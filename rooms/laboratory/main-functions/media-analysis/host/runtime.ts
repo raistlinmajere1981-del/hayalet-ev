@@ -2,6 +2,7 @@ import { createMediaEditArtifactRuntime } from "./edit-artifacts.js";
 import { createMediaEditSupportRuntime } from "./edit-support.js";
 import { createMediaEditPipelineRuntime } from "./edit-pipeline.js";
 import { createMediaProfilePreflightRuntime } from "./profile-preflight.js";
+import { createLaboratoryVisualAnalysisRuntime } from "./visual-analysis-runtime.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 type MediaEditSupportRuntimeDeps = Parameters<typeof createMediaEditSupportRuntime>[0];
@@ -216,6 +217,11 @@ export function createLaboratoryMediaAnalysisHostRuntime(
     return mediaProfilePreflightRuntime.runProfilePreflight(...args);
   }
 
+  const visualAnalysisRuntime = createLaboratoryVisualAnalysisRuntime({
+    asNonEmptyString,
+    toRecord,
+  });
+
   return {
     applyEditRecipePatch,
     buildEditCommand,
@@ -232,5 +238,6 @@ export function createLaboratoryMediaAnalysisHostRuntime(
     runEditPipeline,
     runProfilePreflight,
     sanitizeFileSegment,
+    visualAnalysisRuntime,
   };
 }

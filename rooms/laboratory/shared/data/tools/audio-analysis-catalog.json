@@ -12,6 +12,15 @@
       "summaryKey": "audioAnalysis.catalog.modules.signal-health.summary"
     },
     {
+      "id": "signal-recovery",
+      "status": "implemented",
+      "phase": "v2",
+      "providerIds": ["ffmpeg-signal-recovery"],
+      "toolIds": ["ffmpeg"],
+      "titleKey": "audioAnalysis.catalog.modules.signal-recovery.title",
+      "summaryKey": "audioAnalysis.catalog.modules.signal-recovery.summary"
+    },
+    {
       "id": "spectral-artifacts",
       "status": "implemented",
       "phase": "v1",
@@ -19,6 +28,51 @@
       "toolIds": ["ffmpeg"],
       "titleKey": "audioAnalysis.catalog.modules.spectral-artifacts.title",
       "summaryKey": "audioAnalysis.catalog.modules.spectral-artifacts.summary"
+    },
+    {
+      "id": "frequency-shift-reversal",
+      "status": "implemented",
+      "phase": "v2",
+      "providerIds": ["ffmpeg-frequency-recovery"],
+      "toolIds": ["ffmpeg"],
+      "titleKey": "audioAnalysis.catalog.modules.frequency-shift-reversal.title",
+      "summaryKey": "audioAnalysis.catalog.modules.frequency-shift-reversal.summary"
+    },
+    {
+      "id": "band-pass-exploration",
+      "status": "implemented",
+      "phase": "v2",
+      "providerIds": ["ffmpeg-signal-recovery"],
+      "toolIds": ["ffmpeg"],
+      "titleKey": "audioAnalysis.catalog.modules.band-pass-exploration.title",
+      "summaryKey": "audioAnalysis.catalog.modules.band-pass-exploration.summary"
+    },
+    {
+      "id": "spectrogram-guided-recovery",
+      "status": "implemented",
+      "phase": "v2",
+      "providerIds": ["ffmpeg-signal-recovery"],
+      "toolIds": ["ffmpeg"],
+      "titleKey": "audioAnalysis.catalog.modules.spectrogram-guided-recovery.title",
+      "summaryKey": "audioAnalysis.catalog.modules.spectrogram-guided-recovery.summary"
+    },
+    {
+      "id": "hidden-pattern-extraction",
+      "status": "implemented",
+      "phase": "v2",
+      "providerIds": ["ffmpeg-signal-recovery"],
+      "toolIds": ["ffmpeg"],
+      "titleKey": "audioAnalysis.catalog.modules.hidden-pattern-extraction.title",
+      "summaryKey": "audioAnalysis.catalog.modules.hidden-pattern-extraction.summary"
+    },
+    {
+      "id": "phase-recovery-experiment",
+      "status": "implemented",
+      "phase": "v2",
+      "providerIds": ["ffmpeg-phase-lab"],
+      "toolIds": ["ffmpeg"],
+      "titleKey": "audioAnalysis.catalog.modules.phase-recovery-experiment.title",
+      "summaryKey": "audioAnalysis.catalog.modules.phase-recovery-experiment.summary"
     },
     {
       "id": "transcription",

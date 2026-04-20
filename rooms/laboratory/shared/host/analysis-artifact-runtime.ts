@@ -406,6 +406,112 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
     });
   }
 
+  async function generateProcessFramePreviewArtifact(
+    runtime: { paths: { projectsDir: string } },
+    project: LaboratoryRecord,
+    requestId: string | null,
+    jobId: string | null,
+    target: LaboratoryRecord,
+    artifactBase: string,
+    outputDir: string,
+    moduleId: string,
+    sampleWindowSeconds: number,
+    tileCount: unknown,
+    label: string = "Frame Preview"
+  ) {
+    const sourceKind =
+      asNonEmptyString((project["source"] as LaboratoryRecord | undefined)?.["kind"]) || "video";
+    const outputPath = `${outputDir}/${artifactBase}-frames.png`;
+
+    if (sourceKind === "image") {
+      await runProfileTool(runtime, {
+        requestId,
+        jobId,
+        toolId: "ffmpeg",
+        cwd: getProjectProfileDir(runtime, project as { slug: string }),
+        args: [
+          "-y",
+          "-i",
+          target["path"] as string,
+          "-vf",
+          "scale=1280:-1:flags=lanczos",
+          "-frames:v",
+          "1",
+          outputPath,
+        ],
+        timeoutMs: 90_000,
+      });
+      return createProcessArtifact(moduleId, "frame-preview", outputPath, label, {
+        sourceKind,
+      });
+    }
+
+    const normalizedTileCount = Math.max(2, Math.round(asNumber(tileCount) || 4));
+    const intervalSeconds = Math.max(
+      1,
+      Math.round((sampleWindowSeconds || 40) / normalizedTileCount)
+    );
+    await runProfileTool(runtime, {
+      requestId,
+      jobId,
+      toolId: "ffmpeg",
+      cwd: getProjectProfileDir(runtime, project as { slug: string }),
+      args: [
+        "-y",
+        "-i",
+        target["path"] as string,
+        "-vf",
+        `fps=1/${intervalSeconds},scale=420:-1:flags=lanczos,tile=${normalizedTileCount}x1`,
+        "-frames:v",
+        "1",
+        outputPath,
+      ],
+      timeoutMs: 90_000,
+    });
+    return createProcessArtifact(moduleId, "frame-preview", outputPath, label, {
+      sourceKind,
+      tileCount: normalizedTileCount,
+      intervalSeconds,
+    });
+  }
+
+  async function generateProcessVisualTransformArtifact(
+    runtime: { paths: { projectsDir: string } },
+    project: LaboratoryRecord,
+    requestId: string | null,
+    jobId: string | null,
+    target: LaboratoryRecord,
+    artifactBase: string,
+    outputDir: string,
+    moduleId: string,
+    filterGraph: string,
+    label: string,
+    metadata: LaboratoryRecord = {}
+  ) {
+    const outputPath = `${outputDir}/${artifactBase}-transform.png`;
+    await runProfileTool(runtime, {
+      requestId,
+      jobId,
+      toolId: "ffmpeg",
+      cwd: getProjectProfileDir(runtime, project as { slug: string }),
+      args: [
+        "-y",
+        "-i",
+        target["path"] as string,
+        "-vf",
+        `${filterGraph},scale=1280:-1:flags=lanczos`,
+        "-frames:v",
+        "1",
+        outputPath,
+      ],
+      timeoutMs: 90_000,
+    });
+    return createProcessArtifact(moduleId, "transform-preview", outputPath, label, {
+      ...metadata,
+      filterGraph,
+    });
+  }
+
   function getFindingSeverityRank(level: unknown) {
     const nextLevel = asNonEmptyString(level) || "low";
     return nextLevel === "high" ? 3 : nextLevel === "medium" ? 2 : 1;
@@ -429,7 +535,9 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
     createProfileArtifact,
     createProfileSignal,
     formatIdentifierLabel,
+    generateProcessFramePreviewArtifact,
     generateProcessMetadataArtifact,
+    generateProcessVisualTransformArtifact,
     generateProfileFrameStrip,
     generateProfileMetadataArtifact,
     generateProfileSpectrogram,

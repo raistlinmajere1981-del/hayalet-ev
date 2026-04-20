@@ -18,6 +18,9 @@ type LaboratoryProjectConfigRuntime = {
   subtitleSourcePresets: unknown;
   subtitleYoutubeForm: unknown;
   toolchainManifest: unknown;
+  visualAnalysisCapabilities: unknown;
+  visualAnalysisCatalog: unknown;
+  visualAnalysisProviders: unknown;
   ytDlpForm: unknown;
 };
 
@@ -55,6 +58,9 @@ export function createLaboratoryProjectConfigLoader(deps: LaboratoryProjectConfi
       subtitleAnalysisCatalog,
       subtitleAnalysisCapabilities,
       subtitleAnalysisProviders,
+      visualAnalysisCatalog,
+      visualAnalysisCapabilities,
+      visualAnalysisProviders,
       audioAnalysisCatalog,
       audioAnalysisCapabilities,
       audioAnalysisPresets,
@@ -75,6 +81,9 @@ export function createLaboratoryProjectConfigLoader(deps: LaboratoryProjectConfi
       readJsonFile(`${baseDir}/subtitle-analysis-catalog.json`),
       readJsonFile(`${baseDir}/subtitle-analysis-capabilities.json`),
       readJsonFile(`${baseDir}/subtitle-analysis-providers.json`),
+      readJsonFile(`${baseDir}/visual-analysis-catalog.json`),
+      readJsonFile(`${baseDir}/visual-analysis-capabilities.json`),
+      readJsonFile(`${baseDir}/visual-analysis-providers.json`),
       readJsonFile(`${baseDir}/audio-analysis-catalog.json`),
       readJsonFile(`${baseDir}/audio-analysis-capabilities.json`),
       readJsonFile(`${baseDir}/audio-analysis-presets.json`),
@@ -97,6 +106,9 @@ export function createLaboratoryProjectConfigLoader(deps: LaboratoryProjectConfi
     runtime.subtitleAnalysisCatalog = subtitleAnalysisCatalog || {};
     runtime.subtitleAnalysisCapabilities = subtitleAnalysisCapabilities || {};
     runtime.subtitleAnalysisProviders = subtitleAnalysisProviders || {};
+    runtime.visualAnalysisCatalog = visualAnalysisCatalog || {};
+    runtime.visualAnalysisCapabilities = visualAnalysisCapabilities || {};
+    runtime.visualAnalysisProviders = visualAnalysisProviders || {};
     runtime.audioAnalysisCatalog = audioAnalysisCatalog || {};
     runtime.audioAnalysisCapabilities = audioAnalysisCapabilities || {};
     runtime.audioAnalysisPresets = audioAnalysisPresets || {};

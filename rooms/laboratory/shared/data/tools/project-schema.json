@@ -26,6 +26,13 @@
         "activeModuleId",
         "availableModuleIds",
         "selectedModuleIds"
+      ],
+      "optional": [
+        "analysisScope",
+        "moduleToggles",
+        "activePreviewArtifactId",
+        "activeLiveFindingsStreamId",
+        "controlsCollapsed"
       ]
     },
     "source": {
@@ -423,6 +430,15 @@
             "warnings",
             "error",
             "emptyReason"
+          ],
+          "optional": [
+            "analysisScope",
+            "liveFindings",
+            "previewArtifacts",
+            "confidence",
+            "moduleTrace",
+            "comparisonVariants",
+            "hypothesisSummary"
           ]
         },
         "audio-analysis": {
@@ -444,6 +460,15 @@
             "warnings",
             "error",
             "emptyReason"
+          ],
+          "optional": [
+            "analysisScope",
+            "liveFindings",
+            "previewArtifacts",
+            "confidence",
+            "moduleTrace",
+            "comparisonVariants",
+            "hypothesisSummary"
           ]
         },
         "subtitle-analysis": {
@@ -465,6 +490,15 @@
             "warnings",
             "error",
             "emptyReason"
+          ],
+          "optional": [
+            "analysisScope",
+            "liveFindings",
+            "previewArtifacts",
+            "confidence",
+            "moduleTrace",
+            "comparisonVariants",
+            "hypothesisSummary"
           ]
         }
       }
@@ -486,7 +520,17 @@
             "error",
             "emptyReason"
           ],
-          "optional": ["userReport", "aiReport"]
+          "optional": [
+            "userReport",
+            "aiReport",
+            "analysisScope",
+            "liveFindings",
+            "previewArtifacts",
+            "confidence",
+            "moduleTrace",
+            "comparisonVariants",
+            "hypothesisSummary"
+          ]
         },
         "audio-analysis": {
           "required": [
@@ -502,7 +546,17 @@
             "error",
             "emptyReason"
           ],
-          "optional": ["userReport", "aiReport"]
+          "optional": [
+            "userReport",
+            "aiReport",
+            "analysisScope",
+            "liveFindings",
+            "previewArtifacts",
+            "confidence",
+            "moduleTrace",
+            "comparisonVariants",
+            "hypothesisSummary"
+          ]
         },
         "subtitle-analysis": {
           "required": [
@@ -518,7 +572,17 @@
             "error",
             "emptyReason"
           ],
-          "optional": ["userReport", "aiReport"]
+          "optional": [
+            "userReport",
+            "aiReport",
+            "analysisScope",
+            "liveFindings",
+            "previewArtifacts",
+            "confidence",
+            "moduleTrace",
+            "comparisonVariants",
+            "hypothesisSummary"
+          ]
         }
       }
     }

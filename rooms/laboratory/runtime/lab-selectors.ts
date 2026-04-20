@@ -2,12 +2,14 @@ import { asLabRecord, asNonEmptyString, createLabFeatureMeta } from "../models/l
 import type {
   LabFeatureId,
   LabPreflightResult,
+  LabPreviewArtifactProjection,
   LabRecord,
   LabReportSet,
   LabRun,
   LabStage,
   LabStoreState,
 } from "../models/lab-types.js";
+import { normalizeAnalysisScope } from "../shared/types/analysis-scope.js";
 
 export function getSnapshot(state: LabStoreState): LabRecord {
   return state.snapshot || {};
@@ -345,4 +347,52 @@ export function hasMoreVisibleArtifacts(state: LabStoreState) {
   const run = getCurrentRun(state);
   const artifacts = run ? run.artifacts : [];
   return artifacts.length > getVisibleArtifacts(state).length;
+}
+
+export function getProcessAnalysisScope(state: LabStoreState) {
+  const run = getCurrentRun(state);
+  return run?.analysisScope || normalizeAnalysisScope(asLabRecord(state.workbench)["analysisScope"]);
+}
+
+export function getVisibleLiveFindings(state: LabStoreState) {
+  const run = getCurrentRun(state);
+  const findings = run ? run.liveFindings : [];
+  return findings.slice(0, state.ui.liveFindingsExpanded ? 18 : 6);
+}
+
+export function hasMoreVisibleLiveFindings(state: LabStoreState) {
+  const run = getCurrentRun(state);
+  const findings = run ? run.liveFindings : [];
+  return findings.length > getVisibleLiveFindings(state).length;
+}
+
+export function getPreviewArtifacts(state: LabStoreState) {
+  const run = getCurrentRun(state);
+  return run ? run.previewArtifacts.slice() : [];
+}
+
+export function getActivePreviewArtifact(state: LabStoreState): LabPreviewArtifactProjection | null {
+  const previewArtifacts = getPreviewArtifacts(state);
+  if (previewArtifacts.length === 0) {
+    return null;
+  }
+
+  const activePreviewId =
+    asNonEmptyString(state.ui.activePreviewArtifactId) ||
+    asNonEmptyString(asLabRecord(state.workbench)["activePreviewArtifactId"]);
+  return (
+    previewArtifacts.find(function (entry) {
+      return entry.id === activePreviewId;
+    }) ||
+    previewArtifacts.find(function (entry) {
+      return entry.active === true;
+    }) ||
+    previewArtifacts[0] ||
+    null
+  );
+}
+
+export function getComparisonVariants(state: LabStoreState) {
+  const run = getCurrentRun(state);
+  return run ? run.comparisonVariants.slice() : [];
 }

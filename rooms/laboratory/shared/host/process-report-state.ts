@@ -1,3 +1,10 @@
+import {
+  freezeAnalysisScope,
+  normalizeAnalysisReference,
+  normalizeAnalysisScope,
+  serializeAnalysisScope,
+} from "../types/analysis-scope.js";
+
 interface ProcessReportRecord extends Record<string, unknown> {
   moduleId?: unknown;
   id?: unknown;
@@ -38,6 +45,30 @@ interface ProcessReportRecord extends Record<string, unknown> {
   createdAt?: unknown;
   process?: unknown;
   report?: unknown;
+  analysisScope?: unknown;
+  liveFindings?: unknown;
+  previewArtifacts?: unknown;
+  confidence?: unknown;
+  moduleTrace?: unknown;
+  comparisonVariants?: unknown;
+  hypothesisSummary?: unknown;
+  code?: unknown;
+  severity?: unknown;
+  sourceModule?: unknown;
+  reference?: unknown;
+  hypothesis?: unknown;
+  statusLabel?: unknown;
+  variantId?: unknown;
+  active?: unknown;
+  metadata?: unknown;
+  windowKey?: unknown;
+  streamId?: unknown;
+  emittedAt?: unknown;
+  detail?: unknown;
+  message?: unknown;
+  eventId?: unknown;
+  stage?: unknown;
+  kind?: unknown;
 }
 
 interface ProcessArtifactRecord extends Record<string, unknown> {
@@ -76,6 +107,13 @@ export function createLaboratoryProcessReportStateRuntime(deps: Record<string, u
       warnings: [] as string[],
       error: null as string | null,
       emptyReason: null as string | null,
+      analysisScope: null as Record<string, unknown> | null,
+      liveFindings: [] as unknown[],
+      previewArtifacts: [] as unknown[],
+      confidence: null as string | null,
+      moduleTrace: [] as unknown[],
+      comparisonVariants: [] as unknown[],
+      hypothesisSummary: null as string | null,
     };
   }
 
@@ -93,18 +131,96 @@ export function createLaboratoryProcessReportStateRuntime(deps: Record<string, u
 
   function normalizeProcessArtifact(rawValue: unknown) {
     const artifact = normalizeProfileArtifact(rawValue);
+    const source = toRecord(rawValue);
     return {
       ...artifact,
       moduleId: asNonEmptyString(toRecord(rawValue).moduleId),
+      label: asNonEmptyString(source.label),
+      status: asNonEmptyString(source.status) || "ready",
+      variantId: asNonEmptyString(source.variantId),
+      active: source.active !== false,
+      reference: normalizeAnalysisReference(source.reference ?? rawValue),
+      metadata: toRecord(source.metadata),
     };
   }
 
   function normalizeProcessFinding(rawValue: unknown) {
+    const source = toRecord(rawValue);
     const finding = normalizeProfileSignal(rawValue);
+    const severity = asNonEmptyString(source.severity);
     return {
       ...finding,
       moduleId: asNonEmptyString(toRecord(rawValue).moduleId),
+      code: asNonEmptyString(source.code),
+      severity:
+        severity === "success" || severity === "warning" || severity === "error" ? severity : "info",
+      sourceModule: asNonEmptyString(source.sourceModule) || asNonEmptyString(source.moduleId),
+      reference: normalizeAnalysisReference(source.reference ?? rawValue),
+      hypothesis: asNonEmptyString(source.hypothesis),
     };
+  }
+
+  function normalizeLiveFinding(rawValue: unknown) {
+    const source = toRecord(rawValue);
+    const timestamp = asNumber(source.emittedAt);
+    return {
+      ...normalizeProcessFinding(rawValue),
+      emittedAt: typeof timestamp === "number" ? Math.max(0, Math.round(timestamp)) : Date.now(),
+      windowKey: asNonEmptyString(source.windowKey),
+      streamId: asNonEmptyString(source.streamId),
+    };
+  }
+
+  function normalizeModuleTraceEntry(rawValue: unknown) {
+    const source = toRecord(rawValue);
+    return {
+      id: asNonEmptyString(source.id) || `module-trace-${Date.now()}`,
+      moduleId: asNonEmptyString(source.moduleId),
+      stage: asNonEmptyString(source.stage) || "process",
+      status: asNonEmptyString(source.status) || "idle",
+      timestamp: asNonEmptyString(source["timestamp"]) || new Date().toISOString(),
+      message: asNonEmptyString(source.message),
+      detail: asNonEmptyString(source.detail),
+      eventId: asNonEmptyString(source.eventId),
+    };
+  }
+
+  function normalizeComparisonVariant(rawValue: unknown) {
+    const source = toRecord(rawValue);
+    const artifactId = asNonEmptyString(source["artifactId"]);
+    const artifactIds = Array.isArray(source.artifactIds)
+      ? (source.artifactIds as unknown[]).map(asNonEmptyString).filter(Boolean)
+      : artifactId
+        ? [artifactId]
+        : [];
+    return {
+      id: asNonEmptyString(source.id) || `comparison-variant-${Date.now()}`,
+      kind: asNonEmptyString(source.kind) || "variant",
+      label: asNonEmptyString(source.label) || "Variant",
+      status: asNonEmptyString(source.status) || "ready",
+      summary: asNonEmptyString(source.summary),
+      artifactIds,
+      artifactId,
+      artifactPath: asNonEmptyString(source["artifactPath"]),
+      sourceModule: asNonEmptyString(source.sourceModule),
+      active: source.active !== false,
+    };
+  }
+
+  function normalizeFrozenScope(
+    rawValue: unknown,
+    runId: string | null,
+    status: string,
+    startedAt: string | null
+  ) {
+    const normalizedScope = normalizeAnalysisScope(rawValue);
+    if (normalizedScope === null) {
+      return null;
+    }
+    if (runId !== null && status !== "idle") {
+      return freezeAnalysisScope(normalizedScope, runId, startedAt || new Date().toISOString());
+    }
+    return serializeAnalysisScope(normalizedScope);
   }
 
   function normalizeProcessModule(rawValue: unknown) {
@@ -143,15 +259,18 @@ export function createLaboratoryProcessReportStateRuntime(deps: Record<string, u
 
   function normalizeFeatureProcessRecord(rawValue: unknown, featureId: string) {
     const source = toRecord(rawValue);
+    const status = asNonEmptyString(source.status) || "idle";
+    const runId = asNonEmptyString(source.runId);
+    const startedAt = asNonEmptyString(source.startedAt);
     return {
       ...createEmptyFeatureProcessRecord(featureId),
       ...source,
       featureId: featureId,
-      status: asNonEmptyString(source.status) || "idle",
+      status: status,
       jobId: asNonEmptyString(source.jobId),
       requestId: asNonEmptyString(source.requestId),
-      runId: asNonEmptyString(source.runId),
-      startedAt: asNonEmptyString(source.startedAt),
+      runId,
+      startedAt,
       completedAt: asNonEmptyString(source.completedAt),
       percent: Math.max(0, Math.min(100, Math.round(asNumber(source.percent) || 0))),
       targetSummary:
@@ -184,6 +303,23 @@ export function createLaboratoryProcessReportStateRuntime(deps: Record<string, u
         : [],
       error: asNonEmptyString(source.error),
       emptyReason: asNonEmptyString(source.emptyReason),
+      analysisScope: normalizeFrozenScope(source.analysisScope, runId, status, startedAt),
+      liveFindings: Array.isArray(source.liveFindings)
+        ? source.liveFindings.map(normalizeLiveFinding)
+        : [],
+      previewArtifacts: Array.isArray(source.previewArtifacts)
+        ? source.previewArtifacts.map(normalizeProcessArtifact)
+        : [],
+      confidence: asNonEmptyString(source.confidence),
+      moduleTrace: Array.isArray(source.moduleTrace)
+        ? source.moduleTrace.map(normalizeModuleTraceEntry)
+        : [],
+      comparisonVariants: Array.isArray(source.comparisonVariants)
+        ? source.comparisonVariants.map(normalizeComparisonVariant)
+        : [],
+      hypothesisSummary:
+        asNonEmptyString(source.hypothesisSummary) ||
+        asNonEmptyString(toRecord(normalizeAnalysisScope(source.analysisScope)).hypothesis),
     };
   }
 
@@ -218,6 +354,13 @@ export function createLaboratoryProcessReportStateRuntime(deps: Record<string, u
       exports: [] as unknown[],
       error: null as string | null,
       emptyReason: "Rapor henüz üretilmedi." as string | null,
+      analysisScope: null as Record<string, unknown> | null,
+      liveFindings: [] as unknown[],
+      previewArtifacts: [] as unknown[],
+      confidence: null as string | null,
+      moduleTrace: [] as unknown[],
+      comparisonVariants: [] as unknown[],
+      hypothesisSummary: null as string | null,
     };
   }
 
@@ -282,6 +425,23 @@ export function createLaboratoryProcessReportStateRuntime(deps: Record<string, u
       exports: Array.isArray(source.exports) ? source.exports.map(normalizeReportExport) : [],
       error: asNonEmptyString(source.error),
       emptyReason: asNonEmptyString(source.emptyReason),
+      analysisScope: serializeAnalysisScope(source.analysisScope),
+      liveFindings: Array.isArray(source.liveFindings)
+        ? source.liveFindings.map(normalizeLiveFinding)
+        : [],
+      previewArtifacts: Array.isArray(source.previewArtifacts)
+        ? source.previewArtifacts.map(normalizeProcessArtifact)
+        : [],
+      confidence: asNonEmptyString(source.confidence),
+      moduleTrace: Array.isArray(source.moduleTrace)
+        ? source.moduleTrace.map(normalizeModuleTraceEntry)
+        : [],
+      comparisonVariants: Array.isArray(source.comparisonVariants)
+        ? source.comparisonVariants.map(normalizeComparisonVariant)
+        : [],
+      hypothesisSummary:
+        asNonEmptyString(source.hypothesisSummary) ||
+        asNonEmptyString(toRecord(normalizeAnalysisScope(source.analysisScope)).hypothesis),
     };
   }
 

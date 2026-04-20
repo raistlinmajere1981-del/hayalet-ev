@@ -50,10 +50,12 @@ function createBootSurface(state: LabStoreState): LabStageSurface {
 
 function readPersistableState(state: LabStoreState) {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     artifactRenderCount: state.ui.artifactRenderCount,
     artifactListExpanded: state.ui.artifactListExpanded,
+    activePreviewArtifactId: state.ui.activePreviewArtifactId,
     activityFeed: state.activityFeed.slice(0, 40),
+    analysisControlsCollapsed: state.ui.analysisControlsCollapsed,
     currentStage: state.currentStage,
     editDrafts: state.ui.editDrafts,
     editConfig: state.editConfig,
@@ -83,6 +85,7 @@ function readPersistableState(state: LabStoreState) {
     sourceDrafts: state.ui.sourceDrafts,
     sourceProbeStatus: state.sourceProbeStatus,
     toolState: state.toolState,
+    liveFindingsExpanded: state.ui.liveFindingsExpanded,
     workbench: state.workbench,
   };
 }

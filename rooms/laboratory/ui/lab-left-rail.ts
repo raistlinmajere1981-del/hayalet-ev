@@ -42,6 +42,15 @@ export function renderLabLeftRail(state: LabStoreState) {
       <button
         class="labx-manager-link"
         type="button"
+        data-lab-action="toggle-module-manager"
+        data-active="${state.ui.moduleManagerOpen ? "true" : "false"}"
+      >
+        <strong>Modül Yönetimi</strong>
+        <small>Çalışma tezgahında hangi feature ve analiz hattının aktif olacağını belirle</small>
+      </button>
+      <button
+        class="labx-manager-link"
+        type="button"
         data-lab-action="toggle-tool-manager"
         data-active="${state.ui.toolManagerOpen ? "true" : "false"}"
       >

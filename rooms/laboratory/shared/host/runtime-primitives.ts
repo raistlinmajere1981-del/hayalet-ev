@@ -4,6 +4,10 @@ import {
   getProjectProcessDir as getProjectProcessDirFromPaths,
   getProjectReportDir as getProjectReportDirFromPaths,
 } from "./project-paths.js";
+import {
+  normalizeAnalysisScope,
+  serializeAnalysisScope,
+} from "../types/analysis-scope.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 
@@ -78,6 +82,7 @@ export function createLaboratoryWorkbenchState(overrides: unknown = {}) {
   ).filter(function (featureId) {
     return availableModuleIds.includes(featureId);
   });
+  const analysisScope = serializeAnalysisScope(normalizeAnalysisScope(source["analysisScope"]));
 
   return {
     schemaVersion: LABORATORY_WORKBENCH_SCHEMA_VERSION,
@@ -90,6 +95,11 @@ export function createLaboratoryWorkbenchState(overrides: unknown = {}) {
       selectedModuleIds.length > 0
         ? selectedModuleIds
         : [availableModuleIds.includes(activeModuleId) ? activeModuleId : primaryFeatureId],
+    analysisScope,
+    moduleToggles: toLaboratoryRecord(source["moduleToggles"]),
+    activePreviewArtifactId: readNonEmptyString(source["activePreviewArtifactId"]),
+    activeLiveFindingsStreamId: readNonEmptyString(source["activeLiveFindingsStreamId"]),
+    controlsCollapsed: source["controlsCollapsed"] !== false,
   };
 }
 

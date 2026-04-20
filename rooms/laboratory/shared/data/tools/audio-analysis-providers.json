@@ -14,6 +14,46 @@
       "summaryKey": "audioAnalysis.providers.ffmpeg-signal.summary"
     },
     {
+      "id": "ffmpeg-signal-recovery",
+      "status": "ready",
+      "toolId": "ffmpeg",
+      "moduleIds": [
+        "signal-recovery",
+        "band-pass-exploration",
+        "spectrogram-guided-recovery",
+        "hidden-pattern-extraction"
+      ],
+      "providerType": "binary",
+      "installStrategy": "shared-room-tool",
+      "expectedArtifacts": ["recovered-audio", "spectrogram-image", "recovery-manifest"],
+      "titleKey": "audioAnalysis.providers.ffmpeg-signal-recovery.title",
+      "summaryKey": "audioAnalysis.providers.ffmpeg-signal-recovery.summary"
+    },
+    {
+      "id": "ffmpeg-frequency-recovery",
+      "status": "ready",
+      "toolId": "ffmpeg",
+      "moduleIds": ["frequency-shift-reversal"],
+      "providerType": "binary",
+      "installStrategy": "shared-room-tool",
+      "expectedArtifacts": ["recovered-audio", "spectrogram-image", "recovery-manifest"],
+      "fallbackProviderIds": ["ffmpeg-signal-recovery"],
+      "titleKey": "audioAnalysis.providers.ffmpeg-frequency-recovery.title",
+      "summaryKey": "audioAnalysis.providers.ffmpeg-frequency-recovery.summary"
+    },
+    {
+      "id": "ffmpeg-phase-lab",
+      "status": "ready",
+      "toolId": "ffmpeg",
+      "moduleIds": ["phase-recovery-experiment"],
+      "providerType": "binary",
+      "installStrategy": "shared-room-tool",
+      "expectedArtifacts": ["recovered-audio", "spectrogram-image", "recovery-manifest"],
+      "fallbackProviderIds": ["ffmpeg-signal-recovery"],
+      "titleKey": "audioAnalysis.providers.ffmpeg-phase-lab.title",
+      "summaryKey": "audioAnalysis.providers.ffmpeg-phase-lab.summary"
+    },
+    {
       "id": "whisper-transcript",
       "status": "ready",
       "toolId": "whisper.cpp",

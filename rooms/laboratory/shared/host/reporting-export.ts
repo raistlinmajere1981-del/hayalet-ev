@@ -4,6 +4,7 @@ type LaboratoryReportExportEntry = LaboratoryRecord;
 
 type LaboratoryFeatureReportRecord = LaboratoryRecord & {
   aiReport?: LaboratoryRecord | null;
+  artifacts?: LaboratoryRecord[] | null;
   error?: string | null;
   exports?: LaboratoryReportExportEntry[];
   status?: string | null;
@@ -77,6 +78,25 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
     buildReportMarkdown,
   } = deps;
 
+  function buildSupplementalArtifactExports(reportRecord: LaboratoryFeatureReportRecord) {
+    const artifacts = Array.isArray(reportRecord.artifacts) ? reportRecord.artifacts : [];
+    return artifacts
+      .filter(function (entry) {
+        const artifact = entry as LaboratoryRecord;
+        const kind = typeof artifact["kind"] === "string" ? artifact["kind"] : "";
+        return kind === "subtitle-ai-payload" || kind === "subtitle-channel-batch";
+      })
+      .map(function (entry) {
+        const artifact = entry as LaboratoryRecord;
+        return normalizeReportExport({
+          format: "json",
+          path: artifact["path"],
+          fileName: artifact["fileName"],
+          status: "ready",
+        });
+      });
+  }
+
   async function exportFeatureReport(
     api: unknown,
     runtime: unknown,
@@ -137,6 +157,7 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
         fileName: aiFileName,
         status: "ready",
       });
+      const supplementalExports = buildSupplementalArtifactExports(reportRecord);
 
       await patchActiveProject(runtime, function (nextProject) {
         const nextReportRecord = composeFeatureReport(runtime, nextProject, featureId);
@@ -144,9 +165,25 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
         const currentExports = Array.isArray(currentReportRecord.exports)
           ? currentReportRecord.exports
           : [];
-        nextReportRecord.exports = [userExportEntry, aiExportEntry].concat(
-          currentExports.slice(0, 6)
-        );
+        const nextExportEntries = [userExportEntry, aiExportEntry]
+          .concat(supplementalExports)
+          .concat(currentExports)
+          .reduce<LaboratoryReportExportEntry[]>(function (accumulator, entry) {
+            const candidate = normalizeReportExport(entry);
+            const candidatePath =
+              typeof candidate["path"] === "string" ? String(candidate["path"]) : "";
+            if (
+              candidatePath !== "" &&
+              accumulator.some(function (existingEntry) {
+                return String(existingEntry["path"] || "") === candidatePath;
+              })
+            ) {
+              return accumulator;
+            }
+            accumulator.push(candidate);
+            return accumulator;
+          }, []);
+        nextReportRecord.exports = nextExportEntries.slice(0, 8);
         setFeatureReportRecord(nextProject, featureId, nextReportRecord);
         return nextProject;
       });

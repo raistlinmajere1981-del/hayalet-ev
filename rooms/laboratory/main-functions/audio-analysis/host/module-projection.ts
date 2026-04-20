@@ -310,11 +310,24 @@ export function createAudioAnalysisProjectionRuntime(deps: AudioAnalysisProjecti
         moduleId,
         entry
       );
+      const moduleToggles = toRecord(toRecord(project["workbench"])["moduleToggles"]);
+      const moduleDisabled = Object.prototype.hasOwnProperty.call(moduleToggles, moduleId)
+        ? moduleToggles[moduleId] === false
+        : false;
       const status =
         asNonEmptyString(capabilityEntry.status) || asNonEmptyString(entry.status) || "planned";
       const blockers = normalizeStringArray(capabilityEntry.blockers);
       const warnings = normalizeStringArray(capabilityEntry.warnings);
 
+      if (moduleDisabled) {
+        return normalizeProcessModule({
+          id: moduleId,
+          labelKey: asNonEmptyString(entry.titleKey),
+          status: "skipped",
+          summary: "Disabled from the active workbench scope.",
+          title: moduleId,
+        });
+      }
       if (status === "planned") {
         return normalizeProcessModule({
           id: moduleId,

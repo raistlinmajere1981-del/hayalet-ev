@@ -299,7 +299,8 @@ textarea {
 .labx-grid--source,
 .labx-grid--edit,
 .labx-grid--profile,
-.labx-grid--process {
+.labx-grid--process,
+.labx-grid--analysis-controls {
   grid-template-columns: minmax(0, 1fr);
 }
 
@@ -640,6 +641,12 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
+}
+
+.labx-preview-surface__placeholder {
+  display: grid;
+  gap: 0.55rem;
+  width: 100%;
 }
 
 .labx-preview-row {

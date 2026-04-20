@@ -11,6 +11,16 @@ test("laboratory project schema persists process and report branches", () => {
   assert.deepEqual(schema.process, undefined);
   assert.equal(Array.isArray(schema.project?.process?.records?.["media-analysis"]?.required), true);
   assert.equal(Array.isArray(schema.project?.report?.records?.["media-analysis"]?.required), true);
+  assert.equal(Array.isArray(schema.project?.workbench?.optional), true);
+  assert.equal(schema.project?.workbench?.optional?.includes("analysisScope"), true);
+  assert.equal(
+    schema.project?.process?.records?.["media-analysis"]?.optional?.includes("analysisScope"),
+    true
+  );
+  assert.equal(
+    schema.project?.report?.records?.["media-analysis"]?.optional?.includes("previewArtifacts"),
+    true
+  );
   assert.equal(schema.files?.processDir, "main-functions/media-analysis/process");
   assert.equal(schema.files?.processManifest, "main-functions/media-analysis/process/manifest.json");
   assert.equal(schema.files?.reportDir, "main-functions/media-analysis/report");

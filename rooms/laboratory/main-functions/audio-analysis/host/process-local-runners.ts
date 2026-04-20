@@ -25,6 +25,7 @@ type LaboratoryAudioProbeRecord = LaboratoryRecord & {
 
 type LaboratoryProcessArtifactRecord = LaboratoryRecord & {
   id?: unknown;
+  path?: unknown;
 };
 
 type LaboratoryTranscriptResultRecord = LaboratoryRecord & {
@@ -78,8 +79,8 @@ type AudioAnalysisLocalProcessRunnerDeps = {
   createProcessFinding: (
     moduleId: string,
     findingKind: string,
-    confidence: string,
     level: string,
+    confidence: string,
     title: string,
     detail: string,
     evidenceCount: number,
@@ -101,6 +102,18 @@ type AudioAnalysisLocalProcessRunnerDeps = {
     moduleOutputDir: string,
     moduleId: string
   ) => Promise<unknown>;
+  generateProcessSpectrogramFromInputPath: (
+    runtime: LaboratoryAudioProcessRuntime,
+    project: LaboratoryProjectRecord,
+    requestId: string,
+    jobId: string,
+    inputPath: string,
+    artifactBase: string,
+    moduleOutputDir: string,
+    moduleId: string,
+    label: string,
+    metadata?: LaboratoryRecord
+  ) => Promise<unknown>;
   generateProcessWaveform: (
     runtime: LaboratoryAudioProcessRuntime,
     project: LaboratoryProjectRecord,
@@ -110,6 +123,20 @@ type AudioAnalysisLocalProcessRunnerDeps = {
     artifactBase: string,
     moduleOutputDir: string,
     moduleId: string
+  ) => Promise<unknown>;
+  generateFilteredAudioArtifact: (
+    runtime: LaboratoryAudioProcessRuntime,
+    project: LaboratoryProjectRecord,
+    requestId: string,
+    jobId: string,
+    target: LaboratoryAudioTargetRecord,
+    artifactBase: string,
+    outputDir: string,
+    moduleId: string,
+    filterGraph: string,
+    label: string,
+    metadata: LaboratoryRecord,
+    outputExtension?: string
   ) => Promise<unknown>;
   generateSpectralDescriptorArtifact: (
     runtime: LaboratoryAudioProcessRuntime,
@@ -161,7 +188,9 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
     createProcessArtifact,
     createProcessFinding,
     ensureProcessRuntimeDirectories,
+    generateFilteredAudioArtifact,
     generateProcessSpectrogram,
+    generateProcessSpectrogramFromInputPath,
     generateProcessWaveform,
     generateSpectralDescriptorArtifact,
     maybeRunWhisperProfileSample,
@@ -213,6 +242,122 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
       accumulator.push(toProcessArtifactRecord(value));
       return accumulator;
     }, []);
+  }
+
+  function collectArtifactIds(artifacts: LaboratoryProcessArtifactRecord[]): string[] {
+    return artifacts
+      .map(function (artifact) {
+        return typeof artifact.id === "string" && artifact.id.trim() !== "" ? artifact.id : null;
+      })
+      .filter((artifactId): artifactId is string => artifactId !== null);
+  }
+
+  type RecoveryExperimentConfig = {
+    detail: string;
+    filterGraph: string;
+    label: string;
+    manifestLabel: string;
+    summary: string;
+    title: string;
+    warning: string;
+  };
+
+  async function runRecoveryExperiment(
+    runtime: LaboratoryAudioProcessRuntime,
+    project: LaboratoryProjectRecord,
+    requestId: string,
+    jobId: string,
+    target: LaboratoryAudioTargetRecord,
+    artifactBase: string,
+    moduleOutputDir: string,
+    moduleId: string,
+    config: RecoveryExperimentConfig
+  ): Promise<LaboratoryLocalProcessResult> {
+    await ensureProcessRuntimeDirectories(runtime, project, requestId, moduleOutputDir);
+
+    const filteredAudio = toProcessArtifactRecord(
+      await generateFilteredAudioArtifact(
+        runtime,
+        project,
+        requestId,
+        jobId,
+        target,
+        `${artifactBase}-recovery`,
+        moduleOutputDir,
+        moduleId,
+        config.filterGraph,
+        config.label,
+        {
+          experiment: moduleId,
+          scope: "audio-recovery",
+        }
+      )
+    );
+    const filteredPath =
+      typeof filteredAudio.path === "string" && filteredAudio.path.trim() !== ""
+        ? filteredAudio.path
+        : null;
+    const spectrogram = filteredPath
+      ? toProcessArtifactRecord(
+          await generateProcessSpectrogramFromInputPath(
+            runtime,
+            project,
+            requestId,
+            jobId,
+            filteredPath,
+            `${artifactBase}-recovery`,
+            moduleOutputDir,
+            moduleId,
+            `${config.label} Spectrogram`,
+            {
+              experiment: moduleId,
+              sourceArtifactId: typeof filteredAudio.id === "string" ? filteredAudio.id : null,
+            }
+          )
+        )
+      : null;
+    const manifestPath = `${moduleOutputDir}/${artifactBase}-recovery.json`;
+    await writeJsonFile(manifestPath, {
+      moduleId,
+      generatedAt: new Date().toISOString(),
+      target: toRecord(clone(target)),
+      filterGraph: config.filterGraph,
+      artifacts: [filteredAudio, spectrogram].filter(Boolean),
+      detail: config.detail,
+      summary: config.summary,
+      warning: config.warning,
+    });
+    const manifestArtifact = createProcessArtifact(
+      moduleId,
+      "recovery-manifest",
+      manifestPath,
+      config.manifestLabel,
+      {
+        experiment: moduleId,
+        filterGraph: config.filterGraph,
+      }
+    );
+    const artifacts = compactArtifacts([spectrogram, filteredAudio, manifestArtifact]);
+    const artifactIds = collectArtifactIds(artifacts);
+
+    return {
+      artifacts,
+      findings: [
+        createProcessFinding(
+          moduleId,
+          "derived",
+          "medium",
+          "low",
+          config.title,
+          config.detail,
+          artifactIds.length,
+          artifactIds
+        ),
+      ],
+      status: "ready",
+      summary: config.summary,
+      warnings: [config.warning],
+    };
   }
 
   async function runSignalHealthAudioAnalyzer(
@@ -595,10 +740,211 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
     };
   }
 
+  async function runSignalRecoveryAudioAnalyzer(
+    runtime: LaboratoryAudioProcessRuntime,
+    project: LaboratoryProjectRecord,
+    requestId: string,
+    jobId: string,
+    target: LaboratoryAudioTargetRecord,
+    artifactBase: string,
+    moduleOutputDir: string,
+    moduleId: string
+  ): Promise<LaboratoryLocalProcessResult> {
+    return runRecoveryExperiment(
+      runtime,
+      project,
+      requestId,
+      jobId,
+      target,
+      artifactBase,
+      moduleOutputDir,
+      moduleId,
+      {
+        filterGraph:
+          "highpass=f=80,lowpass=f=4800,afftdn=nf=-25,acompressor=threshold=-18dB:ratio=2:attack=20:release=250,volume=2.2",
+        label: "Signal Recovery Mix",
+        manifestLabel: "Signal Recovery Manifest",
+        title: "Signal recovery experiment generated",
+        detail:
+          "A broadband recovery pass combined denoising, band limiting, and light compression to surface masked content.",
+        summary: "Signal recovery variants and preview artifacts were generated for the active target.",
+        warning: "Recovery output is experimental and should be reviewed against the original source.",
+      }
+    );
+  }
+
+  async function runFrequencyShiftReversalAudioAnalyzer(
+    runtime: LaboratoryAudioProcessRuntime,
+    project: LaboratoryProjectRecord,
+    requestId: string,
+    jobId: string,
+    target: LaboratoryAudioTargetRecord,
+    artifactBase: string,
+    moduleOutputDir: string,
+    moduleId: string
+  ): Promise<LaboratoryLocalProcessResult> {
+    return runRecoveryExperiment(
+      runtime,
+      project,
+      requestId,
+      jobId,
+      target,
+      artifactBase,
+      moduleOutputDir,
+      moduleId,
+      {
+        filterGraph: "afreqshift=shift=-120,highpass=f=100,lowpass=f=5200,volume=2.1",
+        label: "Frequency Shift Reversal",
+        manifestLabel: "Frequency Shift Reversal Manifest",
+        title: "Frequency-shift reversal variant generated",
+        detail:
+          "A small inverse frequency shift was applied to probe whether heterodyned or pitch-shifted material becomes more intelligible.",
+        summary: "Frequency-shift reversal outputs were generated for the active target.",
+        warning: "Frequency-shift reversal is exploratory and may distort unshifted material.",
+      }
+    );
+  }
+
+  async function runBandPassExplorationAudioAnalyzer(
+    runtime: LaboratoryAudioProcessRuntime,
+    project: LaboratoryProjectRecord,
+    requestId: string,
+    jobId: string,
+    target: LaboratoryAudioTargetRecord,
+    artifactBase: string,
+    moduleOutputDir: string,
+    moduleId: string
+  ): Promise<LaboratoryLocalProcessResult> {
+    return runRecoveryExperiment(
+      runtime,
+      project,
+      requestId,
+      jobId,
+      target,
+      artifactBase,
+      moduleOutputDir,
+      moduleId,
+      {
+        filterGraph: "bandpass=f=1700:w=1800,volume=6",
+        label: "Band-pass Exploration",
+        manifestLabel: "Band-pass Exploration Manifest",
+        title: "Band-pass exploration variant generated",
+        detail:
+          "A focused mid-band isolation pass was generated to inspect speech-like or masked content inside the intelligibility range.",
+        summary: "Band-pass exploration artifacts were generated for the active target.",
+        warning: "Band-pass exploration narrows the signal and can remove low or high frequency cues.",
+      }
+    );
+  }
+
+  async function runSpectrogramGuidedRecoveryAudioAnalyzer(
+    runtime: LaboratoryAudioProcessRuntime,
+    project: LaboratoryProjectRecord,
+    requestId: string,
+    jobId: string,
+    target: LaboratoryAudioTargetRecord,
+    artifactBase: string,
+    moduleOutputDir: string,
+    moduleId: string
+  ): Promise<LaboratoryLocalProcessResult> {
+    return runRecoveryExperiment(
+      runtime,
+      project,
+      requestId,
+      jobId,
+      target,
+      artifactBase,
+      moduleOutputDir,
+      moduleId,
+      {
+        filterGraph: "highpass=f=120,lowpass=f=4200,afftdn=nf=-18,volume=2.6",
+        label: "Spectrogram-guided Recovery",
+        manifestLabel: "Spectrogram-guided Recovery Manifest",
+        title: "Spectrogram-guided recovery variant generated",
+        detail:
+          "A recovery pass emphasized the speech-intelligibility band so spectral ridges can be inspected before deeper transcription attempts.",
+        summary: "Spectrogram-guided recovery outputs were generated for the active target.",
+        warning: "Spectrogram-oriented recovery is optimized for inspection, not faithful listening playback.",
+      }
+    );
+  }
+
+  async function runHiddenPatternExtractionAudioAnalyzer(
+    runtime: LaboratoryAudioProcessRuntime,
+    project: LaboratoryProjectRecord,
+    requestId: string,
+    jobId: string,
+    target: LaboratoryAudioTargetRecord,
+    artifactBase: string,
+    moduleOutputDir: string,
+    moduleId: string
+  ): Promise<LaboratoryLocalProcessResult> {
+    return runRecoveryExperiment(
+      runtime,
+      project,
+      requestId,
+      jobId,
+      target,
+      artifactBase,
+      moduleOutputDir,
+      moduleId,
+      {
+        filterGraph:
+          "highpass=f=220,lowpass=f=6400,compand=attacks=0:decays=0.25:points=-80/-80|-30/-12|-12/-6|0/-2,volume=5.5",
+        label: "Hidden Pattern Extraction",
+        manifestLabel: "Hidden Pattern Extraction Manifest",
+        title: "Hidden-pattern extraction variant generated",
+        detail:
+          "Dynamic-range expansion and band limiting were applied to expose low-level or intermittently masked audio patterns.",
+        summary: "Hidden-pattern extraction artifacts were generated for the active target.",
+        warning: "Pattern extraction can amplify noise as well as faint content, so results need manual review.",
+      }
+    );
+  }
+
+  async function runPhaseRecoveryExperimentAudioAnalyzer(
+    runtime: LaboratoryAudioProcessRuntime,
+    project: LaboratoryProjectRecord,
+    requestId: string,
+    jobId: string,
+    target: LaboratoryAudioTargetRecord,
+    artifactBase: string,
+    moduleOutputDir: string,
+    moduleId: string
+  ): Promise<LaboratoryLocalProcessResult> {
+    return runRecoveryExperiment(
+      runtime,
+      project,
+      requestId,
+      jobId,
+      target,
+      artifactBase,
+      moduleOutputDir,
+      moduleId,
+      {
+        filterGraph:
+          "aformat=channel_layouts=stereo,pan=mono|c0=0.5*c0-0.5*c1,highpass=f=100,lowpass=f=5200,volume=8",
+        label: "Phase Recovery Experiment",
+        manifestLabel: "Phase Recovery Manifest",
+        title: "Phase-isolation recovery variant generated",
+        detail:
+          "A side-channel phase isolation experiment was generated to inspect content that may cancel in mono or sit between stereo channels.",
+        summary: "Phase-recovery experiment artifacts were generated for the active target.",
+        warning: "Phase-isolation experiments can collapse on mono or tightly correlated stereo sources.",
+      }
+    );
+  }
+
   return {
+    runBandPassExplorationAudioAnalyzer: runBandPassExplorationAudioAnalyzer,
     runEmotionHeuristicAudioAnalyzer: runEmotionHeuristicAudioAnalyzer,
+    runFrequencyShiftReversalAudioAnalyzer: runFrequencyShiftReversalAudioAnalyzer,
+    runHiddenPatternExtractionAudioAnalyzer: runHiddenPatternExtractionAudioAnalyzer,
+    runPhaseRecoveryExperimentAudioAnalyzer: runPhaseRecoveryExperimentAudioAnalyzer,
     runProsodyAudioAnalyzer: runProsodyAudioAnalyzer,
     runSignalHealthAudioAnalyzer: runSignalHealthAudioAnalyzer,
+    runSignalRecoveryAudioAnalyzer: runSignalRecoveryAudioAnalyzer,
+    runSpectrogramGuidedRecoveryAudioAnalyzer: runSpectrogramGuidedRecoveryAudioAnalyzer,
     runSpectralArtifactsAudioAnalyzer: runSpectralArtifactsAudioAnalyzer,
     runTranscriptionAudioAnalyzer: runTranscriptionAudioAnalyzer,
   };

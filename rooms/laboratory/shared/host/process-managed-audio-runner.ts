@@ -41,6 +41,8 @@ type LaboratoryManagedAudioRunnerResult = {
   warnings: string[];
 };
 
+type LaboratoryManagedAudioUpdateEmitter = ((payload: LaboratoryRecord) => void) | null;
+
 type LaboratoryManagedAudioRunnerDeps = {
   asNonEmptyString: (value: unknown) => string | null;
   getAudioAnalysisModuleProcessDir: (
@@ -91,7 +93,8 @@ export function createLaboratoryManagedAudioRunnerRuntime(deps: LaboratoryManage
     jobId: string,
     target: LaboratoryRecord,
     artifactBase: string,
-    processRecord: LaboratoryProcessRecord
+    processRecord: LaboratoryProcessRecord,
+    emitRuntimeUpdate: LaboratoryManagedAudioUpdateEmitter = null
   ): Promise<LaboratoryManagedAudioRunnerResult> {
     const findings: LaboratoryProcessFindingRecord[] = [];
     const artifacts: LaboratoryProcessArtifactRecord[] = [];
@@ -115,6 +118,21 @@ export function createLaboratoryManagedAudioRunnerRuntime(deps: LaboratoryManage
         status: "running",
         startedAt: new Date().toISOString(),
       });
+      emitRuntimeUpdate?.({
+        kind: "module-progress",
+        moduleId,
+        message: `${moduleId} module started`,
+        detail: null,
+        moduleTrace: {
+          id: `${moduleId}-running-${Date.now()}`,
+          moduleId,
+          stage: "process",
+          status: "running",
+          timestamp: new Date().toISOString(),
+          message: `${moduleId} module started`,
+          detail: null,
+        },
+      });
 
       const moduleRunner = getAudioAnalysisModuleRunner(moduleId);
       if (typeof moduleRunner !== "function") {
@@ -122,6 +140,21 @@ export function createLaboratoryManagedAudioRunnerRuntime(deps: LaboratoryManage
           status: "skipped",
           completedAt: new Date().toISOString(),
           summary: "A generic audio runner is not registered for this module yet.",
+        });
+        emitRuntimeUpdate?.({
+          kind: "module-warning",
+          moduleId,
+          message: `${moduleId} module skipped`,
+          detail: "A generic audio runner is not registered for this module yet.",
+          moduleTrace: {
+            id: `${moduleId}-skipped-${Date.now()}`,
+            moduleId,
+            stage: "process",
+            status: "skipped",
+            timestamp: new Date().toISOString(),
+            message: `${moduleId} module skipped`,
+            detail: "A generic audio runner is not registered for this module yet.",
+          },
         });
         continue;
       }
@@ -163,6 +196,97 @@ export function createLaboratoryManagedAudioRunnerRuntime(deps: LaboratoryManage
             return asNonEmptyString(toArtifactRecord(artifact).id);
           })
           .filter((artifactId): artifactId is string => artifactId !== null),
+      });
+      if (moduleFindings.length > 0) {
+        emitRuntimeUpdate?.({
+          kind: "live-finding",
+          moduleId,
+          message: `${moduleId} findings updated`,
+          detail:
+            moduleFindings.length > 1
+              ? `${moduleFindings.length} audio findings were aggregated for this module.`
+              : asNonEmptyString(toRecord(moduleFindings[0])["detail"]) ||
+                asNonEmptyString(toRecord(moduleFindings[0])["title"]) ||
+                "Audio finding emitted.",
+          finding: moduleFindings[0],
+          moduleTrace: {
+            id: `${moduleId}-finding-${Date.now()}`,
+            moduleId,
+            stage: "process",
+            status: "finding",
+            timestamp: new Date().toISOString(),
+            message: `${moduleId} findings updated`,
+            detail:
+              moduleFindings.length > 1
+                ? `${moduleFindings.length} audio findings were aggregated for this module.`
+                : asNonEmptyString(toRecord(moduleFindings[0])["detail"]) ||
+                  asNonEmptyString(toRecord(moduleFindings[0])["title"]) ||
+                  "Audio finding emitted.",
+          },
+          throttleWindow: `${moduleId}-module-batch`,
+        });
+      }
+      const primaryArtifact = moduleArtifacts[0] ? normalizeProcessArtifact(moduleArtifacts[0]) : null;
+      if (primaryArtifact) {
+        emitRuntimeUpdate?.({
+          kind: "preview-artifact",
+          moduleId,
+          message: `${moduleId} preview artifact ready`,
+          detail: asNonEmptyString(toRecord(primaryArtifact)["label"]),
+          artifact: primaryArtifact,
+          moduleTrace: {
+            id: `${moduleId}-preview-${Date.now()}`,
+            moduleId,
+            stage: "process",
+            status: "preview-ready",
+            timestamp: new Date().toISOString(),
+            message: `${moduleId} preview artifact ready`,
+            detail: asNonEmptyString(toRecord(primaryArtifact)["label"]),
+          },
+          throttleWindow: `${moduleId}-module-batch`,
+        });
+        emitRuntimeUpdate?.({
+          kind: "module-artifact",
+          moduleId,
+          message: `${moduleId} artifact recorded`,
+          detail: asNonEmptyString(toRecord(primaryArtifact)["label"]),
+          artifact: primaryArtifact,
+          throttleWindow: `${moduleId}-module-batch`,
+        });
+      }
+      if (moduleWarnings.length > 0) {
+        emitRuntimeUpdate?.({
+          kind: "module-warning",
+          moduleId,
+          message: `${moduleId} module warning`,
+          detail: moduleWarnings.join(" | "),
+          moduleTrace: {
+            id: `${moduleId}-warning-${Date.now()}`,
+            moduleId,
+            stage: "process",
+            status: "warning",
+            timestamp: new Date().toISOString(),
+            message: `${moduleId} module warning`,
+            detail: moduleWarnings.join(" | "),
+          },
+          throttleWindow: `${moduleId}-module-batch`,
+        });
+      }
+      emitRuntimeUpdate?.({
+        kind: "module-progress",
+        moduleId,
+        message: `${moduleId} module completed`,
+        detail: asNonEmptyString(moduleResult.summary) || null,
+        moduleTrace: {
+          id: `${moduleId}-completed-${Date.now()}`,
+          moduleId,
+          stage: "process",
+          status: asNonEmptyString(moduleResult.status) || "ready",
+          timestamp: new Date().toISOString(),
+          message: `${moduleId} module completed`,
+          detail: asNonEmptyString(moduleResult.summary) || null,
+        },
+        throttleWindow: `${moduleId}-module-batch`,
       });
     }
 

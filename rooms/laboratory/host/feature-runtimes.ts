@@ -209,6 +209,10 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     getToolManifest: bootstrap.getToolManifest,
     generateProcessMetadataArtifact:
       projectRuntimes.analysisArtifact.generateProcessMetadataArtifact,
+    generateProcessFramePreviewArtifact:
+      projectRuntimes.analysisArtifact.generateProcessFramePreviewArtifact,
+    generateProcessVisualTransformArtifact:
+      projectRuntimes.analysisArtifact.generateProcessVisualTransformArtifact,
     listDirectory: io.listDirectory,
     markFeatureReportStale: deps.markFeatureReportStale,
     maybeRunWhisperProfileSample: projectRuntimes.analysisArtifact.maybeRunWhisperProfileSample,
@@ -237,6 +241,42 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     runProfileTool: projectRuntimes.analysisArtifact.runProfileTool,
     runVideoStructureProbe: foundation.audioAnalysisUtility.runVideoStructureProbe,
     sanitizeFileSegment: mediaAnalysis.sanitizeFileSegment,
+    getVisualAnalysisCapabilityState(runtime: unknown, sourceKind: string | null) {
+      return mediaAnalysis.visualAnalysisRuntime.buildVisualAnalysisCapabilityState(
+        deps.toRecord(runtime),
+        sourceKind
+      );
+    },
+    getVisualAnalysisModulesForRuntime(runtime: unknown, sourceKind?: string | null) {
+      return mediaAnalysis.visualAnalysisRuntime.getVisualAnalysisModulesForRuntime(
+        deps.toRecord(runtime),
+        sourceKind || null
+      );
+    },
+    getVisualAnalysisProviderState(runtime: unknown) {
+      return mediaAnalysis.visualAnalysisRuntime.buildVisualAnalysisProviderState(
+        deps.toRecord(runtime)
+      );
+    },
+    partitionVisualAnalysisModuleIds(runtime: unknown, moduleIds: string[]) {
+      return mediaAnalysis.visualAnalysisRuntime.partitionVisualAnalysisModuleIds(
+        deps.toRecord(runtime),
+        moduleIds
+      );
+    },
+    resolveEnabledVisualAnalysisModuleIds(
+      runtime: unknown,
+      project: unknown,
+      sourceKind: string | null,
+      workbenchSource?: unknown
+    ) {
+      return mediaAnalysis.visualAnalysisRuntime.resolveEnabledVisualAnalysisModuleIds(
+        deps.toRecord(runtime),
+        deps.toRecord(project),
+        sourceKind,
+        workbenchSource
+      );
+    },
     setFeatureProcessRecord: projectRuntimes.stateComposition.setFeatureProcessRecord,
     setFeatureReportRecord: projectRuntimes.stateComposition.setFeatureReportRecord,
     subtitleFeatureId: deps.subtitleFeatureId,

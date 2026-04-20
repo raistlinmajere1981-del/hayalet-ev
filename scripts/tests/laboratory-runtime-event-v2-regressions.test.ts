@@ -1,0 +1,69 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import { createLaboratoryRuntimeEvents } from "../../rooms/laboratory/shared/host/runtime-events.ts";
+
+function asNonEmptyString(value: unknown) {
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+}
+
+test("laboratory runtime events throttle high-frequency custom module updates", () => {
+  const notifications: Array<{ type: string; payload: Record<string, unknown> }> = [];
+  const runtimeEvents = createLaboratoryRuntimeEvents({
+    asNonEmptyString,
+    defaultFeatureId: "media-analysis",
+    getFeatureIdFromContext() {
+      return "media-analysis";
+    },
+    loadContext() {
+      return {
+        featureId: "media-analysis",
+      };
+    },
+    roomSnapshotRuntime: {
+      buildMediaSnapshot() {
+        return {};
+      },
+    },
+  });
+
+  const api = {
+    notifyRoom(type: string, payload: Record<string, unknown>) {
+      notifications.push({ type, payload });
+    },
+  };
+
+  runtimeEvents.pushJobState(api, {
+    kind: "module-progress",
+    moduleId: "visual-signal",
+    message: "visual-signal module started",
+    stage: "running",
+    featureStage: "process",
+    throttleWindow: "visual-signal-module-batch",
+    timestamp: 1000,
+  });
+  runtimeEvents.pushJobState(api, {
+    kind: "module-progress",
+    moduleId: "visual-signal",
+    message: "visual-signal module update",
+    stage: "running",
+    featureStage: "process",
+    throttleWindow: "visual-signal-module-batch",
+    timestamp: 1200,
+  });
+  runtimeEvents.pushJobState(api, {
+    kind: "module-progress",
+    moduleId: "visual-signal",
+    message: "visual-signal module completed",
+    stage: "completed",
+    featureStage: "process",
+    throttleWindow: "visual-signal-module-batch",
+    timestamp: 1700,
+  });
+
+  assert.equal(notifications.length, 2);
+  assert.equal(notifications[0]?.type, "lab-event");
+  assert.equal(notifications[1]?.type, "lab-event");
+  assert.equal(notifications[1]?.payload["batchedCount"], 2);
+  assert.match(String(notifications[1]?.payload["detail"] || ""), /updates batched/);
+});

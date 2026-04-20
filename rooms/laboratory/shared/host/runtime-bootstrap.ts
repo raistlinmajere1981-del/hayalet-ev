@@ -144,6 +144,9 @@ type LaboratoryRuntimeState = {
   subtitleYoutubeForm: unknown;
   toolState: LaboratoryToolState;
   toolchainManifest: LaboratoryRecord | null;
+  visualAnalysisCapabilities: unknown;
+  visualAnalysisCatalog: unknown;
+  visualAnalysisProviders: unknown;
   ytDlpForm: unknown;
 };
 
@@ -414,6 +417,9 @@ export function createLaboratoryRuntimeBootstrap(deps: LaboratoryRuntimeBootstra
       subtitleAnalysisCatalog: null,
       subtitleAnalysisCapabilities: null,
       subtitleAnalysisProviders: null,
+      visualAnalysisCatalog: null,
+      visualAnalysisCapabilities: null,
+      visualAnalysisProviders: null,
       audioAnalysisCatalog: null,
       audioAnalysisCapabilities: null,
       audioAnalysisPresets: null,

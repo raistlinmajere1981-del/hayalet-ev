@@ -249,7 +249,7 @@ test("laboratory host keeps audio-analysis snapshots on the shared room-tool con
   assert.match(projectConfigLoaderSource, /audio-analysis-presets\.json/);
   assert.match(projectConfigLoaderSource, /audio-analysis-providers\.json/);
   assert.match(projectConfigLoaderSource, /runtime\.packageToolsDir = baseDir;/);
-  assert.match(projectToolStatusSource, /operation: "tool-check-for-updates"/);
+  assert.match(projectToolStatusSource, /operation: "tool-probe"/);
   assert.match(hostCompositionSource, /shared\/host\/snapshot-composition\.js/);
   assert.match(snapshotCompositionSource, /from "\.\/project-manifests\.js"/);
   assert.match(snapshotCompositionSource, /from "\.\/room-snapshot\.js"/);
@@ -400,6 +400,24 @@ test("laboratory audio-analysis locks a persistent v2-ready contract and plannin
   const emotionModule = Array.isArray(catalog.modules)
     ? catalog.modules.find((entry) => entry.id === "emotion")
     : null;
+  const signalRecoveryModule = Array.isArray(catalog.modules)
+    ? catalog.modules.find((entry) => entry.id === "signal-recovery")
+    : null;
+  const frequencyShiftRecoveryModule = Array.isArray(catalog.modules)
+    ? catalog.modules.find((entry) => entry.id === "frequency-shift-reversal")
+    : null;
+  const bandPassExplorationModule = Array.isArray(catalog.modules)
+    ? catalog.modules.find((entry) => entry.id === "band-pass-exploration")
+    : null;
+  const spectrogramGuidedRecoveryModule = Array.isArray(catalog.modules)
+    ? catalog.modules.find((entry) => entry.id === "spectrogram-guided-recovery")
+    : null;
+  const hiddenPatternExtractionModule = Array.isArray(catalog.modules)
+    ? catalog.modules.find((entry) => entry.id === "hidden-pattern-extraction")
+    : null;
+  const phaseRecoveryModule = Array.isArray(catalog.modules)
+    ? catalog.modules.find((entry) => entry.id === "phase-recovery-experiment")
+    : null;
   const speakerModule = Array.isArray(catalog.modules)
     ? catalog.modules.find((entry) => entry.id === "speaker-diarization")
     : null;
@@ -417,6 +435,15 @@ test("laboratory audio-analysis locks a persistent v2-ready contract and plannin
     : null;
   const emotionProvider = Array.isArray(providers.providers)
     ? providers.providers.find((entry) => entry.id === "emotion-heuristic")
+    : null;
+  const signalRecoveryProvider = Array.isArray(providers.providers)
+    ? providers.providers.find((entry) => entry.id === "ffmpeg-signal-recovery")
+    : null;
+  const frequencyRecoveryProvider = Array.isArray(providers.providers)
+    ? providers.providers.find((entry) => entry.id === "ffmpeg-frequency-recovery")
+    : null;
+  const phaseRecoveryProvider = Array.isArray(providers.providers)
+    ? providers.providers.find((entry) => entry.id === "ffmpeg-phase-lab")
     : null;
   const speakerProvider = Array.isArray(providers.providers)
     ? providers.providers.find((entry) => entry.id === "speaker-timeline")
@@ -451,6 +478,8 @@ test("laboratory audio-analysis locks a persistent v2-ready contract and plannin
   assert.match(providerMatrix, /pyAudioAnalysis/);
   assert.match(smokeMatrix, /music-rhythm-tonal/);
   assert.match(smokeMatrix, /source-separation/);
+  assert.match(enLocale, /Signal recovery/i);
+  assert.match(trLocale, /Sinyal kurtarma/);
   assert.match(enLocale, /speaker timeline now runs on a fully local pyAudioAnalysis path/i);
   assert.match(trLocale, /tamamen local pyAudioAnalysis yolu ile calisir/);
   assert.match(enLocale, /dominant pitch-class/);
@@ -506,9 +535,18 @@ test("laboratory audio-analysis locks a persistent v2-ready contract and plannin
   assert.equal(speakerModule?.status, "implemented");
   assert.equal(prosodyModule?.status, "implemented");
   assert.equal(emotionModule?.status, "implemented");
+  assert.equal(signalRecoveryModule?.status, "implemented");
+  assert.equal(frequencyShiftRecoveryModule?.status, "implemented");
+  assert.equal(bandPassExplorationModule?.status, "implemented");
+  assert.equal(spectrogramGuidedRecoveryModule?.status, "implemented");
+  assert.equal(hiddenPatternExtractionModule?.status, "implemented");
+  assert.equal(phaseRecoveryModule?.status, "implemented");
   assert.equal(soundEventsModule?.status, "implemented");
   assert.equal(sourceSeparationModule?.status, "implemented");
   assert.equal(musicRhythmModule?.status, "implemented");
+  assert.deepEqual(signalRecoveryModule?.toolIds, ["ffmpeg"]);
+  assert.deepEqual(frequencyShiftRecoveryModule?.toolIds, ["ffmpeg"]);
+  assert.deepEqual(phaseRecoveryModule?.providerIds, ["ffmpeg-phase-lab"]);
   assert.deepEqual(speakerModule?.toolIds, ["pyaudioanalysis", "ffmpeg"]);
   assert.deepEqual(speakerModule?.requiredToolIds, ["pyaudioanalysis", "ffmpeg"]);
   assert.equal(speakerProvider?.status, "ready");
@@ -518,6 +556,11 @@ test("laboratory audio-analysis locks a persistent v2-ready contract and plannin
   assert.equal(prosodyProvider?.installStrategy, "shared-room-tool");
   assert.equal(emotionProvider?.status, "ready");
   assert.equal(emotionProvider?.installStrategy, "shared-room-tool");
+  assert.equal(signalRecoveryProvider?.status, "ready");
+  assert.equal(signalRecoveryProvider?.toolId, "ffmpeg");
+  assert.equal(frequencyRecoveryProvider?.status, "ready");
+  assert.deepEqual(frequencyRecoveryProvider?.fallbackProviderIds, ["ffmpeg-signal-recovery"]);
+  assert.equal(phaseRecoveryProvider?.status, "ready");
   assert.equal(soundEventsProvider?.status, "ready");
   assert.equal(sourceSeparationProvider?.status, "ready");
   assert.equal(musicRhythmProvider?.status, "ready");
@@ -858,6 +901,12 @@ test("laboratory host and UI consume the normalized audioAnalysis result envelop
   assert.match(audioProcessModelSpeakerSource, /async function runSpeakerDiarizationAudioAnalyzer\(/);
   assert.match(audioProcessLocalSource, /async function runProsodyAudioAnalyzer\(/);
   assert.match(audioProcessLocalSource, /async function runEmotionHeuristicAudioAnalyzer\(/);
+  assert.match(audioProcessLocalSource, /async function runSignalRecoveryAudioAnalyzer\(/);
+  assert.match(audioProcessLocalSource, /async function runFrequencyShiftReversalAudioAnalyzer\(/);
+  assert.match(audioProcessLocalSource, /async function runBandPassExplorationAudioAnalyzer\(/);
+  assert.match(audioProcessLocalSource, /async function runSpectrogramGuidedRecoveryAudioAnalyzer\(/);
+  assert.match(audioProcessLocalSource, /async function runHiddenPatternExtractionAudioAnalyzer\(/);
+  assert.match(audioProcessLocalSource, /async function runPhaseRecoveryExperimentAudioAnalyzer\(/);
   assert.match(audioProcessModelSoundEventsSource, /async function runSoundEventsAudioAnalyzer\(/);
   assert.match(audioProcessModelSourceSeparationSource, /async function runSourceSeparationAudioAnalyzer\(/);
   assert.match(audioProcessModelMusicSource, /async function runMusicRhythmAudioAnalyzer\(/);
@@ -871,6 +920,12 @@ test("laboratory host and UI consume the normalized audioAnalysis result envelop
   assert.match(audioHostModuleSource, /"speaker-diarization": runSpeakerDiarizationAudioAnalyzer/);
   assert.match(audioHostModuleSource, /prosody: runProsodyAudioAnalyzer/);
   assert.match(audioHostModuleSource, /emotion: runEmotionHeuristicAudioAnalyzer/);
+  assert.match(audioHostModuleSource, /"signal-recovery": runSignalRecoveryAudioAnalyzer/);
+  assert.match(audioHostModuleSource, /"frequency-shift-reversal": runFrequencyShiftReversalAudioAnalyzer/);
+  assert.match(audioHostModuleSource, /"band-pass-exploration": runBandPassExplorationAudioAnalyzer/);
+  assert.match(audioHostModuleSource, /"spectrogram-guided-recovery": runSpectrogramGuidedRecoveryAudioAnalyzer/);
+  assert.match(audioHostModuleSource, /"hidden-pattern-extraction": runHiddenPatternExtractionAudioAnalyzer/);
+  assert.match(audioHostModuleSource, /"phase-recovery-experiment": runPhaseRecoveryExperimentAudioAnalyzer/);
   assert.match(audioHostModuleSource, /"sound-events": runSoundEventsAudioAnalyzer/);
   assert.match(audioHostModuleSource, /"source-separation": runSourceSeparationAudioAnalyzer/);
   assert.match(audioHostModuleSource, /"music-rhythm-tonal": runMusicRhythmAudioAnalyzer/);
@@ -886,6 +941,8 @@ test("laboratory host and UI consume the normalized audioAnalysis result envelop
     /function parseAspectralStatsText\(rawText(?:: [^)]+)?\)(?:: [^{]+)? \{/
   );
   assert.match(audioProcessSupportSource, /function generateSpectralDescriptorArtifact\(/);
+  assert.match(audioProcessSupportSource, /function generateProcessSpectrogramFromInputPath\(/);
+  assert.match(audioProcessSupportSource, /function generateFilteredAudioArtifact\(/);
   assert.match(audioProcessSupportSource, /aspectralstats=measure=centroid\+rolloff\+flatness\+flux/);
   assert.match(
     roomSnapshotSource,
@@ -921,8 +978,9 @@ test("laboratory host and UI consume the normalized audioAnalysis result envelop
   assert.match(settingsOverlaySource, /isAudioAnalysisFeature\(\) \? renderAudioAnalysisProviderPanel\(\) : ""/);
   assert.match(settingsOverlaySource, /\.\/settings-tool-card\.js/);
   assert.match(settingsToolCardSource, /const availability =/);
-  assert.match(settingsToolCardSource, /const systemCommand = availability === "system-command";/);
-  assert.match(settingsToolCardSource, /const managedInstaller = systemCommand && toString\(descriptor\?\.installerType\)\.trim\(\) !== "";/);
+  assert.match(settingsToolCardSource, /const installStrategy = toString\(descriptor\?\.installStrategy, "--"\);/);
+  assert.match(settingsToolCardSource, /const managedInstaller = installStrategy === "automatic" \|\| installerType !== "";/);
   assert.match(settingsToolCardSource, /status", "appInstall"/);
-  assert.match(settingsToolCardSource, /manualRefreshAction/);
+  assert.match(settingsToolCardSource, /status", "manualSetup"/);
+  assert.match(settingsToolCardSource, /data-action="tool-check-updates"/);
 });

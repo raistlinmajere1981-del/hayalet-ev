@@ -87,6 +87,9 @@ type LaboratorySourceSnapshot = {
   toolState: {
     tools: LaboratoryRecord;
   };
+  visualAnalysisCapabilities: LaboratoryRecord;
+  visualAnalysisCatalog: LaboratoryRecord;
+  visualAnalysisProviders: LaboratoryRecord;
   workbench: ReturnType<typeof createLaboratoryWorkbenchState>;
   ytDlpForm: LaboratoryRecord;
 };
@@ -272,6 +275,9 @@ export function createLaboratoryUiBootstrapStateRuntime(
       subtitleAnalysisCatalog: {},
       subtitleAnalysisCapabilities: {},
       subtitleAnalysisProviders: {},
+      visualAnalysisCatalog: {},
+      visualAnalysisCapabilities: {},
+      visualAnalysisProviders: {},
       audioAnalysisCatalog: {},
       audioAnalysisCapabilities: {},
       audioAnalysisPresets: {},

@@ -67,6 +67,9 @@ interface SnapshotRecord extends Record<string, unknown> {
   subtitleAnalysisCatalog?: unknown;
   subtitleAnalysisCapabilities?: unknown;
   subtitleAnalysisProviders?: unknown;
+  visualAnalysisCatalog?: unknown;
+  visualAnalysisCapabilities?: unknown;
+  visualAnalysisProviders?: unknown;
   audioAnalysisCatalog?: unknown;
   audioAnalysisCapabilities?: unknown;
   audioAnalysisPresets?: unknown;
@@ -534,6 +537,9 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
       subtitleAnalysisCatalog: clone(runtimeRecord.subtitleAnalysisCatalog || {}),
       subtitleAnalysisCapabilities: clone(runtimeRecord.subtitleAnalysisCapabilities || {}),
       subtitleAnalysisProviders: clone(runtimeRecord.subtitleAnalysisProviders || {}),
+      visualAnalysisCatalog: clone(runtimeRecord.visualAnalysisCatalog || {}),
+      visualAnalysisCapabilities: clone(runtimeRecord.visualAnalysisCapabilities || {}),
+      visualAnalysisProviders: clone(runtimeRecord.visualAnalysisProviders || {}),
       audioAnalysisCatalog: clone(runtimeRecord.audioAnalysisCatalog || {}),
       audioAnalysisCapabilities: clone(runtimeRecord.audioAnalysisCapabilities || {}),
       audioAnalysisPresets: clone(runtimeRecord.audioAnalysisPresets || {}),

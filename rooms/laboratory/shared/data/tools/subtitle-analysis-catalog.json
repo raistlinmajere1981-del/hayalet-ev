@@ -6,6 +6,13 @@
     { "id": "cue-timing-structure", "status": "implemented", "label": "Cue timing" },
     { "id": "lexical-frequency", "status": "implemented", "label": "Lexical frequency" },
     { "id": "batch-summary", "status": "implemented", "label": "Batch summary" },
+    { "id": "logical-consistency-check", "status": "implemented", "label": "Logical consistency" },
+    { "id": "contradiction-detection", "status": "implemented", "label": "Contradiction detection" },
+    { "id": "narrative-drift", "status": "implemented", "label": "Narrative drift" },
+    { "id": "repetition-structure", "status": "implemented", "label": "Repetition structure" },
+    { "id": "semantic-coherence", "status": "implemented", "label": "Semantic coherence" },
+    { "id": "archive-to-ai-payload", "status": "implemented", "label": "Archive to AI payload" },
+    { "id": "channel-batch-analysis", "status": "implemented", "label": "Channel batch analysis" },
     { "id": "entities-keyphrases", "status": "planned", "label": "Entities and keyphrases" },
     { "id": "semantic-search", "status": "planned", "label": "Semantic search" }
   ]

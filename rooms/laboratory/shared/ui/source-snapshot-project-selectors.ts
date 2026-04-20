@@ -11,6 +11,7 @@ type LaboratoryProjectRecord = LaboratoryRecord & {
   report?: unknown;
   source?: unknown;
   subtitleAnalysis?: unknown;
+  workbench?: unknown;
 };
 
 type LaboratorySourceSnapshotProjectSelectorsDeps = {
@@ -95,6 +96,10 @@ export function createLaboratorySnapshotProjectSelectors(
     return toRecord(getActiveProject()?.profile);
   }
 
+  function getProjectWorkbench() {
+    return toRecord(getActiveProject()?.workbench);
+  }
+
   function getProjectProcess() {
     return toRecord(getActiveProject()?.process);
   }
@@ -109,6 +114,18 @@ export function createLaboratorySnapshotProjectSelectors(
 
   function getProjectSubtitleAnalysis() {
     return toRecord(getActiveProject()?.subtitleAnalysis);
+  }
+
+  function getVisualAnalysisCatalog() {
+    return toRecord(getSourceSnapshot()["visualAnalysisCatalog"]);
+  }
+
+  function getVisualAnalysisCapabilities() {
+    return toRecord(getSourceSnapshot()["visualAnalysisCapabilities"]);
+  }
+
+  function getVisualAnalysisProviders() {
+    return toRecord(getSourceSnapshot()["visualAnalysisProviders"]);
   }
 
   function getCurrentFeatureProcessRecord() {
@@ -173,10 +190,14 @@ export function createLaboratorySnapshotProjectSelectors(
     getProjectSource,
     getProjectEdit,
     getProjectProfile,
+    getProjectWorkbench,
     getProjectProcess,
     getProjectReport,
     getProjectAudioAnalysis,
     getProjectSubtitleAnalysis,
+    getVisualAnalysisCatalog,
+    getVisualAnalysisCapabilities,
+    getVisualAnalysisProviders,
     getCurrentFeatureProcessRecord,
     getCurrentFeatureReportRecord,
     getSourceMetadata,

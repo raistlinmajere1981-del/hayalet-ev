@@ -28,6 +28,13 @@ type LaboratoryTargetRecord = Record<string, unknown> & {
 type SubtitleTargetEntryRecord = Record<string, unknown> & {
   path?: unknown;
 };
+type SubtitleProviderRecord = Record<string, unknown> & {
+  id?: unknown;
+  moduleIds?: unknown;
+  providerType?: unknown;
+  status?: unknown;
+  toolId?: unknown;
+};
 
 export function createSubtitleProcessAnalysisRuntime(deps: SubtitleProcessAnalysisRuntimeDeps) {
   const {
@@ -64,12 +71,68 @@ export function createSubtitleProcessAnalysisRuntime(deps: SubtitleProcessAnalys
     return toRecord(value);
   }
 
+  function toProviderRecord(value: unknown): SubtitleProviderRecord {
+    return toRecord(value);
+  }
+
+  function toStringArray(value: unknown): string[] {
+    return Array.isArray(value)
+      ? value
+          .map(function (entry) {
+            return asNonEmptyString(entry);
+          })
+          .filter((entry): entry is string => entry !== null)
+      : [];
+  }
+
+  function getToolInstalled(runtime: Record<string, unknown>, toolId: string | null) {
+    if (toolId === null) {
+      return false;
+    }
+    return (
+      toRecord(toRecord(toRecord(runtime["toolState"])["tools"])[toolId])["installed"] === true
+    );
+  }
+
+  function buildSubtitleProviderState(runtime: Record<string, unknown>) {
+    const providers = Array.isArray(toRecord(runtime["subtitleAnalysisProviders"])["providers"])
+      ? (toRecord(runtime["subtitleAnalysisProviders"])["providers"] as unknown[]).map(toProviderRecord)
+      : [];
+    return providers.reduce<Record<string, Record<string, unknown>>>(function (accumulator, provider) {
+      const providerId = asNonEmptyString(provider["id"]) || "subtitle-provider";
+      const status = asNonEmptyString(provider["status"]) || "planned";
+      const toolId = asNonEmptyString(provider["toolId"]);
+      const toolReady = status === "planned" ? false : toolId ? getToolInstalled(runtime, toolId) : status === "ready";
+      accumulator[providerId] = {
+        providerId,
+        status: status === "planned" ? "planned" : toolReady ? "ready" : "blocked",
+        toolReady,
+        capabilityReady: status !== "planned" && toolReady,
+        moduleIds: toStringArray(provider["moduleIds"]),
+        providerType: asNonEmptyString(provider["providerType"]),
+        toolId,
+        blockers:
+          status === "planned" || toolReady
+            ? []
+            : [`Install ${toolId || "the required subtitle runtime"} before enabling this module.`],
+        warnings:
+          status === "planned"
+            ? ["This subtitle provider remains planned for a later rollout."]
+            : [],
+      };
+      return accumulator;
+    }, {});
+  }
+
   function buildSubtitleProcessModules(
     runtime: Record<string, unknown>,
+    project: Record<string, unknown>,
     target: Record<string, unknown>
   ) {
     const capabilities = toRecord(runtime["subtitleAnalysisCapabilities"])["modules"];
     const targetEntries = Array.isArray(target["entries"]) ? target["entries"] : [];
+    const moduleToggles = toRecord(toRecord(project["workbench"])["moduleToggles"]);
+    const providerState = buildSubtitleProviderState(runtime);
 
     return getSubtitleAnalysisModuleDescriptors(runtime).map(function (
       entry: Record<string, unknown>
@@ -78,18 +141,47 @@ export function createSubtitleProcessAnalysisRuntime(deps: SubtitleProcessAnalys
       const capability = toRecord((capabilities as Record<string, unknown>)[moduleId]);
       const configuredStatus =
         asNonEmptyString(capability["status"]) || asNonEmptyString(entry["status"]) || "planned";
+      const providerEntries = Object.values(providerState).filter(function (providerEntry) {
+        return toStringArray(toRecord(providerEntry)["moduleIds"]).includes(moduleId);
+      });
+      const toolReady =
+        providerEntries.length === 0
+          ? configuredStatus === "ready" || configuredStatus === "implemented"
+          : providerEntries.some(function (providerEntry) {
+              return toRecord(providerEntry)["toolReady"] === true;
+            });
+      const capabilityReady =
+        providerEntries.length === 0
+          ? configuredStatus === "ready" || configuredStatus === "implemented"
+          : providerEntries.some(function (providerEntry) {
+              return toRecord(providerEntry)["capabilityReady"] === true;
+            });
       let status =
-        configuredStatus === "ready" || configuredStatus === "implemented"
+        (configuredStatus === "ready" || configuredStatus === "implemented") && capabilityReady
           ? "queued"
           : configuredStatus;
       let summary = "Reserved for the later subtitle rollout.";
+      const moduleDisabled = Object.prototype.hasOwnProperty.call(moduleToggles, moduleId)
+        ? moduleToggles[moduleId] === false
+        : false;
 
       if (targetEntries.length === 0) {
         status = "blocked";
         summary = "Import subtitle files before running subtitle analysis.";
+      } else if (moduleDisabled) {
+        status = "skipped";
+        summary = "Disabled from the active workbench scope.";
       } else if (configuredStatus === "planned") {
         status = "planned";
         summary = "Reserved for the next subtitle analysis rollout.";
+      } else if (capabilityReady !== true) {
+        status = "blocked";
+        summary =
+          providerEntries
+            .flatMap(function (providerEntry) {
+              return toStringArray(toRecord(providerEntry)["blockers"]);
+            })
+            .join(" | ") || "Subtitle capability is not ready on the current runtime.";
       } else if (configuredStatus === "ready" || configuredStatus === "implemented") {
         summary = "Queued for the local subtitle analysis run.";
       }
@@ -103,6 +195,11 @@ export function createSubtitleProcessAnalysisRuntime(deps: SubtitleProcessAnalys
         warnings: [],
         artifactIds: [],
         findingIds: [],
+        metadata: {
+          toolReady,
+          capabilityReady,
+          providerCount: providerEntries.length,
+        },
       });
     });
   }

@@ -893,6 +893,7 @@
         "intake": "Kaynak Alimi",
         "cleanup": "Frame Temizligi",
         "motion": "Hareket Analizi",
+        "visualSignal": "Gorsel Sinyal Guclendirme",
         "audio": "Ses Taramasi",
         "report": "Rapor Sentezi"
       }
@@ -932,6 +933,86 @@
         "export": "Raporu Disa Aktar",
         "openFile": "Dosyayi Ac",
         "openFolder": "Klasoru Ac"
+      }
+    }
+  },
+  "visualAnalysis": {
+    "catalog": {
+      "modules": {
+        "frame-consistency": {
+          "title": "Frame Tutarliligi",
+          "summary": "Orneklenen karelerde donma araliklarini ve ritim kaymalarini kontrol eder."
+        },
+        "lighting-consistency": {
+          "title": "Isik Tutarliligi",
+          "summary": "Secili scope icinde pozlama ve isik surekliligini karsilastirir."
+        },
+        "background-consistency": {
+          "title": "Arka Plan Tutarliligi",
+          "summary": "Sahne taban cizgisini bozan arka plan kaymalarini arar."
+        },
+        "occlusion-inconsistency": {
+          "title": "Ortulme Tutarsizligi",
+          "summary": "Kapama ve acilma desenlerinin tutarsiz hissettirdigi pencereleri isaretler."
+        },
+        "object-insert-remove-anomaly": {
+          "title": "Obje Ekleme Cikarma Anomalisi",
+          "summary": "Supheli obje belirme ve kaybolma degisimlerini yuzeye cikarir."
+        },
+        "ai-artifact-detection": {
+          "title": "AI Artefakt Tespiti",
+          "summary": "Model destekli sentetik iz incelemesi icin ayrilan hat."
+        },
+        "temporal-noise-pattern": {
+          "title": "Zamansal Gurultu Deseni",
+          "summary": "Zaman boyunca tekrar eden gurultu ve siyah kare desenlerini izler."
+        },
+        "motion-anomaly": {
+          "title": "Hareket Anomalisi",
+          "summary": "Kaba hareket sicrama ve gecis duzensizliklerini olcer."
+        },
+        "visual-signal-amplification": {
+          "title": "Gorsel Sinyal Guclendirme",
+          "summary": "Elle inceleme icin daha parlak reveal odakli preview varyantlari uretir."
+        },
+        "color-channel-isolation": {
+          "title": "Renk Kanal Izolasyonu",
+          "summary": "Gizli ya da dusuk sinyalli ayrintiyi ortaya cikarmak icin renk kanallarini ayirir."
+        },
+        "gamma-scan": {
+          "title": "Gamma Taramasi",
+          "summary": "Scope hedefi uzerinde gamma odakli bir reveal gecisi calistirir."
+        },
+        "contrast-scan": {
+          "title": "Kontrast Taramasi",
+          "summary": "Gizli detay incelemesi icin kontrast ve ton ayrimini zorlar."
+        },
+        "edge-enhancement": {
+          "title": "Kenar Guclendirme",
+          "summary": "Aktif pencere icin sinir ve kontur bilgisini belirginlestirir."
+        },
+        "histogram-equalization": {
+          "title": "Histogram Esitleme",
+          "summary": "Kapali yapilari ortaya cikarmak icin parlaklik dagilimini normalize eder."
+        },
+        "hidden-detail-reveal": {
+          "title": "Gizli Detay Reveali",
+          "summary": "Dusuk gorunurlukteki ayrintilar icin birlesik reveal filtreleri uygular."
+        }
+      }
+    },
+    "providers": {
+      "ffmpeg-visual-structure": {
+        "title": "FFmpeg Gorsel Yapi",
+        "summary": "Yapisal frame adli incelemesi icin oda yonetimli FFmpeg probe'lari."
+      },
+      "ffmpeg-visual-reveal": {
+        "title": "FFmpeg Gorsel Reveal",
+        "summary": "Preview varyantlari ve sinyal guclendirme icin oda yonetimli FFmpeg reveal filtreleri."
+      },
+      "synthetic-visual-forensics": {
+        "title": "Sentetik Gorsel Forensics",
+        "summary": "AI artefakti ve sentetik izler icin planlanan model destekli inceleme hatti."
       }
     }
   },
@@ -1069,9 +1150,33 @@
           "title": "Sinyal sagligi",
           "summary": "Paylasilan FFmpeg oda araci ile teknik ses seviyesi, sessizlik ve sureklilik kontrolleri."
         },
+        "signal-recovery": {
+          "title": "Sinyal kurtarma",
+          "summary": "Maskelenmis ya da bozulmus konusma icerigini ortaya cikarmak icin FFmpeg tabanli kurtarma ve denoise gecisleri calistirir."
+        },
         "spectral-artifacts": {
           "title": "Waveform ve spektrogram",
           "summary": "Ses odakli gorsel artifact'ler ayni room-local kaynak ve arac durumu ile yan yana durur."
+        },
+        "frequency-shift-reversal": {
+          "title": "Frekans kaydirmayi tersleme",
+          "summary": "Icerik pitch kaydirilmis ya da heterodyned olabilir diye ters frekans varyantlari uretir."
+        },
+        "band-pass-exploration": {
+          "title": "Band-pass kesfi",
+          "summary": "Maskelenmis anlatim veya dar bant detaylari incelemek icin konusma agirlikli orta frekans pencerelerini izole eder."
+        },
+        "spectrogram-guided-recovery": {
+          "title": "Spektrogram rehberli kurtarma",
+          "summary": "Daha derin transkript denemelerinden once spektrogram incelemesine uygun kurtarma varyantlari uretir."
+        },
+        "hidden-pattern-extraction": {
+          "title": "Gizli pattern cikarma",
+          "summary": "Dusuk seviyeli detaylari ve aralikli ipuclarini guclendirerek gizli veya maskelenmis ses pattern'lerini ortaya cikarir."
+        },
+        "phase-recovery-experiment": {
+          "title": "Faz kurtarma deneyi",
+          "summary": "Stereo faz izolasyonu deneyleriyle yan kanal ya da iptal olmaya yatkin icerigi yoklar."
         },
         "transcription": {
           "title": "Transkript",
@@ -1107,6 +1212,18 @@
       "ffmpeg-signal": {
         "title": "FFmpeg sinyal yuruyucusu",
         "summary": "Ses seviyesi, sessizlik ve artifact uretimi icin ortak oda-yerel binary."
+      },
+      "ffmpeg-signal-recovery": {
+        "title": "FFmpeg sinyal kurtarma",
+        "summary": "Denoise, band-pass, reveal ve kurtarma deney varyantlari icin ortak oda-yerel FFmpeg saglayicisi."
+      },
+      "ffmpeg-frequency-recovery": {
+        "title": "FFmpeg frekans kurtarma",
+        "summary": "Ters frekans kaydirma kesfi ve karsilastirma artifact'leri icin ortak oda-yerel FFmpeg saglayicisi."
+      },
+      "ffmpeg-phase-lab": {
+        "title": "FFmpeg faz laboratuvari",
+        "summary": "Stereo faz izolasyonu ve yan kanal kurtarma deneyleri icin ortak oda-yerel FFmpeg saglayicisi."
       },
       "whisper-transcript": {
         "title": "Whisper transkript yuruyucusu",
@@ -1400,6 +1517,34 @@
             "label": "Batch ozeti",
             "summary": "Aktif giris metriklerini kompakt bir batch seviyesi ozete toplar."
           },
+          "logical-consistency-check": {
+            "label": "Mantiksal tutarlilik",
+            "summary": "Altyazi ifadelerinde kaba mantik kaymalarini, olasilik disi gecisleri ve cue duzeyindeki akil yurutme bosluklarini yoklar."
+          },
+          "contradiction-detection": {
+            "label": "Celiski tespiti",
+            "summary": "Aktif secim boyunca celisen iddialari, kutup degisimlerini ve tutarsiz ifadeleri isaretler."
+          },
+          "narrative-drift": {
+            "label": "Anlati kaymasi",
+            "summary": "Dosyalar veya ardilsik altyazi bloklari boyunca konu odaginin sert sekilde kayip kaymadigini izler."
+          },
+          "repetition-structure": {
+            "label": "Tekrar yapisi",
+            "summary": "Tekrarlayan ifadeleri, slogan dongulerini ve fazla sikismis kelime haznesi pattern'lerini ortaya cikarir."
+          },
+          "semantic-coherence": {
+            "label": "Anlamsal butunluk",
+            "summary": "Altyazi yogunlugu, tempo ve terim tekrarinin hala tutarli bir anlati akisina donusup donusmedigini tahmin eder."
+          },
+          "archive-to-ai-payload": {
+            "label": "AI payload arsivi",
+            "summary": "Asagidaki AI inceleme ve replay prompt'lari icin uygun kompakt analiz payload'i uretir."
+          },
+          "channel-batch-analysis": {
+            "label": "Kanal batch analizi",
+            "summary": "Coklu dosya altyazi arsivlerini tek kanal seviyeli anlati paketine toplar."
+          },
           "entities-keyphrases": {
             "label": "Varlik ve anahtar ifadeler",
             "summary": "Kisi, marka ve tekrar eden terimler icin planli entity ve glossary cikarma modu."
@@ -1425,6 +1570,10 @@
           "native-subtitle-qc": {
             "label": "Yerel altyazi QC",
             "summary": "Yerlesik altyazi dogrulama ve ozet analizlerini oda icinde calistirir."
+          },
+          "subtitle-archive-export": {
+            "label": "Altyazi arsiv export",
+            "summary": "Altyazi arsivlerini oda icinde AI'ya hazir payload ve batch export'lara paketler."
           },
           "planned-entity-provider": {
             "label": "Planli entity saglayicisi",

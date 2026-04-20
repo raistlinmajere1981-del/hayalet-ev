@@ -36,15 +36,20 @@ type LaboratoryHostProcessCompositionDeps = LaboratoryProcessRuntimeDeps &
     getSubtitleAnalysisHostRuntime: () => LaboratorySubtitleAnalysisHostRuntime | null;
     getSubtitleMimeType: UnknownFn;
     getToolManifest: UnknownFn;
+    getVisualAnalysisCapabilityState: UnknownFn;
+    getVisualAnalysisModulesForRuntime: UnknownFn;
+    getVisualAnalysisProviderState: UnknownFn;
     listDirectory: UnknownFn;
     normalizeEditOutput: UnknownFn;
     normalizeSourceMetadata: UnknownFn;
     normalizeSubtitleAnalysisState: UnknownFn;
+    partitionVisualAnalysisModuleIds: UnknownFn;
     parseAspectralStatsText: UnknownFn;
     readJsonFile: UnknownFn;
     readTextFile: UnknownFn;
     resolveOpenSmileProsodyRuntime: UnknownFn;
     resolveProfileTarget: UnknownFn;
+    resolveEnabledVisualAnalysisModuleIds: UnknownFn;
     runAudioStructureProbe: UnknownFn;
     runOpenSmileProsodyExtraction: UnknownFn;
     runProfileTool: UnknownFn;
@@ -77,8 +82,13 @@ export function createLaboratoryHostProcessCompositionRuntime(
     getSubtitleSelectedEntries: deps.getSubtitleSelectedEntries,
     getActiveSubtitleEntry: deps.getActiveSubtitleEntry,
     getSubtitleMimeType: deps.getSubtitleMimeType,
+    getVisualAnalysisCapabilityState: deps.getVisualAnalysisCapabilityState,
+    getVisualAnalysisModulesForRuntime: deps.getVisualAnalysisModulesForRuntime,
+    getVisualAnalysisProviderState: deps.getVisualAnalysisProviderState,
+    partitionVisualAnalysisModuleIds: deps.partitionVisualAnalysisModuleIds,
     resolveAudioFeatureTarget,
     resolveProfileTarget: deps.resolveProfileTarget,
+    resolveEnabledVisualAnalysisModuleIds: deps.resolveEnabledVisualAnalysisModuleIds,
     normalizeProcessModule: deps.normalizeProcessModule,
     buildProfileModelSummary: deps.buildProfileModelSummary,
   };
@@ -286,7 +296,9 @@ export function createLaboratoryHostProcessCompositionRuntime(
     ensureEditToolReady: deps.ensureEditToolReady,
     ensureProcessJobSlotAvailable: deps.ensureProcessJobSlotAvailable,
     ensureProjectDirectories: deps.ensureProjectDirectories,
+    generateProcessFramePreviewArtifact: deps["generateProcessFramePreviewArtifact"],
     generateProcessMetadataArtifact: deps["generateProcessMetadataArtifact"],
+    generateProcessVisualTransformArtifact: deps["generateProcessVisualTransformArtifact"],
     generateProcessSpectrogram: laboratoryAudioProcessDelegatesRuntime.generateProcessSpectrogram,
     getActiveProject: deps.getActiveProject,
     getAudioAnalysisModuleProcessDir:
@@ -306,12 +318,14 @@ export function createLaboratoryHostProcessCompositionRuntime(
     resolveProcessRunFeatureIds,
     resolveProcessWorkbench,
     resolveProcessTarget,
+    resolveEnabledVisualAnalysisModuleIds: deps.resolveEnabledVisualAnalysisModuleIds,
     runAudioStructureProbe: deps.runAudioStructureProbe,
     runVideoStructureProbe: deps.runVideoStructureProbe,
     sanitizeFileSegment: deps.sanitizeFileSegment,
     setFeatureProcessRecord: deps.setFeatureProcessRecord,
     setFeatureReportRecord: deps.setFeatureReportRecord,
     toRecord: deps.toRecord,
+    partitionVisualAnalysisModuleIds: deps.partitionVisualAnalysisModuleIds,
     updateProcessModule,
     updateProcessRecordPercent,
     writeJsonFile: deps.writeJsonFile,

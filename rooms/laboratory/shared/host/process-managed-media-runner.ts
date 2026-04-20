@@ -7,25 +7,38 @@ type LaboratoryManagedMediaRuntime = LaboratoryRecord & {
 type LaboratoryManagedMediaProjectRecord = LaboratoryRecord & {
   edit?: unknown;
   profile?: unknown;
+  source?: unknown;
+  workbench?: unknown;
 };
 
-type LaboratoryManagedMediaTargetRecord = LaboratoryRecord;
+type LaboratoryManagedMediaTargetRecord = LaboratoryRecord & {
+  metadata?: unknown;
+  path?: unknown;
+};
 
 type LaboratoryManagedMediaProcessRecord = LaboratoryRecord & {
+  analysisScope?: unknown;
   modules?: unknown;
 };
 
 type LaboratoryProcessModuleRecord = LaboratoryRecord & {
+  metadata?: unknown;
   id?: unknown;
   status?: unknown;
 };
 
 type LaboratoryProcessArtifactRecord = LaboratoryRecord & {
   id?: unknown;
+  label?: unknown;
   moduleId?: unknown;
+  path?: unknown;
 };
 
-type LaboratoryProcessFindingRecord = LaboratoryRecord;
+type LaboratoryProcessFindingRecord = LaboratoryRecord & {
+  detail?: unknown;
+  moduleId?: unknown;
+  title?: unknown;
+};
 
 type LaboratorySpeechAvailabilityRecord = LaboratoryRecord & {
   ready?: unknown;
@@ -54,6 +67,8 @@ type LaboratoryManagedMediaRunnerResult = {
   warnings: string[];
 };
 
+type LaboratoryManagedMediaUpdateEmitter = ((payload: LaboratoryRecord) => void) | null;
+
 type LaboratoryManagedMediaRunnerDeps = {
   asNonEmptyString: (value: unknown) => string | null;
   buildProcessSpeechAvailability: (
@@ -71,6 +86,19 @@ type LaboratoryManagedMediaRunnerDeps = {
     evidenceCount: number,
     artifactIds: string[]
   ) => LaboratoryProcessFindingRecord;
+  generateProcessFramePreviewArtifact: (
+    runtime: LaboratoryManagedMediaRuntime,
+    project: LaboratoryManagedMediaProjectRecord,
+    requestId: string,
+    jobId: string,
+    target: LaboratoryManagedMediaTargetRecord,
+    artifactBase: string,
+    outputDir: string,
+    moduleId: string,
+    sampleWindowSeconds: number,
+    tileCount: unknown,
+    label?: string
+  ) => Promise<unknown>;
   generateProcessMetadataArtifact: (
     runtime: LaboratoryManagedMediaRuntime,
     project: LaboratoryManagedMediaProjectRecord,
@@ -89,6 +117,19 @@ type LaboratoryManagedMediaRunnerDeps = {
     outputDir: string,
     moduleId: string
   ) => Promise<unknown>;
+  generateProcessVisualTransformArtifact: (
+    runtime: LaboratoryManagedMediaRuntime,
+    project: LaboratoryManagedMediaProjectRecord,
+    requestId: string,
+    jobId: string,
+    target: LaboratoryManagedMediaTargetRecord,
+    artifactBase: string,
+    outputDir: string,
+    moduleId: string,
+    filterGraph: string,
+    label: string,
+    metadata?: LaboratoryRecord
+  ) => Promise<unknown>;
   maybeRunWhisperProfileSample: (
     runtime: LaboratoryManagedMediaRuntime,
     project: LaboratoryManagedMediaProjectRecord,
@@ -99,6 +140,16 @@ type LaboratoryManagedMediaRunnerDeps = {
     transcriptSampleSeconds: number
   ) => Promise<unknown>;
   normalizeProcessArtifact: (rawValue: unknown) => LaboratoryProcessArtifactRecord;
+  normalizeProcessFinding: (rawValue: unknown) => LaboratoryProcessFindingRecord;
+  partitionVisualAnalysisModuleIds: (
+    runtime: LaboratoryManagedMediaRuntime,
+    moduleIds: string[]
+  ) => LaboratoryRecord;
+  resolveEnabledVisualAnalysisModuleIds: (
+    runtime: LaboratoryManagedMediaRuntime,
+    project: LaboratoryManagedMediaProjectRecord,
+    sourceKind: string | null
+  ) => string[];
   runAudioStructureProbe: (
     runtime: LaboratoryManagedMediaRuntime,
     project: LaboratoryManagedMediaProjectRecord,
@@ -127,10 +178,15 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
     buildProcessSpeechAvailability,
     clampProfileTranscriptSampleSeconds,
     createProcessFinding,
+    generateProcessFramePreviewArtifact,
     generateProcessMetadataArtifact,
     generateProcessSpectrogram,
+    generateProcessVisualTransformArtifact,
     maybeRunWhisperProfileSample,
     normalizeProcessArtifact,
+    normalizeProcessFinding,
+    partitionVisualAnalysisModuleIds,
+    resolveEnabledVisualAnalysisModuleIds,
     runAudioStructureProbe,
     runVideoStructureProbe,
     toRecord,
@@ -171,6 +227,180 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
 
   function toTranscriptResultRecord(value: unknown): LaboratoryTranscriptResultRecord {
     return toRecord(value);
+  }
+
+  function toProcessFindingRecord(value: unknown): LaboratoryProcessFindingRecord {
+    return toRecord(value);
+  }
+
+  function toReferenceRecord(value: unknown): LaboratoryRecord {
+    return toRecord(value);
+  }
+
+  function getSourceKind(project: LaboratoryManagedMediaProjectRecord): string {
+    return asNonEmptyString(toRecord(project.source)["kind"]) || "video";
+  }
+
+  function getScopeReference(processRecord: LaboratoryManagedMediaProcessRecord): LaboratoryRecord {
+    const scope = toRecord(processRecord.analysisScope);
+    return {
+      ...(Object.keys(toReferenceRecord(scope["timeRange"])).length > 0
+        ? { timeRange: toReferenceRecord(scope["timeRange"]) }
+        : {}),
+      ...(Object.keys(toReferenceRecord(scope["frameRange"])).length > 0
+        ? { frameRange: toReferenceRecord(scope["frameRange"]) }
+        : {}),
+      ...(Object.keys(toReferenceRecord(scope["region"])).length > 0
+        ? { region: toReferenceRecord(scope["region"]) }
+        : {}),
+    };
+  }
+
+  function getScopeHypothesis(processRecord: LaboratoryManagedMediaProcessRecord): string | null {
+    return asNonEmptyString(toRecord(processRecord.analysisScope)["hypothesis"]);
+  }
+
+  function createMediaFinding(
+    processRecord: LaboratoryManagedMediaProcessRecord,
+    moduleId: string,
+    sourceModule: string,
+    options: {
+      artifactIds?: string[];
+      confidence?: string;
+      detail: string;
+      evidenceCount?: number;
+      level?: string;
+      title: string;
+    }
+  ) {
+    return toProcessFindingRecord(
+      normalizeProcessFinding({
+        ...createProcessFinding(
+          moduleId,
+          "derived",
+          options.level || "low",
+          options.confidence || "low",
+          options.title,
+          options.detail,
+          typeof options.evidenceCount === "number" ? options.evidenceCount : 1,
+          Array.isArray(options.artifactIds) ? options.artifactIds : []
+        ),
+        code: `${sourceModule}-signal`,
+        severity: options.level || "low",
+        sourceModule,
+        reference: getScopeReference(processRecord),
+        hypothesis: getScopeHypothesis(processRecord),
+      })
+    );
+  }
+
+  function buildVisualFindingDetail(
+    moduleId: string,
+    freezeCount: number,
+    blackCount: number,
+    sourceKind: string
+  ): { detail: string; level: string; title: string } {
+    if (moduleId === "frame-consistency") {
+      return freezeCount > 0
+        ? {
+            title: "Frame consistency anomaly detected",
+            detail: `The active ${sourceKind} target contains ${freezeCount} freeze interval(s) inside the sampled window.`,
+            level: freezeCount > 2 ? "medium" : "low",
+          }
+        : {
+            title: "Frame consistency sweep completed",
+            detail: "The managed run captured a frame consistency baseline for the selected scope.",
+            level: "low",
+          };
+    }
+    if (moduleId === "motion-anomaly") {
+      return freezeCount + blackCount > 0
+        ? {
+            title: "Motion anomaly cluster detected",
+            detail: `Motion analysis observed ${freezeCount + blackCount} structural transition(s) across the sampled window.`,
+            level: freezeCount + blackCount > 2 ? "medium" : "low",
+          }
+        : {
+            title: "Motion anomaly sweep completed",
+            detail: "No coarse motion spikes surfaced beyond the sampled baseline.",
+            level: "low",
+          };
+    }
+    if (moduleId === "temporal-noise-pattern") {
+      return blackCount > 0
+        ? {
+            title: "Temporal noise pattern detected",
+            detail: `Black interval analysis found ${blackCount} transition(s) that may deserve a deeper visual replay.`,
+            level: "low",
+          }
+        : {
+            title: "Temporal noise baseline captured",
+            detail: "Temporal noise pattern checks completed for the sampled window.",
+            level: "low",
+          };
+    }
+
+    const label =
+      moduleId === "lighting-consistency"
+        ? "Lighting consistency sweep completed"
+        : moduleId === "background-consistency"
+          ? "Background consistency sweep completed"
+          : moduleId === "occlusion-inconsistency"
+            ? "Occlusion inconsistency sweep completed"
+            : moduleId === "object-insert-remove-anomaly"
+              ? "Insert/remove anomaly sweep completed"
+              : "Visual sweep completed";
+    return {
+      title: label,
+      detail: `The managed run generated a ${sourceKind}-level visual baseline for ${moduleId}.`,
+      level: "low",
+    };
+  }
+
+  function getRevealFilterConfig(moduleId: string): {
+    filterGraph: string;
+    label: string;
+  } {
+    if (moduleId === "color-channel-isolation") {
+      return {
+        filterGraph: "colorchannelmixer=rr=1:rg=0:rb=0:gr=0:gg=0:gb=0:br=0:bg=0:bb=0",
+        label: "Red Channel Isolation",
+      };
+    }
+    if (moduleId === "gamma-scan") {
+      return {
+        filterGraph: "eq=gamma=1.7:contrast=1.12:brightness=0.03",
+        label: "Gamma Scan",
+      };
+    }
+    if (moduleId === "contrast-scan") {
+      return {
+        filterGraph: "eq=contrast=1.45:brightness=0.02:saturation=1.05",
+        label: "Contrast Scan",
+      };
+    }
+    if (moduleId === "edge-enhancement") {
+      return {
+        filterGraph: "unsharp=7:7:1.8:7:7:0.0",
+        label: "Edge Enhancement",
+      };
+    }
+    if (moduleId === "histogram-equalization") {
+      return {
+        filterGraph: "histeq=strength=0.35:intensity=0.25",
+        label: "Histogram Equalization",
+      };
+    }
+    if (moduleId === "hidden-detail-reveal") {
+      return {
+        filterGraph: "eq=brightness=0.06:contrast=1.55:gamma=1.45,unsharp=5:5:1.4:5:5:0.0",
+        label: "Hidden Detail Reveal",
+      };
+    }
+    return {
+      filterGraph: "eq=brightness=0.05:contrast=1.2:gamma=1.2",
+      label: "Visual Signal Amplification",
+    };
   }
 
   function getModuleStatus(
@@ -219,7 +449,8 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
     target: LaboratoryManagedMediaTargetRecord,
     artifactBase: string,
     outputDir: string,
-    processRecord: LaboratoryManagedMediaProcessRecord
+    processRecord: LaboratoryManagedMediaProcessRecord,
+    emitRuntimeUpdate: LaboratoryManagedMediaUpdateEmitter = null
   ): Promise<LaboratoryManagedMediaRunnerResult> {
     const findings: LaboratoryProcessFindingRecord[] = [];
     const artifacts: LaboratoryProcessArtifactRecord[] = [];
@@ -245,6 +476,25 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
       summary: "The active target was pinned and its metadata snapshot was saved.",
       artifactIds: metadataArtifact ? [String(metadataArtifact.id || "")] : [],
     });
+    if (metadataArtifact) {
+      emitRuntimeUpdate?.({
+        kind: "preview-artifact",
+        moduleId: "intake",
+        message: "Intake preview artifact ready",
+        detail: asNonEmptyString(metadataArtifact.label),
+        artifact: metadataArtifact,
+        moduleTrace: {
+          id: `intake-preview-${Date.now()}`,
+          moduleId: "intake",
+          stage: "process",
+          status: "preview-ready",
+          timestamp: new Date().toISOString(),
+          message: "Intake preview artifact ready",
+          detail: asNonEmptyString(metadataArtifact.label),
+        },
+        throttleWindow: "intake-module-batch",
+      });
+    }
 
     updateProcessModule(processRecord, "cleanup", {
       status: "ready",
@@ -256,51 +506,376 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
     });
 
     if (getModuleStatus(processRecord, "motion") === "queued") {
+      const sourceKind = getSourceKind(project);
+      const enabledVisualModuleIds = resolveEnabledVisualAnalysisModuleIds(
+        runtime,
+        project,
+        sourceKind
+      );
+      const visualPartitions = toRecord(
+        partitionVisualAnalysisModuleIds(runtime, enabledVisualModuleIds)
+      );
+      const structureModuleIds = toUnknownArray(visualPartitions["structure"])
+        .map(asNonEmptyString)
+        .filter((entry): entry is string => entry !== null);
+
       updateProcessModule(processRecord, "motion", {
         status: "running",
         startedAt: new Date().toISOString(),
       });
+      emitRuntimeUpdate?.({
+        kind: "module-progress",
+        moduleId: "motion",
+        message: "motion module started",
+        moduleTrace: {
+          id: `motion-running-${Date.now()}`,
+          moduleId: "motion",
+          stage: "process",
+          status: "running",
+          timestamp: new Date().toISOString(),
+          message: "motion module started",
+          detail: null,
+        },
+        throttleWindow: "motion-module-batch",
+      });
 
-      const videoProbe = toVideoProbeRecord(
-        await runVideoStructureProbe(runtime, project, requestId, jobId, target)
+      const framePreview = normalizeOptionalArtifact(
+        await generateProcessFramePreviewArtifact(
+          runtime,
+          project,
+          requestId,
+          jobId,
+          target,
+          `${artifactBase}-motion`,
+          outputDir,
+          "motion",
+          60,
+          5,
+          sourceKind === "image" ? "Visual Reference Frame" : "Structure Frame Preview"
+        )
       );
-      const freezeCount = getProbeCount(videoProbe.freeze);
-      const blackCount = getProbeCount(videoProbe.black);
-
-      if (freezeCount > 0) {
-        findings.push(
-          createProcessFinding(
-            "motion",
-            "measured",
-            freezeCount > 2 ? "high" : "medium",
-            "medium",
-            "Freeze intervals detected",
-            `The managed run found ${freezeCount} freeze interval(s).`,
-            freezeCount,
-            []
-          )
-        );
+      if (framePreview !== null) {
+        artifacts.push(framePreview);
       }
 
-      if (blackCount > 0) {
-        findings.push(
-          createProcessFinding(
-            "motion",
-            "measured",
-            "low",
-            "low",
-            "Black interval transitions detected",
-            `Black interval analysis found ${blackCount} transition(s).`,
-            blackCount,
-            []
-          )
+      const videoProbe =
+        sourceKind === "video"
+          ? toVideoProbeRecord(
+              await runVideoStructureProbe(runtime, project, requestId, jobId, target)
+            )
+          : toVideoProbeRecord({});
+      const freezeCount = getProbeCount(videoProbe.freeze);
+      const blackCount = getProbeCount(videoProbe.black);
+      const structureArtifactIds =
+        framePreview && typeof framePreview.id === "string" ? [framePreview.id] : [];
+      structureModuleIds.forEach(function (visualModuleId) {
+        const descriptor = buildVisualFindingDetail(
+          visualModuleId,
+          freezeCount,
+          blackCount,
+          sourceKind
         );
+        findings.push(
+          createMediaFinding(processRecord, "motion", visualModuleId, {
+            artifactIds: structureArtifactIds,
+            detail: descriptor.detail,
+            evidenceCount:
+              descriptor.level === "medium" ? Math.max(1, freezeCount + blackCount) : 1,
+            level: descriptor.level,
+            title: descriptor.title,
+          })
+        );
+      });
+      const motionFindings = findings.filter(function (entry) {
+        return asNonEmptyString(entry.moduleId) === "motion";
+      });
+      if (framePreview !== null) {
+        emitRuntimeUpdate?.({
+          kind: "preview-artifact",
+          moduleId: "motion",
+          message: "motion preview artifact ready",
+          detail: asNonEmptyString(framePreview.label),
+          artifact: framePreview,
+          moduleTrace: {
+            id: `motion-preview-${Date.now()}`,
+            moduleId: "motion",
+            stage: "process",
+            status: "preview-ready",
+            timestamp: new Date().toISOString(),
+            message: "motion preview artifact ready",
+            detail: asNonEmptyString(framePreview.label),
+          },
+          throttleWindow: "motion-module-batch",
+        });
+      }
+      if (motionFindings.length > 0) {
+        const primaryMotionFinding = motionFindings[0];
+        if (primaryMotionFinding) {
+          emitRuntimeUpdate?.({
+            kind: "live-finding",
+            moduleId: "motion",
+            message: "motion findings updated",
+            detail:
+              motionFindings.length > 1
+                ? `${motionFindings.length} visual findings were aggregated for the motion window.`
+                : asNonEmptyString(primaryMotionFinding.detail) ||
+                  asNonEmptyString(primaryMotionFinding.title) ||
+                  "Motion finding emitted.",
+            finding: primaryMotionFinding,
+            moduleTrace: {
+              id: `motion-finding-${Date.now()}`,
+              moduleId: "motion",
+              stage: "process",
+              status: "finding",
+              timestamp: new Date().toISOString(),
+              message: "motion findings updated",
+              detail:
+                motionFindings.length > 1
+                  ? `${motionFindings.length} visual findings were aggregated for the motion window.`
+                  : asNonEmptyString(primaryMotionFinding.detail) ||
+                    asNonEmptyString(primaryMotionFinding.title) ||
+                    "Motion finding emitted.",
+            },
+            throttleWindow: "motion-module-batch",
+          });
+        }
       }
 
       updateProcessModule(processRecord, "motion", {
         status: "ready",
         completedAt: new Date().toISOString(),
-        summary: "Video structure checks finished for the active target.",
+        summary:
+          structureModuleIds.length > 0
+            ? `${structureModuleIds.length} structural visual module(s) completed on the active target.`
+            : "Structural visual checks finished for the active target.",
+        artifactIds: collectArtifactIdsForModule(artifacts, "motion"),
+      });
+      emitRuntimeUpdate?.({
+        kind: "module-progress",
+        moduleId: "motion",
+        message: "motion module completed",
+        detail:
+          structureModuleIds.length > 0
+            ? `${structureModuleIds.length} structural visual module(s) completed on the active target.`
+            : "Video structure checks finished for the active target.",
+        moduleTrace: {
+          id: `motion-completed-${Date.now()}`,
+          moduleId: "motion",
+          stage: "process",
+          status: "ready",
+          timestamp: new Date().toISOString(),
+          message: "motion module completed",
+          detail:
+            structureModuleIds.length > 0
+              ? `${structureModuleIds.length} structural visual module(s) completed on the active target.`
+              : "Video structure checks finished for the active target.",
+        },
+        throttleWindow: "motion-module-batch",
+      });
+    }
+
+    if (getModuleStatus(processRecord, "visual-signal") === "queued") {
+      const sourceKind = getSourceKind(project);
+      const enabledVisualModuleIds = resolveEnabledVisualAnalysisModuleIds(
+        runtime,
+        project,
+        sourceKind
+      );
+      const visualPartitions = toRecord(
+        partitionVisualAnalysisModuleIds(runtime, enabledVisualModuleIds)
+      );
+      const revealModuleIds = toUnknownArray(visualPartitions["reveal"])
+        .map(asNonEmptyString)
+        .filter((entry): entry is string => entry !== null);
+
+      updateProcessModule(processRecord, "visual-signal", {
+        status: "running",
+        startedAt: new Date().toISOString(),
+      });
+      emitRuntimeUpdate?.({
+        kind: "module-progress",
+        moduleId: "visual-signal",
+        message: "visual-signal module started",
+        moduleTrace: {
+          id: `visual-signal-running-${Date.now()}`,
+          moduleId: "visual-signal",
+          stage: "process",
+          status: "running",
+          timestamp: new Date().toISOString(),
+          message: "visual-signal module started",
+          detail: null,
+        },
+        throttleWindow: "visual-signal-module-batch",
+      });
+
+      const revealArtifacts: LaboratoryProcessArtifactRecord[] = [];
+      for (let index = 0; index < revealModuleIds.length; index += 1) {
+        const visualModuleId = revealModuleIds[index];
+        if (!visualModuleId) {
+          continue;
+        }
+        const filterConfig = getRevealFilterConfig(visualModuleId);
+        // eslint-disable-next-line no-await-in-loop -- NOTE: reveal variants are emitted in deterministic order for preview review.
+        const transformArtifact = normalizeOptionalArtifact(
+          await generateProcessVisualTransformArtifact(
+            runtime,
+            project,
+            requestId,
+            jobId,
+            target,
+            `${artifactBase}-${visualModuleId}`,
+            outputDir,
+            "visual-signal",
+            filterConfig.filterGraph,
+            filterConfig.label,
+            {
+              sourceModule: visualModuleId,
+              sourceKind,
+            }
+          )
+        );
+        if (transformArtifact !== null) {
+          revealArtifacts.push(transformArtifact);
+          artifacts.push(transformArtifact);
+        }
+      }
+
+      const comparisonVariants: LaboratoryRecord[] = [];
+      revealModuleIds.forEach(function (visualModuleId, index) {
+        const filterConfig = getRevealFilterConfig(visualModuleId);
+        const transformArtifact = revealArtifacts[index] || revealArtifacts[0] || null;
+        const artifactIds =
+          transformArtifact && typeof transformArtifact.id === "string" ? [transformArtifact.id] : [];
+        const comparisonVariant = {
+          id: `visual-variant-${visualModuleId}`,
+          moduleId: "visual-signal",
+          sourceModule: visualModuleId,
+          label: filterConfig.label,
+          artifactId: transformArtifact ? asNonEmptyString(transformArtifact.id) : null,
+          artifactPath: transformArtifact ? asNonEmptyString(transformArtifact.path) : null,
+          active: index === 0,
+        };
+        comparisonVariants.push(comparisonVariant);
+        findings.push(
+          createMediaFinding(processRecord, "visual-signal", visualModuleId, {
+            artifactIds,
+            detail: `${filterConfig.label} generated a reveal-oriented preview variant for the selected scope.`,
+            title: `${filterConfig.label} variant generated`,
+          })
+        );
+      });
+
+      if (comparisonVariants.length > 0) {
+        emitRuntimeUpdate?.({
+          kind: "module-artifact",
+          moduleId: "visual-signal",
+          message: "visual signal comparison variants ready",
+          detail:
+            comparisonVariants.length > 1
+              ? `${comparisonVariants.length} reveal variants were batched for the current scope.`
+              : asNonEmptyString(comparisonVariants[0]?.["label"]) || "Visual comparison variant ready",
+          artifact: revealArtifacts[0] || undefined,
+          comparisonVariant: comparisonVariants[0] || undefined,
+          comparisonVariants,
+          throttleWindow: "visual-signal-module-batch",
+        });
+      }
+
+      if (revealArtifacts[0]) {
+        emitRuntimeUpdate?.({
+          kind: "preview-artifact",
+          moduleId: "visual-signal",
+          message: "visual signal preview artifact ready",
+          detail: asNonEmptyString(revealArtifacts[0].label),
+          artifact: revealArtifacts[0],
+          comparisonVariant: {
+            id: `visual-variant-${revealModuleIds[0] || "primary"}`,
+            moduleId: "visual-signal",
+            sourceModule: revealModuleIds[0] || "visual-signal-amplification",
+            label: asNonEmptyString(revealArtifacts[0].label) || "Visual Reveal Variant",
+            artifactId: asNonEmptyString(revealArtifacts[0].id),
+            artifactPath: asNonEmptyString(revealArtifacts[0].path),
+            active: true,
+          },
+          moduleTrace: {
+            id: `visual-signal-preview-${Date.now()}`,
+            moduleId: "visual-signal",
+            stage: "process",
+            status: "preview-ready",
+            timestamp: new Date().toISOString(),
+            message: "visual signal preview artifact ready",
+            detail: asNonEmptyString(revealArtifacts[0].label),
+          },
+          throttleWindow: "visual-signal-module-batch",
+        });
+      }
+
+      const revealFindings = findings.filter(function (entry) {
+        return asNonEmptyString(entry.moduleId) === "visual-signal";
+      });
+      if (revealFindings.length > 0) {
+        const primaryRevealFinding = revealFindings[0];
+        if (primaryRevealFinding) {
+          emitRuntimeUpdate?.({
+            kind: "live-finding",
+            moduleId: "visual-signal",
+            message: "visual-signal findings updated",
+            detail:
+              revealFindings.length > 1
+                ? `${revealFindings.length} reveal findings were aggregated for the current preview batch.`
+                : asNonEmptyString(primaryRevealFinding.detail) ||
+                  asNonEmptyString(primaryRevealFinding.title) ||
+                  "Visual reveal finding emitted.",
+            finding: primaryRevealFinding,
+            moduleTrace: {
+              id: `visual-signal-finding-${Date.now()}`,
+              moduleId: "visual-signal",
+              stage: "process",
+              status: "finding",
+              timestamp: new Date().toISOString(),
+              message: "visual-signal findings updated",
+              detail:
+                revealFindings.length > 1
+                  ? `${revealFindings.length} reveal findings were aggregated for the current preview batch.`
+                  : asNonEmptyString(primaryRevealFinding.detail) ||
+                    asNonEmptyString(primaryRevealFinding.title) ||
+                    "Visual reveal finding emitted.",
+            },
+            throttleWindow: "visual-signal-module-batch",
+          });
+        }
+      }
+
+      updateProcessModule(processRecord, "visual-signal", {
+        status: "ready",
+        completedAt: new Date().toISOString(),
+        summary:
+          revealModuleIds.length > 0
+            ? `${revealModuleIds.length} visual reveal module(s) generated preview variants.`
+            : "Visual signal amplification checks finished for the active target.",
+        artifactIds: collectArtifactIdsForModule(artifacts, "visual-signal"),
+      });
+      emitRuntimeUpdate?.({
+        kind: "module-progress",
+        moduleId: "visual-signal",
+        message: "visual-signal module completed",
+        detail:
+          revealModuleIds.length > 0
+            ? `${revealModuleIds.length} visual reveal module(s) generated preview variants.`
+            : "Visual signal amplification checks finished for the active target.",
+        moduleTrace: {
+          id: `visual-signal-completed-${Date.now()}`,
+          moduleId: "visual-signal",
+          stage: "process",
+          status: "ready",
+          timestamp: new Date().toISOString(),
+          message: "visual-signal module completed",
+          detail:
+            revealModuleIds.length > 0
+              ? `${revealModuleIds.length} visual reveal module(s) generated preview variants.`
+              : "Visual signal amplification checks finished for the active target.",
+        },
+        throttleWindow: "visual-signal-module-batch",
       });
     }
 
@@ -308,6 +883,21 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
       updateProcessModule(processRecord, "audio", {
         status: "running",
         startedAt: new Date().toISOString(),
+      });
+      emitRuntimeUpdate?.({
+        kind: "module-progress",
+        moduleId: "audio",
+        message: "audio module started",
+        moduleTrace: {
+          id: `audio-running-${Date.now()}`,
+          moduleId: "audio",
+          stage: "process",
+          status: "running",
+          timestamp: new Date().toISOString(),
+          message: "audio module started",
+          detail: null,
+        },
+        throttleWindow: "audio-module-batch",
       });
 
       const audioProbe = toAudioProbeRecord(
@@ -343,6 +933,25 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
             spectrogram ? [String(spectrogram.id || "")] : []
           )
         );
+      }
+      if (spectrogram !== null) {
+        emitRuntimeUpdate?.({
+          kind: "preview-artifact",
+          moduleId: "audio",
+          message: "audio preview artifact ready",
+          detail: asNonEmptyString(spectrogram.label),
+          artifact: spectrogram,
+          moduleTrace: {
+            id: `audio-preview-${Date.now()}`,
+            moduleId: "audio",
+            stage: "process",
+            status: "preview-ready",
+            timestamp: new Date().toISOString(),
+            message: "audio preview artifact ready",
+            detail: asNonEmptyString(spectrogram.label),
+          },
+          throttleWindow: "audio-module-batch",
+        });
       }
 
       const speech = toSpeechAvailabilityRecord(buildProcessSpeechAvailability(runtime, project));
@@ -380,12 +989,81 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
           warnings.push("Transcript sampling stayed unavailable during the managed run.");
         }
       }
+      const audioFindings = findings.filter(function (entry) {
+        return asNonEmptyString(entry.moduleId) === "audio";
+      });
+      if (audioFindings.length > 0) {
+        const primaryAudioFinding = audioFindings[0];
+        if (primaryAudioFinding) {
+          emitRuntimeUpdate?.({
+            kind: "live-finding",
+            moduleId: "audio",
+            message: "audio findings updated",
+            detail:
+              audioFindings.length > 1
+                ? `${audioFindings.length} audio findings were aggregated for the current sweep.`
+                : asNonEmptyString(primaryAudioFinding.detail) ||
+                  asNonEmptyString(primaryAudioFinding.title) ||
+                  "Audio finding emitted.",
+            finding: primaryAudioFinding,
+            moduleTrace: {
+              id: `audio-finding-${Date.now()}`,
+              moduleId: "audio",
+              stage: "process",
+              status: "finding",
+              timestamp: new Date().toISOString(),
+              message: "audio findings updated",
+              detail:
+                audioFindings.length > 1
+                  ? `${audioFindings.length} audio findings were aggregated for the current sweep.`
+                  : asNonEmptyString(primaryAudioFinding.detail) ||
+                    asNonEmptyString(primaryAudioFinding.title) ||
+                    "Audio finding emitted.",
+            },
+            throttleWindow: "audio-module-batch",
+          });
+        }
+      }
+      if (warnings.length > 0) {
+        emitRuntimeUpdate?.({
+          kind: "module-warning",
+          moduleId: "audio",
+          message: "audio module warning",
+          detail: warnings.join(" | "),
+          moduleTrace: {
+            id: `audio-warning-${Date.now()}`,
+            moduleId: "audio",
+            stage: "process",
+            status: "warning",
+            timestamp: new Date().toISOString(),
+            message: "audio module warning",
+            detail: warnings.join(" | "),
+          },
+          throttleWindow: "audio-module-batch",
+        });
+      }
 
       updateProcessModule(processRecord, "audio", {
         status: "ready",
         completedAt: new Date().toISOString(),
         summary: "Audio continuity checks finished for the active target.",
         artifactIds: collectArtifactIdsForModule(artifacts, "audio"),
+      });
+      emitRuntimeUpdate?.({
+        kind: "module-progress",
+        moduleId: "audio",
+        message: "audio module completed",
+        detail: "Audio continuity checks finished for the active target.",
+        moduleTrace: {
+          id: `audio-completed-${Date.now()}`,
+          moduleId: "audio",
+          stage: "process",
+          status: "ready",
+          timestamp: new Date().toISOString(),
+          message: "audio module completed",
+          detail: "Audio continuity checks finished for the active target.",
+        },
+        throttleWindow: "audio-module-batch",
       });
     }
 

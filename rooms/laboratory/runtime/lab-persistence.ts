@@ -1,7 +1,10 @@
 import type { LabPersistedState } from "../models/lab-types.js";
 
-const LAB_PERSISTENCE_KEY = "hayalet-ev:laboratory-refactor:v3";
-const LAB_LEGACY_PERSISTENCE_KEYS = ["hayalet-ev:laboratory-refactor:v2"];
+const LAB_PERSISTENCE_KEY = "hayalet-ev:laboratory-refactor:v4";
+const LAB_LEGACY_PERSISTENCE_KEYS = [
+  "hayalet-ev:laboratory-refactor:v3",
+  "hayalet-ev:laboratory-refactor:v2",
+];
 
 type PersistenceWindow = Window & typeof globalThis;
 
@@ -62,7 +65,11 @@ function migratePersistedState(
 ): Partial<LabPersistedState> {
   return {
     ...persisted,
-    schemaVersion: 3,
+    schemaVersion: 4,
     activityFeed: Array.isArray(persisted.activityFeed) ? persisted.activityFeed : [],
+    activePreviewArtifactId:
+      typeof persisted.activePreviewArtifactId === "string" ? persisted.activePreviewArtifactId : null,
+    liveFindingsExpanded: persisted.liveFindingsExpanded !== false,
+    analysisControlsCollapsed: persisted.analysisControlsCollapsed === true,
   };
 }

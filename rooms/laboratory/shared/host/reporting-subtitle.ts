@@ -317,6 +317,9 @@ export function createLaboratorySubtitleReportRuntime(deps: LaboratorySubtitleRe
           },
         ],
         findings,
+        artifacts: Array.isArray(processRecord.artifacts)
+          ? processRecord.artifacts.map(normalizeProcessArtifact).map(toProcessArtifactRecord)
+          : [],
         caveats,
         warnings,
         exports: featureReportRecord.exports,

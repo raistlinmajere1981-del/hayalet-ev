@@ -29,6 +29,7 @@ type LaboratorySnapshotSelectorsApi = {
   getProjectReport: () => unknown;
   getProjectSource: () => unknown;
   getProjectSubtitleAnalysis: () => unknown;
+  getProjectWorkbench: () => unknown;
   getProjectSummaries: () => unknown[];
   getSourceMetadata: () => unknown;
   getSourcePresets: () => unknown;
@@ -58,6 +59,9 @@ type LaboratorySnapshotSelectorsApi = {
   getSubtitleYoutubeForm: () => unknown;
   getToolEntry: (toolId: string) => unknown;
   getToolRegistry: () => unknown[];
+  getVisualAnalysisCapabilities: () => unknown;
+  getVisualAnalysisCatalog: () => unknown;
+  getVisualAnalysisProviders: () => unknown;
   getWorkspaceCapabilities: (kind: string) => unknown;
   getYtDlpForm: () => unknown;
 };
@@ -161,6 +165,18 @@ export function createLaboratorySnapshotAccessRuntime(deps: LaboratorySnapshotAc
     return snapshotSelectors.getAudioAnalysisCatalog();
   }
 
+  function getVisualAnalysisCatalog() {
+    return snapshotSelectors.getVisualAnalysisCatalog();
+  }
+
+  function getVisualAnalysisCapabilities() {
+    return snapshotSelectors.getVisualAnalysisCapabilities();
+  }
+
+  function getVisualAnalysisProviders() {
+    return snapshotSelectors.getVisualAnalysisProviders();
+  }
+
   function getAudioAnalysisModules() {
     return snapshotSelectors.getAudioAnalysisModules();
   }
@@ -183,6 +199,10 @@ export function createLaboratorySnapshotAccessRuntime(deps: LaboratorySnapshotAc
 
   function getProjectProcess() {
     return snapshotSelectors.getProjectProcess();
+  }
+
+  function getProjectWorkbench() {
+    return snapshotSelectors.getProjectWorkbench();
   }
 
   function getProjectReport() {
@@ -339,6 +359,7 @@ export function createLaboratorySnapshotAccessRuntime(deps: LaboratorySnapshotAc
     getProjectReport,
     getProjectSource,
     getProjectSubtitleAnalysis,
+    getProjectWorkbench,
     getProjectSummaries,
     getSourceMetadata,
     getSourcePresets,
@@ -368,6 +389,9 @@ export function createLaboratorySnapshotAccessRuntime(deps: LaboratorySnapshotAc
     getSubtitleYoutubeForm,
     getToolEntry,
     getToolRegistry,
+    getVisualAnalysisCapabilities,
+    getVisualAnalysisCatalog,
+    getVisualAnalysisProviders,
     getWorkspaceCapabilities,
     getYtDlpForm,
   };

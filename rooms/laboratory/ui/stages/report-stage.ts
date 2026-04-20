@@ -6,15 +6,21 @@ import type {
   LabUserReport,
 } from "../../models/lab-types.js";
 import {
+  getActivePreviewArtifact,
+  getComparisonVariants,
   getCurrentReports,
+  getPreviewArtifacts,
+  getProcessAnalysisScope,
   getReportExports,
   getVisibleArtifacts,
   hasMoreVisibleArtifacts,
 } from "../../runtime/lab-selectors.js";
+import { renderAnalysisScopeSummary } from "../components/analysis-scope-summary.js";
 import { renderArtifactItem } from "../components/artifact-item.js";
 import { renderCompactCard } from "../components/compact-card.js";
 import { renderEmptyState } from "../components/empty-state.js";
 import { renderFindingCard } from "../components/finding-card.js";
+import { renderPreviewSurface } from "../components/preview-surface.js";
 import { renderPrimaryCTA } from "../components/primary-cta.js";
 import { renderStageHeader } from "../components/stage-header.js";
 
@@ -61,8 +67,12 @@ export function renderReportStage(deps: ReportStageRenderDeps): LabStageSurface 
   const reports = getCurrentReports(deps.state);
   const userReport: LabUserReport | null = reports.user;
   const aiReport: LabAiReport | null = reports.ai;
+  const scope = getProcessAnalysisScope(deps.state);
   const exportsList = getReportExports(deps.state);
   const artifacts = getVisibleArtifacts(deps.state);
+  const previewArtifacts = getPreviewArtifacts(deps.state);
+  const activePreviewArtifact = getActivePreviewArtifact(deps.state);
+  const comparisonVariants = getComparisonVariants(deps.state);
   const hasMoreArtifacts = hasMoreVisibleArtifacts(deps.state);
   const reportView = deps.state.ui.reportView;
   const hasReport = userReport !== null || aiReport !== null;
@@ -76,67 +86,73 @@ export function renderReportStage(deps: ReportStageRenderDeps): LabStageSurface 
           hint: emptyReason || "Process tamamlandığında rapor burada görünür.",
         })
       : `
-        <div class="labx-chip-row">
-          ${["user", "ai"]
-            .map(function (entry) {
-              return `
-                <button
-                  class="labx-chip-button"
-                  type="button"
-                  data-lab-action="report-view"
-                  data-lab-value="${entry}"
-                  data-selected="${entry === reportView ? "true" : "false"}"
-                >
-                  ${escapeHtml(entry === "user" ? "User Report" : "AI Work Report")}
-                </button>
-              `;
-            })
-            .join("")}
-        </div>
-        ${
-          reportView === "user" && userReport
-            ? `
-              <section class="labx-report-block">
-                <p class="labx-report-block__summary">${escapeHtml(userReport.summary)}</p>
-                <div class="labx-summary-list">
-                  <div><span>Confidence</span><strong>${escapeHtml(userReport.confidence)}</strong></div>
-                  <div><span>Top Findings</span><strong>${escapeHtml(String(userReport.topFindings.length))}</strong></div>
-                </div>
-                <div class="labx-list-stack">
-                  ${userReport.topFindings
-                    .map(function (entry) {
-                      return `
-                        <article class="labx-report-finding">
-                          <strong>${escapeHtml(entry.title)}</strong>
-                          <p>${escapeHtml(entry.detail)}</p>
-                          <span>${escapeHtml(entry.evidence.join(" · "))}</span>
-                        </article>
-                      `;
-                    })
-                    .join("")}
-                </div>
-              </section>
-            `
-            : reportView === "ai" && aiReport
+          <div class="labx-chip-row">
+            ${["user", "ai"]
+              .map(function (entry) {
+                return `
+                  <button
+                    class="labx-chip-button"
+                    type="button"
+                    data-lab-action="report-view"
+                    data-lab-value="${entry}"
+                    data-selected="${entry === reportView ? "true" : "false"}"
+                  >
+                    ${escapeHtml(entry === "user" ? "User Report" : "AI Work Report")}
+                  </button>
+                `;
+              })
+              .join("")}
+          </div>
+          ${
+            reportView === "user" && userReport
               ? `
                 <section class="labx-report-block">
+                  <p class="labx-report-block__summary">${escapeHtml(userReport.summary)}</p>
+                  ${
+                    scope?.hypothesis
+                      ? `<p class="labx-panel-hint">${escapeHtml(`Hypothesis summary: ${scope.hypothesis}`)}</p>`
+                      : ""
+                  }
                   <div class="labx-summary-list">
-                    <div><span>Status</span><strong>${escapeHtml(String(aiReport.manifest["status"] || "--"))}</strong></div>
-                    <div><span>Modules</span><strong>${escapeHtml(String(aiReport.manifest["moduleCount"] || 0))}</strong></div>
-                    <div><span>Findings</span><strong>${escapeHtml(String(aiReport.findings.length))}</strong></div>
+                    <div><span>Confidence</span><strong>${escapeHtml(userReport.confidence)}</strong></div>
+                    <div><span>Top Findings</span><strong>${escapeHtml(String(userReport.topFindings.length))}</strong></div>
                   </div>
                   <div class="labx-list-stack">
-                    ${aiReport.findings.slice(0, 6).map(renderFindingCard).join("")}
+                    ${userReport.topFindings
+                      .map(function (entry) {
+                        return `
+                          <article class="labx-report-finding">
+                            <strong>${escapeHtml(entry.title)}</strong>
+                            <p>${escapeHtml(entry.detail)}</p>
+                            <span>${escapeHtml(entry.evidence.join(" · "))}</span>
+                          </article>
+                        `;
+                      })
+                      .join("")}
                   </div>
                 </section>
               `
-              : renderEmptyState({
-                  title: "Rapor görünümü boş",
-                  description: "Seçili görünüm için yapılandırılmış içerik oluşmadı.",
-                  hint: emptyReason || "Seçili görünüm için henüz içerik oluşmadı.",
-                })
-        }
-      `;
+              : reportView === "ai" && aiReport
+                ? `
+                  <section class="labx-report-block">
+                    <div class="labx-summary-list">
+                      <div><span>Status</span><strong>${escapeHtml(String(aiReport.manifest["status"] || "--"))}</strong></div>
+                      <div><span>Modules</span><strong>${escapeHtml(String(aiReport.manifest["moduleCount"] || 0))}</strong></div>
+                      <div><span>Findings</span><strong>${escapeHtml(String(aiReport.findings.length))}</strong></div>
+                      <div><span>Warnings</span><strong>${escapeHtml(String(aiReport.warnings.length))}</strong></div>
+                    </div>
+                    <div class="labx-list-stack">
+                      ${aiReport.findings.slice(0, 6).map(renderFindingCard).join("")}
+                    </div>
+                  </section>
+                `
+                : renderEmptyState({
+                    title: "Rapor görünümü boş",
+                    description: "Seçili görünüm için yapılandırılmış içerik oluşmadı.",
+                    hint: emptyReason || "Seçili görünüm için henüz içerik oluşmadı.",
+                  })
+          }
+        `;
 
   const main = `
     ${renderStageHeader({
@@ -163,6 +179,23 @@ export function renderReportStage(deps: ReportStageRenderDeps): LabStageSurface 
   `;
 
   const side = [
+    renderCompactCard({
+      eyebrow: "Scope",
+      title: "Frozen Scope",
+      body: `
+        ${renderAnalysisScopeSummary(scope, userReport?.confidence || null)}
+        <p class="labx-panel-hint">Report surface aktif run scope snapshot'ini ve hypothesis ozetini korur.</p>
+      `,
+    }),
+    renderCompactCard({
+      eyebrow: "Preview Surface",
+      title: "Latest Preview",
+      body: renderPreviewSurface({
+        activeArtifact: activePreviewArtifact,
+        comparisonVariants,
+        previewArtifacts,
+      }),
+    }),
     renderCompactCard({
       eyebrow: "Exports",
       title: "Dışa Aktarılanlar",

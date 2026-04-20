@@ -285,7 +285,7 @@ export function renderSourceStage(deps: SourceStageRenderDeps): LabStageSurface 
               })
               .join("")}
           </div>
-          <p class="labx-panel-hint">Bu panel, koşuya girecek modülleri ve ilk odak modülünü doğrudan belirler.</p>
+          <p class="labx-panel-hint">Hızlı modül seçimi burada yapılır. Bu panel, koşuya girecek modülleri ve ilk odak modülünü doğrudan belirler.</p>
         `,
       })}
     </div>

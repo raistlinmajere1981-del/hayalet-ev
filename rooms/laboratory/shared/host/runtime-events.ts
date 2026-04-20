@@ -14,6 +14,11 @@ type LaboratoryRuntimeEventsDeps = {
   };
 };
 
+type LaboratoryThrottleEntry = {
+  lastEmittedAt: number;
+  suppressedCount: number;
+};
+
 function getEventSeverity(stage: string | null) {
   if (stage === "failed") {
     return "error";
@@ -25,6 +30,18 @@ function getEventSeverity(stage: string | null) {
     return "success";
   }
   return "info";
+}
+
+function isCustomProcessEventKind(kind: string | null) {
+  return (
+    kind === "analysis-scope-updated" ||
+    kind === "live-finding" ||
+    kind === "preview-artifact" ||
+    kind === "module-progress" ||
+    kind === "module-warning" ||
+    kind === "module-artifact" ||
+    kind === "interactive-adjustment-applied"
+  );
 }
 
 function getActionLabel(action: string | null) {
@@ -70,6 +87,8 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
     loadContext,
     roomSnapshotRuntime,
   } = deps;
+  const throttleState = new Map<string, LaboratoryThrottleEntry>();
+  const throttleWindowMs = 500;
 
   function toRecord(value: unknown): LaboratoryRecord {
     return value !== null && typeof value === "object" && Array.isArray(value) === false
@@ -93,32 +112,91 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
     api.notifyRoom(type, payload ?? {});
   }
 
+  function buildThrottleKey(api: LaboratoryRuntimeEventsApi, payload: LaboratoryRecord) {
+    const throttleWindow = asNonEmptyString(payload["throttleWindow"]);
+    const kind = asNonEmptyString(payload["kind"]);
+    if (throttleWindow === null || kind === null || isCustomProcessEventKind(kind) !== true) {
+      return null;
+    }
+    const featureId = getFeatureIdFromContext(loadContext(api));
+    const moduleId = asNonEmptyString(payload["moduleId"]) || "global";
+    return `${featureId}:${kind}:${moduleId}:${throttleWindow}`;
+  }
+
+  function applyThrottleMetadata(
+    api: LaboratoryRuntimeEventsApi,
+    payload: LaboratoryRecord
+  ): LaboratoryRecord | null {
+    const throttleKey = buildThrottleKey(api, payload);
+    if (throttleKey === null) {
+      return payload;
+    }
+    const nextTimestamp =
+      typeof payload["timestamp"] === "number" ? payload["timestamp"] : Date.now();
+    const currentEntry = throttleState.get(throttleKey) || {
+      lastEmittedAt: 0,
+      suppressedCount: 0,
+    };
+    if (currentEntry.lastEmittedAt > 0 && nextTimestamp - currentEntry.lastEmittedAt < throttleWindowMs) {
+      throttleState.set(throttleKey, {
+        lastEmittedAt: currentEntry.lastEmittedAt,
+        suppressedCount: currentEntry.suppressedCount + 1,
+      });
+      return null;
+    }
+    const batchedCount = currentEntry.suppressedCount + 1;
+    throttleState.set(throttleKey, {
+      lastEmittedAt: nextTimestamp,
+      suppressedCount: 0,
+    });
+    if (batchedCount <= 1) {
+      return payload;
+    }
+    const detail = asNonEmptyString(payload["detail"]);
+    return {
+      ...payload,
+      batchedCount,
+      detail:
+        detail !== null ? `${detail} (${batchedCount} updates batched)` : `${batchedCount} updates batched.`,
+    };
+  }
+
   function emitEvent(api: LaboratoryRuntimeEventsApi, payload: LaboratoryRecord) {
+    const throttledPayload = applyThrottleMetadata(api, payload);
+    if (throttledPayload === null) {
+      return;
+    }
     notifyRoom(api, "lab-event", {
+      ...throttledPayload,
       id:
-        typeof payload["id"] === "string"
-          ? payload["id"]
+        typeof throttledPayload["id"] === "string"
+          ? throttledPayload["id"]
           : `lab-event-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      kind: typeof payload["kind"] === "string" ? payload["kind"] : "activity",
+      kind: typeof throttledPayload["kind"] === "string" ? throttledPayload["kind"] : "activity",
       severity:
-        typeof payload["severity"] === "string"
-          ? payload["severity"]
-          : getEventSeverity(asNonEmptyString(payload["stage"])),
+        typeof throttledPayload["severity"] === "string"
+          ? throttledPayload["severity"]
+          : getEventSeverity(asNonEmptyString(throttledPayload["stage"])),
       message:
-        typeof payload["message"] === "string"
-          ? payload["message"]
-          : getActionLabel(asNonEmptyString(payload["action"])),
-      detail: typeof payload["detail"] === "string" ? payload["detail"] : null,
-      timestamp: typeof payload["timestamp"] === "number" ? payload["timestamp"] : Date.now(),
-      source: typeof payload["source"] === "string" ? payload["source"] : "host",
-      action: asNonEmptyString(payload["action"]),
-      stage: asNonEmptyString(payload["stage"]),
+        typeof throttledPayload["message"] === "string"
+          ? throttledPayload["message"]
+          : getActionLabel(asNonEmptyString(throttledPayload["action"])),
+      detail: typeof throttledPayload["detail"] === "string" ? throttledPayload["detail"] : null,
+      timestamp:
+        typeof throttledPayload["timestamp"] === "number"
+          ? throttledPayload["timestamp"]
+          : Date.now(),
+      source: typeof throttledPayload["source"] === "string" ? throttledPayload["source"] : "host",
+      action: asNonEmptyString(throttledPayload["action"]),
+      stage: asNonEmptyString(throttledPayload["stage"]),
       scope:
-        payload["scope"] === "run" || asNonEmptyString(payload["featureStage"]) === "process"
+        throttledPayload["scope"] === "run" ||
+        asNonEmptyString(throttledPayload["featureStage"]) === "process"
           ? "run"
           : "global",
-      moduleId: asNonEmptyString(payload["moduleId"]),
-      rawLine: typeof payload["rawLine"] === "string" ? payload["rawLine"] : null,
+      moduleId: asNonEmptyString(throttledPayload["moduleId"]),
+      rawLine:
+        typeof throttledPayload["rawLine"] === "string" ? throttledPayload["rawLine"] : null,
     });
   }
 
@@ -126,6 +204,30 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
     const action = asNonEmptyString(payload["action"]);
     const stage = asNonEmptyString(payload["stage"]);
     const detail = asNonEmptyString(payload["message"]);
+    const kind = asNonEmptyString(payload["kind"]);
+    if (isCustomProcessEventKind(kind)) {
+      return {
+        ...payload,
+        kind,
+        severity:
+          typeof payload["severity"] === "string"
+            ? payload["severity"]
+            : getEventSeverity(stage),
+        message:
+          typeof payload["message"] === "string"
+            ? payload["message"]
+            : getActionLabel(action),
+        detail: asNonEmptyString(payload["detail"]) || detail,
+        action,
+        stage,
+        moduleId: asNonEmptyString(payload["moduleId"]),
+        scope:
+          asNonEmptyString(payload["featureStage"]) === "process" ||
+          String(action || "").includes("process")
+            ? "run"
+            : "global",
+      };
+    }
     const baseLabel = getActionLabel(action);
     return {
       kind: payload["kind"],

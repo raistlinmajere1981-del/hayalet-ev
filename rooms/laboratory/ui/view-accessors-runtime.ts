@@ -13,9 +13,13 @@ type LaboratoryViewAccessorsRuntimeDeps = {
   getCurrentFeatureReportRecord: () => unknown;
   getProfileTargetAsset: () => unknown;
   getProjectAudioAnalysis: () => unknown;
+  getProjectWorkbench: () => unknown;
   getSubtitleEntries: () => unknown;
   getSubtitleProcessModuleLabel: (entry: unknown) => string;
   getSubtitleProviderLabel: (entry: unknown) => string;
+  getVisualAnalysisCapabilities: () => unknown;
+  getVisualAnalysisCatalog: () => unknown;
+  getVisualAnalysisProviders: () => unknown;
   renderProfileModelCard: (entry: unknown) => string;
   renderSettingsOverlay: () => string;
   renderToolCard: (toolId: string, stageId: string) => string;
@@ -29,6 +33,7 @@ export function createLaboratoryViewAccessorsRuntime(deps: LaboratoryViewAccesso
   const currentFeatureProcessRecordFn = deps.getCurrentFeatureProcessRecord;
   const currentFeatureReportRecordFn = deps.getCurrentFeatureReportRecord;
   const projectAudioAnalysisFn = deps.getProjectAudioAnalysis;
+  const projectWorkbenchFn = deps.getProjectWorkbench;
   const subtitleEntriesFn = deps.getSubtitleEntries;
   const subtitleProcessModuleLabelFn = deps.getSubtitleProcessModuleLabel;
   const subtitleProviderLabelFn = deps.getSubtitleProviderLabel;
@@ -36,6 +41,9 @@ export function createLaboratoryViewAccessorsRuntime(deps: LaboratoryViewAccesso
   const audioAnalysisOrderedResultEntriesFn = deps.getAudioAnalysisOrderedResultEntries;
   const audioAnalysisPresetsFn = deps.getAudioAnalysisPresets;
   const audioAnalysisProvidersFn = deps.getAudioAnalysisProviders;
+  const visualAnalysisCapabilitiesFn = deps.getVisualAnalysisCapabilities;
+  const visualAnalysisCatalogFn = deps.getVisualAnalysisCatalog;
+  const visualAnalysisProvidersFn = deps.getVisualAnalysisProviders;
   const profileTargetAssetFn = deps.getProfileTargetAsset;
   const renderToolCardFn = deps.renderToolCard;
   const renderProfileModelCardFn = deps.renderProfileModelCard;
@@ -51,6 +59,10 @@ export function createLaboratoryViewAccessorsRuntime(deps: LaboratoryViewAccesso
 
   function getProjectAudioAnalysis() {
     return projectAudioAnalysisFn();
+  }
+
+  function getProjectWorkbench() {
+    return projectWorkbenchFn();
   }
 
   function getSubtitleEntries() {
@@ -83,6 +95,19 @@ export function createLaboratoryViewAccessorsRuntime(deps: LaboratoryViewAccesso
     return Array.isArray(providers) ? providers : [];
   }
 
+  function getVisualAnalysisCatalog() {
+    return visualAnalysisCatalogFn();
+  }
+
+  function getVisualAnalysisCapabilities() {
+    return visualAnalysisCapabilitiesFn();
+  }
+
+  function getVisualAnalysisProviders() {
+    const providers = visualAnalysisProvidersFn();
+    return isLaboratoryRecord(providers) ? providers : {};
+  }
+
   function getProfileTargetAsset() {
     return profileTargetAssetFn();
   }
@@ -112,10 +137,14 @@ export function createLaboratoryViewAccessorsRuntime(deps: LaboratoryViewAccesso
     getCurrentFeatureProcessRecord: getCurrentFeatureProcessRecord,
     getCurrentFeatureReportRecord: getCurrentFeatureReportRecord,
     getProjectAudioAnalysis: getProjectAudioAnalysis,
+    getProjectWorkbench: getProjectWorkbench,
     getProfileTargetAsset: getProfileTargetAsset,
     getSubtitleEntries: getSubtitleEntries,
     getSubtitleProcessModuleLabel: getSubtitleProcessModuleLabel,
     getSubtitleProviderLabel: getSubtitleProviderLabel,
+    getVisualAnalysisCapabilities: getVisualAnalysisCapabilities,
+    getVisualAnalysisCatalog: getVisualAnalysisCatalog,
+    getVisualAnalysisProviders: getVisualAnalysisProviders,
     renderProfileModelCard: renderProfileModelCard,
     renderSettingsOverlay: renderSettingsOverlay,
     renderToolCard: renderToolCard,

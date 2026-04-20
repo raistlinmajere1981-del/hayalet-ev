@@ -102,8 +102,32 @@ export function createAudioAnalysisProcessRunnerSupport(
     outputDir: string,
     moduleId: string
   ) {
+    return generateProcessSpectrogramFromInputPath(
+      runtime,
+      project,
+      requestId,
+      jobId,
+      requireTargetPath(target),
+      artifactBase,
+      outputDir,
+      moduleId,
+      "Spectrogram"
+    );
+  }
+
+  async function generateProcessSpectrogramFromInputPath(
+    runtime: LaboratoryRuntimeRecord,
+    project: LaboratoryProjectRecord,
+    requestId: string,
+    jobId: string,
+    inputPath: string,
+    artifactBase: string,
+    outputDir: string,
+    moduleId: string,
+    label: string,
+    metadata: LaboratoryRecord = {}
+  ) {
     const processRootDir = getProcessRootDir(runtime, project);
-    const targetPath = requireTargetPath(target);
     const outputPath = `${outputDir}/${artifactBase}-spectrogram.png`;
     await runProfileTool(runtime, {
       requestId,
@@ -113,7 +137,7 @@ export function createAudioAnalysisProcessRunnerSupport(
       args: [
         "-y",
         "-i",
-        targetPath,
+        inputPath,
         "-lavfi",
         "showspectrumpic=s=1600x440:legend=0",
         "-frames:v",
@@ -122,7 +146,7 @@ export function createAudioAnalysisProcessRunnerSupport(
       ],
       timeoutMs: 90_000,
     });
-    return createProcessArtifact(moduleId, "spectrogram", outputPath, "Spectrogram", {});
+    return createProcessArtifact(moduleId, "spectrogram", outputPath, label, metadata);
   }
 
   async function generateProcessWaveform(
@@ -207,6 +231,46 @@ export function createAudioAnalysisProcessRunnerSupport(
     );
   }
 
+  async function generateFilteredAudioArtifact(
+    runtime: LaboratoryRuntimeRecord,
+    project: LaboratoryProjectRecord,
+    requestId: string,
+    jobId: string,
+    target: LaboratoryProcessTargetRecord,
+    artifactBase: string,
+    outputDir: string,
+    moduleId: string,
+    filterGraph: string,
+    label: string,
+    metadata: LaboratoryRecord,
+    outputExtension: string = "wav"
+  ) {
+    const processRootDir = getProcessRootDir(runtime, project);
+    const targetPath = requireTargetPath(target);
+    const safeExtension =
+      asNonEmptyString(outputExtension)?.replace(/[^a-z0-9]/gi, "").toLowerCase() || "wav";
+    const outputPath = `${outputDir}/${artifactBase}.${safeExtension}`;
+    await runProfileTool(runtime, {
+      requestId,
+      jobId,
+      toolId: "ffmpeg",
+      cwd: processRootDir,
+      args: [
+        "-y",
+        "-i",
+        targetPath,
+        "-af",
+        filterGraph,
+        outputPath,
+      ],
+      timeoutMs: 120_000,
+    });
+    return createProcessArtifact(moduleId, "filtered-audio", outputPath, label, {
+      ...metadata,
+      filterGraph,
+    });
+  }
+
   return {
     ensureProcessRuntimeDirectories(
       runtime: LaboratoryRuntimeRecord,
@@ -220,8 +284,10 @@ export function createAudioAnalysisProcessRunnerSupport(
       ]);
     },
     generateProcessSpectrogram: generateProcessSpectrogram,
+    generateProcessSpectrogramFromInputPath: generateProcessSpectrogramFromInputPath,
     generateProcessWaveform: generateProcessWaveform,
     generateSpectralDescriptorArtifact: generateSpectralDescriptorArtifact,
+    generateFilteredAudioArtifact: generateFilteredAudioArtifact,
     getModuleProcessDir: getModuleProcessDir,
   };
 }

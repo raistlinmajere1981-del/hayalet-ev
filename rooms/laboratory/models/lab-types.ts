@@ -1,3 +1,5 @@
+import type { AnalysisReference, AnalysisScope } from "../shared/types/analysis-scope.js";
+
 export type LabRecord = Record<string, unknown>;
 
 export type LabStage = "source" | "edit" | "profile" | "process" | "report";
@@ -64,6 +66,14 @@ export interface LabEventFeedItem {
   scope: LabEventScope;
   moduleId: string | null;
   rawLine: string | null;
+  analysisScope?: AnalysisScope | null;
+  finding?: LabRecord | null;
+  artifact?: LabRecord | null;
+  moduleTrace?: LabRecord | null;
+  comparisonVariant?: LabRecord | null;
+  comparisonVariants?: LabRecord[] | null;
+  batchedCount?: number | null;
+  throttleWindow?: string | null;
 }
 
 export interface LabSourceDrafts {
@@ -122,22 +132,72 @@ export interface LabModuleState {
 export interface LabFindingProjection {
   id: string;
   moduleId: string | null;
+  code?: string | null;
   title: string;
   detail: string;
   level: string;
+  severity?: LabEventSeverity;
   confidence: string;
   kind: "measured" | "derived" | "heuristic";
   evidenceCount: number;
   artifactIds: string[];
+  sourceModule?: string | null;
+  reference?: AnalysisReference | null;
+  hypothesis?: string | null;
 }
 
 export interface LabArtifactProjection {
   id: string;
+  moduleId?: string | null;
   kind: string;
+  label?: string | null;
   path: string | null;
   fileName: string | null;
   previewUrl: string | null;
   createdAt: string | null;
+  status?: string;
+  variantId?: string | null;
+  active?: boolean;
+  reference?: AnalysisReference | null;
+  metadata?: LabRecord;
+}
+
+export interface LabLiveFindingProjection extends LabFindingProjection {
+  emittedAt: number;
+  windowKey: string | null;
+  streamId: string | null;
+}
+
+export interface LabPreviewArtifactProjection extends LabArtifactProjection {
+  status: string;
+  variantId: string | null;
+  active: boolean;
+  reference: AnalysisReference | null;
+  metadata: LabRecord;
+}
+
+export interface LabModuleTraceEntry {
+  id: string;
+  moduleId: string | null;
+  stage: string;
+  status: string;
+  timestamp: string;
+  message: string | null;
+  detail: string | null;
+  eventId: string | null;
+}
+
+export interface LabComparisonVariant {
+  id: string;
+  kind: string;
+  label: string;
+  status: string;
+  summary: string | null;
+  artifactIds: string[];
+  artifactId?: string | null;
+  artifactPath?: string | null;
+  sourceModule?: string | null;
+  active?: boolean;
 }
 
 export interface LabRun {
@@ -151,11 +211,18 @@ export interface LabRun {
   rawLog: LabEventFeedItem[];
   artifacts: LabArtifactProjection[];
   findings: LabFindingProjection[];
+  liveFindings: LabLiveFindingProjection[];
   warnings: string[];
   error: string | null;
   targetLabel: string | null;
   progress: number | null;
   emptyReason: string | null;
+  analysisScope: AnalysisScope | null;
+  previewArtifacts: LabPreviewArtifactProjection[];
+  confidence: string | null;
+  moduleTrace: LabModuleTraceEntry[];
+  comparisonVariants: LabComparisonVariant[];
+  hypothesisSummary: string | null;
 }
 
 export interface LabUserReportFinding {
@@ -213,6 +280,9 @@ export interface LabStoreUiState {
   artifactRenderCount: number;
   reportView: "user" | "ai";
   lastHydratedProjectId: string | null;
+  activePreviewArtifactId: string | null;
+  liveFindingsExpanded: boolean;
+  analysisControlsCollapsed: boolean;
 }
 
 export interface LabPersistedState {
@@ -243,6 +313,9 @@ export interface LabPersistedState {
   eventFeedCursor: number;
   artifactListExpanded: boolean;
   artifactRenderCount: number;
+  activePreviewArtifactId: string | null;
+  liveFindingsExpanded: boolean;
+  analysisControlsCollapsed: boolean;
 }
 
 export interface LabStoreState {
@@ -334,6 +407,9 @@ export type LabStoreEvent =
   | { type: "toggle-artifacts"; force?: boolean }
   | { type: "show-more-artifacts" }
   | { type: "report-view-changed"; view: "user" | "ai" }
+  | { type: "preview-artifact-activated"; artifactId: string | null }
+  | { type: "live-findings-expanded"; force?: boolean }
+  | { type: "analysis-controls-collapsed"; force?: boolean }
   | { type: "push-event"; event: LabEventFeedItem }
   | { type: "clear-events" };
 

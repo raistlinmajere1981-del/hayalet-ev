@@ -892,6 +892,7 @@
         "intake": "Source Intake",
         "cleanup": "Frame Cleanup",
         "motion": "Motion Analysis",
+        "visualSignal": "Visual Signal Amplification",
         "audio": "Audio Sweep",
         "report": "Report Synthesis"
       }
@@ -931,6 +932,86 @@
         "export": "Export Report",
         "openFile": "Open File",
         "openFolder": "Open Folder"
+      }
+    }
+  },
+  "visualAnalysis": {
+    "catalog": {
+      "modules": {
+        "frame-consistency": {
+          "title": "Frame Consistency",
+          "summary": "Checks sampled frames for freeze intervals and cadence drift."
+        },
+        "lighting-consistency": {
+          "title": "Lighting Consistency",
+          "summary": "Compares exposure and lighting continuity inside the selected scope."
+        },
+        "background-consistency": {
+          "title": "Background Consistency",
+          "summary": "Looks for backdrop shifts that break the pinned scene baseline."
+        },
+        "occlusion-inconsistency": {
+          "title": "Occlusion Inconsistency",
+          "summary": "Flags scope windows where cover or reveal patterns feel inconsistent."
+        },
+        "object-insert-remove-anomaly": {
+          "title": "Insert or Remove Anomaly",
+          "summary": "Surfaces suspicious object appearance and disappearance changes."
+        },
+        "ai-artifact-detection": {
+          "title": "AI Artifact Detection",
+          "summary": "Reserved for model-assisted synthetic trace inspection."
+        },
+        "temporal-noise-pattern": {
+          "title": "Temporal Noise Pattern",
+          "summary": "Tracks repeated noise and black-frame patterns across time."
+        },
+        "motion-anomaly": {
+          "title": "Motion Anomaly",
+          "summary": "Measures coarse motion spikes and transition irregularities."
+        },
+        "visual-signal-amplification": {
+          "title": "Visual Signal Amplification",
+          "summary": "Builds brighter reveal-oriented preview variants for manual review."
+        },
+        "color-channel-isolation": {
+          "title": "Color Channel Isolation",
+          "summary": "Separates color channels to expose hidden or low-signal detail."
+        },
+        "gamma-scan": {
+          "title": "Gamma Scan",
+          "summary": "Runs a gamma-focused reveal pass over the scoped target."
+        },
+        "contrast-scan": {
+          "title": "Contrast Scan",
+          "summary": "Pushes contrast and tone separation for hidden detail review."
+        },
+        "edge-enhancement": {
+          "title": "Edge Enhancement",
+          "summary": "Emphasizes boundaries and contour information for the active window."
+        },
+        "histogram-equalization": {
+          "title": "Histogram Equalization",
+          "summary": "Normalizes luminance distribution to reveal obscured structure."
+        },
+        "hidden-detail-reveal": {
+          "title": "Hidden Detail Reveal",
+          "summary": "Combines reveal filters for a stronger low-visibility detail pass."
+        }
+      }
+    },
+    "providers": {
+      "ffmpeg-visual-structure": {
+        "title": "FFmpeg Visual Structure",
+        "summary": "Room-managed FFmpeg probes for structural frame forensics."
+      },
+      "ffmpeg-visual-reveal": {
+        "title": "FFmpeg Visual Reveal",
+        "summary": "Room-managed FFmpeg reveal filters for preview variants and signal amplification."
+      },
+      "synthetic-visual-forensics": {
+        "title": "Synthetic Visual Forensics",
+        "summary": "Planned model-backed inspection lane for AI artifact and synthesis traces."
       }
     }
   },
@@ -1068,9 +1149,33 @@
           "title": "Signal health",
           "summary": "Technical loudness, silence, and continuity checks powered by the shared FFmpeg room tooling."
         },
+        "signal-recovery": {
+          "title": "Signal recovery",
+          "summary": "Run FFmpeg-based denoise and recovery passes to surface masked or degraded speech content."
+        },
         "spectral-artifacts": {
           "title": "Waveform and spectrogram",
           "summary": "Audio-first visual artifacts sit beside the same room-local source and tool state."
+        },
+        "frequency-shift-reversal": {
+          "title": "Frequency-shift reversal",
+          "summary": "Generate inverse shift variants when hidden content may have been pitch-moved or heterodyned."
+        },
+        "band-pass-exploration": {
+          "title": "Band-pass exploration",
+          "summary": "Isolate speech-heavy mid-band windows to inspect masked narration or narrow-band details."
+        },
+        "spectrogram-guided-recovery": {
+          "title": "Spectrogram-guided recovery",
+          "summary": "Produce recovery variants tuned for spectrogram inspection before deeper transcript attempts."
+        },
+        "hidden-pattern-extraction": {
+          "title": "Hidden-pattern extraction",
+          "summary": "Amplify low-level details and intermittent cues to expose hidden or masked audio patterns."
+        },
+        "phase-recovery-experiment": {
+          "title": "Phase recovery experiment",
+          "summary": "Probe side-channel or cancellation-prone content with stereo phase-isolation experiments."
         },
         "transcription": {
           "title": "Transcript",
@@ -1106,6 +1211,18 @@
       "ffmpeg-signal": {
         "title": "FFmpeg signal runner",
         "summary": "Shared room-local binary for loudness, silence, and artifact generation."
+      },
+      "ffmpeg-signal-recovery": {
+        "title": "FFmpeg signal recovery",
+        "summary": "Shared room-local FFmpeg provider for denoise, band-pass, reveal, and recovery experiment variants."
+      },
+      "ffmpeg-frequency-recovery": {
+        "title": "FFmpeg frequency recovery",
+        "summary": "Shared room-local FFmpeg provider for inverse frequency-shift exploration and comparison artifacts."
+      },
+      "ffmpeg-phase-lab": {
+        "title": "FFmpeg phase lab",
+        "summary": "Shared room-local FFmpeg provider for stereo phase-isolation and side-channel recovery experiments."
       },
       "whisper-transcript": {
         "title": "Whisper transcript runner",
@@ -1399,6 +1516,34 @@
             "label": "Batch summary",
             "summary": "Roll active-entry metrics into a compact batch-level overview."
           },
+          "logical-consistency-check": {
+            "label": "Logical consistency",
+            "summary": "Check subtitle statements for coarse logic slips, implausible transitions, and cue-level reasoning gaps."
+          },
+          "contradiction-detection": {
+            "label": "Contradiction detection",
+            "summary": "Flag conflicting claims, polarity flips, and inconsistent assertions across the active selection."
+          },
+          "narrative-drift": {
+            "label": "Narrative drift",
+            "summary": "Track whether topic focus drifts sharply across files or sequential subtitle blocks."
+          },
+          "repetition-structure": {
+            "label": "Repetition structure",
+            "summary": "Surface repeated phrases, slogan loops, and over-compressed vocabulary patterns."
+          },
+          "semantic-coherence": {
+            "label": "Semantic coherence",
+            "summary": "Estimate whether subtitle density, cadence, and term reuse still form a coherent narrative flow."
+          },
+          "archive-to-ai-payload": {
+            "label": "Archive to AI payload",
+            "summary": "Export a compact analysis payload tuned for downstream AI review and replay prompts."
+          },
+          "channel-batch-analysis": {
+            "label": "Channel batch analysis",
+            "summary": "Summarize multi-file subtitle archives as a single channel-level narrative bundle."
+          },
           "entities-keyphrases": {
             "label": "Entities and keyphrases",
             "summary": "Planned entity and glossary extraction for people, brands, and recurring terms."
@@ -1424,6 +1569,10 @@
           "native-subtitle-qc": {
             "label": "Native subtitle QC",
             "summary": "Runs built-in subtitle validation and summary analyzers inside the room."
+          },
+          "subtitle-archive-export": {
+            "label": "Subtitle archive export",
+            "summary": "Packages subtitle archives into AI-ready payloads and batch-level exports inside the room."
           },
           "planned-entity-provider": {
             "label": "Planned entity provider",

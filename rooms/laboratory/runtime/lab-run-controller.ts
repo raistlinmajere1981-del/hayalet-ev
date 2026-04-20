@@ -66,6 +66,18 @@ function buildUiEvent(
   };
 }
 
+function toDraftScope(workbench: Record<string, unknown>): Record<string, unknown> {
+  const currentScope = asLabRecord(workbench["analysisScope"]);
+  return {
+    ...currentScope,
+    lifecycle: {
+      mutable: true,
+      processId: null,
+      frozenAt: null,
+    },
+  };
+}
+
 export function createLabRunController(deps: LabRunControllerDeps) {
   let attached = false;
 
@@ -122,6 +134,147 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     sendHostContext({
       ...state.context,
       workbench: nextWorkbench,
+    });
+  }
+
+  function updateAnalysisScopeField(field: string, value: unknown) {
+    updateWorkbench(function (workbench) {
+      const nextScope = toDraftScope(workbench);
+      const nextTimeRange = { ...asLabRecord(nextScope["timeRange"]) };
+      const nextFrameRange = { ...asLabRecord(nextScope["frameRange"]) };
+      const nextRegion = { ...asLabRecord(nextScope["region"]) };
+
+      function readNumeric(nextValue: unknown) {
+        if (nextValue === null || nextValue === "") {
+          return null;
+        }
+        const numericValue = Number(nextValue);
+        return Number.isFinite(numericValue) ? numericValue : null;
+      }
+
+      switch (field) {
+        case "focus":
+          if (typeof value === "string" && value.trim() !== "") {
+            nextScope["focus"] = value;
+          } else {
+            delete nextScope["focus"];
+          }
+          break;
+        case "hypothesis":
+          if (typeof value === "string" && value.trim() !== "") {
+            nextScope["hypothesis"] = value.trim();
+          } else {
+            delete nextScope["hypothesis"];
+          }
+          break;
+        case "timeStartMs":
+        case "timeEndMs": {
+          const nextValue = readNumeric(value);
+          const targetKey = field === "timeStartMs" ? "startMs" : "endMs";
+          if (nextValue === null) {
+            delete nextTimeRange[targetKey];
+          } else {
+            nextTimeRange[targetKey] = Math.max(0, Math.round(nextValue));
+          }
+          if (
+            typeof nextTimeRange["startMs"] === "number" &&
+            typeof nextTimeRange["endMs"] === "number"
+          ) {
+            nextScope["timeRange"] = nextTimeRange;
+          } else {
+            delete nextScope["timeRange"];
+          }
+          break;
+        }
+        case "frameStart":
+        case "frameEnd": {
+          const nextValue = readNumeric(value);
+          const targetKey = field === "frameStart" ? "startFrame" : "endFrame";
+          if (nextValue === null) {
+            delete nextFrameRange[targetKey];
+          } else {
+            nextFrameRange[targetKey] = Math.max(0, Math.round(nextValue));
+          }
+          if (
+            typeof nextFrameRange["startFrame"] === "number" &&
+            typeof nextFrameRange["endFrame"] === "number"
+          ) {
+            nextScope["frameRange"] = nextFrameRange;
+          } else {
+            delete nextScope["frameRange"];
+          }
+          break;
+        }
+        case "regionX":
+        case "regionY":
+        case "regionWidth":
+        case "regionHeight": {
+          const nextValue = readNumeric(value);
+          const targetKey =
+            field === "regionX"
+              ? "x"
+              : field === "regionY"
+                ? "y"
+                : field === "regionWidth"
+                  ? "width"
+                  : "height";
+          if (nextValue === null) {
+            delete nextRegion[targetKey];
+          } else {
+            nextRegion[targetKey] =
+              targetKey === "width" || targetKey === "height"
+                ? Math.max(1, Math.round(nextValue))
+                : Math.max(0, Math.round(nextValue));
+          }
+          if (
+            typeof nextRegion["x"] === "number" &&
+            typeof nextRegion["y"] === "number" &&
+            typeof nextRegion["width"] === "number" &&
+            typeof nextRegion["height"] === "number"
+          ) {
+            nextScope["region"] = nextRegion;
+          } else {
+            delete nextScope["region"];
+          }
+          break;
+        }
+        default:
+          break;
+      }
+
+      if (
+        nextScope["focus"] === undefined &&
+        nextScope["hypothesis"] === undefined &&
+        nextScope["timeRange"] === undefined &&
+        nextScope["frameRange"] === undefined &&
+        nextScope["region"] === undefined
+      ) {
+        return {
+          ...workbench,
+          analysisScope: null,
+        };
+      }
+
+      return {
+        ...workbench,
+        analysisScope: nextScope,
+      };
+    });
+  }
+
+  function toggleModule(moduleId: string) {
+    if (moduleId.trim() === "") {
+      return;
+    }
+    updateWorkbench(function (workbench) {
+      const moduleToggles = {
+        ...asLabRecord(workbench["moduleToggles"]),
+      };
+      moduleToggles[moduleId] = moduleToggles[moduleId] === false;
+      return {
+        ...workbench,
+        moduleToggles,
+      };
     });
   }
 
@@ -328,6 +481,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "feature-toggle":
         toggleFeature(value);
         return;
+      case "module-toggle":
+        toggleModule(value);
+        return;
       case "edit-mode":
         sendMediaAction("edit-set-mode", { mode: value });
         return;
@@ -352,8 +508,20 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "event-feed-reset":
         dispatch({ type: "reset-event-feed" });
         return;
+      case "toggle-live-findings":
+        dispatch({ type: "live-findings-expanded" });
+        return;
+      case "toggle-analysis-controls":
+        dispatch({ type: "analysis-controls-collapsed" });
+        return;
       case "show-more-artifacts":
         dispatch({ type: "show-more-artifacts" });
+        return;
+      case "preview-artifact":
+        dispatch({
+          type: "preview-artifact-activated",
+          artifactId: value.trim() !== "" ? value : null,
+        });
         return;
       default:
         return;
@@ -408,6 +576,17 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           [field.replace("profile.", "")]: value,
         },
       });
+      return;
+    }
+
+    if (field.startsWith("scope.")) {
+      const rawValue =
+        target instanceof HTMLInputElement && target.type === "number"
+          ? target.value === ""
+            ? null
+            : Number(target.value)
+          : target.value;
+      updateAnalysisScopeField(field.replace("scope.", ""), rawValue);
     }
   }
 
@@ -433,6 +612,18 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           : target.value;
 
     switch (field) {
+      case "scope.focus":
+      case "scope.timeStartMs":
+      case "scope.timeEndMs":
+      case "scope.frameStart":
+      case "scope.frameEnd":
+      case "scope.regionX":
+      case "scope.regionY":
+      case "scope.regionWidth":
+      case "scope.regionHeight":
+      case "scope.hypothesis":
+        updateAnalysisScopeField(field.replace("scope.", ""), targetValue);
+        return;
       case "project.id":
         sendMediaAction("project-select", { projectId: targetValue });
         return;

@@ -13,6 +13,7 @@ import {
   readNonEmptyString as asNonEmptyString,
   toLaboratoryRecord as toRecord,
 } from "../shared/host/runtime-primitives.js";
+import { freezeAnalysisScope } from "../shared/types/analysis-scope.js";
 import { createLaboratoryHostFoundation } from "./foundation-runtimes.js";
 import { createLaboratoryHostProjectRuntimes } from "./project-runtimes.js";
 import { createLaboratoryHostFeatureRuntimes } from "./feature-runtimes.js";
@@ -234,13 +235,59 @@ featureRuntimes = createLaboratoryHostFeatureRuntimes(
 export default function createLaboratoryHostRuntime() {
   const currentProjectRuntimes = requireProjectRuntimes();
   const currentFeatureRuntimes = requireFeatureRuntimes();
+  async function queueInteractiveReprocess(
+    _api: Record<string, unknown>,
+    runtime: Record<string, unknown>,
+    context: LaboratoryRecord
+  ) {
+    const featureId =
+      asNonEmptyString(context["featureId"]) ||
+      asNonEmptyString(toRecord(context["workbench"])["activeModuleId"]) ||
+      FEATURE_ID;
+    const nextScope = toRecord(toRecord(context["workbench"])["analysisScope"]);
+    const nextModuleToggles = toRecord(toRecord(context["workbench"])["moduleToggles"]);
+    if (Object.keys(nextScope).length === 0 && Object.keys(nextModuleToggles).length === 0) {
+      return;
+    }
+
+    await currentProjectRuntimes.lifecycle.patchActiveProject(
+      runtime as Parameters<typeof currentProjectRuntimes.lifecycle.patchActiveProject>[0],
+      function (nextProject) {
+        const processRecord = toRecord(
+          currentProjectRuntimes.stateComposition.getFeatureProcessRecord(nextProject, featureId)
+        );
+        const processStatus = asNonEmptyString(processRecord["status"]) || "idle";
+        if (processStatus !== "running" && processStatus !== "queued") {
+          return nextProject;
+        }
+        const requestedAt = new Date().toISOString();
+        const queuedRunId = `${featureId}-queued-${Date.now()}`;
+        processRecord["queuedProcessInstance"] = {
+          runId: queuedRunId,
+          requestedAt,
+          reason: "interactive-adjustment",
+          analysisScope: freezeAnalysisScope(nextScope, queuedRunId, requestedAt),
+          moduleToggles: nextModuleToggles,
+        };
+        currentProjectRuntimes.stateComposition.setFeatureProcessRecord(
+          nextProject,
+          featureId,
+          processRecord
+        );
+        return nextProject;
+      }
+    );
+  }
   const activationDeps = {
     createRuntimeState: foundation.bootstrap.createRuntimeState,
+    emitEvent: currentProjectRuntimes.snapshot.emitEvent,
     ensureHydrated: currentProjectRuntimes.lifecycle.ensureHydrated,
     ensureRoomToolsSubscription:
       currentFeatureRuntimes.roomToolsProgress.ensureRoomToolsSubscription,
     handleMediaAction: currentFeatureRuntimes.featureAdapters.handleMediaAction,
+    loadContext: foundation.bootstrap.loadContext,
     pushMediaState: currentProjectRuntimes.snapshot.pushMediaState,
+    queueInteractiveReprocess,
     saveContext: foundation.bootstrap.saveContext,
     tearDownRoomToolsSubscription:
       currentFeatureRuntimes.roomToolsProgress.tearDownRoomToolsSubscription,

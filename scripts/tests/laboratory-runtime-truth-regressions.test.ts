@@ -180,6 +180,122 @@ test("laboratory store derives run state from canonical events without inventing
   assert.deepEqual(state.run?.moduleOrder, []);
 });
 
+test("laboratory store wires live findings and preview artifacts from custom runtime events", () => {
+  const store = createLabStore();
+  const eventTimestamp = Date.now();
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-scope",
+      kind: "analysis-scope-updated",
+      severity: "info",
+      message: "Analysis scope locked",
+      detail: "Visual ROI active",
+      timestamp: eventTimestamp,
+      source: "host",
+      action: "process-run",
+      stage: "running",
+      scope: "run",
+      moduleId: null,
+      rawLine: null,
+      analysisScope: {
+        focus: "visual",
+        hypothesis: "gorunmeyen obje olabilir",
+        region: {
+          x: 12,
+          y: 18,
+          width: 160,
+          height: 90,
+        },
+      },
+    },
+  });
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-live",
+      kind: "live-finding",
+      severity: "warning",
+      message: "Live finding emitted",
+      detail: "Edge cluster batched",
+      timestamp: eventTimestamp + 1,
+      source: "host",
+      action: "process-run",
+      stage: "running",
+      scope: "run",
+      moduleId: "motion",
+      rawLine: null,
+      finding: {
+        id: "finding-live-1",
+        moduleId: "motion",
+        title: "Edge cluster anomaly",
+        detail: "Contrast window exposed a hidden contour.",
+        level: "medium",
+        confidence: "medium",
+        kind: "derived",
+        evidenceCount: 3,
+        artifactIds: ["preview-live-1"],
+        frameRange: {
+          startFrame: 12,
+          endFrame: 24,
+        },
+      },
+      moduleTrace: {
+        id: "trace-live-1",
+        moduleId: "motion",
+        stage: "process",
+        status: "finding",
+        timestamp: new Date(eventTimestamp + 1).toISOString(),
+        message: "Live finding emitted",
+        detail: "Edge cluster batched",
+      },
+      throttleWindow: "motion-module-batch",
+    },
+  });
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-preview",
+      kind: "preview-artifact",
+      severity: "info",
+      message: "Preview artifact ready",
+      detail: "Frame preview",
+      timestamp: eventTimestamp + 2,
+      source: "host",
+      action: "process-run",
+      stage: "running",
+      scope: "run",
+      moduleId: "motion",
+      rawLine: null,
+      artifact: {
+        id: "preview-live-1",
+        moduleId: "motion",
+        kind: "frame-preview",
+        label: "Frame preview",
+        path: "/tmp/frame-preview.png",
+        fileName: "frame-preview.png",
+        previewUrl: "file:///tmp/frame-preview.png",
+        createdAt: new Date(eventTimestamp + 2).toISOString(),
+        active: true,
+      },
+    },
+  });
+
+  const state = store.getState();
+  assert.equal(state.run?.analysisScope?.focus, "visual");
+  assert.equal(state.run?.analysisScope?.hypothesis, "gorunmeyen obje olabilir");
+  assert.equal(state.run?.liveFindings[0]?.id, "finding-live-1");
+  assert.equal(state.run?.liveFindings[0]?.windowKey, "motion-module-batch");
+  assert.equal(state.run?.previewArtifacts[0]?.id, "preview-live-1");
+  assert.equal(state.ui.activePreviewArtifactId, "preview-live-1");
+  assert.equal(
+    state.run?.moduleTrace.some(function (entry) {
+      return entry.id === "trace-live-1";
+    }),
+    true
+  );
+});
+
 test("laboratory store hydration normalizes live runs into safe persisted summaries", () => {
   const store = createLabStore();
   store.dispatch({
@@ -261,11 +377,84 @@ test("laboratory store hydration normalizes live runs into safe persisted summar
         ],
         artifacts: [],
         findings: [],
+        liveFindings: [
+          {
+            id: "live-1",
+            moduleId: "motion",
+            title: "Scope-local anomaly",
+            detail: "Frame window highlighted an unstable edge cluster.",
+            level: "medium",
+            severity: "warning",
+            confidence: "medium",
+            kind: "derived",
+            evidenceCount: 2,
+            artifactIds: [],
+            emittedAt: Date.now() - 850,
+            windowKey: "frame-window-1",
+            streamId: "media-analysis",
+            frameRange: {
+              startFrame: 24,
+              endFrame: 48,
+            },
+          },
+        ],
         warnings: [],
         error: null,
         targetLabel: null,
         progress: null,
         emptyReason: null,
+        analysisScope: {
+          frameRange: {
+            startFrame: 24,
+            endFrame: 48,
+          },
+          focus: "visual",
+          hypothesis: "Gorunmeyen obje olabilir",
+        },
+        previewArtifacts: [
+          {
+            id: "preview-1",
+            moduleId: "motion",
+            kind: "frame-preview",
+            label: "Frame preview",
+            path: "/tmp/frame-preview.png",
+            fileName: "frame-preview.png",
+            previewUrl: "file:///tmp/frame-preview.png",
+            createdAt: new Date(Date.now() - 750).toISOString(),
+            status: "ready",
+            active: true,
+            region: {
+              x: 10,
+              y: 20,
+              width: 120,
+              height: 90,
+            },
+          },
+        ],
+        confidence: "medium",
+        moduleTrace: [
+          {
+            id: "trace-1",
+            moduleId: "motion",
+            stage: "process",
+            status: "running",
+            timestamp: new Date(Date.now() - 950).toISOString(),
+            message: "Frame batch analyzed",
+            detail: "Window aggregation active",
+            eventId: "evt-persisted",
+          },
+        ],
+        comparisonVariants: [
+          {
+            id: "variant-1",
+            kind: "gamma-scan",
+            label: "Gamma Scan",
+            status: "ready",
+            summary: "Mid-band emphasis",
+            artifactIds: ["preview-1"],
+          },
+        ],
+        hypothesisSummary: "Gorunmeyen obje olabilir",
       },
     },
   });
@@ -276,4 +465,10 @@ test("laboratory store hydration normalizes live runs into safe persisted summar
   assert.equal(state.run?.events.length, 1);
   assert.equal(state.run?.events[0]?.kind, "activity");
   assert.equal(state.run?.rawLog.length, 1);
+  assert.equal(state.run?.analysisScope?.focus, "visual");
+  assert.equal(state.run?.analysisScope?.lifecycle?.mutable, false);
+  assert.equal(state.run?.liveFindings[0]?.windowKey, "frame-window-1");
+  assert.equal(state.run?.previewArtifacts[0]?.kind, "frame-preview");
+  assert.equal(state.run?.comparisonVariants[0]?.kind, "gamma-scan");
+  assert.equal(state.run?.hypothesisSummary, "Gorunmeyen obje olabilir");
 });

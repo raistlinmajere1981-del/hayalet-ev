@@ -8,9 +8,13 @@ type LaboratorySnapshotAccessRuntime = {
   getAudioAnalysisPresets: () => unknown;
   getAudioAnalysisProviders: () => unknown;
   getProjectAudioAnalysis: () => unknown;
+  getProjectWorkbench: () => unknown;
   getSubtitleEntries: () => unknown;
   getSubtitleProcessModuleLabel: (entry: unknown) => string;
   getSubtitleProviderLabel: (entry: unknown) => string;
+  getVisualAnalysisCapabilities: () => unknown;
+  getVisualAnalysisCatalog: () => unknown;
+  getVisualAnalysisProviders: () => unknown;
 };
 
 type LaboratoryProfileProcessReportAccessorsRuntime = {
@@ -72,6 +76,7 @@ export function createLaboratoryViewBindingsRuntime(deps: LaboratoryViewBindings
       return laboratoryProfileProcessReportAccessorsRuntime.getCurrentFeatureReportRecord();
     },
     getProjectAudioAnalysis: laboratorySnapshotAccessRuntime.getProjectAudioAnalysis,
+    getProjectWorkbench: laboratorySnapshotAccessRuntime.getProjectWorkbench,
     getProfileTargetAsset: function () {
       return getMediaAnalysisProfileTargetAsset({
         getCurrentSourceKind: getCurrentSourceKind,
@@ -85,6 +90,9 @@ export function createLaboratoryViewBindingsRuntime(deps: LaboratoryViewBindings
     getSubtitleEntries: laboratorySnapshotAccessRuntime.getSubtitleEntries,
     getSubtitleProcessModuleLabel: laboratorySnapshotAccessRuntime.getSubtitleProcessModuleLabel,
     getSubtitleProviderLabel: laboratorySnapshotAccessRuntime.getSubtitleProviderLabel,
+    getVisualAnalysisCapabilities: laboratorySnapshotAccessRuntime.getVisualAnalysisCapabilities,
+    getVisualAnalysisCatalog: laboratorySnapshotAccessRuntime.getVisualAnalysisCatalog,
+    getVisualAnalysisProviders: laboratorySnapshotAccessRuntime.getVisualAnalysisProviders,
     renderProfileModelCard: function (entry: unknown) {
       return getLaboratorySettingsUi().renderProfileModelCard(entry);
     },
@@ -115,6 +123,9 @@ export function createLaboratoryViewBindingsRuntime(deps: LaboratoryViewBindings
     getProjectAudioAnalysis: function () {
       return laboratoryViewAccessorsRuntime.getProjectAudioAnalysis();
     },
+    getProjectWorkbench: function () {
+      return laboratoryViewAccessorsRuntime.getProjectWorkbench();
+    },
     getProfileTargetAsset: function () {
       return laboratoryViewAccessorsRuntime.getProfileTargetAsset();
     },
@@ -126,6 +137,15 @@ export function createLaboratoryViewBindingsRuntime(deps: LaboratoryViewBindings
     },
     getSubtitleProviderLabel: function (entry: unknown) {
       return laboratoryViewAccessorsRuntime.getSubtitleProviderLabel(entry);
+    },
+    getVisualAnalysisCapabilities: function () {
+      return laboratoryViewAccessorsRuntime.getVisualAnalysisCapabilities();
+    },
+    getVisualAnalysisCatalog: function () {
+      return laboratoryViewAccessorsRuntime.getVisualAnalysisCatalog();
+    },
+    getVisualAnalysisProviders: function () {
+      return laboratoryViewAccessorsRuntime.getVisualAnalysisProviders();
     },
     renderSettingsOverlay: function renderSettingsOverlay() {
       return laboratoryViewAccessorsRuntime.renderSettingsOverlay();

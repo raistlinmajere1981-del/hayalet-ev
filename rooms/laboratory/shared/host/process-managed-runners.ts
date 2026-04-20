@@ -44,6 +44,19 @@ type LaboratoryManagedProcessRunnersDeps = {
     outputDir: string,
     moduleId: string
   ) => Promise<unknown>;
+  generateProcessFramePreviewArtifact: (
+    runtime: LaboratoryRecord,
+    project: LaboratoryRecord,
+    requestId: string,
+    jobId: string,
+    target: LaboratoryRecord,
+    artifactBase: string,
+    outputDir: string,
+    moduleId: string,
+    sampleWindowSeconds: number,
+    tileCount: unknown,
+    label?: string
+  ) => Promise<unknown>;
   generateProcessSpectrogram: (
     runtime: LaboratoryRecord,
     project: LaboratoryRecord,
@@ -53,6 +66,28 @@ type LaboratoryManagedProcessRunnersDeps = {
     artifactBase: string,
     outputDir: string
   ) => Promise<unknown>;
+  generateProcessVisualTransformArtifact: (
+    runtime: LaboratoryRecord,
+    project: LaboratoryRecord,
+    requestId: string,
+    jobId: string,
+    target: LaboratoryRecord,
+    artifactBase: string,
+    outputDir: string,
+    moduleId: string,
+    filterGraph: string,
+    label: string,
+    metadata?: LaboratoryRecord
+  ) => Promise<unknown>;
+  partitionVisualAnalysisModuleIds: (
+    runtime: LaboratoryRecord,
+    moduleIds: string[]
+  ) => LaboratoryRecord;
+  resolveEnabledVisualAnalysisModuleIds: (
+    runtime: LaboratoryRecord,
+    project: LaboratoryRecord,
+    sourceKind: string | null
+  ) => string[];
   getAudioAnalysisModuleProcessDir: (
     runtime: LaboratoryRecord,
     project: LaboratoryRecord,
@@ -95,6 +130,8 @@ type LaboratoryManagedProcessRunnersDeps = {
   writeTextFile: (filePath: string, content: string) => Promise<unknown> | unknown;
 };
 
+type LaboratoryManagedProcessUpdateEmitter = (payload: LaboratoryRecord) => void;
+
 export function createLaboratoryManagedProcessRunnersRuntime(
   deps: LaboratoryManagedProcessRunnersDeps
 ) {
@@ -128,10 +165,15 @@ export function createLaboratoryManagedProcessRunnersRuntime(
     buildProcessSpeechAvailability: deps.buildProcessSpeechAvailability,
     clampProfileTranscriptSampleSeconds: deps.clampProfileTranscriptSampleSeconds,
     createProcessFinding: deps.createProcessFinding,
+    generateProcessFramePreviewArtifact: deps.generateProcessFramePreviewArtifact,
     generateProcessMetadataArtifact: deps.generateProcessMetadataArtifact,
     generateProcessSpectrogram: deps.generateProcessSpectrogram,
+    generateProcessVisualTransformArtifact: deps.generateProcessVisualTransformArtifact,
     maybeRunWhisperProfileSample: deps.maybeRunWhisperProfileSample,
     normalizeProcessArtifact: deps.normalizeProcessArtifact,
+    normalizeProcessFinding: deps.normalizeProcessFinding,
+    partitionVisualAnalysisModuleIds: deps.partitionVisualAnalysisModuleIds,
+    resolveEnabledVisualAnalysisModuleIds: deps.resolveEnabledVisualAnalysisModuleIds,
     runAudioStructureProbe: deps.runAudioStructureProbe,
     runVideoStructureProbe: deps.runVideoStructureProbe,
     toRecord: deps.toRecord,
@@ -139,8 +181,66 @@ export function createLaboratoryManagedProcessRunnersRuntime(
   });
 
   return {
-    runSubtitleManagedProcess: laboratoryManagedSubtitleRunnerRuntime.runSubtitleManagedProcess,
-    runAudioManagedProcess: laboratoryManagedAudioRunnerRuntime.runAudioManagedProcess,
-    runMediaManagedProcess: laboratoryManagedMediaRunnerRuntime.runMediaManagedProcess,
+    runSubtitleManagedProcess(
+      runtime: LaboratoryRecord,
+      project: LaboratoryRecord,
+      target: LaboratoryRecord,
+      artifactBase: string,
+      processRecord: LaboratoryRecord,
+      emitRuntimeUpdate?: LaboratoryManagedProcessUpdateEmitter | null
+    ) {
+      return laboratoryManagedSubtitleRunnerRuntime.runSubtitleManagedProcess(
+        runtime,
+        project,
+        target,
+        artifactBase,
+        processRecord,
+        emitRuntimeUpdate || null
+      );
+    },
+    runAudioManagedProcess(
+      runtime: LaboratoryRecord,
+      project: LaboratoryRecord,
+      requestId: string,
+      jobId: string,
+      target: LaboratoryRecord,
+      artifactBase: string,
+      processRecord: LaboratoryRecord,
+      emitRuntimeUpdate?: LaboratoryManagedProcessUpdateEmitter | null
+    ) {
+      return laboratoryManagedAudioRunnerRuntime.runAudioManagedProcess(
+        runtime,
+        project,
+        requestId,
+        jobId,
+        target,
+        artifactBase,
+        processRecord,
+        emitRuntimeUpdate || null
+      );
+    },
+    runMediaManagedProcess(
+      runtime: LaboratoryRecord,
+      project: LaboratoryRecord,
+      requestId: string,
+      jobId: string,
+      target: LaboratoryRecord,
+      artifactBase: string,
+      outputDir: string,
+      processRecord: LaboratoryRecord,
+      emitRuntimeUpdate?: LaboratoryManagedProcessUpdateEmitter | null
+    ) {
+      return laboratoryManagedMediaRunnerRuntime.runMediaManagedProcess(
+        runtime,
+        project,
+        requestId,
+        jobId,
+        target,
+        artifactBase,
+        outputDir,
+        processRecord,
+        emitRuntimeUpdate || null
+      );
+    },
   };
 }

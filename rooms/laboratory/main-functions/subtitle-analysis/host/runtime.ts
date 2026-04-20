@@ -201,8 +201,12 @@ export function createLaboratorySubtitleAnalysisHostRuntime(
     return subtitleProcessAnalysisRuntime.buildSubtitleAnalysisStats(runtime, project, target);
   }
 
-  function buildSubtitleProcessModules(runtime: LaboratoryRecord, target: LaboratoryRecord) {
-    return subtitleProcessAnalysisRuntime.buildSubtitleProcessModules(runtime, target);
+  function buildSubtitleProcessModules(
+    runtime: LaboratoryRecord,
+    project: LaboratoryRecord,
+    target: LaboratoryRecord
+  ) {
+    return subtitleProcessAnalysisRuntime.buildSubtitleProcessModules(runtime, project, target);
   }
 
   return {

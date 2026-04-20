@@ -11,12 +11,17 @@ import {
   toTimestamp,
 } from "../models/lab-types.js";
 import type {
+  LabComparisonVariant,
   LabAiReport,
   LabArtifactProjection,
   LabEventFeedItem,
+  LabEventSeverity,
   LabFindingProjection,
+  LabLiveFindingProjection,
   LabModuleState,
+  LabModuleTraceEntry,
   LabPreflightResult,
+  LabPreviewArtifactProjection,
   LabPersistedState,
   LabRun,
   LabSourceDrafts,
@@ -25,6 +30,11 @@ import type {
   LabUserReport,
 } from "../models/lab-types.js";
 import { normalizeLabPreflight } from "../services/preflight-service.js";
+import {
+  freezeAnalysisScope,
+  normalizeAnalysisReference,
+  normalizeAnalysisScope,
+} from "../shared/types/analysis-scope.js";
 
 function createDefaultSourceDrafts(): LabSourceDrafts {
   return {
@@ -108,6 +118,9 @@ function createInitialState(): LabStoreState {
       artifactRenderCount: 12,
       reportView: "user",
       lastHydratedProjectId: null,
+      activePreviewArtifactId: null,
+      liveFindingsExpanded: true,
+      analysisControlsCollapsed: true,
     },
   };
 }
@@ -165,6 +178,12 @@ function toEventFeedItem(
           : fallbackScope,
     moduleId: asNonEmptyString(record["moduleId"]),
     rawLine: asNonEmptyString(record["rawLine"]),
+    analysisScope: normalizeAnalysisScope(record["analysisScope"]),
+    finding: asLabRecord(record["finding"]),
+    artifact: asLabRecord(record["artifact"]),
+    moduleTrace: asLabRecord(record["moduleTrace"]),
+    comparisonVariant: asLabRecord(record["comparisonVariant"]),
+    throttleWindow: asNonEmptyString(record["throttleWindow"]),
   };
 }
 
@@ -177,11 +196,18 @@ function toArtifactProjection(value: unknown): LabArtifactProjection | null {
 
   return {
     id,
+    moduleId: asNonEmptyString(record["moduleId"]),
     kind: asNonEmptyString(record["kind"]) || "artifact",
+    label: asNonEmptyString(record["label"]),
     path: asNonEmptyString(record["path"]),
     fileName: asNonEmptyString(record["fileName"]),
     previewUrl: asNonEmptyString(record["previewUrl"]) || asNonEmptyString(record["fileUrl"]),
     createdAt: asNonEmptyString(record["createdAt"]),
+    status: asNonEmptyString(record["status"]) || "ready",
+    variantId: asNonEmptyString(record["variantId"]),
+    active: record["active"] !== false,
+    reference: normalizeAnalysisReference(record["reference"] ?? record),
+    metadata: asLabRecord(record["metadata"]),
   };
 }
 
@@ -191,17 +217,101 @@ function toFindingProjection(value: unknown): LabFindingProjection | null {
   if (id === null) {
     return null;
   }
+  const severity: LabEventSeverity =
+    asNonEmptyString(record["severity"]) === "success" ||
+    asNonEmptyString(record["severity"]) === "warning" ||
+    asNonEmptyString(record["severity"]) === "error"
+      ? (asNonEmptyString(record["severity"]) as LabEventSeverity)
+      : "info";
 
   return {
     id,
     moduleId: asNonEmptyString(record["moduleId"]),
+    code: asNonEmptyString(record["code"]),
     title: asNonEmptyString(record["title"]) || "Bulgu",
     detail: asNonEmptyString(record["detail"]) || "",
     level: asNonEmptyString(record["level"]) || "low",
+    severity,
     confidence: asNonEmptyString(record["confidence"]) || "low",
     kind: normalizeFindingKind(record["kind"]),
     evidenceCount: Math.max(0, Math.round(asNumber(record["evidenceCount"]) || 0)),
     artifactIds: asStringArray(record["artifactIds"]),
+    sourceModule: asNonEmptyString(record["sourceModule"]) || asNonEmptyString(record["moduleId"]),
+    reference: normalizeAnalysisReference(record["reference"] ?? record),
+    hypothesis: asNonEmptyString(record["hypothesis"]),
+  };
+}
+
+function toPreviewArtifactProjection(value: unknown): LabPreviewArtifactProjection | null {
+  const baseArtifact = toArtifactProjection(value);
+  if (!baseArtifact) {
+    return null;
+  }
+
+  return {
+    ...baseArtifact,
+    status: baseArtifact.status || "ready",
+    variantId: baseArtifact.variantId || null,
+    active: baseArtifact.active !== false,
+    reference: baseArtifact.reference || null,
+    metadata: baseArtifact.metadata || {},
+  };
+}
+
+function toLiveFindingProjection(value: unknown): LabLiveFindingProjection | null {
+  const baseFinding = toFindingProjection(value);
+  if (!baseFinding) {
+    return null;
+  }
+
+  return {
+    ...baseFinding,
+    emittedAt: toTimestamp(asLabRecord(value)["emittedAt"]),
+    windowKey: asNonEmptyString(asLabRecord(value)["windowKey"]),
+    streamId: asNonEmptyString(asLabRecord(value)["streamId"]),
+  };
+}
+
+function toModuleTraceEntry(value: unknown): LabModuleTraceEntry | null {
+  const record = asLabRecord(value);
+  const id = asNonEmptyString(record["id"]);
+  if (id === null) {
+    return null;
+  }
+
+  return {
+    id,
+    moduleId: asNonEmptyString(record["moduleId"]),
+    stage: asNonEmptyString(record["stage"]) || "process",
+    status: asNonEmptyString(record["status"]) || "idle",
+    timestamp: asNonEmptyString(record["timestamp"]) || new Date().toISOString(),
+    message: asNonEmptyString(record["message"]),
+    detail: asNonEmptyString(record["detail"]),
+    eventId: asNonEmptyString(record["eventId"]),
+  };
+}
+
+function toComparisonVariant(value: unknown): LabComparisonVariant | null {
+  const record = asLabRecord(value);
+  const id = asNonEmptyString(record["id"]);
+  if (id === null) {
+    return null;
+  }
+
+  const artifactIds = asStringArray(record["artifactIds"]);
+  const artifactId = asNonEmptyString(record["artifactId"]);
+
+  return {
+    id,
+    kind: asNonEmptyString(record["kind"]) || "variant",
+    label: asNonEmptyString(record["label"]) || "Variant",
+    status: asNonEmptyString(record["status"]) || "ready",
+    summary: asNonEmptyString(record["summary"]),
+    artifactIds: artifactIds.length > 0 ? artifactIds : artifactId ? [artifactId] : [],
+    artifactId,
+    artifactPath: asNonEmptyString(record["artifactPath"]),
+    sourceModule: asNonEmptyString(record["sourceModule"]),
+    active: record["active"] !== false,
   };
 }
 
@@ -258,6 +368,27 @@ function toRunFromProcessRecord(processRecord: Record<string, unknown>): LabRun 
   const artifacts = (Array.isArray(processRecord["artifacts"]) ? processRecord["artifacts"] : [])
     .map(toArtifactProjection)
     .filter((entry): entry is LabArtifactProjection => entry !== null);
+  const liveFindings = (Array.isArray(processRecord["liveFindings"])
+    ? processRecord["liveFindings"]
+    : []
+  )
+    .map(toLiveFindingProjection)
+    .filter((entry): entry is LabLiveFindingProjection => entry !== null);
+  const previewArtifacts = (Array.isArray(processRecord["previewArtifacts"])
+    ? processRecord["previewArtifacts"]
+    : []
+  )
+    .map(toPreviewArtifactProjection)
+    .filter((entry): entry is LabPreviewArtifactProjection => entry !== null);
+  const moduleTrace = (Array.isArray(processRecord["moduleTrace"]) ? processRecord["moduleTrace"] : [])
+    .map(toModuleTraceEntry)
+    .filter((entry): entry is LabModuleTraceEntry => entry !== null);
+  const comparisonVariants = (Array.isArray(processRecord["comparisonVariants"])
+    ? processRecord["comparisonVariants"]
+    : []
+  )
+    .map(toComparisonVariant)
+    .filter((entry): entry is LabComparisonVariant => entry !== null);
   const endedAt = asNonEmptyString(processRecord["completedAt"]);
   const events = (Array.isArray(processRecord["events"]) ? processRecord["events"] : [])
     .map(function (entry) {
@@ -285,6 +416,15 @@ function toRunFromProcessRecord(processRecord: Record<string, unknown>): LabRun 
     error: asNonEmptyString(processRecord["error"]),
     targetLabel: asNonEmptyString(asLabRecord(processRecord["targetSummary"])["label"]),
     progress: clampPercent(processRecord["percent"]),
+    analysisScope: normalizeAnalysisScope(processRecord["analysisScope"]),
+    liveFindings,
+    previewArtifacts,
+    confidence: asNonEmptyString(processRecord["confidence"]),
+    moduleTrace,
+    comparisonVariants,
+    hypothesisSummary:
+      asNonEmptyString(processRecord["hypothesisSummary"]) ||
+      asNonEmptyString(asLabRecord(normalizeAnalysisScope(processRecord["analysisScope"]))["hypothesis"]),
     emptyReason:
       asNonEmptyString(processRecord["emptyReason"]) ||
       (findings.length === 0 &&
@@ -388,6 +528,202 @@ function pushRunEvent(
   });
   if (target.length > 260) {
     target.length = 260;
+  }
+}
+
+function upsertRunLiveFinding(state: LabStoreState, event: LabEventFeedItem) {
+  const run = state.run || ensurePendingRun(state, event.action || "runtime");
+  const nextFinding = toLiveFindingProjection({
+    ...asLabRecord(event.finding || {}),
+    ...(event.moduleId ? { moduleId: event.moduleId } : {}),
+    ...(event.throttleWindow ? { windowKey: event.throttleWindow } : {}),
+    ...(event.analysisScope ? { analysisScope: event.analysisScope } : {}),
+    ...(event.kind && !event.finding ? { kind: event.kind } : {}),
+  });
+  if (!nextFinding) {
+    return;
+  }
+  run.liveFindings = run.liveFindings.filter(function (entry) {
+    return entry.id !== nextFinding.id;
+  });
+  run.liveFindings.unshift(nextFinding);
+  if (run.liveFindings.length > 80) {
+    run.liveFindings.length = 80;
+  }
+  run.analysisScope = normalizeAnalysisScope(event.analysisScope) || run.analysisScope;
+  run.hypothesisSummary = nextFinding.hypothesis || run.hypothesisSummary;
+  state.ui.liveFindingsExpanded = true;
+  state.workbench = {
+    ...state.workbench,
+    activeLiveFindingsStreamId: nextFinding.streamId || state.featureId,
+  };
+}
+
+function upsertRunPreviewArtifact(
+  state: LabStoreState,
+  event: LabEventFeedItem,
+  options: { finalArtifact?: boolean } = {}
+) {
+  const run = state.run || ensurePendingRun(state, event.action || "runtime");
+  const nextArtifact = toPreviewArtifactProjection(event.artifact || event);
+  if (!nextArtifact) {
+    return;
+  }
+  const shouldActivate = nextArtifact.active !== false;
+  if (options.finalArtifact === true) {
+    const filteredArtifacts = run.artifacts.filter(function (entry) {
+      return entry.id !== nextArtifact.id;
+    });
+    const nextArtifacts: LabArtifactProjection[] = filteredArtifacts.map(function (entry) {
+      return shouldActivate ? { ...entry, active: false } : entry;
+    });
+    nextArtifacts.unshift({
+      ...nextArtifact,
+      active: shouldActivate,
+    });
+    if (nextArtifacts.length > 48) {
+      nextArtifacts.length = 48;
+    }
+    run.artifacts = nextArtifacts;
+  } else {
+    const filteredPreviewArtifacts = run.previewArtifacts.filter(function (entry) {
+      return entry.id !== nextArtifact.id;
+    });
+    const nextPreviewArtifacts: LabPreviewArtifactProjection[] = filteredPreviewArtifacts.map(
+      function (entry) {
+        return shouldActivate ? { ...entry, active: false } : entry;
+      }
+    );
+    nextPreviewArtifacts.unshift({
+      ...nextArtifact,
+      active: shouldActivate,
+    });
+    if (nextPreviewArtifacts.length > 48) {
+      nextPreviewArtifacts.length = 48;
+    }
+    run.previewArtifacts = nextPreviewArtifacts;
+  }
+  if (shouldActivate) {
+    state.ui.activePreviewArtifactId = nextArtifact.id;
+    state.workbench = {
+      ...state.workbench,
+      activePreviewArtifactId: nextArtifact.id,
+    };
+  }
+}
+
+function syncActivePreviewArtifact(
+  variants: LabPreviewArtifactProjection[],
+  artifactId: string | null
+): LabPreviewArtifactProjection[] {
+  return variants.map(function (entry, index) {
+    const isActive =
+      artifactId !== null
+        ? entry.id === artifactId
+        : index === 0 && variants.every(function (candidate) {
+            return candidate.active !== true;
+          });
+    return {
+      ...entry,
+      active: isActive,
+    };
+  });
+}
+
+function appendModuleTraceFromEvent(state: LabStoreState, event: LabEventFeedItem) {
+  const run = state.run || ensurePendingRun(state, event.action || "runtime");
+  const nextTrace =
+    toModuleTraceEntry(event.moduleTrace) ||
+    (function () {
+      if (event.moduleId === null) {
+        return null;
+      }
+      return {
+        id: event.id,
+        moduleId: event.moduleId,
+        stage: event.stage || "process",
+        status: event.kind,
+        timestamp: new Date(event.timestamp).toISOString(),
+        message: event.message,
+        detail: event.detail,
+        eventId: event.id,
+      } as LabModuleTraceEntry;
+    })();
+  if (!nextTrace) {
+    return;
+  }
+  run.moduleTrace = run.moduleTrace.filter(function (entry) {
+    return entry.id !== nextTrace.id;
+  });
+  run.moduleTrace.unshift(nextTrace);
+  if (run.moduleTrace.length > 120) {
+    run.moduleTrace.length = 120;
+  }
+}
+
+function appendComparisonVariantFromEvent(state: LabStoreState, event: LabEventFeedItem) {
+  const run = state.run || ensurePendingRun(state, event.action || "runtime");
+  const nextVariants = (Array.isArray(event.comparisonVariants) ? event.comparisonVariants : [])
+    .map(toComparisonVariant)
+    .filter((entry): entry is LabComparisonVariant => entry !== null);
+  const primaryVariant = toComparisonVariant(event.comparisonVariant);
+  if (primaryVariant) {
+    nextVariants.unshift(primaryVariant);
+  }
+  if (nextVariants.length === 0) {
+    return;
+  }
+  const nextVariantIds = new Set(nextVariants.map(function (entry) {
+    return entry.id;
+  }));
+  run.comparisonVariants = run.comparisonVariants.filter(function (entry) {
+    return nextVariantIds.has(entry.id) !== true;
+  });
+  nextVariants
+    .slice()
+    .reverse()
+    .forEach(function (entry) {
+      run.comparisonVariants.unshift(entry);
+    });
+  if (run.comparisonVariants.length > 32) {
+    run.comparisonVariants.length = 32;
+  }
+}
+
+function syncRunAugmentationsFromHostEvent(state: LabStoreState, event: LabEventFeedItem) {
+  if (event.kind === "analysis-scope-updated") {
+    const run = state.run || ensurePendingRun(state, event.action || "runtime");
+    run.analysisScope = normalizeAnalysisScope(event.analysisScope) || run.analysisScope;
+    run.hypothesisSummary =
+      asNonEmptyString(asLabRecord(run.analysisScope || {})["hypothesis"]) || run.hypothesisSummary;
+    return;
+  }
+  if (event.kind === "live-finding") {
+    upsertRunLiveFinding(state, event);
+    appendModuleTraceFromEvent(state, event);
+    return;
+  }
+  if (event.kind === "preview-artifact") {
+    upsertRunPreviewArtifact(state, event);
+    appendComparisonVariantFromEvent(state, event);
+    appendModuleTraceFromEvent(state, event);
+    return;
+  }
+  if (event.kind === "module-artifact") {
+    upsertRunPreviewArtifact(state, event, { finalArtifact: true });
+    appendModuleTraceFromEvent(state, event);
+    return;
+  }
+  if (event.kind === "module-progress" || event.kind === "module-warning") {
+    appendModuleTraceFromEvent(state, event);
+    if (event.kind === "module-warning" && event.detail) {
+      const run = state.run || ensurePendingRun(state, event.action || "runtime");
+      run.warnings = Array.from(new Set(run.warnings.concat(event.detail)));
+    }
+    return;
+  }
+  if (event.kind === "interactive-adjustment-applied") {
+    state.ui.analysisControlsCollapsed = false;
   }
 }
 
@@ -600,6 +936,9 @@ function syncCanonicalStateFromSnapshot(
       : [],
   };
   state.workbench = asLabRecord(snapshot["workbench"]);
+  state.ui.activePreviewArtifactId = asNonEmptyString(state.workbench["activePreviewArtifactId"]);
+  state.ui.analysisControlsCollapsed = state.workbench["controlsCollapsed"] === true;
+  state.ui.liveFindingsExpanded = asNonEmptyString(state.workbench["activeLiveFindingsStreamId"]) !== null;
   state.profileModels = Array.isArray(snapshot["profileModels"])
     ? (snapshot["profileModels"] as unknown[]).map(asLabRecord)
     : [];
@@ -651,6 +990,10 @@ function sanitizeHydratedRun(run: LabPersistedState["lastRun"] | undefined) {
   }
 
   const nextRun = structuredClone(run);
+  const scopeFrozenAt =
+    typeof nextRun.startedAt === "number"
+      ? new Date(nextRun.startedAt).toISOString()
+      : new Date().toISOString();
   if (nextRun.state === "running" || nextRun.state === "queued") {
     nextRun.state = "cancelled";
     const endedAt = nextRun.endedAt || Date.now();
@@ -680,6 +1023,37 @@ function sanitizeHydratedRun(run: LabPersistedState["lastRun"] | undefined) {
         })
         .filter((entry): entry is LabEventFeedItem => entry !== null)
     : [];
+  nextRun.analysisScope = freezeAnalysisScope(nextRun.analysisScope, nextRun.id, scopeFrozenAt);
+  nextRun.liveFindings = Array.isArray(nextRun.liveFindings)
+    ? nextRun.liveFindings
+        .map(function (entry) {
+          return toLiveFindingProjection(entry);
+        })
+        .filter((entry): entry is LabLiveFindingProjection => entry !== null)
+    : [];
+  nextRun.previewArtifacts = Array.isArray(nextRun.previewArtifacts)
+    ? nextRun.previewArtifacts
+        .map(function (entry) {
+          return toPreviewArtifactProjection(entry);
+        })
+        .filter((entry): entry is LabPreviewArtifactProjection => entry !== null)
+    : [];
+  nextRun.confidence = asNonEmptyString(nextRun.confidence);
+  nextRun.moduleTrace = Array.isArray(nextRun.moduleTrace)
+    ? nextRun.moduleTrace
+        .map(function (entry) {
+          return toModuleTraceEntry(entry);
+        })
+        .filter((entry): entry is LabModuleTraceEntry => entry !== null)
+    : [];
+  nextRun.comparisonVariants = Array.isArray(nextRun.comparisonVariants)
+    ? nextRun.comparisonVariants
+        .map(function (entry) {
+          return toComparisonVariant(entry);
+        })
+        .filter((entry): entry is LabComparisonVariant => entry !== null)
+    : [];
+  nextRun.hypothesisSummary = asNonEmptyString(nextRun.hypothesisSummary);
   nextRun.emptyReason =
     typeof nextRun.emptyReason === "string"
       ? nextRun.emptyReason
@@ -692,22 +1066,32 @@ function ensurePendingRun(state: LabStoreState, action: string) {
     return state.run;
   }
 
-  const nextRun: LabRun = {
-    id: `pending-${action}-${Date.now()}`,
-    state: "running",
-    startedAt: Date.now(),
+    const nextRun: LabRun = {
+      id: `pending-${action}-${Date.now()}`,
+      state: "running",
+      startedAt: Date.now(),
     modules: {},
     moduleOrder: [],
     events: [],
     rawLog: [],
     artifacts: [],
-    findings: [],
-    warnings: [],
-    error: null,
-    targetLabel: null,
-    progress: null,
-    emptyReason: null,
-  };
+      findings: [],
+      liveFindings: [],
+      warnings: [],
+      error: null,
+      targetLabel: null,
+      progress: null,
+      emptyReason: null,
+      analysisScope: normalizeAnalysisScope(asLabRecord(state.workbench)["analysisScope"]),
+      previewArtifacts: [],
+      confidence: null,
+      moduleTrace: [],
+      comparisonVariants: [],
+      hypothesisSummary:
+        asNonEmptyString(
+          asLabRecord(normalizeAnalysisScope(asLabRecord(state.workbench)["analysisScope"]))["hypothesis"]
+        ) || null,
+    };
   state.run = nextRun;
   return nextRun;
 }
@@ -765,6 +1149,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
           12,
           Math.round(event.payload.artifactRenderCount || state.ui.artifactRenderCount)
         );
+        state.ui.activePreviewArtifactId = event.payload.activePreviewArtifactId || null;
+        state.ui.liveFindingsExpanded = event.payload.liveFindingsExpanded !== false;
+        state.ui.analysisControlsCollapsed = event.payload.analysisControlsCollapsed === true;
         state.bootReady =
           state.bootReady ||
           state.source !== null ||
@@ -775,6 +1162,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     case "host-event-received":
       syncCanonicalStateFromHostEvent(state, event.event);
+      syncRunAugmentationsFromHostEvent(state, event.event);
       routeFeedEvent(state, event.event);
       return state;
     case "bootstrap-ready-sent":
@@ -948,6 +1336,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     case "workbench-updated":
       state.workbench = asLabRecord(event.workbench);
+      state.ui.activePreviewArtifactId = asNonEmptyString(state.workbench["activePreviewArtifactId"]);
+      state.ui.analysisControlsCollapsed = state.workbench["controlsCollapsed"] === true;
+      state.ui.liveFindingsExpanded = asNonEmptyString(state.workbench["activeLiveFindingsStreamId"]) !== null;
       return state;
     case "source-config-patched":
       state.source = {
@@ -1018,6 +1409,35 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     case "report-view-changed":
       state.ui.reportView = event.view;
+      return state;
+    case "preview-artifact-activated":
+      state.ui.activePreviewArtifactId = event.artifactId;
+      if (state.run) {
+        state.run.previewArtifacts = syncActivePreviewArtifact(
+          state.run.previewArtifacts,
+          event.artifactId
+        );
+      }
+      state.workbench = {
+        ...state.workbench,
+        activePreviewArtifactId: event.artifactId,
+      };
+      return state;
+    case "live-findings-expanded":
+      state.ui.liveFindingsExpanded =
+        typeof event.force === "boolean" ? event.force : !state.ui.liveFindingsExpanded;
+      state.workbench = {
+        ...state.workbench,
+        activeLiveFindingsStreamId: state.ui.liveFindingsExpanded ? state.featureId : null,
+      };
+      return state;
+    case "analysis-controls-collapsed":
+      state.ui.analysisControlsCollapsed =
+        typeof event.force === "boolean" ? event.force : !state.ui.analysisControlsCollapsed;
+      state.workbench = {
+        ...state.workbench,
+        controlsCollapsed: state.ui.analysisControlsCollapsed,
+      };
       return state;
     case "push-event":
       routeFeedEvent(state, event.event);

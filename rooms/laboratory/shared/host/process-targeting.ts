@@ -69,6 +69,15 @@ type LaboratoryProcessTargetingRuntimeDeps = {
     runtime: LaboratoryRecord,
     project: LaboratoryProjectRecord
   ) => unknown[];
+  getVisualAnalysisCapabilityState: (
+    runtime: LaboratoryRecord,
+    sourceKind: string | null
+  ) => LaboratoryRecord;
+  getVisualAnalysisModulesForRuntime: (
+    runtime: LaboratoryRecord,
+    sourceKind?: string | null
+  ) => LaboratoryRecord[];
+  getVisualAnalysisProviderState: (runtime: LaboratoryRecord) => LaboratoryRecord;
   getActiveSubtitleEntry: (
     project: LaboratoryProjectRecord
   ) => LaboratorySubtitleEntryRecord | null;
@@ -79,7 +88,17 @@ type LaboratoryProcessTargetingRuntimeDeps = {
     rawValue: unknown,
     runtime: LaboratoryRecord
   ) => LaboratorySubtitleStateRecord;
+  partitionVisualAnalysisModuleIds: (
+    runtime: LaboratoryRecord,
+    moduleIds: string[]
+  ) => LaboratoryRecord;
   resolveAudioFeatureTarget: (project: LaboratoryProjectRecord) => LaboratoryProcessTargetRecord;
+  resolveEnabledVisualAnalysisModuleIds: (
+    runtime: LaboratoryRecord,
+    project: LaboratoryProjectRecord,
+    sourceKind: string | null,
+    workbenchSource?: unknown
+  ) => string[];
   resolveProfileTarget: (project: LaboratoryProjectRecord) => LaboratoryProcessTargetRecord;
   subtitleFeatureId: string;
   toRecord: (value: unknown) => LaboratoryRecord;
@@ -93,12 +112,17 @@ export function createLaboratoryProcessTargetingRuntime(
     subtitleFeatureId,
     asNonEmptyString,
     buildProfileModelSummary,
+    getVisualAnalysisCapabilityState,
+    getVisualAnalysisModulesForRuntime,
+    getVisualAnalysisProviderState,
     getActiveSubtitleEntry,
     getSubtitleMimeType,
     getSubtitleSelectedEntries,
     normalizeProcessModule,
     normalizeSubtitleAnalysisState,
+    partitionVisualAnalysisModuleIds,
     resolveAudioFeatureTarget,
+    resolveEnabledVisualAnalysisModuleIds,
     resolveProfileTarget,
     toRecord,
   } = deps;
@@ -263,7 +287,7 @@ export function createLaboratoryProcessTargetingRuntime(
   }
 
   function buildMediaProcessModules(
-    _runtime: LaboratoryRecord,
+    runtime: LaboratoryRecord,
     project: LaboratoryProjectRecord,
     target: LaboratoryProcessTargetRecord
   ) {
@@ -272,6 +296,25 @@ export function createLaboratoryProcessTargetingRuntime(
     const sourceKind = asNonEmptyString(toSourceRecord(project.source).kind) || "video";
     const edit = toEditRecord(project.edit);
     const targetRecord = toProcessTargetRecord(target);
+    const visualCatalogModules = getVisualAnalysisModulesForRuntime(runtime, sourceKind);
+    const visualCapabilityState = toRecord(getVisualAnalysisCapabilityState(runtime, sourceKind));
+    const enabledVisualModuleIds = resolveEnabledVisualAnalysisModuleIds(
+      runtime,
+      project,
+      sourceKind
+    );
+    const visualPartitions = toRecord(
+      partitionVisualAnalysisModuleIds(runtime, enabledVisualModuleIds)
+    );
+    const structureModuleIds = toStringArray(visualPartitions["structure"]);
+    const revealModuleIds = toStringArray(visualPartitions["reveal"]);
+    const visualProviderState = toRecord(getVisualAnalysisProviderState(runtime));
+    const visualProvidersReady =
+      Object.keys(visualProviderState).length === 0
+        ? false
+        : Object.values(visualProviderState).some(function (entry) {
+            return toRecord(entry)["ready"] === true;
+          });
     const modules: LaboratoryProcessModuleRecord[] = [];
 
     modules.push(
@@ -303,11 +346,55 @@ export function createLaboratoryProcessTargetingRuntime(
           ""
         ),
         status:
-          sourceKind === "video" && enabledLaneIds.includes("visual-tamper") ? "queued" : "skipped",
+          (sourceKind === "video" || sourceKind === "image") &&
+          visualProvidersReady &&
+          structureModuleIds.length > 0 &&
+          (enabledLaneIds.includes("visual-tamper") || enabledLaneIds.includes("synthetic-suspicion"))
+            ? "queued"
+            : "skipped",
         summary:
-          sourceKind === "video" && enabledLaneIds.includes("visual-tamper")
-            ? "Visual tamper checks will run on the pinned target."
-            : "Motion analysis is not active for this target.",
+          structureModuleIds.length > 0
+            ? `${structureModuleIds.length} structural visual module(s) will inspect the pinned target.`
+            : sourceKind === "video" || sourceKind === "image"
+              ? "Structural visual modules are unavailable until the required FFmpeg provider is ready."
+              : "Motion analysis is not active for this target.",
+        metadata: {
+          logicalLayer: "visual-analysis",
+          transportLayer: "media-analysis",
+          catalogCount: Array.isArray(visualCatalogModules) ? visualCatalogModules.length : 0,
+          moduleIds: structureModuleIds,
+          capabilityState: visualCapabilityState,
+        },
+      })
+    );
+    modules.push(
+      normalizeProcessModule({
+        ...createQueuedProcessModule(
+          "visual-signal",
+          "mediaAnalysis.process.steps.visualSignal",
+          "Visual Signal Amplification",
+          ""
+        ),
+        status:
+          (sourceKind === "video" || sourceKind === "image") &&
+          visualProvidersReady &&
+          revealModuleIds.length > 0 &&
+          (enabledLaneIds.includes("visual-tamper") || enabledLaneIds.includes("synthetic-suspicion"))
+            ? "queued"
+            : "skipped",
+        summary:
+          revealModuleIds.length > 0
+            ? `${revealModuleIds.length} reveal module(s) will generate preview variants for the pinned target.`
+            : sourceKind === "video" || sourceKind === "image"
+              ? "Reveal modules are unavailable until the required FFmpeg provider is ready."
+              : "Visual signal amplification is not active for this target.",
+        metadata: {
+          logicalLayer: "visual-analysis",
+          transportLayer: "media-analysis",
+          catalogCount: Array.isArray(visualCatalogModules) ? visualCatalogModules.length : 0,
+          moduleIds: revealModuleIds,
+          capabilityState: visualCapabilityState,
+        },
       })
     );
     modules.push(

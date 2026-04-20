@@ -1,5 +1,6 @@
 import { createLaboratoryManagedProcessRunnersRuntime } from "./process-managed-runners.js";
 import { extractFindings } from "../../services/finding-engine.js";
+import { freezeAnalysisScope } from "../types/analysis-scope.js";
 
 interface LaboratoryProcessDeps {
   appendProcessEvent: (
@@ -19,6 +20,7 @@ interface LaboratoryProcessDeps {
   ) => unknown[];
   buildSubtitleProcessModules: (
     runtime: Record<string, unknown>,
+    project: Record<string, unknown>,
     target: Record<string, unknown>
   ) => unknown[];
   cancelProcessJobsForProject: (
@@ -148,14 +150,18 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     clone: deps["clone"],
     createProcessArtifact: deps["createProcessArtifact"],
     createProcessFinding: deps["createProcessFinding"],
+    generateProcessFramePreviewArtifact: deps["generateProcessFramePreviewArtifact"],
     generateProcessMetadataArtifact: deps["generateProcessMetadataArtifact"],
     generateProcessSpectrogram: deps["generateProcessSpectrogram"],
+    generateProcessVisualTransformArtifact: deps["generateProcessVisualTransformArtifact"],
     getAudioAnalysisModuleProcessDir: deps["getAudioAnalysisModuleProcessDir"],
     getAudioAnalysisModuleRunner: deps["getAudioAnalysisModuleRunner"],
     getProjectSubtitleProcessDir: deps["getProjectSubtitleProcessDir"],
     maybeRunWhisperProfileSample: deps["maybeRunWhisperProfileSample"],
     normalizeProcessArtifact: deps["normalizeProcessArtifact"],
     normalizeProcessFinding: deps["normalizeProcessFinding"],
+    partitionVisualAnalysisModuleIds: deps["partitionVisualAnalysisModuleIds"],
+    resolveEnabledVisualAnalysisModuleIds: deps["resolveEnabledVisualAnalysisModuleIds"],
     runAudioStructureProbe: deps["runAudioStructureProbe"],
     runVideoStructureProbe: deps["runVideoStructureProbe"],
     sanitizeFileSegment: deps["sanitizeFileSegment"],
@@ -228,6 +234,7 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
   }
 
   async function runManagedProcess(
+    api: Record<string, unknown>,
     runtime: Record<string, unknown>,
     project: Record<string, unknown>,
     requestId: string,
@@ -258,6 +265,11 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     processRecord["events"] = [];
     processRecord["rawLog"] = [];
     processRecord["emptyReason"] = null;
+    processRecord["liveFindings"] = [];
+    processRecord["previewArtifacts"] = [];
+    processRecord["moduleTrace"] = [];
+    processRecord["comparisonVariants"] = [];
+    processRecord["confidence"] = null;
     processRecord["targetSummary"] = {
       requestedMode: target["requestedMode"],
       mode: target["mode"],
@@ -269,12 +281,112 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
       path: target["path"],
       entryCount: Array.isArray(target["entries"]) ? target["entries"].length : null,
     };
+    processRecord["analysisScope"] = freezeAnalysisScope(
+      toRecord(toRecord(project["workbench"])["analysisScope"]),
+      processRecord["runId"] as string,
+      processRecord["startedAt"] as string
+    );
+    processRecord["hypothesisSummary"] = asNonEmptyString(
+      toRecord(toRecord(processRecord["analysisScope"]))["hypothesis"]
+    );
     processRecord["modules"] =
       featureId === audioFeatureId
         ? buildAudioAnalysisModules(runtime, project, target)
         : featureId === subtitleFeatureId
-          ? buildSubtitleProcessModules(runtime, target)
+          ? buildSubtitleProcessModules(runtime, project, target)
           : buildMediaProcessModules(runtime, project, target);
+    function appendProcessCollection(
+      key: string,
+      entry: Record<string, unknown>,
+      limit: number,
+      dedupeKey: string = "id"
+    ) {
+      const entries = Array.isArray(processRecord[key])
+        ? (processRecord[key] as unknown[]).map(function (value) {
+            return toRecord(value);
+          })
+        : [];
+      const nextKey = asNonEmptyString(entry[dedupeKey]);
+      const filteredEntries =
+        nextKey === null
+          ? entries
+          : entries.filter(function (value) {
+              return asNonEmptyString(toRecord(value)[dedupeKey]) !== nextKey;
+            });
+      filteredEntries.unshift(entry);
+      processRecord[key] = filteredEntries.slice(0, limit);
+    }
+
+    function emitManagedRuntimeUpdate(payload: Record<string, unknown>) {
+      const kind = asNonEmptyString(payload["kind"]) || "module-progress";
+      const detail = asNonEmptyString(payload["detail"]);
+      if (kind === "live-finding") {
+        const finding = toRecord(payload["finding"]);
+        if (Object.keys(finding).length > 0) {
+          appendProcessCollection(
+            "liveFindings",
+            {
+              ...finding,
+              emittedAt: Date.now(),
+              windowKey: asNonEmptyString(payload["throttleWindow"]),
+              streamId: featureId,
+              hypothesis:
+                asNonEmptyString(finding["hypothesis"]) ||
+                asNonEmptyString(processRecord["hypothesisSummary"]),
+            },
+            80
+          );
+        }
+      }
+      if (kind === "preview-artifact") {
+        const artifact = toRecord(payload["artifact"]);
+        if (Object.keys(artifact).length > 0) {
+          appendProcessCollection(
+            "previewArtifacts",
+            {
+              ...artifact,
+              active: artifact["active"] !== false,
+              status: asNonEmptyString(artifact["status"]) || "ready",
+              variantId: asNonEmptyString(toRecord(payload["comparisonVariant"])["id"]) || null,
+            },
+            48
+          );
+        }
+      }
+      if (kind === "module-warning" && detail !== null) {
+        const warningList = Array.isArray(processRecord["warnings"])
+          ? (processRecord["warnings"] as unknown[]).map(String)
+          : [];
+        processRecord["warnings"] = Array.from(new Set(warningList.concat(detail)));
+      }
+      const moduleTrace = toRecord(payload["moduleTrace"]);
+      if (Object.keys(moduleTrace).length > 0) {
+        appendProcessCollection("moduleTrace", moduleTrace, 120);
+      }
+      const comparisonVariant = toRecord(payload["comparisonVariant"]);
+      if (Object.keys(comparisonVariant).length > 0) {
+        appendProcessCollection("comparisonVariants", comparisonVariant, 32);
+      }
+      if (Array.isArray(payload["comparisonVariants"])) {
+        (payload["comparisonVariants"] as unknown[]).forEach(function (entry) {
+          const nextVariant = toRecord(entry);
+          if (Object.keys(nextVariant).length > 0) {
+            appendProcessCollection("comparisonVariants", nextVariant, 32);
+          }
+        });
+      }
+      pushJobState(api, {
+        requestId: requestId,
+        jobId: jobId,
+        action: action,
+        projectId: project["id"],
+        toolId: "ffmpeg",
+        featureStage: "process",
+        stage: asNonEmptyString(payload["stage"]) || "running",
+        ...payload,
+        analysisScope: processRecord["analysisScope"],
+      });
+    }
     appendRunLifecycleEvent(
       processRecord,
       action,
@@ -283,6 +395,22 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
         ? asNonEmptyString(toRecord(processRecord["targetSummary"])["label"])
         : null
     );
+    emitManagedRuntimeUpdate({
+      kind: "analysis-scope-updated",
+      message: "Analysis scope locked for the current run.",
+      detail: asNonEmptyString(processRecord["hypothesisSummary"]),
+      analysisScope: processRecord["analysisScope"],
+      moduleTrace: {
+        id: `scope-${Date.now()}`,
+        moduleId: null,
+        stage: "process",
+        status: "scope-frozen",
+        timestamp: new Date().toISOString(),
+        message: "Analysis scope locked for the current run.",
+        detail: asNonEmptyString(processRecord["hypothesisSummary"]),
+      },
+      throttleWindow: `${featureId}-scope`,
+    });
     const runtimeJobs = toRecord(runtime["jobs"]);
     const jobRecord = toRecord(runtimeJobs[jobId]);
     if (Object.keys(jobRecord).length > 0) {
@@ -296,7 +424,8 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
             project,
             target,
             artifactBase,
-            processRecord
+            processRecord,
+            emitManagedRuntimeUpdate
           )
         : featureId === audioFeatureId
           ? await laboratoryManagedProcessRunnersRuntime.runAudioManagedProcess(
@@ -306,7 +435,8 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
               jobId,
               target,
               artifactBase,
-              processRecord
+              processRecord,
+              emitManagedRuntimeUpdate
             )
           : await laboratoryManagedProcessRunnersRuntime.runMediaManagedProcess(
               runtime,
@@ -316,7 +446,8 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
               target,
               artifactBase,
               outputDir,
-              processRecord
+              processRecord,
+              emitManagedRuntimeUpdate
             );
 
     const collectedFindings = Array.isArray(results["findings"]) ? results["findings"] : [];
@@ -437,7 +568,9 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     });
 
     try {
+      let followUpWorkbench: Record<string, unknown> | null = null;
       const nextProcessRecord = await runManagedProcess(
+        api,
         runtime,
         clone(project),
         requestId,
@@ -446,7 +579,20 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
         getFeatureProcessDir(runtime, project, featureId)
       );
       await patchActiveProject(runtime, function (nextProject: Record<string, unknown>) {
-        setFeatureProcessRecord(nextProject, featureId, nextProcessRecord);
+        const existingRecord = toRecord(getFeatureProcessRecord(nextProject, featureId));
+        const queuedProcessInstance = toRecord(existingRecord["queuedProcessInstance"]);
+        setFeatureProcessRecord(nextProject, featureId, {
+          ...nextProcessRecord,
+          queuedProcessInstance: null,
+        });
+        if (Object.keys(queuedProcessInstance).length > 0) {
+          followUpWorkbench = {
+            ...resolveProcessWorkbench(nextProject, featureId, workbenchSource),
+            analysisScope: toRecord(queuedProcessInstance["analysisScope"]),
+            moduleToggles: toRecord(queuedProcessInstance["moduleToggles"]),
+          };
+          nextProject["workbench"] = followUpWorkbench;
+        }
         setFeatureReportRecord(
           nextProject,
           featureId,
@@ -463,6 +609,15 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
         featureStage: "process",
         stage: "completed",
       });
+      if (followUpWorkbench !== null) {
+        await runSingleFeatureProcess(
+          api,
+          runtime,
+          `${requestId}-queued-${Date.now()}`,
+          featureId,
+          followUpWorkbench
+        );
+      }
     } catch (error) {
       await patchActiveProject(runtime, function (nextProject: Record<string, unknown>) {
         const failedRecord = {

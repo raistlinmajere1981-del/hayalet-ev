@@ -30,9 +30,15 @@ export function createAudioAnalysisProcessRuntime(
 ): AudioAnalysisProcessRuntime {
   const processRunnerSupport = createAudioAnalysisProcessRunnerSupport(deps);
   const {
+    runBandPassExplorationAudioAnalyzer,
     runEmotionHeuristicAudioAnalyzer,
+    runFrequencyShiftReversalAudioAnalyzer,
+    runHiddenPatternExtractionAudioAnalyzer,
+    runPhaseRecoveryExperimentAudioAnalyzer,
     runProsodyAudioAnalyzer,
     runSignalHealthAudioAnalyzer,
+    runSignalRecoveryAudioAnalyzer,
+    runSpectrogramGuidedRecoveryAudioAnalyzer,
     runSpectralArtifactsAudioAnalyzer,
     runTranscriptionAudioAnalyzer,
   } = createAudioAnalysisLocalProcessRunners({
@@ -56,7 +62,13 @@ export function createAudioAnalysisProcessRuntime(
       | AudioAnalysisModelProcessRuntime[keyof AudioAnalysisModelProcessRuntime]
     > = {
       "signal-health": runSignalHealthAudioAnalyzer,
+      "signal-recovery": runSignalRecoveryAudioAnalyzer,
       "spectral-artifacts": runSpectralArtifactsAudioAnalyzer,
+      "frequency-shift-reversal": runFrequencyShiftReversalAudioAnalyzer,
+      "band-pass-exploration": runBandPassExplorationAudioAnalyzer,
+      "spectrogram-guided-recovery": runSpectrogramGuidedRecoveryAudioAnalyzer,
+      "hidden-pattern-extraction": runHiddenPatternExtractionAudioAnalyzer,
+      "phase-recovery-experiment": runPhaseRecoveryExperimentAudioAnalyzer,
       transcription: runTranscriptionAudioAnalyzer,
       "speaker-diarization": runSpeakerDiarizationAudioAnalyzer,
       prosody: runProsodyAudioAnalyzer,
