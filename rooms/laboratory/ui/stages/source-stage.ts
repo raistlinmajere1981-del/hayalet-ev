@@ -1,5 +1,4 @@
 import {
-  LAB_FEATURES,
   escapeHtml,
   formatBytes,
   formatDurationSeconds,
@@ -7,7 +6,8 @@ import {
 } from "../../models/lab-types.js";
 import type { LabStageSurface, LabStoreState } from "../../models/lab-types.js";
 import {
-  getCurrentFeatureMeta,
+  getAvailableCapabilities,
+  getCapabilityWorkflowSummary,
   getProjectSource,
   getProjects,
   getSourceKind,
@@ -15,12 +15,13 @@ import {
   getSourceMode,
   getSourceProbeStatus,
   getSourceStatus,
-  getWorkbench,
+  getToolState,
 } from "../../runtime/lab-selectors.js";
 import { renderCompactCard } from "../components/compact-card.js";
 import { renderPrimaryCTA } from "../components/primary-cta.js";
 import { renderStageHeader } from "../components/stage-header.js";
 import { renderStatusChip } from "../components/status-chip.js";
+import { asLabRecord, asNonEmptyString } from "../../models/lab-types.js";
 
 type SourceStageRenderDeps = {
   primaryDetail?: string | null;
@@ -96,8 +97,33 @@ function renderPreviewRow(label: string, value: string) {
   `;
 }
 
+function getReadinessTone(readiness: string) {
+  switch (readiness) {
+    case "ready":
+      return "success";
+    case "optional":
+      return "warning";
+    case "blocked":
+      return "error";
+    default:
+      return "neutral";
+  }
+}
+
+function getReadinessLabel(readiness: string) {
+  switch (readiness) {
+    case "ready":
+      return "Hazır";
+    case "optional":
+      return "Opsiyonel";
+    case "blocked":
+      return "Bloklu";
+    default:
+      return readiness;
+  }
+}
+
 export function renderSourceStage(deps: SourceStageRenderDeps): LabStageSurface {
-  const feature = getCurrentFeatureMeta(deps.state);
   const projects = getProjects(deps.state);
   const activeProjectId = deps.state.projectIndex.activeProjectId;
   const sourceProbeStatus = getSourceProbeStatus(deps.state);
@@ -106,19 +132,6 @@ export function renderSourceStage(deps: SourceStageRenderDeps): LabStageSurface 
   const sourceKind = getSourceKind(deps.state);
   const metadata = getSourceMetadata(deps.state);
   const source = getProjectSource(deps.state);
-  const workbench = getWorkbench(deps.state);
-  const availableModuleIds = Array.isArray(workbench["availableModuleIds"])
-    ? (workbench["availableModuleIds"] as unknown[]).filter(
-        (entry): entry is string => typeof entry === "string"
-      )
-    : LAB_FEATURES.map((entry) => entry.id);
-  const selectedModuleIds = Array.isArray(workbench["selectedModuleIds"])
-    ? (workbench["selectedModuleIds"] as unknown[]).filter(
-        (entry): entry is string => typeof entry === "string"
-      )
-    : [feature.id];
-  const activeModuleId =
-    typeof workbench["activeModuleId"] === "string" ? workbench["activeModuleId"] : feature.id;
   const sourceDrafts = deps.state.ui.sourceDrafts;
   const sourceStatusLabel = formatStatusLabel(sourceStatus);
   const sourceProbeLabel = formatStatusLabel(sourceProbeStatus);
@@ -140,15 +153,20 @@ export function renderSourceStage(deps: SourceStageRenderDeps): LabStageSurface 
           ? "running"
           : "neutral";
 
+  const capabilities = getAvailableCapabilities(deps.state);
+  const workflowSummary = getCapabilityWorkflowSummary(deps.state);
+  const toolState = getToolState(deps.state);
+  const toolRegistry = asLabRecord(toolState["tools"]);
+
   const main = `
     ${renderStageHeader({
       eyebrow: "Aşama 01 · Kaynak",
       stageIndex: 1,
-      stageTotal: 5,
+      stageTotal: 4,
       statusLabel: sourceProbeLabel,
       statusTone,
       subtitle:
-        "Kaynak, erişim modu ve modül kapsamı aynı ekranda kilitlenir. Önce giriş yapısını netleştir, sonra sonraki aşamaları güvenle besle.",
+        "Kaynak seçimi, kullanılabilir yetenekler ve araç hazırlığı. Önce giriş yapısını netleştir, sonra çalışma alanına geç.",
       title: "Kaynak",
     })}
     <div class="labx-grid labx-grid--source">
@@ -184,11 +202,6 @@ export function renderSourceStage(deps: SourceStageRenderDeps): LabStageSurface 
               </select>
             </label>
           </div>
-          <div class="labx-selection-strip">
-            <span class="labx-selection-badge">Seçili akış: ${escapeHtml(getSourceKindLabel(sourceKind))}</span>
-            <span class="labx-selection-badge">Erişim: ${escapeHtml(getSourceModeLabel(sourceMode))}</span>
-            <span class="labx-selection-badge">Durum: ${escapeHtml(sourceStatusLabel)}</span>
-          </div>
           <label class="labx-field">
             <span>Kaynak Takma Adı</span>
             <input class="labx-input" data-lab-field="source.fileNameHint" value="${escapeHtml(sourceDrafts.fileNameHint)}" placeholder="project-shot-01" />
@@ -200,7 +213,6 @@ export function renderSourceStage(deps: SourceStageRenderDeps): LabStageSurface 
                   <span>Kaynak URL</span>
                   <input class="labx-input" data-lab-field="source.urlInput" value="${escapeHtml(sourceDrafts.urlInput)}" placeholder="https://..." />
                 </label>
-                <p class="labx-panel-hint">Uzak bir kaynağı indirip çalışma alanına sabitlemek için tam bağlantı ver.</p>
               `
               : sourceMode === "youtube"
                 ? `
@@ -208,9 +220,8 @@ export function renderSourceStage(deps: SourceStageRenderDeps): LabStageSurface 
                     <span>YouTube URL</span>
                     <input class="labx-input" data-lab-field="source.youtubeUrl" value="${escapeHtml(sourceDrafts.youtubeUrl)}" placeholder="https://youtube.com/watch?v=..." />
                   </label>
-                  <p class="labx-panel-hint">YouTube kaynağı indirildiğinde önizleme ve metadata sağ panelde görünür.</p>
                 `
-                : `<p class="labx-panel-hint">Yerel dosya modu seçili. Birincil aksiyon doğrudan dosya seçiciyi açar.</p>`
+                : `<p class="labx-panel-hint">Yerel dosya modu seçili. Birincil aksiyon dosya seçiciyi açar.</p>`
           }
         `,
         footer: renderPrimaryCTA({
@@ -222,124 +233,104 @@ export function renderSourceStage(deps: SourceStageRenderDeps): LabStageSurface 
         tone: "accent",
       })}
       ${renderCompactCard({
-        eyebrow: "Kapsam",
-        title: "Modül Kapsamı",
+        eyebrow: "Yetenekler",
+        title: "Kullanılabilir Yetenekler",
         body: `
-          <div class="labx-stat-grid">
-            <article>
-              <span>Aktif modül</span>
-              <strong>${escapeHtml(feature.label)}</strong>
-            </article>
-            <article>
-              <span>Seçili modül</span>
-              <strong>${escapeHtml(String(selectedModuleIds.length))}</strong>
-            </article>
-            <article>
-              <span>Kullanılabilir</span>
-              <strong>${escapeHtml(String(availableModuleIds.length))}</strong>
-            </article>
-          </div>
-          <div class="labx-module-grid">
-            ${availableModuleIds
-              .map(function (moduleId) {
-                const moduleMeta =
-                  LAB_FEATURES.find(function (entry) {
-                    return entry.id === moduleId;
-                  }) || feature;
-                const selected = selectedModuleIds.includes(moduleId);
-                const active = moduleId === activeModuleId;
+          <p class="labx-panel-hint">Bu kaynak üzerinde çalıştırılabilecek yetenek aileleri. Seçim yaparak iş akışını belirle.</p>
+          <div class="labx-capability-grid">
+            ${capabilities
+              .map(function (cap) {
                 return `
-                  <article class="labx-module-card" data-selected="${selected ? "true" : "false"}" data-active="${active ? "true" : "false"}">
-                    <div class="labx-module-card__head">
-                      <div>
-                        <strong>${escapeHtml(moduleMeta.label)}</strong>
-                        <span>${escapeHtml(moduleMeta.shortLabel)}</span>
-                      </div>
-                      <div class="labx-chip-row">
-                        ${selected ? renderStatusChip("Seçili", "success") : ""}
-                        ${active ? renderStatusChip("Aktif", "running") : ""}
-                      </div>
+                  <article
+                    class="labx-capability-card"
+                    data-readiness="${cap.readiness}"
+                    data-selected="${cap.selected ? "true" : "false"}"
+                  >
+                    <div class="labx-capability-card__head">
+                      <strong>${escapeHtml(cap.label)}</strong>
+                      ${renderStatusChip(getReadinessLabel(cap.readiness), getReadinessTone(cap.readiness))}
                     </div>
-                    <p class="labx-panel-hint">${escapeHtml(moduleMeta.description)}</p>
-                    <div class="labx-module-card__actions">
-                      <button
-                        class="labx-inline-action"
-                        type="button"
-                        data-lab-action="feature-toggle"
-                        data-lab-value="${escapeHtml(moduleId)}"
-                      >
-                        ${selected ? "Seçimden çıkar" : "Modül ekle"}
-                      </button>
-                      <button
-                        class="labx-inline-action"
-                        type="button"
-                        data-lab-action="feature-activate"
-                        data-lab-value="${escapeHtml(moduleId)}"
-                        ${selected ? "" : "disabled"}
-                      >
-                        ${active ? "Aktif modül" : "Aktif yap"}
-                      </button>
+                    <div class="labx-capability-card__meta">
+                      <small>Araç: ${escapeHtml(cap.primaryTool)}</small>
                     </div>
+                    ${cap.blockReason ? `<p class="labx-capability-card__reason">${escapeHtml(cap.blockReason)}</p>` : ""}
+                    <button
+                      class="labx-inline-action"
+                      type="button"
+                      data-lab-action="capability-toggle"
+                      data-lab-value="${escapeHtml(cap.id)}"
+                      ${cap.readiness === "blocked" ? "disabled" : ""}
+                    >
+                      ${cap.selected ? "Seçimden çıkar" : "Seç"}
+                    </button>
                   </article>
                 `;
               })
               .join("")}
           </div>
-          <p class="labx-panel-hint">Hızlı modül seçimi burada yapılır. Bu panel, koşuya girecek modülleri ve ilk odak modülünü doğrudan belirler.</p>
         `,
       })}
     </div>
   `;
 
+  const toolEntries = ["ffmpeg", "yt-dlp", "whisper.cpp", "opensmile", "pyaudioanalysis", "yamnet", "demucs", "librosa"];
+
   const side = [
     renderCompactCard({
-      eyebrow: "Önizleme",
-      title: "Kaynak Önizleme",
+      eyebrow: "Kaynak Özeti",
+      title: storedFileName,
       body: `
         <div class="labx-preview-card">
           <div class="labx-preview-frame">
             ${renderPreviewMedia(sourceKind, previewUrl)}
           </div>
           <div class="labx-preview-meta">
-            ${renderPreviewRow("Kaynak", storedFileName)}
-            ${renderPreviewRow("Giriş yolu", routeLabel)}
-            ${renderPreviewRow("Durum", sourceStatusLabel)}
             ${renderPreviewRow("Tür", getSourceKindLabel(sourceKind))}
-            ${renderPreviewRow("Erişim", getSourceModeLabel(sourceMode))}
+            ${renderPreviewRow("Erişim", routeLabel)}
+            ${renderPreviewRow("Durum", sourceStatusLabel)}
             ${
-              typeof source["sourceUrl"] === "string" && source["sourceUrl"].trim() !== ""
-                ? renderPreviewRow("Bağlantı", source["sourceUrl"])
+              typeof metadata["width"] === "number" && typeof metadata["height"] === "number"
+                ? renderPreviewRow("Çözünürlük", `${String(metadata["width"])} × ${String(metadata["height"])}`)
                 : ""
             }
+            ${renderPreviewRow("Süre", formatDurationSeconds(metadata["durationSeconds"]))}
+            ${renderPreviewRow("Boyut", formatBytes(metadata["sizeBytes"]))}
           </div>
         </div>
       `,
       tone: "accent",
     }),
     renderCompactCard({
-      eyebrow: "Durum",
-      title: feature.label,
+      eyebrow: "Araç Durumu",
+      title: "Araç Hazırlığı",
       body: `
         <div class="labx-summary-list">
-          <div><span>Probe</span>${renderStatusChip(sourceProbeLabel, statusTone)}</div>
-          <div><span>Kaynak</span><strong>${escapeHtml(sourceStatusLabel)}</strong></div>
-          <div><span>Tür</span><strong>${escapeHtml(getSourceKindLabel(sourceKind))}</strong></div>
-          <div><span>Mod</span><strong>${escapeHtml(getSourceModeLabel(sourceMode))}</strong></div>
-          <div><span>Çerçeve</span><strong>${escapeHtml(
-            typeof metadata["width"] === "number" && typeof metadata["height"] === "number"
-              ? `${String(metadata["width"])} × ${String(metadata["height"])}`
-              : "--"
-          )}</strong></div>
-          <div><span>Süre</span><strong>${escapeHtml(formatDurationSeconds(metadata["durationSeconds"]))}</strong></div>
-          <div><span>Boyut</span><strong>${escapeHtml(formatBytes(metadata["sizeBytes"]))}</strong></div>
+          ${toolEntries
+            .map(function (toolId) {
+              const tool = asLabRecord(toolRegistry[toolId]);
+              const installed = tool["installed"] === true || asNonEmptyString(tool["status"]) === "installed";
+              return `
+                <div>
+                  <span>${escapeHtml(toolId)}</span>
+                  ${renderStatusChip(installed ? "Hazır" : "Eksik", installed ? "success" : "error")}
+                </div>
+              `;
+            })
+            .join("")}
         </div>
+        <button class="labx-inline-action" type="button" data-lab-action="toggle-tool-manager">Araçları Yönet</button>
       `,
     }),
     renderCompactCard({
-      eyebrow: "Rehber",
-      title: "Geçiş Kuralı",
+      eyebrow: "İş Akışı",
+      title: "Seçili Yetenek Özeti",
       body: `
-        <p class="labx-panel-hint">Bir sonraki aşama probe tamamlandığında açılır. Bu panel artık sadece metadata değil, eklenen medyanın gerçek önizlemesini de gösterir.</p>
+        <div class="labx-summary-list">
+          <div><span>Seçili aile</span><strong>${escapeHtml(String(workflowSummary.familyCount))}</strong></div>
+          <div><span>Hazır</span><strong>${escapeHtml(String(workflowSummary.readyCount))}</strong></div>
+          ${workflowSummary.blockedCount > 0 ? `<div><span>Bloklu</span><strong>${escapeHtml(String(workflowSummary.blockedCount))}</strong></div>` : ""}
+        </div>
+        ${workflowSummary.familyCount === 0 ? `<p class="labx-panel-hint">Henüz yetenek seçilmedi. Sol panelden en az bir yetenek ailesi seç.</p>` : ""}
       `,
     }),
   ].join("");

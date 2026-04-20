@@ -1,5 +1,6 @@
 import { asLabRecord, asNonEmptyString, createLabFeatureMeta } from "../models/lab-types.js";
 import type {
+  CapabilityFamilyId,
   LabFeatureId,
   LabPreflightResult,
   LabPreviewArtifactProjection,
@@ -9,6 +10,7 @@ import type {
   LabStage,
   LabStoreState,
 } from "../models/lab-types.js";
+import { CAPABILITY_FAMILIES } from "../models/lab-types.js";
 import { normalizeAnalysisScope } from "../shared/types/analysis-scope.js";
 
 export function getSnapshot(state: LabStoreState): LabRecord {
@@ -37,7 +39,8 @@ export function getProjects(state: LabStoreState): LabRecord[] {
 
 export function getCurrentFeatureId(state: LabStoreState): LabFeatureId {
   const activeModuleId = asNonEmptyString(state.workbench["activeModuleId"]);
-  return (activeModuleId as LabFeatureId) || state.featureId;
+  const featureId = (activeModuleId as LabFeatureId) || state.featureId;
+  return featureId === "subtitle-analysis" ? "audio-analysis" : featureId;
 }
 
 export function getCurrentFeatureMeta(state: LabStoreState) {
@@ -75,10 +78,6 @@ export function getCurrentFeatureReportRecord(state: LabStoreState): LabRecord {
 }
 
 export function getCurrentPreflight(state: LabStoreState): LabPreflightResult {
-  if (state.preflight) {
-    return state.preflight;
-  }
-
   const source = getProjectSource(state);
   if (Object.keys(source).length === 0) {
     return {
@@ -106,15 +105,57 @@ export function getCurrentPreflight(state: LabStoreState): LabPreflightResult {
     };
   }
 
+  const selectedCapabilities = getSelectedCapabilities(state);
+  if (selectedCapabilities.length === 0) {
+    return {
+      status: "blocked",
+      missingDependencies: [],
+      warnings: [],
+      estimatedRuntime: null,
+      enabledModules: [],
+      stageReady: false,
+      rawStatus: null,
+      reason: "Önce en az bir yetenek ailesi seçilmelidir.",
+    };
+  }
+
+  const selectedEntries = getAvailableCapabilities(state).filter(function (entry) {
+    return selectedCapabilities.includes(entry.id);
+  });
+  const blockedEntries = selectedEntries.filter(function (entry) {
+    return entry.readiness === "blocked";
+  });
+  const warningEntries = selectedEntries.filter(function (entry) {
+    return entry.readiness === "optional";
+  });
+
+  const missingDependencies = blockedEntries.map(function (entry) {
+    return entry.label;
+  });
+  const warnings = warningEntries.map(function (entry) {
+    return entry.blockReason || `${entry.label} kısmi hazırlıkta.`;
+  });
+  const hostPreflight = state.preflight;
+  const stageReady = blockedEntries.length === 0 && selectedEntries.length > 0;
+
   return {
-    status: "idle",
-    missingDependencies: [],
-    warnings: [],
-    estimatedRuntime: null,
-    enabledModules: [],
-    stageReady: false,
-    rawStatus: null,
-    reason: "Ön kontrol henüz host tarafından çalıştırılmadı.",
+    status: stageReady !== true ? "blocked" : warnings.length > 0 ? "warning" : "ready",
+    missingDependencies,
+    warnings:
+      hostPreflight && hostPreflight.warnings.length > 0
+        ? Array.from(new Set(hostPreflight.warnings.concat(warnings)))
+        : warnings,
+    estimatedRuntime:
+      hostPreflight?.estimatedRuntime || Math.max(60, Math.round(selectedEntries.length * 75)),
+    enabledModules: selectedCapabilities.slice(),
+    stageReady,
+    rawStatus: hostPreflight?.rawStatus || null,
+    reason:
+      stageReady !== true
+        ? blockedEntries[0]?.blockReason || "Seçili yetenekler henüz hazır değil."
+        : warnings.length > 0
+          ? "Araç uyarıları var ama işlem başlatılabilir."
+          : null,
   };
 }
 
@@ -211,7 +252,6 @@ export function getFeatureCompatibility(state: LabStoreState) {
         )
       : [featureId];
   const sourceKind = getSourceKind(state);
-  const sourceMode = getSourceMode(state);
   return {
     featureId,
     mediaReady: sourceReady && availableModules.includes("media-analysis"),
@@ -219,9 +259,6 @@ export function getFeatureCompatibility(state: LabStoreState) {
       sourceReady &&
       availableModules.includes("audio-analysis") &&
       (sourceKind === "audio" || sourceKind === "video"),
-    subtitleReady:
-      availableModules.includes("subtitle-analysis") &&
-      (sourceReady || sourceMode === "url" || sourceMode === "youtube"),
   };
 }
 
@@ -235,7 +272,7 @@ export function getStageBlockReason(state: LabStoreState, stage: LabStage): stri
   if (stage === "source") {
     return null;
   }
-  if (stage === "edit" || stage === "profile") {
+  if (stage === "edit") {
     if (Object.keys(source).length === 0) {
       return "Önce kaynak seçilmelidir.";
     }
@@ -294,8 +331,6 @@ export function getPrimaryActionLabel(state: LabStoreState, stage: LabStage) {
       return asNonEmptyString(asLabRecord(edit["preview"])["status"]) === "ready"
         ? "Önizlemeyi Yenile"
         : "Önizleme Üret";
-    case "profile":
-      return "Ön Kontrol Çalıştır";
     case "process":
       return run && run.state === "running" ? "Çalışmayı İptal Et" : "Analizi Başlat";
     case "report":
@@ -399,4 +434,71 @@ export function getActivePreviewArtifact(
 export function getComparisonVariants(state: LabStoreState) {
   const run = getCurrentRun(state);
   return run ? run.comparisonVariants.slice() : [];
+}
+
+export function getSelectedCapabilities(state: LabStoreState): CapabilityFamilyId[] {
+  return state.selectedCapabilities;
+}
+
+export function getAvailableCapabilities(state: LabStoreState) {
+  const sourceKind = getSourceKind(state);
+  const sourceReady = state.source !== null && state.sourceProbeStatus === "completed";
+  const toolState = getToolState(state);
+  const toolRegistry = asLabRecord(toolState["tools"]);
+
+  return CAPABILITY_FAMILIES.map(function (family) {
+    const sourceCompatible = family.sourceKinds.includes(sourceKind as "video" | "audio" | "image");
+    const toolsReady = family.requiredTools.every(function (toolId) {
+      const tool = asLabRecord(toolRegistry[toolId]);
+      return tool["installed"] === true || asNonEmptyString(tool["status"]) === "installed";
+    });
+    const toolsMissing = family.requiredTools.filter(function (toolId) {
+      const tool = asLabRecord(toolRegistry[toolId]);
+      return tool["installed"] !== true && asNonEmptyString(tool["status"]) !== "installed";
+    });
+
+    let readiness: "ready" | "optional" | "blocked" = "ready";
+    let blockReason: string | null = null;
+
+    if (!sourceReady) {
+      readiness = "blocked";
+      blockReason = "Kaynak henüz hazır değil.";
+    } else if (!sourceCompatible) {
+      readiness = "blocked";
+      blockReason = `Bu kaynak türü (${sourceKind}) desteklenmiyor.`;
+    } else if (!toolsReady) {
+      if (toolsMissing.length === family.requiredTools.length) {
+        readiness = "blocked";
+        blockReason = `Eksik araç: ${toolsMissing.join(", ")}`;
+      } else {
+        readiness = "optional";
+        blockReason = `Opsiyonel araç eksik: ${toolsMissing.join(", ")}`;
+      }
+    }
+
+    return {
+      ...family,
+      readiness,
+      blockReason,
+      selected: state.selectedCapabilities.includes(family.id),
+    };
+  });
+}
+
+export function getCapabilityWorkflowSummary(state: LabStoreState) {
+  const selected = getSelectedCapabilities(state);
+  const available = getAvailableCapabilities(state);
+  const selectedFamilies = available.filter(function (entry) {
+    return selected.includes(entry.id);
+  });
+  const readyCount = selectedFamilies.filter(function (entry) {
+    return entry.readiness === "ready";
+  }).length;
+
+  return {
+    familyCount: selectedFamilies.length,
+    readyCount,
+    blockedCount: selectedFamilies.length - readyCount,
+    selectedIds: selected,
+  };
 }

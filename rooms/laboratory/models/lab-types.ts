@@ -2,7 +2,103 @@ import type { AnalysisReference, AnalysisScope } from "../shared/types/analysis-
 
 export type LabRecord = Record<string, unknown>;
 
-export type LabStage = "source" | "edit" | "profile" | "process" | "report";
+export type LabStage = "source" | "edit" | "process" | "report";
+
+/** Capability families — user-facing groups that resolve to internal modules. */
+export type CapabilityFamilyId =
+  | "visual-structure"
+  | "visual-forensics"
+  | "audio-signal"
+  | "audio-recovery"
+  | "transcription"
+  | "speaker-analysis"
+  | "prosody-emotion"
+  | "sound-classification"
+  | "source-separation"
+  | "music-analysis";
+
+export type CapabilityReadiness = "ready" | "optional" | "blocked";
+
+export interface CapabilityFamilyMeta {
+  id: CapabilityFamilyId;
+  label: string;
+  sourceKinds: Array<"video" | "audio" | "image">;
+  primaryTool: string;
+  requiredTools: string[];
+}
+
+export const CAPABILITY_FAMILIES: CapabilityFamilyMeta[] = [
+  {
+    id: "visual-structure",
+    label: "Visual Structure",
+    sourceKinds: ["video"],
+    primaryTool: "ffmpeg",
+    requiredTools: ["ffmpeg"],
+  },
+  {
+    id: "visual-forensics",
+    label: "Visual Forensics",
+    sourceKinds: ["video"],
+    primaryTool: "ffmpeg",
+    requiredTools: ["ffmpeg"],
+  },
+  {
+    id: "audio-signal",
+    label: "Audio Signal",
+    sourceKinds: ["video", "audio"],
+    primaryTool: "ffmpeg",
+    requiredTools: ["ffmpeg"],
+  },
+  {
+    id: "audio-recovery",
+    label: "Audio Recovery",
+    sourceKinds: ["video", "audio"],
+    primaryTool: "ffmpeg",
+    requiredTools: ["ffmpeg"],
+  },
+  {
+    id: "transcription",
+    label: "Transcription",
+    sourceKinds: ["video", "audio"],
+    primaryTool: "whisper.cpp",
+    requiredTools: ["whisper.cpp"],
+  },
+  {
+    id: "speaker-analysis",
+    label: "Speaker Analysis",
+    sourceKinds: ["video", "audio"],
+    primaryTool: "pyaudioanalysis",
+    requiredTools: ["pyaudioanalysis", "ffmpeg"],
+  },
+  {
+    id: "prosody-emotion",
+    label: "Prosody & Emotion",
+    sourceKinds: ["video", "audio"],
+    primaryTool: "opensmile",
+    requiredTools: ["opensmile"],
+  },
+  {
+    id: "sound-classification",
+    label: "Sound Classification",
+    sourceKinds: ["video", "audio"],
+    primaryTool: "yamnet",
+    requiredTools: ["yamnet", "ffmpeg"],
+  },
+  {
+    id: "source-separation",
+    label: "Source Separation",
+    sourceKinds: ["video", "audio"],
+    primaryTool: "demucs",
+    requiredTools: ["demucs", "ffmpeg"],
+  },
+  {
+    id: "music-analysis",
+    label: "Music Analysis",
+    sourceKinds: ["video", "audio"],
+    primaryTool: "librosa",
+    requiredTools: ["librosa", "ffmpeg"],
+  },
+];
 export type LabFeatureId = "media-analysis" | "audio-analysis" | "subtitle-analysis";
 export type LabEventSeverity = "info" | "success" | "warning" | "error";
 export type LabEventScope = "global" | "run";
@@ -19,7 +115,7 @@ export type LabModuleStatus =
 export type LabSourceProbeStatus = "idle" | "running" | "completed" | "failed";
 export type LabPreflightStatus = "idle" | "ready" | "warning" | "blocked";
 
-export const LAB_STAGES: LabStage[] = ["source", "edit", "profile", "process", "report"];
+export const LAB_STAGES: LabStage[] = ["source", "edit", "process", "report"];
 export const LAB_FEATURES: Array<{
   id: LabFeatureId;
   label: string;
@@ -39,10 +135,11 @@ export const LAB_FEATURES: Array<{
     description: "Ses odaklı analiz modülleri ve çıktı takibi.",
   },
   {
+    // NOTE: subtitle-analysis remains legacy-internal only and is no longer user-facing in v2.2.
     id: "subtitle-analysis",
-    label: "Altyazi Analizi",
-    shortLabel: "Altyazi",
-    description: "Altyazı girişi, seçim, analiz ve rapor akışı.",
+    label: "Transcript Support",
+    shortLabel: "Transcript",
+    description: "Timestamped transcript artifact support kept for backward compatibility.",
   },
 ];
 
@@ -272,6 +369,7 @@ export interface LabStoreUiState {
   sourceDraftDirty: boolean;
   editDraftDirty: boolean;
   profileDraftDirty: boolean;
+  /** @deprecated Module manager removed in v2.2 — kept for hydration compat */
   moduleManagerOpen: boolean;
   toolManagerOpen: boolean;
   eventFeedExpanded: boolean;
@@ -283,12 +381,17 @@ export interface LabStoreUiState {
   activePreviewArtifactId: string | null;
   liveFindingsExpanded: boolean;
   analysisControlsCollapsed: boolean;
+  /** Workspace side panel collapsed state (Edit stage) */
+  editSidePanelCollapsed: boolean;
+  /** Raw log section collapsed in Process stage */
+  rawLogCollapsed: boolean;
 }
 
 export interface LabPersistedState {
   schemaVersion?: number;
   currentStage: LabStage;
   featureId: LabFeatureId;
+  selectedCapabilities: CapabilityFamilyId[];
   projectIndex: {
     activeProjectId: string | null;
     projects: LabRecord[];
@@ -316,11 +419,15 @@ export interface LabPersistedState {
   activePreviewArtifactId: string | null;
   liveFindingsExpanded: boolean;
   analysisControlsCollapsed: boolean;
+  editSidePanelCollapsed?: boolean;
+  rawLogCollapsed?: boolean;
 }
 
 export interface LabStoreState {
   currentStage: LabStage;
   featureId: LabFeatureId;
+  /** Selected capability families — replaces module selection in v2.2 */
+  selectedCapabilities: CapabilityFamilyId[];
   bootReady: boolean;
   roomReadySent: boolean;
   context: LabRecord;
@@ -409,9 +516,14 @@ export type LabStoreEvent =
   | { type: "report-view-changed"; view: "user" | "ai" }
   | { type: "preview-artifact-activated"; artifactId: string | null }
   | { type: "live-findings-expanded"; force?: boolean }
-  | { type: "analysis-controls-collapsed"; force?: boolean }
-  | { type: "push-event"; event: LabEventFeedItem }
-  | { type: "clear-events" };
+   | { type: "analysis-controls-collapsed"; force?: boolean }
+   | { type: "capability-select"; capabilityId: CapabilityFamilyId }
+   | { type: "capability-deselect"; capabilityId: CapabilityFamilyId }
+   | { type: "capability-set"; capabilities: CapabilityFamilyId[] }
+   | { type: "edit-side-panel-toggled"; force?: boolean }
+   | { type: "raw-log-toggled"; force?: boolean }
+   | { type: "push-event"; event: LabEventFeedItem }
+   | { type: "clear-events" };
 
 export function createLabFeatureMeta(featureId: LabFeatureId): LabFeatureMeta {
   return (

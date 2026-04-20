@@ -1,19 +1,6 @@
 {
   "schemaVersion": 1,
   "modules": {
-    "format-qc": { "phase": "v1", "status": "ready" },
-    "readability-density": { "phase": "v1", "status": "ready" },
-    "cue-timing-structure": { "phase": "v1", "status": "ready" },
-    "lexical-frequency": { "phase": "v1", "status": "ready" },
-    "batch-summary": { "phase": "v1", "status": "ready" },
-    "logical-consistency-check": { "phase": "v2", "status": "ready" },
-    "contradiction-detection": { "phase": "v2", "status": "ready" },
-    "narrative-drift": { "phase": "v2", "status": "ready" },
-    "repetition-structure": { "phase": "v2", "status": "ready" },
-    "semantic-coherence": { "phase": "v2", "status": "ready" },
-    "archive-to-ai-payload": { "phase": "v2", "status": "ready" },
-    "channel-batch-analysis": { "phase": "v2", "status": "ready" },
-    "entities-keyphrases": { "phase": "v2", "status": "planned" },
-    "semantic-search": { "phase": "v2", "status": "planned" }
+    "transcript-support": { "phase": "v2.2", "status": "ready" }
   }
 }

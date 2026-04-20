@@ -9,7 +9,6 @@ import { renderLabLeftRail } from "./lab-left-rail.js";
 import { renderLabRightPanel } from "./lab-right-panel.js";
 import { renderEditStage } from "./stages/edit-stage.js";
 import { renderProcessStage } from "./stages/process-stage.js";
-import { renderProfileStage } from "./stages/profile-stage.js";
 import { renderReportStage } from "./stages/report-stage.js";
 import { renderSourceStage } from "./stages/source-stage.js";
 import { createLabRunController } from "../runtime/lab-run-controller.js";
@@ -59,9 +58,11 @@ function readPersistableState(state: LabStoreState) {
     currentStage: state.currentStage,
     editDrafts: state.ui.editDrafts,
     editConfig: state.editConfig,
+    editSidePanelCollapsed: state.ui.editSidePanelCollapsed,
     eventFeedExpanded: state.ui.eventFeedExpanded,
     eventFeedCursor: state.ui.eventFeedCursor,
     featureId: state.featureId,
+    selectedCapabilities: state.selectedCapabilities,
     lastRun: state.run
       ? {
           ...state.run,
@@ -86,6 +87,7 @@ function readPersistableState(state: LabStoreState) {
     sourceProbeStatus: state.sourceProbeStatus,
     toolState: state.toolState,
     liveFindingsExpanded: state.ui.liveFindingsExpanded,
+    rawLogCollapsed: state.ui.rawLogCollapsed,
     workbench: state.workbench,
   };
 }
@@ -126,13 +128,6 @@ export function startLaboratoryLabRoot() {
         });
       case "edit":
         return renderEditStage({
-          primaryDetail: primaryAction.detail,
-          primaryDisabled: primaryAction.disabled,
-          primaryLabel: primaryAction.label,
-          state,
-        });
-      case "profile":
-        return renderProfileStage({
           primaryDetail: primaryAction.detail,
           primaryDisabled: primaryAction.disabled,
           primaryLabel: primaryAction.label,

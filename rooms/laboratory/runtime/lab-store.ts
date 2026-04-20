@@ -28,6 +28,7 @@ import type {
   LabStoreEvent,
   LabStoreState,
   LabUserReport,
+  CapabilityFamilyId,
 } from "../models/lab-types.js";
 import { normalizeLabPreflight } from "../services/preflight-service.js";
 import {
@@ -72,6 +73,7 @@ function createInitialState(): LabStoreState {
   return {
     currentStage: "source",
     featureId: "media-analysis",
+    selectedCapabilities: [],
     bootReady: false,
     roomReadySent: false,
     context: {},
@@ -121,6 +123,8 @@ function createInitialState(): LabStoreState {
       activePreviewArtifactId: null,
       liveFindingsExpanded: true,
       analysisControlsCollapsed: true,
+      editSidePanelCollapsed: false,
+      rawLogCollapsed: true,
     },
   };
 }
@@ -1110,6 +1114,11 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         state.persisted = event.payload as LabPersistedState;
         state.currentStage = normalizeLabStage(event.payload.currentStage, state.currentStage);
         state.featureId = normalizeLabFeatureId(event.payload.featureId, state.featureId);
+        state.selectedCapabilities = Array.isArray(event.payload.selectedCapabilities)
+          ? (event.payload.selectedCapabilities as unknown[]).filter(
+              (entry): entry is CapabilityFamilyId => typeof entry === "string"
+            )
+          : [];
         if (event.payload.projectIndex) {
           state.projectIndex = event.payload.projectIndex;
           state.ui.lastHydratedProjectId = event.payload.projectIndex.activeProjectId;
@@ -1159,6 +1168,8 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         state.ui.activePreviewArtifactId = event.payload.activePreviewArtifactId || null;
         state.ui.liveFindingsExpanded = event.payload.liveFindingsExpanded !== false;
         state.ui.analysisControlsCollapsed = event.payload.analysisControlsCollapsed === true;
+        state.ui.editSidePanelCollapsed = event.payload.editSidePanelCollapsed === true;
+        state.ui.rawLogCollapsed = event.payload.rawLogCollapsed !== false;
         state.bootReady =
           state.bootReady ||
           state.source !== null ||
@@ -1448,6 +1459,30 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         ...state.workbench,
         controlsCollapsed: state.ui.analysisControlsCollapsed,
       };
+      return state;
+    case "capability-select": {
+      const nextCaps = state.selectedCapabilities.includes(event.capabilityId)
+        ? state.selectedCapabilities
+        : state.selectedCapabilities.concat(event.capabilityId);
+      state.selectedCapabilities = nextCaps;
+      return state;
+    }
+    case "capability-deselect": {
+      state.selectedCapabilities = state.selectedCapabilities.filter(function (entry) {
+        return entry !== event.capabilityId;
+      });
+      return state;
+    }
+    case "capability-set":
+      state.selectedCapabilities = event.capabilities.slice();
+      return state;
+    case "edit-side-panel-toggled":
+      state.ui.editSidePanelCollapsed =
+        typeof event.force === "boolean" ? event.force : !state.ui.editSidePanelCollapsed;
+      return state;
+    case "raw-log-toggled":
+      state.ui.rawLogCollapsed =
+        typeof event.force === "boolean" ? event.force : !state.ui.rawLogCollapsed;
       return state;
     case "push-event":
       routeFeedEvent(state, event.event);

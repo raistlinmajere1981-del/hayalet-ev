@@ -67,11 +67,16 @@ function migratePersistedState(
     ...persisted,
     schemaVersion: 4,
     activityFeed: Array.isArray(persisted.activityFeed) ? persisted.activityFeed : [],
+    selectedCapabilities: Array.isArray(persisted.selectedCapabilities)
+      ? persisted.selectedCapabilities
+      : [],
     activePreviewArtifactId:
       typeof persisted.activePreviewArtifactId === "string"
         ? persisted.activePreviewArtifactId
         : null,
     liveFindingsExpanded: persisted.liveFindingsExpanded !== false,
     analysisControlsCollapsed: persisted.analysisControlsCollapsed === true,
+    editSidePanelCollapsed: persisted.editSidePanelCollapsed === true,
+    rawLogCollapsed: persisted.rawLogCollapsed !== false,
   };
 }

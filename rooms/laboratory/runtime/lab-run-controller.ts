@@ -3,10 +3,8 @@ import type { LabFeatureId, LabStage } from "../models/lab-types.js";
 import {
   canAdvanceToStage,
   getActiveEditOutput,
-  getCurrentPreflight,
   getCurrentRun,
   getStageBlockReason,
-  getSnapshot,
   getSourceMode,
   getSourceProbeStatus,
   getSourceStatus,
@@ -75,6 +73,26 @@ function toDraftScope(workbench: Record<string, unknown>): Record<string, unknow
       processId: null,
       frozenAt: null,
     },
+  };
+}
+
+function getFeatureIdForCapability(capabilityId: string): LabFeatureId {
+  return capabilityId === "visual-structure" || capabilityId === "visual-forensics"
+    ? "media-analysis"
+    : "audio-analysis";
+}
+
+function deriveFeatureSelectionFromCapabilities(capabilityIds: string[]) {
+  const featureIds = Array.from(
+    new Set(
+      capabilityIds.map(function (capabilityId) {
+        return getFeatureIdForCapability(capabilityId);
+      })
+    )
+  );
+  return {
+    activeFeatureId: (featureIds[0] || "media-analysis") as LabFeatureId,
+    featureIds,
   };
 }
 
@@ -335,40 +353,41 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     });
   }
 
+  function syncCapabilities(nextCapabilities: string[]) {
+    const normalizedCapabilities = Array.from(
+      new Set(
+        nextCapabilities.filter(function (entry) {
+          return entry.trim() !== "";
+        })
+      )
+    );
+    const { activeFeatureId, featureIds } = deriveFeatureSelectionFromCapabilities(
+      normalizedCapabilities
+    );
+    dispatch({
+      type: "capability-set",
+      capabilities: normalizedCapabilities as import("../models/lab-types.js").CapabilityFamilyId[],
+    });
+    dispatch({
+      type: "feature-changed",
+      featureId: activeFeatureId,
+    });
+    updateWorkbench(function (workbench) {
+      return {
+        ...workbench,
+        activeModuleId: activeFeatureId,
+        selectedModuleIds: featureIds,
+        selectedCapabilityIds: normalizedCapabilities,
+      };
+    });
+  }
+
   function runSourcePrimaryAction() {
     const state = deps.store.getState();
-    const featureId = state.featureId;
     const sourceDrafts = state.ui.sourceDrafts;
 
     function startProbe(action: string, payload: Record<string, unknown>) {
       sendMediaAction(action, payload);
-    }
-
-    if (featureId === "subtitle-analysis") {
-      const activeProject = asLabRecord(getSnapshot(state)["activeProject"]);
-      const subtitleWorkspace = asLabRecord(
-        asLabRecord(activeProject["subtitleAnalysis"])["workspace"]
-      );
-      const subtitleMode = asNonEmptyString(subtitleWorkspace["mode"]) || "local-file";
-      const fields = {
-        fileNameHint: sourceDrafts.fileNameHint,
-        urlInput: sourceDrafts.urlInput,
-        youtubeUrl: sourceDrafts.youtubeUrl,
-      };
-      if (subtitleMode === "local-folder") {
-        startProbe("subtitle-source-pick-folder", { fields });
-        return;
-      }
-      if (subtitleMode === "url") {
-        startProbe("subtitle-source-download-url", { fields });
-        return;
-      }
-      if (subtitleMode.startsWith("youtube-")) {
-        startProbe("subtitle-source-download-youtube", { fields });
-        return;
-      }
-      startProbe("subtitle-source-pick-local", { fields });
-      return;
     }
 
     const mode = getSourceMode(state);
@@ -396,12 +415,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         runSourcePrimaryAction();
         return;
       case "edit":
-        sendMediaAction(
-          state.featureId === "subtitle-analysis" ? "subtitle-edit-preview" : "edit-preview"
-        );
-        return;
-      case "profile":
-        sendMediaAction("profile-run-preflight");
+        sendMediaAction("edit-preview");
         return;
       case "process": {
         const run = getCurrentRun(state);
@@ -481,6 +495,31 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "feature-toggle":
         toggleFeature(value);
         return;
+      case "capability-select":
+        syncCapabilities(
+          deps.store.getState().selectedCapabilities.concat(
+            value as import("../models/lab-types.js").CapabilityFamilyId
+          )
+        );
+        return;
+      case "capability-deselect":
+        syncCapabilities(
+          deps.store.getState().selectedCapabilities.filter(function (entry) {
+            return entry !== value;
+          })
+        );
+        return;
+      case "capability-toggle": {
+        const caps = deps.store.getState().selectedCapabilities;
+        syncCapabilities(
+          caps.includes(value as import("../models/lab-types.js").CapabilityFamilyId)
+            ? caps.filter(function (entry) {
+                return entry !== value;
+              })
+            : caps.concat(value as import("../models/lab-types.js").CapabilityFamilyId)
+        );
+        return;
+      }
       case "module-toggle":
         toggleModule(value);
         return;
@@ -514,6 +553,12 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "toggle-analysis-controls":
         dispatch({ type: "analysis-controls-collapsed" });
         return;
+      case "toggle-edit-side-panel":
+        dispatch({ type: "edit-side-panel-toggled" });
+        return;
+      case "toggle-raw-log":
+        dispatch({ type: "raw-log-toggled" });
+        return;
       case "show-more-artifacts":
         dispatch({ type: "show-more-artifacts" });
         return;
@@ -521,6 +566,40 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         dispatch({
           type: "preview-artifact-activated",
           artifactId: value.trim() !== "" ? value : null,
+        });
+        return;
+      case "new-run-from-report": {
+        const run = getCurrentRun(state);
+        if (run?.analysisScope) {
+          updateWorkbench(function (workbench) {
+            return {
+              ...workbench,
+              forkedFromRunId: run.id,
+              analysisScope: {
+                ...run.analysisScope,
+                lifecycle: {
+                  mutable: true,
+                  processId: null,
+                  frozenAt: null,
+                },
+              },
+            };
+          });
+        }
+        dispatch({ type: "preview-artifact-activated", artifactId: null });
+        dispatch({ type: "stage-changed", stage: "edit" });
+        return;
+      }
+      case "save-project":
+        updateWorkbench(function (workbench) {
+          return {
+            ...workbench,
+            lastManualSaveAt: new Date().toISOString(),
+          };
+        });
+        dispatch({
+          type: "push-event",
+          event: buildUiEvent("Proje mevcut checkpoint durumu ile kaydedildi.", "success"),
         });
         return;
       default:
@@ -643,25 +722,17 @@ export function createLabRunController(deps: LabRunControllerDeps) {
             mode: targetValue,
           },
         });
-        sendMediaAction(
-          state.featureId === "subtitle-analysis" ? "subtitle-source-set-mode" : "source-set-mode",
-          { mode: targetValue }
-        );
+        sendMediaAction("source-set-mode", { mode: targetValue });
         return;
       case "source.fileNameHint":
       case "source.urlInput":
       case "source.youtubeUrl":
-        sendMediaAction(
-          state.featureId === "subtitle-analysis"
-            ? "subtitle-source-update-drafts"
-            : "source-update-draft",
-          {
-            fields: {
-              ...state.ui.sourceDrafts,
-              [field.replace("source.", "")]: targetValue,
-            },
-          }
-        );
+        sendMediaAction("source-update-draft", {
+          fields: {
+            ...state.ui.sourceDrafts,
+            [field.replace("source.", "")]: targetValue,
+          },
+        });
         return;
       case "edit.outputNameHint":
         sendMediaAction("edit-update-recipe", {
@@ -792,19 +863,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           disabled: blockReason !== null,
           detail: blockReason || "Preview completion fake edilemez",
           label: "Önizleme Üret",
-        };
-      }
-      case "profile": {
-        const preflight = getCurrentPreflight(state);
-        const blockReason = getStageBlockReason(state, "profile");
-        return {
-          disabled: blockReason !== null,
-          detail:
-            blockReason ||
-            (preflight.status === "blocked"
-              ? "Bloklayıcı dependency mevcut"
-              : "Preflight gerçek readiness üretir"),
-          label: "Ön Kontrol Çalıştır",
         };
       }
       case "process": {

@@ -1,12 +1,17 @@
-import { escapeHtml } from "../../models/lab-types.js";
+import { asLabRecord, escapeHtml, formatDurationSeconds } from "../../models/lab-types.js";
 import type { LabStageSurface, LabStoreState } from "../../models/lab-types.js";
 import {
-  getActiveEditOutput,
-  getEditOutputs,
+  getCurrentPreflight,
   getEditPreview,
   getProjectEdit,
+  getProjectSource,
+  getSelectedProfileModel,
+  getSourceKind,
+  getSourceMetadata,
   getSourceProbeStatus,
+  getProcessAnalysisScope,
 } from "../../runtime/lab-selectors.js";
+import { renderAnalysisScopeSummary } from "../components/analysis-scope-summary.js";
 import { renderCompactCard } from "../components/compact-card.js";
 import { renderEmptyState } from "../components/empty-state.js";
 import { renderPrimaryCTA } from "../components/primary-cta.js";
@@ -20,199 +25,297 @@ type EditStageRenderDeps = {
   state: LabStoreState;
 };
 
-function getEditAdvancedControlsVisible(editMode: string, advancedOpen: boolean) {
-  return editMode === "advanced" || advancedOpen;
+function getInputValue(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? String(value) : "";
 }
 
-function getActiveOutputLabel(activeOutput: ReturnType<typeof getActiveEditOutput>) {
-  if (!activeOutput) {
-    return "source";
+function getPreviewMedia(sourceKind: string, previewUrl: string | null) {
+  if (!previewUrl) {
+    return `
+      <div class="labx-empty-state">
+        <strong class="labx-empty-state__title">Aktif yüzey yok</strong>
+        <p class="labx-empty-state__description">Kaynak veya türetilmiş önizleme hazır olduğunda burada görünür.</p>
+      </div>
+    `;
   }
-  const fileName = typeof activeOutput["fileName"] === "string" ? activeOutput["fileName"] : null;
-  const outputId = typeof activeOutput["id"] === "string" ? activeOutput["id"] : null;
-  return fileName || outputId || "derived";
+  if (sourceKind === "image") {
+    return `<img class="labx-preview-media labx-preview-media--image" src="${escapeHtml(previewUrl)}" alt="Edit preview" />`;
+  }
+  if (sourceKind === "audio") {
+    return `<audio class="labx-preview-media labx-preview-media--audio" src="${escapeHtml(previewUrl)}" controls preload="metadata"></audio>`;
+  }
+  return `<video class="labx-preview-media labx-preview-media--video" src="${escapeHtml(previewUrl)}" controls preload="metadata" playsinline></video>`;
 }
 
 export function renderEditStage(deps: EditStageRenderDeps): LabStageSurface {
+  const sourceReady = getSourceProbeStatus(deps.state) === "completed";
+  const source = getProjectSource(deps.state);
   const editConfig = getProjectEdit(deps.state);
   const preview = getEditPreview(deps.state);
-  const outputs = getEditOutputs(deps.state);
-  const activeOutput = getActiveEditOutput(deps.state);
-  const sourceReady = getSourceProbeStatus(deps.state) === "completed";
+  const metadata = getSourceMetadata(deps.state);
+  const sourceKind = getSourceKind(deps.state);
+  const scope = getProcessAnalysisScope(deps.state);
+  const preflight = getCurrentPreflight(deps.state);
+  const selectedModel = getSelectedProfileModel(deps.state);
   const drafts = deps.state.ui.editDrafts;
-  const editMode = typeof editConfig["mode"] === "string" ? editConfig["mode"] : "beginner";
-  const handoffMode =
-    typeof editConfig["handoffMode"] === "string" ? editConfig["handoffMode"] : "source";
+  const profileDrafts = deps.state.ui.profileDrafts;
   const previewStatus = typeof preview["status"] === "string" ? preview["status"] : "idle";
-  const advancedControlsVisible = getEditAdvancedControlsVisible(editMode, drafts.advancedOpen);
-  const activeOutputLabel = getActiveOutputLabel(activeOutput);
+  const previewUrl =
+    (typeof preview["previewUrl"] === "string" ? preview["previewUrl"] : null) ||
+    (typeof preview["path"] === "string" ? preview["path"] : null) ||
+    (typeof source["previewUrl"] === "string" ? source["previewUrl"] : null);
+  const editRecipe = asLabRecord(editConfig["recipe"]);
+  const commonRecipe = asLabRecord(editRecipe["common"]);
+  const isAudioSource = sourceKind === "audio";
+  const isVisualSource = sourceKind === "video" || sourceKind === "image";
 
   const main = `
     ${renderStageHeader({
-      eyebrow: "Stage 02 · Edit",
+      eyebrow: "Aşama 02 · Düzenle",
       stageIndex: 2,
-      stageTotal: 5,
+      stageTotal: 4,
       statusLabel: previewStatus,
       statusTone:
         previewStatus === "ready" ? "success" : previewStatus === "failed" ? "error" : "neutral",
       subtitle:
-        "Çekirdek kontrolleri öne al. Preview gerçeği dışında hiçbir şeyi tamamlandı gibi gösterme.",
-      title: "Düzene",
+        isAudioSource
+          ? "Çalışma yüzeyi burada hazırlanır. Zaman aralığı, odak ve transcript destek kapsamı burada belirlenir."
+          : "Çalışma yüzeyi burada hazırlanır. Zaman aralığı, frame aralığı, bölge seçimi ve düşük maliyetli önizleme ayarları burada belirlenir.",
+      title: "Edit Workspace",
     })}
     ${
       sourceReady !== true
         ? renderEmptyState({
             title: "Kaynak hazır değil",
-            description: "Önce source stage içinde gerçek bir kaynak probe tamamlanmalı.",
-            hint: "Edit preview aksiyonu kaynak olmadan açılmaz.",
+            description: "Önce kaynak probe tamamlanmalı.",
+            hint: "Kaynak aşamasında gerçek bir medya girdisi hazır olduğunda çalışma alanı açılır.",
           })
         : `
-          <div class="labx-grid labx-grid--edit">
-            ${renderCompactCard({
-              eyebrow: "Operator Mode",
-              title: "Operatör Modu",
-              body: `
-                <div class="labx-chip-row">
-                  ${["beginner", "advanced"]
-                    .map(function (entry) {
-                      return `
-                        <button
-                          class="labx-chip-button"
-                          type="button"
-                          data-lab-action="edit-mode"
-                          data-lab-value="${entry}"
-                          data-selected="${entry === editMode ? "true" : "false"}"
-                        >
-                          ${escapeHtml(entry)}
-                        </button>
-                      `;
+          <section class="labx-workspace-stage">
+            <div class="labx-workspace-stage__surface">
+              <div class="labx-preview-frame labx-preview-frame--workspace">
+                ${getPreviewMedia(sourceKind, previewUrl)}
+              </div>
+              <div class="labx-workspace-strip">
+                <div class="labx-workspace-strip__row">
+                  <label class="labx-field">
+                    <span>Zaman Başlangıcı (ms)</span>
+                    <input class="labx-input" type="number" min="0" data-lab-field="scope.timeStartMs" value="${escapeHtml(getInputValue(scope?.timeRange?.startMs))}" />
+                  </label>
+                  <label class="labx-field">
+                    <span>Zaman Bitişi (ms)</span>
+                    <input class="labx-input" type="number" min="0" data-lab-field="scope.timeEndMs" value="${escapeHtml(getInputValue(scope?.timeRange?.endMs))}" />
+                  </label>
+                  <label class="labx-field">
+                    <span>Odak</span>
+                    <select class="labx-select" data-lab-field="scope.focus">
+                      ${["visual", "audio", "cross-modal"]
+                        .map(function (entry) {
+                          return `<option value="${entry}" ${(scope?.focus || "visual") === entry ? "selected" : ""}>${escapeHtml(entry)}</option>`;
+                        })
+                        .join("")}
+                    </select>
+                  </label>
+                </div>
+                <div class="labx-workspace-strip__row">
+                  ${
+                    isVisualSource
+                      ? `
+                        <label class="labx-field">
+                          <span>Frame Başlangıcı</span>
+                          <input class="labx-input" type="number" min="0" data-lab-field="scope.frameStart" value="${escapeHtml(getInputValue(scope?.frameRange?.startFrame))}" />
+                        </label>
+                        <label class="labx-field">
+                          <span>Frame Bitişi</span>
+                          <input class="labx-input" type="number" min="0" data-lab-field="scope.frameEnd" value="${escapeHtml(getInputValue(scope?.frameRange?.endFrame))}" />
+                        </label>
+                      `
+                      : `
+                        <div class="labx-summary-list">
+                          <div><span>Transcript</span><strong>Support artifact</strong></div>
+                          <div><span>Search</span><strong>Selected ranges</strong></div>
+                        </div>
+                      `
+                  }
+                  <label class="labx-field">
+                    <span>Not / Hipotez</span>
+                    <input class="labx-input" data-lab-field="scope.hypothesis" value="${escapeHtml(scope?.hypothesis || "")}" placeholder="check splice around 01:30" />
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="labx-workspace-stage__tools">
+              ${
+                isVisualSource
+                  ? renderCompactCard({
+                      eyebrow: "Frame / ROI",
+                      title: "Kapsam Hazırlığı",
+                      body: `
+                        <div class="labx-inline-grid">
+                          <label class="labx-field">
+                            <span>ROI X</span>
+                            <input class="labx-input" type="number" min="0" data-lab-field="scope.regionX" value="${escapeHtml(getInputValue(scope?.region?.x))}" />
+                          </label>
+                          <label class="labx-field">
+                            <span>ROI Y</span>
+                            <input class="labx-input" type="number" min="0" data-lab-field="scope.regionY" value="${escapeHtml(getInputValue(scope?.region?.y))}" />
+                          </label>
+                          <label class="labx-field">
+                            <span>ROI Genişlik</span>
+                            <input class="labx-input" type="number" min="1" data-lab-field="scope.regionWidth" value="${escapeHtml(getInputValue(scope?.region?.width))}" />
+                          </label>
+                          <label class="labx-field">
+                            <span>ROI Yükseklik</span>
+                            <input class="labx-input" type="number" min="1" data-lab-field="scope.regionHeight" value="${escapeHtml(getInputValue(scope?.region?.height))}" />
+                          </label>
+                        </div>
+                        <p class="labx-panel-hint">Bu değerler process başladığında freeze edilir. Sonradan değişirse yeni run oluşmalıdır.</p>
+                      `,
                     })
-                    .join("")}
-                </div>
-                <label class="labx-field">
-                  <span>Output Alias</span>
-                  <input class="labx-input" data-lab-field="edit.outputNameHint" value="${escapeHtml(drafts.outputNameHint)}" placeholder="edit-pass-a" />
-                </label>
-                <label class="labx-field">
-                  <span>Notes</span>
-                  <textarea class="labx-textarea" data-lab-field="edit.notes" placeholder="Operator notes">${escapeHtml(drafts.notes)}</textarea>
-                </label>
-              `,
-            })}
-            ${renderCompactCard({
-              eyebrow: "Source Ref",
-              title: "Aktif Handoff",
-              body: `
-                <div class="labx-summary-list">
-                  <div><span>Handoff</span><strong>${escapeHtml(handoffMode)}</strong></div>
-                  <div><span>Preview Ref</span><strong>${escapeHtml(drafts.activeSourceRef)}</strong></div>
-                  <div><span>Aktif Output</span><strong>${escapeHtml(activeOutputLabel)}</strong></div>
-                </div>
-                ${
-                  advancedControlsVisible
-                    ? `
-                      <div class="labx-inline-grid">
-                        <label class="labx-field">
-                          <span>Handoff</span>
-                          <select class="labx-select" data-lab-field="edit.handoffMode">
-                            ${["source", "derived"]
-                              .map(function (entry) {
-                                return `<option value="${entry}" ${entry === handoffMode ? "selected" : ""}>${escapeHtml(entry)}</option>`;
-                              })
-                              .join("")}
-                          </select>
-                        </label>
-                        <label class="labx-field">
-                          <span>Preview Referansı</span>
-                          <select class="labx-select" data-lab-field="edit.activeSourceRef">
-                            ${["original", "preview"]
-                              .map(function (entry) {
-                                return `<option value="${entry}" ${entry === drafts.activeSourceRef ? "selected" : ""}>${escapeHtml(entry)}</option>`;
-                              })
-                              .join("")}
-                          </select>
-                        </label>
-                      </div>
-                      <div class="labx-list-stack">
-                        ${
-                          outputs.length > 0
-                            ? outputs
-                                .map(function (output) {
-                                  const outputId =
-                                    typeof output["id"] === "string" ? output["id"] : "";
-                                  return `
-                                    <label class="labx-choice-row">
-                                      <input type="radio" name="edit-output" data-lab-field="edit.activeOutputId" value="${escapeHtml(outputId)}" ${activeOutput === output ? "checked" : ""} />
-                                      <span>${escapeHtml(
-                                        typeof output["fileName"] === "string"
-                                          ? output["fileName"]
-                                          : outputId
-                                      )}</span>
-                                    </label>
-                                  `;
-                                })
-                                .join("")
-                            : `<p class="labx-panel-hint">Henüz derived output üretilmedi.</p>`
-                        }
-                      </div>
-                    `
-                    : `<p class="labx-panel-hint">Gelişmiş görünümü açarak handoff ve output seçimlerini düzenleyin.</p>`
-                }
-              `,
-              footer: renderPrimaryCTA({
-                action: "primary-action",
-                detail: deps.primaryDetail || null,
-                disabled: deps.primaryDisabled,
-                label: deps.primaryLabel,
-              }),
-            })}
-          </div>
+                  : renderCompactCard({
+                      eyebrow: "Audio Range",
+                      title: "Ses Kapsamı",
+                      body: `
+                        <div class="labx-summary-list">
+                          <div><span>Odak</span><strong>${escapeHtml(scope?.focus || "audio")}</strong></div>
+                          <div><span>Zaman Penceresi</span><strong>${escapeHtml(scope?.timeRange ? `${Math.round(scope.timeRange.startMs / 1000)}s - ${Math.round(scope.timeRange.endMs / 1000)}s` : "--")}</strong></div>
+                          <div><span>Transcript</span><strong>Timestamped support</strong></div>
+                        </div>
+                      `,
+                    })
+              }
+              ${
+                isVisualSource
+                  ? renderCompactCard({
+                      eyebrow: "Visual Controls",
+                      title: "Gerçek Zamanlı Hafif Ayarlar",
+                      body: `
+                        <div class="labx-summary-list">
+                          <div><span>Brightness</span><strong>${escapeHtml(String(commonRecipe["brightness"] ?? "default"))}</strong></div>
+                          <div><span>Contrast</span><strong>${escapeHtml(String(commonRecipe["contrast"] ?? "default"))}</strong></div>
+                          <div><span>Gamma</span><strong>${escapeHtml(String(commonRecipe["gamma"] ?? "default"))}</strong></div>
+                        </div>
+                        <p class="labx-panel-hint">Bu yüzey düşük maliyetli görsel kontroller için ayrılmıştır. Ağır dönüşümler process içinde job olarak çalışır.</p>
+                      `,
+                    })
+                  : ""
+              }
+              ${renderCompactCard({
+                eyebrow: "Audio Focus",
+                title: "Ses Odağı",
+                body: `
+                  <div class="labx-summary-list">
+                    <div><span>Kaynak Süresi</span><strong>${escapeHtml(formatDurationSeconds(metadata["durationSeconds"]))}</strong></div>
+                    <div><span>Seçili Odak</span><strong>${escapeHtml(scope?.focus || "visual")}</strong></div>
+                    <div><span>Zaman Penceresi</span><strong>${escapeHtml(scope?.timeRange ? `${Math.round(scope.timeRange.startMs / 1000)}s - ${Math.round(scope.timeRange.endMs / 1000)}s` : "--")}</strong></div>
+                  </div>
+                `,
+              })}
+            </div>
+          </section>
         `
     }
   `;
 
   const side = [
     renderCompactCard({
-      eyebrow: "Preview",
-      title: "Kaydedilmiş Önizleme",
-      body:
-        previewStatus === "ready"
-          ? `
-            <div class="labx-summary-list">
-              <div><span>Durum</span>${renderStatusChip("ready", "success")}</div>
-              <div><span>Dosya</span><strong>${escapeHtml(
-                typeof preview["fileName"] === "string" ? preview["fileName"] : "--"
-              )}</strong></div>
-              <div><span>Path</span><strong>${escapeHtml(
-                typeof preview["path"] === "string" ? preview["path"] : "--"
-              )}</strong></div>
-            </div>
-          `
-          : renderEmptyState({
-              title: "Preview yok",
-              description: "Edit stage gerçek preview üretmeden derived kaynağa geçmez.",
-              hint: "Primary CTA preview job başlatır.",
-            }),
+      eyebrow: "Scope Snapshot",
+      title: "Hazırlanan Kapsam",
+      body: renderAnalysisScopeSummary(scope, null),
     }),
     renderCompactCard({
-      eyebrow: "Advanced",
-      title: "İleri Kontroller",
+      eyebrow: "Run Configuration",
+      title: "Çalıştırma Ayarları",
       body: `
-        <label class="labx-choice-row">
-          <input type="checkbox" data-lab-field="edit.advancedOpen" ${drafts.advancedOpen ? "checked" : ""} />
-          <span>Advanced section açık</span>
-        </label>
-        <p class="labx-panel-hint">${
-          advancedControlsVisible
-            ? "Handoff, preview referansı ve output seçimleri görünür durumda."
-            : "İleri kontroller kapalı. İlk ekranda yalnız çekirdek kontroller görünür."
-        }</p>
+        <div class="labx-inline-actions">
+          <button class="labx-inline-action" type="button" data-lab-action="toggle-edit-side-panel">
+            ${deps.state.ui.editSidePanelCollapsed ? "Paneli Aç" : "Paneli Daralt"}
+          </button>
+        </div>
         ${
-          editMode === "advanced"
-            ? `<p class="labx-panel-hint">Operatör modu advanced seçildiği için gelişmiş bölüm açık tutulur.</p>`
-            : ""
+          deps.state.ui.editSidePanelCollapsed
+            ? `<p class="labx-panel-hint">Run configuration şu an gizli.</p>`
+            : `
+              <div class="labx-list-stack">
+                <label class="labx-field">
+                  <span>Depth</span>
+                  <select class="labx-select" data-lab-field="profile.depth">
+                    ${["balanced", "fast", "deep"]
+                      .map(function (entry) {
+                        return `<option value="${entry}" ${profileDrafts.depth === entry ? "selected" : ""}>${escapeHtml(entry)}</option>`;
+                      })
+                      .join("")}
+                  </select>
+                </label>
+                <label class="labx-field">
+                  <span>Frame Density</span>
+                  <select class="labx-select" data-lab-field="profile.frameSampleDensity">
+                    ${["balanced", "sparse", "dense"]
+                      .map(function (entry) {
+                        return `<option value="${entry}" ${profileDrafts.frameSampleDensity === entry ? "selected" : ""}>${escapeHtml(entry)}</option>`;
+                      })
+                      .join("")}
+                  </select>
+                </label>
+                <label class="labx-field">
+                  <span>Sensitivity</span>
+                  <input class="labx-input" type="number" min="0.1" max="1" step="0.05" data-lab-field="profile.sensitivity" value="${escapeHtml(String(profileDrafts.sensitivity ?? ""))}" />
+                </label>
+                <label class="labx-field">
+                  <span>Transcript Sample (sn)</span>
+                  <input class="labx-input" type="number" min="5" max="600" data-lab-field="profile.transcriptSampleSeconds" value="${escapeHtml(String(profileDrafts.transcriptSampleSeconds ?? ""))}" />
+                </label>
+                <label class="labx-field">
+                  <span>Model</span>
+                  <select class="labx-select" data-lab-field="profile.modelId">
+                    <option value="">Varsayılan</option>
+                    ${deps.state.profileModels
+                      .map(function (entry) {
+                        const record = asLabRecord(entry);
+                        const id = typeof record["id"] === "string" ? record["id"] : "";
+                        const label = typeof record["label"] === "string" ? record["label"] : id;
+                        return `<option value="${escapeHtml(id)}" ${selectedModel && selectedModel["id"] === id ? "selected" : ""}>${escapeHtml(label)}</option>`;
+                      })
+                      .join("")}
+                  </select>
+                </label>
+              </div>
+            `
         }
       `,
+    }),
+    renderCompactCard({
+      eyebrow: "Edit Output",
+      title: "Uygulanan Ayarlar",
+      body: `
+        <div class="labx-summary-list">
+          <div><span>Output Alias</span><strong>${escapeHtml(drafts.outputNameHint || "--")}</strong></div>
+          <div><span>Notes</span><strong>${escapeHtml(drafts.notes || "--")}</strong></div>
+          <div><span>Preview</span>${renderStatusChip(previewStatus, previewStatus === "ready" ? "success" : "neutral")}</div>
+        </div>
+      `,
+      footer: renderPrimaryCTA({
+        action: "primary-action",
+        detail: deps.primaryDetail || null,
+        disabled: deps.primaryDisabled,
+        label: deps.primaryLabel,
+      }),
+    }),
+    renderCompactCard({
+      eyebrow: "Preflight",
+      title: "Hazırlık Özeti",
+      body: `
+        <div class="labx-summary-list">
+          <div><span>Durum</span>${renderStatusChip(preflight.status, preflight.status === "ready" ? "success" : preflight.status === "warning" ? "warning" : "error")}</div>
+          <div><span>Yetenek</span><strong>${escapeHtml(String(preflight.enabledModules.length))}</strong></div>
+          <div><span>Tahmini Süre</span><strong>${escapeHtml(formatDurationSeconds(preflight.estimatedRuntime))}</strong></div>
+        </div>
+        ${preflight.reason ? `<p class="labx-panel-hint">${escapeHtml(preflight.reason)}</p>` : ""}
+        ${preflight.warnings.length > 0 ? `<p class="labx-panel-hint">${escapeHtml(preflight.warnings.join(" | "))}</p>` : ""}
+      `,
+      footer: preflight.stageReady
+        ? `<button class="labx-inline-action" type="button" data-lab-stage="process">İşlem Aşamasına Geç</button>`
+        : null,
     }),
   ].join("");
 

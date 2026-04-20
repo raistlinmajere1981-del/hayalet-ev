@@ -1,34 +1,27 @@
-import { createLabFeatureMeta, escapeHtml, LAB_STAGES } from "../models/lab-types.js";
-import type { LabFeatureId, LabStoreState } from "../models/lab-types.js";
+import { escapeHtml, LAB_STAGES } from "../models/lab-types.js";
+import type { LabStoreState } from "../models/lab-types.js";
 import {
   canAdvanceToStage,
-  getCurrentFeatureMeta,
   getStageBlockReason,
-  getWorkbench,
+  getCapabilityWorkflowSummary,
 } from "../runtime/lab-selectors.js";
 
 const STAGE_LABELS: Record<string, string> = {
   source: "Kaynak",
-  edit: "Düzene",
-  profile: "Profil",
+  edit: "Düzenle",
   process: "İşlem",
   report: "Rapor",
 };
 
+const STAGE_HINTS: Record<string, string> = {
+  source: "Kaynak seçimi ve yetenek belirleme",
+  edit: "Çalışma alanı ve kapsam hazırlığı",
+  process: "Analiz yürütme ve izleme",
+  report: "Sonuçlar ve dışa aktarma",
+};
+
 export function renderLabLeftRail(state: LabStoreState) {
-  const feature = getCurrentFeatureMeta(state);
-  const workbench = getWorkbench(state);
-  const selectedModuleIds = Array.isArray(workbench["selectedModuleIds"])
-    ? (workbench["selectedModuleIds"] as unknown[]).filter(
-        (entry): entry is LabFeatureId =>
-          typeof entry === "string" &&
-          ["media-analysis", "audio-analysis", "subtitle-analysis"].includes(entry)
-      )
-    : [feature.id];
-  const activeModuleId =
-    typeof workbench["activeModuleId"] === "string"
-      ? (workbench["activeModuleId"] as LabFeatureId)
-      : feature.id;
+  const workflowSummary = getCapabilityWorkflowSummary(state);
 
   return `
     <aside class="labx-left-rail">
@@ -36,18 +29,9 @@ export function renderLabLeftRail(state: LabStoreState) {
         <span class="labx-brand__mark">A3</span>
         <div>
           <strong>Laboratuvar</strong>
-          <p>Yoğun operatör tezgahı</p>
+          <p>Kaynak odaklı çalışma alanı</p>
         </div>
       </div>
-      <button
-        class="labx-manager-link"
-        type="button"
-        data-lab-action="toggle-module-manager"
-        data-active="${state.ui.moduleManagerOpen ? "true" : "false"}"
-      >
-        <strong>Modül Yönetimi</strong>
-        <small>Çalışma tezgahında hangi feature ve analiz hattının aktif olacağını belirle</small>
-      </button>
       <button
         class="labx-manager-link"
         type="button"
@@ -62,22 +46,23 @@ export function renderLabLeftRail(state: LabStoreState) {
           const allowed = canAdvanceToStage(state, stageId);
           const blockReason = getStageBlockReason(state, stageId);
           const active = stageId === state.currentStage;
+          const hint = STAGE_HINTS[stageId] || "";
           return `
             <button
               class="labx-stage-link"
               type="button"
               data-lab-stage="${stageId}"
               data-active="${active ? "true" : "false"}"
-              title="${escapeHtml(blockReason || STAGE_LABELS[stageId])}"
+              title="${escapeHtml(blockReason || hint)}"
               ${allowed ? "" : 'data-blocked="true"'}
             >
               <span>${String(index + 1).padStart(2, "0")}</span>
               <div class="labx-stage-copy">
-                <strong>${escapeHtml(STAGE_LABELS[stageId])}</strong>
+                <strong>${escapeHtml(STAGE_LABELS[stageId] || stageId)}</strong>
                 ${
                   blockReason
                     ? `<em>${escapeHtml(blockReason)}</em>`
-                    : `<small>${active ? "Aktif aşama" : "Hazır geçiş"}</small>`
+                    : `<small>${active ? "Aktif aşama" : escapeHtml(hint)}</small>`
                 }
               </div>
             </button>
@@ -85,32 +70,10 @@ export function renderLabLeftRail(state: LabStoreState) {
         }).join("")}
       </nav>
       <section class="labx-rail-section">
-        <p class="labx-rail-title">Seçili Modüller</p>
-        <div class="labx-rail-stack">
-          ${selectedModuleIds
-            .map(function (moduleId) {
-              const moduleMeta = createLabFeatureMeta(moduleId);
-              return `
-              <button
-                class="labx-module-link"
-                type="button"
-                data-lab-action="feature-activate"
-                data-lab-value="${escapeHtml(moduleId)}"
-                data-active="${moduleId === activeModuleId ? "true" : "false"}"
-              >
-                <strong>${escapeHtml(moduleMeta.label)}</strong>
-                <small>${escapeHtml(moduleId)}</small>
-              </button>
-            `;
-            })
-            .join("")}
-        </div>
-      </section>
-      <section class="labx-rail-section">
-        <p class="labx-rail-title">Odak</p>
+        <p class="labx-rail-title">İş Akışı</p>
         <div class="labx-rail-note">
-          <strong>${escapeHtml(feature.label)}</strong>
-          <p>${escapeHtml(feature.description)}</p>
+          <strong>${escapeHtml(String(workflowSummary.familyCount))} yetenek ailesi</strong>
+          <p>${escapeHtml(String(workflowSummary.readyCount))} hazır${workflowSummary.blockedCount > 0 ? ` · ${escapeHtml(String(workflowSummary.blockedCount))} bloklu` : ""}</p>
         </div>
       </section>
     </aside>
