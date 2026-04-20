@@ -17,7 +17,7 @@ interface SessionListContext {
     preserveActive?: boolean;
     syncSelectionToTab?: boolean;
   }) => Promise<void>;
-  setActiveSession: (sessionId: string | null) => void;
+  setActiveSession: (sessionId: string | null) => Promise<void>;
   createServerSession: (title?: string) => Promise<string>;
   ensureSessionInDisk: (sessionId: string, title?: string) => Promise<void>;
   reportError: (error: unknown, options?: { defaultTitleKey: string }) => void;
@@ -195,7 +195,7 @@ export async function syncActiveSessionToCurrentTab(
     return;
   }
 
-  context.setActiveSession(visibleSessions[0]?.id ?? null);
+  await context.setActiveSession(visibleSessions[0]?.id ?? null);
   await context.loadActiveSessionHistory();
 }
 
@@ -216,7 +216,7 @@ export async function loadSessionListAndRender(
         visibleSessions.some((session) => session.id === context.runtime.activeSessionId);
 
       if (!activeSessionVisible) {
-        context.setActiveSession(visibleSessions[0]?.id ?? null);
+        await context.setActiveSession(visibleSessions[0]?.id ?? null);
         await context.loadActiveSessionHistory();
       }
     }
@@ -226,7 +226,7 @@ export async function loadSessionListAndRender(
       (context.runtime.activeSessionId == null || context.runtime.activeSessionId === "") &&
       visibleSessions.length > 0
     ) {
-      context.setActiveSession(visibleSessions[0]?.id ?? null);
+      await context.setActiveSession(visibleSessions[0]?.id ?? null);
     }
 
     renderSessionList(sessions, context);
@@ -253,7 +253,7 @@ export async function activateSession(
     return;
   }
 
-  context.setActiveSession(sessionId);
+  await context.setActiveSession(sessionId);
   await context.loadSessionListAndRender({ preserveActive: true });
   await context.loadActiveSessionHistory();
 }
@@ -381,7 +381,7 @@ export function initSessionEvents(context: SessionListContext): void {
         try {
           context.runtime.sessionTab = "active";
           const sessionId = await context.createServerSession(t("session.createDefaultTitle"));
-          context.setActiveSession(sessionId);
+          await context.setActiveSession(sessionId);
           await context.loadSessionListAndRender({ preserveActive: true });
           await context.loadActiveSessionHistory();
         } catch (error) {

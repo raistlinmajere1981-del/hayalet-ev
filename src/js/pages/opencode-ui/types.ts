@@ -45,6 +45,8 @@ export interface OpencodeUiToolCall {
   name: string;
   args?: string;
   result?: string;
+  detail?: string;
+  status?: "done" | "running" | "retrying" | "interrupted" | "failed" | "error";
 }
 
 export type OpencodeUiMessageAttachmentKind =
@@ -151,6 +153,7 @@ export interface SelectItem {
   isConnected?: boolean;
   isFavorite?: boolean;
   isHidden?: boolean;
+  isPassive?: boolean;
 }
 
 export interface ModelVariantOption {
@@ -174,6 +177,8 @@ export interface ModelMeta {
 export interface OpencodeUiModelPreferences {
   hiddenProviders: string[];
   hiddenModels: string[];
+  disabledProviders: string[];
+  disabledModels: string[];
   favoriteModels: string[];
   defaultModelKey: string | null;
   lastSelectedModelKey: string | null;
@@ -194,8 +199,10 @@ export interface ProviderItem {
   badge: string;
   isConnected?: boolean;
   isHidden?: boolean;
+  isPassive?: boolean;
   totalModels?: number;
   visibleModels?: number;
+  passiveModels?: number;
 }
 
 export interface RuntimeState {

@@ -1351,6 +1351,8 @@ export function normalizeSettings(raw: unknown): AppSettings {
     merged.assistants.opencodeUi = defaults.assistants?.opencodeUi ?? {
       hiddenProviders: [],
       hiddenModels: [],
+      disabledProviders: [],
+      disabledModels: [],
       favoriteModels: [],
       defaultModelKey: null,
       lastSelectedModelKey: null,
@@ -1361,6 +1363,12 @@ export function normalizeSettings(raw: unknown): AppSettings {
   }
   if (!Array.isArray(merged.assistants.opencodeUi.hiddenModels)) {
     merged.assistants.opencodeUi.hiddenModels = [];
+  }
+  if (!Array.isArray(merged.assistants.opencodeUi.disabledProviders)) {
+    merged.assistants.opencodeUi.disabledProviders = [];
+  }
+  if (!Array.isArray(merged.assistants.opencodeUi.disabledModels)) {
+    merged.assistants.opencodeUi.disabledModels = [];
   }
   if (!Array.isArray(merged.assistants.opencodeUi.favoriteModels)) {
     merged.assistants.opencodeUi.favoriteModels = [];

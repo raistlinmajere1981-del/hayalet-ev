@@ -33,7 +33,7 @@ export interface BootstrapContext {
   ) => OpencodeUiSessionSummary[];
   listSessionsFromDisk: () => Promise<OpencodeUiSessionSummary[]>;
   createServerSession: (title?: string) => Promise<string>;
-  setActiveSession: (sessionId: string | null) => void;
+  setActiveSession: (sessionId: string | null) => Promise<void>;
   loadSessionListAndRender: (options?: {
     preserveActive?: boolean;
     syncSelectionToTab?: boolean;
@@ -58,19 +58,22 @@ export async function initializeSessionSelection(
 
   if (visibleSessions.length === 0) {
     const createdId = await context.createServerSession(t("session.createDefaultTitle"));
-    context.setActiveSession(createdId);
+    await context.setActiveSession(createdId);
     await context.loadSessionListAndRender({ preserveActive: true });
     await context.loadActiveSessionHistory();
     return;
   }
 
   const resumeId = resumeSessionId.trim();
-  const hasResume = resumeId !== "" && visibleSessions.some((session) => session.id === resumeId);
+  const fallbackResumeId = context.runtime.activeSessionId?.trim() ?? "";
+  const effectiveResumeId = resumeId !== "" ? resumeId : fallbackResumeId;
+  const hasResume =
+    effectiveResumeId !== "" && visibleSessions.some((session) => session.id === effectiveResumeId);
 
   if (hasResume) {
-    context.setActiveSession(resumeId);
+    await context.setActiveSession(effectiveResumeId);
   } else {
-    context.setActiveSession(visibleSessions[0]?.id ?? null);
+    await context.setActiveSession(visibleSessions[0]?.id ?? null);
   }
 
   await context.loadSessionListAndRender({ preserveActive: true });

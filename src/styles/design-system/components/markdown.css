@@ -211,14 +211,26 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  width: 100%;
   padding: var(--space-2) var(--space-3);
+  border: 0;
+  background: transparent;
   cursor: pointer;
   user-select: none;
+  text-align: left;
   transition: background var(--duration-fast);
 }
 
 .ds-tool-call__header:hover {
   background: var(--hover-overlay);
+}
+
+.ds-tool-call__header:disabled {
+  cursor: default;
+}
+
+.ds-tool-call__header:disabled:hover {
+  background: transparent;
 }
 
 .ds-tool-call__chevron {
@@ -262,9 +274,20 @@
   color: var(--color-warning);
 }
 
+.ds-tool-call__status--retrying,
+.ds-tool-call__status--interrupted {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
 .ds-tool-call__status--done {
   background: var(--color-success-bg);
   color: var(--color-success);
+}
+
+.ds-tool-call__status--failed {
+  background: var(--color-error-bg);
+  color: var(--color-error);
 }
 
 .ds-tool-call__body {

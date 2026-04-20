@@ -140,11 +140,10 @@ export async function selectActiveModelKey(
   setSelectedModelLabel(context, context.runtime.activeModelKey);
 
   if (options.persistSelection === true) {
-    const nextPreferences: OpencodeUiModelPreferences = {
-      ...context.runtime.modelPreferences,
+    context.runtime.modelPreferences = await saveOpencodeUiModelPreferences((current) => ({
+      ...current,
       lastSelectedModelKey: context.runtime.activeModelKey,
-    };
-    context.runtime.modelPreferences = await saveOpencodeUiModelPreferences(nextPreferences);
+    }));
     context.onModelStateUpdated?.();
   }
 }
@@ -155,9 +154,7 @@ export async function updateModelPreferences(
     | OpencodeUiModelPreferences
     | ((current: OpencodeUiModelPreferences) => OpencodeUiModelPreferences)
 ): Promise<void> {
-  const current = context.runtime.modelPreferences;
-  const next = typeof updater === "function" ? updater(current) : updater;
-  context.runtime.modelPreferences = await saveOpencodeUiModelPreferences(next);
+  context.runtime.modelPreferences = await saveOpencodeUiModelPreferences(updater);
   applyModelState(context);
 }
 

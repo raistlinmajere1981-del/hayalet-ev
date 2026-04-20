@@ -18,6 +18,8 @@ export interface OpencodeUiToolCall {
   name: string;
   args: string;
   result: string;
+  detail?: string;
+  status?: "done" | "running" | "retrying" | "interrupted" | "failed" | "error";
 }
 
 export interface OpencodeUiMessageAttachment {

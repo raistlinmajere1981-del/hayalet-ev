@@ -5,6 +5,14 @@ import { translateCatalog } from "../../../../shared/i18n/catalog.js";
 import type { ManagedOverlayController } from "../../ui/overlay-system.js";
 import { createSharedAssistantToolOverlayController } from "../../ui/overlay-presets.js";
 import { loadBuiltInLanguagePack } from "../../modules/i18n/built-in-loader.js";
+import {
+  patchOpencodeUiSharedState,
+  readOpencodeUiSharedState,
+} from "../../modules/opencode-ui-shared-state.js";
+import type {
+  OpencodeUiCharacterProfileState,
+  OpencodeUiCharacterProfilesState,
+} from "../../../../shared/opencode-ui-state.js";
 
 interface CharacterFeature {
   id: string;
@@ -269,10 +277,148 @@ const CONFLICTS: ConflictPair[] = [
 ];
 
 const CHARACTER_MD_PATH = ".rovo/_metadata/CHARACTER.md";
+const utf8Decoder = new TextDecoder();
+
+function decodeBase64Utf8(value: string): string {
+  const binary = atob(value);
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  return utf8Decoder.decode(bytes);
+}
+
+function cloneCharacterProfilesState(
+  state: OpencodeUiCharacterProfilesState
+): OpencodeUiCharacterProfilesState {
+  return {
+    activeProfileId: state.activeProfileId,
+    profiles: state.profiles.map((profile) => ({
+      ...profile,
+      selectedFeatureIds: [...profile.selectedFeatureIds],
+    })),
+  };
+}
+
+function createProfileId(): string {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return `character-profile-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  }
+}
+
+function normalizeFeatureIds(featureIds: string[]): string[] {
+  const unique = new Set<string>();
+  featureIds.forEach((featureId) => {
+    if (FEATURE_MAP.has(featureId)) {
+      unique.add(featureId);
+    }
+  });
+  return Array.from(unique);
+}
+
+function buildProfileName(index: number, rawName?: string): string {
+  const normalized = rawName?.trim() ?? "";
+  if (normalized !== "") {
+    return normalized;
+  }
+
+  return index === 0
+    ? characterT("defaultProfileName")
+    : characterT("newProfileName", { index: index + 1 });
+}
+
+function createCharacterProfile(
+  index: number,
+  seed: Partial<OpencodeUiCharacterProfileState> = {}
+): OpencodeUiCharacterProfileState {
+  const createdAt = typeof seed.createdAt === "number" ? seed.createdAt : Date.now();
+  const updatedAt = typeof seed.updatedAt === "number" ? seed.updatedAt : createdAt;
+  return {
+    id: typeof seed.id === "string" && seed.id.trim() !== "" ? seed.id.trim() : createProfileId(),
+    name: typeof seed.name === "string" ? seed.name : buildProfileName(index),
+    description: typeof seed.description === "string" ? seed.description : "",
+    selectedFeatureIds: normalizeFeatureIds(
+      Array.isArray(seed.selectedFeatureIds) ? seed.selectedFeatureIds : []
+    ),
+    createdAt,
+    updatedAt,
+  };
+}
+
+function createFallbackProfilesState(selectedFeatureIds: string[] = []): OpencodeUiCharacterProfilesState {
+  const profile = createCharacterProfile(0, { selectedFeatureIds });
+  return {
+    activeProfileId: profile.id,
+    profiles: [profile],
+  };
+}
+
+function ensureCharacterProfilesState(
+  state: OpencodeUiCharacterProfilesState
+): OpencodeUiCharacterProfilesState {
+  const profiles = state.profiles.map((profile, index) =>
+    createCharacterProfile(index, {
+      ...profile,
+      name: buildProfileName(index, profile.name),
+      description: typeof profile.description === "string" ? profile.description.trim() : "",
+    })
+  );
+  if (profiles.length === 0) {
+    return createFallbackProfilesState();
+  }
+
+  const activeProfileId =
+    state.activeProfileId != null && profiles.some((profile) => profile.id === state.activeProfileId)
+      ? state.activeProfileId
+      : profiles[0]?.id ?? null;
+
+  return {
+    activeProfileId,
+    profiles,
+  };
+}
+
+function buildCharacterMarkdownFallback(profileBlock: string, timestamp: string): string {
+  const emptyHint =
+    profileBlock.trim() === ""
+      ? "\n> *Henüz bir profil tanımlanmadı. Asistan sayfasındaki 🎭 butonuna tıklayarak karakter özelliklerini seç.*\n"
+      : "";
+
+  return [
+    "# 🎭 AI Karakter Profili",
+    "",
+    "> **Yönetim:** Asistan sayfasındaki 🎭 butonu ile overlay üzerinden düzenlenir.",
+    "> **Etki:** Yeni sessionlarda otomatik yüklenir. Mevcut session için aşağıdaki hazır mesajı kullan.",
+    "",
+    "---",
+    "",
+    "## 📋 Aktif Profil",
+    emptyHint,
+    "<!--PROFILE_START-->",
+    profileBlock,
+    "<!--PROFILE_END-->",
+    "",
+    "---",
+    "",
+    "## 💬 Mevcut Session İçin Hazır Mesaj",
+    "",
+    "```",
+    characterT("copyPrompt"),
+    "```",
+    "",
+    "---",
+    "",
+    `**Son güncelleme:** ${timestamp}`,
+    "**Versiyon:** 1.1",
+    "",
+  ]
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n");
+}
 
 export class CharacterOverlay {
   private overlay: HTMLElement | null = null;
   private overlayController: ManagedOverlayController | null = null;
+  private profileList: HTMLElement | null = null;
   private activeList: HTMLElement | null = null;
   private poolList: HTMLElement | null = null;
   private activeCount: HTMLElement | null = null;
@@ -280,11 +426,15 @@ export class CharacterOverlay {
   private conflictText: HTMLElement | null = null;
   private emptyState: HTMLElement | null = null;
   private saveBtn: HTMLButtonElement | null = null;
-
-  // NOTE: Snapshot the persisted selection so close() can discard local edits.
-  private selected: Set<string> = new Set();
-  private savedSelected: Set<string> = new Set();
+  private profileNameInput: HTMLInputElement | null = null;
+  private profileDescriptionInput: HTMLTextAreaElement | null = null;
+  private addProfileBtn: HTMLButtonElement | null = null;
+  private deleteProfileBtn: HTMLButtonElement | null = null;
+  private currentProfileLabel: HTMLElement | null = null;
   private unsubscribeI18n: (() => void) | null = null;
+
+  private draftProfilesState: OpencodeUiCharacterProfilesState = createFallbackProfilesState();
+  private savedProfilesState: OpencodeUiCharacterProfilesState = createFallbackProfilesState();
 
   destroy(): void {
     this.unsubscribeI18n?.();
@@ -301,10 +451,17 @@ export class CharacterOverlay {
         id: "character-overlay",
         element: this.overlay,
         onAfterClose: () => {
-          this.selected = new Set(this.savedSelected);
+          this.draftProfilesState = cloneCharacterProfilesState(this.savedProfilesState);
         },
       });
     }
+    this.profileList = document.getElementById("character-profile-list");
+    this.profileNameInput = document.getElementById(
+      "character-profile-name"
+    ) as HTMLInputElement | null;
+    this.profileDescriptionInput = document.getElementById(
+      "character-profile-description"
+    ) as HTMLTextAreaElement | null;
     this.activeList = document.getElementById("character-active-list");
     this.poolList = document.getElementById("character-pool-list");
     this.activeCount = document.getElementById("character-active-count");
@@ -312,6 +469,13 @@ export class CharacterOverlay {
     this.conflictText = document.getElementById("character-conflict-text");
     this.emptyState = document.getElementById("character-empty-state");
     this.saveBtn = document.getElementById("character-save-btn") as HTMLButtonElement | null;
+    this.addProfileBtn = document.getElementById(
+      "character-profile-add-btn"
+    ) as HTMLButtonElement | null;
+    this.deleteProfileBtn = document.getElementById(
+      "character-profile-delete-btn"
+    ) as HTMLButtonElement | null;
+    this.currentProfileLabel = document.getElementById("character-current-profile-label");
 
     document.getElementById("assistant-character-btn")?.addEventListener("click", () => {
       this.open();
@@ -322,9 +486,29 @@ export class CharacterOverlay {
     document.getElementById("character-cancel-btn")?.addEventListener("click", () => {
       this.close();
     });
+    this.addProfileBtn?.addEventListener("click", () => {
+      this._addProfile();
+    });
+    this.deleteProfileBtn?.addEventListener("click", () => {
+      this._deleteActiveProfile();
+    });
+    this.profileNameInput?.addEventListener("input", () => {
+      this._updateActiveProfile((profile) => ({
+        ...profile,
+        name: this.profileNameInput?.value ?? profile.name,
+      }));
+    });
+    this.profileDescriptionInput?.addEventListener("input", () => {
+      this._updateActiveProfile((profile) => ({
+        ...profile,
+        description: this.profileDescriptionInput?.value ?? profile.description,
+      }));
+    });
 
-    this.overlay?.addEventListener("click", (e) => {
-      if (e.target === this.overlay) this.close();
+    this.overlay?.addEventListener("click", (event) => {
+      if (event.target === this.overlay) {
+        this.close();
+      }
     });
 
     this.saveBtn?.addEventListener("click", () => {
@@ -335,35 +519,41 @@ export class CharacterOverlay {
       void navigator.clipboard.writeText(characterT("copyPrompt")).then(() => {
         const btn = document.getElementById("character-copy-msg-btn");
         const labelEl = btn?.querySelector<HTMLElement>("[data-character-copy-label]");
-        if (btn) {
-          const orig = labelEl?.textContent ?? "";
-          if (labelEl) {
-            labelEl.textContent = characterT("copiedButton");
-          }
-          setTimeout(() => {
-            if (labelEl) {
-              labelEl.textContent = orig;
-            }
-          }, 2000);
+        if (btn == null || labelEl == null) {
+          return;
         }
+
+        const originalLabel = characterT("copyMessageButton");
+        labelEl.textContent = characterT("copiedButton");
+        setTimeout(() => {
+          labelEl.textContent = originalLabel;
+        }, 2000);
       });
     });
 
     this.unsubscribeI18n ??= AppI18n.subscribe(() => {
       this._renderPool();
+      this._renderProfileList();
+      this._renderProfileEditor();
       this._renderActivePanel();
       this._checkConflicts();
     });
 
     this._renderPool();
+    this._renderProfileList();
+    this._renderProfileEditor();
+    this._renderActivePanel();
+    this._checkConflicts();
   }
 
   private open(): void {
     void (async (): Promise<void> => {
       await ensureFeatureLabelIndex();
-      await this._loadFromDisk();
+      await this._loadProfiles();
+      this._renderPool();
+      this._renderProfileList();
+      this._renderProfileEditor();
       this._renderActivePanel();
-      this._updatePool();
       this._checkConflicts();
       this.overlayController?.open();
     })();
@@ -373,128 +563,368 @@ export class CharacterOverlay {
     this.overlayController?.close();
   }
 
-  private async _loadFromDisk(): Promise<void> {
+  private _getActiveProfile(): OpencodeUiCharacterProfileState | null {
+    const activeProfileId = this.draftProfilesState.activeProfileId;
+    if (activeProfileId == null) {
+      return null;
+    }
+
+    return this.draftProfilesState.profiles.find((profile) => profile.id === activeProfileId) ?? null;
+  }
+
+  private async _loadProfiles(): Promise<void> {
+    const sharedState = await readOpencodeUiSharedState();
+    let nextState = ensureCharacterProfilesState(sharedState.characterProfiles);
+
+    if (sharedState.characterProfiles.profiles.length === 0) {
+      const legacySelected = await this._loadLegacySelectedFeatures();
+      nextState = createFallbackProfilesState(legacySelected);
+    }
+
+    this.savedProfilesState = cloneCharacterProfilesState(nextState);
+    this.draftProfilesState = cloneCharacterProfilesState(nextState);
+  }
+
+  private async _readCharacterMarkdown(): Promise<string> {
+    const api = window.electronAPI;
+    if (api == null || typeof api.readFile !== "function") {
+      throw new Error(characterT("errors.electronApiUnavailable"));
+    }
+
+    const base64 = await api.readFile(CHARACTER_MD_PATH);
+    if (typeof base64 !== "string" || base64.trim() === "") {
+      return "";
+    }
+
+    return decodeBase64Utf8(base64);
+  }
+
+  private async _loadLegacySelectedFeatures(): Promise<string[]> {
     try {
-      const api = window.electronAPI;
-      if (!api) throw new Error(characterT("errors.electronApiUnavailable"));
-      const b64 = await api.readFile(CHARACTER_MD_PATH);
-      if (b64 == null || b64 === "") {
-        this.selected = new Set();
-        this.savedSelected = new Set();
-        return;
-      }
-      const content = atob(b64);
-      this.selected = this._parseProfile(content);
-      this.savedSelected = new Set(this.selected);
+      const content = await this._readCharacterMarkdown();
+      return Array.from(this._parseProfile(content));
     } catch {
-      this.selected = new Set();
-      this.savedSelected = new Set();
+      return [];
     }
   }
 
   private _parseProfile(content: string): Set<string> {
     const result = new Set<string>();
     const match = content.match(/<!--PROFILE_START-->([\s\S]*?)<!--PROFILE_END-->/);
-    if (!match) return result;
+    if (!match) {
+      return result;
+    }
 
     const block = match[1] ?? "";
-    // NOTE: Each line uses the "- Label" format.
     const lines = block
       .split("\n")
-      .map((l) => l.trim())
-      .filter((l) => l.startsWith("- "));
-    for (const line of lines) {
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith("- "));
+    lines.forEach((line) => {
       const label = line.slice(2).trim();
       const featureId = FEATURE_LABEL_INDEX.get(normalizeProfileLabel(label));
       if (featureId !== undefined) {
         result.add(featureId);
       }
-    }
+    });
+
     return result;
   }
 
+  private _updateActiveProfile(
+    updater: (profile: OpencodeUiCharacterProfileState) => OpencodeUiCharacterProfileState
+  ): void {
+    const activeProfile = this._getActiveProfile();
+    if (activeProfile == null) {
+      return;
+    }
+
+    this.draftProfilesState = {
+      ...this.draftProfilesState,
+      profiles: this.draftProfilesState.profiles.map((profile, index) => {
+        if (profile.id !== activeProfile.id) {
+          return profile;
+        }
+
+        const nextProfile = updater(profile);
+        return createCharacterProfile(index, {
+          ...nextProfile,
+          updatedAt: Date.now(),
+          selectedFeatureIds: normalizeFeatureIds(nextProfile.selectedFeatureIds),
+        });
+      }),
+    };
+
+    this._renderProfileList();
+    this._renderProfileEditor();
+    this._renderActivePanel();
+    this._checkConflicts();
+  }
+
+  private _setActiveProfile(profileId: string): void {
+    if (!this.draftProfilesState.profiles.some((profile) => profile.id === profileId)) {
+      return;
+    }
+
+    this.draftProfilesState = {
+      ...this.draftProfilesState,
+      activeProfileId: profileId,
+    };
+    this._renderProfileList();
+    this._renderProfileEditor();
+    this._renderActivePanel();
+    this._updatePool();
+    this._checkConflicts();
+  }
+
+  private _addProfile(): void {
+    const profile = createCharacterProfile(this.draftProfilesState.profiles.length, {
+      name: characterT("newProfileName", { index: this.draftProfilesState.profiles.length + 1 }),
+    });
+    this.draftProfilesState = {
+      activeProfileId: profile.id,
+      profiles: [profile, ...this.draftProfilesState.profiles],
+    };
+    this._renderProfileList();
+    this._renderProfileEditor();
+    this._renderActivePanel();
+    this._updatePool();
+    this._checkConflicts();
+    requestAnimationFrame(() => {
+      this.profileNameInput?.focus();
+      this.profileNameInput?.select();
+    });
+  }
+
+  private _deleteActiveProfile(): void {
+    const activeProfile = this._getActiveProfile();
+    if (activeProfile == null) {
+      return;
+    }
+
+    const remainingProfiles = this.draftProfilesState.profiles.filter(
+      (profile) => profile.id !== activeProfile.id
+    );
+    const nextState =
+      remainingProfiles.length > 0
+        ? {
+            activeProfileId: remainingProfiles[0]?.id ?? null,
+            profiles: remainingProfiles,
+          }
+        : createFallbackProfilesState();
+
+    this.draftProfilesState = nextState;
+    this._renderProfileList();
+    this._renderProfileEditor();
+    this._renderActivePanel();
+    this._updatePool();
+    this._checkConflicts();
+  }
+
   private async save(): Promise<void> {
-    const profileBlock = this._buildProfileBlock();
+    const normalizedState = ensureCharacterProfilesState(this.draftProfilesState);
+    const activeProfile =
+      normalizedState.profiles.find((profile) => profile.id === normalizedState.activeProfileId) ??
+      normalizedState.profiles[0] ??
+      null;
     const timestamp = new Date().toISOString().split("T")[0] ?? "";
+    let sharedStatePatched = false;
 
     try {
+      const currentContent = await this._readCharacterMarkdown().catch(() => "");
+      const profileBlock = this._buildProfileBlock(activeProfile);
+      const updatedContent =
+        currentContent.trim() !== ""
+          ? this._mergeCharacterMarkdown(currentContent, profileBlock, timestamp)
+          : buildCharacterMarkdownFallback(profileBlock, timestamp);
+
       const api = window.electronAPI;
-      if (!api) throw new Error(characterT("errors.electronApiUnavailable"));
-      const b64 = await api.readFile(CHARACTER_MD_PATH);
-      if (b64 == null || b64 === "") throw new Error(characterT("errors.profileReadFailed"));
-      const current = atob(b64);
-      const updated = current
-        .replace(
-          /<!--PROFILE_START-->([\s\S]*?)<!--PROFILE_END-->/,
-          `<!--PROFILE_START-->\n${profileBlock}<!--PROFILE_END-->`
-        )
-        .replace(EMPTY_PROFILE_HINT_PATTERN, "")
-        .replace(LAST_UPDATED_PATTERN, (_match, label: string) => `**${label}:** ${timestamp}`);
+      if (api == null || typeof api.fmWriteFileAtomic !== "function") {
+        throw new Error(characterT("errors.electronApiUnavailable"));
+      }
 
-      await api.fmWriteFileAtomic({ path: CHARACTER_MD_PATH, data: updated, encoding: "utf-8" });
-      this.savedSelected = new Set(this.selected);
+      const writtenState = await patchOpencodeUiSharedState((current) => ({
+        ...current,
+        characterProfiles: normalizedState,
+      }));
+      sharedStatePatched = true;
 
-      if (this.saveBtn) {
-        const orig = this.saveBtn.textContent;
+      await api.fmWriteFileAtomic({
+        path: CHARACTER_MD_PATH,
+        data: updatedContent,
+        encoding: "utf-8",
+      });
+
+      this.savedProfilesState = ensureCharacterProfilesState(writtenState.characterProfiles);
+      this.draftProfilesState = cloneCharacterProfilesState(this.savedProfilesState);
+
+      if (this.saveBtn != null) {
+        const originalText = this.saveBtn.textContent;
         this.saveBtn.classList.add("saved");
         this.saveBtn.textContent = characterT("savedButton");
         setTimeout(() => {
-          if (this.saveBtn) {
+          if (this.saveBtn != null) {
             this.saveBtn.classList.remove("saved");
-            this.saveBtn.textContent = orig;
-          }
-        }, 2000);
-      }
-    } catch (err) {
-      if (this.saveBtn) {
-        const originalText = this.saveBtn.textContent;
-        this.saveBtn.classList.remove("saved");
-        this.saveBtn.textContent = AppI18n.t("shell.assistant.buttonStates.error");
-        setTimeout(() => {
-          if (this.saveBtn) {
             this.saveBtn.textContent = originalText;
           }
         }, 2000);
       }
+    } catch (error) {
+      if (sharedStatePatched) {
+        try {
+          await patchOpencodeUiSharedState((current) => ({
+            ...current,
+            characterProfiles: this.savedProfilesState,
+          }));
+        } catch {
+          // NOTE: Keep the original save error; rollback is best-effort.
+        }
+      }
+      if (this.saveBtn != null) {
+        const originalText = this.saveBtn.textContent;
+        this.saveBtn.classList.remove("saved");
+        this.saveBtn.textContent = AppI18n.t("shell.assistant.buttonStates.error");
+        setTimeout(() => {
+          if (this.saveBtn != null) {
+            this.saveBtn.textContent = originalText;
+          }
+        }, 2000);
+      }
+
       console.error(
         characterT("errors.saveFailed", {
-          message: err instanceof Error ? err.message : String(err),
+          message: error instanceof Error ? error.message : String(error),
         }),
-        err
+        error
       );
     }
   }
 
-  private _buildProfileBlock(): string {
-    if (this.selected.size === 0) return "";
-
-    let block = "";
-    for (const cat of CATEGORIES) {
-      const activeInCat = cat.features.filter((f) => this.selected.has(f.id));
-      if (activeInCat.length === 0) continue;
-      block += `\n### ${cat.icon} ${getCategoryLabel(cat)}\n`;
-      for (const f of activeInCat) {
-        block += `- ${getFeatureLabel(f)}\n`;
-      }
+  private _mergeCharacterMarkdown(current: string, profileBlock: string, timestamp: string): string {
+    if (!current.includes("<!--PROFILE_START-->") || !current.includes("<!--PROFILE_END-->")) {
+      return buildCharacterMarkdownFallback(profileBlock, timestamp);
     }
-    return block + "\n";
+
+    const nextProfileBlock =
+      profileBlock.trim() === "" ? "<!--PROFILE_START-->\n<!--PROFILE_END-->" : `<!--PROFILE_START-->\n${profileBlock}<!--PROFILE_END-->`;
+
+    let updated = current.replace(/<!--PROFILE_START-->([\s\S]*?)<!--PROFILE_END-->/, nextProfileBlock);
+    if (profileBlock.trim() !== "") {
+      updated = updated.replace(EMPTY_PROFILE_HINT_PATTERN, "");
+    }
+    if (LAST_UPDATED_PATTERN.test(updated)) {
+      updated = updated.replace(LAST_UPDATED_PATTERN, (_match, label: string) => `**${label}:** ${timestamp}`);
+    } else {
+      updated = `${updated.trimEnd()}\n\n**Son güncelleme:** ${timestamp}\n`;
+    }
+    return updated;
+  }
+
+  private _buildProfileBlock(profile: OpencodeUiCharacterProfileState | null): string {
+    if (profile == null || profile.selectedFeatureIds.length === 0) {
+      return "";
+    }
+
+    const selected = new Set(profile.selectedFeatureIds);
+    let block = "";
+    for (const category of CATEGORIES) {
+      const activeInCategory = category.features.filter((feature) => selected.has(feature.id));
+      if (activeInCategory.length === 0) {
+        continue;
+      }
+
+      block += `\n### ${category.icon} ${getCategoryLabel(category)}\n`;
+      activeInCategory.forEach((feature) => {
+        block += `- ${getFeatureLabel(feature)}\n`;
+      });
+    }
+    return `${block}\n`;
+  }
+
+  private _renderProfileList(): void {
+    if (this.profileList == null) {
+      return;
+    }
+
+    this.profileList.innerHTML = "";
+    this.draftProfilesState.profiles.forEach((profile, index) => {
+      const displayName = buildProfileName(index, profile.name);
+      const descriptionText = profile.description.trim();
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className =
+        profile.id === this.draftProfilesState.activeProfileId
+          ? "character-profile-card is-active"
+          : "character-profile-card";
+      button.addEventListener("click", () => {
+        this._setActiveProfile(profile.id);
+      });
+
+      const header = document.createElement("div");
+      header.className = "character-profile-card__header";
+
+      const title = document.createElement("div");
+      title.className = "character-profile-card__title";
+      title.textContent = displayName;
+
+      const badge = document.createElement("span");
+      badge.className = "character-profile-card__badge";
+      badge.textContent = String(profile.selectedFeatureIds.length);
+
+      header.append(title, badge);
+      button.appendChild(header);
+
+      if (descriptionText !== "") {
+        const description = document.createElement("div");
+        description.className = "character-profile-card__description";
+        description.textContent = descriptionText;
+        button.appendChild(description);
+      }
+
+      this.profileList?.appendChild(button);
+    });
+  }
+
+  private _renderProfileEditor(): void {
+    const activeProfile = this._getActiveProfile();
+    const activeIndex =
+      activeProfile != null
+        ? this.draftProfilesState.profiles.findIndex((profile) => profile.id === activeProfile.id)
+        : -1;
+    if (this.profileNameInput != null) {
+      this.profileNameInput.value = activeProfile?.name ?? "";
+    }
+    if (this.profileDescriptionInput != null) {
+      this.profileDescriptionInput.value = activeProfile?.description ?? "";
+    }
+    if (this.currentProfileLabel != null) {
+      this.currentProfileLabel.textContent =
+        activeProfile != null ? buildProfileName(activeIndex >= 0 ? activeIndex : 0, activeProfile.name) : "";
+    }
+    if (this.deleteProfileBtn != null) {
+      this.deleteProfileBtn.disabled = activeProfile == null;
+    }
   }
 
   private _renderPool(): void {
-    if (!this.poolList) return;
+    if (this.poolList == null) {
+      return;
+    }
+
     this.poolList.innerHTML = "";
 
-    for (const cat of CATEGORIES) {
+    CATEGORIES.forEach((category, index) => {
       const accordion = document.createElement("div");
-      accordion.className = "character-accordion";
-      accordion.dataset["categoryId"] = cat.id;
+      accordion.className =
+        index === 0 ? "character-accordion is-expanded" : "character-accordion";
+      accordion.dataset["categoryId"] = category.id;
 
       const header = document.createElement("div");
       header.className = "character-accordion-header";
       header.innerHTML = `
-        <span class="character-accordion-title">${cat.icon} ${getCategoryLabel(cat)}</span>
+        <span class="character-accordion-title">${category.icon} ${getCategoryLabel(category)}</span>
         <span class="character-accordion-meta">
-          <span class="character-accordion-badge" data-badge="${cat.id}"></span>
+          <span class="character-accordion-badge" data-badge="${category.id}"></span>
           <span class="character-accordion-chevron">▶</span>
         </span>
       `;
@@ -505,7 +935,7 @@ export class CharacterOverlay {
       const body = document.createElement("div");
       body.className = "character-accordion-body";
 
-      for (const feature of cat.features) {
+      category.features.forEach((feature) => {
         const item = document.createElement("div");
         item.className = "character-pool-item";
         item.dataset["featureId"] = feature.id;
@@ -517,111 +947,141 @@ export class CharacterOverlay {
           this._toggleFeature(feature.id);
         });
         body.appendChild(item);
-      }
+      });
 
-      accordion.appendChild(header);
-      accordion.appendChild(body);
-      this.poolList.appendChild(accordion);
-    }
+      accordion.append(header, body);
+      this.poolList?.appendChild(accordion);
+    });
+
+    this._updatePool();
   }
 
   private _updatePool(): void {
-    if (!this.poolList) return;
-
-    for (const cat of CATEGORIES) {
-      let activeCount = 0;
-      for (const feature of cat.features) {
-        const item = this.poolList.querySelector(`[data-feature-id="${feature.id}"]`);
-        if (!item) continue;
-        const isActive = this.selected.has(feature.id);
-        item.classList.toggle("is-active", isActive);
-        const check = item.querySelector(".character-pool-item-check");
-        if (check) check.textContent = isActive ? "✓" : "";
-        if (isActive) activeCount++;
-      }
-      const badge = this.poolList.querySelector(`[data-badge="${cat.id}"]`);
-      if (badge) badge.textContent = activeCount > 0 ? String(activeCount) : "";
+    if (this.poolList == null) {
+      return;
     }
+
+    const activeProfile = this._getActiveProfile();
+    const selected = new Set(activeProfile?.selectedFeatureIds ?? []);
+
+    CATEGORIES.forEach((category) => {
+      let activeCount = 0;
+      category.features.forEach((feature) => {
+        const item = this.poolList?.querySelector<HTMLElement>(`[data-feature-id="${feature.id}"]`);
+        if (item == null) {
+          return;
+        }
+
+        const isActive = selected.has(feature.id);
+        item.classList.toggle("is-active", isActive);
+        const check = item.querySelector<HTMLElement>(".character-pool-item-check");
+        if (check != null) {
+          check.textContent = isActive ? "✓" : "";
+        }
+        if (isActive) {
+          activeCount += 1;
+        }
+      });
+
+      const badge = this.poolList?.querySelector<HTMLElement>(`[data-badge="${category.id}"]`);
+      if (badge != null) {
+        badge.textContent = activeCount > 0 ? String(activeCount) : "";
+      }
+    });
   }
 
-  private _toggleFeature(id: string): void {
-    if (this.selected.has(id)) {
-      this.selected.delete(id);
-    } else {
-      this.selected.add(id);
-    }
-    this._renderActivePanel();
+  private _toggleFeature(featureId: string): void {
+    this._updateActiveProfile((profile) => {
+      const selected = new Set(profile.selectedFeatureIds);
+      if (selected.has(featureId)) {
+        selected.delete(featureId);
+      } else {
+        selected.add(featureId);
+      }
+
+      return {
+        ...profile,
+        selectedFeatureIds: Array.from(selected),
+      };
+    });
     this._updatePool();
-    this._checkConflicts();
   }
 
   private _renderActivePanel(): void {
-    if (!this.activeList) return;
+    if (this.activeList == null) {
+      return;
+    }
 
-    // NOTE: Clear only the groups first to preserve the empty state.
-    const groups = this.activeList.querySelectorAll(".character-group");
-    groups.forEach((g) => {
-      g.remove();
+    this.activeList.querySelectorAll(".character-group").forEach((group) => {
+      group.remove();
     });
 
-    const totalActive = this.selected.size;
+    const activeProfile = this._getActiveProfile();
+    const selected = new Set(activeProfile?.selectedFeatureIds ?? []);
+    const totalActive = selected.size;
 
-    if (this.emptyState) {
+    if (this.emptyState != null) {
       this.emptyState.classList.toggle("is-hidden", totalActive !== 0);
     }
-    if (this.activeCount) {
+    if (this.activeCount != null) {
       this.activeCount.textContent = characterT("activeCount", { count: totalActive });
     }
 
-    for (const cat of CATEGORIES) {
-      const activeInCat = cat.features.filter((f) => this.selected.has(f.id));
-      if (activeInCat.length === 0) continue;
+    CATEGORIES.forEach((category) => {
+      const activeInCategory = category.features.filter((feature) => selected.has(feature.id));
+      if (activeInCategory.length === 0) {
+        return;
+      }
 
       const group = document.createElement("div");
       group.className = "character-group";
 
       const label = document.createElement("div");
       label.className = "character-group-label";
-      label.textContent = `${cat.icon} ${getCategoryLabel(cat)}`;
+      label.textContent = `${category.icon} ${getCategoryLabel(category)}`;
 
       const chips = document.createElement("div");
       chips.className = "character-group-chips";
 
-      for (const f of activeInCat) {
+      activeInCategory.forEach((feature) => {
         const chip = document.createElement("span");
         chip.className = "character-chip";
         chip.title = characterT("removeTitle");
-        chip.innerHTML = `${getFeatureLabel(f)} <span class="character-chip-remove">✕</span>`;
+        chip.innerHTML = `${getFeatureLabel(feature)} <span class="character-chip-remove">✕</span>`;
         chip.addEventListener("click", () => {
-          this._toggleFeature(f.id);
+          this._toggleFeature(feature.id);
         });
         chips.appendChild(chip);
-      }
+      });
 
-      group.appendChild(label);
-      group.appendChild(chips);
-      this.activeList.appendChild(group);
-    }
+      group.append(label, chips);
+      this.activeList?.appendChild(group);
+    });
   }
 
   private _checkConflicts(): void {
-    if (!this.conflictsEl || !this.conflictText) return;
-
-    const conflictMessages: string[] = [];
-    for (const pair of CONFLICTS) {
-      if (this.selected.has(pair.a) && this.selected.has(pair.b)) {
-        const fa = FEATURE_MAP.get(pair.a);
-        const fb = FEATURE_MAP.get(pair.b);
-        if (fa && fb) {
-          conflictMessages.push(
-            characterT("conflictMessage", {
-              a: getFeatureLabel(fa),
-              b: getFeatureLabel(fb),
-            })
-          );
-        }
-      }
+    if (this.conflictsEl == null || this.conflictText == null) {
+      return;
     }
+
+    const selected = new Set(this._getActiveProfile()?.selectedFeatureIds ?? []);
+    const conflictMessages: string[] = [];
+    CONFLICTS.forEach((pair) => {
+      if (!selected.has(pair.a) || !selected.has(pair.b)) {
+        return;
+      }
+
+      const featureA = FEATURE_MAP.get(pair.a);
+      const featureB = FEATURE_MAP.get(pair.b);
+      if (featureA != null && featureB != null) {
+        conflictMessages.push(
+          characterT("conflictMessage", {
+            a: getFeatureLabel(featureA),
+            b: getFeatureLabel(featureB),
+          })
+        );
+      }
+    });
 
     if (conflictMessages.length > 0) {
       this.conflictText.textContent = conflictMessages.join(" • ");

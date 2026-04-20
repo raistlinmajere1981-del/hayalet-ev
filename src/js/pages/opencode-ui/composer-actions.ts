@@ -19,7 +19,6 @@ import {
   refreshRovoInteractionRuntime,
 } from "./interaction-runtime.js";
 import {
-  clearConsumedInteractionMode,
   getInteractionModeLabel,
   loadInteractionSystemPrompt,
 } from "./interaction-mode.js";
@@ -51,6 +50,7 @@ interface ComposerUiContext {
   byId: ByIdFn;
   showToast: (message: string) => void;
   syncInteractionModeUi?: () => void;
+  persistInteractionMode?: (mode: RovoInteractionMode) => Promise<void>;
   ensureActiveSession: () => Promise<string>;
   loadSessionListAndRender: (options?: {
     preserveActive?: boolean;
@@ -389,9 +389,6 @@ export async function sendComposerMessage(context: ComposerUiContext): Promise<v
             text: interactionCandidateText,
           }
         : fallbackMessage;
-    if (clearConsumedInteractionMode(context.runtime, activeInteractionMode)) {
-      context.syncInteractionModeUi?.();
-    }
     if (
       activeInteractionMode !== "off" &&
       interactionSystemPrompt !== null &&

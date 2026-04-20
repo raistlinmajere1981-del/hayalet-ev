@@ -321,6 +321,8 @@ export interface Us1RelaySettings {
 export interface OpencodeUiModelPreferences {
   hiddenProviders?: string[];
   hiddenModels?: string[];
+  disabledProviders?: string[];
+  disabledModels?: string[];
   favoriteModels?: string[];
   defaultModelKey?: string | null;
   lastSelectedModelKey?: string | null;

@@ -493,11 +493,56 @@
         <div class="character-body">
           <div class="character-active-panel">
             <div class="character-panel-header">
-              <span
-                class="character-panel-title"
-                data-shell-i18n-text="assistant.characterOverlay.activeProfileTitle"
-              ></span>
-              <span class="character-active-count" id="character-active-count"></span>
+              <div class="character-panel-heading">
+                <span
+                  class="character-panel-title"
+                  data-shell-i18n-text="assistant.characterOverlay.activeProfileTitle"
+                ></span>
+                <span class="character-active-count" id="character-active-count"></span>
+              </div>
+              <button
+                class="btn btn-ghost btn-sm"
+                id="character-profile-add-btn"
+                data-shell-i18n-text="assistant.characterOverlay.addProfileButton"
+              ></button>
+            </div>
+            <div class="character-profile-list" id="character-profile-list"></div>
+            <div class="character-profile-form">
+              <label class="character-field" for="character-profile-name">
+                <span
+                  class="character-field-label"
+                  data-shell-i18n-text="assistant.characterOverlay.profileNameLabel"
+                ></span>
+                <input
+                  id="character-profile-name"
+                  class="character-text-input input"
+                  type="text"
+                  maxlength="80"
+                  placeholder=""
+                  data-shell-i18n-placeholder="assistant.characterOverlay.profileNamePlaceholder"
+                />
+              </label>
+              <label class="character-field" for="character-profile-description">
+                <span
+                  class="character-field-label"
+                  data-shell-i18n-text="assistant.characterOverlay.profileDescriptionLabel"
+                ></span>
+                <textarea
+                  id="character-profile-description"
+                  class="character-textarea input"
+                  rows="3"
+                  maxlength="240"
+                  placeholder=""
+                  data-shell-i18n-placeholder="assistant.characterOverlay.profileDescriptionPlaceholder"
+                ></textarea>
+              </label>
+              <div class="character-profile-actions">
+                <button
+                  class="btn btn-ghost btn-sm"
+                  id="character-profile-delete-btn"
+                  data-shell-i18n-text="assistant.characterOverlay.deleteProfileButton"
+                ></button>
+              </div>
             </div>
             <div class="character-conflicts is-hidden" id="character-conflicts">
               <span class="character-conflict-icon">⚠️</span>
@@ -512,10 +557,13 @@
 
           <div class="character-pool-panel">
             <div class="character-panel-header">
-              <span
-                class="character-panel-title"
-                data-shell-i18n-text="assistant.characterOverlay.poolTitle"
-              ></span>
+              <div class="character-panel-heading">
+                <span
+                  class="character-panel-title"
+                  data-shell-i18n-text="assistant.characterOverlay.poolTitle"
+                ></span>
+                <span class="character-panel-subtitle" id="character-current-profile-label"></span>
+              </div>
             </div>
             <div class="character-pool-list" id="character-pool-list"></div>
           </div>

@@ -113,43 +113,28 @@ function clearLegacyQuickPrompts(): void {
 async function readQuickPromptsFromStore(): Promise<QuickPromptRecord[]> {
   const api = window.electronAPI;
   if (api == null || typeof api.opencodeUiQuickPromptsRead !== "function") {
-    return loadLegacyQuickPrompts();
-  }
-
-  try {
-    const result = (await api.opencodeUiQuickPromptsRead()) as QuickPromptStoreResponse;
-    const prompts = Array.isArray(result.prompts) ? result.prompts : [];
-    const legacyPrompts = loadLegacyQuickPrompts();
-
-    if (result.success !== true) {
-      if (legacyPrompts.length > 0) {
-        return legacyPrompts;
-      }
-
-      throw new Error(
-        formatDetailedErrorMessage("prompt.loadError", resolveIpcErrorMessage(result))
-      );
-    }
-
-    if (prompts.length > 0) {
-      return normalizeQuickPromptRecords(prompts);
-    }
-
-    if (legacyPrompts.length > 0) {
-      await writeQuickPromptsToStore(legacyPrompts);
-      clearLegacyQuickPrompts();
-      return legacyPrompts;
-    }
-
     return [];
-  } catch (error) {
-    const legacyPrompts = loadLegacyQuickPrompts();
-    if (legacyPrompts.length > 0) {
-      return legacyPrompts;
-    }
-
-    throw error;
   }
+
+  const result = (await api.opencodeUiQuickPromptsRead()) as QuickPromptStoreResponse;
+  const prompts = Array.isArray(result.prompts) ? result.prompts : [];
+  const legacyPrompts = loadLegacyQuickPrompts();
+
+  if (result.success !== true) {
+    throw new Error(formatDetailedErrorMessage("prompt.loadError", resolveIpcErrorMessage(result)));
+  }
+
+  if (prompts.length > 0) {
+    return normalizeQuickPromptRecords(prompts);
+  }
+
+  if (legacyPrompts.length > 0) {
+    await writeQuickPromptsToStore(legacyPrompts);
+    clearLegacyQuickPrompts();
+    return legacyPrompts;
+  }
+
+  return [];
 }
 
 async function writeQuickPromptsToStore(
@@ -158,10 +143,7 @@ async function writeQuickPromptsToStore(
   const normalizedPrompts = normalizeQuickPromptRecords(prompts);
   const api = window.electronAPI;
   if (api == null || typeof api.opencodeUiQuickPromptsWrite !== "function") {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(QUICK_PROMPTS_STORAGE_KEY, JSON.stringify(normalizedPrompts));
-    }
-    return normalizedPrompts;
+    throw new Error(t("prompt.saveError"));
   }
 
   const result = (await api.opencodeUiQuickPromptsWrite(

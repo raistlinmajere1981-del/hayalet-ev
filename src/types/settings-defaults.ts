@@ -146,6 +146,8 @@ export function createDefaultSettings(): AppSettings {
       opencodeUi: {
         hiddenProviders: [],
         hiddenModels: [],
+        disabledProviders: [],
+        disabledModels: [],
         favoriteModels: [],
         defaultModelKey: null,
         lastSelectedModelKey: null,

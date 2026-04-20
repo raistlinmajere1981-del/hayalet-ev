@@ -78,6 +78,7 @@ import {
 } from "./interaction-runtime.js";
 import { buildInteractionModeItems } from "./interaction-mode.js";
 import { buildRuntimeErrorNotice } from "./notice-utils.js";
+import { patchOpencodeUiSharedState, readOpencodeUiSharedState } from "../../modules/opencode-ui-shared-state.js";
 import {
   bindDictationTrigger,
   type DictationBinding,
@@ -136,13 +137,22 @@ let modelSettingsOverlayController: ReturnType<typeof createModelSettingsOverlay
 let dictationBinding: DictationBinding | null = null;
 let localeRefreshBound = false;
 let localeRefreshInFlight: Promise<void> | null = null;
+const CHAT_AUTO_FOLLOW_THRESHOLD_PX = 96;
+let chatAutoFollow = true;
+let chatScrollTrackingBound = false;
+let programmaticChatScrollDepth = 0;
 
 function getInitialUsageText(): string {
   return t("usage.diskDb");
 }
 
-function setActiveSession(sessionId: string | null): void {
+async function setActiveSession(sessionId: string | null): Promise<void> {
   runtime.activeSessionId = sessionId;
+  chatAutoFollow = true;
+  await patchOpencodeUiSharedState((current) => ({
+    ...current,
+    lastSessionId: sessionId != null && sessionId !== "" ? sessionId : null,
+  }));
   sendSessionChangedToHost(sessionId);
   const api = window.electronAPI as
     | undefined
@@ -162,6 +172,37 @@ function setActiveSession(sessionId: string | null): void {
     void api.opencodeUiSessionWatchStop?.();
   }
 }
+
+async function hydrateRuntimeFromSharedState(): Promise<void> {
+  const sharedState = await readOpencodeUiSharedState();
+  runtime.activeSessionId = sharedState.lastSessionId;
+  runtime.activeAgentId = sharedState.lastAgentId;
+  runtime.activeReasoningEffort = sharedState.lastReasoningEffort;
+  runtime.activeInteractionMode = sharedState.interactionMode;
+  runtime.modelPreferences = { ...sharedState.modelPreferences };
+}
+
+async function persistActiveAgentId(agentId: string | null): Promise<void> {
+  await patchOpencodeUiSharedState((current) => ({
+    ...current,
+    lastAgentId: agentId,
+  }));
+}
+
+async function persistReasoningEffort(reasoningEffort: string | null): Promise<void> {
+  await patchOpencodeUiSharedState((current) => ({
+    ...current,
+    lastReasoningEffort: reasoningEffort,
+  }));
+}
+
+async function persistInteractionMode(mode: RovoInteractionMode): Promise<void> {
+  await patchOpencodeUiSharedState((current) => ({
+    ...current,
+    interactionMode: mode,
+  }));
+}
+
 export { buildMessageRequestBody };
 
 function updateUsagePlaceholders(text: string): void {
@@ -314,17 +355,58 @@ async function loadSessionListAndRender(
   await loadSessionListAndRenderFromModule(sessionListContext(), options);
 }
 
+function isChatNearBottom(chatMessages: HTMLElement): boolean {
+  const remaining =
+    chatMessages.scrollHeight - (chatMessages.scrollTop + chatMessages.clientHeight);
+  return remaining <= CHAT_AUTO_FOLLOW_THRESHOLD_PX;
+}
+
+function updateChatAutoFollow(chatMessages: HTMLElement | null = byId<HTMLElement>("chat-messages")): void {
+  if (chatMessages == null) {
+    chatAutoFollow = true;
+    return;
+  }
+
+  chatAutoFollow = isChatNearBottom(chatMessages);
+}
+
+function bindChatScrollTracking(): void {
+  if (chatScrollTrackingBound) {
+    return;
+  }
+
+  const chatMessages = byId<HTMLElement>("chat-messages");
+  if (chatMessages == null) {
+    return;
+  }
+
+  chatScrollTrackingBound = true;
+  updateChatAutoFollow(chatMessages);
+  chatMessages.addEventListener("scroll", () => {
+    if (programmaticChatScrollDepth > 0) {
+      return;
+    }
+
+    updateChatAutoFollow(chatMessages);
+  });
+}
+
 function scrollChatToBottom(force = false): void {
   const chatMessages = byId<HTMLElement>("chat-messages");
   if (chatMessages == null) return;
 
-  if (force) {
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+  if (!force && !chatAutoFollow && !isChatNearBottom(chatMessages)) {
     return;
   }
 
+  programmaticChatScrollDepth += 1;
   requestAnimationFrame(() => {
     chatMessages.scrollTop = chatMessages.scrollHeight;
+    chatAutoFollow = true;
+    requestAnimationFrame(() => {
+      programmaticChatScrollDepth = Math.max(0, programmaticChatScrollDepth - 1);
+      updateChatAutoFollow(chatMessages);
+    });
   });
 }
 
@@ -351,6 +433,7 @@ function composerContext(): Parameters<typeof sendComposerMessage>[0] {
     byId,
     showToast,
     syncInteractionModeUi: refreshInteractionDropdown,
+    persistInteractionMode,
     ensureActiveSession,
     loadSessionListAndRender,
     withHistorySyncFallback,
@@ -358,8 +441,10 @@ function composerContext(): Parameters<typeof sendComposerMessage>[0] {
   };
 }
 
-async function loadActiveSessionHistory(): Promise<void> {
-  await loadActiveSessionHistoryFromModule(historyContext());
+async function loadActiveSessionHistory(
+  options: Parameters<typeof loadActiveSessionHistoryFromModule>[1] = {}
+): Promise<void> {
+  await loadActiveSessionHistoryFromModule(historyContext(), options);
 }
 
 async function syncActiveSessionHistoryIfUpdated(): Promise<void> {
@@ -428,13 +513,13 @@ async function ensureActiveSession(): Promise<string> {
     const firstId = visibleSessions[0]?.id;
     if (typeof firstId === "string" && firstId !== "") {
       runtime.sessionTab = "active";
-      setActiveSession(firstId);
+      await setActiveSession(firstId);
       return firstId;
     }
   }
 
   const createdId = await createServerSession();
-  setActiveSession(createdId);
+  await setActiveSession(createdId);
   await loadSessionListAndRender({ preserveActive: true });
   return createdId;
 }
@@ -478,7 +563,7 @@ async function clearChat(): Promise<void> {
 
   try {
     const sessionId = await createServerSession();
-    setActiveSession(sessionId);
+    await setActiveSession(sessionId);
     await loadSessionListAndRender({ preserveActive: true });
     await loadActiveSessionHistory();
   } catch (error) {
@@ -491,6 +576,7 @@ function initSessionEvents(): void {
 }
 
 function initChatEvents(): void {
+  bindChatScrollTracking();
   initOpencodeUiChatEvents({
     byId,
     showToast,
@@ -541,12 +627,17 @@ async function loadAgents(): Promise<void> {
     if (items.length === 0) {
       modeDropdown.setError(t("provider.none"));
       runtime.activeAgentId = null;
+      await persistActiveAgentId(null);
       return;
     }
 
-    const initial = runtime.activeAgentId ?? items[0]?.value ?? "";
+    const initial =
+      runtime.activeAgentId != null && items.some((item) => item.value === runtime.activeAgentId)
+        ? runtime.activeAgentId
+        : (items[0]?.value ?? "");
     runtime.activeAgentId = initial !== "" ? initial : null;
     modeDropdown.setItems(items, runtime.activeAgentId ?? undefined);
+    await persistActiveAgentId(runtime.activeAgentId);
   } catch {
     modeDropdown.setError(t("provider.error"));
   }
@@ -586,21 +677,24 @@ function refreshInteractionDropdown(): void {
 }
 
 function initSelects(): void {
-  modeDropdown = setupCustomSelect("mode-dropdown", (value: string) => {
+  modeDropdown = setupCustomSelect("mode-dropdown", async (value: string) => {
     runtime.activeAgentId = value !== "" ? value : null;
+    await persistActiveAgentId(runtime.activeAgentId);
   });
 
   modelDropdown = setupCustomSelect("model-dropdown", (value: string): void => {
     void selectActiveModelKey(value !== "" ? value : null, { persistSelection: true });
   });
 
-  effortDropdown = setupCustomSelect("effort-dropdown", (value: string) => {
+  effortDropdown = setupCustomSelect("effort-dropdown", async (value: string) => {
     runtime.activeReasoningEffort = value !== "" ? value : null;
+    await persistReasoningEffort(runtime.activeReasoningEffort);
   });
 
-  interactionDropdown = setupCustomSelect("interaction-dropdown", (value: string) => {
+  interactionDropdown = setupCustomSelect("interaction-dropdown", async (value: string) => {
     runtime.activeInteractionMode =
       value === "plan-harder-local" || value === "change-approval" ? value : "off";
+    await persistInteractionMode(runtime.activeInteractionMode);
   });
   refreshInteractionDropdown();
 }
@@ -616,6 +710,9 @@ function initUtilityActions(): void {
     byId,
     showToast,
     updateModelPreferences,
+    selectActiveModelKey: async (modelKey: string | null): Promise<void> => {
+      await selectActiveModelKey(modelKey);
+    },
   });
   modelSettingsOverlayController.init();
   initQuickPromptPanel({ showToast });
@@ -630,7 +727,7 @@ async function refreshLocalizedDynamicPanels(): Promise<void> {
   localeRefreshInFlight = (async (): Promise<void> => {
     const refreshJobs = [
       loadSessionListAndRender({ preserveActive: true }),
-      loadActiveSessionHistory(),
+      loadActiveSessionHistory({ respectViewport: true }),
       loadStatusContext(),
       loadToolsFinalSnapshot(),
       loadAgents(),
@@ -748,6 +845,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     ThemeManager.init();
     syncThemeFromQuery();
     await bootstrapOpencodeUiI18n();
+    await hydrateRuntimeFromSharedState();
     await initializeRovoInteractionRuntime({
       draftText: draftInteractionText,
       submitText: submitInteractionText,

@@ -30,7 +30,11 @@ export function setupCustomSelect(
     item.classList.add("is-active");
     label.textContent = text + " \u25be";
     dropdown.classList.remove("is-expanded");
-    void onSelect(value, text);
+    void (async (): Promise<void> => {
+      try {
+        await onSelect(value, text);
+      } catch (_error) {}
+    })();
   });
 
   return {

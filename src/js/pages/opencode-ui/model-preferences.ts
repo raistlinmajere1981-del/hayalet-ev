@@ -1,9 +1,12 @@
 import { SettingsManager } from "../../modules/settings-manager.js";
+import { patchOpencodeUiSharedState, readOpencodeUiSharedState } from "../../modules/opencode-ui-shared-state.js";
 import type { OpencodeUiModelPreferences } from "./types.js";
 
 export const DEFAULT_OPENCODE_UI_MODEL_PREFERENCES: OpencodeUiModelPreferences = {
   hiddenProviders: [],
   hiddenModels: [],
+  disabledProviders: [],
+  disabledModels: [],
   favoriteModels: [],
   defaultModelKey: null,
   lastSelectedModelKey: null,
@@ -41,6 +44,8 @@ export function normalizeOpencodeUiModelPreferences(raw: unknown): OpencodeUiMod
   return {
     hiddenProviders: normalizeStringArray(record["hiddenProviders"]),
     hiddenModels: normalizeStringArray(record["hiddenModels"]),
+    disabledProviders: normalizeStringArray(record["disabledProviders"]),
+    disabledModels: normalizeStringArray(record["disabledModels"]),
     favoriteModels: normalizeStringArray(record["favoriteModels"]),
     defaultModelKey: normalizeNullableString(record["defaultModelKey"]),
     lastSelectedModelKey: normalizeNullableString(record["lastSelectedModelKey"]),
@@ -49,21 +54,64 @@ export function normalizeOpencodeUiModelPreferences(raw: unknown): OpencodeUiMod
 
 export async function loadOpencodeUiModelPreferences(): Promise<OpencodeUiModelPreferences> {
   try {
+    const sharedState = await readOpencodeUiSharedState();
+    const sharedPreferences = normalizeOpencodeUiModelPreferences(sharedState.modelPreferences);
+    if (
+      sharedPreferences.hiddenProviders.length > 0 ||
+      sharedPreferences.hiddenModels.length > 0 ||
+      sharedPreferences.disabledProviders.length > 0 ||
+      sharedPreferences.disabledModels.length > 0 ||
+      sharedPreferences.favoriteModels.length > 0 ||
+      sharedPreferences.defaultModelKey !== null ||
+      sharedPreferences.lastSelectedModelKey !== null
+    ) {
+      return sharedPreferences;
+    }
+
     const settings = await SettingsManager.load();
-    return normalizeOpencodeUiModelPreferences(settings.assistants?.opencodeUi);
+    const legacyPreferences = normalizeOpencodeUiModelPreferences(settings.assistants?.opencodeUi);
+    if (
+      legacyPreferences.hiddenProviders.length > 0 ||
+      legacyPreferences.hiddenModels.length > 0 ||
+      legacyPreferences.disabledProviders.length > 0 ||
+      legacyPreferences.disabledModels.length > 0 ||
+      legacyPreferences.favoriteModels.length > 0 ||
+      legacyPreferences.defaultModelKey !== null ||
+      legacyPreferences.lastSelectedModelKey !== null
+    ) {
+      await patchOpencodeUiSharedState((current) => ({
+        ...current,
+        modelPreferences: legacyPreferences,
+      }));
+    }
+
+    return legacyPreferences;
   } catch {
     return { ...DEFAULT_OPENCODE_UI_MODEL_PREFERENCES };
   }
 }
 
 export async function saveOpencodeUiModelPreferences(
-  preferences: OpencodeUiModelPreferences
+  updater:
+    | OpencodeUiModelPreferences
+    | ((current: OpencodeUiModelPreferences) => OpencodeUiModelPreferences)
 ): Promise<OpencodeUiModelPreferences> {
-  const normalized = normalizeOpencodeUiModelPreferences(preferences);
+  const fallbackCurrent = { ...DEFAULT_OPENCODE_UI_MODEL_PREFERENCES };
   try {
-    await SettingsManager.set("assistants.opencodeUi", normalized);
+    const writtenState = await patchOpencodeUiSharedState((current) => {
+      const currentPreferences = normalizeOpencodeUiModelPreferences(current.modelPreferences);
+      const nextPreferences = normalizeOpencodeUiModelPreferences(
+        typeof updater === "function" ? updater(currentPreferences) : updater
+      );
+      return {
+        ...current,
+        modelPreferences: nextPreferences,
+      };
+    });
+    return normalizeOpencodeUiModelPreferences(writtenState.modelPreferences);
   } catch {
-    return normalized;
+    return normalizeOpencodeUiModelPreferences(
+      typeof updater === "function" ? updater(fallbackCurrent) : updater
+    );
   }
-  return normalized;
 }

@@ -300,6 +300,8 @@ export function applyModelPreferences(
 ): SelectItem[] {
   const hiddenProviders = new Set(preferences.hiddenProviders);
   const hiddenModels = new Set(preferences.hiddenModels);
+  const disabledProviders = new Set(preferences.disabledProviders);
+  const disabledModels = new Set(preferences.disabledModels);
   const favoriteModels = new Set(preferences.favoriteModels);
   const connectedProviders = new Set(connectedProviderIds);
 
@@ -308,18 +310,21 @@ export function applyModelPreferences(
     const modelKey = item.modelKey ?? item.value;
     const providerHidden = providerId !== "" && hiddenProviders.has(providerId);
     const modelHidden = modelKey !== "" && hiddenModels.has(modelKey);
+    const providerPassive = providerId !== "" && disabledProviders.has(providerId);
+    const modelPassive = modelKey !== "" && disabledModels.has(modelKey);
 
     return {
       ...item,
       isConnected: providerId !== "" && connectedProviders.has(providerId),
       isFavorite: modelKey !== "" && favoriteModels.has(modelKey),
       isHidden: providerHidden || modelHidden,
+      isPassive: providerPassive || modelPassive,
     };
   });
 }
 
 export function filterVisibleModelItems(items: SelectItem[]): SelectItem[] {
-  return items.filter((item) => item.isHidden !== true);
+  return items.filter((item) => item.isHidden !== true && item.isPassive !== true);
 }
 
 export function sortModelItems(items: SelectItem[]): SelectItem[] {
@@ -380,18 +385,24 @@ export function enrichProviderItems(
   connectedProviderIds: string[]
 ): ProviderItem[] {
   const hiddenProviders = new Set(preferences.hiddenProviders);
+  const disabledProviders = new Set(preferences.disabledProviders);
   const connectedSet = new Set(connectedProviderIds);
 
   return providers.map((provider) => {
     const providerModels = items.filter((item) => item.providerId === provider.id);
-    const visibleModels = providerModels.filter((item) => item.isHidden !== true);
+    const visibleModels = providerModels.filter(
+      (item) => item.isHidden !== true && item.isPassive !== true
+    );
+    const passiveModels = providerModels.filter((item) => item.isPassive === true).length;
 
     return {
       ...provider,
       isConnected: connectedSet.has(provider.id),
       isHidden: hiddenProviders.has(provider.id),
+      isPassive: disabledProviders.has(provider.id),
       totalModels: providerModels.length,
       visibleModels: visibleModels.length,
+      passiveModels,
     };
   });
 }

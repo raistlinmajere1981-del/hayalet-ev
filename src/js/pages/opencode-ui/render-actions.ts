@@ -284,28 +284,100 @@ export function renderHistoricToolCall(
   targetContainer: HTMLElement,
   toolCall: OpencodeUiToolCall
 ): void {
+  const getStatusTone = (status: OpencodeUiToolCall["status"]): string => {
+    switch (status) {
+      case undefined:
+      case "done":
+        return "done";
+      case "running":
+        return "running";
+      case "retrying":
+        return "retrying";
+      case "interrupted":
+        return "interrupted";
+      case "failed":
+      case "error":
+        return "failed";
+      default:
+        return "done";
+    }
+  };
+  const getStatusLabel = (status: OpencodeUiToolCall["status"]): string => {
+    switch (status) {
+      case undefined:
+      case "done":
+        return t("message.toolCallDone");
+      case "running":
+        return t("message.toolCallRunning");
+      case "retrying":
+        return t("message.toolCallRetrying");
+      case "interrupted":
+        return t("message.toolCallInterrupted");
+      case "failed":
+        return t("message.toolCallFailed");
+      case "error":
+        return t("message.toolCallError");
+      default:
+        return t("message.toolCallDone");
+    }
+  };
+  const summarizePayload = (value: string): string => {
+    const compact = normalizeString(value).trim().replace(/\s+/g, " ");
+    if (compact === "") {
+      return "";
+    }
+    return compact.length > 88 ? `${compact.slice(0, 85)}...` : compact;
+  };
+
   const card = document.createElement("div");
-  card.className = "ds-tool-call ds-tool-call--open";
+  card.className = "ds-tool-call";
 
   const args = normalizeString(toolCall.args);
   const result = normalizeString(toolCall.result);
+  const detail = normalizeString(toolCall.detail);
+  const argsPreview = summarizePayload(args);
+  const detailPreview = summarizePayload(detail);
+  const status = toolCall.status ?? "done";
+  const statusTone = getStatusTone(status);
+  const statusLabel = getStatusLabel(status);
+  const previewText = argsPreview !== "" ? argsPreview : detailPreview;
+  const hasDetails = args !== "" || result !== "" || detail !== "";
 
   card.innerHTML =
-    '<div class="ds-tool-call__header">' +
-    '<span class="ds-tool-call__icon">🔧</span>' +
+    '<button type="button" class="ds-tool-call__header"' +
+    (hasDetails ? "" : ' disabled aria-disabled="true"') +
+    ">" +
+    '<span class="ds-tool-call__chevron">▸</span>' +
+    '<span class="ds-tool-call__icon">⌘</span>' +
     '<span class="ds-tool-call__name">' +
     escapeHtml(toolCall.name) +
     "</span>" +
-    '<span class="ds-tool-call__status ds-tool-call__status--done">' +
-    escapeHtml(t("message.toolCallDone")) +
+    (previewText !== ""
+      ? '<span class="ds-tool-call__args" title="' +
+        escapeHtml(args !== "" ? args : detail) +
+        '">' +
+        escapeHtml(previewText) +
+        "</span>"
+      : "") +
+    '<span class="ds-tool-call__status ds-tool-call__status--' +
+    escapeHtml(statusTone) +
+    '">' +
+    escapeHtml(statusLabel) +
     "</span>" +
-    "</div>" +
+    "</button>" +
     '<div class="ds-tool-call__body">' +
     (args !== ""
       ? '<div class="ds-tool-call__result"><strong>' +
         escapeHtml(t("message.toolCallArgsLabel")) +
         "</strong><br>" +
         escapeHtml(args) +
+        "</div>"
+      : "") +
+    (detail !== ""
+      ? '<div class="ds-tool-call__result"><strong>' +
+        escapeHtml(t("message.toolCallDetailLabel")) +
+        "</strong><br>" +
+        escapeHtml(detail) +
         "</div>"
       : "") +
     (result !== ""
@@ -316,6 +388,12 @@ export function renderHistoricToolCall(
         "</div>"
       : "") +
     "</div>";
+
+  if (hasDetails) {
+    card.querySelector<HTMLButtonElement>(".ds-tool-call__header")?.addEventListener("click", () => {
+      card.classList.toggle("ds-tool-call--open");
+    });
+  }
 
   targetContainer.appendChild(card);
 }

@@ -96,7 +96,7 @@ function resolveVisibleStart(sessionId: string, totalMessages: number): number {
 function renderSessionMessages(
   context: HistoryContext,
   detail: OpencodeUiSessionDetail,
-  options: { preserveScrollOffset?: boolean } = {}
+  options: { preserveScrollOffset?: boolean; respectViewport?: boolean } = {}
 ): void {
   const chatMessages = context.byId<HTMLElement>("chat-messages");
   if (chatMessages == null) {
@@ -138,7 +138,7 @@ function renderSessionMessages(
     return;
   }
 
-  context.scrollChatToBottom(true);
+  context.scrollChatToBottom(options.respectViewport !== true);
 }
 
 async function loadMoreHistoryMessages(context: HistoryContext, sessionId: string): Promise<void> {
@@ -159,7 +159,10 @@ async function loadMoreHistoryMessages(context: HistoryContext, sessionId: strin
   renderSessionMessages(context, detail, { preserveScrollOffset: true });
 }
 
-export async function loadActiveSessionHistory(context: HistoryContext): Promise<void> {
+export async function loadActiveSessionHistory(
+  context: HistoryContext,
+  options: { respectViewport?: boolean } = {}
+): Promise<void> {
   const sessionId = context.runtime.activeSessionId;
   if (sessionId == null || sessionId === "") {
     historyVisibleStarts.clear();
@@ -191,7 +194,9 @@ export async function loadActiveSessionHistory(context: HistoryContext): Promise
     Array.isArray(detail.changed_files) ? detail.changed_files : [],
     detail.workspace_path
   );
-  renderSessionMessages(context, detail);
+  renderSessionMessages(context, detail, {
+    ...(options.respectViewport !== undefined ? { respectViewport: options.respectViewport } : {}),
+  });
   context.updateUsageFromSession(detail.usage);
 }
 
@@ -217,8 +222,8 @@ export async function syncActiveSessionHistoryIfUpdated(context: HistoryContext)
       nextCount !== context.runtime.lastRenderedMessageCount ||
       nextSnapshot !== context.runtime.lastRenderedSnapshotKey
     ) {
-      await loadActiveSessionHistory(context);
-    }
+        await loadActiveSessionHistory(context, { respectViewport: true });
+      }
   } catch (_error) {
   } finally {
     liveSyncInFlight = false;

@@ -207,6 +207,8 @@ function createMarkdownBlock(text: string): OpencodeUiMessageBlock | null {
 
 function localizeToolState(status: string): string {
   switch (status) {
+    case "running":
+      return opencodeUiParserT("message.toolCallRunning");
     case "retrying":
       return opencodeUiParserT("message.toolStateLabel.retrying");
     case "interrupted":
@@ -218,6 +220,84 @@ function localizeToolState(status: string): string {
     default:
       return status;
   }
+}
+
+function normalizeToolCallStatus(
+  value: string
+): NonNullable<OpencodeUiToolCall["status"]> {
+  switch (value) {
+    case "running":
+    case "working":
+    case "pending":
+    case "in_progress":
+      return "running";
+    case "retrying":
+      return "retrying";
+    case "interrupted":
+    case "cancelled":
+    case "canceled":
+      return "interrupted";
+    case "failed":
+      return "failed";
+    case "error":
+      return "error";
+    case "success":
+    case "completed":
+    case "done":
+    case "succeeded":
+      return "done";
+    default:
+      return "done";
+  }
+}
+
+function isLimitToolMessage(detail: string): boolean {
+  return /((usage|rate) limit|quota|too many requests|limit has been reached|kullanım sınır|limit[ea] ulaşıldı)/iu.test(
+    detail
+  );
+}
+
+function buildToolNotice(
+  status: string,
+  statusMessage: string
+): OpencodeUiSessionMessage["notices"][number] | null {
+  const detail = statusMessage.trim();
+  if (status === "retrying") {
+    return {
+      tone: "warning",
+      title: opencodeUiParserT("message.runtimeNotice.retryingTitle"),
+      ...(detail !== "" ? { detail } : {}),
+      meta: opencodeUiParserT("message.toolStateRetryMeta"),
+    };
+  }
+
+  if (status === "interrupted") {
+    return {
+      tone: "warning",
+      title: opencodeUiParserT("message.runtimeNotice.interruptedTitle"),
+      ...(detail !== "" ? { detail } : {}),
+    };
+  }
+
+  if (detail !== "" && isLimitToolMessage(detail)) {
+    return {
+      tone: "warning",
+      title: opencodeUiParserT("message.runtimeNotice.limitTitle"),
+      detail,
+    };
+  }
+
+  if (status === "failed" || status === "error") {
+    return {
+      tone: "error",
+      title: opencodeUiParserT("message.toolStateTitle", {
+        state: localizeToolState(status),
+      }),
+      ...(detail !== "" ? { detail } : {}),
+    };
+  }
+
+  return null;
 }
 
 function normalizeTodoItems(value: unknown): OpencodeUiTodoItem[] {
@@ -442,24 +522,18 @@ export function parseMessages(
           status === "interrupted" ||
           status === "retrying"
         ) {
-          notices.push({
-            tone: status === "retrying" ? "warning" : "error",
-            title:
-              statusMessage !== ""
-                ? statusMessage
-                : opencodeUiParserT("message.toolStateTitle", {
-                    state: localizeToolState(status),
-                  }),
-            ...(status === "retrying"
-              ? { meta: opencodeUiParserT("message.toolStateRetryMeta") }
-              : {}),
-          });
+          const notice = buildToolNotice(status, statusMessage);
+          if (notice !== null) {
+            notices.push(notice);
+          }
         }
 
         toolCalls.push({
           name: asString(partData?.["tool"], asString(partData?.["name"], "unknown")),
           args,
           result,
+          ...(statusMessage !== "" ? { detail: statusMessage } : {}),
+          status: normalizeToolCallStatus(status),
         });
       }
     }
