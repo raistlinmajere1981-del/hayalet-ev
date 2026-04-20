@@ -85,10 +85,11 @@ export const LAB_FEATURES = [
     description: "Ses odaklı analiz modülleri ve çıktı takibi."
   },
   {
+    // NOTE: subtitle-analysis remains legacy-internal only and is no longer user-facing in v2.2.
     id: "subtitle-analysis",
-    label: "Altyazi Analizi",
-    shortLabel: "Altyazi",
-    description: "Altyazı girişi, seçim, analiz ve rapor akışı."
+    label: "Transcript Support",
+    shortLabel: "Transcript",
+    description: "Timestamped transcript artifact support kept for backward compatibility."
   }
 ];
 export function createLabFeatureMeta(featureId) {

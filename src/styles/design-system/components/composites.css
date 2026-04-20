@@ -231,9 +231,9 @@
 }
 
 .character-modal {
-  width: min(1200px, 95vw);
-  max-width: min(1200px, 95vw);
-  max-height: min(88vh, 960px);
+  width: min(var(--layout-modal-character-wide-w), 95vw);
+  max-width: min(var(--layout-modal-character-wide-w), 95vw);
+  max-height: min(88vh, var(--layout-modal-character-wide-max-h));
   display: flex;
   flex-direction: column;
 }
@@ -423,7 +423,7 @@
 }
 
 .character-active-panel {
-  width: min(26rem, 38vw);
+  width: min(var(--layout-character-panel-inline-max), 38vw);
   flex-shrink: 0;
   border-right: var(--border-1) solid var(--border-default);
   background: var(--bg-surface-2);
@@ -479,7 +479,7 @@
       var(--bg-surface-2)
     ),
     var(--bg-surface-2);
-  max-height: 15rem;
+  max-height: var(--layout-character-profile-list-max-h);
   overflow-y: auto;
 }
 
@@ -564,7 +564,7 @@
 }
 
 .character-textarea {
-  min-height: 5.5rem;
+  min-height: var(--size-character-textarea-min-h);
   resize: vertical;
 }
 
@@ -1086,7 +1086,7 @@
   }
 
   .character-profile-list {
-    max-height: 12rem;
+    max-height: var(--layout-character-profile-list-max-h-compact);
   }
 
   .live-log-toolbar {

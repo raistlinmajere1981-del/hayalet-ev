@@ -344,7 +344,9 @@ function createCharacterProfile(
   };
 }
 
-function createFallbackProfilesState(selectedFeatureIds: string[] = []): OpencodeUiCharacterProfilesState {
+function createFallbackProfilesState(
+  selectedFeatureIds: string[] = []
+): OpencodeUiCharacterProfilesState {
   const profile = createCharacterProfile(0, { selectedFeatureIds });
   return {
     activeProfileId: profile.id,
@@ -367,9 +369,10 @@ function ensureCharacterProfilesState(
   }
 
   const activeProfileId =
-    state.activeProfileId != null && profiles.some((profile) => profile.id === state.activeProfileId)
+    state.activeProfileId != null &&
+    profiles.some((profile) => profile.id === state.activeProfileId)
       ? state.activeProfileId
-      : profiles[0]?.id ?? null;
+      : (profiles[0]?.id ?? null);
 
   return {
     activeProfileId,
@@ -569,7 +572,9 @@ export class CharacterOverlay {
       return null;
     }
 
-    return this.draftProfilesState.profiles.find((profile) => profile.id === activeProfileId) ?? null;
+    return (
+      this.draftProfilesState.profiles.find((profile) => profile.id === activeProfileId) ?? null
+    );
   }
 
   private async _loadProfiles(): Promise<void> {
@@ -800,20 +805,32 @@ export class CharacterOverlay {
     }
   }
 
-  private _mergeCharacterMarkdown(current: string, profileBlock: string, timestamp: string): string {
+  private _mergeCharacterMarkdown(
+    current: string,
+    profileBlock: string,
+    timestamp: string
+  ): string {
     if (!current.includes("<!--PROFILE_START-->") || !current.includes("<!--PROFILE_END-->")) {
       return buildCharacterMarkdownFallback(profileBlock, timestamp);
     }
 
     const nextProfileBlock =
-      profileBlock.trim() === "" ? "<!--PROFILE_START-->\n<!--PROFILE_END-->" : `<!--PROFILE_START-->\n${profileBlock}<!--PROFILE_END-->`;
+      profileBlock.trim() === ""
+        ? "<!--PROFILE_START-->\n<!--PROFILE_END-->"
+        : `<!--PROFILE_START-->\n${profileBlock}<!--PROFILE_END-->`;
 
-    let updated = current.replace(/<!--PROFILE_START-->([\s\S]*?)<!--PROFILE_END-->/, nextProfileBlock);
+    let updated = current.replace(
+      /<!--PROFILE_START-->([\s\S]*?)<!--PROFILE_END-->/,
+      nextProfileBlock
+    );
     if (profileBlock.trim() !== "") {
       updated = updated.replace(EMPTY_PROFILE_HINT_PATTERN, "");
     }
     if (LAST_UPDATED_PATTERN.test(updated)) {
-      updated = updated.replace(LAST_UPDATED_PATTERN, (_match, label: string) => `**${label}:** ${timestamp}`);
+      updated = updated.replace(
+        LAST_UPDATED_PATTERN,
+        (_match, label: string) => `**${label}:** ${timestamp}`
+      );
     } else {
       updated = `${updated.trimEnd()}\n\n**Son güncelleme:** ${timestamp}\n`;
     }
@@ -899,7 +916,9 @@ export class CharacterOverlay {
     }
     if (this.currentProfileLabel != null) {
       this.currentProfileLabel.textContent =
-        activeProfile != null ? buildProfileName(activeIndex >= 0 ? activeIndex : 0, activeProfile.name) : "";
+        activeProfile != null
+          ? buildProfileName(activeIndex >= 0 ? activeIndex : 0, activeProfile.name)
+          : "";
     }
     if (this.deleteProfileBtn != null) {
       this.deleteProfileBtn.disabled = activeProfile == null;
@@ -915,8 +934,7 @@ export class CharacterOverlay {
 
     CATEGORIES.forEach((category, index) => {
       const accordion = document.createElement("div");
-      accordion.className =
-        index === 0 ? "character-accordion is-expanded" : "character-accordion";
+      accordion.className = index === 0 ? "character-accordion is-expanded" : "character-accordion";
       accordion.dataset["categoryId"] = category.id;
 
       const header = document.createElement("div");

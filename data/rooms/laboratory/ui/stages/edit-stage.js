@@ -52,6 +52,8 @@ export function renderEditStage(deps) {
   const previewUrl = (typeof preview["previewUrl"] === "string" ? preview["previewUrl"] : null) || (typeof preview["path"] === "string" ? preview["path"] : null) || (typeof source["previewUrl"] === "string" ? source["previewUrl"] : null);
   const editRecipe = asLabRecord(editConfig["recipe"]);
   const commonRecipe = asLabRecord(editRecipe["common"]);
+  const isAudioSource = sourceKind === "audio";
+  const isVisualSource = sourceKind === "video" || sourceKind === "image";
   const main = `
     ${renderStageHeader({
     eyebrow: "Aşama 02 · Düzenle",
@@ -59,7 +61,7 @@ export function renderEditStage(deps) {
     stageTotal: 4,
     statusLabel: previewStatus,
     statusTone: previewStatus === "ready" ? "success" : previewStatus === "failed" ? "error" : "neutral",
-    subtitle: "Çalışma yüzeyi burada hazırlanır. Zaman aralığı, frame aralığı, bölge seçimi ve düşük maliyetli önizleme ayarları burada belirlenir.",
+    subtitle: isAudioSource ? "Çalışma yüzeyi burada hazırlanır. Zaman aralığı, odak ve transcript destek kapsamı burada belirlenir." : "Çalışma yüzeyi burada hazırlanır. Zaman aralığı, frame aralığı, bölge seçimi ve düşük maliyetli önizleme ayarları burada belirlenir.",
     title: "Edit Workspace"
   })}
     ${sourceReady !== true ? renderEmptyState({
@@ -85,21 +87,28 @@ export function renderEditStage(deps) {
                   <label class="labx-field">
                     <span>Odak</span>
                     <select class="labx-select" data-lab-field="scope.focus">
-                      ${["visual", "audio", "subtitle", "cross-modal"].map(function(entry) {
+                      ${["visual", "audio", "cross-modal"].map(function(entry) {
     return `<option value="${entry}" ${(scope?.focus || "visual") === entry ? "selected" : ""}>${escapeHtml(entry)}</option>`;
   }).join("")}
                     </select>
                   </label>
                 </div>
                 <div class="labx-workspace-strip__row">
-                  <label class="labx-field">
-                    <span>Frame Başlangıcı</span>
-                    <input class="labx-input" type="number" min="0" data-lab-field="scope.frameStart" value="${escapeHtml(getInputValue(scope?.frameRange?.startFrame))}" />
-                  </label>
-                  <label class="labx-field">
-                    <span>Frame Bitişi</span>
-                    <input class="labx-input" type="number" min="0" data-lab-field="scope.frameEnd" value="${escapeHtml(getInputValue(scope?.frameRange?.endFrame))}" />
-                  </label>
+                  ${isVisualSource ? `
+                        <label class="labx-field">
+                          <span>Frame Başlangıcı</span>
+                          <input class="labx-input" type="number" min="0" data-lab-field="scope.frameStart" value="${escapeHtml(getInputValue(scope?.frameRange?.startFrame))}" />
+                        </label>
+                        <label class="labx-field">
+                          <span>Frame Bitişi</span>
+                          <input class="labx-input" type="number" min="0" data-lab-field="scope.frameEnd" value="${escapeHtml(getInputValue(scope?.frameRange?.endFrame))}" />
+                        </label>
+                      ` : `
+                        <div class="labx-summary-list">
+                          <div><span>Transcript</span><strong>Support artifact</strong></div>
+                          <div><span>Search</span><strong>Selected ranges</strong></div>
+                        </div>
+                      `}
                   <label class="labx-field">
                     <span>Not / Hipotez</span>
                     <input class="labx-input" data-lab-field="scope.hypothesis" value="${escapeHtml(scope?.hypothesis || "")}" placeholder="check splice around 01:30" />
@@ -108,43 +117,53 @@ export function renderEditStage(deps) {
               </div>
             </div>
             <div class="labx-workspace-stage__tools">
-              ${renderCompactCard({
+              ${isVisualSource ? renderCompactCard({
     eyebrow: "Frame / ROI",
     title: "Kapsam Hazırlığı",
     body: `
-                  <div class="labx-inline-grid">
-                    <label class="labx-field">
-                      <span>ROI X</span>
-                      <input class="labx-input" type="number" min="0" data-lab-field="scope.regionX" value="${escapeHtml(getInputValue(scope?.region?.x))}" />
-                    </label>
-                    <label class="labx-field">
-                      <span>ROI Y</span>
-                      <input class="labx-input" type="number" min="0" data-lab-field="scope.regionY" value="${escapeHtml(getInputValue(scope?.region?.y))}" />
-                    </label>
-                    <label class="labx-field">
-                      <span>ROI Genişlik</span>
-                      <input class="labx-input" type="number" min="1" data-lab-field="scope.regionWidth" value="${escapeHtml(getInputValue(scope?.region?.width))}" />
-                    </label>
-                    <label class="labx-field">
-                      <span>ROI Yükseklik</span>
-                      <input class="labx-input" type="number" min="1" data-lab-field="scope.regionHeight" value="${escapeHtml(getInputValue(scope?.region?.height))}" />
-                    </label>
-                  </div>
-                  <p class="labx-panel-hint">Bu değerler process başladığında freeze edilir. Sonradan değişirse yeni run oluşmalıdır.</p>
-                `
+                        <div class="labx-inline-grid">
+                          <label class="labx-field">
+                            <span>ROI X</span>
+                            <input class="labx-input" type="number" min="0" data-lab-field="scope.regionX" value="${escapeHtml(getInputValue(scope?.region?.x))}" />
+                          </label>
+                          <label class="labx-field">
+                            <span>ROI Y</span>
+                            <input class="labx-input" type="number" min="0" data-lab-field="scope.regionY" value="${escapeHtml(getInputValue(scope?.region?.y))}" />
+                          </label>
+                          <label class="labx-field">
+                            <span>ROI Genişlik</span>
+                            <input class="labx-input" type="number" min="1" data-lab-field="scope.regionWidth" value="${escapeHtml(getInputValue(scope?.region?.width))}" />
+                          </label>
+                          <label class="labx-field">
+                            <span>ROI Yükseklik</span>
+                            <input class="labx-input" type="number" min="1" data-lab-field="scope.regionHeight" value="${escapeHtml(getInputValue(scope?.region?.height))}" />
+                          </label>
+                        </div>
+                        <p class="labx-panel-hint">Bu değerler process başladığında freeze edilir. Sonradan değişirse yeni run oluşmalıdır.</p>
+                      `
+  }) : renderCompactCard({
+    eyebrow: "Audio Range",
+    title: "Ses Kapsamı",
+    body: `
+                        <div class="labx-summary-list">
+                          <div><span>Odak</span><strong>${escapeHtml(scope?.focus || "audio")}</strong></div>
+                          <div><span>Zaman Penceresi</span><strong>${escapeHtml(scope?.timeRange ? `${Math.round(scope.timeRange.startMs / 1e3)}s - ${Math.round(scope.timeRange.endMs / 1e3)}s` : "--")}</strong></div>
+                          <div><span>Transcript</span><strong>Timestamped support</strong></div>
+                        </div>
+                      `
   })}
-              ${renderCompactCard({
+              ${isVisualSource ? renderCompactCard({
     eyebrow: "Visual Controls",
     title: "Gerçek Zamanlı Hafif Ayarlar",
     body: `
-                  <div class="labx-summary-list">
-                    <div><span>Brightness</span><strong>${escapeHtml(String(commonRecipe["brightness"] ?? "default"))}</strong></div>
-                    <div><span>Contrast</span><strong>${escapeHtml(String(commonRecipe["contrast"] ?? "default"))}</strong></div>
-                    <div><span>Gamma</span><strong>${escapeHtml(String(commonRecipe["gamma"] ?? "default"))}</strong></div>
-                  </div>
-                  <p class="labx-panel-hint">Bu sprintte kontrol yüzeyi eklendi. Ağır dönüşümler process içinde job olarak çalışır.</p>
-                `
-  })}
+                        <div class="labx-summary-list">
+                          <div><span>Brightness</span><strong>${escapeHtml(String(commonRecipe["brightness"] ?? "default"))}</strong></div>
+                          <div><span>Contrast</span><strong>${escapeHtml(String(commonRecipe["contrast"] ?? "default"))}</strong></div>
+                          <div><span>Gamma</span><strong>${escapeHtml(String(commonRecipe["gamma"] ?? "default"))}</strong></div>
+                        </div>
+                        <p class="labx-panel-hint">Bu yüzey düşük maliyetli görsel kontroller için ayrılmıştır. Ağır dönüşümler process içinde job olarak çalışır.</p>
+                      `
+  }) : ""}
               ${renderCompactCard({
     eyebrow: "Audio Focus",
     title: "Ses Odağı",
@@ -168,7 +187,7 @@ export function renderEditStage(deps) {
     }),
     renderCompactCard({
       eyebrow: "Run Configuration",
-      title: "Profile Ayarları",
+      title: "Çalıştırma Ayarları",
       body: `
         <div class="labx-inline-actions">
           <button class="labx-inline-action" type="button" data-lab-action="toggle-edit-side-panel">

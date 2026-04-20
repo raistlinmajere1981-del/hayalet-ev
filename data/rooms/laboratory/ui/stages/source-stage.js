@@ -222,7 +222,16 @@ export function renderSourceStage(deps) {
   })}
     </div>
   `;
-  const toolEntries = ["ffmpeg", "yt-dlp", "whisper.cpp", "opensmile", "pyaudioanalysis", "yamnet", "demucs", "librosa"];
+  const toolEntries = [
+    "ffmpeg",
+    "yt-dlp",
+    "whisper.cpp",
+    "opensmile",
+    "pyaudioanalysis",
+    "yamnet",
+    "demucs",
+    "librosa"
+  ];
   const side = [
     renderCompactCard({
       eyebrow: "Kaynak Özeti",
@@ -236,7 +245,10 @@ export function renderSourceStage(deps) {
             ${renderPreviewRow("Tür", getSourceKindLabel(sourceKind))}
             ${renderPreviewRow("Erişim", routeLabel)}
             ${renderPreviewRow("Durum", sourceStatusLabel)}
-            ${typeof metadata["width"] === "number" && typeof metadata["height"] === "number" ? renderPreviewRow("Çözünürlük", `${String(metadata["width"])} × ${String(metadata["height"])}`) : ""}
+            ${typeof metadata["width"] === "number" && typeof metadata["height"] === "number" ? renderPreviewRow(
+        "Çözünürlük",
+        `${String(metadata["width"])} × ${String(metadata["height"])}`
+      ) : ""}
             ${renderPreviewRow("Süre", formatDurationSeconds(metadata["durationSeconds"]))}
             ${renderPreviewRow("Boyut", formatBytes(metadata["sizeBytes"]))}
           </div>

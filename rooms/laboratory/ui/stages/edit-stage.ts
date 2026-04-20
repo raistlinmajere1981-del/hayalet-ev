@@ -77,10 +77,9 @@ export function renderEditStage(deps: EditStageRenderDeps): LabStageSurface {
       statusLabel: previewStatus,
       statusTone:
         previewStatus === "ready" ? "success" : previewStatus === "failed" ? "error" : "neutral",
-      subtitle:
-        isAudioSource
-          ? "Çalışma yüzeyi burada hazırlanır. Zaman aralığı, odak ve transcript destek kapsamı burada belirlenir."
-          : "Çalışma yüzeyi burada hazırlanır. Zaman aralığı, frame aralığı, bölge seçimi ve düşük maliyetli önizleme ayarları burada belirlenir.",
+      subtitle: isAudioSource
+        ? "Çalışma yüzeyi burada hazırlanır. Zaman aralığı, odak ve transcript destek kapsamı burada belirlenir."
+        : "Çalışma yüzeyi burada hazırlanır. Zaman aralığı, frame aralığı, bölge seçimi ve düşük maliyetli önizleme ayarları burada belirlenir.",
       title: "Edit Workspace",
     })}
     ${

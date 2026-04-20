@@ -4,7 +4,6 @@ import {
   getActiveEditOutput,
   getCurrentRun,
   getStageBlockReason,
-  getSnapshot,
   getSourceMode,
   getSourceProbeStatus,
   getSourceStatus,
@@ -270,9 +269,7 @@ export function createLabRunController(deps) {
         })
       )
     );
-    const { activeFeatureId, featureIds } = deriveFeatureSelectionFromCapabilities(
-      normalizedCapabilities
-    );
+    const { activeFeatureId, featureIds } = deriveFeatureSelectionFromCapabilities(normalizedCapabilities);
     dispatch({
       type: "capability-set",
       capabilities: normalizedCapabilities
@@ -292,36 +289,9 @@ export function createLabRunController(deps) {
   }
   function runSourcePrimaryAction() {
     const state = deps.store.getState();
-    const featureId = state.featureId;
     const sourceDrafts = state.ui.sourceDrafts;
     function startProbe(action, payload) {
       sendMediaAction(action, payload);
-    }
-    if (featureId === "subtitle-analysis") {
-      const activeProject = asLabRecord(getSnapshot(state)["activeProject"]);
-      const subtitleWorkspace = asLabRecord(
-        asLabRecord(activeProject["subtitleAnalysis"])["workspace"]
-      );
-      const subtitleMode = asNonEmptyString(subtitleWorkspace["mode"]) || "local-file";
-      const fields2 = {
-        fileNameHint: sourceDrafts.fileNameHint,
-        urlInput: sourceDrafts.urlInput,
-        youtubeUrl: sourceDrafts.youtubeUrl
-      };
-      if (subtitleMode === "local-folder") {
-        startProbe("subtitle-source-pick-folder", { fields: fields2 });
-        return;
-      }
-      if (subtitleMode === "url") {
-        startProbe("subtitle-source-download-url", { fields: fields2 });
-        return;
-      }
-      if (subtitleMode.startsWith("youtube-")) {
-        startProbe("subtitle-source-download-youtube", { fields: fields2 });
-        return;
-      }
-      startProbe("subtitle-source-pick-local", { fields: fields2 });
-      return;
     }
     const mode = getSourceMode(state);
     const fields = {
@@ -347,9 +317,7 @@ export function createLabRunController(deps) {
         runSourcePrimaryAction();
         return;
       case "edit":
-        sendMediaAction(
-          state.featureId === "subtitle-analysis" ? "subtitle-edit-preview" : "edit-preview"
-        );
+        sendMediaAction("edit-preview");
         return;
       case "process": {
         const run = getCurrentRun(state);
@@ -502,6 +470,7 @@ export function createLabRunController(deps) {
           updateWorkbench(function(workbench) {
             return {
               ...workbench,
+              forkedFromRunId: run.id,
               analysisScope: {
                 ...run.analysisScope,
                 lifecycle: {
@@ -513,10 +482,17 @@ export function createLabRunController(deps) {
             };
           });
         }
+        dispatch({ type: "preview-artifact-activated", artifactId: null });
         dispatch({ type: "stage-changed", stage: "edit" });
         return;
       }
       case "save-project":
+        updateWorkbench(function(workbench) {
+          return {
+            ...workbench,
+            lastManualSaveAt: (/* @__PURE__ */ new Date()).toISOString()
+          };
+        });
         dispatch({
           type: "push-event",
           event: buildUiEvent("Proje mevcut checkpoint durumu ile kaydedildi.", "success")
@@ -612,23 +588,17 @@ export function createLabRunController(deps) {
             mode: targetValue
           }
         });
-        sendMediaAction(
-          state.featureId === "subtitle-analysis" ? "subtitle-source-set-mode" : "source-set-mode",
-          { mode: targetValue }
-        );
+        sendMediaAction("source-set-mode", { mode: targetValue });
         return;
       case "source.fileNameHint":
       case "source.urlInput":
       case "source.youtubeUrl":
-        sendMediaAction(
-          state.featureId === "subtitle-analysis" ? "subtitle-source-update-drafts" : "source-update-draft",
-          {
-            fields: {
-              ...state.ui.sourceDrafts,
-              [field.replace("source.", "")]: targetValue
-            }
+        sendMediaAction("source-update-draft", {
+          fields: {
+            ...state.ui.sourceDrafts,
+            [field.replace("source.", "")]: targetValue
           }
-        );
+        });
         return;
       case "edit.outputNameHint":
         sendMediaAction("edit-update-recipe", {

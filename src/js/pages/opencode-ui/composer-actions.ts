@@ -18,10 +18,7 @@ import {
   getRovoInteractionActivationSnapshot,
   refreshRovoInteractionRuntime,
 } from "./interaction-runtime.js";
-import {
-  getInteractionModeLabel,
-  loadInteractionSystemPrompt,
-} from "./interaction-mode.js";
+import { getInteractionModeLabel, loadInteractionSystemPrompt } from "./interaction-mode.js";
 import { buildRuntimeErrorNotice } from "./notice-utils.js";
 import { parseRovoInteraction } from "../../modules/rovo-interactions/parser.js";
 import type {

@@ -517,7 +517,8 @@ export function createModelSettingsOverlayController(options: ModelSettingsOverl
         return;
       }
 
-      const passiveKey = target.closest<HTMLElement>("[data-model-passive]")?.dataset["modelPassive"];
+      const passiveKey =
+        target.closest<HTMLElement>("[data-model-passive]")?.dataset["modelPassive"];
       if (passiveKey != null && passiveKey !== "") {
         void toggleModelPassive(passiveKey);
         return;

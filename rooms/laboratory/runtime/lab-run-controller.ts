@@ -361,9 +361,8 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         })
       )
     );
-    const { activeFeatureId, featureIds } = deriveFeatureSelectionFromCapabilities(
-      normalizedCapabilities
-    );
+    const { activeFeatureId, featureIds } =
+      deriveFeatureSelectionFromCapabilities(normalizedCapabilities);
     dispatch({
       type: "capability-set",
       capabilities: normalizedCapabilities as import("../models/lab-types.js").CapabilityFamilyId[],
@@ -497,9 +496,11 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         return;
       case "capability-select":
         syncCapabilities(
-          deps.store.getState().selectedCapabilities.concat(
-            value as import("../models/lab-types.js").CapabilityFamilyId
-          )
+          deps.store
+            .getState()
+            .selectedCapabilities.concat(
+              value as import("../models/lab-types.js").CapabilityFamilyId
+            )
         );
         return;
       case "capability-deselect":

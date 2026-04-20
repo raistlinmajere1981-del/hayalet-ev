@@ -273,7 +273,16 @@ export function renderSourceStage(deps: SourceStageRenderDeps): LabStageSurface 
     </div>
   `;
 
-  const toolEntries = ["ffmpeg", "yt-dlp", "whisper.cpp", "opensmile", "pyaudioanalysis", "yamnet", "demucs", "librosa"];
+  const toolEntries = [
+    "ffmpeg",
+    "yt-dlp",
+    "whisper.cpp",
+    "opensmile",
+    "pyaudioanalysis",
+    "yamnet",
+    "demucs",
+    "librosa",
+  ];
 
   const side = [
     renderCompactCard({
@@ -290,7 +299,10 @@ export function renderSourceStage(deps: SourceStageRenderDeps): LabStageSurface 
             ${renderPreviewRow("Durum", sourceStatusLabel)}
             ${
               typeof metadata["width"] === "number" && typeof metadata["height"] === "number"
-                ? renderPreviewRow("Çözünürlük", `${String(metadata["width"])} × ${String(metadata["height"])}`)
+                ? renderPreviewRow(
+                    "Çözünürlük",
+                    `${String(metadata["width"])} × ${String(metadata["height"])}`
+                  )
                 : ""
             }
             ${renderPreviewRow("Süre", formatDurationSeconds(metadata["durationSeconds"]))}
@@ -308,7 +320,8 @@ export function renderSourceStage(deps: SourceStageRenderDeps): LabStageSurface 
           ${toolEntries
             .map(function (toolId) {
               const tool = asLabRecord(toolRegistry[toolId]);
-              const installed = tool["installed"] === true || asNonEmptyString(tool["status"]) === "installed";
+              const installed =
+                tool["installed"] === true || asNonEmptyString(tool["status"]) === "installed";
               return `
                 <div>
                   <span>${escapeHtml(toolId)}</span>

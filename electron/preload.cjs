@@ -436,7 +436,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   opencodeUiQuickPromptsWrite: (prompts) =>
     ipcRenderer.invoke("opencode-ui-quick-prompts-write", prompts),
   opencodeUiSharedStateRead: () => ipcRenderer.invoke("opencode-ui-shared-state-read"),
-  opencodeUiSharedStateWrite: (state) => ipcRenderer.invoke("opencode-ui-shared-state-write", state),
+  opencodeUiSharedStateWrite: (state) =>
+    ipcRenderer.invoke("opencode-ui-shared-state-write", state),
   opencodeUiSessionWatchStart: (sessionId, dbPath) =>
     ipcRenderer.invoke("opencode-ui-session-watch-start", sessionId, dbPath),
   opencodeUiSessionWatchStop: () => ipcRenderer.invoke("opencode-ui-session-watch-stop"),

@@ -390,9 +390,11 @@ export function renderHistoricToolCall(
     "</div>";
 
   if (hasDetails) {
-    card.querySelector<HTMLButtonElement>(".ds-tool-call__header")?.addEventListener("click", () => {
-      card.classList.toggle("ds-tool-call--open");
-    });
+    card
+      .querySelector<HTMLButtonElement>(".ds-tool-call__header")
+      ?.addEventListener("click", () => {
+        card.classList.toggle("ds-tool-call--open");
+      });
   }
 
   targetContainer.appendChild(card);

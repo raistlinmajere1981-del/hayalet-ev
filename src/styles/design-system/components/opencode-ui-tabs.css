@@ -474,10 +474,10 @@
 }
 
 .model-settings-modal {
-  width: min(1180px, 94vw);
-  max-width: min(1180px, 94vw);
+  width: min(var(--layout-opencode-model-settings-w), 94vw);
+  max-width: min(var(--layout-opencode-model-settings-w), 94vw);
   max-height: var(--size-modal-tall);
-  min-height: min(78vh, 860px);
+  min-height: min(78vh, var(--layout-opencode-model-settings-min-h));
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -550,7 +550,7 @@
 
 .model-settings__layout {
   display: grid;
-  grid-template-columns: minmax(280px, 0.34fr) minmax(0, 1fr);
+  grid-template-columns: minmax(var(--size-panel-compact), 0.34fr) minmax(0, 1fr);
   gap: var(--space-5);
   min-height: 0;
   flex: 1;
@@ -591,7 +591,7 @@
 
 .model-settings__provider-list,
 .model-settings__model-list {
-  max-height: min(62vh, 680px);
+  max-height: min(62vh, var(--layout-opencode-model-settings-list-max-h));
   overflow-y: auto;
   padding-right: var(--space-1);
 }

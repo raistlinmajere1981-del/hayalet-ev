@@ -24,7 +24,7 @@ export function renderLabLeftRail(state) {
         <span class="labx-brand__mark">A3</span>
         <div>
           <strong>Laboratuvar</strong>
-          <p>Medya çalışma alanı</p>
+          <p>Kaynak odaklı çalışma alanı</p>
         </div>
       </div>
       <button

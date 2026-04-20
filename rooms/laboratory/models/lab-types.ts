@@ -516,14 +516,14 @@ export type LabStoreEvent =
   | { type: "report-view-changed"; view: "user" | "ai" }
   | { type: "preview-artifact-activated"; artifactId: string | null }
   | { type: "live-findings-expanded"; force?: boolean }
-   | { type: "analysis-controls-collapsed"; force?: boolean }
-   | { type: "capability-select"; capabilityId: CapabilityFamilyId }
-   | { type: "capability-deselect"; capabilityId: CapabilityFamilyId }
-   | { type: "capability-set"; capabilities: CapabilityFamilyId[] }
-   | { type: "edit-side-panel-toggled"; force?: boolean }
-   | { type: "raw-log-toggled"; force?: boolean }
-   | { type: "push-event"; event: LabEventFeedItem }
-   | { type: "clear-events" };
+  | { type: "analysis-controls-collapsed"; force?: boolean }
+  | { type: "capability-select"; capabilityId: CapabilityFamilyId }
+  | { type: "capability-deselect"; capabilityId: CapabilityFamilyId }
+  | { type: "capability-set"; capabilities: CapabilityFamilyId[] }
+  | { type: "edit-side-panel-toggled"; force?: boolean }
+  | { type: "raw-log-toggled"; force?: boolean }
+  | { type: "push-event"; event: LabEventFeedItem }
+  | { type: "clear-events" };
 
 export function createLabFeatureMeta(featureId: LabFeatureId): LabFeatureMeta {
   return (

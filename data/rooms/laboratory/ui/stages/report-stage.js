@@ -176,6 +176,7 @@ export function renderReportStage(deps) {
       title: "Sonraki Adımlar",
       body: `
         <div class="labx-inline-actions">
+          <button class="labx-inline-action" type="button" data-lab-stage="source">Kaynağa Dön</button>
           <button class="labx-inline-action" type="button" data-lab-stage="edit">Düzenlemeye Dön</button>
           <button class="labx-inline-action" type="button" data-lab-action="new-run-from-report">Yeni Run Oluştur</button>
           <button class="labx-inline-action" type="button" data-lab-action="save-project">Projeyi Kaydet</button>

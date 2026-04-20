@@ -222,9 +222,7 @@ function localizeToolState(status: string): string {
   }
 }
 
-function normalizeToolCallStatus(
-  value: string
-): NonNullable<OpencodeUiToolCall["status"]> {
+function normalizeToolCallStatus(value: string): NonNullable<OpencodeUiToolCall["status"]> {
   switch (value) {
     case "running":
     case "working":

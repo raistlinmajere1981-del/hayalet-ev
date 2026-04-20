@@ -78,7 +78,10 @@ import {
 } from "./interaction-runtime.js";
 import { buildInteractionModeItems } from "./interaction-mode.js";
 import { buildRuntimeErrorNotice } from "./notice-utils.js";
-import { patchOpencodeUiSharedState, readOpencodeUiSharedState } from "../../modules/opencode-ui-shared-state.js";
+import {
+  patchOpencodeUiSharedState,
+  readOpencodeUiSharedState,
+} from "../../modules/opencode-ui-shared-state.js";
 import {
   bindDictationTrigger,
   type DictationBinding,
@@ -361,7 +364,9 @@ function isChatNearBottom(chatMessages: HTMLElement): boolean {
   return remaining <= CHAT_AUTO_FOLLOW_THRESHOLD_PX;
 }
 
-function updateChatAutoFollow(chatMessages: HTMLElement | null = byId<HTMLElement>("chat-messages")): void {
+function updateChatAutoFollow(
+  chatMessages: HTMLElement | null = byId<HTMLElement>("chat-messages")
+): void {
   if (chatMessages == null) {
     chatAutoFollow = true;
     return;

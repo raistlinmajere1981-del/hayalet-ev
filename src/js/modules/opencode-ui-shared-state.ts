@@ -89,7 +89,9 @@ async function persistSharedState(state: OpencodeUiSharedState): Promise<Opencod
 }
 
 async function enqueueSharedStateMutation(
-  mutator: (current: OpencodeUiSharedState) => OpencodeUiSharedState | Promise<OpencodeUiSharedState>
+  mutator: (
+    current: OpencodeUiSharedState
+  ) => OpencodeUiSharedState | Promise<OpencodeUiSharedState>
 ): Promise<OpencodeUiSharedState> {
   const run = async (): Promise<OpencodeUiSharedState> => {
     const current = await ensureSharedStateCache();
@@ -98,7 +100,9 @@ async function enqueueSharedStateMutation(
   };
 
   const queued = sharedStateMutationQueue.then(run, run);
-  sharedStateMutationQueue = queued.then(cloneSharedState, () => cloneSharedState(sharedStateCache));
+  sharedStateMutationQueue = queued.then(cloneSharedState, () =>
+    cloneSharedState(sharedStateCache)
+  );
   return cloneSharedState(await queued);
 }
 

@@ -49,10 +49,15 @@
 
   --layout-modal-compact-w: 420px;
   --layout-modal-character-w: 860px;
+  --layout-modal-character-wide-w: 1200px;
+  --layout-modal-character-wide-max-h: 960px;
   --layout-modal-memory-w: 960px;
   --layout-modal-vw-lg: 96vw;
   --layout-modal-vh-lg: min(80vh, calc(var(--layout-app-height) - var(--space-12)));
   --layout-modal-vh-xl: min(85vh, calc(var(--layout-app-height) - var(--space-8)));
+  --layout-character-panel-inline-max: 26rem;
+  --layout-character-profile-list-max-h: 15rem;
+  --layout-character-profile-list-max-h-compact: 12rem;
 
   --layout-panel-sidebar-w: 260px;
   --layout-panel-compose-h: clamp(160px, 28vh, 200px);
@@ -70,6 +75,9 @@
   --layout-panel-card-min-h: 180px;
   --layout-panel-list-max-h: 260px;
   --layout-panel-scroll-vh-sm: 50vh;
+  --layout-opencode-model-settings-w: 1180px;
+  --layout-opencode-model-settings-min-h: 860px;
+  --layout-opencode-model-settings-list-max-h: 680px;
   --layout-whisper-dock-compose-min-w: var(--size-panel-compact);
   --layout-whisper-dock-compose-max-w: var(--size-panel-wide);
   --layout-whisper-dock-textarea-min-h: calc(var(--layout-modal-field-min-h) + var(--space-2));

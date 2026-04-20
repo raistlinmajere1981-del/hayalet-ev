@@ -175,13 +175,15 @@ export function renderReportStage(deps: ReportStageRenderDeps): LabStageSurface 
       title: "Seçili Yol",
       body: `
         <div class="labx-list-stack">
-          ${selectedCapabilities.length > 0
-            ? selectedCapabilities
-                .map(function (entry) {
-                  return `<p class="labx-panel-hint">${escapeHtml(entry)}</p>`;
-                })
-                .join("")
-            : `<p class="labx-panel-hint">Yetenek seçimi bulunamadı.</p>`}
+          ${
+            selectedCapabilities.length > 0
+              ? selectedCapabilities
+                  .map(function (entry) {
+                    return `<p class="labx-panel-hint">${escapeHtml(entry)}</p>`;
+                  })
+                  .join("")
+              : `<p class="labx-panel-hint">Yetenek seçimi bulunamadı.</p>`
+          }
         </div>
       `,
     }),

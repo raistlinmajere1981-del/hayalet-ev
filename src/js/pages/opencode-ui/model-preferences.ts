@@ -1,5 +1,8 @@
 import { SettingsManager } from "../../modules/settings-manager.js";
-import { patchOpencodeUiSharedState, readOpencodeUiSharedState } from "../../modules/opencode-ui-shared-state.js";
+import {
+  patchOpencodeUiSharedState,
+  readOpencodeUiSharedState,
+} from "../../modules/opencode-ui-shared-state.js";
 import type { OpencodeUiModelPreferences } from "./types.js";
 
 export const DEFAULT_OPENCODE_UI_MODEL_PREFERENCES: OpencodeUiModelPreferences = {

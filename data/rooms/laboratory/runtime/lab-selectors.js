@@ -24,7 +24,8 @@ export function getProjects(state) {
 }
 export function getCurrentFeatureId(state) {
   const activeModuleId = asNonEmptyString(state.workbench["activeModuleId"]);
-  return activeModuleId || state.featureId;
+  const featureId = activeModuleId || state.featureId;
+  return featureId === "subtitle-analysis" ? "audio-analysis" : featureId;
 }
 export function getCurrentFeatureMeta(state) {
   return createLabFeatureMeta(getCurrentFeatureId(state));
@@ -189,12 +190,10 @@ export function getFeatureCompatibility(state) {
     (entry) => typeof entry === "string"
   ) : [featureId];
   const sourceKind = getSourceKind(state);
-  const sourceMode = getSourceMode(state);
   return {
     featureId,
     mediaReady: sourceReady && availableModules.includes("media-analysis"),
-    audioReady: sourceReady && availableModules.includes("audio-analysis") && (sourceKind === "audio" || sourceKind === "video"),
-    subtitleReady: availableModules.includes("subtitle-analysis") && (sourceReady || sourceMode === "url" || sourceMode === "youtube")
+    audioReady: sourceReady && availableModules.includes("audio-analysis") && (sourceKind === "audio" || sourceKind === "video")
   };
 }
 export function getStageBlockReason(state, stage) {

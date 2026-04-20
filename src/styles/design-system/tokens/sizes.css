@@ -50,6 +50,7 @@
   --size-input-inline-sm: 70px;
   --size-modal-wide: 1100px;
   --size-modal-tall: min(80vh, 860px);
+  --size-character-textarea-min-h: 5.5rem;
   --size-empty-icon-lg: 2rem;
   --size-focus-ring: 3px;
   --size-focus-ring-strong: 4px;

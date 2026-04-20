@@ -222,8 +222,8 @@ export async function syncActiveSessionHistoryIfUpdated(context: HistoryContext)
       nextCount !== context.runtime.lastRenderedMessageCount ||
       nextSnapshot !== context.runtime.lastRenderedSnapshotKey
     ) {
-        await loadActiveSessionHistory(context, { respectViewport: true });
-      }
+      await loadActiveSessionHistory(context, { respectViewport: true });
+    }
   } catch (_error) {
   } finally {
     liveSyncInFlight = false;
