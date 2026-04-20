@@ -58,6 +58,7 @@ import {
   buildForgeFallbackPreflightState,
   buildForgePreflightState,
   buildForgeSynthesisProvenance,
+  classifyFreshPreflightError,
   getPreflightForRun,
   renderForgePromptContext,
 } from "./forge-preflight-runtime.js";
@@ -572,7 +573,9 @@ export default function createForgeRoomHostRuntime() {
       } {
         const state = readCurrentState();
         if (goal === null) {
-          dispatchRunContext(null, null, state.runOverride, null, state.sessionRevision);
+          const runOverride =
+            options.runOverride !== undefined ? options.runOverride : state.runOverride;
+          dispatchRunContext(null, null, runOverride, null, state.sessionRevision);
           dispatchArtifactStore({
             ...state.artifactStore,
             activeRunId: null,
@@ -658,8 +661,6 @@ export default function createForgeRoomHostRuntime() {
             expectedContextDigest: contextDigest,
             runId,
             sessionRevision,
-            status: "stale",
-            staleReason: "Forge run context changed and the previous AI chain was invalidated.",
           });
         }
 
@@ -1079,13 +1080,15 @@ export default function createForgeRoomHostRuntime() {
         try {
           assertFreshPreflight(params);
         } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           logForgeRuntimeEvent("warn", "Forge Room stale preflight rejected.", {
+            eventCode: classifyFreshPreflightError(params),
             stage,
             runId: params.runId,
             contextDigest: params.contextDigest,
             preflightId: params.preflight.preflightId,
             sessionRevision: params.preflight.sessionRevision,
-            error: error instanceof Error ? error.message : String(error),
+            error: errorMessage,
           });
           throw error;
         }
@@ -1096,6 +1099,7 @@ export default function createForgeRoomHostRuntime() {
         reason: "fallback" | "generated"
       ): void {
         logForgeRuntimeEvent("info", "Forge Room synthesis snapshot frozen.", {
+          eventCode: "forge.snapshot.created",
           reason,
           runId: snapshot.runId,
           contextDigest: snapshot.contextDigest,
@@ -1210,6 +1214,7 @@ export default function createForgeRoomHostRuntime() {
           dispatchPreflight(fallback.state);
           mutateActiveRunArtifacts((entry) => withForgeRunPreflight(entry, fallback.state));
           logForgeRuntimeEvent("warn", "Forge Room preflight fallback engaged.", {
+            eventCode: "forge.preflight.fallback",
             runId: runRevision.runId,
             contextDigest: runRevision.contextDigest,
             preflightId: fallback.state.preflightId,
@@ -1786,11 +1791,7 @@ export default function createForgeRoomHostRuntime() {
         dispatchApprovedTasks(updated.approvedTasks);
         const updatedTask = updated.approvedTasks.find((task) => task.id === taskId) ?? null;
         mutateActiveRunArtifacts((entry) =>
-          withForgeRunSelectedContextCapsule(
-            entry,
-            taskId,
-            updatedTask?.contextCapsule ?? null
-          )
+          withForgeRunSelectedContextCapsule(entry, taskId, updatedTask?.contextCapsule ?? null)
         );
         await persistCurrentSession("approved-task-context-updated", {
           sessionId: state.activeSessionId,
@@ -1882,7 +1883,6 @@ export default function createForgeRoomHostRuntime() {
             resetMutableStateOnChange: true,
             sessionContextSelection: nextSessionContextSelection,
           });
-          invalidatePreflight("Session context changed after the last preflight run.");
         }
         await persistCurrentSession("session-context-updated", {
           sessionId: state.activeSessionId,
@@ -2751,7 +2751,8 @@ export default function createForgeRoomHostRuntime() {
           const handoffPackage = summary.exportReady
             ? synthesisSnapshot
               ? exportFromSynthesisSnapshot({
-                  buildPackage: (snapshot) => handoffExport.buildHandoffPackageFromSnapshot(snapshot),
+                  buildPackage: (snapshot) =>
+                    handoffExport.buildHandoffPackageFromSnapshot(snapshot),
                   snapshot: synthesisSnapshot,
                 })
               : null
@@ -2816,10 +2817,7 @@ export default function createForgeRoomHostRuntime() {
             synthesisId: selectedSynthesisId,
             targetRoomId: session.goal?.targetRoomId ?? "",
           });
-          const nextExports = [
-            exportRecord,
-            ...state.exports,
-          ];
+          const nextExports = [exportRecord, ...state.exports];
           dispatchExports(nextExports);
           mutateActiveRunArtifacts((entry) =>
             withForgeExportSnapshot(entry, {
@@ -2834,6 +2832,7 @@ export default function createForgeRoomHostRuntime() {
             })
           );
           logForgeRuntimeEvent("info", "Forge Room export snapshot emitted.", {
+            eventCode: "forge.export.snapshot_emitted",
             runId: synthesisSnapshot.runId,
             contextDigest: synthesisSnapshot.contextDigest,
             preflightId: synthesisSnapshot.preflightId,

@@ -363,7 +363,8 @@ export function createForgeRuntimeStateFromSession(
   const operatorProfile = overrides.operatorProfile ?? createDefaultForgeOperatorProfile();
   const preflight = normalizeForgePreflightState(sessionRecord.preflight);
   const sessionRevision =
-    typeof sessionRecord.sessionRevision === "number" && Number.isFinite(sessionRecord.sessionRevision)
+    typeof sessionRecord.sessionRevision === "number" &&
+    Number.isFinite(sessionRecord.sessionRevision)
       ? Math.max(0, Math.trunc(sessionRecord.sessionRevision))
       : 0;
   const runId =
@@ -422,37 +423,40 @@ export function createForgeRuntimeStateFromSession(
       sessionRecord.artifactStore &&
       typeof sessionRecord.artifactStore === "object" &&
       Array.isArray((sessionRecord.artifactStore as { entries?: unknown }).entries)
-        ? {
-            activeRunId:
-              typeof (sessionRecord.artifactStore as ForgeRunArtifactStore).activeRunId === "string"
-                ? (sessionRecord.artifactStore as ForgeRunArtifactStore).activeRunId
-                : null,
-            entries: (sessionRecord.artifactStore as ForgeRunArtifactStore).entries.map((entry) => ({
-              ...entry,
-              ownerScopeId:
-                typeof entry.ownerScopeId === "string" && entry.ownerScopeId.trim() !== ""
-                  ? entry.ownerScopeId
-                  : ownerScopeId,
-              exportSnapshots: Array.isArray(entry.exportSnapshots)
-                ? entry.exportSnapshots.map((snapshot) => ({
-                    ...snapshot,
-                    ownerScopeId:
-                      typeof snapshot.ownerScopeId === "string" && snapshot.ownerScopeId.trim() !== ""
-                        ? snapshot.ownerScopeId
-                        : ownerScopeId,
-                  }))
-                : [],
-              synthesisSnapshots: Array.isArray(entry.synthesisSnapshots)
-                ? entry.synthesisSnapshots.map((snapshot) => ({
-                    ...snapshot,
-                    ownerScopeId:
-                      typeof snapshot.ownerScopeId === "string" && snapshot.ownerScopeId.trim() !== ""
-                        ? snapshot.ownerScopeId
-                        : ownerScopeId,
-                  }))
-                : [],
-            })),
-          }
+        ? (() => {
+            const artifactStore = sessionRecord.artifactStore;
+            return {
+              activeRunId:
+                typeof artifactStore.activeRunId === "string" ? artifactStore.activeRunId : null,
+              entries: artifactStore.entries.map((entry) => ({
+                ...entry,
+                ownerScopeId:
+                  typeof entry.ownerScopeId === "string" && entry.ownerScopeId.trim() !== ""
+                    ? entry.ownerScopeId
+                    : ownerScopeId,
+                exportSnapshots: Array.isArray(entry.exportSnapshots)
+                  ? entry.exportSnapshots.map((snapshot) => ({
+                      ...snapshot,
+                      ownerScopeId:
+                        typeof snapshot.ownerScopeId === "string" &&
+                        snapshot.ownerScopeId.trim() !== ""
+                          ? snapshot.ownerScopeId
+                          : ownerScopeId,
+                    }))
+                  : [],
+                synthesisSnapshots: Array.isArray(entry.synthesisSnapshots)
+                  ? entry.synthesisSnapshots.map((snapshot) => ({
+                      ...snapshot,
+                      ownerScopeId:
+                        typeof snapshot.ownerScopeId === "string" &&
+                        snapshot.ownerScopeId.trim() !== ""
+                          ? snapshot.ownerScopeId
+                          : ownerScopeId,
+                    }))
+                  : [],
+              })),
+            };
+          })()
         : createEmptyForgeRunArtifactStore(),
     exports: Array.isArray(session.exports)
       ? session.exports.map((entry) => ({
@@ -465,8 +469,7 @@ export function createForgeRuntimeStateFromSession(
             typeof entry.ownerScopeId === "string" && entry.ownerScopeId.trim() !== ""
               ? entry.ownerScopeId
               : ownerScopeId,
-          runId:
-            typeof entry.runId === "string" && entry.runId.trim() !== "" ? entry.runId : runId,
+          runId: typeof entry.runId === "string" && entry.runId.trim() !== "" ? entry.runId : runId,
           sessionRevision:
             typeof entry.sessionRevision === "number" && Number.isFinite(entry.sessionRevision)
               ? Math.max(0, Math.trunc(entry.sessionRevision))
@@ -491,7 +494,8 @@ export function createForgeRuntimeStateFromSession(
               ? response.runId
               : runId,
           sessionRevision:
-            typeof response.sessionRevision === "number" && Number.isFinite(response.sessionRevision)
+            typeof response.sessionRevision === "number" &&
+            Number.isFinite(response.sessionRevision)
               ? Math.max(0, Math.trunc(response.sessionRevision))
               : sessionRevision,
         }))

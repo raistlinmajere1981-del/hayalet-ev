@@ -4,10 +4,7 @@ import {
   getProjectProcessDir as getProjectProcessDirFromPaths,
   getProjectReportDir as getProjectReportDirFromPaths,
 } from "./project-paths.js";
-import {
-  normalizeAnalysisScope,
-  serializeAnalysisScope,
-} from "../types/analysis-scope.js";
+import { normalizeAnalysisScope, serializeAnalysisScope } from "../types/analysis-scope.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 

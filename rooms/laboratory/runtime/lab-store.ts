@@ -368,24 +368,23 @@ function toRunFromProcessRecord(processRecord: Record<string, unknown>): LabRun 
   const artifacts = (Array.isArray(processRecord["artifacts"]) ? processRecord["artifacts"] : [])
     .map(toArtifactProjection)
     .filter((entry): entry is LabArtifactProjection => entry !== null);
-  const liveFindings = (Array.isArray(processRecord["liveFindings"])
-    ? processRecord["liveFindings"]
-    : []
+  const liveFindings = (
+    Array.isArray(processRecord["liveFindings"]) ? processRecord["liveFindings"] : []
   )
     .map(toLiveFindingProjection)
     .filter((entry): entry is LabLiveFindingProjection => entry !== null);
-  const previewArtifacts = (Array.isArray(processRecord["previewArtifacts"])
-    ? processRecord["previewArtifacts"]
-    : []
+  const previewArtifacts = (
+    Array.isArray(processRecord["previewArtifacts"]) ? processRecord["previewArtifacts"] : []
   )
     .map(toPreviewArtifactProjection)
     .filter((entry): entry is LabPreviewArtifactProjection => entry !== null);
-  const moduleTrace = (Array.isArray(processRecord["moduleTrace"]) ? processRecord["moduleTrace"] : [])
+  const moduleTrace = (
+    Array.isArray(processRecord["moduleTrace"]) ? processRecord["moduleTrace"] : []
+  )
     .map(toModuleTraceEntry)
     .filter((entry): entry is LabModuleTraceEntry => entry !== null);
-  const comparisonVariants = (Array.isArray(processRecord["comparisonVariants"])
-    ? processRecord["comparisonVariants"]
-    : []
+  const comparisonVariants = (
+    Array.isArray(processRecord["comparisonVariants"]) ? processRecord["comparisonVariants"] : []
   )
     .map(toComparisonVariant)
     .filter((entry): entry is LabComparisonVariant => entry !== null);
@@ -424,7 +423,9 @@ function toRunFromProcessRecord(processRecord: Record<string, unknown>): LabRun 
     comparisonVariants,
     hypothesisSummary:
       asNonEmptyString(processRecord["hypothesisSummary"]) ||
-      asNonEmptyString(asLabRecord(normalizeAnalysisScope(processRecord["analysisScope"]))["hypothesis"]),
+      asNonEmptyString(
+        asLabRecord(normalizeAnalysisScope(processRecord["analysisScope"]))["hypothesis"]
+      ),
     emptyReason:
       asNonEmptyString(processRecord["emptyReason"]) ||
       (findings.length === 0 &&
@@ -620,7 +621,8 @@ function syncActivePreviewArtifact(
     const isActive =
       artifactId !== null
         ? entry.id === artifactId
-        : index === 0 && variants.every(function (candidate) {
+        : index === 0 &&
+          variants.every(function (candidate) {
             return candidate.active !== true;
           });
     return {
@@ -673,9 +675,11 @@ function appendComparisonVariantFromEvent(state: LabStoreState, event: LabEventF
   if (nextVariants.length === 0) {
     return;
   }
-  const nextVariantIds = new Set(nextVariants.map(function (entry) {
-    return entry.id;
-  }));
+  const nextVariantIds = new Set(
+    nextVariants.map(function (entry) {
+      return entry.id;
+    })
+  );
   run.comparisonVariants = run.comparisonVariants.filter(function (entry) {
     return nextVariantIds.has(entry.id) !== true;
   });
@@ -938,7 +942,8 @@ function syncCanonicalStateFromSnapshot(
   state.workbench = asLabRecord(snapshot["workbench"]);
   state.ui.activePreviewArtifactId = asNonEmptyString(state.workbench["activePreviewArtifactId"]);
   state.ui.analysisControlsCollapsed = state.workbench["controlsCollapsed"] === true;
-  state.ui.liveFindingsExpanded = asNonEmptyString(state.workbench["activeLiveFindingsStreamId"]) !== null;
+  state.ui.liveFindingsExpanded =
+    asNonEmptyString(state.workbench["activeLiveFindingsStreamId"]) !== null;
   state.profileModels = Array.isArray(snapshot["profileModels"])
     ? (snapshot["profileModels"] as unknown[]).map(asLabRecord)
     : [];
@@ -1066,32 +1071,34 @@ function ensurePendingRun(state: LabStoreState, action: string) {
     return state.run;
   }
 
-    const nextRun: LabRun = {
-      id: `pending-${action}-${Date.now()}`,
-      state: "running",
-      startedAt: Date.now(),
+  const nextRun: LabRun = {
+    id: `pending-${action}-${Date.now()}`,
+    state: "running",
+    startedAt: Date.now(),
     modules: {},
     moduleOrder: [],
     events: [],
     rawLog: [],
     artifacts: [],
-      findings: [],
-      liveFindings: [],
-      warnings: [],
-      error: null,
-      targetLabel: null,
-      progress: null,
-      emptyReason: null,
-      analysisScope: normalizeAnalysisScope(asLabRecord(state.workbench)["analysisScope"]),
-      previewArtifacts: [],
-      confidence: null,
-      moduleTrace: [],
-      comparisonVariants: [],
-      hypothesisSummary:
-        asNonEmptyString(
-          asLabRecord(normalizeAnalysisScope(asLabRecord(state.workbench)["analysisScope"]))["hypothesis"]
-        ) || null,
-    };
+    findings: [],
+    liveFindings: [],
+    warnings: [],
+    error: null,
+    targetLabel: null,
+    progress: null,
+    emptyReason: null,
+    analysisScope: normalizeAnalysisScope(asLabRecord(state.workbench)["analysisScope"]),
+    previewArtifacts: [],
+    confidence: null,
+    moduleTrace: [],
+    comparisonVariants: [],
+    hypothesisSummary:
+      asNonEmptyString(
+        asLabRecord(normalizeAnalysisScope(asLabRecord(state.workbench)["analysisScope"]))[
+          "hypothesis"
+        ]
+      ) || null,
+  };
   state.run = nextRun;
   return nextRun;
 }
@@ -1336,9 +1343,12 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     case "workbench-updated":
       state.workbench = asLabRecord(event.workbench);
-      state.ui.activePreviewArtifactId = asNonEmptyString(state.workbench["activePreviewArtifactId"]);
+      state.ui.activePreviewArtifactId = asNonEmptyString(
+        state.workbench["activePreviewArtifactId"]
+      );
       state.ui.analysisControlsCollapsed = state.workbench["controlsCollapsed"] === true;
-      state.ui.liveFindingsExpanded = asNonEmptyString(state.workbench["activeLiveFindingsStreamId"]) !== null;
+      state.ui.liveFindingsExpanded =
+        asNonEmptyString(state.workbench["activeLiveFindingsStreamId"]) !== null;
       return state;
     case "source-config-patched":
       state.source = {

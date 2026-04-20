@@ -568,7 +568,7 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     });
 
     try {
-      let followUpWorkbench: Record<string, unknown> | null = null;
+      const pendingFollowUp = { workbench: null as Record<string, unknown> | null };
       const nextProcessRecord = await runManagedProcess(
         api,
         runtime,
@@ -586,12 +586,12 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
           queuedProcessInstance: null,
         });
         if (Object.keys(queuedProcessInstance).length > 0) {
-          followUpWorkbench = {
+          pendingFollowUp.workbench = {
             ...resolveProcessWorkbench(nextProject, featureId, workbenchSource),
             analysisScope: toRecord(queuedProcessInstance["analysisScope"]),
             moduleToggles: toRecord(queuedProcessInstance["moduleToggles"]),
           };
-          nextProject["workbench"] = followUpWorkbench;
+          nextProject["workbench"] = pendingFollowUp.workbench;
         }
         setFeatureReportRecord(
           nextProject,
@@ -609,13 +609,13 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
         featureStage: "process",
         stage: "completed",
       });
-      if (followUpWorkbench !== null) {
+      if (pendingFollowUp.workbench !== null) {
         await runSingleFeatureProcess(
           api,
           runtime,
           `${requestId}-queued-${Date.now()}`,
           featureId,
-          followUpWorkbench
+          pendingFollowUp.workbench
         );
       }
     } catch (error) {

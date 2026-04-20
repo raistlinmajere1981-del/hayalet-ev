@@ -82,16 +82,14 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
     const artifacts = Array.isArray(reportRecord.artifacts) ? reportRecord.artifacts : [];
     return artifacts
       .filter(function (entry) {
-        const artifact = entry as LaboratoryRecord;
-        const kind = typeof artifact["kind"] === "string" ? artifact["kind"] : "";
+        const kind = typeof entry["kind"] === "string" ? entry["kind"] : "";
         return kind === "subtitle-ai-payload" || kind === "subtitle-channel-batch";
       })
       .map(function (entry) {
-        const artifact = entry as LaboratoryRecord;
         return normalizeReportExport({
           format: "json",
-          path: artifact["path"],
-          fileName: artifact["fileName"],
+          path: entry["path"],
+          fileName: entry["fileName"],
           status: "ready",
         });
       });

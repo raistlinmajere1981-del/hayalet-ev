@@ -305,6 +305,9 @@ export function createForgeHandoffExport() {
     if (acceptanceCriteriaCount === 0) {
       missingRequirements.push("Add at least one acceptance criterion");
     }
+    if (session.preflight.status === "stale") {
+      missingRequirements.push("Re-run preflight to refresh provenance");
+    }
     const exportReady = missingRequirements.length === 0;
     const status =
       exportReady === true

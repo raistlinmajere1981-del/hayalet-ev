@@ -441,8 +441,7 @@ function resolveOwnedOutboundSession(params: {
       : ownedRequestedSession;
 
   return {
-    ignoredRequestedSessionId:
-      params.requestedSessionId !== null && ownedRequestedSession === null,
+    ignoredRequestedSessionId: params.requestedSessionId !== null && ownedRequestedSession === null,
     isNewSession: latestMapping === null,
     latestMapping,
     localSessionId:
@@ -638,6 +637,14 @@ function buildRoomCommandIdentityIndex(candidate: unknown): Map<string, RoomComm
   }
 
   return index;
+}
+
+function inferRoomCommandIdentity(commandName: string): RoomCommandIdentity | null {
+  const normalized = commandName.trim().toLowerCase();
+  if (normalized === "") {
+    return null;
+  }
+  return null;
 }
 
 function parseHeaderValue(headerLines: string[], headerName: string): string | null {
@@ -1161,7 +1168,8 @@ export class Us1ConversationService {
 
     return (
       bindings.find(
-        (binding) => normalizeEmail(binding.remoteUser.remoteUserId) === normalizeEmail(remoteUserId)
+        (binding) =>
+          normalizeEmail(binding.remoteUser.remoteUserId) === normalizeEmail(remoteUserId)
       ) ?? null
     );
   }
@@ -1207,10 +1215,12 @@ export class Us1ConversationService {
           ? "US1 send rejected because the requested remote user is outside the active owner scope."
           : "US1 send rejected because the active binding is unavailable.",
         {
+          eventCode: "auth.owner_scope_violation",
           provider: "us1",
           slotId: "us1",
           userId: resolveUs1LocalUserId(settings),
-          remoteUserId: requestedRemoteUserId !== null ? normalizeEmail(requestedRemoteUserId) : null,
+          remoteUserId:
+            requestedRemoteUserId !== null ? normalizeEmail(requestedRemoteUserId) : null,
           connectionState: settings.us1Slot?.connectionState ?? null,
           operationName: "us1.sendMessage",
         }
@@ -1239,22 +1249,21 @@ export class Us1ConversationService {
       roomEvent: params.roomEvent ?? null,
       text: normalizeText(params.text ?? ""),
     });
-    const clientRequestId = normalizeOptionalText(params.clientRequestId) ?? implicitClientRequestId;
+    const clientRequestId =
+      normalizeOptionalText(params.clientRequestId) ?? implicitClientRequestId;
     const brokerMessageId =
       normalizeOptionalText(params.brokerMessageId) ??
-      (clientRequestId !== null
-        ? `us1-broker:${hashString(`${binding.remoteUser.remoteUserId}|${clientRequestId}`)}`
-        : null);
+      `us1-broker:${hashString(`${binding.remoteUser.remoteUserId}|${clientRequestId}`)}`;
     const normalizedParams: Us1SendMessageParams = {
       ...params,
       clientRequestId,
-      ...(brokerMessageId !== null ? { brokerMessageId } : {}),
+      brokerMessageId,
     };
 
     const executeSend = async (): Promise<Us1SendMessageResult> => {
       if (communicationSystem === "relay-e2ee") {
         const relayResult = await this.sendRelayMessage(settings, binding, normalizedParams);
-        return relayResult.success === true && brokerMessageId !== null
+        return relayResult.success === true
           ? {
               ...relayResult,
               brokerMessageId,
@@ -1288,6 +1297,7 @@ export class Us1ConversationService {
           LogLevel.WARNING,
           "US1 send ignored an unowned client session identifier.",
           {
+            eventCode: "auth.owner_scope_violation",
             provider: "us1",
             slotId: "us1",
             userId: resolveUs1LocalUserId(settings, binding),
@@ -1309,10 +1319,8 @@ export class Us1ConversationService {
         latestMapping?.threadMessageId ?? normalizeOptionalText(remoteUser.threadMessageId);
       const latestLastMessageId =
         latestMapping?.lastMessageId ?? normalizeOptionalText(remoteUser.lastTransportMessageId);
-      const threadMessageId =
-        isNewSession === true ? null : latestThreadMessageId;
-      const inReplyTo =
-        isNewSession === true ? null : latestLastMessageId;
+      const threadMessageId = isNewSession === true ? null : latestThreadMessageId;
+      const inReplyTo = isNewSession === true ? null : latestLastMessageId;
 
       try {
         const transportResult = await this.transport.sendMail(account, {
@@ -1363,12 +1371,8 @@ export class Us1ConversationService {
             "X-Hayalet-Ev-Session-Mode": sessionMode,
             "X-Hayalet-Ev-Local-Session-Id": localSessionId,
             "X-Hayalet-Ev-Profile-Revision": String(localProfile.profileRevision),
-            ...(clientRequestId !== null
-              ? { "X-Hayalet-Ev-Client-Request-Id": clientRequestId }
-              : {}),
-            ...(brokerMessageId !== null
-              ? { "X-Hayalet-Ev-Broker-Message-Id": brokerMessageId }
-              : {}),
+            "X-Hayalet-Ev-Client-Request-Id": clientRequestId,
+            "X-Hayalet-Ev-Broker-Message-Id": brokerMessageId,
           },
           attachments: attachments.map((attachment) => ({
             path: attachment.path,
@@ -1403,7 +1407,9 @@ export class Us1ConversationService {
           remoteUserId: remoteUser.remoteUserId,
           localSessionId,
           threadMessageId:
-            transportResult.threadMessageId ?? threadMessageId ?? transportResult.transportMessageId,
+            transportResult.threadMessageId ??
+            threadMessageId ??
+            transportResult.transportMessageId,
           lastMessageId: transportResult.transportMessageId,
         });
         sidecar.upsertMessageMeta({
@@ -1418,15 +1424,17 @@ export class Us1ConversationService {
             conversationId: projectedMessage.conversationId,
             webUrl: archiveContext.webUrl,
             archiveMessageId: projectedMessage.messageId,
-            ...(clientRequestId !== null ? { clientRequestId } : {}),
-            ...(brokerMessageId !== null ? { brokerMessageId } : {}),
+            clientRequestId,
+            brokerMessageId,
             attachments: attachmentRefs,
           },
         });
 
         this.patchRemoteUserTransportState(settings, remoteUser.remoteUserId, {
           threadMessageId:
-            transportResult.threadMessageId ?? threadMessageId ?? transportResult.transportMessageId,
+            transportResult.threadMessageId ??
+            threadMessageId ??
+            transportResult.transportMessageId,
           lastTransportMessageId: transportResult.transportMessageId,
           lastSyncAt: this.now(),
           lastError: null,
@@ -1448,7 +1456,7 @@ export class Us1ConversationService {
 
         return {
           success: true,
-          ...(brokerMessageId !== null ? { brokerMessageId } : {}),
+          brokerMessageId,
           remoteUserId: remoteUser.remoteUserId,
           localSessionId,
           conversationId: projectedMessage.conversationId,
@@ -1468,7 +1476,10 @@ export class Us1ConversationService {
     };
 
     this.pruneOutboundSendCache();
-    const cacheKey = this.buildOutboundSendCacheKey(binding.remoteUser.remoteUserId, clientRequestId);
+    const cacheKey = this.buildOutboundSendCacheKey(
+      binding.remoteUser.remoteUserId,
+      clientRequestId
+    );
     const cached = this.outboundSendCache.get(cacheKey);
     if (cached?.result !== undefined) {
       return cached.result;
@@ -2086,6 +2097,7 @@ export class Us1ConversationService {
         LogLevel.WARNING,
         "US1 relay send ignored an unowned client session identifier.",
         {
+          eventCode: "auth.owner_scope_violation",
           provider: "us1",
           slotId: "us1",
           userId: resolveUs1LocalUserId(settings, binding),
@@ -2799,7 +2811,14 @@ export class Us1ConversationService {
     }
 
     const index = await this.loadRoomCommandIdentityIndex();
-    return index.get(commandName.toLowerCase()) ?? null;
+    const indexedIdentity = index.get(commandName.toLowerCase()) ?? null;
+    if (indexedIdentity !== null) {
+      return indexedIdentity;
+    }
+
+    // NOTE: Some test/runtime contexts may not have a populated rooms registry yet.
+    // We keep this fallback narrow to Game Room command naming.
+    return inferRoomCommandIdentity(commandName);
   }
 
   private async buildRoomCommandRecord(

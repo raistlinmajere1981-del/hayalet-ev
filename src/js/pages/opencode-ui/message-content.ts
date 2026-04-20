@@ -51,7 +51,10 @@ function flattenAssistantBlock(block: OpencodeUiMessageBlock): string {
     lines.push(...block.items.map((item) => `- ${item}`));
   }
 
-  return lines.filter((line) => line !== "").join("\n").trim();
+  return lines
+    .filter((line) => line !== "")
+    .join("\n")
+    .trim();
 }
 
 function appendAssistantBlock(
@@ -70,9 +73,10 @@ function appendAssistantBlock(
 
     const previous = blocks[blocks.length - 1];
     if (previous?.kind === "markdown") {
-      previous.text = normalizeString(previous.text).trim() !== ""
-        ? `${normalizeString(previous.text)}\n${text}`
-        : text;
+      previous.text =
+        normalizeString(previous.text).trim() !== ""
+          ? `${normalizeString(previous.text)}\n${text}`
+          : text;
       return;
     }
   }
@@ -322,7 +326,11 @@ export function extractAssistantMessageContent(payload: unknown): {
 } {
   const blocks = extractAssistantBlocks(payload);
   return {
-    text: blocks.map((block) => flattenAssistantBlock(block)).filter((blockText) => blockText !== "").join("\n").trim(),
+    text: blocks
+      .map((block) => flattenAssistantBlock(block))
+      .filter((blockText) => blockText !== "")
+      .join("\n")
+      .trim(),
     blocks,
   };
 }

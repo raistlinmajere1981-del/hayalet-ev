@@ -137,7 +137,10 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
       lastEmittedAt: 0,
       suppressedCount: 0,
     };
-    if (currentEntry.lastEmittedAt > 0 && nextTimestamp - currentEntry.lastEmittedAt < throttleWindowMs) {
+    if (
+      currentEntry.lastEmittedAt > 0 &&
+      nextTimestamp - currentEntry.lastEmittedAt < throttleWindowMs
+    ) {
       throttleState.set(throttleKey, {
         lastEmittedAt: currentEntry.lastEmittedAt,
         suppressedCount: currentEntry.suppressedCount + 1,
@@ -157,7 +160,9 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
       ...payload,
       batchedCount,
       detail:
-        detail !== null ? `${detail} (${batchedCount} updates batched)` : `${batchedCount} updates batched.`,
+        detail !== null
+          ? `${detail} (${batchedCount} updates batched)`
+          : `${batchedCount} updates batched.`,
     };
   }
 
@@ -195,8 +200,7 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
           ? "run"
           : "global",
       moduleId: asNonEmptyString(throttledPayload["moduleId"]),
-      rawLine:
-        typeof throttledPayload["rawLine"] === "string" ? throttledPayload["rawLine"] : null,
+      rawLine: typeof throttledPayload["rawLine"] === "string" ? throttledPayload["rawLine"] : null,
     });
   }
 
@@ -210,13 +214,9 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
         ...payload,
         kind,
         severity:
-          typeof payload["severity"] === "string"
-            ? payload["severity"]
-            : getEventSeverity(stage),
+          typeof payload["severity"] === "string" ? payload["severity"] : getEventSeverity(stage),
         message:
-          typeof payload["message"] === "string"
-            ? payload["message"]
-            : getActionLabel(action),
+          typeof payload["message"] === "string" ? payload["message"] : getActionLabel(action),
         detail: asNonEmptyString(payload["detail"]) || detail,
         action,
         stage,

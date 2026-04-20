@@ -404,13 +404,15 @@ export class SQLiteArchiveManager {
           return brokerMessageId !== "" ? [[brokerMessageId, row.id] as const] : [];
         })
       );
-      const existingEventIdentityRows = db.prepare(
-        `
+      const existingEventIdentityRows = db
+        .prepare(
+          `
           SELECT broker_message_id, provider_message_id, content_hash
           FROM message_events
           WHERE conversation_id = ? AND account_id = ?
         `
-      ).all(conversationId, this.accountId) as Array<{
+        )
+        .all(conversationId, this.accountId) as Array<{
         broker_message_id: string | null;
         provider_message_id: string | null;
         content_hash: string | null;
@@ -550,14 +552,14 @@ export class SQLiteArchiveManager {
           ) {
             droppedDuplicates += 1;
             firstDroppedDuplicateContext ??= {
-                userId: this.accountId,
-                provider,
-                slotId: provider === "us1" ? "us1" : provider,
-                conversationId,
-                clientRequestId: clientRequestId !== "" ? clientRequestId : null,
-                brokerMessageId,
-                providerMessageId: providerMessageId !== "" ? providerMessageId : null,
-              };
+              userId: this.accountId,
+              provider,
+              slotId: provider === "us1" ? "us1" : provider,
+              conversationId,
+              clientRequestId: clientRequestId !== "" ? clientRequestId : null,
+              brokerMessageId,
+              providerMessageId: providerMessageId !== "" ? providerMessageId : null,
+            };
             continue;
           }
 
@@ -568,16 +570,16 @@ export class SQLiteArchiveManager {
           if (requestedEventSeq !== null && requestedEventSeq <= nextAutoEventSeq) {
             outOfOrderCount += 1;
             firstOutOfOrderContext ??= {
-                userId: this.accountId,
-                provider,
-                slotId: provider === "us1" ? "us1" : provider,
-                conversationId,
-                clientRequestId: clientRequestId !== "" ? clientRequestId : null,
-                brokerMessageId,
-                providerMessageId: providerMessageId !== "" ? providerMessageId : null,
-                requestedEventSeq,
-                previousEventSeq: nextAutoEventSeq,
-              };
+              userId: this.accountId,
+              provider,
+              slotId: provider === "us1" ? "us1" : provider,
+              conversationId,
+              clientRequestId: clientRequestId !== "" ? clientRequestId : null,
+              brokerMessageId,
+              providerMessageId: providerMessageId !== "" ? providerMessageId : null,
+              requestedEventSeq,
+              previousEventSeq: nextAutoEventSeq,
+            };
           }
           const eventSeq =
             requestedEventSeq !== null && requestedEventSeq > nextAutoEventSeq
@@ -598,7 +600,7 @@ export class SQLiteArchiveManager {
           let appliedProjectionEventSeq =
             existingMessageId === null
               ? projectionEventSeq
-              : existingMessageProjectionSeqById.get(existingMessageId) ?? null;
+              : (existingMessageProjectionSeqById.get(existingMessageId) ?? null);
 
           if (existingMessageId === null) {
             insertStmt.run(
@@ -620,7 +622,8 @@ export class SQLiteArchiveManager {
             );
             addedCount += 1;
           } else {
-            const currentProjectionEventSeq = existingMessageProjectionSeqById.get(existingMessageId);
+            const currentProjectionEventSeq =
+              existingMessageProjectionSeqById.get(existingMessageId);
             if (
               typeof currentProjectionEventSeq !== "number" ||
               Number.isFinite(currentProjectionEventSeq) !== true ||
@@ -703,6 +706,7 @@ export class SQLiteArchiveManager {
           LogLevel.INFO,
           "Messaging broker dropped duplicate provider events.",
           {
+            eventCode: "broker.duplicate_drop",
             ...firstDroppedDuplicateContext,
             droppedDuplicates,
             eventSeq: nextAutoEventSeq,
@@ -716,6 +720,7 @@ export class SQLiteArchiveManager {
           LogLevel.INFO,
           "Messaging broker reordered out-of-order events.",
           {
+            eventCode: "broker.out_of_order",
             ...firstOutOfOrderContext,
             outOfOrderCount,
             eventSeq: nextAutoEventSeq,

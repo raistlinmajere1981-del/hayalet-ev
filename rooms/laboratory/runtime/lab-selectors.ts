@@ -351,7 +351,9 @@ export function hasMoreVisibleArtifacts(state: LabStoreState) {
 
 export function getProcessAnalysisScope(state: LabStoreState) {
   const run = getCurrentRun(state);
-  return run?.analysisScope || normalizeAnalysisScope(asLabRecord(state.workbench)["analysisScope"]);
+  return (
+    run?.analysisScope || normalizeAnalysisScope(asLabRecord(state.workbench)["analysisScope"])
+  );
 }
 
 export function getVisibleLiveFindings(state: LabStoreState) {
@@ -371,7 +373,9 @@ export function getPreviewArtifacts(state: LabStoreState) {
   return run ? run.previewArtifacts.slice() : [];
 }
 
-export function getActivePreviewArtifact(state: LabStoreState): LabPreviewArtifactProjection | null {
+export function getActivePreviewArtifact(
+  state: LabStoreState
+): LabPreviewArtifactProjection | null {
   const previewArtifacts = getPreviewArtifacts(state);
   if (previewArtifacts.length === 0) {
     return null;

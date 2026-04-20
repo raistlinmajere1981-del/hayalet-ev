@@ -8,18 +8,26 @@ test("laboratory host activation unwraps host-context room-event payloads before
   const savedContexts: Array<Record<string, unknown>> = [];
   const pushCalls: Array<string | null> = [];
 
+  let currentContext: Record<string, unknown> = {};
+
   const activation = createLaboratoryHostActivation({
     createRuntimeState() {
       return {};
     },
+    emitEvent() {},
     ensureHydrated: async function () {},
     ensureRoomToolsSubscription: function () {},
     handleMediaAction: async function () {},
+    loadContext() {
+      return currentContext;
+    },
     pushMediaState(_api, _runtime, requestId) {
       pushCalls.push(requestId);
     },
     saveContext(_api, payload) {
       savedContexts.push(payload);
+      currentContext = payload;
+      return payload;
     },
     tearDownRoomToolsSubscription: function () {},
     toRecord(value) {

@@ -36,12 +36,19 @@ function mergeText(current: string, next: string): string {
 }
 
 function flattenAssistantBlock(block: OpencodeUiMessageBlock): string {
-  const lines = [asString(block.title).trim(), asString(block.text).trim(), asString(block.meta).trim()];
+  const lines = [
+    asString(block.title).trim(),
+    asString(block.text).trim(),
+    asString(block.meta).trim(),
+  ];
   if (Array.isArray(block.items) && block.items.length > 0) {
     lines.push(...block.items.map((item) => `- ${item}`));
   }
 
-  return lines.filter((line) => line !== "").join("\n").trim();
+  return lines
+    .filter((line) => line !== "")
+    .join("\n")
+    .trim();
 }
 
 function appendAssistantBlock(
@@ -429,7 +436,12 @@ export function parseMessages(
           asString(metadata?.["message"], asString(metadata?.["error"]))
         ).trim();
 
-        if (status === "failed" || status === "error" || status === "interrupted" || status === "retrying") {
+        if (
+          status === "failed" ||
+          status === "error" ||
+          status === "interrupted" ||
+          status === "retrying"
+        ) {
           notices.push({
             tone: status === "retrying" ? "warning" : "error",
             title:
@@ -473,7 +485,12 @@ export function parseMessages(
       appendAssistantBlock(blocks, createMarkdownBlock(interactionText));
     }
 
-    if (text.trim() === "" && blocks.length === 0 && toolCalls.length === 0 && notices.length === 0) {
+    if (
+      text.trim() === "" &&
+      blocks.length === 0 &&
+      toolCalls.length === 0 &&
+      notices.length === 0
+    ) {
       continue;
     }
 

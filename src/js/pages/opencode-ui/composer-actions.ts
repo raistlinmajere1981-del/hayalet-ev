@@ -410,17 +410,10 @@ export async function sendComposerMessage(context: ComposerUiContext): Promise<v
   } catch (error) {
     chatInput.value = previousText;
     setComposerAttachments(context.runtime, stagedAttachments, context.byId);
-    const detail =
-      error instanceof Error && error.message !== "" ? error.message : String(error);
-    addMessage(
-      "assistant",
-      "",
-      undefined,
-      undefined,
-      {
-        notices: [buildRuntimeErrorNotice(detail, { defaultTitleKey: "chat.sendFailedTitle" })],
-      }
-    );
+    const detail = error instanceof Error && error.message !== "" ? error.message : String(error);
+    addMessage("assistant", "", undefined, undefined, {
+      notices: [buildRuntimeErrorNotice(detail, { defaultTitleKey: "chat.sendFailedTitle" })],
+    });
     context.scrollChatToBottom(true);
   } finally {
     context.runtime.isSubmitting = false;

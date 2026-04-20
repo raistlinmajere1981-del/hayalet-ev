@@ -248,21 +248,16 @@ export function createAudioAnalysisProcessRunnerSupport(
     const processRootDir = getProcessRootDir(runtime, project);
     const targetPath = requireTargetPath(target);
     const safeExtension =
-      asNonEmptyString(outputExtension)?.replace(/[^a-z0-9]/gi, "").toLowerCase() || "wav";
+      asNonEmptyString(outputExtension)
+        ?.replace(/[^a-z0-9]/gi, "")
+        .toLowerCase() || "wav";
     const outputPath = `${outputDir}/${artifactBase}.${safeExtension}`;
     await runProfileTool(runtime, {
       requestId,
       jobId,
       toolId: "ffmpeg",
       cwd: processRootDir,
-      args: [
-        "-y",
-        "-i",
-        targetPath,
-        "-af",
-        filterGraph,
-        outputPath,
-      ],
+      args: ["-y", "-i", targetPath, "-af", filterGraph, outputPath],
       timeoutMs: 120_000,
     });
     return createProcessArtifact(moduleId, "filtered-audio", outputPath, label, {

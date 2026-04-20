@@ -167,7 +167,11 @@ function attachmentSourceLabel(source: OpencodeUiMessageAttachment["source"] | u
 
 function createAttachmentCard(attachment: OpencodeUiMessageAttachment): HTMLElement {
   const resolvedKind =
-    attachment.kind ?? attachmentKindFromMediaType(attachment.media_type ?? "", attachment.fileName ?? attachment.name);
+    attachment.kind ??
+    attachmentKindFromMediaType(
+      attachment.media_type ?? "",
+      attachment.fileName ?? attachment.name
+    );
   const previewUrl =
     attachment.previewUrl ??
     buildAttachmentPreviewUrl(
@@ -207,7 +211,9 @@ function createAttachmentCard(attachment: OpencodeUiMessageAttachment): HTMLElem
   const meta = document.createElement("div");
   meta.className = "ds-attachment-card__meta";
   const sizeText = attachment.size != null ? formatAttachmentSize(attachment.size) : "";
-  meta.textContent = [attachmentKindLabel(resolvedKind), sizeText].filter((value) => value !== "").join(" • ");
+  meta.textContent = [attachmentKindLabel(resolvedKind), sizeText]
+    .filter((value) => value !== "")
+    .join(" • ");
 
   const name = document.createElement("div");
   name.className = "ds-attachment-card__name";
@@ -330,11 +336,9 @@ function appendAssistantMessageBlocks(
 
 function buildCopyText(target: HTMLElement): string {
   const clone = target.cloneNode(true) as HTMLElement;
-  clone
-    .querySelectorAll(".ds-msg-copy, .ds-message__role")
-    .forEach((element) => {
-      element.remove();
-    });
+  clone.querySelectorAll(".ds-msg-copy, .ds-message__role").forEach((element) => {
+    element.remove();
+  });
   return clone.innerText.trim();
 }
 

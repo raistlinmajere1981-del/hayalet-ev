@@ -439,15 +439,23 @@ export function createLaboratoryManagedSubtitleRunnerRuntime(
         const firstDocument = documents[0] || null;
         const lastDocument = documents[documents.length - 1] || null;
         const firstWords = new Set(
-          Array.isArray(firstDocument?.["topWords"])
-            ? (firstDocument?.["topWords"] as Array<Record<string, unknown>>).map(function (entry) {
+          Array.isArray(firstDocument === null ? null : firstDocument["topWords"])
+            ? (
+                (firstDocument === null ? [] : firstDocument["topWords"]) as Array<
+                  Record<string, unknown>
+                >
+              ).map(function (entry) {
                 return String(entry["word"] || "");
               })
             : []
         );
         const lastWords = new Set(
-          Array.isArray(lastDocument?.["topWords"])
-            ? (lastDocument?.["topWords"] as Array<Record<string, unknown>>).map(function (entry) {
+          Array.isArray(lastDocument === null ? null : lastDocument["topWords"])
+            ? (
+                (lastDocument === null ? [] : lastDocument["topWords"]) as Array<
+                  Record<string, unknown>
+                >
+              ).map(function (entry) {
                 return String(entry["word"] || "");
               })
             : []
@@ -477,7 +485,7 @@ export function createLaboratoryManagedSubtitleRunnerRuntime(
       } else if (moduleId === "repetition-structure") {
         const topWord = stats.topWords[0] || null;
         summary =
-          topWord && topWord.word
+          topWord !== null && topWord.word !== ""
             ? `Repetition analysis centered on "${topWord.word}" with ${topWord.count} hit(s).`
             : "Repetition analysis found no dominant repeated term.";
         moduleArtifactIds[moduleId] = moduleArtifactIds["lexical-frequency"] || [];
@@ -518,7 +526,7 @@ export function createLaboratoryManagedSubtitleRunnerRuntime(
       } else if (moduleId === "archive-to-ai-payload") {
         summary = `AI payload export prepared ${stats.totalFiles} file(s) and ${stats.totalCues} cue(s) for downstream analysis.`;
         moduleArtifactIds[moduleId] = moduleArtifactIds["archive-to-ai-payload"] || [];
-        if ((moduleArtifactIds[moduleId] || []).length > 0) {
+        if (moduleArtifactIds[moduleId].length > 0) {
           moduleFindings.push(
             createProcessFinding(
               moduleId,

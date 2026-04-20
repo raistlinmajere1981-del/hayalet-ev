@@ -1,4 +1,9 @@
-import { asLabRecord, asNonEmptyString, escapeHtml, formatDateTime } from "../../models/lab-types.js";
+import {
+  asLabRecord,
+  asNonEmptyString,
+  escapeHtml,
+  formatDateTime,
+} from "../../models/lab-types.js";
 import type { LabStageSurface, LabStoreState } from "../../models/lab-types.js";
 import {
   getActivePreviewArtifact,
@@ -81,12 +86,14 @@ function getMediaVisualCatalogModules(state: LabStoreState): ProcessControlModul
   const processModules = Array.isArray(processRecord["modules"])
     ? (processRecord["modules"] as unknown[]).map(asLabRecord)
     : [];
-  const capabilityState =
-    processModules.reduce<Record<string, unknown>>(function (accumulator, moduleEntry) {
-      const metadata = asLabRecord(moduleEntry["metadata"]);
-      const nextState = asLabRecord(metadata["capabilityState"]);
-      return Object.keys(nextState).length > 0 ? nextState : accumulator;
-    }, {}) || {};
+  const capabilityState = processModules.reduce<Record<string, unknown>>(function (
+    accumulator,
+    moduleEntry
+  ) {
+    const metadata = asLabRecord(moduleEntry["metadata"]);
+    const nextState = asLabRecord(metadata["capabilityState"]);
+    return Object.keys(nextState).length > 0 ? nextState : accumulator;
+  }, {});
   const modules = Array.isArray(catalog["modules"]) ? (catalog["modules"] as unknown[]) : [];
 
   return modules.map(function (entry) {
@@ -95,16 +102,12 @@ function getMediaVisualCatalogModules(state: LabStoreState): ProcessControlModul
     const capabilityEntry = asLabRecord(asLabRecord(capabilityState)[moduleId]);
     return {
       id: moduleId,
-      label:
-        asNonEmptyString(record["label"]) ||
-        asNonEmptyString(record["title"]) ||
-        moduleId,
+      label: asNonEmptyString(record["label"]) || asNonEmptyString(record["title"]) || moduleId,
       status:
         asNonEmptyString(capabilityEntry["status"]) ||
         asNonEmptyString(record["status"]) ||
         "planned",
-      summary:
-        asNonEmptyString(capabilityEntry["summary"]) || asNonEmptyString(record["summary"]),
+      summary: asNonEmptyString(capabilityEntry["summary"]) || asNonEmptyString(record["summary"]),
     };
   });
 }
@@ -115,7 +118,9 @@ function getFeatureModules(state: LabStoreState): ProcessControlModule[] {
   }
 
   const processRecord = getProcessRecord(state);
-  const modules = Array.isArray(processRecord["modules"]) ? (processRecord["modules"] as unknown[]) : [];
+  const modules = Array.isArray(processRecord["modules"])
+    ? (processRecord["modules"] as unknown[])
+    : [];
   return modules.map(function (entry) {
     const record = asLabRecord(entry);
     const moduleId = asNonEmptyString(record["id"]) || "module";
@@ -134,7 +139,10 @@ function renderFeatureReadiness(state: LabStoreState) {
   }
 
   const snapshot = asLabRecord(state.snapshot);
-  const modules = state.featureId === "media-analysis" ? getMediaVisualCatalogModules(state) : getFeatureModules(state);
+  const modules =
+    state.featureId === "media-analysis"
+      ? getMediaVisualCatalogModules(state)
+      : getFeatureModules(state);
   const providerSnapshotKey =
     state.featureId === "media-analysis" ? "visualAnalysisProviders" : "subtitleAnalysisProviders";
   const providers = Array.isArray(asLabRecord(snapshot[providerSnapshotKey])["providers"])
@@ -242,7 +250,7 @@ function renderAnalysisControlsCard(state: LabStoreState, run: ReturnType<typeof
                     <select class="labx-select" data-lab-field="scope.focus">
                       ${["", "visual", "audio", "subtitle", "cross-modal"]
                         .map(function (entry) {
-                          return `<option value="${entry}" ${((scope?.focus || "") === entry) ? "selected" : ""}>${escapeHtml(entry || "global")}</option>`;
+                          return `<option value="${entry}" ${(scope?.focus || "") === entry ? "selected" : ""}>${escapeHtml(entry || "global")}</option>`;
                         })
                         .join("")}
                     </select>

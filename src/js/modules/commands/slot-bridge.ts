@@ -522,8 +522,7 @@ function normalizeEnvelope(payload: CommandPayload = {}): NormalizedSlotBridgeEn
   const retiredAction = normalizeRetiredSlotBridgeAction(requestedAction);
   const action = normalizeSlotBridgeAction(requestedAction) ?? "message.send";
   const explicitClientRequestId =
-    typeof parsedArgs["clientRequestId"] === "string" &&
-    parsedArgs["clientRequestId"].trim() !== ""
+    typeof parsedArgs["clientRequestId"] === "string" && parsedArgs["clientRequestId"].trim() !== ""
       ? parsedArgs["clientRequestId"].trim()
       : typeof payload["clientRequestId"] === "string" && payload["clientRequestId"].trim() !== ""
         ? payload["clientRequestId"].trim()
@@ -2150,11 +2149,7 @@ async function sendUs1Message(
     if (remoteUserId !== null && /requested us1 remote user/i.test(errorMessage)) {
       return buildErrorResult(envelope, "TARGET_SELECTION_FAILED", errorMessage);
     }
-    return buildErrorResult(
-      envelope,
-      "SEND_FAILED",
-      errorMessage
-    );
+    return buildErrorResult(envelope, "SEND_FAILED", errorMessage);
   }
 
   const session = {
@@ -2285,7 +2280,10 @@ async function runMessageAction(
         }
       }
 
-      const text = appendRequestMarker(await composeActionText(activeEnvelope, payload), activeEnvelope);
+      const text = appendRequestMarker(
+        await composeActionText(activeEnvelope, payload),
+        activeEnvelope
+      );
       const page = readActionPage(activeEnvelope, payload);
       let attachments: ResolvedSendAttachment[] = [];
       if (Array.isArray(activeEnvelope.attachments) && activeEnvelope.attachments.length > 0) {
@@ -2302,10 +2300,16 @@ async function runMessageAction(
       }
 
       if (text === "" && attachments.length === 0) {
-        return buildErrorResult(activeEnvelope, "MESSAGE_REQUIRED", "Text is required for this action");
+        return buildErrorResult(
+          activeEnvelope,
+          "MESSAGE_REQUIRED",
+          "Text is required for this action"
+        );
       }
 
-      const aiTargets = targets.filter((target): target is "ai0" | "ai1" | "ai2" => target !== "us1");
+      const aiTargets = targets.filter(
+        (target): target is "ai0" | "ai1" | "ai2" => target !== "us1"
+      );
       const us1Targets = targets.filter((target): target is "us1" => target === "us1");
 
       if (aiTargets.length > 0) {
@@ -2366,7 +2370,9 @@ async function runMessageAction(
         });
       }
 
-      return us1Result ?? buildResult(activeEnvelope, { session: activeEnvelope.sessionRef ?? null });
+      return (
+        us1Result ?? buildResult(activeEnvelope, { session: activeEnvelope.sessionRef ?? null })
+      );
     }
   );
 }

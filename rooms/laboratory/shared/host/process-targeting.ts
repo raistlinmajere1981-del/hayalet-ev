@@ -349,7 +349,8 @@ export function createLaboratoryProcessTargetingRuntime(
           (sourceKind === "video" || sourceKind === "image") &&
           visualProvidersReady &&
           structureModuleIds.length > 0 &&
-          (enabledLaneIds.includes("visual-tamper") || enabledLaneIds.includes("synthetic-suspicion"))
+          (enabledLaneIds.includes("visual-tamper") ||
+            enabledLaneIds.includes("synthetic-suspicion"))
             ? "queued"
             : "skipped",
         summary:
@@ -379,7 +380,8 @@ export function createLaboratoryProcessTargetingRuntime(
           (sourceKind === "video" || sourceKind === "image") &&
           visualProvidersReady &&
           revealModuleIds.length > 0 &&
-          (enabledLaneIds.includes("visual-tamper") || enabledLaneIds.includes("synthetic-suspicion"))
+          (enabledLaneIds.includes("visual-tamper") ||
+            enabledLaneIds.includes("synthetic-suspicion"))
             ? "queued"
             : "skipped",
         summary:

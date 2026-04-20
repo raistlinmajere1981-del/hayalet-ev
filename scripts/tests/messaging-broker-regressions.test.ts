@@ -4,6 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { SQLiteArchiveManager } from "../../electron/database/sqlite-archive.ts";
+import { getLoggerCore } from "../../electron/logger/core/LoggerCore.ts";
 import {
   closeDatabaseForAccount,
   getDatabaseForAccount,
@@ -226,3 +227,77 @@ test("messaging broker keeps the newest same-identity projection when older even
     cleanupAccount(accountId);
   }
 });
+
+test(
+  "messaging broker emits structured event codes for duplicate and out-of-order events",
+  { concurrency: false },
+  async () => {
+    const accountId = createAccountId("event-code");
+    const manager = new SQLiteArchiveManager(accountId);
+    const logger = getLoggerCore() as unknown as {
+      logInternal: (...args: unknown[]) => Promise<void>;
+    };
+    const originalLogInternal = logger.logInternal.bind(logger);
+    const capturedContexts: Array<Record<string, unknown>> = [];
+
+    logger.logInternal = async (
+      _category: unknown,
+      _level: unknown,
+      _message: unknown,
+      context?: unknown
+    ) => {
+      if (context !== null && context !== undefined && typeof context === "object") {
+        capturedContexts.push(context as Record<string, unknown>);
+      }
+    };
+
+    try {
+      const first = await manager.syncMessages({
+        accountId,
+        clientRequestId: "req-event-code-1",
+        webUrl: "https://chatgpt.com/c/messaging-broker-event-code",
+        messages: [
+          {
+            role: "assistant",
+            text: "seed event",
+            eventSeq: 10,
+            providerMessageId: "provider-event-code-1",
+          },
+        ],
+      });
+      const second = await manager.syncMessages({
+        accountId,
+        clientRequestId: "req-event-code-2",
+        webUrl: "https://chatgpt.com/c/messaging-broker-event-code",
+        messages: [
+          {
+            role: "assistant",
+            text: "seed event",
+            eventSeq: 10,
+            providerMessageId: "provider-event-code-1",
+          },
+          {
+            role: "assistant",
+            text: "late event",
+            eventSeq: 5,
+            providerMessageId: "provider-event-code-2",
+          },
+        ],
+      });
+
+      assert.equal(first.success, true);
+      assert.equal(second.success, true);
+      assert.equal(
+        capturedContexts.some((context) => context["eventCode"] === "broker.duplicate_drop"),
+        true
+      );
+      assert.equal(
+        capturedContexts.some((context) => context["eventCode"] === "broker.out_of_order"),
+        true
+      );
+    } finally {
+      logger.logInternal = originalLogInternal;
+      cleanupAccount(accountId);
+    }
+  }
+);

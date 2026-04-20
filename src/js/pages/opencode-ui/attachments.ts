@@ -177,7 +177,8 @@ export function buildAttachmentPreviewUrl(
     return null;
   }
 
-  const directPreviewUrl = typeof attachment.previewUrl === "string" ? attachment.previewUrl.trim() : "";
+  const directPreviewUrl =
+    typeof attachment.previewUrl === "string" ? attachment.previewUrl.trim() : "";
   if (directPreviewUrl !== "") {
     return normalizeImageUrlCandidate(directPreviewUrl) ?? directPreviewUrl;
   }

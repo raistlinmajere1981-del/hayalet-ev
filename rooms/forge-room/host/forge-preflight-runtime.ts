@@ -533,8 +533,7 @@ export function buildForgeSynthesisProvenance(params: {
   sessionContextSelection: ForgeSessionContextSelection;
 }): ForgeSynthesisProvenance {
   return {
-    contextDigest:
-      params.preflight.contextDigest ?? params.preflight.bundle?.contextDigest ?? null,
+    contextDigest: params.preflight.contextDigest ?? params.preflight.bundle?.contextDigest ?? null,
     runSignature: params.runSignature?.value ?? null,
     operatorProfileSummary: summarizeForgeSelectedOperatorContext({
       runOverride: params.runOverride,
@@ -582,6 +581,22 @@ export function assertFreshPreflight(params: {
     throw new Error("Preflight context digest is stale for the active Forge run.");
   }
   return matched;
+}
+
+export function classifyFreshPreflightError(params: {
+  contextDigest: string;
+  preflight: ForgePreflightState;
+  runId: string;
+}): "forge.context.digest_mismatch" | "forge.preflight.stale_reject" {
+  const matched = getPreflightForRun(params.runId, params.contextDigest, params.preflight);
+  if (matched === null) {
+    return "forge.context.digest_mismatch";
+  }
+  const expectedDigest = matched.expectedContextDigest ?? matched.contextDigest;
+  if (expectedDigest !== params.contextDigest) {
+    return "forge.context.digest_mismatch";
+  }
+  return "forge.preflight.stale_reject";
 }
 
 export function renderForgePromptContext(params: {

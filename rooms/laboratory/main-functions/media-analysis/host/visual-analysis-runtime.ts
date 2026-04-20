@@ -128,7 +128,10 @@ export function createLaboratoryVisualAnalysisRuntime(deps: VisualAnalysisRuntim
     return Array.isArray(providers) ? providers.map(toProviderRecord) : [];
   }
 
-  function getToolInstalled(runtime: LaboratoryVisualRuntimeRecord, toolId: string | null): boolean {
+  function getToolInstalled(
+    runtime: LaboratoryVisualRuntimeRecord,
+    toolId: string | null
+  ): boolean {
     if (toolId === null) {
       return false;
     }
@@ -165,10 +168,9 @@ export function createLaboratoryVisualAnalysisRuntime(deps: VisualAnalysisRuntim
           planned || capabilityReady
             ? []
             : [`Install ${toolId || "the required runtime"} before enabling this visual provider.`],
-        warnings:
-          planned
-            ? ["This provider stays reserved for a later visual-analysis rollout."]
-            : [],
+        warnings: planned
+          ? ["This provider stays reserved for a later visual-analysis rollout."]
+          : [],
       };
     });
 
@@ -254,10 +256,12 @@ export function createLaboratoryVisualAnalysisRuntime(deps: VisualAnalysisRuntim
     workbenchSource: unknown = {}
   ): string[] {
     const capabilityState = buildVisualAnalysisCapabilityState(runtime, sourceKind);
-    const modules = getVisualAnalysisModulesForRuntime(runtime, sourceKind).filter(function (entry) {
-      const moduleId = asNonEmptyString(entry.id) || "";
-      return toRecord(capabilityState[moduleId])["status"] === "ready";
-    });
+    const modules = getVisualAnalysisModulesForRuntime(runtime, sourceKind).filter(
+      function (entry) {
+        const moduleId = asNonEmptyString(entry.id) || "";
+        return toRecord(capabilityState[moduleId])["status"] === "ready";
+      }
+    );
     const moduleToggles = getMergedModuleToggles(toProjectRecord(project), workbenchSource);
     const relevantToggleIds = modules
       .map(function (entry) {

@@ -117,7 +117,7 @@ test("forge-room task editor updates approved dispatch settings and rebuilds que
   assert.equal(updated.validationMessage, null);
   assert.equal(updated.approvedTasks[0]?.dispatchMode, "compare");
   assert.equal(updated.approvedTasks[0]?.personaPresetId, "gok");
-  const assignments = rebuildQueuedAssignments(updated.approvedTasks);
+  const assignments = rebuildQueuedAssignments(updated.approvedTasks, { contextDigest: null, runId: null, sessionRevision: null });
   assert.equal(assignments.length, 3);
   assert.deepEqual(
     assignments

@@ -1737,8 +1737,10 @@ export class AssistantController {
         try {
           const savedParsed = new URL(savedUrl);
           const baseParsed = new URL(baseUrl);
-          const savedPath = savedParsed.pathname.replace(/\/+$/u, "") || "/";
-          const basePath = baseParsed.pathname.replace(/\/+$/u, "") || "/";
+          const normalizedSavedPath = savedParsed.pathname.replace(/\/+$/u, "");
+          const normalizedBasePath = baseParsed.pathname.replace(/\/+$/u, "");
+          const savedPath = normalizedSavedPath === "" ? "/" : normalizedSavedPath;
+          const basePath = normalizedBasePath === "" ? "/" : normalizedBasePath;
 
           if (savedParsed.origin === baseParsed.origin && savedPath === "/" && basePath !== "/") {
             return baseUrl;

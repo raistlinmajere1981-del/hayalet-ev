@@ -55,7 +55,8 @@ export function readForgeRunArtifacts(
   }
   return (
     store.entries.find(
-      (entry) => entry.runId === runId && (ownerScopeId === null || entry.ownerScopeId === ownerScopeId)
+      (entry) =>
+        entry.runId === runId && (ownerScopeId === null || entry.ownerScopeId === ownerScopeId)
     ) ?? null
   );
 }

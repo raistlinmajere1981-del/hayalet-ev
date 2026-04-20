@@ -26,7 +26,7 @@ test("forge-room task runtime creates compare assignments from approved tasks", 
       personaPresetId: "rovo",
       status: "approved",
     },
-  ]);
+  ], { contextDigest: null, runId: null, sessionRevision: null });
 
   assert.equal(assignments.length, 2);
   assert.deepEqual(
@@ -55,7 +55,7 @@ test("forge-room task runtime groups compare responses into conflicts and produc
       status: "approved" as const,
     },
   ];
-  const assignments = createAssignmentsForApprovedTasks(tasks);
+  const assignments = createAssignmentsForApprovedTasks(tasks, { contextDigest: null, runId: null, sessionRevision: null });
   const responses = [
     {
       id: "forge-response-1",

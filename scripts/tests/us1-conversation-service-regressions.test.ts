@@ -7,6 +7,7 @@ import test from "node:test";
 
 import { MailSidecarStoreManager } from "../../electron/database/mail-sidecar-manager.ts";
 import { closeMailSidecarDatabaseForAccount as closeMailSidecarDbForAccount } from "../../electron/database/mail-sidecar-sqlite.ts";
+import { getLoggerCore } from "../../electron/logger/core/LoggerCore.ts";
 import Database from "../../electron/native/better-sqlite3.ts";
 import { initPaths, Paths } from "../../electron/paths.ts";
 import { Us1ConversationService } from "../../electron/us1-conversation-service.ts";
@@ -753,10 +754,29 @@ test("US1 conversation service resolves provider credentials server-side for exp
   }
 });
 
-test("US1 conversation service rejects foreign remote users outside the owner-scoped bindings", async () => {
+test(
+  "US1 conversation service rejects foreign remote users outside the owner-scoped bindings",
+  { concurrency: false },
+  async () => {
   const accountId = `us1_mail_${Date.now().toString(36)}_foreign_send`;
   const store = createSettingsStore(createSettings(accountId));
   const transportStub = createTransportStub();
+  const logger = getLoggerCore() as unknown as {
+    logInternal: (...args: unknown[]) => Promise<void>;
+  };
+  const originalLogInternal = logger.logInternal.bind(logger);
+  const capturedContexts: Array<Record<string, unknown>> = [];
+  logger.logInternal = async (
+    _category: unknown,
+    _level: unknown,
+    _message: unknown,
+    context?: unknown
+  ) => {
+    if (context !== null && context !== undefined && typeof context === "object") {
+      capturedContexts.push(context as Record<string, unknown>);
+    }
+  };
+
   const service = new Us1ConversationService({
     now: () => FIXED_NOW,
     transport: transportStub.transport,
@@ -778,11 +798,17 @@ test("US1 conversation service rejects foreign remote users outside the owner-sc
     assert.match(result.error ?? "", /foreign@example\.com/);
     assert.equal(transportStub.sentMessages.length, 0);
     assert.equal(store.snapshot().us1Slot?.selectedRemoteUserId, "remote@example.com");
+    assert.equal(
+      capturedContexts.some((context) => context["eventCode"] === "auth.owner_scope_violation"),
+      true
+    );
   } finally {
+    logger.logInternal = originalLogInternal;
     cleanupAccount(accountId);
     cleanupAccount(remoteAccountId);
   }
-});
+  }
+);
 
 test("US1 conversation service ignores forged client session ids and mints owner-scoped ones", async () => {
   const accountId = `us1_mail_${Date.now().toString(36)}_forged_session`;
@@ -1509,6 +1535,55 @@ test("US1 conversation sync falls back to inline SlotBridge room.command text", 
       boardHashBeforeMove: ".........",
       cell: 4,
     });
+  } finally {
+    cleanupAccount(accountId);
+    cleanupAccount(remoteAccountId);
+  }
+});
+
+test("US1 conversation sync does not infer unknown inline room.command identities", async () => {
+  const accountId = `us1_mail_${Date.now().toString(36)}_room_inline_unknown`;
+  const store = createSettingsStore(createSettings(accountId));
+  const transportStub = createTransportStub();
+  const service = new Us1ConversationService({
+    now: () => FIXED_NOW,
+    transport: transportStub.transport,
+    archiveFactory: createArchiveFactory(),
+    settingsStore: {
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
+    },
+  });
+  const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
+
+  try {
+    transportStub.enqueueFetch({
+      accountId,
+      mailbox: "INBOX",
+      cursor: "uid:41b",
+      fetchedCount: 1,
+      processedCount: 1,
+      duplicateCount: 0,
+      messages: [
+        buildFetchedConversationMessage({
+          accountId,
+          uid: 41,
+          transportMessageId: "<inline-room-command-unknown@example.test>",
+          localMessageId: "local-inline-room-command-unknown",
+          localSessionId: "room-inline-session-unknown",
+          nickname: "Remote Player",
+          text:
+            '++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomSecretRemoteMove","matchId":"invite-inline-unknown-1","inviteId":"invite-inline-unknown-1","turnIndex":0,"boardHashBeforeMove":".........","cell":4}})',
+          subject: "XOX move inline unknown",
+        }),
+      ],
+    });
+
+    const result = await service.syncMessages({ localSessionId: "room-inline-session-unknown" });
+
+    assert.equal(result.success, true);
+    assert.equal(result.projectedCount, 1);
+    assert.equal(result.roomCommands?.length, 0);
   } finally {
     cleanupAccount(accountId);
     cleanupAccount(remoteAccountId);

@@ -120,15 +120,20 @@ export function createLaboratoryHostActivation(deps: LaboratoryHostActivationDep
             if (workbenchAdjustment.changed) {
               const workbench = toRecord(toRecord(nextContext)["workbench"]);
               const scope = toRecord(workbench["analysisScope"]);
-              if (workbenchAdjustment.processChanged && typeof queueInteractiveReprocess === "function") {
-                void queueInteractiveReprocess(api, runtime, toRecord(nextContext)).catch(function (error) {
-                  api.log(
-                    "warn",
-                    `Laboratory queued reprocess sync failed: ${
-                      error instanceof Error ? error.message : String(error)
-                    }`
-                  );
-                });
+              if (
+                workbenchAdjustment.processChanged &&
+                typeof queueInteractiveReprocess === "function"
+              ) {
+                void queueInteractiveReprocess(api, runtime, toRecord(nextContext)).catch(
+                  function (error) {
+                    api.log(
+                      "warn",
+                      `Laboratory queued reprocess sync failed: ${
+                        error instanceof Error ? error.message : String(error)
+                      }`
+                    );
+                  }
+                );
               }
               emitEvent(api, {
                 kind: "interactive-adjustment-applied",

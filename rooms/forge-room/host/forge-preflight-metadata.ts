@@ -131,7 +131,9 @@ function labelEquipment(
   const base =
     (typeof record.label === "string" ? record.label.trim() : "") ||
     titleCaseRoomId(record.equipmentKey);
-  return options.includeBrandModel === true && record.brandModel ? `${base} (${record.brandModel})` : base;
+  return options.includeBrandModel === true && record.brandModel
+    ? `${base} (${record.brandModel})`
+    : base;
 }
 
 function listEquipmentByStatus(

@@ -65,7 +65,8 @@ function getToolRegistry(state: LabStoreState): LabToolDescriptorRecord[] {
   if (registry.length > 0) {
     return registry.slice().sort(function (left, right) {
       const leftLabel = asNonEmptyString(left.displayName) || asNonEmptyString(left.toolId) || "";
-      const rightLabel = asNonEmptyString(right.displayName) || asNonEmptyString(right.toolId) || "";
+      const rightLabel =
+        asNonEmptyString(right.displayName) || asNonEmptyString(right.toolId) || "";
       return leftLabel.localeCompare(rightLabel, "tr");
     });
   }
@@ -80,7 +81,8 @@ function getToolRegistry(state: LabStoreState): LabToolDescriptorRecord[] {
     })
     .sort(function (left, right) {
       const leftLabel = asNonEmptyString(left.displayName) || asNonEmptyString(left.toolId) || "";
-      const rightLabel = asNonEmptyString(right.displayName) || asNonEmptyString(right.toolId) || "";
+      const rightLabel =
+        asNonEmptyString(right.displayName) || asNonEmptyString(right.toolId) || "";
       return leftLabel.localeCompare(rightLabel, "tr");
     });
 }
@@ -134,7 +136,11 @@ function getSupportLabel(supportLevel: string, stageId: string): string {
   }
 }
 
-function getStatusChip(descriptor: LabToolDescriptorRecord, entry: LabToolEntryRecord, stageId: string) {
+function getStatusChip(
+  descriptor: LabToolDescriptorRecord,
+  entry: LabToolEntryRecord,
+  stageId: string
+) {
   const availability = asNonEmptyString(descriptor.availability) || "installable";
   const installStrategy = getInstallStrategy(descriptor);
   const supportLevel = getSupportLevel(descriptor, stageId);
@@ -192,10 +198,7 @@ function getInstallStrategyLabel(descriptor: LabToolDescriptorRecord): string {
   }
 }
 
-function renderToolActions(
-  descriptor: LabToolDescriptorRecord,
-  entry: LabToolEntryRecord
-): string {
+function renderToolActions(descriptor: LabToolDescriptorRecord, entry: LabToolEntryRecord): string {
   const toolId = asNonEmptyString(descriptor.toolId) || asNonEmptyString(entry.toolId) || "";
   if (toolId === "") {
     return "";
@@ -274,7 +277,8 @@ function renderToolCard(
   const versionLabel = asNonEmptyString(entry.version) || "--";
   const latestLabel =
     asNonEmptyString(entry.latestVersion) || asNonEmptyString(entry.latestReleaseName) || "--";
-  const locationLabel = asNonEmptyString(entry.binaryPath) || asNonEmptyString(entry.installDir) || "--";
+  const locationLabel =
+    asNonEmptyString(entry.binaryPath) || asNonEmptyString(entry.installDir) || "--";
 
   return `
     <article class="labx-module-card" data-selected="${entry.installed === true ? "true" : "false"}" data-active="${supportLevel === "required" ? "true" : "false"}">

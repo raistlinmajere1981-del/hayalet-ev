@@ -68,7 +68,9 @@ function migratePersistedState(
     schemaVersion: 4,
     activityFeed: Array.isArray(persisted.activityFeed) ? persisted.activityFeed : [],
     activePreviewArtifactId:
-      typeof persisted.activePreviewArtifactId === "string" ? persisted.activePreviewArtifactId : null,
+      typeof persisted.activePreviewArtifactId === "string"
+        ? persisted.activePreviewArtifactId
+        : null,
     liveFindingsExpanded: persisted.liveFindingsExpanded !== false,
     analysisControlsCollapsed: persisted.analysisControlsCollapsed === true,
   };

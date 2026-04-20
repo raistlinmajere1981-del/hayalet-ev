@@ -66,11 +66,7 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
         this._isRunning = true;
         this._currentPort = running.port;
         const serverUrl = running.url ?? `http://127.0.0.1:${this._currentPort}/`;
-        const url = this._resolveWorkspaceUrl(
-          serverUrl,
-          running.workspacePath,
-          this._currentPort
-        );
+        const url = this._resolveWorkspaceUrl(serverUrl, running.workspacePath, this._currentPort);
 
         Logger.infoT(
           LogCategory.ASSISTANT_CORE,
@@ -116,11 +112,7 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
         this._isRunning = true;
         this._currentPort = result.port ?? port ?? 4096;
         const serverUrl = result.url ?? `http://127.0.0.1:${this._currentPort}/`;
-        const url = this._resolveWorkspaceUrl(
-          serverUrl,
-          result.workspacePath,
-          this._currentPort
-        );
+        const url = this._resolveWorkspaceUrl(serverUrl, result.workspacePath, this._currentPort);
 
         Logger.infoT(
           LogCategory.ASSISTANT_CORE,

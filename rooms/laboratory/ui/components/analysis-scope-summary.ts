@@ -22,7 +22,10 @@ function formatRegion(scope: AnalysisScope | null) {
   return `${scope.region.x},${scope.region.y} / ${scope.region.width}x${scope.region.height}`;
 }
 
-export function renderAnalysisScopeSummary(scope: AnalysisScope | null, confidence?: string | null) {
+export function renderAnalysisScopeSummary(
+  scope: AnalysisScope | null,
+  confidence?: string | null
+) {
   return `
     <div class="labx-summary-list">
       <div><span>Focus</span><strong>${escapeHtml(scope?.focus || "global")}</strong></div>

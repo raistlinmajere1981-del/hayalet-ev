@@ -7,9 +7,10 @@ import type {
 import { hashStableValue } from "./forge-runtime-support.js";
 
 function sortStrings(values: string[]): string[] {
-  return [...values].map((entry) => entry.trim()).filter((entry) => entry !== "").sort((left, right) =>
-    left.localeCompare(right)
-  );
+  return [...values]
+    .map((entry) => entry.trim())
+    .filter((entry) => entry !== "")
+    .sort((left, right) => left.localeCompare(right));
 }
 
 function normalizeGoal(goal: ForgeGoal) {

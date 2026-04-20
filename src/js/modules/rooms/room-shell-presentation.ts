@@ -9,7 +9,6 @@ function readRoomShellLabel(roomId: string, fallbackName: string): string {
 
 const ROOM_SHELL_ICON_OVERRIDES: Record<string, string> = {
   "forge-room": "\u2692\uFE0F",
-  laboratory: "\uD83E\uDDEA"
 };
 
 export function resolveRoomShellName(roomId: string, fallbackName: string): string {

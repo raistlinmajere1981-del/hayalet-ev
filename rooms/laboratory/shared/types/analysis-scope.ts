@@ -140,10 +140,7 @@ export function normalizeAnalysisScope(rawValue: unknown): AnalysisScope | null 
   return {
     ...(reference || {}),
     ...(focus &&
-    (focus === "visual" ||
-      focus === "audio" ||
-      focus === "subtitle" ||
-      focus === "cross-modal")
+    (focus === "visual" || focus === "audio" || focus === "subtitle" || focus === "cross-modal")
       ? { focus }
       : {}),
     ...(hypothesis ? { hypothesis } : {}),

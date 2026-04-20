@@ -226,7 +226,9 @@ export function createLaboratoryManagedAudioRunnerRuntime(deps: LaboratoryManage
           throttleWindow: `${moduleId}-module-batch`,
         });
       }
-      const primaryArtifact = moduleArtifacts[0] ? normalizeProcessArtifact(moduleArtifacts[0]) : null;
+      const primaryArtifact = moduleArtifacts[0]
+        ? normalizeProcessArtifact(moduleArtifacts[0])
+        : null;
       if (primaryArtifact) {
         emitRuntimeUpdate?.({
           kind: "preview-artifact",

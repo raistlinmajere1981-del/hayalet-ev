@@ -226,7 +226,9 @@ export function serializeForAI0(params: {
       ? { capabilityContext: serializeCapabilityContext(params.capabilityContext) }
       : {}),
     ...(Object.keys(serializeSelectedOperatorProfile(params.selectedOperatorProfile)).length > 0
-      ? { selectedOperatorProfile: serializeSelectedOperatorProfile(params.selectedOperatorProfile) }
+      ? {
+          selectedOperatorProfile: serializeSelectedOperatorProfile(params.selectedOperatorProfile),
+        }
       : {}),
     ...(serializeRunOverride(params.runOverride)
       ? { runOverride: serializeRunOverride(params.runOverride) }

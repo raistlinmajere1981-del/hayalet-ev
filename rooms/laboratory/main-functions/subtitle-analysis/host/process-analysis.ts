@@ -96,13 +96,23 @@ export function createSubtitleProcessAnalysisRuntime(deps: SubtitleProcessAnalys
 
   function buildSubtitleProviderState(runtime: Record<string, unknown>) {
     const providers = Array.isArray(toRecord(runtime["subtitleAnalysisProviders"])["providers"])
-      ? (toRecord(runtime["subtitleAnalysisProviders"])["providers"] as unknown[]).map(toProviderRecord)
+      ? (toRecord(runtime["subtitleAnalysisProviders"])["providers"] as unknown[]).map(
+          toProviderRecord
+        )
       : [];
-    return providers.reduce<Record<string, Record<string, unknown>>>(function (accumulator, provider) {
+    return providers.reduce<Record<string, Record<string, unknown>>>(function (
+      accumulator,
+      provider
+    ) {
       const providerId = asNonEmptyString(provider["id"]) || "subtitle-provider";
       const status = asNonEmptyString(provider["status"]) || "planned";
       const toolId = asNonEmptyString(provider["toolId"]);
-      const toolReady = status === "planned" ? false : toolId ? getToolInstalled(runtime, toolId) : status === "ready";
+      const toolReady =
+        status === "planned"
+          ? false
+          : toolId
+            ? getToolInstalled(runtime, toolId)
+            : status === "ready";
       accumulator[providerId] = {
         providerId,
         status: status === "planned" ? "planned" : toolReady ? "ready" : "blocked",

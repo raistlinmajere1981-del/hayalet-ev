@@ -153,7 +153,9 @@ export function createLaboratoryProcessReportStateRuntime(deps: Record<string, u
       moduleId: asNonEmptyString(toRecord(rawValue).moduleId),
       code: asNonEmptyString(source.code),
       severity:
-        severity === "success" || severity === "warning" || severity === "error" ? severity : "info",
+        severity === "success" || severity === "warning" || severity === "error"
+          ? severity
+          : "info",
       sourceModule: asNonEmptyString(source.sourceModule) || asNonEmptyString(source.moduleId),
       reference: normalizeAnalysisReference(source.reference ?? rawValue),
       hypothesis: asNonEmptyString(source.hypothesis),

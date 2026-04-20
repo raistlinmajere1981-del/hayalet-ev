@@ -1,8 +1,5 @@
 import { escapeHtml } from "../../models/lab-types.js";
-import type {
-  LabComparisonVariant,
-  LabPreviewArtifactProjection,
-} from "../../models/lab-types.js";
+import type { LabComparisonVariant, LabPreviewArtifactProjection } from "../../models/lab-types.js";
 
 type PreviewSurfaceOptions = {
   activeArtifact: LabPreviewArtifactProjection | null;
@@ -18,7 +15,12 @@ function readPreviewUrl(artifact: LabPreviewArtifactProjection | null) {
 }
 
 function getPreviewKind(artifact: LabPreviewArtifactProjection | null) {
-  const source = (readPreviewUrl(artifact) || artifact?.fileName || artifact?.kind || "").toLowerCase();
+  const source = (
+    readPreviewUrl(artifact) ||
+    artifact?.fileName ||
+    artifact?.kind ||
+    ""
+  ).toLowerCase();
   if (source.endsWith(".wav") || source.endsWith(".mp3") || source.endsWith(".flac")) {
     return "audio";
   }
@@ -129,7 +131,9 @@ export function renderPreviewSurface(options: PreviewSurfaceOptions) {
                 .map(function (variant) {
                   const artifactId = getVariantArtifactId(variant, options.previewArtifacts);
                   const active =
-                    artifactId !== null && options.activeArtifact ? options.activeArtifact.id === artifactId : variant.active === true;
+                    artifactId !== null && options.activeArtifact
+                      ? options.activeArtifact.id === artifactId
+                      : variant.active === true;
                   return `
                     <article class="labx-choice-row">
                       <div>

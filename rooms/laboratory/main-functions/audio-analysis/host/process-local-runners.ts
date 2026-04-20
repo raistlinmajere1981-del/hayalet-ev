@@ -767,8 +767,10 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
         title: "Signal recovery experiment generated",
         detail:
           "A broadband recovery pass combined denoising, band limiting, and light compression to surface masked content.",
-        summary: "Signal recovery variants and preview artifacts were generated for the active target.",
-        warning: "Recovery output is experimental and should be reviewed against the original source.",
+        summary:
+          "Signal recovery variants and preview artifacts were generated for the active target.",
+        warning:
+          "Recovery output is experimental and should be reviewed against the original source.",
       }
     );
   }
@@ -832,7 +834,8 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
         detail:
           "A focused mid-band isolation pass was generated to inspect speech-like or masked content inside the intelligibility range.",
         summary: "Band-pass exploration artifacts were generated for the active target.",
-        warning: "Band-pass exploration narrows the signal and can remove low or high frequency cues.",
+        warning:
+          "Band-pass exploration narrows the signal and can remove low or high frequency cues.",
       }
     );
   }
@@ -864,7 +867,8 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
         detail:
           "A recovery pass emphasized the speech-intelligibility band so spectral ridges can be inspected before deeper transcription attempts.",
         summary: "Spectrogram-guided recovery outputs were generated for the active target.",
-        warning: "Spectrogram-oriented recovery is optimized for inspection, not faithful listening playback.",
+        warning:
+          "Spectrogram-oriented recovery is optimized for inspection, not faithful listening playback.",
       }
     );
   }
@@ -897,7 +901,8 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
         detail:
           "Dynamic-range expansion and band limiting were applied to expose low-level or intermittently masked audio patterns.",
         summary: "Hidden-pattern extraction artifacts were generated for the active target.",
-        warning: "Pattern extraction can amplify noise as well as faint content, so results need manual review.",
+        warning:
+          "Pattern extraction can amplify noise as well as faint content, so results need manual review.",
       }
     );
   }
@@ -930,7 +935,8 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
         detail:
           "A side-channel phase isolation experiment was generated to inspect content that may cancel in mono or sit between stereo channels.",
         summary: "Phase-recovery experiment artifacts were generated for the active target.",
-        warning: "Phase-isolation experiments can collapse on mono or tightly correlated stereo sources.",
+        warning:
+          "Phase-isolation experiments can collapse on mono or tightly correlated stereo sources.",
       }
     );
   }

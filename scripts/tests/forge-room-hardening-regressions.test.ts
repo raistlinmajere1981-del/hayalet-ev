@@ -6,6 +6,7 @@ import { createForgeHandoffExport } from "../../rooms/forge-room/host/forge-hand
 import { readForgePreflightInvalidationReason } from "../../rooms/forge-room/host/forge-preflight-invalidation.ts";
 import {
   assertFreshPreflight,
+  classifyFreshPreflightError,
   getPreflightForRun,
 } from "../../rooms/forge-room/host/forge-preflight-runtime.ts";
 import {
@@ -241,6 +242,44 @@ test("forge-room rejects draft when preflight digest mismatches", () => {
       }),
     /Preflight/
   );
+});
+
+test("forge-room classifies run-context mismatches as digest mismatch events", () => {
+  const preflight = {
+    ...createEmptyForgePreflightState(),
+    status: "fresh" as const,
+    contextDigest: "digest-a",
+    expectedContextDigest: "digest-a",
+    runId: "run-a",
+    sessionRevision: 1,
+  };
+
+  const eventCode = classifyFreshPreflightError({
+    contextDigest: "digest-a",
+    preflight,
+    runId: "run-b",
+  });
+
+  assert.equal(eventCode, "forge.context.digest_mismatch");
+});
+
+test("forge-room classifies stale preflight status as stale reject events", () => {
+  const preflight = {
+    ...createEmptyForgePreflightState(),
+    status: "stale" as const,
+    contextDigest: "digest-a",
+    expectedContextDigest: "digest-a",
+    runId: "run-a",
+    sessionRevision: 1,
+  };
+
+  const eventCode = classifyFreshPreflightError({
+    contextDigest: "digest-a",
+    preflight,
+    runId: "run-a",
+  });
+
+  assert.equal(eventCode, "forge.preflight.stale_reject");
 });
 
 test("forge-room marks preflight stale on selected context change", () => {

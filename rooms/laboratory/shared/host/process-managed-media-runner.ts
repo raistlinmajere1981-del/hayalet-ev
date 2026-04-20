@@ -709,13 +709,12 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
       });
 
       const revealArtifacts: LaboratoryProcessArtifactRecord[] = [];
-      for (let index = 0; index < revealModuleIds.length; index += 1) {
-        const visualModuleId = revealModuleIds[index];
+      await revealModuleIds.reduce<Promise<void>>(async (previous, visualModuleId) => {
+        await previous;
         if (!visualModuleId) {
-          continue;
+          return;
         }
         const filterConfig = getRevealFilterConfig(visualModuleId);
-        // eslint-disable-next-line no-await-in-loop -- NOTE: reveal variants are emitted in deterministic order for preview review.
         const transformArtifact = normalizeOptionalArtifact(
           await generateProcessVisualTransformArtifact(
             runtime,
@@ -738,14 +737,16 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
           revealArtifacts.push(transformArtifact);
           artifacts.push(transformArtifact);
         }
-      }
+      }, Promise.resolve());
 
       const comparisonVariants: LaboratoryRecord[] = [];
       revealModuleIds.forEach(function (visualModuleId, index) {
         const filterConfig = getRevealFilterConfig(visualModuleId);
         const transformArtifact = revealArtifacts[index] || revealArtifacts[0] || null;
         const artifactIds =
-          transformArtifact && typeof transformArtifact.id === "string" ? [transformArtifact.id] : [];
+          transformArtifact && typeof transformArtifact.id === "string"
+            ? [transformArtifact.id]
+            : [];
         const comparisonVariant = {
           id: `visual-variant-${visualModuleId}`,
           moduleId: "visual-signal",
@@ -773,7 +774,8 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
           detail:
             comparisonVariants.length > 1
               ? `${comparisonVariants.length} reveal variants were batched for the current scope.`
-              : asNonEmptyString(comparisonVariants[0]?.["label"]) || "Visual comparison variant ready",
+              : asNonEmptyString(comparisonVariants[0]?.["label"]) ||
+                "Visual comparison variant ready",
           artifact: revealArtifacts[0] || undefined,
           comparisonVariant: comparisonVariants[0] || undefined,
           comparisonVariants,
