@@ -5,14 +5,25 @@
       "id": "download",
       "fields": [
         {
+          "id": "captureMode",
+          "type": "select",
+          "labelKey": "mediaAnalysis.source.youtubeForm.fields.captureMode",
+          "options": [
+            { "value": "video+audio", "labelKey": "mediaAnalysis.source.youtubeForm.options.captureMode.videoAudio" },
+            { "value": "audio-only", "labelKey": "mediaAnalysis.source.youtubeForm.options.captureMode.audioOnly" },
+            { "value": "video-only", "labelKey": "mediaAnalysis.source.youtubeForm.options.captureMode.videoOnly" }
+          ]
+        },
+        {
           "id": "format",
           "type": "select",
           "labelKey": "mediaAnalysis.source.youtubeForm.fields.format",
           "options": [
             { "value": "bestvideo*+bestaudio/best", "labelKey": "mediaAnalysis.source.youtubeForm.options.format.best" },
-            { "value": "best[height<=1080]/best", "labelKey": "mediaAnalysis.source.youtubeForm.options.format.fullHd" },
-            { "value": "best[height<=720]/best", "labelKey": "mediaAnalysis.source.youtubeForm.options.format.hd" },
-            { "value": "worst[ext=mp4]/worst", "labelKey": "mediaAnalysis.source.youtubeForm.options.format.lowest" }
+            { "value": "best[height<=1080][ext=mp4]/best[height<=1080]/best", "labelKey": "mediaAnalysis.source.youtubeForm.options.format.mp4_1080" },
+            { "value": "best[height<=720][ext=mp4]/best[height<=720]/best", "labelKey": "mediaAnalysis.source.youtubeForm.options.format.mp4_720" },
+            { "value": "best[height<=480][ext=mp4]/best[height<=480]/best", "labelKey": "mediaAnalysis.source.youtubeForm.options.format.mp4_480" },
+            { "value": "best[height<=360][ext=mp4]/best[height<=360]/worst[ext=mp4]/worst", "labelKey": "mediaAnalysis.source.youtubeForm.options.format.low" }
           ]
         },
         {
@@ -44,15 +55,29 @@
           "options": [
             { "value": "none", "labelKey": "mediaAnalysis.source.youtubeForm.options.audio.none" },
             { "value": "mp3", "labelKey": "mediaAnalysis.source.youtubeForm.options.audio.mp3" },
+            { "value": "aac", "labelKey": "mediaAnalysis.source.youtubeForm.options.audio.aac" },
             { "value": "m4a", "labelKey": "mediaAnalysis.source.youtubeForm.options.audio.m4a" },
+            { "value": "opus", "labelKey": "mediaAnalysis.source.youtubeForm.options.audio.opus" },
             { "value": "wav", "labelKey": "mediaAnalysis.source.youtubeForm.options.audio.wav" },
             { "value": "flac", "labelKey": "mediaAnalysis.source.youtubeForm.options.audio.flac" }
+          ]
+        },
+        {
+          "id": "audioQuality",
+          "type": "select",
+          "labelKey": "mediaAnalysis.source.youtubeForm.fields.audioQuality",
+          "options": [
+            { "value": "best", "labelKey": "mediaAnalysis.source.youtubeForm.options.audioQuality.best" },
+            { "value": "0", "labelKey": "mediaAnalysis.source.youtubeForm.options.audioQuality.max" },
+            { "value": "2", "labelKey": "mediaAnalysis.source.youtubeForm.options.audioQuality.high" },
+            { "value": "5", "labelKey": "mediaAnalysis.source.youtubeForm.options.audioQuality.medium" },
+            { "value": "7", "labelKey": "mediaAnalysis.source.youtubeForm.options.audioQuality.small" }
           ]
         }
       ]
     },
     {
-      "id": "metadata",
+      "id": "captions",
       "fields": [
         {
           "id": "writeSubtitles",
@@ -68,7 +93,8 @@
           "id": "subtitlesLang",
           "type": "text",
           "labelKey": "mediaAnalysis.source.youtubeForm.fields.subtitlesLang",
-          "placeholderKey": "mediaAnalysis.source.youtubeForm.placeholders.subtitlesLang"
+          "placeholderKey": "mediaAnalysis.source.youtubeForm.placeholders.subtitlesLang",
+          "span": "full"
         }
       ]
     },

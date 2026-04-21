@@ -6,12 +6,134 @@ import { renderLabCenterPanel } from "./lab-center-panel.js";
 import { renderLabLayout } from "./lab-layout.js";
 import { renderLabLeftRail } from "./lab-left-rail.js";
 import { renderLabRightPanel } from "./lab-right-panel.js";
-import { renderEditStage } from "./stages/edit-stage.js";
-import { renderProcessStage } from "./stages/process-stage.js";
-import { renderReportStage } from "./stages/report-stage.js";
-import { renderSourceStage } from "./stages/source-stage.js";
+import { renderWorkspaceSurface } from "./workspace-surface.js";
 import { createLabRunController } from "../runtime/lab-run-controller.js";
 import { renderToolManagementOverlay } from "./tool-management-overlay.js";
+import { renderReportOverlay } from "./report-overlay.js";
+import { getWorkspaceMode } from "../runtime/lab-selectors.js";
+function createRenderedElement(documentRef, markup) {
+  const template = documentRef.createElement("template");
+  template.innerHTML = markup.trim();
+  return template.content.firstElementChild;
+}
+function readPreservedMediaKey(element) {
+  const key = element.getAttribute("data-lab-preserve-media");
+  return typeof key === "string" && key.trim() !== "" ? key : null;
+}
+function readElementSource(element) {
+  const source = element.getAttribute("src");
+  return typeof source === "string" && source.trim() !== "" ? source : null;
+}
+function canReuseElement(currentElement, nextElement) {
+  if (currentElement.tagName !== nextElement.tagName) {
+    return false;
+  }
+  const preserveKey = readPreservedMediaKey(currentElement) || readPreservedMediaKey(nextElement);
+  if (!preserveKey) {
+    return true;
+  }
+  return readPreservedMediaKey(currentElement) === readPreservedMediaKey(nextElement) && readElementSource(currentElement) === readElementSource(nextElement);
+}
+function syncFormState(currentElement, nextElement) {
+  if (typeof HTMLInputElement !== "undefined" && currentElement instanceof HTMLInputElement && nextElement instanceof HTMLInputElement) {
+    if (currentElement.type === "checkbox" || currentElement.type === "radio") {
+      currentElement.checked = nextElement.checked;
+      return;
+    }
+    if (currentElement.value !== nextElement.value) {
+      currentElement.value = nextElement.value;
+    }
+    return;
+  }
+  if (typeof HTMLTextAreaElement !== "undefined" && currentElement instanceof HTMLTextAreaElement && nextElement instanceof HTMLTextAreaElement) {
+    if (currentElement.value !== nextElement.value) {
+      currentElement.value = nextElement.value;
+    }
+    return;
+  }
+  if (typeof HTMLSelectElement !== "undefined" && currentElement instanceof HTMLSelectElement && nextElement instanceof HTMLSelectElement && currentElement.value !== nextElement.value) {
+    currentElement.value = nextElement.value;
+  }
+}
+function syncAttributes(currentElement, nextElement) {
+  const currentAttributeNames = currentElement.getAttributeNames();
+  currentAttributeNames.forEach(function(attributeName) {
+    if (nextElement.hasAttribute(attributeName) !== true) {
+      currentElement.removeAttribute(attributeName);
+    }
+  });
+  nextElement.getAttributeNames().forEach(function(attributeName) {
+    const nextValue = nextElement.getAttribute(attributeName);
+    if (currentElement.getAttribute(attributeName) !== nextValue) {
+      if (nextValue === null) {
+        currentElement.removeAttribute(attributeName);
+        return;
+      }
+      currentElement.setAttribute(attributeName, nextValue);
+    }
+  });
+  syncFormState(currentElement, nextElement);
+}
+function syncChildNodes(currentElement, nextElement) {
+  const currentChildren = Array.from(currentElement.childNodes);
+  const nextChildren = Array.from(nextElement.childNodes);
+  const childCount = Math.max(currentChildren.length, nextChildren.length);
+  for (let index = 0; index < childCount; index += 1) {
+    const currentChild = currentChildren[index];
+    const nextChild = nextChildren[index];
+    if (!currentChild && nextChild) {
+      currentElement.appendChild(nextChild.cloneNode(true));
+      continue;
+    }
+    if (currentChild && !nextChild) {
+      currentChild.remove();
+      continue;
+    }
+    if (!currentChild || !nextChild) {
+      continue;
+    }
+    if (currentChild.nodeType !== nextChild.nodeType) {
+      currentChild.replaceWith(nextChild.cloneNode(true));
+      continue;
+    }
+    if (currentChild.nodeType === 3 || currentChild.nodeType === 8) {
+      if (currentChild.textContent !== nextChild.textContent) {
+        currentChild.textContent = nextChild.textContent;
+      }
+      continue;
+    }
+    const currentChildElement = currentChild;
+    const nextChildElement = nextChild;
+    if (canReuseElement(currentChildElement, nextChildElement) !== true) {
+      currentChildElement.replaceWith(nextChildElement.cloneNode(true));
+      continue;
+    }
+    syncElement(currentChildElement, nextChildElement);
+  }
+}
+function syncElement(currentElement, nextElement) {
+  syncAttributes(currentElement, nextElement);
+  syncChildNodes(currentElement, nextElement);
+}
+function updateRenderedElement(documentRef, currentElement, markup, preserveScroll = false) {
+  const scrollTop = preserveScroll ? currentElement.scrollTop : 0;
+  const nextElement = createRenderedElement(documentRef, markup);
+  if (!nextElement || canReuseElement(currentElement, nextElement) !== true) {
+    const parent = currentElement.parentElement;
+    currentElement.outerHTML = markup;
+    if (preserveScroll && parent) {
+      const replaced = parent.querySelector(`.${currentElement.className.split(" ")[0]}`);
+      if (replaced instanceof HTMLElement) {
+        replaced.scrollTop = scrollTop;
+      }
+    }
+    return;
+  }
+  syncElement(currentElement, nextElement);
+  if (preserveScroll) {
+    currentElement.scrollTop = scrollTop;
+  }
+}
 function createBootSurface(state) {
   return {
     main: `
@@ -73,7 +195,9 @@ function readPersistableState(state) {
     toolState: state.toolState,
     liveFindingsExpanded: state.ui.liveFindingsExpanded,
     rawLogCollapsed: state.ui.rawLogCollapsed,
-    workbench: state.workbench
+    workbench: state.workbench,
+    // V2.3 workspace persistence
+    workspace: state.ui.workspace
   };
 }
 export function startLaboratoryLabRoot() {
@@ -98,39 +222,7 @@ export function startLaboratoryLabRoot() {
   });
   let shellMounted = false;
   function renderSurface(state) {
-    const primaryAction = controller.getPrimaryActionState();
-    switch (state.currentStage) {
-      case "source":
-        return renderSourceStage({
-          primaryDetail: primaryAction.detail,
-          primaryDisabled: primaryAction.disabled,
-          primaryLabel: primaryAction.label,
-          state
-        });
-      case "edit":
-        return renderEditStage({
-          primaryDetail: primaryAction.detail,
-          primaryDisabled: primaryAction.disabled,
-          primaryLabel: primaryAction.label,
-          state
-        });
-      case "process":
-        return renderProcessStage({
-          primaryDetail: primaryAction.detail,
-          primaryDisabled: primaryAction.disabled,
-          primaryLabel: primaryAction.label,
-          state
-        });
-      case "report":
-        return renderReportStage({
-          primaryDetail: primaryAction.detail,
-          primaryDisabled: primaryAction.disabled,
-          primaryLabel: primaryAction.label,
-          state
-        });
-      default:
-        return createBootSurface(state);
-    }
+    return renderWorkspaceSurface(state);
   }
   function render() {
     const state = store.getState();
@@ -146,6 +238,7 @@ export function startLaboratoryLabRoot() {
     const centerPanel = runtimeRoot.querySelector(".labx-center-panel");
     const rightPanel = runtimeRoot.querySelector(".labx-right-panel");
     const overlayRoot = runtimeRoot.querySelector(".labx-overlay-root");
+    const reportOverlayRoot = runtimeRoot.querySelector("#lab-report-overlay-root");
     if (!shell || !leftRail || !centerPanel || !rightPanel || !overlayRoot) {
       runtimeRoot.innerHTML = renderLabLayout(state, surface);
       return;
@@ -153,11 +246,33 @@ export function startLaboratoryLabRoot() {
     if (shell instanceof HTMLElement) {
       shell.dataset["stage"] = state.currentStage;
       shell.dataset["ready"] = state.bootReady ? "true" : "false";
+      shell.dataset["workspaceMode"] = getWorkspaceMode(state);
     }
-    leftRail.outerHTML = renderLabLeftRail(state);
-    centerPanel.outerHTML = renderLabCenterPanel(surface);
-    rightPanel.outerHTML = renderLabRightPanel(surface);
-    overlayRoot.outerHTML = renderToolManagementOverlay(state);
+    updateRenderedElement(documentRef, leftRail, renderLabLeftRail(state));
+    updateRenderedElement(
+      documentRef,
+      centerPanel,
+      renderLabCenterPanel(surface),
+      true
+    );
+    updateRenderedElement(
+      documentRef,
+      rightPanel,
+      renderLabRightPanel(surface),
+      true
+    );
+    updateRenderedElement(
+      documentRef,
+      overlayRoot,
+      renderToolManagementOverlay(state)
+    );
+    if (reportOverlayRoot) {
+      updateRenderedElement(
+        documentRef,
+        reportOverlayRoot,
+        renderReportOverlay(state)
+      );
+    }
   }
   store.subscribe(function(state) {
     saveLabPersistedState(

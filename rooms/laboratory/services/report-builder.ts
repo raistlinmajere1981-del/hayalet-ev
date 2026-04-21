@@ -2,10 +2,17 @@ import { asLabRecord, asNonEmptyString, asStringArray } from "../models/lab-type
 import type {
   LabAiReport,
   LabArtifactProjection,
+  LabBookmark,
+  LabComparisonVariant,
   LabFindingProjection,
+  LabInteractiveSettings,
+  LabIntentId,
+  LabModuleTraceEntry,
+  LabROIRegion,
   LabRun,
   LabUserReport,
 } from "../models/lab-types.js";
+import type { AnalysisScope } from "../shared/types/analysis-scope.js";
 
 function buildEvidenceLabels(
   findings: LabFindingProjection[],
@@ -51,6 +58,36 @@ export function buildUserReport(run: LabRun | null, reportRecord: unknown): LabU
     asNonEmptyString(asLabRecord(normalizedReport["userReport"])["confidence"]) ||
     "low";
 
+  const suspiciousFrames = run.artifacts
+    .filter(function (artifact) {
+      return artifact.previewUrl && artifact.kind !== "transcript";
+    })
+    .slice(0, 6)
+    .map(function (artifact) {
+      return {
+        artifactId: artifact.id,
+        previewUrl: artifact.previewUrl || "",
+        label: artifact.fileName || artifact.kind || artifact.id,
+      };
+    });
+
+  const hypothesisResult = run.hypothesisSummary || null;
+
+  const elapsedSeconds =
+    run.endedAt && run.startedAt ? Math.round((run.endedAt - run.startedAt) / 1000) : 0;
+
+  const moduleSummary = run.moduleOrder.map(function (moduleId) {
+    const mod = run.modules[moduleId];
+    if (!mod) {
+      return { id: moduleId, title: moduleId, status: "unknown" };
+    }
+    return {
+      id: mod.id,
+      title: mod.title || mod.id,
+      status: mod.status,
+    };
+  });
+
   return {
     summary: generatedSummary,
     confidence,
@@ -63,6 +100,10 @@ export function buildUserReport(run: LabRun | null, reportRecord: unknown): LabU
         evidence: buildEvidenceLabels(run.findings, run.artifacts, finding),
       };
     }),
+    suspiciousFrames,
+    hypothesisResult,
+    elapsedSeconds,
+    moduleSummary,
   };
 }
 
@@ -76,6 +117,10 @@ export function buildAiReport(run: LabRun | null, reportRecord: unknown): LabAiR
   const errors = [run.error, asNonEmptyString(normalizedReport["error"])].filter(
     (entry): entry is string => entry !== null
   );
+
+  const moduleTrace: LabModuleTraceEntry[] = run.moduleTrace.slice();
+  const analysisScope: AnalysisScope | null = run.analysisScope;
+  const comparisonVariants: LabComparisonVariant[] = run.comparisonVariants.slice();
 
   return {
     manifest: {
@@ -93,5 +138,44 @@ export function buildAiReport(run: LabRun | null, reportRecord: unknown): LabAiR
     warnings: Array.from(new Set(asStringArray(normalizedReport["warnings"]).concat(run.warnings))),
     errors,
     degradedConditions: Array.from(new Set(degradedConditions)),
+    moduleTrace,
+    analysisScope,
+    comparisonVariants,
+  };
+}
+
+/** V2.3: Build workspace context snapshot for report enrichment */
+export interface LabWorkspaceReportContext {
+  timeRange: { startMs: number | null; endMs: number | null };
+  roiRegions: LabROIRegion[];
+  interactiveSettings: LabInteractiveSettings;
+  hypothesis: string;
+  selectedIntents: LabIntentId[];
+  bookmarks: LabBookmark[];
+}
+
+export function buildWorkspaceContext(workspaceState: {
+  timelineStartMs: number | null;
+  timelineEndMs: number | null;
+  roiRegions: LabROIRegion[];
+  interactiveSettings: LabInteractiveSettings;
+  hypothesis: string;
+  bookmarks: LabBookmark[];
+  selectedIntents: LabIntentId[];
+}): LabWorkspaceReportContext {
+  return {
+    timeRange: {
+      startMs: workspaceState.timelineStartMs,
+      endMs: workspaceState.timelineEndMs,
+    },
+    roiRegions: workspaceState.roiRegions.filter(function (region) {
+      return region.active;
+    }),
+    interactiveSettings: { ...workspaceState.interactiveSettings },
+    hypothesis: workspaceState.hypothesis,
+    selectedIntents: workspaceState.selectedIntents.slice(),
+    bookmarks: workspaceState.bookmarks.slice().sort(function (a, b) {
+      return a.timeMs - b.timeMs;
+    }),
   };
 }

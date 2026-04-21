@@ -50,6 +50,10 @@ type ProjectDeps = {
     toolId: string,
     featureStage: string | null
   ) => Promise<unknown>;
+  patchActiveProject: (
+    runtime: MediaProjectRuntimeRecord,
+    patcher: (project: Record<string, unknown>) => Record<string, unknown>
+  ) => Promise<unknown>;
   refreshActiveProjectMetadata: (
     runtime: MediaProjectRuntimeRecord,
     requestId: string
@@ -81,6 +85,7 @@ export function createMediaProjectActionRuntime(deps: ProjectDeps) {
     ensureProjectExists,
     exportFeatureReport,
     handleToolMutation,
+    patchActiveProject,
     refreshActiveProjectMetadata,
     refreshToolStatus,
     runFeatureProcess,
@@ -88,6 +93,7 @@ export function createMediaProjectActionRuntime(deps: ProjectDeps) {
   } = deps;
 
   async function refresh(runtime: MediaProjectRuntimeRecord, requestId: string) {
+    runtime.activeProjectId = null;
     await refreshToolStatus(runtime);
     return refreshActiveProjectMetadata(runtime, requestId);
   }
@@ -100,14 +106,34 @@ export function createMediaProjectActionRuntime(deps: ProjectDeps) {
     return createProjectRecord(runtime, featureId);
   }
 
+  async function clearProject(runtime: MediaProjectRuntimeRecord, requestId: string) {
+    runtime.activeProjectId = null;
+    return refreshActiveProjectMetadata(runtime, requestId);
+  }
+
   async function selectProject(
     runtime: MediaProjectRuntimeRecord,
     requestId: string,
     featureId: string | null,
     actionPayload: Record<string, unknown>
   ) {
+    const rawResetSourceState = actionPayload["resetSourceState"];
+    const resetSourceState =
+      typeof rawResetSourceState === "object" && rawResetSourceState !== null
+        ? (rawResetSourceState as Record<string, unknown>)
+        : null;
     runtime.activeProjectId = asNonEmptyString(actionPayload["projectId"]);
     await ensureProjectExists(runtime, featureId);
+    if (resetSourceState !== null && Object.keys(resetSourceState).length > 0) {
+      await patchActiveProject(runtime, function (project) {
+        return {
+          ...project,
+          source: {
+            ...resetSourceState,
+          },
+        };
+      });
+    }
     return refreshActiveProjectMetadata(runtime, requestId);
   }
 
@@ -123,6 +149,24 @@ export function createMediaProjectActionRuntime(deps: ProjectDeps) {
       requestId,
       featureId
     );
+  }
+
+  async function renameProject(
+    runtime: MediaProjectRuntimeRecord,
+    requestId: string,
+    _featureId: string | null,
+    actionPayload: Record<string, unknown>
+  ) {
+    const newName = asNonEmptyString(actionPayload["name"]);
+    if (newName) {
+      await deps.patchActiveProject(runtime, function (project) {
+        return {
+          ...project,
+          name: newName,
+        };
+      });
+    }
+    return refreshActiveProjectMetadata(runtime, requestId);
   }
 
   async function runProcess(
@@ -215,12 +259,14 @@ export function createMediaProjectActionRuntime(deps: ProjectDeps) {
     cancelJob,
     cancelProcess,
     checkTool,
+    clearProject,
     createProject,
     deleteProject,
     exportReport,
     mutateTool,
     refresh,
     refreshTools,
+    renameProject,
     runProcess,
     selectProject,
     updateTools,

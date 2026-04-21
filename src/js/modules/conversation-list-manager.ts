@@ -20,6 +20,14 @@ interface RawConversationEntry {
   createdAt?: number;
 }
 
+interface RawOpencodeUiSessionEntry {
+  id?: string;
+  title?: string;
+  updated_at?: number;
+  created_at?: number;
+  archived_at?: number | null;
+}
+
 interface ConversationEntry {
   conversationId: string;
   id: string;
@@ -64,9 +72,9 @@ class ConversationListManagerClass {
   _i18nSub: (() => void) | null;
 
   constructor() {
-    this.selects = { ai1: null, ai2: null, us1: null };
+    this.selects = { ai0: null, ai1: null, ai2: null, us1: null };
     this.entries = [];
-    this.currentSelections = { ai1: "new", ai2: "new", us1: "new" };
+    this.currentSelections = { ai0: "new", ai1: "new", ai2: "new", us1: "new" };
     this._settingsSub = null;
     this._slotControllerSub = null;
     this._appStateSub = null;
@@ -75,26 +83,51 @@ class ConversationListManagerClass {
 
   async init(): Promise<void> {
     this.selects = {
+      ai0: document.getElementById("conversation-ai0") as HTMLSelectElement | null,
       ai1: document.getElementById("conversation-ai1") as HTMLSelectElement | null,
       ai2: document.getElementById("conversation-ai2") as HTMLSelectElement | null,
       us1: document.getElementById("conversation-us1") as HTMLSelectElement | null,
     };
+    this._syncAi0SelectionFromSettings();
 
     await this.refresh({ silent: true });
     this.bindEvents();
     this.subscribeToSettings();
   }
 
+  _readAi0StoredSessionId(): string {
+    const settings = SettingsManager.getSnapshot() as {
+      assistants?: { lastOpencodeUiSessionId?: string | null };
+    } | null;
+    const sessionId = settings?.assistants?.lastOpencodeUiSessionId;
+    return typeof sessionId === "string" ? sessionId.trim() : "";
+  }
+
+  _syncAi0SelectionFromSettings(): void {
+    const sessionId = this._readAi0StoredSessionId();
+    const nextSelection = sessionId !== "" ? sessionId : "new";
+    this.currentSelections["ai0"] = nextSelection;
+
+    const activeConversationId = sessionId !== "" ? sessionId : null;
+    if (AppState.getState().activeConversations["ai0"] !== activeConversationId) {
+      AppState.setActiveConversation("ai0", activeConversationId);
+    }
+  }
+
   subscribeToSettings(): void {
     this._settingsSub = SettingsManager.subscribe(
       ({ changedPaths }: { changedPaths: string[] }) => {
         const slotAccountPaths = [
+          "assistantSlot.accountId",
           "slots.ai1.accountId",
           "slots.ai2.accountId",
           "us1Slot.selectedAccountId",
           "us1Slot.selectedRemoteUserId",
           "us1Slot.connectionState",
         ];
+        const ai0SessionChanged =
+          changedPaths.includes("*") ||
+          changedPaths.some((path) => path === "assistants.lastOpencodeUiSessionId");
         const slotChanged =
           changedPaths.includes("*") ||
           changedPaths.some(
@@ -105,7 +138,11 @@ class ConversationListManagerClass {
               p.startsWith("integrations.mailTransport")
           );
 
-        if (slotChanged) {
+        if (ai0SessionChanged) {
+          this._syncAi0SelectionFromSettings();
+        }
+
+        if (slotChanged || ai0SessionChanged) {
           void this.refresh({ silent: true, skipNotify: true });
         }
       }
@@ -134,6 +171,9 @@ class ConversationListManagerClass {
           if (select !== undefined && select !== null && select.value !== "new") {
             select.value = "new";
             this.currentSelections[slot] = "new";
+            if (slot === "ai0") {
+              AppState.setActiveConversation("ai0", null);
+            }
             Logger.info(
               LogCategory.WEBVIEW,
               conversationListT("logs.resetToNewConversation", { slot })
@@ -147,7 +187,7 @@ class ConversationListManagerClass {
   bindEvents(): void {
     for (const provider in this.selects) {
       this.selects[provider]?.addEventListener("change", () => {
-        this.handleConversationChange(provider);
+        void this.handleConversationChange(provider);
       });
     }
 
@@ -158,30 +198,103 @@ class ConversationListManagerClass {
     });
   }
 
-  handleConversationChange(provider: string, options = { isInitial: false }): void {
+  async handleConversationChange(provider: string, options = { isInitial: false }): Promise<void> {
     const select = this.selects[provider];
     if (!select) return;
 
+    const previousSelection = this.currentSelections[provider] ?? "new";
     const conversationId = select.value;
     this.currentSelections[provider] = conversationId;
 
     this._clearMessagesArea(provider);
 
     const entry = this.entries.find((e) => e.id === conversationId && e.provider === provider);
-    if (provider === "us1") {
-      AppState.setActiveConversation("us1", conversationId === "new" ? null : conversationId);
-      AppState.clearUs1PendingSession(entry?.localSessionId ?? null);
-      if (conversationId !== "new") {
-        AppState.clearUs1PendingSessionByConversation(conversationId);
+    let dispatchedConversationId = conversationId;
+
+    try {
+      if (provider === "us1") {
+        AppState.setActiveConversation("us1", conversationId === "new" ? null : conversationId);
+        AppState.clearUs1PendingSession(entry?.localSessionId ?? null);
+        if (conversationId !== "new") {
+          AppState.clearUs1PendingSessionByConversation(conversationId);
+        }
+      } else if (provider === "ai0") {
+        if (conversationId === "new") {
+          const result = await dispatchInternalSlotBridge(
+            {
+              action: "session.open",
+              toSlot: "ai0",
+            },
+            {
+              provider: "user",
+              source: "user",
+              fromSlot: "user",
+            }
+          );
+          if (result.success !== true) {
+            throw new Error(result.message ?? result.error ?? "AI0 session open failed.");
+          }
+
+          const openedSessionId =
+            typeof result.session?.id === "string" ? result.session.id.trim() : "";
+          if (openedSessionId === "") {
+            throw new Error("AI0 session id is unavailable.");
+          }
+
+          dispatchedConversationId = openedSessionId;
+          this.currentSelections["ai0"] = openedSessionId;
+          AppState.setActiveConversation("ai0", openedSessionId);
+          await this.refresh({
+            silent: true,
+            provider: "ai0",
+            forceSelectId: openedSessionId,
+            skipNotify: true,
+          });
+        } else {
+          const result = await dispatchInternalSlotBridge(
+            {
+              action: "session.switch",
+              toSlot: "ai0",
+              sessionRef: { id: conversationId },
+            },
+            {
+              provider: "user",
+              source: "user",
+              fromSlot: "user",
+            }
+          );
+          if (result.success !== true) {
+            throw new Error(result.message ?? result.error ?? "AI0 session switch failed.");
+          }
+
+          AppState.setActiveConversation("ai0", conversationId);
+        }
+      } else {
+        SlotController.navigate(provider as SlotId, entry?.webUrl ?? null);
       }
-    } else {
-      SlotController.navigate(provider as SlotId, entry?.webUrl ?? null);
+    } catch (error) {
+      this.currentSelections[provider] = previousSelection;
+      if (provider === "ai0") {
+        AppState.setActiveConversation(
+          "ai0",
+          previousSelection !== "new" && previousSelection !== "empty" ? previousSelection : null
+        );
+      }
+      await this.refresh({ silent: true, provider, skipNotify: true });
+      Logger.error(
+        LogCategory.WEBVIEW,
+        conversationListT("logs.refreshError", { message: getErrorMessage(error) })
+      );
+      return;
     }
 
     if (!options.isInitial) {
       Logger.info(
         LogCategory.WEBVIEW,
-        conversationListT("logs.userSelected", { provider, conversationId })
+        conversationListT("logs.userSelected", {
+          provider,
+          conversationId: dispatchedConversationId,
+        })
       );
     }
 
@@ -189,7 +302,7 @@ class ConversationListManagerClass {
       new CustomEvent("conversation-selected", {
         detail: {
           provider,
-          isNew: conversationId === "new",
+          isNew: dispatchedConversationId === "new",
           ...(provider === "us1" ? { localSessionId: entry?.localSessionId ?? null } : {}),
         },
       })
@@ -219,10 +332,19 @@ class ConversationListManagerClass {
         return;
       }
 
+      const ai0Account = AppState.getAccountForSlot("ai0");
       const ai1Account = AppState.getAccountForSlot("ai1");
       const ai2Account = AppState.getAccountForSlot("ai2");
       const us1AccountId = AppState.getUs1ArchiveAccountId();
 
+      const ai0Result =
+        ai0Account?.id !== undefined &&
+        ai0Account.id !== "" &&
+        typeof electronApi.opencodeUiFsListSessions === "function"
+          ? ((await electronApi.opencodeUiFsListSessions()) as
+              | { success?: boolean; sessions?: unknown[] }
+              | undefined)
+          : undefined;
       const ai1Result =
         ai1Account?.id !== undefined && ai1Account.id !== ""
           ? ((await electronApi.dbGetConversations({ accountId: ai1Account.id })) as
@@ -242,12 +364,36 @@ class ConversationListManagerClass {
               | undefined)
           : { data: [] };
 
+      const ai0Entries =
+        ai0Result?.success === true && Array.isArray(ai0Result.sessions) ? ai0Result.sessions : [];
       const ai1Entries = Array.isArray(ai1Result?.data) ? ai1Result.data : [];
       const ai2Entries = Array.isArray(ai2Result?.data) ? ai2Result.data : [];
       const us1Entries = Array.isArray(us1Result?.data) ? us1Result.data : [];
       const us1PendingSessions = AppState.getUs1PendingSessions();
 
       this.entries = [
+        ...ai0Entries.flatMap((e: unknown) => {
+          const entry = e as RawOpencodeUiSessionEntry;
+          const archivedAt = Number(entry.archived_at ?? 0);
+          if (Number.isFinite(archivedAt) && archivedAt > 0) {
+            return [];
+          }
+
+          return [
+            {
+              conversationId: String(entry.id ?? ""),
+              id: String(entry.id ?? ""),
+              webUrl: "",
+              provider: "ai0" as const,
+              mtime:
+                Number(entry.updated_at ?? entry.created_at ?? 0) !== 0
+                  ? Number(entry.updated_at ?? entry.created_at ?? 0)
+                  : 0,
+              folder: "",
+              title: String(entry.title ?? ""),
+            } as ConversationEntry,
+          ];
+        }),
         ...ai1Entries.map((e: unknown) => {
           const entry = e as RawConversationEntry;
           return {
@@ -317,7 +463,7 @@ class ConversationListManagerClass {
         const providers =
           targetProvider !== null && targetProvider !== ""
             ? [targetProvider]
-            : ["ai1", "ai2", "us1"];
+            : ["ai0", "ai1", "ai2", "us1"];
 
         await new Promise((resolve) =>
           setTimeout(resolve, ASSISTANT_TIMEOUTS.CONVERSATION_LIST_MICRO)
@@ -418,6 +564,13 @@ class ConversationListManagerClass {
       select.value = "new";
     }
     this.currentSelections[provider] = select.value;
+    if (provider === "ai0") {
+      const activeConversationId =
+        select.value !== "new" && select.value !== "empty" ? select.value : null;
+      if (AppState.getState().activeConversations["ai0"] !== activeConversationId) {
+        AppState.setActiveConversation("ai0", activeConversationId);
+      }
+    }
   }
 
   updateSelection(
@@ -437,7 +590,7 @@ class ConversationListManagerClass {
       select.value = conversationId;
       this.currentSelections[provider] = conversationId;
       if (silent === false) {
-        this.handleConversationChange(provider);
+        void this.handleConversationChange(provider);
       }
     }
     return true;

@@ -2507,6 +2507,9 @@ async function runAi0SessionOpen(envelope: SlotBridgeEnvelope): Promise<SlotBrid
 
   const script = `
     (async function () {
+      if (typeof window.OpencodeUiHostBridge?.openSession === "function") {
+        return await window.OpencodeUiHostBridge.openSession(${JSON.stringify(requestedTitle)});
+      }
       const createSession = window.APIClient?.createSession;
       if (typeof createSession !== "function") {
         return { success: false, error: "session.create unsupported" };
@@ -2564,8 +2567,11 @@ async function runAi0SessionSwitch(envelope: SlotBridgeEnvelope): Promise<SlotBr
   }
 
   const script = `
-    (function () {
+    (async function () {
       const sessionId = ${JSON.stringify(sessionId)};
+      if (typeof window.OpencodeUiHostBridge?.switchSession === "function") {
+        return await window.OpencodeUiHostBridge.switchSession(sessionId);
+      }
       if (typeof window.SessionStore?.setActiveSession === "function") {
         window.SessionStore.setActiveSession(sessionId);
       } else if (typeof window.SessionStore?.setCurrentSession === "function") {

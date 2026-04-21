@@ -77,7 +77,7 @@ import { initDraft, loadDraft, persistDraft } from "./analyze/draft-manager.js";
 import { bindDictationTrigger, type DictationBinding } from "../modules/transcript/dictation-ui.js";
 import { onTranscriptIngress } from "../modules/transcript/electron-client.js";
 interface ConversationSelectedDetail {
-  provider?: "ai1" | "ai2" | "us1";
+  provider?: "ai0" | "ai1" | "ai2" | "us1";
   isNew?: boolean;
   localSessionId?: string | null;
 }
@@ -104,7 +104,11 @@ function isConversationSelectedDetail(value: unknown): value is ConversationSele
   const isNew = maybe["isNew"];
 
   const providerValid =
-    provider === undefined || provider === "ai1" || provider === "ai2" || provider === "us1";
+    provider === undefined ||
+    provider === "ai0" ||
+    provider === "ai1" ||
+    provider === "ai2" ||
+    provider === "us1";
   const isNewValid = isNew === undefined || typeof isNew === "boolean";
   const localSessionIdValid =
     maybe["localSessionId"] === undefined ||
@@ -338,6 +342,8 @@ export class AnalyzeController {
               ? detail.localSessionId.trim()
               : null;
           void this._renderUs1Messages();
+        } else if (detail.provider === "ai0") {
+          return;
         } else {
           Logger.debug(
             LogCategory.ANALYZE,

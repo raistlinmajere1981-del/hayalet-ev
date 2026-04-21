@@ -118,7 +118,7 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
     "utf8"
   );
   const laboratoryUiCssSource = readFileSync("rooms/laboratory/ui/style.css", "utf8");
-  const laboratoryShellCssSource = readFileSync("rooms/laboratory/shared/styles/shell.css", "utf8");
+  const laboratoryThemeCssSource = readFileSync("rooms/laboratory/ui/lab-theme.css", "utf8");
 
   assert.match(source, /private sceneFeatureId: string \| null = null;/);
   assert.match(
@@ -374,11 +374,24 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
     gameRoomXoxSceneViewCssSource,
     /body\[data-presentation-mode="scene-view"\] \.xox-shell \{\s*min-height: 100%;[\s\S]*padding: 0;/
   );
-  assert.match(laboratoryUiCssSource, /@import "\.\.\/shared\/styles\/shell\.css";/);
-  assert.match(laboratoryUiCssSource, /@import "\.\.\/main-functions\/media-analysis\/styles\.css";/);
+  assert.match(laboratoryUiCssSource, /@import "\.\/lab-theme\.css";/);
+  assert.doesNotMatch(laboratoryUiCssSource, /shared\/styles\/shell\.css/);
+  assert.doesNotMatch(laboratoryUiCssSource, /main-functions\/media-analysis\/styles\.css/);
   assert.match(
-    laboratoryShellCssSource,
-    /body\[data-presentation-mode="scene-view"\] \.lab-shell \{[\s\S]*height: 100%;[\s\S]*padding: 0\.55rem;/
+    laboratoryThemeCssSource,
+    /\.labx-shell\s*\{[\s\S]*min-height:\s*100vh;/
+  );
+  assert.match(
+    laboratoryThemeCssSource,
+    /\.labx-source-intake__frame\s*\{[\s\S]*border: 1px solid/
+  );
+  assert.match(
+    laboratoryThemeCssSource,
+    /\.labx-overlay-backdrop\s*\{[\s\S]*backdrop-filter: blur/
+  );
+  assert.match(
+    laboratoryThemeCssSource,
+    /\.labx-module-overlay\s*\{[\s\S]*max-height: calc\(100vh - 2rem\);/
   );
 });
 

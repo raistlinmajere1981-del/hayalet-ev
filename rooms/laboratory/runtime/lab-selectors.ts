@@ -10,7 +10,7 @@ import type {
   LabStage,
   LabStoreState,
 } from "../models/lab-types.js";
-import { CAPABILITY_FAMILIES } from "../models/lab-types.js";
+import { CAPABILITY_FAMILIES, WORKSPACE_INTENTS } from "../models/lab-types.js";
 import { normalizeAnalysisScope } from "../shared/types/analysis-scope.js";
 
 export function getSnapshot(state: LabStoreState): LabRecord {
@@ -501,4 +501,171 @@ export function getCapabilityWorkflowSummary(state: LabStoreState) {
     blockedCount: selectedFamilies.length - readyCount,
     selectedIds: selected,
   };
+}
+
+// V2.3 workspace selectors
+
+export function getWorkspaceMode(
+  state: LabStoreState
+): import("../models/lab-types.js").WorkspaceMode {
+  if (!state.bootReady && state.source === null) {
+    return "loading";
+  }
+  const run = getCurrentRun(state);
+  if (run && (run.state === "running" || run.state === "queued")) {
+    return "analyzing";
+  }
+  if (
+    run &&
+    (run.state === "completed" ||
+      run.state === "ready" ||
+      run.state === "failed" ||
+      run.state === "cancelled")
+  ) {
+    return "complete";
+  }
+  return "workspace";
+}
+
+export function getSourceReady(state: LabStoreState): boolean {
+  return state.source !== null && state.sourceProbeStatus === "completed";
+}
+
+export function getTimelineSelection(state: LabStoreState) {
+  return {
+    startMs: state.ui.workspace.timelineStartMs,
+    endMs: state.ui.workspace.timelineEndMs,
+  };
+}
+
+export function getROIRegions(state: LabStoreState) {
+  return state.ui.workspace.roiRegions;
+}
+
+export function getActiveROIRegions(state: LabStoreState) {
+  return state.ui.workspace.roiRegions.filter(function (entry) {
+    return entry.active;
+  });
+}
+
+export function getInteractiveSettings(state: LabStoreState) {
+  return state.ui.workspace.interactiveSettings;
+}
+
+export function getAudioFocusSettings(state: LabStoreState) {
+  return state.ui.workspace.audioFocus;
+}
+
+export function getBookmarks(state: LabStoreState) {
+  return state.ui.workspace.bookmarks;
+}
+
+export function getHypothesis(state: LabStoreState) {
+  return state.ui.workspace.hypothesis;
+}
+
+export function getSelectedIntents(
+  state: LabStoreState
+): import("../models/lab-types.js").LabIntentId[] {
+  return state.ui.workspace.selectedIntents;
+}
+
+export function getAvailableIntents(state: LabStoreState) {
+  const sourceKind = getSourceKind(state);
+  const sourceReady = getSourceReady(state);
+  const availableCapabilities = getAvailableCapabilities(state);
+
+  return WORKSPACE_INTENTS.map(function (intent) {
+    const sourceCompatible = intent.sourceKinds.includes(sourceKind as "video" | "audio" | "image");
+    const capabilityReadiness = intent.internalCapabilities.map(function (capId) {
+      const cap = availableCapabilities.find(function (entry) {
+        return entry.id === capId;
+      });
+      return cap ? cap.readiness : "blocked";
+    });
+    const allBlocked = capabilityReadiness.every(function (entry) {
+      return entry === "blocked";
+    });
+    const someBlocked = capabilityReadiness.some(function (entry) {
+      return entry === "blocked";
+    });
+
+    let readiness: "ready" | "optional" | "blocked" = "ready";
+    let blockReason: string | null = null;
+
+    if (!sourceReady) {
+      readiness = "blocked";
+      blockReason = "Source not ready.";
+    } else if (!sourceCompatible) {
+      readiness = "blocked";
+      blockReason = "Not available for this source type.";
+    } else if (allBlocked) {
+      readiness = "blocked";
+      blockReason = "Required tools not installed.";
+    } else if (someBlocked) {
+      readiness = "optional";
+      blockReason = "Some tools missing — partial results.";
+    }
+
+    return {
+      ...intent,
+      readiness,
+      blockReason,
+      selected: state.ui.workspace.selectedIntents.includes(intent.id),
+    };
+  });
+}
+
+export function getIntentDerivedCapabilities(
+  state: LabStoreState
+): import("../models/lab-types.js").CapabilityFamilyId[] {
+  const selectedIntents = getSelectedIntents(state);
+  const capabilitySet = new Set<import("../models/lab-types.js").CapabilityFamilyId>();
+  WORKSPACE_INTENTS.forEach(function (intent) {
+    if (selectedIntents.includes(intent.id)) {
+      intent.internalCapabilities.forEach(function (capId) {
+        capabilitySet.add(capId);
+      });
+    }
+  });
+  return Array.from(capabilitySet);
+}
+
+export function getWorkspaceAnalysisInput(state: LabStoreState) {
+  return {
+    timeRange: getTimelineSelection(state),
+    roiRegions: getActiveROIRegions(state),
+    hypothesis: getHypothesis(state),
+    selectedIntents: getSelectedIntents(state),
+    interactiveSettings: getInteractiveSettings(state),
+    bookmarks: getBookmarks(state),
+  };
+}
+
+export function getProcessPanelCollapsedSections(
+  state: LabStoreState
+): import("../models/lab-types.js").LabProcessSectionId[] {
+  return state.ui.workspace.processPanelCollapsedSections;
+}
+
+export function isProcessSectionCollapsed(
+  state: LabStoreState,
+  sectionId: import("../models/lab-types.js").LabProcessSectionId
+): boolean {
+  return state.ui.workspace.processPanelCollapsedSections.includes(sectionId);
+}
+
+export function getReportOverlayOpen(state: LabStoreState): boolean {
+  return state.ui.workspace.reportOverlayOpen;
+}
+
+export function getRunElapsedSeconds(state: LabStoreState): number {
+  const run = getCurrentRun(state);
+  if (!run) {
+    return 0;
+  }
+  const start = run.startedAt;
+  const end = run.endedAt || Date.now();
+  const diff = end - start;
+  return diff > 0 ? Math.round(diff / 1000) : 0;
 }

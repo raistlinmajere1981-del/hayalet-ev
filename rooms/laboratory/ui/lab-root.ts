@@ -7,12 +7,11 @@ import { renderLabCenterPanel } from "./lab-center-panel.js";
 import { renderLabLayout } from "./lab-layout.js";
 import { renderLabLeftRail } from "./lab-left-rail.js";
 import { renderLabRightPanel } from "./lab-right-panel.js";
-import { renderEditStage } from "./stages/edit-stage.js";
-import { renderProcessStage } from "./stages/process-stage.js";
-import { renderReportStage } from "./stages/report-stage.js";
-import { renderSourceStage } from "./stages/source-stage.js";
+import { renderWorkspaceSurface } from "./workspace-surface.js";
 import { createLabRunController } from "../runtime/lab-run-controller.js";
 import { renderToolManagementOverlay } from "./tool-management-overlay.js";
+import { renderReportOverlay } from "./report-overlay.js";
+import { getWorkspaceMode } from "../runtime/lab-selectors.js";
 
 type RootWindow = Window & {
   roomAPI?: {
@@ -169,13 +168,20 @@ function updateRenderedElement(
   markup: string,
   preserveScroll = false
 ) {
+  const scrollTop = preserveScroll ? currentElement.scrollTop : 0;
   const nextElement = createRenderedElement(documentRef, markup);
   if (!nextElement || canReuseElement(currentElement, nextElement) !== true) {
+    const parent = currentElement.parentElement;
     currentElement.outerHTML = markup;
+    if (preserveScroll && parent) {
+      const replaced = parent.querySelector(`.${currentElement.className.split(" ")[0]}`);
+      if (replaced instanceof HTMLElement) {
+        replaced.scrollTop = scrollTop;
+      }
+    }
     return;
   }
 
-  const scrollTop = preserveScroll ? currentElement.scrollTop : 0;
   syncElement(currentElement, nextElement);
   if (preserveScroll) {
     currentElement.scrollTop = scrollTop;
@@ -250,6 +256,8 @@ function readPersistableState(state: LabStoreState) {
     liveFindingsExpanded: state.ui.liveFindingsExpanded,
     rawLogCollapsed: state.ui.rawLogCollapsed,
     workbench: state.workbench,
+    // V2.3 workspace persistence
+    workspace: state.ui.workspace,
   };
 }
 
@@ -278,39 +286,8 @@ export function startLaboratoryLabRoot() {
   let shellMounted = false;
 
   function renderSurface(state: LabStoreState) {
-    const primaryAction = controller.getPrimaryActionState();
-    switch (state.currentStage) {
-      case "source":
-        return renderSourceStage({
-          primaryDetail: primaryAction.detail,
-          primaryDisabled: primaryAction.disabled,
-          primaryLabel: primaryAction.label,
-          state,
-        });
-      case "edit":
-        return renderEditStage({
-          primaryDetail: primaryAction.detail,
-          primaryDisabled: primaryAction.disabled,
-          primaryLabel: primaryAction.label,
-          state,
-        });
-      case "process":
-        return renderProcessStage({
-          primaryDetail: primaryAction.detail,
-          primaryDisabled: primaryAction.disabled,
-          primaryLabel: primaryAction.label,
-          state,
-        });
-      case "report":
-        return renderReportStage({
-          primaryDetail: primaryAction.detail,
-          primaryDisabled: primaryAction.disabled,
-          primaryLabel: primaryAction.label,
-          state,
-        });
-      default:
-        return createBootSurface(state);
-    }
+    // V2.3: single workspace surface replaces stage routing
+    return renderWorkspaceSurface(state);
   }
 
   function render() {
@@ -334,6 +311,7 @@ export function startLaboratoryLabRoot() {
     const centerPanel = runtimeRoot.querySelector(".labx-center-panel");
     const rightPanel = runtimeRoot.querySelector(".labx-right-panel");
     const overlayRoot = runtimeRoot.querySelector(".labx-overlay-root");
+    const reportOverlayRoot = runtimeRoot.querySelector("#lab-report-overlay-root");
     if (!shell || !leftRail || !centerPanel || !rightPanel || !overlayRoot) {
       runtimeRoot.innerHTML = renderLabLayout(state, surface);
       return;
@@ -342,11 +320,33 @@ export function startLaboratoryLabRoot() {
     if (shell instanceof HTMLElement) {
       shell.dataset["stage"] = state.currentStage;
       shell.dataset["ready"] = state.bootReady ? "true" : "false";
+      shell.dataset["workspaceMode"] = getWorkspaceMode(state);
     }
     updateRenderedElement(documentRef, leftRail as HTMLElement, renderLabLeftRail(state));
-    updateRenderedElement(documentRef, centerPanel as HTMLElement, renderLabCenterPanel(surface), true);
-    updateRenderedElement(documentRef, rightPanel as HTMLElement, renderLabRightPanel(surface), true);
-    updateRenderedElement(documentRef, overlayRoot as HTMLElement, renderToolManagementOverlay(state));
+    updateRenderedElement(
+      documentRef,
+      centerPanel as HTMLElement,
+      renderLabCenterPanel(surface),
+      true
+    );
+    updateRenderedElement(
+      documentRef,
+      rightPanel as HTMLElement,
+      renderLabRightPanel(surface),
+      true
+    );
+    updateRenderedElement(
+      documentRef,
+      overlayRoot as HTMLElement,
+      renderToolManagementOverlay(state)
+    );
+    if (reportOverlayRoot) {
+      updateRenderedElement(
+        documentRef,
+        reportOverlayRoot as HTMLElement,
+        renderReportOverlay(state)
+      );
+    }
   }
 
   store.subscribe(function (state) {

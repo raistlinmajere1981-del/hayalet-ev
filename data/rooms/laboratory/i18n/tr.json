@@ -415,19 +415,46 @@
         "downloadYoutube": "YouTube'dan Al"
       },
       "youtubeDisabled": "Oda-yerel yt-dlp kurulumu hazir olana kadar YouTube modu pasif kalir.",
+      "intakeFrame": {
+        "title": "Kaynak Ekleme Kontrolleri",
+        "subtitle": "Kaynak hazir oldugunda bu cerceveyi kapali tutabilir, rota degistirmek veya indirme planini guncellemek icin tekrar acabilirsin.",
+        "readyLabel": "Aktif kaynak",
+        "statusReady": "Kaynak hazir",
+        "statusPending": "Kaynak bekleniyor",
+        "showAction": "Ayarlari goster",
+        "hideAction": "Ayarlari gizle"
+      },
       "youtubePresetLabel": "YouTube Presetleri",
+      "youtubePresetHint": "Hizli alislar icin preset kullan, oda onayli yt-dlp ince ayarlari icin Ozel moda gec.",
       "youtubePresets": {
-        "low": "En Dusuk",
+        "low": "Dusuk",
         "medium": "Dengeli",
         "best": "En Iyi",
         "custom": "Ozel"
       },
+      "youtubeCustomTitle": "Ozel yt-dlp Ayarlari",
+      "youtubeCustomHint": "Bu kontroller, odanin izin verdigi yt-dlp yuzeyi icinde kalarak video, ses, altyazi ve tekrar deneme davranisini daha ayrintili yonetir.",
       "youtubeForm": {
+        "sections": {
+          "download": {
+            "title": "Yakala Formu",
+            "subtitle": "Cikti video profili, container davranisi ve opsiyonel ses ayirma ayarlarini bir arada yonet."
+          },
+          "captions": {
+            "title": "Altyazi Yakalama",
+            "subtitle": "Manuel ve otomatik altyazi seceneklerini dil filtresiyle birlikte tek cercevede topla."
+          },
+          "network": {
+            "title": "Transfer Kontrolleri",
+            "subtitle": "Playlist kapsami ve tekrar deneme davranisini fazla yer harcamadan ayarla."
+          }
+        },
         "fields": {
           "format": "Format Stratejisi",
           "mergeOutputFormat": "Birlesim Container",
           "recodeVideo": "Videoyu Recode Et",
           "audioFormat": "Sesi Ayir",
+          "audioQuality": "Ses kalitesi",
           "writeSubtitles": "Altyazi yaz",
           "writeAutoSubtitles": "Otomatik altyazi yaz",
           "subtitlesLang": "Altyazi dilleri",
@@ -442,10 +469,11 @@
         },
         "options": {
           "format": {
-            "best": "En iyi video + ses",
-            "fullHd": "Full HD veya alti",
-            "hd": "HD veya alti",
-            "lowest": "En dusuk coznurluk"
+            "best": "En iyi mevcut kalite",
+            "mp4_1080": "1080p MP4 veya alti",
+            "mp4_720": "720p MP4 veya alti",
+            "mp4_480": "480p MP4 veya alti",
+            "low": "360p / dusuk bant genisligi"
           },
           "container": {
             "auto": "Otomatik",
@@ -462,9 +490,18 @@
           "audio": {
             "none": "Orijinali koru",
             "mp3": "MP3",
+            "aac": "AAC",
             "m4a": "M4A",
+            "opus": "Opus",
             "wav": "WAV",
             "flac": "FLAC"
+          },
+          "audioQuality": {
+            "best": "Aracin varsayilanini kullan",
+            "max": "0 · En yuksek kalite",
+            "high": "2 · Yuksek kalite",
+            "medium": "5 · Dengeli",
+            "small": "7 · Daha kucuk dosya"
           }
         }
       },

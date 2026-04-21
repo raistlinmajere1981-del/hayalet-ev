@@ -26,6 +26,28 @@ export function buildUserReport(run, reportRecord) {
   const normalizedReport = asLabRecord(reportRecord);
   const generatedSummary = asNonEmptyString(asLabRecord(normalizedReport["userReport"])["summary"]) || (run.findings[0] ? `En yuksek oncelikli bulgu: ${run.findings[0].title}. Toplam ${String(run.findings.length)} bulgu ve ${String(run.artifacts.length)} artefakt kaydi mevcut.` : run.emptyReason || "Calisma tamamlandi fakat on plana cikan bulgu kaydi uretilmedi.");
   const confidence = run.findings[0]?.confidence || asNonEmptyString(asLabRecord(normalizedReport["userReport"])["confidence"]) || "low";
+  const suspiciousFrames = run.artifacts.filter(function(artifact) {
+    return artifact.previewUrl && artifact.kind !== "transcript";
+  }).slice(0, 6).map(function(artifact) {
+    return {
+      artifactId: artifact.id,
+      previewUrl: artifact.previewUrl || "",
+      label: artifact.fileName || artifact.kind || artifact.id
+    };
+  });
+  const hypothesisResult = run.hypothesisSummary || null;
+  const elapsedSeconds = run.endedAt && run.startedAt ? Math.round((run.endedAt - run.startedAt) / 1e3) : 0;
+  const moduleSummary = run.moduleOrder.map(function(moduleId) {
+    const mod = run.modules[moduleId];
+    if (!mod) {
+      return { id: moduleId, title: moduleId, status: "unknown" };
+    }
+    return {
+      id: mod.id,
+      title: mod.title || mod.id,
+      status: mod.status
+    };
+  });
   return {
     summary: generatedSummary,
     confidence,
@@ -37,7 +59,11 @@ export function buildUserReport(run, reportRecord) {
         confidence: finding.confidence,
         evidence: buildEvidenceLabels(run.findings, run.artifacts, finding)
       };
-    })
+    }),
+    suspiciousFrames,
+    hypothesisResult,
+    elapsedSeconds,
+    moduleSummary
   };
 }
 export function buildAiReport(run, reportRecord) {
@@ -49,6 +75,9 @@ export function buildAiReport(run, reportRecord) {
   const errors = [run.error, asNonEmptyString(normalizedReport["error"])].filter(
     (entry) => entry !== null
   );
+  const moduleTrace = run.moduleTrace.slice();
+  const analysisScope = run.analysisScope;
+  const comparisonVariants = run.comparisonVariants.slice();
   return {
     manifest: {
       featureId: normalizedReport["featureId"] || null,
@@ -64,6 +93,26 @@ export function buildAiReport(run, reportRecord) {
     artifacts: run.artifacts,
     warnings: Array.from(new Set(asStringArray(normalizedReport["warnings"]).concat(run.warnings))),
     errors,
-    degradedConditions: Array.from(new Set(degradedConditions))
+    degradedConditions: Array.from(new Set(degradedConditions)),
+    moduleTrace,
+    analysisScope,
+    comparisonVariants
+  };
+}
+export function buildWorkspaceContext(workspaceState) {
+  return {
+    timeRange: {
+      startMs: workspaceState.timelineStartMs,
+      endMs: workspaceState.timelineEndMs
+    },
+    roiRegions: workspaceState.roiRegions.filter(function(region) {
+      return region.active;
+    }),
+    interactiveSettings: { ...workspaceState.interactiveSettings },
+    hypothesis: workspaceState.hypothesis,
+    selectedIntents: workspaceState.selectedIntents.slice(),
+    bookmarks: workspaceState.bookmarks.slice().sort(function(a, b) {
+      return a.timeMs - b.timeMs;
+    })
   };
 }

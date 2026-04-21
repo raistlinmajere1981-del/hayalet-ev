@@ -22,11 +22,15 @@ export function createLaboratoryActionCompositionRuntime(deps) {
     applyEditRecipePatch: deps.applyEditRecipePatch,
     applyProfilePresetPatch: deps.applyProfilePresetPatch,
     asNonEmptyString: deps.asNonEmptyString,
+    asNumber: deps.asNumber,
     audioFeatureId: deps.audioFeatureId,
+    callRoomTools: deps.callRoomTools,
     cancelJobById: deps.cancelJobById,
     cancelEditJobsForProject: deps.cancelEditJobsForProject,
     cancelFeatureProcess: deps.cancelFeatureProcess,
+    cancelJobsForProject: deps.cancelJobsForProject,
     cancelProfileJobsForProject: deps.cancelProfileJobsForProject,
+    clearJob: deps.clearJob,
     checkToolUpdates(...args) {
       return laboratoryToolMutationRuntime.checkToolUpdates(...args);
     },
@@ -44,6 +48,9 @@ export function createLaboratoryActionCompositionRuntime(deps) {
     getActiveProject: deps.getActiveProject,
     getDefaultMode: deps.getDefaultMode,
     getDefaultSourceType: deps.getDefaultSourceType,
+    getProjectEditDir: deps.getProjectEditDir,
+    getProjectEditOutputDir: deps.getProjectEditOutputDir,
+    getProjectSourceDir: deps.getProjectSourceDir,
     handleLocalPick: deps.handleLocalPick,
     handleToolMutation(...args) {
       const hostAction = laboratoryHostActionRuntime;
@@ -60,8 +67,10 @@ export function createLaboratoryActionCompositionRuntime(deps) {
     normalizeProfileArtifactPreferences: deps.normalizeProfileArtifactPreferences,
     patchActiveProject: deps.patchActiveProject,
     patchActiveProjectDrafts: deps.patchActiveProjectDrafts,
+    pushJobState: deps.pushJobState,
     refreshActiveProjectMetadata: deps.refreshActiveProjectMetadata,
     refreshToolStatus: deps.refreshToolStatus,
+    registerJob: deps.registerJob,
     removeProfileModel: deps.removeProfileModel,
     resetEditForCurrentSource: deps.resetEditForCurrentSource,
     resetProfileForCurrentSource: deps.resetProfileForCurrentSource,

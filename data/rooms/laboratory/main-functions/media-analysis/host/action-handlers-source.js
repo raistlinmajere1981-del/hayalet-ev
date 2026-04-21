@@ -49,7 +49,21 @@ export function createMediaSourceActionRuntime(deps) {
     return patchActiveProject(runtime, function(project) {
       const nextProject = toProjectRecord(project);
       nextProject.source.mode = asNonEmptyString(actionPayload["mode"]) || getDefaultMode(runtime["sourcePresets"], nextProject.source.kind);
+      nextProject.source.status = "idle";
+      nextProject.source.storedPath = null;
+      nextProject.source.storedFileName = null;
+      nextProject.source.sourceUrl = null;
+      nextProject.source.mimeType = null;
+      nextProject.source.routeLabel = null;
       nextProject.source.lastError = null;
+      nextProject.source.metadata = null;
+      nextProject.source.metadataError = null;
+      resetEditForCurrentSource(runtime, nextProject);
+      resetProfileForCurrentSource(
+        runtime,
+        nextProject,
+        "Source import method changed; rerun the profile preflight."
+      );
       return nextProject;
     });
   }

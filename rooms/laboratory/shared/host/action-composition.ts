@@ -18,11 +18,15 @@ type LaboratoryMediaActionRuntimeDeps = {
   applyEditRecipePatch: UnknownFn;
   applyProfilePresetPatch: UnknownFn;
   asNonEmptyString: (value: unknown) => string | null;
+  asNumber: (value: unknown) => number | null;
   audioFeatureId: string;
+  callRoomTools: UnknownFn;
   cancelJobById: UnknownFn;
   cancelEditJobsForProject: UnknownFn;
   cancelFeatureProcess: UnknownFn;
+  cancelJobsForProject: UnknownFn;
   cancelProfileJobsForProject: UnknownFn;
+  clearJob: UnknownFn;
   clampNumber: UnknownFn;
   clampProfileTranscriptSampleSeconds: UnknownFn;
   createDefaultEditState: UnknownFn;
@@ -37,6 +41,9 @@ type LaboratoryMediaActionRuntimeDeps = {
   getDefaultMode: UnknownFn;
   getDefaultSourceType: UnknownFn;
   getProfileModelDescriptorMap: UnknownFn;
+  getProjectEditDir: UnknownFn;
+  getProjectEditOutputDir: UnknownFn;
+  getProjectSourceDir: UnknownFn;
   handleLocalPick: UnknownFn;
   handleUrlDownload: UnknownFn;
   handleYoutubeDownload: UnknownFn;
@@ -46,8 +53,10 @@ type LaboratoryMediaActionRuntimeDeps = {
   normalizeProfileArtifactPreferences: UnknownFn;
   patchActiveProject: UnknownFn;
   patchActiveProjectDrafts: UnknownFn;
+  pushJobState: UnknownFn;
   refreshActiveProjectMetadata: UnknownFn;
   refreshToolStatus: UnknownFn;
+  registerJob: UnknownFn;
   removeProfileModel: UnknownFn;
   resetEditForCurrentSource: UnknownFn;
   resetProfileForCurrentSource: UnknownFn;
@@ -92,11 +101,15 @@ export function createLaboratoryActionCompositionRuntime(deps: LaboratoryActionC
     applyEditRecipePatch: deps.applyEditRecipePatch,
     applyProfilePresetPatch: deps.applyProfilePresetPatch,
     asNonEmptyString: deps.asNonEmptyString,
+    asNumber: deps.asNumber,
     audioFeatureId: deps.audioFeatureId,
+    callRoomTools: deps.callRoomTools,
     cancelJobById: deps.cancelJobById,
     cancelEditJobsForProject: deps.cancelEditJobsForProject,
     cancelFeatureProcess: deps.cancelFeatureProcess,
+    cancelJobsForProject: deps.cancelJobsForProject,
     cancelProfileJobsForProject: deps.cancelProfileJobsForProject,
+    clearJob: deps.clearJob,
     checkToolUpdates(...args: Parameters<LaboratoryToolMutationRuntime["checkToolUpdates"]>) {
       return laboratoryToolMutationRuntime.checkToolUpdates(...args);
     },
@@ -114,6 +127,9 @@ export function createLaboratoryActionCompositionRuntime(deps: LaboratoryActionC
     getActiveProject: deps.getActiveProject,
     getDefaultMode: deps.getDefaultMode,
     getDefaultSourceType: deps.getDefaultSourceType,
+    getProjectEditDir: deps.getProjectEditDir,
+    getProjectEditOutputDir: deps.getProjectEditOutputDir,
+    getProjectSourceDir: deps.getProjectSourceDir,
     handleLocalPick: deps.handleLocalPick,
     handleToolMutation(...args: Parameters<LaboratoryHostActionRuntime["handleToolMutation"]>) {
       const hostAction = laboratoryHostActionRuntime;
@@ -130,8 +146,10 @@ export function createLaboratoryActionCompositionRuntime(deps: LaboratoryActionC
     normalizeProfileArtifactPreferences: deps.normalizeProfileArtifactPreferences,
     patchActiveProject: deps.patchActiveProject,
     patchActiveProjectDrafts: deps.patchActiveProjectDrafts,
+    pushJobState: deps.pushJobState,
     refreshActiveProjectMetadata: deps.refreshActiveProjectMetadata,
     refreshToolStatus: deps.refreshToolStatus,
+    registerJob: deps.registerJob,
     removeProfileModel: deps.removeProfileModel,
     resetEditForCurrentSource: deps.resetEditForCurrentSource,
     resetProfileForCurrentSource: deps.resetProfileForCurrentSource,

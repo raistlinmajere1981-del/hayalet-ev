@@ -414,19 +414,46 @@
         "downloadYoutube": "Capture from YouTube"
       },
       "youtubeDisabled": "YouTube mode stays disabled until the room-local yt-dlp installation is ready.",
+      "intakeFrame": {
+        "title": "Source Intake Controls",
+        "subtitle": "Keep source setup compact once a capture is ready; reopen this frame whenever you need to switch routes or refine the download plan.",
+        "readyLabel": "Active source",
+        "statusReady": "Source ready",
+        "statusPending": "Awaiting source",
+        "showAction": "Show settings",
+        "hideAction": "Hide settings"
+      },
       "youtubePresetLabel": "YouTube Presets",
+      "youtubePresetHint": "Use presets for quick capture profiles, or switch to Custom for room-approved yt-dlp tuning.",
       "youtubePresets": {
-        "low": "Lowest",
+        "low": "Low",
         "medium": "Balanced",
         "best": "Best",
         "custom": "Custom"
       },
+      "youtubeCustomTitle": "Custom yt-dlp Settings",
+      "youtubeCustomHint": "These controls stay within the room's allowed yt-dlp surface while giving you tighter video, audio, subtitle, and retry control.",
       "youtubeForm": {
+        "sections": {
+          "download": {
+            "title": "Capture Shape",
+            "subtitle": "Choose the output video profile, container handling, and optional audio extraction."
+          },
+          "captions": {
+            "title": "Subtitle Capture",
+            "subtitle": "Keep manual and auto subtitle switches with their language filter in one compact frame."
+          },
+          "network": {
+            "title": "Transfer Controls",
+            "subtitle": "Trim playlist scope and retry behavior without wasting vertical space."
+          }
+        },
         "fields": {
           "format": "Format Strategy",
           "mergeOutputFormat": "Merge Container",
           "recodeVideo": "Recode Video",
           "audioFormat": "Extract Audio",
+          "audioQuality": "Audio quality",
           "writeSubtitles": "Write subtitles",
           "writeAutoSubtitles": "Write auto subtitles",
           "subtitlesLang": "Subtitle languages",
@@ -441,10 +468,11 @@
         },
         "options": {
           "format": {
-            "best": "Best video + audio",
-            "fullHd": "Full HD or lower",
-            "hd": "HD or lower",
-            "lowest": "Lowest resolution"
+            "best": "Best available",
+            "mp4_1080": "1080p MP4 or lower",
+            "mp4_720": "720p MP4 or lower",
+            "mp4_480": "480p MP4 or lower",
+            "low": "360p / low bandwidth"
           },
           "container": {
             "auto": "Auto",
@@ -461,9 +489,18 @@
           "audio": {
             "none": "Keep original",
             "mp3": "MP3",
+            "aac": "AAC",
             "m4a": "M4A",
+            "opus": "Opus",
             "wav": "WAV",
             "flac": "FLAC"
+          },
+          "audioQuality": {
+            "best": "Use extractor default",
+            "max": "0 · Max quality",
+            "high": "2 · High quality",
+            "medium": "5 · Balanced",
+            "small": "7 · Smaller file"
           }
         }
       },

@@ -1,4 +1,5 @@
 import { createMediaEditActionRuntime } from "./action-handlers-edit.js";
+import { createMediaExportActionRuntime } from "./action-handlers-export.js";
 import { createMediaProfileActionRuntime } from "./action-handlers-profile.js";
 import { createMediaProjectActionRuntime } from "./action-handlers-project.js";
 import { createMediaSourceActionRuntime } from "./action-handlers-source.js";
@@ -34,16 +35,19 @@ type MediaSourceActionRuntimeDeps = {
 };
 
 type MediaEditActionRuntimeDeps = Parameters<typeof createMediaEditActionRuntime>[0];
+type MediaExportActionRuntimeDeps = Parameters<typeof createMediaExportActionRuntime>[0];
 type MediaProfileActionRuntimeDeps = Parameters<typeof createMediaProfileActionRuntime>[0];
 type MediaProjectActionRuntimeDeps = Parameters<typeof createMediaProjectActionRuntime>[0];
 
 type MediaActionRuntimeDeps = MediaSourceActionRuntimeDeps &
   MediaEditActionRuntimeDeps &
+  MediaExportActionRuntimeDeps &
   MediaProfileActionRuntimeDeps &
   MediaProjectActionRuntimeDeps;
 
 type MediaActionRuntime = ReturnType<typeof createMediaSourceActionRuntime> &
   ReturnType<typeof createMediaEditActionRuntime> &
+  ReturnType<typeof createMediaExportActionRuntime> &
   ReturnType<typeof createMediaProfileActionRuntime> &
   ReturnType<typeof createMediaProjectActionRuntime>;
 
@@ -95,6 +99,19 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     toRecord: deps.toRecord,
   });
 
+  const mediaExportActionRuntime = createMediaExportActionRuntime({
+    asNonEmptyString: deps.asNonEmptyString,
+    asNumber: deps.asNumber,
+    callRoomTools: deps.callRoomTools,
+    getActiveProject: deps.getActiveProject,
+    getProjectEditOutputDir: deps.getProjectEditOutputDir,
+    pushJobState: deps.pushJobState,
+    registerJob: deps.registerJob,
+    clearJob: deps.clearJob,
+    cancelJobsForProject: deps.cancelJobsForProject,
+    toRecord: deps.toRecord,
+  });
+
   const mediaProjectActionRuntime = createMediaProjectActionRuntime({
     asNonEmptyString: deps.asNonEmptyString,
     cancelJobById: deps.cancelJobById,
@@ -105,6 +122,7 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     ensureProjectExists: deps.ensureProjectExists,
     exportFeatureReport: deps.exportFeatureReport,
     handleToolMutation: deps.handleToolMutation,
+    patchActiveProject: deps.patchActiveProject,
     refreshActiveProjectMetadata: deps.refreshActiveProjectMetadata,
     refreshToolStatus: deps.refreshToolStatus,
     runFeatureProcess: deps.runFeatureProcess,
@@ -114,6 +132,7 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
   return {
     ...mediaSourceActionRuntime,
     ...mediaEditActionRuntime,
+    ...mediaExportActionRuntime,
     ...mediaProfileActionRuntime,
     ...mediaProjectActionRuntime,
   };

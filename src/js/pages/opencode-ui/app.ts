@@ -149,6 +149,18 @@ function getInitialUsageText(): string {
   return t("usage.diskDb");
 }
 
+function resolveHostBridgeErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim() !== "") {
+    return error.message.trim();
+  }
+
+  if (typeof error === "string" && error.trim() !== "") {
+    return error.trim();
+  }
+
+  return String(error);
+}
+
 async function setActiveSession(sessionId: string | null): Promise<void> {
   runtime.activeSessionId = sessionId;
   chatAutoFollow = true;
@@ -576,6 +588,51 @@ async function clearChat(): Promise<void> {
   }
 }
 
+async function openSessionFromHost(
+  title = t("session.createDefaultTitle")
+): Promise<{ success: boolean; sessionId?: string; error?: string }> {
+  try {
+    const sessionId = await createServerSession(title);
+    await setActiveSession(sessionId);
+    await loadSessionListAndRender({ preserveActive: true });
+    await loadActiveSessionHistory();
+    return { success: true, sessionId };
+  } catch (error) {
+    return {
+      success: false,
+      error: resolveHostBridgeErrorMessage(error),
+    };
+  }
+}
+
+async function switchSessionFromHost(
+  sessionId: string
+): Promise<{ success: boolean; sessionId?: string; error?: string }> {
+  const normalizedSessionId = sessionId.trim();
+  if (normalizedSessionId === "") {
+    return { success: false, error: "session id unavailable" };
+  }
+
+  try {
+    await setActiveSession(normalizedSessionId);
+    await loadSessionListAndRender({ preserveActive: true });
+    await loadActiveSessionHistory();
+    return { success: true, sessionId: normalizedSessionId };
+  } catch (error) {
+    return {
+      success: false,
+      error: resolveHostBridgeErrorMessage(error),
+    };
+  }
+}
+
+function registerOpencodeUiHostBridge(): void {
+  window.OpencodeUiHostBridge = {
+    openSession: openSessionFromHost,
+    switchSession: switchSessionFromHost,
+  };
+}
+
 function initSessionEvents(): void {
   initSessionEventsFromModule(sessionListContext());
 }
@@ -851,6 +908,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     syncThemeFromQuery();
     await bootstrapOpencodeUiI18n();
     await hydrateRuntimeFromSharedState();
+    registerOpencodeUiHostBridge();
     await initializeRovoInteractionRuntime({
       draftText: draftInteractionText,
       submitText: submitInteractionText,

@@ -29,7 +29,7 @@ export function updateIndicatorAvatars(): void {
       path: ai0AvatarPath,
       slotState:
         ai0Assigned !== true ? "empty" : ai0Connected === true ? "connected" : "disconnected",
-      manageConversationSelect: false,
+      manageConversationSelect: true,
     },
     {
       provider: "ai1",
@@ -185,6 +185,15 @@ export function updateIndicatorAvatars(): void {
             const handler: EventListener = (ev: Event) => {
               ev.preventDefault();
               void (async (): Promise<void> => {
+                if (provider === "ai0") {
+                  await ConversationListManager.refresh({
+                    provider,
+                    silent: true,
+                    skipNotify: true,
+                  });
+                  return;
+                }
+
                 const connectResult = await dispatchInternalSlotBridge(
                   {
                     action: "connection.ensure",

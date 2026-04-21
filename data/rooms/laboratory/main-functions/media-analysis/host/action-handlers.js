@@ -1,4 +1,5 @@
 import { createMediaEditActionRuntime } from "./action-handlers-edit.js";
+import { createMediaExportActionRuntime } from "./action-handlers-export.js";
 import { createMediaProfileActionRuntime } from "./action-handlers-profile.js";
 import { createMediaProjectActionRuntime } from "./action-handlers-project.js";
 import { createMediaSourceActionRuntime } from "./action-handlers-source.js";
@@ -47,6 +48,18 @@ export function createMediaActionRuntime(deps) {
     runProfilePreflight: deps.runProfilePreflight,
     toRecord: deps.toRecord
   });
+  const mediaExportActionRuntime = createMediaExportActionRuntime({
+    asNonEmptyString: deps.asNonEmptyString,
+    asNumber: deps.asNumber,
+    callRoomTools: deps.callRoomTools,
+    getActiveProject: deps.getActiveProject,
+    getProjectEditOutputDir: deps.getProjectEditOutputDir,
+    pushJobState: deps.pushJobState,
+    registerJob: deps.registerJob,
+    clearJob: deps.clearJob,
+    cancelJobsForProject: deps.cancelJobsForProject,
+    toRecord: deps.toRecord
+  });
   const mediaProjectActionRuntime = createMediaProjectActionRuntime({
     asNonEmptyString: deps.asNonEmptyString,
     cancelJobById: deps.cancelJobById,
@@ -57,6 +70,7 @@ export function createMediaActionRuntime(deps) {
     ensureProjectExists: deps.ensureProjectExists,
     exportFeatureReport: deps.exportFeatureReport,
     handleToolMutation: deps.handleToolMutation,
+    patchActiveProject: deps.patchActiveProject,
     refreshActiveProjectMetadata: deps.refreshActiveProjectMetadata,
     refreshToolStatus: deps.refreshToolStatus,
     runFeatureProcess: deps.runFeatureProcess,
@@ -65,6 +79,7 @@ export function createMediaActionRuntime(deps) {
   return {
     ...mediaSourceActionRuntime,
     ...mediaEditActionRuntime,
+    ...mediaExportActionRuntime,
     ...mediaProfileActionRuntime,
     ...mediaProjectActionRuntime
   };

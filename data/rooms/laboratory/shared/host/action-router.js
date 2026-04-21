@@ -47,11 +47,17 @@ export function createLaboratoryActionRouter(deps) {
         case "project-create":
           await mediaActionRuntime.createProject(runtime, featureId);
           break;
+        case "project-clear":
+          await mediaActionRuntime.clearProject(runtime, requestId);
+          break;
         case "project-select":
           await mediaActionRuntime.selectProject(runtime, requestId, featureId, actionPayload);
           break;
         case "project-delete":
           await mediaActionRuntime.deleteProject(runtime, requestId, featureId, actionPayload);
+          break;
+        case "project-rename":
+          await mediaActionRuntime.renameProject(runtime, requestId, featureId, actionPayload);
           break;
         case "subtitle-source-set-mode":
           await subtitleActionRuntime.setSourceMode(runtime, actionPayload);
@@ -145,6 +151,15 @@ export function createLaboratoryActionRouter(deps) {
           break;
         case "edit-cancel-apply":
           await mediaActionRuntime.cancelApply(api, runtime, requestId);
+          break;
+        case "export-roi-image":
+          await mediaActionRuntime.exportROIImage(api, runtime, requestId, actionPayload);
+          break;
+        case "export-frame-grab":
+          await mediaActionRuntime.exportFrameGrab(api, runtime, requestId, actionPayload);
+          break;
+        case "export-timeline-clip":
+          await mediaActionRuntime.exportTimelineClip(api, runtime, requestId, actionPayload);
           break;
         case "profile-set-mode":
           await mediaActionRuntime.setProfileMode(runtime, actionPayload);

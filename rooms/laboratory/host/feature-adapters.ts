@@ -15,6 +15,7 @@ type LaboratoryFeatureAdaptersDeps = {
   cancelJobById: UnknownFn;
   cancelEditJobsForProject: UnknownFn;
   cancelFeatureProcess: UnknownFn;
+  cancelJobsForProject: UnknownFn;
   cancelProfileJobsForProject: UnknownFn;
   clampNumber: UnknownFn;
   clampProfileTranscriptSampleSeconds: UnknownFn;
@@ -42,6 +43,9 @@ type LaboratoryFeatureAdaptersDeps = {
   getElectronApi: UnknownFn;
   getFeatureIdFromContext: UnknownFn;
   getProfileModelDescriptorMap: UnknownFn;
+  getProjectEditDir: UnknownFn;
+  getProjectEditOutputDir: UnknownFn;
+  getProjectSourceDir: UnknownFn;
   getProjectSubtitleEditOutputDir: UnknownFn;
   getRuntimeToolIds: UnknownFn;
   getSubtitleEntries: UnknownFn;
@@ -166,10 +170,12 @@ export function createLaboratoryFeatureAdapters(deps: LaboratoryFeatureAdaptersD
     applyEditRecipePatch: deps.applyEditRecipePatch,
     applyProfilePresetPatch: deps.applyProfilePresetPatch,
     asNonEmptyString: deps.asNonEmptyString,
+    asNumber: deps.asNumber,
     audioFeatureId: deps.audioFeatureId,
     cancelJobById: deps.cancelJobById,
     cancelEditJobsForProject: deps.cancelEditJobsForProject,
     cancelFeatureProcess: deps.cancelFeatureProcess,
+    cancelJobsForProject: deps.cancelJobsForProject,
     cancelProfileJobsForProject: deps.cancelProfileJobsForProject,
     clampNumber: deps.clampNumber,
     clampProfileTranscriptSampleSeconds: deps.clampProfileTranscriptSampleSeconds,
@@ -188,6 +194,9 @@ export function createLaboratoryFeatureAdapters(deps: LaboratoryFeatureAdaptersD
     getDefaultSourceType: deps.getDefaultSourceType,
     getFeatureIdFromContext: deps.getFeatureIdFromContext,
     getProfileModelDescriptorMap: deps.getProfileModelDescriptorMap,
+    getProjectEditDir: deps.getProjectEditDir,
+    getProjectEditOutputDir: deps.getProjectEditOutputDir,
+    getProjectSourceDir: deps.getProjectSourceDir,
     getRuntimeToolIds: deps.getRuntimeToolIds,
     handleLocalPick: deps.handleLocalPick,
     handleUrlDownload: deps.handleUrlDownload,

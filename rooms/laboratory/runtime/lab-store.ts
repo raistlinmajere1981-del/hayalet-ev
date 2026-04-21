@@ -29,6 +29,7 @@ import type {
   LabStoreState,
   LabUserReport,
   CapabilityFamilyId,
+  LabWorkspaceUiState,
 } from "../models/lab-types.js";
 import { normalizeLabPreflight } from "../services/preflight-service.js";
 import {
@@ -43,6 +44,8 @@ function createDefaultSourceDrafts(): LabSourceDrafts {
     urlInput: "",
     youtubeUrl: "",
     youtubePreset: null,
+    youtubeCustom: {},
+    youtubeCaptureMode: "video+audio",
   };
 }
 
@@ -125,7 +128,52 @@ function createInitialState(): LabStoreState {
       analysisControlsCollapsed: true,
       editSidePanelCollapsed: false,
       rawLogCollapsed: true,
+      workspace: createDefaultWorkspaceUiState(),
     },
+  };
+}
+
+function createDefaultWorkspaceUiState(): LabWorkspaceUiState {
+  return {
+    timelineStartMs: null,
+    timelineEndMs: null,
+    roiRegions: [],
+    interactiveSettings: {
+      brightness: 100,
+      contrast: 100,
+      gamma: 1.0,
+      saturation: 100,
+      hueRotate: 0,
+      sharpness: 100,
+      channelR: true,
+      channelG: true,
+      channelB: true,
+      edgeHighlight: false,
+      invert: false,
+    },
+    audioFocus: {
+      gain: 1.0,
+      filterType: "none",
+      filterFrequency: 1000,
+      filterQ: 1.0,
+      visualizationMode: "none",
+      eqBands: [
+        { frequency: 60, gain: 0, Q: 1.0, type: "lowshelf" },
+        { frequency: 250, gain: 0, Q: 1.0, type: "peaking" },
+        { frequency: 1000, gain: 0, Q: 1.0, type: "peaking" },
+        { frequency: 4000, gain: 0, Q: 1.0, type: "peaking" },
+        { frequency: 12000, gain: 0, Q: 1.0, type: "highshelf" },
+      ],
+    },
+    hypothesis: "",
+    bookmarks: [],
+    selectedIntents: [],
+    sourceIntakeCollapsed: false,
+    rightPanelCollapsed: false,
+    processViewActive: false,
+    activeStepPreviewId: null,
+    processPanelCollapsedSections: [],
+    reportOverlayOpen: false,
   };
 }
 
@@ -141,6 +189,7 @@ function createSnapshotEvent(
     severity,
     message,
     detail,
+    percent: null,
     timestamp: Date.now(),
     source: "ui",
     action: null,
@@ -170,6 +219,7 @@ function toEventFeedItem(
       severity === "success" || severity === "warning" || severity === "error" ? severity : "info",
     message,
     detail: asNonEmptyString(record["detail"]),
+    percent: clampPercent(record["percent"]),
     timestamp: toTimestamp(record["timestamp"]),
     source: source === "ui" || source === "system" ? source : "host",
     action: asNonEmptyString(record["action"]),
@@ -469,11 +519,15 @@ function syncDraftsFromSnapshot(state: LabStoreState, snapshot: Record<string, u
   const source = asLabRecord(activeProject["source"]);
   const sourceDrafts = asLabRecord(source["drafts"]);
   if (state.ui.sourceDraftDirty !== true || state.ui.lastHydratedProjectId !== activeProjectId) {
+    const captureMode = asNonEmptyString(sourceDrafts["youtubeCaptureMode"]);
     state.ui.sourceDrafts = {
       fileNameHint: asNonEmptyString(sourceDrafts["fileNameHint"]) || "",
       urlInput: asNonEmptyString(sourceDrafts["urlInput"]) || "",
       youtubeUrl: asNonEmptyString(sourceDrafts["youtubeUrl"]) || "",
       youtubePreset: asNonEmptyString(sourceDrafts["youtubePreset"]),
+      youtubeCustom: asLabRecord(sourceDrafts["youtubeCustom"]),
+      youtubeCaptureMode:
+        captureMode === "audio-only" || captureMode === "video-only" ? captureMode : "video+audio",
     };
   }
 
@@ -926,11 +980,43 @@ function deriveProbeStatus(
   return "idle";
 }
 
+function normalizeWorkspaceSourceModeToken(value: string | null) {
+  return (value || "").replaceAll(/\s+/g, "").toLowerCase();
+}
+
+function isWorkspaceSourceMatchingMode(source: Record<string, unknown>, mode: string | null) {
+  const routeLabel = normalizeWorkspaceSourceModeToken(asNonEmptyString(source["routeLabel"]));
+  if (routeLabel === "") {
+    return false;
+  }
+  if (mode === "url") {
+    return routeLabel === "directurl";
+  }
+  if (mode === "youtube") {
+    return routeLabel === "youtube";
+  }
+  return routeLabel === "localcopy";
+}
+
+function isWorkspaceSourceReady(source: Record<string, unknown> | null) {
+  if (!source) {
+    return false;
+  }
+  const sourceRecord = asLabRecord(source);
+  const mode = asNonEmptyString(sourceRecord["mode"]) || "local";
+  if (asNonEmptyString(sourceRecord["storedPath"]) === null) {
+    return false;
+  }
+  return isWorkspaceSourceMatchingMode(sourceRecord, mode);
+}
+
 function syncCanonicalStateFromSnapshot(
   state: LabStoreState,
   snapshot: Record<string, unknown>,
   options: { preserveFeatureId?: boolean } = {}
 ) {
+  const previousActiveProjectId = state.projectIndex.activeProjectId;
+  const previousSourceReady = isWorkspaceSourceReady(state.source);
   state.snapshot = snapshot;
   state.bootReady = snapshot["ready"] === true || state.bootReady;
   if (options.preserveFeatureId !== true) {
@@ -964,6 +1050,10 @@ function syncCanonicalStateFromSnapshot(
     state.reportExports = [];
     state.sourceProbeStatus = state.sourceProbeStatus === "running" ? "running" : "idle";
     state.ui.lastHydratedProjectId = null;
+    state.ui.workspace = {
+      ...state.ui.workspace,
+      sourceIntakeCollapsed: false,
+    };
     return state;
   }
 
@@ -979,7 +1069,17 @@ function syncCanonicalStateFromSnapshot(
   const processRecord = asLabRecord(asLabRecord(activeProject["process"])["records"])[
     state.featureId
   ];
-  state.run = toRunFromProcessRecord(asLabRecord(processRecord));
+  const nextRun = toRunFromProcessRecord(asLabRecord(processRecord));
+  if (
+    nextRun === null &&
+    state.run &&
+    state.run.id.startsWith("pending-") &&
+    state.run.state === "running"
+  ) {
+    // Keep the pending local run alive until the host creates the process record
+  } else {
+    state.run = nextRun;
+  }
 
   const reportRecord = asLabRecord(
     asLabRecord(asLabRecord(activeProject["report"])["records"])[state.featureId]
@@ -988,6 +1088,20 @@ function syncCanonicalStateFromSnapshot(
   state.reportExports = Array.isArray(reportRecord["exports"])
     ? (reportRecord["exports"] as unknown[]).map(asLabRecord)
     : [];
+
+  const nextActiveProjectId = state.projectIndex.activeProjectId;
+  const nextSourceReady = isWorkspaceSourceReady(state.source);
+  if (previousActiveProjectId !== nextActiveProjectId) {
+    state.ui.workspace = {
+      ...state.ui.workspace,
+      sourceIntakeCollapsed: nextSourceReady,
+    };
+  } else if (previousSourceReady !== nextSourceReady) {
+    state.ui.workspace = {
+      ...state.ui.workspace,
+      sourceIntakeCollapsed: nextSourceReady,
+    };
+  }
 
   syncDraftsFromSnapshot(state, snapshot);
   return state;
@@ -1170,6 +1284,47 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         state.ui.analysisControlsCollapsed = event.payload.analysisControlsCollapsed === true;
         state.ui.editSidePanelCollapsed = event.payload.editSidePanelCollapsed === true;
         state.ui.rawLogCollapsed = event.payload.rawLogCollapsed !== false;
+        // V2.3: hydrate workspace state
+        if (event.payload.workspace && typeof event.payload.workspace === "object") {
+          const ws = event.payload.workspace as Partial<
+            import("../models/lab-types.js").LabWorkspaceUiState
+          >;
+          state.ui.workspace = {
+            ...state.ui.workspace,
+            timelineStartMs:
+              typeof ws.timelineStartMs === "number"
+                ? ws.timelineStartMs
+                : state.ui.workspace.timelineStartMs,
+            timelineEndMs:
+              typeof ws.timelineEndMs === "number"
+                ? ws.timelineEndMs
+                : state.ui.workspace.timelineEndMs,
+            roiRegions: Array.isArray(ws.roiRegions)
+              ? ws.roiRegions
+              : state.ui.workspace.roiRegions,
+            interactiveSettings: ws.interactiveSettings
+              ? { ...state.ui.workspace.interactiveSettings, ...ws.interactiveSettings }
+              : state.ui.workspace.interactiveSettings,
+            audioFocus: ws.audioFocus
+              ? { ...state.ui.workspace.audioFocus, ...ws.audioFocus }
+              : state.ui.workspace.audioFocus,
+            hypothesis:
+              typeof ws.hypothesis === "string" ? ws.hypothesis : state.ui.workspace.hypothesis,
+            bookmarks: Array.isArray(ws.bookmarks) ? ws.bookmarks : state.ui.workspace.bookmarks,
+            selectedIntents: Array.isArray(ws.selectedIntents)
+              ? ws.selectedIntents
+              : state.ui.workspace.selectedIntents,
+            sourceIntakeCollapsed: ws.sourceIntakeCollapsed === true,
+            rightPanelCollapsed: ws.rightPanelCollapsed === true,
+            processViewActive: ws.processViewActive === true,
+            activeStepPreviewId:
+              typeof ws.activeStepPreviewId === "string" ? ws.activeStepPreviewId : null,
+            processPanelCollapsedSections: Array.isArray(ws.processPanelCollapsedSections)
+              ? ws.processPanelCollapsedSections
+              : state.ui.workspace.processPanelCollapsedSections,
+            reportOverlayOpen: ws.reportOverlayOpen === true,
+          };
+        }
         state.bootReady =
           state.bootReady ||
           state.source !== null ||
@@ -1217,9 +1372,17 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     case "source-probe-completed":
       state.sourceProbeStatus = "completed";
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        sourceIntakeCollapsed: true,
+      };
       return state;
     case "source-probe-failed":
       state.sourceProbeStatus = "failed";
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        sourceIntakeCollapsed: false,
+      };
       return state;
     case "preview-started":
     case "preview-progress": {
@@ -1366,6 +1529,17 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         ...(state.source || {}),
         ...asLabRecord(event.patch),
       };
+      if (
+        event.patch["kind"] !== undefined ||
+        event.patch["mode"] !== undefined ||
+        event.patch["storedPath"] === null ||
+        event.patch["status"] === "idle"
+      ) {
+        state.ui.workspace = {
+          ...state.ui.workspace,
+          sourceIntakeCollapsed: false,
+        };
+      }
       return state;
     case "source-drafts-updated":
       state.ui.sourceDrafts = {
@@ -1490,6 +1664,155 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
     case "clear-events":
       state.activityFeed = [createSnapshotEvent("Olay akisi temizlendi.", "info")];
       state.ui.eventFeedCursor = 0;
+      return state;
+    // V2.3 workspace events
+    case "workspace-timeline-updated":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        timelineStartMs: event.startMs,
+        timelineEndMs: event.endMs,
+      };
+      return state;
+    case "workspace-roi-added":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        roiRegions: state.ui.workspace.roiRegions.concat(event.region),
+      };
+      return state;
+    case "workspace-roi-updated":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        roiRegions: state.ui.workspace.roiRegions.map(function (entry) {
+          return entry.id === event.region.id ? event.region : entry;
+        }),
+      };
+      return state;
+    case "workspace-roi-removed":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        roiRegions: state.ui.workspace.roiRegions.filter(function (entry) {
+          return entry.id !== event.regionId;
+        }),
+      };
+      return state;
+    case "workspace-roi-toggled":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        roiRegions: state.ui.workspace.roiRegions.map(function (entry) {
+          return entry.id === event.regionId ? { ...entry, active: !entry.active } : entry;
+        }),
+      };
+      return state;
+    case "workspace-interactive-updated":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        interactiveSettings: {
+          ...state.ui.workspace.interactiveSettings,
+          ...event.patch,
+        },
+      };
+      return state;
+    case "workspace-hypothesis-updated":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        hypothesis: event.text,
+      };
+      return state;
+    case "workspace-bookmark-added":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        bookmarks: state.ui.workspace.bookmarks.concat(event.bookmark),
+      };
+      return state;
+    case "workspace-bookmark-removed":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        bookmarks: state.ui.workspace.bookmarks.filter(function (entry) {
+          return entry.id !== event.bookmarkId;
+        }),
+      };
+      return state;
+    case "workspace-intent-set":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        selectedIntents: event.intents,
+      };
+      return state;
+    case "workspace-intent-toggled": {
+      const intents = state.ui.workspace.selectedIntents;
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        selectedIntents: intents.includes(event.intentId)
+          ? intents.filter(function (entry) {
+              return entry !== event.intentId;
+            })
+          : intents.concat(event.intentId),
+      };
+      return state;
+    }
+    case "workspace-intent-set":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        selectedIntents: event.intents.slice(),
+      };
+      return state;
+    case "workspace-source-intake-toggled":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        sourceIntakeCollapsed:
+          typeof event.force === "boolean"
+            ? event.force
+            : !state.ui.workspace.sourceIntakeCollapsed,
+      };
+      return state;
+    case "workspace-audio-updated":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        audioFocus: {
+          ...state.ui.workspace.audioFocus,
+          ...event.patch,
+        },
+      };
+      return state;
+    case "workspace-right-panel-toggled":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        rightPanelCollapsed:
+          typeof event.force === "boolean" ? event.force : !state.ui.workspace.rightPanelCollapsed,
+      };
+      return state;
+    case "workspace-process-view-toggled":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        processViewActive:
+          typeof event.force === "boolean" ? event.force : !state.ui.workspace.processViewActive,
+      };
+      return state;
+    case "workspace-step-preview-activated":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        activeStepPreviewId: event.stepId,
+      };
+      return state;
+    case "workspace-process-section-toggled": {
+      const collapsed = state.ui.workspace.processPanelCollapsedSections.slice();
+      const idx = collapsed.indexOf(event.sectionId);
+      if (idx >= 0) {
+        collapsed.splice(idx, 1);
+      } else {
+        collapsed.push(event.sectionId);
+      }
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        processPanelCollapsedSections: collapsed,
+      };
+      return state;
+    }
+    case "report-overlay-toggled":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        reportOverlayOpen: event.open,
+      };
       return state;
     default:
       return state;

@@ -1,5 +1,5 @@
 import { asLabRecord, asNonEmptyString, createLabFeatureMeta } from "../models/lab-types.js";
-import { CAPABILITY_FAMILIES } from "../models/lab-types.js";
+import { CAPABILITY_FAMILIES, WORKSPACE_INTENTS } from "../models/lab-types.js";
 import { normalizeAnalysisScope } from "../shared/types/analysis-scope.js";
 export function getSnapshot(state) {
   return state.snapshot || {};
@@ -392,4 +392,131 @@ export function getCapabilityWorkflowSummary(state) {
     blockedCount: selectedFamilies.length - readyCount,
     selectedIds: selected
   };
+}
+export function getWorkspaceMode(state) {
+  if (!state.bootReady && state.source === null) {
+    return "loading";
+  }
+  const run = getCurrentRun(state);
+  if (run && (run.state === "running" || run.state === "queued")) {
+    return "analyzing";
+  }
+  if (run && (run.state === "completed" || run.state === "ready" || run.state === "failed" || run.state === "cancelled")) {
+    return "complete";
+  }
+  return "workspace";
+}
+export function getSourceReady(state) {
+  return state.source !== null && state.sourceProbeStatus === "completed";
+}
+export function getTimelineSelection(state) {
+  return {
+    startMs: state.ui.workspace.timelineStartMs,
+    endMs: state.ui.workspace.timelineEndMs
+  };
+}
+export function getROIRegions(state) {
+  return state.ui.workspace.roiRegions;
+}
+export function getActiveROIRegions(state) {
+  return state.ui.workspace.roiRegions.filter(function(entry) {
+    return entry.active;
+  });
+}
+export function getInteractiveSettings(state) {
+  return state.ui.workspace.interactiveSettings;
+}
+export function getAudioFocusSettings(state) {
+  return state.ui.workspace.audioFocus;
+}
+export function getBookmarks(state) {
+  return state.ui.workspace.bookmarks;
+}
+export function getHypothesis(state) {
+  return state.ui.workspace.hypothesis;
+}
+export function getSelectedIntents(state) {
+  return state.ui.workspace.selectedIntents;
+}
+export function getAvailableIntents(state) {
+  const sourceKind = getSourceKind(state);
+  const sourceReady = getSourceReady(state);
+  const availableCapabilities = getAvailableCapabilities(state);
+  return WORKSPACE_INTENTS.map(function(intent) {
+    const sourceCompatible = intent.sourceKinds.includes(sourceKind);
+    const capabilityReadiness = intent.internalCapabilities.map(function(capId) {
+      const cap = availableCapabilities.find(function(entry) {
+        return entry.id === capId;
+      });
+      return cap ? cap.readiness : "blocked";
+    });
+    const allBlocked = capabilityReadiness.every(function(entry) {
+      return entry === "blocked";
+    });
+    const someBlocked = capabilityReadiness.some(function(entry) {
+      return entry === "blocked";
+    });
+    let readiness = "ready";
+    let blockReason = null;
+    if (!sourceReady) {
+      readiness = "blocked";
+      blockReason = "Source not ready.";
+    } else if (!sourceCompatible) {
+      readiness = "blocked";
+      blockReason = "Not available for this source type.";
+    } else if (allBlocked) {
+      readiness = "blocked";
+      blockReason = "Required tools not installed.";
+    } else if (someBlocked) {
+      readiness = "optional";
+      blockReason = "Some tools missing — partial results.";
+    }
+    return {
+      ...intent,
+      readiness,
+      blockReason,
+      selected: state.ui.workspace.selectedIntents.includes(intent.id)
+    };
+  });
+}
+export function getIntentDerivedCapabilities(state) {
+  const selectedIntents = getSelectedIntents(state);
+  const capabilitySet = /* @__PURE__ */ new Set();
+  WORKSPACE_INTENTS.forEach(function(intent) {
+    if (selectedIntents.includes(intent.id)) {
+      intent.internalCapabilities.forEach(function(capId) {
+        capabilitySet.add(capId);
+      });
+    }
+  });
+  return Array.from(capabilitySet);
+}
+export function getWorkspaceAnalysisInput(state) {
+  return {
+    timeRange: getTimelineSelection(state),
+    roiRegions: getActiveROIRegions(state),
+    hypothesis: getHypothesis(state),
+    selectedIntents: getSelectedIntents(state),
+    interactiveSettings: getInteractiveSettings(state),
+    bookmarks: getBookmarks(state)
+  };
+}
+export function getProcessPanelCollapsedSections(state) {
+  return state.ui.workspace.processPanelCollapsedSections;
+}
+export function isProcessSectionCollapsed(state, sectionId) {
+  return state.ui.workspace.processPanelCollapsedSections.includes(sectionId);
+}
+export function getReportOverlayOpen(state) {
+  return state.ui.workspace.reportOverlayOpen;
+}
+export function getRunElapsedSeconds(state) {
+  const run = getCurrentRun(state);
+  if (!run) {
+    return 0;
+  }
+  const start = run.startedAt;
+  const end = run.endedAt || Date.now();
+  const diff = end - start;
+  return diff > 0 ? Math.round(diff / 1e3) : 0;
 }

@@ -415,6 +415,7 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     cancelJobById: projectRuntimes.jobRuntime.cancelJobById,
     cancelEditJobsForProject: projectRuntimes.jobRuntime.cancelEditJobsForProject,
     cancelFeatureProcess: processDelegates.cancelFeatureProcess,
+    cancelJobsForProject: projectRuntimes.jobState.cancelJobsForProject,
     cancelProfileJobsForProject: projectRuntimes.jobRuntime.cancelProfileJobsForProject,
     clampNumber: hostUtils.clampNumber,
     clampProfileTranscriptSampleSeconds:
@@ -444,6 +445,9 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     getElectronApi: io.getElectronApi,
     getFeatureIdFromContext: bootstrap.getFeatureIdFromContext,
     getProfileModelDescriptorMap: profileModelState.readProfileModelDescriptorMap,
+    getProjectEditDir,
+    getProjectEditOutputDir,
+    getProjectSourceDir,
     getProjectSubtitleEditOutputDir,
     getRuntimeToolIds: bootstrap.getRuntimeToolIds,
     getSubtitleEntries: projectRuntimes.stateComposition.getSubtitleEntries,

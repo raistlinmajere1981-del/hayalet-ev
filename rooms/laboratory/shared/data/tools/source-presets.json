@@ -20,7 +20,7 @@
     },
     "audio": {
       "defaultMode": "local",
-      "modes": ["local", "url"],
+      "modes": ["youtube", "local", "url"],
       "supportedMimeTypes": [
         "audio/mpeg",
         "audio/mp4",
@@ -52,10 +52,12 @@
   "youtubePresets": {
     "low": {
       "defaultCustomValues": {
-        "format": "worst[ext=mp4]/worst",
+        "captureMode": "video+audio",
+        "format": "best[height<=360][ext=mp4]/best[height<=360]/worst[ext=mp4]/worst",
         "mergeOutputFormat": "mp4",
         "recodeVideo": "none",
         "audioFormat": "none",
+        "audioQuality": "5",
         "writeSubtitles": false,
         "writeAutoSubtitles": false,
         "subtitlesLang": "",
@@ -66,10 +68,12 @@
     },
     "medium": {
       "defaultCustomValues": {
+        "captureMode": "video+audio",
         "format": "best[height<=720][ext=mp4]/best[height<=720]/best",
         "mergeOutputFormat": "mp4",
         "recodeVideo": "none",
         "audioFormat": "none",
+        "audioQuality": "5",
         "writeSubtitles": false,
         "writeAutoSubtitles": false,
         "subtitlesLang": "",
@@ -80,10 +84,12 @@
     },
     "best": {
       "defaultCustomValues": {
+        "captureMode": "video+audio",
         "format": "bestvideo*+bestaudio/best",
         "mergeOutputFormat": "mkv",
         "recodeVideo": "none",
         "audioFormat": "none",
+        "audioQuality": "0",
         "writeSubtitles": false,
         "writeAutoSubtitles": false,
         "subtitlesLang": "",
@@ -94,10 +100,12 @@
     },
     "custom": {
       "defaultCustomValues": {
+        "captureMode": "video+audio",
         "format": "bestvideo*+bestaudio/best",
         "mergeOutputFormat": "mkv",
         "recodeVideo": "none",
         "audioFormat": "none",
+        "audioQuality": "5",
         "writeSubtitles": false,
         "writeAutoSubtitles": false,
         "subtitlesLang": "",

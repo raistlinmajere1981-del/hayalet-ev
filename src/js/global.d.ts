@@ -194,6 +194,14 @@ declare global {
     ConversationListManager?: {
       refresh: (options?: Record<string, unknown>) => Promise<void>;
     };
+    OpencodeUiHostBridge?: {
+      openSession?: (
+        title?: string
+      ) => Promise<{ success: boolean; sessionId?: string; error?: string }>;
+      switchSession?: (
+        sessionId: string
+      ) => Promise<{ success: boolean; sessionId?: string; error?: string }>;
+    };
 
     __app_settings_unsub?: () => void;
     __app_provider_config?: ProviderConfig;

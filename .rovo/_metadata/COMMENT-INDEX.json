@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-20T16:16:21.024Z",
+  "generatedAt": "2026-04-21T18:59:52.953Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -2328,8 +2328,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 1074,
-          "endLine": 1074,
+          "startLine": 1080,
+          "endLine": 1080,
           "text": "NOTE: Prevent duplicate sends while the button is already loading.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2337,8 +2337,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1093,
-          "endLine": 1093,
+          "startLine": 1099,
+          "endLine": 1099,
           "text": "NOTE: Allow Ctrl+Enter sends while still preventing duplicate dispatches.",
           "prefix": "NOTE",
           "scopeType": "file",

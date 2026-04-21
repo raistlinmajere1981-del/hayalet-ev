@@ -2,7 +2,131 @@ import type { AnalysisReference, AnalysisScope } from "../shared/types/analysis-
 
 export type LabRecord = Record<string, unknown>;
 
+/** @deprecated V2.3 uses WorkspaceMode — kept for hydration and internal pipeline compat */
 export type LabStage = "source" | "edit" | "process" | "report";
+
+/** V2.3 workspace mode — replaces stage navigation */
+export type WorkspaceMode = "loading" | "workspace" | "analyzing" | "complete";
+
+/** V2.3 user-facing intent identifiers — NO tool names exposed */
+export type LabIntentId =
+  | "visual-inspection"
+  | "audio-investigation"
+  | "detail-enhancement"
+  | "anomaly-detection";
+
+export interface LabIntent {
+  id: LabIntentId;
+  label: string;
+  description: string;
+  sourceKinds: Array<"video" | "audio" | "image">;
+  internalCapabilities: CapabilityFamilyId[];
+}
+
+export const WORKSPACE_INTENTS: LabIntent[] = [
+  {
+    id: "visual-inspection",
+    label: "Visual inspection",
+    description: "Examine visual structure, frame composition, and forensic markers.",
+    sourceKinds: ["video", "image"],
+    internalCapabilities: ["visual-structure", "visual-forensics"],
+  },
+  {
+    id: "audio-investigation",
+    label: "Audio investigation",
+    description: "Analyze audio signals, recover details, and identify speakers.",
+    sourceKinds: ["video", "audio"],
+    internalCapabilities: ["audio-signal", "audio-recovery", "speaker-analysis"],
+  },
+  {
+    id: "detail-enhancement",
+    label: "Detail enhancement",
+    description: "Generate transcripts and separate audio sources for deeper review.",
+    sourceKinds: ["video", "audio"],
+    internalCapabilities: ["transcription", "source-separation"],
+  },
+  {
+    id: "anomaly-detection",
+    label: "Anomaly detection",
+    description: "Detect visual and audio anomalies, classify sounds, and analyze prosody.",
+    sourceKinds: ["video", "audio", "image"],
+    internalCapabilities: [
+      "visual-forensics",
+      "sound-classification",
+      "prosody-emotion",
+      "music-analysis",
+    ],
+  },
+];
+
+export interface LabBookmark {
+  id: string;
+  timeMs: number;
+  frameIndex: number | null;
+  note: string;
+  createdAt: number;
+}
+
+export interface LabROIRegion {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  label: string;
+  active: boolean;
+}
+
+export interface LabInteractiveSettings {
+  brightness: number;
+  contrast: number;
+  gamma: number;
+  saturation: number;
+  hueRotate: number;
+  sharpness: number;
+  channelR: boolean;
+  channelG: boolean;
+  channelB: boolean;
+  edgeHighlight: boolean;
+  invert: boolean;
+}
+
+export type AudioVisualizationMode = "none" | "waveform" | "spectrum";
+
+export interface LabParametricEQBand {
+  frequency: number;
+  gain: number;
+  Q: number;
+  type: "peaking" | "lowshelf" | "highshelf";
+}
+
+export interface LabAudioFocusSettings {
+  gain: number;
+  filterType: "none" | "lowpass" | "highpass" | "bandpass";
+  filterFrequency: number;
+  filterQ: number;
+  visualizationMode: AudioVisualizationMode;
+  eqBands: LabParametricEQBand[];
+}
+
+export type LabProcessSectionId = "pipeline" | "findings" | "artifacts";
+
+export interface LabWorkspaceUiState {
+  timelineStartMs: number | null;
+  timelineEndMs: number | null;
+  roiRegions: LabROIRegion[];
+  interactiveSettings: LabInteractiveSettings;
+  audioFocus: LabAudioFocusSettings;
+  hypothesis: string;
+  bookmarks: LabBookmark[];
+  selectedIntents: LabIntentId[];
+  sourceIntakeCollapsed: boolean;
+  rightPanelCollapsed: boolean;
+  processViewActive: boolean;
+  activeStepPreviewId: string | null;
+  processPanelCollapsedSections: LabProcessSectionId[];
+  reportOverlayOpen: boolean;
+}
 
 /** Capability families — user-facing groups that resolve to internal modules. */
 export type CapabilityFamilyId =
@@ -156,6 +280,7 @@ export interface LabEventFeedItem {
   severity: LabEventSeverity;
   message: string;
   detail: string | null;
+  percent?: number | null;
   timestamp: number;
   source: "host" | "ui" | "system";
   action: string | null;
@@ -173,11 +298,15 @@ export interface LabEventFeedItem {
   throttleWindow?: string | null;
 }
 
+export type YoutubeCaptureMode = "video+audio" | "audio-only" | "video-only";
+
 export interface LabSourceDrafts {
   fileNameHint: string;
   urlInput: string;
   youtubeUrl: string;
   youtubePreset: string | null;
+  youtubeCustom: LabRecord;
+  youtubeCaptureMode: YoutubeCaptureMode;
 }
 
 export interface LabEditDrafts {
@@ -330,10 +459,26 @@ export interface LabUserReportFinding {
   evidence: string[];
 }
 
+export interface LabUserReportSuspiciousFrame {
+  artifactId: string;
+  previewUrl: string;
+  label: string;
+}
+
+export interface LabUserReportModuleSummary {
+  id: string;
+  title: string;
+  status: string;
+}
+
 export interface LabUserReport {
   summary: string;
   confidence: string;
   topFindings: LabUserReportFinding[];
+  suspiciousFrames: LabUserReportSuspiciousFrame[];
+  hypothesisResult: string | null;
+  elapsedSeconds: number;
+  moduleSummary: LabUserReportModuleSummary[];
 }
 
 export interface LabAiReport {
@@ -343,6 +488,9 @@ export interface LabAiReport {
   warnings: string[];
   errors: string[];
   degradedConditions: string[];
+  moduleTrace: LabModuleTraceEntry[];
+  analysisScope: AnalysisScope | null;
+  comparisonVariants: LabComparisonVariant[];
 }
 
 export interface LabReportSet {
@@ -385,6 +533,8 @@ export interface LabStoreUiState {
   editSidePanelCollapsed: boolean;
   /** Raw log section collapsed in Process stage */
   rawLogCollapsed: boolean;
+  /** V2.3 workspace state */
+  workspace: LabWorkspaceUiState;
 }
 
 export interface LabPersistedState {
@@ -421,6 +571,8 @@ export interface LabPersistedState {
   analysisControlsCollapsed: boolean;
   editSidePanelCollapsed?: boolean;
   rawLogCollapsed?: boolean;
+  /** V2.3 workspace state persistence */
+  workspace?: Partial<LabWorkspaceUiState>;
 }
 
 export interface LabStoreState {
@@ -523,7 +675,27 @@ export type LabStoreEvent =
   | { type: "edit-side-panel-toggled"; force?: boolean }
   | { type: "raw-log-toggled"; force?: boolean }
   | { type: "push-event"; event: LabEventFeedItem }
-  | { type: "clear-events" };
+  | { type: "clear-events" }
+  // V2.3 workspace events
+  | { type: "workspace-timeline-updated"; startMs: number | null; endMs: number | null }
+  | { type: "workspace-roi-added"; region: LabROIRegion }
+  | { type: "workspace-roi-updated"; region: LabROIRegion }
+  | { type: "workspace-roi-removed"; regionId: string }
+  | { type: "workspace-roi-toggled"; regionId: string }
+  | { type: "workspace-interactive-updated"; patch: Partial<LabInteractiveSettings> }
+  | { type: "workspace-hypothesis-updated"; text: string }
+  | { type: "workspace-bookmark-added"; bookmark: LabBookmark }
+  | { type: "workspace-image-analysis-requested" }
+  | { type: "workspace-bookmark-removed"; bookmarkId: string }
+  | { type: "workspace-intent-toggled"; intentId: LabIntentId }
+  | { type: "workspace-intent-set"; intents: LabIntentId[] }
+  | { type: "workspace-source-intake-toggled"; force?: boolean }
+  | { type: "workspace-audio-updated"; patch: Partial<LabAudioFocusSettings> }
+  | { type: "workspace-right-panel-toggled"; force?: boolean }
+  | { type: "workspace-process-view-toggled"; force?: boolean }
+  | { type: "workspace-step-preview-activated"; stepId: string | null }
+  | { type: "workspace-process-section-toggled"; sectionId: LabProcessSectionId }
+  | { type: "report-overlay-toggled"; open: boolean };
 
 export function createLabFeatureMeta(featureId: LabFeatureId): LabFeatureMeta {
   return (

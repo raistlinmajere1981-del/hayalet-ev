@@ -1,3 +1,38 @@
+export const WORKSPACE_INTENTS = [
+  {
+    id: "visual-inspection",
+    label: "Visual inspection",
+    description: "Examine visual structure, frame composition, and forensic markers.",
+    sourceKinds: ["video", "image"],
+    internalCapabilities: ["visual-structure", "visual-forensics"]
+  },
+  {
+    id: "audio-investigation",
+    label: "Audio investigation",
+    description: "Analyze audio signals, recover details, and identify speakers.",
+    sourceKinds: ["video", "audio"],
+    internalCapabilities: ["audio-signal", "audio-recovery", "speaker-analysis"]
+  },
+  {
+    id: "detail-enhancement",
+    label: "Detail enhancement",
+    description: "Generate transcripts and separate audio sources for deeper review.",
+    sourceKinds: ["video", "audio"],
+    internalCapabilities: ["transcription", "source-separation"]
+  },
+  {
+    id: "anomaly-detection",
+    label: "Anomaly detection",
+    description: "Detect visual and audio anomalies, classify sounds, and analyze prosody.",
+    sourceKinds: ["video", "audio", "image"],
+    internalCapabilities: [
+      "visual-forensics",
+      "sound-classification",
+      "prosody-emotion",
+      "music-analysis"
+    ]
+  }
+];
 export const CAPABILITY_FAMILIES = [
   {
     id: "visual-structure",

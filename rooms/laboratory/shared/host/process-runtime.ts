@@ -520,14 +520,6 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
       throw new Error("Active project is missing.");
     }
 
-    if (
-      featureId !== audioFeatureId &&
-      featureId !== subtitleFeatureId &&
-      asNonEmptyString(toRecord(toRecord(project["profile"])["preflight"])["status"]) !== "ready"
-    ) {
-      throw new Error("Run the profile preflight before starting the process stage.");
-    }
-
     if (featureId !== subtitleFeatureId) {
       ensureEditToolReady(runtime);
     }

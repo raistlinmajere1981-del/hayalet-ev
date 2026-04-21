@@ -13,8 +13,9 @@ test("rooms expose the shared shell seams expected by the normalized layout cont
     "rooms/game-room/ui/game-room-ui-runtime.ts",
     "rooms/game-room/host/runtime.ts",
     "rooms/laboratory/ui/lab-root.ts",
-    "rooms/laboratory/shared/ui/shell-runtime.ts",
-    "rooms/laboratory/shared/types/room-shell-contracts.ts",
+    "rooms/laboratory/ui/workspace-surface.ts",
+    "rooms/laboratory/ui/tool-management-overlay.ts",
+    "rooms/laboratory/ui/lab-theme.css",
   ].forEach((filePath) => {
     assert.equal(existsSync(filePath), true, filePath);
   });
@@ -34,50 +35,7 @@ test("room root entrypoints stay orchestration-only after layout normalization",
   const laboratoryHostIndexSource = readFileSync("rooms/laboratory/host/index.ts", "utf8");
   const laboratoryUiIndexSource = readFileSync("rooms/laboratory/ui/index.ts", "utf8");
   const laboratoryUiStyleSource = readFileSync("rooms/laboratory/ui/style.css", "utf8");
-  const laboratorySharedLayoutStyleSource = readFileSync(
-    "rooms/laboratory/shared/styles/layout.css",
-    "utf8"
-  );
-  const laboratorySharedComponentsStyleSource = readFileSync(
-    "rooms/laboratory/shared/styles/components.css",
-    "utf8"
-  );
-  const laboratorySharedNavigationStyleSource = readFileSync(
-    "rooms/laboratory/shared/styles/components/navigation.css",
-    "utf8"
-  );
-  const laboratorySharedPanelsStyleSource = readFileSync(
-    "rooms/laboratory/shared/styles/components/panels.css",
-    "utf8"
-  );
-  const laboratorySharedControlsStyleSource = readFileSync(
-    "rooms/laboratory/shared/styles/components/controls.css",
-    "utf8"
-  );
-  const laboratorySharedFeedbackStyleSource = readFileSync(
-    "rooms/laboratory/shared/styles/components/feedback.css",
-    "utf8"
-  );
-  const laboratorySharedOverlayStyleSource = readFileSync(
-    "rooms/laboratory/shared/styles/components/overlay.css",
-    "utf8"
-  );
-  const laboratorySharedAudioSignalStyleSource = readFileSync(
-    "rooms/laboratory/shared/styles/audio-signal.css",
-    "utf8"
-  );
-  const laboratorySharedResponsiveStyleSource = readFileSync(
-    "rooms/laboratory/shared/styles/responsive.css",
-    "utf8"
-  );
-  const laboratoryMediaAnalysisStyleSource = readFileSync(
-    "rooms/laboratory/main-functions/media-analysis/styles.css",
-    "utf8"
-  );
-  const laboratorySubtitleAnalysisStyleSource = readFileSync(
-    "rooms/laboratory/main-functions/subtitle-analysis/styles.css",
-    "utf8"
-  );
+  const laboratoryThemeStyleSource = readFileSync("rooms/laboratory/ui/lab-theme.css", "utf8");
 
   assert.match(gameRoomHostIndexSource, /from "\.\/runtime\.js"/);
   assert.match(gameRoomHostIndexSource, /export default createGameRoomHostRuntime\(\);/);
@@ -98,21 +56,11 @@ test("room root entrypoints stay orchestration-only after layout normalization",
   );
   assert.match(laboratoryUiIndexSource, /import "\.\/lab-root\.js";/);
   assert.match(laboratoryUiStyleSource, /lab-theme\.css/);
-  assert.match(laboratoryMediaAnalysisStyleSource, /@import "\.\/styles\/edit\.css";/);
-  assert.match(laboratoryMediaAnalysisStyleSource, /@import "\.\/styles\/profile\.css";/);
-  assert.match(laboratorySubtitleAnalysisStyleSource, /lab-discovery-table/);
-  assert.match(laboratorySharedLayoutStyleSource, /lab-layout/);
-  assert.match(laboratorySharedComponentsStyleSource, /\.\/components\/navigation\.css/);
-  assert.match(laboratorySharedComponentsStyleSource, /\.\/components\/panels\.css/);
-  assert.match(laboratorySharedComponentsStyleSource, /\.\/components\/controls\.css/);
-  assert.match(laboratorySharedComponentsStyleSource, /\.\/components\/feedback\.css/);
-  assert.match(laboratorySharedComponentsStyleSource, /\.\/components\/overlay\.css/);
-  assert.match(laboratorySharedNavigationStyleSource, /lab-stage-pill/);
-  assert.match(laboratorySharedPanelsStyleSource, /lab-preview-card/);
-  assert.match(laboratorySharedControlsStyleSource, /lab-toggle/);
-  assert.match(laboratorySharedFeedbackStyleSource, /lab-process-row/);
-  assert.match(laboratorySharedOverlayStyleSource, /lab-overlay/);
-  assert.match(laboratorySharedAudioSignalStyleSource, /lab-audio-workbench/);
-  assert.match(laboratorySharedResponsiveStyleSource, /@media \(max-width: 760px\)/);
+  assert.doesNotMatch(laboratoryUiStyleSource, /shared\/styles\/shell\.css/);
+  assert.doesNotMatch(laboratoryUiStyleSource, /main-functions\/media-analysis\/styles\.css/);
+  assert.match(laboratoryThemeStyleSource, /\.labx-shell/);
+  assert.match(laboratoryThemeStyleSource, /\.labx-source-intake__frame/);
+  assert.match(laboratoryThemeStyleSource, /\.labx-process-panel/);
+  assert.match(laboratoryThemeStyleSource, /\.labx-module-overlay/);
   assert.doesNotMatch(laboratoryUiStyleSource, /audio-analysis\/styles\.css/);
 });

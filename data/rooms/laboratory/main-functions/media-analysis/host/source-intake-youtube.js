@@ -83,7 +83,11 @@ export function createMediaYoutubeSourceIntakeRuntime(deps) {
   function buildYtDlpArgs(project, toolState, sourceDir) {
     const settings = getResolvedYoutubeSettings(project, toolState.sourcePresets);
     const values = settings.values;
-    const youtubeUrl = asNonEmptyString(getSourceDrafts(project)["youtubeUrl"]);
+    const drafts = getSourceDrafts(project);
+    const youtubeUrl = asNonEmptyString(drafts["youtubeUrl"]);
+    const captureMode = asNonEmptyString(drafts["youtubeCaptureMode"]) || "video+audio";
+    const isAudioOnly = captureMode === "audio-only";
+    const isVideoOnly = captureMode === "video-only";
     const args = [
       "--newline",
       "--progress",
@@ -92,22 +96,50 @@ export function createMediaYoutubeSourceIntakeRuntime(deps) {
       "-o",
       `${sourceDir}/%(title).120B-%(id)s.%(ext)s`
     ];
-    let formatValue = asNonEmptyString(values["format"]) || "best";
-    if (formatValue.indexOf("+") >= 0 && toolState.ffmpeg.installed !== true) {
-      formatValue = "best";
-    }
-    args.push("-f", formatValue);
-    const mergeOutputFormat = asNonEmptyString(values["mergeOutputFormat"]);
-    if (mergeOutputFormat && mergeOutputFormat !== "auto") {
-      args.push("--merge-output-format", mergeOutputFormat);
-    }
-    const recodeVideo = asNonEmptyString(values["recodeVideo"]);
-    if (recodeVideo && recodeVideo !== "none") {
-      args.push("--recode-video", recodeVideo);
-    }
-    const audioFormat = asNonEmptyString(values["audioFormat"]);
-    if (audioFormat && audioFormat !== "none") {
-      args.push("-x", "--audio-format", audioFormat);
+    if (isAudioOnly) {
+      args.push("-x");
+      const audioFormat = asNonEmptyString(values["audioFormat"]);
+      if (audioFormat && audioFormat !== "none") {
+        args.push("--audio-format", audioFormat);
+      } else {
+        args.push("--audio-format", "best");
+      }
+      const audioQuality = asNonEmptyString(values["audioQuality"]);
+      if (audioQuality && audioQuality !== "best") {
+        args.push("--audio-quality", audioQuality);
+      }
+    } else if (isVideoOnly) {
+      args.push("-f", "bestvideo");
+      const mergeOutputFormat = asNonEmptyString(values["mergeOutputFormat"]);
+      if (mergeOutputFormat && mergeOutputFormat !== "auto") {
+        args.push("--merge-output-format", mergeOutputFormat);
+      }
+      const recodeVideo = asNonEmptyString(values["recodeVideo"]);
+      if (recodeVideo && recodeVideo !== "none") {
+        args.push("--recode-video", recodeVideo);
+      }
+    } else {
+      let formatValue = asNonEmptyString(values["format"]) || "bestvideo*+bestaudio/best";
+      if (formatValue.indexOf("+") >= 0 && toolState.ffmpeg.installed !== true) {
+        formatValue = "best";
+      }
+      args.push("-f", formatValue);
+      const mergeOutputFormat = asNonEmptyString(values["mergeOutputFormat"]);
+      if (mergeOutputFormat && mergeOutputFormat !== "auto") {
+        args.push("--merge-output-format", mergeOutputFormat);
+      }
+      const recodeVideo = asNonEmptyString(values["recodeVideo"]);
+      if (recodeVideo && recodeVideo !== "none") {
+        args.push("--recode-video", recodeVideo);
+      }
+      const audioFormat = asNonEmptyString(values["audioFormat"]);
+      if (audioFormat && audioFormat !== "none") {
+        args.push("-x", "--audio-format", audioFormat);
+        const audioQuality = asNonEmptyString(values["audioQuality"]);
+        if (audioQuality && audioQuality !== "best") {
+          args.push("--audio-quality", audioQuality);
+        }
+      }
     }
     if (values["writeSubtitles"] === true) {
       args.push("--write-subs");
@@ -162,6 +194,8 @@ export function createMediaYoutubeSourceIntakeRuntime(deps) {
     if (youtubeUrl === null) {
       throw new Error("YouTube URL is empty.");
     }
+    const captureMode = asNonEmptyString(drafts.youtubeCaptureMode) || "video+audio";
+    const derivedSourceKind = captureMode === "audio-only" ? "audio" : toString(source["kind"]) || "video";
     await cancelJobsForProject(runtime, projectId, requestId);
     const jobId = `room-youtube-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     registerJob(runtime, {
@@ -208,7 +242,7 @@ export function createMediaYoutubeSourceIntakeRuntime(deps) {
       }
       const preparedSource = await resolvePreparedSource(runtime, project, {
         jobId,
-        mimeType: normalizeMimeType(storedFileName, toString(source["kind"]) || "video"),
+        mimeType: normalizeMimeType(storedFileName, derivedSourceKind),
         requestId,
         storedFileName,
         storedPath
@@ -219,6 +253,7 @@ export function createMediaYoutubeSourceIntakeRuntime(deps) {
         }
         const nextSource = toProjectSourceRecord(nextProject.source);
         nextProject.source = nextSource;
+        nextSource["kind"] = derivedSourceKind;
         nextSource["mode"] = "youtube";
         nextSource["status"] = "ready";
         nextSource["storedPath"] = preparedSource.storedPath;
