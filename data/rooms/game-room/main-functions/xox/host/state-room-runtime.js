@@ -1,0 +1,129 @@
+import { loadContext, readLocale } from "../../../shared/host/context-state.js";
+import { FEATURE_ID, ROOM_ID } from "../../../shared/host/feature-meta.js";
+import { fillTemplate, translate } from "../../../shared/host/text.js";
+import {
+  buildBoardAscii,
+  getAvailableCells,
+  normalizeState,
+  STATUS_COPY
+} from "./state-core.js";
+import {
+  normalizeInviteInbox,
+  normalizePendingInvite
+} from "./state-invites.js";
+export function loadState(api) {
+  return normalizeState(api.getState("xox-game"), readLocale(api));
+}
+export function saveState(api, state) {
+  const normalized = normalizeState(state, readLocale(api));
+  normalized.locale = readLocale(api);
+  api.setState("locale", normalized.locale);
+  api.setState("xox-game", normalized);
+  return normalized;
+}
+export function loadInviteInbox(api) {
+  return normalizeInviteInbox(api.getState("xox-invite-inbox"));
+}
+export function saveInviteInbox(api, inviteInbox) {
+  const normalized = normalizeInviteInbox(inviteInbox);
+  api.setState("xox-invite-inbox", normalized);
+  return normalized;
+}
+export function loadPendingInvite(api) {
+  return normalizePendingInvite(api.getState("xox-pending-invite"));
+}
+export function savePendingInvite(api, pendingInvite) {
+  const normalized = normalizePendingInvite(pendingInvite);
+  if (normalized === null) {
+    api.deleteState?.("xox-pending-invite");
+    return null;
+  }
+  api.setState("xox-pending-invite", normalized);
+  return normalized;
+}
+export function clearPendingInvite(api) {
+  api.deleteState?.("xox-pending-invite");
+}
+export function createUs1OpponentFallback(state) {
+  return {
+    slotId: "us1",
+    label: "US1",
+    nickname: state.opponentNickname || "US1",
+    avatar: null,
+    assigned: state.remoteUserId !== null,
+    connected: false,
+    ready: false,
+    dispatchable: state.remoteUserId !== null,
+    state: "assigned",
+    urlExcluded: false,
+    providerId: "us1",
+    accountId: null,
+    remoteUserId: state.remoteUserId
+  };
+}
+export function getOpponentInfo(context, state) {
+  if (state.target === "us1") {
+    const us1Slot = context.slots.us1;
+    if (state.remoteUserId !== null && us1Slot.remoteUserId === state.remoteUserId) {
+      return us1Slot;
+    }
+    if (state.remoteUserId === null) {
+      return us1Slot;
+    }
+    return createUs1OpponentFallback(state);
+  }
+  return state.target === "ai2" ? context.slots.ai2 : context.slots.ai1;
+}
+export function resolveStatusText(state, context) {
+  const opponent = getOpponentInfo(context, state);
+  return fillTemplate(translate(state.locale, STATUS_COPY, state.statusKey), {
+    opponent: opponent.nickname
+  });
+}
+export function serializeState(api, state, context) {
+  const opponent = getOpponentInfo(context, state);
+  return {
+    roomId: ROOM_ID,
+    featureId: FEATURE_ID,
+    board: state.board.slice(),
+    boardAscii: buildBoardAscii(state.board),
+    availableCells: getAvailableCells(state.board),
+    active: state.active,
+    awaitingMoveFrom: state.awaitingMoveFrom,
+    result: state.result,
+    winner: state.winner,
+    selectedTarget: state.target,
+    starter: state.starter,
+    protocolDelivered: state.protocolDelivered,
+    blockedReason: state.blockedReason,
+    userSymbol: state.userSymbol,
+    aiSymbol: state.aiSymbol,
+    protocolPreface: state.protocolPreface,
+    matchId: state.matchId,
+    inviteId: state.inviteId,
+    turnIndex: state.turnIndex,
+    localSessionId: state.localSessionId,
+    remoteUserId: state.remoteUserId,
+    lastRemoteTransportMessageId: state.lastRemoteTransportMessageId,
+    lastRemoteTurnIndex: state.lastRemoteTurnIndex,
+    pendingInvite: loadPendingInvite(api),
+    inviteInbox: loadInviteInbox(api),
+    opponent,
+    opponentReady: opponent.dispatchable === true,
+    user: {
+      nickname: context.user.nickname
+    },
+    status: resolveStatusText(state, context)
+  };
+}
+export function pushRoomState(api, state) {
+  const context = loadContext(api);
+  const savedState = saveState(api, state);
+  api.notifyRoom?.("xox-state", {
+    state: serializeState(api, savedState, context)
+  });
+  return savedState;
+}
+export function refreshRoomState(api) {
+  return pushRoomState(api, loadState(api));
+}

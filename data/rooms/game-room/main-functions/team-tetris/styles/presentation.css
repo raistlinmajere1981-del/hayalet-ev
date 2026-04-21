@@ -1,0 +1,140 @@
+@media (max-width: 1380px) {
+  .tt-stage-main {
+    grid-template-columns: 1fr;
+  }
+
+  .tt-support-stack {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto auto;
+  }
+
+  .tt-support-pair {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 1180px) {
+  .tt-arena {
+    grid-template-columns: 1fr;
+  }
+
+  .tt-board-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 860px) {
+  .tt-requirement-grid,
+  .tt-toggle-row,
+  .tt-partner-row,
+  .tt-actions,
+  .tt-support-stack,
+  .tt-support-pair {
+    grid-template-columns: 1fr;
+  }
+
+  .tt-rotation-row,
+  .tt-actions--compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .tt-shell {
+    padding: 0.55rem;
+  }
+
+  .tt-surface {
+    padding: 0.55rem;
+    border-radius: 1.2rem;
+  }
+
+  .tt-panel,
+  .tt-stage,
+  .tt-requirement,
+  .tt-board-card,
+  .tt-context-card {
+    border-radius: 0.96rem;
+  }
+
+  .tt-rotation-row,
+  .tt-actions--compact {
+    grid-template-columns: 1fr;
+  }
+}
+
+body[data-presentation-mode="scene-view"] .tt-shell {
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  padding: 0;
+}
+
+body[data-presentation-mode="scene-view"] .tt-surface {
+  min-height: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+body[data-presentation-mode="scene-view"] .tt-arena {
+  min-height: 0;
+  grid-template-columns: minmax(13.5rem, 15rem) minmax(0, 1fr);
+  gap: 0.45rem;
+  overflow: hidden;
+}
+
+body[data-presentation-mode="scene-view"] .tt-rail {
+  gap: 0.45rem;
+}
+
+body[data-presentation-mode="scene-view"] .tt-panel,
+body[data-presentation-mode="scene-view"] .tt-stage,
+body[data-presentation-mode="scene-view"] .tt-requirement,
+body[data-presentation-mode="scene-view"] .tt-board-card,
+body[data-presentation-mode="scene-view"] .tt-context-card {
+  border-radius: 0.88rem;
+}
+
+body[data-presentation-mode="scene-view"] .tt-panel {
+  padding: 0.54rem;
+  gap: 0.4rem;
+}
+
+body[data-presentation-mode="scene-view"] .tt-panel__label,
+body[data-presentation-mode="scene-view"] .tt-panel__eyebrow {
+  font-size: 0.58rem;
+}
+
+body[data-presentation-mode="scene-view"] .tt-panel__title {
+  font-size: clamp(1.22rem, 2.2vw, 1.6rem);
+}
+
+body[data-presentation-mode="scene-view"] .tt-panel__body,
+body[data-presentation-mode="scene-view"] .tt-panel__hint,
+body[data-presentation-mode="scene-view"] .tt-context-card__meta,
+body[data-presentation-mode="scene-view"] .tt-context-card__lead {
+  font-size: 0.7rem;
+  line-height: 1.32;
+}
+
+body[data-presentation-mode="scene-view"] .tt-stage {
+  padding: 0.52rem;
+}
+
+body[data-presentation-mode="scene-view"] .tt-stage-main {
+  grid-template-columns: minmax(0, 1fr) minmax(13.5rem, 14.5rem);
+  gap: 0.45rem;
+}
+
+body[data-presentation-mode="scene-view"] .tt-board {
+  --tt-cell-size: clamp(0.56rem, 0.8vw, 0.92rem);
+}
+
+body[data-presentation-mode="scene-view"] .tt-context-card[data-variant="snapshot"] .tt-board {
+  --tt-cell-size: clamp(0.22rem, 0.3vw, 0.32rem);
+}

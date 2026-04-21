@@ -1,0 +1,221 @@
+import { buildUs1RoomBridgeCommand } from "../../../shared/host/slot-bridge-command.js";
+export function createGameRoomXoxUs1InviteRuntime(deps) {
+  const {
+    FEATURE_ID,
+    ROOM_ID,
+    buildInviteId,
+    buildUs1InviteText,
+    buildUs1MoveText,
+    buildUs1ResetText,
+    commandMessage,
+    createInitialState,
+    createPendingInvite,
+    getOpponentInfo,
+    loadContext,
+    loadInviteInbox,
+    normalizeInviteInbox,
+    pushRoomState,
+    readLocale,
+    removePendingInvite,
+    resolveStateMatchId,
+    saveInviteInbox,
+    savePendingInvite
+  } = deps;
+  function matchesInviteEntry(entry, inviteId, remoteUserId) {
+    if (!entry) {
+      return false;
+    }
+    const matchesInviteId = entry.inviteId === inviteId || entry.matchId === inviteId;
+    if (matchesInviteId !== true) {
+      return false;
+    }
+    if (remoteUserId === null || remoteUserId === "") {
+      return true;
+    }
+    return entry.remoteUserId === remoteUserId;
+  }
+  function findInviteById(api, inviteId, remoteUserId) {
+    return loadInviteInbox(api).find(function(entry) {
+      return matchesInviteEntry(entry, inviteId, remoteUserId || null);
+    }) || null;
+  }
+  function buildInviteInboxSnapshotKey(inviteInbox) {
+    return JSON.stringify(
+      inviteInbox.map((entry) => ({
+        roomId: entry.roomId,
+        featureId: entry.featureId,
+        inviteId: entry.inviteId,
+        matchId: entry.matchId,
+        remoteUserId: entry.remoteUserId,
+        nickname: entry.nickname,
+        senderEmail: entry.senderEmail,
+        note: entry.note,
+        starter: entry.starter,
+        localSessionId: entry.localSessionId,
+        conversationId: entry.conversationId,
+        transportMessageId: entry.transportMessageId,
+        sentAt: entry.sentAt
+      }))
+    );
+  }
+  function syncInviteInboxFromSnapshot(api, roomInviteInbox) {
+    const currentInviteInbox = loadInviteInbox(api);
+    const nextInviteInbox = normalizeInviteInbox(roomInviteInbox).filter(function(entry) {
+      return entry.roomId === ROOM_ID && entry.featureId === FEATURE_ID && entry.inviteId !== "" && entry.remoteUserId !== "";
+    });
+    if (buildInviteInboxSnapshotKey(currentInviteInbox) === buildInviteInboxSnapshotKey(nextInviteInbox)) {
+      return false;
+    }
+    saveInviteInbox(api, nextInviteInbox);
+    return true;
+  }
+  function removeInviteFromInbox(api, inviteId, remoteUserId) {
+    const nextInviteInbox = loadInviteInbox(api).filter(function(entry) {
+      return matchesInviteEntry(entry, inviteId, remoteUserId || null) !== true;
+    });
+    saveInviteInbox(api, nextInviteInbox);
+  }
+  function applyInviteAcceptedState(api, inviteEntry, starter) {
+    const state = createInitialState(readLocale(api), "us1", starter);
+    state.active = true;
+    state.result = "pending";
+    state.awaitingMoveFrom = starter === "ai" ? "ai" : "user";
+    state.statusKey = starter === "ai" ? "aiTurn" : "userTurn";
+    state.matchId = inviteEntry.matchId || inviteEntry.inviteId;
+    state.inviteId = inviteEntry.inviteId || inviteEntry.matchId || null;
+    state.turnIndex = 0;
+    state.localSessionId = inviteEntry.localSessionId || null;
+    state.remoteUserId = inviteEntry.remoteUserId;
+    state.opponentNickname = inviteEntry.nickname;
+    state.protocolDelivered = true;
+    removePendingInvite(api);
+    removeInviteFromInbox(
+      api,
+      inviteEntry.matchId || inviteEntry.inviteId,
+      inviteEntry.remoteUserId
+    );
+    return pushRoomState(api, state);
+  }
+  function readIncomingInviteStarter(inviteEntry) {
+    return inviteEntry.starter === "opponent" ? "user" : "ai";
+  }
+  function readOutgoingInviteStarter(inviteEntry) {
+    return inviteEntry.starter === "opponent" ? "ai" : "user";
+  }
+  async function sendUs1Invite(api, state, inviteNote, syncUs1Mailbox) {
+    const context = loadContext(api);
+    const matchId = buildInviteId();
+    const opponent = getOpponentInfo(context, state);
+    const sendResult = await api.dispatchUs1BridgeMessage({
+      remoteUserId: opponent.remoteUserId || state.remoteUserId || null,
+      text: buildUs1InviteText(state, context, inviteNote),
+      roomEvent: {
+        roomId: ROOM_ID,
+        featureId: FEATURE_ID,
+        inviteId: matchId,
+        matchId,
+        eventType: "invite",
+        starter: state.starter === "ai" ? "opponent" : "user",
+        note: inviteNote !== "" ? inviteNote : null
+      }
+    });
+    if (sendResult.success !== true) {
+      return { success: false, message: commandMessage(state.locale, "dispatchFailed") };
+    }
+    state.statusKey = "invitePending";
+    state.matchId = matchId;
+    state.inviteId = matchId;
+    state.turnIndex = 0;
+    state.lastRemoteTransportMessageId = null;
+    state.lastRemoteTurnIndex = null;
+    state.localSessionId = typeof sendResult.localSessionId === "string" ? sendResult.localSessionId : null;
+    state.remoteUserId = opponent.remoteUserId || null;
+    state.opponentNickname = opponent.nickname;
+    savePendingInvite(
+      api,
+      createPendingInvite("outgoing", {
+        inviteId: matchId,
+        matchId,
+        remoteUserId: state.remoteUserId || opponent.remoteUserId || "us1",
+        nickname: opponent.nickname,
+        note: inviteNote,
+        starter: state.starter === "ai" ? "opponent" : "user",
+        localSessionId: state.localSessionId,
+        conversationId: typeof sendResult.conversationId === "string" ? sendResult.conversationId : ""
+      })
+    );
+    pushRoomState(api, state);
+    await syncUs1Mailbox(api, "invite-sent");
+    return { success: true, message: commandMessage(state.locale, "inviteSent") };
+  }
+  async function sendUs1Move(api, state, moveContext) {
+    const context = loadContext(api);
+    const opponent = getOpponentInfo(context, state);
+    if (opponent.dispatchable !== true || state.remoteUserId === null || opponent.remoteUserId !== null && opponent.remoteUserId !== state.remoteUserId) {
+      return { success: false, message: commandMessage(state.locale, "needReadyOpponent") };
+    }
+    const matchId = resolveStateMatchId(state) || "";
+    const movePayload = {
+      matchId,
+      inviteId: matchId,
+      turnIndex: moveContext.turnIndex,
+      boardHashBeforeMove: moveContext.boardHashBeforeMove,
+      cell: moveContext.cell
+    };
+    const sendResult = await api.dispatchUs1BridgeMessage({
+      localSessionId: state.localSessionId,
+      remoteUserId: state.remoteUserId,
+      text: buildUs1MoveText(
+        matchId,
+        moveContext.turnIndex,
+        moveContext.boardHashBeforeMove,
+        moveContext.cell
+      ),
+      roomCommand: buildUs1RoomBridgeCommand({
+        roomId: ROOM_ID,
+        featureId: FEATURE_ID,
+        commandName: "GameRoomXoxRemoteMove",
+        matchId,
+        turnIndex: moveContext.turnIndex,
+        boardHashBeforeMove: moveContext.boardHashBeforeMove,
+        payload: movePayload
+      })
+    });
+    if (sendResult.success !== true) {
+      return { success: false, message: commandMessage(state.locale, "dispatchFailed") };
+    }
+    if (typeof sendResult.localSessionId === "string" && sendResult.localSessionId !== "") {
+      state.localSessionId = sendResult.localSessionId;
+    }
+    pushRoomState(api, state);
+    return sendResult;
+  }
+  async function sendUs1Reset(api, resetContext) {
+    if (resetContext === null) {
+      return { success: true };
+    }
+    return await api.dispatchUs1BridgeMessage({
+      localSessionId: resetContext.localSessionId || null,
+      remoteUserId: resetContext.remoteUserId || null,
+      text: buildUs1ResetText(resetContext.matchId),
+      roomEvent: {
+        roomId: ROOM_ID,
+        featureId: FEATURE_ID,
+        inviteId: resetContext.matchId,
+        matchId: resetContext.matchId,
+        eventType: "reset"
+      }
+    });
+  }
+  return {
+    applyInviteAcceptedState,
+    findInviteById,
+    readIncomingInviteStarter,
+    readOutgoingInviteStarter,
+    removeInviteFromInbox,
+    sendUs1Invite,
+    sendUs1Move,
+    sendUs1Reset,
+    syncFromSnapshot: syncInviteInboxFromSnapshot
+  };
+}
