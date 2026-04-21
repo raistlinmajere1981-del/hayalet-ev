@@ -31,6 +31,7 @@ test("opencode-ui connect url resolver injects resumeSessionId from settings", (
 
   assert.match(content, /providerId === "opencode-ui"/);
   assert.match(content, /assistants\?\.lastOpencodeUiSessionId/);
+  assert.match(content, /parsed\.searchParams\.set\("resumeMode", this\._isResumeEnabled\(options\) \? "last" : "new"\)/);
   assert.match(content, /parsed\.searchParams\.set\("resumeSessionId", resumeSessionId\)/);
 });
 
@@ -55,7 +56,9 @@ test("opencode connect url resolver ignores stale root resume urls when adapter 
   const content = readAssistantIndex();
 
   assert.match(content, /providerId === "opencode"/);
-  assert.match(content, /const savedPath = savedParsed\.pathname\.replace\(\/\\\/\+\$\/u, ""\) \|\| "\/";/);
-  assert.match(content, /const basePath = baseParsed\.pathname\.replace\(\/\\\/\+\$\/u, ""\) \|\| "\/";/);
+  assert.match(content, /const normalizedSavedPath = savedParsed\.pathname\.replace\(\/\\\/\+\$\/u, ""\);/);
+  assert.match(content, /const normalizedBasePath = baseParsed\.pathname\.replace\(\/\\\/\+\$\/u, ""\);/);
+  assert.match(content, /const savedPath = normalizedSavedPath === "" \? "\/" : normalizedSavedPath;/);
+  assert.match(content, /const basePath = normalizedBasePath === "" \? "\/" : normalizedBasePath;/);
   assert.match(content, /savedParsed\.origin === baseParsed\.origin && savedPath === "\/" && basePath !== "\/"/);
 });

@@ -1315,16 +1315,10 @@ export default function createForgeRoomHostRuntime() {
         dispatchGoal(setGoalStatus(nextGoal, "draft"));
         dispatchDraftState([], null, []);
         clearExecutionState();
-        const preflightResult = await ensureFreshPreflight(nextGoal);
-        assertFreshPreflightOrLog("draft-generation", {
-          contextDigest: runRevision.contextDigest ?? "",
-          preflight: preflightResult.preflight,
-          runId: runRevision.runId ?? "",
-        });
         syncCoordinatorState({
           planStatus: "generating-draft",
           synthesisStatus: "idle",
-          note: `Generating a draft breakdown through ${effectiveArchitectSeatId.toUpperCase()} with the active preflight revision.`,
+          note: `Generating a draft breakdown through ${effectiveArchitectSeatId.toUpperCase()}.`,
         });
 
         let lastParsed = {

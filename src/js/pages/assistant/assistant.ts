@@ -1703,6 +1703,7 @@ export class AssistantController {
           isPackagedFileRoute ? `.${baseUrl}` : baseUrl,
           isPackagedFileRoute ? new URL(".", window.location.href) : window.location.origin
         );
+        parsed.searchParams.set("resumeMode", this._isResumeEnabled(options) ? "last" : "new");
         const resumeSessionId = this._getResumeSessionId(providerId, options);
         if (resumeSessionId !== "") {
           parsed.searchParams.set("resumeSessionId", resumeSessionId);

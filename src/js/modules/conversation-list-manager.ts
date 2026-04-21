@@ -143,7 +143,11 @@ class ConversationListManagerClass {
         }
 
         if (slotChanged || ai0SessionChanged) {
-          void this.refresh({ silent: true, skipNotify: true });
+          void this.refresh({
+            silent: ai0SessionChanged ? false : true,
+            skipNotify: true,
+            ...(ai0SessionChanged ? { provider: "ai0" } : {}),
+          });
         }
       }
     );

@@ -1267,6 +1267,10 @@ function resolveAssistantConnectUrl(baseUrl: string, providerId: string): string
         isPackagedFileRoute ? `.${baseUrl}` : baseUrl,
         isPackagedFileRoute ? new URL(".", window.location.href) : window.location.origin
       );
+      parsed.searchParams.set(
+        "resumeMode",
+        resolveAssistantResumeEnabled(settings) ? "last" : "new"
+      );
       const resumeSessionId = resolveAssistantResumeSessionId(providerId, settings);
       if (resumeSessionId !== "") {
         parsed.searchParams.set("resumeSessionId", resumeSessionId);

@@ -60,3 +60,63 @@ test("slot account change triggers conversation list refresh", async () => {
     ConversationListManager.destroy();
   }
 });
+
+test("ai0 session change refreshes topbar with stored selection instead of stale DOM value", async () => {
+  let settingsListener: ((event: { changedPaths: string[] }) => void) | null = null;
+  const refreshCalls: Array<{
+    silent?: boolean;
+    forceSelectId?: string;
+    skipNotify?: boolean;
+    provider?: string;
+  }> = [];
+
+  const originalSubscribe = SettingsManager.subscribe.bind(SettingsManager);
+  const originalSlotOn = SlotController.on.bind(SlotController);
+  const originalRefresh = ConversationListManager.refresh.bind(ConversationListManager);
+  const originalSyncAi0SelectionFromSettings =
+    ConversationListManager._syncAi0SelectionFromSettings.bind(ConversationListManager);
+
+  SettingsManager.subscribe = (
+    listener: (event: { settings: unknown; changedPaths: string[] }) => void
+  ): (() => void) => {
+    settingsListener = (event: { changedPaths: string[] }) => {
+      listener({ settings: null, changedPaths: event.changedPaths });
+    };
+    return (): void => {};
+  };
+
+  SlotController.on = (
+    _event: SlotEvent,
+    _listener: (payload: { event?: string; slot?: string; data?: { isDefaultPage?: boolean } }) => void
+  ): (() => void) => {
+    return (): void => {};
+  };
+
+  ConversationListManager.refresh = async (options = {}): Promise<void> => {
+    refreshCalls.push(options);
+  };
+
+  ConversationListManager._syncAi0SelectionFromSettings = (): void => {};
+
+  try {
+    ConversationListManager.subscribeToSettings();
+
+    assert.ok(settingsListener !== null, "settings listener should be registered");
+
+    settingsListener({ changedPaths: ["assistants.lastOpencodeUiSessionId"] });
+
+    assert.deepEqual(refreshCalls, [
+      {
+        silent: false,
+        skipNotify: true,
+        provider: "ai0",
+      },
+    ]);
+  } finally {
+    SettingsManager.subscribe = originalSubscribe;
+    SlotController.on = originalSlotOn;
+    ConversationListManager.refresh = originalRefresh;
+    ConversationListManager._syncAi0SelectionFromSettings = originalSyncAi0SelectionFromSettings;
+    ConversationListManager.destroy();
+  }
+});

@@ -28,7 +28,7 @@ interface BootstrapOpencodeUiAppOptions {
   deps: OpencodeUiBootstrapDeps;
   loadAgents: () => Promise<void>;
   loadProviderContextAndModels: () => Promise<void>;
-  initializeSessionSelection: (resumeSessionId: string) => Promise<void>;
+  initializeSessionSelection: (resumeSessionId: string, resumeMode: string) => Promise<void>;
   startPeriodicRefresh: () => void;
   startLiveMessageRefresh: () => void;
 }
@@ -39,6 +39,7 @@ export async function bootstrapOpencodeUiApp(
   const params = new URLSearchParams(window.location.search);
   const port = params.get("port") ?? "4096";
   const resumeSessionId = params.get("resumeSessionId") ?? "";
+  const resumeMode = params.get("resumeMode") ?? "";
   const dbPath = params.get("dbPath") ?? "";
   const baseUrl = `http://127.0.0.1:${port}`;
 
@@ -83,7 +84,7 @@ export async function bootstrapOpencodeUiApp(
 
   try {
     await Promise.all([options.loadAgents(), options.loadProviderContextAndModels()]);
-    await options.initializeSessionSelection(resumeSessionId);
+    await options.initializeSessionSelection(resumeSessionId, resumeMode);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const errorArea = options.byId<HTMLElement>("error-area");

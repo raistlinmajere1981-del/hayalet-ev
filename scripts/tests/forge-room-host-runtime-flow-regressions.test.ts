@@ -370,6 +370,16 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
       targetRoomId: "repair-room",
     });
     assert.equal(draftResult.success, true);
+    assert.equal(
+      dispatchCalls.filter(
+        (call) =>
+          (call["payload"] as { protocol?: { protocolKey?: string } } | undefined)?.protocol
+            ?.protocolKey === "forge-room-preflight-pre-analysis"
+      ).length,
+      0
+    );
+    const snapshotAfterDraftGeneration = latestForgeSnapshot(notifications);
+    assert.equal(snapshotAfterDraftGeneration.preflight.status, "idle");
     const breakdownDispatch = dispatchCalls.find(
       (call) =>
         (call["payload"] as { protocol?: { protocolKey?: string } } | undefined)?.protocol

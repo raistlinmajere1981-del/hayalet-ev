@@ -48,9 +48,27 @@ export interface BootstrapContext {
   syncActiveSessionHistoryIfUpdated: () => Promise<void>;
 }
 
+function normalizeResumeMode(value: string): "last" | "new" {
+  return value.trim() === "new" ? "new" : "last";
+}
+
+function findVisibleSessionId(
+  sessionIds: string[],
+  sessions: OpencodeUiSessionSummary[]
+): string | null {
+  for (const sessionId of sessionIds) {
+    if (sessionId !== "" && sessions.some((session) => session.id === sessionId)) {
+      return sessionId;
+    }
+  }
+
+  return null;
+}
+
 export async function initializeSessionSelection(
   context: BootstrapContext,
-  resumeSessionId: string
+  resumeSessionId: string,
+  resumeModeRaw = ""
 ): Promise<void> {
   context.runtime.sessionTab = "active";
   const sessions = await context.listSessionsFromDisk();
@@ -64,17 +82,26 @@ export async function initializeSessionSelection(
     return;
   }
 
-  const resumeId = resumeSessionId.trim();
-  const fallbackResumeId = context.runtime.activeSessionId?.trim() ?? "";
-  const effectiveResumeId = resumeId !== "" ? resumeId : fallbackResumeId;
-  const hasResume =
-    effectiveResumeId !== "" && visibleSessions.some((session) => session.id === effectiveResumeId);
-
-  if (hasResume) {
-    await context.setActiveSession(effectiveResumeId);
-  } else {
-    await context.setActiveSession(visibleSessions[0]?.id ?? null);
+  const resumeMode = normalizeResumeMode(resumeModeRaw);
+  if (resumeMode === "new") {
+    const createdId = await context.createServerSession(t("session.createDefaultTitle"));
+    await context.setActiveSession(createdId);
+    await context.loadSessionListAndRender({ preserveActive: true });
+    await context.loadActiveSessionHistory();
+    return;
   }
+
+  const explicitResumeId = resumeSessionId.trim();
+  const fallbackResumeId = context.runtime.activeSessionId?.trim() ?? "";
+  const nextSessionId =
+    findVisibleSessionId(
+      Array.from(new Set([explicitResumeId, fallbackResumeId])),
+      visibleSessions
+    ) ??
+    visibleSessions[0]?.id ??
+    null;
+
+  await context.setActiveSession(nextSessionId);
 
   await context.loadSessionListAndRender({ preserveActive: true });
   await context.loadActiveSessionHistory();

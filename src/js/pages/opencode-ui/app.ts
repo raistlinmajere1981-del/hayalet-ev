@@ -820,8 +820,11 @@ function bindLocaleRefresh(): void {
   });
 }
 
-async function initializeSessionSelection(resumeSessionId: string): Promise<void> {
-  await initializeSessionSelectionFromModule(bootstrapContext(), resumeSessionId);
+async function initializeSessionSelection(
+  resumeSessionId: string,
+  resumeMode: string
+): Promise<void> {
+  await initializeSessionSelectionFromModule(bootstrapContext(), resumeSessionId, resumeMode);
 }
 
 function startPeriodicRefresh(): void {
