@@ -262,6 +262,7 @@ export function getFeatureCompatibility(state: LabStoreState) {
   };
 }
 
+/** @deprecated Use condition-driven readiness selectors instead (getSourceActionBlockReason, getEditActionBlockReason, etc.) */
 export function getStageBlockReason(state: LabStoreState, stage: LabStage): string | null {
   const source = getProjectSource(state);
   const preflight = getCurrentPreflight(state);
@@ -316,28 +317,28 @@ export function getStageBlockReason(state: LabStoreState, stage: LabStage): stri
   return "Bu aşama henüz hazır değil.";
 }
 
+/** @deprecated Use condition-driven readiness selectors instead */
 export function canAdvanceToStage(state: LabStoreState, stage: LabStage) {
   return getStageBlockReason(state, stage) === null;
 }
 
-export function getPrimaryActionLabel(state: LabStoreState, stage: LabStage) {
+export function getPrimaryActionLabel(state: LabStoreState, _stage: LabStage) {
+  // Condition-driven: _stage parameter is accepted for compat but real state decides
   const sourceProbeStatus = getSourceProbeStatus(state);
-  const edit = getProjectEdit(state);
-  const run = getCurrentRun(state);
-  switch (stage) {
-    case "source":
-      return sourceProbeStatus === "completed" ? "Kaynağı Yenile" : "Kaynağı Hazırla";
-    case "edit":
-      return asNonEmptyString(asLabRecord(edit["preview"])["status"]) === "ready"
-        ? "Önizlemeyi Yenile"
-        : "Önizleme Üret";
-    case "process":
-      return run && run.state === "running" ? "Çalışmayı İptal Et" : "Analizi Başlat";
-    case "report":
-      return "Raporları Dışa Aktar";
-    default:
-      return "Devam";
+
+  if (hasReportPayload(state) && (state.ui.workspace.reportOverlayOpen || isRunComplete(state))) {
+    return "Raporları Dışa Aktar";
   }
+  if (isRunActive(state)) {
+    return "Çalışmayı İptal Et";
+  }
+  if (getSourceReady(state)) {
+    const edit = getProjectEdit(state);
+    return asNonEmptyString(asLabRecord(edit["preview"])["status"]) === "ready"
+      ? "Önizlemeyi Yenile"
+      : "Önizleme Üret";
+  }
+  return sourceProbeStatus === "completed" ? "Kaynağı Yenile" : "Kaynağı Hazırla";
 }
 
 export function getVisibleEvents(state: LabStoreState) {
@@ -668,4 +669,142 @@ export function getRunElapsedSeconds(state: LabStoreState): number {
   const end = run.endedAt || Date.now();
   const diff = end - start;
   return diff > 0 ? Math.round(diff / 1000) : 0;
+}
+
+// ---------------------------------------------------------------------------
+// Condition-driven readiness selectors (replaces stage-based gating)
+// ---------------------------------------------------------------------------
+
+export function getSourceActionBlockReason(state: LabStoreState): string | null {
+  const sourceMode = getSourceMode(state);
+  const drafts = state.ui.sourceDrafts;
+  if (sourceMode === "url" && drafts.urlInput.trim() === "") {
+    return "Kaynak URL gerekli";
+  }
+  if (sourceMode === "youtube" && drafts.youtubeUrl.trim() === "") {
+    return "YouTube URL gerekli";
+  }
+  return null;
+}
+
+export function getAnalysisActionBlockReason(state: LabStoreState): string | null {
+  if (!getSourceReady(state)) {
+    return "Önce kaynak hazırlanmalı ve probe tamamlanmalı.";
+  }
+  const preflight = getCurrentPreflight(state);
+  if (preflight.status === "blocked") {
+    if (preflight.missingDependencies.length > 0) {
+      return `Eksik dependency: ${preflight.missingDependencies.join(", ")}`;
+    }
+    return preflight.reason || "Ön kontrol bu işlemi blokladı.";
+  }
+  if (preflight.stageReady !== true) {
+    return preflight.reason || "Ön kontrol henüz hazır değil.";
+  }
+  return null;
+}
+
+export function getReportActionBlockReason(state: LabStoreState): string | null {
+  const reports = getCurrentReports(state);
+  const reportStatus = asNonEmptyString(getCurrentFeatureReportRecord(state)["status"]);
+  if (
+    reports.user !== null ||
+    reports.ai !== null ||
+    reportStatus === "ready" ||
+    reportStatus === "stale"
+  ) {
+    return null;
+  }
+  return "Rapor henüz üretilmedi.";
+}
+
+export function getEditActionBlockReason(state: LabStoreState): string | null {
+  const source = getProjectSource(state);
+  const probeStatus = getSourceProbeStatus(state);
+  if (Object.keys(source).length === 0) {
+    return "Önce kaynak seçilmelidir.";
+  }
+  if (probeStatus === "running") {
+    return "Kaynak probe işlemi tamamlanmadı.";
+  }
+  if (probeStatus === "failed") {
+    return "Kaynak probe hata verdi.";
+  }
+  if (probeStatus !== "completed") {
+    return "Kaynak probe tamamlanmalı.";
+  }
+  return null;
+}
+
+export function isRunActive(state: LabStoreState): boolean {
+  const run = getCurrentRun(state);
+  return run !== null && (run.state === "running" || run.state === "queued");
+}
+
+export function isRunComplete(state: LabStoreState): boolean {
+  const run = getCurrentRun(state);
+  return (
+    run !== null &&
+    (run.state === "completed" ||
+      run.state === "ready" ||
+      run.state === "failed" ||
+      run.state === "cancelled")
+  );
+}
+
+export function hasReportPayload(state: LabStoreState): boolean {
+  const reports = getCurrentReports(state);
+  const reportStatus = asNonEmptyString(getCurrentFeatureReportRecord(state)["status"]);
+  return (
+    reports.user !== null ||
+    reports.ai !== null ||
+    reportStatus === "ready" ||
+    reportStatus === "stale"
+  );
+}
+
+export function getToolRelevanceFilter(state: LabStoreState) {
+  const sourceMode = getSourceMode(state);
+  const sourceKind = getSourceKind(state);
+  const selectedIntents = getSelectedIntents(state);
+  const intentCapabilities = getIntentDerivedCapabilities(state);
+  const wsMode = getWorkspaceMode(state);
+
+  const requiredToolIds = new Set<string>();
+  CAPABILITY_FAMILIES.forEach(function (family) {
+    if (intentCapabilities.includes(family.id)) {
+      family.requiredTools.forEach(function (toolId) {
+        requiredToolIds.add(toolId);
+      });
+    }
+  });
+
+  return {
+    sourceMode,
+    sourceKind,
+    selectedIntents,
+    intentCapabilities,
+    workspaceMode: wsMode,
+    requiredToolIds: Array.from(requiredToolIds),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Legacy stage projection — single authoritative derivation for currentStage
+// ---------------------------------------------------------------------------
+
+export function deriveLegacyStage(state: LabStoreState): LabStage {
+  if (state.ui.workspace.reportOverlayOpen && hasReportPayload(state)) {
+    return "report";
+  }
+  if (isRunComplete(state) && hasReportPayload(state)) {
+    return "report";
+  }
+  if (isRunActive(state)) {
+    return "process";
+  }
+  if (getSourceReady(state)) {
+    return "edit";
+  }
+  return "source";
 }

@@ -37,6 +37,7 @@ import {
   normalizeAnalysisReference,
   normalizeAnalysisScope,
 } from "../shared/types/analysis-scope.js";
+import { deriveLegacyStage } from "./lab-selectors.js";
 
 function createDefaultSourceDrafts(): LabSourceDrafts {
   return {
@@ -1507,6 +1508,8 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     }
     case "stage-changed":
+      // Legacy compat: accept the stage value passively but it will be
+      // overwritten by the projection in syncLegacyStage after reduce.
       state.currentStage = event.stage;
       return state;
     case "feature-changed":
@@ -1836,6 +1839,8 @@ export function createLabStore() {
 
   function dispatch(event: LabStoreEvent) {
     state = reduceEvent(structuredClone(state), event);
+    // Recompute legacy stage from real state after every mutation
+    state.currentStage = deriveLegacyStage(state);
     listeners.forEach(function (listener) {
       listener(state);
     });

@@ -86,7 +86,6 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
     const requestId = asNonEmptyString(actionEnvelope.requestId) || createRequestId();
     const action = asNonEmptyString(actionEnvelope.action);
     const actionPayload = toActionPayload(actionEnvelope.payload);
-    const featureStage = asNonEmptyString(actionPayload.featureStage);
     const featureId =
       asNonEmptyString(actionPayload.featureId) || getFeatureIdFromContext(loadContext(api));
 
@@ -289,7 +288,7 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
             requestId,
             action,
             actionPayload,
-            featureStage || "source"
+            "tool-lifecycle"
           );
           break;
         case "tool-check-updates":
@@ -298,11 +297,11 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
             runtime,
             requestId,
             actionPayload,
-            featureStage || "source"
+            "tool-lifecycle"
           );
           break;
         case "tool-update-all":
-          await mediaActionRuntime.updateTools(api, runtime, requestId, featureStage || "source");
+          await mediaActionRuntime.updateTools(api, runtime, requestId, "tool-lifecycle");
           break;
         default:
           throw new Error(`Unsupported media action: ${action}`);

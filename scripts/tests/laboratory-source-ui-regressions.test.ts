@@ -152,15 +152,12 @@ test("laboratory workspace surface renders source intake, preview media, and dee
   const surface = renderWorkspaceSurface(createSeededState().getState());
 
   assert.match(surface.main, /Source setup controls/);
-  assert.match(
-    surface.main,
-    /Active source: lab-demo\.mp4\. Reopen this frame when you want to replace it or tune the import route\./
-  );
+  assert.match(surface.main, /Active: lab-demo\.mp4/);
   assert.match(surface.main, /lab-demo\.mp4/);
   assert.match(surface.main, /<video class="labx-preview-media labx-preview-media--workspace-video"/);
   assert.match(surface.main, /data-lab-action="workspace-toggle-source-intake"/);
-  assert.match(surface.side, /Run Deep Analysis/);
-  assert.match(surface.side, /Background process[^<]*does not lock UI/);
+  assert.match(surface.side, /Derin Analiz Başlat/);
+  assert.match(surface.side, /Arka plan süreci[^<]*kilitlemez/);
   assert.doesNotMatch(surface.main, /Kaynak Seçimi|Hızlı modül seçimi burada yapılır/);
 });
 

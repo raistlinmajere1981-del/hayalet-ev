@@ -4,16 +4,23 @@ import {
   createLabEventId,
   WORKSPACE_INTENTS,
 } from "../models/lab-types.js";
-import type { LabFeatureId, LabSourceDrafts, LabStage } from "../models/lab-types.js";
+import type { LabFeatureId, LabSourceDrafts } from "../models/lab-types.js";
 import {
-  canAdvanceToStage,
+  deriveLegacyStage,
   getActiveEditOutput,
+  getAnalysisActionBlockReason,
   getCurrentRun,
-  getStageBlockReason,
+  getEditActionBlockReason,
+  getReportActionBlockReason,
+  getSourceActionBlockReason,
+  getSourceReady,
   getSourceMode,
   getSourceProbeStatus,
   getSourceStatus,
   getWorkbench,
+  hasReportPayload,
+  isRunActive,
+  isRunComplete,
 } from "./lab-selectors.js";
 import type { createLabEventBus } from "./lab-event-bus.js";
 import type { createLabStore } from "./lab-store.js";
@@ -383,7 +390,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     const state = deps.store.getState();
     if (projectValue === "new") {
       const resetSourceState = buildEmptySourceState(state);
-      dispatch({ type: "stage-changed", stage: "source" });
+      // Reset real source state first; legacy stage is projected automatically
       dispatch({
         type: "source-config-patched",
         patch: resetSourceState,
@@ -549,20 +556,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     });
   }
 
-  function setStage(stage: LabStage) {
-    const state = deps.store.getState();
-    if (canAdvanceToStage(state, stage)) {
-      dispatch({ type: "stage-changed", stage });
-      return;
-    }
-    const blockReason = getStageBlockReason(state, stage) || `Stage blocked: ${stage}`;
-
-    dispatch({
-      type: "push-event",
-      event: buildUiEvent(blockReason, "warning"),
-    });
-  }
-
   function activateFeature(featureId: string) {
     dispatch({
       type: "feature-changed",
@@ -664,32 +657,35 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
   function runPrimaryAction() {
     const state = deps.store.getState();
-    switch (state.currentStage) {
-      case "source":
-        runSourcePrimaryAction();
-        return;
-      case "edit":
-        sendMediaAction("edit-preview");
-        return;
-      case "process": {
-        const run = getCurrentRun(state);
-        if (run && run.state === "running") {
-          sendMediaAction(
-            state.featureId === "audio-analysis" ? "audio-process-cancel" : "process-cancel"
-          );
-          return;
-        }
-        sendMediaAction(state.featureId === "audio-analysis" ? "audio-process-run" : "process-run");
-        return;
-      }
-      case "report":
-        sendMediaAction(
-          state.featureId === "audio-analysis" ? "audio-report-export" : "report-export"
-        );
-        return;
-      default:
-        return;
+
+    // Report export — if report payload exists and overlay is open or run is complete
+    if (hasReportPayload(state) && (state.ui.workspace.reportOverlayOpen || isRunComplete(state))) {
+      sendMediaAction(
+        state.featureId === "audio-analysis" ? "audio-report-export" : "report-export"
+      );
+      return;
     }
+
+    // Process cancel/run — if run is active, cancel; if analysis is ready, start
+    if (isRunActive(state)) {
+      sendMediaAction(
+        state.featureId === "audio-analysis" ? "audio-process-cancel" : "process-cancel"
+      );
+      return;
+    }
+    if (getSourceReady(state) && getAnalysisActionBlockReason(state) === null) {
+      sendMediaAction(state.featureId === "audio-analysis" ? "audio-process-run" : "process-run");
+      return;
+    }
+
+    // Edit preview — if source is ready but analysis isn't ready yet
+    if (getSourceReady(state) && getEditActionBlockReason(state) === null) {
+      sendMediaAction("edit-preview");
+      return;
+    }
+
+    // Source action — default fallback
+    runSourcePrimaryAction();
   }
 
   // --- Timeline drag state ---
@@ -836,7 +832,8 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
     const stageButton = target.closest<HTMLElement>("[data-lab-stage]");
     if (stageButton) {
-      setStage(toStringValue(stageButton.dataset["labStage"]) as LabStage);
+      // Neutralized: stage clicks are legacy-only compat.
+      // The store projection via deriveLegacyStage() owns currentStage.
       return;
     }
 
@@ -877,7 +874,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         sendMediaAction("tools-refresh");
         return;
       case "tool-update-all":
-        sendMediaAction("tool-update-all", { featureStage: state.currentStage });
+        sendMediaAction("tool-update-all", {
+          featureStage: deriveLegacyStage(state),
+          actionFamily: "tool-lifecycle",
+        });
         return;
       case "tool-install":
       case "tool-update":
@@ -887,7 +887,8 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         }
         sendMediaAction(action, {
           toolId: value,
-          featureStage: state.currentStage,
+          featureStage: deriveLegacyStage(state),
+          actionFamily: "tool-lifecycle",
         });
         return;
       case "feature-activate":
@@ -989,8 +990,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
             };
           });
         }
+        // Seed editable workspace state; legacy stage is projected automatically
         dispatch({ type: "preview-artifact-activated", artifactId: null });
-        dispatch({ type: "stage-changed", stage: "edit" });
+        dispatch({ type: "report-overlay-toggled", open: false });
         return;
       }
       case "save-project": {
@@ -1048,12 +1050,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         if (ws.hypothesis.trim() !== "") {
           updateAnalysisScopeField("hypothesis", ws.hypothesis);
         }
-        // Ensure edit stage is prepared before process
-        dispatch({ type: "stage-changed", stage: "edit" });
+        // Intent-based flow: preview -> preflight -> process
+        // Legacy stage is projected automatically by deriveLegacyStage()
         sendMediaAction("edit-preview");
-        // Run preflight then process
         sendMediaAction("profile-run-preflight");
-        dispatch({ type: "stage-changed", stage: "process" });
         dispatch({
           type: "workspace-process-view-toggled",
           force: true,
@@ -1293,7 +1293,8 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         });
         return;
       case "toggle-report-view":
-        dispatch({ type: "stage-changed", stage: "report" });
+        // Report overlay controls report UI; legacy stage is projected automatically
+        dispatch({ type: "report-overlay-toggled", open: true });
         return;
       case "workspace-process-section-toggle":
         if (value.trim() !== "") {
@@ -1662,76 +1663,63 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
   function getPrimaryActionState() {
     const state = deps.store.getState();
-    switch (state.currentStage) {
-      case "source": {
-        const sourceStatus = getSourceStatus(state);
-        const sourceProbeStatus = getSourceProbeStatus(state);
-        const sourceMode = getSourceMode(state);
-        const drafts = state.ui.sourceDrafts;
-        if (sourceMode === "url" && drafts.urlInput.trim() === "") {
-          return {
-            disabled: true,
-            detail: "Kaynak URL gerekli",
-            label: sourceStatus === "ready" ? "Kaynağı Yenile" : "Kaynağı Hazırla",
-          };
-        }
-        if (sourceMode === "youtube" && drafts.youtubeUrl.trim() === "") {
-          return {
-            disabled: true,
-            detail: "YouTube URL gerekli",
-            label: sourceStatus === "ready" ? "Kaynağı Yenile" : "Kaynağı Hazırla",
-          };
-        }
+
+    // Report CTA
+    if (hasReportPayload(state) && (state.ui.workspace.reportOverlayOpen || isRunComplete(state))) {
+      const reportBlock = getReportActionBlockReason(state);
+      return {
+        disabled: reportBlock !== null,
+        detail: reportBlock || "Structured rapor dışa aktarılır",
+        label: "Raporları Dışa Aktar",
+      };
+    }
+
+    // Process CTA (cancel or start)
+    if (isRunActive(state)) {
+      return {
+        disabled: false,
+        detail: "Aktif run iptal edilir",
+        label: "Çalışmayı İptal Et",
+      };
+    }
+    if (getSourceReady(state) && getAnalysisActionBlockReason(state) === null) {
+      return {
+        disabled: false,
+        detail: "Sadece enabled modüller çalışır",
+        label: "Analizi Başlat",
+      };
+    }
+
+    // Edit CTA
+    if (getSourceReady(state)) {
+      const editBlock = getEditActionBlockReason(state);
+      if (editBlock === null) {
         return {
           disabled: false,
-          detail:
-            sourceProbeStatus === "running"
-              ? "Gerçek probe tamamlanıyor"
-              : sourceProbeStatus === "completed" || sourceStatus === "ready"
-                ? "Probe tamamlandı"
-                : "Source probe başlatılır",
-          label:
-            sourceProbeStatus === "completed" || sourceStatus === "ready"
-              ? "Kaynağı Yenile"
-              : "Kaynağı Hazırla",
-        };
-      }
-      case "edit": {
-        const blockReason = getStageBlockReason(state, "edit");
-        return {
-          disabled: blockReason !== null,
-          detail: blockReason || "Preview completion fake edilemez",
+          detail: "Preview completion fake edilemez",
           label: "Önizleme Üret",
         };
       }
-      case "process": {
-        const run = getCurrentRun(state);
-        const blockReason = getStageBlockReason(state, "process");
-        return {
-          disabled: blockReason !== null,
-          detail:
-            blockReason ||
-            (run && run.state === "running"
-              ? "Aktif run iptal edilir"
-              : "Sadece enabled modüller çalışır"),
-          label: run && run.state === "running" ? "Çalışmayı İptal Et" : "Analizi Başlat",
-        };
-      }
-      case "report": {
-        const blockReason = getStageBlockReason(state, "report");
-        return {
-          disabled: blockReason !== null,
-          detail: blockReason || "Structured rapor dışa aktarılır",
-          label: "Raporları Dışa Aktar",
-        };
-      }
-      default:
-        return {
-          disabled: false,
-          detail: null,
-          label: "Devam",
-        };
     }
+
+    // Source CTA (default)
+    const sourceStatus = getSourceStatus(state);
+    const sourceProbeStatus = getSourceProbeStatus(state);
+    const sourceBlock = getSourceActionBlockReason(state);
+    return {
+      disabled: sourceBlock !== null,
+      detail:
+        sourceBlock ||
+        (sourceProbeStatus === "running"
+          ? "Gerçek probe tamamlanıyor"
+          : sourceProbeStatus === "completed" || sourceStatus === "ready"
+            ? "Probe tamamlandı"
+            : "Source probe başlatılır"),
+      label:
+        sourceProbeStatus === "completed" || sourceStatus === "ready"
+          ? "Kaynağı Yenile"
+          : "Kaynağı Hazırla",
+    };
   }
 
   return {

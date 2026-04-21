@@ -1,6 +1,7 @@
 import { asLabRecord, asNonEmptyString, escapeHtml } from "../models/lab-types.js";
 import type { LabRecord, LabStoreState } from "../models/lab-types.js";
 import { renderStatusChip } from "./components/status-chip.js";
+import { getToolRelevanceFilter, getWorkspaceMode } from "../runtime/lab-selectors.js";
 
 type LabToolDescriptorRecord = LabRecord & {
   availability?: unknown;
@@ -342,12 +343,17 @@ function renderToolSection(
 export function renderToolManagementOverlay(state: LabStoreState) {
   const isOpen = state.ui.toolManagerOpen === true;
   const descriptors = getToolRegistry(state);
-  const stageId = state.currentStage;
-  const stageTools = descriptors.filter(function (descriptor) {
-    return getSupportLevel(descriptor, stageId) !== "unsupported";
+  // Relevance-based grouping: tools needed by intent-derived capabilities
+  const relevance = getToolRelevanceFilter(state);
+  const requiredToolSet = new Set(relevance.requiredToolIds);
+  const stageId = state.currentStage; // kept for card-level metadata display only
+  const relevantTools = descriptors.filter(function (descriptor) {
+    const toolId = asNonEmptyString(descriptor.toolId);
+    return toolId !== null && requiredToolSet.has(toolId);
   });
   const otherTools = descriptors.filter(function (descriptor) {
-    return getSupportLevel(descriptor, stageId) === "unsupported";
+    const toolId = asNonEmptyString(descriptor.toolId);
+    return toolId === null || !requiredToolSet.has(toolId);
   });
   const installedCount = descriptors.filter(function (descriptor) {
     const toolId = asNonEmptyString(descriptor.toolId);
@@ -361,6 +367,8 @@ export function renderToolManagementOverlay(state: LabStoreState) {
     const toolId = asNonEmptyString(descriptor.toolId);
     return toolId !== null && getToolEntry(state, toolId).busy === true;
   }).length;
+  const wsMode = getWorkspaceMode(state);
+  const modeLabel = wsMode === "analyzing" ? "Analiz" : wsMode === "complete" ? "Tamamlandı" : "Çalışma Alanı";
 
   return `
     <div class="labx-overlay-root" data-open="${isOpen ? "true" : "false"}">
@@ -406,8 +414,8 @@ export function renderToolManagementOverlay(state: LabStoreState) {
               </div>
               <div class="labx-module-overlay__summary">
                 <article class="labx-overlay-stat">
-                  <span>Aktif aşama araçları</span>
-                  <strong>${escapeHtml(String(stageTools.length))}</strong>
+                  <span>İlgili araçlar</span>
+                  <strong>${escapeHtml(String(relevantTools.length))}</strong>
                 </article>
                 <article class="labx-overlay-stat">
                   <span>Kurulu araç</span>
@@ -421,17 +429,17 @@ export function renderToolManagementOverlay(state: LabStoreState) {
               ${renderToolSection(
                 state,
                 stageId,
-                "Bu aşama",
-                `${STAGE_LABELS[stageId] || stageId} araçları`,
-                "Aktif aşama için gereken ve yakından ilişkili araçlar önce listelenir.",
-                stageTools
+                modeLabel,
+                "İlgili araçlar",
+                "Seçili intent ve yetenek aileleri için gerekli araçlar önce listelenir.",
+                relevantTools
               )}
               ${renderToolSection(
                 state,
                 stageId,
                 "Oda geneli",
                 "Diğer araçlar",
-                "Diğer modül ve aşamalara ait araçlar burada tutulur.",
+                "Diğer modül ve kapasitelere ait araçlar burada tutulur.",
                 otherTools
               )}
             </section>

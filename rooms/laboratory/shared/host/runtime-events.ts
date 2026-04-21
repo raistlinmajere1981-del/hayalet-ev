@@ -196,7 +196,7 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
       stage: asNonEmptyString(throttledPayload["stage"]),
       scope:
         throttledPayload["scope"] === "run" ||
-        asNonEmptyString(throttledPayload["featureStage"]) === "process"
+        String(asNonEmptyString(throttledPayload["action"]) || "").includes("process")
           ? "run"
           : "global",
       moduleId: asNonEmptyString(throttledPayload["moduleId"]),
@@ -221,11 +221,7 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
         action,
         stage,
         moduleId: asNonEmptyString(payload["moduleId"]),
-        scope:
-          asNonEmptyString(payload["featureStage"]) === "process" ||
-          String(action || "").includes("process")
-            ? "run"
-            : "global",
+        scope: String(action || "").includes("process") ? "run" : "global",
       };
     }
     const baseLabel = getActionLabel(action);
@@ -246,11 +242,7 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
       action,
       stage,
       moduleId: asNonEmptyString(payload["moduleId"]),
-      scope:
-        asNonEmptyString(payload["featureStage"]) === "process" ||
-        String(action || "").includes("process")
-          ? "run"
-          : "global",
+      scope: String(action || "").includes("process") ? "run" : "global",
     };
   }
 

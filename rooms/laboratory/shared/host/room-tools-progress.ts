@@ -88,9 +88,7 @@ export function createLaboratoryRoomToolsProgressRuntime(
   const pushSourceState = deps.pushSourceState;
 
   function resolveEventScope(job: LaboratoryJobRecord) {
-    return job.featureStage === "process" || String(job.action || "").includes("process")
-      ? "run"
-      : "global";
+    return String(job.action || "").includes("process") ? "run" : "global";
   }
 
   function trimFeed(entries: LaboratoryRecord[], limit: number) {

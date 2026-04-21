@@ -163,9 +163,7 @@ export function createLaboratoryJobRuntime(deps: JobRuntimeDeps) {
     actionId: string | undefined
   ) {
     const activeJobs = getActiveEditJobs(runtime, projectId, actionId);
-    await cancelFeatureJobs(api, runtime, activeJobs, requestId, function (job) {
-      return job.featureStage ?? "edit";
-    });
+    await cancelFeatureJobs(api, runtime, activeJobs, requestId, "edit");
     return activeJobs;
   }
 
@@ -177,7 +175,8 @@ export function createLaboratoryJobRuntime(deps: JobRuntimeDeps) {
     return collectJobs(runtime, function (job) {
       return (
         job.projectId === projectId &&
-        job.featureStage === "process" &&
+        (String(job.action ?? "").startsWith("process-") ||
+          String(job.action ?? "").startsWith("audio-process-")) &&
         (actionId ? job.action === actionId : true)
       );
     });
@@ -215,7 +214,8 @@ export function createLaboratoryJobRuntime(deps: JobRuntimeDeps) {
     return collectJobs(runtime, function (job) {
       return (
         job.projectId === projectId &&
-        job.featureStage === "report" &&
+        (String(job.action ?? "").startsWith("report-") ||
+          String(job.action ?? "").startsWith("audio-report-")) &&
         (actionId ? job.action === actionId : true)
       );
     });
