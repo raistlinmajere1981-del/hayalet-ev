@@ -1302,7 +1302,7 @@ export default function createForgeRoomHostRuntime() {
         const nextGoal = buildGoal(payload, stateBeforeGoal.currentGoal);
         const nextRunOverride = normalizeRunOverridePayload(payload, stateBeforeGoal.runOverride);
         const effectiveArchitectSeatId = resolveForgeArchitectSeatId(nextRunOverride);
-        const runRevision = syncRunRevision(nextGoal, {
+        syncRunRevision(nextGoal, {
           resetMutableStateOnChange: true,
           runOverride: nextRunOverride,
         });
