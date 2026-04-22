@@ -12,17 +12,15 @@
   }
 
   function readRuntimeOptions(value: unknown): GameRoomUiBootstrapRuntimeOptions {
-    return isRecord(value) ? (value as GameRoomUiBootstrapRuntimeOptions) : {};
+    return isRecord(value) ? value : {};
   }
 
   function readFeatureContract(value: unknown): GameRoomUiFeatureContractLike {
-    return isRecord(value) ? (value as GameRoomUiFeatureContractLike) : {};
+    return isRecord(value) ? value : {};
   }
 
   function readRoomApi(value: unknown): GameRoomRoomApi | null {
-    return isRecord(value) && typeof value["sendCommand"] === "function"
-      ? (value as GameRoomRoomApi)
-      : null;
+    return isRecord(value) && typeof value["sendCommand"] === "function" ? value : null;
   }
 
   function getBootstrapRegistry(host: GameRoomUiGlobal): GameRoomUiBootstrapRuntimeRegistry {

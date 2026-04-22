@@ -157,10 +157,7 @@ export function initAppOverlayHost(root?: HTMLElement | null): void {
     return;
   }
 
-  const resolvedRoot =
-    root ??
-    (document.getElementById(APP_OVERLAY_HOST_ID) as HTMLElement | null | undefined) ??
-    null;
+  const resolvedRoot = root ?? document.getElementById(APP_OVERLAY_HOST_ID) ?? null;
 
   overlayHostState.root = resolvedRoot instanceof HTMLElement ? resolvedRoot : null;
   overlayHostState.layers.clear();

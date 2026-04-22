@@ -51,7 +51,7 @@ export function updateAssistantConnectionUI(
     toolsReady: controller._providerToolsReady,
   });
 
-  const webviewEl = document.getElementById("ai0-webview") as WebviewElement | null;
+  const webviewEl = document.getElementById("ai0-webview");
   const mountEl = document.getElementById("ai0-webview-mount");
   const overlayEl = document.getElementById("ai0-webview-overlay");
 

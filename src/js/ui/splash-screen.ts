@@ -243,7 +243,7 @@ function getElements(): SplashElements {
       container: document.getElementById(ELEMENT_IDS.container),
       progress: document.getElementById(ELEMENT_IDS.progress),
       status: document.getElementById(ELEMENT_IDS.status),
-      logo: document.getElementById(ELEMENT_IDS.logo) as HTMLImageElement | null,
+      logo: document.getElementById(ELEMENT_IDS.logo),
     };
     isInitialized = true;
   }

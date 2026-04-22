@@ -375,7 +375,7 @@ class SlotControllerClass {
     syncSlotWithSettings(
       slotState,
       slot,
-      settings as Settings | null,
+      settings,
       {
         EMPTY: SlotState.EMPTY,
         ASSIGNED: SlotState.ASSIGNED,

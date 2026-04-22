@@ -69,14 +69,30 @@
       "empty": "No Account"
     },
     "invites": {
-      "title": "Incoming Invites",
-      "empty": "No active remote invites right now.",
+      "title": "Invites",
+      "incomingTab": "Incoming",
+      "outgoingTab": "Outgoing",
+      "empty": "No incoming invites right now.",
+      "outgoingEmpty": "No outgoing invites right now.",
       "accept": "Accept",
       "reject": "Reject",
+      "cancel": "Cancel Invite",
       "pendingOutgoing": "Invite sent. Waiting for a reply.",
       "messageFallback": "No invite message was included.",
       "starterUser": "You start",
       "starterRemote": "Remote starts"
+    },
+    "history": {
+      "title": "Match History",
+      "empty": "No completed matches yet.",
+      "win": "You Won",
+      "loss": "You Lost",
+      "draw": "Draw"
+    },
+    "matchup": {
+      "vs": "VS",
+      "turnYours": "Your turn",
+      "turnTheirs": "Opponent playing"
     }
   },
   "teamTetris": {
@@ -174,6 +190,22 @@
       "resultLabel": "Match State",
       "roleLabel": "Local Role",
       "draftLabel": "Draft Shifts"
+    },
+    "stage": {
+      "positioningLabel": "Stage 1: Position",
+      "routeLabel": "Stage 2: Route",
+      "noPiece": "Waiting for your turn...",
+      "moveLeft": "Left",
+      "moveRight": "Right",
+      "rotateCw": "CW",
+      "rotateCcw": "CCW",
+      "confirmPosition": "Confirm Position",
+      "backToPosition": "Back to Position",
+      "routeTitle": "Route Mode",
+      "routeStraight": "Straight",
+      "routeBendLeft": "Bend Left",
+      "routeBendRight": "Bend Right",
+      "bendRowLabel": "Bend Row"
     },
     "validation": {
       "invalidRotation": "This rotation is not legal for the current piece.",

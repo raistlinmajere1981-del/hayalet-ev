@@ -81,11 +81,7 @@ export async function sendBatchWithContext(
       };
 
       if (hasAttachments) {
-        const stageResult = (await FileManager.stageCommandFiles(jobId, attachmentPaths)) as {
-          staged: unknown[];
-          temp: string[];
-          commandDir: string;
-        };
+        const stageResult = await FileManager.stageCommandFiles(jobId, attachmentPaths);
         staged = stageResult;
         Logger.info(
           LogCategory.COMMAND,

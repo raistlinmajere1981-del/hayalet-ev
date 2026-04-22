@@ -58,15 +58,13 @@ export function createLaboratorySourceCompositionRuntime(
     getPresetDefaultCustomValues: deps.getPresetDefaultCustomValues,
     getProjectSourceDir: deps.getProjectSourceDir,
     getSourceConfig: deps.getSourceConfig,
-    normalizeMimeType:
-      mediaSourceFileRuntime.normalizeMimeType as MediaSourceIntakeRuntimeDeps["normalizeMimeType"],
+    normalizeMimeType: mediaSourceFileRuntime.normalizeMimeType,
     patchActiveProject: deps.patchActiveProject,
     pushJobState: deps.pushJobState,
     registerJob: deps.registerJob,
     resetEditForCurrentSource: deps.resetEditForCurrentSource,
     resetProfileForCurrentSource: deps.resetProfileForCurrentSource,
-    resolvePreparedSource:
-      mediaSourceMetadataRuntime.resolvePreparedSource as MediaSourceIntakeRuntimeDeps["resolvePreparedSource"],
+    resolvePreparedSource: mediaSourceMetadataRuntime.resolvePreparedSource,
     roomId: deps.roomId,
     toRecord: deps.toRecord,
   };

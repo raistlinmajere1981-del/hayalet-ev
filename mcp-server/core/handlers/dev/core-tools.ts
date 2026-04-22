@@ -239,7 +239,7 @@ export function createCoreDevTools(projectRoot: string): ToolEntry[] {
       definition: TYPESCRIPT_DASHBOARD_TOOL,
       handler: (args): unknown => {
         const result = generateTypescriptDashboard(
-          args as Parameters<typeof generateTypescriptDashboard>[0],
+          args,
           projectRoot
         );
         return { content: [{ type: "text", text: result.output }] };

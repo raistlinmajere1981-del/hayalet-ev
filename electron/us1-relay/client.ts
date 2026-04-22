@@ -171,7 +171,7 @@ async function performNodeRequest<TResponse>(params: {
             );
             return;
           }
-          resolve(payload as TResponse);
+          resolve(payload);
         } catch (error) {
           reject(error instanceof Error ? error : new Error(String(error)));
         }

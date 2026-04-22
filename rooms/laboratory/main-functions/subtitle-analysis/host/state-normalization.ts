@@ -289,55 +289,55 @@ export function createSubtitleStateNormalizationRuntime(
   }
 
   function toSubtitleEntryInputRecord(value: unknown): SubtitleEntryInputRecord {
-    return toRecord(value) as SubtitleEntryInputRecord;
+    return toRecord(value);
   }
 
   function toSubtitleOutputInputRecord(value: unknown): SubtitleOutputInputRecord {
-    return toRecord(value) as SubtitleOutputInputRecord;
+    return toRecord(value);
   }
 
   function toSubtitleDiscoveryItemInputRecord(value: unknown): SubtitleDiscoveryItemInputRecord {
-    return toRecord(value) as SubtitleDiscoveryItemInputRecord;
+    return toRecord(value);
   }
 
   function toSubtitleWorkspaceDraftsInputRecord(
     value: unknown
   ): SubtitleWorkspaceDraftsInputRecord {
-    return toRecord(value) as SubtitleWorkspaceDraftsInputRecord;
+    return toRecord(value);
   }
 
   function toSubtitleWorkspaceSelectionInputRecord(
     value: unknown
   ): SubtitleWorkspaceSelectionInputRecord {
-    return toRecord(value) as SubtitleWorkspaceSelectionInputRecord;
+    return toRecord(value);
   }
 
   function toSubtitleWorkspaceInputRecord(value: unknown): SubtitleWorkspaceInputRecord {
-    return toRecord(value) as SubtitleWorkspaceInputRecord;
+    return toRecord(value);
   }
 
   function toSubtitleDiscoveryStateInputRecord(value: unknown): SubtitleDiscoveryStateInputRecord {
-    return toRecord(value) as SubtitleDiscoveryStateInputRecord;
+    return toRecord(value);
   }
 
   function toSubtitleEditPreviewInputRecord(value: unknown): SubtitleEditPreviewInputRecord {
-    return toRecord(value) as SubtitleEditPreviewInputRecord;
+    return toRecord(value);
   }
 
   function toSubtitleEditInputRecord(value: unknown): SubtitleEditInputRecord {
-    return toRecord(value) as SubtitleEditInputRecord;
+    return toRecord(value);
   }
 
   function toSubtitleAnalysisInputRecord(value: unknown): SubtitleAnalysisInputRecord {
-    return toRecord(value) as SubtitleAnalysisInputRecord;
+    return toRecord(value);
   }
 
   function toSubtitleExportInputRecord(value: unknown): SubtitleExportInputRecord {
-    return toRecord(value) as SubtitleExportInputRecord;
+    return toRecord(value);
   }
 
   function toSubtitleFeatureStateInputRecord(value: unknown): SubtitleFeatureStateInputRecord {
-    return toRecord(value) as SubtitleFeatureStateInputRecord;
+    return toRecord(value);
   }
 
   function toNonEmptyRecord(value: unknown): LaboratoryRecord | null {

@@ -1125,14 +1125,7 @@ function getElectronApi():
       dbGetAttachments?: (query: Record<string, unknown>) => Promise<unknown>;
     }
   | undefined {
-  return window.electronAPI as
-    | {
-        us1SendMessage?: (params: Record<string, unknown>) => Promise<unknown>;
-        us1SyncMessages?: (params?: Record<string, unknown>) => Promise<unknown>;
-        dbGetMessages?: (query: Record<string, unknown>) => Promise<unknown>;
-        dbGetAttachments?: (query: Record<string, unknown>) => Promise<unknown>;
-      }
-    | undefined;
+  return window.electronAPI;
 }
 
 async function ensureConnected(

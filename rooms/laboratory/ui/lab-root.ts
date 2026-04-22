@@ -278,7 +278,7 @@ export function startLaboratoryLabRoot() {
     documentRef,
     eventBus,
     store,
-    windowRef: window as unknown as Window & { roomAPI?: RootWindow["roomAPI"] },
+    windowRef: window,
   });
   const hostBridge = createLabHostBridge({
     emit: eventBus.emit,
@@ -350,14 +350,11 @@ export function startLaboratoryLabRoot() {
   }
 
   store.subscribe(function (state) {
-    saveLabPersistedState(
-      window as unknown as Window & typeof globalThis,
-      readPersistableState(state)
-    );
+    saveLabPersistedState(window, readPersistableState(state));
     render();
   });
 
-  const persisted = loadLabPersistedState(window as unknown as Window & typeof globalThis);
+  const persisted = loadLabPersistedState(window);
   eventBus.emit({
     type: "hydrate",
     payload: persisted,

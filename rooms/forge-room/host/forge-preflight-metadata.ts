@@ -32,7 +32,7 @@ const FORGE_CAPABILITY_DESCRIPTORS: ForgeCapabilityDescriptor[] = [
     tags: ["ui", "relay"],
     relevantModules: [
       "rooms/forge-room/ui/forge-room-ui-runtime.ts",
-      "rooms/forge-room/ui/panels/goal-input-panel.ts",
+      "rooms/forge-room/ui/panels/workbench-stage-panel.ts",
       "rooms/forge-room/ui/panels/responses-panel.ts",
       "rooms/forge-room/ui/panels/synthesis-panel.ts",
     ],

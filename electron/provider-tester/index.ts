@@ -1768,11 +1768,7 @@ export class ProviderTester {
       const x = Math.max(0, Math.round(hostRect.x + rect.x));
       const y = Math.max(0, Math.round(hostRect.y + rect.y));
       const region = `${x};${y}:${width};${height}`;
-      const capture = (await electronApi.capturePage("region", region)) as {
-        success?: boolean;
-        dataUrl?: string;
-        data?: string;
-      } | null;
+      const capture = await electronApi.capturePage("region", region);
       if (capture?.success !== true) {
         return null;
       }

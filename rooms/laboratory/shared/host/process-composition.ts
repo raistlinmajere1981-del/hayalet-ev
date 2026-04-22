@@ -247,9 +247,7 @@ export function createLaboratoryHostProcessCompositionRuntime(
     mediaFeatureId: deps.mediaFeatureId,
   };
   const laboratoryReportingRuntime = createLaboratoryReportingRuntime(
-    laboratoryReportingRuntimeDeps as unknown as Parameters<
-      typeof createLaboratoryReportingRuntime
-    >[0]
+    laboratoryReportingRuntimeDeps
   );
 
   const laboratoryProcessRuntimeDeps = {
@@ -334,9 +332,7 @@ export function createLaboratoryHostProcessCompositionRuntime(
     audioFeatureId: deps.audioFeatureId,
     subtitleFeatureId: deps.subtitleFeatureId,
   };
-  const laboratoryProcessRuntime = createLaboratoryProcessRuntime(
-    laboratoryProcessRuntimeDeps as unknown as Parameters<typeof createLaboratoryProcessRuntime>[0]
-  );
+  const laboratoryProcessRuntime = createLaboratoryProcessRuntime(laboratoryProcessRuntimeDeps);
 
   const laboratoryProcessCoordinationRuntime = createLaboratoryProcessCoordinationRuntime({
     processRuntime: laboratoryProcessRuntime,

@@ -735,7 +735,7 @@ export class AnalyzeController {
 
   _navigateToAnalyzeSceneDebugRoom(roomId: string): void {
     this._setAnalyzeSceneActiveView(null);
-    openSceneDebugRoom(roomId as never);
+    openSceneDebugRoom(roomId);
   }
 
   async loadSettings(): Promise<void> {

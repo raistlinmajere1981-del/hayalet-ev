@@ -453,7 +453,7 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     const collectedFindings = Array.isArray(results["findings"]) ? results["findings"] : [];
     const derivedFindings = extractFindings(
       (Array.isArray(processRecord["events"]) ? processRecord["events"] : []).map(function (entry) {
-        return toRecord(entry) as unknown;
+        return toRecord(entry);
       }) as never[]
     );
     const derivedFindingRecords = derivedFindings

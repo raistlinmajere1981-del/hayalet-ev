@@ -40,6 +40,8 @@
       startTeamTetrisDrag: stateRuntime.startTeamTetrisDrag,
       updateTeamTetrisDraftTarget: stateRuntime.updateTeamTetrisDraftTarget,
       finishTeamTetrisDrag: stateRuntime.finishTeamTetrisDrag,
+      onTeamTetrisBoardColumnSelect: stateRuntime.onTeamTetrisBoardColumnSelect,
+      onTeamTetrisBendRowSelect: stateRuntime.onTeamTetrisBendRowSelect,
     });
     const moduleShellRuntime = createTeamTetrisUiModuleShellRuntime({
       getState: deps.getState,
@@ -67,10 +69,19 @@
       getTeamTetrisStatusText: stateRuntime.getTeamTetrisStatusText,
       onTeamTetrisRotationSelect: stateRuntime.onTeamTetrisRotationSelect,
       onTeamTetrisRotate: stateRuntime.onTeamTetrisRotate,
+      onTeamTetrisRotateCcw: stateRuntime.onTeamTetrisRotateCcw,
       onTeamTetrisClearDraft: stateRuntime.onTeamTetrisClearDraft,
       onTeamTetrisSubmit: stateRuntime.onTeamTetrisSubmit,
+      onTeamTetrisMoveLeft: stateRuntime.onTeamTetrisMoveLeft,
+      onTeamTetrisMoveRight: stateRuntime.onTeamTetrisMoveRight,
+      onTeamTetrisConfirmPosition: stateRuntime.onTeamTetrisConfirmPosition,
+      onTeamTetrisBackToPosition: stateRuntime.onTeamTetrisBackToPosition,
+      onTeamTetrisRouteModeSelect: stateRuntime.onTeamTetrisRouteModeSelect,
+      onTeamTetrisBendRowSelect: stateRuntime.onTeamTetrisBendRowSelect,
       onTeamTetrisStart: stateRuntime.onTeamTetrisStart,
       onTeamTetrisReset: stateRuntime.onTeamTetrisReset,
+      getTeamTetrisPlayerDisplay: stateRuntime.getTeamTetrisPlayerDisplay,
+      compileStageToRowShifts: stateRuntime.compileStageToRowShifts,
     });
 
     function getTestBridge(): GameRoomTeamTetrisUiTestBridge {

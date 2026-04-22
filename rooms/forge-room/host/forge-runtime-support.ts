@@ -46,7 +46,7 @@ function canonicalizeValue(value: unknown): unknown {
   }
 
   if (value !== null && typeof value === "object") {
-    return Object.keys(value as Record<string, unknown>)
+    return Object.keys(value)
       .sort((left, right) => left.localeCompare(right))
       .reduce<Record<string, unknown>>((acc, key) => {
         const nextValue = canonicalizeValue((value as Record<string, unknown>)[key]);

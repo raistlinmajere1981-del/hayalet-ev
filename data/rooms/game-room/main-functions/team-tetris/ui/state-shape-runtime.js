@@ -40,7 +40,12 @@
         dragTargets: {},
         preview: null,
         errorKey: "",
-        dragActive: false
+        dragActive: false,
+        stage: "positioning",
+        stagedOriginX: -1,
+        routeMode: "straight",
+        bendRow: null,
+        interactionMode: "positioning"
       };
     }
     function createTeamTetrisState() {

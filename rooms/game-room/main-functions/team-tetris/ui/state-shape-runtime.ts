@@ -155,6 +155,11 @@
           preview: null,
           errorKey: "",
           dragActive: false,
+          stage: "positioning",
+          stagedOriginX: -1,
+          routeMode: "straight",
+          bendRow: null,
+          interactionMode: "positioning",
         };
       }
 
@@ -243,9 +248,7 @@
       }
 
       function sanitizeTeamRecord(candidate: unknown): GameRoomTeamTetrisTeamRecord {
-        const source: TeamTetrisTeamRecordInput = isRecord(candidate)
-          ? (candidate as TeamTetrisTeamRecordInput)
-          : {};
+        const source: TeamTetrisTeamRecordInput = isRecord(candidate) ? candidate : {};
         return {
           teamId: readTrimmedString(source.teamId, "team-a"),
           seatIds: Array.isArray(source.seatIds)
@@ -279,9 +282,7 @@
         fallbackTeamId: string,
         fallbackVisibility: string
       ): GameRoomTeamTetrisBoardState {
-        const source: TeamTetrisBoardStateInputRecord = isRecord(candidate)
-          ? (candidate as TeamTetrisBoardStateInputRecord)
-          : {};
+        const source: TeamTetrisBoardStateInputRecord = isRecord(candidate) ? candidate : {};
 
         return {
           teamId: readTrimmedString(source.teamId, fallbackTeamId),
@@ -334,13 +335,13 @@
         const source = candidate as TeamTetrisSeatViewInputRecord;
 
         const seatSource: TeamTetrisSeatIdentityInputRecord = isRecord(source.seat)
-          ? (source.seat as TeamTetrisSeatIdentityInputRecord)
+          ? source.seat
           : {};
         const ownTeamSource: TeamTetrisSeatTeamViewInputRecord = isRecord(source.ownTeam)
-          ? (source.ownTeam as TeamTetrisSeatTeamViewInputRecord)
+          ? source.ownTeam
           : {};
         const opponentTeamSource: TeamTetrisSeatTeamViewInputRecord = isRecord(source.opponentTeam)
-          ? (source.opponentTeam as TeamTetrisSeatTeamViewInputRecord)
+          ? source.opponentTeam
           : {};
 
         return {
@@ -382,9 +383,7 @@
       }
 
       function sanitizeTeamTetrisState(candidate: unknown): GameRoomTeamTetrisState {
-        const source: TeamTetrisStateInputRecord = isRecord(candidate)
-          ? (candidate as TeamTetrisStateInputRecord)
-          : {};
+        const source: TeamTetrisStateInputRecord = isRecord(candidate) ? candidate : {};
         const next = createTeamTetrisState();
 
         next.active = source.active === true;

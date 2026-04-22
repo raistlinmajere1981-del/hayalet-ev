@@ -368,7 +368,8 @@ export function renderToolManagementOverlay(state: LabStoreState) {
     return toolId !== null && getToolEntry(state, toolId).busy === true;
   }).length;
   const wsMode = getWorkspaceMode(state);
-  const modeLabel = wsMode === "analyzing" ? "Analiz" : wsMode === "complete" ? "Tamamlandı" : "Çalışma Alanı";
+  const modeLabel =
+    wsMode === "analyzing" ? "Analiz" : wsMode === "complete" ? "Tamamlandı" : "Çalışma Alanı";
 
   return `
     <div class="labx-overlay-root" data-open="${isOpen ? "true" : "false"}">

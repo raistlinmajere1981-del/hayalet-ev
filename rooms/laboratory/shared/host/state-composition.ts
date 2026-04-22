@@ -173,8 +173,7 @@ export function createLaboratoryHostStateCompositionRuntime(
     getDefaultYoutubePreset: deps.getDefaultYoutubePreset,
     getPreferredFeatureSourceKind: deps.getPreferredFeatureSourceKind,
     getPresetDefaultCustomValues: deps.getPresetDefaultCustomValues,
-    normalizeAudioAnalysisState:
-      deps.normalizeAudioAnalysisState as LaboratoryProjectRecordsRuntimeDeps["normalizeAudioAnalysisState"],
+    normalizeAudioAnalysisState: deps.normalizeAudioAnalysisState,
     normalizeEditState: deps.normalizeEditState,
     normalizeProfileState: deps.normalizeProfileState,
     normalizeProcessState,

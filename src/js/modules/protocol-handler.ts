@@ -124,7 +124,7 @@ function buildProtocolPayload({
   room = "",
   scenario = "",
   targets = [] as string[],
-  context = {} as { starter?: string },
+  context = {},
   protocolKey = "",
   fallbackTitle = "",
 }: {

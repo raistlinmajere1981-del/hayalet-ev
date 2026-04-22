@@ -266,7 +266,7 @@ function buildTeamTetrisSuccessDebug(
 }
 
 function normalizeTeamTetrisDispatchResult(value: unknown): TeamTetrisDispatchResult | null {
-  return isRecord(value) ? (value as TeamTetrisDispatchResult) : null;
+  return isRecord(value) ? value : null;
 }
 
 async function sendBridgeMessageSafe(

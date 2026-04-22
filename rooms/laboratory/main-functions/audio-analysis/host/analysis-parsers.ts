@@ -160,7 +160,7 @@ function findProsodyColumn(header: string[], pattern: RegExp): string | null {
 }
 
 function toPartialProsodySummary(value: unknown): Partial<ProsodySummary> {
-  return value !== null && typeof value === "object" ? (value as Partial<ProsodySummary>) : {};
+  return value !== null && typeof value === "object" ? value : {};
 }
 
 export function createAudioAnalysisParserRuntime() {

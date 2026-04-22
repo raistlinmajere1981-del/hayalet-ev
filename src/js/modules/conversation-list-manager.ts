@@ -395,7 +395,7 @@ class ConversationListManagerClass {
                   : 0,
               folder: "",
               title: String(entry.title ?? ""),
-            } as ConversationEntry,
+            },
           ];
         }),
         ...ai1Entries.map((e: unknown) => {
@@ -411,7 +411,7 @@ class ConversationListManagerClass {
                 : 0,
             folder: "",
             title: String(entry.title ?? ""),
-          } as ConversationEntry;
+          };
         }),
         ...ai2Entries.map((e: unknown) => {
           const entry = e as RawConversationEntry;
@@ -426,7 +426,7 @@ class ConversationListManagerClass {
                 : 0,
             folder: "",
             title: String(entry.title ?? ""),
-          } as ConversationEntry;
+          };
         }),
         ...us1Entries.map((e: unknown) => {
           const entry = e as RawConversationEntry;
@@ -445,7 +445,7 @@ class ConversationListManagerClass {
             localSessionId,
             pendingUnreadCount:
               localSessionId !== null ? (us1PendingSessions[localSessionId]?.unreadCount ?? 0) : 0,
-          } as ConversationEntry;
+          };
         }),
       ];
 

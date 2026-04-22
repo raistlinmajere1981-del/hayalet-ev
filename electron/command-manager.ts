@@ -87,7 +87,7 @@ export async function commandStageAttachments(
     const staged: StagedFile[] = [];
     await inputs.reduce<Promise<void>>(async (chain, input) => {
       await chain;
-      const src = typeof input === "string" ? input : ((input as { path?: string }).path ?? "");
+      const src = typeof input === "string" ? input : (input.path ?? "");
       if (src.length === 0 || !existsSync(src)) return;
       const base = basename(src);
       const insideTarget = src.startsWith(targetDir);

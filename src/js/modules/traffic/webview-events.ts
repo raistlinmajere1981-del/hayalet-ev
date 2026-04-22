@@ -179,8 +179,8 @@ export function attachWebviewEvents(
   webviewEl.addEventListener("will-navigate", listeners.willNavigate as EventListener);
   webviewEl.addEventListener("did-navigate", listeners.didNavigate as EventListener);
   webviewEl.addEventListener("did-navigate-in-page", listeners.didNavigateInPage as EventListener);
-  webviewEl.addEventListener("dom-ready", listeners.domReady as EventListener);
-  webviewEl.addEventListener("did-fail-load", listeners.failLoad as EventListener);
+  webviewEl.addEventListener("dom-ready", listeners.domReady);
+  webviewEl.addEventListener("did-fail-load", listeners.failLoad);
 }
 
 export function detachWebviewEvents(provider: string): void {
@@ -223,12 +223,12 @@ export function detachWebviewEvents(provider: string): void {
       void 0;
     }
     try {
-      webviewEl.removeEventListener("dom-ready", l.domReady as EventListener);
+      webviewEl.removeEventListener("dom-ready", l.domReady);
     } catch (e) {
       void 0;
     }
     try {
-      webviewEl.removeEventListener("did-fail-load", l.failLoad as EventListener);
+      webviewEl.removeEventListener("did-fail-load", l.failLoad);
     } catch (e) {
       void 0;
     }

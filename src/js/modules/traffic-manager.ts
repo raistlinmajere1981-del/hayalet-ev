@@ -268,13 +268,13 @@ class TrafficManagerClass {
       if (this._skipNextLoading[provider] === true && wasOnDefaultPage && !isOnDefaultPage) {
         this._skipNextLoading[provider] = false;
         viewState.loadingFromDefaultTransition = false;
-        this.state[provider] = viewState as Record<string, unknown> & TrafficState;
+        this.state[provider] = viewState;
         return;
       }
 
       this.loadingTracker.startLoading(viewState, Date.now());
       viewState.loadingFromDefaultTransition = wasOnDefaultPage && !isOnDefaultPage;
-      this.state[provider] = viewState as Record<string, unknown> & TrafficState;
+      this.state[provider] = viewState;
       this.setIndicator(provider, "loading", "busy");
     }
   }
@@ -437,7 +437,7 @@ class TrafficManagerClass {
     const viewState = this.state[provider] ?? defaultState();
     if (viewState.polling) return false;
     viewState.polling = true;
-    this.state[provider] = viewState as Record<string, unknown> & TrafficState;
+    this.state[provider] = viewState;
     try {
       const script = buildProbeScript(provider);
       const webContents =
@@ -492,7 +492,7 @@ class TrafficManagerClass {
       return false;
     } finally {
       viewState.polling = false;
-      this.state[provider] = viewState as Record<string, unknown> & TrafficState;
+      this.state[provider] = viewState;
     }
   }
 
@@ -626,7 +626,7 @@ class TrafficManagerClass {
     Object.assign(viewState, sendResult.newState);
     this.setIndicator(provider, "send", sendResult.indicator);
 
-    this.state[provider] = viewState as Record<string, unknown> & TrafficState;
+    this.state[provider] = viewState;
     return true;
   }
 
@@ -657,7 +657,7 @@ class TrafficManagerClass {
     this.state[provider] ??= defaultState();
     const viewState = this.state[provider];
     viewState.status = { ...viewState.status, [kind]: status };
-    this.state[provider] = viewState as Record<string, unknown> & TrafficState;
+    this.state[provider] = viewState;
     this.updateDerivedStates(provider);
 
     const dot = this.indicators[provider]?.[kind as keyof TrafficIndicator];

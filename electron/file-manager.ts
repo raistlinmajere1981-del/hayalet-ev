@@ -34,7 +34,7 @@ interface ResultBase {
 async function translateElectronMessage(key: string, params?: TranslationParams): Promise<string> {
   let settings: { general?: { language?: unknown } };
   try {
-    settings = ((await loadSettings()) ?? {}) as { general?: { language?: unknown } };
+    settings = (await loadSettings()) ?? {};
   } catch {
     settings = {};
   }

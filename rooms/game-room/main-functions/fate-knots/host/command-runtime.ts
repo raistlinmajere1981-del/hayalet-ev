@@ -105,7 +105,7 @@ function loadCommandContentRegistry(api: RoomApi): FateKnotsCommandContentRegist
 }
 
 function asCommandState(value: ReturnType<typeof loadFateKnotsState>): FateKnotsCommandState {
-  return value as unknown as FateKnotsCommandState;
+  return value;
 }
 
 function asSessionState(value: FateKnotsCommandState): FateKnotsSessionState {
@@ -113,11 +113,11 @@ function asSessionState(value: FateKnotsCommandState): FateKnotsSessionState {
 }
 
 function asProfileState(value: FateKnotsCommandState): FateKnotsProfileState {
-  return value as unknown as FateKnotsProfileState;
+  return value;
 }
 
 function asPhaseState(value: FateKnotsCommandState): FateKnotsPhaseState {
-  return value as unknown as FateKnotsPhaseState;
+  return value;
 }
 
 function asPhaseContentRegistry(
@@ -135,18 +135,11 @@ function readUs1RemoteUserId(
   state: FateKnotsCommandState,
   context: Parameters<typeof getUs1RemoteUserId>[2]
 ) {
-  return getUs1RemoteUserId(
-    api as Parameters<typeof getUs1RemoteUserId>[0],
-    asSessionState(state),
-    context
-  );
+  return getUs1RemoteUserId(api, asSessionState(state), context);
 }
 
 function persistUserProfile(api: RoomApi, state: FateKnotsCommandState) {
-  persistProfileFromUser(
-    api as Parameters<typeof persistProfileFromUser>[0],
-    asProfileState(state)
-  );
+  persistProfileFromUser(api, asProfileState(state));
 }
 
 function refreshContentSummary(

@@ -18,7 +18,7 @@ const logger = getLoggerCore();
 async function archiveT(key: string): Promise<string> {
   let settings: { general?: { language?: unknown } };
   try {
-    settings = ((await loadSettings()) ?? {}) as { general?: { language?: unknown } };
+    settings = (await loadSettings()) ?? {};
   } catch {
     settings = {};
   }

@@ -198,15 +198,15 @@ function createEvent(type: string, detail: Record<string, unknown> = {}): ForgeE
 }
 
 function readBridgeResult(value: unknown): ForgeBridgeResult {
-  return toRecord(value) as ForgeBridgeResult;
+  return toRecord(value);
 }
 
 function readBridgeReply(value: unknown): ForgeBridgeReply {
-  return toRecord(value) as ForgeBridgeReply;
+  return toRecord(value);
 }
 
 function readBridgeSession(value: unknown): ForgeBridgeSession {
-  return toRecord(value) as ForgeBridgeSession;
+  return toRecord(value);
 }
 
 function readCommandPayload(payload: Record<string, unknown>): Record<string, unknown> {

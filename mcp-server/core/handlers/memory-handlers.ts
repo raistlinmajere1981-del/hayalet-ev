@@ -109,7 +109,7 @@ export function createMemoryTools(context: ToolContext): ToolEntry[] {
       handler: async (args): Promise<unknown> => {
         const result = await memoryBootstrapPolicy(
           PROJECT_ROOT,
-          args as Parameters<typeof memoryBootstrapPolicy>[1]
+          args
         );
         return {
           content: [

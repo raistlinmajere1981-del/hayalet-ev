@@ -39,6 +39,8 @@
     const startTeamTetrisDrag = deps.startTeamTetrisDrag;
     const updateTeamTetrisDraftTarget = deps.updateTeamTetrisDraftTarget;
     const finishTeamTetrisDrag = deps.finishTeamTetrisDrag;
+    const onTeamTetrisBoardColumnSelect = deps.onTeamTetrisBoardColumnSelect;
+    const onTeamTetrisBendRowSelect = deps.onTeamTetrisBendRowSelect;
 
     function createTeamTetrisMiniPiece(pieceId: string, rotation: number): HTMLElement {
       const cells = getTeamTetrisRotationCells(pieceId, rotation);
@@ -120,19 +122,33 @@
 
       board.style.gridTemplateColumns =
         "repeat(" + state.teamTetris.board.width + ", minmax(0, 1fr))";
-      if (config.interactive === true) {
+      const boardMode = config.boardInteractionMode || "";
+      const isBoardInteractive =
+        config.interactive === true ||
+        boardMode === "positioning" ||
+        boardMode === "route-row-picker";
+      if (isBoardInteractive) {
         board.dataset["interactive"] = "true";
+        board.dataset["boardMode"] = boardMode;
       }
 
       boardRows.forEach(function (row: string, rowIndex: number) {
         row.split("").forEach(function (cellValue: string, columnIndex: number) {
-          const cell = createElement(
-            config.interactive === true ? "button" : "div",
-            "tt-board__cell",
-            ""
-          );
+          const cell = createElement(isBoardInteractive ? "button" : "div", "tt-board__cell", "");
 
-          if (config.interactive === true) {
+          if (boardMode === "positioning") {
+            const interactiveCell = cell as HTMLButtonElement;
+            interactiveCell.type = "button";
+            interactiveCell.addEventListener("click", function () {
+              onTeamTetrisBoardColumnSelect(columnIndex);
+            });
+          } else if (boardMode === "route-row-picker") {
+            const interactiveCell = cell as HTMLButtonElement;
+            interactiveCell.type = "button";
+            interactiveCell.addEventListener("click", function () {
+              onTeamTetrisBendRowSelect(rowIndex);
+            });
+          } else if (config.interactive === true) {
             const interactiveCell = cell as HTMLButtonElement;
             interactiveCell.type = "button";
             interactiveCell.addEventListener("mousedown", function () {

@@ -37,13 +37,13 @@ const requiredForgeFiles = [
   "rooms/forge-room/ui/index.html",
   "rooms/forge-room/ui/index.ts",
   "rooms/forge-room/ui/forge-room-ui-runtime.ts",
-  "rooms/forge-room/ui/panels/goal-input-panel.ts",
   "rooms/forge-room/ui/panels/draft-breakdown-panel.ts",
   "rooms/forge-room/ui/panels/approved-tasks-panel.ts",
+  "rooms/forge-room/ui/panels/operator-profile-manager-panel.ts",
+  "rooms/forge-room/ui/panels/panel-shell.ts",
   "rooms/forge-room/ui/panels/responses-panel.ts",
-  "rooms/forge-room/ui/panels/conflict-summary-panel.ts",
   "rooms/forge-room/ui/panels/synthesis-panel.ts",
-  "rooms/forge-room/ui/panels/coordinator-panel.ts",
+  "rooms/forge-room/ui/panels/workbench-stage-panel.ts",
   "rooms/forge-room/shared/assets/room-background.svg",
   "rooms/forge-room/main-functions/forge-workbench/assets/forge-workbench-view.svg",
   "rooms/forge-room/main-functions/forge-workbench/protocols/forge-room-breakdown-architect.md",
@@ -69,7 +69,9 @@ test("forge-room workspace keeps the required Phase 1 package files", () => {
 test("forge-room manifest satisfies workbench and visible feature scene validation", () => {
   const manifest = JSON.parse(readFileSync("rooms/forge-room/manifest.json", "utf8"));
   const validation = validateRoomManifest(manifest);
-  const forgeFeature = validation.manifest?.features.find((feature) => feature.id === "forge-workbench");
+  const forgeFeature = validation.manifest?.features.find(
+    (feature) => feature.id === "forge-workbench"
+  );
 
   assert.equal(validation.valid, true);
   assert.equal(validation.manifest?.id, "forge-room");

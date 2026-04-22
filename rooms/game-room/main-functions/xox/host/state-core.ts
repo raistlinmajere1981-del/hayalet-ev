@@ -1,5 +1,22 @@
 import { normalizeLocale, normalizeText } from "../../../shared/host/text.js";
 
+export interface XoxMatchHistoryEntry {
+  id: string;
+  finishedAt: number;
+  target: string;
+  opponentNickname: string;
+  opponentAvatar: string | null;
+  userNickname: string;
+  userSymbol: "X" | "O";
+  aiSymbol: "X" | "O";
+  result: "user-win" | "ai-win" | "draw";
+  starter: "ai" | "user";
+  board: string[];
+}
+
+export const MATCH_HISTORY_LIMIT = 20;
+export const TERMINAL_RESULTS = new Set(["user-win", "ai-win", "draw"]);
+
 export interface XoxGameState {
   locale: "tr" | "en";
   target: string;
@@ -348,6 +365,56 @@ export function normalizeState(candidate: unknown, localeFallback: unknown): Xox
       ? source["lastRemoteTurnIndex"]
       : null;
   return state;
+}
+
+export function normalizeMatchHistoryEntry(candidate: unknown): XoxMatchHistoryEntry | null {
+  if (candidate === null || typeof candidate !== "object" || Array.isArray(candidate)) {
+    return null;
+  }
+  const source = candidate as Record<string, unknown>;
+  const id = normalizeText(source["id"]);
+  const result = source["result"];
+  if (id === "" || (result !== "user-win" && result !== "ai-win" && result !== "draw")) {
+    return null;
+  }
+  const finishedAt =
+    typeof source["finishedAt"] === "number" &&
+    Number.isFinite(source["finishedAt"]) &&
+    source["finishedAt"] >= 0
+      ? Math.trunc(source["finishedAt"])
+      : 0;
+  const userSymbol = source["userSymbol"] === "O" ? "O" : "X";
+  const aiSymbol = source["aiSymbol"] === "X" ? "X" : "O";
+  return {
+    id,
+    finishedAt,
+    target: normalizeText(source["target"]) || "ai1",
+    opponentNickname: normalizeText(source["opponentNickname"]) || "Rakip",
+    opponentAvatar: normalizeText(source["opponentAvatar"]) || null,
+    userNickname: normalizeText(source["userNickname"]) || "User",
+    userSymbol,
+    aiSymbol,
+    result,
+    starter: source["starter"] === "ai" ? "ai" : "user",
+    board: normalizeBoard(source["board"]),
+  };
+}
+
+export function normalizeMatchHistory(value: unknown): XoxMatchHistoryEntry[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const entries: XoxMatchHistoryEntry[] = [];
+  for (let index = 0; index < value.length; index += 1) {
+    const entry = normalizeMatchHistoryEntry(value[index]);
+    if (entry !== null) {
+      entries.push(entry);
+    }
+  }
+  if (entries.length > MATCH_HISTORY_LIMIT) {
+    return entries.slice(0, MATCH_HISTORY_LIMIT);
+  }
+  return entries;
 }
 
 export function getOutcomeForBoard(board: string[], state: XoxGameState) {

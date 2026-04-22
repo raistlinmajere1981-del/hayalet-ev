@@ -65,7 +65,7 @@ async function translateElectronMessage(
   let resolvedSettings = settings;
   if (resolvedSettings === undefined) {
     try {
-      resolvedSettings = ((await loadSettings()) ?? {}) as Settings;
+      resolvedSettings = (await loadSettings()) ?? {};
     } catch {
       resolvedSettings = {};
     }

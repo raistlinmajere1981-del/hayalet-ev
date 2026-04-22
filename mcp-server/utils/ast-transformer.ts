@@ -200,7 +200,7 @@ export function addImport(
     );
 
     if (firstNonImportIndex === -1) {
-      bodyNodes.push(importDeclaration as unknown as ASTNode);
+      bodyNodes.push(importDeclaration);
     } else {
       bodyNodes.splice(firstNonImportIndex, 0, importDeclaration as unknown as ASTNode);
     }

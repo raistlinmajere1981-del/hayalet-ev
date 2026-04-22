@@ -10,9 +10,7 @@
   }
 
   function readNicknameRecord(value: unknown): { nickname?: string } | null {
-    return value && typeof value === "object" && Array.isArray(value) === false
-      ? (value as { nickname?: string })
-      : null;
+    return value && typeof value === "object" && Array.isArray(value) === false ? value : null;
   }
 
   const registry = getFactoryRegistry(global);
@@ -92,6 +90,38 @@
       }
 
       return seatId.trim() !== "" ? seatId.toUpperCase() : "???";
+    }
+
+    function getTeamTetrisPlayerDisplay(seatId: string): GameRoomTeamTetrisPlayerDisplay {
+      const state = getState();
+      const label = getTeamTetrisSeatDisplayLabel(seatId);
+      const localSeatId = getTeamTetrisLocalSeatId();
+
+      if (state.teamTetris.hiddenPairs === true) {
+        const view = getTeamTetrisView();
+        if (view && view.revealedPairs !== true && seatId !== localSeatId) {
+          return {
+            avatarUrl: null,
+            label: text(["teamTetris", "roster", "partnerUnknown"]),
+            isAnonymous: true,
+          };
+        }
+      }
+
+      let avatarUrl: string | null = null;
+      if (seatId === "user" || seatId === localSeatId) {
+        const userCtx = state.context["user"] as { avatar?: string } | null;
+        if (userCtx && typeof userCtx.avatar === "string" && userCtx.avatar.trim() !== "") {
+          avatarUrl = userCtx.avatar;
+        }
+      } else {
+        const slot = readSlotRecord(state.context.slots?.[seatId] ?? null);
+        if (slot && typeof (slot as unknown as { avatar?: string }).avatar === "string") {
+          avatarUrl = (slot as unknown as { avatar: string }).avatar || null;
+        }
+      }
+
+      return { avatarUrl: avatarUrl, label: label, isAnonymous: false };
     }
 
     function getTeamTetrisAnonymousSeatLabel(role: string): string {
@@ -290,6 +320,7 @@
       getTeamTetrisView: getTeamTetrisView,
       getTeamTetrisBoardLabel: getTeamTetrisBoardLabel,
       getTeamTetrisSeatDisplayLabel: getTeamTetrisSeatDisplayLabel,
+      getTeamTetrisPlayerDisplay: getTeamTetrisPlayerDisplay,
       getTeamTetrisPendingTurn: getTeamTetrisPendingTurn,
       getTeamTetrisOwnBoardState: getTeamTetrisOwnBoardState,
       getTeamTetrisOpponentBoardState: getTeamTetrisOpponentBoardState,

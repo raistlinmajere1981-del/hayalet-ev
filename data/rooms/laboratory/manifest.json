@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 2,
+  "id": "laboratory",
+  "name": "Laboratory",
+  "version": "1.0.0",
+  "description": "An obsidian analysis room with a guided workbench for intake, readiness, processing, and reporting across media, audio, and subtitle modules.",
+  "menu": {
+    "label": "Laboratory",
+    "icon": "LB",
+    "order": 90
+  },
+  "runtime": {
+    "uiEntry": "ui/index.html",
+    "hostEntry": "host/index.js"
+  },
+  "defaultFeatureId": "media-analysis",
+  "workbench": {
+    "experienceId": "analysis-workbench",
+    "label": "Laboratory Workbench",
+    "description": "A guided desktop workbench that unifies media, audio, and subtitle analysis into one room flow.",
+    "mode": "guided",
+    "primaryFeatureId": "media-analysis",
+    "availableFeatureIds": ["media-analysis", "audio-analysis", "subtitle-analysis"]
+  },
+  "i18n": {
+    "baseDir": "i18n"
+  },
+  "scene": {
+    "referenceSize": {
+      "width": 1600,
+      "height": 900
+    },
+    "roomBackgroundSrc": "shared/assets/room-background.webp",
+    "chrome": {
+      "pageShellVariant": "immersive-stage"
+    },
+    "roomsHotspot": {
+      "id": "laboratory-door",
+      "rect": {
+        "leftPx": 722,
+        "topPx": 234,
+        "widthPx": 170,
+        "heightPx": 330
+      },
+      "label": {
+        "text": "Laboratory"
+      }
+    },
+    "backHotspot": {
+      "id": "laboratory-back",
+      "rect": {
+        "leftPx": 54,
+        "topPx": 150,
+        "widthPx": 168,
+        "heightPx": 256
+      },
+      "label": {
+        "text": "Corridor"
+      }
+    }
+  },
+  "features": [
+    {
+      "id": "media-analysis",
+      "name": "Analysis Workbench",
+      "description": "The unified Laboratory entry point for project intake, readiness review, processing, and reporting across all analysis modules.",
+      "icon": "MA",
+      "scene": {
+        "hotspot": {
+          "id": "laboratory-media-analysis",
+          "rect": {
+            "leftPx": 934,
+            "topPx": 176,
+            "widthPx": 508,
+            "heightPx": 320
+          },
+          "label": {
+            "text": "Analysis Workbench"
+          }
+        },
+        "view": {
+          "id": "media-analysis-console",
+          "backgroundSrc": "main-functions/media-analysis/assets/media-analysis-view.webp",
+          "transparentWindow": {
+            "leftPct": 2.4,
+            "topPct": 10.8,
+            "widthPct": 95.2,
+            "heightPct": 79.4
+          }
+        }
+      }
+    },
+    {
+      "id": "audio-analysis",
+      "name": "Audio Analysis",
+      "description": "An audio-first analysis desk that reuses the laboratory tool room for source prep, signal checks, speech tooling, and reporting.",
+      "icon": "AU"
+    },
+    {
+      "id": "subtitle-analysis",
+      "name": "Subtitle Analysis",
+      "description": "A subtitle-first workbench for local subtitle intake, YouTube subtitle capture, cleanup, QC, and reporting.",
+      "icon": "SB"
+    }
+  ]
+}

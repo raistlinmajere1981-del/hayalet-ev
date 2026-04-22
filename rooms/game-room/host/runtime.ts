@@ -78,35 +78,23 @@ export default function createGameRoomHostRuntime() {
       }
 
       function saveXoxStateCompat(handlerApi: GameRoomHostApi, value: unknown): void {
-        void saveState(
-          handlerApi as unknown as Parameters<typeof saveState>[0],
-          value as Parameters<typeof saveState>[1]
-        );
+        void saveState(handlerApi, value as Parameters<typeof saveState>[1]);
       }
 
       function saveInviteInboxCompat(handlerApi: GameRoomHostApi, payload: unknown[]): void {
-        void saveInviteInbox(
-          handlerApi as unknown as Parameters<typeof saveInviteInbox>[0],
-          payload as Parameters<typeof saveInviteInbox>[1]
-        );
+        void saveInviteInbox(handlerApi, payload);
       }
 
       function clearPendingInviteCompat(handlerApi: GameRoomHostApi): void {
-        clearPendingInvite(handlerApi as unknown as Parameters<typeof clearPendingInvite>[0]);
+        clearPendingInvite(handlerApi);
       }
 
       function saveTeamTetrisStateCompat(handlerApi: GameRoomHostApi, value: unknown): void {
-        saveTeamTetrisState(
-          handlerApi as unknown as Parameters<typeof saveTeamTetrisState>[0],
-          value as Parameters<typeof saveTeamTetrisState>[1]
-        );
+        saveTeamTetrisState(handlerApi, value as Parameters<typeof saveTeamTetrisState>[1]);
       }
 
       function resetFateKnotsStateCompat(handlerApi: GameRoomHostApi, phase: string): void {
-        void resetFateKnotsState(
-          handlerApi as unknown as Parameters<typeof resetFateKnotsState>[0],
-          phase
-        );
+        void resetFateKnotsState(handlerApi, phase);
       }
 
       function ensureUs1SyncLoopCompat(handlerApi: GameRoomHostApi): void {
@@ -118,13 +106,11 @@ export default function createGameRoomHostRuntime() {
       }
 
       function pushActiveFeatureStateCompat(handlerApi: GameRoomHostApi): void {
-        pushActiveFeatureState(handlerApi as Parameters<typeof pushActiveFeatureState>[0]);
+        pushActiveFeatureState(handlerApi);
       }
 
       function dispatchPendingFateKnotsWorkCompat(handlerApi: GameRoomHostApi): Promise<unknown> {
-        return dispatchPendingFateKnotsWork(
-          handlerApi as Parameters<typeof dispatchPendingFateKnotsWork>[0]
-        );
+        return dispatchPendingFateKnotsWork(handlerApi);
       }
 
       function syncUs1MailboxCompat(handlerApi: GameRoomHostApi, reason: string): Promise<unknown> {
@@ -135,7 +121,7 @@ export default function createGameRoomHostRuntime() {
       }
 
       function syncFromContextCompat(handlerApi: GameRoomHostApi, payload: unknown): void {
-        xoxSyncFromContext(handlerApi as Parameters<typeof xoxSyncFromContext>[0], payload);
+        xoxSyncFromContext(handlerApi, payload);
       }
 
       function clearUs1SyncLoopCompat(handlerApi: GameRoomHostApi): void {
@@ -160,45 +146,19 @@ export default function createGameRoomHostRuntime() {
       return {
         commands: createGameRoomCommandRegistry(api, {
           fateKnotsCommandNames: FATE_KNOTS_COMMAND_NAMES,
-          handleFateKnotsCharacterSelect: asCommandHandler(
-            fateKnotsHandleCharacterSelect as unknown as BridgeCommandHandler
-          ),
-          handleFateKnotsChoice: asCommandHandler(
-            fateKnotsHandleChoice as unknown as BridgeCommandHandler
-          ),
-          handleFateKnotsCombatAction: asCommandHandler(
-            fateKnotsHandleCombatAction as unknown as BridgeCommandHandler
-          ),
-          handleFateKnotsDmPacket: asCommandHandler(
-            fateKnotsHandleDmPacket as unknown as BridgeCommandHandler
-          ),
-          handleFateKnotsEnd: asNoPayloadHandler(
-            fateKnotsHandleEnd as unknown as BridgeNoPayloadHandler
-          ),
-          handleFateKnotsNpcBanter: asCommandHandler(
-            fateKnotsHandleNpcBanter as unknown as BridgeCommandHandler
-          ),
-          handleFateKnotsReady: asNoPayloadHandler(
-            fateKnotsHandleReady as unknown as BridgeNoPayloadHandler
-          ),
-          handleFateKnotsReset: asNoPayloadHandler(
-            fateKnotsHandleReset as unknown as BridgeNoPayloadHandler
-          ),
-          handleFateKnotsStart: asCommandHandler(
-            fateKnotsHandleStart as unknown as BridgeCommandHandler
-          ),
-          handleFateKnotsSync: asCommandHandler(
-            fateKnotsHandleSync as unknown as BridgeCommandHandler
-          ),
-          handleTeamTetrisMove: asCommandHandler(
-            handleTeamTetrisMove as unknown as BridgeCommandHandler
-          ),
-          handleTeamTetrisReset: asNoPayloadHandler(
-            handleTeamTetrisReset as unknown as BridgeNoPayloadHandler
-          ),
-          handleTeamTetrisStart: asCommandHandler(
-            handleTeamTetrisStart as unknown as BridgeCommandHandler
-          ),
+          handleFateKnotsCharacterSelect: asCommandHandler(fateKnotsHandleCharacterSelect),
+          handleFateKnotsChoice: asCommandHandler(fateKnotsHandleChoice),
+          handleFateKnotsCombatAction: asCommandHandler(fateKnotsHandleCombatAction),
+          handleFateKnotsDmPacket: asCommandHandler(fateKnotsHandleDmPacket),
+          handleFateKnotsEnd: asNoPayloadHandler(fateKnotsHandleEnd),
+          handleFateKnotsNpcBanter: asCommandHandler(fateKnotsHandleNpcBanter),
+          handleFateKnotsReady: asNoPayloadHandler(fateKnotsHandleReady),
+          handleFateKnotsReset: asNoPayloadHandler(fateKnotsHandleReset),
+          handleFateKnotsStart: asCommandHandler(fateKnotsHandleStart),
+          handleFateKnotsSync: asCommandHandler(fateKnotsHandleSync),
+          handleTeamTetrisMove: asCommandHandler(handleTeamTetrisMove),
+          handleTeamTetrisReset: asNoPayloadHandler(handleTeamTetrisReset),
+          handleTeamTetrisStart: asCommandHandler(handleTeamTetrisStart),
           handleXoxAcceptInvite: asCommandHandler(
             xoxHandleAcceptInvite as unknown as BridgeCommandHandler
           ),

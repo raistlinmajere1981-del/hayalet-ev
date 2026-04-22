@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "sharedSettingsOverlay": true,
+  "providers": [
+    {
+      "id": "ffmpeg-visual-structure",
+      "status": "ready",
+      "toolId": "ffmpeg",
+      "moduleIds": [
+        "frame-consistency",
+        "lighting-consistency",
+        "background-consistency",
+        "occlusion-inconsistency",
+        "object-insert-remove-anomaly",
+        "temporal-noise-pattern",
+        "motion-anomaly"
+      ],
+      "providerType": "binary",
+      "installStrategy": "shared-room-tool",
+      "expectedArtifacts": ["frame-probe-json", "structure-preview"],
+      "titleKey": "visualAnalysis.providers.ffmpeg-visual-structure.title",
+      "summaryKey": "visualAnalysis.providers.ffmpeg-visual-structure.summary"
+    },
+    {
+      "id": "ffmpeg-visual-reveal",
+      "status": "ready",
+      "toolId": "ffmpeg",
+      "moduleIds": [
+        "visual-signal-amplification",
+        "color-channel-isolation",
+        "gamma-scan",
+        "contrast-scan",
+        "edge-enhancement",
+        "histogram-equalization",
+        "hidden-detail-reveal"
+      ],
+      "providerType": "binary",
+      "installStrategy": "shared-room-tool",
+      "expectedArtifacts": ["frame-preview", "transform-preview", "reveal-summary"],
+      "titleKey": "visualAnalysis.providers.ffmpeg-visual-reveal.title",
+      "summaryKey": "visualAnalysis.providers.ffmpeg-visual-reveal.summary"
+    },
+    {
+      "id": "synthetic-visual-forensics",
+      "status": "planned",
+      "moduleIds": ["ai-artifact-detection"],
+      "providerType": "planned",
+      "installStrategy": "external-model-runtime",
+      "expectedArtifacts": ["artifact-heatmap", "ai-forensics-summary"],
+      "titleKey": "visualAnalysis.providers.synthetic-visual-forensics.title",
+      "summaryKey": "visualAnalysis.providers.synthetic-visual-forensics.summary"
+    }
+  ]
+}

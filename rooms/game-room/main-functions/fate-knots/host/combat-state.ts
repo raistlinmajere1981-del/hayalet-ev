@@ -363,7 +363,7 @@ export function cloneFateKnotsCombatState(
       : [],
     activeTurnIndex: Number.isFinite(source.activeTurnIndex) ? Number(source.activeTurnIndex) : 0,
     party: Array.isArray(source.party) ? source.party.map(cloneCombatant) : [],
-    enemy: cloneEnemy((source.enemy ?? {}) as FateKnotsEnemyRecord),
+    enemy: cloneEnemy(source.enemy ?? {}),
     log: Array.isArray(source.log)
       ? source.log.filter(Boolean).map(String).slice(-FATE_KNOTS_MAX_LOG_ENTRIES)
       : [],

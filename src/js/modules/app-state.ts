@@ -183,7 +183,7 @@ class AppStateClass {
   }
 
   getSettings(): AppSettings | null {
-    return SettingsManager.getSnapshot() as AppSettings | null;
+    return SettingsManager.getSnapshot();
   }
 
   getAccountForSlot(slot: string): Account | null {

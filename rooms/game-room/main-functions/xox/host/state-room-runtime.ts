@@ -8,8 +8,12 @@ import type {
 } from "../../../shared/types/room-shell-contracts.js";
 import {
   type XoxGameState,
+  type XoxMatchHistoryEntry,
+  MATCH_HISTORY_LIMIT,
+  TERMINAL_RESULTS,
   buildBoardAscii,
   getAvailableCells,
+  normalizeMatchHistory,
   normalizeState,
   STATUS_COPY,
 } from "./state-core.js";
@@ -54,6 +58,7 @@ interface SerializedXoxState {
   lastRemoteTurnIndex: number | null;
   pendingInvite: PendingInvite | null;
   inviteInbox: InviteEntry[];
+  matchHistory: XoxMatchHistoryEntry[];
   opponent: GameRoomSlotState;
   opponentReady: boolean;
   user: {
@@ -100,6 +105,53 @@ export function savePendingInvite(api: XoxStateApi, pendingInvite: unknown): Pen
 
 export function clearPendingInvite(api: XoxStateApi): void {
   api.deleteState?.("xox-pending-invite");
+}
+
+export function loadMatchHistory(api: XoxStateApi): XoxMatchHistoryEntry[] {
+  return normalizeMatchHistory(api.getState("xox-match-history"));
+}
+
+export function saveMatchHistory(
+  api: XoxStateApi,
+  entries: XoxMatchHistoryEntry[]
+): XoxMatchHistoryEntry[] {
+  const normalized = normalizeMatchHistory(entries);
+  api.setState("xox-match-history", normalized);
+  return normalized;
+}
+
+export function appendMatchHistory(
+  api: XoxStateApi,
+  entry: XoxMatchHistoryEntry
+): XoxMatchHistoryEntry[] {
+  const existing = loadMatchHistory(api);
+  const next = [entry, ...existing].slice(0, MATCH_HISTORY_LIMIT);
+  return saveMatchHistory(api, next);
+}
+
+function buildMatchHistoryEntry(
+  state: XoxGameState,
+  context: GameRoomContextState | GameRoomContextSnapshot
+): XoxMatchHistoryEntry | null {
+  const result = state.result;
+  if (result !== "user-win" && result !== "ai-win" && result !== "draw") {
+    return null;
+  }
+  const opponent = getOpponentInfo(context, state);
+  const id = state.matchId || state.inviteId || "xox-" + state.target + "-" + String(Date.now());
+  return {
+    id,
+    finishedAt: Date.now(),
+    target: state.target,
+    opponentNickname: opponent.nickname || state.opponentNickname || "Rakip",
+    opponentAvatar: opponent.avatar || null,
+    userNickname: context.user.nickname || "User",
+    userSymbol: state.userSymbol,
+    aiSymbol: state.aiSymbol,
+    result,
+    starter: state.starter,
+    board: state.board.slice(),
+  };
 }
 
 export function createUs1OpponentFallback(state: XoxGameState): GameRoomSlotState {
@@ -180,6 +232,7 @@ export function serializeState(
     lastRemoteTurnIndex: state.lastRemoteTurnIndex,
     pendingInvite: loadPendingInvite(api),
     inviteInbox: loadInviteInbox(api),
+    matchHistory: loadMatchHistory(api),
     opponent: opponent,
     opponentReady: opponent.dispatchable === true,
     user: {
@@ -191,7 +244,14 @@ export function serializeState(
 
 export function pushRoomState(api: XoxStateApi, state: XoxGameState): XoxGameState {
   const context = loadContext(api);
+  const previousState = loadState(api);
   const savedState = saveState(api, state);
+  if (TERMINAL_RESULTS.has(savedState.result) && !TERMINAL_RESULTS.has(previousState.result)) {
+    const entry = buildMatchHistoryEntry(savedState, context);
+    if (entry !== null) {
+      appendMatchHistory(api, entry);
+    }
+  }
   api.notifyRoom?.("xox-state", {
     state: serializeState(api, savedState, context),
   });

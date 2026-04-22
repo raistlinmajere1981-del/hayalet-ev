@@ -355,7 +355,7 @@ export class MailTransportService {
           logger: false,
         };
 
-        return new ImapFlow(config) as unknown as MailTransportImapClient;
+        return new ImapFlow(config);
       });
     this.createSmtpTransporter =
       options.createSmtpTransporter ??

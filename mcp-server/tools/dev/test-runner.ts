@@ -30,7 +30,7 @@ export function testRun(
 
     const pkgRaw: unknown = JSON.parse(readFileSync(join(projectRoot, "package.json"), "utf-8"));
     const pkg: PackageJsonLike =
-      typeof pkgRaw === "object" && pkgRaw !== null ? (pkgRaw as PackageJsonLike) : {};
+      typeof pkgRaw === "object" && pkgRaw !== null ? (pkgRaw) : {};
     const hasVitest = Boolean(pkg.devDependencies?.["vitest"] ?? pkg.dependencies?.["vitest"]);
     const hasJest = Boolean(pkg.devDependencies?.["jest"] ?? pkg.dependencies?.["jest"]);
 

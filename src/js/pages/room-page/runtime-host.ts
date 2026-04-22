@@ -52,7 +52,7 @@ export function ensureRoomRuntimeWebview({
 }: EnsureRoomRuntimeWebviewParams): { currentSrc: string; webview: RoomWebviewElement } {
   let webview = mount.querySelector<RoomWebviewElement>("webview[data-room-runtime='true']");
   if (webview === null) {
-    webview = document.createElement("webview") as RoomWebviewElement;
+    webview = document.createElement("webview");
     webview.className = "room-runtime-webview";
     webview.id = `room-webview-${roomId}`;
     webview.setAttribute("data-room-runtime", "true");

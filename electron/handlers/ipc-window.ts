@@ -295,7 +295,7 @@ function resolveInteractionEffectiveMode(options: {
 async function translateElectronMessage(key: string, params?: TranslationParams): Promise<string> {
   let settings: { general?: { language?: unknown } };
   try {
-    settings = ((await loadSettings()) ?? {}) as { general?: { language?: unknown } };
+    settings = (await loadSettings()) ?? {};
   } catch {
     settings = {};
   }
@@ -812,9 +812,7 @@ export function setupWindowHandlers(): void {
     const current = await readAssistantRuntime();
     const next = normalizeAssistantRuntime({
       ...current,
-      ...(typeof payload === "object" && payload !== null
-        ? (payload as Record<string, unknown>)
-        : {}),
+      ...(typeof payload === "object" && payload !== null ? payload : {}),
       updatedAt: new Date().toISOString(),
     });
     const state = await writeAssistantRuntime(next);

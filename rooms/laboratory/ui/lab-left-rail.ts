@@ -17,7 +17,7 @@ export function renderLabLeftRail(state: LabStoreState) {
     asNonEmptyString(source["storedFileName"]) || asNonEmptyString(source["routeLabel"]) || null;
   const hasSource = storedFileName !== null;
   const projectSummaries = state.projectIndex.projects.map(function (project) {
-    return project as Record<string, unknown>;
+    return project;
   });
   const activeProjectSummary = projectSummaries.find(function (project) {
     return String(project["id"] || "") === String(state.projectIndex.activeProjectId || "");

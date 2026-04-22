@@ -161,7 +161,7 @@ export class RoomsController implements PageController {
         void this.renderCharacters();
       },
       navigateToRoom: (roomId: string): void => {
-        openSceneDebugRoom(roomId as never);
+        openSceneDebugRoom(roomId);
       },
       updateObject: (id, updater): void => {
         this.sceneDebugSession.updateObject(id, updater);

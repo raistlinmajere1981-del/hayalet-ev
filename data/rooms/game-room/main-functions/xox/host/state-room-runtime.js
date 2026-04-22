@@ -2,8 +2,11 @@ import { loadContext, readLocale } from "../../../shared/host/context-state.js";
 import { FEATURE_ID, ROOM_ID } from "../../../shared/host/feature-meta.js";
 import { fillTemplate, translate } from "../../../shared/host/text.js";
 import {
+  MATCH_HISTORY_LIMIT,
+  TERMINAL_RESULTS,
   buildBoardAscii,
   getAvailableCells,
+  normalizeMatchHistory,
   normalizeState,
   STATUS_COPY
 } from "./state-core.js";
@@ -43,6 +46,40 @@ export function savePendingInvite(api, pendingInvite) {
 }
 export function clearPendingInvite(api) {
   api.deleteState?.("xox-pending-invite");
+}
+export function loadMatchHistory(api) {
+  return normalizeMatchHistory(api.getState("xox-match-history"));
+}
+export function saveMatchHistory(api, entries) {
+  const normalized = normalizeMatchHistory(entries);
+  api.setState("xox-match-history", normalized);
+  return normalized;
+}
+export function appendMatchHistory(api, entry) {
+  const existing = loadMatchHistory(api);
+  const next = [entry, ...existing].slice(0, MATCH_HISTORY_LIMIT);
+  return saveMatchHistory(api, next);
+}
+function buildMatchHistoryEntry(state, context) {
+  const result = state.result;
+  if (result !== "user-win" && result !== "ai-win" && result !== "draw") {
+    return null;
+  }
+  const opponent = getOpponentInfo(context, state);
+  const id = state.matchId || state.inviteId || "xox-" + state.target + "-" + String(Date.now());
+  return {
+    id,
+    finishedAt: Date.now(),
+    target: state.target,
+    opponentNickname: opponent.nickname || state.opponentNickname || "Rakip",
+    opponentAvatar: opponent.avatar || null,
+    userNickname: context.user.nickname || "User",
+    userSymbol: state.userSymbol,
+    aiSymbol: state.aiSymbol,
+    result,
+    starter: state.starter,
+    board: state.board.slice()
+  };
 }
 export function createUs1OpponentFallback(state) {
   return {
@@ -108,6 +145,7 @@ export function serializeState(api, state, context) {
     lastRemoteTurnIndex: state.lastRemoteTurnIndex,
     pendingInvite: loadPendingInvite(api),
     inviteInbox: loadInviteInbox(api),
+    matchHistory: loadMatchHistory(api),
     opponent,
     opponentReady: opponent.dispatchable === true,
     user: {
@@ -118,7 +156,14 @@ export function serializeState(api, state, context) {
 }
 export function pushRoomState(api, state) {
   const context = loadContext(api);
+  const previousState = loadState(api);
   const savedState = saveState(api, state);
+  if (TERMINAL_RESULTS.has(savedState.result) && !TERMINAL_RESULTS.has(previousState.result)) {
+    const entry = buildMatchHistoryEntry(savedState, context);
+    if (entry !== null) {
+      appendMatchHistory(api, entry);
+    }
+  }
   api.notifyRoom?.("xox-state", {
     state: serializeState(api, savedState, context)
   });

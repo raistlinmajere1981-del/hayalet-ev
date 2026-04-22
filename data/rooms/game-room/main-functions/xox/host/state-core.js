@@ -1,4 +1,6 @@
 import { normalizeLocale, normalizeText } from "../../../shared/host/text.js";
+export const MATCH_HISTORY_LIMIT = 20;
+export const TERMINAL_RESULTS = /* @__PURE__ */ new Set(["user-win", "ai-win", "draw"]);
 export const EMPTY_BOARD = ["", "", "", "", "", "", "", "", ""];
 export const WIN_LINES = [
   [0, 1, 2],
@@ -275,6 +277,49 @@ export function normalizeState(candidate, localeFallback) {
   state.lastRemoteTransportMessageId = normalizeText(source["lastRemoteTransportMessageId"]) || null;
   state.lastRemoteTurnIndex = typeof source["lastRemoteTurnIndex"] === "number" && Number.isInteger(source["lastRemoteTurnIndex"]) && source["lastRemoteTurnIndex"] >= 0 ? source["lastRemoteTurnIndex"] : null;
   return state;
+}
+export function normalizeMatchHistoryEntry(candidate) {
+  if (candidate === null || typeof candidate !== "object" || Array.isArray(candidate)) {
+    return null;
+  }
+  const source = candidate;
+  const id = normalizeText(source["id"]);
+  const result = source["result"];
+  if (id === "" || result !== "user-win" && result !== "ai-win" && result !== "draw") {
+    return null;
+  }
+  const finishedAt = typeof source["finishedAt"] === "number" && Number.isFinite(source["finishedAt"]) && source["finishedAt"] >= 0 ? Math.trunc(source["finishedAt"]) : 0;
+  const userSymbol = source["userSymbol"] === "O" ? "O" : "X";
+  const aiSymbol = source["aiSymbol"] === "X" ? "X" : "O";
+  return {
+    id,
+    finishedAt,
+    target: normalizeText(source["target"]) || "ai1",
+    opponentNickname: normalizeText(source["opponentNickname"]) || "Rakip",
+    opponentAvatar: normalizeText(source["opponentAvatar"]) || null,
+    userNickname: normalizeText(source["userNickname"]) || "User",
+    userSymbol,
+    aiSymbol,
+    result,
+    starter: source["starter"] === "ai" ? "ai" : "user",
+    board: normalizeBoard(source["board"])
+  };
+}
+export function normalizeMatchHistory(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const entries = [];
+  for (let index = 0; index < value.length; index += 1) {
+    const entry = normalizeMatchHistoryEntry(value[index]);
+    if (entry !== null) {
+      entries.push(entry);
+    }
+  }
+  if (entries.length > MATCH_HISTORY_LIMIT) {
+    return entries.slice(0, MATCH_HISTORY_LIMIT);
+  }
+  return entries;
 }
 export function getOutcomeForBoard(board, state) {
   for (let index = 0; index < WIN_LINES.length; index += 1) {

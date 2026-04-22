@@ -293,7 +293,7 @@ class ConversationSyncerClass {
   }
 
   _isTransientSyncError(detail: unknown): boolean {
-    const message = getErrorMessage(detail as Error).toLowerCase();
+    const message = getErrorMessage(detail).toLowerCase();
     return [
       "guest_view_manager_call",
       "script failed to execute",

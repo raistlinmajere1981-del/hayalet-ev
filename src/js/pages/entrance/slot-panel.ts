@@ -34,12 +34,12 @@ export class SlotPanel {
   }
 
   setupListeners(): void {
-    window.addEventListener("slot-account-changed", ((e: Event) => {
+    window.addEventListener("slot-account-changed", (e: Event) => {
       const detail = (e as CustomEvent<unknown>).detail;
       if (hasSlotAccountChangedDetail(detail) && detail.slot !== this.slotId) {
         this.render();
       }
-    }) as EventListener);
+    });
 
     window.addEventListener("account-list-updated", () => {
       this.render();

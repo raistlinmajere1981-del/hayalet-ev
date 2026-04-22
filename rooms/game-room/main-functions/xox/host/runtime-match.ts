@@ -84,7 +84,7 @@ async function sendBridgeMessageSafe(
     },
   });
   return result !== null && typeof result === "object" && Array.isArray(result) === false
-    ? (result as XoxDispatchResult)
+    ? result
     : null;
 }
 
@@ -249,6 +249,6 @@ export async function applyOpponentMove(
   pushRoomState(api, state);
   return {
     success: true,
-    message: resolveStatusText(state, loadContext(api) as GameRoomContextState),
+    message: resolveStatusText(state, loadContext(api)),
   };
 }

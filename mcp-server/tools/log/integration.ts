@@ -39,7 +39,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function parseStructuredLine(line: string): StructuredLogEntry | null {
   try {
     const parsed: unknown = JSON.parse(line);
-    return isRecord(parsed) ? (parsed as StructuredLogEntry) : null;
+    return isRecord(parsed) ? (parsed) : null;
   } catch {
     return null;
   }

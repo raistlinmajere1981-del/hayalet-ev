@@ -141,7 +141,7 @@ function extractConfigFromSource(source: string, providerId: string): ProviderCo
 
   const scrapeSelectors = extractSelectorsObject(source, "scrapeSelectors:");
   if (Object.keys(scrapeSelectors).length > 0) {
-    config.scrapeSelectors = scrapeSelectors as ScrapeSelectors;
+    config.scrapeSelectors = scrapeSelectors;
   }
 
   config.criticalSelectors = extractStringArray(source, "criticalSelectors:");

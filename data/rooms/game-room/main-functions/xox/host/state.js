@@ -25,16 +25,19 @@ export {
   normalizePendingInvite
 } from "./state-invites.js";
 export {
+  appendMatchHistory,
   clearPendingInvite,
   createUs1OpponentFallback,
   getOpponentInfo,
   loadInviteInbox,
+  loadMatchHistory,
   loadPendingInvite,
   loadState,
   pushRoomState,
   refreshRoomState,
   resolveStatusText,
   saveInviteInbox,
+  saveMatchHistory,
   savePendingInvite,
   saveState,
   serializeState

@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "modules": [
+    { "id": "transcript-support", "status": "implemented", "label": "Transcript support" }
+  ]
+}

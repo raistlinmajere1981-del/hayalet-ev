@@ -69,14 +69,30 @@
       "empty": "Hesap Yok"
     },
     "invites": {
-      "title": "Gelen Davetler",
-      "empty": "Su anda aktif uzak davet yok.",
+      "title": "Davetler",
+      "incomingTab": "Gelen",
+      "outgoingTab": "Giden",
+      "empty": "Henuz gelen uzak davet yok.",
+      "outgoingEmpty": "Giden aktif davet yok.",
       "accept": "Kabul Et",
       "reject": "Reddet",
+      "cancel": "Daveti Iptal Et",
       "pendingOutgoing": "Davet gonderildi. Yanit bekleniyor.",
       "messageFallback": "Davet mesaji eklenmedi.",
       "starterUser": "Sen baslarsin",
       "starterRemote": "Uzak kullanici baslar"
+    },
+    "history": {
+      "title": "Mac Gecmisi",
+      "empty": "Henuz tamamlanan mac yok.",
+      "win": "Kazandin",
+      "loss": "Kaybettin",
+      "draw": "Berabere"
+    },
+    "matchup": {
+      "vs": "VS",
+      "turnYours": "Sira sende",
+      "turnTheirs": "Rakip oynuyor"
     }
   },
   "teamTetris": {
@@ -174,6 +190,22 @@
       "resultLabel": "Mac Durumu",
       "roleLabel": "Yerel Rol",
       "draftLabel": "Taslak Kaymalar"
+    },
+    "stage": {
+      "positioningLabel": "Asama 1: Konum",
+      "routeLabel": "Asama 2: Rota",
+      "noPiece": "Siraniz bekleniyor...",
+      "moveLeft": "Sol",
+      "moveRight": "Sag",
+      "rotateCw": "SD",
+      "rotateCcw": "STD",
+      "confirmPosition": "Konumu Onayla",
+      "backToPosition": "Konuma Don",
+      "routeTitle": "Rota Modu",
+      "routeStraight": "Duz",
+      "routeBendLeft": "Sola Kiril",
+      "routeBendRight": "Saga Kiril",
+      "bendRowLabel": "Kirilma Satiri"
     },
     "validation": {
       "invalidRotation": "Bu donus siradaki parca icin gecerli degil.",

@@ -56,7 +56,7 @@ export function createLaboratoryHostActionRuntime(deps: LaboratoryActionRuntimeD
         pushMediaState: deps.pushMediaState,
         subtitleActionRuntime: deps.getSubtitleActionRuntime(),
         toRecord: deps.toRecord,
-      } as LaboratoryActionRouterDeps) as LaboratoryActionRouter;
+      }) as LaboratoryActionRouter;
     }
 
     return actionRouter;

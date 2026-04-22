@@ -71,7 +71,7 @@ function formatSummaryStatus(t: McpTranslator, isActive: boolean, endReason?: st
 function parseStructuredLine(line: string): StructuredLine | null {
   try {
     const parsed: unknown = JSON.parse(line);
-    return typeof parsed === "object" && parsed !== null ? (parsed as StructuredLine) : null;
+    return typeof parsed === "object" && parsed !== null ? (parsed) : null;
   } catch {
     return null;
   }

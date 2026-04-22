@@ -13,7 +13,7 @@ async function bootstrapWhisperPage(): Promise<void> {
   });
 
   await WhisperManager.init({
-    settings: SettingsManager.getSnapshot() as Record<string, unknown>,
+    settings: SettingsManager.getSnapshot(),
   });
 
   const closeButton = document.getElementById("whisper-page-close") as HTMLButtonElement | null;

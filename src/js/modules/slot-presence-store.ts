@@ -107,7 +107,7 @@ function isLegacyDefaultNickname(value: string): boolean {
 }
 
 function getSettingsSnapshot(): AppSettings | null {
-  return SettingsManager.getSnapshot() as AppSettings | null;
+  return SettingsManager.getSnapshot();
 }
 
 function getAiAccountFromSettings(

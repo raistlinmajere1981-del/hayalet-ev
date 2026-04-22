@@ -100,7 +100,7 @@ export async function testElectron(
 ): Promise<ToolResult> {
   const t = getElectronToolsTranslator();
   const timeout = args?.timeout ?? ELECTRON_TIMEOUTS.TEST_DEFAULT / 1000;
-  const runCommand: CommandRunner = args?._runCommand ?? (execAsync as CommandRunner);
+  const runCommand: CommandRunner = args?._runCommand ?? (execAsync);
 
   try {
     const probe = await runCommand("npm run mode:status", {

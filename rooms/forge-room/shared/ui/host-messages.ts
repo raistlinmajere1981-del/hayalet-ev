@@ -76,7 +76,7 @@ function normalizeOperatorProfileSnapshot(value: unknown): ForgeRoomSnapshot["op
       skills: normalizeForgeOperatorSkillRecords(source["skills"]),
       equipment: normalizeForgeOperatorEquipmentRecords(source["equipment"]),
       preferences: normalizedPreferences,
-    } as ForgeRoomSnapshot["operatorProfile"];
+    };
   }
 
   const legacySkill = toRecord(source["skill"]);
@@ -86,7 +86,7 @@ function normalizeOperatorProfileSnapshot(value: unknown): ForgeRoomSnapshot["op
     skills: normalizeForgeLegacyOperatorSkillRecords(legacySkill),
     equipment: normalizeForgeLegacyOperatorEquipmentRecords(legacyTools),
     preferences: normalizedPreferences,
-  } as ForgeRoomSnapshot["operatorProfile"];
+  };
 }
 
 function normalizeSessionContextSelectionSnapshot(

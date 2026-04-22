@@ -37,6 +37,18 @@
   .tt-actions--compact {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .tt-prep-area__controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tt-route-choices {
+    grid-template-columns: 1fr;
+  }
+
+  .tt-bend-row-picker {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 640px) {
@@ -53,13 +65,26 @@
   .tt-stage,
   .tt-requirement,
   .tt-board-card,
-  .tt-context-card {
+  .tt-context-card,
+  .tt-prep-area {
     border-radius: 0.96rem;
   }
 
   .tt-rotation-row,
   .tt-actions--compact {
     grid-template-columns: 1fr;
+  }
+
+  .tt-prep-area__controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tt-bend-row-picker {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .tt-lobby-slot__name {
+    max-width: 4rem;
   }
 }
 

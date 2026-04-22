@@ -75,10 +75,7 @@ function buildScopeMap(ast: TSESTree.Program): Map<number, ScopeInfo> {
       node.type === "FunctionExpression" ||
       node.type === "ArrowFunctionExpression"
     ) {
-      const funcNode = node as
-        | TSESTree.FunctionDeclaration
-        | TSESTree.FunctionExpression
-        | TSESTree.ArrowFunctionExpression;
+      const funcNode = node;
       newScope = {
         type: "function",
         name: funcNode.id?.name ?? "<anonymous>",
@@ -87,7 +84,7 @@ function buildScopeMap(ast: TSESTree.Program): Map<number, ScopeInfo> {
         parentScope: currentScope,
       };
     } else if (node.type === "ClassDeclaration") {
-      const classNode = node as TSESTree.ClassDeclaration;
+      const classNode = node;
       newScope = {
         type: "class",
         name: classNode.id?.name ?? "<anonymous>",
@@ -96,7 +93,7 @@ function buildScopeMap(ast: TSESTree.Program): Map<number, ScopeInfo> {
         parentScope: currentScope,
       };
     } else if (node.type === "MethodDefinition") {
-      const methodNode = node as TSESTree.MethodDefinition;
+      const methodNode = node;
       newScope = {
         type: "method",
         name: methodNode.key.type === "Identifier" ? methodNode.key.name : "<computed>",
@@ -169,13 +166,13 @@ function buildScopeMap(ast: TSESTree.Program): Map<number, ScopeInfo> {
             }
           });
         } else if ("type" in child) {
-          visit(child as TSESTree.Node, scopeToUse);
+          visit(child, scopeToUse);
         }
       }
     }
   }
 
-  visit(ast as TSESTree.Node, fileScope);
+  visit(ast, fileScope);
 
   return scopeMap;
 }

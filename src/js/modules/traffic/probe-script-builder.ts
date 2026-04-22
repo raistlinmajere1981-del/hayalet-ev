@@ -44,12 +44,7 @@ export function buildProbeScript(provider: string): string {
     contentContainers?: string[];
   };
 
-  const selectors = (cfg.selectors ?? {}) as {
-    sendButtonBase?: string;
-    sendButton?: string;
-    stopButton?: string;
-    voiceButton?: string;
-  };
+  const selectors = cfg.selectors ?? {};
   const locale = getSelectorLanguage();
   const probeScrollerQueryFailedMessage = JSON.stringify(
     AppI18n.t("app.logs.traffic.probeScrollerQueryFailed")

@@ -204,7 +204,7 @@ async function dispatchUs1BridgeMessage(
       ? (bridgeResultRaw as Record<string, unknown>)
       : null;
   if (bridgeResult === null || bridgeResult["success"] !== true) {
-    return bridgeResult as Us1MessageSendResult;
+    return bridgeResult;
   }
 
   const data =
@@ -462,7 +462,7 @@ async function handleUserMove(api: XoxRuntimeApi, payload: unknown): Promise<Xox
       success: true,
       message:
         outcome.finished === true
-          ? resolveStatusText(state, loadContext(api) as GameRoomContextState)
+          ? resolveStatusText(state, loadContext(api))
           : commandMessage(locale, "moveSent"),
     };
   }
@@ -471,7 +471,7 @@ async function handleUserMove(api: XoxRuntimeApi, payload: unknown): Promise<Xox
     pushRoomState(api, state);
     return {
       success: true,
-      message: resolveStatusText(state, loadContext(api) as GameRoomContextState),
+      message: resolveStatusText(state, loadContext(api)),
     };
   }
 

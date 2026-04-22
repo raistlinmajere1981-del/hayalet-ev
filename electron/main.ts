@@ -288,12 +288,12 @@ async function syncOpencodeSettingsOnStartup(): Promise<void> {
     const assistants =
       typeof assistantsRaw === "object" && assistantsRaw !== null
         ? (assistantsRaw as Record<string, unknown>)
-        : ((settingsRecord["assistants"] = {}) as Record<string, unknown>);
+        : (settingsRecord["assistants"] = {});
     const opencodeRaw = assistants["opencode"];
     const opencode =
       typeof opencodeRaw === "object" && opencodeRaw !== null
         ? (opencodeRaw as Record<string, unknown>)
-        : ((assistants["opencode"] = {}) as Record<string, unknown>);
+        : (assistants["opencode"] = {});
 
     const defaultPortValue = opencode["defaultPort"];
     if (
@@ -691,7 +691,7 @@ registerHandler("screenshot-capture", screenshotCaptureHandler);
 
 registerHandler("logger:appendBatch", handleLoggerAppendBatch);
 ipcMain.on("logger:appendBatch", (event, entries: unknown[]) => {
-  void handleLoggerAppendBatch(event as never, entries);
+  void handleLoggerAppendBatch(event, entries);
 });
 
 registerHandler("copy-to-assets", copyToAssets);

@@ -20,7 +20,7 @@ export function createSubtitleStateDelegatesRuntime(deps: SubtitleStateDelegates
     runtime: LaboratoryRecord,
     presetId: string
   ): LaboratoryRecord {
-    return subtitleStateRuntime.getDefaultSubtitleEditRecipe(runtime, presetId) as LaboratoryRecord;
+    return subtitleStateRuntime.getDefaultSubtitleEditRecipe(runtime, presetId);
   }
 
   function createEmptySubtitleDiscoveryState() {

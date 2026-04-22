@@ -65,6 +65,34 @@
       }
       return seatId.trim() !== "" ? seatId.toUpperCase() : "???";
     }
+    function getTeamTetrisPlayerDisplay(seatId) {
+      const state = getState();
+      const label = getTeamTetrisSeatDisplayLabel(seatId);
+      const localSeatId = getTeamTetrisLocalSeatId();
+      if (state.teamTetris.hiddenPairs === true) {
+        const view = getTeamTetrisView();
+        if (view && view.revealedPairs !== true && seatId !== localSeatId) {
+          return {
+            avatarUrl: null,
+            label: text(["teamTetris", "roster", "partnerUnknown"]),
+            isAnonymous: true
+          };
+        }
+      }
+      let avatarUrl = null;
+      if (seatId === "user" || seatId === localSeatId) {
+        const userCtx = state.context["user"];
+        if (userCtx && typeof userCtx.avatar === "string" && userCtx.avatar.trim() !== "") {
+          avatarUrl = userCtx.avatar;
+        }
+      } else {
+        const slot = readSlotRecord(state.context.slots?.[seatId] ?? null);
+        if (slot && typeof slot.avatar === "string") {
+          avatarUrl = slot.avatar || null;
+        }
+      }
+      return { avatarUrl, label, isAnonymous: false };
+    }
     function getTeamTetrisAnonymousSeatLabel(role) {
       return role === "followup" ? text(["teamTetris", "roster", "partnerFollowup"]) : text(["teamTetris", "roster", "partnerOpener"]);
     }
@@ -222,6 +250,7 @@
       getTeamTetrisView,
       getTeamTetrisBoardLabel,
       getTeamTetrisSeatDisplayLabel,
+      getTeamTetrisPlayerDisplay,
       getTeamTetrisPendingTurn,
       getTeamTetrisOwnBoardState,
       getTeamTetrisOpponentBoardState,

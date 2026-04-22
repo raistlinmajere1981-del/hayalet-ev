@@ -352,10 +352,7 @@ class RelayManagerClass {
           this._aiaiRelay.isActive &&
           this._aiaiRelay.handlesProvider(provider)
         ) {
-          await this._aiaiRelay.handleThinkingComplete(
-            provider,
-            result as unknown as Record<string, unknown>
-          );
+          await this._aiaiRelay.handleThinkingComplete(provider, result);
           return;
         }
 
@@ -372,17 +369,11 @@ class RelayManagerClass {
             return;
           }
 
-          await this._us1AssistantRelay.handleThinkingComplete(
-            provider,
-            result as unknown as Record<string, unknown>
-          );
+          await this._us1AssistantRelay.handleThinkingComplete(provider, result);
           return;
         }
 
-        await this._aiAssistantRelay.handleThinkingComplete(
-          provider,
-          result as unknown as Record<string, unknown>
-        );
+        await this._aiAssistantRelay.handleThinkingComplete(provider, result);
       } catch (err) {
         const detail = (event as CustomEvent).detail as { provider?: string } | undefined;
         Logger.warnT(

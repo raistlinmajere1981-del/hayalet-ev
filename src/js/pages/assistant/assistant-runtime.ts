@@ -33,7 +33,7 @@ export async function readAssistantRuntimeState(): Promise<AssistantRuntimeState
       return null;
     }
 
-    return response.state as AssistantRuntimeState;
+    return response.state;
   } catch {
     return null;
   }

@@ -11,7 +11,6 @@
     const render = deps.render;
     const getFeatureLabel = deps.getFeatureLabel;
     const createTeamTetrisPieceCard = deps.createTeamTetrisPieceCard;
-    const createTeamTetrisRequirementCard = deps.createTeamTetrisRequirementCard;
     const createTeamTetrisSnapshotCard = deps.createTeamTetrisSnapshotCard;
     const renderTeamTetrisBoardCard = deps.renderTeamTetrisBoardCard;
     const getTeamTetrisView = deps.getTeamTetrisView;
@@ -26,12 +25,19 @@
     const getTeamTetrisResultLabel = deps.getTeamTetrisResultLabel;
     const getTeamTetrisDraftStatusText = deps.getTeamTetrisDraftStatusText;
     const getTeamTetrisStatusText = deps.getTeamTetrisStatusText;
-    const onTeamTetrisRotationSelect = deps.onTeamTetrisRotationSelect;
     const onTeamTetrisRotate = deps.onTeamTetrisRotate;
+    const onTeamTetrisRotateCcw = deps.onTeamTetrisRotateCcw;
     const onTeamTetrisClearDraft = deps.onTeamTetrisClearDraft;
     const onTeamTetrisSubmit = deps.onTeamTetrisSubmit;
+    const onTeamTetrisMoveLeft = deps.onTeamTetrisMoveLeft;
+    const onTeamTetrisMoveRight = deps.onTeamTetrisMoveRight;
+    const onTeamTetrisConfirmPosition = deps.onTeamTetrisConfirmPosition;
+    const onTeamTetrisBackToPosition = deps.onTeamTetrisBackToPosition;
+    const onTeamTetrisRouteModeSelect = deps.onTeamTetrisRouteModeSelect;
+    const onTeamTetrisBendRowSelect = deps.onTeamTetrisBendRowSelect;
     const onTeamTetrisStart = deps.onTeamTetrisStart;
     const onTeamTetrisReset = deps.onTeamTetrisReset;
+    const getTeamTetrisPlayerDisplay = deps.getTeamTetrisPlayerDisplay;
     function createButton(className, label) {
       const button = createElement("button", className, label);
       button.type = "button";
@@ -64,6 +70,158 @@
       }
       return [text(["teamTetris", "roster", "revealedHint"])];
     }
+    function isSlotReady(seatId, state) {
+      const reqSlots = state.teamTetris.requiredSlots;
+      if (seatId === "ai1") {
+        return reqSlots.ai1 === true;
+      }
+      if (seatId === "ai2") {
+        return reqSlots.ai2 === true;
+      }
+      if (seatId === "us1") {
+        return reqSlots.us1 === true;
+      }
+      return null;
+    }
+    function renderLobbySlotCard(seatId, state) {
+      const display = getTeamTetrisPlayerDisplay(seatId);
+      const ready = isSlotReady(seatId, state);
+      const card = createElement("div", "tt-lobby-slot", "");
+      card.dataset["seatId"] = seatId;
+      card.dataset["anonymous"] = display.isAnonymous ? "true" : "false";
+      if (ready !== null) {
+        card.dataset["ready"] = ready ? "true" : "false";
+      }
+      const avatarEl = createElement("div", "tt-lobby-slot__avatar", "");
+      if (display.avatarUrl && !display.isAnonymous) {
+        const img = createElement("img", "tt-lobby-slot__img", "");
+        img.src = display.avatarUrl;
+        img.alt = display.label;
+        avatarEl.append(img);
+      } else {
+        avatarEl.append(
+          createElement("span", "tt-lobby-slot__initial", display.label.charAt(0).toUpperCase())
+        );
+      }
+      card.append(avatarEl, createElement("span", "tt-lobby-slot__name", display.label));
+      if (ready !== null) {
+        const badge = createElement(
+          "span",
+          "tt-lobby-slot__badge",
+          ready ? text(["teamTetris", "controls", "requirementReady"]) : text(["teamTetris", "controls", "requirementWaiting"])
+        );
+        badge.dataset["ready"] = ready ? "true" : "false";
+        card.append(badge);
+      }
+      return card;
+    }
+    function renderPrepArea(pendingTurn, draft) {
+      const prepArea = createElement("section", "tt-prep-area", "");
+      if (!pendingTurn) {
+        prepArea.append(
+          createElement("p", "tt-prep-area__empty", text(["teamTetris", "stage", "noPiece"]))
+        );
+        return prepArea;
+      }
+      const pieceCard = createTeamTetrisPieceCard(
+        text(["teamTetris", "boards", "currentPiece"]),
+        pendingTurn.pieceId,
+        draft.rotation,
+        ""
+      );
+      pieceCard.className = (pieceCard.className + " tt-prep-area__piece").trim();
+      pieceCard.dataset["variant"] = "current-piece";
+      const stageLabel = createElement("div", "tt-prep-area__stage-label", "");
+      const stageText = draft.stage === "positioning" ? text(["teamTetris", "stage", "positioningLabel"]) : text(["teamTetris", "stage", "routeLabel"]);
+      stageLabel.append(createElement("span", "tt-prep-area__stage-badge", stageText));
+      const controlsRow = createElement("div", "tt-prep-area__controls", "");
+      if (draft.stage === "positioning") {
+        const moveLeftBtn = createButton(
+          "xox-button xox-button--ghost tt-prep-btn",
+          text(["teamTetris", "stage", "moveLeft"])
+        );
+        moveLeftBtn.addEventListener("click", onTeamTetrisMoveLeft);
+        const rotateCcwBtn = createButton(
+          "xox-button xox-button--ghost tt-prep-btn",
+          text(["teamTetris", "stage", "rotateCcw"])
+        );
+        rotateCcwBtn.addEventListener("click", onTeamTetrisRotateCcw);
+        const rotateCwBtn = createButton(
+          "xox-button xox-button--ghost tt-prep-btn",
+          text(["teamTetris", "stage", "rotateCw"])
+        );
+        rotateCwBtn.addEventListener("click", onTeamTetrisRotate);
+        const moveRightBtn = createButton(
+          "xox-button xox-button--ghost tt-prep-btn",
+          text(["teamTetris", "stage", "moveRight"])
+        );
+        moveRightBtn.addEventListener("click", onTeamTetrisMoveRight);
+        const confirmBtn = createButton(
+          "xox-button xox-button--primary tt-prep-btn--confirm",
+          text(["teamTetris", "stage", "confirmPosition"])
+        );
+        confirmBtn.addEventListener("click", onTeamTetrisConfirmPosition);
+        controlsRow.append(moveLeftBtn, rotateCcwBtn, rotateCwBtn, moveRightBtn);
+        prepArea.append(stageLabel, pieceCard, controlsRow, confirmBtn);
+      } else {
+        const backBtn = createButton(
+          "xox-button xox-button--ghost tt-prep-btn",
+          text(["teamTetris", "stage", "backToPosition"])
+        );
+        backBtn.addEventListener("click", onTeamTetrisBackToPosition);
+        const routeModes = [
+          { mode: "straight", labelKey: "routeStraight" },
+          { mode: "bend-left", labelKey: "routeBendLeft" },
+          { mode: "bend-right", labelKey: "routeBendRight" }
+        ];
+        const routeChoices = createElement("div", "tt-route-choices", "");
+        routeModes.forEach(function(entry) {
+          const btn = createButton(
+            "tt-toggle tt-route-btn",
+            text(["teamTetris", "stage", entry.labelKey])
+          );
+          btn.dataset["selected"] = draft.routeMode === entry.mode ? "true" : "false";
+          btn.addEventListener("click", function() {
+            onTeamTetrisRouteModeSelect(entry.mode);
+          });
+          routeChoices.append(btn);
+        });
+        const routePanel = createElement("div", "tt-route-panel", "");
+        routePanel.append(
+          createElement("p", "tt-panel__label", text(["teamTetris", "stage", "routeTitle"])),
+          routeChoices
+        );
+        if (draft.routeMode !== "straight") {
+          const bendLabel = createElement(
+            "p",
+            "tt-panel__label",
+            text(["teamTetris", "stage", "bendRowLabel"])
+          );
+          const bendRowPicker = createElement("div", "tt-bend-row-picker", "");
+          for (let r = 0; r < 20; r += 1) {
+            const rowBtn = createButton("tt-bend-row-btn", String(r));
+            rowBtn.dataset["selected"] = draft.bendRow === r ? "true" : "false";
+            (function(rowIndex) {
+              rowBtn.addEventListener("click", function() {
+                onTeamTetrisBendRowSelect(rowIndex);
+              });
+            })(r);
+            bendRowPicker.append(rowBtn);
+          }
+          routePanel.append(bendLabel, bendRowPicker);
+        }
+        const submitBtn = createButton(
+          "xox-button xox-button--primary tt-prep-btn--confirm",
+          text(["teamTetris", "controls", "submitMove"])
+        );
+        const canSubmitFromStage = draft.preview !== null && draft.preview.success === true && draft.preview.pathComplete === true;
+        submitBtn.disabled = !canSubmitFromStage;
+        submitBtn.addEventListener("click", onTeamTetrisSubmit);
+        controlsRow.append(backBtn);
+        prepArea.append(stageLabel, pieceCard, routePanel, controlsRow, submitBtn);
+      }
+      return prepArea;
+    }
     function renderTeamTetris(root) {
       const state = getState();
       document.title = state.context.room.name + " - " + getFeatureLabel(featureId);
@@ -73,7 +231,8 @@
       const opponentBoard = getTeamTetrisOpponentBoardState();
       const hiddenPairs = state.preferences.teamTetrisHiddenPairs !== false;
       const selectedPartnerSeatId = readSelectedPartnerSeatId(state);
-      const draftPreview = state.teamTetrisDraft.preview;
+      const draft = state.teamTetrisDraft;
+      const draftPreview = draft.preview;
       const draftCanSubmit = draftPreview !== null && draftPreview.success === true && draftPreview.pathComplete === true;
       const draftOverlayCells = draftPreview && Array.isArray(draftPreview.cells) ? draftPreview.cells : [];
       const draftPathCells = draftPreview && Array.isArray(draftPreview.pathCells) ? draftPreview.pathCells : [];
@@ -87,7 +246,6 @@
       const draftPathTurnTone = draftCanSubmit ? "trace-valid-turn" : "trace-blocked-turn";
       const canConfigureMatch = state.teamTetris.active !== true && state.teamTetris.result !== "pending";
       const canStart = state.teamTetris.canStart === true && canConfigureMatch && (hiddenPairs === true || selectedPartnerSeatId !== null);
-      const canSubmitMove = pendingTurn !== null && draftCanSubmit;
       const app = createElement("main", "tt-shell", "");
       app.dataset["presentationMode"] = state.presentation.mode;
       const surface = createElement("section", "tt-surface", "");
@@ -107,26 +265,20 @@
       const roster = createElement("section", "tt-panel tt-panel--overview", "");
       const overviewGrid = createElement("div", "tt-overview-grid", "");
       const overviewCopy = createElement("div", "tt-overview-copy", "");
-      const readinessGrid = createElement("div", "tt-requirement-grid", "");
+      const lobbySlots = createElement("div", "tt-lobby-slots", "");
+      ["user", "ai1", "ai2", "us1"].forEach(function(seatId) {
+        lobbySlots.append(renderLobbySlotCard(seatId, state));
+      });
       overviewCopy.append(
         createElement("p", "tt-panel__label", text(["teamTetris", "roster", "title"])),
-        createElement(
-          "p",
-          "tt-panel__body",
-          text(["teamTetris", "roster", "youLabel"]) + ": " + (view ? getTeamTetrisSeatDisplayLabel(view.seat.seatId) : text(["teamTetris", "turns", "idle"]))
-        ),
+        lobbySlots,
         createElement(
           "p",
           "tt-panel__body",
           text(["teamTetris", "roster", "partnerLabel"]) + ": " + getTeamTetrisPartnerRoleLabel()
         )
       );
-      readinessGrid.append(
-        createTeamTetrisRequirementCard("ai1", state.teamTetris.requiredSlots.ai1 === true),
-        createTeamTetrisRequirementCard("ai2", state.teamTetris.requiredSlots.ai2 === true),
-        createTeamTetrisRequirementCard("us1", state.teamTetris.requiredSlots.us1 === true)
-      );
-      overviewGrid.append(overviewCopy, readinessGrid);
+      overviewGrid.append(overviewCopy);
       roster.append(overviewGrid);
       if (state.teamTetris.matchId || state.teamTetris.active === true) {
         roster.append(
@@ -216,12 +368,6 @@
       const supportStack = createElement("div", "tt-support-stack", "");
       const supportPair = createElement("div", "tt-support-pair", "");
       const statusPanel = createElement("section", "tt-context-card tt-context-card--status", "");
-      const rotationPanel = createTeamTetrisPieceCard(
-        text(["teamTetris", "boards", "currentPiece"]),
-        pendingTurn ? pendingTurn.pieceId : "",
-        state.teamTetrisDraft.rotation,
-        ""
-      );
       const snapshotCard = createTeamTetrisSnapshotCard(
         text(["teamTetris", "boards", "beforePartner"]),
         ownBoard.boardBeforePartnerPieceRows
@@ -232,12 +378,17 @@
         ownBoard.partnerLastPiece ? ownBoard.partnerLastPiece.rotation : 0,
         getTeamTetrisPlacedByLabel(ownBoard.partnerLastPiece)
       );
-      rotationPanel.className = `${rotationPanel.className} tt-context-card--controls`.trim();
-      rotationPanel.dataset["variant"] = "current-piece";
       snapshotCard.dataset["variant"] = "snapshot";
       partnerPieceCard.dataset["variant"] = "partner";
+      const turnIndicator = createElement("div", "tt-turn-indicator", "");
+      turnIndicator.dataset["active"] = pendingTurn !== null ? "true" : "false";
+      turnIndicator.append(
+        createElement("span", "tt-turn-indicator__dot", ""),
+        createElement("span", "tt-turn-indicator__text", getTeamTetrisTurnLabel())
+      );
       statusPanel.append(
         createElement("span", "tt-context-card__label", text(["teamTetris", "heroBadge"])),
+        turnIndicator,
         createElement("p", "tt-context-card__lead", getTeamTetrisStatusText()),
         createElement(
           "p",
@@ -247,59 +398,28 @@
         createElement(
           "p",
           "tt-context-card__meta",
-          text(["teamTetris", "controls", "pathLegend"]) + ": " + text(["teamTetris", "controls", "pathRule"])
-        ),
-        createElement(
-          "p",
-          "tt-context-card__meta",
           view && view.hiddenPairs === true && view.revealedPairs !== true ? text(["teamTetris", "roster", "hiddenHint"]) : text(["teamTetris", "roster", "revealedHint"])
         ),
         createElement("p", "tt-context-card__meta", text(["teamTetris", "boards", "publicHint"]))
       );
-      const rotationChoices = createElement("div", "tt-rotation-row", "");
-      const legalRotations = pendingTurn ? pendingTurn.legalRotations : [0];
-      legalRotations.forEach(function(rotation) {
-        const button = createButton("tt-rotation", String(rotation));
-        button.disabled = pendingTurn === null;
-        button.dataset["selected"] = state.teamTetrisDraft.rotation === rotation ? "true" : "false";
-        button.addEventListener("click", function() {
-          onTeamTetrisRotationSelect(rotation);
-        });
-        rotationChoices.append(button);
-      });
-      const rotateButton = createButton(
-        "xox-button xox-button--ghost",
-        text(["teamTetris", "controls", "rotate"])
-      );
-      rotateButton.disabled = pendingTurn === null;
-      rotateButton.addEventListener("click", onTeamTetrisRotate);
-      const draftActions = createElement("div", "tt-actions tt-actions--compact", "");
+      const prepArea = renderPrepArea(pendingTurn, draft);
       const clearButton = createButton(
         "xox-button xox-button--ghost",
         text(["teamTetris", "controls", "clearPath"])
       );
       clearButton.disabled = pendingTurn === null;
       clearButton.addEventListener("click", onTeamTetrisClearDraft);
-      const submitButton = createButton(
-        "xox-button xox-button--primary",
-        text(["teamTetris", "controls", "submitMove"])
-      );
-      submitButton.disabled = !canSubmitMove;
-      submitButton.addEventListener("click", onTeamTetrisSubmit);
-      draftActions.append(clearButton, rotateButton, submitButton);
-      rotationPanel.append(
-        rotationChoices,
-        draftActions,
-        createElement("p", "tt-context-card__hint", getTeamTetrisDraftStatusText())
-      );
+      const draftHint = createElement("p", "tt-context-card__hint", getTeamTetrisDraftStatusText());
       supportPair.append(snapshotCard, partnerPieceCard);
-      supportStack.append(statusPanel, rotationPanel, supportPair);
+      supportStack.append(statusPanel, prepArea, clearButton, draftHint, supportPair);
+      const boardInteractionMode = draft.interactionMode;
       const boardGrid = createElement("div", "tt-board-grid", "");
       boardGrid.append(
         renderTeamTetrisBoardCard(ownBoard, {
           tone: "private",
           meta: text(["teamTetris", "boards", "privateBoard"]),
-          interactive: pendingTurn !== null,
+          interactive: pendingTurn !== null && boardInteractionMode === "positioning",
+          boardInteractionMode,
           overlayCells: draftOverlayCells,
           overlayTone: draftOverlayTone,
           overlayPieceId: pendingTurn ? pendingTurn.pieceId : "",

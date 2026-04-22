@@ -548,7 +548,7 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
       profileModelState: clone(runtimeRecord.profileModelState || {}),
       projects: projectedProjects.map(serializeProjectSummary),
       activeProjectId: runtimeRecord.activeProjectId,
-      activeProject: serializeProject(activeProject as SnapshotRecord, runtimeRecord),
+      activeProject: serializeProject(activeProject, runtimeRecord),
       toolState: clone(runtimeRecord.toolState || { tools: {} }),
       jobs: serializeJobs(runtimeRecord),
     };

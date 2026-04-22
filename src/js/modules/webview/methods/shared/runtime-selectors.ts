@@ -49,9 +49,7 @@ export async function getRuntimeProviderConfig(
 
   try {
     const config: unknown = JSON.parse(configJson);
-    return config !== null && config !== undefined && typeof config === "object"
-      ? (config as RuntimeProviderConfig)
-      : null;
+    return config !== null && config !== undefined && typeof config === "object" ? config : null;
   } catch {
     return null;
   }

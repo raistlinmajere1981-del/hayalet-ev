@@ -231,6 +231,10 @@ type GameRoomTeamTetrisDraftReplayResult =
   | GameRoomTeamTetrisDraftPreview
   | GameRoomTeamTetrisDraftReplayFailure;
 
+type GameRoomTeamTetrisDraftStage = "positioning" | "route";
+type GameRoomTeamTetrisRouteMode = "straight" | "bend-left" | "bend-right";
+type GameRoomTeamTetrisInteractionMode = "positioning" | "route-row-picker" | "preview";
+
 interface GameRoomTeamTetrisDraftState extends GameRoomUnknownRecord {
   matchId: string;
   turnIndex: number | null;
@@ -242,6 +246,11 @@ interface GameRoomTeamTetrisDraftState extends GameRoomUnknownRecord {
   preview: GameRoomTeamTetrisDraftReplayResult | null;
   errorKey: string;
   dragActive: boolean;
+  stage: GameRoomTeamTetrisDraftStage;
+  stagedOriginX: number;
+  routeMode: GameRoomTeamTetrisRouteMode;
+  bendRow: number | null;
+  interactionMode: GameRoomTeamTetrisInteractionMode;
 }
 
 interface GameRoomTeamTetrisState extends GameRoomUnknownRecord {
@@ -369,11 +378,18 @@ interface GameRoomTeamTetrisUiStateViewRuntimeDeps {
   createTeamTetrisBoard(teamId: string, visibility: string): GameRoomTeamTetrisBoardState;
 }
 
+interface GameRoomTeamTetrisPlayerDisplay {
+  avatarUrl: string | null;
+  label: string;
+  isAnonymous: boolean;
+}
+
 interface GameRoomTeamTetrisUiStateViewRuntime {
   syncTeamTetrisPreferencesFromState(): void;
   getTeamTetrisView(): GameRoomTeamTetrisSeatView | null;
   getTeamTetrisBoardLabel(teamId: string): string;
   getTeamTetrisSeatDisplayLabel(seatId: string): string;
+  getTeamTetrisPlayerDisplay(seatId: string): GameRoomTeamTetrisPlayerDisplay;
   getTeamTetrisPendingTurn(): GameRoomTeamTetrisPendingTurn | null;
   getTeamTetrisOwnBoardState(): GameRoomTeamTetrisBoardViewState;
   getTeamTetrisOpponentBoardState(): GameRoomTeamTetrisBoardViewState;
@@ -407,6 +423,13 @@ interface GameRoomTeamTetrisUiDraftRuntime {
     rotation: number,
     rowShifts: number[]
   ): GameRoomTeamTetrisDraftReplayResult;
+  compileStageToRowShifts(
+    stagedOriginX: number,
+    rotation: number,
+    pieceId: string,
+    routeMode: GameRoomTeamTetrisRouteMode,
+    bendRow: number | null
+  ): number[];
   buildTeamTetrisRowShiftsFromTargets(
     pieceId: string,
     rotation: number,
@@ -419,8 +442,16 @@ interface GameRoomTeamTetrisUiDraftRuntime {
   finishTeamTetrisDrag(): void;
   onTeamTetrisRotationSelect(rotation: number): void;
   onTeamTetrisRotate(): void;
+  onTeamTetrisRotateCcw(): void;
   onTeamTetrisClearDraft(): void;
   onTeamTetrisSubmit(): void;
+  onTeamTetrisMoveLeft(): void;
+  onTeamTetrisMoveRight(): void;
+  onTeamTetrisConfirmPosition(): void;
+  onTeamTetrisBackToPosition(): void;
+  onTeamTetrisRouteModeSelect(mode: GameRoomTeamTetrisRouteMode): void;
+  onTeamTetrisBoardColumnSelect(column: number): void;
+  onTeamTetrisBendRowSelect(row: number): void;
 }
 
 interface GameRoomTeamTetrisUiStateRuntimeDeps {
@@ -450,10 +481,13 @@ interface GameRoomTeamTetrisUiModuleCardRuntimeDeps {
   startTeamTetrisDrag(columnIndex: number, rowIndex: number): void;
   updateTeamTetrisDraftTarget(columnIndex: number, rowIndex: number): void;
   finishTeamTetrisDrag(): void;
+  onTeamTetrisBoardColumnSelect(column: number): void;
+  onTeamTetrisBendRowSelect(row: number): void;
 }
 
 interface GameRoomTeamTetrisBoardCardOptions extends GameRoomUnknownRecord {
   interactive?: boolean;
+  boardInteractionMode?: GameRoomTeamTetrisInteractionMode;
   overlayCells?: GameRoomTeamTetrisCell[];
   overlayTone?: string;
   overlayPieceId?: string;
@@ -518,10 +552,25 @@ interface GameRoomTeamTetrisUiModuleShellRuntimeDeps {
   getTeamTetrisStatusText(): string;
   onTeamTetrisRotationSelect(rotation: number): void;
   onTeamTetrisRotate(): void;
+  onTeamTetrisRotateCcw(): void;
   onTeamTetrisClearDraft(): void;
   onTeamTetrisSubmit(): void;
+  onTeamTetrisMoveLeft(): void;
+  onTeamTetrisMoveRight(): void;
+  onTeamTetrisConfirmPosition(): void;
+  onTeamTetrisBackToPosition(): void;
+  onTeamTetrisRouteModeSelect(mode: GameRoomTeamTetrisRouteMode): void;
+  onTeamTetrisBendRowSelect(row: number): void;
   onTeamTetrisStart(): void;
   onTeamTetrisReset(): void;
+  getTeamTetrisPlayerDisplay(seatId: string): GameRoomTeamTetrisPlayerDisplay;
+  compileStageToRowShifts(
+    stagedOriginX: number,
+    rotation: number,
+    pieceId: string,
+    routeMode: GameRoomTeamTetrisRouteMode,
+    bendRow: number | null
+  ): number[];
 }
 
 interface GameRoomTeamTetrisUiModuleShellRuntime {
