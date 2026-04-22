@@ -62,6 +62,7 @@ export function createDefaultSettings(): AppSettings {
     general: {
       appearance: { ...DEFAULT_THEME_APPEARANCE_SETTINGS },
       language: DEFAULT_APP_LANGUAGE,
+      transcriptModelVariant: "full",
     },
     scene: {
       appearance: { ...DEFAULT_SCENE_APPEARANCE_SETTINGS },

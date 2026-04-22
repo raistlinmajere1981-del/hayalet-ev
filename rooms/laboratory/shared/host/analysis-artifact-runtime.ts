@@ -19,6 +19,7 @@ type AnalysisArtifactRuntimeDeps = {
   readTextFile: (filePath: string) => Promise<string>;
   roomId: string;
   toRecord: (value: unknown) => LaboratoryRecord;
+  transcribeManagedAudioFile: (payload: LaboratoryRecord) => Promise<LaboratoryRecord>;
   writeJsonFile: (filePath: string, value: unknown) => Promise<void>;
 };
 
@@ -47,6 +48,7 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
     readTextFile,
     roomId,
     toRecord,
+    transcribeManagedAudioFile,
     writeJsonFile,
   } = deps;
 
@@ -303,12 +305,13 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
       return null;
     }
 
-    const modelPath = asNonEmptyString(selectedModelRecord["path"]);
-    if (modelPath === null) {
+    const modelId = asNonEmptyString(selectedModelRecord["modelId"]);
+    if (modelId === null) {
       return null;
     }
 
-    const language = asNonEmptyString(selectedModelRecord["language"]) || "en";
+    const selectedLanguage = asNonEmptyString(selectedModelRecord["language"]) || "en";
+    const languageOverride = selectedLanguage === "multilingual" ? null : selectedLanguage;
     const sampleWavPath = `${getProjectProfilePreflightDir(runtime, project as { slug: string })}/${artifactBase}-speech.wav`;
     const transcriptBase = `${getProjectProfilePreflightDir(runtime, project as { slug: string })}/${artifactBase}-transcript`;
     const transcriptPath = `${transcriptBase}.txt`;
@@ -333,23 +336,36 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
       ],
       timeoutMs: 120_000,
     });
-    await runProfileTool(runtime, {
-      requestId: requestId,
-      jobId: jobId,
-      toolId: "whisper.cpp",
-      cwd: getProjectProfileDir(runtime, project as { slug: string }),
-      args: ["-m", modelPath, "-f", sampleWavPath, "-l", language, "-otxt", "-of", transcriptBase],
-      timeoutMs: 8 * 60 * 1000,
-    });
+    const transcriptResult = toRecord(
+      await transcribeManagedAudioFile({
+        audioPath: sampleWavPath,
+        metadata: {
+          artifactBase,
+          featureStage: "profile",
+          jobId,
+          requestId,
+        },
+        ...(languageOverride ? { language: languageOverride } : {}),
+        modelId,
+        outputBasePath: transcriptBase,
+        roomId,
+        source: "synthetic-test",
+      })
+    );
+    if (transcriptResult["success"] !== true) {
+      throw new Error(asNonEmptyString(transcriptResult["error"]) || "Transcript sample failed.");
+    }
 
-    const transcriptText = asNonEmptyString(await readTextFile(transcriptPath));
+    const transcriptText =
+      asNonEmptyString(transcriptResult["text"]) ||
+      asNonEmptyString(await readTextFile(transcriptPath));
     if (transcriptText === null) {
       return null;
     }
 
     const artifact = createProfileArtifact("transcript", transcriptPath, "Transcript Sample", {
       wordCount: transcriptText.split(/\s+/).filter(Boolean).length,
-      language: language,
+      language: languageOverride || "app-default",
     });
 
     return {

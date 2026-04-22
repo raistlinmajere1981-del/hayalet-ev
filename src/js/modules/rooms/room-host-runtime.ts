@@ -1,6 +1,7 @@
 import type { InstalledRoomRecord, RoomCommandScope } from "@shared/index.js";
 import { getErrorMessage } from "@shared/index.js";
 import type { RemoteUserIdentity } from "@shared/settings.js";
+import type { TranscriptIngressPayload } from "../../../types/transcript.js";
 import { AppState } from "../app-state.js";
 import { AppI18n } from "../i18n/index.js";
 import { Logger, LogCategory, LogLevel } from "../logger/index.js";
@@ -143,6 +144,18 @@ class RoomHostRuntimeClass {
       EXPECTED_COMMAND_CAPTURE_FAILURE_EVENT,
       this.handleExpectedCommandCaptureFailureEvent
     );
+
+    const electronApi = window.electronAPI;
+    if (electronApi === undefined) {
+      return;
+    }
+
+    if (
+      typeof electronApi.transcriptOnIngress === "function" &&
+      typeof electronApi.transcriptOffIngress === "function"
+    ) {
+      electronApi.transcriptOnIngress(this.handleTranscriptIngress);
+    }
   }
 
   private handleExpectedCommandCaptureFailureEvent = (event: Event): void => {
@@ -154,6 +167,27 @@ class RoomHostRuntimeClass {
         ...(typeof detail["text"] === "string" ? { text: detail["text"] } : {}),
       }
     );
+  };
+
+  private handleTranscriptIngress = (payload: TranscriptIngressPayload): void => {
+    if (typeof payload.target !== "string" || payload.target.startsWith("room:") !== true) {
+      return;
+    }
+
+    const roomId = payload.target.slice("room:".length).trim();
+    if (roomId === "") {
+      return;
+    }
+
+    const registration = this.rooms.get(roomId);
+    if (registration === undefined) {
+      return;
+    }
+
+    registration.bridge?.sendToRoom({
+      type: "transcript-ingress",
+      payload,
+    });
   };
 
   async ensureRoomHost(room: InstalledRoomRecord, bridge: RoomBridge): Promise<boolean> {

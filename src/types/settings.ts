@@ -1,5 +1,6 @@
 import type { SlotId, ProviderId, AllProviderId, AssistantProviderId } from "./common.js";
 import type { AppLanguage } from "./i18n.js";
+import type { TranscriptModelVariant } from "./transcript.js";
 export type { AppLanguage } from "./i18n.js";
 
 export const ASSISTANT_SLOT_SETTINGS_KEY = "assistantSlot";
@@ -215,6 +216,7 @@ export interface SceneSettings {
 export interface GeneralSettings {
   appearance?: ThemeAppearanceSettings;
   language?: AppLanguage;
+  transcriptModelVariant?: TranscriptModelVariant;
   startMinimized?: boolean;
   closeToTray?: boolean;
   autoUpdate?: boolean;

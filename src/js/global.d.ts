@@ -37,6 +37,8 @@ import type {
 } from "../types/room-tools.js";
 import type {
   TranscriptIngressPayload,
+  TranscriptManagedModelId,
+  TranscriptManagedModelStatus,
   TranscriptRuntimeStatus,
   TranscriptSubmitIngressRequest,
   TranscriptSubmitIngressResult,
@@ -1131,6 +1133,13 @@ declare global {
     opencodeUiOffSessionUpdated: (callback: (payload: { sessionId: string }) => void) => void;
     transcriptStatus: () => Promise<TranscriptRuntimeStatus>;
     transcriptEnsureRuntime: () => Promise<TranscriptRuntimeStatus>;
+    transcriptListModels?: () => Promise<TranscriptManagedModelStatus[]>;
+    transcriptInstallModel?: (
+      modelId: TranscriptManagedModelId
+    ) => Promise<TranscriptManagedModelStatus>;
+    transcriptRemoveModel?: (
+      modelId: TranscriptManagedModelId
+    ) => Promise<TranscriptManagedModelStatus>;
     transcriptTranscribeLocal: (
       request: TranscriptTranscriptionRequest
     ) => Promise<TranscriptTranscriptionResult>;

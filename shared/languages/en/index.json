@@ -4884,6 +4884,45 @@
       "language": {
         "label": "Application Language"
       },
+      "transcriptProfile": {
+        "label": "Speech Model",
+        "hint": "The active whisper.cpp language follows the application language automatically.",
+        "options": {
+          "light": "Light",
+          "full": "Full"
+        }
+      },
+      "transcriptRuntime": {
+        "label": "Speech Runtime",
+        "hint": "Install, repair, and model cache management now live in Settings. Laboratory only reads the active runtime state.",
+        "statusLabel": "Runtime status",
+        "activeLanguageLabel": "Active language",
+        "activeModelLabel": "Active model",
+        "loading": "Loading transcript runtime status...",
+        "empty": "The central runtime did not return any managed models yet.",
+        "actions": {
+          "prepare": "Prepare active runtime",
+          "refresh": "Refresh",
+          "install": "Install",
+          "repair": "Repair",
+          "remove": "Remove",
+          "active": "Active"
+        },
+        "states": {
+          "ready": "Ready",
+          "preparing": "Preparing",
+          "missing-runtime": "Missing",
+          "error": "Error"
+        },
+        "languages": {
+          "tr": "Turkish",
+          "en": "English"
+        },
+        "families": {
+          "multilingual": "Multilingual",
+          "english": "English-only"
+        }
+      },
       "dialog": {
         "avatarTitle": "Choose avatar",
         "selectButton": "Select",

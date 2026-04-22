@@ -1,10 +1,23 @@
 import { Logger } from "../../../modules/logger/index.js";
 import { LogCategory } from "@shared/logging-core";
 import { DEFAULT_APP_LANGUAGE, type AppLanguage, type LanguageDescriptor } from "@shared/i18n.js";
+import type {
+  TranscriptManagedModelId,
+  TranscriptManagedModelStatus,
+  TranscriptModelVariant,
+  TranscriptRuntimeStatus,
+} from "@shared/transcript.js";
 import { getErrorMessage } from "@shared/index.js";
 import { normalizeAppLanguage } from "../../../../../shared/i18n/locale.js";
 import { AppI18n, formatLanguageLabel } from "../../../modules/i18n/index.js";
 import type { AppSettings, GoogleDriveSettings } from "@shared/settings.js";
+import {
+  ensureTranscriptRuntime,
+  getTranscriptStatus,
+  installTranscriptModel,
+  listTranscriptModels,
+  removeTranscriptModel,
+} from "../../../modules/transcript/electron-client.js";
 import { t as entranceT } from "../panel-i18n.js";
 
 interface SettingsManager {
@@ -16,6 +29,25 @@ interface GDriveExchangeCodeResult {
   success?: boolean;
   account?: string;
 }
+
+type TranscriptPanelBusyState =
+  | {
+      kind: "refresh" | "ensure";
+      modelId?: null;
+    }
+  | {
+      kind: "install" | "remove";
+      modelId: TranscriptManagedModelId;
+    }
+  | null;
+
+type TranscriptRuntimePanelState = {
+  busy: TranscriptPanelBusyState;
+  error: string | null;
+  loaded: boolean;
+  models: TranscriptManagedModelStatus[];
+  status: TranscriptRuntimeStatus | null;
+};
 
 function isGDriveExchangeCodeResult(value: unknown): value is GDriveExchangeCodeResult {
   if (value === null || value === undefined || typeof value !== "object") {
@@ -30,16 +62,25 @@ function isGDriveExchangeCodeResult(value: unknown): value is GDriveExchangeCode
 export class UserPanel {
   settingsManager: SettingsManager;
   languageRenderVersion: number;
+  transcriptPanelState: TranscriptRuntimePanelState;
 
   constructor(settingsManager: SettingsManager) {
     this.settingsManager = settingsManager;
     this.languageRenderVersion = 0;
+    this.transcriptPanelState = {
+      busy: null,
+      error: null,
+      loaded: false,
+      models: [],
+      status: null,
+    };
   }
 
   init(): void {
     this.setupListeners();
     void this.renderLanguageSection(DEFAULT_APP_LANGUAGE);
     this.render();
+    void this.refreshTranscriptRuntimePanel();
   }
 
   setupListeners(): void {
@@ -105,6 +146,56 @@ export class UserPanel {
         void this.saveAppLanguage((event.target as HTMLSelectElement).value);
       };
     }
+
+    const transcriptProfileSelect = document.getElementById(
+      "app-transcript-profile-select"
+    ) as HTMLSelectElement | null;
+    if (transcriptProfileSelect !== null) {
+      transcriptProfileSelect.onchange = (event): void => {
+        void this.saveTranscriptModelVariant((event.target as HTMLSelectElement).value);
+      };
+    }
+
+    const transcriptRuntimeEnsureBtn = document.getElementById("app-transcript-runtime-ensure-btn");
+    if (transcriptRuntimeEnsureBtn instanceof HTMLElement) {
+      transcriptRuntimeEnsureBtn.onclick = (): void => {
+        void this.ensureActiveTranscriptRuntime();
+      };
+    }
+
+    const transcriptRuntimeRefreshBtn = document.getElementById(
+      "app-transcript-runtime-refresh-btn"
+    );
+    if (transcriptRuntimeRefreshBtn instanceof HTMLElement) {
+      transcriptRuntimeRefreshBtn.onclick = (): void => {
+        void this.refreshTranscriptRuntimePanel();
+      };
+    }
+
+    const transcriptRuntimeModels = document.getElementById("app-transcript-runtime-models");
+    if (transcriptRuntimeModels instanceof HTMLElement) {
+      transcriptRuntimeModels.addEventListener("click", (event): void => {
+        const target = event.target instanceof HTMLElement ? event.target : null;
+        const button = target?.closest<HTMLElement>("[data-transcript-model-action]");
+        if (!(button instanceof HTMLElement)) {
+          return;
+        }
+
+        const modelId = this.normalizeTranscriptModelId(button.dataset["transcriptModelId"]);
+        if (modelId === null) {
+          return;
+        }
+
+        const action = button.dataset["transcriptModelAction"];
+        if (action === "install") {
+          void this.installTranscriptRuntimeModel(modelId);
+          return;
+        }
+        if (action === "remove") {
+          void this.removeTranscriptRuntimeModel(modelId);
+        }
+      });
+    }
   }
 
   render(): void {
@@ -152,6 +243,11 @@ export class UserPanel {
     const appLanguageEl = document.getElementById(
       "app-language-select"
     ) as HTMLSelectElement | null;
+    const transcriptProfileLabelEl = document.getElementById("app-transcript-profile-label");
+    const transcriptProfileEl = document.getElementById(
+      "app-transcript-profile-select"
+    ) as HTMLSelectElement | null;
+    const transcriptProfileHintEl = document.getElementById("app-transcript-profile-hint");
 
     if (clientIdEl) clientIdEl.value = gd.clientId ?? "";
     if (clientSecretEl) clientSecretEl.value = gd.clientSecret ?? "";
@@ -159,7 +255,25 @@ export class UserPanel {
     if (appLanguageEl) {
       appLanguageEl.value = settings.general?.language ?? DEFAULT_APP_LANGUAGE;
     }
+    if (transcriptProfileLabelEl) {
+      transcriptProfileLabelEl.textContent = AppI18n.t("entrance.user.transcriptProfile.label");
+    }
+    if (transcriptProfileHintEl) {
+      transcriptProfileHintEl.textContent = AppI18n.t("entrance.user.transcriptProfile.hint");
+    }
+    if (transcriptProfileEl) {
+      const lightOption = transcriptProfileEl.querySelector<HTMLOptionElement>("option[value='light']");
+      const fullOption = transcriptProfileEl.querySelector<HTMLOptionElement>("option[value='full']");
+      if (lightOption) {
+        lightOption.textContent = AppI18n.t("entrance.user.transcriptProfile.options.light");
+      }
+      if (fullOption) {
+        fullOption.textContent = AppI18n.t("entrance.user.transcriptProfile.options.full");
+      }
+      transcriptProfileEl.value = settings.general?.transcriptModelVariant ?? "full";
+    }
 
+    this.renderTranscriptRuntimePanel();
     void this.renderLanguageSection(settings.general?.language ?? DEFAULT_APP_LANGUAGE);
   }
 
@@ -218,6 +332,307 @@ export class UserPanel {
       general: { ...current.general, language: nextLanguage },
     };
     await this.settingsManager.save(updated);
+    await this.refreshTranscriptRuntimePanel();
+  }
+
+  async saveTranscriptModelVariant(value: string): Promise<void> {
+    const nextVariant: TranscriptModelVariant = value === "light" ? "light" : "full";
+    const current = this.settingsManager.getSnapshot();
+
+    if (current.general?.transcriptModelVariant === nextVariant) {
+      return;
+    }
+
+    const updated = {
+      ...current,
+      general: { ...current.general, transcriptModelVariant: nextVariant },
+    };
+    await this.settingsManager.save(updated);
+    await this.refreshTranscriptRuntimePanel();
+  }
+
+  private async ensureActiveTranscriptRuntime(): Promise<void> {
+    this.transcriptPanelState.busy = { kind: "ensure", modelId: null };
+    this.transcriptPanelState.error = null;
+    this.renderTranscriptRuntimePanel();
+
+    try {
+      const status = await ensureTranscriptRuntime();
+      const models = await listTranscriptModels();
+      this.transcriptPanelState = {
+        busy: null,
+        error: null,
+        loaded: true,
+        models,
+        status,
+      };
+    } catch (error) {
+      this.transcriptPanelState.busy = null;
+      this.transcriptPanelState.loaded = true;
+      this.transcriptPanelState.error = getErrorMessage(error);
+    }
+
+    this.renderTranscriptRuntimePanel();
+  }
+
+  private async refreshTranscriptRuntimePanel(): Promise<void> {
+    this.transcriptPanelState.busy = { kind: "refresh", modelId: null };
+    this.transcriptPanelState.error = null;
+    this.renderTranscriptRuntimePanel();
+
+    try {
+      const [status, models] = await Promise.all([getTranscriptStatus(), listTranscriptModels()]);
+      this.transcriptPanelState = {
+        busy: null,
+        error: null,
+        loaded: true,
+        models,
+        status,
+      };
+    } catch (error) {
+      this.transcriptPanelState.busy = null;
+      this.transcriptPanelState.loaded = true;
+      this.transcriptPanelState.error = getErrorMessage(error);
+    }
+
+    this.renderTranscriptRuntimePanel();
+  }
+
+  private async installTranscriptRuntimeModel(modelId: TranscriptManagedModelId): Promise<void> {
+    this.transcriptPanelState.busy = { kind: "install", modelId };
+    this.transcriptPanelState.error = null;
+    this.renderTranscriptRuntimePanel();
+
+    try {
+      const result = await installTranscriptModel(modelId);
+      if (result === null) {
+        throw new Error("Transcript runtime bridge is unavailable.");
+      }
+      await this.refreshTranscriptRuntimePanel();
+    } catch (error) {
+      this.transcriptPanelState.busy = null;
+      this.transcriptPanelState.error = getErrorMessage(error);
+      this.renderTranscriptRuntimePanel();
+    }
+  }
+
+  private async removeTranscriptRuntimeModel(modelId: TranscriptManagedModelId): Promise<void> {
+    this.transcriptPanelState.busy = { kind: "remove", modelId };
+    this.transcriptPanelState.error = null;
+    this.renderTranscriptRuntimePanel();
+
+    try {
+      const result = await removeTranscriptModel(modelId);
+      if (result === null) {
+        throw new Error("Transcript runtime bridge is unavailable.");
+      }
+      await this.refreshTranscriptRuntimePanel();
+    } catch (error) {
+      this.transcriptPanelState.busy = null;
+      this.transcriptPanelState.error = getErrorMessage(error);
+      this.renderTranscriptRuntimePanel();
+    }
+  }
+
+  private renderTranscriptRuntimePanel(): void {
+    const labelEl = document.getElementById("app-transcript-runtime-label");
+    const statusLabelEl = document.getElementById("app-transcript-runtime-status-label");
+    const statusValueEl = document.getElementById("app-transcript-runtime-status-value");
+    const activeLanguageLabelEl = document.getElementById(
+      "app-transcript-runtime-active-language-label"
+    );
+    const activeLanguageEl = document.getElementById("app-transcript-runtime-active-language");
+    const activeModelLabelEl = document.getElementById("app-transcript-runtime-active-model-label");
+    const activeModelEl = document.getElementById("app-transcript-runtime-active-model");
+    const hintEl = document.getElementById("app-transcript-runtime-hint");
+    const feedbackEl = document.getElementById("app-transcript-runtime-feedback");
+    const ensureBtn = document.getElementById(
+      "app-transcript-runtime-ensure-btn"
+    ) as HTMLButtonElement | null;
+    const refreshBtn = document.getElementById(
+      "app-transcript-runtime-refresh-btn"
+    ) as HTMLButtonElement | null;
+    const modelsEl = document.getElementById("app-transcript-runtime-models");
+
+    if (labelEl) {
+      labelEl.textContent = AppI18n.t("entrance.user.transcriptRuntime.label");
+    }
+    if (statusLabelEl) {
+      statusLabelEl.textContent = AppI18n.t("entrance.user.transcriptRuntime.statusLabel");
+    }
+    if (activeLanguageLabelEl) {
+      activeLanguageLabelEl.textContent = AppI18n.t(
+        "entrance.user.transcriptRuntime.activeLanguageLabel"
+      );
+    }
+    if (activeModelLabelEl) {
+      activeModelLabelEl.textContent = AppI18n.t("entrance.user.transcriptRuntime.activeModelLabel");
+    }
+    if (hintEl) {
+      hintEl.textContent = AppI18n.t("entrance.user.transcriptRuntime.hint");
+    }
+
+    const status = this.transcriptPanelState.status;
+    const activeModel =
+      status === null
+        ? null
+        : (this.transcriptPanelState.models.find((entry) => entry.modelId === status.modelId) ??
+          null);
+    const statusKey = status?.state ?? "missing-runtime";
+    const activeLanguage = status?.activeLanguage ?? "tr";
+
+    if (statusValueEl) {
+      statusValueEl.textContent = AppI18n.t(`entrance.user.transcriptRuntime.states.${statusKey}`);
+    }
+    if (activeLanguageEl) {
+      activeLanguageEl.textContent = AppI18n.t(
+        `entrance.user.transcriptRuntime.languages.${activeLanguage}`
+      );
+    }
+    if (activeModelEl) {
+      activeModelEl.textContent = activeModel
+        ? this.getTranscriptRuntimeModelTitle(activeModel)
+        : status?.modelId ?? "--";
+    }
+
+    if (ensureBtn) {
+      ensureBtn.textContent = AppI18n.t("entrance.user.transcriptRuntime.actions.prepare");
+      ensureBtn.disabled = this.transcriptPanelState.busy !== null;
+    }
+    if (refreshBtn) {
+      refreshBtn.textContent = AppI18n.t("entrance.user.transcriptRuntime.actions.refresh");
+      refreshBtn.disabled = this.transcriptPanelState.busy !== null;
+    }
+
+    if (feedbackEl) {
+      if (this.transcriptPanelState.error !== null) {
+        feedbackEl.textContent = this.transcriptPanelState.error;
+      } else if (this.transcriptPanelState.loaded !== true) {
+        feedbackEl.textContent = AppI18n.t("entrance.user.transcriptRuntime.loading");
+      } else {
+        feedbackEl.textContent = status?.message ?? "";
+      }
+    }
+
+    if (modelsEl) {
+      if (this.transcriptPanelState.models.length === 0) {
+        modelsEl.innerHTML = `
+          <div class="user-profile-inline__runtime-model">
+            <div class="user-profile-inline__runtime-status-text">${this.escapeHtml(
+              AppI18n.t("entrance.user.transcriptRuntime.empty")
+            )}</div>
+          </div>
+        `;
+      } else {
+        modelsEl.innerHTML = this.transcriptPanelState.models
+          .map((model) => this.renderTranscriptRuntimeModelCard(model, status))
+          .join("");
+      }
+    }
+  }
+
+  private renderTranscriptRuntimeModelCard(
+    model: TranscriptManagedModelStatus,
+    status: TranscriptRuntimeStatus | null
+  ): string {
+    const isActive = status?.modelId === model.modelId;
+    const busyState = this.transcriptPanelState.busy;
+    const isBusyForModel =
+      busyState !== null &&
+      (busyState.kind === "install" || busyState.kind === "remove") &&
+      busyState.modelId === model.modelId;
+    const canRemove = model.ready === true && isActive !== true;
+    const action =
+      canRemove === true
+        ? "remove"
+        : model.installed === true && model.ready !== true
+          ? "install"
+          : model.installed === true
+            ? null
+            : "install";
+    const actionLabel =
+      canRemove === true
+        ? AppI18n.t("entrance.user.transcriptRuntime.actions.remove")
+        : model.installed === true && model.ready !== true
+          ? AppI18n.t("entrance.user.transcriptRuntime.actions.repair")
+          : model.installed === true
+            ? AppI18n.t("entrance.user.transcriptRuntime.actions.active")
+            : AppI18n.t("entrance.user.transcriptRuntime.actions.install");
+    const footerStatus = model.ready
+      ? AppI18n.t("entrance.user.transcriptRuntime.states.ready")
+      : model.installed
+        ? AppI18n.t("entrance.user.transcriptRuntime.actions.repair")
+        : AppI18n.t("entrance.user.transcriptRuntime.states.missing-runtime");
+
+    return `
+      <article class="user-profile-inline__runtime-model" data-active="${isActive ? "true" : "false"}">
+        <div class="user-profile-inline__runtime-model-head">
+          <div class="user-profile-inline__runtime-model-title">
+            <strong>${this.escapeHtml(this.getTranscriptRuntimeModelTitle(model))}</strong>
+            <span class="user-profile-inline__runtime-model-meta">${this.escapeHtml(
+              this.getTranscriptRuntimeModelMeta(model)
+            )}</span>
+          </div>
+          ${
+            isActive
+              ? `<span class="user-profile-inline__runtime-badge">${this.escapeHtml(
+                  AppI18n.t("entrance.user.transcriptRuntime.actions.active")
+                )}</span>`
+              : ""
+          }
+        </div>
+        <div class="user-profile-inline__runtime-model-footer">
+          <span class="user-profile-inline__runtime-status-text">${this.escapeHtml(
+            model.lastError ?? footerStatus
+          )}</span>
+          <button
+            class="btn btn-secondary btn-sm"
+            type="button"
+            data-transcript-model-action="${action ?? ""}"
+            data-transcript-model-id="${this.escapeHtml(model.modelId)}"
+            ${action === null || this.transcriptPanelState.busy !== null || isBusyForModel ? "disabled" : ""}
+          >
+            ${this.escapeHtml(actionLabel)}
+          </button>
+        </div>
+      </article>
+    `;
+  }
+
+  private getTranscriptRuntimeModelTitle(model: TranscriptManagedModelStatus): string {
+    const languageLabel = AppI18n.t(`entrance.user.transcriptRuntime.languages.${model.locale}`);
+    const variantLabel = AppI18n.t(
+      `entrance.user.transcriptProfile.options.${model.variant === "light" ? "light" : "full"}`
+    );
+    return `${languageLabel} · ${variantLabel}`;
+  }
+
+  private getTranscriptRuntimeModelMeta(model: TranscriptManagedModelStatus): string {
+    const familyLabel = AppI18n.t(`entrance.user.transcriptRuntime.families.${model.family}`);
+    return `${model.modelId} · ${familyLabel}`;
+  }
+
+  private normalizeTranscriptModelId(value: string | undefined): TranscriptManagedModelId | null {
+    switch (value) {
+      case undefined:
+        return null;
+      case "tiny":
+      case "base":
+      case "tiny.en":
+      case "base.en":
+        return value;
+      default:
+        return null;
+    }
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
   }
 
   async saveNickname(): Promise<void> {

@@ -209,6 +209,7 @@ export async function initializeCoreRuntime(
     );
   }
 
+  // NOTE: WhisperManager is a deferred-message queue feature, not the whisper.cpp speech runtime.
   const whisperInitOptions = { settings: settings as unknown as Record<string, unknown> };
   await runStartupStep("whisper-manager.init", async () => {
     await WhisperManager.init(whisperInitOptions);

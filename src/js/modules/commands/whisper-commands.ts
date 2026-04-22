@@ -8,6 +8,8 @@ import { getErrorMessage } from "@shared/index.js";
 
 type CommandHandlerResult = { success: boolean; message?: string; [key: string]: unknown };
 
+// NOTE: This command schedules deferred whisper messages and is intentionally separate from speech transcription.
+
 function resolveSourceAccountId(payload: CommandPayload = {}): string {
   const providerRaw = typeof payload.provider === "string" ? payload.provider.toLowerCase() : "";
   if (providerRaw !== "ai1" && providerRaw !== "ai2" && providerRaw !== "ai0") {

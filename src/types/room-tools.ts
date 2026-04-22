@@ -1,8 +1,18 @@
+import type {
+  TranscriptFileTranscriptionRequest,
+  TranscriptFileTranscriptionResult,
+  TranscriptManagedModelStatus,
+  TranscriptRuntimeStatus,
+} from "./transcript.js";
+
 export type RoomToolOperationName =
   | "resolve-paths"
   | "ensure-dir"
   | "delete-path"
   | "download-file"
+  | "transcript-status"
+  | "transcript-list-models"
+  | "transcript-transcribe-file"
   | "tool-probe"
   | "tool-check-for-updates"
   | "tool-install"
@@ -89,6 +99,20 @@ export interface RoomToolDownloadFileRequest extends RoomToolRequestBase {
   headers?: Record<string, string>;
 }
 
+export interface RoomToolTranscriptStatusRequest extends RoomToolRequestBase {
+  operation: "transcript-status";
+}
+
+export interface RoomToolTranscriptListModelsRequest extends RoomToolRequestBase {
+  operation: "transcript-list-models";
+}
+
+export interface RoomToolTranscriptTranscribeFileRequest
+  extends RoomToolRequestBase,
+    Omit<TranscriptFileTranscriptionRequest, "roomId"> {
+  operation: "transcript-transcribe-file";
+}
+
 export interface RoomToolToolRequestBase extends RoomToolRequestBase {
   toolId: string;
 }
@@ -126,6 +150,9 @@ export type RoomToolCallRequest =
   | RoomToolEnsureDirRequest
   | RoomToolDeletePathRequest
   | RoomToolDownloadFileRequest
+  | RoomToolTranscriptStatusRequest
+  | RoomToolTranscriptListModelsRequest
+  | RoomToolTranscriptTranscribeFileRequest
   | RoomToolProbeRequest
   | RoomToolCheckForUpdatesRequest
   | RoomToolInstallRequest
@@ -149,6 +176,9 @@ export interface RoomToolCallResult {
   ensuredPath?: string;
   deletedPath?: string;
   download?: RoomFileDownloadResult;
+  transcriptStatus?: TranscriptRuntimeStatus;
+  transcriptModels?: TranscriptManagedModelStatus[];
+  transcription?: TranscriptFileTranscriptionResult;
   tool?: RoomToolStatus;
   update?: RoomToolUpdateCheck;
   run?: RoomToolRunResult;

@@ -5,6 +5,7 @@ import { navigateMainShellPage, resolveExternalReturnPage } from "../shared/exte
 import { WhisperDockController } from "./controller.js";
 import { applyWhisperStaticTranslations } from "./i18n.js";
 
+// NOTE: The whisper page edits deferred account whispers and does not manage speech transcription runtime state.
 async function bootstrapWhisperPage(): Promise<void> {
   await bootstrapExternalToolPage({
     applyStaticTranslations: () => {

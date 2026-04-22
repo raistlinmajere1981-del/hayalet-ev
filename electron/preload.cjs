@@ -457,6 +457,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
   transcriptStatus: () => ipcRenderer.invoke("transcript-status"),
   transcriptEnsureRuntime: () => ipcRenderer.invoke("transcript-ensure-runtime"),
+  transcriptListModels: () => ipcRenderer.invoke("transcript-list-models"),
+  transcriptInstallModel: (modelId) => ipcRenderer.invoke("transcript-install-model", modelId),
+  transcriptRemoveModel: (modelId) => ipcRenderer.invoke("transcript-remove-model", modelId),
   transcriptTranscribeLocal: (request) =>
     ipcRenderer.invoke("transcript-transcribe-local", request),
   transcriptSubmitIngress: (request) => ipcRenderer.invoke("transcript-submit-ingress", request),

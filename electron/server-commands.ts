@@ -5,6 +5,7 @@ import { LogCategory, LogLevel } from "../src/types/logging-core.js";
 
 const logger = getLoggerCore();
 
+// NOTE: WhisperManager here is the deferred message queue command, not the whisper.cpp speech runtime.
 const COMMAND_LIST = ["WhisperManager", "AIAIChatStart", "AIAIChatStop"];
 
 interface CommandPayload {

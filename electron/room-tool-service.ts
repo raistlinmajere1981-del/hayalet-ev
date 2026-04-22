@@ -19,6 +19,7 @@ import type {
   RoomToolUpdateCheck,
 } from "../src/types/room-tools.ts";
 import { LogCategory, LogLevel } from "@shared/index.js";
+import { transcriptService } from "./transcript-service.ts";
 
 const ROOM_TOOLS_PROGRESS_CHANNEL = "room-tools:progress";
 const PYTHON_GET_PIP_URL = "https://bootstrap.pypa.io/get-pip.py";
@@ -673,6 +674,12 @@ class RoomToolService {
         return await this.deletePath(request);
       case "download-file":
         return await this.downloadFile(event, request);
+      case "transcript-status":
+        return await this.readTranscriptStatus(request);
+      case "transcript-list-models":
+        return await this.listTranscriptModels(request);
+      case "transcript-transcribe-file":
+        return await this.transcribeManagedFile(request);
       case "tool-probe":
         return await this.probeTool(request);
       case "tool-check-for-updates":
@@ -790,6 +797,50 @@ class RoomToolService {
     }
   ): Promise<RoomToolCallResult> {
     return await this.downloadToPath(event, request, { enforceRoomManagedPath: true });
+  }
+
+  private async readTranscriptStatus(
+    request: Extract<RoomToolCallRequest, { operation: "transcript-status" }>
+  ): Promise<RoomToolCallResult> {
+    return {
+      success: true,
+      operation: request.operation,
+      requestId: normalizeRequestId(request.requestId),
+      transcriptStatus: await transcriptService.getStatus(),
+    };
+  }
+
+  private async listTranscriptModels(
+    request: Extract<RoomToolCallRequest, { operation: "transcript-list-models" }>
+  ): Promise<RoomToolCallResult> {
+    return {
+      success: true,
+      operation: request.operation,
+      requestId: normalizeRequestId(request.requestId),
+      transcriptModels: await transcriptService.listModels(),
+    };
+  }
+
+  private async transcribeManagedFile(
+    request: Extract<RoomToolCallRequest, { operation: "transcript-transcribe-file" }>
+  ): Promise<RoomToolCallResult> {
+    const result = await transcriptService.transcribeFile({
+      ...request,
+      roomId: request.roomId,
+    });
+
+    return {
+      success: result.success === true,
+      operation: request.operation,
+      requestId: normalizeRequestId(request.requestId),
+      ...(typeof request.jobId === "string" && request.jobId.trim() !== ""
+        ? { jobId: request.jobId }
+        : {}),
+      ...(typeof result.error === "string" && result.error.trim() !== ""
+        ? { error: result.error }
+        : {}),
+      transcription: result,
+    };
   }
 
   private async downloadToPath(

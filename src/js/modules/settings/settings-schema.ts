@@ -34,6 +34,7 @@ import {
 import { isAssistantProviderId } from "@shared/common.js";
 import { normalizeThemeAppearance } from "../../ui/theme/appearance-normalizer.js";
 import { normalizeAppLanguage } from "../../../../shared/i18n/locale.js";
+import { normalizeTranscriptModelVariant } from "../../../../shared/transcript/model-catalog.js";
 import {
   DEFAULT_ASSISTANT_ACCOUNT_ID,
   DEFAULT_OPENCODE_UI_ACCOUNT_ID,
@@ -1066,6 +1067,10 @@ export function normalizeSettings(raw: unknown): AppSettings {
   }
   const legacyTheme = (merged.general as Record<string, unknown>)["theme"];
   merged.general.language = normalizeAppLanguage(merged.general.language);
+  merged.general.transcriptModelVariant = normalizeTranscriptModelVariant(
+    merged.general.transcriptModelVariant,
+    defaults.general?.transcriptModelVariant ?? "full"
+  );
   merged.general.appearance = normalizeThemeAppearanceSettings(
     merged.general.appearance,
     legacyTheme

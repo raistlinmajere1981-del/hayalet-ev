@@ -37,6 +37,10 @@ const STAGE_LABELS: Record<string, string> = {
   report: "Rapor",
 };
 
+function isSettingsManagedTool(toolId: string | null): boolean {
+  return toolId === "whisper.cpp";
+}
+
 function toToolDescriptorRecord(value: unknown): LabToolDescriptorRecord {
   return asLabRecord(value);
 }
@@ -172,6 +176,10 @@ function getStatusChip(
 }
 
 function getLifecycleHint(descriptor: LabToolDescriptorRecord, entry: LabToolEntryRecord): string {
+  const toolId = asNonEmptyString(descriptor.toolId) || asNonEmptyString(entry.toolId);
+  if (isSettingsManagedTool(toolId)) {
+    return "Whisper.cpp lifecycle is managed in main Settings. Laboratory only reflects the current runtime probe and active language/model readiness.";
+  }
   if (typeof entry.lastError === "string" && entry.lastError.trim() !== "") {
     return `Son hata: ${entry.lastError.trim()}`;
   }
@@ -188,6 +196,9 @@ function getLifecycleHint(descriptor: LabToolDescriptorRecord, entry: LabToolEnt
 }
 
 function getInstallStrategyLabel(descriptor: LabToolDescriptorRecord): string {
+  if (isSettingsManagedTool(asNonEmptyString(descriptor.toolId))) {
+    return "Settings üzerinden yönetilir";
+  }
   switch (getInstallStrategy(descriptor)) {
     case "manual":
       return "Manuel kurulum";
@@ -203,6 +214,14 @@ function renderToolActions(descriptor: LabToolDescriptorRecord, entry: LabToolEn
   const toolId = asNonEmptyString(descriptor.toolId) || asNonEmptyString(entry.toolId) || "";
   if (toolId === "") {
     return "";
+  }
+
+  if (isSettingsManagedTool(toolId)) {
+    return `
+      <button class="labx-inline-action" type="button" disabled>
+        Settings'ten yönetilir
+      </button>
+    `;
   }
 
   const availability = asNonEmptyString(descriptor.availability) || "installable";
@@ -355,17 +374,24 @@ export function renderToolManagementOverlay(state: LabStoreState) {
     const toolId = asNonEmptyString(descriptor.toolId);
     return toolId === null || !requiredToolSet.has(toolId);
   });
+  const roomManagedDescriptors = descriptors.filter(function (descriptor) {
+    return isSettingsManagedTool(asNonEmptyString(descriptor.toolId)) !== true;
+  });
   const installedCount = descriptors.filter(function (descriptor) {
     const toolId = asNonEmptyString(descriptor.toolId);
     return toolId !== null && getToolEntry(state, toolId).installed === true;
   }).length;
-  const updateCount = descriptors.filter(function (descriptor) {
+  const updateCount = roomManagedDescriptors.filter(function (descriptor) {
     const toolId = asNonEmptyString(descriptor.toolId);
     return toolId !== null && getToolEntry(state, toolId).updateAvailable === true;
   }).length;
   const busyCount = descriptors.filter(function (descriptor) {
     const toolId = asNonEmptyString(descriptor.toolId);
     return toolId !== null && getToolEntry(state, toolId).busy === true;
+  }).length;
+  const roomManagedInstalledCount = roomManagedDescriptors.filter(function (descriptor) {
+    const toolId = asNonEmptyString(descriptor.toolId);
+    return toolId !== null && getToolEntry(state, toolId).installed === true;
   }).length;
   const wsMode = getWorkspaceMode(state);
   const modeLabel =
@@ -388,7 +414,7 @@ export function renderToolManagementOverlay(state: LabStoreState) {
                   <p class="labx-card__eyebrow">Çalışma Tezgahı</p>
                   <h2 class="labx-module-overlay__title">Araç Yönetimi</h2>
                   <p class="labx-panel-hint">
-                    yt-dlp, FFmpeg ve diğer oda araçlarını aynı panelden kur, güncelle ve yeniden doğrula.
+                    yt-dlp ve FFmpeg gibi oda araçlarını burada yönet; Whisper.cpp ise yalnızca merkezi Settings runtime durumuyla birlikte yansıtılır.
                   </p>
                 </div>
                 <div class="labx-inline-actions">
@@ -396,7 +422,7 @@ export function renderToolManagementOverlay(state: LabStoreState) {
                     class="labx-inline-action"
                     type="button"
                     data-lab-action="tool-update-all"
-                    ${installedCount === 0 || busyCount > 0 ? "disabled" : ""}
+                    ${roomManagedInstalledCount === 0 || busyCount > 0 ? "disabled" : ""}
                   >
                     Toplu güncelle
                   </button>

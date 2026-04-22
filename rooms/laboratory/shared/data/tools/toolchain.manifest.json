@@ -118,23 +118,17 @@
     "whisper.cpp": {
       "displayName": "Whisper.cpp",
       "installDirName": "whisper-cpp",
-      "installStrategy": "automatic",
+      "availability": "system-command",
       "usedBy": ["Transcript extraction", "Speech overlay checks"],
       "testImpact": ["profile-transcript", "speech-overlay"],
       "readinessImpact": "Limits transcript-backed speech checks and transcript artifacts.",
-      "manualHint": "If automatic install is unavailable on this runtime, Laboratory can reuse the Analyze dictate whisper-cli runtime, an explicit HAYALET_EV_TRANSCRIPT_WHISPER_BIN path, or a PATH-installed whisper-cli binary after refresh.",
+      "manualHint": "Whisper.cpp is managed from the main Settings transcript runtime panel. Laboratory only refreshes and displays the active system/runtime state.",
       "stageSupport": {
         "source": "unsupported",
         "edit": "unsupported",
         "profile": "optional",
         "process": "optional",
         "report": "unsupported"
-      },
-      "releaseProvider": {
-        "type": "github-release",
-        "owner": "ggml-org",
-        "repo": "whisper.cpp",
-        "releaseUrl": "https://github.com/ggml-org/whisper.cpp/releases/latest"
       },
       "probe": {
         "args": ["--help"],
@@ -149,39 +143,32 @@
           "${dataDir}/transcript/whisper.cpp-src/build/bin/whisper-cli",
           "${dataDir}/transcript/whisper.cpp-src/build/bin/main"
         ],
-        "setupHint": "Use the Analyze dictate runtime, set HAYALET_EV_TRANSCRIPT_WHISPER_BIN to a whisper-cli binary, or install whisper-cli on PATH, then refresh this tool."
+        "setupHint": "Open Settings > User > Speech Runtime, prepare the active runtime there, then refresh this card to re-probe the current system state."
       },
       "manualGuide": {
         "linux": {
           "installCommands": [
-            "export HAYALET_EV_TRANSCRIPT_WHISPER_BIN=/absolute/path/to/whisper-cli"
+            "Settings > User > Speech Runtime > Prepare active runtime"
           ],
           "notes": [
-            "You can also reuse the Analyze dictate runtime or place whisper-cli directly on PATH."
+            "Optional overrides such as HAYALET_EV_TRANSCRIPT_WHISPER_BIN still work, but lifecycle ownership stays in Settings."
           ]
         },
         "macos": {
           "installCommands": [
-            "export HAYALET_EV_TRANSCRIPT_WHISPER_BIN=/absolute/path/to/whisper-cli"
+            "Settings > User > Speech Runtime > Prepare active runtime"
           ],
           "notes": [
-            "You can also reuse the Analyze dictate runtime or place whisper-cli directly on PATH."
+            "Optional overrides such as HAYALET_EV_TRANSCRIPT_WHISPER_BIN still work, but lifecycle ownership stays in Settings."
           ]
         },
         "windows": {
           "installCommands": [
-            "setx HAYALET_EV_TRANSCRIPT_WHISPER_BIN \"C:\\\\path\\\\to\\\\whisper-cli.exe\""
+            "Settings > User > Speech Runtime > Prepare active runtime"
           ],
           "notes": [
-            "You can also reuse the Analyze dictate runtime or place whisper-cli.exe directly on PATH."
+            "Optional overrides such as HAYALET_EV_TRANSCRIPT_WHISPER_BIN still work, but lifecycle ownership stays in Settings."
           ]
-        }
-      },
-      "assets": {
-        "win32-x64": {
-          "assetMatch": "^whisper-bin-x64\\.zip$",
-          "archive": "zip",
-          "executableName": "whisper-cli.exe"
         }
       }
     },

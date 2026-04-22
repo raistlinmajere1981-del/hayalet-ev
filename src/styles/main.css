@@ -1326,17 +1326,51 @@ body.is-scroll-locked {
 .settings-hub-panel[data-settings-panel="accounts"] .user-profile-inline__field--language {
   --settings-account-profile-language-min: var(--layout-action-flex-min);
   justify-self: end;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: min(100%, 20rem);
+}
+
+.settings-hub-panel[data-settings-panel="accounts"] .user-profile-inline__setting {
   display: grid;
   grid-template-columns: auto minmax(var(--settings-account-profile-language-min), 1fr);
   align-items: center;
   gap: var(--space-2);
 }
 
+.settings-hub-panel[data-settings-panel="accounts"] .user-profile-inline__setting--secondary {
+  align-items: start;
+}
+
+.settings-hub-panel[data-settings-panel="accounts"] .user-profile-inline__setting-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
 .settings-hub-panel[data-settings-panel="accounts"]
-  .user-profile-inline__field--language
+  .user-profile-inline__setting
   .form-label {
   margin: 0;
   white-space: nowrap;
+}
+
+.settings-hub-panel[data-settings-panel="accounts"] .user-profile-inline__hint {
+  margin: 0;
+  max-width: 22rem;
+  font-size: var(--text-2xs);
+  line-height: 1.35;
+  color: var(--text-secondary);
+}
+
+.settings-hub-panel[data-settings-panel="accounts"] .user-profile-inline__runtime-panel {
+  width: min(100%, 34rem);
+}
+
+.settings-hub-panel[data-settings-panel="accounts"] .user-profile-inline__runtime-model strong {
+  line-height: 1.25;
 }
 
 .settings-hub-panel[data-settings-panel="accounts"] .user-profile-inline__field--language .select {

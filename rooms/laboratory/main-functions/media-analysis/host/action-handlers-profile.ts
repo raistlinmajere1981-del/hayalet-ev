@@ -43,15 +43,6 @@ type ProfileDeps = {
     presetId: string | null
   ) => Record<string, unknown> | null;
   getActiveProject: (runtime: MediaProfileRuntimeRecord) => MediaProfileProjectIdentity | null;
-  getProfileModelDescriptorMap: (
-    runtime: MediaProfileRuntimeRecord
-  ) => Record<string, Record<string, unknown>>;
-  installProfileModel: (
-    api: MediaProfileActionApi,
-    runtime: MediaProfileRuntimeRecord,
-    requestId: string,
-    modelId: string | null
-  ) => Promise<unknown>;
   markProfileAsStale: (project: MediaProfileProjectRecord, reason: string) => void;
   normalizeProfileArtifactPreferences: (
     prefs: Record<string, unknown>,
@@ -62,11 +53,6 @@ type ProfileDeps = {
     runtime: MediaProfileRuntimeRecord,
     patcher: (project: MediaProfileProjectRecord) => MediaProfileProjectRecord
   ) => Promise<MediaProfileProjectRecord>;
-  removeProfileModel: (
-    runtime: MediaProfileRuntimeRecord,
-    requestId: string,
-    modelId: string | null
-  ) => Promise<unknown>;
   runProfilePreflight: (
     api: MediaProfileActionApi,
     runtime: MediaProfileRuntimeRecord,
@@ -85,12 +71,9 @@ export function createMediaProfileActionRuntime(deps: ProfileDeps) {
     createEmptyProfilePreflight,
     findProfilePreset,
     getActiveProject,
-    getProfileModelDescriptorMap,
-    installProfileModel,
     markProfileAsStale,
     normalizeProfileArtifactPreferences,
     patchActiveProject,
-    removeProfileModel,
     runProfilePreflight,
     toRecord,
   } = deps;
@@ -227,20 +210,9 @@ export function createMediaProfileActionRuntime(deps: ProfileDeps) {
     runtime: MediaProfileRuntimeRecord,
     actionPayload: Record<string, unknown>
   ) {
-    return patchActiveProject(runtime, function (nextProject: MediaProfileProjectRecord) {
-      const requestedModelId = asNonEmptyString(actionPayload["modelId"]);
-      if (
-        requestedModelId !== null &&
-        toRecord(getProfileModelDescriptorMap(runtime)[requestedModelId])["fileName"] === undefined
-      ) {
-        throw new Error("Requested speech model is unavailable.");
-      }
-      nextProject["profile"]["modelId"] = requestedModelId;
-      nextProject["profile"]["lastError"] = null;
-      nextProject["profile"]["lastActionAt"] = new Date().toISOString();
-      markProfileAsStale(nextProject, "Speech model selection changed; rerun the preflight.");
-      return nextProject;
-    });
+    void runtime;
+    void actionPayload;
+    throw new Error("Transcript model selection moved to Settings > User > Speech Runtime.");
   }
 
   async function runProfile(
@@ -295,7 +267,11 @@ export function createMediaProfileActionRuntime(deps: ProfileDeps) {
     requestId: string,
     actionPayload: Record<string, unknown>
   ) {
-    return installProfileModel(api, runtime, requestId, asNonEmptyString(actionPayload["modelId"]));
+    void api;
+    void runtime;
+    void requestId;
+    void actionPayload;
+    throw new Error("Transcript model installs moved to Settings > User > Speech Runtime.");
   }
 
   async function removeProfile(
@@ -303,7 +279,10 @@ export function createMediaProfileActionRuntime(deps: ProfileDeps) {
     requestId: string,
     actionPayload: Record<string, unknown>
   ) {
-    return removeProfileModel(runtime, requestId, asNonEmptyString(actionPayload["modelId"]));
+    void runtime;
+    void requestId;
+    void actionPayload;
+    throw new Error("Transcript model removal moved to Settings > User > Speech Runtime.");
   }
 
   return {

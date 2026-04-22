@@ -4884,6 +4884,45 @@
       "language": {
         "label": "Uygulama Dili"
       },
+      "transcriptProfile": {
+        "label": "Ses Modeli",
+        "hint": "Aktif whisper.cpp dili uygulama diliyle otomatik senkron kalır.",
+        "options": {
+          "light": "Hafif",
+          "full": "Tam"
+        }
+      },
+      "transcriptRuntime": {
+        "label": "Ses Runtime",
+        "hint": "Kurulum, onarim ve model cache yonetimi artik Settings uzerinden yapilir. Laboratory yalnizca aktif runtime durumunu okur.",
+        "statusLabel": "Runtime durumu",
+        "activeLanguageLabel": "Aktif dil",
+        "activeModelLabel": "Aktif model",
+        "loading": "Transcript runtime durumu yukleniyor...",
+        "empty": "Merkezi runtime henuz yonetilen model listesi dondurmedi.",
+        "actions": {
+          "prepare": "Aktif runtime'i hazirla",
+          "refresh": "Yenile",
+          "install": "Kur",
+          "repair": "Onar",
+          "remove": "Kaldir",
+          "active": "Aktif"
+        },
+        "states": {
+          "ready": "Hazir",
+          "preparing": "Hazirlaniyor",
+          "missing-runtime": "Eksik",
+          "error": "Hata"
+        },
+        "languages": {
+          "tr": "Turkce",
+          "en": "Ingilizce"
+        },
+        "families": {
+          "multilingual": "Cok dilli",
+          "english": "Yalnizca Ingilizce"
+        }
+      },
       "dialog": {
         "avatarTitle": "Avatar seç",
         "selectButton": "Seç",

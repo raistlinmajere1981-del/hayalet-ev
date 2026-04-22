@@ -1,6 +1,7 @@
 // NOTE: Provide a mock window.electronAPI for web/dev runs outside Electron.
 import { getFilename } from "../constants/index.js";
 import { DEFAULT_APP_LANGUAGE } from "../../types/i18n.js";
+import type { TranscriptRuntimeStatus } from "../../types/transcript.js";
 import { getBuiltInLanguageDescriptors } from "../../../shared/i18n/built-in-descriptors.js";
 import { normalizeAppLanguage } from "../../../shared/i18n/locale.js";
 import { loadBuiltInLanguagePack } from "../modules/i18n/built-in-loader.js";
@@ -22,6 +23,19 @@ export function ensureElectronApiFallback(): void {
     } catch {
       return null;
     }
+  };
+
+  const fallbackTranscriptStatus: TranscriptRuntimeStatus = {
+    state: "missing-runtime",
+    ready: false,
+    binaryPath: null,
+    modelPath: null,
+    modelId: "base",
+    modelLanguage: "tr",
+    appLanguage: "tr",
+    activeLanguage: "tr",
+    activeVariant: "full",
+    message: "electronAPI fallback",
   };
 
   const fallbackApi = {
@@ -173,16 +187,13 @@ export function ensureElectronApiFallback(): void {
       modelPath: string | null;
       modelId: string;
       modelLanguage: string;
+      appLanguage: string;
+      activeLanguage: string;
+      activeVariant: string;
       message: string | null;
     }> =>
       await Promise.resolve({
-        state: "missing-runtime",
-        ready: false,
-        binaryPath: null,
-        modelPath: null,
-        modelId: "base",
-        modelLanguage: "auto",
-        message: "electronAPI fallback",
+        ...fallbackTranscriptStatus,
       }),
     transcriptEnsureRuntime: async (): Promise<{
       state: string;
@@ -191,17 +202,17 @@ export function ensureElectronApiFallback(): void {
       modelPath: string | null;
       modelId: string;
       modelLanguage: string;
+      appLanguage: string;
+      activeLanguage: string;
+      activeVariant: string;
       message: string | null;
     }> =>
       await Promise.resolve({
-        state: "missing-runtime",
-        ready: false,
-        binaryPath: null,
-        modelPath: null,
-        modelId: "base",
-        modelLanguage: "auto",
-        message: "electronAPI fallback",
+        ...fallbackTranscriptStatus,
       }),
+    transcriptListModels: async (): Promise<unknown[]> => await Promise.resolve([]),
+    transcriptInstallModel: async (): Promise<null> => await Promise.resolve(null),
+    transcriptRemoveModel: async (): Promise<null> => await Promise.resolve(null),
     transcriptTranscribeLocal: async (): Promise<{
       success: boolean;
       status: {
@@ -211,21 +222,16 @@ export function ensureElectronApiFallback(): void {
         modelPath: string | null;
         modelId: string;
         modelLanguage: string;
+        appLanguage: string;
+        activeLanguage: string;
+        activeVariant: string;
         message: string | null;
       };
       error: string;
     }> =>
       await Promise.resolve({
         success: false,
-        status: {
-          state: "missing-runtime",
-          ready: false,
-          binaryPath: null,
-          modelPath: null,
-          modelId: "base",
-          modelLanguage: "auto",
-          message: "electronAPI fallback",
-        },
+        status: fallbackTranscriptStatus,
         error: "fallback",
       }),
     transcriptSubmitIngress: async (): Promise<{ success: boolean }> =>

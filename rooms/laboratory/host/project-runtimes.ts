@@ -279,9 +279,11 @@ export function createLaboratoryHostProjectRuntimes(deps: LaboratoryHostProjectR
     getStageSupport: bootstrap.getStageSupport,
     getToolManifest: bootstrap.getToolManifest,
     listDirectory: io.listDirectory,
+    listSharedTranscriptModels: io.listSharedTranscriptModels,
     persistProfileModelState: profileModelState.saveProfileModelState,
     pushJobState: snapshot.pushJobState,
     readBinaryFileBytes: io.readBinaryFileBytes,
+    readSharedTranscriptStatus: io.readSharedTranscriptStatus,
     refreshProfileModelState: profileModelState.reloadProfileModelState,
     registerJob: jobState.registerJob,
     roomId: deps.roomId,
@@ -369,6 +371,7 @@ export function createLaboratoryHostProjectRuntimes(deps: LaboratoryHostProjectR
     readTextFile: io.readTextFile,
     roomId: deps.roomId,
     toRecord: deps.toRecord,
+    transcribeManagedAudioFile: io.transcribeManagedAudioFile,
     writeJsonFile: io.writeJsonFile,
   };
   const analysisArtifact = createLaboratoryAnalysisArtifactRuntime(

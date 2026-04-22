@@ -36,6 +36,9 @@ type LaboratoryProfileModelCatalog = LaboratoryRecord & {
 };
 
 type LaboratoryProfileModelState = {
+  activeLanguage: string | null;
+  activeModelId: string | null;
+  activeVariant: string | null;
   models: Record<string, LaboratoryProfileModelEntry>;
   schemaVersion: number;
   updatedAt: string | number | null;
@@ -245,6 +248,9 @@ export function createLaboratoryProjectStorageRuntime(deps: LaboratoryProjectSto
     const models = toRecord(storedRecord["models"]);
     const catalogModels = toRecord(toProfileModelCatalog(runtime.profileModels).models);
     const nextState: LaboratoryProfileModelState = {
+      activeLanguage: asNonEmptyString(storedRecord["activeLanguage"]),
+      activeModelId: asNonEmptyString(storedRecord["activeModelId"]),
+      activeVariant: asNonEmptyString(storedRecord["activeVariant"]),
       schemaVersion: 1,
       updatedAt: asNonEmptyString(storedRecord["updatedAt"]),
       models: {},

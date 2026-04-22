@@ -581,16 +581,117 @@
                                 <div
                                   class="user-profile-inline__field user-profile-inline__field--language"
                                 >
-                                  <label
-                                    class="form-label"
-                                    id="app-language-label"
-                                    for="app-language-select"
-                                    data-i18n-text="user.language.label"
-                                  ></label>
-                                  <select
-                                    id="app-language-select"
-                                    class="select select-sm"
-                                  ></select>
+                                  <div class="user-profile-inline__setting">
+                                    <label
+                                      class="form-label"
+                                      id="app-language-label"
+                                      for="app-language-select"
+                                      data-i18n-text="user.language.label"
+                                    ></label>
+                                    <select
+                                      id="app-language-select"
+                                      class="select select-sm"
+                                    ></select>
+                                  </div>
+                                  <div
+                                    class="user-profile-inline__setting user-profile-inline__setting--secondary"
+                                  >
+                                    <label
+                                      class="form-label"
+                                      id="app-transcript-profile-label"
+                                      for="app-transcript-profile-select"
+                                      data-i18n-text="user.transcriptProfile.label"
+                                    ></label>
+                                    <div class="user-profile-inline__setting-body">
+                                      <select
+                                        id="app-transcript-profile-select"
+                                        class="select select-sm"
+                                      >
+                                        <option
+                                          value="light"
+                                          data-i18n-text="user.transcriptProfile.options.light"
+                                        ></option>
+                                        <option
+                                          value="full"
+                                          data-i18n-text="user.transcriptProfile.options.full"
+                                        ></option>
+                                      </select>
+                                      <p
+                                        class="user-profile-inline__hint"
+                                        id="app-transcript-profile-hint"
+                                        data-i18n-text="user.transcriptProfile.hint"
+                                      ></p>
+                                    </div>
+                                  </div>
+                                  <div
+                                    class="user-profile-inline__setting user-profile-inline__setting--secondary"
+                                  >
+                                    <label
+                                      class="form-label"
+                                      id="app-transcript-runtime-label"
+                                      for="app-transcript-runtime-ensure-btn"
+                                      data-i18n-text="user.transcriptRuntime.label"
+                                    ></label>
+                                    <div class="user-profile-inline__setting-body">
+                                      <section
+                                        class="user-profile-inline__runtime-panel"
+                                        aria-labelledby="app-transcript-runtime-label"
+                                      >
+                                        <div class="user-profile-inline__runtime-meta">
+                                          <article class="user-profile-inline__runtime-stat">
+                                            <span
+                                              id="app-transcript-runtime-status-label"
+                                              data-i18n-text="user.transcriptRuntime.statusLabel"
+                                            ></span>
+                                            <strong id="app-transcript-runtime-status-value">--</strong>
+                                          </article>
+                                          <article class="user-profile-inline__runtime-stat">
+                                            <span
+                                              id="app-transcript-runtime-active-language-label"
+                                              data-i18n-text="user.transcriptRuntime.activeLanguageLabel"
+                                            ></span>
+                                            <strong id="app-transcript-runtime-active-language"
+                                              >--</strong
+                                            >
+                                          </article>
+                                          <article class="user-profile-inline__runtime-stat">
+                                            <span
+                                              id="app-transcript-runtime-active-model-label"
+                                              data-i18n-text="user.transcriptRuntime.activeModelLabel"
+                                            ></span>
+                                            <strong id="app-transcript-runtime-active-model">--</strong>
+                                          </article>
+                                        </div>
+                                        <p
+                                          class="user-profile-inline__hint"
+                                          id="app-transcript-runtime-hint"
+                                          data-i18n-text="user.transcriptRuntime.hint"
+                                        ></p>
+                                        <div class="user-profile-inline__runtime-actions">
+                                          <button
+                                            id="app-transcript-runtime-ensure-btn"
+                                            class="btn btn-secondary btn-sm"
+                                            type="button"
+                                            data-i18n-text="user.transcriptRuntime.actions.prepare"
+                                          ></button>
+                                          <button
+                                            id="app-transcript-runtime-refresh-btn"
+                                            class="btn btn-secondary btn-sm"
+                                            type="button"
+                                            data-i18n-text="user.transcriptRuntime.actions.refresh"
+                                          ></button>
+                                        </div>
+                                        <div
+                                          class="user-profile-inline__runtime-models"
+                                          id="app-transcript-runtime-models"
+                                        ></div>
+                                        <p
+                                          class="user-profile-inline__hint user-profile-inline__runtime-feedback"
+                                          id="app-transcript-runtime-feedback"
+                                        ></p>
+                                      </section>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                               <section class="us1-slot-panel__section">

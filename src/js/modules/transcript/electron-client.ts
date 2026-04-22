@@ -1,5 +1,7 @@
 import type {
   TranscriptIngressPayload,
+  TranscriptManagedModelId,
+  TranscriptManagedModelStatus,
   TranscriptRuntimeStatus,
   TranscriptSubmitIngressRequest,
   TranscriptSubmitIngressResult,
@@ -14,6 +16,9 @@ const FALLBACK_STATUS: TranscriptRuntimeStatus = {
   modelPath: null,
   modelId: "base",
   modelLanguage: "auto",
+  appLanguage: "tr",
+  activeLanguage: "tr",
+  activeVariant: "full",
   message: "Electron transcript bridge is unavailable.",
 };
 
@@ -63,6 +68,20 @@ function normalizeSubmitIngressResult(value: unknown): TranscriptSubmitIngressRe
   };
 }
 
+function normalizeManagedModelStatus(value: unknown): TranscriptManagedModelStatus | null {
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "modelId" in value &&
+    "label" in value &&
+    "installed" in value
+  ) {
+    return value as TranscriptManagedModelStatus;
+  }
+
+  return null;
+}
+
 export async function getTranscriptStatus(): Promise<TranscriptRuntimeStatus> {
   const api = getElectronApi();
   if (typeof api?.transcriptStatus !== "function") {
@@ -79,6 +98,44 @@ export async function ensureTranscriptRuntime(): Promise<TranscriptRuntimeStatus
   }
 
   return normalizeRuntimeStatus(await api.transcriptEnsureRuntime());
+}
+
+export async function listTranscriptModels(): Promise<TranscriptManagedModelStatus[]> {
+  const api = getElectronApi();
+  if (typeof api?.transcriptListModels !== "function") {
+    return [];
+  }
+
+  const value = await api.transcriptListModels();
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((entry) => normalizeManagedModelStatus(entry))
+    .filter((entry): entry is TranscriptManagedModelStatus => entry !== null);
+}
+
+export async function installTranscriptModel(
+  modelId: TranscriptManagedModelId
+): Promise<TranscriptManagedModelStatus | null> {
+  const api = getElectronApi();
+  if (typeof api?.transcriptInstallModel !== "function") {
+    return null;
+  }
+
+  return normalizeManagedModelStatus(await api.transcriptInstallModel(modelId));
+}
+
+export async function removeTranscriptModel(
+  modelId: TranscriptManagedModelId
+): Promise<TranscriptManagedModelStatus | null> {
+  const api = getElectronApi();
+  if (typeof api?.transcriptRemoveModel !== "function") {
+    return null;
+  }
+
+  return normalizeManagedModelStatus(await api.transcriptRemoveModel(modelId));
 }
 
 export async function transcribeLocalAudio(

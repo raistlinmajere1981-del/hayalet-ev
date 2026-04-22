@@ -1,5 +1,9 @@
 import type { TranscriptIngressPayload, TranscriptTargetId } from "../../../types/transcript.js";
-import { getTranscriptStatus, transcribeLocalAudio } from "./electron-client.js";
+import {
+  getTranscriptStatus,
+  submitTranscriptIngress,
+  transcribeLocalAudio,
+} from "./electron-client.js";
 import { startMicrophoneCapture, type MicrophoneCaptureSession } from "./microphone-capture.js";
 import { insertTranscriptIntoTextarea } from "./textarea-insertion.js";
 
@@ -108,8 +112,21 @@ export function bindDictationTrigger(options: BindDictationTriggerOptions): Dict
     }
   };
 
-  const dispatchTranscript = (payload: TranscriptIngressPayload): void => {
-    handleIngress(payload);
+  const dispatchTranscript = async (payload: TranscriptIngressPayload): Promise<void> => {
+    const ingressResult = await submitTranscriptIngress({
+      text: payload.text,
+      source: payload.source === "android-bridge" ? "android-bridge" : "synthetic-test",
+      target: payload.target,
+      isFinal: payload.isFinal,
+      metadata: {
+        ...(payload.metadata ?? {}),
+        capturedSource: payload.source,
+      },
+    });
+
+    if (ingressResult.success !== true) {
+      handleIngress(payload);
+    }
   };
 
   const handleIngress = (payload: TranscriptIngressPayload): void => {
@@ -140,7 +157,6 @@ export function bindDictationTrigger(options: BindDictationTriggerOptions): Dict
       const capture = await activeCapture.stop();
       const transcription = await transcribeLocalAudio({
         audioBase64: capture.audioBase64,
-        language: "auto",
         source: "pc-mic",
       });
 
@@ -148,7 +164,7 @@ export function bindDictationTrigger(options: BindDictationTriggerOptions): Dict
         throw new Error(transcription.error ?? labels.emptyResultMessage);
       }
 
-      dispatchTranscript({
+      await dispatchTranscript({
         requestId: crypto.randomUUID(),
         createdAt: new Date().toISOString(),
         text: transcription.text,

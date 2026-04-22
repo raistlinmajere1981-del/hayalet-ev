@@ -88,6 +88,9 @@ type LaboratoryProfileModelEntry = {
 };
 
 type LaboratoryProfileModelState = {
+  activeLanguage: string | null;
+  activeModelId: string | null;
+  activeVariant: string | null;
   models: Record<string, LaboratoryProfileModelEntry>;
   schemaVersion: number;
   updatedAt: string | number | null;
@@ -428,6 +431,9 @@ export function createLaboratoryRuntimeBootstrap(deps: LaboratoryRuntimeBootstra
       activeProjectId: null,
       toolState: createDefaultToolState([]),
       profileModelState: {
+        activeLanguage: null,
+        activeModelId: null,
+        activeVariant: null,
         schemaVersion: 1,
         updatedAt: null,
         models: {},
