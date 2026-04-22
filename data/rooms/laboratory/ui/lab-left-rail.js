@@ -1,13 +1,17 @@
 import { escapeHtml, asNonEmptyString } from "../models/lab-types.js";
 import {
   getProjectSource,
-  getWorkspaceMode,
   getSelectedIntents,
-  getAvailableIntents
+  getAvailableIntents,
+  getSourceReady,
+  hasReportPayload,
+  isRunActive
 } from "../runtime/lab-selectors.js";
 import { renderStatusChip } from "./components/status-chip.js";
 export function renderLabLeftRail(state) {
-  const workspaceMode = getWorkspaceMode(state);
+  const runActive = isRunActive(state);
+  const hasReport = hasReportPayload(state);
+  const sourceReady = getSourceReady(state);
   const source = getProjectSource(state);
   const selectedIntents = getSelectedIntents(state);
   const intents = getAvailableIntents(state);
@@ -26,8 +30,8 @@ export function renderLabLeftRail(state) {
   const disableDelete = newProjectSelected || state.projectIndex.activeProjectId === null;
   const saveButtonAttrs = !hasSource ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : "";
   const deleteButtonAttrs = disableDelete ? 'style="opacity: 0.5; cursor: not-allowed; color: var(--color-error)" disabled' : 'style="color: var(--color-error)"';
-  const modeLabel = workspaceMode === "loading" ? "Loading" : workspaceMode === "analyzing" ? "Analyzing" : workspaceMode === "complete" ? "Complete" : "Workspace";
-  const modeTone = workspaceMode === "analyzing" ? "running" : workspaceMode === "complete" ? "success" : "neutral";
+  const modeLabel = runActive ? "Analiz" : hasReport ? "Rapor var" : sourceReady ? "Hazır" : "Kaynak bekleniyor";
+  const modeTone = runActive ? "running" : hasReport ? "success" : "neutral";
   return `
     <aside class="labx-left-rail">
       <div class="labx-brand">
