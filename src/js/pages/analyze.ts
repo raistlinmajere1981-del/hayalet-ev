@@ -1198,16 +1198,22 @@ export class AnalyzeController {
     this._syncDictationAvailability();
   }
 
-  _captureDefaults(): NonNullable<ReturnType<typeof SettingsManager.getSnapshot>["capture"]>["defaults"] {
+  _captureDefaults(): NonNullable<
+    ReturnType<typeof SettingsManager.getSnapshot>["capture"]
+  >["defaults"] {
     return SettingsManager.getSnapshot().capture?.defaults ?? {};
   }
 
-  _captureProviders(): NonNullable<ReturnType<typeof SettingsManager.getSnapshot>["capture"]>["providers"] {
+  _captureProviders(): NonNullable<
+    ReturnType<typeof SettingsManager.getSnapshot>["capture"]
+  >["providers"] {
     return SettingsManager.getSnapshot().capture?.providers ?? {};
   }
 
   _syncDictationAvailability(): void {
-    const dictationButton = document.getElementById("compose-dictation-btn") as HTMLButtonElement | null;
+    const dictationButton = document.getElementById(
+      "compose-dictation-btn"
+    ) as HTMLButtonElement | null;
     if (dictationButton === null) {
       return;
     }
@@ -1283,10 +1289,7 @@ export class AnalyzeController {
       void this.refreshCaptureSessionState(true).finally(() => {
         const state = this._captureStatus?.analyze.state ?? "idle";
         const settled =
-          state === "ready" ||
-          state === "result-ready" ||
-          state === "idle" ||
-          state === "error";
+          state === "ready" || state === "result-ready" || state === "idle" || state === "error";
         if (settled || remainingTicks <= 0) {
           this._stopCaptureStatusPolling();
         }
@@ -1316,8 +1319,7 @@ export class AnalyzeController {
   }
 
   toggleCapturePanel(forceOpen?: boolean): void {
-    const nextOpen =
-      typeof forceOpen === "boolean" ? forceOpen : this._capturePanelOpen !== true;
+    const nextOpen = typeof forceOpen === "boolean" ? forceOpen : this._capturePanelOpen !== true;
     if (nextOpen === this._capturePanelOpen) {
       return;
     }
@@ -1337,18 +1339,14 @@ export class AnalyzeController {
       androidStatus?.devices.find((device) => device.selected) ??
       androidStatus?.devices.find((device) => device.connectionState === "device") ??
       null;
-    const stateLabel = analyzeT(
-      `page.captureSessionStates.${captureState?.state ?? "idle"}`
-    );
+    const stateLabel = analyzeT(`page.captureSessionStates.${captureState?.state ?? "idle"}`);
     const latestName =
       captureState?.latestAsset?.name ??
       ((captureState?.pendingInboxCount ?? 0) > 0
         ? analyzeT("page.captureSessionActions.sync")
         : analyzeT("page.captureSessionLatestEmpty"));
     const message =
-      captureState?.message ??
-      androidStatus?.pairingHint ??
-      analyzeT("page.captureSessionHint");
+      captureState?.message ?? androidStatus?.pairingHint ?? analyzeT("page.captureSessionHint");
 
     const stateEl = document.getElementById("analyze-capture-state");
     const deviceEl = document.getElementById("analyze-capture-device");
@@ -1358,7 +1356,9 @@ export class AnalyzeController {
     const stopBtn = document.getElementById("capture-stop-btn") as HTMLButtonElement | null;
     const captureBtn = document.getElementById("capture-photo-btn") as HTMLButtonElement | null;
     const retakeBtn = document.getElementById("capture-retake-btn") as HTMLButtonElement | null;
-    const syncBtn = document.getElementById("capture-import-btn-inline") as HTMLButtonElement | null;
+    const syncBtn = document.getElementById(
+      "capture-import-btn-inline"
+    ) as HTMLButtonElement | null;
     const androidCompanionEnabled = this._captureProviders()?.androidCompanionEnabled !== false;
 
     if (stateEl) {
@@ -1371,7 +1371,9 @@ export class AnalyzeController {
       latestNameEl.textContent = latestName;
     }
     if (feedbackEl) {
-      feedbackEl.textContent = androidCompanionEnabled ? message : analyzeT("page.captureSessionDisabled");
+      feedbackEl.textContent = androidCompanionEnabled
+        ? message
+        : analyzeT("page.captureSessionDisabled");
     }
 
     const hasReadyDevice = selectedDevice !== null;
@@ -1383,11 +1385,13 @@ export class AnalyzeController {
     const isSessionReady =
       captureState?.state === "ready" || captureState?.state === "result-ready";
     if (sessionBtn) {
-      sessionBtn.disabled = androidCompanionEnabled !== true || hasReadyDevice === false || isSessionActive;
+      sessionBtn.disabled =
+        androidCompanionEnabled !== true || hasReadyDevice === false || isSessionActive;
     }
     if (stopBtn) {
       stopBtn.disabled =
-        androidCompanionEnabled !== true || (isSessionActive !== true && captureState?.deviceId === null);
+        androidCompanionEnabled !== true ||
+        (isSessionActive !== true && captureState?.deviceId === null);
     }
     if (captureBtn) {
       captureBtn.disabled = androidCompanionEnabled !== true || isSessionReady !== true;
@@ -1396,7 +1400,8 @@ export class AnalyzeController {
       retakeBtn.disabled = androidCompanionEnabled !== true || isSessionReady !== true;
     }
     if (syncBtn) {
-      syncBtn.disabled = androidCompanionEnabled !== true || (captureState?.pendingInboxCount ?? 0) === 0;
+      syncBtn.disabled =
+        androidCompanionEnabled !== true || (captureState?.pendingInboxCount ?? 0) === 0;
     }
 
     void this._renderCapturePreview();

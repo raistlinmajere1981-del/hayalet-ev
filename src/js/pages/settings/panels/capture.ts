@@ -157,9 +157,9 @@ function renderAndroidOperationState(root: HTMLElement, state: CapturePanelState
       ? `${String(progressValue)}%`
       : operation.state === "needs-confirmation"
         ? captureT("android.progress.states.confirmation")
-      : operation.state === "success"
-        ? captureT("android.progress.states.success")
-        : captureT("android.progress.states.error");
+        : operation.state === "success"
+          ? captureT("android.progress.states.success")
+          : captureT("android.progress.states.error");
   message.textContent = operation.message ?? "";
   details.innerHTML = "";
   operation.details.forEach((entry) => {
@@ -575,7 +575,8 @@ function syncActionButtons(root: HTMLElement, state: CapturePanelState): void {
     refreshButton.disabled = busy;
   }
   if (connectInput) {
-    connectInput.disabled = busy || androidStatus?.adbPath === null || androidCompanionEnabled !== true;
+    connectInput.disabled =
+      busy || androidStatus?.adbPath === null || androidCompanionEnabled !== true;
   }
   if (connectButton) {
     connectButton.disabled =
@@ -597,7 +598,8 @@ function syncActionButtons(root: HTMLElement, state: CapturePanelState): void {
       selectedDevice === null ||
       androidStatus?.adbPath === null ||
       androidCompanionEnabled !== true ||
-      (selectedDevice.companionState !== "installed" && selectedDevice.companionState !== "outdated");
+      (selectedDevice.companionState !== "installed" &&
+        selectedDevice.companionState !== "outdated");
   }
   if (confirmInstallButton) {
     confirmInstallButton.disabled = state.actionLoading;
@@ -618,10 +620,7 @@ function syncActionButtons(root: HTMLElement, state: CapturePanelState): void {
       }
 
       button.disabled =
-        busy ||
-        device === null ||
-        device.selected ||
-        device.connectionState !== "device";
+        busy || device === null || device.selected || device.connectionState !== "device";
     });
 }
 
@@ -667,7 +666,9 @@ async function runAndSyncCaptureAction(
 
   try {
     const outcome =
-      typeof options?.execute === "function" ? await options.execute() : await runCaptureAction(action);
+      typeof options?.execute === "function"
+        ? await options.execute()
+        : await runCaptureAction(action);
     state.status = outcome.status;
     const waitingConfirmation = outcome.status.operation.state === "needs-confirmation";
     if (waitingConfirmation !== true && (outcome.ok !== true || shouldShowCaptureConfirmation())) {
@@ -702,7 +703,9 @@ async function saveCapturePolicy(root: HTMLElement, state: CapturePanelState): P
   const confirmationSelect = root.querySelector<HTMLSelectElement>(
     "#capture-default-confirmation-select"
   );
-  const localWhisperEnabled = root.querySelector<HTMLInputElement>("#capture-provider-local-whisper");
+  const localWhisperEnabled = root.querySelector<HTMLInputElement>(
+    "#capture-provider-local-whisper"
+  );
   const androidCompanionEnabled = root.querySelector<HTMLInputElement>(
     "#capture-provider-android-companion"
   );
@@ -726,8 +729,7 @@ async function saveCapturePolicy(root: HTMLElement, state: CapturePanelState): P
     nextDefaults["photoQuality"] = qualitySelect?.value === "balanced" ? "balanced" : "high";
     nextDefaults["attachMode"] =
       attachSelect?.value === "auto-stage" ? "auto-stage" : "manual-sync";
-    nextDefaults["commandConfirmation"] =
-      confirmationSelect?.value === "none" ? "none" : "toast";
+    nextDefaults["commandConfirmation"] = confirmationSelect?.value === "none" ? "none" : "toast";
 
     nextProviders["localWhisperEnabled"] = localWhisperEnabled?.checked !== false;
     nextProviders["androidCompanionEnabled"] = androidCompanionEnabled?.checked !== false;
@@ -917,10 +919,7 @@ function bindActions(root: HTMLElement, state: CapturePanelState): void {
   }
 
   policyInputs.forEach((element) => {
-    if (
-      !(element instanceof HTMLSelectElement) &&
-      !(element instanceof HTMLInputElement)
-    ) {
+    if (!(element instanceof HTMLSelectElement) && !(element instanceof HTMLInputElement)) {
       return;
     }
 

@@ -108,8 +108,7 @@ export interface RoomToolTranscriptListModelsRequest extends RoomToolRequestBase
 }
 
 export interface RoomToolTranscriptTranscribeFileRequest
-  extends RoomToolRequestBase,
-    Omit<TranscriptFileTranscriptionRequest, "roomId"> {
+  extends RoomToolRequestBase, Omit<TranscriptFileTranscriptionRequest, "roomId"> {
   operation: "transcript-transcribe-file";
 }
 

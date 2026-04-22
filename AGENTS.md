@@ -73,7 +73,7 @@ Plan aşamasında kullanıcıya kod gösterme, planı basit ve kısa biçimde a�
 🎯 Hedef Workflow: <`workflow:terminal-mode` | `workflow:app-mode` | `workflow:ghost-agent-mode`>
 🔁 Geçiş Planı: <hedef workflow'a göre geçiş/geri dönüş adımı; geçiş yoksa `Yok` yaz>
 🔍 Hata: [tek cümle — ne yanlış]
-🔧 Çözüm: [ne yapılacak, hangi dosya, başladığın noktaya dönüş sürecinde ki aşamalar]
+🔧 Çözüm: [ne yapılacak, başladığın noktaya dönüş sürecinde ki aşamalar]
 📁 Etkilenen dosyalar: [liste]
 
 📋 Süreç:
@@ -85,7 +85,7 @@ Devam etmem için "evet" yaz.
 
 > **Kural:** "evet" veya açık onay gelmeden değişiklik uygulanmaz.
 > **Kural:** Hiçbir plugin/skill bu onay adımını atlayamaz.
-> **Kural:** Onay sonrası süreç bitmeden kullanıcı tekrar bekletilmez — sonuç bildirimi ile çember kapanır.
+> **Kural:** Onay sonrası süreç bitmeden kullanıcı tekrar bekletilmez — uygulanan çözüm, değişen dosyalar (satır numaraları gerekli değil) hakkında kısa sonuç ile çember kapanır.
 > **Kural:** Mod alanı her seferinde `npm run mode:status` çıktısına göre dinamik doldurulur; `npm run whereami` ile cross-check edilir — hardcode yazılmaz.
 > **Kural:** `Hedef Workflow` alanı zorunludur; mevcut mod ile yapılacak workflow aynı şey değildir.
 > **Kural:** `Geçiş Planı` alanı zorunludur; `ghost-agent` gereken işlerde `npm run mode:switch -- ghost-agent` ve işlem sonu `npm run mode:switch -- app` açıkça yazılır.

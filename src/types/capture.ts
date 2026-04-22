@@ -12,19 +12,11 @@ export type CaptureAndroidHostState =
   | "package-query-failed"
   | "error";
 
-export type CaptureAndroidDeviceConnectionState =
-  | "device"
-  | "unauthorized"
-  | "offline"
-  | "unknown";
+export type CaptureAndroidDeviceConnectionState = "device" | "unauthorized" | "offline" | "unknown";
 
 export type CaptureAndroidTransportKind = "usb" | "wireless" | "unknown";
 
-export type CaptureAndroidCompanionState =
-  | "unknown"
-  | "not-installed"
-  | "installed"
-  | "outdated";
+export type CaptureAndroidCompanionState = "unknown" | "not-installed" | "installed" | "outdated";
 
 export type CaptureAndroidPermissionState = "granted" | "denied" | "unknown";
 

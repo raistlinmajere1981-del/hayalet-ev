@@ -306,7 +306,10 @@ function toRuntimeStatus(
 }
 
 export class TranscriptService {
-  private activeEnsurePromises = new Map<TranscriptManagedModelId, Promise<TranscriptRuntimeStatus>>();
+  private activeEnsurePromises = new Map<
+    TranscriptManagedModelId,
+    Promise<TranscriptRuntimeStatus>
+  >();
   private activeBinaryEnsurePromise: Promise<string> | null = null;
   private activeModelInstallPromises = new Map<
     TranscriptManagedModelId,
@@ -334,10 +337,7 @@ export class TranscriptService {
       settings.general?.transcriptModelVariant,
       "full"
     );
-    const requestedVariant = normalizeTranscriptModelVariant(
-      request?.variant,
-      configuredVariant
-    );
+    const requestedVariant = normalizeTranscriptModelVariant(request?.variant, configuredVariant);
     const initialLanguage = requestedLanguage ?? resolveTranscriptSupportedLanguage(appLanguage);
     const descriptor =
       (requestedModelId !== null ? getTranscriptModelDescriptor(requestedModelId) : null) ??
@@ -500,7 +500,10 @@ export class TranscriptService {
     }
 
     const currentStatus = await this.getModelStatus(descriptor);
-    if (currentStatus.ready === true || currentStatus.path === normalizeText(process.env[TRANSCRIPT_WHISPER_MODEL_ENV])) {
+    if (
+      currentStatus.ready === true ||
+      currentStatus.path === normalizeText(process.env[TRANSCRIPT_WHISPER_MODEL_ENV])
+    ) {
       return currentStatus;
     }
 
@@ -514,7 +517,11 @@ export class TranscriptService {
       await ensureRuntimeDirectories(paths);
       await this.ensureBinary();
 
-      if (currentStatus.installed === true && currentStatus.ready !== true && currentStatus.path !== null) {
+      if (
+        currentStatus.installed === true &&
+        currentStatus.ready !== true &&
+        currentStatus.path !== null
+      ) {
         await this.quarantineManagedModel(descriptor.fileName, currentStatus.path);
       }
 
@@ -870,7 +877,11 @@ export class TranscriptService {
     if (currentStatus.path !== null && currentStatus.ready === true) {
       return currentStatus.path;
     }
-    if (currentStatus.installed === true && currentStatus.ready !== true && currentStatus.path !== null) {
+    if (
+      currentStatus.installed === true &&
+      currentStatus.ready !== true &&
+      currentStatus.path !== null
+    ) {
       await this.quarantineManagedModel(descriptor.fileName, currentStatus.path);
     }
 

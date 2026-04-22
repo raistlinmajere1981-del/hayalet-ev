@@ -297,7 +297,9 @@ export async function runCaptureAction(action: CaptureHostAction): Promise<Captu
 export async function connectCaptureDevice(address: string): Promise<CaptureActionOutcome> {
   const api = getElectronApi();
   return normalizeActionOutcome(
-    typeof api?.captureConnectDevice === "function" ? await api.captureConnectDevice(address) : null,
+    typeof api?.captureConnectDevice === "function"
+      ? await api.captureConnectDevice(address)
+      : null,
     "connect-device"
   );
 }

@@ -142,7 +142,8 @@ function normalizeCaptureSettings(raw: unknown): AppSettings["capture"] | undefi
   return {
     defaults: {
       preferredDeviceId:
-        typeof defaults["preferredDeviceId"] === "string" && defaults["preferredDeviceId"].trim() !== ""
+        typeof defaults["preferredDeviceId"] === "string" &&
+        defaults["preferredDeviceId"].trim() !== ""
           ? defaults["preferredDeviceId"].trim()
           : null,
       defaultLens: normalizeCaptureDefaultLens(defaults["defaultLens"]),
@@ -161,23 +162,11 @@ function normalizeCaptureSettings(raw: unknown): AppSettings["capture"] | undefi
         commandPhrases["openCamera"],
         defaultCapturePhrases.openCamera
       ),
-      capture: normalizeCapturePhraseList(
-        commandPhrases["capture"],
-        defaultCapturePhrases.capture
-      ),
-      retake: normalizeCapturePhraseList(
-        commandPhrases["retake"],
-        defaultCapturePhrases.retake
-      ),
-      attach: normalizeCapturePhraseList(
-        commandPhrases["attach"],
-        defaultCapturePhrases.attach
-      ),
+      capture: normalizeCapturePhraseList(commandPhrases["capture"], defaultCapturePhrases.capture),
+      retake: normalizeCapturePhraseList(commandPhrases["retake"], defaultCapturePhrases.retake),
+      attach: normalizeCapturePhraseList(commandPhrases["attach"], defaultCapturePhrases.attach),
       stop: normalizeCapturePhraseList(commandPhrases["stop"], defaultCapturePhrases.stop),
-      cancel: normalizeCapturePhraseList(
-        commandPhrases["cancel"],
-        defaultCapturePhrases.cancel
-      ),
+      cancel: normalizeCapturePhraseList(commandPhrases["cancel"], defaultCapturePhrases.cancel),
     },
   };
 }

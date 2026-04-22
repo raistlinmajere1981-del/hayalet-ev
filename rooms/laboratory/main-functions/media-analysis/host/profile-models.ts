@@ -231,7 +231,9 @@ export function createMediaProfileModelRuntime(deps: MediaProfileModelRuntimeDep
     return toProfileModelDescriptorRecord(getProfileModelDescriptor(runtime, modelId));
   }
 
-  function getSharedTranscriptModelMap(entries: unknown): Record<string, LaboratorySharedTranscriptModelStatusRecord> {
+  function getSharedTranscriptModelMap(
+    entries: unknown
+  ): Record<string, LaboratorySharedTranscriptModelStatusRecord> {
     if (!Array.isArray(entries)) {
       return {};
     }
@@ -408,7 +410,8 @@ export function createMediaProfileModelRuntime(deps: MediaProfileModelRuntimeDep
     const sharedModelMap = getSharedTranscriptModelMap(await listSharedTranscriptModels());
     const sharedModel = toSharedTranscriptModelStatusRecord(sharedModelMap[modelId]);
     const descriptor = getProfileModelDescriptorRecord(runtime, modelId);
-    const fileName = asNonEmptyString(sharedModel.fileName) || asNonEmptyString(descriptor.fileName);
+    const fileName =
+      asNonEmptyString(sharedModel.fileName) || asNonEmptyString(descriptor.fileName);
     const filePath = asNonEmptyString(sharedModel.path);
     const checksumValid = sharedModel.checksumValid === true;
 
@@ -416,7 +419,8 @@ export function createMediaProfileModelRuntime(deps: MediaProfileModelRuntimeDep
       checksumSha1: null,
       checksumValid,
       expectedBytes: asNumber(sharedModel.expectedBytes) ?? asNumber(descriptor.expectedBytes),
-      expectedSha1: asNonEmptyString(sharedModel.expectedSha1) ?? asNonEmptyString(descriptor.expectedSha1),
+      expectedSha1:
+        asNonEmptyString(sharedModel.expectedSha1) ?? asNonEmptyString(descriptor.expectedSha1),
       fileName,
       installed: sharedModel.installed === true,
       lastError:
@@ -429,7 +433,9 @@ export function createMediaProfileModelRuntime(deps: MediaProfileModelRuntimeDep
 
     await persistProfileModelState(runtime);
     if (nextEntry.installed !== true) {
-      throw new Error(`Profile model ${modelId} is not installed on the shared transcript runtime.`);
+      throw new Error(
+        `Profile model ${modelId} is not installed on the shared transcript runtime.`
+      );
     }
     if (checksumValid !== true) {
       throw new Error("Downloaded model failed checksum verification.");
@@ -473,7 +479,8 @@ export function createMediaProfileModelRuntime(deps: MediaProfileModelRuntimeDep
       const descriptor = getProfileModelDescriptorRecord(runtime, modelId);
       const current = toProfileModelEntryRecord(storedModels[modelId]);
       const sharedModel = toSharedTranscriptModelStatusRecord(sharedStatusMap[modelId]);
-      const fileName = asNonEmptyString(sharedModel.fileName) || asNonEmptyString(descriptor.fileName);
+      const fileName =
+        asNonEmptyString(sharedModel.fileName) || asNonEmptyString(descriptor.fileName);
       const installed = sharedModel.installed === true;
       const lastError = asNonEmptyString(sharedModel.lastError);
 
@@ -484,7 +491,8 @@ export function createMediaProfileModelRuntime(deps: MediaProfileModelRuntimeDep
         checksumSha1: installed ? asNonEmptyString(current.checksumSha1) : null,
         checksumValid: installed && sharedModel.checksumValid === true,
         expectedBytes: asNumber(sharedModel.expectedBytes) ?? asNumber(descriptor.expectedBytes),
-        expectedSha1: asNonEmptyString(sharedModel.expectedSha1) ?? asNonEmptyString(descriptor.expectedSha1),
+        expectedSha1:
+          asNonEmptyString(sharedModel.expectedSha1) ?? asNonEmptyString(descriptor.expectedSha1),
         fileName,
         installed,
         lastError: installed ? lastError : null,

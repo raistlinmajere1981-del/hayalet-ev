@@ -281,7 +281,9 @@ export class CaptureTranscriptRuntimePanel {
       );
     }
     if (activeModelLabelEl) {
-      activeModelLabelEl.textContent = AppI18n.t("entrance.user.transcriptRuntime.activeModelLabel");
+      activeModelLabelEl.textContent = AppI18n.t(
+        "entrance.user.transcriptRuntime.activeModelLabel"
+      );
     }
     if (hintEl) {
       hintEl.textContent = AppI18n.t("entrance.user.transcriptRuntime.hint");
@@ -307,7 +309,7 @@ export class CaptureTranscriptRuntimePanel {
     if (activeModelEl) {
       activeModelEl.textContent = activeModel
         ? this.getTranscriptRuntimeModelTitle(activeModel)
-        : status?.modelId ?? "--";
+        : (status?.modelId ?? "--");
     }
 
     if (ensureBtn) {
