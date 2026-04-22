@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-22T11:03:57.963Z",
+  "generatedAt": "2026-04-22T20:54:29.131Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -16,15 +16,15 @@
     ]
   },
   "stats": {
-    "filesScanned": 494,
-    "filesWithComments": 83,
-    "commentsIndexed": 206,
-    "fileLevelComments": 153,
-    "symbolLevelComments": 53,
+    "filesScanned": 500,
+    "filesWithComments": 87,
+    "commentsIndexed": 211,
+    "fileLevelComments": 155,
+    "symbolLevelComments": 56,
     "prefixCounts": {
       "none": 43,
       "AI": 1,
-      "NOTE": 160,
+      "NOTE": 165,
       "WARNING": 2,
       "TODO": 0
     }
@@ -916,8 +916,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 478,
-          "endLine": 478,
+          "startLine": 493,
+          "endLine": 493,
           "text": "NOTE: Startup flags are read from the preload process argv so the renderer stays passive.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -925,8 +925,8 @@
         },
         {
           "kind": "warning",
-          "startLine": 512,
-          "endLine": 512,
+          "startLine": 527,
+          "endLine": 527,
           "text": "WARNING: Keep this allowlist narrow because callbacks are exposed to the renderer.",
           "prefix": "WARNING",
           "scopeType": "file",
@@ -934,8 +934,8 @@
         },
         {
           "kind": "note",
-          "startLine": 570,
-          "endLine": 570,
+          "startLine": 585,
+          "endLine": 585,
           "text": "NOTE: External tool pages share this preload, but only the main shell should boot /js/app.js.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1174,6 +1174,34 @@
       ]
     },
     {
+      "path": "electron/server-commands.ts",
+      "totalComments": 1,
+      "byKind": {
+        "note": 1
+      },
+      "byPrefix": {
+        "none": 0,
+        "AI": 0,
+        "NOTE": 1,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [
+        "CommandPayload"
+      ],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 8,
+          "endLine": 8,
+          "text": "NOTE: WhisperManager here is the deferred message queue command, not the whisper.cpp speech runtime.",
+          "prefix": "NOTE",
+          "scopeType": "interface",
+          "scopeName": "CommandPayload"
+        }
+      ]
+    },
+    {
       "path": "electron/session-manager.ts",
       "totalComments": 1,
       "byKind": {
@@ -1216,8 +1244,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 401,
-          "endLine": 401,
+          "startLine": 724,
+          "endLine": 724,
           "text": "NOTE: Transcript fan-out is best-effort so one detached window cannot abort the ingress.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1582,8 +1610,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 178,
-          "endLine": 178,
+          "startLine": 185,
+          "endLine": 185,
           "text": "NOTE: API exposed by the Electron preload layer (electron/preload.cjs).",
           "prefix": "NOTE",
           "scopeType": "interface",
@@ -1646,6 +1674,34 @@
       ]
     },
     {
+      "path": "src/js/modules/commands/whisper-commands.ts",
+      "totalComments": 1,
+      "byKind": {
+        "note": 1
+      },
+      "byPrefix": {
+        "none": 0,
+        "AI": 0,
+        "NOTE": 1,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [
+        "resolveSourceAccountId"
+      ],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 11,
+          "endLine": 11,
+          "text": "NOTE: This command schedules deferred whisper messages and is intentionally separate from speech transcription.",
+          "prefix": "NOTE",
+          "scopeType": "function",
+          "scopeName": "resolveSourceAccountId"
+        }
+      ]
+    },
+    {
       "path": "src/js/modules/core-engine.ts",
       "totalComments": 1,
       "byKind": {
@@ -1670,6 +1726,32 @@
           "prefix": "NOTE",
           "scopeType": "function",
           "scopeName": "registerServerCommands"
+        }
+      ]
+    },
+    {
+      "path": "src/js/modules/core/runtime-actions.ts",
+      "totalComments": 1,
+      "byKind": {
+        "note": 1
+      },
+      "byPrefix": {
+        "none": 0,
+        "AI": 0,
+        "NOTE": 1,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 212,
+          "endLine": 212,
+          "text": "NOTE: WhisperManager is a deferred-message queue feature, not the whisper.cpp speech runtime.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
         }
       ]
     },
@@ -2313,14 +2395,14 @@
     },
     {
       "path": "src/js/pages/analyze.ts",
-      "totalComments": 2,
+      "totalComments": 3,
       "byKind": {
-        "note": 2
+        "note": 3
       },
       "byPrefix": {
         "none": 0,
         "AI": 0,
-        "NOTE": 2,
+        "NOTE": 3,
         "WARNING": 0,
         "TODO": 0
       },
@@ -2328,8 +2410,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 1080,
-          "endLine": 1080,
+          "startLine": 1121,
+          "endLine": 1121,
           "text": "NOTE: Prevent duplicate sends while the button is already loading.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2337,9 +2419,18 @@
         },
         {
           "kind": "note",
-          "startLine": 1099,
-          "endLine": 1099,
+          "startLine": 1169,
+          "endLine": 1169,
           "text": "NOTE: Allow Ctrl+Enter sends while still preventing duplicate dispatches.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 1329,
+          "endLine": 1329,
+          "text": "NOTE: Keep the last known capture snapshot so the dictate toggle can still evaluate fallback state.",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
@@ -2738,6 +2829,34 @@
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
+        }
+      ]
+    },
+    {
+      "path": "src/js/pages/whisper/app.ts",
+      "totalComments": 1,
+      "byKind": {
+        "note": 1
+      },
+      "byPrefix": {
+        "none": 0,
+        "AI": 0,
+        "NOTE": 1,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [
+        "bootstrapWhisperPage"
+      ],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 8,
+          "endLine": 8,
+          "text": "NOTE: The whisper page edits deferred account whispers and does not manage speech transcription runtime state.",
+          "prefix": "NOTE",
+          "scopeType": "function",
+          "scopeName": "bootstrapWhisperPage"
         }
       ]
     },
@@ -3728,6 +3847,18 @@
       ]
     },
     {
+      "file": "electron/server-commands.ts",
+      "type": "interface",
+      "name": "CommandPayload",
+      "comments": [
+        {
+          "startLine": 8,
+          "kind": "note",
+          "text": "NOTE: WhisperManager here is the deferred message queue command, not the whisper.cpp speech runtime."
+        }
+      ]
+    },
+    {
       "file": "src/js/app/navigation.ts",
       "type": "function",
       "name": "getLastPrimaryPage",
@@ -3745,7 +3876,7 @@
       "name": "Window",
       "comments": [
         {
-          "startLine": 178,
+          "startLine": 185,
           "kind": "note",
           "text": "NOTE: API exposed by the Electron preload layer (electron/preload.cjs)."
         }
@@ -3760,6 +3891,18 @@
           "startLine": 3,
           "kind": "jsdoc",
           "text": "Command description registry for the server command panel.\n\nEach command exposes four localized fields:\n- description: one-line summary\n- detail: detailed behavior description\n- usage: inline command usage format\n- example: example command invocation\n\n@module commands/command-descriptions"
+        }
+      ]
+    },
+    {
+      "file": "src/js/modules/commands/whisper-commands.ts",
+      "type": "function",
+      "name": "resolveSourceAccountId",
+      "comments": [
+        {
+          "startLine": 11,
+          "kind": "note",
+          "text": "NOTE: This command schedules deferred whisper messages and is intentionally separate from speech transcription."
         }
       ]
     },
@@ -3808,6 +3951,18 @@
           "startLine": 1,
           "kind": "note",
           "text": "NOTE: Opened from the Assistant page; uses memory-* IPC channels for shared memory."
+        }
+      ]
+    },
+    {
+      "file": "src/js/pages/whisper/app.ts",
+      "type": "function",
+      "name": "bootstrapWhisperPage",
+      "comments": [
+        {
+          "startLine": 8,
+          "kind": "note",
+          "text": "NOTE: The whisper page edits deferred account whispers and does not manage speech transcription runtime state."
         }
       ]
     },
