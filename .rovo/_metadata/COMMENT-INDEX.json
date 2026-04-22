@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-22T00:34:36.079Z",
+  "generatedAt": "2026-04-22T11:03:57.963Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -16,7 +16,7 @@
     ]
   },
   "stats": {
-    "filesScanned": 493,
+    "filesScanned": 494,
     "filesWithComments": 83,
     "commentsIndexed": 206,
     "fileLevelComments": 153,
@@ -1636,8 +1636,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 1386,
-          "endLine": 1386,
+          "startLine": 1398,
+          "endLine": 1398,
           "text": "NOTE: readiness polling must stay sequential to preserve timeout semantics.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2000,8 +2000,8 @@
         },
         {
           "kind": "note",
-          "startLine": 763,
-          "endLine": 763,
+          "startLine": 771,
+          "endLine": 771,
           "text": "NOTE: Ignore listener errors to keep iteration running.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2091,8 +2091,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 451,
-          "endLine": 451,
+          "startLine": 452,
+          "endLine": 452,
           "text": "NOTE: The post-thinking probe is intentionally sequential because each rescrape depends on DOM settle time.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2100,8 +2100,8 @@
         },
         {
           "kind": "note",
-          "startLine": 454,
-          "endLine": 454,
+          "startLine": 455,
+          "endLine": 455,
           "text": "NOTE: Each scrape must observe the DOM after the prior settle window, not in parallel.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2109,8 +2109,8 @@
         },
         {
           "kind": "note",
-          "startLine": 557,
-          "endLine": 557,
+          "startLine": 558,
+          "endLine": 558,
           "text": "NOTE: In relay mode the user-side author actually comes from the peer AI.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2118,8 +2118,8 @@
         },
         {
           "kind": "note",
-          "startLine": 572,
-          "endLine": 572,
+          "startLine": 573,
+          "endLine": 573,
           "text": "NOTE: If the message contains a hev-sender tag (++cmd delivery), override the author.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2127,8 +2127,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1234,
-          "endLine": 1234,
+          "startLine": 1236,
+          "endLine": 1236,
           "text": "NOTE: Extraction is sequential because each asset maps to a live DOM node that may mutate during generation.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2136,8 +2136,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1242,
-          "endLine": 1242,
+          "startLine": 1244,
+          "endLine": 1244,
           "text": "NOTE: Fallback capture must run after extraction on the same asset to keep coordinates aligned.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2145,8 +2145,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1267,
-          "endLine": 1267,
+          "startLine": 1269,
+          "endLine": 1269,
           "text": "NOTE: Replacement detection must read the current archived file before deciding whether to rewrite it.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2154,8 +2154,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1277,
-          "endLine": 1277,
+          "startLine": 1279,
+          "endLine": 1279,
           "text": "NOTE: Save operations stay ordered so later assets observe the updated dedupe map from earlier writes.",
           "prefix": "NOTE",
           "scopeType": "file",

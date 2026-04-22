@@ -8,6 +8,9 @@ export type LabStage = "source" | "edit" | "process" | "report";
 /** V2.3 workspace mode — replaces stage navigation */
 export type WorkspaceMode = "loading" | "workspace" | "analyzing" | "complete";
 
+/** V2.4 report freshness — condition-driven, never gates UI */
+export type ReportFreshness = "current" | "stale" | "previous-run";
+
 /** V2.3 user-facing intent identifiers — NO tool names exposed */
 export type LabIntentId =
   | "visual-inspection"

@@ -2,14 +2,18 @@ import { escapeHtml, asNonEmptyString } from "../models/lab-types.js";
 import type { LabStoreState } from "../models/lab-types.js";
 import {
   getProjectSource,
-  getWorkspaceMode,
   getSelectedIntents,
   getAvailableIntents,
+  getSourceReady,
+  hasReportPayload,
+  isRunActive,
 } from "../runtime/lab-selectors.js";
 import { renderStatusChip } from "./components/status-chip.js";
 
 export function renderLabLeftRail(state: LabStoreState) {
-  const workspaceMode = getWorkspaceMode(state);
+  const runActive = isRunActive(state);
+  const hasReport = hasReportPayload(state);
+  const sourceReady = getSourceReady(state);
   const source = getProjectSource(state);
   const selectedIntents = getSelectedIntents(state);
   const intents = getAvailableIntents(state);
@@ -33,21 +37,15 @@ export function renderLabLeftRail(state: LabStoreState) {
     ? 'style="opacity: 0.5; cursor: not-allowed; color: var(--color-error)" disabled'
     : 'style="color: var(--color-error)"';
 
-  const modeLabel =
-    workspaceMode === "loading"
-      ? "Loading"
-      : workspaceMode === "analyzing"
-        ? "Analyzing"
-        : workspaceMode === "complete"
-          ? "Complete"
-          : "Workspace";
+  const modeLabel = runActive
+    ? "Analiz"
+    : hasReport
+      ? "Rapor var"
+      : sourceReady
+        ? "Hazır"
+        : "Kaynak bekleniyor";
 
-  const modeTone =
-    workspaceMode === "analyzing"
-      ? "running"
-      : workspaceMode === "complete"
-        ? "success"
-        : "neutral";
+  const modeTone = runActive ? "running" : hasReport ? "success" : "neutral";
 
   return `
     <aside class="labx-left-rail">

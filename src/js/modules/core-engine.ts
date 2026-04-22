@@ -188,6 +188,9 @@ class CoreEngineClass {
     archiveFolders = {},
     attachments = [],
     jobIds = {},
+    waitForCompletion = false,
+    clientRequestId,
+    brokerMessageId,
   }: SendBatchParams = {}): Promise<{ success: boolean; message?: string }> {
     return await sendBatchWithContext(
       {
@@ -197,6 +200,9 @@ class CoreEngineClass {
         archiveFolders,
         attachments,
         jobIds,
+        waitForCompletion,
+        ...(typeof clientRequestId === "string" ? { clientRequestId } : {}),
+        ...(typeof brokerMessageId === "string" ? { brokerMessageId } : {}),
       },
       {
         ensureReady: this.ensureReady.bind(this),
@@ -206,7 +212,14 @@ class CoreEngineClass {
   }
 
   async sendMessageInternal(
-    p: { provider?: string; text?: string; page?: string } | null
+    p: {
+      provider?: string;
+      text?: string;
+      page?: string;
+      waitForCompletion?: boolean;
+      clientRequestId?: string;
+      brokerMessageId?: string;
+    } | null
   ): Promise<{ success: boolean; message?: string }> {
     return await sendMessageWithContext(p, {
       ensureReady: this.ensureReady.bind(this),

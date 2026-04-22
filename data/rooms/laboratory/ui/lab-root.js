@@ -275,10 +275,7 @@ export function startLaboratoryLabRoot() {
     }
   }
   store.subscribe(function(state) {
-    saveLabPersistedState(
-      window,
-      readPersistableState(state)
-    );
+    saveLabPersistedState(window, readPersistableState(state));
     render();
   });
   const persisted = loadLabPersistedState(window);

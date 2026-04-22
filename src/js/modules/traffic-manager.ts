@@ -1,4 +1,4 @@
-import { LogCategory } from "@shared/logging-core";
+import { LogCategory, LogLevel } from "@shared/logging-core";
 import { Logger } from "./logger/index.js";
 import { getErrorMessage } from "@shared/index.js";
 import { AppState } from "./app-state.js";
@@ -290,9 +290,9 @@ class TrafficManagerClass {
       probing: false,
     };
     this.startPolling();
-    this.state[provider] ??= defaultState();
-    const current = this.state[provider] ?? defaultState();
-    this.setIndicator(provider, "loading", current.status.loading);
+    this.state[provider] = defaultState();
+    this.setIndicator(provider, "send", "busy");
+    this.setIndicator(provider, "loading", "busy");
   }
 
   stop(provider: string, { force: _force = false } = {}): void {
@@ -582,6 +582,14 @@ class TrafficManagerClass {
     if (thinkingResult.event) {
       this.logEvent(thinkingResult.event);
       if (thinkingResult.event.type === "thinking-ended") {
+        if (thinkingResult.event.reason === "timeout") {
+          Logger.toastT(
+            LogCategory.TRAFFIC,
+            LogLevel.WARNING,
+            "app.logs.traffic.thinkingEndedTimeoutToast",
+            { provider }
+          );
+        }
         setTimeout(() => {
           try {
             const st = this.state[provider] ?? defaultState();

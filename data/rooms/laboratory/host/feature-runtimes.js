@@ -215,9 +215,7 @@ export function createLaboratoryHostFeatureRuntimes(deps) {
     roomId: deps.roomId,
     toRecord: deps.toRecord
   };
-  sourceComposition = createLaboratorySourceCompositionRuntime(
-    sourceCompositionDeps
-  );
+  sourceComposition = createLaboratorySourceCompositionRuntime(sourceCompositionDeps);
   const roomToolsProgressDeps = {
     roomId: deps.roomId,
     asNonEmptyString: deps.asNonEmptyString,
@@ -227,17 +225,13 @@ export function createLaboratoryHostFeatureRuntimes(deps) {
     pushJobState: projectRuntimes.snapshot.pushJobState,
     pushSourceState: projectRuntimes.snapshot.pushSourceState
   };
-  const roomToolsProgress = createLaboratoryRoomToolsProgressRuntime(
-    roomToolsProgressDeps
-  );
+  const roomToolsProgress = createLaboratoryRoomToolsProgressRuntime(roomToolsProgressDeps);
   const runtimeStorageDeps = {
     lifecycleRuntime: projectRuntimes.lifecycle,
     profileModelRuntime: projectRuntimes.mediaProfileModel,
     toRecord: deps.toRecord
   };
-  const runtimeStorage = createLaboratoryRuntimeStorage(
-    runtimeStorageDeps
-  );
+  const runtimeStorage = createLaboratoryRuntimeStorage(runtimeStorageDeps);
   const projectStateDeps = {
     roomSnapshotRuntime: projectRuntimes.snapshot.laboratoryRoomSnapshotRuntime,
     runtimeStorage: {
@@ -285,9 +279,7 @@ export function createLaboratoryHostFeatureRuntimes(deps) {
     syncProjectSubtitleAnalysisProjection: projectRuntimes.stateComposition.syncProjectSubtitleAnalysisProjection,
     toFileUrl: hostUtils.toFileUrl
   };
-  const projectState = createLaboratoryProjectStateRuntime(
-    projectStateDeps
-  );
+  const projectState = createLaboratoryProjectStateRuntime(projectStateDeps);
   deps.setProjectStateRuntime(projectState);
   const sourceCompositionRuntime = requireSourceComposition();
   const processCompositionRecord = deps.toRecord(processComposition);
@@ -386,9 +378,7 @@ export function createLaboratoryHostFeatureRuntimes(deps) {
     upsertSubtitleEntries: projectRuntimes.stateComposition.upsertSubtitleEntries,
     writeTextFile: io.writeTextFile
   };
-  const featureAdapters = createLaboratoryFeatureAdapters(
-    featureAdaptersDeps
-  );
+  const featureAdapters = createLaboratoryFeatureAdapters(featureAdaptersDeps);
   deps.setSubtitleAnalysisHostRuntime(featureAdapters.laboratorySubtitleAnalysisHostRuntime);
   return {
     featureAdapters,

@@ -1825,6 +1825,7 @@
         "thinkingStartedPanel": "{{provider}} için düşünme başladı",
         "thinkingEndedEvent": "{{provider}} için düşünme bitti (stop butonu gizli)",
         "thinkingEndedPanel": "{{provider}} için düşünme bitti",
+        "thinkingEndedTimeoutToast": "{{provider}} için düşünme zaman aşımına ulaştı, tamamlandı olarak işaretlendi.",
         "sendStateChanged": "{{provider}} için gönder butonu durumu değişti: {{previousIndicator}} -> {{indicator}} ({{sendState}})",
         "loadingSyncedToIdleDueToThinking": "{{provider}} için thinking nedeniyle loading idle durumuna senkronlandı",
         "probeCycleFailed": "{{provider}} için probe cycle başarısız: {{message}}",

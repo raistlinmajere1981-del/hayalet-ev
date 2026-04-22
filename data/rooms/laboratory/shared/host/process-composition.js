@@ -249,9 +249,7 @@ export function createLaboratoryHostProcessCompositionRuntime(deps) {
     audioFeatureId: deps.audioFeatureId,
     subtitleFeatureId: deps.subtitleFeatureId
   };
-  const laboratoryProcessRuntime = createLaboratoryProcessRuntime(
-    laboratoryProcessRuntimeDeps
-  );
+  const laboratoryProcessRuntime = createLaboratoryProcessRuntime(laboratoryProcessRuntimeDeps);
   const laboratoryProcessCoordinationRuntime = createLaboratoryProcessCoordinationRuntime({
     processRuntime: laboratoryProcessRuntime,
     reportingRuntime: laboratoryReportingRuntime

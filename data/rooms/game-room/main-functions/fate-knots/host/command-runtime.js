@@ -85,17 +85,10 @@ function asSelectionState(value) {
   return value;
 }
 function readUs1RemoteUserId(api, state, context) {
-  return getUs1RemoteUserId(
-    api,
-    asSessionState(state),
-    context
-  );
+  return getUs1RemoteUserId(api, asSessionState(state), context);
 }
 function persistUserProfile(api, state) {
-  persistProfileFromUser(
-    api,
-    asProfileState(state)
-  );
+  persistProfileFromUser(api, asProfileState(state));
 }
 function refreshContentSummary(state, contentRegistry) {
   updateContentSummary(

@@ -605,6 +605,42 @@ export function getToolRelevanceFilter(state) {
     requiredToolIds: Array.from(requiredToolIds)
   };
 }
+export function getReportFreshness(state) {
+  const reports = getCurrentReports(state);
+  const hasReport = reports.user !== null || reports.ai !== null;
+  if (!hasReport) {
+    return null;
+  }
+  const run = getCurrentRun(state);
+  if (!run) {
+    return "previous-run";
+  }
+  if (run.state === "running" || run.state === "queued") {
+    return "previous-run";
+  }
+  if (run.state === "completed" || run.state === "ready") {
+    return "current";
+  }
+  return "stale";
+}
+export function isWorkspaceDirty(state) {
+  const run = getCurrentRun(state);
+  if (!run || !run.analysisScope) {
+    return false;
+  }
+  const scope = run.analysisScope;
+  const ws = state.ui.workspace;
+  const scopeTimeStart = scope.timeRange && typeof scope.timeRange.startMs === "number" ? scope.timeRange.startMs : null;
+  const scopeTimeEnd = scope.timeRange && typeof scope.timeRange.endMs === "number" ? scope.timeRange.endMs : null;
+  if (ws.timelineStartMs !== scopeTimeStart || ws.timelineEndMs !== scopeTimeEnd) {
+    return true;
+  }
+  const scopeHypothesis = typeof scope.hypothesis === "string" ? scope.hypothesis : "";
+  if (ws.hypothesis !== scopeHypothesis) {
+    return true;
+  }
+  return false;
+}
 export function deriveLegacyStage(state) {
   if (state.ui.workspace.reportOverlayOpen && hasReportPayload(state)) {
     return "report";

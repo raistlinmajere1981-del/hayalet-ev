@@ -11,6 +11,7 @@ const { AssistantProviderRegistry } = await import(
   "../../src/js/pages/assistant/provider-registry.ts"
 );
 const { SettingsManager } = await import("../../src/js/modules/settings-manager.ts");
+const { TrafficManager } = await import("../../src/js/modules/traffic-manager.ts");
 
 type ElectronApiMock = {
   us1SendMessage?: (params: Record<string, unknown>) => Promise<unknown>;
@@ -28,6 +29,49 @@ type TestWindow = {
   };
   setTimeout?: typeof setTimeout;
 };
+
+type SendBatchPayload = {
+  targets?: string[];
+  text?: string;
+  page?: string;
+  attachments?: Array<{ name: string; path: string }>;
+  waitForCompletion?: boolean;
+  clientRequestId?: string;
+  brokerMessageId?: string;
+};
+
+type SendMessagePayload = {
+  provider?: string;
+  text?: string;
+  page?: string;
+  waitForCompletion?: boolean;
+  clientRequestId?: string;
+  brokerMessageId?: string;
+};
+
+function makeReadyTrafficState(lastHref: string) {
+  return {
+    status: { loading: "idle", thinking: "idle", send: "idle" },
+    lastHref,
+    lastSendSeen: 0,
+    loadingActive: false,
+    loadingFromDefaultTransition: false,
+    loadingStartTime: 0,
+    loadingScrollAppeared: false,
+    lastScrollChange: 0,
+    lastAutoScrollAt: 0,
+    loadingJustEnded: false,
+    loadingEndedAt: 0,
+    stopButtonLastSeen: 0,
+    stopButtonDisappearedAt: 0,
+    thinkingJustEnded: false,
+    thinkingEndedAt: 0,
+    polling: false,
+    readyState: "ready",
+    sendState: "enabled",
+    thinkingState: "idle",
+  };
+}
 
 type SlotBridgeHarness = {
   appState: {
@@ -51,17 +95,8 @@ type SlotBridgeHarness = {
   coreEngine: {
     ensureReady: () => Promise<void>;
     setActiveTargets: (targets?: string[]) => void;
-    sendBatchInternal: (payload?: {
-      targets?: string[];
-      text?: string;
-      page?: string;
-      attachments?: Array<{ name: string; path: string }>;
-    }) => Promise<{ success: boolean; message?: string }>;
-    sendMessageInternal: (payload: {
-      provider?: string;
-      text?: string;
-      page?: string;
-    } | null) => Promise<{ success: boolean; message?: string }>;
+    sendBatchInternal: (payload?: SendBatchPayload) => Promise<{ success: boolean; message?: string }>;
+    sendMessageInternal: (payload: SendMessagePayload | null) => Promise<{ success: boolean; message?: string }>;
     setConnection: (
       provider: string,
       connected: boolean,
@@ -94,6 +129,12 @@ function createHarness(
   const globalWithWindow = globalThis as { window?: TestWindow };
   const originalWindow = globalWithWindow.window;
   const originalDateNow = Date.now;
+  const originalTrafficStates = {
+    ai0: TrafficManager.state.ai0,
+    ai1: TrafficManager.state.ai1,
+    ai2: TrafficManager.state.ai2,
+    us1: TrafficManager.state.us1,
+  };
 
   const coreEngine: SlotBridgeHarness["coreEngine"] = {
     ensureReady: async () => {},
@@ -173,6 +214,11 @@ function createHarness(
   appState.isUs1Connected = () => true;
   appState.setAssistantToolsReady = () => {};
 
+  TrafficManager.state.ai0 = makeReadyTrafficState("https://chatgpt.com/ai0");
+  TrafficManager.state.ai1 = makeReadyTrafficState("https://chatgpt.com/ai1");
+  TrafficManager.state.ai2 = makeReadyTrafficState("https://chatgpt.com/ai2");
+  TrafficManager.state.us1 = makeReadyTrafficState("https://mail.example.test/us1");
+
   return {
     appState,
     conversationListManager,
@@ -192,6 +238,10 @@ function createHarness(
       appState.isConnected = originalAppStateIsConnected;
       appState.isUs1Connected = originalAppStateIsUs1Connected;
       appState.setAssistantToolsReady = originalSetAssistantToolsReady;
+      TrafficManager.state.ai0 = originalTrafficStates.ai0;
+      TrafficManager.state.ai1 = originalTrafficStates.ai1;
+      TrafficManager.state.ai2 = originalTrafficStates.ai2;
+      TrafficManager.state.us1 = originalTrafficStates.us1;
       Date.now = originalDateNow;
 
       if (originalWindow === undefined) {
@@ -214,6 +264,8 @@ test(
     const harness = createHarness();
     let sent = false;
     let sentText = "";
+    let sentClientRequestId = "";
+    let sentWaitForCompletion = false;
 
     try {
       harness.coreEngine.sendBatchInternal = async () => {
@@ -222,6 +274,8 @@ test(
       harness.coreEngine.sendMessageInternal = async (payload) => {
         sent = true;
         sentText = payload?.text ?? "";
+        sentClientRequestId = payload?.clientRequestId ?? "";
+        sentWaitForCompletion = payload?.waitForCompletion === true;
         return { success: true };
       };
       harness.webviewManager.syncProvider = async () => ({
@@ -246,6 +300,12 @@ test(
           data: sent
             ? [
                 { id: "assistant-old", role: "assistant", text: "previous reply" },
+                {
+                  id: "user-new",
+                  role: "user",
+                  text: "Ping",
+                  client_request_id: sentClientRequestId,
+                },
                 { id: "assistant-new", role: "assistant", text: "latest reply" },
               ]
             : [{ id: "assistant-old", role: "assistant", text: "previous reply" }],
@@ -263,7 +323,9 @@ test(
       });
 
       assert.equal(result.success, true);
-      assert.equal(sentText.includes("<!-- hev-req:req-sendwait-image -->"), true);
+      assert.equal(sentText.includes("<!-- hev-req:req-sendwait-image -->"), false);
+      assert.equal(sentClientRequestId.startsWith("slotbridge-implicit:"), true);
+      assert.equal(sentWaitForCompletion, true);
       assert.equal(result.reply?.text, "latest reply");
       assert.equal(result.reply?.attachments?.[0]?.kind, "generated-image");
       assert.equal(result.reply?.attachments?.[0]?.path, "/tmp/reply-image.png");
@@ -318,6 +380,42 @@ test(
       assert.deepEqual(connectionCalls, ["ai1:true"]);
       assert.equal(sentProvider, "ai1");
       assert.equal(sentText.startsWith("Auto-connect now"), true);
+    } finally {
+      harness.restore();
+    }
+  }
+);
+
+test(
+  "SlotBridge message.send rejects connected AI slots until the first traffic probe completes",
+  { concurrency: false },
+  async () => {
+    const harness = createHarness({ immediateTimers: true });
+    let sendCalled = false;
+
+    try {
+      TrafficManager.state.ai1 = {
+        ...makeReadyTrafficState("https://chatgpt.com/ai1"),
+        lastHref: "",
+      };
+      harness.coreEngine.sendBatchInternal = async () => {
+        throw new Error("sendBatch should not run for single-target text sends");
+      };
+      harness.coreEngine.sendMessageInternal = async () => {
+        sendCalled = true;
+        return { success: true };
+      };
+
+      const result = await slotBridgeHandler({
+        action: "message.send",
+        fromSlot: "user",
+        payload: { text: "Wait for probe" },
+        toSlot: "ai1",
+      });
+
+      assert.equal(result.success, false);
+      assert.equal(result.code, "TARGET_NOT_READY");
+      assert.equal(sendCalled, false);
     } finally {
       harness.restore();
     }
@@ -489,12 +587,7 @@ test(
   { concurrency: false },
   async () => {
     const harness = createHarness({ immediateTimers: true });
-    const sendBatchCalls: Array<{
-      attachments?: Array<{ name: string; path: string }>;
-      page?: string;
-      targets?: string[];
-      text?: string;
-    }> = [];
+    const sendBatchCalls: SendBatchPayload[] = [];
     let sent = false;
 
     try {
@@ -570,6 +663,8 @@ test(
     const harness = createHarness({ immediateTimers: true });
     let targetSent = false;
     let sentText = "";
+    let sentClientRequestId = "";
+    let sentWaitForCompletion = false;
 
     try {
       harness.coreEngine.sendBatchInternal = async () => {
@@ -579,6 +674,8 @@ test(
         if (payload?.provider === "ai0") {
           targetSent = true;
           sentText = payload.text ?? "";
+          sentClientRequestId = payload.clientRequestId ?? "";
+          sentWaitForCompletion = payload.waitForCompletion === true;
         }
         return { success: true };
       };
@@ -604,7 +701,9 @@ test(
       });
 
       assert.equal(result.success, true);
-      assert.equal(sentText.includes("<!-- hev-req:req-sendwait-ai0-live-reply -->"), true);
+      assert.equal(sentText.includes("<!-- hev-req:req-sendwait-ai0-live-reply -->"), false);
+      assert.equal(sentClientRequestId.startsWith("slotbridge-implicit:"), true);
+      assert.equal(sentWaitForCompletion, true);
       assert.equal(result.reply?.text, "fresh ai0 reply");
       assert.equal(result.reply?.conversationId, "conv-ai0");
     } finally {

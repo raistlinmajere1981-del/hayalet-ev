@@ -662,6 +662,9 @@ export function createLabRunController(deps) {
         runPrimaryAction();
         return;
       case "load-source":
+        if (isRunActive(state)) {
+          return;
+        }
         runSourcePrimaryAction();
         return;
       case "workspace-toggle-source-intake":

@@ -10,8 +10,10 @@ import type {
 } from "../models/lab-types.js";
 import {
   getCurrentReports,
+  getReportFreshness,
   getReportOverlayOpen,
   getCurrentRun,
+  isRunActive,
 } from "../runtime/lab-selectors.js";
 import { renderStatusChip } from "./components/status-chip.js";
 
@@ -310,6 +312,18 @@ export function renderReportOverlay(state: LabStoreState) {
         : `<div class="labx-process-empty">${reports.emptyReason || "Rapor mevcut değil"}</div>`;
 
   const runIdSuffix = run ? run.id.slice(-6) : "—";
+  const freshness = getReportFreshness(state);
+  const runActive = isRunActive(state);
+  const freshnessLabel =
+    freshness === "current"
+      ? "\u2713 Güncel"
+      : freshness === "previous-run"
+        ? runActive
+          ? "\u2298 Önceki çalışma \u00b7 Analiz devam ediyor"
+          : "\u2298 Önceki çalışma"
+        : freshness === "stale"
+          ? "\u2298 Eski çalışma \u00b7 Son analiz başarısız"
+          : "";
 
   return `
     <div class="labx-overlay-root" data-open="${isOpen ? "true" : "false"}" id="lab-report-overlay-root">
@@ -327,6 +341,7 @@ export function renderReportOverlay(state: LabStoreState) {
                 <div>
                   <p class="labx-card__eyebrow">Analiz Sonucu</p>
                   <h2 class="labx-report-overlay__title">Rapor #${escapeHtml(runIdSuffix)}</h2>
+                  ${freshnessLabel ? `<span class="labx-report-freshness" data-freshness="${escapeHtml(freshness || "")}">${escapeHtml(freshnessLabel)}</span>` : ""}
                 </div>
                 <div class="labx-inline-actions">
                   <button class="labx-inline-action" type="button" data-lab-action="report-export-json">JSON Export</button>

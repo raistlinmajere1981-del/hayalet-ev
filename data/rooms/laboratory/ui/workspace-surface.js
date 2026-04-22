@@ -6,13 +6,16 @@ import {
   getHypothesis,
   getInteractiveSettings,
   getProjectSource,
+  getReportFreshness,
   getROIRegions,
   getSourceKind,
   getSourceMode,
   getSourceMetadata,
   getSourceProbeStatus,
   getTimelineSelection,
-  getWorkspaceMode
+  hasReportPayload,
+  isRunActive,
+  isWorkspaceDirty
 } from "../runtime/lab-selectors.js";
 import { renderStatusChip } from "./components/status-chip.js";
 import { renderWorkspaceTimeline } from "./workspace-timeline.js";
@@ -342,11 +345,15 @@ function renderSourceActionPanel(state, mode) {
   const source = getProjectSource(state);
   const hasSource = asNonEmptyString(source["storedFileName"]) !== null || asNonEmptyString(source["storedPath"]) !== null;
   const hasSourceForMode = hasSource && isLoadedSourceMatchingMode(source, mode);
+  const sourceLocked = isRunActive(state);
+  const disabledAttr = sourceLocked || getLoadSourceDisabled(state, mode) ? "disabled" : "";
+  const lockHint = sourceLocked ? "Source locked during analysis" : "";
   return `
     <div class="labx-source-intake__action">
-      <button class="labx-inline-action labx-source-intake__action-button" type="button" data-lab-action="load-source" ${getLoadSourceDisabled(state, mode) ? "disabled" : ""}>
+      <button class="labx-inline-action labx-source-intake__action-button" type="button" data-lab-action="load-source" ${disabledAttr} ${lockHint ? `title="${escapeHtml(lockHint)}"` : ""}>
         ${escapeHtml(getLoadSourceActionLabel(mode, hasSourceForMode))}
       </button>
+      ${sourceLocked ? `<span class="labx-source-locked-hint">${escapeHtml(lockHint)}</span>` : ""}
     </div>
   `;
 }
@@ -744,7 +751,8 @@ export function renderWorkspaceSurface(state) {
   const bookmarks = getBookmarks(state);
   const hypothesis = getHypothesis(state);
   const run = getCurrentRun(state);
-  const workspaceMode = getWorkspaceMode(state);
+  const runActive = isRunActive(state);
+  const hasReport = hasReportPayload(state);
   const hasAudio = sourceKind === "audio" || sourceKind === "video";
   const sourceReady = probeStatus === "completed" && isLoadedSourceMatchingMode(source, sourceMode);
   const durationMs = sourceReady && typeof metadata["durationSeconds"] === "number" ? Math.round(metadata["durationSeconds"] * 1e3) : 0;
@@ -768,8 +776,12 @@ export function renderWorkspaceSurface(state) {
     </section>
   `;
   const controlsSection = sourceReady && (sourceKind === "video" || sourceKind === "image") ? renderWorkspaceInteractiveControls(settings, state.ui.workspace.rightPanelCollapsed) : "";
-  const processSection = run && (workspaceMode === "analyzing" || workspaceMode === "complete") ? renderWorkspaceProcessPanel(state) : "";
-  const reportButton = run && workspaceMode === "complete" ? `
+  const processSection = run ? renderWorkspaceProcessPanel(state) : `<section class="labx-process-panel labx-process-panel--empty" id="lab-process-panel">
+        <div class="labx-process-empty">Henüz analiz çalışması yok.</div>
+      </section>`;
+  const freshness = getReportFreshness(state);
+  const freshnessLabel = freshness === "current" ? "✓ Güncel" : freshness === "previous-run" ? runActive ? "⊘ Önceki çalışma · Analiz devam ediyor" : "⊘ Önceki çalışma" : freshness === "stale" ? "⊘ Eski çalışma · Son analiz başarısız" : "";
+  const reportButton = hasReport ? `
       <div class="labx-analysis-trigger">
         <button
           class="labx-primary-cta"
@@ -779,19 +791,23 @@ export function renderWorkspaceSurface(state) {
           <strong>Raporu Görüntüle</strong>
           <span class="labx-primary-cta__detail">Kullanıcı ve teknik raporlar</span>
         </button>
+        ${freshnessLabel ? `<span class="labx-report-freshness" data-freshness="${escapeHtml(freshness || "")}">${escapeHtml(freshnessLabel)}</span>` : ""}
       </div>
     ` : "";
-  const analysisButton = sourceReady && workspaceMode !== "complete" ? `
+  const dirty = isWorkspaceDirty(state);
+  const dirtyHint = dirty ? runActive ? "Ayarlar değişti · sonraki analiz için geçerli" : "Ayarlar değişti · yeniden analiz için Başlat" : "";
+  const analysisButton = sourceReady ? `
       <div class="labx-analysis-trigger">
         <button
           class="labx-primary-cta"
           type="button"
           data-lab-action="run-deep-analysis"
         >
-          <strong>${run && run.state === "running" ? "Analizi İptal Et" : "Derin Analiz Başlat"}</strong>
-          <span class="labx-primary-cta__detail">${run && run.state === "running" ? "Analiz arka planda çalışıyor" : "Arka plan süreci — UI'ı kilitlemez"}</span>
+          <strong>${runActive ? "Analizi İptal Et" : "Derin Analiz Başlat"}</strong>
+          <span class="labx-primary-cta__detail">${runActive ? "Analiz arka planda çalışıyor" : "Arka plan süreci — UI'ı kilitlemez"}</span>
         </button>
         ${sourceKind === "image" ? `<button class="labx-secondary-cta" type="button" data-lab-action="workspace-image-analysis">Görsel Analiz Et</button>` : ""}
+        ${dirtyHint ? `<span class="labx-dirty-indicator">${escapeHtml(dirtyHint)}</span>` : ""}
       </div>
     ` : "";
   const side = `

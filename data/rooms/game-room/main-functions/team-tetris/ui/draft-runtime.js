@@ -351,17 +351,7 @@
       const rowShifts = [];
       let currentX = spawn.x;
       for (let rowIndex = 0; rowIndex < totalRows; rowIndex += 1) {
-        let desiredX = clampedOriginX;
-        if (routeMode === "straight") {
-          desiredX = clampedOriginX;
-        } else if (routeMode === "bend-left" || routeMode === "bend-right") {
-          if (bendRow !== null && rowIndex >= bendRow) {
-            const bendOffset = routeMode === "bend-left" ? -1 : 1;
-            desiredX = clampNumber(clampedOriginX + bendOffset, 0, maxOriginX);
-          } else {
-            desiredX = clampedOriginX;
-          }
-        }
+        const desiredX = routeMode !== "straight" && bendRow !== null && rowIndex >= bendRow ? clampNumber(clampedOriginX + (routeMode === "bend-left" ? -1 : 1), 0, maxOriginX) : clampedOriginX;
         const shift = clampNumber(desiredX - currentX, -1, 1);
         rowShifts.push(shift);
         currentX += shift;

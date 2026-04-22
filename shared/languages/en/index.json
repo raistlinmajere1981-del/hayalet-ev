@@ -1825,6 +1825,7 @@
         "thinkingStartedPanel": "Thinking started for {{provider}}",
         "thinkingEndedEvent": "Thinking ended for {{provider}} (stop button hidden)",
         "thinkingEndedPanel": "Thinking ended for {{provider}}",
+        "thinkingEndedTimeoutToast": "Thinking timeout reached for {{provider}}, marking as completed.",
         "sendStateChanged": "Send button state changed for {{provider}}: {{previousIndicator}} -> {{indicator}} ({{sendState}})",
         "loadingSyncedToIdleDueToThinking": "Loading synced to idle due to thinking for {{provider}}",
         "probeCycleFailed": "Probe cycle failed for {{provider}}: {{message}}",

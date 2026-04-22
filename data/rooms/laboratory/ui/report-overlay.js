@@ -1,8 +1,10 @@
 import { escapeHtml, formatDateTime } from "../models/lab-types.js";
 import {
   getCurrentReports,
+  getReportFreshness,
   getReportOverlayOpen,
-  getCurrentRun
+  getCurrentRun,
+  isRunActive
 } from "../runtime/lab-selectors.js";
 import { renderStatusChip } from "./components/status-chip.js";
 function renderConfidenceBadge(confidence) {
@@ -238,6 +240,9 @@ export function renderReportOverlay(state) {
   const aiTabActive = reportView === "ai";
   const contentHtml = userTabActive && reports.user ? renderUserReport(reports.user) : aiTabActive && reports.ai ? renderAiReport(reports.ai) : `<div class="labx-process-empty">${reports.emptyReason || "Rapor mevcut değil"}</div>`;
   const runIdSuffix = run ? run.id.slice(-6) : "—";
+  const freshness = getReportFreshness(state);
+  const runActive = isRunActive(state);
+  const freshnessLabel = freshness === "current" ? "✓ Güncel" : freshness === "previous-run" ? runActive ? "⊘ Önceki çalışma · Analiz devam ediyor" : "⊘ Önceki çalışma" : freshness === "stale" ? "⊘ Eski çalışma · Son analiz başarısız" : "";
   return `
     <div class="labx-overlay-root" data-open="${isOpen ? "true" : "false"}" id="lab-report-overlay-root">
       ${isOpen ? `
@@ -252,6 +257,7 @@ export function renderReportOverlay(state) {
                 <div>
                   <p class="labx-card__eyebrow">Analiz Sonucu</p>
                   <h2 class="labx-report-overlay__title">Rapor #${escapeHtml(runIdSuffix)}</h2>
+                  ${freshnessLabel ? `<span class="labx-report-freshness" data-freshness="${escapeHtml(freshness || "")}">${escapeHtml(freshnessLabel)}</span>` : ""}
                 </div>
                 <div class="labx-inline-actions">
                   <button class="labx-inline-action" type="button" data-lab-action="report-export-json">JSON Export</button>

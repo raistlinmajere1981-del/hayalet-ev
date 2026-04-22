@@ -25,10 +25,13 @@ interface ProbeData {
   lastSend?: number;
 }
 
+type ThinkingEndReason = "stop-hidden" | "timeout";
+
 interface ThinkingEvent {
   type: string;
   messageKey: string;
   messageParams?: Record<string, string>;
+  reason?: ThinkingEndReason;
 }
 
 interface ProbeResult {
@@ -39,6 +42,7 @@ interface ProbeResult {
 
 interface CheckResult {
   shouldEnd: boolean;
+  reason: ThinkingEndReason | null;
   newState: ViewState;
 }
 
@@ -57,13 +61,25 @@ export class ThinkingTracker {
 
     let event = null;
     const previousIndicator = viewState.status?.thinking ?? "idle";
-    const indicator = stopVisible ? "busy" : "idle";
+    let indicator = stopVisible ? "busy" : "idle";
+    let thinkingEndReason: ThinkingEndReason | null = null;
 
     if (lastSend > (viewState.lastSendSeen ?? 0)) {
       viewState.lastSendSeen = lastSend;
     }
 
-    if (indicator === "busy") {
+    if (previousIndicator === "busy" && stopVisible !== true) {
+      const checkResult = this.checkThinkingEnd(provider, viewState, data, now);
+      viewState = checkResult.newState;
+      if (checkResult.shouldEnd) {
+        indicator = "idle";
+        thinkingEndReason = checkResult.reason;
+      } else {
+        indicator = "busy";
+      }
+    }
+
+    if (indicator === "busy" && stopVisible) {
       viewState.stopButtonLastSeen = now;
       viewState.stopButtonDisappearedAt = 0;
     }
@@ -94,6 +110,7 @@ export class ThinkingTracker {
           type: "thinking-ended",
           messageKey: "app.logs.traffic.thinkingEndedEvent",
           messageParams: { provider },
+          reason: thinkingEndReason ?? "stop-hidden",
         };
 
         Logger.panelT(
@@ -103,6 +120,7 @@ export class ThinkingTracker {
           { provider },
           {
             provider,
+            reason: thinkingEndReason ?? "stop-hidden",
             probeCount: this.probeCount,
             stopVisible,
           }
@@ -131,35 +149,45 @@ export class ThinkingTracker {
     const voiceMode = data.voiceMode === true;
 
     if (viewState.status?.thinking !== "busy") {
-      return { shouldEnd: false, newState: viewState };
+      return { shouldEnd: false, reason: null, newState: viewState };
     }
 
     if (stopVisible) {
       viewState.stopButtonLastSeen = now;
       viewState.stopButtonDisappearedAt = 0;
-      return { shouldEnd: false, newState: viewState };
+      return { shouldEnd: false, reason: null, newState: viewState };
     }
 
-    viewState.stopButtonDisappearedAt ??= now;
+    if (
+      typeof viewState.stopButtonDisappearedAt !== "number" ||
+      viewState.stopButtonDisappearedAt <= 0
+    ) {
+      viewState.stopButtonDisappearedAt = now;
+    }
 
     const timeSinceDisappeared = now - (viewState.stopButtonDisappearedAt ?? 0);
     const shouldCheckEndThinking =
       timeSinceDisappeared >= this.config.thinking.stopButtonDetectionTimeoutMs;
-
-    if (!shouldCheckEndThinking) {
-      return { shouldEnd: false, newState: viewState };
-    }
 
     const shouldEndThinking = sendState === "enabled" || sendState === "disabled" || voiceMode;
 
     if (shouldEndThinking) {
       return {
         shouldEnd: true,
-        newState: this.endThinking(viewState, now),
+        reason: "stop-hidden",
+        newState: viewState,
       };
     }
 
-    return { shouldEnd: false, newState: viewState };
+    if (shouldCheckEndThinking) {
+      return {
+        shouldEnd: true,
+        reason: "timeout",
+        newState: viewState,
+      };
+    }
+
+    return { shouldEnd: false, reason: null, newState: viewState };
   }
 
   endThinking(viewState: ViewState, now: number): ViewState {

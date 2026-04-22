@@ -13,6 +13,7 @@ import { getProvider } from "./provider-factory.js";
 import { isProviderScenarioActive } from "./provider-scenario-lock.js";
 import { normalizeUrl, isSlotUrlExcluded, isDefaultPage } from "./methods/shared/url-utils.js";
 import { PendingArchiveHandler } from "./pending-archive-handler.js";
+import { applyPendingOutboundBridgeMetadata } from "./outbound-bridge-metadata.js";
 import { hashString } from "./providers/shared/scraper-helpers.js";
 import { dispatchExpectedCommandCaptureFailure } from "../rooms/expected-command-capture-events.js";
 import {
@@ -568,7 +569,7 @@ class ConversationSyncerClass {
         ai: AppState.getNickname(provider),
       };
 
-      const normalized: ScrapedMessage[] = messages.map((m: ScrapedMessage) => {
+      let normalized: ScrapedMessage[] = messages.map((m: ScrapedMessage) => {
         // NOTE: If the message contains a hev-sender tag (++cmd delivery), override the author.
         const textContent =
           typeof m.text === "string" ? m.text : typeof m.content === "string" ? m.content : "";
@@ -591,6 +592,7 @@ class ConversationSyncerClass {
           ...(generatedImages.length > 0 ? { generatedImages } : {}),
         };
       });
+      normalized = applyPendingOutboundBridgeMetadata(provider, normalized);
 
       const slots = this._settings?.slots as
         | Record<string, { catchCommands?: boolean }>

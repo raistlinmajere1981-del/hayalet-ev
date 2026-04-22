@@ -15,9 +15,7 @@ export function createLaboratoryActionCompositionRuntime(deps) {
     roomId: deps.roomId,
     toRecord: deps.toRecord
   };
-  const laboratoryToolMutationRuntime = createLaboratoryToolMutationRuntime(
-    laboratoryToolMutationRuntimeDeps
-  );
+  const laboratoryToolMutationRuntime = createLaboratoryToolMutationRuntime(laboratoryToolMutationRuntimeDeps);
   const mediaActionRuntimeDeps = {
     applyEditRecipePatch: deps.applyEditRecipePatch,
     applyProfilePresetPatch: deps.applyProfilePresetPatch,
@@ -112,9 +110,7 @@ export function createLaboratoryActionCompositionRuntime(deps) {
     toRecord: deps.toRecord,
     toolMutationRuntime
   };
-  laboratoryHostActionRuntime = createLaboratoryHostActionRuntime(
-    laboratoryHostActionRuntimeDeps
-  );
+  laboratoryHostActionRuntime = createLaboratoryHostActionRuntime(laboratoryHostActionRuntimeDeps);
   const hostActionRuntime = laboratoryHostActionRuntime;
   return {
     handleMediaAction: hostActionRuntime.handleMediaAction,

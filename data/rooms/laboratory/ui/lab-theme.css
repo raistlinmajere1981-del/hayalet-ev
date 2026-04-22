@@ -2630,3 +2630,48 @@ textarea {
   border: 1px solid rgba(235, 87, 87, 0.2);
   color: var(--labx-error);
 }
+
+/* ── Continuous workspace: freshness, dirty, source-lock ── */
+
+.labx-report-freshness {
+  display: inline-block;
+  font-size: 0.72rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--labx-radius);
+  margin-top: 0.25rem;
+}
+
+.labx-report-freshness[data-freshness="current"] {
+  background: rgba(130, 227, 177, 0.12);
+  color: var(--labx-success, #82e3b1);
+}
+
+.labx-report-freshness[data-freshness="previous-run"],
+.labx-report-freshness[data-freshness="stale"] {
+  background: rgba(235, 187, 62, 0.1);
+  color: var(--labx-warning, #ebbb3e);
+}
+
+.labx-dirty-indicator {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--labx-warning, #ebbb3e);
+  margin-top: 0.3rem;
+  opacity: 0.85;
+}
+
+.labx-source-locked-hint {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--labx-text-dim, rgba(255, 255, 255, 0.45));
+  margin-top: 0.2rem;
+}
+
+.labx-process-panel--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: var(--labx-radius);
+}

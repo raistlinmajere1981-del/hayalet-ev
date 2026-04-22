@@ -496,8 +496,7 @@ class MessageSenderClass {
     return (
       baseline.found === true &&
       baseline.disabled === false &&
-      current.found === true &&
-      current.disabled === true
+      ((current.found === true && current.disabled === true) || current.found === false)
     );
   }
 
@@ -505,8 +504,7 @@ class MessageSenderClass {
     const current = this._readSendAckState(provider);
     return (
       (current.thinking === "busy" && baseline.thinking !== "busy") ||
-      (current.send === "busy" && baseline.send !== "busy") ||
-      (current.loading === "busy" && baseline.loading !== "busy")
+      (current.send === "busy" && baseline.send !== "busy")
     );
   }
 

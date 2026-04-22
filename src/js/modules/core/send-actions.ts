@@ -20,6 +20,9 @@ export interface SendBatchParams {
   archiveFolders?: Record<string, string>;
   attachments?: Array<string | AttachmentInput>;
   jobIds?: Record<string, string>;
+  waitForCompletion?: boolean;
+  clientRequestId?: string;
+  brokerMessageId?: string;
 }
 
 interface SendBatchContext {
@@ -43,6 +46,9 @@ export async function sendBatchWithContext(
     archiveFolders = {},
     attachments = [],
     jobIds = {},
+    waitForCompletion = false,
+    clientRequestId,
+    brokerMessageId,
   }: SendBatchParams = {},
   context: SendBatchContext
 ): Promise<{ success: boolean; message?: string }> {
@@ -129,12 +135,18 @@ export async function sendBatchWithContext(
           page,
           attachments: stagedEntries,
           archiveFolders,
+          ...(typeof clientRequestId === "string" && clientRequestId.trim() !== ""
+            ? { clientRequestId: clientRequestId.trim() }
+            : {}),
+          ...(typeof brokerMessageId === "string" && brokerMessageId.trim() !== ""
+            ? { brokerMessageId: brokerMessageId.trim() }
+            : {}),
         },
       };
     })
   );
 
-  void CommandManager.enqueue(jobs);
+  const queuedJobs = CommandManager.enqueue(jobs);
   Logger.info(LogCategory.COMMAND, commandT("executor.queuedLog", { count: jobs.length }), {
     context: {
       targets: list,
@@ -142,19 +154,62 @@ export async function sendBatchWithContext(
     },
   });
   context.setActiveTargets(list);
-  return { success: true };
+
+  if (waitForCompletion !== true) {
+    return { success: true };
+  }
+
+  try {
+    const results = await Promise.all(
+      queuedJobs.map(async (job) => {
+        if (job.done !== null) {
+          return await job.done;
+        }
+
+        const message = job.result?.message;
+        return {
+          success: job.status !== "failed",
+          ...(typeof message === "string" ? { message } : {}),
+        };
+      })
+    );
+    const failedResult = results.find((result) => result.success !== true);
+    return failedResult ?? { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 export async function sendMessageWithContext(
-  payload: { provider?: string; text?: string; page?: string } | null,
+  payload: {
+    provider?: string;
+    text?: string;
+    page?: string;
+    waitForCompletion?: boolean;
+    clientRequestId?: string;
+    brokerMessageId?: string;
+  } | null,
   context: SendBatchContext
 ): Promise<{ success: boolean; message?: string }> {
-  const { provider = "ai1", text = "", page = "generic" } = payload ?? {};
+  const {
+    provider = "ai1",
+    text = "",
+    page = "generic",
+    waitForCompletion = false,
+    clientRequestId,
+    brokerMessageId,
+  } = payload ?? {};
   return await sendBatchWithContext(
     {
       targets: [provider],
       text,
       page,
+      waitForCompletion,
+      ...(typeof clientRequestId === "string" ? { clientRequestId } : {}),
+      ...(typeof brokerMessageId === "string" ? { brokerMessageId } : {}),
     },
     context
   );

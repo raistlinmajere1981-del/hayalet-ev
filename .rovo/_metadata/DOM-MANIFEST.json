@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-22T00:34:36.572Z",
+  "generatedAt": "2026-04-22T11:03:58.469Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,7 +9,7 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 513,
+    "filesScanned": 514,
     "ids": 578,
     "testIds": 15,
     "querySelectors": 149,

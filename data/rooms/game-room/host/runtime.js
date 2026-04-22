@@ -69,31 +69,19 @@ export default function createGameRoomHostRuntime() {
         return (handlerApi) => handler(handlerApi);
       }
       function saveXoxStateCompat(handlerApi, value) {
-        void saveState(
-          handlerApi,
-          value
-        );
+        void saveState(handlerApi, value);
       }
       function saveInviteInboxCompat(handlerApi, payload) {
-        void saveInviteInbox(
-          handlerApi,
-          payload
-        );
+        void saveInviteInbox(handlerApi, payload);
       }
       function clearPendingInviteCompat(handlerApi) {
         clearPendingInvite(handlerApi);
       }
       function saveTeamTetrisStateCompat(handlerApi, value) {
-        saveTeamTetrisState(
-          handlerApi,
-          value
-        );
+        saveTeamTetrisState(handlerApi, value);
       }
       function resetFateKnotsStateCompat(handlerApi, phase) {
-        void resetFateKnotsState(
-          handlerApi,
-          phase
-        );
+        void resetFateKnotsState(handlerApi, phase);
       }
       function ensureUs1SyncLoopCompat(handlerApi) {
         xoxEnsureUs1SyncLoop(handlerApi);
@@ -105,9 +93,7 @@ export default function createGameRoomHostRuntime() {
         pushActiveFeatureState(handlerApi);
       }
       function dispatchPendingFateKnotsWorkCompat(handlerApi) {
-        return dispatchPendingFateKnotsWork(
-          handlerApi
-        );
+        return dispatchPendingFateKnotsWork(handlerApi);
       }
       function syncUs1MailboxCompat(handlerApi, reason) {
         return xoxSyncUs1Mailbox(
@@ -138,45 +124,19 @@ export default function createGameRoomHostRuntime() {
       return {
         commands: createGameRoomCommandRegistry(api, {
           fateKnotsCommandNames: FATE_KNOTS_COMMAND_NAMES,
-          handleFateKnotsCharacterSelect: asCommandHandler(
-            fateKnotsHandleCharacterSelect
-          ),
-          handleFateKnotsChoice: asCommandHandler(
-            fateKnotsHandleChoice
-          ),
-          handleFateKnotsCombatAction: asCommandHandler(
-            fateKnotsHandleCombatAction
-          ),
-          handleFateKnotsDmPacket: asCommandHandler(
-            fateKnotsHandleDmPacket
-          ),
-          handleFateKnotsEnd: asNoPayloadHandler(
-            fateKnotsHandleEnd
-          ),
-          handleFateKnotsNpcBanter: asCommandHandler(
-            fateKnotsHandleNpcBanter
-          ),
-          handleFateKnotsReady: asNoPayloadHandler(
-            fateKnotsHandleReady
-          ),
-          handleFateKnotsReset: asNoPayloadHandler(
-            fateKnotsHandleReset
-          ),
-          handleFateKnotsStart: asCommandHandler(
-            fateKnotsHandleStart
-          ),
-          handleFateKnotsSync: asCommandHandler(
-            fateKnotsHandleSync
-          ),
-          handleTeamTetrisMove: asCommandHandler(
-            handleTeamTetrisMove
-          ),
-          handleTeamTetrisReset: asNoPayloadHandler(
-            handleTeamTetrisReset
-          ),
-          handleTeamTetrisStart: asCommandHandler(
-            handleTeamTetrisStart
-          ),
+          handleFateKnotsCharacterSelect: asCommandHandler(fateKnotsHandleCharacterSelect),
+          handleFateKnotsChoice: asCommandHandler(fateKnotsHandleChoice),
+          handleFateKnotsCombatAction: asCommandHandler(fateKnotsHandleCombatAction),
+          handleFateKnotsDmPacket: asCommandHandler(fateKnotsHandleDmPacket),
+          handleFateKnotsEnd: asNoPayloadHandler(fateKnotsHandleEnd),
+          handleFateKnotsNpcBanter: asCommandHandler(fateKnotsHandleNpcBanter),
+          handleFateKnotsReady: asNoPayloadHandler(fateKnotsHandleReady),
+          handleFateKnotsReset: asNoPayloadHandler(fateKnotsHandleReset),
+          handleFateKnotsStart: asCommandHandler(fateKnotsHandleStart),
+          handleFateKnotsSync: asCommandHandler(fateKnotsHandleSync),
+          handleTeamTetrisMove: asCommandHandler(handleTeamTetrisMove),
+          handleTeamTetrisReset: asNoPayloadHandler(handleTeamTetrisReset),
+          handleTeamTetrisStart: asCommandHandler(handleTeamTetrisStart),
           handleXoxAcceptInvite: asCommandHandler(
             xoxHandleAcceptInvite
           ),

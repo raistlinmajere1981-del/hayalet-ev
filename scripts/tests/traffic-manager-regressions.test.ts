@@ -75,6 +75,42 @@ test("thinking is busy only while stop button is visible", () => {
   assert.equal(result.indicator, "busy");
 });
 
+test("thinking ends with timeout reason when stop button stays hidden without send-ready signals", () => {
+  const tracker = new ThinkingTracker({ thinking: { stopButtonDetectionTimeoutMs: 2000 } });
+  const now = Date.now();
+
+  const state = {
+    status: { thinking: "busy" },
+    lastSendSeen: 0,
+    stopButtonLastSeen: now - 5_000,
+    stopButtonDisappearedAt: 0,
+    thinkingJustEnded: false,
+    thinkingEndedAt: 0,
+  };
+
+  const firstProbe = tracker.handleProbe(
+    "ai1",
+    state,
+    { stopVisible: false, sendState: "missing", voiceMode: false, lastSend: now },
+    now
+  );
+  assert.equal(firstProbe.indicator, "busy");
+  assert.equal(firstProbe.event, null);
+
+  state.status.thinking = firstProbe.indicator;
+
+  const secondProbe = tracker.handleProbe(
+    "ai1",
+    state,
+    { stopVisible: false, sendState: "missing", voiceMode: false, lastSend: now },
+    now + 2_100
+  );
+
+  assert.equal(secondProbe.indicator, "idle");
+  assert.equal(secondProbe.event?.type, "thinking-ended");
+  assert.equal(secondProbe.event?.reason, "timeout");
+});
+
 test("default-page to conversation navigation triggers loading when skip flag is not set", () => {
   const slot = "ai1";
   const originalGetProvider = AppState.getProviderIdForSlot;

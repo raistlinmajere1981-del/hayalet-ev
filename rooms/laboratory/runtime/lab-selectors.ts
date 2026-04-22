@@ -9,6 +9,7 @@ import type {
   LabRun,
   LabStage,
   LabStoreState,
+  ReportFreshness,
 } from "../models/lab-types.js";
 import { CAPABILITY_FAMILIES, WORKSPACE_INTENTS } from "../models/lab-types.js";
 import { normalizeAnalysisScope } from "../shared/types/analysis-scope.js";
@@ -787,6 +788,51 @@ export function getToolRelevanceFilter(state: LabStoreState) {
     workspaceMode: wsMode,
     requiredToolIds: Array.from(requiredToolIds),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Condition-driven freshness & dirty selectors (IFL §4h, §5c)
+// ---------------------------------------------------------------------------
+
+export function getReportFreshness(state: LabStoreState): ReportFreshness | null {
+  const reports = getCurrentReports(state);
+  const hasReport = reports.user !== null || reports.ai !== null;
+  if (!hasReport) {
+    return null;
+  }
+  const run = getCurrentRun(state);
+  if (!run) {
+    return "previous-run";
+  }
+  if (run.state === "running" || run.state === "queued") {
+    return "previous-run";
+  }
+  if (run.state === "completed" || run.state === "ready") {
+    return "current";
+  }
+  // failed or cancelled
+  return "stale";
+}
+
+export function isWorkspaceDirty(state: LabStoreState): boolean {
+  const run = getCurrentRun(state);
+  if (!run || !run.analysisScope) {
+    return false;
+  }
+  const scope = run.analysisScope;
+  const ws = state.ui.workspace;
+  const scopeTimeStart =
+    scope.timeRange && typeof scope.timeRange.startMs === "number" ? scope.timeRange.startMs : null;
+  const scopeTimeEnd =
+    scope.timeRange && typeof scope.timeRange.endMs === "number" ? scope.timeRange.endMs : null;
+  if (ws.timelineStartMs !== scopeTimeStart || ws.timelineEndMs !== scopeTimeEnd) {
+    return true;
+  }
+  const scopeHypothesis = typeof scope.hypothesis === "string" ? scope.hypothesis : "";
+  if (ws.hypothesis !== scopeHypothesis) {
+    return true;
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------------------

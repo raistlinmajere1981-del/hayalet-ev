@@ -7,6 +7,7 @@ import { Logger } from "./logger/index.js";
 
 import { TrafficManager } from "./traffic-manager.js";
 import { WebviewManager } from "./webview-manager.js";
+import { rememberOutboundBridgeMessage } from "./webview/outbound-bridge-metadata.js";
 import { AppI18n } from "./i18n/index.js";
 import { getErrorMessage } from "@shared/index.js";
 import { resolveIntlLocale } from "../../../shared/i18n/locale.js";
@@ -102,6 +103,19 @@ class CommandExecutorClass {
   }
 
   handleJobSuccess(job: CommandJob): void {
+    const clientRequestMeta = job.meta["clientRequestId"];
+    const brokerMessageMeta = job.meta["brokerMessageId"];
+    const clientRequestId = typeof clientRequestMeta === "string" ? clientRequestMeta.trim() : "";
+    const brokerMessageId = typeof brokerMessageMeta === "string" ? brokerMessageMeta.trim() : "";
+
+    if (clientRequestId !== "") {
+      rememberOutboundBridgeMessage(job.provider, {
+        messageText: job.message,
+        clientRequestId,
+        ...(brokerMessageId !== "" ? { brokerMessageId } : {}),
+      });
+    }
+
     TrafficManager.signal(job.provider, "sent", job.message);
     try {
       const folder = job.meta.archiveFolders?.[job.provider];

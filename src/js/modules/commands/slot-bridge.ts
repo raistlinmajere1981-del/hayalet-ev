@@ -775,6 +775,13 @@ function buildRequestMarker(reqId: string | undefined): string {
 }
 
 function appendRequestMarker(text: string, envelope: SlotBridgeEnvelope): string {
+  if (
+    (typeof envelope.clientRequestId === "string" && envelope.clientRequestId.trim() !== "") ||
+    (typeof envelope.brokerMessageId === "string" && envelope.brokerMessageId.trim() !== "")
+  ) {
+    return text;
+  }
+
   const marker = buildRequestMarker(envelope.reqId);
   if (marker === "") {
     return text;
@@ -1212,23 +1219,28 @@ function isAssistantToolsReadyForSlot(slot: "ai0" | "ai1" | "ai2"): boolean {
 function isAiSlotReady(slot: "ai0" | "ai1" | "ai2"): boolean {
   const state = SlotController.getState(slot);
   if (state === null) {
-    return AppState.isConnected(slot) === true && isAssistantToolsReadyForSlot(slot);
+    return false;
   }
 
   if (
+    AppState.isConnected(slot) !== true ||
     state.state !== SlotState.CONNECTED ||
     state.urlExcluded === true ||
-    state.domReady !== true
+    state.domReady !== true ||
+    isAssistantToolsReadyForSlot(slot) !== true
   ) {
     return false;
   }
 
   const trafficState = TrafficManager.getState(slot);
+  if (trafficState === null) {
+    return false;
+  }
+
   return (
-    isAssistantToolsReadyForSlot(slot) &&
-    (trafficState === null ||
-      trafficState.readyState === "ready" ||
-      trafficState.status.loading !== "busy")
+    trafficState.lastHref !== "" &&
+    trafficState.readyState === "ready" &&
+    trafficState.status.loading !== "busy"
   );
 }
 
@@ -1739,7 +1751,7 @@ function readLatestSyncedReply(
 async function readLatestArchivedReply(
   slot: UnifiedMessageTarget,
   conversationId: string | null,
-  reqId?: string,
+  request: Pick<SlotBridgeEnvelope, "reqId" | "clientRequestId" | "brokerMessageId"> = {},
   afterSeq?: number | null
 ): Promise<SlotBridgeReply | null> {
   const messages = await listConversationMessages(
@@ -1747,13 +1759,29 @@ async function readLatestArchivedReply(
     conversationId,
     afterSeq !== undefined ? { afterSeq } : {}
   );
-  const marker = buildRequestMarker(reqId);
+  const brokerMessageId =
+    typeof request.brokerMessageId === "string" ? request.brokerMessageId.trim() : "";
+  const clientRequestId =
+    typeof request.clientRequestId === "string" ? request.clientRequestId.trim() : "";
+  const marker = buildRequestMarker(request.reqId);
   const requestIndex =
-    marker !== ""
+    brokerMessageId !== "" || clientRequestId !== "" || marker !== ""
       ? [...messages]
-          .map((message, index) =>
-            message.role === "user" && message.text.includes(marker) ? index : -1
-          )
+          .map((message, index) => {
+            if (message.role !== "user") {
+              return -1;
+            }
+            if (brokerMessageId !== "" && message.brokerMessageId === brokerMessageId) {
+              return index;
+            }
+            if (clientRequestId !== "" && message.clientRequestId === clientRequestId) {
+              return index;
+            }
+            if (marker !== "" && message.text.includes(marker)) {
+              return index;
+            }
+            return -1;
+          })
           .reduce(
             (latestIndex, currentIndex) =>
               currentIndex > latestIndex ? currentIndex : latestIndex,
@@ -1864,7 +1892,7 @@ async function waitForReply(
       (await readLatestArchivedReply(
         targetSlot,
         nextConversationId,
-        envelope.reqId,
+        envelope,
         previousReply?.eventSeq ?? null
       ));
     const replyChanged =
@@ -2188,6 +2216,7 @@ async function sendAiTargets(
 ): Promise<SlotBridgeResult> {
   const coreEngine = await getCoreEngine();
   const archiveFolders = readArchiveFolders(envelope);
+  const waitForCompletion = envelope.wait === true || envelope.action === "message.sendWait";
   const sendResult =
     attachments.length > 0 || targets.length > 1 || archiveFolders !== undefined
       ? await coreEngine.sendBatchInternal({
@@ -2200,6 +2229,7 @@ async function sendAiTargets(
           targets,
           text,
           page,
+          waitForCompletion,
           ...(archiveFolders !== undefined ? { archiveFolders } : {}),
           attachments: attachments.map((attachment) => ({
             name: attachment.name,
@@ -2215,6 +2245,7 @@ async function sendAiTargets(
             : {}),
           text,
           page,
+          waitForCompletion,
           ...(targets[0] !== undefined ? { provider: targets[0] } : {}),
         });
 
@@ -2272,7 +2303,7 @@ async function runMessageAction(
             (await readLatestArchivedReply(
               primaryTarget,
               baselineSync.conversationId,
-              activeEnvelope.reqId
+              activeEnvelope
             ));
         }
       }
