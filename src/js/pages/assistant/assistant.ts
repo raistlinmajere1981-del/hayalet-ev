@@ -3,6 +3,7 @@
 import type { TranslationParams } from "@shared/i18n.js";
 import { LogCategory, LogLevel } from "@shared/logging-core";
 import { ASSISTANT_TIMEOUTS } from "@timeouts";
+import type { WebviewTag } from "electron";
 import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
 import { getMimeTypeFromPath } from "../../constants/index.js";
 import { Logger } from "../../modules/logger/index.js";
@@ -936,7 +937,7 @@ export class AssistantController {
 
   _navigateToSceneDebugRoom(roomId: string): void {
     this._setAssistantSceneScreenOpen(false);
-    openSceneDebugRoom(roomId as never);
+    openSceneDebugRoom(roomId);
   }
 
   _syncAssistantSceneCharacterState(): void {
@@ -1911,7 +1912,7 @@ export class AssistantController {
   }
 
   _openDevTools(): void {
-    const webview = document.getElementById("ai0-webview") as WebviewElement | null;
+    const webview = document.getElementById("ai0-webview") as WebviewTag | null;
 
     if (webview && typeof webview.openDevTools === "function") {
       webview.openDevTools();
@@ -2435,7 +2436,7 @@ export class AssistantController {
       return;
     }
 
-    const ai0Webview = document.getElementById("ai0-webview") as WebviewElement | null;
+    const ai0Webview = document.getElementById("ai0-webview");
     const delivered = sendTranscriptIngressToAssistantWebview(ai0Webview, payload);
     if (!delivered) {
       this._pendingTranscriptIngress.push(payload);
@@ -2447,7 +2448,7 @@ export class AssistantController {
       return;
     }
 
-    const ai0Webview = document.getElementById("ai0-webview") as WebviewElement | null;
+    const ai0Webview = document.getElementById("ai0-webview");
     if (ai0Webview == null) {
       return;
     }
@@ -2495,7 +2496,7 @@ export class AssistantController {
   }
 
   _syncDisabledMcpToHealth(): void {
-    const ai0Webview = document.getElementById("ai0-webview") as WebviewElement | null;
+    const ai0Webview = document.getElementById("ai0-webview");
     if (!ai0Webview) return;
 
     if (this._disabledMcpServers.size > 0) {
@@ -2520,7 +2521,7 @@ export class AssistantController {
     theme: ThemeId = ThemeManager.current,
     options: { assumeDomReady?: boolean } = {}
   ): void {
-    const ai0Webview = document.getElementById("ai0-webview") as WebviewElement | null;
+    const ai0Webview = document.getElementById("ai0-webview");
     if (ai0Webview == null) {
       return;
     }

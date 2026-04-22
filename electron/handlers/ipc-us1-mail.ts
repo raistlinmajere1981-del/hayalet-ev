@@ -4,11 +4,7 @@ import type {
   Us1InviteRemoteUserParams,
   Us1MailAccountDraft,
   Us1RejectRemoteUserParams,
-  Us1SendMessageParams,
-  Us1SyncMessagesParams,
-  Us1SyncRemoteUsersParams,
 } from "@shared/us1-mail.js";
-import type { Us1RelayHealthCheckParams } from "@shared/us1-relay.js";
 
 import { LogCategory, LogLevel } from "@shared/index.js";
 import { shell } from "electron";
@@ -50,21 +46,19 @@ export function setupUs1MailHandlers(): void {
   });
 
   registerHandler("us1-sync-remote-users", async (_event, params: unknown) => {
-    return await mailIdentityService.syncRemoteUsers((params ?? {}) as Us1SyncRemoteUsersParams);
+    return await mailIdentityService.syncRemoteUsers(params ?? {});
   });
 
   registerHandler("us1-send-message", async (_event, params: unknown) => {
-    return await us1ConversationService.sendMessage((params ?? {}) as Us1SendMessageParams);
+    return await us1ConversationService.sendMessage(params ?? {});
   });
 
   registerHandler("us1-sync-messages", async (_event, params: unknown) => {
-    return await us1ConversationService.syncMessages((params ?? {}) as Us1SyncMessagesParams);
+    return await us1ConversationService.syncMessages(params ?? {});
   });
 
   registerHandler("us1-relay-health-check", async (_event, params: unknown) => {
-    return await us1ConversationService.checkRelayHealth(
-      (params ?? {}) as Us1RelayHealthCheckParams
-    );
+    return await us1ConversationService.checkRelayHealth(params ?? {});
   });
 
   registerHandler("us1-mail-start-gmail-oauth", async (_event) => {

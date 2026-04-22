@@ -22,7 +22,7 @@ if (process.argv.includes("--version") || process.argv.includes("-v")) {
   process.exit(0);
 }
 
-async function start() {
+async function start(): Promise<void> {
   const { main } = await import("./core/server-setup.js");
   void main();
 }

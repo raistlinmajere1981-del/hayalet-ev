@@ -13,7 +13,6 @@ import {
 import { LogLevel } from "@shared/index.js";
 import { Paths } from "../paths.ts";
 import type {
-  LogContext,
   LogQueryParams,
   SessionMeta,
   SessionSummary,
@@ -134,7 +133,7 @@ function parseStructuredLine(line: string): StructuredLogEntry | null {
       ...(typeof localeRaw === "string" ? { locale: localeRaw } : {}),
       ...(typeof messageKeyRaw === "string" ? { messageKey: messageKeyRaw } : {}),
       ...(isLogLevelValue(levelRaw) ? { level: levelRaw } : {}),
-      ...(isRecord(contextRaw) ? { context: contextRaw as LogContext } : {}),
+      ...(isRecord(contextRaw) ? { context: contextRaw } : {}),
       ...(typeof parsed["isoTimestamp"] === "string"
         ? { isoTimestamp: parsed["isoTimestamp"] }
         : {}),

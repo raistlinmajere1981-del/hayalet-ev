@@ -1,5 +1,6 @@
 import type { WebviewTag } from "electron";
 import { LogCategory, LogLevel } from "@shared/logging-core";
+import type { BaseProviderConfig } from "@shared/provider.js";
 import { Logger } from "../../modules/logger/index.js";
 import { getErrorMessage } from "@shared/index.js";
 import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
@@ -443,9 +444,7 @@ export class WebviewPanel {
       return false;
     }
 
-    const providerConfig = ProviderRegistry.get(providerId) as {
-      webviewSync?: { readiness?: string };
-    } | null;
+    const providerConfig = ProviderRegistry.get(providerId) as BaseProviderConfig | null;
     return providerConfig?.webviewSync?.readiness === "verified";
   }
 
@@ -917,11 +916,11 @@ export class WebviewPanel {
         scenarioId: state.scenarioId,
       });
     } catch (error) {
-      state.message = getErrorMessage(error as Error);
+      state.message = getErrorMessage(error);
       Logger.error(
         LogCategory.ENTRANCE,
         providerTestT("logs.deliveryToAssistantFailed", {
-          message: getErrorMessage(error as Error),
+          message: getErrorMessage(error),
         })
       );
     } finally {
@@ -1011,14 +1010,14 @@ export class WebviewPanel {
       );
     } catch (error) {
       state.phase = "completed";
-      state.message = getErrorMessage(error as Error);
+      state.message = getErrorMessage(error);
       this.renderScenarioOverlay();
 
       Logger.error(
         LogCategory.ENTRANCE,
         providerTestT("logs.scenarioFailed", {
           scenarioId: state.scenarioId,
-          message: getErrorMessage(error as Error),
+          message: getErrorMessage(error),
         })
       );
     } finally {
@@ -1047,7 +1046,7 @@ export class WebviewPanel {
     try {
       await electronApi.cancelProviderScenario({ runId: state.runId });
     } catch (error) {
-      state.message = getErrorMessage(error as Error);
+      state.message = getErrorMessage(error);
       this.renderScenarioOverlay();
     }
   }

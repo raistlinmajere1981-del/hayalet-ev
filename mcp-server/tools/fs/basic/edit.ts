@@ -8,7 +8,7 @@ import { applyEdit } from "./edit/apply.js";
 import { detectConflicts } from "./edit/conflict.js";
 import { detectEOL, normalizeEOL } from "./edit/eol.js";
 import { formatOutput } from "./edit/format-output.js";
-import type { EditFileOptions, EditResult, ConflictInfo, EOLMode } from "./edit/types.js";
+import type { EditFileOptions, EditResult, ConflictInfo } from "./edit/types.js";
 import { checkBracketBalance } from "./edit/validator.js";
 import type { ToolResult } from "../../../types/index-mcp.js";
 import type { TranslationParams } from "../../../../src/types/i18n.js";
@@ -69,7 +69,7 @@ export async function editFileContent(options: EditFileOptions): Promise<ToolRes
 
     const originalEOL = detectEOL(content);
     if (normalizeEol !== "preserve") {
-      content = normalizeEOL(content, normalizeEol as EOLMode);
+      content = normalizeEOL(content, normalizeEol);
     }
 
     const originalContent = content;

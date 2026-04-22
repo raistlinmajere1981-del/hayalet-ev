@@ -1,6 +1,5 @@
 import type {
   ProviderScenarioCommandReport,
-  ProviderScenarioCommandStatus,
   ProviderScenarioId,
   ProviderScenarioProgressEvent,
   ProviderTestResult,
@@ -258,7 +257,7 @@ export async function runCommandScenario(
         results.push(...suiteResults);
 
         Object.assign(runningReport, {
-          status: result.status as ProviderScenarioCommandStatus,
+          status: result.status,
           message: result.message,
           duration: completedAt - startedAt,
           completedAt,

@@ -18,23 +18,6 @@ interface OpencodeIndicatorElements {
   actionButton?: HTMLButtonElement | null;
 }
 
-interface OpencodeUpdateCheckResult {
-  success: boolean;
-  installedVersion: string;
-  latestVersion?: string;
-  updateAvailable?: boolean;
-  releaseUrl?: string;
-  error?: string;
-}
-
-interface OpencodeInstallLaunchResult {
-  success: boolean;
-  command: string;
-  installUrl: string;
-  fallbackToBrowser?: boolean;
-  error?: string;
-}
-
 function assistantT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`shell.assistant.${key}`, params);
 }
@@ -152,7 +135,7 @@ async function launchOpencodeInstallFlow(): Promise<void> {
     throw new Error(assistantT("opencodeDoctor.errors.installIpcMissing"));
   }
 
-  const result = (await electronApi.opencodeLaunchInstall()) as OpencodeInstallLaunchResult;
+  const result = await electronApi.opencodeLaunchInstall();
   if (result.success !== true) {
     throw new Error(
       formatErrorWithDetail(
@@ -227,9 +210,7 @@ export async function handleOpencodeActionButtonClick(
       throw new Error(assistantT("opencodeDoctor.errors.updateIpcMissing"));
     }
 
-    const result = (await electronApi.opencodeCheckUpdates(
-      detectedVersion
-    )) as OpencodeUpdateCheckResult;
+    const result = await electronApi.opencodeCheckUpdates(detectedVersion);
     if (result.success !== true) {
       throw new Error(
         formatErrorWithDetail(
@@ -301,7 +282,7 @@ export async function handleOpencodeActionButtonClick(
 export async function openOpencodeSettingsModal(
   options: { onSaved?: () => void } = {}
 ): Promise<void> {
-  const prefs = getOpencodePreferences(SettingsManager.getSnapshot() as AppSettings | null);
+  const prefs = getOpencodePreferences(SettingsManager.getSnapshot());
   const electronApi = window.electronAPI;
 
   const content = document.createElement("div");

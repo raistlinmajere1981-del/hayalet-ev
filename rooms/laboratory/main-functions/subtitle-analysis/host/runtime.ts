@@ -13,7 +13,6 @@ type SubtitleProcessAnalysisRuntimeDeps = Parameters<
   typeof createSubtitleProcessAnalysisRuntime
 >[0];
 type SubtitleSourceIntakeRuntimeDeps = Parameters<typeof createSubtitleSourceIntakeRuntime>[0];
-type SubtitleActionRuntimeDeps = Parameters<typeof createSubtitleActionRuntime>[0];
 
 type LaboratorySubtitleAnalysisHostRuntimeDeps = {
   asNonEmptyString: SubtitleYoutubeSourceRuntimeDeps["asNonEmptyString"];
@@ -70,13 +69,10 @@ export function createLaboratorySubtitleAnalysisHostRuntime(
 ) {
   const workspacePatchActiveProject =
     deps.patchActiveProject as SubtitleWorkspaceRuntimeDeps["patchActiveProject"];
-  const youtubePatchActiveProject =
-    deps.patchActiveProject as SubtitleYoutubeSourceRuntimeDeps["patchActiveProject"];
-  const sourceIntakePatchActiveProject =
-    deps.patchActiveProject as SubtitleSourceIntakeRuntimeDeps["patchActiveProject"];
+  const youtubePatchActiveProject = deps.patchActiveProject;
+  const sourceIntakePatchActiveProject = deps.patchActiveProject;
   const editWorkspacePatchActiveProject = deps.patchActiveProject;
-  const actionPatchActiveProject =
-    deps.patchActiveProject as SubtitleActionRuntimeDeps["patchActiveProject"];
+  const actionPatchActiveProject = deps.patchActiveProject;
   const subtitleWorkspaceRuntime = createSubtitleWorkspaceRuntime({
     asNumber: deps.asNumber,
     getActiveProject: deps.getActiveProject,

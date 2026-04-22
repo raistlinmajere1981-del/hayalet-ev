@@ -3,12 +3,6 @@ import { AppI18n } from "./i18n/index.js";
 
 type ProtocolMap = Record<string, string>;
 
-type LoadProtocolsResult = {
-  success: boolean;
-  protocols?: ProtocolMap;
-  message?: string;
-};
-
 type ResolveProtocolMessageResult = {
   message: string;
   body: string;
@@ -60,7 +54,7 @@ async function loadProtocolMap(): Promise<{ protocols: ProtocolMap | null; error
   }
 
   try {
-    const result = (await loadProtocols()) as LoadProtocolsResult;
+    const result = await loadProtocols();
     if (result.success === true && result.protocols !== undefined) {
       return {
         protocols: await RoomProtocolRegistry.mergeProtocolMap(result.protocols, {

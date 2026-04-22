@@ -36,9 +36,24 @@
   type XoxSlotState = {
     slotId: string;
     nickname: string;
+    avatar?: string | null;
     assigned?: boolean;
     connected?: boolean;
     ready?: boolean;
+    dispatchable?: boolean;
+  };
+  type XoxMatchHistoryEntry = {
+    id: string;
+    finishedAt: number;
+    target: string;
+    opponentNickname: string;
+    opponentAvatar: string | null;
+    userNickname: string;
+    userSymbol: "X" | "O";
+    aiSymbol: "X" | "O";
+    result: "user-win" | "ai-win" | "draw";
+    starter: "ai" | "user";
+    board: string[];
   };
   type XoxGameState = {
     board: string[];
@@ -61,6 +76,7 @@
     remoteUserId: string | null;
     pendingInvite: XoxPendingInvite | null;
     inviteInbox: XoxInviteEntry[];
+    matchHistory: XoxMatchHistoryEntry[];
     opponent: XoxSlotState;
     user: {
       nickname: string;
@@ -114,6 +130,11 @@
     onCellClick: (index: number) => void;
     onAcceptInvite: (inviteId: string, remoteUserId: string) => void;
     onRejectInvite: (inviteId: string, remoteUserId: string) => void;
+    onCancelOutgoingInvite: () => void;
+    getMatchHistory: () => XoxMatchHistoryEntry[];
+    getMatchHistoryResultLabel: (entry: XoxMatchHistoryEntry) => string;
+    getMatchHistoryResultTone: (entry: XoxMatchHistoryEntry) => string;
+    formatMatchHistoryDate: (entry: XoxMatchHistoryEntry) => string;
   };
 
   function isRecord(value: unknown): value is UnknownRecord {
@@ -182,6 +203,7 @@
         remoteUserId: null,
         pendingInvite: null,
         inviteInbox: [],
+        matchHistory: [],
         opponent: createSlot("ai1"),
         user: {
           nickname: "User",
@@ -222,6 +244,57 @@
         .filter(function (entry: XoxInviteEntry) {
           return entry.inviteId !== "" && entry.remoteUserId !== "";
         });
+    }
+
+    function normalizeMatchHistoryEntry(candidate: unknown): XoxMatchHistoryEntry | null {
+      if (isRecord(candidate) === false) {
+        return null;
+      }
+      const source = candidate;
+      const id = readString(source["id"], "");
+      const result = source["result"];
+      if (id === "" || (result !== "user-win" && result !== "ai-win" && result !== "draw")) {
+        return null;
+      }
+      const finishedAt =
+        typeof source["finishedAt"] === "number" &&
+        Number.isFinite(source["finishedAt"]) &&
+        source["finishedAt"] >= 0
+          ? Math.trunc(source["finishedAt"])
+          : 0;
+      const boardSource = Array.isArray(source["board"]) ? (source["board"] as unknown[]) : [];
+      const board: string[] = [];
+      for (let index = 0; index < 9; index += 1) {
+        const raw: unknown = boardSource[index];
+        board.push(raw === "X" || raw === "O" ? raw : "");
+      }
+      return {
+        id,
+        finishedAt,
+        target: readString(source["target"], "ai1"),
+        opponentNickname: readString(source["opponentNickname"], "Rakip"),
+        opponentAvatar: readString(source["opponentAvatar"], "") || null,
+        userNickname: readString(source["userNickname"], "User"),
+        userSymbol: source["userSymbol"] === "O" ? "O" : "X",
+        aiSymbol: source["aiSymbol"] === "X" ? "X" : "O",
+        result,
+        starter: source["starter"] === "ai" ? "ai" : "user",
+        board,
+      };
+    }
+
+    function normalizeMatchHistory(value: unknown): XoxMatchHistoryEntry[] {
+      if (!Array.isArray(value)) {
+        return [];
+      }
+      const entries: XoxMatchHistoryEntry[] = [];
+      for (let index = 0; index < value.length; index += 1) {
+        const entry = normalizeMatchHistoryEntry(value[index]);
+        if (entry !== null) {
+          entries.push(entry);
+        }
+      }
+      return entries.slice(0, 20);
     }
 
     function normalizePendingInvite(value: unknown): XoxPendingInvite | null {
@@ -285,6 +358,7 @@
       next.remoteUserId = readOptionalString(source["remoteUserId"]);
       next.pendingInvite = normalizePendingInvite(source["pendingInvite"]);
       next.inviteInbox = normalizeInviteInbox(source["inviteInbox"]);
+      next.matchHistory = normalizeMatchHistory(source["matchHistory"]);
       next.opponent = normalizeSlot(source["opponent"], next.selectedTarget);
       if (isRecord(source["user"])) {
         next.user.nickname = readString(source["user"]["nickname"], next.user.nickname);
@@ -471,6 +545,45 @@
       });
     }
 
+    function onCancelOutgoingInvite() {
+      const state = getState();
+      state.lastCommandMessage = "";
+      sendRoomCommand("GameRoomXoxReset", {});
+    }
+
+    function getMatchHistory(): XoxMatchHistoryEntry[] {
+      const state = getState();
+      return Array.isArray(state.game.matchHistory) ? state.game.matchHistory : [];
+    }
+
+    function getMatchHistoryResultLabel(entry: XoxMatchHistoryEntry): string {
+      if (entry.result === "draw") {
+        return text(["xox", "history", "draw"]);
+      }
+      return entry.result === "user-win"
+        ? text(["xox", "history", "win"])
+        : text(["xox", "history", "loss"]);
+    }
+
+    function getMatchHistoryResultTone(entry: XoxMatchHistoryEntry): string {
+      if (entry.result === "draw") {
+        return "draw";
+      }
+      return entry.result === "user-win" ? "win" : "loss";
+    }
+
+    function formatMatchHistoryDate(entry: XoxMatchHistoryEntry): string {
+      const state = getState();
+      if (!entry.finishedAt || entry.finishedAt <= 0) {
+        return "";
+      }
+      try {
+        return new Date(entry.finishedAt).toLocaleString(state.locale);
+      } catch {
+        return new Date(entry.finishedAt).toISOString();
+      }
+    }
+
     function hasAuthoritativeGamePreferences() {
       const state = getState();
       return (
@@ -512,6 +625,11 @@
       onCellClick: onCellClick,
       onAcceptInvite: onAcceptInvite,
       onRejectInvite: onRejectInvite,
+      onCancelOutgoingInvite: onCancelOutgoingInvite,
+      getMatchHistory: getMatchHistory,
+      getMatchHistoryResultLabel: getMatchHistoryResultLabel,
+      getMatchHistoryResultTone: getMatchHistoryResultTone,
+      formatMatchHistoryDate: formatMatchHistoryDate,
     };
   };
 })(typeof window !== "undefined" ? window : globalThis);

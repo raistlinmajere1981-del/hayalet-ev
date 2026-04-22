@@ -36,10 +36,6 @@ type LaboratoryProcessCompositionRuntime = ReturnType<
 };
 type LaboratoryProjectStateRuntime = ReturnType<typeof createLaboratoryProjectStateRuntime>;
 type LaboratoryFeatureAdaptersRuntime = ReturnType<typeof createLaboratoryFeatureAdapters>;
-type LaboratoryRoomToolsProgressRuntime = ReturnType<
-  typeof createLaboratoryRoomToolsProgressRuntime
->;
-type LaboratoryRuntimeStorageRuntime = ReturnType<typeof createLaboratoryRuntimeStorage>;
 type LaboratorySubtitleAnalysisHostRuntime = ReturnType<
   typeof createLaboratorySubtitleAnalysisHostRuntime
 >;
@@ -314,9 +310,7 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     toRecord: deps.toRecord,
   } as unknown as Parameters<typeof createLaboratorySourceCompositionRuntime>[0];
 
-  sourceComposition = createLaboratorySourceCompositionRuntime(
-    sourceCompositionDeps
-  ) as unknown as LaboratorySourceCompositionRuntime;
+  sourceComposition = createLaboratorySourceCompositionRuntime(sourceCompositionDeps);
 
   const roomToolsProgressDeps = {
     roomId: deps.roomId,
@@ -328,9 +322,7 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     pushSourceState: projectRuntimes.snapshot.pushSourceState,
   } as unknown as Parameters<typeof createLaboratoryRoomToolsProgressRuntime>[0];
 
-  const roomToolsProgress = createLaboratoryRoomToolsProgressRuntime(
-    roomToolsProgressDeps
-  ) as unknown as LaboratoryRoomToolsProgressRuntime;
+  const roomToolsProgress = createLaboratoryRoomToolsProgressRuntime(roomToolsProgressDeps);
 
   const runtimeStorageDeps = {
     lifecycleRuntime: projectRuntimes.lifecycle,
@@ -338,9 +330,7 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     toRecord: deps.toRecord,
   } as unknown as Parameters<typeof createLaboratoryRuntimeStorage>[0];
 
-  const runtimeStorage = createLaboratoryRuntimeStorage(
-    runtimeStorageDeps
-  ) as unknown as LaboratoryRuntimeStorageRuntime;
+  const runtimeStorage = createLaboratoryRuntimeStorage(runtimeStorageDeps);
 
   const projectStateDeps = {
     roomSnapshotRuntime: projectRuntimes.snapshot.laboratoryRoomSnapshotRuntime,
@@ -391,14 +381,12 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     toFileUrl: hostUtils.toFileUrl,
   } as unknown as Parameters<typeof createLaboratoryProjectStateRuntime>[0];
 
-  const projectState = createLaboratoryProjectStateRuntime(
-    projectStateDeps
-  ) as unknown as LaboratoryProjectStateRuntime;
+  const projectState = createLaboratoryProjectStateRuntime(projectStateDeps);
 
   deps.setProjectStateRuntime(projectState);
 
   const sourceCompositionRuntime = requireSourceComposition();
-  const processCompositionRecord = deps.toRecord(processComposition as unknown);
+  const processCompositionRecord = deps.toRecord(processComposition);
   const processDelegates = processCompositionRecord[
     "laboratoryProcessDelegatesRuntime"
   ] as LaboratoryProcessDelegatesRuntime | null;
@@ -503,9 +491,7 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     writeTextFile: io.writeTextFile,
   } as unknown as Parameters<typeof createLaboratoryFeatureAdapters>[0];
 
-  const featureAdapters = createLaboratoryFeatureAdapters(
-    featureAdaptersDeps
-  ) as unknown as LaboratoryFeatureAdaptersRuntime;
+  const featureAdapters = createLaboratoryFeatureAdapters(featureAdaptersDeps);
 
   deps.setSubtitleAnalysisHostRuntime(featureAdapters.laboratorySubtitleAnalysisHostRuntime);
 

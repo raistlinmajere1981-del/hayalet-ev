@@ -1,7 +1,4 @@
 import type {
-  OpencodeUiFsArchiveResult,
-  OpencodeUiFsEnsureResult,
-  OpencodeUiFsListResult,
   OpencodeUiFsReadResult,
   OpencodeUiSessionDetail,
   OpencodeUiSessionSummary,
@@ -30,9 +27,7 @@ export function createSessionStorage(runtime: RuntimeState): OpencodeUiSessionSt
         throw new Error(t("storage.electronUnavailable"));
       }
 
-      const result = (await electronApi.opencodeUiFsListSessions(
-        dbPathArg()
-      )) as OpencodeUiFsListResult;
+      const result = await electronApi.opencodeUiFsListSessions(dbPathArg());
       if (result.success !== true) {
         throw new Error(
           formatDetailedErrorMessage("storage.listFailed", resolveIpcErrorMessage(result))
@@ -55,11 +50,7 @@ export function createSessionStorage(runtime: RuntimeState): OpencodeUiSessionSt
         throw new Error(t("storage.electronUnavailable"));
       }
 
-      const result = (await electronApi.opencodeUiFsEnsureSession(
-        sessionId,
-        title,
-        dbPathArg()
-      )) as OpencodeUiFsEnsureResult;
+      const result = await electronApi.opencodeUiFsEnsureSession(sessionId, title, dbPathArg());
 
       if (result.success !== true) {
         throw new Error(
@@ -91,11 +82,7 @@ export function createSessionStorage(runtime: RuntimeState): OpencodeUiSessionSt
         throw new Error(t("storage.electronUnavailable"));
       }
 
-      const result = (await electronApi.opencodeUiFsArchiveSession(
-        sessionId,
-        archived,
-        dbPathArg()
-      )) as OpencodeUiFsArchiveResult;
+      const result = await electronApi.opencodeUiFsArchiveSession(sessionId, archived, dbPathArg());
 
       if (result.success !== true) {
         throw new Error(

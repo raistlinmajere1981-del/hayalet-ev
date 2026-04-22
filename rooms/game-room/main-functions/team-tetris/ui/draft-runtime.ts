@@ -421,6 +421,40 @@
       return clampNumber(cellX - Math.floor(bounds.width / 2), 0, maxOrigin);
     }
 
+    function compileStageToRowShifts(
+      stagedOriginX: number,
+      rotation: number,
+      pieceId: string,
+      routeMode: GameRoomTeamTetrisRouteMode,
+      bendRow: number | null
+    ): number[] {
+      const spawn = getTeamTetrisSpawnPosition(pieceId, rotation);
+      const bounds = getTeamTetrisPieceBounds(pieceId, rotation);
+      if (bounds.width === 0 || bounds.height === 0) {
+        return [];
+      }
+
+      const maxOriginX = Math.max(0, BOARD_WIDTH - bounds.width);
+      const clampedOriginX = clampNumber(stagedOriginX, 0, maxOriginX);
+      const totalRows = BOARD_HEIGHT - 1;
+
+      const rowShifts: number[] = [];
+      let currentX = spawn.x;
+
+      for (let rowIndex = 0; rowIndex < totalRows; rowIndex += 1) {
+        const desiredX =
+          routeMode !== "straight" && bendRow !== null && rowIndex >= bendRow
+            ? clampNumber(clampedOriginX + (routeMode === "bend-left" ? -1 : 1), 0, maxOriginX)
+            : clampedOriginX;
+
+        const shift = clampNumber(desiredX - currentX, -1, 1);
+        rowShifts.push(shift);
+        currentX += shift;
+      }
+
+      return rowShifts;
+    }
+
     function buildTeamTetrisRowShiftsFromTargets(
       pieceId: string,
       rotation: number,
@@ -468,9 +502,29 @@
         return;
       }
 
-      if (Object.keys(state.teamTetrisDraft.dragTargets).length === 0) {
-        state.teamTetrisDraft.preview = null;
-        state.teamTetrisDraft.errorKey = "";
+      const draft = state.teamTetrisDraft;
+
+      if (draft.stage === "route" && draft.stagedOriginX >= 0) {
+        const compiledShifts = compileStageToRowShifts(
+          draft.stagedOriginX,
+          draft.rotation,
+          pendingTurn.pieceId,
+          draft.routeMode,
+          draft.bendRow
+        );
+        draft.rowShifts = compiledShifts;
+      } else if (draft.stage === "positioning" && draft.stagedOriginX >= 0) {
+        const compiledShifts = compileStageToRowShifts(
+          draft.stagedOriginX,
+          draft.rotation,
+          pendingTurn.pieceId,
+          "straight",
+          null
+        );
+        draft.rowShifts = compiledShifts;
+      } else if (Object.keys(draft.dragTargets).length === 0 && draft.stagedOriginX < 0) {
+        draft.preview = null;
+        draft.errorKey = "";
         return;
       }
 
@@ -478,22 +532,22 @@
       const preview = replayTeamTetrisDraft(
         ownBoard.rows,
         pendingTurn.pieceId,
-        state.teamTetrisDraft.rotation,
-        state.teamTetrisDraft.rowShifts
+        draft.rotation,
+        draft.rowShifts
       );
 
-      state.teamTetrisDraft.preview =
+      draft.preview =
         preview.success === true
           ? Object.assign({}, preview, {
               pathCells: buildSimplifiedTeamTetrisPathCells(
                 pendingTurn.pieceId,
-                state.teamTetrisDraft.rotation,
-                state.teamTetrisDraft.rowShifts,
+                draft.rotation,
+                draft.rowShifts,
                 preview
               ),
             })
           : preview;
-      state.teamTetrisDraft.errorKey =
+      draft.errorKey =
         preview.success === true
           ? preview.pathComplete === true
             ? ""
@@ -527,6 +581,11 @@
         nextDraft.turnToken = pendingTurn.turnToken;
         nextDraft.pieceId = pendingTurn.pieceId;
         nextDraft.rotation = initialRotation;
+        nextDraft.stage = "positioning";
+        nextDraft.stagedOriginX = -1;
+        nextDraft.routeMode = "straight";
+        nextDraft.bendRow = null;
+        nextDraft.interactionMode = "positioning";
         state.teamTetrisDraft = nextDraft;
         refreshTeamTetrisDraftPreview();
         return;
@@ -536,6 +595,11 @@
         state.teamTetrisDraft.rotation = initialRotation;
         state.teamTetrisDraft.dragTargets = {};
         state.teamTetrisDraft.rowShifts = [];
+        state.teamTetrisDraft.stage = "positioning";
+        state.teamTetrisDraft.stagedOriginX = -1;
+        state.teamTetrisDraft.routeMode = "straight";
+        state.teamTetrisDraft.bendRow = null;
+        state.teamTetrisDraft.interactionMode = "positioning";
       }
 
       refreshTeamTetrisDraftPreview();
@@ -555,6 +619,11 @@
       state.teamTetrisDraft.preview = null;
       state.teamTetrisDraft.errorKey = "";
       state.teamTetrisDraft.dragActive = false;
+      state.teamTetrisDraft.stage = "positioning";
+      state.teamTetrisDraft.stagedOriginX = -1;
+      state.teamTetrisDraft.routeMode = "straight";
+      state.teamTetrisDraft.bendRow = null;
+      state.teamTetrisDraft.interactionMode = "positioning";
     }
 
     function onTeamTetrisRotate(): void {
@@ -641,6 +710,129 @@
       render();
     }
 
+    function onTeamTetrisRotateCcw(): void {
+      const state = getState();
+      const pendingTurn = getTeamTetrisPendingTurn();
+
+      if (!pendingTurn) {
+        return;
+      }
+
+      const legalRotations =
+        pendingTurn.legalRotations.length > 0 ? pendingTurn.legalRotations : [0];
+      const currentIndex = legalRotations.indexOf(state.teamTetrisDraft.rotation);
+      const nextIndex = currentIndex <= 0 ? legalRotations.length - 1 : currentIndex - 1;
+
+      state.teamTetrisDraft.rotation = legalRotations[nextIndex] ?? 0;
+      clearTeamTetrisDraft();
+      refreshTeamTetrisDraftPreview();
+      render();
+    }
+
+    function onTeamTetrisMoveLeft(): void {
+      const state = getState();
+      const pendingTurn = getTeamTetrisPendingTurn();
+      if (!pendingTurn) {
+        return;
+      }
+
+      const bounds = getTeamTetrisPieceBounds(pendingTurn.pieceId, state.teamTetrisDraft.rotation);
+      const spawn = getTeamTetrisSpawnPosition(pendingTurn.pieceId, state.teamTetrisDraft.rotation);
+      const currentX =
+        state.teamTetrisDraft.stagedOriginX >= 0 ? state.teamTetrisDraft.stagedOriginX : spawn.x;
+      const maxOriginX = Math.max(0, BOARD_WIDTH - bounds.width);
+      state.teamTetrisDraft.stagedOriginX = clampNumber(currentX - 1, 0, maxOriginX);
+      state.teamTetrisDraft.interactionMode = "positioning";
+      refreshTeamTetrisDraftPreview();
+      render();
+    }
+
+    function onTeamTetrisMoveRight(): void {
+      const state = getState();
+      const pendingTurn = getTeamTetrisPendingTurn();
+      if (!pendingTurn) {
+        return;
+      }
+
+      const bounds = getTeamTetrisPieceBounds(pendingTurn.pieceId, state.teamTetrisDraft.rotation);
+      const spawn = getTeamTetrisSpawnPosition(pendingTurn.pieceId, state.teamTetrisDraft.rotation);
+      const currentX =
+        state.teamTetrisDraft.stagedOriginX >= 0 ? state.teamTetrisDraft.stagedOriginX : spawn.x;
+      const maxOriginX = Math.max(0, BOARD_WIDTH - bounds.width);
+      state.teamTetrisDraft.stagedOriginX = clampNumber(currentX + 1, 0, maxOriginX);
+      state.teamTetrisDraft.interactionMode = "positioning";
+      refreshTeamTetrisDraftPreview();
+      render();
+    }
+
+    function onTeamTetrisConfirmPosition(): void {
+      const state = getState();
+      const pendingTurn = getTeamTetrisPendingTurn();
+      if (!pendingTurn) {
+        return;
+      }
+
+      if (state.teamTetrisDraft.stagedOriginX < 0) {
+        const spawn = getTeamTetrisSpawnPosition(
+          pendingTurn.pieceId,
+          state.teamTetrisDraft.rotation
+        );
+        state.teamTetrisDraft.stagedOriginX = spawn.x;
+      }
+
+      state.teamTetrisDraft.stage = "route";
+      state.teamTetrisDraft.interactionMode = "route-row-picker";
+      refreshTeamTetrisDraftPreview();
+      render();
+    }
+
+    function onTeamTetrisBackToPosition(): void {
+      const state = getState();
+      state.teamTetrisDraft.stage = "positioning";
+      state.teamTetrisDraft.interactionMode = "positioning";
+      state.teamTetrisDraft.routeMode = "straight";
+      state.teamTetrisDraft.bendRow = null;
+      refreshTeamTetrisDraftPreview();
+      render();
+    }
+
+    function onTeamTetrisRouteModeSelect(mode: GameRoomTeamTetrisRouteMode): void {
+      const state = getState();
+      state.teamTetrisDraft.routeMode = mode;
+      if (mode === "straight") {
+        state.teamTetrisDraft.bendRow = null;
+      }
+      refreshTeamTetrisDraftPreview();
+      render();
+    }
+
+    function onTeamTetrisBoardColumnSelect(column: number): void {
+      const state = getState();
+      const pendingTurn = getTeamTetrisPendingTurn();
+      if (!pendingTurn) {
+        return;
+      }
+
+      const bounds = getTeamTetrisPieceBounds(pendingTurn.pieceId, state.teamTetrisDraft.rotation);
+      const originX = getTeamTetrisOriginFromCell(
+        pendingTurn.pieceId,
+        state.teamTetrisDraft.rotation,
+        column
+      );
+      const maxOriginX = Math.max(0, BOARD_WIDTH - bounds.width);
+      state.teamTetrisDraft.stagedOriginX = clampNumber(originX, 0, maxOriginX);
+      state.teamTetrisDraft.interactionMode = "positioning";
+      refreshTeamTetrisDraftPreview();
+      render();
+    }
+
+    function onTeamTetrisBendRowSelect(row: number): void {
+      const state = getState();
+      state.teamTetrisDraft.bendRow = clampNumber(row, 0, BOARD_HEIGHT - 1);
+      refreshTeamTetrisDraftPreview();
+      render();
+    }
+
     function onTeamTetrisSubmit(): void {
       const state = getState();
       const pendingTurn = getTeamTetrisPendingTurn();
@@ -672,6 +864,7 @@
       getTeamTetrisPieceBounds: getTeamTetrisPieceBounds,
       getTeamTetrisSpawnPosition: getTeamTetrisSpawnPosition,
       replayTeamTetrisDraft: replayTeamTetrisDraft,
+      compileStageToRowShifts: compileStageToRowShifts,
       buildTeamTetrisRowShiftsFromTargets: buildTeamTetrisRowShiftsFromTargets,
       getTeamTetrisOriginFromCell: getTeamTetrisOriginFromCell,
       syncTeamTetrisDraftFromState: syncTeamTetrisDraftFromState,
@@ -680,8 +873,16 @@
       finishTeamTetrisDrag: finishTeamTetrisDrag,
       onTeamTetrisRotationSelect: onTeamTetrisRotationSelect,
       onTeamTetrisRotate: onTeamTetrisRotate,
+      onTeamTetrisRotateCcw: onTeamTetrisRotateCcw,
       onTeamTetrisClearDraft: onTeamTetrisClearDraft,
       onTeamTetrisSubmit: onTeamTetrisSubmit,
+      onTeamTetrisMoveLeft: onTeamTetrisMoveLeft,
+      onTeamTetrisMoveRight: onTeamTetrisMoveRight,
+      onTeamTetrisConfirmPosition: onTeamTetrisConfirmPosition,
+      onTeamTetrisBackToPosition: onTeamTetrisBackToPosition,
+      onTeamTetrisRouteModeSelect: onTeamTetrisRouteModeSelect,
+      onTeamTetrisBoardColumnSelect: onTeamTetrisBoardColumnSelect,
+      onTeamTetrisBendRowSelect: onTeamTetrisBendRowSelect,
     };
   };
 })((typeof window !== "undefined" ? window : globalThis) as unknown as GameRoomUiGlobal);

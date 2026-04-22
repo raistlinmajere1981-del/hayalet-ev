@@ -72,7 +72,6 @@ import {
   handleTimelineScroll,
   initializeTimeline,
   rebuildTimelineView,
-  type TimelineState,
 } from "./server/timeline-controller.js";
 import { initServerControllerPage } from "./server/init-controller.js";
 import type { ServerInitContext } from "./server/init-controller.js";
@@ -183,7 +182,7 @@ export class ServerController {
   }
 
   private getServerCommandsApi(): ServerCommandsApi {
-    return ServerCommands as unknown as ServerCommandsApi;
+    return ServerCommands;
   }
 
   private normalizeSlot(value: string): CommandSlot {
@@ -233,7 +232,7 @@ export class ServerController {
   private async saveDisabledCommands(slot: CommandSlot, disabledCommands: string[]): Promise<void> {
     const settings = SettingsManager.getSnapshot();
     const next = buildSettingsWithDisabledCommands(settings, slot, disabledCommands);
-    await SettingsManager.save(next as unknown as Record<string, unknown>);
+    await SettingsManager.save(next);
   }
 
   private async toggleCommandForSlot(
@@ -357,7 +356,7 @@ export class ServerController {
       },
       navigateToRoom: (roomId: string): void => {
         this.setServerSceneScreenOpen(false);
-        openSceneDebugRoom(roomId as never);
+        openSceneDebugRoom(roomId);
       },
       updateObject: (id, updater): void => {
         this._serverSceneSession.updateObject(id, updater);
@@ -921,7 +920,7 @@ export class ServerController {
 
   private async initializeTimeline(): Promise<void> {
     await initializeTimeline({
-      state: this as TimelineState,
+      state: this,
       batchSize: TIMELINE_SESSION_BATCH,
       updateTimelineMeta: (text) => {
         this.updateTimelineMeta(text);
@@ -932,7 +931,7 @@ export class ServerController {
 
   async handleTimelineScroll(): Promise<void> {
     await handleTimelineScroll({
-      state: this as TimelineState,
+      state: this,
       topThreshold: TIMELINE_TOP_THRESHOLD,
       batchSize: TIMELINE_SESSION_BATCH,
       updateTimelineMeta: (text) => {
@@ -944,7 +943,7 @@ export class ServerController {
 
   handleLogEntry(entry: LogEntry): void {
     handleTimelineLogEntry({
-      state: this as TimelineState,
+      state: this,
       entry,
       getProviderLabel: (provider) => this.getProviderLabel(provider),
     });
@@ -952,7 +951,7 @@ export class ServerController {
 
   private rebuildTimeline(stickToBottom = false): void {
     rebuildTimelineView({
-      state: this as TimelineState,
+      state: this,
       getProviderLabel: (provider) => this.getProviderLabel(provider),
       stickToBottom,
     });

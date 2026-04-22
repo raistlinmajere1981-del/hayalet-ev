@@ -3,6 +3,7 @@ import { AppState } from "../app-state.js";
 import { isDefaultPage } from "../webview/methods/shared/url-utils.js";
 import { Logger } from "../logger/index.js";
 import { LogCategory, LogLevel } from "@shared/index.js";
+import type { BaseProviderConfig } from "@shared/provider.js";
 
 interface LoadingConfig {
   loading: {
@@ -80,10 +81,7 @@ export class LoadingTracker {
 
     const providerId = AppState.getProviderIdForSlot(provider) ?? "";
     const cfg = providerId.length > 0 ? ProviderRegistry.get(providerId) : null;
-    const cfgWithSelectors = cfg as {
-      scrollerSelectors?: string[];
-      contentContainers?: string[];
-    } | null;
+    const cfgWithSelectors = cfg as BaseProviderConfig | null;
     const scrollerSelectors = cfgWithSelectors?.scrollerSelectors ?? [
       "div.flex.h-full.flex-col.overflow-y-auto",
       "main div.overflow-y-auto",

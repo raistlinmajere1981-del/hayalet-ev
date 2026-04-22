@@ -1,3 +1,4 @@
+import type { WebviewTag } from "electron";
 import { GHOST_TIMEOUTS } from "@timeouts";
 import { buildGhostProviderFramePlan } from "./ghost-frame.js";
 import { evaluateGhostLoadingReadiness } from "./loading-readiness.js";
@@ -21,25 +22,6 @@ type LaunchTarget = {
   details: string;
 };
 
-type ServerStatusResponse = {
-  success: boolean;
-  server?: GhostProviderServerState;
-  error?: string;
-};
-
-type ServerConnectResponse = {
-  success: boolean;
-  target?: LaunchTarget;
-  server?: GhostProviderServerState;
-  error?: string;
-};
-
-type ServerStopResponse = {
-  success: boolean;
-  server?: GhostProviderServerState;
-  error?: string;
-};
-
 type OverlayState = "connecting" | "error" | "hidden";
 
 type ProviderReadyResult = {
@@ -50,11 +32,6 @@ type ProviderReadyResult = {
 interface GhostDidFailLoadEvent extends Event {
   errorCode?: number;
   errorDescription?: string;
-}
-
-interface GhostWebviewElement extends HTMLElement {
-  isLoading?: () => boolean;
-  getURL?: () => string;
 }
 
 const PROVIDER_READY_TIMEOUT_MS = GHOST_TIMEOUTS.PROVIDER_READY;
@@ -75,7 +52,7 @@ const loadingOverlay = document.getElementById("ghost-loading-overlay");
 const ghostCloseBtn = document.getElementById("ghost-close-btn") as HTMLButtonElement | null;
 const ghostReturnBtn = document.getElementById("ghost-return-btn") as HTMLButtonElement | null;
 const providerFrame = document.getElementById("provider-frame");
-const providerView = document.getElementById("ghost-provider-view") as GhostWebviewElement | null;
+const providerView = document.getElementById("ghost-provider-view") as WebviewTag | null;
 
 let exitActionInFlight = false;
 let providerOperationInFlight = false;
@@ -169,7 +146,7 @@ async function waitForProviderReady(
 
       providerView.removeEventListener("dom-ready", onReady);
       providerView.removeEventListener("did-stop-loading", onReady);
-      providerView.removeEventListener("did-fail-load", onFail as EventListener);
+      providerView.removeEventListener("did-fail-load", onFail);
       resolve(result);
     };
 
@@ -217,7 +194,7 @@ async function waitForProviderReady(
 
     providerView.addEventListener("dom-ready", onReady);
     providerView.addEventListener("did-stop-loading", onReady);
-    providerView.addEventListener("did-fail-load", onFail as EventListener);
+    providerView.addEventListener("did-fail-load", onFail);
 
     pollTimerId = window.setInterval(runProbe, PROVIDER_READY_POLL_INTERVAL_MS);
     runProbe();
@@ -337,7 +314,7 @@ async function refreshProviderStatus(): Promise<void> {
   }
 
   try {
-    const response = (await api.ghostServerStatus()) as ServerStatusResponse;
+    const response = await api.ghostServerStatus();
     if (response.success !== true) {
       setProviderMetaText(`opencode | status failed: ${response.error ?? "unknown"}`);
       return;
@@ -366,9 +343,9 @@ async function connectProvider(autoStart = true): Promise<void> {
   );
 
   try {
-    const response = (await api.ghostServerConnect({
+    const response = await api.ghostServerConnect({
       autoStart,
-    })) as ServerConnectResponse;
+    });
     if (response.success !== true || response.target === undefined) {
       setStatus("Server baglantisi basarisiz", response.error ?? "Bilinmeyen hata", "error");
       await refreshProviderStatus();
@@ -420,7 +397,7 @@ async function stopProvider(): Promise<void> {
   setStatus("OpenCode baglantisi kesiliyor", "Sunucu durdurma istegi gonderiliyor.");
 
   try {
-    const response = (await api.ghostServerStop()) as ServerStopResponse;
+    const response = await api.ghostServerStop();
     if (response.success !== true) {
       setStatus("Server durdurma basarisiz", response.error ?? "Bilinmeyen hata", "error");
       return;

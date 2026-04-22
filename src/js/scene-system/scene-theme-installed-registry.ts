@@ -1,6 +1,13 @@
 import type { SceneThemeRegistration } from "./scene-theme-registry-contract.js";
 
 type SceneThemeRegistryListener = () => void;
+type SceneThemeElectronApi = {
+  sceneThemesListInstalled?: () => Promise<{
+    success: boolean;
+    themes?: SceneThemeRegistration[];
+    error?: string;
+  }>;
+};
 
 const sceneThemeRegistryListeners = new Set<SceneThemeRegistryListener>();
 
@@ -52,15 +59,7 @@ export async function syncInstalledSceneThemeRegistrationsFromElectron(): Promis
     return [];
   }
 
-  const electronApi = window as typeof window & {
-    electronAPI?: {
-      sceneThemesListInstalled?: () => Promise<{
-        success: boolean;
-        themes?: SceneThemeRegistration[];
-        error?: string;
-      }>;
-    };
-  };
+  const electronApi = window as Window & { electronAPI?: SceneThemeElectronApi };
   const listInstalledThemes = electronApi.electronAPI?.sceneThemesListInstalled;
   if (typeof listInstalledThemes !== "function") {
     clearInstalledSceneThemeRegistrations();

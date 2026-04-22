@@ -105,7 +105,7 @@ function roomHostT(key: string, params?: Record<string, string | number>): strin
 
 function toHostExports(result: unknown): RoomHostExports {
   if (result !== null && typeof result === "object" && Array.isArray(result) === false) {
-    return result as RoomHostExports;
+    return result;
   }
   return {};
 }
@@ -141,7 +141,7 @@ class RoomHostRuntimeClass {
   constructor() {
     window.addEventListener(
       EXPECTED_COMMAND_CAPTURE_FAILURE_EVENT,
-      this.handleExpectedCommandCaptureFailureEvent as EventListener
+      this.handleExpectedCommandCaptureFailureEvent
     );
   }
 
@@ -346,15 +346,13 @@ class RoomHostRuntimeClass {
     let hostModuleCleanup: (() => void) | null = null;
 
     try {
-      let exported: RoomHostFactory | null = null;
+      let exported: unknown = null;
 
       try {
         const moduleUrl = new URL(toRoomRuntimeFileUrl(registration.room.hostEntryPath));
         moduleUrl.searchParams.set("roomHostId", registration.room.id);
         moduleUrl.searchParams.set("roomHostUpdatedAt", registration.room.updatedAt);
-        exported = (await import(
-          /* @vite-ignore */ moduleUrl.toString()
-        )) as unknown as RoomHostFactory;
+        exported = await import(/* @vite-ignore */ moduleUrl.toString());
       } catch {
         if (typeof readFile !== "function") {
           return false;
@@ -372,16 +370,14 @@ class RoomHostRuntimeClass {
               readRoomHostModuleSource
             );
             hostModuleCleanup = blobModule.dispose;
-            exported = (await import(
-              /* @vite-ignore */ blobModule.moduleUrl
-            )) as unknown as RoomHostFactory;
+            exported = await import(/* @vite-ignore */ blobModule.moduleUrl);
           } catch {
             const moduleUrl = await buildRoomHostModuleDataUrl(
               registration.room.hostEntryPath,
               readRoomHostModuleSource,
               { inlineDependencies: true }
             );
-            exported = (await import(/* @vite-ignore */ moduleUrl)) as unknown as RoomHostFactory;
+            exported = await import(/* @vite-ignore */ moduleUrl);
           }
         } catch {
           const source = await readFile(registration.room.hostEntryPath);
