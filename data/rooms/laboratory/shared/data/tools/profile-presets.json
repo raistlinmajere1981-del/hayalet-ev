@@ -3,7 +3,7 @@
   "defaultMode": "beginner",
   "defaultDepth": "balanced",
   "defaultSensitivity": 0.58,
-  "defaultModelId": "tiny.en",
+  "defaultModelId": "tiny",
   "lanes": {
     "metadata-lineage": {
       "labelKey": "mediaAnalysis.profile.lanes.metadata-lineage.title",

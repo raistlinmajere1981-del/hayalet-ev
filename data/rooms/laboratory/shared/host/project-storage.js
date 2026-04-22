@@ -118,6 +118,9 @@ export function createLaboratoryProjectStorageRuntime(deps) {
     const models = toRecord(storedRecord["models"]);
     const catalogModels = toRecord(toProfileModelCatalog(runtime.profileModels).models);
     const nextState = {
+      activeLanguage: asNonEmptyString(storedRecord["activeLanguage"]),
+      activeModelId: asNonEmptyString(storedRecord["activeModelId"]),
+      activeVariant: asNonEmptyString(storedRecord["activeVariant"]),
       schemaVersion: 1,
       updatedAt: asNonEmptyString(storedRecord["updatedAt"]),
       models: {}

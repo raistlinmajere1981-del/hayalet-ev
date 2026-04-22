@@ -247,7 +247,7 @@
     "settings": {
       "eyebrow": "Tool Room",
       "title": "Media Analyzer Settings",
-      "subtitle": "Probe, install, update, and review the room-local capture, edit, and profiling tools.",
+      "subtitle": "Probe and review room-local capture, edit, and profiling tools. Central transcript runtime ownership stays in Settings.",
       "refreshAction": "Refresh Tools",
       "bulkUpdateAction": "Update Modules",
       "closeAction": "Close",
@@ -738,8 +738,8 @@
         "optionalTools": "Optional analyzers",
         "mediaKinds": "Media support",
         "incompatible": "Not available for the current media type.",
-        "speechToolMissing": "Install Whisper.cpp to unlock transcript-aware speech sampling.",
-        "speechModelMissing": "Install a transcript model to unlock the deeper speech lane."
+        "speechToolMissing": "Prepare the Settings transcript runtime to unlock transcript-aware speech sampling.",
+        "speechModelMissing": "Install the active transcript model from Settings to unlock the deeper speech lane."
       },
       "artifactControlsTitle": "Artifact Preferences",
       "artifactControlsSubtitle": "Choose which lightweight evidence files the preflight should generate.",
@@ -811,9 +811,9 @@
         "high": "High"
       },
       "modelTitle": "Transcript Models",
-      "modelSubtitle": "Optional Whisper.cpp models help the room sample speech continuity and overdub clues.",
-      "modelUnavailable": "Install the room-local Whisper.cpp binary first to manage transcript models on this platform.",
-      "modelVerificationHint": "After host setup, refresh Module Management, confirm Whisper.cpp is ready, then retry the model install.",
+      "modelSubtitle": "Transcript sampling now follows the central Settings runtime instead of room-local model ownership.",
+      "modelUnavailable": "Manage transcript runtime and model installation from Settings > User > Speech Runtime.",
+      "modelVerificationHint": "After preparing the runtime in Settings, refresh Module Management here to re-probe the shared status.",
       "modelActions": {
         "install": "Install Model",
         "remove": "Remove Model"
@@ -900,12 +900,20 @@
       },
       "models": {
         "tiny": {
+          "multilingual": {
+            "title": "Tiny Multilingual",
+            "summary": "Fast multilingual transcript model for Turkish-heavy or mixed-language checks."
+          },
           "en": {
             "title": "Tiny English",
             "summary": "Smallest transcript model. Fastest option for a lightweight speech sanity check."
           }
         },
         "base": {
+          "multilingual": {
+            "title": "Base Multilingual",
+            "summary": "Larger multilingual transcript model for denser dialogue, accents, and room tone."
+          },
           "en": {
             "title": "Base English",
             "summary": "Heavier transcript model with better recall for difficult dialogue and room tone."
@@ -1068,12 +1076,12 @@
       "dummyHint": "Audio Analysis shares the same room-local tools and settings overlay as Media Analysis. Implemented modules run live while planned modules stay clearly marked.",
       "toolingEyebrow": "Shared Tool Room",
       "toolingTitle": "Same tool workflow, audio-first surface",
-      "toolingBody": "Tool installs, updates, and model readiness are managed from the same room-local registry used by Media Analysis."
+      "toolingBody": "Tool installs and updates stay room-local here, but transcript runtime and model readiness are managed from the main Settings panel."
     },
     "settings": {
       "eyebrow": "Tool Room",
       "title": "Audio Analysis Settings",
-      "subtitle": "This feature reuses the same room-local install, update, and model workflow as Media Analysis.",
+      "subtitle": "This feature reuses the same room-local tooling flow as Media Analysis, while transcript runtime ownership stays in Settings.",
       "currentStageTitle": "Current stage tools",
       "providersEyebrow": "Provider Readiness",
       "providersTitle": "Audio provider dashboard",
@@ -1216,7 +1224,7 @@
         },
         "transcription": {
           "title": "Transcript",
-          "summary": "Optional transcript capture reuses the existing Whisper.cpp install and model flow."
+          "summary": "Optional transcript capture reuses the central Settings-owned Whisper.cpp runtime and active model."
         },
         "speaker-diarization": {
           "title": "Speaker timeline",
@@ -1263,7 +1271,7 @@
       },
       "whisper-transcript": {
         "title": "Whisper transcript runner",
-        "summary": "Shared room-local binary and model path for transcript-aware passes."
+        "summary": "Shared central transcript runtime projection for transcript-aware passes."
       },
       "speaker-timeline": {
         "title": "Speaker timeline adapter",

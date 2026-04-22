@@ -8,12 +8,9 @@ export function createMediaProfileActionRuntime(deps) {
     createEmptyProfilePreflight,
     findProfilePreset,
     getActiveProject,
-    getProfileModelDescriptorMap,
-    installProfileModel,
     markProfileAsStale,
     normalizeProfileArtifactPreferences,
     patchActiveProject,
-    removeProfileModel,
     runProfilePreflight,
     toRecord
   } = deps;
@@ -111,17 +108,9 @@ export function createMediaProfileActionRuntime(deps) {
     });
   }
   async function setProfileModel(runtime, actionPayload) {
-    return patchActiveProject(runtime, function(nextProject) {
-      const requestedModelId = asNonEmptyString(actionPayload["modelId"]);
-      if (requestedModelId !== null && toRecord(getProfileModelDescriptorMap(runtime)[requestedModelId])["fileName"] === void 0) {
-        throw new Error("Requested speech model is unavailable.");
-      }
-      nextProject["profile"]["modelId"] = requestedModelId;
-      nextProject["profile"]["lastError"] = null;
-      nextProject["profile"]["lastActionAt"] = (/* @__PURE__ */ new Date()).toISOString();
-      markProfileAsStale(nextProject, "Speech model selection changed; rerun the preflight.");
-      return nextProject;
-    });
+    void runtime;
+    void actionPayload;
+    throw new Error("Transcript model selection moved to Settings > User > Speech Runtime.");
   }
   async function runProfile(api, runtime, requestId) {
     return runProfilePreflight(api, runtime, requestId);
@@ -157,10 +146,17 @@ export function createMediaProfileActionRuntime(deps) {
     });
   }
   async function installProfile(api, runtime, requestId, actionPayload) {
-    return installProfileModel(api, runtime, requestId, asNonEmptyString(actionPayload["modelId"]));
+    void api;
+    void runtime;
+    void requestId;
+    void actionPayload;
+    throw new Error("Transcript model installs moved to Settings > User > Speech Runtime.");
   }
   async function removeProfile(runtime, requestId, actionPayload) {
-    return removeProfileModel(runtime, requestId, asNonEmptyString(actionPayload["modelId"]));
+    void runtime;
+    void requestId;
+    void actionPayload;
+    throw new Error("Transcript model removal moved to Settings > User > Speech Runtime.");
   }
   return {
     applyProfilePreset,

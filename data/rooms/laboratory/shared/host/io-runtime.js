@@ -66,6 +66,33 @@ export function createLaboratoryHostIoRuntime(deps) {
       requestId
     });
   }
+  async function readSharedTranscriptStatus() {
+    const result = await callRoomTools({
+      operation: "transcript-status",
+      roomId
+    });
+    return result["transcriptStatus"];
+  }
+  async function listSharedTranscriptModels() {
+    const result = await callRoomTools({
+      operation: "transcript-list-models",
+      roomId
+    });
+    const transcriptModels = result["transcriptModels"];
+    if (!Array.isArray(transcriptModels)) {
+      return [];
+    }
+    const models = transcriptModels;
+    return models;
+  }
+  async function transcribeManagedAudioFile(payload) {
+    const result = await callRoomTools({
+      operation: "transcript-transcribe-file",
+      roomId,
+      ...payload
+    });
+    return result["transcription"];
+  }
   return {
     callRoomTools,
     cancelRoomTool,
@@ -74,9 +101,12 @@ export function createLaboratoryHostIoRuntime(deps) {
     ensureRuntimeDirectory,
     getElectronApi,
     listDirectory,
+    listSharedTranscriptModels,
     readBinaryFileBytes,
     readJsonFile,
+    readSharedTranscriptStatus,
     readTextFile,
+    transcribeManagedAudioFile,
     writeJsonFile,
     writeTextFile
   };

@@ -30,10 +30,16 @@ export function createLaboratoryToolMutationRuntime(deps) {
       toolId
     };
   }
+  function assertRoomManagedTool(toolId) {
+    if (toolId === "whisper.cpp") {
+      throw new Error("Whisper.cpp lifecycle moved to Settings > User > Speech Runtime.");
+    }
+  }
   async function checkToolUpdates(api, runtime, requestId, toolId, featureStage) {
     if (getRuntimeToolIds(runtime).includes(toolId) === false) {
       throw new Error(`Unsupported tool: ${toolId}`);
     }
+    assertRoomManagedTool(toolId);
     const currentEntry = getToolEntry(runtime, toolId);
     if (currentEntry.busy === true) {
       throw new Error(`Tool operation already running: ${toolId}`);
@@ -123,6 +129,7 @@ export function createLaboratoryToolMutationRuntime(deps) {
     if (getRuntimeToolIds(runtime).includes(toolId) === false) {
       throw new Error(`Unsupported tool: ${toolId}`);
     }
+    assertRoomManagedTool(toolId);
     if (getToolEntry(runtime, toolId).busy === true) {
       throw new Error(`Tool operation already running: ${toolId}`);
     }
@@ -212,7 +219,7 @@ export function createLaboratoryToolMutationRuntime(deps) {
       throw new Error("A tool operation is already running.");
     }
     const installedToolIds = getRuntimeToolIds(runtime).filter(function(toolId) {
-      return getToolEntry(runtime, toolId).installed === true;
+      return toolId !== "whisper.cpp" && getToolEntry(runtime, toolId).installed === true;
     });
     const failedToolIds = [];
     for (let index = 0; index < installedToolIds.length; index += 1) {

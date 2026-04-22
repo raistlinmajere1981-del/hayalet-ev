@@ -206,6 +206,9 @@ export function createLaboratoryRuntimeBootstrap(deps) {
       activeProjectId: null,
       toolState: createDefaultToolState([]),
       profileModelState: {
+        activeLanguage: null,
+        activeModelId: null,
+        activeVariant: null,
         schemaVersion: 1,
         updatedAt: null,
         models: {}

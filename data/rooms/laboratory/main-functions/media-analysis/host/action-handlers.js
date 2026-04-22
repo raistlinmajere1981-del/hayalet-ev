@@ -39,12 +39,9 @@ export function createMediaActionRuntime(deps) {
     createEmptyProfilePreflight: deps.createEmptyProfilePreflight,
     findProfilePreset: deps.findProfilePreset,
     getActiveProject: deps.getActiveProject,
-    getProfileModelDescriptorMap: deps.getProfileModelDescriptorMap,
-    installProfileModel: deps.installProfileModel,
     markProfileAsStale: deps.markProfileAsStale,
     normalizeProfileArtifactPreferences: deps.normalizeProfileArtifactPreferences,
     patchActiveProject: deps.patchActiveProject,
-    removeProfileModel: deps.removeProfileModel,
     runProfilePreflight: deps.runProfilePreflight,
     toRecord: deps.toRecord
   });

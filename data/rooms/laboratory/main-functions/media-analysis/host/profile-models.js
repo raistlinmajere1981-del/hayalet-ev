@@ -2,31 +2,17 @@ export function createMediaProfileModelRuntime(deps) {
   const {
     asNonEmptyString,
     asNumber,
-    callRoomTools,
-    clearJob,
     createDefaultProfileModelEntry,
-    digestSha1,
-    ensureRuntimeDirectory,
-    getActiveProject,
     getProfileModelDescriptor,
     getProfileModelDescriptorMap,
-    getProfileModelsDir,
     getStageSupport,
     getToolManifest,
-    listDirectory,
+    listSharedTranscriptModels,
     persistProfileModelState,
-    pushJobState,
-    readBinaryFileBytes,
-    refreshProfileModelState,
-    registerJob,
-    roomId,
+    readSharedTranscriptStatus,
     toRecord,
-    updateProfileModelBusy,
     updateProfileModelEntry
   } = deps;
-  function toProjectProfileRecord(value) {
-    return toRecord(value);
-  }
   function toProjectSourceRecord(value) {
     return toRecord(value);
   }
@@ -48,7 +34,7 @@ export function createMediaProfileModelRuntime(deps) {
   function toRuntimeCompatibilityRecord(value) {
     return toRecord(value);
   }
-  function toDirectoryEntryRecord(value) {
+  function toSharedTranscriptModelStatusRecord(value) {
     return toRecord(value);
   }
   function getToolMap(runtime) {
@@ -63,8 +49,18 @@ export function createMediaProfileModelRuntime(deps) {
   function getProfileModelDescriptorRecord(runtime, modelId) {
     return toProfileModelDescriptorRecord(getProfileModelDescriptor(runtime, modelId));
   }
-  function getProjectId(project) {
-    return project ? asNonEmptyString(project.id) : null;
+  function getSharedTranscriptModelMap(entries) {
+    if (!Array.isArray(entries)) {
+      return {};
+    }
+    return entries.reduce(function(accumulator, entry) {
+      const model = toSharedTranscriptModelStatusRecord(entry);
+      const modelId = asNonEmptyString(model.modelId);
+      if (modelId !== null) {
+        accumulator[modelId] = model;
+      }
+      return accumulator;
+    }, {});
   }
   function toStringArray(value) {
     if (!Array.isArray(value)) {
@@ -139,9 +135,10 @@ export function createMediaProfileModelRuntime(deps) {
   }
   function buildProfileModelSummary(runtime, project) {
     const source = toProjectSourceRecord(project.source);
-    const profile = toProjectProfileRecord(project.profile);
     const sourceKind = asNonEmptyString(source.kind) || "video";
-    const selectedModelId = asNonEmptyString(profile.modelId);
+    const selectedModelId = asNonEmptyString(
+      toProfileModelStateRecord(runtime.profileModelState).activeModelId
+    );
     const whisperManifest = getToolManifest(runtime, "whisper.cpp");
     const whisperSupport = getStageSupport(whisperManifest, "profile");
     const whisperSummary = buildProfileToolSummary(runtime, "whisper.cpp", whisperSupport);
@@ -191,207 +188,80 @@ export function createMediaProfileModelRuntime(deps) {
     });
   }
   async function verifyProfileModel(runtime, modelId) {
+    const sharedModelMap = getSharedTranscriptModelMap(await listSharedTranscriptModels());
+    const sharedModel = toSharedTranscriptModelStatusRecord(sharedModelMap[modelId]);
     const descriptor = getProfileModelDescriptorRecord(runtime, modelId);
-    const storedModel = toProfileModelEntryRecord(getProfileModelStateMap(runtime)[modelId]);
-    const fileName = asNonEmptyString(descriptor.fileName);
-    const filePath = asNonEmptyString(storedModel.path) || (fileName ? `${getProfileModelsDir(runtime)}/${fileName}` : null);
-    if (filePath === null) {
-      throw new Error(`Profile model ${modelId} is missing its storage path.`);
-    }
-    const bytes = await readBinaryFileBytes(filePath);
-    if (!(bytes instanceof Uint8Array)) {
-      throw new Error(`Could not read the profile model file: ${filePath}`);
-    }
-    const checksumSha1 = await digestSha1(bytes);
-    const sizeBytes = bytes.byteLength;
-    const expectedSha1 = asNonEmptyString(descriptor.expectedSha1);
-    const expectedBytes = asNumber(descriptor.expectedBytes);
-    const checksumValid = (expectedSha1 === null || expectedSha1 === checksumSha1) && (expectedBytes === null || expectedBytes === sizeBytes);
+    const fileName = asNonEmptyString(sharedModel.fileName) || asNonEmptyString(descriptor.fileName);
+    const filePath = asNonEmptyString(sharedModel.path);
+    const checksumValid = sharedModel.checksumValid === true;
     const nextEntry = updateProfileModelEntry(runtime, modelId, {
-      checksumSha1,
+      checksumSha1: null,
       checksumValid,
-      expectedBytes,
-      expectedSha1,
+      expectedBytes: asNumber(sharedModel.expectedBytes) ?? asNumber(descriptor.expectedBytes),
+      expectedSha1: asNonEmptyString(sharedModel.expectedSha1) ?? asNonEmptyString(descriptor.expectedSha1),
       fileName,
-      installed: true,
-      lastError: checksumValid ? null : "Downloaded model failed checksum verification.",
+      installed: sharedModel.installed === true,
+      lastError: asNonEmptyString(sharedModel.lastError) || (checksumValid ? null : "Downloaded model failed checksum verification."),
       lastVerifiedAt: (/* @__PURE__ */ new Date()).toISOString(),
       path: filePath,
-      sizeBytes
+      sizeBytes: asNumber(sharedModel.sizeBytes)
     });
     await persistProfileModelState(runtime);
+    if (nextEntry.installed !== true) {
+      throw new Error(`Profile model ${modelId} is not installed on the shared transcript runtime.`);
+    }
     if (checksumValid !== true) {
       throw new Error("Downloaded model failed checksum verification.");
     }
     return nextEntry;
   }
   async function installProfileModel(api, runtime, requestId, modelId) {
-    const descriptor = getProfileModelDescriptorRecord(runtime, modelId);
-    const downloadUrl = asNonEmptyString(descriptor.downloadUrl);
-    const fileName = asNonEmptyString(descriptor.fileName);
-    if (downloadUrl === null || fileName === null) {
-      throw new Error(`Profile model descriptor is incomplete for ${modelId}.`);
-    }
-    const whisperSummary = buildProfileToolSummary(
-      runtime,
-      "whisper.cpp",
-      getStageSupport(getToolManifest(runtime, "whisper.cpp"), "profile")
-    );
-    if (whisperSummary.platformSupported !== true) {
-      throw new Error("Whisper.cpp is not supported on this platform.");
-    }
-    if (whisperSummary.installed !== true) {
-      throw new Error("Install Whisper.cpp before downloading speech models.");
-    }
-    const compatibility = evaluateProfileModelCompatibility(runtime, descriptor, whisperSummary);
-    if (compatibility.runtimeCompatible !== true) {
-      throw new Error(
-        compatibility.compatibilityReason || "This model is not compatible with the current runtime."
-      );
-    }
-    const project = getActiveProject(runtime);
-    const projectId = getProjectId(project);
-    const jobId = `room-profile-model-${modelId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const modelsDir = getProfileModelsDir(runtime);
-    const targetPath = `${modelsDir}/${fileName}`;
-    await ensureRuntimeDirectory(modelsDir, requestId);
-    updateProfileModelBusy(runtime, modelId, true, null);
-    await persistProfileModelState(runtime);
-    registerJob(runtime, {
-      action: "profile-model-install",
-      featureStage: "profile",
-      jobId,
-      projectId,
-      requestId,
-      toolId: "whisper.cpp"
-    });
-    pushJobState(api, {
-      action: "profile-model-install",
-      featureStage: "profile",
-      jobId,
-      message: fileName,
-      projectId,
-      requestId,
-      stage: "queued",
-      toolId: "whisper.cpp"
-    });
-    try {
-      await callRoomTools({
-        destinationPath: targetPath,
-        jobId,
-        operation: "download-file",
-        overwrite: true,
-        requestId,
-        roomId,
-        url: downloadUrl
-      });
-      await refreshProfileModelState(runtime);
-      const verifiedModel = await verifyProfileModel(runtime, modelId);
-      updateProfileModelBusy(runtime, modelId, false, null);
-      await persistProfileModelState(runtime);
-      pushJobState(api, {
-        action: "profile-model-install",
-        featureStage: "profile",
-        jobId,
-        message: asNonEmptyString(verifiedModel.fileName) || modelId,
-        percent: 100,
-        projectId,
-        requestId,
-        stage: "completed",
-        toolId: "whisper.cpp"
-      });
-      return verifiedModel;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      updateProfileModelBusy(runtime, modelId, false, message);
-      await persistProfileModelState(runtime);
-      try {
-        await callRoomTools({
-          operation: "delete-path",
-          recursive: false,
-          requestId,
-          roomId,
-          targetPath
-        });
-      } catch (_cleanupError) {
-      }
-      pushJobState(api, {
-        action: "profile-model-install",
-        featureStage: "profile",
-        jobId,
-        message,
-        projectId,
-        requestId,
-        stage: "failed",
-        toolId: "whisper.cpp"
-      });
-      throw error;
-    } finally {
-      clearJob(runtime, jobId);
-      await refreshProfileModelState(runtime);
-    }
+    void api;
+    void runtime;
+    void requestId;
+    void modelId;
+    throw new Error("Transcript model installs moved to Settings > User > Speech Runtime.");
   }
   async function removeProfileModel(runtime, requestId, modelId) {
-    const modelState = toProfileModelEntryRecord(getProfileModelStateMap(runtime)[modelId]);
-    const descriptor = getProfileModelDescriptorRecord(runtime, modelId);
-    const descriptorFileName = asNonEmptyString(descriptor.fileName);
-    const targetPath = asNonEmptyString(modelState.path) || (descriptorFileName ? `${getProfileModelsDir(runtime)}/${descriptorFileName}` : null);
-    if (targetPath !== null) {
-      await callRoomTools({
-        operation: "delete-path",
-        recursive: false,
-        requestId,
-        roomId,
-        targetPath
-      });
-    }
-    updateProfileModelEntry(runtime, modelId, {
-      checksumSha1: null,
-      checksumValid: false,
-      installed: false,
-      lastError: null,
-      lastVerifiedAt: null,
-      path: targetPath,
-      sizeBytes: null
-    });
-    await refreshProfileModelState(runtime);
-    await persistProfileModelState(runtime);
+    void runtime;
+    void requestId;
+    void modelId;
+    throw new Error("Transcript model removal moved to Settings > User > Speech Runtime.");
   }
   async function refreshProfileModelStateWithStorage(runtime) {
-    const modelDir = getProfileModelsDir(runtime);
-    try {
-      await ensureRuntimeDirectory(modelDir, null);
-    } catch (_error) {
-    }
-    const directoryEntries = (await listDirectory(modelDir)).map(toDirectoryEntryRecord);
+    const sharedStatusMap = getSharedTranscriptModelMap(await listSharedTranscriptModels());
+    const sharedStatus = toRecord(await readSharedTranscriptStatus());
     const currentState = toProfileModelStateRecord(runtime.profileModelState);
     const storedModels = getProfileModelStateMap(runtime);
     const nextModels = {};
     Object.keys(getProfileModelDescriptorMap(runtime)).forEach(function(modelId) {
       const descriptor = getProfileModelDescriptorRecord(runtime, modelId);
-      const fileName = asNonEmptyString(descriptor.fileName);
       const current = toProfileModelEntryRecord(storedModels[modelId]);
-      const fileEntry = fileName === null ? null : directoryEntries.find(function(entry) {
-        return entry.isDirectory !== true && asNonEmptyString(entry.name) === fileName;
-      }) || null;
+      const sharedModel = toSharedTranscriptModelStatusRecord(sharedStatusMap[modelId]);
+      const fileName = asNonEmptyString(sharedModel.fileName) || asNonEmptyString(descriptor.fileName);
+      const installed = sharedModel.installed === true;
+      const lastError = asNonEmptyString(sharedModel.lastError);
       nextModels[modelId] = {
         ...createDefaultProfileModelEntry(modelId),
         ...current,
         busy: false,
-        checksumSha1: fileEntry ? asNonEmptyString(current.checksumSha1) : null,
-        checksumValid: fileEntry ? current.checksumValid === true : false,
-        expectedBytes: asNumber(descriptor.expectedBytes),
-        expectedSha1: asNonEmptyString(descriptor.expectedSha1),
+        checksumSha1: installed ? asNonEmptyString(current.checksumSha1) : null,
+        checksumValid: installed && sharedModel.checksumValid === true,
+        expectedBytes: asNumber(sharedModel.expectedBytes) ?? asNumber(descriptor.expectedBytes),
+        expectedSha1: asNonEmptyString(sharedModel.expectedSha1) ?? asNonEmptyString(descriptor.expectedSha1),
         fileName,
-        installed: Boolean(fileEntry),
-        lastError: fileEntry ? asNonEmptyString(current.lastError) : null,
-        lastVerifiedAt: fileEntry ? asNonEmptyString(current.lastVerifiedAt) : null,
+        installed,
+        lastError: installed ? lastError : null,
+        lastVerifiedAt: installed ? asNonEmptyString(current.lastVerifiedAt) : null,
         modelId,
-        path: fileEntry ? asNonEmptyString(fileEntry.path) : fileName ? `${modelDir}/${fileName}` : null,
-        sizeBytes: fileEntry ? asNumber(current.sizeBytes) : null
+        path: installed ? asNonEmptyString(sharedModel.path) : null,
+        sizeBytes: installed ? asNumber(sharedModel.sizeBytes) : null
       };
     });
     runtime.profileModelState = {
+      activeLanguage: asNonEmptyString(sharedStatus["activeLanguage"]),
+      activeModelId: asNonEmptyString(sharedStatus["modelId"]),
+      activeVariant: asNonEmptyString(sharedStatus["activeVariant"]),
       models: nextModels,
       schemaVersion: 1,
       updatedAt: currentState.updatedAt

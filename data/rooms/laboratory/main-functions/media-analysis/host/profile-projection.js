@@ -198,12 +198,14 @@ export function createMediaProfileProjectionRuntime(deps) {
         const whisperSummary = optionalToolMap["whisper.cpp"] || null;
         if (!whisperSummary || whisperSummary.ready !== true) {
           laneWarnings.push(
-            "Speech transcript sampling is unavailable until Whisper.cpp is ready."
+            "Speech transcript sampling is unavailable until the central Settings transcript runtime is ready."
           );
         } else if (selectedModel && selectedModel.runtimeCompatible === false && asNonEmptyString(selectedModel.compatibilityReason)) {
           laneWarnings.push(asNonEmptyString(selectedModel.compatibilityReason) || "");
         } else if (selectedModel === null || selectedModel.ready !== true) {
-          laneWarnings.push("Install and verify a Whisper model to unlock transcript sampling.");
+          laneWarnings.push(
+            "Install and verify the active transcript model from Settings to unlock transcript sampling."
+          );
         }
       }
       warnings.push(...laneWarnings);
