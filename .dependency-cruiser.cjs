@@ -24,6 +24,7 @@ module.exports = {
           "src/js/modules/webview/providers/shared/scraper-helpers\.ts$", // intentionally not imported (reference copy pattern)
           "src/types/us1-mail\.ts$", // type-only shared contract (depcruise treats as orphan)
           "src/types/transcript\.ts$", // type-only transcript contract consumed across electron/preload boundaries
+          "src/types/capture\.ts$", // type-only capture contract consumed across electron/preload boundaries
           "src/types/room-tools\.ts$", // shared room-tool IPC contract imported across preload/electron type edges
           "src/types/room-manifest-types\.ts$", // type-only room manifest contract consumed through `import type`
           "src/types/room-installed-types\.ts$", // type-only installed-room contract consumed through `import type`

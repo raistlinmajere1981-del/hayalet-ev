@@ -9,6 +9,8 @@
     <string name="status_permissions_required">Camera and microphone permissions are required</string>
     <string name="preview_label">Preview mode</string>
     <string name="preview_on_phone">Live preview stays on this phone</string>
+    <string name="preview_waiting_title">Preview waits for Analyze</string>
+    <string name="preview_waiting_body">Open the phone session from Analyze to start the camera preview and Android dictate on this device.</string>
     <string name="target_label">Active target</string>
     <string name="target_waiting">Waiting for desktop target</string>
     <string name="permissions_label">Permissions</string>

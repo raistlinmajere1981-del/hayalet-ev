@@ -118,9 +118,15 @@
           "preparingMessage": "Preparing the local voice transcription runtime.",
           "emptyResultMessage": "The voice transcript came back empty.",
           "insertedMessage": "The transcript was inserted into the text field.",
+          "androidToggleLabel": "Android dictate",
+          "androidIdleTitle": "Start dictation through the connected Android device",
+          "androidPreparingMessage": "Android dictate is preparing on the phone. Keep the companion app open and speak into the device.",
+          "androidListeningMessage": "Android dictate is active on the phone. You can speak into the connected device now.",
+          "androidUnavailableTitle": "Choose a ready phone and keep the Android speech bridge enabled in Settings > Capture before using Android dictate.",
           "disabledTitle": "Local Whisper dictation is disabled in Settings > Capture.",
           "captureError": "Could not start the microphone: {{message}}",
-          "transcriptionError": "Could not transcribe the audio: {{message}}"
+          "transcriptionError": "Could not transcribe the audio: {{message}}",
+          "androidError": "Android dictate could not be prepared: {{message}}"
         },
         "captureImport": {
           "empty": "No phone captures are waiting in the central analyze inbox.",
@@ -5008,27 +5014,27 @@
           "none": "Silent"
         }
       },
-  "policy": {
-    "title": "Android Speech Policy",
-    "subtitle": "Control the phone-side speech path and the command phrases that the companion normalizes locally.",
-    "fallbackMode": "Fallback strategy",
-    "providers": {
-      "localWhisper": "Enable local Whisper dictation",
-      "androidCompanion": "Enable Android companion capture",
-      "androidSpeech": "Enable Android speech bridge"
-    },
-    "commands": {
-      "openCamera": "Open session phrases",
-      "capture": "Capture phrases",
-      "retake": "Retake phrases",
-      "attach": "Attach phrases",
-      "stop": "Stop phrases"
-    },
-    "hint": "Phrase inputs are comma-separated and are passed to the companion app when Analyze starts a phone session.",
-    "fallbackOptions": {
-      "system": "Fallback to system recognizer",
-      "voskSeam": "Reserve Vosk fallback seam"
-    }
+      "policy": {
+        "title": "Android Speech Policy",
+        "subtitle": "Control the phone-side speech path and the command phrases that the companion normalizes locally.",
+        "fallbackMode": "Fallback strategy",
+        "providers": {
+          "localWhisper": "Enable local Whisper dictation",
+          "androidCompanion": "Enable Android companion capture",
+          "androidSpeech": "Enable Android speech bridge"
+        },
+        "commands": {
+          "openCamera": "Open session phrases",
+          "capture": "Capture phrases",
+          "retake": "Retake phrases",
+          "attach": "Attach phrases",
+          "stop": "Stop phrases"
+        },
+        "hint": "Phrase inputs are comma-separated and are passed to the companion app when Analyze starts a phone session.",
+        "fallbackOptions": {
+          "system": "Fallback to system recognizer",
+          "voskSeam": "Reserve Vosk fallback seam"
+        }
       },
       "transcript": {
         "title": "Speech Runtime",
@@ -5042,24 +5048,24 @@
         "activeDevice": "Active device",
         "companionStatus": "Companion app",
         "bridgeStatus": "Bridge session",
-    "permissions": "Permissions",
-    "reverseStatus": "ADB reverse",
-    "expectedVersion": "Expected version",
-    "connectAddress": "Wireless ADB address",
-    "previewTitle": "Live preview",
+        "permissions": "Permissions",
+        "reverseStatus": "ADB reverse",
+        "expectedVersion": "Expected version",
+        "connectAddress": "Wireless ADB address",
+        "previewTitle": "Live preview",
         "previewHint": "The live camera preview stays on the phone screen while Hayalet Ev receives captured assets and command events.",
         "actions": {
           "scan": "Scan devices",
           "install": "Install companion",
           "update": "Update companion",
-      "reinstall": "Reinstall companion",
-      "open": "Open app",
-      "refresh": "Refresh state",
-      "connect": "Connect wirelessly",
-      "disconnect": "Disconnect",
-      "useDevice": "Use device",
-      "activeDevice": "Active device",
-      "inspectOnly": "Inspect only"
+          "reinstall": "Reinstall companion",
+          "open": "Open app",
+          "refresh": "Refresh state",
+          "connect": "Connect wirelessly",
+          "disconnect": "Disconnect",
+          "useDevice": "Use device",
+          "activeDevice": "Active device",
+          "inspectOnly": "Inspect only"
         },
         "deviceList": {
           "title": "Connected device records",
@@ -5142,7 +5148,7 @@
           "missing-adb": "Install Android platform-tools or expose `adb` on PATH to manage the Android companion.",
           "no-devices": "Connect a phone with USB debugging or wireless ADB, then refresh this panel.",
           "ready": "The host can see one ready Android device. Install and launch the companion app next.",
-      "multiple-devices": "Multiple ready Android devices were found. Pick one preferred device before launching the companion.",
+          "multiple-devices": "Multiple ready Android devices were found. Pick one preferred device before launching the companion.",
           "unauthorized": "Approve the USB debugging prompt on the phone, then refresh this panel.",
           "offline": "Reconnect the device or restart wireless ADB, then refresh this panel.",
           "reverse-conflict": "ADB reverse must be re-applied before the desktop bridge can talk to the phone app.",

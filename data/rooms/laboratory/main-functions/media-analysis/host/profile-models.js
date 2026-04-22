@@ -208,7 +208,9 @@ export function createMediaProfileModelRuntime(deps) {
     });
     await persistProfileModelState(runtime);
     if (nextEntry.installed !== true) {
-      throw new Error(`Profile model ${modelId} is not installed on the shared transcript runtime.`);
+      throw new Error(
+        `Profile model ${modelId} is not installed on the shared transcript runtime.`
+      );
     }
     if (checksumValid !== true) {
       throw new Error("Downloaded model failed checksum verification.");

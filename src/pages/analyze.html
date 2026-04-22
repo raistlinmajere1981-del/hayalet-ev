@@ -159,13 +159,23 @@
                 data-shell-i18n-placeholder="app.analyze.page.composePlaceholder"
                 spellcheck="false"
               ></textarea>
-              <button
-                type="button"
-                class="btn btn-secondary btn-icon dictation-trigger compose-dictation-btn"
-                id="compose-dictation-btn"
-                title=""
-                aria-label=""
-              ></button>
+              <div class="compose-dictation-controls">
+                <label
+                  class="compose-dictation-source"
+                  id="compose-android-dictation-toggle"
+                  hidden
+                >
+                  <input type="checkbox" id="compose-android-dictation-checkbox" />
+                  <span id="compose-android-dictation-label"></span>
+                </label>
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-icon dictation-trigger compose-dictation-btn"
+                  id="compose-dictation-btn"
+                  title=""
+                  aria-label=""
+                ></button>
+              </div>
             </div>
           </div>
 

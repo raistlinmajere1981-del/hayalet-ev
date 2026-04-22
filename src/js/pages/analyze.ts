@@ -79,7 +79,11 @@ import {
 import type { StagedFile } from "./analyze/upload-handler.js";
 import { applyMessageAction } from "./analyze/context-menu.js";
 import { initDraft, loadDraft, persistDraft } from "./analyze/draft-manager.js";
-import { bindDictationTrigger, type DictationBinding } from "../modules/transcript/dictation-ui.js";
+import {
+  bindDictationTrigger,
+  type DictationBinding,
+  type DictationMode,
+} from "../modules/transcript/dictation-ui.js";
 import {
   consumeAnalyzeCaptureAssets,
   getCaptureStatus,
@@ -87,7 +91,11 @@ import {
   runCaptureAction,
 } from "../modules/capture/electron-client.js";
 import { onTranscriptIngress } from "../modules/transcript/electron-client.js";
-import type { CaptureActionOutcome, CaptureServiceStatus } from "../../types/capture.js";
+import type {
+  CaptureActionOutcome,
+  CaptureAndroidDeviceStatus,
+  CaptureServiceStatus,
+} from "../../types/capture.js";
 interface ConversationSelectedDetail {
   provider?: "ai0" | "ai1" | "ai2" | "us1";
   isNew?: boolean;
@@ -213,6 +221,7 @@ export class AnalyzeController {
   _unsubSceneTheme: (() => void) | null;
   _unsubSceneThemeAssets: (() => void) | null;
   _dictationBinding: DictationBinding | null;
+  _dictationMode: DictationMode;
   _captureStatus: CaptureServiceStatus | null;
   _capturePreviewToken: number;
   _captureStatusPollTimer: number | null;
@@ -262,6 +271,7 @@ export class AnalyzeController {
     this._unsubSceneTheme = null;
     this._unsubSceneThemeAssets = null;
     this._dictationBinding = null;
+    this._dictationMode = "local";
     this._captureStatus = null;
     this._capturePreviewToken = 0;
     this._captureStatusPollTimer = null;
@@ -1144,6 +1154,17 @@ export class AnalyzeController {
     document.getElementById("compose-input")?.addEventListener("input", () => {
       this.updateSendButtonState();
     });
+    document
+      .getElementById("compose-android-dictation-checkbox")
+      ?.addEventListener("change", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement)) {
+          return;
+        }
+
+        this._dictationMode = target.checked ? "android" : "local";
+        this._bindDictationUi();
+      });
 
     // NOTE: Allow Ctrl+Enter sends while still preventing duplicate dispatches.
     document.getElementById("compose-input")?.addEventListener("keydown", (e) => {
@@ -1184,6 +1205,11 @@ export class AnalyzeController {
           analyzeT("page.dictation.captureError", { message }),
         transcriptionError: (message: string): string =>
           analyzeT("page.dictation.transcriptionError", { message }),
+        androidIdleTitle: analyzeT("page.dictation.androidIdleTitle"),
+        androidPreparingMessage: analyzeT("page.dictation.androidPreparingMessage"),
+        androidListeningMessage: analyzeT("page.dictation.androidListeningMessage"),
+        androidError: (message: string): string =>
+          analyzeT("page.dictation.androidError", { message }),
       }),
       showNotice: (message, kind = "info") => {
         notifyUser({
@@ -1192,6 +1218,8 @@ export class AnalyzeController {
           dedupeKey: "analyze-dictation",
         });
       },
+      getMode: (): DictationMode => this._dictationMode,
+      requestAndroidDictation: async () => await this._requestAndroidDictation(),
       isTargetActive: () => document.documentElement.getAttribute("data-active-page") === "analyze",
       subscribeIngress: onTranscriptIngress,
     });
@@ -1210,6 +1238,58 @@ export class AnalyzeController {
     return SettingsManager.getSnapshot().capture?.providers ?? {};
   }
 
+  _selectedAndroidDictationDevice(
+    status: CaptureServiceStatus | null = this._captureStatus
+  ): CaptureAndroidDeviceStatus | null {
+    const devices = status?.android.devices ?? [];
+    return devices.find((device) => device.selected && device.connectionState === "device") ?? null;
+  }
+
+  _isLocalDictationAvailable(): boolean {
+    return this._captureProviders()?.localWhisperEnabled !== false;
+  }
+
+  _isAndroidDictationAvailable(status: CaptureServiceStatus | null = this._captureStatus): boolean {
+    const providers = this._captureProviders();
+    return (
+      providers?.androidCompanionEnabled !== false &&
+      providers?.androidSpeechEnabled !== false &&
+      this._selectedAndroidDictationDevice(status) !== null
+    );
+  }
+
+  _normalizeDictationMode(): void {
+    const localAvailable = this._isLocalDictationAvailable();
+    const androidAvailable = this._isAndroidDictationAvailable();
+
+    if (this._dictationMode === "android" && androidAvailable !== true) {
+      this._dictationMode = "local";
+      return;
+    }
+
+    if (this._dictationMode === "local" && localAvailable !== true && androidAvailable === true) {
+      this._dictationMode = "android";
+    }
+  }
+
+  _renderDictationModeToggle(): void {
+    const toggle = document.getElementById("compose-android-dictation-toggle");
+    const checkbox = document.getElementById(
+      "compose-android-dictation-checkbox"
+    ) as HTMLInputElement | null;
+    const label = document.getElementById("compose-android-dictation-label");
+    if (!(toggle instanceof HTMLElement) || checkbox === null || label === null) {
+      return;
+    }
+
+    this._normalizeDictationMode();
+    const androidAvailable = this._isAndroidDictationAvailable();
+    toggle.hidden = androidAvailable !== true;
+    checkbox.checked = androidAvailable === true && this._dictationMode === "android";
+    checkbox.disabled = androidAvailable !== true;
+    label.textContent = analyzeT("page.dictation.androidToggleLabel");
+  }
+
   _syncDictationAvailability(): void {
     const dictationButton = document.getElementById(
       "compose-dictation-btn"
@@ -1218,16 +1298,70 @@ export class AnalyzeController {
       return;
     }
 
-    const localWhisperEnabled = this._captureProviders()?.localWhisperEnabled !== false;
-    if (localWhisperEnabled) {
-      this._dictationBinding?.refresh();
+    this._renderDictationModeToggle();
+    this._dictationBinding?.refresh();
+
+    const localAvailable = this._isLocalDictationAvailable();
+    const androidAvailable = this._isAndroidDictationAvailable();
+    const currentMode = this._dictationMode;
+    const modeAvailable = currentMode === "android" ? androidAvailable : localAvailable;
+    if (modeAvailable) {
+      dictationButton.disabled = false;
       return;
     }
 
+    const disabledTitle =
+      currentMode === "android"
+        ? analyzeT("page.dictation.androidUnavailableTitle")
+        : analyzeT("page.dictation.disabledTitle");
     dictationButton.disabled = true;
     dictationButton.setAttribute("aria-pressed", "false");
-    dictationButton.title = analyzeT("page.dictation.disabledTitle");
-    dictationButton.setAttribute("aria-label", analyzeT("page.dictation.disabledTitle"));
+    dictationButton.title = disabledTitle;
+    dictationButton.setAttribute("aria-label", disabledTitle);
+  }
+
+  async _requestAndroidDictation(): Promise<"starting" | "ready"> {
+    this.toggleCapturePanel(true);
+
+    try {
+      this._captureStatus = await refreshCaptureStatus();
+    } catch {
+      // NOTE: Keep the last known capture snapshot so the dictate toggle can still evaluate fallback state.
+    } finally {
+      this.renderCaptureSessionState();
+    }
+
+    if (this._isAndroidDictationAvailable() !== true) {
+      throw new Error(analyzeT("page.dictation.androidUnavailableTitle"));
+    }
+
+    const captureState = this._captureStatus?.analyze.state ?? "idle";
+    if (
+      captureState === "ready" ||
+      captureState === "result-ready" ||
+      captureState === "capture-requested"
+    ) {
+      return "ready";
+    }
+
+    if (captureState === "pending-launch") {
+      this._startCaptureStatusPolling();
+      return "starting";
+    }
+
+    const outcome = await runCaptureAction("start-analyze-session");
+    this._captureStatus = outcome.status;
+    this._applyAutoStagedCapture(outcome.status);
+    this.renderCaptureSessionState();
+    if (outcome.ok !== true) {
+      throw new Error(outcome.message);
+    }
+
+    this._startCaptureStatusPolling();
+    return outcome.status.analyze.state === "ready" ||
+      outcome.status.analyze.state === "result-ready"
+      ? "ready"
+      : "starting";
   }
 
   _notifyCaptureFeedback(
@@ -1335,10 +1469,7 @@ export class AnalyzeController {
   renderCaptureSessionState(): void {
     const captureState = this._captureStatus?.analyze ?? null;
     const androidStatus = this._captureStatus?.android ?? null;
-    const selectedDevice =
-      androidStatus?.devices.find((device) => device.selected) ??
-      androidStatus?.devices.find((device) => device.connectionState === "device") ??
-      null;
+    const selectedDevice = this._selectedAndroidDictationDevice(this._captureStatus);
     const stateLabel = analyzeT(`page.captureSessionStates.${captureState?.state ?? "idle"}`);
     const latestName =
       captureState?.latestAsset?.name ??
@@ -1404,6 +1535,7 @@ export class AnalyzeController {
         androidCompanionEnabled !== true || (captureState?.pendingInboxCount ?? 0) === 0;
     }
 
+    this._syncDictationAvailability();
     void this._renderCapturePreview();
   }
 

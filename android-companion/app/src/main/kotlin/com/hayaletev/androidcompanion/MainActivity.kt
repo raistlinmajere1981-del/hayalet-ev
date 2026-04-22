@@ -8,6 +8,7 @@ import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import com.hayaletev.androidcompanion.capture.CameraSessionController
 import com.hayaletev.androidcompanion.capture.CaptureForegroundService
@@ -57,6 +58,7 @@ class MainActivity : AppCompatActivity() {
                 permissionsSummary = getString(R.string.permissions_missing)
             )
         )
+        renderPreviewState()
 
         ContextCompat.startForegroundService(
             this,
@@ -136,11 +138,17 @@ class MainActivity : AppCompatActivity() {
             } else {
                 getString(R.string.permissions_missing)
             }
+        renderPreviewState()
     }
 
     private fun renderUiState(state: CompanionUiState) {
         binding.statusValue.text = state.connectionStatus
         binding.targetValue.text = state.target
         binding.permissionsValue.text = state.permissionsSummary
+        renderPreviewState()
+    }
+
+    private fun renderPreviewState() {
+        binding.previewPlaceholder.isVisible = cameraController.isPreviewBound().not()
     }
 }

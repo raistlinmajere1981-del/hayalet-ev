@@ -9,6 +9,8 @@ import { insertTranscriptIntoTextarea } from "./textarea-insertion.js";
 
 type DictationState = "idle" | "listening" | "transcribing";
 type DictationNoticeKind = "info" | "success" | "error";
+export type DictationMode = "local" | "android";
+type AndroidDictationRequestState = "starting" | "ready";
 
 export interface DictationLabels {
   idleTitle: string;
@@ -20,6 +22,10 @@ export interface DictationLabels {
   insertedMessage: string;
   captureError: (message: string) => string;
   transcriptionError: (message: string) => string;
+  androidIdleTitle: string;
+  androidPreparingMessage: string;
+  androidListeningMessage: string;
+  androidError: (message: string) => string;
 }
 
 export interface DictationBinding {
@@ -35,6 +41,8 @@ interface BindDictationTriggerOptions {
   showNotice: (message: string, kind?: DictationNoticeKind) => void;
   isTargetActive?: () => boolean;
   subscribeIngress?: (callback: (payload: TranscriptIngressPayload) => void) => () => void;
+  getMode?: () => DictationMode;
+  requestAndroidDictation?: () => Promise<AndroidDictationRequestState>;
 }
 
 const MICROPHONE_ICON = `
@@ -61,18 +69,24 @@ const SPINNER_ICON = `
 function setButtonState(
   button: HTMLButtonElement,
   state: DictationState,
-  labels: DictationLabels
+  labels: DictationLabels,
+  mode: DictationMode
 ): void {
   button.dataset["dictationState"] = state;
+  button.dataset["dictationMode"] = mode;
   button.classList.toggle("is-listening", state === "listening");
   button.classList.toggle("is-transcribing", state === "transcribing");
+  button.classList.toggle("is-android", mode === "android");
   button.disabled = state === "transcribing";
   button.setAttribute("aria-pressed", state === "listening" ? "true" : "false");
 
   switch (state) {
     case "idle":
-      button.title = labels.idleTitle;
-      button.setAttribute("aria-label", labels.idleTitle);
+      button.title = mode === "android" ? labels.androidIdleTitle : labels.idleTitle;
+      button.setAttribute(
+        "aria-label",
+        mode === "android" ? labels.androidIdleTitle : labels.idleTitle
+      );
       button.innerHTML = MICROPHONE_ICON;
       return;
     case "listening":
@@ -102,7 +116,7 @@ export function bindDictationTrigger(options: BindDictationTriggerOptions): Dict
   let currentState: DictationState = "idle";
 
   const refresh = (): void => {
-    setButtonState(button, currentState, options.getLabels());
+    setButtonState(button, currentState, options.getLabels(), options.getMode?.() ?? "local");
   };
 
   const insertTranscript = (text: string, showInsertedNotice: boolean): void => {
@@ -131,6 +145,13 @@ export function bindDictationTrigger(options: BindDictationTriggerOptions): Dict
 
   const handleIngress = (payload: TranscriptIngressPayload): void => {
     if (options.isTargetActive?.() === false) {
+      return;
+    }
+    const mode = options.getMode?.() ?? "local";
+    if (payload.source === "android-bridge" && mode !== "android") {
+      return;
+    }
+    if (payload.source !== "android-bridge" && mode === "android") {
       return;
     }
     if (payload.target !== null && payload.target !== options.targetId) {
@@ -188,7 +209,25 @@ export function bindDictationTrigger(options: BindDictationTriggerOptions): Dict
   };
 
   const handleClick = (): void => {
+    const mode = options.getMode?.() ?? "local";
     if (currentState === "transcribing") {
+      return;
+    }
+
+    if (mode === "android") {
+      void (async (): Promise<void> => {
+        const labels = options.getLabels();
+        try {
+          const result = await options.requestAndroidDictation?.();
+          options.showNotice(
+            result === "ready" ? labels.androidListeningMessage : labels.androidPreparingMessage,
+            "info"
+          );
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          options.showNotice(labels.androidError(message), "error");
+        }
+      })();
       return;
     }
 

@@ -118,9 +118,15 @@
           "preparingMessage": "Yerel ses çözümleme altyapısı hazırlanıyor.",
           "emptyResultMessage": "Sesten metin sonucu boş döndü.",
           "insertedMessage": "Transcript metin alanına eklendi.",
+          "androidToggleLabel": "Android dictate",
+          "androidIdleTitle": "Bağlı Android cihaz üzerinden dikte başlat",
+          "androidPreparingMessage": "Android dictate telefon üzerinde hazırlanıyor. Companion uygulamasını açık tutup telefona konuş.",
+          "androidListeningMessage": "Android dictate telefon üzerinde aktif. Bağlı cihaza konuşabilirsin.",
+          "androidUnavailableTitle": "Android dictate için hazır bir telefon seçip Ayarlar > Capture altında Android ses köprüsünü açık tut.",
           "disabledTitle": "Lokal Whisper dikte, Ayarlar > Capture altında kapalı.",
           "captureError": "Mikrofon başlatılamadı: {{message}}",
-          "transcriptionError": "Ses çözümlenemedi: {{message}}"
+          "transcriptionError": "Ses çözümlenemedi: {{message}}",
+          "androidError": "Android dictate hazırlanamadı: {{message}}"
         },
         "captureImport": {
           "empty": "Merkezi analyze inbox içinde bekleyen telefon çekimi bulunmuyor.",
@@ -5008,27 +5014,27 @@
           "none": "Sessiz"
         }
       },
-  "policy": {
-    "title": "Android Ses Politikası",
-    "subtitle": "Telefon tarafı ses yolunu ve companion uygulamasının yerelde normalize ettiği komut ifadelerini buradan yönet.",
-    "fallbackMode": "Fallback stratejisi",
-    "providers": {
-      "localWhisper": "Lokal Whisper dikteyi etkinleştir",
-      "androidCompanion": "Android companion capture etkin",
-      "androidSpeech": "Android ses köprüsünü aç"
-    },
-    "commands": {
-      "openCamera": "Oturum açma ifadeleri",
-      "capture": "Çekim ifadeleri",
-      "retake": "Tekrar çekim ifadeleri",
-      "attach": "Ekleme ifadeleri",
-      "stop": "Durdurma ifadeleri"
-    },
-    "hint": "İfadeleri virgülle ayır. Analyze telefon oturumu başlatırken bu liste companion uygulamasına gönderilir.",
-    "fallbackOptions": {
-      "system": "Sistem tanıyıcıya düş",
-      "voskSeam": "Vosk fallback dikişini ayır"
-    }
+      "policy": {
+        "title": "Android Ses Politikası",
+        "subtitle": "Telefon tarafı ses yolunu ve companion uygulamasının yerelde normalize ettiği komut ifadelerini buradan yönet.",
+        "fallbackMode": "Fallback stratejisi",
+        "providers": {
+          "localWhisper": "Lokal Whisper dikteyi etkinleştir",
+          "androidCompanion": "Android companion capture etkin",
+          "androidSpeech": "Android ses köprüsünü aç"
+        },
+        "commands": {
+          "openCamera": "Oturum açma ifadeleri",
+          "capture": "Çekim ifadeleri",
+          "retake": "Tekrar çekim ifadeleri",
+          "attach": "Ekleme ifadeleri",
+          "stop": "Durdurma ifadeleri"
+        },
+        "hint": "İfadeleri virgülle ayır. Analyze telefon oturumu başlatırken bu liste companion uygulamasına gönderilir.",
+        "fallbackOptions": {
+          "system": "Sistem tanıyıcıya düş",
+          "voskSeam": "Vosk fallback dikişini ayır"
+        }
       },
       "transcript": {
         "title": "Ses Runtime",
@@ -5042,24 +5048,24 @@
         "activeDevice": "Aktif cihaz",
         "companionStatus": "Companion uygulaması",
         "bridgeStatus": "Köprü oturumu",
-    "permissions": "İzinler",
-    "reverseStatus": "ADB reverse",
-    "expectedVersion": "Beklenen sürüm",
-    "connectAddress": "Wireless ADB adresi",
-    "previewTitle": "Canlı önizleme",
+        "permissions": "İzinler",
+        "reverseStatus": "ADB reverse",
+        "expectedVersion": "Beklenen sürüm",
+        "connectAddress": "Wireless ADB adresi",
+        "previewTitle": "Canlı önizleme",
         "previewHint": "Canlı kamera önizlemesi telefon ekranında kalır; Hayalet Ev yalnızca çekilen dosyaları ve komut olaylarını alır.",
         "actions": {
           "scan": "Cihazları tara",
           "install": "Companion kur",
           "update": "Companion güncelle",
-      "reinstall": "Companion yeniden kur",
-      "open": "Uygulamayı aç",
-      "refresh": "Durumu yenile",
-      "connect": "Kablosuz bağlan",
-      "disconnect": "Bağlantıyı kes",
-      "useDevice": "Bu cihazı kullan",
-      "activeDevice": "Aktif cihaz",
-      "inspectOnly": "Yalnızca incele"
+          "reinstall": "Companion yeniden kur",
+          "open": "Uygulamayı aç",
+          "refresh": "Durumu yenile",
+          "connect": "Kablosuz bağlan",
+          "disconnect": "Bağlantıyı kes",
+          "useDevice": "Bu cihazı kullan",
+          "activeDevice": "Aktif cihaz",
+          "inspectOnly": "Yalnızca incele"
         },
         "deviceList": {
           "title": "Bağlı cihaz kayıtları",
@@ -5142,7 +5148,7 @@
           "missing-adb": "Android companion yönetimi için Android platform-tools kur veya `adb` komutunu PATH'e ekle.",
           "no-devices": "USB debugging ya da wireless ADB ile bir telefon bağla, sonra bu paneli yenile.",
           "ready": "Host tek bir hazır Android cihaz görüyor. Sıradaki adım companion uygulamasını kurmak ve açmak.",
-      "multiple-devices": "Birden fazla hazır Android cihaz bulundu. Companion başlatmadan önce tercih edilen cihazı seç.",
+          "multiple-devices": "Birden fazla hazır Android cihaz bulundu. Companion başlatmadan önce tercih edilen cihazı seç.",
           "unauthorized": "Telefondaki USB debugging onayını verip bu paneli yeniden yenile.",
           "offline": "Cihazı yeniden bağla ya da wireless ADB'yi tekrar başlat, sonra paneli yenile.",
           "reverse-conflict": "Desktop bridge telefon uygulamasıyla konuşmadan önce ADB reverse yeniden uygulanmalı.",

@@ -489,17 +489,50 @@
 }
 
 .compose-textarea-stack textarea {
-  padding-right: calc(var(--btn-height-sm) + var(--space-8));
+  padding-right: calc(var(--btn-height-sm) + var(--space-44));
+  padding-bottom: calc(var(--btn-height-sm) + var(--space-4));
 }
 
-.compose-dictation-btn {
+.compose-dictation-controls {
   position: absolute;
   right: var(--space-2);
   bottom: var(--space-2);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  z-index: 1;
+}
+
+.compose-dictation-source {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--btn-height-sm);
+  padding: 0 var(--space-2);
+  border: var(--space-0-25) solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-panel) 86%, transparent);
+  color: var(--text-muted);
+  font-size: var(--text-2xs);
+  white-space: nowrap;
+}
+
+.compose-dictation-source input {
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+
+.compose-dictation-btn {
+  position: static;
   width: var(--btn-height-sm);
   height: var(--btn-height-sm);
   border-radius: var(--radius-md);
-  z-index: 1;
+}
+
+.compose-dictation-btn[data-dictation-mode="android"] {
+  border-color: color-mix(in srgb, var(--color-accent) 58%, var(--border-default));
+  color: var(--color-accent);
 }
 
 .compose-start-action {
@@ -602,6 +635,16 @@
 
   .compose-input-row {
     flex-direction: column;
+  }
+
+  .compose-textarea-stack textarea {
+    padding-right: calc(var(--btn-height-sm) + var(--space-8));
+    padding-bottom: calc((var(--btn-height-sm) * 2) + var(--space-6));
+  }
+
+  .compose-dictation-controls {
+    max-width: calc(100% - var(--space-4));
+    flex-wrap: wrap;
   }
 }
 

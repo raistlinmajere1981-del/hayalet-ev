@@ -670,6 +670,11 @@ function initChatEvents(): void {
       captureError: (message: string): string => t("chat.dictation.captureError", { message }),
       transcriptionError: (message: string): string =>
         t("chat.dictation.transcriptionError", { message }),
+      androidIdleTitle: t("chat.dictation.idleTitle"),
+      androidPreparingMessage: t("chat.dictation.preparingMessage"),
+      androidListeningMessage: t("chat.dictation.listeningMessage"),
+      androidError: (message: string): string =>
+        t("chat.dictation.transcriptionError", { message }),
     }),
     showNotice: (message) => {
       showToast(message);
