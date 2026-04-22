@@ -506,6 +506,21 @@
   margin-right: auto;
 }
 
+.analyze-wrapper .compose-row {
+  height: auto;
+  min-height: var(--layout-panel-compose-h);
+}
+
+.analyze-wrapper .compose-area {
+  min-height: 0;
+}
+
+.analyze-wrapper #capture-import-btn[aria-expanded="true"] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
 .page-analyze {
   position: relative;
   height: var(--layout-page-height);

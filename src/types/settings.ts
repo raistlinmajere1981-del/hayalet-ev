@@ -222,6 +222,42 @@ export interface GeneralSettings {
   autoUpdate?: boolean;
 }
 
+export type CaptureDefaultLens = "back" | "front";
+export type CapturePhotoQuality = "balanced" | "high";
+export type CaptureAttachMode = "manual-sync" | "auto-stage";
+export type CaptureCommandConfirmation = "none" | "toast";
+export type CaptureSpeechFallbackMode = "system" | "vosk-seam";
+
+export interface CaptureDefaultsSettings {
+  preferredDeviceId?: string | null;
+  defaultLens?: CaptureDefaultLens;
+  photoQuality?: CapturePhotoQuality;
+  attachMode?: CaptureAttachMode;
+  commandConfirmation?: CaptureCommandConfirmation;
+}
+
+export interface CaptureProviderSettings {
+  localWhisperEnabled?: boolean;
+  androidCompanionEnabled?: boolean;
+  androidSpeechEnabled?: boolean;
+  speechFallbackMode?: CaptureSpeechFallbackMode;
+}
+
+export interface CaptureCommandPhraseSettings {
+  openCamera?: string[];
+  capture?: string[];
+  retake?: string[];
+  attach?: string[];
+  stop?: string[];
+  cancel?: string[];
+}
+
+export interface CaptureSettings {
+  defaults?: CaptureDefaultsSettings;
+  providers?: CaptureProviderSettings;
+  commandPhrases?: CaptureCommandPhraseSettings;
+}
+
 export interface UploadSettings {
   preferredMethod: UploadMethod;
   fallbackMethod?: UploadMethod;
@@ -333,6 +369,7 @@ export interface OpencodeUiModelPreferences {
 export interface AppSettings {
   version?: string;
   general?: GeneralSettings;
+  capture?: CaptureSettings;
   scene?: SceneSettings;
   user?: {
     nickname?: string;

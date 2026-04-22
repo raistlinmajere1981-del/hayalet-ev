@@ -77,6 +77,31 @@
         "stopChatButton": "⏹ Analiz Sonlandır",
         "crossLabel": "Çaprazla",
         "sendButton": "Gönder",
+        "captureSessionKicker": "Telefon çekimi",
+        "captureSessionTitle": "Merkezi Android capture oturumu",
+        "captureSessionHint": "Canlı önizleme telefon ekranında kalır. Analyze yalnızca capture tetikler, sonucu senkronize eder ve dosyayı hazır ek olarak sahneler.",
+        "captureSessionState": "Oturum durumu",
+        "captureSessionDevice": "Cihaz",
+        "captureSessionDeviceNone": "Seçili telefon yok",
+        "captureSessionLatest": "Son görsel",
+        "captureSessionActions": {
+          "start": "Telefon önizlemesini aç",
+          "stop": "Telefon oturumunu bitir",
+          "capture": "Fotoğraf çek",
+          "retake": "Tekrar çek",
+          "sync": "Telefon dosyalarını al"
+        },
+        "captureSessionStates": {
+          "idle": "Boşta",
+          "pending-launch": "Telefon uygulaması açılıyor",
+          "ready": "Telefonda hazır",
+          "capture-requested": "Çekim istendi",
+          "result-ready": "Sonuç hazır",
+          "error": "Capture hatası"
+        },
+        "captureSessionLatestEmpty": "Henüz hazır edilmiş telefon çekimi yok.",
+        "captureSessionDisabled": "Android companion capture, Ayarlar > Capture altında kapalı.",
+        "captureImportButton": "Telefondan al",
         "addFileButton": "Dosya ekle",
         "archiveOverlayEyebrow": "Arşiv katmanı",
         "archiveOverlayButton": "Arşiv Konsolu",
@@ -93,8 +118,14 @@
           "preparingMessage": "Yerel ses çözümleme altyapısı hazırlanıyor.",
           "emptyResultMessage": "Sesten metin sonucu boş döndü.",
           "insertedMessage": "Transcript metin alanına eklendi.",
+          "disabledTitle": "Lokal Whisper dikte, Ayarlar > Capture altında kapalı.",
           "captureError": "Mikrofon başlatılamadı: {{message}}",
           "transcriptionError": "Ses çözümlenemedi: {{message}}"
+        },
+        "captureImport": {
+          "empty": "Merkezi analyze inbox içinde bekleyen telefon çekimi bulunmuyor.",
+          "success": "{{count}} telefon çekimi hazır dosyalara eklendi.",
+          "error": "Telefon çekimleri içe aktarılamadı: {{message}}"
         },
         "buttons": {
           "sending": "Gönderiliyor...",
@@ -715,11 +746,12 @@
       "ariaLabel": "Ayar güvertesi",
       "kicker": "Topbar ayarları",
       "title": "Kontrol Güvertesi",
-      "subtitle": "Tema, oda yönetimi, canlı log ve dil paketlerini tek yüzeyde yönet.",
+      "subtitle": "Hesaplar, capture servisleri, oda yönetimi, canlı log ve dil paketlerini tek yüzeyde yönet.",
       "currentThemeLabel": "Aktif tema",
       "nav": {
         "theme": "Tema",
         "accounts": "Hesaplar",
+        "capture": "Capture",
         "backup": "Backup",
         "rooms": "Odalar",
         "liveLog": "Canlı Log",
@@ -729,6 +761,10 @@
         "title": "Hesap Ayarları",
         "userColumn": "Kullanıcı Hesap Ayarları",
         "slotColumn": "Slot Hesap Ayarları"
+      },
+      "capture": {
+        "title": "Capture Kontrolü",
+        "subtitle": "Lokal ses runtime'ı, Android companion durumu ve kamera capture akışını tek güverteden yönet."
       },
       "scene": {
         "ariaLabel": "Ayar odası",
@@ -4939,6 +4975,192 @@
         "clientSecretPlaceholder": "Client Secret",
         "authCodePlaceholder": "Yetki kodu",
         "startAuth": "Auth URL"
+      }
+    },
+    "capture": {
+      "defaults": {
+        "title": "Capture Varsayılanları",
+        "subtitle": "Merkezi telefon capture için tercih edilen Android cihazı ve varsayılan kamera davranışını burada sakla.",
+        "device": "Tercih edilen cihaz",
+        "lens": "Varsayılan lens",
+        "quality": "Fotoğraf kalitesi",
+        "attachMode": "Analyze ekleme modu",
+        "confirmation": "Komut geri bildirimi",
+        "hint": "Bu varsayılanlar bugün Analyze, ileride de tüm odalar tarafından paylaşılır.",
+        "saved": "Capture varsayılanları kaydedildi.",
+        "deviceOptions": {
+          "auto": "Tek telefon hazırsa otomatik seç"
+        },
+        "lensOptions": {
+          "back": "Arka kamera",
+          "front": "Ön kamera"
+        },
+        "qualityOptions": {
+          "high": "Yüksek kalite",
+          "balanced": "Dengeli hız"
+        },
+        "attachOptions": {
+          "manualSync": "Analyze içine elle al",
+          "autoStage": "Hat hazır olduğunda otomatik sahnele"
+        },
+        "confirmationOptions": {
+          "toast": "Toast göster",
+          "none": "Sessiz"
+        }
+      },
+  "policy": {
+    "title": "Android Ses Politikası",
+    "subtitle": "Telefon tarafı ses yolunu ve companion uygulamasının yerelde normalize ettiği komut ifadelerini buradan yönet.",
+    "fallbackMode": "Fallback stratejisi",
+    "providers": {
+      "localWhisper": "Lokal Whisper dikteyi etkinleştir",
+      "androidCompanion": "Android companion capture etkin",
+      "androidSpeech": "Android ses köprüsünü aç"
+    },
+    "commands": {
+      "openCamera": "Oturum açma ifadeleri",
+      "capture": "Çekim ifadeleri",
+      "retake": "Tekrar çekim ifadeleri",
+      "attach": "Ekleme ifadeleri",
+      "stop": "Durdurma ifadeleri"
+    },
+    "hint": "İfadeleri virgülle ayır. Analyze telefon oturumu başlatırken bu liste companion uygulamasına gönderilir.",
+    "fallbackOptions": {
+      "system": "Sistem tanıyıcıya düş",
+      "voskSeam": "Vosk fallback dikişini ayır"
+    }
+      },
+      "transcript": {
+        "title": "Ses Runtime",
+        "subtitle": "Yönetilen lokal whisper.cpp profilini seç ve kurulu model setini buradan yönet."
+      },
+      "android": {
+        "title": "Android Companion",
+        "subtitle": "ADB eşleme, companion kurulumu, kamera preview ve komut yönlendirmesi burada yönetilecek.",
+        "hostStatus": "Host köprüsü",
+        "deviceCount": "Bağlı cihazlar",
+        "activeDevice": "Aktif cihaz",
+        "companionStatus": "Companion uygulaması",
+        "bridgeStatus": "Köprü oturumu",
+    "permissions": "İzinler",
+    "reverseStatus": "ADB reverse",
+    "expectedVersion": "Beklenen sürüm",
+    "connectAddress": "Wireless ADB adresi",
+    "previewTitle": "Canlı önizleme",
+        "previewHint": "Canlı kamera önizlemesi telefon ekranında kalır; Hayalet Ev yalnızca çekilen dosyaları ve komut olaylarını alır.",
+        "actions": {
+          "scan": "Cihazları tara",
+          "install": "Companion kur",
+          "update": "Companion güncelle",
+      "reinstall": "Companion yeniden kur",
+      "open": "Uygulamayı aç",
+      "refresh": "Durumu yenile",
+      "connect": "Kablosuz bağlan",
+      "disconnect": "Bağlantıyı kes",
+      "useDevice": "Bu cihazı kullan",
+      "activeDevice": "Aktif cihaz",
+      "inspectOnly": "Yalnızca incele"
+        },
+        "deviceList": {
+          "title": "Bağlı cihaz kayıtları",
+          "subtitle": "USB, wireless, yetkisiz ve çevrimdışı telefonlar burada görünür kalır; aktif cihaz seçimi açık olur.",
+          "empty": "Henüz Android cihaz bulunamadı.",
+          "connection": "Bağlantı",
+          "companion": "Companion",
+          "bridge": "Köprü",
+          "permissions": "İzinler",
+          "preferredSaved": "Tercih edilen Android cihaz güncellendi."
+        },
+        "states": {
+          "host": {
+            "checking": "Host kontrol ediliyor",
+            "missing-adb": "ADB eksik",
+            "no-devices": "Cihaz bulunamadı",
+            "ready": "Hazır",
+            "multiple-devices": "Birden fazla cihaz",
+            "unauthorized": "Yetki gerekiyor",
+            "offline": "Cihaz çevrimdışı",
+            "reverse-conflict": "Reverse çakışması",
+            "package-query-failed": "Paket kontrolü başarısız",
+            "error": "Host hatası",
+            "waiting": "Capture servisi bekleniyor"
+          },
+          "activeDevice": {
+            "none": "Seçili cihaz yok"
+          },
+          "connection": {
+            "device": "Hazır",
+            "unauthorized": "Yetki gerekiyor",
+            "offline": "Çevrimdışı",
+            "unknown": "Bilinmiyor"
+          },
+          "transport": {
+            "usb": "USB",
+            "wireless": "Kablosuz",
+            "unknown": "Taşıma bilinmiyor"
+          },
+          "companion": {
+            "unknown": "Bilinmiyor",
+            "not-installed": "Kurulu değil",
+            "installed": "Kurulu",
+            "outdated": "Güncel değil"
+          },
+          "bridge": {
+            "waiting": "Telefon bekleniyor",
+            "connected": "Bağlı"
+          },
+          "permission": {
+            "granted": "Verildi",
+            "denied": "Eksik",
+            "unknown": "Bilinmiyor"
+          },
+          "permissions": {
+            "none": "Henüz uygulama izni yok"
+          },
+          "reverse": {
+            "not-configured": "Yapılandırılmadı",
+            "ready": "Hazır",
+            "conflict": "Çakışma",
+            "error": "Hata"
+          },
+          "expectedVersion": {
+            "none": "Build metadata yok"
+          },
+          "preview": {
+            "phone-screen": "Önizleme telefonda"
+          }
+        },
+        "deviceHints": {
+          "active": "Bu telefon, Analyze ve gelecekteki odalar için seçili tercih edilen cihazdır.",
+          "ready": "Bu telefon hazır ve tercih edilen capture cihazı yapılabilir.",
+          "unauthorized": "Telefondaki USB debugging iznini onayla, sonra bu paneli yenile.",
+          "offline": "Companion başlatmadan önce telefonu yeniden bağla veya wireless debugging'i tekrar kur.",
+          "unknown": "Hayalet Ev bu kaydı görüyor ama kullanmak için yeterli durumu henüz alamadı."
+        },
+        "feedback": {
+          "checking": "Lokal ADB köprüsü ve bağlı Android cihazlar kontrol ediliyor.",
+          "missing-adb": "Android companion yönetimi için Android platform-tools kur veya `adb` komutunu PATH'e ekle.",
+          "no-devices": "USB debugging ya da wireless ADB ile bir telefon bağla, sonra bu paneli yenile.",
+          "ready": "Host tek bir hazır Android cihaz görüyor. Sıradaki adım companion uygulamasını kurmak ve açmak.",
+      "multiple-devices": "Birden fazla hazır Android cihaz bulundu. Companion başlatmadan önce tercih edilen cihazı seç.",
+          "unauthorized": "Telefondaki USB debugging onayını verip bu paneli yeniden yenile.",
+          "offline": "Cihazı yeniden bağla ya da wireless ADB'yi tekrar başlat, sonra paneli yenile.",
+          "reverse-conflict": "Desktop bridge telefon uygulamasıyla konuşmadan önce ADB reverse yeniden uygulanmalı.",
+          "package-query-failed": "ADB telefona ulaştı ama companion paketi temiz biçimde sorgulanamadı.",
+          "error": "Android host kontrolü başarısız oldu. Daha fazla ayrıntı için terminalde `adb devices -l` çalıştır.",
+          "waiting": "Host capture servisi ve companion installer bağlandıktan sonra Android kontrol düğmeleri açılacak."
+        },
+        "progress": {
+          "starting": "İşlem başlatılıyor...",
+          "bootstrapStarting": "Önkoşul kurulumu başlatılıyor...",
+          "confirm": "Kurulumları onayla",
+          "cancel": "Şimdi değil",
+          "states": {
+            "confirmation": "Onay bekleniyor",
+            "success": "Tamamlandı",
+            "error": "Hata"
+          }
+        }
       }
     },
     "slot": {

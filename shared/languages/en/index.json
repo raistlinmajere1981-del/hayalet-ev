@@ -77,6 +77,31 @@
         "stopChatButton": "⏹ Stop Analysis",
         "crossLabel": "Cross-send",
         "sendButton": "Send",
+        "captureSessionKicker": "Phone capture",
+        "captureSessionTitle": "Central Android capture session",
+        "captureSessionHint": "The live preview stays on the phone screen. Analyze only triggers capture, syncs the latest result, and stages the file.",
+        "captureSessionState": "Session state",
+        "captureSessionDevice": "Device",
+        "captureSessionDeviceNone": "No phone selected",
+        "captureSessionLatest": "Latest image",
+        "captureSessionActions": {
+          "start": "Open phone preview",
+          "stop": "End phone session",
+          "capture": "Capture photo",
+          "retake": "Retake",
+          "sync": "Sync phone files"
+        },
+        "captureSessionStates": {
+          "idle": "Idle",
+          "pending-launch": "Opening phone app",
+          "ready": "Ready on phone",
+          "capture-requested": "Capture requested",
+          "result-ready": "Result ready",
+          "error": "Capture error"
+        },
+        "captureSessionLatestEmpty": "No phone capture has been staged yet.",
+        "captureSessionDisabled": "Android companion capture is disabled in Settings > Capture.",
+        "captureImportButton": "From Phone",
         "addFileButton": "Add File",
         "archiveOverlayEyebrow": "Archive layer",
         "archiveOverlayButton": "Archive Console",
@@ -93,8 +118,14 @@
           "preparingMessage": "Preparing the local voice transcription runtime.",
           "emptyResultMessage": "The voice transcript came back empty.",
           "insertedMessage": "The transcript was inserted into the text field.",
+          "disabledTitle": "Local Whisper dictation is disabled in Settings > Capture.",
           "captureError": "Could not start the microphone: {{message}}",
           "transcriptionError": "Could not transcribe the audio: {{message}}"
+        },
+        "captureImport": {
+          "empty": "No phone captures are waiting in the central analyze inbox.",
+          "success": "{{count}} phone capture(s) were added to the staged files.",
+          "error": "Phone captures could not be imported: {{message}}"
         },
         "buttons": {
           "sending": "Sending...",
@@ -715,11 +746,12 @@
       "ariaLabel": "Settings deck",
       "kicker": "Topbar settings",
       "title": "Control Deck",
-      "subtitle": "Manage theme, room packages, live log and language packs on one surface.",
+      "subtitle": "Manage accounts, capture services, room packages, live log and language packs on one surface.",
       "currentThemeLabel": "Active theme",
       "nav": {
         "theme": "Theme",
         "accounts": "Accounts",
+        "capture": "Capture",
         "backup": "Backup",
         "rooms": "Rooms",
         "liveLog": "Live Log",
@@ -729,6 +761,10 @@
         "title": "Account Settings",
         "userColumn": "User Account Settings",
         "slotColumn": "Slot Account Settings"
+      },
+      "capture": {
+        "title": "Capture Control",
+        "subtitle": "Manage local speech runtime, Android companion state, and camera capture from one deck."
       },
       "scene": {
         "ariaLabel": "Settings room",
@@ -4939,6 +4975,192 @@
         "clientSecretPlaceholder": "Client Secret",
         "authCodePlaceholder": "Auth code",
         "startAuth": "Auth URL"
+      }
+    },
+    "capture": {
+      "defaults": {
+        "title": "Capture Defaults",
+        "subtitle": "Store the preferred Android device and default camera behavior for central phone capture.",
+        "device": "Preferred device",
+        "lens": "Default lens",
+        "quality": "Photo quality",
+        "attachMode": "Analyze attach mode",
+        "confirmation": "Command feedback",
+        "hint": "These defaults are shared by Analyze now and future rooms later.",
+        "saved": "Capture defaults were saved.",
+        "deviceOptions": {
+          "auto": "Auto-select when one phone is ready"
+        },
+        "lensOptions": {
+          "back": "Back camera",
+          "front": "Front camera"
+        },
+        "qualityOptions": {
+          "high": "High quality",
+          "balanced": "Balanced speed"
+        },
+        "attachOptions": {
+          "manualSync": "Manual sync into Analyze",
+          "autoStage": "Auto-stage when the pipeline is ready"
+        },
+        "confirmationOptions": {
+          "toast": "Show toasts",
+          "none": "Silent"
+        }
+      },
+  "policy": {
+    "title": "Android Speech Policy",
+    "subtitle": "Control the phone-side speech path and the command phrases that the companion normalizes locally.",
+    "fallbackMode": "Fallback strategy",
+    "providers": {
+      "localWhisper": "Enable local Whisper dictation",
+      "androidCompanion": "Enable Android companion capture",
+      "androidSpeech": "Enable Android speech bridge"
+    },
+    "commands": {
+      "openCamera": "Open session phrases",
+      "capture": "Capture phrases",
+      "retake": "Retake phrases",
+      "attach": "Attach phrases",
+      "stop": "Stop phrases"
+    },
+    "hint": "Phrase inputs are comma-separated and are passed to the companion app when Analyze starts a phone session.",
+    "fallbackOptions": {
+      "system": "Fallback to system recognizer",
+      "voskSeam": "Reserve Vosk fallback seam"
+    }
+      },
+      "transcript": {
+        "title": "Speech Runtime",
+        "subtitle": "Choose the managed local whisper.cpp profile and maintain its installed model set."
+      },
+      "android": {
+        "title": "Android Companion",
+        "subtitle": "ADB pairing, companion install, camera preview, and command routing will be managed here.",
+        "hostStatus": "Host bridge",
+        "deviceCount": "Connected devices",
+        "activeDevice": "Active device",
+        "companionStatus": "Companion app",
+        "bridgeStatus": "Bridge session",
+    "permissions": "Permissions",
+    "reverseStatus": "ADB reverse",
+    "expectedVersion": "Expected version",
+    "connectAddress": "Wireless ADB address",
+    "previewTitle": "Live preview",
+        "previewHint": "The live camera preview stays on the phone screen while Hayalet Ev receives captured assets and command events.",
+        "actions": {
+          "scan": "Scan devices",
+          "install": "Install companion",
+          "update": "Update companion",
+      "reinstall": "Reinstall companion",
+      "open": "Open app",
+      "refresh": "Refresh state",
+      "connect": "Connect wirelessly",
+      "disconnect": "Disconnect",
+      "useDevice": "Use device",
+      "activeDevice": "Active device",
+      "inspectOnly": "Inspect only"
+        },
+        "deviceList": {
+          "title": "Connected device records",
+          "subtitle": "USB, wireless, unauthorized, and offline phones stay visible here so the active device choice is explicit.",
+          "empty": "No Android devices were discovered yet.",
+          "connection": "Connection",
+          "companion": "Companion",
+          "bridge": "Bridge",
+          "permissions": "Permissions",
+          "preferredSaved": "Preferred Android device was updated."
+        },
+        "states": {
+          "host": {
+            "checking": "Checking host",
+            "missing-adb": "ADB missing",
+            "no-devices": "No devices",
+            "ready": "Ready",
+            "multiple-devices": "Multiple devices",
+            "unauthorized": "Authorization required",
+            "offline": "Device offline",
+            "reverse-conflict": "Reverse conflict",
+            "package-query-failed": "Package check failed",
+            "error": "Host error",
+            "waiting": "Capture service pending"
+          },
+          "activeDevice": {
+            "none": "No device selected"
+          },
+          "connection": {
+            "device": "Ready",
+            "unauthorized": "Authorization required",
+            "offline": "Offline",
+            "unknown": "Unknown"
+          },
+          "transport": {
+            "usb": "USB",
+            "wireless": "Wireless",
+            "unknown": "Unknown transport"
+          },
+          "companion": {
+            "unknown": "Unknown",
+            "not-installed": "Not installed",
+            "installed": "Installed",
+            "outdated": "Outdated"
+          },
+          "bridge": {
+            "waiting": "Waiting for phone",
+            "connected": "Connected"
+          },
+          "permission": {
+            "granted": "Granted",
+            "denied": "Missing",
+            "unknown": "Unknown"
+          },
+          "permissions": {
+            "none": "No app permissions yet"
+          },
+          "reverse": {
+            "not-configured": "Not configured",
+            "ready": "Ready",
+            "conflict": "Conflict",
+            "error": "Error"
+          },
+          "expectedVersion": {
+            "none": "Build metadata missing"
+          },
+          "preview": {
+            "phone-screen": "Preview on phone"
+          }
+        },
+        "deviceHints": {
+          "active": "This phone is the current preferred device for Analyze and future rooms.",
+          "ready": "This phone is ready and can become the preferred capture device.",
+          "unauthorized": "Approve the USB debugging prompt on the phone, then refresh this panel.",
+          "offline": "Reconnect the phone or reattach wireless debugging before starting the companion.",
+          "unknown": "Hayalet Ev can see this entry but does not have enough state to use it yet."
+        },
+        "feedback": {
+          "checking": "Inspecting the local ADB bridge and connected Android devices.",
+          "missing-adb": "Install Android platform-tools or expose `adb` on PATH to manage the Android companion.",
+          "no-devices": "Connect a phone with USB debugging or wireless ADB, then refresh this panel.",
+          "ready": "The host can see one ready Android device. Install and launch the companion app next.",
+      "multiple-devices": "Multiple ready Android devices were found. Pick one preferred device before launching the companion.",
+          "unauthorized": "Approve the USB debugging prompt on the phone, then refresh this panel.",
+          "offline": "Reconnect the device or restart wireless ADB, then refresh this panel.",
+          "reverse-conflict": "ADB reverse must be re-applied before the desktop bridge can talk to the phone app.",
+          "package-query-failed": "ADB reached the phone, but the companion package could not be inspected cleanly.",
+          "error": "Android host inspection failed. Check `adb devices -l` from the terminal for more detail.",
+          "waiting": "Android bridge controls will unlock after the host capture service and companion installer are wired."
+        },
+        "progress": {
+          "starting": "Starting...",
+          "bootstrapStarting": "Starting prerequisite setup...",
+          "confirm": "Approve installs",
+          "cancel": "Not now",
+          "states": {
+            "confirmation": "Confirmation needed",
+            "success": "Completed",
+            "error": "Failed"
+          }
+        }
       }
     },
     "slot": {

@@ -5,6 +5,7 @@ import {
   type AppSettings,
 } from "./settings.js";
 import { DEFAULT_APP_LANGUAGE } from "./i18n.js";
+import { DEFAULT_CAPTURE_COMMAND_PHRASES } from "../../shared/capture/command-catalog.js";
 
 export const DEFAULT_ASSISTANT_ACCOUNT_ID = "opencode_opencode_at_opencode_com";
 export const DEFAULT_OPENCODE_UI_ACCOUNT_ID = "opencode_ui_opencode_at_opencode_com";
@@ -63,6 +64,29 @@ export function createDefaultSettings(): AppSettings {
       appearance: { ...DEFAULT_THEME_APPEARANCE_SETTINGS },
       language: DEFAULT_APP_LANGUAGE,
       transcriptModelVariant: "full",
+    },
+    capture: {
+      defaults: {
+        preferredDeviceId: null,
+        defaultLens: "back",
+        photoQuality: "high",
+        attachMode: "manual-sync",
+        commandConfirmation: "toast",
+      },
+      providers: {
+        localWhisperEnabled: true,
+        androidCompanionEnabled: true,
+        androidSpeechEnabled: true,
+        speechFallbackMode: "system",
+      },
+      commandPhrases: {
+        openCamera: [...DEFAULT_CAPTURE_COMMAND_PHRASES.openCamera],
+        capture: [...DEFAULT_CAPTURE_COMMAND_PHRASES.capture],
+        retake: [...DEFAULT_CAPTURE_COMMAND_PHRASES.retake],
+        attach: [...DEFAULT_CAPTURE_COMMAND_PHRASES.attach],
+        stop: [...DEFAULT_CAPTURE_COMMAND_PHRASES.stop],
+        cancel: [...DEFAULT_CAPTURE_COMMAND_PHRASES.cancel],
+      },
     },
     scene: {
       appearance: { ...DEFAULT_SCENE_APPEARANCE_SETTINGS },

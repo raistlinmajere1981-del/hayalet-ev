@@ -455,6 +455,18 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.removeListener(OPENCODE_UI_SESSION_UPDATED_CHANNEL, handler);
     opencodeUiSessionUpdatedHandlers.delete(callback);
   },
+  captureStatus: () => ipcRenderer.invoke("capture-status"),
+  captureRefreshStatus: () => ipcRenderer.invoke("capture-refresh-status"),
+  captureConsumeAnalyzeAssets: () => ipcRenderer.invoke("capture-consume-analyze-assets"),
+  captureInstallCompanion: (options) => ipcRenderer.invoke("capture-install-companion", options),
+  captureDismissOperation: () => ipcRenderer.invoke("capture-dismiss-operation"),
+  captureConnectDevice: (address) => ipcRenderer.invoke("capture-connect-device", address),
+  captureDisconnectDevice: (deviceId) => ipcRenderer.invoke("capture-disconnect-device", deviceId),
+  captureLaunchCompanion: () => ipcRenderer.invoke("capture-launch-companion"),
+  captureStartAnalyzeSession: () => ipcRenderer.invoke("capture-start-analyze-session"),
+  captureStopAnalyzeSession: () => ipcRenderer.invoke("capture-stop-analyze-session"),
+  captureRequestAnalyzePhoto: () => ipcRenderer.invoke("capture-request-analyze-photo"),
+  captureRetakeAnalyzePhoto: () => ipcRenderer.invoke("capture-retake-analyze-photo"),
   transcriptStatus: () => ipcRenderer.invoke("transcript-status"),
   transcriptEnsureRuntime: () => ipcRenderer.invoke("transcript-ensure-runtime"),
   transcriptListModels: () => ipcRenderer.invoke("transcript-list-models"),

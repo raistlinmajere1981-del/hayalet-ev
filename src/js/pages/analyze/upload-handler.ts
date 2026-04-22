@@ -72,10 +72,30 @@ export async function addUploadFiles(currentFiles: StagedFile[]): Promise<Staged
       return { name, path: p };
     });
 
-    return [...currentFiles, ...newEntries];
+    return mergeUploadFiles(currentFiles, newEntries);
   } catch (_err) {
     return currentFiles;
   }
+}
+
+export function mergeUploadFiles(
+  currentFiles: StagedFile[],
+  nextFiles: StagedFile[]
+): StagedFile[] {
+  const merged = [...currentFiles];
+
+  nextFiles.forEach((file) => {
+    const exists = merged.some(
+      (entry) => entry.path === file.path || (entry.name === file.name && entry.path === file.path)
+    );
+    if (exists) {
+      return;
+    }
+
+    merged.push(file);
+  });
+
+  return merged;
 }
 
 export function removeUploadFile(currentFiles: StagedFile[], name: string): StagedFile[] {

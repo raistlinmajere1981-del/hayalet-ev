@@ -70,12 +70,24 @@ import {
   normalizeMessageItem,
   type AttachmentData,
 } from "./analyze/message-renderer-types.js";
-import { renderUploadList, addUploadFiles, removeUploadFile } from "./analyze/upload-handler.js";
+import {
+  renderUploadList,
+  addUploadFiles,
+  mergeUploadFiles,
+  removeUploadFile,
+} from "./analyze/upload-handler.js";
 import type { StagedFile } from "./analyze/upload-handler.js";
 import { applyMessageAction } from "./analyze/context-menu.js";
 import { initDraft, loadDraft, persistDraft } from "./analyze/draft-manager.js";
 import { bindDictationTrigger, type DictationBinding } from "../modules/transcript/dictation-ui.js";
+import {
+  consumeAnalyzeCaptureAssets,
+  getCaptureStatus,
+  refreshCaptureStatus,
+  runCaptureAction,
+} from "../modules/capture/electron-client.js";
 import { onTranscriptIngress } from "../modules/transcript/electron-client.js";
+import type { CaptureActionOutcome, CaptureServiceStatus } from "../../types/capture.js";
 interface ConversationSelectedDetail {
   provider?: "ai0" | "ai1" | "ai2" | "us1";
   isNew?: boolean;
@@ -201,6 +213,11 @@ export class AnalyzeController {
   _unsubSceneTheme: (() => void) | null;
   _unsubSceneThemeAssets: (() => void) | null;
   _dictationBinding: DictationBinding | null;
+  _captureStatus: CaptureServiceStatus | null;
+  _capturePreviewToken: number;
+  _captureStatusPollTimer: number | null;
+  _lastAutoStagedCapturePath: string | null;
+  _capturePanelOpen: boolean;
 
   get _analyzeSceneLayout(): SceneLayoutConfig {
     return this._analyzeSceneSession.getSceneLayout();
@@ -245,6 +262,11 @@ export class AnalyzeController {
     this._unsubSceneTheme = null;
     this._unsubSceneThemeAssets = null;
     this._dictationBinding = null;
+    this._captureStatus = null;
+    this._capturePreviewToken = 0;
+    this._captureStatusPollTimer = null;
+    this._lastAutoStagedCapturePath = null;
+    this._capturePanelOpen = false;
   }
 
   async init(): Promise<void> {
@@ -256,6 +278,11 @@ export class AnalyzeController {
 
     this._unsubSettings ??= SettingsManager.subscribe(
       ({ changedPaths }: { changedPaths: string[] }) => {
+        if (changedPaths.includes("*") || changedPaths.some((path) => path.startsWith("capture"))) {
+          this._syncDictationAvailability();
+          this.renderCaptureSessionState();
+        }
+
         const shouldRefreshAnalyzeHeader =
           changedPaths.includes("*") ||
           changedPaths.some(
@@ -303,6 +330,7 @@ export class AnalyzeController {
       this.updateConnectionStates();
       this._dictationBinding?.refresh();
       this.refreshUploads();
+      this.renderCaptureSessionState();
       this._renderAnalyzeSceneHotspots();
       this._analyzeSceneEditor?.refresh();
       void this._renderMessages("ai1");
@@ -313,6 +341,8 @@ export class AnalyzeController {
 
     this.updateConnectionStates();
     this.refreshUploads();
+    this._renderCapturePanelState();
+    this.renderCaptureSessionState();
     this._initializeAnalyzeScene();
     this._unsubSceneTheme ??= SceneThemeManager.onChange(() => {
       this._analyzeSceneSession.reloadFromActiveTheme(this._analyzeSceneDebugEnabled);
@@ -324,6 +354,7 @@ export class AnalyzeController {
     });
 
     void this._initDraftSystem();
+    void this.refreshCaptureSessionState(true);
 
     window.addEventListener("conversation-selected", (e) => {
       const rawDetail: unknown = (e as CustomEvent<unknown>).detail;
@@ -1092,6 +1123,24 @@ export class AnalyzeController {
     document.getElementById("upload-add-btn")?.addEventListener("click", () => {
       void this.handleUploadClick();
     });
+    document.getElementById("capture-import-btn")?.addEventListener("click", () => {
+      this.toggleCapturePanel();
+    });
+    document.getElementById("capture-import-btn-inline")?.addEventListener("click", () => {
+      void this.handleCaptureImportClick();
+    });
+    document.getElementById("capture-session-btn")?.addEventListener("click", () => {
+      void this._runCaptureAction("start-analyze-session");
+    });
+    document.getElementById("capture-stop-btn")?.addEventListener("click", () => {
+      void this._runCaptureAction("stop-analyze-session");
+    });
+    document.getElementById("capture-photo-btn")?.addEventListener("click", () => {
+      void this._runCaptureAction("capture-analyze-photo");
+    });
+    document.getElementById("capture-retake-btn")?.addEventListener("click", () => {
+      void this._runCaptureAction("retake-analyze-photo");
+    });
     document.getElementById("compose-input")?.addEventListener("input", () => {
       this.updateSendButtonState();
     });
@@ -1146,6 +1195,297 @@ export class AnalyzeController {
       isTargetActive: () => document.documentElement.getAttribute("data-active-page") === "analyze",
       subscribeIngress: onTranscriptIngress,
     });
+    this._syncDictationAvailability();
+  }
+
+  _captureDefaults(): NonNullable<ReturnType<typeof SettingsManager.getSnapshot>["capture"]>["defaults"] {
+    return SettingsManager.getSnapshot().capture?.defaults ?? {};
+  }
+
+  _captureProviders(): NonNullable<ReturnType<typeof SettingsManager.getSnapshot>["capture"]>["providers"] {
+    return SettingsManager.getSnapshot().capture?.providers ?? {};
+  }
+
+  _syncDictationAvailability(): void {
+    const dictationButton = document.getElementById("compose-dictation-btn") as HTMLButtonElement | null;
+    if (dictationButton === null) {
+      return;
+    }
+
+    const localWhisperEnabled = this._captureProviders()?.localWhisperEnabled !== false;
+    if (localWhisperEnabled) {
+      this._dictationBinding?.refresh();
+      return;
+    }
+
+    dictationButton.disabled = true;
+    dictationButton.setAttribute("aria-pressed", "false");
+    dictationButton.title = analyzeT("page.dictation.disabledTitle");
+    dictationButton.setAttribute("aria-label", analyzeT("page.dictation.disabledTitle"));
+  }
+
+  _notifyCaptureFeedback(
+    kind: "success" | "info" | "error",
+    title: string,
+    dedupeKey: string
+  ): void {
+    const confirmationMode = this._captureDefaults()?.commandConfirmation ?? "toast";
+    if (kind !== "error" && confirmationMode === "none") {
+      return;
+    }
+
+    notifyUser({
+      kind,
+      title,
+      dedupeKey,
+    });
+  }
+
+  _applyAutoStagedCapture(status: CaptureServiceStatus | null): void {
+    const attachMode = this._captureDefaults()?.attachMode ?? "manual-sync";
+    if (attachMode !== "auto-stage") {
+      return;
+    }
+
+    const latestAsset = status?.analyze.latestAsset ?? null;
+    if (latestAsset === null || latestAsset.path === this._lastAutoStagedCapturePath) {
+      return;
+    }
+
+    const nextFiles = mergeUploadFiles(this.stagedFiles, [
+      {
+        name: latestAsset.name,
+        originalName: latestAsset.originalName,
+        path: latestAsset.path,
+      },
+    ]);
+    if (nextFiles.length === this.stagedFiles.length) {
+      this._lastAutoStagedCapturePath = latestAsset.path;
+      return;
+    }
+
+    this.stagedFiles = nextFiles;
+    this._lastAutoStagedCapturePath = latestAsset.path;
+    this._renderUploadList();
+    this._notifyCaptureFeedback(
+      "success",
+      analyzeT("page.captureImport.success", { count: 1 }),
+      "analyze-capture-auto-stage"
+    );
+  }
+
+  _startCaptureStatusPolling(): void {
+    this._stopCaptureStatusPolling();
+    let remainingTicks = 16;
+
+    this._captureStatusPollTimer = window.setInterval(() => {
+      remainingTicks -= 1;
+      void this.refreshCaptureSessionState(true).finally(() => {
+        const state = this._captureStatus?.analyze.state ?? "idle";
+        const settled =
+          state === "ready" ||
+          state === "result-ready" ||
+          state === "idle" ||
+          state === "error";
+        if (settled || remainingTicks <= 0) {
+          this._stopCaptureStatusPolling();
+        }
+      });
+    }, 1500);
+  }
+
+  _stopCaptureStatusPolling(): void {
+    if (this._captureStatusPollTimer !== null) {
+      window.clearInterval(this._captureStatusPollTimer);
+      this._captureStatusPollTimer = null;
+    }
+  }
+
+  _renderCapturePanelState(): void {
+    const captureShell = document.getElementById("analyze-capture-shell");
+    const toggleButton = document.getElementById("capture-import-btn") as HTMLButtonElement | null;
+
+    if (captureShell instanceof HTMLElement) {
+      captureShell.hidden = this._capturePanelOpen !== true;
+    }
+
+    if (toggleButton) {
+      toggleButton.setAttribute("aria-expanded", this._capturePanelOpen ? "true" : "false");
+      toggleButton.classList.toggle("is-active", this._capturePanelOpen);
+    }
+  }
+
+  toggleCapturePanel(forceOpen?: boolean): void {
+    const nextOpen =
+      typeof forceOpen === "boolean" ? forceOpen : this._capturePanelOpen !== true;
+    if (nextOpen === this._capturePanelOpen) {
+      return;
+    }
+
+    this._capturePanelOpen = nextOpen;
+    this._renderCapturePanelState();
+
+    if (nextOpen) {
+      void this.refreshCaptureSessionState(true);
+    }
+  }
+
+  renderCaptureSessionState(): void {
+    const captureState = this._captureStatus?.analyze ?? null;
+    const androidStatus = this._captureStatus?.android ?? null;
+    const selectedDevice =
+      androidStatus?.devices.find((device) => device.selected) ??
+      androidStatus?.devices.find((device) => device.connectionState === "device") ??
+      null;
+    const stateLabel = analyzeT(
+      `page.captureSessionStates.${captureState?.state ?? "idle"}`
+    );
+    const latestName =
+      captureState?.latestAsset?.name ??
+      ((captureState?.pendingInboxCount ?? 0) > 0
+        ? analyzeT("page.captureSessionActions.sync")
+        : analyzeT("page.captureSessionLatestEmpty"));
+    const message =
+      captureState?.message ??
+      androidStatus?.pairingHint ??
+      analyzeT("page.captureSessionHint");
+
+    const stateEl = document.getElementById("analyze-capture-state");
+    const deviceEl = document.getElementById("analyze-capture-device");
+    const latestNameEl = document.getElementById("analyze-capture-latest-name");
+    const feedbackEl = document.getElementById("analyze-capture-feedback");
+    const sessionBtn = document.getElementById("capture-session-btn") as HTMLButtonElement | null;
+    const stopBtn = document.getElementById("capture-stop-btn") as HTMLButtonElement | null;
+    const captureBtn = document.getElementById("capture-photo-btn") as HTMLButtonElement | null;
+    const retakeBtn = document.getElementById("capture-retake-btn") as HTMLButtonElement | null;
+    const syncBtn = document.getElementById("capture-import-btn-inline") as HTMLButtonElement | null;
+    const androidCompanionEnabled = this._captureProviders()?.androidCompanionEnabled !== false;
+
+    if (stateEl) {
+      stateEl.textContent = stateLabel;
+    }
+    if (deviceEl) {
+      deviceEl.textContent = selectedDevice?.label ?? analyzeT("page.captureSessionDeviceNone");
+    }
+    if (latestNameEl) {
+      latestNameEl.textContent = latestName;
+    }
+    if (feedbackEl) {
+      feedbackEl.textContent = androidCompanionEnabled ? message : analyzeT("page.captureSessionDisabled");
+    }
+
+    const hasReadyDevice = selectedDevice !== null;
+    const isSessionActive =
+      captureState?.state === "ready" ||
+      captureState?.state === "capture-requested" ||
+      captureState?.state === "result-ready" ||
+      captureState?.state === "pending-launch";
+    const isSessionReady =
+      captureState?.state === "ready" || captureState?.state === "result-ready";
+    if (sessionBtn) {
+      sessionBtn.disabled = androidCompanionEnabled !== true || hasReadyDevice === false || isSessionActive;
+    }
+    if (stopBtn) {
+      stopBtn.disabled =
+        androidCompanionEnabled !== true || (isSessionActive !== true && captureState?.deviceId === null);
+    }
+    if (captureBtn) {
+      captureBtn.disabled = androidCompanionEnabled !== true || isSessionReady !== true;
+    }
+    if (retakeBtn) {
+      retakeBtn.disabled = androidCompanionEnabled !== true || isSessionReady !== true;
+    }
+    if (syncBtn) {
+      syncBtn.disabled = androidCompanionEnabled !== true || (captureState?.pendingInboxCount ?? 0) === 0;
+    }
+
+    void this._renderCapturePreview();
+  }
+
+  async refreshCaptureSessionState(forceRefresh = false): Promise<void> {
+    try {
+      this._captureStatus = forceRefresh ? await refreshCaptureStatus() : await getCaptureStatus();
+      this._applyAutoStagedCapture(this._captureStatus);
+    } catch (error) {
+      this._captureStatus = null;
+      this._notifyCaptureFeedback(
+        "error",
+        analyzeT("page.captureImport.error", { message: getErrorMessage(error) }),
+        "analyze-capture-status-error"
+      );
+    } finally {
+      this.renderCaptureSessionState();
+    }
+  }
+
+  async _renderCapturePreview(): Promise<void> {
+    const previewImage = document.getElementById(
+      "analyze-capture-latest-image"
+    ) as HTMLImageElement | null;
+    const previewEmpty = document.getElementById("analyze-capture-latest-empty");
+    const latestAsset = this._captureStatus?.analyze.latestAsset ?? null;
+    const previewToken = ++this._capturePreviewToken;
+
+    if (!(previewImage instanceof HTMLImageElement) || !(previewEmpty instanceof HTMLElement)) {
+      return;
+    }
+
+    if (latestAsset === null || typeof window.electronAPI?.readFile !== "function") {
+      previewImage.hidden = true;
+      previewImage.removeAttribute("src");
+      previewEmpty.hidden = false;
+      previewEmpty.textContent = analyzeT("page.captureSessionLatestEmpty");
+      return;
+    }
+
+    try {
+      const base64 = await window.electronAPI.readFile(latestAsset.path);
+      if (previewToken !== this._capturePreviewToken) {
+        return;
+      }
+
+      if (typeof base64 !== "string" || base64 === "") {
+        throw new Error("Preview file is empty.");
+      }
+
+      previewImage.src = `data:${getMimeTypeFromPath(latestAsset.path)};base64,${base64}`;
+      previewImage.hidden = false;
+      previewEmpty.hidden = true;
+    } catch {
+      if (previewToken !== this._capturePreviewToken) {
+        return;
+      }
+      previewImage.hidden = true;
+      previewImage.removeAttribute("src");
+      previewEmpty.hidden = false;
+      previewEmpty.textContent = latestAsset.name;
+    }
+  }
+
+  async _runCaptureAction(action: CaptureActionOutcome["action"]): Promise<void> {
+    try {
+      const outcome = await runCaptureAction(action);
+      this._captureStatus = outcome.status;
+      this._applyAutoStagedCapture(outcome.status);
+      this._notifyCaptureFeedback(
+        outcome.ok ? "success" : "error",
+        outcome.message,
+        `analyze-${action}`
+      );
+      if (
+        outcome.ok === true &&
+        (action === "start-analyze-session" ||
+          action === "capture-analyze-photo" ||
+          action === "retake-analyze-photo" ||
+          action === "stop-analyze-session")
+      ) {
+        this._startCaptureStatusPolling();
+      }
+    } catch (error) {
+      this._notifyCaptureFeedback("error", getErrorMessage(error), `analyze-${action}-error`);
+    } finally {
+      this.renderCaptureSessionState();
+    }
   }
 
   _clearSlotMessages(provider: string): void {
@@ -1616,6 +1956,59 @@ export class AnalyzeController {
     }
   }
 
+  async handleCaptureImportClick(): Promise<void> {
+    const inlineButton = document.getElementById(
+      "capture-import-btn-inline"
+    ) as HTMLButtonElement | null;
+    if (inlineButton?.disabled === true) {
+      return;
+    }
+
+    if (inlineButton) {
+      inlineButton.disabled = true;
+    }
+
+    try {
+      const imported = await consumeAnalyzeCaptureAssets();
+      if (imported.length === 0) {
+        this._notifyCaptureFeedback(
+          "info",
+          analyzeT("page.captureImport.empty"),
+          "analyze-capture-import-empty"
+        );
+        return;
+      }
+
+      this.stagedFiles = mergeUploadFiles(
+        this.stagedFiles,
+        imported.map((entry) => ({
+          name: entry.name,
+          originalName: entry.originalName,
+          path: entry.path,
+        }))
+      );
+      this._renderUploadList();
+      this._captureStatus = await refreshCaptureStatus().catch(() => this._captureStatus);
+      this._applyAutoStagedCapture(this._captureStatus);
+      this.renderCaptureSessionState();
+      this._notifyCaptureFeedback(
+        "success",
+        analyzeT("page.captureImport.success", { count: imported.length }),
+        "analyze-capture-import-success"
+      );
+    } catch (error) {
+      this._notifyCaptureFeedback(
+        "error",
+        analyzeT("page.captureImport.error", { message: getErrorMessage(error) }),
+        "analyze-capture-import-error"
+      );
+    } finally {
+      if (inlineButton) {
+        inlineButton.disabled = false;
+      }
+    }
+  }
+
   _renderUploadList(): void {
     renderUploadList(this.stagedFiles, (name) => {
       this.stagedFiles = removeUploadFile(this.stagedFiles, name);
@@ -1903,6 +2296,7 @@ export class AnalyzeController {
     this._setAnalyzeSceneActiveView(null);
     this._analyzeSceneSelection = null;
     this._stopUs1Polling();
+    this._stopCaptureStatusPolling();
 
     try {
       this._persistDraft();

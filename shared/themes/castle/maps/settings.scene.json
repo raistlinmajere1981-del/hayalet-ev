@@ -110,6 +110,41 @@
       }
     },
     {
+      "id": "panel-capture",
+      "kind": "object",
+      "viewId": null,
+      "action": {
+        "type": "settings",
+        "panel": "capture"
+      },
+      "rect": {
+        "leftPx": 548,
+        "topPx": 594,
+        "widthPx": 124,
+        "heightPx": 148
+      },
+      "frame": {
+        "variant": "flat",
+        "rotateDeg": -2,
+        "perspectiveDeg": 8,
+        "hueDeg": 33,
+        "alpha": 0.34
+      },
+      "label": {
+        "visible": true,
+        "textKey": "settingsHub.nav.capture",
+        "centerXPx": 610,
+        "topPx": 646,
+        "widthPx": 160,
+        "heightPx": 40,
+        "rotateDeg": 0,
+        "fontSizePx": 18,
+        "letterSpacingPx": 1,
+        "fontPreset": "display",
+        "framePerspectiveDeg": 0
+      }
+    },
+    {
       "id": "panel-backup",
       "kind": "object",
       "viewId": null,

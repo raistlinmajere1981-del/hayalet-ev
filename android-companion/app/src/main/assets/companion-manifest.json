@@ -1,0 +1,10 @@
+{
+  "applicationId": "com.hayaletev.androidcompanion",
+  "mainActivity": "com.hayaletev.androidcompanion/.MainActivity",
+  "foregroundService": "com.hayaletev.androidcompanion/.capture.CaptureForegroundService",
+  "versionName": "0.1.0-dev",
+  "versionCode": 1,
+  "bridgePort": 48561,
+  "commandPollIntervalMs": 1500,
+  "previewMode": "phone-screen"
+}

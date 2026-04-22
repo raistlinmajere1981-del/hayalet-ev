@@ -222,6 +222,7 @@ import { setupRoomHandlers } from "./handlers/ipc-rooms.ts";
 import { setupRoomToolHandlers } from "./handlers/ipc-room-tools.ts";
 import { setupSceneThemeHandlers } from "./handlers/ipc-scene-themes.ts";
 import { setupBackupHandlers } from "./handlers/ipc-backup.ts";
+import { setupCaptureHandlers } from "./handlers/ipc-capture.ts";
 import { setupTranscriptHandlers } from "./handlers/ipc-transcript.ts";
 import { setupUs1MailHandlers } from "./handlers/ipc-us1-mail.ts";
 
@@ -416,6 +417,7 @@ void app.whenReady().then(async () => {
     setupSettingsHandlers();
     setupI18nHandlers();
     setupMemoryHandlers();
+    setupCaptureHandlers();
     setupTranscriptHandlers();
     setupOpencodeUiToolsHandlers();
     setupRoomHandlers(null);

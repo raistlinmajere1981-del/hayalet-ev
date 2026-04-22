@@ -45,6 +45,11 @@ import type {
   TranscriptTranscriptionRequest,
   TranscriptTranscriptionResult,
 } from "../types/transcript.js";
+import type {
+  CaptureActionOutcome,
+  CaptureImportedAsset,
+  CaptureServiceStatus,
+} from "../types/capture.js";
 import type { SceneThemeRegistration } from "./scene-system/scene-theme-registry-contract.js";
 
 export {};
@@ -1131,6 +1136,20 @@ declare global {
     opencodeUiSessionWatchStop: () => Promise<{ success: boolean }>;
     opencodeUiOnSessionUpdated: (callback: (payload: { sessionId: string }) => void) => void;
     opencodeUiOffSessionUpdated: (callback: (payload: { sessionId: string }) => void) => void;
+    captureStatus?: () => Promise<CaptureServiceStatus>;
+    captureRefreshStatus?: () => Promise<CaptureServiceStatus>;
+    captureConsumeAnalyzeAssets?: () => Promise<CaptureImportedAsset[]>;
+    captureInstallCompanion?: (options?: {
+      allowBootstrap?: boolean;
+    }) => Promise<CaptureActionOutcome>;
+    captureDismissOperation?: () => Promise<CaptureServiceStatus>;
+    captureConnectDevice?: (address: string) => Promise<CaptureActionOutcome>;
+    captureDisconnectDevice?: (deviceId: string) => Promise<CaptureActionOutcome>;
+    captureLaunchCompanion?: () => Promise<CaptureActionOutcome>;
+    captureStartAnalyzeSession?: () => Promise<CaptureActionOutcome>;
+    captureStopAnalyzeSession?: () => Promise<CaptureActionOutcome>;
+    captureRequestAnalyzePhoto?: () => Promise<CaptureActionOutcome>;
+    captureRetakeAnalyzePhoto?: () => Promise<CaptureActionOutcome>;
     transcriptStatus: () => Promise<TranscriptRuntimeStatus>;
     transcriptEnsureRuntime: () => Promise<TranscriptRuntimeStatus>;
     transcriptListModels?: () => Promise<TranscriptManagedModelStatus[]>;

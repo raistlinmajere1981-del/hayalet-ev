@@ -59,7 +59,15 @@ import {
   type WorkspaceToolOpenDetail,
 } from "../../ui/workspace-tool-overlay.js";
 
-const SETTINGS_PANELS = ["accounts", "theme", "backup", "rooms", "live-log", "languages"] as const;
+const SETTINGS_PANELS = [
+  "accounts",
+  "capture",
+  "theme",
+  "backup",
+  "rooms",
+  "live-log",
+  "languages",
+] as const;
 
 export type SettingsPanelId = (typeof SETTINGS_PANELS)[number];
 

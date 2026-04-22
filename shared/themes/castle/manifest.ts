@@ -110,6 +110,7 @@ export const CASTLE_THEME_SOURCE = {
       panels: {
         theme: settingsThemePanel,
         accounts: settingsAccountsPanel,
+        capture: settingsLogViewPanel,
         backup: settingsBackupPanel,
         rooms: settingsRoomsPanel,
         "live-log": settingsLogViewPanel,
