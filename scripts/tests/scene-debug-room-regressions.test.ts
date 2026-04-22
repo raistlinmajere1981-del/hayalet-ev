@@ -116,6 +116,7 @@ test("settings scene layout defines close, panels, one back, and one user charac
       "door-close",
       "panel-theme",
       "panel-accounts",
+      "panel-capture",
       "panel-backup",
       "panel-rooms",
       "panel-live-log",

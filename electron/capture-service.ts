@@ -178,11 +178,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function normalizeStringList(value: unknown, fallback: string[]): string[] {
-  const source = Array.isArray(value)
-    ? value
-    : typeof value === "string"
-      ? value.split(",")
-      : [];
+  const source = Array.isArray(value) ? value : typeof value === "string" ? value.split(",") : [];
   const normalized = source
     .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
     .filter((entry, index, list) => entry !== "" && list.indexOf(entry) === index);
@@ -205,29 +201,26 @@ function resolveCaptureSettings(settings: unknown): ResolvedCaptureSettings {
     localWhisperEnabled: providers?.["localWhisperEnabled"] !== false,
     androidCompanionEnabled: providers?.["androidCompanionEnabled"] !== false,
     androidSpeechEnabled: providers?.["androidSpeechEnabled"] !== false,
-    speechFallbackMode:
-      providers?.["speechFallbackMode"] === "vosk-seam" ? "vosk-seam" : "system",
+    speechFallbackMode: providers?.["speechFallbackMode"] === "vosk-seam" ? "vosk-seam" : "system",
     commandPhrases: {
-      openCamera: normalizeStringList(
-        commandPhrases?.["openCamera"],
-        [...DEFAULT_CAPTURE_COMMAND_PHRASES.openCamera]
-      ),
-      capture: normalizeStringList(
-        commandPhrases?.["capture"],
-        [...DEFAULT_CAPTURE_COMMAND_PHRASES.capture]
-      ),
+      openCamera: normalizeStringList(commandPhrases?.["openCamera"], [
+        ...DEFAULT_CAPTURE_COMMAND_PHRASES.openCamera,
+      ]),
+      capture: normalizeStringList(commandPhrases?.["capture"], [
+        ...DEFAULT_CAPTURE_COMMAND_PHRASES.capture,
+      ]),
       retake: normalizeStringList(commandPhrases?.["retake"], [
         ...DEFAULT_CAPTURE_COMMAND_PHRASES.retake,
       ]),
-      attach: normalizeStringList(
-        commandPhrases?.["attach"],
-        [...DEFAULT_CAPTURE_COMMAND_PHRASES.attach]
-      ),
-      stop: normalizeStringList(commandPhrases?.["stop"], [...DEFAULT_CAPTURE_COMMAND_PHRASES.stop]),
-      cancel: normalizeStringList(
-        commandPhrases?.["cancel"],
-        [...DEFAULT_CAPTURE_COMMAND_PHRASES.cancel]
-      ),
+      attach: normalizeStringList(commandPhrases?.["attach"], [
+        ...DEFAULT_CAPTURE_COMMAND_PHRASES.attach,
+      ]),
+      stop: normalizeStringList(commandPhrases?.["stop"], [
+        ...DEFAULT_CAPTURE_COMMAND_PHRASES.stop,
+      ]),
+      cancel: normalizeStringList(commandPhrases?.["cancel"], [
+        ...DEFAULT_CAPTURE_COMMAND_PHRASES.cancel,
+      ]),
     },
   };
 }
@@ -251,7 +244,9 @@ function buildCompanionCommandProfile(
   };
 }
 
-function resolveCaptureActionFromCommand(kind: CaptureCompanionCommandKind): CaptureActionOutcome["action"] {
+function resolveCaptureActionFromCommand(
+  kind: CaptureCompanionCommandKind
+): CaptureActionOutcome["action"] {
   switch (kind) {
     case "open-camera":
       return "start-analyze-session";
@@ -288,6 +283,24 @@ async function fileExists(filePath: string): Promise<boolean> {
   }
 }
 
+async function readDirectoryNameSet(directoryPath: string): Promise<Set<string>> {
+  return new Set(await readdir(directoryPath));
+}
+
+function resolveAvailableFileName(existingNames: Set<string>, preferredName: string): string {
+  const extension = extname(preferredName);
+  const baseName = extension === "" ? preferredName : preferredName.slice(0, -extension.length);
+
+  let nextName = preferredName;
+  let counter = 1;
+  while (existingNames.has(nextName)) {
+    nextName = `${baseName}-${String(counter)}${extension}`;
+    counter += 1;
+  }
+
+  return nextName;
+}
+
 async function resolveExecutableOnPath(executableName: string): Promise<string | null> {
   const direct = normalizeText(executableName);
   if (direct === null) {
@@ -304,16 +317,17 @@ async function resolveExecutableOnPath(executableName: string): Promise<string |
     .filter((entry) => entry !== "");
 
   const extensions = process.platform === "win32" ? ["", ".exe", ".cmd", ".bat"] : [""];
-  for (const entry of pathEntries) {
-    for (const extension of extensions) {
-      const candidate = join(entry, `${direct}${extension}`);
-      if (await isExecutable(candidate)) {
-        return candidate;
-      }
-    }
-  }
+  const candidates = pathEntries.flatMap((entry) =>
+    extensions.map((extension) => join(entry, `${direct}${extension}`))
+  );
+  const executableChecks = await Promise.all(
+    candidates.map(async (candidate) => ({
+      candidate,
+      executable: await isExecutable(candidate),
+    }))
+  );
 
-  return null;
+  return executableChecks.find((result) => result.executable)?.candidate ?? null;
 }
 
 async function runCommand(
@@ -556,7 +570,11 @@ function parseAdbDeviceList(output: string): CaptureAndroidDeviceStatus[] {
         deviceId,
         label: model ?? deviceId,
         model,
-        transport: deviceId.includes(":") ? "wireless" : details.some((token) => token.startsWith("usb:")) ? "usb" : "unknown",
+        transport: deviceId.includes(":")
+          ? "wireless"
+          : details.some((token) => token.startsWith("usb:"))
+            ? "usb"
+            : "unknown",
         connectionState,
         selected: false,
         companionState: "unknown",
@@ -606,7 +624,7 @@ function selectReadyDevice(
     }
   }
 
-  return readyDevices.length === 1 ? readyDevices[0] ?? null : null;
+  return readyDevices.length === 1 ? (readyDevices[0] ?? null) : null;
 }
 
 function buildHostMessage(hostState: CaptureAndroidHostState): string | null {
@@ -687,7 +705,9 @@ function summarizeCompanionBuildFailure(output: string | null): string {
       .map((line) => line.trim())
       .find((line) => line !== "") ?? null;
 
-  return firstLine !== null ? `Android companion build failed: ${firstLine}` : "Android companion build failed.";
+  return firstLine !== null
+    ? `Android companion build failed: ${firstLine}`
+    : "Android companion build failed.";
 }
 
 async function readCompanionManifest(): Promise<CaptureAndroidArtifactStatus> {
@@ -711,24 +731,28 @@ async function readCompanionManifest(): Promise<CaptureAndroidArtifactStatus> {
   }
 
   try {
-    const parsed = JSON.parse(await readFile(companionManifestPath, "utf8")) as CompanionManifestRecord;
+    const parsed = JSON.parse(
+      await readFile(companionManifestPath, "utf8")
+    ) as CompanionManifestRecord;
     const artifactManifest =
       (await fileExists(companionArtifactManifestPath)) === true
-        ? (JSON.parse(
-            await readFile(companionArtifactManifestPath, "utf8")
-          ) as Record<string, unknown>)
+        ? (JSON.parse(await readFile(companionArtifactManifestPath, "utf8")) as Record<
+            string,
+            unknown
+          >)
         : null;
     const artifactApkPath = normalizeText(artifactManifest?.["apkPath"]);
-    const artifactReady =
-      artifactApkPath !== null && (await fileExists(artifactApkPath)) === true;
+    const artifactReady = artifactApkPath !== null && (await fileExists(artifactApkPath)) === true;
     const wrapperReady = await fileExists(companionWrapperPath);
 
     return {
-      buildState: artifactReady ? "artifact-ready" : wrapperReady ? "source-ready" : "build-blocked",
-      applicationId:
-        normalizeText(parsed.applicationId) ?? CAPTURE_ANDROID_COMPANION_PACKAGE,
-      mainActivity:
-        normalizeText(parsed.mainActivity) ?? CAPTURE_ANDROID_MAIN_ACTIVITY,
+      buildState: artifactReady
+        ? "artifact-ready"
+        : wrapperReady
+          ? "source-ready"
+          : "build-blocked",
+      applicationId: normalizeText(parsed.applicationId) ?? CAPTURE_ANDROID_COMPANION_PACKAGE,
+      mainActivity: normalizeText(parsed.mainActivity) ?? CAPTURE_ANDROID_MAIN_ACTIVITY,
       versionName: normalizeText(parsed.versionName),
       versionCode:
         typeof parsed.versionCode === "number" && Number.isFinite(parsed.versionCode)
@@ -768,15 +792,8 @@ async function moveAnalyzeAssetToStaging(
   stagedDir: string
 ): Promise<CaptureImportedAsset> {
   const originalName = basename(sourcePath);
-  const extension = extname(originalName);
-  const baseName = extension === "" ? originalName : originalName.slice(0, -extension.length);
-
-  let nextName = originalName;
-  let counter = 1;
-  while (await fileExists(join(stagedDir, nextName))) {
-    nextName = `${baseName}-${String(counter)}${extension}`;
-    counter += 1;
-  }
+  const stagedNames = await readDirectoryNameSet(stagedDir);
+  const nextName = resolveAvailableFileName(stagedNames, originalName);
 
   const targetPath = join(stagedDir, nextName);
   await rename(sourcePath, targetPath);
@@ -834,15 +851,8 @@ async function writeAnalyzeAsset(
   const { analyzeInboxDir, analyzeStagedDir } = await ensureCaptureIngressPaths();
   const targetDir = destination === "staged" ? analyzeStagedDir : analyzeInboxDir;
   const normalizedName = normalizeText(fileName) ?? `capture-${Date.now()}.jpg`;
-  const extension = extname(normalizedName);
-  const baseName = extension === "" ? normalizedName : normalizedName.slice(0, -extension.length);
-
-  let nextName = normalizedName;
-  let counter = 1;
-  while (await fileExists(join(targetDir, nextName))) {
-    nextName = `${baseName}-${String(counter)}${extension}`;
-    counter += 1;
-  }
+  const existingNames = await readDirectoryNameSet(targetDir);
+  const nextName = resolveAvailableFileName(existingNames, normalizedName);
 
   const targetPath = join(targetDir, nextName);
   await writeFile(targetPath, Buffer.from(contentBase64, "base64"));
@@ -1040,7 +1050,7 @@ class CaptureService {
     const ingress = await readAnalyzeIngressSnapshot();
     const activeSession =
       android.selectedDeviceId !== null
-        ? this.bridgeSessions.get(android.selectedDeviceId) ?? null
+        ? (this.bridgeSessions.get(android.selectedDeviceId) ?? null)
         : null;
 
     this.analyzeState = {
@@ -1075,7 +1085,8 @@ class CaptureService {
   }
 
   private setOperationState(
-    nextState: Partial<CaptureServiceStatus["operation"]> & Pick<CaptureServiceStatus["operation"], "state">
+    nextState: Partial<CaptureServiceStatus["operation"]> &
+      Pick<CaptureServiceStatus["operation"], "state">
   ): void {
     const details = Array.isArray(nextState.details)
       ? nextState.details
@@ -1178,9 +1189,11 @@ class CaptureService {
       );
     }
 
-    const connectResult = await runCommand(adbPath, ["connect", normalizedAddress]).catch((error) => {
-      throw new Error(error instanceof Error ? error.message : String(error));
-    });
+    const connectResult = await runCommand(adbPath, ["connect", normalizedAddress]).catch(
+      (error) => {
+        throw new Error(error instanceof Error ? error.message : String(error));
+      }
+    );
     if (connectResult.exitCode !== 0) {
       return await this.buildActionOutcome(
         "connect-device",
@@ -1320,7 +1333,8 @@ class CaptureService {
       ...this.analyzeState,
       deviceId,
       state: "pending-launch",
-      message: "Companion launch requested. Open the app on the phone and keep the preview on the phone screen.",
+      message:
+        "Companion launch requested. Open the app on the phone and keep the preview on the phone screen.",
     };
     return await this.buildActionOutcome(
       "launch-companion",
@@ -1370,7 +1384,9 @@ class CaptureService {
     });
   }
 
-  async requestAnalyzeCapture(kind: "capture-photo" | "retake-photo"): Promise<CaptureActionOutcome> {
+  async requestAnalyzeCapture(
+    kind: "capture-photo" | "retake-photo"
+  ): Promise<CaptureActionOutcome> {
     const status = await this.refreshStatus();
     const readyState =
       this.analyzeState.state === "ready" || this.analyzeState.state === "result-ready";
@@ -1395,17 +1411,17 @@ class CaptureService {
   async consumeAnalyzeInboxAssets(): Promise<CaptureImportedAsset[]> {
     const { analyzeInboxDir, analyzeStagedDir } = await ensureCaptureIngressPaths();
     const entries = await readdir(analyzeInboxDir, { withFileTypes: true });
-    const imported: CaptureImportedAsset[] = [];
-
-    for (const entry of entries) {
-      if (entry.isFile() !== true) {
-        continue;
-      }
-
-      imported.push(
-        await moveAnalyzeAssetToStaging(join(analyzeInboxDir, entry.name), analyzeStagedDir)
-      );
-    }
+    const fileEntries = entries.filter((entry) => entry.isFile());
+    const imported = await fileEntries.reduce<Promise<CaptureImportedAsset[]>>(
+      async (pendingImported, entry) => {
+        const accumulated = await pendingImported;
+        accumulated.push(
+          await moveAnalyzeAssetToStaging(join(analyzeInboxDir, entry.name), analyzeStagedDir)
+        );
+        return accumulated;
+      },
+      Promise.resolve([])
+    );
 
     if (imported.length > 0) {
       const latestAsset = imported[imported.length - 1] ?? null;
@@ -1432,14 +1448,17 @@ class CaptureService {
       this.analyzeState.deviceId,
       status.android.selectedDeviceId,
       this.bridgeState.registeredDeviceId,
-    ].filter((value, index, list): value is string => value !== null && list.indexOf(value) === index);
+    ].filter(
+      (value, index, list): value is string => value !== null && list.indexOf(value) === index
+    );
 
     if (requireSession !== true) {
       return preferredCandidates[0] ?? null;
     }
 
     return (
-      preferredCandidates.find((deviceId) => this.getAnalyzeBridgeSession(deviceId) !== null) ?? null
+      preferredCandidates.find((deviceId) => this.getAnalyzeBridgeSession(deviceId) !== null) ??
+      null
     );
   }
 
@@ -1449,7 +1468,9 @@ class CaptureService {
     }
 
     const session = this.bridgeSessions.get(deviceId) ?? null;
-    return session?.target === CAPTURE_ANALYZE_TARGET && session.previewActive === true ? session : null;
+    return session?.target === CAPTURE_ANALYZE_TARGET && session.previewActive === true
+      ? session
+      : null;
   }
 
   private clearPendingAnalyzeCommands(deviceId: string): void {
@@ -1530,7 +1551,10 @@ class CaptureService {
       }
     }
 
-    const activeSession = [...this.bridgeSessions.values()].sort((left, right) => right.lastSeenAt - left.lastSeenAt)[0] ?? null;
+    const activeSession =
+      [...this.bridgeSessions.values()].sort(
+        (left, right) => right.lastSeenAt - left.lastSeenAt
+      )[0] ?? null;
     this.bridgeState = {
       ...this.bridgeState,
       registeredDeviceId: activeSession?.deviceId ?? null,
@@ -1668,7 +1692,10 @@ class CaptureService {
         const deviceId = normalizeText(body["deviceId"]);
         const commandId = normalizeText(body["commandId"]);
         if (deviceId === null || commandId === null) {
-          this.sendJson(response, 400, { ok: false, error: "deviceId and commandId are required." });
+          this.sendJson(response, 400, {
+            ok: false,
+            error: "deviceId and commandId are required.",
+          });
           return;
         }
 
@@ -1709,7 +1736,7 @@ class CaptureService {
                 ? "The phone is capturing a photo."
                 : commandKind === "close-camera"
                   ? "The phone capture session is idle."
-                : "The phone acknowledged the latest command."),
+                  : "The phone acknowledged the latest command."),
           };
         }
 
@@ -1905,7 +1932,11 @@ class CaptureService {
 
     if (selectedDevice !== null) {
       selectedDevice.selected = true;
-      reverseState = await inspectReverseState(adbPath, selectedDevice.deviceId, artifact.bridgePort);
+      reverseState = await inspectReverseState(
+        adbPath,
+        selectedDevice.deviceId,
+        artifact.bridgePort
+      );
       if (
         detailedDevices.find((entry) => entry.device.deviceId === selectedDevice.deviceId)
           ?.packageQueryFailed === true
@@ -1972,10 +2003,15 @@ class CaptureService {
   }
 
   private async readCompanionBootstrapPlan(): Promise<CompanionBuildScriptEvent | null> {
-    const result = await runCommand(process.execPath, [getCompanionBuildScriptPath(), "--plan-only", "--json-progress"], 0, {
-      cwd: getCaptureProjectRoot(),
-      stdio: "pipe",
-    }).catch((error) => {
+    const result = await runCommand(
+      process.execPath,
+      [getCompanionBuildScriptPath(), "--plan-only", "--json-progress"],
+      0,
+      {
+        cwd: getCaptureProjectRoot(),
+        stdio: "pipe",
+      }
+    ).catch((error) => {
       throw new Error(error instanceof Error ? error.message : String(error));
     });
     const candidateLines = `${result.stdout}\n${result.stderr}`
@@ -2100,9 +2136,7 @@ class CaptureService {
         details:
           Array.isArray(plan.details) && plan.details.length > 0
             ? plan.details
-            : [
-                "A repo-local JDK 21 and Android SDK will be prepared before the APK build starts.",
-              ],
+            : ["A repo-local JDK 21 and Android SDK will be prepared before the APK build starts."],
       });
       return await this.buildPassiveActionOutcome(
         "install-companion",
@@ -2164,7 +2198,8 @@ class CaptureService {
       );
     }
     const deviceId =
-      options?.deviceId ?? this.resolveAnalyzeCommandDeviceId(status, options?.requireSession === true);
+      options?.deviceId ??
+      this.resolveAnalyzeCommandDeviceId(status, options?.requireSession === true);
     if (deviceId === null) {
       return await this.buildActionOutcome(
         resolveCaptureActionFromCommand(kind),

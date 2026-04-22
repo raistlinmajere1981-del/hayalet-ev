@@ -43,9 +43,18 @@
   --layout-topbar-relay-line-w: 28px;
   --layout-workspace-sidebar-max-w: min(38vw, 560px);
   --layout-settings-hub-max-w: 1440px;
+  --layout-settings-capture-select-max-w: 18rem;
+  --layout-settings-capture-input-max-w: 22rem;
+  --layout-settings-capture-connect-basis: 18rem;
+  --layout-settings-account-language-max-w: 20rem;
+  --layout-settings-account-hint-max-w: 22rem;
+  --layout-settings-account-runtime-panel-max-w: 34rem;
   --layout-assistant-runtime-stack-max-w: 460px;
   --layout-assistant-session-controls-max-w: 24rem;
   --layout-message-virtual-scroll-h: 400px;
+  --layout-analyze-capture-side-min-w: 14rem;
+  --layout-analyze-capture-preview-min-h: 12rem;
+  --layout-analyze-capture-preview-max-h: 18rem;
 
   --layout-modal-compact-w: 420px;
   --layout-modal-character-w: 860px;

@@ -1253,11 +1253,11 @@ body.is-scroll-locked {
 }
 
 .settings-capture-profile-input .select {
-  width: min(100%, 18rem);
+  width: min(100%, var(--layout-settings-capture-select-max-w));
 }
 
 .settings-capture-profile-input .input {
-  width: min(100%, 22rem);
+  width: min(100%, var(--layout-settings-capture-input-max-w));
 }
 
 .settings-capture-profile-input--check {
@@ -1282,7 +1282,7 @@ body.is-scroll-locked {
 }
 
 .settings-capture-note--status {
-  min-height: 1.25rem;
+  min-height: var(--space-5);
 }
 
 .settings-capture-status-grid {
@@ -1301,7 +1301,8 @@ body.is-scroll-locked {
   gap: var(--space-1);
   padding: var(--space-3);
   border-radius: var(--radius-lg);
-  border: var(--border-1) solid color-mix(in srgb, var(--settings-workbench-border) 80%, transparent);
+  border: var(--border-1) solid
+    color-mix(in srgb, var(--settings-workbench-border) 80%, transparent);
   background:
     linear-gradient(
       180deg,
@@ -1314,7 +1315,7 @@ body.is-scroll-locked {
 .settings-capture-stat-label {
   color: var(--text-secondary);
   font-size: var(--text-2xs);
-  letter-spacing: 0.02em;
+  letter-spacing: var(--tracking-wide);
 }
 
 .settings-capture-stat-card strong,
@@ -1333,7 +1334,11 @@ body.is-scroll-locked {
   border: var(--border-1) solid
     color-mix(in srgb, var(--settings-workbench-border-strong) 74%, transparent);
   background:
-    linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 10%, transparent), transparent 68%),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-accent) 10%, transparent),
+      transparent 68%
+    ),
     color-mix(in srgb, var(--bg-surface-2) 62%, transparent);
 }
 
@@ -1358,7 +1363,11 @@ body.is-scroll-locked {
   border: var(--border-1) solid
     color-mix(in srgb, var(--settings-workbench-border-strong) 68%, transparent);
   background:
-    linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 8%, transparent), transparent 70%),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-accent) 8%, transparent),
+      transparent 70%
+    ),
     color-mix(in srgb, var(--bg-surface-2) 68%, transparent);
 }
 
@@ -1376,9 +1385,9 @@ body.is-scroll-locked {
 .settings-capture-progress-bar {
   position: relative;
   overflow: hidden;
-  height: 0.55rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--bg-surface-4) 80%, transparent);
+  height: var(--size-dot-control);
+  border-radius: var(--radius-badge);
+  background: color-mix(in srgb, var(--bg-surface-3) 80%, transparent);
 }
 
 .settings-capture-progress-bar > span {
@@ -1386,16 +1395,20 @@ body.is-scroll-locked {
   height: 100%;
   width: 0%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 55%, white));
+  background: linear-gradient(
+    90deg,
+    var(--color-accent),
+    color-mix(in srgb, var(--color-accent) 55%, white)
+  );
   transition: width 180ms ease;
 }
 
 .settings-capture-progress-details {
   margin: 0;
-  padding-left: 1rem;
+  padding-left: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: var(--space-1-5);
   color: color-mix(in srgb, var(--text-secondary) 88%, transparent);
 }
 
@@ -1478,7 +1491,7 @@ body.is-scroll-locked {
 }
 
 .settings-capture-connect-row .settings-capture-profile-row {
-  flex: 1 1 18rem;
+  flex: 1 1 var(--layout-settings-capture-connect-basis);
 }
 
 .settings-capture-device-list {
@@ -1492,7 +1505,8 @@ body.is-scroll-locked {
   gap: var(--space-2);
   padding: var(--space-3);
   border-radius: var(--radius-lg);
-  border: var(--border-1) solid color-mix(in srgb, var(--settings-workbench-border) 78%, transparent);
+  border: var(--border-1) solid
+    color-mix(in srgb, var(--settings-workbench-border) 78%, transparent);
   background:
     linear-gradient(
       180deg,
@@ -1503,8 +1517,12 @@ body.is-scroll-locked {
 }
 
 .settings-capture-device-card.is-selected {
-  border-color: color-mix(in srgb, var(--color-accent) 60%, var(--settings-workbench-border-strong));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 24%, transparent);
+  border-color: color-mix(
+    in srgb,
+    var(--color-accent) 60%,
+    var(--settings-workbench-border-strong)
+  );
+  box-shadow: 0 0 0 var(--border-1) color-mix(in srgb, var(--color-accent) 24%, transparent);
 }
 
 .settings-capture-device-header {
@@ -1535,7 +1553,7 @@ body.is-scroll-locked {
 
 .analyze-capture-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(14rem, 0.8fr);
+  grid-template-columns: minmax(0, 1.2fr) minmax(var(--layout-analyze-capture-side-min-w), 0.8fr);
   gap: var(--space-3);
   align-items: stretch;
 }
@@ -1557,7 +1575,7 @@ body.is-scroll-locked {
 .analyze-capture-kicker {
   color: var(--text-secondary);
   font-size: var(--text-2xs);
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-wider);
   text-transform: uppercase;
 }
 
@@ -1582,11 +1600,11 @@ body.is-scroll-locked {
 .analyze-capture-stat {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: var(--space-1);
   padding: var(--space-2);
   border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--bg-surface-2) 78%, transparent);
-  border: var(--border-1) solid color-mix(in srgb, var(--border-color) 75%, transparent);
+  border: var(--border-1) solid color-mix(in srgb, var(--border-default) 75%, transparent);
 }
 
 .analyze-capture-stat span {
@@ -1613,16 +1631,20 @@ body.is-scroll-locked {
 }
 
 .analyze-capture-preview-frame {
-  min-height: 12rem;
+  min-height: var(--layout-analyze-capture-preview-min-h);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--space-2);
   border-radius: var(--radius-xl);
   background:
-    linear-gradient(160deg, color-mix(in srgb, var(--color-accent) 16%, transparent), transparent 70%),
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--color-accent) 16%, transparent),
+      transparent 70%
+    ),
     color-mix(in srgb, var(--bg-surface-2) 75%, transparent);
-  border: var(--border-1) solid color-mix(in srgb, var(--border-color) 72%, transparent);
+  border: var(--border-1) solid color-mix(in srgb, var(--border-default) 72%, transparent);
   overflow: hidden;
 }
 
@@ -1630,7 +1652,7 @@ body.is-scroll-locked {
   display: block;
   width: 100%;
   height: auto;
-  max-height: 18rem;
+  max-height: var(--layout-analyze-capture-preview-max-h);
   object-fit: contain;
   border-radius: var(--radius-lg);
 }
@@ -1798,7 +1820,7 @@ body.is-scroll-locked {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  min-width: min(100%, 20rem);
+  min-width: min(100%, var(--layout-settings-account-language-max-w));
 }
 
 .settings-hub-panel[data-settings-panel="accounts"] .user-profile-inline__setting {
@@ -1819,23 +1841,21 @@ body.is-scroll-locked {
   min-width: 0;
 }
 
-.settings-hub-panel[data-settings-panel="accounts"]
-  .user-profile-inline__setting
-  .form-label {
+.settings-hub-panel[data-settings-panel="accounts"] .user-profile-inline__setting .form-label {
   margin: 0;
   white-space: nowrap;
 }
 
 .settings-hub-panel[data-settings-panel="accounts"] .user-profile-inline__hint {
   margin: 0;
-  max-width: 22rem;
+  max-width: var(--layout-settings-account-hint-max-w);
   font-size: var(--text-2xs);
   line-height: 1.35;
   color: var(--text-secondary);
 }
 
 .settings-hub-panel[data-settings-panel="accounts"] .user-profile-inline__runtime-panel {
-  width: min(100%, 34rem);
+  width: min(100%, var(--layout-settings-account-runtime-panel-max-w));
 }
 
 .settings-hub-panel[data-settings-panel="accounts"] .user-profile-inline__runtime-model strong {
