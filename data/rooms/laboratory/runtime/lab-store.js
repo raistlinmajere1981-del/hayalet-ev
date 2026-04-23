@@ -276,6 +276,7 @@ function toEventFeedItem(value, fallbackScope) {
   }
   const source = asNonEmptyString(record["source"]);
   const severity = asNonEmptyString(record["severity"]);
+  const resultAssetIds = asStringArray(record["resultAssetIds"]);
   return {
     id: asNonEmptyString(record["id"]) || createLabEventId("event"),
     kind: asNonEmptyString(record["kind"]) || "activity",
@@ -298,8 +299,13 @@ function toEventFeedItem(value, fallbackScope) {
     requestId: asNonEmptyString(record["requestId"]),
     jobId: asNonEmptyString(record["jobId"]),
     projectId: asNonEmptyString(record["projectId"]),
-    throttleWindow: asNonEmptyString(record["throttleWindow"])
+    throttleWindow: asNonEmptyString(record["throttleWindow"]),
+    ...resultAssetIds.length > 0 ? { resultAssetIds: Array.from(new Set(resultAssetIds)) } : {}
   };
+}
+function normalizeUserActionResultAssetIds(value) {
+  const resultAssetIds = asStringArray(value);
+  return resultAssetIds.length > 0 ? Array.from(new Set(resultAssetIds)) : void 0;
 }
 function toArtifactProjection(value) {
   const record = asLabRecord(value);
@@ -560,10 +566,14 @@ function pushRunEvent(state, event, options = {}) {
   }
 }
 function pushUserAction(state, actionEvent) {
+  const normalizedResultAssetIds = normalizeUserActionResultAssetIds(actionEvent.resultAssetIds);
   state.userActions = state.userActions.filter(function(entry) {
     return entry.id !== actionEvent.id;
   });
-  state.userActions.unshift(actionEvent);
+  state.userActions.unshift({
+    ...actionEvent,
+    ...normalizedResultAssetIds === void 0 ? {} : { resultAssetIds: normalizedResultAssetIds }
+  });
   if (state.userActions.length > LAB_USER_ACTION_HISTORY_LIMIT) {
     state.userActions.length = LAB_USER_ACTION_HISTORY_LIMIT;
   }
@@ -575,7 +585,18 @@ function patchUserAction(state, id, patch) {
   if (!target) {
     return null;
   }
-  Object.assign(target, patch);
+  const nextPatch = {
+    ...patch
+  };
+  if (Object.prototype.hasOwnProperty.call(patch, "resultAssetIds")) {
+    const normalizedResultAssetIds = normalizeUserActionResultAssetIds(patch.resultAssetIds);
+    if (normalizedResultAssetIds === void 0) {
+      delete nextPatch.resultAssetIds;
+    } else {
+      nextPatch.resultAssetIds = normalizedResultAssetIds;
+    }
+  }
+  Object.assign(target, nextPatch);
   return target;
 }
 function upsertRunLiveFinding(state, event) {
@@ -796,11 +817,13 @@ function syncUserActionsFromHostEvent(state, event) {
     return;
   }
   if (event.stage === "completed") {
+    const normalizedResultAssetIds = normalizeUserActionResultAssetIds(event.resultAssetIds);
     patchUserAction(state, matchedAction.id, {
       ...basePatch,
       status: "success",
       finishedAt: event.timestamp || Date.now(),
-      message: trackedDefinition.successMessage
+      message: trackedDefinition.successMessage,
+      ...normalizedResultAssetIds === void 0 ? {} : { resultAssetIds: normalizedResultAssetIds }
     });
     return;
   }
@@ -1571,12 +1594,16 @@ function reduceEvent(state, event) {
       });
       return state;
     case "user-action-added":
+      const normalizedResultAssetIds = normalizeUserActionResultAssetIds(
+        event.actionEvent.resultAssetIds
+      );
       pushUserAction(state, {
         ...event.actionEvent,
         dismissedFromHubAt: event.actionEvent.dismissedFromHubAt ?? null,
         jobId: event.actionEvent.jobId ?? null,
         projectId: event.actionEvent.projectId ?? null,
         requestId: event.actionEvent.requestId ?? null,
+        ...normalizedResultAssetIds === void 0 ? {} : { resultAssetIds: normalizedResultAssetIds },
         sourceAction: event.actionEvent.sourceAction ?? null
       });
       return state;

@@ -1,6 +1,11 @@
 import { escapeHtml } from "../models/lab-types.js";
-import { getHubUserActions } from "../runtime/lab-selectors.js";
-import { getLabUserActionDisplayText } from "../runtime/lab-user-actions.js";
+import { getActionOutputs, getHubUserActions } from "../runtime/lab-selectors.js";
+import {
+  getLabUserActionDisplayText,
+  getLabUserActionOutputLabel,
+  getLabUserActionPrimaryOutput
+} from "../runtime/lab-user-actions.js";
+import { buildLabAssetMetadataTitle } from "./lab-asset-display.js";
 function getHubActionIcon(actionEvent) {
   switch (actionEvent.status) {
     case "idle":
@@ -33,6 +38,28 @@ function getHubActionTone(actionEvent) {
     }
   }
 }
+function renderHubActionResult(state, actionEvent) {
+  if (actionEvent.status !== "success") {
+    return "";
+  }
+  const outputs = getActionOutputs(state, actionEvent.id);
+  const primaryOutput = getLabUserActionPrimaryOutput(outputs);
+  const outputLabel = getLabUserActionOutputLabel(outputs);
+  if (primaryOutput === null || outputLabel === null) {
+    return "";
+  }
+  return `
+    <button
+      class="labx-topbar-actions__result"
+      type="button"
+      data-lab-action="asset-preview"
+      data-lab-value="${escapeHtml(primaryOutput.id)}"
+      title="${escapeHtml(buildLabAssetMetadataTitle(primaryOutput))}"
+    >
+      &rarr; ${escapeHtml(outputLabel)}
+    </button>
+  `;
+}
 export function renderLabTopbarActions(state) {
   const hubActions = getHubUserActions(state);
   if (hubActions.length === 0) {
@@ -48,9 +75,12 @@ export function renderLabTopbarActions(state) {
                 data-tone="${escapeHtml(getHubActionTone(actionEvent))}"
               >
                 ${getHubActionIcon(actionEvent)}
-                <span class="labx-topbar-actions__label">${escapeHtml(
+                <span class="labx-topbar-actions__content">
+                  <span class="labx-topbar-actions__label">${escapeHtml(
       getLabUserActionDisplayText(actionEvent)
     )}</span>
+                  ${renderHubActionResult(state, actionEvent)}
+                </span>
               </article>
             `;
   }).join("")}

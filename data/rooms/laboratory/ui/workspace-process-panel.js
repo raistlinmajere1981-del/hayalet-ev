@@ -6,6 +6,7 @@ import {
   getModuleIdsForCapabilityFamily
 } from "../models/lab-types.js";
 import {
+  getActionOutputs,
   getActiveModule,
   getActualOutputs,
   getCurrentRun,
@@ -23,8 +24,13 @@ import {
   isExpectedOutputMatched,
   isProcessSectionCollapsed
 } from "../runtime/lab-selectors.js";
-import { getLabUserActionDisplayText } from "../runtime/lab-user-actions.js";
+import {
+  getLabUserActionDisplayText,
+  getLabUserActionOutputLabel,
+  getLabUserActionPrimaryOutput
+} from "../runtime/lab-user-actions.js";
 import { renderArtifactItem } from "./components/artifact-item.js";
+import { buildLabAssetMetadataTitle } from "./lab-asset-display.js";
 import { renderStatusChip } from "./components/status-chip.js";
 const AUDIO_TRANSPORT_CAPABILITY_IDS = [
   "audio-signal",
@@ -603,14 +609,30 @@ function renderRecentActionsSection(state) {
       ${recentActions.length > 0 ? `
             <div class="labx-process-recent-actions__list">
               ${recentActions.map(function(actionEvent) {
+    const outputs = getActionOutputs(state, actionEvent.id);
+    const primaryOutput = getLabUserActionPrimaryOutput(outputs);
+    const outputLabel = getLabUserActionOutputLabel(outputs);
     return `
                     <div
                       class="labx-process-recent-actions__item"
                       data-tone="${escapeHtml(actionEvent.status)}"
                     >
-                      <span class="labx-process-recent-actions__label">${escapeHtml(
+                      <span class="labx-process-recent-actions__copy">
+                        <span class="labx-process-recent-actions__label">${escapeHtml(
       getLabUserActionDisplayText(actionEvent)
     )}</span>
+                        ${actionEvent.status === "success" && primaryOutput !== null && outputLabel !== null ? `
+                              <button
+                                class="labx-process-recent-actions__result"
+                                type="button"
+                                data-lab-action="asset-preview"
+                                data-lab-value="${escapeHtml(primaryOutput.id)}"
+                                title="${escapeHtml(buildLabAssetMetadataTitle(primaryOutput))}"
+                              >
+                                &rarr; ${escapeHtml(outputLabel)}
+                              </button>
+                            ` : ""}
+                      </span>
                       <small class="labx-process-recent-actions__meta">${escapeHtml(
       getRecentActionMeta(actionEvent)
     )}</small>

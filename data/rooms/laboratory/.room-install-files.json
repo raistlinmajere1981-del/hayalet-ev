@@ -169,6 +169,7 @@
     "ui/components/status-chip.js",
     "ui/index.html",
     "ui/index.js",
+    "ui/lab-asset-display.js",
     "ui/lab-center-panel.js",
     "ui/lab-layout.js",
     "ui/lab-left-rail.js",

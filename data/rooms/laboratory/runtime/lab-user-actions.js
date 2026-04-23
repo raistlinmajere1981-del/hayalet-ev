@@ -59,3 +59,17 @@ export function getLabUserActionDisplayText(actionEvent) {
   }
   return actionEvent.message || actionEvent.label;
 }
+export function getLabUserActionPrimaryOutput(outputs) {
+  return outputs[0] || null;
+}
+export function getLabUserActionOutputOverflowCount(outputs) {
+  return Math.max(0, outputs.length - 1);
+}
+export function getLabUserActionOutputLabel(outputs) {
+  const primaryOutput = getLabUserActionPrimaryOutput(outputs);
+  if (primaryOutput === null) {
+    return null;
+  }
+  const overflowCount = getLabUserActionOutputOverflowCount(outputs);
+  return overflowCount > 0 ? `${primaryOutput.name} +${String(overflowCount)}` : primaryOutput.name;
+}

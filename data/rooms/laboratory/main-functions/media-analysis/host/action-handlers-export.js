@@ -51,17 +51,22 @@ export function createMediaExportActionRuntime(deps) {
     return normalizedIntentIds.length > 0 ? Array.from(new Set(normalizedIntentIds)) : void 0;
   }
   async function registerOutputAsset(runtime, inputProject, assetInput) {
+    let createdAsset = null;
     await patchActiveProject(runtime, function(nextProject) {
-      const asset = createLabOutputAsset(nextProject, {
+      createdAsset = createLabOutputAsset(nextProject, {
         ...assetInput,
         runId: assetInput.runId || getCurrentMediaRunId(inputProject),
         intentIds: assetInput.intentIds || getWorkspaceIntentIds(inputProject)
       });
       return {
         ...nextProject,
-        assets: upsertLabAsset(nextProject["assets"], asset)
+        assets: upsertLabAsset(nextProject["assets"], createdAsset)
       };
     });
+    if (createdAsset === null) {
+      throw new Error("Output asset could not be registered.");
+    }
+    return createdAsset;
   }
   async function exportROIImage(api, runtime, requestId, payload) {
     const project = getActiveProject(runtime);
@@ -138,7 +143,7 @@ export function createMediaExportActionRuntime(deps) {
       if (runPayload["cancelled"] === true || exitCode !== 0) {
         throw new Error(asNonEmptyString(runPayload["stderr"]) || "ffmpeg ROI export failed.");
       }
-      await registerOutputAsset(runtime, project, {
+      const createdAsset = await registerOutputAsset(runtime, project, {
         type: "image",
         name: outputFileName,
         localPath: outputPath,
@@ -157,6 +162,7 @@ export function createMediaExportActionRuntime(deps) {
         percent: 100,
         projectId,
         requestId,
+        resultAssetIds: [createdAsset.id],
         stage: "completed",
         toolId: "ffmpeg"
       });
@@ -251,7 +257,7 @@ export function createMediaExportActionRuntime(deps) {
       if (runPayload["cancelled"] === true || exitCode !== 0) {
         throw new Error(asNonEmptyString(runPayload["stderr"]) || "ffmpeg frame grab failed.");
       }
-      await registerOutputAsset(runtime, project, {
+      const createdAsset = await registerOutputAsset(runtime, project, {
         type: "frame",
         name: outputFileName,
         localPath: outputPath,
@@ -270,6 +276,7 @@ export function createMediaExportActionRuntime(deps) {
         percent: 100,
         projectId,
         requestId,
+        resultAssetIds: [createdAsset.id],
         stage: "completed",
         toolId: "ffmpeg"
       });
@@ -376,7 +383,7 @@ export function createMediaExportActionRuntime(deps) {
       if (runPayload["cancelled"] === true || exitCode !== 0) {
         throw new Error(asNonEmptyString(runPayload["stderr"]) || "ffmpeg clip export failed.");
       }
-      await registerOutputAsset(runtime, project, {
+      const createdAsset = await registerOutputAsset(runtime, project, {
         type: "clip",
         name: outputFileName,
         localPath: outputPath,
@@ -397,6 +404,7 @@ export function createMediaExportActionRuntime(deps) {
         percent: 100,
         projectId,
         requestId,
+        resultAssetIds: [createdAsset.id],
         stage: "completed",
         toolId: "ffmpeg"
       });
@@ -491,7 +499,7 @@ export function createMediaExportActionRuntime(deps) {
       if (runPayload["cancelled"] === true || exitCode !== 0) {
         throw new Error(asNonEmptyString(runPayload["stderr"]) || "ffmpeg audio export failed.");
       }
-      await registerOutputAsset(runtime, project, {
+      const createdAsset = await registerOutputAsset(runtime, project, {
         type: "audio",
         name: outputFileName,
         localPath: outputPath,
@@ -509,6 +517,7 @@ export function createMediaExportActionRuntime(deps) {
         percent: 100,
         projectId,
         requestId,
+        resultAssetIds: [createdAsset.id],
         stage: "completed",
         toolId: "ffmpeg"
       });

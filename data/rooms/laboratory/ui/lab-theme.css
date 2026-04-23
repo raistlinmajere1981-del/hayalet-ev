@@ -1254,6 +1254,14 @@ textarea {
   color: var(--labx-text-soft);
 }
 
+.labx-topbar-actions__content {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
 .labx-topbar-actions__item[data-tone="running"] {
   border-color: rgba(92, 215, 223, 0.22);
   background: rgba(13, 34, 48, 0.78);
@@ -1291,6 +1299,22 @@ textarea {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.78rem;
+}
+
+.labx-topbar-actions__result {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--labx-text);
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.labx-topbar-actions__result:hover,
+.labx-topbar-actions__result:focus-visible {
+  color: var(--labx-accent-soft);
+  text-decoration: underline;
 }
 
 @keyframes labx-topbar-spin {
@@ -2824,6 +2848,13 @@ textarea {
   background: rgba(255, 255, 255, 0.025);
 }
 
+.labx-process-recent-actions__copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
 .labx-process-recent-actions__item[data-tone="success"] {
   border-left: 2px solid rgba(130, 227, 177, 0.72);
 }
@@ -2840,6 +2871,24 @@ textarea {
   min-width: 0;
   color: var(--labx-text-soft);
   font-size: 0.75rem;
+}
+
+.labx-process-recent-actions__result {
+  align-self: flex-start;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--labx-text);
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.labx-process-recent-actions__result:hover,
+.labx-process-recent-actions__result:focus-visible {
+  color: var(--labx-accent-soft);
+  text-decoration: underline;
 }
 
 .labx-process-recent-actions__meta {

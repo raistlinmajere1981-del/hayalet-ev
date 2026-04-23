@@ -161,6 +161,11 @@ export function getCurrentReports(state) {
 export function getAssets(state) {
   return state.assets.slice();
 }
+export function getAssetById(state, assetId) {
+  return state.assets.find(function(asset) {
+    return asset.id === assetId;
+  }) || null;
+}
 export function getAssetsByType(state, type) {
   return state.assets.filter(function(asset) {
     return asset.type === type;
@@ -374,6 +379,17 @@ export function getHubUserActions(state, limit = 4) {
   return getUserActions(state).filter(function(entry) {
     return entry.status === "running" || entry.status === "error" || entry.dismissedFromHubAt == null;
   }).slice(0, limit);
+}
+export function getActionOutputs(state, actionId) {
+  const action = getUserActions(state).find(function(entry) {
+    return entry.id === actionId;
+  });
+  if (!action || Array.isArray(action.resultAssetIds) !== true || action.resultAssetIds.length === 0) {
+    return [];
+  }
+  return action.resultAssetIds.map(function(assetId) {
+    return getAssetById(state, assetId);
+  }).filter((asset) => asset !== null);
 }
 export function getVisibleArtifacts(state) {
   const run = getCurrentRun(state);
