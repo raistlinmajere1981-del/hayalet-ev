@@ -79,6 +79,17 @@ function getActionLabel(action: string | null) {
   }
 }
 
+function toStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map(function (entry) {
+      return typeof entry === "string" && entry.trim() !== "" ? entry.trim() : null;
+    })
+    .filter((entry): entry is string => entry !== null);
+}
+
 export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps) {
   const {
     asNonEmptyString,
@@ -171,6 +182,7 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
     if (throttledPayload === null) {
       return;
     }
+    const resultAssetIds = Array.from(new Set(toStringArray(throttledPayload["resultAssetIds"])));
     notifyRoom(api, "lab-event", {
       ...throttledPayload,
       id:
@@ -201,6 +213,7 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
           : "global",
       moduleId: asNonEmptyString(throttledPayload["moduleId"]),
       rawLine: typeof throttledPayload["rawLine"] === "string" ? throttledPayload["rawLine"] : null,
+      ...(resultAssetIds.length > 0 ? { resultAssetIds } : {}),
     });
   }
 
@@ -212,6 +225,7 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
     const requestId = asNonEmptyString(payload["requestId"]);
     const jobId = asNonEmptyString(payload["jobId"]);
     const projectId = asNonEmptyString(payload["projectId"]);
+    const resultAssetIds = Array.from(new Set(toStringArray(payload["resultAssetIds"])));
     if (isCustomProcessEventKind(kind)) {
       return {
         ...payload,
@@ -227,6 +241,7 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
         requestId,
         jobId,
         projectId,
+        ...(resultAssetIds.length > 0 ? { resultAssetIds } : {}),
         scope: String(action || "").includes("process") ? "run" : "global",
       };
     }
@@ -251,6 +266,7 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
       requestId,
       jobId,
       projectId,
+      ...(resultAssetIds.length > 0 ? { resultAssetIds } : {}),
       scope: String(action || "").includes("process") ? "run" : "global",
     };
   }
@@ -258,6 +274,7 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
   function buildActionResultEventPayload(payload: LaboratoryRecord) {
     const action = asNonEmptyString(payload["action"]);
     const success = payload["success"] === true;
+    const resultAssetIds = Array.from(new Set(toStringArray(payload["resultAssetIds"])));
     return {
       kind: "request-result",
       severity: success ? "success" : "error",
@@ -270,6 +287,7 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
       requestId: asNonEmptyString(payload["requestId"]),
       jobId: asNonEmptyString(payload["jobId"]),
       projectId: asNonEmptyString(payload["projectId"]),
+      ...(resultAssetIds.length > 0 ? { resultAssetIds } : {}),
       scope: String(action || "").includes("process") ? "run" : "global",
     };
   }

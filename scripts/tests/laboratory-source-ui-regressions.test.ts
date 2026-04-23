@@ -732,6 +732,19 @@ test("laboratory workspace surface renders action hub and recent action history 
   const store = createSeededState(true);
 
   store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-frame-result",
+      type: "frame",
+      name: "frame_01.png",
+      localPath: "/tmp/frame_01.png",
+      createdAt: 200,
+      sourceId: "source-1",
+      runId: "run-1",
+    },
+  });
+
+  store.dispatch({
     type: "user-action-added",
     actionEvent: {
       id: "user-action-running",
@@ -756,6 +769,7 @@ test("laboratory workspace surface renders action hub and recent action history 
       message: "Frame alındı",
       projectId: "project-1",
       requestId: "req-success",
+      resultAssetIds: ["asset-frame-result"],
       sourceAction: "export-frame-grab",
     },
   });
@@ -766,8 +780,63 @@ test("laboratory workspace surface renders action hub and recent action history 
 
   assert.match(surface.main, /Klip çıkarılıyor/);
   assert.match(surface.main, /labx-topbar-actions/);
+  assert.match(surface.main, /frame_01\.png/);
   assert.match(processHtml, /Son işlemler/);
   assert.match(processHtml, /Frame alındı/);
+  assert.match(processHtml, /frame_01\.png/);
+  assert.match(processHtml, /data-lab-action="asset-preview"/);
+});
+
+test("laboratory workspace surface renders multi-output action summaries with overflow counts", () => {
+  const store = createSeededState(true);
+
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-report-user",
+      type: "report",
+      name: "report-user.md",
+      localPath: "/tmp/report-user.md",
+      createdAt: 200,
+      sourceId: "source-1",
+      runId: "run-1",
+    },
+  });
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-report-ai",
+      type: "report",
+      name: "report-ai.json",
+      localPath: "/tmp/report-ai.json",
+      createdAt: 300,
+      sourceId: "source-1",
+      runId: "run-1",
+    },
+  });
+  store.dispatch({
+    type: "user-action-added",
+    actionEvent: {
+      id: "user-action-report-success",
+      type: "custom",
+      label: "Rapor dışa aktarılıyor",
+      status: "success",
+      startedAt: Date.now() - 5000,
+      finishedAt: Date.now() - 1000,
+      message: "Rapor dışa aktarıldı",
+      projectId: "project-1",
+      requestId: "req-report-success",
+      resultAssetIds: ["asset-report-user", "asset-report-ai"],
+      sourceAction: "report-export",
+    },
+  });
+
+  const state = store.getState();
+  const surface = renderWorkspaceSurface(state);
+  const processHtml = renderWorkspaceProcessPanel(state, { sourceReady: true });
+
+  assert.match(surface.main, /report-user\.md \+1/);
+  assert.match(processHtml, /report-user\.md \+1/);
 });
 
 test("laboratory project assets panel renders registry groups and local asset actions only", () => {

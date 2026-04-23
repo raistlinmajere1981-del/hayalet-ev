@@ -1,4 +1,4 @@
-import type { LabUserActionEvent } from "../models/lab-types.js";
+import type { LabAsset, LabUserActionEvent } from "../models/lab-types.js";
 
 export const LAB_USER_ACTION_HISTORY_LIMIT = 24;
 export const LAB_USER_ACTION_HUB_SUCCESS_WINDOW_MS = 2600;
@@ -72,4 +72,21 @@ export function getLabUserActionDisplayText(actionEvent: LabUserActionEvent) {
     return actionEvent.label;
   }
   return actionEvent.message || actionEvent.label;
+}
+
+export function getLabUserActionPrimaryOutput(outputs: LabAsset[]): LabAsset | null {
+  return outputs[0] || null;
+}
+
+export function getLabUserActionOutputOverflowCount(outputs: LabAsset[]): number {
+  return Math.max(0, outputs.length - 1);
+}
+
+export function getLabUserActionOutputLabel(outputs: LabAsset[]): string | null {
+  const primaryOutput = getLabUserActionPrimaryOutput(outputs);
+  if (primaryOutput === null) {
+    return null;
+  }
+  const overflowCount = getLabUserActionOutputOverflowCount(outputs);
+  return overflowCount > 0 ? `${primaryOutput.name} +${String(overflowCount)}` : primaryOutput.name;
 }

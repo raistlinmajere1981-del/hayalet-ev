@@ -327,6 +327,7 @@ function toEventFeedItem(
 
   const source = asNonEmptyString(record["source"]);
   const severity = asNonEmptyString(record["severity"]);
+  const resultAssetIds = asStringArray(record["resultAssetIds"]);
   return {
     id: asNonEmptyString(record["id"]) || createLabEventId("event"),
     kind: asNonEmptyString(record["kind"]) || "activity",
@@ -356,7 +357,13 @@ function toEventFeedItem(
     jobId: asNonEmptyString(record["jobId"]),
     projectId: asNonEmptyString(record["projectId"]),
     throttleWindow: asNonEmptyString(record["throttleWindow"]),
+    ...(resultAssetIds.length > 0 ? { resultAssetIds: Array.from(new Set(resultAssetIds)) } : {}),
   };
+}
+
+function normalizeUserActionResultAssetIds(value: unknown): string[] | undefined {
+  const resultAssetIds = asStringArray(value);
+  return resultAssetIds.length > 0 ? Array.from(new Set(resultAssetIds)) : undefined;
 }
 
 function toArtifactProjection(value: unknown): LabArtifactProjection | null {
@@ -710,10 +717,14 @@ function pushRunEvent(
 }
 
 function pushUserAction(state: LabStoreState, actionEvent: LabUserActionEvent) {
+  const normalizedResultAssetIds = normalizeUserActionResultAssetIds(actionEvent.resultAssetIds);
   state.userActions = state.userActions.filter(function (entry) {
     return entry.id !== actionEvent.id;
   });
-  state.userActions.unshift(actionEvent);
+  state.userActions.unshift({
+    ...actionEvent,
+    ...(normalizedResultAssetIds === undefined ? {} : { resultAssetIds: normalizedResultAssetIds }),
+  });
   if (state.userActions.length > LAB_USER_ACTION_HISTORY_LIMIT) {
     state.userActions.length = LAB_USER_ACTION_HISTORY_LIMIT;
   }
@@ -730,7 +741,18 @@ function patchUserAction(
   if (!target) {
     return null;
   }
-  Object.assign(target, patch);
+  const nextPatch: Partial<LabUserActionEvent> = {
+    ...patch,
+  };
+  if (Object.prototype.hasOwnProperty.call(patch, "resultAssetIds")) {
+    const normalizedResultAssetIds = normalizeUserActionResultAssetIds(patch.resultAssetIds);
+    if (normalizedResultAssetIds === undefined) {
+      delete nextPatch.resultAssetIds;
+    } else {
+      nextPatch.resultAssetIds = normalizedResultAssetIds;
+    }
+  }
+  Object.assign(target, nextPatch);
   return target;
 }
 
@@ -983,11 +1005,15 @@ function syncUserActionsFromHostEvent(state: LabStoreState, event: LabEventFeedI
   }
 
   if (event.stage === "completed") {
+    const normalizedResultAssetIds = normalizeUserActionResultAssetIds(event.resultAssetIds);
     patchUserAction(state, matchedAction.id, {
       ...basePatch,
       status: "success",
       finishedAt: event.timestamp || Date.now(),
       message: trackedDefinition.successMessage,
+      ...(normalizedResultAssetIds === undefined
+        ? {}
+        : { resultAssetIds: normalizedResultAssetIds }),
     });
     return;
   }
@@ -1911,12 +1937,18 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       });
       return state;
     case "user-action-added":
+      const normalizedResultAssetIds = normalizeUserActionResultAssetIds(
+        event.actionEvent.resultAssetIds
+      );
       pushUserAction(state, {
         ...event.actionEvent,
         dismissedFromHubAt: event.actionEvent.dismissedFromHubAt ?? null,
         jobId: event.actionEvent.jobId ?? null,
         projectId: event.actionEvent.projectId ?? null,
         requestId: event.actionEvent.requestId ?? null,
+        ...(normalizedResultAssetIds === undefined
+          ? {}
+          : { resultAssetIds: normalizedResultAssetIds }),
         sourceAction: event.actionEvent.sourceAction ?? null,
       });
       return state;

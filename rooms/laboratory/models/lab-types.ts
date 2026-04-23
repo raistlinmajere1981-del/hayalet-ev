@@ -475,6 +475,7 @@ export interface LabEventFeedItem {
   requestId?: string | null;
   jobId?: string | null;
   projectId?: string | null;
+  resultAssetIds?: string[];
 }
 
 export type LabUserActionStatus = "idle" | "running" | "success" | "error";
@@ -492,6 +493,7 @@ export interface LabUserActionEvent {
   requestId?: string | null;
   jobId?: string | null;
   projectId?: string | null;
+  resultAssetIds?: string[];
   sourceAction?: string | null;
   dismissedFromHubAt?: number | null;
 }

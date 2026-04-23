@@ -5,6 +5,8 @@ import { createLabRunController } from "../../rooms/laboratory/runtime/lab-run-c
 import { createLabHostBridge } from "../../rooms/laboratory/runtime/lab-host-bridge.ts";
 import {
   getActualOutputs,
+  getActionOutputs,
+  getAssetById,
   getAssets,
   getAssetsByRun,
   getAssetsBySource,
@@ -297,6 +299,7 @@ test("laboratory store keeps export user actions separate from analysis run stat
       requestId: "req-export-1",
       jobId: "job-export-1",
       projectId: "project-1",
+      resultAssetIds: ["asset-clip-export-1"],
     },
   });
   store.dispatch({
@@ -320,6 +323,7 @@ test("laboratory store keeps export user actions separate from analysis run stat
   const state = store.getState();
   assert.equal(state.userActions[0]?.status, "success");
   assert.equal(state.userActions[0]?.message, "Klip hazır");
+  assert.deepEqual(state.userActions[0]?.resultAssetIds, ["asset-clip-export-1"]);
   assert.equal(state.run?.state, "running");
   assert.equal(state.run?.events.length, 1);
   assert.equal(state.run?.events[0]?.action, "process-run");
@@ -416,6 +420,55 @@ test("laboratory store hydrates project assets and selectors keep registry looku
     getAssets(store.getState()).map((asset) => asset.id),
     ["asset-source-1", "asset-clip-1"]
   );
+  assert.equal(getAssetById(store.getState(), "asset-clip-1")?.name, "clip_renamed.mp4");
+  assert.equal(getAssetById(store.getState(), "asset-missing"), null);
+});
+
+test("laboratory action output selector resolves linked assets and ignores stale ids", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-frame-result",
+      type: "frame",
+      name: "frame_01.png",
+      localPath: "/tmp/frame_01.png",
+      createdAt: 200,
+    },
+  });
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-report-result",
+      type: "report",
+      name: "report.md",
+      localPath: "/tmp/report.md",
+      createdAt: 300,
+    },
+  });
+  store.dispatch({
+    type: "user-action-added",
+    actionEvent: {
+      id: "user-action-result",
+      type: "grab-frame",
+      label: "Frame alınıyor",
+      status: "success",
+      startedAt: Date.now() - 1000,
+      finishedAt: Date.now(),
+      message: "Frame alındı",
+      requestId: "req-frame-result",
+      projectId: null,
+      resultAssetIds: ["asset-frame-result", "asset-missing", "asset-report-result"],
+      sourceAction: "export-frame-grab",
+    },
+  });
+
+  assert.deepEqual(
+    getActionOutputs(store.getState(), "user-action-result").map((asset) => asset.id),
+    ["asset-frame-result", "asset-report-result"]
+  );
+  assert.deepEqual(getActionOutputs(store.getState(), "user-action-missing"), []);
 });
 
 test("laboratory intent output selectors map expected outputs and filter actual assets", () => {
@@ -565,6 +618,58 @@ test("laboratory run controller dismisses successful user actions from the topba
   }
 });
 
+test("laboratory run controller waits for linked assets before dismissing success chips", () => {
+  const timerMock = installTimerMock();
+
+  try {
+    const eventBus = createLabEventBus();
+    const store = createLabStore();
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+    createLabRunController({
+      documentRef: {} as Document,
+      eventBus,
+      store,
+      windowRef: {} as Window,
+    });
+
+    eventBus.emit({
+      type: "user-action-added",
+      actionEvent: {
+        id: "user-action-success-pending-output",
+        type: "grab-frame",
+        label: "Frame alınıyor",
+        status: "success",
+        startedAt: Date.now() - 3000,
+        finishedAt: Date.now() - 1000,
+        message: "Frame alındı",
+        requestId: "req-frame-success",
+        resultAssetIds: ["asset-frame-result"],
+        sourceAction: "export-frame-grab",
+      },
+    });
+
+    assert.equal(timerMock.scheduled.length, 0);
+
+    eventBus.emit({
+      type: "asset-added",
+      asset: {
+        id: "asset-frame-result",
+        type: "frame",
+        name: "frame_01.png",
+        localPath: "/tmp/frame_01.png",
+        createdAt: Date.now(),
+      },
+    });
+
+    assert.equal(timerMock.scheduled.length, 1);
+    assert.equal(timerMock.scheduled[0]?.delay, LAB_USER_ACTION_HUB_SUCCESS_WINDOW_MS);
+  } finally {
+    timerMock.restore();
+  }
+});
+
 test("laboratory run controller threads frozen run intent ids into tracked export actions", () => {
   const originalElement = globalThis.Element;
   const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
@@ -668,6 +773,71 @@ test("laboratory run controller threads frozen run intent ids into tracked expor
       const payload = entry.payload["payload"] as Record<string, unknown>;
       assert.deepEqual(payload["intentIds"], ["visual-inspection"]);
     });
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
+test("laboratory run controller previews action-linked output assets through asset-preview clicks", () => {
+  const originalElement = globalThis.Element;
+  const openedUrls: string[] = [];
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  class TestElement extends FakeActionElement {}
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    store.dispatch({
+      type: "asset-added",
+      asset: {
+        id: "asset-frame-result",
+        type: "frame",
+        name: "frame_01.png",
+        localPath: "/tmp/frame_01.png",
+        createdAt: Date.now(),
+      },
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        open(url: string) {
+          openedUrls.push(url);
+          return null;
+        },
+        roomAPI: {
+          sendEvent() {},
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
+
+    clickListener?.({ target: new TestElement("asset-preview", "asset-frame-result") } as Event);
+
+    assert.deepEqual(openedUrls, ["/tmp/frame_01.png"]);
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;

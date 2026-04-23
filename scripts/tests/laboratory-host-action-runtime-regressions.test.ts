@@ -273,6 +273,7 @@ test("laboratory media export runtime cancels only prior export jobs for every e
     ) => Promise<unknown>
   ) {
     const cancelledJobIds: string[] = [];
+    const pushedJobStates: Array<Record<string, unknown>> = [];
     let activeProject: Record<string, unknown> = {
       id: "project-1",
       source: {
@@ -327,7 +328,9 @@ test("laboratory media export runtime cancels only prior export jobs for every e
           assets: syncSourceLabAssetForProject(nextProject, nextProject["assets"]),
         };
       },
-      pushJobState() {},
+      pushJobState(_api, payload) {
+        pushedJobStates.push({ ...payload });
+      },
       registerJob: jobState.registerJob,
       clearJob: jobState.clearJob,
       cancelJobsForProject: jobState.cancelJobsForProject,
@@ -432,6 +435,11 @@ test("laboratory media export runtime cancels only prior export jobs for every e
     assert.equal(outputAsset?.["runId"], "run-1");
     assert.deepEqual(outputAsset?.["intentIds"], ["visual-inspection"]);
     assert.equal(typeof outputAsset?.["sourceId"], "string");
+    const completedPayload =
+      pushedJobStates.find(function (payload) {
+        return payload["stage"] === "completed";
+      }) || null;
+    assert.deepEqual(completedPayload?.["resultAssetIds"], [outputAsset?.["id"]]);
   }
 
   await runExportCase("image", function (exportRuntime, runtime) {
@@ -720,6 +728,7 @@ test("laboratory report export registers user and ai report assets", async () =>
   } as Record<string, unknown>;
   const writtenPaths: string[] = [];
   const jobStages: string[] = [];
+  const pushedJobStates: Array<Record<string, unknown>> = [];
 
   function getReportRecord(project: Record<string, unknown>, featureId: string) {
     return (((project["report"] as Record<string, unknown>)["records"] as Record<string, unknown>)[
@@ -758,6 +767,7 @@ test("laboratory report export registers user and ai report assets", async () =>
       );
     },
     pushJobState(_api, payload) {
+      pushedJobStates.push({ ...payload });
       if (typeof payload["stage"] === "string") {
         jobStages.push(payload["stage"]);
       }
@@ -793,5 +803,15 @@ test("laboratory report export registers user and ai report assets", async () =>
   assert.deepEqual(
     assets.map((asset) => (asset["metadata"] as Record<string, unknown>)["format"]).sort(),
     ["json", "md"]
+  );
+  const completedPayload =
+    pushedJobStates.find(function (payload) {
+      return payload["stage"] === "completed";
+    }) || null;
+  assert.deepEqual(
+    completedPayload?.["resultAssetIds"],
+    assets.map(function (asset) {
+      return asset["id"];
+    })
   );
 });

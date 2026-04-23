@@ -13,6 +13,7 @@ import type {
   LabUserActionEvent,
 } from "../models/lab-types.js";
 import {
+  getActionOutputs,
   deriveLegacyStage,
   getActiveEditOutput,
   getAnalysisActionBlockReason,
@@ -261,10 +262,19 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   }
 
   function syncUserActionHubTimers() {
+    const state = deps.store.getState();
     const activeUserActionIds = new Set<string>();
-    getUserActions(deps.store.getState()).forEach(function (entry) {
+    getUserActions(state).forEach(function (entry) {
       activeUserActionIds.add(entry.id);
       if (entry.status === "success" && entry.dismissedFromHubAt == null) {
+        if (
+          Array.isArray(entry.resultAssetIds) &&
+          entry.resultAssetIds.length > 0 &&
+          getActionOutputs(state, entry.id).length === 0
+        ) {
+          clearHubDismissTimer(entry.id);
+          return;
+        }
         scheduleHubDismiss(entry.id);
         return;
       }

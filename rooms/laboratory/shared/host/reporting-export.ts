@@ -134,6 +134,7 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
     });
 
     try {
+      let createdResultAssetIds: string[] = [];
       const stamp = new Date().toISOString().replace(/[:.]/g, "-");
       const baseName = `${sanitizeFileSegment(project.slug, "project")}-${featureId}-${stamp}`;
       const fileName = `${baseName}-user.md`;
@@ -215,6 +216,7 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
             requestId,
           },
         });
+        createdResultAssetIds = [userReportAsset.id, aiReportAsset.id];
         return {
           ...nextProject,
           assets: upsertLabAsset(
@@ -229,6 +231,7 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
         action: action,
         projectId: project.id,
         featureStage: "report",
+        ...(createdResultAssetIds.length > 0 ? { resultAssetIds: createdResultAssetIds } : {}),
         stage: "completed",
       });
     } catch (error) {

@@ -1,6 +1,7 @@
 import { asNonEmptyString, escapeHtml } from "../models/lab-types.js";
 import type { LabAsset, LabAssetType, LabStoreState } from "../models/lab-types.js";
 import { getAssets } from "../runtime/lab-selectors.js";
+import { buildLabAssetMetadataTitle, getLabAssetPath, getLabAssetPathLeaf } from "./lab-asset-display.js";
 
 type AssetGroup = {
   type: LabAssetType;
@@ -44,10 +45,6 @@ function getAssetIcon(asset: LabAsset): string {
   return ASSET_TYPE_ICONS[asset.type];
 }
 
-function getAssetPath(asset: LabAsset): string | null {
-  return asNonEmptyString(asset.localPath) || asNonEmptyString(asset.url);
-}
-
 function canUseAsSource(asset: LabAsset): boolean {
   return (
     asNonEmptyString(asset.localPath) !== null &&
@@ -57,17 +54,6 @@ function canUseAsSource(asset: LabAsset): boolean {
       asset.type === "audio" ||
       asset.type === "image")
   );
-}
-
-function buildMetadataTitle(asset: LabAsset): string {
-  const lines = [
-    `${asset.type}: ${asset.name}`,
-    asset.sourceId ? `sourceId: ${asset.sourceId}` : "",
-    asset.runId ? `runId: ${asset.runId}` : "",
-    asset.localPath ? `path: ${asset.localPath}` : "",
-    asset.url ? `url: ${asset.url}` : "",
-  ].filter(Boolean);
-  return lines.join("\n");
 }
 
 function renderAssetMenu(asset: LabAsset) {
@@ -80,7 +66,7 @@ function renderAssetMenu(asset: LabAsset) {
     `
     : "";
   const downloadButton =
-    getAssetPath(asset) !== null
+    getLabAssetPath(asset) !== null
       ? `
         <button type="button" data-lab-action="asset-download" data-lab-value="${escapedId}">
           Download
@@ -106,12 +92,11 @@ function renderAssetMenu(asset: LabAsset) {
 }
 
 function renderAssetItem(asset: LabAsset) {
-  const assetPath = getAssetPath(asset);
   const createdAt = formatAssetTime(asset.createdAt);
   const escapedId = escapeHtml(asset.id);
   return `
     <div class="labx-project-assets__item" data-lab-asset-id="${escapedId}" title="${escapeHtml(
-      buildMetadataTitle(asset)
+      buildLabAssetMetadataTitle(asset)
     )}">
       <button
         class="labx-project-assets__preview"
@@ -124,7 +109,7 @@ function renderAssetItem(asset: LabAsset) {
         </span>
         <span class="labx-project-assets__text">
           <strong>${escapeHtml(asset.name)}</strong>
-          <span>${escapeHtml([createdAt, assetPath ? assetPath.split(/[\\/]/).pop() : ""].filter(Boolean).join(" · "))}</span>
+          <span>${escapeHtml([createdAt, getLabAssetPathLeaf(asset)].filter(Boolean).join(" · "))}</span>
         </span>
       </button>
       ${renderAssetMenu(asset)}

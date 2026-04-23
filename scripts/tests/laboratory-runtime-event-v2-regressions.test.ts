@@ -99,7 +99,8 @@ test("laboratory runtime events preserve correlation metadata for export jobs an
     jobId: "job-export-1",
     projectId: "project-1",
     requestId: "req-export-1",
-    stage: "queued",
+    resultAssetIds: ["asset-frame-result-1"],
+    stage: "completed",
   });
   runtimeEvents.pushActionResult(api, {
     action: "export-frame-grab",
@@ -114,6 +115,7 @@ test("laboratory runtime events preserve correlation metadata for export jobs an
   assert.equal(notifications[0]?.payload["requestId"], "req-export-1");
   assert.equal(notifications[0]?.payload["jobId"], "job-export-1");
   assert.equal(notifications[0]?.payload["projectId"], "project-1");
+  assert.deepEqual(notifications[0]?.payload["resultAssetIds"], ["asset-frame-result-1"]);
   assert.equal(notifications[1]?.payload["requestId"], "req-export-1");
   assert.equal(notifications[1]?.payload["jobId"], "job-export-1");
   assert.equal(notifications[1]?.payload["projectId"], "project-1");
