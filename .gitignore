@@ -60,6 +60,10 @@ screenshots/
 *.png
 *.jpg
 *.jpeg
+!android-companion/
+!android-companion/**
+!screenshots/
+!screenshots/**
 !src/assets/assistant.png
 !src/assets/chatgpt.png
 !src/assets/default.png

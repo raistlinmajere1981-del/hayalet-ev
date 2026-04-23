@@ -48,6 +48,11 @@ MCP tool yüzeyi değiştiğinde varsayılan akış:
 
 ---
 
+## 🚨 #1 FAST MODE: 
+> ⚠️ Kullanıcının "Fast:" ile başlayan mesaşlarında 2. kural için atlanır. 
+> ⚠️ Fast modda Mode: "terminal", muhatap "kullanıcı" kabul edilir,
+> ⚠️ Fast modda değişecek dosyaların kontrolü ve ön analiz yapılmaz
+
 ## 🚨 #2 KURAL: DEĞİŞİKLİK ONAY PROTOKOLÜ — ZORUNLU
 
 Plan aşamasında kullanıcıya kod gösterme, planı basit ve kısa biçimde açıkla.
