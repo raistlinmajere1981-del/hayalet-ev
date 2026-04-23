@@ -558,6 +558,48 @@ test("laboratory transparency renderers tolerate sparse run payloads", () => {
   });
 });
 
+test("laboratory workspace surface renders action hub and recent action history from user actions", () => {
+  const store = createSeededState(true);
+
+  store.dispatch({
+    type: "user-action-added",
+    actionEvent: {
+      id: "user-action-running",
+      type: "export-clip",
+      label: "Klip çıkarılıyor",
+      status: "running",
+      startedAt: Date.now() - 3000,
+      projectId: "project-1",
+      requestId: "req-running",
+      sourceAction: "export-timeline-clip",
+    },
+  });
+  store.dispatch({
+    type: "user-action-added",
+    actionEvent: {
+      id: "user-action-success",
+      type: "grab-frame",
+      label: "Frame alınıyor",
+      status: "success",
+      startedAt: Date.now() - 5000,
+      finishedAt: Date.now() - 1000,
+      message: "Frame alındı",
+      projectId: "project-1",
+      requestId: "req-success",
+      sourceAction: "export-frame-grab",
+    },
+  });
+
+  const state = store.getState();
+  const surface = renderWorkspaceSurface(state);
+  const processHtml = renderWorkspaceProcessPanel(state, { sourceReady: true });
+
+  assert.match(surface.main, /Klip çıkarılıyor/);
+  assert.match(surface.main, /labx-topbar-actions/);
+  assert.match(processHtml, /Son işlemler/);
+  assert.match(processHtml, /Frame alındı/);
+});
+
 test("laboratory report overlay renders snapshot summary and workspace-dirty freshness metadata", () => {
   const store = createLabStore();
   const baseWorkspace = store.getState().ui.workspace;

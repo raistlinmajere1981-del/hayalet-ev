@@ -18,6 +18,11 @@ import {
   normalizeAnalysisScope
 } from "../shared/types/analysis-scope.js";
 import { deriveLegacyStage } from "./lab-selectors.js";
+import {
+  LAB_USER_ACTION_HISTORY_LIMIT,
+  getTrackedLabUserActionDefinition,
+  isTrackedLabUserAction
+} from "./lab-user-actions.js";
 function createDefaultSourceDrafts() {
   return {
     fileNameHint: "",
@@ -95,6 +100,7 @@ function createInitialState() {
     profileModels: [],
     toolState: {},
     activityFeed: [],
+    userActions: [],
     persisted: null,
     ui: {
       sourceDrafts: createDefaultSourceDrafts(),
@@ -217,6 +223,9 @@ function toEventFeedItem(value, fallbackScope) {
     artifact: asLabRecord(record["artifact"]),
     moduleTrace: asLabRecord(record["moduleTrace"]),
     comparisonVariant: asLabRecord(record["comparisonVariant"]),
+    requestId: asNonEmptyString(record["requestId"]),
+    jobId: asNonEmptyString(record["jobId"]),
+    projectId: asNonEmptyString(record["projectId"]),
     throttleWindow: asNonEmptyString(record["throttleWindow"])
   };
 }
@@ -478,6 +487,25 @@ function pushRunEvent(state, event, options = {}) {
     target.length = 260;
   }
 }
+function pushUserAction(state, actionEvent) {
+  state.userActions = state.userActions.filter(function(entry) {
+    return entry.id !== actionEvent.id;
+  });
+  state.userActions.unshift(actionEvent);
+  if (state.userActions.length > LAB_USER_ACTION_HISTORY_LIMIT) {
+    state.userActions.length = LAB_USER_ACTION_HISTORY_LIMIT;
+  }
+}
+function patchUserAction(state, id, patch) {
+  const target = state.userActions.find(function(entry) {
+    return entry.id === id;
+  });
+  if (!target) {
+    return null;
+  }
+  Object.assign(target, patch);
+  return target;
+}
 function upsertRunLiveFinding(state, event) {
   const run = state.run || ensurePendingRun(state, event.action || "runtime");
   const nextFinding = toLiveFindingProjection({
@@ -652,6 +680,67 @@ function syncRunAugmentationsFromHostEvent(state, event) {
     state.ui.analysisControlsCollapsed = false;
   }
 }
+function syncUserActionsFromHostEvent(state, event) {
+  const requestId = asNonEmptyString(event.requestId);
+  if (requestId === null) {
+    return;
+  }
+  const matchedAction = state.userActions.find(function(entry) {
+    return entry.requestId === requestId;
+  });
+  if (!matchedAction || isTrackedLabUserAction(matchedAction.sourceAction) !== true) {
+    return;
+  }
+  const sourceAction = matchedAction.sourceAction || event.action || null;
+  const trackedDefinition = getTrackedLabUserActionDefinition(sourceAction);
+  if (trackedDefinition === null) {
+    return;
+  }
+  const jobId = asNonEmptyString(event.jobId);
+  if (event.kind === "request-result") {
+    if (matchedAction.jobId !== null && matchedAction.jobId !== void 0) {
+      return;
+    }
+    if (event.stage === "failed" || event.stage === "cancelled") {
+      patchUserAction(state, matchedAction.id, {
+        status: "error",
+        finishedAt: event.timestamp || Date.now(),
+        message: event.detail || trackedDefinition.errorMessage,
+        projectId: asNonEmptyString(event.projectId) || matchedAction.projectId || null
+      });
+    }
+    return;
+  }
+  const basePatch = {
+    jobId: jobId || matchedAction.jobId || null,
+    projectId: asNonEmptyString(event.projectId) || matchedAction.projectId || null,
+    sourceAction
+  };
+  if (event.stage === "queued" || event.stage === "running") {
+    patchUserAction(state, matchedAction.id, {
+      ...basePatch,
+      status: "running"
+    });
+    return;
+  }
+  if (event.stage === "completed") {
+    patchUserAction(state, matchedAction.id, {
+      ...basePatch,
+      status: "success",
+      finishedAt: event.timestamp || Date.now(),
+      message: trackedDefinition.successMessage
+    });
+    return;
+  }
+  if (event.stage === "failed" || event.stage === "cancelled") {
+    patchUserAction(state, matchedAction.id, {
+      ...basePatch,
+      status: "error",
+      finishedAt: event.timestamp || Date.now(),
+      message: event.detail || trackedDefinition.errorMessage
+    });
+  }
+}
 function routeFeedEvent(state, event) {
   if (event.scope === "run") {
     syncRunModuleFromFeedEvent(state, event);
@@ -806,6 +895,7 @@ function syncCanonicalStateFromHostEvent(state, event) {
   syncPreviewFromHostEvent(state, event);
   syncPreflightFromHostEvent(state, event);
   syncRunStateFromHostEvent(state, event);
+  syncUserActionsFromHostEvent(state, event);
 }
 function deriveProbeStatus(source, fallback) {
   const status = asNonEmptyString(source["status"]);
@@ -1381,6 +1471,24 @@ function reduceEvent(state, event) {
       return state;
     case "push-event":
       routeFeedEvent(state, event.event);
+      return state;
+    case "user-action-added":
+      pushUserAction(state, {
+        ...event.actionEvent,
+        dismissedFromHubAt: event.actionEvent.dismissedFromHubAt ?? null,
+        jobId: event.actionEvent.jobId ?? null,
+        projectId: event.actionEvent.projectId ?? null,
+        requestId: event.actionEvent.requestId ?? null,
+        sourceAction: event.actionEvent.sourceAction ?? null
+      });
+      return state;
+    case "user-action-updated":
+      patchUserAction(state, event.id, event.patch);
+      return state;
+    case "user-action-hub-dismissed":
+      patchUserAction(state, event.id, {
+        dismissedFromHubAt: Date.now()
+      });
       return state;
     case "clear-events":
       state.activityFeed = [createSnapshotEvent("Olay akisi temizlendi.", "info")];

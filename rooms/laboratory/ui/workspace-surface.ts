@@ -37,6 +37,7 @@ import { renderWorkspaceAudioFocus } from "./workspace-audio-focus.js";
 import { renderWorkspaceHypothesis } from "./workspace-hypothesis.js";
 import { renderWorkspaceBookmarks } from "./workspace-bookmarks.js";
 import { renderWorkspaceProcessPanel } from "./workspace-process-panel.js";
+import { renderLabTopbarActions } from "./lab-topbar-actions.js";
 
 function getSourceKindLabel(kind: string) {
   switch (kind) {
@@ -972,6 +973,7 @@ export function renderWorkspaceSurface(state: LabStoreState): LabStageSurface {
 
   const main = `
     ${renderSourceBar(state)}
+    ${renderLabTopbarActions(state)}
     ${renderSourceIntake(state)}
     <section class="labx-workspace-main" id="lab-workspace-main">
       <div class="labx-workspace-preview" id="lab-workspace-preview">
@@ -1017,7 +1019,9 @@ export function renderWorkspaceSurface(state: LabStoreState): LabStageSurface {
           ? "\u2298 Eski çalışma \u00b7 Son analiz başarısız"
           : "";
   const freshnessMeta =
-    freshness && freshness.workspaceDirty ? `${freshnessLabel} \u00b7 Workspace farklı` : freshnessLabel;
+    freshness && freshness.workspaceDirty
+      ? `${freshnessLabel} \u00b7 Workspace farklı`
+      : freshnessLabel;
 
   const reportButton = hasReport
     ? `

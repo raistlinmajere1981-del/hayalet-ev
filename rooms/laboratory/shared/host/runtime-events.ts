@@ -209,6 +209,9 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
     const stage = asNonEmptyString(payload["stage"]);
     const detail = asNonEmptyString(payload["message"]);
     const kind = asNonEmptyString(payload["kind"]);
+    const requestId = asNonEmptyString(payload["requestId"]);
+    const jobId = asNonEmptyString(payload["jobId"]);
+    const projectId = asNonEmptyString(payload["projectId"]);
     if (isCustomProcessEventKind(kind)) {
       return {
         ...payload,
@@ -221,6 +224,9 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
         action,
         stage,
         moduleId: asNonEmptyString(payload["moduleId"]),
+        requestId,
+        jobId,
+        projectId,
         scope: String(action || "").includes("process") ? "run" : "global",
       };
     }
@@ -242,6 +248,9 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
       action,
       stage,
       moduleId: asNonEmptyString(payload["moduleId"]),
+      requestId,
+      jobId,
+      projectId,
       scope: String(action || "").includes("process") ? "run" : "global",
     };
   }
@@ -258,6 +267,9 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
       detail: asNonEmptyString(payload["error"]) || asNonEmptyString(payload["message"]),
       action,
       stage: success ? "completed" : "failed",
+      requestId: asNonEmptyString(payload["requestId"]),
+      jobId: asNonEmptyString(payload["jobId"]),
+      projectId: asNonEmptyString(payload["projectId"]),
       scope: String(action || "").includes("process") ? "run" : "global",
     };
   }

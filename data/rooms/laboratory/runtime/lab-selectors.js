@@ -1,6 +1,7 @@
 import { asLabRecord, asNonEmptyString, createLabFeatureMeta } from "../models/lab-types.js";
 import { CAPABILITY_FAMILIES, WORKSPACE_INTENTS } from "../models/lab-types.js";
 import { normalizeAnalysisScope } from "../shared/types/analysis-scope.js";
+import { LAB_USER_ACTION_HISTORY_LIMIT } from "./lab-user-actions.js";
 function normalizeIntentIdList(value) {
   const sourceIds = Array.isArray(value) ? value.filter((entry) => typeof entry === "string") : [];
   return WORKSPACE_INTENTS.map(function(intent) {
@@ -312,6 +313,24 @@ export function getVisibleRawLogs(state) {
 }
 export function getGlobalActivityFeed(state) {
   return Array.isArray(state.activityFeed) ? state.activityFeed.slice() : [];
+}
+export function getUserActions(state) {
+  const activeProjectId = state.projectIndex.activeProjectId;
+  const userActions = Array.isArray(state.userActions) ? state.userActions : [];
+  if (activeProjectId === null) {
+    return userActions.slice();
+  }
+  return userActions.filter(function(entry) {
+    return entry.projectId === null || entry.projectId === activeProjectId;
+  });
+}
+export function getRecentUserActions(state, limit = 6) {
+  return getUserActions(state).slice(0, Math.min(limit, LAB_USER_ACTION_HISTORY_LIMIT));
+}
+export function getHubUserActions(state, limit = 4) {
+  return getUserActions(state).filter(function(entry) {
+    return entry.status === "running" || entry.status === "error" || entry.dismissedFromHubAt == null;
+  }).slice(0, limit);
 }
 export function getVisibleArtifacts(state) {
   const run = getCurrentRun(state);

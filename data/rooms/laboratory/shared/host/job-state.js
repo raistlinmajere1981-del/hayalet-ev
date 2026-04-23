@@ -23,7 +23,8 @@ export function createLaboratoryJobStateRuntime(deps) {
   function clearJob(runtime, jobId) {
     delete runtime.jobs[jobId];
   }
-  async function cancelJobsForProject(runtime, projectId, requestId) {
+  async function cancelJobsForProject(runtime, projectId, requestId, options = {}) {
+    const actionIds = Array.isArray(options.actionIds) && options.actionIds.length > 0 ? new Set(options.actionIds) : null;
     const jobIds = Object.keys(runtime.jobs);
     for (let index = 0; index < jobIds.length; index += 1) {
       const jobId = jobIds[index];
@@ -31,7 +32,7 @@ export function createLaboratoryJobStateRuntime(deps) {
         continue;
       }
       const job = runtime.jobs[jobId];
-      if (job && job.projectId === projectId) {
+      if (job && job.projectId === projectId && (actionIds === null || actionIds.has(job.action))) {
         await cancelRoomTool(roomId, jobId, requestId);
         clearJob(runtime, jobId);
       }

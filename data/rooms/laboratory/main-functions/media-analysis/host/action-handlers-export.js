@@ -1,3 +1,8 @@
+const MEDIA_EXPORT_ACTION_IDS = [
+  "export-roi-image",
+  "export-frame-grab",
+  "export-timeline-clip"
+];
 export function createMediaExportActionRuntime(deps) {
   const {
     asNonEmptyString,
@@ -34,7 +39,9 @@ export function createMediaExportActionRuntime(deps) {
     const cropW = asNumber(payload["width"]) || 100;
     const cropH = asNumber(payload["height"]) || 100;
     const sourceKind = asNonEmptyString(source["kind"]) || "video";
-    await cancelJobsForProject(runtime, projectId, requestId);
+    await cancelJobsForProject(runtime, projectId, requestId, {
+      actionIds: Array.from(MEDIA_EXPORT_ACTION_IDS)
+    });
     const jobId = `export-roi-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     registerJob(runtime, {
       action: "export-roi-image",
@@ -134,7 +141,9 @@ export function createMediaExportActionRuntime(deps) {
       throw new Error("Frame export is only available for video sources.");
     }
     const seekMs = asNumber(payload["seekMs"]) || 0;
-    await cancelJobsForProject(runtime, projectId, requestId);
+    await cancelJobsForProject(runtime, projectId, requestId, {
+      actionIds: Array.from(MEDIA_EXPORT_ACTION_IDS)
+    });
     const jobId = `export-frame-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     registerJob(runtime, {
       action: "export-frame-grab",
@@ -238,7 +247,9 @@ export function createMediaExportActionRuntime(deps) {
     const durationSec = (endMs - startMs) / 1e3;
     const cropRegion = payload["cropRegion"];
     const hasCrop = cropRegion && typeof cropRegion["width"] === "number" && typeof cropRegion["height"] === "number" && cropRegion["width"] > 0 && cropRegion["height"] > 0;
-    await cancelJobsForProject(runtime, projectId, requestId);
+    await cancelJobsForProject(runtime, projectId, requestId, {
+      actionIds: Array.from(MEDIA_EXPORT_ACTION_IDS)
+    });
     const jobId = `export-clip-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     registerJob(runtime, {
       action: "export-timeline-clip",

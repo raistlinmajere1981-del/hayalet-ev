@@ -67,3 +67,54 @@ test("laboratory runtime events throttle high-frequency custom module updates", 
   assert.equal(notifications[1]?.payload["batchedCount"], 2);
   assert.match(String(notifications[1]?.payload["detail"] || ""), /updates batched/);
 });
+
+test("laboratory runtime events preserve correlation metadata for export jobs and request results", () => {
+  const notifications: Array<{ type: string; payload: Record<string, unknown> }> = [];
+  const runtimeEvents = createLaboratoryRuntimeEvents({
+    asNonEmptyString,
+    defaultFeatureId: "media-analysis",
+    getFeatureIdFromContext() {
+      return "media-analysis";
+    },
+    loadContext() {
+      return {
+        featureId: "media-analysis",
+      };
+    },
+    roomSnapshotRuntime: {
+      buildMediaSnapshot() {
+        return {};
+      },
+    },
+  });
+
+  const api = {
+    notifyRoom(type: string, payload: Record<string, unknown>) {
+      notifications.push({ type, payload });
+    },
+  };
+
+  runtimeEvents.pushJobState(api, {
+    action: "export-frame-grab",
+    jobId: "job-export-1",
+    projectId: "project-1",
+    requestId: "req-export-1",
+    stage: "queued",
+  });
+  runtimeEvents.pushActionResult(api, {
+    action: "export-frame-grab",
+    jobId: "job-export-1",
+    projectId: "project-1",
+    requestId: "req-export-1",
+    success: false,
+    error: "frame export failed",
+  });
+
+  assert.equal(notifications.length, 2);
+  assert.equal(notifications[0]?.payload["requestId"], "req-export-1");
+  assert.equal(notifications[0]?.payload["jobId"], "job-export-1");
+  assert.equal(notifications[0]?.payload["projectId"], "project-1");
+  assert.equal(notifications[1]?.payload["requestId"], "req-export-1");
+  assert.equal(notifications[1]?.payload["jobId"], "job-export-1");
+  assert.equal(notifications[1]?.payload["projectId"], "project-1");
+});

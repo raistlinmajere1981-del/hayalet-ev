@@ -32,6 +32,10 @@ type LaboratoryJobStateRuntimeDeps = {
   roomId: string;
 };
 
+type LaboratoryProjectCancelOptions = {
+  actionIds?: string[];
+};
+
 export function createLaboratoryJobStateRuntime(deps: LaboratoryJobStateRuntimeDeps) {
   const { cancelRoomTool, roomId } = deps;
 
@@ -67,8 +71,13 @@ export function createLaboratoryJobStateRuntime(deps: LaboratoryJobStateRuntimeD
   async function cancelJobsForProject(
     runtime: LaboratoryRuntimeWithJobs,
     projectId: string,
-    requestId: string
+    requestId: string,
+    options: LaboratoryProjectCancelOptions = {}
   ): Promise<void> {
+    const actionIds =
+      Array.isArray(options.actionIds) && options.actionIds.length > 0
+        ? new Set(options.actionIds)
+        : null;
     const jobIds = Object.keys(runtime.jobs);
     for (let index = 0; index < jobIds.length; index += 1) {
       const jobId = jobIds[index];
@@ -76,7 +85,7 @@ export function createLaboratoryJobStateRuntime(deps: LaboratoryJobStateRuntimeD
         continue;
       }
       const job = runtime.jobs[jobId];
-      if (job && job.projectId === projectId) {
+      if (job && job.projectId === projectId && (actionIds === null || actionIds.has(job.action))) {
         // eslint-disable-next-line no-await-in-loop -- NOTE: cancel tracked jobs in registration order.
         await cancelRoomTool(roomId, jobId, requestId);
         clearJob(runtime, jobId);

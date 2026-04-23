@@ -70,9 +70,11 @@ export const WORKSPACE_INTENTS: LabIntent[] = [
 ];
 
 export function getIntentLabel(intentId: string): string {
-  return WORKSPACE_INTENTS.find(function (intent) {
-    return intent.id === intentId;
-  })?.label || intentId;
+  return (
+    WORKSPACE_INTENTS.find(function (intent) {
+      return intent.id === intentId;
+    })?.label || intentId
+  );
 }
 
 export function getIntentPreviewDescription(intentId: string): string {
@@ -348,7 +350,9 @@ export function getIntentIdsForCapabilityFamily(capabilityId: CapabilityFamilyId
   });
 }
 
-export function getCapabilityFamilyForModuleId(moduleId: string | null | undefined): CapabilityFamilyId | null {
+export function getCapabilityFamilyForModuleId(
+  moduleId: string | null | undefined
+): CapabilityFamilyId | null {
   if (typeof moduleId !== "string" || moduleId.trim() === "") {
     return null;
   }
@@ -447,6 +451,28 @@ export interface LabEventFeedItem {
   comparisonVariants?: LabRecord[] | null;
   batchedCount?: number | null;
   throttleWindow?: string | null;
+  requestId?: string | null;
+  jobId?: string | null;
+  projectId?: string | null;
+}
+
+export type LabUserActionStatus = "idle" | "running" | "success" | "error";
+
+export type LabUserActionType = "export-clip" | "extract-audio" | "grab-frame" | "custom";
+
+export interface LabUserActionEvent {
+  id: string;
+  type: LabUserActionType;
+  label: string;
+  status: LabUserActionStatus;
+  startedAt: number;
+  finishedAt?: number;
+  message?: string;
+  requestId?: string | null;
+  jobId?: string | null;
+  projectId?: string | null;
+  sourceAction?: string | null;
+  dismissedFromHubAt?: number | null;
 }
 
 export type YoutubeCaptureMode = "video+audio" | "audio-only" | "video-only";
@@ -778,6 +804,7 @@ export interface LabStoreState {
   profileModels: LabRecord[];
   toolState: LabRecord;
   activityFeed: LabEventFeedItem[];
+  userActions: LabUserActionEvent[];
   ui: LabStoreUiState;
   persisted: LabPersistedState | null;
 }
@@ -853,6 +880,9 @@ export type LabStoreEvent =
   | { type: "edit-side-panel-toggled"; force?: boolean }
   | { type: "raw-log-toggled"; force?: boolean }
   | { type: "push-event"; event: LabEventFeedItem }
+  | { type: "user-action-added"; actionEvent: LabUserActionEvent }
+  | { type: "user-action-updated"; id: string; patch: Partial<LabUserActionEvent> }
+  | { type: "user-action-hub-dismissed"; id: string }
   | { type: "clear-events" }
   // V2.3 workspace events
   | { type: "workspace-timeline-updated"; startMs: number | null; endMs: number | null }

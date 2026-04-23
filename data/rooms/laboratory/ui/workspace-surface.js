@@ -32,6 +32,7 @@ import { renderWorkspaceAudioFocus } from "./workspace-audio-focus.js";
 import { renderWorkspaceHypothesis } from "./workspace-hypothesis.js";
 import { renderWorkspaceBookmarks } from "./workspace-bookmarks.js";
 import { renderWorkspaceProcessPanel } from "./workspace-process-panel.js";
+import { renderLabTopbarActions } from "./lab-topbar-actions.js";
 function getSourceKindLabel(kind) {
   switch (kind) {
     case "audio":
@@ -794,6 +795,7 @@ export function renderWorkspaceSurface(state) {
   const durationMs = sourceReady && typeof metadata["durationSeconds"] === "number" ? Math.round(metadata["durationSeconds"] * 1e3) : 0;
   const main = `
     ${renderSourceBar(state)}
+    ${renderLabTopbarActions(state)}
     ${renderSourceIntake(state)}
     <section class="labx-workspace-main" id="lab-workspace-main">
       <div class="labx-workspace-preview" id="lab-workspace-preview">

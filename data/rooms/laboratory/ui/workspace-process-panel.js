@@ -8,6 +8,7 @@ import {
 import {
   getActiveModule,
   getCurrentRun,
+  getRecentUserActions,
   getIntentDirtyMap,
   getRunSnapshotSummary,
   getSelectedIntents,
@@ -19,6 +20,7 @@ import {
   hasMoreVisibleLiveFindings,
   isProcessSectionCollapsed
 } from "../runtime/lab-selectors.js";
+import { getLabUserActionDisplayText } from "../runtime/lab-user-actions.js";
 import { renderArtifactItem } from "./components/artifact-item.js";
 import { renderStatusChip } from "./components/status-chip.js";
 const AUDIO_TRANSPORT_CAPABILITY_IDS = [
@@ -88,6 +90,28 @@ function formatElapsed(seconds) {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${String(m)} dk ${String(s).padStart(2, "0")} sn`;
+}
+function formatRelativeActionTime(timestamp) {
+  if (typeof timestamp !== "number" || Number.isFinite(timestamp) !== true) {
+    return "az önce";
+  }
+  const diffMs = Math.max(0, Date.now() - timestamp);
+  const diffSeconds = Math.max(1, Math.round(diffMs / 1e3));
+  if (diffSeconds < 60) {
+    return `${String(diffSeconds)} sn önce`;
+  }
+  const diffMinutes = Math.round(diffSeconds / 60);
+  if (diffMinutes < 60) {
+    return `${String(diffMinutes)} dk önce`;
+  }
+  const diffHours = Math.round(diffMinutes / 60);
+  return `${String(diffHours)} sa önce`;
+}
+function getRecentActionMeta(actionEvent) {
+  if (actionEvent.status === "running") {
+    return "devam ediyor";
+  }
+  return formatRelativeActionTime(actionEvent.finishedAt || actionEvent.startedAt);
 }
 function renderConfidenceGauge(confidence) {
   if (!confidence) {
@@ -169,7 +193,8 @@ function getTransportFallbackCapabilityIds(moduleId, resolvedCapabilities, inten
   return [];
 }
 function getPlannedModuleIds(module) {
-  const rawModuleIds = Array.isArray(module?.metadata?.["moduleIds"]) ? module?.metadata?.["moduleIds"] : [];
+  const metadata = module?.metadata;
+  const rawModuleIds = Array.isArray(metadata?.["moduleIds"]) ? metadata["moduleIds"] : [];
   return rawModuleIds.filter((entry) => typeof entry === "string" && entry.trim() !== "");
 }
 function getExecutionModuleRowsForCapability(state, capabilityId, resolvedCapabilities) {
@@ -494,11 +519,41 @@ function renderArtifactsSection(artifacts, hasMore, collapsed) {
     </div>
   `;
 }
+function renderRecentActionsSection(state) {
+  const recentActions = getRecentUserActions(state, 6);
+  return `
+    <section class="labx-process-recent-actions">
+      <div class="labx-process-recent-actions__head">
+        <strong>Son işlemler</strong>
+      </div>
+      ${recentActions.length > 0 ? `
+            <div class="labx-process-recent-actions__list">
+              ${recentActions.map(function(actionEvent) {
+    return `
+                    <div
+                      class="labx-process-recent-actions__item"
+                      data-tone="${escapeHtml(actionEvent.status)}"
+                    >
+                      <span class="labx-process-recent-actions__label">${escapeHtml(
+      getLabUserActionDisplayText(actionEvent)
+    )}</span>
+                      <small class="labx-process-recent-actions__meta">${escapeHtml(
+      getRecentActionMeta(actionEvent)
+    )}</small>
+                    </div>
+                  `;
+  }).join("")}
+            </div>
+          ` : `<div class="labx-process-empty">Henüz işlem yok</div>`}
+    </section>
+  `;
+}
 function renderIdleProcessPanel(state, sourceReady) {
   if (sourceReady !== true) {
     return `
       <section class="labx-process-panel labx-process-panel--empty" id="lab-process-panel">
         <div class="labx-process-empty">Henüz analiz çalışması yok.</div>
+        ${renderRecentActionsSection(state)}
       </section>
     `;
   }
@@ -515,6 +570,7 @@ function renderIdleProcessPanel(state, sourceReady) {
         </div>
       </div>
       ${renderIntentExecutionMap(state, sourceReady)}
+      ${renderRecentActionsSection(state)}
     </section>
   `;
 }
@@ -537,12 +593,13 @@ export function renderWorkspaceProcessPanel(state, options) {
   const statusTone = getStepTone(run.state);
   const statusLabel = run.state === "running" ? "Analiz ediliyor" : run.state === "completed" || run.state === "ready" ? "Tamamlandı" : run.state === "failed" ? "Hata" : run.state === "cancelled" ? "İptal" : "Sırada";
   const activeModuleLabel = activeModule ? activeModule.title || activeModule.id : null;
+  const runIdLabel = (run.id || "").slice(-6) || "—";
   return `
     <section class="labx-process-panel" id="lab-process-panel">
       <div class="labx-process-header">
         <div class="labx-process-header__title">
           ${renderStatusChip(statusLabel, statusTone)}
-          <strong>Analiz #${escapeHtml((run.id ?? "").slice(-6) || "—")}</strong>
+          <strong>Analiz #${escapeHtml(runIdLabel)}</strong>
         </div>
         ${activeModuleLabel ? `<div class="labx-process-header__subline">Çalışan modül: ${escapeHtml(activeModuleLabel)}</div>` : ""}
         <div class="labx-process-header__meta">
@@ -559,6 +616,7 @@ export function renderWorkspaceProcessPanel(state, options) {
       ${renderPipelineSection(run, activeStepId, pipelineCollapsed)}
       ${renderFindingsSection(liveFindings, hasMoreFindings, findingsCollapsed)}
       ${renderArtifactsSection(artifacts, hasMoreArts, artifactsCollapsed)}
+      ${renderRecentActionsSection(state)}
     </section>
   `;
 }

@@ -16,11 +16,16 @@ import {
   getSourceMode,
   getSourceProbeStatus,
   getSourceStatus,
+  getUserActions,
   getWorkbench,
   hasReportPayload,
   isRunActive,
   isRunComplete
 } from "./lab-selectors.js";
+import {
+  LAB_USER_ACTION_HUB_SUCCESS_WINDOW_MS,
+  getTrackedLabUserActionDefinition
+} from "./lab-user-actions.js";
 function toStringValue(value) {
   return typeof value === "string" ? value : "";
 }
@@ -93,31 +98,111 @@ function deriveFeatureSelectionFromCapabilities(capabilityIds) {
 }
 export function createLabRunController(deps) {
   let attached = false;
+  const hubDismissTimers = /* @__PURE__ */ new Map();
   function dispatch(event) {
     deps.eventBus.emit(event);
   }
   function getRoomApi() {
     return deps.windowRef.roomAPI;
   }
-  function sendMediaAction(action, payload = {}) {
+  function createActionRequestId(action) {
+    return `${action}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  }
+  function sendMediaAction(action, payload = {}, options = {}) {
     const roomApi = getRoomApi();
     if (!roomApi || typeof roomApi.sendEvent !== "function") {
       dispatch({
         type: "push-event",
         event: buildUiEvent("Room API bridge is not connected.", "error")
       });
-      return false;
+      return null;
     }
     const state = deps.store.getState();
+    const requestId = options.requestId || createActionRequestId(action);
     roomApi.sendEvent("media-action", {
-      requestId: `${action}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      requestId,
       action,
       payload: {
         featureId: state.featureId,
         ...payload
       }
     });
-    return true;
+    return requestId;
+  }
+  function startTrackedUserAction(action, payload = {}) {
+    const definition = getTrackedLabUserActionDefinition(action);
+    if (!definition) {
+      return sendMediaAction(action, payload);
+    }
+    const state = deps.store.getState();
+    const requestId = createActionRequestId(action);
+    const sentRequestId = sendMediaAction(action, payload, { requestId });
+    if (sentRequestId === null) {
+      return null;
+    }
+    dispatch({
+      type: "user-action-added",
+      actionEvent: {
+        id: createLabEventId("user-action"),
+        type: definition.type,
+        label: definition.label,
+        status: "running",
+        startedAt: Date.now(),
+        dismissedFromHubAt: null,
+        projectId: state.projectIndex.activeProjectId,
+        requestId: sentRequestId,
+        sourceAction: action
+      }
+    });
+    return sentRequestId;
+  }
+  function startTrackedReportExport() {
+    const state = deps.store.getState();
+    return startTrackedUserAction(
+      state.featureId === "audio-analysis" ? "audio-report-export" : "report-export"
+    );
+  }
+  function clearHubDismissTimer(actionId) {
+    const timer = hubDismissTimers.get(actionId);
+    if (!timer) {
+      return;
+    }
+    clearTimeout(timer);
+    hubDismissTimers.delete(actionId);
+  }
+  function scheduleHubDismiss(actionId) {
+    if (hubDismissTimers.has(actionId)) {
+      return;
+    }
+    hubDismissTimers.set(
+      actionId,
+      setTimeout(function() {
+        hubDismissTimers.delete(actionId);
+        dispatch({
+          type: "user-action-hub-dismissed",
+          id: actionId
+        });
+      }, LAB_USER_ACTION_HUB_SUCCESS_WINDOW_MS)
+    );
+  }
+  function syncUserActionHubTimers() {
+    const activeUserActionIds = /* @__PURE__ */ new Set();
+    getUserActions(deps.store.getState()).forEach(function(entry) {
+      activeUserActionIds.add(entry.id);
+      if (entry.status === "success" && entry.dismissedFromHubAt == null) {
+        scheduleHubDismiss(entry.id);
+        return;
+      }
+      clearHubDismissTimer(entry.id);
+    });
+    Array.from(hubDismissTimers.keys()).forEach(function(actionId) {
+      if (!activeUserActionIds.has(actionId)) {
+        clearHubDismissTimer(actionId);
+      }
+    });
+  }
+  function handleBusEvent(_event) {
+    syncUserActionHubTimers();
   }
   function sendHostContext(payload) {
     const roomApi = getRoomApi();
@@ -565,9 +650,7 @@ export function createLabRunController(deps) {
   function runPrimaryAction() {
     const state = deps.store.getState();
     if (hasReportPayload(state) && (state.ui.workspace.reportOverlayOpen || isRunComplete(state))) {
-      sendMediaAction(
-        state.featureId === "audio-analysis" ? "audio-report-export" : "report-export"
-      );
+      startTrackedReportExport();
       return;
     }
     if (isRunActive(state)) {
@@ -930,7 +1013,7 @@ export function createLabRunController(deps) {
           return r.id === value;
         });
         if (roiRegion) {
-          sendMediaAction("export-roi-image", {
+          startTrackedUserAction("export-roi-image", {
             regionId: roiRegion.id,
             x: roiRegion.x,
             y: roiRegion.y,
@@ -944,7 +1027,7 @@ export function createLabRunController(deps) {
         const clipState = deps.store.getState();
         const clipWs = clipState.ui.workspace;
         if (clipWs.timelineStartMs !== null && clipWs.timelineEndMs !== null) {
-          sendMediaAction("export-timeline-clip", {
+          startTrackedUserAction("export-timeline-clip", {
             startMs: clipWs.timelineStartMs,
             endMs: clipWs.timelineEndMs
           });
@@ -955,7 +1038,7 @@ export function createLabRunController(deps) {
         const frameState = deps.store.getState();
         const frameWs = frameState.ui.workspace;
         const seekMs = frameWs.timelineStartMs !== null ? frameWs.timelineStartMs : 0;
-        sendMediaAction("export-frame-grab", {
+        startTrackedUserAction("export-frame-grab", {
           seekMs
         });
         return;
@@ -1129,10 +1212,10 @@ export function createLabRunController(deps) {
         });
         return;
       case "report-export-json":
-        sendMediaAction("export-report-json");
+        startTrackedReportExport();
         return;
       case "report-export-pdf":
-        sendMediaAction("export-report-pdf");
+        startTrackedReportExport();
         return;
       default:
         return;
@@ -1445,6 +1528,7 @@ export function createLabRunController(deps) {
       label: sourceProbeStatus === "completed" || sourceStatus === "ready" ? "Kaynağı Yenile" : "Kaynağı Hazırla"
     };
   }
+  deps.eventBus.subscribe(handleBusEvent);
   return {
     attach,
     getPrimaryActionState

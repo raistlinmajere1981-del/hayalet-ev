@@ -1,5 +1,11 @@
 type LaboratoryRecord = Record<string, unknown>;
 
+const MEDIA_EXPORT_ACTION_IDS = [
+  "export-roi-image",
+  "export-frame-grab",
+  "export-timeline-clip",
+] as const;
+
 type LaboratoryExportActionRuntimeDeps = {
   asNonEmptyString: (value: unknown) => string | null;
   asNumber: (value: unknown) => number | null;
@@ -12,7 +18,10 @@ type LaboratoryExportActionRuntimeDeps = {
   cancelJobsForProject: (
     runtime: LaboratoryRecord,
     projectId: string,
-    requestId: string
+    requestId: string,
+    options?: {
+      actionIds?: string[];
+    }
   ) => Promise<unknown>;
   toRecord: (value: unknown) => LaboratoryRecord;
 };
@@ -64,7 +73,9 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     const cropH = asNumber(payload["height"]) || 100;
     const sourceKind = asNonEmptyString(source["kind"]) || "video";
 
-    await cancelJobsForProject(runtime, projectId, requestId);
+    await cancelJobsForProject(runtime, projectId, requestId, {
+      actionIds: Array.from(MEDIA_EXPORT_ACTION_IDS),
+    });
 
     const jobId = `export-roi-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     registerJob(runtime, {
@@ -184,7 +195,9 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
 
     const seekMs = asNumber(payload["seekMs"]) || 0;
 
-    await cancelJobsForProject(runtime, projectId, requestId);
+    await cancelJobsForProject(runtime, projectId, requestId, {
+      actionIds: Array.from(MEDIA_EXPORT_ACTION_IDS),
+    });
 
     const jobId = `export-frame-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     registerJob(runtime, {
@@ -312,7 +325,9 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
       cropRegion["width"] > 0 &&
       cropRegion["height"] > 0;
 
-    await cancelJobsForProject(runtime, projectId, requestId);
+    await cancelJobsForProject(runtime, projectId, requestId, {
+      actionIds: Array.from(MEDIA_EXPORT_ACTION_IDS),
+    });
 
     const jobId = `export-clip-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     registerJob(runtime, {

@@ -8,13 +8,16 @@ import {
 import type {
   CapabilityFamilyId,
   LabIntentId,
+  LabIntentDirtyState,
   LabModuleState,
   LabProcessSectionId,
   LabStoreState,
+  LabUserActionEvent,
 } from "../models/lab-types.js";
 import {
   getActiveModule,
   getCurrentRun,
+  getRecentUserActions,
   getIntentDirtyMap,
   getRunSnapshotSummary,
   getSelectedIntents,
@@ -26,6 +29,7 @@ import {
   hasMoreVisibleLiveFindings,
   isProcessSectionCollapsed,
 } from "../runtime/lab-selectors.js";
+import { getLabUserActionDisplayText } from "../runtime/lab-user-actions.js";
 import { renderArtifactItem } from "./components/artifact-item.js";
 import { renderStatusChip } from "./components/status-chip.js";
 
@@ -107,6 +111,30 @@ function formatElapsed(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${String(m)} dk ${String(s).padStart(2, "0")} sn`;
+}
+
+function formatRelativeActionTime(timestamp: number | undefined) {
+  if (typeof timestamp !== "number" || Number.isFinite(timestamp) !== true) {
+    return "az önce";
+  }
+  const diffMs = Math.max(0, Date.now() - timestamp);
+  const diffSeconds = Math.max(1, Math.round(diffMs / 1000));
+  if (diffSeconds < 60) {
+    return `${String(diffSeconds)} sn önce`;
+  }
+  const diffMinutes = Math.round(diffSeconds / 60);
+  if (diffMinutes < 60) {
+    return `${String(diffMinutes)} dk önce`;
+  }
+  const diffHours = Math.round(diffMinutes / 60);
+  return `${String(diffHours)} sa önce`;
+}
+
+function getRecentActionMeta(actionEvent: LabUserActionEvent) {
+  if (actionEvent.status === "running") {
+    return "devam ediyor";
+  }
+  return formatRelativeActionTime(actionEvent.finishedAt || actionEvent.startedAt);
 }
 
 function renderConfidenceGauge(confidence: string | null) {
@@ -195,7 +223,7 @@ function getTransportFallbackCapabilityIds(
   }
   if (moduleId === "audio") {
     return resolvedCapabilities.filter(function (capabilityId) {
-        return AUDIO_TRANSPORT_CAPABILITY_IDS.includes(capabilityId);
+      return AUDIO_TRANSPORT_CAPABILITY_IDS.includes(capabilityId);
     });
   }
   if (moduleId === "report" && intentIds.length === 1) {
@@ -206,8 +234,11 @@ function getTransportFallbackCapabilityIds(
 }
 
 function getPlannedModuleIds(module: LabModuleState | undefined): string[] {
-  const rawModuleIds = Array.isArray(module?.metadata?.["moduleIds"]) ? module?.metadata?.["moduleIds"] : [];
-  return rawModuleIds.filter((entry): entry is string => typeof entry === "string" && entry.trim() !== "");
+  const metadata = module?.metadata;
+  const rawModuleIds = Array.isArray(metadata?.["moduleIds"]) ? metadata["moduleIds"] : [];
+  return rawModuleIds.filter(
+    (entry): entry is string => typeof entry === "string" && entry.trim() !== ""
+  );
 }
 
 // NOTE: Managed runs can surface transport wrappers plus an inner module plan in metadata.
@@ -222,7 +253,9 @@ function getExecutionModuleRowsForCapability(
   }
   const intentIds = getExecutionIntentIds(state);
   const seen = new Set<string>();
-  const expectedModuleIds = new Set(getModuleIdsForCapabilityFamily(capabilityId).concat(capabilityId));
+  const expectedModuleIds = new Set(
+    getModuleIdsForCapabilityFamily(capabilityId).concat(capabilityId)
+  );
   const rows: ExecutionModuleRow[] = [];
 
   run.moduleOrder.forEach(function (moduleId) {
@@ -294,13 +327,25 @@ function getCapabilityExecutionStatus(
   const relevantStatuses = moduleRows.map(function (moduleRow) {
     return moduleRow.status;
   });
-  if (relevantStatuses.some(function (status) { return status === "failed"; })) {
+  if (
+    relevantStatuses.some(function (status) {
+      return status === "failed";
+    })
+  ) {
     return "failed";
   }
-  if (relevantStatuses.some(function (status) { return status === "running"; })) {
+  if (
+    relevantStatuses.some(function (status) {
+      return status === "running";
+    })
+  ) {
     return "running";
   }
-  if (relevantStatuses.some(function (status) { return status === "queued"; })) {
+  if (
+    relevantStatuses.some(function (status) {
+      return status === "queued";
+    })
+  ) {
     return "queued";
   }
   if (
@@ -386,7 +431,9 @@ function renderIntentExecutionMap(state: LabStoreState, sourceReady: boolean): s
         ${intentIds
           .map(function (intentId) {
             const capabilityIds = getCapabilityIdsForIntent(intentId, resolvedCapabilities);
-            const dirtyState = dirtyMap[intentId];
+            const dirtyState = (dirtyMap as Partial<Record<LabIntentId, LabIntentDirtyState>>)[
+              intentId
+            ];
             const dirtyHint =
               dirtyState && dirtyState.dirty
                 ? `<span class="labx-intent-map__hint">Live drift: ${escapeHtml(dirtyState.changedKeys.join(", "))}</span>`
@@ -630,11 +677,48 @@ function renderArtifactsSection(
   `;
 }
 
+function renderRecentActionsSection(state: LabStoreState) {
+  const recentActions = getRecentUserActions(state, 6);
+  return `
+    <section class="labx-process-recent-actions">
+      <div class="labx-process-recent-actions__head">
+        <strong>Son işlemler</strong>
+      </div>
+      ${
+        recentActions.length > 0
+          ? `
+            <div class="labx-process-recent-actions__list">
+              ${recentActions
+                .map(function (actionEvent) {
+                  return `
+                    <div
+                      class="labx-process-recent-actions__item"
+                      data-tone="${escapeHtml(actionEvent.status)}"
+                    >
+                      <span class="labx-process-recent-actions__label">${escapeHtml(
+                        getLabUserActionDisplayText(actionEvent)
+                      )}</span>
+                      <small class="labx-process-recent-actions__meta">${escapeHtml(
+                        getRecentActionMeta(actionEvent)
+                      )}</small>
+                    </div>
+                  `;
+                })
+                .join("")}
+            </div>
+          `
+          : `<div class="labx-process-empty">Henüz işlem yok</div>`
+      }
+    </section>
+  `;
+}
+
 function renderIdleProcessPanel(state: LabStoreState, sourceReady: boolean): string {
   if (sourceReady !== true) {
     return `
       <section class="labx-process-panel labx-process-panel--empty" id="lab-process-panel">
         <div class="labx-process-empty">Henüz analiz çalışması yok.</div>
+        ${renderRecentActionsSection(state)}
       </section>
     `;
   }
@@ -652,6 +736,7 @@ function renderIdleProcessPanel(state: LabStoreState, sourceReady: boolean): str
         </div>
       </div>
       ${renderIntentExecutionMap(state, sourceReady)}
+      ${renderRecentActionsSection(state)}
     </section>
   `;
 }
@@ -690,13 +775,14 @@ export function renderWorkspaceProcessPanel(
             ? "İptal"
             : "Sırada";
   const activeModuleLabel = activeModule ? activeModule.title || activeModule.id : null;
+  const runIdLabel = (run.id || "").slice(-6) || "—";
 
   return `
     <section class="labx-process-panel" id="lab-process-panel">
       <div class="labx-process-header">
         <div class="labx-process-header__title">
           ${renderStatusChip(statusLabel, statusTone)}
-          <strong>Analiz #${escapeHtml(((run.id ?? "") as string).slice(-6) || "—")}</strong>
+          <strong>Analiz #${escapeHtml(runIdLabel)}</strong>
         </div>
         ${
           activeModuleLabel
@@ -717,6 +803,7 @@ export function renderWorkspaceProcessPanel(
       ${renderPipelineSection(run, activeStepId, pipelineCollapsed)}
       ${renderFindingsSection(liveFindings, hasMoreFindings, findingsCollapsed)}
       ${renderArtifactsSection(artifacts, hasMoreArts, artifactsCollapsed)}
+      ${renderRecentActionsSection(state)}
     </section>
   `;
 }

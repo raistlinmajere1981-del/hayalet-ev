@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createLabEventBus } from "../../rooms/laboratory/runtime/lab-event-bus.ts";
+import { createLabRunController } from "../../rooms/laboratory/runtime/lab-run-controller.ts";
 import { createLabHostBridge } from "../../rooms/laboratory/runtime/lab-host-bridge.ts";
 import {
   getIntentDirtyMap,
@@ -8,8 +10,36 @@ import {
   getWorkspaceDiff,
 } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
+import { LAB_USER_ACTION_HUB_SUCCESS_WINDOW_MS } from "../../rooms/laboratory/runtime/lab-user-actions.ts";
 import { extractFindings } from "../../rooms/laboratory/services/finding-engine.ts";
 import { parseProcessOutput } from "../../rooms/laboratory/services/process-output-parser.ts";
+
+type TimeoutFn = typeof globalThis.setTimeout;
+type ClearTimeoutFn = typeof globalThis.clearTimeout;
+
+function installTimerMock(): {
+  scheduled: Array<{ fn: () => void; delay: number }>;
+  restore: () => void;
+} {
+  const originalSetTimeout: TimeoutFn = globalThis.setTimeout;
+  const originalClearTimeout: ClearTimeoutFn = globalThis.clearTimeout;
+  const scheduled: Array<{ fn: () => void; delay: number }> = [];
+
+  globalThis.setTimeout = ((fn: (...args: unknown[]) => void, delay?: number) => {
+    scheduled.push({ fn: () => fn(), delay: delay ?? 0 });
+    return scheduled.length as unknown as ReturnType<typeof setTimeout>;
+  }) as TimeoutFn;
+
+  globalThis.clearTimeout = (() => {}) as ClearTimeoutFn;
+
+  return {
+    scheduled,
+    restore() {
+      globalThis.setTimeout = originalSetTimeout;
+      globalThis.clearTimeout = originalClearTimeout;
+    },
+  };
+}
 
 test("laboratory process output parser translates known ffmpeg and download lines", () => {
   const blackdetectEvent = parseProcessOutput("blackdetect=duration:0.42");
@@ -184,6 +214,123 @@ test("laboratory store derives run state from canonical events without inventing
   const state = store.getState();
   assert.equal(state.run?.state, "running");
   assert.deepEqual(state.run?.moduleOrder, []);
+});
+
+test("laboratory store keeps export user actions separate from analysis run state", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "user-action-added",
+    actionEvent: {
+      id: "user-action-1",
+      type: "export-clip",
+      label: "Klip çıkarılıyor",
+      status: "running",
+      startedAt: Date.now() - 1000,
+      projectId: "project-1",
+      requestId: "req-export-1",
+      sourceAction: "export-timeline-clip",
+    },
+  });
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-export",
+      kind: "activity",
+      severity: "success",
+      message: "Klip çıkarılıyor tamamlandı",
+      detail: null,
+      timestamp: Date.now(),
+      source: "host",
+      action: "export-timeline-clip",
+      stage: "completed",
+      scope: "global",
+      moduleId: null,
+      rawLine: null,
+      requestId: "req-export-1",
+      jobId: "job-export-1",
+      projectId: "project-1",
+    },
+  });
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-run",
+      kind: "activity",
+      severity: "info",
+      message: "Analiz basladi",
+      detail: null,
+      timestamp: Date.now(),
+      source: "host",
+      action: "process-run",
+      stage: "running",
+      scope: "run",
+      moduleId: null,
+      rawLine: null,
+    },
+  });
+
+  const state = store.getState();
+  assert.equal(state.userActions[0]?.status, "success");
+  assert.equal(state.userActions[0]?.message, "Klip hazır");
+  assert.equal(state.run?.state, "running");
+  assert.equal(state.run?.events.length, 1);
+  assert.equal(state.run?.events[0]?.action, "process-run");
+});
+
+test("laboratory run controller dismisses successful user actions from the topbar after the success window", () => {
+  const timerMock = installTimerMock();
+
+  try {
+    const eventBus = createLabEventBus();
+    const store = createLabStore();
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+    createLabRunController({
+      documentRef: {} as Document,
+      eventBus,
+      store,
+      windowRef: {} as Window,
+    });
+
+    eventBus.emit({
+      type: "user-action-added",
+      actionEvent: {
+        id: "user-action-success",
+        type: "export-clip",
+        label: "Klip çıkarılıyor",
+        status: "running",
+        startedAt: Date.now() - 1000,
+        dismissedFromHubAt: null,
+        projectId: "project-1",
+        requestId: "req-export-1",
+        sourceAction: "export-timeline-clip",
+      },
+    });
+
+    assert.equal(timerMock.scheduled.length, 0);
+
+    eventBus.emit({
+      type: "user-action-updated",
+      id: "user-action-success",
+      patch: {
+        status: "success",
+        finishedAt: Date.now(),
+        message: "Klip hazır",
+      },
+    });
+
+    assert.equal(timerMock.scheduled.length, 1);
+    assert.equal(timerMock.scheduled[0]?.delay, LAB_USER_ACTION_HUB_SUCCESS_WINDOW_MS);
+    assert.equal(store.getState().userActions[0]?.dismissedFromHubAt, null);
+
+    timerMock.scheduled[0]?.fn();
+
+    assert.equal(typeof store.getState().userActions[0]?.dismissedFromHubAt, "number");
+  } finally {
+    timerMock.restore();
+  }
 });
 
 test("laboratory store wires live findings and preview artifacts from custom runtime events", () => {

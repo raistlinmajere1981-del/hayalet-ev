@@ -12,12 +12,14 @@ import type {
   LabRunSnapshotSummary,
   LabStage,
   LabStoreState,
+  LabUserActionEvent,
   LabWorkspaceDiff,
   PreflightSeverity,
   ReportFreshness,
 } from "../models/lab-types.js";
 import { CAPABILITY_FAMILIES, WORKSPACE_INTENTS } from "../models/lab-types.js";
 import { normalizeAnalysisScope } from "../shared/types/analysis-scope.js";
+import { LAB_USER_ACTION_HISTORY_LIMIT } from "./lab-user-actions.js";
 
 function normalizeIntentIdList(value: unknown) {
   const sourceIds = Array.isArray(value)
@@ -197,7 +199,9 @@ export function getRunSnapshotSummary(state: LabStoreState): LabRunSnapshotSumma
   return {
     focus: typeof scope.focus === "string" ? scope.focus : null,
     timelineStartMs:
-      scope.timeRange && typeof scope.timeRange.startMs === "number" ? scope.timeRange.startMs : null,
+      scope.timeRange && typeof scope.timeRange.startMs === "number"
+        ? scope.timeRange.startMs
+        : null,
     timelineEndMs:
       scope.timeRange && typeof scope.timeRange.endMs === "number" ? scope.timeRange.endMs : null,
     hypothesis: typeof scope.hypothesis === "string" ? scope.hypothesis : null,
@@ -412,6 +416,31 @@ export function getVisibleRawLogs(state: LabStoreState) {
 
 export function getGlobalActivityFeed(state: LabStoreState) {
   return Array.isArray(state.activityFeed) ? state.activityFeed.slice() : [];
+}
+
+export function getUserActions(state: LabStoreState): LabUserActionEvent[] {
+  const activeProjectId = state.projectIndex.activeProjectId;
+  const userActions = Array.isArray(state.userActions) ? state.userActions : [];
+  if (activeProjectId === null) {
+    return userActions.slice();
+  }
+  return userActions.filter(function (entry) {
+    return entry.projectId === null || entry.projectId === activeProjectId;
+  });
+}
+
+export function getRecentUserActions(state: LabStoreState, limit = 6): LabUserActionEvent[] {
+  return getUserActions(state).slice(0, Math.min(limit, LAB_USER_ACTION_HISTORY_LIMIT));
+}
+
+export function getHubUserActions(state: LabStoreState, limit = 4): LabUserActionEvent[] {
+  return getUserActions(state)
+    .filter(function (entry) {
+      return (
+        entry.status === "running" || entry.status === "error" || entry.dismissedFromHubAt == null
+      );
+    })
+    .slice(0, limit);
 }
 
 export function getVisibleArtifacts(state: LabStoreState) {

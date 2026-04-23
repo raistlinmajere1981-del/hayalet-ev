@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { createRoomBuiltArtifact, createRoomInstalledCopy } from "./helpers/room-installed-copy.ts";
 import { createLaboratoryHostActivation } from "../../rooms/laboratory/shared/host/activation.ts";
+import { createMediaExportActionRuntime } from "../../rooms/laboratory/main-functions/media-analysis/host/action-handlers-export.ts";
+import { createLaboratoryJobStateRuntime } from "../../rooms/laboratory/shared/host/job-state.ts";
 
 test("laboratory host activation unwraps host-context room-event payloads before saving context", () => {
   const savedContexts: Array<Record<string, unknown>> = [];
@@ -242,4 +244,144 @@ test("laboratory host action composition is extracted into a shared host boundar
     await buildArtifact.cleanup();
     await installedCopy.cleanup();
   }
+});
+
+test("laboratory media export runtime cancels only prior export jobs for every export handler", async () => {
+  async function runExportCase(
+    runExport: (
+      exportRuntime: ReturnType<typeof createMediaExportActionRuntime>,
+      runtime: { roomId: string; jobs: Record<string, Record<string, unknown>> }
+    ) => Promise<unknown>
+  ) {
+    const cancelledJobIds: string[] = [];
+    const jobState = createLaboratoryJobStateRuntime({
+      roomId: "laboratory",
+      cancelRoomTool: async function (_roomId, jobId) {
+        cancelledJobIds.push(jobId);
+      },
+    });
+
+    const exportRuntime = createMediaExportActionRuntime({
+      asNonEmptyString(value: unknown) {
+        return typeof value === "string" && value.trim() !== "" ? value : null;
+      },
+      asNumber(value: unknown) {
+        return typeof value === "number" && Number.isFinite(value) ? value : null;
+      },
+      async callRoomTools() {
+        return {
+          run: {
+            exitCode: 0,
+          },
+        };
+      },
+      getActiveProject() {
+        return {
+          id: "project-1",
+          source: {
+            kind: "video",
+            storedPath: "/tmp/lab-demo.mp4",
+          },
+        };
+      },
+      getProjectEditOutputDir() {
+        return "/tmp";
+      },
+      pushJobState() {},
+      registerJob: jobState.registerJob,
+      clearJob: jobState.clearJob,
+      cancelJobsForProject: jobState.cancelJobsForProject,
+      toRecord(value: unknown) {
+        return value !== null && typeof value === "object" && Array.isArray(value) === false
+          ? (value as Record<string, unknown>)
+          : {};
+      },
+    });
+
+    const runtime = {
+      roomId: "laboratory",
+      jobs: {
+        "process-job": {
+          requestId: "req-process-1",
+          action: "process-run",
+          projectId: "project-1",
+          toolId: "ffmpeg",
+          featureStage: "process",
+          operation: "tool-run",
+          stage: "queued",
+          percent: null,
+          bytesReceived: null,
+          bytesTotal: null,
+          message: null,
+        },
+        "old-roi-job": {
+          requestId: "req-export-roi-old",
+          action: "export-roi-image",
+          projectId: "project-1",
+          toolId: "ffmpeg",
+          featureStage: "edit",
+          operation: "tool-run",
+          stage: "queued",
+          percent: null,
+          bytesReceived: null,
+          bytesTotal: null,
+          message: null,
+        },
+        "old-frame-job": {
+          requestId: "req-export-frame-old",
+          action: "export-frame-grab",
+          projectId: "project-1",
+          toolId: "ffmpeg",
+          featureStage: "edit",
+          operation: "tool-run",
+          stage: "queued",
+          percent: null,
+          bytesReceived: null,
+          bytesTotal: null,
+          message: null,
+        },
+        "old-clip-job": {
+          requestId: "req-export-clip-old",
+          action: "export-timeline-clip",
+          projectId: "project-1",
+          toolId: "ffmpeg",
+          featureStage: "edit",
+          operation: "tool-run",
+          stage: "queued",
+          percent: null,
+          bytesReceived: null,
+          bytesTotal: null,
+          message: null,
+        },
+      } as Record<string, Record<string, unknown>>,
+    };
+
+    await runExport(exportRuntime, runtime);
+
+    assert.deepEqual(cancelledJobIds, ["old-roi-job", "old-frame-job", "old-clip-job"]);
+    assert.equal(Boolean(runtime.jobs["process-job"]), true);
+    assert.deepEqual(Object.keys(runtime.jobs), ["process-job"]);
+  }
+
+  await runExportCase(function (exportRuntime, runtime) {
+    return exportRuntime.exportROIImage({}, runtime, "req-export-roi-new", {
+      regionId: "face",
+      x: 8,
+      y: 12,
+      width: 120,
+      height: 80,
+      seekMs: 1200,
+    });
+  });
+  await runExportCase(function (exportRuntime, runtime) {
+    return exportRuntime.exportFrameGrab({}, runtime, "req-export-frame-new", {
+      seekMs: 1200,
+    });
+  });
+  await runExportCase(function (exportRuntime, runtime) {
+    return exportRuntime.exportTimelineClip({}, runtime, "req-export-clip-new", {
+      startMs: 1000,
+      endMs: 2400,
+    });
+  });
 });
