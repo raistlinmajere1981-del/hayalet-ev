@@ -2923,6 +2923,116 @@ textarea {
   display: none;
 }
 
+/* ===== INTENT OUTPUT TRACE ===== */
+
+.labx-output-trace {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.55rem;
+  border: 1px solid rgba(92, 215, 223, 0.16);
+  border-radius: 0.55rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.labx-output-trace__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.labx-output-trace__head strong {
+  color: var(--labx-text);
+  font-size: 0.72rem;
+  letter-spacing: 0;
+}
+
+.labx-output-trace__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.labx-output-trace__intent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.45rem;
+  border-radius: 0.45rem;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.labx-output-trace__intent-head strong {
+  font-size: 0.78rem;
+}
+
+.labx-output-trace__group {
+  display: grid;
+  grid-template-columns: minmax(4.8rem, auto) minmax(0, 1fr);
+  gap: 0.35rem;
+  align-items: start;
+}
+
+.labx-output-trace__label {
+  color: var(--labx-text-dim);
+  font-size: 0.7rem;
+}
+
+.labx-output-trace__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.labx-output-trace__expected-row,
+.labx-output-trace__asset {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  color: var(--labx-text);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.labx-output-trace__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 1rem;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 999px;
+  font-size: 0.62rem;
+}
+
+.labx-output-trace__expected-row[data-matched="true"] .labx-output-trace__mark {
+  background: rgba(130, 227, 177, 0.14);
+  color: var(--labx-success);
+}
+
+.labx-output-trace__expected-row[data-matched="false"] .labx-output-trace__mark {
+  background: rgba(255, 111, 123, 0.14);
+  color: var(--labx-error);
+}
+
+.labx-output-trace__asset-type {
+  flex: 0 0 auto;
+  padding: 0.05rem 0.32rem;
+  border-radius: 0.28rem;
+  background: rgba(92, 215, 223, 0.12);
+  color: var(--labx-accent);
+  font-size: 0.64rem;
+}
+
+.labx-output-trace__empty {
+  color: var(--labx-text-dim);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
 /* ===== CONFIDENCE GAUGE ===== */
 
 .labx-confidence-gauge {

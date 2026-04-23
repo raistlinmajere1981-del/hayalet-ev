@@ -4,14 +4,17 @@ import { createLabEventBus } from "../../rooms/laboratory/runtime/lab-event-bus.
 import { createLabRunController } from "../../rooms/laboratory/runtime/lab-run-controller.ts";
 import { createLabHostBridge } from "../../rooms/laboratory/runtime/lab-host-bridge.ts";
 import {
+  getActualOutputs,
   getAssets,
   getAssetsByRun,
   getAssetsBySource,
   getAssetsByType,
+  getExpectedOutputs,
   getIntentDirtyMap,
   getReportFreshness,
   getRunSnapshotSummary,
   getWorkspaceDiff,
+  isExpectedOutputMatched,
 } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import { LAB_USER_ACTION_HUB_SUCCESS_WINDOW_MS } from "../../rooms/laboratory/runtime/lab-user-actions.ts";
@@ -43,6 +46,40 @@ function installTimerMock(): {
       globalThis.clearTimeout = originalClearTimeout;
     },
   };
+}
+
+class FakeActionElement {
+  dataset: Record<string, string>;
+
+  constructor(action: string, value?: string) {
+    this.dataset = {
+      labAction: action,
+      ...(value === undefined ? {} : { labValue: value }),
+    };
+  }
+
+  closest(selector: string): FakeActionElement | null {
+    if (selector === "[data-lab-stage]") {
+      return null;
+    }
+    if (selector === "[data-lab-action]") {
+      return this;
+    }
+    return null;
+  }
+}
+
+class FakeControllerDocument {
+  listeners = new Map<string, (event: Event) => void>();
+
+  addEventListener(type: string, listener: EventListenerOrEventListenerObject): void {
+    this.listeners.set(
+      type,
+      typeof listener === "function"
+        ? (listener as (event: Event) => void)
+        : (event: Event) => listener.handleEvent(event)
+    );
+  }
 }
 
 test("laboratory process output parser translates known ffmpeg and download lines", () => {
@@ -381,6 +418,98 @@ test("laboratory store hydrates project assets and selectors keep registry looku
   );
 });
 
+test("laboratory intent output selectors map expected outputs and filter actual assets", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "snapshot-received",
+    payload: {
+      ready: true,
+      featureId: "media-analysis",
+      activeProjectId: "project-output-trace",
+      projects: [],
+      activeProject: {
+        id: "project-output-trace",
+        source: {
+          status: "ready",
+          kind: "video",
+          mode: "local",
+          storedPath: "/tmp/source.mp4",
+          drafts: {},
+        },
+        edit: {},
+        profile: {},
+        process: {
+          records: {},
+        },
+        report: {
+          records: {},
+        },
+        assets: [
+          {
+            id: "asset-source-tagged",
+            type: "source",
+            name: "source.mp4",
+            localPath: "/tmp/source.mp4",
+            createdAt: 100,
+            intentIds: ["visual-inspection"],
+          },
+          {
+            id: "asset-frame-visual",
+            type: "frame",
+            name: "frame_01.png",
+            localPath: "/tmp/frame_01.png",
+            createdAt: 200,
+            intentIds: ["visual-inspection"],
+          },
+          {
+            id: "asset-audio",
+            type: "audio",
+            name: "audio.wav",
+            localPath: "/tmp/audio.wav",
+            createdAt: 300,
+            intentIds: ["audio-investigation"],
+          },
+          {
+            id: "asset-unscoped",
+            type: "artifact",
+            name: "unscoped.json",
+            localPath: "/tmp/unscoped.json",
+            createdAt: 400,
+          },
+        ],
+      },
+    },
+  });
+
+  const visualExpected = getExpectedOutputs("visual-inspection");
+  const audioExpected = getExpectedOutputs("audio-investigation");
+  const visualActual = getActualOutputs(store.getState(), "visual-inspection");
+
+  assert.deepEqual(
+    visualExpected.map((entry) => entry.label),
+    ["Frame çıktıları", "Anomali verileri"]
+  );
+  assert.deepEqual(audioExpected, [
+    {
+      intentId: "audio-investigation",
+      label: "Ses çıktısı",
+      assetTypes: ["audio"],
+    },
+  ]);
+  assert.deepEqual(getExpectedOutputs("detail-enhancement"), []);
+  assert.deepEqual(
+    visualActual.map((asset) => asset.id),
+    ["asset-source-tagged", "asset-frame-visual"]
+  );
+  assert.equal(isExpectedOutputMatched(visualExpected[0]!, visualActual), true);
+  assert.equal(isExpectedOutputMatched(visualExpected[1]!, visualActual), false);
+  assert.deepEqual(
+    getActualOutputs(store.getState(), "audio-investigation").map((asset) => asset.id),
+    ["asset-audio"]
+  );
+});
+
 test("laboratory run controller dismisses successful user actions from the topbar after the success window", () => {
   const timerMock = installTimerMock();
 
@@ -433,6 +562,121 @@ test("laboratory run controller dismisses successful user actions from the topba
     assert.equal(typeof store.getState().userActions[0]?.dismissedFromHubAt, "number");
   } finally {
     timerMock.restore();
+  }
+});
+
+test("laboratory run controller threads frozen run intent ids into tracked export actions", () => {
+  const originalElement = globalThis.Element;
+  const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  class TestElement extends FakeActionElement {}
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent(eventName: string, payload: Record<string, unknown>) {
+            sentEvents.push({ eventName, payload });
+          },
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    const state = store.getState() as ReturnType<typeof store.getState> & {
+      run: Record<string, unknown>;
+    };
+    state.run = {
+      id: "run-controller-intents",
+      state: "running",
+      startedAt: Date.now() - 1000,
+      modules: {},
+      moduleOrder: [],
+      events: [],
+      rawLog: [],
+      artifacts: [],
+      findings: [],
+      liveFindings: [],
+      warnings: [],
+      error: null,
+      targetLabel: null,
+      progress: 10,
+      emptyReason: null,
+      analysisScope: {
+        focus: "visual",
+        intentIds: ["visual-inspection"],
+      },
+      previewArtifacts: [],
+      confidence: null,
+      moduleTrace: [],
+      comparisonVariants: [],
+      hypothesisSummary: null,
+    };
+    state.ui.workspace.roiRegions = [
+      {
+        id: "face",
+        label: "Face",
+        x: 8,
+        y: 12,
+        width: 120,
+        height: 80,
+      },
+    ];
+    state.ui.workspace.timelineStartMs = 1200;
+    state.ui.workspace.timelineEndMs = 2400;
+
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
+
+    clickListener?.({ target: new TestElement("workspace-roi-export", "face") } as Event);
+    clickListener?.({ target: new TestElement("timeline-export-clip") } as Event);
+    clickListener?.({ target: new TestElement("timeline-grab-frame") } as Event);
+    clickListener?.({ target: new TestElement("timeline-extract-audio") } as Event);
+
+    const mediaActions = sentEvents.filter(function (entry) {
+      return entry.eventName === "media-action";
+    });
+    assert.equal(mediaActions.length, 4);
+    assert.deepEqual(
+      mediaActions.map(function (entry) {
+        return (entry.payload["action"] as string) || null;
+      }),
+      [
+        "export-roi-image",
+        "export-timeline-clip",
+        "export-frame-grab",
+        "export-audio-track",
+      ]
+    );
+    mediaActions.forEach(function (entry) {
+      const payload = entry.payload["payload"] as Record<string, unknown>;
+      assert.deepEqual(payload["intentIds"], ["visual-inspection"]);
+    });
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
   }
 });
 

@@ -460,6 +460,131 @@ test("laboratory media export runtime cancels only prior export jobs for every e
   });
 });
 
+test("laboratory media export runtime preserves payload intent ids before workbench fallback", async () => {
+  async function runExportCase(
+    assetType: string,
+    payloadFactory: (intentIds?: unknown) => Record<string, unknown>
+  ) {
+    async function runWithIntentIds(intentIds?: unknown) {
+      let activeProject: Record<string, unknown> = {
+        id: "project-intent-drift",
+        source: {
+          kind: "video",
+          storedPath: "/tmp/lab-demo.mp4",
+      },
+      process: {
+        records: {
+          "media-analysis": {
+            runId: "run-frozen",
+          },
+        },
+      },
+      workbench: {
+        analysisScope: {
+          intentIds: ["audio-investigation"],
+        },
+      },
+      assets: [],
+    };
+    const jobState = createLaboratoryJobStateRuntime({
+      roomId: "laboratory",
+      cancelRoomTool: async function () {},
+    });
+
+      const exportRuntime = createMediaExportActionRuntime({
+        asNonEmptyString(value: unknown) {
+          return typeof value === "string" && value.trim() !== "" ? value : null;
+        },
+      asNumber(value: unknown) {
+        return typeof value === "number" && Number.isFinite(value) ? value : null;
+      },
+      async callRoomTools() {
+        return {
+          run: {
+            exitCode: 0,
+          },
+        };
+      },
+      getActiveProject() {
+        return activeProject;
+      },
+      getProjectEditOutputDir() {
+        return "/tmp";
+      },
+      async patchActiveProject(_runtime, patcher) {
+        const nextProject = patcher(activeProject);
+        activeProject = {
+          ...nextProject,
+          assets: syncSourceLabAssetForProject(nextProject, nextProject["assets"]),
+        };
+      },
+      pushJobState() {},
+      registerJob: jobState.registerJob,
+      clearJob: jobState.clearJob,
+      cancelJobsForProject: jobState.cancelJobsForProject,
+        toRecord(value: unknown) {
+          return value !== null && typeof value === "object" && Array.isArray(value) === false
+            ? (value as Record<string, unknown>)
+            : {};
+        },
+      });
+
+      const payload = payloadFactory(intentIds);
+      const runtime = {
+        roomId: "laboratory",
+        jobs: {},
+      };
+
+      if (assetType === "image") {
+        await exportRuntime.exportROIImage({}, runtime, "req-export-roi-intent", payload);
+      } else if (assetType === "clip") {
+        await exportRuntime.exportTimelineClip({}, runtime, "req-export-clip-intent", payload);
+      } else if (assetType === "audio") {
+        await exportRuntime.exportAudioTrack({}, runtime, "req-export-audio-intent", payload);
+      } else {
+        await exportRuntime.exportFrameGrab({}, runtime, "req-export-frame-intent", payload);
+      }
+
+      const assets = activeProject.assets as Array<Record<string, unknown>>;
+      return assets.find(function (asset) {
+        return asset["type"] === assetType;
+      })?.["intentIds"];
+    }
+
+    assert.deepEqual(await runWithIntentIds(["visual-inspection"]), ["visual-inspection"]);
+    assert.deepEqual(await runWithIntentIds([]), ["audio-investigation"]);
+    assert.deepEqual(await runWithIntentIds(), ["audio-investigation"]);
+  }
+
+  await runExportCase("frame", function (intentIds?: unknown) {
+    return {
+      seekMs: 1200,
+      ...(intentIds === undefined ? {} : { intentIds }),
+    };
+  });
+  await runExportCase("image", function (intentIds?: unknown) {
+    return {
+      regionId: "face",
+      x: 8,
+      y: 12,
+      width: 120,
+      height: 80,
+      seekMs: 1200,
+      ...(intentIds === undefined ? {} : { intentIds }),
+    };
+  });
+  await runExportCase("clip", function (intentIds?: unknown) {
+    return {
+      startMs: 1000,
+      endMs: 2400,
+      ...(intentIds === undefined ? {} : { intentIds }),
+    };
+  });
+  await runExportCase("audio", function (intentIds?: unknown) {
+    return intentIds === undefined ? {} : { intentIds };
+  });
+});
+
 test("laboratory source intake resolves use-as-source from registered local asset ids only", async () => {
   let activeProject = {
     id: "project-asset-source",

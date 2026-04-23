@@ -3,6 +3,7 @@ import type {
   CapabilityFamilyId,
   LabAsset,
   LabAssetType,
+  LabExpectedOutput,
   LabFeatureId,
   LabIntentDirtyMap,
   LabModuleState,
@@ -234,6 +235,37 @@ export function getAssetsBySource(state: LabStoreState, sourceId: string): LabAs
 export function getAssetsByRun(state: LabStoreState, runId: string): LabAsset[] {
   return state.assets.filter(function (asset) {
     return asset.runId === runId;
+  });
+}
+
+export function getExpectedOutputs(intentId: string): LabExpectedOutput[] {
+  switch (intentId) {
+    case "visual-inspection":
+      return [
+        { intentId, label: "Frame çıktıları", assetTypes: ["frame", "image"] },
+        { intentId, label: "Anomali verileri", assetTypes: ["artifact"] },
+      ];
+    case "audio-investigation":
+      return [{ intentId, label: "Ses çıktısı", assetTypes: ["audio"] }];
+    default:
+      return [];
+  }
+}
+
+export function getActualOutputs(state: LabStoreState, intentId: string): LabAsset[] {
+  return getAssets(state).filter(function (asset) {
+    return Array.isArray(asset.intentIds) && asset.intentIds.includes(intentId);
+  });
+}
+
+export function isExpectedOutputMatched(
+  expectedOutput: LabExpectedOutput,
+  actualOutputs: LabAsset[]
+): boolean {
+  return expectedOutput.assetTypes.some(function (assetType) {
+    return actualOutputs.some(function (asset) {
+      return asset.type === assetType;
+    });
   });
 }
 

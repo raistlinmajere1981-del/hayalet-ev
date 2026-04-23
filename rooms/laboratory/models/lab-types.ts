@@ -17,6 +17,12 @@ export interface LabAsset {
   metadata?: LabRecord;
 }
 
+export interface LabExpectedOutput {
+  intentId: string;
+  label: string;
+  assetTypes: LabAssetType[];
+}
+
 /** @deprecated V2.3 uses WorkspaceMode — kept for hydration and internal pipeline compat */
 export type LabStage = "source" | "edit" | "process" | "report";
 

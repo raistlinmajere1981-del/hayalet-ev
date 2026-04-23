@@ -230,6 +230,11 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     );
   }
 
+  function getCurrentRunIntentPayload(state = deps.store.getState()): Record<string, unknown> {
+    const intentIds = toStringArray(getCurrentRun(state)?.analysisScope?.intentIds);
+    return intentIds.length > 0 ? { intentIds } : {};
+  }
+
   function clearHubDismissTimer(actionId: string) {
     const timer = hubDismissTimers.get(actionId);
     if (!timer) {
@@ -1300,6 +1305,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
             y: roiRegion.y,
             width: roiRegion.width,
             height: roiRegion.height,
+            ...getCurrentRunIntentPayload(roiState),
           });
         }
         return;
@@ -1311,6 +1317,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           startTrackedUserAction("export-timeline-clip", {
             startMs: clipWs.timelineStartMs,
             endMs: clipWs.timelineEndMs,
+            ...getCurrentRunIntentPayload(clipState),
           });
         }
         return;
@@ -1321,11 +1328,12 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         const seekMs = frameWs.timelineStartMs !== null ? frameWs.timelineStartMs : 0;
         startTrackedUserAction("export-frame-grab", {
           seekMs: seekMs,
+          ...getCurrentRunIntentPayload(frameState),
         });
         return;
       }
       case "timeline-extract-audio":
-        startTrackedUserAction("export-audio-track");
+        startTrackedUserAction("export-audio-track", getCurrentRunIntentPayload(state));
         return;
       case "asset-preview":
         if (value.trim() !== "") {

@@ -73,6 +73,19 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     );
   }
 
+  function getPayloadIntentIds(payload: LaboratoryRecord): string[] | undefined {
+    const intentIds = payload["intentIds"];
+    if (!Array.isArray(intentIds)) {
+      return undefined;
+    }
+    const normalizedIntentIds = intentIds
+      .map(function (entry) {
+        return asNonEmptyString(entry);
+      })
+      .filter((entry): entry is string => entry !== null);
+    return normalizedIntentIds.length > 0 ? Array.from(new Set(normalizedIntentIds)) : undefined;
+  }
+
   async function registerOutputAsset(
     runtime: LaboratoryRecord,
     inputProject: LaboratoryRecord,
@@ -115,6 +128,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     const cropW = asNumber(payload["width"]) || 100;
     const cropH = asNumber(payload["height"]) || 100;
     const sourceKind = asNonEmptyString(source["kind"]) || "video";
+    const intentIds = getPayloadIntentIds(payload);
 
     await cancelJobsForProject(runtime, projectId, requestId, {
       actionIds: Array.from(MEDIA_EXPORT_ACTION_IDS),
@@ -186,6 +200,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         type: "image",
         name: outputFileName,
         localPath: outputPath,
+        ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: "export-roi-image",
           fileName: outputFileName,
@@ -250,6 +265,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     }
 
     const seekMs = asNumber(payload["seekMs"]) || 0;
+    const intentIds = getPayloadIntentIds(payload);
 
     await cancelJobsForProject(runtime, projectId, requestId, {
       actionIds: Array.from(MEDIA_EXPORT_ACTION_IDS),
@@ -316,6 +332,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         type: "frame",
         name: outputFileName,
         localPath: outputPath,
+        ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: "export-frame-grab",
           fileName: outputFileName,
@@ -385,6 +402,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
       throw new Error("Invalid timeline selection for clip export.");
     }
     const durationSec = (endMs - startMs) / 1000;
+    const intentIds = getPayloadIntentIds(payload);
 
     const cropRegion = payload["cropRegion"] as LaboratoryRecord | undefined;
     const hasCrop =
@@ -466,6 +484,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         type: "clip",
         name: outputFileName,
         localPath: outputPath,
+        ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: "export-timeline-clip",
           durationMs: endMs - startMs,
@@ -512,7 +531,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     api: unknown,
     runtime: LaboratoryRecord,
     requestId: string,
-    _payload: LaboratoryRecord
+    payload: LaboratoryRecord
   ) {
     const project = getActiveProject(runtime);
     if (project === null) {
@@ -530,6 +549,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     if (sourceKind !== "video" && sourceKind !== "audio") {
       throw new Error("Audio export is only available for video or audio sources.");
     }
+    const intentIds = getPayloadIntentIds(payload);
 
     await cancelJobsForProject(runtime, projectId, requestId, {
       actionIds: Array.from(MEDIA_EXPORT_ACTION_IDS),
@@ -596,6 +616,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         type: "audio",
         name: outputFileName,
         localPath: outputPath,
+        ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: "export-audio-track",
           fileName: outputFileName,

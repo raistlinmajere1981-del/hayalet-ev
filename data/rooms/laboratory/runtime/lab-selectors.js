@@ -176,6 +176,31 @@ export function getAssetsByRun(state, runId) {
     return asset.runId === runId;
   });
 }
+export function getExpectedOutputs(intentId) {
+  switch (intentId) {
+    case "visual-inspection":
+      return [
+        { intentId, label: "Frame çıktıları", assetTypes: ["frame", "image"] },
+        { intentId, label: "Anomali verileri", assetTypes: ["artifact"] }
+      ];
+    case "audio-investigation":
+      return [{ intentId, label: "Ses çıktısı", assetTypes: ["audio"] }];
+    default:
+      return [];
+  }
+}
+export function getActualOutputs(state, intentId) {
+  return getAssets(state).filter(function(asset) {
+    return Array.isArray(asset.intentIds) && asset.intentIds.includes(intentId);
+  });
+}
+export function isExpectedOutputMatched(expectedOutput, actualOutputs) {
+  return expectedOutput.assetTypes.some(function(assetType) {
+    return actualOutputs.some(function(asset) {
+      return asset.type === assetType;
+    });
+  });
+}
 export function getWorkbench(state) {
   return state.workbench;
 }

@@ -162,6 +162,10 @@ export function createLabRunController(deps) {
       state.featureId === "audio-analysis" ? "audio-report-export" : "report-export"
     );
   }
+  function getCurrentRunIntentPayload(state = deps.store.getState()) {
+    const intentIds = toStringArray(getCurrentRun(state)?.analysisScope?.intentIds);
+    return intentIds.length > 0 ? { intentIds } : {};
+  }
   function clearHubDismissTimer(actionId) {
     const timer = hubDismissTimers.get(actionId);
     if (!timer) {
@@ -1055,7 +1059,8 @@ export function createLabRunController(deps) {
             x: roiRegion.x,
             y: roiRegion.y,
             width: roiRegion.width,
-            height: roiRegion.height
+            height: roiRegion.height,
+            ...getCurrentRunIntentPayload(roiState)
           });
         }
         return;
@@ -1066,7 +1071,8 @@ export function createLabRunController(deps) {
         if (clipWs.timelineStartMs !== null && clipWs.timelineEndMs !== null) {
           startTrackedUserAction("export-timeline-clip", {
             startMs: clipWs.timelineStartMs,
-            endMs: clipWs.timelineEndMs
+            endMs: clipWs.timelineEndMs,
+            ...getCurrentRunIntentPayload(clipState)
           });
         }
         return;
@@ -1076,12 +1082,13 @@ export function createLabRunController(deps) {
         const frameWs = frameState.ui.workspace;
         const seekMs = frameWs.timelineStartMs !== null ? frameWs.timelineStartMs : 0;
         startTrackedUserAction("export-frame-grab", {
-          seekMs
+          seekMs,
+          ...getCurrentRunIntentPayload(frameState)
         });
         return;
       }
       case "timeline-extract-audio":
-        startTrackedUserAction("export-audio-track");
+        startTrackedUserAction("export-audio-track", getCurrentRunIntentPayload(state));
         return;
       case "asset-preview":
         if (value.trim() !== "") {

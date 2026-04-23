@@ -40,6 +40,16 @@ export function createMediaExportActionRuntime(deps) {
       (entry) => typeof entry === "string" && entry.trim() !== ""
     );
   }
+  function getPayloadIntentIds(payload) {
+    const intentIds = payload["intentIds"];
+    if (!Array.isArray(intentIds)) {
+      return void 0;
+    }
+    const normalizedIntentIds = intentIds.map(function(entry) {
+      return asNonEmptyString(entry);
+    }).filter((entry) => entry !== null);
+    return normalizedIntentIds.length > 0 ? Array.from(new Set(normalizedIntentIds)) : void 0;
+  }
   async function registerOutputAsset(runtime, inputProject, assetInput) {
     await patchActiveProject(runtime, function(nextProject) {
       const asset = createLabOutputAsset(nextProject, {
@@ -70,6 +80,7 @@ export function createMediaExportActionRuntime(deps) {
     const cropW = asNumber(payload["width"]) || 100;
     const cropH = asNumber(payload["height"]) || 100;
     const sourceKind = asNonEmptyString(source["kind"]) || "video";
+    const intentIds = getPayloadIntentIds(payload);
     await cancelJobsForProject(runtime, projectId, requestId, {
       actionIds: Array.from(MEDIA_EXPORT_ACTION_IDS)
     });
@@ -131,6 +142,7 @@ export function createMediaExportActionRuntime(deps) {
         type: "image",
         name: outputFileName,
         localPath: outputPath,
+        ...intentIds === void 0 ? {} : { intentIds },
         metadata: {
           action: "export-roi-image",
           fileName: outputFileName,
@@ -184,6 +196,7 @@ export function createMediaExportActionRuntime(deps) {
       throw new Error("Frame export is only available for video sources.");
     }
     const seekMs = asNumber(payload["seekMs"]) || 0;
+    const intentIds = getPayloadIntentIds(payload);
     await cancelJobsForProject(runtime, projectId, requestId, {
       actionIds: Array.from(MEDIA_EXPORT_ACTION_IDS)
     });
@@ -242,6 +255,7 @@ export function createMediaExportActionRuntime(deps) {
         type: "frame",
         name: outputFileName,
         localPath: outputPath,
+        ...intentIds === void 0 ? {} : { intentIds },
         metadata: {
           action: "export-frame-grab",
           fileName: outputFileName,
@@ -300,6 +314,7 @@ export function createMediaExportActionRuntime(deps) {
       throw new Error("Invalid timeline selection for clip export.");
     }
     const durationSec = (endMs - startMs) / 1e3;
+    const intentIds = getPayloadIntentIds(payload);
     const cropRegion = payload["cropRegion"];
     const hasCrop = cropRegion && typeof cropRegion["width"] === "number" && typeof cropRegion["height"] === "number" && cropRegion["width"] > 0 && cropRegion["height"] > 0;
     await cancelJobsForProject(runtime, projectId, requestId, {
@@ -365,6 +380,7 @@ export function createMediaExportActionRuntime(deps) {
         type: "clip",
         name: outputFileName,
         localPath: outputPath,
+        ...intentIds === void 0 ? {} : { intentIds },
         metadata: {
           action: "export-timeline-clip",
           durationMs: endMs - startMs,
@@ -404,7 +420,7 @@ export function createMediaExportActionRuntime(deps) {
       clearJob(runtime, jobId);
     }
   }
-  async function exportAudioTrack(api, runtime, requestId, _payload) {
+  async function exportAudioTrack(api, runtime, requestId, payload) {
     const project = getActiveProject(runtime);
     if (project === null) {
       throw new Error("No active project for audio export.");
@@ -419,6 +435,7 @@ export function createMediaExportActionRuntime(deps) {
     if (sourceKind !== "video" && sourceKind !== "audio") {
       throw new Error("Audio export is only available for video or audio sources.");
     }
+    const intentIds = getPayloadIntentIds(payload);
     await cancelJobsForProject(runtime, projectId, requestId, {
       actionIds: Array.from(MEDIA_EXPORT_ACTION_IDS)
     });
@@ -478,6 +495,7 @@ export function createMediaExportActionRuntime(deps) {
         type: "audio",
         name: outputFileName,
         localPath: outputPath,
+        ...intentIds === void 0 ? {} : { intentIds },
         metadata: {
           action: "export-audio-track",
           fileName: outputFileName,

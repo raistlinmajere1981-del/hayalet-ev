@@ -16,7 +16,9 @@ import type {
 } from "../models/lab-types.js";
 import {
   getActiveModule,
+  getActualOutputs,
   getCurrentRun,
+  getExpectedOutputs,
   getRecentUserActions,
   getIntentDirtyMap,
   getRunSnapshotSummary,
@@ -27,6 +29,7 @@ import {
   getRunElapsedSeconds,
   hasMoreVisibleArtifacts,
   hasMoreVisibleLiveFindings,
+  isExpectedOutputMatched,
   isProcessSectionCollapsed,
 } from "../runtime/lab-selectors.js";
 import { getLabUserActionDisplayText } from "../runtime/lab-user-actions.js";
@@ -188,6 +191,20 @@ function getExecutionIntentIds(state: LabStoreState): LabIntentId[] {
   }
   const selectedIntents = getSelectedIntents(state);
   return Array.isArray(selectedIntents) ? selectedIntents.slice() : [];
+}
+
+function getExecutionTraceIntentIds(state: LabStoreState): string[] {
+  const runIntentIds = getCurrentRun(state)?.analysisScope?.intentIds;
+  if (Array.isArray(runIntentIds) && runIntentIds.length > 0) {
+    return Array.from(
+      new Set(
+        runIntentIds.filter(function (intentId): intentId is string {
+          return typeof intentId === "string" && intentId.trim() !== "";
+        })
+      )
+    );
+  }
+  return getExecutionIntentIds(state).slice();
 }
 
 function getResolvedCapabilityIds(intentIds: LabIntentId[]): CapabilityFamilyId[] {
@@ -479,6 +496,76 @@ function renderIntentExecutionMap(state: LabStoreState, sourceReady: boolean): s
   `;
 }
 
+function renderIntentOutputTrace(state: LabStoreState, sourceReady: boolean): string {
+  if (sourceReady !== true) {
+    return "";
+  }
+
+  const intentIds = getExecutionTraceIntentIds(state);
+  if (intentIds.length === 0) {
+    return "";
+  }
+
+  return `
+    <section class="labx-output-trace">
+      <div class="labx-output-trace__head">
+        <strong>INTENT OUTPUT TRACE</strong>
+      </div>
+      <div class="labx-output-trace__body">
+        ${intentIds
+          .map(function (intentId) {
+            const expectedOutputs = getExpectedOutputs(intentId);
+            const actualOutputs = getActualOutputs(state, intentId);
+            const expectedHtml =
+              expectedOutputs.length > 0
+                ? expectedOutputs
+                    .map(function (expectedOutput) {
+                      const matched = isExpectedOutputMatched(expectedOutput, actualOutputs);
+                      return `
+                        <div class="labx-output-trace__expected-row" data-matched="${matched ? "true" : "false"}">
+                          <span class="labx-output-trace__mark">${matched ? "✔" : "✖"}</span>
+                          <span>${escapeHtml(expectedOutput.label)}</span>
+                        </div>
+                      `;
+                    })
+                    .join("")
+                : `<div class="labx-output-trace__empty">Bu intent için beklenen çıktı tanımı yok</div>`;
+            const actualHtml =
+              actualOutputs.length > 0
+                ? actualOutputs
+                    .map(function (asset) {
+                      return `
+                        <div class="labx-output-trace__asset">
+                          <span class="labx-output-trace__asset-type">${escapeHtml(asset.type)}</span>
+                          <span>${escapeHtml(asset.name)}</span>
+                        </div>
+                      `;
+                    })
+                    .join("")
+                : `<div class="labx-output-trace__empty">Bu intent herhangi bir çıktı üretmedi</div>`;
+
+            return `
+              <article class="labx-output-trace__intent">
+                <div class="labx-output-trace__intent-head">
+                  <strong>${escapeHtml(getIntentLabel(intentId))}</strong>
+                </div>
+                <div class="labx-output-trace__group">
+                  <span class="labx-output-trace__label">Beklenen:</span>
+                  <div class="labx-output-trace__rows">${expectedHtml}</div>
+                </div>
+                <div class="labx-output-trace__group">
+                  <span class="labx-output-trace__label">Üretilen:</span>
+                  <div class="labx-output-trace__rows">${actualHtml}</div>
+                </div>
+              </article>
+            `;
+          })
+          .join("")}
+      </div>
+    </section>
+  `;
+}
+
 function renderRunSnapshotSummary(state: LabStoreState): string {
   const snapshotSummary = getRunSnapshotSummary(state);
   if (!snapshotSummary) {
@@ -736,6 +823,7 @@ function renderIdleProcessPanel(state: LabStoreState, sourceReady: boolean): str
         </div>
       </div>
       ${renderIntentExecutionMap(state, sourceReady)}
+      ${renderIntentOutputTrace(state, sourceReady)}
       ${renderRecentActionsSection(state)}
     </section>
   `;
@@ -799,6 +887,7 @@ export function renderWorkspaceProcessPanel(
       </div>
       ${renderRunSnapshotSummary(state)}
       ${renderIntentExecutionMap(state, options.sourceReady)}
+      ${renderIntentOutputTrace(state, options.sourceReady)}
 
       ${renderPipelineSection(run, activeStepId, pipelineCollapsed)}
       ${renderFindingsSection(liveFindings, hasMoreFindings, findingsCollapsed)}

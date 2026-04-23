@@ -245,6 +245,172 @@ test("laboratory process panel keeps the intent map visible when a run has no fr
   assert.match(html, /Visual inspection/);
 });
 
+test("laboratory process panel renders intent output trace from project assets", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-frame-visual",
+      type: "frame",
+      name: "frame_01.png",
+      localPath: "/tmp/frame_01.png",
+      createdAt: 200,
+      sourceId: "source-1",
+      runId: "run-output-trace",
+      intentIds: ["visual-inspection"],
+    },
+  });
+
+  const state = store.getState() as ReturnType<typeof store.getState> & {
+    run: Record<string, unknown>;
+  };
+  state.ui.workspace.selectedIntents = ["anomaly-detection"];
+  state.run = {
+    id: "run-output-trace",
+    state: "completed",
+    startedAt: Date.now() - 2000,
+    endedAt: Date.now() - 500,
+    modules: {
+      motion: {
+        id: "motion",
+        title: "Motion Analysis",
+        status: "completed",
+      },
+    },
+    moduleOrder: ["motion"],
+    events: [],
+    rawLog: [],
+    artifacts: [],
+    findings: [],
+    liveFindings: [],
+    warnings: [],
+    error: null,
+    targetLabel: null,
+    progress: 100,
+    emptyReason: null,
+    analysisScope: {
+      focus: "visual",
+      intentIds: ["visual-inspection", "audio-investigation", "detail-enhancement"],
+    },
+    previewArtifacts: [],
+    confidence: "medium",
+    moduleTrace: [],
+    comparisonVariants: [],
+    hypothesisSummary: null,
+  };
+
+  const html = renderWorkspaceProcessPanel(state, { sourceReady: true });
+
+  assert.match(html, /INTENT OUTPUT TRACE/);
+  assert.match(html, /Frame çıktıları/);
+  assert.match(html, /Anomali verileri/);
+  assert.match(html, /frame_01\.png/);
+  assert.match(html, /data-matched="true"/);
+  assert.match(html, /data-matched="false"/);
+  assert.match(html, /Bu intent herhangi bir çıktı üretmedi/);
+  assert.match(html, /Bu intent için beklenen çıktı tanımı yok/);
+  assert.ok(html.indexOf("INTENT OUTPUT TRACE") < html.indexOf("Pipeline"));
+});
+
+test("laboratory process panel output trace keeps frozen intent snapshot during live drift", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "workspace-intent-set",
+    intents: ["audio-investigation"],
+  });
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-audio-live",
+      type: "audio",
+      name: "live_audio.wav",
+      localPath: "/tmp/live_audio.wav",
+      createdAt: 200,
+      sourceId: "source-1",
+      runId: "run-frozen-trace",
+      intentIds: ["audio-investigation"],
+    },
+  });
+
+  const state = store.getState() as ReturnType<typeof store.getState> & {
+    run: Record<string, unknown>;
+  };
+  state.run = {
+    id: "run-frozen-trace",
+    state: "running",
+    startedAt: Date.now() - 2000,
+    modules: {},
+    moduleOrder: [],
+    events: [],
+    rawLog: [],
+    artifacts: [],
+    findings: [],
+    liveFindings: [],
+    warnings: [],
+    error: null,
+    targetLabel: null,
+    progress: 20,
+    emptyReason: null,
+    analysisScope: {
+      focus: "visual",
+      intentIds: ["visual-inspection"],
+    },
+    previewArtifacts: [],
+    confidence: null,
+    moduleTrace: [],
+    comparisonVariants: [],
+    hypothesisSummary: null,
+  };
+
+  const html = renderWorkspaceProcessPanel(state, { sourceReady: true });
+
+  assert.match(html, /INTENT OUTPUT TRACE/);
+  assert.match(html, /Visual inspection/);
+  assert.doesNotMatch(html, /Audio investigation/);
+  assert.doesNotMatch(html, /live_audio\.wav/);
+});
+
+test("laboratory process panel trace keeps unknown frozen intent ids visible as unmapped observations", () => {
+  const store = createSeededState(true);
+  const state = store.getState() as ReturnType<typeof store.getState> & {
+    run: Record<string, unknown>;
+  };
+
+  state.run = {
+    id: "run-unknown-intent",
+    state: "completed",
+    startedAt: Date.now() - 2000,
+    endedAt: Date.now() - 500,
+    modules: {},
+    moduleOrder: [],
+    events: [],
+    rawLog: [],
+    artifacts: [],
+    findings: [],
+    liveFindings: [],
+    warnings: [],
+    error: null,
+    targetLabel: null,
+    progress: 100,
+    emptyReason: null,
+    analysisScope: {
+      focus: "visual",
+      intentIds: ["future-intent"],
+    },
+    previewArtifacts: [],
+    confidence: null,
+    moduleTrace: [],
+    comparisonVariants: [],
+    hypothesisSummary: null,
+  };
+
+  const html = renderWorkspaceProcessPanel(state, { sourceReady: true });
+
+  assert.match(html, /INTENT OUTPUT TRACE/);
+  assert.match(html, /future-intent/);
+  assert.match(html, /Bu intent için beklenen çıktı tanımı yok/);
+});
+
 test("laboratory analysis readiness allows intent-only selection when derived capabilities are ready", () => {
   const store = createSeededState(true);
   store.dispatch({ type: "workspace-intent-set", intents: ["visual-inspection"] });
