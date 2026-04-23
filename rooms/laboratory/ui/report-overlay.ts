@@ -134,7 +134,10 @@ function renderIntentGroups(state: LabStoreState) {
               : `<div class="labx-process-empty">No findings mapped to this intent.</div>`;
           const artifactHtml =
             group.artifacts.length > 0
-              ? `<div class="labx-report-manifest">${(Array.isArray(group.artifacts) ? group.artifacts.slice(0, 4) : [])
+              ? `<div class="labx-report-manifest">${(Array.isArray(group.artifacts)
+                  ? group.artifacts.slice(0, 4)
+                  : []
+                )
                   .map(function (artifact) {
                     return `<div class="labx-report-manifest__entry"><span>${escapeHtml(artifact.kind)}</span><strong>${escapeHtml(artifact.fileName || artifact.id)}</strong></div>`;
                   })
@@ -462,7 +465,9 @@ export function renderReportOverlay(state: LabStoreState) {
           ? "\u2298 Eski çalışma \u00b7 Son analiz başarısız"
           : "";
   const freshnessMeta =
-    freshness && freshness.workspaceDirty ? `${freshnessLabel} \u00b7 Workspace farklı` : freshnessLabel;
+    freshness && freshness.workspaceDirty
+      ? `${freshnessLabel} \u00b7 Workspace farklı`
+      : freshnessLabel;
 
   return `
     <div class="labx-overlay-root" data-open="${isOpen ? "true" : "false"}" id="lab-report-overlay-root">

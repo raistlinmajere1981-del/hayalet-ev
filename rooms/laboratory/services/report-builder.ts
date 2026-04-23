@@ -181,7 +181,9 @@ export function buildIntentReportGroups(run: LabRun | null): LabIntentReportGrou
   }
 
   const scopeIntentIds = Array.isArray(run.analysisScope?.intentIds)
-    ? run.analysisScope?.intentIds.filter((entry): entry is LabIntentId => typeof entry === "string")
+    ? run.analysisScope?.intentIds.filter(
+        (entry): entry is LabIntentId => typeof entry === "string"
+      )
     : [];
   const orderedIntentIds = scopeIntentIds.filter(function (intentId, index) {
     return scopeIntentIds.indexOf(intentId) === index;

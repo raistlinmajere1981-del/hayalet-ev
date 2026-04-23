@@ -48,10 +48,12 @@ MCP tool yüzeyi değiştiğinde varsayılan akış:
 
 ---
 
-## 🚨 #1 FAST MODE: 
-> ⚠️ Kullanıcının "Fast:" ile başlayan mesaşlarında 2. kural için atlanır. 
-> ⚠️ Fast modda Mode: "terminal", muhatap "kullanıcı" kabul edilir,
-> ⚠️ Fast modda değişecek dosyaların kontrolü ve ön analiz yapılmaz
+## 🚨 #1 FAST MODE:
+
+> ⚠️ Kullanıcının `"Fast:"` ile başlayan mesajlarında yalnızca `#2 Değişiklik Onay Protokolü` atlanır.
+> ⚠️ Fast mod, dinamik mod tespitini override etmez; yine `npm run mode:status` ve `npm run whereami` birlikte değerlendirilir.
+> ⚠️ Fast mod, `Mode: terminal` veya muhatap `Kullanıcı` gibi hardcoded sonuç üretmez.
+> ⚠️ Subagent review görevlerinde varsayılan talimat cümlesi `"Fast:"` etiketiyle başlatılır; böylece review akışı default olarak fast modda ister.
 
 ## 🚨 #2 KURAL: DEĞİŞİKLİK ONAY PROTOKOLÜ — ZORUNLU
 
@@ -61,7 +63,7 @@ Plan aşamasında kullanıcıya kod gösterme, planı basit ve kısa biçimde a�
 ### Zorunlu Onay Formatı
 
 > ⚠️ Onay formatı sunulmadan önce MCP bağımsız `npm run mode:status` çağrılır ve `npm run whereami` ile cross-check edilir.
-> ⚠️ `whoareyou` sınıflandırması sadece mod `app` iken yapılır, bu kontrolde komut çalıştırılmaz, sadece görevi verenin AI olup olmadığı kontrol edilir.
+> ⚠️ `whoareyou` sınıflandırması yalnızca runtime mod `app` ve `whereami.effectiveMode` sonucu `app` iken yapılır; bu kontrolde komut çalıştırılmaz, sadece görevi verenin AI olup olmadığı kontrol edilir.
 > ⚠️ Bütün işlemlerde süreç başladığı noktaya dönmekle sonuçlanır, mode geçişleri ve modalara özel süreçler planlanır.
 
 ```
@@ -72,7 +74,15 @@ Plan aşamasında kullanıcıya kod gösterme, planı basit ve kısa biçimde a�
          `terminal`     → "Terminal - Standart"
          `transitioning`→ "Geçiş - Bekle"
          `conflict`     → "ÇAKIŞMA - Durdur"
-🤖 Muhatap: <mod `app` ise `whoareyou`, değilse varsayılan `Kullanıcı`>
+🧭 Çalışma Yüzeyi: <`npm run whereami` içindeki `effectiveMode` sonucuna göre>
+         `app`                   → "App Yüzeyi - Aktif"
+         `other-provider-cli`    → "Terminal / Diğer Provider"
+         `opencode-terminal-mode`→ "Terminal / OpenCode CLI"
+         `terminal`              → "Terminal - Nötr"
+         `ghost-agent`           → "Ghost Agent Yüzeyi"
+         `transitioning`         → "Geçiş Yüzeyi"
+         `conflict`              → "ÇAKIŞMA - Durdur"
+🤖 Muhatap: <runtime mod `app` ve yüzey `app` ise `whoareyou`, değilse varsayılan `Kullanıcı`>
          `kullanici`    → "Kullanıcı"
          `ai`           → "AI"
 🎯 Hedef Workflow: <`workflow:terminal-mode` | `workflow:app-mode` | `workflow:ghost-agent-mode`>
@@ -91,15 +101,19 @@ Devam etmem için "evet" yaz.
 > **Kural:** "evet" veya açık onay gelmeden değişiklik uygulanmaz.
 > **Kural:** Hiçbir plugin/skill bu onay adımını atlayamaz.
 > **Kural:** Onay sonrası süreç bitmeden kullanıcı tekrar bekletilmez — uygulanan çözüm, değişen dosyalar (satır numaraları gerekli değil) hakkında kısa sonuç ile çember kapanır.
-> **Kural:** Mod alanı her seferinde `npm run mode:status` çıktısına göre dinamik doldurulur; `npm run whereami` ile cross-check edilir — hardcode yazılmaz.
+> **Kural:** `Mod` alanı her seferinde `npm run mode:status` çıktısına göre dinamik doldurulur; `Çalışma Yüzeyi` alanı `npm run whereami` içindeki `effectiveMode` sonucundan doldurulur — hardcode yazılmaz.
+> **Kural:** `mode:status`, wrapper/runtime lifecycle durumunu gösterir; `whereami.effectiveMode`, asistanın aktif çalışma yüzeyini gösterir. Workflow seçimi bu iki sinyal birlikte değerlendirilerek yapılır.
 > **Kural:** `Hedef Workflow` alanı zorunludur; mevcut mod ile yapılacak workflow aynı şey değildir.
 > **Kural:** `Geçiş Planı` alanı zorunludur; `ghost-agent` gereken işlerde `npm run mode:switch -- ghost-agent` ve işlem sonu `npm run mode:switch -- app` açıkça yazılır.
-> **Kural:** Mod `app` iken aşağıdaki gören mesajında aşağıdaki ibarelerden biri varsa muhatap `AI` seçilir:
+> **Kural:** `whereami.effectiveMode` sonucu `other-provider-cli` veya `opencode-terminal-mode` ise `workflow:terminal-mode` seçilir; runtime mod `app` olsa bile otomatik `ghost-agent` geçişi yapılmaz.
+> **Kural:** `workflow:ghost-agent-mode` yalnızca runtime mod `app` ve `whereami.effectiveMode` sonucu `app` iken seçilebilir.
+> **Kural:** Runtime mod `app` olsa bile OpenCode serve kapalıysa veya özel interaction yüzeyi aktif değilse plain text ile devam edilir; bu durum tek başına `ghost-agent`e geçiş sebebi değildir.
+> **Kural:** Runtime mod `app` ve yüzey `app` iken aşağıdaki gören mesajında aşağıdaki ibarelerden biri varsa muhatap `AI` seçilir:
 >
 > - Görev öncesi session içinde relay'in aktif olduğuna dair mesaj/işaret görüldüyse
 > - Karşı taraf mesajında kendini açıkça AI olarak tanıttıysa
 >   **Kural:** Bu iki durumun dışındaki tüm senaryolarda varsayılan muhatap `Kullanıcı` seçilir.
->   **Kural:** Muhatap `AI` ve mod `app` ise final raporun sonuna `++cmd:AsistanAISend` eklenir.
+>   **Kural:** Muhatap `AI` ve runtime mod `app` ve yüzey `app` ise final raporun sonuna `++cmd:AsistanAISend` eklenir.
 >   **Kural:** `++cmd:AsistanAISend` args vermeden çalışır; hedef, settings'teki son aktif relay AI kaydından çözülür.
 >   **Kural:** Muhatap sınıflandırması ve AI'ye özel davranışlar için canonical akış: `workflow:ai-counterparty`.
 
@@ -156,7 +170,7 @@ Base — her session, düşük maliyet:
 Koşullu adımlar:
 
 1. Değişiklik veya mod kararı gerekiyorsa → `npm run mode:status`, `npm run whereami`
-2. Mod `app` ise ve muhatap sınıflandırması gerekiyorsa → whoareyou kontrolü
+2. Runtime mod `app` ve `whereami.effectiveMode` sonucu `app` ise ve muhatap sınıflandırması gerekiyorsa → whoareyou kontrolü
 3. Electron/CDP işi varsa → `hev_fs_read{ file_path: ".rovo/_metadata/DOM-MANIFEST.json" }`
 4. Performans/uzun job/yerel bağımlılık kararı varsa → `hev_fs_read{ file_path: ".rovo/_metadata/SYSTEM-INFO.md" }`
 5. Karakter profili gerekiyorsa → `hev_fs_read{ file_path: ".rovo/_metadata/CHARACTER.md" }`
@@ -223,20 +237,24 @@ MCP workflow tool sistemi kaldırılmıştır. Workflow kılavuzu sadece bu dosy
 ### C. Operasyonel Kontrol Workflow'ları — Canonical
 
 - `workflow:terminal-mode`:
-  1. `npm run mode:status` sonucu `terminal` ise bu akış seçilir
-  2. Değişiklikler terminal modda direkt uygulanır
-  3. Plan/onay formatı korunur ve syntax doğrulama zorunludur
+  1. Şu durumlardan biri varsa bu akış seçilir: `npm run mode:status` sonucu `terminal` veya `npm run whereami` içindeki `effectiveMode` sonucu `other-provider-cli` / `opencode-terminal-mode`
+  2. Bu akışta asistan davranışı plain text ve terminal odaklıdır; özel app interaction payload üretilmez
+  3. Hata tespitinde önce kod, log ve ilgili dosyalar üzerinde ilerlenir; Electron bağlantısı sonraki doğrulama adımı olarak değerlendirilir
+  4. Electron doğrulaması gerekiyorsa en güncel mod kontrolüne göre karar verilir: aktif uygulama varsa o uygulama üzerinden test yapılır; aktif uygulama yoksa gerekli uygulama kontrollü şekilde başlatılır
+  5. Test için geçici olarak başlatılan uygulama veya mod geçişi varsa süreç sonunda başlangıç durumuna dönülür
+  6. Değişiklikler terminal akışında direkt uygulanır; plan/onay formatı veya Fast istisnası dışında syntax doğrulama zorunludur
 
 - `workflow:app-mode`:
-  1. `npm run mode:status` sonucu `app` ise değişiklik tipi değerlendirilir
+  1. Bu akış yalnızca runtime mod `app` ve `whereami.effectiveMode` sonucu `app` ise değerlendirilir
   2. CSS / AGENTS.md / ghost-agent / mcp-server değişikliklerinde app içinde standart süreç: plan,onay,işlem uygulanır
   3. Bu grupta agent geçiş tetiklemez; işlem app modunda tamamlanır
 
 - `workflow:ghost-agent-mode`:
-  1. Uygulama kaynak kodu / mantık değişikliği gerekiyorsa `npm run mode:switch -- ghost-agent` ile geçiş yapılır
-  2. Bu grupta restart gerektirecek uygulama işi ghost-agent içinde yapılır; app içinde doğrudan düzenleme ile tamamlanmaz
-  3. İşlem tamamlanınca `npm run mode:switch -- app` ile geri dönüş yapılır
-  4. Final raporunda geçişin tamamlandığı ve başlangıç noktasına dönüldüğü açıkça belirtilir
+  1. Bu akış yalnızca runtime mod `app` ve `whereami.effectiveMode` sonucu `app` iken seçilebilir
+  2. Uygulama kaynak kodu / mantık değişikliği gerekiyorsa `npm run mode:switch -- ghost-agent` ile geçiş yapılır
+  3. Bu grupta restart gerektirecek uygulama işi ghost-agent içinde yapılır; app içinde doğrudan düzenleme ile tamamlanmaz
+  4. İşlem tamamlanınca `npm run mode:switch -- app` ile geri dönüş yapılır
+  5. Final raporunda geçişin tamamlandığı ve başlangıç noktasına dönüldüğü açıkça belirtilir
 
 - `workflow:transition-control`:
   1. Agent geçişlerde Electron click/xdotool kullanmaz; yalnızca `mode:*` komutlarını kullanır
@@ -245,11 +263,11 @@ MCP workflow tool sistemi kaldırılmıştır. Workflow kılavuzu sadece bu dosy
   4. Geçiş doğrulaması için `npm run mode:wait -- <mode>` ve `npm run whereami` cross-check yapılır
 
 - `workflow:ai-counterparty`:
-  1. `whoareyou` sınıflandırması sadece mod `app` iken yapılır
+  1. `whoareyou` sınıflandırması yalnızca runtime mod `app` ve `whereami.effectiveMode` sonucu `app` iken yapılır
   2. Görev öncesi session'da relay aktif mesajı/sinyali varsa muhatap `AI` seçilir
   3. Relay sinyali yoksa ve karşı taraf kendini AI olarak tanıttıysa muhatap `AI` seçilir
   4. Bu iki koşul da yoksa varsayılan muhatap `Kullanıcı` seçilir
-  5. Muhatap `AI` ve mod `app` ise final raporun sonuna `++cmd:AsistanAISend` eklenir
+  5. Muhatap `AI` ve runtime mod `app` ve yüzey `app` ise final raporun sonuna `++cmd:AsistanAISend` eklenir
 
 - `workflow:room-addition`:
   1. İstenen hedef önce `oda` ve `ana fonksiyon` olarak ayrıştırılır
@@ -291,20 +309,28 @@ MCP workflow tool sistemi kaldırılmıştır. Workflow kılavuzu sadece bu dosy
 
 ### 🌐 Çalışma Modu Tespiti — Her İşlem Öncesi ZORUNLU
 
-Agent mod kararını `workflow:terminal-mode`, `workflow:app-mode` ve `workflow:ghost-agent-mode` akışlarına göre verir:
+Agent workflow kararını iki sinyali birlikte değerlendirerek verir:
 
-| Durum                                                             | Mod Sonucu      | Hangi Workflow?             |
-| ----------------------------------------------------------------- | --------------- | --------------------------- |
-| ❌ Hayalet-ev kapalı                                              | **terminal**    | `workflow:terminal-mode`    |
-| ✅ Bağlı + CSS / AGENTS.md / ghost-agent / mcp-server değişikliği | **app**         | `workflow:app-mode`         |
-| ✅ Bağlı + uygulama kaynak kodu / mantık değişikliği              | **ghost-agent** | `workflow:ghost-agent-mode` |
+- `npm run mode:status` → wrapper/runtime lifecycle durumu
+- `npm run whereami` → assistant surface / `effectiveMode` cross-check sonucu
+
+| Durum                                                                                                                   | Workflow                    | Not                                                                                                   |
+| ----------------------------------------------------------------------------------------------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `mode:status` = `terminal`                                                                                              | `workflow:terminal-mode`    | Hayalet-ev kapalı veya runtime tarafında app aktif değil                                              |
+| `whereami.effectiveMode` = `other-provider-cli` / `opencode-terminal-mode`                                              | `workflow:terminal-mode`    | App açık olsa bile asistan davranışı terminal/plain text olur; otomatik `ghost-agent` geçişi yapılmaz |
+| `mode:status` = `app` + `whereami.effectiveMode` = `app` + CSS / AGENTS.md / `ghost-agent/` / `mcp-server/` değişikliği | `workflow:app-mode`         | App içinde kalınır                                                                                    |
+| `mode:status` = `app` + `whereami.effectiveMode` = `app` + uygulama kaynak kodu / mantık değişikliği                    | `workflow:ghost-agent-mode` | Yalnızca bu kombinasyonda `ghost-agent` geçişi planlanır                                              |
+| `mode:status` = `ghost-agent`                                                                                           | `workflow:ghost-agent-mode` | Mevcut ghost akışı korunur                                                                            |
 
 **Kural:** `npm run mode:status` her işlem öncesi çağrılır — aynı session içinde bile.
 **Kural:** `npm run whereami` çıktısı `mode:status` için cross-check olarak kullanılır.
 **Kural:** `mode:status` sonucu `conflict` ise işlem durdurulur; `transitioning` ise `mode:wait` ile geçiş tamamlanması beklenir.
 **Kural:** Mod kararı agent tarafından planlama aşamasında verilir, onay formatında gösterilir.
-**Kural:** `app` sonucu mevcut çalışma durumudur; `src/`, `electron/`, `shared/` ve restart gerektiren uygulama kaynak/mantık değişiklikleri için hedef workflow `workflow:ghost-agent-mode` seçilir.
+**Kural:** `mode:status` sonucu `app`, yalnızca runtime/app lifecycle'ın aktif olduğunu gösterir; bu sonuç tek başına OpenCode serve veya özel interaction yüzeyinin aktif olduğu anlamına gelmez.
+**Kural:** Runtime `app` olsa bile `whereami.effectiveMode` sonucu `app` değilse asistan `workflow:terminal-mode` davranışıyla devam eder; plain text kullanılır, `whoareyou` yapılmaz ve otomatik `ghost-agent` geçişi tetiklenmez.
+**Kural:** `src/`, `electron/`, `shared/` ve restart gerektiren uygulama kaynak/mantık değişiklikleri için hedef workflow ancak runtime `app` ve `effectiveMode` `app` ise `workflow:ghost-agent-mode` seçilir.
 **Kural:** `AGENTS.md`, CSS, `ghost-agent/` ve `mcp-server/` değişiklikleri gibi istisnalar dışında app kaynak kodu düzenlemeleri app modunda tamamlanmaz.
+**Kural:** Terminal odaklı hata tespitinde önce kod ve dosya incelemesi yapılır; Electron doğrulaması gerekiyorsa son mod kontrolüne göre aktif uygulama kullanılır veya yeni uygulama başlatılır, iş bitince başlangıç durumuna dönülür.
 **Kural:** Kod değişiklikleri doğrudan kaynak dosyalara uygulanır.
 
 **MCP çalışmazsa:** Mod tespiti için `npm run mode:status` + `npm run whereami` kullanılmaya devam edilir. Sadece MCP tool işlemlerinin riskini kullanıcıya bildir.
