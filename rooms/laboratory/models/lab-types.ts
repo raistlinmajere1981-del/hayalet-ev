@@ -9,7 +9,14 @@ export type LabStage = "source" | "edit" | "process" | "report";
 export type WorkspaceMode = "loading" | "workspace" | "analyzing" | "complete";
 
 /** V2.4 report freshness — condition-driven, never gates UI */
-export type ReportFreshness = "current" | "stale" | "previous-run";
+export type ReportFreshnessState = "current" | "stale" | "previous-run";
+export interface ReportFreshness {
+  state: ReportFreshnessState;
+  workspaceDirty: boolean;
+}
+
+/** V2.5 preflight severity — shared contract between UI + controller */
+export type PreflightSeverity = "clear" | "warning" | "will-fail";
 
 /** V2.3 user-facing intent identifiers — NO tool names exposed */
 export type LabIntentId =
@@ -61,6 +68,34 @@ export const WORKSPACE_INTENTS: LabIntent[] = [
     ],
   },
 ];
+
+export function getIntentLabel(intentId: string): string {
+  return WORKSPACE_INTENTS.find(function (intent) {
+    return intent.id === intentId;
+  })?.label || intentId;
+}
+
+export function getIntentPreviewDescription(intentId: string): string {
+  switch (intentId) {
+    case "visual-inspection":
+      return "Görsel yapı ve anomaliler analiz edilir";
+    case "audio-investigation":
+      return "Ses sinyali ve anomaliler analiz edilir";
+    case "detail-enhancement":
+      return "Görüntü detayları iyileştirilir";
+    case "anomaly-detection":
+      return "Olası anormallikler tespit edilir";
+    default:
+      return getIntentLabel(intentId);
+  }
+}
+
+export function getCapabilityFamilyIdsForIntentId(intentId: LabIntentId): CapabilityFamilyId[] {
+  const intent = WORKSPACE_INTENTS.find(function (entry) {
+    return entry.id === intentId;
+  });
+  return Array.isArray(intent?.internalCapabilities) ? intent.internalCapabilities.slice() : [];
+}
 
 export interface LabBookmark {
   id: string;
@@ -226,6 +261,119 @@ export const CAPABILITY_FAMILIES: CapabilityFamilyMeta[] = [
     requiredTools: ["librosa", "ffmpeg"],
   },
 ];
+
+const CAPABILITY_MODULE_GROUPS: Array<{
+  capabilityId: CapabilityFamilyId;
+  moduleIds: string[];
+}> = [
+  {
+    capabilityId: "visual-structure",
+    moduleIds: [
+      "frame-consistency",
+      "lighting-consistency",
+      "background-consistency",
+      "occlusion-inconsistency",
+      "object-insert-remove-anomaly",
+      "temporal-noise-pattern",
+      "motion-anomaly",
+    ],
+  },
+  {
+    capabilityId: "visual-forensics",
+    moduleIds: [
+      "visual-signal-amplification",
+      "color-channel-isolation",
+      "gamma-scan",
+      "contrast-scan",
+      "edge-enhancement",
+      "histogram-equalization",
+      "hidden-detail-reveal",
+      "ai-artifact-detection",
+    ],
+  },
+  {
+    capabilityId: "audio-signal",
+    moduleIds: ["signal-health", "spectral-artifacts"],
+  },
+  {
+    capabilityId: "audio-recovery",
+    moduleIds: [
+      "signal-recovery",
+      "band-pass-exploration",
+      "spectrogram-guided-recovery",
+      "hidden-pattern-extraction",
+      "frequency-shift-reversal",
+      "phase-recovery-experiment",
+    ],
+  },
+  {
+    capabilityId: "transcription",
+    moduleIds: ["transcription", "transcript-support"],
+  },
+  {
+    capabilityId: "speaker-analysis",
+    moduleIds: ["speaker-diarization"],
+  },
+  {
+    capabilityId: "prosody-emotion",
+    moduleIds: ["prosody", "emotion"],
+  },
+  {
+    capabilityId: "sound-classification",
+    moduleIds: ["sound-events"],
+  },
+  {
+    capabilityId: "source-separation",
+    moduleIds: ["source-separation"],
+  },
+  {
+    capabilityId: "music-analysis",
+    moduleIds: ["music-rhythm-tonal"],
+  },
+];
+
+export function getModuleIdsForCapabilityFamily(capabilityId: CapabilityFamilyId): string[] {
+  return (
+    CAPABILITY_MODULE_GROUPS.find(function (entry) {
+      return entry.capabilityId === capabilityId;
+    })?.moduleIds.slice() || []
+  );
+}
+
+export function getIntentIdsForCapabilityFamily(capabilityId: CapabilityFamilyId): LabIntentId[] {
+  return WORKSPACE_INTENTS.filter(function (intent) {
+    return intent.internalCapabilities.includes(capabilityId);
+  }).map(function (intent) {
+    return intent.id;
+  });
+}
+
+export function getCapabilityFamilyForModuleId(moduleId: string | null | undefined): CapabilityFamilyId | null {
+  if (typeof moduleId !== "string" || moduleId.trim() === "") {
+    return null;
+  }
+  const normalizedModuleId = moduleId.trim();
+  if (
+    CAPABILITY_FAMILIES.some(function (family) {
+      return family.id === normalizedModuleId;
+    })
+  ) {
+    return normalizedModuleId as CapabilityFamilyId;
+  }
+  return (
+    CAPABILITY_MODULE_GROUPS.find(function (entry) {
+      return entry.moduleIds.includes(normalizedModuleId);
+    })?.capabilityId || null
+  );
+}
+
+export function getIntentIdsForModuleId(moduleId: string | null | undefined): LabIntentId[] {
+  const capabilityId = getCapabilityFamilyForModuleId(moduleId);
+  if (capabilityId === null) {
+    return [];
+  }
+  return getIntentIdsForCapabilityFamily(capabilityId);
+}
 export type LabFeatureId = "media-analysis" | "audio-analysis" | "subtitle-analysis";
 export type LabEventSeverity = "info" | "success" | "warning" | "error";
 export type LabEventScope = "global" | "run";
@@ -356,6 +504,7 @@ export interface LabModuleState {
   summary?: string | null;
   findingIds?: string[];
   artifactIds?: string[];
+  metadata?: LabRecord;
 }
 
 export interface LabFindingProjection {
@@ -453,6 +602,32 @@ export interface LabRun {
   comparisonVariants: LabComparisonVariant[];
   hypothesisSummary: string | null;
 }
+
+export interface LabRunSnapshotSummary {
+  focus: string | null;
+  timelineStartMs: number | null;
+  timelineEndMs: number | null;
+  hypothesis: string | null;
+  intentIds: LabIntentId[];
+}
+
+export interface LabWorkspaceDiff {
+  timelineChanged: boolean;
+  hypothesisChanged: boolean;
+  intentsChanged: boolean;
+  workspaceDirty: boolean;
+  changedKeys: Array<"timeline" | "hypothesis" | "intents">;
+}
+
+export interface LabIntentDirtyState {
+  intentId: LabIntentId;
+  inSnapshot: boolean;
+  inWorkspace: boolean;
+  dirty: boolean;
+  changedKeys: Array<"timeline" | "hypothesis" | "selection">;
+}
+
+export type LabIntentDirtyMap = Record<LabIntentId, LabIntentDirtyState>;
 
 export interface LabUserReportFinding {
   id: string;

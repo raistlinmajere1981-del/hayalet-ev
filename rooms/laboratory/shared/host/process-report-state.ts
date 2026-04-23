@@ -254,6 +254,7 @@ export function createLaboratoryProcessReportStateRuntime(deps: Record<string, u
       findingIds: Array.isArray(source.findingIds)
         ? (source.findingIds as unknown[]).map(asNonEmptyString).filter(Boolean)
         : [],
+      metadata: toRecord(source.metadata),
       startedAt: asNonEmptyString(source.startedAt),
       completedAt: asNonEmptyString(source.completedAt),
     };

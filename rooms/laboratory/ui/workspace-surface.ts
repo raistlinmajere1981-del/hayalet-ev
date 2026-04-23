@@ -1,4 +1,12 @@
-import { escapeHtml, formatBytes, formatDurationSeconds } from "../models/lab-types.js";
+import {
+  asLabRecord,
+  asNonEmptyString,
+  escapeHtml,
+  formatBytes,
+  formatDurationSeconds,
+  getIntentLabel,
+  getIntentPreviewDescription,
+} from "../models/lab-types.js";
 import type {
   LabStageSurface,
   LabStoreState,
@@ -7,7 +15,6 @@ import type {
 import {
   getAudioFocusSettings,
   getBookmarks,
-  getCurrentRun,
   getHypothesis,
   getInteractiveSettings,
   getProjectSource,
@@ -17,10 +24,10 @@ import {
   getSourceMode,
   getSourceMetadata,
   getSourceProbeStatus,
+  getSelectedIntents,
   getTimelineSelection,
   hasReportPayload,
   isRunActive,
-  isWorkspaceDirty,
 } from "../runtime/lab-selectors.js";
 import { renderStatusChip } from "./components/status-chip.js";
 import { renderWorkspaceTimeline } from "./workspace-timeline.js";
@@ -30,7 +37,6 @@ import { renderWorkspaceAudioFocus } from "./workspace-audio-focus.js";
 import { renderWorkspaceHypothesis } from "./workspace-hypothesis.js";
 import { renderWorkspaceBookmarks } from "./workspace-bookmarks.js";
 import { renderWorkspaceProcessPanel } from "./workspace-process-panel.js";
-import { asLabRecord, asNonEmptyString } from "../models/lab-types.js";
 
 function getSourceKindLabel(kind: string) {
   switch (kind) {
@@ -56,6 +62,41 @@ function getSourceModeLabel(mode: string) {
     default:
       return mode;
   }
+}
+
+function renderIntentPreview(intentIds: string[]) {
+  if (!Array.isArray(intentIds) || intentIds.length === 0) {
+    return `
+      <div class="labx-intent-preview">
+        <strong class="labx-intent-preview__title">Bu analiz şunları yapacak:</strong>
+        <p class="labx-intent-preview__empty">Analiz için intent seçin</p>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="labx-intent-preview">
+      <div class="labx-intent-preview__section">
+        <strong class="labx-intent-preview__title">Bu analiz şunları yapacak:</strong>
+        <ul class="labx-intent-preview__list">
+          ${intentIds
+            .map(function (intentId) {
+              return `<li><strong>${escapeHtml(getIntentLabel(intentId))}</strong> · ${escapeHtml(getIntentPreviewDescription(intentId))}</li>`;
+            })
+            .join("")}
+        </ul>
+      </div>
+      <div class="labx-intent-preview__section">
+        <strong class="labx-intent-preview__title">Beklenen çıktılar:</strong>
+        <ul class="labx-intent-preview__list">
+          <li>Nesne tespiti</li>
+          <li>Anomali raporu</li>
+          <li>Görsel bulgular</li>
+          <li>Öneriler</li>
+        </ul>
+      </div>
+    </div>
+  `;
 }
 
 function toStringArray(value: unknown): string[] {
@@ -920,7 +961,6 @@ export function renderWorkspaceSurface(state: LabStoreState): LabStageSurface {
   const timeline = getTimelineSelection(state);
   const bookmarks = getBookmarks(state);
   const hypothesis = getHypothesis(state);
-  const run = getCurrentRun(state);
   const runActive = isRunActive(state);
   const hasReport = hasReportPayload(state);
   const hasAudio = sourceKind === "audio" || sourceKind === "video";
@@ -963,23 +1003,21 @@ export function renderWorkspaceSurface(state: LabStoreState): LabStageSurface {
       ? renderWorkspaceInteractiveControls(settings, state.ui.workspace.rightPanelCollapsed)
       : "";
 
-  const processSection = run
-    ? renderWorkspaceProcessPanel(state)
-    : `<section class="labx-process-panel labx-process-panel--empty" id="lab-process-panel">
-        <div class="labx-process-empty">Henüz analiz çalışması yok.</div>
-      </section>`;
+  const processSection = renderWorkspaceProcessPanel(state, { sourceReady });
 
   const freshness = getReportFreshness(state);
   const freshnessLabel =
-    freshness === "current"
+    freshness?.state === "current"
       ? "\u2713 Güncel"
-      : freshness === "previous-run"
+      : freshness?.state === "previous-run"
         ? runActive
           ? "\u2298 Önceki çalışma \u00b7 Analiz devam ediyor"
           : "\u2298 Önceki çalışma"
-        : freshness === "stale"
+        : freshness?.state === "stale"
           ? "\u2298 Eski çalışma \u00b7 Son analiz başarısız"
           : "";
+  const freshnessMeta =
+    freshness && freshness.workspaceDirty ? `${freshnessLabel} \u00b7 Workspace farklı` : freshnessLabel;
 
   const reportButton = hasReport
     ? `
@@ -992,21 +1030,21 @@ export function renderWorkspaceSurface(state: LabStoreState): LabStageSurface {
           <strong>Raporu Görüntüle</strong>
           <span class="labx-primary-cta__detail">Kullanıcı ve teknik raporlar</span>
         </button>
-        ${freshnessLabel ? `<span class="labx-report-freshness" data-freshness="${escapeHtml(freshness || "")}">${escapeHtml(freshnessLabel)}</span>` : ""}
+        ${
+          freshnessMeta
+            ? `<span class="labx-report-freshness" data-freshness="${escapeHtml(freshness?.state || "")}" data-workspace-dirty="${freshness?.workspaceDirty === true ? "true" : "false"}">${escapeHtml(freshnessMeta)}</span>`
+            : ""
+        }
       </div>
     `
     : "";
 
-  const dirty = isWorkspaceDirty(state);
-  const dirtyHint = dirty
-    ? runActive
-      ? "Ayarlar değişti \u00b7 sonraki analiz için geçerli"
-      : "Ayarlar değişti \u00b7 yeniden analiz için Başlat"
-    : "";
+  const intentPreview = sourceReady ? renderIntentPreview(getSelectedIntents(state)) : "";
 
   const analysisButton = sourceReady
     ? `
       <div class="labx-analysis-trigger">
+        ${intentPreview}
         <button
           class="labx-primary-cta"
           type="button"
@@ -1020,7 +1058,6 @@ export function renderWorkspaceSurface(state: LabStoreState): LabStageSurface {
             ? `<button class="labx-secondary-cta" type="button" data-lab-action="workspace-image-analysis">Görsel Analiz Et</button>`
             : ""
         }
-        ${dirtyHint ? `<span class="labx-dirty-indicator">${escapeHtml(dirtyHint)}</span>` : ""}
       </div>
     `
     : "";

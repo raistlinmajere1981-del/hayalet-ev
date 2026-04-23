@@ -33,6 +33,31 @@ export const WORKSPACE_INTENTS = [
     ]
   }
 ];
+export function getIntentLabel(intentId) {
+  return WORKSPACE_INTENTS.find(function(intent) {
+    return intent.id === intentId;
+  })?.label || intentId;
+}
+export function getIntentPreviewDescription(intentId) {
+  switch (intentId) {
+    case "visual-inspection":
+      return "Görsel yapı ve anomaliler analiz edilir";
+    case "audio-investigation":
+      return "Ses sinyali ve anomaliler analiz edilir";
+    case "detail-enhancement":
+      return "Görüntü detayları iyileştirilir";
+    case "anomaly-detection":
+      return "Olası anormallikler tespit edilir";
+    default:
+      return getIntentLabel(intentId);
+  }
+}
+export function getCapabilityFamilyIdsForIntentId(intentId) {
+  const intent = WORKSPACE_INTENTS.find(function(entry) {
+    return entry.id === intentId;
+  });
+  return Array.isArray(intent?.internalCapabilities) ? intent.internalCapabilities.slice() : [];
+}
 export const CAPABILITY_FAMILIES = [
   {
     id: "visual-structure",
@@ -105,6 +130,105 @@ export const CAPABILITY_FAMILIES = [
     requiredTools: ["librosa", "ffmpeg"]
   }
 ];
+const CAPABILITY_MODULE_GROUPS = [
+  {
+    capabilityId: "visual-structure",
+    moduleIds: [
+      "frame-consistency",
+      "lighting-consistency",
+      "background-consistency",
+      "occlusion-inconsistency",
+      "object-insert-remove-anomaly",
+      "temporal-noise-pattern",
+      "motion-anomaly"
+    ]
+  },
+  {
+    capabilityId: "visual-forensics",
+    moduleIds: [
+      "visual-signal-amplification",
+      "color-channel-isolation",
+      "gamma-scan",
+      "contrast-scan",
+      "edge-enhancement",
+      "histogram-equalization",
+      "hidden-detail-reveal",
+      "ai-artifact-detection"
+    ]
+  },
+  {
+    capabilityId: "audio-signal",
+    moduleIds: ["signal-health", "spectral-artifacts"]
+  },
+  {
+    capabilityId: "audio-recovery",
+    moduleIds: [
+      "signal-recovery",
+      "band-pass-exploration",
+      "spectrogram-guided-recovery",
+      "hidden-pattern-extraction",
+      "frequency-shift-reversal",
+      "phase-recovery-experiment"
+    ]
+  },
+  {
+    capabilityId: "transcription",
+    moduleIds: ["transcription", "transcript-support"]
+  },
+  {
+    capabilityId: "speaker-analysis",
+    moduleIds: ["speaker-diarization"]
+  },
+  {
+    capabilityId: "prosody-emotion",
+    moduleIds: ["prosody", "emotion"]
+  },
+  {
+    capabilityId: "sound-classification",
+    moduleIds: ["sound-events"]
+  },
+  {
+    capabilityId: "source-separation",
+    moduleIds: ["source-separation"]
+  },
+  {
+    capabilityId: "music-analysis",
+    moduleIds: ["music-rhythm-tonal"]
+  }
+];
+export function getModuleIdsForCapabilityFamily(capabilityId) {
+  return CAPABILITY_MODULE_GROUPS.find(function(entry) {
+    return entry.capabilityId === capabilityId;
+  })?.moduleIds.slice() || [];
+}
+export function getIntentIdsForCapabilityFamily(capabilityId) {
+  return WORKSPACE_INTENTS.filter(function(intent) {
+    return intent.internalCapabilities.includes(capabilityId);
+  }).map(function(intent) {
+    return intent.id;
+  });
+}
+export function getCapabilityFamilyForModuleId(moduleId) {
+  if (typeof moduleId !== "string" || moduleId.trim() === "") {
+    return null;
+  }
+  const normalizedModuleId = moduleId.trim();
+  if (CAPABILITY_FAMILIES.some(function(family) {
+    return family.id === normalizedModuleId;
+  })) {
+    return normalizedModuleId;
+  }
+  return CAPABILITY_MODULE_GROUPS.find(function(entry) {
+    return entry.moduleIds.includes(normalizedModuleId);
+  })?.capabilityId || null;
+}
+export function getIntentIdsForModuleId(moduleId) {
+  const capabilityId = getCapabilityFamilyForModuleId(moduleId);
+  if (capabilityId === null) {
+    return [];
+  }
+  return getIntentIdsForCapabilityFamily(capabilityId);
+}
 export const LAB_STAGES = ["source", "edit", "process", "report"];
 export const LAB_FEATURES = [
   {

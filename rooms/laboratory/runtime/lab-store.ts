@@ -9,6 +9,7 @@ import {
   normalizeLabFeatureId,
   normalizeLabStage,
   toTimestamp,
+  WORKSPACE_INTENTS,
 } from "../models/lab-types.js";
 import type {
   LabComparisonVariant,
@@ -71,6 +72,31 @@ function createIdlePreflight(
     rawStatus: null,
     reason,
   };
+}
+
+function normalizeWorkspaceIntentIds(value: unknown) {
+  const knownIntentIds = new Set<string>(
+    WORKSPACE_INTENTS.map(function (intent) {
+      return intent.id;
+    })
+  );
+  return asStringArray(value).filter(function (intentId, index, allIntentIds) {
+    return knownIntentIds.has(intentId) && allIntentIds.indexOf(intentId) === index;
+  }) as Array<(typeof WORKSPACE_INTENTS)[number]["id"]>;
+}
+
+function deriveCapabilitiesFromIntentIds(intentIds: unknown): CapabilityFamilyId[] {
+  const normalizedIntentIds = normalizeWorkspaceIntentIds(intentIds);
+  const capabilitySet = new Set<CapabilityFamilyId>();
+  WORKSPACE_INTENTS.forEach(function (intent) {
+    if (!normalizedIntentIds.includes(intent.id)) {
+      return;
+    }
+    intent.internalCapabilities.forEach(function (capabilityId) {
+      capabilitySet.add(capabilityId);
+    });
+  });
+  return Array.from(capabilitySet);
 }
 
 function createInitialState(): LabStoreState {
@@ -393,6 +419,7 @@ function toModuleState(value: unknown): LabModuleState | null {
     summary: asNonEmptyString(record["summary"]),
     findingIds: asStringArray(record["findingIds"]),
     artifactIds: asStringArray(record["artifactIds"]),
+    metadata: asLabRecord(record["metadata"]),
   };
 }
 
@@ -1313,7 +1340,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
               typeof ws.hypothesis === "string" ? ws.hypothesis : state.ui.workspace.hypothesis,
             bookmarks: Array.isArray(ws.bookmarks) ? ws.bookmarks : state.ui.workspace.bookmarks,
             selectedIntents: Array.isArray(ws.selectedIntents)
-              ? ws.selectedIntents
+              ? normalizeWorkspaceIntentIds(ws.selectedIntents)
               : state.ui.workspace.selectedIntents,
             sourceIntakeCollapsed: ws.sourceIntakeCollapsed === true,
             rightPanelCollapsed: ws.rightPanelCollapsed === true,
@@ -1325,6 +1352,11 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
               : state.ui.workspace.processPanelCollapsedSections,
             reportOverlayOpen: ws.reportOverlayOpen === true,
           };
+          if (Array.isArray(ws.selectedIntents)) {
+            state.selectedCapabilities = deriveCapabilitiesFromIntentIds(
+              state.ui.workspace.selectedIntents
+            );
+          }
         }
         state.bootReady =
           state.bootReady ||
@@ -1735,30 +1767,29 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         }),
       };
       return state;
-    case "workspace-intent-set":
+    case "workspace-intent-set": {
+      const nextIntents = normalizeWorkspaceIntentIds(event.intents);
       state.ui.workspace = {
         ...state.ui.workspace,
-        selectedIntents: event.intents,
+        selectedIntents: nextIntents,
       };
-      return state;
-    case "workspace-intent-toggled": {
-      const intents = state.ui.workspace.selectedIntents;
-      state.ui.workspace = {
-        ...state.ui.workspace,
-        selectedIntents: intents.includes(event.intentId)
-          ? intents.filter(function (entry) {
-              return entry !== event.intentId;
-            })
-          : intents.concat(event.intentId),
-      };
+      state.selectedCapabilities = deriveCapabilitiesFromIntentIds(nextIntents);
       return state;
     }
-    case "workspace-intent-set":
+    case "workspace-intent-toggled": {
+      const intents = normalizeWorkspaceIntentIds(state.ui.workspace.selectedIntents);
+      const nextIntents = intents.includes(event.intentId)
+        ? intents.filter(function (entry) {
+            return entry !== event.intentId;
+          })
+        : intents.concat(event.intentId);
       state.ui.workspace = {
         ...state.ui.workspace,
-        selectedIntents: event.intents.slice(),
+        selectedIntents: nextIntents,
       };
+      state.selectedCapabilities = deriveCapabilitiesFromIntentIds(nextIntents);
       return state;
+    }
     case "workspace-source-intake-toggled":
       state.ui.workspace = {
         ...state.ui.workspace,

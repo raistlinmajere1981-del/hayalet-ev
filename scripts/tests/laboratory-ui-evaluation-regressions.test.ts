@@ -186,6 +186,7 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   assert.match(toolOverlaySource, /data-lab-action="tool-install"/);
   assert.match(toolOverlaySource, /data-lab-action="tool-check-updates"/);
   assert.match(workspaceSurfaceSource, /Source setup controls/);
-  assert.match(workspaceSurfaceSource, /Run Deep Analysis/);
-  assert.match(workspaceSurfaceSource, /Analysis running in background/);
+  assert.match(workspaceSurfaceSource, /Derin Analiz Başlat/);
+  assert.match(workspaceSurfaceSource, /Analiz arka planda çalışıyor/);
+  assert.match(workspaceSurfaceSource, /Bu analiz şunları yapacak:/);
 });

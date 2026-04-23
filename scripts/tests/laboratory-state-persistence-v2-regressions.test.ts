@@ -150,6 +150,16 @@ test("process runtime consumes queued process instances after the active run com
   const source = readFileSync("rooms/laboratory/shared/host/process-runtime.ts", "utf8");
 
   assert.match(source, /queuedProcessInstance/);
-  assert.match(source, /followUpWorkbench/);
+  assert.match(source, /pendingFollowUp/);
+  assert.match(source, /workbench,\n        }/);
   assert.match(source, /await runSingleFeatureProcess\(/);
+});
+
+test("process actions resolve workbench from live project context", () => {
+  const actionRouterSource = readFileSync("rooms/laboratory/shared/host/action-router.ts", "utf8");
+  const processRuntimeSource = readFileSync("rooms/laboratory/shared/host/process-runtime.ts", "utf8");
+
+  assert.doesNotMatch(actionRouterSource, /actionPayload\["workbench"\]/);
+  assert.match(processRuntimeSource, /shouldPersistProcessWorkbench/);
+  assert.match(processRuntimeSource, /return true;/);
 });

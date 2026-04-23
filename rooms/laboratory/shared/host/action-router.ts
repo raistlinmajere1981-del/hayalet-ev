@@ -255,23 +255,11 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
           break;
         case "process-run":
         case "audio-process-run":
-          await mediaActionRuntime.runProcess(
-            api,
-            runtime,
-            requestId,
-            featureId,
-            toRecord(loadContext(api))["workbench"]
-          );
+          await mediaActionRuntime.runProcess(api, runtime, requestId, featureId);
           break;
         case "process-cancel":
         case "audio-process-cancel":
-          await mediaActionRuntime.cancelProcess(
-            api,
-            runtime,
-            requestId,
-            featureId,
-            toRecord(loadContext(api))["workbench"]
-          );
+          await mediaActionRuntime.cancelProcess(api, runtime, requestId, featureId);
           break;
         case "job-cancel":
           await mediaActionRuntime.cancelJob(api, runtime, requestId, actionPayload);

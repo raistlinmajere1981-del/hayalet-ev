@@ -144,6 +144,7 @@ export function createLaboratoryProcessReportStateRuntime(deps) {
       }) : [],
       artifactIds: Array.isArray(source.artifactIds) ? source.artifactIds.map(asNonEmptyString).filter(Boolean) : [],
       findingIds: Array.isArray(source.findingIds) ? source.findingIds.map(asNonEmptyString).filter(Boolean) : [],
+      metadata: toRecord(source.metadata),
       startedAt: asNonEmptyString(source.startedAt),
       completedAt: asNonEmptyString(source.completedAt)
     };

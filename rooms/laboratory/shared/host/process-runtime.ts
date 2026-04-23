@@ -142,6 +142,12 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     audioFeatureId,
     subtitleFeatureId,
   } = deps;
+
+  function shouldPersistProcessWorkbench(workbenchSource: unknown) {
+    void workbenchSource;
+    return true;
+  }
+
   const managedProcessRunnersDeps = {
     asNonEmptyString: deps["asNonEmptyString"],
     buildProcessSpeechAvailability: deps["buildProcessSpeechAvailability"],
@@ -520,6 +526,9 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
       throw new Error("Active project is missing.");
     }
 
+    const workbench = resolveProcessWorkbench(project, featureId, workbenchSource);
+    const persistProcessWorkbench = shouldPersistProcessWorkbench(workbenchSource);
+
     if (featureId !== subtitleFeatureId) {
       ensureEditToolReady(runtime);
     }
@@ -546,7 +555,9 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     });
 
     await patchActiveProject(runtime, function (nextProject: Record<string, unknown>) {
-      nextProject["workbench"] = resolveProcessWorkbench(nextProject, featureId, workbenchSource);
+      if (persistProcessWorkbench) {
+        nextProject["workbench"] = workbench;
+      }
       setFeatureProcessRecord(nextProject, featureId, {
         ...createEmptyProcessRun(featureId),
         featureId: featureId,
@@ -564,7 +575,10 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
       const nextProcessRecord = await runManagedProcess(
         api,
         runtime,
-        clone(project),
+        {
+          ...clone(project),
+          workbench,
+        },
         requestId,
         jobId,
         featureId,
@@ -579,11 +593,13 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
         });
         if (Object.keys(queuedProcessInstance).length > 0) {
           pendingFollowUp.workbench = {
-            ...resolveProcessWorkbench(nextProject, featureId, workbenchSource),
+            ...workbench,
             analysisScope: toRecord(queuedProcessInstance["analysisScope"]),
             moduleToggles: toRecord(queuedProcessInstance["moduleToggles"]),
           };
-          nextProject["workbench"] = pendingFollowUp.workbench;
+          if (persistProcessWorkbench) {
+            nextProject["workbench"] = pendingFollowUp.workbench;
+          }
         }
         setFeatureReportRecord(
           nextProject,
@@ -672,12 +688,15 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
 
     const workbench = resolveProcessWorkbench(project, featureId, workbenchSource);
     const runFeatureIds = resolveProcessRunFeatureIds(project, featureId, workbenchSource);
+    const persistProcessWorkbench = shouldPersistProcessWorkbench(workbenchSource);
     if (runFeatureIds.length === 0) {
       throw new Error("Select at least one analysis module before starting the process stage.");
     }
 
     await patchActiveProject(runtime, function (nextProject: Record<string, unknown>) {
-      nextProject["workbench"] = workbench;
+      if (persistProcessWorkbench) {
+        nextProject["workbench"] = workbench;
+      }
       runFeatureIds.slice(1).forEach(function (queuedFeatureId) {
         setFeatureProcessRecord(nextProject, queuedFeatureId, {
           ...createEmptyProcessRun(queuedFeatureId),
@@ -743,9 +762,12 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     }
 
     const workbench = resolveProcessWorkbench(project, featureId, workbenchSource);
+    const persistProcessWorkbench = shouldPersistProcessWorkbench(workbenchSource);
     await cancelProcessJobsForProject(api, runtime, project["id"] as string, requestId);
     await patchActiveProject(runtime, function (nextProject: Record<string, unknown>) {
-      nextProject["workbench"] = workbench;
+      if (persistProcessWorkbench) {
+        nextProject["workbench"] = workbench;
+      }
       const records = toRecord(toRecord(nextProject["process"])["records"]);
       Object.keys(records).forEach(function (recordFeatureId) {
         const existingRecord = getFeatureProcessRecord(nextProject, recordFeatureId);

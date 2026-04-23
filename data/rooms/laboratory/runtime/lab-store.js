@@ -8,7 +8,8 @@ import {
   normalizeFindingKind,
   normalizeLabFeatureId,
   normalizeLabStage,
-  toTimestamp
+  toTimestamp,
+  WORKSPACE_INTENTS
 } from "../models/lab-types.js";
 import { normalizeLabPreflight } from "../services/preflight-service.js";
 import {
@@ -45,6 +46,29 @@ function createIdlePreflight(reason = "Ön kontrol henüz çalıştırılmadı."
     rawStatus: null,
     reason
   };
+}
+function normalizeWorkspaceIntentIds(value) {
+  const knownIntentIds = new Set(
+    WORKSPACE_INTENTS.map(function(intent) {
+      return intent.id;
+    })
+  );
+  return asStringArray(value).filter(function(intentId, index, allIntentIds) {
+    return knownIntentIds.has(intentId) && allIntentIds.indexOf(intentId) === index;
+  });
+}
+function deriveCapabilitiesFromIntentIds(intentIds) {
+  const normalizedIntentIds = normalizeWorkspaceIntentIds(intentIds);
+  const capabilitySet = /* @__PURE__ */ new Set();
+  WORKSPACE_INTENTS.forEach(function(intent) {
+    if (!normalizedIntentIds.includes(intent.id)) {
+      return;
+    }
+    intent.internalCapabilities.forEach(function(capabilityId) {
+      capabilitySet.add(capabilityId);
+    });
+  });
+  return Array.from(capabilitySet);
 }
 function createInitialState() {
   return {
@@ -323,7 +347,8 @@ function toModuleState(value) {
     title: asNonEmptyString(record["title"]) || asNonEmptyString(record["label"]),
     summary: asNonEmptyString(record["summary"]),
     findingIds: asStringArray(record["findingIds"]),
-    artifactIds: asStringArray(record["artifactIds"])
+    artifactIds: asStringArray(record["artifactIds"]),
+    metadata: asLabRecord(record["metadata"])
   };
 }
 function toRunFromProcessRecord(processRecord) {
@@ -1030,7 +1055,7 @@ function reduceEvent(state, event) {
             audioFocus: ws.audioFocus ? { ...state.ui.workspace.audioFocus, ...ws.audioFocus } : state.ui.workspace.audioFocus,
             hypothesis: typeof ws.hypothesis === "string" ? ws.hypothesis : state.ui.workspace.hypothesis,
             bookmarks: Array.isArray(ws.bookmarks) ? ws.bookmarks : state.ui.workspace.bookmarks,
-            selectedIntents: Array.isArray(ws.selectedIntents) ? ws.selectedIntents : state.ui.workspace.selectedIntents,
+            selectedIntents: Array.isArray(ws.selectedIntents) ? normalizeWorkspaceIntentIds(ws.selectedIntents) : state.ui.workspace.selectedIntents,
             sourceIntakeCollapsed: ws.sourceIntakeCollapsed === true,
             rightPanelCollapsed: ws.rightPanelCollapsed === true,
             processViewActive: ws.processViewActive === true,
@@ -1038,6 +1063,11 @@ function reduceEvent(state, event) {
             processPanelCollapsedSections: Array.isArray(ws.processPanelCollapsedSections) ? ws.processPanelCollapsedSections : state.ui.workspace.processPanelCollapsedSections,
             reportOverlayOpen: ws.reportOverlayOpen === true
           };
+          if (Array.isArray(ws.selectedIntents)) {
+            state.selectedCapabilities = deriveCapabilitiesFromIntentIds(
+              state.ui.workspace.selectedIntents
+            );
+          }
         }
         state.bootReady = state.bootReady || state.source !== null || state.run !== null || state.reports.user !== null || state.reports.ai !== null;
       }
@@ -1423,28 +1453,27 @@ function reduceEvent(state, event) {
         })
       };
       return state;
-    case "workspace-intent-set":
+    case "workspace-intent-set": {
+      const nextIntents = normalizeWorkspaceIntentIds(event.intents);
       state.ui.workspace = {
         ...state.ui.workspace,
-        selectedIntents: event.intents
+        selectedIntents: nextIntents
       };
-      return state;
-    case "workspace-intent-toggled": {
-      const intents = state.ui.workspace.selectedIntents;
-      state.ui.workspace = {
-        ...state.ui.workspace,
-        selectedIntents: intents.includes(event.intentId) ? intents.filter(function(entry) {
-          return entry !== event.intentId;
-        }) : intents.concat(event.intentId)
-      };
+      state.selectedCapabilities = deriveCapabilitiesFromIntentIds(nextIntents);
       return state;
     }
-    case "workspace-intent-set":
+    case "workspace-intent-toggled": {
+      const intents = normalizeWorkspaceIntentIds(state.ui.workspace.selectedIntents);
+      const nextIntents = intents.includes(event.intentId) ? intents.filter(function(entry) {
+        return entry !== event.intentId;
+      }) : intents.concat(event.intentId);
       state.ui.workspace = {
         ...state.ui.workspace,
-        selectedIntents: event.intents.slice()
+        selectedIntents: nextIntents
       };
+      state.selectedCapabilities = deriveCapabilitiesFromIntentIds(nextIntents);
       return state;
+    }
     case "workspace-source-intake-toggled":
       state.ui.workspace = {
         ...state.ui.workspace,

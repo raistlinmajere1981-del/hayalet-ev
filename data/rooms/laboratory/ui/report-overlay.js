@@ -1,12 +1,109 @@
-import { escapeHtml, formatDateTime } from "../models/lab-types.js";
+import { escapeHtml, formatDateTime, getIntentLabel } from "../models/lab-types.js";
+import { buildIntentReportGroups } from "../services/report-builder.js";
 import {
   getCurrentReports,
   getReportFreshness,
   getReportOverlayOpen,
   getCurrentRun,
+  getIntentDirtyMap,
+  getRunSnapshotSummary,
+  getWorkspaceDiff,
   isRunActive
 } from "../runtime/lab-selectors.js";
 import { renderStatusChip } from "./components/status-chip.js";
+function formatTimelineMs(ms) {
+  if (ms === null) {
+    return "—";
+  }
+  const totalSeconds = Math.max(0, Math.round(ms / 1e3));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor(totalSeconds % 3600 / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) {
+    return `${String(hours)}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+function formatDiffLabel(key) {
+  switch (key) {
+    case "timeline":
+      return "Timeline";
+    case "hypothesis":
+      return "Hypothesis";
+    case "intents":
+      return "Intents";
+    default:
+      return key;
+  }
+}
+function renderSnapshotSummary(state) {
+  const snapshotSummary = getRunSnapshotSummary(state);
+  if (!snapshotSummary) {
+    return "";
+  }
+  const workspaceDiff = getWorkspaceDiff(state);
+  const timelineSummary = snapshotSummary.timelineStartMs !== null || snapshotSummary.timelineEndMs !== null ? `${formatTimelineMs(snapshotSummary.timelineStartMs)} - ${formatTimelineMs(snapshotSummary.timelineEndMs)}` : "Full source";
+  const intentSummary = snapshotSummary.intentIds.length > 0 ? snapshotSummary.intentIds.map(getIntentLabel).join(", ") : "No intent snapshot";
+  const diffBadges = workspaceDiff && workspaceDiff.changedKeys.length > 0 ? `<div class="labx-workspace-diff-badges">${workspaceDiff.changedKeys.map(function(key) {
+    return `<span class="labx-workspace-diff-badge">${escapeHtml(formatDiffLabel(key))}</span>`;
+  }).join("")}</div>` : "";
+  return `
+    <div class="labx-report-section">
+      <div class="labx-process-snapshot__head">
+        <h3 class="labx-report-section__title">Snapshot Summary</h3>
+        ${diffBadges}
+      </div>
+      <div class="labx-process-snapshot__grid">
+        <div class="labx-process-snapshot__item">
+          <span>Focus</span>
+          <strong>${escapeHtml(snapshotSummary.focus || "Unspecified")}</strong>
+        </div>
+        <div class="labx-process-snapshot__item">
+          <span>Timeline</span>
+          <strong>${escapeHtml(timelineSummary)}</strong>
+        </div>
+        <div class="labx-process-snapshot__item">
+          <span>Intents</span>
+          <strong>${escapeHtml(intentSummary)}</strong>
+        </div>
+      </div>
+      ${snapshotSummary.hypothesis ? `<p class="labx-process-snapshot__hypothesis">${escapeHtml(snapshotSummary.hypothesis)}</p>` : ""}
+      ${workspaceDiff && workspaceDiff.workspaceDirty ? `<p class="labx-workspace-diff-hint">Live workspace changed in ${escapeHtml(workspaceDiff.changedKeys.map(formatDiffLabel).join(", "))}. Report still reflects the frozen snapshot.</p>` : `<p class="labx-workspace-diff-hint">Report reflects the frozen run snapshot.</p>`}
+    </div>
+  `;
+}
+function renderIntentGroups(state) {
+  const run = getCurrentRun(state);
+  const intentGroups = buildIntentReportGroups(run);
+  if (intentGroups.length === 0) {
+    return "";
+  }
+  const dirtyMap = getIntentDirtyMap(state);
+  return `
+    <div class="labx-report-section">
+      <h3 class="labx-report-section__title">Intent Groups</h3>
+      ${intentGroups.map(function(group) {
+    const dirtyState = dirtyMap[group.intentId];
+    const dirtyHint = dirtyState && dirtyState.dirty ? `<p class="labx-report-section__hint">Live workspace drift: ${escapeHtml(dirtyState.changedKeys.join(", "))}</p>` : "";
+    const findingsHtml = group.findings.length > 0 ? (Array.isArray(group.findings) ? group.findings.slice(0, 3) : []).map(function(finding) {
+      return `<div class="labx-report-finding"><div class="labx-report-finding__title"><strong>${escapeHtml(finding.title)}</strong></div><div class="labx-report-finding__detail">${escapeHtml(finding.detail)}</div></div>`;
+    }).join("") : `<div class="labx-process-empty">No findings mapped to this intent.</div>`;
+    const artifactHtml = group.artifacts.length > 0 ? `<div class="labx-report-manifest">${(Array.isArray(group.artifacts) ? group.artifacts.slice(0, 4) : []).map(function(artifact) {
+      return `<div class="labx-report-manifest__entry"><span>${escapeHtml(artifact.kind)}</span><strong>${escapeHtml(artifact.fileName || artifact.id)}</strong></div>`;
+    }).join("")}</div>` : "";
+    return `
+            <div class="labx-report-section">
+              <h4 class="labx-report-section__title">${escapeHtml(group.label)}</h4>
+              <p class="labx-report-section__hint">${escapeHtml(`${String(group.modules.length)} modules · ${String(group.findings.length)} findings · ${String(group.artifacts.length)} artifacts`)}</p>
+              ${dirtyHint}
+              ${findingsHtml}
+              ${artifactHtml}
+            </div>
+          `;
+  }).join("")}
+    </div>
+  `;
+}
 function renderConfidenceBadge(confidence) {
   const level = confidence === "high" ? "high" : confidence === "medium" ? "medium" : "low";
   const label = level === "high" ? "Yüksek" : level === "medium" ? "Orta" : "Düşük";
@@ -139,7 +236,7 @@ function renderModuleTraceTimeline(trace) {
   if (!trace || trace.length === 0) {
     return `<div class="labx-process-empty">Zaman çizelgesi yok</div>`;
   }
-  return trace.slice(0, 20).map(function(entry) {
+  return (Array.isArray(trace) ? trace.slice(0, 20) : []).map(function(entry) {
     const icon = getTraceStatusIcon(entry.status);
     return `
         <div class="labx-report-timeline-entry">
@@ -239,10 +336,11 @@ export function renderReportOverlay(state) {
   const userTabActive = reportView === "user";
   const aiTabActive = reportView === "ai";
   const contentHtml = userTabActive && reports.user ? renderUserReport(reports.user) : aiTabActive && reports.ai ? renderAiReport(reports.ai) : `<div class="labx-process-empty">${reports.emptyReason || "Rapor mevcut değil"}</div>`;
-  const runIdSuffix = run ? run.id.slice(-6) : "—";
+  const runIdSuffix = run ? (run.id ?? "").slice(-6) || "—" : "—";
   const freshness = getReportFreshness(state);
   const runActive = isRunActive(state);
-  const freshnessLabel = freshness === "current" ? "✓ Güncel" : freshness === "previous-run" ? runActive ? "⊘ Önceki çalışma · Analiz devam ediyor" : "⊘ Önceki çalışma" : freshness === "stale" ? "⊘ Eski çalışma · Son analiz başarısız" : "";
+  const freshnessLabel = freshness?.state === "current" ? "✓ Güncel" : freshness?.state === "previous-run" ? runActive ? "⊘ Önceki çalışma · Analiz devam ediyor" : "⊘ Önceki çalışma" : freshness?.state === "stale" ? "⊘ Eski çalışma · Son analiz başarısız" : "";
+  const freshnessMeta = freshness && freshness.workspaceDirty ? `${freshnessLabel} · Workspace farklı` : freshnessLabel;
   return `
     <div class="labx-overlay-root" data-open="${isOpen ? "true" : "false"}" id="lab-report-overlay-root">
       ${isOpen ? `
@@ -257,7 +355,7 @@ export function renderReportOverlay(state) {
                 <div>
                   <p class="labx-card__eyebrow">Analiz Sonucu</p>
                   <h2 class="labx-report-overlay__title">Rapor #${escapeHtml(runIdSuffix)}</h2>
-                  ${freshnessLabel ? `<span class="labx-report-freshness" data-freshness="${escapeHtml(freshness || "")}">${escapeHtml(freshnessLabel)}</span>` : ""}
+                  ${freshnessMeta ? `<span class="labx-report-freshness" data-freshness="${escapeHtml(freshness?.state || "")}" data-workspace-dirty="${freshness?.workspaceDirty === true ? "true" : "false"}">${escapeHtml(freshnessMeta)}</span>` : ""}
                 </div>
                 <div class="labx-inline-actions">
                   <button class="labx-inline-action" type="button" data-lab-action="report-export-json">JSON Export</button>
@@ -279,6 +377,8 @@ export function renderReportOverlay(state) {
                   data-lab-value="ai"
                 >Teknik Rapor</button>
               </div>
+              ${renderSnapshotSummary(state)}
+              ${renderIntentGroups(state)}
               ${contentHtml}
             </section>
           ` : ""}

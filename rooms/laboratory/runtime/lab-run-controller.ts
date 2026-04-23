@@ -4,7 +4,7 @@ import {
   createLabEventId,
   WORKSPACE_INTENTS,
 } from "../models/lab-types.js";
-import type { LabFeatureId, LabSourceDrafts } from "../models/lab-types.js";
+import type { CapabilityFamilyId, LabFeatureId, LabIntentId, LabSourceDrafts } from "../models/lab-types.js";
 import {
   deriveLegacyStage,
   getActiveEditOutput,
@@ -445,6 +445,24 @@ export function createLabRunController(deps: LabRunControllerDeps) {
             delete nextScope["hypothesis"];
           }
           break;
+        case "intentIds": {
+          const nextIntentIds = Array.isArray(value)
+            ? value
+                .filter((entry): entry is string => typeof entry === "string")
+                .map(function (entry) {
+                  return entry.trim();
+                })
+                .filter(function (entry) {
+                  return entry !== "";
+                })
+            : [];
+          if (nextIntentIds.length > 0) {
+            nextScope["intentIds"] = Array.from(new Set(nextIntentIds));
+          } else {
+            delete nextScope["intentIds"];
+          }
+          break;
+        }
         case "timeStartMs":
         case "timeEndMs": {
           const nextValue = readNumeric(value);
@@ -525,7 +543,8 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         nextScope["hypothesis"] === undefined &&
         nextScope["timeRange"] === undefined &&
         nextScope["frameRange"] === undefined &&
-        nextScope["region"] === undefined
+        nextScope["region"] === undefined &&
+        nextScope["intentIds"] === undefined
       ) {
         return {
           ...workbench,
@@ -655,6 +674,46 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     startProbe("source-pick-local", { fields });
   }
 
+  function collectIntentCapabilities(selectedIntents: LabIntentId[]): CapabilityFamilyId[] {
+    const intentCapabilities: CapabilityFamilyId[] = [];
+    WORKSPACE_INTENTS.forEach(function (intent) {
+      if (selectedIntents.includes(intent.id)) {
+        intent.internalCapabilities.forEach(function (capId) {
+          if (!intentCapabilities.includes(capId)) {
+            intentCapabilities.push(capId);
+          }
+        });
+      }
+    });
+    return intentCapabilities;
+  }
+
+  function startDeepAnalysis(state: ReturnType<typeof deps.store.getState>) {
+    const ws = state.ui.workspace;
+    const intentCapabilities =
+      ws.selectedIntents.length > 0
+        ? collectIntentCapabilities(ws.selectedIntents)
+        : state.selectedCapabilities.slice();
+    const { activeFeatureId } = deriveFeatureSelectionFromCapabilities(intentCapabilities);
+
+    syncCapabilities(intentCapabilities);
+    updateAnalysisScopeField("timeStartMs", ws.timelineStartMs);
+    updateAnalysisScopeField("timeEndMs", ws.timelineEndMs);
+    updateAnalysisScopeField("hypothesis", ws.hypothesis);
+    updateAnalysisScopeField("intentIds", ws.selectedIntents);
+
+    const sourceRecord = asLabRecord(state.source);
+    if (asNonEmptyString(sourceRecord["previewUrl"]) === null) {
+      sendMediaAction("edit-preview");
+    }
+    sendMediaAction("profile-run-preflight");
+    dispatch({
+      type: "workspace-process-view-toggled",
+      force: true,
+    });
+    sendMediaAction(activeFeatureId === "audio-analysis" ? "audio-process-run" : "process-run");
+  }
+
   function runPrimaryAction() {
     const state = deps.store.getState();
 
@@ -674,7 +733,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       return;
     }
     if (getSourceReady(state) && getAnalysisActionBlockReason(state) === null) {
-      sendMediaAction(state.featureId === "audio-analysis" ? "audio-process-run" : "process-run");
+      startDeepAnalysis(state);
       return;
     }
 
@@ -1030,45 +1089,16 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           );
           return;
         }
-        // Sync intent-derived capabilities to internal capability system
-        const ws = state.ui.workspace;
-        const intentCapabilities: string[] = [];
-        WORKSPACE_INTENTS.forEach(function (intent) {
-          if (ws.selectedIntents.includes(intent.id)) {
-            intent.internalCapabilities.forEach(function (capId) {
-              if (!intentCapabilities.includes(capId)) {
-                intentCapabilities.push(capId);
-              }
-            });
-          }
-        });
-        syncCapabilities(intentCapabilities);
-        // Update analysis scope with workspace state
-        if (ws.timelineStartMs !== null) {
-          updateAnalysisScopeField("timeStartMs", ws.timelineStartMs);
+        // Controller guard — shared contract with UI
+        const blockReason = getAnalysisActionBlockReason(state);
+        if (blockReason !== null) {
+          dispatch({
+            type: "push-event",
+            event: buildUiEvent(blockReason, "warning"),
+          });
+          return;
         }
-        if (ws.timelineEndMs !== null) {
-          updateAnalysisScopeField("timeEndMs", ws.timelineEndMs);
-        }
-        if (ws.hypothesis.trim() !== "") {
-          updateAnalysisScopeField("hypothesis", ws.hypothesis);
-        }
-        // Intent-based flow: preview -> preflight -> process
-        // Legacy stage is projected automatically by deriveLegacyStage()
-        sendMediaAction("edit-preview");
-        sendMediaAction("profile-run-preflight");
-        dispatch({
-          type: "workspace-process-view-toggled",
-          force: true,
-        });
-        // Give host time to process preflight before starting run
-        setTimeout(function () {
-          sendMediaAction(
-            deps.store.getState().featureId === "audio-analysis"
-              ? "audio-process-run"
-              : "process-run"
-          );
-        }, 200);
+        startDeepAnalysis(state);
         return;
       }
       case "project-select": {

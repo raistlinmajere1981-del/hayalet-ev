@@ -2,17 +2,41 @@ import { asLabRecord, asNonEmptyString, createLabFeatureMeta } from "../models/l
 import type {
   CapabilityFamilyId,
   LabFeatureId,
+  LabIntentDirtyMap,
+  LabModuleState,
   LabPreflightResult,
   LabPreviewArtifactProjection,
   LabRecord,
   LabReportSet,
   LabRun,
+  LabRunSnapshotSummary,
   LabStage,
   LabStoreState,
+  LabWorkspaceDiff,
+  PreflightSeverity,
   ReportFreshness,
 } from "../models/lab-types.js";
 import { CAPABILITY_FAMILIES, WORKSPACE_INTENTS } from "../models/lab-types.js";
 import { normalizeAnalysisScope } from "../shared/types/analysis-scope.js";
+
+function normalizeIntentIdList(value: unknown) {
+  const sourceIds = Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string")
+    : [];
+  return WORKSPACE_INTENTS.map(function (intent) {
+    return intent.id;
+  }).filter(function (intentId, index, allIntentIds) {
+    return sourceIds.includes(intentId) && allIntentIds.indexOf(intentId) === index;
+  });
+}
+
+function getEffectiveSelectedCapabilities(state: LabStoreState) {
+  const intentDerivedCapabilities = getIntentDerivedCapabilities(state);
+  if (intentDerivedCapabilities.length > 0) {
+    return intentDerivedCapabilities;
+  }
+  return getSelectedCapabilities(state);
+}
 
 export function getSnapshot(state: LabStoreState): LabRecord {
   return state.snapshot || {};
@@ -106,7 +130,7 @@ export function getCurrentPreflight(state: LabStoreState): LabPreflightResult {
     };
   }
 
-  const selectedCapabilities = getSelectedCapabilities(state);
+  const selectedCapabilities = getEffectiveSelectedCapabilities(state);
   if (selectedCapabilities.length === 0) {
     return {
       status: "blocked",
@@ -148,7 +172,7 @@ export function getCurrentPreflight(state: LabStoreState): LabPreflightResult {
         : warnings,
     estimatedRuntime:
       hostPreflight?.estimatedRuntime || Math.max(60, Math.round(selectedEntries.length * 75)),
-    enabledModules: selectedCapabilities.slice(),
+    enabledModules: Array.isArray(selectedCapabilities) ? selectedCapabilities.slice() : [],
     stageReady,
     rawStatus: hostPreflight?.rawStatus || null,
     reason:
@@ -162,6 +186,23 @@ export function getCurrentPreflight(state: LabStoreState): LabPreflightResult {
 
 export function getCurrentRun(state: LabStoreState): LabRun | null {
   return state.run;
+}
+
+export function getRunSnapshotSummary(state: LabStoreState): LabRunSnapshotSummary | null {
+  const run = getCurrentRun(state);
+  if (!run || !run.analysisScope) {
+    return null;
+  }
+  const scope = run.analysisScope;
+  return {
+    focus: typeof scope.focus === "string" ? scope.focus : null,
+    timelineStartMs:
+      scope.timeRange && typeof scope.timeRange.startMs === "number" ? scope.timeRange.startMs : null,
+    timelineEndMs:
+      scope.timeRange && typeof scope.timeRange.endMs === "number" ? scope.timeRange.endMs : null,
+    hypothesis: typeof scope.hypothesis === "string" ? scope.hypothesis : null,
+    intentIds: normalizeIntentIdList(scope.intentIds),
+  };
 }
 
 export function getCurrentReports(state: LabStoreState): LabReportSet {
@@ -343,16 +384,18 @@ export function getPrimaryActionLabel(state: LabStoreState, _stage: LabStage) {
 }
 
 export function getVisibleEvents(state: LabStoreState) {
-  const feed = (state.run?.events || []).slice().sort(function (left, right) {
-    return right.timestamp - left.timestamp;
-  });
+  const feed = Array.isArray(state.run?.events)
+    ? state.run.events.slice().sort(function (left, right) {
+        return right.timestamp - left.timestamp;
+      })
+    : [];
   const windowSize = state.ui.eventFeedExpanded ? 40 : 18;
   const windowStart = state.ui.eventFeedExpanded ? state.ui.eventFeedCursor : 0;
-  return feed.slice(windowStart, windowStart + windowSize);
+  return Array.isArray(feed) ? feed.slice(windowStart, windowStart + windowSize) : [];
 }
 
 export function hasMoreVisibleEvents(state: LabStoreState) {
-  const totalCount = state.run?.events.length || 0;
+  const totalCount = Array.isArray(state.run?.events) ? state.run.events.length : 0;
   const windowSize = state.ui.eventFeedExpanded ? 40 : 18;
   const windowStart = state.ui.eventFeedExpanded ? state.ui.eventFeedCursor : 0;
   return totalCount > windowStart + windowSize;
@@ -363,26 +406,26 @@ export function getVisibleEventOffset(state: LabStoreState) {
 }
 
 export function getVisibleRawLogs(state: LabStoreState) {
-  const rawLog = state.run?.rawLog || [];
-  return rawLog.slice(0, state.ui.eventFeedExpanded ? 40 : 12);
+  const rawLog = Array.isArray(state.run?.rawLog) ? state.run.rawLog : [];
+  return Array.isArray(rawLog) ? rawLog.slice(0, state.ui.eventFeedExpanded ? 40 : 12) : [];
 }
 
 export function getGlobalActivityFeed(state: LabStoreState) {
-  return state.activityFeed.slice();
+  return Array.isArray(state.activityFeed) ? state.activityFeed.slice() : [];
 }
 
 export function getVisibleArtifacts(state: LabStoreState) {
   const run = getCurrentRun(state);
-  const artifacts = run ? run.artifacts : [];
+  const artifacts = Array.isArray(run?.artifacts) ? run.artifacts : [];
   if (!state.ui.artifactListExpanded) {
-    return artifacts.slice(0, 12);
+    return Array.isArray(artifacts) ? artifacts.slice(0, 12) : [];
   }
-  return artifacts.slice(0, state.ui.artifactRenderCount);
+  return Array.isArray(artifacts) ? artifacts.slice(0, state.ui.artifactRenderCount) : [];
 }
 
 export function hasMoreVisibleArtifacts(state: LabStoreState) {
   const run = getCurrentRun(state);
-  const artifacts = run ? run.artifacts : [];
+  const artifacts = Array.isArray(run?.artifacts) ? run.artifacts : [];
   return artifacts.length > getVisibleArtifacts(state).length;
 }
 
@@ -395,19 +438,19 @@ export function getProcessAnalysisScope(state: LabStoreState) {
 
 export function getVisibleLiveFindings(state: LabStoreState) {
   const run = getCurrentRun(state);
-  const findings = run ? run.liveFindings : [];
-  return findings.slice(0, state.ui.liveFindingsExpanded ? 18 : 6);
+  const findings = Array.isArray(run?.liveFindings) ? run.liveFindings : [];
+  return Array.isArray(findings) ? findings.slice(0, state.ui.liveFindingsExpanded ? 18 : 6) : [];
 }
 
 export function hasMoreVisibleLiveFindings(state: LabStoreState) {
   const run = getCurrentRun(state);
-  const findings = run ? run.liveFindings : [];
+  const findings = Array.isArray(run?.liveFindings) ? run.liveFindings : [];
   return findings.length > getVisibleLiveFindings(state).length;
 }
 
 export function getPreviewArtifacts(state: LabStoreState) {
   const run = getCurrentRun(state);
-  return run ? run.previewArtifacts.slice() : [];
+  return Array.isArray(run?.previewArtifacts) ? run.previewArtifacts.slice() : [];
 }
 
 export function getActivePreviewArtifact(
@@ -435,7 +478,19 @@ export function getActivePreviewArtifact(
 
 export function getComparisonVariants(state: LabStoreState) {
   const run = getCurrentRun(state);
-  return run ? run.comparisonVariants.slice() : [];
+  return Array.isArray(run?.comparisonVariants) ? run.comparisonVariants.slice() : [];
+}
+
+export function getActiveModule(state: LabStoreState): LabModuleState | null {
+  const run = getCurrentRun(state);
+  if (!run || !Array.isArray(run.moduleOrder)) {
+    return null;
+  }
+  const activeModuleId =
+    run.moduleOrder.find(function (moduleId) {
+      return run.modules[moduleId]?.status === "running";
+    }) || null;
+  return activeModuleId ? run.modules[activeModuleId] || null : null;
 }
 
 export function getSelectedCapabilities(state: LabStoreState): CapabilityFamilyId[] {
@@ -447,6 +502,7 @@ export function getAvailableCapabilities(state: LabStoreState) {
   const sourceReady = state.source !== null && state.sourceProbeStatus === "completed";
   const toolState = getToolState(state);
   const toolRegistry = asLabRecord(toolState["tools"]);
+  const effectiveSelectedCapabilities = getEffectiveSelectedCapabilities(state);
 
   return CAPABILITY_FAMILIES.map(function (family) {
     const sourceCompatible = family.sourceKinds.includes(sourceKind as "video" | "audio" | "image");
@@ -482,13 +538,13 @@ export function getAvailableCapabilities(state: LabStoreState) {
       ...family,
       readiness,
       blockReason,
-      selected: state.selectedCapabilities.includes(family.id),
+      selected: effectiveSelectedCapabilities.includes(family.id),
     };
   });
 }
 
 export function getCapabilityWorkflowSummary(state: LabStoreState) {
-  const selected = getSelectedCapabilities(state);
+  const selected = getEffectiveSelectedCapabilities(state);
   const available = getAvailableCapabilities(state);
   const selectedFamilies = available.filter(function (entry) {
     return selected.includes(entry.id);
@@ -644,6 +700,87 @@ export function getWorkspaceAnalysisInput(state: LabStoreState) {
   };
 }
 
+export function getWorkspaceDiff(state: LabStoreState): LabWorkspaceDiff | null {
+  const snapshotSummary = getRunSnapshotSummary(state);
+  if (!snapshotSummary) {
+    return null;
+  }
+
+  const liveTimeline = getTimelineSelection(state);
+  const liveHypothesis = getHypothesis(state).trim();
+  const liveIntentIds = normalizeIntentIdList(getSelectedIntents(state));
+
+  const timelineChanged =
+    liveTimeline.startMs !== snapshotSummary.timelineStartMs ||
+    liveTimeline.endMs !== snapshotSummary.timelineEndMs;
+  const hypothesisChanged = liveHypothesis !== (snapshotSummary.hypothesis || "");
+  const intentsChanged =
+    liveIntentIds.length !== snapshotSummary.intentIds.length ||
+    liveIntentIds.some(function (intentId, index) {
+      return snapshotSummary.intentIds[index] !== intentId;
+    });
+
+  const changedKeys: LabWorkspaceDiff["changedKeys"] = [];
+  if (timelineChanged) {
+    changedKeys.push("timeline");
+  }
+  if (hypothesisChanged) {
+    changedKeys.push("hypothesis");
+  }
+  if (intentsChanged) {
+    changedKeys.push("intents");
+  }
+
+  return {
+    timelineChanged,
+    hypothesisChanged,
+    intentsChanged,
+    workspaceDirty: changedKeys.length > 0,
+    changedKeys,
+  };
+}
+
+export function getIntentDirtyMap(state: LabStoreState): LabIntentDirtyMap {
+  const snapshotSummary = getRunSnapshotSummary(state);
+  if (!snapshotSummary) {
+    return {} as LabIntentDirtyMap;
+  }
+
+  const workspaceDiff = getWorkspaceDiff(state);
+  const snapshotIntentIds = normalizeIntentIdList(snapshotSummary.intentIds);
+  const liveIntentIds = normalizeIntentIdList(getSelectedIntents(state));
+  const allIntentIds = WORKSPACE_INTENTS.map(function (intent) {
+    return intent.id;
+  }).filter(function (intentId) {
+    return snapshotIntentIds.includes(intentId) || liveIntentIds.includes(intentId);
+  });
+
+  return allIntentIds.reduce(function (accumulator, intentId) {
+    const inSnapshot = snapshotIntentIds.includes(intentId);
+    const inWorkspace = liveIntentIds.includes(intentId);
+    const changedKeys: Array<"timeline" | "hypothesis" | "selection"> = [];
+
+    if (inSnapshot !== inWorkspace) {
+      changedKeys.push("selection");
+    }
+    if (inSnapshot && workspaceDiff?.timelineChanged) {
+      changedKeys.push("timeline");
+    }
+    if (inSnapshot && workspaceDiff?.hypothesisChanged) {
+      changedKeys.push("hypothesis");
+    }
+
+    accumulator[intentId] = {
+      intentId,
+      inSnapshot,
+      inWorkspace,
+      dirty: changedKeys.length > 0,
+      changedKeys,
+    };
+    return accumulator;
+  }, {} as LabIntentDirtyMap);
+}
+
 export function getProcessPanelCollapsedSections(
   state: LabStoreState
 ): import("../models/lab-types.js").LabProcessSectionId[] {
@@ -688,19 +825,47 @@ export function getSourceActionBlockReason(state: LabStoreState): string | null 
   return null;
 }
 
+export function getPreflightSeverity(state: LabStoreState): PreflightSeverity {
+  const preflight = getCurrentPreflight(state);
+  if (preflight.status === "blocked" && preflight.missingDependencies.length > 0) {
+    return "will-fail";
+  }
+  if (preflight.status === "blocked" || preflight.status === "warning") {
+    return "warning";
+  }
+  if (!preflight.stageReady && preflight.status !== "ready") {
+    return "warning";
+  }
+  return "clear";
+}
+
+export function getPreflightWarnings(state: LabStoreState): string[] {
+  const preflight = getCurrentPreflight(state);
+  const msgs: string[] = [];
+  if (preflight.missingDependencies.length > 0) {
+    msgs.push(`Eksik dependency: ${preflight.missingDependencies.join(", ")}`);
+  }
+  preflight.warnings.forEach(function (w) {
+    if (!msgs.includes(w)) msgs.push(w);
+  });
+  if (msgs.length === 0 && preflight.reason) {
+    msgs.push(preflight.reason);
+  }
+  return msgs;
+}
+
 export function getAnalysisActionBlockReason(state: LabStoreState): string | null {
   if (!getSourceReady(state)) {
     return "Önce kaynak hazırlanmalı ve probe tamamlanmalı.";
   }
-  const preflight = getCurrentPreflight(state);
-  if (preflight.status === "blocked") {
-    if (preflight.missingDependencies.length > 0) {
-      return `Eksik dependency: ${preflight.missingDependencies.join(", ")}`;
-    }
-    return preflight.reason || "Ön kontrol bu işlemi blokladı.";
+  const selectedCapabilities = getEffectiveSelectedCapabilities(state);
+  if (selectedCapabilities.length === 0) {
+    return "En az bir analiz modülü seçilmelidir.";
   }
-  if (preflight.stageReady !== true) {
-    return preflight.reason || "Ön kontrol henüz hazır değil.";
+  const severity = getPreflightSeverity(state);
+  if (severity === "will-fail") {
+    const preflight = getCurrentPreflight(state);
+    return `Eksik dependency: ${preflight.missingDependencies.join(", ")}`;
   }
   return null;
 }
@@ -800,39 +965,35 @@ export function getReportFreshness(state: LabStoreState): ReportFreshness | null
   if (!hasReport) {
     return null;
   }
+  const workspaceDirty = getWorkspaceDiff(state)?.workspaceDirty === true;
   const run = getCurrentRun(state);
   if (!run) {
-    return "previous-run";
+    return {
+      state: "previous-run",
+      workspaceDirty,
+    };
   }
   if (run.state === "running" || run.state === "queued") {
-    return "previous-run";
+    return {
+      state: "previous-run",
+      workspaceDirty,
+    };
   }
   if (run.state === "completed" || run.state === "ready") {
-    return "current";
+    return {
+      state: "current",
+      workspaceDirty,
+    };
   }
   // failed or cancelled
-  return "stale";
+  return {
+    state: "stale",
+    workspaceDirty,
+  };
 }
 
 export function isWorkspaceDirty(state: LabStoreState): boolean {
-  const run = getCurrentRun(state);
-  if (!run || !run.analysisScope) {
-    return false;
-  }
-  const scope = run.analysisScope;
-  const ws = state.ui.workspace;
-  const scopeTimeStart =
-    scope.timeRange && typeof scope.timeRange.startMs === "number" ? scope.timeRange.startMs : null;
-  const scopeTimeEnd =
-    scope.timeRange && typeof scope.timeRange.endMs === "number" ? scope.timeRange.endMs : null;
-  if (ws.timelineStartMs !== scopeTimeStart || ws.timelineEndMs !== scopeTimeEnd) {
-    return true;
-  }
-  const scopeHypothesis = typeof scope.hypothesis === "string" ? scope.hypothesis : "";
-  if (ws.hypothesis !== scopeHypothesis) {
-    return true;
-  }
-  return false;
+  return getWorkspaceDiff(state)?.workspaceDirty === true;
 }
 
 // ---------------------------------------------------------------------------

@@ -19,7 +19,7 @@ function toRecord(value: unknown) {
 
 const featureIds = ["media-analysis", "audio-analysis", "subtitle-analysis"];
 
-test("analysis scope normalization keeps ordered ranges and freeze lifecycle", () => {
+test("analysis scope normalization keeps ordered ranges, intent ids, and freeze lifecycle", () => {
   const normalized = normalizeAnalysisScope({
     timeRange: {
       startMs: 4200,
@@ -37,6 +37,7 @@ test("analysis scope normalization keeps ordered ranges and freeze lifecycle", (
     },
     focus: "visual",
     hypothesis: "su aralikta gorunmeyen obje olabilir",
+    intentIds: ["visual-inspection"],
   });
 
   assert.deepEqual(normalized?.timeRange, {
@@ -48,6 +49,7 @@ test("analysis scope normalization keeps ordered ranges and freeze lifecycle", (
     endFrame: 84,
   });
   assert.equal(normalized?.focus, "visual");
+  assert.deepEqual(normalized?.intentIds, ["visual-inspection"]);
 
   const frozen = freezeAnalysisScope(normalized, "media-analysis-run-1", "2026-04-20T10:00:00.000Z");
   assert.equal(frozen?.lifecycle?.mutable, false);
@@ -66,6 +68,7 @@ test("laboratory workbench preserves scope and density controls without dropping
       },
       focus: "visual",
       hypothesis: "kenarda gizli detay olabilir",
+      intentIds: ["visual-inspection"],
     },
     activePreviewArtifactId: "preview-1",
     activeLiveFindingsStreamId: "media-analysis",

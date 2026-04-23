@@ -1,4 +1,11 @@
-import { asLabRecord, asNonEmptyString, asStringArray } from "../models/lab-types.js";
+import {
+  asLabRecord,
+  asNonEmptyString,
+  asStringArray,
+  getCapabilityFamilyIdsForIntentId,
+  getIntentIdsForModuleId,
+  getIntentLabel,
+} from "../models/lab-types.js";
 import type {
   LabAiReport,
   LabArtifactProjection,
@@ -7,12 +14,36 @@ import type {
   LabFindingProjection,
   LabInteractiveSettings,
   LabIntentId,
+  LabModuleState,
   LabModuleTraceEntry,
   LabROIRegion,
   LabRun,
   LabUserReport,
 } from "../models/lab-types.js";
 import type { AnalysisScope } from "../shared/types/analysis-scope.js";
+
+export interface LabIntentReportGroup {
+  intentId: LabIntentId;
+  label: string;
+  findings: LabFindingProjection[];
+  artifacts: LabArtifactProjection[];
+  modules: Array<{
+    id: string;
+    title: string;
+    status: LabModuleState["status"];
+  }>;
+}
+
+const AUDIO_TRANSPORT_CAPABILITY_IDS = [
+  "audio-signal",
+  "audio-recovery",
+  "transcription",
+  "speaker-analysis",
+  "prosody-emotion",
+  "sound-classification",
+  "source-separation",
+  "music-analysis",
+] as const;
 
 function buildEvidenceLabels(
   findings: LabFindingProjection[],
@@ -142,6 +173,126 @@ export function buildAiReport(run: LabRun | null, reportRecord: unknown): LabAiR
     analysisScope,
     comparisonVariants,
   };
+}
+
+export function buildIntentReportGroups(run: LabRun | null): LabIntentReportGroup[] {
+  if (!run) {
+    return [];
+  }
+
+  const scopeIntentIds = Array.isArray(run.analysisScope?.intentIds)
+    ? run.analysisScope?.intentIds.filter((entry): entry is LabIntentId => typeof entry === "string")
+    : [];
+  const orderedIntentIds = scopeIntentIds.filter(function (intentId, index) {
+    return scopeIntentIds.indexOf(intentId) === index;
+  });
+
+  function resolveTransportIntentIds(moduleId: string | null) {
+    if (moduleId === "motion") {
+      return orderedIntentIds.filter(function (intentId) {
+        return getCapabilityFamilyIdsForIntentId(intentId).includes("visual-structure");
+      });
+    }
+    if (moduleId === "visual-signal") {
+      return orderedIntentIds.filter(function (intentId) {
+        return getCapabilityFamilyIdsForIntentId(intentId).includes("visual-forensics");
+      });
+    }
+    if (moduleId === "audio") {
+      const fallbackCapabilityIds = orderedIntentIds
+        .flatMap(function (intentId) {
+          return getCapabilityFamilyIdsForIntentId(intentId);
+        })
+        .filter(function (capabilityId, index, allCapabilityIds) {
+          return (
+            AUDIO_TRANSPORT_CAPABILITY_IDS.includes(
+              capabilityId as (typeof AUDIO_TRANSPORT_CAPABILITY_IDS)[number]
+            ) && allCapabilityIds.indexOf(capabilityId) === index
+          );
+        });
+      if (fallbackCapabilityIds.length === 0) {
+        return [];
+      }
+      return orderedIntentIds.filter(function (intentId) {
+        const intentCapabilityIds = getCapabilityFamilyIdsForIntentId(intentId);
+        return fallbackCapabilityIds.some(function (capabilityId) {
+          return intentCapabilityIds.includes(capabilityId);
+        });
+      });
+    }
+    if (moduleId === "report" && orderedIntentIds.length === 1) {
+      return orderedIntentIds.slice();
+    }
+    return [];
+  }
+
+  function resolveIntentIdsForGroupedItem(moduleId: string | null) {
+    const mappedIntentIds = getIntentIdsForModuleId(moduleId).filter(function (intentId) {
+      return orderedIntentIds.includes(intentId);
+    });
+    if (mappedIntentIds.length > 0) {
+      return mappedIntentIds;
+    }
+    const transportIntentIds = resolveTransportIntentIds(moduleId);
+    if (transportIntentIds.length > 0) {
+      return transportIntentIds;
+    }
+    if (orderedIntentIds.length === 1 && moduleId === null) {
+      return orderedIntentIds.slice();
+    }
+    return [];
+  }
+
+  return orderedIntentIds.map(function (intentId) {
+    const findings = run.findings.filter(function (finding) {
+      const candidateModuleIds = [finding.moduleId, finding.sourceModule].filter(
+        (moduleId): moduleId is string => typeof moduleId === "string" && moduleId.trim() !== ""
+      );
+      if (candidateModuleIds.length === 0) {
+        return resolveIntentIdsForGroupedItem(null).includes(intentId);
+      }
+      return candidateModuleIds.some(function (moduleId) {
+        return resolveIntentIdsForGroupedItem(moduleId).includes(intentId);
+      });
+    });
+    const artifacts = run.artifacts.filter(function (artifact) {
+      const metadataSourceModule = asNonEmptyString(asLabRecord(artifact.metadata)["sourceModule"]);
+      const candidateModuleIds = [artifact.moduleId, metadataSourceModule].filter(
+        (moduleId): moduleId is string => typeof moduleId === "string" && moduleId.trim() !== ""
+      );
+      if (candidateModuleIds.length === 0) {
+        return resolveIntentIdsForGroupedItem(null).includes(intentId);
+      }
+      return candidateModuleIds.some(function (moduleId) {
+        return resolveIntentIdsForGroupedItem(moduleId).includes(intentId);
+      });
+    });
+    const modules = run.moduleOrder
+      .filter(function (moduleId) {
+        const module = run.modules[moduleId];
+        const metadataModuleIds = asStringArray(asLabRecord(module?.metadata)["moduleIds"]);
+        const candidateModuleIds = [moduleId].concat(metadataModuleIds);
+        return candidateModuleIds.some(function (candidateModuleId) {
+          return resolveIntentIdsForGroupedItem(candidateModuleId).includes(intentId);
+        });
+      })
+      .map(function (moduleId) {
+        const module = run.modules[moduleId];
+        return {
+          id: moduleId,
+          title: module?.title || moduleId,
+          status: module?.status || "idle",
+        };
+      });
+
+    return {
+      intentId,
+      label: getIntentLabel(intentId),
+      findings,
+      artifacts,
+      modules,
+    };
+  });
 }
 
 /** V2.3: Build workspace context snapshot for report enrichment */

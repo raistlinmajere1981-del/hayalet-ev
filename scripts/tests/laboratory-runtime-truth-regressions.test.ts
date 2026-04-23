@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createLabHostBridge } from "../../rooms/laboratory/runtime/lab-host-bridge.ts";
+import {
+  getIntentDirtyMap,
+  getReportFreshness,
+  getRunSnapshotSummary,
+  getWorkspaceDiff,
+} from "../../rooms/laboratory/runtime/lab-selectors.ts";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import { extractFindings } from "../../rooms/laboratory/services/finding-engine.ts";
 import { parseProcessOutput } from "../../rooms/laboratory/services/process-output-parser.ts";
@@ -471,4 +477,114 @@ test("laboratory store hydration normalizes live runs into safe persisted summar
   assert.equal(state.run?.previewArtifacts[0]?.kind, "frame-preview");
   assert.equal(state.run?.comparisonVariants[0]?.kind, "gamma-scan");
   assert.equal(state.run?.hypothesisSummary, "Gorunmeyen obje olabilir");
+});
+
+test("laboratory selectors expose frozen snapshot summary and live workspace drift separately", () => {
+  const store = createLabStore();
+  const baseWorkspace = store.getState().ui.workspace;
+
+  store.dispatch({
+    type: "hydrate",
+    payload: {
+      currentStage: "report",
+      featureId: "media-analysis",
+      projectIndex: {
+        activeProjectId: "project-1",
+        projects: [],
+      },
+      workbench: {},
+      sourceProbeStatus: "completed",
+      workspace: {
+        ...baseWorkspace,
+        timelineStartMs: 2400,
+        timelineEndMs: 5600,
+        hypothesis: "live workspace clue",
+        selectedIntents: ["visual-inspection"],
+      },
+      reports: {
+        user: {
+          summary: "ready",
+          confidence: "medium",
+          topFindings: [],
+          suspiciousFrames: [],
+          hypothesisResult: "frozen clue",
+          elapsedSeconds: 5,
+          moduleSummary: [],
+        },
+        ai: null,
+        emptyReason: null,
+      },
+      activityFeed: [],
+      lastRun: {
+        id: "run-1",
+        state: "completed",
+        startedAt: Date.now() - 5000,
+        endedAt: Date.now() - 1000,
+        modules: {},
+        moduleOrder: [],
+        events: [],
+        rawLog: [],
+        artifacts: [],
+        findings: [],
+        liveFindings: [],
+        warnings: [],
+        error: null,
+        targetLabel: null,
+        progress: 100,
+        emptyReason: null,
+        analysisScope: {
+          focus: "visual",
+          timeRange: {
+            startMs: 1200,
+            endMs: 5400,
+          },
+          hypothesis: "frozen clue",
+          intentIds: ["visual-inspection", "anomaly-detection"],
+        },
+        previewArtifacts: [],
+        confidence: "medium",
+        moduleTrace: [],
+        comparisonVariants: [],
+        hypothesisSummary: "frozen clue",
+      },
+    },
+  });
+
+  const state = store.getState();
+  assert.deepEqual(getRunSnapshotSummary(state), {
+    focus: "visual",
+    timelineStartMs: 1200,
+    timelineEndMs: 5400,
+    hypothesis: "frozen clue",
+    intentIds: ["visual-inspection", "anomaly-detection"],
+  });
+  assert.deepEqual(getIntentDirtyMap(state), {
+    "visual-inspection": {
+      intentId: "visual-inspection",
+      inSnapshot: true,
+      inWorkspace: true,
+      dirty: true,
+      changedKeys: ["timeline", "hypothesis"],
+    },
+    "anomaly-detection": {
+      intentId: "anomaly-detection",
+      inSnapshot: true,
+      inWorkspace: false,
+      dirty: true,
+      changedKeys: ["selection", "timeline", "hypothesis"],
+    },
+  });
+  assert.deepEqual(getWorkspaceDiff(state), {
+    timelineChanged: true,
+    hypothesisChanged: true,
+    intentsChanged: true,
+    workspaceDirty: true,
+    changedKeys: ["timeline", "hypothesis", "intents"],
+  });
+  assert.deepEqual(getReportFreshness(state), {
+    state: "current",
+    workspaceDirty: true,
+  });
+  assert.deepEqual(state.run?.analysisScope?.intentIds, ["visual-inspection", "anomaly-detection"]);
+  assert.deepEqual(state.ui.workspace.selectedIntents, ["visual-inspection"]);
 });

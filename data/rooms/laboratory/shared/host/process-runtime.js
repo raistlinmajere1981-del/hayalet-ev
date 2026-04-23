@@ -35,6 +35,10 @@ export function createLaboratoryProcessRuntime(deps) {
     audioFeatureId,
     subtitleFeatureId
   } = deps;
+  function shouldPersistProcessWorkbench(workbenchSource) {
+    void workbenchSource;
+    return true;
+  }
   const managedProcessRunnersDeps = {
     asNonEmptyString: deps["asNonEmptyString"],
     buildProcessSpeechAvailability: deps["buildProcessSpeechAvailability"],
@@ -316,6 +320,8 @@ export function createLaboratoryProcessRuntime(deps) {
     if (project === null) {
       throw new Error("Active project is missing.");
     }
+    const workbench = resolveProcessWorkbench(project, featureId, workbenchSource);
+    const persistProcessWorkbench = shouldPersistProcessWorkbench(workbenchSource);
     if (featureId !== subtitleFeatureId) {
       ensureEditToolReady(runtime);
     }
@@ -340,7 +346,9 @@ export function createLaboratoryProcessRuntime(deps) {
       stage: "queued"
     });
     await patchActiveProject(runtime, function(nextProject) {
-      nextProject["workbench"] = resolveProcessWorkbench(nextProject, featureId, workbenchSource);
+      if (persistProcessWorkbench) {
+        nextProject["workbench"] = workbench;
+      }
       setFeatureProcessRecord(nextProject, featureId, {
         ...createEmptyProcessRun(featureId),
         featureId,
@@ -357,7 +365,10 @@ export function createLaboratoryProcessRuntime(deps) {
       const nextProcessRecord = await runManagedProcess(
         api,
         runtime,
-        clone(project),
+        {
+          ...clone(project),
+          workbench
+        },
         requestId,
         jobId,
         featureId,
@@ -372,11 +383,13 @@ export function createLaboratoryProcessRuntime(deps) {
         });
         if (Object.keys(queuedProcessInstance).length > 0) {
           pendingFollowUp.workbench = {
-            ...resolveProcessWorkbench(nextProject, featureId, workbenchSource),
+            ...workbench,
             analysisScope: toRecord(queuedProcessInstance["analysisScope"]),
             moduleToggles: toRecord(queuedProcessInstance["moduleToggles"])
           };
-          nextProject["workbench"] = pendingFollowUp.workbench;
+          if (persistProcessWorkbench) {
+            nextProject["workbench"] = pendingFollowUp.workbench;
+          }
         }
         setFeatureReportRecord(
           nextProject,
@@ -457,11 +470,14 @@ export function createLaboratoryProcessRuntime(deps) {
     }
     const workbench = resolveProcessWorkbench(project, featureId, workbenchSource);
     const runFeatureIds = resolveProcessRunFeatureIds(project, featureId, workbenchSource);
+    const persistProcessWorkbench = shouldPersistProcessWorkbench(workbenchSource);
     if (runFeatureIds.length === 0) {
       throw new Error("Select at least one analysis module before starting the process stage.");
     }
     await patchActiveProject(runtime, function(nextProject) {
-      nextProject["workbench"] = workbench;
+      if (persistProcessWorkbench) {
+        nextProject["workbench"] = workbench;
+      }
       runFeatureIds.slice(1).forEach(function(queuedFeatureId) {
         setFeatureProcessRecord(nextProject, queuedFeatureId, {
           ...createEmptyProcessRun(queuedFeatureId),
@@ -512,9 +528,12 @@ export function createLaboratoryProcessRuntime(deps) {
       throw new Error("Active project is missing.");
     }
     const workbench = resolveProcessWorkbench(project, featureId, workbenchSource);
+    const persistProcessWorkbench = shouldPersistProcessWorkbench(workbenchSource);
     await cancelProcessJobsForProject(api, runtime, project["id"], requestId);
     await patchActiveProject(runtime, function(nextProject) {
-      nextProject["workbench"] = workbench;
+      if (persistProcessWorkbench) {
+        nextProject["workbench"] = workbench;
+      }
       const records = toRecord(toRecord(nextProject["process"])["records"]);
       Object.keys(records).forEach(function(recordFeatureId) {
         const existingRecord = getFeatureProcessRecord(nextProject, recordFeatureId);

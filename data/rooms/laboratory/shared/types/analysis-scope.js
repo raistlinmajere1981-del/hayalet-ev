@@ -8,6 +8,17 @@ function asFiniteNumber(value) {
   const numericValue = Number(value);
   return Number.isFinite(numericValue) ? numericValue : null;
 }
+function asStringArray(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const nextValues = value.filter((entry) => typeof entry === "string").map(function(entry) {
+    return entry.trim();
+  }).filter(function(entry) {
+    return entry !== "";
+  });
+  return Array.from(new Set(nextValues));
+}
 function normalizeStartEndRange(rawValue, startKey, endKey) {
   const source = toRecord(rawValue);
   const startValue = asFiniteNumber(source[startKey]);
@@ -60,19 +71,21 @@ export function normalizeAnalysisScope(rawValue) {
   const reference = normalizeAnalysisReference(source);
   const focus = asNonEmptyString(source["focus"]);
   const hypothesis = asNonEmptyString(source["hypothesis"]);
+  const intentIds = asStringArray(source["intentIds"]);
   const lifecycleSource = toRecord(source["lifecycle"]);
-  const lifecycle = Object.keys(lifecycleSource).length > 0 || hypothesis !== null || focus !== null || reference !== null ? {
+  const lifecycle = Object.keys(lifecycleSource).length > 0 || hypothesis !== null || focus !== null || intentIds.length > 0 || reference !== null ? {
     mutable: lifecycleSource["mutable"] !== false,
     processId: asNonEmptyString(lifecycleSource["processId"]),
     frozenAt: asNonEmptyString(lifecycleSource["frozenAt"])
   } : null;
-  if (reference === null && hypothesis === null && focus === null && lifecycle === null) {
+  if (reference === null && hypothesis === null && focus === null && intentIds.length === 0 && lifecycle === null) {
     return null;
   }
   return {
     ...reference || {},
     ...focus && (focus === "visual" || focus === "audio" || focus === "subtitle" || focus === "cross-modal") ? { focus } : {},
     ...hypothesis ? { hypothesis } : {},
+    ...intentIds.length > 0 ? { intentIds } : {},
     ...lifecycle ? { lifecycle } : {}
   };
 }

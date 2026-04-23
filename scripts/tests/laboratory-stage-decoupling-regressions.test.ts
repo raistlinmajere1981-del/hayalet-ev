@@ -1,11 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import {
   deriveLegacyStage,
+  getActiveModule,
   getSourceActionBlockReason,
   getEditActionBlockReason,
   getAnalysisActionBlockReason,
+  getAvailableCapabilities,
+  getCurrentPreflight,
   getReportActionBlockReason,
   hasReportPayload,
   isRunActive,
@@ -60,6 +64,90 @@ test("deriveLegacyStage returns 'process' when a run is active", () => {
   assert.equal(deriveLegacyStage(state), "process");
   assert.equal(state.currentStage, "process");
   assert.equal(isRunActive(state), true);
+});
+
+test("getActiveModule returns the first running module and clears when none are running", () => {
+  const store = createLabStore();
+  store.dispatch({
+    type: "source-config-patched",
+    patch: { kind: "video", mode: "local", storedPath: "/tmp/test.mp4" },
+  });
+  store.dispatch({ type: "source-probe-completed", action: "source-pick-local" });
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-run",
+      kind: "activity",
+      severity: "info",
+      message: "Analiz basladi",
+      detail: null,
+      timestamp: Date.now(),
+      source: "host",
+      action: "process-run",
+      stage: "running",
+      scope: "run",
+      moduleId: null,
+      rawLine: null,
+    },
+  });
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-motion",
+      kind: "activity",
+      severity: "info",
+      message: "motion running",
+      detail: "motion running",
+      timestamp: Date.now() + 1,
+      source: "host",
+      action: "process-run",
+      stage: "running",
+      scope: "run",
+      moduleId: "motion",
+      rawLine: null,
+    },
+  });
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-audio",
+      kind: "activity",
+      severity: "info",
+      message: "audio queued",
+      detail: "audio queued",
+      timestamp: Date.now() + 2,
+      source: "host",
+      action: "process-run",
+      stage: "queued",
+      scope: "run",
+      moduleId: "audio",
+      rawLine: null,
+    },
+  });
+
+  let state = store.getState();
+  assert.equal(getActiveModule(state)?.id, "motion");
+
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-motion-done",
+      kind: "activity",
+      severity: "success",
+      message: "motion done",
+      detail: "motion done",
+      timestamp: Date.now() + 3,
+      source: "host",
+      action: "process-run",
+      stage: "completed",
+      scope: "run",
+      moduleId: "motion",
+      rawLine: null,
+    },
+  });
+
+  state = store.getState();
+  assert.equal(getActiveModule(state), null);
 });
 
 test("deriveLegacyStage returns 'report' when run is complete and reports exist", () => {
@@ -274,6 +362,110 @@ test("switching intents changes tool relevance without stage change", () => {
   assert.equal(relevance.requiredToolIds.includes("ffmpeg"), true);
   // Stage is still 'edit' — irrelevant to tool relevance
   assert.equal(state.currentStage, "edit");
+});
+
+test("workspace intent hydration replaces stale capability state in selectors", () => {
+  const store = createLabStore();
+  const baseWorkspace = store.getState().ui.workspace;
+
+  store.dispatch({
+    type: "hydrate",
+    payload: {
+      currentStage: "edit",
+      featureId: "media-analysis",
+      source: { kind: "video", mode: "local", storedPath: "/tmp/test.mp4" },
+      sourceProbeStatus: "completed",
+      selectedCapabilities: ["audio-signal"],
+      workspace: {
+        ...baseWorkspace,
+        selectedIntents: ["visual-inspection"],
+      },
+    },
+  });
+
+  const state = store.getState();
+  const selectedCapabilityIds = getAvailableCapabilities(state)
+    .filter(function (entry) {
+      return entry.selected;
+    })
+    .map(function (entry) {
+      return entry.id;
+    });
+
+  assert.deepEqual(state.selectedCapabilities, ["visual-structure", "visual-forensics"]);
+  assert.deepEqual(getCurrentPreflight(state).enabledModules, [
+    "visual-structure",
+    "visual-forensics",
+  ]);
+  assert.deepEqual(selectedCapabilityIds, ["visual-structure", "visual-forensics"]);
+});
+
+test("workspace intent hydration clears stale capabilities when no intents remain", () => {
+  const store = createLabStore();
+  const baseWorkspace = store.getState().ui.workspace;
+
+  store.dispatch({
+    type: "hydrate",
+    payload: {
+      currentStage: "edit",
+      featureId: "media-analysis",
+      source: { kind: "video", mode: "local", storedPath: "/tmp/test.mp4" },
+      sourceProbeStatus: "completed",
+      selectedCapabilities: ["audio-signal"],
+      workspace: {
+        ...baseWorkspace,
+        selectedIntents: [],
+      },
+    },
+  });
+
+  const state = store.getState();
+
+  assert.deepEqual(state.selectedCapabilities, []);
+  assert.equal(getAnalysisActionBlockReason(state), "En az bir analiz modülü seçilmelidir.");
+});
+
+test("live intents stay authoritative when manual capability state drifts", () => {
+  const store = createLabStore();
+  store.dispatch({
+    type: "source-config-patched",
+    patch: { kind: "video", mode: "local", storedPath: "/tmp/test.mp4" },
+  });
+  store.dispatch({ type: "source-probe-completed", action: "source-pick-local" });
+  store.dispatch({ type: "workspace-intent-set", intents: ["visual-inspection"] });
+  store.dispatch({ type: "capability-set", capabilities: ["audio-signal"] });
+
+  const state = store.getState();
+  const selectedCapabilityIds = getAvailableCapabilities(state)
+    .filter(function (entry) {
+      return entry.selected;
+    })
+    .map(function (entry) {
+      return entry.id;
+    });
+
+  assert.deepEqual(getCurrentPreflight(state).enabledModules, [
+    "visual-structure",
+    "visual-forensics",
+  ]);
+  assert.deepEqual(selectedCapabilityIds, ["visual-structure", "visual-forensics"]);
+});
+
+test("controller startDeepAnalysis prefers live workspace intents before stale capability state", () => {
+  const source = readFileSync("rooms/laboratory/runtime/lab-run-controller.ts", "utf8");
+
+  assert.match(
+    source,
+    /ws\.selectedIntents\.length > 0\s*\?\s*collectIntentCapabilities\(ws\.selectedIntents\)\s*:\s*state\.selectedCapabilities\.slice\(\)/
+  );
+  assert.match(
+    source,
+    /const \{ activeFeatureId \} = deriveFeatureSelectionFromCapabilities\(intentCapabilities\);/
+  );
+  assert.match(
+    source,
+    /sendMediaAction\(activeFeatureId === "audio-analysis" \? "audio-process-run" : "process-run"\);/
+  );
 });
 
 // ---------------------------------------------------------------------------

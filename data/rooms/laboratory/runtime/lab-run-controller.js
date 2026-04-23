@@ -352,6 +352,19 @@ export function createLabRunController(deps) {
             delete nextScope["hypothesis"];
           }
           break;
+        case "intentIds": {
+          const nextIntentIds = Array.isArray(value) ? value.filter((entry) => typeof entry === "string").map(function(entry) {
+            return entry.trim();
+          }).filter(function(entry) {
+            return entry !== "";
+          }) : [];
+          if (nextIntentIds.length > 0) {
+            nextScope["intentIds"] = Array.from(new Set(nextIntentIds));
+          } else {
+            delete nextScope["intentIds"];
+          }
+          break;
+        }
         case "timeStartMs":
         case "timeEndMs": {
           const nextValue = readNumeric(value);
@@ -405,7 +418,7 @@ export function createLabRunController(deps) {
         default:
           break;
       }
-      if (nextScope["focus"] === void 0 && nextScope["hypothesis"] === void 0 && nextScope["timeRange"] === void 0 && nextScope["frameRange"] === void 0 && nextScope["region"] === void 0) {
+      if (nextScope["focus"] === void 0 && nextScope["hypothesis"] === void 0 && nextScope["timeRange"] === void 0 && nextScope["frameRange"] === void 0 && nextScope["region"] === void 0 && nextScope["intentIds"] === void 0) {
         return {
           ...workbench,
           analysisScope: null
@@ -516,6 +529,39 @@ export function createLabRunController(deps) {
     }
     startProbe("source-pick-local", { fields });
   }
+  function collectIntentCapabilities(selectedIntents) {
+    const intentCapabilities = [];
+    WORKSPACE_INTENTS.forEach(function(intent) {
+      if (selectedIntents.includes(intent.id)) {
+        intent.internalCapabilities.forEach(function(capId) {
+          if (!intentCapabilities.includes(capId)) {
+            intentCapabilities.push(capId);
+          }
+        });
+      }
+    });
+    return intentCapabilities;
+  }
+  function startDeepAnalysis(state) {
+    const ws = state.ui.workspace;
+    const intentCapabilities = ws.selectedIntents.length > 0 ? collectIntentCapabilities(ws.selectedIntents) : state.selectedCapabilities.slice();
+    const { activeFeatureId } = deriveFeatureSelectionFromCapabilities(intentCapabilities);
+    syncCapabilities(intentCapabilities);
+    updateAnalysisScopeField("timeStartMs", ws.timelineStartMs);
+    updateAnalysisScopeField("timeEndMs", ws.timelineEndMs);
+    updateAnalysisScopeField("hypothesis", ws.hypothesis);
+    updateAnalysisScopeField("intentIds", ws.selectedIntents);
+    const sourceRecord = asLabRecord(state.source);
+    if (asNonEmptyString(sourceRecord["previewUrl"]) === null) {
+      sendMediaAction("edit-preview");
+    }
+    sendMediaAction("profile-run-preflight");
+    dispatch({
+      type: "workspace-process-view-toggled",
+      force: true
+    });
+    sendMediaAction(activeFeatureId === "audio-analysis" ? "audio-process-run" : "process-run");
+  }
   function runPrimaryAction() {
     const state = deps.store.getState();
     if (hasReportPayload(state) && (state.ui.workspace.reportOverlayOpen || isRunComplete(state))) {
@@ -531,7 +577,7 @@ export function createLabRunController(deps) {
       return;
     }
     if (getSourceReady(state) && getAnalysisActionBlockReason(state) === null) {
-      sendMediaAction(state.featureId === "audio-analysis" ? "audio-process-run" : "process-run");
+      startDeepAnalysis(state);
       return;
     }
     if (getSourceReady(state) && getEditActionBlockReason(state) === null) {
@@ -835,38 +881,15 @@ export function createLabRunController(deps) {
           );
           return;
         }
-        const ws = state.ui.workspace;
-        const intentCapabilities = [];
-        WORKSPACE_INTENTS.forEach(function(intent) {
-          if (ws.selectedIntents.includes(intent.id)) {
-            intent.internalCapabilities.forEach(function(capId) {
-              if (!intentCapabilities.includes(capId)) {
-                intentCapabilities.push(capId);
-              }
-            });
-          }
-        });
-        syncCapabilities(intentCapabilities);
-        if (ws.timelineStartMs !== null) {
-          updateAnalysisScopeField("timeStartMs", ws.timelineStartMs);
+        const blockReason = getAnalysisActionBlockReason(state);
+        if (blockReason !== null) {
+          dispatch({
+            type: "push-event",
+            event: buildUiEvent(blockReason, "warning")
+          });
+          return;
         }
-        if (ws.timelineEndMs !== null) {
-          updateAnalysisScopeField("timeEndMs", ws.timelineEndMs);
-        }
-        if (ws.hypothesis.trim() !== "") {
-          updateAnalysisScopeField("hypothesis", ws.hypothesis);
-        }
-        sendMediaAction("edit-preview");
-        sendMediaAction("profile-run-preflight");
-        dispatch({
-          type: "workspace-process-view-toggled",
-          force: true
-        });
-        setTimeout(function() {
-          sendMediaAction(
-            deps.store.getState().featureId === "audio-analysis" ? "audio-process-run" : "process-run"
-          );
-        }, 200);
+        startDeepAnalysis(state);
         return;
       }
       case "project-select": {
