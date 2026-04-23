@@ -11,11 +11,18 @@ import {
   getAssetsByRun,
   getAssetsBySource,
   getAssetsByType,
+  getCurrentSourceAsset,
+  getDualPreviewVolume,
   getExpectedOutputs,
   getIntentDirtyMap,
+  getLinkedAudioAssets,
+  getParentSourceForAsset,
   getReportFreshness,
   getRunSnapshotSummary,
+  getSelectedDualPreviewAudioAsset,
   getWorkspaceDiff,
+  isDualPreviewActive,
+  isDualPreviewAvailable,
   isExpectedOutputMatched,
 } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
@@ -82,6 +89,174 @@ class FakeControllerDocument {
         : (event: Event) => listener.handleEvent(event)
     );
   }
+}
+
+class FakeMediaElement {
+  currentTime = 0;
+  duration = 0;
+  readyState = 1;
+  muted = false;
+  paused = true;
+  volume = 1;
+  playCalls = 0;
+  pauseCalls = 0;
+  failPlay = false;
+  private listeners = new Map<string, Set<(event: Event) => void>>();
+
+  addEventListener(type: string, listener: EventListenerOrEventListenerObject): void {
+    const handler =
+      typeof listener === "function"
+        ? (listener as (event: Event) => void)
+        : (event: Event) => listener.handleEvent(event);
+    const existing = this.listeners.get(type) || new Set<(event: Event) => void>();
+    existing.add(handler);
+    this.listeners.set(type, existing);
+  }
+
+  removeEventListener(type: string, listener: EventListenerOrEventListenerObject): void {
+    const existing = this.listeners.get(type);
+    if (!existing) {
+      return;
+    }
+    const handler =
+      typeof listener === "function"
+        ? (listener as (event: Event) => void)
+        : (event: Event) => listener.handleEvent(event);
+    existing.delete(handler);
+  }
+
+  play() {
+    this.paused = false;
+    this.playCalls += 1;
+    if (this.failPlay) {
+      this.paused = true;
+      return Promise.reject(new Error("Autoplay blocked"));
+    }
+    this.dispatch("play");
+    return Promise.resolve();
+  }
+
+  pause() {
+    this.paused = true;
+    this.pauseCalls += 1;
+    this.dispatch("pause");
+  }
+
+  dispatch(type: string) {
+    const handlers = Array.from(this.listeners.get(type) || []);
+    handlers.forEach(function (handler) {
+      handler({ type } as Event);
+    });
+  }
+}
+
+class FakeRangeElement {
+  constructor(
+    public value: string,
+    public max = "0"
+  ) {}
+}
+
+class FakeTextElement {
+  constructor(public textContent: string | null = null) {}
+}
+
+class FakeDualPreviewDocument extends FakeControllerDocument {
+  constructor(
+    private readonly queryMap: Map<string, unknown>,
+    private readonly mediaElements: unknown[] = []
+  ) {
+    super();
+  }
+
+  querySelector(selector: string) {
+    return this.queryMap.get(selector) || null;
+  }
+
+  querySelectorAll(selector: string) {
+    if (selector === ".labx-preview-media") {
+      return this.mediaElements as HTMLMediaElement[];
+    }
+    return [] as HTMLMediaElement[];
+  }
+}
+
+function createDualPreviewSnapshot(startOffsetMs = 0) {
+  return {
+    ready: true,
+    featureId: "media-analysis",
+    activeProjectId: "project-dual-preview",
+    projects: [{ id: "project-dual-preview", name: "lab-demo.mp4", hasSource: true }],
+    activeProject: {
+      id: "project-dual-preview",
+      name: "lab-demo.mp4",
+      createdAt: "2026-04-23T19:00:00.000Z",
+      source: {
+        status: "ready",
+        kind: "video",
+        mode: "local",
+        previewUrl: "file:///tmp/lab-demo.mp4",
+        storedFileName: "lab-demo.mp4",
+        storedPath: "/tmp/lab-demo.mp4",
+        routeLabel: "Local Copy",
+        metadata: {
+          durationSeconds: 6,
+          sizeBytes: 2048,
+        },
+        drafts: {},
+      },
+      edit: {},
+      profile: {
+        preflight: {},
+      },
+      process: {
+        records: {},
+      },
+      report: {
+        records: {},
+      },
+      assets: [
+        {
+          id: "source-active",
+          type: "source",
+          name: "lab-demo.mp4",
+          localPath: "/tmp/lab-demo.mp4",
+          createdAt: 100,
+          sourceId: "source-active",
+          metadata: {
+            storedFileName: "lab-demo.mp4",
+          },
+        },
+        {
+          id: "asset-audio-linked",
+          type: "audio",
+          name: "audio.wav",
+          localPath: "/tmp/audio.wav",
+          createdAt: 200,
+          sourceId: "source-active",
+          derivedFromAssetId: "source-active",
+          derivedFromSourceId: "source-active",
+          metadata: {
+            durationMs: 6000,
+            startOffsetMs,
+          },
+        },
+      ],
+    },
+    workbench: {
+      activeModuleId: "media-analysis",
+      availableModuleIds: ["media-analysis"],
+      selectedModuleIds: ["media-analysis"],
+    },
+    sourceProbeStatus: "completed",
+    profileModels: [],
+    reports: {
+      user: null,
+      ai: null,
+      emptyReason: "Rapor henüz üretilmedi.",
+    },
+    activityFeed: [],
+  };
 }
 
 test("laboratory process output parser translates known ffmpeg and download lines", () => {
@@ -471,6 +646,217 @@ test("laboratory action output selector resolves linked assets and ignores stale
   assert.deepEqual(getActionOutputs(store.getState(), "user-action-missing"), []);
 });
 
+test("laboratory lineage selectors resolve current source, linked audio, and parent assets", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "snapshot-received",
+    payload: {
+      ready: true,
+      featureId: "media-analysis",
+      activeProjectId: "project-lineage",
+      projects: [],
+      activeProject: {
+        id: "project-lineage",
+        source: {
+          status: "ready",
+          kind: "video",
+          mode: "local",
+          storedPath: "/tmp/source-active.mp4",
+          storedFileName: "source-active.mp4",
+          drafts: {},
+        },
+        edit: {},
+        profile: {},
+        process: {
+          records: {},
+        },
+        report: {
+          records: {},
+        },
+        assets: [
+          {
+            id: "source-old",
+            type: "source",
+            name: "source-old.mp4",
+            localPath: "/tmp/source-old.mp4",
+            createdAt: 100,
+            sourceId: "source-old",
+          },
+          {
+            id: "source-active",
+            type: "source",
+            name: "source-active.mp4",
+            localPath: "/tmp/source-active.mp4",
+            createdAt: 200,
+            sourceId: "source-active",
+            metadata: {
+              storedFileName: "source-active.mp4",
+            },
+          },
+          {
+            id: "asset-audio-linked",
+            type: "audio",
+            name: "audio.wav",
+            localPath: "/tmp/audio.wav",
+            createdAt: 300,
+            sourceId: "source-active",
+            derivedFromAssetId: "source-active",
+            derivedFromSourceId: "source-active",
+            metadata: {
+              durationMs: 1400,
+              startOffsetMs: 0,
+            },
+          },
+          {
+            id: "asset-audio-stale",
+            type: "audio",
+            name: "stale.wav",
+            localPath: "/tmp/stale.wav",
+            createdAt: 400,
+            sourceId: "source-active",
+            derivedFromAssetId: "asset-missing",
+            derivedFromSourceId: "source-missing",
+          },
+        ],
+      },
+    },
+  });
+
+  const state = store.getState();
+  assert.equal(getCurrentSourceAsset(state)?.id, "source-active");
+  assert.deepEqual(
+    getLinkedAudioAssets(state, "source-active").map((asset) => asset.id),
+    ["asset-audio-linked"]
+  );
+  assert.equal(getParentSourceForAsset(state, "asset-audio-linked")?.id, "source-active");
+  assert.equal(getParentSourceForAsset(state, "asset-audio-stale"), null);
+  assert.equal(isDualPreviewAvailable(state), true);
+  assert.equal(isDualPreviewActive(state), false);
+  assert.equal(getSelectedDualPreviewAudioAsset(state)?.id, "asset-audio-linked");
+  assert.equal(getDualPreviewVolume(state), 1);
+
+  store.dispatch({
+    type: "asset-updated",
+    id: "asset-audio-linked",
+    patch: {
+      name: "audio-linked.wav",
+    },
+  });
+  assert.equal(
+    getAssetById(store.getState(), "asset-audio-linked")?.derivedFromAssetId,
+    "source-active"
+  );
+  assert.equal(
+    getAssetById(store.getState(), "asset-audio-linked")?.derivedFromSourceId,
+    "source-active"
+  );
+});
+
+test("laboratory workspace dual preview state heals across source churn and stale selections", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "snapshot-received",
+    payload: createDualPreviewSnapshot(),
+  });
+  store.dispatch({
+    type: "workspace-dual-preview-toggled",
+    force: true,
+    audioAssetId: "asset-missing",
+  });
+
+  assert.equal(isDualPreviewActive(store.getState()), true);
+  assert.equal(getSelectedDualPreviewAudioAsset(store.getState())?.id, "asset-audio-linked");
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "image",
+      status: "idle",
+      storedPath: null,
+      previewUrl: null,
+    },
+  });
+
+  assert.equal(isDualPreviewAvailable(store.getState()), false);
+  assert.equal(isDualPreviewActive(store.getState()), false);
+  assert.equal(getSelectedDualPreviewAudioAsset(store.getState()), null);
+});
+
+test("laboratory hydrate restores dual preview workspace fields with valid linked audio fallback", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "hydrate",
+    payload: {
+      currentStage: "source",
+      featureId: "media-analysis",
+      projectIndex: {
+        activeProjectId: "project-dual-preview",
+        projects: [{ id: "project-dual-preview", name: "lab-demo.mp4", hasSource: true }],
+      },
+      workbench: {
+        activeModuleId: "media-analysis",
+        availableModuleIds: ["media-analysis"],
+        selectedModuleIds: ["media-analysis"],
+      },
+      source: {
+        status: "ready",
+        kind: "video",
+        mode: "local",
+        previewUrl: "file:///tmp/lab-demo.mp4",
+        storedFileName: "lab-demo.mp4",
+        storedPath: "/tmp/lab-demo.mp4",
+        routeLabel: "Local Copy",
+      },
+      sourceProbeStatus: "completed",
+      assets: [
+        {
+          id: "source-active",
+          type: "source",
+          name: "lab-demo.mp4",
+          localPath: "/tmp/lab-demo.mp4",
+          createdAt: 100,
+          sourceId: "source-active",
+          metadata: {
+            storedFileName: "lab-demo.mp4",
+          },
+        },
+        {
+          id: "asset-audio-linked",
+          type: "audio",
+          name: "audio.wav",
+          localPath: "/tmp/audio.wav",
+          createdAt: 200,
+          sourceId: "source-active",
+          derivedFromAssetId: "source-active",
+          derivedFromSourceId: "source-active",
+          metadata: {
+            durationMs: 6000,
+            startOffsetMs: 0,
+          },
+        },
+      ],
+      reports: {
+        user: null,
+        ai: null,
+        emptyReason: "Rapor henüz üretilmedi.",
+      },
+      activityFeed: [],
+      workspace: {
+        dualPreviewEnabled: true,
+        dualPreviewAudioAssetId: "asset-missing",
+        dualPreviewVolume: 0.35,
+      },
+    },
+  });
+
+  assert.equal(isDualPreviewActive(store.getState()), true);
+  assert.equal(getSelectedDualPreviewAudioAsset(store.getState())?.id, "asset-audio-linked");
+  assert.equal(getDualPreviewVolume(store.getState()), 0.35);
+});
+
 test("laboratory intent output selectors map expected outputs and filter actual assets", () => {
   const store = createLabStore();
 
@@ -762,12 +1148,7 @@ test("laboratory run controller threads frozen run intent ids into tracked expor
       mediaActions.map(function (entry) {
         return (entry.payload["action"] as string) || null;
       }),
-      [
-        "export-roi-image",
-        "export-timeline-clip",
-        "export-frame-grab",
-        "export-audio-track",
-      ]
+      ["export-roi-image", "export-timeline-clip", "export-frame-grab", "export-audio-track"]
     );
     mediaActions.forEach(function (entry) {
       const payload = entry.payload["payload"] as Record<string, unknown>;
@@ -838,6 +1219,461 @@ test("laboratory run controller previews action-linked output assets through ass
     clickListener?.({ target: new TestElement("asset-preview", "asset-frame-result") } as Event);
 
     assert.deepEqual(openedUrls, ["/tmp/frame_01.png"]);
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
+test("laboratory run controller focuses the source preview through explicit source-preview actions", () => {
+  const originalElement = globalThis.Element;
+  const previewCalls: string[] = [];
+  const previewElement = {
+    scrollIntoView() {
+      previewCalls.push("scroll");
+    },
+    focus() {
+      previewCalls.push("focus");
+    },
+  };
+  const documentRef = {
+    listeners: new Map<string, (event: Event) => void>(),
+    addEventListener(type: string, listener: EventListenerOrEventListenerObject) {
+      this.listeners.set(
+        type,
+        typeof listener === "function"
+          ? (listener as (event: Event) => void)
+          : (event: Event) => listener.handleEvent(event)
+      );
+    },
+    querySelector(selector: string) {
+      return selector === "#lab-workspace-preview" ? previewElement : null;
+    },
+  };
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  class TestElement extends FakeActionElement {}
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent() {},
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
+
+    clickListener?.({ target: new TestElement("focus-source-preview", "source-active") } as Event);
+
+    assert.deepEqual(previewCalls, ["scroll", "focus"]);
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
+test("laboratory run controller keeps dual preview media in sync and timeline seeks honor audio offset", async () => {
+  const originalElement = globalThis.Element;
+  const master = new FakeMediaElement();
+  const slave = new FakeMediaElement();
+  const progress = new FakeRangeElement("0", "6000");
+  const volume = new FakeRangeElement("1", "1");
+  const playLabel = new FakeTextElement("▶");
+  const timeLabel = new FakeTextElement("00:00 / 00:06");
+  const documentRef = new FakeDualPreviewDocument(
+    new Map<string, unknown>([
+      ['[data-lab-role="dual-preview-master"]', master],
+      ['[data-lab-role="dual-preview-slave"]', slave],
+      ['[data-lab-role="dual-preview-progress"]', progress],
+      ['[data-lab-role="dual-preview-volume"]', volume],
+      ['[data-lab-role="dual-preview-play-label"]', playLabel],
+      ['[data-lab-role="dual-preview-time"]', timeLabel],
+    ]),
+    [master, slave]
+  );
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  class TestElement extends FakeActionElement {}
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+
+  try {
+    master.duration = 6;
+    slave.duration = 8;
+
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent() {},
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    store.dispatch({
+      type: "snapshot-received",
+      payload: createDualPreviewSnapshot(250),
+    });
+    store.dispatch({
+      type: "workspace-dual-preview-toggled",
+      force: true,
+      audioAssetId: "asset-audio-linked",
+    });
+
+    await Promise.resolve();
+
+    assert.equal(master.muted, true);
+    assert.equal(slave.volume, 1);
+    assert.equal(slave.currentTime, 0.25);
+
+    master.currentTime = 1;
+    await master.play();
+    assert.equal(slave.playCalls > 0, true);
+    assert.equal(slave.currentTime, 1.25);
+
+    store.dispatch({
+      type: "workspace-dual-preview-volume-updated",
+      volume: 0.4,
+    });
+    assert.equal(slave.volume, 0.4);
+
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
+    clickListener?.({ target: new TestElement("timeline-seek", "2000") } as Event);
+
+    assert.equal(master.currentTime, 2);
+    assert.equal(slave.currentTime, 2.25);
+    assert.equal(progress.value, "2000");
+    assert.match(timeLabel.textContent || "", /00:02 \/ 00:06/);
+
+    master.pause();
+    assert.equal(slave.pauseCalls > 0, true);
+    assert.equal(playLabel.textContent, "▶");
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
+test("laboratory run controller fences legacy timeline seek fallback while dual preview is active", () => {
+  const originalElement = globalThis.Element;
+  const standaloneMedia = new FakeMediaElement();
+  const documentRef = new FakeDualPreviewDocument(new Map<string, unknown>(), [standaloneMedia]);
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  class TestElement extends FakeActionElement {}
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent() {},
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    store.dispatch({
+      type: "snapshot-received",
+      payload: createDualPreviewSnapshot(),
+    });
+    store.dispatch({
+      type: "workspace-dual-preview-toggled",
+      force: true,
+      audioAssetId: "asset-audio-linked",
+    });
+
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
+
+    clickListener?.({ target: new TestElement("timeline-seek", "2000") } as Event);
+
+    assert.equal(standaloneMedia.currentTime, 0);
+    assert.equal(
+      store.getState().activityFeed.some((entry) =>
+        entry.message.includes("Dual preview seek is unavailable")
+      ),
+      true
+    );
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
+test("laboratory run controller waits for slave metadata before applying dual preview seeks", async () => {
+  const originalElement = globalThis.Element;
+  const master = new FakeMediaElement();
+  const slave = new FakeMediaElement();
+  slave.readyState = 0;
+  const documentRef = new FakeDualPreviewDocument(
+    new Map<string, unknown>([
+      ['[data-lab-role="dual-preview-master"]', master],
+      ['[data-lab-role="dual-preview-slave"]', slave],
+    ]),
+    [master, slave]
+  );
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  class TestElement extends FakeActionElement {}
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+
+  try {
+    master.duration = 6;
+    slave.duration = 8;
+
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent() {},
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    store.dispatch({
+      type: "snapshot-received",
+      payload: createDualPreviewSnapshot(500),
+    });
+    store.dispatch({
+      type: "workspace-dual-preview-toggled",
+      force: true,
+      audioAssetId: "asset-audio-linked",
+    });
+
+    master.currentTime = 2;
+    master.dispatch("seeked");
+    assert.equal(slave.currentTime, 0);
+
+    slave.readyState = 1;
+    slave.dispatch("loadedmetadata");
+    await Promise.resolve();
+
+    assert.equal(slave.currentTime, 2.5);
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
+test("laboratory run controller pauses the master if the dual preview slave ends early", () => {
+  const originalElement = globalThis.Element;
+  const master = new FakeMediaElement();
+  const slave = new FakeMediaElement();
+  const documentRef = new FakeDualPreviewDocument(
+    new Map<string, unknown>([
+      ['[data-lab-role="dual-preview-master"]', master],
+      ['[data-lab-role="dual-preview-slave"]', slave],
+    ]),
+    [master, slave]
+  );
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: FakeActionElement,
+  });
+
+  try {
+    master.duration = 6;
+    slave.duration = 3;
+
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent() {},
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    store.dispatch({
+      type: "snapshot-received",
+      payload: createDualPreviewSnapshot(),
+    });
+    store.dispatch({
+      type: "workspace-dual-preview-toggled",
+      force: true,
+      audioAssetId: "asset-audio-linked",
+    });
+
+    master.paused = false;
+    slave.dispatch("ended");
+
+    assert.equal(master.pauseCalls > 0, true);
+    assert.equal(master.paused, true);
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
+test("laboratory run controller does not spam slave autoplay retries after a blocked attempt", async () => {
+  const originalElement = globalThis.Element;
+  const master = new FakeMediaElement();
+  const slave = new FakeMediaElement();
+  slave.failPlay = true;
+  const documentRef = new FakeDualPreviewDocument(
+    new Map<string, unknown>([
+      ['[data-lab-role="dual-preview-master"]', master],
+      ['[data-lab-role="dual-preview-slave"]', slave],
+    ]),
+    [master, slave]
+  );
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: FakeActionElement,
+  });
+
+  try {
+    master.duration = 6;
+    slave.duration = 6;
+
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent() {},
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    store.dispatch({
+      type: "snapshot-received",
+      payload: createDualPreviewSnapshot(),
+    });
+    store.dispatch({
+      type: "workspace-dual-preview-toggled",
+      force: true,
+      audioAssetId: "asset-audio-linked",
+    });
+
+    await master.play();
+    await Promise.resolve();
+    const firstPlayCalls = slave.playCalls;
+
+    master.dispatch("timeupdate");
+    await Promise.resolve();
+    assert.equal(slave.playCalls, firstPlayCalls);
+
+    slave.failPlay = false;
+    master.pause();
+    await master.play();
+    await Promise.resolve();
+    assert.equal(slave.playCalls > firstPlayCalls, true);
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;

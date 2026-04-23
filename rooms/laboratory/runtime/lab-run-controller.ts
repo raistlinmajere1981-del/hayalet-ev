@@ -18,8 +18,10 @@ import {
   getActiveEditOutput,
   getAnalysisActionBlockReason,
   getCurrentRun,
+  getDualPreviewVolume,
   getEditActionBlockReason,
   getReportActionBlockReason,
+  getSelectedDualPreviewAudioAsset,
   getSourceActionBlockReason,
   getSourceReady,
   getSourceMode,
@@ -28,6 +30,7 @@ import {
   getUserActions,
   getWorkbench,
   hasReportPayload,
+  isDualPreviewActive,
   isRunActive,
   isRunComplete,
 } from "./lab-selectors.js";
@@ -151,9 +154,70 @@ function deriveFeatureSelectionFromCapabilities(capabilityIds: string[]) {
 export function createLabRunController(deps: LabRunControllerDeps) {
   let attached = false;
   const hubDismissTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  type MediaLikeElement = {
+    currentTime: number;
+    duration?: number;
+    readyState?: number;
+    muted?: boolean;
+    paused?: boolean;
+    play?: () => Promise<void> | void;
+    pause?: () => void;
+    volume?: number;
+    addEventListener?: (type: string, listener: EventListenerOrEventListenerObject) => void;
+    removeEventListener?: (type: string, listener: EventListenerOrEventListenerObject) => void;
+  };
+
+  type RangeLikeElement = {
+    value: string;
+    max?: string;
+  };
+
+  type TextLikeElement = {
+    textContent: string | null;
+  };
+
+  let boundDualPreviewMaster: MediaLikeElement | null = null;
+  let boundDualPreviewSlave: MediaLikeElement | null = null;
+  let dualPreviewStateSnapshot = {
+    enabled: false,
+    audioAssetId: null as string | null,
+    sourceKey: null as string | null,
+    volume: 1,
+  };
+  let dualPreviewSlaveAutoplayBlocked = false;
+  let dualPreviewPendingSlaveSeekSeconds: number | null = null;
 
   function dispatch(event: Parameters<ReturnType<typeof createLabStore>["dispatch"]>[0]) {
     deps.eventBus.emit(event);
+  }
+
+  function formatClockTime(totalSeconds: number) {
+    const safeSeconds =
+      Number.isFinite(totalSeconds) && totalSeconds > 0 ? Math.floor(totalSeconds) : 0;
+    const hours = Math.floor(safeSeconds / 3600);
+    const minutes = Math.floor((safeSeconds % 3600) / 60);
+    const seconds = safeSeconds % 60;
+    if (hours > 0) {
+      return `${String(hours)}:${pad2(minutes)}:${pad2(seconds)}`;
+    }
+    return `${pad2(minutes)}:${pad2(seconds)}`;
+  }
+
+  function isMediaLikeElement(value: unknown): value is MediaLikeElement {
+    if (!value || typeof value !== "object") {
+      return false;
+    }
+    return typeof (value as MediaLikeElement).currentTime === "number";
+  }
+
+  function isMediaMetadataReady(media: MediaLikeElement | null) {
+    if (media === null) {
+      return false;
+    }
+    if (typeof media.readyState === "number") {
+      return media.readyState >= 1;
+    }
+    return typeof media.duration === "number" && Number.isFinite(media.duration);
   }
 
   function getRoomApi() {
@@ -911,6 +975,375 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     link.remove();
   }
 
+  function focusSourcePreview() {
+    const preview = deps.documentRef.querySelector?.("#lab-workspace-preview") as {
+      focus?: () => void;
+      scrollIntoView?: (options?: ScrollIntoViewOptions) => void;
+    } | null;
+    if (!preview || typeof preview.scrollIntoView !== "function") {
+      dispatch({
+        type: "push-event",
+        event: buildUiEvent("Source preview is unavailable.", "warning"),
+      });
+      return;
+    }
+    preview.scrollIntoView({
+      block: "center",
+      behavior: "smooth",
+    });
+    if (typeof preview.focus === "function") {
+      preview.focus();
+    }
+  }
+
+  function getDualPreviewMaster() {
+    const candidate = deps.documentRef.querySelector?.(
+      '[data-lab-role="dual-preview-master"]'
+    ) as unknown;
+    return isMediaLikeElement(candidate) ? candidate : null;
+  }
+
+  function getDualPreviewSlave() {
+    const candidate = deps.documentRef.querySelector?.(
+      '[data-lab-role="dual-preview-slave"]'
+    ) as unknown;
+    return isMediaLikeElement(candidate) ? candidate : null;
+  }
+
+  function getDualPreviewProgressInput() {
+    return deps.documentRef.querySelector?.(
+      '[data-lab-role="dual-preview-progress"]'
+    ) as RangeLikeElement | null;
+  }
+
+  function getDualPreviewVolumeInput() {
+    return deps.documentRef.querySelector?.(
+      '[data-lab-role="dual-preview-volume"]'
+    ) as RangeLikeElement | null;
+  }
+
+  function getDualPreviewPlayLabel() {
+    return deps.documentRef.querySelector?.(
+      '[data-lab-role="dual-preview-play-label"]'
+    ) as TextLikeElement | null;
+  }
+
+  function getDualPreviewTimeLabel() {
+    return deps.documentRef.querySelector?.(
+      '[data-lab-role="dual-preview-time"]'
+    ) as TextLikeElement | null;
+  }
+
+  function getDualPreviewSourceKey() {
+    const state = deps.store.getState();
+    const sourceRecord = asLabRecord(state.source);
+    return (
+      asNonEmptyString(sourceRecord["storedPath"]) ||
+      asNonEmptyString(sourceRecord["previewUrl"]) ||
+      asNonEmptyString(sourceRecord["storedFileName"])
+    );
+  }
+
+  function getDualPreviewOffsetSeconds() {
+    const selectedAudio = getSelectedDualPreviewAudioAsset(deps.store.getState());
+    if (selectedAudio === null) {
+      return 0;
+    }
+    const metadata = asLabRecord(selectedAudio.metadata);
+    return typeof metadata["startOffsetMs"] === "number" ? metadata["startOffsetMs"] / 1000 : 0;
+  }
+
+  function getDualPreviewDurationSeconds(master: MediaLikeElement | null) {
+    if (master && typeof master.duration === "number" && Number.isFinite(master.duration)) {
+      return Math.max(0, master.duration);
+    }
+    const metadata = asLabRecord(asLabRecord(deps.store.getState().source)["metadata"]);
+    return typeof metadata["durationSeconds"] === "number" ? Math.max(0, metadata["durationSeconds"]) : 0;
+  }
+
+  function clampMediaTime(media: MediaLikeElement | null, seconds: number) {
+    const safeSeconds = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+    if (media && typeof media.duration === "number" && Number.isFinite(media.duration)) {
+      return Math.max(0, Math.min(media.duration, safeSeconds));
+    }
+    return safeSeconds;
+  }
+
+  function safePlay(media: MediaLikeElement | null) {
+    try {
+      const result = media?.play?.();
+      if (result && typeof (result as PromiseLike<void>).then === "function") {
+        void (result as PromiseLike<void>).then(
+          function () {},
+          function () {}
+        );
+      }
+    } catch {
+      // NOTE: Media playback retries are best-effort only.
+    }
+  }
+
+  function attemptDualPreviewSlavePlayback(slave: MediaLikeElement, explicitAttempt: boolean) {
+    if (slave.paused === false) {
+      dualPreviewSlaveAutoplayBlocked = false;
+      return;
+    }
+    if (explicitAttempt !== true && dualPreviewSlaveAutoplayBlocked) {
+      return;
+    }
+
+    try {
+      const result = slave.play?.();
+      if (result && typeof (result as PromiseLike<void>).then === "function") {
+        void (result as PromiseLike<void>).then(
+          function () {
+            dualPreviewSlaveAutoplayBlocked = false;
+          },
+          function () {
+            dualPreviewSlaveAutoplayBlocked = true;
+          }
+        );
+      } else {
+        dualPreviewSlaveAutoplayBlocked = false;
+      }
+    } catch {
+      dualPreviewSlaveAutoplayBlocked = true;
+    }
+  }
+
+  function flushPendingDualPreviewSlaveSeek() {
+    const slave = getDualPreviewSlave();
+    if (
+      slave === null ||
+      dualPreviewPendingSlaveSeekSeconds === null ||
+      isMediaMetadataReady(slave) !== true
+    ) {
+      return;
+    }
+    slave.currentTime = clampMediaTime(slave, dualPreviewPendingSlaveSeekSeconds);
+    dualPreviewPendingSlaveSeekSeconds = null;
+  }
+
+  function updateDualPreviewTransportUi() {
+    const state = deps.store.getState();
+    const master = getDualPreviewMaster();
+    const playLabel = getDualPreviewPlayLabel();
+    const progressInput = getDualPreviewProgressInput();
+    const volumeInput = getDualPreviewVolumeInput();
+    const timeLabel = getDualPreviewTimeLabel();
+    const durationSeconds = getDualPreviewDurationSeconds(master);
+    const currentSeconds =
+      master && typeof master.currentTime === "number" && Number.isFinite(master.currentTime)
+        ? Math.max(0, master.currentTime)
+        : 0;
+
+    if (playLabel) {
+      playLabel.textContent = master && master.paused === false ? "❚❚" : "▶";
+    }
+    if (progressInput) {
+      progressInput.max = String(Math.max(0, Math.round(durationSeconds * 1000)));
+      progressInput.value = String(Math.max(0, Math.round(currentSeconds * 1000)));
+    }
+    if (volumeInput) {
+      volumeInput.value = String(getDualPreviewVolume(state));
+    }
+    if (timeLabel) {
+      timeLabel.textContent = `${formatClockTime(currentSeconds)} / ${formatClockTime(
+        durationSeconds
+      )}`;
+    }
+  }
+
+  function syncDualPreviewVolume() {
+    const state = deps.store.getState();
+    const master = getDualPreviewMaster();
+    const slave = getDualPreviewSlave();
+    const volume = getDualPreviewVolume(state);
+
+    if (master) {
+      master.muted = true;
+      if (typeof master.volume === "number") {
+        master.volume = 0;
+      }
+    }
+    if (slave && typeof slave.volume === "number") {
+      slave.volume = volume;
+    }
+  }
+
+  function syncSlaveToMaster(
+    options: { force?: boolean; play?: boolean; explicitPlaybackAttempt?: boolean } = {}
+  ) {
+    const state = deps.store.getState();
+    if (isDualPreviewActive(state) !== true) {
+      return;
+    }
+
+    const master = getDualPreviewMaster();
+    const slave = getDualPreviewSlave();
+    if (master === null || slave === null) {
+      return;
+    }
+
+    const offsetSeconds = getDualPreviewOffsetSeconds();
+    const targetSeconds = clampMediaTime(slave, master.currentTime + offsetSeconds);
+    if (isMediaMetadataReady(slave) !== true) {
+      dualPreviewPendingSlaveSeekSeconds = targetSeconds;
+      syncDualPreviewVolume();
+      updateDualPreviewTransportUi();
+      return;
+    }
+
+    const driftSeconds = Math.abs(slave.currentTime - targetSeconds);
+    if (options.force === true || driftSeconds > 0.2) {
+      slave.currentTime = targetSeconds;
+    }
+    dualPreviewPendingSlaveSeekSeconds = null;
+
+    syncDualPreviewVolume();
+    if (options.play === true || (master.paused === false && slave.paused === true)) {
+      attemptDualPreviewSlavePlayback(slave, options.explicitPlaybackAttempt === true);
+    } else {
+      slave.pause?.();
+    }
+    updateDualPreviewTransportUi();
+  }
+
+  function seekDualPreviewToMs(timeMs: number) {
+    const state = deps.store.getState();
+    if (isDualPreviewActive(state) !== true) {
+      return false;
+    }
+
+    const master = getDualPreviewMaster();
+    if (master === null) {
+      return false;
+    }
+
+    master.currentTime = clampMediaTime(master, timeMs / 1000);
+    syncSlaveToMaster({ force: true });
+    updateDualPreviewTransportUi();
+    return true;
+  }
+
+  function handleDualPreviewMasterPlay() {
+    syncSlaveToMaster({ force: true, play: true, explicitPlaybackAttempt: true });
+  }
+
+  function handleDualPreviewMasterPause() {
+    getDualPreviewSlave()?.pause?.();
+    updateDualPreviewTransportUi();
+  }
+
+  function handleDualPreviewMasterTimeUpdate() {
+    syncSlaveToMaster();
+  }
+
+  function handleDualPreviewMasterSeeked() {
+    syncSlaveToMaster({ force: true });
+  }
+
+  function handleDualPreviewMasterLoadedMetadata() {
+    updateDualPreviewTransportUi();
+    syncSlaveToMaster({ force: true });
+  }
+
+  function handleDualPreviewMasterEnded() {
+    const slave = getDualPreviewSlave();
+    slave?.pause?.();
+    dualPreviewSlaveAutoplayBlocked = false;
+    dualPreviewPendingSlaveSeekSeconds = null;
+    updateDualPreviewTransportUi();
+  }
+
+  function handleDualPreviewSlaveLoadedMetadata() {
+    flushPendingDualPreviewSlaveSeek();
+    syncSlaveToMaster({ force: true });
+  }
+
+  function handleDualPreviewSlaveEnded() {
+    const master = getDualPreviewMaster();
+    if (master?.paused === false) {
+      master.pause?.();
+    }
+    dualPreviewSlaveAutoplayBlocked = false;
+    dualPreviewPendingSlaveSeekSeconds = null;
+    updateDualPreviewTransportUi();
+  }
+
+  function bindDualPreviewMediaListeners() {
+    const nextMaster = getDualPreviewMaster();
+    if (boundDualPreviewMaster !== nextMaster) {
+      if (boundDualPreviewMaster?.removeEventListener) {
+        boundDualPreviewMaster.removeEventListener("play", handleDualPreviewMasterPlay);
+        boundDualPreviewMaster.removeEventListener("pause", handleDualPreviewMasterPause);
+        boundDualPreviewMaster.removeEventListener("timeupdate", handleDualPreviewMasterTimeUpdate);
+        boundDualPreviewMaster.removeEventListener("seeking", handleDualPreviewMasterSeeked);
+        boundDualPreviewMaster.removeEventListener("seeked", handleDualPreviewMasterSeeked);
+        boundDualPreviewMaster.removeEventListener(
+          "loadedmetadata",
+          handleDualPreviewMasterLoadedMetadata
+        );
+        boundDualPreviewMaster.removeEventListener("ended", handleDualPreviewMasterEnded);
+      }
+      if (nextMaster?.addEventListener) {
+        nextMaster.addEventListener("play", handleDualPreviewMasterPlay);
+        nextMaster.addEventListener("pause", handleDualPreviewMasterPause);
+        nextMaster.addEventListener("timeupdate", handleDualPreviewMasterTimeUpdate);
+        nextMaster.addEventListener("seeking", handleDualPreviewMasterSeeked);
+        nextMaster.addEventListener("seeked", handleDualPreviewMasterSeeked);
+        nextMaster.addEventListener("loadedmetadata", handleDualPreviewMasterLoadedMetadata);
+        nextMaster.addEventListener("ended", handleDualPreviewMasterEnded);
+      }
+      boundDualPreviewMaster = nextMaster;
+    }
+
+    const nextSlave = getDualPreviewSlave();
+    if (boundDualPreviewSlave !== nextSlave) {
+      if (boundDualPreviewSlave?.removeEventListener) {
+        boundDualPreviewSlave.removeEventListener(
+          "loadedmetadata",
+          handleDualPreviewSlaveLoadedMetadata
+        );
+        boundDualPreviewSlave.removeEventListener("ended", handleDualPreviewSlaveEnded);
+      }
+      if (nextSlave?.addEventListener) {
+        nextSlave.addEventListener("loadedmetadata", handleDualPreviewSlaveLoadedMetadata);
+        nextSlave.addEventListener("ended", handleDualPreviewSlaveEnded);
+      }
+      boundDualPreviewSlave = nextSlave;
+    }
+  }
+
+  function syncDualPreviewFromState() {
+    bindDualPreviewMediaListeners();
+    const state = deps.store.getState();
+    const nextSnapshot = {
+      enabled: isDualPreviewActive(state),
+      audioAssetId: getSelectedDualPreviewAudioAsset(state)?.id || null,
+      sourceKey: getDualPreviewSourceKey(),
+      volume: getDualPreviewVolume(state),
+    };
+    const shouldForceSync =
+      dualPreviewStateSnapshot.enabled !== nextSnapshot.enabled ||
+      dualPreviewStateSnapshot.audioAssetId !== nextSnapshot.audioAssetId ||
+      dualPreviewStateSnapshot.sourceKey !== nextSnapshot.sourceKey;
+
+    if (nextSnapshot.enabled !== true) {
+      boundDualPreviewSlave?.pause?.();
+      dualPreviewSlaveAutoplayBlocked = false;
+      dualPreviewPendingSlaveSeekSeconds = null;
+      updateDualPreviewTransportUi();
+      dualPreviewStateSnapshot = nextSnapshot;
+      return;
+    }
+
+    syncDualPreviewVolume();
+    syncSlaveToMaster({ force: shouldForceSync });
+    updateDualPreviewTransportUi();
+    dualPreviewStateSnapshot = nextSnapshot;
+  }
+
   // --- Timeline drag state ---
   type TimelineDragMode = "none" | "rail" | "start" | "end" | "body";
   let timelineDragMode: TimelineDragMode = "none";
@@ -1350,6 +1783,44 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           previewAsset(value);
         }
         return;
+      case "focus-source-preview":
+        if (value.trim() !== "") {
+          focusSourcePreview();
+        }
+        return;
+      case "workspace-open-dual-preview":
+        dispatch({
+          type: "workspace-dual-preview-toggled",
+          force: true,
+          audioAssetId: value.trim() !== "" ? value : null,
+        });
+        return;
+      case "workspace-close-dual-preview":
+        dispatch({
+          type: "workspace-dual-preview-toggled",
+          force: false,
+        });
+        return;
+      case "workspace-dual-preview-audio-select":
+        dispatch({
+          type: "workspace-dual-preview-audio-selected",
+          audioAssetId: value.trim() !== "" ? value : null,
+        });
+        return;
+      case "dual-preview-toggle-play": {
+        const master = getDualPreviewMaster();
+        if (master === null) {
+          return;
+        }
+        if (master.paused === false) {
+          master.pause?.();
+        } else {
+          safePlay(master);
+          syncSlaveToMaster({ force: true, play: true, explicitPlaybackAttempt: true });
+        }
+        updateDualPreviewTransportUi();
+        return;
+      }
       case "asset-download":
         if (value.trim() !== "") {
           downloadAsset(value);
@@ -1420,8 +1891,20 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "timeline-seek":
         if (value.trim() !== "") {
           const timeMs = Number(value);
-          const mediaEls =
-            deps.documentRef.querySelectorAll<HTMLMediaElement>(".labx-preview-media");
+          if (Number.isFinite(timeMs) !== true) {
+            return;
+          }
+          if (isDualPreviewActive(state) === true) {
+            if (seekDualPreviewToMs(timeMs)) {
+              return;
+            }
+            dispatch({
+              type: "push-event",
+              event: buildUiEvent("Dual preview seek is unavailable until media is ready.", "warning"),
+            });
+            return;
+          }
+          const mediaEls = deps.documentRef.querySelectorAll<HTMLMediaElement>(".labx-preview-media");
           mediaEls.forEach(function (el) {
             el.currentTime = timeMs / 1000;
           });
@@ -1556,6 +2039,15 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       return;
     }
 
+    const action = target.dataset["labAction"];
+    if (action === "dual-preview-seek") {
+      const timeMs = Number(target.value);
+      if (Number.isFinite(timeMs)) {
+        seekDualPreviewToMs(timeMs);
+      }
+      return;
+    }
+
     const field = target.dataset["labField"];
     if (!field) {
       return;
@@ -1653,6 +2145,15 @@ export function createLabRunController(deps: LabRunControllerDeps) {
               ? (rawValue as number | null)
               : state.ui.workspace.timelineEndMs,
         });
+        return;
+      }
+      if (workspaceField === "dualPreviewVolume") {
+        dispatch({
+          type: "workspace-dual-preview-volume-updated",
+          volume: typeof rawValue === "number" ? rawValue : Number(rawValue),
+        });
+        syncDualPreviewVolume();
+        updateDualPreviewTransportUi();
         return;
       }
       if (workspaceField === "hypothesis") {
@@ -1902,6 +2403,12 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     deps.documentRef.addEventListener("mousedown", handleMouseDown);
     deps.windowRef.addEventListener("mousemove", handleTimelineMouseMove as EventListener);
     deps.windowRef.addEventListener("mouseup", handleTimelineMouseUp as EventListener);
+    deps.store.subscribe(function () {
+      syncDualPreviewFromState();
+    });
+    queueMicrotask(function () {
+      syncDualPreviewFromState();
+    });
   }
 
   function getPrimaryActionState() {

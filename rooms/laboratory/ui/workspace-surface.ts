@@ -10,16 +10,22 @@ import {
 import type {
   LabStageSurface,
   LabStoreState,
+  LabAsset,
   LabInteractiveSettings,
 } from "../models/lab-types.js";
 import {
   getAudioFocusSettings,
   getBookmarks,
+  getCurrentSourceAsset,
+  getDualPreviewLinkedAudioAssets,
+  getDualPreviewVolume,
   getHypothesis,
   getInteractiveSettings,
+  getLinkedAudioAssets,
   getProjectSource,
   getReportFreshness,
   getROIRegions,
+  getSelectedDualPreviewAudioAsset,
   getSourceKind,
   getSourceMode,
   getSourceMetadata,
@@ -27,6 +33,8 @@ import {
   getSelectedIntents,
   getTimelineSelection,
   hasReportPayload,
+  isDualPreviewActive,
+  isDualPreviewAvailable,
   isRunActive,
 } from "../runtime/lab-selectors.js";
 import { renderStatusChip } from "./components/status-chip.js";
@@ -38,7 +46,6 @@ import { renderWorkspaceHypothesis } from "./workspace-hypothesis.js";
 import { renderWorkspaceBookmarks } from "./workspace-bookmarks.js";
 import { renderWorkspaceProcessPanel } from "./workspace-process-panel.js";
 import { renderLabTopbarActions } from "./lab-topbar-actions.js";
-import { renderLabProjectAssetsPanel } from "./lab-project-assets-panel.js";
 
 function getSourceKindLabel(kind: string) {
   switch (kind) {
@@ -428,7 +435,7 @@ function getSourceProgressModel(state: LabStoreState, mode: string) {
         ? "Import is running. The source will be saved into this project."
         : hasSourceForMode
           ? "Ready to replace the current project source."
-          : "Choose a source and import it into the active project.");
+          : null);
 
   const label = showCompletedState
     ? "Import complete"
@@ -604,11 +611,7 @@ function buildSvgChannelFilter(settings: LabInteractiveSettings) {
   `;
 }
 
-function renderPreviewMedia(
-  sourceKind: string,
-  previewUrl: string | null,
-  settings: LabInteractiveSettings
-) {
+function buildPreviewFilterState(settings: LabInteractiveSettings) {
   const filterParts: string[] = [];
   if (settings.brightness !== 100) {
     filterParts.push(`brightness(${String(settings.brightness / 100)})`);
@@ -645,18 +648,70 @@ function renderPreviewMedia(
   }
   const svgFilter = buildSvgChannelFilter(settings);
   const filterCss = filterParts.length > 0 ? `filter: ${filterParts.join(" ")};` : "";
+  return {
+    svgFilter,
+    filterCss,
+  };
+}
 
+function renderVideoPreviewMedia(
+  previewUrl: string,
+  settings: LabInteractiveSettings,
+  options: {
+    controls?: boolean;
+    muted?: boolean;
+    preserveKey?: string;
+    role?: string;
+    className?: string;
+  } = {}
+) {
+  const { svgFilter, filterCss } = buildPreviewFilterState(settings);
+  const controls = options.controls !== false ? "controls" : "";
+  const muted = options.muted === true ? "muted" : "";
+  const preserveKey = options.preserveKey || "workspace-preview";
+  const roleAttr = options.role ? `data-lab-role="${escapeHtml(options.role)}"` : "";
+  const className = options.className || "labx-preview-media--workspace-video";
+  return `
+    ${svgFilter}
+    <div class="labx-preview-filter-wrap" style="${filterCss}">
+      <video class="labx-preview-media ${escapeHtml(className)}" data-lab-preserve-media="${escapeHtml(preserveKey)}" ${roleAttr} src="${escapeHtml(previewUrl)}" ${controls} ${muted} preload="metadata" playsinline></video>
+    </div>
+  `;
+}
+
+function renderAudioPreviewMedia(
+  previewUrl: string,
+  options: {
+    controls?: boolean;
+    preserveKey?: string;
+    role?: string;
+    className?: string;
+  } = {}
+) {
+  const controls = options.controls !== false ? "controls" : "";
+  const preserveKey = options.preserveKey || "workspace-preview";
+  const roleAttr = options.role ? `data-lab-role="${escapeHtml(options.role)}"` : "";
+  const className = options.className || "labx-preview-media--audio";
+  return `
+    <audio class="labx-preview-media ${escapeHtml(className)}" data-lab-preserve-media="${escapeHtml(preserveKey)}" ${roleAttr} src="${escapeHtml(previewUrl)}" ${controls} preload="metadata"></audio>
+  `;
+}
+
+function renderPreviewMedia(
+  sourceKind: string,
+  previewUrl: string | null,
+  settings: LabInteractiveSettings
+) {
   if (previewUrl === null) {
     return `
-      ${svgFilter}
       <div class="labx-empty-state labx-workspace-empty">
         <strong class="labx-empty-state__title">Select a source to begin</strong>
-        <p class="labx-empty-state__description">Load a media file to activate the workspace.</p>
       </div>
     `;
   }
 
   if (sourceKind === "image") {
+    const { svgFilter, filterCss } = buildPreviewFilterState(settings);
     return `
       ${svgFilter}
       <img class="labx-preview-media labx-preview-media--workspace-image" data-lab-preserve-media="workspace-preview" src="${escapeHtml(previewUrl)}" alt="Workspace preview" style="${filterCss}" />
@@ -665,15 +720,163 @@ function renderPreviewMedia(
   if (sourceKind === "audio") {
     return `
       <div class="labx-audio-visualizer">
-        <audio class="labx-preview-media labx-preview-media--audio" data-lab-preserve-media="workspace-preview" src="${escapeHtml(previewUrl)}" controls preload="metadata"></audio>
+        ${renderAudioPreviewMedia(previewUrl)}
       </div>
     `;
   }
-  // Video: apply filter to a wrapper so native controls stay clickable
+  return renderVideoPreviewMedia(previewUrl, settings);
+}
+
+function formatDurationMs(durationMs: number | null) {
+  if (typeof durationMs !== "number" || Number.isFinite(durationMs) !== true) {
+    return "00:00";
+  }
+  return formatDurationSeconds(durationMs / 1000);
+}
+
+function renderDualPreviewLevelMeter() {
+  const levels = [0.18, 0.42, 0.76, 0.94, 0.76, 0.42, 0.18];
   return `
-    ${svgFilter}
-    <div class="labx-preview-filter-wrap" style="${filterCss}">
-      <video class="labx-preview-media labx-preview-media--workspace-video" data-lab-preserve-media="workspace-preview" src="${escapeHtml(previewUrl)}" controls preload="metadata" playsinline></video>
+    <div class="labx-dual-preview-audio__meter" aria-hidden="true">
+      ${levels
+        .map(function (level) {
+          return `<span class="labx-dual-preview-audio__meter-bar" style="--labx-meter-level:${String(level)};"></span>`;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function renderDualPreviewAudioPane(selectedAudio: LabAsset, linkedAudioAssets: LabAsset[]) {
+  const metadata = asLabRecord(selectedAudio.metadata);
+  const durationMs =
+    typeof metadata["durationMs"] === "number" ? Math.max(0, Math.round(metadata["durationMs"])) : null;
+  const startOffsetMs =
+    typeof metadata["startOffsetMs"] === "number"
+      ? Math.round(metadata["startOffsetMs"])
+      : 0;
+  const offsetLabel =
+    startOffsetMs === 0
+      ? "Senkron: ✓ Aynı zaman ekseni"
+      : `Senkron: Ofset ${startOffsetMs > 0 ? "+" : ""}${String(startOffsetMs)} ms`;
+  return `
+    <aside class="labx-dual-preview-audio">
+      <div class="labx-dual-preview-audio__header">
+        <span class="labx-card__eyebrow">LINKED AUDIO</span>
+        <strong>${escapeHtml(selectedAudio.name)}</strong>
+        <p class="labx-panel-hint">Video master, audio slave. Ayrı kontrol hissi korunur.</p>
+      </div>
+      ${
+        linkedAudioAssets.length > 1
+          ? `
+      <div class="labx-dual-preview-audio__switcher">
+        ${linkedAudioAssets
+          .map(function (asset) {
+            return `
+              <button
+                class="labx-chip-button"
+                type="button"
+                data-lab-action="workspace-dual-preview-audio-select"
+                data-lab-value="${escapeHtml(asset.id)}"
+                data-selected="${asset.id === selectedAudio.id ? "true" : "false"}"
+              >
+                ${escapeHtml(asset.name)}
+              </button>
+            `;
+          })
+          .join("")}
+      </div>
+      `
+          : ""
+      }
+      ${renderDualPreviewLevelMeter()}
+      <div class="labx-dual-preview-audio__meta">
+        <span>${escapeHtml(offsetLabel)}</span>
+        ${durationMs === null ? "" : `<span>Süre ${escapeHtml(formatDurationMs(durationMs))}</span>`}
+      </div>
+      ${renderAudioPreviewMedia(
+        asNonEmptyString(selectedAudio.url) || asNonEmptyString(selectedAudio.localPath) || "",
+        {
+          controls: false,
+          preserveKey: "workspace-preview-dual-audio",
+          role: "dual-preview-slave",
+          className: "labx-preview-media--dual-audio",
+        }
+      )}
+    </aside>
+  `;
+}
+
+function renderDualPreviewTransportBar(state: LabStoreState, durationMs: number) {
+  return `
+    <div class="labx-dual-preview-transport">
+      <button
+        class="labx-dual-preview-transport__play"
+        type="button"
+        data-lab-action="dual-preview-toggle-play"
+      >
+        <span data-lab-role="dual-preview-play-label">▶</span>
+      </button>
+      <div class="labx-dual-preview-transport__scrub">
+        <input
+          class="labx-dual-preview-transport__range"
+          type="range"
+          min="0"
+          max="${String(durationMs)}"
+          step="10"
+          value="0"
+          data-lab-action="dual-preview-seek"
+          data-lab-role="dual-preview-progress"
+        />
+        <span class="labx-dual-preview-transport__time" data-lab-role="dual-preview-time">00:00 / ${escapeHtml(formatDurationMs(durationMs))}</span>
+      </div>
+      <label class="labx-dual-preview-transport__volume">
+        <span>Volume</span>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.05"
+          value="${String(getDualPreviewVolume(state))}"
+          data-lab-field="workspace.dualPreviewVolume"
+          data-lab-role="dual-preview-volume"
+        />
+      </label>
+      <button
+        class="labx-inline-action labx-inline-action--small"
+        type="button"
+        data-lab-action="workspace-close-dual-preview"
+      >
+        Tek preview
+      </button>
+    </div>
+  `;
+}
+
+function renderDualPreviewShell(
+  previewUrl: string,
+  settings: LabInteractiveSettings,
+  roiRegions: ReturnType<typeof getROIRegions>,
+  selectedAudio: LabAsset,
+  linkedAudioAssets: LabAsset[]
+) {
+  return `
+    <div class="labx-workspace-preview__dual-shell">
+      <div class="labx-workspace-preview__video-pane">
+        <div class="labx-workspace-preview__video-stage">
+          ${renderVideoPreviewMedia(previewUrl, settings, {
+            controls: false,
+            muted: true,
+            preserveKey: "workspace-preview-dual-video",
+            role: "dual-preview-master",
+            className: "labx-preview-media--workspace-video",
+          })}
+          ${renderWorkspaceROIOverlay(roiRegions)}
+        </div>
+      </div>
+      <div class="labx-workspace-preview__audio-pane">
+        ${renderDualPreviewAudioPane(selectedAudio, linkedAudioAssets)}
+      </div>
     </div>
   `;
 }
@@ -855,7 +1058,6 @@ function renderSourceIntake(state: LabStoreState) {
             <div class="labx-source-intake__frame-head">
               <div>
                 <strong>Local Source Copy</strong>
-                <p class="labx-panel-hint">Pick a local file and optionally rename.</p>
               </div>
             </div>
             <div class="labx-source-intake__mode-grid">
@@ -877,13 +1079,11 @@ function renderSourceIntake(state: LabStoreState) {
         <div class="labx-source-intake__header-copy">
           <span class="labx-card__eyebrow">Source Intake</span>
           <strong class="labx-source-intake__title">Source setup controls</strong>
-          <p class="labx-panel-hint">
-            ${
-              sourceReadyForMode
-                ? `Active: ${escapeHtml(sourceSummaryLabel)}`
-                : "Choose a source type and import method to begin."
-            }
-          </p>
+          ${
+            sourceReadyForMode
+              ? `<p class="labx-panel-hint">Active: ${escapeHtml(sourceSummaryLabel)}</p>`
+              : ""
+          }
         </div>
         <div class="labx-source-intake__header-meta">
           <div class="labx-source-intake__tags">
@@ -911,7 +1111,6 @@ function renderSourceIntake(state: LabStoreState) {
                 <div class="labx-source-intake__frame-head">
                   <div>
                     <strong>Import Route</strong>
-                    <p class="labx-panel-hint">Select type, method, and import.</p>
                   </div>
                 </div>
                 <div class="labx-source-intake__top">
@@ -950,6 +1149,65 @@ function renderSourceIntake(state: LabStoreState) {
   `;
 }
 
+function renderLinkedAudioBar(state: LabStoreState) {
+  const currentSourceAsset = getCurrentSourceAsset(state);
+  if (currentSourceAsset === null) {
+    return "";
+  }
+
+  const linkedAudioAssets = getLinkedAudioAssets(state, currentSourceAsset.id);
+  if (linkedAudioAssets.length === 0) {
+    return "";
+  }
+  const dualPreviewAvailable = isDualPreviewAvailable(state);
+  const dualPreviewActive = isDualPreviewActive(state);
+  const selectedAudio = getSelectedDualPreviewAudioAsset(state);
+
+  const label =
+    linkedAudioAssets.length === 1
+      ? "Bu kaynağın ses çıktısı mevcut:"
+      : "Bu kaynağın ses çıktıları mevcut:";
+
+  return `
+    <div class="labx-linked-audio-bar">
+      <span class="labx-linked-audio-bar__label">${escapeHtml(label)}</span>
+      <div class="labx-linked-audio-bar__items">
+        ${
+          dualPreviewAvailable
+            ? `
+              <button
+                class="labx-inline-action"
+                type="button"
+                data-lab-action="${dualPreviewActive ? "workspace-close-dual-preview" : "workspace-open-dual-preview"}"
+                data-lab-value="${escapeHtml(selectedAudio?.id || linkedAudioAssets[0]?.id || "")}"
+              >
+                ${escapeHtml(dualPreviewActive ? "Tek preview'a dön" : "🎧 Ses ile birlikte aç")}
+              </button>
+            `
+            : ""
+        }
+        ${linkedAudioAssets
+          .map(function (asset) {
+            return `
+              <span class="labx-linked-audio-bar__item">
+                <strong>${escapeHtml(asset.name)}</strong>
+                <button
+                  class="labx-inline-action labx-inline-action--small"
+                  type="button"
+                  data-lab-action="asset-preview"
+                  data-lab-value="${escapeHtml(asset.id)}"
+                >
+                  Aç
+                </button>
+              </span>
+            `;
+          })
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
 export function renderWorkspaceSurface(state: LabStoreState): LabStageSurface {
   const source = getProjectSource(state);
   const sourceKind = getSourceKind(state);
@@ -967,24 +1225,65 @@ export function renderWorkspaceSurface(state: LabStoreState): LabStageSurface {
   const hasReport = hasReportPayload(state);
   const hasAudio = sourceKind === "audio" || sourceKind === "video";
   const sourceReady = probeStatus === "completed" && isLoadedSourceMatchingMode(source, sourceMode);
+  const dualPreviewAvailable = isDualPreviewAvailable(state);
+  const dualPreviewActive = sourceReady && isDualPreviewActive(state);
+  const dualPreviewLinkedAudioAssets = getDualPreviewLinkedAudioAssets(state);
+  const selectedDualPreviewAudioAsset = getSelectedDualPreviewAudioAsset(state);
+  const hasVisualControls = sourceReady && (sourceKind === "video" || sourceKind === "image");
   const durationMs =
     sourceReady && typeof metadata["durationSeconds"] === "number"
       ? Math.round(metadata["durationSeconds"] * 1000)
       : 0;
+  const focusPanels = [
+    hasAudio && sourceReady
+      ? renderWorkspaceAudioFocus(audioFocus, {
+          suppressVisualization: dualPreviewActive,
+        })
+      : "",
+    hasVisualControls ? renderWorkspaceInteractiveControls(settings) : "",
+  ].filter(Boolean);
+  const focusSection =
+    focusPanels.length > 0
+      ? `
+        <div class="labx-workspace-focus-row" data-layout="${focusPanels.length > 1 ? "split" : "single"}">
+          ${focusPanels.join("")}
+        </div>
+      `
+      : "";
+  const previewMarkup =
+    sourceReady &&
+    dualPreviewActive &&
+    previewUrl !== null &&
+    selectedDualPreviewAudioAsset !== null &&
+    dualPreviewLinkedAudioAssets.length > 0
+      ? renderDualPreviewShell(
+          previewUrl,
+          settings,
+          roiRegions,
+          selectedDualPreviewAudioAsset,
+          dualPreviewLinkedAudioAssets
+        )
+      : renderPreviewMedia(sourceKind, sourceReady ? previewUrl : null, settings);
+  const dualPreviewTransport =
+    dualPreviewActive && selectedDualPreviewAudioAsset !== null && durationMs > 0
+      ? renderDualPreviewTransportBar(state, durationMs)
+      : "";
 
   const main = `
     ${renderSourceBar(state)}
     ${renderLabTopbarActions(state)}
     ${renderSourceIntake(state)}
     <section class="labx-workspace-main" id="lab-workspace-main">
-      <div class="labx-workspace-preview" id="lab-workspace-preview">
-        ${renderPreviewMedia(sourceKind, sourceReady ? previewUrl : null, settings)}
+      ${renderLinkedAudioBar(state)}
+      <div class="labx-workspace-preview" id="lab-workspace-preview" data-preview-mode="${dualPreviewActive ? "dual" : "single"}" data-dual-preview-available="${dualPreviewAvailable ? "true" : "false"}">
+        ${previewMarkup}
         ${
-          sourceReady && (sourceKind === "video" || sourceKind === "image")
+          sourceReady && (sourceKind === "video" || sourceKind === "image") && dualPreviewActive !== true
             ? renderWorkspaceROIOverlay(roiRegions)
             : ""
         }
       </div>
+      ${dualPreviewTransport}
       ${
         durationMs > 0
           ? renderWorkspaceTimeline({
@@ -996,19 +1295,12 @@ export function renderWorkspaceSurface(state: LabStoreState): LabStageSurface {
           : ""
       }
       ${renderWorkspaceHypothesis(hypothesis)}
-      ${hasAudio && sourceReady ? renderWorkspaceAudioFocus(audioFocus) : ""}
+      ${focusSection}
       ${renderWorkspaceBookmarks(bookmarks)}
     </section>
   `;
 
-  const controlsSection =
-    sourceReady && (sourceKind === "video" || sourceKind === "image")
-      ? renderWorkspaceInteractiveControls(settings, state.ui.workspace.rightPanelCollapsed)
-      : "";
-
   const processSection = renderWorkspaceProcessPanel(state, { sourceReady });
-  const assetsSection = renderLabProjectAssetsPanel(state);
-
   const freshness = getReportFreshness(state);
   const freshnessLabel =
     freshness?.state === "current"
@@ -1070,9 +1362,7 @@ export function renderWorkspaceSurface(state: LabStoreState): LabStageSurface {
 
   const side = `
     ${processSection}
-    ${assetsSection}
     ${reportButton}
-    ${controlsSection}
     ${analysisButton}
   `;
 

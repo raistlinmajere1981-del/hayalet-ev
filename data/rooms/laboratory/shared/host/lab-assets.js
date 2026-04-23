@@ -94,6 +94,8 @@ export function normalizeLabAsset(value) {
   const localPath = asNonEmptyString(record["localPath"]);
   const url = asNonEmptyString(record["url"]);
   const sourceId = asNonEmptyString(record["sourceId"]);
+  const derivedFromAssetId = asNonEmptyString(record["derivedFromAssetId"]);
+  const derivedFromSourceId = asNonEmptyString(record["derivedFromSourceId"]);
   const runId = asNonEmptyString(record["runId"]);
   const intentIds = normalizeStringArray(record["intentIds"]);
   const metadata = toRecord(record["metadata"]);
@@ -105,6 +107,8 @@ export function normalizeLabAsset(value) {
     ...localPath === null ? {} : { localPath },
     createdAt: asTimestamp(record["createdAt"]),
     ...sourceId === null ? {} : { sourceId },
+    ...derivedFromAssetId === null ? {} : { derivedFromAssetId },
+    ...derivedFromSourceId === null ? {} : { derivedFromSourceId },
     ...runId === null ? {} : { runId },
     ...intentIds === void 0 ? {} : { intentIds },
     ...Object.keys(metadata).length === 0 ? {} : { metadata }
@@ -174,6 +178,8 @@ export function buildSourceLabAsset(project) {
   const routeLabel = asNonEmptyString(source["routeLabel"]);
   const storedFileName = asNonEmptyString(source["storedFileName"]);
   const sourceMetadata = toRecord(source["metadata"]);
+  const derivedFromAssetId = asNonEmptyString(sourceMetadata["derivedFromAssetId"]);
+  const derivedFromSourceId = asNonEmptyString(sourceMetadata["derivedFromSourceId"]);
   const name = storedFileName || (localPath === null ? null : basename(localPath)) || (sourceUrl === null ? null : sourceUrl) || "Source";
   return {
     id: sourceId,
@@ -183,6 +189,8 @@ export function buildSourceLabAsset(project) {
     ...localPath === null ? {} : { localPath },
     createdAt: asTimestamp(sourceMetadata["extractedAt"], asTimestamp(project["createdAt"])),
     sourceId,
+    ...derivedFromAssetId === null ? {} : { derivedFromAssetId },
+    ...derivedFromSourceId === null ? {} : { derivedFromSourceId },
     metadata: {
       ...sourceMetadata,
       kind: sourceKind,
@@ -206,6 +214,8 @@ export function createLabOutputAsset(project, input) {
   const url = asNonEmptyString(input.url);
   const name = asNonEmptyString(input.name) || (localPath === null ? null : basename(localPath)) || (url === null ? null : url) || input.type;
   const sourceId = asNonEmptyString(input.sourceId) || deriveLabSourceId(project) || void 0;
+  const derivedFromAssetId = asNonEmptyString(input.derivedFromAssetId) || void 0;
+  const derivedFromSourceId = asNonEmptyString(input.derivedFromSourceId) || void 0;
   const runId = asNonEmptyString(input.runId) || void 0;
   const id = asNonEmptyString(input.id) || `asset-${input.type}-${hashText([deriveProjectId(project), input.type, localPath || url || name].join("|"))}`;
   return {
@@ -216,6 +226,8 @@ export function createLabOutputAsset(project, input) {
     ...localPath === null ? {} : { localPath },
     createdAt: typeof input.createdAt === "number" ? input.createdAt : Date.now(),
     ...sourceId === void 0 ? {} : { sourceId },
+    ...derivedFromAssetId === void 0 ? {} : { derivedFromAssetId },
+    ...derivedFromSourceId === void 0 ? {} : { derivedFromSourceId },
     ...runId === void 0 ? {} : { runId },
     ...input.intentIds && input.intentIds.length > 0 ? { intentIds: Array.from(new Set(input.intentIds)) } : {},
     ...input.metadata && Object.keys(input.metadata).length > 0 ? { metadata: input.metadata } : {}

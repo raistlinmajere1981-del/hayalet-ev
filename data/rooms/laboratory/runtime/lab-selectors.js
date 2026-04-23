@@ -166,6 +166,27 @@ export function getAssetById(state, assetId) {
     return asset.id === assetId;
   }) || null;
 }
+export function getCurrentSourceAsset(state) {
+  const source = getProjectSource(state);
+  const storedPath = asNonEmptyString(source["storedPath"]);
+  const sourceUrl = asNonEmptyString(source["sourceUrl"]);
+  const storedFileName = asNonEmptyString(source["storedFileName"]);
+  return getAssets(state).find(function(asset) {
+    if (asset.type !== "source") {
+      return false;
+    }
+    if (storedPath !== null && asset.localPath === storedPath) {
+      return true;
+    }
+    if (sourceUrl !== null && asset.url === sourceUrl) {
+      return true;
+    }
+    if (storedFileName === null) {
+      return false;
+    }
+    return asset.name === storedFileName && asNonEmptyString(asLabRecord(asset.metadata)["storedFileName"]) === storedFileName;
+  }) || null;
+}
 export function getAssetsByType(state, type) {
   return state.assets.filter(function(asset) {
     return asset.type === type;
@@ -180,6 +201,41 @@ export function getAssetsByRun(state, runId) {
   return state.assets.filter(function(asset) {
     return asset.runId === runId;
   });
+}
+export function getLinkedAudioAssets(state, sourceId) {
+  return getAssets(state).filter(function(asset) {
+    return asset.type === "audio" && asset.derivedFromSourceId === sourceId;
+  }).sort(function(left, right) {
+    if (left.createdAt !== right.createdAt) {
+      return right.createdAt - left.createdAt;
+    }
+    if (left.name !== right.name) {
+      return left.name.localeCompare(right.name);
+    }
+    return left.id.localeCompare(right.id);
+  });
+}
+export function getParentSourceForAsset(state, assetId) {
+  const asset = getAssetById(state, assetId);
+  if (asset === null) {
+    return null;
+  }
+  if (asset.derivedFromAssetId) {
+    const parentAsset = getAssetById(state, asset.derivedFromAssetId);
+    if (parentAsset !== null) {
+      return parentAsset;
+    }
+  }
+  if (asset.derivedFromSourceId) {
+    const parentSource = getAssetById(state, asset.derivedFromSourceId);
+    if (parentSource !== null) {
+      return parentSource;
+    }
+    return getAssets(state).find(function(candidate) {
+      return candidate.type === "source" && candidate.sourceId === asset.derivedFromSourceId;
+    }) || null;
+  }
+  return null;
 }
 export function getExpectedOutputs(intentId) {
   switch (intentId) {
@@ -543,6 +599,35 @@ export function getInteractiveSettings(state) {
 }
 export function getAudioFocusSettings(state) {
   return state.ui.workspace.audioFocus;
+}
+export function getDualPreviewEnabled(state) {
+  return state.ui.workspace.dualPreviewEnabled === true;
+}
+export function getDualPreviewVolume(state) {
+  return Math.max(0, Math.min(1, state.ui.workspace.dualPreviewVolume));
+}
+export function getDualPreviewLinkedAudioAssets(state) {
+  const currentSourceAsset = getCurrentSourceAsset(state);
+  if (currentSourceAsset === null || getSourceKind(state) !== "video" || getSourceReady(state) !== true) {
+    return [];
+  }
+  return getLinkedAudioAssets(state, currentSourceAsset.id);
+}
+export function getSelectedDualPreviewAudioAsset(state) {
+  const linkedAudioAssets = getDualPreviewLinkedAudioAssets(state);
+  if (linkedAudioAssets.length === 0) {
+    return null;
+  }
+  const selectedId = asNonEmptyString(state.ui.workspace.dualPreviewAudioAssetId);
+  return linkedAudioAssets.find(function(asset) {
+    return asset.id === selectedId;
+  }) || linkedAudioAssets[0] || null;
+}
+export function isDualPreviewAvailable(state) {
+  return getDualPreviewLinkedAudioAssets(state).length > 0;
+}
+export function isDualPreviewActive(state) {
+  return getDualPreviewEnabled(state) && isDualPreviewAvailable(state);
 }
 export function getBookmarks(state) {
   return state.ui.workspace.bookmarks;

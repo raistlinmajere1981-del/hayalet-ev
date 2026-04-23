@@ -228,6 +228,34 @@ export function getAssetById(state: LabStoreState, assetId: string): LabAsset | 
   );
 }
 
+export function getCurrentSourceAsset(state: LabStoreState): LabAsset | null {
+  const source = getProjectSource(state);
+  const storedPath = asNonEmptyString(source["storedPath"]);
+  const sourceUrl = asNonEmptyString(source["sourceUrl"]);
+  const storedFileName = asNonEmptyString(source["storedFileName"]);
+
+  return (
+    getAssets(state).find(function (asset) {
+      if (asset.type !== "source") {
+        return false;
+      }
+      if (storedPath !== null && asset.localPath === storedPath) {
+        return true;
+      }
+      if (sourceUrl !== null && asset.url === sourceUrl) {
+        return true;
+      }
+      if (storedFileName === null) {
+        return false;
+      }
+      return (
+        asset.name === storedFileName &&
+        asNonEmptyString(asLabRecord(asset.metadata)["storedFileName"]) === storedFileName
+      );
+    }) || null
+  );
+}
+
 export function getAssetsByType(state: LabStoreState, type: LabAssetType): LabAsset[] {
   return state.assets.filter(function (asset) {
     return asset.type === type;
@@ -244,6 +272,50 @@ export function getAssetsByRun(state: LabStoreState, runId: string): LabAsset[] 
   return state.assets.filter(function (asset) {
     return asset.runId === runId;
   });
+}
+
+export function getLinkedAudioAssets(state: LabStoreState, sourceId: string): LabAsset[] {
+  return getAssets(state)
+    .filter(function (asset) {
+      return asset.type === "audio" && asset.derivedFromSourceId === sourceId;
+    })
+    .sort(function (left, right) {
+      if (left.createdAt !== right.createdAt) {
+        return right.createdAt - left.createdAt;
+      }
+      if (left.name !== right.name) {
+        return left.name.localeCompare(right.name);
+      }
+      return left.id.localeCompare(right.id);
+    });
+}
+
+export function getParentSourceForAsset(state: LabStoreState, assetId: string): LabAsset | null {
+  const asset = getAssetById(state, assetId);
+  if (asset === null) {
+    return null;
+  }
+
+  if (asset.derivedFromAssetId) {
+    const parentAsset = getAssetById(state, asset.derivedFromAssetId);
+    if (parentAsset !== null) {
+      return parentAsset;
+    }
+  }
+
+  if (asset.derivedFromSourceId) {
+    const parentSource = getAssetById(state, asset.derivedFromSourceId);
+    if (parentSource !== null) {
+      return parentSource;
+    }
+    return (
+      getAssets(state).find(function (candidate) {
+        return candidate.type === "source" && candidate.sourceId === asset.derivedFromSourceId;
+      }) || null
+    );
+  }
+
+  return null;
 }
 
 export function getExpectedOutputs(intentId: string): LabExpectedOutput[] {
@@ -511,7 +583,11 @@ export function getActionOutputs(state: LabStoreState, actionId: string): LabAss
   const action = getUserActions(state).find(function (entry) {
     return entry.id === actionId;
   });
-  if (!action || Array.isArray(action.resultAssetIds) !== true || action.resultAssetIds.length === 0) {
+  if (
+    !action ||
+    Array.isArray(action.resultAssetIds) !== true ||
+    action.resultAssetIds.length === 0
+  ) {
     return [];
   }
   return action.resultAssetIds
@@ -719,6 +795,43 @@ export function getInteractiveSettings(state: LabStoreState) {
 
 export function getAudioFocusSettings(state: LabStoreState) {
   return state.ui.workspace.audioFocus;
+}
+
+export function getDualPreviewEnabled(state: LabStoreState) {
+  return state.ui.workspace.dualPreviewEnabled === true;
+}
+
+export function getDualPreviewVolume(state: LabStoreState) {
+  return Math.max(0, Math.min(1, state.ui.workspace.dualPreviewVolume));
+}
+
+export function getDualPreviewLinkedAudioAssets(state: LabStoreState): LabAsset[] {
+  const currentSourceAsset = getCurrentSourceAsset(state);
+  if (currentSourceAsset === null || getSourceKind(state) !== "video" || getSourceReady(state) !== true) {
+    return [];
+  }
+  return getLinkedAudioAssets(state, currentSourceAsset.id);
+}
+
+export function getSelectedDualPreviewAudioAsset(state: LabStoreState): LabAsset | null {
+  const linkedAudioAssets = getDualPreviewLinkedAudioAssets(state);
+  if (linkedAudioAssets.length === 0) {
+    return null;
+  }
+  const selectedId = asNonEmptyString(state.ui.workspace.dualPreviewAudioAssetId);
+  return (
+    linkedAudioAssets.find(function (asset) {
+      return asset.id === selectedId;
+    }) || linkedAudioAssets[0] || null
+  );
+}
+
+export function isDualPreviewAvailable(state: LabStoreState) {
+  return getDualPreviewLinkedAudioAssets(state).length > 0;
+}
+
+export function isDualPreviewActive(state: LabStoreState) {
+  return getDualPreviewEnabled(state) && isDualPreviewAvailable(state);
 }
 
 export function getBookmarks(state: LabStoreState) {

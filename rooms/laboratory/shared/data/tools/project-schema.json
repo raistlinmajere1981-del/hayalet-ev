@@ -72,7 +72,16 @@
     "assets": {
       "item": {
         "required": ["id", "type", "name", "createdAt"],
-        "optional": ["url", "localPath", "sourceId", "runId", "intentIds", "metadata"],
+        "optional": [
+          "url",
+          "localPath",
+          "sourceId",
+          "derivedFromAssetId",
+          "derivedFromSourceId",
+          "runId",
+          "intentIds",
+          "metadata"
+        ],
         "types": ["source", "clip", "frame", "audio", "image", "report", "artifact"]
       }
     },

@@ -85,6 +85,8 @@ function normalizeStoreAsset(value: unknown): LabAsset | null {
   const url = asNonEmptyString(record["url"]);
   const localPath = asNonEmptyString(record["localPath"]);
   const sourceId = asNonEmptyString(record["sourceId"]);
+  const derivedFromAssetId = asNonEmptyString(record["derivedFromAssetId"]);
+  const derivedFromSourceId = asNonEmptyString(record["derivedFromSourceId"]);
   const runId = asNonEmptyString(record["runId"]);
   const intentIds = asStringArray(record["intentIds"]);
   const metadata = asLabRecord(record["metadata"]);
@@ -97,6 +99,8 @@ function normalizeStoreAsset(value: unknown): LabAsset | null {
     ...(localPath === null ? {} : { localPath }),
     createdAt: asNumber(record["createdAt"]) || Date.now(),
     ...(sourceId === null ? {} : { sourceId }),
+    ...(derivedFromAssetId === null ? {} : { derivedFromAssetId }),
+    ...(derivedFromSourceId === null ? {} : { derivedFromSourceId }),
     ...(runId === null ? {} : { runId }),
     ...(intentIds.length === 0 ? {} : { intentIds: Array.from(new Set(intentIds)) }),
     ...(Object.keys(metadata).length === 0 ? {} : { metadata }),
@@ -280,6 +284,9 @@ function createDefaultWorkspaceUiState(): LabWorkspaceUiState {
         { frequency: 12000, gain: 0, Q: 1.0, type: "highshelf" },
       ],
     },
+    dualPreviewEnabled: false,
+    dualPreviewAudioAssetId: null,
+    dualPreviewVolume: 1.0,
     hypothesis: "",
     bookmarks: [],
     selectedIntents: [],
@@ -1250,6 +1257,86 @@ function isWorkspaceSourceReady(source: Record<string, unknown> | null) {
   return isWorkspaceSourceMatchingMode(sourceRecord, mode);
 }
 
+function clampDualPreviewVolume(value: unknown) {
+  if (typeof value !== "number" || Number.isFinite(value) !== true) {
+    return 1.0;
+  }
+  return Math.max(0, Math.min(1, value));
+}
+
+function findWorkspaceCurrentSourceAsset(state: LabStoreState) {
+  const sourceRecord = asLabRecord(state.source);
+  const storedPath = asNonEmptyString(sourceRecord["storedPath"]);
+  const sourceUrl = asNonEmptyString(sourceRecord["sourceUrl"]);
+  const storedFileName = asNonEmptyString(sourceRecord["storedFileName"]);
+
+  return (
+    state.assets.find(function (asset) {
+      if (asset.type !== "source") {
+        return false;
+      }
+      if (storedPath !== null && asset.localPath === storedPath) {
+        return true;
+      }
+      if (sourceUrl !== null && asset.url === sourceUrl) {
+        return true;
+      }
+      if (storedFileName === null) {
+        return false;
+      }
+      return (
+        asset.name === storedFileName &&
+        asNonEmptyString(asLabRecord(asset.metadata)["storedFileName"]) === storedFileName
+      );
+    }) || null
+  );
+}
+
+function getWorkspaceLinkedAudioAssets(state: LabStoreState) {
+  const currentSourceAsset = findWorkspaceCurrentSourceAsset(state);
+  if (currentSourceAsset === null) {
+    return [];
+  }
+  return state.assets
+    .filter(function (asset) {
+      return asset.type === "audio" && asset.derivedFromSourceId === currentSourceAsset.id;
+    })
+    .sort(function (left, right) {
+      if (left.createdAt !== right.createdAt) {
+        return right.createdAt - left.createdAt;
+      }
+      if (left.name !== right.name) {
+        return left.name.localeCompare(right.name);
+      }
+      return left.id.localeCompare(right.id);
+    });
+}
+
+function healWorkspaceDualPreviewState(state: LabStoreState) {
+  const sourceRecord = asLabRecord(state.source);
+  const sourceKind = asNonEmptyString(sourceRecord["kind"]);
+  const linkedAudioAssets =
+    sourceKind === "video" &&
+    state.sourceProbeStatus === "completed" &&
+    isWorkspaceSourceReady(state.source)
+      ? getWorkspaceLinkedAudioAssets(state)
+      : [];
+  const dualPreviewAvailable = linkedAudioAssets.length > 0;
+  const currentSelection = asNonEmptyString(state.ui.workspace.dualPreviewAudioAssetId);
+  const resolvedSelection =
+    linkedAudioAssets.find(function (asset) {
+      return asset.id === currentSelection;
+    }) || linkedAudioAssets[0] || null;
+
+  state.ui.workspace = {
+    ...state.ui.workspace,
+    dualPreviewEnabled:
+      dualPreviewAvailable === true ? state.ui.workspace.dualPreviewEnabled === true : false,
+    dualPreviewAudioAssetId: resolvedSelection?.id || null,
+    dualPreviewVolume: clampDualPreviewVolume(state.ui.workspace.dualPreviewVolume),
+  };
+}
+
 function syncCanonicalStateFromSnapshot(
   state: LabStoreState,
   snapshot: Record<string, unknown>,
@@ -1295,6 +1382,7 @@ function syncCanonicalStateFromSnapshot(
       ...state.ui.workspace,
       sourceIntakeCollapsed: false,
     };
+    healWorkspaceDualPreviewState(state);
     return state;
   }
 
@@ -1346,6 +1434,7 @@ function syncCanonicalStateFromSnapshot(
   }
 
   syncDraftsFromSnapshot(state, snapshot);
+  healWorkspaceDualPreviewState(state);
   return state;
 }
 
@@ -1551,6 +1640,13 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
             audioFocus: ws.audioFocus
               ? { ...state.ui.workspace.audioFocus, ...ws.audioFocus }
               : state.ui.workspace.audioFocus,
+            dualPreviewEnabled: ws.dualPreviewEnabled === true,
+            dualPreviewAudioAssetId:
+              typeof ws.dualPreviewAudioAssetId === "string" ? ws.dualPreviewAudioAssetId : null,
+            dualPreviewVolume:
+              typeof ws.dualPreviewVolume === "number"
+                ? clampDualPreviewVolume(ws.dualPreviewVolume)
+                : state.ui.workspace.dualPreviewVolume,
             hypothesis:
               typeof ws.hypothesis === "string" ? ws.hypothesis : state.ui.workspace.hypothesis,
             bookmarks: Array.isArray(ws.bookmarks) ? ws.bookmarks : state.ui.workspace.bookmarks,
@@ -1572,6 +1668,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
               state.ui.workspace.selectedIntents
             );
           }
+          healWorkspaceDualPreviewState(state);
         }
         state.bootReady =
           state.bootReady ||
@@ -1614,9 +1711,11 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     case "source-probe-started":
       state.sourceProbeStatus = "running";
+      healWorkspaceDualPreviewState(state);
       return state;
     case "source-probe-progress":
       state.sourceProbeStatus = "running";
+      healWorkspaceDualPreviewState(state);
       return state;
     case "source-probe-completed":
       state.sourceProbeStatus = "completed";
@@ -1624,6 +1723,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         ...state.ui.workspace,
         sourceIntakeCollapsed: true,
       };
+      healWorkspaceDualPreviewState(state);
       return state;
     case "source-probe-failed":
       state.sourceProbeStatus = "failed";
@@ -1631,6 +1731,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         ...state.ui.workspace,
         sourceIntakeCollapsed: false,
       };
+      healWorkspaceDualPreviewState(state);
       return state;
     case "preview-started":
     case "preview-progress": {
@@ -1790,6 +1891,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
           sourceIntakeCollapsed: false,
         };
       }
+      healWorkspaceDualPreviewState(state);
       return state;
     case "source-drafts-updated":
       state.ui.sourceDrafts = {
@@ -1913,11 +2015,13 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     case "asset-added":
       state.assets = upsertStoreAsset(state.assets, event.asset);
+      healWorkspaceDualPreviewState(state);
       return state;
     case "asset-removed":
       state.assets = state.assets.filter(function (asset) {
         return asset.id !== event.id;
       });
+      healWorkspaceDualPreviewState(state);
       return state;
     case "asset-updated":
       state.assets = state.assets.map(function (asset) {
@@ -1935,6 +2039,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
           }) || asset
         );
       });
+      healWorkspaceDualPreviewState(state);
       return state;
     case "user-action-added":
       const normalizedResultAssetIds = normalizeUserActionResultAssetIds(
@@ -2000,6 +2105,35 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         roiRegions: state.ui.workspace.roiRegions.map(function (entry) {
           return entry.id === event.regionId ? { ...entry, active: !entry.active } : entry;
         }),
+      };
+      return state;
+    case "workspace-dual-preview-toggled": {
+      const nextEnabled =
+        typeof event.force === "boolean"
+          ? event.force
+          : !state.ui.workspace.dualPreviewEnabled;
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        dualPreviewEnabled: nextEnabled,
+        dualPreviewAudioAssetId:
+          typeof event.audioAssetId === "string"
+            ? event.audioAssetId
+            : state.ui.workspace.dualPreviewAudioAssetId,
+      };
+      healWorkspaceDualPreviewState(state);
+      return state;
+    }
+    case "workspace-dual-preview-audio-selected":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        dualPreviewAudioAssetId: event.audioAssetId,
+      };
+      healWorkspaceDualPreviewState(state);
+      return state;
+    case "workspace-dual-preview-volume-updated":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        dualPreviewVolume: clampDualPreviewVolume(event.volume),
       };
       return state;
     case "workspace-interactive-updated":

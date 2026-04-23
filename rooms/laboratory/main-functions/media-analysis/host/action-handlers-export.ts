@@ -1,4 +1,8 @@
-import { createLabOutputAsset, upsertLabAsset } from "../../../shared/host/lab-assets.js";
+import {
+  createLabOutputAsset,
+  deriveLabSourceId,
+  upsertLabAsset,
+} from "../../../shared/host/lab-assets.js";
 import type { LabAsset } from "../../../models/lab-types.js";
 
 type LaboratoryRecord = Record<string, unknown>;
@@ -92,7 +96,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     inputProject: LaboratoryRecord,
     assetInput: Parameters<typeof createLabOutputAsset>[1]
   ): Promise<LabAsset> {
-    let createdAsset: LabAsset | null = null;
+    let createdAsset: LabAsset | undefined;
     await patchActiveProject(runtime, function (nextProject) {
       createdAsset = createLabOutputAsset(nextProject, {
         ...assetInput,
@@ -104,7 +108,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         assets: upsertLabAsset(nextProject["assets"], createdAsset),
       };
     });
-    if (createdAsset === null) {
+    if (createdAsset === undefined) {
       throw new Error("Output asset could not be registered.");
     }
     return createdAsset;
@@ -621,16 +625,32 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         throw new Error(asNonEmptyString(runPayload["stderr"]) || "ffmpeg audio export failed.");
       }
 
+      const currentSourceAssetId = deriveLabSourceId(project);
+      const sourceMetadata = toRecord(source["metadata"]);
+      const sourceDurationSeconds = asNumber(sourceMetadata["durationSeconds"]);
+      const durationMs =
+        sourceDurationSeconds !== null && sourceDurationSeconds > 0
+          ? Math.round(sourceDurationSeconds * 1000)
+          : null;
+
       const createdAsset = await registerOutputAsset(runtime, project, {
         type: "audio",
         name: outputFileName,
         localPath: outputPath,
+        ...(currentSourceAssetId === null
+          ? {}
+          : {
+              derivedFromAssetId: currentSourceAssetId,
+              derivedFromSourceId: currentSourceAssetId,
+            }),
         ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: "export-audio-track",
           fileName: outputFileName,
           requestId,
           toolId: "ffmpeg",
+          ...(durationMs === null ? {} : { durationMs }),
+          startOffsetMs: 0,
         },
       });
 

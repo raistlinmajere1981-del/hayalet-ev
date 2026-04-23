@@ -18,10 +18,14 @@ function renderEQBand(band: LabAudioFocusSettings["eqBands"][0], index: number) 
   `;
 }
 
-export function renderWorkspaceAudioFocus(audioFocus: LabAudioFocusSettings) {
+export function renderWorkspaceAudioFocus(
+  audioFocus: LabAudioFocusSettings,
+  options: { suppressVisualization?: boolean } = {}
+) {
   const showFilterControls = audioFocus.filterType !== "none";
+  const suppressVisualization = options.suppressVisualization === true;
   return `
-    <section class="labx-audio-focus" id="lab-audio-focus">
+    <section class="labx-audio-focus labx-workspace-focus-row__panel" id="lab-audio-focus">
       <div class="labx-audio-focus__header">
         <p class="labx-card__eyebrow">AUDIO FOCUS</p>
       </div>
@@ -81,6 +85,10 @@ export function renderWorkspaceAudioFocus(audioFocus: LabAudioFocusSettings) {
         `
             : ""
         }
+        ${
+          suppressVisualization
+            ? ""
+            : `
         <label class="labx-control-row">
           <span class="labx-control-row__label">Visualization</span>
           <select class="labx-select labx-select--compact" data-lab-field="workspace.audioFocus.visualizationMode">
@@ -96,6 +104,8 @@ export function renderWorkspaceAudioFocus(audioFocus: LabAudioFocusSettings) {
               .join("")}
           </select>
         </label>
+        `
+        }
       </div>
       <div class="labx-audio-focus__eq">
         <p class="labx-card__eyebrow">PARAMETRIC EQ</p>
@@ -105,9 +115,13 @@ export function renderWorkspaceAudioFocus(audioFocus: LabAudioFocusSettings) {
           })
           .join("")}
       </div>
-      <div class="labx-audio-focus__viz">
+      ${
+        suppressVisualization
+          ? `<p class="labx-panel-hint">Dual preview acikken companion audio meter preview alaninda gosterilir.</p>`
+          : `<div class="labx-audio-focus__viz">
         <canvas id="lab-audio-viz" class="labx-audio-viz" width="320" height="80" data-lab-viz="audio-${audioFocus.visualizationMode}"></canvas>
-      </div>
+      </div>`
+      }
     </section>
   `;
 }

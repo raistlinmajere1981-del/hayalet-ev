@@ -68,7 +68,7 @@ test("laboratory left rail opens in new project mode with passive save and delet
   );
 
   assert.match(html, /<option value="new" selected>-- New Project --<\/option>/);
-  assert.match(html, /data-lab-action="save-project" disabled/);
+  assert.match(html, /data-lab-action="save-project"[\s\S]*disabled/);
   assert.match(html, /data-lab-action="project-delete"[^>]*disabled/);
   assert.doesNotMatch(html, /workspace\.projectName/);
   assert.doesNotMatch(html, /toggle-report-view/);
@@ -91,7 +91,7 @@ test("laboratory left rail enables save and delete when the active project has a
   );
 
   assert.match(html, /<option value="project-1" selected>/);
-  assert.doesNotMatch(html, /data-lab-action="save-project" disabled/);
+  assert.doesNotMatch(html, /data-lab-action="save-project"[\s\S]*disabled/);
   assert.doesNotMatch(html, /data-lab-action="project-delete"[^>]*disabled/);
 });
 

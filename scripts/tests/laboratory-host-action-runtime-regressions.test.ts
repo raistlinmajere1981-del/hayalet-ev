@@ -279,6 +279,9 @@ test("laboratory media export runtime cancels only prior export jobs for every e
       source: {
         kind: "video",
         storedPath: "/tmp/lab-demo.mp4",
+        metadata: {
+          durationSeconds: 1.4,
+        },
       },
       process: {
         records: {
@@ -435,6 +438,13 @@ test("laboratory media export runtime cancels only prior export jobs for every e
     assert.equal(outputAsset?.["runId"], "run-1");
     assert.deepEqual(outputAsset?.["intentIds"], ["visual-inspection"]);
     assert.equal(typeof outputAsset?.["sourceId"], "string");
+    if (expectedAssetType === "audio") {
+      assert.equal(outputAsset?.["derivedFromAssetId"], outputAsset?.["sourceId"]);
+      assert.equal(outputAsset?.["derivedFromSourceId"], outputAsset?.["sourceId"]);
+      const metadata = (outputAsset?.["metadata"] || {}) as Record<string, unknown>;
+      assert.equal(metadata["durationMs"], 1400);
+      assert.equal(metadata["startOffsetMs"], 0);
+    }
     const completedPayload =
       pushedJobStates.find(function (payload) {
         return payload["stage"] === "completed";
@@ -479,57 +489,57 @@ test("laboratory media export runtime preserves payload intent ids before workbe
         source: {
           kind: "video",
           storedPath: "/tmp/lab-demo.mp4",
-      },
-      process: {
-        records: {
-          "media-analysis": {
-            runId: "run-frozen",
+        },
+        process: {
+          records: {
+            "media-analysis": {
+              runId: "run-frozen",
+            },
           },
         },
-      },
-      workbench: {
-        analysisScope: {
-          intentIds: ["audio-investigation"],
+        workbench: {
+          analysisScope: {
+            intentIds: ["audio-investigation"],
+          },
         },
-      },
-      assets: [],
-    };
-    const jobState = createLaboratoryJobStateRuntime({
-      roomId: "laboratory",
-      cancelRoomTool: async function () {},
-    });
+        assets: [],
+      };
+      const jobState = createLaboratoryJobStateRuntime({
+        roomId: "laboratory",
+        cancelRoomTool: async function () {},
+      });
 
       const exportRuntime = createMediaExportActionRuntime({
         asNonEmptyString(value: unknown) {
           return typeof value === "string" && value.trim() !== "" ? value : null;
         },
-      asNumber(value: unknown) {
-        return typeof value === "number" && Number.isFinite(value) ? value : null;
-      },
-      async callRoomTools() {
-        return {
-          run: {
-            exitCode: 0,
-          },
-        };
-      },
-      getActiveProject() {
-        return activeProject;
-      },
-      getProjectEditOutputDir() {
-        return "/tmp";
-      },
-      async patchActiveProject(_runtime, patcher) {
-        const nextProject = patcher(activeProject);
-        activeProject = {
-          ...nextProject,
-          assets: syncSourceLabAssetForProject(nextProject, nextProject["assets"]),
-        };
-      },
-      pushJobState() {},
-      registerJob: jobState.registerJob,
-      clearJob: jobState.clearJob,
-      cancelJobsForProject: jobState.cancelJobsForProject,
+        asNumber(value: unknown) {
+          return typeof value === "number" && Number.isFinite(value) ? value : null;
+        },
+        async callRoomTools() {
+          return {
+            run: {
+              exitCode: 0,
+            },
+          };
+        },
+        getActiveProject() {
+          return activeProject;
+        },
+        getProjectEditOutputDir() {
+          return "/tmp";
+        },
+        async patchActiveProject(_runtime, patcher) {
+          const nextProject = patcher(activeProject);
+          activeProject = {
+            ...nextProject,
+            assets: syncSourceLabAssetForProject(nextProject, nextProject["assets"]),
+          };
+        },
+        pushJobState() {},
+        registerJob: jobState.registerJob,
+        clearJob: jobState.clearJob,
+        cancelJobsForProject: jobState.cancelJobsForProject,
         toRecord(value: unknown) {
           return value !== null && typeof value === "object" && Array.isArray(value) === false
             ? (value as Record<string, unknown>)
@@ -697,6 +707,12 @@ test("laboratory source intake resolves use-as-source from registered local asse
   assert.equal(metadata["originAssetId"], "asset-local-clip");
   assert.equal(metadata["derivedFromSourceId"], "source-1");
   assert.equal(metadata["derivedFromRunId"], "run-1");
+  const syncedAssets = syncSourceLabAssetForProject(activeProject, activeProject["assets"]);
+  const sourceAsset = syncedAssets.find(function (asset) {
+    return asset.id === asset.sourceId;
+  });
+  assert.equal(sourceAsset?.derivedFromAssetId, "asset-local-clip");
+  assert.equal(sourceAsset?.derivedFromSourceId, "source-1");
   assert.equal(editResetCount, 1);
   assert.equal(profileResetCount, 1);
 });

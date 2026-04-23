@@ -12,6 +12,8 @@ export interface LabAsset {
   localPath?: string;
   createdAt: number;
   sourceId?: string;
+  derivedFromAssetId?: string;
+  derivedFromSourceId?: string;
   runId?: string;
   intentIds?: string[];
   metadata?: LabRecord;
@@ -178,6 +180,9 @@ export interface LabWorkspaceUiState {
   roiRegions: LabROIRegion[];
   interactiveSettings: LabInteractiveSettings;
   audioFocus: LabAudioFocusSettings;
+  dualPreviewEnabled: boolean;
+  dualPreviewAudioAssetId: string | null;
+  dualPreviewVolume: number;
   hypothesis: string;
   bookmarks: LabBookmark[];
   selectedIntents: LabIntentId[];
@@ -918,6 +923,9 @@ export type LabStoreEvent =
   | { type: "workspace-roi-updated"; region: LabROIRegion }
   | { type: "workspace-roi-removed"; regionId: string }
   | { type: "workspace-roi-toggled"; regionId: string }
+  | { type: "workspace-dual-preview-toggled"; force?: boolean; audioAssetId?: string | null }
+  | { type: "workspace-dual-preview-audio-selected"; audioAssetId: string | null }
+  | { type: "workspace-dual-preview-volume-updated"; volume: number }
   | { type: "workspace-interactive-updated"; patch: Partial<LabInteractiveSettings> }
   | { type: "workspace-hypothesis-updated"; text: string }
   | { type: "workspace-bookmark-added"; bookmark: LabBookmark }
