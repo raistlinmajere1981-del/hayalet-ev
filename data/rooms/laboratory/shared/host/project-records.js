@@ -1,4 +1,5 @@
 import { createLaboratoryWorkbenchState } from "./runtime-primitives.js";
+import { normalizeLabAssets, syncSourceLabAssetForProject } from "./lab-assets.js";
 export function createLaboratoryProjectRecordsRuntime(deps) {
   const {
     asNonEmptyString,
@@ -58,6 +59,7 @@ export function createLaboratoryProjectRecordsRuntime(deps) {
       subtitleAnalysis: createEmptySubtitleAnalysisState(subtitleRuntime || {}),
       process: createEmptyProcessState(),
       report: createEmptyReportState(),
+      assets: [],
       workbench: createLaboratoryWorkbenchState({
         activeModuleId: featureId
       })
@@ -73,7 +75,7 @@ export function createLaboratoryProjectRecordsRuntime(deps) {
     const youtubePreset = asNonEmptyString(drafts.youtubePreset) || defaultPreset;
     const currentTimestamp = (/* @__PURE__ */ new Date()).toISOString();
     const schemaVersion = typeof rawProject.schemaVersion === "number" ? rawProject.schemaVersion : projectSchemaVersion;
-    return {
+    const normalizedProject = {
       schemaVersion,
       id: asNonEmptyString(rawProject.id) || asNonEmptyString(rawProject.slug) || buildProjectSlug(currentTimestamp),
       slug: asNonEmptyString(rawProject.slug) || asNonEmptyString(rawProject.id) || buildProjectSlug(currentTimestamp),
@@ -115,10 +117,16 @@ export function createLaboratoryProjectRecordsRuntime(deps) {
       subtitleAnalysis: normalizeSubtitleAnalysisState(rawProject.subtitleAnalysis, runtime || {}),
       process: normalizeProcessState(rawProject.process),
       report: normalizeReportState(rawProject.report),
+      assets: normalizeLabAssets(rawProject.assets),
       workbench: createLaboratoryWorkbenchState({
         ...toRecord(rawProject.workbench)
       })
     };
+    normalizedProject.assets = syncSourceLabAssetForProject(
+      normalizedProject,
+      normalizedProject.assets
+    );
+    return normalizedProject;
   }
   function updateProjectTimestamps(project) {
     project.updatedAt = (/* @__PURE__ */ new Date()).toISOString();

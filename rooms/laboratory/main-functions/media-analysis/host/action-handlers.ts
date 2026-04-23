@@ -11,6 +11,12 @@ type MediaSourceActionRuntimeDeps = {
   getDefaultMode: (sourcePresets: unknown, sourceKind: unknown) => string;
   getDefaultSourceType: (sourcePresets: unknown) => string;
   handleLocalPick: (api: unknown, runtime: LaboratoryRecord, requestId: string) => Promise<unknown>;
+  handleAssetAsSource: (
+    api: unknown,
+    runtime: LaboratoryRecord,
+    requestId: string,
+    assetId: string
+  ) => Promise<unknown>;
   handleUrlDownload: (
     api: unknown,
     runtime: LaboratoryRecord,
@@ -57,6 +63,7 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     getDefaultMode: deps.getDefaultMode,
     getDefaultSourceType: deps.getDefaultSourceType,
     handleLocalPick: deps.handleLocalPick,
+    handleAssetAsSource: deps.handleAssetAsSource,
     handleUrlDownload: deps.handleUrlDownload,
     handleYoutubeDownload: deps.handleYoutubeDownload,
     patchActiveProject: deps.patchActiveProject,
@@ -102,6 +109,7 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     callRoomTools: deps.callRoomTools,
     getActiveProject: deps.getActiveProject,
     getProjectEditOutputDir: deps.getProjectEditOutputDir,
+    patchActiveProject: deps.patchActiveProject,
     pushJobState: deps.pushJobState,
     registerJob: deps.registerJob,
     clearJob: deps.clearJob,

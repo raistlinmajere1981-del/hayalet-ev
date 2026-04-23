@@ -38,6 +38,7 @@ import { renderWorkspaceHypothesis } from "./workspace-hypothesis.js";
 import { renderWorkspaceBookmarks } from "./workspace-bookmarks.js";
 import { renderWorkspaceProcessPanel } from "./workspace-process-panel.js";
 import { renderLabTopbarActions } from "./lab-topbar-actions.js";
+import { renderLabProjectAssetsPanel } from "./lab-project-assets-panel.js";
 
 function getSourceKindLabel(kind: string) {
   switch (kind) {
@@ -1006,6 +1007,7 @@ export function renderWorkspaceSurface(state: LabStoreState): LabStageSurface {
       : "";
 
   const processSection = renderWorkspaceProcessPanel(state, { sourceReady });
+  const assetsSection = renderLabProjectAssetsPanel(state);
 
   const freshness = getReportFreshness(state);
   const freshnessLabel =
@@ -1068,6 +1070,7 @@ export function renderWorkspaceSurface(state: LabStoreState): LabStageSurface {
 
   const side = `
     ${processSection}
+    ${assetsSection}
     ${reportButton}
     ${controlsSection}
     ${analysisButton}

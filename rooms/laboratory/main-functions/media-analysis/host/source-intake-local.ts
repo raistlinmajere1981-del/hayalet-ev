@@ -1,3 +1,6 @@
+import { findLabAssetById } from "../../../shared/host/lab-assets.js";
+import type { LabAsset } from "../../../models/lab-types.js";
+
 type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryMediaLocalRuntime = LaboratoryRecord & {
@@ -95,6 +98,13 @@ export function createMediaLocalSourceIntakeRuntime(deps: MediaLocalSourceIntake
     );
   }
 
+  function toRecord(value: unknown): LaboratoryRecord {
+    if (value !== null && typeof value === "object" && Array.isArray(value) === false) {
+      return value as LaboratoryRecord;
+    }
+    return {};
+  }
+
   function setProjectSource(
     project: LaboratoryProjectRecord,
     updater: (source: LaboratoryProjectSourceRecord) => void
@@ -108,6 +118,25 @@ export function createMediaLocalSourceIntakeRuntime(deps: MediaLocalSourceIntake
     return typeof project.source.kind === "string" && project.source.kind.trim() !== ""
       ? project.source.kind
       : "video";
+  }
+
+  function inferAssetSourceKind(asset: LabAsset, fallbackKind: string): string {
+    const metadata = toRecord(asset.metadata);
+    const metadataKind =
+      asNonEmptyString(metadata["kind"]) || asNonEmptyString(metadata["sourceKind"]);
+    if (metadataKind === "video" || metadataKind === "audio" || metadataKind === "image") {
+      return metadataKind;
+    }
+    if (asset.type === "audio") {
+      return "audio";
+    }
+    if (asset.type === "frame" || asset.type === "image") {
+      return "image";
+    }
+    if (asset.type === "clip" || asset.type === "source") {
+      return "video";
+    }
+    return fallbackKind;
   }
 
   async function handleLocalPick(
@@ -180,7 +209,97 @@ export function createMediaLocalSourceIntakeRuntime(deps: MediaLocalSourceIntake
     };
   }
 
+  async function handleAssetAsSource(
+    _api: unknown,
+    runtime: LaboratoryMediaLocalRuntime,
+    requestId: string,
+    assetId: string
+  ) {
+    const project = getActiveProject(runtime);
+    const asset = findLabAssetById(project, assetId);
+    if (asset === null) {
+      throw new Error("Asset is not registered in this project.");
+    }
+
+    const assetPath = asNonEmptyString(asset.localPath);
+    if (assetPath === null) {
+      throw new Error("Only local project assets can be used as a source.");
+    }
+
+    const electronApi = getElectronApi();
+    if (electronApi === null || typeof electronApi.copyFileTo !== "function") {
+      throw new Error("Asset source import is unavailable.");
+    }
+
+    const sourceKind = inferAssetSourceKind(asset, getProjectSourceKind(project));
+    const sourceDir = getProjectSourceDir(runtime, project);
+    const copyResult = await electronApi.copyFileTo(assetPath, sourceDir);
+    if (copyResult.success !== true) {
+      throw new Error(
+        (typeof copyResult.message === "string" && copyResult.message) ||
+          (typeof copyResult.error === "string" && copyResult.error) ||
+          "Asset copy failed."
+      );
+    }
+
+    const storedPath = asNonEmptyString(copyResult.path);
+    const storedFileName =
+      asNonEmptyString(copyResult.name) || (storedPath ? storedPath.split(/[\\/]/).pop() : null);
+    const preparedProject = {
+      ...project,
+      source: {
+        ...project.source,
+        kind: sourceKind,
+      },
+    };
+    const preparedSource = await resolvePreparedSource(runtime, preparedProject, {
+      requestId: requestId,
+      storedPath: storedPath,
+      storedFileName: storedFileName,
+      mimeType: normalizeMimeType(storedFileName, sourceKind),
+    });
+
+    await patchActiveProject(runtime, function (nextProject) {
+      const derivedFromSourceId = asNonEmptyString(asset.sourceId);
+      const derivedFromRunId = asNonEmptyString(asset.runId);
+      setProjectSource(nextProject, function (nextSource) {
+        nextSource["kind"] = sourceKind;
+        nextSource["mode"] = "local";
+        nextSource["status"] = "ready";
+        nextSource["storedPath"] = preparedSource.storedPath;
+        nextSource["storedFileName"] = preparedSource.storedFileName;
+        nextSource["mimeType"] = preparedSource.mimeType;
+        nextSource["sourceUrl"] = assetPath;
+        nextSource["routeLabel"] = "Asset reuse";
+        nextSource["lastError"] = null;
+        nextSource["metadata"] = {
+          ...toRecord(preparedSource.metadata),
+          derivedFromAssetId: asset.id,
+          ...(derivedFromSourceId === null ? {} : { derivedFromSourceId }),
+          ...(derivedFromRunId === null ? {} : { derivedFromRunId }),
+          originAssetId: asset.id,
+          originAssetType: asset.type,
+        };
+        nextSource["metadataError"] = preparedSource.metadataError;
+      });
+      resetEditForCurrentSource(runtime, nextProject);
+      resetProfileForCurrentSource(
+        runtime,
+        nextProject,
+        "Source asset changed; rerun the profile preflight."
+      );
+      return nextProject;
+    });
+
+    return {
+      assetId: asset.id,
+      storedPath: preparedSource.storedPath,
+      storedFileName: preparedSource.storedFileName,
+    };
+  }
+
   return {
+    handleAssetAsSource,
     handleLocalPick,
   };
 }

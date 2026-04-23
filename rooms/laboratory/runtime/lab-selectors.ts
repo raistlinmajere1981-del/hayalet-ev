@@ -1,6 +1,8 @@
 import { asLabRecord, asNonEmptyString, createLabFeatureMeta } from "../models/lab-types.js";
 import type {
   CapabilityFamilyId,
+  LabAsset,
+  LabAssetType,
   LabFeatureId,
   LabIntentDirtyMap,
   LabModuleState,
@@ -211,6 +213,28 @@ export function getRunSnapshotSummary(state: LabStoreState): LabRunSnapshotSumma
 
 export function getCurrentReports(state: LabStoreState): LabReportSet {
   return state.reports;
+}
+
+export function getAssets(state: LabStoreState): LabAsset[] {
+  return state.assets.slice();
+}
+
+export function getAssetsByType(state: LabStoreState, type: LabAssetType): LabAsset[] {
+  return state.assets.filter(function (asset) {
+    return asset.type === type;
+  });
+}
+
+export function getAssetsBySource(state: LabStoreState, sourceId: string): LabAsset[] {
+  return state.assets.filter(function (asset) {
+    return asset.sourceId === sourceId;
+  });
+}
+
+export function getAssetsByRun(state: LabStoreState, runId: string): LabAsset[] {
+  return state.assets.filter(function (asset) {
+    return asset.runId === runId;
+  });
 }
 
 export function getWorkbench(state: LabStoreState): LabRecord {

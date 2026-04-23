@@ -1,9 +1,12 @@
+import { createLabOutputAsset, upsertLabAsset } from "../../../shared/host/lab-assets.js";
+
 type LaboratoryRecord = Record<string, unknown>;
 
 const MEDIA_EXPORT_ACTION_IDS = [
   "export-roi-image",
   "export-frame-grab",
   "export-timeline-clip",
+  "export-audio-track",
 ] as const;
 
 type LaboratoryExportActionRuntimeDeps = {
@@ -12,6 +15,10 @@ type LaboratoryExportActionRuntimeDeps = {
   callRoomTools: (payload: LaboratoryRecord) => Promise<unknown>;
   getActiveProject: (runtime: LaboratoryRecord) => LaboratoryRecord | null;
   getProjectEditOutputDir: (runtime: LaboratoryRecord, project: LaboratoryRecord) => string;
+  patchActiveProject: (
+    runtime: LaboratoryRecord,
+    patcher: (project: LaboratoryRecord) => LaboratoryRecord
+  ) => Promise<unknown>;
   pushJobState: (api: unknown, payload: LaboratoryRecord) => void;
   registerJob: (runtime: LaboratoryRecord, job: LaboratoryRecord) => void;
   clearJob: (runtime: LaboratoryRecord, jobId: string) => void;
@@ -33,6 +40,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     callRoomTools,
     getActiveProject,
     getProjectEditOutputDir,
+    patchActiveProject,
     pushJobState,
     registerJob,
     clearJob,
@@ -46,6 +54,41 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
 
   function getSourceRecord(project: LaboratoryRecord): LaboratoryRecord {
     return toRecord(project["source"]);
+  }
+
+  function getCurrentMediaRunId(project: LaboratoryRecord): string | null {
+    return asNonEmptyString(
+      toRecord(toRecord(toRecord(project["process"])["records"])["media-analysis"])["runId"]
+    );
+  }
+
+  function getWorkspaceIntentIds(project: LaboratoryRecord): string[] {
+    const scope = toRecord(toRecord(project["workbench"])["analysisScope"]);
+    const intentIds = scope["intentIds"];
+    if (!Array.isArray(intentIds)) {
+      return [];
+    }
+    return intentIds.filter(
+      (entry): entry is string => typeof entry === "string" && entry.trim() !== ""
+    );
+  }
+
+  async function registerOutputAsset(
+    runtime: LaboratoryRecord,
+    inputProject: LaboratoryRecord,
+    assetInput: Parameters<typeof createLabOutputAsset>[1]
+  ) {
+    await patchActiveProject(runtime, function (nextProject) {
+      const asset = createLabOutputAsset(nextProject, {
+        ...assetInput,
+        runId: assetInput.runId || getCurrentMediaRunId(inputProject),
+        intentIds: assetInput.intentIds || getWorkspaceIntentIds(inputProject),
+      });
+      return {
+        ...nextProject,
+        assets: upsertLabAsset(nextProject["assets"], asset),
+      };
+    });
   }
 
   async function exportROIImage(
@@ -138,6 +181,19 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
       if (runPayload["cancelled"] === true || exitCode !== 0) {
         throw new Error(asNonEmptyString(runPayload["stderr"]) || "ffmpeg ROI export failed.");
       }
+
+      await registerOutputAsset(runtime, project, {
+        type: "image",
+        name: outputFileName,
+        localPath: outputPath,
+        metadata: {
+          action: "export-roi-image",
+          fileName: outputFileName,
+          regionId,
+          requestId,
+          toolId: "ffmpeg",
+        },
+      });
 
       pushJobState(api, {
         action: "export-roi-image",
@@ -255,6 +311,19 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
       if (runPayload["cancelled"] === true || exitCode !== 0) {
         throw new Error(asNonEmptyString(runPayload["stderr"]) || "ffmpeg frame grab failed.");
       }
+
+      await registerOutputAsset(runtime, project, {
+        type: "frame",
+        name: outputFileName,
+        localPath: outputPath,
+        metadata: {
+          action: "export-frame-grab",
+          fileName: outputFileName,
+          requestId,
+          seekMs,
+          toolId: "ffmpeg",
+        },
+      });
 
       pushJobState(api, {
         action: "export-frame-grab",
@@ -393,6 +462,21 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         throw new Error(asNonEmptyString(runPayload["stderr"]) || "ffmpeg clip export failed.");
       }
 
+      await registerOutputAsset(runtime, project, {
+        type: "clip",
+        name: outputFileName,
+        localPath: outputPath,
+        metadata: {
+          action: "export-timeline-clip",
+          durationMs: endMs - startMs,
+          endMs,
+          fileName: outputFileName,
+          requestId,
+          startMs,
+          toolId: "ffmpeg",
+        },
+      });
+
       pushJobState(api, {
         action: "export-timeline-clip",
         jobId,
@@ -424,7 +508,135 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     }
   }
 
+  async function exportAudioTrack(
+    api: unknown,
+    runtime: LaboratoryRecord,
+    requestId: string,
+    _payload: LaboratoryRecord
+  ) {
+    const project = getActiveProject(runtime);
+    if (project === null) {
+      throw new Error("No active project for audio export.");
+    }
+
+    const projectId = getProjectId(project);
+    const source = getSourceRecord(project);
+    const storedPath = asNonEmptyString(source["storedPath"]);
+    if (storedPath === null) {
+      throw new Error("No source file available for audio export.");
+    }
+
+    const sourceKind = asNonEmptyString(source["kind"]) || "video";
+    if (sourceKind !== "video" && sourceKind !== "audio") {
+      throw new Error("Audio export is only available for video or audio sources.");
+    }
+
+    await cancelJobsForProject(runtime, projectId, requestId, {
+      actionIds: Array.from(MEDIA_EXPORT_ACTION_IDS),
+    });
+
+    const jobId = `export-audio-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    registerJob(runtime, {
+      action: "export-audio-track",
+      featureStage: "edit",
+      jobId,
+      projectId,
+      requestId,
+      toolId: "ffmpeg",
+    });
+
+    pushJobState(api, {
+      action: "export-audio-track",
+      featureStage: "edit",
+      jobId,
+      projectId,
+      requestId,
+      stage: "queued",
+      toolId: "ffmpeg",
+    });
+
+    try {
+      const outputDir = getProjectEditOutputDir(runtime, project);
+      const outputFileName = `audio-track-${Date.now()}.wav`;
+      const outputPath = `${outputDir}/${outputFileName}`;
+      const args = [
+        "-y",
+        "-i",
+        storedPath,
+        "-vn",
+        "-acodec",
+        "pcm_s16le",
+        "-ar",
+        "48000",
+        "-ac",
+        "2",
+        outputPath,
+      ];
+
+      const runResult = toRecord(
+        await callRoomTools({
+          args,
+          cwd: outputDir,
+          jobId,
+          operation: "tool-run",
+          requestId,
+          roomId: asNonEmptyString(runtime["roomId"]) || "laboratory",
+          timeoutMs: 5 * 60 * 1000,
+          toolId: "ffmpeg",
+        })
+      );
+
+      const runPayload = toRecord(runResult["run"]);
+      const exitCode = typeof runPayload["exitCode"] === "number" ? runPayload["exitCode"] : 0;
+      if (runPayload["cancelled"] === true || exitCode !== 0) {
+        throw new Error(asNonEmptyString(runPayload["stderr"]) || "ffmpeg audio export failed.");
+      }
+
+      await registerOutputAsset(runtime, project, {
+        type: "audio",
+        name: outputFileName,
+        localPath: outputPath,
+        metadata: {
+          action: "export-audio-track",
+          fileName: outputFileName,
+          requestId,
+          toolId: "ffmpeg",
+        },
+      });
+
+      pushJobState(api, {
+        action: "export-audio-track",
+        jobId,
+        percent: 100,
+        projectId,
+        requestId,
+        stage: "completed",
+        toolId: "ffmpeg",
+      });
+
+      return {
+        outputPath,
+        outputFileName,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      pushJobState(api, {
+        action: "export-audio-track",
+        jobId,
+        message: errorMessage,
+        projectId,
+        requestId,
+        stage: "failed",
+        toolId: "ffmpeg",
+      });
+      throw error;
+    } finally {
+      clearJob(runtime, jobId);
+    }
+  }
+
   return {
+    exportAudioTrack,
     exportROIImage,
     exportFrameGrab,
     exportTimelineClip,

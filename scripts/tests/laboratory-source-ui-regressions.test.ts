@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { getAnalysisActionBlockReason } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import { renderLabLeftRail } from "../../rooms/laboratory/ui/lab-left-rail.ts";
+import { renderLabProjectAssetsPanel } from "../../rooms/laboratory/ui/lab-project-assets-panel.ts";
 import { renderReportOverlay } from "../../rooms/laboratory/ui/report-overlay.ts";
 import { renderToolManagementOverlay } from "../../rooms/laboratory/ui/tool-management-overlay.ts";
 import { renderWorkspaceProcessPanel } from "../../rooms/laboratory/ui/workspace-process-panel.ts";
@@ -157,7 +158,10 @@ test("laboratory workspace surface renders source intake, preview media, and dee
   assert.match(surface.main, /Source setup controls/);
   assert.match(surface.main, /Active: lab-demo\.mp4/);
   assert.match(surface.main, /lab-demo\.mp4/);
-  assert.match(surface.main, /<video class="labx-preview-media labx-preview-media--workspace-video"/);
+  assert.match(
+    surface.main,
+    /<video class="labx-preview-media labx-preview-media--workspace-video"/
+  );
   assert.match(surface.main, /data-lab-action="workspace-toggle-source-intake"/);
   assert.match(surface.side, /Derin Analiz Başlat/);
   assert.match(surface.side, /Arka plan süreci[^<]*kilitlemez/);
@@ -429,15 +433,15 @@ test("laboratory process panel prefers preserved transport module metadata and f
     targetLabel: null,
     progress: 25,
     emptyReason: null,
-        analysisScope: {
-          focus: "visual",
-          intentIds: [
-            "visual-inspection",
-            "audio-investigation",
-            "detail-enhancement",
-            "anomaly-detection",
-          ],
-        },
+    analysisScope: {
+      focus: "visual",
+      intentIds: [
+        "visual-inspection",
+        "audio-investigation",
+        "detail-enhancement",
+        "anomaly-detection",
+      ],
+    },
     previewArtifacts: [],
     confidence: null,
     moduleTrace: [],
@@ -598,6 +602,63 @@ test("laboratory workspace surface renders action hub and recent action history 
   assert.match(surface.main, /labx-topbar-actions/);
   assert.match(processHtml, /Son işlemler/);
   assert.match(processHtml, /Frame alındı/);
+});
+
+test("laboratory project assets panel renders registry groups and local asset actions only", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "clip-local-1",
+      type: "clip",
+      name: "clip_01.mp4",
+      localPath: "/tmp/clip_01.mp4",
+      createdAt: 200,
+      sourceId: "source-1",
+      runId: "run-1",
+      metadata: {
+        durationMs: 1400,
+      },
+    },
+  });
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "clip-remote-1",
+      type: "clip",
+      name: "remote_clip.mp4",
+      url: "https://example.test/remote_clip.mp4",
+      createdAt: 300,
+    },
+  });
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "report-1",
+      type: "report",
+      name: "run_report.md",
+      localPath: "/tmp/run_report.md",
+      createdAt: 400,
+      runId: "run-1",
+    },
+  });
+
+  const panelHtml = renderLabProjectAssetsPanel(store.getState());
+  const surface = renderWorkspaceSurface(store.getState());
+
+  assert.match(surface.side, /Project Assets/);
+  assert.match(panelHtml, /Clips/);
+  assert.match(panelHtml, /Reports/);
+  assert.match(panelHtml, /clip_01\.mp4/);
+  assert.match(panelHtml, /run_report\.md/);
+  assert.match(panelHtml, /data-lab-action="asset-preview"/);
+  assert.match(panelHtml, /data-lab-action="asset-download"/);
+  assert.match(panelHtml, /data-lab-action="asset-remove"/);
+  assert.match(panelHtml, /data-lab-action="asset-use-as-source" data-lab-value="clip-local-1"/);
+  assert.doesNotMatch(
+    panelHtml,
+    /data-lab-action="asset-use-as-source" data-lab-value="clip-remote-1"/
+  );
 });
 
 test("laboratory report overlay renders snapshot summary and workspace-dirty freshness metadata", () => {

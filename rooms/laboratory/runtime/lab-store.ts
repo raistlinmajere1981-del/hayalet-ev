@@ -12,6 +12,8 @@ import {
   WORKSPACE_INTENTS,
 } from "../models/lab-types.js";
 import type {
+  LabAsset,
+  LabAssetType,
   LabComparisonVariant,
   LabAiReport,
   LabArtifactProjection,
@@ -55,6 +57,84 @@ function createDefaultSourceDrafts(): LabSourceDrafts {
     youtubeCustom: {},
     youtubeCaptureMode: "video+audio",
   };
+}
+
+const LAB_ASSET_TYPES: LabAssetType[] = [
+  "source",
+  "clip",
+  "frame",
+  "audio",
+  "image",
+  "report",
+  "artifact",
+];
+
+function normalizeAssetType(value: unknown): LabAssetType | null {
+  return LAB_ASSET_TYPES.includes(value as LabAssetType) ? (value as LabAssetType) : null;
+}
+
+function normalizeStoreAsset(value: unknown): LabAsset | null {
+  const record = asLabRecord(value);
+  const id = asNonEmptyString(record["id"]);
+  const type = normalizeAssetType(record["type"]);
+  const name = asNonEmptyString(record["name"]);
+  if (id === null || type === null || name === null) {
+    return null;
+  }
+
+  const url = asNonEmptyString(record["url"]);
+  const localPath = asNonEmptyString(record["localPath"]);
+  const sourceId = asNonEmptyString(record["sourceId"]);
+  const runId = asNonEmptyString(record["runId"]);
+  const intentIds = asStringArray(record["intentIds"]);
+  const metadata = asLabRecord(record["metadata"]);
+
+  return {
+    id,
+    type,
+    name,
+    ...(url === null ? {} : { url }),
+    ...(localPath === null ? {} : { localPath }),
+    createdAt: asNumber(record["createdAt"]) || Date.now(),
+    ...(sourceId === null ? {} : { sourceId }),
+    ...(runId === null ? {} : { runId }),
+    ...(intentIds.length === 0 ? {} : { intentIds: Array.from(new Set(intentIds)) }),
+    ...(Object.keys(metadata).length === 0 ? {} : { metadata }),
+  };
+}
+
+function normalizeStoreAssets(value: unknown): LabAsset[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const assets: LabAsset[] = [];
+  value.forEach(function (entry) {
+    const asset = normalizeStoreAsset(entry);
+    if (asset === null || assets.some((existing) => existing.id === asset.id)) {
+      return;
+    }
+    assets.push(asset);
+  });
+  return assets;
+}
+
+function upsertStoreAsset(assets: LabAsset[], assetValue: unknown): LabAsset[] {
+  const asset = normalizeStoreAsset(assetValue);
+  if (asset === null) {
+    return assets;
+  }
+  const index = assets.findIndex(function (entry) {
+    return entry.id === asset.id;
+  });
+  if (index === -1) {
+    return assets.concat(asset);
+  }
+  const nextAssets = assets.slice();
+  nextAssets[index] = {
+    ...nextAssets[index],
+    ...asset,
+  };
+  return nextAssets;
 }
 
 function createEmptyReports(): LabStoreState["reports"] {
@@ -127,6 +207,7 @@ function createInitialState(): LabStoreState {
     run: null,
     reports: createEmptyReports(),
     reportExports: [],
+    assets: [],
     profileModels: [],
     toolState: {},
     activityFeed: [],
@@ -1181,6 +1262,7 @@ function syncCanonicalStateFromSnapshot(
     state.run = null;
     state.reports = createEmptyReports();
     state.reportExports = [];
+    state.assets = [];
     state.sourceProbeStatus = state.sourceProbeStatus === "running" ? "running" : "idle";
     state.ui.lastHydratedProjectId = null;
     state.ui.workspace = {
@@ -1221,6 +1303,7 @@ function syncCanonicalStateFromSnapshot(
   state.reportExports = Array.isArray(reportRecord["exports"])
     ? (reportRecord["exports"] as unknown[]).map(asLabRecord)
     : [];
+  state.assets = normalizeStoreAssets(activeProject["assets"]);
 
   const nextActiveProjectId = state.projectIndex.activeProjectId;
   const nextSourceReady = isWorkspaceSourceReady(state.source);
@@ -1381,6 +1464,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         state.reportExports = Array.isArray(event.payload.reportExports)
           ? event.payload.reportExports
           : [];
+        state.assets = normalizeStoreAssets(event.payload.assets);
         state.profileModels = Array.isArray(event.payload.profileModels)
           ? event.payload.profileModels
           : [];
@@ -1800,6 +1884,31 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     case "push-event":
       routeFeedEvent(state, event.event);
+      return state;
+    case "asset-added":
+      state.assets = upsertStoreAsset(state.assets, event.asset);
+      return state;
+    case "asset-removed":
+      state.assets = state.assets.filter(function (asset) {
+        return asset.id !== event.id;
+      });
+      return state;
+    case "asset-updated":
+      state.assets = state.assets.map(function (asset) {
+        if (asset.id !== event.id) {
+          return asset;
+        }
+        return (
+          normalizeStoreAsset({
+            ...asset,
+            ...event.patch,
+            id: asset.id,
+            type: event.patch.type || asset.type,
+            name: event.patch.name || asset.name,
+            createdAt: event.patch.createdAt || asset.createdAt,
+          }) || asset
+        );
+      });
       return state;
     case "user-action-added":
       pushUserAction(state, {

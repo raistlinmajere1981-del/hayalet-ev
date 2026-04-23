@@ -195,7 +195,9 @@ function getTransportFallbackCapabilityIds(moduleId, resolvedCapabilities, inten
 function getPlannedModuleIds(module) {
   const metadata = module?.metadata;
   const rawModuleIds = Array.isArray(metadata?.["moduleIds"]) ? metadata["moduleIds"] : [];
-  return rawModuleIds.filter((entry) => typeof entry === "string" && entry.trim() !== "");
+  return rawModuleIds.filter(
+    (entry) => typeof entry === "string" && entry.trim() !== ""
+  );
 }
 function getExecutionModuleRowsForCapability(state, capabilityId, resolvedCapabilities) {
   const run = getCurrentRun(state);
@@ -204,7 +206,9 @@ function getExecutionModuleRowsForCapability(state, capabilityId, resolvedCapabi
   }
   const intentIds = getExecutionIntentIds(state);
   const seen = /* @__PURE__ */ new Set();
-  const expectedModuleIds = new Set(getModuleIdsForCapabilityFamily(capabilityId).concat(capabilityId));
+  const expectedModuleIds = new Set(
+    getModuleIdsForCapabilityFamily(capabilityId).concat(capabilityId)
+  );
   const rows = [];
   run.moduleOrder.forEach(function(moduleId) {
     const module = run.modules[moduleId];

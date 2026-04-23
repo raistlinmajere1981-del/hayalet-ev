@@ -16,7 +16,7 @@
       "process",
       "report"
     ],
-    "optional": ["workbench"],
+    "optional": ["workbench", "assets"],
     "workbench": {
       "required": [
         "schemaVersion",
@@ -67,6 +67,13 @@
           "extractedBy",
           "extractedAt"
         ]
+      }
+    },
+    "assets": {
+      "item": {
+        "required": ["id", "type", "name", "createdAt"],
+        "optional": ["url", "localPath", "sourceId", "runId", "intentIds", "metadata"],
+        "types": ["source", "clip", "frame", "audio", "image", "report", "artifact"]
       }
     },
     "edit": {

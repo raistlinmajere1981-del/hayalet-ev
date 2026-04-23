@@ -33,6 +33,7 @@ import { renderWorkspaceHypothesis } from "./workspace-hypothesis.js";
 import { renderWorkspaceBookmarks } from "./workspace-bookmarks.js";
 import { renderWorkspaceProcessPanel } from "./workspace-process-panel.js";
 import { renderLabTopbarActions } from "./lab-topbar-actions.js";
+import { renderLabProjectAssetsPanel } from "./lab-project-assets-panel.js";
 function getSourceKindLabel(kind) {
   switch (kind) {
     case "audio":
@@ -815,6 +816,7 @@ export function renderWorkspaceSurface(state) {
   `;
   const controlsSection = sourceReady && (sourceKind === "video" || sourceKind === "image") ? renderWorkspaceInteractiveControls(settings, state.ui.workspace.rightPanelCollapsed) : "";
   const processSection = renderWorkspaceProcessPanel(state, { sourceReady });
+  const assetsSection = renderLabProjectAssetsPanel(state);
   const freshness = getReportFreshness(state);
   const freshnessLabel = freshness?.state === "current" ? "✓ Güncel" : freshness?.state === "previous-run" ? runActive ? "⊘ Önceki çalışma · Analiz devam ediyor" : "⊘ Önceki çalışma" : freshness?.state === "stale" ? "⊘ Eski çalışma · Son analiz başarısız" : "";
   const freshnessMeta = freshness && freshness.workspaceDirty ? `${freshnessLabel} · Workspace farklı` : freshnessLabel;
@@ -848,6 +850,7 @@ export function renderWorkspaceSurface(state) {
     ` : "";
   const side = `
     ${processSection}
+    ${assetsSection}
     ${reportButton}
     ${controlsSection}
     ${analysisButton}

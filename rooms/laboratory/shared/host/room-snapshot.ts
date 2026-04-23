@@ -1,4 +1,6 @@
 import { createLaboratoryWorkbenchState } from "./runtime-primitives.js";
+import { serializeLabAssetForSnapshot } from "./lab-assets.js";
+import type { LabAsset } from "../../models/lab-types.js";
 
 interface SnapshotRecord extends Record<string, unknown> {
   id?: unknown;
@@ -50,6 +52,7 @@ interface SnapshotRecord extends Record<string, unknown> {
   manualHint?: unknown;
   manualGuide?: unknown;
   activeProjectId?: unknown;
+  assets?: unknown;
   bootstrap?: unknown;
   hydrated?: unknown;
   projects?: unknown;
@@ -163,6 +166,7 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
     const audioAnalysis = toRecord(project.audioAnalysis);
     const subtitleAnalysis = toRecord(project.subtitleAnalysis);
     const workbench = toRecord(project.workbench);
+    const assets = Array.isArray(project.assets) ? project.assets : [];
 
     return {
       id: project.id,
@@ -193,6 +197,7 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
       subtitleEntryCount: Array.isArray(subtitleAnalysis.entries)
         ? (subtitleAnalysis.entries as unknown[]).length
         : 0,
+      assetCount: assets.length,
       workbench: clone(workbench),
     };
   }
@@ -210,6 +215,11 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
     const subtitleAnalysis = normalizeSubtitleAnalysisState(project.subtitleAnalysis, runtime);
     const subtitleEdit = toRecord(subtitleAnalysis.edit);
     const workbench = toRecord(project.workbench);
+    const assets = (Array.isArray(project.assets) ? (project.assets as unknown[]) : [])
+      .map(function (entry: unknown) {
+        return serializeLabAssetForSnapshot(entry, toFileUrl);
+      })
+      .filter((entry): entry is LabAsset => entry !== null);
 
     return {
       id: project.id,
@@ -217,6 +227,7 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
       name: project.name,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
+      assets,
       source: {
         ...(clone(project.source) as Record<string, unknown>),
         previewUrl: toFileUrl(projectSource.storedPath),

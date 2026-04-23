@@ -4,6 +4,7 @@ export function createLaboratorySourceDelegatesRuntime(deps) {
     buildYtDlpArgs: mediaSourceIntakeRuntime.buildYtDlpArgs,
     findYtDlpFinalPath: mediaSourceIntakeRuntime.findYtDlpFinalPath,
     getResolvedYoutubeSettings: mediaSourceIntakeRuntime.getResolvedYoutubeSettings,
+    handleAssetAsSource: mediaSourceIntakeRuntime.handleAssetAsSource,
     handleLocalPick: mediaSourceIntakeRuntime.handleLocalPick,
     handleUrlDownload: mediaSourceIntakeRuntime.handleUrlDownload,
     handleYoutubeDownload: mediaSourceIntakeRuntime.handleYoutubeDownload

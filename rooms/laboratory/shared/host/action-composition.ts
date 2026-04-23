@@ -44,6 +44,7 @@ type LaboratoryMediaActionRuntimeDeps = {
   getProjectEditDir: UnknownFn;
   getProjectEditOutputDir: UnknownFn;
   getProjectSourceDir: UnknownFn;
+  handleAssetAsSource: UnknownFn;
   handleLocalPick: UnknownFn;
   handleUrlDownload: UnknownFn;
   handleYoutubeDownload: UnknownFn;
@@ -126,6 +127,7 @@ export function createLaboratoryActionCompositionRuntime(deps: LaboratoryActionC
     getProjectEditDir: deps.getProjectEditDir,
     getProjectEditOutputDir: deps.getProjectEditOutputDir,
     getProjectSourceDir: deps.getProjectSourceDir,
+    handleAssetAsSource: deps.handleAssetAsSource,
     handleLocalPick: deps.handleLocalPick,
     handleToolMutation(...args: Parameters<LaboratoryHostActionRuntime["handleToolMutation"]>) {
       const hostAction = laboratoryHostActionRuntime;

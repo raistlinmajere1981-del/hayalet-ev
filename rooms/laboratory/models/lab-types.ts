@@ -2,6 +2,21 @@ import type { AnalysisReference, AnalysisScope } from "../shared/types/analysis-
 
 export type LabRecord = Record<string, unknown>;
 
+export type LabAssetType = "source" | "clip" | "frame" | "audio" | "image" | "report" | "artifact";
+
+export interface LabAsset {
+  id: string;
+  type: LabAssetType;
+  name: string;
+  url?: string;
+  localPath?: string;
+  createdAt: number;
+  sourceId?: string;
+  runId?: string;
+  intentIds?: string[];
+  metadata?: LabRecord;
+}
+
 /** @deprecated V2.3 uses WorkspaceMode — kept for hydration and internal pipeline compat */
 export type LabStage = "source" | "edit" | "process" | "report";
 
@@ -759,6 +774,7 @@ export interface LabPersistedState {
   lastRun: LabRun | null;
   reports: LabReportSet;
   reportExports: LabRecord[];
+  assets: LabAsset[];
   profileModels: LabRecord[];
   toolState: LabRecord;
   activityFeed: LabEventFeedItem[];
@@ -801,6 +817,7 @@ export interface LabStoreState {
   run: LabRun | null;
   reports: LabReportSet;
   reportExports: LabRecord[];
+  assets: LabAsset[];
   profileModels: LabRecord[];
   toolState: LabRecord;
   activityFeed: LabEventFeedItem[];
@@ -880,6 +897,9 @@ export type LabStoreEvent =
   | { type: "edit-side-panel-toggled"; force?: boolean }
   | { type: "raw-log-toggled"; force?: boolean }
   | { type: "push-event"; event: LabEventFeedItem }
+  | { type: "asset-added"; asset: LabAsset }
+  | { type: "asset-removed"; id: string }
+  | { type: "asset-updated"; id: string; patch: Partial<LabAsset> }
   | { type: "user-action-added"; actionEvent: LabUserActionEvent }
   | { type: "user-action-updated"; id: string; patch: Partial<LabUserActionEvent> }
   | { type: "user-action-hub-dismissed"; id: string }

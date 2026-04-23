@@ -23,6 +23,12 @@ type MediaSourceActionRuntimeDeps = {
   getDefaultMode: (sourcePresets: unknown, sourceKind: unknown) => string;
   getDefaultSourceType: (sourcePresets: unknown) => string;
   handleLocalPick: (api: unknown, runtime: LaboratoryRecord, requestId: string) => Promise<unknown>;
+  handleAssetAsSource: (
+    api: unknown,
+    runtime: LaboratoryRecord,
+    requestId: string,
+    assetId: string
+  ) => Promise<unknown>;
   handleUrlDownload: (
     api: unknown,
     runtime: LaboratoryRecord,
@@ -64,6 +70,7 @@ export function createMediaSourceActionRuntime(deps: MediaSourceActionRuntimeDep
     asNonEmptyString,
     getDefaultMode,
     getDefaultSourceType,
+    handleAssetAsSource,
     handleLocalPick,
     handleUrlDownload,
     handleYoutubeDownload,
@@ -137,6 +144,20 @@ export function createMediaSourceActionRuntime(deps: MediaSourceActionRuntimeDep
     return handleLocalPick(api, runtime, requestId);
   }
 
+  async function useAssetAsSource(
+    api: unknown,
+    runtime: LaboratoryRecord,
+    requestId: string,
+    actionPayload: LaboratoryRecord
+  ) {
+    const assetId =
+      asNonEmptyString(actionPayload["assetId"]) || asNonEmptyString(actionPayload["id"]);
+    if (assetId === null) {
+      throw new Error("Asset id is required.");
+    }
+    return handleAssetAsSource(api, runtime, requestId, assetId);
+  }
+
   async function downloadUrl(
     api: unknown,
     runtime: LaboratoryRecord,
@@ -164,5 +185,6 @@ export function createMediaSourceActionRuntime(deps: MediaSourceActionRuntimeDep
     setSourceKind,
     setSourceMode,
     updateDrafts,
+    useAssetAsSource,
   };
 }

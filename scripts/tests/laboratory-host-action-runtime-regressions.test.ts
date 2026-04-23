@@ -4,7 +4,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { createRoomBuiltArtifact, createRoomInstalledCopy } from "./helpers/room-installed-copy.ts";
 import { createLaboratoryHostActivation } from "../../rooms/laboratory/shared/host/activation.ts";
 import { createMediaExportActionRuntime } from "../../rooms/laboratory/main-functions/media-analysis/host/action-handlers-export.ts";
+import { createMediaLocalSourceIntakeRuntime } from "../../rooms/laboratory/main-functions/media-analysis/host/source-intake-local.ts";
 import { createLaboratoryJobStateRuntime } from "../../rooms/laboratory/shared/host/job-state.ts";
+import { syncSourceLabAssetForProject } from "../../rooms/laboratory/shared/host/lab-assets.ts";
+import { createLaboratoryReportExportRuntime } from "../../rooms/laboratory/shared/host/reporting-export.ts";
 
 test("laboratory host activation unwraps host-context room-event payloads before saving context", () => {
   const savedContexts: Array<Record<string, unknown>> = [];
@@ -164,14 +167,20 @@ test("laboratory host action composition is extracted into a shared host boundar
   );
   assert.match(workspaceFeatureAdaptersSource, /deleteProject:\s*UnknownFn;/);
   assert.match(workspaceFeatureAdaptersSource, /deleteProject:\s*deps\.deleteProject,/);
-  assert.match(workspaceHostFeatureSource, /deleteProject:\s*projectRuntimes\.lifecycle\.deleteProject,/);
+  assert.match(
+    workspaceHostFeatureSource,
+    /deleteProject:\s*projectRuntimes\.lifecycle\.deleteProject,/
+  );
   assert.match(workspaceFeatureAdaptersSource, /from "\.\.\/shared\/host\/action-composition\.js"/);
   assert.match(
     workspaceFeatureAdaptersSource,
     /from "\.\.\/main-functions\/subtitle-analysis\/host\/runtime\.js"/
   );
   assert.match(workspaceHostFeatureSource, /from "\.\/feature-adapters\.js"/);
-  assert.doesNotMatch(workspaceHostRuntimeSource, /from "\.\.\/shared\/host\/action-composition\.js"/);
+  assert.doesNotMatch(
+    workspaceHostRuntimeSource,
+    /from "\.\.\/shared\/host\/action-composition\.js"/
+  );
   assert.doesNotMatch(workspaceHostRuntimeSource, /from "\.\.\/shared\/host\/action-runtime\.js"/);
 
   const installedCopy = await createRoomInstalledCopy("laboratory");
@@ -205,7 +214,10 @@ test("laboratory host action composition is extracted into a shared host boundar
       "utf8"
     );
     const installedHostSource = readFileSync(`${installedCopy.rootDir}/host/index.js`, "utf8");
-    const installedHostRuntimeSource = readFileSync(`${installedCopy.rootDir}/host/runtime.js`, "utf8");
+    const installedHostRuntimeSource = readFileSync(
+      `${installedCopy.rootDir}/host/runtime.js`,
+      "utf8"
+    );
     const installedHostFoundationSource = readFileSync(
       `${installedCopy.rootDir}/host/foundation-runtimes.js`,
       "utf8"
@@ -222,8 +234,14 @@ test("laboratory host action composition is extracted into a shared host boundar
       `${installedCopy.rootDir}/shared/host/action-composition.js`,
       "utf8"
     );
-    const installedActionRuntimeSource = readFileSync(`${installedCopy.rootDir}/shared/host/action-runtime.js`, "utf8");
-    const installedFeatureAdaptersSource = readFileSync(`${installedCopy.rootDir}/host/feature-adapters.js`, "utf8");
+    const installedActionRuntimeSource = readFileSync(
+      `${installedCopy.rootDir}/shared/host/action-runtime.js`,
+      "utf8"
+    );
+    const installedFeatureAdaptersSource = readFileSync(
+      `${installedCopy.rootDir}/host/feature-adapters.js`,
+      "utf8"
+    );
 
     assert.equal(existsSync(`${installedCopy.rootDir}/shared/host/action-composition.js`), true);
     assert.equal(existsSync(`${installedCopy.rootDir}/shared/host/action-runtime.js`), true);
@@ -248,12 +266,33 @@ test("laboratory host action composition is extracted into a shared host boundar
 
 test("laboratory media export runtime cancels only prior export jobs for every export handler", async () => {
   async function runExportCase(
+    expectedAssetType: string,
     runExport: (
       exportRuntime: ReturnType<typeof createMediaExportActionRuntime>,
       runtime: { roomId: string; jobs: Record<string, Record<string, unknown>> }
     ) => Promise<unknown>
   ) {
     const cancelledJobIds: string[] = [];
+    let activeProject: Record<string, unknown> = {
+      id: "project-1",
+      source: {
+        kind: "video",
+        storedPath: "/tmp/lab-demo.mp4",
+      },
+      process: {
+        records: {
+          "media-analysis": {
+            runId: "run-1",
+          },
+        },
+      },
+      workbench: {
+        analysisScope: {
+          intentIds: ["visual-inspection"],
+        },
+      },
+      assets: [],
+    };
     const jobState = createLaboratoryJobStateRuntime({
       roomId: "laboratory",
       cancelRoomTool: async function (_roomId, jobId) {
@@ -276,16 +315,17 @@ test("laboratory media export runtime cancels only prior export jobs for every e
         };
       },
       getActiveProject() {
-        return {
-          id: "project-1",
-          source: {
-            kind: "video",
-            storedPath: "/tmp/lab-demo.mp4",
-          },
-        };
+        return activeProject;
       },
       getProjectEditOutputDir() {
         return "/tmp";
+      },
+      async patchActiveProject(_runtime, patcher) {
+        const nextProject = patcher(activeProject);
+        activeProject = {
+          ...nextProject,
+          assets: syncSourceLabAssetForProject(nextProject, nextProject["assets"]),
+        };
       },
       pushJobState() {},
       registerJob: jobState.registerJob,
@@ -353,17 +393,48 @@ test("laboratory media export runtime cancels only prior export jobs for every e
           bytesTotal: null,
           message: null,
         },
+        "old-audio-job": {
+          requestId: "req-export-audio-old",
+          action: "export-audio-track",
+          projectId: "project-1",
+          toolId: "ffmpeg",
+          featureStage: "edit",
+          operation: "tool-run",
+          stage: "queued",
+          percent: null,
+          bytesReceived: null,
+          bytesTotal: null,
+          message: null,
+        },
       } as Record<string, Record<string, unknown>>,
     };
 
     await runExport(exportRuntime, runtime);
 
-    assert.deepEqual(cancelledJobIds, ["old-roi-job", "old-frame-job", "old-clip-job"]);
+    assert.deepEqual(cancelledJobIds, [
+      "old-roi-job",
+      "old-frame-job",
+      "old-clip-job",
+      "old-audio-job",
+    ]);
     assert.equal(Boolean(runtime.jobs["process-job"]), true);
     assert.deepEqual(Object.keys(runtime.jobs), ["process-job"]);
+
+    const assets = activeProject.assets as Array<Record<string, unknown>>;
+    assert.equal(assets.length, 2);
+    assert.equal(
+      assets.some((asset) => asset["type"] === "source"),
+      true
+    );
+    const outputAsset = assets.find(function (asset) {
+      return asset["type"] === expectedAssetType;
+    });
+    assert.equal(outputAsset?.["runId"], "run-1");
+    assert.deepEqual(outputAsset?.["intentIds"], ["visual-inspection"]);
+    assert.equal(typeof outputAsset?.["sourceId"], "string");
   }
 
-  await runExportCase(function (exportRuntime, runtime) {
+  await runExportCase("image", function (exportRuntime, runtime) {
     return exportRuntime.exportROIImage({}, runtime, "req-export-roi-new", {
       regionId: "face",
       x: 8,
@@ -373,15 +444,229 @@ test("laboratory media export runtime cancels only prior export jobs for every e
       seekMs: 1200,
     });
   });
-  await runExportCase(function (exportRuntime, runtime) {
+  await runExportCase("frame", function (exportRuntime, runtime) {
     return exportRuntime.exportFrameGrab({}, runtime, "req-export-frame-new", {
       seekMs: 1200,
     });
   });
-  await runExportCase(function (exportRuntime, runtime) {
+  await runExportCase("clip", function (exportRuntime, runtime) {
     return exportRuntime.exportTimelineClip({}, runtime, "req-export-clip-new", {
       startMs: 1000,
       endMs: 2400,
     });
   });
+  await runExportCase("audio", function (exportRuntime, runtime) {
+    return exportRuntime.exportAudioTrack({}, runtime, "req-export-audio-new", {});
+  });
+});
+
+test("laboratory source intake resolves use-as-source from registered local asset ids only", async () => {
+  let activeProject = {
+    id: "project-asset-source",
+    source: {
+      kind: "video",
+      status: "ready",
+      storedPath: "/tmp/source.mp4",
+    },
+    assets: [
+      {
+        id: "asset-local-clip",
+        type: "clip",
+        name: "clip_01.mp4",
+        localPath: "/tmp/clip_01.mp4",
+        createdAt: 100,
+        sourceId: "source-1",
+        runId: "run-1",
+      },
+      {
+        id: "asset-url-clip",
+        type: "clip",
+        name: "remote_clip.mp4",
+        url: "https://example.test/remote_clip.mp4",
+        createdAt: 200,
+      },
+    ],
+  } as Record<string, unknown> & { source: Record<string, unknown> };
+  const copiedPaths: string[] = [];
+  let editResetCount = 0;
+  let profileResetCount = 0;
+
+  const sourceRuntime = createMediaLocalSourceIntakeRuntime({
+    asNonEmptyString(value: unknown) {
+      return typeof value === "string" && value.trim() !== "" ? value : null;
+    },
+    getActiveProject() {
+      return activeProject;
+    },
+    getElectronApi() {
+      return {
+        async copyFileTo(sourcePath: string, destinationDir: string) {
+          copiedPaths.push(`${sourcePath}->${destinationDir}`);
+          return {
+            success: true,
+            path: `${destinationDir}/clip_01.mp4`,
+            name: "clip_01.mp4",
+          };
+        },
+        async showOpenDialog() {
+          return { canceled: true, filePaths: [] };
+        },
+      };
+    },
+    getProjectSourceDir() {
+      return "/tmp/project/source";
+    },
+    getSourceConfig() {
+      return {};
+    },
+    normalizeMimeType(_fileName: unknown, kind: string) {
+      return kind === "audio" ? "audio/wav" : kind === "image" ? "image/png" : "video/mp4";
+    },
+    async patchActiveProject(_runtime, updater) {
+      activeProject = updater(activeProject);
+    },
+    resetEditForCurrentSource() {
+      editResetCount += 1;
+    },
+    resetProfileForCurrentSource() {
+      profileResetCount += 1;
+    },
+    async resolvePreparedSource(_runtime, _project, options) {
+      return {
+        metadata: {
+          durationSeconds: 1.4,
+        },
+        metadataError: null,
+        mimeType: options["mimeType"] as string,
+        storedFileName: options["storedFileName"] as string,
+        storedPath: options["storedPath"] as string,
+      };
+    },
+  });
+
+  await assert.rejects(
+    sourceRuntime.handleAssetAsSource({}, {}, "req-missing", "asset-missing"),
+    /not registered/
+  );
+  await assert.rejects(
+    sourceRuntime.handleAssetAsSource({}, {}, "req-url", "asset-url-clip"),
+    /Only local project assets/
+  );
+  assert.deepEqual(copiedPaths, []);
+
+  await sourceRuntime.handleAssetAsSource({}, {}, "req-local", "asset-local-clip");
+
+  assert.deepEqual(copiedPaths, ["/tmp/clip_01.mp4->/tmp/project/source"]);
+  assert.equal(activeProject.source["storedPath"], "/tmp/project/source/clip_01.mp4");
+  assert.equal(activeProject.source["routeLabel"], "Asset reuse");
+  assert.equal(activeProject.source["mimeType"], "video/mp4");
+  const metadata = activeProject.source["metadata"] as Record<string, unknown>;
+  assert.equal(metadata["originAssetId"], "asset-local-clip");
+  assert.equal(metadata["derivedFromSourceId"], "source-1");
+  assert.equal(metadata["derivedFromRunId"], "run-1");
+  assert.equal(editResetCount, 1);
+  assert.equal(profileResetCount, 1);
+});
+
+test("laboratory report export registers user and ai report assets", async () => {
+  let activeProject = {
+    id: "project-report-1",
+    slug: "project-report",
+    source: {
+      kind: "video",
+      storedPath: "/tmp/source.mp4",
+    },
+    report: {
+      records: {
+        "media-analysis": {
+          status: "ready",
+          sourceRunId: "run-report-1",
+          exports: [],
+          aiReport: {
+            manifest: {},
+          },
+          userReport: {
+            summary: "Ready",
+          },
+        },
+      },
+    },
+    assets: [],
+  } as Record<string, unknown>;
+  const writtenPaths: string[] = [];
+  const jobStages: string[] = [];
+
+  function getReportRecord(project: Record<string, unknown>, featureId: string) {
+    return (((project["report"] as Record<string, unknown>)["records"] as Record<string, unknown>)[
+      featureId
+    ] || {}) as Record<string, unknown>;
+  }
+
+  const reportRuntime = createLaboratoryReportExportRuntime({
+    buildReportMarkdown() {
+      return "# Report";
+    },
+    clearJob() {},
+    composeFeatureReport(_runtime, project, featureId) {
+      return getReportRecord(project, featureId);
+    },
+    async ensureProjectDirectories() {},
+    ensureReportJobSlotAvailable() {},
+    getActiveProject() {
+      return activeProject as Record<string, unknown> & { id: string; slug: string };
+    },
+    getFeatureReportDir() {
+      return "/tmp/project/report";
+    },
+    getFeatureReportExportAction() {
+      return "report-export";
+    },
+    getFeatureReportRecord: getReportRecord,
+    normalizeReportExport(value) {
+      return value !== null && typeof value === "object" && Array.isArray(value) === false
+        ? (value as Record<string, unknown>)
+        : {};
+    },
+    async patchActiveProject(_runtime, patcher) {
+      activeProject = patcher(
+        activeProject as Record<string, unknown> & { id: string; slug: string }
+      );
+    },
+    pushJobState(_api, payload) {
+      if (typeof payload["stage"] === "string") {
+        jobStages.push(payload["stage"]);
+      }
+    },
+    registerJob() {},
+    sanitizeFileSegment(value, fallback) {
+      return typeof value === "string" && value.trim() !== "" ? value : fallback;
+    },
+    setFeatureReportRecord(project, featureId, record) {
+      const report = project["report"] as Record<string, unknown>;
+      const records = report["records"] as Record<string, unknown>;
+      records[featureId] = record;
+    },
+    async writeTextFile(filePath) {
+      writtenPaths.push(filePath);
+    },
+  });
+
+  await reportRuntime.exportFeatureReport({}, {}, "req-report", "media-analysis");
+
+  assert.deepEqual(jobStages, ["queued", "completed"]);
+  assert.equal(writtenPaths.length, 2);
+  const assets = activeProject["assets"] as Array<Record<string, unknown>>;
+  assert.equal(assets.length, 2);
+  assert.deepEqual(
+    assets.map((asset) => asset["type"]),
+    ["report", "report"]
+  );
+  assert.deepEqual(
+    assets.map((asset) => asset["runId"]),
+    ["run-report-1", "run-report-1"]
+  );
+  assert.deepEqual(
+    assets.map((asset) => (asset["metadata"] as Record<string, unknown>)["format"]).sort(),
+    ["json", "md"]
+  );
 });

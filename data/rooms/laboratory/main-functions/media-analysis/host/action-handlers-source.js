@@ -14,6 +14,7 @@ export function createMediaSourceActionRuntime(deps) {
     asNonEmptyString,
     getDefaultMode,
     getDefaultSourceType,
+    handleAssetAsSource,
     handleLocalPick,
     handleUrlDownload,
     handleYoutubeDownload,
@@ -74,6 +75,13 @@ export function createMediaSourceActionRuntime(deps) {
     await patchActiveProjectDrafts(runtime, actionPayload["fields"]);
     return handleLocalPick(api, runtime, requestId);
   }
+  async function useAssetAsSource(api, runtime, requestId, actionPayload) {
+    const assetId = asNonEmptyString(actionPayload["assetId"]) || asNonEmptyString(actionPayload["id"]);
+    if (assetId === null) {
+      throw new Error("Asset id is required.");
+    }
+    return handleAssetAsSource(api, runtime, requestId, assetId);
+  }
   async function downloadUrl(api, runtime, requestId, actionPayload) {
     await patchActiveProjectDrafts(runtime, actionPayload["fields"]);
     return handleUrlDownload(api, runtime, requestId);
@@ -88,6 +96,7 @@ export function createMediaSourceActionRuntime(deps) {
     pickLocal,
     setSourceKind,
     setSourceMode,
-    updateDrafts
+    updateDrafts,
+    useAssetAsSource
   };
 }

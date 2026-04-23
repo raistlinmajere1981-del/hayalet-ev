@@ -49,6 +49,7 @@ export function createLaboratoryActionCompositionRuntime(deps) {
     getProjectEditDir: deps.getProjectEditDir,
     getProjectEditOutputDir: deps.getProjectEditOutputDir,
     getProjectSourceDir: deps.getProjectSourceDir,
+    handleAssetAsSource: deps.handleAssetAsSource,
     handleLocalPick: deps.handleLocalPick,
     handleToolMutation(...args) {
       const hostAction = laboratoryHostActionRuntime;

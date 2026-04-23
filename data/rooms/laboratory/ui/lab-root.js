@@ -164,6 +164,7 @@ function readPersistableState(state) {
     schemaVersion: 4,
     artifactRenderCount: state.ui.artifactRenderCount,
     artifactListExpanded: state.ui.artifactListExpanded,
+    assets: state.assets,
     activePreviewArtifactId: state.ui.activePreviewArtifactId,
     activityFeed: state.activityFeed.slice(0, 40),
     analysisControlsCollapsed: state.ui.analysisControlsCollapsed,

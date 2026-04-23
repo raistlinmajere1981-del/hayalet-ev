@@ -1,4 +1,5 @@
 import { createLaboratoryWorkbenchState } from "./runtime-primitives.js";
+import { serializeLabAssetForSnapshot } from "./lab-assets.js";
 export function createLaboratoryRoomSnapshotRuntime(deps) {
   const {
     asNonEmptyString,
@@ -49,6 +50,7 @@ export function createLaboratoryRoomSnapshotRuntime(deps) {
     const audioAnalysis = toRecord(project.audioAnalysis);
     const subtitleAnalysis = toRecord(project.subtitleAnalysis);
     const workbench = toRecord(project.workbench);
+    const assets = Array.isArray(project.assets) ? project.assets : [];
     return {
       id: project.id,
       slug: project.slug,
@@ -73,6 +75,7 @@ export function createLaboratoryRoomSnapshotRuntime(deps) {
       subtitleProcessStatus: subtitleProcess.status,
       subtitleReportStatus: subtitleReport.status,
       subtitleEntryCount: Array.isArray(subtitleAnalysis.entries) ? subtitleAnalysis.entries.length : 0,
+      assetCount: assets.length,
       workbench: clone(workbench)
     };
   }
@@ -88,12 +91,16 @@ export function createLaboratoryRoomSnapshotRuntime(deps) {
     const subtitleAnalysis = normalizeSubtitleAnalysisState(project.subtitleAnalysis, runtime);
     const subtitleEdit = toRecord(subtitleAnalysis.edit);
     const workbench = toRecord(project.workbench);
+    const assets = (Array.isArray(project.assets) ? project.assets : []).map(function(entry) {
+      return serializeLabAssetForSnapshot(entry, toFileUrl);
+    }).filter((entry) => entry !== null);
     return {
       id: project.id,
       slug: project.slug,
       name: project.name,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
+      assets,
       source: {
         ...clone(project.source),
         previewUrl: toFileUrl(projectSource.storedPath),

@@ -158,6 +158,24 @@ export function getRunSnapshotSummary(state) {
 export function getCurrentReports(state) {
   return state.reports;
 }
+export function getAssets(state) {
+  return state.assets.slice();
+}
+export function getAssetsByType(state, type) {
+  return state.assets.filter(function(asset) {
+    return asset.type === type;
+  });
+}
+export function getAssetsBySource(state, sourceId) {
+  return state.assets.filter(function(asset) {
+    return asset.sourceId === sourceId;
+  });
+}
+export function getAssetsByRun(state, runId) {
+  return state.assets.filter(function(asset) {
+    return asset.runId === runId;
+  });
+}
 export function getWorkbench(state) {
   return state.workbench;
 }

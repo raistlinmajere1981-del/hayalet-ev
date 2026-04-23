@@ -120,7 +120,9 @@ export function buildIntentReportGroups(run) {
   if (!run) {
     return [];
   }
-  const scopeIntentIds = Array.isArray(run.analysisScope?.intentIds) ? run.analysisScope?.intentIds.filter((entry) => typeof entry === "string") : [];
+  const scopeIntentIds = Array.isArray(run.analysisScope?.intentIds) ? run.analysisScope?.intentIds.filter(
+    (entry) => typeof entry === "string"
+  ) : [];
   const orderedIntentIds = scopeIntentIds.filter(function(intentId, index) {
     return scopeIntentIds.indexOf(intentId) === index;
   });

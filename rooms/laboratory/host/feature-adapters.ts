@@ -50,6 +50,7 @@ type LaboratoryFeatureAdaptersDeps = {
   getRuntimeToolIds: UnknownFn;
   getSubtitleEntries: UnknownFn;
   getSubtitleMimeType: UnknownFn;
+  handleAssetAsSource: UnknownFn;
   handleLocalPick: UnknownFn;
   handleUrlDownload: UnknownFn;
   handleYoutubeDownload: UnknownFn;
@@ -198,6 +199,7 @@ export function createLaboratoryFeatureAdapters(deps: LaboratoryFeatureAdaptersD
     getProjectEditOutputDir: deps.getProjectEditOutputDir,
     getProjectSourceDir: deps.getProjectSourceDir,
     getRuntimeToolIds: deps.getRuntimeToolIds,
+    handleAssetAsSource: deps.handleAssetAsSource,
     handleLocalPick: deps.handleLocalPick,
     handleUrlDownload: deps.handleUrlDownload,
     handleYoutubeDownload: deps.handleYoutubeDownload,

@@ -331,6 +331,7 @@ export function createLaboratoryHostFeatureRuntimes(deps) {
     getRuntimeToolIds: bootstrap.getRuntimeToolIds,
     getSubtitleEntries: projectRuntimes.stateComposition.getSubtitleEntries,
     getSubtitleMimeType: projectRuntimes.stateComposition.getSubtitleMimeType,
+    handleAssetAsSource: sourceCompositionRuntime.laboratorySourceDelegatesRuntime.handleAssetAsSource,
     handleLocalPick: sourceCompositionRuntime.laboratorySourceDelegatesRuntime.handleLocalPick,
     handleUrlDownload: sourceCompositionRuntime.laboratorySourceDelegatesRuntime.handleUrlDownload,
     handleYoutubeDownload: sourceCompositionRuntime.laboratorySourceDelegatesRuntime.handleYoutubeDownload,

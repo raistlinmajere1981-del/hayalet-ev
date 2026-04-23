@@ -33,6 +33,77 @@ function createDefaultSourceDrafts() {
     youtubeCaptureMode: "video+audio"
   };
 }
+const LAB_ASSET_TYPES = [
+  "source",
+  "clip",
+  "frame",
+  "audio",
+  "image",
+  "report",
+  "artifact"
+];
+function normalizeAssetType(value) {
+  return LAB_ASSET_TYPES.includes(value) ? value : null;
+}
+function normalizeStoreAsset(value) {
+  const record = asLabRecord(value);
+  const id = asNonEmptyString(record["id"]);
+  const type = normalizeAssetType(record["type"]);
+  const name = asNonEmptyString(record["name"]);
+  if (id === null || type === null || name === null) {
+    return null;
+  }
+  const url = asNonEmptyString(record["url"]);
+  const localPath = asNonEmptyString(record["localPath"]);
+  const sourceId = asNonEmptyString(record["sourceId"]);
+  const runId = asNonEmptyString(record["runId"]);
+  const intentIds = asStringArray(record["intentIds"]);
+  const metadata = asLabRecord(record["metadata"]);
+  return {
+    id,
+    type,
+    name,
+    ...url === null ? {} : { url },
+    ...localPath === null ? {} : { localPath },
+    createdAt: asNumber(record["createdAt"]) || Date.now(),
+    ...sourceId === null ? {} : { sourceId },
+    ...runId === null ? {} : { runId },
+    ...intentIds.length === 0 ? {} : { intentIds: Array.from(new Set(intentIds)) },
+    ...Object.keys(metadata).length === 0 ? {} : { metadata }
+  };
+}
+function normalizeStoreAssets(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const assets = [];
+  value.forEach(function(entry) {
+    const asset = normalizeStoreAsset(entry);
+    if (asset === null || assets.some((existing) => existing.id === asset.id)) {
+      return;
+    }
+    assets.push(asset);
+  });
+  return assets;
+}
+function upsertStoreAsset(assets, assetValue) {
+  const asset = normalizeStoreAsset(assetValue);
+  if (asset === null) {
+    return assets;
+  }
+  const index = assets.findIndex(function(entry) {
+    return entry.id === asset.id;
+  });
+  if (index === -1) {
+    return assets.concat(asset);
+  }
+  const nextAssets = assets.slice();
+  nextAssets[index] = {
+    ...nextAssets[index],
+    ...asset
+  };
+  return nextAssets;
+}
 function createEmptyReports() {
   return {
     user: null,
@@ -97,6 +168,7 @@ function createInitialState() {
     run: null,
     reports: createEmptyReports(),
     reportExports: [],
+    assets: [],
     profileModels: [],
     toolState: {},
     activityFeed: [],
@@ -964,6 +1036,7 @@ function syncCanonicalStateFromSnapshot(state, snapshot, options = {}) {
     state.run = null;
     state.reports = createEmptyReports();
     state.reportExports = [];
+    state.assets = [];
     state.sourceProbeStatus = state.sourceProbeStatus === "running" ? "running" : "idle";
     state.ui.lastHydratedProjectId = null;
     state.ui.workspace = {
@@ -988,6 +1061,7 @@ function syncCanonicalStateFromSnapshot(state, snapshot, options = {}) {
   );
   state.reports = toReportsFromRecord(reportRecord);
   state.reportExports = Array.isArray(reportRecord["exports"]) ? reportRecord["exports"].map(asLabRecord) : [];
+  state.assets = normalizeStoreAssets(activeProject["assets"]);
   const nextActiveProjectId = state.projectIndex.activeProjectId;
   const nextSourceReady = isWorkspaceSourceReady(state.source);
   if (previousActiveProjectId !== nextActiveProjectId) {
@@ -1104,6 +1178,7 @@ function reduceEvent(state, event) {
         state.run = sanitizeHydratedRun(event.payload.lastRun);
         state.reports = event.payload.reports || state.reports;
         state.reportExports = Array.isArray(event.payload.reportExports) ? event.payload.reportExports : [];
+        state.assets = normalizeStoreAssets(event.payload.assets);
         state.profileModels = Array.isArray(event.payload.profileModels) ? event.payload.profileModels : [];
         state.toolState = asLabRecord(event.payload.toolState);
         state.activityFeed = Array.isArray(event.payload.activityFeed) ? event.payload.activityFeed.map(function(entry) {
@@ -1471,6 +1546,29 @@ function reduceEvent(state, event) {
       return state;
     case "push-event":
       routeFeedEvent(state, event.event);
+      return state;
+    case "asset-added":
+      state.assets = upsertStoreAsset(state.assets, event.asset);
+      return state;
+    case "asset-removed":
+      state.assets = state.assets.filter(function(asset) {
+        return asset.id !== event.id;
+      });
+      return state;
+    case "asset-updated":
+      state.assets = state.assets.map(function(asset) {
+        if (asset.id !== event.id) {
+          return asset;
+        }
+        return normalizeStoreAsset({
+          ...asset,
+          ...event.patch,
+          id: asset.id,
+          type: event.patch.type || asset.type,
+          name: event.patch.name || asset.name,
+          createdAt: event.patch.createdAt || asset.createdAt
+        }) || asset;
+      });
       return state;
     case "user-action-added":
       pushUserAction(state, {

@@ -115,6 +115,7 @@ export function renderWorkspaceTimeline(deps: {
               : ""
           }
           <button class="labx-timeline__export-btn" type="button" data-lab-action="timeline-grab-frame" title="Capture current frame as image">Grab Frame</button>
+          <button class="labx-timeline__export-btn" type="button" data-lab-action="timeline-extract-audio" title="Extract source audio">Extract Audio</button>
         </div>
       </div>
       ${

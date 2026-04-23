@@ -669,6 +669,43 @@ export function createLabRunController(deps) {
     }
     runSourcePrimaryAction();
   }
+  function findAsset(assetId) {
+    return deps.store.getState().assets.find(function(asset) {
+      return asset.id === assetId;
+    }) || null;
+  }
+  function getAssetHref(assetId) {
+    const asset = findAsset(assetId);
+    if (asset === null) {
+      return null;
+    }
+    return asNonEmptyString(asset.url) || asNonEmptyString(asset.localPath);
+  }
+  function previewAsset(assetId) {
+    const href = getAssetHref(assetId);
+    if (href === null) {
+      dispatch({
+        type: "push-event",
+        event: buildUiEvent("Asset preview is unavailable.", "warning")
+      });
+      return;
+    }
+    deps.windowRef.open(href, "_blank", "noopener,noreferrer");
+  }
+  function downloadAsset(assetId) {
+    const asset = findAsset(assetId);
+    const href = getAssetHref(assetId);
+    if (asset === null || href === null) {
+      return;
+    }
+    const link = deps.documentRef.createElement("a");
+    link.href = href;
+    link.download = asset.name;
+    link.rel = "noopener";
+    deps.documentRef.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
   let timelineDragMode = "none";
   let timelineDragTrack = null;
   let timelineDragDurationMs = 0;
@@ -1043,6 +1080,29 @@ export function createLabRunController(deps) {
         });
         return;
       }
+      case "timeline-extract-audio":
+        startTrackedUserAction("export-audio-track");
+        return;
+      case "asset-preview":
+        if (value.trim() !== "") {
+          previewAsset(value);
+        }
+        return;
+      case "asset-download":
+        if (value.trim() !== "") {
+          downloadAsset(value);
+        }
+        return;
+      case "asset-use-as-source":
+        if (value.trim() !== "") {
+          sendMediaAction("asset-use-as-source", { assetId: value });
+        }
+        return;
+      case "asset-remove":
+        if (value.trim() !== "") {
+          sendMediaAction("asset-remove", { assetId: value });
+        }
+        return;
       case "workspace-intent-toggle":
         if (value.trim() !== "") {
           dispatch({
@@ -1320,6 +1380,24 @@ export function createLabRunController(deps) {
       }
     }
   }
+  function handleContextMenu(event) {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) {
+      return;
+    }
+    const assetRow = target.closest("[data-lab-asset-id]");
+    if (!assetRow) {
+      return;
+    }
+    const menu = assetRow.querySelector(".labx-project-assets__menu");
+    if (!menu) {
+      return;
+    }
+    event.preventDefault();
+    menu.open = true;
+    const summary = menu.querySelector("summary");
+    summary?.focus();
+  }
   function handleChange(event) {
     const target = event.target;
     if (!isTextControl(target)) {
@@ -1479,6 +1557,7 @@ export function createLabRunController(deps) {
     }
     attached = true;
     deps.documentRef.addEventListener("click", handleClick);
+    deps.documentRef.addEventListener("contextmenu", handleContextMenu);
     deps.documentRef.addEventListener("input", handleInput);
     deps.documentRef.addEventListener("change", handleChange);
     deps.documentRef.addEventListener("mousedown", handleMouseDown);

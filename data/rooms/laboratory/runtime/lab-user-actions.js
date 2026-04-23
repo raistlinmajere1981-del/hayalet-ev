@@ -15,6 +15,13 @@ const TRACKED_USER_ACTION_DEFINITIONS = {
     successMessage: "Frame alındı",
     errorMessage: "Frame alınamadı"
   },
+  "export-audio-track": {
+    sourceAction: "export-audio-track",
+    type: "extract-audio",
+    label: "Ses çıkarılıyor",
+    successMessage: "Ses çıkarıldı",
+    errorMessage: "Ses çıkarılamadı"
+  },
   "export-roi-image": {
     sourceAction: "export-roi-image",
     type: "custom",

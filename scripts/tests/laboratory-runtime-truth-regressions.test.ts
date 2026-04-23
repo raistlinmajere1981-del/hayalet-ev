@@ -4,6 +4,10 @@ import { createLabEventBus } from "../../rooms/laboratory/runtime/lab-event-bus.
 import { createLabRunController } from "../../rooms/laboratory/runtime/lab-run-controller.ts";
 import { createLabHostBridge } from "../../rooms/laboratory/runtime/lab-host-bridge.ts";
 import {
+  getAssets,
+  getAssetsByRun,
+  getAssetsBySource,
+  getAssetsByType,
   getIntentDirtyMap,
   getReportFreshness,
   getRunSnapshotSummary,
@@ -46,7 +50,7 @@ test("laboratory process output parser translates known ffmpeg and download line
   const frameEvent = parseProcessOutput("frame= 248 fps=24");
   const downloadEvent = parseProcessOutput("[download] 42.1% of 12.31MiB");
   const subtitleEvent = parseProcessOutput("subtitle stream has 12 entries");
-  const mergeEvent = parseProcessOutput("Merging formats into \"clip.mp4\"");
+  const mergeEvent = parseProcessOutput('Merging formats into "clip.mp4"');
 
   assert.equal(blackdetectEvent?.message, "Siyah sahne tespiti calisiyor");
   assert.equal(blackdetectEvent?.moduleId, "motion");
@@ -95,8 +99,14 @@ test("laboratory finding engine derives findings from semantic events and stays 
   ]);
 
   assert.equal(anomalyFindings.length >= 2, true);
-  assert.equal(anomalyFindings.some((entry) => entry.title.includes("Siyah sahne")), true);
-  assert.equal(anomalyFindings.some((entry) => entry.title.includes("Freeze")), true);
+  assert.equal(
+    anomalyFindings.some((entry) => entry.title.includes("Siyah sahne")),
+    true
+  );
+  assert.equal(
+    anomalyFindings.some((entry) => entry.title.includes("Freeze")),
+    true
+  );
 
   const noAnomalyFindings = extractFindings([
     {
@@ -276,6 +286,99 @@ test("laboratory store keeps export user actions separate from analysis run stat
   assert.equal(state.run?.state, "running");
   assert.equal(state.run?.events.length, 1);
   assert.equal(state.run?.events[0]?.action, "process-run");
+});
+
+test("laboratory store hydrates project assets and selectors keep registry lookups scoped", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "snapshot-received",
+    payload: {
+      ready: true,
+      featureId: "media-analysis",
+      activeProjectId: "project-asset-1",
+      projects: [],
+      activeProject: {
+        id: "project-asset-1",
+        source: {
+          status: "ready",
+          kind: "video",
+          mode: "local",
+          storedPath: "/tmp/source.mp4",
+          drafts: {},
+        },
+        edit: {},
+        profile: {},
+        process: {
+          records: {},
+        },
+        report: {
+          records: {},
+        },
+        assets: [
+          {
+            id: "asset-source-1",
+            type: "source",
+            name: "source.mp4",
+            localPath: "/tmp/source.mp4",
+            createdAt: 100,
+            sourceId: "source-1",
+          },
+          {
+            id: "asset-clip-1",
+            type: "clip",
+            name: "clip_01.mp4",
+            localPath: "/tmp/clip_01.mp4",
+            createdAt: 200,
+            sourceId: "source-1",
+            runId: "run-1",
+          },
+          {
+            id: "asset-frame-1",
+            type: "frame",
+            name: "frame_001.png",
+            localPath: "/tmp/frame_001.png",
+            createdAt: 300,
+            sourceId: "source-1",
+            runId: "run-2",
+          },
+        ],
+      },
+    },
+  });
+
+  const state = store.getState();
+  const assets = getAssets(state);
+  assert.equal(assets.length, 3);
+  assets.pop();
+  assert.equal(getAssets(store.getState()).length, 3);
+  assert.deepEqual(
+    getAssetsByType(state, "clip").map((asset) => asset.id),
+    ["asset-clip-1"]
+  );
+  assert.deepEqual(
+    getAssetsBySource(state, "source-1").map((asset) => asset.id),
+    ["asset-source-1", "asset-clip-1", "asset-frame-1"]
+  );
+  assert.deepEqual(
+    getAssetsByRun(state, "run-1").map((asset) => asset.id),
+    ["asset-clip-1"]
+  );
+
+  store.dispatch({
+    type: "asset-updated",
+    id: "asset-clip-1",
+    patch: {
+      name: "clip_renamed.mp4",
+    },
+  });
+  assert.equal(getAssetsByType(store.getState(), "clip")[0]?.name, "clip_renamed.mp4");
+
+  store.dispatch({ type: "asset-removed", id: "asset-frame-1" });
+  assert.deepEqual(
+    getAssets(store.getState()).map((asset) => asset.id),
+    ["asset-source-1", "asset-clip-1"]
+  );
 });
 
 test("laboratory run controller dismisses successful user actions from the topbar after the success window", () => {

@@ -1,3 +1,5 @@
+import { removeLabAssetById } from "../../../shared/host/lab-assets.js";
+
 type MediaProjectActionApi = Record<string, unknown>;
 type MediaProjectRuntimeRecord = {
   activeProjectId?: string | null;
@@ -211,6 +213,25 @@ export function createMediaProjectActionRuntime(deps: ProjectDeps) {
     return exportFeatureReport(api, runtime, requestId, featureId);
   }
 
+  async function removeAsset(
+    runtime: MediaProjectRuntimeRecord,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    const assetId =
+      asNonEmptyString(actionPayload["assetId"]) || asNonEmptyString(actionPayload["id"]);
+    if (assetId === null) {
+      throw new Error("Asset id is required.");
+    }
+    await patchActiveProject(runtime, function (project) {
+      return {
+        ...project,
+        assets: removeLabAssetById(project["assets"], assetId),
+      };
+    });
+    return refreshActiveProjectMetadata(runtime, requestId);
+  }
+
   async function mutateTool(
     api: MediaProjectActionApi,
     runtime: MediaProjectRuntimeRecord,
@@ -264,6 +285,7 @@ export function createMediaProjectActionRuntime(deps: ProjectDeps) {
     deleteProject,
     exportReport,
     mutateTool,
+    removeAsset,
     refresh,
     refreshTools,
     renameProject,

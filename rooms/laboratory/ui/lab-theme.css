@@ -2185,6 +2185,203 @@ textarea {
   font-size: 0.74rem;
 }
 
+.labx-project-assets {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 1rem 1.1rem;
+  max-height: 360px;
+  overflow: visible;
+  border: 1px solid var(--labx-border);
+  border-radius: var(--labx-radius);
+  background:
+    linear-gradient(180deg, rgba(15, 29, 36, 0.96), rgba(8, 17, 23, 0.94)),
+    var(--labx-surface-strong);
+}
+
+.labx-project-assets__head,
+.labx-project-assets__group-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.labx-project-assets__head strong {
+  font-size: 0.92rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.labx-project-assets__head span,
+.labx-project-assets__group-title span {
+  min-width: 1.45rem;
+  padding: 0.12rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(92, 215, 223, 0.12);
+  color: var(--labx-text-soft);
+  font-size: 0.68rem;
+  text-align: center;
+}
+
+.labx-project-assets__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.labx-project-assets__group-title strong {
+  color: var(--labx-text-dim);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.labx-project-assets__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.labx-project-assets__item {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.labx-project-assets__preview {
+  display: grid;
+  grid-template-columns: 2.35rem minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.55rem;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--labx-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.labx-project-assets__preview:hover,
+.labx-project-assets__menu summary:hover {
+  border-color: rgba(92, 215, 223, 0.28);
+  background: rgba(92, 215, 223, 0.08);
+}
+
+.labx-project-assets__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2rem;
+  border-radius: 0.45rem;
+  background: rgba(92, 215, 223, 0.12);
+  color: var(--labx-accent);
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.labx-project-assets__icon[data-asset-type="report"] {
+  background: rgba(235, 187, 62, 0.12);
+  color: var(--labx-warning);
+}
+
+.labx-project-assets__icon[data-asset-type="audio"] {
+  background: rgba(122, 162, 255, 0.13);
+  color: #9eb7ff;
+}
+
+.labx-project-assets__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.labx-project-assets__text strong,
+.labx-project-assets__text span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.labx-project-assets__text strong {
+  font-size: 0.78rem;
+}
+
+.labx-project-assets__text span {
+  color: var(--labx-text-dim);
+  font-size: 0.68rem;
+}
+
+.labx-project-assets__menu {
+  position: relative;
+}
+
+.labx-project-assets__menu summary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--labx-text-soft);
+  cursor: pointer;
+  list-style: none;
+}
+
+.labx-project-assets__menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.labx-project-assets__menu-list {
+  position: absolute;
+  z-index: 30;
+  right: 0;
+  top: calc(100% + 0.35rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 9.5rem;
+  padding: 0.35rem;
+  border: 1px solid var(--labx-border);
+  border-radius: 0.55rem;
+  background: rgba(7, 14, 22, 0.98);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+}
+
+.labx-project-assets__menu-list button {
+  padding: 0.42rem 0.5rem;
+  border: 0;
+  border-radius: 0.4rem;
+  background: transparent;
+  color: var(--labx-text-soft);
+  font-size: 0.72rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.labx-project-assets__menu-list button:hover {
+  background: rgba(92, 215, 223, 0.1);
+  color: var(--labx-text);
+}
+
+.labx-project-assets__empty {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.55rem;
+  color: var(--labx-text-dim);
+  font-size: 0.74rem;
+}
+
 .labx-process-error {
   padding: 0.45rem 0.65rem;
   border-radius: 0.55rem;

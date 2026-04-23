@@ -1,6 +1,12 @@
 type LaboratorySourceDelegatesRecord = Record<string, unknown>;
 
 type LaboratorySourceIntakeRuntime = {
+  handleAssetAsSource: (
+    api: unknown,
+    runtime: unknown,
+    requestId: string,
+    assetId: string
+  ) => Promise<unknown>;
   handleLocalPick: (api: unknown, runtime: unknown, requestId: string) => Promise<unknown>;
   handleUrlDownload: (api: unknown, runtime: unknown, requestId: string) => Promise<unknown>;
   getResolvedYoutubeSettings: (
@@ -27,6 +33,7 @@ export function createLaboratorySourceDelegatesRuntime(deps: LaboratorySourceDel
     buildYtDlpArgs: mediaSourceIntakeRuntime.buildYtDlpArgs,
     findYtDlpFinalPath: mediaSourceIntakeRuntime.findYtDlpFinalPath,
     getResolvedYoutubeSettings: mediaSourceIntakeRuntime.getResolvedYoutubeSettings,
+    handleAssetAsSource: mediaSourceIntakeRuntime.handleAssetAsSource,
     handleLocalPick: mediaSourceIntakeRuntime.handleLocalPick,
     handleUrlDownload: mediaSourceIntakeRuntime.handleUrlDownload,
     handleYoutubeDownload: mediaSourceIntakeRuntime.handleYoutubeDownload,

@@ -178,6 +178,12 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
         case "source-download-youtube":
           await mediaActionRuntime.downloadYoutube(api, runtime, requestId, actionPayload);
           break;
+        case "asset-use-as-source":
+          await mediaActionRuntime.useAssetAsSource(api, runtime, requestId, actionPayload);
+          break;
+        case "asset-remove":
+          await mediaActionRuntime.removeAsset(runtime, requestId, actionPayload);
+          break;
         case "edit-set-mode":
           await mediaActionRuntime.setEditMode(runtime, actionPayload);
           break;
@@ -225,6 +231,9 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
           break;
         case "export-timeline-clip":
           await mediaActionRuntime.exportTimelineClip(api, runtime, requestId, actionPayload);
+          break;
+        case "export-audio-track":
+          await mediaActionRuntime.exportAudioTrack(api, runtime, requestId, actionPayload);
           break;
         case "profile-set-mode":
           await mediaActionRuntime.setProfileMode(runtime, actionPayload);

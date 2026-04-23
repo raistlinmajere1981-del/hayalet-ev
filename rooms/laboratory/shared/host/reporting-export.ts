@@ -1,3 +1,5 @@
+import { createLabOutputAsset, upsertLabAsset } from "./lab-assets.js";
+
 type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryReportExportEntry = LaboratoryRecord;
@@ -183,7 +185,43 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
           }, []);
         nextReportRecord.exports = nextExportEntries.slice(0, 8);
         setFeatureReportRecord(nextProject, featureId, nextReportRecord);
-        return nextProject;
+        const reportRunId =
+          typeof nextReportRecord["sourceRunId"] === "string"
+            ? nextReportRecord["sourceRunId"]
+            : null;
+        const userReportAsset = createLabOutputAsset(nextProject, {
+          type: "report",
+          name: fileName,
+          localPath: outputPath,
+          runId: reportRunId,
+          metadata: {
+            action,
+            featureId,
+            fileName,
+            format: "md",
+            requestId,
+          },
+        });
+        const aiReportAsset = createLabOutputAsset(nextProject, {
+          type: "report",
+          name: aiFileName,
+          localPath: aiOutputPath,
+          runId: reportRunId,
+          metadata: {
+            action,
+            featureId,
+            fileName: aiFileName,
+            format: "json",
+            requestId,
+          },
+        });
+        return {
+          ...nextProject,
+          assets: upsertLabAsset(
+            upsertLabAsset(nextProject["assets"], userReportAsset),
+            aiReportAsset
+          ),
+        };
       });
       pushJobState(api, {
         requestId: requestId,

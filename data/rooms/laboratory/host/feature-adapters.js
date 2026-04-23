@@ -96,6 +96,7 @@ export function createLaboratoryFeatureAdapters(deps) {
     getProjectEditOutputDir: deps.getProjectEditOutputDir,
     getProjectSourceDir: deps.getProjectSourceDir,
     getRuntimeToolIds: deps.getRuntimeToolIds,
+    handleAssetAsSource: deps.handleAssetAsSource,
     handleLocalPick: deps.handleLocalPick,
     handleUrlDownload: deps.handleUrlDownload,
     handleYoutubeDownload: deps.handleYoutubeDownload,
