@@ -15,6 +15,14 @@ test("android companion diagnostics panel stays wired across ui and runtime flow
     "android-companion/app/src/main/kotlin/com/hayaletev/androidcompanion/debug/CompanionDiagnostics.kt",
     "utf8"
   );
+  const manifestSource = readFileSync(
+    "android-companion/app/src/main/AndroidManifest.xml",
+    "utf8"
+  );
+  const networkSecurityConfigSource = readFileSync(
+    "android-companion/app/src/main/res/xml/network_security_config.xml",
+    "utf8"
+  );
   const activitySource = readFileSync(
     "android-companion/app/src/main/kotlin/com/hayaletev/androidcompanion/MainActivity.kt",
     "utf8"
@@ -46,6 +54,9 @@ test("android companion diagnostics panel stays wired across ui and runtime flow
   assert.match(stringsSource, /name="diagnostics_label"/);
   assert.match(stringsSource, /name="diagnostics_copy"/);
   assert.match(stringsSource, /name="diagnostics_share"/);
+  assert.match(manifestSource, /android:networkSecurityConfig="@xml\/network_security_config"/);
+  assert.match(manifestSource, /android:usesCleartextTraffic="true"/);
+  assert.match(networkSecurityConfigSource, /cleartextTrafficPermitted="true"/);
 
   assert.match(diagnosticsSource, /MAX_LOG_ENTRIES = 400/);
   assert.match(diagnosticsSource, /fun buildShareText\(\): String/);
