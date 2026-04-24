@@ -15,6 +15,7 @@ import type {
   LabRun,
   LabRunSnapshotSummary,
   LabSelection,
+  LabSelectionIntent,
   LabStage,
   LabStoreState,
   LabUserActionEvent,
@@ -875,6 +876,10 @@ export function getSelectionDuration(state: LabStoreState): number {
     return 0;
   }
   return selection.endMs - selection.startMs;
+}
+
+export function getSelectionIntent(state: LabStoreState): LabSelectionIntent {
+  return state.ui.workspace.activeSelection?.intent ?? "unknown";
 }
 
 export function getTimelineSelection(state: LabStoreState) {

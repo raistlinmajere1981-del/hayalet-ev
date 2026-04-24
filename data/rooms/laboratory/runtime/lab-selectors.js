@@ -651,6 +651,9 @@ export function getSelectionDuration(state) {
   }
   return selection.endMs - selection.startMs;
 }
+export function getSelectionIntent(state) {
+  return state.ui.workspace.activeSelection?.intent ?? "unknown";
+}
 export function getTimelineSelection(state) {
   const activeSelection = getActiveSelection(state);
   if (activeSelection !== null && activeSelection.endMs > activeSelection.startMs) {

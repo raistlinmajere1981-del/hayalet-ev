@@ -141,12 +141,20 @@ export interface LabROIRegion {
 }
 
 export type LabSelectionType = "clip" | "focus" | "inspect" | "unknown";
+export type LabSelectionIntent =
+  | "anomaly"
+  | "motion"
+  | "audio"
+  | "visual"
+  | "general"
+  | "unknown";
 
 export interface LabSelection {
   id: string;
   startMs: number;
   endMs: number;
   type: LabSelectionType;
+  intent: LabSelectionIntent;
   label?: string;
   roi?: {
     x: number;
@@ -937,6 +945,7 @@ export type LabStoreEvent =
   | { type: "clear-events" }
   // V2.3 workspace events
   | { type: "workspace-timeline-updated"; startMs: number | null; endMs: number | null }
+  | { type: "workspace-selection-intent-updated"; intent: LabSelectionIntent }
   | { type: "workspace-roi-added"; region: LabROIRegion }
   | { type: "workspace-roi-updated"; region: LabROIRegion }
   | { type: "workspace-roi-removed"; regionId: string }

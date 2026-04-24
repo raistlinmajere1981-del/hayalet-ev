@@ -7,6 +7,7 @@ import { renderLabCenterPanel } from "./lab-center-panel.js";
 import { renderLabLayout } from "./lab-layout.js";
 import { renderLabLeftRail } from "./lab-left-rail.js";
 import { renderLabRightPanel } from "./lab-right-panel.js";
+import { bindLabSelectionIntentClicks } from "./lab-selection-intent-binder.js";
 import { renderWorkspaceSurface } from "./workspace-surface.js";
 import { createLabRunController } from "../runtime/lab-run-controller.js";
 import { renderToolManagementOverlay } from "./tool-management-overlay.js";
@@ -274,6 +275,10 @@ export function startLaboratoryLabRoot() {
   const eventBus = createLabEventBus();
   const store = createLabStore();
   eventBus.subscribe(store.dispatch);
+  bindLabSelectionIntentClicks({
+    documentRef,
+    emit: eventBus.emit,
+  });
 
   const controller = createLabRunController({
     documentRef,

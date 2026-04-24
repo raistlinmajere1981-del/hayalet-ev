@@ -34,10 +34,11 @@ Current codebase note:
 ## Assumptions
 - New selections default to `intent: "general"`
 - Existing persisted selections that do not yet carry an `intent` should hydrate as `general`, not `unknown`
-- `unknown` remains the fallback only when no active selection exists or a malformed value is encountered
+- `unknown` remains the selector fallback only when no active selection exists; active selections should normalize malformed intent values to `general`
 - Intent affects styling and semantic display only in this phase
 - The live action row remains canonical and executable; intent controls remain UI-state only
 - Intent picker interaction will need a UI-local dispatch seam outside `run-controller`
+- Selection intent is a separate concept from the existing workspace analysis-intent system and must not reuse `selectedIntents`, `workspace-intent-*`, or `analysisScope.intentIds`
 
 ## Sprint 1: Model And Store Intent Bridge
 **Goal**: Extend the semantic selection entity with intent while preserving the Phase 1.5 additive bridge.
@@ -66,6 +67,7 @@ Current codebase note:
   - freshly synthesized selections default to `general`
   - malformed or unknown persisted intent values normalize safely
   - legacy persisted selections without `intent` hydrate to `general`
+  - evolving valid selections keep their prior intent instead of resetting on every `workspace-timeline-updated`
   - invalid timeline ranges still produce `activeSelection: null`
 - **Validation**:
   - reducer-focused tests for creation and hydrate normalization
@@ -97,6 +99,7 @@ Current codebase note:
 Recommended decision:
 - Prefer `workspace-selection-intent-updated` for consistency with the current reducer surface
 - If exact product wording must remain `updateSelectionIntent`, document it as an intentional naming exception
+- Do not reuse `workspace-intent-set` / `workspace-intent-toggled`; those events remain reserved for analysis capability selection
 
 ## Sprint 2: Selector And View-Model Exposure
 **Goal**: Make intent readable from selectors and available to the timeline renderer without leaking store internals into the UI.
@@ -118,8 +121,8 @@ Recommended decision:
 
 ### Task 2.2: Extend Timeline View Model With Intent Metadata
 - **Location**: `rooms/laboratory/runtime/lab-selectors.ts`
-- **Description**: Push intent data into `getWaveformTimelineModel()` so the renderer can style the panel and overlay from the same source of truth.
-- **Complexity**: 3/10
+- **Description**: Keep the renderer on selector-derived data while acknowledging that `getWaveformTimelineModel()` already carries the full `activeSelection` object.
+- **Complexity**: 1/10
 - **Dependencies**: Task 2.1
 - **Acceptance Criteria**:
   - timeline model includes `activeSelection.intent`
@@ -185,19 +188,20 @@ Recommended decision:
 
 ### Task 4.1: Define The Dispatch Seam
 - **Location**: `rooms/laboratory/ui/workspace-surface.ts`, `rooms/laboratory/ui/lab-root.ts`, optional new helper under `rooms/laboratory/ui/`
-- **Description**: Choose a UI-local event path for intent clicks, because `workspace-surface.ts` itself is render-only and current event delegation for timeline controls lives in `run-controller`.
+- **Description**: Choose a delegated UI-local event path for intent clicks, because `workspace-surface.ts` itself is render-only and current event delegation for timeline controls lives in `run-controller`.
 - **Complexity**: 5/10
 - **Dependencies**: Sprint 3
 - **Acceptance Criteria**:
   - the chosen seam does not modify `run-controller`
-  - the store can receive the intent update event from UI clicks
+  - the store can receive the intent update event from UI clicks through `eventBus.emit`
   - `workspace-surface.ts` remains a composition layer, not a stateful controller
+  - listeners attach to a stable root/document seam so rerenders do not orphan handlers
 - **Validation**:
   - targeted UI/runtime regression proving click -> reducer update
 
 Recommended implementation shape:
 - `workspace-surface.ts` continues to pass the enriched timeline model into `renderLabWaveformTimeline()`
-- a small UI-local binder is attached from `lab-root.ts` or a dedicated helper to listen for intent-pill clicks and emit the store event
+- a small delegated binder is attached from `lab-root.ts` or a dedicated helper to listen for intent-pill clicks and emit the store event
 - no new `data-lab-action` path is added to `run-controller`
 
 ### Task 4.2: Wire Intent Pill Clicks To Store Updates
@@ -254,6 +258,8 @@ Recommended implementation shape:
   - reducer updates intent
   - selector returns intent
   - legacy hydrated selection without intent becomes `general`
+  - malformed hydrated selection intent becomes `general`
+  - intent survives drag / finetune / valid range evolution
   - snapshot/source reset preserves intent reset semantics
   - rendered panel marks the active intent and keeps passive hints inert
 - **Complexity**: 4/10
@@ -283,6 +289,8 @@ Recommended implementation shape:
 - **UI dispatch seam conflict**: the request places intent dispatch in `workspace-surface.ts`, but that file is render-only today. A real click-to-store path needs a small binder elsewhere unless `run-controller` is allowed back into scope.
 - **Event naming drift**: `updateSelectionIntent` does not match the existing `workspace-*` reducer vocabulary. Decide once and keep tests aligned.
 - **Hydration compatibility**: old Phase 1.5 persisted selections will lack `intent`. If they normalize to `unknown` instead of `general`, the UI will look incomplete after reload.
+- **Intent drift on timeline edits**: `workspace-timeline-updated` rebuilds the selection entity, so intent must be explicitly preserved across drag, finetune, and numeric range edits.
+- **Intent namespace collision**: reusing existing analysis-intent events or state would silently leak selection metadata into analysis scope. Keep the namespaces separate.
 - **Fallback selection render**: `lab-waveform-timeline.ts` currently creates a fallback semantic object when markup has a valid range but no full selection object. That fallback must include a stable default intent.
 - **Style sprawl**: per-intent coloring should hang off one attribute/token, not duplicated CSS branches for panel, overlay, pills, and hint text independently.
 - **Future pipeline expectations**: the hint text will imply future behavior. Keep wording explicit that this phase stores intent only and does not launch analysis.

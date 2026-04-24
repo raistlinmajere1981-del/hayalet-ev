@@ -26,6 +26,7 @@ import {
   getReportFreshness,
   getRunSnapshotSummary,
   getSelectionDuration,
+  getSelectionIntent,
   getSelectedDualPreviewAudioAsset,
   getWaveformTimelineModel,
   getWorkspaceDiff,
@@ -42,6 +43,7 @@ import {
   createLabWaveformTimelineVisualizer,
   renderLabWaveformTimeline,
 } from "../../rooms/laboratory/ui/lab-waveform-timeline.ts";
+import { bindLabSelectionIntentClicks } from "../../rooms/laboratory/ui/lab-selection-intent-binder.ts";
 import {
   renderWorkspaceAudioFocus,
 } from "../../rooms/laboratory/ui/workspace-audio-focus.ts";
@@ -104,6 +106,36 @@ class FakeControllerDocument {
         ? (listener as (event: Event) => void)
         : (event: Event) => listener.handleEvent(event)
     );
+  }
+
+  removeEventListener(type: string): void {
+    this.listeners.delete(type);
+  }
+}
+
+class FakeSelectionIntentTrigger {
+  constructor(private readonly intent: string | null) {}
+
+  getAttribute(name: string) {
+    return name === "data-lab-selection-intent" ? this.intent : null;
+  }
+}
+
+class FakeSelectionIntentTarget {
+  constructor(private readonly trigger: FakeSelectionIntentTrigger | null) {}
+
+  closest(selector: string) {
+    return selector === "[data-lab-selection-intent]" ? this.trigger : null;
+  }
+}
+
+class FakeClickEvent {
+  defaultPrevented = false;
+
+  constructor(public target: EventTarget | null = null) {}
+
+  preventDefault() {
+    this.defaultPrevented = true;
   }
 }
 
@@ -821,6 +853,7 @@ test("waveform timeline renders a passive selection entity panel alongside live 
     startMs: 12300,
     endMs: 18900,
     type: "clip",
+    intent: "general",
     createdAt: 1700000000000,
   };
   const markup = renderLabWaveformTimeline({
@@ -841,6 +874,12 @@ test("waveform timeline renders a passive selection entity panel alongside live 
   assert.match(markup, /00:12\.300/);
   assert.match(markup, /00:18\.900/);
   assert.match(markup, /Type: Clip/);
+  assert.match(markup, /Intent: General/);
+  assert.match(markup, /This selection will guide future analysis/);
+  assert.match(markup, /data-selection-intent="general"/);
+  assert.match(markup, /data-lab-selection-intent="anomaly"/);
+  assert.match(markup, /data-lab-selection-intent="general"/);
+  assert.match(markup, /aria-pressed="true"/);
   assert.match(markup, /Analyze this/);
   assert.match(markup, /Extract clip/);
   assert.match(markup, /Focus region/);
@@ -848,8 +887,135 @@ test("waveform timeline renders a passive selection entity panel alongside live 
   assert.doesNotMatch(markup, /data-lab-action="[^"]*">Analyze this/);
   assert.doesNotMatch(markup, /data-lab-action="[^"]*">Extract clip/);
   assert.doesNotMatch(markup, /data-lab-action="[^"]*">Focus region/);
+  assert.doesNotMatch(markup, /data-lab-action="workspace-intent-toggle"/);
   assert.match(markup, /timeline-export-clip/);
   assert.match(markup, /timeline-grab-frame/);
+});
+
+test("selection intent binder emits a dedicated semantic selection event", () => {
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  eventBus.subscribe(store.dispatch);
+  bindLabSelectionIntentClicks({
+    documentRef: documentRef as unknown as Document,
+    emit: eventBus.emit,
+  });
+
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1200,
+    endMs: 2600,
+  });
+
+  const clickListener = documentRef.listeners.get("click");
+  assert.ok(clickListener);
+
+  const clickEvent = new FakeClickEvent(
+    new FakeSelectionIntentTarget(new FakeSelectionIntentTrigger("audio")) as unknown as EventTarget
+  );
+  clickListener?.(clickEvent as unknown as Event);
+
+  assert.equal(clickEvent.defaultPrevented, true);
+  assert.equal(getSelectionIntent(store.getState()), "audio");
+  assert.equal(
+    eventBus.getHistory().some(function (event) {
+      return event.type === "workspace-selection-intent-updated" && event.intent === "audio";
+    }),
+    true
+  );
+});
+
+test("selection intent updates stay fenced from workspace analysis intents", () => {
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  const baseWorkspace = store.getState().ui.workspace;
+
+  eventBus.subscribe(store.dispatch);
+  bindLabSelectionIntentClicks({
+    documentRef: documentRef as unknown as Document,
+    emit: eventBus.emit,
+  });
+
+  store.dispatch({
+    type: "hydrate",
+    payload: {
+      currentStage: "report",
+      featureId: "media-analysis",
+      projectIndex: {
+        activeProjectId: "project-1",
+        projects: [],
+      },
+      workbench: {},
+      sourceProbeStatus: "completed",
+      workspace: {
+        ...baseWorkspace,
+        timelineStartMs: 2400,
+        timelineEndMs: 5600,
+        selectedIntents: ["visual-inspection"],
+      },
+      reports: {
+        user: null,
+        ai: null,
+        emptyReason: null,
+      },
+      activityFeed: [],
+      lastRun: {
+        id: "run-1",
+        state: "completed",
+        startedAt: Date.now() - 5000,
+        endedAt: Date.now() - 1000,
+        modules: {},
+        moduleOrder: [],
+        events: [],
+        rawLog: [],
+        artifacts: [],
+        findings: [],
+        liveFindings: [],
+        warnings: [],
+        error: null,
+        targetLabel: null,
+        progress: 100,
+        emptyReason: null,
+        analysisScope: {
+          focus: "visual",
+          timeRange: {
+            startMs: 2400,
+            endMs: 5600,
+          },
+          hypothesis: "frozen clue",
+          intentIds: ["visual-inspection", "anomaly-detection"],
+        },
+        previewArtifacts: [],
+        confidence: "medium",
+        moduleTrace: [],
+        comparisonVariants: [],
+        hypothesisSummary: "frozen clue",
+      },
+    },
+  });
+
+  const clickListener = documentRef.listeners.get("click");
+  assert.ok(clickListener);
+
+  const clickEvent = new FakeClickEvent(
+    new FakeSelectionIntentTarget(new FakeSelectionIntentTrigger("audio")) as unknown as EventTarget
+  );
+  clickListener?.(clickEvent as unknown as Event);
+
+  const state = store.getState();
+  assert.equal(clickEvent.defaultPrevented, true);
+  assert.equal(state.ui.workspace.activeSelection?.intent, "audio");
+  assert.deepEqual(state.ui.workspace.selectedIntents, ["visual-inspection"]);
+  assert.deepEqual(state.run?.analysisScope?.intentIds, ["visual-inspection", "anomaly-detection"]);
+  assert.deepEqual(getRunSnapshotSummary(state), {
+    focus: "visual",
+    timelineStartMs: 2400,
+    timelineEndMs: 5600,
+    hypothesis: "frozen clue",
+    intentIds: ["visual-inspection", "anomaly-detection"],
+  });
 });
 
 test("waveform timeline model maps linked audio offset onto the shared master axis", () => {
@@ -2224,6 +2390,7 @@ test("laboratory hydrate reconstructs an active selection from a valid persisted
     startMs: 2400,
     endMs: 5600,
     type: "focus",
+    intent: "general",
     label: "Door latch",
     roi: {
       x: 10,
@@ -2280,11 +2447,51 @@ test("laboratory hydrate rebuilds selection identity from the primitive bridge o
     assert.equal(rehydratedSelection?.startMs, 2400);
     assert.equal(rehydratedSelection?.endMs, 5600);
     assert.equal(rehydratedSelection?.type, "clip");
+    assert.equal(rehydratedSelection?.intent, "general");
     assert.notEqual(rehydratedSelection?.id, initialSelection?.id);
     assert.equal(rehydratedSelection?.createdAt, 1700000005000);
   } finally {
     Date.now = originalDateNow;
   }
+});
+
+test("laboratory hydrate normalizes malformed persisted selection intent to general", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "hydrate",
+    payload: {
+      currentStage: "source",
+      featureId: "media-analysis",
+      projectIndex: {
+        activeProjectId: null,
+        projects: [],
+      },
+      workbench: {},
+      sourceProbeStatus: "idle",
+      reports: {
+        user: null,
+        ai: null,
+        emptyReason: "Rapor henüz üretilmedi.",
+      },
+      activityFeed: [],
+      workspace: {
+        timelineStartMs: 1500,
+        timelineEndMs: 3600,
+        activeSelection: {
+          id: "selection-persisted-invalid-intent",
+          startMs: 1500,
+          endMs: 3600,
+          type: "inspect",
+          intent: "not-real",
+          createdAt: 1700000000042,
+        },
+      },
+    },
+  });
+
+  assert.equal(store.getState().ui.workspace.activeSelection?.intent, "general");
+  assert.equal(getSelectionIntent(store.getState()), "general");
 });
 
 test("laboratory hydrate suppresses persisted selection entities when the primitive range is invalid", () => {
@@ -3191,6 +3398,10 @@ test("laboratory run controller applies timeline finetune and clear actions from
       startMs: 1000,
       endMs: 3000,
     });
+    store.dispatch({
+      type: "workspace-selection-intent-updated",
+      intent: "audio",
+    });
 
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
@@ -3210,6 +3421,7 @@ test("laboratory run controller applies timeline finetune and clear actions from
 
     assert.equal(store.getState().ui.workspace.timelineStartMs, 1100);
     assert.equal(store.getState().ui.workspace.timelineEndMs, 2500);
+    assert.equal(store.getState().ui.workspace.activeSelection?.intent, "audio");
 
     clickListener?.(
       new FakeMouseEvent(
@@ -3220,6 +3432,7 @@ test("laboratory run controller applies timeline finetune and clear actions from
 
     assert.equal(store.getState().ui.workspace.timelineStartMs, null);
     assert.equal(store.getState().ui.workspace.timelineEndMs, null);
+    assert.equal(getSelectionIntent(store.getState()), "unknown");
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;
@@ -3244,12 +3457,21 @@ test("laboratory store promotes timeline ranges into stable selection entities",
   const firstSelection = store.getState().ui.workspace.activeSelection;
   assert.ok(firstSelection);
   assert.equal(firstSelection?.type, "clip");
+  assert.equal(firstSelection?.intent, "general");
   assert.equal(firstSelection?.startMs, 1000);
   assert.equal(firstSelection?.endMs, 3000);
   assert.ok(typeof firstSelection?.id === "string" && firstSelection.id.length > 0);
   assert.equal(getActiveSelection(store.getState())?.id, firstSelection?.id);
   assert.equal(isSelectionValid(store.getState()), true);
   assert.equal(getSelectionDuration(store.getState()), 2000);
+  assert.equal(getSelectionIntent(store.getState()), "general");
+
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+
+  assert.equal(getSelectionIntent(store.getState()), "audio");
 
   store.dispatch({
     type: "workspace-timeline-updated",
@@ -3261,6 +3483,7 @@ test("laboratory store promotes timeline ranges into stable selection entities",
   assert.ok(evolvedSelection);
   assert.equal(evolvedSelection?.id, firstSelection?.id);
   assert.equal(evolvedSelection?.createdAt, firstSelection?.createdAt);
+  assert.equal(evolvedSelection?.intent, "audio");
   assert.equal(evolvedSelection?.startMs, 1200);
   assert.equal(evolvedSelection?.endMs, 3400);
 
@@ -3273,6 +3496,19 @@ test("laboratory store promotes timeline ranges into stable selection entities",
   assert.equal(store.getState().ui.workspace.activeSelection, null);
   assert.equal(isSelectionValid(store.getState()), false);
   assert.equal(getSelectionDuration(store.getState()), 0);
+  assert.equal(getSelectionIntent(store.getState()), "unknown");
+});
+
+test("laboratory store ignores semantic selection intent updates without an active selection", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "visual",
+  });
+
+  assert.equal(store.getState().ui.workspace.activeSelection, null);
+  assert.equal(getSelectionIntent(store.getState()), "unknown");
 });
 
 test("laboratory store resets semantic and primitive selection state on source changes", () => {
