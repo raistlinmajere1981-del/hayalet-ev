@@ -83,7 +83,7 @@ export function renderWorkspaceAudioFocus(audioFocus: LabAudioFocusSettings) {
         }
       </div>
       <p class="labx-panel-hint">
-        Timeline preview altinda tek waveform katmani kullanilir. Yuklu spectrogram artifact varsa ayni eksende gosterilir.
+        Timeline preview altinda tek realtime waveform katmani kullanilir. Spectrum modu ayni canvas uzerinde canli frekans gorunumu cizer.
       </p>
       <div class="labx-audio-focus__eq">
         <p class="labx-card__eyebrow">PARAMETRIC EQ</p>

@@ -17,9 +17,7 @@ function isSelectionIntentValue(value: string): value is Exclude<LabSelectionInt
   return LAB_SELECTION_INTENT_VALUES.has(value as LabSelectionIntent);
 }
 
-function isClosestCapableTarget(
-  value: EventTarget | null
-): value is EventTarget & {
+function isClosestCapableTarget(value: EventTarget | null): value is EventTarget & {
   closest: (selector: string) => { getAttribute: (name: string) => string | null } | null;
 } {
   return typeof value === "object" && value !== null && "closest" in value;

@@ -1,9 +1,4 @@
-import {
-  asLabRecord,
-  asNonEmptyString,
-  asNumber,
-  createLabEventId
-} from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, asNumber, createLabEventId } from "../models/lab-types.js";
 export function normalizeWorkspaceTimelineRange(startMs, endMs) {
   const nextStart = typeof startMs === "number" && Number.isFinite(startMs) ? Math.max(0, Math.round(startMs)) : null;
   const nextEnd = typeof endMs === "number" && Number.isFinite(endMs) ? Math.max(0, Math.round(endMs)) : null;
@@ -84,7 +79,9 @@ export function createActiveSelectionFromRange(startMs, endMs, previousSelection
   }
   const selectionSeed = getSelectionSeedForRange(options.persistedSelection, startMs, endMs);
   const nextType = previousSelection?.type || selectionSeed?.type || "clip";
-  const nextIntent = normalizeLabSelectionIntent(previousSelection?.intent ?? selectionSeed?.intent);
+  const nextIntent = normalizeLabSelectionIntent(
+    previousSelection?.intent ?? selectionSeed?.intent
+  );
   const nextLabel = previousSelection?.label ?? selectionSeed?.label;
   const nextRoi = previousSelection?.roi ?? selectionSeed?.roi;
   return {

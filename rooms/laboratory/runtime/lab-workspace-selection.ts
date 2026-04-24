@@ -1,9 +1,4 @@
-import {
-  asLabRecord,
-  asNonEmptyString,
-  asNumber,
-  createLabEventId,
-} from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, asNumber, createLabEventId } from "../models/lab-types.js";
 import type {
   LabSelection,
   LabSelectionIntent,
@@ -120,7 +115,9 @@ export function createActiveSelectionFromRange(
 
   const selectionSeed = getSelectionSeedForRange(options.persistedSelection, startMs, endMs);
   const nextType = previousSelection?.type || selectionSeed?.type || "clip";
-  const nextIntent = normalizeLabSelectionIntent(previousSelection?.intent ?? selectionSeed?.intent);
+  const nextIntent = normalizeLabSelectionIntent(
+    previousSelection?.intent ?? selectionSeed?.intent
+  );
   const nextLabel = previousSelection?.label ?? selectionSeed?.label;
   const nextRoi = previousSelection?.roi ?? selectionSeed?.roi;
 

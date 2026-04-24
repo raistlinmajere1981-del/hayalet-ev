@@ -1,6 +1,10 @@
 import { asLabRecord, asNonEmptyString, createLabFeatureMeta } from "../models/lab-types.js";
 import { CAPABILITY_FAMILIES, WORKSPACE_INTENTS } from "../models/lab-types.js";
 import { normalizeAnalysisScope } from "../shared/types/analysis-scope.js";
+import {
+  buildSelectionSuggestionPreview,
+  getSelectionSuggestionsForContext
+} from "./lab-selection-suggestion-logic.js";
 import { LAB_USER_ACTION_HISTORY_LIMIT } from "./lab-user-actions.js";
 function normalizeIntentIdList(value) {
   const sourceIds = Array.isArray(value) ? value.filter((entry) => typeof entry === "string") : [];
@@ -654,6 +658,29 @@ export function getSelectionDuration(state) {
 export function getSelectionIntent(state) {
   return state.ui.workspace.activeSelection?.intent ?? "unknown";
 }
+export function getActiveSuggestionPreviewId(state) {
+  return state.ui.activeSuggestionPreviewId;
+}
+export function getSelectionSuggestions(state) {
+  return getSelectionSuggestionsForContext(getActiveSelection(state), getSourceKind(state));
+}
+export function buildSuggestionPreview(suggestion, selection) {
+  return buildSelectionSuggestionPreview(suggestion, selection);
+}
+export function getActiveSuggestionPreview(state) {
+  const previewId = getActiveSuggestionPreviewId(state);
+  const activeSelection = getActiveSelection(state);
+  if (previewId === null || activeSelection === null || activeSelection.endMs <= activeSelection.startMs) {
+    return null;
+  }
+  const suggestion = getSelectionSuggestions(state).find(function(entry) {
+    return entry.id === previewId;
+  });
+  if (!suggestion) {
+    return null;
+  }
+  return buildSuggestionPreview(suggestion, activeSelection);
+}
 export function getTimelineSelection(state) {
   const activeSelection = getActiveSelection(state);
   if (activeSelection !== null && activeSelection.endMs > activeSelection.startMs) {
@@ -701,11 +728,14 @@ export function getWaveformTimelineModel(state) {
   const waveformCropEndRatio = waveformContentDurationMs > 0 ? Math.max(0, Math.min(1, waveformContentVisibleEndMs / waveformContentDurationMs)) : 1;
   return {
     activeSelection: getActiveSelection(state),
+    activeSuggestionPreview: getActiveSuggestionPreview(state),
+    audioFocus: getAudioFocusSettings(state),
     bookmarks: getBookmarks(state),
     dualPreviewActive,
     durationMs,
     endMs: selection.endMs,
     linkedAudioAssetId: selectedAudioAsset?.id || null,
+    selectionSuggestions: getSelectionSuggestions(state),
     startMs: selection.startMs,
     sourceKind,
     visualizationArtifact: getAudioVisualizationArtifact(state),

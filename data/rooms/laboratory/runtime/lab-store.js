@@ -25,6 +25,7 @@ import {
   normalizeWorkspaceTimelineRange,
   syncWorkspaceSelectionWithRange
 } from "./lab-workspace-selection.js";
+import { getSelectionSuggestionsForContext } from "./lab-selection-suggestion-logic.js";
 import {
   LAB_USER_ACTION_HISTORY_LIMIT,
   getTrackedLabUserActionDefinition,
@@ -221,6 +222,7 @@ function createInitialState() {
       artifactRenderCount: 12,
       reportView: "user",
       lastHydratedProjectId: null,
+      activeSuggestionPreviewId: null,
       activePreviewArtifactId: null,
       liveFindingsExpanded: true,
       analysisControlsCollapsed: true,
@@ -293,6 +295,22 @@ function createSnapshotEvent(message, severity, detail = null, scope = "global")
     moduleId: null,
     rawLine: null
   };
+}
+function clearSuggestionPreview(state) {
+  state.ui.activeSuggestionPreviewId = null;
+}
+function getWorkspaceSelectionSuggestionSourceKind(state) {
+  return asNonEmptyString(asLabRecord(state.source)["kind"]) || "video";
+}
+function canStoreSelectionSuggestionPreview(state, suggestionId) {
+  const activeSelection = state.ui.workspace.activeSelection;
+  if (activeSelection === null || activeSelection.endMs <= activeSelection.startMs) {
+    return false;
+  }
+  const sourceKind = getWorkspaceSelectionSuggestionSourceKind(state);
+  return getSelectionSuggestionsForContext(activeSelection, sourceKind).some(
+    (suggestion) => suggestion.id === suggestionId
+  );
 }
 function toEventFeedItem(value, fallbackScope) {
   const record = asLabRecord(value);
@@ -1149,6 +1167,7 @@ function syncCanonicalStateFromSnapshot(state, snapshot, options = {}) {
     state.assets = [];
     state.sourceProbeStatus = state.sourceProbeStatus === "running" ? "running" : "idle";
     state.ui.lastHydratedProjectId = null;
+    clearSuggestionPreview(state);
     state.ui.workspace = clearWorkspaceSelection({
       ...state.ui.workspace,
       sourceIntakeCollapsed: false
@@ -1177,6 +1196,7 @@ function syncCanonicalStateFromSnapshot(state, snapshot, options = {}) {
   const nextSourceReady = isWorkspaceSourceReady(state.source);
   const nextSourceSelectionKey = getWorkspaceSourceSelectionResetKey(state.source);
   if (previousActiveProjectId !== nextActiveProjectId || previousSourceSelectionKey !== nextSourceSelectionKey) {
+    clearSuggestionPreview(state);
     state.ui.workspace = clearWorkspaceSelection(state.ui.workspace);
   }
   if (previousActiveProjectId !== nextActiveProjectId) {
@@ -1275,6 +1295,7 @@ function reduceEvent(state, event) {
   switch (event.type) {
     case "hydrate":
       if (event.payload) {
+        clearSuggestionPreview(state);
         state.persisted = event.payload;
         state.currentStage = normalizeLabStage(event.payload.currentStage, state.currentStage);
         state.featureId = normalizeLabFeatureId(event.payload.featureId, state.featureId);
@@ -1568,6 +1589,7 @@ function reduceEvent(state, event) {
       };
       const nextSourceSelectionKey = getWorkspaceSourceSelectionResetKey(state.source);
       if (previousSourceSelectionKey !== nextSourceSelectionKey) {
+        clearSuggestionPreview(state);
         state.ui.workspace = clearWorkspaceSelection(state.ui.workspace);
       }
       if (event.patch["kind"] !== void 0 || event.patch["mode"] !== void 0 || event.patch["storedPath"] === null || event.patch["status"] === "idle") {
@@ -1742,6 +1764,9 @@ function reduceEvent(state, event) {
     // V2.3 workspace events
     case "workspace-timeline-updated": {
       const nextTimelineRange = normalizeWorkspaceTimelineRange(event.startMs, event.endMs);
+      if (nextTimelineRange.startMs !== state.ui.workspace.timelineStartMs || nextTimelineRange.endMs !== state.ui.workspace.timelineEndMs) {
+        clearSuggestionPreview(state);
+      }
       state.ui.workspace = syncWorkspaceSelectionWithRange(state.ui.workspace, nextTimelineRange);
       return state;
     }
@@ -1753,6 +1778,7 @@ function reduceEvent(state, event) {
       if (state.ui.workspace.activeSelection.intent === nextIntent) {
         return state;
       }
+      clearSuggestionPreview(state);
       state.ui.workspace = {
         ...state.ui.workspace,
         activeSelection: {
@@ -1762,6 +1788,18 @@ function reduceEvent(state, event) {
       };
       return state;
     }
+    case "workspace-selection-suggestion-clicked":
+      return state;
+    case "workspace-selection-suggestion-preview-set":
+      if (!canStoreSelectionSuggestionPreview(state, event.suggestionId)) {
+        clearSuggestionPreview(state);
+        return state;
+      }
+      state.ui.activeSuggestionPreviewId = event.suggestionId;
+      return state;
+    case "workspace-selection-suggestion-preview-cleared":
+      clearSuggestionPreview(state);
+      return state;
     case "workspace-roi-added":
       state.ui.workspace = {
         ...state.ui.workspace,

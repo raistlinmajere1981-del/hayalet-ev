@@ -7,11 +7,16 @@ import { renderLabLayout } from "./lab-layout.js";
 import { renderLabLeftRail } from "./lab-left-rail.js";
 import { renderLabRightPanel } from "./lab-right-panel.js";
 import { bindLabSelectionIntentClicks } from "./lab-selection-intent-binder.js";
+import { bindLabSelectionSuggestionClicks } from "./lab-selection-suggestion-binder.js";
 import { renderWorkspaceSurface } from "./workspace-surface.js";
 import { createLabRunController } from "../runtime/lab-run-controller.js";
 import { renderToolManagementOverlay } from "./tool-management-overlay.js";
 import { renderReportOverlay } from "./report-overlay.js";
-import { getWorkspaceMode } from "../runtime/lab-selectors.js";
+import {
+  getActiveSuggestionPreview,
+  getSelectionSuggestions,
+  getWorkspaceMode
+} from "../runtime/lab-selectors.js";
 function createRenderedElement(documentRef, markup) {
   const template = documentRef.createElement("template");
   template.innerHTML = markup.trim();
@@ -216,6 +221,18 @@ export function startLaboratoryLabRoot() {
   bindLabSelectionIntentClicks({
     documentRef,
     emit: eventBus.emit
+  });
+  bindLabSelectionSuggestionClicks({
+    canPreviewSuggestion(suggestionId) {
+      return getSelectionSuggestions(store.getState()).some(function(suggestion) {
+        return suggestion.id === suggestionId;
+      });
+    },
+    documentRef,
+    emit: eventBus.emit,
+    hasActivePreview() {
+      return getActiveSuggestionPreview(store.getState()) !== null;
+    }
   });
   const controller = createLabRunController({
     documentRef,

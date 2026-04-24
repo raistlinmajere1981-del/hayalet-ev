@@ -1,18 +1,23 @@
 import type {
+  LabActionSuggestion,
   LabArtifactProjection,
   LabAudioFocusSettings,
   LabBookmark,
   LabPreviewArtifactProjection,
   LabSelection,
+  LabSuggestionPreview,
 } from "../models/lab-types.js";
 
 export type LabWaveformTimelineModel = {
   activeSelection?: LabSelection | null;
+  activeSuggestionPreview?: LabSuggestionPreview | null;
+  audioFocus?: LabAudioFocusSettings;
   bookmarks: LabBookmark[];
   dualPreviewActive: boolean;
   durationMs: number;
   endMs: number | null;
   linkedAudioAssetId?: string | null;
+  selectionSuggestions?: LabActionSuggestion[];
   sourceKind?: string;
   startMs: number | null;
   visualizationArtifact?: LabArtifactProjection | LabPreviewArtifactProjection | null;

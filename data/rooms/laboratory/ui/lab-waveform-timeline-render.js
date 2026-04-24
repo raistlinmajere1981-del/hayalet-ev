@@ -49,6 +49,69 @@ function formatSelectionIntent(intent) {
     unknown: "Unknown"
   }[intent ?? "unknown"];
 }
+function getSuggestionPriorityClass(suggestion) {
+  return suggestion.confidence >= 0.8 ? "is-primary" : "is-secondary";
+}
+function renderSelectionSuggestions(suggestions) {
+  if (suggestions.length === 0) {
+    return "";
+  }
+  return `
+    <div class="lab-selection-panel__suggestions">
+      <div class="lab-selection-panel__suggestions-title">Suggested actions</div>
+      <div class="lab-selection-panel__suggestions-list">
+        ${suggestions.map(function(suggestion) {
+    return `<button
+              class="lab-selection-panel__suggestion ${getSuggestionPriorityClass(suggestion)}"
+              type="button"
+              data-lab-selection-suggestion="${escapeHtml(suggestion.id)}"
+              data-suggestion-priority="${suggestion.confidence >= 0.8 ? "primary" : "secondary"}"
+            >
+              <span class="lab-selection-panel__suggestion-label">${escapeHtml(suggestion.label)}</span>
+              ${typeof suggestion.description === "string" && suggestion.description.trim() !== "" ? `<span class="lab-selection-panel__suggestion-description">${escapeHtml(suggestion.description)}</span>` : ""}
+            </button>`;
+  }).join("")}
+      </div>
+    </div>
+  `;
+}
+function formatEstimatedCost(cost) {
+  return {
+    low: "Low",
+    medium: "Medium",
+    high: "High"
+  }[cost ?? "low"];
+}
+function renderSuggestionPreview(preview) {
+  if (preview === null) {
+    return "";
+  }
+  return `
+    <div class="lab-selection-preview" data-lab-selection-preview="true">
+      <div class="lab-selection-preview__eyebrow">Preview</div>
+      <div class="lab-selection-preview__title">${escapeHtml(preview.title)}</div>
+      <div class="lab-selection-preview__section">
+        <div class="lab-selection-preview__section-title">Steps</div>
+        <ul class="lab-selection-preview__list lab-selection-preview__list--steps">
+          ${preview.steps.map(function(step) {
+    return `<li>${escapeHtml(step)}</li>`;
+  }).join("")}
+        </ul>
+      </div>
+      ${preview.expectedOutputs.length > 0 ? `
+        <div class="lab-selection-preview__section">
+          <div class="lab-selection-preview__section-title">Outputs</div>
+          <ul class="lab-selection-preview__list lab-selection-preview__list--outputs">
+            ${preview.expectedOutputs.map(function(output) {
+    return `<li>${escapeHtml(output)}</li>`;
+  }).join("")}
+          </ul>
+        </div>
+      ` : ""}
+      ${preview.estimatedCost ? `<div class="lab-selection-preview__cost">Estimated cost: ${escapeHtml(formatEstimatedCost(preview.estimatedCost))}</div>` : ""}
+    </div>
+  `;
+}
 function renderFineTuneButtons(prefix, msValue) {
   return `
     <div class="labx-timeline__finetune">
@@ -75,6 +138,9 @@ export function renderLabWaveformTimeline(model) {
     intent: "general",
     createdAt: 0
   } : null;
+  const hasSemanticSelection = model.activeSelection !== null && model.activeSelection !== void 0 && model.activeSelection.endMs > model.activeSelection.startMs;
+  const selectionSuggestions = hasSemanticSelection ? model.selectionSuggestions ?? [] : [];
+  const suggestionPreview = hasSemanticSelection ? model.activeSuggestionPreview ?? null : null;
   const selectionIntent = activeSelection?.intent ?? "general";
   const startMs = hasSelection ? rawStartMs : 0;
   const endMs = hasSelection ? rawEndMs : durationMs;
@@ -122,10 +188,11 @@ export function renderLabWaveformTimeline(model) {
           >
             <canvas
               id="lab-audio-viz"
-              class="labx-audio-viz labx-audio-viz--timeline"
+              class="labx-audio-viz labx-audio-viz--timeline lab-audio-viz-canvas"
               width="960"
               height="112"
               data-lab-viz="audio-waveform-timeline"
+              data-lab-viz-mode="${escapeHtml(model.visualizationMode ?? "waveform")}"
               data-waveform-crop-start="${String(model.waveformCropStartRatio ?? 0)}"
               data-waveform-crop-end="${String(model.waveformCropEndRatio ?? 1)}"
             ></canvas>
@@ -136,7 +203,12 @@ export function renderLabWaveformTimeline(model) {
         </div>
         <div class="labx-timeline__rail" data-lab-action="timeline-interact"></div>
         ${hasSelection ? `
-          <div class="lab-selection-panel" style="left: ${String(selectionCenterPct)}%" data-selection-intent="${escapeHtml(selectionIntent)}">
+          <div
+            class="lab-selection-panel"
+            style="left: ${String(selectionCenterPct)}%"
+            data-selection-intent="${escapeHtml(selectionIntent)}"
+            data-lab-selection-panel="true"
+          >
             <div class="lab-selection-panel__eyebrow">Selection</div>
             <div class="lab-selection-panel__range">
               ${formatTimePrecise(startMs)} &#8594; ${formatTimePrecise(endMs)}
@@ -157,11 +229,8 @@ export function renderLabWaveformTimeline(model) {
   }).join("")}
             </div>
             <div class="lab-selection-panel__hint">This selection will guide future analysis</div>
-            <div class="lab-selection-panel__actions">
-              <button class="lab-selection-panel__action" type="button" disabled>Analyze this</button>
-              <button class="lab-selection-panel__action" type="button" disabled>Extract clip</button>
-              <button class="lab-selection-panel__action" type="button" disabled>Focus region</button>
-            </div>
+            ${renderSelectionSuggestions(selectionSuggestions)}
+            ${renderSuggestionPreview(suggestionPreview)}
           </div>
           <div
             class="labx-timeline__selection lab-selection-overlay"

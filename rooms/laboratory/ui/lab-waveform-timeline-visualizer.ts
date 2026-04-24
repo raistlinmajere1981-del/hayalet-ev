@@ -3,12 +3,12 @@ import type {
   LabAudioFocusSettings,
   LabPreviewArtifactProjection,
 } from "../models/lab-types.js";
+import { createAudioVisualizer } from "../runtime/lab-audio-visualizer.js";
 import type {
   LabWaveformTimelineModel,
   LabWaveformTimelineVisualizerDeps,
 } from "./lab-waveform-timeline-types.js";
 
-type WaveformBuffer = Uint8Array<ArrayBuffer>;
 type AudioVisualizationArtifact = LabArtifactProjection | LabPreviewArtifactProjection;
 type AudioBufferLike = {
   getChannelData: (channel: number) => Float32Array;
@@ -53,29 +53,23 @@ function isAudioVisualizerCanvas(value: unknown): value is HTMLCanvasElement {
   return typeof (value as { getContext?: unknown }).getContext === "function";
 }
 
-function createWaveformBuffer(length: number): WaveformBuffer {
-  return new Uint8Array(new ArrayBuffer(length));
-}
-
 function getEffectiveAudioVisualizationMode(
   mode: LabAudioFocusSettings["visualizationMode"]
-): "none" | "waveform" {
+): "none" | "waveform" | "spectrum" {
   if (mode === "spectrum") {
+    return "spectrum";
+  }
+  if (mode === "waveform") {
     return "waveform";
   }
-  return "waveform";
+  return "none";
 }
 
 export function createLabWaveformTimelineVisualizer(deps: LabWaveformTimelineVisualizerDeps) {
   let boundWorkspaceAudioPreview: HTMLMediaElement | null = null;
-  let audioVisualizerContext: AudioContext | null = null;
-  let audioVisualizerAnalyser: AnalyserNode | null = null;
-  let audioVisualizerSourceMedia: HTMLMediaElement | null = null;
-  let audioVisualizerSourceNode: MediaElementAudioSourceNode | null = null;
-  let audioVisualizerWaveformBuffer: WaveformBuffer | null = null;
-  let audioVisualizerFrameId: number | null = null;
-  let audioVisualizerActivatedByPlay = false;
-  let audioVisualizerSourceRoute: "analyser" | "destination" | null = null;
+  let audioVisualizer: ReturnType<typeof createAudioVisualizer> | null = null;
+  let audioVisualizerCanvas: HTMLCanvasElement | null = null;
+  let audioVisualizerMedia: HTMLMediaElement | null = null;
   let audioVisualizationArtifactRequestId = 0;
   let failedArtifactRenderKey: string | null = null;
   let loadingArtifactRenderKey: string | null = null;
@@ -142,7 +136,11 @@ export function createLabWaveformTimelineVisualizer(deps: LabWaveformTimelineVis
       return null;
     }
     const candidate = querySelector(WAVEFORM_CANVAS_SELECTOR);
-    return isAudioVisualizerCanvas(candidate) ? candidate : null;
+    if (!isAudioVisualizerCanvas(candidate)) {
+      return null;
+    }
+    candidate.dataset["labVizMode"] = getEffectiveAudioVisualizationMode(getVisualizationMode());
+    return candidate;
   }
 
   function getLoadableVisualizationArtifactUrl(artifact: AudioVisualizationArtifact) {
@@ -205,35 +203,39 @@ export function createLabWaveformTimelineVisualizer(deps: LabWaveformTimelineVis
         : null;
   }
 
-  function disconnectAudioVisualizerAnalyser() {
-    if (audioVisualizerAnalyser) {
-      try {
-        audioVisualizerAnalyser.disconnect();
-      } catch {
-        // Analyzer cleanup can overlap with source reroutes during sync.
-      }
-    }
+  function destroyLiveAudioVisualizer() {
+    audioVisualizer?.destroy();
+    audioVisualizer = null;
+    audioVisualizerCanvas = null;
+    audioVisualizerMedia = null;
   }
 
-  function disconnectAudioVisualizerSource() {
-    if (audioVisualizerSourceNode) {
-      try {
-        audioVisualizerSourceNode.disconnect();
-      } catch {
-        // Media replacement can race with teardown during render updates.
-      }
-    }
-    disconnectAudioVisualizerAnalyser();
-    audioVisualizerSourceRoute = null;
-    audioVisualizerSourceNode = null;
-    audioVisualizerSourceMedia = null;
+  function stopLiveAudioVisualizer() {
+    audioVisualizer?.stop();
   }
 
-  function cancelAudioVisualizerFrame() {
-    if (audioVisualizerFrameId !== null) {
-      deps.windowRef.cancelAnimationFrame(audioVisualizerFrameId);
-      audioVisualizerFrameId = null;
+  function ensureLiveAudioVisualizer(media: HTMLMediaElement, canvas: HTMLCanvasElement) {
+    if (
+      audioVisualizer !== null &&
+      audioVisualizerMedia === media &&
+      audioVisualizerCanvas === canvas
+    ) {
+      return audioVisualizer;
     }
+    destroyLiveAudioVisualizer();
+    audioVisualizer = createAudioVisualizer(media, canvas, {
+      getAudioFocus() {
+        return getTimelineModel().audioFocus;
+      },
+      documentRef: deps.documentRef,
+      getMode() {
+        return getVisualizationMode();
+      },
+      windowRef: deps.windowRef,
+    });
+    audioVisualizerCanvas = canvas;
+    audioVisualizerMedia = media;
+    return audioVisualizer;
   }
 
   function resetArtifactRenderState(options: { preserveFailure?: boolean } = {}) {
@@ -252,68 +254,6 @@ export function createLabWaveformTimelineVisualizer(deps: LabWaveformTimelineVis
     if (options.preserveFailure !== true) {
       failedDecodedWaveformSourceUrl = null;
     }
-  }
-
-  function routeAudioVisualizerSourceToAnalyser() {
-    const context = audioVisualizerContext;
-    const analyser = audioVisualizerAnalyser;
-    const sourceNode = audioVisualizerSourceNode;
-    if (context === null || analyser === null || sourceNode === null) {
-      return false;
-    }
-    if (audioVisualizerSourceRoute === "analyser") {
-      return true;
-    }
-    if (audioVisualizerSourceRoute !== null) {
-      try {
-        sourceNode.disconnect();
-      } catch {
-        // Re-routing may happen while the current graph is already tearing down.
-      }
-    }
-    disconnectAudioVisualizerAnalyser();
-    try {
-      analyser.connect(context.destination);
-      sourceNode.connect(analyser);
-      audioVisualizerSourceRoute = "analyser";
-      return true;
-    } catch {
-      audioVisualizerSourceRoute = null;
-      return false;
-    }
-  }
-
-  function routeAudioVisualizerSourceToDestination() {
-    const context = audioVisualizerContext;
-    const sourceNode = audioVisualizerSourceNode;
-    if (context === null || sourceNode === null) {
-      return false;
-    }
-    if (audioVisualizerSourceRoute === "destination") {
-      return true;
-    }
-    if (audioVisualizerSourceRoute !== null) {
-      try {
-        sourceNode.disconnect();
-      } catch {
-        // Re-routing may happen while the current graph is already tearing down.
-      }
-    }
-    disconnectAudioVisualizerAnalyser();
-    try {
-      sourceNode.connect(context.destination);
-      audioVisualizerSourceRoute = "destination";
-      audioVisualizerWaveformBuffer = null;
-      return true;
-    } catch {
-      audioVisualizerSourceRoute = null;
-      return false;
-    }
-  }
-
-  function deactivateLiveAudioVisualizerForArtifact() {
-    cancelAudioVisualizerFrame();
-    routeAudioVisualizerSourceToDestination();
   }
 
   function getWorkspaceAudioPreviewSourceUrl(media: HTMLMediaElement) {
@@ -340,7 +280,7 @@ export function createLabWaveformTimelineVisualizer(deps: LabWaveformTimelineVis
     }
     const width = Math.max(1, Math.round(canvas.clientWidth || canvas.width || 320));
     const height = Math.max(1, Math.round(canvas.clientHeight || canvas.height || 80));
-    const scale = Math.max(1, Math.min(2, deps.windowRef.devicePixelRatio || 1));
+    const scale = Math.max(1, deps.windowRef.devicePixelRatio || 1);
     const scaledWidth = Math.max(1, Math.round(width * scale));
     const scaledHeight = Math.max(1, Math.round(height * scale));
     if (canvas.width !== scaledWidth || canvas.height !== scaledHeight) {
@@ -667,179 +607,7 @@ export function createLabWaveformTimelineVisualizer(deps: LabWaveformTimelineVis
     context.stroke();
   }
 
-  async function ensureAudioVisualizerGraph(media: HTMLMediaElement) {
-    const audioContextCtor = getAudioContextCtor();
-    if (audioContextCtor === null) {
-      return false;
-    }
-
-    if (audioVisualizerContext === null || audioVisualizerContext.state === "closed") {
-      const nextContext = new audioContextCtor();
-      const nextAnalyser = nextContext.createAnalyser();
-      nextAnalyser.fftSize = 2048;
-      nextAnalyser.smoothingTimeConstant = 0.82;
-      audioVisualizerContext = nextContext;
-      audioVisualizerAnalyser = nextAnalyser;
-      audioVisualizerWaveformBuffer = createWaveformBuffer(nextAnalyser.fftSize);
-    }
-
-    const context = audioVisualizerContext;
-    const analyser = audioVisualizerAnalyser;
-    if (analyser === null) {
-      return false;
-    }
-
-    if (audioVisualizerSourceMedia !== media || audioVisualizerSourceNode === null) {
-      disconnectAudioVisualizerSource();
-      try {
-        audioVisualizerSourceNode = context.createMediaElementSource(media);
-        audioVisualizerSourceNode.connect(analyser);
-        audioVisualizerSourceMedia = media;
-      } catch {
-        disconnectAudioVisualizerSource();
-        return false;
-      }
-    }
-
-    if (context.state === "suspended") {
-      try {
-        await context.resume();
-      } catch {
-        return false;
-      }
-    }
-
-    if (routeAudioVisualizerSourceToAnalyser() !== true) {
-      return false;
-    }
-
-    return true;
-  }
-
-  function drawAudioVisualizerFrame() {
-    audioVisualizerFrameId = null;
-    if (renderAudioVisualizationArtifactIfAvailable() === true) {
-      return;
-    }
-    const media = getWorkspaceAudioPreview();
-    if (media !== null && renderDecodedWaveformIfAvailable(media) === true) {
-      return;
-    }
-    const canvas = getAudioVisualizerCanvas();
-    const analyser = audioVisualizerAnalyser;
-    const effectiveMode = getEffectiveAudioVisualizationMode(getVisualizationMode());
-    if (
-      canvas === null ||
-      media === null ||
-      analyser === null ||
-      audioVisualizerSourceMedia !== media ||
-      media.paused === true ||
-      effectiveMode === "none"
-    ) {
-      drawAudioVisualizerIdle();
-      return;
-    }
-
-    const preparedCanvas = prepareAudioVisualizerCanvas(canvas);
-    if (preparedCanvas === null) {
-      return;
-    }
-
-    if (
-      audioVisualizerWaveformBuffer === null ||
-      audioVisualizerWaveformBuffer.length !== audioVisualizerAnalyser?.fftSize
-    ) {
-      audioVisualizerWaveformBuffer = createWaveformBuffer(analyser.fftSize);
-    }
-
-    analyser.getByteTimeDomainData(audioVisualizerWaveformBuffer);
-    const { context, height, width } = preparedCanvas;
-    const colors = readAudioVisualizerColors(canvas);
-    const midline = height / 2;
-    const bucketCount = Math.max(32, Math.min(160, Math.round(width / 5)));
-    const bucketSpan = Math.max(1, Math.floor(audioVisualizerWaveformBuffer.length / bucketCount));
-
-    context.clearRect(0, 0, width, height);
-
-    context.lineWidth = 1;
-    context.strokeStyle = colors.guide;
-    context.beginPath();
-    context.moveTo(0, midline);
-    context.lineTo(width, midline);
-    context.stroke();
-
-    context.lineWidth = Math.max(1, Math.min(3, width / bucketCount));
-    context.strokeStyle = colors.waveform;
-    context.beginPath();
-    for (let index = 0; index < bucketCount; index += 1) {
-      const start = index * bucketSpan;
-      const end =
-        index === bucketCount - 1
-          ? audioVisualizerWaveformBuffer.length
-          : Math.min(audioVisualizerWaveformBuffer.length, start + bucketSpan);
-      let peak = 0;
-      for (let sampleIndex = start; sampleIndex < end; sampleIndex += 1) {
-        const sample = audioVisualizerWaveformBuffer[sampleIndex] ?? 128;
-        peak = Math.max(peak, Math.abs((sample - 128) / 128));
-      }
-      const x = ((index + 0.5) / bucketCount) * width;
-      const amplitude = Math.max(height * 0.04, peak * height * 0.42);
-      context.moveTo(x, midline - amplitude);
-      context.lineTo(x, midline + amplitude);
-    }
-    context.stroke();
-
-    audioVisualizerFrameId = deps.windowRef.requestAnimationFrame(drawAudioVisualizerFrame);
-  }
-
-  function startAudioVisualizerLoop() {
-    cancelAudioVisualizerFrame();
-    audioVisualizerFrameId = deps.windowRef.requestAnimationFrame(drawAudioVisualizerFrame);
-  }
-
-  function stopAudioVisualizerLoop() {
-    cancelAudioVisualizerFrame();
-  }
-
-  async function activateAudioVisualizer(media: HTMLMediaElement) {
-    if (renderAudioVisualizationArtifactIfAvailable() === true) {
-      deactivateLiveAudioVisualizerForArtifact();
-      return;
-    }
-    if (renderDecodedWaveformIfAvailable(media) === true) {
-      deactivateLiveAudioVisualizerForArtifact();
-      return;
-    }
-    if (
-      getEffectiveAudioVisualizationMode(getVisualizationMode()) === "none" ||
-      getAudioVisualizerCanvas() === null
-    ) {
-      stopAudioVisualizerLoop();
-      drawAudioVisualizerIdle();
-      return;
-    }
-    if ((await ensureAudioVisualizerGraph(media)) !== true) {
-      return;
-    }
-    startAudioVisualizerLoop();
-  }
-
-  function handleWorkspaceAudioPreviewPlay() {
-    const media = getWorkspaceAudioPreview();
-    if (media === null) {
-      return;
-    }
-    audioVisualizerActivatedByPlay = true;
-    void activateAudioVisualizer(media);
-  }
-
-  function handleWorkspaceAudioPreviewPause() {
-    stopAudioVisualizerLoop();
-    sync();
-  }
-
-  function handleWorkspaceAudioPreviewEnded() {
-    stopAudioVisualizerLoop();
+  function handleWorkspaceAudioPreviewPlaybackChange() {
     sync();
   }
 
@@ -849,21 +617,43 @@ export function createLabWaveformTimelineVisualizer(deps: LabWaveformTimelineVis
       return;
     }
     if (boundWorkspaceAudioPreview?.removeEventListener) {
-      boundWorkspaceAudioPreview.removeEventListener("play", handleWorkspaceAudioPreviewPlay);
-      boundWorkspaceAudioPreview.removeEventListener("pause", handleWorkspaceAudioPreviewPause);
-      boundWorkspaceAudioPreview.removeEventListener("ended", handleWorkspaceAudioPreviewEnded);
+      boundWorkspaceAudioPreview.removeEventListener(
+        "play",
+        handleWorkspaceAudioPreviewPlaybackChange
+      );
+      boundWorkspaceAudioPreview.removeEventListener(
+        "pause",
+        handleWorkspaceAudioPreviewPlaybackChange
+      );
+      boundWorkspaceAudioPreview.removeEventListener(
+        "ended",
+        handleWorkspaceAudioPreviewPlaybackChange
+      );
+      boundWorkspaceAudioPreview.removeEventListener(
+        "seeking",
+        handleWorkspaceAudioPreviewPlaybackChange
+      );
+      boundWorkspaceAudioPreview.removeEventListener(
+        "seeked",
+        handleWorkspaceAudioPreviewPlaybackChange
+      );
+      boundWorkspaceAudioPreview.removeEventListener(
+        "loadedmetadata",
+        handleWorkspaceAudioPreviewPlaybackChange
+      );
     }
-    if (audioVisualizerSourceMedia !== null && audioVisualizerSourceMedia !== nextPreview) {
-      stopAudioVisualizerLoop();
-      disconnectAudioVisualizerSource();
-      audioVisualizerActivatedByPlay = false;
+    if (audioVisualizerMedia !== null && audioVisualizerMedia !== nextPreview) {
+      destroyLiveAudioVisualizer();
       resetArtifactRenderState();
       resetDecodedWaveformRenderState();
     }
     if (nextPreview?.addEventListener) {
-      nextPreview.addEventListener("play", handleWorkspaceAudioPreviewPlay);
-      nextPreview.addEventListener("pause", handleWorkspaceAudioPreviewPause);
-      nextPreview.addEventListener("ended", handleWorkspaceAudioPreviewEnded);
+      nextPreview.addEventListener("play", handleWorkspaceAudioPreviewPlaybackChange);
+      nextPreview.addEventListener("pause", handleWorkspaceAudioPreviewPlaybackChange);
+      nextPreview.addEventListener("ended", handleWorkspaceAudioPreviewPlaybackChange);
+      nextPreview.addEventListener("seeking", handleWorkspaceAudioPreviewPlaybackChange);
+      nextPreview.addEventListener("seeked", handleWorkspaceAudioPreviewPlaybackChange);
+      nextPreview.addEventListener("loadedmetadata", handleWorkspaceAudioPreviewPlaybackChange);
     }
     boundWorkspaceAudioPreview = nextPreview;
   }
@@ -875,52 +665,59 @@ export function createLabWaveformTimelineVisualizer(deps: LabWaveformTimelineVis
     if (canvas === null || effectiveMode === "none") {
       resetArtifactRenderState();
       resetDecodedWaveformRenderState();
-      stopAudioVisualizerLoop();
+      destroyLiveAudioVisualizer();
       return;
     }
-    if (renderAudioVisualizationArtifactIfAvailable() === true) {
-      deactivateLiveAudioVisualizerForArtifact();
-      return;
-    }
+
     const media = getWorkspaceAudioPreview();
-    if (media === null) {
+    if (media !== null && media.paused === false) {
       resetArtifactRenderState({ preserveFailure: true });
       resetDecodedWaveformRenderState({ preserveFailure: true });
-      stopAudioVisualizerLoop();
-      drawAudioVisualizerIdle();
+      ensureLiveAudioVisualizer(media, canvas).start();
       return;
     }
-    if (renderDecodedWaveformIfAvailable(media) === true) {
-      deactivateLiveAudioVisualizerForArtifact();
+
+    if (renderAudioVisualizationArtifactIfAvailable() === true) {
+      stopLiveAudioVisualizer();
       return;
     }
-    if (media.paused === false && audioVisualizerActivatedByPlay === true) {
-      resetArtifactRenderState({ preserveFailure: true });
-      if (audioVisualizerSourceMedia === media && audioVisualizerAnalyser !== null) {
-        if (routeAudioVisualizerSourceToAnalyser() === true) {
-          startAudioVisualizerLoop();
-          return;
-        }
-      }
-      void activateAudioVisualizer(media);
+    stopLiveAudioVisualizer();
+    if (media !== null && renderDecodedWaveformIfAvailable(media) === true) {
       return;
     }
-    resetArtifactRenderState({ preserveFailure: true });
-    stopAudioVisualizerLoop();
     drawAudioVisualizerIdle();
   }
 
   function dispose() {
-    cancelAudioVisualizerFrame();
     if (boundWorkspaceAudioPreview?.removeEventListener) {
-      boundWorkspaceAudioPreview.removeEventListener("play", handleWorkspaceAudioPreviewPlay);
-      boundWorkspaceAudioPreview.removeEventListener("pause", handleWorkspaceAudioPreviewPause);
-      boundWorkspaceAudioPreview.removeEventListener("ended", handleWorkspaceAudioPreviewEnded);
+      boundWorkspaceAudioPreview.removeEventListener(
+        "play",
+        handleWorkspaceAudioPreviewPlaybackChange
+      );
+      boundWorkspaceAudioPreview.removeEventListener(
+        "pause",
+        handleWorkspaceAudioPreviewPlaybackChange
+      );
+      boundWorkspaceAudioPreview.removeEventListener(
+        "ended",
+        handleWorkspaceAudioPreviewPlaybackChange
+      );
+      boundWorkspaceAudioPreview.removeEventListener(
+        "seeking",
+        handleWorkspaceAudioPreviewPlaybackChange
+      );
+      boundWorkspaceAudioPreview.removeEventListener(
+        "seeked",
+        handleWorkspaceAudioPreviewPlaybackChange
+      );
+      boundWorkspaceAudioPreview.removeEventListener(
+        "loadedmetadata",
+        handleWorkspaceAudioPreviewPlaybackChange
+      );
     }
-    disconnectAudioVisualizerSource();
+    destroyLiveAudioVisualizer();
     resetArtifactRenderState();
     resetDecodedWaveformRenderState();
-    audioVisualizerActivatedByPlay = false;
     boundWorkspaceAudioPreview = null;
   }
 

@@ -1,16 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import type {
+  LabActionSuggestion,
   LabArtifactProjection,
   LabSelection,
 } from "../../rooms/laboratory/models/lab-types.ts";
 import { createLabEventBus } from "../../rooms/laboratory/runtime/lab-event-bus.ts";
 import { createLabRunController } from "../../rooms/laboratory/runtime/lab-run-controller.ts";
 import { createLabHostBridge } from "../../rooms/laboratory/runtime/lab-host-bridge.ts";
+import { createAudioVisualizer } from "../../rooms/laboratory/runtime/lab-audio-visualizer.ts";
 import {
   getActualOutputs,
   getActionOutputs,
   getActiveSelection,
+  getActiveSuggestionPreview,
   getAudioVisualizationArtifact,
   getAssetById,
   getAssets,
@@ -27,6 +30,7 @@ import {
   getRunSnapshotSummary,
   getSelectionDuration,
   getSelectionIntent,
+  getSelectionSuggestions,
   getSelectedDualPreviewAudioAsset,
   getWaveformTimelineModel,
   getWorkspaceDiff,
@@ -34,6 +38,7 @@ import {
   isDualPreviewAvailable,
   isExpectedOutputMatched,
   isSelectionValid,
+  buildSuggestionPreview,
 } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import { LAB_USER_ACTION_HUB_SUCCESS_WINDOW_MS } from "../../rooms/laboratory/runtime/lab-user-actions.ts";
@@ -44,6 +49,7 @@ import {
   renderLabWaveformTimeline,
 } from "../../rooms/laboratory/ui/lab-waveform-timeline.ts";
 import { bindLabSelectionIntentClicks } from "../../rooms/laboratory/ui/lab-selection-intent-binder.ts";
+import { bindLabSelectionSuggestionClicks } from "../../rooms/laboratory/ui/lab-selection-suggestion-binder.ts";
 import {
   renderWorkspaceAudioFocus,
 } from "../../rooms/laboratory/ui/workspace-audio-focus.ts";
@@ -97,19 +103,61 @@ class FakeActionElement {
 }
 
 class FakeControllerDocument {
+  private listenerSets = new Map<string, Set<(event: Event) => void>>();
   listeners = new Map<string, (event: Event) => void>();
 
   addEventListener(type: string, listener: EventListenerOrEventListenerObject): void {
-    this.listeners.set(
-      type,
+    const handler =
       typeof listener === "function"
         ? (listener as (event: Event) => void)
-        : (event: Event) => listener.handleEvent(event)
-    );
+        : (event: Event) => listener.handleEvent(event);
+    const listeners = this.listenerSets.get(type) || new Set<(event: Event) => void>();
+    listeners.add(handler);
+    this.listenerSets.set(type, listeners);
+    this.listeners.set(type, (event: Event) => {
+      Array.from(this.listenerSets.get(type) || []).forEach(function (candidate) {
+        candidate(event);
+      });
+    });
   }
 
-  removeEventListener(type: string): void {
-    this.listeners.delete(type);
+  removeEventListener(type: string, listener?: EventListenerOrEventListenerObject): void {
+    if (!listener) {
+      this.listenerSets.delete(type);
+      this.listeners.delete(type);
+      return;
+    }
+    const listeners = this.listenerSets.get(type);
+    if (!listeners) {
+      return;
+    }
+    const handler =
+      typeof listener === "function"
+        ? (listener as (event: Event) => void)
+        : (event: Event) => listener.handleEvent(event);
+    listeners.delete(handler);
+    if (listeners.size === 0) {
+      this.listenerSets.delete(type);
+      this.listeners.delete(type);
+      return;
+    }
+    this.listeners.set(type, (event: Event) => {
+      Array.from(this.listenerSets.get(type) || []).forEach(function (candidate) {
+        candidate(event);
+      });
+    });
+  }
+}
+
+class FakeDomElement {
+  closest(): null {
+    return null;
+  }
+}
+
+class FakeSelectionPanelTrigger extends FakeDomElement {
+  getAttribute(): string | null {
+    return null;
   }
 }
 
@@ -121,11 +169,55 @@ class FakeSelectionIntentTrigger {
   }
 }
 
-class FakeSelectionIntentTarget {
-  constructor(private readonly trigger: FakeSelectionIntentTrigger | null) {}
+class FakeSelectionIntentTarget extends FakeDomElement {
+  constructor(private readonly trigger: FakeSelectionIntentTrigger | null) {
+    super();
+  }
 
   closest(selector: string) {
-    return selector === "[data-lab-selection-intent]" ? this.trigger : null;
+    if (selector === "[data-lab-selection-intent]") {
+      return this.trigger;
+    }
+    if (selector === "[data-lab-selection-panel]") {
+      return new FakeSelectionPanelTrigger();
+    }
+    return null;
+  }
+}
+
+class FakeSelectionSuggestionTrigger {
+  constructor(private readonly suggestionId: string | null) {}
+
+  getAttribute(name: string) {
+    return name === "data-lab-selection-suggestion" ? this.suggestionId : null;
+  }
+}
+
+class FakeSelectionSuggestionTarget extends FakeDomElement {
+  constructor(private readonly trigger: FakeSelectionSuggestionTrigger | null) {
+    super();
+  }
+
+  closest(selector: string) {
+    if (selector === "[data-lab-selection-suggestion]") {
+      return this.trigger;
+    }
+    if (selector === "[data-lab-selection-panel]") {
+      return new FakeSelectionPanelTrigger();
+    }
+    return null;
+  }
+}
+
+class FakePanelOnlyTarget extends FakeDomElement {
+  closest(selector: string) {
+    return selector === "[data-lab-selection-panel]" ? new FakeSelectionPanelTrigger() : null;
+  }
+}
+
+class FakeOutsideTarget extends FakeDomElement {
+  closest(): null {
+    return null;
   }
 }
 
@@ -136,6 +228,12 @@ class FakeClickEvent {
 
   preventDefault() {
     this.defaultPrevented = true;
+  }
+}
+
+class FakeKeyboardEvent extends FakeClickEvent {
+  constructor(public key: string) {
+    super(null);
   }
 }
 
@@ -197,6 +295,10 @@ class FakeMediaElement {
     handlers.forEach(function (handler) {
       handler({ type } as Event);
     });
+  }
+
+  listenerCount(type: string) {
+    return (this.listeners.get(type) || new Set()).size;
   }
 }
 
@@ -354,6 +456,9 @@ class FakeDualPreviewDocument extends FakeControllerDocument {
 class FakeCanvasContext {
   clearRectCalls = 0;
   drawImageCalls = 0;
+  fillRectCalls = 0;
+  fillStyle = "";
+  fillStyleHistory: string[] = [];
   lastDrawImageArgs: unknown[] | null = null;
   lineWidth = 0;
   lastDrawnImageSrc: string | null = null;
@@ -362,6 +467,7 @@ class FakeCanvasContext {
   strokeCalls = 0;
   strokeStyle = "";
   strokeStyleHistory: string[] = [];
+  transformCalls: Array<[number, number, number, number, number, number]> = [];
 
   beginPath() {}
 
@@ -376,11 +482,18 @@ class FakeCanvasContext {
     this.lastDrawnImageSrc = typeof image.src === "string" ? image.src : null;
   }
 
+  fillRect() {
+    this.fillRectCalls += 1;
+    this.fillStyleHistory.push(this.fillStyle);
+  }
+
   lineTo() {}
 
   moveTo() {}
 
-  setTransform() {}
+  setTransform(a: number, b: number, c: number, d: number, e: number, f: number) {
+    this.transformCalls.push([a, b, c, d, e, f]);
+  }
 
   stroke() {
     this.strokeCalls += 1;
@@ -389,6 +502,7 @@ class FakeCanvasContext {
 }
 
 class FakeCanvasElement {
+  dataset: Record<string, string> = {};
   width = 320;
   height = 80;
   clientWidth = 320;
@@ -413,8 +527,51 @@ class FakeVisualizerSourceNode {
   }
 }
 
+class FakeVisualizerAudioParam {
+  setTargetCalls: Array<[number, number, number]> = [];
+
+  constructor(public value: number) {}
+
+  setTargetAtTime(value: number, startTime: number, timeConstant: number) {
+    this.value = value;
+    this.setTargetCalls.push([value, startTime, timeConstant]);
+  }
+}
+
+class FakeVisualizerGainNode {
+  connectedTargets: unknown[] = [];
+  disconnectCalls = 0;
+  gain = new FakeVisualizerAudioParam(1);
+
+  connect(target: unknown) {
+    this.connectedTargets.push(target);
+  }
+
+  disconnect() {
+    this.disconnectCalls += 1;
+  }
+}
+
+class FakeVisualizerBiquadFilterNode {
+  connectedTargets: unknown[] = [];
+  disconnectCalls = 0;
+  frequency = new FakeVisualizerAudioParam(350);
+  gain = new FakeVisualizerAudioParam(0);
+  Q = new FakeVisualizerAudioParam(1);
+  type: BiquadFilterType = "lowpass";
+
+  connect(target: unknown) {
+    this.connectedTargets.push(target);
+  }
+
+  disconnect() {
+    this.disconnectCalls += 1;
+  }
+}
+
 class FakeVisualizerAnalyserNode {
   connectedTargets: unknown[] = [];
+  disconnectCalls = 0;
   fftSize = 2048;
   smoothingTimeConstant = 0;
 
@@ -422,9 +579,19 @@ class FakeVisualizerAnalyserNode {
     this.connectedTargets.push(target);
   }
 
+  disconnect() {
+    this.disconnectCalls += 1;
+  }
+
   getByteTimeDomainData(buffer: Uint8Array) {
     for (let index = 0; index < buffer.length; index += 1) {
       buffer[index] = 128 + Math.round(Math.sin(index / 6) * 28);
+    }
+  }
+
+  getByteFrequencyData(buffer: Uint8Array) {
+    for (let index = 0; index < buffer.length; index += 1) {
+      buffer[index] = Math.max(16, Math.min(255, Math.round((index / buffer.length) * 255)));
     }
   }
 }
@@ -432,9 +599,12 @@ class FakeVisualizerAnalyserNode {
 class FakeVisualizerAudioContext {
   static constructed: FakeVisualizerAudioContext[] = [];
 
+  currentTime = 0;
   state: AudioContextState = "suspended";
   readonly analyser = new FakeVisualizerAnalyserNode();
   readonly destination = { kind: "destination" };
+  readonly biquadFilters: FakeVisualizerBiquadFilterNode[] = [];
+  readonly gainNodes: FakeVisualizerGainNode[] = [];
   readonly sourceNodes: FakeVisualizerSourceNode[] = [];
   closeCalls = 0;
   resumeCalls = 0;
@@ -445,6 +615,18 @@ class FakeVisualizerAudioContext {
 
   createAnalyser() {
     return this.analyser as unknown as AnalyserNode;
+  }
+
+  createBiquadFilter() {
+    const filterNode = new FakeVisualizerBiquadFilterNode();
+    this.biquadFilters.push(filterNode);
+    return filterNode as unknown as BiquadFilterNode;
+  }
+
+  createGain() {
+    const gainNode = new FakeVisualizerGainNode();
+    this.gainNodes.push(gainNode);
+    return gainNode as unknown as GainNode;
   }
 
   createMediaElementSource() {
@@ -591,11 +773,42 @@ class FakeVisualizerWindow {
 }
 
 class FakeVisualizerDocument {
+  hidden = false;
+  private listeners = new Map<string, Set<(event: Event) => void>>();
+
   constructor(
     public primaryMediaPreview: FakeMediaElement | null,
     public dualAudioPreview: FakeMediaElement | null,
     public canvas: FakeCanvasElement | null
   ) {}
+
+  addEventListener(type: string, listener: EventListenerOrEventListenerObject): void {
+    const handler =
+      typeof listener === "function"
+        ? (listener as (event: Event) => void)
+        : (event: Event) => listener.handleEvent(event);
+    const existing = this.listeners.get(type) || new Set<(event: Event) => void>();
+    existing.add(handler);
+    this.listeners.set(type, existing);
+  }
+
+  removeEventListener(type: string, listener: EventListenerOrEventListenerObject): void {
+    const existing = this.listeners.get(type);
+    if (!existing) {
+      return;
+    }
+    const handler =
+      typeof listener === "function"
+        ? (listener as (event: Event) => void)
+        : (event: Event) => listener.handleEvent(event);
+    existing.delete(handler);
+  }
+
+  dispatch(type: string) {
+    Array.from(this.listeners.get(type) || []).forEach(function (handler) {
+      handler({ type } as Event);
+    });
+  }
 
   querySelector(selector: string) {
     if (selector === 'audio[data-lab-preserve-media="workspace-preview-dual-audio"]') {
@@ -613,6 +826,512 @@ class FakeVisualizerDocument {
     return null;
   }
 }
+
+async function flushVisualizerWork(turns = 6) {
+  for (let index = 0; index < turns; index += 1) {
+    await Promise.resolve();
+  }
+}
+
+test("runtime audio visualizer draws waveform frames and scales with device pixel ratio", async () => {
+  FakeVisualizerAudioContext.constructed = [];
+  const media = new FakeMediaElement();
+  media.paused = false;
+  const canvas = new FakeCanvasElement();
+  canvas.clientWidth = 200;
+  canvas.clientHeight = 60;
+  const documentRef = new FakeVisualizerDocument(media, null, canvas);
+  const windowRef = new FakeVisualizerWindow();
+  windowRef.devicePixelRatio = 3;
+  const controller = createAudioVisualizer(
+    media as unknown as HTMLMediaElement,
+    canvas as unknown as HTMLCanvasElement,
+    {
+      documentRef: documentRef as unknown as Document,
+      getMode() {
+        return "waveform";
+      },
+      windowRef: windowRef as unknown as Window,
+    }
+  );
+
+  controller.start();
+  await flushVisualizerWork();
+
+  assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
+  assert.equal(canvas.width, 600);
+  assert.equal(canvas.height, 180);
+  assert.deepEqual(canvas.context.transformCalls.at(-1), [3, 0, 0, 3, 0, 0]);
+  assert.ok(canvas.context.strokeCalls > 0);
+  assert.equal(windowRef.scheduledFrames.size, 1);
+
+  controller.destroy();
+});
+
+test("runtime audio visualizer renders frequency data in spectrum mode", async () => {
+  FakeVisualizerAudioContext.constructed = [];
+  const media = new FakeMediaElement();
+  media.paused = false;
+  const canvas = new FakeCanvasElement();
+  const documentRef = new FakeVisualizerDocument(media, null, canvas);
+  const windowRef = new FakeVisualizerWindow();
+  const controller = createAudioVisualizer(
+    media as unknown as HTMLMediaElement,
+    canvas as unknown as HTMLCanvasElement,
+    {
+      documentRef: documentRef as unknown as Document,
+      getMode() {
+        return "spectrum";
+      },
+      windowRef: windowRef as unknown as Window,
+    }
+  );
+
+  controller.start();
+  await flushVisualizerWork();
+
+  assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
+  assert.ok(canvas.context.fillRectCalls > 0);
+  assert.equal(windowRef.scheduledFrames.size, 1);
+
+  controller.destroy();
+});
+
+test("runtime audio visualizer applies preview audio focus through a stable processing graph", async () => {
+  FakeVisualizerAudioContext.constructed = [];
+  const media = new FakeMediaElement();
+  media.paused = false;
+  const canvas = new FakeCanvasElement();
+  const documentRef = new FakeVisualizerDocument(media, null, canvas);
+  const windowRef = new FakeVisualizerWindow();
+  let audioFocus = {
+    gain: 2.4,
+    filterType: "highpass",
+    filterFrequency: 1280,
+    filterQ: 7.5,
+    visualizationMode: "waveform",
+    eqBands: [
+      { frequency: 60, gain: -6, Q: 1.4, type: "lowshelf" },
+      { frequency: 250, gain: -3.5, Q: 0.8, type: "peaking" },
+      { frequency: 1000, gain: 2.5, Q: 1.2, type: "peaking" },
+      { frequency: 4000, gain: 4.5, Q: 1.6, type: "peaking" },
+      { frequency: 12000, gain: 3, Q: 0.9, type: "highshelf" },
+    ],
+  } as const;
+  const controller = createAudioVisualizer(
+    media as unknown as HTMLMediaElement,
+    canvas as unknown as HTMLCanvasElement,
+    {
+      documentRef: documentRef as unknown as Document,
+      getAudioFocus() {
+        return audioFocus;
+      },
+      getMode() {
+        return "waveform";
+      },
+      windowRef: windowRef as unknown as Window,
+    }
+  );
+
+  controller.start();
+  await flushVisualizerWork();
+
+  const audioContext = FakeVisualizerAudioContext.constructed[0];
+  const gainNode = audioContext?.gainNodes[0];
+  const primaryFilter = audioContext?.biquadFilters[0];
+  const eqNodes = audioContext?.biquadFilters.slice(1) || [];
+
+  assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
+  assert.equal(audioContext?.sourceNodes.length, 1);
+  assert.equal(audioContext?.gainNodes.length, 1);
+  assert.equal(audioContext?.biquadFilters.length, 6);
+  assert.equal(audioContext?.sourceNodes[0]?.connectedTargets[0], gainNode);
+  assert.equal(gainNode?.connectedTargets[0], primaryFilter);
+  assert.equal(primaryFilter?.connectedTargets[0], eqNodes[0]);
+  assert.equal(eqNodes.at(-1)?.connectedTargets[0], audioContext?.analyser);
+  assert.equal(audioContext?.analyser.connectedTargets[0], audioContext?.destination);
+  assert.deepEqual(gainNode?.gain.setTargetCalls.at(-1), [2.4, 0, 0.01]);
+  assert.equal(primaryFilter?.type, "highpass");
+  assert.deepEqual(primaryFilter?.frequency.setTargetCalls.at(-1), [1280, 0, 0.01]);
+  assert.deepEqual(primaryFilter?.Q.setTargetCalls.at(-1), [7.5, 0, 0.01]);
+  assert.equal(eqNodes[0]?.type, "lowshelf");
+  assert.deepEqual(eqNodes[0]?.gain.setTargetCalls.at(-1), [-6, 0, 0.01]);
+  assert.equal(eqNodes[4]?.type, "highshelf");
+  assert.deepEqual(eqNodes[4]?.gain.setTargetCalls.at(-1), [3, 0, 0.01]);
+
+  controller.destroy();
+});
+
+test("runtime audio visualizer clamps preview audio focus values and skips unchanged param reapply", async () => {
+  FakeVisualizerAudioContext.constructed = [];
+  const media = new FakeMediaElement();
+  media.paused = false;
+  const canvas = new FakeCanvasElement();
+  const documentRef = new FakeVisualizerDocument(media, null, canvas);
+  const windowRef = new FakeVisualizerWindow();
+  let audioFocus = {
+    gain: 9,
+    filterType: "bandpass",
+    filterFrequency: 40_000,
+    filterQ: 0.01,
+    visualizationMode: "waveform",
+    eqBands: [
+      { frequency: 5, gain: -30, Q: 99, type: "lowshelf" },
+      { frequency: 250, gain: 15, Q: 0.01, type: "peaking" },
+      { frequency: 1000, gain: 0, Q: 1, type: "peaking" },
+      { frequency: 4000, gain: -18, Q: 25, type: "peaking" },
+      { frequency: 50_000, gain: 22, Q: 0.02, type: "highshelf" },
+    ],
+  } as const;
+  const controller = createAudioVisualizer(
+    media as unknown as HTMLMediaElement,
+    canvas as unknown as HTMLCanvasElement,
+    {
+      documentRef: documentRef as unknown as Document,
+      getAudioFocus() {
+        return audioFocus;
+      },
+      getMode() {
+        return "waveform";
+      },
+      windowRef: windowRef as unknown as Window,
+    }
+  );
+
+  controller.start();
+  await flushVisualizerWork();
+
+  const audioContext = FakeVisualizerAudioContext.constructed[0];
+  const gainNode = audioContext?.gainNodes[0];
+  const primaryFilter = audioContext?.biquadFilters[0];
+  const eqNodes = audioContext?.biquadFilters.slice(1) || [];
+  const initialGainCalls = gainNode?.gain.setTargetCalls.length || 0;
+  const initialFilterCalls = primaryFilter?.frequency.setTargetCalls.length || 0;
+
+  assert.deepEqual(gainNode?.gain.setTargetCalls.at(-1), [3, 0, 0.01]);
+  assert.deepEqual(primaryFilter?.frequency.setTargetCalls.at(-1), [20000, 0, 0.01]);
+  assert.deepEqual(primaryFilter?.Q.setTargetCalls.at(-1), [0.1, 0, 0.01]);
+  assert.deepEqual(eqNodes[0]?.frequency.setTargetCalls.at(-1), [20, 0, 0.01]);
+  assert.deepEqual(eqNodes[0]?.gain.setTargetCalls.at(-1), [-12, 0, 0.01]);
+  assert.deepEqual(eqNodes[4]?.frequency.setTargetCalls.at(-1), [20000, 0, 0.01]);
+  assert.deepEqual(eqNodes[4]?.gain.setTargetCalls.at(-1), [12, 0, 0.01]);
+
+  controller.start();
+  await flushVisualizerWork();
+  assert.equal(gainNode?.gain.setTargetCalls.length, initialGainCalls);
+  assert.equal(primaryFilter?.frequency.setTargetCalls.length, initialFilterCalls);
+
+  audioFocus = {
+    ...audioFocus,
+    gain: 0.4,
+    filterFrequency: 880,
+    filterQ: 4.5,
+    eqBands: audioFocus.eqBands.map(function (band, index) {
+      return index === 1 ? { ...band, gain: -4 } : band;
+    }),
+  };
+  controller.start();
+  await flushVisualizerWork();
+
+  assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
+  assert.equal(audioContext?.sourceNodes.length, 1);
+  assert.deepEqual(gainNode?.gain.setTargetCalls.at(-1), [0.4, 0, 0.01]);
+  assert.deepEqual(primaryFilter?.frequency.setTargetCalls.at(-1), [880, 0, 0.01]);
+  assert.deepEqual(primaryFilter?.Q.setTargetCalls.at(-1), [4.5, 0, 0.01]);
+  assert.deepEqual(eqNodes[1]?.gain.setTargetCalls.at(-1), [-4, 0, 0.01]);
+  assert.equal(gainNode?.gain.setTargetCalls.length, initialGainCalls + 1);
+
+  controller.destroy();
+});
+
+test("runtime audio visualizer bypasses the primary filter stage when filter type is none", async () => {
+  FakeVisualizerAudioContext.constructed = [];
+  const media = new FakeMediaElement();
+  media.paused = false;
+  const canvas = new FakeCanvasElement();
+  const documentRef = new FakeVisualizerDocument(media, null, canvas);
+  const windowRef = new FakeVisualizerWindow();
+  let audioFocus = {
+    gain: 1.1,
+    filterType: "none",
+    filterFrequency: 1000,
+    filterQ: 1,
+    visualizationMode: "waveform",
+    eqBands: [
+      { frequency: 60, gain: 0, Q: 1, type: "lowshelf" },
+      { frequency: 250, gain: 0, Q: 1, type: "peaking" },
+      { frequency: 1000, gain: 0, Q: 1, type: "peaking" },
+      { frequency: 4000, gain: 0, Q: 1, type: "peaking" },
+      { frequency: 12000, gain: 0, Q: 1, type: "highshelf" },
+    ],
+  };
+  const controller = createAudioVisualizer(
+    media as unknown as HTMLMediaElement,
+    canvas as unknown as HTMLCanvasElement,
+    {
+      documentRef: documentRef as unknown as Document,
+      getAudioFocus() {
+        return audioFocus;
+      },
+      getMode() {
+        return "waveform";
+      },
+      windowRef: windowRef as unknown as Window,
+    }
+  );
+
+  controller.start();
+  await flushVisualizerWork();
+
+  const audioContext = FakeVisualizerAudioContext.constructed[0];
+  const gainNode = audioContext?.gainNodes[0];
+  const primaryFilter = audioContext?.biquadFilters[0];
+  const firstEqNode = audioContext?.biquadFilters[1];
+
+  assert.equal(gainNode?.connectedTargets.at(-1), firstEqNode);
+
+  audioFocus = {
+    ...audioFocus,
+    filterType: "lowpass",
+    filterFrequency: 850,
+  };
+  controller.start();
+  await flushVisualizerWork();
+
+  assert.equal(gainNode?.connectedTargets.at(-1), primaryFilter);
+  assert.equal(primaryFilter?.type, "lowpass");
+  assert.equal(primaryFilter?.connectedTargets.at(-1), firstEqNode);
+
+  audioFocus = {
+    ...audioFocus,
+    filterType: "highpass",
+  };
+  controller.start();
+  await flushVisualizerWork();
+
+  assert.equal(primaryFilter?.type, "highpass");
+  assert.equal(gainNode?.connectedTargets.at(-1), primaryFilter);
+
+  audioFocus = {
+    ...audioFocus,
+    filterType: "none",
+  };
+  controller.start();
+  await flushVisualizerWork();
+
+  assert.equal(gainNode?.connectedTargets.at(-1), firstEqNode);
+
+  controller.destroy();
+});
+
+test("runtime audio visualizer preserves custom preview audio focus across pause play and seek", async () => {
+  FakeVisualizerAudioContext.constructed = [];
+  const media = new FakeMediaElement();
+  media.paused = false;
+  const canvas = new FakeCanvasElement();
+  const documentRef = new FakeVisualizerDocument(media, null, canvas);
+  const windowRef = new FakeVisualizerWindow();
+  const audioFocus = {
+    gain: 1.9,
+    filterType: "bandpass" as const,
+    filterFrequency: 1450,
+    filterQ: 6.2,
+    visualizationMode: "waveform" as const,
+    eqBands: [
+      { frequency: 60, gain: -2, Q: 1.1, type: "lowshelf" as const },
+      { frequency: 250, gain: 1.5, Q: 0.9, type: "peaking" as const },
+      { frequency: 1000, gain: 3.5, Q: 1.4, type: "peaking" as const },
+      { frequency: 4000, gain: -1, Q: 1.3, type: "peaking" as const },
+      { frequency: 12000, gain: 2.5, Q: 0.8, type: "highshelf" as const },
+    ],
+  };
+  const controller = createAudioVisualizer(
+    media as unknown as HTMLMediaElement,
+    canvas as unknown as HTMLCanvasElement,
+    {
+      documentRef: documentRef as unknown as Document,
+      getAudioFocus() {
+        return audioFocus;
+      },
+      getMode() {
+        return "waveform";
+      },
+      windowRef: windowRef as unknown as Window,
+    }
+  );
+
+  controller.start();
+  await flushVisualizerWork();
+
+  const audioContext = FakeVisualizerAudioContext.constructed[0];
+  const gainNode = audioContext?.gainNodes[0];
+  const primaryFilter = audioContext?.biquadFilters[0];
+  const eqNodes = audioContext?.biquadFilters.slice(1) || [];
+  const initialGainCalls = gainNode?.gain.setTargetCalls.length || 0;
+  const initialFilterCalls = primaryFilter?.frequency.setTargetCalls.length || 0;
+  const initialEqCalls = eqNodes[2]?.gain.setTargetCalls.length || 0;
+
+  assert.deepEqual(gainNode?.gain.setTargetCalls.at(-1), [1.9, 0, 0.01]);
+  assert.deepEqual(primaryFilter?.frequency.setTargetCalls.at(-1), [1450, 0, 0.01]);
+  assert.deepEqual(primaryFilter?.Q.setTargetCalls.at(-1), [6.2, 0, 0.01]);
+  assert.deepEqual(eqNodes[2]?.gain.setTargetCalls.at(-1), [3.5, 0, 0.01]);
+
+  media.pause();
+  await flushVisualizerWork();
+
+  assert.equal(windowRef.scheduledFrames.size, 0);
+  assert.equal(gainNode?.gain.value, 1.9);
+  assert.equal(primaryFilter?.type, "bandpass");
+  assert.equal(primaryFilter?.frequency.value, 1450);
+  assert.equal(primaryFilter?.Q.value, 6.2);
+  assert.equal(eqNodes[2]?.gain.value, 3.5);
+
+  await media.play();
+  await flushVisualizerWork();
+
+  assert.equal(windowRef.scheduledFrames.size, 1);
+  assert.equal(gainNode?.gain.value, 1.9);
+  assert.equal(primaryFilter?.type, "bandpass");
+  assert.equal(primaryFilter?.frequency.value, 1450);
+  assert.equal(primaryFilter?.Q.value, 6.2);
+  assert.equal(eqNodes[2]?.gain.value, 3.5);
+  assert.equal(gainNode?.gain.setTargetCalls.length, initialGainCalls);
+  assert.equal(primaryFilter?.frequency.setTargetCalls.length, initialFilterCalls);
+  assert.equal(eqNodes[2]?.gain.setTargetCalls.length, initialEqCalls);
+
+  media.dispatch("seeking");
+  await flushVisualizerWork();
+
+  assert.equal(windowRef.scheduledFrames.size, 1);
+  assert.equal(gainNode?.gain.value, 1.9);
+  assert.equal(primaryFilter?.type, "bandpass");
+  assert.equal(primaryFilter?.frequency.value, 1450);
+  assert.equal(primaryFilter?.Q.value, 6.2);
+  assert.equal(eqNodes[2]?.gain.value, 3.5);
+  assert.equal(gainNode?.gain.setTargetCalls.length, initialGainCalls);
+  assert.equal(primaryFilter?.frequency.setTargetCalls.length, initialFilterCalls);
+  assert.equal(eqNodes[2]?.gain.setTargetCalls.length, initialEqCalls);
+
+  controller.destroy();
+});
+
+test("runtime audio visualizer keeps realtime rendering alive after seek while playing", async () => {
+  FakeVisualizerAudioContext.constructed = [];
+  const media = new FakeMediaElement();
+  media.paused = false;
+  const canvas = new FakeCanvasElement();
+  const documentRef = new FakeVisualizerDocument(media, null, canvas);
+  const windowRef = new FakeVisualizerWindow();
+  const controller = createAudioVisualizer(
+    media as unknown as HTMLMediaElement,
+    canvas as unknown as HTMLCanvasElement,
+    {
+      documentRef: documentRef as unknown as Document,
+      getMode() {
+        return "waveform";
+      },
+      windowRef: windowRef as unknown as Window,
+    }
+  );
+
+  controller.start();
+  await flushVisualizerWork();
+
+  const initialStrokeCalls = canvas.context.strokeCalls;
+  assert.equal(windowRef.scheduledFrames.size, 1);
+
+  media.dispatch("seeking");
+  await flushVisualizerWork();
+  assert.ok(canvas.context.strokeCalls > initialStrokeCalls);
+  assert.equal(windowRef.scheduledFrames.size, 1);
+
+  windowRef.flushFrame();
+  await flushVisualizerWork();
+  assert.equal(windowRef.scheduledFrames.size, 1);
+
+  media.pause();
+  await flushVisualizerWork();
+  assert.equal(windowRef.scheduledFrames.size, 0);
+
+  controller.destroy();
+});
+
+test("runtime audio visualizer throttles paused seek refreshes to snapshot-only rendering", async () => {
+  FakeVisualizerAudioContext.constructed = [];
+  const media = new FakeMediaElement();
+  media.paused = true;
+  const canvas = new FakeCanvasElement();
+  const documentRef = new FakeVisualizerDocument(media, null, canvas);
+  const windowRef = new FakeVisualizerWindow();
+  const controller = createAudioVisualizer(
+    media as unknown as HTMLMediaElement,
+    canvas as unknown as HTMLCanvasElement,
+    {
+      documentRef: documentRef as unknown as Document,
+      getMode() {
+        return "waveform";
+      },
+      windowRef: windowRef as unknown as Window,
+    }
+  );
+
+  controller.start();
+  await flushVisualizerWork();
+
+  const initialStrokeCalls = canvas.context.strokeCalls;
+  assert.equal(windowRef.scheduledFrames.size, 0);
+
+  media.currentTime = 12.3;
+  media.dispatch("seeking");
+  await flushVisualizerWork();
+  assert.ok(canvas.context.strokeCalls > initialStrokeCalls);
+  assert.equal(windowRef.scheduledFrames.size, 0);
+
+  controller.destroy();
+});
+
+test("runtime audio visualizer pauses on visibility changes and tears down listeners on destroy", async () => {
+  FakeVisualizerAudioContext.constructed = [];
+  const media = new FakeMediaElement();
+  media.paused = false;
+  const canvas = new FakeCanvasElement();
+  const documentRef = new FakeVisualizerDocument(media, null, canvas);
+  const windowRef = new FakeVisualizerWindow();
+  const controller = createAudioVisualizer(
+    media as unknown as HTMLMediaElement,
+    canvas as unknown as HTMLCanvasElement,
+    {
+      documentRef: documentRef as unknown as Document,
+      getMode() {
+        return "waveform";
+      },
+      windowRef: windowRef as unknown as Window,
+    }
+  );
+
+  controller.start();
+  await flushVisualizerWork();
+  assert.equal(windowRef.scheduledFrames.size, 1);
+  assert.equal(media.listenerCount("play"), 1);
+
+  documentRef.hidden = true;
+  documentRef.dispatch("visibilitychange");
+  await flushVisualizerWork();
+  assert.equal(windowRef.scheduledFrames.size, 0);
+
+  documentRef.hidden = false;
+  documentRef.dispatch("visibilitychange");
+  await flushVisualizerWork();
+  assert.equal(windowRef.scheduledFrames.size, 1);
+
+  controller.destroy();
+  assert.equal(windowRef.scheduledFrames.size, 0);
+  assert.equal(media.listenerCount("play"), 0);
+
+  media.dispatch("play");
+  await flushVisualizerWork();
+  assert.equal(windowRef.scheduledFrames.size, 0);
+});
 
 test("laboratory workspace audio focus defaults to waveform visualization", () => {
   const store = createLabStore();
@@ -813,7 +1532,8 @@ test("workspace audio focus points users to the unified waveform timeline", () =
     ],
   });
 
-  assert.match(markup, /Timeline preview altinda tek waveform katmani kullanilir\./);
+  assert.match(markup, /Timeline preview altinda tek realtime waveform katmani kullanilir\./);
+  assert.match(markup, /Spectrum modu ayni canvas uzerinde canli frekans gorunumu cizer\./);
   assert.doesNotMatch(markup, /workspace\.audioFocus\.visualizationMode/);
   assert.doesNotMatch(markup, /lab-audio-viz/);
 });
@@ -847,7 +1567,7 @@ test("waveform timeline hides selection affordances for invalid numeric ranges",
   assert.doesNotMatch(invertedMarkup, /labx-timeline__selection/);
 });
 
-test("waveform timeline renders a passive selection entity panel alongside live actions", () => {
+test("waveform timeline renders selector-driven suggested actions alongside live actions", () => {
   const selection: LabSelection = {
     id: "selection-clip",
     startMs: 12300,
@@ -862,6 +1582,31 @@ test("waveform timeline renders a passive selection entity panel alongside live 
     dualPreviewActive: false,
     durationMs: 60000,
     endMs: selection.endMs,
+    activeSuggestionPreview: {
+      suggestionId: "audio-inspect",
+      title: "Ses analizi yapilacak",
+      steps: [
+        "6.6s secim hazirlanacak",
+        "Ses track izole edilecek",
+        "Frekans ve yogunluk taramasi hazirlanacak",
+      ],
+      expectedOutputs: ["Ses analizi raporu", "Olasi anomali noktalari"],
+      estimatedCost: "low",
+    },
+    selectionSuggestions: [
+      {
+        id: "audio-inspect",
+        label: "Ses detaylarini incele",
+        actionType: "inspect-audio",
+        confidence: 0.9,
+      },
+      {
+        id: "extract-clip",
+        label: "Bu bolumu kes",
+        actionType: "extract-clip",
+        confidence: 0.6,
+      },
+    ],
     startMs: selection.startMs,
     waveformSourceLabel: "Source audio",
     waveformSyncLabel: "Preview and waveform share the same master axis.",
@@ -880,16 +1625,61 @@ test("waveform timeline renders a passive selection entity panel alongside live 
   assert.match(markup, /data-lab-selection-intent="anomaly"/);
   assert.match(markup, /data-lab-selection-intent="general"/);
   assert.match(markup, /aria-pressed="true"/);
-  assert.match(markup, /Analyze this/);
-  assert.match(markup, /Extract clip/);
-  assert.match(markup, /Focus region/);
-  assert.match(markup, /disabled>Analyze this/);
-  assert.doesNotMatch(markup, /data-lab-action="[^"]*">Analyze this/);
-  assert.doesNotMatch(markup, /data-lab-action="[^"]*">Extract clip/);
-  assert.doesNotMatch(markup, /data-lab-action="[^"]*">Focus region/);
+  assert.match(markup, /Suggested actions/);
+  assert.match(markup, /Ses detaylarini incele/);
+  assert.match(markup, /Bu bolumu kes/);
+  assert.match(markup, /data-lab-selection-suggestion="audio-inspect"/);
+  assert.match(markup, /data-lab-selection-suggestion="extract-clip"/);
+  assert.match(markup, /data-suggestion-priority="primary"/);
+  assert.match(markup, /data-suggestion-priority="secondary"/);
+  assert.match(markup, /Preview/);
+  assert.match(markup, /Ses analizi yapilacak/);
+  assert.match(markup, /Steps/);
+  assert.match(markup, /Outputs/);
+  assert.match(markup, /Estimated cost: Low/);
+  assert.match(markup, /data-lab-selection-preview="true"/);
+  assert.doesNotMatch(markup, /Analyze this/);
+  assert.doesNotMatch(markup, /Focus region/);
+  assert.doesNotMatch(markup, /data-lab-action="[^"]*">Ses detaylarini incele/);
+  assert.doesNotMatch(markup, /data-lab-action="[^"]*">Bu bolumu kes/);
   assert.doesNotMatch(markup, /data-lab-action="workspace-intent-toggle"/);
   assert.match(markup, /timeline-export-clip/);
   assert.match(markup, /timeline-grab-frame/);
+});
+
+test("waveform timeline does not render suggested actions from fallback-only selection markup", () => {
+  const markup = renderLabWaveformTimeline({
+    bookmarks: [],
+    dualPreviewActive: false,
+    durationMs: 60000,
+    endMs: 18900,
+    activeSuggestionPreview: {
+      suggestionId: "audio-inspect",
+      title: "Ses analizi yapilacak",
+      steps: ["Secilen zaman araligi hazirlanacak"],
+      expectedOutputs: ["Ses analizi raporu"],
+      estimatedCost: "low",
+    },
+    selectionSuggestions: [
+      {
+        id: "audio-inspect",
+        label: "Ses detaylarini incele",
+        actionType: "inspect-audio",
+        confidence: 0.9,
+      },
+    ],
+    startMs: 12300,
+    waveformSourceLabel: "Source audio",
+    waveformSyncLabel: "Preview and waveform share the same master axis.",
+    waveformWindowDurationMs: 60000,
+    waveformWindowStartMs: 0,
+  });
+
+  assert.match(markup, /class="lab-selection-panel"/);
+  assert.doesNotMatch(markup, /Suggested actions/);
+  assert.doesNotMatch(markup, /data-lab-selection-suggestion=/);
+  assert.doesNotMatch(markup, /data-lab-selection-preview=/);
+  assert.doesNotMatch(markup, /Ses analizi yapilacak/);
 });
 
 test("selection intent binder emits a dedicated semantic selection event", () => {
@@ -924,6 +1714,279 @@ test("selection intent binder emits a dedicated semantic selection event", () =>
     }),
     true
   );
+});
+
+test("selection suggestion binder emits a passive selection suggestion event", () => {
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  eventBus.subscribe(store.dispatch);
+  bindLabSelectionSuggestionClicks({
+    canPreviewSuggestion(suggestionId) {
+      return getSelectionSuggestions(store.getState()).some(function (suggestion) {
+        return suggestion.id === suggestionId;
+      });
+    },
+    documentRef: documentRef as unknown as Document,
+    emit: eventBus.emit,
+    hasActivePreview() {
+      return getActiveSuggestionPreview(store.getState()) !== null;
+    },
+  });
+
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1200,
+    endMs: 2600,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+
+  const clickListener = documentRef.listeners.get("click");
+  assert.ok(clickListener);
+
+  const clickEvent = new FakeClickEvent(
+    new FakeSelectionSuggestionTarget(
+      new FakeSelectionSuggestionTrigger("audio-inspect")
+    ) as unknown as EventTarget
+  );
+  clickListener?.(clickEvent as unknown as Event);
+
+  assert.equal(clickEvent.defaultPrevented, true);
+  assert.equal(store.getState().ui.workspace.activeSelection?.intent, "audio");
+  assert.equal(store.getState().ui.activeSuggestionPreviewId, "audio-inspect");
+  assert.equal(getActiveSuggestionPreview(store.getState())?.title, "Ses analizi yapilacak");
+  assert.equal(store.getState().run, null);
+  assert.equal(
+    eventBus.getHistory().some(function (event) {
+      return (
+        event.type === "workspace-selection-suggestion-clicked" &&
+        event.suggestionId === "audio-inspect"
+      );
+    }),
+    true
+  );
+  assert.equal(
+    eventBus.getHistory().some(function (event) {
+      return (
+        event.type === "workspace-selection-suggestion-preview-set" &&
+        event.suggestionId === "audio-inspect"
+      );
+    }),
+    true
+  );
+});
+
+test("selection suggestion preview dismissal stays stable with stacked document listeners", () => {
+  const originalElement = globalThis.Element;
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  const controller = createLabRunController({
+    documentRef: documentRef as unknown as Document,
+    eventBus,
+    store,
+    windowRef: new FakeWindowEventTarget() as unknown as Window,
+  });
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: FakeDomElement,
+  });
+  try {
+    eventBus.subscribe(store.dispatch);
+    bindLabSelectionIntentClicks({
+      documentRef: documentRef as unknown as Document,
+      emit: eventBus.emit,
+    });
+    bindLabSelectionSuggestionClicks({
+      canPreviewSuggestion(suggestionId) {
+        return getSelectionSuggestions(store.getState()).some(function (suggestion) {
+          return suggestion.id === suggestionId;
+        });
+      },
+      documentRef: documentRef as unknown as Document,
+      emit: eventBus.emit,
+      hasActivePreview() {
+        return getActiveSuggestionPreview(store.getState()) !== null;
+      },
+    });
+    controller.attach();
+
+    store.dispatch({
+      type: "source-config-patched",
+      patch: {
+        kind: "audio",
+        mode: "local",
+        storedPath: "/tmp/source.wav",
+      },
+    });
+    store.dispatch({
+      type: "workspace-timeline-updated",
+      startMs: 1200,
+      endMs: 2600,
+    });
+    store.dispatch({
+      type: "workspace-selection-intent-updated",
+      intent: "audio",
+    });
+
+    const clickListener = documentRef.listeners.get("click");
+    const keydownListener = documentRef.listeners.get("keydown");
+    assert.ok(clickListener);
+    assert.ok(keydownListener);
+
+    clickListener?.(
+      new FakeClickEvent(
+        new FakeSelectionSuggestionTarget(
+          new FakeSelectionSuggestionTrigger("audio-inspect")
+        ) as unknown as EventTarget
+      ) as unknown as Event
+    );
+    assert.equal(store.getState().ui.activeSuggestionPreviewId, "audio-inspect");
+
+    clickListener?.(
+      new FakeClickEvent(new FakePanelOnlyTarget() as unknown as EventTarget) as unknown as Event
+    );
+    assert.equal(store.getState().ui.activeSuggestionPreviewId, "audio-inspect");
+
+    clickListener?.(
+      new FakeClickEvent(new FakeOutsideTarget() as unknown as EventTarget) as unknown as Event
+    );
+    assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
+
+    clickListener?.(
+      new FakeClickEvent(
+        new FakeSelectionSuggestionTarget(
+          new FakeSelectionSuggestionTrigger("audio-inspect")
+        ) as unknown as EventTarget
+      ) as unknown as Event
+    );
+    assert.equal(store.getState().ui.activeSuggestionPreviewId, "audio-inspect");
+
+    const escapeEvent = new FakeKeyboardEvent("Escape");
+    keydownListener?.(escapeEvent as unknown as Event);
+    assert.equal(escapeEvent.defaultPrevented, true);
+    assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
+test("selection suggestion binder ignores invalid preview ids while keeping passive click history", () => {
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  eventBus.subscribe(store.dispatch);
+  bindLabSelectionSuggestionClicks({
+    canPreviewSuggestion(suggestionId) {
+      return getSelectionSuggestions(store.getState()).some(function (suggestion) {
+        return suggestion.id === suggestionId;
+      });
+    },
+    documentRef: documentRef as unknown as Document,
+    emit: eventBus.emit,
+    hasActivePreview() {
+      return getActiveSuggestionPreview(store.getState()) !== null;
+    },
+  });
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "audio",
+      mode: "local",
+      storedPath: "/tmp/source.wav",
+    },
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1200,
+    endMs: 2600,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+
+  const clickListener = documentRef.listeners.get("click");
+  assert.ok(clickListener);
+
+  const clickEvent = new FakeClickEvent(
+    new FakeSelectionSuggestionTarget(
+      new FakeSelectionSuggestionTrigger("stale-suggestion-id")
+    ) as unknown as EventTarget
+  );
+  clickListener?.(clickEvent as unknown as Event);
+
+  assert.equal(clickEvent.defaultPrevented, true);
+  assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
+  assert.equal(getActiveSuggestionPreview(store.getState()), null);
+  assert.equal(
+    eventBus.getHistory().some(function (event) {
+      return (
+        event.type === "workspace-selection-suggestion-clicked" &&
+        event.suggestionId === "stale-suggestion-id"
+      );
+    }),
+    true
+  );
+  assert.equal(
+    eventBus.getHistory().some(function (event) {
+      return event.type === "workspace-selection-suggestion-preview-set";
+    }),
+    false
+  );
+});
+
+test("laboratory store rejects invalid selection preview-set events", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+  assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "audio",
+      mode: "local",
+      storedPath: "/tmp/source.wav",
+    },
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1200,
+    endMs: 2600,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "enhance-visual",
+  });
+  assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
+
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+  assert.equal(store.getState().ui.activeSuggestionPreviewId, "audio-inspect");
 });
 
 test("selection intent updates stay fenced from workspace analysis intents", () => {
@@ -1018,6 +2081,112 @@ test("selection intent updates stay fenced from workspace analysis intents", () 
   });
 });
 
+test("selection suggestion clicks stay fenced from analysis intents and run execution", () => {
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  const baseWorkspace = store.getState().ui.workspace;
+
+  eventBus.subscribe(store.dispatch);
+  bindLabSelectionSuggestionClicks({
+    canPreviewSuggestion(suggestionId) {
+      return getSelectionSuggestions(store.getState()).some(function (suggestion) {
+        return suggestion.id === suggestionId;
+      });
+    },
+    documentRef: documentRef as unknown as Document,
+    emit: eventBus.emit,
+    hasActivePreview() {
+      return getActiveSuggestionPreview(store.getState()) !== null;
+    },
+  });
+
+  store.dispatch({
+    type: "hydrate",
+    payload: {
+      currentStage: "report",
+      featureId: "media-analysis",
+      projectIndex: {
+        activeProjectId: "project-1",
+        projects: [],
+      },
+      workbench: {},
+      source: {
+        kind: "audio",
+        mode: "local",
+        storedPath: "/tmp/source.wav",
+      },
+      sourceProbeStatus: "completed",
+      workspace: {
+        ...baseWorkspace,
+        timelineStartMs: 2400,
+        timelineEndMs: 5600,
+        selectedIntents: ["visual-inspection"],
+      },
+      reports: {
+        user: null,
+        ai: null,
+        emptyReason: null,
+      },
+      activityFeed: [],
+      lastRun: {
+        id: "run-1",
+        state: "completed",
+        startedAt: Date.now() - 5000,
+        endedAt: Date.now() - 1000,
+        modules: {},
+        moduleOrder: [],
+        events: [],
+        rawLog: [],
+        artifacts: [],
+        findings: [],
+        liveFindings: [],
+        warnings: [],
+        error: null,
+        targetLabel: null,
+        progress: 100,
+        emptyReason: null,
+        analysisScope: {
+          focus: "visual",
+          timeRange: {
+            startMs: 2400,
+            endMs: 5600,
+          },
+          hypothesis: "frozen clue",
+          intentIds: ["visual-inspection", "anomaly-detection"],
+        },
+        previewArtifacts: [],
+        confidence: "medium",
+        moduleTrace: [],
+        comparisonVariants: [],
+        hypothesisSummary: "frozen clue",
+      },
+    },
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+
+  const clickListener = documentRef.listeners.get("click");
+  assert.ok(clickListener);
+
+  const clickEvent = new FakeClickEvent(
+    new FakeSelectionSuggestionTarget(
+      new FakeSelectionSuggestionTrigger("audio-inspect")
+    ) as unknown as EventTarget
+  );
+  clickListener?.(clickEvent as unknown as Event);
+
+  const state = store.getState();
+  assert.equal(clickEvent.defaultPrevented, true);
+  assert.equal(state.ui.workspace.activeSelection?.intent, "audio");
+  assert.equal(state.ui.activeSuggestionPreviewId, "audio-inspect");
+  assert.deepEqual(state.ui.workspace.selectedIntents, ["visual-inspection"]);
+  assert.deepEqual(state.run?.analysisScope?.intentIds, ["visual-inspection", "anomaly-detection"]);
+  assert.equal(state.run?.state, "completed");
+});
+
 test("waveform timeline model maps linked audio offset onto the shared master axis", () => {
   const store = createLabStore();
   store.dispatch({
@@ -1094,8 +2263,7 @@ test("workspace audio visualizer renders a loadable artifact before live analyse
   });
 
   visualizer.sync();
-  await Promise.resolve();
-  await Promise.resolve();
+  await flushVisualizerWork();
 
   assert.equal(FakeVisualizerAudioContext.constructed.length, 0);
   assert.equal(windowRef.scheduledFrames.size, 0);
@@ -1144,8 +2312,7 @@ test("workspace audio visualizer crops artifact rendering to the shared waveform
   });
 
   visualizer.sync();
-  await Promise.resolve();
-  await Promise.resolve();
+  await flushVisualizerWork();
 
   assert.equal(canvas.context.drawImageCalls, 1);
   assert.equal(canvas.context.lastDrawnImageSrc, "file:///tmp/waveform-cropped.png");
@@ -1200,8 +2367,7 @@ test("workspace audio visualizer redraws when the shared waveform crop changes w
   });
 
   visualizer.sync();
-  await Promise.resolve();
-  await Promise.resolve();
+  await flushVisualizerWork();
 
   assert.equal(canvas.context.drawImageCalls, 1);
   assert.equal(canvas.context.lastDrawImageArgs?.[1], 0);
@@ -1240,7 +2406,7 @@ test("workspace audio visualizer binds to the dual preview companion audio eleme
   assert.equal(FakeVisualizerAudioContext.constructed.length, 0);
 
   await dualAudio.play();
-  await Promise.resolve();
+  await flushVisualizerWork();
 
   assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
   assert.equal(windowRef.scheduledFrames.size, 1);
@@ -1268,7 +2434,7 @@ test("workspace audio visualizer initializes lazily and disconnects on source ch
   assert.equal(windowRef.scheduledFrames.size, 0);
 
   await firstAudio.play();
-  await Promise.resolve();
+  await flushVisualizerWork();
 
   assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
   const audioContext = FakeVisualizerAudioContext.constructed[0];
@@ -1277,6 +2443,7 @@ test("workspace audio visualizer initializes lazily and disconnects on source ch
   assert.equal(windowRef.scheduledFrames.size, 1);
 
   windowRef.flushFrame();
+  await flushVisualizerWork();
   assert.ok(canvas.context.clearRectCalls > 0);
   assert.ok(canvas.context.strokeCalls > 0);
   assert.equal(windowRef.scheduledFrames.size, 1);
@@ -1291,7 +2458,101 @@ test("workspace audio visualizer initializes lazily and disconnects on source ch
   visualizer.dispose();
 });
 
-test("workspace audio visualizer can resume live waveform after artifact mode exits mid-playback", async () => {
+test("workspace audio visualizer updates preview audio focus without recreating the live controller", async () => {
+  FakeVisualizerAudioContext.constructed = [];
+  const audioPreview = new FakeMediaElement();
+  const canvas = new FakeCanvasElement();
+  const documentRef = new FakeVisualizerDocument(audioPreview, null, canvas);
+  const windowRef = new FakeVisualizerWindow();
+  let audioFocus = {
+    gain: 1.6,
+    filterType: "lowpass",
+    filterFrequency: 1400,
+    filterQ: 1.8,
+    visualizationMode: "waveform" as const,
+    eqBands: [
+      { frequency: 60, gain: 1.5, Q: 1, type: "lowshelf" as const },
+      { frequency: 250, gain: -2, Q: 0.9, type: "peaking" as const },
+      { frequency: 1000, gain: 0, Q: 1.2, type: "peaking" as const },
+      { frequency: 4000, gain: 3, Q: 1.4, type: "peaking" as const },
+      { frequency: 12000, gain: 2, Q: 1, type: "highshelf" as const },
+    ],
+  };
+  let bookmarkCount = 0;
+  const visualizer = createLabWaveformTimelineVisualizer({
+    documentRef: documentRef as unknown as Document,
+    getTimelineModel() {
+      return {
+        audioFocus,
+        bookmarks: Array.from({ length: bookmarkCount }, function (_, index) {
+          return {
+            id: `bookmark-${String(index)}`,
+            label: `Bookmark ${String(index)}`,
+            timeMs: index * 500,
+          };
+        }),
+        dualPreviewActive: false,
+        durationMs: 0,
+        endMs: null,
+        startMs: null,
+        visualizationArtifact: null,
+        visualizationMode: "waveform",
+        waveformCropEndRatio: 1,
+        waveformCropStartRatio: 0,
+        waveformSourceLabel: "Waveform",
+        waveformSyncLabel: "Preview and waveform share the same master axis.",
+        waveformWindowDurationMs: 0,
+        waveformWindowStartMs: 0,
+      };
+    },
+    windowRef: windowRef as unknown as Window,
+  });
+
+  visualizer.sync();
+  await audioPreview.play();
+  await flushVisualizerWork();
+
+  const audioContext = FakeVisualizerAudioContext.constructed[0];
+  const gainNode = audioContext?.gainNodes[0];
+  const primaryFilter = audioContext?.biquadFilters[0];
+  const initialGainCalls = gainNode?.gain.setTargetCalls.length || 0;
+  const initialFilterCalls = primaryFilter?.frequency.setTargetCalls.length || 0;
+
+  assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
+  assert.equal(audioContext?.sourceNodes.length, 1);
+  assert.deepEqual(gainNode?.gain.setTargetCalls.at(-1), [1.6, 0, 0.01]);
+  assert.deepEqual(primaryFilter?.frequency.setTargetCalls.at(-1), [1400, 0, 0.01]);
+
+  bookmarkCount = 2;
+  visualizer.sync();
+  await flushVisualizerWork();
+
+  assert.equal(gainNode?.gain.setTargetCalls.length, initialGainCalls);
+  assert.equal(primaryFilter?.frequency.setTargetCalls.length, initialFilterCalls);
+  assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
+
+  audioFocus = {
+    ...audioFocus,
+    gain: 0.7,
+    filterQ: 4.2,
+    eqBands: audioFocus.eqBands.map(function (band, index) {
+      return index === 3 ? { ...band, gain: 5 } : band;
+    }),
+  };
+  visualizer.sync();
+  await flushVisualizerWork();
+
+  assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
+  assert.equal(audioContext?.sourceNodes.length, 1);
+  assert.deepEqual(gainNode?.gain.setTargetCalls.at(-1), [0.7, 0, 0.01]);
+  assert.deepEqual(primaryFilter?.Q.setTargetCalls.at(-1), [4.2, 0, 0.01]);
+  assert.deepEqual(audioContext?.biquadFilters[4]?.gain.setTargetCalls.at(-1), [5, 0, 0.01]);
+  assert.equal(gainNode?.gain.setTargetCalls.length, initialGainCalls + 1);
+
+  visualizer.dispose();
+});
+
+test("workspace audio visualizer prioritizes live spectrum rendering over artifact fallback during playback", async () => {
   FakeVisualizerAudioContext.constructed = [];
   FakeVisualizerWindow.imageLoadBehavior.clear();
   const audioPreview = new FakeMediaElement();
@@ -1323,13 +2584,15 @@ test("workspace audio visualizer can resume live waveform after artifact mode ex
   assert.equal(canvas.context.drawImageCalls, 1);
 
   await audioPreview.play();
-  await Promise.resolve();
-  assert.equal(FakeVisualizerAudioContext.constructed.length, 0);
+  await flushVisualizerWork();
+  assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
+  windowRef.flushFrame();
+  await flushVisualizerWork();
+  assert.ok(canvas.context.fillRectCalls > 0);
 
   artifact = null;
   visualizer.sync();
-  await Promise.resolve();
-  await Promise.resolve();
+  await flushVisualizerWork();
 
   assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
   assert.equal(windowRef.scheduledFrames.size, 1);
@@ -1490,8 +2753,7 @@ test("laboratory run controller renders decoded waveform peaks before play when 
 
   controller.attach();
   await Promise.resolve();
-  await Promise.resolve();
-  await Promise.resolve();
+  await flushVisualizerWork();
   await Promise.resolve();
   await Promise.resolve();
 
@@ -1501,7 +2763,7 @@ test("laboratory run controller renders decoded waveform peaks before play when 
   assert.equal(canvas.context.strokeStyleHistory.at(-1), "#5cd7df");
 });
 
-test("laboratory run controller swaps from live waveform to artifact rendering when a loadable artifact arrives", async () => {
+test("laboratory run controller keeps live spectrum rendering when a loadable artifact arrives", async () => {
   FakeVisualizerAudioContext.constructed = [];
   FakeVisualizerWindow.imageLoadBehavior.clear();
   const audioPreview = new FakeMediaElement();
@@ -1534,10 +2796,9 @@ test("laboratory run controller swaps from live waveform to artifact rendering w
   });
 
   controller.attach();
-  await Promise.resolve();
+  await flushVisualizerWork();
   await audioPreview.play();
-  await Promise.resolve();
-  await Promise.resolve();
+  await flushVisualizerWork();
 
   const audioContext = FakeVisualizerAudioContext.constructed[0];
   assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
@@ -1571,26 +2832,27 @@ test("laboratory run controller swaps from live waveform to artifact rendering w
   });
   store.getState().ui.workspace.audioFocus.visualizationMode = "spectrum";
 
-  await Promise.resolve();
-  await Promise.resolve();
+  await flushVisualizerWork();
+  windowRef.flushFrame();
+  await flushVisualizerWork();
 
-  assert.equal(windowRef.scheduledFrames.size, 0);
-  assert.equal(canvas.context.drawImageCalls, 1);
-  assert.equal(canvas.context.lastDrawnImageSrc, "file:///tmp/controller-spectrogram.png");
-  assert.equal(audioContext?.sourceNodes[0]?.disconnectCalls, 1);
+  assert.equal(windowRef.scheduledFrames.size, 1);
+  assert.equal(canvas.context.drawImageCalls, 0);
+  assert.ok(canvas.context.fillRectCalls > 0);
   assert.equal(
     audioContext?.sourceNodes[0]?.connectedTargets[audioContext.sourceNodes[0].connectedTargets.length - 1],
-    audioContext?.destination
+    audioContext?.gainNodes[0]
   );
 });
 
-test("laboratory run controller resumes live waveform after artifact load failure while media keeps playing", async () => {
+test("laboratory run controller pauses realtime rendering while hidden and resumes on visibility restore", async () => {
   FakeVisualizerAudioContext.constructed = [];
   FakeVisualizerWindow.imageLoadBehavior.clear();
-  FakeVisualizerWindow.imageLoadBehavior.set("file:///tmp/controller-failing-spectrogram.png", "error");
   const audioPreview = new FakeMediaElement();
   const canvas = new FakeCanvasElement();
   const documentRef = new (class extends FakeControllerDocument {
+    hidden = false;
+
     querySelector(selector: string) {
       if (selector === 'audio[data-lab-preserve-media="workspace-preview"]') {
         return audioPreview;
@@ -1618,53 +2880,26 @@ test("laboratory run controller resumes live waveform after artifact load failur
   });
 
   controller.attach();
-  await Promise.resolve();
+  await flushVisualizerWork();
   await audioPreview.play();
-  await Promise.resolve();
-  await Promise.resolve();
+  await flushVisualizerWork();
 
   const audioContext = FakeVisualizerAudioContext.constructed[0];
   assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
   assert.equal(windowRef.scheduledFrames.size, 1);
 
-  store.getState().ui.workspace.audioFocus.visualizationMode = "spectrum";
-  store.dispatch({
-    type: "host-event-received",
-    event: {
-      id: "evt-audio-artifact-failing-arrival",
-      kind: "module-artifact",
-      severity: "info",
-      message: "Spectrogram artifact ready",
-      detail: "Audio spectrogram rendered",
-      timestamp: Date.now(),
-      source: "host",
-      action: "process-run",
-      stage: "completed",
-      scope: "run",
-      moduleId: "spectral-artifacts",
-      rawLine: null,
-      artifact: {
-        id: "artifact-spectrogram-controller-failing",
-        moduleId: "spectral-artifacts",
-        kind: "spectrogram",
-        path: "/tmp/controller-failing-spectrogram.png",
-        fileName: "controller-failing-spectrogram.png",
-        previewUrl: "file:///tmp/controller-failing-spectrogram.png",
-        createdAt: new Date().toISOString(),
-      },
-    },
-  });
+  documentRef.hidden = true;
+  documentRef.listeners.get("visibilitychange")?.({ type: "visibilitychange" } as Event);
+  await Promise.resolve();
+  assert.equal(windowRef.scheduledFrames.size, 0);
 
-  await Promise.resolve();
-  await Promise.resolve();
-  await Promise.resolve();
-
-  assert.equal(canvas.context.drawImageCalls, 0);
+  documentRef.hidden = false;
+  documentRef.listeners.get("visibilitychange")?.({ type: "visibilitychange" } as Event);
+  await flushVisualizerWork();
   assert.equal(windowRef.scheduledFrames.size, 1);
-  assert.equal(audioContext?.sourceNodes[0]?.disconnectCalls, 2);
   assert.equal(
     audioContext?.sourceNodes[0]?.connectedTargets[audioContext.sourceNodes[0].connectedTargets.length - 1],
-    audioContext?.analyser
+    audioContext?.gainNodes[0]
   );
 });
 
@@ -3511,13 +4746,488 @@ test("laboratory store ignores semantic selection intent updates without an acti
   assert.equal(getSelectionIntent(store.getState()), "unknown");
 });
 
+test("selection suggestion selector returns an empty list without a valid selection", () => {
+  const store = createLabStore();
+
+  assert.deepEqual(getSelectionSuggestions(store.getState()), []);
+  assert.deepEqual(getWaveformTimelineModel(store.getState()).selectionSuggestions ?? [], []);
+});
+
+test("selection suggestion selector provides a general fallback for timeline media", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "audio",
+      mode: "local",
+      storedPath: "/tmp/source.wav",
+    },
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+
+  assert.deepEqual(getSelectionSuggestions(store.getState()), [
+    {
+      id: "extract-clip",
+      label: "Bu bolumu kes",
+      actionType: "extract-clip",
+      confidence: 0.68,
+    },
+  ]);
+});
+
+test("selection suggestion selector fences recommendations by intent and media kind", () => {
+  const audioStore = createLabStore();
+  audioStore.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "audio",
+      mode: "local",
+      storedPath: "/tmp/source.wav",
+    },
+  });
+  audioStore.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+  audioStore.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+
+  assert.deepEqual(getSelectionSuggestions(audioStore.getState()), [
+    {
+      id: "audio-inspect",
+      label: "Ses detaylarini incele",
+      actionType: "inspect-audio",
+      confidence: 0.9,
+    },
+    {
+      id: "extract-clip",
+      label: "Bu bolumu kes",
+      actionType: "extract-clip",
+      confidence: 0.6,
+    },
+  ]);
+
+  const imageStore = createLabStore();
+  imageStore.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "image",
+      mode: "local",
+      storedPath: "/tmp/source.png",
+    },
+  });
+  imageStore.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+  imageStore.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+
+  assert.deepEqual(getSelectionSuggestions(imageStore.getState()), [
+    {
+      id: "focus-region",
+      label: "Bolgeye odaklan",
+      actionType: "focus-region",
+      confidence: 0.66,
+    },
+  ]);
+
+  imageStore.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "general",
+  });
+
+  assert.deepEqual(getSelectionSuggestions(imageStore.getState()), [
+    {
+      id: "focus-region",
+      label: "Bolgeye odaklan",
+      actionType: "focus-region",
+      confidence: 0.66,
+    },
+  ]);
+
+  imageStore.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "anomaly",
+  });
+
+  assert.deepEqual(getSelectionSuggestions(imageStore.getState()), [
+    {
+      id: "analyze-anomaly",
+      label: "Anomaliyi analiz et",
+      actionType: "analyze-segment",
+      confidence: 0.9,
+    },
+    {
+      id: "focus-region",
+      label: "Bolgeye odaklan",
+      actionType: "focus-region",
+      confidence: 0.58,
+    },
+  ]);
+
+  imageStore.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "visual",
+  });
+
+  assert.deepEqual(getSelectionSuggestions(imageStore.getState()), [
+    {
+      id: "enhance-visual",
+      label: "Goruntuyu iyilestir",
+      actionType: "enhance-visual",
+      confidence: 0.8,
+    },
+    {
+      id: "focus-region",
+      label: "Bolgeye odaklan",
+      actionType: "focus-region",
+      confidence: 0.58,
+    },
+  ]);
+});
+
+test("suggestion preview builder returns a dry-run plan for supported actions", () => {
+  const selection: LabSelection = {
+    id: "selection-preview",
+    startMs: 1200,
+    endMs: 7800,
+    type: "clip",
+    intent: "audio",
+    createdAt: 1700000000000,
+  };
+  const fallbackSuggestion = {
+    id: "custom-fallback",
+    label: "Custom fallback",
+    actionType: "unknown-action" as LabActionSuggestion["actionType"],
+    confidence: 0.2,
+  };
+
+  assert.deepEqual(
+    buildSuggestionPreview(
+      {
+        id: "analyze-anomaly",
+        label: "Anomaliyi analiz et",
+        actionType: "analyze-segment",
+        confidence: 0.9,
+      },
+      selection
+    ),
+    {
+      suggestionId: "analyze-anomaly",
+      title: "Segment analiz edilecek",
+      steps: [
+        "6.6s secim hazirlanacak",
+        "Gorsel ve/veya ses sinyalleri ayristirilacak",
+        "Anomali veya tutarsizlik incelemesi hazirlanacak",
+      ],
+      expectedOutputs: [
+        "Analiz raporu",
+        "Tespit edilen bulgular",
+        "Ilgili frame veya segment referanslari",
+      ],
+      estimatedCost: "medium",
+    }
+  );
+
+  assert.deepEqual(
+    buildSuggestionPreview(
+      {
+        id: "audio-inspect",
+        label: "Ses detaylarini incele",
+        actionType: "inspect-audio",
+        confidence: 0.9,
+      },
+      selection
+    ),
+    {
+      suggestionId: "audio-inspect",
+      title: "Ses analizi yapilacak",
+      steps: [
+        "6.6s secim hazirlanacak",
+        "Ses track izole edilecek",
+        "Frekans ve yogunluk taramasi hazirlanacak",
+        "Ani degisim noktalarina bakilacak",
+      ],
+      expectedOutputs: ["Ses analizi raporu", "Olasi anomali noktalari"],
+      estimatedCost: "low",
+    }
+  );
+
+  assert.deepEqual(
+    buildSuggestionPreview(
+      {
+        id: "extract-clip",
+        label: "Bu bolumu kes",
+        actionType: "extract-clip",
+        confidence: 0.68,
+      },
+      selection
+    ),
+    {
+      suggestionId: "extract-clip",
+      title: "Clip olusturulacak",
+      steps: ["6.6s secim hazirlanacak", "Secilen segment yeni bir clip olarak hazirlanacak"],
+      expectedOutputs: ["Video veya audio clip"],
+      estimatedCost: "low",
+    }
+  );
+
+  assert.deepEqual(
+    buildSuggestionPreview(
+      {
+        id: "focus-region",
+        label: "Bolgeye odaklan",
+        actionType: "focus-region",
+        confidence: 0.66,
+      },
+      selection
+    ),
+    {
+      suggestionId: "focus-region",
+      title: "Islem hazirlaniyor",
+      steps: ["Bu islem icin detayli plan henuz tanimli degil"],
+      expectedOutputs: [],
+      estimatedCost: "low",
+    }
+  );
+
+  assert.deepEqual(
+    buildSuggestionPreview(
+      {
+        id: "enhance-visual",
+        label: "Goruntuyu iyilestir",
+        actionType: "enhance-visual",
+        confidence: 0.8,
+      },
+      selection
+    ),
+    {
+      suggestionId: "enhance-visual",
+      title: "Islem hazirlaniyor",
+      steps: ["Bu islem icin detayli plan henuz tanimli degil"],
+      expectedOutputs: [],
+      estimatedCost: "low",
+    }
+  );
+
+  assert.deepEqual(buildSuggestionPreview(fallbackSuggestion, selection), {
+    suggestionId: "custom-fallback",
+    title: "Islem hazirlaniyor",
+    steps: ["Bu islem icin detayli plan henuz tanimli degil"],
+    expectedOutputs: [],
+    estimatedCost: "low",
+  });
+});
+
+test("selection preview is derived from the active preview id and current suggestion set", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "audio",
+      mode: "local",
+      storedPath: "/tmp/source.wav",
+    },
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+
+  assert.equal(store.getState().ui.activeSuggestionPreviewId, "audio-inspect");
+  assert.deepEqual(getActiveSuggestionPreview(store.getState()), {
+    suggestionId: "audio-inspect",
+    title: "Ses analizi yapilacak",
+    steps: [
+      "2.0s secim hazirlanacak",
+      "Ses track izole edilecek",
+      "Frekans ve yogunluk taramasi hazirlanacak",
+      "Ani degisim noktalarina bakilacak",
+    ],
+    expectedOutputs: ["Ses analizi raporu", "Olasi anomali noktalari"],
+    estimatedCost: "low",
+  });
+  assert.deepEqual(getWaveformTimelineModel(store.getState()).activeSuggestionPreview, {
+    suggestionId: "audio-inspect",
+    title: "Ses analizi yapilacak",
+    steps: [
+      "2.0s secim hazirlanacak",
+      "Ses track izole edilecek",
+      "Frekans ve yogunluk taramasi hazirlanacak",
+      "Ani degisim noktalarina bakilacak",
+    ],
+    expectedOutputs: ["Ses analizi raporu", "Olasi anomali noktalari"],
+    estimatedCost: "low",
+  });
+});
+
+test("selection preview clears on range changes, intent changes, and explicit dismiss events", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "audio",
+      mode: "local",
+      storedPath: "/tmp/source.wav",
+    },
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+
+  assert.equal(store.getState().ui.activeSuggestionPreviewId, "audio-inspect");
+
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1200,
+    endMs: 3200,
+  });
+  assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
+
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+  assert.equal(store.getState().ui.activeSuggestionPreviewId, "audio-inspect");
+
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "visual",
+  });
+  assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
+
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-cleared",
+  });
+  assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
+});
+
+test("hydrate keeps selection previews ephemeral and drops any active preview id", () => {
+  const store = createLabStore();
+  const baseWorkspace = store.getState().ui.workspace;
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "audio",
+      mode: "local",
+      storedPath: "/tmp/source.wav",
+    },
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+  assert.equal(store.getState().ui.activeSuggestionPreviewId, "audio-inspect");
+
+  store.dispatch({
+    type: "hydrate",
+    payload: {
+      currentStage: "report",
+      featureId: "media-analysis",
+      projectIndex: {
+        activeProjectId: "project-1",
+        projects: [],
+      },
+      workbench: {},
+      source: {
+        kind: "audio",
+        mode: "local",
+        storedPath: "/tmp/source.wav",
+      },
+      sourceProbeStatus: "completed",
+      workspace: {
+        ...baseWorkspace,
+        timelineStartMs: 1000,
+        timelineEndMs: 3000,
+      },
+      reports: {
+        user: null,
+        ai: null,
+        emptyReason: null,
+      },
+      activityFeed: [],
+      lastRun: null,
+    },
+  });
+
+  assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
+  assert.equal(getActiveSuggestionPreview(store.getState()), null);
+});
+
 test("laboratory store resets semantic and primitive selection state on source changes", () => {
   const store = createLabStore();
 
   store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "audio",
+      mode: "local",
+      storedPath: "/tmp/source.wav",
+    },
+  });
+  store.dispatch({
     type: "workspace-timeline-updated",
     startMs: 1500,
     endMs: 3600,
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "extract-clip",
   });
 
   store.dispatch({
@@ -3532,15 +5242,28 @@ test("laboratory store resets semantic and primitive selection state on source c
   assert.equal(store.getState().ui.workspace.timelineStartMs, null);
   assert.equal(store.getState().ui.workspace.timelineEndMs, null);
   assert.equal(store.getState().ui.workspace.activeSelection, null);
+  assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
 });
 
 test("laboratory store clears semantic and primitive selection state when the active project changes", () => {
   const store = createLabStore();
 
   store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "video",
+      mode: "local",
+      storedPath: "/tmp/original.mp4",
+    },
+  });
+  store.dispatch({
     type: "workspace-timeline-updated",
     startMs: 1800,
     endMs: 4200,
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "extract-clip",
   });
 
   store.dispatch({
@@ -3551,6 +5274,7 @@ test("laboratory store clears semantic and primitive selection state when the ac
   assert.equal(store.getState().ui.workspace.timelineStartMs, null);
   assert.equal(store.getState().ui.workspace.timelineEndMs, null);
   assert.equal(store.getState().ui.workspace.activeSelection, null);
+  assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
 });
 
 test("laboratory run controller accepts numeric timeline input edits and normalizes invalid ranges", () => {

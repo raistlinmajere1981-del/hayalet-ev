@@ -2,6 +2,7 @@ import { asLabRecord, asNonEmptyString, createLabFeatureMeta } from "../models/l
 import type {
   LabArtifactProjection,
   CapabilityFamilyId,
+  LabActionSuggestion,
   LabAsset,
   LabAssetType,
   LabExpectedOutput,
@@ -16,6 +17,7 @@ import type {
   LabRunSnapshotSummary,
   LabSelection,
   LabSelectionIntent,
+  LabSuggestionPreview,
   LabStage,
   LabStoreState,
   LabUserActionEvent,
@@ -25,6 +27,10 @@ import type {
 } from "../models/lab-types.js";
 import { CAPABILITY_FAMILIES, WORKSPACE_INTENTS } from "../models/lab-types.js";
 import { normalizeAnalysisScope } from "../shared/types/analysis-scope.js";
+import {
+  buildSelectionSuggestionPreview,
+  getSelectionSuggestionsForContext,
+} from "./lab-selection-suggestion-logic.js";
 import { LAB_USER_ACTION_HISTORY_LIMIT } from "./lab-user-actions.js";
 
 function normalizeIntentIdList(value: unknown) {
@@ -882,6 +888,40 @@ export function getSelectionIntent(state: LabStoreState): LabSelectionIntent {
   return state.ui.workspace.activeSelection?.intent ?? "unknown";
 }
 
+export function getActiveSuggestionPreviewId(state: LabStoreState): string | null {
+  return state.ui.activeSuggestionPreviewId;
+}
+
+export function getSelectionSuggestions(state: LabStoreState): LabActionSuggestion[] {
+  return getSelectionSuggestionsForContext(getActiveSelection(state), getSourceKind(state));
+}
+
+export function buildSuggestionPreview(
+  suggestion: LabActionSuggestion,
+  selection: LabSelection
+): LabSuggestionPreview {
+  return buildSelectionSuggestionPreview(suggestion, selection);
+}
+
+export function getActiveSuggestionPreview(state: LabStoreState): LabSuggestionPreview | null {
+  const previewId = getActiveSuggestionPreviewId(state);
+  const activeSelection = getActiveSelection(state);
+  if (
+    previewId === null ||
+    activeSelection === null ||
+    activeSelection.endMs <= activeSelection.startMs
+  ) {
+    return null;
+  }
+  const suggestion = getSelectionSuggestions(state).find(function (entry) {
+    return entry.id === previewId;
+  });
+  if (!suggestion) {
+    return null;
+  }
+  return buildSuggestionPreview(suggestion, activeSelection);
+}
+
 export function getTimelineSelection(state: LabStoreState) {
   const activeSelection = getActiveSelection(state);
   if (activeSelection !== null && activeSelection.endMs > activeSelection.startMs) {
@@ -949,11 +989,14 @@ export function getWaveformTimelineModel(state: LabStoreState) {
 
   return {
     activeSelection: getActiveSelection(state),
+    activeSuggestionPreview: getActiveSuggestionPreview(state),
+    audioFocus: getAudioFocusSettings(state),
     bookmarks: getBookmarks(state),
     dualPreviewActive,
     durationMs,
     endMs: selection.endMs,
     linkedAudioAssetId: selectedAudioAsset?.id || null,
+    selectionSuggestions: getSelectionSuggestions(state),
     startMs: selection.startMs,
     sourceKind,
     visualizationArtifact: getAudioVisualizationArtifact(state),
