@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
+import { inspectCompanionArtifactCache } from "./lib/android-companion-artifact.mjs";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 
@@ -805,10 +806,18 @@ export async function resolveInstallableArtifact({
   buildIfMissing = false,
   autoBootstrap = false,
   emitProgress = null,
+  paths = null,
 } = {}) {
-  const artifactManifest = await readArtifactManifest();
-  if (artifactManifest && (await fileExists(artifactManifest.apkPath)) === true) {
-    return artifactManifest;
+  const resolvedPaths = {
+    companionRoot: typeof paths?.companionRoot === "string" ? paths.companionRoot : companionRoot,
+    artifactManifestPath:
+      typeof paths?.artifactManifestPath === "string"
+        ? paths.artifactManifestPath
+        : artifactManifestPath,
+  };
+  const artifactState = await inspectCompanionArtifactCache(resolvedPaths);
+  if (artifactState.artifactReady === true && artifactState.artifactFresh === true) {
+    return artifactState.artifactManifest;
   }
 
   if (buildIfMissing !== true) {

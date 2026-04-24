@@ -10,6 +10,7 @@ import { transcriptService } from "./transcript-service.ts";
 import { DEFAULT_CAPTURE_COMMAND_PHRASES } from "../shared/capture/command-catalog.js";
 import { normalizeAppLanguage } from "../shared/i18n/locale.js";
 import { normalizeTranscriptModelVariant } from "../shared/transcript/model-catalog.js";
+import { inspectCompanionArtifactCache } from "../scripts/lib/android-companion-artifact.mjs";
 import type {
   CaptureActionOutcome,
   CaptureAndroidArtifactStatus,
@@ -127,6 +128,10 @@ function getCompanionManifestPath(): string {
 
 function getCompanionArtifactDir(): string {
   return join(getCaptureProjectRoot(), "dist", "android-companion");
+}
+
+function getCompanionSourceRoot(): string {
+  return join(getCaptureProjectRoot(), "android-companion");
 }
 
 function getCompanionArtifactManifestPath(): string {
@@ -734,15 +739,12 @@ async function readCompanionManifest(): Promise<CaptureAndroidArtifactStatus> {
     const parsed = JSON.parse(
       await readFile(companionManifestPath, "utf8")
     ) as CompanionManifestRecord;
-    const artifactManifest =
-      (await fileExists(companionArtifactManifestPath)) === true
-        ? (JSON.parse(await readFile(companionArtifactManifestPath, "utf8")) as Record<
-            string,
-            unknown
-          >)
-        : null;
-    const artifactApkPath = normalizeText(artifactManifest?.["apkPath"]);
-    const artifactReady = artifactApkPath !== null && (await fileExists(artifactApkPath)) === true;
+    const artifactState = await inspectCompanionArtifactCache({
+      companionRoot: getCompanionSourceRoot(),
+      artifactManifestPath: companionArtifactManifestPath,
+    });
+    const artifactReady =
+      artifactState.artifactReady === true && artifactState.artifactFresh === true;
     const wrapperReady = await fileExists(companionWrapperPath);
 
     return {
@@ -760,8 +762,8 @@ async function readCompanionManifest(): Promise<CaptureAndroidArtifactStatus> {
           : typeof parsed.versionCode === "string" && parsed.versionCode.trim() !== ""
             ? Number(parsed.versionCode)
             : null,
-      apkPath: artifactReady ? artifactApkPath : null,
-      builtAt: normalizeText(artifactManifest?.["builtAt"]),
+      apkPath: artifactReady ? artifactState.apkPath : null,
+      builtAt: artifactState.builtAt,
       sourceManifestPath: companionManifestPath,
       bridgePort:
         typeof parsed.bridgePort === "number" && Number.isFinite(parsed.bridgePort)
