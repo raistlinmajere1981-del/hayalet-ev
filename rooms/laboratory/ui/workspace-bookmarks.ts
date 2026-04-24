@@ -40,9 +40,7 @@ export function renderWorkspaceBookmarks(bookmarks: LabBookmark[]) {
             .join("")}
         </div>
       `
-          : `
-        <p class="labx-panel-hint">No bookmarks yet. Mark interesting moments for the report.</p>
-      `
+          : ""
       }
     </div>
   `;

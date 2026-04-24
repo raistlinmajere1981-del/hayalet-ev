@@ -140,6 +140,23 @@ export interface LabROIRegion {
   active: boolean;
 }
 
+export type LabSelectionType = "clip" | "focus" | "inspect" | "unknown";
+
+export interface LabSelection {
+  id: string;
+  startMs: number;
+  endMs: number;
+  type: LabSelectionType;
+  label?: string;
+  roi?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  createdAt: number;
+}
+
 export interface LabInteractiveSettings {
   brightness: number;
   contrast: number;
@@ -177,6 +194,7 @@ export type LabProcessSectionId = "pipeline" | "findings" | "artifacts";
 export interface LabWorkspaceUiState {
   timelineStartMs: number | null;
   timelineEndMs: number | null;
+  activeSelection: LabSelection | null;
   roiRegions: LabROIRegion[];
   interactiveSettings: LabInteractiveSettings;
   audioFocus: LabAudioFocusSettings;

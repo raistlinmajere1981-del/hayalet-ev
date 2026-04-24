@@ -54,6 +54,23 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
       return null;
     }
 
+    const analysisScopeRecord = deps.toRecord(processRecord["analysisScope"]);
+    const moduleTrace = Array.isArray(processRecord["moduleTrace"])
+      ? (processRecord["moduleTrace"] as unknown[]).map(function (entry) {
+          return deps.toRecord(entry);
+        })
+      : [];
+    const comparisonVariants = Array.isArray(processRecord["comparisonVariants"])
+      ? (processRecord["comparisonVariants"] as unknown[]).map(function (entry) {
+          return deps.toRecord(entry);
+        })
+      : [];
+    const previewArtifacts = Array.isArray(processRecord["previewArtifacts"])
+      ? (processRecord["previewArtifacts"] as unknown[]).map(function (entry) {
+          return deps.toRecord(entry);
+        })
+      : [];
+
     const modules = Array.isArray(processRecord["modules"])
       ? (processRecord["modules"] as unknown[])
       : [];
@@ -103,6 +120,11 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
       warnings: Array.isArray(processRecord["warnings"])
         ? (processRecord["warnings"] as unknown[]).map(String)
         : [],
+      analysisScope: Object.keys(analysisScopeRecord).length > 0 ? analysisScopeRecord : null,
+      hypothesisSummary: asNonEmptyString(processRecord["hypothesisSummary"]),
+      moduleTrace,
+      comparisonVariants,
+      previewArtifacts,
       error: asNonEmptyString(processRecord["error"]),
       targetLabel: asNonEmptyString(deps.toRecord(processRecord["targetSummary"])["label"]),
       progress: typeof processRecord["percent"] === "number" ? processRecord["percent"] : null,

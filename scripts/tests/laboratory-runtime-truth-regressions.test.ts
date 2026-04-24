@@ -1,11 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import type {
+  LabArtifactProjection,
+  LabSelection,
+} from "../../rooms/laboratory/models/lab-types.ts";
 import { createLabEventBus } from "../../rooms/laboratory/runtime/lab-event-bus.ts";
 import { createLabRunController } from "../../rooms/laboratory/runtime/lab-run-controller.ts";
 import { createLabHostBridge } from "../../rooms/laboratory/runtime/lab-host-bridge.ts";
 import {
   getActualOutputs,
   getActionOutputs,
+  getActiveSelection,
+  getAudioVisualizationArtifact,
   getAssetById,
   getAssets,
   getAssetsByRun,
@@ -19,16 +25,26 @@ import {
   getParentSourceForAsset,
   getReportFreshness,
   getRunSnapshotSummary,
+  getSelectionDuration,
   getSelectedDualPreviewAudioAsset,
+  getWaveformTimelineModel,
   getWorkspaceDiff,
   isDualPreviewActive,
   isDualPreviewAvailable,
   isExpectedOutputMatched,
+  isSelectionValid,
 } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import { LAB_USER_ACTION_HUB_SUCCESS_WINDOW_MS } from "../../rooms/laboratory/runtime/lab-user-actions.ts";
 import { extractFindings } from "../../rooms/laboratory/services/finding-engine.ts";
 import { parseProcessOutput } from "../../rooms/laboratory/services/process-output-parser.ts";
+import {
+  createLabWaveformTimelineVisualizer,
+  renderLabWaveformTimeline,
+} from "../../rooms/laboratory/ui/lab-waveform-timeline.ts";
+import {
+  renderWorkspaceAudioFocus,
+} from "../../rooms/laboratory/ui/workspace-audio-focus.ts";
 
 type TimeoutFn = typeof globalThis.setTimeout;
 type ClearTimeoutFn = typeof globalThis.clearTimeout;
@@ -93,6 +109,7 @@ class FakeControllerDocument {
 
 class FakeMediaElement {
   currentTime = 0;
+  currentSrc = "";
   duration = 0;
   readyState = 1;
   muted = false;
@@ -101,6 +118,7 @@ class FakeMediaElement {
   playCalls = 0;
   pauseCalls = 0;
   failPlay = false;
+  src = "";
   private listeners = new Map<string, Set<(event: Event) => void>>();
 
   addEventListener(type: string, listener: EventListenerOrEventListenerObject): void {
@@ -161,6 +179,126 @@ class FakeTextElement {
   constructor(public textContent: string | null = null) {}
 }
 
+class FakePlayheadElement {
+  style: Record<string, string> = {};
+  attributes = new Map<string, string>();
+
+  setAttribute(name: string, value: string) {
+    this.attributes.set(name, value);
+  }
+}
+
+class FakeWindowEventTarget {
+  listeners = new Map<string, (event: Event) => void>();
+  roomAPI = {
+    sendEvent() {},
+  };
+
+  addEventListener(type: string, listener: EventListenerOrEventListenerObject): void {
+    this.listeners.set(
+      type,
+      typeof listener === "function"
+        ? (listener as (event: Event) => void)
+        : (event: Event) => listener.handleEvent(event)
+    );
+  }
+
+  removeEventListener(type: string): void {
+    this.listeners.delete(type);
+  }
+}
+
+class FakeTimelineTrack {
+  constructor(
+    private readonly left: number,
+    private readonly width: number
+  ) {}
+
+  getBoundingClientRect() {
+    return {
+      left: this.left,
+      width: this.width,
+    };
+  }
+}
+
+class FakeTimelineRoot {
+  dataset: Record<string, string>;
+
+  constructor(
+    private readonly track: FakeTimelineTrack,
+    durationMs: number
+  ) {
+    this.dataset = {
+      duration: String(durationMs),
+    };
+  }
+
+  querySelector(selector: string) {
+    return selector === ".labx-timeline__track" ? this.track : null;
+  }
+}
+
+class FakeTimelineActionElement {
+  dataset: Record<string, string>;
+
+  constructor(
+    action: string,
+    private readonly timeline: FakeTimelineRoot,
+    value?: string
+  ) {
+    this.dataset = {
+      labAction: action,
+      ...(value === undefined ? {} : { labValue: value }),
+    };
+  }
+
+  closest(selector: string) {
+    if (selector === ".labx-timeline") {
+      return this.timeline;
+    }
+    if (selector === "[data-lab-action]") {
+      return this;
+    }
+    return selector.includes(this.dataset.labAction) ? this : null;
+  }
+}
+
+class FakeMouseEvent {
+  constructor(
+    public target: EventTarget | null,
+    public clientX: number,
+    public shiftKey = false
+  ) {}
+
+  preventDefault() {}
+
+  stopPropagation() {}
+}
+
+class FakeHtmlInputElement {
+  checked = false;
+  dataset: Record<string, string>;
+  type = "text";
+
+  constructor(
+    field: string,
+    public value: string
+  ) {
+    this.dataset = {
+      labField: field,
+    };
+  }
+}
+
+class FakeHtmlSelectElement {
+  constructor(public value = "") {}
+}
+
+class FakeHtmlTextAreaElement {
+  constructor(public value = "") {}
+}
+
 class FakeDualPreviewDocument extends FakeControllerDocument {
   constructor(
     private readonly queryMap: Map<string, unknown>,
@@ -180,6 +318,1189 @@ class FakeDualPreviewDocument extends FakeControllerDocument {
     return [] as HTMLMediaElement[];
   }
 }
+
+class FakeCanvasContext {
+  clearRectCalls = 0;
+  drawImageCalls = 0;
+  lastDrawImageArgs: unknown[] | null = null;
+  lineWidth = 0;
+  lastDrawnImageSrc: string | null = null;
+  shadowBlur = 0;
+  shadowColor = "";
+  strokeCalls = 0;
+  strokeStyle = "";
+  strokeStyleHistory: string[] = [];
+
+  beginPath() {}
+
+  clearRect() {
+    this.clearRectCalls += 1;
+  }
+
+  drawImage(...args: unknown[]) {
+    const image = args[0] as { src?: string } | undefined;
+    this.drawImageCalls += 1;
+    this.lastDrawImageArgs = args;
+    this.lastDrawnImageSrc = typeof image.src === "string" ? image.src : null;
+  }
+
+  lineTo() {}
+
+  moveTo() {}
+
+  setTransform() {}
+
+  stroke() {
+    this.strokeCalls += 1;
+    this.strokeStyleHistory.push(this.strokeStyle);
+  }
+}
+
+class FakeCanvasElement {
+  width = 320;
+  height = 80;
+  clientWidth = 320;
+  clientHeight = 80;
+  readonly context = new FakeCanvasContext();
+
+  getContext(type: string) {
+    return type === "2d" ? (this.context as unknown as CanvasRenderingContext2D) : null;
+  }
+}
+
+class FakeVisualizerSourceNode {
+  connectedTargets: unknown[] = [];
+  disconnectCalls = 0;
+
+  connect(target: unknown) {
+    this.connectedTargets.push(target);
+  }
+
+  disconnect() {
+    this.disconnectCalls += 1;
+  }
+}
+
+class FakeVisualizerAnalyserNode {
+  connectedTargets: unknown[] = [];
+  fftSize = 2048;
+  smoothingTimeConstant = 0;
+
+  connect(target: unknown) {
+    this.connectedTargets.push(target);
+  }
+
+  getByteTimeDomainData(buffer: Uint8Array) {
+    for (let index = 0; index < buffer.length; index += 1) {
+      buffer[index] = 128 + Math.round(Math.sin(index / 6) * 28);
+    }
+  }
+}
+
+class FakeVisualizerAudioContext {
+  static constructed: FakeVisualizerAudioContext[] = [];
+
+  state: AudioContextState = "suspended";
+  readonly analyser = new FakeVisualizerAnalyserNode();
+  readonly destination = { kind: "destination" };
+  readonly sourceNodes: FakeVisualizerSourceNode[] = [];
+  closeCalls = 0;
+  resumeCalls = 0;
+
+  constructor() {
+    FakeVisualizerAudioContext.constructed.push(this);
+  }
+
+  createAnalyser() {
+    return this.analyser as unknown as AnalyserNode;
+  }
+
+  createMediaElementSource() {
+    const sourceNode = new FakeVisualizerSourceNode();
+    this.sourceNodes.push(sourceNode);
+    return sourceNode as unknown as MediaElementAudioSourceNode;
+  }
+
+  decodeAudioData() {
+    const sampleCount = 4096;
+    const samples = new Float32Array(sampleCount);
+    for (let index = 0; index < sampleCount; index += 1) {
+      samples[index] = Math.sin(index / 18) * 0.7;
+    }
+    return Promise.resolve({
+      length: sampleCount,
+      numberOfChannels: 1,
+      getChannelData() {
+        return samples;
+      },
+    } as unknown as AudioBuffer);
+  }
+
+  close() {
+    this.closeCalls += 1;
+    this.state = "closed";
+    return Promise.resolve();
+  }
+
+  resume() {
+    this.resumeCalls += 1;
+    this.state = "running";
+    return Promise.resolve();
+  }
+}
+
+class FakeVisualizerWindow {
+  static imageLoadBehavior = new Map<string, "load" | "error" | "defer">();
+
+  AudioContext = FakeVisualizerAudioContext as unknown as typeof AudioContext;
+  Image: typeof Image;
+  devicePixelRatio = 1;
+  fetchCalls: string[] = [];
+  nextFrameId = 1;
+  private readonly deferredImages = new Map<
+    string,
+    Array<{ onerror: null | (() => void); onload: null | (() => void) }>
+  >();
+  roomAPI = {
+    sendEvent() {},
+  };
+  scheduledFrames = new Map<number, FrameRequestCallback>();
+
+  constructor() {
+    const windowRef = this;
+    this.Image = class FakeImage {
+      height = 120;
+      naturalHeight = 120;
+      naturalWidth = 1200;
+      onerror: null | (() => void) = null;
+      onload: null | (() => void) = null;
+      private _src = "";
+      width = 1200;
+
+      get src() {
+        return this._src;
+      }
+
+      set src(value: string) {
+        this._src = value;
+        queueMicrotask(() => {
+          const behavior = FakeVisualizerWindow.imageLoadBehavior.get(value) || "load";
+          if (behavior === "defer") {
+            const pending = windowRef.deferredImages.get(value) || [];
+            pending.push(this);
+            windowRef.deferredImages.set(value, pending);
+            return;
+          }
+          if (behavior === "error") {
+            this.onerror?.();
+            return;
+          }
+          this.onload?.();
+        });
+      }
+    } as unknown as typeof Image;
+  }
+
+  addEventListener() {}
+
+  fetch(url: string) {
+    this.fetchCalls.push(url);
+    return Promise.resolve({
+      arrayBuffer: async () => new ArrayBuffer(16),
+      ok: true,
+    } as Response);
+  }
+
+  cancelAnimationFrame(id: number) {
+    this.scheduledFrames.delete(id);
+  }
+
+  flushFrame(timestamp = 16) {
+    const nextFrame = this.scheduledFrames.entries().next();
+    if (nextFrame.done) {
+      return;
+    }
+    const [frameId, callback] = nextFrame.value;
+    this.scheduledFrames.delete(frameId);
+    callback(timestamp);
+  }
+
+  flushDeferredImage(url: string) {
+    const pending = this.deferredImages.get(url) || [];
+    this.deferredImages.delete(url);
+    pending.forEach(function (image) {
+      image.onload?.();
+    });
+  }
+
+  getComputedStyle() {
+    return {
+      getPropertyValue(name: string) {
+        switch (name) {
+          case "--labx-accent":
+            return "#5cd7df";
+          case "--labx-border":
+            return "rgba(116, 155, 193, 0.18)";
+          case "--labx-text-dim":
+            return "#6d8197";
+          default:
+            return "";
+        }
+      },
+    } as CSSStyleDeclaration;
+  }
+
+  requestAnimationFrame(callback: FrameRequestCallback) {
+    const frameId = this.nextFrameId;
+    this.nextFrameId += 1;
+    this.scheduledFrames.set(frameId, callback);
+    return frameId;
+  }
+}
+
+class FakeVisualizerDocument {
+  constructor(
+    public primaryMediaPreview: FakeMediaElement | null,
+    public dualAudioPreview: FakeMediaElement | null,
+    public canvas: FakeCanvasElement | null
+  ) {}
+
+  querySelector(selector: string) {
+    if (selector === 'audio[data-lab-preserve-media="workspace-preview-dual-audio"]') {
+      return this.dualAudioPreview;
+    }
+    if (
+      selector === 'audio[data-lab-preserve-media="workspace-preview"]' ||
+      selector === 'video[data-lab-preserve-media="workspace-preview"]'
+    ) {
+      return this.primaryMediaPreview;
+    }
+    if (selector === "#lab-audio-viz") {
+      return this.canvas;
+    }
+    return null;
+  }
+}
+
+test("laboratory workspace audio focus defaults to waveform visualization", () => {
+  const store = createLabStore();
+  assert.equal(store.getState().ui.workspace.audioFocus.visualizationMode, "waveform");
+});
+
+test("laboratory hydration upgrades deprecated audio visualization none mode to waveform", () => {
+  const store = createLabStore();
+  store.dispatch({
+    type: "hydrate-complete",
+    payload: {
+      workspace: {
+        audioFocus: {
+          ...store.getState().ui.workspace.audioFocus,
+          visualizationMode: "none",
+        },
+      },
+    },
+  });
+
+  assert.equal(store.getState().ui.workspace.audioFocus.visualizationMode, "waveform");
+});
+
+test("laboratory audio focus updates preserve an existing spectrogram preference", () => {
+  const store = createLabStore();
+  store.dispatch({
+    type: "workspace-audio-updated",
+    patch: {
+      visualizationMode: "spectrum",
+    },
+  });
+  store.dispatch({
+    type: "workspace-audio-updated",
+    patch: {
+      filterType: "highpass",
+    },
+  });
+
+  assert.equal(store.getState().ui.workspace.audioFocus.visualizationMode, "spectrum");
+});
+
+test("audio visualization selector prefers renderable current-run artifacts by mode", () => {
+  const store = createLabStore();
+  const state = store.getState() as ReturnType<typeof store.getState> & {
+    run: Record<string, unknown>;
+  };
+  state.run = {
+    id: "run-audio-visualization",
+    state: "completed",
+    startedAt: Date.now() - 1000,
+    endedAt: Date.now(),
+    modules: {},
+    moduleOrder: [],
+    events: [],
+    rawLog: [],
+    artifacts: [
+      {
+        id: "artifact-waveform-final",
+        kind: "waveform",
+        previewUrl: "file:///tmp/final-waveform.png",
+        path: "/tmp/final-waveform.png",
+        createdAt: new Date(Date.now() - 4000).toISOString(),
+        active: false,
+      },
+      {
+        id: "artifact-spectrogram-file-url",
+        kind: "spectrogram",
+        previewUrl: null,
+        fileUrl: "file:///tmp/file-url-spectrogram.png",
+        path: "/tmp/file-url-spectrogram.png",
+        createdAt: new Date(Date.now() - 500).toISOString(),
+        active: true,
+      },
+      {
+        id: "artifact-spectrogram-raw-path-only",
+        kind: "spectrogram",
+        previewUrl: null,
+        path: "/tmp/raw-path-only-spectrogram.png",
+        createdAt: new Date(Date.now() - 50).toISOString(),
+        active: true,
+      },
+    ],
+    findings: [],
+    liveFindings: [],
+    warnings: [],
+    error: null,
+    targetLabel: null,
+    progress: null,
+    emptyReason: null,
+    analysisScope: null,
+    previewArtifacts: [
+      {
+        id: "artifact-waveform-preview",
+        kind: "waveform",
+        previewUrl: "file:///tmp/preview-waveform.png",
+        path: "/tmp/preview-waveform.png",
+        createdAt: new Date(Date.now() - 100).toISOString(),
+        active: true,
+        status: "ready",
+        variantId: null,
+        reference: null,
+        metadata: {},
+      },
+      {
+        id: "artifact-spectrogram-preview",
+        kind: "spectrogram",
+        previewUrl: "file:///tmp/preview-spectrogram.png",
+        path: "/tmp/preview-spectrogram.png",
+        createdAt: new Date(Date.now() - 200).toISOString(),
+        active: true,
+        status: "ready",
+        variantId: null,
+        reference: null,
+        metadata: {},
+      },
+    ],
+    confidence: null,
+    moduleTrace: [],
+    comparisonVariants: [],
+    hypothesisSummary: null,
+  };
+
+  state.ui.workspace.audioFocus.visualizationMode = "waveform";
+  assert.equal(getAudioVisualizationArtifact(store.getState())?.id, "artifact-waveform-final");
+
+  state.ui.workspace.audioFocus.visualizationMode = "spectrum";
+  assert.equal(getAudioVisualizationArtifact(store.getState())?.id, "artifact-spectrogram-file-url");
+
+  state.ui.workspace.audioFocus.visualizationMode = "none";
+  assert.equal(getAudioVisualizationArtifact(store.getState())?.id, "artifact-waveform-final");
+});
+
+test("audio visualization selector keeps stable input order when artifact priority ties", () => {
+  const store = createLabStore();
+  const state = store.getState() as ReturnType<typeof store.getState> & {
+    run: Record<string, unknown>;
+  };
+  const sharedCreatedAt = new Date().toISOString();
+  state.run = {
+    id: "run-audio-visualization-stable-order",
+    state: "completed",
+    startedAt: Date.now() - 1000,
+    endedAt: Date.now(),
+    modules: {},
+    moduleOrder: [],
+    events: [],
+    rawLog: [],
+    artifacts: [
+      {
+        id: "artifact-waveform-second-by-id",
+        kind: "waveform",
+        previewUrl: "file:///tmp/waveform-second.png",
+        path: "/tmp/waveform-second.png",
+        createdAt: sharedCreatedAt,
+        active: false,
+      },
+      {
+        id: "artifact-waveform-first-by-id",
+        kind: "waveform",
+        previewUrl: "file:///tmp/waveform-first.png",
+        path: "/tmp/waveform-first.png",
+        createdAt: sharedCreatedAt,
+        active: false,
+      },
+    ],
+    findings: [],
+    liveFindings: [],
+    warnings: [],
+    error: null,
+    targetLabel: null,
+    progress: null,
+    emptyReason: null,
+    analysisScope: null,
+    previewArtifacts: [],
+    confidence: null,
+    moduleTrace: [],
+    comparisonVariants: [],
+    hypothesisSummary: null,
+  };
+
+  state.ui.workspace.audioFocus.visualizationMode = "waveform";
+  assert.equal(getAudioVisualizationArtifact(store.getState())?.id, "artifact-waveform-second-by-id");
+});
+
+test("workspace audio focus points users to the unified waveform timeline", () => {
+  const markup = renderWorkspaceAudioFocus({
+    gain: 1,
+    filterType: "none",
+    filterFrequency: 1000,
+    filterQ: 1,
+    visualizationMode: "spectrum",
+    eqBands: [
+      { frequency: 60, gain: 0, Q: 1, type: "lowshelf" },
+      { frequency: 250, gain: 0, Q: 1, type: "peaking" },
+      { frequency: 1000, gain: 0, Q: 1, type: "peaking" },
+      { frequency: 4000, gain: 0, Q: 1, type: "peaking" },
+      { frequency: 12000, gain: 0, Q: 1, type: "highshelf" },
+    ],
+  });
+
+  assert.match(markup, /Timeline preview altinda tek waveform katmani kullanilir\./);
+  assert.doesNotMatch(markup, /workspace\.audioFocus\.visualizationMode/);
+  assert.doesNotMatch(markup, /lab-audio-viz/);
+});
+
+test("waveform timeline hides selection affordances for invalid numeric ranges", () => {
+  const baseModel = {
+    bookmarks: [],
+    dualPreviewActive: false,
+    durationMs: 6000,
+    waveformSourceLabel: "Source audio",
+    waveformSyncLabel: "Preview and waveform share the same master axis.",
+    waveformWindowDurationMs: 6000,
+    waveformWindowStartMs: 0,
+  };
+
+  const zeroWidthMarkup = renderLabWaveformTimeline({
+    ...baseModel,
+    endMs: 2400,
+    startMs: 2400,
+  });
+  const invertedMarkup = renderLabWaveformTimeline({
+    ...baseModel,
+    endMs: 1800,
+    startMs: 2400,
+  });
+
+  assert.doesNotMatch(zeroWidthMarkup, /timeline-export-clip/);
+  assert.doesNotMatch(zeroWidthMarkup, /labx-timeline__selection/);
+  assert.match(zeroWidthMarkup, /End must be greater than start/);
+  assert.doesNotMatch(invertedMarkup, /timeline-export-clip/);
+  assert.doesNotMatch(invertedMarkup, /labx-timeline__selection/);
+});
+
+test("waveform timeline renders a passive selection entity panel alongside live actions", () => {
+  const selection: LabSelection = {
+    id: "selection-clip",
+    startMs: 12300,
+    endMs: 18900,
+    type: "clip",
+    createdAt: 1700000000000,
+  };
+  const markup = renderLabWaveformTimeline({
+    activeSelection: selection,
+    bookmarks: [],
+    dualPreviewActive: false,
+    durationMs: 60000,
+    endMs: selection.endMs,
+    startMs: selection.startMs,
+    waveformSourceLabel: "Source audio",
+    waveformSyncLabel: "Preview and waveform share the same master axis.",
+    waveformWindowDurationMs: 60000,
+    waveformWindowStartMs: 0,
+  });
+
+  assert.match(markup, /class="lab-selection-panel"/);
+  assert.match(markup, /Selection/);
+  assert.match(markup, /00:12\.300/);
+  assert.match(markup, /00:18\.900/);
+  assert.match(markup, /Type: Clip/);
+  assert.match(markup, /Analyze this/);
+  assert.match(markup, /Extract clip/);
+  assert.match(markup, /Focus region/);
+  assert.match(markup, /disabled>Analyze this/);
+  assert.doesNotMatch(markup, /data-lab-action="[^"]*">Analyze this/);
+  assert.doesNotMatch(markup, /data-lab-action="[^"]*">Extract clip/);
+  assert.doesNotMatch(markup, /data-lab-action="[^"]*">Focus region/);
+  assert.match(markup, /timeline-export-clip/);
+  assert.match(markup, /timeline-grab-frame/);
+});
+
+test("waveform timeline model maps linked audio offset onto the shared master axis", () => {
+  const store = createLabStore();
+  store.dispatch({
+    type: "snapshot-received",
+    payload: createDualPreviewSnapshot(250),
+  });
+  store.dispatch({
+    type: "workspace-dual-preview-toggled",
+    force: true,
+    audioAssetId: "asset-audio-linked",
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 800,
+    endMs: 1800,
+  });
+
+  const model = getWaveformTimelineModel(store.getState());
+  const markup = renderLabWaveformTimeline(model);
+
+  assert.equal(model.waveformWindowStartMs, 250);
+  assert.equal(model.waveformWindowDurationMs, 5750);
+  assert.equal(Number((model.waveformCropEndRatio || 0).toFixed(6)), Number((5750 / 6000).toFixed(6)));
+  assert.match(markup, /id="lab-audio-viz"/);
+  assert.match(markup, /data-lab-role="timeline-playhead"/);
+  assert.match(markup, /Linked audio offset \+250 ms/);
+});
+
+test("waveform timeline model clips negative linked audio offsets against the master range", () => {
+  const store = createLabStore();
+  store.dispatch({
+    type: "snapshot-received",
+    payload: createDualPreviewSnapshot(-500),
+  });
+  store.dispatch({
+    type: "workspace-dual-preview-toggled",
+    force: true,
+    audioAssetId: "asset-audio-linked",
+  });
+
+  const model = getWaveformTimelineModel(store.getState());
+  const markup = renderLabWaveformTimeline(model);
+
+  assert.equal(model.waveformWindowStartMs, 0);
+  assert.equal(model.waveformWindowDurationMs, 5500);
+  assert.equal(Number((model.waveformCropStartRatio || 0).toFixed(6)), Number((500 / 6000).toFixed(6)));
+  assert.match(markup, /data-waveform-crop-start="0\.08333333333333333"/);
+});
+
+test("workspace audio visualizer renders a loadable artifact before live analyser init", async () => {
+  FakeVisualizerAudioContext.constructed = [];
+  FakeVisualizerWindow.imageLoadBehavior.clear();
+  const audioPreview = new FakeMediaElement();
+  const canvas = new FakeCanvasElement();
+  const documentRef = new FakeVisualizerDocument(audioPreview, null, canvas);
+  const windowRef = new FakeVisualizerWindow();
+  const visualizer = createLabWaveformTimelineVisualizer({
+    documentRef: documentRef as unknown as Document,
+    getVisualizationArtifact() {
+      return {
+        id: "artifact-waveform",
+        kind: "waveform",
+        previewUrl: null,
+        fileUrl: "file:///tmp/waveform-artifact.png",
+        path: "/tmp/waveform-artifact.png",
+        fileName: "waveform-artifact.png",
+        createdAt: new Date().toISOString(),
+      } as LabArtifactProjection & { fileUrl: string };
+    },
+    getVisualizationMode() {
+      return "waveform";
+    },
+    windowRef: windowRef as unknown as Window,
+  });
+
+  visualizer.sync();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(FakeVisualizerAudioContext.constructed.length, 0);
+  assert.equal(windowRef.scheduledFrames.size, 0);
+  assert.equal(canvas.context.drawImageCalls, 1);
+  assert.equal(canvas.context.lastDrawnImageSrc, "file:///tmp/waveform-artifact.png");
+});
+
+test("workspace audio visualizer crops artifact rendering to the shared waveform window", async () => {
+  FakeVisualizerAudioContext.constructed = [];
+  FakeVisualizerWindow.imageLoadBehavior.clear();
+  const audioPreview = new FakeMediaElement();
+  const canvas = new FakeCanvasElement();
+  const documentRef = new FakeVisualizerDocument(audioPreview, null, canvas);
+  const windowRef = new FakeVisualizerWindow();
+  const visualizer = createLabWaveformTimelineVisualizer({
+    documentRef: documentRef as unknown as Document,
+    getTimelineModel() {
+      return {
+        bookmarks: [],
+        dualPreviewActive: true,
+        durationMs: 6000,
+        endMs: null,
+        linkedAudioAssetId: "asset-audio-linked",
+        sourceKind: "video",
+        startMs: null,
+        visualizationArtifact: {
+          id: "artifact-waveform-cropped",
+          kind: "waveform",
+          previewUrl: "file:///tmp/waveform-cropped.png",
+          path: "/tmp/waveform-cropped.png",
+          fileName: "waveform-cropped.png",
+          createdAt: new Date().toISOString(),
+        },
+        visualizationMode: "waveform",
+        waveformContentDurationMs: 6000,
+        waveformCropEndRatio: 11 / 12,
+        waveformCropStartRatio: 1 / 12,
+        waveformOffsetMs: -500,
+        waveformSourceLabel: "audio.wav",
+        waveformSyncLabel: "Linked audio offset -500 ms",
+        waveformWindowDurationMs: 5500,
+        waveformWindowStartMs: 0,
+      };
+    },
+    windowRef: windowRef as unknown as Window,
+  });
+
+  visualizer.sync();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(canvas.context.drawImageCalls, 1);
+  assert.equal(canvas.context.lastDrawnImageSrc, "file:///tmp/waveform-cropped.png");
+  assert.equal(canvas.context.lastDrawImageArgs?.length, 9);
+  assert.equal(canvas.context.lastDrawImageArgs?.[1], 100);
+  assert.equal(canvas.context.lastDrawImageArgs?.[3], 1000);
+  assert.equal(canvas.context.lastDrawImageArgs?.[4], 120);
+  assert.equal(canvas.context.lastDrawImageArgs?.[7], 320);
+  assert.equal(canvas.context.lastDrawImageArgs?.[8], 80);
+});
+
+test("workspace audio visualizer redraws when the shared waveform crop changes without changing the artifact", async () => {
+  FakeVisualizerAudioContext.constructed = [];
+  FakeVisualizerWindow.imageLoadBehavior.clear();
+  const audioPreview = new FakeMediaElement();
+  const canvas = new FakeCanvasElement();
+  const documentRef = new FakeVisualizerDocument(audioPreview, null, canvas);
+  const windowRef = new FakeVisualizerWindow();
+  let cropStartRatio = 0;
+  let cropEndRatio = 1;
+  const visualizer = createLabWaveformTimelineVisualizer({
+    documentRef: documentRef as unknown as Document,
+    getTimelineModel() {
+      return {
+        bookmarks: [],
+        dualPreviewActive: true,
+        durationMs: 6000,
+        endMs: null,
+        linkedAudioAssetId: "asset-audio-linked",
+        sourceKind: "video",
+        startMs: null,
+        visualizationArtifact: {
+          id: "artifact-waveform-cropped-live",
+          kind: "waveform",
+          previewUrl: "file:///tmp/waveform-cropped-live.png",
+          path: "/tmp/waveform-cropped-live.png",
+          fileName: "waveform-cropped-live.png",
+          createdAt: new Date().toISOString(),
+        },
+        visualizationMode: "waveform",
+        waveformContentDurationMs: 6000,
+        waveformCropEndRatio: cropEndRatio,
+        waveformCropStartRatio: cropStartRatio,
+        waveformOffsetMs: 0,
+        waveformSourceLabel: "audio.wav",
+        waveformSyncLabel: "Linked audio is aligned to the master axis.",
+        waveformWindowDurationMs: 6000,
+        waveformWindowStartMs: 0,
+      };
+    },
+    windowRef: windowRef as unknown as Window,
+  });
+
+  visualizer.sync();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(canvas.context.drawImageCalls, 1);
+  assert.equal(canvas.context.lastDrawImageArgs?.[1], 0);
+  assert.equal(canvas.context.lastDrawImageArgs?.[3], 1200);
+
+  cropStartRatio = 1 / 12;
+  cropEndRatio = 11 / 12;
+  visualizer.sync();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(canvas.context.drawImageCalls, 2);
+  assert.equal(canvas.context.lastDrawImageArgs?.[1], 100);
+  assert.equal(canvas.context.lastDrawImageArgs?.[3], 1000);
+});
+
+test("workspace audio visualizer binds to the dual preview companion audio element when present", async () => {
+  FakeVisualizerAudioContext.constructed = [];
+  const primaryVideo = new FakeMediaElement();
+  const dualAudio = new FakeMediaElement();
+  const canvas = new FakeCanvasElement();
+  const documentRef = new FakeVisualizerDocument(primaryVideo, dualAudio, canvas);
+  const windowRef = new FakeVisualizerWindow();
+  const visualizer = createLabWaveformTimelineVisualizer({
+    documentRef: documentRef as unknown as Document,
+    getVisualizationArtifact() {
+      return null;
+    },
+    getVisualizationMode() {
+      return "waveform";
+    },
+    windowRef: windowRef as unknown as Window,
+  });
+
+  visualizer.sync();
+  assert.equal(FakeVisualizerAudioContext.constructed.length, 0);
+
+  await dualAudio.play();
+  await Promise.resolve();
+
+  assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
+  assert.equal(windowRef.scheduledFrames.size, 1);
+});
+
+test("workspace audio visualizer initializes lazily and disconnects on source changes", async () => {
+  FakeVisualizerAudioContext.constructed = [];
+  const firstAudio = new FakeMediaElement();
+  const canvas = new FakeCanvasElement();
+  const documentRef = new FakeVisualizerDocument(firstAudio, null, canvas);
+  const windowRef = new FakeVisualizerWindow();
+  const visualizer = createLabWaveformTimelineVisualizer({
+    documentRef: documentRef as unknown as Document,
+    getVisualizationArtifact() {
+      return null;
+    },
+    getVisualizationMode() {
+      return "waveform";
+    },
+    windowRef: windowRef as unknown as Window,
+  });
+
+  visualizer.sync();
+  assert.equal(FakeVisualizerAudioContext.constructed.length, 0);
+  assert.equal(windowRef.scheduledFrames.size, 0);
+
+  await firstAudio.play();
+  await Promise.resolve();
+
+  assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
+  const audioContext = FakeVisualizerAudioContext.constructed[0];
+  assert.equal(audioContext?.resumeCalls, 1);
+  assert.equal(audioContext?.sourceNodes.length, 1);
+  assert.equal(windowRef.scheduledFrames.size, 1);
+
+  windowRef.flushFrame();
+  assert.ok(canvas.context.clearRectCalls > 0);
+  assert.ok(canvas.context.strokeCalls > 0);
+  assert.equal(windowRef.scheduledFrames.size, 1);
+
+  const secondAudio = new FakeMediaElement();
+  documentRef.primaryMediaPreview = secondAudio;
+  visualizer.sync();
+
+  assert.equal(audioContext?.sourceNodes[0]?.disconnectCalls, 1);
+  assert.equal(windowRef.scheduledFrames.size, 0);
+
+  visualizer.dispose();
+});
+
+test("workspace audio visualizer can resume live waveform after artifact mode exits mid-playback", async () => {
+  FakeVisualizerAudioContext.constructed = [];
+  FakeVisualizerWindow.imageLoadBehavior.clear();
+  const audioPreview = new FakeMediaElement();
+  const canvas = new FakeCanvasElement();
+  const documentRef = new FakeVisualizerDocument(audioPreview, null, canvas);
+  const windowRef = new FakeVisualizerWindow();
+  let artifact: LabArtifactProjection | null = {
+    id: "artifact-spectrogram",
+    kind: "spectrogram",
+    previewUrl: "file:///tmp/spectrogram-artifact.png",
+    path: "/tmp/spectrogram-artifact.png",
+    fileName: "spectrogram-artifact.png",
+    createdAt: new Date().toISOString(),
+  };
+  const visualizer = createLabWaveformTimelineVisualizer({
+    documentRef: documentRef as unknown as Document,
+    getVisualizationArtifact() {
+      return artifact;
+    },
+    getVisualizationMode() {
+      return "spectrum";
+    },
+    windowRef: windowRef as unknown as Window,
+  });
+
+  visualizer.sync();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(canvas.context.drawImageCalls, 1);
+
+  await audioPreview.play();
+  await Promise.resolve();
+  assert.equal(FakeVisualizerAudioContext.constructed.length, 0);
+
+  artifact = null;
+  visualizer.sync();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
+  assert.equal(windowRef.scheduledFrames.size, 1);
+});
+
+test("workspace audio visualizer ignores stale artifact image loads after the selection changes", async () => {
+  FakeVisualizerAudioContext.constructed = [];
+  FakeVisualizerWindow.imageLoadBehavior.clear();
+  FakeVisualizerWindow.imageLoadBehavior.set("file:///tmp/slow-waveform.png", "defer");
+  const audioPreview = new FakeMediaElement();
+  const canvas = new FakeCanvasElement();
+  const documentRef = new FakeVisualizerDocument(audioPreview, null, canvas);
+  const windowRef = new FakeVisualizerWindow();
+  let artifact: LabArtifactProjection | null = {
+    id: "artifact-waveform-slow",
+    kind: "waveform",
+    previewUrl: "file:///tmp/slow-waveform.png",
+    path: "/tmp/slow-waveform.png",
+    fileName: "slow-waveform.png",
+    createdAt: new Date(Date.now() - 1000).toISOString(),
+  };
+  const visualizer = createLabWaveformTimelineVisualizer({
+    documentRef: documentRef as unknown as Document,
+    getVisualizationArtifact() {
+      return artifact;
+    },
+    getVisualizationMode() {
+      return "waveform";
+    },
+    windowRef: windowRef as unknown as Window,
+  });
+
+  visualizer.sync();
+  await Promise.resolve();
+  assert.equal(canvas.context.drawImageCalls, 0);
+
+  artifact = {
+    id: "artifact-waveform-fast",
+    kind: "waveform",
+    previewUrl: "file:///tmp/fast-waveform.png",
+    path: "/tmp/fast-waveform.png",
+    fileName: "fast-waveform.png",
+    createdAt: new Date().toISOString(),
+  };
+  visualizer.sync();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(canvas.context.drawImageCalls, 1);
+  assert.equal(canvas.context.lastDrawnImageSrc, "file:///tmp/fast-waveform.png");
+
+  windowRef.flushDeferredImage("file:///tmp/slow-waveform.png");
+  await Promise.resolve();
+
+  assert.equal(canvas.context.drawImageCalls, 1);
+  assert.equal(canvas.context.lastDrawnImageSrc, "file:///tmp/fast-waveform.png");
+});
+
+test("laboratory run controller renders loadable audio visualization artifacts before play", async () => {
+  FakeVisualizerAudioContext.constructed = [];
+  FakeVisualizerWindow.imageLoadBehavior.clear();
+  const audioPreview = new FakeMediaElement();
+  const canvas = new FakeCanvasElement();
+  const documentRef = new (class extends FakeControllerDocument {
+    querySelector(selector: string) {
+      if (selector === 'audio[data-lab-preserve-media="workspace-preview"]') {
+        return audioPreview;
+      }
+      if (selector === "#lab-audio-viz") {
+        return canvas;
+      }
+      return null;
+    }
+  })();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  const windowRef = new FakeVisualizerWindow();
+
+  eventBus.subscribe(function (event) {
+    store.dispatch(event);
+  });
+
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-audio-artifact",
+      kind: "module-artifact",
+      severity: "info",
+      message: "Waveform artifact ready",
+      detail: "Audio waveform rendered",
+      timestamp: Date.now(),
+      source: "host",
+      action: "process-run",
+      stage: "completed",
+      scope: "run",
+      moduleId: "spectral-artifacts",
+      rawLine: null,
+      artifact: {
+        id: "artifact-waveform-controller",
+        moduleId: "spectral-artifacts",
+        kind: "waveform",
+        path: "/tmp/controller-waveform.png",
+        fileName: "controller-waveform.png",
+        previewUrl: "file:///tmp/controller-waveform.png",
+        createdAt: new Date().toISOString(),
+      },
+    },
+  });
+
+  const controller = createLabRunController({
+    documentRef: documentRef as unknown as Document,
+    eventBus,
+    store,
+    windowRef: windowRef as unknown as Window,
+  });
+
+  controller.attach();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(FakeVisualizerAudioContext.constructed.length, 0);
+  assert.equal(windowRef.scheduledFrames.size, 0);
+  assert.equal(canvas.context.drawImageCalls, 1);
+  assert.equal(canvas.context.lastDrawnImageSrc, "file:///tmp/controller-waveform.png");
+});
+
+test("laboratory run controller renders decoded waveform peaks before play when the preview source is available", async () => {
+  FakeVisualizerAudioContext.constructed = [];
+  FakeVisualizerWindow.imageLoadBehavior.clear();
+  const audioPreview = new FakeMediaElement();
+  audioPreview.currentSrc = "file:///tmp/controller-waveform-source.wav";
+  const canvas = new FakeCanvasElement();
+  const documentRef = new (class extends FakeControllerDocument {
+    querySelector(selector: string) {
+      if (selector === 'audio[data-lab-preserve-media="workspace-preview"]') {
+        return audioPreview;
+      }
+      if (selector === "#lab-audio-viz") {
+        return canvas;
+      }
+      return null;
+    }
+  })();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  const windowRef = new FakeVisualizerWindow();
+
+  eventBus.subscribe(function (event) {
+    store.dispatch(event);
+  });
+
+  const controller = createLabRunController({
+    documentRef: documentRef as unknown as Document,
+    eventBus,
+    store,
+    windowRef: windowRef as unknown as Window,
+  });
+
+  controller.attach();
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
+  assert.deepEqual(windowRef.fetchCalls, ["file:///tmp/controller-waveform-source.wav"]);
+  assert.equal(windowRef.scheduledFrames.size, 0);
+  assert.equal(canvas.context.strokeStyleHistory.at(-1), "#5cd7df");
+});
+
+test("laboratory run controller swaps from live waveform to artifact rendering when a loadable artifact arrives", async () => {
+  FakeVisualizerAudioContext.constructed = [];
+  FakeVisualizerWindow.imageLoadBehavior.clear();
+  const audioPreview = new FakeMediaElement();
+  const canvas = new FakeCanvasElement();
+  const documentRef = new (class extends FakeControllerDocument {
+    querySelector(selector: string) {
+      if (selector === 'audio[data-lab-preserve-media="workspace-preview"]') {
+        return audioPreview;
+      }
+      if (selector === "#lab-audio-viz") {
+        return canvas;
+      }
+      return null;
+    }
+  })();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  const windowRef = new FakeVisualizerWindow();
+
+  eventBus.subscribe(function (event) {
+    store.dispatch(event);
+  });
+
+  audioPreview.paused = false;
+  const controller = createLabRunController({
+    documentRef: documentRef as unknown as Document,
+    eventBus,
+    store,
+    windowRef: windowRef as unknown as Window,
+  });
+
+  controller.attach();
+  await Promise.resolve();
+  await audioPreview.play();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  const audioContext = FakeVisualizerAudioContext.constructed[0];
+  assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
+  assert.equal(windowRef.scheduledFrames.size, 1);
+
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-audio-artifact-arrival",
+      kind: "module-artifact",
+      severity: "info",
+      message: "Spectrogram artifact ready",
+      detail: "Audio spectrogram rendered",
+      timestamp: Date.now(),
+      source: "host",
+      action: "process-run",
+      stage: "completed",
+      scope: "run",
+      moduleId: "spectral-artifacts",
+      rawLine: null,
+      artifact: {
+        id: "artifact-spectrogram-controller",
+        moduleId: "spectral-artifacts",
+        kind: "spectrogram",
+        path: "/tmp/controller-spectrogram.png",
+        fileName: "controller-spectrogram.png",
+        previewUrl: "file:///tmp/controller-spectrogram.png",
+        createdAt: new Date().toISOString(),
+      },
+    },
+  });
+  store.getState().ui.workspace.audioFocus.visualizationMode = "spectrum";
+
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(windowRef.scheduledFrames.size, 0);
+  assert.equal(canvas.context.drawImageCalls, 1);
+  assert.equal(canvas.context.lastDrawnImageSrc, "file:///tmp/controller-spectrogram.png");
+  assert.equal(audioContext?.sourceNodes[0]?.disconnectCalls, 1);
+  assert.equal(
+    audioContext?.sourceNodes[0]?.connectedTargets[audioContext.sourceNodes[0].connectedTargets.length - 1],
+    audioContext?.destination
+  );
+});
+
+test("laboratory run controller resumes live waveform after artifact load failure while media keeps playing", async () => {
+  FakeVisualizerAudioContext.constructed = [];
+  FakeVisualizerWindow.imageLoadBehavior.clear();
+  FakeVisualizerWindow.imageLoadBehavior.set("file:///tmp/controller-failing-spectrogram.png", "error");
+  const audioPreview = new FakeMediaElement();
+  const canvas = new FakeCanvasElement();
+  const documentRef = new (class extends FakeControllerDocument {
+    querySelector(selector: string) {
+      if (selector === 'audio[data-lab-preserve-media="workspace-preview"]') {
+        return audioPreview;
+      }
+      if (selector === "#lab-audio-viz") {
+        return canvas;
+      }
+      return null;
+    }
+  })();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  const windowRef = new FakeVisualizerWindow();
+
+  eventBus.subscribe(function (event) {
+    store.dispatch(event);
+  });
+
+  audioPreview.paused = false;
+  const controller = createLabRunController({
+    documentRef: documentRef as unknown as Document,
+    eventBus,
+    store,
+    windowRef: windowRef as unknown as Window,
+  });
+
+  controller.attach();
+  await Promise.resolve();
+  await audioPreview.play();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  const audioContext = FakeVisualizerAudioContext.constructed[0];
+  assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
+  assert.equal(windowRef.scheduledFrames.size, 1);
+
+  store.getState().ui.workspace.audioFocus.visualizationMode = "spectrum";
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-audio-artifact-failing-arrival",
+      kind: "module-artifact",
+      severity: "info",
+      message: "Spectrogram artifact ready",
+      detail: "Audio spectrogram rendered",
+      timestamp: Date.now(),
+      source: "host",
+      action: "process-run",
+      stage: "completed",
+      scope: "run",
+      moduleId: "spectral-artifacts",
+      rawLine: null,
+      artifact: {
+        id: "artifact-spectrogram-controller-failing",
+        moduleId: "spectral-artifacts",
+        kind: "spectrogram",
+        path: "/tmp/controller-failing-spectrogram.png",
+        fileName: "controller-failing-spectrogram.png",
+        previewUrl: "file:///tmp/controller-failing-spectrogram.png",
+        createdAt: new Date().toISOString(),
+      },
+    },
+  });
+
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(canvas.context.drawImageCalls, 0);
+  assert.equal(windowRef.scheduledFrames.size, 1);
+  assert.equal(audioContext?.sourceNodes[0]?.disconnectCalls, 2);
+  assert.equal(
+    audioContext?.sourceNodes[0]?.connectedTargets[audioContext.sourceNodes[0].connectedTargets.length - 1],
+    audioContext?.analyser
+  );
+});
 
 function createDualPreviewSnapshot(startOffsetMs = 0) {
   return {
@@ -857,6 +2178,154 @@ test("laboratory hydrate restores dual preview workspace fields with valid linke
   assert.equal(getDualPreviewVolume(store.getState()), 0.35);
 });
 
+test("laboratory hydrate reconstructs an active selection from a valid persisted primitive range", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "hydrate",
+    payload: {
+      currentStage: "source",
+      featureId: "media-analysis",
+      projectIndex: {
+        activeProjectId: null,
+        projects: [],
+      },
+      workbench: {},
+      sourceProbeStatus: "idle",
+      reports: {
+        user: null,
+        ai: null,
+        emptyReason: "Rapor henüz üretilmedi.",
+      },
+      activityFeed: [],
+      workspace: {
+        timelineStartMs: 2400,
+        timelineEndMs: 5600,
+        activeSelection: {
+          id: "selection-persisted",
+          startMs: 2400,
+          endMs: 5600,
+          type: "focus",
+          label: "Door latch",
+          roi: {
+            x: 10,
+            y: 20,
+            width: 80,
+            height: 60,
+          },
+          createdAt: 1700000000000,
+        },
+      },
+    },
+  });
+
+  assert.deepEqual(store.getState().ui.workspace.activeSelection, {
+    id: "selection-persisted",
+    startMs: 2400,
+    endMs: 5600,
+    type: "focus",
+    label: "Door latch",
+    roi: {
+      x: 10,
+      y: 20,
+      width: 80,
+      height: 60,
+    },
+    createdAt: 1700000000000,
+  });
+});
+
+test("laboratory hydrate rebuilds selection identity from the primitive bridge on rehydrate", () => {
+  const store = createLabStore();
+  const originalDateNow = Date.now;
+
+  try {
+    Date.now = () => 1700000000000;
+    store.dispatch({
+      type: "workspace-timeline-updated",
+      startMs: 1000,
+      endMs: 3000,
+    });
+
+    const initialSelection = store.getState().ui.workspace.activeSelection;
+    assert.ok(initialSelection);
+
+    Date.now = () => 1700000005000;
+    store.dispatch({
+      type: "hydrate",
+      payload: {
+        currentStage: "source",
+        featureId: "media-analysis",
+        projectIndex: {
+          activeProjectId: null,
+          projects: [],
+        },
+        workbench: {},
+        sourceProbeStatus: "idle",
+        reports: {
+          user: null,
+          ai: null,
+          emptyReason: "Rapor henüz üretilmedi.",
+        },
+        activityFeed: [],
+        workspace: {
+          timelineStartMs: 2400,
+          timelineEndMs: 5600,
+        },
+      },
+    });
+
+    const rehydratedSelection = store.getState().ui.workspace.activeSelection;
+    assert.ok(rehydratedSelection);
+    assert.equal(rehydratedSelection?.startMs, 2400);
+    assert.equal(rehydratedSelection?.endMs, 5600);
+    assert.equal(rehydratedSelection?.type, "clip");
+    assert.notEqual(rehydratedSelection?.id, initialSelection?.id);
+    assert.equal(rehydratedSelection?.createdAt, 1700000005000);
+  } finally {
+    Date.now = originalDateNow;
+  }
+});
+
+test("laboratory hydrate suppresses persisted selection entities when the primitive range is invalid", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "hydrate",
+    payload: {
+      currentStage: "source",
+      featureId: "media-analysis",
+      projectIndex: {
+        activeProjectId: null,
+        projects: [],
+      },
+      workbench: {},
+      sourceProbeStatus: "idle",
+      reports: {
+        user: null,
+        ai: null,
+        emptyReason: "Rapor henüz üretilmedi.",
+      },
+      activityFeed: [],
+      workspace: {
+        timelineStartMs: 5600,
+        timelineEndMs: 2400,
+        activeSelection: {
+          id: "selection-invalid",
+          startMs: 5600,
+          endMs: 2400,
+          type: "inspect",
+          createdAt: 1700000000001,
+        },
+      },
+    },
+  });
+
+  assert.equal(store.getState().ui.workspace.timelineStartMs, 5600);
+  assert.equal(store.getState().ui.workspace.timelineEndMs, null);
+  assert.equal(store.getState().ui.workspace.activeSelection, null);
+});
+
 test("laboratory intent output selectors map expected outputs and filter actual assets", () => {
   const store = createLabStore();
 
@@ -1298,6 +2767,711 @@ test("laboratory run controller focuses the source preview through explicit sour
         configurable: true,
         value: originalElement,
       });
+    }
+  }
+});
+
+test("laboratory run controller syncs the unified timeline playhead to the active preview media", async () => {
+  const preview = new FakeMediaElement();
+  preview.duration = 5;
+  preview.currentTime = 1.25;
+  const playhead = new FakePlayheadElement();
+  const playheadLabel = new FakeTextElement(null);
+  const timelineRoot = { dataset: { duration: "5000" } };
+  const documentRef = new FakeDualPreviewDocument(
+    new Map<string, unknown>([
+      ['video[data-lab-preserve-media="workspace-preview"]', preview],
+      ['[data-lab-role="timeline-playhead"]', playhead],
+      ['[data-lab-role="timeline-playhead-label"]', playheadLabel],
+      [".labx-timeline", timelineRoot],
+    ]),
+    [preview]
+  );
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  eventBus.subscribe(function (event) {
+    store.dispatch(event);
+  });
+
+  const controller = createLabRunController({
+    documentRef: documentRef as unknown as Document,
+    eventBus,
+    store,
+    windowRef: {
+      roomAPI: {
+        sendEvent() {},
+      },
+      addEventListener() {},
+    } as unknown as Window,
+  });
+
+  controller.attach();
+  await Promise.resolve();
+
+  assert.equal(playhead.style.left, "25%");
+  assert.equal(playhead.attributes.get("data-active"), "true");
+  assert.equal(playheadLabel.textContent, "00:01.250");
+
+  preview.currentTime = 2.5;
+  preview.dispatch("timeupdate");
+
+  assert.equal(playhead.style.left, "50%");
+  assert.equal(playheadLabel.textContent, "00:02.500");
+});
+
+test("laboratory run controller rebinds the unified timeline playhead between single preview and dual preview master", async () => {
+  const singlePreview = new FakeMediaElement();
+  singlePreview.duration = 6;
+  singlePreview.currentTime = 1;
+  const master = new FakeMediaElement();
+  master.duration = 6;
+  master.currentTime = 2;
+  const slave = new FakeMediaElement();
+  slave.duration = 8;
+  const playhead = new FakePlayheadElement();
+  const playheadLabel = new FakeTextElement(null);
+  const timelineRoot = { dataset: { duration: "6000" } };
+  const queryMap = new Map<string, unknown>([
+    ['video[data-lab-preserve-media="workspace-preview"]', singlePreview],
+    ['[data-lab-role="dual-preview-master"]', master],
+    ['[data-lab-role="dual-preview-slave"]', slave],
+    ['[data-lab-role="timeline-playhead"]', playhead],
+    ['[data-lab-role="timeline-playhead-label"]', playheadLabel],
+    [".labx-timeline", timelineRoot],
+  ]);
+  const documentRef = new FakeDualPreviewDocument(queryMap, [singlePreview, master, slave]);
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  eventBus.subscribe(function (event) {
+    store.dispatch(event);
+  });
+
+  const controller = createLabRunController({
+    documentRef: documentRef as unknown as Document,
+    eventBus,
+    store,
+    windowRef: {
+      roomAPI: {
+        sendEvent() {},
+      },
+      addEventListener() {},
+    } as unknown as Window,
+  });
+
+  controller.attach();
+  await Promise.resolve();
+
+  assert.equal(playhead.style.left, "16.666666666666664%");
+  assert.equal(playheadLabel.textContent, "00:01.000");
+
+  store.dispatch({
+    type: "snapshot-received",
+    payload: createDualPreviewSnapshot(),
+  });
+  store.dispatch({
+    type: "workspace-dual-preview-toggled",
+    force: true,
+    audioAssetId: "asset-audio-linked",
+  });
+  await Promise.resolve();
+
+  assert.equal(playhead.style.left, "33.33333333333333%");
+  assert.equal(playheadLabel.textContent, "00:02.000");
+
+  singlePreview.currentTime = 4;
+  singlePreview.dispatch("timeupdate");
+  assert.equal(playhead.style.left, "33.33333333333333%");
+
+  master.currentTime = 3;
+  master.dispatch("timeupdate");
+  assert.equal(playhead.style.left, "50%");
+  assert.equal(playheadLabel.textContent, "00:03.000");
+
+  store.dispatch({
+    type: "workspace-dual-preview-toggled",
+    force: false,
+  });
+  await Promise.resolve();
+
+  singlePreview.dispatch("timeupdate");
+  assert.equal(playhead.style.left, "66.66666666666666%");
+  assert.equal(playheadLabel.textContent, "00:04.000");
+});
+
+test("laboratory run controller keeps click-to-seek and drag-to-select separated by the rail threshold", () => {
+  const originalElement = globalThis.Element;
+  const originalMouseEvent = globalThis.MouseEvent;
+  const preview = new FakeMediaElement();
+  preview.duration = 10;
+  const documentRef = new FakeDualPreviewDocument(
+    new Map<string, unknown>([['video[data-lab-preserve-media="workspace-preview"]', preview]]),
+    [preview]
+  );
+  const windowRef = new FakeWindowEventTarget();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  const track = new FakeTimelineTrack(100, 1000);
+  const timeline = new FakeTimelineRoot(track, 10000);
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: FakeTimelineActionElement,
+  });
+  Object.defineProperty(globalThis, "MouseEvent", {
+    configurable: true,
+    value: FakeMouseEvent,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: windowRef as unknown as Window,
+    });
+
+    controller.attach();
+
+    const mouseDownListener = documentRef.listeners.get("mousedown");
+    const mouseMoveListener = windowRef.listeners.get("mousemove");
+    const mouseUpListener = windowRef.listeners.get("mouseup");
+    assert.ok(mouseDownListener);
+    assert.ok(mouseMoveListener);
+    assert.ok(mouseUpListener);
+
+    const railTarget = new FakeTimelineActionElement("timeline-interact", timeline);
+
+    mouseDownListener?.(
+      new FakeMouseEvent(railTarget as unknown as EventTarget, 350) as unknown as Event
+    );
+    mouseMoveListener?.(
+      new FakeMouseEvent(railTarget as unknown as EventTarget, 352) as unknown as Event
+    );
+    mouseUpListener?.({} as Event);
+
+    assert.equal(preview.currentTime, 2.5);
+    assert.equal(store.getState().ui.workspace.timelineStartMs, null);
+    assert.equal(store.getState().ui.workspace.timelineEndMs, null);
+
+    mouseDownListener?.(
+      new FakeMouseEvent(railTarget as unknown as EventTarget, 350) as unknown as Event
+    );
+    mouseMoveListener?.(
+      new FakeMouseEvent(railTarget as unknown as EventTarget, 550) as unknown as Event
+    );
+    mouseUpListener?.({} as Event);
+
+    assert.equal(preview.currentTime, 2.5);
+    assert.equal(store.getState().ui.workspace.timelineStartMs, 2500);
+    assert.equal(store.getState().ui.workspace.timelineEndMs, 4500);
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+    if (originalMouseEvent === undefined) {
+      delete (globalThis as Record<string, unknown>).MouseEvent;
+    } else {
+      Object.defineProperty(globalThis, "MouseEvent", {
+        configurable: true,
+        value: originalMouseEvent,
+      });
+    }
+  }
+});
+
+test("laboratory run controller drags timeline start and end handles independently", () => {
+  const originalElement = globalThis.Element;
+  const originalMouseEvent = globalThis.MouseEvent;
+  const documentRef = new FakeControllerDocument();
+  const windowRef = new FakeWindowEventTarget();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  const track = new FakeTimelineTrack(100, 1000);
+  const timeline = new FakeTimelineRoot(track, 10000);
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: FakeTimelineActionElement,
+  });
+  Object.defineProperty(globalThis, "MouseEvent", {
+    configurable: true,
+    value: FakeMouseEvent,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: windowRef as unknown as Window,
+    });
+
+    controller.attach();
+    store.dispatch({
+      type: "workspace-timeline-updated",
+      startMs: 1000,
+      endMs: 3000,
+    });
+
+    const mouseDownListener = documentRef.listeners.get("mousedown");
+    const mouseMoveListener = windowRef.listeners.get("mousemove");
+    const mouseUpListener = windowRef.listeners.get("mouseup");
+    assert.ok(mouseDownListener);
+    assert.ok(mouseMoveListener);
+    assert.ok(mouseUpListener);
+
+    mouseDownListener?.(
+      new FakeMouseEvent(
+        new FakeTimelineActionElement("timeline-drag-start", timeline) as unknown as EventTarget,
+        200
+      ) as unknown as Event
+    );
+    mouseMoveListener?.({ clientX: 150 } as MouseEvent);
+    mouseUpListener?.({} as Event);
+
+    assert.equal(store.getState().ui.workspace.timelineStartMs, 500);
+    assert.equal(store.getState().ui.workspace.timelineEndMs, 3000);
+
+    mouseDownListener?.(
+      new FakeMouseEvent(
+        new FakeTimelineActionElement("timeline-drag-end", timeline) as unknown as EventTarget,
+        400
+      ) as unknown as Event
+    );
+    mouseMoveListener?.({ clientX: 650 } as MouseEvent);
+    mouseUpListener?.({} as Event);
+
+    assert.equal(store.getState().ui.workspace.timelineStartMs, 500);
+    assert.equal(store.getState().ui.workspace.timelineEndMs, 5500);
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+    if (originalMouseEvent === undefined) {
+      delete (globalThis as Record<string, unknown>).MouseEvent;
+    } else {
+      Object.defineProperty(globalThis, "MouseEvent", {
+        configurable: true,
+        value: originalMouseEvent,
+      });
+    }
+  }
+});
+
+test("laboratory run controller drags the timeline selection body from the pointer-down offset", () => {
+  const originalElement = globalThis.Element;
+  const originalMouseEvent = globalThis.MouseEvent;
+  const documentRef = new FakeControllerDocument();
+  const windowRef = new FakeWindowEventTarget();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  const track = new FakeTimelineTrack(100, 1000);
+  const timeline = new FakeTimelineRoot(track, 10000);
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: FakeTimelineActionElement,
+  });
+  Object.defineProperty(globalThis, "MouseEvent", {
+    configurable: true,
+    value: FakeMouseEvent,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: windowRef as unknown as Window,
+    });
+
+    controller.attach();
+    store.dispatch({
+      type: "workspace-timeline-updated",
+      startMs: 1000,
+      endMs: 3000,
+    });
+
+    const mouseDownListener = documentRef.listeners.get("mousedown");
+    const mouseMoveListener = windowRef.listeners.get("mousemove");
+    const mouseUpListener = windowRef.listeners.get("mouseup");
+    assert.ok(mouseDownListener);
+    assert.ok(mouseMoveListener);
+    assert.ok(mouseUpListener);
+
+    const actionTarget = new FakeTimelineActionElement("timeline-drag-body", timeline);
+
+    mouseDownListener?.(
+      new FakeMouseEvent(actionTarget as unknown as EventTarget, 250) as unknown as Event
+    );
+    mouseMoveListener?.(
+      new FakeMouseEvent(actionTarget as unknown as EventTarget, 650) as unknown as Event
+    );
+
+    assert.equal(store.getState().ui.workspace.timelineStartMs, 5000);
+    assert.equal(store.getState().ui.workspace.timelineEndMs, 7000);
+
+    mouseUpListener?.({} as Event);
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+    if (originalMouseEvent === undefined) {
+      delete (globalThis as Record<string, unknown>).MouseEvent;
+    } else {
+      Object.defineProperty(globalThis, "MouseEvent", {
+        configurable: true,
+        value: originalMouseEvent,
+      });
+    }
+  }
+});
+
+test("laboratory run controller applies timeline finetune and clear actions from the unified timeline", () => {
+  const originalElement = globalThis.Element;
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  const timeline = new FakeTimelineRoot(new FakeTimelineTrack(100, 1000), 10000);
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: FakeTimelineActionElement,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent() {},
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+
+    controller.attach();
+    store.dispatch({
+      type: "workspace-timeline-updated",
+      startMs: 1000,
+      endMs: 3000,
+    });
+
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
+
+    clickListener?.(
+      new FakeMouseEvent(
+        new FakeTimelineActionElement("timeline-finetune", timeline, "start:+100") as unknown as EventTarget,
+        0
+      ) as unknown as Event
+    );
+    clickListener?.(
+      new FakeMouseEvent(
+        new FakeTimelineActionElement("timeline-finetune", timeline, "end:-500") as unknown as EventTarget,
+        0
+      ) as unknown as Event
+    );
+
+    assert.equal(store.getState().ui.workspace.timelineStartMs, 1100);
+    assert.equal(store.getState().ui.workspace.timelineEndMs, 2500);
+
+    clickListener?.(
+      new FakeMouseEvent(
+        new FakeTimelineActionElement("timeline-clear", timeline) as unknown as EventTarget,
+        0
+      ) as unknown as Event
+    );
+
+    assert.equal(store.getState().ui.workspace.timelineStartMs, null);
+    assert.equal(store.getState().ui.workspace.timelineEndMs, null);
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
+test("laboratory store promotes timeline ranges into stable selection entities", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+
+  const firstSelection = store.getState().ui.workspace.activeSelection;
+  assert.ok(firstSelection);
+  assert.equal(firstSelection?.type, "clip");
+  assert.equal(firstSelection?.startMs, 1000);
+  assert.equal(firstSelection?.endMs, 3000);
+  assert.ok(typeof firstSelection?.id === "string" && firstSelection.id.length > 0);
+  assert.equal(getActiveSelection(store.getState())?.id, firstSelection?.id);
+  assert.equal(isSelectionValid(store.getState()), true);
+  assert.equal(getSelectionDuration(store.getState()), 2000);
+
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1200,
+    endMs: 3400,
+  });
+
+  const evolvedSelection = store.getState().ui.workspace.activeSelection;
+  assert.ok(evolvedSelection);
+  assert.equal(evolvedSelection?.id, firstSelection?.id);
+  assert.equal(evolvedSelection?.createdAt, firstSelection?.createdAt);
+  assert.equal(evolvedSelection?.startMs, 1200);
+  assert.equal(evolvedSelection?.endMs, 3400);
+
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1200,
+    endMs: 1100,
+  });
+
+  assert.equal(store.getState().ui.workspace.activeSelection, null);
+  assert.equal(isSelectionValid(store.getState()), false);
+  assert.equal(getSelectionDuration(store.getState()), 0);
+});
+
+test("laboratory store resets semantic and primitive selection state on source changes", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1500,
+    endMs: 3600,
+  });
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "video",
+      mode: "local",
+      storedPath: "/tmp/new-source.mp4",
+    },
+  });
+
+  assert.equal(store.getState().ui.workspace.timelineStartMs, null);
+  assert.equal(store.getState().ui.workspace.timelineEndMs, null);
+  assert.equal(store.getState().ui.workspace.activeSelection, null);
+});
+
+test("laboratory store clears semantic and primitive selection state when the active project changes", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1800,
+    endMs: 4200,
+  });
+
+  store.dispatch({
+    type: "snapshot-received",
+    payload: createDualPreviewSnapshot(0),
+  });
+
+  assert.equal(store.getState().ui.workspace.timelineStartMs, null);
+  assert.equal(store.getState().ui.workspace.timelineEndMs, null);
+  assert.equal(store.getState().ui.workspace.activeSelection, null);
+});
+
+test("laboratory run controller accepts numeric timeline input edits and normalizes invalid ranges", () => {
+  const originalInput = Object.getOwnPropertyDescriptor(globalThis, "HTMLInputElement");
+  const originalSelect = Object.getOwnPropertyDescriptor(globalThis, "HTMLSelectElement");
+  const originalTextArea = Object.getOwnPropertyDescriptor(globalThis, "HTMLTextAreaElement");
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  Object.defineProperty(globalThis, "HTMLInputElement", {
+    configurable: true,
+    value: FakeHtmlInputElement,
+  });
+  Object.defineProperty(globalThis, "HTMLSelectElement", {
+    configurable: true,
+    value: FakeHtmlSelectElement,
+  });
+  Object.defineProperty(globalThis, "HTMLTextAreaElement", {
+    configurable: true,
+    value: FakeHtmlTextAreaElement,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent() {},
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+
+    controller.attach();
+    store.dispatch({
+      type: "workspace-timeline-updated",
+      startMs: 1000,
+      endMs: 3000,
+    });
+
+    const inputListener = documentRef.listeners.get("input");
+    assert.ok(inputListener);
+
+    const startInput = new FakeHtmlInputElement("workspace.timelineStartMs", "1500");
+    startInput.type = "number";
+    inputListener?.({ target: startInput } as Event);
+    assert.equal(store.getState().ui.workspace.timelineStartMs, 1500);
+    assert.equal(store.getState().ui.workspace.timelineEndMs, 3000);
+
+    const invalidEndInput = new FakeHtmlInputElement("workspace.timelineEndMs", "1400");
+    invalidEndInput.type = "number";
+    inputListener?.({ target: invalidEndInput } as Event);
+    assert.equal(store.getState().ui.workspace.timelineStartMs, 1500);
+    assert.equal(store.getState().ui.workspace.timelineEndMs, null);
+
+    const endInput = new FakeHtmlInputElement("workspace.timelineEndMs", "");
+    endInput.type = "number";
+    inputListener?.({ target: endInput } as Event);
+    assert.equal(store.getState().ui.workspace.timelineStartMs, 1500);
+    assert.equal(store.getState().ui.workspace.timelineEndMs, null);
+  } finally {
+    if (originalInput) {
+      Object.defineProperty(globalThis, "HTMLInputElement", originalInput);
+    } else {
+      delete (globalThis as Record<string, unknown>).HTMLInputElement;
+    }
+    if (originalSelect) {
+      Object.defineProperty(globalThis, "HTMLSelectElement", originalSelect);
+    } else {
+      delete (globalThis as Record<string, unknown>).HTMLSelectElement;
+    }
+    if (originalTextArea) {
+      Object.defineProperty(globalThis, "HTMLTextAreaElement", originalTextArea);
+    } else {
+      delete (globalThis as Record<string, unknown>).HTMLTextAreaElement;
+    }
+  }
+});
+
+test("laboratory run controller keeps invalid scope time ranges out of the analysis draft", () => {
+  const originalInput = Object.getOwnPropertyDescriptor(globalThis, "HTMLInputElement");
+  const originalSelect = Object.getOwnPropertyDescriptor(globalThis, "HTMLSelectElement");
+  const originalTextArea = Object.getOwnPropertyDescriptor(globalThis, "HTMLTextAreaElement");
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  Object.defineProperty(globalThis, "HTMLInputElement", {
+    configurable: true,
+    value: FakeHtmlInputElement,
+  });
+  Object.defineProperty(globalThis, "HTMLSelectElement", {
+    configurable: true,
+    value: FakeHtmlSelectElement,
+  });
+  Object.defineProperty(globalThis, "HTMLTextAreaElement", {
+    configurable: true,
+    value: FakeHtmlTextAreaElement,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent() {},
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+
+    controller.attach();
+
+    const inputListener = documentRef.listeners.get("input");
+    assert.ok(inputListener);
+
+    const scopeStart = new FakeHtmlInputElement("scope.timeStartMs", "2500");
+    scopeStart.type = "number";
+    inputListener?.({ target: scopeStart } as Event);
+
+    const scopeEnd = new FakeHtmlInputElement("scope.timeEndMs", "2000");
+    scopeEnd.type = "number";
+    inputListener?.({ target: scopeEnd } as Event);
+
+    const analysisScope = (store.getState().workbench["analysisScope"] || {}) as Record<
+      string,
+      unknown
+    >;
+    assert.equal((analysisScope["timeRange"] as Record<string, unknown> | undefined) ?? null, null);
+  } finally {
+    if (originalInput) {
+      Object.defineProperty(globalThis, "HTMLInputElement", originalInput);
+    } else {
+      delete (globalThis as Record<string, unknown>).HTMLInputElement;
+    }
+    if (originalSelect) {
+      Object.defineProperty(globalThis, "HTMLSelectElement", originalSelect);
+    } else {
+      delete (globalThis as Record<string, unknown>).HTMLSelectElement;
+    }
+    if (originalTextArea) {
+      Object.defineProperty(globalThis, "HTMLTextAreaElement", originalTextArea);
+    } else {
+      delete (globalThis as Record<string, unknown>).HTMLTextAreaElement;
     }
   }
 });

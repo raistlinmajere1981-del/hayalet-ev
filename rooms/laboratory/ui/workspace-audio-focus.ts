@@ -18,12 +18,8 @@ function renderEQBand(band: LabAudioFocusSettings["eqBands"][0], index: number) 
   `;
 }
 
-export function renderWorkspaceAudioFocus(
-  audioFocus: LabAudioFocusSettings,
-  options: { suppressVisualization?: boolean } = {}
-) {
+export function renderWorkspaceAudioFocus(audioFocus: LabAudioFocusSettings) {
   const showFilterControls = audioFocus.filterType !== "none";
-  const suppressVisualization = options.suppressVisualization === true;
   return `
     <section class="labx-audio-focus labx-workspace-focus-row__panel" id="lab-audio-focus">
       <div class="labx-audio-focus__header">
@@ -85,28 +81,10 @@ export function renderWorkspaceAudioFocus(
         `
             : ""
         }
-        ${
-          suppressVisualization
-            ? ""
-            : `
-        <label class="labx-control-row">
-          <span class="labx-control-row__label">Visualization</span>
-          <select class="labx-select labx-select--compact" data-lab-field="workspace.audioFocus.visualizationMode">
-            ${(["none", "waveform", "spectrum"] as const)
-              .map(function (mode) {
-                const labels: Record<string, string> = {
-                  none: "None",
-                  waveform: "Waveform",
-                  spectrum: "Spectrum",
-                };
-                return `<option value="${mode}" ${audioFocus.visualizationMode === mode ? "selected" : ""}>${labels[mode]}</option>`;
-              })
-              .join("")}
-          </select>
-        </label>
-        `
-        }
       </div>
+      <p class="labx-panel-hint">
+        Timeline preview altinda tek waveform katmani kullanilir. Yuklu spectrogram artifact varsa ayni eksende gosterilir.
+      </p>
       <div class="labx-audio-focus__eq">
         <p class="labx-card__eyebrow">PARAMETRIC EQ</p>
         ${audioFocus.eqBands
@@ -115,13 +93,6 @@ export function renderWorkspaceAudioFocus(
           })
           .join("")}
       </div>
-      ${
-        suppressVisualization
-          ? `<p class="labx-panel-hint">Dual preview acikken companion audio meter preview alaninda gosterilir.</p>`
-          : `<div class="labx-audio-focus__viz">
-        <canvas id="lab-audio-viz" class="labx-audio-viz" width="320" height="80" data-lab-viz="audio-${audioFocus.visualizationMode}"></canvas>
-      </div>`
-      }
     </section>
   `;
 }

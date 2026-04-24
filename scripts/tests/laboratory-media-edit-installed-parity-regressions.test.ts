@@ -14,6 +14,7 @@ const activeShellFiles = [
   "ui/index.js",
   "ui/lab-root.js",
   "ui/lab-theme.css",
+  "ui/lab-waveform-timeline.js",
   "ui/style.css",
   "ui/tool-management-overlay.js",
   "ui/workspace-process-panel.js",

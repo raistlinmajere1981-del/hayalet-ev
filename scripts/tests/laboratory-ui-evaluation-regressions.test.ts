@@ -166,11 +166,11 @@ test("laboratory shell preserves workspace preview nodes while diffing live pane
     labRootSource,
     /updateRenderedElement\(\s*documentRef,\s*rightPanel as HTMLElement,\s*renderLabRightPanel\(surface\),\s*true\s*\);/
   );
-  assert.match(workspaceSurfaceSource, /data-lab-preserve-media="workspace-preview"/);
   assert.match(
     workspaceSurfaceSource,
-    /<video class="labx-preview-media labx-preview-media--workspace-video"[\s\S]*data-lab-preserve-media="workspace-preview"/
+    /preserveKey \|\| "workspace-preview"/
   );
+  assert.match(workspaceSurfaceSource, /data-lab-preserve-media="\$\{escapeHtml\(preserveKey\)\}"/);
 });
 
 test("laboratory shell persists workspace-facing state and exposes tool lifecycle controls", () => {
@@ -187,6 +187,6 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   assert.match(toolOverlaySource, /data-lab-action="tool-check-updates"/);
   assert.match(workspaceSurfaceSource, /Source setup controls/);
   assert.match(workspaceSurfaceSource, /Derin Analiz Başlat/);
-  assert.match(workspaceSurfaceSource, /Analiz arka planda çalışıyor/);
+  assert.match(workspaceSurfaceSource, /data-lab-action="run-deep-analysis"/);
   assert.match(workspaceSurfaceSource, /Bu analiz şunları yapacak:/);
 });

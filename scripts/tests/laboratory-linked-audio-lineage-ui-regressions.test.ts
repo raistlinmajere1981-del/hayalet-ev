@@ -178,9 +178,13 @@ test("laboratory workspace surface renders split dual preview with shared transp
   assert.match(surface.main, /data-lab-action="workspace-close-dual-preview"/);
   assert.match(surface.main, /data-lab-action="workspace-dual-preview-audio-select"/);
   assert.match(surface.main, /Senkron: Ofset \+250 ms/);
-  assert.match(surface.main, /Dual preview acikken companion audio meter preview alaninda gosterilir\./);
+  assert.match(surface.main, /labx-timeline__waveform-window/);
+  assert.match(surface.main, /id="lab-audio-viz"/);
+  assert.doesNotMatch(surface.main, /workspace\.audioFocus\.visualizationMode/);
+  assert.doesNotMatch(surface.main, /labx-dual-preview-audio__meter/);
   assert.ok(
     surface.main.indexOf("labx-workspace-preview__video-stage") <
       surface.main.indexOf("labx-roi-overlay")
   );
+  assert.ok(surface.main.indexOf("labx-dual-preview-audio__meta") < surface.main.indexOf("lab-audio-viz"));
 });

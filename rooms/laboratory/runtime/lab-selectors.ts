@@ -1,5 +1,6 @@
 import { asLabRecord, asNonEmptyString, createLabFeatureMeta } from "../models/lab-types.js";
 import type {
+  LabArtifactProjection,
   CapabilityFamilyId,
   LabAsset,
   LabAssetType,
@@ -13,6 +14,7 @@ import type {
   LabReportSet,
   LabRun,
   LabRunSnapshotSummary,
+  LabSelection,
   LabStage,
   LabStoreState,
   LabUserActionEvent,
@@ -659,6 +661,92 @@ export function getActivePreviewArtifact(
   );
 }
 
+function getAudioVisualizationArtifactTimestamp(
+  artifact: LabArtifactProjection | LabPreviewArtifactProjection
+) {
+  if (typeof artifact.createdAt !== "string" || artifact.createdAt.trim() === "") {
+    return Number.NEGATIVE_INFINITY;
+  }
+  const parsedTimestamp = Date.parse(artifact.createdAt);
+  return Number.isFinite(parsedTimestamp) ? parsedTimestamp : Number.NEGATIVE_INFINITY;
+}
+
+function getLoadableVisualizationArtifactUrl(
+  artifact: LabArtifactProjection | LabPreviewArtifactProjection
+) {
+  if (typeof artifact.previewUrl === "string" && artifact.previewUrl.trim() !== "") {
+    return artifact.previewUrl;
+  }
+  const fileUrl = (artifact as { fileUrl?: unknown }).fileUrl;
+  return typeof fileUrl === "string" && fileUrl.trim() !== "" ? fileUrl : null;
+}
+
+function hasLoadableVisualizationArtifactUrl(
+  artifact: LabArtifactProjection | LabPreviewArtifactProjection
+) {
+  return getLoadableVisualizationArtifactUrl(artifact) !== null;
+}
+
+function pickPreferredAudioVisualizationArtifact(
+  artifacts: Array<LabArtifactProjection | LabPreviewArtifactProjection>,
+  kind: "waveform" | "spectrogram"
+) {
+  return (
+    artifacts
+      .map(function (artifact, index) {
+        return {
+          artifact,
+          index,
+        };
+      })
+      .filter(function (entry) {
+        return entry.artifact.kind === kind && hasLoadableVisualizationArtifactUrl(entry.artifact);
+      })
+      .sort(function (left, right) {
+        const timestampDelta =
+          getAudioVisualizationArtifactTimestamp(right.artifact) -
+          getAudioVisualizationArtifactTimestamp(left.artifact);
+        if (timestampDelta !== 0) {
+          return timestampDelta;
+        }
+        if (left.artifact.active !== right.artifact.active) {
+          return left.artifact.active === true ? -1 : 1;
+        }
+        return left.index - right.index;
+      })[0]?.artifact || null
+  );
+}
+
+export function getAudioVisualizationArtifact(
+  state: LabStoreState
+): LabArtifactProjection | LabPreviewArtifactProjection | null {
+  const mode =
+    state.ui.workspace.audioFocus.visualizationMode === "spectrum" ? "spectrum" : "waveform";
+
+  const run = getCurrentRun(state);
+  if (!run) {
+    return null;
+  }
+
+  const finalArtifacts = Array.isArray(run.artifacts) ? run.artifacts : [];
+  const previewArtifacts = Array.isArray(run.previewArtifacts) ? run.previewArtifacts : [];
+  const preferredKinds: Array<"waveform" | "spectrogram"> =
+    mode === "spectrum" ? ["spectrogram", "waveform"] : ["waveform", "spectrogram"];
+
+  for (const kind of preferredKinds) {
+    const finalArtifact = pickPreferredAudioVisualizationArtifact(finalArtifacts, kind);
+    if (finalArtifact) {
+      return finalArtifact;
+    }
+    const previewArtifact = pickPreferredAudioVisualizationArtifact(previewArtifacts, kind);
+    if (previewArtifact) {
+      return previewArtifact;
+    }
+  }
+
+  return null;
+}
+
 export function getComparisonVariants(state: LabStoreState) {
   const run = getCurrentRun(state);
   return Array.isArray(run?.comparisonVariants) ? run.comparisonVariants.slice() : [];
@@ -772,10 +860,120 @@ export function getSourceReady(state: LabStoreState): boolean {
   return state.source !== null && state.sourceProbeStatus === "completed";
 }
 
+export function getActiveSelection(state: LabStoreState): LabSelection | null {
+  return state.ui.workspace.activeSelection;
+}
+
+export function isSelectionValid(state: LabStoreState): boolean {
+  const selection = getActiveSelection(state);
+  return selection !== null && selection.endMs > selection.startMs;
+}
+
+export function getSelectionDuration(state: LabStoreState): number {
+  const selection = getActiveSelection(state);
+  if (selection === null || selection.endMs <= selection.startMs) {
+    return 0;
+  }
+  return selection.endMs - selection.startMs;
+}
+
 export function getTimelineSelection(state: LabStoreState) {
+  const activeSelection = getActiveSelection(state);
+  if (activeSelection !== null && activeSelection.endMs > activeSelection.startMs) {
+    return {
+      startMs: activeSelection.startMs,
+      endMs: activeSelection.endMs,
+    };
+  }
   return {
     startMs: state.ui.workspace.timelineStartMs,
     endMs: state.ui.workspace.timelineEndMs,
+  };
+}
+
+function getRoundedAssetMetadataNumber(
+  asset: LabAsset | null,
+  key: "durationMs" | "startOffsetMs"
+): number | null {
+  if (asset === null) {
+    return null;
+  }
+  const metadata = asLabRecord(asset.metadata);
+  const rawValue = metadata[key];
+  return typeof rawValue === "number" && Number.isFinite(rawValue) ? Math.round(rawValue) : null;
+}
+
+export function getWaveformTimelineModel(state: LabStoreState) {
+  const sourceKind = getSourceKind(state);
+  const sourceReady = getSourceReady(state);
+  const metadata = getSourceMetadata(state);
+  const durationMs =
+    sourceReady && typeof metadata["durationSeconds"] === "number"
+      ? Math.max(0, Math.round(metadata["durationSeconds"] * 1000))
+      : 0;
+  const selection = getTimelineSelection(state);
+  const dualPreviewActive = isDualPreviewActive(state);
+  const selectedAudioAsset = dualPreviewActive ? getSelectedDualPreviewAudioAsset(state) : null;
+  const rawWaveformOffsetMs =
+    getRoundedAssetMetadataNumber(selectedAudioAsset, "startOffsetMs") || 0;
+  const selectedAudioDurationMs = getRoundedAssetMetadataNumber(selectedAudioAsset, "durationMs");
+  const waveformContentDurationMs =
+    selectedAudioAsset !== null && selectedAudioDurationMs !== null
+      ? Math.max(0, selectedAudioDurationMs)
+      : durationMs;
+  const waveformVisibleStartMs = Math.max(0, rawWaveformOffsetMs);
+  const waveformVisibleEndMs = Math.min(
+    durationMs,
+    rawWaveformOffsetMs + waveformContentDurationMs
+  );
+  const waveformContentVisibleStartMs = Math.max(0, 0 - rawWaveformOffsetMs);
+  const waveformContentVisibleEndMs = Math.max(
+    waveformContentVisibleStartMs,
+    Math.min(waveformContentDurationMs, durationMs - rawWaveformOffsetMs)
+  );
+  const waveformWindowDurationMs =
+    durationMs > 0 ? Math.max(0, waveformVisibleEndMs - waveformVisibleStartMs) : 0;
+  const waveformCropStartRatio =
+    waveformContentDurationMs > 0
+      ? Math.max(0, Math.min(1, waveformContentVisibleStartMs / waveformContentDurationMs))
+      : 0;
+  const waveformCropEndRatio =
+    waveformContentDurationMs > 0
+      ? Math.max(0, Math.min(1, waveformContentVisibleEndMs / waveformContentDurationMs))
+      : 1;
+
+  return {
+    activeSelection: getActiveSelection(state),
+    bookmarks: getBookmarks(state),
+    dualPreviewActive,
+    durationMs,
+    endMs: selection.endMs,
+    linkedAudioAssetId: selectedAudioAsset?.id || null,
+    startMs: selection.startMs,
+    sourceKind,
+    visualizationArtifact: getAudioVisualizationArtifact(state),
+    visualizationMode: state.ui.workspace.audioFocus.visualizationMode,
+    waveformContentDurationMs,
+    waveformCropEndRatio,
+    waveformCropStartRatio,
+    waveformOffsetMs: rawWaveformOffsetMs,
+    waveformSourceLabel:
+      selectedAudioAsset?.name ||
+      (sourceKind === "audio"
+        ? "Source audio"
+        : sourceKind === "video"
+          ? "Embedded audio"
+          : "Waveform"),
+    waveformSyncLabel:
+      selectedAudioAsset === null
+        ? "Preview and waveform share the same master axis."
+        : rawWaveformOffsetMs === 0
+          ? "Linked audio is aligned to the master axis."
+          : `Linked audio offset ${rawWaveformOffsetMs > 0 ? "+" : ""}${String(rawWaveformOffsetMs)} ms`,
+    waveformWindowDurationMs:
+      sourceKind === "audio" || sourceKind === "video" ? waveformWindowDurationMs : 0,
+    waveformWindowStartMs:
+      sourceKind === "audio" || sourceKind === "video" ? waveformVisibleStartMs : 0,
   };
 }
 
@@ -807,7 +1005,11 @@ export function getDualPreviewVolume(state: LabStoreState) {
 
 export function getDualPreviewLinkedAudioAssets(state: LabStoreState): LabAsset[] {
   const currentSourceAsset = getCurrentSourceAsset(state);
-  if (currentSourceAsset === null || getSourceKind(state) !== "video" || getSourceReady(state) !== true) {
+  if (
+    currentSourceAsset === null ||
+    getSourceKind(state) !== "video" ||
+    getSourceReady(state) !== true
+  ) {
     return [];
   }
   return getLinkedAudioAssets(state, currentSourceAsset.id);
@@ -822,7 +1024,9 @@ export function getSelectedDualPreviewAudioAsset(state: LabStoreState): LabAsset
   return (
     linkedAudioAssets.find(function (asset) {
       return asset.id === selectedId;
-    }) || linkedAudioAssets[0] || null
+    }) ||
+    linkedAudioAssets[0] ||
+    null
   );
 }
 

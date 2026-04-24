@@ -178,6 +178,7 @@
     "ui/lab-root.js",
     "ui/lab-theme.css",
     "ui/lab-topbar-actions.js",
+    "ui/lab-waveform-timeline.js",
     "ui/report-overlay.js",
     "ui/style.css",
     "ui/tool-management-overlay.js",
@@ -188,7 +189,6 @@
     "ui/workspace-interactive-controls.js",
     "ui/workspace-process-panel.js",
     "ui/workspace-roi-overlay.js",
-    "ui/workspace-surface.js",
-    "ui/workspace-timeline.js"
+    "ui/workspace-surface.js"
   ]
 }

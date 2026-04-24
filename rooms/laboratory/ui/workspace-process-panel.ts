@@ -832,7 +832,6 @@ function renderIdleProcessPanel(state: LabStoreState, sourceReady: boolean): str
   if (sourceReady !== true) {
     return `
       <section class="labx-process-panel labx-process-panel--empty" id="lab-process-panel">
-        <div class="labx-process-empty">Henüz analiz çalışması yok.</div>
         ${renderRecentActionsSection(state)}
       </section>
     `;

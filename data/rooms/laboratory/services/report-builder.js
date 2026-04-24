@@ -92,9 +92,9 @@ export function buildAiReport(run, reportRecord) {
   const errors = [run.error, asNonEmptyString(normalizedReport["error"])].filter(
     (entry) => entry !== null
   );
-  const moduleTrace = run.moduleTrace.slice();
+  const moduleTrace = Array.isArray(run.moduleTrace) ? run.moduleTrace.slice() : [];
   const analysisScope = run.analysisScope;
-  const comparisonVariants = run.comparisonVariants.slice();
+  const comparisonVariants = Array.isArray(run.comparisonVariants) ? run.comparisonVariants.slice() : [];
   return {
     manifest: {
       featureId: normalizedReport["featureId"] || null,

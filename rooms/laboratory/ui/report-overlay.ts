@@ -120,13 +120,13 @@ function renderIntentGroups(state: LabStoreState) {
       ${intentGroups
         .map(function (group) {
           const dirtyState = dirtyMap[group.intentId];
-          const dirtyHint =
-            dirtyState && dirtyState.dirty
-              ? `<p class="labx-report-section__hint">Live workspace drift: ${escapeHtml(dirtyState.changedKeys.join(", "))}</p>`
-              : "";
+          const dirtyHint = dirtyState.dirty
+            ? `<p class="labx-report-section__hint">Live workspace drift: ${escapeHtml(dirtyState.changedKeys.join(", "))}</p>`
+            : "";
           const findingsHtml =
             group.findings.length > 0
-              ? (Array.isArray(group.findings) ? group.findings.slice(0, 3) : [])
+              ? group.findings
+                  .slice(0, 3)
                   .map(function (finding) {
                     return `<div class="labx-report-finding"><div class="labx-report-finding__title"><strong>${escapeHtml(finding.title)}</strong></div><div class="labx-report-finding__detail">${escapeHtml(finding.detail)}</div></div>`;
                   })
@@ -134,10 +134,8 @@ function renderIntentGroups(state: LabStoreState) {
               : `<div class="labx-process-empty">No findings mapped to this intent.</div>`;
           const artifactHtml =
             group.artifacts.length > 0
-              ? `<div class="labx-report-manifest">${(Array.isArray(group.artifacts)
-                  ? group.artifacts.slice(0, 4)
-                  : []
-                )
+              ? `<div class="labx-report-manifest">${group.artifacts
+                  .slice(0, 4)
                   .map(function (artifact) {
                     return `<div class="labx-report-manifest__entry"><span>${escapeHtml(artifact.kind)}</span><strong>${escapeHtml(artifact.fileName || artifact.id)}</strong></div>`;
                   })
@@ -451,7 +449,7 @@ export function renderReportOverlay(state: LabStoreState) {
         ? renderAiReport(reports.ai)
         : `<div class="labx-process-empty">${reports.emptyReason || "Rapor mevcut değil"}</div>`;
 
-  const runIdSuffix = run ? (run.id ?? "").slice(-6) || "—" : "—";
+  const runIdSuffix = run ? run.id.slice(-6) || "—" : "—";
   const freshness = getReportFreshness(state);
   const runActive = isRunActive(state);
   const freshnessLabel =

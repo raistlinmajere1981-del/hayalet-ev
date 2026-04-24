@@ -11,11 +11,10 @@ export function createLaboratoryHostUtils(deps) {
     if (typeof filePath !== "string" || filePath.trim() === "") {
       return null;
     }
-    const normalized = filePath.replace(/\\/g, "/");
-    if (normalized.startsWith("/")) {
-      return encodeURI(`file://${normalized}`);
-    }
-    return encodeURI(`file:///${normalized}`);
+    const normalized = filePath.trim().replace(/\\/g, "/");
+    const url = new URL("file:///");
+    url.pathname = normalized.startsWith("/") ? normalized : `/${normalized}`;
+    return url.toString();
   }
   function clampNumber(value, minimum, maximum, fallback) {
     const numericValue = Number(value);

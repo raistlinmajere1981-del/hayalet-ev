@@ -27,28 +27,13 @@ function renderToggle(label, field, active) {
     </label>
   `;
 }
-export function renderWorkspaceInteractiveControls(settings, collapsed) {
-  if (collapsed) {
-    return `
-      <section class="labx-card labx-controls-card" data-tone="accent">
-        <div class="labx-card__header">
-          <div>
-            <p class="labx-card__eyebrow">INTERACTIVE CONTROLS</p>
-            <h2 class="labx-card__title">Visual Adjustments</h2>
-          </div>
-          <button class="labx-inline-action" type="button" data-lab-action="workspace-toggle-right-panel">Expand</button>
-        </div>
-      </section>
-    `;
-  }
+export function renderWorkspaceInteractiveControls(settings) {
   return `
-    <section class="labx-card labx-controls-card" data-tone="accent">
+    <section class="labx-card labx-controls-card labx-workspace-focus-row__panel" data-tone="accent">
       <div class="labx-card__header">
         <div>
-          <p class="labx-card__eyebrow">INTERACTIVE CONTROLS</p>
           <h2 class="labx-card__title">Visual Adjustments</h2>
         </div>
-        <button class="labx-inline-action" type="button" data-lab-action="workspace-toggle-right-panel">Collapse</button>
       </div>
       <div class="labx-card__body">
         <div class="labx-controls-stack">

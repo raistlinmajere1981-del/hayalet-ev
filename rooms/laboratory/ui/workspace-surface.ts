@@ -31,14 +31,14 @@ import {
   getSourceMetadata,
   getSourceProbeStatus,
   getSelectedIntents,
-  getTimelineSelection,
+  getWaveformTimelineModel,
   hasReportPayload,
   isDualPreviewActive,
   isDualPreviewAvailable,
   isRunActive,
 } from "../runtime/lab-selectors.js";
 import { renderStatusChip } from "./components/status-chip.js";
-import { renderWorkspaceTimeline } from "./workspace-timeline.js";
+import { renderLabWaveformTimeline } from "./lab-waveform-timeline.js";
 import { renderWorkspaceROIOverlay } from "./workspace-roi-overlay.js";
 import { renderWorkspaceInteractiveControls } from "./workspace-interactive-controls.js";
 import { renderWorkspaceAudioFocus } from "./workspace-audio-focus.js";
@@ -734,27 +734,14 @@ function formatDurationMs(durationMs: number | null) {
   return formatDurationSeconds(durationMs / 1000);
 }
 
-function renderDualPreviewLevelMeter() {
-  const levels = [0.18, 0.42, 0.76, 0.94, 0.76, 0.42, 0.18];
-  return `
-    <div class="labx-dual-preview-audio__meter" aria-hidden="true">
-      ${levels
-        .map(function (level) {
-          return `<span class="labx-dual-preview-audio__meter-bar" style="--labx-meter-level:${String(level)};"></span>`;
-        })
-        .join("")}
-    </div>
-  `;
-}
-
 function renderDualPreviewAudioPane(selectedAudio: LabAsset, linkedAudioAssets: LabAsset[]) {
   const metadata = asLabRecord(selectedAudio.metadata);
   const durationMs =
-    typeof metadata["durationMs"] === "number" ? Math.max(0, Math.round(metadata["durationMs"])) : null;
+    typeof metadata["durationMs"] === "number"
+      ? Math.max(0, Math.round(metadata["durationMs"]))
+      : null;
   const startOffsetMs =
-    typeof metadata["startOffsetMs"] === "number"
-      ? Math.round(metadata["startOffsetMs"])
-      : 0;
+    typeof metadata["startOffsetMs"] === "number" ? Math.round(metadata["startOffsetMs"]) : 0;
   const offsetLabel =
     startOffsetMs === 0
       ? "Senkron: ✓ Aynı zaman ekseni"
@@ -789,7 +776,6 @@ function renderDualPreviewAudioPane(selectedAudio: LabAsset, linkedAudioAssets: 
       `
           : ""
       }
-      ${renderDualPreviewLevelMeter()}
       <div class="labx-dual-preview-audio__meta">
         <span>${escapeHtml(offsetLabel)}</span>
         ${durationMs === null ? "" : `<span>Süre ${escapeHtml(formatDurationMs(durationMs))}</span>`}
@@ -1218,7 +1204,7 @@ export function renderWorkspaceSurface(state: LabStoreState): LabStageSurface {
   const settings = getInteractiveSettings(state);
   const audioFocus = getAudioFocusSettings(state);
   const roiRegions = getROIRegions(state);
-  const timeline = getTimelineSelection(state);
+  const timeline = getWaveformTimelineModel(state);
   const bookmarks = getBookmarks(state);
   const hypothesis = getHypothesis(state);
   const runActive = isRunActive(state);
@@ -1235,11 +1221,7 @@ export function renderWorkspaceSurface(state: LabStoreState): LabStageSurface {
       ? Math.round(metadata["durationSeconds"] * 1000)
       : 0;
   const focusPanels = [
-    hasAudio && sourceReady
-      ? renderWorkspaceAudioFocus(audioFocus, {
-          suppressVisualization: dualPreviewActive,
-        })
-      : "",
+    hasAudio && sourceReady ? renderWorkspaceAudioFocus(audioFocus) : "",
     hasVisualControls ? renderWorkspaceInteractiveControls(settings) : "",
   ].filter(Boolean);
   const focusSection =
@@ -1278,22 +1260,15 @@ export function renderWorkspaceSurface(state: LabStoreState): LabStageSurface {
       <div class="labx-workspace-preview" id="lab-workspace-preview" data-preview-mode="${dualPreviewActive ? "dual" : "single"}" data-dual-preview-available="${dualPreviewAvailable ? "true" : "false"}">
         ${previewMarkup}
         ${
-          sourceReady && (sourceKind === "video" || sourceKind === "image") && dualPreviewActive !== true
+          sourceReady &&
+          (sourceKind === "video" || sourceKind === "image") &&
+          dualPreviewActive !== true
             ? renderWorkspaceROIOverlay(roiRegions)
             : ""
         }
       </div>
       ${dualPreviewTransport}
-      ${
-        durationMs > 0
-          ? renderWorkspaceTimeline({
-              durationMs,
-              startMs: timeline.startMs,
-              endMs: timeline.endMs,
-              bookmarks,
-            })
-          : ""
-      }
+      ${durationMs > 0 ? renderLabWaveformTimeline(timeline) : ""}
       ${renderWorkspaceHypothesis(hypothesis)}
       ${focusSection}
       ${renderWorkspaceBookmarks(bookmarks)}
@@ -1317,53 +1292,56 @@ export function renderWorkspaceSurface(state: LabStoreState): LabStageSurface {
       ? `${freshnessLabel} \u00b7 Workspace farklı`
       : freshnessLabel;
 
-  const reportButton = hasReport
-    ? `
-      <div class="labx-analysis-trigger">
-        <button
-          class="labx-primary-cta"
-          type="button"
-          data-lab-action="open-report-overlay"
-        >
-          <strong>Raporu Görüntüle</strong>
-          <span class="labx-primary-cta__detail">Kullanıcı ve teknik raporlar</span>
-        </button>
-        ${
-          freshnessMeta
-            ? `<span class="labx-report-freshness" data-freshness="${escapeHtml(freshness?.state || "")}" data-workspace-dirty="${freshness?.workspaceDirty === true ? "true" : "false"}">${escapeHtml(freshnessMeta)}</span>`
-            : ""
-        }
-      </div>
-    `
-    : "";
+  const reportButton = `
+    <div class="labx-analysis-trigger">
+      <button
+        class="labx-primary-cta labx-primary-cta--compact"
+        type="button"
+        data-lab-action="open-report-overlay"
+        ${hasReport ? "" : "disabled"}
+      >
+        <strong>Raporu Görüntüle</strong>
+      </button>
+      ${
+        hasReport && freshnessMeta
+          ? `<span class="labx-report-freshness" data-freshness="${escapeHtml(freshness?.state || "")}" data-workspace-dirty="${freshness?.workspaceDirty === true ? "true" : "false"}">${escapeHtml(freshnessMeta)}</span>`
+          : ""
+      }
+    </div>
+  `;
 
   const intentPreview = sourceReady ? renderIntentPreview(getSelectedIntents(state)) : "";
 
   const analysisButton = sourceReady
     ? `
       <div class="labx-analysis-trigger">
-        ${intentPreview}
         <button
-          class="labx-primary-cta"
+          class="labx-primary-cta labx-primary-cta--compact"
           type="button"
           data-lab-action="run-deep-analysis"
         >
           <strong>${runActive ? "Analizi İptal Et" : "Derin Analiz Başlat"}</strong>
-          <span class="labx-primary-cta__detail">${runActive ? "Analiz arka planda çalışıyor" : "Arka plan süreci — UI'ı kilitlemez"}</span>
         </button>
-        ${
-          sourceKind === "image"
-            ? `<button class="labx-secondary-cta" type="button" data-lab-action="workspace-image-analysis">Görsel Analiz Et</button>`
-            : ""
-        }
+        ${intentPreview}
       </div>
     `
     : "";
+  const imageAnalysisButton =
+    sourceReady && sourceKind === "image"
+      ? `
+        <div class="labx-analysis-trigger">
+          <button class="labx-secondary-cta" type="button" data-lab-action="workspace-image-analysis">
+            Görsel Analiz Et
+          </button>
+        </div>
+      `
+      : "";
 
   const side = `
-    ${processSection}
-    ${reportButton}
     ${analysisButton}
+    ${reportButton}
+    ${imageAnalysisButton}
+    ${processSection}
   `;
 
   return { main, side };

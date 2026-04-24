@@ -111,7 +111,7 @@ export function createAudioAnalysisSpeakerDiarizationModelRunner(deps) {
       `${segments.length} segments`,
       typeof diarizationSummary.durationSeconds === "number" ? `${Number(diarizationSummary.durationSeconds).toFixed(1)}s analyzed` : null
     ].filter(Boolean);
-    const fallbackWarning = fallbackApplied ? "pyAudioAnalysis HMM smoothing failed for this clip, so the room-local diarization helper fell back to a KMeans-only segmentation path." : null;
+    const fallbackWarning = fallbackApplied ? "The packaged pyAudioAnalysis diarization path was unavailable for this clip, so the room-local helper used a heuristic speaker segmentation fallback." : null;
     const reviewWarning = "pyAudioAnalysis diarization is a fully local heuristic pipeline; speaker boundaries should be reviewed manually.";
     const warningText = [fallbackWarning, reviewWarning].filter(Boolean).join(" ");
     const warnings = [fallbackWarning, reviewWarning].filter(isNonNullString);

@@ -12,6 +12,7 @@ import type {
   LabStoreEvent,
   LabUserActionEvent,
 } from "../models/lab-types.js";
+import { createLabWaveformTimelineVisualizer } from "../ui/lab-waveform-timeline.js";
 import {
   getActionOutputs,
   deriveLegacyStage,
@@ -28,6 +29,7 @@ import {
   getSourceProbeStatus,
   getSourceStatus,
   getUserActions,
+  getWaveformTimelineModel,
   getWorkbench,
   hasReportPayload,
   isDualPreviewActive,
@@ -178,6 +180,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
   let boundDualPreviewMaster: MediaLikeElement | null = null;
   let boundDualPreviewSlave: MediaLikeElement | null = null;
+  let boundTimelineSyncMedia: MediaLikeElement | null = null;
   let dualPreviewStateSnapshot = {
     enabled: false,
     audioAssetId: null as string | null,
@@ -186,6 +189,12 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   };
   let dualPreviewSlaveAutoplayBlocked = false;
   let dualPreviewPendingSlaveSeekSeconds: number | null = null;
+  const getWorkspaceWaveformTimelineModel = () => getWaveformTimelineModel(deps.store.getState());
+  const workspaceAudioVisualizer = createLabWaveformTimelineVisualizer({
+    documentRef: deps.documentRef,
+    getTimelineModel: getWorkspaceWaveformTimelineModel,
+    windowRef: deps.windowRef,
+  });
 
   function dispatch(event: Parameters<ReturnType<typeof createLabStore>["dispatch"]>[0]) {
     deps.eventBus.emit(event);
@@ -218,6 +227,133 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       return media.readyState >= 1;
     }
     return typeof media.duration === "number" && Number.isFinite(media.duration);
+  }
+
+  function formatTimelineTimeMs(totalMs: number) {
+    const safeMs = Number.isFinite(totalMs) && totalMs > 0 ? Math.round(totalMs) : 0;
+    const minutes = Math.floor(safeMs / 60000);
+    const seconds = Math.floor((safeMs % 60000) / 1000);
+    const millis = safeMs % 1000;
+    return `${pad2(minutes)}:${pad2(seconds)}.${String(millis).padStart(3, "0")}`;
+  }
+
+  function getPrimaryWorkspacePreviewMedia() {
+    const selectors = [
+      'audio[data-lab-preserve-media="workspace-preview"]',
+      'video[data-lab-preserve-media="workspace-preview"]',
+      'video[data-lab-preserve-media="workspace-preview-dual-video"]',
+    ];
+    for (const selector of selectors) {
+      const candidate = deps.documentRef.querySelector?.(selector);
+      if (isMediaLikeElement(candidate)) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  function getTimelineSyncMedia() {
+    const state = deps.store.getState();
+    if (isDualPreviewActive(state) === true) {
+      return getDualPreviewMaster();
+    }
+    return getPrimaryWorkspacePreviewMedia();
+  }
+
+  function getTimelinePlayhead() {
+    const candidate = deps.documentRef.querySelector?.('[data-lab-role="timeline-playhead"]');
+    return candidate && typeof candidate === "object"
+      ? (candidate as {
+          setAttribute?: (name: string, value: string) => void;
+          style?: { left?: string; opacity?: string };
+        })
+      : null;
+  }
+
+  function getTimelinePlayheadLabel() {
+    const candidate = deps.documentRef.querySelector?.('[data-lab-role="timeline-playhead-label"]');
+    return candidate && typeof candidate === "object"
+      ? (candidate as { textContent: string | null })
+      : null;
+  }
+
+  function getTimelineDurationMs(media: MediaLikeElement | null) {
+    const timeline = deps.documentRef.querySelector?.(".labx-timeline") as {
+      dataset?: Record<string, string | undefined>;
+    } | null;
+    const timelineDurationMs = Number(timeline?.dataset?.["duration"] || 0);
+    if (Number.isFinite(timelineDurationMs) && timelineDurationMs > 0) {
+      return timelineDurationMs;
+    }
+    if (media && typeof media.duration === "number" && Number.isFinite(media.duration)) {
+      return Math.max(0, Math.round(media.duration * 1000));
+    }
+    return 0;
+  }
+
+  function updateTimelinePlaybackUi() {
+    const media = getTimelineSyncMedia();
+    const playhead = getTimelinePlayhead();
+    const playheadLabel = getTimelinePlayheadLabel();
+    const durationMs = Math.max(1, getTimelineDurationMs(media));
+    const currentMs =
+      media && typeof media.currentTime === "number" && Number.isFinite(media.currentTime)
+        ? Math.max(0, Math.round(media.currentTime * 1000))
+        : 0;
+    const clampedCurrentMs = Math.max(0, Math.min(durationMs, currentMs));
+    const leftPct = Math.max(0, Math.min(100, (clampedCurrentMs / durationMs) * 100));
+
+    if (playhead?.style) {
+      playhead.style.left = `${String(leftPct)}%`;
+      playhead.style.opacity = media === null ? "0" : "1";
+    }
+    playhead?.setAttribute?.("data-active", media === null ? "false" : "true");
+    if (playheadLabel) {
+      playheadLabel.textContent = formatTimelineTimeMs(clampedCurrentMs);
+    }
+  }
+
+  function handleTimelineMediaPlaybackChange() {
+    updateTimelinePlaybackUi();
+  }
+
+  function bindTimelinePlaybackListeners() {
+    const nextMedia = getTimelineSyncMedia();
+    if (boundTimelineSyncMedia === nextMedia) {
+      return;
+    }
+    if (boundTimelineSyncMedia?.removeEventListener) {
+      boundTimelineSyncMedia.removeEventListener("timeupdate", handleTimelineMediaPlaybackChange);
+      boundTimelineSyncMedia.removeEventListener("play", handleTimelineMediaPlaybackChange);
+      boundTimelineSyncMedia.removeEventListener("pause", handleTimelineMediaPlaybackChange);
+      boundTimelineSyncMedia.removeEventListener("seeking", handleTimelineMediaPlaybackChange);
+      boundTimelineSyncMedia.removeEventListener("seeked", handleTimelineMediaPlaybackChange);
+      boundTimelineSyncMedia.removeEventListener(
+        "loadedmetadata",
+        handleTimelineMediaPlaybackChange
+      );
+      boundTimelineSyncMedia.removeEventListener(
+        "durationchange",
+        handleTimelineMediaPlaybackChange
+      );
+      boundTimelineSyncMedia.removeEventListener("ended", handleTimelineMediaPlaybackChange);
+    }
+    if (nextMedia?.addEventListener) {
+      nextMedia.addEventListener("timeupdate", handleTimelineMediaPlaybackChange);
+      nextMedia.addEventListener("play", handleTimelineMediaPlaybackChange);
+      nextMedia.addEventListener("pause", handleTimelineMediaPlaybackChange);
+      nextMedia.addEventListener("seeking", handleTimelineMediaPlaybackChange);
+      nextMedia.addEventListener("seeked", handleTimelineMediaPlaybackChange);
+      nextMedia.addEventListener("loadedmetadata", handleTimelineMediaPlaybackChange);
+      nextMedia.addEventListener("durationchange", handleTimelineMediaPlaybackChange);
+      nextMedia.addEventListener("ended", handleTimelineMediaPlaybackChange);
+    }
+    boundTimelineSyncMedia = nextMedia;
+  }
+
+  function syncTimelinePlaybackUiFromState() {
+    bindTimelinePlaybackListeners();
+    updateTimelinePlaybackUi();
   }
 
   function getRoomApi() {
@@ -661,7 +797,8 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           }
           if (
             typeof nextTimeRange["startMs"] === "number" &&
-            typeof nextTimeRange["endMs"] === "number"
+            typeof nextTimeRange["endMs"] === "number" &&
+            nextTimeRange["endMs"] > nextTimeRange["startMs"]
           ) {
             nextScope["timeRange"] = nextTimeRange;
           } else {
@@ -1058,7 +1195,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       return Math.max(0, master.duration);
     }
     const metadata = asLabRecord(asLabRecord(deps.store.getState().source)["metadata"]);
-    return typeof metadata["durationSeconds"] === "number" ? Math.max(0, metadata["durationSeconds"]) : 0;
+    return typeof metadata["durationSeconds"] === "number"
+      ? Math.max(0, metadata["durationSeconds"])
+      : 0;
   }
 
   function clampMediaTime(media: MediaLikeElement | null, seconds: number) {
@@ -1152,6 +1291,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         durationSeconds
       )}`;
     }
+    updateTimelinePlaybackUi();
   }
 
   function syncDualPreviewVolume() {
@@ -1224,6 +1364,36 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     syncSlaveToMaster({ force: true });
     updateDualPreviewTransportUi();
     return true;
+  }
+
+  function seekSinglePreviewToMs(timeMs: number) {
+    const media = getPrimaryWorkspacePreviewMedia();
+    if (media !== null) {
+      media.currentTime = clampMediaTime(media, timeMs / 1000);
+      updateTimelinePlaybackUi();
+      return true;
+    }
+    const mediaEls = deps.documentRef.querySelectorAll<HTMLMediaElement>(".labx-preview-media");
+    mediaEls.forEach(function (el) {
+      el.currentTime = timeMs / 1000;
+    });
+    updateTimelinePlaybackUi();
+    return mediaEls.length > 0;
+  }
+
+  function seekTimelineToMs(timeMs: number) {
+    const state = deps.store.getState();
+    if (isDualPreviewActive(state) === true) {
+      if (seekDualPreviewToMs(timeMs)) {
+        return true;
+      }
+      dispatch({
+        type: "push-event",
+        event: buildUiEvent("Dual preview seek is unavailable until media is ready.", "warning"),
+      });
+      return false;
+    }
+    return seekSinglePreviewToMs(timeMs);
   }
 
   function handleDualPreviewMasterPlay() {
@@ -1345,28 +1515,31 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   }
 
   // --- Timeline drag state ---
-  type TimelineDragMode = "none" | "rail" | "start" | "end" | "body";
+  type TimelineDragMode = "none" | "pending-seek" | "rail" | "start" | "end" | "body";
   let timelineDragMode: TimelineDragMode = "none";
   let timelineDragTrack: HTMLElement | null = null;
   let timelineDragDurationMs: number = 0;
   let timelineDragAnchorMs: number = 0;
   let timelineDragBodyOffsetStart: number = 0;
   let timelineDragBodyOffsetEnd: number = 0;
+  let timelineDragBodyPointerOffsetMs: number = 0;
+  let timelinePendingClientX: number = 0;
+  let timelinePendingShiftKey = false;
+  const TIMELINE_DRAG_THRESHOLD_PX = 4;
+
+  function msFromTrackClientX(track: Element, durationMs: number, clientX: number): number {
+    const rect = (track as HTMLElement).getBoundingClientRect();
+    const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
+    const pct = x / rect.width;
+    return Math.max(0, Math.round(durationMs * pct));
+  }
 
   function msFromTrackX(clientX: number): number {
     if (!timelineDragTrack) return 0;
-    const rect = timelineDragTrack.getBoundingClientRect();
-    const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
-    const pct = x / rect.width;
-    return Math.max(0, Math.round(timelineDragDurationMs * pct));
+    return msFromTrackClientX(timelineDragTrack, timelineDragDurationMs, clientX);
   }
 
-  function startTimelineDrag(
-    track: Element,
-    _timeline: HTMLElement,
-    anchorMs: number,
-    durationMs: number
-  ) {
+  function startTimelineDrag(track: Element, anchorMs: number, durationMs: number) {
     timelineDragMode = "rail";
     timelineDragTrack = track as HTMLElement;
     timelineDragDurationMs = durationMs;
@@ -1374,9 +1547,25 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     dispatch({ type: "workspace-timeline-updated", startMs: anchorMs, endMs: anchorMs });
   }
 
+  function startTimelinePendingSeek(
+    track: Element,
+    anchorMs: number,
+    durationMs: number,
+    clientX: number,
+    shiftKey: boolean,
+    event: MouseEvent
+  ) {
+    event.preventDefault();
+    timelineDragMode = "pending-seek";
+    timelineDragTrack = track as HTMLElement;
+    timelineDragDurationMs = durationMs;
+    timelineDragAnchorMs = anchorMs;
+    timelinePendingClientX = clientX;
+    timelinePendingShiftKey = shiftKey;
+  }
+
   function startTimelineHandleDrag(
     track: Element,
-    _timeline: HTMLElement,
     mode: "start" | "end",
     durationMs: number,
     event: MouseEvent
@@ -1388,22 +1577,39 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     timelineDragDurationMs = durationMs;
   }
 
-  function startTimelineBodyDrag(
-    track: Element,
-    _timeline: HTMLElement,
-    durationMs: number,
-    event: MouseEvent
-  ) {
+  function startTimelineBodyDrag(track: Element, durationMs: number, event: MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
     const state = deps.store.getState();
     const currentStart = state.ui.workspace.timelineStartMs ?? 0;
     const currentEnd = state.ui.workspace.timelineEndMs ?? durationMs;
+    const pointerMs = msFromTrackClientX(track, durationMs, event.clientX);
     timelineDragMode = "body";
     timelineDragTrack = track as HTMLElement;
     timelineDragDurationMs = durationMs;
     timelineDragBodyOffsetStart = currentStart;
     timelineDragBodyOffsetEnd = currentEnd;
+    timelineDragBodyPointerOffsetMs = Math.max(
+      0,
+      Math.min(currentEnd - currentStart, pointerMs - currentStart)
+    );
+  }
+
+  function extendTimelineSelectionToMs(timeMs: number) {
+    const state = deps.store.getState();
+    const existingStart = state.ui.workspace.timelineStartMs;
+    const existingEnd = state.ui.workspace.timelineEndMs;
+    if (existingStart !== null && existingEnd !== null) {
+      const distStart = Math.abs(timeMs - existingStart);
+      const distEnd = Math.abs(timeMs - existingEnd);
+      if (distStart <= distEnd) {
+        dispatch({ type: "workspace-timeline-updated", startMs: timeMs, endMs: existingEnd });
+      } else {
+        dispatch({ type: "workspace-timeline-updated", startMs: existingStart, endMs: timeMs });
+      }
+      return;
+    }
+    dispatch({ type: "workspace-timeline-updated", startMs: timeMs, endMs: timeMs });
   }
 
   function handleMouseDown(event: Event) {
@@ -1412,7 +1618,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     if (!target) return;
 
     const handleEl = target.closest<HTMLElement>(
-      "[data-lab-action='timeline-drag-start'], [data-lab-action='timeline-drag-end'], [data-lab-action='timeline-drag-body']"
+      "[data-lab-action='timeline-interact'], [data-lab-action='timeline-drag-start'], [data-lab-action='timeline-drag-end'], [data-lab-action='timeline-drag-body']"
     );
     if (!handleEl) return;
 
@@ -1423,21 +1629,31 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
     const durationMs = Number(timeline.dataset["duration"] || 0);
 
-    if (action === "timeline-drag-start" || action === "timeline-drag-end") {
+    if (action === "timeline-interact") {
+      const ms = msFromTrackClientX(track, durationMs, event.clientX);
+      startTimelinePendingSeek(track, ms, durationMs, event.clientX, event.shiftKey, event);
+    } else if (action === "timeline-drag-start" || action === "timeline-drag-end") {
       startTimelineHandleDrag(
         track,
-        timeline,
         action === "timeline-drag-start" ? "start" : "end",
         durationMs,
         event
       );
     } else if (action === "timeline-drag-body") {
-      startTimelineBodyDrag(track, timeline, durationMs, event);
+      startTimelineBodyDrag(track, durationMs, event);
     }
   }
 
   function handleTimelineMouseMove(event: MouseEvent) {
     if (timelineDragMode === "none" || !timelineDragTrack) return;
+
+    if (timelineDragMode === "pending-seek") {
+      const shiftPx = Math.abs(event.clientX - timelinePendingClientX);
+      if (shiftPx < TIMELINE_DRAG_THRESHOLD_PX) {
+        return;
+      }
+      startTimelineDrag(timelineDragTrack, timelineDragAnchorMs, timelineDragDurationMs);
+    }
 
     const ms = msFromTrackX(event.clientX);
     const state = deps.store.getState();
@@ -1456,18 +1672,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       dispatch({ type: "workspace-timeline-updated", startMs: currentStart, endMs: nextEnd });
     } else if (timelineDragMode === "body") {
       const rangeWidth = timelineDragBodyOffsetEnd - timelineDragBodyOffsetStart;
-      const rect = timelineDragTrack.getBoundingClientRect();
-      const currentX = Math.max(0, Math.min(event.clientX - rect.left, rect.width));
-      const initialCenterPct =
-        (timelineDragBodyOffsetStart / timelineDragDurationMs +
-          timelineDragBodyOffsetEnd / timelineDragDurationMs) /
-        2;
-      const initialCenterX = initialCenterPct * rect.width;
-      const shiftPx = currentX - initialCenterX;
-      const shiftMs = Math.round((shiftPx / rect.width) * timelineDragDurationMs);
       const newStart = Math.max(
         0,
-        Math.min(timelineDragBodyOffsetStart + shiftMs, timelineDragDurationMs - rangeWidth)
+        Math.min(ms - timelineDragBodyPointerOffsetMs, timelineDragDurationMs - rangeWidth)
       );
       const newEnd = newStart + rangeWidth;
       dispatch({ type: "workspace-timeline-updated", startMs: newStart, endMs: newEnd });
@@ -1476,8 +1683,18 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
   function handleTimelineMouseUp() {
     if (timelineDragMode === "none") return;
+    if (timelineDragMode === "pending-seek") {
+      if (timelinePendingShiftKey === true) {
+        extendTimelineSelectionToMs(timelineDragAnchorMs);
+      } else {
+        seekTimelineToMs(timelineDragAnchorMs);
+      }
+    }
     timelineDragMode = "none";
     timelineDragTrack = null;
+    timelineDragBodyPointerOffsetMs = 0;
+    timelinePendingClientX = 0;
+    timelinePendingShiftKey = false;
   }
 
   function handleClick(event: Event) {
@@ -1894,75 +2111,14 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           if (Number.isFinite(timeMs) !== true) {
             return;
           }
-          if (isDualPreviewActive(state) === true) {
-            if (seekDualPreviewToMs(timeMs)) {
-              return;
-            }
-            dispatch({
-              type: "push-event",
-              event: buildUiEvent("Dual preview seek is unavailable until media is ready.", "warning"),
-            });
-            return;
-          }
-          const mediaEls = deps.documentRef.querySelectorAll<HTMLMediaElement>(".labx-preview-media");
-          mediaEls.forEach(function (el) {
-            el.currentTime = timeMs / 1000;
-          });
+          seekTimelineToMs(timeMs);
         }
         return;
-      case "timeline-interact": {
-        const timeline = target.closest<HTMLElement>(".labx-timeline");
-        const track = timeline?.querySelector(".labx-timeline__track");
-        if (timeline && track && event instanceof MouseEvent) {
-          const rect = track.getBoundingClientRect();
-          const x = Math.max(0, Math.min(event.clientX - rect.left, rect.width));
-          const pct = x / rect.width;
-          const durationMs = Number(timeline.dataset["duration"] || 0);
-          const ms = Math.round(durationMs * pct);
-
-          if (event.shiftKey) {
-            // Shift-click extends existing range or creates new one
-            const existingStart = state.ui.workspace.timelineStartMs;
-            const existingEnd = state.ui.workspace.timelineEndMs;
-            if (existingStart !== null && existingEnd !== null) {
-              // Extend nearest boundary
-              const distStart = Math.abs(ms - existingStart);
-              const distEnd = Math.abs(ms - existingEnd);
-              if (distStart <= distEnd) {
-                dispatch({ type: "workspace-timeline-updated", startMs: ms, endMs: existingEnd });
-              } else {
-                dispatch({ type: "workspace-timeline-updated", startMs: existingStart, endMs: ms });
-              }
-            } else {
-              dispatch({ type: "workspace-timeline-updated", startMs: ms, endMs: ms });
-            }
-          } else {
-            // Normal click starts a drag selection
-            startTimelineDrag(track, timeline, ms, durationMs);
-          }
-        }
-        return;
-      }
+      case "timeline-interact":
       case "timeline-drag-start":
-      case "timeline-drag-end": {
-        const timeline = target.closest<HTMLElement>(".labx-timeline");
-        const track = timeline?.querySelector(".labx-timeline__track");
-        if (timeline && track && event instanceof MouseEvent) {
-          const durationMs = Number(timeline.dataset["duration"] || 0);
-          const mode = action === "timeline-drag-start" ? "start" : "end";
-          startTimelineHandleDrag(track, timeline, mode, durationMs, event);
-        }
+      case "timeline-drag-end":
+      case "timeline-drag-body":
         return;
-      }
-      case "timeline-drag-body": {
-        const timeline = target.closest<HTMLElement>(".labx-timeline");
-        const track = timeline?.querySelector(".labx-timeline__track");
-        if (timeline && track && event instanceof MouseEvent) {
-          const durationMs = Number(timeline.dataset["duration"] || 0);
-          startTimelineBodyDrag(track, timeline, durationMs, event);
-        }
-        return;
-      }
       case "timeline-finetune": {
         const parts = value.split(":");
         if (parts.length === 2) {
@@ -2405,9 +2561,13 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     deps.windowRef.addEventListener("mouseup", handleTimelineMouseUp as EventListener);
     deps.store.subscribe(function () {
       syncDualPreviewFromState();
+      syncTimelinePlaybackUiFromState();
+      workspaceAudioVisualizer.sync();
     });
     queueMicrotask(function () {
       syncDualPreviewFromState();
+      syncTimelinePlaybackUiFromState();
+      workspaceAudioVisualizer.sync();
     });
   }
 

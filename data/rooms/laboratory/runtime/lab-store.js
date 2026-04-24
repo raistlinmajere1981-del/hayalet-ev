@@ -33,6 +33,128 @@ function createDefaultSourceDrafts() {
     youtubeCaptureMode: "video+audio"
   };
 }
+function normalizeAudioFocusSettings(currentSettings, patch) {
+  if (!patch) {
+    return currentSettings;
+  }
+  const nextVisualizationMode = patch.visualizationMode === void 0 ? currentSettings.visualizationMode === "spectrum" ? "spectrum" : "waveform" : patch.visualizationMode === "spectrum" ? "spectrum" : "waveform";
+  return {
+    ...currentSettings,
+    ...patch,
+    visualizationMode: nextVisualizationMode
+  };
+}
+function normalizeWorkspaceTimelineRange(startMs, endMs) {
+  const nextStart = typeof startMs === "number" && Number.isFinite(startMs) ? Math.max(0, Math.round(startMs)) : null;
+  const nextEnd = typeof endMs === "number" && Number.isFinite(endMs) ? Math.max(0, Math.round(endMs)) : null;
+  if (nextStart !== null && nextEnd !== null && nextEnd <= nextStart) {
+    return {
+      endMs: null,
+      startMs: nextStart
+    };
+  }
+  return {
+    endMs: nextEnd,
+    startMs: nextStart
+  };
+}
+function normalizeLabSelectionType(value) {
+  switch (value) {
+    case "clip":
+    case "focus":
+    case "inspect":
+      return value;
+    default:
+      return "unknown";
+  }
+}
+function normalizeSelectionRoi(value) {
+  const record = asLabRecord(value);
+  const x = asNumber(record["x"]);
+  const y = asNumber(record["y"]);
+  const width = asNumber(record["width"]);
+  const height = asNumber(record["height"]);
+  if (x === null || y === null || width === null || height === null || width <= 0 || height <= 0) {
+    return void 0;
+  }
+  return {
+    x,
+    y,
+    width,
+    height
+  };
+}
+function getSelectionSeedForRange(value, startMs, endMs) {
+  const record = asLabRecord(value);
+  const seedRange = normalizeWorkspaceTimelineRange(
+    asNumber(record["startMs"]),
+    asNumber(record["endMs"])
+  );
+  if (seedRange.startMs !== startMs || seedRange.endMs !== endMs) {
+    return null;
+  }
+  const id = asNonEmptyString(record["id"]);
+  const label = asNonEmptyString(record["label"]) || void 0;
+  const roi = normalizeSelectionRoi(record["roi"]);
+  const createdAt = asNumber(record["createdAt"]);
+  return {
+    ...id === null ? {} : { id },
+    type: normalizeLabSelectionType(record["type"]),
+    ...label === void 0 ? {} : { label },
+    ...roi === void 0 ? {} : { roi },
+    ...createdAt === null ? {} : { createdAt: Math.max(0, Math.round(createdAt)) }
+  };
+}
+function createActiveSelectionFromRange(startMs, endMs, previousSelection, options = {}) {
+  if (startMs === null || endMs === null || endMs <= startMs) {
+    return null;
+  }
+  const selectionSeed = getSelectionSeedForRange(options.persistedSelection, startMs, endMs);
+  const nextType = previousSelection?.type || selectionSeed?.type || "clip";
+  const nextLabel = previousSelection?.label ?? selectionSeed?.label;
+  const nextRoi = previousSelection?.roi ?? selectionSeed?.roi;
+  return {
+    id: previousSelection?.id || selectionSeed?.id || createLabEventId("selection"),
+    startMs,
+    endMs,
+    type: nextType === "unknown" ? "clip" : nextType,
+    ...nextLabel === void 0 ? {} : { label: nextLabel },
+    ...nextRoi === void 0 ? {} : { roi: nextRoi },
+    createdAt: previousSelection?.createdAt || selectionSeed?.createdAt || Math.max(0, Date.now())
+  };
+}
+function syncWorkspaceSelectionWithRange(workspace, range, options = {}) {
+  return {
+    ...workspace,
+    timelineStartMs: range.startMs,
+    timelineEndMs: range.endMs,
+    activeSelection: createActiveSelectionFromRange(
+      range.startMs,
+      range.endMs,
+      workspace.activeSelection,
+      options
+    )
+  };
+}
+function clearWorkspaceSelection(workspace) {
+  return {
+    ...workspace,
+    timelineStartMs: null,
+    timelineEndMs: null,
+    activeSelection: null
+  };
+}
+function getWorkspaceSourceSelectionResetKey(source) {
+  const sourceRecord = asLabRecord(source);
+  return JSON.stringify({
+    kind: asNonEmptyString(sourceRecord["kind"]),
+    mode: asNonEmptyString(sourceRecord["mode"]),
+    storedPath: asNonEmptyString(sourceRecord["storedPath"]),
+    sourceAssetId: asNonEmptyString(sourceRecord["sourceAssetId"]),
+    sourceUrl: asNonEmptyString(sourceRecord["sourceUrl"]),
+    storedFileName: asNonEmptyString(sourceRecord["storedFileName"])
+  });
+}
 const LAB_ASSET_TYPES = [
   "source",
   "clip",
@@ -216,6 +338,7 @@ function createDefaultWorkspaceUiState() {
   return {
     timelineStartMs: null,
     timelineEndMs: null,
+    activeSelection: null,
     roiRegions: [],
     interactiveSettings: {
       brightness: 100,
@@ -235,7 +358,7 @@ function createDefaultWorkspaceUiState() {
       filterType: "none",
       filterFrequency: 1e3,
       filterQ: 1,
-      visualizationMode: "none",
+      visualizationMode: "waveform",
       eqBands: [
         { frequency: 60, gain: 0, Q: 1, type: "lowshelf" },
         { frequency: 250, gain: 0, Q: 1, type: "peaking" },
@@ -1102,6 +1225,7 @@ function healWorkspaceDualPreviewState(state) {
 function syncCanonicalStateFromSnapshot(state, snapshot, options = {}) {
   const previousActiveProjectId = state.projectIndex.activeProjectId;
   const previousSourceReady = isWorkspaceSourceReady(state.source);
+  const previousSourceSelectionKey = getWorkspaceSourceSelectionResetKey(state.source);
   state.snapshot = snapshot;
   state.bootReady = snapshot["ready"] === true || state.bootReady;
   if (options.preserveFeatureId !== true) {
@@ -1129,10 +1253,10 @@ function syncCanonicalStateFromSnapshot(state, snapshot, options = {}) {
     state.assets = [];
     state.sourceProbeStatus = state.sourceProbeStatus === "running" ? "running" : "idle";
     state.ui.lastHydratedProjectId = null;
-    state.ui.workspace = {
+    state.ui.workspace = clearWorkspaceSelection({
       ...state.ui.workspace,
       sourceIntakeCollapsed: false
-    };
+    });
     healWorkspaceDualPreviewState(state);
     return state;
   }
@@ -1155,6 +1279,10 @@ function syncCanonicalStateFromSnapshot(state, snapshot, options = {}) {
   state.assets = normalizeStoreAssets(activeProject["assets"]);
   const nextActiveProjectId = state.projectIndex.activeProjectId;
   const nextSourceReady = isWorkspaceSourceReady(state.source);
+  const nextSourceSelectionKey = getWorkspaceSourceSelectionResetKey(state.source);
+  if (previousActiveProjectId !== nextActiveProjectId || previousSourceSelectionKey !== nextSourceSelectionKey) {
+    state.ui.workspace = clearWorkspaceSelection(state.ui.workspace);
+  }
   if (previousActiveProjectId !== nextActiveProjectId) {
     state.ui.workspace = {
       ...state.ui.workspace,
@@ -1303,26 +1431,35 @@ function reduceEvent(state, event) {
         state.ui.rawLogCollapsed = event.payload.rawLogCollapsed !== false;
         if (event.payload.workspace && typeof event.payload.workspace === "object") {
           const ws = event.payload.workspace;
-          state.ui.workspace = {
-            ...state.ui.workspace,
-            timelineStartMs: typeof ws.timelineStartMs === "number" ? ws.timelineStartMs : state.ui.workspace.timelineStartMs,
-            timelineEndMs: typeof ws.timelineEndMs === "number" ? ws.timelineEndMs : state.ui.workspace.timelineEndMs,
-            roiRegions: Array.isArray(ws.roiRegions) ? ws.roiRegions : state.ui.workspace.roiRegions,
-            interactiveSettings: ws.interactiveSettings ? { ...state.ui.workspace.interactiveSettings, ...ws.interactiveSettings } : state.ui.workspace.interactiveSettings,
-            audioFocus: ws.audioFocus ? { ...state.ui.workspace.audioFocus, ...ws.audioFocus } : state.ui.workspace.audioFocus,
-            dualPreviewEnabled: ws.dualPreviewEnabled === true,
-            dualPreviewAudioAssetId: typeof ws.dualPreviewAudioAssetId === "string" ? ws.dualPreviewAudioAssetId : null,
-            dualPreviewVolume: typeof ws.dualPreviewVolume === "number" ? clampDualPreviewVolume(ws.dualPreviewVolume) : state.ui.workspace.dualPreviewVolume,
-            hypothesis: typeof ws.hypothesis === "string" ? ws.hypothesis : state.ui.workspace.hypothesis,
-            bookmarks: Array.isArray(ws.bookmarks) ? ws.bookmarks : state.ui.workspace.bookmarks,
-            selectedIntents: Array.isArray(ws.selectedIntents) ? normalizeWorkspaceIntentIds(ws.selectedIntents) : state.ui.workspace.selectedIntents,
-            sourceIntakeCollapsed: ws.sourceIntakeCollapsed === true,
-            rightPanelCollapsed: ws.rightPanelCollapsed === true,
-            processViewActive: ws.processViewActive === true,
-            activeStepPreviewId: typeof ws.activeStepPreviewId === "string" ? ws.activeStepPreviewId : null,
-            processPanelCollapsedSections: Array.isArray(ws.processPanelCollapsedSections) ? ws.processPanelCollapsedSections : state.ui.workspace.processPanelCollapsedSections,
-            reportOverlayOpen: ws.reportOverlayOpen === true
-          };
+          const hydratedTimelineRange = normalizeWorkspaceTimelineRange(
+            typeof ws.timelineStartMs === "number" ? ws.timelineStartMs : state.ui.workspace.timelineStartMs,
+            typeof ws.timelineEndMs === "number" ? ws.timelineEndMs : state.ui.workspace.timelineEndMs
+          );
+          state.ui.workspace = syncWorkspaceSelectionWithRange(
+            {
+              ...state.ui.workspace,
+              activeSelection: null,
+              roiRegions: Array.isArray(ws.roiRegions) ? ws.roiRegions : state.ui.workspace.roiRegions,
+              interactiveSettings: ws.interactiveSettings ? { ...state.ui.workspace.interactiveSettings, ...ws.interactiveSettings } : state.ui.workspace.interactiveSettings,
+              audioFocus: normalizeAudioFocusSettings(state.ui.workspace.audioFocus, ws.audioFocus),
+              dualPreviewEnabled: ws.dualPreviewEnabled === true,
+              dualPreviewAudioAssetId: typeof ws.dualPreviewAudioAssetId === "string" ? ws.dualPreviewAudioAssetId : null,
+              dualPreviewVolume: typeof ws.dualPreviewVolume === "number" ? clampDualPreviewVolume(ws.dualPreviewVolume) : state.ui.workspace.dualPreviewVolume,
+              hypothesis: typeof ws.hypothesis === "string" ? ws.hypothesis : state.ui.workspace.hypothesis,
+              bookmarks: Array.isArray(ws.bookmarks) ? ws.bookmarks : state.ui.workspace.bookmarks,
+              selectedIntents: Array.isArray(ws.selectedIntents) ? normalizeWorkspaceIntentIds(ws.selectedIntents) : state.ui.workspace.selectedIntents,
+              sourceIntakeCollapsed: ws.sourceIntakeCollapsed === true,
+              rightPanelCollapsed: ws.rightPanelCollapsed === true,
+              processViewActive: ws.processViewActive === true,
+              activeStepPreviewId: typeof ws.activeStepPreviewId === "string" ? ws.activeStepPreviewId : null,
+              processPanelCollapsedSections: Array.isArray(ws.processPanelCollapsedSections) ? ws.processPanelCollapsedSections : state.ui.workspace.processPanelCollapsedSections,
+              reportOverlayOpen: ws.reportOverlayOpen === true
+            },
+            hydratedTimelineRange,
+            {
+              persistedSelection: ws.activeSelection
+            }
+          );
           if (Array.isArray(ws.selectedIntents)) {
             state.selectedCapabilities = deriveCapabilitiesFromIntentIds(
               state.ui.workspace.selectedIntents
@@ -1527,11 +1664,16 @@ function reduceEvent(state, event) {
       state.ui.analysisControlsCollapsed = state.workbench["controlsCollapsed"] === true;
       state.ui.liveFindingsExpanded = asNonEmptyString(state.workbench["activeLiveFindingsStreamId"]) !== null;
       return state;
-    case "source-config-patched":
+    case "source-config-patched": {
+      const previousSourceSelectionKey = getWorkspaceSourceSelectionResetKey(state.source);
       state.source = {
         ...state.source || {},
         ...asLabRecord(event.patch)
       };
+      const nextSourceSelectionKey = getWorkspaceSourceSelectionResetKey(state.source);
+      if (previousSourceSelectionKey !== nextSourceSelectionKey) {
+        state.ui.workspace = clearWorkspaceSelection(state.ui.workspace);
+      }
       if (event.patch["kind"] !== void 0 || event.patch["mode"] !== void 0 || event.patch["storedPath"] === null || event.patch["status"] === "idle") {
         state.ui.workspace = {
           ...state.ui.workspace,
@@ -1540,6 +1682,7 @@ function reduceEvent(state, event) {
       }
       healWorkspaceDualPreviewState(state);
       return state;
+    }
     case "source-drafts-updated":
       state.ui.sourceDrafts = {
         ...state.ui.sourceDrafts,
@@ -1701,13 +1844,11 @@ function reduceEvent(state, event) {
       state.ui.eventFeedCursor = 0;
       return state;
     // V2.3 workspace events
-    case "workspace-timeline-updated":
-      state.ui.workspace = {
-        ...state.ui.workspace,
-        timelineStartMs: event.startMs,
-        timelineEndMs: event.endMs
-      };
+    case "workspace-timeline-updated": {
+      const nextTimelineRange = normalizeWorkspaceTimelineRange(event.startMs, event.endMs);
+      state.ui.workspace = syncWorkspaceSelectionWithRange(state.ui.workspace, nextTimelineRange);
       return state;
+    }
     case "workspace-roi-added":
       state.ui.workspace = {
         ...state.ui.workspace,
@@ -1820,10 +1961,7 @@ function reduceEvent(state, event) {
     case "workspace-audio-updated":
       state.ui.workspace = {
         ...state.ui.workspace,
-        audioFocus: {
-          ...state.ui.workspace.audioFocus,
-          ...event.patch
-        }
+        audioFocus: normalizeAudioFocusSettings(state.ui.workspace.audioFocus, event.patch)
       };
       return state;
     case "workspace-right-panel-toggled":

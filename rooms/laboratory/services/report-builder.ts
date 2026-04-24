@@ -149,9 +149,13 @@ export function buildAiReport(run: LabRun | null, reportRecord: unknown): LabAiR
     (entry): entry is string => entry !== null
   );
 
-  const moduleTrace: LabModuleTraceEntry[] = run.moduleTrace.slice();
+  const moduleTrace: LabModuleTraceEntry[] = Array.isArray(run.moduleTrace)
+    ? run.moduleTrace.slice()
+    : [];
   const analysisScope: AnalysisScope | null = run.analysisScope;
-  const comparisonVariants: LabComparisonVariant[] = run.comparisonVariants.slice();
+  const comparisonVariants: LabComparisonVariant[] = Array.isArray(run.comparisonVariants)
+    ? run.comparisonVariants.slice()
+    : [];
 
   return {
     manifest: {
