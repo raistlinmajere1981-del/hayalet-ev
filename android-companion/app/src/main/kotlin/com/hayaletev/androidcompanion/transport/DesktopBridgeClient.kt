@@ -1,5 +1,6 @@
 package com.hayaletev.androidcompanion.transport
 
+import com.hayaletev.androidcompanion.debug.CompanionDiagnostics
 import com.hayaletev.androidcompanion.model.CompanionManifest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -49,6 +50,10 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
     private val baseUrl = "http://127.0.0.1:${manifest.bridgePort}"
 
+    init {
+        CompanionDiagnostics.setState("Bridge endpoint", baseUrl)
+    }
+
     suspend fun registerSession(
         deviceId: String,
         target: String,
@@ -73,7 +78,15 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
 
     suspend fun pollCommands(deviceId: String): List<BridgeCommand> {
         val response = getJson("/api/v1/session/commands?deviceId=$deviceId")
-        return parseCommands(response.optJSONArray("commands"))
+        val commands = parseCommands(response.optJSONArray("commands"))
+        if (commands.isNotEmpty()) {
+            CompanionDiagnostics.i(
+                "bridge",
+                "Desktop command queue returned ${commands.size} command(s).",
+                commands.joinToString(", ") { it.kind },
+            )
+        }
+        return commands
     }
 
     suspend fun acknowledgeCommand(
@@ -93,6 +106,11 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
             payload.put("previewActive", previewActive)
         }
         postJson("/api/v1/session/ack", payload)
+        CompanionDiagnostics.i(
+            "bridge",
+            "Acknowledged command ${command.kind}.",
+            "status=$status, previewActive=$previewActive",
+        )
     }
 
     suspend fun uploadAnalyzeCapture(
@@ -105,6 +123,11 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
             .put("fileName", file.name)
             .put("contentBase64", android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP))
         postJson("/api/v1/media/analyze", payload)
+        CompanionDiagnostics.i(
+            "bridge",
+            "Uploaded analyze capture to desktop.",
+            "file=${file.name}, bytes=${bytes.size}",
+        )
     }
 
     suspend fun submitTranscript(
@@ -123,6 +146,11 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
             payload.put("metadata", metadata)
         }
         postJson("/api/v1/transcript/ingress", payload)
+        CompanionDiagnostics.d(
+            "speech",
+            "Submitted transcript to desktop bridge.",
+            "target=$target, final=$isFinal",
+        )
     }
 
     private suspend fun getJson(path: String): JSONObject = withContext(Dispatchers.IO) {
@@ -131,12 +159,22 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
             .get()
             .build()
 
-        client.newCall(request).execute().use { response ->
-            val body = response.body?.string().orEmpty()
-            if (!response.isSuccessful) {
-                throw IllegalStateException(body.ifBlank { "Bridge request failed: ${response.code}" })
+        try {
+            client.newCall(request).execute().use { response ->
+                val body = response.body?.string().orEmpty()
+                if (!response.isSuccessful) {
+                    CompanionDiagnostics.e(
+                        "bridge",
+                        "GET $path failed with ${response.code}.",
+                        body.ifBlank { "Bridge request failed." },
+                    )
+                    throw IllegalStateException(body.ifBlank { "Bridge request failed: ${response.code}" })
+                }
+                JSONObject(body.ifBlank { "{}" })
             }
-            JSONObject(body.ifBlank { "{}" })
+        } catch (error: Exception) {
+            CompanionDiagnostics.e("bridge", "GET $path failed.", throwable = error)
+            throw error
         }
     }
 
@@ -146,12 +184,22 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
             .post(payload.toString().toRequestBody(jsonMediaType))
             .build()
 
-        client.newCall(request).execute().use { response ->
-            val body = response.body?.string().orEmpty()
-            if (!response.isSuccessful) {
-                throw IllegalStateException(body.ifBlank { "Bridge request failed: ${response.code}" })
+        try {
+            client.newCall(request).execute().use { response ->
+                val body = response.body?.string().orEmpty()
+                if (!response.isSuccessful) {
+                    CompanionDiagnostics.e(
+                        "bridge",
+                        "POST $path failed with ${response.code}.",
+                        body.ifBlank { "Bridge request failed." },
+                    )
+                    throw IllegalStateException(body.ifBlank { "Bridge request failed: ${response.code}" })
+                }
+                JSONObject(body.ifBlank { "{}" })
             }
-            JSONObject(body.ifBlank { "{}" })
+        } catch (error: Exception) {
+            CompanionDiagnostics.e("bridge", "POST $path failed.", throwable = error)
+            throw error
         }
     }
 

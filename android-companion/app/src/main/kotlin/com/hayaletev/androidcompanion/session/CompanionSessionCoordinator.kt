@@ -7,6 +7,7 @@ import com.hayaletev.androidcompanion.capture.CameraSessionConfig
 import com.hayaletev.androidcompanion.capture.CameraSessionController
 import com.hayaletev.androidcompanion.capture.CaptureLens
 import com.hayaletev.androidcompanion.capture.CapturePhotoQuality
+import com.hayaletev.androidcompanion.debug.CompanionDiagnostics
 import com.hayaletev.androidcompanion.model.CompanionManifest
 import com.hayaletev.androidcompanion.speech.CommandPhraseCatalog
 import com.hayaletev.androidcompanion.speech.CommandSpeechConfig
@@ -49,6 +50,8 @@ class CompanionSessionCoordinator(
 ) {
     private var launchContext = CompanionLaunchContext()
     private var pollJob: Job? = null
+    private var lastBridgeFailureSignature: String? = null
+    private var bridgeConnected = false
     private val speechController =
         CommandSpeechController(appContext, scope) { result ->
             scope.launch {
@@ -59,6 +62,12 @@ class CompanionSessionCoordinator(
                         text = result.transcript,
                         isFinal = true,
                         metadata = buildTranscriptMetadata(result),
+                    )
+                }.onFailure { error ->
+                    CompanionDiagnostics.w(
+                        "speech",
+                        "Transcript submission failed.",
+                        throwable = error,
                     )
                 }
             }
@@ -103,6 +112,12 @@ class CompanionSessionCoordinator(
             )
 
         speechController.updateConfig(launchContext.speechConfig)
+        publishLaunchContextDiagnostics()
+        CompanionDiagnostics.i(
+            "intent",
+            "Launch context updated.",
+            buildLaunchContextSummary(),
+        )
         onUiState(
             CompanionUiState(
                 connectionStatus = appContext.getString(R.string.status_waiting_desktop),
@@ -114,13 +129,18 @@ class CompanionSessionCoordinator(
 
     fun start(hasPermissions: () -> Boolean) {
         if (pollJob != null) {
+            CompanionDiagnostics.d("session", "Desktop session loop is already running.")
             return
         }
 
+        CompanionDiagnostics.i("session", "Starting desktop session loop.")
+        CompanionDiagnostics.setState("Session loop", "Running")
         pollJob =
             scope.launch(Dispatchers.Main.immediate) {
                 while (isActive) {
                     if (!hasPermissions()) {
+                        bridgeConnected = false
+                        CompanionDiagnostics.setState("Bridge", "Blocked by missing permissions")
                         onUiState(
                             CompanionUiState(
                                 connectionStatus = appContext.getString(R.string.status_permissions_required),
@@ -148,6 +168,24 @@ class CompanionSessionCoordinator(
                                 permissions = BridgePermissions(camera = "granted", microphone = "granted"),
                                 previewActive = cameraController.isPreviewBound(),
                             ) + bridgeClient.pollCommands(launchContext.deviceId)
+                        CompanionDiagnostics.setState("Bridge", "Connected")
+                        CompanionDiagnostics.clearState("Last bridge error")
+                        if (bridgeConnected.not()) {
+                            CompanionDiagnostics.i(
+                                "bridge",
+                                "Desktop bridge connected.",
+                                buildLaunchContextSummary(),
+                            )
+                        }
+                        bridgeConnected = true
+                        lastBridgeFailureSignature = null
+                        if (commands.isNotEmpty()) {
+                            CompanionDiagnostics.i(
+                                "bridge",
+                                "Received ${commands.size} command(s) from desktop.",
+                                commands.joinToString(", ") { it.kind },
+                            )
+                        }
 
                         onUiState(
                             CompanionUiState(
@@ -160,7 +198,19 @@ class CompanionSessionCoordinator(
                         commands.distinctBy { it.id }.forEach { command ->
                             handleCommand(command)
                         }
-                    } catch (_: Exception) {
+                    } catch (error: Exception) {
+                        bridgeConnected = false
+                        val errorSignature = summarizeError(error)
+                        CompanionDiagnostics.setState("Bridge", "Waiting for desktop")
+                        CompanionDiagnostics.setState("Last bridge error", errorSignature)
+                        if (lastBridgeFailureSignature != errorSignature) {
+                            CompanionDiagnostics.w(
+                                "bridge",
+                                "Desktop bridge loop is waiting for a healthy connection.",
+                                throwable = error,
+                            )
+                        }
+                        lastBridgeFailureSignature = errorSignature
                         onUiState(
                             CompanionUiState(
                                 connectionStatus = appContext.getString(R.string.status_waiting_desktop),
@@ -176,70 +226,91 @@ class CompanionSessionCoordinator(
     }
 
     fun stop() {
+        CompanionDiagnostics.i("session", "Stopping desktop session loop.")
         pollJob?.cancel()
         pollJob = null
+        bridgeConnected = false
+        CompanionDiagnostics.setState("Session loop", "Stopped")
+        CompanionDiagnostics.setState("Bridge", "Idle")
         speechController.stop()
         cameraController.stopSession()
     }
 
     fun destroy() {
+        CompanionDiagnostics.i("session", "Destroying session coordinator.")
         stop()
         speechController.destroy()
     }
 
     private suspend fun handleCommand(command: BridgeCommand) {
         applyCommandProfile(command.profile)
-        when (command.kind) {
-            "open-camera" -> {
-                cameraController.ensurePreview(launchContext.cameraConfig)
-                if (launchContext.speechConfig.enabled) {
-                    speechController.start()
+        CompanionDiagnostics.setState("Last command", command.kind)
+        CompanionDiagnostics.i(
+            "command",
+            "Handling command ${command.kind}.",
+            "target=${command.target}",
+        )
+        runCatching {
+            when (command.kind) {
+                "open-camera" -> {
+                    cameraController.ensurePreview(launchContext.cameraConfig)
+                    if (launchContext.speechConfig.enabled) {
+                        speechController.start()
+                    }
+                    bridgeClient.acknowledgeCommand(
+                        deviceId = launchContext.deviceId,
+                        command = command,
+                        status = "accepted",
+                        message = "Phone preview is active.",
+                        previewActive = cameraController.isPreviewBound(),
+                    )
                 }
-                bridgeClient.acknowledgeCommand(
-                    deviceId = launchContext.deviceId,
-                    command = command,
-                    status = "accepted",
-                    message = "Phone preview is active.",
-                    previewActive = cameraController.isPreviewBound(),
-                )
-            }
 
-            "capture-photo" -> {
-                cameraController.ensurePreview(launchContext.cameraConfig)
-                val file = File.createTempFile("analyze-capture-", ".jpg", appContext.cacheDir)
-                val captured = cameraController.takePhoto(file)
-                bridgeClient.uploadAnalyzeCapture(launchContext.deviceId, captured)
-                bridgeClient.acknowledgeCommand(
-                    deviceId = launchContext.deviceId,
-                    command = command,
-                    status = "done",
-                    message = "Phone capture uploaded to Hayalet Ev.",
-                    previewActive = cameraController.isPreviewBound(),
-                )
-            }
+                "capture-photo" -> {
+                    cameraController.ensurePreview(launchContext.cameraConfig)
+                    val file = File.createTempFile("analyze-capture-", ".jpg", appContext.cacheDir)
+                    val captured = cameraController.takePhoto(file)
+                    bridgeClient.uploadAnalyzeCapture(launchContext.deviceId, captured)
+                    bridgeClient.acknowledgeCommand(
+                        deviceId = launchContext.deviceId,
+                        command = command,
+                        status = "done",
+                        message = "Phone capture uploaded to Hayalet Ev.",
+                        previewActive = cameraController.isPreviewBound(),
+                    )
+                }
 
-            "retake-photo" -> {
-                cameraController.ensurePreview(launchContext.cameraConfig)
-                bridgeClient.acknowledgeCommand(
-                    deviceId = launchContext.deviceId,
-                    command = command,
-                    status = "accepted",
-                    message = "Ready to retake the phone capture.",
-                    previewActive = cameraController.isPreviewBound(),
-                )
-            }
+                "retake-photo" -> {
+                    cameraController.ensurePreview(launchContext.cameraConfig)
+                    bridgeClient.acknowledgeCommand(
+                        deviceId = launchContext.deviceId,
+                        command = command,
+                        status = "accepted",
+                        message = "Ready to retake the phone capture.",
+                        previewActive = cameraController.isPreviewBound(),
+                    )
+                }
 
-            "close-camera" -> {
-                speechController.stop()
-                cameraController.stopSession()
-                bridgeClient.acknowledgeCommand(
-                    deviceId = launchContext.deviceId,
-                    command = command,
-                    status = "done",
-                    message = "Phone capture session closed.",
-                    previewActive = cameraController.isPreviewBound(),
-                )
+                "close-camera" -> {
+                    speechController.stop()
+                    cameraController.stopSession()
+                    bridgeClient.acknowledgeCommand(
+                        deviceId = launchContext.deviceId,
+                        command = command,
+                        status = "done",
+                        message = "Phone capture session closed.",
+                        previewActive = cameraController.isPreviewBound(),
+                    )
+                }
             }
+        }.onFailure { error ->
+            CompanionDiagnostics.e(
+                "command",
+                "Command ${command.kind} failed.",
+                throwable = error,
+            )
+            CompanionDiagnostics.setState("Last bridge error", summarizeError(error))
+            throw error
         }
     }
 
@@ -320,6 +391,12 @@ class CompanionSessionCoordinator(
             )
 
         speechController.updateConfig(launchContext.speechConfig)
+        publishLaunchContextDiagnostics()
+        CompanionDiagnostics.d(
+            "command",
+            "Applied command profile overrides.",
+            "defaultLens=${profile.defaultLens ?: "unchanged"}, photoQuality=${profile.photoQuality ?: "unchanged"}",
+        )
     }
 
     private fun JSONObject.readPhraseList(key: String): List<String> {
@@ -332,5 +409,44 @@ class CompanionSessionCoordinator(
                 }
             }
         }
+    }
+
+    private fun publishLaunchContextDiagnostics() {
+        CompanionDiagnostics.setState("Device", launchContext.deviceId)
+        CompanionDiagnostics.setState("Target", launchContext.target)
+        CompanionDiagnostics.setState(
+            "Camera config",
+            "${launchContext.cameraConfig.lens.name.lowercase()} / ${launchContext.cameraConfig.photoQuality.name.lowercase()}",
+        )
+        CompanionDiagnostics.setState(
+            "Speech",
+            if (launchContext.speechConfig.enabled) {
+                "Enabled (${launchContext.speechConfig.fallbackMode.name.lowercase()})"
+            } else {
+                "Disabled"
+            },
+        )
+    }
+
+    private fun buildLaunchContextSummary(): String {
+        return buildString {
+            append("deviceId=")
+            append(launchContext.deviceId)
+            append(", target=")
+            append(launchContext.target)
+            append(", lens=")
+            append(launchContext.cameraConfig.lens.name.lowercase())
+            append(", photoQuality=")
+            append(launchContext.cameraConfig.photoQuality.name.lowercase())
+            append(", speechEnabled=")
+            append(launchContext.speechConfig.enabled)
+            append(", fallback=")
+            append(launchContext.speechConfig.fallbackMode.name.lowercase())
+        }
+    }
+
+    private fun summarizeError(error: Throwable): String {
+        val message = error.message?.trim().takeUnless { it.isNullOrEmpty() } ?: "No detail"
+        return "${error::class.simpleName}: $message"
     }
 }

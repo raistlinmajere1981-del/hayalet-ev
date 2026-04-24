@@ -148,5 +148,82 @@
                 android:textSize="16sp"
                 android:textStyle="bold" />
         </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/diagnosticsPanel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:background="#161B24"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:id="@+id/diagnosticsLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/diagnostics_label"
+                android:textColor="#8FA0B5"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/diagnosticsSummaryValue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:fontFamily="monospace"
+                android:textColor="#F5F7FA"
+                android:textIsSelectable="true"
+                android:textSize="12sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/diagnosticsCopyButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/diagnostics_copy" />
+
+                <Button
+                    android:id="@+id/diagnosticsShareButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:text="@string/diagnostics_share" />
+
+                <Button
+                    android:id="@+id/diagnosticsClearButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:text="@string/diagnostics_clear" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/diagnosticsLogsLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="@string/diagnostics_logs_label"
+                android:textColor="#8FA0B5"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/diagnosticsLogsValue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:fontFamily="monospace"
+                android:textColor="#F5F7FA"
+                android:textIsSelectable="true"
+                android:textSize="11sp" />
+        </LinearLayout>
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

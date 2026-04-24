@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import com.hayaletev.androidcompanion.debug.CompanionDiagnostics
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -112,6 +113,7 @@ class CommandSpeechController(
             override fun onEndOfSpeech() = scheduleRestart()
 
             override fun onError(error: Int) {
+                CompanionDiagnostics.w("speech", "Speech recognizer reported error code $error.")
                 scheduleRestart()
             }
 
@@ -122,11 +124,17 @@ class CommandSpeechController(
                     ?.trim()
                     .orEmpty()
                 if (text.isNotEmpty()) {
+                    val commandCandidate = config.phraseCatalog.detect(text)
+                    CompanionDiagnostics.i(
+                        "speech",
+                        "Speech transcript captured.",
+                        "backend=${backendKind.wireValue}, command=${commandCandidate?.intent ?: "none"}, text=${text.take(160)}",
+                    )
                     onFinalTranscript(
                         CommandSpeechResult(
                             transcript = text,
                             backend = backendKind.wireValue,
-                            commandCandidate = config.phraseCatalog.detect(text),
+                            commandCandidate = commandCandidate,
                         )
                     )
                 }
@@ -139,6 +147,19 @@ class CommandSpeechController(
 
     fun updateConfig(nextConfig: CommandSpeechConfig) {
         config = nextConfig
+        CompanionDiagnostics.i(
+            "speech",
+            "Speech config updated.",
+            "enabled=${config.enabled}, fallback=${config.fallbackMode.name.lowercase()}, openCameraPhrases=${config.phraseCatalog.openCamera.size}",
+        )
+        CompanionDiagnostics.setState(
+            "Speech",
+            if (config.enabled) {
+                "Enabled (${config.fallbackMode.name.lowercase()})"
+            } else {
+                "Disabled"
+            },
+        )
         recreateRecognizer()
         if (active) {
             startListening()
@@ -151,10 +172,14 @@ class CommandSpeechController(
         }
 
         active = true
+        CompanionDiagnostics.i("speech", "Starting speech controller.")
         startListening()
     }
 
     fun stop() {
+        if (active) {
+            CompanionDiagnostics.i("speech", "Stopping speech controller.")
+        }
         active = false
         restartJob?.cancel()
         restartJob = null
@@ -171,6 +196,7 @@ class CommandSpeechController(
         speechRecognizer?.destroy()
         speechRecognizer = null
         backendKind = SpeechBackendKind.UNAVAILABLE
+        CompanionDiagnostics.setState("Speech backend", backendKind.wireValue)
     }
 
     private fun scheduleRestart() {
@@ -193,7 +219,10 @@ class CommandSpeechController(
             return
         }
 
-        val recognizer = ensureRecognizer() ?: return
+        val recognizer = ensureRecognizer() ?: run {
+            CompanionDiagnostics.w("speech", "Speech recognizer is unavailable on this device.")
+            return
+        }
         recognizer.cancel()
         recognizer.startListening(buildRecognizerIntent())
     }
@@ -216,6 +245,8 @@ class CommandSpeechController(
                     .getOrDefault(false)
             if (onDeviceAvailable) {
                 backendKind = SpeechBackendKind.ON_DEVICE
+                CompanionDiagnostics.i("speech", "Using on-device speech recognizer.")
+                CompanionDiagnostics.setState("Speech backend", backendKind.wireValue)
                 return SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
             }
         }
@@ -224,15 +255,21 @@ class CommandSpeechController(
             SpeechFallbackMode.SYSTEM -> {
                 if (SpeechRecognizer.isRecognitionAvailable(context)) {
                     backendKind = SpeechBackendKind.SYSTEM
+                    CompanionDiagnostics.i("speech", "Using system speech recognizer.")
+                    CompanionDiagnostics.setState("Speech backend", backendKind.wireValue)
                     SpeechRecognizer.createSpeechRecognizer(context)
                 } else {
                     backendKind = SpeechBackendKind.UNAVAILABLE
+                    CompanionDiagnostics.w("speech", "System speech recognition is unavailable.")
+                    CompanionDiagnostics.setState("Speech backend", backendKind.wireValue)
                     null
                 }
             }
 
             SpeechFallbackMode.VOSK_SEAM -> {
                 backendKind = SpeechBackendKind.VOSK_SEAM
+                CompanionDiagnostics.w("speech", "Vosk seam fallback is not implemented yet.")
+                CompanionDiagnostics.setState("Speech backend", backendKind.wireValue)
                 null
             }
         }

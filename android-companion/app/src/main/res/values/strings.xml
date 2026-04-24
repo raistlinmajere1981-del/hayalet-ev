@@ -16,6 +16,16 @@
     <string name="permissions_label">Permissions</string>
     <string name="permissions_ready">Camera and microphone granted</string>
     <string name="permissions_missing">Permissions missing</string>
+    <string name="diagnostics_label">Diagnostics</string>
+    <string name="diagnostics_logs_label">Recent logs</string>
+    <string name="diagnostics_copy">Copy logs</string>
+    <string name="diagnostics_share">Share logs</string>
+    <string name="diagnostics_clear">Clear logs</string>
+    <string name="diagnostics_summary_empty">No diagnostic state yet.</string>
+    <string name="diagnostics_logs_empty">No diagnostic log entries yet.</string>
+    <string name="diagnostics_clipboard_label">Hayalet Ev Companion Diagnostics</string>
+    <string name="diagnostics_copy_success">Diagnostics copied to clipboard.</string>
+    <string name="diagnostics_share_title">Share companion diagnostics</string>
     <string name="capture_channel_name">Capture Session</string>
     <string name="capture_channel_description">Foreground capture service status for Hayalet Ev.</string>
     <string name="capture_service_title">Capture session ready</string>

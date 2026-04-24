@@ -8,8 +8,10 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import com.hayaletev.androidcompanion.debug.CompanionDiagnostics
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
+import java.util.Locale
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -40,9 +42,11 @@ class CameraSessionController(
 
     suspend fun ensurePreview(config: CameraSessionConfig) {
         if (imageCapture != null && currentConfig == config) {
+            CompanionDiagnostics.d("camera", "Camera preview is already active.", describeConfig(config))
             return
         }
 
+        CompanionDiagnostics.i("camera", "Binding camera preview.", describeConfig(config))
         suspendCancellableCoroutine { continuation ->
             val cameraProviderFuture = ProcessCameraProvider.getInstance(activity)
             cameraProviderFuture.addListener(
@@ -82,8 +86,11 @@ class CameraSessionController(
                         cameraProvider = resolvedProvider
                         imageCapture = nextImageCapture
                         currentConfig = config
+                        CompanionDiagnostics.setState("Camera preview", "Bound (${describeConfig(config)})")
+                        CompanionDiagnostics.i("camera", "Camera preview is active.", describeConfig(config))
                         continuation.resume(Unit)
                     } catch (error: Exception) {
+                        CompanionDiagnostics.e("camera", "Failed to bind camera preview.", throwable = error)
                         continuation.resumeWithException(error)
                     }
                 },
@@ -93,28 +100,43 @@ class CameraSessionController(
     }
 
     fun stopSession() {
+        if (imageCapture != null) {
+            CompanionDiagnostics.i("camera", "Stopping camera preview session.")
+        }
         cameraProvider?.unbindAll()
         imageCapture = null
         currentConfig = null
+        CompanionDiagnostics.setState("Camera preview", "Idle")
     }
 
     suspend fun takePhoto(outputFile: File): File {
         val capture = imageCapture ?: throw IllegalStateException("Camera preview is not ready yet.")
         val outputOptions = ImageCapture.OutputFileOptions.Builder(outputFile).build()
+        CompanionDiagnostics.i("camera", "Capturing photo.", outputFile.name)
         return suspendCancellableCoroutine { continuation ->
             capture.takePicture(
                 outputOptions,
                 ContextCompat.getMainExecutor(activity),
                 object : ImageCapture.OnImageSavedCallback {
                     override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                        CompanionDiagnostics.i("camera", "Photo capture completed.", outputFile.name)
                         continuation.resume(outputFile)
                     }
 
                     override fun onError(exception: ImageCaptureException) {
+                        CompanionDiagnostics.e("camera", "Photo capture failed.", throwable = exception)
                         continuation.resumeWithException(exception)
                     }
                 },
             )
+        }
+    }
+
+    private fun describeConfig(config: CameraSessionConfig): String {
+        return buildString {
+            append(config.lens.name.lowercase(Locale.US))
+            append(" / ")
+            append(config.photoQuality.name.lowercase(Locale.US))
         }
     }
 }
