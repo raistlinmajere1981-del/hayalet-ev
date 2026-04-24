@@ -112,6 +112,44 @@ function renderSuggestionPreview(preview) {
     </div>
   `;
 }
+function formatInterpretationType(type) {
+  return {
+    info: "Info",
+    warning: "Warning",
+    hint: "Hint"
+  }[type];
+}
+function getInterpretationIcon(type) {
+  return {
+    info: "i",
+    warning: "!",
+    hint: "~"
+  }[type];
+}
+function renderInterpretationPanel(items, variant) {
+  if (items.length === 0) {
+    return "";
+  }
+  return `
+    <details class="lab-interpretation-panel lab-interpretation-panel--${variant}" data-lab-interpretation-panel="true" open>
+      <summary class="lab-interpretation-panel__summary">
+        <span class="lab-interpretation-panel__eyebrow">Interpretation</span>
+        <span class="lab-interpretation-panel__count">${String(items.length)}</span>
+      </summary>
+      <div class="lab-interpretation-panel__list">
+        ${items.map(function(item) {
+    return `<div class="lab-interpretation-panel__item" data-tone="${escapeHtml(item.type)}">
+              <span class="lab-interpretation-panel__icon" aria-hidden="true">${escapeHtml(getInterpretationIcon(item.type))}</span>
+              <div class="lab-interpretation-panel__copy">
+                <div class="lab-interpretation-panel__meta">${escapeHtml(formatInterpretationType(item.type))}</div>
+                <div class="lab-interpretation-panel__message">${escapeHtml(item.message)}</div>
+              </div>
+            </div>`;
+  }).join("")}
+      </div>
+    </details>
+  `;
+}
 function renderFineTuneButtons(prefix, msValue) {
   return `
     <div class="labx-timeline__finetune">
@@ -141,6 +179,7 @@ export function renderLabWaveformTimeline(model) {
   const hasSemanticSelection = model.activeSelection !== null && model.activeSelection !== void 0 && model.activeSelection.endMs > model.activeSelection.startMs;
   const selectionSuggestions = hasSemanticSelection ? model.selectionSuggestions ?? [] : [];
   const suggestionPreview = hasSemanticSelection ? model.activeSuggestionPreview ?? null : null;
+  const interpretationItems = model.interpretationItems ?? [];
   const selectionIntent = activeSelection?.intent ?? "general";
   const startMs = hasSelection ? rawStartMs : 0;
   const endMs = hasSelection ? rawEndMs : durationMs;
@@ -231,6 +270,7 @@ export function renderLabWaveformTimeline(model) {
             <div class="lab-selection-panel__hint">This selection will guide future analysis</div>
             ${renderSelectionSuggestions(selectionSuggestions)}
             ${renderSuggestionPreview(suggestionPreview)}
+            ${renderInterpretationPanel(interpretationItems, "embedded")}
           </div>
           <div
             class="labx-timeline__selection lab-selection-overlay"
@@ -262,6 +302,7 @@ export function renderLabWaveformTimeline(model) {
           <button class="labx-timeline__export-btn" type="button" data-lab-action="timeline-extract-audio" title="Extract source audio">Extract Audio</button>
         </div>
       </div>
+      ${hasSelection ? "" : renderInterpretationPanel(interpretationItems, "standalone")}
       ${hasSelection ? `
         <div class="labx-timeline__finetune-row">
           <label class="labx-timeline__finetune-label">Start</label>

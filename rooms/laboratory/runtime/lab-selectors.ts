@@ -7,6 +7,7 @@ import type {
   LabAssetType,
   LabExpectedOutput,
   LabFeatureId,
+  LabInterpretationItem,
   LabIntentDirtyMap,
   LabModuleState,
   LabPreflightResult,
@@ -27,6 +28,8 @@ import type {
 } from "../models/lab-types.js";
 import { CAPABILITY_FAMILIES, WORKSPACE_INTENTS } from "../models/lab-types.js";
 import { normalizeAnalysisScope } from "../shared/types/analysis-scope.js";
+import { normalizeAudioFocusSettings } from "./lab-audio-focus-normalization.js";
+import { buildInterpretationItems } from "./lab-interpretation-engine.js";
 import {
   buildSelectionSuggestionPreview,
   getSelectionSuggestionsForContext,
@@ -896,6 +899,14 @@ export function getSelectionSuggestions(state: LabStoreState): LabActionSuggesti
   return getSelectionSuggestionsForContext(getActiveSelection(state), getSourceKind(state));
 }
 
+export function getInterpretationItems(state: LabStoreState): LabInterpretationItem[] {
+  return buildInterpretationItems({
+    activeSelection: getActiveSelection(state),
+    audioFocus: getEffectivePreviewAudioFocusSettings(state),
+    sourceKind: getSourceKind(state),
+  });
+}
+
 export function buildSuggestionPreview(
   suggestion: LabActionSuggestion,
   selection: LabSelection
@@ -990,11 +1001,12 @@ export function getWaveformTimelineModel(state: LabStoreState) {
   return {
     activeSelection: getActiveSelection(state),
     activeSuggestionPreview: getActiveSuggestionPreview(state),
-    audioFocus: getAudioFocusSettings(state),
+    audioFocus: getEffectivePreviewAudioFocusSettings(state),
     bookmarks: getBookmarks(state),
     dualPreviewActive,
     durationMs,
     endMs: selection.endMs,
+    interpretationItems: getInterpretationItems(state),
     linkedAudioAssetId: selectedAudioAsset?.id || null,
     selectionSuggestions: getSelectionSuggestions(state),
     startMs: selection.startMs,
@@ -1040,7 +1052,19 @@ export function getInteractiveSettings(state: LabStoreState) {
 }
 
 export function getAudioFocusSettings(state: LabStoreState) {
-  return state.ui.workspace.audioFocus;
+  return normalizeAudioFocusSettings(state.ui.workspace.audioFocus);
+}
+
+export function getEffectivePreviewAudioFocusSettings(state: LabStoreState) {
+  const normalizedSettings = getAudioFocusSettings(state);
+  if (isDualPreviewActive(state) !== true) {
+    return normalizedSettings;
+  }
+  return {
+    ...normalizedSettings,
+    playbackRate: 1,
+    preservePitch: true,
+  };
 }
 
 export function getDualPreviewEnabled(state: LabStoreState) {

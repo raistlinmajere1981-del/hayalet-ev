@@ -19,6 +19,11 @@ import {
 } from "../shared/types/analysis-scope.js";
 import { deriveLegacyStage } from "./lab-selectors.js";
 import {
+  DEFAULT_AUDIO_FOCUS_SETTINGS,
+  normalizeAudioFocusPatch,
+  normalizeAudioFocusSettings
+} from "./lab-audio-focus-normalization.js";
+import {
   clearWorkspaceSelection,
   getWorkspaceSourceSelectionResetKey,
   normalizeLabSelectionIntent,
@@ -39,17 +44,6 @@ function createDefaultSourceDrafts() {
     youtubePreset: null,
     youtubeCustom: {},
     youtubeCaptureMode: "video+audio"
-  };
-}
-function normalizeAudioFocusSettings(currentSettings, patch) {
-  if (!patch) {
-    return currentSettings;
-  }
-  const nextVisualizationMode = patch.visualizationMode === void 0 ? currentSettings.visualizationMode === "spectrum" ? "spectrum" : "waveform" : patch.visualizationMode === "spectrum" ? "spectrum" : "waveform";
-  return {
-    ...currentSettings,
-    ...patch,
-    visualizationMode: nextVisualizationMode
   };
 }
 const LAB_ASSET_TYPES = [
@@ -251,20 +245,7 @@ function createDefaultWorkspaceUiState() {
       edgeHighlight: false,
       invert: false
     },
-    audioFocus: {
-      gain: 1,
-      filterType: "none",
-      filterFrequency: 1e3,
-      filterQ: 1,
-      visualizationMode: "waveform",
-      eqBands: [
-        { frequency: 60, gain: 0, Q: 1, type: "lowshelf" },
-        { frequency: 250, gain: 0, Q: 1, type: "peaking" },
-        { frequency: 1e3, gain: 0, Q: 1, type: "peaking" },
-        { frequency: 4e3, gain: 0, Q: 1, type: "peaking" },
-        { frequency: 12e3, gain: 0, Q: 1, type: "highshelf" }
-      ]
-    },
+    audioFocus: normalizeAudioFocusSettings(DEFAULT_AUDIO_FOCUS_SETTINGS),
     dualPreviewEnabled: false,
     dualPreviewAudioAssetId: null,
     dualPreviewVolume: 1,
@@ -1358,7 +1339,7 @@ function reduceEvent(state, event) {
               activeSelection: null,
               roiRegions: Array.isArray(ws.roiRegions) ? ws.roiRegions : state.ui.workspace.roiRegions,
               interactiveSettings: ws.interactiveSettings ? { ...state.ui.workspace.interactiveSettings, ...ws.interactiveSettings } : state.ui.workspace.interactiveSettings,
-              audioFocus: normalizeAudioFocusSettings(state.ui.workspace.audioFocus, ws.audioFocus),
+              audioFocus: normalizeAudioFocusPatch(state.ui.workspace.audioFocus, ws.audioFocus),
               dualPreviewEnabled: ws.dualPreviewEnabled === true,
               dualPreviewAudioAssetId: typeof ws.dualPreviewAudioAssetId === "string" ? ws.dualPreviewAudioAssetId : null,
               dualPreviewVolume: typeof ws.dualPreviewVolume === "number" ? clampDualPreviewVolume(ws.dualPreviewVolume) : state.ui.workspace.dualPreviewVolume,
@@ -1912,7 +1893,7 @@ function reduceEvent(state, event) {
     case "workspace-audio-updated":
       state.ui.workspace = {
         ...state.ui.workspace,
-        audioFocus: normalizeAudioFocusSettings(state.ui.workspace.audioFocus, event.patch)
+        audioFocus: normalizeAudioFocusPatch(state.ui.workspace.audioFocus, event.patch)
       };
       return state;
     case "workspace-right-panel-toggled":

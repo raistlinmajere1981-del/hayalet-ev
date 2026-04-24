@@ -18,8 +18,24 @@ function renderEQBand(band: LabAudioFocusSettings["eqBands"][0], index: number) 
   `;
 }
 
-export function renderWorkspaceAudioFocus(audioFocus: LabAudioFocusSettings) {
+type WorkspaceAudioFocusRenderOptions = {
+  previewTarget?: "audio" | "video";
+  temporalAudioFocus?: Pick<LabAudioFocusSettings, "playbackRate" | "preservePitch">;
+  temporalControlsEnabled?: boolean;
+};
+
+export function renderWorkspaceAudioFocus(
+  audioFocus: LabAudioFocusSettings,
+  options: WorkspaceAudioFocusRenderOptions = {}
+) {
   const showFilterControls = audioFocus.filterType !== "none";
+  const temporalControlsEnabled = options.temporalControlsEnabled !== false;
+  const temporalAudioFocus = options.temporalAudioFocus || audioFocus;
+  const disabledAttr = temporalControlsEnabled ? "" : " disabled";
+  const previewTargetHint =
+    options.previewTarget === "video"
+      ? "Playback rate affects the bound preview media transport."
+      : "Playback rate affects the current preview audio.";
   return `
     <section class="labx-audio-focus labx-workspace-focus-row__panel" id="lab-audio-focus">
       <div class="labx-audio-focus__header">
@@ -80,6 +96,37 @@ export function renderWorkspaceAudioFocus(audioFocus: LabAudioFocusSettings) {
         </label>
         `
             : ""
+        }
+      </div>
+      <div class="labx-audio-focus__transport">
+        <p class="labx-card__eyebrow">ANALYSIS AID</p>
+        <label class="labx-control-row${temporalControlsEnabled ? "" : " is-disabled"}">
+          <span class="labx-control-row__label">Playback Speed</span>
+          <input
+            class="labx-range"
+            type="range"
+            min="0.25"
+            max="2"
+            step="0.05"
+            value="${String(temporalAudioFocus.playbackRate)}"
+            data-lab-field="workspace.audioFocus.playbackRate"${disabledAttr}
+          />
+          <span class="labx-control-row__value">${String(temporalAudioFocus.playbackRate)}x</span>
+        </label>
+        <label class="labx-control-toggle${temporalControlsEnabled ? "" : " is-disabled"}">
+          <input
+            type="checkbox"
+            data-lab-field="workspace.audioFocus.preservePitch"
+            ${temporalAudioFocus.preservePitch ? "checked" : ""}${disabledAttr}
+          />
+          <span>Preserve pitch while changing speed</span>
+        </label>
+        <p class="labx-audio-focus__transport-note">Slow down to inspect. Speed up to detect patterns.</p>
+        <p class="labx-audio-focus__transport-note">${previewTargetHint}</p>
+        ${
+          temporalControlsEnabled
+            ? ""
+            : `<p class="labx-audio-focus__transport-note labx-audio-focus__transport-note--muted">Dual preview keeps temporal playback fixed at 1x with preserved pitch.</p>`
         }
       </div>
       <p class="labx-panel-hint">

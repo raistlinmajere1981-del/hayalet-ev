@@ -164,6 +164,9 @@ export function createLabWaveformTimelineVisualizer(deps) {
       getMode() {
         return getVisualizationMode();
       },
+      getTemporalAudioEnabled() {
+        return getTimelineModel().dualPreviewActive !== true;
+      },
       windowRef: deps.windowRef
     });
     audioVisualizerCanvas = canvas;
@@ -470,11 +473,26 @@ export function createLabWaveformTimelineVisualizer(deps) {
       return;
     }
     if (boundWorkspaceAudioPreview?.removeEventListener) {
-      boundWorkspaceAudioPreview.removeEventListener("play", handleWorkspaceAudioPreviewPlaybackChange);
-      boundWorkspaceAudioPreview.removeEventListener("pause", handleWorkspaceAudioPreviewPlaybackChange);
-      boundWorkspaceAudioPreview.removeEventListener("ended", handleWorkspaceAudioPreviewPlaybackChange);
-      boundWorkspaceAudioPreview.removeEventListener("seeking", handleWorkspaceAudioPreviewPlaybackChange);
-      boundWorkspaceAudioPreview.removeEventListener("seeked", handleWorkspaceAudioPreviewPlaybackChange);
+      boundWorkspaceAudioPreview.removeEventListener(
+        "play",
+        handleWorkspaceAudioPreviewPlaybackChange
+      );
+      boundWorkspaceAudioPreview.removeEventListener(
+        "pause",
+        handleWorkspaceAudioPreviewPlaybackChange
+      );
+      boundWorkspaceAudioPreview.removeEventListener(
+        "ended",
+        handleWorkspaceAudioPreviewPlaybackChange
+      );
+      boundWorkspaceAudioPreview.removeEventListener(
+        "seeking",
+        handleWorkspaceAudioPreviewPlaybackChange
+      );
+      boundWorkspaceAudioPreview.removeEventListener(
+        "seeked",
+        handleWorkspaceAudioPreviewPlaybackChange
+      );
       boundWorkspaceAudioPreview.removeEventListener(
         "loadedmetadata",
         handleWorkspaceAudioPreviewPlaybackChange
@@ -524,11 +542,26 @@ export function createLabWaveformTimelineVisualizer(deps) {
   }
   function dispose() {
     if (boundWorkspaceAudioPreview?.removeEventListener) {
-      boundWorkspaceAudioPreview.removeEventListener("play", handleWorkspaceAudioPreviewPlaybackChange);
-      boundWorkspaceAudioPreview.removeEventListener("pause", handleWorkspaceAudioPreviewPlaybackChange);
-      boundWorkspaceAudioPreview.removeEventListener("ended", handleWorkspaceAudioPreviewPlaybackChange);
-      boundWorkspaceAudioPreview.removeEventListener("seeking", handleWorkspaceAudioPreviewPlaybackChange);
-      boundWorkspaceAudioPreview.removeEventListener("seeked", handleWorkspaceAudioPreviewPlaybackChange);
+      boundWorkspaceAudioPreview.removeEventListener(
+        "play",
+        handleWorkspaceAudioPreviewPlaybackChange
+      );
+      boundWorkspaceAudioPreview.removeEventListener(
+        "pause",
+        handleWorkspaceAudioPreviewPlaybackChange
+      );
+      boundWorkspaceAudioPreview.removeEventListener(
+        "ended",
+        handleWorkspaceAudioPreviewPlaybackChange
+      );
+      boundWorkspaceAudioPreview.removeEventListener(
+        "seeking",
+        handleWorkspaceAudioPreviewPlaybackChange
+      );
+      boundWorkspaceAudioPreview.removeEventListener(
+        "seeked",
+        handleWorkspaceAudioPreviewPlaybackChange
+      );
       boundWorkspaceAudioPreview.removeEventListener(
         "loadedmetadata",
         handleWorkspaceAudioPreviewPlaybackChange

@@ -231,6 +231,9 @@ export function createLabWaveformTimelineVisualizer(deps: LabWaveformTimelineVis
       getMode() {
         return getVisualizationMode();
       },
+      getTemporalAudioEnabled() {
+        return getTimelineModel().dualPreviewActive !== true;
+      },
       windowRef: deps.windowRef,
     });
     audioVisualizerCanvas = canvas;

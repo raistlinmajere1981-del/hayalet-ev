@@ -13,6 +13,7 @@ import {
   getCurrentSourceAsset,
   getDualPreviewLinkedAudioAssets,
   getDualPreviewVolume,
+  getEffectivePreviewAudioFocusSettings,
   getHypothesis,
   getInteractiveSettings,
   getLinkedAudioAssets,
@@ -973,6 +974,7 @@ export function renderWorkspaceSurface(state) {
   const previewUrl = asNonEmptyString(source["previewUrl"]);
   const settings = getInteractiveSettings(state);
   const audioFocus = getAudioFocusSettings(state);
+  const effectivePreviewAudioFocus = getEffectivePreviewAudioFocusSettings(state);
   const roiRegions = getROIRegions(state);
   const timeline = getWaveformTimelineModel(state);
   const bookmarks = getBookmarks(state);
@@ -988,7 +990,11 @@ export function renderWorkspaceSurface(state) {
   const hasVisualControls = sourceReady && (sourceKind === "video" || sourceKind === "image");
   const durationMs = sourceReady && typeof metadata["durationSeconds"] === "number" ? Math.round(metadata["durationSeconds"] * 1e3) : 0;
   const focusPanels = [
-    hasAudio && sourceReady ? renderWorkspaceAudioFocus(audioFocus) : "",
+    hasAudio && sourceReady ? renderWorkspaceAudioFocus(audioFocus, {
+      previewTarget: sourceKind === "video" ? "video" : "audio",
+      temporalAudioFocus: effectivePreviewAudioFocus,
+      temporalControlsEnabled: dualPreviewActive !== true
+    }) : "",
     hasVisualControls ? renderWorkspaceInteractiveControls(settings) : ""
   ].filter(Boolean);
   const focusSection = focusPanels.length > 0 ? `

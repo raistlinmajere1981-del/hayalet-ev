@@ -1,6 +1,7 @@
 import { escapeHtml } from "../models/lab-types.js";
 import type {
   LabActionSuggestion,
+  LabInterpretationItem,
   LabSelection,
   LabSuggestionPreview,
 } from "../models/lab-types.js";
@@ -153,6 +154,56 @@ function renderSuggestionPreview(preview: LabSuggestionPreview | null) {
   `;
 }
 
+function formatInterpretationType(type: LabInterpretationItem["type"]) {
+  return (
+    {
+      info: "Info",
+      warning: "Warning",
+      hint: "Hint",
+    } as const
+  )[type];
+}
+
+function getInterpretationIcon(type: LabInterpretationItem["type"]) {
+  return (
+    {
+      info: "i",
+      warning: "!",
+      hint: "~",
+    } as const
+  )[type];
+}
+
+function renderInterpretationPanel(
+  items: LabInterpretationItem[],
+  variant: "embedded" | "standalone"
+) {
+  if (items.length === 0) {
+    return "";
+  }
+  return `
+    <details class="lab-interpretation-panel lab-interpretation-panel--${variant}" data-lab-interpretation-panel="true" open>
+      <summary class="lab-interpretation-panel__summary">
+        <span class="lab-interpretation-panel__eyebrow">Interpretation</span>
+        <span class="lab-interpretation-panel__count">${String(items.length)}</span>
+      </summary>
+      <div class="lab-interpretation-panel__list">
+        ${items
+          .map(function (item) {
+            return `<div class="lab-interpretation-panel__item" data-tone="${escapeHtml(item.type)}">
+              <span class="lab-interpretation-panel__icon" aria-hidden="true">${escapeHtml(getInterpretationIcon(item.type))}</span>
+              <div class="lab-interpretation-panel__copy">
+                <div class="lab-interpretation-panel__meta">${escapeHtml(formatInterpretationType(item.type))}</div>
+                <div class="lab-interpretation-panel__message">${escapeHtml(item.message)}</div>
+              </div>
+            </div>`;
+          })
+          .join("")}
+      </div>
+    </details>
+  `;
+}
+
 function renderFineTuneButtons(prefix: string, msValue: number) {
   return `
     <div class="labx-timeline__finetune">
@@ -190,6 +241,7 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
     model.activeSelection.endMs > model.activeSelection.startMs;
   const selectionSuggestions = hasSemanticSelection ? (model.selectionSuggestions ?? []) : [];
   const suggestionPreview = hasSemanticSelection ? (model.activeSuggestionPreview ?? null) : null;
+  const interpretationItems = model.interpretationItems ?? [];
   const selectionIntent = activeSelection?.intent ?? "general";
   const startMs = hasSelection ? rawStartMs : 0;
   const endMs = hasSelection ? rawEndMs : durationMs;
@@ -298,6 +350,7 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
             <div class="lab-selection-panel__hint">This selection will guide future analysis</div>
             ${renderSelectionSuggestions(selectionSuggestions)}
             ${renderSuggestionPreview(suggestionPreview)}
+            ${renderInterpretationPanel(interpretationItems, "embedded")}
           </div>
           <div
             class="labx-timeline__selection lab-selection-overlay"
@@ -339,6 +392,7 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
           <button class="labx-timeline__export-btn" type="button" data-lab-action="timeline-extract-audio" title="Extract source audio">Extract Audio</button>
         </div>
       </div>
+      ${hasSelection ? "" : renderInterpretationPanel(interpretationItems, "standalone")}
       ${
         hasSelection
           ? `

@@ -117,8 +117,18 @@ function syncChildNodes(currentElement, nextElement) {
     syncElement(currentChildElement, nextChildElement);
   }
 }
+function readPreservedDetailsState(currentElement, nextElement) {
+  if (typeof HTMLDetailsElement !== "undefined" && currentElement instanceof HTMLDetailsElement && nextElement instanceof HTMLDetailsElement && currentElement.hasAttribute("data-lab-interpretation-panel")) {
+    return currentElement.open;
+  }
+  return null;
+}
 function syncElement(currentElement, nextElement) {
+  const preservedDetailsState = readPreservedDetailsState(currentElement, nextElement);
   syncAttributes(currentElement, nextElement);
+  if (preservedDetailsState !== null && typeof HTMLDetailsElement !== "undefined" && currentElement instanceof HTMLDetailsElement) {
+    currentElement.open = preservedDetailsState;
+  }
   syncChildNodes(currentElement, nextElement);
 }
 function updateRenderedElement(documentRef, currentElement, markup, preserveScroll = false) {

@@ -3,6 +3,7 @@ import type {
   LabArtifactProjection,
   LabAudioFocusSettings,
   LabBookmark,
+  LabInterpretationItem,
   LabPreviewArtifactProjection,
   LabSelection,
   LabSuggestionPreview,
@@ -16,6 +17,7 @@ export type LabWaveformTimelineModel = {
   dualPreviewActive: boolean;
   durationMs: number;
   endMs: number | null;
+  interpretationItems?: LabInterpretationItem[];
   linkedAudioAssetId?: string | null;
   selectionSuggestions?: LabActionSuggestion[];
   sourceKind?: string;

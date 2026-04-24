@@ -180,6 +180,14 @@ export interface LabSuggestionPreview {
   estimatedCost?: "low" | "medium" | "high";
 }
 
+export interface LabInterpretationItem {
+  id: string;
+  type: "info" | "warning" | "hint";
+  message: string;
+  confidence: number;
+  relatedAction?: string;
+}
+
 export interface LabInteractiveSettings {
   brightness: number;
   contrast: number;
@@ -208,6 +216,8 @@ export interface LabAudioFocusSettings {
   filterType: "none" | "lowpass" | "highpass" | "bandpass";
   filterFrequency: number;
   filterQ: number;
+  playbackRate: number;
+  preservePitch: boolean;
   visualizationMode: AudioVisualizationMode;
   eqBands: LabParametricEQBand[];
 }

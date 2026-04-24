@@ -3,12 +3,18 @@ import assert from "node:assert/strict";
 import type {
   LabActionSuggestion,
   LabArtifactProjection,
+  LabAudioFocusSettings,
   LabSelection,
 } from "../../rooms/laboratory/models/lab-types.ts";
+import {
+  DEFAULT_AUDIO_FOCUS_SETTINGS,
+  normalizeAudioFocusSettings,
+} from "../../rooms/laboratory/runtime/lab-audio-focus-normalization.ts";
 import { createLabEventBus } from "../../rooms/laboratory/runtime/lab-event-bus.ts";
 import { createLabRunController } from "../../rooms/laboratory/runtime/lab-run-controller.ts";
 import { createLabHostBridge } from "../../rooms/laboratory/runtime/lab-host-bridge.ts";
 import { createAudioVisualizer } from "../../rooms/laboratory/runtime/lab-audio-visualizer.ts";
+import { buildInterpretationItems } from "../../rooms/laboratory/runtime/lab-interpretation-engine.ts";
 import {
   getActualOutputs,
   getActionOutputs,
@@ -22,7 +28,9 @@ import {
   getAssetsByType,
   getCurrentSourceAsset,
   getDualPreviewVolume,
+  getEffectivePreviewAudioFocusSettings,
   getExpectedOutputs,
+  getInterpretationItems,
   getIntentDirtyMap,
   getLinkedAudioAssets,
   getParentSourceForAsset,
@@ -79,6 +87,22 @@ function installTimerMock(): {
       globalThis.clearTimeout = originalClearTimeout;
     },
   };
+}
+
+function createTestAudioFocusSettings(
+  overrides: Partial<LabAudioFocusSettings> = {}
+): LabAudioFocusSettings {
+  const defaultEqBands = DEFAULT_AUDIO_FOCUS_SETTINGS.eqBands.map(function (band) {
+    return { ...band };
+  });
+  return normalizeAudioFocusSettings(
+    {
+      ...DEFAULT_AUDIO_FOCUS_SETTINGS,
+      ...overrides,
+      eqBands: overrides.eqBands ?? defaultEqBands,
+    },
+    DEFAULT_AUDIO_FOCUS_SETTINGS
+  );
 }
 
 class FakeActionElement {
@@ -241,15 +265,57 @@ class FakeMediaElement {
   currentTime = 0;
   currentSrc = "";
   duration = 0;
+  private _mozPreservesPitch = true;
+  private _playbackRate = 1;
+  private _preservesPitch = true;
   readyState = 1;
   muted = false;
   paused = true;
   volume = 1;
   playCalls = 0;
+  playbackRateSetCalls = 0;
   pauseCalls = 0;
+  pitchSetCalls = 0;
   failPlay = false;
   src = "";
+  private _webkitPreservesPitch = true;
   private listeners = new Map<string, Set<(event: Event) => void>>();
+
+  get playbackRate() {
+    return this._playbackRate;
+  }
+
+  set playbackRate(value: number) {
+    this._playbackRate = value;
+    this.playbackRateSetCalls += 1;
+  }
+
+  get preservesPitch() {
+    return this._preservesPitch;
+  }
+
+  set preservesPitch(value: boolean) {
+    this._preservesPitch = value;
+    this.pitchSetCalls += 1;
+  }
+
+  get mozPreservesPitch() {
+    return this._mozPreservesPitch;
+  }
+
+  set mozPreservesPitch(value: boolean) {
+    this._mozPreservesPitch = value;
+    this.pitchSetCalls += 1;
+  }
+
+  get webkitPreservesPitch() {
+    return this._webkitPreservesPitch;
+  }
+
+  set webkitPreservesPitch(value: boolean) {
+    this._webkitPreservesPitch = value;
+    this.pitchSetCalls += 1;
+  }
 
   addEventListener(type: string, listener: EventListenerOrEventListenerObject): void {
     const handler =
@@ -904,11 +970,13 @@ test("runtime audio visualizer applies preview audio focus through a stable proc
   const canvas = new FakeCanvasElement();
   const documentRef = new FakeVisualizerDocument(media, null, canvas);
   const windowRef = new FakeVisualizerWindow();
-  let audioFocus = {
+  let audioFocus = createTestAudioFocusSettings({
     gain: 2.4,
     filterType: "highpass",
     filterFrequency: 1280,
     filterQ: 7.5,
+    playbackRate: 0.65,
+    preservePitch: false,
     visualizationMode: "waveform",
     eqBands: [
       { frequency: 60, gain: -6, Q: 1.4, type: "lowshelf" },
@@ -917,7 +985,7 @@ test("runtime audio visualizer applies preview audio focus through a stable proc
       { frequency: 4000, gain: 4.5, Q: 1.6, type: "peaking" },
       { frequency: 12000, gain: 3, Q: 0.9, type: "highshelf" },
     ],
-  } as const;
+  });
   const controller = createAudioVisualizer(
     media as unknown as HTMLMediaElement,
     canvas as unknown as HTMLCanvasElement,
@@ -950,6 +1018,10 @@ test("runtime audio visualizer applies preview audio focus through a stable proc
   assert.equal(primaryFilter?.connectedTargets[0], eqNodes[0]);
   assert.equal(eqNodes.at(-1)?.connectedTargets[0], audioContext?.analyser);
   assert.equal(audioContext?.analyser.connectedTargets[0], audioContext?.destination);
+  assert.equal(media.playbackRate, 0.65);
+  assert.equal(media.preservesPitch, false);
+  assert.equal(media.mozPreservesPitch, false);
+  assert.equal(media.webkitPreservesPitch, false);
   assert.deepEqual(gainNode?.gain.setTargetCalls.at(-1), [2.4, 0, 0.01]);
   assert.equal(primaryFilter?.type, "highpass");
   assert.deepEqual(primaryFilter?.frequency.setTargetCalls.at(-1), [1280, 0, 0.01]);
@@ -969,11 +1041,13 @@ test("runtime audio visualizer clamps preview audio focus values and skips uncha
   const canvas = new FakeCanvasElement();
   const documentRef = new FakeVisualizerDocument(media, null, canvas);
   const windowRef = new FakeVisualizerWindow();
-  let audioFocus = {
+  let audioFocus = createTestAudioFocusSettings({
     gain: 9,
     filterType: "bandpass",
     filterFrequency: 40_000,
     filterQ: 0.01,
+    playbackRate: 5,
+    preservePitch: false,
     visualizationMode: "waveform",
     eqBands: [
       { frequency: 5, gain: -30, Q: 99, type: "lowshelf" },
@@ -982,7 +1056,7 @@ test("runtime audio visualizer clamps preview audio focus values and skips uncha
       { frequency: 4000, gain: -18, Q: 25, type: "peaking" },
       { frequency: 50_000, gain: 22, Q: 0.02, type: "highshelf" },
     ],
-  } as const;
+  });
   const controller = createAudioVisualizer(
     media as unknown as HTMLMediaElement,
     canvas as unknown as HTMLCanvasElement,
@@ -1007,7 +1081,11 @@ test("runtime audio visualizer clamps preview audio focus values and skips uncha
   const eqNodes = audioContext?.biquadFilters.slice(1) || [];
   const initialGainCalls = gainNode?.gain.setTargetCalls.length || 0;
   const initialFilterCalls = primaryFilter?.frequency.setTargetCalls.length || 0;
+  const initialPlaybackSetCalls = media.playbackRateSetCalls;
+  const initialPitchSetCalls = media.pitchSetCalls;
 
+  assert.equal(media.playbackRate, 2);
+  assert.equal(media.preservesPitch, false);
   assert.deepEqual(gainNode?.gain.setTargetCalls.at(-1), [3, 0, 0.01]);
   assert.deepEqual(primaryFilter?.frequency.setTargetCalls.at(-1), [20000, 0, 0.01]);
   assert.deepEqual(primaryFilter?.Q.setTargetCalls.at(-1), [0.1, 0, 0.01]);
@@ -1020,6 +1098,25 @@ test("runtime audio visualizer clamps preview audio focus values and skips uncha
   await flushVisualizerWork();
   assert.equal(gainNode?.gain.setTargetCalls.length, initialGainCalls);
   assert.equal(primaryFilter?.frequency.setTargetCalls.length, initialFilterCalls);
+  assert.equal(media.playbackRateSetCalls, initialPlaybackSetCalls);
+  assert.equal(media.pitchSetCalls, initialPitchSetCalls);
+
+  audioFocus = {
+    ...audioFocus,
+    playbackRate: 0.5,
+    preservePitch: true,
+  };
+  controller.start();
+  await flushVisualizerWork();
+
+  const playbackOnlySetCalls = media.playbackRateSetCalls;
+  const pitchOnlySetCalls = media.pitchSetCalls;
+  assert.equal(media.playbackRate, 0.5);
+  assert.equal(media.preservesPitch, true);
+  assert.equal(gainNode?.gain.setTargetCalls.length, initialGainCalls);
+  assert.equal(primaryFilter?.frequency.setTargetCalls.length, initialFilterCalls);
+  assert.equal(media.playbackRateSetCalls, initialPlaybackSetCalls + 1);
+  assert.equal(pitchOnlySetCalls > initialPitchSetCalls, true);
 
   audioFocus = {
     ...audioFocus,
@@ -1040,6 +1137,8 @@ test("runtime audio visualizer clamps preview audio focus values and skips uncha
   assert.deepEqual(primaryFilter?.Q.setTargetCalls.at(-1), [4.5, 0, 0.01]);
   assert.deepEqual(eqNodes[1]?.gain.setTargetCalls.at(-1), [-4, 0, 0.01]);
   assert.equal(gainNode?.gain.setTargetCalls.length, initialGainCalls + 1);
+  assert.equal(media.playbackRateSetCalls, playbackOnlySetCalls);
+  assert.equal(media.pitchSetCalls, pitchOnlySetCalls);
 
   controller.destroy();
 });
@@ -1051,7 +1150,7 @@ test("runtime audio visualizer bypasses the primary filter stage when filter typ
   const canvas = new FakeCanvasElement();
   const documentRef = new FakeVisualizerDocument(media, null, canvas);
   const windowRef = new FakeVisualizerWindow();
-  let audioFocus = {
+  let audioFocus = createTestAudioFocusSettings({
     gain: 1.1,
     filterType: "none",
     filterFrequency: 1000,
@@ -1064,7 +1163,7 @@ test("runtime audio visualizer bypasses the primary filter stage when filter typ
       { frequency: 4000, gain: 0, Q: 1, type: "peaking" },
       { frequency: 12000, gain: 0, Q: 1, type: "highshelf" },
     ],
-  };
+  });
   const controller = createAudioVisualizer(
     media as unknown as HTMLMediaElement,
     canvas as unknown as HTMLCanvasElement,
@@ -1131,11 +1230,13 @@ test("runtime audio visualizer preserves custom preview audio focus across pause
   const canvas = new FakeCanvasElement();
   const documentRef = new FakeVisualizerDocument(media, null, canvas);
   const windowRef = new FakeVisualizerWindow();
-  const audioFocus = {
+  const audioFocus = createTestAudioFocusSettings({
     gain: 1.9,
     filterType: "bandpass" as const,
     filterFrequency: 1450,
     filterQ: 6.2,
+    playbackRate: 0.8,
+    preservePitch: false,
     visualizationMode: "waveform" as const,
     eqBands: [
       { frequency: 60, gain: -2, Q: 1.1, type: "lowshelf" as const },
@@ -1144,7 +1245,7 @@ test("runtime audio visualizer preserves custom preview audio focus across pause
       { frequency: 4000, gain: -1, Q: 1.3, type: "peaking" as const },
       { frequency: 12000, gain: 2.5, Q: 0.8, type: "highshelf" as const },
     ],
-  };
+  });
   const controller = createAudioVisualizer(
     media as unknown as HTMLMediaElement,
     canvas as unknown as HTMLCanvasElement,
@@ -1172,6 +1273,8 @@ test("runtime audio visualizer preserves custom preview audio focus across pause
   const initialEqCalls = eqNodes[2]?.gain.setTargetCalls.length || 0;
 
   assert.deepEqual(gainNode?.gain.setTargetCalls.at(-1), [1.9, 0, 0.01]);
+  assert.equal(media.playbackRate, 0.8);
+  assert.equal(media.preservesPitch, false);
   assert.deepEqual(primaryFilter?.frequency.setTargetCalls.at(-1), [1450, 0, 0.01]);
   assert.deepEqual(primaryFilter?.Q.setTargetCalls.at(-1), [6.2, 0, 0.01]);
   assert.deepEqual(eqNodes[2]?.gain.setTargetCalls.at(-1), [3.5, 0, 0.01]);
@@ -1181,6 +1284,8 @@ test("runtime audio visualizer preserves custom preview audio focus across pause
 
   assert.equal(windowRef.scheduledFrames.size, 0);
   assert.equal(gainNode?.gain.value, 1.9);
+  assert.equal(media.playbackRate, 0.8);
+  assert.equal(media.preservesPitch, false);
   assert.equal(primaryFilter?.type, "bandpass");
   assert.equal(primaryFilter?.frequency.value, 1450);
   assert.equal(primaryFilter?.Q.value, 6.2);
@@ -1191,6 +1296,8 @@ test("runtime audio visualizer preserves custom preview audio focus across pause
 
   assert.equal(windowRef.scheduledFrames.size, 1);
   assert.equal(gainNode?.gain.value, 1.9);
+  assert.equal(media.playbackRate, 0.8);
+  assert.equal(media.preservesPitch, false);
   assert.equal(primaryFilter?.type, "bandpass");
   assert.equal(primaryFilter?.frequency.value, 1450);
   assert.equal(primaryFilter?.Q.value, 6.2);
@@ -1204,6 +1311,8 @@ test("runtime audio visualizer preserves custom preview audio focus across pause
 
   assert.equal(windowRef.scheduledFrames.size, 1);
   assert.equal(gainNode?.gain.value, 1.9);
+  assert.equal(media.playbackRate, 0.8);
+  assert.equal(media.preservesPitch, false);
   assert.equal(primaryFilter?.type, "bandpass");
   assert.equal(primaryFilter?.frequency.value, 1450);
   assert.equal(primaryFilter?.Q.value, 6.2);
@@ -1517,25 +1626,156 @@ test("audio visualization selector keeps stable input order when artifact priori
 });
 
 test("workspace audio focus points users to the unified waveform timeline", () => {
-  const markup = renderWorkspaceAudioFocus({
-    gain: 1,
-    filterType: "none",
-    filterFrequency: 1000,
-    filterQ: 1,
-    visualizationMode: "spectrum",
-    eqBands: [
-      { frequency: 60, gain: 0, Q: 1, type: "lowshelf" },
-      { frequency: 250, gain: 0, Q: 1, type: "peaking" },
-      { frequency: 1000, gain: 0, Q: 1, type: "peaking" },
-      { frequency: 4000, gain: 0, Q: 1, type: "peaking" },
-      { frequency: 12000, gain: 0, Q: 1, type: "highshelf" },
-    ],
-  });
+  const markup = renderWorkspaceAudioFocus(
+    createTestAudioFocusSettings({
+      gain: 1,
+      filterType: "none",
+      filterFrequency: 1000,
+      filterQ: 1,
+      visualizationMode: "spectrum",
+      eqBands: [
+        { frequency: 60, gain: 0, Q: 1, type: "lowshelf" },
+        { frequency: 250, gain: 0, Q: 1, type: "peaking" },
+        { frequency: 1000, gain: 0, Q: 1, type: "peaking" },
+        { frequency: 4000, gain: 0, Q: 1, type: "peaking" },
+        { frequency: 12000, gain: 0, Q: 1, type: "highshelf" },
+      ],
+    }),
+    {
+      previewTarget: "audio",
+      temporalControlsEnabled: true,
+    }
+  );
 
   assert.match(markup, /Timeline preview altinda tek realtime waveform katmani kullanilir\./);
   assert.match(markup, /Spectrum modu ayni canvas uzerinde canli frekans gorunumu cizer\./);
+  assert.match(markup, /workspace\.audioFocus\.playbackRate/);
+  assert.match(markup, /workspace\.audioFocus\.preservePitch/);
+  assert.match(markup, /Slow down to inspect\. Speed up to detect patterns\./);
+  assert.match(markup, /Playback rate affects the current preview audio\./);
   assert.doesNotMatch(markup, /workspace\.audioFocus\.visualizationMode/);
   assert.doesNotMatch(markup, /lab-audio-viz/);
+});
+
+test("workspace audio focus fences temporal controls while dual preview is active", () => {
+  const markup = renderWorkspaceAudioFocus(
+    createTestAudioFocusSettings({
+      playbackRate: 0.4,
+      preservePitch: false,
+    }),
+    {
+      previewTarget: "video",
+      temporalAudioFocus: createTestAudioFocusSettings({
+        playbackRate: 1,
+        preservePitch: true,
+      }),
+      temporalControlsEnabled: false,
+    }
+  );
+
+  assert.match(markup, /workspace\.audioFocus\.playbackRate" disabled/);
+  assert.match(markup, /workspace\.audioFocus\.preservePitch"/);
+  assert.match(markup, />1x</);
+  assert.match(markup, /checked disabled/);
+  assert.match(markup, /Dual preview keeps temporal playback fixed at 1x with preserved pitch\./);
+  assert.match(markup, /Playback rate affects the bound preview media transport\./);
+});
+
+test("interpretation engine explains audio focus and selection rules deterministically", () => {
+  const items = buildInterpretationItems({
+    activeSelection: {
+      id: "selection-short",
+      startMs: 120,
+      endMs: 420,
+      type: "clip",
+      intent: "audio",
+      createdAt: 1,
+    },
+    audioFocus: createTestAudioFocusSettings({
+      gain: 1.8,
+      playbackRate: 0.4,
+      filterType: "lowpass",
+      filterFrequency: 900,
+      eqBands: DEFAULT_AUDIO_FOCUS_SETTINGS.eqBands.map(function (band, index) {
+        return index === 4 ? { ...band, gain: 9 } : { ...band };
+      }),
+    }),
+    sourceKind: "audio",
+  });
+
+  assert.deepEqual(
+    items.map(function (item) {
+      return item.id;
+    }),
+    [
+      "audio-high-gain",
+      "audio-slow-playback",
+      "audio-lowpass-suppressed-highs",
+      "audio-extreme-eq-boost",
+      "selection-short-context",
+    ]
+  );
+});
+
+test("waveform timeline renders interpretation guidance even without an active selection", () => {
+  const store = createLabStore();
+  store.dispatch({
+    type: "snapshot-received",
+    payload: createDualPreviewSnapshot(0),
+  });
+  store.dispatch({
+    type: "workspace-audio-updated",
+    patch: {
+      gain: 1.8,
+      playbackRate: 0.4,
+      preservePitch: false,
+    },
+  });
+
+  const model = getWaveformTimelineModel(store.getState());
+  const markup = renderLabWaveformTimeline(model);
+
+  assert.ok((model.interpretationItems?.length || 0) >= 2);
+  assert.match(markup, /data-lab-interpretation-panel="true"/);
+  assert.match(markup, /High gain may introduce clipping or noise amplification/);
+  assert.match(markup, /Slow playback can reveal temporal anomalies/);
+});
+
+test("effective preview audio focus fences temporal controls while dual preview is active", () => {
+  const store = createLabStore();
+  store.dispatch({
+    type: "snapshot-received",
+    payload: createDualPreviewSnapshot(250),
+  });
+  store.dispatch({
+    type: "workspace-audio-updated",
+    patch: {
+      playbackRate: 0.4,
+      preservePitch: false,
+    },
+  });
+  store.dispatch({
+    type: "workspace-dual-preview-toggled",
+    force: true,
+    audioAssetId: "asset-audio-linked",
+  });
+
+  const rawAudioFocus = store.getState().ui.workspace.audioFocus;
+  const effectiveAudioFocus = getEffectivePreviewAudioFocusSettings(store.getState());
+  const interpretationItems = getInterpretationItems(store.getState());
+  const timelineModel = getWaveformTimelineModel(store.getState());
+
+  assert.equal(rawAudioFocus.playbackRate, 0.4);
+  assert.equal(rawAudioFocus.preservePitch, false);
+  assert.equal(effectiveAudioFocus.playbackRate, 1);
+  assert.equal(effectiveAudioFocus.preservePitch, true);
+  assert.equal(timelineModel.audioFocus?.playbackRate, 1);
+  assert.equal(
+    interpretationItems.some(function (item) {
+      return item.id === "audio-slow-playback";
+    }),
+    false
+  );
 });
 
 test("waveform timeline hides selection affordances for invalid numeric ranges", () => {
@@ -2464,11 +2704,13 @@ test("workspace audio visualizer updates preview audio focus without recreating 
   const canvas = new FakeCanvasElement();
   const documentRef = new FakeVisualizerDocument(audioPreview, null, canvas);
   const windowRef = new FakeVisualizerWindow();
-  let audioFocus = {
+  let audioFocus = createTestAudioFocusSettings({
     gain: 1.6,
     filterType: "lowpass",
     filterFrequency: 1400,
     filterQ: 1.8,
+    playbackRate: 1.4,
+    preservePitch: false,
     visualizationMode: "waveform" as const,
     eqBands: [
       { frequency: 60, gain: 1.5, Q: 1, type: "lowshelf" as const },
@@ -2477,7 +2719,7 @@ test("workspace audio visualizer updates preview audio focus without recreating 
       { frequency: 4000, gain: 3, Q: 1.4, type: "peaking" as const },
       { frequency: 12000, gain: 2, Q: 1, type: "highshelf" as const },
     ],
-  };
+  });
   let bookmarkCount = 0;
   const visualizer = createLabWaveformTimelineVisualizer({
     documentRef: documentRef as unknown as Document,
@@ -2517,9 +2759,13 @@ test("workspace audio visualizer updates preview audio focus without recreating 
   const primaryFilter = audioContext?.biquadFilters[0];
   const initialGainCalls = gainNode?.gain.setTargetCalls.length || 0;
   const initialFilterCalls = primaryFilter?.frequency.setTargetCalls.length || 0;
+  const initialPlaybackSetCalls = audioPreview.playbackRateSetCalls;
+  const initialPitchSetCalls = audioPreview.pitchSetCalls;
 
   assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
   assert.equal(audioContext?.sourceNodes.length, 1);
+  assert.equal(audioPreview.playbackRate, 1.4);
+  assert.equal(audioPreview.preservesPitch, false);
   assert.deepEqual(gainNode?.gain.setTargetCalls.at(-1), [1.6, 0, 0.01]);
   assert.deepEqual(primaryFilter?.frequency.setTargetCalls.at(-1), [1400, 0, 0.01]);
 
@@ -2529,12 +2775,16 @@ test("workspace audio visualizer updates preview audio focus without recreating 
 
   assert.equal(gainNode?.gain.setTargetCalls.length, initialGainCalls);
   assert.equal(primaryFilter?.frequency.setTargetCalls.length, initialFilterCalls);
+  assert.equal(audioPreview.playbackRateSetCalls, initialPlaybackSetCalls);
+  assert.equal(audioPreview.pitchSetCalls, initialPitchSetCalls);
   assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
 
   audioFocus = {
     ...audioFocus,
     gain: 0.7,
     filterQ: 4.2,
+    playbackRate: 0.7,
+    preservePitch: true,
     eqBands: audioFocus.eqBands.map(function (band, index) {
       return index === 3 ? { ...band, gain: 5 } : band;
     }),
@@ -2544,10 +2794,14 @@ test("workspace audio visualizer updates preview audio focus without recreating 
 
   assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
   assert.equal(audioContext?.sourceNodes.length, 1);
+  assert.equal(audioPreview.playbackRate, 0.7);
+  assert.equal(audioPreview.preservesPitch, true);
   assert.deepEqual(gainNode?.gain.setTargetCalls.at(-1), [0.7, 0, 0.01]);
   assert.deepEqual(primaryFilter?.Q.setTargetCalls.at(-1), [4.2, 0, 0.01]);
   assert.deepEqual(audioContext?.biquadFilters[4]?.gain.setTargetCalls.at(-1), [5, 0, 0.01]);
   assert.equal(gainNode?.gain.setTargetCalls.length, initialGainCalls + 1);
+  assert.equal(audioPreview.playbackRateSetCalls > initialPlaybackSetCalls, true);
+  assert.equal(audioPreview.pitchSetCalls > initialPitchSetCalls, true);
 
   visualizer.dispose();
 });

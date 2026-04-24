@@ -14,7 +14,6 @@ import {
 import type {
   LabAsset,
   LabAssetType,
-  LabAudioFocusSettings,
   LabComparisonVariant,
   LabAiReport,
   LabArtifactProjection,
@@ -44,6 +43,11 @@ import {
 } from "../shared/types/analysis-scope.js";
 import { deriveLegacyStage } from "./lab-selectors.js";
 import {
+  DEFAULT_AUDIO_FOCUS_SETTINGS,
+  normalizeAudioFocusPatch,
+  normalizeAudioFocusSettings,
+} from "./lab-audio-focus-normalization.js";
+import {
   clearWorkspaceSelection,
   getWorkspaceSourceSelectionResetKey,
   normalizeLabSelectionIntent,
@@ -65,28 +69,6 @@ function createDefaultSourceDrafts(): LabSourceDrafts {
     youtubePreset: null,
     youtubeCustom: {},
     youtubeCaptureMode: "video+audio",
-  };
-}
-
-function normalizeAudioFocusSettings(
-  currentSettings: LabAudioFocusSettings,
-  patch: Partial<LabAudioFocusSettings> | null | undefined
-): LabAudioFocusSettings {
-  if (!patch) {
-    return currentSettings;
-  }
-  const nextVisualizationMode =
-    patch.visualizationMode === undefined
-      ? currentSettings.visualizationMode === "spectrum"
-        ? "spectrum"
-        : "waveform"
-      : patch.visualizationMode === "spectrum"
-        ? "spectrum"
-        : "waveform";
-  return {
-    ...currentSettings,
-    ...patch,
-    visualizationMode: nextVisualizationMode,
   };
 }
 
@@ -303,20 +285,7 @@ function createDefaultWorkspaceUiState(): LabWorkspaceUiState {
       edgeHighlight: false,
       invert: false,
     },
-    audioFocus: {
-      gain: 1.0,
-      filterType: "none",
-      filterFrequency: 1000,
-      filterQ: 1.0,
-      visualizationMode: "waveform",
-      eqBands: [
-        { frequency: 60, gain: 0, Q: 1.0, type: "lowshelf" },
-        { frequency: 250, gain: 0, Q: 1.0, type: "peaking" },
-        { frequency: 1000, gain: 0, Q: 1.0, type: "peaking" },
-        { frequency: 4000, gain: 0, Q: 1.0, type: "peaking" },
-        { frequency: 12000, gain: 0, Q: 1.0, type: "highshelf" },
-      ],
-    },
+    audioFocus: normalizeAudioFocusSettings(DEFAULT_AUDIO_FOCUS_SETTINGS),
     dualPreviewEnabled: false,
     dualPreviewAudioAssetId: null,
     dualPreviewVolume: 1.0,
@@ -1705,7 +1674,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
               interactiveSettings: ws.interactiveSettings
                 ? { ...state.ui.workspace.interactiveSettings, ...ws.interactiveSettings }
                 : state.ui.workspace.interactiveSettings,
-              audioFocus: normalizeAudioFocusSettings(state.ui.workspace.audioFocus, ws.audioFocus),
+              audioFocus: normalizeAudioFocusPatch(state.ui.workspace.audioFocus, ws.audioFocus),
               dualPreviewEnabled: ws.dualPreviewEnabled === true,
               dualPreviewAudioAssetId:
                 typeof ws.dualPreviewAudioAssetId === "string" ? ws.dualPreviewAudioAssetId : null,
@@ -2310,7 +2279,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
     case "workspace-audio-updated":
       state.ui.workspace = {
         ...state.ui.workspace,
-        audioFocus: normalizeAudioFocusSettings(state.ui.workspace.audioFocus, event.patch),
+        audioFocus: normalizeAudioFocusPatch(state.ui.workspace.audioFocus, event.patch),
       };
       return state;
     case "workspace-right-panel-toggled":

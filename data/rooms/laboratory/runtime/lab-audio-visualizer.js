@@ -1,20 +1,11 @@
+import {
+  DEFAULT_AUDIO_FOCUS_SETTINGS,
+  createAudioFocusSignature,
+  getDefaultAudioFocusEqBand,
+  normalizeAudioFocusSettings
+} from "./lab-audio-focus-normalization.js";
 const AUDIO_VISUALIZER_FFT_SIZE = 2048;
 const AUDIO_FOCUS_SMOOTHING_TIME = 0.01;
-const DEFAULT_AUDIO_FOCUS_EQ_BANDS = [
-  { frequency: 60, gain: 0, Q: 1, type: "lowshelf" },
-  { frequency: 250, gain: 0, Q: 1, type: "peaking" },
-  { frequency: 1e3, gain: 0, Q: 1, type: "peaking" },
-  { frequency: 4e3, gain: 0, Q: 1, type: "peaking" },
-  { frequency: 12e3, gain: 0, Q: 1, type: "highshelf" }
-];
-const DEFAULT_AUDIO_FOCUS_SETTINGS = {
-  gain: 1,
-  filterType: "none",
-  filterFrequency: 1e3,
-  filterQ: 1,
-  visualizationMode: "waveform",
-  eqBands: DEFAULT_AUDIO_FOCUS_EQ_BANDS
-};
 const MEDIA_AUDIO_GRAPH_CACHE = /* @__PURE__ */ new WeakMap();
 function createByteBuffer(length) {
   return new Uint8Array(new ArrayBuffer(length));
@@ -45,74 +36,13 @@ function getSharedAudioGraph(mediaElement) {
     frequencyData: null,
     gainNode: null,
     lastAppliedAudioFocusSignature: null,
+    lastAppliedPlaybackSignature: null,
     sourceNode: null,
     sourceRoute: null,
     timeDomainData: null
   };
   MEDIA_AUDIO_GRAPH_CACHE.set(mediaElement, graph);
   return graph;
-}
-function clampNumber(value, min, max, fallback) {
-  if (!Number.isFinite(value)) {
-    return fallback;
-  }
-  return Math.max(min, Math.min(max, value));
-}
-function normalizeEqBand(band, fallbackBand) {
-  return {
-    frequency: clampNumber(
-      typeof band?.frequency === "number" ? band.frequency : fallbackBand.frequency,
-      20,
-      2e4,
-      fallbackBand.frequency
-    ),
-    gain: clampNumber(
-      typeof band?.gain === "number" ? band.gain : fallbackBand.gain,
-      -12,
-      12,
-      fallbackBand.gain
-    ),
-    Q: clampNumber(typeof band?.Q === "number" ? band.Q : fallbackBand.Q, 0.1, 20, fallbackBand.Q),
-    type: band?.type === "lowshelf" || band?.type === "highshelf" || band?.type === "peaking" ? band.type : fallbackBand.type
-  };
-}
-function normalizeAudioFocusSettings(audioFocus) {
-  const source = audioFocus || DEFAULT_AUDIO_FOCUS_SETTINGS;
-  return {
-    gain: clampNumber(source.gain, 0, 3, DEFAULT_AUDIO_FOCUS_SETTINGS.gain),
-    filterType: source.filterType === "lowpass" || source.filterType === "highpass" || source.filterType === "bandpass" ? source.filterType : "none",
-    filterFrequency: clampNumber(
-      source.filterFrequency,
-      20,
-      2e4,
-      DEFAULT_AUDIO_FOCUS_SETTINGS.filterFrequency
-    ),
-    filterQ: clampNumber(source.filterQ, 0.1, 20, DEFAULT_AUDIO_FOCUS_SETTINGS.filterQ),
-    visualizationMode: source.visualizationMode === "spectrum" ? "spectrum" : source.visualizationMode === "none" ? "none" : "waveform",
-    eqBands: DEFAULT_AUDIO_FOCUS_EQ_BANDS.map(function(fallbackBand, index) {
-      return normalizeEqBand(source.eqBands[index], fallbackBand);
-    })
-  };
-}
-function createAudioFocusSignature(audioFocus) {
-  return JSON.stringify({
-    gain: Number(audioFocus.gain.toFixed(4)),
-    filterFrequency: Number(audioFocus.filterFrequency.toFixed(2)),
-    filterQ: Number(audioFocus.filterQ.toFixed(4)),
-    filterType: audioFocus.filterType,
-    eqBands: audioFocus.eqBands.map(function(band) {
-      return {
-        frequency: Number(band.frequency.toFixed(2)),
-        gain: Number(band.gain.toFixed(4)),
-        Q: Number(band.Q.toFixed(4)),
-        type: band.type
-      };
-    })
-  });
-}
-function getDefaultEqBand(index) {
-  const fallbackIndex = Math.max(0, Math.min(DEFAULT_AUDIO_FOCUS_EQ_BANDS.length - 1, index));
-  return DEFAULT_AUDIO_FOCUS_EQ_BANDS[fallbackIndex];
 }
 function setSmoothedAudioParam(param, value, currentTime, timeConstant = AUDIO_FOCUS_SMOOTHING_TIME) {
   if (!param) {
@@ -129,7 +59,7 @@ async function ensureSharedAudioGraph(graph, mediaElement, windowRef) {
     graph.audioContext = new audioContextCtor();
     graph.gainNode = graph.audioContext.createGain();
     graph.filterNode = graph.audioContext.createBiquadFilter();
-    graph.eqNodes = DEFAULT_AUDIO_FOCUS_EQ_BANDS.map(function() {
+    graph.eqNodes = DEFAULT_AUDIO_FOCUS_SETTINGS.eqBands.map(function() {
       return graph.audioContext?.createBiquadFilter() || null;
     }).filter((entry) => entry !== null);
     graph.analyser = graph.audioContext.createAnalyser();
@@ -138,6 +68,7 @@ async function ensureSharedAudioGraph(graph, mediaElement, windowRef) {
     graph.timeDomainData = createByteBuffer(graph.analyser.fftSize);
     graph.frequencyData = createByteBuffer(graph.analyser.frequencyBinCount);
     graph.lastAppliedAudioFocusSignature = null;
+    graph.lastAppliedPlaybackSignature = null;
     graph.sourceNode = null;
     graph.sourceRoute = null;
   }
@@ -164,6 +95,34 @@ async function ensureSharedAudioGraph(graph, mediaElement, windowRef) {
     }
   }
   return true;
+}
+function setOptionalPitchProperty(mediaElement, propertyName, preservePitch) {
+  const candidate = mediaElement;
+  if (propertyName in candidate) {
+    candidate[propertyName] = preservePitch;
+  }
+}
+function createPlaybackSettingsSignature(audioFocus) {
+  return JSON.stringify({
+    playbackRate: Number(audioFocus.playbackRate.toFixed(4)),
+    preservePitch: audioFocus.preservePitch === true
+  });
+}
+function applyPlaybackSettings(mediaElement, audioFocus) {
+  const graph = MEDIA_AUDIO_GRAPH_CACHE.get(mediaElement) || null;
+  const signature = createPlaybackSettingsSignature(audioFocus);
+  if (graph?.lastAppliedPlaybackSignature === signature) {
+    return;
+  }
+  if (mediaElement.playbackRate !== audioFocus.playbackRate) {
+    mediaElement.playbackRate = audioFocus.playbackRate;
+  }
+  setOptionalPitchProperty(mediaElement, "preservesPitch", audioFocus.preservePitch);
+  setOptionalPitchProperty(mediaElement, "mozPreservesPitch", audioFocus.preservePitch);
+  setOptionalPitchProperty(mediaElement, "webkitPreservesPitch", audioFocus.preservePitch);
+  if (graph !== null) {
+    graph.lastAppliedPlaybackSignature = signature;
+  }
 }
 function disconnectAnalyser(graph) {
   if (graph.analyser) {
@@ -407,7 +366,15 @@ export function createAudioVisualizer(mediaElement, canvasElement, options = {})
     );
   }
   function getAudioFocus() {
-    return normalizeAudioFocusSettings(options.getAudioFocus?.());
+    const normalizedSettings = normalizeAudioFocusSettings(options.getAudioFocus?.());
+    if (options.getTemporalAudioEnabled?.() === false) {
+      return {
+        ...normalizedSettings,
+        playbackRate: DEFAULT_AUDIO_FOCUS_SETTINGS.playbackRate,
+        preservePitch: DEFAULT_AUDIO_FOCUS_SETTINGS.preservePitch
+      };
+    }
+    return normalizedSettings;
   }
   function applyAudioFocusSettings(audioFocus, force = false) {
     const context = sharedGraph.audioContext;
@@ -417,6 +384,7 @@ export function createAudioVisualizer(mediaElement, canvasElement, options = {})
     if (context === null || filterNode === null || gainNode === null || analyser === null) {
       return false;
     }
+    applyPlaybackSettings(mediaElement, audioFocus);
     const signature = createAudioFocusSignature(audioFocus);
     if (force !== true && sharedGraph.lastAppliedAudioFocusSignature === signature) {
       return true;
@@ -427,7 +395,7 @@ export function createAudioVisualizer(mediaElement, canvasElement, options = {})
     setSmoothedAudioParam(filterNode.frequency, audioFocus.filterFrequency, currentTime);
     setSmoothedAudioParam(filterNode.Q, audioFocus.filterQ, currentTime);
     sharedGraph.eqNodes.forEach(function(node, index) {
-      const band = audioFocus.eqBands[index] ?? getDefaultEqBand(index);
+      const band = audioFocus.eqBands[index] ?? getDefaultAudioFocusEqBand(index);
       node.type = band.type;
       setSmoothedAudioParam(node.frequency, band.frequency, currentTime);
       setSmoothedAudioParam(node.Q, band.Q, currentTime);

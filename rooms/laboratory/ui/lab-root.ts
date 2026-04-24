@@ -163,8 +163,28 @@ function syncChildNodes(currentElement: Element, nextElement: Element) {
   }
 }
 
+function readPreservedDetailsState(currentElement: Element, nextElement: Element) {
+  if (
+    typeof HTMLDetailsElement !== "undefined" &&
+    currentElement instanceof HTMLDetailsElement &&
+    nextElement instanceof HTMLDetailsElement &&
+    currentElement.hasAttribute("data-lab-interpretation-panel")
+  ) {
+    return currentElement.open;
+  }
+  return null;
+}
+
 function syncElement(currentElement: Element, nextElement: Element) {
+  const preservedDetailsState = readPreservedDetailsState(currentElement, nextElement);
   syncAttributes(currentElement, nextElement);
+  if (
+    preservedDetailsState !== null &&
+    typeof HTMLDetailsElement !== "undefined" &&
+    currentElement instanceof HTMLDetailsElement
+  ) {
+    currentElement.open = preservedDetailsState;
+  }
   syncChildNodes(currentElement, nextElement);
 }
 
