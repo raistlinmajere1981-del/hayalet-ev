@@ -6,6 +6,24 @@ type LaboratoryHostUtilsDeps = {
   toRecord: (value: unknown) => LaboratoryHostUtilsRecord;
 };
 
+export function sanitizeLaboratoryFileSegment(value: unknown, fallback: string): string {
+  const baseValue =
+    typeof value === "string" && value.trim() !== "" ? value : fallback || "artifact";
+  const normalized = baseValue
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return normalized || fallback || "artifact";
+}
+
+export function toLaboratoryFfmpegTimestamp(seconds: unknown, fallback: string | null): string {
+  const numericValue = Number(seconds);
+  if (Number.isFinite(numericValue) !== true || numericValue < 0) {
+    return fallback || "0";
+  }
+  return numericValue.toFixed(3);
+}
+
 export function createLaboratoryHostUtils(deps: LaboratoryHostUtilsDeps) {
   const { audioFeatureId, getDefaultSourceType, toRecord } = deps;
 
@@ -45,6 +63,8 @@ export function createLaboratoryHostUtils(deps: LaboratoryHostUtilsDeps) {
   return {
     clampNumber,
     getPreferredFeatureSourceKind,
+    sanitizeFileSegment: sanitizeLaboratoryFileSegment,
     toFileUrl,
+    toFfmpegTimestamp: toLaboratoryFfmpegTimestamp,
   };
 }

@@ -1,3 +1,8 @@
+import {
+  sanitizeLaboratoryFileSegment,
+  toLaboratoryFfmpegTimestamp,
+} from "../../../shared/host/host-utils.js";
+
 type MediaEditSupportRecord = Record<string, unknown> & {
   activePresetId?: unknown;
   audio?: MediaEditSupportRecord;
@@ -97,12 +102,7 @@ export function createMediaEditSupportRuntime(deps: MediaEditSupportDeps) {
   const toRecord = deps["toRecord"];
 
   function sanitizeFileSegment(value: unknown, fallback: string) {
-    const baseValue = asNonEmptyString(value) || fallback || "artifact";
-    const normalized = baseValue
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-    return normalized || fallback || "artifact";
+    return sanitizeLaboratoryFileSegment(asNonEmptyString(value), fallback);
   }
 
   function getPreparedSourcePath(project: MediaEditSupportProjectRecord) {
@@ -145,11 +145,7 @@ export function createMediaEditSupportRuntime(deps: MediaEditSupportDeps) {
   }
 
   function toFfmpegTimestamp(seconds: unknown, fallback: string | null) {
-    const numericValue = Number(seconds);
-    if (Number.isFinite(numericValue) !== true || numericValue < 0) {
-      return fallback || "0";
-    }
-    return numericValue.toFixed(3);
+    return toLaboratoryFfmpegTimestamp(seconds, fallback);
   }
 
   function toEvenInteger(value: number, minimum: number) {

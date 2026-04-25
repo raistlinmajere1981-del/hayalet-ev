@@ -662,11 +662,11 @@ export const LAB_FEATURES: Array<{
     description: "Ses odaklı analiz modülleri ve çıktı takibi.",
   },
   {
-    // NOTE: subtitle-analysis remains legacy-internal only and is no longer user-facing in v2.2.
+    // NOTE: subtitle-analysis is internal transcript support while the public workbench stays unified.
     id: "subtitle-analysis",
     label: "Transcript Support",
     shortLabel: "Transcript",
-    description: "Timestamped transcript artifact support kept for backward compatibility.",
+    description: "Timestamped transcript artifact support for source intake, cleanup, and reporting.",
   },
 ];
 
@@ -971,8 +971,6 @@ export interface LabStoreUiState {
   sourceDraftDirty: boolean;
   editDraftDirty: boolean;
   profileDraftDirty: boolean;
-  /** @deprecated Module manager removed in v2.2 — kept for hydration compat */
-  moduleManagerOpen: boolean;
   toolManagerOpen: boolean;
   eventFeedExpanded: boolean;
   eventFeedCursor: number;
@@ -1122,7 +1120,6 @@ export type LabStoreEvent =
   | { type: "edit-drafts-committed" }
   | { type: "profile-drafts-updated"; patch: Partial<LabProfileDrafts> }
   | { type: "profile-drafts-committed" }
-  | { type: "module-manager-toggled"; open?: boolean }
   | { type: "tool-manager-toggled"; open?: boolean }
   | { type: "toggle-event-feed"; force?: boolean }
   | { type: "advance-event-feed" }

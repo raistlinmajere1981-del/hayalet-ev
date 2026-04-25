@@ -1,10 +1,8 @@
-import { asLabRecord, asNonEmptyString, createLabFeatureMeta } from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString } from "../models/lab-types.js";
 import type {
-  LabArtifactProjection,
   CapabilityFamilyId,
   LabActionSuggestion,
   LabAsset,
-  LabAssetType,
   LabExecutionAlternatives,
   LabExecutionCandidate,
   LabExecutionCommitment,
@@ -15,18 +13,12 @@ import type {
   LabExecutionSimulation,
   LabExecutionStaging,
   LabExpectedOutput,
-  LabFeatureId,
   LabGlobalProcessSummary,
   LabInspectionMode,
   LabInterpretationItem,
   LabIntentDirtyMap,
-  LabModuleState,
   LabPreflightResult,
-  LabPreviewArtifactProjection,
-  LabRecord,
-  LabReportSet,
   LabRun,
-  LabRunSnapshotSummary,
   LabSelection,
   LabSelectionIntent,
   LabSuggestionPreview,
@@ -55,6 +47,72 @@ import {
   getSelectionSuggestionsForContext,
 } from "./lab-selection-suggestion-logic.js";
 import { LAB_USER_ACTION_HISTORY_LIMIT } from "./lab-user-actions.js";
+import {
+  getCurrentFeatureReportRecord,
+  getProjectSource,
+} from "./selectors/lab-project-selectors.js";
+import {
+  getActiveModule,
+  getAssetById,
+  getAssets,
+  getAudioVisualizationArtifact,
+  getCurrentReports,
+  getCurrentRun,
+  getCurrentSourceAsset,
+  getEditPreview,
+  getLinkedAudioAssets,
+  getRunSnapshotSummary,
+  getSourceKind,
+  getSourceMetadata,
+  getSourceMode,
+  getSourceProbeStatus,
+  getToolState,
+} from "./selectors/lab-source-selectors.js";
+
+export {
+  getActiveProject,
+  getCurrentFeatureId,
+  getCurrentFeatureMeta,
+  getCurrentFeatureProcessRecord,
+  getCurrentFeatureReportRecord,
+  getProjectEdit,
+  getProjectProfile,
+  getProjectSource,
+  getProjects,
+  getSnapshot,
+} from "./selectors/lab-project-selectors.js";
+export {
+  getActiveEditOutput,
+  getActiveModule,
+  getActivePreviewArtifact,
+  getAssetById,
+  getAssets,
+  getAssetsByRun,
+  getAssetsBySource,
+  getAssetsByType,
+  getAudioVisualizationArtifact,
+  getComparisonVariants,
+  getCurrentReports,
+  getCurrentRun,
+  getCurrentSourceAsset,
+  getEditOutputs,
+  getEditPreview,
+  getFeatureCompatibility,
+  getLinkedAudioAssets,
+  getParentSourceForAsset,
+  getPreviewArtifacts,
+  getProfileModelCatalog,
+  getReportExports,
+  getRunSnapshotSummary,
+  getSelectedProfileModel,
+  getSourceKind,
+  getSourceMetadata,
+  getSourceMode,
+  getSourceProbeStatus,
+  getSourceStatus,
+  getToolState,
+  getWorkbench,
+} from "./selectors/lab-source-selectors.js";
 
 function normalizeIntentIdList(value: unknown) {
   const sourceIds = Array.isArray(value)
@@ -73,70 +131,6 @@ function getEffectiveSelectedCapabilities(state: LabStoreState) {
     return intentDerivedCapabilities;
   }
   return getSelectedCapabilities(state);
-}
-
-export function getSnapshot(state: LabStoreState): LabRecord {
-  return state.snapshot || {};
-}
-
-export function getActiveProject(state: LabStoreState): LabRecord | null {
-  const snapshotProject = asLabRecord(getSnapshot(state)["activeProject"]);
-  if (Object.keys(snapshotProject).length > 0) {
-    return snapshotProject;
-  }
-  if (state.source || state.editConfig || state.profileConfig) {
-    return {
-      id: state.projectIndex.activeProjectId,
-      source: state.source,
-      edit: state.editConfig,
-      profile: state.profileConfig,
-    };
-  }
-  return null;
-}
-
-export function getProjects(state: LabStoreState): LabRecord[] {
-  return state.projectIndex.projects;
-}
-
-export function getCurrentFeatureId(state: LabStoreState): LabFeatureId {
-  const activeModuleId = asNonEmptyString(state.workbench["activeModuleId"]);
-  const featureId = (activeModuleId as LabFeatureId) || state.featureId;
-  return featureId === "subtitle-analysis" ? "audio-analysis" : featureId;
-}
-
-export function getCurrentFeatureMeta(state: LabStoreState) {
-  return createLabFeatureMeta(getCurrentFeatureId(state));
-}
-
-export function getProjectSource(state: LabStoreState): LabRecord {
-  return asLabRecord(state.source);
-}
-
-export function getProjectEdit(state: LabStoreState): LabRecord {
-  return asLabRecord(state.editConfig);
-}
-
-export function getProjectProfile(state: LabStoreState): LabRecord {
-  return asLabRecord(state.profileConfig);
-}
-
-export function getCurrentFeatureProcessRecord(state: LabStoreState): LabRecord {
-  const activeProject = getActiveProject(state);
-  if (!activeProject) {
-    return {};
-  }
-  const process = asLabRecord(activeProject["process"]);
-  return asLabRecord(asLabRecord(process["records"])[getCurrentFeatureId(state)]);
-}
-
-export function getCurrentFeatureReportRecord(state: LabStoreState): LabRecord {
-  const activeProject = getActiveProject(state);
-  if (!activeProject) {
-    return {};
-  }
-  const report = asLabRecord(activeProject["report"]);
-  return asLabRecord(asLabRecord(report["records"])[getCurrentFeatureId(state)]);
 }
 
 export function getCurrentPreflight(state: LabStoreState): LabPreflightResult {
@@ -221,135 +215,6 @@ export function getCurrentPreflight(state: LabStoreState): LabPreflightResult {
   };
 }
 
-export function getCurrentRun(state: LabStoreState): LabRun | null {
-  return state.run;
-}
-
-export function getRunSnapshotSummary(state: LabStoreState): LabRunSnapshotSummary | null {
-  const run = getCurrentRun(state);
-  if (!run || !run.analysisScope) {
-    return null;
-  }
-  const scope = run.analysisScope;
-  return {
-    focus: typeof scope.focus === "string" ? scope.focus : null,
-    timelineStartMs:
-      scope.timeRange && typeof scope.timeRange.startMs === "number"
-        ? scope.timeRange.startMs
-        : null,
-    timelineEndMs:
-      scope.timeRange && typeof scope.timeRange.endMs === "number" ? scope.timeRange.endMs : null,
-    hypothesis: typeof scope.hypothesis === "string" ? scope.hypothesis : null,
-    intentIds: normalizeIntentIdList(scope.intentIds),
-  };
-}
-
-export function getCurrentReports(state: LabStoreState): LabReportSet {
-  return state.reports;
-}
-
-export function getAssets(state: LabStoreState): LabAsset[] {
-  return state.assets.slice();
-}
-
-export function getAssetById(state: LabStoreState, assetId: string): LabAsset | null {
-  return (
-    state.assets.find(function (asset) {
-      return asset.id === assetId;
-    }) || null
-  );
-}
-
-export function getCurrentSourceAsset(state: LabStoreState): LabAsset | null {
-  const source = getProjectSource(state);
-  const storedPath = asNonEmptyString(source["storedPath"]);
-  const sourceUrl = asNonEmptyString(source["sourceUrl"]);
-  const storedFileName = asNonEmptyString(source["storedFileName"]);
-
-  return (
-    getAssets(state).find(function (asset) {
-      if (asset.type !== "source") {
-        return false;
-      }
-      if (storedPath !== null && asset.localPath === storedPath) {
-        return true;
-      }
-      if (sourceUrl !== null && asset.url === sourceUrl) {
-        return true;
-      }
-      if (storedFileName === null) {
-        return false;
-      }
-      return (
-        asset.name === storedFileName &&
-        asNonEmptyString(asLabRecord(asset.metadata)["storedFileName"]) === storedFileName
-      );
-    }) || null
-  );
-}
-
-export function getAssetsByType(state: LabStoreState, type: LabAssetType): LabAsset[] {
-  return state.assets.filter(function (asset) {
-    return asset.type === type;
-  });
-}
-
-export function getAssetsBySource(state: LabStoreState, sourceId: string): LabAsset[] {
-  return state.assets.filter(function (asset) {
-    return asset.sourceId === sourceId;
-  });
-}
-
-export function getAssetsByRun(state: LabStoreState, runId: string): LabAsset[] {
-  return state.assets.filter(function (asset) {
-    return asset.runId === runId;
-  });
-}
-
-export function getLinkedAudioAssets(state: LabStoreState, sourceId: string): LabAsset[] {
-  return getAssets(state)
-    .filter(function (asset) {
-      return asset.type === "audio" && asset.derivedFromSourceId === sourceId;
-    })
-    .sort(function (left, right) {
-      if (left.createdAt !== right.createdAt) {
-        return right.createdAt - left.createdAt;
-      }
-      if (left.name !== right.name) {
-        return left.name.localeCompare(right.name);
-      }
-      return left.id.localeCompare(right.id);
-    });
-}
-
-export function getParentSourceForAsset(state: LabStoreState, assetId: string): LabAsset | null {
-  const asset = getAssetById(state, assetId);
-  if (asset === null) {
-    return null;
-  }
-
-  if (asset.derivedFromAssetId) {
-    const parentAsset = getAssetById(state, asset.derivedFromAssetId);
-    if (parentAsset !== null) {
-      return parentAsset;
-    }
-  }
-
-  if (asset.derivedFromSourceId) {
-    const parentSource = getAssetById(state, asset.derivedFromSourceId);
-    if (parentSource !== null) {
-      return parentSource;
-    }
-    return (
-      getAssets(state).find(function (candidate) {
-        return candidate.type === "source" && candidate.sourceId === asset.derivedFromSourceId;
-      }) || null
-    );
-  }
-
-  return null;
-}
-
 export function getExpectedOutputs(intentId: string): LabExpectedOutput[] {
   switch (intentId) {
     case "visual-inspection":
@@ -379,101 +244,6 @@ export function isExpectedOutputMatched(
       return asset.type === assetType;
     });
   });
-}
-
-export function getWorkbench(state: LabStoreState): LabRecord {
-  return state.workbench;
-}
-
-export function getSourceProbeStatus(state: LabStoreState) {
-  return state.sourceProbeStatus;
-}
-
-export function getSourceStatus(state: LabStoreState): string {
-  return asNonEmptyString(getProjectSource(state)["status"]) || "idle";
-}
-
-export function getSourceMode(state: LabStoreState): string {
-  return asNonEmptyString(getProjectSource(state)["mode"]) || "local";
-}
-
-export function getSourceKind(state: LabStoreState): string {
-  return asNonEmptyString(getProjectSource(state)["kind"]) || "video";
-}
-
-export function getSourceMetadata(state: LabStoreState): LabRecord {
-  return asLabRecord(getProjectSource(state)["metadata"]);
-}
-
-export function getEditPreview(state: LabStoreState): LabRecord {
-  return asLabRecord(getProjectEdit(state)["preview"]);
-}
-
-export function getEditOutputs(state: LabStoreState): LabRecord[] {
-  const outputs = getProjectEdit(state)["outputs"];
-  return Array.isArray(outputs) ? outputs.map(asLabRecord) : [];
-}
-
-export function getActiveEditOutput(state: LabStoreState): LabRecord | null {
-  const activeOutputId = asNonEmptyString(getProjectEdit(state)["activeOutputId"]);
-  if (activeOutputId === null) {
-    return null;
-  }
-
-  return (
-    getEditOutputs(state).find(function (entry) {
-      return asNonEmptyString(entry["id"]) === activeOutputId;
-    }) || null
-  );
-}
-
-export function getReportExports(state: LabStoreState): LabRecord[] {
-  return state.reportExports;
-}
-
-export function getProfileModelCatalog(state: LabStoreState): LabRecord[] {
-  return state.profileModels;
-}
-
-export function getSelectedProfileModel(state: LabStoreState): LabRecord | null {
-  const profile = getProjectProfile(state);
-  const modelId = asNonEmptyString(profile["modelId"]);
-  if (modelId === null) {
-    return null;
-  }
-
-  return (
-    getProfileModelCatalog(state).find(function (entry) {
-      return asNonEmptyString(entry["id"]) === modelId;
-    }) || null
-  );
-}
-
-export function getToolState(state: LabStoreState): LabRecord {
-  return state.toolState;
-}
-
-export function getFeatureCompatibility(state: LabStoreState) {
-  const featureId = getCurrentFeatureId(state);
-  const sourceReady = state.source !== null && state.sourceProbeStatus === "completed";
-  const availableModules = Array.isArray(state.workbench["availableModuleIds"])
-    ? (state.workbench["availableModuleIds"] as unknown[]).filter(
-        (entry): entry is string => typeof entry === "string"
-      )
-    : Array.isArray(state.workbench["selectedModuleIds"])
-      ? (state.workbench["selectedModuleIds"] as unknown[]).filter(
-          (entry): entry is string => typeof entry === "string"
-        )
-      : [featureId];
-  const sourceKind = getSourceKind(state);
-  return {
-    featureId,
-    mediaReady: sourceReady && availableModules.includes("media-analysis"),
-    audioReady:
-      sourceReady &&
-      availableModules.includes("audio-analysis") &&
-      (sourceKind === "audio" || sourceKind === "video"),
-  };
 }
 
 /** @deprecated Use condition-driven readiness selectors instead (getSourceActionBlockReason, getEditActionBlockReason, etc.) */
@@ -547,8 +317,7 @@ export function getPrimaryActionLabel(state: LabStoreState, _stage: LabStage) {
     return "Çalışmayı İptal Et";
   }
   if (getSourceReady(state)) {
-    const edit = getProjectEdit(state);
-    return asNonEmptyString(asLabRecord(edit["preview"])["status"]) === "ready"
+    return asNonEmptyString(getEditPreview(state)["status"]) === "ready"
       ? "Önizlemeyi Yenile"
       : "Önizleme Üret";
   }
@@ -661,137 +430,6 @@ export function hasMoreVisibleLiveFindings(state: LabStoreState) {
   const run = getCurrentRun(state);
   const findings = Array.isArray(run?.liveFindings) ? run.liveFindings : [];
   return findings.length > getVisibleLiveFindings(state).length;
-}
-
-export function getPreviewArtifacts(state: LabStoreState) {
-  const run = getCurrentRun(state);
-  return Array.isArray(run?.previewArtifacts) ? run.previewArtifacts.slice() : [];
-}
-
-export function getActivePreviewArtifact(
-  state: LabStoreState
-): LabPreviewArtifactProjection | null {
-  const previewArtifacts = getPreviewArtifacts(state);
-  if (previewArtifacts.length === 0) {
-    return null;
-  }
-
-  const activePreviewId =
-    asNonEmptyString(state.ui.activePreviewArtifactId) ||
-    asNonEmptyString(asLabRecord(state.workbench)["activePreviewArtifactId"]);
-  return (
-    previewArtifacts.find(function (entry) {
-      return entry.id === activePreviewId;
-    }) ||
-    previewArtifacts.find(function (entry) {
-      return entry.active === true;
-    }) ||
-    previewArtifacts[0] ||
-    null
-  );
-}
-
-function getAudioVisualizationArtifactTimestamp(
-  artifact: LabArtifactProjection | LabPreviewArtifactProjection
-) {
-  if (typeof artifact.createdAt !== "string" || artifact.createdAt.trim() === "") {
-    return Number.NEGATIVE_INFINITY;
-  }
-  const parsedTimestamp = Date.parse(artifact.createdAt);
-  return Number.isFinite(parsedTimestamp) ? parsedTimestamp : Number.NEGATIVE_INFINITY;
-}
-
-function getLoadableVisualizationArtifactUrl(
-  artifact: LabArtifactProjection | LabPreviewArtifactProjection
-) {
-  if (typeof artifact.previewUrl === "string" && artifact.previewUrl.trim() !== "") {
-    return artifact.previewUrl;
-  }
-  const fileUrl = (artifact as { fileUrl?: unknown }).fileUrl;
-  return typeof fileUrl === "string" && fileUrl.trim() !== "" ? fileUrl : null;
-}
-
-function hasLoadableVisualizationArtifactUrl(
-  artifact: LabArtifactProjection | LabPreviewArtifactProjection
-) {
-  return getLoadableVisualizationArtifactUrl(artifact) !== null;
-}
-
-function pickPreferredAudioVisualizationArtifact(
-  artifacts: Array<LabArtifactProjection | LabPreviewArtifactProjection>,
-  kind: "waveform" | "spectrogram"
-) {
-  return (
-    artifacts
-      .map(function (artifact, index) {
-        return {
-          artifact,
-          index,
-        };
-      })
-      .filter(function (entry) {
-        return entry.artifact.kind === kind && hasLoadableVisualizationArtifactUrl(entry.artifact);
-      })
-      .sort(function (left, right) {
-        const timestampDelta =
-          getAudioVisualizationArtifactTimestamp(right.artifact) -
-          getAudioVisualizationArtifactTimestamp(left.artifact);
-        if (timestampDelta !== 0) {
-          return timestampDelta;
-        }
-        if (left.artifact.active !== right.artifact.active) {
-          return left.artifact.active === true ? -1 : 1;
-        }
-        return left.index - right.index;
-      })[0]?.artifact || null
-  );
-}
-
-export function getAudioVisualizationArtifact(
-  state: LabStoreState
-): LabArtifactProjection | LabPreviewArtifactProjection | null {
-  const mode =
-    state.ui.workspace.audioFocus.visualizationMode === "spectrum" ? "spectrum" : "waveform";
-
-  const run = getCurrentRun(state);
-  if (!run) {
-    return null;
-  }
-
-  const finalArtifacts = Array.isArray(run.artifacts) ? run.artifacts : [];
-  const previewArtifacts = Array.isArray(run.previewArtifacts) ? run.previewArtifacts : [];
-  const preferredKinds: Array<"waveform" | "spectrogram"> =
-    mode === "spectrum" ? ["spectrogram", "waveform"] : ["waveform", "spectrogram"];
-
-  for (const kind of preferredKinds) {
-    const finalArtifact = pickPreferredAudioVisualizationArtifact(finalArtifacts, kind);
-    if (finalArtifact) {
-      return finalArtifact;
-    }
-    const previewArtifact = pickPreferredAudioVisualizationArtifact(previewArtifacts, kind);
-    if (previewArtifact) {
-      return previewArtifact;
-    }
-  }
-
-  return null;
-}
-
-export function getComparisonVariants(state: LabStoreState) {
-  const run = getCurrentRun(state);
-  return Array.isArray(run?.comparisonVariants) ? run.comparisonVariants.slice() : [];
-}
-
-export function getActiveModule(state: LabStoreState): LabModuleState | null {
-  const run = getCurrentRun(state);
-  if (!run || !Array.isArray(run.moduleOrder)) {
-    return null;
-  }
-  const activeModuleId =
-    run.moduleOrder.find(function (moduleId) {
-      return run.modules[moduleId]?.status === "running";
-    }) || null;
-  return activeModuleId ? run.modules[activeModuleId] || null : null;
 }
 
 export function getSelectedCapabilities(state: LabStoreState): CapabilityFamilyId[] {

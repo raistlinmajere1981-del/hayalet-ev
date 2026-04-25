@@ -623,6 +623,35 @@ test("laboratory hydrate restores dual preview workspace fields with valid linke
   assert.equal(getDualPreviewVolume(store.getState()), 0.35);
 });
 
+test("laboratory hydrate ignores retired module manager persisted ui flags", () => {
+  const store = createLabStore();
+  const legacyPersistedPayload = {
+    currentStage: "source",
+    featureId: "media-analysis",
+    projectIndex: {
+      activeProjectId: null,
+      projects: [],
+    },
+    workbench: {},
+    sourceProbeStatus: "idle",
+    reports: {
+      user: null,
+      ai: null,
+      emptyReason: "Rapor henüz üretilmedi.",
+    },
+    activityFeed: [],
+    moduleManagerOpen: true,
+    workspace: {},
+  } as unknown as NonNullable<ReturnType<typeof store.getState>["persisted"]>;
+
+  store.dispatch({
+    type: "hydrate",
+    payload: legacyPersistedPayload,
+  });
+
+  assert.equal(store.getState().ui.toolManagerOpen, false);
+});
+
 test("laboratory hydrate reconstructs an active selection from a valid persisted primitive range", () => {
   const store = createLabStore();
 

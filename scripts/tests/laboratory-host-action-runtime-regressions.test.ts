@@ -8,6 +8,36 @@ import { createMediaLocalSourceIntakeRuntime } from "../../rooms/laboratory/main
 import { createLaboratoryJobStateRuntime } from "../../rooms/laboratory/shared/host/job-state.ts";
 import { syncSourceLabAssetForProject } from "../../rooms/laboratory/shared/host/lab-assets.ts";
 import { createLaboratoryReportExportRuntime } from "../../rooms/laboratory/shared/host/reporting-export.ts";
+import {
+  createLaboratoryHostUtils,
+  sanitizeLaboratoryFileSegment,
+  toLaboratoryFfmpegTimestamp,
+} from "../../rooms/laboratory/shared/host/host-utils.ts";
+
+test("laboratory host utility helpers preserve file, timestamp, and clamp golden cases", () => {
+  const hostUtils = createLaboratoryHostUtils({
+    audioFeatureId: "audio-analysis",
+    getDefaultSourceType() {
+      return "media";
+    },
+    toRecord(value) {
+      return value !== null && typeof value === "object" && Array.isArray(value) === false
+        ? (value as Record<string, unknown>)
+        : {};
+    },
+  });
+
+  assert.equal(
+    sanitizeLaboratoryFileSegment(" Clip 01 / Final!.mp4 ", "artifact"),
+    "clip-01-final-mp4"
+  );
+  assert.equal(sanitizeLaboratoryFileSegment("", "fallback-name"), "fallback-name");
+  assert.equal(toLaboratoryFfmpegTimestamp(1.23456, null), "1.235");
+  assert.equal(toLaboratoryFfmpegTimestamp(-1, null), "0");
+  assert.equal(toLaboratoryFfmpegTimestamp("bad", "2.000"), "2.000");
+  assert.equal(hostUtils.clampNumber("3.5", 0, 2, 1), 2);
+  assert.equal(hostUtils.clampNumber("bad", 0, 2, 1), 1);
+});
 
 test("laboratory host activation unwraps host-context room-event payloads before saving context", () => {
   const savedContexts: Array<Record<string, unknown>> = [];

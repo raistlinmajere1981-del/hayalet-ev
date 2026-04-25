@@ -16,10 +16,10 @@ ve sonunda ne gördüğünü gerçekten ortaya koymaktır.
 
 Laboratory:
 
-* medya ile çalışır
-* ses ile çalışır
-* resim ile çalışır
-* altyazı ile çalışır
+- medya ile çalışır
+- ses ile çalışır
+- resim ile çalışır
+- altyazı ile çalışır
 
 Ama bunları üç ayrı dünya gibi kurmaz.
 
@@ -27,9 +27,9 @@ Ama bunları üç ayrı dünya gibi kurmaz.
 
 Bu yüzden Laboratory:
 
-* bir player değildir
-* bir editör değildir
-* sadece bir rapor ekranı değildir
+- bir player değildir
+- bir editör değildir
+- sadece bir rapor ekranı değildir
 
 👉 bunların arasındaki geçiş alanıdır
 
@@ -42,10 +42,10 @@ Bir analizin en zor kısmı
 
 Öncesidir.
 
-* kaynak hazır mı?
-* gerekli araçlar var mı?
-* model eksik mi?
-* bu koşu gerçekten başlayabilir mi?
+- kaynak hazır mı?
+- gerekli araçlar var mı?
+- model eksik mi?
+- bu koşu gerçekten başlayabilir mi?
 
 Laboratory önce buna bakar.
 
@@ -82,10 +82,10 @@ sadece bekleyen bir ekran olmaz.
 
 Yapılan işi takip eder.
 
-* hangi aşama çalışıyor
-* ne üretildi
-* ne takıldı
-* ne yarım kaldı
+- hangi aşama çalışıyor
+- ne üretildi
+- ne takıldı
+- ne yarım kaldı
 
 görünür olur.
 
@@ -105,10 +105,10 @@ Laboratory yalnızca “çıktı üretmek” ile ilgilenmez.
 
 Arkadaki zemini de görünür kılar.
 
-* hangi araç ne için gerekli
-* hangisi otomatik kurulabilir
-* hangisi sistem bağımlıdır
-* hangi model hangi işte kullanılır
+- hangi araç ne için gerekli
+- hangisi otomatik kurulabilir
+- hangisi sistem bağımlıdır
+- hangi model hangi işte kullanılır
 
 Böylece oda,
 sadece sonuç alanı olmaz.
@@ -125,12 +125,12 @@ iş bittikten sonra oluşan bir ek değildir.
 
 Burada rapor:
 
-* ne bulunduğunu söyler
-* neyin eksik kaldığını söyler
-* hangi koşullarda üretildiğini taşır
-* bu verileri hem kullanıcının anlayacağı düzeyde bir rapor ve
-bir AI'nin yorumlayacağı şekilde teknik rapor olarak sunulur
-* Rapor istendiğinde AI'ye otomatik iletilebilir, 
+- ne bulunduğunu söyler
+- neyin eksik kaldığını söyler
+- hangi koşullarda üretildiğini taşır
+- bu verileri hem kullanıcının anlayacağı düzeyde bir rapor ve
+  bir AI'nin yorumlayacağı şekilde teknik rapor olarak sunulur
+- Rapor istendiğinde AI'ye otomatik iletilebilir,
 
 Yani sadece “çıktı” vermez.
 
@@ -141,14 +141,13 @@ ham sonuçtan daha değerlidir.
 
 ---
 
-
 ## 🎯 Amaç
 
 Amaç sadece bir analizi tamamlamak değil.
 
-* neyin çalışabildiğini görmek
-* neyin neden çalışmadığını anlamak
-* elde edilen sonucu güvenilir hale getirmek
+- neyin çalışabildiğini görmek
+- neyin neden çalışmadığını anlamak
+- elde edilen sonucu güvenilir hale getirmek
 
 ---
 
@@ -167,3 +166,17 @@ Ve sonunda:
 
 > ham veri,
 > çalışılmış bir bulguya dönüşür.
+
+---
+
+## Teknik Bakım Notu
+
+Laboratory kaynak kodu için oda-local sahiplik ve temizlik sınırları:
+
+- `rooms/laboratory/README.md`
+
+Kuralların kısa hali:
+
+- gerçek kaynak `rooms/laboratory` altındadır
+- `data/rooms/laboratory` generated/installed kopyadır
+- dinamik tool payloadları ve manifest assetleri import grafiğinde görünmese bile runtime girdisidir

@@ -2,7 +2,7 @@ import type { LabAudioFocusSettings } from "../models/lab-types.js";
 
 type AudioFocusEqBand = LabAudioFocusSettings["eqBands"][number];
 
-export const DEFAULT_AUDIO_FOCUS_EQ_BANDS: AudioFocusEqBand[] = [
+const DEFAULT_AUDIO_FOCUS_EQ_BANDS: AudioFocusEqBand[] = [
   { frequency: 60, gain: 0, Q: 1.0, type: "lowshelf" },
   { frequency: 250, gain: 0, Q: 1.0, type: "peaking" },
   { frequency: 1000, gain: 0, Q: 1.0, type: "peaking" },

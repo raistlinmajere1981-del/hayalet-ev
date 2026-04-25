@@ -177,11 +177,13 @@ function resolveEsbuildFormat(relativePath: string): Format | undefined {
 export async function buildWorkspaceRoomOutput(sourceDir: string, buildDir: string): Promise<void> {
   await copyDirectoryContents(sourceDir, buildDir, {
     includeRelativePath: (relativePath) =>
+      relativePath.startsWith("scripts/") === false &&
       isWorkspaceTypeScriptSourcePath(relativePath) === false &&
       isTypeDeclarationPath(relativePath) === false,
   });
 
   const sourceFiles = (await collectFilesRecursive(sourceDir)).filter((file) =>
+    file.relativePath.startsWith("scripts/") === false &&
     isWorkspaceTypeScriptSourcePath(file.relativePath)
   );
 

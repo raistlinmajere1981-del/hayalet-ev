@@ -430,7 +430,10 @@ test("laboratory theme widens the left rail and normalizes rail asset spacing", 
 test("laboratory micro inspection UI exposes roi focus precedence and lens affordances in the preview shell", () => {
   const overlaySource = readFileSync("rooms/laboratory/ui/workspace-roi-overlay.ts", "utf8");
   const surfaceSource = readFileSync("rooms/laboratory/ui/workspace-surface.ts", "utf8");
-  const timelineSource = readFileSync("rooms/laboratory/ui/lab-waveform-timeline-render.ts", "utf8");
+  const timelineSelectionSource = readFileSync(
+    "rooms/laboratory/ui/timeline/timeline-selection.ts",
+    "utf8"
+  );
 
   assert.match(
     overlaySource,
@@ -440,23 +443,26 @@ test("laboratory micro inspection UI exposes roi focus precedence and lens affor
   assert.match(overlaySource, /data-lab-selection-roi-capture="true"/);
   assert.match(surfaceSource, /data-lab-preview-inspection-stage="true"/);
   assert.match(surfaceSource, /data-lab-preview-inspection-content="true"/);
-  assert.match(timelineSource, /Selection micro zoom/);
-  assert.match(timelineSource, /id="lab-audio-viz-inspection"/);
+  assert.match(timelineSelectionSource, /Selection micro zoom/);
+  assert.match(timelineSelectionSource, /id="lab-audio-viz-inspection"/);
 });
 
 test("laboratory selection preview exposes soft execution intent affordances without run semantics", () => {
-  const timelineSource = readFileSync("rooms/laboratory/ui/lab-waveform-timeline-render.ts", "utf8");
+  const timelineSelectionSource = readFileSync(
+    "rooms/laboratory/ui/timeline/timeline-selection.ts",
+    "utf8"
+  );
 
-  assert.match(timelineSource, /Selected action/);
-  assert.match(timelineSource, /data-lab-execution-intent-accept=/);
-  assert.match(timelineSource, /data-lab-execution-intent-dismiss=/);
-  assert.match(timelineSource, /data-lab-execution-intent-queue=/);
-  assert.match(timelineSource, /data-lab-execution-intent-clear="true"/);
-  assert.match(timelineSource, /mediaAnalysis\.timeline\.intentSelected/);
-  assert.match(timelineSource, /mediaAnalysis\.timeline\.wantThis/);
-  assert.match(timelineSource, /mediaAnalysis\.timeline\.notNow/);
-  assert.match(timelineSource, /mediaAnalysis\.timeline\.queueForLater/);
-  assert.doesNotMatch(timelineSource, />Run</);
+  assert.match(timelineSelectionSource, /Selected action/);
+  assert.match(timelineSelectionSource, /data-lab-execution-intent-accept=/);
+  assert.match(timelineSelectionSource, /data-lab-execution-intent-dismiss=/);
+  assert.match(timelineSelectionSource, /data-lab-execution-intent-queue=/);
+  assert.match(timelineSelectionSource, /data-lab-execution-intent-clear="true"/);
+  assert.match(timelineSelectionSource, /mediaAnalysis\.timeline\.intentSelected/);
+  assert.match(timelineSelectionSource, /mediaAnalysis\.timeline\.wantThis/);
+  assert.match(timelineSelectionSource, /mediaAnalysis\.timeline\.notNow/);
+  assert.match(timelineSelectionSource, /mediaAnalysis\.timeline\.queueForLater/);
+  assert.doesNotMatch(timelineSelectionSource, />Run</);
 });
 
 test("laboratory execution plan UI stays passive and derived from active intent", () => {

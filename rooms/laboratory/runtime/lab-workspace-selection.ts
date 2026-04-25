@@ -29,7 +29,7 @@ export function normalizeWorkspaceTimelineRange(
   };
 }
 
-export function normalizeLabSelectionType(value: unknown): LabSelectionType {
+function normalizeLabSelectionType(value: unknown): LabSelectionType {
   switch (value) {
     case "clip":
     case "focus":
@@ -118,7 +118,7 @@ function getSelectionSeedForRange(
   };
 }
 
-export function createActiveSelectionFromRange(
+function createActiveSelectionFromRange(
   startMs: number | null,
   endMs: number | null,
   previousSelection: LabSelection | null,

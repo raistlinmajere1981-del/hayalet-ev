@@ -1550,19 +1550,6 @@
       "label": "Hipotez",
       "placeholder": "Ne aradigini yaz — or. 01:30 civarinda ek yeri kontrol et, ses senkronunu dogrula..."
     },
-    "workspaceIntents": {
-      "eyebrow": "YETENEKLER",
-      "title": "Neye bakilacak",
-      "readiness": {
-        "available": "Uygun",
-        "partial": "Kismi",
-        "unavailable": "Kullanilamaz"
-      },
-      "actions": {
-        "deselect": "Secimi kaldir",
-        "select": "Sec"
-      }
-    },
     "interactiveControls": {
       "title": "Gorsel Ayarlar",
       "fields": {

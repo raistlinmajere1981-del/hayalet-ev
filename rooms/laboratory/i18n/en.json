@@ -1550,19 +1550,6 @@
       "label": "Hypothesis",
       "placeholder": "Describe what you're looking for — e.g. check splice around 01:30, verify audio sync..."
     },
-    "workspaceIntents": {
-      "eyebrow": "CAPABILITIES",
-      "title": "What to look for",
-      "readiness": {
-        "available": "Available",
-        "partial": "Partial",
-        "unavailable": "Unavailable"
-      },
-      "actions": {
-        "deselect": "Deselect",
-        "select": "Select"
-      }
-    },
     "interactiveControls": {
       "title": "Visual Adjustments",
       "fields": {

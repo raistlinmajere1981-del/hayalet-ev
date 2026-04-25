@@ -139,7 +139,7 @@ function createSeededState(ffmpegInstalled = false) {
 
 test("laboratory left rail reflects the active workspace shell navigation", () => {
   const store = createSeededState();
-  store.dispatch({ type: "module-manager-toggled", open: true });
+  store.dispatch({ type: "tool-manager-toggled", open: true });
   const html = renderLabLeftRail(store.getState());
 
   assert.match(html, /Laboratory/);
@@ -1427,11 +1427,11 @@ test("laboratory store applies optimistic source and workbench patches for sourc
       selectedModuleIds: ["media-analysis", "audio-analysis", "subtitle-analysis"],
     },
   });
-  store.dispatch({ type: "module-manager-toggled", open: true });
+  store.dispatch({ type: "tool-manager-toggled", open: true });
 
   const state = store.getState();
   assert.equal(state.source?.["kind"], "audio");
   assert.equal(state.source?.["mode"], "url");
   assert.equal(state.workbench["activeModuleId"], "audio-analysis");
-  assert.equal(state.ui.moduleManagerOpen, true);
+  assert.equal(state.ui.toolManagerOpen, true);
 });

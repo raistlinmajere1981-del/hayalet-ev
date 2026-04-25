@@ -1,0 +1,48 @@
+:root {
+  color-scheme: dark;
+  --labx-bg: #07111c;
+  --labx-bg-soft: #0d1726;
+  --labx-surface: rgba(11, 22, 37, 0.9);
+  --labx-surface-strong: rgba(14, 27, 44, 0.96);
+  --labx-surface-highlight: rgba(17, 37, 59, 0.98);
+  --labx-border: rgba(116, 155, 193, 0.18);
+  --labx-border-strong: rgba(117, 183, 222, 0.34);
+  --labx-text: #ecf4ff;
+  --labx-text-soft: #9db3ca;
+  --labx-text-dim: #6d8197;
+  --labx-accent: #5cd7df;
+  --labx-accent-soft: rgba(92, 215, 223, 0.14);
+  --labx-warning: #ffb265;
+  --labx-error: #ff7f88;
+  --labx-success: #82e3b1;
+  --labx-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+  --labx-radius: 18px;
+  --labx-radius-tight: 12px;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background:
+    radial-gradient(circle at top right, rgba(92, 215, 223, 0.08), transparent 26%),
+    radial-gradient(circle at bottom left, rgba(67, 118, 176, 0.18), transparent 32%),
+    linear-gradient(180deg, #09111c 0%, #07111c 45%, #050d17 100%);
+  color: var(--labx-text);
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+}
+
+body {
+  min-height: 100vh;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}

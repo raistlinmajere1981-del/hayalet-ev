@@ -78,7 +78,7 @@ export function getLabUserActionPrimaryOutput(outputs: LabAsset[]): LabAsset | n
   return outputs[0] || null;
 }
 
-export function getLabUserActionOutputOverflowCount(outputs: LabAsset[]): number {
+function getLabUserActionOutputOverflowCount(outputs: LabAsset[]): number {
   return Math.max(0, outputs.length - 1);
 }
 

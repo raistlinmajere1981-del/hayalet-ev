@@ -52,14 +52,14 @@ function collectRelativeFiles(rootDir: string, currentDir: string = rootDir): st
 }
 
 function resolveLaboratoryShippedParityRoot() {
-  const directInstalledRoot = "data/rooms/laboratory";
-  const cachedWorkspaceBuildRoot = "data/room-storage/laboratory/build/workspace";
+  const generatedRuntimeRoot = "rooms/.build/laboratory/runtime";
+  const workspaceSourceRoot = "rooms/laboratory";
 
-  if (existsSync(join(directInstalledRoot, "manifest.json"))) {
-    return directInstalledRoot;
+  if (existsSync(join(generatedRuntimeRoot, "manifest.json"))) {
+    return generatedRuntimeRoot;
   }
 
-  return cachedWorkspaceBuildRoot;
+  return workspaceSourceRoot;
 }
 
 function assertRoomParity(leftRoot: string, rightRoot: string) {
@@ -92,7 +92,10 @@ test("laboratory shipped room keeps parity with the active lab-root shell build 
       assert.equal(existsSync(join(shippedParityRoot, relativePath)), false, relativePath);
     });
 
-    const workspaceSurfaceSource = readFileSync(join(buildArtifact.rootDir, "ui/workspace-surface.js"), "utf8");
+    const workspaceSurfaceSource = readFileSync(
+      join(buildArtifact.rootDir, "ui/workspace-surface.js"),
+      "utf8"
+    );
     const shippedWorkspaceSurfaceSource = readFileSync(
       join(shippedParityRoot, "ui/workspace-surface.js"),
       "utf8"
@@ -109,7 +112,10 @@ test("laboratory shipped room keeps parity with the active lab-root shell build 
     assert.match(workspaceSurfaceSource, /workspace-open-dual-preview/);
     assert.match(workspaceSurfaceSource, /dual-preview-master/);
     assert.match(runtimeControllerSource, /workspace-dual-preview-toggled/);
-    assert.match(runtimeControllerSource, /Dual preview seek is unavailable until media is ready\./);
+    assert.match(
+      runtimeControllerSource,
+      /Dual preview seek is unavailable until media is ready\./
+    );
     assert.match(shippedWorkspaceSurfaceSource, /workspace-open-dual-preview/);
     assert.match(shippedRuntimeControllerSource, /workspace-dual-preview-toggled/);
 
