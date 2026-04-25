@@ -449,7 +449,7 @@ export function renderReportOverlay(state: LabStoreState) {
         ? renderAiReport(reports.ai)
         : `<div class="labx-process-empty">${reports.emptyReason || "Rapor mevcut değil"}</div>`;
 
-  const runIdSuffix = run ? run.id.slice(-6) || "—" : "—";
+  const runIdSuffix = run && typeof run.id === "string" ? run.id.slice(-6) || "—" : "—";
   const freshness = getReportFreshness(state);
   const runActive = isRunActive(state);
   const freshnessLabel =

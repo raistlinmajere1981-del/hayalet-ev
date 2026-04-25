@@ -1,6 +1,8 @@
 import { escapeHtml } from "../models/lab-types.js";
 import type {
   LabActionSuggestion,
+  LabInspectionMode,
+  LabInspectionSnapshot,
   LabInterpretationItem,
   LabSelection,
   LabSuggestionPreview,
@@ -67,6 +69,39 @@ function formatSelectionIntent(intent: LabSelection["intent"] | undefined) {
   )[intent ?? "unknown"];
 }
 
+function supportsInspectionMode(mode: LabInspectionMode, sourceKind: string | undefined) {
+  switch (mode) {
+    case "none":
+      return true;
+    case "audio":
+      return sourceKind === "audio" || sourceKind === "video";
+    case "motion":
+      return sourceKind === "video";
+    case "visual":
+      return sourceKind === "image" || sourceKind === "video";
+    default:
+      return false;
+  }
+}
+
+const INSPECTION_MODE_OPTIONS = [
+  "none",
+  "visual",
+  "audio",
+  "motion",
+] as const satisfies ReadonlyArray<LabInspectionMode>;
+
+function formatInspectionMode(mode: LabInspectionMode) {
+  return (
+    {
+      none: "None",
+      visual: "Visual",
+      audio: "Audio",
+      motion: "Motion",
+    } as const
+  )[mode];
+}
+
 function getSuggestionPriorityClass(suggestion: LabActionSuggestion) {
   return suggestion.confidence >= 0.8 ? "is-primary" : "is-secondary";
 }
@@ -101,6 +136,52 @@ function renderSelectionSuggestions(suggestions: LabActionSuggestion[]) {
   `;
 }
 
+function getToolHintGlyph(suggestion: LabActionSuggestion) {
+  switch (suggestion.actionType) {
+    case "analyze-segment":
+    case "extract-clip":
+    case "focus-region":
+    case "inspect-audio":
+      return "+";
+    case "inspect-motion":
+      return ">";
+    case "enhance-visual":
+      return "*";
+    case "stabilize-segment":
+      return "=";
+    default:
+      return "·";
+  }
+}
+
+function renderInspectionToolHints(suggestions: LabActionSuggestion[]) {
+  const toolHintSuggestions = suggestions.filter(function (suggestion) {
+    return typeof suggestion.toolHint === "string" && suggestion.toolHint.trim() !== "";
+  });
+  if (toolHintSuggestions.length === 0) {
+    return "";
+  }
+  return `
+    <div class="lab-selection-panel__tools">
+      <div class="lab-selection-panel__tools-title">Inspection tools</div>
+      <div class="lab-selection-panel__tools-list">
+        ${toolHintSuggestions
+          .map(function (suggestion) {
+            return `<button
+              class="lab-selection-panel__tool-hint"
+              type="button"
+              data-lab-selection-suggestion="${escapeHtml(suggestion.id)}"
+            >
+              <span class="lab-selection-panel__tool-hint-icon" aria-hidden="true">${escapeHtml(getToolHintGlyph(suggestion))}</span>
+              <span class="lab-selection-panel__tool-hint-label">${escapeHtml(suggestion.toolHint || suggestion.label)}</span>
+            </button>`;
+          })
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
 function formatEstimatedCost(cost: LabSuggestionPreview["estimatedCost"]) {
   return (
     {
@@ -111,10 +192,33 @@ function formatEstimatedCost(cost: LabSuggestionPreview["estimatedCost"]) {
   )[cost ?? "low"];
 }
 
-function renderSuggestionPreview(preview: LabSuggestionPreview | null) {
+function renderExecutionIntentStrip(activeExecutionIntent: LabActionSuggestion | null) {
+  if (activeExecutionIntent === null) {
+    return "";
+  }
+  return `
+    <div class="lab-selection-panel__execution-intent">
+      <div class="lab-selection-panel__execution-intent-copy">
+        <span class="lab-selection-panel__execution-intent-eyebrow">Selected action</span>
+        <strong class="lab-selection-panel__execution-intent-label">${escapeHtml(activeExecutionIntent.label)}</strong>
+      </div>
+      <button
+        class="lab-selection-panel__execution-intent-clear"
+        type="button"
+        data-lab-execution-intent-clear="true"
+      >Clear</button>
+    </div>
+  `;
+}
+
+function renderSuggestionPreview(
+  preview: LabSuggestionPreview | null,
+  activeExecutionIntent: LabActionSuggestion | null
+) {
   if (preview === null) {
     return "";
   }
+  const executionIntentSelected = activeExecutionIntent?.id === preview.suggestionId;
   return `
     <div class="lab-selection-preview" data-lab-selection-preview="true">
       <div class="lab-selection-preview__eyebrow">Preview</div>
@@ -150,6 +254,24 @@ function renderSuggestionPreview(preview: LabSuggestionPreview | null) {
           ? `<div class="lab-selection-preview__cost">Estimated cost: ${escapeHtml(formatEstimatedCost(preview.estimatedCost))}</div>`
           : ""
       }
+      <div class="lab-selection-preview__actions">
+        <button
+          class="lab-selection-preview__action lab-selection-preview__action--primary${executionIntentSelected ? " is-active" : ""}"
+          type="button"
+          data-lab-execution-intent-accept="${escapeHtml(preview.suggestionId)}"
+          aria-pressed="${String(executionIntentSelected)}"
+        >${executionIntentSelected ? "Intent selected" : "I want this"}</button>
+        <button
+          class="lab-selection-preview__action"
+          type="button"
+          data-lab-execution-intent-dismiss="${escapeHtml(preview.suggestionId)}"
+        >Not now</button>
+        <button
+          class="lab-selection-preview__action lab-selection-preview__action--subtle"
+          type="button"
+          data-lab-execution-intent-queue="${escapeHtml(preview.suggestionId)}"
+        >Queue for later</button>
+      </div>
     </div>
   `;
 }
@@ -162,6 +284,19 @@ function formatInterpretationType(type: LabInterpretationItem["type"]) {
       hint: "Hint",
     } as const
   )[type];
+}
+
+function formatInterpretationSeverity(severity: LabInterpretationItem["severity"]) {
+  if (severity === undefined) {
+    return "";
+  }
+  return (
+    {
+      low: "Low",
+      medium: "Medium",
+      high: "High",
+    } as const
+  )[severity];
 }
 
 function getInterpretationIcon(type: LabInterpretationItem["type"]) {
@@ -190,17 +325,112 @@ function renderInterpretationPanel(
       <div class="lab-interpretation-panel__list">
         ${items
           .map(function (item) {
-            return `<div class="lab-interpretation-panel__item" data-tone="${escapeHtml(item.type)}">
+            const severityLabel = formatInterpretationSeverity(item.severity);
+            return `<div class="lab-interpretation-panel__item" data-tone="${escapeHtml(item.type)}"${item.severity ? ` data-severity="${escapeHtml(item.severity)}"` : ""}>
               <span class="lab-interpretation-panel__icon" aria-hidden="true">${escapeHtml(getInterpretationIcon(item.type))}</span>
               <div class="lab-interpretation-panel__copy">
-                <div class="lab-interpretation-panel__meta">${escapeHtml(formatInterpretationType(item.type))}</div>
+                <div class="lab-interpretation-panel__meta">${escapeHtml(formatInterpretationType(item.type))}${severityLabel ? `<span class="lab-interpretation-panel__severity">${escapeHtml(severityLabel)}</span>` : ""}</div>
                 <div class="lab-interpretation-panel__message">${escapeHtml(item.message)}</div>
+                ${
+                  item.recommendation
+                    ? `<div class="lab-interpretation-panel__recommendation">&#8594; ${escapeHtml(item.recommendation)}</div>`
+                    : ""
+                }
               </div>
             </div>`;
           })
           .join("")}
       </div>
     </details>
+  `;
+}
+
+function renderSelectionRegionTools(options: {
+  roiFocusActive: boolean;
+  selectionRoi: LabSelection["roi"] | undefined;
+  snapshot: LabInspectionSnapshot | null;
+  sourceKind: string | undefined;
+}) {
+  if (options.selectionRoi === undefined && options.snapshot === null) {
+    return "";
+  }
+  return `
+    <div class="lab-selection-panel__region-tools">
+      ${
+        options.selectionRoi
+          ? `
+            <button
+              class="lab-selection-panel__region-tool"
+              type="button"
+              ${options.roiFocusActive ? `data-lab-selection-roi-focus-reset="true"` : `data-lab-selection-roi-focus-toggle="true"`}
+            >${options.roiFocusActive ? "Reset focus" : "Focus region"}</button>
+            <button
+              class="lab-selection-panel__region-tool"
+              type="button"
+              data-lab-selection-roi-capture="true"
+            >Capture region</button>
+            ${
+              options.sourceKind === "video"
+                ? `
+                  <button class="lab-selection-panel__region-tool" type="button" data-lab-selection-roi-frame-step="-1">Frame -1</button>
+                  <button class="lab-selection-panel__region-tool" type="button" data-lab-selection-roi-frame-step="1">Frame +1</button>
+                `
+                : ""
+            }
+          `
+          : ""
+      }
+      ${
+        options.snapshot !== null
+          ? `<button class="lab-selection-panel__region-tool is-secondary" type="button" data-lab-selection-roi-snapshot-clear="true">Dismiss snapshot</button>`
+          : ""
+      }
+    </div>
+  `;
+}
+
+function renderInspectionSnapshot(snapshot: LabInspectionSnapshot | null) {
+  if (snapshot === null) {
+    return "";
+  }
+  const timeLabel = snapshot.timeMs !== null ? formatTimePrecise(snapshot.timeMs) : "Static frame";
+  return `
+    <div class="lab-selection-snapshot" data-lab-selection-snapshot="true">
+      <div class="lab-selection-snapshot__head">
+        <div class="lab-selection-snapshot__eyebrow">Region snapshot</div>
+        <div class="lab-selection-snapshot__meta">${escapeHtml(timeLabel)} · ${escapeHtml(String(snapshot.width))}×${escapeHtml(String(snapshot.height))}</div>
+      </div>
+      <div class="lab-selection-snapshot__image-wrap">
+        <img class="lab-selection-snapshot__image" src="${escapeHtml(snapshot.objectUrl)}" alt="Temporary inspection snapshot" />
+      </div>
+    </div>
+  `;
+}
+
+function renderWaveformInspectionLens(model: LabWaveformTimelineModel) {
+  const lens = model.waveformInspectionLens;
+  if (!lens || lens.enabled !== true) {
+    return "";
+  }
+  return `
+    <div class="labx-timeline__inspection-lens" data-lab-timeline-inspection-lens="true">
+      <div class="labx-timeline__inspection-lens-head">
+        <div class="labx-timeline__inspection-lens-title">Selection micro zoom</div>
+        <div class="labx-timeline__inspection-lens-meta">${escapeHtml(lens.sourceLabel)}</div>
+      </div>
+      <div class="labx-timeline__inspection-lens-window">
+        <canvas
+          id="lab-audio-viz-inspection"
+          class="labx-audio-viz labx-audio-viz--inspection lab-audio-viz-canvas"
+          width="960"
+          height="92"
+          data-lab-viz="audio-waveform-inspection"
+          data-lab-viz-mode="waveform"
+          data-waveform-inspection-crop-start="${String(lens.cropStartRatio)}"
+          data-waveform-inspection-crop-end="${String(lens.cropEndRatio)}"
+        ></canvas>
+      </div>
+    </div>
   `;
 }
 
@@ -240,8 +470,15 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
     model.activeSelection !== undefined &&
     model.activeSelection.endMs > model.activeSelection.startMs;
   const selectionSuggestions = hasSemanticSelection ? (model.selectionSuggestions ?? []) : [];
+  const activeExecutionIntent = hasSemanticSelection ? (model.activeExecutionIntent ?? null) : null;
+  const actionSuggestions = selectionSuggestions.filter(function (suggestion) {
+    return typeof suggestion.toolHint !== "string" || suggestion.toolHint.trim() === "";
+  });
   const suggestionPreview = hasSemanticSelection ? (model.activeSuggestionPreview ?? null) : null;
+  const activeInspectionSnapshot = model.activeInspectionSnapshot ?? null;
   const interpretationItems = model.interpretationItems ?? [];
+  const inspectionMode = model.inspectionMode ?? "none";
+  const roiFocusActive = model.roiFocusActive === true;
   const selectionIntent = activeSelection?.intent ?? "general";
   const startMs = hasSelection ? rawStartMs : 0;
   const endMs = hasSelection ? rawEndMs : durationMs;
@@ -249,6 +486,10 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
   const endPct = hasSelection ? Math.max(0, Math.min(100, (endMs / durationMs) * 100)) : 100;
   const selectionCenterPct = hasSelection ? startPct + (endPct - startPct) / 2 : 0;
   const selectionDurationMs = hasSelection ? Math.max(0, endMs - startMs) : 0;
+  const selectionRoi = activeSelection?.roi;
+  const selectionRoiLabel = selectionRoi
+    ? `Region active${roiFocusActive ? " · Focused" : ""} · ${Math.round(selectionRoi.width * 100)}% × ${Math.round(selectionRoi.height * 100)}%`
+    : "Region inactive";
   const waveformWindowStartPct = Math.max(
     0,
     Math.min(100, (model.waveformWindowStartMs / durationMs) * 100)
@@ -336,6 +577,35 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
                 ? `<div class="lab-selection-panel__label">${escapeHtml(activeSelection.label)}</div>`
                 : ""
             }
+            <div class="lab-selection-panel__region-row">
+              <span class="lab-selection-panel__region-state${selectionRoi ? " is-active" : ""}">${escapeHtml(selectionRoiLabel)}</span>
+              ${
+                selectionRoi
+                  ? `<button class="lab-selection-panel__region-clear" type="button" data-lab-selection-roi-clear="true">Clear region</button>`
+                  : ""
+              }
+            </div>
+            ${renderSelectionRegionTools({
+              roiFocusActive,
+              selectionRoi,
+              snapshot: activeInspectionSnapshot,
+              sourceKind: model.sourceKind,
+            })}
+            <div class="lab-selection-panel__inspection">
+              <div class="lab-selection-panel__inspection-title">Inspection mode</div>
+              <div class="lab-selection-panel__inspection-modes">
+                ${INSPECTION_MODE_OPTIONS.map(function (mode) {
+                  const isActive = inspectionMode === mode;
+                  const isSupported = supportsInspectionMode(mode, model.sourceKind);
+                  return `<button
+                    class="lab-selection-panel__inspection-pill${isActive ? " is-active" : ""}"
+                    type="button"
+                    aria-pressed="${String(isActive)}"
+                    ${isSupported ? `data-lab-selection-inspection-mode="${mode}"` : "disabled"}
+                  >${escapeHtml(formatInspectionMode(mode))}</button>`;
+                }).join("")}
+              </div>
+            </div>
             <div class="lab-selection-panel__intent-picker" data-lab-role="selection-intent-picker">
               ${SELECTION_INTENT_OPTIONS.map(function (intent) {
                 const isActive = selectionIntent === intent;
@@ -348,8 +618,11 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
               }).join("")}
             </div>
             <div class="lab-selection-panel__hint">This selection will guide future analysis</div>
-            ${renderSelectionSuggestions(selectionSuggestions)}
-            ${renderSuggestionPreview(suggestionPreview)}
+            ${renderExecutionIntentStrip(activeExecutionIntent)}
+            ${renderInspectionToolHints(selectionSuggestions)}
+            ${renderInspectionSnapshot(activeInspectionSnapshot)}
+            ${renderSelectionSuggestions(actionSuggestions)}
+            ${renderSuggestionPreview(suggestionPreview, activeExecutionIntent)}
             ${renderInterpretationPanel(interpretationItems, "embedded")}
           </div>
           <div
@@ -392,6 +665,7 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
           <button class="labx-timeline__export-btn" type="button" data-lab-action="timeline-extract-audio" title="Extract source audio">Extract Audio</button>
         </div>
       </div>
+      ${renderWaveformInspectionLens(model)}
       ${hasSelection ? "" : renderInterpretationPanel(interpretationItems, "standalone")}
       ${
         hasSelection

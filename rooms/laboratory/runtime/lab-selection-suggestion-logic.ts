@@ -1,8 +1,14 @@
 import type {
   LabActionSuggestion,
+  LabInspectionMode,
   LabSelection,
   LabSuggestionPreview,
 } from "../models/lab-types.js";
+
+type SelectionSuggestionContext = {
+  inspectionMode?: LabInspectionMode;
+  sourceKind: string;
+};
 
 function sourceSupportsClipSuggestion(sourceKind: string): boolean {
   return sourceKind === "audio" || sourceKind === "video";
@@ -22,12 +28,15 @@ function sourceSupportsFocusSuggestion(sourceKind: string): boolean {
 
 export function getSelectionSuggestionsForContext(
   activeSelection: LabSelection | null,
-  sourceKind: string
+  context: SelectionSuggestionContext
 ): LabActionSuggestion[] {
   if (activeSelection === null || activeSelection.endMs <= activeSelection.startMs) {
     return [];
   }
 
+  const sourceKind = context.sourceKind;
+  const inspectionMode = context.inspectionMode ?? "none";
+  const hasSelectionRoi = activeSelection.roi !== undefined;
   const suggestions: LabActionSuggestion[] = [];
 
   function pushSuggestion(suggestion: LabActionSuggestion) {
@@ -44,7 +53,7 @@ export function getSelectionSuggestionsForContext(
           id: "analyze-anomaly",
           label: "Anomaliyi analiz et",
           actionType: "analyze-segment",
-          confidence: 0.9,
+          confidence: hasSelectionRoi ? 0.94 : 0.9,
         });
       }
       break;
@@ -53,8 +62,9 @@ export function getSelectionSuggestionsForContext(
         pushSuggestion({
           id: "motion-check",
           label: "Hareket tutarliligini incele",
+          ...(hasSelectionRoi ? { toolHint: "Inspect motion" } : {}),
           actionType: "analyze-segment",
-          confidence: 0.85,
+          confidence: hasSelectionRoi || inspectionMode === "motion" ? 0.92 : 0.85,
         });
       }
       break;
@@ -64,7 +74,7 @@ export function getSelectionSuggestionsForContext(
           id: "audio-inspect",
           label: "Ses detaylarini incele",
           actionType: "inspect-audio",
-          confidence: 0.9,
+          confidence: inspectionMode === "audio" ? 0.93 : 0.9,
         });
       }
       break;
@@ -73,13 +83,63 @@ export function getSelectionSuggestionsForContext(
         pushSuggestion({
           id: "enhance-visual",
           label: "Goruntuyu iyilestir",
+          ...(hasSelectionRoi ? { toolHint: "Enhance clarity" } : {}),
           actionType: "enhance-visual",
-          confidence: 0.8,
+          confidence: hasSelectionRoi || inspectionMode === "visual" ? 0.86 : 0.8,
         });
       }
       break;
     default:
       break;
+  }
+
+  if (hasSelectionRoi && sourceSupportsFocusSuggestion(sourceKind)) {
+    pushSuggestion({
+      id: "inspect-region",
+      label: "Secili bolgeyi incele",
+      toolHint: "Focus region",
+      actionType: "focus-region",
+      confidence: inspectionMode === "motion" || inspectionMode === "visual" ? 0.88 : 0.82,
+    });
+  }
+
+  if (hasSelectionRoi && sourceKind === "video") {
+    if (
+      suggestions.some(function (entry) {
+        return entry.toolHint === "Inspect motion";
+      }) !== true
+    ) {
+      pushSuggestion({
+        id: "inspect-motion-region",
+        label: "Bolgedeki hareketi incele",
+        toolHint: "Inspect motion",
+        actionType: "inspect-motion",
+        confidence: inspectionMode === "motion" ? 0.9 : 0.84,
+      });
+    }
+    pushSuggestion({
+      id: "stabilize-region",
+      label: "Segmenti stabilize et",
+      toolHint: "Stabilize segment",
+      actionType: "stabilize-segment",
+      confidence: 0.72,
+    });
+  }
+
+  if (hasSelectionRoi && sourceSupportsVisualSuggestion(sourceKind)) {
+    if (
+      suggestions.some(function (entry) {
+        return entry.toolHint === "Enhance clarity";
+      }) !== true
+    ) {
+      pushSuggestion({
+        id: "enhance-region-clarity",
+        label: "Bolge netligini artir",
+        toolHint: "Enhance clarity",
+        actionType: "enhance-visual",
+        confidence: inspectionMode === "visual" ? 0.83 : 0.76,
+      });
+    }
   }
 
   if (sourceSupportsClipSuggestion(sourceKind)) {
@@ -89,7 +149,7 @@ export function getSelectionSuggestionsForContext(
       actionType: "extract-clip",
       confidence: suggestions.length > 0 ? 0.6 : 0.68,
     });
-  } else if (sourceSupportsFocusSuggestion(sourceKind)) {
+  } else if (sourceSupportsFocusSuggestion(sourceKind) && hasSelectionRoi !== true) {
     pushSuggestion({
       id: "focus-region",
       label: "Bolgeye odaklan",
@@ -152,7 +212,44 @@ export function buildSelectionSuggestionPreview(
         expectedOutputs: ["Video veya audio clip"],
         estimatedCost: "low",
       };
+    case "focus-region":
+      return {
+        suggestionId: suggestion.id,
+        title: "Bolge incelemesi hazirlanacak",
+        steps: [
+          preparationStep,
+          "Secili goruntu bolgesi izole edilecek",
+          "Bolgeye odakli gorsel inceleme hazirlanacak",
+        ],
+        expectedOutputs: ["Bolge odakli notlar", "Ilgili goruntu referanslari"],
+        estimatedCost: "low",
+      };
+    case "inspect-motion":
+      return {
+        suggestionId: suggestion.id,
+        title: "Bolgedeki hareket incelemesi hazirlanacak",
+        steps: [
+          preparationStep,
+          "Secili goruntu bolgesi hareket odakli izole edilecek",
+          "Frame seviyesinde hareket belirsizligi ve akis okunabilirligi gozden gecirilecek",
+        ],
+        expectedOutputs: ["Hareket odakli notlar", "Frame referanslari"],
+        estimatedCost: "low",
+      };
     default:
+      if (suggestion.actionType === "stabilize-segment") {
+        return {
+          suggestionId: suggestion.id,
+          title: "Stabilizasyon onizlemesi hazirlanacak",
+          steps: [
+            preparationStep,
+            "Secilen bolge ve segment sabitlenmis bir inceleme gorunumu icin hazirlanacak",
+            "Goruntu akisi karsilastirmali olarak gozden gecirilecek",
+          ],
+          expectedOutputs: ["Stabilizasyon notlari", "Karsilastirmali goruntu referanslari"],
+          estimatedCost: "low",
+        };
+      }
       return {
         suggestionId: suggestion.id,
         title: "Islem hazirlaniyor",

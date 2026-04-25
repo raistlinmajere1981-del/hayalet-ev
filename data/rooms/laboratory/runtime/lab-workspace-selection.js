@@ -35,20 +35,25 @@ export function normalizeLabSelectionIntent(value, fallback = "general") {
       return fallback;
   }
 }
-function normalizeSelectionRoi(value) {
+export function normalizeLabSelectionRoi(value) {
   const record = asLabRecord(value);
   const x = asNumber(record["x"]);
   const y = asNumber(record["y"]);
   const width = asNumber(record["width"]);
   const height = asNumber(record["height"]);
-  if (x === null || y === null || width === null || height === null || width <= 0 || height <= 0) {
+  if (x === null || y === null || width === null || height === null || x < 0 || y < 0 || x >= 1 || y >= 1 || width <= 0 || height <= 0) {
+    return void 0;
+  }
+  const clampedWidth = Math.min(1 - x, width);
+  const clampedHeight = Math.min(1 - y, height);
+  if (clampedWidth <= 0 || clampedHeight <= 0) {
     return void 0;
   }
   return {
     x,
     y,
-    width,
-    height
+    width: clampedWidth,
+    height: clampedHeight
   };
 }
 function getSelectionSeedForRange(value, startMs, endMs) {
@@ -62,7 +67,7 @@ function getSelectionSeedForRange(value, startMs, endMs) {
   }
   const id = asNonEmptyString(record["id"]);
   const label = asNonEmptyString(record["label"]) || void 0;
-  const roi = normalizeSelectionRoi(record["roi"]);
+  const roi = normalizeLabSelectionRoi(record["roi"]);
   const createdAt = asNumber(record["createdAt"]);
   return {
     ...id === null ? {} : { id },
@@ -83,7 +88,8 @@ export function createActiveSelectionFromRange(startMs, endMs, previousSelection
     previousSelection?.intent ?? selectionSeed?.intent
   );
   const nextLabel = previousSelection?.label ?? selectionSeed?.label;
-  const nextRoi = previousSelection?.roi ?? selectionSeed?.roi;
+  const previousSelectionMatchesRange = previousSelection?.startMs === startMs && previousSelection?.endMs === endMs;
+  const nextRoi = previousSelectionMatchesRange ? previousSelection?.roi : selectionSeed?.roi;
   return {
     id: previousSelection?.id || selectionSeed?.id || createLabEventId("selection"),
     startMs,

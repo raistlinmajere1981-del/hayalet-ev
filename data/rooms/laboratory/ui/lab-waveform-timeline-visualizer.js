@@ -5,6 +5,7 @@ const WORKSPACE_AUDIO_MEDIA_SELECTORS = [
   'video[data-lab-preserve-media="workspace-preview"]'
 ];
 const WAVEFORM_CANVAS_SELECTOR = "#lab-audio-viz";
+const INSPECTION_WAVEFORM_CANVAS_SELECTOR = "#lab-audio-viz-inspection";
 function isWorkspaceAudioPreview(value) {
   if (typeof HTMLMediaElement === "function" && value instanceof HTMLMediaElement) {
     return true;
@@ -87,17 +88,26 @@ export function createLabWaveformTimelineVisualizer(deps) {
     }
     return null;
   }
-  function getAudioVisualizerCanvas() {
+  function getAudioVisualizerCanvasBySelector(selector, mode) {
     const querySelector = getDocumentQuerySelector();
     if (querySelector === null) {
       return null;
     }
-    const candidate = querySelector(WAVEFORM_CANVAS_SELECTOR);
+    const candidate = querySelector(selector);
     if (!isAudioVisualizerCanvas(candidate)) {
       return null;
     }
-    candidate.dataset["labVizMode"] = getEffectiveAudioVisualizationMode(getVisualizationMode());
+    candidate.dataset["labVizMode"] = mode;
     return candidate;
+  }
+  function getAudioVisualizerCanvas() {
+    return getAudioVisualizerCanvasBySelector(
+      WAVEFORM_CANVAS_SELECTOR,
+      getEffectiveAudioVisualizationMode(getVisualizationMode())
+    );
+  }
+  function getInspectionLensCanvas() {
+    return getAudioVisualizerCanvasBySelector(INSPECTION_WAVEFORM_CANVAS_SELECTOR, "waveform");
   }
   function getLoadableVisualizationArtifactUrl(artifact) {
     if (typeof artifact.previewUrl === "string" && artifact.previewUrl.trim() !== "") {
@@ -260,18 +270,11 @@ export function createLabWaveformTimelineVisualizer(deps) {
       String(model.waveformOffsetMs ?? 0)
     ].join(":");
   }
-  function drawStaticWaveformPeaks(renderKey, peaks) {
-    const canvas = getAudioVisualizerCanvas();
-    if (canvas === null) {
-      return false;
-    }
+  function drawStaticWaveformPeaksToCanvas(canvas, cropStartRatio, cropEndRatio, peaks) {
     const preparedCanvas = prepareAudioVisualizerCanvas(canvas);
     if (preparedCanvas === null) {
       return false;
     }
-    const model = getTimelineModel();
-    const cropStartRatio = Math.max(0, Math.min(1, model.waveformCropStartRatio ?? 0));
-    const cropEndRatio = Math.max(cropStartRatio, Math.min(1, model.waveformCropEndRatio ?? 1));
     const { context, height, width } = preparedCanvas;
     const colors = readAudioVisualizerColors(canvas);
     const midline = height / 2;
@@ -306,8 +309,43 @@ export function createLabWaveformTimelineVisualizer(deps) {
       context.lineTo(x, midline + amplitude);
     }
     context.stroke();
+    return true;
+  }
+  function drawStaticWaveformPeaks(renderKey, peaks) {
+    const canvas = getAudioVisualizerCanvas();
+    if (canvas === null) {
+      return false;
+    }
+    const model = getTimelineModel();
+    const cropStartRatio = Math.max(0, Math.min(1, model.waveformCropStartRatio ?? 0));
+    const cropEndRatio = Math.max(cropStartRatio, Math.min(1, model.waveformCropEndRatio ?? 1));
+    if (!drawStaticWaveformPeaksToCanvas(canvas, cropStartRatio, cropEndRatio, peaks)) {
+      return false;
+    }
     renderedDecodedWaveformKey = renderKey;
     return true;
+  }
+  function clearInspectionLensCanvas() {
+    const canvas = getInspectionLensCanvas();
+    if (canvas === null) {
+      return;
+    }
+    const preparedCanvas = prepareAudioVisualizerCanvas(canvas);
+    if (preparedCanvas === null) {
+      return;
+    }
+    preparedCanvas.context.clearRect(0, 0, preparedCanvas.width, preparedCanvas.height);
+  }
+  function drawInspectionLensPeaks(peaks) {
+    const canvas = getInspectionLensCanvas();
+    const lens = getTimelineModel().waveformInspectionLens;
+    if (canvas === null || lens?.enabled !== true) {
+      clearInspectionLensCanvas();
+      return false;
+    }
+    const cropStartRatio = Math.max(0, Math.min(1, lens.cropStartRatio));
+    const cropEndRatio = Math.max(cropStartRatio, Math.min(1, lens.cropEndRatio));
+    return drawStaticWaveformPeaksToCanvas(canvas, cropStartRatio, cropEndRatio, peaks);
   }
   function renderDecodedWaveformIfAvailable(media) {
     const sourceUrl = getWorkspaceAudioPreviewSourceUrl(media);
@@ -319,8 +357,9 @@ export function createLabWaveformTimelineVisualizer(deps) {
     const cachedPeaks = decodedWaveformPeakCache.get(sourceUrl) || null;
     if (cachedPeaks !== null) {
       if (renderedDecodedWaveformKey !== renderKey) {
-        return drawStaticWaveformPeaks(renderKey, cachedPeaks);
+        drawStaticWaveformPeaks(renderKey, cachedPeaks);
       }
+      drawInspectionLensPeaks(cachedPeaks);
       return true;
     }
     if (loadingDecodedWaveformSourceUrl === sourceUrl || failedDecodedWaveformSourceUrl === sourceUrl) {
@@ -517,10 +556,19 @@ export function createLabWaveformTimelineVisualizer(deps) {
     bindWorkspaceAudioPreviewListeners();
     const canvas = getAudioVisualizerCanvas();
     const effectiveMode = getEffectiveAudioVisualizationMode(getVisualizationMode());
-    if (canvas === null || effectiveMode === "none") {
+    if (effectiveMode === "none") {
       resetArtifactRenderState();
       resetDecodedWaveformRenderState();
       destroyLiveAudioVisualizer();
+      const media2 = getWorkspaceAudioPreview();
+      if (media2 !== null) {
+        renderDecodedWaveformIfAvailable(media2);
+      } else {
+        clearInspectionLensCanvas();
+      }
+      return;
+    }
+    if (canvas === null) {
       return;
     }
     const media = getWorkspaceAudioPreview();
@@ -528,16 +576,23 @@ export function createLabWaveformTimelineVisualizer(deps) {
       resetArtifactRenderState({ preserveFailure: true });
       resetDecodedWaveformRenderState({ preserveFailure: true });
       ensureLiveAudioVisualizer(media, canvas).start();
+      renderDecodedWaveformIfAvailable(media);
       return;
     }
     if (renderAudioVisualizationArtifactIfAvailable() === true) {
       stopLiveAudioVisualizer();
+      if (media !== null) {
+        renderDecodedWaveformIfAvailable(media);
+      } else {
+        clearInspectionLensCanvas();
+      }
       return;
     }
     stopLiveAudioVisualizer();
     if (media !== null && renderDecodedWaveformIfAvailable(media) === true) {
       return;
     }
+    clearInspectionLensCanvas();
     drawAudioVisualizerIdle();
   }
   function dispose() {

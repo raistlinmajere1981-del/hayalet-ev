@@ -1,3 +1,4 @@
+import { asLabRecord, asNonEmptyString } from "../models/lab-types.js";
 import { createLabEventBus } from "../runtime/lab-event-bus.js";
 import { createLabHostBridge } from "../runtime/lab-host-bridge.js";
 import { loadLabPersistedState, saveLabPersistedState } from "../runtime/lab-persistence.js";
@@ -6,14 +7,21 @@ import { renderLabCenterPanel } from "./lab-center-panel.js";
 import { renderLabLayout } from "./lab-layout.js";
 import { renderLabLeftRail } from "./lab-left-rail.js";
 import { renderLabRightPanel } from "./lab-right-panel.js";
+import { bindLabAssetPreviewClicks } from "./lab-asset-preview-binder.js";
+import { bindLabPreviewInspectionInteractions } from "./lab-preview-inspection-binder.js";
+import { createLabPreviewInspectionController } from "./lab-preview-inspection-controller.js";
 import { bindLabSelectionIntentClicks } from "./lab-selection-intent-binder.js";
+import { bindLabSelectionRoiInteractions } from "./lab-selection-roi-binder.js";
 import { bindLabSelectionSuggestionClicks } from "./lab-selection-suggestion-binder.js";
 import { renderWorkspaceSurface } from "./workspace-surface.js";
 import { createLabRunController } from "../runtime/lab-run-controller.js";
 import { renderToolManagementOverlay } from "./tool-management-overlay.js";
 import { renderReportOverlay } from "./report-overlay.js";
 import {
-  getActiveSuggestionPreview,
+  getActiveSelection,
+  getActiveInspectionSnapshot,
+  getActiveSuggestionPreviewId,
+  getRoiFocusActive,
   getSelectionSuggestions,
   getWorkspaceMode
 } from "../runtime/lab-selectors.js";
@@ -131,6 +139,12 @@ function syncElement(currentElement, nextElement) {
   }
   syncChildNodes(currentElement, nextElement);
 }
+export const __testOnlyLabRootDomSync = {
+  syncElement
+};
+export const __testOnlyLabRootPersistence = {
+  readPersistableState
+};
 function updateRenderedElement(documentRef, currentElement, markup, preserveScroll = false) {
   const scrollTop = preserveScroll ? currentElement.scrollTop : 0;
   const nextElement = createRenderedElement(documentRef, markup);
@@ -228,9 +242,49 @@ export function startLaboratoryLabRoot() {
   const eventBus = createLabEventBus();
   const store = createLabStore();
   eventBus.subscribe(store.dispatch);
+  const previewInspectionController = createLabPreviewInspectionController({
+    documentRef,
+    emit: eventBus.emit,
+    getActiveSelection() {
+      return getActiveSelection(store.getState());
+    },
+    getActiveSnapshot() {
+      return getActiveInspectionSnapshot(store.getState());
+    },
+    getRoiFocusActive() {
+      return getRoiFocusActive(store.getState());
+    },
+    windowRef
+  });
   bindLabSelectionIntentClicks({
     documentRef,
     emit: eventBus.emit
+  });
+  bindLabAssetPreviewClicks({
+    documentRef,
+    emit: eventBus.emit,
+    resolveHref(assetId) {
+      const asset = store.getState().assets.find(function(candidate) {
+        return candidate.id === assetId;
+      });
+      return asNonEmptyString(asset?.localPath) || asNonEmptyString(asset?.url) || null;
+    },
+    windowRef
+  });
+  bindLabSelectionRoiInteractions({
+    documentRef,
+    emit: eventBus.emit,
+    getActiveSelection() {
+      return store.getState().ui.workspace.activeSelection;
+    },
+    getSourceKind() {
+      const sourceKind = asNonEmptyString(asLabRecord(store.getState().source)["kind"]);
+      return sourceKind || "video";
+    }
+  });
+  bindLabPreviewInspectionInteractions({
+    controller: previewInspectionController,
+    documentRef
   });
   bindLabSelectionSuggestionClicks({
     canPreviewSuggestion(suggestionId) {
@@ -240,8 +294,8 @@ export function startLaboratoryLabRoot() {
     },
     documentRef,
     emit: eventBus.emit,
-    hasActivePreview() {
-      return getActiveSuggestionPreview(store.getState()) !== null;
+    getActivePreviewSuggestionId() {
+      return getActiveSuggestionPreviewId(store.getState());
     }
   });
   const controller = createLabRunController({
@@ -310,6 +364,7 @@ export function startLaboratoryLabRoot() {
   store.subscribe(function(state) {
     saveLabPersistedState(window, readPersistableState(state));
     render();
+    previewInspectionController.sync();
   });
   const persisted = loadLabPersistedState(window);
   eventBus.emit({
@@ -323,6 +378,7 @@ export function startLaboratoryLabRoot() {
     });
   }
   render();
+  previewInspectionController.sync();
   if (windowRef.roomAPI && typeof windowRef.roomAPI.ready === "function") {
     windowRef.roomAPI.ready({
       feature: "media-analysis",

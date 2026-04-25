@@ -142,11 +142,9 @@ test("laboratory left rail reflects the active workspace shell navigation", () =
 
   assert.match(html, /Laboratory/);
   assert.match(html, /Media workspace/);
-  assert.match(html, /PROJECT/);
+  assert.match(html, /Project Assets/);
   assert.match(html, /Tool Management/);
-  assert.match(html, /Install, update, and refresh local analysis tools/);
   assert.match(html, /INTENTS/);
-  assert.match(html, /STATUS/);
   assert.match(html, /Save/);
   assert.match(html, /Delete/);
   assert.doesNotMatch(html, /Modül Yönetimi|Seçili Modüller|Yoğun operatör tezgahı/);
@@ -164,7 +162,7 @@ test("laboratory workspace surface renders source intake, preview media, and dee
   );
   assert.match(surface.main, /data-lab-action="workspace-toggle-source-intake"/);
   assert.match(surface.side, /Derin Analiz Başlat/);
-  assert.match(surface.side, /Arka plan süreci[^<]*kilitlemez/);
+  assert.match(surface.side, /Raporu Görüntüle/);
   assert.doesNotMatch(surface.main, /Kaynak Seçimi|Hızlı modül seçimi burada yapılır/);
 });
 
@@ -879,9 +877,9 @@ test("laboratory project assets panel renders registry groups and local asset ac
   });
 
   const panelHtml = renderLabProjectAssetsPanel(store.getState());
-  const surface = renderWorkspaceSurface(store.getState());
+  const leftRailHtml = renderLabLeftRail(store.getState());
 
-  assert.match(surface.side, /Project Assets/);
+  assert.match(leftRailHtml, /Project Assets/);
   assert.match(panelHtml, /Clips/);
   assert.match(panelHtml, /Reports/);
   assert.match(panelHtml, /clip_01\.mp4/);

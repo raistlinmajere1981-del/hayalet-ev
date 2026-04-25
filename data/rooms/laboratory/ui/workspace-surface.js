@@ -8,6 +8,7 @@ import {
   getIntentPreviewDescription
 } from "../models/lab-types.js";
 import {
+  getActiveSelection,
   getAudioFocusSettings,
   getBookmarks,
   getCurrentSourceAsset,
@@ -15,6 +16,7 @@ import {
   getDualPreviewVolume,
   getEffectivePreviewAudioFocusSettings,
   getHypothesis,
+  getInspectionMode,
   getInteractiveSettings,
   getLinkedAudioAssets,
   getProjectSource,
@@ -554,9 +556,10 @@ function renderVideoPreviewMedia(previewUrl, settings, options = {}) {
   const preserveKey = options.preserveKey || "workspace-preview";
   const roleAttr = options.role ? `data-lab-role="${escapeHtml(options.role)}"` : "";
   const className = options.className || "labx-preview-media--workspace-video";
+  const selectionRoiStageAttr = options.selectionRoiStage === true ? `data-lab-selection-roi-stage="true" data-lab-selection-roi-controls-reserve="${controls ? "56" : "0"}"` : "";
   return `
     ${svgFilter}
-    <div class="labx-preview-filter-wrap" style="${filterCss}">
+    <div class="labx-preview-filter-wrap" style="${filterCss}" ${selectionRoiStageAttr}>
       <video class="labx-preview-media ${escapeHtml(className)}" data-lab-preserve-media="${escapeHtml(preserveKey)}" ${roleAttr} src="${escapeHtml(previewUrl)}" ${controls} ${muted} preload="metadata" playsinline></video>
     </div>
   `;
@@ -690,19 +693,30 @@ function renderDualPreviewTransportBar(state, durationMs) {
     </div>
   `;
 }
-function renderDualPreviewShell(previewUrl, settings, roiRegions, selectedAudio, linkedAudioAssets) {
+function renderDualPreviewShell(previewUrl, settings, overlayMarkup, roiFocusActive, selectedAudio, linkedAudioAssets) {
   return `
     <div class="labx-workspace-preview__dual-shell">
       <div class="labx-workspace-preview__video-pane">
-        <div class="labx-workspace-preview__video-stage">
-          ${renderVideoPreviewMedia(previewUrl, settings, {
+        <div
+          class="labx-workspace-preview__video-stage"
+          data-lab-selection-roi-stage="true"
+          data-lab-selection-roi-controls-reserve="0"
+          data-lab-preview-inspection-stage="true"
+          data-lab-preview-inspection-topology="dual-video"
+          data-lab-roi-focus-active="${roiFocusActive ? "true" : "false"}"
+        >
+          <div class="labx-workspace-preview__inspection-viewport" data-lab-preview-inspection-viewport="true">
+            <div class="labx-workspace-preview__inspection-content" data-lab-preview-inspection-content="true">
+              ${renderVideoPreviewMedia(previewUrl, settings, {
     controls: false,
     muted: true,
     preserveKey: "workspace-preview-dual-video",
     role: "dual-preview-master",
     className: "labx-preview-media--workspace-video"
   })}
-          ${renderWorkspaceROIOverlay(roiRegions)}
+              ${overlayMarkup}
+            </div>
+          </div>
         </div>
       </div>
       <div class="labx-workspace-preview__audio-pane">
@@ -976,7 +990,10 @@ export function renderWorkspaceSurface(state) {
   const audioFocus = getAudioFocusSettings(state);
   const effectivePreviewAudioFocus = getEffectivePreviewAudioFocusSettings(state);
   const roiRegions = getROIRegions(state);
+  const activeSelection = getActiveSelection(state);
+  const inspectionMode = getInspectionMode(state);
   const timeline = getWaveformTimelineModel(state);
+  const roiFocusActive = timeline.roiFocusActive === true;
   const bookmarks = getBookmarks(state);
   const hypothesis = getHypothesis(state);
   const runActive = isRunActive(state);
@@ -1002,13 +1019,40 @@ export function renderWorkspaceSurface(state) {
           ${focusPanels.join("")}
         </div>
       ` : "";
-  const previewMarkup = sourceReady && dualPreviewActive && previewUrl !== null && selectedDualPreviewAudioAsset !== null && dualPreviewLinkedAudioAssets.length > 0 ? renderDualPreviewShell(
+  const roiOverlayMarkup = sourceReady && (sourceKind === "video" || sourceKind === "image") ? renderWorkspaceROIOverlay({
+    inspectionMode,
+    legacyRegions: roiRegions,
+    roiFocusActive,
+    selectionRoi: activeSelection?.roi ?? null,
+    selectionRoiEnabled: sourceKind === "image" || activeSelection !== null && activeSelection.endMs > activeSelection.startMs,
+    showInlineInspectionControls: sourceKind === "image",
+    sourceKind
+  }) : "";
+  const previewMediaMarkup = sourceReady && dualPreviewActive && previewUrl !== null && selectedDualPreviewAudioAsset !== null && dualPreviewLinkedAudioAssets.length > 0 ? renderDualPreviewShell(
     previewUrl,
     settings,
-    roiRegions,
+    roiOverlayMarkup,
+    roiFocusActive,
     selectedDualPreviewAudioAsset,
     dualPreviewLinkedAudioAssets
   ) : renderPreviewMedia(sourceKind, sourceReady ? previewUrl : null, settings);
+  const previewMarkup = sourceReady && (sourceKind === "video" || sourceKind === "image") && dualPreviewActive !== true ? `
+        <div
+          class="labx-workspace-preview__single-stage"
+          data-lab-selection-roi-stage="true"
+          data-lab-selection-roi-controls-reserve="${sourceKind === "video" ? "56" : "0"}"
+          data-lab-preview-inspection-stage="true"
+          data-lab-preview-inspection-topology="single-${escapeHtml(sourceKind)}"
+          data-lab-roi-focus-active="${roiFocusActive ? "true" : "false"}"
+        >
+          <div class="labx-workspace-preview__inspection-viewport" data-lab-preview-inspection-viewport="true">
+            <div class="labx-workspace-preview__inspection-content" data-lab-preview-inspection-content="true">
+              ${previewMediaMarkup}
+              ${roiOverlayMarkup}
+            </div>
+          </div>
+        </div>
+      ` : previewMediaMarkup;
   const dualPreviewTransport = dualPreviewActive && selectedDualPreviewAudioAsset !== null && durationMs > 0 ? renderDualPreviewTransportBar(state, durationMs) : "";
   const main = `
     ${renderSourceBar(state)}
@@ -1018,7 +1062,6 @@ export function renderWorkspaceSurface(state) {
       ${renderLinkedAudioBar(state)}
       <div class="labx-workspace-preview" id="lab-workspace-preview" data-preview-mode="${dualPreviewActive ? "dual" : "single"}" data-dual-preview-available="${dualPreviewAvailable ? "true" : "false"}">
         ${previewMarkup}
-        ${sourceReady && (sourceKind === "video" || sourceKind === "image") && dualPreviewActive !== true ? renderWorkspaceROIOverlay(roiRegions) : ""}
       </div>
       ${dualPreviewTransport}
       ${durationMs > 0 ? renderLabWaveformTimeline(timeline) : ""}

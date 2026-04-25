@@ -157,6 +157,9 @@ test("laboratory shell preserves workspace preview nodes while diffing live pane
   assert.match(labRootSource, /function syncChildNodes\(/);
   assert.match(labRootSource, /function canReuseElement\(/);
   assert.match(labRootSource, /const preserveKey = readPreservedMediaKey\(currentElement\) \|\| readPreservedMediaKey\(nextElement\);/);
+  assert.match(labRootSource, /function readPreservedDetailsState\(/);
+  assert.match(labRootSource, /currentElement\.hasAttribute\("data-lab-interpretation-panel"\)/);
+  assert.match(labRootSource, /currentElement\.open = preservedDetailsState;/);
   assert.match(labRootSource, /currentElement\.scrollTop = scrollTop;/);
   assert.match(
     labRootSource,
@@ -189,4 +192,44 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   assert.match(workspaceSurfaceSource, /Derin Analiz Başlat/);
   assert.match(workspaceSurfaceSource, /data-lab-action="run-deep-analysis"/);
   assert.match(workspaceSurfaceSource, /Bu analiz şunları yapacak:/);
+});
+
+test("laboratory theme widens the left rail and normalizes rail asset spacing", () => {
+  const themeSource = readFileSync("rooms/laboratory/ui/lab-theme.css", "utf8");
+
+  assert.match(themeSource, /grid-template-columns:\s*16\.8rem minmax\(0, 1fr\) minmax\(17rem, 20rem\);/);
+  assert.match(themeSource, /\.labx-left-rail\s*\{[\s\S]*gap:\s*0\.8rem;[\s\S]*padding:\s*0\.85rem;/);
+  assert.match(themeSource, /\.labx-project-assets\s*\{[\s\S]*gap:\s*0\.55rem;[\s\S]*padding:\s*0\.9rem 0\.95rem;/);
+  assert.match(themeSource, /\.labx-project-assets__preview\s*\{[\s\S]*gap:\s*0\.45rem;[\s\S]*padding:\s*0\.42rem 0\.5rem;/);
+});
+
+test("laboratory micro inspection UI exposes roi focus precedence and lens affordances in the preview shell", () => {
+  const overlaySource = readFileSync("rooms/laboratory/ui/workspace-roi-overlay.ts", "utf8");
+  const surfaceSource = readFileSync("rooms/laboratory/ui/workspace-surface.ts", "utf8");
+  const timelineSource = readFileSync("rooms/laboratory/ui/lab-waveform-timeline-render.ts", "utf8");
+
+  assert.match(
+    overlaySource,
+    /data-lab-selection-roi="true"[\s\S]*data-lab-selection-roi-ignore="true"/
+  );
+  assert.match(overlaySource, /data-lab-selection-roi-focus-toggle="true"/);
+  assert.match(overlaySource, /data-lab-selection-roi-capture="true"/);
+  assert.match(surfaceSource, /data-lab-preview-inspection-stage="true"/);
+  assert.match(surfaceSource, /data-lab-preview-inspection-content="true"/);
+  assert.match(timelineSource, /Selection micro zoom/);
+  assert.match(timelineSource, /id="lab-audio-viz-inspection"/);
+});
+
+test("laboratory selection preview exposes soft execution intent affordances without run semantics", () => {
+  const timelineSource = readFileSync("rooms/laboratory/ui/lab-waveform-timeline-render.ts", "utf8");
+
+  assert.match(timelineSource, /Selected action/);
+  assert.match(timelineSource, /data-lab-execution-intent-accept=/);
+  assert.match(timelineSource, /data-lab-execution-intent-dismiss=/);
+  assert.match(timelineSource, /data-lab-execution-intent-queue=/);
+  assert.match(timelineSource, /data-lab-execution-intent-clear="true"/);
+  assert.match(timelineSource, />\$\{executionIntentSelected \? "Intent selected" : "I want this"\}</);
+  assert.match(timelineSource, />Not now</);
+  assert.match(timelineSource, />Queue for later</);
+  assert.doesNotMatch(timelineSource, />Run</);
 });

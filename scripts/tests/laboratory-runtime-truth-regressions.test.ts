@@ -18,8 +18,11 @@ import { buildInterpretationItems } from "../../rooms/laboratory/runtime/lab-int
 import {
   getActualOutputs,
   getActionOutputs,
+  getActiveExecutionIntent,
   getActiveSelection,
+  getActiveInspectionSnapshot,
   getActiveSuggestionPreview,
+  getActiveSuggestionPreviewId,
   getAudioVisualizationArtifact,
   getAssetById,
   getAssets,
@@ -30,11 +33,13 @@ import {
   getDualPreviewVolume,
   getEffectivePreviewAudioFocusSettings,
   getExpectedOutputs,
+  getInspectionMode,
   getInterpretationItems,
   getIntentDirtyMap,
   getLinkedAudioAssets,
   getParentSourceForAsset,
   getReportFreshness,
+  getRoiFocusActive,
   getRunSnapshotSummary,
   getSelectionDuration,
   getSelectionIntent,
@@ -56,8 +61,16 @@ import {
   createLabWaveformTimelineVisualizer,
   renderLabWaveformTimeline,
 } from "../../rooms/laboratory/ui/lab-waveform-timeline.ts";
+import { bindLabAssetPreviewClicks } from "../../rooms/laboratory/ui/lab-asset-preview-binder.ts";
+import { bindLabPreviewInspectionInteractions } from "../../rooms/laboratory/ui/lab-preview-inspection-binder.ts";
+import {
+  __testOnlyLabPreviewInspectionController,
+  createLabPreviewInspectionController,
+} from "../../rooms/laboratory/ui/lab-preview-inspection-controller.ts";
 import { bindLabSelectionIntentClicks } from "../../rooms/laboratory/ui/lab-selection-intent-binder.ts";
+import { bindLabSelectionRoiInteractions } from "../../rooms/laboratory/ui/lab-selection-roi-binder.ts";
 import { bindLabSelectionSuggestionClicks } from "../../rooms/laboratory/ui/lab-selection-suggestion-binder.ts";
+import { renderWorkspaceSurface } from "../../rooms/laboratory/ui/workspace-surface.ts";
 import {
   renderWorkspaceAudioFocus,
 } from "../../rooms/laboratory/ui/workspace-audio-focus.ts";
@@ -119,8 +132,21 @@ class FakeActionElement {
     if (selector === "[data-lab-stage]") {
       return null;
     }
-    if (selector === "[data-lab-action]") {
+    if (
+      selector === "[data-lab-action]" ||
+      (selector === "[data-lab-action='asset-preview']" && this.dataset.labAction === "asset-preview")
+    ) {
       return this;
+    }
+    return null;
+  }
+
+  getAttribute(name: string): string | null {
+    if (name === "data-lab-action") {
+      return this.dataset.labAction ?? null;
+    }
+    if (name === "data-lab-value") {
+      return this.dataset.labValue ?? null;
     }
     return null;
   }
@@ -241,6 +267,83 @@ class FakePanelOnlyTarget extends FakeDomElement {
 
 class FakeOutsideTarget extends FakeDomElement {
   closest(): null {
+    return null;
+  }
+}
+
+class FakeRoiStage {
+  constructor(
+    private readonly attrs: Record<string, string>,
+    private readonly rect: {
+      bottom: number;
+      height: number;
+      left: number;
+      top: number;
+      width: number;
+    }
+  ) {}
+
+  closest(selector: string) {
+    return selector === "[data-lab-selection-roi-stage='true']" ? this : null;
+  }
+
+  getAttribute(name: string) {
+    return this.attrs[name] ?? null;
+  }
+
+  getBoundingClientRect() {
+    return this.rect;
+  }
+}
+
+class FakeRoiIgnoreElement {
+  closest(selector: string) {
+    return selector === "[data-lab-selection-roi-ignore='true']" ? (this as unknown as FakeRoiStage) : null;
+  }
+}
+
+class FakeRoiDrawTarget extends FakeDomElement {
+  constructor(private readonly stage: FakeRoiStage) {
+    super();
+  }
+
+  closest(selector: string) {
+    if (selector === "[data-lab-selection-roi-stage='true']") {
+      return this.stage;
+    }
+    return null;
+  }
+}
+
+class FakeRoiClearTrigger {
+  getAttribute() {
+    return null;
+  }
+}
+
+class FakeRoiClearTarget extends FakeDomElement {
+  closest(selector: string) {
+    return selector === "[data-lab-selection-roi-clear]" ? (new FakeRoiClearTrigger() as unknown as FakeRoiStage) : null;
+  }
+}
+
+class FakeInspectionModeTrigger {
+  constructor(private readonly mode: string | null) {}
+
+  getAttribute(name: string) {
+    return name === "data-lab-selection-inspection-mode" ? this.mode : null;
+  }
+}
+
+class FakeInspectionModeTarget extends FakeDomElement {
+  constructor(private readonly trigger: FakeInspectionModeTrigger | null) {
+    super();
+  }
+
+  closest(selector: string) {
+    if (selector === "[data-lab-selection-inspection-mode]") {
+      return this.trigger as unknown as FakeRoiStage;
+    }
     return null;
   }
 }
@@ -1681,8 +1784,8 @@ test("workspace audio focus fences temporal controls while dual preview is activ
   assert.match(markup, /Playback rate affects the bound preview media transport\./);
 });
 
-test("interpretation engine explains audio focus and selection rules deterministically", () => {
-  const items = buildInterpretationItems({
+test("interpretation engine explains audio focus and selection rules with deterministic guidance", () => {
+  const context = {
     activeSelection: {
       id: "selection-short",
       startMs: 120,
@@ -1700,8 +1803,12 @@ test("interpretation engine explains audio focus and selection rules determinist
         return index === 4 ? { ...band, gain: 9 } : { ...band };
       }),
     }),
+    inspectionMode: "audio",
     sourceKind: "audio",
-  });
+  } as const;
+
+  const items = buildInterpretationItems(context);
+  const repeatedItems = buildInterpretationItems(context);
 
   assert.deepEqual(
     items.map(function (item) {
@@ -1713,6 +1820,44 @@ test("interpretation engine explains audio focus and selection rules determinist
       "audio-lowpass-suppressed-highs",
       "audio-extreme-eq-boost",
       "selection-short-context",
+    ]
+  );
+
+  assert.deepEqual(items, repeatedItems);
+  assert.deepEqual(
+    items.map(function (item) {
+      return {
+        id: item.id,
+        recommendation: item.recommendation,
+        severity: item.severity,
+      };
+    }),
+    [
+      {
+        id: "audio-high-gain",
+        recommendation: "Reduce gain or apply EQ balancing",
+        severity: "high",
+      },
+      {
+        id: "audio-slow-playback",
+        recommendation: "Use slow playback to inspect transient details",
+        severity: "medium",
+      },
+      {
+        id: "audio-lowpass-suppressed-highs",
+        recommendation: "Try increasing cutoff to restore clarity",
+        severity: "low",
+      },
+      {
+        id: "audio-extreme-eq-boost",
+        recommendation: "Reduce boost to avoid distortion",
+        severity: "high",
+      },
+      {
+        id: "selection-short-context",
+        recommendation: "Expand selection for better context",
+        severity: "medium",
+      },
     ]
   );
 });
@@ -1737,8 +1882,361 @@ test("waveform timeline renders interpretation guidance even without an active s
 
   assert.ok((model.interpretationItems?.length || 0) >= 2);
   assert.match(markup, /data-lab-interpretation-panel="true"/);
+  assert.match(markup, /data-severity="high"/);
+  assert.match(markup, /data-severity="medium"/);
   assert.match(markup, /High gain may introduce clipping or noise amplification/);
+  assert.match(markup, /Reduce gain or apply EQ balancing/);
   assert.match(markup, /Slow playback can reveal temporal anomalies/);
+  assert.match(markup, /Use slow playback to inspect transient details/);
+});
+
+test("interpretation engine maps fast playback and wide selection guidance deterministically", () => {
+  const items = buildInterpretationItems({
+    activeSelection: {
+      id: "selection-wide",
+      startMs: 0,
+      endMs: 14_000,
+      type: "clip",
+      intent: "audio",
+      createdAt: 2,
+    },
+    audioFocus: createTestAudioFocusSettings({
+      playbackRate: 1.8,
+    }),
+    inspectionMode: "audio",
+    sourceKind: "audio",
+  });
+
+  assert.deepEqual(
+    items.map(function (item) {
+      return {
+        id: item.id,
+        recommendation: item.recommendation,
+        severity: item.severity,
+      };
+    }),
+    [
+      {
+        id: "audio-fast-playback",
+        recommendation: "Use fast playback to detect repetition patterns",
+        severity: "medium",
+      },
+      {
+        id: "selection-wide-context",
+        recommendation: "Narrow selection for focused analysis",
+        severity: "low",
+      },
+    ]
+  );
+});
+
+test("interpretation engine reacts to semantic roi size and fast motion playback", () => {
+  const items = buildInterpretationItems({
+    activeSelection: {
+      id: "selection-roi",
+      startMs: 1000,
+      endMs: 4000,
+      type: "inspect",
+      intent: "motion",
+      roi: {
+        x: 0.1,
+        y: 0.1,
+        width: 0.1,
+        height: 0.1,
+      },
+      createdAt: 3,
+    },
+    audioFocus: createTestAudioFocusSettings({
+      playbackRate: 1.8,
+    }),
+    inspectionMode: "motion",
+    sourceKind: "video",
+  });
+
+  assert.deepEqual(
+    items.map(function (item) {
+      return item.id;
+    }),
+    ["audio-fast-playback", "selection-roi-limited-context", "selection-roi-motion-ambiguity"]
+  );
+
+  const wideItems = buildInterpretationItems({
+    activeSelection: {
+      id: "selection-roi-wide",
+      startMs: 0,
+      endMs: 4000,
+      type: "inspect",
+      intent: "visual",
+      roi: {
+        x: 0.05,
+        y: 0.05,
+        width: 0.85,
+        height: 0.75,
+      },
+      createdAt: 4,
+    },
+    audioFocus: createTestAudioFocusSettings(),
+    inspectionMode: "visual",
+    sourceKind: "image",
+  });
+
+  assert.deepEqual(
+    wideItems.map(function (item) {
+      return item.id;
+    }),
+    ["selection-roi-wide-focus"]
+  );
+});
+
+test("interpretation engine flags extreme roi aspect ratios deterministically", () => {
+  const items = buildInterpretationItems({
+    activeSelection: {
+      id: "selection-roi-aspect",
+      startMs: 0,
+      endMs: 4_000,
+      type: "inspect",
+      intent: "visual",
+      roi: {
+        x: 0.1,
+        y: 0.2,
+        width: 0.72,
+        height: 0.16,
+      },
+      createdAt: 5,
+    },
+    audioFocus: createTestAudioFocusSettings(),
+    inspectionMode: "visual",
+    sourceKind: "image",
+  });
+
+  assert.deepEqual(
+    items.map(function (item) {
+      return item.id;
+    }),
+    ["selection-roi-extreme-aspect"]
+  );
+});
+
+test("selection suggestions and waveform model deepen when semantic roi inspection is active", () => {
+  const store = createLabStore();
+  store.dispatch({
+    type: "snapshot-received",
+    payload: {
+      ready: true,
+      featureId: "media-analysis",
+      activeProjectId: "project-micro-zoom",
+      projects: [{ id: "project-micro-zoom", name: "lab-demo.mp4", hasSource: true }],
+      activeProject: {
+        id: "project-micro-zoom",
+        name: "lab-demo.mp4",
+        createdAt: "2026-04-23T19:00:00.000Z",
+        source: {
+          status: "ready",
+          kind: "video",
+          mode: "local",
+          previewUrl: "file:///tmp/lab-demo.mp4",
+          storedFileName: "lab-demo.mp4",
+          storedPath: "/tmp/lab-demo.mp4",
+          routeLabel: "Local Copy",
+          metadata: {
+            durationSeconds: 20,
+            sizeBytes: 2048,
+          },
+          drafts: {},
+        },
+        edit: {},
+        profile: {
+          preflight: {},
+        },
+        process: {
+          records: {},
+        },
+        report: {
+          records: {},
+        },
+        assets: [
+          {
+            id: "source-active",
+            type: "source",
+            name: "lab-demo.mp4",
+            localPath: "/tmp/lab-demo.mp4",
+            createdAt: 100,
+            sourceId: "source-active",
+          },
+        ],
+      },
+      workbench: {},
+      sourceProbeStatus: "completed",
+      profileModels: [],
+      reports: {
+        user: null,
+        ai: null,
+        emptyReason: "Rapor henüz üretilmedi.",
+      },
+      activityFeed: [],
+    },
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 8_000,
+    endMs: 16_000,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "visual",
+  });
+  store.dispatch({
+    type: "selection-roi-updated",
+    roi: {
+      x: 0.14,
+      y: 0.18,
+      width: 0.22,
+      height: 0.24,
+    },
+  });
+  store.dispatch({
+    type: "selection-inspection-mode-updated",
+    mode: "motion",
+  });
+
+  const suggestions = getSelectionSuggestions(store.getState());
+  const toolHintLabels = suggestions
+    .map(function (suggestion) {
+      return suggestion.toolHint ?? null;
+    })
+    .filter((entry): entry is string => entry !== null);
+  const model = getWaveformTimelineModel(store.getState());
+  const markup = renderLabWaveformTimeline(model);
+
+  assert.deepEqual(toolHintLabels, [
+    "Enhance clarity",
+    "Focus region",
+    "Inspect motion",
+    "Stabilize segment",
+  ]);
+  assert.equal(model.waveformInspectionLens?.enabled, true);
+  assert.ok((model.waveformInspectionLens?.cropEndRatio ?? 0) > (model.waveformInspectionLens?.cropStartRatio ?? 0));
+  assert.match(markup, /Inspection tools/);
+  assert.match(markup, /Focus region/);
+  assert.match(markup, /lab-audio-viz-inspection/);
+});
+
+test("lab root preserves interpretation panel details state across embedded and standalone rerenders", async () => {
+  class FakeElement {
+    attributes = new Map<string, string>();
+    childNodes: unknown[] = [];
+
+    constructor(attributes: Record<string, string> = {}) {
+      Object.entries(attributes).forEach(([key, value]) => {
+        this.attributes.set(key, value);
+      });
+    }
+
+    getAttributeNames() {
+      return Array.from(this.attributes.keys());
+    }
+
+    hasAttribute(name: string) {
+      return this.attributes.has(name);
+    }
+
+    getAttribute(name: string) {
+      return this.attributes.get(name) ?? null;
+    }
+
+    setAttribute(name: string, value: string) {
+      this.attributes.set(name, value);
+    }
+
+    removeAttribute(name: string) {
+      this.attributes.delete(name);
+    }
+  }
+
+  class FakeDetailsElement extends FakeElement {
+    open = false;
+  }
+
+  const descriptors = {
+    document: Object.getOwnPropertyDescriptor(globalThis, "document"),
+    window: Object.getOwnPropertyDescriptor(globalThis, "window"),
+    HTMLElement: Object.getOwnPropertyDescriptor(globalThis, "HTMLElement"),
+    HTMLDetailsElement: Object.getOwnPropertyDescriptor(globalThis, "HTMLDetailsElement"),
+  };
+
+  Object.defineProperty(globalThis, "HTMLElement", {
+    configurable: true,
+    value: FakeElement,
+  });
+  Object.defineProperty(globalThis, "HTMLDetailsElement", {
+    configurable: true,
+    value: FakeDetailsElement,
+  });
+  Object.defineProperty(globalThis, "document", {
+    configurable: true,
+    value: {
+      getElementById() {
+        return null;
+      },
+    },
+  });
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {},
+  });
+
+  try {
+    const labRootModule = (await import("../../rooms/laboratory/ui/lab-root.ts")) as {
+      __testOnlyLabRootDomSync: {
+        syncElement: (currentElement: Element, nextElement: Element) => void;
+      };
+    };
+
+    const embeddedCurrent = new FakeDetailsElement({
+      class: "lab-interpretation-panel lab-interpretation-panel--embedded",
+      "data-lab-interpretation-panel": "true",
+    });
+    const embeddedNext = new FakeDetailsElement({
+      class: "lab-interpretation-panel lab-interpretation-panel--embedded",
+      "data-lab-interpretation-panel": "true",
+      open: "",
+    });
+    embeddedCurrent.open = false;
+    embeddedNext.open = true;
+
+    labRootModule.__testOnlyLabRootDomSync.syncElement(
+      embeddedCurrent as unknown as Element,
+      embeddedNext as unknown as Element
+    );
+
+    const standaloneCurrent = new FakeDetailsElement({
+      class: "lab-interpretation-panel lab-interpretation-panel--standalone",
+      "data-lab-interpretation-panel": "true",
+      open: "",
+    });
+    const standaloneNext = new FakeDetailsElement({
+      class: "lab-interpretation-panel lab-interpretation-panel--standalone",
+      "data-lab-interpretation-panel": "true",
+    });
+    standaloneCurrent.open = true;
+    standaloneNext.open = false;
+
+    labRootModule.__testOnlyLabRootDomSync.syncElement(
+      standaloneCurrent as unknown as Element,
+      standaloneNext as unknown as Element
+    );
+
+    assert.equal(embeddedCurrent.open, false);
+    assert.equal(standaloneCurrent.open, true);
+  } finally {
+    Object.entries(descriptors).forEach(([key, descriptor]) => {
+      if (descriptor) {
+        Object.defineProperty(globalThis, key, descriptor);
+      } else {
+        Reflect.deleteProperty(globalThis, key);
+      }
+    });
+  }
 });
 
 test("effective preview audio focus fences temporal controls while dual preview is active", () => {
@@ -1860,6 +2358,9 @@ test("waveform timeline renders selector-driven suggested actions alongside live
   assert.match(markup, /00:18\.900/);
   assert.match(markup, /Type: Clip/);
   assert.match(markup, /Intent: General/);
+  assert.match(markup, /Region inactive/);
+  assert.match(markup, /Inspection mode/);
+  assert.match(markup, /data-lab-selection-inspection-mode="none"/);
   assert.match(markup, /This selection will guide future analysis/);
   assert.match(markup, /data-selection-intent="general"/);
   assert.match(markup, /data-lab-selection-intent="anomaly"/);
@@ -1922,6 +2423,68 @@ test("waveform timeline does not render suggested actions from fallback-only sel
   assert.doesNotMatch(markup, /Ses analizi yapilacak/);
 });
 
+test("workspace surface renders semantic roi overlay and focus mask inside the visual preview stage", () => {
+  const store = createLabStore();
+  store.dispatch({
+    type: "snapshot-received",
+    payload: createDualPreviewSnapshot(0),
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+  store.dispatch({
+    type: "selection-roi-updated",
+    roi: {
+      x: 0.1,
+      y: 0.1,
+      width: 0.25,
+      height: 0.3,
+    },
+  });
+
+  const surface = renderWorkspaceSurface(store.getState());
+
+  assert.match(surface.main, /data-lab-selection-roi-stage="true"/);
+  assert.match(surface.main, /data-lab-selection-roi-overlay="true"/);
+  assert.match(surface.main, /data-lab-selection-roi="true"/);
+  assert.match(surface.main, /labx-selection-roi-mask/);
+});
+
+test("workspace surface fences semantic roi overlay to the dual preview video pane", () => {
+  const store = createLabStore();
+  store.dispatch({
+    type: "snapshot-received",
+    payload: createDualPreviewSnapshot(0),
+  });
+  store.dispatch({
+    type: "workspace-dual-preview-toggled",
+    force: true,
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+  store.dispatch({
+    type: "selection-roi-updated",
+    roi: {
+      x: 0.2,
+      y: 0.2,
+      width: 0.2,
+      height: 0.2,
+    },
+  });
+
+  const surface = renderWorkspaceSurface(store.getState());
+  const overlayMatches = surface.main.match(/data-lab-selection-roi-overlay="true"/g) ?? [];
+
+  assert.equal(overlayMatches.length, 1);
+  assert.match(surface.main, /labx-workspace-preview__video-stage/);
+  assert.match(surface.main, /labx-workspace-preview__audio-pane/);
+});
+
 test("selection intent binder emits a dedicated semantic selection event", () => {
   const documentRef = new FakeControllerDocument();
   const eventBus = createLabEventBus();
@@ -1969,8 +2532,8 @@ test("selection suggestion binder emits a passive selection suggestion event", (
     },
     documentRef: documentRef as unknown as Document,
     emit: eventBus.emit,
-    hasActivePreview() {
-      return getActiveSuggestionPreview(store.getState()) !== null;
+    getActivePreviewSuggestionId() {
+      return getActiveSuggestionPreviewId(store.getState());
     },
   });
 
@@ -2019,6 +2582,765 @@ test("selection suggestion binder emits a passive selection suggestion event", (
   );
 });
 
+test("selection suggestion binder gates soft execution intent actions by the exact active preview id", () => {
+  class FakeClosestTarget extends FakeDomElement {
+    constructor(private readonly selectors: Record<string, object | null>) {
+      super();
+    }
+
+    closest(selector: string) {
+      return (this.selectors[selector] ?? null) as object | null;
+    }
+  }
+
+  class FakeExecutionIntentTrigger {
+    constructor(private readonly attrName: string, private readonly suggestionId: string | null) {}
+
+    getAttribute(name: string) {
+      return name === this.attrName ? this.suggestionId : null;
+    }
+  }
+
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  eventBus.subscribe(store.dispatch);
+  bindLabSelectionSuggestionClicks({
+    canPreviewSuggestion(suggestionId) {
+      return getSelectionSuggestions(store.getState()).some(function (suggestion) {
+        return suggestion.id === suggestionId;
+      });
+    },
+    documentRef: documentRef as unknown as Document,
+    emit: eventBus.emit,
+    getActivePreviewSuggestionId() {
+      return getActiveSuggestionPreviewId(store.getState());
+    },
+  });
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "audio",
+      mode: "local",
+      storedPath: "/tmp/source.wav",
+    },
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1200,
+    endMs: 2600,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+
+  const clickListener = documentRef.listeners.get("click");
+  assert.ok(clickListener);
+
+  clickListener?.({
+    target: new FakeClosestTarget({
+      "[data-lab-execution-intent-accept]": new FakeExecutionIntentTrigger(
+        "data-lab-execution-intent-accept",
+        "extract-clip"
+      ),
+    }) as unknown as EventTarget,
+    preventDefault() {
+      throw new Error("mismatched preview ids should not be consumed");
+    },
+  } as Event);
+  assert.equal(getActiveExecutionIntent(store.getState()), null);
+
+  const acceptEvent = new FakeClickEvent(
+    new FakeClosestTarget({
+      "[data-lab-execution-intent-accept]": new FakeExecutionIntentTrigger(
+        "data-lab-execution-intent-accept",
+        "audio-inspect"
+      ),
+    }) as unknown as EventTarget
+  );
+  clickListener?.(acceptEvent as unknown as Event);
+  assert.equal(acceptEvent.defaultPrevented, true);
+  assert.equal(getActiveExecutionIntent(store.getState())?.id, "audio-inspect");
+
+  const queueEvent = new FakeClickEvent(
+    new FakeClosestTarget({
+      "[data-lab-execution-intent-queue]": new FakeExecutionIntentTrigger(
+        "data-lab-execution-intent-queue",
+        "audio-inspect"
+      ),
+    }) as unknown as EventTarget
+  );
+  clickListener?.(queueEvent as unknown as Event);
+  assert.equal(queueEvent.defaultPrevented, true);
+
+  const dismissEvent = new FakeClickEvent(
+    new FakeClosestTarget({
+      "[data-lab-execution-intent-dismiss]": new FakeExecutionIntentTrigger(
+        "data-lab-execution-intent-dismiss",
+        "audio-inspect"
+      ),
+    }) as unknown as EventTarget
+  );
+  clickListener?.(dismissEvent as unknown as Event);
+  assert.equal(dismissEvent.defaultPrevented, true);
+  assert.equal(getActiveExecutionIntent(store.getState()), null);
+
+  const clearEvent = new FakeClickEvent(
+    new FakeClosestTarget({
+      "[data-lab-execution-intent-clear]": {},
+    }) as unknown as EventTarget
+  );
+  clickListener?.(clearEvent as unknown as Event);
+  assert.equal(clearEvent.defaultPrevented, true);
+
+  assert.equal(
+    eventBus.getHistory().some(function (event) {
+      return (
+        event.type === "workspace-selection-suggestion-accepted" &&
+        event.suggestionId === "audio-inspect"
+      );
+    }),
+    true
+  );
+  assert.equal(
+    eventBus.getHistory().some(function (event) {
+      return (
+        event.type === "workspace-selection-suggestion-dismissed" &&
+        event.suggestionId === "audio-inspect"
+      );
+    }),
+    true
+  );
+  assert.equal(
+    eventBus.getHistory().some(function (event) {
+      return (
+        event.type === "workspace-selection-suggestion-queued" &&
+        event.suggestionId === "audio-inspect"
+      );
+    }),
+    true
+  );
+  assert.equal(
+    eventBus.getHistory().some(function (event) {
+      return event.type === "workspace-execution-intent-cleared";
+    }),
+    true
+  );
+});
+
+test("selection roi binder enforces minimum drag size and emits passive roi + inspection events", () => {
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  eventBus.subscribe(store.dispatch);
+  bindLabSelectionRoiInteractions({
+    documentRef: documentRef as unknown as Document,
+    emit: eventBus.emit,
+    getActiveSelection() {
+      return store.getState().ui.workspace.activeSelection;
+    },
+    getSourceKind() {
+      return "video";
+    },
+  });
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "video",
+      mode: "local",
+      storedPath: "/tmp/source.mp4",
+    },
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+
+  const mouseDownListener = documentRef.listeners.get("mousedown");
+  const mouseMoveListener = documentRef.listeners.get("mousemove");
+  const mouseUpListener = documentRef.listeners.get("mouseup");
+  const clickListener = documentRef.listeners.get("click");
+  assert.ok(mouseDownListener);
+  assert.ok(mouseMoveListener);
+  assert.ok(mouseUpListener);
+  assert.ok(clickListener);
+
+  const stage = new FakeRoiStage(
+    {
+      "data-lab-selection-roi-controls-reserve": "0",
+    },
+    {
+      left: 0,
+      top: 0,
+      width: 200,
+      height: 100,
+      bottom: 100,
+    }
+  );
+
+  mouseDownListener?.(
+    {
+      button: 0,
+      clientX: 10,
+      clientY: 10,
+      preventDefault() {},
+      target: new FakeRoiDrawTarget(stage) as unknown as EventTarget,
+    } as Event
+  );
+  mouseMoveListener?.(
+    {
+      clientX: 14,
+      clientY: 15,
+      preventDefault() {},
+    } as Event
+  );
+
+  assert.equal(store.getState().ui.workspace.activeSelection?.roi, undefined);
+
+  mouseMoveListener?.(
+    {
+      clientX: 70,
+      clientY: 60,
+      preventDefault() {},
+    } as Event
+  );
+  mouseUpListener?.({} as Event);
+
+  assert.deepEqual(store.getState().ui.workspace.activeSelection?.roi, {
+    x: 0.05,
+    y: 0.1,
+    width: 0.3,
+    height: 0.5,
+  });
+
+  clickListener?.(
+    new FakeClickEvent(
+      new FakeInspectionModeTarget(new FakeInspectionModeTrigger("motion")) as unknown as EventTarget
+    ) as unknown as Event
+  );
+  assert.equal(getInspectionMode(store.getState()), "motion");
+
+  clickListener?.(
+    new FakeClickEvent(new FakeRoiClearTarget() as unknown as EventTarget) as unknown as Event
+  );
+  assert.equal(store.getState().ui.workspace.activeSelection?.roi, undefined);
+});
+
+test("selection roi redraw binder ignores the existing roi so double-click focus wins precedence", () => {
+  class FakeExistingSelectionRoiTarget extends FakeDomElement {
+    closest(selector: string) {
+      if (selector === "[data-lab-selection-roi-ignore='true']") {
+        return {} as object;
+      }
+      if (selector === "[data-lab-selection-roi='true']") {
+        return {} as object;
+      }
+      return null;
+    }
+  }
+
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  eventBus.subscribe(store.dispatch);
+  const calls: string[] = [];
+
+  bindLabSelectionRoiInteractions({
+    documentRef: documentRef as unknown as Document,
+    emit: eventBus.emit,
+    getActiveSelection() {
+      return store.getState().ui.workspace.activeSelection;
+    },
+    getSourceKind() {
+      return "video";
+    },
+  });
+  bindLabPreviewInspectionInteractions({
+    controller: {
+      captureSnapshot() {
+        return false;
+      },
+      clearFocus() {
+        return false;
+      },
+      clearSnapshot() {
+        return false;
+      },
+      stepFrame() {
+        return false;
+      },
+      toggleFocus() {
+        calls.push("toggle-focus");
+        return true;
+      },
+    },
+    documentRef: documentRef as unknown as Document,
+  });
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "video",
+      mode: "local",
+      storedPath: "/tmp/source.mp4",
+    },
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1_000,
+    endMs: 3_000,
+  });
+  store.dispatch({
+    type: "selection-roi-updated",
+    roi: {
+      x: 0.1,
+      y: 0.1,
+      width: 0.25,
+      height: 0.3,
+    },
+  });
+
+  const initialRoi = store.getState().ui.workspace.activeSelection?.roi;
+  const mouseDownListener = documentRef.listeners.get("mousedown");
+  const mouseMoveListener = documentRef.listeners.get("mousemove");
+  const dblClickListener = documentRef.listeners.get("dblclick");
+  assert.ok(mouseDownListener);
+  assert.ok(mouseMoveListener);
+  assert.ok(dblClickListener);
+
+  mouseDownListener?.({
+    button: 0,
+    clientX: 24,
+    clientY: 24,
+    preventDefault() {},
+    target: new FakeExistingSelectionRoiTarget() as unknown as EventTarget,
+  } as Event);
+  mouseMoveListener?.({
+    clientX: 80,
+    clientY: 64,
+    preventDefault() {},
+  } as Event);
+  dblClickListener?.({
+    target: new FakeExistingSelectionRoiTarget() as unknown as EventTarget,
+    preventDefault() {},
+    stopImmediatePropagation() {},
+  } as Event);
+
+  assert.deepEqual(store.getState().ui.workspace.activeSelection?.roi, initialRoi);
+  assert.deepEqual(calls, ["toggle-focus"]);
+});
+
+test("preview inspection binder routes focus, stepping, capture, and escape without touching form fields", () => {
+  class FakeClosestTarget extends FakeDomElement {
+    constructor(private readonly selectors: Record<string, object | null>) {
+      super();
+    }
+
+    closest(selector: string) {
+      return (this.selectors[selector] ?? null) as object | null;
+    }
+  }
+
+  const documentRef = new FakeControllerDocument();
+  const calls: string[] = [];
+  bindLabPreviewInspectionInteractions({
+    controller: {
+      captureSnapshot() {
+        calls.push("capture");
+        return true;
+      },
+      clearFocus() {
+        calls.push("clear-focus");
+        return true;
+      },
+      clearSnapshot() {
+        calls.push("clear-snapshot");
+        return true;
+      },
+      stepFrame(direction) {
+        calls.push(direction < 0 ? "step-backward" : "step-forward");
+        return true;
+      },
+      toggleFocus() {
+        calls.push("toggle-focus");
+        return true;
+      },
+    },
+    documentRef: documentRef as unknown as Document,
+  });
+
+  const clickListener = documentRef.listeners.get("click");
+  const dblClickListener = documentRef.listeners.get("dblclick");
+  const keydownListener = documentRef.listeners.get("keydown");
+  assert.ok(clickListener);
+  assert.ok(dblClickListener);
+  assert.ok(keydownListener);
+
+  clickListener?.({
+    target: new FakeClosestTarget({
+      "[data-lab-selection-roi-focus-toggle]": {},
+    }) as unknown as EventTarget,
+    preventDefault() {},
+    stopImmediatePropagation() {},
+  } as Event);
+  clickListener?.({
+    target: new FakeClosestTarget({
+      "[data-lab-selection-roi-capture]": {},
+    }) as unknown as EventTarget,
+    preventDefault() {},
+    stopImmediatePropagation() {},
+  } as Event);
+  clickListener?.({
+    target: new FakeClosestTarget({
+      "[data-lab-preview-inspection-stage='true']": {},
+    }) as unknown as EventTarget,
+    preventDefault() {},
+    stopImmediatePropagation() {},
+  } as Event);
+  dblClickListener?.({
+    target: new FakeClosestTarget({
+      "[data-lab-selection-roi='true']": {},
+    }) as unknown as EventTarget,
+    preventDefault() {},
+    stopImmediatePropagation() {},
+  } as Event);
+  keydownListener?.({
+    key: "ArrowRight",
+    target: new FakeOutsideTarget() as unknown as EventTarget,
+    preventDefault() {},
+    stopImmediatePropagation() {},
+  } as Event);
+  keydownListener?.({
+    key: "Escape",
+    target: new FakeOutsideTarget() as unknown as EventTarget,
+    preventDefault() {},
+    stopImmediatePropagation() {},
+  } as Event);
+  keydownListener?.({
+    key: "ArrowLeft",
+    target: new FakeClosestTarget({
+      "input, textarea, select, [contenteditable='true']": {},
+    }) as unknown as EventTarget,
+    preventDefault() {
+      throw new Error("editable targets should be ignored");
+    },
+    stopImmediatePropagation() {
+      throw new Error("editable targets should be ignored");
+    },
+  } as Event);
+
+  assert.deepEqual(calls, [
+    "toggle-focus",
+    "capture",
+    "toggle-focus",
+    "step-forward",
+    "clear-focus",
+  ]);
+});
+
+test("preview inspection controller focuses roi, captures a snapshot, and clears stale state on topology loss", async () => {
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  eventBus.subscribe(store.dispatch);
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "video",
+      mode: "local",
+      storedPath: "/tmp/source.mp4",
+    },
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1_000,
+    endMs: 3_000,
+  });
+  store.dispatch({
+    type: "selection-roi-updated",
+    roi: {
+      x: 0.2,
+      y: 0.15,
+      width: 0.3,
+      height: 0.35,
+    },
+  });
+
+  const capturedDrawCalls: unknown[][] = [];
+  const fakeCanvas = {
+    height: 0,
+    width: 0,
+    getContext() {
+      return {
+        drawImage(...args: unknown[]) {
+          capturedDrawCalls.push(args);
+        },
+      };
+    },
+    toDataURL() {
+      return "data:image/png;base64,roi";
+    },
+  };
+
+  const contentStyle = {
+    transform: "",
+    transformOrigin: "",
+  };
+  const content = {
+    getAttribute() {
+      return null;
+    },
+    getBoundingClientRect() {
+      return {
+        height: 200,
+        left: 0,
+        top: 0,
+        width: 400,
+      };
+    },
+    querySelector() {
+      return null;
+    },
+    setAttribute() {},
+    style: contentStyle,
+  };
+  const video = {
+    currentSrc: "file:///tmp/source.mp4",
+    currentTime: 1,
+    duration: 8,
+    getAttribute(name: string) {
+      return name === "src" ? this.currentSrc : null;
+    },
+    pauseCalls: 0,
+    pause() {
+      this.pauseCalls += 1;
+      this.paused = true;
+    },
+    paused: false,
+    videoHeight: 400,
+    videoWidth: 800,
+  };
+
+  let stageAvailable = true;
+  const stageAttributes = new Map<string, string>([
+    ["data-lab-preview-inspection-topology", "single-video"],
+  ]);
+  const stage = {
+    getAttribute(name: string) {
+      return stageAttributes.get(name) ?? null;
+    },
+    getBoundingClientRect() {
+      return {
+        height: 200,
+        left: 0,
+        top: 0,
+        width: 400,
+      };
+    },
+    querySelector(selector: string) {
+      if (selector === "[data-lab-preview-inspection-content='true']") {
+        return content as unknown as Element;
+      }
+      if (selector === "video[data-lab-preserve-media], img[data-lab-preserve-media]") {
+        return video as unknown as Element;
+      }
+      return null;
+    },
+    setAttribute(name: string, value: string) {
+      stageAttributes.set(name, value);
+    },
+    style: undefined,
+  };
+
+  const controller = createLabPreviewInspectionController({
+    documentRef: {
+      createElement() {
+        return fakeCanvas as unknown as HTMLElement;
+      },
+      querySelector(selector: string) {
+        if (selector === "[data-lab-preview-inspection-stage='true']" && stageAvailable) {
+          return stage as unknown as Element;
+        }
+        return null;
+      },
+    } as unknown as Document,
+    emit: eventBus.emit,
+    getActiveSelection() {
+      return getActiveSelection(store.getState());
+    },
+    getActiveSnapshot() {
+      return getActiveInspectionSnapshot(store.getState());
+    },
+    getRoiFocusActive() {
+      return getRoiFocusActive(store.getState());
+    },
+    windowRef: {
+      URL,
+    } as unknown as Window,
+  });
+
+  assert.equal(controller.setFocusActive(true), true);
+  controller.sync();
+  assert.equal(getRoiFocusActive(store.getState()), true);
+  assert.match(contentStyle.transform, /scale/);
+  assert.equal(
+    __testOnlyLabPreviewInspectionController.computeFocusTransform(
+      {
+        width: 400,
+        height: 200,
+      },
+      store.getState().ui.workspace.activeSelection?.roi!
+    )?.scale,
+    2.857142857142857
+  );
+
+  assert.equal(controller.stepFrame(1), true);
+  assert.equal(video.pauseCalls, 1);
+  assert.ok(video.currentTime > 1);
+
+  assert.equal(await controller.captureSnapshot(), true);
+  assert.equal(getActiveInspectionSnapshot(store.getState())?.width, 240);
+  assert.equal(getActiveInspectionSnapshot(store.getState())?.height, 140);
+  assert.deepEqual(capturedDrawCalls[0]?.slice(1, 5), [160, 60, 240, 140]);
+
+  stageAvailable = false;
+  controller.sync();
+
+  assert.equal(getRoiFocusActive(store.getState()), false);
+  assert.equal(getActiveInspectionSnapshot(store.getState()), null);
+});
+
+test("preview inspection controller ignores snapshot capture when roi is below the minimum size guard", async () => {
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  eventBus.subscribe(store.dispatch);
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "video",
+      mode: "local",
+      storedPath: "/tmp/source.mp4",
+    },
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1_000,
+    endMs: 3_000,
+  });
+  store.dispatch({
+    type: "selection-roi-updated",
+    roi: {
+      x: 0.1,
+      y: 0.1,
+      width: 0.05,
+      height: 0.05,
+    },
+  });
+
+  let createElementCalls = 0;
+  const stage = {
+    getAttribute(name: string) {
+      return name === "data-lab-preview-inspection-topology" ? "single-video" : null;
+    },
+    getBoundingClientRect() {
+      return {
+        height: 100,
+        left: 0,
+        top: 0,
+        width: 100,
+      };
+    },
+    querySelector(selector: string) {
+      if (selector === "[data-lab-preview-inspection-content='true']") {
+        return {
+          getAttribute() {
+            return null;
+          },
+          getBoundingClientRect() {
+            return {
+              height: 100,
+              left: 0,
+              top: 0,
+              width: 100,
+            };
+          },
+          querySelector() {
+            return null;
+          },
+          setAttribute() {},
+          style: {
+            transform: "",
+            transformOrigin: "",
+          },
+        } as unknown as Element;
+      }
+      if (selector === "video[data-lab-preserve-media], img[data-lab-preserve-media]") {
+        return {
+          currentSrc: "file:///tmp/source.mp4",
+          currentTime: 1,
+          duration: 8,
+          getAttribute(sourceName: string) {
+            return sourceName === "src" ? this.currentSrc : null;
+          },
+          pause() {},
+          paused: true,
+          videoHeight: 400,
+          videoWidth: 800,
+        } as unknown as Element;
+      }
+      return null;
+    },
+    setAttribute() {},
+    style: undefined,
+  };
+
+  const controller = createLabPreviewInspectionController({
+    documentRef: {
+      createElement() {
+        createElementCalls += 1;
+        throw new Error("snapshot capture should stop before canvas allocation");
+      },
+      querySelector(selector: string) {
+        if (selector === "[data-lab-preview-inspection-stage='true']") {
+          return stage as unknown as Element;
+        }
+        return null;
+      },
+    } as unknown as Document,
+    emit: eventBus.emit,
+    getActiveSelection() {
+      return getActiveSelection(store.getState());
+    },
+    getActiveSnapshot() {
+      return getActiveInspectionSnapshot(store.getState());
+    },
+    getRoiFocusActive() {
+      return getRoiFocusActive(store.getState());
+    },
+    windowRef: {
+      URL: {
+        createObjectURL() {
+          return "blob:ignored";
+        },
+        revokeObjectURL() {},
+      },
+    } as unknown as Window,
+  });
+
+  assert.equal(await controller.captureSnapshot(), false);
+  assert.equal(createElementCalls, 0);
+  assert.equal(getActiveInspectionSnapshot(store.getState()), null);
+});
+
 test("selection suggestion preview dismissal stays stable with stacked document listeners", () => {
   const originalElement = globalThis.Element;
   const documentRef = new FakeControllerDocument();
@@ -2049,8 +3371,8 @@ test("selection suggestion preview dismissal stays stable with stacked document 
       },
       documentRef: documentRef as unknown as Document,
       emit: eventBus.emit,
-      hasActivePreview() {
-        return getActiveSuggestionPreview(store.getState()) !== null;
+      getActivePreviewSuggestionId() {
+        return getActiveSuggestionPreviewId(store.getState());
       },
     });
     controller.attach();
@@ -2136,8 +3458,8 @@ test("selection suggestion binder ignores invalid preview ids while keeping pass
     },
     documentRef: documentRef as unknown as Document,
     emit: eventBus.emit,
-    hasActivePreview() {
-      return getActiveSuggestionPreview(store.getState()) !== null;
+    getActivePreviewSuggestionId() {
+      return getActiveSuggestionPreviewId(store.getState());
     },
   });
 
@@ -2336,8 +3658,8 @@ test("selection suggestion clicks stay fenced from analysis intents and run exec
     },
     documentRef: documentRef as unknown as Document,
     emit: eventBus.emit,
-    hasActivePreview() {
-      return getActiveSuggestionPreview(store.getState()) !== null;
+    getActivePreviewSuggestionId() {
+      return getActiveSuggestionPreviewId(store.getState());
     },
   });
 
@@ -3863,10 +5185,10 @@ test("laboratory hydrate reconstructs an active selection from a valid persisted
           type: "focus",
           label: "Door latch",
           roi: {
-            x: 10,
-            y: 20,
-            width: 80,
-            height: 60,
+            x: 0.1,
+            y: 0.2,
+            width: 0.35,
+            height: 0.4,
           },
           createdAt: 1700000000000,
         },
@@ -3882,13 +5204,56 @@ test("laboratory hydrate reconstructs an active selection from a valid persisted
     intent: "general",
     label: "Door latch",
     roi: {
-      x: 10,
-      y: 20,
-      width: 80,
-      height: 60,
+      x: 0.1,
+      y: 0.2,
+      width: 0.35,
+      height: 0.4,
     },
     createdAt: 1700000000000,
   });
+});
+
+test("laboratory hydrate drops legacy pixel-like persisted selection roi values", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "hydrate",
+    payload: {
+      currentStage: "source",
+      featureId: "media-analysis",
+      projectIndex: {
+        activeProjectId: null,
+        projects: [],
+      },
+      workbench: {},
+      sourceProbeStatus: "idle",
+      reports: {
+        user: null,
+        ai: null,
+        emptyReason: "Rapor henüz üretilmedi.",
+      },
+      activityFeed: [],
+      workspace: {
+        timelineStartMs: 2400,
+        timelineEndMs: 5600,
+        activeSelection: {
+          id: "selection-persisted",
+          startMs: 2400,
+          endMs: 5600,
+          type: "focus",
+          roi: {
+            x: 10,
+            y: 20,
+            width: 80,
+            height: 60,
+          },
+          createdAt: 1700000000000,
+        },
+      },
+    },
+  });
+
+  assert.equal(store.getState().ui.workspace.activeSelection?.roi, undefined);
 });
 
 test("laboratory hydrate rebuilds selection identity from the primitive bridge on rehydrate", () => {
@@ -4331,12 +5696,10 @@ test("laboratory run controller threads frozen run intent ids into tracked expor
   }
 });
 
-test("laboratory run controller previews action-linked output assets through asset-preview clicks", () => {
+test("laboratory asset preview binder opens action-linked assets through the system opener when available", async () => {
   const originalElement = globalThis.Element;
-  const openedUrls: string[] = [];
+  const openedPaths: string[] = [];
   const documentRef = new FakeControllerDocument();
-  const eventBus = createLabEventBus();
-  const store = createLabStore();
 
   class TestElement extends FakeActionElement {}
 
@@ -4346,44 +5709,90 @@ test("laboratory run controller previews action-linked output assets through ass
   });
 
   try {
-    eventBus.subscribe(function (event) {
-      store.dispatch(event);
-    });
-
-    store.dispatch({
-      type: "asset-added",
-      asset: {
-        id: "asset-frame-result",
-        type: "frame",
-        name: "frame_01.png",
-        localPath: "/tmp/frame_01.png",
-        createdAt: Date.now(),
-      },
-    });
-
-    const controller = createLabRunController({
+    bindLabAssetPreviewClicks({
       documentRef: documentRef as unknown as Document,
-      eventBus,
-      store,
+      emit() {},
+      resolveHref(assetId) {
+        return assetId === "asset-frame-result" ? "/tmp/frame_01.png" : null;
+      },
+      windowRef: {
+        electronAPI: {
+          openPath(path: string) {
+            openedPaths.push(path);
+            return Promise.resolve({ success: true });
+          },
+        },
+        open() {
+          return null;
+        },
+      } as unknown as Window,
+    });
+
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
+
+    let prevented = false;
+    let stopped = false;
+    clickListener?.({
+      target: new TestElement("asset-preview", "asset-frame-result"),
+      preventDefault() {
+        prevented = true;
+      },
+      stopImmediatePropagation() {
+        stopped = true;
+      },
+    } as Event);
+    await Promise.resolve();
+
+    assert.equal(prevented, true);
+    assert.equal(stopped, true);
+    assert.deepEqual(openedPaths, ["/tmp/frame_01.png"]);
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
+test("laboratory asset preview binder falls back to window preview when the system opener is unavailable", async () => {
+  const originalElement = globalThis.Element;
+  const openedUrls: string[] = [];
+  const documentRef = new FakeControllerDocument();
+
+  class TestElement extends FakeActionElement {}
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+
+  try {
+    bindLabAssetPreviewClicks({
+      documentRef: documentRef as unknown as Document,
+      emit() {},
+      resolveHref(assetId) {
+        return assetId === "asset-audio-preview" ? "/tmp/track.wav" : null;
+      },
       windowRef: {
         open(url: string) {
           openedUrls.push(url);
           return null;
         },
-        roomAPI: {
-          sendEvent() {},
-        },
-        addEventListener() {},
       } as unknown as Window,
     });
-    controller.attach();
 
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
 
-    clickListener?.({ target: new TestElement("asset-preview", "asset-frame-result") } as Event);
+    clickListener?.({ target: new TestElement("asset-preview", "asset-audio-preview") } as Event);
+    await Promise.resolve();
 
-    assert.deepEqual(openedUrls, ["/tmp/frame_01.png"]);
+    assert.deepEqual(openedUrls, ["/tmp/track.wav"]);
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;
@@ -4963,6 +6372,45 @@ test("laboratory store promotes timeline ranges into stable selection entities",
   assert.equal(getSelectionIntent(store.getState()), "audio");
 
   store.dispatch({
+    type: "selection-roi-updated",
+    roi: {
+      x: 0.1,
+      y: 0.15,
+      width: 0.3,
+      height: 0.35,
+    },
+  });
+
+  assert.deepEqual(store.getState().ui.workspace.activeSelection?.roi, {
+    x: 0.1,
+    y: 0.15,
+    width: 0.3,
+    height: 0.35,
+  });
+  store.dispatch({
+    type: "selection-roi-focus-set",
+    active: true,
+  });
+  store.dispatch({
+    type: "selection-roi-snapshot-set",
+    snapshot: {
+      id: "selection-snapshot",
+      objectUrl: "blob:selection-snapshot",
+      width: 200,
+      height: 120,
+      sourceKind: "video",
+      roi: {
+        x: 0.1,
+        y: 0.15,
+        width: 0.3,
+        height: 0.35,
+      },
+      createdAt: 3,
+      timeMs: 1_400,
+    },
+  });
+
+  store.dispatch({
     type: "workspace-timeline-updated",
     startMs: 1200,
     endMs: 3400,
@@ -4975,6 +6423,9 @@ test("laboratory store promotes timeline ranges into stable selection entities",
   assert.equal(evolvedSelection?.intent, "audio");
   assert.equal(evolvedSelection?.startMs, 1200);
   assert.equal(evolvedSelection?.endMs, 3400);
+  assert.equal(evolvedSelection?.roi, undefined);
+  assert.equal(getRoiFocusActive(store.getState()), false);
+  assert.equal(getActiveInspectionSnapshot(store.getState()), null);
 
   store.dispatch({
     type: "workspace-timeline-updated",
@@ -4998,6 +6449,217 @@ test("laboratory store ignores semantic selection intent updates without an acti
 
   assert.equal(store.getState().ui.workspace.activeSelection, null);
   assert.equal(getSelectionIntent(store.getState()), "unknown");
+});
+
+test("laboratory store can synthesize and clear an image inspection selection from semantic roi updates", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "image",
+      mode: "local",
+      storedPath: "/tmp/source.png",
+    },
+  });
+
+  store.dispatch({
+    type: "selection-roi-updated",
+    roi: {
+      x: 0.2,
+      y: 0.1,
+      width: 0.4,
+      height: 0.5,
+    },
+  });
+
+  assert.deepEqual(store.getState().ui.workspace.activeSelection, {
+    id: store.getState().ui.workspace.activeSelection?.id,
+    startMs: 0,
+    endMs: 1,
+    type: "inspect",
+    intent: "general",
+    roi: {
+      x: 0.2,
+      y: 0.1,
+      width: 0.4,
+      height: 0.5,
+    },
+    createdAt: store.getState().ui.workspace.activeSelection?.createdAt,
+  });
+
+  store.dispatch({
+    type: "selection-roi-cleared",
+  });
+
+  assert.equal(store.getState().ui.workspace.activeSelection, null);
+});
+
+test("laboratory inspection micro state stays UI-scoped and resets on hydrate", async () => {
+  const store = createLabStore();
+  const labRootModule = (await import("../../rooms/laboratory/ui/lab-root.ts")) as {
+    __testOnlyLabRootPersistence: {
+      readPersistableState: (state: ReturnType<typeof store.getState>) => Record<string, unknown>;
+    };
+  };
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "image",
+      mode: "local",
+      storedPath: "/tmp/source.png",
+    },
+  });
+  store.dispatch({
+    type: "selection-roi-updated",
+    roi: {
+      x: 0.2,
+      y: 0.2,
+      width: 0.24,
+      height: 0.26,
+    },
+  });
+  store.dispatch({
+    type: "selection-inspection-mode-updated",
+    mode: "motion",
+  });
+  store.dispatch({
+    type: "selection-roi-focus-set",
+    active: true,
+  });
+  store.dispatch({
+    type: "selection-roi-snapshot-set",
+    snapshot: {
+      id: "snapshot-1",
+      objectUrl: "blob:roi-snapshot-1",
+      width: 240,
+      height: 180,
+      sourceKind: "image",
+      roi: {
+        x: 0.2,
+        y: 0.2,
+        width: 0.24,
+        height: 0.26,
+      },
+      createdAt: 1,
+      timeMs: null,
+    },
+  });
+
+  assert.equal(getInspectionMode(store.getState()), "motion");
+  assert.equal(getRoiFocusActive(store.getState()), true);
+  assert.equal(getActiveInspectionSnapshot(store.getState())?.id, "snapshot-1");
+
+  const persistedState = labRootModule.__testOnlyLabRootPersistence.readPersistableState(
+    store.getState()
+  );
+
+  assert.equal("inspectionMode" in persistedState, false);
+  assert.equal("roiFocusActive" in persistedState, false);
+  assert.equal("activeInspectionSnapshot" in persistedState, false);
+  assert.equal(
+    "inspectionMode" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+  assert.equal(
+    "roiFocusActive" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+  assert.equal(
+    "activeInspectionSnapshot" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+
+  store.dispatch({
+    type: "hydrate",
+    payload: {
+      currentStage: "source",
+      featureId: "media-analysis",
+      projectIndex: {
+        activeProjectId: null,
+        projects: [],
+      },
+      workbench: {},
+      sourceProbeStatus: "idle",
+      reports: {
+        user: null,
+        ai: null,
+        emptyReason: "Rapor henüz üretilmedi.",
+      },
+      activityFeed: [],
+      workspace: {},
+    },
+  });
+
+  assert.equal(getInspectionMode(store.getState()), "none");
+  assert.equal(getRoiFocusActive(store.getState()), false);
+  assert.equal(getActiveInspectionSnapshot(store.getState()), null);
+});
+
+test("laboratory source changes clear semantic roi and reset inspection mode", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "video",
+      mode: "local",
+      storedPath: "/tmp/source-a.mp4",
+    },
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+  store.dispatch({
+    type: "selection-roi-updated",
+    roi: {
+      x: 0.2,
+      y: 0.2,
+      width: 0.25,
+      height: 0.25,
+    },
+  });
+  store.dispatch({
+    type: "selection-inspection-mode-updated",
+    mode: "visual",
+  });
+  store.dispatch({
+    type: "selection-roi-focus-set",
+    active: true,
+  });
+  store.dispatch({
+    type: "selection-roi-snapshot-set",
+    snapshot: {
+      id: "snapshot-reset",
+      objectUrl: "blob:roi-reset",
+      width: 120,
+      height: 120,
+      sourceKind: "video",
+      roi: {
+        x: 0.2,
+        y: 0.2,
+        width: 0.25,
+        height: 0.25,
+      },
+      createdAt: 2,
+      timeMs: 1400,
+    },
+  });
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      storedPath: "/tmp/source-b.mp4",
+    },
+  });
+
+  assert.equal(store.getState().ui.workspace.activeSelection, null);
+  assert.equal(getInspectionMode(store.getState()), "none");
+  assert.equal(getRoiFocusActive(store.getState()), false);
+  assert.equal(getActiveInspectionSnapshot(store.getState()), null);
 });
 
 test("selection suggestion selector returns an empty list without a valid selection", () => {
@@ -5152,6 +6814,93 @@ test("selection suggestion selector fences recommendations by intent and media k
   ]);
 });
 
+test("selection suggestion selector boosts region-aware visual and motion guidance", () => {
+  const videoStore = createLabStore();
+  videoStore.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "video",
+      mode: "local",
+      storedPath: "/tmp/source.mp4",
+    },
+  });
+  videoStore.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+  videoStore.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "motion",
+  });
+
+  assert.deepEqual(getSelectionSuggestions(videoStore.getState()), [
+    {
+      id: "motion-check",
+      label: "Hareket tutarliligini incele",
+      actionType: "analyze-segment",
+      confidence: 0.85,
+    },
+    {
+      id: "extract-clip",
+      label: "Bu bolumu kes",
+      actionType: "extract-clip",
+      confidence: 0.6,
+    },
+  ]);
+
+  videoStore.dispatch({
+    type: "selection-roi-updated",
+    roi: {
+      x: 0.25,
+      y: 0.2,
+      width: 0.2,
+      height: 0.25,
+    },
+  });
+  videoStore.dispatch({
+    type: "selection-inspection-mode-updated",
+    mode: "motion",
+  });
+
+  assert.deepEqual(getSelectionSuggestions(videoStore.getState()), [
+    {
+      id: "motion-check",
+      label: "Hareket tutarliligini incele",
+      toolHint: "Inspect motion",
+      actionType: "analyze-segment",
+      confidence: 0.92,
+    },
+    {
+      id: "inspect-region",
+      label: "Secili bolgeyi incele",
+      toolHint: "Focus region",
+      actionType: "focus-region",
+      confidence: 0.88,
+    },
+    {
+      id: "stabilize-region",
+      label: "Segmenti stabilize et",
+      toolHint: "Stabilize segment",
+      actionType: "stabilize-segment",
+      confidence: 0.72,
+    },
+    {
+      id: "enhance-region-clarity",
+      label: "Bolge netligini artir",
+      toolHint: "Enhance clarity",
+      actionType: "enhance-visual",
+      confidence: 0.76,
+    },
+    {
+      id: "extract-clip",
+      label: "Bu bolumu kes",
+      actionType: "extract-clip",
+      confidence: 0.6,
+    },
+  ]);
+});
+
 test("suggestion preview builder returns a dry-run plan for supported actions", () => {
   const selection: LabSelection = {
     id: "selection-preview",
@@ -5250,9 +6999,13 @@ test("suggestion preview builder returns a dry-run plan for supported actions", 
     ),
     {
       suggestionId: "focus-region",
-      title: "Islem hazirlaniyor",
-      steps: ["Bu islem icin detayli plan henuz tanimli degil"],
-      expectedOutputs: [],
+      title: "Bolge incelemesi hazirlanacak",
+      steps: [
+        "6.6s secim hazirlanacak",
+        "Secili goruntu bolgesi izole edilecek",
+        "Bolgeye odakli gorsel inceleme hazirlanacak",
+      ],
+      expectedOutputs: ["Bolge odakli notlar", "Ilgili goruntu referanslari"],
       estimatedCost: "low",
     }
   );
@@ -5361,8 +7114,14 @@ test("selection preview clears on range changes, intent changes, and explicit di
     type: "workspace-selection-suggestion-preview-set",
     suggestionId: "audio-inspect",
   });
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "audio-inspect",
+  });
 
   assert.equal(store.getState().ui.activeSuggestionPreviewId, "audio-inspect");
+  assert.equal(store.getState().ui.activeExecutionIntentId, "audio-inspect");
+  assert.equal(getActiveExecutionIntent(store.getState())?.id, "audio-inspect");
 
   store.dispatch({
     type: "workspace-timeline-updated",
@@ -5370,6 +7129,8 @@ test("selection preview clears on range changes, intent changes, and explicit di
     endMs: 3200,
   });
   assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
+  assert.equal(store.getState().ui.activeExecutionIntentId, null);
+  assert.equal(getActiveExecutionIntent(store.getState()), null);
 
   store.dispatch({
     type: "workspace-selection-intent-updated",
@@ -5379,13 +7140,20 @@ test("selection preview clears on range changes, intent changes, and explicit di
     type: "workspace-selection-suggestion-preview-set",
     suggestionId: "audio-inspect",
   });
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "audio-inspect",
+  });
   assert.equal(store.getState().ui.activeSuggestionPreviewId, "audio-inspect");
+  assert.equal(store.getState().ui.activeExecutionIntentId, "audio-inspect");
 
   store.dispatch({
     type: "workspace-selection-intent-updated",
     intent: "visual",
   });
   assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
+  assert.equal(store.getState().ui.activeExecutionIntentId, null);
+  assert.equal(getActiveExecutionIntent(store.getState()), null);
 
   store.dispatch({
     type: "workspace-selection-intent-updated",
@@ -5396,13 +7164,24 @@ test("selection preview clears on range changes, intent changes, and explicit di
     suggestionId: "audio-inspect",
   });
   store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "audio-inspect",
+  });
+  store.dispatch({
     type: "workspace-selection-suggestion-preview-cleared",
   });
   assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
+  assert.equal(store.getState().ui.activeExecutionIntentId, "audio-inspect");
+  assert.equal(getActiveExecutionIntent(store.getState())?.id, "audio-inspect");
 });
 
-test("hydrate keeps selection previews ephemeral and drops any active preview id", () => {
+test("hydrate keeps selection previews and execution intents ephemeral", async () => {
   const store = createLabStore();
+  const labRootModule = (await import("../../rooms/laboratory/ui/lab-root.ts")) as {
+    __testOnlyLabRootPersistence: {
+      readPersistableState: (state: ReturnType<typeof store.getState>) => Record<string, unknown>;
+    };
+  };
   const baseWorkspace = store.getState().ui.workspace;
 
   store.dispatch({
@@ -5426,7 +7205,21 @@ test("hydrate keeps selection previews ephemeral and drops any active preview id
     type: "workspace-selection-suggestion-preview-set",
     suggestionId: "audio-inspect",
   });
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "audio-inspect",
+  });
   assert.equal(store.getState().ui.activeSuggestionPreviewId, "audio-inspect");
+  assert.equal(store.getState().ui.activeExecutionIntentId, "audio-inspect");
+
+  const persistedState = labRootModule.__testOnlyLabRootPersistence.readPersistableState(
+    store.getState()
+  );
+  assert.equal("activeExecutionIntentId" in persistedState, false);
+  assert.equal(
+    "activeExecutionIntentId" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
 
   store.dispatch({
     type: "hydrate",
@@ -5460,7 +7253,100 @@ test("hydrate keeps selection previews ephemeral and drops any active preview id
   });
 
   assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
+  assert.equal(store.getState().ui.activeExecutionIntentId, null);
   assert.equal(getActiveSuggestionPreview(store.getState()), null);
+  assert.equal(getActiveExecutionIntent(store.getState()), null);
+});
+
+test("store accepts execution intents only from the exact active suggestion preview", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "video",
+      mode: "local",
+      storedPath: "/tmp/source.mp4",
+    },
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "audio-inspect",
+  });
+  assert.equal(store.getState().ui.activeExecutionIntentId, null);
+  assert.equal(getActiveExecutionIntent(store.getState()), null);
+
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "extract-clip",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "audio-inspect",
+  });
+  assert.equal(store.getState().ui.activeExecutionIntentId, null);
+  assert.equal(getActiveExecutionIntent(store.getState()), null);
+
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "missing-suggestion",
+  });
+  assert.equal(store.getState().ui.activeExecutionIntentId, null);
+  assert.equal(getActiveExecutionIntent(store.getState()), null);
+
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "audio-inspect",
+  });
+  assert.equal(store.getState().ui.activeExecutionIntentId, "audio-inspect");
+  assert.equal(getActiveExecutionIntent(store.getState())?.id, "audio-inspect");
+
+  store.dispatch({
+    type: "workspace-selection-suggestion-dismissed",
+    suggestionId: " audio-inspect ",
+  });
+  assert.equal(store.getState().ui.activeExecutionIntentId, null);
+  assert.equal(getActiveExecutionIntent(store.getState()), null);
+
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: " audio-inspect ",
+  });
+  assert.equal(getActiveSuggestionPreviewId(store.getState()), "audio-inspect");
+
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: " audio-inspect ",
+  });
+  assert.equal(store.getState().ui.activeExecutionIntentId, "audio-inspect");
+  assert.equal(getActiveExecutionIntent(store.getState())?.id, "audio-inspect");
+
+  store.dispatch({
+    type: "selection-roi-updated",
+    roi: {
+      x: 0.2,
+      y: 0.2,
+      width: 0.24,
+      height: 0.24,
+    },
+  });
+  assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
+  assert.equal(store.getState().ui.activeExecutionIntentId, null);
+  assert.equal(getActiveExecutionIntent(store.getState()), null);
 });
 
 test("laboratory store resets semantic and primitive selection state on source changes", () => {
@@ -5483,6 +7369,10 @@ test("laboratory store resets semantic and primitive selection state on source c
     type: "workspace-selection-suggestion-preview-set",
     suggestionId: "extract-clip",
   });
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "extract-clip",
+  });
 
   store.dispatch({
     type: "source-config-patched",
@@ -5497,6 +7387,8 @@ test("laboratory store resets semantic and primitive selection state on source c
   assert.equal(store.getState().ui.workspace.timelineEndMs, null);
   assert.equal(store.getState().ui.workspace.activeSelection, null);
   assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
+  assert.equal(store.getState().ui.activeExecutionIntentId, null);
+  assert.equal(getActiveExecutionIntent(store.getState()), null);
 });
 
 test("laboratory store clears semantic and primitive selection state when the active project changes", () => {
@@ -5519,6 +7411,10 @@ test("laboratory store clears semantic and primitive selection state when the ac
     type: "workspace-selection-suggestion-preview-set",
     suggestionId: "extract-clip",
   });
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "extract-clip",
+  });
 
   store.dispatch({
     type: "snapshot-received",
@@ -5529,6 +7425,8 @@ test("laboratory store clears semantic and primitive selection state when the ac
   assert.equal(store.getState().ui.workspace.timelineEndMs, null);
   assert.equal(store.getState().ui.workspace.activeSelection, null);
   assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
+  assert.equal(store.getState().ui.activeExecutionIntentId, null);
+  assert.equal(getActiveExecutionIntent(store.getState()), null);
 });
 
 test("laboratory run controller accepts numeric timeline input edits and normalizes invalid ranges", () => {

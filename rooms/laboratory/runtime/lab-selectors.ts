@@ -7,6 +7,7 @@ import type {
   LabAssetType,
   LabExpectedOutput,
   LabFeatureId,
+  LabInspectionMode,
   LabInterpretationItem,
   LabIntentDirtyMap,
   LabModuleState,
@@ -891,18 +892,38 @@ export function getSelectionIntent(state: LabStoreState): LabSelectionIntent {
   return state.ui.workspace.activeSelection?.intent ?? "unknown";
 }
 
+export function getInspectionMode(state: LabStoreState): LabInspectionMode {
+  return state.ui.inspectionMode;
+}
+
+export function getRoiFocusActive(state: LabStoreState): boolean {
+  return state.ui.roiFocusActive === true;
+}
+
+export function getActiveInspectionSnapshot(state: LabStoreState) {
+  return state.ui.activeInspectionSnapshot;
+}
+
 export function getActiveSuggestionPreviewId(state: LabStoreState): string | null {
   return state.ui.activeSuggestionPreviewId;
 }
 
+export function getActiveExecutionIntentId(state: LabStoreState): string | null {
+  return state.ui.activeExecutionIntentId;
+}
+
 export function getSelectionSuggestions(state: LabStoreState): LabActionSuggestion[] {
-  return getSelectionSuggestionsForContext(getActiveSelection(state), getSourceKind(state));
+  return getSelectionSuggestionsForContext(getActiveSelection(state), {
+    inspectionMode: getInspectionMode(state),
+    sourceKind: getSourceKind(state),
+  });
 }
 
 export function getInterpretationItems(state: LabStoreState): LabInterpretationItem[] {
   return buildInterpretationItems({
     activeSelection: getActiveSelection(state),
     audioFocus: getEffectivePreviewAudioFocusSettings(state),
+    inspectionMode: getInspectionMode(state),
     sourceKind: getSourceKind(state),
   });
 }
@@ -931,6 +952,18 @@ export function getActiveSuggestionPreview(state: LabStoreState): LabSuggestionP
     return null;
   }
   return buildSuggestionPreview(suggestion, activeSelection);
+}
+
+export function getActiveExecutionIntent(state: LabStoreState): LabActionSuggestion | null {
+  const activeExecutionIntentId = getActiveExecutionIntentId(state);
+  if (activeExecutionIntentId === null) {
+    return null;
+  }
+  return (
+    getSelectionSuggestions(state).find(function (entry) {
+      return entry.id === activeExecutionIntentId;
+    }) || null
+  );
 }
 
 export function getTimelineSelection(state: LabStoreState) {
@@ -997,17 +1030,64 @@ export function getWaveformTimelineModel(state: LabStoreState) {
     waveformContentDurationMs > 0
       ? Math.max(0, Math.min(1, waveformContentVisibleEndMs / waveformContentDurationMs))
       : 1;
+  const hasSelectionInspectionLens =
+    (sourceKind === "audio" || sourceKind === "video") &&
+    selection.startMs !== null &&
+    selection.endMs !== null &&
+    selection.endMs > selection.startMs &&
+    waveformContentDurationMs > 0;
+  const waveformInspectionLensWindowStartMs =
+    hasSelectionInspectionLens === true
+      ? Math.max(waveformVisibleStartMs, selection.startMs ?? 0)
+      : 0;
+  const waveformInspectionLensWindowEndMs =
+    hasSelectionInspectionLens === true
+      ? Math.min(waveformVisibleEndMs, selection.endMs ?? waveformVisibleEndMs)
+      : 0;
+  const waveformInspectionLensDurationMs =
+    hasSelectionInspectionLens === true
+      ? Math.max(1, waveformInspectionLensWindowEndMs - waveformInspectionLensWindowStartMs)
+      : 0;
+  const waveformInspectionLensContentStartMs =
+    hasSelectionInspectionLens === true
+      ? Math.max(0, waveformInspectionLensWindowStartMs - rawWaveformOffsetMs)
+      : 0;
+  const waveformInspectionLensContentEndMs =
+    hasSelectionInspectionLens === true
+      ? Math.max(
+          waveformInspectionLensContentStartMs,
+          Math.min(
+            waveformContentDurationMs,
+            waveformInspectionLensWindowEndMs - rawWaveformOffsetMs
+          )
+        )
+      : 0;
+  const waveformInspectionLensCropStartRatio =
+    hasSelectionInspectionLens === true && waveformContentDurationMs > 0
+      ? Math.max(0, Math.min(1, waveformInspectionLensContentStartMs / waveformContentDurationMs))
+      : 0;
+  const waveformInspectionLensCropEndRatio =
+    hasSelectionInspectionLens === true && waveformContentDurationMs > 0
+      ? Math.max(
+          waveformInspectionLensCropStartRatio,
+          Math.min(1, waveformInspectionLensContentEndMs / waveformContentDurationMs)
+        )
+      : 1;
 
   return {
+    activeExecutionIntent: getActiveExecutionIntent(state),
     activeSelection: getActiveSelection(state),
+    activeInspectionSnapshot: getActiveInspectionSnapshot(state),
     activeSuggestionPreview: getActiveSuggestionPreview(state),
     audioFocus: getEffectivePreviewAudioFocusSettings(state),
     bookmarks: getBookmarks(state),
     dualPreviewActive,
     durationMs,
     endMs: selection.endMs,
+    inspectionMode: getInspectionMode(state),
     interpretationItems: getInterpretationItems(state),
     linkedAudioAssetId: selectedAudioAsset?.id || null,
+    roiFocusActive: getRoiFocusActive(state),
     selectionSuggestions: getSelectionSuggestions(state),
     startMs: selection.startMs,
     sourceKind,
@@ -1030,6 +1110,18 @@ export function getWaveformTimelineModel(state: LabStoreState) {
         : rawWaveformOffsetMs === 0
           ? "Linked audio is aligned to the master axis."
           : `Linked audio offset ${rawWaveformOffsetMs > 0 ? "+" : ""}${String(rawWaveformOffsetMs)} ms`,
+    waveformInspectionLens: {
+      cropEndRatio: waveformInspectionLensCropEndRatio,
+      cropStartRatio: waveformInspectionLensCropStartRatio,
+      durationMs: waveformInspectionLensDurationMs,
+      enabled: hasSelectionInspectionLens,
+      sourceLabel:
+        hasSelectionInspectionLens === true
+          ? `Micro zoom · ${selection.endMs! - selection.startMs!} ms`
+          : "Micro zoom",
+      windowDurationMs: waveformInspectionLensDurationMs,
+      windowStartMs: waveformInspectionLensWindowStartMs,
+    },
     waveformWindowDurationMs:
       sourceKind === "audio" || sourceKind === "video" ? waveformWindowDurationMs : 0,
     waveformWindowStartMs:

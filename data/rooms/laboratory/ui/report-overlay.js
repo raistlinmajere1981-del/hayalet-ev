@@ -336,7 +336,7 @@ export function renderReportOverlay(state) {
   const userTabActive = reportView === "user";
   const aiTabActive = reportView === "ai";
   const contentHtml = userTabActive && reports.user ? renderUserReport(reports.user) : aiTabActive && reports.ai ? renderAiReport(reports.ai) : `<div class="labx-process-empty">${reports.emptyReason || "Rapor mevcut değil"}</div>`;
-  const runIdSuffix = run ? run.id.slice(-6) || "—" : "—";
+  const runIdSuffix = run && typeof run.id === "string" ? run.id.slice(-6) || "—" : "—";
   const freshness = getReportFreshness(state);
   const runActive = isRunActive(state);
   const freshnessLabel = freshness?.state === "current" ? "✓ Güncel" : freshness?.state === "previous-run" ? runActive ? "⊘ Önceki çalışma · Analiz devam ediyor" : "⊘ Önceki çalışma" : freshness?.state === "stale" ? "⊘ Eski çalışma · Son analiz başarısız" : "";

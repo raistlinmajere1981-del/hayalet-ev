@@ -20,7 +20,7 @@
     },
     "audio": {
       "defaultMode": "local",
-      "modes": ["youtube", "local", "url"],
+      "modes": ["local", "url"],
       "supportedMimeTypes": [
         "audio/mpeg",
         "audio/mp4",

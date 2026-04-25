@@ -660,16 +660,32 @@ export function getSelectionDuration(state) {
 export function getSelectionIntent(state) {
   return state.ui.workspace.activeSelection?.intent ?? "unknown";
 }
+export function getInspectionMode(state) {
+  return state.ui.inspectionMode;
+}
+export function getRoiFocusActive(state) {
+  return state.ui.roiFocusActive === true;
+}
+export function getActiveInspectionSnapshot(state) {
+  return state.ui.activeInspectionSnapshot;
+}
 export function getActiveSuggestionPreviewId(state) {
   return state.ui.activeSuggestionPreviewId;
 }
+export function getActiveExecutionIntentId(state) {
+  return state.ui.activeExecutionIntentId;
+}
 export function getSelectionSuggestions(state) {
-  return getSelectionSuggestionsForContext(getActiveSelection(state), getSourceKind(state));
+  return getSelectionSuggestionsForContext(getActiveSelection(state), {
+    inspectionMode: getInspectionMode(state),
+    sourceKind: getSourceKind(state)
+  });
 }
 export function getInterpretationItems(state) {
   return buildInterpretationItems({
     activeSelection: getActiveSelection(state),
     audioFocus: getEffectivePreviewAudioFocusSettings(state),
+    inspectionMode: getInspectionMode(state),
     sourceKind: getSourceKind(state)
   });
 }
@@ -689,6 +705,15 @@ export function getActiveSuggestionPreview(state) {
     return null;
   }
   return buildSuggestionPreview(suggestion, activeSelection);
+}
+export function getActiveExecutionIntent(state) {
+  const activeExecutionIntentId = getActiveExecutionIntentId(state);
+  if (activeExecutionIntentId === null) {
+    return null;
+  }
+  return getSelectionSuggestions(state).find(function(entry) {
+    return entry.id === activeExecutionIntentId;
+  }) || null;
 }
 export function getTimelineSelection(state) {
   const activeSelection = getActiveSelection(state);
@@ -735,16 +760,37 @@ export function getWaveformTimelineModel(state) {
   const waveformWindowDurationMs = durationMs > 0 ? Math.max(0, waveformVisibleEndMs - waveformVisibleStartMs) : 0;
   const waveformCropStartRatio = waveformContentDurationMs > 0 ? Math.max(0, Math.min(1, waveformContentVisibleStartMs / waveformContentDurationMs)) : 0;
   const waveformCropEndRatio = waveformContentDurationMs > 0 ? Math.max(0, Math.min(1, waveformContentVisibleEndMs / waveformContentDurationMs)) : 1;
+  const hasSelectionInspectionLens = (sourceKind === "audio" || sourceKind === "video") && selection.startMs !== null && selection.endMs !== null && selection.endMs > selection.startMs && waveformContentDurationMs > 0;
+  const waveformInspectionLensWindowStartMs = hasSelectionInspectionLens === true ? Math.max(waveformVisibleStartMs, selection.startMs ?? 0) : 0;
+  const waveformInspectionLensWindowEndMs = hasSelectionInspectionLens === true ? Math.min(waveformVisibleEndMs, selection.endMs ?? waveformVisibleEndMs) : 0;
+  const waveformInspectionLensDurationMs = hasSelectionInspectionLens === true ? Math.max(1, waveformInspectionLensWindowEndMs - waveformInspectionLensWindowStartMs) : 0;
+  const waveformInspectionLensContentStartMs = hasSelectionInspectionLens === true ? Math.max(0, waveformInspectionLensWindowStartMs - rawWaveformOffsetMs) : 0;
+  const waveformInspectionLensContentEndMs = hasSelectionInspectionLens === true ? Math.max(
+    waveformInspectionLensContentStartMs,
+    Math.min(
+      waveformContentDurationMs,
+      waveformInspectionLensWindowEndMs - rawWaveformOffsetMs
+    )
+  ) : 0;
+  const waveformInspectionLensCropStartRatio = hasSelectionInspectionLens === true && waveformContentDurationMs > 0 ? Math.max(0, Math.min(1, waveformInspectionLensContentStartMs / waveformContentDurationMs)) : 0;
+  const waveformInspectionLensCropEndRatio = hasSelectionInspectionLens === true && waveformContentDurationMs > 0 ? Math.max(
+    waveformInspectionLensCropStartRatio,
+    Math.min(1, waveformInspectionLensContentEndMs / waveformContentDurationMs)
+  ) : 1;
   return {
+    activeExecutionIntent: getActiveExecutionIntent(state),
     activeSelection: getActiveSelection(state),
+    activeInspectionSnapshot: getActiveInspectionSnapshot(state),
     activeSuggestionPreview: getActiveSuggestionPreview(state),
     audioFocus: getEffectivePreviewAudioFocusSettings(state),
     bookmarks: getBookmarks(state),
     dualPreviewActive,
     durationMs,
     endMs: selection.endMs,
+    inspectionMode: getInspectionMode(state),
     interpretationItems: getInterpretationItems(state),
     linkedAudioAssetId: selectedAudioAsset?.id || null,
+    roiFocusActive: getRoiFocusActive(state),
     selectionSuggestions: getSelectionSuggestions(state),
     startMs: selection.startMs,
     sourceKind,
@@ -756,6 +802,15 @@ export function getWaveformTimelineModel(state) {
     waveformOffsetMs: rawWaveformOffsetMs,
     waveformSourceLabel: selectedAudioAsset?.name || (sourceKind === "audio" ? "Source audio" : sourceKind === "video" ? "Embedded audio" : "Waveform"),
     waveformSyncLabel: selectedAudioAsset === null ? "Preview and waveform share the same master axis." : rawWaveformOffsetMs === 0 ? "Linked audio is aligned to the master axis." : `Linked audio offset ${rawWaveformOffsetMs > 0 ? "+" : ""}${String(rawWaveformOffsetMs)} ms`,
+    waveformInspectionLens: {
+      cropEndRatio: waveformInspectionLensCropEndRatio,
+      cropStartRatio: waveformInspectionLensCropStartRatio,
+      durationMs: waveformInspectionLensDurationMs,
+      enabled: hasSelectionInspectionLens,
+      sourceLabel: hasSelectionInspectionLens === true ? `Micro zoom · ${selection.endMs - selection.startMs} ms` : "Micro zoom",
+      windowDurationMs: waveformInspectionLensDurationMs,
+      windowStartMs: waveformInspectionLensWindowStartMs
+    },
     waveformWindowDurationMs: sourceKind === "audio" || sourceKind === "video" ? waveformWindowDurationMs : 0,
     waveformWindowStartMs: sourceKind === "audio" || sourceKind === "video" ? waveformVisibleStartMs : 0
   };

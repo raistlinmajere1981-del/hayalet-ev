@@ -142,6 +142,14 @@ export interface LabROIRegion {
 
 export type LabSelectionType = "clip" | "focus" | "inspect" | "unknown";
 export type LabSelectionIntent = "anomaly" | "motion" | "audio" | "visual" | "general" | "unknown";
+export type LabInspectionMode = "none" | "visual" | "audio" | "motion";
+
+export interface LabSelectionROI {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 export interface LabSelection {
   id: string;
@@ -150,12 +158,7 @@ export interface LabSelection {
   type: LabSelectionType;
   intent: LabSelectionIntent;
   label?: string;
-  roi?: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  };
+  roi?: LabSelectionROI;
   createdAt: number;
 }
 
@@ -163,12 +166,15 @@ export interface LabActionSuggestion {
   id: string;
   label: string;
   description?: string;
+  toolHint?: string;
   actionType:
     | "analyze-segment"
     | "extract-clip"
     | "focus-region"
+    | "inspect-motion"
     | "inspect-audio"
-    | "enhance-visual";
+    | "enhance-visual"
+    | "stabilize-segment";
   confidence: number;
 }
 
@@ -180,11 +186,24 @@ export interface LabSuggestionPreview {
   estimatedCost?: "low" | "medium" | "high";
 }
 
+export interface LabInspectionSnapshot {
+  id: string;
+  objectUrl: string;
+  width: number;
+  height: number;
+  sourceKind: "image" | "video";
+  roi: LabSelectionROI;
+  createdAt: number;
+  timeMs: number | null;
+}
+
 export interface LabInterpretationItem {
   id: string;
   type: "info" | "warning" | "hint";
   message: string;
   confidence: number;
+  recommendation?: string;
+  severity?: "low" | "medium" | "high";
   relatedAction?: string;
 }
 
@@ -809,8 +828,12 @@ export interface LabStoreUiState {
   artifactRenderCount: number;
   reportView: "user" | "ai";
   lastHydratedProjectId: string | null;
+  activeExecutionIntentId: string | null;
   activeSuggestionPreviewId: string | null;
+  activeInspectionSnapshot: LabInspectionSnapshot | null;
   activePreviewArtifactId: string | null;
+  inspectionMode: LabInspectionMode;
+  roiFocusActive: boolean;
   liveFindingsExpanded: boolean;
   analysisControlsCollapsed: boolean;
   /** Workspace side panel collapsed state (Edit stage) */
@@ -973,8 +996,19 @@ export type LabStoreEvent =
   | { type: "workspace-timeline-updated"; startMs: number | null; endMs: number | null }
   | { type: "workspace-selection-intent-updated"; intent: LabSelectionIntent }
   | { type: "workspace-selection-suggestion-clicked"; suggestionId: string }
+  | { type: "workspace-selection-suggestion-accepted"; suggestionId: string }
+  | { type: "workspace-selection-suggestion-dismissed"; suggestionId: string }
+  | { type: "workspace-selection-suggestion-queued"; suggestionId: string }
+  | { type: "workspace-execution-intent-cleared" }
   | { type: "workspace-selection-suggestion-preview-set"; suggestionId: string }
   | { type: "workspace-selection-suggestion-preview-cleared" }
+  | { type: "selection-roi-focus-set"; active: boolean }
+  | { type: "selection-roi-focus-cleared" }
+  | { type: "selection-roi-updated"; roi: LabSelectionROI }
+  | { type: "selection-roi-cleared" }
+  | { type: "selection-roi-snapshot-set"; snapshot: LabInspectionSnapshot }
+  | { type: "selection-roi-snapshot-cleared" }
+  | { type: "selection-inspection-mode-updated"; mode: LabInspectionMode }
   | { type: "workspace-roi-added"; region: LabROIRegion }
   | { type: "workspace-roi-updated"; region: LabROIRegion }
   | { type: "workspace-roi-removed"; regionId: string }

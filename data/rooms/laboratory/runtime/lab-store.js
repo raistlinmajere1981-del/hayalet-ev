@@ -27,6 +27,7 @@ import {
   clearWorkspaceSelection,
   getWorkspaceSourceSelectionResetKey,
   normalizeLabSelectionIntent,
+  normalizeLabSelectionRoi,
   normalizeWorkspaceTimelineRange,
   syncWorkspaceSelectionWithRange
 } from "./lab-workspace-selection.js";
@@ -216,8 +217,12 @@ function createInitialState() {
       artifactRenderCount: 12,
       reportView: "user",
       lastHydratedProjectId: null,
+      activeExecutionIntentId: null,
       activeSuggestionPreviewId: null,
+      activeInspectionSnapshot: null,
       activePreviewArtifactId: null,
+      inspectionMode: "none",
+      roiFocusActive: false,
       liveFindingsExpanded: true,
       analysisControlsCollapsed: true,
       editSidePanelCollapsed: false,
@@ -260,6 +265,40 @@ function createDefaultWorkspaceUiState() {
     reportOverlayOpen: false
   };
 }
+function normalizeInspectionMode(value) {
+  switch (value) {
+    case "visual":
+    case "audio":
+    case "motion":
+      return value;
+    default:
+      return "none";
+  }
+}
+function resetInspectionMode(state) {
+  state.ui.inspectionMode = "none";
+}
+function clearRoiFocus(state) {
+  state.ui.roiFocusActive = false;
+}
+function clearInspectionSnapshot(state) {
+  state.ui.activeInspectionSnapshot = null;
+}
+function clearInspectionDepth(state) {
+  clearRoiFocus(state);
+  clearInspectionSnapshot(state);
+}
+function createImageInspectionSelection(roi) {
+  return {
+    id: createLabEventId("selection"),
+    startMs: 0,
+    endMs: 1,
+    type: "inspect",
+    intent: "general",
+    roi,
+    createdAt: Math.max(0, Date.now())
+  };
+}
 function createSnapshotEvent(message, severity, detail = null, scope = "global") {
   return {
     id: createLabEventId("ui"),
@@ -280,18 +319,46 @@ function createSnapshotEvent(message, severity, detail = null, scope = "global")
 function clearSuggestionPreview(state) {
   state.ui.activeSuggestionPreviewId = null;
 }
+function clearExecutionIntent(state) {
+  state.ui.activeExecutionIntentId = null;
+}
+function normalizeSelectionSuggestionId(suggestionId) {
+  return typeof suggestionId === "string" && suggestionId.trim() !== "" ? suggestionId.trim() : null;
+}
 function getWorkspaceSelectionSuggestionSourceKind(state) {
   return asNonEmptyString(asLabRecord(state.source)["kind"]) || "video";
 }
 function canStoreSelectionSuggestionPreview(state, suggestionId) {
+  const normalizedSuggestionId = normalizeSelectionSuggestionId(suggestionId);
+  if (normalizedSuggestionId === null) {
+    return false;
+  }
   const activeSelection = state.ui.workspace.activeSelection;
   if (activeSelection === null || activeSelection.endMs <= activeSelection.startMs) {
     return false;
   }
   const sourceKind = getWorkspaceSelectionSuggestionSourceKind(state);
-  return getSelectionSuggestionsForContext(activeSelection, sourceKind).some(
-    (suggestion) => suggestion.id === suggestionId
-  );
+  return getSelectionSuggestionsForContext(activeSelection, {
+    inspectionMode: state.ui.inspectionMode,
+    sourceKind
+  }).some((suggestion) => suggestion.id === normalizedSuggestionId);
+}
+function canResolveSelectionExecutionIntent(state, suggestionId) {
+  const normalizedSuggestionId = normalizeSelectionSuggestionId(suggestionId);
+  if (normalizedSuggestionId === null) {
+    return false;
+  }
+  return canStoreSelectionSuggestionPreview(state, normalizedSuggestionId);
+}
+function canAcceptSelectionExecutionIntent(state, suggestionId) {
+  const normalizedSuggestionId = normalizeSelectionSuggestionId(suggestionId);
+  if (normalizedSuggestionId === null) {
+    return false;
+  }
+  if (state.ui.activeSuggestionPreviewId !== normalizedSuggestionId) {
+    return false;
+  }
+  return canResolveSelectionExecutionIntent(state, normalizedSuggestionId);
 }
 function toEventFeedItem(value, fallbackScope) {
   const record = asLabRecord(value);
@@ -1148,7 +1215,10 @@ function syncCanonicalStateFromSnapshot(state, snapshot, options = {}) {
     state.assets = [];
     state.sourceProbeStatus = state.sourceProbeStatus === "running" ? "running" : "idle";
     state.ui.lastHydratedProjectId = null;
+    clearExecutionIntent(state);
     clearSuggestionPreview(state);
+    resetInspectionMode(state);
+    clearInspectionDepth(state);
     state.ui.workspace = clearWorkspaceSelection({
       ...state.ui.workspace,
       sourceIntakeCollapsed: false
@@ -1177,7 +1247,10 @@ function syncCanonicalStateFromSnapshot(state, snapshot, options = {}) {
   const nextSourceReady = isWorkspaceSourceReady(state.source);
   const nextSourceSelectionKey = getWorkspaceSourceSelectionResetKey(state.source);
   if (previousActiveProjectId !== nextActiveProjectId || previousSourceSelectionKey !== nextSourceSelectionKey) {
+    clearExecutionIntent(state);
     clearSuggestionPreview(state);
+    resetInspectionMode(state);
+    clearInspectionDepth(state);
     state.ui.workspace = clearWorkspaceSelection(state.ui.workspace);
   }
   if (previousActiveProjectId !== nextActiveProjectId) {
@@ -1276,7 +1349,10 @@ function reduceEvent(state, event) {
   switch (event.type) {
     case "hydrate":
       if (event.payload) {
+        clearExecutionIntent(state);
         clearSuggestionPreview(state);
+        resetInspectionMode(state);
+        clearInspectionDepth(state);
         state.persisted = event.payload;
         state.currentStage = normalizeLabStage(event.payload.currentStage, state.currentStage);
         state.featureId = normalizeLabFeatureId(event.payload.featureId, state.featureId);
@@ -1570,7 +1646,10 @@ function reduceEvent(state, event) {
       };
       const nextSourceSelectionKey = getWorkspaceSourceSelectionResetKey(state.source);
       if (previousSourceSelectionKey !== nextSourceSelectionKey) {
+        clearExecutionIntent(state);
         clearSuggestionPreview(state);
+        resetInspectionMode(state);
+        clearInspectionDepth(state);
         state.ui.workspace = clearWorkspaceSelection(state.ui.workspace);
       }
       if (event.patch["kind"] !== void 0 || event.patch["mode"] !== void 0 || event.patch["storedPath"] === null || event.patch["status"] === "idle") {
@@ -1746,7 +1825,9 @@ function reduceEvent(state, event) {
     case "workspace-timeline-updated": {
       const nextTimelineRange = normalizeWorkspaceTimelineRange(event.startMs, event.endMs);
       if (nextTimelineRange.startMs !== state.ui.workspace.timelineStartMs || nextTimelineRange.endMs !== state.ui.workspace.timelineEndMs) {
+        clearExecutionIntent(state);
         clearSuggestionPreview(state);
+        clearInspectionDepth(state);
       }
       state.ui.workspace = syncWorkspaceSelectionWithRange(state.ui.workspace, nextTimelineRange);
       return state;
@@ -1759,6 +1840,7 @@ function reduceEvent(state, event) {
       if (state.ui.workspace.activeSelection.intent === nextIntent) {
         return state;
       }
+      clearExecutionIntent(state);
       clearSuggestionPreview(state);
       state.ui.workspace = {
         ...state.ui.workspace,
@@ -1771,16 +1853,121 @@ function reduceEvent(state, event) {
     }
     case "workspace-selection-suggestion-clicked":
       return state;
+    case "workspace-selection-suggestion-accepted":
+      if (!canAcceptSelectionExecutionIntent(state, event.suggestionId)) {
+        return state;
+      }
+      state.ui.activeExecutionIntentId = normalizeSelectionSuggestionId(event.suggestionId);
+      return state;
+    case "workspace-selection-suggestion-dismissed":
+      if (state.ui.activeExecutionIntentId === normalizeSelectionSuggestionId(event.suggestionId)) {
+        clearExecutionIntent(state);
+      }
+      return state;
+    case "workspace-selection-suggestion-queued":
+      return state;
+    case "workspace-execution-intent-cleared":
+      clearExecutionIntent(state);
+      return state;
     case "workspace-selection-suggestion-preview-set":
       if (!canStoreSelectionSuggestionPreview(state, event.suggestionId)) {
         clearSuggestionPreview(state);
         return state;
       }
-      state.ui.activeSuggestionPreviewId = event.suggestionId;
+      state.ui.activeSuggestionPreviewId = normalizeSelectionSuggestionId(event.suggestionId);
       return state;
     case "workspace-selection-suggestion-preview-cleared":
       clearSuggestionPreview(state);
       return state;
+    case "selection-roi-focus-set": {
+      const activeSelection = state.ui.workspace.activeSelection;
+      if (event.active !== true || activeSelection === null || activeSelection.endMs <= activeSelection.startMs || activeSelection.roi === void 0) {
+        clearRoiFocus(state);
+        return state;
+      }
+      state.ui.roiFocusActive = true;
+      return state;
+    }
+    case "selection-roi-focus-cleared":
+      clearRoiFocus(state);
+      return state;
+    case "selection-roi-updated": {
+      const normalizedRoi = normalizeLabSelectionRoi(event.roi);
+      if (!normalizedRoi) {
+        return state;
+      }
+      clearExecutionIntent(state);
+      clearSuggestionPreview(state);
+      clearInspectionSnapshot(state);
+      const activeSelection = state.ui.workspace.activeSelection;
+      const sourceKind = getWorkspaceSelectionSuggestionSourceKind(state);
+      if (activeSelection === null || activeSelection.endMs <= activeSelection.startMs) {
+        if (sourceKind !== "image") {
+          return state;
+        }
+        state.ui.workspace = {
+          ...state.ui.workspace,
+          activeSelection: createImageInspectionSelection(normalizedRoi)
+        };
+        return state;
+      }
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        activeSelection: {
+          ...activeSelection,
+          roi: normalizedRoi
+        }
+      };
+      return state;
+    }
+    case "selection-roi-cleared": {
+      const activeSelection = state.ui.workspace.activeSelection;
+      if (activeSelection === null) {
+        clearExecutionIntent(state);
+        clearInspectionDepth(state);
+        return state;
+      }
+      clearExecutionIntent(state);
+      clearSuggestionPreview(state);
+      clearInspectionDepth(state);
+      const sourceKind = getWorkspaceSelectionSuggestionSourceKind(state);
+      const imageOnlySelection = sourceKind === "image" && activeSelection.startMs === 0 && activeSelection.endMs === 1 && state.ui.workspace.timelineStartMs === null && state.ui.workspace.timelineEndMs === null;
+      if (imageOnlySelection) {
+        state.ui.workspace = {
+          ...state.ui.workspace,
+          activeSelection: null
+        };
+        return state;
+      }
+      const { roi: _removedRoi, ...selectionWithoutRoi } = activeSelection;
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        activeSelection: selectionWithoutRoi
+      };
+      return state;
+    }
+    case "selection-roi-snapshot-set": {
+      const activeSelection = state.ui.workspace.activeSelection;
+      if (activeSelection === null || activeSelection.endMs <= activeSelection.startMs || activeSelection.roi === void 0) {
+        clearInspectionSnapshot(state);
+        return state;
+      }
+      state.ui.activeInspectionSnapshot = event.snapshot;
+      return state;
+    }
+    case "selection-roi-snapshot-cleared":
+      clearInspectionSnapshot(state);
+      return state;
+    case "selection-inspection-mode-updated": {
+      const nextInspectionMode = normalizeInspectionMode(event.mode);
+      if (state.ui.inspectionMode === nextInspectionMode) {
+        return state;
+      }
+      clearExecutionIntent(state);
+      clearSuggestionPreview(state);
+      state.ui.inspectionMode = nextInspectionMode;
+      return state;
+    }
     case "workspace-roi-added":
       state.ui.workspace = {
         ...state.ui.workspace,
