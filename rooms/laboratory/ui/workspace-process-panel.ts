@@ -41,6 +41,9 @@ import {
 import { renderArtifactItem } from "./components/artifact-item.js";
 import { buildLabAssetMetadataTitle } from "./lab-asset-display.js";
 import { renderStatusChip } from "./components/status-chip.js";
+import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
+import type { LabI18n } from "./lab-i18n.js";
+import { formatLabExpectedOutputLabel, translateLabRuntimeText } from "./lab-runtime-i18n.js";
 
 const AUDIO_TRANSPORT_CAPABILITY_IDS: CapabilityFamilyId[] = [
   "audio-signal",
@@ -89,69 +92,89 @@ function getStepTone(status: string) {
   }
 }
 
-function getModuleStatusLabel(status: string) {
+function getModuleStatusLabel(status: string, copy: LabI18n = LAB_FALLBACK_I18N) {
   switch (status) {
     case "running":
-      return "Çalışıyor";
+      return copy.t("mediaAnalysis.processPanel.status.running", "Çalışıyor");
     case "completed":
     case "ready":
-      return "Tamamlandı";
+      return copy.t("mediaAnalysis.processPanel.status.completed", "Tamamlandı");
     case "failed":
-      return "Tamamlanamadı";
+      return copy.t("mediaAnalysis.processPanel.status.failed", "Tamamlanamadı");
     case "queued":
-      return "Bekliyor";
+      return copy.t("mediaAnalysis.processPanel.status.queued", "Bekliyor");
     case "skipped":
-      return "Atlandı";
+      return copy.t("mediaAnalysis.processPanel.status.skipped", "Atlandı");
     case "cancelled":
-      return "İptal edildi";
+      return copy.t("mediaAnalysis.processPanel.status.cancelled", "İptal edildi");
     default:
-      return "Bekleniyor";
+      return copy.t("mediaAnalysis.processPanel.status.pending", "Bekleniyor");
   }
 }
 
-function getModuleStatusTooltip(status: string) {
-  return status === "failed" ? "Bu modül çalışmadı, diğerleri devam ediyor" : "";
+function getModuleStatusTooltip(status: string, copy: LabI18n = LAB_FALLBACK_I18N) {
+  return status === "failed"
+    ? copy.t(
+        "mediaAnalysis.processPanel.statusTooltips.failed",
+        "Bu modül çalışmadı, diğerleri devam ediyor"
+      )
+    : "";
 }
 
-function formatElapsed(seconds: number): string {
+function formatElapsed(seconds: number, copy: LabI18n = LAB_FALLBACK_I18N): string {
   if (seconds < 60) {
-    return `${String(seconds)} sn`;
+    return copy.t("mediaAnalysis.processPanel.time.seconds", "{value} sn", { value: seconds });
   }
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
-  return `${String(m)} dk ${String(s).padStart(2, "0")} sn`;
+  return copy.t("mediaAnalysis.processPanel.time.minutes", "{minutes} dk {seconds} sn", {
+    minutes: m,
+    seconds: String(s).padStart(2, "0"),
+  });
 }
 
-function formatRelativeActionTime(timestamp: number | undefined) {
+function formatRelativeActionTime(
+  timestamp: number | undefined,
+  copy: LabI18n = LAB_FALLBACK_I18N
+) {
   if (typeof timestamp !== "number" || Number.isFinite(timestamp) !== true) {
-    return "az önce";
+    return copy.t("mediaAnalysis.processPanel.time.justNow", "az önce");
   }
   const diffMs = Math.max(0, Date.now() - timestamp);
   const diffSeconds = Math.max(1, Math.round(diffMs / 1000));
   if (diffSeconds < 60) {
-    return `${String(diffSeconds)} sn önce`;
+    return copy.t("mediaAnalysis.processPanel.time.secondsAgo", "{value} sn önce", {
+      value: diffSeconds,
+    });
   }
   const diffMinutes = Math.round(diffSeconds / 60);
   if (diffMinutes < 60) {
-    return `${String(diffMinutes)} dk önce`;
+    return copy.t("mediaAnalysis.processPanel.time.minutesAgo", "{value} dk önce", {
+      value: diffMinutes,
+    });
   }
   const diffHours = Math.round(diffMinutes / 60);
-  return `${String(diffHours)} sa önce`;
+  return copy.t("mediaAnalysis.processPanel.time.hoursAgo", "{value} sa önce", {
+    value: diffHours,
+  });
 }
 
-function getRecentActionMeta(actionEvent: LabUserActionEvent) {
+function getRecentActionMeta(actionEvent: LabUserActionEvent, copy: LabI18n = LAB_FALLBACK_I18N) {
   if (actionEvent.status === "running") {
-    return "devam ediyor";
+    return copy.t("mediaAnalysis.processPanel.recent.running", "devam ediyor");
   }
-  return formatRelativeActionTime(actionEvent.finishedAt || actionEvent.startedAt);
+  return formatRelativeActionTime(actionEvent.finishedAt || actionEvent.startedAt, copy);
 }
 
-function renderConfidenceGauge(confidence: string | null) {
+function renderConfidenceGauge(confidence: string | null, copy: LabI18n = LAB_FALLBACK_I18N) {
   if (!confidence) {
     return "";
   }
   const level = confidence === "high" ? "high" : confidence === "medium" ? "medium" : "low";
-  const label = level === "high" ? "Yüksek" : level === "medium" ? "Orta" : "Düşük";
+  const label = copy.t(
+    `mediaAnalysis.processPanel.confidence.${level}`,
+    level === "high" ? "Yüksek" : level === "medium" ? "Orta" : "Düşük"
+  );
   return `<span class="labx-confidence-gauge" data-level="${level}">${escapeHtml(label)}</span>`;
 }
 
@@ -169,25 +192,35 @@ function formatTimelineMs(ms: number | null): string {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-function formatDiffLabel(key: "timeline" | "hypothesis" | "intents"): string {
+function formatDiffLabel(
+  key: "timeline" | "hypothesis" | "intents",
+  copy: LabI18n = LAB_FALLBACK_I18N
+): string {
   switch (key) {
     case "timeline":
-      return "Timeline";
+      return copy.t("mediaAnalysis.processPanel.diff.timeline", "Timeline");
     case "hypothesis":
-      return "Hypothesis";
+      return copy.t("mediaAnalysis.processPanel.diff.hypothesis", "Hypothesis");
     case "intents":
-      return "Intents";
+      return copy.t("mediaAnalysis.processPanel.diff.intents", "Intents");
     default:
       return key;
   }
 }
 
-function getCapabilityLabel(capabilityId: CapabilityFamilyId): string {
-  return (
+function getCapabilityLabel(
+  capabilityId: CapabilityFamilyId,
+  copy: LabI18n = LAB_FALLBACK_I18N
+): string {
+  const fallback =
     CAPABILITY_FAMILIES.find(function (entry) {
       return entry.id === capabilityId;
-    })?.label || capabilityId
-  );
+    })?.label || capabilityId;
+  return copy.t(`mediaAnalysis.capabilities.${capabilityId}.label`, fallback);
+}
+
+function getProcessIntentLabel(intentId: string, copy: LabI18n = LAB_FALLBACK_I18N): string {
+  return copy.t(`mediaAnalysis.workspace.intents.${intentId}.label`, getIntentLabel(intentId));
 }
 
 function getExecutionIntentIds(state: LabStoreState): LabIntentId[] {
@@ -385,7 +418,8 @@ function renderCapabilityModules(
   state: LabStoreState,
   capabilityId: CapabilityFamilyId,
   run: ReturnType<typeof getCurrentRun>,
-  resolvedCapabilities: CapabilityFamilyId[]
+  resolvedCapabilities: CapabilityFamilyId[],
+  copy: LabI18n = LAB_FALLBACK_I18N
 ) {
   const moduleRows = run
     ? getExecutionModuleRowsForCapability(state, capabilityId, resolvedCapabilities)
@@ -397,23 +431,31 @@ function renderCapabilityModules(
         };
       });
   if (moduleRows.length === 0) {
-    return `<div class="labx-process-empty">${run ? "Modül bekleniyor" : "Modül planı yok"}</div>`;
+    return `<div class="labx-process-empty">${escapeHtml(
+      run
+        ? copy.t("mediaAnalysis.processPanel.empty.moduleWaiting", "Modül bekleniyor")
+        : copy.t("mediaAnalysis.processPanel.empty.noModulePlan", "Modül planı yok")
+    )}</div>`;
   }
   return moduleRows
     .map(function (moduleRow) {
       const moduleStatus = moduleRow.status;
-      const tooltip = run ? getModuleStatusTooltip(moduleStatus) : "";
+      const tooltip = run ? getModuleStatusTooltip(moduleStatus, copy) : "";
       return `
         <div class="labx-intent-map__module">
           <span class="labx-intent-map__module-name">${escapeHtml(moduleRow.label)}</span>
-          <strong class="labx-intent-map__module-status" data-tone="${escapeHtml(getStepTone(moduleStatus))}" ${tooltip ? `title="${escapeHtml(tooltip)}"` : ""}>${escapeHtml(getModuleStatusLabel(moduleStatus))}</strong>
+          <strong class="labx-intent-map__module-status" data-tone="${escapeHtml(getStepTone(moduleStatus))}" ${tooltip ? `title="${escapeHtml(tooltip)}"` : ""}>${escapeHtml(getModuleStatusLabel(moduleStatus, copy))}</strong>
         </div>
       `;
     })
     .join("");
 }
 
-function renderIntentExecutionMap(state: LabStoreState, sourceReady: boolean): string {
+function renderIntentExecutionMap(
+  state: LabStoreState,
+  sourceReady: boolean,
+  copy: LabI18n = LAB_FALLBACK_I18N
+): string {
   const run = getCurrentRun(state);
   if (sourceReady !== true) {
     return "";
@@ -425,9 +467,9 @@ function renderIntentExecutionMap(state: LabStoreState, sourceReady: boolean): s
     return `
       <section class="labx-intent-map">
         <div class="labx-intent-map__head">
-          <strong>Intent → Execution Map</strong>
+          <strong>${escapeHtml(copy.t("mediaAnalysis.processPanel.executionMap.title", "Intent → Execution Map"))}</strong>
         </div>
-        <div class="labx-process-empty">Henüz yürütme yok</div>
+        <div class="labx-process-empty">${escapeHtml(copy.t("mediaAnalysis.processPanel.empty.noExecution", "Henüz yürütme yok"))}</div>
       </section>
     `;
   }
@@ -436,9 +478,9 @@ function renderIntentExecutionMap(state: LabStoreState, sourceReady: boolean): s
     return `
       <section class="labx-intent-map">
         <div class="labx-intent-map__head">
-          <strong>Intent → Execution Map</strong>
+          <strong>${escapeHtml(copy.t("mediaAnalysis.processPanel.executionMap.title", "Intent → Execution Map"))}</strong>
         </div>
-        <div class="labx-process-empty">Intent seçimi yok</div>
+        <div class="labx-process-empty">${escapeHtml(copy.t("mediaAnalysis.processPanel.empty.noIntentSelection", "Intent seçimi yok"))}</div>
       </section>
     `;
   }
@@ -447,9 +489,9 @@ function renderIntentExecutionMap(state: LabStoreState, sourceReady: boolean): s
   return `
       <section class="labx-intent-map">
         <div class="labx-intent-map__head">
-          <strong>Intent → Execution Map</strong>
+          <strong>${escapeHtml(copy.t("mediaAnalysis.processPanel.executionMap.title", "Intent → Execution Map"))}</strong>
         </div>
-        ${!run ? `<div class="labx-process-empty">Henüz yürütme yok</div>` : ""}
+        ${!run ? `<div class="labx-process-empty">${escapeHtml(copy.t("mediaAnalysis.processPanel.empty.noExecution", "Henüz yürütme yok"))}</div>` : ""}
         <div class="labx-intent-map__body">
         ${intentIds
           .map(function (intentId) {
@@ -459,7 +501,7 @@ function renderIntentExecutionMap(state: LabStoreState, sourceReady: boolean): s
             ];
             const dirtyHint =
               dirtyState && dirtyState.dirty
-                ? `<span class="labx-intent-map__hint">Live drift: ${escapeHtml(dirtyState.changedKeys.join(", "))}</span>`
+                ? `<span class="labx-intent-map__hint">${escapeHtml(copy.t("mediaAnalysis.processPanel.executionMap.liveDrift", "Live drift"))}: ${escapeHtml(dirtyState.changedKeys.join(", "))}</span>`
                 : "";
             const capabilitiesHtml =
               capabilityIds.length > 0
@@ -472,24 +514,25 @@ function renderIntentExecutionMap(state: LabStoreState, sourceReady: boolean): s
                         state,
                         capabilityId,
                         run,
-                        resolvedCapabilities
+                        resolvedCapabilities,
+                        copy
                       );
                       return `
                         <div class="labx-intent-map__capability">
                           <div class="labx-intent-map__capability-head">
-                            <span>${escapeHtml(getCapabilityLabel(capabilityId))}</span>
-                            ${renderStatusChip(getModuleStatusLabel(capabilityStatus), getStepTone(capabilityStatus))}
+                            <span>${escapeHtml(getCapabilityLabel(capabilityId, copy))}</span>
+                            ${renderStatusChip(getModuleStatusLabel(capabilityStatus, copy), getStepTone(capabilityStatus))}
                           </div>
                           <div class="labx-intent-map__modules">${moduleRows}</div>
                         </div>
                       `;
                     })
                     .join("")
-                : `<div class="labx-process-empty">Yetenek eşleşmesi yok</div>`;
+                : `<div class="labx-process-empty">${escapeHtml(copy.t("mediaAnalysis.processPanel.empty.noCapabilityMatch", "Yetenek eşleşmesi yok"))}</div>`;
             return `
               <article class="labx-intent-map__intent">
                 <div class="labx-intent-map__intent-head">
-                  <strong>${escapeHtml(getIntentLabel(intentId))}</strong>
+                  <strong>${escapeHtml(getProcessIntentLabel(intentId, copy))}</strong>
                   ${dirtyHint}
                 </div>
                 <div class="labx-intent-map__capabilities">${capabilitiesHtml}</div>
@@ -502,7 +545,11 @@ function renderIntentExecutionMap(state: LabStoreState, sourceReady: boolean): s
   `;
 }
 
-function renderIntentOutputTrace(state: LabStoreState, sourceReady: boolean): string {
+function renderIntentOutputTrace(
+  state: LabStoreState,
+  sourceReady: boolean,
+  copy: LabI18n = LAB_FALLBACK_I18N
+): string {
   if (sourceReady !== true) {
     return "";
   }
@@ -515,7 +562,7 @@ function renderIntentOutputTrace(state: LabStoreState, sourceReady: boolean): st
   return `
     <section class="labx-output-trace">
       <div class="labx-output-trace__head">
-        <strong>INTENT OUTPUT TRACE</strong>
+        <strong>${escapeHtml(copy.t("mediaAnalysis.processPanel.outputTrace.title", "INTENT OUTPUT TRACE"))}</strong>
       </div>
       <div class="labx-output-trace__body">
         ${intentIds
@@ -530,12 +577,12 @@ function renderIntentOutputTrace(state: LabStoreState, sourceReady: boolean): st
                       return `
                         <div class="labx-output-trace__expected-row" data-matched="${matched ? "true" : "false"}">
                           <span class="labx-output-trace__mark">${matched ? "✔" : "✖"}</span>
-                          <span>${escapeHtml(expectedOutput.label)}</span>
+	                          <span>${escapeHtml(formatLabExpectedOutputLabel(expectedOutput, copy))}</span>
                         </div>
                       `;
                     })
                     .join("")
-                : `<div class="labx-output-trace__empty">Bu intent için beklenen çıktı tanımı yok</div>`;
+                : `<div class="labx-output-trace__empty">${escapeHtml(copy.t("mediaAnalysis.processPanel.outputTrace.noExpected", "Bu intent için beklenen çıktı tanımı yok"))}</div>`;
             const actualHtml =
               actualOutputs.length > 0
                 ? actualOutputs
@@ -548,19 +595,19 @@ function renderIntentOutputTrace(state: LabStoreState, sourceReady: boolean): st
                       `;
                     })
                     .join("")
-                : `<div class="labx-output-trace__empty">Bu intent herhangi bir çıktı üretmedi</div>`;
+                : `<div class="labx-output-trace__empty">${escapeHtml(copy.t("mediaAnalysis.processPanel.outputTrace.noActual", "Bu intent herhangi bir çıktı üretmedi"))}</div>`;
 
             return `
               <article class="labx-output-trace__intent">
                 <div class="labx-output-trace__intent-head">
-                  <strong>${escapeHtml(getIntentLabel(intentId))}</strong>
+                  <strong>${escapeHtml(getProcessIntentLabel(intentId, copy))}</strong>
                 </div>
                 <div class="labx-output-trace__group">
-                  <span class="labx-output-trace__label">Beklenen:</span>
+                  <span class="labx-output-trace__label">${escapeHtml(copy.t("mediaAnalysis.processPanel.outputTrace.expected", "Beklenen:"))}</span>
                   <div class="labx-output-trace__rows">${expectedHtml}</div>
                 </div>
                 <div class="labx-output-trace__group">
-                  <span class="labx-output-trace__label">Üretilen:</span>
+                  <span class="labx-output-trace__label">${escapeHtml(copy.t("mediaAnalysis.processPanel.outputTrace.actual", "Üretilen:"))}</span>
                   <div class="labx-output-trace__rows">${actualHtml}</div>
                 </div>
               </article>
@@ -572,7 +619,7 @@ function renderIntentOutputTrace(state: LabStoreState, sourceReady: boolean): st
   `;
 }
 
-function renderRunSnapshotSummary(state: LabStoreState): string {
+function renderRunSnapshotSummary(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N): string {
   const snapshotSummary = getRunSnapshotSummary(state);
   if (!snapshotSummary) {
     return "";
@@ -582,16 +629,18 @@ function renderRunSnapshotSummary(state: LabStoreState): string {
   const timelineSummary =
     snapshotSummary.timelineStartMs !== null || snapshotSummary.timelineEndMs !== null
       ? `${formatTimelineMs(snapshotSummary.timelineStartMs)} - ${formatTimelineMs(snapshotSummary.timelineEndMs)}`
-      : "Full source";
+      : copy.t("mediaAnalysis.processPanel.snapshot.fullSource", "Full source");
   const intentSummary =
     snapshotSummary.intentIds.length > 0
-      ? snapshotSummary.intentIds.map(getIntentLabel).join(", ")
-      : "No intent snapshot";
+      ? snapshotSummary.intentIds
+          .map((intentId) => getProcessIntentLabel(intentId, copy))
+          .join(", ")
+      : copy.t("mediaAnalysis.processPanel.snapshot.noIntent", "No intent snapshot");
   const diffBadges =
     workspaceDiff && workspaceDiff.changedKeys.length > 0
       ? `<div class="labx-workspace-diff-badges">${workspaceDiff.changedKeys
           .map(function (key) {
-            return `<span class="labx-workspace-diff-badge">${escapeHtml(formatDiffLabel(key))}</span>`;
+            return `<span class="labx-workspace-diff-badge">${escapeHtml(formatDiffLabel(key, copy))}</span>`;
           })
           .join("")}</div>`
       : "";
@@ -600,26 +649,26 @@ function renderRunSnapshotSummary(state: LabStoreState): string {
     : "";
   const diffHint =
     workspaceDiff && workspaceDiff.workspaceDirty
-      ? `<p class="labx-workspace-diff-hint">Live workspace changed in ${escapeHtml(workspaceDiff.changedKeys.map(formatDiffLabel).join(", "))}. Snapshot stays frozen for this run.</p>`
-      : `<p class="labx-workspace-diff-hint">Snapshot stays frozen for this run.</p>`;
+      ? `<p class="labx-workspace-diff-hint">${escapeHtml(copy.t("mediaAnalysis.processPanel.snapshot.liveWorkspaceChanged", "Live workspace changed in {keys}. Snapshot stays frozen for this run.", { keys: workspaceDiff.changedKeys.map((key) => formatDiffLabel(key, copy)).join(", ") }))}</p>`
+      : `<p class="labx-workspace-diff-hint">${escapeHtml(copy.t("mediaAnalysis.processPanel.snapshot.frozen", "Snapshot stays frozen for this run."))}</p>`;
 
   return `
     <section class="labx-process-snapshot">
       <div class="labx-process-snapshot__head">
-        <strong>Run Snapshot</strong>
+        <strong>${escapeHtml(copy.t("mediaAnalysis.processPanel.snapshot.title", "Run Snapshot"))}</strong>
         ${diffBadges}
       </div>
       <div class="labx-process-snapshot__grid">
         <div class="labx-process-snapshot__item">
-          <span>Focus</span>
-          <strong>${escapeHtml(snapshotSummary.focus || "Unspecified")}</strong>
+          <span>${escapeHtml(copy.t("mediaAnalysis.processPanel.snapshot.focus", "Focus"))}</span>
+          <strong>${escapeHtml(snapshotSummary.focus || copy.t("mediaAnalysis.processPanel.snapshot.unspecified", "Unspecified"))}</strong>
         </div>
         <div class="labx-process-snapshot__item">
-          <span>Timeline</span>
+          <span>${escapeHtml(copy.t("mediaAnalysis.processPanel.snapshot.timeline", "Timeline"))}</span>
           <strong>${escapeHtml(timelineSummary)}</strong>
         </div>
         <div class="labx-process-snapshot__item">
-          <span>Intents</span>
+          <span>${escapeHtml(copy.t("mediaAnalysis.processPanel.snapshot.intents", "Intents"))}</span>
           <strong>${escapeHtml(intentSummary)}</strong>
         </div>
       </div>
@@ -655,11 +704,12 @@ function renderSectionHeader(
 function renderPipelineSection(
   run: NonNullable<ReturnType<typeof getCurrentRun>>,
   activeStepId: string | null,
-  collapsed: boolean
+  collapsed: boolean,
+  copy: LabI18n = LAB_FALLBACK_I18N
 ) {
   const moduleOrder = Array.isArray(run.moduleOrder) ? run.moduleOrder : [];
   if (moduleOrder.length === 0) {
-    return `<div class="labx-process-empty">Pipeline resolving...</div>`;
+    return `<div class="labx-process-empty">${escapeHtml(copy.t("mediaAnalysis.processPanel.empty.pipelineResolving", "Pipeline resolving..."))}</div>`;
   }
 
   const completedCount = moduleOrder.filter(function (id) {
@@ -675,7 +725,7 @@ function renderPipelineSection(
         <div class="labx-process-progress__bar">
           <div class="labx-process-progress__fill" style="width: ${String(progressPct)}%"></div>
         </div>
-        <span class="labx-process-progress__label">${String(completedCount)}/${String(totalCount)} adım · ${String(progressPct)}%</span>
+        <span class="labx-process-progress__label">${escapeHtml(copy.t("mediaAnalysis.processPanel.progressLabel", "{completed}/{total} adım · {percent}%", { completed: completedCount, total: totalCount, percent: progressPct }))}</span>
       </div>
       <div class="labx-process-steps">
         ${moduleOrder
@@ -686,7 +736,7 @@ function renderPipelineSection(
             }
             const isActive = moduleId === activeStepId;
             const isCurrent = mod.status === "running";
-            const tooltip = getModuleStatusTooltip(mod.status);
+            const tooltip = getModuleStatusTooltip(mod.status, copy);
             return `
               <button
                 class="labx-process-step ${isActive ? "labx-process-step--selected" : ""} ${isCurrent ? "labx-process-step--current" : ""}"
@@ -698,7 +748,7 @@ function renderPipelineSection(
                 <span class="labx-process-step__icon" data-status="${escapeHtml(mod.status)}">${getStepStatusIcon(mod.status)}</span>
                 <div class="labx-process-step__body">
                   <strong>${escapeHtml(mod.title || mod.id)}</strong>
-                  <small>${escapeHtml(mod.message || getModuleStatusLabel(mod.status))}</small>
+	                  <small>${escapeHtml(mod.message ? translateLabRuntimeText(mod.message, copy) : getModuleStatusLabel(mod.status, copy))}</small>
                 </div>
               </button>
             `;
@@ -710,7 +760,7 @@ function renderPipelineSection(
 
   return `
     <div class="labx-process-section" data-collapsed="${collapsed ? "true" : "false"}">
-      ${renderSectionHeader("pipeline", "Pipeline", moduleOrder.length, collapsed)}
+      ${renderSectionHeader("pipeline", copy.t("mediaAnalysis.processPanel.sections.pipeline", "Pipeline"), moduleOrder.length, collapsed)}
       ${collapsed ? "" : bodyHtml}
     </div>
   `;
@@ -719,7 +769,8 @@ function renderPipelineSection(
 function renderFindingsSection(
   liveFindings: ReturnType<typeof getVisibleLiveFindings>,
   hasMore: boolean,
-  collapsed: boolean
+  collapsed: boolean,
+  copy: LabI18n = LAB_FALLBACK_I18N
 ) {
   const visibleFindings = Array.isArray(liveFindings) ? liveFindings.slice(0, 4) : [];
   const bodyHtml = `
@@ -731,15 +782,15 @@ function renderFindingsSection(
                 return `<div class="labx-finding-line"><strong>${escapeHtml(finding.title)}</strong><small>${escapeHtml(finding.detail || "")}</small></div>`;
               })
               .join("")
-          : `<div class="labx-process-empty">Bulgu yok</div>`
+          : `<div class="labx-process-empty">${escapeHtml(copy.t("mediaAnalysis.processPanel.empty.noFindings", "Bulgu yok"))}</div>`
       }
-      ${hasMore ? `<button class="labx-inline-action labx-inline-action--small" type="button" data-lab-action="toggle-live-findings">Daha fazla</button>` : ""}
+      ${hasMore ? `<button class="labx-inline-action labx-inline-action--small" type="button" data-lab-action="toggle-live-findings">${escapeHtml(copy.t("mediaAnalysis.processPanel.actions.more", "Daha fazla"))}</button>` : ""}
     </div>
   `;
 
   return `
     <div class="labx-process-section" data-collapsed="${collapsed ? "true" : "false"}">
-      ${renderSectionHeader("findings", "Bulgular", Array.isArray(liveFindings) ? liveFindings.length : 0, collapsed)}
+      ${renderSectionHeader("findings", copy.t("mediaAnalysis.processPanel.sections.findings", "Bulgular"), Array.isArray(liveFindings) ? liveFindings.length : 0, collapsed)}
       ${collapsed ? "" : bodyHtml}
     </div>
   `;
@@ -748,34 +799,35 @@ function renderFindingsSection(
 function renderArtifactsSection(
   artifacts: ReturnType<typeof getVisibleArtifacts>,
   hasMore: boolean,
-  collapsed: boolean
+  collapsed: boolean,
+  copy: LabI18n = LAB_FALLBACK_I18N
 ) {
   const visibleArtifacts = Array.isArray(artifacts) ? artifacts.slice(0, 4) : [];
   const bodyHtml = `
     <div class="labx-process-section__body">
       ${
         visibleArtifacts.length > 0
-          ? visibleArtifacts.map(renderArtifactItem).join("")
-          : `<div class="labx-process-empty">Artefakt yok</div>`
+          ? visibleArtifacts.map((artifact) => renderArtifactItem(artifact, copy)).join("")
+          : `<div class="labx-process-empty">${escapeHtml(copy.t("mediaAnalysis.processPanel.empty.noArtifacts", "Artefakt yok"))}</div>`
       }
-      ${hasMore ? `<button class="labx-inline-action labx-inline-action--small" type="button" data-lab-action="show-more-artifacts">Daha fazla</button>` : ""}
+      ${hasMore ? `<button class="labx-inline-action labx-inline-action--small" type="button" data-lab-action="show-more-artifacts">${escapeHtml(copy.t("mediaAnalysis.processPanel.actions.more", "Daha fazla"))}</button>` : ""}
     </div>
   `;
 
   return `
     <div class="labx-process-section" data-collapsed="${collapsed ? "true" : "false"}">
-      ${renderSectionHeader("artifacts", "Artefaktlar", Array.isArray(artifacts) ? artifacts.length : 0, collapsed)}
+      ${renderSectionHeader("artifacts", copy.t("mediaAnalysis.processPanel.sections.artifacts", "Artefaktlar"), Array.isArray(artifacts) ? artifacts.length : 0, collapsed)}
       ${collapsed ? "" : bodyHtml}
     </div>
   `;
 }
 
-function renderRecentActionsSection(state: LabStoreState) {
+function renderRecentActionsSection(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
   const recentActions = getRecentUserActions(state, 6);
   return `
     <section class="labx-process-recent-actions">
       <div class="labx-process-recent-actions__head">
-        <strong>Son işlemler</strong>
+        <strong>${escapeHtml(copy.t("mediaAnalysis.processPanel.recent.title", "Son işlemler"))}</strong>
       </div>
       ${
         recentActions.length > 0
@@ -814,7 +866,7 @@ function renderRecentActionsSection(state: LabStoreState) {
                         }
                       </span>
                       <small class="labx-process-recent-actions__meta">${escapeHtml(
-                        getRecentActionMeta(actionEvent)
+                        getRecentActionMeta(actionEvent, copy)
                       )}</small>
                     </div>
                   `;
@@ -822,17 +874,21 @@ function renderRecentActionsSection(state: LabStoreState) {
                 .join("")}
             </div>
           `
-          : `<div class="labx-process-empty">Henüz işlem yok</div>`
+          : `<div class="labx-process-empty">${escapeHtml(copy.t("mediaAnalysis.processPanel.empty.noRecentActions", "Henüz işlem yok"))}</div>`
       }
     </section>
   `;
 }
 
-function renderIdleProcessPanel(state: LabStoreState, sourceReady: boolean): string {
+function renderIdleProcessPanel(
+  state: LabStoreState,
+  sourceReady: boolean,
+  copy: LabI18n = LAB_FALLBACK_I18N
+): string {
   if (sourceReady !== true) {
     return `
       <section class="labx-process-panel labx-process-panel--empty" id="lab-process-panel">
-        ${renderRecentActionsSection(state)}
+        ${renderRecentActionsSection(state, copy)}
       </section>
     `;
   }
@@ -842,27 +898,28 @@ function renderIdleProcessPanel(state: LabStoreState, sourceReady: boolean): str
     <section class="labx-process-panel" id="lab-process-panel">
       <div class="labx-process-header">
         <div class="labx-process-header__title">
-          ${renderStatusChip("Hazır", "neutral")}
-          <strong>Analiz akışı</strong>
+          ${renderStatusChip(copy.t("mediaAnalysis.processPanel.status.ready", "Hazır"), "neutral")}
+          <strong>${escapeHtml(copy.t("mediaAnalysis.processPanel.idleTitle", "Analiz akışı"))}</strong>
         </div>
         <div class="labx-process-header__meta">
-          <span>${escapeHtml(String(selectedIntents.length))} intent</span>
+          <span>${escapeHtml(copy.t("mediaAnalysis.processPanel.intentCount", "{count} intent", { count: selectedIntents.length }))}</span>
         </div>
       </div>
-      ${renderIntentExecutionMap(state, sourceReady)}
-      ${renderIntentOutputTrace(state, sourceReady)}
-      ${renderRecentActionsSection(state)}
+      ${renderIntentExecutionMap(state, sourceReady, copy)}
+      ${renderIntentOutputTrace(state, sourceReady, copy)}
+      ${renderRecentActionsSection(state, copy)}
     </section>
   `;
 }
 
 export function renderWorkspaceProcessPanel(
   state: LabStoreState,
-  options: { sourceReady: boolean }
+  options: { copy?: LabI18n; sourceReady: boolean }
 ) {
+  const copy = options.copy ?? LAB_FALLBACK_I18N;
   const run = getCurrentRun(state);
   if (!run) {
-    return renderIdleProcessPanel(state, options.sourceReady);
+    return renderIdleProcessPanel(state, options.sourceReady, copy);
   }
 
   const liveFindings = getVisibleLiveFindings(state);
@@ -881,14 +938,14 @@ export function renderWorkspaceProcessPanel(
   const statusTone = getStepTone(run.state);
   const statusLabel =
     run.state === "running"
-      ? "Analiz ediliyor"
+      ? copy.t("mediaAnalysis.processPanel.runStatus.analyzing", "Analiz ediliyor")
       : run.state === "completed" || run.state === "ready"
-        ? "Tamamlandı"
+        ? copy.t("mediaAnalysis.processPanel.runStatus.completed", "Tamamlandı")
         : run.state === "failed"
-          ? "Hata"
+          ? copy.t("mediaAnalysis.processPanel.runStatus.failed", "Hata")
           : run.state === "cancelled"
-            ? "İptal"
-            : "Sırada";
+            ? copy.t("mediaAnalysis.processPanel.runStatus.cancelled", "İptal")
+            : copy.t("mediaAnalysis.processPanel.runStatus.queued", "Sırada");
   const activeModuleLabel = activeModule ? activeModule.title || activeModule.id : null;
   const runIdLabel = (run.id || "").slice(-6) || "—";
 
@@ -897,29 +954,29 @@ export function renderWorkspaceProcessPanel(
       <div class="labx-process-header">
         <div class="labx-process-header__title">
           ${renderStatusChip(statusLabel, statusTone)}
-          <strong>Analiz #${escapeHtml(runIdLabel)}</strong>
+          <strong>${escapeHtml(copy.t("mediaAnalysis.processPanel.runTitle", "Analiz #{id}", { id: runIdLabel }))}</strong>
         </div>
         ${
           activeModuleLabel
-            ? `<div class="labx-process-header__subline">Çalışan modül: ${escapeHtml(activeModuleLabel)}</div>`
+            ? `<div class="labx-process-header__subline">${escapeHtml(copy.t("mediaAnalysis.processPanel.activeModule", "Çalışan modül: {module}", { module: activeModuleLabel }))}</div>`
             : ""
         }
         <div class="labx-process-header__meta">
-          <span>${escapeHtml(String(executionIntentIds.length))} intent</span>
-          <span>${escapeHtml(String(Array.isArray(run.moduleOrder) ? run.moduleOrder.length : 0))} adım</span>
-          <span>${formatElapsed(elapsedSeconds)}</span>
-          ${renderConfidenceGauge(run.confidence)}
+          <span>${escapeHtml(copy.t("mediaAnalysis.processPanel.intentCount", "{count} intent", { count: executionIntentIds.length }))}</span>
+          <span>${escapeHtml(copy.t("mediaAnalysis.processPanel.stepCount", "{count} adım", { count: Array.isArray(run.moduleOrder) ? run.moduleOrder.length : 0 }))}</span>
+          <span>${escapeHtml(formatElapsed(elapsedSeconds, copy))}</span>
+          ${renderConfidenceGauge(run.confidence, copy)}
         </div>
         ${run.error ? `<div class="labx-process-error">${escapeHtml(run.error)}</div>` : ""}
       </div>
-      ${renderRunSnapshotSummary(state)}
-      ${renderIntentExecutionMap(state, options.sourceReady)}
-      ${renderIntentOutputTrace(state, options.sourceReady)}
+      ${renderRunSnapshotSummary(state, copy)}
+      ${renderIntentExecutionMap(state, options.sourceReady, copy)}
+      ${renderIntentOutputTrace(state, options.sourceReady, copy)}
 
-      ${renderPipelineSection(run, activeStepId, pipelineCollapsed)}
-      ${renderFindingsSection(liveFindings, hasMoreFindings, findingsCollapsed)}
-      ${renderArtifactsSection(artifacts, hasMoreArts, artifactsCollapsed)}
-      ${renderRecentActionsSection(state)}
+      ${renderPipelineSection(run, activeStepId, pipelineCollapsed, copy)}
+      ${renderFindingsSection(liveFindings, hasMoreFindings, findingsCollapsed, copy)}
+      ${renderArtifactsSection(artifacts, hasMoreArts, artifactsCollapsed, copy)}
+      ${renderRecentActionsSection(state, copy)}
     </section>
   `;
 }

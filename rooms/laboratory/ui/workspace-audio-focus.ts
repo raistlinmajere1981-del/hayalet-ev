@@ -1,4 +1,7 @@
+import { escapeHtml } from "../models/lab-types.js";
 import type { LabAudioFocusSettings } from "../models/lab-types.js";
+import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
+import type { LabI18n } from "./lab-i18n.js";
 
 function renderEQBand(band: LabAudioFocusSettings["eqBands"][0], index: number) {
   return `
@@ -26,7 +29,8 @@ type WorkspaceAudioFocusRenderOptions = {
 
 export function renderWorkspaceAudioFocus(
   audioFocus: LabAudioFocusSettings,
-  options: WorkspaceAudioFocusRenderOptions = {}
+  options: WorkspaceAudioFocusRenderOptions = {},
+  copy: LabI18n = LAB_FALLBACK_I18N
 ) {
   const showFilterControls = audioFocus.filterType !== "none";
   const temporalControlsEnabled = options.temporalControlsEnabled !== false;
@@ -34,16 +38,22 @@ export function renderWorkspaceAudioFocus(
   const disabledAttr = temporalControlsEnabled ? "" : " disabled";
   const previewTargetHint =
     options.previewTarget === "video"
-      ? "Playback rate affects the bound preview media transport."
-      : "Playback rate affects the current preview audio.";
+      ? copy.t(
+          "mediaAnalysis.audioFocus.previewTarget.video",
+          "Playback rate affects the bound preview media transport."
+        )
+      : copy.t(
+          "mediaAnalysis.audioFocus.previewTarget.audio",
+          "Playback rate affects the current preview audio."
+        );
   return `
     <section class="labx-audio-focus labx-workspace-focus-row__panel" id="lab-audio-focus">
       <div class="labx-audio-focus__header">
-        <p class="labx-card__eyebrow">AUDIO FOCUS</p>
+        <p class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.audioFocus.eyebrow", "AUDIO FOCUS"))}</p>
       </div>
       <div class="labx-audio-focus__controls">
         <label class="labx-control-row">
-          <span class="labx-control-row__label">Gain</span>
+          <span class="labx-control-row__label">${escapeHtml(copy.t("mediaAnalysis.audioFocus.fields.gain", "Gain"))}</span>
           <input
             class="labx-range"
             type="range"
@@ -56,11 +66,13 @@ export function renderWorkspaceAudioFocus(
           <span class="labx-control-row__value">${String(audioFocus.gain)}x</span>
         </label>
         <label class="labx-control-row">
-          <span class="labx-control-row__label">Filter</span>
+          <span class="labx-control-row__label">${escapeHtml(copy.t("mediaAnalysis.audioFocus.fields.filter", "Filter"))}</span>
           <select class="labx-select labx-select--compact" data-lab-field="workspace.audioFocus.filterType">
             ${(["none", "lowpass", "highpass", "bandpass"] as const)
               .map(function (entry) {
-                return `<option value="${entry}" ${audioFocus.filterType === entry ? "selected" : ""}>${entry === "none" ? "None" : entry.charAt(0).toUpperCase() + entry.slice(1)}</option>`;
+                const fallback =
+                  entry === "none" ? "None" : entry.charAt(0).toUpperCase() + entry.slice(1);
+                return `<option value="${entry}" ${audioFocus.filterType === entry ? "selected" : ""}>${escapeHtml(copy.t(`mediaAnalysis.audioFocus.filters.${entry}`, fallback))}</option>`;
               })
               .join("")}
           </select>
@@ -69,7 +81,7 @@ export function renderWorkspaceAudioFocus(
           showFilterControls
             ? `
         <label class="labx-control-row">
-          <span class="labx-control-row__label">Cutoff Freq</span>
+          <span class="labx-control-row__label">${escapeHtml(copy.t("mediaAnalysis.audioFocus.fields.cutoff", "Cutoff Freq"))}</span>
           <input
             class="labx-range"
             type="range"
@@ -82,7 +94,7 @@ export function renderWorkspaceAudioFocus(
           <span class="labx-control-row__value">${String(audioFocus.filterFrequency)} Hz</span>
         </label>
         <label class="labx-control-row">
-          <span class="labx-control-row__label">Resonance (Q)</span>
+          <span class="labx-control-row__label">${escapeHtml(copy.t("mediaAnalysis.audioFocus.fields.resonance", "Resonance (Q)"))}</span>
           <input
             class="labx-range"
             type="range"
@@ -99,9 +111,9 @@ export function renderWorkspaceAudioFocus(
         }
       </div>
       <div class="labx-audio-focus__transport">
-        <p class="labx-card__eyebrow">ANALYSIS AID</p>
+        <p class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.audioFocus.analysisAid", "ANALYSIS AID"))}</p>
         <label class="labx-control-row${temporalControlsEnabled ? "" : " is-disabled"}">
-          <span class="labx-control-row__label">Playback Speed</span>
+          <span class="labx-control-row__label">${escapeHtml(copy.t("mediaAnalysis.audioFocus.fields.playbackSpeed", "Playback Speed"))}</span>
           <input
             class="labx-range"
             type="range"
@@ -119,21 +131,21 @@ export function renderWorkspaceAudioFocus(
             data-lab-field="workspace.audioFocus.preservePitch"
             ${temporalAudioFocus.preservePitch ? "checked" : ""}${disabledAttr}
           />
-          <span>Preserve pitch while changing speed</span>
+          <span>${escapeHtml(copy.t("mediaAnalysis.audioFocus.preservePitch", "Preserve pitch while changing speed"))}</span>
         </label>
-        <p class="labx-audio-focus__transport-note">Slow down to inspect. Speed up to detect patterns.</p>
-        <p class="labx-audio-focus__transport-note">${previewTargetHint}</p>
+        <p class="labx-audio-focus__transport-note">${escapeHtml(copy.t("mediaAnalysis.audioFocus.transportNote", "Slow down to inspect. Speed up to detect patterns."))}</p>
+        <p class="labx-audio-focus__transport-note">${escapeHtml(previewTargetHint)}</p>
         ${
           temporalControlsEnabled
             ? ""
-            : `<p class="labx-audio-focus__transport-note labx-audio-focus__transport-note--muted">Dual preview keeps temporal playback fixed at 1x with preserved pitch.</p>`
+            : `<p class="labx-audio-focus__transport-note labx-audio-focus__transport-note--muted">${escapeHtml(copy.t("mediaAnalysis.audioFocus.dualPreviewLocked", "Dual preview keeps temporal playback fixed at 1x with preserved pitch."))}</p>`
         }
       </div>
       <p class="labx-panel-hint">
-        Timeline preview altinda tek realtime waveform katmani kullanilir. Spectrum modu ayni canvas uzerinde canli frekans gorunumu cizer.
+        ${escapeHtml(copy.t("mediaAnalysis.audioFocus.visualizerHint", "Timeline preview altinda tek realtime waveform katmani kullanilir. Spectrum modu ayni canvas uzerinde canli frekans gorunumu cizer."))}
       </p>
       <div class="labx-audio-focus__eq">
-        <p class="labx-card__eyebrow">PARAMETRIC EQ</p>
+        <p class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.audioFocus.eqTitle", "PARAMETRIC EQ"))}</p>
         ${audioFocus.eqBands
           .map(function (band, i) {
             return renderEQBand(band, i);

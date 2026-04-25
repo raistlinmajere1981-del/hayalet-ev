@@ -4,6 +4,7 @@ import {
   getLabAssetPath,
   getLabAssetPathLeaf
 } from "./lab-asset-display.js";
+import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 const IMAGE_EXTENSIONS = /* @__PURE__ */ new Set(["avif", "gif", "jpeg", "jpg", "png", "svg", "webp"]);
 const VIDEO_EXTENSIONS = /* @__PURE__ */ new Set(["m4v", "mkv", "mov", "mp4", "webm"]);
 const AUDIO_EXTENSIONS = /* @__PURE__ */ new Set(["aac", "flac", "m4a", "mp3", "ogg", "opus", "wav", "webm"]);
@@ -83,7 +84,7 @@ function inferPreviewKind(asset, path) {
   }
   return "unsupported";
 }
-function renderPreviewMedia(asset, previewUrl, kind) {
+function renderPreviewMedia(asset, previewUrl, kind, copy) {
   const label = escapeHtml(asset.name);
   if (kind === "image") {
     return `<img class="labx-asset-preview__media labx-asset-preview__media--image" src="${escapeHtml(previewUrl)}" alt="${label}" />`;
@@ -117,7 +118,7 @@ function renderPreviewMedia(asset, previewUrl, kind) {
   }
   return `
     <div class="labx-asset-preview__unsupported">
-      <strong>Preview unavailable</strong>
+      <strong>${escapeHtml(copy.t("mediaAnalysis.assetPreview.unavailable", "Preview unavailable"))}</strong>
       <span>${escapeHtml(getLabAssetPathLeaf(asset) || asset.name)}</span>
     </div>
   `;
@@ -128,7 +129,7 @@ function renderAssetMeta(asset) {
   const sizeBytes = typeof metadata["sizeBytes"] === "number" ? formatBytes(metadata["sizeBytes"]) : null;
   return [asset.type.toUpperCase(), durationSeconds, sizeBytes, getLabAssetPathLeaf(asset)].filter((entry) => typeof entry === "string" && entry.trim() !== "").join(" · ");
 }
-export function renderLabAssetPreviewOverlay(state) {
+export function renderLabAssetPreviewOverlay(state, copy = LAB_FALLBACK_I18N) {
   const asset = getActiveAssetPreview(state);
   const isOpen = asset !== null;
   const path = asset === null ? null : getLabAssetPath(asset);
@@ -140,22 +141,22 @@ export function renderLabAssetPreviewOverlay(state) {
             <button
               type="button"
               class="labx-overlay-backdrop"
-              aria-label="Close asset preview"
+              aria-label="${escapeHtml(copy.t("mediaAnalysis.assetPreview.closeAria", "Close asset preview"))}"
               data-lab-action="close-asset-preview"
             ></button>
-            <section class="labx-asset-preview" role="dialog" aria-modal="true" aria-label="Asset preview">
+            <section class="labx-asset-preview" role="dialog" aria-modal="true" aria-label="${escapeHtml(copy.t("mediaAnalysis.assetPreview.ariaLabel", "Asset preview"))}">
               <header class="labx-asset-preview__header">
                 <div class="labx-asset-preview__title-group">
-                  <span class="labx-card__eyebrow">ASSET PREVIEW</span>
+                  <span class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.assetPreview.eyebrow", "ASSET PREVIEW"))}</span>
                   <h2 class="labx-asset-preview__title">${escapeHtml(asset.name)}</h2>
                   <p class="labx-asset-preview__meta" title="${escapeHtml(buildLabAssetMetadataTitle(asset))}">
                     ${escapeHtml(renderAssetMeta(asset))}
                   </p>
                 </div>
-                <button class="labx-inline-action" type="button" data-lab-action="close-asset-preview">Kapat</button>
+                <button class="labx-inline-action" type="button" data-lab-action="close-asset-preview">${escapeHtml(copy.t("mediaAnalysis.assetPreview.closeAction", "Kapat"))}</button>
               </header>
               <div class="labx-asset-preview__body" data-preview-kind="${escapeHtml(previewKind)}">
-                ${previewUrl === null ? `<div class="labx-asset-preview__unsupported"><strong>Preview unavailable</strong></div>` : renderPreviewMedia(asset, previewUrl, previewKind)}
+                ${previewUrl === null ? `<div class="labx-asset-preview__unsupported"><strong>${escapeHtml(copy.t("mediaAnalysis.assetPreview.unavailable", "Preview unavailable"))}</strong></div>` : renderPreviewMedia(asset, previewUrl, previewKind, copy)}
               </div>
             </section>
           ` : ""}

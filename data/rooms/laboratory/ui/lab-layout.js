@@ -9,12 +9,12 @@ import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 export function renderLabLayout(state, surface, copy = LAB_FALLBACK_I18N) {
   return `
     <div class="labx-shell" data-stage="${state.currentStage}" data-ready="${state.bootReady ? "true" : "false"}" data-workspace-mode="${getWorkspaceMode(state)}">
-      ${renderLabLeftRail(state)}
+      ${renderLabLeftRail(state, copy)}
       ${renderLabCenterPanel(surface)}
       ${renderLabRightPanel(state, surface, copy)}
     </div>
-    ${renderToolManagementOverlay(state)}
-    ${renderLabAssetPreviewOverlay(state)}
-    ${renderReportOverlay(state)}
+    ${renderToolManagementOverlay(state, copy)}
+    ${renderLabAssetPreviewOverlay(state, copy)}
+    ${renderReportOverlay(state, copy)}
   `;
 }

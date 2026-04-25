@@ -169,7 +169,7 @@
       },
       "edit": {
         "title": "Duzenle",
-        "subtitle": "Derin profile ve yonetilen kosa gecmeden once asset ya da altyazi ciktisini duzenle."
+        "subtitle": "Derin profile ve yönetilen koşuya geçmeden önce varlığı ya da altyazı çıktısını düzenle."
       },
       "profile": {
         "title": "Test Profili",
@@ -637,7 +637,8 @@
       "modes": {
         "youtube": "YouTube",
         "local": "Yerel",
-        "url": "Dogrudan URL"
+        "url": "Dogrudan URL",
+        "localCopy": "Yerel Kopya"
       },
       "fields": {
         "youtubeUrl": "YouTube URL",
@@ -652,7 +653,10 @@
       "actions": {
         "pickLocal": "Yerel Kaynagi Kopyala",
         "downloadUrl": "URL Kaynagini Indir",
-        "downloadYoutube": "YouTube'dan Al"
+        "downloadYoutube": "YouTube'dan Al",
+        "replaceUrl": "URL Kaynagini Degistir",
+        "replaceYoutube": "YouTube Kaynagini Degistir",
+        "replaceLocal": "Yerel Kaynagi Degistir"
       },
       "youtubeDisabled": "Oda-yerel yt-dlp kurulumu hazir olana kadar YouTube modu pasif kalir.",
       "intakeFrame": {
@@ -700,7 +704,8 @@
           "subtitlesLang": "Altyazi dilleri",
           "playlistItems": "Playlist ogeleri",
           "limitRate": "Hiz limiti",
-          "retries": "Tekrar deneme"
+          "retries": "Tekrar deneme",
+          "captureMode": "Yakala Modu"
         },
         "placeholders": {
           "subtitlesLang": "en.*,tr.* veya all",
@@ -742,8 +747,14 @@
             "high": "2 · Yuksek kalite",
             "medium": "5 · Dengeli",
             "small": "7 · Daha kucuk dosya"
+          },
+          "captureMode": {
+            "videoAudio": "Video + Ses",
+            "audioOnly": "Sadece Ses",
+            "videoOnly": "Sadece Video"
           }
-        }
+        },
+        "defaultSectionHint": "Oda onayli yt-dlp kontrolleri."
       },
       "formats": {
         "video": {
@@ -758,7 +769,35 @@
           "title": "Goruntu",
           "subtitle": "Goruntuleri proje icine kopyala veya URL ile indir."
         }
-      }
+      },
+      "kinds": {
+        "audio": "Ses",
+        "image": "Goruntu",
+        "video": "Video"
+      },
+      "progress": {
+        "runningDetail": "Ice aktarma calisiyor. Kaynak bu projeye kaydedilecek.",
+        "readyToReplace": "Aktif proje kaynagini degistirmeye hazir.",
+        "complete": "Ice aktarma tamamlandi",
+        "failed": "Ice aktarma basarisiz",
+        "awaiting": "Ice aktarma bekleniyor"
+      },
+      "lockedHint": "Analiz sirasinda kaynak kilitli",
+      "workspacePreviewAlt": "Workspace onizlemesi",
+      "noSource": "Kaynak yok",
+      "currentSource": "aktif kaynak",
+      "directUrl": {
+        "title": "Dogrudan URL Kaynagi",
+        "hint": "Uzak URL yapistir ve gerekirse yeniden adlandir."
+      },
+      "youtubeCapture": {
+        "title": "YouTube Yakalama",
+        "hint": "yt-dlp kontrolleri tek yerde."
+      },
+      "localCopy": {
+        "title": "Yerel Kaynak Kopyasi"
+      },
+      "importRoute": "Ice Aktarma Rotasi"
     },
     "download": {
       "title": "Video Download Hatti",
@@ -787,7 +826,7 @@
     },
     "edit": {
       "title": "Inceleme penceresini sekillendir",
-      "subtitle": "Orijinali bozmadan duzenleme tarifi kur, guvenli onizleme al ve analiz-hazir turetilmis cikti uret.",
+      "subtitle": "Derin profile ve yönetilen koşuya geçmeden önce varlığı ya da altyazı çıktısını düzenle.",
       "previewEmptyTitle": "Duzenleme onizlemesi proje kaynagini bekliyor",
       "previewEmptyBody": "Kaynak asamasina don, aktif projeye gercek dosya al ve sonra turetilmis ciktiyi sekillendirmek icin geri gel.",
       "workspaceTitle": "Duzenleme Calisma Yuzeyi",
@@ -1218,6 +1257,680 @@
         "export": "Raporu Disa Aktar",
         "openFile": "Dosyayi Ac",
         "openFolder": "Klasoru Ac"
+      }
+    },
+    "assets": {
+      "pathUnavailable": "Yol mevcut degil",
+      "sync": {
+        "sameAxis": "Senkron: ✓ Ayni zaman ekseni",
+        "offset": "Senkron: Ofset {offset} ms"
+      },
+      "actions": {
+        "useAsSource": "Kaynak olarak kullan",
+        "download": "Indir",
+        "ariaLabel": "Varlık aksiyonları",
+        "preview": "Onizleme",
+        "delete": "Sil"
+      },
+      "relation": {
+        "source": "Kaynak"
+      },
+      "projects": {
+        "newOption": "-- Yeni Proje --",
+        "saveAction": "Kaydet",
+        "deleteAction": "Sil"
+      },
+      "empty": "Henüz proje varlığı yok",
+      "ariaLabel": "Proje varlıkları",
+      "title": "Proje Varlıkları",
+      "groups": {
+        "source": "Kaynak",
+        "clip": "Klipler",
+        "frame": "Kareler",
+        "audio": "Ses",
+        "image": "Goruntuler",
+        "report": "Raporlar",
+        "artifact": "Artefaktlar"
+      }
+    },
+    "assetPreview": {
+      "unavailable": "Onizleme mevcut degil",
+      "closeAria": "Varlık önizlemesini kapat",
+      "ariaLabel": "Varlık önizlemesi",
+      "eyebrow": "VARLIK ÖNİZLEMESİ",
+      "closeAction": "Kapat"
+    },
+    "leftRail": {
+      "toolManagement": "Arac Yonetimi",
+      "workspaceLabel": "Medya calisma alani",
+      "intentsTitle": "NİYETLER",
+      "readiness": {
+        "readyShort": "OK"
+      },
+      "status": {
+        "selected": "Secili",
+        "unavailable": "Kullanilamaz",
+        "available": "Uygun"
+      }
+    },
+    "topbarActions": {
+      "ariaLabel": "Aksiyon ilerleme merkezi"
+    },
+    "reportOverlay": {
+      "diff": {
+        "timeline": "Timeline",
+        "hypothesis": "Hipotez",
+        "intents": "Niyetler"
+      },
+      "snapshot": {
+        "fullSource": "Tum kaynak",
+        "noIntent": "Niyet anlık görüntüsü yok",
+        "title": "Snapshot Ozeti",
+        "focus": "Odak",
+        "unspecified": "Belirtilmemis",
+        "timeline": "Timeline",
+        "intents": "Niyetler",
+        "liveWorkspaceChanged": "Canli workspace {keys} alanlarinda degisti. Rapor donmus snapshotu yansitmaya devam eder.",
+        "frozen": "Rapor donmus kosu snapshotunu yansitir."
+      },
+      "intentGroups": {
+        "title": "Niyet Grupları",
+        "liveDrift": "Canli workspace drift",
+        "noFindings": "Bu niyet için eşleşmiş bulgu yok.",
+        "counts": "{modules} modul · {findings} bulgu · {artifacts} artefakt"
+      },
+      "empty": {
+        "noFindings": "Bulgu yok",
+        "noTimeline": "Zaman çizelgesi yok",
+        "noArtifacts": "Artefakt yok",
+        "noReport": "Rapor mevcut değil"
+      },
+      "user": {
+        "suspiciousFrames": "Şüpheli Kareler",
+        "suspiciousFramesHint": "Otomatik tespit edilen dikkat çekici kareler",
+        "hypothesisResult": "Hipotez Sonucu",
+        "moduleSummary": "Modül Özeti",
+        "summary": "Özet",
+        "confidence": "Güven",
+        "elapsedSeconds": "{seconds} sn",
+        "findings": "Bulgular"
+      },
+      "ai": {
+        "manifest": "Manifest",
+        "moduleTimeline": "Modül Zaman Çizelgesi",
+        "technicalFindings": "Bulgular (Teknik)",
+        "artifacts": "Artefaktlar",
+        "degraded": "Kısıtlamalar",
+        "warnings": "Uyarılar",
+        "errors": "Hatalar"
+      },
+      "closeAria": "Raporu kapat",
+      "ariaLabel": "Analiz Raporu",
+      "eyebrow": "Analiz Sonucu",
+      "title": "Rapor #{id}",
+      "actions": {
+        "exportJson": "JSON Disa Aktar",
+        "exportPdf": "PDF Disa Aktar",
+        "close": "Kapat"
+      },
+      "tabs": {
+        "user": "Kullanıcı Raporu",
+        "ai": "Teknik Rapor"
+      },
+      "confidence": {
+        "high": "Yuksek",
+        "medium": "Orta",
+        "low": "Dusuk"
+      }
+    },
+    "reportFreshness": {
+      "current": "✓ Güncel",
+      "previousRunActive": "⊘ Önceki çalışma · Analiz devam ediyor",
+      "previousRun": "⊘ Önceki çalışma",
+      "stale": "⊘ Eski çalışma · Son analiz başarısız",
+      "workspaceDirty": "Workspace farklı"
+    },
+    "toolManager": {
+      "support": {
+        "requiredForStage": "{stage} için zorunlu",
+        "optionalForStage": "{stage} için opsiyonel",
+        "roomWide": "Oda geneli"
+      },
+      "status": {
+        "busy": "Çalışıyor",
+        "updateAvailable": "Güncelleme var",
+        "installed": "Kurulu",
+        "planned": "Planlı",
+        "manualSetup": "Manuel kurulum",
+        "notReady": "Hazır değil"
+      },
+      "lifecycle": {
+        "settingsManaged": "Whisper.cpp yasam dongusu ana Settings tarafindan yonetilir. Laboratory yalnizca mevcut runtime probe ve aktif dil/model hazirligini yansitir.",
+        "lastError": "Son hata: {error}",
+        "default": "Araç durumu room-local registry üzerinden izlenir."
+      },
+      "strategy": {
+        "settingsManaged": "Settings üzerinden yönetilir",
+        "manual": "Manuel kurulum",
+        "planned": "Planlı",
+        "automatic": "Uygulama içi kurulum"
+      },
+      "actions": {
+        "settingsManaged": "Settings'ten yönetilir",
+        "planned": "Planlı",
+        "checkUpdates": "Güncelleme kontrolü",
+        "update": "Güncelle",
+        "install": "Kur",
+        "manualSetup": "Manuel kurulum",
+        "bulkUpdate": "Toplu güncelle",
+        "refresh": "Yenile",
+        "close": "Kapat"
+      },
+      "labels": {
+        "stageSupport": "Aşama desteği",
+        "installedVersion": "Kurulu sürüm",
+        "latestVersion": "Son sürüm",
+        "location": "Konum"
+      },
+      "empty": {
+        "title": "Bu alan için ek araç gerekmiyor",
+        "body": "Aktif aşamada room-local bir araç zorunluluğu görünmüyor."
+      },
+      "mode": {
+        "analyzing": "Analiz",
+        "complete": "Tamamlandı",
+        "workspace": "Çalışma Alanı"
+      },
+      "closeAria": "Araç yönetimini kapat",
+      "ariaLabel": "Araç Yönetimi",
+      "eyebrow": "Çalışma Tezgahı",
+      "title": "Araç Yönetimi",
+      "subtitle": "yt-dlp ve FFmpeg gibi oda araçlarını burada yönet; Whisper.cpp ise yalnızca merkezi Settings runtime durumuyla birlikte yansıtılır.",
+      "stats": {
+        "relevant": "İlgili araçlar",
+        "installed": "Kurulu araç",
+        "updates": "Güncelleme bekleyen"
+      },
+      "sections": {
+        "relevant": {
+          "title": "İlgili araçlar",
+          "hint": "Seçili niyet ve yetenek aileleri için gerekli araçlar önce listelenir."
+        },
+        "other": {
+          "eyebrow": "Oda geneli",
+          "title": "Diğer araçlar",
+          "hint": "Diğer modül ve kapasitelere ait araçlar burada tutulur."
+        }
+      },
+      "usedBy": {
+        "media-intake": "Medya içe alma",
+        "youtube-capture": "YouTube yakalama",
+        "subtitle-discovery": "Altyazı keşfi",
+        "media-edit": "Medya düzenleme",
+        "profile-artifacts": "Profil çıktıları",
+        "managed-process-runs": "Yönetilen analiz koşuları",
+        "transcript-extraction": "Transkript çıkarma",
+        "speech-overlay-checks": "Konuşma katmanı kontrolleri",
+        "prosody-checks": "Prozodi kontrolleri",
+        "paralinguistic-audio-features": "Paralinguistik ses özellikleri",
+        "sound-event-tagging": "Ses olayı etiketleme",
+        "ambient-event-summaries": "Ortam olayı özetleri",
+        "rhythm-fallback": "Ritim yedeği",
+        "music-structure-helpers": "Müzik yapısı yardımcıları",
+        "source-separation": "Kaynak ayrıştırma",
+        "vocal-isolation": "Vokal izolasyonu",
+        "tonal-fallback": "Tonal yedek",
+        "music-descriptor-extraction": "Müzik tanımlayıcı çıkarımı",
+        "speaker-diarization-fallback": "Konuşmacı ayrıştırma yedeği",
+        "segment-classification": "Segment sınıflandırma"
+      },
+      "toolDetails": {
+        "yt-dlp": {
+          "readinessImpact": "Uzak YouTube ve oynatma listesi tabanlı içe alma akışlarını bloke eder."
+        },
+        "ffmpeg": {
+          "readinessImpact": "Yerel dönüştürmeleri, türetilmiş çıktıları ve yönetilen analiz koşularının çoğunu bloke eder."
+        },
+        "whisper-cpp": {
+          "readinessImpact": "Transkript destekli konuşma kontrollerini ve transkript artefaktlarını sınırlar.",
+          "manualHint": "Whisper.cpp ana Settings transkript runtime panelinden yönetilir. Laboratory yalnızca aktif sistem/runtime durumunu yeniler ve gösterir."
+        },
+        "opensmile": {
+          "readinessImpact": "Host binary kurulana kadar opsiyonel ses özellik çıkarımı kullanılamaz."
+        },
+        "yamnet": {
+          "readinessImpact": "Python runtime olmadan olay etiketleme ve ortam sesi özetleri devre dışı kalır."
+        },
+        "librosa": {
+          "readinessImpact": "Paket kurulana kadar müzik ve ritim odaklı yardımcılar bloke kalır."
+        },
+        "demucs": {
+          "readinessImpact": "Host paketi olmadan opsiyonel ayrıştırma akışları çalışamaz."
+        },
+        "essentia": {
+          "readinessImpact": "Host paketi kurulana kadar tonal analiz yedeği kullanılamaz."
+        },
+        "pyaudioanalysis": {
+          "readinessImpact": "Host paketi kurulana kadar konuşmacı ayrıştırma ve segmentasyon yedek akışları bloke kalır."
+        }
+      }
+    },
+    "audioFocus": {
+      "previewTarget": {
+        "video": "Oynatma hizi bagli onizleme medya transportunu etkiler.",
+        "audio": "Oynatma hizi aktif onizleme sesini etkiler."
+      },
+      "eyebrow": "SES ODAGI",
+      "fields": {
+        "gain": "Kazanc",
+        "filter": "Filtre",
+        "cutoff": "Kesim Frekansi",
+        "resonance": "Rezonans (Q)",
+        "playbackSpeed": "Oynatma Hizi"
+      },
+      "analysisAid": "ANALIZ YARDIMI",
+      "preservePitch": "Hiz degisirken pitch korunsun",
+      "transportNote": "Incelemek icin yavaslat. Paternleri yakalamak icin hizlandir.",
+      "dualPreviewLocked": "Cift onizleme zamansal oynatmayi pitch korunarak 1x sabit tutar.",
+      "visualizerHint": "Timeline preview altinda tek realtime waveform katmani kullanilir. Spectrum modu ayni canvas uzerinde canli frekans gorunumu cizer.",
+      "eqTitle": "PARAMETRIK EQ",
+      "filters": {
+        "none": "Yok",
+        "lowpass": "Lowpass",
+        "highpass": "Highpass",
+        "bandpass": "Bandpass"
+      }
+    },
+    "bookmarks": {
+      "title": "Yer isaretleri",
+      "addAction": "+ Simdiki Ani Isaretle",
+      "removeAction": "Kaldir"
+    },
+    "hypothesis": {
+      "label": "Hipotez",
+      "placeholder": "Ne aradigini yaz — or. 01:30 civarinda ek yeri kontrol et, ses senkronunu dogrula..."
+    },
+    "workspaceIntents": {
+      "eyebrow": "YETENEKLER",
+      "title": "Neye bakilacak",
+      "readiness": {
+        "available": "Uygun",
+        "partial": "Kismi",
+        "unavailable": "Kullanilamaz"
+      },
+      "actions": {
+        "deselect": "Secimi kaldir",
+        "select": "Sec"
+      }
+    },
+    "interactiveControls": {
+      "title": "Gorsel Ayarlar",
+      "fields": {
+        "brightness": "Parlaklik",
+        "contrast": "Kontrast",
+        "gamma": "Gama",
+        "saturation": "Doygunluk",
+        "hueRotate": "Ton cevirme",
+        "sharpness": "Keskinlik",
+        "edgeHighlight": "Kenar vurgula",
+        "invert": "Ters cevir"
+      },
+      "channelTitle": "KANAL IZOLASYONU",
+      "resetAction": "Tumunu Sifirla"
+    },
+    "processPanel": {
+      "status": {
+        "running": "Çalışıyor",
+        "completed": "Tamamlandı",
+        "failed": "Tamamlanamadı",
+        "queued": "Bekliyor",
+        "skipped": "Atlandı",
+        "cancelled": "İptal edildi",
+        "pending": "Bekleniyor",
+        "ready": "Hazır"
+      },
+      "statusTooltips": {
+        "failed": "Bu modül çalışmadı, diğerleri devam ediyor"
+      },
+      "time": {
+        "seconds": "{value} sn",
+        "minutes": "{minutes} dk {seconds} sn",
+        "justNow": "az önce",
+        "secondsAgo": "{value} sn önce",
+        "minutesAgo": "{value} dk önce",
+        "hoursAgo": "{value} sa önce"
+      },
+      "recent": {
+        "running": "devam ediyor",
+        "title": "Son işlemler"
+      },
+      "diff": {
+        "timeline": "Timeline",
+        "hypothesis": "Hipotez",
+        "intents": "Niyetler"
+      },
+      "empty": {
+        "moduleWaiting": "Modül bekleniyor",
+        "noModulePlan": "Modül planı yok",
+        "noExecution": "Henüz yürütme yok",
+        "noIntentSelection": "Niyet seçimi yok",
+        "noCapabilityMatch": "Yetenek eşleşmesi yok",
+        "pipelineResolving": "Pipeline cozumleniyor...",
+        "noFindings": "Bulgu yok",
+        "noArtifacts": "Artefakt yok",
+        "noRecentActions": "Henüz işlem yok"
+      },
+      "executionMap": {
+        "title": "Niyet → Yürütme Haritası",
+        "liveDrift": "Canli drift"
+      },
+      "outputTrace": {
+        "title": "NİYET ÇIKTI İZLEĞİ",
+        "noExpected": "Bu niyet için beklenen çıktı tanımı yok",
+        "noActual": "Bu niyet herhangi bir çıktı üretmedi",
+        "expected": "Beklenen:",
+        "actual": "Üretilen:"
+      },
+      "snapshot": {
+        "fullSource": "Tum kaynak",
+        "noIntent": "Niyet anlık görüntüsü yok",
+        "liveWorkspaceChanged": "Canli workspace {keys} alanlarinda degisti. Snapshot bu kosu icin donmus kalir.",
+        "frozen": "Snapshot bu kosu icin donmus kalir.",
+        "title": "Kosu Snapshotu",
+        "focus": "Odak",
+        "unspecified": "Belirtilmemis",
+        "timeline": "Timeline",
+        "intents": "Niyetler"
+      },
+      "progressLabel": "{completed}/{total} adım · {percent}%",
+      "sections": {
+        "pipeline": "Pipeline",
+        "findings": "Bulgular",
+        "artifacts": "Artefaktlar"
+      },
+      "actions": {
+        "more": "Daha fazla"
+      },
+      "idleTitle": "Analiz akışı",
+      "intentCount": "{count} niyet",
+      "runStatus": {
+        "analyzing": "Analiz ediliyor",
+        "completed": "Tamamlandı",
+        "failed": "Hata",
+        "cancelled": "İptal",
+        "queued": "Sırada"
+      },
+      "runTitle": "Analiz #{id}",
+      "activeModule": "Çalışan modül: {module}",
+      "stepCount": "{count} adım",
+      "confidence": {
+        "high": "Yuksek",
+        "medium": "Orta",
+        "low": "Dusuk"
+      }
+    },
+    "roi": {
+      "focusedLabel": "Odakli ROI",
+      "inspectionLabel": "Inceleme ROI",
+      "actions": {
+        "deactivate": "Pasif et",
+        "activate": "Aktif et",
+        "export": "Goruntu olarak disa aktar",
+        "remove": "Kaldir",
+        "resetFocus": "Odagi sifirla",
+        "focusRegion": "Bolgeye odaklan",
+        "captureRegion": "Bolgeyi yakala",
+        "clearRegion": "Bolgeyi temizle"
+      },
+      "status": {
+        "regionActive": "Bolge aktif",
+        "noRegion": "Henuz bolge yok"
+      },
+      "inspectionPrefix": "Inceleme",
+      "summary": {
+        "regions": "{count} bolge",
+        "active": "aktif"
+      },
+      "hints": {
+        "redefine": "Inceleme bolgesini yeniden tanimlamak icin surukle veya odaklamak icin cift tikla",
+        "define": "Inceleme bolgesi tanimlamak icin surukle",
+        "selectRange": "Once zaman araligi sec, sonra ilgi bolgesini tanimlamak icin surukle"
+      },
+      "inspectionModes": {
+        "none": "Yok",
+        "visual": "Gorsel",
+        "audio": "Ses",
+        "motion": "Hareket"
+      }
+    },
+    "intentPreview": {
+      "title": "Bu analiz şunları yapacak:",
+      "empty": "Analiz için niyet seçin",
+      "outputsTitle": "Beklenen çıktılar:",
+      "outputs": {
+        "objectDetection": "Nesne tespiti",
+        "anomalyReport": "Anomali raporu",
+        "visualFindings": "Görsel bulgular",
+        "recommendations": "Öneriler"
+      }
+    },
+    "dualPreview": {
+      "syncSameAxis": "Senkron: ✓ Aynı zaman ekseni",
+      "syncOffset": "Senkron: Ofset {offset} ms",
+      "linkedAudio": "BAGLI SES",
+      "audioHint": "Video master, audio slave. Ayrı kontrol hissi korunur.",
+      "duration": "Süre",
+      "volume": "Ses Duzeyi",
+      "singlePreview": "Tek preview"
+    },
+    "linkedAudio": {
+      "single": "Bu kaynağın ses çıktısı mevcut:",
+      "multiple": "Bu kaynağın ses çıktıları mevcut:",
+      "closeDualPreview": "Tek preview'a dön",
+      "openDualPreview": "🎧 Ses ile birlikte aç",
+      "openAsset": "Aç"
+    },
+    "analysisActions": {
+      "viewReport": "Raporu Görüntüle",
+      "cancel": "Analizi İptal Et",
+      "start": "Derin Analiz Başlat",
+      "imageAnalysis": "Görsel Analiz Et"
+    },
+    "workspace": {
+      "intents": {
+        "visual-inspection": {
+          "label": "Gorsel inceleme",
+          "description": "Gorsel yapiyi, kare kompozisyonunu ve forensic isaretleri incele.",
+          "preview": "Gorsel yapi ve anomaliler analiz edilir"
+        },
+        "audio-investigation": {
+          "label": "Ses arastirmasi",
+          "description": "Ses sinyallerini analiz et, ayrintilari kurtar ve konusmacilari belirle.",
+          "preview": "Ses sinyali ve anomaliler analiz edilir"
+        },
+        "detail-enhancement": {
+          "label": "Detay iyilestirme",
+          "description": "Daha derin inceleme icin transkript uret ve ses kaynaklarini ayir.",
+          "preview": "Goruntu detaylari iyilestirilir"
+        },
+        "anomaly-detection": {
+          "label": "Anomali tespiti",
+          "description": "Gorsel ve isitsel anomalileri tespit et, sesleri siniflandir ve prozodiyi analiz et.",
+          "preview": "Olasi anormallikler tespit edilir"
+        }
+      }
+    },
+    "capabilities": {
+      "visual-structure": {
+        "label": "Gorsel Yapi"
+      },
+      "visual-forensics": {
+        "label": "Gorsel Forensic"
+      },
+      "audio-signal": {
+        "label": "Ses Sinyali"
+      },
+      "audio-recovery": {
+        "label": "Ses Kurtarma"
+      },
+      "transcription": {
+        "label": "Transkripsiyon"
+      },
+      "speaker-analysis": {
+        "label": "Konusmaci Analizi"
+      },
+      "prosody-emotion": {
+        "label": "Prozodi ve Duygu"
+      },
+      "sound-classification": {
+        "label": "Ses Siniflandirma"
+      },
+      "source-separation": {
+        "label": "Kaynak Ayirma"
+      },
+      "music-analysis": {
+        "label": "Muzik Analizi"
+      }
+    },
+    "runtime": {
+      "actions": {
+        "generic": "İşlem",
+        "named": "{action}",
+        "sourceDownloadUrl": "URL kaynağı indiriliyor",
+        "sourceDownloadYoutube": "YouTube kaynağı hazırlanıyor",
+        "sourcePickLocal": "Yerel kaynak içeri alınıyor",
+        "editPreview": "Önizleme hazırlanıyor",
+        "runPreflight": "Ön kontrol çalışıyor",
+        "processRun": "Analiz çalışıyor",
+        "processCancel": "Analiz iptal ediliyor",
+        "reportExport": "Rapor dışa aktarılıyor",
+        "toolInstall": "Araç kurulumu çalışıyor",
+        "toolUpdate": "Araç güncellemesi çalışıyor",
+        "toolCheckUpdates": "Araç güncellemesi kontrol ediliyor"
+      },
+      "blockReasons": {
+        "selectSource": "Önce kaynak seçilmelidir.",
+        "sourceProbeRequiredForPreflight": "Kaynak probe tamamlanmadan ön kontrol doğrulanamaz.",
+        "selectCapabilityFamily": "Önce en az bir yetenek ailesi seçilmelidir.",
+        "selectedCapabilitiesNotReady": "Seçili yetenekler henüz hazır değil.",
+        "toolWarningsCanProceed": "Araç uyarıları var ama işlem başlatılabilir.",
+        "sourceProbeIncomplete": "Kaynak probe işlemi tamamlanmadı.",
+        "sourceProbeFailed": "Kaynak probe hata verdi.",
+        "sourceProbeMustComplete": "Kaynak probe tamamlanmalı.",
+        "sourceProbeBeforeAnalysis": "Analizden önce kaynak probe tamamlanmalı.",
+        "preflightBlockedStage": "Ön kontrol bu aşamayı blokladı.",
+        "preflightNotReady": "Ön kontrol henüz hazır değil.",
+        "reportNotGenerated": "Rapor henüz üretilmedi.",
+        "stageNotReady": "Bu aşama henüz hazır değil.",
+        "prepareSourceAndProbe": "Önce kaynak hazırlanmalı ve probe tamamlanmalı.",
+        "selectAnalysisModule": "En az bir analiz modülü seçilmelidir.",
+        "sourceNotReady": "Kaynak henüz hazır değil.",
+        "sourceUrlRequired": "Kaynak URL gerekli",
+        "youtubeUrlRequired": "YouTube URL gerekli",
+        "capabilityPartiallyReady": "{label} kısmi hazırlıkta.",
+        "sourceKindUnsupported": "Bu kaynak türü ({sourceKind}) desteklenmiyor.",
+        "missingTools": "Eksik araç: {tools}",
+        "optionalToolsMissing": "Opsiyonel araç eksik: {tools}",
+        "missingDependencies": "Eksik dependency: {dependencies}"
+      },
+      "controller": {
+        "roomApiDisconnected": "Room API bridge bağlı değil.",
+        "assetPreviewUnavailable": "Varlık önizlemesi kullanılamıyor.",
+        "sourcePreviewUnavailable": "Kaynak preview kullanılamıyor.",
+        "dualPreviewSeekUnavailable": "Medya hazır olana kadar dual preview seek kullanılamaz.",
+        "projectCheckpointSaved": "Proje mevcut checkpoint durumu ile kaydedildi."
+      },
+      "emptyReasons": {
+        "runCompletedNoFindings": "Çalışma tamamlandı ancak raporlanabilir bulgu veya artefakt oluşmadı.",
+        "reportReadyUnreadable": "Rapor hazır ancak okunabilir içerik üretilemedi.",
+        "previousRunRestored": "Önceki çalışma özet olarak geri yüklendi."
+      },
+      "events": {
+        "analysisCompleted": "Analiz tamamlandı",
+        "analysisFailed": "Analiz hata verdi",
+        "analysisCancelled": "Analiz iptal edildi",
+        "analysisStarted": "Analiz başladı",
+        "analysisRequestCompleted": "Analiz isteği tamamlandı",
+        "analysisRequestFailed": "Analiz isteği hata verdi",
+        "analysisRequestCancelled": "Analiz isteği iptal edildi",
+        "analysisScopeLocked": "Analiz kapsamı mevcut çalışma için kilitlendi.",
+        "cancelledByOperator": "Operatör tarafından iptal edildi.",
+        "cancelledByUser": "Çalışma kullanıcı tarafından iptal edildi.",
+        "feedCleared": "Olay akışı temizlendi.",
+        "processUpdate": "İşlem güncellemesi",
+        "rawOutput": "Ham çıktı",
+        "stage": {
+          "queued": "{action} kuyruğa alındı",
+          "completed": "{action} tamamlandı",
+          "failed": "{action} hata verdi",
+          "cancelled": "{action} iptal edildi",
+          "started": "{action} başladı"
+        }
+      },
+      "expectedOutputs": {
+        "visualInspection": {
+          "frames": "Frame çıktıları",
+          "anomalies": "Anomali verileri"
+        },
+        "audioInvestigation": {
+          "audio": "Ses çıktısı"
+        }
+      },
+      "preflight": {
+        "warningCanContinue": "Ön kontrolde uyarılar var ama işlem devam edebilir.",
+        "stageNotMarkedReady": "Ön kontrol bu aşamayı henüz hazır işaretlemedi.",
+        "notRun": "Ön kontrol henüz çalıştırılmadı.",
+        "failed": "Ön kontrol tamamlanamadı.",
+        "running": "Ön kontrol çalışıyor.",
+        "missingDependencies": "Eksik bağımlılıklar: {dependencies}"
+      },
+      "primaryAction": {
+        "exportReport": "Raporları Dışa Aktar",
+        "cancelRun": "Çalışmayı İptal Et",
+        "startAnalysis": "Analizi Başlat",
+        "generatePreview": "Önizleme Üret",
+        "refreshPreview": "Önizlemeyi Yenile",
+        "refreshSource": "Kaynağı Yenile",
+        "prepareSource": "Kaynağı Hazırla",
+        "exportReportDetail": "Structured rapor dışa aktarılır",
+        "cancelRunDetail": "Aktif run iptal edilir",
+        "startAnalysisDetail": "Sadece enabled modüller çalışır",
+        "generatePreviewDetail": "Preview completion fake edilemez",
+        "probeRunningDetail": "Gerçek probe tamamlanıyor",
+        "probeCompleteDetail": "Probe tamamlandı",
+        "startProbeDetail": "Source probe başlatılır"
+      },
+      "userActions": {
+        "exportTimelineClip": {
+          "running": "Klip çıkarılıyor",
+          "success": "Klip hazır",
+          "error": "Klip çıkarılamadı"
+        },
+        "exportFrameGrab": {
+          "running": "Frame alınıyor",
+          "success": "Frame alındı",
+          "error": "Frame alınamadı"
+        },
+        "exportAudioTrack": {
+          "running": "Ses çıkarılıyor",
+          "success": "Ses çıkarıldı",
+          "error": "Ses çıkarılamadı"
+        },
+        "exportRoiImage": {
+          "running": "Bölge görüntüsü alınıyor",
+          "success": "Bölge görüntüsü hazır",
+          "error": "Bölge görüntüsü alınamadı"
+        },
+        "reportExport": {
+          "running": "Rapor dışa aktarılıyor",
+          "success": "Rapor dışa aktarıldı",
+          "error": "Rapor dışa aktarılamadı"
+        },
+        "audioReportExport": {
+          "running": "Ses raporu dışa aktarılıyor",
+          "success": "Ses raporu dışa aktarıldı",
+          "error": "Ses raporu dışa aktarılamadı"
+        }
       }
     }
   },

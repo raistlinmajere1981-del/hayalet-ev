@@ -1,11 +1,12 @@
 import { escapeHtml } from "../models/lab-types.js";
 import { getActionOutputs, getHubUserActions } from "../runtime/lab-selectors.js";
 import {
-  getLabUserActionDisplayText,
   getLabUserActionOutputLabel,
   getLabUserActionPrimaryOutput
 } from "../runtime/lab-user-actions.js";
 import { buildLabAssetMetadataTitle } from "./lab-asset-display.js";
+import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
+import { formatLabUserActionDisplayText } from "./lab-runtime-i18n.js";
 function getHubActionIcon(actionEvent) {
   switch (actionEvent.status) {
     case "idle":
@@ -60,13 +61,13 @@ function renderHubActionResult(state, actionEvent) {
     </button>
   `;
 }
-export function renderLabTopbarActions(state) {
+export function renderLabTopbarActions(state, copy = LAB_FALLBACK_I18N) {
   const hubActions = getHubUserActions(state);
   if (hubActions.length === 0) {
     return "";
   }
   return `
-    <section class="labx-topbar-actions" aria-label="Action progress hub">
+    <section class="labx-topbar-actions" aria-label="${escapeHtml(copy.t("mediaAnalysis.topbarActions.ariaLabel", "Action progress hub"))}">
       <div class="labx-topbar-actions__list">
         ${hubActions.map(function(actionEvent) {
     return `
@@ -74,13 +75,13 @@ export function renderLabTopbarActions(state) {
                 class="labx-topbar-actions__item"
                 data-tone="${escapeHtml(getHubActionTone(actionEvent))}"
               >
-                ${getHubActionIcon(actionEvent)}
-                <span class="labx-topbar-actions__content">
-                  <span class="labx-topbar-actions__label">${escapeHtml(
-      getLabUserActionDisplayText(actionEvent)
+	                ${getHubActionIcon(actionEvent)}
+	                <span class="labx-topbar-actions__content">
+	                  <span class="labx-topbar-actions__label">${escapeHtml(
+      formatLabUserActionDisplayText(actionEvent, copy)
     )}</span>
-                  ${renderHubActionResult(state, actionEvent)}
-                </span>
+	                  ${renderHubActionResult(state, actionEvent)}
+	                </span>
               </article>
             `;
   }).join("")}

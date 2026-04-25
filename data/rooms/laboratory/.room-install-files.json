@@ -195,6 +195,7 @@
     "ui/lab-project-assets-panel.js",
     "ui/lab-right-panel.js",
     "ui/lab-root.js",
+    "ui/lab-runtime-i18n.js",
     "ui/lab-selection-intent-binder.js",
     "ui/lab-selection-roi-binder.js",
     "ui/lab-selection-suggestion-binder.js",

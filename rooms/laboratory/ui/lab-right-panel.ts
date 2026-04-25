@@ -35,11 +35,7 @@ function renderLiveContext(state: LabStoreState, copy: LabI18n) {
         <div class="labx-right-context__item">
           <span>${escapeHtml(copy.t("mediaAnalysis.rightContext.selection", "Selection"))}</span>
           <strong>${escapeHtml(context.selectionRangeLabel ?? copy.t("mediaAnalysis.rightContext.emptySelection", "No active selection"))}</strong>
-          ${
-            context.selectionLabel
-              ? `<small>${escapeHtml(context.selectionLabel)}</small>`
-              : ""
-          }
+          ${context.selectionLabel ? `<small>${escapeHtml(context.selectionLabel)}</small>` : ""}
         </div>
         <div class="labx-right-context__item">
           <span>${escapeHtml(copy.t("mediaAnalysis.rightContext.intent", "Intent"))}</span>

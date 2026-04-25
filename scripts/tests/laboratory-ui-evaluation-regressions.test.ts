@@ -5,6 +5,11 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { renderLabWaveformTimeline } from "../../rooms/laboratory/ui/lab-waveform-timeline.ts";
 import { createLabI18n } from "../../rooms/laboratory/ui/lab-i18n.ts";
+import {
+  formatLabExpectedOutputLabel,
+  formatLabUserActionDisplayText,
+  translateLabRuntimeText,
+} from "../../rooms/laboratory/ui/lab-runtime-i18n.ts";
 import { createRoomBuiltArtifact } from "./helpers/room-installed-copy.ts";
 
 class ElementStub {
@@ -357,10 +362,10 @@ test("laboratory shell routes host traffic through lab-root orchestration seams"
   assert.match(uiIndexSource, /import "\.\/lab-root\.js";/);
   assert.match(labRootSource, /return renderWorkspaceSurface\(state, \{/);
   assert.match(labRootSource, /runtimeRoot\.innerHTML = renderLabLayout\(state, surface, copy\);/);
-  assert.match(labRootSource, /renderToolManagementOverlay\(state\)/);
+  assert.match(labRootSource, /renderToolManagementOverlay\(state, copy\)/);
   assert.match(labRootSource, /emit:\s*eventBus\.emit,/);
   assert.match(labRootSource, /roomAPI\.ready\(\{\s*feature:\s*"media-analysis",\s*room:\s*"laboratory",\s*stage:\s*"ui-ready"/);
-  assert.match(labLayoutSource, /renderToolManagementOverlay\(state\)/);
+  assert.match(labLayoutSource, /renderToolManagementOverlay\(state, copy\)/);
   assert.match(hostBridgeSource, /type === "source-state"/);
   assert.match(hostBridgeSource, /type:\s*"source-snapshot-received"/);
   assert.match(hostBridgeSource, /type === "lab-event"/);
@@ -403,7 +408,7 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   assert.match(labRootSource, /schemaVersion:\s*4,/);
   assert.match(labRootSource, /workspace:\s*state\.ui\.workspace,/);
   assert.match(labRootSource, /state\.run\.state === "running" \|\| state\.run\.state === "queued"/);
-  assert.match(toolOverlaySource, /aria-label="Araç Yönetimi"/);
+  assert.match(toolOverlaySource, /mediaAnalysis\.toolManager\.ariaLabel/);
   assert.match(toolOverlaySource, /data-lab-action="tool-update-all"/);
   assert.match(toolOverlaySource, /data-lab-action="tool-install"/);
   assert.match(toolOverlaySource, /data-lab-action="tool-check-updates"/);
@@ -1401,6 +1406,39 @@ test("laboratory phase 4.95 renders room-local i18n labels in English and Turkis
   assert.match(trMarkup, /Tip/);
   assert.match(trMarkup, /Simulasyon onizlemesi/);
   assert.match(trMarkup, /Calistirma adayi/);
+});
+
+test("laboratory runtime status copy resolves through room-local i18n catalogs", () => {
+  const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));
+  const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
+  const enCopy = createLabI18n({ locale: "en", translations: enTranslations });
+  const trCopy = createLabI18n({ locale: "tr", translations: trTranslations });
+
+  assert.equal(translateLabRuntimeText("Kaynak henüz hazır değil.", enCopy), "Source is not ready yet.");
+  assert.equal(translateLabRuntimeText("Eksik araç: ffmpeg", enCopy), "Missing tool: ffmpeg");
+  assert.equal(translateLabRuntimeText("Eksik araç: ffmpeg", trCopy), "Eksik araç: ffmpeg");
+  assert.equal(
+    formatLabExpectedOutputLabel(
+      { intentId: "audio-investigation", label: "Ses çıktısı", assetTypes: ["audio"] },
+      enCopy
+    ),
+    "Audio output"
+  );
+  assert.equal(
+    formatLabUserActionDisplayText(
+      {
+        id: "action-1",
+        type: "extract-audio",
+        label: "Ses çıkarılıyor",
+        status: "success",
+        startedAt: 1,
+        message: "Ses çıkarıldı",
+        sourceAction: "export-audio-track",
+      },
+      enCopy
+    ),
+    "Audio extracted"
+  );
 });
 
 test("laboratory phase 4.95 i18n keys keep English and Turkish catalog parity", () => {

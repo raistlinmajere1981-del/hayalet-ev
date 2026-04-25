@@ -2,9 +2,20 @@ import { escapeHtml } from "../models/lab-types.js";
 import type { LabStoreState } from "../models/lab-types.js";
 import { getAvailableIntents } from "../runtime/lab-selectors.js";
 import { renderStatusChip } from "./components/status-chip.js";
+import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import { renderLabProjectAssetsPanel } from "./lab-project-assets-panel.js";
+import type { LabI18n } from "./lab-i18n.js";
+import { translateLabRuntimeText } from "./lab-runtime-i18n.js";
 
-export function renderLabLeftRail(state: LabStoreState) {
+function getIntentLabel(intentId: string, fallback: string, copy: LabI18n): string {
+  return copy.t(`mediaAnalysis.workspace.intents.${intentId}.label`, fallback);
+}
+
+function getIntentDescription(intentId: string, fallback: string, copy: LabI18n): string {
+  return copy.t(`mediaAnalysis.workspace.intents.${intentId}.description`, fallback);
+}
+
+export function renderLabLeftRail(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
   const intents = getAvailableIntents(state);
 
   return `
@@ -15,24 +26,34 @@ export function renderLabLeftRail(state: LabStoreState) {
         data-lab-action="toggle-tool-manager"
         data-active="${state.ui.toolManagerOpen ? "true" : "false"}"
       >
-        <strong>Tool Management</strong>
+        <strong>${escapeHtml(copy.t("mediaAnalysis.leftRail.toolManagement", "Tool Management"))}</strong>
       </button>
 
       <div class="labx-brand">
         <div>
-          <strong>Laboratory</strong>
-          <p>Media workspace</p>
+          <strong>${escapeHtml(copy.t("title", "Laboratory"))}</strong>
+          <p>${escapeHtml(copy.t("mediaAnalysis.leftRail.workspaceLabel", "Media workspace"))}</p>
         </div>
       </div>
 
-      ${renderLabProjectAssetsPanel(state, { includeProjectControls: true, variant: "rail" })}
+      ${renderLabProjectAssetsPanel(state, {
+        copy,
+        includeProjectControls: true,
+        variant: "rail",
+      })}
 
 
       <section class="labx-rail-section">
-        <p class="labx-rail-title">INTENTS</p>
+        <p class="labx-rail-title">${escapeHtml(copy.t("mediaAnalysis.leftRail.intentsTitle", "INTENTS"))}</p>
         <div class="labx-rail-stack">
           ${intents
             .map(function (intent) {
+              const intentLabel = getIntentLabel(intent.id, intent.label, copy);
+              const intentDescription = getIntentDescription(intent.id, intent.description, copy);
+              const blockReason =
+                intent.blockReason === null
+                  ? null
+                  : translateLabRuntimeText(intent.blockReason, copy);
               return `
               <button
                 class="labx-module-link"
@@ -41,13 +62,13 @@ export function renderLabLeftRail(state: LabStoreState) {
                 data-lab-value="${escapeHtml(intent.id)}"
                 data-active="${intent.selected ? "true" : "false"}"
                 ${intent.readiness === "blocked" ? 'data-blocked="true"' : ""}
-                title="${intent.blockReason ? escapeHtml(intent.blockReason) : escapeHtml(intent.description)}"
+                title="${blockReason ? escapeHtml(blockReason) : escapeHtml(intentDescription)}"
               >
                 <div class="labx-module-link__head">
-                  <strong>${escapeHtml(intent.label)}</strong>
+                  <strong>${escapeHtml(intentLabel)}</strong>
                   ${renderStatusChip(
                     intent.readiness === "ready"
-                      ? "OK"
+                      ? copy.t("mediaAnalysis.leftRail.readiness.readyShort", "OK")
                       : intent.readiness === "optional"
                         ? "△"
                         : "✕",
@@ -58,7 +79,16 @@ export function renderLabLeftRail(state: LabStoreState) {
                         : "error"
                   )}
                 </div>
-                <small>${intent.selected ? "Selected" : intent.readiness === "blocked" ? escapeHtml(intent.blockReason || "Unavailable") : "Available"}</small>
+                <small>${
+                  intent.selected
+                    ? escapeHtml(copy.t("mediaAnalysis.leftRail.status.selected", "Selected"))
+                    : intent.readiness === "blocked"
+                      ? escapeHtml(
+                          blockReason ||
+                            copy.t("mediaAnalysis.leftRail.status.unavailable", "Unavailable")
+                        )
+                      : escapeHtml(copy.t("mediaAnalysis.leftRail.status.available", "Available"))
+                }</small>
               </button>
             `;
             })

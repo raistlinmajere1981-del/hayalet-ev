@@ -419,7 +419,7 @@ export function startLaboratoryLabRoot() {
       shell.dataset["ready"] = state.bootReady ? "true" : "false";
       shell.dataset["workspaceMode"] = getWorkspaceMode(state);
     }
-    updateRenderedElement(documentRef, leftRail, renderLabLeftRail(state));
+    updateRenderedElement(documentRef, leftRail, renderLabLeftRail(state, copy));
     updateRenderedElement(
       documentRef,
       centerPanel,
@@ -435,18 +435,18 @@ export function startLaboratoryLabRoot() {
     updateRenderedElement(
       documentRef,
       overlayRoot,
-      renderToolManagementOverlay(state)
+      renderToolManagementOverlay(state, copy)
     );
     updateRenderedElement(
       documentRef,
       assetPreviewOverlayRoot,
-      renderLabAssetPreviewOverlay(state)
+      renderLabAssetPreviewOverlay(state, copy)
     );
     if (reportOverlayRoot) {
       updateRenderedElement(
         documentRef,
         reportOverlayRoot,
-        renderReportOverlay(state)
+        renderReportOverlay(state, copy)
       );
     }
   }

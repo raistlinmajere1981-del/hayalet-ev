@@ -59,38 +59,49 @@ type WorkspaceSurfaceOptions = {
   copy?: LabI18n;
 };
 
-function getSourceKindLabel(kind: string) {
+function getSourceKindLabel(kind: string, copy: LabI18n = LAB_FALLBACK_I18N) {
   switch (kind) {
     case "audio":
-      return "Audio";
+      return copy.t("mediaAnalysis.source.kinds.audio", "Audio");
     case "image":
-      return "Image";
+      return copy.t("mediaAnalysis.source.kinds.image", "Image");
     case "video":
-      return "Video";
+      return copy.t("mediaAnalysis.source.kinds.video", "Video");
     default:
       return kind;
   }
 }
 
-function getSourceModeLabel(mode: string) {
+function getSourceModeLabel(mode: string, copy: LabI18n = LAB_FALLBACK_I18N) {
   switch (mode) {
     case "url":
-      return "Direct URL";
+      return copy.t("mediaAnalysis.source.modes.url", "Direct URL");
     case "youtube":
-      return "YouTube";
+      return copy.t("mediaAnalysis.source.modes.youtube", "YouTube");
     case "local":
-      return "Local Copy";
+      return copy.t("mediaAnalysis.source.modes.localCopy", "Local Copy");
     default:
       return mode;
   }
 }
 
-function renderIntentPreview(intentIds: string[]) {
+function getWorkspaceIntentLabel(intentId: string, copy: LabI18n): string {
+  return copy.t(`mediaAnalysis.workspace.intents.${intentId}.label`, getIntentLabel(intentId));
+}
+
+function getWorkspaceIntentPreviewDescription(intentId: string, copy: LabI18n): string {
+  return copy.t(
+    `mediaAnalysis.workspace.intents.${intentId}.preview`,
+    getIntentPreviewDescription(intentId)
+  );
+}
+
+function renderIntentPreview(intentIds: string[], copy: LabI18n) {
   if (!Array.isArray(intentIds) || intentIds.length === 0) {
     return `
       <div class="labx-intent-preview">
-        <strong class="labx-intent-preview__title">Bu analiz şunları yapacak:</strong>
-        <p class="labx-intent-preview__empty">Analiz için intent seçin</p>
+        <strong class="labx-intent-preview__title">${escapeHtml(copy.t("mediaAnalysis.intentPreview.title", "Bu analiz şunları yapacak:"))}</strong>
+        <p class="labx-intent-preview__empty">${escapeHtml(copy.t("mediaAnalysis.intentPreview.empty", "Analiz için intent seçin"))}</p>
       </div>
     `;
   }
@@ -98,22 +109,22 @@ function renderIntentPreview(intentIds: string[]) {
   return `
     <div class="labx-intent-preview">
       <div class="labx-intent-preview__section">
-        <strong class="labx-intent-preview__title">Bu analiz şunları yapacak:</strong>
+        <strong class="labx-intent-preview__title">${escapeHtml(copy.t("mediaAnalysis.intentPreview.title", "Bu analiz şunları yapacak:"))}</strong>
         <ul class="labx-intent-preview__list">
           ${intentIds
             .map(function (intentId) {
-              return `<li><strong>${escapeHtml(getIntentLabel(intentId))}</strong> · ${escapeHtml(getIntentPreviewDescription(intentId))}</li>`;
+              return `<li><strong>${escapeHtml(getWorkspaceIntentLabel(intentId, copy))}</strong> · ${escapeHtml(getWorkspaceIntentPreviewDescription(intentId, copy))}</li>`;
             })
             .join("")}
         </ul>
       </div>
       <div class="labx-intent-preview__section">
-        <strong class="labx-intent-preview__title">Beklenen çıktılar:</strong>
+        <strong class="labx-intent-preview__title">${escapeHtml(copy.t("mediaAnalysis.intentPreview.outputsTitle", "Beklenen çıktılar:"))}</strong>
         <ul class="labx-intent-preview__list">
-          <li>Nesne tespiti</li>
-          <li>Anomali raporu</li>
-          <li>Görsel bulgular</li>
-          <li>Öneriler</li>
+          <li>${escapeHtml(copy.t("mediaAnalysis.intentPreview.outputs.objectDetection", "Nesne tespiti"))}</li>
+          <li>${escapeHtml(copy.t("mediaAnalysis.intentPreview.outputs.anomalyReport", "Anomali raporu"))}</li>
+          <li>${escapeHtml(copy.t("mediaAnalysis.intentPreview.outputs.visualFindings", "Görsel bulgular"))}</li>
+          <li>${escapeHtml(copy.t("mediaAnalysis.intentPreview.outputs.recommendations", "Öneriler"))}</li>
         </ul>
       </div>
     </div>
@@ -202,99 +213,133 @@ function getYoutubeFormSections(state: LabStoreState) {
   return Array.isArray(ytDlpForm["sections"]) ? (ytDlpForm["sections"] as unknown[]) : [];
 }
 
-function getYoutubePresetLabel(presetId: string) {
+function getYoutubePresetLabel(presetId: string, copy: LabI18n = LAB_FALLBACK_I18N) {
   switch (presetId) {
     case "low":
-      return "Low";
+      return copy.t("mediaAnalysis.source.youtubePresets.low", "Low");
     case "medium":
-      return "Medium";
+      return copy.t("mediaAnalysis.source.youtubePresets.medium", "Medium");
     case "best":
-      return "Best";
+      return copy.t("mediaAnalysis.source.youtubePresets.best", "Best");
     case "custom":
-      return "Custom";
+      return copy.t("mediaAnalysis.source.youtubePresets.custom", "Custom");
     default:
       return presetId;
   }
 }
 
-function getYoutubeSectionMeta(sectionId: string) {
+function getYoutubeSectionMeta(sectionId: string, copy: LabI18n = LAB_FALLBACK_I18N) {
   switch (sectionId) {
     case "download":
       return {
-        title: "Capture Shape",
-        hint: "Video profile, container handling, and optional audio extraction stay together here.",
+        title: copy.t("mediaAnalysis.source.youtubeForm.sections.download.title", "Capture Shape"),
+        hint: copy.t(
+          "mediaAnalysis.source.youtubeForm.sections.download.subtitle",
+          "Video profile, container handling, and optional audio extraction stay together here."
+        ),
       };
     case "captions":
       return {
-        title: "Subtitle Capture",
-        hint: "Manual and auto subtitle switches share the same language filter frame.",
+        title: copy.t(
+          "mediaAnalysis.source.youtubeForm.sections.captions.title",
+          "Subtitle Capture"
+        ),
+        hint: copy.t(
+          "mediaAnalysis.source.youtubeForm.sections.captions.subtitle",
+          "Manual and auto subtitle switches share the same language filter frame."
+        ),
       };
     case "network":
       return {
-        title: "Transfer Controls",
-        hint: "Playlist scope, rate limit, and retry behavior stay compact in one place.",
+        title: copy.t(
+          "mediaAnalysis.source.youtubeForm.sections.network.title",
+          "Transfer Controls"
+        ),
+        hint: copy.t(
+          "mediaAnalysis.source.youtubeForm.sections.network.subtitle",
+          "Playlist scope, rate limit, and retry behavior stay compact in one place."
+        ),
       };
     default:
       return {
         title: sectionId,
-        hint: "Room-approved yt-dlp controls.",
+        hint: copy.t(
+          "mediaAnalysis.source.youtubeForm.defaultSectionHint",
+          "Room-approved yt-dlp controls."
+        ),
       };
   }
 }
 
-function getYoutubeFieldLabel(fieldId: string) {
+function getYoutubeFieldLabel(fieldId: string, copy: LabI18n = LAB_FALLBACK_I18N) {
   switch (fieldId) {
     case "captureMode":
-      return "Capture Mode";
+      return copy.t("mediaAnalysis.source.youtubeForm.fields.captureMode", "Capture Mode");
     case "format":
-      return "Format";
+      return copy.t("mediaAnalysis.source.youtubeForm.fields.format", "Format");
     case "mergeOutputFormat":
-      return "Container";
+      return copy.t("mediaAnalysis.source.youtubeForm.fields.mergeOutputFormat", "Container");
     case "recodeVideo":
-      return "Recode Video";
+      return copy.t("mediaAnalysis.source.youtubeForm.fields.recodeVideo", "Recode Video");
     case "audioFormat":
-      return "Audio Format";
+      return copy.t("mediaAnalysis.source.youtubeForm.fields.audioFormat", "Audio Format");
     case "audioQuality":
-      return "Audio Quality";
+      return copy.t("mediaAnalysis.source.youtubeForm.fields.audioQuality", "Audio Quality");
     case "writeSubtitles":
-      return "Write Subtitles";
+      return copy.t("mediaAnalysis.source.youtubeForm.fields.writeSubtitles", "Write Subtitles");
     case "writeAutoSubtitles":
-      return "Write Auto Subtitles";
+      return copy.t(
+        "mediaAnalysis.source.youtubeForm.fields.writeAutoSubtitles",
+        "Write Auto Subtitles"
+      );
     case "subtitlesLang":
-      return "Subtitle Languages";
+      return copy.t("mediaAnalysis.source.youtubeForm.fields.subtitlesLang", "Subtitle Languages");
     case "playlistItems":
-      return "Playlist Items";
+      return copy.t("mediaAnalysis.source.youtubeForm.fields.playlistItems", "Playlist Items");
     case "limitRate":
-      return "Rate Limit";
+      return copy.t("mediaAnalysis.source.youtubeForm.fields.limitRate", "Rate Limit");
     case "retries":
-      return "Retries";
+      return copy.t("mediaAnalysis.source.youtubeForm.fields.retries", "Retries");
     default:
       return fieldId;
   }
 }
 
-function getYoutubePlaceholder(fieldId: string) {
+function getYoutubePlaceholder(fieldId: string, copy: LabI18n = LAB_FALLBACK_I18N) {
   switch (fieldId) {
     case "subtitlesLang":
-      return "en.*,tr.*";
+      return copy.t("mediaAnalysis.source.youtubeForm.placeholders.subtitlesLang", "en.*,tr.*");
     case "playlistItems":
-      return "1,3-5";
+      return copy.t("mediaAnalysis.source.youtubeForm.placeholders.playlistItems", "1,3-5");
     case "limitRate":
-      return "2M";
+      return copy.t("mediaAnalysis.source.youtubeForm.placeholders.limitRate", "2M");
     default:
       return "";
   }
 }
 
-function getYoutubeOptionLabel(fieldId: string, optionValue: string) {
+function getYoutubeOptionLabel(
+  fieldId: string,
+  optionValue: string,
+  copy: LabI18n = LAB_FALLBACK_I18N
+) {
   if (fieldId === "captureMode") {
     switch (optionValue) {
       case "video+audio":
-        return "Video + Audio";
+        return copy.t(
+          "mediaAnalysis.source.youtubeForm.options.captureMode.videoAudio",
+          "Video + Audio"
+        );
       case "audio-only":
-        return "Audio Only";
+        return copy.t(
+          "mediaAnalysis.source.youtubeForm.options.captureMode.audioOnly",
+          "Audio Only"
+        );
       case "video-only":
-        return "Video Only";
+        return copy.t(
+          "mediaAnalysis.source.youtubeForm.options.captureMode.videoOnly",
+          "Video Only"
+        );
       default:
         return optionValue;
     }
@@ -302,43 +347,74 @@ function getYoutubeOptionLabel(fieldId: string, optionValue: string) {
   if (fieldId === "format") {
     switch (optionValue) {
       case "bestvideo*+bestaudio/best":
-        return "Best available";
+        return copy.t("mediaAnalysis.source.youtubeForm.options.format.best", "Best available");
       case "best[height<=1080][ext=mp4]/best[height<=1080]/best":
-        return "1080p MP4 or lower";
+        return copy.t(
+          "mediaAnalysis.source.youtubeForm.options.format.mp4_1080",
+          "1080p MP4 or lower"
+        );
       case "best[height<=720][ext=mp4]/best[height<=720]/best":
-        return "720p MP4 or lower";
+        return copy.t(
+          "mediaAnalysis.source.youtubeForm.options.format.mp4_720",
+          "720p MP4 or lower"
+        );
       case "best[height<=480][ext=mp4]/best[height<=480]/best":
-        return "480p MP4 or lower";
+        return copy.t(
+          "mediaAnalysis.source.youtubeForm.options.format.mp4_480",
+          "480p MP4 or lower"
+        );
       case "best[height<=360][ext=mp4]/best[height<=360]/worst[ext=mp4]/worst":
-        return "360p / low bandwidth";
+        return copy.t(
+          "mediaAnalysis.source.youtubeForm.options.format.low",
+          "360p / low bandwidth"
+        );
       default:
         return optionValue;
     }
   }
   if (fieldId === "audioFormat") {
     if (optionValue === "none") {
-      return "Keep original media";
+      return copy.t("mediaAnalysis.source.youtubeForm.options.audio.none", "Keep original media");
     }
     return optionValue.toUpperCase();
   }
   if (fieldId === "mergeOutputFormat") {
-    return optionValue === "auto" ? "Auto" : optionValue.toUpperCase();
+    return optionValue === "auto"
+      ? copy.t("mediaAnalysis.source.youtubeForm.options.container.auto", "Auto")
+      : optionValue.toUpperCase();
   }
   if (fieldId === "recodeVideo") {
-    return optionValue === "none" ? "No recode" : optionValue.toUpperCase();
+    return optionValue === "none"
+      ? copy.t("mediaAnalysis.source.youtubeForm.options.recode.none", "No recode")
+      : optionValue.toUpperCase();
   }
   if (fieldId === "audioQuality") {
     switch (optionValue) {
       case "best":
-        return "Use extractor default";
+        return copy.t(
+          "mediaAnalysis.source.youtubeForm.options.audioQuality.best",
+          "Use extractor default"
+        );
       case "0":
-        return "0 · Max quality";
+        return copy.t(
+          "mediaAnalysis.source.youtubeForm.options.audioQuality.max",
+          "0 · Max quality"
+        );
       case "2":
-        return "2 · High quality";
+        return copy.t(
+          "mediaAnalysis.source.youtubeForm.options.audioQuality.high",
+          "2 · High quality"
+        );
       case "5":
-        return "5 · Balanced";
+        return copy.t(
+          "mediaAnalysis.source.youtubeForm.options.audioQuality.medium",
+          "5 · Balanced"
+        );
       case "7":
-        return "7 · Smaller file";
+        return copy.t(
+          "mediaAnalysis.source.youtubeForm.options.audioQuality.small",
+          "7 · Smaller file"
+        );
       default:
         return optionValue;
     }
@@ -346,14 +422,24 @@ function getYoutubeOptionLabel(fieldId: string, optionValue: string) {
   return optionValue;
 }
 
-function getLoadSourceActionLabel(mode: string, hasSource: boolean) {
+function getLoadSourceActionLabel(
+  mode: string,
+  hasSource: boolean,
+  copy: LabI18n = LAB_FALLBACK_I18N
+) {
   if (mode === "url") {
-    return hasSource ? "Replace URL Source" : "Download URL Source";
+    return hasSource
+      ? copy.t("mediaAnalysis.source.actions.replaceUrl", "Replace URL Source")
+      : copy.t("mediaAnalysis.source.actions.downloadUrl", "Download URL Source");
   }
   if (mode === "youtube") {
-    return hasSource ? "Replace YouTube Source" : "Capture from YouTube";
+    return hasSource
+      ? copy.t("mediaAnalysis.source.actions.replaceYoutube", "Replace YouTube Source")
+      : copy.t("mediaAnalysis.source.actions.downloadYoutube", "Capture from YouTube");
   }
-  return hasSource ? "Replace Local Source" : "Copy Local Source";
+  return hasSource
+    ? copy.t("mediaAnalysis.source.actions.replaceLocal", "Replace Local Source")
+    : copy.t("mediaAnalysis.source.actions.pickLocal", "Copy Local Source");
 }
 
 function getLoadSourceDisabled(state: LabStoreState, mode: string) {
@@ -399,7 +485,11 @@ function isLoadedSourceMatchingMode(source: Record<string, unknown>, mode: strin
   return isLocalSourceRouteLabel(routeLabel);
 }
 
-function getSourceProgressModel(state: LabStoreState, mode: string) {
+function getSourceProgressModel(
+  state: LabStoreState,
+  mode: string,
+  copy: LabI18n = LAB_FALLBACK_I18N
+) {
   const source = getProjectSource(state);
   const probeStatus = getSourceProbeStatus(state);
   const expectedAction = getSourceActionForMode(mode);
@@ -448,18 +538,24 @@ function getSourceProgressModel(state: LabStoreState, mode: string) {
     (showCompletedState
       ? null
       : showRunningState
-        ? "Import is running. The source will be saved into this project."
+        ? copy.t(
+            "mediaAnalysis.source.progress.runningDetail",
+            "Import is running. The source will be saved into this project."
+          )
         : hasSourceForMode
-          ? "Ready to replace the current project source."
+          ? copy.t(
+              "mediaAnalysis.source.progress.readyToReplace",
+              "Ready to replace the current project source."
+            )
           : null);
 
   const label = showCompletedState
-    ? "Import complete"
+    ? copy.t("mediaAnalysis.source.progress.complete", "Import complete")
     : showFailedState
-      ? "Import failed"
+      ? copy.t("mediaAnalysis.source.progress.failed", "Import failed")
       : showRunningState
         ? `${String(percent)}%`
-        : "Awaiting import";
+        : copy.t("mediaAnalysis.source.progress.awaiting", "Awaiting import");
 
   return {
     detail,
@@ -469,7 +565,11 @@ function getSourceProgressModel(state: LabStoreState, mode: string) {
   };
 }
 
-function renderSourceActionPanel(state: LabStoreState, mode: string) {
+function renderSourceActionPanel(
+  state: LabStoreState,
+  mode: string,
+  copy: LabI18n = LAB_FALLBACK_I18N
+) {
   const source = getProjectSource(state);
   const hasSource =
     asNonEmptyString(source["storedFileName"]) !== null ||
@@ -477,19 +577,25 @@ function renderSourceActionPanel(state: LabStoreState, mode: string) {
   const hasSourceForMode = hasSource && isLoadedSourceMatchingMode(source, mode);
   const sourceLocked = isRunActive(state);
   const disabledAttr = sourceLocked || getLoadSourceDisabled(state, mode) ? "disabled" : "";
-  const lockHint = sourceLocked ? "Source locked during analysis" : "";
+  const lockHint = sourceLocked
+    ? copy.t("mediaAnalysis.source.lockedHint", "Source locked during analysis")
+    : "";
   return `
     <div class="labx-source-intake__action">
       <button class="labx-inline-action labx-source-intake__action-button" type="button" data-lab-action="load-source" ${disabledAttr} ${lockHint ? `title="${escapeHtml(lockHint)}"` : ""}>
-        ${escapeHtml(getLoadSourceActionLabel(mode, hasSourceForMode))}
+        ${escapeHtml(getLoadSourceActionLabel(mode, hasSourceForMode, copy))}
       </button>
       ${sourceLocked ? `<span class="labx-source-locked-hint">${escapeHtml(lockHint)}</span>` : ""}
     </div>
   `;
 }
 
-function renderSourceProgressPanel(state: LabStoreState, mode: string) {
-  const progress = getSourceProgressModel(state, mode);
+function renderSourceProgressPanel(
+  state: LabStoreState,
+  mode: string,
+  copy: LabI18n = LAB_FALLBACK_I18N
+) {
+  const progress = getSourceProgressModel(state, mode, copy);
   return `
     <div class="labx-source-bar__progress" data-tone="${escapeHtml(progress.tone)}">
       <div class="labx-source-bar__progress-head">
@@ -509,7 +615,8 @@ function renderSourceProgressPanel(state: LabStoreState, mode: string) {
 
 function renderYoutubeCustomField(
   fieldRecord: Record<string, unknown>,
-  youtubeCustomDrafts: Record<string, unknown>
+  youtubeCustomDrafts: Record<string, unknown>,
+  copy: LabI18n = LAB_FALLBACK_I18N
 ) {
   const fieldId = asNonEmptyString(fieldRecord["id"]);
   if (fieldId === null) {
@@ -517,7 +624,7 @@ function renderYoutubeCustomField(
   }
   const fieldType = asNonEmptyString(fieldRecord["type"]) || "text";
   const fieldValue = youtubeCustomDrafts[fieldId];
-  const fieldLabel = getYoutubeFieldLabel(fieldId);
+  const fieldLabel = getYoutubeFieldLabel(fieldId, copy);
   const itemClassName =
     asNonEmptyString(fieldRecord["span"]) === "full"
       ? "labx-source-intake__custom-item labx-source-intake__custom-item--full"
@@ -554,7 +661,7 @@ function renderYoutubeCustomField(
               const rawValue = asNonEmptyString(optionRecord["value"]) || "";
               return `<option value="${escapeHtml(rawValue)}" ${
                 String(fieldValue || "") === rawValue ? "selected" : ""
-              }>${escapeHtml(getYoutubeOptionLabel(fieldId, rawValue))}</option>`;
+              }>${escapeHtml(getYoutubeOptionLabel(fieldId, rawValue, copy))}</option>`;
             })
             .join("")}
         </select>
@@ -570,7 +677,7 @@ function renderYoutubeCustomField(
         type="${fieldType === "number" ? "number" : "text"}"
         data-lab-field="source.youtubeCustom.${escapeHtml(fieldId)}"
         value="${fieldValue === null || fieldValue === undefined ? "" : escapeHtml(String(fieldValue))}"
-        placeholder="${escapeHtml(getYoutubePlaceholder(fieldId))}"
+        placeholder="${escapeHtml(getYoutubePlaceholder(fieldId, copy))}"
       />
     </label>
   `;
@@ -578,16 +685,17 @@ function renderYoutubeCustomField(
 
 function renderYoutubeCustomSection(
   sectionRecord: Record<string, unknown>,
-  youtubeCustomDrafts: Record<string, unknown>
+  youtubeCustomDrafts: Record<string, unknown>,
+  copy: LabI18n = LAB_FALLBACK_I18N
 ) {
   const sectionId = asNonEmptyString(sectionRecord["id"]) || "custom";
-  const sectionMeta = getYoutubeSectionMeta(sectionId);
+  const sectionMeta = getYoutubeSectionMeta(sectionId, copy);
   const fields = Array.isArray(sectionRecord["fields"])
     ? (sectionRecord["fields"] as unknown[])
     : [];
   const fieldMarkup = fields
     .map(function (fieldValue) {
-      return renderYoutubeCustomField(asLabRecord(fieldValue), youtubeCustomDrafts);
+      return renderYoutubeCustomField(asLabRecord(fieldValue), youtubeCustomDrafts, copy);
     })
     .join("");
 
@@ -721,12 +829,13 @@ function renderAudioPreviewMedia(
 function renderPreviewMedia(
   sourceKind: string,
   previewUrl: string | null,
-  settings: LabInteractiveSettings
+  settings: LabInteractiveSettings,
+  copy: LabI18n = LAB_FALLBACK_I18N
 ) {
   if (previewUrl === null) {
     return `
       <div class="labx-empty-state labx-workspace-empty">
-        <strong class="labx-empty-state__title">Select a source to begin</strong>
+        <strong class="labx-empty-state__title">${escapeHtml(copy.t("mediaAnalysis.source.previewEmptyTitle", "Select a source to begin"))}</strong>
       </div>
     `;
   }
@@ -735,7 +844,7 @@ function renderPreviewMedia(
     const { svgFilter, filterCss } = buildPreviewFilterState(settings);
     return `
       ${svgFilter}
-      <img class="labx-preview-media labx-preview-media--workspace-image" data-lab-preserve-media="workspace-preview" src="${escapeHtml(previewUrl)}" alt="Workspace preview" style="${filterCss}" />
+      <img class="labx-preview-media labx-preview-media--workspace-image" data-lab-preserve-media="workspace-preview" src="${escapeHtml(previewUrl)}" alt="${escapeHtml(copy.t("mediaAnalysis.source.workspacePreviewAlt", "Workspace preview"))}" style="${filterCss}" />
     `;
   }
   if (sourceKind === "audio") {
@@ -755,7 +864,11 @@ function formatDurationMs(durationMs: number | null) {
   return formatDurationSeconds(durationMs / 1000);
 }
 
-function renderDualPreviewAudioPane(selectedAudio: LabAsset, linkedAudioAssets: LabAsset[]) {
+function renderDualPreviewAudioPane(
+  selectedAudio: LabAsset,
+  linkedAudioAssets: LabAsset[],
+  copy: LabI18n = LAB_FALLBACK_I18N
+) {
   const metadata = asLabRecord(selectedAudio.metadata);
   const durationMs =
     typeof metadata["durationMs"] === "number"
@@ -765,14 +878,16 @@ function renderDualPreviewAudioPane(selectedAudio: LabAsset, linkedAudioAssets: 
     typeof metadata["startOffsetMs"] === "number" ? Math.round(metadata["startOffsetMs"]) : 0;
   const offsetLabel =
     startOffsetMs === 0
-      ? "Senkron: ✓ Aynı zaman ekseni"
-      : `Senkron: Ofset ${startOffsetMs > 0 ? "+" : ""}${String(startOffsetMs)} ms`;
+      ? copy.t("mediaAnalysis.dualPreview.syncSameAxis", "Senkron: ✓ Aynı zaman ekseni")
+      : copy.t("mediaAnalysis.dualPreview.syncOffset", "Senkron: Ofset {offset} ms", {
+          offset: `${startOffsetMs > 0 ? "+" : ""}${String(startOffsetMs)}`,
+        });
   return `
     <aside class="labx-dual-preview-audio">
       <div class="labx-dual-preview-audio__header">
-        <span class="labx-card__eyebrow">LINKED AUDIO</span>
+        <span class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.dualPreview.linkedAudio", "LINKED AUDIO"))}</span>
         <strong>${escapeHtml(selectedAudio.name)}</strong>
-        <p class="labx-panel-hint">Video master, audio slave. Ayrı kontrol hissi korunur.</p>
+        <p class="labx-panel-hint">${escapeHtml(copy.t("mediaAnalysis.dualPreview.audioHint", "Video master, audio slave. Ayrı kontrol hissi korunur."))}</p>
       </div>
       ${
         linkedAudioAssets.length > 1
@@ -799,7 +914,11 @@ function renderDualPreviewAudioPane(selectedAudio: LabAsset, linkedAudioAssets: 
       }
       <div class="labx-dual-preview-audio__meta">
         <span>${escapeHtml(offsetLabel)}</span>
-        ${durationMs === null ? "" : `<span>Süre ${escapeHtml(formatDurationMs(durationMs))}</span>`}
+        ${
+          durationMs === null
+            ? ""
+            : `<span>${escapeHtml(copy.t("mediaAnalysis.dualPreview.duration", "Süre"))} ${escapeHtml(formatDurationMs(durationMs))}</span>`
+        }
       </div>
       ${renderAudioPreviewMedia(
         asNonEmptyString(selectedAudio.url) || asNonEmptyString(selectedAudio.localPath) || "",
@@ -814,7 +933,11 @@ function renderDualPreviewAudioPane(selectedAudio: LabAsset, linkedAudioAssets: 
   `;
 }
 
-function renderDualPreviewTransportBar(state: LabStoreState, durationMs: number) {
+function renderDualPreviewTransportBar(
+  state: LabStoreState,
+  durationMs: number,
+  copy: LabI18n = LAB_FALLBACK_I18N
+) {
   return `
     <div class="labx-dual-preview-transport">
       <button
@@ -838,7 +961,7 @@ function renderDualPreviewTransportBar(state: LabStoreState, durationMs: number)
         <span class="labx-dual-preview-transport__time" data-lab-role="dual-preview-time">00:00 / ${escapeHtml(formatDurationMs(durationMs))}</span>
       </div>
       <label class="labx-dual-preview-transport__volume">
-        <span>Volume</span>
+        <span>${escapeHtml(copy.t("mediaAnalysis.dualPreview.volume", "Volume"))}</span>
         <input
           type="range"
           min="0"
@@ -854,7 +977,7 @@ function renderDualPreviewTransportBar(state: LabStoreState, durationMs: number)
         type="button"
         data-lab-action="workspace-close-dual-preview"
       >
-        Tek preview
+        ${escapeHtml(copy.t("mediaAnalysis.dualPreview.singlePreview", "Tek preview"))}
       </button>
     </div>
   `;
@@ -869,18 +992,12 @@ function renderGlobalProcessSummary(state: LabStoreState, copy: LabI18n) {
   const activeTaskLabel =
     summary.activeTaskLabel ??
     (summary.activeTaskKey
-      ? copy.t(
-          `mediaAnalysis.processSummary.tasks.${summary.activeTaskKey}`,
-          summary.activeTaskKey
-        )
+      ? copy.t(`mediaAnalysis.processSummary.tasks.${summary.activeTaskKey}`, summary.activeTaskKey)
       : copy.t("mediaAnalysis.processSummary.noActiveTask", "No active task"));
   const progressLabel =
     summary.progressLabel ??
     (summary.progressKey
-      ? copy.t(
-          `mediaAnalysis.processSummary.progress.${summary.progressKey}`,
-          summary.progressKey
-        )
+      ? copy.t(`mediaAnalysis.processSummary.progress.${summary.progressKey}`, summary.progressKey)
       : copy.t("mediaAnalysis.processSummary.noProgress", "No progress in motion"));
   return `
     <section
@@ -911,7 +1028,8 @@ function renderDualPreviewShell(
   overlayMarkup: string,
   roiFocusActive: boolean,
   selectedAudio: LabAsset,
-  linkedAudioAssets: LabAsset[]
+  linkedAudioAssets: LabAsset[],
+  copy: LabI18n = LAB_FALLBACK_I18N
 ) {
   return `
     <div class="labx-workspace-preview__dual-shell">
@@ -939,13 +1057,13 @@ function renderDualPreviewShell(
         </div>
       </div>
       <div class="labx-workspace-preview__audio-pane">
-        ${renderDualPreviewAudioPane(selectedAudio, linkedAudioAssets)}
+        ${renderDualPreviewAudioPane(selectedAudio, linkedAudioAssets, copy)}
       </div>
     </div>
   `;
 }
 
-function renderSourceBar(state: LabStoreState) {
+function renderSourceBar(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
   const source = getProjectSource(state);
   const sourceKind = getSourceKind(state);
   const sourceMode = getEffectiveSourceMode(state, sourceKind);
@@ -958,7 +1076,7 @@ function renderSourceBar(state: LabStoreState) {
   const storedFileName =
     asNonEmptyString(source["storedFileName"]) ||
     asNonEmptyString(source["routeLabel"]) ||
-    "No source";
+    copy.t("mediaAnalysis.source.noSource", "No source");
 
   const statusTone =
     probeStatus === "completed" && hasSourceForMode
@@ -979,19 +1097,19 @@ function renderSourceBar(state: LabStoreState) {
       <div class="labx-source-bar__info">
         <strong>${escapeHtml(storedFileName)}</strong>
         <div class="labx-source-bar__meta">
-          ${renderStatusChip(getSourceKindLabel(sourceKind), statusTone)}
-          ${renderStatusChip(getSourceModeLabel(sourceMode), "neutral")}
+          ${renderStatusChip(getSourceKindLabel(sourceKind, copy), statusTone)}
+          ${renderStatusChip(getSourceModeLabel(sourceMode, copy), "neutral")}
           ${resolution ? `<span>${escapeHtml(resolution)}</span>` : ""}
           <span>${escapeHtml(formatDurationSeconds(metadata["durationSeconds"]))}</span>
           <span>${escapeHtml(formatBytes(metadata["sizeBytes"]))}</span>
         </div>
       </div>
-      ${renderSourceProgressPanel(state, sourceMode)}
+      ${renderSourceProgressPanel(state, sourceMode, copy)}
     </div>
   `;
 }
 
-function renderSourceIntake(state: LabStoreState) {
+function renderSourceIntake(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
   const source = getProjectSource(state);
   const sourceKind = getSourceKind(state);
   const sourceMode = getEffectiveSourceMode(state, sourceKind);
@@ -1009,33 +1127,33 @@ function renderSourceIntake(state: LabStoreState) {
   const sourceSummaryLabel =
     asNonEmptyString(source["storedFileName"]) ||
     asNonEmptyString(source["routeLabel"]) ||
-    "current source";
+    copy.t("mediaAnalysis.source.currentSource", "current source");
   const youtubeCustomDrafts = {
     ...getYoutubePresetDefaults(state, youtubePreset),
     ...asLabRecord(sourceDrafts.youtubeCustom),
   };
   const customFields = getYoutubeFormSections(state)
     .map(function (section) {
-      return renderYoutubeCustomSection(asLabRecord(section), youtubeCustomDrafts);
+      return renderYoutubeCustomSection(asLabRecord(section), youtubeCustomDrafts, copy);
     })
     .join("");
   const secondaryRowContent =
     sourceMode === "url"
       ? `
         <section class="labx-source-intake__frame labx-source-intake__frame--mode">
-          <div class="labx-source-intake__frame-head">
-            <div>
-              <strong>Direct URL Source</strong>
-              <p class="labx-panel-hint">Paste a remote URL and optionally rename.</p>
+            <div class="labx-source-intake__frame-head">
+              <div>
+              <strong>${escapeHtml(copy.t("mediaAnalysis.source.directUrl.title", "Direct URL Source"))}</strong>
+              <p class="labx-panel-hint">${escapeHtml(copy.t("mediaAnalysis.source.directUrl.hint", "Paste a remote URL and optionally rename."))}</p>
             </div>
           </div>
           <div class="labx-source-intake__mode-grid">
             <label class="labx-field">
-              <span>Source URL</span>
+              <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.urlInput", "Source URL"))}</span>
               <input class="labx-input" data-lab-field="source.urlInput" value="${escapeHtml(sourceDrafts.urlInput)}" placeholder="https://..." />
             </label>
             <label class="labx-field">
-              <span>Stored File Name</span>
+              <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.fileNameHint", "Stored File Name"))}</span>
               <input class="labx-input" data-lab-field="source.fileNameHint" value="${escapeHtml(sourceDrafts.fileNameHint)}" placeholder="downloaded-source.mp4" />
             </label>
           </div>
@@ -1046,34 +1164,34 @@ function renderSourceIntake(state: LabStoreState) {
           <section class="labx-source-intake__frame labx-source-intake__frame--mode">
             <div class="labx-source-intake__frame-head">
               <div>
-                <strong>YouTube Capture</strong>
-                <p class="labx-panel-hint">yt-dlp controls in one place.</p>
+                <strong>${escapeHtml(copy.t("mediaAnalysis.source.youtubeCapture.title", "YouTube Capture"))}</strong>
+                <p class="labx-panel-hint">${escapeHtml(copy.t("mediaAnalysis.source.youtubeCapture.hint", "yt-dlp controls in one place."))}</p>
               </div>
             </div>
             <div class="labx-source-intake__youtube-stack">
               <div class="labx-source-intake__youtube-main">
                 <label class="labx-field labx-source-intake__youtube-main-item labx-source-intake__youtube-main-item--wide">
-                  <span>YouTube URL</span>
+                  <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.youtubeUrl", "YouTube URL"))}</span>
                   <input class="labx-input" data-lab-field="source.youtubeUrl" value="${escapeHtml(sourceDrafts.youtubeUrl)}" placeholder="https://youtube.com/watch?v=..." />
                 </label>
                 <label class="labx-field labx-source-intake__youtube-main-item">
-                  <span>Stored File Name</span>
+                  <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.fileNameHint", "Stored File Name"))}</span>
                   <input class="labx-input" data-lab-field="source.fileNameHint" value="${escapeHtml(sourceDrafts.fileNameHint)}" placeholder="youtube-source.mp4" />
                 </label>
                 <label class="labx-field labx-source-intake__youtube-main-item">
-                  <span>Capture Mode</span>
+                  <span>${escapeHtml(copy.t("mediaAnalysis.source.youtubeForm.fields.captureMode", "Capture Mode"))}</span>
                   <select class="labx-select" data-lab-field="source.youtubeCaptureMode">
-                    <option value="video+audio" ${sourceDrafts.youtubeCaptureMode === "video+audio" ? "selected" : ""}>Video + Audio</option>
-                    <option value="audio-only" ${sourceDrafts.youtubeCaptureMode === "audio-only" ? "selected" : ""}>Audio Only</option>
-                    <option value="video-only" ${sourceDrafts.youtubeCaptureMode === "video-only" ? "selected" : ""}>Video Only</option>
+                    <option value="video+audio" ${sourceDrafts.youtubeCaptureMode === "video+audio" ? "selected" : ""}>${escapeHtml(getYoutubeOptionLabel("captureMode", "video+audio", copy))}</option>
+                    <option value="audio-only" ${sourceDrafts.youtubeCaptureMode === "audio-only" ? "selected" : ""}>${escapeHtml(getYoutubeOptionLabel("captureMode", "audio-only", copy))}</option>
+                    <option value="video-only" ${sourceDrafts.youtubeCaptureMode === "video-only" ? "selected" : ""}>${escapeHtml(getYoutubeOptionLabel("captureMode", "video-only", copy))}</option>
                   </select>
                 </label>
               </div>
               <section class="labx-source-intake__frame labx-source-intake__frame--sub">
                 <div class="labx-source-intake__frame-head">
                   <div>
-                    <strong>YouTube Preset</strong>
-                    <p class="labx-panel-hint">Pick a preset or Custom.</p>
+                    <strong>${escapeHtml(copy.t("mediaAnalysis.source.youtubePresetLabel", "YouTube Preset"))}</strong>
+                    <p class="labx-panel-hint">${escapeHtml(copy.t("mediaAnalysis.source.youtubePresetHint", "Pick a preset or Custom."))}</p>
                   </div>
                 </div>
                 <div class="labx-chip-row">
@@ -1087,7 +1205,7 @@ function renderSourceIntake(state: LabStoreState) {
                           data-lab-value="${escapeHtml(presetId)}"
                           data-selected="${presetId === youtubePreset ? "true" : "false"}"
                         >
-                          ${escapeHtml(getYoutubePresetLabel(presetId))}
+                          ${escapeHtml(getYoutubePresetLabel(presetId, copy))}
                         </button>
                       `;
                     })
@@ -1100,8 +1218,8 @@ function renderSourceIntake(state: LabStoreState) {
                     <section class="labx-source-intake__frame labx-source-intake__frame--sub">
                       <div class="labx-source-intake__frame-head">
                         <div>
-                          <strong>Custom yt-dlp Settings</strong>
-                          <p class="labx-panel-hint">Fine-tune yt-dlp options.</p>
+                          <strong>${escapeHtml(copy.t("mediaAnalysis.source.youtubeCustomTitle", "Custom yt-dlp Settings"))}</strong>
+                          <p class="labx-panel-hint">${escapeHtml(copy.t("mediaAnalysis.source.youtubeCustomHint", "Fine-tune yt-dlp options."))}</p>
                         </div>
                       </div>
                       <div class="labx-source-intake__custom-shell">${customFields}</div>
@@ -1112,7 +1230,7 @@ function renderSourceIntake(state: LabStoreState) {
               ${
                 ytDlpInstalled
                   ? ""
-                  : `<p class="labx-panel-hint">yt-dlp is required for YouTube capture. Install it from Tool Manager to enable this import method.</p>`
+                  : `<p class="labx-panel-hint">${escapeHtml(copy.t("mediaAnalysis.source.youtubeDisabled", "yt-dlp is required for YouTube capture. Install it from Tool Manager to enable this import method."))}</p>`
               }
             </div>
           </section>
@@ -1121,12 +1239,12 @@ function renderSourceIntake(state: LabStoreState) {
           <section class="labx-source-intake__frame labx-source-intake__frame--mode">
             <div class="labx-source-intake__frame-head">
               <div>
-                <strong>Local Source Copy</strong>
+                <strong>${escapeHtml(copy.t("mediaAnalysis.source.localCopy.title", "Local Source Copy"))}</strong>
               </div>
             </div>
             <div class="labx-source-intake__mode-grid">
               <label class="labx-field">
-                <span>Stored File Name</span>
+                <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.fileNameHint", "Stored File Name"))}</span>
                 <input class="labx-input" data-lab-field="source.fileNameHint" value="${escapeHtml(sourceDrafts.fileNameHint)}" placeholder="project-source.mp4" />
               </label>
             </div>
@@ -1136,25 +1254,25 @@ function renderSourceIntake(state: LabStoreState) {
   return `
     <section
       class="labx-workspace-strip labx-source-intake"
-      aria-label="Source intake"
+      aria-label="${escapeHtml(copy.t("mediaAnalysis.source.intakeTitle", "Source intake"))}"
       data-collapsed="${collapsed ? "true" : "false"}"
     >
       <div class="labx-source-intake__header">
         <div class="labx-source-intake__header-copy">
-          <span class="labx-card__eyebrow">Source Intake</span>
-          <strong class="labx-source-intake__title">Source setup controls</strong>
+          <span class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.source.intakeTitle", "Source Intake"))}</span>
+          <strong class="labx-source-intake__title">${escapeHtml(copy.t("mediaAnalysis.source.intakeFrame.title", "Source setup controls"))}</strong>
           ${
             sourceReadyForMode
-              ? `<p class="labx-panel-hint">Active: ${escapeHtml(sourceSummaryLabel)}</p>`
+              ? `<p class="labx-panel-hint">${escapeHtml(copy.t("mediaAnalysis.source.intakeFrame.readyLabel", "Active"))}: ${escapeHtml(sourceSummaryLabel)}</p>`
               : ""
           }
         </div>
         <div class="labx-source-intake__header-meta">
           <div class="labx-source-intake__tags">
-            ${renderStatusChip(getSourceKindLabel(sourceKind), "neutral")}
-            ${renderStatusChip(getSourceModeLabel(sourceMode), sourceReadyForMode ? "success" : "neutral")}
+            ${renderStatusChip(getSourceKindLabel(sourceKind, copy), "neutral")}
+            ${renderStatusChip(getSourceModeLabel(sourceMode, copy), sourceReadyForMode ? "success" : "neutral")}
             <span class="labx-source-intake__status" data-tone="${sourceReadyForMode ? "success" : "idle"}">
-              ${escapeHtml(sourceReadyForMode ? "Source ready" : "Awaiting source")}
+              ${escapeHtml(sourceReadyForMode ? copy.t("mediaAnalysis.source.intakeFrame.statusReady", "Source ready") : copy.t("mediaAnalysis.source.intakeFrame.statusPending", "Awaiting source"))}
             </span>
           </div>
           <button
@@ -1162,7 +1280,7 @@ function renderSourceIntake(state: LabStoreState) {
             type="button"
             data-lab-action="workspace-toggle-source-intake"
           >
-            ${escapeHtml(collapsed ? "Show source setup" : "Hide source setup")}
+            ${escapeHtml(collapsed ? copy.t("mediaAnalysis.source.intakeFrame.showAction", "Show source setup") : copy.t("mediaAnalysis.source.intakeFrame.hideAction", "Hide source setup"))}
           </button>
         </div>
       </div>
@@ -1174,35 +1292,35 @@ function renderSourceIntake(state: LabStoreState) {
               <section class="labx-source-intake__frame">
                 <div class="labx-source-intake__frame-head">
                   <div>
-                    <strong>Import Route</strong>
+                    <strong>${escapeHtml(copy.t("mediaAnalysis.source.importRoute", "Import Route"))}</strong>
                   </div>
                 </div>
                 <div class="labx-source-intake__top">
                   <label class="labx-field">
-                    <span>Source Type</span>
+                    <span>${escapeHtml(copy.t("mediaAnalysis.source.formatLabel", "Source Type"))}</span>
                     <select class="labx-select" data-lab-field="source.kind">
                       ${kindOptions
                         .map(function (entry) {
                           return `<option value="${escapeHtml(entry)}" ${
                             entry === sourceKind ? "selected" : ""
-                          }>${escapeHtml(getSourceKindLabel(entry))}</option>`;
+                          }>${escapeHtml(getSourceKindLabel(entry, copy))}</option>`;
                         })
                         .join("")}
                     </select>
                   </label>
                   <label class="labx-field">
-                    <span>Import Method</span>
+                    <span>${escapeHtml(copy.t("mediaAnalysis.source.modeLabel", "Import Method"))}</span>
                     <select class="labx-select" data-lab-field="source.mode">
                       ${modeOptions
                         .map(function (entry) {
                           return `<option value="${escapeHtml(entry)}" ${
                             entry === sourceMode ? "selected" : ""
-                          }>${escapeHtml(getSourceModeLabel(entry))}</option>`;
+                          }>${escapeHtml(getSourceModeLabel(entry, copy))}</option>`;
                         })
                         .join("")}
                     </select>
                   </label>
-                  ${renderSourceActionPanel(state, sourceMode)}
+                  ${renderSourceActionPanel(state, sourceMode, copy)}
                 </div>
               </section>
               ${secondaryRowContent}
@@ -1213,7 +1331,7 @@ function renderSourceIntake(state: LabStoreState) {
   `;
 }
 
-function renderLinkedAudioBar(state: LabStoreState) {
+function renderLinkedAudioBar(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
   const currentSourceAsset = getCurrentSourceAsset(state);
   if (currentSourceAsset === null) {
     return "";
@@ -1229,8 +1347,8 @@ function renderLinkedAudioBar(state: LabStoreState) {
 
   const label =
     linkedAudioAssets.length === 1
-      ? "Bu kaynağın ses çıktısı mevcut:"
-      : "Bu kaynağın ses çıktıları mevcut:";
+      ? copy.t("mediaAnalysis.linkedAudio.single", "Bu kaynağın ses çıktısı mevcut:")
+      : copy.t("mediaAnalysis.linkedAudio.multiple", "Bu kaynağın ses çıktıları mevcut:");
 
   return `
     <div class="labx-linked-audio-bar">
@@ -1245,7 +1363,11 @@ function renderLinkedAudioBar(state: LabStoreState) {
                 data-lab-action="${dualPreviewActive ? "workspace-close-dual-preview" : "workspace-open-dual-preview"}"
                 data-lab-value="${escapeHtml(selectedAudio?.id || linkedAudioAssets[0]?.id || "")}"
               >
-                ${escapeHtml(dualPreviewActive ? "Tek preview'a dön" : "🎧 Ses ile birlikte aç")}
+                ${escapeHtml(
+                  dualPreviewActive
+                    ? copy.t("mediaAnalysis.linkedAudio.closeDualPreview", "Tek preview'a dön")
+                    : copy.t("mediaAnalysis.linkedAudio.openDualPreview", "🎧 Ses ile birlikte aç")
+                )}
               </button>
             `
             : ""
@@ -1261,7 +1383,7 @@ function renderLinkedAudioBar(state: LabStoreState) {
                   data-lab-action="asset-preview"
                   data-lab-value="${escapeHtml(asset.id)}"
                 >
-                  Aç
+                  ${escapeHtml(copy.t("mediaAnalysis.linkedAudio.openAsset", "Aç"))}
                 </button>
               </span>
             `;
@@ -1314,13 +1436,17 @@ export function renderWorkspaceSurface(
       : 0;
   const focusPanels = [
     hasAudio && sourceReady
-      ? renderWorkspaceAudioFocus(audioFocus, {
-          previewTarget: sourceKind === "video" ? "video" : "audio",
-          temporalAudioFocus: effectivePreviewAudioFocus,
-          temporalControlsEnabled: dualPreviewActive !== true,
-        })
+      ? renderWorkspaceAudioFocus(
+          audioFocus,
+          {
+            previewTarget: sourceKind === "video" ? "video" : "audio",
+            temporalAudioFocus: effectivePreviewAudioFocus,
+            temporalControlsEnabled: dualPreviewActive !== true,
+          },
+          copy
+        )
       : "",
-    hasVisualControls ? renderWorkspaceInteractiveControls(settings) : "",
+    hasVisualControls ? renderWorkspaceInteractiveControls(settings, copy) : "",
   ].filter(Boolean);
   const focusSection =
     focusPanels.length > 0
@@ -1332,17 +1458,20 @@ export function renderWorkspaceSurface(
       : "";
   const roiOverlayMarkup =
     sourceReady && (sourceKind === "video" || sourceKind === "image")
-      ? renderWorkspaceROIOverlay({
-          inspectionMode,
-          legacyRegions: roiRegions,
-          roiFocusActive,
-          selectionRoi: activeSelection?.roi ?? null,
-          selectionRoiEnabled:
-            sourceKind === "image" ||
-            (activeSelection !== null && activeSelection.endMs > activeSelection.startMs),
-          showInlineInspectionControls: sourceKind === "image",
-          sourceKind,
-        })
+      ? renderWorkspaceROIOverlay(
+          {
+            inspectionMode,
+            legacyRegions: roiRegions,
+            roiFocusActive,
+            selectionRoi: activeSelection?.roi ?? null,
+            selectionRoiEnabled:
+              sourceKind === "image" ||
+              (activeSelection !== null && activeSelection.endMs > activeSelection.startMs),
+            showInlineInspectionControls: sourceKind === "image",
+            sourceKind,
+          },
+          copy
+        )
       : "";
   const previewMediaMarkup =
     sourceReady &&
@@ -1356,9 +1485,10 @@ export function renderWorkspaceSurface(
           roiOverlayMarkup,
           roiFocusActive,
           selectedDualPreviewAudioAsset,
-          dualPreviewLinkedAudioAssets
+          dualPreviewLinkedAudioAssets,
+          copy
         )
-      : renderPreviewMedia(sourceKind, sourceReady ? previewUrl : null, settings);
+      : renderPreviewMedia(sourceKind, sourceReady ? previewUrl : null, settings, copy);
   const previewMarkup =
     sourceReady && (sourceKind === "video" || sourceKind === "image") && dualPreviewActive !== true
       ? `
@@ -1381,41 +1511,47 @@ export function renderWorkspaceSurface(
       : previewMediaMarkup;
   const dualPreviewTransport =
     dualPreviewActive && selectedDualPreviewAudioAsset !== null && durationMs > 0
-      ? renderDualPreviewTransportBar(state, durationMs)
+      ? renderDualPreviewTransportBar(state, durationMs, copy)
       : "";
 
   const main = `
-    ${renderSourceBar(state)}
+    ${renderSourceBar(state, copy)}
     ${renderGlobalProcessSummary(state, copy)}
-    ${renderLabTopbarActions(state)}
-    ${renderSourceIntake(state)}
+    ${renderLabTopbarActions(state, copy)}
+    ${renderSourceIntake(state, copy)}
     <section class="labx-workspace-main" id="lab-workspace-main">
-      ${renderLinkedAudioBar(state)}
+      ${renderLinkedAudioBar(state, copy)}
       <div class="labx-workspace-preview" id="lab-workspace-preview" data-preview-mode="${dualPreviewActive ? "dual" : "single"}" data-dual-preview-available="${dualPreviewAvailable ? "true" : "false"}">
         ${previewMarkup}
       </div>
       ${dualPreviewTransport}
       ${durationMs > 0 ? renderLabWaveformTimeline(timelineModel) : ""}
-      ${renderWorkspaceHypothesis(hypothesis)}
+      ${renderWorkspaceHypothesis(hypothesis, copy)}
       ${focusSection}
-      ${renderWorkspaceBookmarks(bookmarks)}
+      ${renderWorkspaceBookmarks(bookmarks, copy)}
     </section>
   `;
 
   const freshness = getReportFreshness(state);
   const freshnessLabel =
     freshness?.state === "current"
-      ? "\u2713 Güncel"
+      ? copy.t("mediaAnalysis.reportFreshness.current", "\u2713 Güncel")
       : freshness?.state === "previous-run"
         ? runActive
-          ? "\u2298 Önceki çalışma \u00b7 Analiz devam ediyor"
-          : "\u2298 Önceki çalışma"
+          ? copy.t(
+              "mediaAnalysis.reportFreshness.previousRunActive",
+              "\u2298 Önceki çalışma \u00b7 Analiz devam ediyor"
+            )
+          : copy.t("mediaAnalysis.reportFreshness.previousRun", "\u2298 Önceki çalışma")
         : freshness?.state === "stale"
-          ? "\u2298 Eski çalışma \u00b7 Son analiz başarısız"
+          ? copy.t(
+              "mediaAnalysis.reportFreshness.stale",
+              "\u2298 Eski çalışma \u00b7 Son analiz başarısız"
+            )
           : "";
   const freshnessMeta =
     freshness && freshness.workspaceDirty
-      ? `${freshnessLabel} \u00b7 Workspace farklı`
+      ? `${freshnessLabel} \u00b7 ${copy.t("mediaAnalysis.reportFreshness.workspaceDirty", "Workspace farklı")}`
       : freshnessLabel;
 
   const reportButton = `
@@ -1426,7 +1562,7 @@ export function renderWorkspaceSurface(
         data-lab-action="open-report-overlay"
         ${hasReport ? "" : "disabled"}
       >
-        <strong>Raporu Görüntüle</strong>
+        <strong>${escapeHtml(copy.t("mediaAnalysis.analysisActions.viewReport", "Raporu Görüntüle"))}</strong>
       </button>
       ${
         hasReport && freshnessMeta
@@ -1436,7 +1572,7 @@ export function renderWorkspaceSurface(
     </div>
   `;
 
-  const intentPreview = sourceReady ? renderIntentPreview(getSelectedIntents(state)) : "";
+  const intentPreview = sourceReady ? renderIntentPreview(getSelectedIntents(state), copy) : "";
 
   const analysisButton = sourceReady
     ? `
@@ -1446,7 +1582,11 @@ export function renderWorkspaceSurface(
           type="button"
           data-lab-action="run-deep-analysis"
         >
-          <strong>${runActive ? "Analizi İptal Et" : "Derin Analiz Başlat"}</strong>
+          <strong>${escapeHtml(
+            runActive
+              ? copy.t("mediaAnalysis.analysisActions.cancel", "Analizi İptal Et")
+              : copy.t("mediaAnalysis.analysisActions.start", "Derin Analiz Başlat")
+          )}</strong>
         </button>
         ${intentPreview}
       </div>
@@ -1457,7 +1597,7 @@ export function renderWorkspaceSurface(
       ? `
         <div class="labx-analysis-trigger">
           <button class="labx-secondary-cta" type="button" data-lab-action="workspace-image-analysis">
-            Görsel Analiz Et
+            ${escapeHtml(copy.t("mediaAnalysis.analysisActions.imageAnalysis", "Görsel Analiz Et"))}
           </button>
         </div>
       `

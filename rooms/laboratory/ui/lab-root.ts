@@ -262,7 +262,10 @@ function updateRenderedElement(
   }
 }
 
-function createBootSurface(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N): LabStageSurface {
+function createBootSurface(
+  state: LabStoreState,
+  copy: LabI18n = LAB_FALLBACK_I18N
+): LabStageSurface {
   return {
     main: `
       <section class="labx-boot">
@@ -541,7 +544,7 @@ export function startLaboratoryLabRoot() {
       shell.dataset["ready"] = state.bootReady ? "true" : "false";
       shell.dataset["workspaceMode"] = getWorkspaceMode(state);
     }
-    updateRenderedElement(documentRef, leftRail as HTMLElement, renderLabLeftRail(state));
+    updateRenderedElement(documentRef, leftRail as HTMLElement, renderLabLeftRail(state, copy));
     updateRenderedElement(
       documentRef,
       centerPanel as HTMLElement,
@@ -557,18 +560,18 @@ export function startLaboratoryLabRoot() {
     updateRenderedElement(
       documentRef,
       overlayRoot as HTMLElement,
-      renderToolManagementOverlay(state)
+      renderToolManagementOverlay(state, copy)
     );
     updateRenderedElement(
       documentRef,
       assetPreviewOverlayRoot as HTMLElement,
-      renderLabAssetPreviewOverlay(state)
+      renderLabAssetPreviewOverlay(state, copy)
     );
     if (reportOverlayRoot) {
       updateRenderedElement(
         documentRef,
         reportOverlayRoot as HTMLElement,
-        renderReportOverlay(state)
+        renderReportOverlay(state, copy)
       );
     }
   }

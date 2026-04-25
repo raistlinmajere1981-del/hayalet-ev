@@ -1,4 +1,5 @@
 import { escapeHtml } from "../models/lab-types.js";
+import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 const INSPECTION_MODE_OPTIONS = ["none", "visual", "audio", "motion"];
 function formatInspectionMode(mode) {
   return {
@@ -7,6 +8,9 @@ function formatInspectionMode(mode) {
     audio: "Audio",
     motion: "Motion"
   }[mode];
+}
+function formatInspectionModeCopy(mode, copy) {
+  return copy.t(`mediaAnalysis.roi.inspectionModes.${mode}`, formatInspectionMode(mode));
 }
 function supportsInspectionMode(mode, sourceKind) {
   switch (mode) {
@@ -36,7 +40,7 @@ function renderSelectionFocusMask(selectionRoi) {
     <div class="labx-selection-roi-mask labx-selection-roi-mask--bottom" style="left: 0%; top: ${String(top + height)}%; width: 100%; height: ${String(bottom)}%"></div>
   `;
 }
-function renderSelectionRoi(selectionRoi, roiFocusActive) {
+function renderSelectionRoi(selectionRoi, roiFocusActive, copy) {
   return `
     ${renderSelectionFocusMask(selectionRoi)}
     <div
@@ -45,11 +49,13 @@ function renderSelectionRoi(selectionRoi, roiFocusActive) {
       data-lab-selection-roi="true"
       data-lab-selection-roi-ignore="true"
     >
-      <div class="labx-selection-roi__label">${roiFocusActive ? "Focused ROI" : "Inspection ROI"}</div>
+      <div class="labx-selection-roi__label">${escapeHtml(
+    roiFocusActive ? copy.t("mediaAnalysis.roi.focusedLabel", "Focused ROI") : copy.t("mediaAnalysis.roi.inspectionLabel", "Inspection ROI")
+  )}</div>
     </div>
   `;
 }
-function renderLegacyRegions(regions) {
+function renderLegacyRegions(regions, copy) {
   return regions.map(function(region) {
     return `
       <div
@@ -66,33 +72,33 @@ function renderLegacyRegions(regions) {
             type="button"
             data-lab-action="workspace-roi-toggle"
             data-lab-value="${escapeHtml(region.id)}"
-            title="${region.active ? "Deactivate" : "Activate"}"
+            title="${escapeHtml(region.active ? copy.t("mediaAnalysis.roi.actions.deactivate", "Deactivate") : copy.t("mediaAnalysis.roi.actions.activate", "Activate"))}"
           >${region.active ? "●" : "○"}</button>
           <button
             class="labx-roi-btn labx-roi-btn--export"
             type="button"
             data-lab-action="workspace-roi-export"
             data-lab-value="${escapeHtml(region.id)}"
-            title="Export as image"
+            title="${escapeHtml(copy.t("mediaAnalysis.roi.actions.export", "Export as image"))}"
           >⤓</button>
           <button
             class="labx-roi-btn"
             type="button"
             data-lab-action="workspace-roi-remove"
             data-lab-value="${escapeHtml(region.id)}"
-            title="Remove"
+            title="${escapeHtml(copy.t("mediaAnalysis.roi.actions.remove", "Remove"))}"
           >✕</button>
         </div>
       </div>
     `;
   }).join("");
 }
-function renderInlineInspectionControls(inspectionMode, selectionRoi, sourceKind, roiFocusActive) {
+function renderInlineInspectionControls(inspectionMode, selectionRoi, sourceKind, roiFocusActive, copy) {
   return `
     <div class="labx-roi-selection-toolbar" data-lab-selection-roi-ignore="true">
       <div class="labx-roi-selection-toolbar__status">
-        <span>${selectionRoi ? "Region active" : "No region yet"}</span>
-        <span>Inspection: ${escapeHtml(formatInspectionMode(inspectionMode))}</span>
+        <span>${escapeHtml(selectionRoi ? copy.t("mediaAnalysis.roi.status.regionActive", "Region active") : copy.t("mediaAnalysis.roi.status.noRegion", "No region yet"))}</span>
+        <span>${escapeHtml(copy.t("mediaAnalysis.roi.inspectionPrefix", "Inspection"))}: ${escapeHtml(formatInspectionModeCopy(inspectionMode, copy))}</span>
       </div>
       <div class="labx-roi-selection-toolbar__modes">
         ${INSPECTION_MODE_OPTIONS.map(function(mode) {
@@ -104,7 +110,7 @@ function renderInlineInspectionControls(inspectionMode, selectionRoi, sourceKind
               type="button"
               ${supported ? `data-lab-selection-inspection-mode="${mode}"` : "disabled"}
               aria-pressed="${String(active)}"
-            >${escapeHtml(formatInspectionMode(mode))}</button>
+            >${escapeHtml(formatInspectionModeCopy(mode, copy))}</button>
           `;
   }).join("")}
         ${selectionRoi ? `
@@ -112,38 +118,50 @@ function renderInlineInspectionControls(inspectionMode, selectionRoi, sourceKind
                 class="labx-roi-selection-toolbar__action"
                 type="button"
                 ${roiFocusActive ? `data-lab-selection-roi-focus-reset="true"` : `data-lab-selection-roi-focus-toggle="true"`}
-              >${roiFocusActive ? "Reset focus" : "Focus region"}</button>
+              >${escapeHtml(roiFocusActive ? copy.t("mediaAnalysis.roi.actions.resetFocus", "Reset focus") : copy.t("mediaAnalysis.roi.actions.focusRegion", "Focus region"))}</button>
               <button
                 class="labx-roi-selection-toolbar__action"
                 type="button"
                 data-lab-selection-roi-capture="true"
-              >Capture region</button>
+              >${escapeHtml(copy.t("mediaAnalysis.roi.actions.captureRegion", "Capture region"))}</button>
               <button
                 class="labx-roi-selection-toolbar__clear"
                 type="button"
                 data-lab-selection-roi-clear="true"
-              >Clear region</button>
+              >${escapeHtml(copy.t("mediaAnalysis.roi.actions.clearRegion", "Clear region"))}</button>
             ` : ""}
       </div>
     </div>
   `;
 }
-export function renderWorkspaceROIOverlay(options) {
+export function renderWorkspaceROIOverlay(options, copy = LAB_FALLBACK_I18N) {
   const selectionRoi = options.selectionRoi ?? null;
   const roiFocusActive = options.roiFocusActive === true;
-  const regionElements = renderLegacyRegions(options.legacyRegions);
+  const regionElements = renderLegacyRegions(options.legacyRegions, copy);
   const summaryMarkup = options.legacyRegions.length > 0 ? `
         <div class="labx-roi-summary">
-          <span>${String(options.legacyRegions.length)} region${options.legacyRegions.length !== 1 ? "s" : ""}</span>
+          <span>${escapeHtml(copy.t("mediaAnalysis.roi.summary.regions", "{count} region(s)", { count: options.legacyRegions.length }))}</span>
           <span>${String(
     options.legacyRegions.filter(function(r) {
       return r.active;
     }).length
-  )} active</span>
+  )} ${escapeHtml(copy.t("mediaAnalysis.roi.summary.active", "active"))}</span>
         </div>
       ` : `
         <div class="labx-roi-hint">
-          ${options.selectionRoiEnabled ? selectionRoi ? "Drag to redefine the inspection region or double click to focus" : "Drag to define an inspection region" : "Select a time range, then drag to define region of interest"}
+          ${options.selectionRoiEnabled ? selectionRoi ? escapeHtml(
+    copy.t(
+      "mediaAnalysis.roi.hints.redefine",
+      "Drag to redefine the inspection region or double click to focus"
+    )
+  ) : escapeHtml(
+    copy.t("mediaAnalysis.roi.hints.define", "Drag to define an inspection region")
+  ) : escapeHtml(
+    copy.t(
+      "mediaAnalysis.roi.hints.selectRange",
+      "Select a time range, then drag to define region of interest"
+    )
+  )}
         </div>
       `;
   return `
@@ -154,14 +172,15 @@ export function renderWorkspaceROIOverlay(options) {
       data-lab-roi-focus-active="${roiFocusActive ? "true" : "false"}"
       data-lab-source-kind="${escapeHtml(options.sourceKind)}"
     >
-      ${selectionRoi ? renderSelectionRoi(selectionRoi, roiFocusActive) : ""}
+      ${selectionRoi ? renderSelectionRoi(selectionRoi, roiFocusActive, copy) : ""}
       ${regionElements}
       ${summaryMarkup}
       ${options.showInlineInspectionControls === true ? renderInlineInspectionControls(
     options.inspectionMode,
     selectionRoi,
     options.sourceKind,
-    roiFocusActive
+    roiFocusActive,
+    copy
   ) : ""}
     </div>
   `;

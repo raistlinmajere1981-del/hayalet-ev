@@ -11,6 +11,7 @@ import {
   getLabAssetPathLeaf,
   getLabAssetSyncLabel
 } from "./lab-asset-display.js";
+import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 const ASSET_GROUPS = [
   { type: "source", label: "Source" },
   { type: "clip", label: "Clips" },
@@ -41,48 +42,51 @@ function formatAssetTime(value) {
     minute: "2-digit"
   });
 }
+function getAssetGroupLabel(group, copy) {
+  return copy.t(`mediaAnalysis.assets.groups.${group.type}`, group.label);
+}
 function getAssetIcon(asset) {
   return ASSET_TYPE_ICONS[asset.type];
 }
 function canUseAsSource(asset) {
   return asNonEmptyString(asset.localPath) !== null && (asset.type === "source" || asset.type === "clip" || asset.type === "frame" || asset.type === "audio" || asset.type === "image");
 }
-function renderAssetMenu(asset) {
+function renderAssetMenu(asset, copy) {
   const escapedId = escapeHtml(asset.id);
   const useAsSourceButton = canUseAsSource(asset) ? `
       <button type="button" data-lab-action="asset-use-as-source" data-lab-value="${escapedId}">
-        Use as source
+        ${escapeHtml(copy.t("mediaAnalysis.assets.actions.useAsSource", "Use as source"))}
       </button>
     ` : "";
   const downloadButton = getLabAssetPath(asset) !== null ? `
         <button type="button" data-lab-action="asset-download" data-lab-value="${escapedId}">
-          Download
+          ${escapeHtml(copy.t("mediaAnalysis.assets.actions.download", "Download"))}
         </button>
       ` : "";
   return `
     <details class="labx-project-assets__menu">
-      <summary aria-label="Asset actions">...</summary>
+      <summary aria-label="${escapeHtml(copy.t("mediaAnalysis.assets.actions.ariaLabel", "Asset actions"))}">...</summary>
       <div class="labx-project-assets__menu-list">
         <button type="button" data-lab-action="asset-preview" data-lab-value="${escapedId}">
-          Preview
+          ${escapeHtml(copy.t("mediaAnalysis.assets.actions.preview", "Preview"))}
         </button>
         ${downloadButton}
         ${useAsSourceButton}
         <button type="button" data-lab-action="asset-remove" data-lab-value="${escapedId}">
-          Delete
+          ${escapeHtml(copy.t("mediaAnalysis.assets.actions.delete", "Delete"))}
         </button>
       </div>
     </details>
   `;
 }
-function renderAudioAssetDetails(state, asset) {
+function renderAudioAssetDetails(state, asset, copy) {
   if (asset.type !== "audio") {
     return "";
   }
   const parentSource = getParentSourceForAsset(state, asset.id);
   const currentSourceAsset = getCurrentSourceAsset(state);
-  const syncLabel = getLabAssetSyncLabel(asset);
-  const relationMarkup = parentSource === null ? "" : currentSourceAsset !== null && currentSourceAsset.id === parentSource.id ? `<button class="labx-project-assets__relation-link" type="button" data-lab-action="focus-source-preview" data-lab-value="${escapeHtml(parentSource.id)}">Source: ${escapeHtml(parentSource.name)}</button>` : `<span class="labx-project-assets__relation-text">Source: ${escapeHtml(parentSource.name)}</span>`;
+  const syncLabel = getLabAssetSyncLabel(asset, copy);
+  const relationMarkup = parentSource === null ? "" : currentSourceAsset !== null && currentSourceAsset.id === parentSource.id ? `<button class="labx-project-assets__relation-link" type="button" data-lab-action="focus-source-preview" data-lab-value="${escapeHtml(parentSource.id)}">${escapeHtml(copy.t("mediaAnalysis.assets.relation.source", "Source"))}: ${escapeHtml(parentSource.name)}</button>` : `<span class="labx-project-assets__relation-text">${escapeHtml(copy.t("mediaAnalysis.assets.relation.source", "Source"))}: ${escapeHtml(parentSource.name)}</span>`;
   if (relationMarkup === "" && syncLabel === null) {
     return "";
   }
@@ -93,7 +97,7 @@ function renderAudioAssetDetails(state, asset) {
     </span>
   `;
 }
-function renderAssetItem(state, asset) {
+function renderAssetItem(state, asset, copy) {
   const createdAt = formatAssetTime(asset.createdAt);
   const escapedId = escapeHtml(asset.id);
   return `
@@ -114,14 +118,14 @@ function renderAssetItem(state, asset) {
           <span class="labx-project-assets__meta-primary">${escapeHtml(
     [createdAt, getLabAssetPathLeaf(asset)].filter(Boolean).join(" · ")
   )}</span>
-          ${renderAudioAssetDetails(state, asset)}
+          ${renderAudioAssetDetails(state, asset, copy)}
         </span>
       </button>
-      ${renderAssetMenu(asset)}
+      ${renderAssetMenu(asset, copy)}
     </div>
   `;
 }
-function renderAssetGroup(state, group, assets) {
+function renderAssetGroup(state, group, assets, copy) {
   const groupAssets = assets.filter(function(asset) {
     return asset.type === group.type;
   });
@@ -131,18 +135,19 @@ function renderAssetGroup(state, group, assets) {
   return `
     <section class="labx-project-assets__group">
       <div class="labx-project-assets__group-title">
-        <strong>${escapeHtml(group.label)}</strong>
+        <strong>${escapeHtml(getAssetGroupLabel(group, copy))}</strong>
         <span>${String(groupAssets.length)}</span>
       </div>
       <div class="labx-project-assets__list">
         ${groupAssets.map(function(asset) {
-    return renderAssetItem(state, asset);
+    return renderAssetItem(state, asset, copy);
   }).join("")}
       </div>
     </section>
   `;
 }
 export function renderLabProjectAssetsPanel(state, options = {}) {
+  const copy = options.copy ?? LAB_FALLBACK_I18N;
   const source = getProjectSource(state);
   const storedFileName = asNonEmptyString(source["storedFileName"]) || asNonEmptyString(source["routeLabel"]) || null;
   const hasSource = storedFileName !== null;
@@ -163,7 +168,7 @@ export function renderLabProjectAssetsPanel(state, options = {}) {
   const projectControls = options.includeProjectControls ? `
       <div class="labx-project-assets__project-controls">
         <select class="labx-select labx-select--compact" data-lab-field="project.id">
-          <option value="new" ${newProjectSelected ? "selected" : ""}>-- New Project --</option>
+          <option value="new" ${newProjectSelected ? "selected" : ""}>${escapeHtml(copy.t("mediaAnalysis.assets.projects.newOption", "-- New Project --"))}</option>
           ${listedProjects.map(function(project) {
     return `<option value="${escapeHtml(String(project["id"]))}" ${!newProjectSelected && project["id"] === state.projectIndex.activeProjectId ? "selected" : ""}>
                 ${escapeHtml(String(project["name"] || project["id"]))}
@@ -177,7 +182,7 @@ export function renderLabProjectAssetsPanel(state, options = {}) {
             data-lab-action="save-project"
             ${hasSource ? "" : "disabled"}
           >
-            Save
+            ${escapeHtml(copy.t("mediaAnalysis.assets.projects.saveAction", "Save"))}
           </button>
           <button
             class="labx-inline-action labx-inline-action--rail labx-inline-action--danger"
@@ -185,22 +190,22 @@ export function renderLabProjectAssetsPanel(state, options = {}) {
             data-lab-action="project-delete"
             ${disableDelete ? "disabled" : ""}
           >
-            Delete
+            ${escapeHtml(copy.t("mediaAnalysis.assets.projects.deleteAction", "Delete"))}
           </button>
         </div>
       </div>
     ` : "";
   const body = assets.length > 0 ? ASSET_GROUPS.map(function(group) {
-    return renderAssetGroup(state, group, assets);
+    return renderAssetGroup(state, group, assets, copy);
   }).join("") : `
         <div class="labx-project-assets__empty">
-          <strong>No project assets yet</strong>
+          <strong>${escapeHtml(copy.t("mediaAnalysis.assets.empty", "No project assets yet"))}</strong>
         </div>
       `;
   return `
-    <section class="labx-project-assets${options.variant === "rail" ? " labx-project-assets--rail" : ""}" aria-label="Project assets">
+    <section class="labx-project-assets${options.variant === "rail" ? " labx-project-assets--rail" : ""}" aria-label="${escapeHtml(copy.t("mediaAnalysis.assets.ariaLabel", "Project assets"))}">
       <div class="labx-project-assets__head">
-        <strong>Project Assets</strong>
+        <strong>${escapeHtml(copy.t("mediaAnalysis.assets.title", "Project Assets"))}</strong>
         <span>${String(assets.length)}</span>
       </div>
       ${projectControls}

@@ -1,17 +1,18 @@
 import { escapeHtml } from "../models/lab-types.js";
+import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 function formatTime(ms) {
   const totalSeconds = Math.round(ms / 1e3);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
-export function renderWorkspaceBookmarks(bookmarks) {
+export function renderWorkspaceBookmarks(bookmarks, copy = LAB_FALLBACK_I18N) {
   return `
     <div class="labx-bookmarks" id="lab-bookmarks">
       <div class="labx-bookmarks__header">
-        <span class="labx-bookmarks__label">Bookmarks</span>
+        <span class="labx-bookmarks__label">${escapeHtml(copy.t("mediaAnalysis.bookmarks.title", "Bookmarks"))}</span>
         <button class="labx-inline-action labx-inline-action--small" type="button" data-lab-action="workspace-add-bookmark">
-          + Mark Current
+          ${escapeHtml(copy.t("mediaAnalysis.bookmarks.addAction", "+ Mark Current"))}
         </button>
       </div>
       ${bookmarks.length > 0 ? `
@@ -26,7 +27,7 @@ export function renderWorkspaceBookmarks(bookmarks) {
                   type="button"
                   data-lab-action="workspace-remove-bookmark"
                   data-lab-value="${escapeHtml(bookmark.id)}"
-                  title="Remove"
+                  title="${escapeHtml(copy.t("mediaAnalysis.bookmarks.removeAction", "Remove"))}"
                 >✕</button>
               </div>
             `;

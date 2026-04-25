@@ -1187,8 +1187,7 @@ export function getLaboratoryProcessSummary(state: LabStoreState): LabGlobalProc
   }
 
   if (runningAction !== undefined || state.sourceProbeStatus === "running") {
-    const activeTaskLabel =
-      runningAction?.label || null;
+    const activeTaskLabel = runningAction?.label || null;
     const activeTaskKey =
       runningAction?.label === undefined && state.sourceProbeStatus === "running"
         ? "sourcePreparation"

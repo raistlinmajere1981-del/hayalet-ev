@@ -1,5 +1,7 @@
 import { escapeHtml } from "../models/lab-types.js";
 import type { LabBookmark } from "../models/lab-types.js";
+import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
+import type { LabI18n } from "./lab-i18n.js";
 
 function formatTime(ms: number) {
   const totalSeconds = Math.round(ms / 1000);
@@ -8,13 +10,16 @@ function formatTime(ms: number) {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-export function renderWorkspaceBookmarks(bookmarks: LabBookmark[]) {
+export function renderWorkspaceBookmarks(
+  bookmarks: LabBookmark[],
+  copy: LabI18n = LAB_FALLBACK_I18N
+) {
   return `
     <div class="labx-bookmarks" id="lab-bookmarks">
       <div class="labx-bookmarks__header">
-        <span class="labx-bookmarks__label">Bookmarks</span>
+        <span class="labx-bookmarks__label">${escapeHtml(copy.t("mediaAnalysis.bookmarks.title", "Bookmarks"))}</span>
         <button class="labx-inline-action labx-inline-action--small" type="button" data-lab-action="workspace-add-bookmark">
-          + Mark Current
+          ${escapeHtml(copy.t("mediaAnalysis.bookmarks.addAction", "+ Mark Current"))}
         </button>
       </div>
       ${
@@ -32,7 +37,7 @@ export function renderWorkspaceBookmarks(bookmarks: LabBookmark[]) {
                   type="button"
                   data-lab-action="workspace-remove-bookmark"
                   data-lab-value="${escapeHtml(bookmark.id)}"
-                  title="Remove"
+                  title="${escapeHtml(copy.t("mediaAnalysis.bookmarks.removeAction", "Remove"))}"
                 >✕</button>
               </div>
             `;

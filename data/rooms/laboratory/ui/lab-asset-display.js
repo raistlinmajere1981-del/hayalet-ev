@@ -22,7 +22,7 @@ export function buildLabAssetMetadataTitle(asset) {
   ].filter(Boolean);
   return lines.join("\n");
 }
-export function getLabAssetSyncLabel(asset) {
+export function getLabAssetSyncLabel(asset, copy) {
   if (asset.type !== "audio") {
     return null;
   }
@@ -33,7 +33,9 @@ export function getLabAssetSyncLabel(asset) {
     return null;
   }
   if (startOffsetMs === null || startOffsetMs === 0) {
-    return "Senkron: ✓ Aynı zaman ekseni";
+    return copy?.t("mediaAnalysis.assets.sync.sameAxis", "Senkron: ✓ Aynı zaman ekseni") ?? "Senkron: ✓ Aynı zaman ekseni";
   }
-  return `Senkron: Ofset ${String(Math.round(startOffsetMs))} ms`;
+  return copy?.t("mediaAnalysis.assets.sync.offset", "Senkron: Ofset {offset} ms", {
+    offset: Math.round(startOffsetMs)
+  }) ?? `Senkron: Ofset ${String(Math.round(startOffsetMs))} ms`;
 }

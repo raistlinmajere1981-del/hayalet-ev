@@ -5890,8 +5890,7 @@ textarea {
   border: 1px solid rgba(72, 214, 222, 0.24);
   border-radius: 1rem;
   background:
-    linear-gradient(135deg, rgba(10, 34, 48, 0.88), rgba(6, 16, 28, 0.78)),
-    rgba(7, 18, 30, 0.86);
+    linear-gradient(135deg, rgba(10, 34, 48, 0.88), rgba(6, 16, 28, 0.78)), rgba(7, 18, 30, 0.86);
   color: var(--labx-text);
 }
 
@@ -5953,8 +5952,7 @@ textarea {
   border: 1px solid rgba(72, 214, 222, 0.24);
   border-radius: 1rem;
   background:
-    linear-gradient(180deg, rgba(12, 32, 48, 0.92), rgba(6, 16, 28, 0.9)),
-    var(--labx-surface);
+    linear-gradient(180deg, rgba(12, 32, 48, 0.92), rgba(6, 16, 28, 0.9)), var(--labx-surface);
 }
 
 .labx-right-context__header h2 {

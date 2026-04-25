@@ -7,6 +7,7 @@ import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import { renderLabAssetPreviewOverlay } from "../../rooms/laboratory/ui/lab-asset-preview-overlay.ts";
 import { renderLabLeftRail } from "../../rooms/laboratory/ui/lab-left-rail.ts";
 import { renderLabProjectAssetsPanel } from "../../rooms/laboratory/ui/lab-project-assets-panel.ts";
+import { createLabI18n } from "../../rooms/laboratory/ui/lab-i18n.ts";
 import { renderReportOverlay } from "../../rooms/laboratory/ui/report-overlay.ts";
 import { renderToolManagementOverlay } from "../../rooms/laboratory/ui/tool-management-overlay.ts";
 import { renderWorkspaceProcessPanel } from "../../rooms/laboratory/ui/workspace-process-panel.ts";
@@ -321,8 +322,8 @@ test("laboratory process panel renders intent output trace from project assets",
   const html = renderWorkspaceProcessPanel(state, { sourceReady: true });
 
   assert.match(html, /INTENT OUTPUT TRACE/);
-  assert.match(html, /Frame çıktıları/);
-  assert.match(html, /Anomali verileri/);
+  assert.match(html, /Frame outputs/);
+  assert.match(html, /Anomaly data/);
   assert.match(html, /frame_01\.png/);
   assert.match(html, /data-matched="true"/);
   assert.match(html, /data-matched="false"/);
@@ -448,9 +449,18 @@ test("laboratory tool overlay lists room-local tool lifecycle actions inside the
   assert.match(html, /Güncelleme bekleyen/);
   assert.match(html, /yt-dlp/);
   assert.match(html, /FFmpeg/);
-  assert.match(html, /data-lab-action="tool-check-updates"/);
-  assert.match(html, /data-lab-action="tool-install"/);
-  assert.doesNotMatch(html, /Dense operator workbench|Modules|Focus/);
+	  assert.match(html, /data-lab-action="tool-check-updates"/);
+	  assert.match(html, /data-lab-action="tool-install"/);
+	  assert.doesNotMatch(html, /Dense operator workbench|Modules|Focus/);
+
+	  const trCopy = createLabI18n({
+	    locale: "tr",
+	    translations: JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8")),
+	  });
+	  const translatedHtml = renderToolManagementOverlay(store.getState(), trCopy);
+	  assert.match(translatedHtml, /Seçili niyet ve yetenek aileleri/);
+	  assert.match(translatedHtml, /Uzak YouTube ve oynatma listesi tabanlı içe alma akışlarını bloke eder/);
+	  assert.doesNotMatch(translatedHtml, /YouTube capture stays enabled from the source intake frame/);
 });
 
 test("laboratory workspace panels show snapshot drift as a non-blocking visibility layer", () => {

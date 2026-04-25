@@ -1,5 +1,6 @@
 import { asLabRecord, asNonEmptyString, asNumber } from "../models/lab-types.js";
 import type { LabAsset } from "../models/lab-types.js";
+import type { LabI18n } from "./lab-i18n.js";
 
 export function getLabAssetPath(asset: LabAsset): string | null {
   return asNonEmptyString(asset.localPath) || asNonEmptyString(asset.url);
@@ -27,7 +28,7 @@ export function buildLabAssetMetadataTitle(asset: LabAsset): string {
   return lines.join("\n");
 }
 
-export function getLabAssetSyncLabel(asset: LabAsset): string | null {
+export function getLabAssetSyncLabel(asset: LabAsset, copy?: LabI18n): string | null {
   if (asset.type !== "audio") {
     return null;
   }
@@ -38,7 +39,14 @@ export function getLabAssetSyncLabel(asset: LabAsset): string | null {
     return null;
   }
   if (startOffsetMs === null || startOffsetMs === 0) {
-    return "Senkron: ✓ Aynı zaman ekseni";
+    return (
+      copy?.t("mediaAnalysis.assets.sync.sameAxis", "Senkron: ✓ Aynı zaman ekseni") ??
+      "Senkron: ✓ Aynı zaman ekseni"
+    );
   }
-  return `Senkron: Ofset ${String(Math.round(startOffsetMs))} ms`;
+  return (
+    copy?.t("mediaAnalysis.assets.sync.offset", "Senkron: Ofset {offset} ms", {
+      offset: Math.round(startOffsetMs),
+    }) ?? `Senkron: Ofset ${String(Math.round(startOffsetMs))} ms`
+  );
 }

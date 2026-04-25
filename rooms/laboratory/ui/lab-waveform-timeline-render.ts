@@ -264,7 +264,10 @@ function formatEstimatedCost(cost: LabSuggestionPreview["estimatedCost"], copy: 
   return copy.t(`mediaAnalysis.timeline.cost.${normalizedCost}`, fallback);
 }
 
-function renderExecutionIntentStrip(activeExecutionIntent: LabActionSuggestion | null, copy: LabI18n) {
+function renderExecutionIntentStrip(
+  activeExecutionIntent: LabActionSuggestion | null,
+  copy: LabI18n
+) {
   if (activeExecutionIntent === null) {
     return "";
   }
@@ -525,10 +528,19 @@ function renderExecutionReadiness(readiness: LabExecutionReadiness | null, copy:
   const confidenceLabel = formatConfidencePercent(readiness.confidence, copy);
   const intro =
     readiness.status === "ready"
-      ? copy.t("mediaAnalysis.executionPanels.readiness.readyIntro", "Execution readiness looks stable")
+      ? copy.t(
+          "mediaAnalysis.executionPanels.readiness.readyIntro",
+          "Execution readiness looks stable"
+        )
       : readiness.status === "needs-review"
-        ? copy.t("mediaAnalysis.executionPanels.readiness.reviewIntro", "This path needs review before any execution step")
-        : copy.t("mediaAnalysis.executionPanels.readiness.blockedIntro", "This path is not yet execution-ready");
+        ? copy.t(
+            "mediaAnalysis.executionPanels.readiness.reviewIntro",
+            "This path needs review before any execution step"
+          )
+        : copy.t(
+            "mediaAnalysis.executionPanels.readiness.blockedIntro",
+            "This path is not yet execution-ready"
+          );
   return `
     <div class="lab-execution-readiness" data-lab-execution-readiness="true">
       <div class="lab-execution-readiness__eyebrow">${escapeHtml(copy.t("mediaAnalysis.executionPanels.readiness.eyebrow", "Execution readiness"))}</div>
@@ -588,8 +600,14 @@ function renderExecutionPayloadPreview(payload: LabExecutionPayloadPreview | nul
   }
   const readinessLabel = formatReadinessStatus(payload.readinessStatus, copy);
   const readinessSignal = payload.readinessPassesPreview
-    ? copy.t("mediaAnalysis.executionPanels.payload.readinessPass", "Readiness signal passes this preview")
-    : copy.t("mediaAnalysis.executionPanels.payload.readinessReview", "Readiness signal asks for review");
+    ? copy.t(
+        "mediaAnalysis.executionPanels.payload.readinessPass",
+        "Readiness signal passes this preview"
+      )
+    : copy.t(
+        "mediaAnalysis.executionPanels.payload.readinessReview",
+        "Readiness signal asks for review"
+      );
   return `
     <div class="lab-execution-payload" data-lab-execution-payload-preview="true">
       <div class="lab-execution-payload__eyebrow">${escapeHtml(copy.t("mediaAnalysis.executionPanels.payload.eyebrow", "Execution payload (preview)"))}</div>
@@ -889,7 +907,10 @@ function renderExecutionCandidate(candidate: LabExecutionCandidate | null, copy:
   `;
 }
 
-function formatCommitmentTimestamp(committedAt: LabExecutionCommitment["committedAt"], copy: LabI18n) {
+function formatCommitmentTimestamp(
+  committedAt: LabExecutionCommitment["committedAt"],
+  copy: LabI18n
+) {
   if (typeof committedAt !== "number" || Number.isFinite(committedAt) !== true) {
     return null;
   }
@@ -1089,10 +1110,7 @@ function formatInterpretationType(type: LabInterpretationItem["type"], copy: Lab
   return copy.t(`mediaAnalysis.timeline.interpretationTypes.${type}`, fallback);
 }
 
-function formatInterpretationSeverity(
-  severity: LabInterpretationItem["severity"],
-  copy: LabI18n
-) {
+function formatInterpretationSeverity(severity: LabInterpretationItem["severity"], copy: LabI18n) {
   if (severity === undefined) {
     return "";
   }
@@ -1275,7 +1293,11 @@ function renderExecutionDetailsTrigger(copy: LabI18n, hasDetails: boolean) {
   `;
 }
 
-function renderExecutionDetailsOverlay(copy: LabI18n, model: LabWaveformTimelineModel, body: string) {
+function renderExecutionDetailsOverlay(
+  copy: LabI18n,
+  model: LabWaveformTimelineModel,
+  body: string
+) {
   if (model.activeOverlay !== "execution-details" || body.trim() === "") {
     return "";
   }
@@ -1383,7 +1405,9 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
         roiFocusActive
           ? "mediaAnalysis.timeline.regionActiveFocused"
           : "mediaAnalysis.timeline.regionActive",
-        roiFocusActive ? "Region active · Focused · {width}% × {height}%" : "Region active · {width}% × {height}%",
+        roiFocusActive
+          ? "Region active · Focused · {width}% × {height}%"
+          : "Region active · {width}% × {height}%",
         {
           width: String(Math.round(selectionRoi.width * 100)),
           height: String(Math.round(selectionRoi.height * 100)),
@@ -1420,7 +1444,10 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
             "mediaAnalysis.timeline.invalidRangeHint",
             "End must be greater than start to create a valid selection."
           )
-        : copy.t("mediaAnalysis.timeline.seekDragHint", "Click to seek, drag to create a selection.")
+        : copy.t(
+            "mediaAnalysis.timeline.seekDragHint",
+            "Click to seek, drag to create a selection."
+          )
       : copy.t(
           "mediaAnalysis.timeline.outsideRangeHint",
           "Waveform falls outside the visible master range."
@@ -1430,7 +1457,10 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
   const executionReadinessMarkup = renderExecutionReadiness(activeExecutionReadiness, copy);
   const executionPayloadMarkup = renderExecutionPayloadPreview(activeExecutionPayloadPreview, copy);
   const executionReflectionMarkup = renderExecutionReflection(activeExecutionReflection, copy);
-  const executionAlternativesMarkup = renderExecutionAlternatives(activeExecutionAlternatives, copy);
+  const executionAlternativesMarkup = renderExecutionAlternatives(
+    activeExecutionAlternatives,
+    copy
+  );
   const executionCandidateMarkup = renderExecutionCandidate(activeExecutionCandidate, copy);
   const executionCommitmentMarkup = renderExecutionCommitment(
     activeExecutionCandidate,
@@ -1561,42 +1591,60 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
               copy,
               defaultCollapsed: getPanelCollapsed(model, "simulation"),
               panelId: "simulation",
-              title: copy.t("mediaAnalysis.executionPanels.simulation.eyebrow", "Simulation preview"),
+              title: copy.t(
+                "mediaAnalysis.executionPanels.simulation.eyebrow",
+                "Simulation preview"
+              ),
             })}
             ${renderCollapsibleExecutionPanel({
               body: executionPayloadMarkup,
               copy,
               defaultCollapsed: getPanelCollapsed(model, "payload"),
               panelId: "payload",
-              title: copy.t("mediaAnalysis.executionPanels.payload.eyebrow", "Execution payload (preview)"),
+              title: copy.t(
+                "mediaAnalysis.executionPanels.payload.eyebrow",
+                "Execution payload (preview)"
+              ),
             })}
             ${renderCollapsibleExecutionPanel({
               body: executionReflectionMarkup,
               copy,
               defaultCollapsed: getPanelCollapsed(model, "reflection"),
               panelId: "reflection",
-              title: copy.t("mediaAnalysis.executionPanels.reflection.eyebrow", "Execution reflection"),
+              title: copy.t(
+                "mediaAnalysis.executionPanels.reflection.eyebrow",
+                "Execution reflection"
+              ),
             })}
             ${renderCollapsibleExecutionPanel({
               body: executionAlternativesMarkup,
               copy,
               defaultCollapsed: getPanelCollapsed(model, "alternatives"),
               panelId: "alternatives",
-              title: copy.t("mediaAnalysis.executionPanels.alternatives.eyebrow", "Alternative evaluation"),
+              title: copy.t(
+                "mediaAnalysis.executionPanels.alternatives.eyebrow",
+                "Alternative evaluation"
+              ),
             })}
             ${renderCollapsibleExecutionPanel({
               body: executionCandidateMarkup,
               copy,
               defaultCollapsed: getPanelCollapsed(model, "candidate"),
               panelId: "candidate",
-              title: copy.t("mediaAnalysis.executionPanels.candidate.eyebrow", "Execution candidate"),
+              title: copy.t(
+                "mediaAnalysis.executionPanels.candidate.eyebrow",
+                "Execution candidate"
+              ),
             })}
             ${renderCollapsibleExecutionPanel({
               body: executionCommitmentMarkup,
               copy,
               defaultCollapsed: getPanelCollapsed(model, "commitment"),
               panelId: "commitment",
-              title: copy.t("mediaAnalysis.executionPanels.commitment.eyebrow", "Execution commitment"),
+              title: copy.t(
+                "mediaAnalysis.executionPanels.commitment.eyebrow",
+                "Execution commitment"
+              ),
             })}
             ${renderCollapsibleExecutionPanel({
               body: executionStagingMarkup,
