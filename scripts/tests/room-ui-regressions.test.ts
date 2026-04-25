@@ -13,12 +13,12 @@ const room: InstalledRoomRecord = {
   name: "Game Room",
   version: "2.1.0",
   icon: "GM",
-  iconPath: "/workspace/data/rooms/game-room/shared/assets/nav-icon.svg",
+  iconPath: "/workspace/rooms/.build/game-room/runtime/shared/assets/nav-icon.svg",
   sourceDir: "/workspace/rooms/game-room",
-  installedDir: "/workspace/data/rooms/game-room",
-  manifestPath: "/workspace/data/rooms/game-room/manifest.json",
-  runtimeEntryPath: "/workspace/data/rooms/game-room/ui/index.html",
-  hostEntryPath: "/workspace/data/rooms/game-room/host/index.js",
+  installedDir: "/workspace/rooms/.build/game-room/runtime",
+  manifestPath: "/workspace/rooms/.build/game-room/runtime/manifest.json",
+  runtimeEntryPath: "/workspace/rooms/.build/game-room/runtime/ui/index.html",
+  hostEntryPath: "/workspace/rooms/.build/game-room/runtime/host/index.js",
   defaultFeatureId: "xox",
   features: [{ id: "xox", name: "XOX" }],
   installedAt: "2026-03-08T00:00:00.000Z",
@@ -30,10 +30,10 @@ const workshopRoom: InstalledRoomRecord = {
   name: "Workshop",
   version: "1.0.0",
   sourceDir: "/workspace/rooms/workshop",
-  installedDir: "/workspace/data/rooms/workshop",
-  manifestPath: "/workspace/data/rooms/workshop/manifest.json",
-  runtimeEntryPath: "/workspace/data/rooms/workshop/ui/index.html",
-  hostEntryPath: "/workspace/data/rooms/workshop/host/index.js",
+  installedDir: "/workspace/rooms/.build/workshop/runtime",
+  manifestPath: "/workspace/rooms/.build/workshop/runtime/manifest.json",
+  runtimeEntryPath: "/workspace/rooms/.build/workshop/runtime/ui/index.html",
+  hostEntryPath: "/workspace/rooms/.build/workshop/runtime/host/index.js",
   defaultFeatureId: "assembler",
   features: [{ id: "assembler", name: "Assembler" }],
   installedAt: "2026-03-22T00:00:00.000Z",
@@ -51,7 +51,7 @@ test("buildRoomNavMarkup renders room nav button metadata", () => {
   assert.match(markup, /data-side-nav-icon-fallback="GM"/);
   assert.match(
     markup,
-    /data-side-nav-icon-src="\/workspace\/data\/rooms\/game-room\/shared\/assets\/nav-icon\.svg"/
+    /data-side-nav-icon-src="\/workspace\/rooms\/\.build\/game-room\/runtime\/shared\/assets\/nav-icon\.svg"/
   );
   assert.match(markup, /Game Room/);
 });

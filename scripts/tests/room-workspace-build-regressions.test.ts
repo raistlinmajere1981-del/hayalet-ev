@@ -1,13 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
-  access,
-  mkdtemp,
-  mkdir,
-  readFile,
-  rm,
-  writeFile,
-} from "node:fs/promises";
+import { access, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { ROOM_SCHEMA_VERSION } from "../../src/types/rooms.ts";
@@ -32,6 +25,7 @@ test("workspace room discovery and build support TypeScript runtime sources", as
   const workspaceRoot = join(tempRoot, "rooms");
   const roomRoot = join(workspaceRoot, "ts-proof-room");
   const buildRoot = join(tempRoot, "room-storage");
+  const runtimeBuildRoot = join(workspaceRoot, ".build");
 
   try {
     await mkdir(roomRoot, { recursive: true });
@@ -118,8 +112,8 @@ test("workspace room discovery and build support TypeScript runtime sources", as
         "<!doctype html>",
         '<html lang=\"en\">',
         "  <body>",
-        "    <div id=\"app\"></div>",
-        "    <script type=\"module\" src=\"./bootstrap.js\"></script>",
+        '    <div id="app"></div>',
+        '    <script type="module" src="./bootstrap.js"></script>',
         "  </body>",
         "</html>",
         "",
@@ -132,6 +126,7 @@ test("workspace room discovery and build support TypeScript runtime sources", as
     );
     await writeTempRoomFile(roomRoot, "assets/proof-room.webp");
     await writeTempRoomFile(roomRoot, "assets/proof-feature-view.webp");
+    await writeTempRoomFile(roomRoot, "assets/obsolete.txt", "stale");
 
     const workspaceRooms = await readWorkspaceRoomsFromRoot({
       readOnly: false,
@@ -145,6 +140,7 @@ test("workspace room discovery and build support TypeScript runtime sources", as
     assert.deepEqual(workspaceRoom?.errors ?? [], []);
 
     const buildResult = await buildWorkspaceRoomArtifact({
+      getRoomRuntimeBuildDir: (roomId) => join(runtimeBuildRoot, roomId, "runtime"),
       getRoomStorageRoot: (roomId) => join(buildRoot, roomId),
       roomId: "ts-proof-room",
       roomPackageError: async (_key, detail) =>
@@ -163,17 +159,33 @@ test("workspace room discovery and build support TypeScript runtime sources", as
     const builtUiBootstrap = join(buildResult.artifact.buildDir, "ui/bootstrap.js");
     const copiedHtml = join(buildResult.artifact.buildDir, "ui/index.html");
     const copiedTsHost = join(buildResult.artifact.buildDir, "host/index.ts");
+    const obsoleteRuntimeFile = join(buildResult.artifact.buildDir, "assets/obsolete.txt");
 
     await access(builtHostEntry);
     await access(builtHostRuntime);
     await access(builtUiBootstrap);
     await access(copiedHtml);
+    await access(obsoleteRuntimeFile);
     await assert.rejects(async () => await access(copiedTsHost));
 
     const builtHostSource = await readFile(builtHostEntry, "utf8");
     const builtRuntimeSource = await readFile(builtHostRuntime, "utf8");
     assert.match(builtHostSource, /runtime\.js/);
     assert.match(builtRuntimeSource, /commands/);
+
+    await rm(join(roomRoot, "assets/obsolete.txt"), { force: true });
+    const rebuildResult = await buildWorkspaceRoomArtifact({
+      getRoomRuntimeBuildDir: (roomId) => join(runtimeBuildRoot, roomId, "runtime"),
+      getRoomStorageRoot: (roomId) => join(buildRoot, roomId),
+      roomId: "ts-proof-room",
+      roomPackageError: async (_key, detail) =>
+        detail instanceof Error ? detail.message : String(detail ?? "room-package-error"),
+      roomPackageT: async (_key, params) => String(params?.["path"] ?? params?.["roomId"] ?? "ok"),
+      workspaceRooms,
+    });
+
+    assert.equal(rebuildResult.success, true);
+    await assert.rejects(async () => await access(obsoleteRuntimeFile));
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
   }

@@ -113,8 +113,17 @@ const paths: PathResolver = {
     return join(getConfig().projectRoot, "rooms");
   },
 
+  getGeneratedRoomsDir(): string {
+    // NOTE: Generated room runtime artifacts are disposable and must not be edited as source.
+    return join(this.getRoomsWorkspaceDir(), ".build");
+  },
+
+  getRoomRuntimeBuildDir(roomId: string): string {
+    return join(this.getGeneratedRoomsDir(), roomId, "runtime");
+  },
+
   getInstalledRoomsDir(): string {
-    // NOTE: `data/rooms` contains generated install copies only.
+    // NOTE: Legacy generated install copies live here for migration/rollback only.
     return join(getConfig().dataDir, "rooms");
   },
 

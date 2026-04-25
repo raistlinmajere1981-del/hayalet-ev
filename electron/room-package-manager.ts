@@ -1,9 +1,15 @@
 import { existsSync } from "fs";
 import { readFile, rm } from "fs/promises";
-import { dirname, join, resolve } from "path";
+import { dirname, join, relative, resolve } from "path";
 import { formatErrorWithDetail } from "../shared/i18n/error-detail.ts";
 import { Paths } from "./paths.ts";
-import { ensureDir, resolveInstalledRoomTrackedFiles } from "./rooms/room-install-files.ts";
+import {
+  copyDirectoryContents,
+  deleteInstalledRoomCopies,
+  ensureDir,
+  INSTALLED_ROOM_FILE_SNAPSHOT,
+  resolveInstalledRoomTrackedFiles,
+} from "./rooms/room-install-files.ts";
 import { buildInstalledRoomRecord } from "./rooms/installed-room-builder.ts";
 import type { RoomOperationResult } from "./rooms/room-package-types.ts";
 import {
@@ -42,7 +48,9 @@ import { translateElectronMessage } from "./i18n/language-service.ts";
 interface RoomManagerOptions {
   workspaceRoot?: string;
   bundledWorkspaceRoot?: string;
+  runtimeBuildRoot?: string;
   installedRoot?: string;
+  dataRoot?: string;
   registryPath?: string;
 }
 
@@ -70,6 +78,16 @@ function haveSameRelativePaths(left: string[], right: string[]): boolean {
   return left.every((path, index) => path === right[index]);
 }
 
+function isLegacyRoomSourceRestorePath(relativePath: string): boolean {
+  const normalizedPath = relativePath.replace(/\\/g, "/");
+  return (
+    normalizedPath !== INSTALLED_ROOM_FILE_SNAPSHOT &&
+    normalizedPath.startsWith("tools/runtime/") === false &&
+    normalizedPath.startsWith("shared/data/tools/runtime/") === false &&
+    normalizedPath.split("/").includes("__pycache__") === false
+  );
+}
+
 async function roomPackageT(
   key: string,
   params?: Record<string, string | number | boolean>
@@ -88,13 +106,19 @@ async function roomPackageError(
 export class RoomPackageManager {
   private readonly workspaceRootOption: string | undefined;
   private readonly bundledWorkspaceRootOption: string | undefined;
-  private readonly installedRootOption: string | undefined;
+  private readonly runtimeBuildRootOption: string | undefined;
+  private readonly legacyInstalledRootOption: string | undefined;
+  private readonly dataRootOption: string | undefined;
   private readonly registryPathOption: string | undefined;
 
   constructor(options: RoomManagerOptions = {}) {
     this.workspaceRootOption = options.workspaceRoot;
     this.bundledWorkspaceRootOption = options.bundledWorkspaceRoot;
-    this.installedRootOption = options.installedRoot;
+    this.runtimeBuildRootOption = options.runtimeBuildRoot;
+    this.legacyInstalledRootOption = options.installedRoot;
+    this.dataRootOption =
+      options.dataRoot ??
+      (options.installedRoot !== undefined ? dirname(options.installedRoot) : undefined);
     this.registryPathOption = options.registryPath;
   }
 
@@ -114,22 +138,52 @@ export class RoomPackageManager {
     return Paths.getBundledRoomsDir();
   }
 
-  private getInstalledRoot(): string {
-    return this.installedRootOption ?? Paths.getInstalledRoomsDir();
+  private getRuntimeBuildRoot(): string {
+    if (this.runtimeBuildRootOption !== undefined) {
+      return this.runtimeBuildRootOption;
+    }
+
+    if (this.legacyInstalledRootOption !== undefined) {
+      return this.legacyInstalledRootOption;
+    }
+
+    return this.workspaceRootOption === undefined
+      ? Paths.getGeneratedRoomsDir()
+      : join(this.getWorkspaceRoot(), ".build");
   }
 
   private getDataRoot(): string {
-    return dirname(this.getInstalledRoot());
+    return this.dataRootOption ?? Paths.getDataDir();
+  }
+
+  private getLegacyInstalledRoot(): string {
+    if (this.legacyInstalledRootOption !== undefined) {
+      return this.legacyInstalledRootOption;
+    }
+
+    return this.dataRootOption === undefined
+      ? Paths.getInstalledRoomsDir()
+      : join(this.getDataRoot(), "rooms");
+  }
+
+  private getRoomRuntimeBuildDir(roomId: string): string {
+    if (this.runtimeBuildRootOption === undefined && this.legacyInstalledRootOption !== undefined) {
+      return join(this.getRuntimeBuildRoot(), roomId);
+    }
+
+    return this.runtimeBuildRootOption === undefined && this.workspaceRootOption === undefined
+      ? Paths.getRoomRuntimeBuildDir(roomId)
+      : join(this.getRuntimeBuildRoot(), roomId, "runtime");
   }
 
   private getRoomStorageRoot(roomId: string): string {
-    return this.installedRootOption === undefined
+    return this.dataRootOption === undefined
       ? Paths.getRoomStorageDir(roomId)
       : join(this.getDataRoot(), "room-storage", roomId);
   }
 
   private getRoomPartitionRoot(roomId: string): string {
-    return this.installedRootOption === undefined
+    return this.dataRootOption === undefined
       ? Paths.getRoomPartitionDir(roomId)
       : join(this.getDataRoot(), "electron-user-data", "Partitions", `room-${roomId}`);
   }
@@ -138,7 +192,7 @@ export class RoomPackageManager {
     return {
       partitionRoot: this.getRoomPartitionRoot(roomId),
       policy:
-        this.installedRootOption === undefined
+        this.dataRootOption === undefined
           ? Paths.getRoomRuntimeResiduePolicy()
           : {
               cleanupTrigger: "deleteData",
@@ -158,6 +212,96 @@ export class RoomPackageManager {
     ]);
   }
 
+  private isPathInsideRuntimeBuildRoot(targetPath: string): boolean {
+    const relativePath = relative(
+      normalizeRoomPath(this.getRuntimeBuildRoot()),
+      normalizeRoomPath(targetPath)
+    );
+    return (
+      relativePath === "" ||
+      (relativePath.startsWith("..") === false &&
+        relativePath.includes(`..${process.platform === "win32" ? "\\" : "/"}`) === false)
+    );
+  }
+
+  private isPathInsideLegacyInstalledRoot(targetPath: string): boolean {
+    const relativePath = relative(
+      normalizeRoomPath(this.getLegacyInstalledRoot()),
+      normalizeRoomPath(targetPath)
+    );
+    return (
+      relativePath === "" ||
+      (relativePath.startsWith("..") === false &&
+        relativePath.includes(`..${process.platform === "win32" ? "\\" : "/"}`) === false)
+    );
+  }
+
+  private async restoreLegacyInstalledRoomSource(room: InstalledRoomRecord): Promise<boolean> {
+    if (
+      this.legacyInstalledRootOption !== undefined ||
+      this.isPathInsideLegacyInstalledRoot(room.installedDir) === false ||
+      existsSync(join(room.installedDir, "manifest.json")) === false
+    ) {
+      return false;
+    }
+
+    const workspaceSourceDir = join(this.getWorkspaceRoot(), room.id);
+    if (existsSync(workspaceSourceDir)) {
+      return false;
+    }
+
+    await copyDirectoryContents(room.installedDir, workspaceSourceDir, {
+      includeRelativePath: isLegacyRoomSourceRestorePath,
+    });
+    return true;
+  }
+
+  private async deleteInstalledPackage(
+    room: InstalledRoomRecord,
+    options: { deleteData: boolean }
+  ): Promise<void> {
+    const usesLegacyDirectInstalledRoot =
+      this.runtimeBuildRootOption === undefined && this.legacyInstalledRootOption !== undefined;
+
+    if (
+      usesLegacyDirectInstalledRoot === false &&
+      this.isPathInsideRuntimeBuildRoot(room.installedDir)
+    ) {
+      const artifactRoot =
+        normalizeRoomPath(room.installedDir) ===
+        normalizeRoomPath(this.getRoomRuntimeBuildDir(room.id))
+          ? dirname(room.installedDir)
+          : room.installedDir;
+      await rm(artifactRoot, { recursive: true, force: true });
+      return;
+    }
+
+    if (options.deleteData === true) {
+      await rm(room.installedDir, { recursive: true, force: true });
+      return;
+    }
+
+    const trackedFiles = await resolveInstalledRoomTrackedFiles(room);
+    await deleteInstalledRoomCopies(room.installedDir, trackedFiles);
+  }
+
+  private async deleteGeneratedRoomPackage(
+    roomId: string,
+    options: { deleteData: boolean }
+  ): Promise<void> {
+    const usesLegacyDirectInstalledRoot =
+      this.runtimeBuildRootOption === undefined && this.legacyInstalledRootOption !== undefined;
+
+    if (usesLegacyDirectInstalledRoot === true) {
+      if (options.deleteData === true) {
+        await rm(join(this.getRuntimeBuildRoot(), roomId), { recursive: true, force: true });
+      }
+      return;
+    }
+
+    await rm(join(this.getRuntimeBuildRoot(), roomId), { recursive: true, force: true });
+  }
+
   private getRegistryPath(): string {
     return this.registryPathOption ?? Paths.getRoomsRegistryPath();
   }
@@ -167,7 +311,7 @@ export class RoomPackageManager {
   }
 
   private async ensureInstalledRoot(): Promise<void> {
-    await ensureDir(this.getInstalledRoot());
+    await ensureDir(this.getRuntimeBuildRoot());
   }
 
   private async ensureRegistryRoot(): Promise<void> {
@@ -215,7 +359,9 @@ export class RoomPackageManager {
     return (
       this.workspaceRootOption === undefined &&
       this.bundledWorkspaceRootOption === undefined &&
-      this.installedRootOption === undefined &&
+      this.runtimeBuildRootOption === undefined &&
+      this.legacyInstalledRootOption === undefined &&
+      this.dataRootOption === undefined &&
       this.registryPathOption === undefined
     );
   }
@@ -326,6 +472,21 @@ export class RoomPackageManager {
     room: InstalledRoomRecord,
     workspaceRoom: RoomWorkspaceEntry
   ): Promise<boolean> {
+    if (
+      this.legacyInstalledRootOption === undefined &&
+      this.isPathInsideLegacyInstalledRoot(room.installedDir)
+    ) {
+      return true;
+    }
+
+    if (
+      existsSync(room.manifestPath) === false ||
+      existsSync(room.runtimeEntryPath) === false ||
+      existsSync(room.hostEntryPath) === false
+    ) {
+      return true;
+    }
+
     const sourceState = await collectWorkspaceRoomSourceBuildState(workspaceRoom.dirPath);
     const trackedFiles = await resolveInstalledRoomTrackedFiles(room);
     if (haveSameRelativePaths(sourceState.outputRelativePaths, trackedFiles) === false) {
@@ -377,8 +538,8 @@ export class RoomPackageManager {
   }
 
   async syncLinkedWorkspaceRoomsOnStartup(): Promise<StartupRoomsSyncResult> {
-    const installedRooms = await this.hydrateInstalledRoomsFromRegistry();
-    if (installedRooms.length === 0) {
+    const registry = await this.readRegistry();
+    if (registry.rooms.length === 0) {
       return {
         success: true,
         snapshot: null,
@@ -386,11 +547,25 @@ export class RoomPackageManager {
       };
     }
 
-    const workspaceRooms = await this.listWorkspaceRooms();
+    let workspaceRooms = await this.listWorkspaceRooms();
+    const restoredLegacySources = await Promise.all(
+      registry.rooms.map(async (room) => {
+        if (this.findLinkedWorkspaceRoom(room, workspaceRooms) !== null) {
+          return false;
+        }
+
+        return await this.restoreLegacyInstalledRoomSource(room);
+      })
+    );
+
+    if (restoredLegacySources.some((restored) => restored)) {
+      workspaceRooms = await this.listWorkspaceRooms();
+    }
+
     const syncedRoomIds: string[] = [];
     const errors: string[] = [];
     const startupSyncPlan = await Promise.all(
-      installedRooms.map(async (room) => {
+      registry.rooms.map(async (room) => {
         const linkedWorkspaceRoom = this.findLinkedWorkspaceRoom(room, workspaceRooms);
         if (linkedWorkspaceRoom === null) {
           return null;
@@ -459,7 +634,6 @@ export class RoomPackageManager {
       ensureRoots: async () => {
         await this.ensureRoots();
       },
-      installedRoot: this.getInstalledRoot(),
       prepareWorkspaceRoomBuild: async () => await this.buildWorkspaceRoomArtifact(roomId),
       readRegistry: async () => await this.readRegistry(),
       roomPackageT,
@@ -489,6 +663,9 @@ export class RoomPackageManager {
     options: { deleteData?: boolean } = {}
   ): Promise<RoomOperationResult> {
     return await removeInstalledRoomOperation({
+      deleteInstalledPackage: async (room, deleteOptions) => {
+        await this.deleteInstalledPackage(room, deleteOptions);
+      },
       deletePersistentRoomData: async (targetRoomId) => {
         await this.deletePersistentRoomData(targetRoomId);
       },
@@ -507,10 +684,15 @@ export class RoomPackageManager {
     options: { deleteData?: boolean } = {}
   ): Promise<RoomOperationResult> {
     return await deleteWorkspaceRoomOperation({
+      deleteInstalledPackage: async (room, deleteOptions) => {
+        await this.deleteInstalledPackage(room, deleteOptions);
+      },
+      deleteGeneratedRoomPackage: async (targetRoomId, deleteOptions) => {
+        await this.deleteGeneratedRoomPackage(targetRoomId, deleteOptions);
+      },
       deletePersistentRoomData: async (targetRoomId) => {
         await this.deletePersistentRoomData(targetRoomId);
       },
-      installedRoot: this.getInstalledRoot(),
       listWorkspaceRooms: async () => await this.listWorkspaceRooms(),
       options,
       readRegistry: async () => await this.readRegistry(),
@@ -553,6 +735,7 @@ export class RoomPackageManager {
   ): Promise<BuildWorkspaceRoomArtifactResult> {
     return await buildWorkspaceRoomArtifactOperation({
       getRoomStorageRoot: (targetRoomId) => this.getRoomStorageRoot(targetRoomId),
+      getRoomRuntimeBuildDir: (targetRoomId) => this.getRoomRuntimeBuildDir(targetRoomId),
       roomId,
       roomPackageError,
       roomPackageT,

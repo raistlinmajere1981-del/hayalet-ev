@@ -74,7 +74,10 @@ test("room tool service can describe planned and system-command tools without fo
   assert.match(serviceSource, /lastError: data\.lastError \?\? null,/);
   assert.match(serviceSource, /function summarizeCommandFailure\(result: \{ stderr: string; stdout: string \}\): string \| null/);
   assert.match(serviceSource, /async function resolveInstallableToolInstallDir\(/);
-  assert.match(serviceSource, /packageToolRuntimeDir: join\(installedDir, "tools", "runtime", platformKey\),/);
+  assert.match(
+    serviceSource,
+    /packageToolRuntimeDir: join\(legacyInstalledDir, "tools", "runtime", platformKey\),/
+  );
   assert.match(serviceSource, /toolRuntimeDir: join\(storageDir, "tools", "runtime", platformKey\),/);
   assert.match(serviceSource, /const legacyInstallDir = join\(paths\.packageToolRuntimeDir, installDirName\);/);
   assert.match(serviceSource, /await rename\(legacyInstallDir, preferredInstallDir\);/);
@@ -107,6 +110,10 @@ test("room tool service resolves toolchain manifests from installed and workspac
   );
   assert.match(
     serviceSource,
+    /join\(Paths\.getInstalledRoomDir\(paths\.roomId\), "tools", "toolchain\.manifest\.json"\)/
+  );
+  assert.match(
+    serviceSource,
     /join\(\s*paths\.storageDir,\s*"build",\s*"workspace",\s*"shared",\s*"data",\s*"tools",\s*"toolchain\.manifest\.json"\s*\)/
   );
   assert.match(
@@ -116,7 +123,7 @@ test("room tool service resolves toolchain manifests from installed and workspac
   assert.match(serviceSource, /const manifestPath = candidatePaths\.find\(\(candidate\) => existsSync\(candidate\)\);/);
   assert.match(
     serviceSource,
-    /const allowedRoots = \[\s*paths\.storageDir,\s*paths\.toolRuntimeDir,\s*paths\.packageToolsDir,\s*getInstalledSharedToolsDir\(paths\),\s*\];/
+    /const allowedRoots = \[paths\.storageDir, paths\.toolRuntimeDir\];/
   );
 });
 

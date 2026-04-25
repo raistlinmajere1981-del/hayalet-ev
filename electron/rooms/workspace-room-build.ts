@@ -22,12 +22,14 @@ export type BuildWorkspaceRoomArtifactResult =
     };
 
 export async function buildWorkspaceRoomArtifact({
+  getRoomRuntimeBuildDir,
   getRoomStorageRoot,
   roomId,
   roomPackageError,
   roomPackageT,
   workspaceRooms,
 }: {
+  getRoomRuntimeBuildDir: (roomId: string) => string;
   getRoomStorageRoot: (roomId: string) => string;
   roomId: string;
   roomPackageError: RoomPackageErrorTranslator;
@@ -58,7 +60,7 @@ export async function buildWorkspaceRoomArtifact({
   }
 
   const roomStorageRoot = getRoomStorageRoot(target.manifest.id);
-  const buildDir = join(roomStorageRoot, "build", "workspace");
+  const buildDir = getRoomRuntimeBuildDir(target.manifest.id);
   await buildWorkspaceRoomOutput(target.dirPath, buildDir);
 
   const runtimeEntryPath = join(buildDir, target.manifest.runtime.uiEntry);

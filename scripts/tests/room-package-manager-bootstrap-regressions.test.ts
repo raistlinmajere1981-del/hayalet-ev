@@ -62,7 +62,9 @@ test("room package manager resolves Paths lazily instead of constructor time", a
   const source = await readFile(roomPackageManagerPath, "utf8");
 
   assert.match(source, /private getWorkspaceRoot\(\): string/);
-  assert.match(source, /private getInstalledRoot\(\): string/);
+  assert.match(source, /private getRuntimeBuildRoot\(\): string/);
+  assert.match(source, /private getDataRoot\(\): string/);
+  assert.match(source, /private getRoomRuntimeBuildDir\(roomId: string\): string/);
   assert.match(source, /private getRegistryPath\(\): string/);
   assert.match(source, /export function getRoomPackageManager\(\): RoomPackageManager/);
   assert.doesNotMatch(source, /export const roomPackageManager = new RoomPackageManager\(\)/);
@@ -73,7 +75,7 @@ test("room package manager resolves Paths lazily instead of constructor time", a
   assert.ok(constructorMatch, "constructor should exist");
   assert.doesNotMatch(
     constructorMatch?.[1] ?? "",
-    /Paths\.get(ProjectRoot|InstalledRoomsDir|RoomsRegistryPath)/
+    /Paths\.get(ProjectRoot|GeneratedRoomsDir|DataDir|RoomsRegistryPath)/
   );
 });
 
@@ -183,20 +185,14 @@ test("room package manager keeps installed room record building in a dedicated b
   assert.match(workspaceRoomBuildSource, /buildWorkspaceRoomOutput\(target\.dirPath, buildDir\)/);
   assert.match(
     workspaceRoomBuildSource,
-    /const buildDir = join\(roomStorageRoot, "build", "workspace"\);/
+    /const buildDir = getRoomRuntimeBuildDir\(target\.manifest\.id\);/
   );
-  assert.match(
-    workspaceRoomBuildSupportSource,
-    /export async function buildWorkspaceRoomOutput\(/
-  );
+  assert.match(workspaceRoomBuildSupportSource, /export async function buildWorkspaceRoomOutput\(/);
   assert.match(
     workspaceRoomBuildSupportSource,
     /export async function collectWorkspaceRoomSourceBuildState\(/
   );
-  assert.match(
-    workspaceRoomBuildSupportSource,
-    /export function roomSourceSatisfiesRuntimePath\(/
-  );
+  assert.match(workspaceRoomBuildSupportSource, /export function roomSourceSatisfiesRuntimePath\(/);
   assert.match(workspaceRoomBuildSupportSource, /app\.asar\.unpacked/);
   assert.match(workspaceRoomBuildSupportSource, /pathToFileURL/);
   assert.match(workspaceRoomBuildSupportSource, /async function loadEsbuildModule\(/);
@@ -209,6 +205,14 @@ test("room package manager keeps installed room record building in a dedicated b
     "TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx scripts/rooms/build-workspace-rooms.ts"
   );
   assert.equal(
+    scripts["rooms:paths"],
+    "TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx scripts/rooms/report-room-paths.ts"
+  );
+  assert.equal(
+    scripts["rooms:clean-generated"],
+    "TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx scripts/rooms/clean-generated-room-artifacts.ts"
+  );
+  assert.equal(
     scripts["rooms:test:file"],
     "TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx --test"
   );
@@ -219,6 +223,7 @@ test("room package manager keeps installed room record building in a dedicated b
   assert.match(appIndexSource, /AppI18n\.t\("app\.startup\.syncingLinkedRooms"\)/);
   assert.match(appIndexSource, /await RoomRegistry\.prepareStartupSnapshot\(/);
   assert.match(externalBootstrapSource, /await RoomRegistry\.prepareStartupSnapshot\(/);
+  assert.match(eslintConfigSource, /"rooms\/\.build\/\*\*"/);
   assert.match(eslintConfigSource, /"rooms\/\*\*\/ui\/\*\*\/\*\.ts"/);
   assert.match(eslintConfigSource, /"rooms\/\*\*\/main-functions\/\*\*\/host\/\*\*\/\*\.ts"/);
   assert.match(eslintConfigSource, /project:\s*"\.\/rooms\/tsconfig\.rooms\.json"/);
@@ -247,8 +252,14 @@ test("dev startup falls back to workspace rooms when installed registry is empty
 
 test("packaged startup seeds the external workspace root and bootstraps installed rooms from rooms/", async () => {
   const managerSource = await readFile(roomPackageManagerPath, "utf8");
-  const mainWrapperSource = await readFile(join(projectRoot, "electron", "packaged-wrapper-main.ts"), "utf8");
-  const cliWrapperSource = await readFile(join(projectRoot, "electron", "packaged-wrapper-cli.ts"), "utf8");
+  const mainWrapperSource = await readFile(
+    join(projectRoot, "electron", "packaged-wrapper-main.ts"),
+    "utf8"
+  );
+  const cliWrapperSource = await readFile(
+    join(projectRoot, "electron", "packaged-wrapper-cli.ts"),
+    "utf8"
+  );
   const seedSource = await readFile(packagedWorkspaceSeedPath, "utf8");
   const afterPackSource = await readFile(afterPackScriptPath, "utf8");
   const pathsSource = await readFile(pathsPath, "utf8");
@@ -265,13 +276,21 @@ test("packaged startup seeds the external workspace root and bootstraps installe
     /private async bootstrapPackagedInstalledRoomsFromWorkspace\(\): Promise<void>/
   );
   assert.match(managerSource, /await this\.installFromWorkspace\(room\.manifest\.id\);/);
-  assert.match(mainWrapperSource, /import \{ seedPackagedProjectRoot \} from "\.\/packaged-workspace-seed\.ts";/);
-  assert.match(cliWrapperSource, /import \{ seedPackagedProjectRoot \} from "\.\/packaged-workspace-seed\.ts";/);
+  assert.match(
+    mainWrapperSource,
+    /import \{ seedPackagedProjectRoot \} from "\.\/packaged-workspace-seed\.ts";/
+  );
+  assert.match(
+    cliWrapperSource,
+    /import \{ seedPackagedProjectRoot \} from "\.\/packaged-workspace-seed\.ts";/
+  );
   assert.match(seedSource, /return dirname\(resourcesPath\);/);
   assert.match(seedSource, /"AGENTS\.md"/);
   assert.match(seedSource, /"rooms"/);
   assert.match(seedSource, /"scripts"/);
   assert.match(seedSource, /"rooms\/tsconfig\.rooms\.json"/);
+  assert.match(seedSource, /includes\("\/rooms\/\.build"\)/);
+  assert.match(afterPackSource, /includes\("\/rooms\/\.build"\)/);
   assert.doesNotMatch(seedSource, /"config\/rooms\.json"/);
   assert.doesNotMatch(afterPackSource, /"config\/rooms\.json"/);
 });

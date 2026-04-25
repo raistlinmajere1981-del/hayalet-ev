@@ -36,8 +36,9 @@ temp/
 # Data directory (user databases and attachments)
 data/*
 !data/protocols.json
-!data/rooms/
-!data/rooms/**
+
+# Generated room runtime artifacts
+rooms/.build/
 
 # Assets allowlist
 # (disabled to allow versioning assets under src/assets)

@@ -51,7 +51,10 @@ async function copyMissingEntry(sourcePath: string, targetPath: string): Promise
     return 0;
   }
 
-  if (sourcePath.endsWith(".tsbuildinfo")) {
+  if (
+    sourcePath.endsWith(".tsbuildinfo") ||
+    sourcePath.replace(/\\/g, "/").includes("/rooms/.build")
+  ) {
     return 0;
   }
 

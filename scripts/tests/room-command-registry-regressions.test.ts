@@ -7,11 +7,11 @@ const room: InstalledRoomRecord = {
   id: "game-room",
   name: "Game Room",
   version: "2.2.0",
-  installedDir: "/workspace/data/rooms/game-room",
+  installedDir: "/workspace/rooms/.build/game-room/runtime",
   sourceDir: "/workspace/rooms/game-room",
-  manifestPath: "/workspace/data/rooms/game-room/manifest.json",
-  runtimeEntryPath: "/workspace/data/rooms/game-room/ui/index.html",
-  hostEntryPath: "/workspace/data/rooms/game-room/host/index.js",
+  manifestPath: "/workspace/rooms/.build/game-room/runtime/manifest.json",
+  runtimeEntryPath: "/workspace/rooms/.build/game-room/runtime/ui/index.html",
+  hostEntryPath: "/workspace/rooms/.build/game-room/runtime/host/index.js",
   defaultFeatureId: "xox",
   features: [
     { id: "xox", name: "XOX" },
@@ -112,7 +112,10 @@ test("RoomCommandRegistry hides internal commands from the public catalog", asyn
     roomPayload: { cell: 6 },
   });
 
-  assert.equal(catalog.some((item) => item.name === "GameRoomInternalBridgeOnly"), false);
+  assert.equal(
+    catalog.some((item) => item.name === "GameRoomInternalBridgeOnly"),
+    false
+  );
   assert.deepEqual(directResult, { cell: 6 });
 });
 
@@ -120,7 +123,11 @@ test("RoomCommandRegistry runs room-ui commands with structured payloads", async
   RoomCommandRegistry.reset();
   RoomCommandRegistry.syncInstalledRooms([room]);
 
-  RoomCommandRegistry.registerHandler("game-room", "GameRoomXoxUserMove", async (payload) => payload.roomArgs);
+  RoomCommandRegistry.registerHandler(
+    "game-room",
+    "GameRoomXoxUserMove",
+    async (payload) => payload.roomArgs
+  );
 
   const result = await RoomCommandRegistry.run("GameRoomXoxUserMove", {
     provider: "room-ui",
@@ -134,13 +141,21 @@ test("RoomCommandRegistry parses AI args and enforces scope rules", async () => 
   RoomCommandRegistry.reset();
   RoomCommandRegistry.syncInstalledRooms([room]);
 
-  RoomCommandRegistry.registerHandler("game-room", "GameRoomXoxAiMove", async (payload) => payload.roomArgs);
+  RoomCommandRegistry.registerHandler(
+    "game-room",
+    "GameRoomXoxAiMove",
+    async (payload) => payload.roomArgs
+  );
   RoomCommandRegistry.registerHandler(
     "game-room",
     "GameRoomFateKnotsAiChoice",
     async (payload) => payload.roomArgs
   );
-  RoomCommandRegistry.registerHandler("game-room", "GameRoomXoxUserMove", async (payload) => payload.roomArgs);
+  RoomCommandRegistry.registerHandler(
+    "game-room",
+    "GameRoomXoxUserMove",
+    async (payload) => payload.roomArgs
+  );
   RoomCommandRegistry.registerHandler(
     "game-room",
     "GameRoomXoxRemoteMove",

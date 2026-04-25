@@ -217,7 +217,8 @@ function detectPlatformKey(): PlatformKey | null {
 }
 
 function resolveRuntimePaths(roomId: string): RoomToolRuntimePaths {
-  const installedDir = Paths.getInstalledRoomDir(roomId);
+  const installedDir = Paths.getRoomRuntimeBuildDir(roomId);
+  const legacyInstalledDir = Paths.getInstalledRoomDir(roomId);
   const storageDir = Paths.getRoomStorageDir(roomId);
   const platformKey = detectPlatformKey() ?? `${process.platform}-${process.arch}`;
   return {
@@ -226,7 +227,7 @@ function resolveRuntimePaths(roomId: string): RoomToolRuntimePaths {
     storageDir,
     projectsDir: join(storageDir, "projects"),
     packageToolsDir: join(installedDir, "tools"),
-    packageToolRuntimeDir: join(installedDir, "tools", "runtime", platformKey),
+    packageToolRuntimeDir: join(legacyInstalledDir, "tools", "runtime", platformKey),
     toolRuntimeDir: join(storageDir, "tools", "runtime", platformKey),
     toolStatePath: join(storageDir, "tool-state.json"),
   };
@@ -241,6 +242,14 @@ function getToolchainManifestCandidates(paths: RoomToolRuntimePaths): string[] {
     new Set([
       join(paths.packageToolsDir, "toolchain.manifest.json"),
       join(getInstalledSharedToolsDir(paths), "toolchain.manifest.json"),
+      join(Paths.getInstalledRoomDir(paths.roomId), "tools", "toolchain.manifest.json"),
+      join(
+        Paths.getInstalledRoomDir(paths.roomId),
+        "shared",
+        "data",
+        "tools",
+        "toolchain.manifest.json"
+      ),
       join(
         paths.storageDir,
         "build",
@@ -287,12 +296,7 @@ function isPathInside(parentPath: string, childPath: string): boolean {
 function ensureRoomManagedPath(roomId: string, targetPath: string): void {
   const paths = resolveRuntimePaths(roomId);
   const absolutePath = ensureAbsolutePath(targetPath);
-  const allowedRoots = [
-    paths.storageDir,
-    paths.toolRuntimeDir,
-    paths.packageToolsDir,
-    getInstalledSharedToolsDir(paths),
-  ];
+  const allowedRoots = [paths.storageDir, paths.toolRuntimeDir];
   if (allowedRoots.some((root) => isPathInside(root, absolutePath))) {
     return;
   }
@@ -649,7 +653,7 @@ async function resolveInstallableToolInstallDir(
     await rename(legacyInstallDir, preferredInstallDir);
     return preferredInstallDir;
   } catch {
-    return legacyInstallDir;
+    return preferredInstallDir;
   }
 }
 
@@ -744,7 +748,6 @@ class RoomToolService {
     await Promise.all([
       ensureDir(paths.storageDir),
       ensureDir(paths.projectsDir),
-      ensureDir(paths.packageToolsDir),
       ensureDir(paths.toolRuntimeDir),
     ]);
     return {

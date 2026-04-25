@@ -1,13 +1,12 @@
 import { existsSync } from "fs";
-import { rm, stat } from "fs/promises";
+import { stat, rm } from "fs/promises";
 import { join } from "path";
 import type { RoomRegistryState, RoomWorkspaceEntry } from "@shared/index.js";
 import { buildInstalledRoomRecord } from "./installed-room-builder.ts";
 import {
+  collectFilesRecursive,
   copyDirectoryContents,
-  deleteInstalledRoomCopies,
   INSTALLED_ROOM_FILE_SNAPSHOT,
-  resolveInstalledRoomTrackedFiles,
   writeInstalledRoomFileSnapshot,
 } from "./room-install-files.ts";
 import type { RoomOperationResult, RoomPackageTranslator } from "./room-package-types.ts";
@@ -18,7 +17,6 @@ function normalizeRoomId(rawValue: string): string {
 }
 
 interface InstallRoomFromWorkspaceParams {
-  installedRoot: string;
   ensureRoots: () => Promise<void>;
   prepareWorkspaceRoomBuild: () => Promise<BuildWorkspaceRoomArtifactResult>;
   readRegistry: () => Promise<RoomRegistryState>;
@@ -27,7 +25,6 @@ interface InstallRoomFromWorkspaceParams {
 }
 
 export async function installRoomFromWorkspace({
-  installedRoot,
   ensureRoots,
   prepareWorkspaceRoomBuild,
   readRegistry,
@@ -44,10 +41,12 @@ export async function installRoomFromWorkspace({
     return { success: false, error: await roomPackageT("roomIdRequired") };
   }
 
-  const roomInstalledDir = join(installedRoot, target.manifest.id);
+  const roomInstalledDir = buildResult.artifact.buildDir;
   await ensureRoots();
-  const trackedFiles = await copyDirectoryContents(buildResult.artifact.buildDir, roomInstalledDir);
-  await writeInstalledRoomFileSnapshot(roomInstalledDir, trackedFiles);
+  await writeInstalledRoomFileSnapshot(
+    roomInstalledDir,
+    (await collectFilesRecursive(roomInstalledDir)).map((file) => file.relativePath)
+  );
 
   const now = new Date().toISOString();
   const record = buildInstalledRoomRecord(target.manifest, {
@@ -92,6 +91,10 @@ interface RemoveInstalledRoomParams {
   options?: { deleteData?: boolean };
   readRegistry: () => Promise<RoomRegistryState>;
   writeRegistry: (registry: RoomRegistryState) => Promise<void>;
+  deleteInstalledPackage: (
+    room: RoomRegistryState["rooms"][number],
+    options: { deleteData: boolean }
+  ) => Promise<void>;
   deletePersistentRoomData: (roomId: string) => Promise<void>;
   roomPackageT: RoomPackageTranslator;
 }
@@ -101,6 +104,7 @@ export async function removeInstalledRoomOperation({
   options = {},
   readRegistry,
   writeRegistry,
+  deleteInstalledPackage,
   deletePersistentRoomData,
   roomPackageT,
 }: RemoveInstalledRoomParams): Promise<RoomOperationResult> {
@@ -120,12 +124,11 @@ export async function removeInstalledRoomOperation({
 
   if (options.deleteData === true) {
     await Promise.all([
-      rm(current.installedDir, { recursive: true, force: true }),
+      deleteInstalledPackage(current, { deleteData: true }),
       deletePersistentRoomData(current.id),
     ]);
   } else {
-    const trackedFiles = await resolveInstalledRoomTrackedFiles(current);
-    await deleteInstalledRoomCopies(current.installedDir, trackedFiles);
+    await deleteInstalledPackage(current, { deleteData: false });
   }
 
   registry.rooms = registry.rooms.filter((item) => item.id !== normalizedRoomId);
@@ -140,23 +143,28 @@ export async function removeInstalledRoomOperation({
 }
 
 interface DeleteWorkspaceRoomParams {
-  installedRoot: string;
   roomId: string;
   options?: { deleteData?: boolean };
   listWorkspaceRooms: () => Promise<RoomWorkspaceEntry[]>;
   readRegistry: () => Promise<RoomRegistryState>;
   writeRegistry: (registry: RoomRegistryState) => Promise<void>;
+  deleteInstalledPackage: (
+    room: RoomRegistryState["rooms"][number],
+    options: { deleteData: boolean }
+  ) => Promise<void>;
+  deleteGeneratedRoomPackage: (roomId: string, options: { deleteData: boolean }) => Promise<void>;
   deletePersistentRoomData: (roomId: string) => Promise<void>;
   roomPackageT: RoomPackageTranslator;
 }
 
 export async function deleteWorkspaceRoomOperation({
-  installedRoot,
   roomId,
   options = {},
   listWorkspaceRooms,
   readRegistry,
   writeRegistry,
+  deleteInstalledPackage,
+  deleteGeneratedRoomPackage,
   deletePersistentRoomData,
   roomPackageT,
 }: DeleteWorkspaceRoomParams): Promise<RoomOperationResult> {
@@ -186,21 +194,22 @@ export async function deleteWorkspaceRoomOperation({
   await rm(target.dirPath, { recursive: true, force: true });
 
   let restartRequired = false;
-  if (options.deleteData === true) {
-    const installedRoomId = target.manifest?.id ?? target.dirName;
-    await Promise.all([
-      rm(join(installedRoot, installedRoomId), { recursive: true, force: true }),
-      deletePersistentRoomData(installedRoomId),
-    ]);
+  const installedRoomId = target.manifest?.id ?? target.dirName;
+  const registry = await readRegistry();
+  const current = registry.rooms.find((item) => item.id === installedRoomId);
 
-    const registry = await readRegistry();
-    const nextRooms = registry.rooms.filter((item) => item.id !== installedRoomId);
-    if (nextRooms.length !== registry.rooms.length) {
-      registry.rooms = nextRooms;
-      registry.updatedAt = new Date().toISOString();
-      await writeRegistry(registry);
-      restartRequired = true;
-    }
+  if (current !== undefined) {
+    await deleteInstalledPackage(current, { deleteData: options.deleteData === true });
+    registry.rooms = registry.rooms.filter((item) => item.id !== installedRoomId);
+    registry.updatedAt = new Date().toISOString();
+    await writeRegistry(registry);
+    restartRequired = true;
+  } else {
+    await deleteGeneratedRoomPackage(installedRoomId, { deleteData: options.deleteData === true });
+  }
+
+  if (options.deleteData === true) {
+    await deletePersistentRoomData(installedRoomId);
   }
 
   return {

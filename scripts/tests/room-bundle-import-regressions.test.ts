@@ -205,7 +205,8 @@ test("RoomPackageManager imports a .hevroom bundle into workspace and installed 
 test("RoomPackageManager packages workspace rooms into room-storage exports by default", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-bundle-package-"));
   const workspaceRoot = join(tempRoot, "rooms");
-  const installedRoot = join(tempRoot, "data", "rooms");
+  const dataRoot = join(tempRoot, "data");
+  const runtimeBuildRoot = join(workspaceRoot, ".build");
   const registryPath = join(tempRoot, "config", "rooms.json");
 
   try {
@@ -213,7 +214,8 @@ test("RoomPackageManager packages workspace rooms into room-storage exports by d
 
     const manager = new RoomPackageManager({
       workspaceRoot,
-      installedRoot,
+      runtimeBuildRoot,
+      dataRoot,
       registryPath,
     });
 
@@ -226,7 +228,7 @@ test("RoomPackageManager packages workspace rooms into room-storage exports by d
       "exports",
       "package-room.hevroom.json"
     );
-    const expectedBuildRoot = join(
+    const staleStorageBuildRoot = join(
       tempRoot,
       "data",
       "room-storage",
@@ -234,12 +236,14 @@ test("RoomPackageManager packages workspace rooms into room-storage exports by d
       "build",
       "workspace"
     );
+    const expectedBuildRoot = join(runtimeBuildRoot, "package-room", "runtime");
 
     assert.equal(result.success, true, result.error);
     assert.equal(result.path, expectedOutput);
     assert.equal(existsSync(expectedOutput), true);
     assert.equal(existsSync(expectedBuildRoot), true);
     assert.equal(existsSync(join(expectedBuildRoot, "ui", "index.html")), true);
+    assert.equal(existsSync(staleStorageBuildRoot), false);
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
   }
@@ -248,7 +252,9 @@ test("RoomPackageManager packages workspace rooms into room-storage exports by d
 test("RoomPackageManager startup sync refreshes workspace-linked installed rooms after source edits", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-startup-sync-"));
   const workspaceRoot = join(tempRoot, "rooms");
-  const installedRoot = join(tempRoot, "data", "rooms");
+  const dataRoot = join(tempRoot, "data");
+  const runtimeBuildRoot = join(workspaceRoot, ".build");
+  const runtimeRoomDir = join(runtimeBuildRoot, "sync-room", "runtime");
   const registryPath = join(tempRoot, "config", "rooms.json");
 
   try {
@@ -256,7 +262,8 @@ test("RoomPackageManager startup sync refreshes workspace-linked installed rooms
 
     const manager = new RoomPackageManager({
       workspaceRoot,
-      installedRoot,
+      runtimeBuildRoot,
+      dataRoot,
       registryPath,
     });
 
@@ -268,10 +275,7 @@ test("RoomPackageManager startup sync refreshes workspace-linked installed rooms
     const initialRoom = initialInstalledRooms[0];
     assert.ok(initialRoom);
     const initialUpdatedAt = initialRoom.updatedAt;
-    assert.match(
-      await readFile(join(installedRoot, "sync-room", "ui", "index.html"), "utf8"),
-      /Sync Room/
-    );
+    assert.match(await readFile(join(runtimeRoomDir, "ui", "index.html"), "utf8"), /Sync Room/);
 
     await waitForFsTick();
     await writeFile(
@@ -286,10 +290,7 @@ test("RoomPackageManager startup sync refreshes workspace-linked installed rooms
     assert.equal(syncResult.snapshot?.rooms.length, 1);
     assert.ok(syncResult.snapshot?.rooms[0]);
     assert.notEqual(syncResult.snapshot?.rooms[0]?.updatedAt, initialUpdatedAt);
-    assert.match(
-      await readFile(join(installedRoot, "sync-room", "ui", "index.html"), "utf8"),
-      /Sync Room v2/
-    );
+    assert.match(await readFile(join(runtimeRoomDir, "ui", "index.html"), "utf8"), /Sync Room v2/);
 
     const secondSyncResult = await manager.syncLinkedWorkspaceRoomsOnStartup();
     assert.equal(secondSyncResult.success, true, secondSyncResult.error);
@@ -387,7 +388,8 @@ test("RoomPackageManager lists bundled rooms and installs them without deleting 
   const workspaceRoot = join(tempRoot, "rooms");
   const bundledWorkspaceRoot = join(tempRoot, "app.asar", "rooms");
   const dataRoot = join(tempRoot, "data");
-  const installedRoot = join(dataRoot, "rooms");
+  const runtimeBuildRoot = join(workspaceRoot, ".build");
+  const runtimeRoomDir = join(runtimeBuildRoot, "workshop", "runtime");
   const registryPath = join(tempRoot, "config", "rooms.json");
 
   try {
@@ -397,7 +399,8 @@ test("RoomPackageManager lists bundled rooms and installs them without deleting 
     const manager = new RoomPackageManager({
       workspaceRoot,
       bundledWorkspaceRoot,
-      installedRoot,
+      runtimeBuildRoot,
+      dataRoot,
       registryPath,
     });
 
@@ -411,12 +414,12 @@ test("RoomPackageManager lists bundled rooms and installs them without deleting 
     const installResult = await manager.installFromWorkspace("workshop");
     assert.equal(installResult.success, true, installResult.error);
     assert.equal(installResult.room?.sourceDir, join(bundledWorkspaceRoot, "workshop"));
-    assert.equal(existsSync(join(installedRoot, "workshop", "ui", "index.html")), true);
+    assert.equal(existsSync(join(runtimeRoomDir, "ui", "index.html")), true);
     assert.equal(
       existsSync(
         join(dataRoot, "room-storage", "workshop", "build", "workspace", "ui", "index.html")
       ),
-      true
+      false
     );
     assert.equal(existsSync(join(workspaceRoot, "workshop")), false);
 

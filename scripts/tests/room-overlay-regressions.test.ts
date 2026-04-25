@@ -73,10 +73,10 @@ const installedRooms: InstalledRoomRecord[] = [
     name: "Game Room",
     version: "2.0.0",
     sourceDir: "/workspace/rooms/game-room",
-    installedDir: "/workspace/data/rooms/game-room",
-    manifestPath: "/workspace/data/rooms/game-room/manifest.json",
-    runtimeEntryPath: "/workspace/data/rooms/game-room/ui/index.html",
-    hostEntryPath: "/workspace/data/rooms/game-room/host/index.js",
+    installedDir: "/workspace/rooms/.build/game-room/runtime",
+    manifestPath: "/workspace/rooms/.build/game-room/runtime/manifest.json",
+    runtimeEntryPath: "/workspace/rooms/.build/game-room/runtime/ui/index.html",
+    hostEntryPath: "/workspace/rooms/.build/game-room/runtime/host/index.js",
     defaultFeatureId: "chess",
     features: [{ id: "chess", name: "Chess" }],
     installedAt: "2026-03-08T00:00:00.000Z",
@@ -87,10 +87,10 @@ const installedRooms: InstalledRoomRecord[] = [
     name: "Workshop",
     version: "1.0.0",
     sourceDir: "/workspace/rooms/workshop",
-    installedDir: "/workspace/data/rooms/workshop",
-    manifestPath: "/workspace/data/rooms/workshop/manifest.json",
-    runtimeEntryPath: "/workspace/data/rooms/workshop/ui/index.html",
-    hostEntryPath: "/workspace/data/rooms/workshop/host/index.js",
+    installedDir: "/workspace/rooms/.build/workshop/runtime",
+    manifestPath: "/workspace/rooms/.build/workshop/runtime/manifest.json",
+    runtimeEntryPath: "/workspace/rooms/.build/workshop/runtime/ui/index.html",
+    hostEntryPath: "/workspace/rooms/.build/workshop/runtime/host/index.js",
     defaultFeatureId: "assembler",
     features: [{ id: "assembler", name: "Assembler" }],
     installedAt: "2026-03-22T00:00:00.000Z",
@@ -137,10 +137,10 @@ test("workspace fallback entries stay out of installed summary and list markup",
       version: "1.0.0",
       isWorkspaceFallback: true,
       sourceDir: "/workspace/rooms/fallback-room",
-      installedDir: "/workspace/data/room-storage/fallback-room/build/workspace",
-      manifestPath: "/workspace/data/room-storage/fallback-room/build/workspace/manifest.json",
-      runtimeEntryPath: "/workspace/data/room-storage/fallback-room/build/workspace/ui/index.html",
-      hostEntryPath: "/workspace/data/room-storage/fallback-room/build/workspace/host/index.js",
+      installedDir: "/workspace/rooms/.build/fallback-room/runtime",
+      manifestPath: "/workspace/rooms/.build/fallback-room/runtime/manifest.json",
+      runtimeEntryPath: "/workspace/rooms/.build/fallback-room/runtime/ui/index.html",
+      hostEntryPath: "/workspace/rooms/.build/fallback-room/runtime/host/index.js",
       defaultFeatureId: "primary",
       features: [{ id: "primary", name: "Primary" }],
       installedAt: "2026-03-29T00:00:00.000Z",
@@ -150,7 +150,10 @@ test("workspace fallback entries stay out of installed summary and list markup",
 
   const summaryMarkup = buildRoomOverlaySummary([], fallbackInstalledRooms);
   const installedMarkup = buildInstalledRoomListMarkup(fallbackInstalledRooms, []);
-  const workspaceMarkup = buildWorkspaceRoomListMarkup(workspaceRooms.slice(0, 1), fallbackInstalledRooms);
+  const workspaceMarkup = buildWorkspaceRoomListMarkup(
+    workspaceRooms.slice(0, 1),
+    fallbackInstalledRooms
+  );
 
   assert.match(summaryMarkup, /Yüklü: <strong>0<\/strong>/);
   assert.match(installedMarkup, /room-manager-empty/);

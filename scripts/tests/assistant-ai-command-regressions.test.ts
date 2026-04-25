@@ -14,11 +14,11 @@ const room: InstalledRoomRecord = {
   id: "game-room",
   name: "Game Room",
   version: "2.2.0",
-  installedDir: "/workspace/data/rooms/game-room",
+  installedDir: "/workspace/rooms/.build/game-room/runtime",
   sourceDir: "/workspace/rooms/game-room",
-  manifestPath: "/workspace/data/rooms/game-room/manifest.json",
-  runtimeEntryPath: "/workspace/data/rooms/game-room/ui/index.html",
-  hostEntryPath: "/workspace/data/rooms/game-room/host/index.js",
+  manifestPath: "/workspace/rooms/.build/game-room/runtime/manifest.json",
+  runtimeEntryPath: "/workspace/rooms/.build/game-room/runtime/ui/index.html",
+  hostEntryPath: "/workspace/rooms/.build/game-room/runtime/host/index.js",
   defaultFeatureId: "xox",
   features: [{ id: "xox", name: "XOX" }],
   commandSpecs: [
@@ -65,7 +65,10 @@ test("RelayManager catches ai0 last-message SlotBridge commands only when assist
 
   try {
     RelayManager.coreEngine = {
-      handleCaughtCommand: async (command: string, payload: { args?: string; provider?: string }) => {
+      handleCaughtCommand: async (
+        command: string,
+        payload: { args?: string; provider?: string }
+      ) => {
         caught.push({
           command,
           args: payload.args ?? "",
@@ -78,9 +81,10 @@ test("RelayManager catches ai0 last-message SlotBridge commands only when assist
     const inline =
       '++cmd:SlotBridge({"action":"message.send","fromSlot":"ai0","toSlot":"ai1","payload":{"text":"Merhaba"}})';
 
-    SettingsManager.getSnapshot = () => ({
-      assistantSlot: { catchCommands: false },
-    }) as never;
+    SettingsManager.getSnapshot = () =>
+      ({
+        assistantSlot: { catchCommands: false },
+      }) as never;
 
     const disabledResult = await RelayManager.processAssistantCommandCatch({
       messages: [{ role: "assistant", text: inline }],
@@ -89,9 +93,10 @@ test("RelayManager catches ai0 last-message SlotBridge commands only when assist
     assert.equal(disabledResult, false);
     assert.equal(caught.length, 0);
 
-    SettingsManager.getSnapshot = () => ({
-      assistantSlot: { catchCommands: true },
-    }) as never;
+    SettingsManager.getSnapshot = () =>
+      ({
+        assistantSlot: { catchCommands: true },
+      }) as never;
 
     const enabledResult = await RelayManager.processAssistantCommandCatch({
       messages: [{ role: "assistant", text: inline }],
@@ -159,21 +164,28 @@ test("server command catalog includes internal room commands for slot panels", (
   const aiCatalog = categoryApi.getCatalog?.("ai1-ai2") ?? [];
   const us1Catalog = categoryApi.getCatalog?.("us1") ?? [];
 
-  assert.equal(aiCatalog.some((item) => item.name === "GameRoomXoxAiMove"), true);
-  assert.equal(us1Catalog.some((item) => item.name === "GameRoomXoxRemoteMove"), true);
+  assert.equal(
+    aiCatalog.some((item) => item.name === "GameRoomXoxAiMove"),
+    true
+  );
+  assert.equal(
+    us1Catalog.some((item) => item.name === "GameRoomXoxRemoteMove"),
+    true
+  );
 });
 
 test("server commands block disabled commands per slot", async () => {
   const originalGetSnapshot = SettingsManager.getSnapshot;
 
   try {
-    SettingsManager.getSnapshot = () => ({
-      slots: {
-        ai1: { disabledCommands: ["WhisperManager"] },
-        ai2: { disabledCommands: [] },
-      },
-      assistantSlot: { disabledCommands: [] },
-    }) as never;
+    SettingsManager.getSnapshot = () =>
+      ({
+        slots: {
+          ai1: { disabledCommands: ["WhisperManager"] },
+          ai2: { disabledCommands: [] },
+        },
+        assistantSlot: { disabledCommands: [] },
+      }) as never;
 
     const disabled = (await serverCommands.run("WhisperManager", {
       provider: "ai1",
@@ -191,13 +203,14 @@ test("server commands can disable SlotBridge actions per slot", async () => {
   const originalGetSnapshot = SettingsManager.getSnapshot;
 
   try {
-    SettingsManager.getSnapshot = () => ({
-      slots: {
-        ai1: { disabledCommands: ["SlotBridge:message.send"] },
-        ai2: { disabledCommands: [] },
-      },
-      assistantSlot: { disabledCommands: [] },
-    }) as never;
+    SettingsManager.getSnapshot = () =>
+      ({
+        slots: {
+          ai1: { disabledCommands: ["SlotBridge:message.send"] },
+          ai2: { disabledCommands: [] },
+        },
+        assistantSlot: { disabledCommands: [] },
+      }) as never;
 
     const disabled = (await serverCommands.run("SlotBridge", {
       provider: "ai1",
@@ -219,13 +232,14 @@ test("server commands block disabled room commands routed through SlotBridge", a
   try {
     RoomCommandRegistry.syncInstalledRooms([room]);
 
-    SettingsManager.getSnapshot = () => ({
-      slots: {
-        ai1: { disabledCommands: ["GameRoomXoxAiMove"] },
-        ai2: { disabledCommands: [] },
-      },
-      assistantSlot: { disabledCommands: [] },
-    }) as never;
+    SettingsManager.getSnapshot = () =>
+      ({
+        slots: {
+          ai1: { disabledCommands: ["GameRoomXoxAiMove"] },
+          ai2: { disabledCommands: [] },
+        },
+        assistantSlot: { disabledCommands: [] },
+      }) as never;
 
     const disabled = (await serverCommands.run("SlotBridge", {
       provider: "ai1",
@@ -245,14 +259,15 @@ test("server commands block disabled us1 room commands routed through SlotBridge
   try {
     RoomCommandRegistry.syncInstalledRooms([room]);
 
-    SettingsManager.getSnapshot = () => ({
-      slots: {
-        ai1: { disabledCommands: [] },
-        ai2: { disabledCommands: [] },
-      },
-      us1Slot: { selectedRemoteUserId: null, disabledCommands: ["GameRoomXoxRemoteMove"] },
-      assistantSlot: { disabledCommands: [] },
-    }) as never;
+    SettingsManager.getSnapshot = () =>
+      ({
+        slots: {
+          ai1: { disabledCommands: [] },
+          ai2: { disabledCommands: [] },
+        },
+        us1Slot: { selectedRemoteUserId: null, disabledCommands: ["GameRoomXoxRemoteMove"] },
+        assistantSlot: { disabledCommands: [] },
+      }) as never;
 
     const disabled = (await serverCommands.run("SlotBridge", {
       provider: "us1",

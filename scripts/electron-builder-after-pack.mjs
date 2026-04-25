@@ -89,7 +89,9 @@ function syncPackagedWorkspaceMirror(appOutDir) {
     cpSync(sourcePath, targetPath, {
       force: true,
       recursive: true,
-      filter: (entryPath) => !entryPath.endsWith(".tsbuildinfo"),
+      filter: (entryPath) =>
+        !entryPath.endsWith(".tsbuildinfo") &&
+        !entryPath.replace(/\\/g, "/").includes("/rooms/.build"),
     });
     mirroredPaths.push(relativePath);
   }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-25T18:08:42.556Z",
+  "generatedAt": "2026-04-25T21:08:24.932Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -18,13 +18,13 @@
   "stats": {
     "filesScanned": 501,
     "filesWithComments": 87,
-    "commentsIndexed": 211,
-    "fileLevelComments": 155,
+    "commentsIndexed": 212,
+    "fileLevelComments": 156,
     "symbolLevelComments": 56,
     "prefixCounts": {
       "none": 43,
       "AI": 1,
-      "NOTE": 165,
+      "NOTE": 166,
       "WARNING": 2,
       "TODO": 0
     }
@@ -800,14 +800,14 @@
     },
     {
       "path": "electron/paths.ts",
-      "totalComments": 9,
+      "totalComments": 10,
       "byKind": {
-        "note": 9
+        "note": 10
       },
       "byPrefix": {
         "none": 0,
         "AI": 0,
-        "NOTE": 9,
+        "NOTE": 10,
         "WARNING": 0,
         "TODO": 0
       },
@@ -864,7 +864,7 @@
           "kind": "note",
           "startLine": 117,
           "endLine": 117,
-          "text": "NOTE: `data/rooms` contains generated install copies only.",
+          "text": "NOTE: Generated room runtime artifacts are disposable and must not be edited as source.",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
@@ -873,7 +873,7 @@
           "kind": "note",
           "startLine": 126,
           "endLine": 126,
-          "text": "NOTE: Room runtime state and generated artifacts live outside the package tree.",
+          "text": "NOTE: Legacy generated install copies live here for migration/rollback only.",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
@@ -882,6 +882,15 @@
           "kind": "note",
           "startLine": 135,
           "endLine": 135,
+          "text": "NOTE: Room runtime state and generated artifacts live outside the package tree.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 144,
+          "endLine": 144,
           "text": "NOTE: Room webview/session partitions are runtime residue, not package content.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -889,8 +898,8 @@
         },
         {
           "kind": "note",
-          "startLine": 136,
-          "endLine": 136,
+          "startLine": 145,
+          "endLine": 145,
           "text": "NOTE: Retain them by default so reinstalls can reuse session state; only explicit deleteData cleanup removes them.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1030,8 +1039,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 154,
-          "endLine": 154,
+          "startLine": 208,
+          "endLine": 208,
           "text": "NOTE: This path only runs for explicit data deletion, so runtime residue is always removed here.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1039,8 +1048,8 @@
         },
         {
           "kind": "note",
-          "startLine": 257,
-          "endLine": 257,
+          "startLine": 403,
+          "endLine": 403,
           "text": "NOTE: Bootstrap installs stay ordered because each run rewrites the shared registry file.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1048,8 +1057,8 @@
         },
         {
           "kind": "note",
-          "startLine": 429,
-          "endLine": 429,
+          "startLine": 604,
+          "endLine": 604,
           "text": "NOTE: Install writes shared registry state, so startup sync stays serialized even",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1057,8 +1066,8 @@
         },
         {
           "kind": "note",
-          "startLine": 430,
-          "endLine": 430,
+          "startLine": 605,
+          "endLine": 605,
           "text": "though the \"needs sync\" probes can run in parallel.",
           "prefix": null,
           "scopeType": "file",
