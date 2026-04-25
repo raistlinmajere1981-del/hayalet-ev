@@ -51,6 +51,7 @@ export interface InstalledRoomRecord {
   version: string;
   description?: string;
   icon?: string;
+  iconPath?: string;
   isWorkspaceFallback?: boolean;
   sourceDir: string;
   installedDir: string;

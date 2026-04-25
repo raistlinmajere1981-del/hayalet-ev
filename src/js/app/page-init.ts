@@ -21,6 +21,7 @@ import settingsDocumentTemplate from "../../pages/settings.html?raw";
 import archivesDocumentTemplate from "../../pages/archives.html?raw";
 import whisperDocumentTemplate from "../../pages/whisper.html?raw";
 import { mountSceneWindowControls } from "../scene/window-controls.js";
+import { hydrateStaticSideNavIcons } from "./side-nav-icons.js";
 
 import type { PageController } from "./types.js";
 import { SLOTS, ASSISTANT_SLOT } from "@slots";
@@ -48,6 +49,7 @@ export function injectPageTemplates(): void {
       whisperDocumentTemplate,
       "page-whisper"
     )}`;
+    hydrateStaticSideNavIcons();
     syncInstalledRoomChrome();
     hideInjectedPages(container);
     mountSceneWindowControls();

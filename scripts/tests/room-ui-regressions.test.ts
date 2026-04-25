@@ -12,6 +12,8 @@ const room: InstalledRoomRecord = {
   id: "game-room",
   name: "Game Room",
   version: "2.1.0",
+  icon: "GM",
+  iconPath: "/workspace/data/rooms/game-room/shared/assets/nav-icon.svg",
   sourceDir: "/workspace/rooms/game-room",
   installedDir: "/workspace/data/rooms/game-room",
   manifestPath: "/workspace/data/rooms/game-room/manifest.json",
@@ -46,6 +48,11 @@ test("buildRoomNavMarkup renders room nav button metadata", () => {
   const markup = buildRoomNavMarkup(room);
   assert.match(markup, /data-room-nav="true"/);
   assert.match(markup, /data-page="room-game-room"/);
+  assert.match(markup, /data-side-nav-icon-fallback="GM"/);
+  assert.match(
+    markup,
+    /data-side-nav-icon-src="\/workspace\/data\/rooms\/game-room\/shared\/assets\/nav-icon\.svg"/
+  );
   assert.match(markup, /Game Room/);
 });
 

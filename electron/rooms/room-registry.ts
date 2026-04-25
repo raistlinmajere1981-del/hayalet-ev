@@ -64,6 +64,7 @@ export async function writeRoomRegistry(
       sourceDir: resolve(item.sourceDir),
       installedDir: resolve(item.installedDir),
       manifestPath: resolve(item.manifestPath),
+      ...(item.iconPath !== undefined ? { iconPath: resolve(item.iconPath) } : {}),
       runtimeEntryPath: resolve(item.runtimeEntryPath),
       hostEntryPath: resolve(item.hostEntryPath),
       features: item.features.map((feature) => ({

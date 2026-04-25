@@ -19,6 +19,7 @@ test("validateRoomManifest accepts a minimal valid room manifest", () => {
     menu: {
       label: "Game Room",
       icon: "GM",
+      iconSrc: "assets/nav-icon.svg",
     },
     runtime: {
       uiEntry: "ui/index.html",
@@ -69,6 +70,7 @@ test("validateRoomManifest accepts a minimal valid room manifest", () => {
   assert.equal(result.valid, true);
   assert.deepEqual(result.errors, []);
   assert.equal(result.manifest?.id, "game-room");
+  assert.equal(result.manifest?.menu.iconSrc, "assets/nav-icon.svg");
   assert.equal(result.manifest?.runtime.uiEntry, "ui/index.html");
   assert.equal(result.manifest?.defaultFeatureId, "xox");
 });
@@ -81,6 +83,7 @@ test("validateRoomManifest rejects invalid ids, commands, and unsafe paths", () 
     version: "1.0",
     menu: {
       label: "Bad",
+      iconSrc: "../escape.svg",
     },
     runtime: {
       uiEntry: "../ui/index.html",
@@ -101,6 +104,7 @@ test("validateRoomManifest rejects invalid ids, commands, and unsafe paths", () 
   assert.match(result.errors.join("\n"), /version must look like semver/);
   assert.match(result.errors.join("\n"), /runtime\.uiEntry must be a safe relative path/);
   assert.match(result.errors.join("\n"), /runtime\.hostEntry must be a safe relative path/);
+  assert.match(result.errors.join("\n"), /menu\.iconSrc must be a safe relative path/);
   assert.match(result.errors.join("\n"), /commandSpecs\[0\]\.name must match/);
 });
 

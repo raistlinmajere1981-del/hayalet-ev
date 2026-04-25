@@ -29,6 +29,9 @@ export function resolveRoomProtocolFilePath(spec: RoomProtocolSpec): string | nu
 
 export function collectRoomManifestRequiredFilePaths(manifest: RoomManifest): string[] {
   const paths = new Set<string>();
+  if (manifest.menu.iconSrc !== undefined) {
+    paths.add(manifest.menu.iconSrc);
+  }
   paths.add(manifest.runtime.uiEntry);
   paths.add(manifest.runtime.hostEntry);
   if (manifest.scene !== undefined) {

@@ -114,6 +114,9 @@ export function buildInstalledRoomRecord(
     version: manifest.version,
     ...optionalDescription(manifest.description),
     ...(manifest.menu.icon !== undefined ? { icon: manifest.menu.icon } : {}),
+    ...(manifest.menu.iconSrc !== undefined
+      ? { iconPath: join(installedDir, manifest.menu.iconSrc) }
+      : {}),
     sourceDir,
     installedDir,
     manifestPath: join(installedDir, "manifest.json"),

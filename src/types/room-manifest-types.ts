@@ -14,6 +14,7 @@ export type RoomCommandExposure = "public" | "internal";
 export interface RoomMenuConfig {
   label: string;
   icon?: string;
+  iconSrc?: string;
   order?: number;
 }
 

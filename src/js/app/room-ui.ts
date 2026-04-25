@@ -5,6 +5,7 @@ import {
   getRoomPageName,
 } from "../modules/rooms/room-markup.js";
 import { RoomPageController } from "../pages/room-page.js";
+import { hydrateRoomNavIcons } from "./side-nav-icons.js";
 import type { PageController } from "./types.js";
 
 export function syncInstalledRoomChrome(controllers?: Record<string, PageController>): void {
@@ -41,8 +42,15 @@ export function syncInstalledRoomChrome(controllers?: Record<string, PageControl
     const navSelector = `[data-room-nav='true'][data-room-id='${room.id}']`;
     const pageSelector = `[data-room-page='true'][data-room-id='${room.id}']`;
 
-    if (navMenu.querySelector(navSelector) === null) {
+    const existingNavButton = navMenu.querySelector<HTMLElement>(navSelector);
+    if (existingNavButton === null) {
       navMenu.insertAdjacentHTML("beforeend", buildRoomNavMarkup(room));
+    } else {
+      const isActive = existingNavButton.classList.contains("is-active");
+      existingNavButton.outerHTML = buildRoomNavMarkup(room);
+      if (isActive) {
+        navMenu.querySelector<HTMLElement>(navSelector)?.classList.add("is-active");
+      }
     }
 
     if (pagesContainer.querySelector(pageSelector) === null) {
@@ -58,4 +66,6 @@ export function syncInstalledRoomChrome(controllers?: Record<string, PageControl
       }
     }
   });
+
+  hydrateRoomNavIcons(navMenu);
 }

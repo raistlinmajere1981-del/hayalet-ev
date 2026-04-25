@@ -40,6 +40,11 @@ export function readMenuConfig(
 
   const label = readRequiredString(menuRaw, "label", errors);
   const icon = readOptionalString(menuRaw, "icon", errors);
+  const iconSrcRaw = readOptionalString(menuRaw, "iconSrc", errors);
+  const iconSrc = iconSrcRaw !== undefined ? normalizeRoomRelativePath(iconSrcRaw) : undefined;
+  if (iconSrcRaw !== undefined && iconSrc === null) {
+    errors.push("menu.iconSrc must be a safe relative path");
+  }
   const orderRaw = menuRaw["order"];
   let order: number | undefined;
   if (orderRaw !== undefined) {
@@ -57,6 +62,7 @@ export function readMenuConfig(
   return {
     label,
     ...(icon !== undefined ? { icon } : {}),
+    ...(iconSrc !== undefined && iconSrc !== null ? { iconSrc } : {}),
     ...(order !== undefined ? { order } : {}),
   };
 }

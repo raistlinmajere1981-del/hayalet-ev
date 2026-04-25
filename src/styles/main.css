@@ -289,7 +289,7 @@ body.is-scroll-locked {
   letter-spacing: normal;
 }
 
-.room-nav-icon[data-room-icon-display="compact"] {
+.room-nav-icon[data-room-icon-display="compact"][data-side-nav-icon-kind="text"] {
   font-size: var(--text-xs);
   letter-spacing: var(--tracking-wide);
 }

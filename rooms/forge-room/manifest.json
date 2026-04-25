@@ -7,6 +7,7 @@
   "menu": {
     "label": "Forge Room",
     "icon": "FG",
+    "iconSrc": "shared/assets/nav-icon.svg",
     "order": 95
   },
   "runtime": {

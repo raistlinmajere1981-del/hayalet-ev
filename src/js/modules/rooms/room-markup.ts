@@ -22,10 +22,13 @@ export function buildRoomNavMarkup(room: InstalledRoomRecord): string {
   const pageName = getRoomPageName(room.id);
   const roomName = resolveRoomShellName(room.id, room.name);
   const icon = resolveRoomShellIcon(room.id, room.icon, roomName);
+  const iconSource = room.iconPath?.trim() ?? "";
   const iconDisplayMode = getRoomIconDisplayMode(icon);
+  const iconSourceAttribute =
+    iconSource !== "" ? ` data-side-nav-icon-src="${escapeHtml(iconSource)}"` : "";
   return `
     <button class="side-nav-btn" data-page="${escapeHtml(pageName)}" data-room-nav="true" data-room-id="${escapeHtml(room.id)}" title="${escapeHtml(roomName)}">
-      <span class="side-nav-icon room-nav-icon" data-room-icon-display="${escapeHtml(iconDisplayMode)}">${escapeHtml(icon)}</span>
+      <span class="side-nav-icon room-nav-icon" data-room-icon-display="${escapeHtml(iconDisplayMode)}" data-side-nav-icon-fallback="${escapeHtml(icon)}"${iconSourceAttribute}>${escapeHtml(icon)}</span>
       <span class="side-nav-label">${escapeHtml(roomName)}</span>
     </button>
   `;
