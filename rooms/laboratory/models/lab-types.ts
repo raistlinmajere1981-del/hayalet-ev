@@ -315,6 +315,29 @@ export interface LabExecutionStaging {
   confidence?: number;
 }
 
+export type LabGlobalProcessState = "idle" | "processing" | "analyzing" | "staging";
+
+export interface LabGlobalProcessSummary {
+  state: LabGlobalProcessState;
+  completedCount: number;
+  totalCount: number;
+  activeTaskKey?: "sourcePreparation" | null;
+  activeTaskLabel: string | null;
+  progressKey?: "oneActiveTask" | null;
+  progressLabel: string | null;
+  tone: "neutral" | "running" | "success" | "warning" | "error";
+}
+
+export interface LabRightPanelContext {
+  activeIntentLabel: string | null;
+  candidateStatus: LabExecutionCandidate["status"] | null;
+  commitmentStatus: LabExecutionCommitment["status"] | "none";
+  processSummary: LabGlobalProcessSummary;
+  selectionLabel: string | null;
+  selectionRangeLabel: string | null;
+  stagingStatus: LabExecutionStaging["status"] | "none";
+}
+
 export interface LabInspectionSnapshot {
   id: string;
   objectUrl: string;

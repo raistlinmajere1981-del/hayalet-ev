@@ -18,6 +18,7 @@ import {
   getHypothesis,
   getInspectionMode,
   getInteractiveSettings,
+  getLaboratoryProcessSummary,
   getLinkedAudioAssets,
   getProjectSource,
   getReportFreshness,
@@ -41,8 +42,8 @@ import { renderWorkspaceInteractiveControls } from "./workspace-interactive-cont
 import { renderWorkspaceAudioFocus } from "./workspace-audio-focus.js";
 import { renderWorkspaceHypothesis } from "./workspace-hypothesis.js";
 import { renderWorkspaceBookmarks } from "./workspace-bookmarks.js";
-import { renderWorkspaceProcessPanel } from "./workspace-process-panel.js";
 import { renderLabTopbarActions } from "./lab-topbar-actions.js";
+import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 function getSourceKindLabel(kind) {
   switch (kind) {
     case "audio":
@@ -696,6 +697,42 @@ function renderDualPreviewTransportBar(state, durationMs) {
     </div>
   `;
 }
+function renderGlobalProcessSummary(state, copy) {
+  const summary = getLaboratoryProcessSummary(state);
+  const stateLabel = copy.t(
+    `mediaAnalysis.processSummary.states.${summary.state}`,
+    summary.state.charAt(0).toUpperCase() + summary.state.slice(1)
+  );
+  const activeTaskLabel = summary.activeTaskLabel ?? (summary.activeTaskKey ? copy.t(
+    `mediaAnalysis.processSummary.tasks.${summary.activeTaskKey}`,
+    summary.activeTaskKey
+  ) : copy.t("mediaAnalysis.processSummary.noActiveTask", "No active task"));
+  const progressLabel = summary.progressLabel ?? (summary.progressKey ? copy.t(
+    `mediaAnalysis.processSummary.progress.${summary.progressKey}`,
+    summary.progressKey
+  ) : copy.t("mediaAnalysis.processSummary.noProgress", "No progress in motion"));
+  return `
+    <section
+      class="labx-global-process"
+      data-lab-global-process="true"
+      data-process-state="${escapeHtml(summary.state)}"
+      data-tone="${escapeHtml(summary.tone)}"
+      aria-label="${escapeHtml(copy.t("mediaAnalysis.processSummary.ariaLabel", "Laboratory process state"))}"
+    >
+      <div class="labx-global-process__state">
+        <span class="labx-global-process__dot" aria-hidden="true"></span>
+        <span class="labx-global-process__label">${escapeHtml(stateLabel)}</span>
+      </div>
+      <div class="labx-global-process__task">
+        <span class="labx-global-process__eyebrow">${escapeHtml(copy.t("mediaAnalysis.processSummary.activeTask", "Active task"))}</span>
+        <strong>${escapeHtml(activeTaskLabel)}</strong>
+      </div>
+      <div class="labx-global-process__progress">
+        <span>${escapeHtml(progressLabel)}</span>
+      </div>
+    </section>
+  `;
+}
 function renderDualPreviewShell(previewUrl, settings, overlayMarkup, roiFocusActive, selectedAudio, linkedAudioAssets) {
   return `
     <div class="labx-workspace-preview__dual-shell">
@@ -982,7 +1019,8 @@ function renderLinkedAudioBar(state) {
     </div>
   `;
 }
-export function renderWorkspaceSurface(state) {
+export function renderWorkspaceSurface(state, options = {}) {
+  const copy = options.copy ?? LAB_FALLBACK_I18N;
   const source = getProjectSource(state);
   const sourceKind = getSourceKind(state);
   const sourceMode = getEffectiveSourceMode(state, sourceKind);
@@ -996,6 +1034,12 @@ export function renderWorkspaceSurface(state) {
   const activeSelection = getActiveSelection(state);
   const inspectionMode = getInspectionMode(state);
   const timeline = getWaveformTimelineModel(state);
+  const timelineModel = {
+    ...timeline,
+    activeOverlay: options.activeOverlay ?? "none",
+    collapsedPanels: options.collapsedPanels ?? {},
+    copy
+  };
   const roiFocusActive = timeline.roiFocusActive === true;
   const bookmarks = getBookmarks(state);
   const hypothesis = getHypothesis(state);
@@ -1059,6 +1103,7 @@ export function renderWorkspaceSurface(state) {
   const dualPreviewTransport = dualPreviewActive && selectedDualPreviewAudioAsset !== null && durationMs > 0 ? renderDualPreviewTransportBar(state, durationMs) : "";
   const main = `
     ${renderSourceBar(state)}
+    ${renderGlobalProcessSummary(state, copy)}
     ${renderLabTopbarActions(state)}
     ${renderSourceIntake(state)}
     <section class="labx-workspace-main" id="lab-workspace-main">
@@ -1067,13 +1112,12 @@ export function renderWorkspaceSurface(state) {
         ${previewMarkup}
       </div>
       ${dualPreviewTransport}
-      ${durationMs > 0 ? renderLabWaveformTimeline(timeline) : ""}
+      ${durationMs > 0 ? renderLabWaveformTimeline(timelineModel) : ""}
       ${renderWorkspaceHypothesis(hypothesis)}
       ${focusSection}
       ${renderWorkspaceBookmarks(bookmarks)}
     </section>
   `;
-  const processSection = renderWorkspaceProcessPanel(state, { sourceReady });
   const freshness = getReportFreshness(state);
   const freshnessLabel = freshness?.state === "current" ? "✓ Güncel" : freshness?.state === "previous-run" ? runActive ? "⊘ Önceki çalışma · Analiz devam ediyor" : "⊘ Önceki çalışma" : freshness?.state === "stale" ? "⊘ Eski çalışma · Son analiz başarısız" : "";
   const freshnessMeta = freshness && freshness.workspaceDirty ? `${freshnessLabel} · Workspace farklı` : freshnessLabel;
@@ -1114,7 +1158,6 @@ export function renderWorkspaceSurface(state) {
     ${analysisButton}
     ${reportButton}
     ${imageAnalysisButton}
-    ${processSection}
   `;
   return { main, side };
 }

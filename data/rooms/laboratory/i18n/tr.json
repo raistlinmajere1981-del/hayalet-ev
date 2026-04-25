@@ -198,8 +198,248 @@
     "eyebrow": "Obsidian Laboratuvar",
     "operatorLabel": "Operator",
     "loading": {
+      "eyebrow": "Hayalet Ev Laboratuvari",
       "title": "Laboratuvar Yukleniyor",
-      "body": "Oda baglami ve room-local ceviriler bekleniyor."
+      "body": "Oda baglami ve oda yerel cevirileri bekleniyor.",
+      "contractEyebrow": "Baslangic",
+      "contractTitle": "Oda kontrati",
+      "contractBody": "Shell hazirlanirken roomAPI.ready payload yapisi korunur.",
+      "currentStage": "Gecerli asama: {stage}"
+    },
+    "processSummary": {
+      "ariaLabel": "Laboratuvar islem durumu",
+      "activeTask": "Aktif is",
+      "noActiveTask": "Aktif is yok",
+      "noProgress": "Hareket halinde ilerleme yok",
+      "states": {
+        "idle": "Bos",
+        "processing": "Isleniyor",
+        "analyzing": "Analiz ediliyor",
+        "staging": "Hazirlaniyor"
+      },
+      "tasks": {
+        "sourcePreparation": "Kaynak hazirligi"
+      },
+      "progress": {
+        "oneActiveTask": "1 aktif is"
+      }
+    },
+    "rightContext": {
+      "eyebrow": "Canli baglam",
+      "title": "Kontrol + baglam",
+      "selection": "Secim",
+      "emptySelection": "Aktif secim yok",
+      "intent": "Niyet",
+      "emptyIntent": "Secili aksiyon yok",
+      "candidate": "Aday",
+      "commitment": "Kullanici secimi",
+      "staging": "Hazirlama",
+      "process": "Surec",
+      "emptyTitle": "Calisma paneli",
+      "emptyBody": "Kontrolleri ve analiz seceneklerini gormek icin bir kaynak yukle.",
+      "status": {
+        "none": "Yok",
+        "viable": "Uygun",
+        "unstable": "Kararsiz",
+        "not-viable": "Uygun degil",
+        "committed": "Secildi",
+        "revoked": "Geri alindi",
+        "staged": "Hazirlandi",
+        "not-staged": "Hazirlanmadi"
+      }
+    },
+    "executionDetails": {
+      "open": "Detaylari gor",
+      "close": "Detaylari kapat",
+      "eyebrow": "Calistirma zinciri",
+      "title": "Calistirma detaylari"
+    },
+    "executionPanels": {
+      "toggle": "Detay",
+      "shared": {
+        "steps": "Adimlar",
+        "expectedOutputs": "Beklenen ciktilar",
+        "notes": "Notlar",
+        "uncertainties": "Belirsizlikler",
+        "warnings": "Uyarilar",
+        "confidenceValue": "{value}% guven"
+      },
+      "metricValues": {
+        "low": "Dusuk",
+        "medium": "Orta",
+        "high": "Yuksek"
+      },
+      "plan": {
+        "eyebrow": "Calistirma plani",
+        "intro": "Sistem buna su sekilde yaklasirdi:",
+        "notes": "Plan notlari"
+      },
+      "simulation": {
+        "eyebrow": "Simulasyon onizlemesi",
+        "effects": "Ne olurdu",
+        "warnings": "Simulasyon uyarilari",
+        "intensity": "Yogunluk",
+        "risk": "Risk",
+        "outro": "Uygulansaydi, gercek calistirma baslamadan yukaridaki tahmini gozlemlerdin."
+      },
+      "readiness": {
+        "eyebrow": "Calistirma hazirligi",
+        "readyIntro": "Calistirma hazirligi stabil gorunuyor",
+        "reviewIntro": "Bu yol herhangi bir calistirma adimindan once inceleme ister",
+        "blockedIntro": "Bu yol henuz calistirmaya hazir degil",
+        "blockers": "Hazirlik blokajlari",
+        "notes": "Inceleme notlari",
+        "status": {
+          "ready": "Hazir",
+          "needs-review": "Inceleme gerekli",
+          "blocked": "Bloke"
+        }
+      },
+      "payload": {
+        "eyebrow": "Calistirma payload onizlemesi",
+        "intro": "Sistem calistirma girdisini bu sekilde yapilandirirdi. Hicbir calistirma yapilmaz.",
+        "action": "Aksiyon",
+        "readinessPass": "Hazirlik sinyali bu onizlemeden geciyor",
+        "readinessReview": "Hazirlik sinyali inceleme istiyor",
+        "input": "Onizleme girdisi",
+        "parameters": "Onizleme parametreleri",
+        "expectedOutputs": "Onizleme beklenen ciktilari",
+        "notes": "Onizleme notlari"
+      },
+      "reflection": {
+        "eyebrow": "Calistirma degerlendirmesi",
+        "proceed": "Bu yol stabil gorunuyor",
+        "review": "Bu yol ek inceleme gerektirebilir",
+        "avoid": "Bu yol mevcut haliyle onerilmiyor",
+        "reasoning": "Gerekce",
+        "tradeoffs": "Odunlesimler",
+        "alternatives": "Alternatifler",
+        "decisions": {
+          "avoid": "Kacin",
+          "proceed": "Ilerle",
+          "review": "Incele"
+        }
+      },
+      "alternatives": {
+        "eyebrow": "Alternatif degerlendirmesi",
+        "actionPrefix": "Alternatif yaklasim {actionType} olurdu."
+      },
+      "relativeAdvantages": {
+        "higher-precision": "Daha yuksek hassasiyet",
+        "higher-coverage": "Daha genis kapsam",
+        "lower-risk": "Daha dusuk risk",
+        "faster": "Daha hizli",
+        "more-stable": "Daha stabil"
+      },
+      "candidate": {
+        "eyebrow": "Calistirma adayi",
+        "structuralIntegrity": "Yapisal butunluk",
+        "readiness": "Hazirlik",
+        "reflection": "Degerlendirme",
+        "status": {
+          "not-viable": "Uygun degil",
+          "unstable": "Kararsiz",
+          "viable": "Uygun"
+        },
+        "integrity": {
+          "complete": "Tam",
+          "insufficient": "Yetersiz",
+          "partial": "Kismi"
+        }
+      },
+      "commitment": {
+        "eyebrow": "Calistirma secimi",
+        "blocked": "Bu yol henuz kullanici secimi icin yapisal olarak uygun degil.",
+        "pending": "Henuz bilincili olarak secilmis bir yol yok.",
+        "choose": "Bu yolu sec",
+        "committed": "Secildi",
+        "revoke": "Secimi geri al",
+        "chosenRecently": "Yakin zamanda secildi"
+      },
+      "staging": {
+        "eyebrow": "Calistirma hazirlama",
+        "userChoice": "Kullanici secimi",
+        "status": {
+          "not-staged": "Hazirlanmadi",
+          "staged": "Hazirlandi"
+        },
+        "choiceStatus": {
+          "committed": "Secildi",
+          "none": "Yok"
+        }
+      }
+    },
+    "timeline": {
+      "eyebrow": "Zaman cizgisi",
+      "selection": "Secim",
+      "type": "Tip",
+      "intent": "Niyet",
+      "suggestedActions": "Onerilen aksiyonlar",
+      "inspectionTools": "Inceleme araclari",
+      "selectedAction": "Secili aksiyon",
+      "clear": "Temizle",
+      "preview": "Onizleme",
+      "outputs": "Ciktilar",
+      "estimatedCost": "Tahmini maliyet",
+      "intentSelected": "Niyet secildi",
+      "wantThis": "Bunu istiyorum",
+      "notNow": "Simdi degil",
+      "queueForLater": "Sonrasi icin ayir",
+      "regionInactive": "Bolge pasif",
+      "regionActive": "Bolge aktif · {width}% × {height}%",
+      "regionActiveFocused": "Bolge aktif · Odakta · {width}% × {height}%",
+      "clearRegion": "Bolgeyi temizle",
+      "resetFocus": "Odagi sifirla",
+      "focusRegion": "Bolgeye odaklan",
+      "captureRegion": "Bolgeyi yakala",
+      "frameBack": "Kare -1",
+      "frameForward": "Kare +1",
+      "dismissSnapshot": "Goruntuyu kapat",
+      "staticFrame": "Sabit kare",
+      "regionSnapshot": "Bolge goruntusu",
+      "snapshotAlt": "Gecici inceleme goruntusu",
+      "microZoom": "Secim mikro yakinlastirma",
+      "inspectionMode": "Inceleme modu",
+      "selectionHint": "Bu secim gelecekteki analize rehberlik eder",
+      "interpretation": "Yorum",
+      "invalidRangeHint": "Gecerli secim icin bitis baslangictan buyuk olmali.",
+      "seekDragHint": "Aramak icin tikla, secim olusturmak icin surukle.",
+      "outsideRangeHint": "Waveform gorunur ana araligin disinda kaliyor.",
+      "selectionTypes": {
+        "clip": "Klip",
+        "focus": "Odak",
+        "inspect": "Inceleme",
+        "unknown": "Bilinmeyen"
+      },
+      "selectionIntents": {
+        "anomaly": "Anomali",
+        "motion": "Hareket",
+        "audio": "Ses",
+        "visual": "Gorsel",
+        "general": "Genel",
+        "unknown": "Bilinmeyen"
+      },
+      "inspectionModes": {
+        "none": "Yok",
+        "visual": "Gorsel",
+        "audio": "Ses",
+        "motion": "Hareket"
+      },
+      "cost": {
+        "low": "Dusuk",
+        "medium": "Orta",
+        "high": "Yuksek"
+      },
+      "interpretationTypes": {
+        "info": "Bilgi",
+        "warning": "Uyari",
+        "hint": "Ipucu"
+      },
+      "severity": {
+        "low": "Dusuk",
+        "medium": "Orta",
+        "high": "Yuksek"
+      }
     },
     "stageNav": {
       "previous": "Onceki",

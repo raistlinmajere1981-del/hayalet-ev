@@ -16,7 +16,27 @@ import type {
   LabSelection,
   LabSuggestionPreview,
 } from "../models/lab-types.js";
+import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
+import type { LabI18n } from "./lab-i18n.js";
 import type { LabWaveformTimelineModel } from "./lab-waveform-timeline-types.js";
+
+type ExecutionPanelId =
+  | "alternatives"
+  | "candidate"
+  | "commitment"
+  | "payload"
+  | "plan"
+  | "readiness"
+  | "reflection"
+  | "simulation"
+  | "staging";
+
+const DEFAULT_COLLAPSED_PANELS: Partial<Record<ExecutionPanelId, boolean>> = {
+  alternatives: true,
+  payload: true,
+  reflection: true,
+  simulation: true,
+};
 
 function formatTimePrecise(ms: number) {
   const totalMs = Math.round(ms);
@@ -46,15 +66,53 @@ function formatDuration(ms: number) {
   return `${minutes}m ${seconds}s`;
 }
 
-function formatSelectionType(type: LabSelection["type"] | undefined) {
-  return (
+function getPanelCollapsed(model: LabWaveformTimelineModel, panelId: ExecutionPanelId) {
+  const modelValue = model.collapsedPanels?.[panelId];
+  if (typeof modelValue === "boolean") {
+    return modelValue;
+  }
+  return DEFAULT_COLLAPSED_PANELS[panelId] === true;
+}
+
+function renderCollapsibleExecutionPanel(options: {
+  body: string;
+  copy: LabI18n;
+  defaultCollapsed: boolean;
+  panelId: ExecutionPanelId;
+  title: string;
+}) {
+  if (options.body.trim() === "") {
+    return "";
+  }
+  return `
+    <details
+      class="lab-execution-collapsible"
+      data-lab-collapsible-panel="true"
+      data-panel-id="${escapeHtml(options.panelId)}"
+      ${options.defaultCollapsed ? "" : "open"}
+    >
+      <summary class="lab-execution-collapsible__summary">
+        <span>${escapeHtml(options.title)}</span>
+        <span class="lab-execution-collapsible__toggle">${escapeHtml(options.copy.t("mediaAnalysis.executionPanels.toggle", "Details"))}</span>
+      </summary>
+      <div class="lab-execution-collapsible__body">
+        ${options.body}
+      </div>
+    </details>
+  `;
+}
+
+function formatSelectionType(type: LabSelection["type"] | undefined, copy: LabI18n) {
+  const normalizedType = type ?? "unknown";
+  const fallback = (
     {
       clip: "Clip",
       focus: "Focus",
       inspect: "Inspect",
       unknown: "Unknown",
     } as const
-  )[type ?? "unknown"];
+  )[normalizedType];
+  return copy.t(`mediaAnalysis.timeline.selectionTypes.${normalizedType}`, fallback);
 }
 
 const SELECTION_INTENT_OPTIONS = [
@@ -65,17 +123,19 @@ const SELECTION_INTENT_OPTIONS = [
   "general",
 ] as const satisfies ReadonlyArray<LabSelection["intent"]>;
 
-function formatSelectionIntent(intent: LabSelection["intent"] | undefined) {
-  return (
+function formatSelectionIntent(intent: LabSelection["intent"] | undefined, copy: LabI18n) {
+  const normalizedIntent = intent ?? "unknown";
+  const fallback = (
     {
       anomaly: "Anomaly",
-      motion: "Motion",
       audio: "Audio",
-      visual: "Visual",
       general: "General",
+      motion: "Motion",
       unknown: "Unknown",
+      visual: "Visual",
     } as const
-  )[intent ?? "unknown"];
+  )[normalizedIntent];
+  return copy.t(`mediaAnalysis.timeline.selectionIntents.${normalizedIntent}`, fallback);
 }
 
 function supportsInspectionMode(mode: LabInspectionMode, sourceKind: string | undefined) {
@@ -100,28 +160,29 @@ const INSPECTION_MODE_OPTIONS = [
   "motion",
 ] as const satisfies ReadonlyArray<LabInspectionMode>;
 
-function formatInspectionMode(mode: LabInspectionMode) {
-  return (
+function formatInspectionMode(mode: LabInspectionMode, copy: LabI18n) {
+  const fallback = (
     {
-      none: "None",
-      visual: "Visual",
       audio: "Audio",
       motion: "Motion",
+      none: "None",
+      visual: "Visual",
     } as const
   )[mode];
+  return copy.t(`mediaAnalysis.timeline.inspectionModes.${mode}`, fallback);
 }
 
 function getSuggestionPriorityClass(suggestion: LabActionSuggestion) {
   return suggestion.confidence >= 0.8 ? "is-primary" : "is-secondary";
 }
 
-function renderSelectionSuggestions(suggestions: LabActionSuggestion[]) {
+function renderSelectionSuggestions(suggestions: LabActionSuggestion[], copy: LabI18n) {
   if (suggestions.length === 0) {
     return "";
   }
   return `
     <div class="lab-selection-panel__suggestions">
-      <div class="lab-selection-panel__suggestions-title">Suggested actions</div>
+      <div class="lab-selection-panel__suggestions-title">${escapeHtml(copy.t("mediaAnalysis.timeline.suggestedActions", "Suggested actions"))}</div>
       <div class="lab-selection-panel__suggestions-list">
         ${suggestions
           .map(function (suggestion) {
@@ -163,7 +224,7 @@ function getToolHintGlyph(suggestion: LabActionSuggestion) {
   }
 }
 
-function renderInspectionToolHints(suggestions: LabActionSuggestion[]) {
+function renderInspectionToolHints(suggestions: LabActionSuggestion[], copy: LabI18n) {
   const toolHintSuggestions = suggestions.filter(function (suggestion) {
     return typeof suggestion.toolHint === "string" && suggestion.toolHint.trim() !== "";
   });
@@ -172,7 +233,7 @@ function renderInspectionToolHints(suggestions: LabActionSuggestion[]) {
   }
   return `
     <div class="lab-selection-panel__tools">
-      <div class="lab-selection-panel__tools-title">Inspection tools</div>
+      <div class="lab-selection-panel__tools-title">${escapeHtml(copy.t("mediaAnalysis.timeline.inspectionTools", "Inspection tools"))}</div>
       <div class="lab-selection-panel__tools-list">
         ${toolHintSuggestions
           .map(function (suggestion) {
@@ -191,38 +252,41 @@ function renderInspectionToolHints(suggestions: LabActionSuggestion[]) {
   `;
 }
 
-function formatEstimatedCost(cost: LabSuggestionPreview["estimatedCost"]) {
-  return (
+function formatEstimatedCost(cost: LabSuggestionPreview["estimatedCost"], copy: LabI18n) {
+  const normalizedCost = cost ?? "low";
+  const fallback = (
     {
+      high: "High",
       low: "Low",
       medium: "Medium",
-      high: "High",
     } as const
-  )[cost ?? "low"];
+  )[normalizedCost];
+  return copy.t(`mediaAnalysis.timeline.cost.${normalizedCost}`, fallback);
 }
 
-function renderExecutionIntentStrip(activeExecutionIntent: LabActionSuggestion | null) {
+function renderExecutionIntentStrip(activeExecutionIntent: LabActionSuggestion | null, copy: LabI18n) {
   if (activeExecutionIntent === null) {
     return "";
   }
   return `
     <div class="lab-selection-panel__execution-intent">
       <div class="lab-selection-panel__execution-intent-copy">
-        <span class="lab-selection-panel__execution-intent-eyebrow">Selected action</span>
+        <span class="lab-selection-panel__execution-intent-eyebrow">${escapeHtml(copy.t("mediaAnalysis.timeline.selectedAction", "Selected action"))}</span>
         <strong class="lab-selection-panel__execution-intent-label">${escapeHtml(activeExecutionIntent.label)}</strong>
       </div>
       <button
         class="lab-selection-panel__execution-intent-clear"
         type="button"
         data-lab-execution-intent-clear="true"
-      >Clear</button>
+      >${escapeHtml(copy.t("mediaAnalysis.timeline.clear", "Clear"))}</button>
     </div>
   `;
 }
 
 function renderSuggestionPreview(
   preview: LabSuggestionPreview | null,
-  activeExecutionIntent: LabActionSuggestion | null
+  activeExecutionIntent: LabActionSuggestion | null,
+  copy: LabI18n
 ) {
   if (preview === null) {
     return "";
@@ -230,10 +294,10 @@ function renderSuggestionPreview(
   const executionIntentSelected = activeExecutionIntent?.id === preview.suggestionId;
   return `
     <div class="lab-selection-preview" data-lab-selection-preview="true">
-      <div class="lab-selection-preview__eyebrow">Preview</div>
+      <div class="lab-selection-preview__eyebrow">${escapeHtml(copy.t("mediaAnalysis.timeline.preview", "Preview"))}</div>
       <div class="lab-selection-preview__title">${escapeHtml(preview.title)}</div>
       <div class="lab-selection-preview__section">
-        <div class="lab-selection-preview__section-title">Steps</div>
+        <div class="lab-selection-preview__section-title">${escapeHtml(copy.t("mediaAnalysis.executionPanels.shared.steps", "Steps"))}</div>
         <ul class="lab-selection-preview__list lab-selection-preview__list--steps">
           ${preview.steps
             .map(function (step) {
@@ -246,7 +310,7 @@ function renderSuggestionPreview(
         preview.expectedOutputs.length > 0
           ? `
         <div class="lab-selection-preview__section">
-          <div class="lab-selection-preview__section-title">Outputs</div>
+          <div class="lab-selection-preview__section-title">${escapeHtml(copy.t("mediaAnalysis.timeline.outputs", "Outputs"))}</div>
           <ul class="lab-selection-preview__list lab-selection-preview__list--outputs">
             ${preview.expectedOutputs
               .map(function (output) {
@@ -260,7 +324,7 @@ function renderSuggestionPreview(
       }
       ${
         preview.estimatedCost
-          ? `<div class="lab-selection-preview__cost">Estimated cost: ${escapeHtml(formatEstimatedCost(preview.estimatedCost))}</div>`
+          ? `<div class="lab-selection-preview__cost">${escapeHtml(copy.t("mediaAnalysis.timeline.estimatedCost", "Estimated cost"))}: ${escapeHtml(formatEstimatedCost(preview.estimatedCost, copy))}</div>`
           : ""
       }
       <div class="lab-selection-preview__actions">
@@ -269,50 +333,54 @@ function renderSuggestionPreview(
           type="button"
           data-lab-execution-intent-accept="${escapeHtml(preview.suggestionId)}"
           aria-pressed="${String(executionIntentSelected)}"
-        >${executionIntentSelected ? "Intent selected" : "I want this"}</button>
+        >${escapeHtml(executionIntentSelected ? copy.t("mediaAnalysis.timeline.intentSelected", "Intent selected") : copy.t("mediaAnalysis.timeline.wantThis", "I want this"))}</button>
         <button
           class="lab-selection-preview__action"
           type="button"
           data-lab-execution-intent-dismiss="${escapeHtml(preview.suggestionId)}"
-        >Not now</button>
+        >${escapeHtml(copy.t("mediaAnalysis.timeline.notNow", "Not now"))}</button>
         <button
           class="lab-selection-preview__action lab-selection-preview__action--subtle"
           type="button"
           data-lab-execution-intent-queue="${escapeHtml(preview.suggestionId)}"
-        >Queue for later</button>
+        >${escapeHtml(copy.t("mediaAnalysis.timeline.queueForLater", "Queue for later"))}</button>
       </div>
     </div>
   `;
 }
 
-function formatExecutionPlanConfidence(confidence: LabExecutionPlan["confidence"]) {
+function formatConfidencePercent(confidence: number | undefined, copy: LabI18n) {
   if (typeof confidence !== "number" || Number.isFinite(confidence) !== true) {
     return null;
   }
-  return `${Math.round(confidence * 100)}% confidence`;
+  return copy.t("mediaAnalysis.executionPanels.shared.confidenceValue", "{value}% confidence", {
+    value: String(Math.round(confidence * 100)),
+  });
 }
 
-function formatSimulationConfidence(
-  confidence: NonNullable<LabExecutionSimulation["metrics"]>["confidence"]
-) {
-  if (typeof confidence !== "number" || Number.isFinite(confidence) !== true) {
-    return null;
-  }
-  return `${Math.round(confidence * 100)}% confidence`;
+function formatMetricValue(value: "high" | "low" | "medium", copy: LabI18n) {
+  const fallback = (
+    {
+      high: "High",
+      low: "Low",
+      medium: "Medium",
+    } as const
+  )[value];
+  return copy.t(`mediaAnalysis.executionPanels.metricValues.${value}`, fallback);
 }
 
-function renderExecutionPlan(plan: LabExecutionPlan | null) {
+function renderExecutionPlan(plan: LabExecutionPlan | null, copy: LabI18n) {
   if (plan === null) {
     return "";
   }
-  const confidenceLabel = formatExecutionPlanConfidence(plan.confidence);
+  const confidenceLabel = formatConfidencePercent(plan.confidence, copy);
   return `
     <div class="lab-execution-plan" data-lab-execution-plan="true">
-      <div class="lab-execution-plan__eyebrow">Execution plan</div>
+      <div class="lab-execution-plan__eyebrow">${escapeHtml(copy.t("mediaAnalysis.executionPanels.plan.eyebrow", "Execution plan"))}</div>
       <div class="lab-execution-plan__title">${escapeHtml(plan.title)}</div>
-      <div class="lab-execution-plan__intro">The system would approach this by:</div>
+      <div class="lab-execution-plan__intro">${escapeHtml(copy.t("mediaAnalysis.executionPanels.plan.intro", "The system would approach this by:"))}</div>
       <div class="lab-execution-plan__section">
-        <div class="lab-execution-plan__section-title">Steps</div>
+        <div class="lab-execution-plan__section-title">${escapeHtml(copy.t("mediaAnalysis.executionPanels.shared.steps", "Steps"))}</div>
         <ol class="lab-execution-plan__steps">
           ${plan.steps
             .map(function (step) {
@@ -332,7 +400,7 @@ function renderExecutionPlan(plan: LabExecutionPlan | null) {
         plan.expectedOutputs.length > 0
           ? `
         <div class="lab-execution-plan__section">
-          <div class="lab-execution-plan__section-title">Expected outputs</div>
+          <div class="lab-execution-plan__section-title">${escapeHtml(copy.t("mediaAnalysis.executionPanels.shared.expectedOutputs", "Expected outputs"))}</div>
           <ul class="lab-execution-plan__outputs">
             ${plan.expectedOutputs
               .map(function (output) {
@@ -348,7 +416,7 @@ function renderExecutionPlan(plan: LabExecutionPlan | null) {
         Array.isArray(plan.riskNotes) && plan.riskNotes.length > 0
           ? `
         <div class="lab-execution-plan__section">
-          <div class="lab-execution-plan__section-title">Planning notes</div>
+          <div class="lab-execution-plan__section-title">${escapeHtml(copy.t("mediaAnalysis.executionPanels.plan.notes", "Planning notes"))}</div>
           <ul class="lab-execution-plan__risks">
             ${plan.riskNotes
               .map(function (note) {
@@ -369,21 +437,21 @@ function renderExecutionPlan(plan: LabExecutionPlan | null) {
   `;
 }
 
-function renderExecutionSimulation(simulation: LabExecutionSimulation | null) {
+function renderExecutionSimulation(simulation: LabExecutionSimulation | null, copy: LabI18n) {
   if (simulation === null) {
     return "";
   }
   const metrics = simulation.metrics;
-  const confidenceLabel = formatSimulationConfidence(metrics?.confidence);
+  const confidenceLabel = formatConfidencePercent(metrics?.confidence, copy);
   return `
     <div class="lab-execution-simulation" data-lab-execution-simulation="true">
-      <div class="lab-execution-simulation__eyebrow">Simulation preview</div>
+      <div class="lab-execution-simulation__eyebrow">${escapeHtml(copy.t("mediaAnalysis.executionPanels.simulation.eyebrow", "Simulation preview"))}</div>
       <div class="lab-execution-simulation__summary">${escapeHtml(simulation.summary)}</div>
       ${
         simulation.predictedEffects.length > 0
           ? `
         <div class="lab-execution-simulation__section">
-          <div class="lab-execution-simulation__section-title">What would happen</div>
+          <div class="lab-execution-simulation__section-title">${escapeHtml(copy.t("mediaAnalysis.executionPanels.simulation.effects", "What would happen"))}</div>
           <ul class="lab-execution-simulation__effects">
             ${simulation.predictedEffects
               .map(function (effect) {
@@ -399,7 +467,7 @@ function renderExecutionSimulation(simulation: LabExecutionSimulation | null) {
         Array.isArray(simulation.warnings) && simulation.warnings.length > 0
           ? `
         <div class="lab-execution-simulation__section">
-          <div class="lab-execution-simulation__section-title">Simulation warnings</div>
+          <div class="lab-execution-simulation__section-title">${escapeHtml(copy.t("mediaAnalysis.executionPanels.simulation.warnings", "Simulation warnings"))}</div>
           <ul class="lab-execution-simulation__warnings">
             ${simulation.warnings
               .map(function (warning) {
@@ -417,12 +485,12 @@ function renderExecutionSimulation(simulation: LabExecutionSimulation | null) {
         <div class="lab-execution-simulation__metrics">
           ${
             metrics.intensity
-              ? `<span class="lab-execution-simulation__metric">Intensity: ${escapeHtml(metrics.intensity)}</span>`
+              ? `<span class="lab-execution-simulation__metric">${escapeHtml(copy.t("mediaAnalysis.executionPanels.simulation.intensity", "Intensity"))}: ${escapeHtml(formatMetricValue(metrics.intensity, copy))}</span>`
               : ""
           }
           ${
             metrics.risk
-              ? `<span class="lab-execution-simulation__metric">Risk: ${escapeHtml(metrics.risk)}</span>`
+              ? `<span class="lab-execution-simulation__metric">${escapeHtml(copy.t("mediaAnalysis.executionPanels.simulation.risk", "Risk"))}: ${escapeHtml(formatMetricValue(metrics.risk, copy))}</span>`
               : ""
           }
           ${
@@ -434,44 +502,38 @@ function renderExecutionSimulation(simulation: LabExecutionSimulation | null) {
       `
           : ""
       }
-      <div class="lab-execution-simulation__outro">If applied, you would observe the forecast above without starting any real execution.</div>
+      <div class="lab-execution-simulation__outro">${escapeHtml(copy.t("mediaAnalysis.executionPanels.simulation.outro", "If applied, you would observe the forecast above without starting any real execution."))}</div>
     </div>
   `;
 }
 
-function formatReadinessConfidence(confidence: number | undefined) {
-  if (typeof confidence !== "number" || Number.isFinite(confidence) !== true) {
-    return null;
-  }
-  return `${Math.round(confidence * 100)}% confidence`;
-}
-
-function formatReadinessStatus(status: LabExecutionReadiness["status"]) {
-  return (
+function formatReadinessStatus(status: LabExecutionReadiness["status"], copy: LabI18n) {
+  const fallback = (
     {
-      ready: "Ready",
-      "needs-review": "Needs review",
       blocked: "Blocked",
+      "needs-review": "Needs review",
+      ready: "Ready",
     } as const
   )[status];
+  return copy.t(`mediaAnalysis.executionPanels.readiness.status.${status}`, fallback);
 }
 
-function renderExecutionReadiness(readiness: LabExecutionReadiness | null) {
+function renderExecutionReadiness(readiness: LabExecutionReadiness | null, copy: LabI18n) {
   if (readiness === null) {
     return "";
   }
-  const confidenceLabel = formatReadinessConfidence(readiness.confidence);
+  const confidenceLabel = formatConfidencePercent(readiness.confidence, copy);
   const intro =
     readiness.status === "ready"
-      ? "Execution readiness looks stable"
+      ? copy.t("mediaAnalysis.executionPanels.readiness.readyIntro", "Execution readiness looks stable")
       : readiness.status === "needs-review"
-        ? "This path needs review before any execution step"
-        : "This path is not yet execution-ready";
+        ? copy.t("mediaAnalysis.executionPanels.readiness.reviewIntro", "This path needs review before any execution step")
+        : copy.t("mediaAnalysis.executionPanels.readiness.blockedIntro", "This path is not yet execution-ready");
   return `
     <div class="lab-execution-readiness" data-lab-execution-readiness="true">
-      <div class="lab-execution-readiness__eyebrow">Execution readiness</div>
+      <div class="lab-execution-readiness__eyebrow">${escapeHtml(copy.t("mediaAnalysis.executionPanels.readiness.eyebrow", "Execution readiness"))}</div>
       <div class="lab-execution-readiness__header">
-        <span class="lab-execution-readiness__status" data-status="${escapeHtml(readiness.status)}">${escapeHtml(formatReadinessStatus(readiness.status))}</span>
+        <span class="lab-execution-readiness__status" data-status="${escapeHtml(readiness.status)}">${escapeHtml(formatReadinessStatus(readiness.status, copy))}</span>
         ${
           confidenceLabel
             ? `<span class="lab-execution-readiness__confidence">${escapeHtml(confidenceLabel)}</span>`
@@ -484,7 +546,7 @@ function renderExecutionReadiness(readiness: LabExecutionReadiness | null) {
         Array.isArray(readiness.blockers) && readiness.blockers.length > 0
           ? `
         <div class="lab-execution-readiness__section">
-          <div class="lab-execution-readiness__section-title">Readiness blockers</div>
+          <div class="lab-execution-readiness__section-title">${escapeHtml(copy.t("mediaAnalysis.executionPanels.readiness.blockers", "Readiness blockers"))}</div>
           <ul class="lab-execution-readiness__blockers">
             ${readiness.blockers
               .map(function (blocker) {
@@ -500,7 +562,7 @@ function renderExecutionReadiness(readiness: LabExecutionReadiness | null) {
         Array.isArray(readiness.notes) && readiness.notes.length > 0
           ? `
         <div class="lab-execution-readiness__section">
-          <div class="lab-execution-readiness__section-title">Review notes</div>
+          <div class="lab-execution-readiness__section-title">${escapeHtml(copy.t("mediaAnalysis.executionPanels.readiness.notes", "Review notes"))}</div>
           <ul class="lab-execution-readiness__notes">
             ${readiness.notes
               .map(function (note) {
@@ -520,31 +582,31 @@ function formatPayloadPreviewJson(value: Record<string, unknown>) {
   return JSON.stringify(value, null, 2);
 }
 
-function renderExecutionPayloadPreview(payload: LabExecutionPayloadPreview | null) {
+function renderExecutionPayloadPreview(payload: LabExecutionPayloadPreview | null, copy: LabI18n) {
   if (payload === null) {
     return "";
   }
-  const readinessLabel = formatReadinessStatus(payload.readinessStatus);
+  const readinessLabel = formatReadinessStatus(payload.readinessStatus, copy);
   const readinessSignal = payload.readinessPassesPreview
-    ? "Readiness signal passes this preview"
-    : "Readiness signal asks for review";
+    ? copy.t("mediaAnalysis.executionPanels.payload.readinessPass", "Readiness signal passes this preview")
+    : copy.t("mediaAnalysis.executionPanels.payload.readinessReview", "Readiness signal asks for review");
   return `
     <div class="lab-execution-payload" data-lab-execution-payload-preview="true">
-      <div class="lab-execution-payload__eyebrow">Execution payload (preview)</div>
+      <div class="lab-execution-payload__eyebrow">${escapeHtml(copy.t("mediaAnalysis.executionPanels.payload.eyebrow", "Execution payload (preview)"))}</div>
       <div class="lab-execution-payload__summary">${escapeHtml(payload.summary)}</div>
-      <div class="lab-execution-payload__intro">This is how the system would structure the execution input. No execution is performed.</div>
+      <div class="lab-execution-payload__intro">${escapeHtml(copy.t("mediaAnalysis.executionPanels.payload.intro", "This is how the system would structure the execution input. No execution is performed."))}</div>
       <div class="lab-execution-payload__meta">
-        <span class="lab-execution-payload__chip">Action: ${escapeHtml(payload.actionType)}</span>
+        <span class="lab-execution-payload__chip">${escapeHtml(copy.t("mediaAnalysis.executionPanels.payload.action", "Action"))}: ${escapeHtml(payload.actionType)}</span>
         <span class="lab-execution-payload__chip" data-status="${escapeHtml(payload.readinessStatus)}">${escapeHtml(readinessLabel)}</span>
         <span class="lab-execution-payload__chip">${escapeHtml(readinessSignal)}</span>
       </div>
       <div class="lab-execution-payload__grid">
         <div class="lab-execution-payload__section">
-          <div class="lab-execution-payload__section-title">Preview input</div>
+          <div class="lab-execution-payload__section-title">${escapeHtml(copy.t("mediaAnalysis.executionPanels.payload.input", "Preview input"))}</div>
           <pre class="lab-execution-payload__code">${escapeHtml(formatPayloadPreviewJson(payload.dryRunShape.previewInput))}</pre>
         </div>
         <div class="lab-execution-payload__section">
-          <div class="lab-execution-payload__section-title">Preview parameters</div>
+          <div class="lab-execution-payload__section-title">${escapeHtml(copy.t("mediaAnalysis.executionPanels.payload.parameters", "Preview parameters"))}</div>
           <pre class="lab-execution-payload__code">${escapeHtml(formatPayloadPreviewJson(payload.dryRunShape.previewParameters))}</pre>
         </div>
       </div>
@@ -552,7 +614,7 @@ function renderExecutionPayloadPreview(payload: LabExecutionPayloadPreview | nul
         payload.dryRunShape.previewExpectedOutputs.length > 0
           ? `
         <div class="lab-execution-payload__section">
-          <div class="lab-execution-payload__section-title">Preview expected outputs</div>
+          <div class="lab-execution-payload__section-title">${escapeHtml(copy.t("mediaAnalysis.executionPanels.payload.expectedOutputs", "Preview expected outputs"))}</div>
           <ul class="lab-execution-payload__outputs">
             ${payload.dryRunShape.previewExpectedOutputs
               .map(function (output) {
@@ -568,7 +630,7 @@ function renderExecutionPayloadPreview(payload: LabExecutionPayloadPreview | nul
         Array.isArray(payload.notes) && payload.notes.length > 0
           ? `
         <div class="lab-execution-payload__section">
-          <div class="lab-execution-payload__section-title">Preview notes</div>
+          <div class="lab-execution-payload__section-title">${escapeHtml(copy.t("mediaAnalysis.executionPanels.payload.notes", "Preview notes"))}</div>
           <ul class="lab-execution-payload__notes">
             ${payload.notes
               .map(function (note) {
@@ -584,53 +646,53 @@ function renderExecutionPayloadPreview(payload: LabExecutionPayloadPreview | nul
   `;
 }
 
-function formatReflectionDecision(decision: LabExecutionReflection["decision"]) {
-  return (
+function formatReflectionDecision(decision: LabExecutionReflection["decision"], copy: LabI18n) {
+  const fallback = (
     {
       avoid: "Avoid",
       proceed: "Proceed",
       review: "Review",
     } as const
   )[decision];
+  return copy.t(`mediaAnalysis.executionPanels.reflection.decisions.${decision}`, fallback);
 }
 
-function formatReflectionConfidence(confidence: LabExecutionReflection["confidence"]) {
-  if (typeof confidence !== "number" || Number.isFinite(confidence) !== true) {
-    return null;
-  }
-  return `${Math.round(confidence * 100)}% confidence`;
-}
-
-function getReflectionDecisionCopy(decision: LabExecutionReflection["decision"]) {
+function getReflectionDecisionCopy(decision: LabExecutionReflection["decision"], copy: LabI18n) {
   if (decision === "proceed") {
-    return "This path appears stable";
+    return copy.t("mediaAnalysis.executionPanels.reflection.proceed", "This path appears stable");
   }
   if (decision === "review") {
-    return "This path may require additional review";
+    return copy.t(
+      "mediaAnalysis.executionPanels.reflection.review",
+      "This path may require additional review"
+    );
   }
-  return "This path is not recommended in its current form";
+  return copy.t(
+    "mediaAnalysis.executionPanels.reflection.avoid",
+    "This path is not recommended in its current form"
+  );
 }
 
-function renderExecutionReflection(reflection: LabExecutionReflection | null) {
+function renderExecutionReflection(reflection: LabExecutionReflection | null, copy: LabI18n) {
   if (reflection === null) {
     return "";
   }
-  const confidenceLabel = formatReflectionConfidence(reflection.confidence);
+  const confidenceLabel = formatConfidencePercent(reflection.confidence, copy);
   return `
     <div class="lab-execution-reflection" data-lab-execution-reflection="true">
-      <div class="lab-execution-reflection__eyebrow">Execution reflection</div>
+      <div class="lab-execution-reflection__eyebrow">${escapeHtml(copy.t("mediaAnalysis.executionPanels.reflection.eyebrow", "Execution reflection"))}</div>
       <div class="lab-execution-reflection__header">
-        <span class="lab-execution-reflection__decision" data-decision="${escapeHtml(reflection.decision)}">${escapeHtml(formatReflectionDecision(reflection.decision))}</span>
+        <span class="lab-execution-reflection__decision" data-decision="${escapeHtml(reflection.decision)}">${escapeHtml(formatReflectionDecision(reflection.decision, copy))}</span>
         ${
           confidenceLabel
             ? `<span class="lab-execution-reflection__confidence">${escapeHtml(confidenceLabel)}</span>`
             : ""
         }
       </div>
-      <div class="lab-execution-reflection__intro">${escapeHtml(getReflectionDecisionCopy(reflection.decision))}</div>
+      <div class="lab-execution-reflection__intro">${escapeHtml(getReflectionDecisionCopy(reflection.decision, copy))}</div>
       <div class="lab-execution-reflection__summary">${escapeHtml(reflection.summary)}</div>
       <div class="lab-execution-reflection__section">
-        <div class="lab-execution-reflection__section-title">Reasoning</div>
+        <div class="lab-execution-reflection__section-title">${escapeHtml(copy.t("mediaAnalysis.executionPanels.reflection.reasoning", "Reasoning"))}</div>
         <ul class="lab-execution-reflection__reasoning">
           ${reflection.reasoning
             .map(function (reason) {
@@ -643,7 +705,7 @@ function renderExecutionReflection(reflection: LabExecutionReflection | null) {
         Array.isArray(reflection.tradeoffs) && reflection.tradeoffs.length > 0
           ? `
         <div class="lab-execution-reflection__section">
-          <div class="lab-execution-reflection__section-title">Tradeoffs</div>
+          <div class="lab-execution-reflection__section-title">${escapeHtml(copy.t("mediaAnalysis.executionPanels.reflection.tradeoffs", "Tradeoffs"))}</div>
           <ul class="lab-execution-reflection__tradeoffs">
             ${reflection.tradeoffs
               .map(function (tradeoff) {
@@ -659,7 +721,7 @@ function renderExecutionReflection(reflection: LabExecutionReflection | null) {
         Array.isArray(reflection.alternatives) && reflection.alternatives.length > 0
           ? `
         <div class="lab-execution-reflection__section">
-          <div class="lab-execution-reflection__section-title">Alternatives</div>
+          <div class="lab-execution-reflection__section-title">${escapeHtml(copy.t("mediaAnalysis.executionPanels.reflection.alternatives", "Alternatives"))}</div>
           <ul class="lab-execution-reflection__alternatives">
             ${reflection.alternatives
               .map(function (alternative) {
@@ -675,32 +737,30 @@ function renderExecutionReflection(reflection: LabExecutionReflection | null) {
   `;
 }
 
-function formatAlternativesConfidence(confidence: LabExecutionAlternatives["confidence"]) {
-  if (typeof confidence !== "number" || Number.isFinite(confidence) !== true) {
-    return null;
-  }
-  return `${Math.round(confidence * 100)}% confidence`;
-}
-
 function formatRelativeAdvantage(
-  advantage: NonNullable<LabExecutionAlternatives["alternatives"][number]["relativeAdvantage"]>
+  advantage: NonNullable<LabExecutionAlternatives["alternatives"][number]["relativeAdvantage"]>,
+  copy: LabI18n
 ) {
-  return advantage
-    .split("-")
-    .map(function (part) {
-      return part.charAt(0).toUpperCase() + part.slice(1);
-    })
-    .join(" ");
+  const fallback = (
+    {
+      "higher-coverage": "Higher Coverage",
+      "higher-precision": "Higher Precision",
+      "lower-risk": "Lower Risk",
+      faster: "Faster",
+      "more-stable": "More Stable",
+    } as const
+  )[advantage];
+  return copy.t(`mediaAnalysis.executionPanels.relativeAdvantages.${advantage}`, fallback);
 }
 
-function renderExecutionAlternatives(alternatives: LabExecutionAlternatives | null) {
+function renderExecutionAlternatives(alternatives: LabExecutionAlternatives | null, copy: LabI18n) {
   if (alternatives === null || alternatives.alternatives.length === 0) {
     return "";
   }
-  const confidenceLabel = formatAlternativesConfidence(alternatives.confidence);
+  const confidenceLabel = formatConfidencePercent(alternatives.confidence, copy);
   return `
     <div class="lab-execution-alternatives" data-lab-execution-alternatives="true">
-      <div class="lab-execution-alternatives__eyebrow">Alternative evaluation</div>
+      <div class="lab-execution-alternatives__eyebrow">${escapeHtml(copy.t("mediaAnalysis.executionPanels.alternatives.eyebrow", "Alternative evaluation"))}</div>
       <div class="lab-execution-alternatives__summary">${escapeHtml(alternatives.summary)}</div>
       ${
         confidenceLabel
@@ -716,11 +776,11 @@ function renderExecutionAlternatives(alternatives: LabExecutionAlternatives | nu
               <span class="lab-execution-alternatives__label">${escapeHtml(alternative.label)}</span>
               ${
                 alternative.relativeAdvantage
-                  ? `<span class="lab-execution-alternatives__advantage">${escapeHtml(formatRelativeAdvantage(alternative.relativeAdvantage))}</span>`
+                  ? `<span class="lab-execution-alternatives__advantage">${escapeHtml(formatRelativeAdvantage(alternative.relativeAdvantage, copy))}</span>`
                   : ""
               }
             </div>
-            <div class="lab-execution-alternatives__action">An alternative approach would be ${escapeHtml(alternative.actionType)}.</div>
+            <div class="lab-execution-alternatives__action">${escapeHtml(copy.t("mediaAnalysis.executionPanels.alternatives.actionPrefix", "An alternative approach would be {actionType}.", { actionType: alternative.actionType }))}</div>
             <div class="lab-execution-alternatives__body">${escapeHtml(alternative.summary)}</div>
             <div class="lab-execution-alternatives__tradeoff">${escapeHtml(alternative.tradeoff)}</div>
           </article>
@@ -737,43 +797,41 @@ function renderExecutionAlternatives(alternatives: LabExecutionAlternatives | nu
   `;
 }
 
-function formatCandidateStatus(status: LabExecutionCandidate["status"]) {
-  return (
+function formatCandidateStatus(status: LabExecutionCandidate["status"], copy: LabI18n) {
+  const fallback = (
     {
       "not-viable": "Not viable",
       unstable: "Unstable",
       viable: "Viable",
     } as const
   )[status];
+  return copy.t(`mediaAnalysis.executionPanels.candidate.status.${status}`, fallback);
 }
 
-function formatStructuralIntegrity(integrity: LabExecutionCandidate["structuralIntegrity"]) {
-  return (
+function formatStructuralIntegrity(
+  integrity: LabExecutionCandidate["structuralIntegrity"],
+  copy: LabI18n
+) {
+  const fallback = (
     {
       complete: "Complete",
       insufficient: "Insufficient",
       partial: "Partial",
     } as const
   )[integrity];
+  return copy.t(`mediaAnalysis.executionPanels.candidate.integrity.${integrity}`, fallback);
 }
 
-function formatCandidateConfidence(confidence: LabExecutionCandidate["confidence"]) {
-  if (typeof confidence !== "number" || Number.isFinite(confidence) !== true) {
-    return null;
-  }
-  return `${Math.round(confidence * 100)}% confidence`;
-}
-
-function renderExecutionCandidate(candidate: LabExecutionCandidate | null) {
+function renderExecutionCandidate(candidate: LabExecutionCandidate | null, copy: LabI18n) {
   if (candidate === null) {
     return "";
   }
-  const confidenceLabel = formatCandidateConfidence(candidate.confidence);
+  const confidenceLabel = formatConfidencePercent(candidate.confidence, copy);
   return `
     <div class="lab-execution-candidate" data-lab-execution-candidate="true">
-      <div class="lab-execution-candidate__eyebrow">Execution candidate</div>
+      <div class="lab-execution-candidate__eyebrow">${escapeHtml(copy.t("mediaAnalysis.executionPanels.candidate.eyebrow", "Execution candidate"))}</div>
       <div class="lab-execution-candidate__header">
-        <span class="lab-execution-candidate__status" data-status="${escapeHtml(candidate.status)}">${escapeHtml(formatCandidateStatus(candidate.status))}</span>
+        <span class="lab-execution-candidate__status" data-status="${escapeHtml(candidate.status)}">${escapeHtml(formatCandidateStatus(candidate.status, copy))}</span>
         ${
           confidenceLabel
             ? `<span class="lab-execution-candidate__confidence">${escapeHtml(confidenceLabel)}</span>`
@@ -783,23 +841,23 @@ function renderExecutionCandidate(candidate: LabExecutionCandidate | null) {
       <div class="lab-execution-candidate__summary">${escapeHtml(candidate.summary)}</div>
       <div class="lab-execution-candidate__grid">
         <div class="lab-execution-candidate__metric">
-          <span>Structural integrity</span>
-          <strong>${escapeHtml(formatStructuralIntegrity(candidate.structuralIntegrity))}</strong>
+          <span>${escapeHtml(copy.t("mediaAnalysis.executionPanels.candidate.structuralIntegrity", "Structural integrity"))}</span>
+          <strong>${escapeHtml(formatStructuralIntegrity(candidate.structuralIntegrity, copy))}</strong>
         </div>
         <div class="lab-execution-candidate__metric">
-          <span>Readiness</span>
-          <strong>${escapeHtml(formatReadinessStatus(candidate.readinessStatus))}</strong>
+          <span>${escapeHtml(copy.t("mediaAnalysis.executionPanels.candidate.readiness", "Readiness"))}</span>
+          <strong>${escapeHtml(formatReadinessStatus(candidate.readinessStatus, copy))}</strong>
         </div>
         <div class="lab-execution-candidate__metric">
-          <span>Reflection</span>
-          <strong>${escapeHtml(formatReflectionDecision(candidate.reflectionDecision))}</strong>
+          <span>${escapeHtml(copy.t("mediaAnalysis.executionPanels.candidate.reflection", "Reflection"))}</span>
+          <strong>${escapeHtml(formatReflectionDecision(candidate.reflectionDecision, copy))}</strong>
         </div>
       </div>
       ${
         Array.isArray(candidate.notes) && candidate.notes.length > 0
           ? `
         <div class="lab-execution-candidate__section">
-          <div class="lab-execution-candidate__section-title">Notes</div>
+          <div class="lab-execution-candidate__section-title">${escapeHtml(copy.t("mediaAnalysis.executionPanels.shared.notes", "Notes"))}</div>
           <ul class="lab-execution-candidate__list">
             ${candidate.notes
               .map(function (note) {
@@ -815,7 +873,7 @@ function renderExecutionCandidate(candidate: LabExecutionCandidate | null) {
         Array.isArray(candidate.uncertainties) && candidate.uncertainties.length > 0
           ? `
         <div class="lab-execution-candidate__section">
-          <div class="lab-execution-candidate__section-title">Uncertainties</div>
+          <div class="lab-execution-candidate__section-title">${escapeHtml(copy.t("mediaAnalysis.executionPanels.shared.uncertainties", "Uncertainties"))}</div>
           <ul class="lab-execution-candidate__list lab-execution-candidate__list--uncertainties">
             ${candidate.uncertainties
               .map(function (uncertainty) {
@@ -831,16 +889,17 @@ function renderExecutionCandidate(candidate: LabExecutionCandidate | null) {
   `;
 }
 
-function formatCommitmentTimestamp(committedAt: LabExecutionCommitment["committedAt"]) {
+function formatCommitmentTimestamp(committedAt: LabExecutionCommitment["committedAt"], copy: LabI18n) {
   if (typeof committedAt !== "number" || Number.isFinite(committedAt) !== true) {
     return null;
   }
-  return "Chosen recently";
+  return copy.t("mediaAnalysis.executionPanels.commitment.chosenRecently", "Chosen recently");
 }
 
 function renderExecutionCommitment(
   candidate: LabExecutionCandidate | null,
-  commitment: LabExecutionCommitment | null
+  commitment: LabExecutionCommitment | null,
+  copy: LabI18n
 ) {
   if (candidate === null) {
     return "";
@@ -848,8 +907,8 @@ function renderExecutionCommitment(
   if (candidate.status === "not-viable") {
     return `
       <div class="lab-execution-commitment lab-execution-commitment--blocked" data-lab-execution-commitment-control="true">
-        <div class="lab-execution-commitment__eyebrow">Execution commitment</div>
-        <div class="lab-execution-commitment__summary">This path is not structurally suitable for a user choice yet.</div>
+        <div class="lab-execution-commitment__eyebrow">${escapeHtml(copy.t("mediaAnalysis.executionPanels.commitment.eyebrow", "Execution commitment"))}</div>
+        <div class="lab-execution-commitment__summary">${escapeHtml(copy.t("mediaAnalysis.executionPanels.commitment.blocked", "This path is not structurally suitable for a user choice yet."))}</div>
       </div>
     `;
   }
@@ -864,25 +923,25 @@ function renderExecutionCommitment(
   if (activeCommitment === null) {
     return `
       <div class="lab-execution-commitment lab-execution-commitment--pending" data-lab-execution-commitment-control="true">
-        <div class="lab-execution-commitment__eyebrow">Execution commitment</div>
-        <div class="lab-execution-commitment__summary">No path has been consciously chosen yet.</div>
+        <div class="lab-execution-commitment__eyebrow">${escapeHtml(copy.t("mediaAnalysis.executionPanels.commitment.eyebrow", "Execution commitment"))}</div>
+        <div class="lab-execution-commitment__summary">${escapeHtml(copy.t("mediaAnalysis.executionPanels.commitment.pending", "No path has been consciously chosen yet."))}</div>
         <button
           class="lab-execution-commitment__choice"
           type="button"
           data-lab-execution-commitment-set="${escapeHtml(candidate.planId)}"
-        >Choose this path</button>
+        >${escapeHtml(copy.t("mediaAnalysis.executionPanels.commitment.choose", "Choose this path"))}</button>
       </div>
     `;
   }
 
-  const confidenceLabel = formatCandidateConfidence(activeCommitment.confidence);
-  const timestampLabel = formatCommitmentTimestamp(activeCommitment.committedAt);
+  const confidenceLabel = formatConfidencePercent(activeCommitment.confidence, copy);
+  const timestampLabel = formatCommitmentTimestamp(activeCommitment.committedAt, copy);
   return `
     <div class="lab-execution-commitment is-committed" data-lab-execution-commitment="true">
-      <div class="lab-execution-commitment__eyebrow">Execution commitment</div>
+      <div class="lab-execution-commitment__eyebrow">${escapeHtml(copy.t("mediaAnalysis.executionPanels.commitment.eyebrow", "Execution commitment"))}</div>
       <div class="lab-execution-commitment__header">
-        <span class="lab-execution-commitment__badge">Committed</span>
-        <span class="lab-execution-commitment__candidate">Candidate: ${escapeHtml(formatCandidateStatus(activeCommitment.candidateStatus))}</span>
+        <span class="lab-execution-commitment__badge">${escapeHtml(copy.t("mediaAnalysis.executionPanels.commitment.committed", "Committed"))}</span>
+        <span class="lab-execution-commitment__candidate">${escapeHtml(copy.t("mediaAnalysis.executionPanels.candidate.eyebrow", "Candidate"))}: ${escapeHtml(formatCandidateStatus(activeCommitment.candidateStatus, copy))}</span>
         ${timestampLabel ? `<span class="lab-execution-commitment__time">${escapeHtml(timestampLabel)}</span>` : ""}
       </div>
       <div class="lab-execution-commitment__summary">${escapeHtml(activeCommitment.summary)}</div>
@@ -895,7 +954,7 @@ function renderExecutionCommitment(
         Array.isArray(activeCommitment.notes) && activeCommitment.notes.length > 0
           ? `
         <div class="lab-execution-commitment__section">
-          <div class="lab-execution-commitment__section-title">Notes</div>
+          <div class="lab-execution-commitment__section-title">${escapeHtml(copy.t("mediaAnalysis.executionPanels.shared.notes", "Notes"))}</div>
           <ul class="lab-execution-commitment__list">
             ${activeCommitment.notes
               .map(function (note) {
@@ -911,7 +970,7 @@ function renderExecutionCommitment(
         Array.isArray(activeCommitment.uncertainties) && activeCommitment.uncertainties.length > 0
           ? `
         <div class="lab-execution-commitment__section">
-          <div class="lab-execution-commitment__section-title">Uncertainties</div>
+          <div class="lab-execution-commitment__section-title">${escapeHtml(copy.t("mediaAnalysis.executionPanels.shared.uncertainties", "Uncertainties"))}</div>
           <ul class="lab-execution-commitment__list lab-execution-commitment__list--uncertainties">
             ${activeCommitment.uncertainties
               .map(function (uncertainty) {
@@ -927,39 +986,41 @@ function renderExecutionCommitment(
         class="lab-execution-commitment__choice lab-execution-commitment__choice--revoke"
         type="button"
         data-lab-execution-commitment-revoke="true"
-      >Revoke choice</button>
+      >${escapeHtml(copy.t("mediaAnalysis.executionPanels.commitment.revoke", "Revoke choice"))}</button>
     </div>
   `;
 }
 
-function formatStagingStatus(status: LabExecutionStaging["status"]) {
-  return (
+function formatStagingStatus(status: LabExecutionStaging["status"], copy: LabI18n) {
+  const fallback = (
     {
       "not-staged": "Not staged",
       staged: "Staged",
     } as const
   )[status];
+  return copy.t(`mediaAnalysis.executionPanels.staging.status.${status}`, fallback);
 }
 
-function formatStagingChoiceStatus(status: LabExecutionStaging["commitmentStatus"]) {
-  return (
+function formatStagingChoiceStatus(status: LabExecutionStaging["commitmentStatus"], copy: LabI18n) {
+  const fallback = (
     {
       committed: "Chosen",
       none: "None",
     } as const
   )[status];
+  return copy.t(`mediaAnalysis.executionPanels.staging.choiceStatus.${status}`, fallback);
 }
 
-function renderExecutionStaging(staging: LabExecutionStaging | null) {
+function renderExecutionStaging(staging: LabExecutionStaging | null, copy: LabI18n) {
   if (staging === null) {
     return "";
   }
-  const confidenceLabel = formatCandidateConfidence(staging.confidence);
+  const confidenceLabel = formatConfidencePercent(staging.confidence, copy);
   return `
     <div class="lab-execution-staging" data-lab-execution-staging="true">
-      <div class="lab-execution-staging__eyebrow">Execution staging</div>
+      <div class="lab-execution-staging__eyebrow">${escapeHtml(copy.t("mediaAnalysis.executionPanels.staging.eyebrow", "Execution staging"))}</div>
       <div class="lab-execution-staging__header">
-        <span class="lab-execution-staging__badge" data-status="${escapeHtml(staging.status)}">${escapeHtml(formatStagingStatus(staging.status))}</span>
+        <span class="lab-execution-staging__badge" data-status="${escapeHtml(staging.status)}">${escapeHtml(formatStagingStatus(staging.status, copy))}</span>
         ${
           confidenceLabel
             ? `<span class="lab-execution-staging__confidence">${escapeHtml(confidenceLabel)}</span>`
@@ -969,23 +1030,23 @@ function renderExecutionStaging(staging: LabExecutionStaging | null) {
       <div class="lab-execution-staging__summary">${escapeHtml(staging.summary)}</div>
       <div class="lab-execution-staging__grid">
         <div class="lab-execution-staging__metric">
-          <span>User choice</span>
-          <strong>${escapeHtml(formatStagingChoiceStatus(staging.commitmentStatus))}</strong>
+          <span>${escapeHtml(copy.t("mediaAnalysis.executionPanels.staging.userChoice", "User choice"))}</span>
+          <strong>${escapeHtml(formatStagingChoiceStatus(staging.commitmentStatus, copy))}</strong>
         </div>
         <div class="lab-execution-staging__metric">
-          <span>Candidate</span>
-          <strong>${escapeHtml(formatCandidateStatus(staging.candidateStatus))}</strong>
+          <span>${escapeHtml(copy.t("mediaAnalysis.executionPanels.candidate.eyebrow", "Candidate"))}</span>
+          <strong>${escapeHtml(formatCandidateStatus(staging.candidateStatus, copy))}</strong>
         </div>
         <div class="lab-execution-staging__metric">
-          <span>Readiness</span>
-          <strong>${escapeHtml(formatReadinessStatus(staging.readinessStatus))}</strong>
+          <span>${escapeHtml(copy.t("mediaAnalysis.executionPanels.candidate.readiness", "Readiness"))}</span>
+          <strong>${escapeHtml(formatReadinessStatus(staging.readinessStatus, copy))}</strong>
         </div>
       </div>
       ${
         Array.isArray(staging.notes) && staging.notes.length > 0
           ? `
         <div class="lab-execution-staging__section">
-          <div class="lab-execution-staging__section-title">Notes</div>
+          <div class="lab-execution-staging__section-title">${escapeHtml(copy.t("mediaAnalysis.executionPanels.shared.notes", "Notes"))}</div>
           <ul class="lab-execution-staging__notes">
             ${staging.notes
               .map(function (note) {
@@ -1001,7 +1062,7 @@ function renderExecutionStaging(staging: LabExecutionStaging | null) {
         Array.isArray(staging.warnings) && staging.warnings.length > 0
           ? `
         <div class="lab-execution-staging__section">
-          <div class="lab-execution-staging__section-title">Warnings</div>
+          <div class="lab-execution-staging__section-title">${escapeHtml(copy.t("mediaAnalysis.executionPanels.shared.warnings", "Warnings"))}</div>
           <ul class="lab-execution-staging__notes lab-execution-staging__notes--warnings">
             ${staging.warnings
               .map(function (warning) {
@@ -1017,27 +1078,32 @@ function renderExecutionStaging(staging: LabExecutionStaging | null) {
   `;
 }
 
-function formatInterpretationType(type: LabInterpretationItem["type"]) {
-  return (
+function formatInterpretationType(type: LabInterpretationItem["type"], copy: LabI18n) {
+  const fallback = (
     {
+      hint: "Hint",
       info: "Info",
       warning: "Warning",
-      hint: "Hint",
     } as const
   )[type];
+  return copy.t(`mediaAnalysis.timeline.interpretationTypes.${type}`, fallback);
 }
 
-function formatInterpretationSeverity(severity: LabInterpretationItem["severity"]) {
+function formatInterpretationSeverity(
+  severity: LabInterpretationItem["severity"],
+  copy: LabI18n
+) {
   if (severity === undefined) {
     return "";
   }
-  return (
+  const fallback = (
     {
+      high: "High",
       low: "Low",
       medium: "Medium",
-      high: "High",
     } as const
   )[severity];
+  return copy.t(`mediaAnalysis.timeline.severity.${severity}`, fallback);
 }
 
 function getInterpretationIcon(type: LabInterpretationItem["type"]) {
@@ -1052,7 +1118,8 @@ function getInterpretationIcon(type: LabInterpretationItem["type"]) {
 
 function renderInterpretationPanel(
   items: LabInterpretationItem[],
-  variant: "embedded" | "standalone"
+  variant: "embedded" | "standalone",
+  copy: LabI18n
 ) {
   if (items.length === 0) {
     return "";
@@ -1060,17 +1127,17 @@ function renderInterpretationPanel(
   return `
     <details class="lab-interpretation-panel lab-interpretation-panel--${variant}" data-lab-interpretation-panel="true" open>
       <summary class="lab-interpretation-panel__summary">
-        <span class="lab-interpretation-panel__eyebrow">Interpretation</span>
+        <span class="lab-interpretation-panel__eyebrow">${escapeHtml(copy.t("mediaAnalysis.timeline.interpretation", "Interpretation"))}</span>
         <span class="lab-interpretation-panel__count">${String(items.length)}</span>
       </summary>
       <div class="lab-interpretation-panel__list">
         ${items
           .map(function (item) {
-            const severityLabel = formatInterpretationSeverity(item.severity);
+            const severityLabel = formatInterpretationSeverity(item.severity, copy);
             return `<div class="lab-interpretation-panel__item" data-tone="${escapeHtml(item.type)}"${item.severity ? ` data-severity="${escapeHtml(item.severity)}"` : ""}>
               <span class="lab-interpretation-panel__icon" aria-hidden="true">${escapeHtml(getInterpretationIcon(item.type))}</span>
               <div class="lab-interpretation-panel__copy">
-                <div class="lab-interpretation-panel__meta">${escapeHtml(formatInterpretationType(item.type))}${severityLabel ? `<span class="lab-interpretation-panel__severity">${escapeHtml(severityLabel)}</span>` : ""}</div>
+                <div class="lab-interpretation-panel__meta">${escapeHtml(formatInterpretationType(item.type, copy))}${severityLabel ? `<span class="lab-interpretation-panel__severity">${escapeHtml(severityLabel)}</span>` : ""}</div>
                 <div class="lab-interpretation-panel__message">${escapeHtml(item.message)}</div>
                 ${
                   item.recommendation
@@ -1087,6 +1154,7 @@ function renderInterpretationPanel(
 }
 
 function renderSelectionRegionTools(options: {
+  copy: LabI18n;
   roiFocusActive: boolean;
   selectionRoi: LabSelection["roi"] | undefined;
   snapshot: LabInspectionSnapshot | null;
@@ -1104,17 +1172,17 @@ function renderSelectionRegionTools(options: {
               class="lab-selection-panel__region-tool"
               type="button"
               ${options.roiFocusActive ? `data-lab-selection-roi-focus-reset="true"` : `data-lab-selection-roi-focus-toggle="true"`}
-            >${options.roiFocusActive ? "Reset focus" : "Focus region"}</button>
+            >${escapeHtml(options.roiFocusActive ? options.copy.t("mediaAnalysis.timeline.resetFocus", "Reset focus") : options.copy.t("mediaAnalysis.timeline.focusRegion", "Focus region"))}</button>
             <button
               class="lab-selection-panel__region-tool"
               type="button"
               data-lab-selection-roi-capture="true"
-            >Capture region</button>
+            >${escapeHtml(options.copy.t("mediaAnalysis.timeline.captureRegion", "Capture region"))}</button>
             ${
               options.sourceKind === "video"
                 ? `
-                  <button class="lab-selection-panel__region-tool" type="button" data-lab-selection-roi-frame-step="-1">Frame -1</button>
-                  <button class="lab-selection-panel__region-tool" type="button" data-lab-selection-roi-frame-step="1">Frame +1</button>
+                  <button class="lab-selection-panel__region-tool" type="button" data-lab-selection-roi-frame-step="-1">${escapeHtml(options.copy.t("mediaAnalysis.timeline.frameBack", "Frame -1"))}</button>
+                  <button class="lab-selection-panel__region-tool" type="button" data-lab-selection-roi-frame-step="1">${escapeHtml(options.copy.t("mediaAnalysis.timeline.frameForward", "Frame +1"))}</button>
                 `
                 : ""
             }
@@ -1123,32 +1191,35 @@ function renderSelectionRegionTools(options: {
       }
       ${
         options.snapshot !== null
-          ? `<button class="lab-selection-panel__region-tool is-secondary" type="button" data-lab-selection-roi-snapshot-clear="true">Dismiss snapshot</button>`
+          ? `<button class="lab-selection-panel__region-tool is-secondary" type="button" data-lab-selection-roi-snapshot-clear="true">${escapeHtml(options.copy.t("mediaAnalysis.timeline.dismissSnapshot", "Dismiss snapshot"))}</button>`
           : ""
       }
     </div>
   `;
 }
 
-function renderInspectionSnapshot(snapshot: LabInspectionSnapshot | null) {
+function renderInspectionSnapshot(snapshot: LabInspectionSnapshot | null, copy: LabI18n) {
   if (snapshot === null) {
     return "";
   }
-  const timeLabel = snapshot.timeMs !== null ? formatTimePrecise(snapshot.timeMs) : "Static frame";
+  const timeLabel =
+    snapshot.timeMs !== null
+      ? formatTimePrecise(snapshot.timeMs)
+      : copy.t("mediaAnalysis.timeline.staticFrame", "Static frame");
   return `
     <div class="lab-selection-snapshot" data-lab-selection-snapshot="true">
       <div class="lab-selection-snapshot__head">
-        <div class="lab-selection-snapshot__eyebrow">Region snapshot</div>
+        <div class="lab-selection-snapshot__eyebrow">${escapeHtml(copy.t("mediaAnalysis.timeline.regionSnapshot", "Region snapshot"))}</div>
         <div class="lab-selection-snapshot__meta">${escapeHtml(timeLabel)} · ${escapeHtml(String(snapshot.width))}×${escapeHtml(String(snapshot.height))}</div>
       </div>
       <div class="lab-selection-snapshot__image-wrap">
-        <img class="lab-selection-snapshot__image" src="${escapeHtml(snapshot.objectUrl)}" alt="Temporary inspection snapshot" />
+        <img class="lab-selection-snapshot__image" src="${escapeHtml(snapshot.objectUrl)}" alt="${escapeHtml(copy.t("mediaAnalysis.timeline.snapshotAlt", "Temporary inspection snapshot"))}" />
       </div>
     </div>
   `;
 }
 
-function renderWaveformInspectionLens(model: LabWaveformTimelineModel) {
+function renderWaveformInspectionLens(model: LabWaveformTimelineModel, copy: LabI18n) {
   const lens = model.waveformInspectionLens;
   if (!lens || lens.enabled !== true) {
     return "";
@@ -1156,7 +1227,7 @@ function renderWaveformInspectionLens(model: LabWaveformTimelineModel) {
   return `
     <div class="labx-timeline__inspection-lens" data-lab-timeline-inspection-lens="true">
       <div class="labx-timeline__inspection-lens-head">
-        <div class="labx-timeline__inspection-lens-title">Selection micro zoom</div>
+        <div class="labx-timeline__inspection-lens-title">${escapeHtml(copy.t("mediaAnalysis.timeline.microZoom", "Selection micro zoom"))}</div>
         <div class="labx-timeline__inspection-lens-meta">${escapeHtml(lens.sourceLabel)}</div>
       </div>
       <div class="labx-timeline__inspection-lens-window">
@@ -1189,7 +1260,51 @@ function renderFineTuneButtons(prefix: string, msValue: number) {
   `;
 }
 
+function renderExecutionDetailsTrigger(copy: LabI18n, hasDetails: boolean) {
+  if (hasDetails !== true) {
+    return "";
+  }
+  return `
+    <button
+      class="lab-execution-details-trigger"
+      type="button"
+      data-lab-execution-details-open="true"
+    >
+      ${escapeHtml(copy.t("mediaAnalysis.executionDetails.open", "View details"))}
+    </button>
+  `;
+}
+
+function renderExecutionDetailsOverlay(copy: LabI18n, model: LabWaveformTimelineModel, body: string) {
+  if (model.activeOverlay !== "execution-details" || body.trim() === "") {
+    return "";
+  }
+  return `
+    <div class="lab-execution-details-overlay" data-lab-execution-details-overlay="true" role="dialog" aria-modal="false">
+      <div class="lab-execution-details-overlay__backdrop" data-lab-execution-details-close="true"></div>
+      <section class="lab-execution-details-overlay__panel">
+        <div class="lab-execution-details-overlay__header">
+          <div>
+            <p class="lab-execution-details-overlay__eyebrow">${escapeHtml(copy.t("mediaAnalysis.executionDetails.eyebrow", "Execution chain"))}</p>
+            <h2>${escapeHtml(copy.t("mediaAnalysis.executionDetails.title", "Execution details"))}</h2>
+          </div>
+          <button
+            class="lab-execution-details-overlay__close"
+            type="button"
+            data-lab-execution-details-close="true"
+            aria-label="${escapeHtml(copy.t("mediaAnalysis.executionDetails.close", "Close details"))}"
+          >×</button>
+        </div>
+        <div class="lab-execution-details-overlay__body">
+          ${body}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
+  const copy = model.copy ?? LAB_FALLBACK_I18N;
   const durationMs = Math.max(1, model.durationMs);
   const rawStartMs = model.startMs ?? 0;
   const rawEndMs = model.endMs ?? durationMs;
@@ -1264,8 +1379,17 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
   const selectionDurationMs = hasSelection ? Math.max(0, endMs - startMs) : 0;
   const selectionRoi = activeSelection?.roi;
   const selectionRoiLabel = selectionRoi
-    ? `Region active${roiFocusActive ? " · Focused" : ""} · ${Math.round(selectionRoi.width * 100)}% × ${Math.round(selectionRoi.height * 100)}%`
-    : "Region inactive";
+    ? copy.t(
+        roiFocusActive
+          ? "mediaAnalysis.timeline.regionActiveFocused"
+          : "mediaAnalysis.timeline.regionActive",
+        roiFocusActive ? "Region active · Focused · {width}% × {height}%" : "Region active · {width}% × {height}%",
+        {
+          width: String(Math.round(selectionRoi.width * 100)),
+          height: String(Math.round(selectionRoi.height * 100)),
+        }
+      )
+    : copy.t("mediaAnalysis.timeline.regionInactive", "Region inactive");
   const waveformWindowStartPct = Math.max(
     0,
     Math.min(100, (model.waveformWindowStartMs / durationMs) * 100)
@@ -1292,15 +1416,46 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
   const hintLabel =
     hasVisibleWaveform === true
       ? model.startMs !== null && model.endMs !== null && hasSelection !== true
-        ? "End must be greater than start to create a valid selection."
-        : "Click to seek, drag to create a selection."
-      : "Waveform falls outside the visible master range.";
+        ? copy.t(
+            "mediaAnalysis.timeline.invalidRangeHint",
+            "End must be greater than start to create a valid selection."
+          )
+        : copy.t("mediaAnalysis.timeline.seekDragHint", "Click to seek, drag to create a selection.")
+      : copy.t(
+          "mediaAnalysis.timeline.outsideRangeHint",
+          "Waveform falls outside the visible master range."
+        );
+  const executionPlanMarkup = renderExecutionPlan(activeExecutionPlan, copy);
+  const executionSimulationMarkup = renderExecutionSimulation(activeExecutionSimulation, copy);
+  const executionReadinessMarkup = renderExecutionReadiness(activeExecutionReadiness, copy);
+  const executionPayloadMarkup = renderExecutionPayloadPreview(activeExecutionPayloadPreview, copy);
+  const executionReflectionMarkup = renderExecutionReflection(activeExecutionReflection, copy);
+  const executionAlternativesMarkup = renderExecutionAlternatives(activeExecutionAlternatives, copy);
+  const executionCandidateMarkup = renderExecutionCandidate(activeExecutionCandidate, copy);
+  const executionCommitmentMarkup = renderExecutionCommitment(
+    activeExecutionCandidate,
+    activeExecutionCommitment,
+    copy
+  );
+  const executionStagingMarkup = renderExecutionStaging(activeExecutionStaging, copy);
+  const executionDetailsBody = [
+    executionPlanMarkup,
+    executionSimulationMarkup,
+    executionReadinessMarkup,
+    executionReflectionMarkup,
+    executionAlternativesMarkup,
+  ]
+    .filter(function (entry) {
+      return entry.trim() !== "";
+    })
+    .join("");
+  const hasExecutionDetails = executionDetailsBody.trim() !== "";
 
   return `
     <div class="labx-timeline" id="lab-timeline" data-duration="${String(durationMs)}" data-waveform-mode="${model.dualPreviewActive ? "linked-audio" : "source-audio"}">
       <div class="labx-timeline__header">
         <div class="labx-timeline__header-copy">
-          <p class="labx-card__eyebrow">TIMELINE</p>
+          <p class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.timeline.eyebrow", "Timeline"))}</p>
           <strong>${escapeHtml(model.waveformSourceLabel)}</strong>
         </div>
         <span class="labx-timeline__sync">${escapeHtml(model.waveformSyncLabel)}</span>
@@ -1341,13 +1496,13 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
             data-selection-intent="${escapeHtml(selectionIntent)}"
             data-lab-selection-panel="true"
           >
-            <div class="lab-selection-panel__eyebrow">Selection</div>
+            <div class="lab-selection-panel__eyebrow">${escapeHtml(copy.t("mediaAnalysis.timeline.selection", "Selection"))}</div>
             <div class="lab-selection-panel__range">
               ${formatTimePrecise(startMs)} &#8594; ${formatTimePrecise(endMs)}
               <span class="lab-selection-panel__duration">(${formatDuration(selectionDurationMs)})</span>
             </div>
-            <div class="lab-selection-panel__meta">Type: ${escapeHtml(formatSelectionType(activeSelection?.type))}</div>
-            <div class="lab-selection-panel__intent-summary">Intent: ${escapeHtml(formatSelectionIntent(selectionIntent))}</div>
+            <div class="lab-selection-panel__meta">${escapeHtml(copy.t("mediaAnalysis.timeline.type", "Type"))}: ${escapeHtml(formatSelectionType(activeSelection?.type, copy))}</div>
+            <div class="lab-selection-panel__intent-summary">${escapeHtml(copy.t("mediaAnalysis.timeline.intent", "Intent"))}: ${escapeHtml(formatSelectionIntent(selectionIntent, copy))}</div>
             ${
               typeof activeSelection?.label === "string" && activeSelection.label.trim() !== ""
                 ? `<div class="lab-selection-panel__label">${escapeHtml(activeSelection.label)}</div>`
@@ -1357,18 +1512,19 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
               <span class="lab-selection-panel__region-state${selectionRoi ? " is-active" : ""}">${escapeHtml(selectionRoiLabel)}</span>
               ${
                 selectionRoi
-                  ? `<button class="lab-selection-panel__region-clear" type="button" data-lab-selection-roi-clear="true">Clear region</button>`
+                  ? `<button class="lab-selection-panel__region-clear" type="button" data-lab-selection-roi-clear="true">${escapeHtml(copy.t("mediaAnalysis.timeline.clearRegion", "Clear region"))}</button>`
                   : ""
               }
             </div>
             ${renderSelectionRegionTools({
+              copy,
               roiFocusActive,
               selectionRoi,
               snapshot: activeInspectionSnapshot,
               sourceKind: model.sourceKind,
             })}
             <div class="lab-selection-panel__inspection">
-              <div class="lab-selection-panel__inspection-title">Inspection mode</div>
+              <div class="lab-selection-panel__inspection-title">${escapeHtml(copy.t("mediaAnalysis.timeline.inspectionMode", "Inspection mode"))}</div>
               <div class="lab-selection-panel__inspection-modes">
                 ${INSPECTION_MODE_OPTIONS.map(function (mode) {
                   const isActive = inspectionMode === mode;
@@ -1378,7 +1534,7 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
                     type="button"
                     aria-pressed="${String(isActive)}"
                     ${isSupported ? `data-lab-selection-inspection-mode="${mode}"` : "disabled"}
-                  >${escapeHtml(formatInspectionMode(mode))}</button>`;
+                  >${escapeHtml(formatInspectionMode(mode, copy))}</button>`;
                 }).join("")}
               </div>
             </div>
@@ -1390,25 +1546,67 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
                   type="button"
                   aria-pressed="${String(isActive)}"
                   data-lab-selection-intent="${intent}"
-                >${escapeHtml(formatSelectionIntent(intent))}</button>`;
+                >${escapeHtml(formatSelectionIntent(intent, copy))}</button>`;
               }).join("")}
             </div>
-            <div class="lab-selection-panel__hint">This selection will guide future analysis</div>
-            ${renderExecutionIntentStrip(activeExecutionIntent)}
-            ${renderInspectionToolHints(selectionSuggestions)}
-            ${renderInspectionSnapshot(activeInspectionSnapshot)}
-            ${renderSelectionSuggestions(actionSuggestions)}
-            ${renderSuggestionPreview(suggestionPreview, activeExecutionIntent)}
-            ${renderExecutionPlan(activeExecutionPlan)}
-            ${renderExecutionSimulation(activeExecutionSimulation)}
-            ${renderExecutionReadiness(activeExecutionReadiness)}
-            ${renderExecutionPayloadPreview(activeExecutionPayloadPreview)}
-            ${renderExecutionReflection(activeExecutionReflection)}
-            ${renderExecutionAlternatives(activeExecutionAlternatives)}
-            ${renderExecutionCandidate(activeExecutionCandidate)}
-            ${renderExecutionCommitment(activeExecutionCandidate, activeExecutionCommitment)}
-            ${renderExecutionStaging(activeExecutionStaging)}
-            ${renderInterpretationPanel(interpretationItems, "embedded")}
+            <div class="lab-selection-panel__hint">${escapeHtml(copy.t("mediaAnalysis.timeline.selectionHint", "This selection will guide future analysis"))}</div>
+            ${renderExecutionIntentStrip(activeExecutionIntent, copy)}
+            ${renderInspectionToolHints(selectionSuggestions, copy)}
+            ${renderInspectionSnapshot(activeInspectionSnapshot, copy)}
+            ${renderSelectionSuggestions(actionSuggestions, copy)}
+            ${renderSuggestionPreview(suggestionPreview, activeExecutionIntent, copy)}
+            ${renderExecutionDetailsTrigger(copy, hasExecutionDetails)}
+            ${renderCollapsibleExecutionPanel({
+              body: executionSimulationMarkup,
+              copy,
+              defaultCollapsed: getPanelCollapsed(model, "simulation"),
+              panelId: "simulation",
+              title: copy.t("mediaAnalysis.executionPanels.simulation.eyebrow", "Simulation preview"),
+            })}
+            ${renderCollapsibleExecutionPanel({
+              body: executionPayloadMarkup,
+              copy,
+              defaultCollapsed: getPanelCollapsed(model, "payload"),
+              panelId: "payload",
+              title: copy.t("mediaAnalysis.executionPanels.payload.eyebrow", "Execution payload (preview)"),
+            })}
+            ${renderCollapsibleExecutionPanel({
+              body: executionReflectionMarkup,
+              copy,
+              defaultCollapsed: getPanelCollapsed(model, "reflection"),
+              panelId: "reflection",
+              title: copy.t("mediaAnalysis.executionPanels.reflection.eyebrow", "Execution reflection"),
+            })}
+            ${renderCollapsibleExecutionPanel({
+              body: executionAlternativesMarkup,
+              copy,
+              defaultCollapsed: getPanelCollapsed(model, "alternatives"),
+              panelId: "alternatives",
+              title: copy.t("mediaAnalysis.executionPanels.alternatives.eyebrow", "Alternative evaluation"),
+            })}
+            ${renderCollapsibleExecutionPanel({
+              body: executionCandidateMarkup,
+              copy,
+              defaultCollapsed: getPanelCollapsed(model, "candidate"),
+              panelId: "candidate",
+              title: copy.t("mediaAnalysis.executionPanels.candidate.eyebrow", "Execution candidate"),
+            })}
+            ${renderCollapsibleExecutionPanel({
+              body: executionCommitmentMarkup,
+              copy,
+              defaultCollapsed: getPanelCollapsed(model, "commitment"),
+              panelId: "commitment",
+              title: copy.t("mediaAnalysis.executionPanels.commitment.eyebrow", "Execution commitment"),
+            })}
+            ${renderCollapsibleExecutionPanel({
+              body: executionStagingMarkup,
+              copy,
+              defaultCollapsed: getPanelCollapsed(model, "staging"),
+              panelId: "staging",
+              title: copy.t("mediaAnalysis.executionPanels.staging.eyebrow", "Execution staging"),
+            })}
+            ${renderInterpretationPanel(interpretationItems, "embedded", copy)}
+            ${renderExecutionDetailsOverlay(copy, model, executionDetailsBody)}
           </div>
           <div
             class="labx-timeline__selection lab-selection-overlay"
@@ -1450,8 +1648,8 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
           <button class="labx-timeline__export-btn" type="button" data-lab-action="timeline-extract-audio" title="Extract source audio">Extract Audio</button>
         </div>
       </div>
-      ${renderWaveformInspectionLens(model)}
-      ${hasSelection ? "" : renderInterpretationPanel(interpretationItems, "standalone")}
+      ${renderWaveformInspectionLens(model, copy)}
+      ${hasSelection ? "" : renderInterpretationPanel(interpretationItems, "standalone", copy)}
       ${
         hasSelection
           ? `

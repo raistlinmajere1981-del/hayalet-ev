@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { renderLabWaveformTimeline } from "../../rooms/laboratory/ui/lab-waveform-timeline.ts";
+import { createLabI18n } from "../../rooms/laboratory/ui/lab-i18n.ts";
 import { createRoomBuiltArtifact } from "./helpers/room-installed-copy.ts";
 
 class ElementStub {
@@ -177,6 +178,22 @@ function extractStagingPanelMarkup(markup: string) {
   return markup.slice(start, end);
 }
 
+function extractCollapsibleOpeningTag(markup: string, panelId: string) {
+  const match = new RegExp(`<details[\\s\\S]*?data-panel-id="${panelId}"[\\s\\S]*?>`).exec(markup);
+  assert.notEqual(match, null, `Expected collapsible panel ${panelId}`);
+  return match?.[0] ?? "";
+}
+
+function extractExecutionDetailsOverlayMarkup(markup: string) {
+  const attrIndex = markup.indexOf('data-lab-execution-details-overlay="true"');
+  assert.notEqual(attrIndex, -1);
+  const start = markup.lastIndexOf('<div class="lab-execution-details-overlay"', attrIndex);
+  const end = markup.indexOf('<div\n            class="labx-timeline__selection', attrIndex);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+  return markup.slice(start, end);
+}
+
 function createPassiveExecutionChainFixture() {
   const activePlan = {
     id: "plan:audio-inspect:inspect-audio:audio:audio:clip:audio:1000:3000:noroi",
@@ -338,8 +355,8 @@ test("laboratory shell routes host traffic through lab-root orchestration seams"
   const hostBridgeSource = readFileSync("rooms/laboratory/runtime/lab-host-bridge.ts", "utf8");
 
   assert.match(uiIndexSource, /import "\.\/lab-root\.js";/);
-  assert.match(labRootSource, /return renderWorkspaceSurface\(state\);/);
-  assert.match(labRootSource, /runtimeRoot\.innerHTML = renderLabLayout\(state, surface\);/);
+  assert.match(labRootSource, /return renderWorkspaceSurface\(state, \{/);
+  assert.match(labRootSource, /runtimeRoot\.innerHTML = renderLabLayout\(state, surface, copy\);/);
   assert.match(labRootSource, /renderToolManagementOverlay\(state\)/);
   assert.match(labRootSource, /emit:\s*eventBus\.emit,/);
   assert.match(labRootSource, /roomAPI\.ready\(\{\s*feature:\s*"media-analysis",\s*room:\s*"laboratory",\s*stage:\s*"ui-ready"/);
@@ -359,7 +376,8 @@ test("laboratory shell preserves workspace preview nodes while diffing live pane
   assert.match(labRootSource, /function canReuseElement\(/);
   assert.match(labRootSource, /const preserveKey = readPreservedMediaKey\(currentElement\) \|\| readPreservedMediaKey\(nextElement\);/);
   assert.match(labRootSource, /function readPreservedDetailsState\(/);
-  assert.match(labRootSource, /currentElement\.hasAttribute\("data-lab-interpretation-panel"\)/);
+  assert.match(labRootSource, /element\.hasAttribute\("data-lab-interpretation-panel"\)/);
+  assert.match(labRootSource, /element\.hasAttribute\("data-lab-collapsible-panel"\)/);
   assert.match(labRootSource, /currentElement\.open = preservedDetailsState;/);
   assert.match(labRootSource, /currentElement\.scrollTop = scrollTop;/);
   assert.match(
@@ -368,7 +386,7 @@ test("laboratory shell preserves workspace preview nodes while diffing live pane
   );
   assert.match(
     labRootSource,
-    /updateRenderedElement\(\s*documentRef,\s*rightPanel as HTMLElement,\s*renderLabRightPanel\(surface\),\s*true\s*\);/
+    /updateRenderedElement\(\s*documentRef,\s*rightPanel as HTMLElement,\s*renderLabRightPanel\(state, surface, copy\),\s*true\s*\);/
   );
   assert.match(
     workspaceSurfaceSource,
@@ -429,9 +447,10 @@ test("laboratory selection preview exposes soft execution intent affordances wit
   assert.match(timelineSource, /data-lab-execution-intent-dismiss=/);
   assert.match(timelineSource, /data-lab-execution-intent-queue=/);
   assert.match(timelineSource, /data-lab-execution-intent-clear="true"/);
-  assert.match(timelineSource, />\$\{executionIntentSelected \? "Intent selected" : "I want this"\}</);
-  assert.match(timelineSource, />Not now</);
-  assert.match(timelineSource, />Queue for later</);
+  assert.match(timelineSource, /mediaAnalysis\.timeline\.intentSelected/);
+  assert.match(timelineSource, /mediaAnalysis\.timeline\.wantThis/);
+  assert.match(timelineSource, /mediaAnalysis\.timeline\.notNow/);
+  assert.match(timelineSource, /mediaAnalysis\.timeline\.queueForLater/);
   assert.doesNotMatch(timelineSource, />Run</);
 });
 
@@ -1268,4 +1287,166 @@ test("laboratory execution staging UI stays passive and avoids action language",
   assert.match(timelineSource, /data-lab-execution-staging="true"/);
   assert.match(timelineSource, /function renderExecutionStaging/);
   assert.doesNotMatch(timelineSource, /workspace-execution-staging/);
+});
+
+test("laboratory execution panels are collapse-first with a non-persistent details overlay", () => {
+  const fixture = createPassiveExecutionChainFixture();
+  const collapsedMarkup = renderLabWaveformTimeline(
+    createExecutionReadinessTimelineModel({
+      activeExecutionPlan: fixture.activePlan,
+      activeExecutionSimulation: fixture.activeSimulation,
+      activeExecutionReadiness: fixture.activeReadiness,
+      activeExecutionPayloadPreview: fixture.activePayload,
+      activeExecutionReflection: fixture.activeReflection,
+      activeExecutionAlternatives: fixture.activeAlternatives,
+      activeExecutionCandidate: fixture.activeCandidate,
+      activeExecutionCommitment: fixture.activeCommitment,
+      activeExecutionStaging: fixture.activeStaging,
+    })
+  );
+
+  assert.match(collapsedMarkup, /data-lab-collapsible-panel="true"/);
+  assert.match(collapsedMarkup, /data-panel-id="simulation"/);
+  assert.match(collapsedMarkup, /data-panel-id="payload"/);
+  assert.match(collapsedMarkup, /data-panel-id="reflection"/);
+  assert.match(collapsedMarkup, /data-panel-id="alternatives"/);
+  assert.doesNotMatch(collapsedMarkup, /data-panel-id="plan"/);
+  assert.doesNotMatch(collapsedMarkup, /data-panel-id="readiness"/);
+  ["simulation", "payload", "reflection", "alternatives"].forEach(function (panelId) {
+    assert.doesNotMatch(extractCollapsibleOpeningTag(collapsedMarkup, panelId), /\sopen\b/);
+  });
+  ["candidate", "commitment", "staging"].forEach(function (panelId) {
+    assert.match(extractCollapsibleOpeningTag(collapsedMarkup, panelId), /\sopen\b/);
+  });
+  assert.doesNotMatch(collapsedMarkup, /data-lab-execution-details-overlay="true"/);
+
+  const overlayMarkup = renderLabWaveformTimeline(
+    createExecutionReadinessTimelineModel({
+      activeOverlay: "execution-details",
+      activeExecutionPlan: fixture.activePlan,
+      activeExecutionSimulation: fixture.activeSimulation,
+      activeExecutionReadiness: fixture.activeReadiness,
+      activeExecutionPayloadPreview: fixture.activePayload,
+      activeExecutionReflection: fixture.activeReflection,
+      activeExecutionAlternatives: fixture.activeAlternatives,
+      activeExecutionCandidate: fixture.activeCandidate,
+      activeExecutionCommitment: fixture.activeCommitment,
+      activeExecutionStaging: fixture.activeStaging,
+    })
+  );
+  assert.match(overlayMarkup, /data-lab-execution-details-overlay="true"/);
+  assert.match(overlayMarkup, /data-lab-execution-details-close="true"/);
+  const detailsOverlay = extractExecutionDetailsOverlayMarkup(overlayMarkup);
+  assert.match(detailsOverlay, /data-lab-execution-plan="true"/);
+  assert.match(detailsOverlay, /data-lab-execution-simulation="true"/);
+  assert.match(detailsOverlay, /data-lab-execution-readiness="true"/);
+  assert.match(detailsOverlay, /data-lab-execution-reflection="true"/);
+  assert.match(detailsOverlay, /data-lab-execution-alternatives="true"/);
+  assert.doesNotMatch(detailsOverlay, /data-lab-execution-payload-preview="true"/);
+
+  const rootSource = readFileSync("rooms/laboratory/ui/lab-root.ts", "utf8");
+  assert.match(rootSource, /data-lab-execution-details-open/);
+  assert.match(rootSource, /activeOverlay: LabWaveformTimelineModel\["activeOverlay"\]/);
+  assert.doesNotMatch(rootSource, /processPanelCollapsedSections/);
+  assert.doesNotMatch(rootSource, /workspace-process-section-toggled/);
+});
+
+test("laboratory phase 4.95 renders room-local i18n labels in English and Turkish", () => {
+  const fixture = createPassiveExecutionChainFixture();
+  const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));
+  const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
+  const enCopy = createLabI18n({ locale: "en", translations: enTranslations });
+  const trCopy = createLabI18n({ locale: "tr", translations: trTranslations });
+
+  const enMarkup = renderLabWaveformTimeline(
+    createExecutionReadinessTimelineModel({
+      activeOverlay: "execution-details",
+      activeExecutionPlan: fixture.activePlan,
+      activeExecutionSimulation: fixture.activeSimulation,
+      activeExecutionReadiness: fixture.activeReadiness,
+      activeExecutionPayloadPreview: fixture.activePayload,
+      activeExecutionReflection: fixture.activeReflection,
+      activeExecutionAlternatives: fixture.activeAlternatives,
+      activeExecutionCandidate: fixture.activeCandidate,
+      activeExecutionCommitment: fixture.activeCommitment,
+      activeExecutionStaging: fixture.activeStaging,
+      copy: enCopy,
+    })
+  );
+  const trMarkup = renderLabWaveformTimeline(
+    createExecutionReadinessTimelineModel({
+      activeOverlay: "execution-details",
+      activeExecutionPlan: fixture.activePlan,
+      activeExecutionSimulation: fixture.activeSimulation,
+      activeExecutionReadiness: fixture.activeReadiness,
+      activeExecutionPayloadPreview: fixture.activePayload,
+      activeExecutionReflection: fixture.activeReflection,
+      activeExecutionAlternatives: fixture.activeAlternatives,
+      activeExecutionCandidate: fixture.activeCandidate,
+      activeExecutionCommitment: fixture.activeCommitment,
+      activeExecutionStaging: fixture.activeStaging,
+      copy: trCopy,
+    })
+  );
+
+  assert.match(enMarkup, /View details/);
+  assert.match(enMarkup, /Execution details/);
+  assert.match(enMarkup, /Selection/);
+  assert.match(enMarkup, /Type/);
+  assert.match(enMarkup, /Simulation preview/);
+  assert.match(enMarkup, /Execution candidate/);
+  assert.match(trMarkup, /Detaylari gor/);
+  assert.match(trMarkup, /Calistirma detaylari/);
+  assert.match(trMarkup, /Secim/);
+  assert.match(trMarkup, /Tip/);
+  assert.match(trMarkup, /Simulasyon onizlemesi/);
+  assert.match(trMarkup, /Calistirma adayi/);
+});
+
+test("laboratory phase 4.95 i18n keys keep English and Turkish catalog parity", () => {
+  const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));
+  const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
+  const phaseKeys = [
+    "mediaAnalysis.processSummary",
+    "mediaAnalysis.rightContext",
+    "mediaAnalysis.executionDetails",
+    "mediaAnalysis.executionPanels",
+    "mediaAnalysis.timeline",
+  ];
+
+  function readPath(record: Record<string, unknown>, key: string): unknown {
+    return key.split(".").reduce<unknown>(function (current, part) {
+      return current && typeof current === "object"
+        ? (current as Record<string, unknown>)[part]
+        : undefined;
+    }, record);
+  }
+
+  function collectKeys(value: unknown, prefix = ""): string[] {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return [prefix];
+    }
+    return Object.keys(value as Record<string, unknown>)
+      .sort()
+      .flatMap(function (key) {
+        const nextPrefix = prefix === "" ? key : `${prefix}.${key}`;
+        return collectKeys((value as Record<string, unknown>)[key], nextPrefix);
+      });
+  }
+
+  phaseKeys.forEach(function (key) {
+    assert.deepEqual(collectKeys(readPath(enTranslations, key)), collectKeys(readPath(trTranslations, key)));
+  });
+});
+
+test("laboratory global process layer is single-source and right panel no longer embeds process dashboard", () => {
+  const surfaceSource = readFileSync("rooms/laboratory/ui/workspace-surface.ts", "utf8");
+  const rightPanelSource = readFileSync("rooms/laboratory/ui/lab-right-panel.ts", "utf8");
+
+  assert.match(surfaceSource, /data-lab-global-process="true"/);
+  assert.match(surfaceSource, /getLaboratoryProcessSummary/);
+  assert.doesNotMatch(surfaceSource, /renderWorkspaceProcessPanel/);
+  assert.match(rightPanelSource, /data-lab-right-context="true"/);
+  assert.match(rightPanelSource, /getLaboratoryRightPanelContext/);
+  assert.doesNotMatch(rightPanelSource, /labx-process-panel/);
 });

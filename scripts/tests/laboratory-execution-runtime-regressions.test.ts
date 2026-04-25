@@ -25,6 +25,8 @@ import {
   getActiveExecutionSimulation,
   getActiveExecutionStaging,
   getActiveSuggestionPreviewId,
+  getLaboratoryProcessSummary,
+  getLaboratoryRightPanelContext,
   test,
 } from "./laboratory-runtime-truth.helpers.ts";
 
@@ -35,6 +37,75 @@ import type {
   LabExecutionPayloadPreview,
   LabSelection,
 } from "./laboratory-runtime-truth.helpers.ts";
+
+test("laboratory process summary derives a single deterministic state", () => {
+  const store = createLabStore();
+
+  assert.equal(getLaboratoryProcessSummary(store.getState()).state, "idle");
+
+  store.dispatch({
+    type: "source-probe-started",
+    action: "probe",
+  });
+  const processingSummary = getLaboratoryProcessSummary(store.getState());
+  assert.equal(processingSummary.state, "processing");
+  assert.equal(processingSummary.activeTaskKey, "sourcePreparation");
+  assert.equal(processingSummary.progressKey, "oneActiveTask");
+
+  store.dispatch({
+    type: "source-probe-completed",
+    action: "probe",
+  });
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "audio",
+      mode: "local",
+      storedPath: "/tmp/source.wav",
+    },
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "audio-inspect",
+  });
+  const activeCandidate = getActiveExecutionCandidate(store.getState());
+  assert.ok(activeCandidate);
+  store.dispatch({
+    type: "workspace-execution-commitment-set",
+    planId: activeCandidate.planId,
+  });
+
+  const stagingSummary = getLaboratoryProcessSummary(store.getState());
+  assert.equal(stagingSummary.state, "staging");
+  assert.equal(getLaboratoryRightPanelContext(store.getState()).stagingStatus, "staged");
+
+  store.dispatch({
+    type: "run-started",
+    action: "analysis",
+  });
+  store.dispatch({
+    type: "module-started",
+    action: "analysis",
+    moduleId: "audio",
+  });
+  const analyzingSummary = getLaboratoryProcessSummary(store.getState());
+  assert.equal(analyzingSummary.state, "analyzing");
+  assert.equal(analyzingSummary.totalCount, 1);
+  assert.equal(analyzingSummary.activeTaskLabel, "audio");
+});
 
 test("store accepts execution intents only from the exact active suggestion preview", () => {
   const store = createLabStore();

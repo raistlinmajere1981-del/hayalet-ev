@@ -1,4 +1,4 @@
-import { asLabRecord, asNonEmptyString } from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, escapeHtml } from "../models/lab-types.js";
 import { createLabEventBus } from "../runtime/lab-event-bus.js";
 import { createLabHostBridge } from "../runtime/lab-host-bridge.js";
 import { loadLabPersistedState, saveLabPersistedState } from "../runtime/lab-persistence.js";
@@ -20,12 +20,14 @@ import { renderReportOverlay } from "./report-overlay.js";
 import { renderLabAssetPreviewOverlay } from "./lab-asset-preview-overlay.js";
 import {
   getActiveSelection,
+  getActiveExecutionIntentId,
   getActiveInspectionSnapshot,
   getActiveSuggestionPreviewId,
   getRoiFocusActive,
   getSelectionSuggestions,
   getWorkspaceMode
 } from "../runtime/lab-selectors.js";
+import { createLabI18n, LAB_FALLBACK_I18N } from "./lab-i18n.js";
 function createRenderedElement(documentRef, markup) {
   const template = documentRef.createElement("template");
   template.innerHTML = markup.trim();
@@ -126,8 +128,17 @@ function syncChildNodes(currentElement, nextElement) {
     syncElement(currentChildElement, nextChildElement);
   }
 }
+function hasPreservedDetailsState(element) {
+  return element.hasAttribute("data-lab-interpretation-panel") || element.hasAttribute("data-lab-collapsible-panel");
+}
+function hasMatchingPreservedDetailsIdentity(currentElement, nextElement) {
+  if (currentElement.hasAttribute("data-lab-collapsible-panel") || nextElement.hasAttribute("data-lab-collapsible-panel")) {
+    return currentElement.hasAttribute("data-lab-collapsible-panel") && nextElement.hasAttribute("data-lab-collapsible-panel") && currentElement.getAttribute("data-panel-id") === nextElement.getAttribute("data-panel-id");
+  }
+  return currentElement.hasAttribute("data-lab-interpretation-panel") && nextElement.hasAttribute("data-lab-interpretation-panel");
+}
 function readPreservedDetailsState(currentElement, nextElement) {
-  if (typeof HTMLDetailsElement !== "undefined" && currentElement instanceof HTMLDetailsElement && nextElement instanceof HTMLDetailsElement && currentElement.hasAttribute("data-lab-interpretation-panel")) {
+  if (typeof HTMLDetailsElement !== "undefined" && currentElement instanceof HTMLDetailsElement && nextElement instanceof HTMLDetailsElement && hasPreservedDetailsState(currentElement) && hasPreservedDetailsState(nextElement) && hasMatchingPreservedDetailsIdentity(currentElement, nextElement)) {
     return currentElement.open;
   }
   return null;
@@ -165,26 +176,26 @@ function updateRenderedElement(documentRef, currentElement, markup, preserveScro
     currentElement.scrollTop = scrollTop;
   }
 }
-function createBootSurface(state) {
+function createBootSurface(state, copy = LAB_FALLBACK_I18N) {
   return {
     main: `
       <section class="labx-boot">
-        <p class="labx-boot__eyebrow">Hayalet Ev Laboratuvar</p>
-        <h1 class="labx-boot__title">Laboratuvar Yükleniyor</h1>
-        <p class="labx-boot__body">Çalışma tezgahı, kayıtlı projeler ve yerel analiz hazırlığı yükleniyor.</p>
+        <p class="labx-boot__eyebrow">${escapeHtml(copy.t("mediaAnalysis.loading.eyebrow", "Ghost House Laboratory"))}</p>
+        <h1 class="labx-boot__title">${escapeHtml(copy.t("mediaAnalysis.loading.title", "Loading Laboratory"))}</h1>
+        <p class="labx-boot__body">${escapeHtml(copy.t("mediaAnalysis.loading.body", "Waiting for room context and room-local translations."))}</p>
       </section>
     `,
     side: `
       <section class="labx-card">
         <div class="labx-card__header">
           <div>
-            <p class="labx-card__eyebrow">Başlangıç</p>
-            <h2 class="labx-card__title">Oda Kontratı</h2>
+            <p class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.loading.contractEyebrow", "Startup"))}</p>
+            <h2 class="labx-card__title">${escapeHtml(copy.t("mediaAnalysis.loading.contractTitle", "Room contract"))}</h2>
           </div>
         </div>
         <div class="labx-card__body">
-          <p class="labx-panel-hint">Yeni shell hazırlanırken roomAPI.ready payload yapısı korunur.</p>
-          <p class="labx-panel-hint">Geçerli aşama: ${state.currentStage}</p>
+          <p class="labx-panel-hint">${escapeHtml(copy.t("mediaAnalysis.loading.contractBody", "The roomAPI.ready payload shape is preserved while the shell is prepared."))}</p>
+          <p class="labx-panel-hint">${escapeHtml(copy.t("mediaAnalysis.loading.currentStage", "Current stage: {stage}", { stage: state.currentStage }))}</p>
         </div>
       </section>
     `
@@ -298,6 +309,32 @@ export function startLaboratoryLabRoot() {
       return getActiveSuggestionPreviewId(store.getState());
     }
   });
+  documentRef.addEventListener("click", function(event) {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+    if (target.closest("[data-lab-execution-details-open]")) {
+      const identity = getExecutionDetailsIdentity(store.getState());
+      if (identity !== null) {
+        activeOverlay = "execution-details";
+        activeOverlayIdentity = identity;
+        render();
+      }
+      return;
+    }
+    if (target.closest("[data-lab-execution-details-close]")) {
+      closeExecutionDetailsOverlay();
+      render();
+    }
+  });
+  documentRef.addEventListener("keydown", function(event) {
+    if (event.key !== "Escape" || activeOverlay !== "execution-details") {
+      return;
+    }
+    closeExecutionDetailsOverlay();
+    render();
+  });
   const controller = createLabRunController({
     documentRef,
     eventBus,
@@ -308,15 +345,61 @@ export function startLaboratoryLabRoot() {
     emit: eventBus.emit
   });
   let shellMounted = false;
-  function renderSurface(state) {
-    return renderWorkspaceSurface(state);
+  let activeOverlay = "none";
+  let activeOverlayIdentity = null;
+  const collapsedPanels = {
+    alternatives: true,
+    payload: true,
+    reflection: true,
+    simulation: true
+  };
+  function getExecutionDetailsIdentity(state) {
+    const selection = getActiveSelection(state);
+    const intentId = getActiveExecutionIntentId(state);
+    if (selection === null || selection.endMs <= selection.startMs || intentId === null) {
+      return null;
+    }
+    const roi = selection.roi ? `${selection.roi.x}:${selection.roi.y}:${selection.roi.width}:${selection.roi.height}` : "no-roi";
+    const source = asLabRecord(state.source);
+    const sourceIdentity = asNonEmptyString(source["assetId"]) || asNonEmptyString(source["storedFileName"]) || asNonEmptyString(source["previewUrl"]) || "no-source";
+    return [
+      state.projectIndex.activeProjectId || "no-project",
+      sourceIdentity,
+      selection.id,
+      String(selection.startMs),
+      String(selection.endMs),
+      roi,
+      intentId
+    ].join("|");
+  }
+  function closeExecutionDetailsOverlay() {
+    activeOverlay = "none";
+    activeOverlayIdentity = null;
+  }
+  function reconcileExecutionDetailsOverlay(state) {
+    if (activeOverlay !== "execution-details") {
+      return;
+    }
+    const currentIdentity = getExecutionDetailsIdentity(state);
+    if (currentIdentity === null || currentIdentity !== activeOverlayIdentity) {
+      closeExecutionDetailsOverlay();
+    }
+  }
+  function renderSurface(state, copy) {
+    return renderWorkspaceSurface(state, {
+      activeOverlay,
+      collapsedPanels,
+      copy
+    });
   }
   function render() {
     const state = store.getState();
+    const copy = createLabI18n(state.context);
+    reconcileExecutionDetailsOverlay(state);
     const hasCanonicalState = state.bootReady || state.source !== null || state.run !== null || state.reports.user !== null || state.reports.ai !== null || state.projectIndex.projects.length > 0;
-    const surface = hasCanonicalState ? renderSurface(state) : createBootSurface(state);
+    const surface = hasCanonicalState ? renderSurface(state, copy) : createBootSurface(state, copy);
     if (shellMounted !== true) {
-      runtimeRoot.innerHTML = renderLabLayout(state, surface);
+      runtimeRoot.innerHTML = renderLabLayout(state, surface, copy);
       shellMounted = true;
       return;
     }
@@ -328,7 +411,7 @@ export function startLaboratoryLabRoot() {
     const assetPreviewOverlayRoot = runtimeRoot.querySelector("#lab-asset-preview-overlay-root");
     const reportOverlayRoot = runtimeRoot.querySelector("#lab-report-overlay-root");
     if (!shell || !leftRail || !centerPanel || !rightPanel || !overlayRoot || !assetPreviewOverlayRoot) {
-      runtimeRoot.innerHTML = renderLabLayout(state, surface);
+      runtimeRoot.innerHTML = renderLabLayout(state, surface, copy);
       return;
     }
     if (shell instanceof HTMLElement) {
@@ -346,7 +429,7 @@ export function startLaboratoryLabRoot() {
     updateRenderedElement(
       documentRef,
       rightPanel,
-      renderLabRightPanel(surface),
+      renderLabRightPanel(state, surface, copy),
       true
     );
     updateRenderedElement(

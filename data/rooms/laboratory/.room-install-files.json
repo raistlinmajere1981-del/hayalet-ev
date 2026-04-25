@@ -187,6 +187,7 @@
     "ui/lab-asset-preview-binder.js",
     "ui/lab-asset-preview-overlay.js",
     "ui/lab-center-panel.js",
+    "ui/lab-i18n.js",
     "ui/lab-layout.js",
     "ui/lab-left-rail.js",
     "ui/lab-preview-inspection-binder.js",

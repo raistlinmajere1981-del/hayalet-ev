@@ -19,6 +19,7 @@ import type {
   LabSelection,
   LabSuggestionPreview,
 } from "../models/lab-types.js";
+import type { LabI18n } from "./lab-i18n.js";
 
 export type LabWaveformInspectionLensModel = {
   cropEndRatio: number;
@@ -44,8 +45,11 @@ export type LabWaveformTimelineModel = {
   activeSelection?: LabSelection | null;
   activeInspectionSnapshot?: LabInspectionSnapshot | null;
   activeSuggestionPreview?: LabSuggestionPreview | null;
+  activeOverlay?: "none" | "execution-details";
   audioFocus?: LabAudioFocusSettings;
   bookmarks: LabBookmark[];
+  collapsedPanels?: Record<string, boolean>;
+  copy?: LabI18n;
   dualPreviewActive: boolean;
   durationMs: number;
   endMs: number | null;

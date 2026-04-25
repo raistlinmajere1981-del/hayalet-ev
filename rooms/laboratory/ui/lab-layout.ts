@@ -6,13 +6,19 @@ import { renderToolManagementOverlay } from "./tool-management-overlay.js";
 import { renderReportOverlay } from "./report-overlay.js";
 import { renderLabAssetPreviewOverlay } from "./lab-asset-preview-overlay.js";
 import { getWorkspaceMode } from "../runtime/lab-selectors.js";
+import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
+import type { LabI18n } from "./lab-i18n.js";
 
-export function renderLabLayout(state: LabStoreState, surface: LabStageSurface) {
+export function renderLabLayout(
+  state: LabStoreState,
+  surface: LabStageSurface,
+  copy: LabI18n = LAB_FALLBACK_I18N
+) {
   return `
     <div class="labx-shell" data-stage="${state.currentStage}" data-ready="${state.bootReady ? "true" : "false"}" data-workspace-mode="${getWorkspaceMode(state)}">
       ${renderLabLeftRail(state)}
       ${renderLabCenterPanel(surface)}
-      ${renderLabRightPanel(surface)}
+      ${renderLabRightPanel(state, surface, copy)}
     </div>
     ${renderToolManagementOverlay(state)}
     ${renderLabAssetPreviewOverlay(state)}

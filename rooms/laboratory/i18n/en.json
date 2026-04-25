@@ -198,8 +198,248 @@
     "eyebrow": "Obsidian Laboratory",
     "operatorLabel": "Operator",
     "loading": {
+      "eyebrow": "Ghost House Laboratory",
       "title": "Loading Laboratory",
-      "body": "Waiting for room context and room-local translations."
+      "body": "Waiting for room context and room-local translations.",
+      "contractEyebrow": "Startup",
+      "contractTitle": "Room contract",
+      "contractBody": "The roomAPI.ready payload shape is preserved while the shell is prepared.",
+      "currentStage": "Current stage: {stage}"
+    },
+    "processSummary": {
+      "ariaLabel": "Laboratory process state",
+      "activeTask": "Active task",
+      "noActiveTask": "No active task",
+      "noProgress": "No progress in motion",
+      "states": {
+        "idle": "Idle",
+        "processing": "Processing",
+        "analyzing": "Analyzing",
+        "staging": "Staging"
+      },
+      "tasks": {
+        "sourcePreparation": "Source preparation"
+      },
+      "progress": {
+        "oneActiveTask": "1 active task"
+      }
+    },
+    "rightContext": {
+      "eyebrow": "Live context",
+      "title": "Control + context",
+      "selection": "Selection",
+      "emptySelection": "No active selection",
+      "intent": "Intent",
+      "emptyIntent": "No selected action",
+      "candidate": "Candidate",
+      "commitment": "Commitment",
+      "staging": "Staging",
+      "process": "Process",
+      "emptyTitle": "Workspace panel",
+      "emptyBody": "Load a source to see controls and analysis options.",
+      "status": {
+        "none": "None",
+        "viable": "Viable",
+        "unstable": "Unstable",
+        "not-viable": "Not viable",
+        "committed": "Committed",
+        "revoked": "Revoked",
+        "staged": "Staged",
+        "not-staged": "Not staged"
+      }
+    },
+    "executionDetails": {
+      "open": "View details",
+      "close": "Close details",
+      "eyebrow": "Execution chain",
+      "title": "Execution details"
+    },
+    "executionPanels": {
+      "toggle": "Details",
+      "shared": {
+        "steps": "Steps",
+        "expectedOutputs": "Expected outputs",
+        "notes": "Notes",
+        "uncertainties": "Uncertainties",
+        "warnings": "Warnings",
+        "confidenceValue": "{value}% confidence"
+      },
+      "metricValues": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "plan": {
+        "eyebrow": "Execution plan",
+        "intro": "The system would approach this by:",
+        "notes": "Planning notes"
+      },
+      "simulation": {
+        "eyebrow": "Simulation preview",
+        "effects": "What would happen",
+        "warnings": "Simulation warnings",
+        "intensity": "Intensity",
+        "risk": "Risk",
+        "outro": "If applied, you would observe the forecast above without starting any real execution."
+      },
+      "readiness": {
+        "eyebrow": "Execution readiness",
+        "readyIntro": "Execution readiness looks stable",
+        "reviewIntro": "This path needs review before any execution step",
+        "blockedIntro": "This path is not yet execution-ready",
+        "blockers": "Readiness blockers",
+        "notes": "Review notes",
+        "status": {
+          "ready": "Ready",
+          "needs-review": "Needs review",
+          "blocked": "Blocked"
+        }
+      },
+      "payload": {
+        "eyebrow": "Execution payload (preview)",
+        "intro": "This is how the system would structure the execution input. No execution is performed.",
+        "action": "Action",
+        "readinessPass": "Readiness signal passes this preview",
+        "readinessReview": "Readiness signal asks for review",
+        "input": "Preview input",
+        "parameters": "Preview parameters",
+        "expectedOutputs": "Preview expected outputs",
+        "notes": "Preview notes"
+      },
+      "reflection": {
+        "eyebrow": "Execution reflection",
+        "proceed": "This path appears stable",
+        "review": "This path may require additional review",
+        "avoid": "This path is not recommended in its current form",
+        "reasoning": "Reasoning",
+        "tradeoffs": "Tradeoffs",
+        "alternatives": "Alternatives",
+        "decisions": {
+          "avoid": "Avoid",
+          "proceed": "Proceed",
+          "review": "Review"
+        }
+      },
+      "alternatives": {
+        "eyebrow": "Alternative evaluation",
+        "actionPrefix": "An alternative approach would be {actionType}."
+      },
+      "relativeAdvantages": {
+        "higher-precision": "Higher precision",
+        "higher-coverage": "Higher coverage",
+        "lower-risk": "Lower risk",
+        "faster": "Faster",
+        "more-stable": "More stable"
+      },
+      "candidate": {
+        "eyebrow": "Execution candidate",
+        "structuralIntegrity": "Structural integrity",
+        "readiness": "Readiness",
+        "reflection": "Reflection",
+        "status": {
+          "not-viable": "Not viable",
+          "unstable": "Unstable",
+          "viable": "Viable"
+        },
+        "integrity": {
+          "complete": "Complete",
+          "insufficient": "Insufficient",
+          "partial": "Partial"
+        }
+      },
+      "commitment": {
+        "eyebrow": "Execution commitment",
+        "blocked": "This path is not structurally suitable for a user choice yet.",
+        "pending": "No path has been consciously chosen yet.",
+        "choose": "Choose this path",
+        "committed": "Committed",
+        "revoke": "Revoke choice",
+        "chosenRecently": "Chosen recently"
+      },
+      "staging": {
+        "eyebrow": "Execution staging",
+        "userChoice": "User choice",
+        "status": {
+          "not-staged": "Not staged",
+          "staged": "Staged"
+        },
+        "choiceStatus": {
+          "committed": "Chosen",
+          "none": "None"
+        }
+      }
+    },
+    "timeline": {
+      "eyebrow": "Timeline",
+      "selection": "Selection",
+      "type": "Type",
+      "intent": "Intent",
+      "suggestedActions": "Suggested actions",
+      "inspectionTools": "Inspection tools",
+      "selectedAction": "Selected action",
+      "clear": "Clear",
+      "preview": "Preview",
+      "outputs": "Outputs",
+      "estimatedCost": "Estimated cost",
+      "intentSelected": "Intent selected",
+      "wantThis": "I want this",
+      "notNow": "Not now",
+      "queueForLater": "Queue for later",
+      "regionInactive": "Region inactive",
+      "regionActive": "Region active · {width}% × {height}%",
+      "regionActiveFocused": "Region active · Focused · {width}% × {height}%",
+      "clearRegion": "Clear region",
+      "resetFocus": "Reset focus",
+      "focusRegion": "Focus region",
+      "captureRegion": "Capture region",
+      "frameBack": "Frame -1",
+      "frameForward": "Frame +1",
+      "dismissSnapshot": "Dismiss snapshot",
+      "staticFrame": "Static frame",
+      "regionSnapshot": "Region snapshot",
+      "snapshotAlt": "Temporary inspection snapshot",
+      "microZoom": "Selection micro zoom",
+      "inspectionMode": "Inspection mode",
+      "selectionHint": "This selection will guide future analysis",
+      "interpretation": "Interpretation",
+      "invalidRangeHint": "End must be greater than start to create a valid selection.",
+      "seekDragHint": "Click to seek, drag to create a selection.",
+      "outsideRangeHint": "Waveform falls outside the visible master range.",
+      "selectionTypes": {
+        "clip": "Clip",
+        "focus": "Focus",
+        "inspect": "Inspect",
+        "unknown": "Unknown"
+      },
+      "selectionIntents": {
+        "anomaly": "Anomaly",
+        "motion": "Motion",
+        "audio": "Audio",
+        "visual": "Visual",
+        "general": "General",
+        "unknown": "Unknown"
+      },
+      "inspectionModes": {
+        "none": "None",
+        "visual": "Visual",
+        "audio": "Audio",
+        "motion": "Motion"
+      },
+      "cost": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "interpretationTypes": {
+        "info": "Info",
+        "warning": "Warning",
+        "hint": "Hint"
+      },
+      "severity": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      }
     },
     "stageNav": {
       "previous": "Previous",

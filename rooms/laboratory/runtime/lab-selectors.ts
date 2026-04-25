@@ -16,6 +16,7 @@ import type {
   LabExecutionStaging,
   LabExpectedOutput,
   LabFeatureId,
+  LabGlobalProcessSummary,
   LabInspectionMode,
   LabInterpretationItem,
   LabIntentDirtyMap,
@@ -31,6 +32,7 @@ import type {
   LabSuggestionPreview,
   LabStage,
   LabStoreState,
+  LabRightPanelContext,
   LabUserActionEvent,
   LabWorkspaceDiff,
   PreflightSeverity,
@@ -1124,6 +1126,128 @@ export function getActiveExecutionStaging(state: LabStoreState): LabExecutionSta
     executionCommitment: getActiveExecutionCommitment(state),
     activeSelection: getActiveSelection(state),
   });
+}
+
+function getModuleProgress(run: LabRun | null) {
+  if (run === null || Array.isArray(run.moduleOrder) !== true || run.moduleOrder.length === 0) {
+    return {
+      completedCount: 0,
+      totalCount: 0,
+    };
+  }
+  const completedCount = run.moduleOrder.filter(function (moduleId) {
+    const status = run.modules[moduleId]?.status;
+    return status === "completed" || status === "ready";
+  }).length;
+  return {
+    completedCount,
+    totalCount: run.moduleOrder.length,
+  };
+}
+
+function getPassiveExecutionMilestoneCount(state: LabStoreState) {
+  return [
+    getActiveExecutionIntent(state),
+    getActiveExecutionPlan(state),
+    getActiveExecutionSimulation(state),
+    getActiveExecutionReadiness(state),
+    getActiveExecutionPayloadPreview(state),
+    getActiveExecutionReflection(state),
+    getActiveExecutionAlternatives(state),
+    getActiveExecutionCandidate(state),
+    getActiveExecutionCommitment(state),
+    getActiveExecutionStaging(state),
+  ].filter(Boolean).length;
+}
+
+export function getLaboratoryProcessSummary(state: LabStoreState): LabGlobalProcessSummary {
+  const run = getCurrentRun(state);
+  const activeModule = getActiveModule(state);
+  const runningAction = getUserActions(state).find(function (action) {
+    return action.status === "running";
+  });
+  const activeStaging = getActiveExecutionStaging(state);
+  const moduleProgress = getModuleProgress(run);
+  const passiveMilestones = getPassiveExecutionMilestoneCount(state);
+
+  if (run !== null && (run.state === "running" || run.state === "queued")) {
+    const activeTaskLabel =
+      activeModule?.title || activeModule?.id || run.targetLabel || runningAction?.label || null;
+    return {
+      state: "analyzing",
+      completedCount: moduleProgress.completedCount,
+      totalCount: moduleProgress.totalCount,
+      activeTaskLabel,
+      progressLabel:
+        moduleProgress.totalCount > 0
+          ? `${String(moduleProgress.completedCount)} / ${String(moduleProgress.totalCount)}`
+          : null,
+      tone: "running",
+    };
+  }
+
+  if (runningAction !== undefined || state.sourceProbeStatus === "running") {
+    const activeTaskLabel =
+      runningAction?.label || null;
+    const activeTaskKey =
+      runningAction?.label === undefined && state.sourceProbeStatus === "running"
+        ? "sourcePreparation"
+        : null;
+    return {
+      state: "processing",
+      completedCount: 0,
+      totalCount: 1,
+      activeTaskKey,
+      activeTaskLabel,
+      progressKey: activeTaskLabel !== null || activeTaskKey !== null ? "oneActiveTask" : null,
+      progressLabel: null,
+      tone: "running",
+    };
+  }
+
+  if (activeStaging !== null) {
+    return {
+      state: "staging",
+      completedCount: passiveMilestones,
+      totalCount: 9,
+      activeTaskLabel: activeStaging.summary,
+      progressLabel: `${String(passiveMilestones)} / 9`,
+      tone: activeStaging.status === "staged" ? "success" : "warning",
+    };
+  }
+
+  return {
+    state: "idle",
+    completedCount: 0,
+    totalCount: 0,
+    activeTaskLabel: null,
+    progressLabel: null,
+    tone: "neutral",
+  };
+}
+
+function formatSelectionRangeLabel(selection: LabSelection | null) {
+  if (selection === null || selection.endMs <= selection.startMs) {
+    return null;
+  }
+  return `${String(Math.round(selection.startMs))} ms → ${String(Math.round(selection.endMs))} ms`;
+}
+
+export function getLaboratoryRightPanelContext(state: LabStoreState): LabRightPanelContext {
+  const selection = getActiveSelection(state);
+  const activeIntent = getActiveExecutionIntent(state);
+  const candidate = getActiveExecutionCandidate(state);
+  const commitment = getActiveExecutionCommitment(state);
+  const staging = getActiveExecutionStaging(state);
+  return {
+    activeIntentLabel: activeIntent?.label || null,
+    candidateStatus: candidate?.status || null,
+    commitmentStatus: commitment?.status || "none",
+    processSummary: getLaboratoryProcessSummary(state),
+    selectionLabel: selection?.label || selection?.intent || null,
+    selectionRangeLabel: formatSelectionRangeLabel(selection),
+    stagingStatus: staging?.status || "none",
+  };
 }
 
 export function getTimelineSelection(state: LabStoreState) {
