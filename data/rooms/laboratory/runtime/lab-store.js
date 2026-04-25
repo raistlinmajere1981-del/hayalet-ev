@@ -17,7 +17,7 @@ import {
   normalizeAnalysisReference,
   normalizeAnalysisScope
 } from "../shared/types/analysis-scope.js";
-import { deriveLegacyStage } from "./lab-selectors.js";
+import { deriveLegacyStage, getActiveExecutionCandidate } from "./lab-selectors.js";
 import {
   DEFAULT_AUDIO_FOCUS_SETTINGS,
   normalizeAudioFocusPatch,
@@ -217,10 +217,12 @@ function createInitialState() {
       artifactRenderCount: 12,
       reportView: "user",
       lastHydratedProjectId: null,
+      activeExecutionCommitment: null,
       activeExecutionIntentId: null,
       activeSuggestionPreviewId: null,
       activeInspectionSnapshot: null,
       activePreviewArtifactId: null,
+      activeAssetPreviewId: null,
       inspectionMode: "none",
       roiFocusActive: false,
       liveFindingsExpanded: true,
@@ -319,8 +321,37 @@ function createSnapshotEvent(message, severity, detail = null, scope = "global")
 function clearSuggestionPreview(state) {
   state.ui.activeSuggestionPreviewId = null;
 }
+function clearExecutionCommitment(state) {
+  state.ui.activeExecutionCommitment = null;
+}
 function clearExecutionIntent(state) {
   state.ui.activeExecutionIntentId = null;
+  clearExecutionCommitment(state);
+}
+function normalizeExecutionPlanId(planId) {
+  return typeof planId === "string" && planId.trim() !== "" ? planId.trim() : null;
+}
+function buildExecutionCommitmentSummary(candidate) {
+  if (candidate.status === "viable") {
+    return "This path has been consciously chosen as the current passive commitment.";
+  }
+  if (candidate.status === "unstable") {
+    return "This path has been chosen with review notes still attached.";
+  }
+  return "This path is not available for commitment.";
+}
+function createExecutionCommitmentFromCandidate(candidate) {
+  return {
+    id: `commitment:${candidate.planId}`,
+    planId: candidate.planId,
+    status: "committed",
+    candidateStatus: candidate.status,
+    summary: buildExecutionCommitmentSummary(candidate),
+    committedAt: Date.now(),
+    ...Array.isArray(candidate.notes) && candidate.notes.length > 0 ? { notes: candidate.notes.slice() } : {},
+    ...Array.isArray(candidate.uncertainties) && candidate.uncertainties.length > 0 ? { uncertainties: candidate.uncertainties.slice() } : {},
+    ...typeof candidate.confidence === "number" && Number.isFinite(candidate.confidence) ? { confidence: candidate.confidence } : {}
+  };
 }
 function normalizeSelectionSuggestionId(suggestionId) {
   return typeof suggestionId === "string" && suggestionId.trim() !== "" ? suggestionId.trim() : null;
@@ -1100,6 +1131,9 @@ function deriveProbeStatus(source, fallback) {
 function normalizeWorkspaceSourceModeToken(value) {
   return (value || "").replaceAll(/\s+/g, "").toLowerCase();
 }
+function isWorkspaceLocalSourceRouteLabel(routeLabel) {
+  return routeLabel === "localcopy" || routeLabel === "assetreuse";
+}
 function isWorkspaceSourceMatchingMode(source, mode) {
   const routeLabel = normalizeWorkspaceSourceModeToken(asNonEmptyString(source["routeLabel"]));
   if (routeLabel === "") {
@@ -1111,7 +1145,7 @@ function isWorkspaceSourceMatchingMode(source, mode) {
   if (mode === "youtube") {
     return routeLabel === "youtube";
   }
-  return routeLabel === "localcopy";
+  return isWorkspaceLocalSourceRouteLabel(routeLabel);
 }
 function isWorkspaceSourceReady(source) {
   if (!source) {
@@ -1732,6 +1766,12 @@ function reduceEvent(state, event) {
         activePreviewArtifactId: event.artifactId
       };
       return state;
+    case "asset-preview-opened":
+      state.ui.activeAssetPreviewId = event.assetId;
+      return state;
+    case "asset-preview-closed":
+      state.ui.activeAssetPreviewId = null;
+      return state;
     case "live-findings-expanded":
       state.ui.liveFindingsExpanded = typeof event.force === "boolean" ? event.force : !state.ui.liveFindingsExpanded;
       state.workbench = {
@@ -1777,6 +1817,9 @@ function reduceEvent(state, event) {
       state.assets = state.assets.filter(function(asset) {
         return asset.id !== event.id;
       });
+      if (state.ui.activeAssetPreviewId === event.id) {
+        state.ui.activeAssetPreviewId = null;
+      }
       healWorkspaceDualPreviewState(state);
       return state;
     case "asset-updated":
@@ -1857,7 +1900,13 @@ function reduceEvent(state, event) {
       if (!canAcceptSelectionExecutionIntent(state, event.suggestionId)) {
         return state;
       }
-      state.ui.activeExecutionIntentId = normalizeSelectionSuggestionId(event.suggestionId);
+      {
+        const nextExecutionIntentId = normalizeSelectionSuggestionId(event.suggestionId);
+        if (state.ui.activeExecutionIntentId !== nextExecutionIntentId) {
+          clearExecutionCommitment(state);
+        }
+        state.ui.activeExecutionIntentId = nextExecutionIntentId;
+      }
       return state;
     case "workspace-selection-suggestion-dismissed":
       if (state.ui.activeExecutionIntentId === normalizeSelectionSuggestionId(event.suggestionId)) {
@@ -1868,6 +1917,21 @@ function reduceEvent(state, event) {
       return state;
     case "workspace-execution-intent-cleared":
       clearExecutionIntent(state);
+      return state;
+    case "workspace-execution-commitment-set": {
+      const planId = normalizeExecutionPlanId(event.planId);
+      if (planId === null) {
+        return state;
+      }
+      const candidate = getActiveExecutionCandidate(state);
+      if (candidate === null || candidate.planId !== planId || candidate.status === "not-viable") {
+        return state;
+      }
+      state.ui.activeExecutionCommitment = createExecutionCommitmentFromCandidate(candidate);
+      return state;
+    }
+    case "workspace-execution-commitment-revoked":
+      clearExecutionCommitment(state);
       return state;
     case "workspace-selection-suggestion-preview-set":
       if (!canStoreSelectionSuggestionPreview(state, event.suggestionId)) {

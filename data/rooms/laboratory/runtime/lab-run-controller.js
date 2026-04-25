@@ -851,7 +851,7 @@ export function createLabRunController(deps) {
       });
       return;
     }
-    deps.windowRef.open(href, "_blank", "noopener,noreferrer");
+    dispatch({ type: "asset-preview-opened", assetId });
   }
   function downloadAsset(assetId) {
     const asset = findAsset(assetId);
@@ -1641,6 +1641,9 @@ export function createLabRunController(deps) {
         if (value.trim() !== "") {
           previewAsset(value);
         }
+        return;
+      case "close-asset-preview":
+        dispatch({ type: "asset-preview-closed" });
         return;
       case "focus-source-preview":
         if (value.trim() !== "") {

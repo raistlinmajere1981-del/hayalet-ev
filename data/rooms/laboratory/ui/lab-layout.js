@@ -3,6 +3,7 @@ import { renderLabLeftRail } from "./lab-left-rail.js";
 import { renderLabRightPanel } from "./lab-right-panel.js";
 import { renderToolManagementOverlay } from "./tool-management-overlay.js";
 import { renderReportOverlay } from "./report-overlay.js";
+import { renderLabAssetPreviewOverlay } from "./lab-asset-preview-overlay.js";
 import { getWorkspaceMode } from "../runtime/lab-selectors.js";
 export function renderLabLayout(state, surface) {
   return `
@@ -12,6 +13,7 @@ export function renderLabLayout(state, surface) {
       ${renderLabRightPanel(surface)}
     </div>
     ${renderToolManagementOverlay(state)}
+    ${renderLabAssetPreviewOverlay(state)}
     ${renderReportOverlay(state)}
   `;
 }

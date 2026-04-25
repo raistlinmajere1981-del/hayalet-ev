@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 
 import { getAnalysisActionBlockReason } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
+import { renderLabAssetPreviewOverlay } from "../../rooms/laboratory/ui/lab-asset-preview-overlay.ts";
 import { renderLabLeftRail } from "../../rooms/laboratory/ui/lab-left-rail.ts";
 import { renderLabProjectAssetsPanel } from "../../rooms/laboratory/ui/lab-project-assets-panel.ts";
 import { renderReportOverlay } from "../../rooms/laboratory/ui/report-overlay.ts";
@@ -164,6 +165,26 @@ test("laboratory workspace surface renders source intake, preview media, and dee
   assert.match(surface.side, /Derin Analiz Başlat/);
   assert.match(surface.side, /Raporu Görüntüle/);
   assert.doesNotMatch(surface.main, /Kaynak Seçimi|Hızlı modül seçimi burada yapılır/);
+});
+
+test("laboratory workspace treats reused local assets as ready sources", () => {
+  const store = createSeededState();
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      routeLabel: "Asset reuse",
+    },
+  });
+
+  const surface = renderWorkspaceSurface(store.getState());
+
+  assert.match(surface.main, /Source ready/);
+  assert.match(surface.main, /Active: lab-demo\.mp4/);
+  assert.match(
+    surface.main,
+    /<video class="labx-preview-media labx-preview-media--workspace-video"/
+  );
+  assert.doesNotMatch(surface.main, /Awaiting source|Select a source to begin/);
 });
 
 test("laboratory workspace surface previews intent outcomes before the analysis CTA", () => {
@@ -892,6 +913,53 @@ test("laboratory project assets panel renders registry groups and local asset ac
     panelHtml,
     /data-lab-action="asset-use-as-source" data-lab-value="clip-remote-1"/
   );
+});
+
+test("laboratory asset preview overlay renders selected video and audio assets in-app", () => {
+  const store = createLabStore();
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-video-preview",
+      type: "source",
+      name: "CGI Analizi -1.mp4",
+      localPath: "/tmp/CGI Analizi -1.mp4",
+      createdAt: Date.now(),
+      metadata: {
+        durationSeconds: 32,
+        sizeBytes: 2900000,
+      },
+    },
+  });
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-audio-preview",
+      type: "audio",
+      name: "audio-track.wav",
+      localPath: "/tmp/audio-track.wav",
+      createdAt: Date.now(),
+    },
+  });
+
+  store.dispatch({ type: "asset-preview-opened", assetId: "asset-video-preview" });
+  const videoOverlay = renderLabAssetPreviewOverlay(store.getState());
+  assert.match(videoOverlay, /id="lab-asset-preview-overlay-root"/);
+  assert.match(videoOverlay, /data-open="true"/);
+  assert.match(
+    videoOverlay,
+    /<video class="labx-asset-preview__media labx-asset-preview__media--video"/
+  );
+  assert.match(videoOverlay, /src="file:\/\/\/tmp\/CGI%20Analizi%20-1\.mp4"/);
+
+  store.dispatch({ type: "asset-preview-opened", assetId: "asset-audio-preview" });
+  const audioOverlay = renderLabAssetPreviewOverlay(store.getState());
+  assert.match(audioOverlay, /class="labx-asset-preview__audio-shell"/);
+  assert.match(audioOverlay, /<audio class="labx-asset-preview__audio-control"/);
+  assert.match(audioOverlay, /src="file:\/\/\/tmp\/audio-track\.wav"/);
+
+  store.dispatch({ type: "asset-preview-closed" });
+  assert.match(renderLabAssetPreviewOverlay(store.getState()), /data-open="false"/);
 });
 
 test("laboratory report overlay renders snapshot summary and workspace-dirty freshness metadata", () => {

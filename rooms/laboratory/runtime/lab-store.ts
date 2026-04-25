@@ -19,6 +19,8 @@ import type {
   LabArtifactProjection,
   LabEventFeedItem,
   LabEventSeverity,
+  LabExecutionCandidate,
+  LabExecutionCommitment,
   LabFindingProjection,
   LabInspectionMode,
   LabLiveFindingProjection,
@@ -43,7 +45,7 @@ import {
   normalizeAnalysisReference,
   normalizeAnalysisScope,
 } from "../shared/types/analysis-scope.js";
-import { deriveLegacyStage } from "./lab-selectors.js";
+import { deriveLegacyStage, getActiveExecutionCandidate } from "./lab-selectors.js";
 import {
   DEFAULT_AUDIO_FOCUS_SETTINGS,
   normalizeAudioFocusPatch,
@@ -258,10 +260,12 @@ function createInitialState(): LabStoreState {
       artifactRenderCount: 12,
       reportView: "user",
       lastHydratedProjectId: null,
+      activeExecutionCommitment: null,
       activeExecutionIntentId: null,
       activeSuggestionPreviewId: null,
       activeInspectionSnapshot: null,
       activePreviewArtifactId: null,
+      activeAssetPreviewId: null,
       inspectionMode: "none",
       roiFocusActive: false,
       liveFindingsExpanded: true,
@@ -375,8 +379,49 @@ function clearSuggestionPreview(state: LabStoreState) {
   state.ui.activeSuggestionPreviewId = null;
 }
 
+function clearExecutionCommitment(state: LabStoreState) {
+  state.ui.activeExecutionCommitment = null;
+}
+
 function clearExecutionIntent(state: LabStoreState) {
   state.ui.activeExecutionIntentId = null;
+  clearExecutionCommitment(state);
+}
+
+function normalizeExecutionPlanId(planId: string) {
+  return typeof planId === "string" && planId.trim() !== "" ? planId.trim() : null;
+}
+
+function buildExecutionCommitmentSummary(candidate: LabExecutionCandidate) {
+  if (candidate.status === "viable") {
+    return "This path has been consciously chosen as the current passive commitment.";
+  }
+  if (candidate.status === "unstable") {
+    return "This path has been chosen with review notes still attached.";
+  }
+  return "This path is not available for commitment.";
+}
+
+function createExecutionCommitmentFromCandidate(
+  candidate: LabExecutionCandidate
+): LabExecutionCommitment {
+  return {
+    id: `commitment:${candidate.planId}`,
+    planId: candidate.planId,
+    status: "committed",
+    candidateStatus: candidate.status,
+    summary: buildExecutionCommitmentSummary(candidate),
+    committedAt: Date.now(),
+    ...(Array.isArray(candidate.notes) && candidate.notes.length > 0
+      ? { notes: candidate.notes.slice() }
+      : {}),
+    ...(Array.isArray(candidate.uncertainties) && candidate.uncertainties.length > 0
+      ? { uncertainties: candidate.uncertainties.slice() }
+      : {}),
+    ...(typeof candidate.confidence === "number" && Number.isFinite(candidate.confidence)
+      ? { confidence: candidate.confidence }
+      : {}),
+  };
 }
 
 function normalizeSelectionSuggestionId(suggestionId: string) {
@@ -1334,6 +1379,10 @@ function normalizeWorkspaceSourceModeToken(value: string | null) {
   return (value || "").replaceAll(/\s+/g, "").toLowerCase();
 }
 
+function isWorkspaceLocalSourceRouteLabel(routeLabel: string) {
+  return routeLabel === "localcopy" || routeLabel === "assetreuse";
+}
+
 function isWorkspaceSourceMatchingMode(source: Record<string, unknown>, mode: string | null) {
   const routeLabel = normalizeWorkspaceSourceModeToken(asNonEmptyString(source["routeLabel"]));
   if (routeLabel === "") {
@@ -1345,7 +1394,7 @@ function isWorkspaceSourceMatchingMode(source: Record<string, unknown>, mode: st
   if (mode === "youtube") {
     return routeLabel === "youtube";
   }
-  return routeLabel === "localcopy";
+  return isWorkspaceLocalSourceRouteLabel(routeLabel);
 }
 
 function isWorkspaceSourceReady(source: Record<string, unknown> | null) {
@@ -2110,6 +2159,12 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         activePreviewArtifactId: event.artifactId,
       };
       return state;
+    case "asset-preview-opened":
+      state.ui.activeAssetPreviewId = event.assetId;
+      return state;
+    case "asset-preview-closed":
+      state.ui.activeAssetPreviewId = null;
+      return state;
     case "live-findings-expanded":
       state.ui.liveFindingsExpanded =
         typeof event.force === "boolean" ? event.force : !state.ui.liveFindingsExpanded;
@@ -2161,6 +2216,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       state.assets = state.assets.filter(function (asset) {
         return asset.id !== event.id;
       });
+      if (state.ui.activeAssetPreviewId === event.id) {
+        state.ui.activeAssetPreviewId = null;
+      }
       healWorkspaceDualPreviewState(state);
       return state;
     case "asset-updated":
@@ -2248,7 +2306,13 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       if (!canAcceptSelectionExecutionIntent(state, event.suggestionId)) {
         return state;
       }
-      state.ui.activeExecutionIntentId = normalizeSelectionSuggestionId(event.suggestionId);
+      {
+        const nextExecutionIntentId = normalizeSelectionSuggestionId(event.suggestionId);
+        if (state.ui.activeExecutionIntentId !== nextExecutionIntentId) {
+          clearExecutionCommitment(state);
+        }
+        state.ui.activeExecutionIntentId = nextExecutionIntentId;
+      }
       return state;
     case "workspace-selection-suggestion-dismissed":
       if (state.ui.activeExecutionIntentId === normalizeSelectionSuggestionId(event.suggestionId)) {
@@ -2259,6 +2323,21 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     case "workspace-execution-intent-cleared":
       clearExecutionIntent(state);
+      return state;
+    case "workspace-execution-commitment-set": {
+      const planId = normalizeExecutionPlanId(event.planId);
+      if (planId === null) {
+        return state;
+      }
+      const candidate = getActiveExecutionCandidate(state);
+      if (candidate === null || candidate.planId !== planId || candidate.status === "not-viable") {
+        return state;
+      }
+      state.ui.activeExecutionCommitment = createExecutionCommitmentFromCandidate(candidate);
+      return state;
+    }
+    case "workspace-execution-commitment-revoked":
+      clearExecutionCommitment(state);
       return state;
     case "workspace-selection-suggestion-preview-set":
       if (!canStoreSelectionSuggestionPreview(state, event.suggestionId)) {

@@ -5,15 +5,6 @@ type AssetPreviewBinderDeps = {
   documentRef: Pick<Document, "addEventListener" | "removeEventListener">;
   emit: (event: LabStoreEvent) => void;
   resolveHref: (assetId: string) => string | null;
-  windowRef: Pick<Window, "open"> & {
-    electronAPI?: {
-      openPath?: (path: string) => Promise<{
-        error?: string;
-        message?: string;
-        success?: boolean;
-      }>;
-    };
-  };
 };
 
 type ClosestCapableTarget = EventTarget & {
@@ -59,34 +50,6 @@ function emitPreviewWarning(deps: AssetPreviewBinderDeps, message: string) {
   });
 }
 
-async function openAssetPreviewTarget(deps: AssetPreviewBinderDeps, href: string) {
-  const electronApi = deps.windowRef.electronAPI;
-  const openPath =
-    electronApi && typeof electronApi["openPath"] === "function"
-      ? electronApi["openPath"].bind(electronApi)
-      : null;
-  if (openPath !== null) {
-    const result = await openPath(href);
-    if (result.success === true) {
-      return;
-    }
-    emitPreviewWarning(
-      deps,
-      asNonEmptyString(result.error) ||
-        asNonEmptyString(result.message) ||
-        "Asset preview is unavailable."
-    );
-    return;
-  }
-
-  if (typeof deps.windowRef.open === "function") {
-    deps.windowRef.open(href, "_blank", "noopener,noreferrer");
-    return;
-  }
-
-  emitPreviewWarning(deps, "Asset preview is unavailable.");
-}
-
 export function bindLabAssetPreviewClicks(deps: AssetPreviewBinderDeps) {
   function handleClick(event: Event) {
     const target = event.target;
@@ -101,12 +64,12 @@ export function bindLabAssetPreviewClicks(deps: AssetPreviewBinderDeps) {
     if (assetId === null) {
       return;
     }
-    const href = deps.resolveHref(assetId);
-    if (href === null) {
+    preventAction(event);
+    if (deps.resolveHref(assetId) === null) {
+      emitPreviewWarning(deps, "Asset preview is unavailable.");
       return;
     }
-    preventAction(event);
-    void openAssetPreviewTarget(deps, href);
+    deps.emit({ type: "asset-preview-opened", assetId });
   }
 
   deps.documentRef.addEventListener("click", handleClick);

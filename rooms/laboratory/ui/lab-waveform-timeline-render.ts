@@ -1,11 +1,15 @@
 import { escapeHtml } from "../models/lab-types.js";
 import type {
   LabActionSuggestion,
+  LabExecutionAlternatives,
+  LabExecutionCandidate,
+  LabExecutionCommitment,
   LabExecutionPayloadPreview,
   LabExecutionPlan,
   LabExecutionReadiness,
   LabExecutionReflection,
   LabExecutionSimulation,
+  LabExecutionStaging,
   LabInspectionMode,
   LabInspectionSnapshot,
   LabInterpretationItem,
@@ -671,6 +675,348 @@ function renderExecutionReflection(reflection: LabExecutionReflection | null) {
   `;
 }
 
+function formatAlternativesConfidence(confidence: LabExecutionAlternatives["confidence"]) {
+  if (typeof confidence !== "number" || Number.isFinite(confidence) !== true) {
+    return null;
+  }
+  return `${Math.round(confidence * 100)}% confidence`;
+}
+
+function formatRelativeAdvantage(
+  advantage: NonNullable<LabExecutionAlternatives["alternatives"][number]["relativeAdvantage"]>
+) {
+  return advantage
+    .split("-")
+    .map(function (part) {
+      return part.charAt(0).toUpperCase() + part.slice(1);
+    })
+    .join(" ");
+}
+
+function renderExecutionAlternatives(alternatives: LabExecutionAlternatives | null) {
+  if (alternatives === null || alternatives.alternatives.length === 0) {
+    return "";
+  }
+  const confidenceLabel = formatAlternativesConfidence(alternatives.confidence);
+  return `
+    <div class="lab-execution-alternatives" data-lab-execution-alternatives="true">
+      <div class="lab-execution-alternatives__eyebrow">Alternative evaluation</div>
+      <div class="lab-execution-alternatives__summary">${escapeHtml(alternatives.summary)}</div>
+      ${
+        confidenceLabel
+          ? `<div class="lab-execution-alternatives__confidence">${escapeHtml(confidenceLabel)}</div>`
+          : ""
+      }
+      <div class="lab-execution-alternatives__list">
+        ${alternatives.alternatives
+          .map(function (alternative) {
+            return `
+          <article class="lab-execution-alternatives__item">
+            <div class="lab-execution-alternatives__item-head">
+              <span class="lab-execution-alternatives__label">${escapeHtml(alternative.label)}</span>
+              ${
+                alternative.relativeAdvantage
+                  ? `<span class="lab-execution-alternatives__advantage">${escapeHtml(formatRelativeAdvantage(alternative.relativeAdvantage))}</span>`
+                  : ""
+              }
+            </div>
+            <div class="lab-execution-alternatives__action">An alternative approach would be ${escapeHtml(alternative.actionType)}.</div>
+            <div class="lab-execution-alternatives__body">${escapeHtml(alternative.summary)}</div>
+            <div class="lab-execution-alternatives__tradeoff">${escapeHtml(alternative.tradeoff)}</div>
+          </article>
+        `;
+          })
+          .join("")}
+      </div>
+      ${
+        alternatives.comparisonNote
+          ? `<div class="lab-execution-alternatives__comparison">${escapeHtml(alternatives.comparisonNote)}</div>`
+          : ""
+      }
+    </div>
+  `;
+}
+
+function formatCandidateStatus(status: LabExecutionCandidate["status"]) {
+  return (
+    {
+      "not-viable": "Not viable",
+      unstable: "Unstable",
+      viable: "Viable",
+    } as const
+  )[status];
+}
+
+function formatStructuralIntegrity(integrity: LabExecutionCandidate["structuralIntegrity"]) {
+  return (
+    {
+      complete: "Complete",
+      insufficient: "Insufficient",
+      partial: "Partial",
+    } as const
+  )[integrity];
+}
+
+function formatCandidateConfidence(confidence: LabExecutionCandidate["confidence"]) {
+  if (typeof confidence !== "number" || Number.isFinite(confidence) !== true) {
+    return null;
+  }
+  return `${Math.round(confidence * 100)}% confidence`;
+}
+
+function renderExecutionCandidate(candidate: LabExecutionCandidate | null) {
+  if (candidate === null) {
+    return "";
+  }
+  const confidenceLabel = formatCandidateConfidence(candidate.confidence);
+  return `
+    <div class="lab-execution-candidate" data-lab-execution-candidate="true">
+      <div class="lab-execution-candidate__eyebrow">Execution candidate</div>
+      <div class="lab-execution-candidate__header">
+        <span class="lab-execution-candidate__status" data-status="${escapeHtml(candidate.status)}">${escapeHtml(formatCandidateStatus(candidate.status))}</span>
+        ${
+          confidenceLabel
+            ? `<span class="lab-execution-candidate__confidence">${escapeHtml(confidenceLabel)}</span>`
+            : ""
+        }
+      </div>
+      <div class="lab-execution-candidate__summary">${escapeHtml(candidate.summary)}</div>
+      <div class="lab-execution-candidate__grid">
+        <div class="lab-execution-candidate__metric">
+          <span>Structural integrity</span>
+          <strong>${escapeHtml(formatStructuralIntegrity(candidate.structuralIntegrity))}</strong>
+        </div>
+        <div class="lab-execution-candidate__metric">
+          <span>Readiness</span>
+          <strong>${escapeHtml(formatReadinessStatus(candidate.readinessStatus))}</strong>
+        </div>
+        <div class="lab-execution-candidate__metric">
+          <span>Reflection</span>
+          <strong>${escapeHtml(formatReflectionDecision(candidate.reflectionDecision))}</strong>
+        </div>
+      </div>
+      ${
+        Array.isArray(candidate.notes) && candidate.notes.length > 0
+          ? `
+        <div class="lab-execution-candidate__section">
+          <div class="lab-execution-candidate__section-title">Notes</div>
+          <ul class="lab-execution-candidate__list">
+            ${candidate.notes
+              .map(function (note) {
+                return `<li>${escapeHtml(note)}</li>`;
+              })
+              .join("")}
+          </ul>
+        </div>
+      `
+          : ""
+      }
+      ${
+        Array.isArray(candidate.uncertainties) && candidate.uncertainties.length > 0
+          ? `
+        <div class="lab-execution-candidate__section">
+          <div class="lab-execution-candidate__section-title">Uncertainties</div>
+          <ul class="lab-execution-candidate__list lab-execution-candidate__list--uncertainties">
+            ${candidate.uncertainties
+              .map(function (uncertainty) {
+                return `<li>${escapeHtml(uncertainty)}</li>`;
+              })
+              .join("")}
+          </ul>
+        </div>
+      `
+          : ""
+      }
+    </div>
+  `;
+}
+
+function formatCommitmentTimestamp(committedAt: LabExecutionCommitment["committedAt"]) {
+  if (typeof committedAt !== "number" || Number.isFinite(committedAt) !== true) {
+    return null;
+  }
+  return "Chosen recently";
+}
+
+function renderExecutionCommitment(
+  candidate: LabExecutionCandidate | null,
+  commitment: LabExecutionCommitment | null
+) {
+  if (candidate === null) {
+    return "";
+  }
+  if (candidate.status === "not-viable") {
+    return `
+      <div class="lab-execution-commitment lab-execution-commitment--blocked" data-lab-execution-commitment-control="true">
+        <div class="lab-execution-commitment__eyebrow">Execution commitment</div>
+        <div class="lab-execution-commitment__summary">This path is not structurally suitable for a user choice yet.</div>
+      </div>
+    `;
+  }
+
+  const activeCommitment =
+    commitment !== null &&
+    commitment.status === "committed" &&
+    commitment.planId === candidate.planId
+      ? commitment
+      : null;
+
+  if (activeCommitment === null) {
+    return `
+      <div class="lab-execution-commitment lab-execution-commitment--pending" data-lab-execution-commitment-control="true">
+        <div class="lab-execution-commitment__eyebrow">Execution commitment</div>
+        <div class="lab-execution-commitment__summary">No path has been consciously chosen yet.</div>
+        <button
+          class="lab-execution-commitment__choice"
+          type="button"
+          data-lab-execution-commitment-set="${escapeHtml(candidate.planId)}"
+        >Choose this path</button>
+      </div>
+    `;
+  }
+
+  const confidenceLabel = formatCandidateConfidence(activeCommitment.confidence);
+  const timestampLabel = formatCommitmentTimestamp(activeCommitment.committedAt);
+  return `
+    <div class="lab-execution-commitment is-committed" data-lab-execution-commitment="true">
+      <div class="lab-execution-commitment__eyebrow">Execution commitment</div>
+      <div class="lab-execution-commitment__header">
+        <span class="lab-execution-commitment__badge">Committed</span>
+        <span class="lab-execution-commitment__candidate">Candidate: ${escapeHtml(formatCandidateStatus(activeCommitment.candidateStatus))}</span>
+        ${timestampLabel ? `<span class="lab-execution-commitment__time">${escapeHtml(timestampLabel)}</span>` : ""}
+      </div>
+      <div class="lab-execution-commitment__summary">${escapeHtml(activeCommitment.summary)}</div>
+      ${
+        confidenceLabel
+          ? `<div class="lab-execution-commitment__confidence">${escapeHtml(confidenceLabel)}</div>`
+          : ""
+      }
+      ${
+        Array.isArray(activeCommitment.notes) && activeCommitment.notes.length > 0
+          ? `
+        <div class="lab-execution-commitment__section">
+          <div class="lab-execution-commitment__section-title">Notes</div>
+          <ul class="lab-execution-commitment__list">
+            ${activeCommitment.notes
+              .map(function (note) {
+                return `<li>${escapeHtml(note)}</li>`;
+              })
+              .join("")}
+          </ul>
+        </div>
+      `
+          : ""
+      }
+      ${
+        Array.isArray(activeCommitment.uncertainties) && activeCommitment.uncertainties.length > 0
+          ? `
+        <div class="lab-execution-commitment__section">
+          <div class="lab-execution-commitment__section-title">Uncertainties</div>
+          <ul class="lab-execution-commitment__list lab-execution-commitment__list--uncertainties">
+            ${activeCommitment.uncertainties
+              .map(function (uncertainty) {
+                return `<li>${escapeHtml(uncertainty)}</li>`;
+              })
+              .join("")}
+          </ul>
+        </div>
+      `
+          : ""
+      }
+      <button
+        class="lab-execution-commitment__choice lab-execution-commitment__choice--revoke"
+        type="button"
+        data-lab-execution-commitment-revoke="true"
+      >Revoke choice</button>
+    </div>
+  `;
+}
+
+function formatStagingStatus(status: LabExecutionStaging["status"]) {
+  return (
+    {
+      "not-staged": "Not staged",
+      staged: "Staged",
+    } as const
+  )[status];
+}
+
+function formatStagingChoiceStatus(status: LabExecutionStaging["commitmentStatus"]) {
+  return (
+    {
+      committed: "Chosen",
+      none: "None",
+    } as const
+  )[status];
+}
+
+function renderExecutionStaging(staging: LabExecutionStaging | null) {
+  if (staging === null) {
+    return "";
+  }
+  const confidenceLabel = formatCandidateConfidence(staging.confidence);
+  return `
+    <div class="lab-execution-staging" data-lab-execution-staging="true">
+      <div class="lab-execution-staging__eyebrow">Execution staging</div>
+      <div class="lab-execution-staging__header">
+        <span class="lab-execution-staging__badge" data-status="${escapeHtml(staging.status)}">${escapeHtml(formatStagingStatus(staging.status))}</span>
+        ${
+          confidenceLabel
+            ? `<span class="lab-execution-staging__confidence">${escapeHtml(confidenceLabel)}</span>`
+            : ""
+        }
+      </div>
+      <div class="lab-execution-staging__summary">${escapeHtml(staging.summary)}</div>
+      <div class="lab-execution-staging__grid">
+        <div class="lab-execution-staging__metric">
+          <span>User choice</span>
+          <strong>${escapeHtml(formatStagingChoiceStatus(staging.commitmentStatus))}</strong>
+        </div>
+        <div class="lab-execution-staging__metric">
+          <span>Candidate</span>
+          <strong>${escapeHtml(formatCandidateStatus(staging.candidateStatus))}</strong>
+        </div>
+        <div class="lab-execution-staging__metric">
+          <span>Readiness</span>
+          <strong>${escapeHtml(formatReadinessStatus(staging.readinessStatus))}</strong>
+        </div>
+      </div>
+      ${
+        Array.isArray(staging.notes) && staging.notes.length > 0
+          ? `
+        <div class="lab-execution-staging__section">
+          <div class="lab-execution-staging__section-title">Notes</div>
+          <ul class="lab-execution-staging__notes">
+            ${staging.notes
+              .map(function (note) {
+                return `<li>${escapeHtml(note)}</li>`;
+              })
+              .join("")}
+          </ul>
+        </div>
+      `
+          : ""
+      }
+      ${
+        Array.isArray(staging.warnings) && staging.warnings.length > 0
+          ? `
+        <div class="lab-execution-staging__section">
+          <div class="lab-execution-staging__section-title">Warnings</div>
+          <ul class="lab-execution-staging__notes lab-execution-staging__notes--warnings">
+            ${staging.warnings
+              .map(function (warning) {
+                return `<li>${escapeHtml(warning)}</li>`;
+              })
+              .join("")}
+          </ul>
+        </div>
+      `
+          : ""
+      }
+    </div>
+  `;
+}
+
 function formatInterpretationType(type: LabInterpretationItem["type"]) {
   return (
     {
@@ -882,6 +1228,24 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
     hasSemanticSelection && activeExecutionPayloadPreview !== null
       ? (model.activeExecutionReflection ?? null)
       : null;
+  const activeExecutionAlternatives =
+    hasSemanticSelection && activeExecutionReflection !== null
+      ? (model.activeExecutionAlternatives ?? null)
+      : null;
+  const activeExecutionCandidate =
+    hasSemanticSelection &&
+    activeExecutionReflection !== null &&
+    activeExecutionAlternatives !== null
+      ? (model.activeExecutionCandidate ?? null)
+      : null;
+  const activeExecutionCommitment =
+    hasSemanticSelection && activeExecutionCandidate !== null
+      ? (model.activeExecutionCommitment ?? null)
+      : null;
+  const activeExecutionStaging =
+    hasSemanticSelection && activeExecutionCommitment !== null
+      ? (model.activeExecutionStaging ?? null)
+      : null;
   const activeExecutionIntent = hasSemanticSelection ? (model.activeExecutionIntent ?? null) : null;
   const actionSuggestions = selectionSuggestions.filter(function (suggestion) {
     return typeof suggestion.toolHint !== "string" || suggestion.toolHint.trim() === "";
@@ -1040,6 +1404,10 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
             ${renderExecutionReadiness(activeExecutionReadiness)}
             ${renderExecutionPayloadPreview(activeExecutionPayloadPreview)}
             ${renderExecutionReflection(activeExecutionReflection)}
+            ${renderExecutionAlternatives(activeExecutionAlternatives)}
+            ${renderExecutionCandidate(activeExecutionCandidate)}
+            ${renderExecutionCommitment(activeExecutionCandidate, activeExecutionCommitment)}
+            ${renderExecutionStaging(activeExecutionStaging)}
             ${renderInterpretationPanel(interpretationItems, "embedded")}
           </div>
           <div

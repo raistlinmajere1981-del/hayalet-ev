@@ -339,6 +339,9 @@ function getSourceActionForMode(mode) {
 function normalizeModeToken(value) {
   return (value || "").replaceAll(/\s+/g, "").toLowerCase();
 }
+function isLocalSourceRouteLabel(routeLabel) {
+  return routeLabel === "localcopy" || routeLabel === "assetreuse";
+}
 function isLoadedSourceMatchingMode(source, mode) {
   const routeLabel = normalizeModeToken(asNonEmptyString(source["routeLabel"]));
   if (routeLabel === "") {
@@ -350,7 +353,7 @@ function isLoadedSourceMatchingMode(source, mode) {
   if (mode === "youtube") {
     return routeLabel === "youtube";
   }
-  return routeLabel === "localcopy";
+  return isLocalSourceRouteLabel(routeLabel);
 }
 function getSourceProgressModel(state, mode) {
   const source = getProjectSource(state);

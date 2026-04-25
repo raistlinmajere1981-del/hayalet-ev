@@ -251,6 +251,70 @@ export interface LabExecutionReflection {
   confidence?: number;
 }
 
+export interface LabExecutionAlternative {
+  actionType: string;
+  label: string;
+  summary: string;
+  tradeoff: string;
+  relativeAdvantage?:
+    | "higher-precision"
+    | "higher-coverage"
+    | "lower-risk"
+    | "faster"
+    | "more-stable";
+}
+
+export interface LabExecutionAlternatives {
+  id: string;
+  planId: string;
+  summary: string;
+  alternatives: LabExecutionAlternative[];
+  comparisonNote?: string;
+  confidence?: number;
+}
+
+export interface LabExecutionCandidate {
+  id: string;
+  planId: string;
+  status: "viable" | "unstable" | "not-viable";
+  summary: string;
+  structuralIntegrity: "complete" | "partial" | "insufficient";
+  readinessStatus: LabExecutionReadiness["status"];
+  reflectionDecision: LabExecutionReflection["decision"];
+  notes?: string[];
+  uncertainties?: string[];
+  confidence?: number;
+}
+
+export type LabExecutionCommitmentStatus = "inactive" | "committed" | "revoked";
+
+export interface LabExecutionCommitment {
+  id: string;
+  planId: string;
+  status: LabExecutionCommitmentStatus;
+  candidateStatus: LabExecutionCandidate["status"];
+  summary: string;
+  committedAt?: number;
+  notes?: string[];
+  uncertainties?: string[];
+  confidence?: number;
+}
+
+export type LabExecutionStagingStatus = "staged" | "not-staged";
+
+export interface LabExecutionStaging {
+  id: string;
+  planId: string;
+  status: LabExecutionStagingStatus;
+  summary: string;
+  commitmentStatus: "committed" | "none";
+  candidateStatus: LabExecutionCandidate["status"];
+  readinessStatus: LabExecutionReadiness["status"];
+  notes?: string[];
+  warnings?: string[];
+  confidence?: number;
+}
+
 export interface LabInspectionSnapshot {
   id: string;
   objectUrl: string;
@@ -893,10 +957,12 @@ export interface LabStoreUiState {
   artifactRenderCount: number;
   reportView: "user" | "ai";
   lastHydratedProjectId: string | null;
+  activeExecutionCommitment: LabExecutionCommitment | null;
   activeExecutionIntentId: string | null;
   activeSuggestionPreviewId: string | null;
   activeInspectionSnapshot: LabInspectionSnapshot | null;
   activePreviewArtifactId: string | null;
+  activeAssetPreviewId: string | null;
   inspectionMode: LabInspectionMode;
   roiFocusActive: boolean;
   liveFindingsExpanded: boolean;
@@ -1042,6 +1108,8 @@ export type LabStoreEvent =
   | { type: "show-more-artifacts" }
   | { type: "report-view-changed"; view: "user" | "ai" }
   | { type: "preview-artifact-activated"; artifactId: string | null }
+  | { type: "asset-preview-opened"; assetId: string }
+  | { type: "asset-preview-closed" }
   | { type: "live-findings-expanded"; force?: boolean }
   | { type: "analysis-controls-collapsed"; force?: boolean }
   | { type: "capability-select"; capabilityId: CapabilityFamilyId }
@@ -1065,6 +1133,8 @@ export type LabStoreEvent =
   | { type: "workspace-selection-suggestion-dismissed"; suggestionId: string }
   | { type: "workspace-selection-suggestion-queued"; suggestionId: string }
   | { type: "workspace-execution-intent-cleared" }
+  | { type: "workspace-execution-commitment-set"; planId: string }
+  | { type: "workspace-execution-commitment-revoked" }
   | { type: "workspace-selection-suggestion-preview-set"; suggestionId: string }
   | { type: "workspace-selection-suggestion-preview-cleared" }
   | { type: "selection-roi-focus-set"; active: boolean }

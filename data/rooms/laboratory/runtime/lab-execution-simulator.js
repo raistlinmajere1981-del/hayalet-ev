@@ -61,13 +61,17 @@ function buildWarnings(input, actionType) {
     warnings.push("A very large region would likely dilute the focal detail of the outcome.");
   }
   if (actionType === "inspect-audio" && gain > 1.5) {
-    warnings.push("High preview gain could make the observed outcome feel harsher or more distorted.");
+    warnings.push(
+      "High preview gain could make the observed outcome feel harsher or more distorted."
+    );
   }
   if (actionType === "inspect-motion" && playbackRate > 1.5) {
     warnings.push("Fast playback would make motion ambiguity more noticeable in the forecast.");
   }
   if (actionType === "focus-region" && input.activeSelection.roi === void 0) {
-    warnings.push("Without an active region, the simulated outcome stays segment-scoped rather than spatially focused.");
+    warnings.push(
+      "Without an active region, the simulated outcome stays segment-scoped rather than spatially focused."
+    );
   }
   if (actionType === "inspect-audio" && filterType === "lowpass" && filterFrequency < 500) {
     warnings.push("A low cutoff would suppress high-frequency detail in the observed outcome.");

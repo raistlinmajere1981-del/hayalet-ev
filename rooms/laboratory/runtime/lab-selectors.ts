@@ -5,11 +5,15 @@ import type {
   LabActionSuggestion,
   LabAsset,
   LabAssetType,
+  LabExecutionAlternatives,
+  LabExecutionCandidate,
+  LabExecutionCommitment,
   LabExecutionPayloadPreview,
   LabExecutionPlan,
   LabExecutionReadiness,
   LabExecutionReflection,
   LabExecutionSimulation,
+  LabExecutionStaging,
   LabExpectedOutput,
   LabFeatureId,
   LabInspectionMode,
@@ -35,11 +39,14 @@ import type {
 import { CAPABILITY_FAMILIES, WORKSPACE_INTENTS } from "../models/lab-types.js";
 import { normalizeAnalysisScope } from "../shared/types/analysis-scope.js";
 import { normalizeAudioFocusSettings } from "./lab-audio-focus-normalization.js";
+import { buildExecutionAlternativesFromResolved } from "./lab-execution-alternatives.js";
 import { buildExecutionPayloadPreviewFromResolved } from "./lab-execution-bridge.js";
+import { buildExecutionCandidateFromResolved } from "./lab-execution-candidate.js";
 import { buildExecutionPlan } from "./lab-execution-planner.js";
 import { buildExecutionReadiness } from "./lab-execution-readiness.js";
 import { buildExecutionReflectionFromResolved } from "./lab-execution-reflection.js";
 import { buildExecutionSimulation } from "./lab-execution-simulator.js";
+import { buildExecutionStagingFromResolved } from "./lab-execution-staging.js";
 import { buildInterpretationItems } from "./lab-interpretation-engine.js";
 import {
   buildSelectionSuggestionPreview,
@@ -1060,6 +1067,65 @@ export function getActiveExecutionReflection(state: LabStoreState): LabExecution
   });
 }
 
+export function getActiveExecutionAlternatives(
+  state: LabStoreState
+): LabExecutionAlternatives | null {
+  return buildExecutionAlternativesFromResolved({
+    executionPlan: getActiveExecutionPlan(state),
+    executionSimulation: getActiveExecutionSimulation(state),
+    executionReadiness: getActiveExecutionReadiness(state),
+    executionReflection: getActiveExecutionReflection(state),
+    activeSelection: getActiveSelection(state),
+    inspectionMode: getInspectionMode(state),
+    sourceKind: getSourceKind(state),
+  });
+}
+
+export function getActiveExecutionCandidate(state: LabStoreState): LabExecutionCandidate | null {
+  return buildExecutionCandidateFromResolved({
+    executionPlan: getActiveExecutionPlan(state),
+    executionSimulation: getActiveExecutionSimulation(state),
+    executionReadiness: getActiveExecutionReadiness(state),
+    executionPayloadPreview: getActiveExecutionPayloadPreview(state),
+    executionReflection: getActiveExecutionReflection(state),
+    executionAlternatives: getActiveExecutionAlternatives(state),
+    activeSelection: getActiveSelection(state),
+    inspectionMode: getInspectionMode(state),
+    sourceKind: getSourceKind(state),
+  });
+}
+
+export function getActiveExecutionCommitment(state: LabStoreState): LabExecutionCommitment | null {
+  const commitment = state.ui.activeExecutionCommitment;
+  if (commitment === null || commitment.status !== "committed") {
+    return null;
+  }
+  const candidate = getActiveExecutionCandidate(state);
+  if (
+    candidate === null ||
+    candidate.planId !== commitment.planId ||
+    candidate.status !== commitment.candidateStatus ||
+    candidate.status === "not-viable"
+  ) {
+    return null;
+  }
+  return commitment;
+}
+
+export function getActiveExecutionStaging(state: LabStoreState): LabExecutionStaging | null {
+  return buildExecutionStagingFromResolved({
+    executionPlan: getActiveExecutionPlan(state),
+    executionSimulation: getActiveExecutionSimulation(state),
+    executionReadiness: getActiveExecutionReadiness(state),
+    executionPayloadPreview: getActiveExecutionPayloadPreview(state),
+    executionReflection: getActiveExecutionReflection(state),
+    executionAlternatives: getActiveExecutionAlternatives(state),
+    executionCandidate: getActiveExecutionCandidate(state),
+    executionCommitment: getActiveExecutionCommitment(state),
+    activeSelection: getActiveSelection(state),
+  });
+}
+
 export function getTimelineSelection(state: LabStoreState) {
   const activeSelection = getActiveSelection(state);
   if (activeSelection !== null && activeSelection.endMs > activeSelection.startMs) {
@@ -1169,11 +1235,15 @@ export function getWaveformTimelineModel(state: LabStoreState) {
       : 1;
 
   return {
+    activeExecutionAlternatives: getActiveExecutionAlternatives(state),
+    activeExecutionCandidate: getActiveExecutionCandidate(state),
+    activeExecutionCommitment: getActiveExecutionCommitment(state),
     activeExecutionPlan: getActiveExecutionPlan(state),
     activeExecutionPayloadPreview: getActiveExecutionPayloadPreview(state),
     activeExecutionReadiness: getActiveExecutionReadiness(state),
     activeExecutionReflection: getActiveExecutionReflection(state),
     activeExecutionSimulation: getActiveExecutionSimulation(state),
+    activeExecutionStaging: getActiveExecutionStaging(state),
     activeExecutionIntent: getActiveExecutionIntent(state),
     activeSelection: getActiveSelection(state),
     activeInspectionSnapshot: getActiveInspectionSnapshot(state),

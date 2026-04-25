@@ -372,6 +372,10 @@ function normalizeModeToken(value: string | null) {
   return (value || "").replaceAll(/\s+/g, "").toLowerCase();
 }
 
+function isLocalSourceRouteLabel(routeLabel: string) {
+  return routeLabel === "localcopy" || routeLabel === "assetreuse";
+}
+
 function isLoadedSourceMatchingMode(source: Record<string, unknown>, mode: string) {
   const routeLabel = normalizeModeToken(asNonEmptyString(source["routeLabel"]));
   if (routeLabel === "") {
@@ -383,7 +387,7 @@ function isLoadedSourceMatchingMode(source: Record<string, unknown>, mode: strin
   if (mode === "youtube") {
     return routeLabel === "youtube";
   }
-  return routeLabel === "localcopy";
+  return isLocalSourceRouteLabel(routeLabel);
 }
 
 function getSourceProgressModel(state: LabStoreState, mode: string) {

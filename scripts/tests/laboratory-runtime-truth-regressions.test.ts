@@ -4,6 +4,8 @@ import type {
   LabActionSuggestion,
   LabArtifactProjection,
   LabAudioFocusSettings,
+  LabExecutionCommitment,
+  LabExecutionPayloadPreview,
   LabSelection,
 } from "../../rooms/laboratory/models/lab-types.ts";
 import {
@@ -16,6 +18,11 @@ import { createLabHostBridge } from "../../rooms/laboratory/runtime/lab-host-bri
 import { createAudioVisualizer } from "../../rooms/laboratory/runtime/lab-audio-visualizer.ts";
 import { buildInterpretationItems } from "../../rooms/laboratory/runtime/lab-interpretation-engine.ts";
 import {
+  buildExecutionAlternatives,
+  buildExecutionAlternativesFromResolved,
+} from "../../rooms/laboratory/runtime/lab-execution-alternatives.ts";
+import { buildExecutionCandidateFromResolved } from "../../rooms/laboratory/runtime/lab-execution-candidate.ts";
+import {
   buildExecutionPayloadPreview,
   buildExecutionPayloadPreviewFromResolved,
 } from "../../rooms/laboratory/runtime/lab-execution-bridge.ts";
@@ -26,14 +33,19 @@ import {
   buildExecutionReflectionFromResolved,
 } from "../../rooms/laboratory/runtime/lab-execution-reflection.ts";
 import { buildExecutionSimulation } from "../../rooms/laboratory/runtime/lab-execution-simulator.ts";
+import { buildExecutionStagingFromResolved } from "../../rooms/laboratory/runtime/lab-execution-staging.ts";
 import {
   getActualOutputs,
   getActionOutputs,
+  getActiveExecutionAlternatives,
+  getActiveExecutionCandidate,
+  getActiveExecutionCommitment,
   getActiveExecutionPlan,
   getActiveExecutionPayloadPreview,
   getActiveExecutionReadiness,
   getActiveExecutionReflection,
   getActiveExecutionSimulation,
+  getActiveExecutionStaging,
   getActiveExecutionIntent,
   getActiveSelection,
   getActiveInspectionSnapshot,
@@ -87,9 +99,7 @@ import { bindLabSelectionIntentClicks } from "../../rooms/laboratory/ui/lab-sele
 import { bindLabSelectionRoiInteractions } from "../../rooms/laboratory/ui/lab-selection-roi-binder.ts";
 import { bindLabSelectionSuggestionClicks } from "../../rooms/laboratory/ui/lab-selection-suggestion-binder.ts";
 import { renderWorkspaceSurface } from "../../rooms/laboratory/ui/workspace-surface.ts";
-import {
-  renderWorkspaceAudioFocus,
-} from "../../rooms/laboratory/ui/workspace-audio-focus.ts";
+import { renderWorkspaceAudioFocus } from "../../rooms/laboratory/ui/workspace-audio-focus.ts";
 
 type TimeoutFn = typeof globalThis.setTimeout;
 type ClearTimeoutFn = typeof globalThis.clearTimeout;
@@ -150,7 +160,8 @@ class FakeActionElement {
     }
     if (
       selector === "[data-lab-action]" ||
-      (selector === "[data-lab-action='asset-preview']" && this.dataset.labAction === "asset-preview")
+      (selector === "[data-lab-action='asset-preview']" &&
+        this.dataset.labAction === "asset-preview")
     ) {
       return this;
     }
@@ -314,7 +325,9 @@ class FakeRoiStage {
 
 class FakeRoiIgnoreElement {
   closest(selector: string) {
-    return selector === "[data-lab-selection-roi-ignore='true']" ? (this as unknown as FakeRoiStage) : null;
+    return selector === "[data-lab-selection-roi-ignore='true']"
+      ? (this as unknown as FakeRoiStage)
+      : null;
   }
 }
 
@@ -339,7 +352,9 @@ class FakeRoiClearTrigger {
 
 class FakeRoiClearTarget extends FakeDomElement {
   closest(selector: string) {
-    return selector === "[data-lab-selection-roi-clear]" ? (new FakeRoiClearTrigger() as unknown as FakeRoiStage) : null;
+    return selector === "[data-lab-selection-roi-clear]"
+      ? (new FakeRoiClearTrigger() as unknown as FakeRoiStage)
+      : null;
   }
 }
 
@@ -1686,7 +1701,10 @@ test("audio visualization selector prefers renderable current-run artifacts by m
   assert.equal(getAudioVisualizationArtifact(store.getState())?.id, "artifact-waveform-final");
 
   state.ui.workspace.audioFocus.visualizationMode = "spectrum";
-  assert.equal(getAudioVisualizationArtifact(store.getState())?.id, "artifact-spectrogram-file-url");
+  assert.equal(
+    getAudioVisualizationArtifact(store.getState())?.id,
+    "artifact-spectrogram-file-url"
+  );
 
   state.ui.workspace.audioFocus.visualizationMode = "none";
   assert.equal(getAudioVisualizationArtifact(store.getState())?.id, "artifact-waveform-final");
@@ -1741,7 +1759,10 @@ test("audio visualization selector keeps stable input order when artifact priori
   };
 
   state.ui.workspace.audioFocus.visualizationMode = "waveform";
-  assert.equal(getAudioVisualizationArtifact(store.getState())?.id, "artifact-waveform-second-by-id");
+  assert.equal(
+    getAudioVisualizationArtifact(store.getState())?.id,
+    "artifact-waveform-second-by-id"
+  );
 });
 
 test("workspace audio focus points users to the unified waveform timeline", () => {
@@ -2131,7 +2152,10 @@ test("selection suggestions and waveform model deepen when semantic roi inspecti
     "Stabilize segment",
   ]);
   assert.equal(model.waveformInspectionLens?.enabled, true);
-  assert.ok((model.waveformInspectionLens?.cropEndRatio ?? 0) > (model.waveformInspectionLens?.cropStartRatio ?? 0));
+  assert.ok(
+    (model.waveformInspectionLens?.cropEndRatio ?? 0) >
+      (model.waveformInspectionLens?.cropStartRatio ?? 0)
+  );
   assert.match(markup, /Inspection tools/);
   assert.match(markup, /Focus region/);
   assert.match(markup, /lab-audio-viz-inspection/);
@@ -2253,6 +2277,59 @@ test("lab root preserves interpretation panel details state across embedded and 
       }
     });
   }
+});
+
+test("laboratory store treats reused local assets as ready sources during snapshot sync", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "snapshot-received",
+    payload: {
+      ready: true,
+      featureId: "media-analysis",
+      activeProjectId: "project-asset-reuse",
+      projects: [{ id: "project-asset-reuse", name: "asset-reuse.png", hasSource: true }],
+      activeProject: {
+        id: "project-asset-reuse",
+        name: "asset-reuse.png",
+        createdAt: "2026-04-25T11:55:00.000Z",
+        source: {
+          status: "ready",
+          kind: "image",
+          mode: "local",
+          previewUrl: "file:///tmp/asset-reuse.png",
+          storedFileName: "asset-reuse.png",
+          storedPath: "/tmp/project/source/asset-reuse.png",
+          routeLabel: "Asset reuse",
+          metadata: {
+            width: 1920,
+            height: 1080,
+            durationSeconds: 0,
+          },
+          drafts: {},
+        },
+        edit: {},
+        profile: {
+          preflight: {},
+        },
+        process: {
+          records: {},
+        },
+        report: {
+          records: {},
+        },
+        assets: [],
+      },
+      workbench: {},
+      profileModels: [],
+      toolState: {},
+      activityFeed: [],
+    },
+  });
+
+  const state = store.getState();
+  assert.equal(state.sourceProbeStatus, "completed");
+  assert.equal(state.ui.workspace.sourceIntakeCollapsed, true);
 });
 
 test("effective preview audio focus fences temporal controls while dual preview is active", () => {
@@ -2610,7 +2687,10 @@ test("selection suggestion binder gates soft execution intent actions by the exa
   }
 
   class FakeExecutionIntentTrigger {
-    constructor(private readonly attrName: string, private readonly suggestionId: string | null) {}
+    constructor(
+      private readonly attrName: string,
+      private readonly suggestionId: string | null
+    ) {}
 
     getAttribute(name: string) {
       return name === this.attrName ? this.suggestionId : null;
@@ -2802,32 +2882,26 @@ test("selection roi binder enforces minimum drag size and emits passive roi + in
     }
   );
 
-  mouseDownListener?.(
-    {
-      button: 0,
-      clientX: 10,
-      clientY: 10,
-      preventDefault() {},
-      target: new FakeRoiDrawTarget(stage) as unknown as EventTarget,
-    } as Event
-  );
-  mouseMoveListener?.(
-    {
-      clientX: 14,
-      clientY: 15,
-      preventDefault() {},
-    } as Event
-  );
+  mouseDownListener?.({
+    button: 0,
+    clientX: 10,
+    clientY: 10,
+    preventDefault() {},
+    target: new FakeRoiDrawTarget(stage) as unknown as EventTarget,
+  } as Event);
+  mouseMoveListener?.({
+    clientX: 14,
+    clientY: 15,
+    preventDefault() {},
+  } as Event);
 
   assert.equal(store.getState().ui.workspace.activeSelection?.roi, undefined);
 
-  mouseMoveListener?.(
-    {
-      clientX: 70,
-      clientY: 60,
-      preventDefault() {},
-    } as Event
-  );
+  mouseMoveListener?.({
+    clientX: 70,
+    clientY: 60,
+    preventDefault() {},
+  } as Event);
   mouseUpListener?.({} as Event);
 
   assert.deepEqual(store.getState().ui.workspace.activeSelection?.roi, {
@@ -2839,7 +2913,9 @@ test("selection roi binder enforces minimum drag size and emits passive roi + in
 
   clickListener?.(
     new FakeClickEvent(
-      new FakeInspectionModeTarget(new FakeInspectionModeTrigger("motion")) as unknown as EventTarget
+      new FakeInspectionModeTarget(
+        new FakeInspectionModeTrigger("motion")
+      ) as unknown as EventTarget
     ) as unknown as Event
   );
   assert.equal(getInspectionMode(store.getState()), "motion");
@@ -3787,7 +3863,10 @@ test("waveform timeline model maps linked audio offset onto the shared master ax
 
   assert.equal(model.waveformWindowStartMs, 250);
   assert.equal(model.waveformWindowDurationMs, 5750);
-  assert.equal(Number((model.waveformCropEndRatio || 0).toFixed(6)), Number((5750 / 6000).toFixed(6)));
+  assert.equal(
+    Number((model.waveformCropEndRatio || 0).toFixed(6)),
+    Number((5750 / 6000).toFixed(6))
+  );
   assert.match(markup, /id="lab-audio-viz"/);
   assert.match(markup, /data-lab-role="timeline-playhead"/);
   assert.match(markup, /Linked audio offset \+250 ms/);
@@ -3810,7 +3889,10 @@ test("waveform timeline model clips negative linked audio offsets against the ma
 
   assert.equal(model.waveformWindowStartMs, 0);
   assert.equal(model.waveformWindowDurationMs, 5500);
-  assert.equal(Number((model.waveformCropStartRatio || 0).toFixed(6)), Number((500 / 6000).toFixed(6)));
+  assert.equal(
+    Number((model.waveformCropStartRatio || 0).toFixed(6)),
+    Number((500 / 6000).toFixed(6))
+  );
   assert.match(markup, /data-waveform-crop-start="0\.08333333333333333"/);
 });
 
@@ -4432,7 +4514,9 @@ test("laboratory run controller keeps live spectrum rendering when a loadable ar
   assert.equal(canvas.context.drawImageCalls, 0);
   assert.ok(canvas.context.fillRectCalls > 0);
   assert.equal(
-    audioContext?.sourceNodes[0]?.connectedTargets[audioContext.sourceNodes[0].connectedTargets.length - 1],
+    audioContext?.sourceNodes[0]?.connectedTargets[
+      audioContext.sourceNodes[0].connectedTargets.length - 1
+    ],
     audioContext?.gainNodes[0]
   );
 });
@@ -4490,7 +4574,9 @@ test("laboratory run controller pauses realtime rendering while hidden and resum
   await flushVisualizerWork();
   assert.equal(windowRef.scheduledFrames.size, 1);
   assert.equal(
-    audioContext?.sourceNodes[0]?.connectedTargets[audioContext.sourceNodes[0].connectedTargets.length - 1],
+    audioContext?.sourceNodes[0]?.connectedTargets[
+      audioContext.sourceNodes[0].connectedTargets.length - 1
+    ],
     audioContext?.gainNodes[0]
   );
 });
@@ -5712,9 +5798,9 @@ test("laboratory run controller threads frozen run intent ids into tracked expor
   }
 });
 
-test("laboratory asset preview binder opens action-linked assets through the system opener when available", async () => {
+test("laboratory asset preview binder opens action-linked assets through the room overlay", async () => {
   const originalElement = globalThis.Element;
-  const openedPaths: string[] = [];
+  const emittedAssetIds: string[] = [];
   const documentRef = new FakeControllerDocument();
 
   class TestElement extends FakeActionElement {}
@@ -5727,21 +5813,14 @@ test("laboratory asset preview binder opens action-linked assets through the sys
   try {
     bindLabAssetPreviewClicks({
       documentRef: documentRef as unknown as Document,
-      emit() {},
+      emit(event) {
+        if (event.type === "asset-preview-opened") {
+          emittedAssetIds.push(event.assetId);
+        }
+      },
       resolveHref(assetId) {
         return assetId === "asset-frame-result" ? "/tmp/frame_01.png" : null;
       },
-      windowRef: {
-        electronAPI: {
-          openPath(path: string) {
-            openedPaths.push(path);
-            return Promise.resolve({ success: true });
-          },
-        },
-        open() {
-          return null;
-        },
-      } as unknown as Window,
     });
 
     const clickListener = documentRef.listeners.get("click");
@@ -5762,7 +5841,7 @@ test("laboratory asset preview binder opens action-linked assets through the sys
 
     assert.equal(prevented, true);
     assert.equal(stopped, true);
-    assert.deepEqual(openedPaths, ["/tmp/frame_01.png"]);
+    assert.deepEqual(emittedAssetIds, ["asset-frame-result"]);
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;
@@ -5775,9 +5854,9 @@ test("laboratory asset preview binder opens action-linked assets through the sys
   }
 });
 
-test("laboratory asset preview binder falls back to window preview when the system opener is unavailable", async () => {
+test("laboratory asset preview binder does not spawn blank windows for room previews", async () => {
   const originalElement = globalThis.Element;
-  const openedUrls: string[] = [];
+  const emittedAssetIds: string[] = [];
   const documentRef = new FakeControllerDocument();
 
   class TestElement extends FakeActionElement {}
@@ -5790,16 +5869,14 @@ test("laboratory asset preview binder falls back to window preview when the syst
   try {
     bindLabAssetPreviewClicks({
       documentRef: documentRef as unknown as Document,
-      emit() {},
+      emit(event) {
+        if (event.type === "asset-preview-opened") {
+          emittedAssetIds.push(event.assetId);
+        }
+      },
       resolveHref(assetId) {
         return assetId === "asset-audio-preview" ? "/tmp/track.wav" : null;
       },
-      windowRef: {
-        open(url: string) {
-          openedUrls.push(url);
-          return null;
-        },
-      } as unknown as Window,
     });
 
     const clickListener = documentRef.listeners.get("click");
@@ -5808,7 +5885,7 @@ test("laboratory asset preview binder falls back to window preview when the syst
     clickListener?.({ target: new TestElement("asset-preview", "asset-audio-preview") } as Event);
     await Promise.resolve();
 
-    assert.deepEqual(openedUrls, ["/tmp/track.wav"]);
+    assert.deepEqual(emittedAssetIds, ["asset-audio-preview"]);
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;
@@ -6322,13 +6399,21 @@ test("laboratory run controller applies timeline finetune and clear actions from
 
     clickListener?.(
       new FakeMouseEvent(
-        new FakeTimelineActionElement("timeline-finetune", timeline, "start:+100") as unknown as EventTarget,
+        new FakeTimelineActionElement(
+          "timeline-finetune",
+          timeline,
+          "start:+100"
+        ) as unknown as EventTarget,
         0
       ) as unknown as Event
     );
     clickListener?.(
       new FakeMouseEvent(
-        new FakeTimelineActionElement("timeline-finetune", timeline, "end:-500") as unknown as EventTarget,
+        new FakeTimelineActionElement(
+          "timeline-finetune",
+          timeline,
+          "end:-500"
+        ) as unknown as EventTarget,
         0
       ) as unknown as Event
     );
@@ -7145,6 +7230,7 @@ test("selection preview clears on range changes, intent changes, and explicit di
     endMs: 3200,
   });
   assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
+  assert.equal(store.getState().ui.activeExecutionCommitment, null);
   assert.equal(store.getState().ui.activeExecutionIntentId, null);
   assert.equal(getActiveExecutionIntent(store.getState()), null);
 
@@ -7228,18 +7314,45 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
   assert.equal(store.getState().ui.activeSuggestionPreviewId, "audio-inspect");
   assert.equal(store.getState().ui.activeExecutionIntentId, "audio-inspect");
   assert.equal(getActiveExecutionPlan(store.getState())?.suggestionId, "audio-inspect");
+  const activeHydrateCandidate = getActiveExecutionCandidate(store.getState());
+  assert.ok(activeHydrateCandidate);
+  store.dispatch({
+    type: "workspace-execution-commitment-set",
+    planId: activeHydrateCandidate.planId,
+  });
+  assert.equal(
+    getActiveExecutionCommitment(store.getState())?.planId,
+    activeHydrateCandidate.planId
+  );
 
   const persistedState = labRootModule.__testOnlyLabRootPersistence.readPersistableState(
     store.getState()
   );
   assert.equal("activeExecutionIntentId" in persistedState, false);
+  assert.equal("activeExecutionAlternatives" in persistedState, false);
+  assert.equal("activeExecutionCandidate" in persistedState, false);
+  assert.equal("activeExecutionCommitment" in persistedState, false);
   assert.equal("activeExecutionPlan" in persistedState, false);
   assert.equal("activeExecutionPayloadPreview" in persistedState, false);
   assert.equal("activeExecutionReadiness" in persistedState, false);
   assert.equal("activeExecutionReflection" in persistedState, false);
   assert.equal("activeExecutionSimulation" in persistedState, false);
+  assert.equal("activeExecutionStaging" in persistedState, false);
   assert.equal(
     "activeExecutionIntentId" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+  assert.equal(
+    "activeExecutionAlternatives" in
+      ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+  assert.equal(
+    "activeExecutionCandidate" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+  assert.equal(
+    "activeExecutionCommitment" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
     false
   );
   assert.equal(
@@ -7256,12 +7369,15 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
     false
   );
   assert.equal(
-    "activeExecutionReflection" in
-      ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "activeExecutionReflection" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
     false
   );
   assert.equal(
     "activeExecutionSimulation" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+  assert.equal(
+    "activeExecutionStaging" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
     false
   );
 
@@ -7301,9 +7417,13 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
   assert.equal(getActiveSuggestionPreview(store.getState()), null);
   assert.equal(getActiveExecutionIntent(store.getState()), null);
   assert.equal(getActiveExecutionPlan(store.getState()), null);
+  assert.equal(getActiveExecutionAlternatives(store.getState()), null);
+  assert.equal(getActiveExecutionCandidate(store.getState()), null);
+  assert.equal(getActiveExecutionCommitment(store.getState()), null);
   assert.equal(getActiveExecutionPayloadPreview(store.getState()), null);
   assert.equal(getActiveExecutionReadiness(store.getState()), null);
   assert.equal(getActiveExecutionReflection(store.getState()), null);
+  assert.equal(getActiveExecutionStaging(store.getState()), null);
 });
 
 test("store accepts execution intents only from the exact active suggestion preview", () => {
@@ -7382,6 +7502,26 @@ test("store accepts execution intents only from the exact active suggestion prev
   });
   assert.equal(store.getState().ui.activeExecutionIntentId, "audio-inspect");
   assert.equal(getActiveExecutionIntent(store.getState())?.id, "audio-inspect");
+
+  const activeCandidate = getActiveExecutionCandidate(store.getState());
+  assert.ok(activeCandidate);
+  store.dispatch({
+    type: "workspace-execution-commitment-set",
+    planId: activeCandidate.planId,
+  });
+  assert.equal(getActiveExecutionCommitment(store.getState())?.planId, activeCandidate.planId);
+
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "extract-clip",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "extract-clip",
+  });
+  assert.equal(store.getState().ui.activeExecutionIntentId, "extract-clip");
+  assert.equal(store.getState().ui.activeExecutionCommitment, null);
+  assert.equal(getActiveExecutionCommitment(store.getState()), null);
 
   store.dispatch({
     type: "selection-roi-updated",
@@ -7554,7 +7694,10 @@ test("execution planner is deterministic and resolves ROI tool-hint intents", ()
   });
 
   assert.deepEqual(inspectRegionPlan, inspectRegionPlanRepeat);
-  assert.equal(inspectRegionPlan.id, "plan:inspect-region:focus-region:video:motion:inspect:motion:1200:4800:180-220-240-280");
+  assert.equal(
+    inspectRegionPlan.id,
+    "plan:inspect-region:focus-region:video:motion:inspect:motion:1200:4800:180-220-240-280"
+  );
   assert.equal(inspectRegionPlan.suggestionId, "inspect-region");
   assert.match(inspectRegionPlan.title, /Region focus plan/);
 
@@ -8135,7 +8278,10 @@ test("execution payload preview is derived only from active readiness", () => {
   assert.equal(activePayload?.id, `payload:${activePlan?.id}`);
   assert.equal(activePayload?.planId, activePlan?.id);
   assert.equal(activePayload?.actionType, "inspect-audio");
-  assert.equal(activePayload?.readinessStatus, getActiveExecutionReadiness(store.getState())?.status);
+  assert.equal(
+    activePayload?.readinessStatus,
+    getActiveExecutionReadiness(store.getState())?.status
+  );
   assert.equal(typeof activePayload?.readinessPassesPreview, "boolean");
   assert.equal(activePayload?.dryRunShape.previewExpectedOutputs[0], "frequencyClusters");
   assert.deepEqual(Object.keys(activePayload?.dryRunShape.previewInput || {}), ["audioWindow"]);
@@ -8686,6 +8832,1272 @@ test("execution reflection helper returns null for missing upstream objects", ()
   );
 });
 
+function createExecutionAlternativesChain(params: {
+  actionType: LabActionSuggestion["actionType"];
+  audioFocus?: LabAudioFocusSettings;
+  inspectionMode: "none" | "visual" | "audio" | "motion";
+  selection: LabSelection;
+  sourceKind: string;
+  suggestionId: string;
+}) {
+  const plan = buildExecutionPlan({
+    suggestion: {
+      id: params.suggestionId,
+      label: params.suggestionId,
+      actionType: params.actionType,
+      confidence: 0.86,
+    },
+    activeSelection: params.selection,
+    inspectionMode: params.inspectionMode,
+    sourceKind: params.sourceKind,
+  });
+  const simulation = buildExecutionSimulation({
+    executionPlan: plan,
+    activeSelection: params.selection,
+    inspectionMode: params.inspectionMode,
+    sourceKind: params.sourceKind,
+    audioFocus: params.audioFocus ?? createTestAudioFocusSettings(),
+  });
+  const readiness = buildExecutionReadiness({
+    executionPlan: plan,
+    executionSimulation: simulation,
+    activeSelection: params.selection,
+    inspectionMode: params.inspectionMode,
+    sourceKind: params.sourceKind,
+    audioFocus: params.audioFocus ?? createTestAudioFocusSettings(),
+  });
+  const payload = buildExecutionPayloadPreview({
+    executionPlan: plan,
+    executionSimulation: simulation,
+    executionReadiness: readiness,
+    activeSelection: params.selection,
+    inspectionMode: params.inspectionMode,
+    sourceKind: params.sourceKind,
+  });
+  const reflection = buildExecutionReflection({
+    executionPlan: plan,
+    executionSimulation: simulation,
+    executionReadiness: readiness,
+    executionPayloadPreview: payload,
+    activeSelection: params.selection,
+    inspectionMode: params.inspectionMode,
+    sourceKind: params.sourceKind,
+  });
+  const alternatives = buildExecutionAlternatives({
+    executionPlan: plan,
+    executionSimulation: simulation,
+    executionReadiness: readiness,
+    executionReflection: reflection,
+    activeSelection: params.selection,
+    inspectionMode: params.inspectionMode,
+    sourceKind: params.sourceKind,
+  });
+  return {
+    alternatives,
+    payload,
+    plan,
+    readiness,
+    reflection,
+    selection: params.selection,
+    simulation,
+  };
+}
+
+test("execution alternatives compare deterministic counterfactuals across decisions", () => {
+  const proceedSelection: LabSelection = {
+    id: "selection-alternatives-proceed",
+    startMs: 1000,
+    endMs: 3600,
+    type: "inspect",
+    intent: "audio",
+    roi: {
+      x: 0.2,
+      y: 0.24,
+      width: 0.22,
+      height: 0.24,
+    },
+    createdAt: 1,
+  };
+  const proceedChain = createExecutionAlternativesChain({
+    actionType: "analyze-segment",
+    inspectionMode: "audio",
+    selection: proceedSelection,
+    sourceKind: "video",
+    suggestionId: "analyze-segment",
+  });
+  const proceedRepeat = buildExecutionAlternatives({
+    executionPlan: proceedChain.plan,
+    executionSimulation: proceedChain.simulation,
+    executionReadiness: proceedChain.readiness,
+    executionReflection: proceedChain.reflection,
+    activeSelection: proceedChain.selection,
+    inspectionMode: "audio",
+    sourceKind: "video",
+  });
+
+  assert.deepEqual(proceedChain.alternatives, proceedRepeat);
+  assert.equal(proceedChain.alternatives.id, `alternatives:${proceedChain.plan.id}`);
+  assert.equal(proceedChain.alternatives.planId, proceedChain.plan.id);
+  assert.equal(proceedChain.reflection.decision, "proceed");
+  assert.match(proceedChain.alternatives.summary, /selected path appears stable/i);
+  assert.equal(proceedChain.alternatives.alternatives.length <= 3, true);
+  assert.equal(
+    proceedChain.alternatives.alternatives.some(function (alternative) {
+      return alternative.actionType === "focus-region";
+    }),
+    true
+  );
+  assert.equal(
+    proceedChain.alternatives.alternatives.some(function (alternative) {
+      return alternative.actionType === "inspect-audio";
+    }),
+    true
+  );
+
+  const reviewSelection: LabSelection = {
+    id: "selection-alternatives-review",
+    startMs: 1000,
+    endMs: 18000,
+    type: "clip",
+    intent: "visual",
+    roi: {
+      x: 0.04,
+      y: 0.04,
+      width: 0.82,
+      height: 0.82,
+    },
+    createdAt: 1,
+  };
+  const reviewChain = createExecutionAlternativesChain({
+    actionType: "focus-region",
+    inspectionMode: "visual",
+    selection: reviewSelection,
+    sourceKind: "video",
+    suggestionId: "inspect-region",
+  });
+
+  assert.equal(reviewChain.reflection.decision, "review");
+  assert.match(reviewChain.alternatives.summary, /needs review/i);
+  assert.doesNotMatch(reviewChain.alternatives.summary, /preferred/i);
+  assert.equal(
+    reviewChain.alternatives.alternatives.some(function (alternative) {
+      return alternative.actionType === "analyze-segment";
+    }),
+    true
+  );
+
+  const avoidSelection: LabSelection = {
+    id: "selection-alternatives-avoid",
+    startMs: 1000,
+    endMs: 2600,
+    type: "clip",
+    intent: "audio",
+    createdAt: 1,
+  };
+  const avoidChain = createExecutionAlternativesChain({
+    actionType: "inspect-audio",
+    audioFocus: createTestAudioFocusSettings({ gain: 2.6 }),
+    inspectionMode: "audio",
+    selection: avoidSelection,
+    sourceKind: "audio",
+    suggestionId: "audio-inspect",
+  });
+
+  assert.equal(avoidChain.reflection.decision, "avoid");
+  assert.match(avoidChain.alternatives.summary, /not recommended/i);
+  assert.doesNotMatch(avoidChain.alternatives.summary, /preferred/i);
+  assert.equal(
+    avoidChain.alternatives.alternatives.some(function (alternative) {
+      return alternative.actionType === "slow-playback-inspection";
+    }),
+    true
+  );
+});
+
+test("execution alternatives cover known action mappings and fallback", () => {
+  const videoSelection: LabSelection = {
+    id: "selection-alternatives-video",
+    startMs: 2000,
+    endMs: 5200,
+    type: "inspect",
+    intent: "motion",
+    roi: {
+      x: 0.18,
+      y: 0.18,
+      width: 0.24,
+      height: 0.28,
+    },
+    createdAt: 1,
+  };
+  const extractChain = createExecutionAlternativesChain({
+    actionType: "extract-clip",
+    inspectionMode: "visual",
+    selection: videoSelection,
+    sourceKind: "video",
+    suggestionId: "extract-clip",
+  });
+  const motionChain = createExecutionAlternativesChain({
+    actionType: "inspect-motion",
+    inspectionMode: "motion",
+    selection: videoSelection,
+    sourceKind: "video",
+    suggestionId: "inspect-motion",
+  });
+  const visualChain = createExecutionAlternativesChain({
+    actionType: "enhance-visual",
+    inspectionMode: "visual",
+    selection: videoSelection,
+    sourceKind: "video",
+    suggestionId: "enhance-visual",
+  });
+  const stabilizeChain = createExecutionAlternativesChain({
+    actionType: "stabilize-segment",
+    inspectionMode: "motion",
+    selection: videoSelection,
+    sourceKind: "video",
+    suggestionId: "stabilize-segment",
+  });
+  const fallbackChain = createExecutionAlternativesChain({
+    actionType: "unknown-action" as unknown as LabActionSuggestion["actionType"],
+    inspectionMode: "none",
+    selection: videoSelection,
+    sourceKind: "video",
+    suggestionId: "unknown-action",
+  });
+
+  assert.equal(extractChain.alternatives.alternatives[0]?.actionType, "analyze-segment");
+  assert.equal(
+    extractChain.alternatives.alternatives.some(function (alternative) {
+      return alternative.relativeAdvantage === "lower-risk";
+    }),
+    true
+  );
+  assert.equal(
+    motionChain.alternatives.alternatives.some(function (alternative) {
+      return alternative.actionType === "slow-playback-inspection";
+    }),
+    true
+  );
+  assert.equal(
+    visualChain.alternatives.alternatives.some(function (alternative) {
+      return alternative.actionType === "stabilize-segment";
+    }),
+    true
+  );
+  assert.equal(
+    stabilizeChain.alternatives.alternatives.some(function (alternative) {
+      return alternative.actionType === "inspect-motion";
+    }),
+    true
+  );
+  assert.deepEqual(
+    fallbackChain.alternatives.alternatives.map(function (alternative) {
+      return alternative.actionType;
+    }),
+    ["analyze-segment", "generic-narrowed-inspection"]
+  );
+});
+
+test("execution alternatives are derived only from the complete active reflection chain", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "audio",
+      mode: "local",
+      storedPath: "/tmp/source.wav",
+    },
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+
+  assert.equal(getActiveExecutionAlternatives(store.getState()), null);
+
+  store.dispatch({
+    type: "workspace-selection-suggestion-queued",
+    suggestionId: "audio-inspect",
+  });
+  assert.equal(getActiveExecutionAlternatives(store.getState()), null);
+
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "audio-inspect",
+  });
+
+  const activePlan = getActiveExecutionPlan(store.getState());
+  const activeAlternatives = getActiveExecutionAlternatives(store.getState());
+  assert.equal(activeAlternatives?.id, `alternatives:${activePlan?.id}`);
+  assert.equal(activeAlternatives?.planId, activePlan?.id);
+  assert.equal((activeAlternatives?.alternatives.length ?? 0) > 0, true);
+
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-cleared",
+  });
+  assert.equal(getActiveExecutionAlternatives(store.getState())?.id, activeAlternatives?.id);
+
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1500,
+    endMs: 2800,
+  });
+  assert.equal(getActiveExecutionAlternatives(store.getState()), null);
+});
+
+test("execution alternatives helper returns null for missing upstream objects", () => {
+  const selection: LabSelection = {
+    id: "selection-alternatives-missing",
+    startMs: 1000,
+    endMs: 3000,
+    type: "clip",
+    intent: "audio",
+    createdAt: 1,
+  };
+  const chain = createExecutionAlternativesChain({
+    actionType: "inspect-audio",
+    inspectionMode: "audio",
+    selection,
+    sourceKind: "audio",
+    suggestionId: "audio-inspect",
+  });
+
+  assert.equal(
+    buildExecutionAlternativesFromResolved({
+      executionPlan: null,
+      executionSimulation: chain.simulation,
+      executionReadiness: chain.readiness,
+      executionReflection: chain.reflection,
+      activeSelection: selection,
+      inspectionMode: "audio",
+      sourceKind: "audio",
+    }),
+    null
+  );
+  assert.equal(
+    buildExecutionAlternativesFromResolved({
+      executionPlan: chain.plan,
+      executionSimulation: null,
+      executionReadiness: chain.readiness,
+      executionReflection: chain.reflection,
+      activeSelection: selection,
+      inspectionMode: "audio",
+      sourceKind: "audio",
+    }),
+    null
+  );
+  assert.equal(
+    buildExecutionAlternativesFromResolved({
+      executionPlan: chain.plan,
+      executionSimulation: chain.simulation,
+      executionReadiness: null,
+      executionReflection: chain.reflection,
+      activeSelection: selection,
+      inspectionMode: "audio",
+      sourceKind: "audio",
+    }),
+    null
+  );
+  assert.equal(
+    buildExecutionAlternativesFromResolved({
+      executionPlan: chain.plan,
+      executionSimulation: chain.simulation,
+      executionReadiness: chain.readiness,
+      executionReflection: null,
+      activeSelection: selection,
+      inspectionMode: "audio",
+      sourceKind: "audio",
+    }),
+    null
+  );
+  assert.equal(
+    buildExecutionAlternativesFromResolved({
+      executionPlan: chain.plan,
+      executionSimulation: chain.simulation,
+      executionReadiness: chain.readiness,
+      executionReflection: chain.reflection,
+      activeSelection: null,
+      inspectionMode: "audio",
+      sourceKind: "audio",
+    }),
+    null
+  );
+});
+
+test("execution candidate synthesizes structural viability without downgrading stable alternatives", () => {
+  const proceedSelection: LabSelection = {
+    id: "selection-candidate-proceed",
+    startMs: 1000,
+    endMs: 3600,
+    type: "inspect",
+    intent: "audio",
+    roi: {
+      x: 0.2,
+      y: 0.24,
+      width: 0.22,
+      height: 0.24,
+    },
+    createdAt: 1,
+  };
+  const proceedChain = createExecutionAlternativesChain({
+    actionType: "analyze-segment",
+    inspectionMode: "audio",
+    selection: proceedSelection,
+    sourceKind: "video",
+    suggestionId: "analyze-segment",
+  });
+  const proceedCandidate = buildExecutionCandidateFromResolved({
+    executionPlan: proceedChain.plan,
+    executionSimulation: proceedChain.simulation,
+    executionReadiness: proceedChain.readiness,
+    executionPayloadPreview: proceedChain.payload,
+    executionReflection: proceedChain.reflection,
+    executionAlternatives: proceedChain.alternatives,
+    activeSelection: proceedChain.selection,
+    inspectionMode: "audio",
+    sourceKind: "video",
+  });
+  const proceedRepeat = buildExecutionCandidateFromResolved({
+    executionPlan: proceedChain.plan,
+    executionSimulation: proceedChain.simulation,
+    executionReadiness: proceedChain.readiness,
+    executionPayloadPreview: proceedChain.payload,
+    executionReflection: proceedChain.reflection,
+    executionAlternatives: proceedChain.alternatives,
+    activeSelection: proceedChain.selection,
+    inspectionMode: "audio",
+    sourceKind: "video",
+  });
+
+  assert.ok(proceedCandidate);
+  assert.ok(proceedRepeat);
+  assert.deepEqual(proceedCandidate, proceedRepeat);
+  assert.equal(proceedCandidate.id, `candidate:${proceedChain.plan.id}`);
+  assert.equal(proceedCandidate.status, "viable");
+  assert.equal(proceedCandidate.structuralIntegrity, "complete");
+  assert.equal(proceedCandidate.readinessStatus, "ready");
+  assert.equal(proceedCandidate.reflectionDecision, "proceed");
+  assert.equal(proceedCandidate.uncertainties, undefined);
+  assert.match(proceedCandidate.summary, /structurally ready/i);
+  assert.equal(proceedChain.alternatives.alternatives.length > 0, true);
+
+  const reviewSelection: LabSelection = {
+    id: "selection-candidate-review",
+    startMs: 1000,
+    endMs: 18000,
+    type: "clip",
+    intent: "visual",
+    roi: {
+      x: 0.04,
+      y: 0.04,
+      width: 0.82,
+      height: 0.82,
+    },
+    createdAt: 1,
+  };
+  const reviewChain = createExecutionAlternativesChain({
+    actionType: "focus-region",
+    inspectionMode: "visual",
+    selection: reviewSelection,
+    sourceKind: "video",
+    suggestionId: "inspect-region",
+  });
+  const reviewCandidate = buildExecutionCandidateFromResolved({
+    executionPlan: reviewChain.plan,
+    executionSimulation: reviewChain.simulation,
+    executionReadiness: reviewChain.readiness,
+    executionPayloadPreview: reviewChain.payload,
+    executionReflection: reviewChain.reflection,
+    executionAlternatives: reviewChain.alternatives,
+    activeSelection: reviewChain.selection,
+    inspectionMode: "visual",
+    sourceKind: "video",
+  });
+
+  assert.ok(reviewCandidate);
+  assert.equal(reviewCandidate.status, "unstable");
+  assert.equal(reviewCandidate.structuralIntegrity, "partial");
+  assert.equal(reviewCandidate.readinessStatus, "needs-review");
+  assert.equal(reviewCandidate.reflectionDecision, "review");
+  assert.match(reviewCandidate.uncertainties?.join(" ") || "", /warning|tradeoffs|risk/i);
+
+  const avoidSelection: LabSelection = {
+    id: "selection-candidate-avoid",
+    startMs: 1000,
+    endMs: 2600,
+    type: "clip",
+    intent: "audio",
+    createdAt: 1,
+  };
+  const avoidChain = createExecutionAlternativesChain({
+    actionType: "inspect-audio",
+    audioFocus: createTestAudioFocusSettings({ gain: 2.6 }),
+    inspectionMode: "audio",
+    selection: avoidSelection,
+    sourceKind: "audio",
+    suggestionId: "audio-inspect",
+  });
+  const avoidCandidate = buildExecutionCandidateFromResolved({
+    executionPlan: avoidChain.plan,
+    executionSimulation: avoidChain.simulation,
+    executionReadiness: avoidChain.readiness,
+    executionPayloadPreview: avoidChain.payload,
+    executionReflection: avoidChain.reflection,
+    executionAlternatives: avoidChain.alternatives,
+    activeSelection: avoidChain.selection,
+    inspectionMode: "audio",
+    sourceKind: "audio",
+  });
+
+  assert.ok(avoidCandidate);
+  assert.equal(avoidCandidate.status, "not-viable");
+  assert.equal(avoidCandidate.structuralIntegrity, "insufficient");
+  assert.equal(avoidCandidate.readinessStatus, "blocked");
+  assert.equal(avoidCandidate.reflectionDecision, "avoid");
+});
+
+test("execution candidate validates upstream coherence and payload preview shape", () => {
+  const selection: LabSelection = {
+    id: "selection-candidate-payload",
+    startMs: 1000,
+    endMs: 3000,
+    type: "clip",
+    intent: "audio",
+    createdAt: 1,
+  };
+  const chain = createExecutionAlternativesChain({
+    actionType: "inspect-audio",
+    inspectionMode: "audio",
+    selection,
+    sourceKind: "audio",
+    suggestionId: "audio-inspect",
+  });
+  const baseInput = {
+    executionPlan: chain.plan,
+    executionSimulation: chain.simulation,
+    executionReadiness: chain.readiness,
+    executionPayloadPreview: chain.payload,
+    executionReflection: chain.reflection,
+    executionAlternatives: chain.alternatives,
+    activeSelection: selection,
+    inspectionMode: "audio" as const,
+    sourceKind: "audio",
+  };
+
+  assert.equal(
+    buildExecutionCandidateFromResolved({
+      ...baseInput,
+      executionSimulation: {
+        ...chain.simulation,
+        planId: "plan:mismatch",
+      },
+    }),
+    null
+  );
+  assert.equal(
+    buildExecutionCandidateFromResolved({
+      ...baseInput,
+      executionReadiness: {
+        ...chain.readiness,
+        planId: "plan:mismatch",
+      },
+    }),
+    null
+  );
+  assert.equal(
+    buildExecutionCandidateFromResolved({
+      ...baseInput,
+      executionPayloadPreview: {
+        ...chain.payload,
+        planId: "plan:mismatch",
+      },
+    }),
+    null
+  );
+  assert.equal(
+    buildExecutionCandidateFromResolved({
+      ...baseInput,
+      executionReflection: {
+        ...chain.reflection,
+        planId: "plan:mismatch",
+      },
+    }),
+    null
+  );
+  assert.equal(
+    buildExecutionCandidateFromResolved({
+      ...baseInput,
+      executionAlternatives: {
+        ...chain.alternatives,
+        planId: "plan:mismatch",
+      },
+    }),
+    null
+  );
+
+  const createPayloadVariant = (
+    patch: Partial<LabExecutionPayloadPreview>
+  ): LabExecutionPayloadPreview => ({
+    ...chain.payload,
+    ...patch,
+    dryRunShape: {
+      ...chain.payload.dryRunShape,
+      ...(patch.dryRunShape ?? {}),
+    },
+  });
+  const emptyInputCandidate = buildExecutionCandidateFromResolved({
+    ...baseInput,
+    executionPayloadPreview: createPayloadVariant({
+      dryRunShape: {
+        ...chain.payload.dryRunShape,
+        previewInput: {},
+      },
+    }),
+  });
+  const emptyParametersCandidate = buildExecutionCandidateFromResolved({
+    ...baseInput,
+    executionPayloadPreview: createPayloadVariant({
+      dryRunShape: {
+        ...chain.payload.dryRunShape,
+        previewParameters: {},
+      },
+    }),
+  });
+  const emptyOutputsCandidate = buildExecutionCandidateFromResolved({
+    ...baseInput,
+    executionPayloadPreview: createPayloadVariant({
+      dryRunShape: {
+        ...chain.payload.dryRunShape,
+        previewExpectedOutputs: [],
+      },
+    }),
+  });
+  const readinessMismatchCandidate = buildExecutionCandidateFromResolved({
+    ...baseInput,
+    executionPayloadPreview: createPayloadVariant({
+      readinessPassesPreview: false,
+    }),
+  });
+  const actionMismatchCandidate = buildExecutionCandidateFromResolved({
+    ...baseInput,
+    executionPayloadPreview: createPayloadVariant({
+      actionType: "focus-region",
+    }),
+  });
+
+  assert.equal(emptyInputCandidate?.structuralIntegrity, "insufficient");
+  assert.equal(emptyInputCandidate?.status, "not-viable");
+  assert.equal(emptyParametersCandidate?.structuralIntegrity, "insufficient");
+  assert.equal(emptyOutputsCandidate?.structuralIntegrity, "insufficient");
+  assert.equal(readinessMismatchCandidate?.structuralIntegrity, "partial");
+  assert.equal(readinessMismatchCandidate?.status, "unstable");
+  assert.equal(actionMismatchCandidate?.structuralIntegrity, "insufficient");
+  assert.equal(actionMismatchCandidate?.status, "not-viable");
+});
+
+test("execution candidate is derived only from the complete active alternatives chain", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "audio",
+      mode: "local",
+      storedPath: "/tmp/source.wav",
+    },
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+
+  assert.equal(getActiveExecutionCandidate(store.getState()), null);
+
+  store.dispatch({
+    type: "workspace-selection-suggestion-queued",
+    suggestionId: "audio-inspect",
+  });
+  assert.equal(getActiveExecutionCandidate(store.getState()), null);
+
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "audio-inspect",
+  });
+
+  const activePlan = getActiveExecutionPlan(store.getState());
+  const activeCandidate = getActiveExecutionCandidate(store.getState());
+  assert.equal(activeCandidate?.id, `candidate:${activePlan?.id}`);
+  assert.equal(activeCandidate?.planId, activePlan?.id);
+
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-cleared",
+  });
+  assert.equal(getActiveExecutionCandidate(store.getState())?.id, activeCandidate?.id);
+
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1500,
+    endMs: 2800,
+  });
+  assert.equal(getActiveExecutionCandidate(store.getState()), null);
+});
+
+test("execution candidate helper returns null for missing upstream objects", () => {
+  const selection: LabSelection = {
+    id: "selection-candidate-missing",
+    startMs: 1000,
+    endMs: 3000,
+    type: "clip",
+    intent: "audio",
+    createdAt: 1,
+  };
+  const chain = createExecutionAlternativesChain({
+    actionType: "inspect-audio",
+    inspectionMode: "audio",
+    selection,
+    sourceKind: "audio",
+    suggestionId: "audio-inspect",
+  });
+  const baseInput = {
+    executionPlan: chain.plan,
+    executionSimulation: chain.simulation,
+    executionReadiness: chain.readiness,
+    executionPayloadPreview: chain.payload,
+    executionReflection: chain.reflection,
+    executionAlternatives: chain.alternatives,
+    activeSelection: selection,
+    inspectionMode: "audio" as const,
+    sourceKind: "audio",
+  };
+
+  assert.equal(buildExecutionCandidateFromResolved({ ...baseInput, executionPlan: null }), null);
+  assert.equal(
+    buildExecutionCandidateFromResolved({ ...baseInput, executionSimulation: null }),
+    null
+  );
+  assert.equal(
+    buildExecutionCandidateFromResolved({ ...baseInput, executionReadiness: null }),
+    null
+  );
+  assert.equal(
+    buildExecutionCandidateFromResolved({ ...baseInput, executionPayloadPreview: null }),
+    null
+  );
+  assert.equal(
+    buildExecutionCandidateFromResolved({ ...baseInput, executionReflection: null }),
+    null
+  );
+  assert.equal(
+    buildExecutionCandidateFromResolved({ ...baseInput, executionAlternatives: null }),
+    null
+  );
+  assert.equal(buildExecutionCandidateFromResolved({ ...baseInput, activeSelection: null }), null);
+});
+
+function createCommittedAudioExecutionStore() {
+  const store = createLabStore();
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "audio",
+      mode: "local",
+      storedPath: "/tmp/source.wav",
+    },
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "audio-inspect",
+  });
+
+  const candidate = getActiveExecutionCandidate(store.getState());
+  if (candidate === null || candidate.status === "not-viable") {
+    throw new Error("Expected a committable execution candidate");
+  }
+
+  const beforeCommit = Date.now();
+  store.dispatch({
+    type: "workspace-execution-commitment-set",
+    planId: ` ${candidate.planId} `,
+  });
+  const afterCommit = Date.now();
+  const commitment = store.getState().ui.activeExecutionCommitment;
+  if (commitment === null) {
+    throw new Error("Expected an active execution commitment");
+  }
+
+  return {
+    afterCommit,
+    beforeCommit,
+    candidate,
+    commitment,
+    store,
+  };
+}
+
+test("execution commitment is explicit, candidate-gated, and revocable", () => {
+  const { afterCommit, beforeCommit, candidate, commitment, store } =
+    createCommittedAudioExecutionStore();
+
+  assert.equal(commitment.id, `commitment:${candidate.planId}`);
+  assert.equal(commitment.planId, candidate.planId);
+  assert.equal(commitment.status, "committed");
+  assert.equal(commitment.candidateStatus, candidate.status);
+  assert.equal(commitment.confidence, candidate.confidence);
+  assert.deepEqual(commitment.notes, candidate.notes);
+  assert.deepEqual(commitment.uncertainties, candidate.uncertainties);
+  assert.equal(typeof commitment.committedAt, "number");
+  assert.equal((commitment.committedAt ?? 0) >= beforeCommit, true);
+  assert.equal((commitment.committedAt ?? 0) <= afterCommit, true);
+  assert.equal(getActiveExecutionCommitment(store.getState())?.id, commitment.id);
+
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-cleared",
+  });
+  assert.equal(getActiveExecutionCommitment(store.getState())?.id, commitment.id);
+
+  store.dispatch({
+    type: "workspace-execution-commitment-revoked",
+  });
+  assert.equal(store.getState().ui.activeExecutionCommitment, null);
+  assert.equal(getActiveExecutionCommitment(store.getState()), null);
+  assert.equal(store.getState().ui.activeExecutionIntentId, "audio-inspect");
+});
+
+test("execution commitment rejects missing, mismatched, stale, and not-viable candidates", () => {
+  const emptyStore = createLabStore();
+  emptyStore.dispatch({
+    type: "workspace-execution-commitment-set",
+    planId: "plan:missing",
+  });
+  assert.equal(emptyStore.getState().ui.activeExecutionCommitment, null);
+
+  const { candidate, commitment, store } = createCommittedAudioExecutionStore();
+  store.dispatch({
+    type: "workspace-execution-commitment-revoked",
+  });
+  store.dispatch({
+    type: "workspace-execution-commitment-set",
+    planId: "plan:mismatch",
+  });
+  assert.equal(store.getState().ui.activeExecutionCommitment, null);
+
+  store.getState().ui.activeExecutionCommitment = {
+    ...commitment,
+    status: "revoked",
+  } satisfies LabExecutionCommitment;
+  assert.equal(getActiveExecutionCommitment(store.getState()), null);
+
+  store.getState().ui.activeExecutionCommitment = {
+    ...commitment,
+    status: "committed",
+    candidateStatus: candidate.status === "viable" ? "unstable" : "viable",
+  };
+  assert.equal(getActiveExecutionCommitment(store.getState()), null);
+
+  const blockedStore = createLabStore();
+  blockedStore.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "audio",
+      mode: "local",
+      storedPath: "/tmp/source.wav",
+    },
+  });
+  blockedStore.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 2600,
+  });
+  blockedStore.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+  blockedStore.dispatch({
+    type: "workspace-audio-updated",
+    patch: {
+      gain: 2.6,
+    },
+  });
+  blockedStore.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+  blockedStore.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "audio-inspect",
+  });
+  const blockedCandidate = getActiveExecutionCandidate(blockedStore.getState());
+  assert.equal(blockedCandidate?.status, "not-viable");
+  blockedStore.dispatch({
+    type: "workspace-execution-commitment-set",
+    planId: blockedCandidate?.planId ?? "missing",
+  });
+  assert.equal(blockedStore.getState().ui.activeExecutionCommitment, null);
+  assert.equal(getActiveExecutionCommitment(blockedStore.getState()), null);
+});
+
+test("execution commitment clears on upstream context changes but not preview clear", () => {
+  const keepStore = createCommittedAudioExecutionStore();
+  keepStore.store.dispatch({
+    type: "workspace-selection-suggestion-preview-cleared",
+  });
+  assert.equal(
+    getActiveExecutionCommitment(keepStore.store.getState())?.id,
+    keepStore.commitment.id
+  );
+
+  const timelineStore = createCommittedAudioExecutionStore();
+  timelineStore.store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1200,
+    endMs: 3200,
+  });
+  assert.equal(timelineStore.store.getState().ui.activeExecutionCommitment, null);
+  assert.equal(getActiveExecutionCommitment(timelineStore.store.getState()), null);
+
+  const roiStore = createCommittedAudioExecutionStore();
+  roiStore.store.dispatch({
+    type: "selection-roi-updated",
+    roi: {
+      x: 0.2,
+      y: 0.2,
+      width: 0.24,
+      height: 0.24,
+    },
+  });
+  assert.equal(roiStore.store.getState().ui.activeExecutionCommitment, null);
+  assert.equal(getActiveExecutionCommitment(roiStore.store.getState()), null);
+
+  const inspectionStore = createCommittedAudioExecutionStore();
+  inspectionStore.store.dispatch({
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
+  });
+  assert.equal(inspectionStore.store.getState().ui.activeExecutionCommitment, null);
+  assert.equal(getActiveExecutionCommitment(inspectionStore.store.getState()), null);
+
+  const sourceStore = createCommittedAudioExecutionStore();
+  sourceStore.store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      storedPath: "/tmp/next-source.wav",
+    },
+  });
+  assert.equal(sourceStore.store.getState().ui.activeExecutionCommitment, null);
+  assert.equal(getActiveExecutionCommitment(sourceStore.store.getState()), null);
+
+  const intentStore = createCommittedAudioExecutionStore();
+  intentStore.store.dispatch({
+    type: "workspace-execution-intent-cleared",
+  });
+  assert.equal(intentStore.store.getState().ui.activeExecutionCommitment, null);
+  assert.equal(getActiveExecutionCommitment(intentStore.store.getState()), null);
+});
+
+function createExecutionStagingChain(params: {
+  actionType: LabActionSuggestion["actionType"];
+  audioFocus?: LabAudioFocusSettings;
+  inspectionMode: "none" | "visual" | "audio" | "motion";
+  selection: LabSelection;
+  sourceKind: string;
+  suggestionId: string;
+}) {
+  const chain = createExecutionAlternativesChain(params);
+  const candidate = buildExecutionCandidateFromResolved({
+    executionPlan: chain.plan,
+    executionSimulation: chain.simulation,
+    executionReadiness: chain.readiness,
+    executionPayloadPreview: chain.payload,
+    executionReflection: chain.reflection,
+    executionAlternatives: chain.alternatives,
+    activeSelection: chain.selection,
+    inspectionMode: params.inspectionMode,
+    sourceKind: params.sourceKind,
+  });
+  if (candidate === null) {
+    throw new Error("Expected an execution candidate for staging tests");
+  }
+  const commitment: LabExecutionCommitment = {
+    id: `commitment:${candidate.planId}`,
+    planId: candidate.planId,
+    status: "committed",
+    candidateStatus: candidate.status,
+    summary: "This path has been consciously chosen for passive staging.",
+    committedAt: 1,
+    notes: candidate.notes,
+    uncertainties: candidate.uncertainties,
+    confidence: candidate.confidence,
+  };
+
+  return {
+    ...chain,
+    candidate,
+    commitment,
+  };
+}
+
+test("execution staging derives a passive staged state from committed viable and unstable chains", () => {
+  const selection: LabSelection = {
+    id: "selection-staging-viable",
+    startMs: 1000,
+    endMs: 3600,
+    type: "inspect",
+    intent: "audio",
+    roi: {
+      x: 0.2,
+      y: 0.24,
+      width: 0.22,
+      height: 0.24,
+    },
+    createdAt: 1,
+  };
+  const chain = createExecutionStagingChain({
+    actionType: "analyze-segment",
+    inspectionMode: "audio",
+    selection,
+    sourceKind: "video",
+    suggestionId: "analyze-segment",
+  });
+  const baseInput = {
+    executionPlan: chain.plan,
+    executionSimulation: chain.simulation,
+    executionReadiness: chain.readiness,
+    executionPayloadPreview: chain.payload,
+    executionReflection: chain.reflection,
+    executionAlternatives: chain.alternatives,
+    executionCandidate: chain.candidate,
+    executionCommitment: chain.commitment,
+    activeSelection: selection,
+  };
+  const staging = buildExecutionStagingFromResolved(baseInput);
+  const repeat = buildExecutionStagingFromResolved(baseInput);
+
+  assert.ok(staging);
+  assert.deepEqual(staging, repeat);
+  assert.equal(staging.id, `staging:${chain.plan.id}`);
+  assert.equal(staging.planId, chain.plan.id);
+  assert.equal(staging.status, "staged");
+  assert.equal(staging.commitmentStatus, "committed");
+  assert.equal(staging.candidateStatus, "viable");
+  assert.equal(staging.readinessStatus, "ready");
+  assert.match(staging.summary, /prepared and can be staged/i);
+
+  const unstableCandidate = {
+    ...chain.candidate,
+    status: "unstable" as const,
+  };
+  const unstableStaging = buildExecutionStagingFromResolved({
+    ...baseInput,
+    executionCandidate: unstableCandidate,
+    executionCommitment: {
+      ...chain.commitment,
+      candidateStatus: "unstable",
+    },
+  });
+  assert.equal(unstableStaging?.status, "staged");
+  assert.equal(unstableStaging?.candidateStatus, "unstable");
+  assert.match(unstableStaging?.warnings?.join(" ") || "", /unstable/i);
+});
+
+test("execution staging returns null for invalid or stale upstream chains", () => {
+  const selection: LabSelection = {
+    id: "selection-staging-invalid",
+    startMs: 1000,
+    endMs: 3000,
+    type: "clip",
+    intent: "audio",
+    createdAt: 1,
+  };
+  const chain = createExecutionStagingChain({
+    actionType: "inspect-audio",
+    inspectionMode: "audio",
+    selection,
+    sourceKind: "audio",
+    suggestionId: "audio-inspect",
+  });
+  const baseInput = {
+    executionPlan: chain.plan,
+    executionSimulation: chain.simulation,
+    executionReadiness: chain.readiness,
+    executionPayloadPreview: chain.payload,
+    executionReflection: chain.reflection,
+    executionAlternatives: chain.alternatives,
+    executionCandidate: chain.candidate,
+    executionCommitment: chain.commitment,
+    activeSelection: selection,
+  };
+
+  assert.equal(buildExecutionStagingFromResolved({ ...baseInput, executionCommitment: null }), null);
+  assert.equal(
+    buildExecutionStagingFromResolved({
+      ...baseInput,
+      executionCommitment: {
+        ...chain.commitment,
+        status: "inactive",
+      },
+    }),
+    null
+  );
+  assert.equal(
+    buildExecutionStagingFromResolved({
+      ...baseInput,
+      executionCommitment: {
+        ...chain.commitment,
+        status: "revoked",
+      },
+    }),
+    null
+  );
+  assert.equal(
+    buildExecutionStagingFromResolved({
+      ...baseInput,
+      executionCandidate: {
+        ...chain.candidate,
+        status: "not-viable",
+      },
+      executionCommitment: {
+        ...chain.commitment,
+        candidateStatus: "not-viable",
+      },
+    }),
+    null
+  );
+  assert.equal(
+    buildExecutionStagingFromResolved({
+      ...baseInput,
+      executionReadiness: {
+        ...chain.readiness,
+        status: "blocked",
+      },
+    }),
+    null
+  );
+  assert.equal(
+    buildExecutionStagingFromResolved({
+      ...baseInput,
+      executionPayloadPreview: {
+        ...chain.payload,
+        planId: "plan:mismatch",
+      },
+    }),
+    null
+  );
+  assert.equal(
+    buildExecutionStagingFromResolved({
+      ...baseInput,
+      executionCommitment: {
+        ...chain.commitment,
+        candidateStatus: chain.candidate.status === "viable" ? "unstable" : "viable",
+      },
+    }),
+    null
+  );
+  assert.equal(
+    buildExecutionStagingFromResolved({
+      ...baseInput,
+      activeSelection: {
+        ...selection,
+        endMs: selection.startMs,
+      },
+    }),
+    null
+  );
+});
+
+test("execution staging can represent a coherent committed path that is not staged yet", () => {
+  const selection: LabSelection = {
+    id: "selection-staging-review",
+    startMs: 1000,
+    endMs: 18000,
+    type: "clip",
+    intent: "visual",
+    roi: {
+      x: 0.04,
+      y: 0.04,
+      width: 0.82,
+      height: 0.82,
+    },
+    createdAt: 1,
+  };
+  const chain = createExecutionStagingChain({
+    actionType: "focus-region",
+    inspectionMode: "visual",
+    selection,
+    sourceKind: "video",
+    suggestionId: "inspect-region",
+  });
+  const staging = buildExecutionStagingFromResolved({
+    executionPlan: chain.plan,
+    executionSimulation: chain.simulation,
+    executionReadiness: chain.readiness,
+    executionPayloadPreview: chain.payload,
+    executionReflection: chain.reflection,
+    executionAlternatives: chain.alternatives,
+    executionCandidate: chain.candidate,
+    executionCommitment: chain.commitment,
+    activeSelection: selection,
+  });
+
+  assert.equal(chain.candidate.status, "unstable");
+  assert.equal(chain.payload.readinessPassesPreview, false);
+  assert.equal(staging?.status, "not-staged");
+  assert.equal(staging?.readinessStatus, "needs-review");
+  assert.match(staging?.warnings?.join(" ") || "", /readiness check|unstable/i);
+});
+
+test("execution staging is selector-derived and clears with its upstream chain", () => {
+  const { commitment, store } = createCommittedAudioExecutionStore();
+  const staging = getActiveExecutionStaging(store.getState());
+
+  assert.ok(staging);
+  assert.equal(staging.id, `staging:${commitment.planId}`);
+  assert.equal(staging.status, "staged");
+
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-cleared",
+  });
+  assert.equal(getActiveExecutionStaging(store.getState())?.id, staging.id);
+
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1200,
+    endMs: 3200,
+  });
+  assert.equal(getActiveExecutionStaging(store.getState()), null);
+});
+
 test("laboratory store resets semantic and primitive selection state on source changes", () => {
   const store = createLabStore();
 
@@ -9075,9 +10487,9 @@ test("laboratory run controller fences legacy timeline seek fallback while dual 
 
     assert.equal(standaloneMedia.currentTime, 0);
     assert.equal(
-      store.getState().activityFeed.some((entry) =>
-        entry.message.includes("Dual preview seek is unavailable")
-      ),
+      store
+        .getState()
+        .activityFeed.some((entry) => entry.message.includes("Dual preview seek is unavailable")),
       true
     );
   } finally {

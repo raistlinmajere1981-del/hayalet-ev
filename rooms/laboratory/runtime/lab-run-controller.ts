@@ -1094,7 +1094,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       });
       return;
     }
-    deps.windowRef.open(href, "_blank", "noopener,noreferrer");
+    dispatch({ type: "asset-preview-opened", assetId });
   }
 
   function downloadAsset(assetId: string) {
@@ -1999,6 +1999,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         if (value.trim() !== "") {
           previewAsset(value);
         }
+        return;
+      case "close-asset-preview":
+        dispatch({ type: "asset-preview-closed" });
         return;
       case "focus-source-preview":
         if (value.trim() !== "") {

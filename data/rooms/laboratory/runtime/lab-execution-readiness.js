@@ -86,7 +86,10 @@ export function buildExecutionReadiness(input) {
       "The current simulation forecast still carries high risk for a stable execution-ready path."
     );
   } else if (simulationRisk === "medium") {
-    pushUnique(notes, "The simulation forecast still carries moderate risk and should be reviewed.");
+    pushUnique(
+      notes,
+      "The simulation forecast still carries moderate risk and should be reviewed."
+    );
   }
   if (simulationConfidence < 0.4) {
     pushUnique(notes, "Forecast confidence is still low enough to merit review.");
@@ -108,7 +111,10 @@ export function buildExecutionReadiness(input) {
           "Preview gain is extreme enough that the path should not yet be treated as execution-ready."
         );
       } else if (gain > 2) {
-        pushUnique(notes, "High preview gain should be reviewed before carrying this path forward.");
+        pushUnique(
+          notes,
+          "High preview gain should be reviewed before carrying this path forward."
+        );
       }
       break;
     case "focus-region":
@@ -133,10 +139,7 @@ export function buildExecutionReadiness(input) {
         );
       }
       if (playbackRate > 2.4) {
-        pushUnique(
-          blockers,
-          "Preview transport is too aggressive to keep motion review stable."
-        );
+        pushUnique(blockers, "Preview transport is too aggressive to keep motion review stable.");
       } else if (playbackRate > 1.75) {
         pushUnique(
           notes,
@@ -155,10 +158,7 @@ export function buildExecutionReadiness(input) {
       break;
     case "analyze-segment":
       if (durationMs > 0 && durationMs < 200) {
-        pushUnique(
-          blockers,
-          "This segment window is too short to keep anomaly review stable."
-        );
+        pushUnique(blockers, "This segment window is too short to keep anomaly review stable.");
       } else if (durationMs >= 200 && durationMs < 500) {
         pushUnique(
           notes,

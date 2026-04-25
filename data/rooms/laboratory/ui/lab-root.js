@@ -17,6 +17,7 @@ import { renderWorkspaceSurface } from "./workspace-surface.js";
 import { createLabRunController } from "../runtime/lab-run-controller.js";
 import { renderToolManagementOverlay } from "./tool-management-overlay.js";
 import { renderReportOverlay } from "./report-overlay.js";
+import { renderLabAssetPreviewOverlay } from "./lab-asset-preview-overlay.js";
 import {
   getActiveSelection,
   getActiveInspectionSnapshot,
@@ -268,8 +269,7 @@ export function startLaboratoryLabRoot() {
         return candidate.id === assetId;
       });
       return asNonEmptyString(asset?.localPath) || asNonEmptyString(asset?.url) || null;
-    },
-    windowRef
+    }
   });
   bindLabSelectionRoiInteractions({
     documentRef,
@@ -325,8 +325,9 @@ export function startLaboratoryLabRoot() {
     const centerPanel = runtimeRoot.querySelector(".labx-center-panel");
     const rightPanel = runtimeRoot.querySelector(".labx-right-panel");
     const overlayRoot = runtimeRoot.querySelector(".labx-overlay-root");
+    const assetPreviewOverlayRoot = runtimeRoot.querySelector("#lab-asset-preview-overlay-root");
     const reportOverlayRoot = runtimeRoot.querySelector("#lab-report-overlay-root");
-    if (!shell || !leftRail || !centerPanel || !rightPanel || !overlayRoot) {
+    if (!shell || !leftRail || !centerPanel || !rightPanel || !overlayRoot || !assetPreviewOverlayRoot) {
       runtimeRoot.innerHTML = renderLabLayout(state, surface);
       return;
     }
@@ -352,6 +353,11 @@ export function startLaboratoryLabRoot() {
       documentRef,
       overlayRoot,
       renderToolManagementOverlay(state)
+    );
+    updateRenderedElement(
+      documentRef,
+      assetPreviewOverlayRoot,
+      renderLabAssetPreviewOverlay(state)
     );
     if (reportOverlayRoot) {
       updateRenderedElement(

@@ -107,11 +107,20 @@ function buildTradeoffs(input, decision) {
   const roiArea = getRoiArea(input.activeSelection);
   const actionType = input.executionPlan.actionType;
   if (actionType === "inspect-audio") {
-    pushUnique(tradeoffs, "Audio-focused review can expose signal detail while amplifying preview bias.");
+    pushUnique(
+      tradeoffs,
+      "Audio-focused review can expose signal detail while amplifying preview bias."
+    );
   } else if (actionType === "focus-region") {
-    pushUnique(tradeoffs, "Region focus improves local detail while reducing surrounding scene context.");
+    pushUnique(
+      tradeoffs,
+      "Region focus improves local detail while reducing surrounding scene context."
+    );
   } else if (actionType === "inspect-motion") {
-    pushUnique(tradeoffs, "Motion review clarifies continuity while depending heavily on playback cadence.");
+    pushUnique(
+      tradeoffs,
+      "Motion review clarifies continuity while depending heavily on playback cadence."
+    );
   } else if (actionType === "analyze-segment") {
     pushUnique(tradeoffs, "Segment review balances anomaly coverage against selection precision.");
   }
@@ -122,7 +131,10 @@ function buildTradeoffs(input, decision) {
     pushUnique(tradeoffs, "A smaller ROI increases focus but can hide nearby evidence.");
   }
   if (decision === "proceed" && tradeoffs.length === 0) {
-    pushUnique(tradeoffs, "The path is stable, but the reflection remains advisory rather than executable.");
+    pushUnique(
+      tradeoffs,
+      "The path is stable, but the reflection remains advisory rather than executable."
+    );
   }
   return tradeoffs.length > 0 ? tradeoffs : void 0;
 }
@@ -154,7 +166,10 @@ function buildAlternatives(input, decision) {
     pushUnique(alternatives, "Lower preview gain");
   }
   if (alternatives.length === 0) {
-    pushUnique(alternatives, "Review the selection and dry-run notes before carrying this path further");
+    pushUnique(
+      alternatives,
+      "Review the selection and dry-run notes before carrying this path further"
+    );
   }
   return alternatives;
 }

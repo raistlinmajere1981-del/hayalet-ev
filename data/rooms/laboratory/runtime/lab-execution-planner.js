@@ -41,7 +41,9 @@ function buildRiskNotes(input) {
     riskNotes.push("Wide selections may broaden review scope and dilute focus.");
   }
   if (roi !== void 0 && (roiArea < 0.05 || roi.width / Math.max(roi.height, 1e-3) > 3 || roi.height / Math.max(roi.width, 1e-3) > 3)) {
-    riskNotes.push("The selected region is narrow in context and may need a wider comparison view.");
+    riskNotes.push(
+      "The selected region is narrow in context and may need a wider comparison view."
+    );
   }
   if (input.suggestion.actionType === "focus-region" && roi === void 0) {
     riskNotes.push("No active region is defined yet, so the plan stays segment-scoped.");
@@ -87,7 +89,10 @@ function createPlan(input, title, steps, expectedOutputs) {
   };
 }
 export function buildExecutionPlan(input) {
-  const selectionDurationMs = Math.max(0, input.activeSelection.endMs - input.activeSelection.startMs);
+  const selectionDurationMs = Math.max(
+    0,
+    input.activeSelection.endMs - input.activeSelection.startMs
+  );
   const durationLabel = selectionDurationMs <= 0 ? "current selection context" : selectionDurationMs < 1e3 ? `${selectionDurationMs}ms selection` : `${(selectionDurationMs / 1e3).toFixed(1)}s selection`;
   const hasRoi = input.activeSelection.roi !== void 0;
   switch (input.suggestion.actionType) {

@@ -25,6 +25,36 @@ export function bindLabSelectionSuggestionClicks(deps: SelectionSuggestionBinder
   function handleClick(event: Event) {
     const target = event.target;
     if (isClosestCapableTarget(target)) {
+      const executionCommitmentSetTrigger = target.closest("[data-lab-execution-commitment-set]");
+      if (
+        executionCommitmentSetTrigger &&
+        typeof executionCommitmentSetTrigger.getAttribute === "function"
+      ) {
+        const planId = executionCommitmentSetTrigger.getAttribute(
+          "data-lab-execution-commitment-set"
+        );
+        if (typeof planId !== "string" || planId.trim() === "") {
+          return;
+        }
+        event.preventDefault();
+        deps.emit({
+          type: "workspace-execution-commitment-set",
+          planId: planId.trim(),
+        });
+        return;
+      }
+
+      const executionCommitmentRevokeTrigger = target.closest(
+        "[data-lab-execution-commitment-revoke]"
+      );
+      if (executionCommitmentRevokeTrigger !== null) {
+        event.preventDefault();
+        deps.emit({
+          type: "workspace-execution-commitment-revoked",
+        });
+        return;
+      }
+
       const executionIntentAcceptTrigger = target.closest("[data-lab-execution-intent-accept]");
       if (
         executionIntentAcceptTrigger &&
