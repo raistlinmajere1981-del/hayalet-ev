@@ -1,6 +1,11 @@
 import { escapeHtml } from "../models/lab-types.js";
 import type {
   LabActionSuggestion,
+  LabExecutionPayloadPreview,
+  LabExecutionPlan,
+  LabExecutionReadiness,
+  LabExecutionReflection,
+  LabExecutionSimulation,
   LabInspectionMode,
   LabInspectionSnapshot,
   LabInterpretationItem,
@@ -276,6 +281,396 @@ function renderSuggestionPreview(
   `;
 }
 
+function formatExecutionPlanConfidence(confidence: LabExecutionPlan["confidence"]) {
+  if (typeof confidence !== "number" || Number.isFinite(confidence) !== true) {
+    return null;
+  }
+  return `${Math.round(confidence * 100)}% confidence`;
+}
+
+function formatSimulationConfidence(
+  confidence: NonNullable<LabExecutionSimulation["metrics"]>["confidence"]
+) {
+  if (typeof confidence !== "number" || Number.isFinite(confidence) !== true) {
+    return null;
+  }
+  return `${Math.round(confidence * 100)}% confidence`;
+}
+
+function renderExecutionPlan(plan: LabExecutionPlan | null) {
+  if (plan === null) {
+    return "";
+  }
+  const confidenceLabel = formatExecutionPlanConfidence(plan.confidence);
+  return `
+    <div class="lab-execution-plan" data-lab-execution-plan="true">
+      <div class="lab-execution-plan__eyebrow">Execution plan</div>
+      <div class="lab-execution-plan__title">${escapeHtml(plan.title)}</div>
+      <div class="lab-execution-plan__intro">The system would approach this by:</div>
+      <div class="lab-execution-plan__section">
+        <div class="lab-execution-plan__section-title">Steps</div>
+        <ol class="lab-execution-plan__steps">
+          ${plan.steps
+            .map(function (step) {
+              return `<li class="lab-execution-plan__step"${step.tool ? ` data-tool="${escapeHtml(step.tool)}"` : ""}>
+                <div class="lab-execution-plan__step-label">${escapeHtml(step.label)}</div>
+                ${
+                  step.description
+                    ? `<div class="lab-execution-plan__step-description">${escapeHtml(step.description)}</div>`
+                    : ""
+                }
+              </li>`;
+            })
+            .join("")}
+        </ol>
+      </div>
+      ${
+        plan.expectedOutputs.length > 0
+          ? `
+        <div class="lab-execution-plan__section">
+          <div class="lab-execution-plan__section-title">Expected outputs</div>
+          <ul class="lab-execution-plan__outputs">
+            ${plan.expectedOutputs
+              .map(function (output) {
+                return `<li>${escapeHtml(output)}</li>`;
+              })
+              .join("")}
+          </ul>
+        </div>
+      `
+          : ""
+      }
+      ${
+        Array.isArray(plan.riskNotes) && plan.riskNotes.length > 0
+          ? `
+        <div class="lab-execution-plan__section">
+          <div class="lab-execution-plan__section-title">Planning notes</div>
+          <ul class="lab-execution-plan__risks">
+            ${plan.riskNotes
+              .map(function (note) {
+                return `<li>${escapeHtml(note)}</li>`;
+              })
+              .join("")}
+          </ul>
+        </div>
+      `
+          : ""
+      }
+      ${
+        confidenceLabel
+          ? `<div class="lab-execution-plan__confidence">${escapeHtml(confidenceLabel)}</div>`
+          : ""
+      }
+    </div>
+  `;
+}
+
+function renderExecutionSimulation(simulation: LabExecutionSimulation | null) {
+  if (simulation === null) {
+    return "";
+  }
+  const metrics = simulation.metrics;
+  const confidenceLabel = formatSimulationConfidence(metrics?.confidence);
+  return `
+    <div class="lab-execution-simulation" data-lab-execution-simulation="true">
+      <div class="lab-execution-simulation__eyebrow">Simulation preview</div>
+      <div class="lab-execution-simulation__summary">${escapeHtml(simulation.summary)}</div>
+      ${
+        simulation.predictedEffects.length > 0
+          ? `
+        <div class="lab-execution-simulation__section">
+          <div class="lab-execution-simulation__section-title">What would happen</div>
+          <ul class="lab-execution-simulation__effects">
+            ${simulation.predictedEffects
+              .map(function (effect) {
+                return `<li>${escapeHtml(effect)}</li>`;
+              })
+              .join("")}
+          </ul>
+        </div>
+      `
+          : ""
+      }
+      ${
+        Array.isArray(simulation.warnings) && simulation.warnings.length > 0
+          ? `
+        <div class="lab-execution-simulation__section">
+          <div class="lab-execution-simulation__section-title">Simulation warnings</div>
+          <ul class="lab-execution-simulation__warnings">
+            ${simulation.warnings
+              .map(function (warning) {
+                return `<li>${escapeHtml(warning)}</li>`;
+              })
+              .join("")}
+          </ul>
+        </div>
+      `
+          : ""
+      }
+      ${
+        metrics
+          ? `
+        <div class="lab-execution-simulation__metrics">
+          ${
+            metrics.intensity
+              ? `<span class="lab-execution-simulation__metric">Intensity: ${escapeHtml(metrics.intensity)}</span>`
+              : ""
+          }
+          ${
+            metrics.risk
+              ? `<span class="lab-execution-simulation__metric">Risk: ${escapeHtml(metrics.risk)}</span>`
+              : ""
+          }
+          ${
+            confidenceLabel
+              ? `<span class="lab-execution-simulation__metric">${escapeHtml(confidenceLabel)}</span>`
+              : ""
+          }
+        </div>
+      `
+          : ""
+      }
+      <div class="lab-execution-simulation__outro">If applied, you would observe the forecast above without starting any real execution.</div>
+    </div>
+  `;
+}
+
+function formatReadinessConfidence(confidence: number | undefined) {
+  if (typeof confidence !== "number" || Number.isFinite(confidence) !== true) {
+    return null;
+  }
+  return `${Math.round(confidence * 100)}% confidence`;
+}
+
+function formatReadinessStatus(status: LabExecutionReadiness["status"]) {
+  return (
+    {
+      ready: "Ready",
+      "needs-review": "Needs review",
+      blocked: "Blocked",
+    } as const
+  )[status];
+}
+
+function renderExecutionReadiness(readiness: LabExecutionReadiness | null) {
+  if (readiness === null) {
+    return "";
+  }
+  const confidenceLabel = formatReadinessConfidence(readiness.confidence);
+  const intro =
+    readiness.status === "ready"
+      ? "Execution readiness looks stable"
+      : readiness.status === "needs-review"
+        ? "This path needs review before any execution step"
+        : "This path is not yet execution-ready";
+  return `
+    <div class="lab-execution-readiness" data-lab-execution-readiness="true">
+      <div class="lab-execution-readiness__eyebrow">Execution readiness</div>
+      <div class="lab-execution-readiness__header">
+        <span class="lab-execution-readiness__status" data-status="${escapeHtml(readiness.status)}">${escapeHtml(formatReadinessStatus(readiness.status))}</span>
+        ${
+          confidenceLabel
+            ? `<span class="lab-execution-readiness__confidence">${escapeHtml(confidenceLabel)}</span>`
+            : ""
+        }
+      </div>
+      <div class="lab-execution-readiness__intro">${escapeHtml(intro)}</div>
+      <div class="lab-execution-readiness__summary">${escapeHtml(readiness.summary)}</div>
+      ${
+        Array.isArray(readiness.blockers) && readiness.blockers.length > 0
+          ? `
+        <div class="lab-execution-readiness__section">
+          <div class="lab-execution-readiness__section-title">Readiness blockers</div>
+          <ul class="lab-execution-readiness__blockers">
+            ${readiness.blockers
+              .map(function (blocker) {
+                return `<li>${escapeHtml(blocker)}</li>`;
+              })
+              .join("")}
+          </ul>
+        </div>
+      `
+          : ""
+      }
+      ${
+        Array.isArray(readiness.notes) && readiness.notes.length > 0
+          ? `
+        <div class="lab-execution-readiness__section">
+          <div class="lab-execution-readiness__section-title">Review notes</div>
+          <ul class="lab-execution-readiness__notes">
+            ${readiness.notes
+              .map(function (note) {
+                return `<li>${escapeHtml(note)}</li>`;
+              })
+              .join("")}
+          </ul>
+        </div>
+      `
+          : ""
+      }
+    </div>
+  `;
+}
+
+function formatPayloadPreviewJson(value: Record<string, unknown>) {
+  return JSON.stringify(value, null, 2);
+}
+
+function renderExecutionPayloadPreview(payload: LabExecutionPayloadPreview | null) {
+  if (payload === null) {
+    return "";
+  }
+  const readinessLabel = formatReadinessStatus(payload.readinessStatus);
+  const readinessSignal = payload.readinessPassesPreview
+    ? "Readiness signal passes this preview"
+    : "Readiness signal asks for review";
+  return `
+    <div class="lab-execution-payload" data-lab-execution-payload-preview="true">
+      <div class="lab-execution-payload__eyebrow">Execution payload (preview)</div>
+      <div class="lab-execution-payload__summary">${escapeHtml(payload.summary)}</div>
+      <div class="lab-execution-payload__intro">This is how the system would structure the execution input. No execution is performed.</div>
+      <div class="lab-execution-payload__meta">
+        <span class="lab-execution-payload__chip">Action: ${escapeHtml(payload.actionType)}</span>
+        <span class="lab-execution-payload__chip" data-status="${escapeHtml(payload.readinessStatus)}">${escapeHtml(readinessLabel)}</span>
+        <span class="lab-execution-payload__chip">${escapeHtml(readinessSignal)}</span>
+      </div>
+      <div class="lab-execution-payload__grid">
+        <div class="lab-execution-payload__section">
+          <div class="lab-execution-payload__section-title">Preview input</div>
+          <pre class="lab-execution-payload__code">${escapeHtml(formatPayloadPreviewJson(payload.dryRunShape.previewInput))}</pre>
+        </div>
+        <div class="lab-execution-payload__section">
+          <div class="lab-execution-payload__section-title">Preview parameters</div>
+          <pre class="lab-execution-payload__code">${escapeHtml(formatPayloadPreviewJson(payload.dryRunShape.previewParameters))}</pre>
+        </div>
+      </div>
+      ${
+        payload.dryRunShape.previewExpectedOutputs.length > 0
+          ? `
+        <div class="lab-execution-payload__section">
+          <div class="lab-execution-payload__section-title">Preview expected outputs</div>
+          <ul class="lab-execution-payload__outputs">
+            ${payload.dryRunShape.previewExpectedOutputs
+              .map(function (output) {
+                return `<li>${escapeHtml(output)}</li>`;
+              })
+              .join("")}
+          </ul>
+        </div>
+      `
+          : ""
+      }
+      ${
+        Array.isArray(payload.notes) && payload.notes.length > 0
+          ? `
+        <div class="lab-execution-payload__section">
+          <div class="lab-execution-payload__section-title">Preview notes</div>
+          <ul class="lab-execution-payload__notes">
+            ${payload.notes
+              .map(function (note) {
+                return `<li>${escapeHtml(note)}</li>`;
+              })
+              .join("")}
+          </ul>
+        </div>
+      `
+          : ""
+      }
+    </div>
+  `;
+}
+
+function formatReflectionDecision(decision: LabExecutionReflection["decision"]) {
+  return (
+    {
+      avoid: "Avoid",
+      proceed: "Proceed",
+      review: "Review",
+    } as const
+  )[decision];
+}
+
+function formatReflectionConfidence(confidence: LabExecutionReflection["confidence"]) {
+  if (typeof confidence !== "number" || Number.isFinite(confidence) !== true) {
+    return null;
+  }
+  return `${Math.round(confidence * 100)}% confidence`;
+}
+
+function getReflectionDecisionCopy(decision: LabExecutionReflection["decision"]) {
+  if (decision === "proceed") {
+    return "This path appears stable";
+  }
+  if (decision === "review") {
+    return "This path may require additional review";
+  }
+  return "This path is not recommended in its current form";
+}
+
+function renderExecutionReflection(reflection: LabExecutionReflection | null) {
+  if (reflection === null) {
+    return "";
+  }
+  const confidenceLabel = formatReflectionConfidence(reflection.confidence);
+  return `
+    <div class="lab-execution-reflection" data-lab-execution-reflection="true">
+      <div class="lab-execution-reflection__eyebrow">Execution reflection</div>
+      <div class="lab-execution-reflection__header">
+        <span class="lab-execution-reflection__decision" data-decision="${escapeHtml(reflection.decision)}">${escapeHtml(formatReflectionDecision(reflection.decision))}</span>
+        ${
+          confidenceLabel
+            ? `<span class="lab-execution-reflection__confidence">${escapeHtml(confidenceLabel)}</span>`
+            : ""
+        }
+      </div>
+      <div class="lab-execution-reflection__intro">${escapeHtml(getReflectionDecisionCopy(reflection.decision))}</div>
+      <div class="lab-execution-reflection__summary">${escapeHtml(reflection.summary)}</div>
+      <div class="lab-execution-reflection__section">
+        <div class="lab-execution-reflection__section-title">Reasoning</div>
+        <ul class="lab-execution-reflection__reasoning">
+          ${reflection.reasoning
+            .map(function (reason) {
+              return `<li>${escapeHtml(reason)}</li>`;
+            })
+            .join("")}
+        </ul>
+      </div>
+      ${
+        Array.isArray(reflection.tradeoffs) && reflection.tradeoffs.length > 0
+          ? `
+        <div class="lab-execution-reflection__section">
+          <div class="lab-execution-reflection__section-title">Tradeoffs</div>
+          <ul class="lab-execution-reflection__tradeoffs">
+            ${reflection.tradeoffs
+              .map(function (tradeoff) {
+                return `<li>${escapeHtml(tradeoff)}</li>`;
+              })
+              .join("")}
+          </ul>
+        </div>
+      `
+          : ""
+      }
+      ${
+        Array.isArray(reflection.alternatives) && reflection.alternatives.length > 0
+          ? `
+        <div class="lab-execution-reflection__section">
+          <div class="lab-execution-reflection__section-title">Alternatives</div>
+          <ul class="lab-execution-reflection__alternatives">
+            ${reflection.alternatives
+              .map(function (alternative) {
+                return `<li>${escapeHtml(alternative)}</li>`;
+              })
+              .join("")}
+          </ul>
+        </div>
+      `
+          : ""
+      }
+    </div>
+  `;
+}
+
 function formatInterpretationType(type: LabInterpretationItem["type"]) {
   return (
     {
@@ -470,6 +865,23 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
     model.activeSelection !== undefined &&
     model.activeSelection.endMs > model.activeSelection.startMs;
   const selectionSuggestions = hasSemanticSelection ? (model.selectionSuggestions ?? []) : [];
+  const activeExecutionPlan = hasSemanticSelection ? (model.activeExecutionPlan ?? null) : null;
+  const activeExecutionSimulation =
+    hasSemanticSelection && activeExecutionPlan !== null
+      ? (model.activeExecutionSimulation ?? null)
+      : null;
+  const activeExecutionReadiness =
+    hasSemanticSelection && activeExecutionPlan !== null && activeExecutionSimulation !== null
+      ? (model.activeExecutionReadiness ?? null)
+      : null;
+  const activeExecutionPayloadPreview =
+    hasSemanticSelection && activeExecutionReadiness !== null
+      ? (model.activeExecutionPayloadPreview ?? null)
+      : null;
+  const activeExecutionReflection =
+    hasSemanticSelection && activeExecutionPayloadPreview !== null
+      ? (model.activeExecutionReflection ?? null)
+      : null;
   const activeExecutionIntent = hasSemanticSelection ? (model.activeExecutionIntent ?? null) : null;
   const actionSuggestions = selectionSuggestions.filter(function (suggestion) {
     return typeof suggestion.toolHint !== "string" || suggestion.toolHint.trim() === "";
@@ -623,6 +1035,11 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
             ${renderInspectionSnapshot(activeInspectionSnapshot)}
             ${renderSelectionSuggestions(actionSuggestions)}
             ${renderSuggestionPreview(suggestionPreview, activeExecutionIntent)}
+            ${renderExecutionPlan(activeExecutionPlan)}
+            ${renderExecutionSimulation(activeExecutionSimulation)}
+            ${renderExecutionReadiness(activeExecutionReadiness)}
+            ${renderExecutionPayloadPreview(activeExecutionPayloadPreview)}
+            ${renderExecutionReflection(activeExecutionReflection)}
             ${renderInterpretationPanel(interpretationItems, "embedded")}
           </div>
           <div

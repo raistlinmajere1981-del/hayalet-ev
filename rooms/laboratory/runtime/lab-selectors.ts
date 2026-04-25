@@ -5,6 +5,11 @@ import type {
   LabActionSuggestion,
   LabAsset,
   LabAssetType,
+  LabExecutionPayloadPreview,
+  LabExecutionPlan,
+  LabExecutionReadiness,
+  LabExecutionReflection,
+  LabExecutionSimulation,
   LabExpectedOutput,
   LabFeatureId,
   LabInspectionMode,
@@ -30,6 +35,11 @@ import type {
 import { CAPABILITY_FAMILIES, WORKSPACE_INTENTS } from "../models/lab-types.js";
 import { normalizeAnalysisScope } from "../shared/types/analysis-scope.js";
 import { normalizeAudioFocusSettings } from "./lab-audio-focus-normalization.js";
+import { buildExecutionPayloadPreviewFromResolved } from "./lab-execution-bridge.js";
+import { buildExecutionPlan } from "./lab-execution-planner.js";
+import { buildExecutionReadiness } from "./lab-execution-readiness.js";
+import { buildExecutionReflectionFromResolved } from "./lab-execution-reflection.js";
+import { buildExecutionSimulation } from "./lab-execution-simulator.js";
 import { buildInterpretationItems } from "./lab-interpretation-engine.js";
 import {
   buildSelectionSuggestionPreview,
@@ -966,6 +976,90 @@ export function getActiveExecutionIntent(state: LabStoreState): LabActionSuggest
   );
 }
 
+export function getActiveExecutionPlan(state: LabStoreState): LabExecutionPlan | null {
+  const activeExecutionIntent = getActiveExecutionIntent(state);
+  const activeSelection = getActiveSelection(state);
+  if (
+    activeExecutionIntent === null ||
+    activeSelection === null ||
+    activeSelection.endMs <= activeSelection.startMs
+  ) {
+    return null;
+  }
+  return buildExecutionPlan({
+    suggestion: activeExecutionIntent,
+    activeSelection,
+    inspectionMode: getInspectionMode(state),
+    sourceKind: getSourceKind(state),
+  });
+}
+
+export function getActiveExecutionSimulation(state: LabStoreState): LabExecutionSimulation | null {
+  const activeExecutionPlan = getActiveExecutionPlan(state);
+  const activeSelection = getActiveSelection(state);
+  if (
+    activeExecutionPlan === null ||
+    activeSelection === null ||
+    activeSelection.endMs <= activeSelection.startMs
+  ) {
+    return null;
+  }
+  return buildExecutionSimulation({
+    executionPlan: activeExecutionPlan,
+    activeSelection,
+    inspectionMode: getInspectionMode(state),
+    sourceKind: getSourceKind(state),
+    audioFocus: getEffectivePreviewAudioFocusSettings(state),
+  });
+}
+
+export function getActiveExecutionReadiness(state: LabStoreState): LabExecutionReadiness | null {
+  const activeExecutionPlan = getActiveExecutionPlan(state);
+  const activeExecutionSimulation = getActiveExecutionSimulation(state);
+  const activeSelection = getActiveSelection(state);
+  if (
+    activeExecutionPlan === null ||
+    activeExecutionSimulation === null ||
+    activeSelection === null ||
+    activeSelection.endMs <= activeSelection.startMs
+  ) {
+    return null;
+  }
+  return buildExecutionReadiness({
+    executionPlan: activeExecutionPlan,
+    executionSimulation: activeExecutionSimulation,
+    activeSelection,
+    inspectionMode: getInspectionMode(state),
+    sourceKind: getSourceKind(state),
+    audioFocus: getEffectivePreviewAudioFocusSettings(state),
+  });
+}
+
+export function getActiveExecutionPayloadPreview(
+  state: LabStoreState
+): LabExecutionPayloadPreview | null {
+  return buildExecutionPayloadPreviewFromResolved({
+    executionPlan: getActiveExecutionPlan(state),
+    executionSimulation: getActiveExecutionSimulation(state),
+    executionReadiness: getActiveExecutionReadiness(state),
+    activeSelection: getActiveSelection(state),
+    inspectionMode: getInspectionMode(state),
+    sourceKind: getSourceKind(state),
+  });
+}
+
+export function getActiveExecutionReflection(state: LabStoreState): LabExecutionReflection | null {
+  return buildExecutionReflectionFromResolved({
+    executionPlan: getActiveExecutionPlan(state),
+    executionSimulation: getActiveExecutionSimulation(state),
+    executionReadiness: getActiveExecutionReadiness(state),
+    executionPayloadPreview: getActiveExecutionPayloadPreview(state),
+    activeSelection: getActiveSelection(state),
+    inspectionMode: getInspectionMode(state),
+    sourceKind: getSourceKind(state),
+  });
+}
+
 export function getTimelineSelection(state: LabStoreState) {
   const activeSelection = getActiveSelection(state);
   if (activeSelection !== null && activeSelection.endMs > activeSelection.startMs) {
@@ -1075,6 +1169,11 @@ export function getWaveformTimelineModel(state: LabStoreState) {
       : 1;
 
   return {
+    activeExecutionPlan: getActiveExecutionPlan(state),
+    activeExecutionPayloadPreview: getActiveExecutionPayloadPreview(state),
+    activeExecutionReadiness: getActiveExecutionReadiness(state),
+    activeExecutionReflection: getActiveExecutionReflection(state),
+    activeExecutionSimulation: getActiveExecutionSimulation(state),
     activeExecutionIntent: getActiveExecutionIntent(state),
     activeSelection: getActiveSelection(state),
     activeInspectionSnapshot: getActiveInspectionSnapshot(state),

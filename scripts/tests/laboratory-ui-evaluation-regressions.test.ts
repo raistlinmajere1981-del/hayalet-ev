@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { renderLabWaveformTimeline } from "../../rooms/laboratory/ui/lab-waveform-timeline.ts";
 import { createRoomBuiltArtifact } from "./helpers/room-installed-copy.ts";
 
 class ElementStub {
@@ -103,6 +104,31 @@ function createMinimalLaboratoryUiEnvironment() {
       });
     },
     runtimeRoot,
+  };
+}
+
+function createExecutionReadinessTimelineModel(
+  overrides: Record<string, unknown> = {}
+): Parameters<typeof renderLabWaveformTimeline>[0] {
+  return {
+    activeSelection: {
+      id: "selection-1",
+      startMs: 1000,
+      endMs: 3000,
+      type: "clip",
+      intent: "audio",
+      createdAt: 1,
+    },
+    bookmarks: [],
+    dualPreviewActive: false,
+    durationMs: 4000,
+    endMs: 3000,
+    startMs: 1000,
+    waveformSourceLabel: "Embedded audio",
+    waveformSyncLabel: "Preview and waveform share the same master axis.",
+    waveformWindowDurationMs: 4000,
+    waveformWindowStartMs: 0,
+    ...overrides,
   };
 }
 
@@ -232,4 +258,330 @@ test("laboratory selection preview exposes soft execution intent affordances wit
   assert.match(timelineSource, />Not now</);
   assert.match(timelineSource, />Queue for later</);
   assert.doesNotMatch(timelineSource, />Run</);
+});
+
+test("laboratory execution plan UI stays passive and derived from active intent", () => {
+  const timelineSource = readFileSync("rooms/laboratory/ui/lab-waveform-timeline-render.ts", "utf8");
+
+  assert.match(timelineSource, /data-lab-execution-plan="true"/);
+  assert.match(timelineSource, /Execution plan/);
+  assert.match(timelineSource, /The system would approach this by:/);
+  assert.match(timelineSource, /Expected outputs/);
+  assert.match(timelineSource, /Planning notes/);
+  assert.doesNotMatch(timelineSource, />Run this</);
+  assert.doesNotMatch(timelineSource, />Start execution</);
+});
+
+test("laboratory execution simulation UI stays passive and derived from active plan", () => {
+  const timelineSource = readFileSync("rooms/laboratory/ui/lab-waveform-timeline-render.ts", "utf8");
+
+  assert.match(timelineSource, /data-lab-execution-simulation="true"/);
+  assert.match(timelineSource, /Simulation preview/);
+  assert.match(timelineSource, /What would happen/);
+  assert.match(timelineSource, /Simulation warnings/);
+  assert.match(timelineSource, /If applied, you would observe/);
+  assert.doesNotMatch(timelineSource, />Run</);
+  assert.doesNotMatch(timelineSource, />Apply</);
+  assert.doesNotMatch(timelineSource, />Execute</);
+});
+
+test("laboratory execution readiness UI stays passive and owned by active readiness only", () => {
+  const timelineSource = readFileSync("rooms/laboratory/ui/lab-waveform-timeline-render.ts", "utf8");
+
+  assert.match(timelineSource, /data-lab-execution-readiness="true"/);
+  assert.match(timelineSource, /Execution readiness/);
+  assert.match(timelineSource, /Readiness blockers/);
+  assert.match(timelineSource, /Review notes/);
+  assert.match(timelineSource, /Execution readiness looks stable/);
+  assert.match(timelineSource, /This path needs review before any execution step/);
+  assert.match(timelineSource, /This path is not yet execution-ready/);
+  assert.match(
+    timelineSource,
+    /hasSemanticSelection && activeExecutionPlan !== null && activeExecutionSimulation !== null/
+  );
+  assert.doesNotMatch(timelineSource, />Run</);
+  assert.doesNotMatch(timelineSource, />Execute</);
+  assert.doesNotMatch(timelineSource, /Start execution/);
+});
+
+test("laboratory execution readiness render ownership stays tied to active readiness", () => {
+  const previewOnlyMarkup = renderLabWaveformTimeline(
+    createExecutionReadinessTimelineModel({
+      activeSuggestionPreview: {
+        suggestionId: "audio-inspect",
+        title: "Audio preview",
+        steps: ["Step 1"],
+        expectedOutputs: ["Output"],
+      },
+    })
+  );
+  assert.doesNotMatch(previewOnlyMarkup, /data-lab-execution-readiness="true"/);
+
+  const queuedOnlyMarkup = renderLabWaveformTimeline(
+    createExecutionReadinessTimelineModel({
+      activeExecutionIntent: null,
+      activeSuggestionPreview: null,
+      selectionSuggestions: [
+        {
+          id: "audio-inspect",
+          label: "Inspect audio",
+          actionType: "inspect-audio",
+          confidence: 0.82,
+        },
+      ],
+    })
+  );
+  assert.doesNotMatch(queuedOnlyMarkup, /data-lab-execution-readiness="true"/);
+
+  const simulationMissingMarkup = renderLabWaveformTimeline(
+    createExecutionReadinessTimelineModel({
+      activeExecutionPlan: {
+        id: "plan:audio-inspect:inspect-audio:audio:audio:clip:audio:1000:3000:noroi",
+        suggestionId: "audio-inspect",
+        actionType: "inspect-audio",
+        title: "Audio inspection plan",
+        steps: [
+          {
+            id: "isolate",
+            label: "Isolate",
+          },
+        ],
+        expectedOutputs: ["Spectral profile"],
+        confidence: 0.78,
+      },
+      activeExecutionSimulation: null,
+      activeExecutionReadiness: null,
+    })
+  );
+  assert.doesNotMatch(simulationMissingMarkup, /data-lab-execution-readiness="true"/);
+});
+
+test("laboratory execution payload preview UI stays passive and technical", () => {
+  const timelineSource = readFileSync("rooms/laboratory/ui/lab-waveform-timeline-render.ts", "utf8");
+
+  assert.match(timelineSource, /data-lab-execution-payload-preview="true"/);
+  assert.match(timelineSource, /Execution payload \(preview\)/);
+  assert.match(timelineSource, /This is how the system would structure the execution input/);
+  assert.match(timelineSource, /No execution is performed/);
+  assert.match(timelineSource, /Preview input/);
+  assert.match(timelineSource, /Preview parameters/);
+  assert.match(timelineSource, /Preview expected outputs/);
+  assert.doesNotMatch(timelineSource, /safeToExecute/);
+  assert.doesNotMatch(timelineSource, /safe-to-execute/);
+  assert.doesNotMatch(timelineSource, />Run</);
+  assert.doesNotMatch(timelineSource, />Execute</);
+  assert.doesNotMatch(timelineSource, />Apply</);
+  assert.doesNotMatch(timelineSource, /Start execution/);
+});
+
+test("laboratory execution payload preview render ownership stays tied to active payload", () => {
+  const activePlan = {
+    id: "plan:audio-inspect:inspect-audio:audio:audio:clip:audio:1000:3000:noroi",
+    suggestionId: "audio-inspect",
+    actionType: "inspect-audio" as const,
+    title: "Audio inspection plan",
+    steps: [
+      {
+        id: "isolate",
+        label: "Isolate",
+      },
+    ],
+    expectedOutputs: ["Spectral profile"],
+    confidence: 0.78,
+  };
+  const activeSimulation = {
+    id: `simulation:${activePlan.id}`,
+    planId: activePlan.id,
+    summary: "If applied, the preview would emphasize spectral behavior.",
+    predictedEffects: ["Frequency bands would read as more distinct."],
+    metrics: {
+      intensity: "medium" as const,
+      risk: "low" as const,
+      confidence: 0.78,
+    },
+  };
+  const activeReadiness = {
+    id: `readiness:${activePlan.id}`,
+    planId: activePlan.id,
+    status: "ready" as const,
+    summary: "This looks ready to carry forward as a preview-only execution candidate.",
+    confidence: 0.81,
+  };
+  const activePayload = {
+    id: `payload:${activePlan.id}`,
+    planId: activePlan.id,
+    actionType: "inspect-audio",
+    summary: "The dry-run bridge would describe the selected audio window.",
+    dryRunShape: {
+      previewInput: {
+        audioWindow: {
+          startMs: 1000,
+          endMs: 3000,
+          sourceKind: "audio",
+        },
+      },
+      previewParameters: {
+        bandFocus: "full-spectrum",
+        transientScan: "enabled",
+      },
+      previewExpectedOutputs: ["frequencyClusters", "transientPeaks"],
+    },
+    readinessStatus: "ready" as const,
+    readinessPassesPreview: true,
+  };
+
+  const previewOnlyMarkup = renderLabWaveformTimeline(
+    createExecutionReadinessTimelineModel({
+      activeSuggestionPreview: {
+        suggestionId: "audio-inspect",
+        title: "Audio preview",
+        steps: ["Step 1"],
+        expectedOutputs: ["Output"],
+      },
+    })
+  );
+  assert.doesNotMatch(previewOnlyMarkup, /data-lab-execution-payload-preview="true"/);
+
+  const readinessMissingMarkup = renderLabWaveformTimeline(
+    createExecutionReadinessTimelineModel({
+      activeExecutionPlan: activePlan,
+      activeExecutionSimulation: activeSimulation,
+      activeExecutionReadiness: null,
+      activeExecutionPayloadPreview: activePayload,
+    })
+  );
+  assert.doesNotMatch(readinessMissingMarkup, /data-lab-execution-payload-preview="true"/);
+
+  const payloadMarkup = renderLabWaveformTimeline(
+    createExecutionReadinessTimelineModel({
+      activeExecutionPlan: activePlan,
+      activeExecutionSimulation: activeSimulation,
+      activeExecutionReadiness: activeReadiness,
+      activeExecutionPayloadPreview: activePayload,
+    })
+  );
+  assert.match(payloadMarkup, /data-lab-execution-payload-preview="true"/);
+  assert.match(payloadMarkup, /frequencyClusters/);
+  assert.match(payloadMarkup, /bandFocus/);
+});
+
+test("laboratory execution reflection UI stays passive and advisory", () => {
+  const timelineSource = readFileSync("rooms/laboratory/ui/lab-waveform-timeline-render.ts", "utf8");
+
+  assert.match(timelineSource, /data-lab-execution-reflection="true"/);
+  assert.match(timelineSource, /Execution reflection/);
+  assert.match(timelineSource, /This path appears stable/);
+  assert.match(timelineSource, /This path may require additional review/);
+  assert.match(timelineSource, /This path is not recommended in its current form/);
+  assert.match(timelineSource, /Reasoning/);
+  assert.match(timelineSource, /Tradeoffs/);
+  assert.match(timelineSource, /Alternatives/);
+  assert.doesNotMatch(timelineSource, />\s*Run\s*</);
+  assert.doesNotMatch(timelineSource, />\s*Execute\s*</);
+  assert.doesNotMatch(timelineSource, />\s*Apply\s*</);
+  assert.doesNotMatch(timelineSource, /Start execution/);
+});
+
+test("laboratory execution reflection render ownership stays tied to active reflection", () => {
+  const activePlan = {
+    id: "plan:audio-inspect:inspect-audio:audio:audio:clip:audio:1000:3000:noroi",
+    suggestionId: "audio-inspect",
+    actionType: "inspect-audio" as const,
+    title: "Audio inspection plan",
+    steps: [
+      {
+        id: "isolate",
+        label: "Isolate",
+      },
+    ],
+    expectedOutputs: ["Spectral profile"],
+    confidence: 0.78,
+  };
+  const activeSimulation = {
+    id: `simulation:${activePlan.id}`,
+    planId: activePlan.id,
+    summary: "If applied, the preview would emphasize spectral behavior.",
+    predictedEffects: ["Frequency bands would read as more distinct."],
+    metrics: {
+      intensity: "medium" as const,
+      risk: "low" as const,
+      confidence: 0.78,
+    },
+  };
+  const activeReadiness = {
+    id: `readiness:${activePlan.id}`,
+    planId: activePlan.id,
+    status: "ready" as const,
+    summary: "This looks ready to carry forward as a preview-only execution candidate.",
+    confidence: 0.81,
+  };
+  const activePayload = {
+    id: `payload:${activePlan.id}`,
+    planId: activePlan.id,
+    actionType: "inspect-audio",
+    summary: "The dry-run bridge would describe the selected audio window.",
+    dryRunShape: {
+      previewInput: {
+        audioWindow: {
+          startMs: 1000,
+          endMs: 3000,
+          sourceKind: "audio",
+        },
+      },
+      previewParameters: {
+        bandFocus: "full-spectrum",
+        transientScan: "enabled",
+      },
+      previewExpectedOutputs: ["frequencyClusters", "transientPeaks"],
+    },
+    readinessStatus: "ready" as const,
+    readinessPassesPreview: true,
+  };
+  const activeReflection = {
+    id: `reflection:${activePlan.id}`,
+    planId: activePlan.id,
+    summary: "This path may require additional review before it is carried further.",
+    decision: "review" as const,
+    reasoning: ["Payload preview asks for additional review before this path is carried further."],
+    tradeoffs: ["Audio-focused review can expose signal detail while amplifying preview bias."],
+    alternatives: ["Expand selection range"],
+    confidence: 0.72,
+  };
+
+  const previewOnlyMarkup = renderLabWaveformTimeline(
+    createExecutionReadinessTimelineModel({
+      activeSuggestionPreview: {
+        suggestionId: "audio-inspect",
+        title: "Audio preview",
+        steps: ["Step 1"],
+        expectedOutputs: ["Output"],
+      },
+    })
+  );
+  assert.doesNotMatch(previewOnlyMarkup, /data-lab-execution-reflection="true"/);
+
+  const payloadMissingMarkup = renderLabWaveformTimeline(
+    createExecutionReadinessTimelineModel({
+      activeExecutionPlan: activePlan,
+      activeExecutionSimulation: activeSimulation,
+      activeExecutionReadiness: activeReadiness,
+      activeExecutionPayloadPreview: null,
+      activeExecutionReflection: activeReflection,
+    })
+  );
+  assert.doesNotMatch(payloadMissingMarkup, /data-lab-execution-reflection="true"/);
+
+  const reflectionMarkup = renderLabWaveformTimeline(
+    createExecutionReadinessTimelineModel({
+      activeExecutionPlan: activePlan,
+      activeExecutionSimulation: activeSimulation,
+      activeExecutionReadiness: activeReadiness,
+      activeExecutionPayloadPreview: activePayload,
+      activeExecutionReflection: activeReflection,
+    })
+  );
+  assert.match(reflectionMarkup, /data-lab-execution-reflection="true"/);
+  assert.match(reflectionMarkup, /data-decision="review"/);
+  assert.match(reflectionMarkup, /Expand selection range/);
+  assert.match(reflectionMarkup, /Payload preview asks for additional review/);
 });

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-25T00:27:58.728Z",
+  "generatedAt": "2026-04-25T07:41:01.278Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,11 +9,11 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 520,
+    "filesScanned": 521,
     "ids": 656,
     "testIds": 15,
-    "querySelectors": 149,
-    "totalSelectors": 820
+    "querySelectors": 150,
+    "totalSelectors": 821
   },
   "lookup": {
     "id": {
@@ -836,6 +836,7 @@
       "input_type": "input[type=",
       "main_div_overflow_y_auto": "main div.overflow-y-auto",
       "nav_role": "nav[role=",
+      "script_foreignobject": "script, foreignObject",
       "span": "span",
       "span_last_child": "span:last-child",
       "span_data_star": "span[data-star]",

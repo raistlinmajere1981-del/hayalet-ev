@@ -186,6 +186,71 @@ export interface LabSuggestionPreview {
   estimatedCost?: "low" | "medium" | "high";
 }
 
+export type LabExecutionPlan = {
+  id: string;
+  suggestionId: string;
+  actionType: LabActionSuggestion["actionType"];
+  title: string;
+  steps: Array<{
+    id: string;
+    label: string;
+    description?: string;
+    tool?: string;
+  }>;
+  expectedOutputs: string[];
+  riskNotes?: string[];
+  confidence?: number;
+};
+
+export interface LabExecutionSimulation {
+  id: string;
+  planId: string;
+  summary: string;
+  predictedEffects: string[];
+  warnings?: string[];
+  metrics?: {
+    intensity?: "low" | "medium" | "high";
+    risk?: "low" | "medium" | "high";
+    confidence?: number;
+  };
+}
+
+export interface LabExecutionReadiness {
+  id: string;
+  planId: string;
+  status: "ready" | "needs-review" | "blocked";
+  summary: string;
+  blockers?: string[];
+  notes?: string[];
+  confidence?: number;
+}
+
+export interface LabExecutionPayloadPreview {
+  id: string;
+  planId: string;
+  actionType: LabActionSuggestion["actionType"] | string;
+  summary: string;
+  dryRunShape: {
+    previewInput: Record<string, unknown>;
+    previewParameters: Record<string, unknown>;
+    previewExpectedOutputs: string[];
+  };
+  notes?: string[];
+  readinessStatus: LabExecutionReadiness["status"];
+  readinessPassesPreview: boolean;
+}
+
+export interface LabExecutionReflection {
+  id: string;
+  planId: string;
+  summary: string;
+  decision: "proceed" | "review" | "avoid";
+  reasoning: string[];
+  tradeoffs?: string[];
+  alternatives?: string[];
+  confidence?: number;
+}
+
 export interface LabInspectionSnapshot {
   id: string;
   objectUrl: string;

@@ -3,6 +3,11 @@ import type {
   LabArtifactProjection,
   LabAudioFocusSettings,
   LabBookmark,
+  LabExecutionPayloadPreview,
+  LabExecutionPlan,
+  LabExecutionReadiness,
+  LabExecutionReflection,
+  LabExecutionSimulation,
   LabInspectionSnapshot,
   LabInspectionMode,
   LabInterpretationItem,
@@ -22,6 +27,11 @@ export type LabWaveformInspectionLensModel = {
 };
 
 export type LabWaveformTimelineModel = {
+  activeExecutionPlan?: LabExecutionPlan | null;
+  activeExecutionPayloadPreview?: LabExecutionPayloadPreview | null;
+  activeExecutionReadiness?: LabExecutionReadiness | null;
+  activeExecutionReflection?: LabExecutionReflection | null;
+  activeExecutionSimulation?: LabExecutionSimulation | null;
   activeExecutionIntent?: LabActionSuggestion | null;
   activeSelection?: LabSelection | null;
   activeInspectionSnapshot?: LabInspectionSnapshot | null;

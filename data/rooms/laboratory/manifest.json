@@ -7,6 +7,7 @@
   "menu": {
     "label": "Laboratory",
     "icon": "LB",
+    "iconSrc": "shared/assets/nav-icon.svg",
     "order": 90
   },
   "runtime": {

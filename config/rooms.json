@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-04-25T00:28:17.624Z",
+  "updatedAt": "2026-04-25T07:38:45.135Z",
   "rooms": [
     {
       "id": "laboratory",
@@ -8,6 +8,7 @@
       "version": "1.0.0",
       "description": "An obsidian analysis room with a guided workbench for intake, readiness, processing, and reporting across media, audio, and subtitle modules.",
       "icon": "LB",
+      "iconPath": "/home/raistlin/hayalet-ev/data/rooms/laboratory/shared/assets/nav-icon.svg",
       "sourceDir": "/home/raistlin/hayalet-ev/rooms/laboratory",
       "installedDir": "/home/raistlin/hayalet-ev/data/rooms/laboratory",
       "manifestPath": "/home/raistlin/hayalet-ev/data/rooms/laboratory/manifest.json",
@@ -105,8 +106,8 @@
         }
       },
       "i18nBaseDir": "/home/raistlin/hayalet-ev/data/rooms/laboratory/i18n",
-      "installedAt": "2026-04-25T00:28:17.624Z",
-      "updatedAt": "2026-04-25T00:28:17.624Z"
+      "installedAt": "2026-04-25T07:38:45.135Z",
+      "updatedAt": "2026-04-25T07:38:45.135Z"
     }
   ]
 }
