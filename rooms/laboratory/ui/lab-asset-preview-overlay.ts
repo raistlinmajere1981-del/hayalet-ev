@@ -159,7 +159,7 @@ export function renderLabAssetPreviewOverlay(state: LabStoreState): string {
   return `
     <div class="labx-overlay-root labx-asset-preview-root" data-open="${isOpen ? "true" : "false"}" id="lab-asset-preview-overlay-root">
       ${
-        isOpen && asset !== null
+        asset !== null
           ? `
             <button
               type="button"

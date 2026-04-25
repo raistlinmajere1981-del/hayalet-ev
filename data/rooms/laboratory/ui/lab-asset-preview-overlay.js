@@ -136,7 +136,7 @@ export function renderLabAssetPreviewOverlay(state) {
   const previewKind = asset === null ? "unsupported" : inferPreviewKind(asset, path);
   return `
     <div class="labx-overlay-root labx-asset-preview-root" data-open="${isOpen ? "true" : "false"}" id="lab-asset-preview-overlay-root">
-      ${isOpen && asset !== null ? `
+      ${asset !== null ? `
             <button
               type="button"
               class="labx-overlay-backdrop"
