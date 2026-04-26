@@ -153,6 +153,14 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
         )
     }
 
+    suspend fun submitDiagnosticsSnapshot(deviceId: String) {
+        postJson(
+            "/api/v1/diagnostics/snapshot",
+            CompanionDiagnostics.buildSnapshotPayload(deviceId),
+            reportFailureToDiagnostics = false,
+        )
+    }
+
     private suspend fun getJson(path: String): JSONObject = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("$baseUrl$path")
@@ -178,7 +186,11 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
         }
     }
 
-    private suspend fun postJson(path: String, payload: JSONObject): JSONObject = withContext(Dispatchers.IO) {
+    private suspend fun postJson(
+        path: String,
+        payload: JSONObject,
+        reportFailureToDiagnostics: Boolean = true,
+    ): JSONObject = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("$baseUrl$path")
             .post(payload.toString().toRequestBody(jsonMediaType))
@@ -188,17 +200,21 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
             client.newCall(request).execute().use { response ->
                 val body = response.body?.string().orEmpty()
                 if (!response.isSuccessful) {
-                    CompanionDiagnostics.e(
-                        "bridge",
-                        "POST $path failed with ${response.code}.",
-                        body.ifBlank { "Bridge request failed." },
-                    )
+                    if (reportFailureToDiagnostics) {
+                        CompanionDiagnostics.e(
+                            "bridge",
+                            "POST $path failed with ${response.code}.",
+                            body.ifBlank { "Bridge request failed." },
+                        )
+                    }
                     throw IllegalStateException(body.ifBlank { "Bridge request failed: ${response.code}" })
                 }
                 JSONObject(body.ifBlank { "{}" })
             }
         } catch (error: Exception) {
-            CompanionDiagnostics.e("bridge", "POST $path failed.", throwable = error)
+            if (reportFailureToDiagnostics) {
+                CompanionDiagnostics.e("bridge", "POST $path failed.", throwable = error)
+            }
             throw error
         }
     }

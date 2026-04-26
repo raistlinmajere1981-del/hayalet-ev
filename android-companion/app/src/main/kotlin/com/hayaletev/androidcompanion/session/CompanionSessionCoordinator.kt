@@ -51,6 +51,7 @@ class CompanionSessionCoordinator(
     private var launchContext = CompanionLaunchContext()
     private var pollJob: Job? = null
     private var lastBridgeFailureSignature: String? = null
+    private var lastDiagnosticsSyncFailureSignature: String? = null
     private var bridgeConnected = false
     private val speechController =
         CommandSpeechController(appContext, scope) { result ->
@@ -198,6 +199,7 @@ class CompanionSessionCoordinator(
                         commands.distinctBy { it.id }.forEach { command ->
                             handleCommand(command)
                         }
+                        syncDiagnosticsSnapshot()
                     } catch (error: Exception) {
                         bridgeConnected = false
                         val errorSignature = summarizeError(error)
@@ -442,6 +444,27 @@ class CompanionSessionCoordinator(
             append(launchContext.speechConfig.enabled)
             append(", fallback=")
             append(launchContext.speechConfig.fallbackMode.name.lowercase())
+        }
+    }
+
+    private suspend fun syncDiagnosticsSnapshot() {
+        runCatching {
+            bridgeClient.submitDiagnosticsSnapshot(launchContext.deviceId)
+        }.onSuccess {
+            if (lastDiagnosticsSyncFailureSignature != null) {
+                CompanionDiagnostics.i("diagnostics", "Desktop diagnostics shadow sync recovered.")
+            }
+            lastDiagnosticsSyncFailureSignature = null
+        }.onFailure { error ->
+            val errorSignature = summarizeError(error)
+            if (lastDiagnosticsSyncFailureSignature != errorSignature) {
+                CompanionDiagnostics.w(
+                    "diagnostics",
+                    "Desktop diagnostics shadow sync failed.",
+                    throwable = error,
+                )
+            }
+            lastDiagnosticsSyncFailureSignature = errorSignature
         }
     }
 

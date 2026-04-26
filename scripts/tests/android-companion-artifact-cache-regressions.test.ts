@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, utimes, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -8,6 +8,14 @@ import {
   inspectCompanionArtifactCache,
 } from "../lib/android-companion-artifact.mjs";
 import { resolveInstallableArtifact } from "../android-companion-utils.mjs";
+
+test("android companion bootstrap parses command-line tools version from the numeric capture group", async () => {
+  const source = await readFile("scripts/android-companion-utils.mjs", "utf8");
+
+  assert.match(source, /full: match\[1\] \?\? null/);
+  assert.match(source, /version: Number\.parseInt\(match\[2\] \?\? "", 10\)/);
+  assert.doesNotMatch(source, /Number\.parseInt\(match\[1\]/);
+});
 
 async function createFixture() {
   const root = await mkdtemp(join(tmpdir(), "hev-android-companion-artifact-"));

@@ -35,6 +35,8 @@ const CAPTURE_ANDROID_MAIN_ACTIVITY = "com.hayaletev.androidcompanion/.MainActiv
 const CAPTURE_BRIDGE_PORT = 48_561;
 const CAPTURE_ANALYZE_TARGET = "analyze-compose";
 const CAPTURE_SESSION_STALE_MS = 20_000;
+const CAPTURE_COMPANION_DIAGNOSTICS_MAX_LOG_ENTRIES = 400;
+const CAPTURE_COMPANION_DIAGNOSTICS_MAX_TEXT_CHARS = 220_000;
 
 interface CommandResult {
   exitCode: number;
@@ -84,6 +86,28 @@ interface CaptureIngressPaths {
 interface AnalyzeIngressSnapshot {
   pendingInboxCount: number;
   latestStagedAsset: CaptureImportedAsset | null;
+}
+
+interface CompanionDiagnosticsStateEntry {
+  key: string;
+  value: string;
+}
+
+interface CompanionDiagnosticsLogEntry {
+  timestampMs: number | null;
+  level: string;
+  category: string;
+  message: string;
+  details: string | null;
+}
+
+interface CompanionDiagnosticsShadowSnapshot {
+  deviceId: string;
+  generatedAtMs: number | null;
+  receivedAtMs: number;
+  stateEntries: CompanionDiagnosticsStateEntry[];
+  logEntries: CompanionDiagnosticsLogEntry[];
+  text: string;
 }
 
 interface ResolvedCaptureSettings {
@@ -180,6 +204,75 @@ function normalizeModelLabel(value: string | null): string | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && Array.isArray(value) === false;
+}
+
+function normalizeFiniteNumber(value: unknown): number | null {
+  if (typeof value !== "number" || Number.isFinite(value) === false) {
+    return null;
+  }
+
+  return value;
+}
+
+function normalizeFreeformText(value: unknown, maxChars: number): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const truncated = value.slice(0, maxChars).trimEnd();
+  return truncated.trim() === "" ? null : truncated;
+}
+
+function sanitizeCompanionDiagnosticsPathSegment(value: string): string {
+  const normalized = value.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 96);
+  return normalized === "" ? "android-companion" : normalized;
+}
+
+function normalizeCompanionDiagnosticsStateEntries(
+  value: unknown
+): CompanionDiagnosticsStateEntry[] {
+  if (Array.isArray(value) === false) {
+    return [];
+  }
+
+  return value.flatMap((item): CompanionDiagnosticsStateEntry[] => {
+    if (isRecord(item) === false) {
+      return [];
+    }
+
+    const key = normalizeText(item["key"]);
+    const entryValue = normalizeFreeformText(item["value"], 8_000);
+    return key === null || entryValue === null ? [] : [{ key, value: entryValue }];
+  });
+}
+
+function normalizeCompanionDiagnosticsLogEntries(value: unknown): CompanionDiagnosticsLogEntry[] {
+  if (Array.isArray(value) === false) {
+    return [];
+  }
+
+  return value
+    .slice(-CAPTURE_COMPANION_DIAGNOSTICS_MAX_LOG_ENTRIES)
+    .flatMap((item): CompanionDiagnosticsLogEntry[] => {
+      if (isRecord(item) === false) {
+        return [];
+      }
+
+      const message = normalizeFreeformText(item["message"], 16_000);
+      if (message === null) {
+        return [];
+      }
+
+      return [
+        {
+          timestampMs: normalizeFiniteNumber(item["timestampMs"]),
+          level: normalizeText(item["level"]) ?? "INFO",
+          category: normalizeText(item["category"]) ?? "general",
+          message,
+          details: normalizeFreeformText(item["details"], 32_000),
+        },
+      ];
+    });
 }
 
 function normalizeStringList(value: unknown, fallback: string[]): string[] {
@@ -866,6 +959,73 @@ async function writeAnalyzeAsset(
     path: targetPath,
     importedAt: fileStat?.mtimeMs ?? Date.now(),
   };
+}
+
+function normalizeCompanionDiagnosticsShadowSnapshot(
+  body: Record<string, unknown>
+): CompanionDiagnosticsShadowSnapshot | null {
+  const deviceId = normalizeText(body["deviceId"]);
+  if (deviceId === null) {
+    return null;
+  }
+
+  const stateEntries = normalizeCompanionDiagnosticsStateEntries(body["stateEntries"]);
+  const logEntries = normalizeCompanionDiagnosticsLogEntries(body["logEntries"]);
+  const fallbackText = [
+    "Hayalet Ev Companion Diagnostics",
+    "",
+    "State",
+    stateEntries.length === 0
+      ? "No state entries yet."
+      : stateEntries.map((entry) => `${entry.key}: ${entry.value}`).join("\n"),
+    "",
+    "Logs",
+    logEntries.length === 0
+      ? "No diagnostic log entries yet."
+      : logEntries
+          .slice()
+          .reverse()
+          .map((entry) => {
+            const prefix = `[${entry.timestampMs ?? "unknown"}] ${entry.level.padEnd(5, " ")} ${entry.category.toUpperCase()} ${entry.message}`;
+            return entry.details === null ? prefix : `${prefix}\n${entry.details}`;
+          })
+          .join("\n\n"),
+  ].join("\n");
+
+  return {
+    deviceId,
+    generatedAtMs: normalizeFiniteNumber(body["generatedAtMs"]),
+    receivedAtMs: Date.now(),
+    stateEntries,
+    logEntries,
+    text:
+      normalizeFreeformText(body["text"], CAPTURE_COMPANION_DIAGNOSTICS_MAX_TEXT_CHARS) ??
+      fallbackText,
+  };
+}
+
+async function writeCompanionDiagnosticsShadowSnapshot(
+  snapshot: CompanionDiagnosticsShadowSnapshot
+): Promise<{ dir: string; textPath: string; jsonPath: string }> {
+  const deviceDir = join(
+    Paths.getLogsDir(),
+    "android-companion",
+    sanitizeCompanionDiagnosticsPathSegment(snapshot.deviceId)
+  );
+  const textPath = join(deviceDir, "latest.txt");
+  const jsonPath = join(deviceDir, "latest.json");
+
+  await mkdir(deviceDir, { recursive: true });
+  await Promise.all([
+    writeFile(
+      textPath,
+      snapshot.text.endsWith("\n") ? snapshot.text : `${snapshot.text}\n`,
+      "utf8"
+    ),
+    writeFile(jsonPath, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8"),
+  ]);
+
+  return { dir: deviceDir, textPath, jsonPath };
 }
 
 async function inspectCompanionState(
@@ -1743,6 +1903,23 @@ class CaptureService {
         }
 
         this.sendJson(response, 200, { ok: true });
+        return;
+      }
+
+      if (method === "POST" && requestUrl.pathname === "/api/v1/diagnostics/snapshot") {
+        const body = await this.readJsonBody(request);
+        const snapshot = normalizeCompanionDiagnosticsShadowSnapshot(body);
+        if (snapshot === null) {
+          this.sendJson(response, 400, { ok: false, error: "deviceId is required." });
+          return;
+        }
+
+        const written = await writeCompanionDiagnosticsShadowSnapshot(snapshot);
+        this.sendJson(response, 200, {
+          ok: true,
+          shadowPath: written.textPath,
+          shadowJsonPath: written.jsonPath,
+        });
         return;
       }
 

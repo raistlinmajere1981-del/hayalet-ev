@@ -27,6 +27,7 @@ test("android companion diagnostics panel stays wired across ui and runtime flow
     "android-companion/app/src/main/kotlin/com/hayaletev/androidcompanion/MainActivity.kt",
     "utf8"
   );
+  const captureServiceSource = readFileSync("electron/capture-service.ts", "utf8");
   const sessionSource = readFileSync(
     "android-companion/app/src/main/kotlin/com/hayaletev/androidcompanion/session/CompanionSessionCoordinator.kt",
     "utf8"
@@ -60,6 +61,7 @@ test("android companion diagnostics panel stays wired across ui and runtime flow
 
   assert.match(diagnosticsSource, /MAX_LOG_ENTRIES = 400/);
   assert.match(diagnosticsSource, /fun buildShareText\(\): String/);
+  assert.match(diagnosticsSource, /fun buildSnapshotPayload\(deviceId: String\): JSONObject/);
   assert.match(diagnosticsSource, /fun interface CompanionDiagnosticsListener/);
   assert.match(diagnosticsSource, /Log\.e\(LOG_TAG, message\)/);
 
@@ -72,10 +74,18 @@ test("android companion diagnostics panel stays wired across ui and runtime flow
   assert.match(sessionSource, /CompanionDiagnostics\.i\(\s*"session"/);
   assert.match(sessionSource, /CompanionDiagnostics\.w\(\s*"bridge"/);
   assert.match(sessionSource, /CompanionDiagnostics\.e\(\s*"command"/);
+  assert.match(sessionSource, /syncDiagnosticsSnapshot\(\)/);
+  assert.match(sessionSource, /bridgeClient\.submitDiagnosticsSnapshot\(launchContext\.deviceId\)/);
   assert.doesNotMatch(sessionSource, /catch \(_: Exception\)/);
+
+  assert.match(captureServiceSource, /\/api\/v1\/diagnostics\/snapshot/);
+  assert.match(captureServiceSource, /writeCompanionDiagnosticsShadowSnapshot/);
+  assert.match(captureServiceSource, /Paths\.getLogsDir\(\),\s*"android-companion"/);
 
   assert.match(transportSource, /CompanionDiagnostics\.e\("bridge", "GET \$path failed\."/);
   assert.match(transportSource, /CompanionDiagnostics\.i\(\s*"bridge",\s*"Acknowledged command/);
+  assert.match(transportSource, /fun submitDiagnosticsSnapshot\(deviceId: String\)/);
+  assert.match(transportSource, /reportFailureToDiagnostics = false/);
 
   assert.match(cameraSource, /CompanionDiagnostics\.i\("camera", "Binding camera preview\."/);
   assert.match(cameraSource, /CompanionDiagnostics\.e\("camera", "Photo capture failed\."/);

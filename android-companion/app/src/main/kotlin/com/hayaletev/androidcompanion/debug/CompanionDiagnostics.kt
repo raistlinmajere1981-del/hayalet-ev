@@ -1,6 +1,8 @@
 package com.hayaletev.androidcompanion.debug
 
 import android.util.Log
+import org.json.JSONArray
+import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -120,8 +122,49 @@ object CompanionDiagnostics {
         }
     }
 
+    fun snapshot(): CompanionDiagnosticsSnapshot =
+        synchronized(lock) {
+            CompanionDiagnosticsSnapshot(
+                stateEntries = stateEntries.entries.map { it.key to it.value },
+                logEntries = logEntries.toList(),
+            )
+        }
+
     fun buildShareText(): String {
+        return buildShareText(snapshot())
+    }
+
+    fun buildSnapshotPayload(deviceId: String): JSONObject {
         val snapshot = snapshot()
+        val stateJson =
+            JSONArray().apply {
+                snapshot.stateEntries.forEach { (key, value) ->
+                    put(JSONObject().put("key", key).put("value", value))
+                }
+            }
+        val logsJson =
+            JSONArray().apply {
+                snapshot.logEntries.forEach { entry ->
+                    put(
+                        JSONObject()
+                            .put("timestampMs", entry.timestampMs)
+                            .put("level", entry.level.name)
+                            .put("category", entry.category)
+                            .put("message", entry.message)
+                            .put("details", entry.details ?: JSONObject.NULL)
+                    )
+                }
+            }
+
+        return JSONObject()
+            .put("deviceId", deviceId)
+            .put("generatedAtMs", System.currentTimeMillis())
+            .put("stateEntries", stateJson)
+            .put("logEntries", logsJson)
+            .put("text", buildShareText(snapshot))
+    }
+
+    private fun buildShareText(snapshot: CompanionDiagnosticsSnapshot): String {
         val stateText =
             if (snapshot.stateEntries.isEmpty()) {
                 "No state entries yet."
@@ -187,14 +230,6 @@ object CompanionDiagnostics {
         writeToLogcat(entry)
         notifyListeners(snapshot())
     }
-
-    private fun snapshot(): CompanionDiagnosticsSnapshot =
-        synchronized(lock) {
-            CompanionDiagnosticsSnapshot(
-                stateEntries = stateEntries.entries.map { it.key to it.value },
-                logEntries = logEntries.toList(),
-            )
-        }
 
     private fun notifyListeners(snapshot: CompanionDiagnosticsSnapshot) {
         listeners.forEach { listener ->

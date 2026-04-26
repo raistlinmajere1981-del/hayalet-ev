@@ -450,8 +450,8 @@ async function fetchAndroidCmdlineToolsInfo() {
   const latestMatch =
     urlMatches
       .map((match) => ({
-        full: match[1] != null ? `commandlinetools-${hostToken}-${match[1]}_latest.zip` : null,
-        version: Number.parseInt(match[1] ?? "", 10),
+        full: match[1] ?? null,
+        version: Number.parseInt(match[2] ?? "", 10),
       }))
       .filter(
         (entry) => entry.full !== null && Number.isFinite(entry.version)
