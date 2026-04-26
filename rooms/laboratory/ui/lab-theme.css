@@ -894,7 +894,6 @@
   text-align: center;
 }
 
-
 .labx-progress {
   position: relative;
   height: 0.4rem;
@@ -910,7 +909,6 @@
   border-radius: inherit;
   background: linear-gradient(90deg, rgba(92, 215, 223, 0.9), rgba(106, 166, 235, 0.82));
 }
-
 
 .labx-workspace-strip {
   display: grid;
@@ -5726,7 +5724,9 @@
   border-radius: 999px;
   background: var(--labx-accent);
   box-shadow: 0 0 10px rgba(72, 214, 222, 0.5);
-  transition: background 0.2s, box-shadow 0.2s;
+  transition:
+    background 0.2s,
+    box-shadow 0.2s;
 }
 
 .labx-global-process[data-tone="idle"] .labx-global-process__dot {
@@ -5767,6 +5767,7 @@
   font-size: 0.82rem;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: opacity 0.2s ease;
 }
 
 .labx-right-panel__controls {
@@ -6032,10 +6033,16 @@
 .labx-journey-hint [data-active="true"] {
   color: var(--labx-accent);
   font-weight: 600;
+  border-bottom: 1px solid rgba(92, 215, 223, 0.45);
+  padding-bottom: 1px;
+}
+
+.labx-journey-hint [data-reached="true"][data-active="false"] {
+  opacity: 0.5;
 }
 
 .labx-journey-hint [data-reached="false"] {
-  opacity: 0.35;
+  opacity: 0.28;
 }
 
 /* ===== §3 DECISION SURFACE TIERS ===== */
@@ -6062,7 +6069,9 @@
   border-left-width: 2px;
   border-radius: 0.75rem;
   background: rgba(255, 255, 255, 0.025);
-  transition: border-color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
 }
 
 .labx-right-context__decision-card > span:first-child {
@@ -6074,6 +6083,7 @@
 
 .labx-right-context__decision-card > strong {
   font-size: 0.82rem;
+  transition: opacity 0.15s ease;
 }
 
 .labx-right-context__decision-card[data-accent="none"] {
@@ -6152,7 +6162,49 @@
 /* ===== §7a OVERLAY TRIGGER GLOW ===== */
 
 .lab-execution-details-trigger[data-overlay-source="true"] {
-  box-shadow: 0 0 0 1px rgba(92, 215, 223, 0.3), 0 0 12px rgba(92, 215, 223, 0.15);
+  box-shadow:
+    0 0 0 1px rgba(92, 215, 223, 0.3),
+    0 0 12px rgba(92, 215, 223, 0.15);
+}
+
+/* ===== §5 PHASE 5 — FLOW COHERENCE LAYER ===== */
+
+@keyframes labx-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes labx-staging-arrive {
+  0% {
+    background: rgba(92, 215, 223, 0.12);
+  }
+  60% {
+    background: rgba(92, 215, 223, 0.07);
+  }
+  100% {
+    background: rgba(92, 215, 223, 0.04);
+  }
+}
+
+.labx-right-context__causal-line {
+  margin: 0.2rem 0 0;
+  font-size: 0.64rem;
+  font-style: italic;
+  color: var(--labx-text-dim);
+  line-height: 1.4;
+  animation: labx-fade-in 0.18s ease forwards;
+}
+
+.labx-right-context__causal-line--intent {
+  color: rgba(92, 215, 223, 0.55);
+}
+
+.labx-right-context__decision-card[data-accent="staging"] {
+  animation: labx-staging-arrive 0.45s ease forwards;
 }
 
 /* ===== §9a INTERACTIVE TRANSITIONS ===== */
@@ -6167,7 +6219,10 @@
 .labx-module-card,
 .labx-process-step,
 .labx-source-intake__toggle {
-  transition: border-color 0.15s, background 0.15s, opacity 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    opacity 0.15s;
 }
 
 .labx-right-context__item {

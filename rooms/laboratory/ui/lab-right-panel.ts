@@ -27,6 +27,7 @@ function getCandidateAccent(status: string | null): string {
       return "pending";
     case "not-viable":
       return "error";
+    case null:
     default:
       return "none";
   }
@@ -35,11 +36,21 @@ function getCandidateAccent(status: string | null): string {
 function getCandidateImplication(status: string | null, copy: LabI18n): string {
   switch (status) {
     case "viable":
-      return copy.t("mediaAnalysis.rightContext.implication.candidate.viable", "Structurally viable for execution");
+      return copy.t(
+        "mediaAnalysis.rightContext.implication.candidate.viable",
+        "Structurally viable for execution"
+      );
     case "unstable":
-      return copy.t("mediaAnalysis.rightContext.implication.candidate.unstable", "Structure incomplete \u2014 needs evaluation");
+      return copy.t(
+        "mediaAnalysis.rightContext.implication.candidate.unstable",
+        "Structure incomplete \u2014 needs evaluation"
+      );
     case "not-viable":
-      return copy.t("mediaAnalysis.rightContext.implication.candidate.notViable", "Not viable \u2014 path requires revision");
+      return copy.t(
+        "mediaAnalysis.rightContext.implication.candidate.notViable",
+        "Not viable \u2014 path requires revision"
+      );
+    case null:
     default:
       return copy.t("mediaAnalysis.rightContext.implication.candidate.none", "Awaiting evaluation");
   }
@@ -48,22 +59,39 @@ function getCandidateImplication(status: string | null, copy: LabI18n): string {
 function getCommitmentImplication(status: string | null, copy: LabI18n): string {
   switch (status) {
     case "committed":
-      return copy.t("mediaAnalysis.rightContext.implication.commitment.committed", "Path selected for staging");
+      return copy.t(
+        "mediaAnalysis.rightContext.implication.commitment.committed",
+        "Path selected for staging"
+      );
     case "revoked":
-      return copy.t("mediaAnalysis.rightContext.implication.commitment.revoked", "Commitment withdrawn");
+      return copy.t(
+        "mediaAnalysis.rightContext.implication.commitment.revoked",
+        "Commitment withdrawn"
+      );
+    case null:
     default:
-      return copy.t("mediaAnalysis.rightContext.implication.commitment.none", "No path committed yet");
+      return copy.t(
+        "mediaAnalysis.rightContext.implication.commitment.none",
+        "No path committed yet"
+      );
   }
 }
 
 function getStagingImplication(status: string | null, copy: LabI18n): string {
   switch (status) {
     case "staged":
-      return copy.t("mediaAnalysis.rightContext.implication.staging.staged", "Prepared for execution");
+      return copy.t(
+        "mediaAnalysis.rightContext.implication.staging.staged",
+        "Prepared for execution"
+      );
     case "not-staged":
       return copy.t("mediaAnalysis.rightContext.implication.staging.notStaged", "Not yet staged");
+    case null:
     default:
-      return copy.t("mediaAnalysis.rightContext.implication.staging.none", "Awaiting staging readiness");
+      return copy.t(
+        "mediaAnalysis.rightContext.implication.staging.none",
+        "Awaiting staging readiness"
+      );
   }
 }
 
@@ -80,27 +108,29 @@ function renderDecisionSurface(state: LabStoreState, copy: LabI18n) {
         <span>${escapeHtml(copy.t("mediaAnalysis.rightContext.selection", "Selection"))}</span>
         <strong>${escapeHtml(context.selectionRangeLabel ?? copy.t("mediaAnalysis.rightContext.emptySelection", "No active selection"))}</strong>
         ${context.selectionLabel ? `<small>${escapeHtml(context.selectionLabel)}</small>` : ""}
+        ${context.selectionRangeLabel ? `<p class="labx-right-context__causal-line">${escapeHtml(copy.t("mediaAnalysis.rightContext.selectionCausal", "This selection defines the analysis scope"))}</p>` : ""}
       </div>
       <div class="labx-right-context__item">
         <span>${escapeHtml(copy.t("mediaAnalysis.rightContext.intent", "Intent"))}</span>
         <strong>${escapeHtml(context.activeIntentLabel ?? copy.t("mediaAnalysis.rightContext.emptyIntent", "No intent selected"))}</strong>
+        ${context.activeIntentLabel ? `<p class="labx-right-context__causal-line labx-right-context__causal-line--intent">${escapeHtml(copy.t("mediaAnalysis.rightContext.intentCausal", "System will analyze this region for ") + context.activeIntentLabel)}</p>` : ""}
       </div>
     </div>
   `;
 
   const tier2 = `
     <div class="labx-right-context__tier-2">
-      <div class="labx-right-context__decision-card" data-accent="${getCandidateAccent(context.candidateStatus)}">
+      <div class="labx-right-context__decision-card" data-accent="${getCandidateAccent(context.candidateStatus)}" data-decision-card="candidate">
         <span>${escapeHtml(copy.t("mediaAnalysis.rightContext.candidate", "Candidate"))}</span>
         <strong>${escapeHtml(formatStatus(context.candidateStatus, copy))}</strong>
         <p class="labx-right-context__implication">${escapeHtml(getCandidateImplication(context.candidateStatus, copy))}</p>
       </div>
-      <div class="labx-right-context__decision-card" data-accent="${context.commitmentStatus === "committed" ? "success" : "none"}">
+      <div class="labx-right-context__decision-card" data-accent="${context.commitmentStatus === "committed" ? "success" : "none"}" data-decision-card="commitment">
         <span>${escapeHtml(copy.t("mediaAnalysis.rightContext.commitment", "Commitment"))}</span>
         <strong>${escapeHtml(formatStatus(context.commitmentStatus, copy))}</strong>
         <p class="labx-right-context__implication">${escapeHtml(getCommitmentImplication(context.commitmentStatus, copy))}</p>
       </div>
-      <div class="labx-right-context__decision-card" data-accent="${context.stagingStatus === "staged" ? "staging" : "none"}">
+      <div class="labx-right-context__decision-card" data-accent="${context.stagingStatus === "staged" ? "staging" : "none"}" data-decision-card="staging">
         <span>${escapeHtml(copy.t("mediaAnalysis.rightContext.staging", "Staging"))}</span>
         <strong>${escapeHtml(formatStatus(context.stagingStatus, copy))}</strong>
         <p class="labx-right-context__implication">${escapeHtml(getStagingImplication(context.stagingStatus, copy))}</p>
