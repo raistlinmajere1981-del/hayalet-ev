@@ -1,4 +1,5 @@
 import {
+  __testOnlyResetExecutionPatternRegistry,
   assert,
   buildSuggestionPreview,
   createMockExecutionResult,
@@ -607,6 +608,7 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
   const persistedState = labRootModule.__testOnlyLabRootPersistence.readPersistableState(
     store.getState()
   );
+  assert.equal("adaptiveDecisionHint" in persistedState, false);
   assert.equal("activeExecutionGoalEvaluation" in persistedState, false);
   assert.equal("activeExecutionIntentId" in persistedState, false);
   assert.equal("activeExecutionAlternatives" in persistedState, false);
@@ -619,7 +621,18 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
   assert.equal("activeExecutionSimulation" in persistedState, false);
   assert.equal("activeExecutionStaging" in persistedState, false);
   assert.equal("executionGoalEvaluation" in persistedState, false);
+  assert.equal("executionPatternRegistry" in persistedState, false);
+  assert.equal("executionPatternSignal" in persistedState, false);
   assert.equal("executionRuntime" in persistedState, false);
+  assert.equal("patternSignal" in persistedState, false);
+  assert.equal("decisionPressure" in persistedState, false);
+  assert.equal("preferredAlternative" in persistedState, false);
+  assert.equal("preferredAlternativeIndex" in persistedState, false);
+  assert.equal("preferredAlternativeLabel" in persistedState, false);
+  assert.equal(
+    "adaptiveDecisionHint" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
   assert.equal(
     "activeExecutionGoalEvaluation" in
       ((persistedState["workspace"] as Record<string, unknown>) || {}),
@@ -672,9 +685,42 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
     false
   );
   assert.equal(
+    "executionPatternRegistry" in
+      ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+  assert.equal(
+    "executionPatternSignal" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+  assert.equal(
     "executionRuntime" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
     false
   );
+  assert.equal(
+    "patternSignal" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+  assert.equal(
+    "decisionPressure" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+  assert.equal(
+    "preferredAlternative" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+  assert.equal(
+    "preferredAlternativeIndex" in
+      ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+  assert.equal(
+    "preferredAlternativeLabel" in
+      ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+
+  __testOnlyResetExecutionPatternRegistry();
 
   store.dispatch({
     type: "hydrate",
@@ -723,4 +769,42 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
   assert.equal(getActiveExecutionGoalEvaluation(store.getState()), null);
   assert.equal(getActiveExecutionResult(store.getState()), null);
   assert.equal(getActiveExecutionResultInterpretation(store.getState()), null);
+
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "audio-inspect",
+  });
+  const freshCandidate = getActiveExecutionCandidate(store.getState());
+  assert.ok(freshCandidate);
+  store.dispatch({
+    type: "workspace-execution-commitment-set",
+    planId: freshCandidate.planId,
+  });
+  const freshDispatchCandidate = getExecutionDispatchCandidate(store.getState());
+  assert.ok(freshDispatchCandidate);
+  store.dispatch({
+    type: "workspace-execution-dispatch",
+    planId: freshDispatchCandidate.planId,
+    dispatchId: freshDispatchCandidate.dispatchId,
+  });
+  store.dispatch({
+    type: "workspace-execution-completed",
+    planId: freshDispatchCandidate.planId,
+    dispatchId: freshDispatchCandidate.dispatchId,
+    result: createMockExecutionResult(freshDispatchCandidate),
+  });
+  assert.equal(getActiveExecutionGoalEvaluation(store.getState())?.patternSignal, undefined);
 });

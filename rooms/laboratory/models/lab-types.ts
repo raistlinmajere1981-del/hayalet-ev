@@ -273,11 +273,15 @@ export interface LabExecutionAlternatives {
   confidence?: number;
 }
 
+export type LabExecutionDecisionPressure = "low" | "medium" | "high";
+
 export interface LabExecutionCandidate {
   id: string;
   planId: string;
   status: "viable" | "unstable" | "not-viable";
   summary: string;
+  adaptiveDecisionHint: string;
+  decisionPressure: LabExecutionDecisionPressure;
   structuralIntegrity: "complete" | "partial" | "insufficient";
   readinessStatus: LabExecutionReadiness["status"];
   reflectionDecision: LabExecutionReflection["decision"];
@@ -355,11 +359,22 @@ export type LabActiveExecutionResult = LabExecutionResult & {
 };
 
 export type LabExecutionGoalOutcome = "successful" | "neutral" | "failed";
+export type LabExecutionPatternStrength = "neutral" | "weak" | "strong";
+
+export interface LabExecutionPatternSignal {
+  executionCount: number;
+  averageCoverage: number;
+  successRatio: number;
+  failureRatio: number;
+  strength: LabExecutionPatternStrength;
+  note?: string;
+}
 
 export interface LabExecutionGoalEvaluation {
   outcome: LabExecutionGoalOutcome;
   goalAlignment: number;
   summary: string;
+  patternSignal?: LabExecutionPatternSignal;
 }
 
 export type LabExecutionRuntimeStatus = "idle" | "running" | "completed";

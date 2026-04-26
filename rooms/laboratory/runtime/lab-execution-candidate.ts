@@ -11,6 +11,10 @@ import type {
   LabSelection,
   LabSelectionROI,
 } from "../models/lab-types.js";
+import {
+  buildAdaptiveDecisionSignal,
+  buildGuidedAlternativeSignal,
+} from "./lab-adaptive-decision.js";
 
 export type LabExecutionCandidateResultInterpretation = {
   coverageLevel: "low" | "medium" | "high";
@@ -291,6 +295,16 @@ function buildSummary(status: LabExecutionCandidate["status"]) {
   return "This path is not structurally suitable for execution.";
 }
 
+function appendAdaptiveDecisionHint(summary: string, adaptiveDecisionHint: string) {
+  if (adaptiveDecisionHint === "" || summary.includes(adaptiveDecisionHint)) {
+    return summary;
+  }
+  if (summary === "") {
+    return adaptiveDecisionHint;
+  }
+  return `${summary} ${adaptiveDecisionHint}`;
+}
+
 function buildConfidence(
   input: LabExecutionCandidateInput,
   status: LabExecutionCandidate["status"],
@@ -338,6 +352,12 @@ function buildConfidence(
     } else if (goalEvaluation.outcome === "failed") {
       confidence -= 0.12;
     }
+
+    if (goalEvaluation.patternSignal?.strength === "strong") {
+      confidence += 0.02;
+    } else if (goalEvaluation.patternSignal?.strength === "weak") {
+      confidence -= 0.03;
+    }
   }
 
   return clampConfidence(confidence);
@@ -348,12 +368,32 @@ function buildExecutionCandidate(input: LabExecutionCandidateInput): LabExecutio
   const structuralIntegrity = evaluateStructuralIntegrity(input, materialAlternativePressure);
   const status = evaluateStatus(input, structuralIntegrity, materialAlternativePressure);
   const uncertainties = buildUncertainties(input, materialAlternativePressure);
+  const adaptiveDecision = buildAdaptiveDecisionSignal({
+    executionGoalEvaluation: input.executionGoalEvaluation ?? null,
+    executionResultInterpretation: input.executionResultInterpretation ?? null,
+  });
+  const guidedAlternative = buildGuidedAlternativeSignal({
+    alternatives: input.executionAlternatives.alternatives,
+    alternativesConfidence: input.executionAlternatives.confidence ?? null,
+    decisionPressure: adaptiveDecision.decisionPressure,
+    executionGoalEvaluation: input.executionGoalEvaluation ?? null,
+    executionResultInterpretation: input.executionResultInterpretation ?? null,
+  });
+  const adaptiveDecisionHint = appendAdaptiveDecisionHint(
+    adaptiveDecision.adaptiveDecisionHint,
+    guidedAlternative.candidateGuidanceText
+  );
 
   return {
     id: createCandidateId(input),
     planId: input.executionPlan.id,
     status,
-    summary: buildSummary(status),
+    summary: appendAdaptiveDecisionHint(
+      buildSummary(status),
+      adaptiveDecisionHint
+    ),
+    adaptiveDecisionHint,
+    decisionPressure: adaptiveDecision.decisionPressure,
     structuralIntegrity,
     readinessStatus: input.executionReadiness.status,
     reflectionDecision: input.executionReflection.decision,

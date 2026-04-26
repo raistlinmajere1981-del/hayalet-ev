@@ -9,6 +9,11 @@ import type {
   LabInspectionMode,
   LabSelection,
 } from "../models/lab-types.js";
+import {
+  buildAdaptiveDecisionSignal,
+  buildGuidedAlternativeSignal,
+  type LabGuidedAlternativeSignal,
+} from "./lab-adaptive-decision.js";
 
 export type LabExecutionAlternativesResultInterpretation = {
   coverageLevel: "low" | "medium" | "high";
@@ -334,14 +339,28 @@ function buildAlternatives(input: LabExecutionAlternativesInput) {
   }
 }
 
-function buildSummary(input: LabExecutionAlternativesInput) {
+function buildBaseSummary(input: LabExecutionAlternativesInput) {
   const goalEvaluation = input.executionGoalEvaluation;
+  const patternStrength = goalEvaluation?.patternSignal?.strength;
   const interpretation = input.executionResultInterpretation;
+  const adaptiveDecision = buildAdaptiveDecisionSignal({
+    executionGoalEvaluation: goalEvaluation ?? null,
+    executionResultInterpretation: interpretation ?? null,
+  });
+  if (adaptiveDecision.decisionPressure === "high") {
+    return "Adaptive decision pressure is high; alternatives should be evaluated before continuing this route.";
+  }
   if (goalEvaluation !== undefined && goalEvaluation !== null) {
+    if (patternStrength === "weak") {
+      return "Historical execution feedback shows similar paths have been weak; alternative paths should be treated as stronger next routes.";
+    }
     if (goalEvaluation.outcome === "failed") {
       return "Goal evaluation indicates the current result missed its intended outcome; alternative paths should be treated as stronger next routes.";
     }
     if (goalEvaluation.outcome === "successful") {
+      if (patternStrength === "strong" && interpretation?.alignment !== "deviates") {
+        return "Historical execution feedback reinforces this successful path; alternatives remain light comparative backups.";
+      }
       if (interpretation?.alignment === "deviates") {
         return "Goal evaluation indicates the intended outcome was achieved, but execution still diverges from simulation; alternatives remain comparative safeguards.";
       }
@@ -369,14 +388,42 @@ function buildSummary(input: LabExecutionAlternativesInput) {
   return "The selected path is not recommended in its current form; alternatives outline safer counterfactual routes.";
 }
 
-function buildComparisonNote(input: LabExecutionAlternativesInput) {
+function buildSummary(
+  input: LabExecutionAlternativesInput,
+  guidedAlternative: LabGuidedAlternativeSignal
+) {
+  const baseSummary = buildBaseSummary(input);
+  if (guidedAlternative.guidanceText === "") {
+    return baseSummary;
+  }
+  if (baseSummary.includes(guidedAlternative.guidanceText)) {
+    return baseSummary;
+  }
+  return `${baseSummary} ${guidedAlternative.guidanceText}`;
+}
+
+function buildBaseComparisonNote(input: LabExecutionAlternativesInput) {
   const goalEvaluation = input.executionGoalEvaluation;
+  const patternStrength = goalEvaluation?.patternSignal?.strength;
   const interpretation = input.executionResultInterpretation;
+  const adaptiveDecision = buildAdaptiveDecisionSignal({
+    executionGoalEvaluation: goalEvaluation ?? null,
+    executionResultInterpretation: interpretation ?? null,
+  });
+  if (adaptiveDecision.decisionPressure === "high") {
+    return "Compared to this route, the alternatives provide safer evidence checks before carrying it further.";
+  }
   if (goalEvaluation !== undefined && goalEvaluation !== null) {
+    if (patternStrength === "weak") {
+      return "Compared to historically weak similar results, these alternatives may recover coverage or reduce repeat failure.";
+    }
     if (goalEvaluation.outcome === "failed") {
       return "Compared to the current result, these alternatives are better positioned to recover coverage or reduce divergence.";
     }
     if (goalEvaluation.outcome === "successful") {
+      if (patternStrength === "strong" && interpretation?.alignment !== "deviates") {
+        return "Compared to the current result, these alternatives are backup routes against an already stable pattern.";
+      }
       if (interpretation?.alignment === "deviates") {
         return "Compared to the current result, these alternatives can validate the achieved outcome against the remaining divergence.";
       }
@@ -402,6 +449,20 @@ function buildComparisonNote(input: LabExecutionAlternativesInput) {
     return "Compared to the selected path, these alternatives trade the current uncertainty for clearer scope or steadier context.";
   }
   return "Compared to the selected path, these alternatives lower risk by changing scope, method, or intensity before any future handoff.";
+}
+
+function buildComparisonNote(
+  input: LabExecutionAlternativesInput,
+  guidedAlternative: LabGuidedAlternativeSignal
+) {
+  const baseComparisonNote = buildBaseComparisonNote(input);
+  if (
+    guidedAlternative.preferredAlternativeLabel === null ||
+    baseComparisonNote.includes(guidedAlternative.preferredAlternativeLabel)
+  ) {
+    return baseComparisonNote;
+  }
+  return `${baseComparisonNote} ${guidedAlternative.preferredAlternativeLabel} is the clearest comparison point.`;
 }
 
 function buildConfidence(input: LabExecutionAlternativesInput, alternativeCount: number) {
@@ -443,13 +504,25 @@ export function buildExecutionAlternatives(
   input: LabExecutionAlternativesInput
 ): LabExecutionAlternatives {
   const alternatives = buildAlternatives(input);
+  const confidence = buildConfidence(input, alternatives.length);
+  const adaptiveDecision = buildAdaptiveDecisionSignal({
+    executionGoalEvaluation: input.executionGoalEvaluation ?? null,
+    executionResultInterpretation: input.executionResultInterpretation ?? null,
+  });
+  const guidedAlternative = buildGuidedAlternativeSignal({
+    alternatives,
+    alternativesConfidence: confidence,
+    decisionPressure: adaptiveDecision.decisionPressure,
+    executionGoalEvaluation: input.executionGoalEvaluation ?? null,
+    executionResultInterpretation: input.executionResultInterpretation ?? null,
+  });
   return {
     id: createAlternativesId(input),
     planId: input.executionPlan.id,
-    summary: buildSummary(input),
+    summary: buildSummary(input, guidedAlternative),
     alternatives,
-    comparisonNote: buildComparisonNote(input),
-    confidence: buildConfidence(input, alternatives.length),
+    comparisonNote: buildComparisonNote(input, guidedAlternative),
+    confidence,
   };
 }
 

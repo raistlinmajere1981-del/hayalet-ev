@@ -24,6 +24,10 @@ import { createLabHostBridge } from "../../rooms/laboratory/runtime/lab-host-bri
 import { createAudioVisualizer } from "../../rooms/laboratory/runtime/lab-audio-visualizer.ts";
 import { buildInterpretationItems } from "../../rooms/laboratory/runtime/lab-interpretation-engine.ts";
 import {
+  buildAdaptiveDecisionSignal,
+  buildGuidedAlternativeSignal,
+} from "../../rooms/laboratory/runtime/lab-adaptive-decision.ts";
+import {
   buildExecutionAlternatives,
   buildExecutionAlternativesFromResolved,
 } from "../../rooms/laboratory/runtime/lab-execution-alternatives.ts";
@@ -41,6 +45,8 @@ import {
 import { buildExecutionSimulation } from "../../rooms/laboratory/runtime/lab-execution-simulator.ts";
 import { buildExecutionStagingFromResolved } from "../../rooms/laboratory/runtime/lab-execution-staging.ts";
 import {
+  __testOnlyBuildExecutionPatternKey,
+  __testOnlyResetExecutionPatternRegistry,
   getActualOutputs,
   getActionOutputs,
   getActiveExecutionAlternatives,
@@ -117,13 +123,17 @@ import { renderWorkspaceSurface } from "../../rooms/laboratory/ui/workspace-surf
 import { renderWorkspaceAudioFocus } from "../../rooms/laboratory/ui/workspace-audio-focus.ts";
 
 export {
+  __testOnlyBuildExecutionPatternKey,
   __testOnlyLabPreviewInspectionController,
+  __testOnlyResetExecutionPatternRegistry,
   assert,
   bindLabAssetPreviewClicks,
   bindLabPreviewInspectionInteractions,
   bindLabSelectionIntentClicks,
   bindLabSelectionRoiInteractions,
   bindLabSelectionSuggestionClicks,
+  buildAdaptiveDecisionSignal,
+  buildGuidedAlternativeSignal,
   buildExecutionAlternatives,
   buildExecutionAlternativesFromResolved,
   buildExecutionCandidateFromResolved,

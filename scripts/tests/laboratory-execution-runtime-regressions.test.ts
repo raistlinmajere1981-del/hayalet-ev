@@ -1,8 +1,12 @@
 import {
+  __testOnlyBuildExecutionPatternKey,
+  __testOnlyResetExecutionPatternRegistry,
   assert,
+  buildAdaptiveDecisionSignal,
   buildExecutionAlternatives,
   buildExecutionAlternativesFromResolved,
   buildExecutionCandidateFromResolved,
+  buildGuidedAlternativeSignal,
   buildExecutionPayloadPreview,
   buildExecutionPayloadPreviewFromResolved,
   buildExecutionPlan,
@@ -2427,7 +2431,13 @@ test("execution candidate helper returns null for missing upstream objects", () 
   assert.equal(buildExecutionCandidateFromResolved({ ...baseInput, activeSelection: null }), null);
 });
 
-function createCommittedAudioExecutionStore() {
+function createCommittedAudioExecutionStore(
+  params: {
+    endMs?: number;
+    roi?: LabSelection["roi"];
+    startMs?: number;
+  } = {}
+) {
   const store = createLabStore();
   store.dispatch({
     type: "source-config-patched",
@@ -2439,9 +2449,15 @@ function createCommittedAudioExecutionStore() {
   });
   store.dispatch({
     type: "workspace-timeline-updated",
-    startMs: 1000,
-    endMs: 3000,
+    startMs: params.startMs ?? 1000,
+    endMs: params.endMs ?? 3000,
   });
+  if (params.roi !== undefined) {
+    store.dispatch({
+      type: "selection-roi-updated",
+      roi: params.roi,
+    });
+  }
   store.dispatch({
     type: "workspace-selection-intent-updated",
     intent: "audio",
@@ -2938,6 +2954,51 @@ function completeMockExecutionRuntime(store: ReturnType<typeof createLabStore>) 
     result: createMockExecutionResult(dispatchCandidate),
   });
   return dispatchCandidate;
+}
+
+function completeExecutionRuntimeWithResult(
+  store: ReturnType<typeof createLabStore>,
+  result: LabExecutionResult
+) {
+  const dispatchCandidate = getExecutionDispatchCandidate(store.getState());
+  if (dispatchCandidate === null) {
+    throw new Error("Expected a dispatch candidate");
+  }
+  store.dispatch({
+    type: "workspace-execution-dispatch",
+    planId: dispatchCandidate.planId,
+    dispatchId: dispatchCandidate.dispatchId,
+  });
+  store.dispatch({
+    type: "workspace-execution-completed",
+    planId: dispatchCandidate.planId,
+    dispatchId: dispatchCandidate.dispatchId,
+    result,
+  });
+  return dispatchCandidate;
+}
+
+function createAudioExecutionResult(params: {
+  artifactCount?: number;
+  confidence: number;
+  coverage: number;
+  summary?: string;
+}): LabExecutionResult {
+  const markerLabels = ["Frequency cluster marker", "Transient frequency marker"];
+  return {
+    summary: params.summary ?? "Inspected selected audio",
+    insights: ["Frequency cluster detected"],
+    artifacts: markerLabels.slice(0, params.artifactCount ?? 1).map(function (label) {
+      return {
+        type: "marker" as const,
+        label,
+      };
+    }),
+    metrics: {
+      confidence: params.confidence,
+      coverage: params.coverage,
+    },
+  };
 }
 
 function assertArtifactsInsideSelection(
@@ -3495,6 +3556,514 @@ test("completed execution result feeds passive reflection candidate and alternat
   assert.equal(getActiveExecutionResult(store.getState())?.summary, "Inspected selected audio");
 });
 
+test("session pattern awareness records completed samples idempotently", () => {
+  __testOnlyResetExecutionPatternRegistry();
+
+  const first = createCommittedAudioExecutionStore();
+  completeExecutionRuntimeWithResult(
+    first.store,
+    createAudioExecutionResult({
+      confidence: 0.52,
+      coverage: 0.42,
+    })
+  );
+  const firstEvaluation = getActiveExecutionGoalEvaluation(first.store.getState());
+  assert.ok(firstEvaluation);
+  assert.equal(firstEvaluation.patternSignal, undefined);
+
+  getActiveExecutionGoalEvaluation(first.store.getState());
+  getActiveExecutionCandidate(first.store.getState());
+  getActiveExecutionAlternatives(first.store.getState());
+
+  const dispatchCandidate = getExecutionDispatchCandidate(first.store.getState());
+  assert.ok(dispatchCandidate);
+  first.store.dispatch({
+    type: "workspace-execution-dispatch",
+    planId: dispatchCandidate.planId,
+    dispatchId: dispatchCandidate.dispatchId,
+  });
+  first.store.dispatch({
+    type: "workspace-execution-completed",
+    planId: dispatchCandidate.planId,
+    dispatchId: dispatchCandidate.dispatchId,
+    result: createAudioExecutionResult({
+      artifactCount: 2,
+      confidence: 0.8,
+      coverage: 0.86,
+      summary: "Inspected selected audio again",
+    }),
+  });
+
+  const rerunEvaluation = getActiveExecutionGoalEvaluation(first.store.getState());
+  assert.ok(rerunEvaluation);
+  assert.equal(rerunEvaluation.patternSignal?.executionCount, 1);
+  assert.equal(rerunEvaluation.patternSignal?.strength, "weak");
+  assert.match(rerunEvaluation.summary, /Historically similar evaluations show low coverage/);
+  assert.equal(
+    getActiveExecutionGoalEvaluation(first.store.getState())?.patternSignal?.executionCount,
+    1
+  );
+
+  const next = createCommittedAudioExecutionStore();
+  completeExecutionRuntimeWithResult(
+    next.store,
+    createAudioExecutionResult({
+      artifactCount: 2,
+      confidence: 0.82,
+      coverage: 0.88,
+      summary: "Inspected selected audio third pass",
+    })
+  );
+  const nextEvaluation = getActiveExecutionGoalEvaluation(next.store.getState());
+  assert.ok(nextEvaluation);
+  assert.equal(nextEvaluation.patternSignal?.executionCount, 2);
+  assert.equal(nextEvaluation.patternSignal?.successRatio, 0.5);
+  assert.equal(nextEvaluation.patternSignal?.failureRatio, 0.5);
+  assert.equal(nextEvaluation.patternSignal?.strength, "neutral");
+  assert.doesNotMatch(nextEvaluation.summary, /Historically similar evaluations/);
+
+  __testOnlyResetExecutionPatternRegistry();
+});
+
+test("session pattern awareness separates duration buckets roi presence and neutral ratios", () => {
+  const weakResult = createAudioExecutionResult({
+    confidence: 0.5,
+    coverage: 0.4,
+  });
+  const strongResult = createAudioExecutionResult({
+    artifactCount: 2,
+    confidence: 0.82,
+    coverage: 0.88,
+  });
+
+  const patternKeyForDuration = function (durationMs: number, hasRoi = false) {
+    return __testOnlyBuildExecutionPatternKey({
+      actionType: "inspect-audio",
+      selectionSnapshot: {
+        endMs: 1000 + durationMs,
+        inspectionMode: "audio",
+        intent: "audio",
+        sourceKind: "audio",
+        startMs: 1000,
+        type: "clip",
+        ...(hasRoi
+          ? {
+              roi: {
+                x: 0.2,
+                y: 0.2,
+                width: 0.24,
+                height: 0.24,
+              },
+            }
+          : {}),
+      },
+    });
+  };
+
+  assert.notEqual(patternKeyForDuration(999), patternKeyForDuration(1000));
+  assert.notEqual(patternKeyForDuration(4999), patternKeyForDuration(5000));
+  assert.notEqual(patternKeyForDuration(14999), patternKeyForDuration(15000));
+  assert.notEqual(patternKeyForDuration(2000), patternKeyForDuration(2000, true));
+
+  __testOnlyResetExecutionPatternRegistry();
+  const noRoiSeed = createCommittedAudioExecutionStore();
+  completeExecutionRuntimeWithResult(noRoiSeed.store, weakResult);
+  getActiveExecutionGoalEvaluation(noRoiSeed.store.getState());
+
+  const roiCurrent = createCommittedAudioExecutionStore({
+    roi: {
+      x: 0.2,
+      y: 0.2,
+      width: 0.24,
+      height: 0.24,
+    },
+  });
+  completeExecutionRuntimeWithResult(roiCurrent.store, strongResult);
+  assert.equal(getActiveExecutionGoalEvaluation(roiCurrent.store.getState())?.patternSignal, undefined);
+
+  __testOnlyResetExecutionPatternRegistry();
+  const neutralSeed = createCommittedAudioExecutionStore();
+  completeExecutionRuntimeWithResult(
+    neutralSeed.store,
+    createAudioExecutionResult({
+      confidence: 0.82,
+      coverage: 0.9,
+    })
+  );
+  getActiveExecutionGoalEvaluation(neutralSeed.store.getState());
+
+  const neutralCurrent = createCommittedAudioExecutionStore();
+  completeExecutionRuntimeWithResult(neutralCurrent.store, strongResult);
+  const neutralPatternEvaluation = getActiveExecutionGoalEvaluation(neutralCurrent.store.getState());
+  assert.ok(neutralPatternEvaluation);
+  assert.equal(neutralPatternEvaluation.patternSignal?.executionCount, 1);
+  assert.equal(neutralPatternEvaluation.patternSignal?.successRatio, 0);
+  assert.equal(neutralPatternEvaluation.patternSignal?.failureRatio, 0);
+  assert.equal(neutralPatternEvaluation.patternSignal?.strength, "neutral");
+  assert.doesNotMatch(neutralPatternEvaluation.summary, /Historically similar evaluations/);
+
+  __testOnlyResetExecutionPatternRegistry();
+});
+
+test("session pattern signal softly biases candidate confidence and alternatives tone", () => {
+  const selection: LabSelection = {
+    id: "selection-pattern-signal-feedback",
+    startMs: 1000,
+    endMs: 3000,
+    type: "clip",
+    intent: "audio",
+    createdAt: 1,
+  };
+  const chain = createExecutionAlternativesChain({
+    actionType: "inspect-audio",
+    inspectionMode: "audio",
+    selection,
+    sourceKind: "audio",
+    suggestionId: "audio-inspect",
+  });
+  const interpretation = {
+    alignment: "matches-simulation" as const,
+    anomalyLevel: "moderate" as const,
+    coverageLevel: "high" as const,
+  };
+  const baseGoalEvaluation = {
+    outcome: "successful" as const,
+    goalAlignment: 0.88,
+    summary: "Audio goal achieved through repeated frequency evidence",
+  };
+  const strongGoalEvaluation = {
+    ...baseGoalEvaluation,
+    patternSignal: {
+      averageCoverage: 0.86,
+      executionCount: 2,
+      failureRatio: 0,
+      strength: "strong" as const,
+      successRatio: 1,
+      note: "Historically similar evaluations usually complete successfully",
+    },
+  };
+  const weakGoalEvaluation = {
+    ...baseGoalEvaluation,
+    patternSignal: {
+      averageCoverage: 0.42,
+      executionCount: 2,
+      failureRatio: 1,
+      strength: "weak" as const,
+      successRatio: 0,
+      note: "Historically similar evaluations show low coverage",
+    },
+  };
+  const baseInput = {
+    executionPlan: chain.plan,
+    executionSimulation: chain.simulation,
+    executionReadiness: chain.readiness,
+    executionPayloadPreview: chain.payload,
+    executionReflection: {
+      ...chain.reflection,
+      confidence: 0.72,
+    },
+    executionAlternatives: chain.alternatives,
+    activeSelection: chain.selection,
+    inspectionMode: "audio" as const,
+    sourceKind: "audio",
+  };
+  const baseCandidate = buildExecutionCandidateFromResolved({
+    ...baseInput,
+    executionGoalEvaluation: baseGoalEvaluation,
+    executionResultInterpretation: interpretation,
+  });
+  const strongCandidate = buildExecutionCandidateFromResolved({
+    ...baseInput,
+    executionGoalEvaluation: strongGoalEvaluation,
+    executionResultInterpretation: interpretation,
+  });
+  const weakCandidate = buildExecutionCandidateFromResolved({
+    ...baseInput,
+    executionGoalEvaluation: weakGoalEvaluation,
+    executionResultInterpretation: interpretation,
+  });
+  const strongAlternatives = buildExecutionAlternatives({
+    executionPlan: chain.plan,
+    executionSimulation: chain.simulation,
+    executionReadiness: chain.readiness,
+    executionReflection: chain.reflection,
+    executionGoalEvaluation: strongGoalEvaluation,
+    executionResultInterpretation: interpretation,
+    activeSelection: chain.selection,
+    inspectionMode: "audio",
+    sourceKind: "audio",
+  });
+  const weakAlternatives = buildExecutionAlternatives({
+    executionPlan: chain.plan,
+    executionSimulation: chain.simulation,
+    executionReadiness: chain.readiness,
+    executionReflection: chain.reflection,
+    executionGoalEvaluation: weakGoalEvaluation,
+    executionResultInterpretation: interpretation,
+    activeSelection: chain.selection,
+    inspectionMode: "audio",
+    sourceKind: "audio",
+  });
+
+  assert.ok(baseCandidate);
+  assert.ok(strongCandidate);
+  assert.ok(weakCandidate);
+  assert.equal(baseCandidate.decisionPressure, "low");
+  assert.equal(baseCandidate.adaptiveDecisionHint, "");
+  assert.equal(strongCandidate.decisionPressure, "low");
+  assert.equal(strongCandidate.adaptiveDecisionHint, "");
+  assert.equal(weakCandidate.decisionPressure, "medium");
+  assert.equal(
+    weakCandidate.adaptiveDecisionHint,
+    "Alternative strategies may yield more stable results. Consider comparing Slower temporal inspection for steadier context."
+  );
+  assert.match(weakCandidate.summary, /Alternative strategies may yield more stable results/);
+  assert.match(weakCandidate.summary, /Slower temporal inspection/);
+  assert.equal(strongCandidate.status, baseCandidate.status);
+  assert.equal(weakCandidate.status, baseCandidate.status);
+  assert.equal((strongCandidate.confidence ?? 0) > (baseCandidate.confidence ?? 0), true);
+  assert.equal((weakCandidate.confidence ?? 0) < (baseCandidate.confidence ?? 0), true);
+  assert.deepEqual(strongAlternatives.alternatives, chain.alternatives.alternatives);
+  assert.deepEqual(weakAlternatives.alternatives, chain.alternatives.alternatives);
+  assert.match(strongAlternatives.summary, /historical execution feedback reinforces/i);
+  assert.match(strongAlternatives.comparisonNote ?? "", /already stable pattern/i);
+  assert.match(weakAlternatives.summary, /historical execution feedback shows similar paths/i);
+  assert.match(weakAlternatives.summary, /A softer alternative to compare next is: Slower temporal inspection/i);
+  assert.match(weakAlternatives.comparisonNote ?? "", /historically weak similar results/i);
+  assert.match(weakAlternatives.comparisonNote ?? "", /Slower temporal inspection/i);
+});
+
+test("adaptive decision signal maps goal pattern and alignment deterministically", () => {
+  const weakFailed = buildAdaptiveDecisionSignal({
+    executionGoalEvaluation: {
+      outcome: "failed",
+      goalAlignment: 0.2,
+      summary: "Goal failed",
+      patternSignal: {
+        averageCoverage: 0.42,
+        executionCount: 2,
+        failureRatio: 1,
+        strength: "weak",
+        successRatio: 0,
+      },
+    },
+    executionResultInterpretation: {
+      alignment: "matches-simulation",
+    },
+  });
+  assert.deepEqual(weakFailed, {
+    adaptiveDecisionHint: "This path has historically underperformed under similar conditions.",
+    decisionPressure: "high",
+  });
+
+  const failedAndDeviates = buildAdaptiveDecisionSignal({
+    executionGoalEvaluation: {
+      outcome: "failed",
+      goalAlignment: 0.25,
+      summary: "Goal failed",
+    },
+    executionResultInterpretation: {
+      alignment: "deviates",
+    },
+  });
+  assert.deepEqual(failedAndDeviates, {
+    adaptiveDecisionHint: "Current execution feedback indicates this path needs careful review.",
+    decisionPressure: "high",
+  });
+
+  const weakPartial = buildAdaptiveDecisionSignal({
+    executionGoalEvaluation: {
+      outcome: "neutral",
+      goalAlignment: 0.5,
+      summary: "Goal inconclusive",
+      patternSignal: {
+        averageCoverage: 0.48,
+        executionCount: 2,
+        failureRatio: 0.5,
+        strength: "weak",
+        successRatio: 0.5,
+      },
+    },
+    executionResultInterpretation: {
+      alignment: "partial",
+    },
+  });
+  assert.deepEqual(weakPartial, {
+    adaptiveDecisionHint: "Alternative strategies may yield more stable results.",
+    decisionPressure: "medium",
+  });
+
+  const strongSuccess = buildAdaptiveDecisionSignal({
+    executionGoalEvaluation: {
+      outcome: "successful",
+      goalAlignment: 0.9,
+      summary: "Goal achieved",
+      patternSignal: {
+        averageCoverage: 0.88,
+        executionCount: 3,
+        failureRatio: 0,
+        strength: "strong",
+        successRatio: 1,
+      },
+    },
+    executionResultInterpretation: {
+      alignment: "matches-simulation",
+    },
+  });
+  assert.deepEqual(strongSuccess, {
+    adaptiveDecisionHint: "",
+    decisionPressure: "low",
+  });
+
+  assert.deepEqual(
+    buildAdaptiveDecisionSignal({
+      executionGoalEvaluation: {
+        outcome: "successful",
+        goalAlignment: 0.85,
+        summary: "Goal achieved with weak history",
+        patternSignal: {
+          averageCoverage: 0.44,
+          executionCount: 2,
+          failureRatio: 0.5,
+          strength: "weak",
+          successRatio: 0.5,
+        },
+      },
+      executionResultInterpretation: {
+        alignment: "matches-simulation",
+      },
+    }),
+    {
+      adaptiveDecisionHint: "Alternative strategies may yield more stable results.",
+      decisionPressure: "medium",
+    }
+  );
+  assert.deepEqual(buildAdaptiveDecisionSignal({}), {
+    adaptiveDecisionHint: "",
+    decisionPressure: "low",
+  });
+});
+
+test("guided alternative signal ranks advisory alternatives deterministically", () => {
+  const alternatives = [
+    {
+      actionType: "analyze-segment",
+      label: "Broader segment review",
+      relativeAdvantage: "higher-coverage" as const,
+      summary: "Review broader context.",
+      tradeoff: "Trades precision for coverage.",
+    },
+    {
+      actionType: "stabilize-segment",
+      label: "Stability-first comparison",
+      relativeAdvantage: "more-stable" as const,
+      summary: "Compare steadier evidence first.",
+      tradeoff: "Trades immediacy for stability.",
+    },
+    {
+      actionType: "focus-region",
+      label: "Region-focused inspection",
+      relativeAdvantage: "higher-precision" as const,
+      summary: "Review the selected region.",
+      tradeoff: "Trades coverage for precision.",
+    },
+  ];
+  const highGuidance = buildGuidedAlternativeSignal({
+    alternatives,
+    alternativesConfidence: 0.72,
+    decisionPressure: "high",
+    executionGoalEvaluation: {
+      outcome: "failed",
+      goalAlignment: 0.2,
+      summary: "Goal failed",
+      patternSignal: {
+        averageCoverage: 0.42,
+        executionCount: 2,
+        failureRatio: 1,
+        strength: "weak",
+        successRatio: 0,
+      },
+    },
+    executionResultInterpretation: {
+      alignment: "deviates",
+    },
+  });
+  assert.deepEqual(highGuidance, {
+    candidateGuidanceText: "Consider comparing Stability-first comparison for steadier context.",
+    guidanceText:
+      "A more stable alternative under current conditions is: Stability-first comparison.",
+    preferredAlternativeIndex: 1,
+    preferredAlternativeLabel: "Stability-first comparison",
+  });
+
+  const mediumGuidance = buildGuidedAlternativeSignal({
+    alternatives,
+    alternativesConfidence: 0.72,
+    decisionPressure: "medium",
+    executionGoalEvaluation: {
+      outcome: "neutral",
+      goalAlignment: 0.5,
+      summary: "Goal inconclusive",
+    },
+    executionResultInterpretation: {
+      alignment: "partial",
+    },
+  });
+  assert.equal(mediumGuidance.preferredAlternativeLabel, "Stability-first comparison");
+  assert.match(mediumGuidance.guidanceText, /A softer alternative to compare next is/);
+
+  assert.deepEqual(
+    buildGuidedAlternativeSignal({
+      alternatives,
+      decisionPressure: "low",
+    }),
+    {
+      candidateGuidanceText: "",
+      guidanceText: "",
+      preferredAlternativeIndex: null,
+      preferredAlternativeLabel: null,
+    }
+  );
+  assert.deepEqual(
+    buildGuidedAlternativeSignal({
+      alternatives: [],
+      decisionPressure: "high",
+    }),
+    {
+      candidateGuidanceText: "",
+      guidanceText: "",
+      preferredAlternativeIndex: null,
+      preferredAlternativeLabel: null,
+    }
+  );
+  assert.equal(
+    buildGuidedAlternativeSignal({
+      alternatives: [
+        {
+          actionType: "a",
+          label: "First equal path",
+          relativeAdvantage: "higher-coverage",
+          summary: "First.",
+          tradeoff: "Equal.",
+        },
+        {
+          actionType: "b",
+          label: "Second equal path",
+          relativeAdvantage: "higher-coverage",
+          summary: "Second.",
+          tradeoff: "Equal.",
+        },
+      ],
+      decisionPressure: "high",
+    }).preferredAlternativeIndex,
+    0
+  );
+  assert.doesNotMatch(
+    `${highGuidance.guidanceText} ${highGuidance.candidateGuidanceText}`,
+    /\b(auto|commit|dispatch|execute|run|apply|switch|select|activate|choose)\b/i
+  );
+});
+
 test("goal-aware feedback stays additive when goal success coexists with divergent interpretation", () => {
   const selection: LabSelection = {
     id: "selection-goal-mixed-signal",
@@ -3555,6 +4124,11 @@ test("goal-aware feedback stays additive when goal success coexists with diverge
 
   assert.ok(interpretationOnlyCandidate);
   assert.ok(mixedSignalCandidate);
+  assert.equal(mixedSignalCandidate.decisionPressure, "medium");
+  assert.equal(
+    mixedSignalCandidate.adaptiveDecisionHint,
+    "Alternative strategies may yield more stable results. Consider comparing Narrowed inspection window for steadier context."
+  );
   assert.equal(mixedSignalCandidate.status, interpretationOnlyCandidate.status);
   assert.equal(
     (mixedSignalCandidate.confidence ?? 0) > (interpretationOnlyCandidate.confidence ?? 0),
@@ -3563,6 +4137,7 @@ test("goal-aware feedback stays additive when goal success coexists with diverge
   assert.deepEqual(mixedSignalAlternatives.alternatives, chain.alternatives.alternatives);
   assert.match(mixedSignalAlternatives.summary, /intended outcome was achieved/i);
   assert.match(mixedSignalAlternatives.summary, /diverges from simulation/i);
+  assert.match(mixedSignalAlternatives.summary, /Narrowed inspection window/i);
   assert.match(mixedSignalAlternatives.comparisonNote ?? "", /remaining divergence/i);
 });
 
@@ -3632,16 +4207,34 @@ test("goal-aware feedback tightens failed outcomes without changing structure or
 
   assert.ok(interpretationOnlyCandidate);
   assert.ok(failedGoalCandidate);
+  assert.equal(failedGoalCandidate.decisionPressure, "high");
+  assert.equal(
+    failedGoalCandidate.adaptiveDecisionHint,
+    "Current execution feedback indicates this path needs careful review. Consider comparing Motion continuity inspection for steadier context."
+  );
   assert.equal(failedGoalCandidate.status, interpretationOnlyCandidate.status);
+  assert.equal(
+    failedGoalCandidate.structuralIntegrity,
+    interpretationOnlyCandidate.structuralIntegrity
+  );
+  assert.equal(failedGoalCandidate.id, interpretationOnlyCandidate.id);
+  assert.equal(failedGoalCandidate.planId, interpretationOnlyCandidate.planId);
+  assert.match(failedGoalCandidate.summary, /Current execution feedback indicates/);
+  assert.match(failedGoalCandidate.summary, /Motion continuity inspection/);
   assert.equal(
     (failedGoalCandidate.confidence ?? 0) < (interpretationOnlyCandidate.confidence ?? 0),
     true
   );
   assert.deepEqual(failedGoalAlternatives.alternatives, chain.alternatives.alternatives);
-  assert.match(failedGoalAlternatives.summary, /missed its intended outcome/i);
+  assert.match(failedGoalAlternatives.summary, /adaptive decision pressure is high/i);
+  assert.match(failedGoalAlternatives.summary, /Motion continuity inspection/i);
+  assert.doesNotMatch(
+    `${failedGoalAlternatives.summary} ${failedGoalAlternatives.comparisonNote ?? ""}`,
+    /\b(auto|commit|dispatch|execute|run|apply|switch|select|activate|choose)\b/i
+  );
   assert.match(
     failedGoalAlternatives.comparisonNote ?? "",
-    /recover coverage or reduce divergence/i
+    /Motion continuity inspection/i
   );
 });
 

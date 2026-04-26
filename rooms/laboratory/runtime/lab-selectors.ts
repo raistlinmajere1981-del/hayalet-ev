@@ -156,6 +156,17 @@ type ActiveExecutionRuntimeContext = {
   result: LabExecutionResult;
 };
 
+type ExecutionPatternStats = {
+  executionCount: number;
+  coverageTotal: number;
+  successCount: number;
+  failureCount: number;
+};
+
+const executionPatternRegistry = new Map<string, ExecutionPatternStats>();
+const recordedExecutionPatternSamples = new Set<string>();
+const activeExecutionGoalEvaluationCache = new Map<string, LabExecutionGoalEvaluation>();
+
 function getExpectedExecutionArtifactCount(actionType: string) {
   if (actionType === "analyze-segment") {
     return 2;
@@ -171,6 +182,44 @@ function getExecutionSelectionDurationMs(selection?: LabExecutionSelectionSnapsh
     return 0;
   }
   return Math.max(0, selection.endMs - selection.startMs);
+}
+
+function getExecutionDurationBucket(selection?: LabExecutionSelectionSnapshot) {
+  const durationMs = getExecutionSelectionDurationMs(selection);
+  if (durationMs < 1000) {
+    return "short";
+  }
+  if (durationMs < 5000) {
+    return "medium";
+  }
+  if (durationMs < 15000) {
+    return "long";
+  }
+  return "extended";
+}
+
+function buildExecutionPatternKey(input: {
+  actionType: string;
+  selectionSnapshot?: LabExecutionSelectionSnapshot;
+}) {
+  return [
+    input.actionType,
+    getExecutionDurationBucket(input.selectionSnapshot),
+    input.selectionSnapshot?.roi === undefined ? "no-roi" : "roi",
+  ].join(":");
+}
+
+function buildExecutionResultSignature(result: LabExecutionResult) {
+  return stableStringify({
+    artifacts: result.artifacts,
+    insights: result.insights,
+    metrics: result.metrics,
+    summary: result.summary,
+  });
+}
+
+function buildExecutionPatternSampleId(context: ActiveExecutionRuntimeContext) {
+  return `${context.dispatchCandidate.dispatchId}:${buildExecutionResultSignature(context.result)}`;
 }
 
 function getExecutionCoverageScore(result: LabExecutionResultInterpretationInput) {
@@ -327,6 +376,110 @@ export function getExecutionGoalEvaluation(
         "Goal evaluation remains neutral for this action"
       );
   }
+}
+
+function roundExecutionPatternMetric(value: number) {
+  return Number(value.toFixed(2));
+}
+
+function getExecutionPatternSignal(
+  patternKey: string
+): LabExecutionGoalEvaluation["patternSignal"] {
+  const stats = executionPatternRegistry.get(patternKey);
+  if (stats === undefined || stats.executionCount === 0) {
+    return undefined;
+  }
+
+  const averageCoverage = roundExecutionPatternMetric(stats.coverageTotal / stats.executionCount);
+  const decisiveCount = stats.successCount + stats.failureCount;
+  const successRatio =
+    decisiveCount > 0 ? roundExecutionPatternMetric(stats.successCount / decisiveCount) : 0;
+  const failureRatio =
+    decisiveCount > 0 ? roundExecutionPatternMetric(stats.failureCount / decisiveCount) : 0;
+  const weak = averageCoverage < 0.55 || failureRatio >= 0.6;
+  const strong = averageCoverage >= 0.8 && successRatio >= 0.6;
+  const strength = weak ? "weak" : strong ? "strong" : "neutral";
+
+  return {
+    averageCoverage,
+    executionCount: stats.executionCount,
+    failureRatio,
+    strength,
+    successRatio,
+    ...(strength === "weak"
+      ? { note: "Historically similar evaluations show low coverage" }
+      : strength === "strong"
+        ? { note: "Historically similar evaluations usually complete successfully" }
+        : {}),
+  };
+}
+
+function recordExecutionPatternSample(
+  context: ActiveExecutionRuntimeContext,
+  goalEvaluation: LabExecutionGoalEvaluation
+) {
+  const sampleId = buildExecutionPatternSampleId(context);
+  if (recordedExecutionPatternSamples.has(sampleId)) {
+    return;
+  }
+
+  const patternKey = buildExecutionPatternKey({
+    actionType: context.dispatchCandidate.actionType,
+    selectionSnapshot: context.dispatchCandidate.selectionSnapshot,
+  });
+  const stats = executionPatternRegistry.get(patternKey) ?? {
+    coverageTotal: 0,
+    executionCount: 0,
+    failureCount: 0,
+    successCount: 0,
+  };
+  const coverage = getExecutionCoverageScore({
+    ...context.result,
+    actionType: context.dispatchCandidate.actionType,
+    selectionSnapshot: context.dispatchCandidate.selectionSnapshot,
+  });
+
+  stats.executionCount += 1;
+  stats.coverageTotal += coverage;
+  if (goalEvaluation.outcome === "successful") {
+    stats.successCount += 1;
+  } else if (goalEvaluation.outcome === "failed") {
+    stats.failureCount += 1;
+  }
+
+  executionPatternRegistry.set(patternKey, stats);
+  recordedExecutionPatternSamples.add(sampleId);
+}
+
+function appendExecutionPatternSignal(
+  goalEvaluation: LabExecutionGoalEvaluation,
+  patternSignal: LabExecutionGoalEvaluation["patternSignal"]
+): LabExecutionGoalEvaluation {
+  if (patternSignal === undefined) {
+    return goalEvaluation;
+  }
+
+  const note = patternSignal.note;
+  return {
+    ...goalEvaluation,
+    patternSignal,
+    ...(note !== undefined && !goalEvaluation.summary.includes(note)
+      ? { summary: `${goalEvaluation.summary} ${note}` }
+      : {}),
+  };
+}
+
+export function __testOnlyResetExecutionPatternRegistry() {
+  executionPatternRegistry.clear();
+  recordedExecutionPatternSamples.clear();
+  activeExecutionGoalEvaluationCache.clear();
+}
+
+export function __testOnlyBuildExecutionPatternKey(input: {
+  actionType: string;
+  selectionSnapshot?: LabExecutionSelectionSnapshot;
+}) {
+  return buildExecutionPatternKey(input);
 }
 
 function getReflectionFeedbackLine(interpretation: LabExecutionResultInterpretation) {
@@ -1266,13 +1419,31 @@ export function getActiveExecutionGoalEvaluation(
   if (context === null) {
     return null;
   }
-  return getExecutionGoalEvaluation(
+  const sampleId = buildExecutionPatternSampleId(context);
+  const cachedEvaluation = activeExecutionGoalEvaluationCache.get(sampleId);
+  if (cachedEvaluation !== undefined) {
+    return cachedEvaluation;
+  }
+
+  const goalEvaluation = getExecutionGoalEvaluation(
     {
       ...context.result,
       selectionSnapshot: context.dispatchCandidate.selectionSnapshot,
     },
     context.dispatchCandidate.actionType
   );
+  const patternKey = buildExecutionPatternKey({
+    actionType: context.dispatchCandidate.actionType,
+    selectionSnapshot: context.dispatchCandidate.selectionSnapshot,
+  });
+  const augmentedEvaluation = appendExecutionPatternSignal(
+    goalEvaluation,
+    getExecutionPatternSignal(patternKey)
+  );
+
+  activeExecutionGoalEvaluationCache.set(sampleId, augmentedEvaluation);
+  recordExecutionPatternSample(context, goalEvaluation);
+  return augmentedEvaluation;
 }
 
 export function getExecutionJourneyStep(state: LabStoreState): number {
