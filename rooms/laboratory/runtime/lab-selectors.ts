@@ -766,6 +766,23 @@ export function getActiveExecutionStaging(state: LabStoreState): LabExecutionSta
   });
 }
 
+export function getExecutionJourneyStep(state: LabStoreState): number {
+  if (getActiveExecutionStaging(state) !== null) return 4;
+  if (
+    getActiveExecutionCandidate(state) !== null ||
+    getActiveExecutionCommitment(state) !== null
+  ) return 3;
+  if (
+    getActiveExecutionSimulation(state) !== null ||
+    getActiveExecutionReadiness(state) !== null ||
+    getActiveExecutionReflection(state) !== null ||
+    getActiveExecutionAlternatives(state) !== null
+  ) return 2;
+  if (getActiveExecutionPlan(state) !== null) return 1;
+  if (getActiveSelection(state) !== null) return 0;
+  return -1;
+}
+
 function getModuleProgress(run: LabRun | null) {
   if (run === null || Array.isArray(run.moduleOrder) !== true || run.moduleOrder.length === 0) {
     return {

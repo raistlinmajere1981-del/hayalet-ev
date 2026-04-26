@@ -15,7 +15,9 @@
   --labx-warning: #ffb265;
   --labx-error: #ff7f88;
   --labx-success: #82e3b1;
-  --labx-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+  --labx-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  --labx-shadow-primary: 0 12px 32px rgba(0, 0, 0, 0.18);
+  --labx-shadow-secondary: 0 6px 16px rgba(0, 0, 0, 0.1);
   --labx-radius: 18px;
   --labx-radius-tight: 12px;
 }

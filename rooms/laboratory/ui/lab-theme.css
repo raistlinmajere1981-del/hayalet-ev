@@ -228,9 +228,7 @@
   box-shadow: var(--labx-shadow);
 }
 
-.labx-stage-header__eyebrow,
-.labx-card__eyebrow,
-.labx-boot__eyebrow {
+.labx-card__eyebrow {
   display: flex;
   gap: 0.65rem;
   align-items: center;
@@ -241,49 +239,13 @@
   letter-spacing: 0.16em;
 }
 
-.labx-stage-header__title,
-.labx-boot__title {
-  margin: 0;
-  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
-  font-size: clamp(2.1rem, 2.8vw, 3rem);
-  font-weight: 700;
-  letter-spacing: -0.04em;
-}
-
-.labx-stage-header__subtitle,
-.labx-boot__body {
-  max-width: 52rem;
-  margin: 0.55rem 0 0;
-  color: var(--labx-text-soft);
-  font-size: 0.94rem;
-  line-height: 1.6;
-}
-
-.labx-grid {
-  display: grid;
-  gap: 1rem;
-}
-
-.labx-grid--source,
-.labx-grid--edit,
-.labx-grid--profile,
-.labx-grid--process,
-.labx-grid--analysis-controls {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.labx-grid--process-v2 {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.labx-card,
-.labx-boot {
+.labx-card {
   padding: 1.05rem 1.1rem;
   border: 1px solid var(--labx-border);
   border-radius: 1.25rem;
   background:
     linear-gradient(180deg, rgba(15, 28, 45, 0.96), rgba(11, 21, 34, 0.92)), var(--labx-surface);
-  box-shadow: var(--labx-shadow);
+  box-shadow: var(--labx-shadow-secondary);
 }
 
 .labx-card[data-tone="accent"] {
@@ -312,9 +274,7 @@
   font-weight: 600;
 }
 
-.labx-card__body,
-.labx-list-stack,
-.labx-event-feed {
+.labx-card__body {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -934,46 +894,6 @@
   text-align: center;
 }
 
-.labx-module-row,
-.labx-finding-card,
-.labx-artifact-item,
-.labx-event-feed__item,
-.labx-choice-row,
-.labx-report-finding {
-  padding: 0.82rem;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 1rem;
-  background: rgba(5, 11, 18, 0.78);
-}
-
-.labx-module-row__head,
-.labx-finding-card__head,
-.labx-event-feed__head,
-.labx-artifact-item,
-.labx-choice-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.75rem;
-  align-items: flex-start;
-}
-
-.labx-finding-card__detail,
-.labx-event-feed__detail,
-.labx-report-finding p {
-  margin: 0.45rem 0 0;
-  color: var(--labx-text-soft);
-  line-height: 1.5;
-}
-
-.labx-finding-card__meta,
-.labx-report-finding span {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-  margin-top: 0.55rem;
-  color: var(--labx-text-dim);
-  font-size: 0.74rem;
-}
 
 .labx-progress {
   position: relative;
@@ -991,74 +911,6 @@
   background: linear-gradient(90deg, rgba(92, 215, 223, 0.9), rgba(106, 166, 235, 0.82));
 }
 
-.labx-raw-log {
-  margin-top: 0.9rem;
-}
-
-.labx-raw-log summary {
-  cursor: pointer;
-  color: var(--labx-text-soft);
-}
-
-.labx-raw-log__list {
-  margin-top: 0.75rem;
-  display: grid;
-  gap: 0.5rem;
-}
-
-.labx-raw-log__entry {
-  margin: 0;
-  padding: 0.75rem;
-  border-radius: 0.9rem;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(3, 7, 13, 0.92);
-  color: var(--labx-text-soft);
-  font-size: 0.75rem;
-  line-height: 1.45;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.labx-bullet-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-}
-
-.labx-bullet-list span {
-  padding-left: 0.85rem;
-  color: var(--labx-text-soft);
-  position: relative;
-}
-
-.labx-bullet-list span::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0.55rem;
-  width: 0.33rem;
-  height: 0.33rem;
-  border-radius: 999px;
-  background: var(--labx-accent);
-}
-
-.labx-report-block__summary {
-  margin: 0;
-  font-size: 0.94rem;
-  line-height: 1.6;
-  color: var(--labx-text);
-}
-
-.labx-workspace-stage {
-  display: grid;
-  gap: 1rem;
-}
-
-.labx-workspace-stage__surface,
-.labx-workspace-stage__tools {
-  display: grid;
-  gap: 1rem;
-}
 
 .labx-workspace-strip {
   display: grid;
@@ -4471,15 +4323,13 @@
   flex-direction: column;
   flex: 1 1 auto;
   gap: 0.65rem;
-  padding: 1rem 1.1rem;
-  min-height: 320px;
+  padding: 0.75rem 0.85rem;
+  min-height: 64px;
   max-height: none;
   overflow-y: auto;
-  border: 1px solid var(--labx-border);
-  border-radius: var(--labx-radius);
-  background:
-    linear-gradient(180deg, rgba(12, 24, 40, 0.96), rgba(8, 15, 26, 0.94)),
-    var(--labx-surface-strong);
+  border-top: 1px solid var(--labx-border);
+  border-radius: 0;
+  background: transparent;
 }
 
 .labx-process-header {
@@ -5779,17 +5629,21 @@
 }
 
 .labx-global-process {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr) max-content;
   gap: 0.75rem;
   align-items: center;
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.5rem;
   padding: 0.7rem 0.85rem;
-  border: 1px solid rgba(72, 214, 222, 0.24);
+  border: 1px solid rgba(72, 214, 222, 0.32);
   border-radius: 1rem;
   background:
-    linear-gradient(135deg, rgba(10, 34, 48, 0.88), rgba(6, 16, 28, 0.78)), rgba(7, 18, 30, 0.86);
+    linear-gradient(135deg, rgba(10, 34, 48, 0.92), rgba(6, 16, 28, 0.86)), rgba(7, 18, 30, 0.9);
   color: var(--labx-text);
+  transition: border-color 0.2s;
 }
 
 .labx-global-process__state {
@@ -5804,11 +5658,27 @@
 }
 
 .labx-global-process__dot {
-  width: 0.55rem;
-  height: 0.55rem;
+  width: 0.65rem;
+  height: 0.65rem;
   border-radius: 999px;
   background: var(--labx-accent);
-  box-shadow: 0 0 14px rgba(72, 214, 222, 0.6);
+  box-shadow: 0 0 10px rgba(72, 214, 222, 0.5);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.labx-global-process[data-tone="idle"] .labx-global-process__dot {
+  background: var(--labx-text-dim);
+  box-shadow: none;
+}
+
+.labx-global-process[data-tone="success"] .labx-global-process__dot {
+  background: var(--labx-success);
+  box-shadow: 0 0 10px rgba(130, 227, 177, 0.5);
+}
+
+.labx-global-process[data-tone="error"] .labx-global-process__dot {
+  background: var(--labx-error);
+  box-shadow: 0 0 10px rgba(255, 127, 136, 0.5);
 }
 
 .labx-global-process[data-tone="running"] .labx-global-process__dot {
@@ -5942,8 +5812,19 @@
 .lab-execution-details-overlay__backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(1, 7, 13, 0.68);
-  backdrop-filter: blur(6px);
+  background: rgba(1, 7, 13, 0.58);
+  backdrop-filter: blur(4px);
+}
+
+@keyframes labx-overlay-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .lab-execution-details-overlay__panel {
@@ -5951,7 +5832,7 @@
   z-index: 1;
   display: flex;
   flex-direction: column;
-  width: min(58rem, calc(100vw - 3rem));
+  width: min(56rem, calc(100vw - 3rem));
   max-height: min(44rem, calc(100vh - 3rem));
   overflow: hidden;
   border: 1px solid rgba(72, 214, 222, 0.28);
@@ -5959,7 +5840,8 @@
   background:
     linear-gradient(180deg, rgba(9, 24, 38, 0.98), rgba(5, 13, 22, 0.98)),
     var(--labx-surface-strong);
-  box-shadow: var(--labx-shadow);
+  box-shadow: var(--labx-shadow-primary);
+  animation: labx-overlay-enter 0.18s ease;
 }
 
 .lab-execution-details-overlay__header {
@@ -6011,4 +5893,220 @@
     opacity: 1;
     transform: scale(1.08);
   }
+}
+
+/* ===== §1 BOOT TRANSITION ===== */
+
+.labx-center-panel,
+.labx-right-panel,
+.labx-left-rail {
+  transition: opacity 0.4s ease;
+}
+
+.labx-shell[data-ready="false"] .labx-center-panel,
+.labx-shell[data-ready="false"] .labx-right-panel {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.labx-shell[data-ready="false"] .labx-left-rail {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.labx-shell[data-ready="false"]::after {
+  content: attr(data-boot-message);
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  background: rgba(5, 11, 20, 0.55);
+  backdrop-filter: blur(2px);
+  color: var(--labx-text-soft);
+  font-size: 0.88rem;
+  letter-spacing: 0.09em;
+  pointer-events: none;
+  animation: labx-boot-breathe 2.8s ease-in-out infinite;
+}
+
+.labx-shell[data-boot-fade="out"]::after {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.labx-shell[data-boot-fade="in"]::after {
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+@keyframes labx-boot-breathe {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ===== §2a JOURNEY HINT ===== */
+
+.labx-journey-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0;
+  font-size: 0.63rem;
+  color: var(--labx-text-dim);
+  letter-spacing: 0.05em;
+}
+
+.labx-journey-hint__arrow {
+  opacity: 0.4;
+}
+
+.labx-journey-hint [data-active="true"] {
+  color: var(--labx-accent);
+  font-weight: 600;
+}
+
+.labx-journey-hint [data-reached="false"] {
+  opacity: 0.35;
+}
+
+/* ===== §3 DECISION SURFACE TIERS ===== */
+
+.labx-right-context__tier-1 {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.labx-right-context__tier-2 {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.55rem 0;
+}
+
+.labx-right-context__decision-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-left-width: 2px;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.025);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.labx-right-context__decision-card > span:first-child {
+  font-size: 0.66rem;
+  color: var(--labx-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.labx-right-context__decision-card > strong {
+  font-size: 0.82rem;
+}
+
+.labx-right-context__decision-card[data-accent="none"] {
+  border-left-color: rgba(255, 255, 255, 0.1);
+}
+
+.labx-right-context__decision-card[data-accent="success"] {
+  border-left-color: var(--labx-success);
+  background: rgba(130, 227, 177, 0.03);
+}
+
+.labx-right-context__decision-card[data-accent="error"] {
+  border-left-color: var(--labx-error);
+  background: rgba(255, 127, 136, 0.03);
+}
+
+.labx-right-context__decision-card[data-accent="pending"] {
+  border-left-color: rgba(255, 255, 255, 0.22);
+}
+
+.labx-right-context__decision-card[data-accent="staging"] {
+  border-left-color: var(--labx-accent);
+  background: rgba(92, 215, 223, 0.04);
+}
+
+.labx-right-context__implication {
+  margin: 0.1rem 0 0;
+  font-size: 0.64rem;
+  color: var(--labx-text-dim);
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.labx-right-context__process-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.1rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--labx-text-dim);
+  font-size: 0.7rem;
+}
+
+/* ===== §4a PROCESS PANEL IDLE SKELETON ===== */
+
+.labx-process-idle-skeleton {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  min-height: 40px;
+}
+
+.labx-process-idle-hint {
+  margin: 0;
+  padding: 0 0 0.4rem;
+  color: var(--labx-text-dim);
+  font-size: 0.72rem;
+}
+
+/* ===== §6 EXECUTION PANEL SECONDARY TREATMENT ===== */
+
+.lab-execution-collapsible--secondary {
+  opacity: 0.78;
+  transition: opacity 0.15s;
+}
+
+.lab-execution-collapsible--secondary[open] {
+  opacity: 1;
+}
+
+.lab-execution-collapsible--secondary .lab-execution-collapsible__summary {
+  font-size: 0.82rem;
+}
+
+/* ===== §7a OVERLAY TRIGGER GLOW ===== */
+
+.lab-execution-details-trigger[data-overlay-source="true"] {
+  box-shadow: 0 0 0 1px rgba(92, 215, 223, 0.3), 0 0 12px rgba(92, 215, 223, 0.15);
+}
+
+/* ===== §9a INTERACTIVE TRANSITIONS ===== */
+
+.labx-manager-link,
+.labx-module-link,
+.labx-chip-button,
+.labx-inline-action,
+.labx-primary-cta,
+.labx-secondary-cta,
+.labx-capability-card,
+.labx-module-card,
+.labx-process-step,
+.labx-source-intake__toggle {
+  transition: border-color 0.15s, background 0.15s, opacity 0.15s;
+}
+
+.labx-right-context__item {
+  transition: opacity 0.15s;
 }

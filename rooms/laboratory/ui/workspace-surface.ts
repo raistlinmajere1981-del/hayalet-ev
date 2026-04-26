@@ -21,6 +21,7 @@ import {
   getDualPreviewLinkedAudioAssets,
   getDualPreviewVolume,
   getEffectivePreviewAudioFocusSettings,
+  getExecutionJourneyStep,
   getHypothesis,
   getInspectionMode,
   getInteractiveSettings,
@@ -983,22 +984,78 @@ function renderDualPreviewTransportBar(
   `;
 }
 
+function getThinkingLabel(state: string, copy: LabI18n): string {
+  switch (state) {
+    case "running":
+      return copy.t("mediaAnalysis.processSummary.thinking.running", "Thinking\u2026");
+    case "analyzing":
+      return copy.t("mediaAnalysis.processSummary.thinking.analyzing", "Analyzing\u2026");
+    default:
+      return "";
+  }
+}
+
+function renderJourneyHint(state: LabStoreState, copy: LabI18n) {
+  const step = getExecutionJourneyStep(state);
+  if (step === -1) return "";
+  const stepKeys = ["select", "plan", "evaluate", "decide", "stage"] as const;
+  const stepFallbacks = ["Select", "Plan", "Evaluate", "Decide", "Stage"];
+  const parts = stepKeys
+    .map(function (key, i) {
+      const isActive = i === step;
+      const isReached = i <= step;
+      const label = copy.t(`mediaAnalysis.journey.steps.${key}`, stepFallbacks[i] ?? key);
+      const arrow =
+        i < stepKeys.length - 1
+          ? `<span class="labx-journey-hint__arrow" aria-hidden="true">\u2192</span>`
+          : "";
+      return `<span data-step="${i}" data-active="${isActive ? "true" : "false"}" data-reached="${isReached ? "true" : "false"}">${escapeHtml(label)}</span>${arrow}`;
+    })
+    .join("");
+  return `<div class="labx-journey-hint" aria-label="${escapeHtml(copy.t("mediaAnalysis.journey.ariaLabel", "Execution journey"))}">${parts}</div>`;
+}
+
 function renderGlobalProcessSummary(state: LabStoreState, copy: LabI18n) {
+  if (!state.bootReady) {
+    return `
+      <section
+        class="labx-global-process"
+        data-lab-global-process="true"
+        data-process-state="initializing"
+        data-tone="idle"
+        aria-label="${escapeHtml(copy.t("mediaAnalysis.processSummary.ariaLabel", "Laboratory process state"))}"
+      >
+        <div class="labx-global-process__state">
+          <span class="labx-global-process__dot" aria-hidden="true"></span>
+          <span class="labx-global-process__label">${escapeHtml(copy.t("mediaAnalysis.processSummary.states.initializing", "Initializing"))}</span>
+        </div>
+        <div class="labx-global-process__task">
+          <span class="labx-global-process__eyebrow">${escapeHtml(copy.t("mediaAnalysis.processSummary.activeTask", "System"))}</span>
+          <strong>${escapeHtml(copy.t("mediaAnalysis.processSummary.bootPhase", "Laboratory environment starting\u2026"))}</strong>
+        </div>
+        <div class="labx-global-process__progress"></div>
+      </section>
+    `;
+  }
   const summary = getLaboratoryProcessSummary(state);
   const stateLabel = copy.t(
     `mediaAnalysis.processSummary.states.${summary.state}`,
-    summary.state.charAt(0).toUpperCase() + summary.state.slice(1)
+    summary.state === "idle"
+      ? copy.t("mediaAnalysis.processSummary.states.idle", "Idle")
+      : summary.state.charAt(0).toUpperCase() + summary.state.slice(1)
   );
+  const thinkingLabel = getThinkingLabel(summary.state, copy);
   const activeTaskLabel =
     summary.activeTaskLabel ??
     (summary.activeTaskKey
       ? copy.t(`mediaAnalysis.processSummary.tasks.${summary.activeTaskKey}`, summary.activeTaskKey)
-      : copy.t("mediaAnalysis.processSummary.noActiveTask", "No active task"));
+      : copy.t("mediaAnalysis.processSummary.noActiveTask", "Ready for input"));
   const progressLabel =
     summary.progressLabel ??
     (summary.progressKey
       ? copy.t(`mediaAnalysis.processSummary.progress.${summary.progressKey}`, summary.progressKey)
-      : copy.t("mediaAnalysis.processSummary.noProgress", "No progress in motion"));
+      : "");
+  const journeyHint = renderJourneyHint(state, copy);
   return `
     <section
       class="labx-global-process"
@@ -1012,11 +1069,12 @@ function renderGlobalProcessSummary(state: LabStoreState, copy: LabI18n) {
         <span class="labx-global-process__label">${escapeHtml(stateLabel)}</span>
       </div>
       <div class="labx-global-process__task">
-        <span class="labx-global-process__eyebrow">${escapeHtml(copy.t("mediaAnalysis.processSummary.activeTask", "Active task"))}</span>
+        <span class="labx-global-process__eyebrow">${escapeHtml(thinkingLabel || copy.t("mediaAnalysis.processSummary.activeTask", "Active task"))}</span>
         <strong>${escapeHtml(activeTaskLabel)}</strong>
       </div>
       <div class="labx-global-process__progress">
-        <span>${escapeHtml(progressLabel)}</span>
+        ${progressLabel ? `<span>${escapeHtml(progressLabel)}</span>` : ""}
+        ${journeyHint}
       </div>
     </section>
   `;
@@ -1585,7 +1643,7 @@ export function renderWorkspaceSurface(
           <strong>${escapeHtml(
             runActive
               ? copy.t("mediaAnalysis.analysisActions.cancel", "Analizi İptal Et")
-              : copy.t("mediaAnalysis.analysisActions.start", "Derin Analiz Başlat")
+              : copy.t("mediaAnalysis.analysisActions.start", "Analizi Başlat")
           )}</strong>
         </button>
         ${intentPreview}

@@ -823,11 +823,15 @@ function renderArtifactsSection(
 }
 
 function renderRecentActionsSection(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
-  const recentActions = getRecentUserActions(state, 6);
+  const CAP = 3;
+  const allActions = getRecentUserActions(state, 10);
+  const recentActions = allActions.slice(0, CAP);
+  const hasMore = allActions.length > CAP;
   return `
     <section class="labx-process-recent-actions">
       <div class="labx-process-recent-actions__head">
         <strong>${escapeHtml(copy.t("mediaAnalysis.processPanel.recent.title", "Son işlemler"))}</strong>
+        ${hasMore ? `<button class="labx-inline-action labx-inline-action--small" type="button" data-lab-action="show-all-recent-actions">${escapeHtml(copy.t("mediaAnalysis.processPanel.recent.showAll", "Tümü"))}</button>` : ""}
       </div>
       ${
         recentActions.length > 0
@@ -888,6 +892,10 @@ function renderIdleProcessPanel(
   if (sourceReady !== true) {
     return `
       <section class="labx-process-panel labx-process-panel--empty" id="lab-process-panel">
+        <div class="labx-process-idle-skeleton">
+          ${renderStatusChip(copy.t("mediaAnalysis.processPanel.status.waiting", "Waiting"), "neutral")}
+        </div>
+        <p class="labx-process-idle-hint">${escapeHtml(copy.t("mediaAnalysis.processPanel.idleHint", "Load a source to begin analysis."))}</p>
         ${renderRecentActionsSection(state, copy)}
       </section>
     `;

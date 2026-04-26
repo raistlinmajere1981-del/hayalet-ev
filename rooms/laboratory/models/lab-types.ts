@@ -666,7 +666,8 @@ export const LAB_FEATURES: Array<{
     id: "subtitle-analysis",
     label: "Transcript Support",
     shortLabel: "Transcript",
-    description: "Timestamped transcript artifact support for source intake, cleanup, and reporting.",
+    description:
+      "Timestamped transcript artifact support for source intake, cleanup, and reporting.",
   },
 ];
 

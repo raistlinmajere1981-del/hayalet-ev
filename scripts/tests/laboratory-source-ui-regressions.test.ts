@@ -163,7 +163,7 @@ test("laboratory workspace surface renders source intake, preview media, and dee
     /<video class="labx-preview-media labx-preview-media--workspace-video"/
   );
   assert.match(surface.main, /data-lab-action="workspace-toggle-source-intake"/);
-  assert.match(surface.side, /Derin Analiz Başlat/);
+  assert.match(surface.side, /Analizi Başlat/);
   assert.match(surface.side, /Raporu Görüntüle/);
   assert.doesNotMatch(surface.main, /Kaynak Seçimi|Hızlı modül seçimi burada yapılır/);
 });

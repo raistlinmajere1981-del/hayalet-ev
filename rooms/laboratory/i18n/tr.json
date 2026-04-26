@@ -199,23 +199,29 @@
     "operatorLabel": "Operator",
     "loading": {
       "eyebrow": "Hayalet Ev Laboratuvari",
-      "title": "Laboratuvar Yukleniyor",
-      "body": "Oda baglami ve oda yerel cevirileri bekleniyor.",
-      "contractEyebrow": "Baslangic",
-      "contractTitle": "Oda kontrati",
-      "contractBody": "Shell hazirlanirken roomAPI.ready payload yapisi korunur.",
+      "title": "Laboratuvar ortami hazirlaniyor",
+      "body": "Oda baglami ve oda yerel cevirileri yuklenirken shell gorunur kalir.",
+      "contractEyebrow": "Boot",
+      "contractTitle": "Shell durumu",
+      "contractBody": "Room-ready baglami tamamlanirken tezgah gorunur kalir.",
       "currentStage": "Gecerli asama: {stage}"
     },
     "processSummary": {
       "ariaLabel": "Laboratuvar islem durumu",
-      "activeTask": "Aktif is",
-      "noActiveTask": "Aktif is yok",
+      "activeTask": "Aktif gorev",
+      "noActiveTask": "Girdi icin hazir",
       "noProgress": "Hareket halinde ilerleme yok",
       "states": {
-        "idle": "Bos",
+        "idle": "Bosta",
+        "initializing": "Hazirlaniyor",
         "processing": "Isleniyor",
-        "analyzing": "Analiz ediliyor",
-        "staging": "Hazirlaniyor"
+        "analyzing": "Analiz",
+        "staging": "Hazir"
+      },
+      "bootPhase": "Laboratuvar ortami baslatiliyor...",
+      "thinking": {
+        "running": "Dusunuyor...",
+        "analyzing": "Analiz ediyor..."
       },
       "tasks": {
         "sourcePreparation": "Kaynak hazirligi"
@@ -224,21 +230,31 @@
         "oneActiveTask": "1 aktif is"
       }
     },
+    "journey": {
+      "ariaLabel": "Calisma akisi",
+      "steps": {
+        "select": "Sec",
+        "plan": "Planla",
+        "evaluate": "Degerlendir",
+        "decide": "Karar ver",
+        "stage": "Hazirla"
+      }
+    },
     "rightContext": {
-      "eyebrow": "Canli baglam",
-      "title": "Kontrol + baglam",
+      "eyebrow": "Aktif durum",
+      "title": "Karar Yuzeyi",
       "selection": "Secim",
       "emptySelection": "Aktif secim yok",
       "intent": "Niyet",
-      "emptyIntent": "Secili aksiyon yok",
+      "emptyIntent": "Secili niyet yok",
       "candidate": "Aday",
-      "commitment": "Kullanici secimi",
+      "commitment": "Karar",
       "staging": "Hazirlama",
       "process": "Surec",
-      "emptyTitle": "Calisma paneli",
-      "emptyBody": "Kontrolleri ve analiz seceneklerini gormek icin bir kaynak yukle.",
+      "emptyTitle": "Karar yuzeyi",
+      "emptyBody": "Karar akisini baslatmak icin bir kaynak yukle.",
       "status": {
-        "none": "Yok",
+        "none": "—",
         "viable": "Uygun",
         "unstable": "Kararsiz",
         "not-viable": "Uygun degil",
@@ -246,6 +262,24 @@
         "revoked": "Geri alindi",
         "staged": "Hazirlandi",
         "not-staged": "Hazirlanmadi"
+      },
+      "implication": {
+        "candidate": {
+          "viable": "Yapisal olarak uygulanabilir",
+          "unstable": "Yapi eksik - ek degerlendirme gerekiyor",
+          "notViable": "Uygun degil - yol revizyon istiyor",
+          "none": "Degerlendirme bekleniyor"
+        },
+        "commitment": {
+          "committed": "Yol bir sonraki adim icin secildi",
+          "revoked": "Secim geri alindi - karara don",
+          "none": "Henuz bir yol secilmedi"
+        },
+        "staging": {
+          "staged": "Yurutme icin hazir",
+          "notStaged": "Henuz hazirlanmadi - onkosullari gozden gecir",
+          "none": "Hazirlama uygunlugu bekleniyor"
+        }
       }
     },
     "executionDetails": {
@@ -1314,7 +1348,7 @@
       }
     },
     "topbarActions": {
-      "ariaLabel": "Aksiyon ilerleme merkezi"
+      "ariaLabel": "Surec Etkinligi"
     },
     "reportOverlay": {
       "diff": {
@@ -1720,7 +1754,7 @@
     "analysisActions": {
       "viewReport": "Raporu Görüntüle",
       "cancel": "Analizi İptal Et",
-      "start": "Derin Analiz Başlat",
+      "start": "Analizi Başlat",
       "imageAnalysis": "Görsel Analiz Et"
     },
     "workspace": {

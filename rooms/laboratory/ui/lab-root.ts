@@ -1,5 +1,5 @@
-import { asLabRecord, asNonEmptyString, escapeHtml } from "../models/lab-types.js";
-import type { LabStageSurface, LabStoreState } from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString } from "../models/lab-types.js";
+import type { LabStoreState } from "../models/lab-types.js";
 import { createLabEventBus } from "../runtime/lab-event-bus.js";
 import { createLabHostBridge } from "../runtime/lab-host-bridge.js";
 import { loadLabPersistedState, saveLabPersistedState } from "../runtime/lab-persistence.js";
@@ -28,7 +28,7 @@ import {
   getSelectionSuggestions,
   getWorkspaceMode,
 } from "../runtime/lab-selectors.js";
-import { createLabI18n, LAB_FALLBACK_I18N } from "./lab-i18n.js";
+import { createLabI18n } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 import type { LabWaveformTimelineModel } from "./lab-waveform-timeline-types.js";
 
@@ -262,35 +262,6 @@ function updateRenderedElement(
   }
 }
 
-function createBootSurface(
-  state: LabStoreState,
-  copy: LabI18n = LAB_FALLBACK_I18N
-): LabStageSurface {
-  return {
-    main: `
-      <section class="labx-boot">
-        <p class="labx-boot__eyebrow">${escapeHtml(copy.t("mediaAnalysis.loading.eyebrow", "Ghost House Laboratory"))}</p>
-        <h1 class="labx-boot__title">${escapeHtml(copy.t("mediaAnalysis.loading.title", "Loading Laboratory"))}</h1>
-        <p class="labx-boot__body">${escapeHtml(copy.t("mediaAnalysis.loading.body", "Waiting for room context and room-local translations."))}</p>
-      </section>
-    `,
-    side: `
-      <section class="labx-card">
-        <div class="labx-card__header">
-          <div>
-            <p class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.loading.contractEyebrow", "Startup"))}</p>
-            <h2 class="labx-card__title">${escapeHtml(copy.t("mediaAnalysis.loading.contractTitle", "Room contract"))}</h2>
-          </div>
-        </div>
-        <div class="labx-card__body">
-          <p class="labx-panel-hint">${escapeHtml(copy.t("mediaAnalysis.loading.contractBody", "The roomAPI.ready payload shape is preserved while the shell is prepared."))}</p>
-          <p class="labx-panel-hint">${escapeHtml(copy.t("mediaAnalysis.loading.currentStage", "Current stage: {stage}", { stage: state.currentStage }))}</p>
-        </div>
-      </section>
-    `,
-  };
-}
-
 function readPersistableState(state: LabStoreState) {
   return {
     schemaVersion: 4,
@@ -442,6 +413,130 @@ export function startLaboratoryLabRoot() {
   const hostBridge = createLabHostBridge({
     emit: eventBus.emit,
   });
+  const BOOT_MESSAGES = [
+    "Preparing Laboratory environment\u2026",
+    "Loading analysis context\u2026",
+    "Initializing modules\u2026",
+  ];
+  const BOOT_OVERLAY_SETTLE_MS = 450;
+  const BOOT_OVERLAY_MIN_VISIBLE_MS = 350;
+  const BOOT_OVERLAY_FAILSAFE_MS = 12000;
+  let bootMessageIndex = 0;
+  let bootMessageInterval: ReturnType<typeof setInterval> | null = null;
+  let bootOverlayLocked = true;
+  let bootBootstrapSeen = false;
+  let bootOverlaySettleTimer: ReturnType<typeof setTimeout> | null = null;
+  let bootOverlayFailsafeTimer: ReturnType<typeof setTimeout> | null = null;
+  const bootOverlayStartedAt = Date.now();
+
+  function clearBootOverlaySettleTimer() {
+    if (bootOverlaySettleTimer !== null) {
+      clearTimeout(bootOverlaySettleTimer);
+      bootOverlaySettleTimer = null;
+    }
+  }
+
+  function clearBootOverlayFailsafeTimer() {
+    if (bootOverlayFailsafeTimer !== null) {
+      clearTimeout(bootOverlayFailsafeTimer);
+      bootOverlayFailsafeTimer = null;
+    }
+  }
+
+  function getBootOverlayBootstrapStatus(state: LabStoreState) {
+    const snapshot = asLabRecord(state.snapshot);
+    const bootstrap = asLabRecord(snapshot["bootstrap"]);
+    const status = asNonEmptyString(bootstrap["status"]);
+    if (status === "idle" || status === "running" || status === "ready" || status === "error") {
+      return status;
+    }
+    return null;
+  }
+
+  function hasBootOverlayCompletionSignal(state: LabStoreState) {
+    const bootstrapStatus = getBootOverlayBootstrapStatus(state);
+    if (bootstrapStatus !== null) {
+      return bootstrapStatus === "ready" || bootstrapStatus === "error";
+    }
+    if (state.snapshot === null) {
+      return false;
+    }
+    return (
+      state.bootReady ||
+      state.source !== null ||
+      state.run !== null ||
+      state.reports.user !== null ||
+      state.reports.ai !== null ||
+      Object.keys(state.context).length > 0
+    );
+  }
+
+  function isBootOverlayActive(_state: LabStoreState) {
+    return bootOverlayLocked;
+  }
+
+  function unlockBootOverlay() {
+    if (!bootOverlayLocked) {
+      return;
+    }
+    bootOverlayLocked = false;
+    clearBootOverlaySettleTimer();
+    clearBootOverlayFailsafeTimer();
+    stopBootMessages();
+    render();
+  }
+
+  function scheduleBootOverlayUnlock(state: LabStoreState) {
+    if (!bootOverlayLocked || !bootBootstrapSeen || !hasBootOverlayCompletionSignal(state)) {
+      return;
+    }
+    clearBootOverlaySettleTimer();
+    const elapsed = Date.now() - bootOverlayStartedAt;
+    const minVisibleRemainder = Math.max(0, BOOT_OVERLAY_MIN_VISIBLE_MS - elapsed);
+    const delay = Math.max(BOOT_OVERLAY_SETTLE_MS, minVisibleRemainder);
+    bootOverlaySettleTimer = setTimeout(function () {
+      unlockBootOverlay();
+    }, delay);
+  }
+
+  function syncShellState(shell: HTMLElement, state: LabStoreState) {
+    shell.dataset["stage"] = state.currentStage;
+    shell.dataset["ready"] = isBootOverlayActive(state) ? "false" : "true";
+    shell.dataset["workspaceMode"] = getWorkspaceMode(state);
+  }
+
+  function startBootMessages() {
+    const shell = runtimeRoot.querySelector<HTMLElement>(".labx-shell");
+    if (shell) {
+      shell.dataset["bootMessage"] = BOOT_MESSAGES[bootMessageIndex] ?? "";
+      shell.dataset["bootFade"] = "in";
+    }
+    if (bootMessageInterval !== null) return;
+    bootMessageInterval = setInterval(function () {
+      bootMessageIndex = (bootMessageIndex + 1) % BOOT_MESSAGES.length;
+      const s = runtimeRoot.querySelector<HTMLElement>(".labx-shell");
+      if (s) {
+        s.dataset["bootFade"] = "out";
+        setTimeout(function () {
+          s.dataset["bootMessage"] = BOOT_MESSAGES[bootMessageIndex] ?? "";
+          s.dataset["bootFade"] = "in";
+        }, 150);
+      }
+    }, 2500);
+  }
+
+  function stopBootMessages() {
+    if (bootMessageInterval !== null) {
+      clearInterval(bootMessageInterval);
+      bootMessageInterval = null;
+    }
+    const shell = runtimeRoot.querySelector<HTMLElement>(".labx-shell");
+    if (shell) {
+      delete shell.dataset["bootMessage"];
+      delete shell.dataset["bootFade"];
+    }
+  }
+
   let shellMounted = false;
   let activeOverlay: LabWaveformTimelineModel["activeOverlay"] = "none";
   let activeOverlayIdentity: string | null = null;
@@ -506,17 +601,19 @@ export function startLaboratoryLabRoot() {
     const state = store.getState();
     const copy = createLabI18n(state.context);
     reconcileExecutionDetailsOverlay(state);
-    const hasCanonicalState =
-      state.bootReady ||
-      state.source !== null ||
-      state.run !== null ||
-      state.reports.user !== null ||
-      state.reports.ai !== null ||
-      state.projectIndex.projects.length > 0;
-    const surface = hasCanonicalState ? renderSurface(state, copy) : createBootSurface(state, copy);
+    const surface = renderSurface(state, copy);
     if (shellMounted !== true) {
       runtimeRoot.innerHTML = renderLabLayout(state, surface, copy);
       shellMounted = true;
+      const mountedShell = runtimeRoot.querySelector<HTMLElement>(".labx-shell");
+      if (mountedShell) {
+        syncShellState(mountedShell, state);
+      }
+      if (isBootOverlayActive(state)) {
+        startBootMessages();
+      } else {
+        stopBootMessages();
+      }
       return;
     }
 
@@ -540,9 +637,7 @@ export function startLaboratoryLabRoot() {
     }
 
     if (shell instanceof HTMLElement) {
-      shell.dataset["stage"] = state.currentStage;
-      shell.dataset["ready"] = state.bootReady ? "true" : "false";
-      shell.dataset["workspaceMode"] = getWorkspaceMode(state);
+      syncShellState(shell, state);
     }
     updateRenderedElement(documentRef, leftRail as HTMLElement, renderLabLeftRail(state, copy));
     updateRenderedElement(
@@ -574,12 +669,28 @@ export function startLaboratoryLabRoot() {
         renderReportOverlay(state, copy)
       );
     }
+
+    if (isBootOverlayActive(state)) {
+      startBootMessages();
+    } else {
+      stopBootMessages();
+    }
+
+    const triggerEl = runtimeRoot.querySelector<HTMLElement>(".lab-execution-details-trigger");
+    if (triggerEl) {
+      if (activeOverlay === "execution-details") {
+        triggerEl.dataset["overlaySource"] = "true";
+      } else {
+        delete triggerEl.dataset["overlaySource"];
+      }
+    }
   }
 
   store.subscribe(function (state) {
     saveLabPersistedState(window, readPersistableState(state));
     render();
     previewInspectionController.sync();
+    scheduleBootOverlayUnlock(state);
   });
 
   const persisted = loadLabPersistedState(window);
@@ -592,9 +703,14 @@ export function startLaboratoryLabRoot() {
 
   if (windowRef.roomAPI && typeof windowRef.roomAPI.onHostMessage === "function") {
     windowRef.roomAPI.onHostMessage(function (message: unknown) {
+      bootBootstrapSeen = true;
       hostBridge.handleHostMessage(message);
     });
   }
+
+  bootOverlayFailsafeTimer = setTimeout(function () {
+    unlockBootOverlay();
+  }, BOOT_OVERLAY_FAILSAFE_MS);
 
   render();
   previewInspectionController.sync();

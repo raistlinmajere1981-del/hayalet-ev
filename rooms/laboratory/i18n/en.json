@@ -199,23 +199,29 @@
     "operatorLabel": "Operator",
     "loading": {
       "eyebrow": "Ghost House Laboratory",
-      "title": "Loading Laboratory",
-      "body": "Waiting for room context and room-local translations.",
-      "contractEyebrow": "Startup",
-      "contractTitle": "Room contract",
-      "contractBody": "The roomAPI.ready payload shape is preserved while the shell is prepared.",
+      "title": "Preparing Laboratory environment",
+      "body": "The shell stays visible while room context and room-local translations finish loading.",
+      "contractEyebrow": "Boot",
+      "contractTitle": "Shell status",
+      "contractBody": "The workbench stays mounted while the room-ready context finishes.",
       "currentStage": "Current stage: {stage}"
     },
     "processSummary": {
       "ariaLabel": "Laboratory process state",
       "activeTask": "Active task",
-      "noActiveTask": "No active task",
+      "noActiveTask": "Ready for input",
       "noProgress": "No progress in motion",
       "states": {
         "idle": "Idle",
+        "initializing": "Initializing",
         "processing": "Processing",
         "analyzing": "Analyzing",
-        "staging": "Staging"
+        "staging": "Staged"
+      },
+      "bootPhase": "Laboratory environment starting...",
+      "thinking": {
+        "running": "Thinking...",
+        "analyzing": "Analyzing..."
       },
       "tasks": {
         "sourcePreparation": "Source preparation"
@@ -224,21 +230,31 @@
         "oneActiveTask": "1 active task"
       }
     },
+    "journey": {
+      "ariaLabel": "Execution journey",
+      "steps": {
+        "select": "Select",
+        "plan": "Plan",
+        "evaluate": "Evaluate",
+        "decide": "Decide",
+        "stage": "Stage"
+      }
+    },
     "rightContext": {
-      "eyebrow": "Live context",
-      "title": "Control + context",
+      "eyebrow": "Active State",
+      "title": "Decision Surface",
       "selection": "Selection",
       "emptySelection": "No active selection",
       "intent": "Intent",
-      "emptyIntent": "No selected action",
+      "emptyIntent": "No intent selected",
       "candidate": "Candidate",
       "commitment": "Commitment",
       "staging": "Staging",
       "process": "Process",
-      "emptyTitle": "Workspace panel",
-      "emptyBody": "Load a source to see controls and analysis options.",
+      "emptyTitle": "Decision surface",
+      "emptyBody": "Load a source to begin decision flow.",
       "status": {
-        "none": "None",
+        "none": "—",
         "viable": "Viable",
         "unstable": "Unstable",
         "not-viable": "Not viable",
@@ -246,6 +262,24 @@
         "revoked": "Revoked",
         "staged": "Staged",
         "not-staged": "Not staged"
+      },
+      "implication": {
+        "candidate": {
+          "viable": "Structurally viable for execution",
+          "unstable": "Structure incomplete - needs evaluation",
+          "notViable": "Not viable - path requires revision",
+          "none": "Awaiting evaluation"
+        },
+        "commitment": {
+          "committed": "Path selected for further evaluation",
+          "revoked": "Commitment withdrawn - return to decision",
+          "none": "No path committed yet"
+        },
+        "staging": {
+          "staged": "Prepared for execution staging",
+          "notStaged": "Not yet staged - review prerequisites",
+          "none": "Awaiting staging readiness"
+        }
       }
     },
     "executionDetails": {
@@ -1314,7 +1348,7 @@
       }
     },
     "topbarActions": {
-      "ariaLabel": "Action progress hub"
+      "ariaLabel": "Process Activity"
     },
     "reportOverlay": {
       "diff": {
@@ -1720,7 +1754,7 @@
     "analysisActions": {
       "viewReport": "View Report",
       "cancel": "Cancel Analysis",
-      "start": "Start Deep Analysis",
+      "start": "Start Analysis",
       "imageAnalysis": "Analyze Image"
     },
     "workspace": {

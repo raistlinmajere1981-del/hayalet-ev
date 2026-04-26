@@ -338,10 +338,9 @@ test("laboratory UI shell evaluates under minimal runtime stubs", async () => {
       `${pathToFileURL(resolve(buildArtifact.rootDir, "ui/index.js")).href}?smoke=${Date.now()}`
     );
 
-    assert.match(
-      environment.runtimeRoot.innerHTML,
-      /Loading Laboratory|Laboratuvar Yukleniyor|Laboratuvar Yükleniyor/
-    );
+    assert.match(environment.runtimeRoot.innerHTML, /class="labx-shell"/);
+    assert.match(environment.runtimeRoot.innerHTML, /data-ready="false"/);
+    assert.match(environment.runtimeRoot.innerHTML, /Laboratory environment starting|Initializing/);
     assert.deepEqual(environment.readyPayload(), {
       feature: "media-analysis",
       room: "laboratory",
@@ -362,6 +361,17 @@ test("laboratory shell routes host traffic through lab-root orchestration seams"
   assert.match(uiIndexSource, /import "\.\/lab-root\.js";/);
   assert.match(labRootSource, /return renderWorkspaceSurface\(state, \{/);
   assert.match(labRootSource, /runtimeRoot\.innerHTML = renderLabLayout\(state, surface, copy\);/);
+  assert.match(labRootSource, /const BOOT_OVERLAY_SETTLE_MS = 450;/);
+  assert.match(labRootSource, /let bootBootstrapSeen = false;/);
+  assert.match(labRootSource, /function getBootOverlayBootstrapStatus\(state: LabStoreState\)/);
+  assert.match(labRootSource, /const bootstrapStatus = getBootOverlayBootstrapStatus\(state\);/);
+  assert.match(labRootSource, /bootstrapStatus === "ready" \|\| bootstrapStatus === "error"/);
+  assert.match(
+    labRootSource,
+    /shell\.dataset\["ready"\] = isBootOverlayActive\(state\) \? "false" : "true";/
+  );
+  assert.match(labRootSource, /bootBootstrapSeen = true;/);
+  assert.match(labRootSource, /scheduleBootOverlayUnlock\(state\);/);
   assert.match(labRootSource, /renderToolManagementOverlay\(state, copy\)/);
   assert.match(labRootSource, /emit:\s*eventBus\.emit,/);
   assert.match(labRootSource, /roomAPI\.ready\(\{\s*feature:\s*"media-analysis",\s*room:\s*"laboratory",\s*stage:\s*"ui-ready"/);
@@ -413,7 +423,7 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   assert.match(toolOverlaySource, /data-lab-action="tool-install"/);
   assert.match(toolOverlaySource, /data-lab-action="tool-check-updates"/);
   assert.match(workspaceSurfaceSource, /Source setup controls/);
-  assert.match(workspaceSurfaceSource, /Derin Analiz Başlat/);
+  assert.match(workspaceSurfaceSource, /Analizi Başlat/);
   assert.match(workspaceSurfaceSource, /data-lab-action="run-deep-analysis"/);
   assert.match(workspaceSurfaceSource, /Bu analiz şunları yapacak:/);
 });

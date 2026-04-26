@@ -84,6 +84,8 @@ function getPanelCollapsed(model: LabWaveformTimelineModel, panelId: ExecutionPa
   return DEFAULT_COLLAPSED_PANELS[panelId] === true;
 }
 
+const SECONDARY_PANELS: ExecutionPanelId[] = ["simulation", "reflection", "alternatives", "payload"];
+
 function renderCollapsibleExecutionPanel(options: {
   body: string;
   copy: LabI18n;
@@ -94,9 +96,10 @@ function renderCollapsibleExecutionPanel(options: {
   if (options.body.trim() === "") {
     return "";
   }
+  const isSecondary = SECONDARY_PANELS.includes(options.panelId);
   return `
     <details
-      class="lab-execution-collapsible"
+      class="lab-execution-collapsible${isSecondary ? " lab-execution-collapsible--secondary" : ""}"
       data-lab-collapsible-panel="true"
       data-panel-id="${escapeHtml(options.panelId)}"
       ${options.defaultCollapsed ? "" : "open"}
