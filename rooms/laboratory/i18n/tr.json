@@ -1631,7 +1631,8 @@
         "progress": "%{progress}",
         "insights": "İçgörüler",
         "detectedElements": "Tespit edilen öğeler",
-        "outcomeEvaluated": "Sonuç değerlendirildi"
+        "outcomeEvaluated": "Sonuç değerlendirildi",
+        "goalEvaluation": "Hedef değerlendirmesi: {summary}"
       },
       "diff": {
         "timeline": "Timeline",

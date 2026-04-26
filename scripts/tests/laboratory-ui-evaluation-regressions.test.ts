@@ -1233,6 +1233,7 @@ test("laboratory timeline renders selector-fed execution feedback after completi
   const candidatePanel = extractCandidatePanelMarkup(markup);
 
   assert.match(markup, /Result partially aligns with simulated expectations/);
+  assert.match(markup, /Audio goal remains inconclusive for the current result/);
   assert.match(markup, /Execution feedback is mixed/);
   assert.match(markup, /mixed execution signal/);
   assert.match(candidatePanel, /98% confidence/);

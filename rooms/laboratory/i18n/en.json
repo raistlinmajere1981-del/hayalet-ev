@@ -1631,7 +1631,8 @@
         "progress": "{progress}%",
         "insights": "Insights",
         "detectedElements": "Detected elements",
-        "outcomeEvaluated": "Outcome evaluated"
+        "outcomeEvaluated": "Outcome evaluated",
+        "goalEvaluation": "Goal evaluation: {summary}"
       },
       "diff": {
         "timeline": "Timeline",

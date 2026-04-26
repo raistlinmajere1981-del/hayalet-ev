@@ -6,6 +6,7 @@ import {
   getActiveExecutionAlternatives,
   getActiveExecutionCandidate,
   getActiveExecutionCommitment,
+  getActiveExecutionGoalEvaluation,
   getActiveExecutionIntent,
   getActiveExecutionResult,
   getActiveExecutionPayloadPreview,
@@ -600,11 +601,13 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
   });
   assert.equal(store.getState().ui.executionRuntime.status, "completed");
   assert.equal(getActiveExecutionResult(store.getState()) !== null, true);
+  assert.equal(getActiveExecutionGoalEvaluation(store.getState()) !== null, true);
   assert.equal(getActiveExecutionResultInterpretation(store.getState()) !== null, true);
 
   const persistedState = labRootModule.__testOnlyLabRootPersistence.readPersistableState(
     store.getState()
   );
+  assert.equal("activeExecutionGoalEvaluation" in persistedState, false);
   assert.equal("activeExecutionIntentId" in persistedState, false);
   assert.equal("activeExecutionAlternatives" in persistedState, false);
   assert.equal("activeExecutionCandidate" in persistedState, false);
@@ -615,7 +618,13 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
   assert.equal("activeExecutionReflection" in persistedState, false);
   assert.equal("activeExecutionSimulation" in persistedState, false);
   assert.equal("activeExecutionStaging" in persistedState, false);
+  assert.equal("executionGoalEvaluation" in persistedState, false);
   assert.equal("executionRuntime" in persistedState, false);
+  assert.equal(
+    "activeExecutionGoalEvaluation" in
+      ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
   assert.equal(
     "activeExecutionIntentId" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
     false
@@ -656,6 +665,10 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
   );
   assert.equal(
     "activeExecutionStaging" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+  assert.equal(
+    "executionGoalEvaluation" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
     false
   );
   assert.equal(
@@ -707,6 +720,7 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
   assert.equal(getActiveExecutionReflection(store.getState()), null);
   assert.equal(getActiveExecutionStaging(store.getState()), null);
   assert.equal(store.getState().ui.executionRuntime.status, "idle");
+  assert.equal(getActiveExecutionGoalEvaluation(store.getState()), null);
   assert.equal(getActiveExecutionResult(store.getState()), null);
   assert.equal(getActiveExecutionResultInterpretation(store.getState()), null);
 });

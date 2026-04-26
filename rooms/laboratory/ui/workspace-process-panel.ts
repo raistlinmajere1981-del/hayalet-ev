@@ -18,6 +18,7 @@ import type {
 import {
   getActionOutputs,
   getActiveModule,
+  getActiveExecutionGoalEvaluation,
   getActiveExecutionResult,
   getActiveExecutionResultInterpretation,
   getActualOutputs,
@@ -893,6 +894,7 @@ function renderExecutionRuntimeIndicator(state: LabStoreState, copy: LabI18n = L
     return "";
   }
   const activeResult = getActiveExecutionResult(state);
+  const activeGoalEvaluation = getActiveExecutionGoalEvaluation(state);
   const activeResultInterpretation = getActiveExecutionResultInterpretation(state);
   const label =
     runtime.status === "completed"
@@ -915,7 +917,12 @@ function renderExecutionRuntimeIndicator(state: LabStoreState, copy: LabI18n = L
       <span>${escapeHtml(copy.t("mediaAnalysis.processPanel.executionRuntime.progress", "{progress}%", { progress }))}</span>
       ${
         runtime.status === "completed" && activeResult !== null
-          ? renderExecutionRuntimeResult(activeResult, activeResultInterpretation !== null, copy)
+          ? renderExecutionRuntimeResult(
+              activeResult,
+              activeResultInterpretation !== null,
+              activeGoalEvaluation?.summary ?? null,
+              copy
+            )
           : ""
       }
     </div>
@@ -925,6 +932,7 @@ function renderExecutionRuntimeIndicator(state: LabStoreState, copy: LabI18n = L
 function renderExecutionRuntimeResult(
   result: LabActiveExecutionResult,
   outcomeEvaluated: boolean,
+  goalEvaluationSummary: string | null,
   copy: LabI18n = LAB_FALLBACK_I18N
 ) {
   const insights = result.insights.filter(function (insight) {
@@ -973,6 +981,11 @@ function renderExecutionRuntimeResult(
       ${
         outcomeEvaluated
           ? `<div class="labx-execution-runtime__section labx-execution-runtime__section--outcome">${escapeHtml(copy.t("mediaAnalysis.processPanel.executionRuntime.outcomeEvaluated", "Outcome evaluated"))}</div>`
+          : ""
+      }
+      ${
+        goalEvaluationSummary !== null
+          ? `<div class="labx-execution-runtime__section labx-execution-runtime__section--goal">${escapeHtml(copy.t("mediaAnalysis.processPanel.executionRuntime.goalEvaluation", "Goal evaluation: {summary}", { summary: goalEvaluationSummary }))}</div>`
           : ""
       }
     </div>

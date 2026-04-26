@@ -1,6 +1,7 @@
 import type {
   LabExecutionAlternatives,
   LabExecutionCandidate,
+  LabExecutionGoalEvaluation,
   LabExecutionPayloadPreview,
   LabExecutionPlan,
   LabExecutionReadiness,
@@ -24,6 +25,7 @@ type LabExecutionCandidateInput = {
   executionPlan: LabExecutionPlan;
   executionReadiness: LabExecutionReadiness;
   executionReflection: LabExecutionReflection;
+  executionGoalEvaluation?: LabExecutionGoalEvaluation | null;
   executionResultInterpretation?: LabExecutionCandidateResultInterpretation | null;
   executionSimulation: LabExecutionSimulation;
   inspectionMode: LabInspectionMode;
@@ -37,6 +39,7 @@ export type LabExecutionCandidateResolvedInput = {
   executionPlan: LabExecutionPlan | null;
   executionReadiness: LabExecutionReadiness | null;
   executionReflection: LabExecutionReflection | null;
+  executionGoalEvaluation?: LabExecutionGoalEvaluation | null;
   executionResultInterpretation?: LabExecutionCandidateResultInterpretation | null;
   executionSimulation: LabExecutionSimulation | null;
   inspectionMode: LabInspectionMode;
@@ -328,6 +331,15 @@ function buildConfidence(
     }
   }
 
+  const goalEvaluation = input.executionGoalEvaluation;
+  if (goalEvaluation !== undefined && goalEvaluation !== null) {
+    if (goalEvaluation.outcome === "successful") {
+      confidence += 0.06;
+    } else if (goalEvaluation.outcome === "failed") {
+      confidence -= 0.12;
+    }
+  }
+
   return clampConfidence(confidence);
 }
 
@@ -374,6 +386,7 @@ export function buildExecutionCandidateFromResolved(
     executionPlan: input.executionPlan,
     executionReadiness: input.executionReadiness,
     executionReflection: input.executionReflection,
+    executionGoalEvaluation: input.executionGoalEvaluation ?? null,
     executionResultInterpretation: input.executionResultInterpretation ?? null,
     executionSimulation: input.executionSimulation,
     inspectionMode: input.inspectionMode,

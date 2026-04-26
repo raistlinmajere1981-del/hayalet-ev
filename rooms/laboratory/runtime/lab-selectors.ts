@@ -8,6 +8,7 @@ import type {
   LabExecutionCandidate,
   LabExecutionCommitment,
   LabExecutionDispatchCandidate,
+  LabExecutionGoalEvaluation,
   LabExecutionPayloadPreview,
   LabExecutionPlan,
   LabExecutionReadiness,
@@ -143,7 +144,11 @@ export type LabExecutionResultInterpretation = {
 
 export type LabExecutionResultInterpretationInput = LabExecutionResult & {
   actionType: string;
-  selectionSnapshot: LabExecutionSelectionSnapshot;
+  selectionSnapshot?: LabExecutionSelectionSnapshot;
+};
+
+export type LabExecutionGoalEvaluationInput = LabExecutionResult & {
+  selectionSnapshot?: LabExecutionSelectionSnapshot;
 };
 
 type ActiveExecutionRuntimeContext = {
@@ -161,7 +166,10 @@ function getExpectedExecutionArtifactCount(actionType: string) {
   return 1;
 }
 
-function getExecutionSelectionDurationMs(selection: LabExecutionSelectionSnapshot) {
+function getExecutionSelectionDurationMs(selection?: LabExecutionSelectionSnapshot) {
+  if (selection === undefined) {
+    return 0;
+  }
   return Math.max(0, selection.endMs - selection.startMs);
 }
 
@@ -213,6 +221,114 @@ export function buildExecutionResultInterpretation(
   };
 }
 
+function clampGoalAlignment(value: number) {
+  return Number(Math.max(0, Math.min(1, value)).toFixed(2));
+}
+
+function createGoalEvaluation(
+  outcome: LabExecutionGoalEvaluation["outcome"],
+  goalAlignment: number,
+  summary: string
+): LabExecutionGoalEvaluation {
+  return {
+    outcome,
+    goalAlignment: clampGoalAlignment(goalAlignment),
+    summary,
+  };
+}
+
+export function getExecutionGoalEvaluation(
+  result: LabExecutionGoalEvaluationInput,
+  actionType: string
+): LabExecutionGoalEvaluation {
+  const interpretation = buildExecutionResultInterpretation({
+    ...result,
+    actionType,
+  });
+  const confidence =
+    typeof result.metrics.confidence === "number" && Number.isFinite(result.metrics.confidence)
+      ? Math.max(0, Math.min(1, result.metrics.confidence))
+      : undefined;
+  const hasRoi = result.selectionSnapshot?.roi !== undefined;
+  const artifactCount = result.artifacts.length;
+
+  switch (actionType) {
+    case "analyze-segment":
+      if (interpretation.coverageLevel === "high" && interpretation.anomalyLevel !== "none") {
+        return createGoalEvaluation(
+          "successful",
+          interpretation.anomalyLevel === "high" ? 0.95 : 0.88,
+          "Segment goal achieved through high-coverage anomaly detection"
+        );
+      }
+      if (interpretation.coverageLevel === "low") {
+        return createGoalEvaluation(
+          "failed",
+          0.25,
+          "Segment goal remains unmet because coverage is too limited"
+        );
+      }
+      return createGoalEvaluation(
+        "neutral",
+        0.55,
+        "Segment goal remains inconclusive under the current evidence"
+      );
+    case "focus-region":
+      if (hasRoi !== true) {
+        return createGoalEvaluation(
+          "neutral",
+          0.5,
+          "Region goal remains neutral without an ROI snapshot"
+        );
+      }
+      if (interpretation.coverageLevel === "high") {
+        return createGoalEvaluation(
+          "successful",
+          0.9,
+          "Region goal achieved with high ROI coverage"
+        );
+      }
+      if (interpretation.coverageLevel === "low") {
+        return createGoalEvaluation(
+          "failed",
+          0.25,
+          "Region goal remains unmet because ROI coverage is limited"
+        );
+      }
+      return createGoalEvaluation(
+        "neutral",
+        0.58,
+        "Region goal remains inconclusive under the current ROI coverage"
+      );
+    case "inspect-audio":
+      if (artifactCount >= 2 && confidence !== undefined && confidence >= 0.6) {
+        return createGoalEvaluation(
+          "successful",
+          confidence >= 0.75 ? 0.88 : 0.8,
+          "Audio goal achieved through repeated frequency evidence"
+        );
+      }
+      if (confidence !== undefined && confidence < 0.6) {
+        return createGoalEvaluation(
+          "failed",
+          0.25,
+          "Audio goal remains unmet because confidence is too low"
+        );
+      }
+      return createGoalEvaluation(
+        "neutral",
+        0.55,
+        "Audio goal remains inconclusive for the current result"
+      );
+    default:
+      return createGoalEvaluation(
+        "neutral",
+        0.5,
+        "Goal evaluation remains neutral for this action"
+      );
+  }
+}
+
 function getReflectionFeedbackLine(interpretation: LabExecutionResultInterpretation) {
   if (interpretation.coverageLevel === "low") {
     return "Result shows limited coverage";
@@ -228,18 +344,28 @@ function getReflectionFeedbackLine(interpretation: LabExecutionResultInterpretat
 
 function appendReflectionFeedback(
   reflection: LabExecutionReflection,
-  interpretation: LabExecutionResultInterpretation | null
+  interpretation: LabExecutionResultInterpretation | null,
+  goalEvaluation: LabExecutionGoalEvaluation | null
 ): LabExecutionReflection {
-  if (interpretation === null) {
-    return reflection;
+  const feedbackLines: string[] = [];
+
+  if (interpretation !== null) {
+    const feedbackLine = getReflectionFeedbackLine(interpretation);
+    if (!reflection.summary.includes(feedbackLine)) {
+      feedbackLines.push(feedbackLine);
+    }
   }
-  const feedbackLine = getReflectionFeedbackLine(interpretation);
-  if (reflection.summary.includes(feedbackLine)) {
+
+  if (goalEvaluation !== null && !reflection.summary.includes(goalEvaluation.summary)) {
+    feedbackLines.push(goalEvaluation.summary);
+  }
+
+  if (feedbackLines.length === 0) {
     return reflection;
   }
   return {
     ...reflection,
-    summary: `${reflection.summary} ${feedbackLine}`,
+    summary: `${reflection.summary} ${feedbackLines.join(" ")}`,
   };
 }
 
@@ -886,7 +1012,11 @@ export function getActiveExecutionReflection(state: LabStoreState): LabExecution
   if (reflection === null) {
     return null;
   }
-  return appendReflectionFeedback(reflection, getActiveExecutionResultInterpretation(state));
+  return appendReflectionFeedback(
+    reflection,
+    getActiveExecutionResultInterpretation(state),
+    getActiveExecutionGoalEvaluation(state)
+  );
 }
 
 function getBaseActiveExecutionAlternatives(state: LabStoreState): LabExecutionAlternatives | null {
@@ -909,6 +1039,7 @@ export function getActiveExecutionAlternatives(
     executionSimulation: getActiveExecutionSimulation(state),
     executionReadiness: getActiveExecutionReadiness(state),
     executionReflection: getActiveExecutionReflection(state),
+    executionGoalEvaluation: getActiveExecutionGoalEvaluation(state),
     executionResultInterpretation: getActiveExecutionResultInterpretation(state),
     activeSelection: getActiveSelection(state),
     inspectionMode: getInspectionMode(state),
@@ -938,6 +1069,7 @@ export function getActiveExecutionCandidate(state: LabStoreState): LabExecutionC
     executionPayloadPreview: getActiveExecutionPayloadPreview(state),
     executionReflection: getActiveExecutionReflection(state),
     executionAlternatives: getActiveExecutionAlternatives(state),
+    executionGoalEvaluation: getActiveExecutionGoalEvaluation(state),
     executionResultInterpretation: getActiveExecutionResultInterpretation(state),
     activeSelection: getActiveSelection(state),
     inspectionMode: getInspectionMode(state),
@@ -1125,6 +1257,22 @@ export function getActiveExecutionResultInterpretation(
     actionType: context.dispatchCandidate.actionType,
     selectionSnapshot: context.dispatchCandidate.selectionSnapshot,
   });
+}
+
+export function getActiveExecutionGoalEvaluation(
+  state: LabStoreState
+): LabExecutionGoalEvaluation | null {
+  const context = getActiveExecutionRuntimeContext(state);
+  if (context === null) {
+    return null;
+  }
+  return getExecutionGoalEvaluation(
+    {
+      ...context.result,
+      selectionSnapshot: context.dispatchCandidate.selectionSnapshot,
+    },
+    context.dispatchCandidate.actionType
+  );
 }
 
 export function getExecutionJourneyStep(state: LabStoreState): number {

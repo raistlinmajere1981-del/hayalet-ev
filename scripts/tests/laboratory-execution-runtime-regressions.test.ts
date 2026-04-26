@@ -20,6 +20,7 @@ import {
   getActiveExecutionAlternatives,
   getActiveExecutionCandidate,
   getActiveExecutionCommitment,
+  getActiveExecutionGoalEvaluation,
   getActiveExecutionIntent,
   getActiveExecutionResult,
   getActiveExecutionPayloadPreview,
@@ -31,6 +32,7 @@ import {
   getActiveExecutionResultInterpretation,
   getActiveSuggestionPreviewId,
   getExecutionDispatchCandidate,
+  getExecutionGoalEvaluation,
   getLaboratoryProcessSummary,
   getLaboratoryRightPanelContext,
   installTimerMock,
@@ -3067,6 +3069,238 @@ test("execution result interpretation maps deterministic outcome buckets", () =>
   );
 });
 
+test("execution goal evaluation maps deterministic action-aware outcomes", () => {
+  const analyzeSelectionSnapshot = {
+    endMs: 4200,
+    inspectionMode: "none" as const,
+    intent: "anomaly" as const,
+    sourceKind: "video",
+    startMs: 1200,
+    type: "clip" as const,
+  };
+  const analyzeSuccessfulInput = {
+    summary: "Analyzed selected segment",
+    insights: ["Detected structural variation", "Potential anomaly in mid-range"],
+    artifacts: [
+      {
+        type: "marker" as const,
+        label: "Structural variation marker",
+        timeRange: { start: 1700, end: 1800 },
+      },
+      {
+        type: "marker" as const,
+        label: "Mid-range anomaly marker",
+        timeRange: { start: 2400, end: 2500 },
+      },
+      {
+        type: "marker" as const,
+        label: "Boundary variance marker",
+        timeRange: { start: 3100, end: 3200 },
+      },
+    ],
+    metrics: {
+      coverage: 0.95,
+      confidence: 0.9,
+    },
+    selectionSnapshot: analyzeSelectionSnapshot,
+  };
+
+  assert.deepEqual(
+    getExecutionGoalEvaluation(analyzeSuccessfulInput, "analyze-segment"),
+    getExecutionGoalEvaluation(analyzeSuccessfulInput, "analyze-segment")
+  );
+  assert.deepEqual(getExecutionGoalEvaluation(analyzeSuccessfulInput, "analyze-segment"), {
+    outcome: "successful",
+    goalAlignment: 0.95,
+    summary: "Segment goal achieved through high-coverage anomaly detection",
+  });
+  assert.deepEqual(
+    getExecutionGoalEvaluation(
+      {
+        ...analyzeSuccessfulInput,
+        artifacts: [],
+        metrics: {
+          coverage: 0.4,
+          confidence: 0.45,
+        },
+      },
+      "analyze-segment"
+    ),
+    {
+      outcome: "failed",
+      goalAlignment: 0.25,
+      summary: "Segment goal remains unmet because coverage is too limited",
+    }
+  );
+
+  const focusSelectionSnapshot = {
+    endMs: 3600,
+    inspectionMode: "visual" as const,
+    intent: "visual" as const,
+    roi: {
+      x: 0.15,
+      y: 0.2,
+      width: 0.3,
+      height: 0.25,
+    },
+    sourceKind: "video",
+    startMs: 1200,
+    type: "inspect" as const,
+  };
+  assert.deepEqual(
+    getExecutionGoalEvaluation(
+      {
+        summary: "Focused selected region",
+        insights: ["Focused region shows localized activity"],
+        artifacts: [
+          {
+            type: "annotation" as const,
+            label: "Left upper ROI annotation",
+            timeRange: { start: 2000, end: 2300 },
+          },
+        ],
+        metrics: {
+          coverage: 0.84,
+          confidence: 0.82,
+        },
+        selectionSnapshot: focusSelectionSnapshot,
+      },
+      "focus-region"
+    ),
+    {
+      outcome: "successful",
+      goalAlignment: 0.9,
+      summary: "Region goal achieved with high ROI coverage",
+    }
+  );
+  assert.deepEqual(
+    getExecutionGoalEvaluation(
+      {
+        summary: "Focused selected region",
+        insights: ["Focused region shows localized activity"],
+        artifacts: [
+          {
+            type: "annotation" as const,
+            label: "Left upper ROI annotation",
+            timeRange: { start: 2000, end: 2300 },
+          },
+        ],
+        metrics: {
+          coverage: 0.42,
+          confidence: 0.67,
+        },
+        selectionSnapshot: focusSelectionSnapshot,
+      },
+      "focus-region"
+    ),
+    {
+      outcome: "failed",
+      goalAlignment: 0.25,
+      summary: "Region goal remains unmet because ROI coverage is limited",
+    }
+  );
+  assert.deepEqual(
+    getExecutionGoalEvaluation(
+      {
+        summary: "Focused selected segment",
+        insights: ["Focused segment remains region-neutral"],
+        artifacts: [],
+        metrics: {
+          coverage: 0.72,
+        },
+      },
+      "focus-region"
+    ),
+    {
+      outcome: "neutral",
+      goalAlignment: 0.5,
+      summary: "Region goal remains neutral without an ROI snapshot",
+    }
+  );
+
+  const audioSelectionSnapshot = {
+    endMs: 3000,
+    inspectionMode: "audio" as const,
+    intent: "audio" as const,
+    sourceKind: "audio",
+    startMs: 1000,
+    type: "clip" as const,
+  };
+  assert.deepEqual(
+    getExecutionGoalEvaluation(
+      {
+        summary: "Inspected selected audio",
+        insights: ["Frequency cluster detected"],
+        artifacts: [
+          {
+            type: "marker" as const,
+            label: "Frequency cluster marker",
+            timeRange: { start: 1700, end: 1800 },
+          },
+          {
+            type: "marker" as const,
+            label: "Transient frequency marker",
+            timeRange: { start: 2200, end: 2300 },
+          },
+        ],
+        metrics: {
+          coverage: 0.82,
+          confidence: 0.79,
+        },
+        selectionSnapshot: audioSelectionSnapshot,
+      },
+      "inspect-audio"
+    ),
+    {
+      outcome: "successful",
+      goalAlignment: 0.88,
+      summary: "Audio goal achieved through repeated frequency evidence",
+    }
+  );
+  assert.deepEqual(
+    getExecutionGoalEvaluation(
+      {
+        summary: "Inspected selected audio",
+        insights: ["Frequency cluster detected"],
+        artifacts: [
+          {
+            type: "marker" as const,
+            label: "Frequency cluster marker",
+            timeRange: { start: 1700, end: 1800 },
+          },
+        ],
+        metrics: {
+          coverage: 0.62,
+          confidence: 0.52,
+        },
+        selectionSnapshot: audioSelectionSnapshot,
+      },
+      "inspect-audio"
+    ),
+    {
+      outcome: "failed",
+      goalAlignment: 0.25,
+      summary: "Audio goal remains unmet because confidence is too low",
+    }
+  );
+  assert.deepEqual(
+    getExecutionGoalEvaluation(
+      {
+        summary: "Execution completed for selected context",
+        insights: [],
+        artifacts: [],
+        metrics: {},
+      },
+      "enhance-visual"
+    ),
+    {
+      outcome: "neutral",
+      goalAlignment: 0.5,
+      summary: "Goal evaluation remains neutral for this action",
+    }
+  );
+});
+
 test("execution dispatch candidate exists only for a valid committed staged chain", () => {
   const store = createLabStore();
 
@@ -3229,6 +3463,11 @@ test("completed execution result feeds passive reflection candidate and alternat
     anomalyLevel: "moderate",
     coverageLevel: "medium",
   });
+  assert.deepEqual(getActiveExecutionGoalEvaluation(store.getState()), {
+    outcome: "neutral",
+    goalAlignment: 0.55,
+    summary: "Audio goal remains inconclusive for the current result",
+  });
   const afterReflection = getActiveExecutionReflection(store.getState());
   const afterCandidate = getActiveExecutionCandidate(store.getState());
   const afterAlternatives = getActiveExecutionAlternatives(store.getState());
@@ -3241,7 +3480,7 @@ test("completed execution result feeds passive reflection candidate and alternat
   assert.ok(afterDispatchCandidate);
   assert.equal(
     afterReflection.summary,
-    `${beforeReflection.summary} Result partially aligns with simulated expectations`
+    `${beforeReflection.summary} Result partially aligns with simulated expectations Audio goal remains inconclusive for the current result`
   );
   assert.equal(afterCandidate.status, baseCandidate.status);
   assert.equal(
@@ -3254,6 +3493,156 @@ test("completed execution result feeds passive reflection candidate and alternat
   assert.equal(afterStaging.status, "staged");
   assert.equal(afterDispatchCandidate.dispatchId, beforeDispatchId);
   assert.equal(getActiveExecutionResult(store.getState())?.summary, "Inspected selected audio");
+});
+
+test("goal-aware feedback stays additive when goal success coexists with divergent interpretation", () => {
+  const selection: LabSelection = {
+    id: "selection-goal-mixed-signal",
+    startMs: 1200,
+    endMs: 4200,
+    type: "clip",
+    intent: "anomaly",
+    createdAt: 1,
+  };
+  const chain = createExecutionAlternativesChain({
+    actionType: "analyze-segment",
+    inspectionMode: "none",
+    selection,
+    sourceKind: "video",
+    suggestionId: "segment-analyze",
+  });
+  const interpretation = {
+    alignment: "deviates" as const,
+    anomalyLevel: "high" as const,
+    coverageLevel: "high" as const,
+  };
+  const goalEvaluation = {
+    outcome: "successful" as const,
+    goalAlignment: 0.95,
+    summary: "Segment goal achieved through high-coverage anomaly detection",
+  };
+  const baseInput = {
+    executionPlan: chain.plan,
+    executionSimulation: chain.simulation,
+    executionReadiness: chain.readiness,
+    executionPayloadPreview: chain.payload,
+    executionReflection: chain.reflection,
+    executionAlternatives: chain.alternatives,
+    activeSelection: chain.selection,
+    inspectionMode: "none" as const,
+    sourceKind: "video",
+  };
+  const interpretationOnlyCandidate = buildExecutionCandidateFromResolved({
+    ...baseInput,
+    executionResultInterpretation: interpretation,
+  });
+  const mixedSignalCandidate = buildExecutionCandidateFromResolved({
+    ...baseInput,
+    executionResultInterpretation: interpretation,
+    executionGoalEvaluation: goalEvaluation,
+  });
+  const mixedSignalAlternatives = buildExecutionAlternatives({
+    executionPlan: chain.plan,
+    executionSimulation: chain.simulation,
+    executionReadiness: chain.readiness,
+    executionReflection: chain.reflection,
+    executionGoalEvaluation: goalEvaluation,
+    executionResultInterpretation: interpretation,
+    activeSelection: chain.selection,
+    inspectionMode: "none",
+    sourceKind: "video",
+  });
+
+  assert.ok(interpretationOnlyCandidate);
+  assert.ok(mixedSignalCandidate);
+  assert.equal(mixedSignalCandidate.status, interpretationOnlyCandidate.status);
+  assert.equal(
+    (mixedSignalCandidate.confidence ?? 0) > (interpretationOnlyCandidate.confidence ?? 0),
+    true
+  );
+  assert.deepEqual(mixedSignalAlternatives.alternatives, chain.alternatives.alternatives);
+  assert.match(mixedSignalAlternatives.summary, /intended outcome was achieved/i);
+  assert.match(mixedSignalAlternatives.summary, /diverges from simulation/i);
+  assert.match(mixedSignalAlternatives.comparisonNote ?? "", /remaining divergence/i);
+});
+
+test("goal-aware feedback tightens failed outcomes without changing structure or status", () => {
+  const selection: LabSelection = {
+    id: "selection-goal-failed-branch",
+    startMs: 1000,
+    endMs: 3400,
+    type: "inspect",
+    intent: "visual",
+    roi: {
+      x: 0.18,
+      y: 0.22,
+      width: 0.24,
+      height: 0.18,
+    },
+    createdAt: 1,
+  };
+  const chain = createExecutionAlternativesChain({
+    actionType: "focus-region",
+    inspectionMode: "visual",
+    selection,
+    sourceKind: "video",
+    suggestionId: "inspect-region",
+  });
+  const interpretation = {
+    alignment: "deviates" as const,
+    anomalyLevel: "moderate" as const,
+    coverageLevel: "low" as const,
+  };
+  const goalEvaluation = {
+    outcome: "failed" as const,
+    goalAlignment: 0.25,
+    summary: "Region goal remains unmet because ROI coverage is limited",
+  };
+  const baseInput = {
+    executionPlan: chain.plan,
+    executionSimulation: chain.simulation,
+    executionReadiness: chain.readiness,
+    executionPayloadPreview: chain.payload,
+    executionReflection: chain.reflection,
+    executionAlternatives: chain.alternatives,
+    activeSelection: chain.selection,
+    inspectionMode: "visual" as const,
+    sourceKind: "video",
+  };
+  const interpretationOnlyCandidate = buildExecutionCandidateFromResolved({
+    ...baseInput,
+    executionResultInterpretation: interpretation,
+  });
+  const failedGoalCandidate = buildExecutionCandidateFromResolved({
+    ...baseInput,
+    executionResultInterpretation: interpretation,
+    executionGoalEvaluation: goalEvaluation,
+  });
+  const failedGoalAlternatives = buildExecutionAlternatives({
+    executionPlan: chain.plan,
+    executionSimulation: chain.simulation,
+    executionReadiness: chain.readiness,
+    executionReflection: chain.reflection,
+    executionGoalEvaluation: goalEvaluation,
+    executionResultInterpretation: interpretation,
+    activeSelection: chain.selection,
+    inspectionMode: "visual",
+    sourceKind: "video",
+  });
+
+  assert.ok(interpretationOnlyCandidate);
+  assert.ok(failedGoalCandidate);
+  assert.equal(failedGoalCandidate.status, interpretationOnlyCandidate.status);
+  assert.equal(
+    (failedGoalCandidate.confidence ?? 0) < (interpretationOnlyCandidate.confidence ?? 0),
+    true
+  );
+  assert.deepEqual(failedGoalAlternatives.alternatives, chain.alternatives.alternatives);
+  assert.match(failedGoalAlternatives.summary, /missed its intended outcome/i);
+  assert.match(
+    failedGoalAlternatives.comparisonNote ?? "",
+    /recover coverage or reduce divergence/i
+  );
 });
 
 test("execution dispatcher emits deterministic mock progress and cleans up stale timers", () => {
@@ -3602,10 +3991,12 @@ test("execution runtime clears on upstream invalidation edges", () => {
     const { store } = createCommittedAudioExecutionStore();
     completeMockExecutionRuntime(store);
     assert.equal(getActiveExecutionResult(store.getState()) !== null, true, scenario.name);
+    assert.equal(getActiveExecutionGoalEvaluation(store.getState()) !== null, true, scenario.name);
 
     scenario.mutate(store);
 
     assert.equal(store.getState().ui.executionRuntime.status, "idle", scenario.name);
     assert.equal(getActiveExecutionResult(store.getState()), null, scenario.name);
+    assert.equal(getActiveExecutionGoalEvaluation(store.getState()), null, scenario.name);
   });
 });

@@ -354,6 +354,14 @@ export type LabActiveExecutionResult = LabExecutionResult & {
   selectionSnapshot: LabExecutionSelectionSnapshot;
 };
 
+export type LabExecutionGoalOutcome = "successful" | "neutral" | "failed";
+
+export interface LabExecutionGoalEvaluation {
+  outcome: LabExecutionGoalOutcome;
+  goalAlignment: number;
+  summary: string;
+}
+
 export type LabExecutionRuntimeStatus = "idle" | "running" | "completed";
 
 export interface LabExecutionRuntime {

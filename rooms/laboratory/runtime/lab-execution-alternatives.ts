@@ -1,6 +1,7 @@
 import type {
   LabExecutionAlternative,
   LabExecutionAlternatives,
+  LabExecutionGoalEvaluation,
   LabExecutionPlan,
   LabExecutionReadiness,
   LabExecutionReflection,
@@ -20,6 +21,7 @@ type LabExecutionAlternativesInput = {
   executionPlan: LabExecutionPlan;
   executionReadiness: LabExecutionReadiness;
   executionReflection: LabExecutionReflection;
+  executionGoalEvaluation?: LabExecutionGoalEvaluation | null;
   executionResultInterpretation?: LabExecutionAlternativesResultInterpretation | null;
   executionSimulation: LabExecutionSimulation;
   inspectionMode: LabInspectionMode;
@@ -31,6 +33,7 @@ export type LabExecutionAlternativesResolvedInput = {
   executionPlan: LabExecutionPlan | null;
   executionReadiness: LabExecutionReadiness | null;
   executionReflection: LabExecutionReflection | null;
+  executionGoalEvaluation?: LabExecutionGoalEvaluation | null;
   executionResultInterpretation?: LabExecutionAlternativesResultInterpretation | null;
   executionSimulation: LabExecutionSimulation | null;
   inspectionMode: LabInspectionMode;
@@ -332,7 +335,19 @@ function buildAlternatives(input: LabExecutionAlternativesInput) {
 }
 
 function buildSummary(input: LabExecutionAlternativesInput) {
+  const goalEvaluation = input.executionGoalEvaluation;
   const interpretation = input.executionResultInterpretation;
+  if (goalEvaluation !== undefined && goalEvaluation !== null) {
+    if (goalEvaluation.outcome === "failed") {
+      return "Goal evaluation indicates the current result missed its intended outcome; alternative paths should be treated as stronger next routes.";
+    }
+    if (goalEvaluation.outcome === "successful") {
+      if (interpretation?.alignment === "deviates") {
+        return "Goal evaluation indicates the intended outcome was achieved, but execution still diverges from simulation; alternatives remain comparative safeguards.";
+      }
+      return "Goal evaluation indicates the intended outcome was achieved; alternatives remain comparative backup routes.";
+    }
+  }
   if (interpretation !== undefined && interpretation !== null) {
     if (interpretation.coverageLevel === "low" || interpretation.alignment === "deviates") {
       return "Execution feedback suggests alternative paths may yield better outcomes than the current route.";
@@ -355,7 +370,19 @@ function buildSummary(input: LabExecutionAlternativesInput) {
 }
 
 function buildComparisonNote(input: LabExecutionAlternativesInput) {
+  const goalEvaluation = input.executionGoalEvaluation;
   const interpretation = input.executionResultInterpretation;
+  if (goalEvaluation !== undefined && goalEvaluation !== null) {
+    if (goalEvaluation.outcome === "failed") {
+      return "Compared to the current result, these alternatives are better positioned to recover coverage or reduce divergence.";
+    }
+    if (goalEvaluation.outcome === "successful") {
+      if (interpretation?.alignment === "deviates") {
+        return "Compared to the current result, these alternatives can validate the achieved outcome against the remaining divergence.";
+      }
+      return "Compared to the current result, these alternatives are backup routes rather than stronger paths.";
+    }
+  }
   if (interpretation !== undefined && interpretation !== null) {
     if (interpretation.coverageLevel === "low" || interpretation.alignment === "deviates") {
       return "Compared to the current result, these alternatives may improve coverage or reduce divergence.";
@@ -444,6 +471,7 @@ export function buildExecutionAlternativesFromResolved(
     executionPlan: input.executionPlan,
     executionReadiness: input.executionReadiness,
     executionReflection: input.executionReflection,
+    executionGoalEvaluation: input.executionGoalEvaluation ?? null,
     executionResultInterpretation: input.executionResultInterpretation ?? null,
     executionSimulation: input.executionSimulation,
     inspectionMode: input.inspectionMode,

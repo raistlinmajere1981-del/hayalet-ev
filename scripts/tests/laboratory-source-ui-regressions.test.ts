@@ -312,6 +312,7 @@ test("laboratory process panel renders materialized execution insights and eleme
   assert.match(html, /Detected elements/);
   assert.match(html, /Frequency cluster marker/);
   assert.match(html, /Outcome evaluated/);
+  assert.match(html, /Goal evaluation: Audio goal remains inconclusive for the current result/);
   assert.doesNotMatch(html, /data-lab-action="execution/);
 });
 
@@ -361,6 +362,7 @@ test("laboratory process panel resolves evaluated outcome copy in Turkish", () =
   const html = renderWorkspaceProcessPanel(store.getState(), { sourceReady: true, copy: tr });
 
   assert.match(html, /Sonuç değerlendirildi/);
+  assert.match(html, /Hedef değerlendirmesi: Audio goal remains inconclusive for the current result/);
 });
 
 test("laboratory root owns mock execution dispatch outside the run controller", () => {
