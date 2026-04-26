@@ -182,9 +182,10 @@ export async function buildWorkspaceRoomOutput(sourceDir: string, buildDir: stri
       isTypeDeclarationPath(relativePath) === false,
   });
 
-  const sourceFiles = (await collectFilesRecursive(sourceDir)).filter((file) =>
-    file.relativePath.startsWith("scripts/") === false &&
-    isWorkspaceTypeScriptSourcePath(file.relativePath)
+  const sourceFiles = (await collectFilesRecursive(sourceDir)).filter(
+    (file) =>
+      file.relativePath.startsWith("scripts/") === false &&
+      isWorkspaceTypeScriptSourcePath(file.relativePath)
   );
 
   await Promise.all(

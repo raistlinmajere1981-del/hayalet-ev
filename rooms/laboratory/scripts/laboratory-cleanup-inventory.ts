@@ -298,9 +298,7 @@ function collectCssAudit(cssFiles: string[], uiFiles: string[]): CssAudit {
   };
 }
 
-export async function buildInventory(
-  options: BuildInventoryOptions = {}
-): Promise<Inventory> {
+export async function buildInventory(options: BuildInventoryOptions = {}): Promise<Inventory> {
   const labFiles = await walkFiles(LAB_ROOT);
   const tsFiles = labFiles.filter((filePath) => filePath.endsWith(".ts"));
   const testFiles = (await walkFiles(TEST_ROOT)).filter(

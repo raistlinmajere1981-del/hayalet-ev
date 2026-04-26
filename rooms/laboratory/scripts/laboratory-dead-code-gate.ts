@@ -119,10 +119,7 @@ function getImportedNames(importerPath: string, moduleMap: Map<string, string>) 
   }
 
   sourceFile.forEachChild((node) => {
-    if (
-      ts.isImportDeclaration(node) &&
-      ts.isStringLiteral(node.moduleSpecifier)
-    ) {
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
       const target = resolveLocalImport(importerPath, node.moduleSpecifier.text, moduleMap);
       if (target === null) {
         return;
@@ -255,7 +252,9 @@ const unusedExports = tsFiles
       return [];
     }
 
-    return collectNamedExports(filePath).filter((entry) => importedNames.has(entry.exportName) !== true);
+    return collectNamedExports(filePath).filter(
+      (entry) => importedNames.has(entry.exportName) !== true
+    );
   })
   .sort((left, right) => left.file.localeCompare(right.file) || left.line - right.line);
 
@@ -270,6 +269,9 @@ const report: GateReport = {
 
 console.log(`${JSON.stringify(report, null, 2)}\n`);
 
-if (hasFlag("--fail-on-findings") && (unusedExports.length > 0 || inventory.zeroIndegreeCandidates.length > 0)) {
+if (
+  hasFlag("--fail-on-findings") &&
+  (unusedExports.length > 0 || inventory.zeroIndegreeCandidates.length > 0)
+) {
   process.exitCode = 1;
 }
