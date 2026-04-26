@@ -5,6 +5,13 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { renderLabWaveformTimeline } from "../../rooms/laboratory/ui/lab-waveform-timeline.ts";
 import { createLabI18n } from "../../rooms/laboratory/ui/lab-i18n.ts";
+import { createMockExecutionResult } from "../../rooms/laboratory/runtime/lab-execution-dispatcher.ts";
+import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
+import {
+  getActiveExecutionCandidate,
+  getExecutionDispatchCandidate,
+  getWaveformTimelineModel,
+} from "../../rooms/laboratory/runtime/lab-selectors.ts";
 import {
   formatLabExpectedOutputLabel,
   formatLabUserActionDisplayText,
@@ -329,6 +336,62 @@ function createPassiveExecutionChainFixture() {
   };
 }
 
+function createCompletedAudioExecutionStore() {
+  const store = createLabStore();
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "audio",
+      mode: "local",
+      storedPath: "/tmp/source.wav",
+      metadata: {
+        durationSeconds: 4,
+      },
+    },
+  });
+  store.dispatch({
+    type: "source-probe-completed",
+    action: "probe",
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "audio-inspect",
+  });
+  const activeCandidate = getActiveExecutionCandidate(store.getState());
+  assert.ok(activeCandidate);
+  store.dispatch({
+    type: "workspace-execution-commitment-set",
+    planId: activeCandidate.planId,
+  });
+  const dispatchCandidate = getExecutionDispatchCandidate(store.getState());
+  assert.ok(dispatchCandidate);
+  store.dispatch({
+    type: "workspace-execution-dispatch",
+    planId: dispatchCandidate.planId,
+    dispatchId: dispatchCandidate.dispatchId,
+  });
+  store.dispatch({
+    type: "workspace-execution-completed",
+    planId: dispatchCandidate.planId,
+    dispatchId: dispatchCandidate.dispatchId,
+    result: createMockExecutionResult(dispatchCandidate),
+  });
+  return store;
+}
+
 test("laboratory UI shell evaluates under minimal runtime stubs", async () => {
   const environment = createMinimalLaboratoryUiEnvironment();
   const buildArtifact = await createRoomBuiltArtifact("laboratory");
@@ -374,7 +437,10 @@ test("laboratory shell routes host traffic through lab-root orchestration seams"
   assert.match(labRootSource, /scheduleBootOverlayUnlock\(state\);/);
   assert.match(labRootSource, /renderToolManagementOverlay\(state, copy\)/);
   assert.match(labRootSource, /emit:\s*eventBus\.emit,/);
-  assert.match(labRootSource, /roomAPI\.ready\(\{\s*feature:\s*"media-analysis",\s*room:\s*"laboratory",\s*stage:\s*"ui-ready"/);
+  assert.match(
+    labRootSource,
+    /roomAPI\.ready\(\{\s*feature:\s*"media-analysis",\s*room:\s*"laboratory",\s*stage:\s*"ui-ready"/
+  );
   assert.match(labLayoutSource, /renderToolManagementOverlay\(state, copy\)/);
   assert.match(hostBridgeSource, /type === "source-state"/);
   assert.match(hostBridgeSource, /type:\s*"source-snapshot-received"/);
@@ -389,7 +455,10 @@ test("laboratory shell preserves workspace preview nodes while diffing live pane
   assert.match(labRootSource, /function updateRenderedElement\(/);
   assert.match(labRootSource, /function syncChildNodes\(/);
   assert.match(labRootSource, /function canReuseElement\(/);
-  assert.match(labRootSource, /const preserveKey = readPreservedMediaKey\(currentElement\) \|\| readPreservedMediaKey\(nextElement\);/);
+  assert.match(
+    labRootSource,
+    /const preserveKey = readPreservedMediaKey\(currentElement\) \|\| readPreservedMediaKey\(nextElement\);/
+  );
   assert.match(labRootSource, /function readPreservedDetailsState\(/);
   assert.match(labRootSource, /element\.hasAttribute\("data-lab-interpretation-panel"\)/);
   assert.match(labRootSource, /element\.hasAttribute\("data-lab-collapsible-panel"\)/);
@@ -403,10 +472,7 @@ test("laboratory shell preserves workspace preview nodes while diffing live pane
     labRootSource,
     /updateRenderedElement\(\s*documentRef,\s*rightPanel as HTMLElement,\s*renderLabRightPanel\(state, surface, copy\),\s*true\s*\);/
   );
-  assert.match(
-    workspaceSurfaceSource,
-    /preserveKey \|\| "workspace-preview"/
-  );
+  assert.match(workspaceSurfaceSource, /preserveKey \|\| "workspace-preview"/);
   assert.match(workspaceSurfaceSource, /data-lab-preserve-media="\$\{escapeHtml\(preserveKey\)\}"/);
 });
 
@@ -417,7 +483,10 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
 
   assert.match(labRootSource, /schemaVersion:\s*4,/);
   assert.match(labRootSource, /workspace:\s*state\.ui\.workspace,/);
-  assert.match(labRootSource, /state\.run\.state === "running" \|\| state\.run\.state === "queued"/);
+  assert.match(
+    labRootSource,
+    /state\.run\.state === "running" \|\| state\.run\.state === "queued"/
+  );
   assert.match(toolOverlaySource, /mediaAnalysis\.toolManager\.ariaLabel/);
   assert.match(toolOverlaySource, /data-lab-action="tool-update-all"/);
   assert.match(toolOverlaySource, /data-lab-action="tool-install"/);
@@ -431,10 +500,22 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
 test("laboratory theme widens the left rail and normalizes rail asset spacing", () => {
   const themeSource = readFileSync("rooms/laboratory/ui/lab-theme.css", "utf8");
 
-  assert.match(themeSource, /grid-template-columns:\s*16\.8rem minmax\(0, 1fr\) minmax\(17rem, 20rem\);/);
-  assert.match(themeSource, /\.labx-left-rail\s*\{[\s\S]*gap:\s*0\.8rem;[\s\S]*padding:\s*0\.85rem;/);
-  assert.match(themeSource, /\.labx-project-assets\s*\{[\s\S]*gap:\s*0\.55rem;[\s\S]*padding:\s*0\.9rem 0\.95rem;/);
-  assert.match(themeSource, /\.labx-project-assets__preview\s*\{[\s\S]*gap:\s*0\.45rem;[\s\S]*padding:\s*0\.42rem 0\.5rem;/);
+  assert.match(
+    themeSource,
+    /grid-template-columns:\s*16\.8rem minmax\(0, 1fr\) minmax\(17rem, 20rem\);/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-left-rail\s*\{[\s\S]*gap:\s*0\.8rem;[\s\S]*padding:\s*0\.85rem;/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-project-assets\s*\{[\s\S]*gap:\s*0\.55rem;[\s\S]*padding:\s*0\.9rem 0\.95rem;/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-project-assets__preview\s*\{[\s\S]*gap:\s*0\.45rem;[\s\S]*padding:\s*0\.42rem 0\.5rem;/
+  );
 });
 
 test("laboratory micro inspection UI exposes roi focus precedence and lens affordances in the preview shell", () => {
@@ -476,7 +557,10 @@ test("laboratory selection preview exposes soft execution intent affordances wit
 });
 
 test("laboratory execution plan UI stays passive and derived from active intent", () => {
-  const timelineSource = readFileSync("rooms/laboratory/ui/lab-waveform-timeline-render.ts", "utf8");
+  const timelineSource = readFileSync(
+    "rooms/laboratory/ui/lab-waveform-timeline-render.ts",
+    "utf8"
+  );
 
   assert.match(timelineSource, /data-lab-execution-plan="true"/);
   assert.match(timelineSource, /Execution plan/);
@@ -488,7 +572,10 @@ test("laboratory execution plan UI stays passive and derived from active intent"
 });
 
 test("laboratory execution simulation UI stays passive and derived from active plan", () => {
-  const timelineSource = readFileSync("rooms/laboratory/ui/lab-waveform-timeline-render.ts", "utf8");
+  const timelineSource = readFileSync(
+    "rooms/laboratory/ui/lab-waveform-timeline-render.ts",
+    "utf8"
+  );
 
   assert.match(timelineSource, /data-lab-execution-simulation="true"/);
   assert.match(timelineSource, /Simulation preview/);
@@ -501,7 +588,10 @@ test("laboratory execution simulation UI stays passive and derived from active p
 });
 
 test("laboratory execution readiness UI stays passive and owned by active readiness only", () => {
-  const timelineSource = readFileSync("rooms/laboratory/ui/lab-waveform-timeline-render.ts", "utf8");
+  const timelineSource = readFileSync(
+    "rooms/laboratory/ui/lab-waveform-timeline-render.ts",
+    "utf8"
+  );
 
   assert.match(timelineSource, /data-lab-execution-readiness="true"/);
   assert.match(timelineSource, /Execution readiness/);
@@ -572,7 +662,10 @@ test("laboratory execution readiness render ownership stays tied to active readi
 });
 
 test("laboratory execution payload preview UI stays passive and technical", () => {
-  const timelineSource = readFileSync("rooms/laboratory/ui/lab-waveform-timeline-render.ts", "utf8");
+  const timelineSource = readFileSync(
+    "rooms/laboratory/ui/lab-waveform-timeline-render.ts",
+    "utf8"
+  );
 
   assert.match(timelineSource, /data-lab-execution-payload-preview="true"/);
   assert.match(timelineSource, /Execution payload \(preview\)/);
@@ -681,7 +774,10 @@ test("laboratory execution payload preview render ownership stays tied to active
 });
 
 test("laboratory execution reflection UI stays passive and advisory", () => {
-  const timelineSource = readFileSync("rooms/laboratory/ui/lab-waveform-timeline-render.ts", "utf8");
+  const timelineSource = readFileSync(
+    "rooms/laboratory/ui/lab-waveform-timeline-render.ts",
+    "utf8"
+  );
 
   assert.match(timelineSource, /data-lab-execution-reflection="true"/);
   assert.match(timelineSource, /Execution reflection/);
@@ -802,7 +898,10 @@ test("laboratory execution reflection render ownership stays tied to active refl
 });
 
 test("laboratory execution alternatives UI stays passive and comparative", () => {
-  const timelineSource = readFileSync("rooms/laboratory/ui/lab-waveform-timeline-render.ts", "utf8");
+  const timelineSource = readFileSync(
+    "rooms/laboratory/ui/lab-waveform-timeline-render.ts",
+    "utf8"
+  );
 
   assert.match(timelineSource, /data-lab-execution-alternatives="true"/);
   assert.match(timelineSource, /Alternative evaluation/);
@@ -943,7 +1042,10 @@ test("laboratory execution alternatives render ownership stays tied to active re
 });
 
 test("laboratory execution candidate UI stays passive and structural", () => {
-  const timelineSource = readFileSync("rooms/laboratory/ui/lab-waveform-timeline-render.ts", "utf8");
+  const timelineSource = readFileSync(
+    "rooms/laboratory/ui/lab-waveform-timeline-render.ts",
+    "utf8"
+  );
   const candidateFunctionStart = timelineSource.indexOf("function renderExecutionCandidate");
   const candidateFunctionEnd = timelineSource.indexOf(
     "function formatCommitmentTimestamp",
@@ -951,7 +1053,10 @@ test("laboratory execution candidate UI stays passive and structural", () => {
   );
   assert.notEqual(candidateFunctionStart, -1);
   assert.notEqual(candidateFunctionEnd, -1);
-  const candidateFunctionSource = timelineSource.slice(candidateFunctionStart, candidateFunctionEnd);
+  const candidateFunctionSource = timelineSource.slice(
+    candidateFunctionStart,
+    candidateFunctionEnd
+  );
 
   assert.match(timelineSource, /data-lab-execution-candidate="true"/);
   assert.match(timelineSource, /Execution candidate/);
@@ -1120,6 +1225,19 @@ test("laboratory execution candidate render ownership stays tied to complete can
   assert.doesNotMatch(candidatePanel, /data-lab-action/);
   assert.doesNotMatch(candidatePanel, />\s*(Run|Execute|Apply|Start|Commit)\s*</);
   assert.doesNotMatch(candidatePanel, /\bCommit\b/);
+});
+
+test("laboratory timeline renders selector-fed execution feedback after completion", () => {
+  const store = createCompletedAudioExecutionStore();
+  const markup = renderLabWaveformTimeline(getWaveformTimelineModel(store.getState()));
+  const candidatePanel = extractCandidatePanelMarkup(markup);
+
+  assert.match(markup, /Result partially aligns with simulated expectations/);
+  assert.match(markup, /Execution feedback is mixed/);
+  assert.match(markup, /mixed execution signal/);
+  assert.match(candidatePanel, /98% confidence/);
+  assert.doesNotMatch(markup, /data-lab-action="execution/);
+  assert.doesNotMatch(candidatePanel, />\s*(Run|Execute|Apply|Start|Commit)\s*</);
 });
 
 test("laboratory execution commitment UI is explicit, passive, and candidate-gated", () => {
@@ -1304,7 +1422,10 @@ test("laboratory execution staging UI stays passive and avoids action language",
   assert.doesNotMatch(stagingPanel, /\b(Run|Execute|Apply|Start|Commit|Queue)\b/);
   assert.doesNotMatch(stagingPanel, /commitmentStatus|committed|commitment/i);
 
-  const timelineSource = readFileSync("rooms/laboratory/ui/lab-waveform-timeline-render.ts", "utf8");
+  const timelineSource = readFileSync(
+    "rooms/laboratory/ui/lab-waveform-timeline-render.ts",
+    "utf8"
+  );
   assert.match(timelineSource, /data-lab-execution-staging="true"/);
   assert.match(timelineSource, /function renderExecutionStaging/);
   assert.doesNotMatch(timelineSource, /workspace-execution-staging/);
@@ -1430,7 +1551,10 @@ test("laboratory runtime status copy resolves through room-local i18n catalogs",
   const enCopy = createLabI18n({ locale: "en", translations: enTranslations });
   const trCopy = createLabI18n({ locale: "tr", translations: trTranslations });
 
-  assert.equal(translateLabRuntimeText("Kaynak henüz hazır değil.", enCopy), "Source is not ready yet.");
+  assert.equal(
+    translateLabRuntimeText("Kaynak henüz hazır değil.", enCopy),
+    "Source is not ready yet."
+  );
   assert.equal(translateLabRuntimeText("Eksik araç: ffmpeg", enCopy), "Missing tool: ffmpeg");
   assert.equal(translateLabRuntimeText("Eksik araç: ffmpeg", trCopy), "Eksik araç: ffmpeg");
   assert.equal(
@@ -1489,7 +1613,10 @@ test("laboratory phase 4.95 i18n keys keep English and Turkish catalog parity", 
   }
 
   phaseKeys.forEach(function (key) {
-    assert.deepEqual(collectKeys(readPath(enTranslations, key)), collectKeys(readPath(trTranslations, key)));
+    assert.deepEqual(
+      collectKeys(readPath(enTranslations, key)),
+      collectKeys(readPath(trTranslations, key))
+    );
   });
 });
 

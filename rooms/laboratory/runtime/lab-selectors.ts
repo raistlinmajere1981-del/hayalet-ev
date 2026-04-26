@@ -3,13 +3,17 @@ import type {
   CapabilityFamilyId,
   LabActionSuggestion,
   LabAsset,
+  LabActiveExecutionResult,
   LabExecutionAlternatives,
   LabExecutionCandidate,
   LabExecutionCommitment,
+  LabExecutionDispatchCandidate,
   LabExecutionPayloadPreview,
   LabExecutionPlan,
   LabExecutionReadiness,
   LabExecutionReflection,
+  LabExecutionResult,
+  LabExecutionSelectionSnapshot,
   LabExecutionSimulation,
   LabExecutionStaging,
   LabExpectedOutput,
@@ -68,6 +72,176 @@ import {
   getSourceProbeStatus,
   getToolState,
 } from "./selectors/lab-source-selectors.js";
+
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(",")}]`;
+  }
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record)
+    .sort()
+    .filter(function (key) {
+      return record[key] !== undefined;
+    })
+    .map(function (key) {
+      return `${JSON.stringify(key)}:${stableStringify(record[key])}`;
+    })
+    .join(",")}}`;
+}
+
+export function buildExecutionDispatchId(input: {
+  payloadPreview: LabExecutionPayloadPreview;
+  planId: string;
+  selectionSnapshot: LabExecutionSelectionSnapshot;
+  staging: LabExecutionStaging;
+}): string {
+  return `dispatch:${stableStringify({
+    actionType: input.payloadPreview.actionType,
+    candidateStatus: input.staging.candidateStatus,
+    commitmentStatus: input.staging.commitmentStatus,
+    planId: input.planId,
+    readinessPassesPreview: input.payloadPreview.readinessPassesPreview,
+    readinessStatus: input.staging.readinessStatus,
+    selectionSnapshot: input.selectionSnapshot,
+    stagingStatus: input.staging.status,
+  })}`;
+}
+
+function createExecutionSelectionSnapshot(
+  state: LabStoreState,
+  selection: LabSelection
+): LabExecutionSelectionSnapshot {
+  const roi = selection.roi;
+  return {
+    endMs: selection.endMs,
+    inspectionMode: getInspectionMode(state),
+    intent: selection.intent,
+    sourceKind: getSourceKind(state) || "unknown",
+    startMs: selection.startMs,
+    type: selection.type,
+    ...(roi
+      ? {
+          roi: {
+            height: Number(roi.height.toFixed(4)),
+            width: Number(roi.width.toFixed(4)),
+            x: Number(roi.x.toFixed(4)),
+            y: Number(roi.y.toFixed(4)),
+          },
+        }
+      : {}),
+  };
+}
+
+export type LabExecutionResultInterpretation = {
+  coverageLevel: "low" | "medium" | "high";
+  anomalyLevel: "none" | "moderate" | "high";
+  alignment: "matches-simulation" | "partial" | "deviates";
+};
+
+export type LabExecutionResultInterpretationInput = LabExecutionResult & {
+  actionType: string;
+  selectionSnapshot: LabExecutionSelectionSnapshot;
+};
+
+type ActiveExecutionRuntimeContext = {
+  dispatchCandidate: LabExecutionDispatchCandidate;
+  result: LabExecutionResult;
+};
+
+function getExpectedExecutionArtifactCount(actionType: string) {
+  if (actionType === "analyze-segment") {
+    return 2;
+  }
+  if (actionType === "focus-region" || actionType === "inspect-audio") {
+    return 1;
+  }
+  return 1;
+}
+
+function getExecutionSelectionDurationMs(selection: LabExecutionSelectionSnapshot) {
+  return Math.max(0, selection.endMs - selection.startMs);
+}
+
+function getExecutionCoverageScore(result: LabExecutionResultInterpretationInput) {
+  const expectedArtifactCount = getExpectedExecutionArtifactCount(result.actionType);
+  const metricCoverage = result.metrics.coverage;
+  let coverageScore =
+    typeof metricCoverage === "number" && Number.isFinite(metricCoverage)
+      ? metricCoverage
+      : result.artifacts.length / expectedArtifactCount;
+  const durationMs = getExecutionSelectionDurationMs(result.selectionSnapshot);
+
+  if (durationMs > 10000 && result.artifacts.length <= expectedArtifactCount) {
+    coverageScore -= 0.1;
+  }
+  if (durationMs > 0 && durationMs < 500) {
+    coverageScore -= 0.05;
+  }
+
+  return Math.max(0, Math.min(1, coverageScore));
+}
+
+export function buildExecutionResultInterpretation(
+  result: LabExecutionResultInterpretationInput
+): LabExecutionResultInterpretation {
+  const coverageScore = getExecutionCoverageScore(result);
+  const coverageLevel = coverageScore >= 0.8 ? "high" : coverageScore >= 0.55 ? "medium" : "low";
+  const expectedArtifactCount = getExpectedExecutionArtifactCount(result.actionType);
+  const artifactCount = result.artifacts.length;
+  const anomalyLevel =
+    artifactCount === 0
+      ? "none"
+      : result.actionType === "analyze-segment" && artifactCount >= 3
+        ? "high"
+        : artifactCount > expectedArtifactCount + 1
+          ? "high"
+          : "moderate";
+  const alignment =
+    coverageLevel === "low" || anomalyLevel === "high"
+      ? "deviates"
+      : coverageLevel === "high"
+        ? "matches-simulation"
+        : "partial";
+
+  return {
+    alignment,
+    anomalyLevel,
+    coverageLevel,
+  };
+}
+
+function getReflectionFeedbackLine(interpretation: LabExecutionResultInterpretation) {
+  if (interpretation.coverageLevel === "low") {
+    return "Result shows limited coverage";
+  }
+  if (interpretation.alignment === "deviates") {
+    return "Detected structure differs from initial simulation";
+  }
+  if (interpretation.alignment === "matches-simulation") {
+    return "Output aligns with simulated expectations";
+  }
+  return "Result partially aligns with simulated expectations";
+}
+
+function appendReflectionFeedback(
+  reflection: LabExecutionReflection,
+  interpretation: LabExecutionResultInterpretation | null
+): LabExecutionReflection {
+  if (interpretation === null) {
+    return reflection;
+  }
+  const feedbackLine = getReflectionFeedbackLine(interpretation);
+  if (reflection.summary.includes(feedbackLine)) {
+    return reflection;
+  }
+  return {
+    ...reflection,
+    summary: `${reflection.summary} ${feedbackLine}`,
+  };
+}
 
 export {
   getActiveProject,
@@ -695,12 +869,32 @@ export function getActiveExecutionPayloadPreview(
   });
 }
 
-export function getActiveExecutionReflection(state: LabStoreState): LabExecutionReflection | null {
+function getBaseActiveExecutionReflection(state: LabStoreState): LabExecutionReflection | null {
   return buildExecutionReflectionFromResolved({
     executionPlan: getActiveExecutionPlan(state),
     executionSimulation: getActiveExecutionSimulation(state),
     executionReadiness: getActiveExecutionReadiness(state),
     executionPayloadPreview: getActiveExecutionPayloadPreview(state),
+    activeSelection: getActiveSelection(state),
+    inspectionMode: getInspectionMode(state),
+    sourceKind: getSourceKind(state),
+  });
+}
+
+export function getActiveExecutionReflection(state: LabStoreState): LabExecutionReflection | null {
+  const reflection = getBaseActiveExecutionReflection(state);
+  if (reflection === null) {
+    return null;
+  }
+  return appendReflectionFeedback(reflection, getActiveExecutionResultInterpretation(state));
+}
+
+function getBaseActiveExecutionAlternatives(state: LabStoreState): LabExecutionAlternatives | null {
+  return buildExecutionAlternativesFromResolved({
+    executionPlan: getActiveExecutionPlan(state),
+    executionSimulation: getActiveExecutionSimulation(state),
+    executionReadiness: getActiveExecutionReadiness(state),
+    executionReflection: getBaseActiveExecutionReflection(state),
     activeSelection: getActiveSelection(state),
     inspectionMode: getInspectionMode(state),
     sourceKind: getSourceKind(state),
@@ -715,6 +909,21 @@ export function getActiveExecutionAlternatives(
     executionSimulation: getActiveExecutionSimulation(state),
     executionReadiness: getActiveExecutionReadiness(state),
     executionReflection: getActiveExecutionReflection(state),
+    executionResultInterpretation: getActiveExecutionResultInterpretation(state),
+    activeSelection: getActiveSelection(state),
+    inspectionMode: getInspectionMode(state),
+    sourceKind: getSourceKind(state),
+  });
+}
+
+function getBaseActiveExecutionCandidate(state: LabStoreState): LabExecutionCandidate | null {
+  return buildExecutionCandidateFromResolved({
+    executionPlan: getActiveExecutionPlan(state),
+    executionSimulation: getActiveExecutionSimulation(state),
+    executionReadiness: getActiveExecutionReadiness(state),
+    executionPayloadPreview: getActiveExecutionPayloadPreview(state),
+    executionReflection: getBaseActiveExecutionReflection(state),
+    executionAlternatives: getBaseActiveExecutionAlternatives(state),
     activeSelection: getActiveSelection(state),
     inspectionMode: getInspectionMode(state),
     sourceKind: getSourceKind(state),
@@ -729,10 +938,28 @@ export function getActiveExecutionCandidate(state: LabStoreState): LabExecutionC
     executionPayloadPreview: getActiveExecutionPayloadPreview(state),
     executionReflection: getActiveExecutionReflection(state),
     executionAlternatives: getActiveExecutionAlternatives(state),
+    executionResultInterpretation: getActiveExecutionResultInterpretation(state),
     activeSelection: getActiveSelection(state),
     inspectionMode: getInspectionMode(state),
     sourceKind: getSourceKind(state),
   });
+}
+
+function getBaseActiveExecutionCommitment(state: LabStoreState): LabExecutionCommitment | null {
+  const commitment = state.ui.activeExecutionCommitment;
+  if (commitment === null || commitment.status !== "committed") {
+    return null;
+  }
+  const candidate = getBaseActiveExecutionCandidate(state);
+  if (
+    candidate === null ||
+    candidate.planId !== commitment.planId ||
+    candidate.status !== commitment.candidateStatus ||
+    candidate.status === "not-viable"
+  ) {
+    return null;
+  }
+  return commitment;
 }
 
 export function getActiveExecutionCommitment(state: LabStoreState): LabExecutionCommitment | null {
@@ -752,6 +979,20 @@ export function getActiveExecutionCommitment(state: LabStoreState): LabExecution
   return commitment;
 }
 
+function getBaseActiveExecutionStaging(state: LabStoreState): LabExecutionStaging | null {
+  return buildExecutionStagingFromResolved({
+    executionPlan: getActiveExecutionPlan(state),
+    executionSimulation: getActiveExecutionSimulation(state),
+    executionReadiness: getActiveExecutionReadiness(state),
+    executionPayloadPreview: getActiveExecutionPayloadPreview(state),
+    executionReflection: getBaseActiveExecutionReflection(state),
+    executionAlternatives: getBaseActiveExecutionAlternatives(state),
+    executionCandidate: getBaseActiveExecutionCandidate(state),
+    executionCommitment: getBaseActiveExecutionCommitment(state),
+    activeSelection: getActiveSelection(state),
+  });
+}
+
 export function getActiveExecutionStaging(state: LabStoreState): LabExecutionStaging | null {
   return buildExecutionStagingFromResolved({
     executionPlan: getActiveExecutionPlan(state),
@@ -766,18 +1007,137 @@ export function getActiveExecutionStaging(state: LabStoreState): LabExecutionSta
   });
 }
 
+function getBaseExecutionDispatchCandidate(
+  state: LabStoreState
+): LabExecutionDispatchCandidate | null {
+  const commitment = getBaseActiveExecutionCommitment(state);
+  const staging = getBaseActiveExecutionStaging(state);
+  const payloadPreview = getActiveExecutionPayloadPreview(state);
+  const activeSelection = getActiveSelection(state);
+  if (
+    commitment === null ||
+    staging === null ||
+    payloadPreview === null ||
+    activeSelection === null ||
+    activeSelection.endMs <= activeSelection.startMs ||
+    staging.status !== "staged" ||
+    staging.planId !== commitment.planId ||
+    payloadPreview.planId !== commitment.planId
+  ) {
+    return null;
+  }
+  const selectionSnapshot = createExecutionSelectionSnapshot(state, activeSelection);
+  return {
+    dispatchId: buildExecutionDispatchId({
+      payloadPreview,
+      planId: commitment.planId,
+      selectionSnapshot,
+      staging,
+    }),
+    actionType: payloadPreview.actionType,
+    planId: commitment.planId,
+    payloadPreview,
+    selectionSnapshot,
+    staging,
+  };
+}
+
+export function getExecutionDispatchCandidate(
+  state: LabStoreState
+): LabExecutionDispatchCandidate | null {
+  const commitment = getActiveExecutionCommitment(state);
+  const staging = getActiveExecutionStaging(state);
+  const payloadPreview = getActiveExecutionPayloadPreview(state);
+  const activeSelection = getActiveSelection(state);
+  if (
+    commitment === null ||
+    staging === null ||
+    payloadPreview === null ||
+    activeSelection === null ||
+    activeSelection.endMs <= activeSelection.startMs ||
+    staging.status !== "staged" ||
+    staging.planId !== commitment.planId ||
+    payloadPreview.planId !== commitment.planId
+  ) {
+    return null;
+  }
+  const selectionSnapshot = createExecutionSelectionSnapshot(state, activeSelection);
+  return {
+    dispatchId: buildExecutionDispatchId({
+      payloadPreview,
+      planId: commitment.planId,
+      selectionSnapshot,
+      staging,
+    }),
+    actionType: payloadPreview.actionType,
+    planId: commitment.planId,
+    payloadPreview,
+    selectionSnapshot,
+    staging,
+  };
+}
+
+function getActiveExecutionRuntimeContext(
+  state: LabStoreState
+): ActiveExecutionRuntimeContext | null {
+  const executionRuntime = state.ui.executionRuntime;
+  if (
+    executionRuntime.status !== "completed" ||
+    executionRuntime.result === undefined ||
+    executionRuntime.dispatchId === undefined
+  ) {
+    return null;
+  }
+  const dispatchCandidate = getBaseExecutionDispatchCandidate(state);
+  if (
+    dispatchCandidate === null ||
+    dispatchCandidate.dispatchId !== executionRuntime.dispatchId ||
+    dispatchCandidate.planId !== executionRuntime.activePlanId
+  ) {
+    return null;
+  }
+  return {
+    dispatchCandidate,
+    result: executionRuntime.result,
+  };
+}
+
+export function getActiveExecutionResult(state: LabStoreState): LabActiveExecutionResult | null {
+  const context = getActiveExecutionRuntimeContext(state);
+  if (context === null) {
+    return null;
+  }
+  return {
+    ...context.result,
+    selectionSnapshot: context.dispatchCandidate.selectionSnapshot,
+  };
+}
+
+export function getActiveExecutionResultInterpretation(
+  state: LabStoreState
+): LabExecutionResultInterpretation | null {
+  const context = getActiveExecutionRuntimeContext(state);
+  if (context === null) {
+    return null;
+  }
+  return buildExecutionResultInterpretation({
+    ...context.result,
+    actionType: context.dispatchCandidate.actionType,
+    selectionSnapshot: context.dispatchCandidate.selectionSnapshot,
+  });
+}
+
 export function getExecutionJourneyStep(state: LabStoreState): number {
   if (getActiveExecutionStaging(state) !== null) return 4;
-  if (
-    getActiveExecutionCandidate(state) !== null ||
-    getActiveExecutionCommitment(state) !== null
-  ) return 3;
+  if (getActiveExecutionCandidate(state) !== null || getActiveExecutionCommitment(state) !== null)
+    return 3;
   if (
     getActiveExecutionSimulation(state) !== null ||
     getActiveExecutionReadiness(state) !== null ||
     getActiveExecutionReflection(state) !== null ||
     getActiveExecutionAlternatives(state) !== null
-  ) return 2;
+  )
+    return 2;
   if (getActiveExecutionPlan(state) !== null) return 1;
   if (getActiveSelection(state) !== null) return 0;
   return -1;

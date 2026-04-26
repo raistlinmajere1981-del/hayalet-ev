@@ -5,7 +5,9 @@ import type {
   LabArtifactProjection,
   LabAudioFocusSettings,
   LabExecutionCommitment,
+  LabExecutionDispatchCandidate,
   LabExecutionPayloadPreview,
+  LabExecutionResult,
   LabSelection,
 } from "../../rooms/laboratory/models/lab-types.ts";
 import {
@@ -13,6 +15,10 @@ import {
   normalizeAudioFocusSettings,
 } from "../../rooms/laboratory/runtime/lab-audio-focus-normalization.ts";
 import { createLabEventBus } from "../../rooms/laboratory/runtime/lab-event-bus.ts";
+import {
+  createLabExecutionDispatcher,
+  createMockExecutionResult,
+} from "../../rooms/laboratory/runtime/lab-execution-dispatcher.ts";
 import { createLabRunController } from "../../rooms/laboratory/runtime/lab-run-controller.ts";
 import { createLabHostBridge } from "../../rooms/laboratory/runtime/lab-host-bridge.ts";
 import { createAudioVisualizer } from "../../rooms/laboratory/runtime/lab-audio-visualizer.ts";
@@ -40,10 +46,12 @@ import {
   getActiveExecutionAlternatives,
   getActiveExecutionCandidate,
   getActiveExecutionCommitment,
+  getActiveExecutionResult,
   getActiveExecutionPlan,
   getActiveExecutionPayloadPreview,
   getActiveExecutionReadiness,
   getActiveExecutionReflection,
+  getActiveExecutionResultInterpretation,
   getActiveExecutionSimulation,
   getActiveExecutionStaging,
   getActiveExecutionIntent,
@@ -52,6 +60,7 @@ import {
   getActiveSuggestionPreview,
   getActiveSuggestionPreviewId,
   getAudioVisualizationArtifact,
+  getExecutionDispatchCandidate,
   getAssetById,
   getAssets,
   getAssetsByRun,
@@ -81,7 +90,9 @@ import {
   isDualPreviewAvailable,
   isExpectedOutputMatched,
   isSelectionValid,
+  buildExecutionResultInterpretation,
   buildSuggestionPreview,
+  buildExecutionDispatchId,
 } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import { LAB_USER_ACTION_HUB_SUCCESS_WINDOW_MS } from "../../rooms/laboratory/runtime/lab-user-actions.ts";
@@ -114,19 +125,23 @@ export {
   buildExecutionAlternatives,
   buildExecutionAlternativesFromResolved,
   buildExecutionCandidateFromResolved,
+  buildExecutionDispatchId,
   buildExecutionPayloadPreview,
   buildExecutionPayloadPreviewFromResolved,
   buildExecutionPlan,
   buildExecutionReadiness,
   buildExecutionReflection,
   buildExecutionReflectionFromResolved,
+  buildExecutionResultInterpretation,
   buildExecutionSimulation,
   buildExecutionStagingFromResolved,
   buildInterpretationItems,
   buildSuggestionPreview,
   createAudioVisualizer,
+  createLabExecutionDispatcher,
   createLabEventBus,
   createLabHostBridge,
+  createMockExecutionResult,
   createLabPreviewInspectionController,
   createLabRunController,
   createLabStore,
@@ -138,10 +153,12 @@ export {
   getActiveExecutionCandidate,
   getActiveExecutionCommitment,
   getActiveExecutionIntent,
+  getActiveExecutionResult,
   getActiveExecutionPayloadPreview,
   getActiveExecutionPlan,
   getActiveExecutionReadiness,
   getActiveExecutionReflection,
+  getActiveExecutionResultInterpretation,
   getActiveExecutionSimulation,
   getActiveExecutionStaging,
   getActiveInspectionSnapshot,
@@ -155,6 +172,7 @@ export {
   getAssetsBySource,
   getAssetsByType,
   getAudioVisualizationArtifact,
+  getExecutionDispatchCandidate,
   getCurrentSourceAsset,
   getDualPreviewVolume,
   getEffectivePreviewAudioFocusSettings,
@@ -193,7 +211,9 @@ export type {
   LabArtifactProjection,
   LabAudioFocusSettings,
   LabExecutionCommitment,
+  LabExecutionDispatchCandidate,
   LabExecutionPayloadPreview,
+  LabExecutionResult,
   LabSelection,
 };
 

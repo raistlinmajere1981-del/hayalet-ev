@@ -84,7 +84,12 @@ function getPanelCollapsed(model: LabWaveformTimelineModel, panelId: ExecutionPa
   return DEFAULT_COLLAPSED_PANELS[panelId] === true;
 }
 
-const SECONDARY_PANELS: ExecutionPanelId[] = ["simulation", "reflection", "alternatives", "payload"];
+const SECONDARY_PANELS: ExecutionPanelId[] = [
+  "simulation",
+  "reflection",
+  "alternatives",
+  "payload",
+];
 
 function renderCollapsibleExecutionPanel(options: {
   body: string;

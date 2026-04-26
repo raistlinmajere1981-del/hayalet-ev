@@ -48,7 +48,11 @@ import {
   normalizeAnalysisReference,
   normalizeAnalysisScope,
 } from "../shared/types/analysis-scope.js";
-import { deriveLegacyStage, getActiveExecutionCandidate } from "./lab-selectors.js";
+import {
+  deriveLegacyStage,
+  getActiveExecutionCandidate,
+  getExecutionDispatchCandidate,
+} from "./lab-selectors.js";
 import {
   DEFAULT_AUDIO_FOCUS_SETTINGS,
   normalizeAudioFocusPatch,
@@ -100,6 +104,12 @@ function createIdlePreflight(
     stageReady: false,
     rawStatus: null,
     reason,
+  };
+}
+
+function createIdleExecutionRuntime(): LabStoreState["ui"]["executionRuntime"] {
+  return {
+    status: "idle",
   };
 }
 
@@ -181,6 +191,7 @@ function createInitialState(): LabStoreState {
       reportView: "user",
       lastHydratedProjectId: null,
       activeExecutionCommitment: null,
+      executionRuntime: createIdleExecutionRuntime(),
       activeExecutionIntentId: null,
       activeSuggestionPreviewId: null,
       activeInspectionSnapshot: null,
@@ -299,13 +310,29 @@ function clearSuggestionPreview(state: LabStoreState) {
   state.ui.activeSuggestionPreviewId = null;
 }
 
+function clearExecutionRuntime(state: LabStoreState) {
+  state.ui.executionRuntime = createIdleExecutionRuntime();
+}
+
 function clearExecutionCommitment(state: LabStoreState) {
   state.ui.activeExecutionCommitment = null;
+  clearExecutionRuntime(state);
 }
 
 function clearExecutionIntent(state: LabStoreState) {
   state.ui.activeExecutionIntentId = null;
   clearExecutionCommitment(state);
+}
+
+function clampExecutionProgress(value: number) {
+  return Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : 0;
+}
+
+function isMatchingExecutionRuntime(state: LabStoreState, planId: string, dispatchId: string) {
+  return (
+    state.ui.executionRuntime.activePlanId === planId &&
+    state.ui.executionRuntime.dispatchId === dispatchId
+  );
 }
 
 function normalizeExecutionPlanId(planId: string) {
@@ -1645,6 +1672,7 @@ function ensurePendingRun(state: LabStoreState, action: string) {
 function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState {
   switch (event.type) {
     case "hydrate":
+      clearExecutionRuntime(state);
       if (event.payload) {
         clearExecutionIntent(state);
         clearSuggestionPreview(state);
@@ -2249,11 +2277,66 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       if (candidate === null || candidate.planId !== planId || candidate.status === "not-viable") {
         return state;
       }
+      clearExecutionRuntime(state);
       state.ui.activeExecutionCommitment = createExecutionCommitmentFromCandidate(candidate);
       return state;
     }
     case "workspace-execution-commitment-revoked":
       clearExecutionCommitment(state);
+      return state;
+    case "workspace-execution-dispatch": {
+      const dispatchCandidate = getExecutionDispatchCandidate(state);
+      if (
+        dispatchCandidate === null ||
+        dispatchCandidate.planId !== event.planId ||
+        dispatchCandidate.dispatchId !== event.dispatchId
+      ) {
+        return state;
+      }
+      state.ui.executionRuntime = {
+        status: "running",
+        activePlanId: event.planId,
+        dispatchId: event.dispatchId,
+        progress: 0,
+      };
+      return state;
+    }
+    case "workspace-execution-progress":
+      if (
+        state.ui.executionRuntime.status !== "running" ||
+        !isMatchingExecutionRuntime(state, event.planId, event.dispatchId)
+      ) {
+        return state;
+      }
+      state.ui.executionRuntime = {
+        ...state.ui.executionRuntime,
+        progress: clampExecutionProgress(event.progress),
+      };
+      return state;
+    case "workspace-execution-completed":
+      if (
+        state.ui.executionRuntime.status !== "running" ||
+        !isMatchingExecutionRuntime(state, event.planId, event.dispatchId)
+      ) {
+        return state;
+      }
+      state.ui.executionRuntime = {
+        status: "completed",
+        activePlanId: event.planId,
+        dispatchId: event.dispatchId,
+        progress: 100,
+        result: event.result,
+      };
+      return state;
+    case "workspace-execution-runtime-reset":
+      if (
+        event.planId !== undefined &&
+        event.dispatchId !== undefined &&
+        !isMatchingExecutionRuntime(state, event.planId, event.dispatchId)
+      ) {
+        return state;
+      }
+      clearExecutionRuntime(state);
       return state;
     case "workspace-selection-suggestion-preview-set":
       if (!canStoreSelectionSuggestionPreview(state, event.suggestionId)) {

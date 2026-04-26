@@ -2,7 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { getAnalysisActionBlockReason } from "../../rooms/laboratory/runtime/lab-selectors.ts";
+import {
+  getActiveExecutionCandidate,
+  getExecutionDispatchCandidate,
+  getAnalysisActionBlockReason,
+} from "../../rooms/laboratory/runtime/lab-selectors.ts";
+import { createMockExecutionResult } from "../../rooms/laboratory/runtime/lab-execution-dispatcher.ts";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import { renderLabAssetPreviewOverlay } from "../../rooms/laboratory/ui/lab-asset-preview-overlay.ts";
 import { renderLabLeftRail } from "../../rooms/laboratory/ui/lab-left-rail.ts";
@@ -223,6 +228,153 @@ test("laboratory process panel previews intent execution before the first run", 
   assert.match(html, /Anomaly detection/);
   assert.match(html, /Visual Structure/);
   assert.match(html, /Bekliyor/);
+});
+
+test("laboratory process panel shows minimal execution runtime state without controls", () => {
+  const store = createSeededState(true);
+  const state = store.getState();
+
+  state.ui.executionRuntime = {
+    status: "running",
+    activePlanId: "plan:audio-inspect",
+    dispatchId: "dispatch:test",
+    progress: 25,
+  };
+  const runningHtml = renderWorkspaceProcessPanel(state, { sourceReady: true });
+  assert.match(runningHtml, /class="labx-execution-runtime"/);
+  assert.match(runningHtml, /Executing plan/);
+  assert.match(runningHtml, /data-progress="25"/);
+  const indicatorStart = runningHtml.indexOf('class="labx-execution-runtime"');
+  const indicatorEnd = runningHtml.indexOf("</div>", indicatorStart);
+  const indicatorHtml = runningHtml.slice(indicatorStart, indicatorEnd);
+  assert.doesNotMatch(indicatorHtml, /<button/);
+
+  state.ui.executionRuntime = {
+    status: "completed",
+    activePlanId: "plan:audio-inspect",
+    dispatchId: "dispatch:test",
+    progress: 100,
+    result: {
+      summary: "Mock execution completed for plan:audio-inspect.",
+      insights: [],
+      artifacts: [],
+      metrics: {},
+    },
+  };
+  const completedHtml = renderWorkspaceProcessPanel(state, { sourceReady: true });
+  assert.match(completedHtml, /Execution complete/);
+  assert.match(completedHtml, /data-progress="100"/);
+});
+
+test("laboratory process panel renders materialized execution insights and elements", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "audio-inspect",
+  });
+  const activeCandidate = getActiveExecutionCandidate(store.getState());
+  assert.ok(activeCandidate);
+  store.dispatch({
+    type: "workspace-execution-commitment-set",
+    planId: activeCandidate.planId,
+  });
+  const dispatchCandidate = getExecutionDispatchCandidate(store.getState());
+  assert.ok(dispatchCandidate);
+  store.dispatch({
+    type: "workspace-execution-dispatch",
+    planId: dispatchCandidate.planId,
+    dispatchId: dispatchCandidate.dispatchId,
+  });
+  store.dispatch({
+    type: "workspace-execution-completed",
+    planId: dispatchCandidate.planId,
+    dispatchId: dispatchCandidate.dispatchId,
+    result: createMockExecutionResult(dispatchCandidate),
+  });
+
+  const html = renderWorkspaceProcessPanel(store.getState(), { sourceReady: true });
+
+  assert.match(html, /Insights/);
+  assert.match(html, /Frequency cluster detected/);
+  assert.match(html, /Detected elements/);
+  assert.match(html, /Frequency cluster marker/);
+  assert.match(html, /Outcome evaluated/);
+  assert.doesNotMatch(html, /data-lab-action="execution/);
+});
+
+test("laboratory process panel resolves evaluated outcome copy in Turkish", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "audio-inspect",
+  });
+  const activeCandidate = getActiveExecutionCandidate(store.getState());
+  assert.ok(activeCandidate);
+  store.dispatch({
+    type: "workspace-execution-commitment-set",
+    planId: activeCandidate.planId,
+  });
+  const dispatchCandidate = getExecutionDispatchCandidate(store.getState());
+  assert.ok(dispatchCandidate);
+  store.dispatch({
+    type: "workspace-execution-dispatch",
+    planId: dispatchCandidate.planId,
+    dispatchId: dispatchCandidate.dispatchId,
+  });
+  store.dispatch({
+    type: "workspace-execution-completed",
+    planId: dispatchCandidate.planId,
+    dispatchId: dispatchCandidate.dispatchId,
+    result: createMockExecutionResult(dispatchCandidate),
+  });
+
+  const tr = createLabI18n({
+    locale: "tr",
+    translations: JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8")),
+  });
+  const html = renderWorkspaceProcessPanel(store.getState(), { sourceReady: true, copy: tr });
+
+  assert.match(html, /Sonuç değerlendirildi/);
+});
+
+test("laboratory root owns mock execution dispatch outside the run controller", () => {
+  const rootSource = readFileSync("rooms/laboratory/ui/lab-root.ts", "utf8");
+  const runControllerSource = readFileSync(
+    "rooms/laboratory/runtime/lab-run-controller.ts",
+    "utf8"
+  );
+
+  assert.match(rootSource, /createLabExecutionDispatcher/);
+  assert.match(rootSource, /getExecutionDispatchCandidate/);
+  assert.match(rootSource, /beforeunload/);
+  assert.doesNotMatch(runControllerSource, /createLabExecutionDispatcher/);
+  assert.doesNotMatch(runControllerSource, /workspace-execution-dispatch/);
 });
 
 test("laboratory process panel keeps the intent map visible when a run has no frozen scope snapshot", () => {
@@ -449,18 +601,21 @@ test("laboratory tool overlay lists room-local tool lifecycle actions inside the
   assert.match(html, /Güncelleme bekleyen/);
   assert.match(html, /yt-dlp/);
   assert.match(html, /FFmpeg/);
-	  assert.match(html, /data-lab-action="tool-check-updates"/);
-	  assert.match(html, /data-lab-action="tool-install"/);
-	  assert.doesNotMatch(html, /Dense operator workbench|Modules|Focus/);
+  assert.match(html, /data-lab-action="tool-check-updates"/);
+  assert.match(html, /data-lab-action="tool-install"/);
+  assert.doesNotMatch(html, /Dense operator workbench|Modules|Focus/);
 
-	  const trCopy = createLabI18n({
-	    locale: "tr",
-	    translations: JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8")),
-	  });
-	  const translatedHtml = renderToolManagementOverlay(store.getState(), trCopy);
-	  assert.match(translatedHtml, /Seçili niyet ve yetenek aileleri/);
-	  assert.match(translatedHtml, /Uzak YouTube ve oynatma listesi tabanlı içe alma akışlarını bloke eder/);
-	  assert.doesNotMatch(translatedHtml, /YouTube capture stays enabled from the source intake frame/);
+  const trCopy = createLabI18n({
+    locale: "tr",
+    translations: JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8")),
+  });
+  const translatedHtml = renderToolManagementOverlay(store.getState(), trCopy);
+  assert.match(translatedHtml, /Seçili niyet ve yetenek aileleri/);
+  assert.match(
+    translatedHtml,
+    /Uzak YouTube ve oynatma listesi tabanlı içe alma akışlarını bloke eder/
+  );
+  assert.doesNotMatch(translatedHtml, /YouTube capture stays enabled from the source intake frame/);
 });
 
 test("laboratory workspace panels show snapshot drift as a non-blocking visibility layer", () => {

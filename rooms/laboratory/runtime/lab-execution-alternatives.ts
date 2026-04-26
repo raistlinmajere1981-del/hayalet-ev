@@ -9,11 +9,18 @@ import type {
   LabSelection,
 } from "../models/lab-types.js";
 
+export type LabExecutionAlternativesResultInterpretation = {
+  coverageLevel: "low" | "medium" | "high";
+  anomalyLevel: "none" | "moderate" | "high";
+  alignment: "matches-simulation" | "partial" | "deviates";
+};
+
 type LabExecutionAlternativesInput = {
   activeSelection: LabSelection;
   executionPlan: LabExecutionPlan;
   executionReadiness: LabExecutionReadiness;
   executionReflection: LabExecutionReflection;
+  executionResultInterpretation?: LabExecutionAlternativesResultInterpretation | null;
   executionSimulation: LabExecutionSimulation;
   inspectionMode: LabInspectionMode;
   sourceKind: string;
@@ -24,6 +31,7 @@ export type LabExecutionAlternativesResolvedInput = {
   executionPlan: LabExecutionPlan | null;
   executionReadiness: LabExecutionReadiness | null;
   executionReflection: LabExecutionReflection | null;
+  executionResultInterpretation?: LabExecutionAlternativesResultInterpretation | null;
   executionSimulation: LabExecutionSimulation | null;
   inspectionMode: LabInspectionMode;
   sourceKind: string;
@@ -324,6 +332,19 @@ function buildAlternatives(input: LabExecutionAlternativesInput) {
 }
 
 function buildSummary(input: LabExecutionAlternativesInput) {
+  const interpretation = input.executionResultInterpretation;
+  if (interpretation !== undefined && interpretation !== null) {
+    if (interpretation.coverageLevel === "low" || interpretation.alignment === "deviates") {
+      return "Execution feedback suggests alternative paths may yield better outcomes than the current route.";
+    }
+    if (
+      interpretation.coverageLevel === "high" &&
+      interpretation.alignment === "matches-simulation"
+    ) {
+      return "Execution feedback reinforces current path stability; alternatives remain comparative backup routes.";
+    }
+    return "Execution feedback is mixed; alternatives may clarify coverage or alignment before carrying the result further.";
+  }
   if (input.executionReflection.decision === "proceed") {
     return "The selected path appears stable; alternatives mainly trade precision, coverage, or tempo against that stable baseline.";
   }
@@ -334,6 +355,19 @@ function buildSummary(input: LabExecutionAlternativesInput) {
 }
 
 function buildComparisonNote(input: LabExecutionAlternativesInput) {
+  const interpretation = input.executionResultInterpretation;
+  if (interpretation !== undefined && interpretation !== null) {
+    if (interpretation.coverageLevel === "low" || interpretation.alignment === "deviates") {
+      return "Compared to the current result, these alternatives may improve coverage or reduce divergence.";
+    }
+    if (
+      interpretation.coverageLevel === "high" &&
+      interpretation.alignment === "matches-simulation"
+    ) {
+      return "Compared to the current result, these alternatives are backup routes rather than stronger paths.";
+    }
+    return "Compared to the current result, these alternatives can clarify the mixed execution signal.";
+  }
   if (input.executionReflection.decision === "proceed") {
     return "Compared to the selected path, these alternatives can expose different evidence at the cost of changing the current balance.";
   }
@@ -410,6 +444,7 @@ export function buildExecutionAlternativesFromResolved(
     executionPlan: input.executionPlan,
     executionReadiness: input.executionReadiness,
     executionReflection: input.executionReflection,
+    executionResultInterpretation: input.executionResultInterpretation ?? null,
     executionSimulation: input.executionSimulation,
     inspectionMode: input.inspectionMode,
     sourceKind: input.sourceKind,

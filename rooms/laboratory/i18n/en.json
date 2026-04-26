@@ -1625,6 +1625,14 @@
         "running": "in progress",
         "title": "Recent actions"
       },
+      "executionRuntime": {
+        "running": "Executing plan...",
+        "completed": "Execution complete",
+        "progress": "{progress}%",
+        "insights": "Insights",
+        "detectedElements": "Detected elements",
+        "outcomeEvaluated": "Outcome evaluated"
+      },
       "diff": {
         "timeline": "Timeline",
         "hypothesis": "Hypothesis",

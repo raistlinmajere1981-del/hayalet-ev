@@ -315,6 +315,64 @@ export interface LabExecutionStaging {
   confidence?: number;
 }
 
+export interface LabExecutionArtifactTimeRange {
+  start: number;
+  end: number;
+}
+
+export type LabExecutionArtifactType = "marker" | "segment" | "annotation";
+
+export interface LabExecutionArtifact {
+  type: LabExecutionArtifactType;
+  label: string;
+  timeRange?: LabExecutionArtifactTimeRange;
+}
+
+export interface LabExecutionResultMetrics {
+  coverage?: number;
+  confidence?: number;
+}
+
+export interface LabExecutionSelectionSnapshot {
+  startMs: number;
+  endMs: number;
+  type: LabSelectionType;
+  intent: LabSelectionIntent;
+  inspectionMode: LabInspectionMode;
+  sourceKind: string;
+  roi?: LabSelectionROI;
+}
+
+export interface LabExecutionResult {
+  summary: string;
+  insights: string[];
+  artifacts: LabExecutionArtifact[];
+  metrics: LabExecutionResultMetrics;
+}
+
+export type LabActiveExecutionResult = LabExecutionResult & {
+  selectionSnapshot: LabExecutionSelectionSnapshot;
+};
+
+export type LabExecutionRuntimeStatus = "idle" | "running" | "completed";
+
+export interface LabExecutionRuntime {
+  status: LabExecutionRuntimeStatus;
+  activePlanId?: string;
+  dispatchId?: string;
+  progress?: number;
+  result?: LabExecutionResult;
+}
+
+export interface LabExecutionDispatchCandidate {
+  dispatchId: string;
+  planId: string;
+  actionType: LabExecutionPayloadPreview["actionType"];
+  payloadPreview: LabExecutionPayloadPreview;
+  selectionSnapshot: LabExecutionSelectionSnapshot;
+  staging: LabExecutionStaging;
+}
+
 export type LabGlobalProcessState = "idle" | "processing" | "analyzing" | "staging";
 
 export interface LabGlobalProcessSummary {
@@ -980,6 +1038,7 @@ export interface LabStoreUiState {
   reportView: "user" | "ai";
   lastHydratedProjectId: string | null;
   activeExecutionCommitment: LabExecutionCommitment | null;
+  executionRuntime: LabExecutionRuntime;
   activeExecutionIntentId: string | null;
   activeSuggestionPreviewId: string | null;
   activeInspectionSnapshot: LabInspectionSnapshot | null;
@@ -1156,6 +1215,20 @@ export type LabStoreEvent =
   | { type: "workspace-execution-intent-cleared" }
   | { type: "workspace-execution-commitment-set"; planId: string }
   | { type: "workspace-execution-commitment-revoked" }
+  | { type: "workspace-execution-dispatch"; planId: string; dispatchId: string }
+  | {
+      type: "workspace-execution-progress";
+      planId: string;
+      dispatchId: string;
+      progress: number;
+    }
+  | {
+      type: "workspace-execution-completed";
+      planId: string;
+      dispatchId: string;
+      result: LabExecutionResult;
+    }
+  | { type: "workspace-execution-runtime-reset"; planId?: string; dispatchId?: string }
   | { type: "workspace-selection-suggestion-preview-set"; suggestionId: string }
   | { type: "workspace-selection-suggestion-preview-cleared" }
   | { type: "selection-roi-focus-set"; active: boolean }

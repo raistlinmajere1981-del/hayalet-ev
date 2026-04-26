@@ -7,6 +7,7 @@ import {
 } from "../models/lab-types.js";
 import type {
   CapabilityFamilyId,
+  LabActiveExecutionResult,
   LabIntentId,
   LabIntentDirtyState,
   LabModuleState,
@@ -17,6 +18,8 @@ import type {
 import {
   getActionOutputs,
   getActiveModule,
+  getActiveExecutionResult,
+  getActiveExecutionResultInterpretation,
   getActualOutputs,
   getCurrentRun,
   getExpectedOutputs,
@@ -884,6 +887,98 @@ function renderRecentActionsSection(state: LabStoreState, copy: LabI18n = LAB_FA
   `;
 }
 
+function renderExecutionRuntimeIndicator(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
+  const runtime = state.ui.executionRuntime;
+  if (runtime.status === "idle") {
+    return "";
+  }
+  const activeResult = getActiveExecutionResult(state);
+  const activeResultInterpretation = getActiveExecutionResultInterpretation(state);
+  const label =
+    runtime.status === "completed"
+      ? copy.t("mediaAnalysis.processPanel.executionRuntime.completed", "Execution complete")
+      : copy.t("mediaAnalysis.processPanel.executionRuntime.running", "Executing plan...");
+  const progress =
+    typeof runtime.progress === "number" && Number.isFinite(runtime.progress)
+      ? Math.max(0, Math.min(100, Math.round(runtime.progress)))
+      : runtime.status === "completed"
+        ? 100
+        : 0;
+  return `
+    <div
+      class="labx-execution-runtime"
+      data-status="${escapeHtml(runtime.status)}"
+      data-progress="${String(progress)}"
+    >
+      <span class="labx-execution-runtime__dot" aria-hidden="true"></span>
+      <strong>${escapeHtml(label)}</strong>
+      <span>${escapeHtml(copy.t("mediaAnalysis.processPanel.executionRuntime.progress", "{progress}%", { progress }))}</span>
+      ${
+        runtime.status === "completed" && activeResult !== null
+          ? renderExecutionRuntimeResult(activeResult, activeResultInterpretation !== null, copy)
+          : ""
+      }
+    </div>
+  `;
+}
+
+function renderExecutionRuntimeResult(
+  result: LabActiveExecutionResult,
+  outcomeEvaluated: boolean,
+  copy: LabI18n = LAB_FALLBACK_I18N
+) {
+  const insights = result.insights.filter(function (insight) {
+    return insight.trim() !== "";
+  });
+  const artifactLabels = result.artifacts
+    .map(function (artifact) {
+      return artifact.label.trim();
+    })
+    .filter(function (label) {
+      return label !== "";
+    });
+  if (insights.length === 0 && artifactLabels.length === 0 && outcomeEvaluated !== true) {
+    return "";
+  }
+  return `
+    <div class="labx-execution-runtime__result">
+      ${
+        insights.length > 0
+          ? `
+            <div class="labx-execution-runtime__section">
+              <span class="labx-execution-runtime__label">${escapeHtml(copy.t("mediaAnalysis.processPanel.executionRuntime.insights", "Insights"))}</span>
+              <ul>${insights
+                .map(function (insight) {
+                  return `<li>${escapeHtml(insight)}</li>`;
+                })
+                .join("")}</ul>
+            </div>
+          `
+          : ""
+      }
+      ${
+        artifactLabels.length > 0
+          ? `
+            <div class="labx-execution-runtime__section">
+              <span class="labx-execution-runtime__label">${escapeHtml(copy.t("mediaAnalysis.processPanel.executionRuntime.detectedElements", "Detected elements"))}</span>
+              <ul>${artifactLabels
+                .map(function (label) {
+                  return `<li>${escapeHtml(label)}</li>`;
+                })
+                .join("")}</ul>
+            </div>
+          `
+          : ""
+      }
+      ${
+        outcomeEvaluated
+          ? `<div class="labx-execution-runtime__section labx-execution-runtime__section--outcome">${escapeHtml(copy.t("mediaAnalysis.processPanel.executionRuntime.outcomeEvaluated", "Outcome evaluated"))}</div>`
+          : ""
+      }
+    </div>
+  `;
+}
+
 function renderIdleProcessPanel(
   state: LabStoreState,
   sourceReady: boolean,
@@ -913,6 +1008,7 @@ function renderIdleProcessPanel(
           <span>${escapeHtml(copy.t("mediaAnalysis.processPanel.intentCount", "{count} intent", { count: selectedIntents.length }))}</span>
         </div>
       </div>
+      ${renderExecutionRuntimeIndicator(state, copy)}
       ${renderIntentExecutionMap(state, sourceReady, copy)}
       ${renderIntentOutputTrace(state, sourceReady, copy)}
       ${renderRecentActionsSection(state, copy)}
@@ -977,6 +1073,7 @@ export function renderWorkspaceProcessPanel(
         </div>
         ${run.error ? `<div class="labx-process-error">${escapeHtml(run.error)}</div>` : ""}
       </div>
+      ${renderExecutionRuntimeIndicator(state, copy)}
       ${renderRunSnapshotSummary(state, copy)}
       ${renderIntentExecutionMap(state, options.sourceReady, copy)}
       ${renderIntentOutputTrace(state, options.sourceReady, copy)}

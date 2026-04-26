@@ -4361,6 +4361,69 @@
   font-size: 0.74rem;
 }
 
+.labx-execution-runtime {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid rgba(89, 207, 172, 0.24);
+  border-radius: 0.55rem;
+  background: rgba(89, 207, 172, 0.08);
+  color: var(--labx-text-soft);
+  font-size: 0.74rem;
+}
+
+.labx-execution-runtime__dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--labx-accent, #59cfac);
+  box-shadow: 0 0 0 0.24rem rgba(89, 207, 172, 0.12);
+}
+
+.labx-execution-runtime strong {
+  color: var(--labx-text);
+  font-size: 0.76rem;
+}
+
+.labx-execution-runtime[data-status="completed"] {
+  border-color: rgba(125, 216, 125, 0.24);
+  background: rgba(125, 216, 125, 0.08);
+}
+
+.labx-execution-runtime__result {
+  flex-basis: 100%;
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.15rem;
+  padding-left: 0.9rem;
+}
+
+.labx-execution-runtime__section {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.labx-execution-runtime__label {
+  color: var(--labx-text);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.labx-execution-runtime__section ul {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+  padding-left: 1rem;
+}
+
+.labx-execution-runtime__section li {
+  color: var(--labx-text-soft);
+  line-height: 1.35;
+}
+
 .labx-project-assets {
   display: flex;
   flex-direction: column;

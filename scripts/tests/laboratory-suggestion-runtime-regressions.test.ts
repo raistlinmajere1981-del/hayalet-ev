@@ -1,27 +1,28 @@
 import {
   assert,
   buildSuggestionPreview,
+  createMockExecutionResult,
   createLabStore,
   getActiveExecutionAlternatives,
   getActiveExecutionCandidate,
   getActiveExecutionCommitment,
   getActiveExecutionIntent,
+  getActiveExecutionResult,
   getActiveExecutionPayloadPreview,
   getActiveExecutionPlan,
   getActiveExecutionReadiness,
   getActiveExecutionReflection,
+  getActiveExecutionResultInterpretation,
   getActiveExecutionStaging,
   getActiveSuggestionPreview,
+  getExecutionDispatchCandidate,
   getSelectionSuggestions,
   getWaveformTimelineModel,
   importLabRootModuleWithDomStub,
   test,
 } from "./laboratory-runtime-truth.helpers.ts";
 
-import type {
-  LabActionSuggestion,
-  LabSelection,
-} from "./laboratory-runtime-truth.helpers.ts";
+import type { LabActionSuggestion, LabSelection } from "./laboratory-runtime-truth.helpers.ts";
 
 test("selection suggestion selector returns an empty list without a valid selection", () => {
   const store = createLabStore();
@@ -584,6 +585,22 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
     getActiveExecutionCommitment(store.getState())?.planId,
     activeHydrateCandidate.planId
   );
+  const dispatchCandidate = getExecutionDispatchCandidate(store.getState());
+  assert.ok(dispatchCandidate);
+  store.dispatch({
+    type: "workspace-execution-dispatch",
+    planId: dispatchCandidate.planId,
+    dispatchId: dispatchCandidate.dispatchId,
+  });
+  store.dispatch({
+    type: "workspace-execution-completed",
+    planId: dispatchCandidate.planId,
+    dispatchId: dispatchCandidate.dispatchId,
+    result: createMockExecutionResult(dispatchCandidate),
+  });
+  assert.equal(store.getState().ui.executionRuntime.status, "completed");
+  assert.equal(getActiveExecutionResult(store.getState()) !== null, true);
+  assert.equal(getActiveExecutionResultInterpretation(store.getState()) !== null, true);
 
   const persistedState = labRootModule.__testOnlyLabRootPersistence.readPersistableState(
     store.getState()
@@ -598,6 +615,7 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
   assert.equal("activeExecutionReflection" in persistedState, false);
   assert.equal("activeExecutionSimulation" in persistedState, false);
   assert.equal("activeExecutionStaging" in persistedState, false);
+  assert.equal("executionRuntime" in persistedState, false);
   assert.equal(
     "activeExecutionIntentId" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
     false
@@ -638,6 +656,10 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
   );
   assert.equal(
     "activeExecutionStaging" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+  assert.equal(
+    "executionRuntime" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
     false
   );
 
@@ -684,4 +706,7 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
   assert.equal(getActiveExecutionReadiness(store.getState()), null);
   assert.equal(getActiveExecutionReflection(store.getState()), null);
   assert.equal(getActiveExecutionStaging(store.getState()), null);
+  assert.equal(store.getState().ui.executionRuntime.status, "idle");
+  assert.equal(getActiveExecutionResult(store.getState()), null);
+  assert.equal(getActiveExecutionResultInterpretation(store.getState()), null);
 });

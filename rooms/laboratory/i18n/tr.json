@@ -1625,6 +1625,14 @@
         "running": "devam ediyor",
         "title": "Son işlemler"
       },
+      "executionRuntime": {
+        "running": "Plan çalıştırılıyor...",
+        "completed": "Yürütme tamamlandı",
+        "progress": "%{progress}",
+        "insights": "İçgörüler",
+        "detectedElements": "Tespit edilen öğeler",
+        "outcomeEvaluated": "Sonuç değerlendirildi"
+      },
       "diff": {
         "timeline": "Timeline",
         "hypothesis": "Hipotez",

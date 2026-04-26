@@ -9,8 +9,11 @@ import {
   buildExecutionReadiness,
   buildExecutionReflection,
   buildExecutionReflectionFromResolved,
+  buildExecutionResultInterpretation,
   buildExecutionSimulation,
   buildExecutionStagingFromResolved,
+  createLabExecutionDispatcher,
+  createMockExecutionResult,
   createDualPreviewSnapshot,
   createLabStore,
   createTestAudioFocusSettings,
@@ -18,15 +21,19 @@ import {
   getActiveExecutionCandidate,
   getActiveExecutionCommitment,
   getActiveExecutionIntent,
+  getActiveExecutionResult,
   getActiveExecutionPayloadPreview,
   getActiveExecutionPlan,
   getActiveExecutionReadiness,
   getActiveExecutionReflection,
   getActiveExecutionSimulation,
   getActiveExecutionStaging,
+  getActiveExecutionResultInterpretation,
   getActiveSuggestionPreviewId,
+  getExecutionDispatchCandidate,
   getLaboratoryProcessSummary,
   getLaboratoryRightPanelContext,
+  installTimerMock,
   test,
 } from "./laboratory-runtime-truth.helpers.ts";
 
@@ -34,7 +41,9 @@ import type {
   LabActionSuggestion,
   LabAudioFocusSettings,
   LabExecutionCommitment,
+  LabExecutionDispatchCandidate,
   LabExecutionPayloadPreview,
+  LabExecutionResult,
   LabSelection,
 } from "./laboratory-runtime-truth.helpers.ts";
 
@@ -1695,6 +1704,59 @@ test("execution alternatives compare deterministic counterfactuals across decisi
   );
 });
 
+test("execution alternatives re-weight summary tone without changing structure", () => {
+  const selection: LabSelection = {
+    id: "selection-alternatives-feedback",
+    startMs: 1000,
+    endMs: 3600,
+    type: "inspect",
+    intent: "audio",
+    createdAt: 1,
+  };
+  const chain = createExecutionAlternativesChain({
+    actionType: "inspect-audio",
+    inspectionMode: "audio",
+    selection,
+    sourceKind: "audio",
+    suggestionId: "audio-inspect",
+  });
+  const stableFeedback = buildExecutionAlternatives({
+    executionPlan: chain.plan,
+    executionSimulation: chain.simulation,
+    executionReadiness: chain.readiness,
+    executionReflection: chain.reflection,
+    executionResultInterpretation: {
+      alignment: "matches-simulation",
+      anomalyLevel: "moderate",
+      coverageLevel: "high",
+    },
+    activeSelection: chain.selection,
+    inspectionMode: "audio",
+    sourceKind: "audio",
+  });
+  const divergentFeedback = buildExecutionAlternatives({
+    executionPlan: chain.plan,
+    executionSimulation: chain.simulation,
+    executionReadiness: chain.readiness,
+    executionReflection: chain.reflection,
+    executionResultInterpretation: {
+      alignment: "deviates",
+      anomalyLevel: "high",
+      coverageLevel: "high",
+    },
+    activeSelection: chain.selection,
+    inspectionMode: "audio",
+    sourceKind: "audio",
+  });
+
+  assert.deepEqual(stableFeedback.alternatives, chain.alternatives.alternatives);
+  assert.deepEqual(divergentFeedback.alternatives, chain.alternatives.alternatives);
+  assert.match(stableFeedback.summary, /current path stability/i);
+  assert.match(stableFeedback.comparisonNote ?? "", /backup routes/i);
+  assert.match(divergentFeedback.summary, /alternative paths may yield better outcomes/i);
+  assert.match(divergentFeedback.comparisonNote ?? "", /improve coverage or reduce divergence/i);
+});
+
 test("execution alternatives cover known action mappings and fallback", () => {
   const videoSelection: LabSelection = {
     id: "selection-alternatives-video",
@@ -2045,6 +2107,75 @@ test("execution candidate synthesizes structural viability without downgrading s
   assert.equal(avoidCandidate.structuralIntegrity, "insufficient");
   assert.equal(avoidCandidate.readinessStatus, "blocked");
   assert.equal(avoidCandidate.reflectionDecision, "avoid");
+});
+
+test("execution candidate adjusts confidence from interpreted result without changing status", () => {
+  const selection: LabSelection = {
+    id: "selection-candidate-feedback",
+    startMs: 1000,
+    endMs: 3600,
+    type: "inspect",
+    intent: "audio",
+    createdAt: 1,
+  };
+  const chain = createExecutionAlternativesChain({
+    actionType: "inspect-audio",
+    inspectionMode: "audio",
+    selection,
+    sourceKind: "audio",
+    suggestionId: "audio-inspect",
+  });
+  const baseInput = {
+    executionPlan: chain.plan,
+    executionSimulation: chain.simulation,
+    executionReadiness: chain.readiness,
+    executionPayloadPreview: chain.payload,
+    executionReflection: chain.reflection,
+    executionAlternatives: chain.alternatives,
+    activeSelection: chain.selection,
+    inspectionMode: "audio" as const,
+    sourceKind: "audio",
+  };
+  const baseCandidate = buildExecutionCandidateFromResolved(baseInput);
+  const alignedCandidate = buildExecutionCandidateFromResolved({
+    ...baseInput,
+    executionResultInterpretation: {
+      alignment: "matches-simulation" as const,
+      anomalyLevel: "moderate" as const,
+      coverageLevel: "high" as const,
+    },
+  });
+  const partialCandidate = buildExecutionCandidateFromResolved({
+    ...baseInput,
+    executionResultInterpretation: {
+      alignment: "partial" as const,
+      anomalyLevel: "moderate" as const,
+      coverageLevel: "medium" as const,
+    },
+  });
+  const deviatingCandidate = buildExecutionCandidateFromResolved({
+    ...baseInput,
+    executionResultInterpretation: {
+      alignment: "deviates" as const,
+      anomalyLevel: "high" as const,
+      coverageLevel: "high" as const,
+    },
+  });
+  const clamp = function (value: number) {
+    return Math.max(0.25, Math.min(0.98, Number(value.toFixed(2))));
+  };
+
+  assert.ok(baseCandidate);
+  assert.ok(alignedCandidate);
+  assert.ok(partialCandidate);
+  assert.ok(deviatingCandidate);
+  assert.equal(alignedCandidate.status, baseCandidate.status);
+  assert.equal(partialCandidate.status, baseCandidate.status);
+  assert.equal(deviatingCandidate.status, baseCandidate.status);
+  assert.equal(alignedCandidate.confidence, clamp((baseCandidate.confidence ?? 0) + 0.04));
+  assert.equal(partialCandidate.confidence, clamp((baseCandidate.confidence ?? 0) + 0.01));
+  assert.equal(deviatingCandidate.confidence, 0.94);
+  assert.equal((deviatingCandidate.confidence ?? 0) < (baseCandidate.confidence ?? 0), true);
 });
 
 test("execution candidate validates upstream coherence and payload preview shape", () => {
@@ -2640,7 +2771,10 @@ test("execution staging returns null for invalid or stale upstream chains", () =
     activeSelection: selection,
   };
 
-  assert.equal(buildExecutionStagingFromResolved({ ...baseInput, executionCommitment: null }), null);
+  assert.equal(
+    buildExecutionStagingFromResolved({ ...baseInput, executionCommitment: null }),
+    null
+  );
   assert.equal(
     buildExecutionStagingFromResolved({
       ...baseInput,
@@ -2777,4 +2911,701 @@ test("execution staging is selector-derived and clears with its upstream chain",
     endMs: 3200,
   });
   assert.equal(getActiveExecutionStaging(store.getState()), null);
+});
+
+function completeMockExecutionRuntime(store: ReturnType<typeof createLabStore>) {
+  const dispatchCandidate = getExecutionDispatchCandidate(store.getState());
+  if (dispatchCandidate === null) {
+    throw new Error("Expected a dispatch candidate");
+  }
+  store.dispatch({
+    type: "workspace-execution-dispatch",
+    planId: dispatchCandidate.planId,
+    dispatchId: dispatchCandidate.dispatchId,
+  });
+  store.dispatch({
+    type: "workspace-execution-progress",
+    planId: dispatchCandidate.planId,
+    dispatchId: dispatchCandidate.dispatchId,
+    progress: 50,
+  });
+  store.dispatch({
+    type: "workspace-execution-completed",
+    planId: dispatchCandidate.planId,
+    dispatchId: dispatchCandidate.dispatchId,
+    result: createMockExecutionResult(dispatchCandidate),
+  });
+  return dispatchCandidate;
+}
+
+function assertArtifactsInsideSelection(
+  result: LabExecutionResult,
+  candidate: LabExecutionDispatchCandidate
+) {
+  result.artifacts.forEach(function (artifact) {
+    if (artifact.timeRange === undefined) {
+      return;
+    }
+    assert.equal(
+      artifact.timeRange.start >= candidate.selectionSnapshot.startMs,
+      true,
+      artifact.label
+    );
+    assert.equal(artifact.timeRange.end <= candidate.selectionSnapshot.endMs, true, artifact.label);
+    assert.equal(artifact.timeRange.end >= artifact.timeRange.start, true, artifact.label);
+  });
+}
+
+function withCandidateContext(
+  candidate: LabExecutionDispatchCandidate,
+  overrides: Partial<LabExecutionDispatchCandidate>
+): LabExecutionDispatchCandidate {
+  return {
+    ...candidate,
+    ...overrides,
+    payloadPreview: {
+      ...candidate.payloadPreview,
+      ...(overrides.payloadPreview ?? {}),
+    },
+    selectionSnapshot: {
+      ...candidate.selectionSnapshot,
+      ...(overrides.selectionSnapshot ?? {}),
+    },
+    staging: {
+      ...candidate.staging,
+      ...(overrides.staging ?? {}),
+    },
+  };
+}
+
+test("execution result interpretation maps deterministic outcome buckets", () => {
+  const selectionSnapshot = {
+    endMs: 3000,
+    inspectionMode: "audio" as const,
+    intent: "audio" as const,
+    sourceKind: "audio",
+    startMs: 1000,
+    type: "clip" as const,
+  };
+  const alignedResult = {
+    actionType: "inspect-audio",
+    selectionSnapshot,
+    summary: "Inspected selected audio",
+    insights: ["Frequency cluster detected"],
+    artifacts: [
+      {
+        type: "marker" as const,
+        label: "Frequency cluster marker",
+        timeRange: { start: 1800, end: 1900 },
+      },
+    ],
+    metrics: {
+      coverage: 0.86,
+      confidence: 0.82,
+    },
+  };
+
+  assert.deepEqual(buildExecutionResultInterpretation(alignedResult), {
+    alignment: "matches-simulation",
+    anomalyLevel: "moderate",
+    coverageLevel: "high",
+  });
+  assert.deepEqual(
+    buildExecutionResultInterpretation({
+      ...alignedResult,
+      actionType: "analyze-segment",
+      artifacts: [
+        ...alignedResult.artifacts,
+        {
+          type: "marker" as const,
+          label: "Boundary variance marker",
+          timeRange: { start: 2100, end: 2200 },
+        },
+        {
+          type: "marker" as const,
+          label: "Mid-range anomaly marker",
+          timeRange: { start: 2400, end: 2500 },
+        },
+      ],
+      metrics: {
+        coverage: 0.95,
+        confidence: 0.9,
+      },
+    }),
+    {
+      alignment: "deviates",
+      anomalyLevel: "high",
+      coverageLevel: "high",
+    }
+  );
+  assert.deepEqual(
+    buildExecutionResultInterpretation({
+      ...alignedResult,
+      artifacts: [],
+      metrics: {
+        coverage: 0.4,
+      },
+    }),
+    {
+      alignment: "deviates",
+      anomalyLevel: "none",
+      coverageLevel: "low",
+    }
+  );
+  assert.deepEqual(
+    buildExecutionResultInterpretation({
+      ...alignedResult,
+      metrics: {
+        coverage: 0.72,
+      },
+    }),
+    {
+      alignment: "partial",
+      anomalyLevel: "moderate",
+      coverageLevel: "medium",
+    }
+  );
+});
+
+test("execution dispatch candidate exists only for a valid committed staged chain", () => {
+  const store = createLabStore();
+
+  assert.equal(getExecutionDispatchCandidate(store.getState()), null);
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "audio",
+      mode: "local",
+      storedPath: "/tmp/source.wav",
+    },
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "audio-inspect",
+  });
+
+  assert.equal(getExecutionDispatchCandidate(store.getState()), null);
+
+  const activeCandidate = getActiveExecutionCandidate(store.getState());
+  assert.ok(activeCandidate);
+  store.dispatch({
+    type: "workspace-execution-commitment-set",
+    planId: activeCandidate.planId,
+  });
+
+  const dispatchCandidate = getExecutionDispatchCandidate(store.getState());
+  assert.ok(dispatchCandidate);
+  assert.equal(dispatchCandidate.planId, activeCandidate.planId);
+  assert.equal(dispatchCandidate.actionType, "inspect-audio");
+  assert.equal(dispatchCandidate.payloadPreview.planId, activeCandidate.planId);
+  assert.deepEqual(dispatchCandidate.selectionSnapshot, {
+    endMs: 3000,
+    inspectionMode: "none",
+    intent: "audio",
+    sourceKind: "audio",
+    startMs: 1000,
+    type: "clip",
+  });
+  assert.equal(dispatchCandidate.staging.status, "staged");
+  assert.match(dispatchCandidate.dispatchId, /^dispatch:/);
+  assert.equal("id" in dispatchCandidate.selectionSnapshot, false);
+  assert.equal("createdAt" in dispatchCandidate.selectionSnapshot, false);
+
+  const originalSelection = store.getState().ui.workspace.activeSelection;
+  assert.ok(originalSelection);
+  store.getState().ui.workspace.activeSelection = {
+    ...originalSelection,
+    id: "selection-transient-replacement",
+    createdAt: originalSelection.createdAt + 9999,
+  };
+  const transientDispatchCandidate = getExecutionDispatchCandidate(store.getState());
+  assert.ok(transientDispatchCandidate);
+  assert.equal(transientDispatchCandidate.dispatchId, dispatchCandidate.dispatchId);
+
+  store.dispatch({
+    type: "workspace-execution-commitment-revoked",
+  });
+  assert.equal(getExecutionDispatchCandidate(store.getState()), null);
+});
+
+test("execution runtime lifecycle is identity-gated and exposes the active result", () => {
+  const { store } = createCommittedAudioExecutionStore();
+  const dispatchCandidate = getExecutionDispatchCandidate(store.getState());
+  assert.ok(dispatchCandidate);
+
+  store.dispatch({
+    type: "workspace-execution-dispatch",
+    planId: dispatchCandidate.planId,
+    dispatchId: "dispatch:stale",
+  });
+  assert.equal(store.getState().ui.executionRuntime.status, "idle");
+
+  store.dispatch({
+    type: "workspace-execution-dispatch",
+    planId: dispatchCandidate.planId,
+    dispatchId: dispatchCandidate.dispatchId,
+  });
+  assert.equal(store.getState().ui.executionRuntime.status, "running");
+  assert.equal(store.getState().ui.executionRuntime.progress, 0);
+
+  store.dispatch({
+    type: "workspace-execution-progress",
+    planId: dispatchCandidate.planId,
+    dispatchId: "dispatch:stale",
+    progress: 75,
+  });
+  assert.equal(store.getState().ui.executionRuntime.progress, 0);
+
+  store.dispatch({
+    type: "workspace-execution-progress",
+    planId: dispatchCandidate.planId,
+    dispatchId: dispatchCandidate.dispatchId,
+    progress: 52.4,
+  });
+  assert.equal(store.getState().ui.executionRuntime.progress, 52);
+
+  const result = createMockExecutionResult(dispatchCandidate);
+  store.dispatch({
+    type: "workspace-execution-completed",
+    planId: dispatchCandidate.planId,
+    dispatchId: dispatchCandidate.dispatchId,
+    result,
+  });
+  assert.equal(store.getState().ui.executionRuntime.status, "completed");
+  assert.equal(store.getState().ui.executionRuntime.progress, 100);
+  assert.deepEqual(getActiveExecutionResult(store.getState()), {
+    ...result,
+    selectionSnapshot: dispatchCandidate.selectionSnapshot,
+  });
+
+  store.dispatch({
+    type: "workspace-execution-dispatch",
+    planId: dispatchCandidate.planId,
+    dispatchId: dispatchCandidate.dispatchId,
+  });
+  assert.equal(store.getState().ui.executionRuntime.status, "running");
+  assert.equal(store.getState().ui.executionRuntime.result, undefined);
+  assert.equal(getActiveExecutionResult(store.getState()), null);
+});
+
+test("completed execution result feeds passive reflection candidate and alternatives output", () => {
+  const { candidate: baseCandidate, store } = createCommittedAudioExecutionStore();
+  const dispatchCandidate = getExecutionDispatchCandidate(store.getState());
+  assert.ok(dispatchCandidate);
+  const beforeReflection = getActiveExecutionReflection(store.getState());
+  const beforeAlternatives = getActiveExecutionAlternatives(store.getState());
+  assert.ok(beforeReflection);
+  assert.ok(beforeAlternatives);
+  const beforeDispatchId = dispatchCandidate.dispatchId;
+
+  store.dispatch({
+    type: "workspace-execution-dispatch",
+    planId: dispatchCandidate.planId,
+    dispatchId: dispatchCandidate.dispatchId,
+  });
+  store.dispatch({
+    type: "workspace-execution-completed",
+    planId: dispatchCandidate.planId,
+    dispatchId: dispatchCandidate.dispatchId,
+    result: createMockExecutionResult(dispatchCandidate),
+  });
+
+  assert.deepEqual(getActiveExecutionResultInterpretation(store.getState()), {
+    alignment: "partial",
+    anomalyLevel: "moderate",
+    coverageLevel: "medium",
+  });
+  const afterReflection = getActiveExecutionReflection(store.getState());
+  const afterCandidate = getActiveExecutionCandidate(store.getState());
+  const afterAlternatives = getActiveExecutionAlternatives(store.getState());
+  const afterStaging = getActiveExecutionStaging(store.getState());
+  const afterDispatchCandidate = getExecutionDispatchCandidate(store.getState());
+  assert.ok(afterReflection);
+  assert.ok(afterCandidate);
+  assert.ok(afterAlternatives);
+  assert.ok(afterStaging);
+  assert.ok(afterDispatchCandidate);
+  assert.equal(
+    afterReflection.summary,
+    `${beforeReflection.summary} Result partially aligns with simulated expectations`
+  );
+  assert.equal(afterCandidate.status, baseCandidate.status);
+  assert.equal(
+    afterCandidate.confidence,
+    Math.max(0.25, Math.min(0.98, Number(((baseCandidate.confidence ?? 0) + 0.01).toFixed(2))))
+  );
+  assert.match(afterAlternatives.summary, /execution feedback is mixed/i);
+  assert.match(afterAlternatives.comparisonNote ?? "", /mixed execution signal/i);
+  assert.match(afterStaging.notes?.join(" ") ?? "", /mixed execution signal/i);
+  assert.equal(afterStaging.status, "staged");
+  assert.equal(afterDispatchCandidate.dispatchId, beforeDispatchId);
+  assert.equal(getActiveExecutionResult(store.getState())?.summary, "Inspected selected audio");
+});
+
+test("execution dispatcher emits deterministic mock progress and cleans up stale timers", () => {
+  const timerMock = installTimerMock();
+
+  try {
+    const { store } = createCommittedAudioExecutionStore();
+    const dispatchCandidate = getExecutionDispatchCandidate(store.getState());
+    assert.ok(dispatchCandidate);
+    const emitted: string[] = [];
+    const dispatcher = createLabExecutionDispatcher({
+      emit(event) {
+        emitted.push(event.type);
+        store.dispatch(event);
+      },
+    });
+
+    dispatcher.sync(dispatchCandidate);
+
+    assert.deepEqual(
+      timerMock.scheduled.map((entry) => entry.delay),
+      [375, 750, 1125, 1500]
+    );
+    assert.deepEqual(emitted, ["workspace-execution-dispatch"]);
+    assert.equal(store.getState().ui.executionRuntime.status, "running");
+
+    timerMock.scheduled[0]?.fn();
+    assert.equal(store.getState().ui.executionRuntime.progress, 25);
+
+    timerMock.scheduled[3]?.fn();
+    assert.equal(store.getState().ui.executionRuntime.status, "completed");
+    const completedResult = getActiveExecutionResult(store.getState());
+    assert.ok(completedResult);
+    assert.equal(completedResult.summary, "Inspected selected audio");
+    assert.deepEqual(completedResult.insights, ["Frequency cluster detected"]);
+    assert.equal(completedResult.artifacts.length, 1);
+    assert.deepEqual(completedResult.selectionSnapshot, dispatchCandidate.selectionSnapshot);
+
+    dispatcher.sync(dispatchCandidate);
+    assert.equal(timerMock.scheduled.length, 4);
+  } finally {
+    timerMock.restore();
+  }
+});
+
+test("execution mock materialization is deterministic and action-aware", () => {
+  const { store } = createCommittedAudioExecutionStore();
+  const baseCandidate = getExecutionDispatchCandidate(store.getState());
+  assert.ok(baseCandidate);
+
+  const analyzeCandidate = withCandidateContext(baseCandidate, {
+    actionType: "analyze-segment",
+    payloadPreview: {
+      ...baseCandidate.payloadPreview,
+      actionType: "analyze-segment",
+    },
+    selectionSnapshot: {
+      ...baseCandidate.selectionSnapshot,
+      startMs: 1203,
+      endMs: 4203,
+      intent: "anomaly",
+    },
+  });
+  const analyzeResult = createMockExecutionResult(analyzeCandidate);
+  assert.deepEqual(analyzeResult, createMockExecutionResult(analyzeCandidate));
+  assert.equal(analyzeResult.summary, "Analyzed selected segment");
+  assert.deepEqual(analyzeResult.insights, [
+    "Detected structural variation",
+    "Potential anomaly in mid-range",
+  ]);
+  assert.equal(analyzeResult.artifacts.length, 3);
+  assert.equal(analyzeResult.metrics.coverage, 0.95);
+  assert.equal(analyzeResult.metrics.confidence, 0.9);
+  assertArtifactsInsideSelection(analyzeResult, analyzeCandidate);
+
+  const focusCandidate = withCandidateContext(baseCandidate, {
+    actionType: "focus-region",
+    payloadPreview: {
+      ...baseCandidate.payloadPreview,
+      actionType: "focus-region",
+    },
+    selectionSnapshot: {
+      ...baseCandidate.selectionSnapshot,
+      intent: "visual",
+      roi: {
+        x: 0.15,
+        y: 0.2,
+        width: 0.3,
+        height: 0.25,
+      },
+    },
+  });
+  const focusResult = createMockExecutionResult(focusCandidate);
+  assert.equal(focusResult.summary, "Focused selected region");
+  assert.deepEqual(focusResult.insights, [
+    "Focused region shows localized activity",
+    "Tight ROI coverage",
+  ]);
+  assert.deepEqual(
+    focusResult.artifacts.map(function (artifact) {
+      return artifact.label;
+    }),
+    ["Left upper ROI annotation"]
+  );
+  assert.equal(focusResult.metrics.coverage, 0.76);
+  assert.equal(focusResult.metrics.confidence, 0.82);
+  assertArtifactsInsideSelection(focusResult, focusCandidate);
+
+  const alternateFocusCandidate = withCandidateContext(focusCandidate, {
+    selectionSnapshot: {
+      ...focusCandidate.selectionSnapshot,
+      roi: {
+        x: 0.72,
+        y: 0.12,
+        width: 0.12,
+        height: 0.12,
+      },
+    },
+  });
+  const alternateFocusResult = createMockExecutionResult(alternateFocusCandidate);
+  assert.notDeepEqual(alternateFocusResult, focusResult);
+  assert.deepEqual(alternateFocusResult.insights, [
+    "Focused region shows localized activity",
+    "Tight ROI coverage",
+  ]);
+  assert.deepEqual(
+    alternateFocusResult.artifacts.map(function (artifact) {
+      return artifact.label;
+    }),
+    ["Right upper ROI annotation"]
+  );
+  assert.equal(alternateFocusResult.metrics.coverage, 0.71);
+  assert.equal(alternateFocusResult.metrics.confidence, 0.82);
+  assertArtifactsInsideSelection(alternateFocusResult, alternateFocusCandidate);
+
+  const audioResult = createMockExecutionResult(baseCandidate);
+  assert.equal(audioResult.summary, "Inspected selected audio");
+  assert.deepEqual(audioResult.insights, ["Frequency cluster detected"]);
+  assert.equal(audioResult.artifacts[0]?.label, "Frequency cluster marker");
+  assertArtifactsInsideSelection(audioResult, baseCandidate);
+
+  const fallbackResult = createMockExecutionResult(
+    withCandidateContext(baseCandidate, {
+      actionType: "enhance-visual",
+      payloadPreview: {
+        ...baseCandidate.payloadPreview,
+        actionType: "enhance-visual",
+      },
+    })
+  );
+  assert.deepEqual(fallbackResult, {
+    summary: "Execution completed for selected context",
+    insights: ["Local mock execution completed without action-specific materialization."],
+    artifacts: [],
+    metrics: {},
+  });
+});
+
+test("focus-region materialization stays segment-scoped when ROI is absent", () => {
+  const { store } = createCommittedAudioExecutionStore();
+  const baseCandidate = getExecutionDispatchCandidate(store.getState());
+  assert.ok(baseCandidate);
+  const focusCandidate = withCandidateContext(baseCandidate, {
+    actionType: "focus-region",
+    payloadPreview: {
+      ...baseCandidate.payloadPreview,
+      actionType: "focus-region",
+    },
+    selectionSnapshot: {
+      ...baseCandidate.selectionSnapshot,
+      intent: "visual",
+      roi: undefined,
+    },
+  });
+
+  const result = createMockExecutionResult(focusCandidate);
+
+  assert.equal(result.summary, "Focused selected segment");
+  assert.deepEqual(result.insights, ["Focused segment remains region-neutral"]);
+  assert.deepEqual(result.artifacts, [
+    {
+      type: "annotation",
+      label: "Segment-scoped focus annotation",
+      timeRange: {
+        start: focusCandidate.selectionSnapshot.startMs,
+        end: focusCandidate.selectionSnapshot.endMs,
+      },
+    },
+  ]);
+});
+
+test("execution dispatcher invalidation prevents late mock completion", () => {
+  const timerMock = installTimerMock();
+
+  try {
+    const { store } = createCommittedAudioExecutionStore();
+    const dispatchCandidate = getExecutionDispatchCandidate(store.getState());
+    assert.ok(dispatchCandidate);
+    const dispatcher = createLabExecutionDispatcher({
+      emit(event) {
+        store.dispatch(event);
+      },
+    });
+
+    dispatcher.sync(dispatchCandidate);
+    assert.equal(store.getState().ui.executionRuntime.status, "running");
+
+    dispatcher.sync(null);
+    assert.equal(store.getState().ui.executionRuntime.status, "idle");
+
+    timerMock.scheduled.forEach(function (entry) {
+      entry.fn();
+    });
+
+    assert.equal(store.getState().ui.executionRuntime.status, "idle");
+    assert.equal(getActiveExecutionResult(store.getState()), null);
+  } finally {
+    timerMock.restore();
+  }
+});
+
+test("execution runtime clears on upstream invalidation edges", () => {
+  const scenarios: Array<{
+    name: string;
+    mutate: (store: ReturnType<typeof createLabStore>) => void;
+  }> = [
+    {
+      name: "hydrate",
+      mutate(store) {
+        store.dispatch({ type: "hydrate", payload: null });
+      },
+    },
+    {
+      name: "source change",
+      mutate(store) {
+        store.dispatch({
+          type: "source-config-patched",
+          patch: {
+            storedPath: "/tmp/source-2.wav",
+          },
+        });
+      },
+    },
+    {
+      name: "timeline change",
+      mutate(store) {
+        store.dispatch({
+          type: "workspace-timeline-updated",
+          startMs: 1200,
+          endMs: 3200,
+        });
+      },
+    },
+    {
+      name: "selection intent change",
+      mutate(store) {
+        store.dispatch({
+          type: "workspace-selection-intent-updated",
+          intent: "general",
+        });
+      },
+    },
+    {
+      name: "suggestion change",
+      mutate(store) {
+        store.dispatch({
+          type: "workspace-selection-suggestion-preview-set",
+          suggestionId: "extract-clip",
+        });
+        store.dispatch({
+          type: "workspace-selection-suggestion-accepted",
+          suggestionId: "extract-clip",
+        });
+      },
+    },
+    {
+      name: "suggestion dismissal",
+      mutate(store) {
+        store.dispatch({
+          type: "workspace-selection-suggestion-dismissed",
+          suggestionId: "audio-inspect",
+        });
+      },
+    },
+    {
+      name: "intent clear",
+      mutate(store) {
+        store.dispatch({
+          type: "workspace-execution-intent-cleared",
+        });
+      },
+    },
+    {
+      name: "new commitment",
+      mutate(store) {
+        const dispatchCandidate = getExecutionDispatchCandidate(store.getState());
+        assert.ok(dispatchCandidate);
+        store.dispatch({
+          type: "workspace-execution-commitment-set",
+          planId: dispatchCandidate.planId,
+        });
+      },
+    },
+    {
+      name: "commitment revoke",
+      mutate(store) {
+        store.dispatch({
+          type: "workspace-execution-commitment-revoked",
+        });
+      },
+    },
+    {
+      name: "roi update",
+      mutate(store) {
+        store.dispatch({
+          type: "selection-roi-updated",
+          roi: {
+            x: 0.1,
+            y: 0.1,
+            width: 0.2,
+            height: 0.2,
+          },
+        });
+      },
+    },
+    {
+      name: "roi clear",
+      mutate(store) {
+        store.dispatch({
+          type: "selection-roi-cleared",
+        });
+      },
+    },
+    {
+      name: "inspection mode change",
+      mutate(store) {
+        store.dispatch({
+          type: "selection-inspection-mode-updated",
+          mode: "audio",
+        });
+      },
+    },
+  ];
+
+  scenarios.forEach(function (scenario) {
+    const { store } = createCommittedAudioExecutionStore();
+    completeMockExecutionRuntime(store);
+    assert.equal(getActiveExecutionResult(store.getState()) !== null, true, scenario.name);
+
+    scenario.mutate(store);
+
+    assert.equal(store.getState().ui.executionRuntime.status, "idle", scenario.name);
+    assert.equal(getActiveExecutionResult(store.getState()), null, scenario.name);
+  });
 });

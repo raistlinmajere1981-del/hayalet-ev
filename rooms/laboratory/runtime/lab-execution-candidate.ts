@@ -11,6 +11,12 @@ import type {
   LabSelectionROI,
 } from "../models/lab-types.js";
 
+export type LabExecutionCandidateResultInterpretation = {
+  coverageLevel: "low" | "medium" | "high";
+  anomalyLevel: "none" | "moderate" | "high";
+  alignment: "matches-simulation" | "partial" | "deviates";
+};
+
 type LabExecutionCandidateInput = {
   activeSelection: LabSelection;
   executionAlternatives: LabExecutionAlternatives;
@@ -18,6 +24,7 @@ type LabExecutionCandidateInput = {
   executionPlan: LabExecutionPlan;
   executionReadiness: LabExecutionReadiness;
   executionReflection: LabExecutionReflection;
+  executionResultInterpretation?: LabExecutionCandidateResultInterpretation | null;
   executionSimulation: LabExecutionSimulation;
   inspectionMode: LabInspectionMode;
   sourceKind: string;
@@ -30,6 +37,7 @@ export type LabExecutionCandidateResolvedInput = {
   executionPlan: LabExecutionPlan | null;
   executionReadiness: LabExecutionReadiness | null;
   executionReflection: LabExecutionReflection | null;
+  executionResultInterpretation?: LabExecutionCandidateResultInterpretation | null;
   executionSimulation: LabExecutionSimulation | null;
   inspectionMode: LabInspectionMode;
   sourceKind: string;
@@ -306,6 +314,20 @@ function buildConfidence(
 
   confidence -= Math.min(0.08, uncertaintyCount * 0.02);
 
+  const interpretation = input.executionResultInterpretation;
+  if (interpretation !== undefined && interpretation !== null) {
+    if (
+      interpretation.coverageLevel === "high" &&
+      interpretation.alignment === "matches-simulation"
+    ) {
+      confidence += 0.04;
+    } else if (interpretation.coverageLevel === "low" || interpretation.alignment === "deviates") {
+      confidence -= 0.08;
+    } else {
+      confidence += 0.01;
+    }
+  }
+
   return clampConfidence(confidence);
 }
 
@@ -352,6 +374,7 @@ export function buildExecutionCandidateFromResolved(
     executionPlan: input.executionPlan,
     executionReadiness: input.executionReadiness,
     executionReflection: input.executionReflection,
+    executionResultInterpretation: input.executionResultInterpretation ?? null,
     executionSimulation: input.executionSimulation,
     inspectionMode: input.inspectionMode,
     sourceKind: input.sourceKind,

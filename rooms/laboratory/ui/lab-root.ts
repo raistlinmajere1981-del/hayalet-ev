@@ -1,6 +1,7 @@
 import { asLabRecord, asNonEmptyString } from "../models/lab-types.js";
 import type { LabStoreState } from "../models/lab-types.js";
 import { createLabEventBus } from "../runtime/lab-event-bus.js";
+import { createLabExecutionDispatcher } from "../runtime/lab-execution-dispatcher.js";
 import { createLabHostBridge } from "../runtime/lab-host-bridge.js";
 import { loadLabPersistedState, saveLabPersistedState } from "../runtime/lab-persistence.js";
 import { createLabStore } from "../runtime/lab-store.js";
@@ -24,6 +25,7 @@ import {
   getActiveExecutionIntentId,
   getActiveInspectionSnapshot,
   getActiveSuggestionPreviewId,
+  getExecutionDispatchCandidate,
   getRoiFocusActive,
   getSelectionSuggestions,
   getWorkspaceMode,
@@ -322,6 +324,24 @@ export function startLaboratoryLabRoot() {
   const eventBus = createLabEventBus();
   const store = createLabStore();
   eventBus.subscribe(store.dispatch);
+  const executionDispatcher = createLabExecutionDispatcher({
+    clearTimeoutFn:
+      typeof windowRef.clearTimeout === "function"
+        ? function (timerId) {
+            windowRef.clearTimeout(timerId as number);
+          }
+        : function (timerId) {
+            clearTimeout(timerId as ReturnType<typeof setTimeout>);
+          },
+    emit: eventBus.emit,
+    setTimeoutFn:
+      typeof windowRef.setTimeout === "function"
+        ? windowRef.setTimeout.bind(windowRef)
+        : setTimeout,
+  });
+  if (typeof windowRef.addEventListener === "function") {
+    windowRef.addEventListener("beforeunload", executionDispatcher.dispose);
+  }
   const previewInspectionController = createLabPreviewInspectionController({
     documentRef,
     emit: eventBus.emit,
@@ -540,6 +560,7 @@ export function startLaboratoryLabRoot() {
   let shellMounted = false;
   let activeOverlay: LabWaveformTimelineModel["activeOverlay"] = "none";
   let activeOverlayIdentity: string | null = null;
+
   const collapsedPanels: Record<string, boolean> = {
     alternatives: true,
     payload: true,
@@ -689,6 +710,7 @@ export function startLaboratoryLabRoot() {
   store.subscribe(function (state) {
     saveLabPersistedState(window, readPersistableState(state));
     render();
+    executionDispatcher.sync(getExecutionDispatchCandidate(state));
     previewInspectionController.sync();
     scheduleBootOverlayUnlock(state);
   });
