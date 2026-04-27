@@ -48,13 +48,6 @@ MCP tool yüzeyi değiştiğinde varsayılan akış:
 
 ---
 
-## 🚨 #1 FAST MODE:
-
-> ⚠️ Kullanıcının `"Fast:"` ile başlayan mesajlarında yalnızca `#2 Değişiklik Onay Protokolü` atlanır.
-> ⚠️ Fast mod, dinamik mod tespitini override etmez; yine `npm run mode:status` ve `npm run whereami` birlikte değerlendirilir.
-> ⚠️ Fast mod, `Mode: terminal` veya muhatap `Kullanıcı` gibi hardcoded sonuç üretmez.
-> ⚠️ Subagent review görevlerinde varsayılan talimat cümlesi `"Fast:"` etiketiyle başlatılır; böylece review akışı default olarak fast modda ister.
-
 ## 🚨 #2 KURAL: DEĞİŞİKLİK ONAY PROTOKOLÜ — ZORUNLU
 
 Plan aşamasında kullanıcıya kod gösterme, planı basit ve kısa biçimde açıkla.
@@ -242,7 +235,7 @@ MCP workflow tool sistemi kaldırılmıştır. Workflow kılavuzu sadece bu dosy
   3. Hata tespitinde önce kod, log ve ilgili dosyalar üzerinde ilerlenir; Electron bağlantısı sonraki doğrulama adımı olarak değerlendirilir
   4. Electron doğrulaması gerekiyorsa en güncel mod kontrolüne göre karar verilir: aktif uygulama varsa o uygulama üzerinden test yapılır; aktif uygulama yoksa gerekli uygulama kontrollü şekilde başlatılır
   5. Test için geçici olarak başlatılan uygulama veya mod geçişi varsa süreç sonunda başlangıç durumuna dönülür
-  6. Değişiklikler terminal akışında direkt uygulanır; plan/onay formatı veya Fast istisnası dışında syntax doğrulama zorunludur
+  6. Değişiklikler terminal akışında direkt uygulanır; plan/onay formatı veya syntax doğrulama zorunludur
 
 - `workflow:app-mode`:
   1. Bu akış yalnızca runtime mod `app` ve `whereami.effectiveMode` sonucu `app` ise değerlendirilir
