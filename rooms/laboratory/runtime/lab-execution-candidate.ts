@@ -1,4 +1,5 @@
 import type {
+  LabActiveExecutionResult,
   LabExecutionAlternatives,
   LabExecutionCandidate,
   LabExecutionGoalEvaluation,
@@ -13,6 +14,7 @@ import type {
 } from "../models/lab-types.js";
 import {
   buildAdaptiveDecisionSignal,
+  buildCounterfactualProjection,
   buildGuidedAlternativeSignal,
 } from "./lab-adaptive-decision.js";
 
@@ -29,6 +31,7 @@ type LabExecutionCandidateInput = {
   executionPlan: LabExecutionPlan;
   executionReadiness: LabExecutionReadiness;
   executionReflection: LabExecutionReflection;
+  executionResult?: LabActiveExecutionResult | null;
   executionGoalEvaluation?: LabExecutionGoalEvaluation | null;
   executionResultInterpretation?: LabExecutionCandidateResultInterpretation | null;
   executionSimulation: LabExecutionSimulation;
@@ -43,6 +46,7 @@ export type LabExecutionCandidateResolvedInput = {
   executionPlan: LabExecutionPlan | null;
   executionReadiness: LabExecutionReadiness | null;
   executionReflection: LabExecutionReflection | null;
+  executionResult?: LabActiveExecutionResult | null;
   executionGoalEvaluation?: LabExecutionGoalEvaluation | null;
   executionResultInterpretation?: LabExecutionCandidateResultInterpretation | null;
   executionSimulation: LabExecutionSimulation | null;
@@ -379,9 +383,28 @@ function buildExecutionCandidate(input: LabExecutionCandidateInput): LabExecutio
     executionGoalEvaluation: input.executionGoalEvaluation ?? null,
     executionResultInterpretation: input.executionResultInterpretation ?? null,
   });
+  const preferredAlternative =
+    guidedAlternative.preferredAlternativeIndex === null
+      ? null
+      : input.executionAlternatives.alternatives[guidedAlternative.preferredAlternativeIndex] ?? null;
+  const counterfactualProjection =
+    adaptiveDecision.decisionPressure !== "high" ||
+    preferredAlternative === null ||
+    input.executionResult === undefined ||
+    input.executionResult === null
+      ? null
+      : buildCounterfactualProjection(preferredAlternative, {
+          decisionPressure: adaptiveDecision.decisionPressure,
+          executionGoalEvaluation: input.executionGoalEvaluation ?? null,
+          executionResult: input.executionResult,
+          executionResultInterpretation: input.executionResultInterpretation ?? null,
+        });
   const adaptiveDecisionHint = appendAdaptiveDecisionHint(
-    adaptiveDecision.adaptiveDecisionHint,
-    guidedAlternative.candidateGuidanceText
+    appendAdaptiveDecisionHint(
+      adaptiveDecision.adaptiveDecisionHint,
+      guidedAlternative.candidateGuidanceText
+    ),
+    counterfactualProjection?.summary ?? ""
   );
 
   return {
@@ -426,6 +449,7 @@ export function buildExecutionCandidateFromResolved(
     executionPlan: input.executionPlan,
     executionReadiness: input.executionReadiness,
     executionReflection: input.executionReflection,
+    executionResult: input.executionResult ?? null,
     executionGoalEvaluation: input.executionGoalEvaluation ?? null,
     executionResultInterpretation: input.executionResultInterpretation ?? null,
     executionSimulation: input.executionSimulation,

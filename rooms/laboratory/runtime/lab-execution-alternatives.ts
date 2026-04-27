@@ -1,4 +1,5 @@
 import type {
+  LabActiveExecutionResult,
   LabExecutionAlternative,
   LabExecutionAlternatives,
   LabExecutionGoalEvaluation,
@@ -11,6 +12,7 @@ import type {
 } from "../models/lab-types.js";
 import {
   buildAdaptiveDecisionSignal,
+  buildCounterfactualProjection,
   buildGuidedAlternativeSignal,
   type LabGuidedAlternativeSignal,
 } from "./lab-adaptive-decision.js";
@@ -26,6 +28,7 @@ type LabExecutionAlternativesInput = {
   executionPlan: LabExecutionPlan;
   executionReadiness: LabExecutionReadiness;
   executionReflection: LabExecutionReflection;
+  executionResult?: LabActiveExecutionResult | null;
   executionGoalEvaluation?: LabExecutionGoalEvaluation | null;
   executionResultInterpretation?: LabExecutionAlternativesResultInterpretation | null;
   executionSimulation: LabExecutionSimulation;
@@ -38,6 +41,7 @@ export type LabExecutionAlternativesResolvedInput = {
   executionPlan: LabExecutionPlan | null;
   executionReadiness: LabExecutionReadiness | null;
   executionReflection: LabExecutionReflection | null;
+  executionResult?: LabActiveExecutionResult | null;
   executionGoalEvaluation?: LabExecutionGoalEvaluation | null;
   executionResultInterpretation?: LabExecutionAlternativesResultInterpretation | null;
   executionSimulation: LabExecutionSimulation | null;
@@ -385,21 +389,27 @@ function buildBaseSummary(input: LabExecutionAlternativesInput) {
   if (input.executionReflection.decision === "review") {
     return "The selected path still needs review; alternatives may reduce uncertainty or add context before carrying it further.";
   }
-  return "The selected path is not recommended in its current form; alternatives outline safer counterfactual routes.";
+  return "The selected path is not recommended in its current form; alternatives outline safer comparison routes.";
 }
 
 function buildSummary(
   input: LabExecutionAlternativesInput,
-  guidedAlternative: LabGuidedAlternativeSignal
+  guidedAlternative: LabGuidedAlternativeSignal,
+  counterfactualSummary: string
 ) {
   const baseSummary = buildBaseSummary(input);
-  if (guidedAlternative.guidanceText === "") {
+  const suffix = [guidedAlternative.guidanceText, counterfactualSummary]
+    .filter(function (entry) {
+      return entry !== "";
+    })
+    .join(" ");
+  if (suffix === "") {
     return baseSummary;
   }
-  if (baseSummary.includes(guidedAlternative.guidanceText)) {
+  if (baseSummary.includes(suffix)) {
     return baseSummary;
   }
-  return `${baseSummary} ${guidedAlternative.guidanceText}`;
+  return `${baseSummary} ${suffix}`;
 }
 
 function buildBaseComparisonNote(input: LabExecutionAlternativesInput) {
@@ -516,10 +526,27 @@ export function buildExecutionAlternatives(
     executionGoalEvaluation: input.executionGoalEvaluation ?? null,
     executionResultInterpretation: input.executionResultInterpretation ?? null,
   });
+  const preferredAlternative =
+    guidedAlternative.preferredAlternativeIndex === null
+      ? null
+      : alternatives[guidedAlternative.preferredAlternativeIndex] ?? null;
+  const counterfactualProjection =
+    preferredAlternative === null || input.executionResult === undefined || input.executionResult === null
+      ? null
+      : buildCounterfactualProjection(preferredAlternative, {
+          decisionPressure: adaptiveDecision.decisionPressure,
+          executionGoalEvaluation: input.executionGoalEvaluation ?? null,
+          executionResult: input.executionResult,
+          executionResultInterpretation: input.executionResultInterpretation ?? null,
+        });
   return {
     id: createAlternativesId(input),
     planId: input.executionPlan.id,
-    summary: buildSummary(input, guidedAlternative),
+    summary: buildSummary(
+      input,
+      guidedAlternative,
+      counterfactualProjection?.summary ?? ""
+    ),
     alternatives,
     comparisonNote: buildComparisonNote(input, guidedAlternative),
     confidence,
@@ -544,6 +571,7 @@ export function buildExecutionAlternativesFromResolved(
     executionPlan: input.executionPlan,
     executionReadiness: input.executionReadiness,
     executionReflection: input.executionReflection,
+    executionResult: input.executionResult ?? null,
     executionGoalEvaluation: input.executionGoalEvaluation ?? null,
     executionResultInterpretation: input.executionResultInterpretation ?? null,
     executionSimulation: input.executionSimulation,

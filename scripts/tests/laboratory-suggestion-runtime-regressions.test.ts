@@ -626,6 +626,10 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
   assert.equal("executionRuntime" in persistedState, false);
   assert.equal("patternSignal" in persistedState, false);
   assert.equal("decisionPressure" in persistedState, false);
+  assert.equal("counterfactualProjection" in persistedState, false);
+  assert.equal("expectedCoverage" in persistedState, false);
+  assert.equal("expectedAlignment" in persistedState, false);
+  assert.equal("expectedStability" in persistedState, false);
   assert.equal("preferredAlternative" in persistedState, false);
   assert.equal("preferredAlternativeIndex" in persistedState, false);
   assert.equal("preferredAlternativeLabel" in persistedState, false);
@@ -703,6 +707,23 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
   );
   assert.equal(
     "decisionPressure" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+  assert.equal(
+    "counterfactualProjection" in
+      ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+  assert.equal(
+    "expectedCoverage" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+  assert.equal(
+    "expectedAlignment" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+  assert.equal(
+    "expectedStability" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
     false
   );
   assert.equal(

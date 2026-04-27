@@ -3,6 +3,7 @@ import {
   __testOnlyResetExecutionPatternRegistry,
   assert,
   buildAdaptiveDecisionSignal,
+  buildCounterfactualProjection,
   buildExecutionAlternatives,
   buildExecutionAlternativesFromResolved,
   buildExecutionCandidateFromResolved,
@@ -1701,6 +1702,7 @@ test("execution alternatives compare deterministic counterfactuals across decisi
 
   assert.equal(avoidChain.reflection.decision, "avoid");
   assert.match(avoidChain.alternatives.summary, /not recommended/i);
+  assert.doesNotMatch(avoidChain.alternatives.summary, /counterfactual/i);
   assert.doesNotMatch(avoidChain.alternatives.summary, /preferred/i);
   assert.equal(
     avoidChain.alternatives.alternatives.some(function (alternative) {
@@ -3554,6 +3556,49 @@ test("completed execution result feeds passive reflection candidate and alternat
   assert.equal(afterStaging.status, "staged");
   assert.equal(afterDispatchCandidate.dispatchId, beforeDispatchId);
   assert.equal(getActiveExecutionResult(store.getState())?.summary, "Inspected selected audio");
+  assert.match(afterAlternatives.summary, /Projected outcome suggests higher stability, better alignment, and stable coverage\./i);
+  assert.doesNotMatch(afterCandidate.adaptiveDecisionHint, /Projected outcome suggests/i);
+});
+
+test("counterfactual projection stays hidden until execution completes", () => {
+  const { store } = createCommittedAudioExecutionStore();
+  const dispatchCandidate = getExecutionDispatchCandidate(store.getState());
+  assert.ok(dispatchCandidate);
+
+  const beforeCandidate = getActiveExecutionCandidate(store.getState());
+  const beforeAlternatives = getActiveExecutionAlternatives(store.getState());
+  assert.ok(beforeCandidate);
+  assert.ok(beforeAlternatives);
+  assert.doesNotMatch(beforeCandidate.summary, /Projected outcome suggests/i);
+  assert.doesNotMatch(beforeAlternatives.summary, /Projected outcome suggests/i);
+
+  store.dispatch({
+    type: "workspace-execution-dispatch",
+    planId: dispatchCandidate.planId,
+    dispatchId: dispatchCandidate.dispatchId,
+  });
+
+  const runningCandidate = getActiveExecutionCandidate(store.getState());
+  const runningAlternatives = getActiveExecutionAlternatives(store.getState());
+  assert.ok(runningCandidate);
+  assert.ok(runningAlternatives);
+  assert.equal(getActiveExecutionResult(store.getState()), null);
+  assert.doesNotMatch(runningCandidate.summary, /Projected outcome suggests/i);
+  assert.doesNotMatch(runningAlternatives.summary, /Projected outcome suggests/i);
+
+  store.dispatch({
+    type: "workspace-execution-completed",
+    planId: dispatchCandidate.planId,
+    dispatchId: dispatchCandidate.dispatchId,
+    result: createMockExecutionResult(dispatchCandidate),
+  });
+
+  const completedCandidate = getActiveExecutionCandidate(store.getState());
+  const completedAlternatives = getActiveExecutionAlternatives(store.getState());
+  assert.ok(completedCandidate);
+  assert.ok(completedAlternatives);
+  assert.match(completedAlternatives.summary, /Projected outcome suggests/i);
+  assert.doesNotMatch(completedCandidate.adaptiveDecisionHint, /Projected outcome suggests/i);
 });
 
 test("session pattern awareness records completed samples idempotently", () => {
@@ -4064,6 +4109,156 @@ test("guided alternative signal ranks advisory alternatives deterministically", 
   );
 });
 
+test("counterfactual projection remains deterministic and pressure-aware", () => {
+  const selectionSnapshot = {
+    endMs: 4400,
+    inspectionMode: "visual" as const,
+    intent: "visual" as const,
+    sourceKind: "video",
+    startMs: 1200,
+    type: "inspect" as const,
+  };
+  const stableProjection = buildCounterfactualProjection(
+    {
+      actionType: "inspect-motion",
+      label: "Motion continuity inspection",
+      relativeAdvantage: "more-stable",
+      summary: "Compare motion continuity.",
+      tradeoff: "Trades still detail for steadier motion evidence.",
+    },
+    {
+      decisionPressure: "high",
+      executionGoalEvaluation: {
+        outcome: "failed",
+        goalAlignment: 0.2,
+        summary: "Goal failed",
+        patternSignal: {
+          averageCoverage: 0.38,
+          executionCount: 3,
+          failureRatio: 1,
+          strength: "weak",
+          successRatio: 0,
+        },
+      },
+      executionResult: {
+        summary: "Focused region remained unstable",
+        insights: ["Coverage remained narrow"],
+        artifacts: [],
+        metrics: {
+          confidence: 0.44,
+          coverage: 0.32,
+        },
+        selectionSnapshot,
+      },
+      executionResultInterpretation: {
+        alignment: "deviates",
+      },
+    }
+  );
+  assert.deepEqual(stableProjection, {
+    expectedCoverage: "increase",
+    expectedAlignment: "better",
+    expectedStability: "higher",
+    summary: "Projected outcome suggests higher stability, better alignment, and increase coverage.",
+  });
+  assert.deepEqual(
+    buildCounterfactualProjection(
+      {
+        actionType: "inspect-motion",
+        label: "Motion continuity inspection",
+        relativeAdvantage: "more-stable",
+        summary: "Compare motion continuity.",
+        tradeoff: "Trades still detail for steadier motion evidence.",
+      },
+      {
+        decisionPressure: "high",
+        executionGoalEvaluation: {
+          outcome: "failed",
+          goalAlignment: 0.2,
+          summary: "Goal failed",
+          patternSignal: {
+            averageCoverage: 0.38,
+            executionCount: 3,
+            failureRatio: 1,
+            strength: "weak",
+            successRatio: 0,
+          },
+        },
+        executionResult: {
+          summary: "Focused region remained unstable",
+          insights: ["Coverage remained narrow"],
+          artifacts: [],
+          metrics: {
+            confidence: 0.44,
+            coverage: 0.32,
+          },
+          selectionSnapshot,
+        },
+        executionResultInterpretation: {
+          alignment: "deviates",
+        },
+      }
+    ),
+    stableProjection
+  );
+  assert.deepEqual(
+    buildCounterfactualProjection(
+      {
+        actionType: "inspect-motion",
+        label: "Motion continuity inspection",
+        relativeAdvantage: "more-stable",
+        summary: "Compare motion continuity.",
+        tradeoff: "Trades still detail for steadier motion evidence.",
+      },
+      {}
+    ),
+    {
+      expectedCoverage: "stable",
+      expectedAlignment: "similar",
+      expectedStability: "similar",
+      summary: "",
+    }
+  );
+  assert.deepEqual(
+    buildCounterfactualProjection(
+      {
+        actionType: "analyze-segment",
+        label: "Broader segment review",
+        relativeAdvantage: "higher-coverage",
+        summary: "Compare broader context.",
+        tradeoff: "Trades precision for context.",
+      },
+      {
+        executionResult: {
+          summary: "Selected audio remained mixed",
+          insights: [],
+          artifacts: [],
+          metrics: {
+            coverage: 0.88,
+          },
+          selectionSnapshot: {
+            endMs: 3000,
+            inspectionMode: "audio",
+            intent: "audio",
+            sourceKind: "audio",
+            startMs: 1000,
+            type: "clip",
+          },
+        },
+        executionResultInterpretation: {
+          alignment: "matches-simulation",
+        },
+      }
+    ),
+    {
+      expectedCoverage: "stable",
+      expectedAlignment: "similar",
+      expectedStability: "similar",
+      summary: "",
+    }
+  );
+});
+
 test("goal-aware feedback stays additive when goal success coexists with divergent interpretation", () => {
   const selection: LabSelection = {
     id: "selection-goal-mixed-signal",
@@ -4090,6 +4285,29 @@ test("goal-aware feedback stays additive when goal success coexists with diverge
     goalAlignment: 0.95,
     summary: "Segment goal achieved through high-coverage anomaly detection",
   };
+  const executionResult = {
+    summary: "Analyzed selected segment",
+    insights: ["Detected structural variation", "Potential anomaly in mid-range"],
+    artifacts: [
+      {
+        type: "marker" as const,
+        label: "Structural variance marker",
+        timeRange: { start: 1800, end: 2050 },
+      },
+    ],
+    metrics: {
+      confidence: 0.78,
+      coverage: 0.84,
+    },
+    selectionSnapshot: {
+      endMs: chain.selection.endMs,
+      inspectionMode: "none" as const,
+      intent: chain.selection.intent,
+      sourceKind: "video",
+      startMs: chain.selection.startMs,
+      type: chain.selection.type,
+    },
+  };
   const baseInput = {
     executionPlan: chain.plan,
     executionSimulation: chain.simulation,
@@ -4097,6 +4315,7 @@ test("goal-aware feedback stays additive when goal success coexists with diverge
     executionPayloadPreview: chain.payload,
     executionReflection: chain.reflection,
     executionAlternatives: chain.alternatives,
+    executionResult,
     activeSelection: chain.selection,
     inspectionMode: "none" as const,
     sourceKind: "video",
@@ -4115,6 +4334,7 @@ test("goal-aware feedback stays additive when goal success coexists with diverge
     executionSimulation: chain.simulation,
     executionReadiness: chain.readiness,
     executionReflection: chain.reflection,
+    executionResult,
     executionGoalEvaluation: goalEvaluation,
     executionResultInterpretation: interpretation,
     activeSelection: chain.selection,
@@ -4138,6 +4358,10 @@ test("goal-aware feedback stays additive when goal success coexists with diverge
   assert.match(mixedSignalAlternatives.summary, /intended outcome was achieved/i);
   assert.match(mixedSignalAlternatives.summary, /diverges from simulation/i);
   assert.match(mixedSignalAlternatives.summary, /Narrowed inspection window/i);
+  assert.match(
+    mixedSignalAlternatives.summary,
+    /Projected outcome suggests similar stability, better alignment, and decrease coverage\./i
+  );
   assert.match(mixedSignalAlternatives.comparisonNote ?? "", /remaining divergence/i);
 });
 
@@ -4173,6 +4397,29 @@ test("goal-aware feedback tightens failed outcomes without changing structure or
     goalAlignment: 0.25,
     summary: "Region goal remains unmet because ROI coverage is limited",
   };
+  const executionResult = {
+    summary: "Focused region shows localized activity",
+    insights: ["Focused region shows localized activity"],
+    artifacts: [
+      {
+        type: "annotation" as const,
+        label: "Localized activity annotation",
+      },
+    ],
+    metrics: {
+      confidence: 0.46,
+      coverage: 0.28,
+    },
+    selectionSnapshot: {
+      endMs: chain.selection.endMs,
+      inspectionMode: "visual" as const,
+      intent: chain.selection.intent,
+      roi: chain.selection.roi,
+      sourceKind: "video",
+      startMs: chain.selection.startMs,
+      type: chain.selection.type,
+    },
+  };
   const baseInput = {
     executionPlan: chain.plan,
     executionSimulation: chain.simulation,
@@ -4180,6 +4427,7 @@ test("goal-aware feedback tightens failed outcomes without changing structure or
     executionPayloadPreview: chain.payload,
     executionReflection: chain.reflection,
     executionAlternatives: chain.alternatives,
+    executionResult,
     activeSelection: chain.selection,
     inspectionMode: "visual" as const,
     sourceKind: "video",
@@ -4198,6 +4446,7 @@ test("goal-aware feedback tightens failed outcomes without changing structure or
     executionSimulation: chain.simulation,
     executionReadiness: chain.readiness,
     executionReflection: chain.reflection,
+    executionResult,
     executionGoalEvaluation: goalEvaluation,
     executionResultInterpretation: interpretation,
     activeSelection: chain.selection,
@@ -4210,7 +4459,7 @@ test("goal-aware feedback tightens failed outcomes without changing structure or
   assert.equal(failedGoalCandidate.decisionPressure, "high");
   assert.equal(
     failedGoalCandidate.adaptiveDecisionHint,
-    "Current execution feedback indicates this path needs careful review. Consider comparing Motion continuity inspection for steadier context."
+    "Current execution feedback indicates this path needs careful review. Consider comparing Motion continuity inspection for steadier context. Projected outcome suggests higher stability, better alignment, and increase coverage."
   );
   assert.equal(failedGoalCandidate.status, interpretationOnlyCandidate.status);
   assert.equal(
@@ -4228,6 +4477,10 @@ test("goal-aware feedback tightens failed outcomes without changing structure or
   assert.deepEqual(failedGoalAlternatives.alternatives, chain.alternatives.alternatives);
   assert.match(failedGoalAlternatives.summary, /adaptive decision pressure is high/i);
   assert.match(failedGoalAlternatives.summary, /Motion continuity inspection/i);
+  assert.match(
+    failedGoalAlternatives.summary,
+    /Projected outcome suggests higher stability, better alignment, and increase coverage\./i
+  );
   assert.doesNotMatch(
     `${failedGoalAlternatives.summary} ${failedGoalAlternatives.comparisonNote ?? ""}`,
     /\b(auto|commit|dispatch|execute|run|apply|switch|select|activate|choose)\b/i

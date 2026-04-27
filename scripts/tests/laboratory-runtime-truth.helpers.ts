@@ -25,6 +25,7 @@ import { createAudioVisualizer } from "../../rooms/laboratory/runtime/lab-audio-
 import { buildInterpretationItems } from "../../rooms/laboratory/runtime/lab-interpretation-engine.ts";
 import {
   buildAdaptiveDecisionSignal,
+  buildCounterfactualProjection,
   buildGuidedAlternativeSignal,
 } from "../../rooms/laboratory/runtime/lab-adaptive-decision.ts";
 import {
@@ -133,6 +134,7 @@ export {
   bindLabSelectionRoiInteractions,
   bindLabSelectionSuggestionClicks,
   buildAdaptiveDecisionSignal,
+  buildCounterfactualProjection,
   buildGuidedAlternativeSignal,
   buildExecutionAlternatives,
   buildExecutionAlternativesFromResolved,

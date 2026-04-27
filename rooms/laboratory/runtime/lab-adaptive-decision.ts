@@ -1,4 +1,5 @@
 import type {
+  LabActiveExecutionResult,
   LabExecutionAlternative,
   LabExecutionDecisionPressure,
   LabExecutionGoalEvaluation,
@@ -21,6 +22,13 @@ export type LabGuidedAlternativeSignal = {
   preferredAlternativeLabel: string | null;
 };
 
+export type LabCounterfactualProjection = {
+  expectedCoverage: "increase" | "decrease" | "stable";
+  expectedAlignment: "better" | "worse" | "similar";
+  expectedStability: "higher" | "lower" | "similar";
+  summary: string;
+};
+
 type LabAdaptiveDecisionInput = {
   executionGoalEvaluation?: LabExecutionGoalEvaluation | null;
   executionResultInterpretation?: LabAdaptiveDecisionResultInterpretation | null;
@@ -31,6 +39,20 @@ type LabGuidedAlternativeInput = LabAdaptiveDecisionInput & {
   alternativesConfidence?: number | null;
   decisionPressure?: LabExecutionDecisionPressure;
 };
+
+type LabCounterfactualProjectionContext = LabAdaptiveDecisionInput & {
+  executionResult?: LabActiveExecutionResult | null;
+  decisionPressure?: LabExecutionDecisionPressure;
+};
+
+function getNeutralCounterfactualProjection(): LabCounterfactualProjection {
+  return {
+    expectedCoverage: "stable",
+    expectedAlignment: "similar",
+    expectedStability: "similar",
+    summary: "",
+  };
+}
 
 function getAdaptiveDecisionHint(
   pressure: LabExecutionDecisionPressure,
@@ -46,6 +68,95 @@ function getAdaptiveDecisionHint(
     return "Alternative strategies may yield more stable results.";
   }
   return "";
+}
+
+function getCounterfactualCoverage(
+  alternative: LabExecutionAlternative,
+  executionResult: LabActiveExecutionResult | null
+): LabCounterfactualProjection["expectedCoverage"] {
+  const coverage = executionResult?.metrics.coverage ?? 0.5;
+  if (alternative.relativeAdvantage === "higher-coverage") {
+    return coverage < 0.8 ? "increase" : "stable";
+  }
+  if (alternative.relativeAdvantage === "higher-precision") {
+    return coverage > 0.7 ? "decrease" : "stable";
+  }
+  if (alternative.relativeAdvantage === "lower-risk") {
+    return coverage < 0.45 ? "increase" : "stable";
+  }
+  if (alternative.relativeAdvantage === "more-stable") {
+    return coverage < 0.35 ? "increase" : "stable";
+  }
+  return "stable";
+}
+
+function getCounterfactualAlignment(
+  alternative: LabExecutionAlternative,
+  alignment: LabAdaptiveDecisionResultInterpretation["alignment"] | null,
+  decisionPressure: LabExecutionDecisionPressure,
+  outcome: LabExecutionGoalEvaluation["outcome"] | "neutral",
+  patternStrength: LabExecutionPatternStrength
+): LabCounterfactualProjection["expectedAlignment"] {
+  const saferAlternative =
+    alternative.relativeAdvantage === "lower-risk" ||
+    alternative.relativeAdvantage === "more-stable" ||
+    alternative.relativeAdvantage === "higher-coverage";
+
+  if (alignment === "deviates") {
+    return saferAlternative || alternative.relativeAdvantage === "higher-precision"
+      ? "better"
+      : "similar";
+  }
+  if (alignment === "partial") {
+    if (saferAlternative) {
+      return "better";
+    }
+    return alternative.relativeAdvantage === "higher-precision" ? "similar" : "worse";
+  }
+  if (
+    alignment === "matches-simulation" &&
+    decisionPressure === "medium" &&
+    outcome === "neutral" &&
+    patternStrength === "weak" &&
+    alternative.relativeAdvantage === "higher-coverage"
+  ) {
+    return "worse";
+  }
+  return "similar";
+}
+
+function getCounterfactualStability(
+  alternative: LabExecutionAlternative,
+  decisionPressure: LabExecutionDecisionPressure,
+  outcome: LabExecutionGoalEvaluation["outcome"] | "neutral",
+  patternStrength: LabExecutionPatternStrength
+): LabCounterfactualProjection["expectedStability"] {
+  if (
+    alternative.relativeAdvantage === "more-stable" ||
+    alternative.relativeAdvantage === "lower-risk"
+  ) {
+    return "higher";
+  }
+  if (alternative.relativeAdvantage === "higher-precision") {
+    return decisionPressure === "high" || outcome === "failed" || patternStrength === "weak"
+      ? "lower"
+      : "similar";
+  }
+  if (alternative.relativeAdvantage === "higher-coverage") {
+    return decisionPressure === "high" || outcome === "failed" ? "higher" : "similar";
+  }
+  return "similar";
+}
+
+function buildCounterfactualSummary(projection: LabCounterfactualProjection) {
+  if (
+    projection.expectedCoverage === "stable" &&
+    projection.expectedAlignment === "similar" &&
+    projection.expectedStability === "similar"
+  ) {
+    return "";
+  }
+  return `Projected outcome suggests ${projection.expectedStability} stability, ${projection.expectedAlignment} alignment, and ${projection.expectedCoverage} coverage.`;
 }
 
 function getEmptyGuidedAlternativeSignal(): LabGuidedAlternativeSignal {
@@ -179,4 +290,68 @@ export function buildGuidedAlternativeSignal(
     preferredAlternativeIndex,
     preferredAlternativeLabel: preferredAlternative.label,
   };
+}
+
+export function buildCounterfactualProjection(
+  alternative: LabExecutionAlternative,
+  context: LabCounterfactualProjectionContext
+): LabCounterfactualProjection {
+  const goalEvaluation = context.executionGoalEvaluation ?? null;
+  const interpretation = context.executionResultInterpretation ?? null;
+  const executionResult = context.executionResult ?? null;
+  if (executionResult === null || (goalEvaluation === null && interpretation === null)) {
+    return getNeutralCounterfactualProjection();
+  }
+  const decisionPressure =
+    context.decisionPressure ??
+    buildAdaptiveDecisionSignal({
+      executionGoalEvaluation: goalEvaluation,
+      executionResultInterpretation: interpretation,
+    }).decisionPressure;
+  const outcome = goalEvaluation?.outcome ?? "neutral";
+  const patternStrength = goalEvaluation?.patternSignal?.strength ?? "neutral";
+  const projection = {
+    expectedCoverage: getCounterfactualCoverage(alternative, executionResult),
+    expectedAlignment: getCounterfactualAlignment(
+      alternative,
+      interpretation?.alignment ?? null,
+      decisionPressure,
+      outcome,
+      patternStrength
+    ),
+    expectedStability: getCounterfactualStability(
+      alternative,
+      decisionPressure,
+      outcome,
+      patternStrength
+    ),
+    summary: "",
+  } satisfies LabCounterfactualProjection;
+
+  if (decisionPressure === "high" && outcome === "failed") {
+    projection.expectedAlignment = "better";
+    if (projection.expectedStability !== "lower") {
+      projection.expectedStability = "higher";
+    }
+  }
+
+  if (patternStrength === "weak") {
+    if (projection.expectedStability === "similar") {
+      projection.expectedStability = "higher";
+    }
+    if (projection.expectedAlignment === "worse") {
+      projection.expectedAlignment = "similar";
+    }
+  }
+
+  if (
+    interpretation?.alignment === "deviates" &&
+    projection.expectedAlignment === "similar" &&
+    alternative.relativeAdvantage !== "higher-precision"
+  ) {
+    projection.expectedAlignment = "better";
+  }
+
+  projection.summary = buildCounterfactualSummary(projection);
+  return projection;
 }
