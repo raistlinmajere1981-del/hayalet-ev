@@ -4,8 +4,6 @@ import {
   escapeHtml,
   formatBytes,
   formatDurationSeconds,
-  getIntentLabel,
-  getIntentPreviewDescription,
 } from "../models/lab-types.js";
 import type {
   LabStageSurface,
@@ -21,23 +19,18 @@ import {
   getDualPreviewLinkedAudioAssets,
   getDualPreviewVolume,
   getEffectivePreviewAudioFocusSettings,
-  getExecutionJourneyStep,
   getHypothesis,
   getInspectionMode,
   getInteractiveSettings,
-  getLaboratoryProcessSummary,
   getLinkedAudioAssets,
   getProjectSource,
-  getReportFreshness,
   getROIRegions,
   getSelectedDualPreviewAudioAsset,
   getSourceKind,
   getSourceMode,
   getSourceMetadata,
   getSourceProbeStatus,
-  getSelectedIntents,
   getWaveformTimelineModel,
-  hasReportPayload,
   isDualPreviewActive,
   isDualPreviewAvailable,
   isRunActive,
@@ -49,7 +42,6 @@ import { renderWorkspaceInteractiveControls } from "./workspace-interactive-cont
 import { renderWorkspaceAudioFocus } from "./workspace-audio-focus.js";
 import { renderWorkspaceHypothesis } from "./workspace-hypothesis.js";
 import { renderWorkspaceBookmarks } from "./workspace-bookmarks.js";
-import { renderLabTopbarActions } from "./lab-topbar-actions.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 import type { LabWaveformTimelineModel } from "./lab-waveform-timeline-types.js";
@@ -84,52 +76,6 @@ function getSourceModeLabel(mode: string, copy: LabI18n = LAB_FALLBACK_I18N) {
     default:
       return mode;
   }
-}
-
-function getWorkspaceIntentLabel(intentId: string, copy: LabI18n): string {
-  return copy.t(`mediaAnalysis.workspace.intents.${intentId}.label`, getIntentLabel(intentId));
-}
-
-function getWorkspaceIntentPreviewDescription(intentId: string, copy: LabI18n): string {
-  return copy.t(
-    `mediaAnalysis.workspace.intents.${intentId}.preview`,
-    getIntentPreviewDescription(intentId)
-  );
-}
-
-function renderIntentPreview(intentIds: string[], copy: LabI18n) {
-  if (!Array.isArray(intentIds) || intentIds.length === 0) {
-    return `
-      <div class="labx-intent-preview">
-        <strong class="labx-intent-preview__title">${escapeHtml(copy.t("mediaAnalysis.intentPreview.title", "Bu analiz şunları yapacak:"))}</strong>
-        <p class="labx-intent-preview__empty">${escapeHtml(copy.t("mediaAnalysis.intentPreview.empty", "Analiz için intent seçin"))}</p>
-      </div>
-    `;
-  }
-
-  return `
-    <div class="labx-intent-preview">
-      <div class="labx-intent-preview__section">
-        <strong class="labx-intent-preview__title">${escapeHtml(copy.t("mediaAnalysis.intentPreview.title", "Bu analiz şunları yapacak:"))}</strong>
-        <ul class="labx-intent-preview__list">
-          ${intentIds
-            .map(function (intentId) {
-              return `<li><strong>${escapeHtml(getWorkspaceIntentLabel(intentId, copy))}</strong> · ${escapeHtml(getWorkspaceIntentPreviewDescription(intentId, copy))}</li>`;
-            })
-            .join("")}
-        </ul>
-      </div>
-      <div class="labx-intent-preview__section">
-        <strong class="labx-intent-preview__title">${escapeHtml(copy.t("mediaAnalysis.intentPreview.outputsTitle", "Beklenen çıktılar:"))}</strong>
-        <ul class="labx-intent-preview__list">
-          <li>${escapeHtml(copy.t("mediaAnalysis.intentPreview.outputs.objectDetection", "Nesne tespiti"))}</li>
-          <li>${escapeHtml(copy.t("mediaAnalysis.intentPreview.outputs.anomalyReport", "Anomali raporu"))}</li>
-          <li>${escapeHtml(copy.t("mediaAnalysis.intentPreview.outputs.visualFindings", "Görsel bulgular"))}</li>
-          <li>${escapeHtml(copy.t("mediaAnalysis.intentPreview.outputs.recommendations", "Öneriler"))}</li>
-        </ul>
-      </div>
-    </div>
-  `;
 }
 
 function toStringArray(value: unknown): string[] {
@@ -984,102 +930,6 @@ function renderDualPreviewTransportBar(
   `;
 }
 
-function getThinkingLabel(state: string, copy: LabI18n): string {
-  switch (state) {
-    case "running":
-      return copy.t("mediaAnalysis.processSummary.thinking.running", "Thinking\u2026");
-    case "analyzing":
-      return copy.t("mediaAnalysis.processSummary.thinking.analyzing", "Analyzing\u2026");
-    default:
-      return "";
-  }
-}
-
-function renderJourneyHint(state: LabStoreState, copy: LabI18n) {
-  const step = getExecutionJourneyStep(state);
-  if (step === -1) return "";
-  const stepKeys = ["select", "plan", "evaluate", "decide", "stage"] as const;
-  const stepFallbacks = ["Select", "Plan", "Evaluate", "Decide", "Stage"];
-  const parts = stepKeys
-    .map(function (key, i) {
-      const isActive = i === step;
-      const isReached = i <= step;
-      const label = copy.t(`mediaAnalysis.journey.steps.${key}`, stepFallbacks[i] ?? key);
-      const arrow =
-        i < stepKeys.length - 1
-          ? `<span class="labx-journey-hint__arrow" aria-hidden="true">\u2192</span>`
-          : "";
-      return `<span data-step="${i}" data-active="${isActive ? "true" : "false"}" data-reached="${isReached ? "true" : "false"}">${escapeHtml(label)}</span>${arrow}`;
-    })
-    .join("");
-  return `<div class="labx-journey-hint" aria-label="${escapeHtml(copy.t("mediaAnalysis.journey.ariaLabel", "Execution journey"))}">${parts}</div>`;
-}
-
-function renderGlobalProcessSummary(state: LabStoreState, copy: LabI18n) {
-  if (!state.bootReady) {
-    return `
-      <section
-        class="labx-global-process"
-        data-lab-global-process="true"
-        data-process-state="initializing"
-        data-tone="idle"
-        aria-label="${escapeHtml(copy.t("mediaAnalysis.processSummary.ariaLabel", "Laboratory process state"))}"
-      >
-        <div class="labx-global-process__state">
-          <span class="labx-global-process__dot" aria-hidden="true"></span>
-          <span class="labx-global-process__label">${escapeHtml(copy.t("mediaAnalysis.processSummary.states.initializing", "Initializing"))}</span>
-        </div>
-        <div class="labx-global-process__task">
-          <span class="labx-global-process__eyebrow">${escapeHtml(copy.t("mediaAnalysis.processSummary.activeTask", "System"))}</span>
-          <strong>${escapeHtml(copy.t("mediaAnalysis.processSummary.bootPhase", "Laboratory environment starting\u2026"))}</strong>
-        </div>
-        <div class="labx-global-process__progress"></div>
-      </section>
-    `;
-  }
-  const summary = getLaboratoryProcessSummary(state);
-  const stateLabel = copy.t(
-    `mediaAnalysis.processSummary.states.${summary.state}`,
-    summary.state === "idle"
-      ? copy.t("mediaAnalysis.processSummary.states.idle", "Idle")
-      : summary.state.charAt(0).toUpperCase() + summary.state.slice(1)
-  );
-  const thinkingLabel = getThinkingLabel(summary.state, copy);
-  const activeTaskLabel =
-    summary.activeTaskLabel ??
-    (summary.activeTaskKey
-      ? copy.t(`mediaAnalysis.processSummary.tasks.${summary.activeTaskKey}`, summary.activeTaskKey)
-      : copy.t("mediaAnalysis.processSummary.noActiveTask", "Ready for input"));
-  const progressLabel =
-    summary.progressLabel ??
-    (summary.progressKey
-      ? copy.t(`mediaAnalysis.processSummary.progress.${summary.progressKey}`, summary.progressKey)
-      : "");
-  const journeyHint = renderJourneyHint(state, copy);
-  return `
-    <section
-      class="labx-global-process"
-      data-lab-global-process="true"
-      data-process-state="${escapeHtml(summary.state)}"
-      data-tone="${escapeHtml(summary.tone)}"
-      aria-label="${escapeHtml(copy.t("mediaAnalysis.processSummary.ariaLabel", "Laboratory process state"))}"
-    >
-      <div class="labx-global-process__state">
-        <span class="labx-global-process__dot" aria-hidden="true"></span>
-        <span class="labx-global-process__label">${escapeHtml(stateLabel)}</span>
-      </div>
-      <div class="labx-global-process__task">
-        <span class="labx-global-process__eyebrow">${escapeHtml(thinkingLabel || copy.t("mediaAnalysis.processSummary.activeTask", "Active task"))}</span>
-        <strong>${escapeHtml(activeTaskLabel)}</strong>
-      </div>
-      <div class="labx-global-process__progress">
-        ${progressLabel ? `<span>${escapeHtml(progressLabel)}</span>` : ""}
-        ${journeyHint}
-      </div>
-    </section>
-  `;
-}
-
 function renderDualPreviewShell(
   previewUrl: string,
   settings: LabInteractiveSettings,
@@ -1167,7 +1017,7 @@ function renderSourceBar(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N
   `;
 }
 
-function renderSourceIntake(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
+export function renderSourceIntake(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
   const source = getProjectSource(state);
   const sourceKind = getSourceKind(state);
   const sourceMode = getEffectiveSourceMode(state, sourceKind);
@@ -1452,11 +1302,32 @@ function renderLinkedAudioBar(state: LabStoreState, copy: LabI18n = LAB_FALLBACK
   `;
 }
 
+function renderCenterSkeleton(copy: LabI18n) {
+  return `
+    <section
+      class="labx-center-skeleton"
+      data-lab-center-skeleton="true"
+      aria-label="${escapeHtml(copy.t("mediaAnalysis.center.loading", "Laboratory center loading"))}"
+    >
+      <div class="labx-skeleton-block"></div>
+      <div class="labx-skeleton-block"></div>
+      <p class="labx-center-skeleton__label">${escapeHtml(copy.t("mediaAnalysis.center.loadingLabel", "Ortam hazırlanıyor..."))}</p>
+    </section>
+  `;
+}
+
 export function renderWorkspaceSurface(
   state: LabStoreState,
   options: WorkspaceSurfaceOptions = {}
 ): LabStageSurface {
   const copy = options.copy ?? LAB_FALLBACK_I18N;
+  if (!state.bootReady) {
+    return {
+      main: renderCenterSkeleton(copy),
+      side: "",
+    };
+  }
+
   const source = getProjectSource(state);
   const sourceKind = getSourceKind(state);
   const sourceMode = getEffectiveSourceMode(state, sourceKind);
@@ -1479,8 +1350,6 @@ export function renderWorkspaceSurface(
   const roiFocusActive = timeline.roiFocusActive === true;
   const bookmarks = getBookmarks(state);
   const hypothesis = getHypothesis(state);
-  const runActive = isRunActive(state);
-  const hasReport = hasReportPayload(state);
   const hasAudio = sourceKind === "audio" || sourceKind === "video";
   const sourceReady = probeStatus === "completed" && isLoadedSourceMatchingMode(source, sourceMode);
   const dualPreviewAvailable = isDualPreviewAvailable(state);
@@ -1574,9 +1443,6 @@ export function renderWorkspaceSurface(
 
   const main = `
     ${renderSourceBar(state, copy)}
-    ${renderGlobalProcessSummary(state, copy)}
-    ${renderLabTopbarActions(state, copy)}
-    ${renderSourceIntake(state, copy)}
     <section class="labx-workspace-main" id="lab-workspace-main">
       ${renderLinkedAudioBar(state, copy)}
       <div class="labx-workspace-preview" id="lab-workspace-preview" data-preview-mode="${dualPreviewActive ? "dual" : "single"}" data-dual-preview-available="${dualPreviewAvailable ? "true" : "false"}">
@@ -1590,82 +1456,5 @@ export function renderWorkspaceSurface(
     </section>
   `;
 
-  const freshness = getReportFreshness(state);
-  const freshnessLabel =
-    freshness?.state === "current"
-      ? copy.t("mediaAnalysis.reportFreshness.current", "\u2713 Güncel")
-      : freshness?.state === "previous-run"
-        ? runActive
-          ? copy.t(
-              "mediaAnalysis.reportFreshness.previousRunActive",
-              "\u2298 Önceki çalışma \u00b7 Analiz devam ediyor"
-            )
-          : copy.t("mediaAnalysis.reportFreshness.previousRun", "\u2298 Önceki çalışma")
-        : freshness?.state === "stale"
-          ? copy.t(
-              "mediaAnalysis.reportFreshness.stale",
-              "\u2298 Eski çalışma \u00b7 Son analiz başarısız"
-            )
-          : "";
-  const freshnessMeta =
-    freshness && freshness.workspaceDirty
-      ? `${freshnessLabel} \u00b7 ${copy.t("mediaAnalysis.reportFreshness.workspaceDirty", "Workspace farklı")}`
-      : freshnessLabel;
-
-  const reportButton = `
-    <div class="labx-analysis-trigger">
-      <button
-        class="labx-primary-cta labx-primary-cta--compact"
-        type="button"
-        data-lab-action="open-report-overlay"
-        ${hasReport ? "" : "disabled"}
-      >
-        <strong>${escapeHtml(copy.t("mediaAnalysis.analysisActions.viewReport", "Raporu Görüntüle"))}</strong>
-      </button>
-      ${
-        hasReport && freshnessMeta
-          ? `<span class="labx-report-freshness" data-freshness="${escapeHtml(freshness?.state || "")}" data-workspace-dirty="${freshness?.workspaceDirty === true ? "true" : "false"}">${escapeHtml(freshnessMeta)}</span>`
-          : ""
-      }
-    </div>
-  `;
-
-  const intentPreview = sourceReady ? renderIntentPreview(getSelectedIntents(state), copy) : "";
-
-  const analysisButton = sourceReady
-    ? `
-      <div class="labx-analysis-trigger">
-        <button
-          class="labx-primary-cta labx-primary-cta--compact"
-          type="button"
-          data-lab-action="run-deep-analysis"
-        >
-          <strong>${escapeHtml(
-            runActive
-              ? copy.t("mediaAnalysis.analysisActions.cancel", "Analizi İptal Et")
-              : copy.t("mediaAnalysis.analysisActions.start", "Analizi Başlat")
-          )}</strong>
-        </button>
-        ${intentPreview}
-      </div>
-    `
-    : "";
-  const imageAnalysisButton =
-    sourceReady && sourceKind === "image"
-      ? `
-        <div class="labx-analysis-trigger">
-          <button class="labx-secondary-cta" type="button" data-lab-action="workspace-image-analysis">
-            ${escapeHtml(copy.t("mediaAnalysis.analysisActions.imageAnalysis", "Görsel Analiz Et"))}
-          </button>
-        </div>
-      `
-      : "";
-
-  const side = `
-    ${analysisButton}
-    ${reportButton}
-    ${imageAnalysisButton}
-  `;
-
-  return { main, side };
+  return { main, side: "" };
 }

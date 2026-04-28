@@ -6,6 +6,7 @@ import {
   buildCounterfactualProjection,
   buildDecisionPosture,
   buildDecisionCoherence,
+  __testOnlyResolveLabI18nFromDictionaries,
   buildExecutionAlternatives,
   buildExecutionAlternativesFromResolved,
   buildExecutionBridge,
@@ -47,10 +48,13 @@ import {
   getLaboratoryRightPanelContext,
   formatExecutionBridgeAdvisory,
   formatDecisionCoherenceAdvisory,
+  formatDecisionPostureLabel,
   formatExecutionDescriptorAdvisory,
   formatExecutionReadinessSignalAdvisory,
   installTimerMock,
   prependDecisionPostureLabel,
+  reorderDecisionSummary,
+  resolveLabI18n,
   test,
 } from "./laboratory-runtime-truth.helpers.ts";
 
@@ -109,6 +113,12 @@ test("laboratory process summary derives a single deterministic state", () => {
   });
   const activeCandidate = getActiveExecutionCandidate(store.getState());
   assert.ok(activeCandidate);
+  const activeAlternatives = getActiveExecutionAlternatives(store.getState());
+  assert.ok(activeAlternatives);
+  assert.match(activeCandidate.summary, /Descriptor view:/);
+  assert.match(activeAlternatives.summary, /Descriptor view:/);
+  assert.doesNotMatch(activeCandidate.summary, /Tanımlayıcı görünümü:/);
+  assert.doesNotMatch(activeAlternatives.summary, /Tanımlayıcı görünümü:/);
   store.dispatch({
     type: "workspace-execution-commitment-set",
     planId: activeCandidate.planId,
@@ -1627,43 +1637,55 @@ function deepFreeze<T>(value: T): T {
 const DESCRIPTOR_EXECUTION_VERB_PATTERN =
   /\b(auto|commit|dispatch|execute|run|apply|switch|select|activate|choose|trigger|invoke)\b/i;
 
-function sliceAdvisoryText(summary: string, marker: string, stopMarkers: string[]) {
+const ADVISORY_MARKERS = [
+  "Descriptor view:",
+  "Readiness view:",
+  "Execution bridge:",
+  "Coherence view:",
+] as const;
+
+function getLocalizedAdvisoryMarkers(locale: "en" | "tr") {
+  return [
+    `${resolveLabI18n("descriptor.view", locale)}:`,
+    `${resolveLabI18n("readiness.view", locale)}:`,
+    `${resolveLabI18n("bridge.view", locale)}:`,
+    `${resolveLabI18n("coherence.view", locale)}:`,
+  ];
+}
+
+function sliceAdvisoryText(summary: string, marker: (typeof ADVISORY_MARKERS)[number]) {
   const index = summary.indexOf(marker);
   if (index === -1) {
     return "";
   }
-  const advisory = summary.slice(index);
-  const stopIndex = stopMarkers.reduce<number | null>(function (current, stopMarker) {
-    const markerIndex = advisory.indexOf(stopMarker);
+  const searchStart = index + marker.length;
+  const stopIndex = ADVISORY_MARKERS.reduce<number | null>(function (current, stopMarker) {
+    if (stopMarker === marker) {
+      return current;
+    }
+    const markerIndex = summary.indexOf(` ${stopMarker}`, searchStart);
     if (markerIndex === -1) {
       return current;
     }
     return current === null ? markerIndex : Math.min(current, markerIndex);
   }, null);
-  return stopIndex === null ? advisory : advisory.slice(0, stopIndex);
+  return stopIndex === null ? summary.slice(index) : summary.slice(index, stopIndex);
 }
 
 function extractDescriptorAdvisoryText(summary: string) {
-  return sliceAdvisoryText(summary, "Descriptor view:", [
-    " Readiness view:",
-    " Execution bridge:",
-    " Coherence view:",
-  ]);
+  return sliceAdvisoryText(summary, "Descriptor view:");
 }
 
 function extractReadinessSignalAdvisoryText(summary: string) {
-  return sliceAdvisoryText(summary, "Readiness view:", [
-    " Execution bridge:",
-    " Coherence view:",
-  ]);
+  return sliceAdvisoryText(summary, "Readiness view:");
 }
 
 function extractExecutionBridgeAdvisoryText(summary: string) {
-  return sliceAdvisoryText(summary, "Execution bridge:", [" Coherence view:"]);
+  return sliceAdvisoryText(summary, "Execution bridge:");
 }
 
 function extractDecisionCoherenceAdvisoryText(summary: string) {
-  return sliceAdvisoryText(summary, "Coherence view:", []);
+  return sliceAdvisoryText(summary, "Coherence view:");
 }
 
 function countOccurrences(value: string, needle: string) {
@@ -1671,6 +1693,26 @@ function countOccurrences(value: string, needle: string) {
     return 0;
   }
   return value.split(needle).length - 1;
+}
+
+function assertSummaryOrder(summary: string, orderedParts: string[]) {
+  let previousIndex = -1;
+  for (const part of orderedParts) {
+    const index = summary.indexOf(part);
+    assert.notEqual(index, -1);
+    assert.equal(index > previousIndex, true);
+    previousIndex = index;
+  }
+}
+
+function assertLocalizedAdvisoryOrder(summary: string, locale: "en" | "tr") {
+  assertSummaryOrder(summary, getLocalizedAdvisoryMarkers(locale));
+}
+
+function countLocalizedAdvisories(summary: string, locale: "en" | "tr") {
+  return getLocalizedAdvisoryMarkers(locale).reduce(function (total, marker) {
+    return total + countOccurrences(summary, marker);
+  }, 0);
 }
 
 function hasObjectKey(value: unknown, keyName: string): boolean {
@@ -1775,7 +1817,10 @@ test("execution bridge maps descriptors to passive contracts deterministically",
       "maps to librosa using spectral_features_analysis, with a spectral-window shaped input and time-series output",
   });
   assert.deepEqual(buildExecutionBridge(descriptor), bridge);
-  assert.equal(formatExecutionBridgeAdvisory(bridge), `Execution bridge: This path ${bridge.summary}.`);
+  assert.equal(
+    formatExecutionBridgeAdvisory(bridge),
+    `Execution bridge: This path ${bridge.summary}.`
+  );
   assert.doesNotMatch(formatExecutionBridgeAdvisory(bridge), DESCRIPTOR_EXECUTION_VERB_PATTERN);
 
   assert.deepEqual(
@@ -1958,7 +2003,8 @@ test("execution readiness signal maps pressure and projection deterministically"
         expectedAlignment: "worse",
         expectedCoverage: "decrease",
         expectedStability: "lower",
-        summary: "Projected outcome suggests lower stability, worse alignment, and decrease coverage.",
+        summary:
+          "Projected outcome suggests lower stability, worse alignment, and decrease coverage.",
       },
     }).level,
     "strained"
@@ -1977,7 +2023,8 @@ test("execution readiness signal maps pressure and projection deterministically"
         expectedAlignment: "better",
         expectedCoverage: "stable",
         expectedStability: "higher",
-        summary: "Projected outcome suggests higher stability, better alignment, and stable coverage.",
+        summary:
+          "Projected outcome suggests higher stability, better alignment, and stable coverage.",
       },
     }).level,
     "steady"
@@ -1996,7 +2043,8 @@ test("execution readiness signal maps pressure and projection deterministically"
         expectedAlignment: "worse",
         expectedCoverage: "stable",
         expectedStability: "lower",
-        summary: "Projected outcome suggests lower stability, worse alignment, and stable coverage.",
+        summary:
+          "Projected outcome suggests lower stability, worse alignment, and stable coverage.",
       },
     }).level,
     "strained"
@@ -2005,6 +2053,104 @@ test("execution readiness signal maps pressure and projection deterministically"
     formatExecutionReadinessSignalAdvisory(steadySignal),
     DESCRIPTOR_EXECUTION_VERB_PATTERN
   );
+});
+
+test("laboratory advisory i18n resolves semantic keys without leaking selectors", () => {
+  assert.equal(resolveLabI18n("descriptor.view", "en"), "Descriptor view");
+  assert.equal(resolveLabI18n("descriptor.view", "tr"), "Tanımlayıcı görünümü");
+  assert.notEqual(resolveLabI18n("readiness.view", "en"), resolveLabI18n("readiness.view", "tr"));
+  assert.equal(
+    __testOnlyResolveLabI18nFromDictionaries("bridge.view", "tr", {
+      en: {
+        "bridge.view": "Execution bridge",
+      },
+    }),
+    "Execution bridge"
+  );
+  assert.equal(
+    __testOnlyResolveLabI18nFromDictionaries("bridge.view", "tr", {}),
+    "Execution bridge"
+  );
+
+  const descriptor = buildExecutionDescriptor({ actionType: "inspect-audio" });
+  const bridge = buildExecutionBridge(descriptor);
+  const readinessSignal = buildExecutionReadinessSignal({
+    decisionPressure: "low",
+    goalEvaluation: {
+      outcome: "successful",
+      goalAlignment: 0.92,
+      summary: "Goal achieved",
+      patternSignal: {
+        averageCoverage: 0.86,
+        executionCount: 3,
+        failureRatio: 0,
+        strength: "strong",
+        successRatio: 1,
+      },
+    },
+    alignment: "matches-simulation",
+    alternativesConfidence: 0.82,
+  });
+  const coherence = buildDecisionCoherence({
+    posture: "proceed",
+    readiness: {
+      level: "steady",
+      score: -2,
+    },
+    projection: {
+      expectedAlignment: "better",
+      expectedStability: "higher",
+      expectedCoverage: "stable",
+    },
+  });
+
+  const englishOutputs = [
+    formatDecisionPostureLabel("proceed-with-caution"),
+    formatExecutionDescriptorAdvisory({ actionType: "inspect-audio", descriptor }),
+    formatExecutionReadinessSignalAdvisory(readinessSignal),
+    formatExecutionBridgeAdvisory(bridge),
+    formatDecisionCoherenceAdvisory(coherence),
+  ];
+  const turkishOutputs = [
+    formatDecisionPostureLabel("proceed-with-caution", "tr"),
+    formatExecutionDescriptorAdvisory({ actionType: "inspect-audio", descriptor, locale: "tr" }),
+    formatExecutionReadinessSignalAdvisory(readinessSignal, "tr"),
+    formatExecutionBridgeAdvisory(bridge, "tr"),
+    formatDecisionCoherenceAdvisory(coherence, "tr"),
+  ];
+
+  assert.equal(
+    englishOutputs[1],
+    "Descriptor view: aligns with audio-analysis (spectral-window shape)."
+  );
+  assert.equal(
+    englishOutputs[2],
+    "Readiness view: steady signal from low pressure, strong pattern, matched alignment, high alternative confidence, and neutral projection."
+  );
+  assert.equal(englishOutputs[3], `Execution bridge: This path ${bridge.summary}.`);
+  assert.equal(englishOutputs[4], coherence.summary);
+  assert.notDeepEqual(englishOutputs, turkishOutputs);
+  assert.deepEqual(turkishOutputs, [
+    formatDecisionPostureLabel("proceed-with-caution", "tr"),
+    formatExecutionDescriptorAdvisory({ actionType: "inspect-audio", descriptor, locale: "tr" }),
+    formatExecutionReadinessSignalAdvisory(readinessSignal, "tr"),
+    formatExecutionBridgeAdvisory(bridge, "tr"),
+    formatDecisionCoherenceAdvisory(coherence, "tr"),
+  ]);
+  assert.equal(turkishOutputs[3].includes(bridge.summary), false);
+
+  const rendered = [...englishOutputs, ...turkishOutputs].join(" ");
+  for (const key of [
+    "posture.caution",
+    "descriptor.view",
+    "readiness.view",
+    "bridge.view",
+    "coherence.view",
+    "coherence.aligned",
+    "projection.stable",
+  ]) {
+    assert.equal(rendered.includes(key), false);
+  }
 });
 
 test("decision coherence compresses posture readiness and projection deterministically", () => {
@@ -2045,18 +2191,21 @@ test("decision coherence compresses posture readiness and projection determinist
     },
   });
 
-  assert.deepEqual(buildDecisionCoherence({
-    posture: "proceed",
-    readiness: {
-      level: "steady",
-      score: -2,
-    },
-    projection: {
-      expectedAlignment: "better",
-      expectedStability: "higher",
-      expectedCoverage: "stable",
-    },
-  }), aligned);
+  assert.deepEqual(
+    buildDecisionCoherence({
+      posture: "proceed",
+      readiness: {
+        level: "steady",
+        score: -2,
+      },
+      projection: {
+        expectedAlignment: "better",
+        expectedStability: "higher",
+        expectedCoverage: "stable",
+      },
+    }),
+    aligned
+  );
   assert.deepEqual(aligned, {
     state: "aligned",
     dominantAxis: "neutral",
@@ -2088,6 +2237,89 @@ test("decision coherence compresses posture readiness and projection determinist
   assert.doesNotMatch(aligned.summary, DESCRIPTOR_EXECUTION_VERB_PATTERN);
   assert.doesNotMatch(mixed.summary, DESCRIPTOR_EXECUTION_VERB_PATTERN);
   assert.doesNotMatch(conflicted.summary, DESCRIPTOR_EXECUTION_VERB_PATTERN);
+});
+
+test("decision priority reorders advisory summaries without mutating text", () => {
+  const parts = {
+    posturePrefix: "Proceed with caution:",
+    descriptor: "Descriptor view: describes a stable pattern.",
+    readiness: "Readiness view: guarded signal from medium pressure.",
+    bridge: "Execution bridge: This path maps to a passive contract.",
+    coherence: "Coherence view: Signals are conflicted.",
+  };
+  const conflictedInput = deepFreeze({
+    summaryParts: parts,
+    coherenceState: "conflicted" as const,
+  });
+  const before = cloneForMutationCheck(conflictedInput);
+  const conflicted = reorderDecisionSummary(conflictedInput);
+
+  assert.equal(
+    conflicted,
+    "Proceed with caution: Coherence view: Signals are conflicted. Readiness view: guarded signal from medium pressure. Descriptor view: describes a stable pattern. Execution bridge: This path maps to a passive contract."
+  );
+  assert.equal(reorderDecisionSummary(conflictedInput), conflicted);
+  assert.deepEqual(conflictedInput, before);
+  assert.equal(countOccurrences(conflicted, parts.descriptor), 1);
+  assert.equal(countOccurrences(conflicted, parts.readiness), 1);
+  assert.equal(countOccurrences(conflicted, parts.bridge), 1);
+  assert.equal(countOccurrences(conflicted, parts.coherence), 1);
+  assert.equal(conflicted.startsWith(`${parts.posturePrefix} ${parts.coherence}`), true);
+
+  const mixed = reorderDecisionSummary({
+    summaryParts: parts,
+    coherenceState: "mixed",
+  });
+  assert.equal(
+    mixed,
+    "Proceed with caution: Descriptor view: describes a stable pattern. Readiness view: guarded signal from medium pressure. Coherence view: Signals are conflicted. Execution bridge: This path maps to a passive contract."
+  );
+
+  const aligned = reorderDecisionSummary({
+    summaryParts: parts,
+    coherenceState: "aligned",
+  });
+  const defaultOrder = reorderDecisionSummary({
+    summaryParts: parts,
+  });
+  assert.equal(aligned, defaultOrder);
+  assert.equal(
+    aligned,
+    "Proceed with caution: Descriptor view: describes a stable pattern. Readiness view: guarded signal from medium pressure. Execution bridge: This path maps to a passive contract. Coherence view: Signals are conflicted."
+  );
+
+  assert.equal(
+    reorderDecisionSummary({
+      summaryParts: {
+        posturePrefix: "Proceed:",
+        descriptor: "",
+        readiness: "Readiness view: steady.",
+        bridge: undefined,
+        coherence: "Coherence view: aligned.",
+      },
+      coherenceState: "conflicted",
+    }),
+    "Proceed: Coherence view: aligned. Readiness view: steady."
+  );
+
+  const preservedDescriptor = "Descriptor view: keeps  internal spacing.";
+  const preserved = reorderDecisionSummary({
+    summaryParts: {
+      descriptor: preservedDescriptor,
+      readiness: "Readiness view: steady.",
+    },
+  });
+  assert.equal(preserved.includes(preservedDescriptor), true);
+  assert.equal(countOccurrences(preserved, preservedDescriptor), 1);
+  assert.equal(
+    reorderDecisionSummary({
+      summaryParts: {
+        descriptor: " Descriptor view: trims only boundary spacing. ",
+        readiness: "Readiness view: steady.",
+      },
+    }),
+    "Descriptor view: trims only boundary spacing. Readiness view: steady."
+  );
 });
 
 test("passive execution descriptor remains stable across equivalent feedback contexts", () => {
@@ -2384,12 +2616,78 @@ test("passive descriptor and bridge advisories are summary-only and avoid execut
   assert.equal(countOccurrences(alternatives.summary, "Execution bridge:"), 1);
   assert.equal(countOccurrences(candidate?.summary ?? "", "Coherence view:"), 1);
   assert.equal(countOccurrences(alternatives.summary, "Coherence view:"), 1);
-  assert.equal((candidate?.summary ?? "").indexOf(candidateAdvisory) < (candidate?.summary ?? "").indexOf(candidateReadinessAdvisory), true);
-  assert.equal((candidate?.summary ?? "").indexOf(candidateReadinessAdvisory) < (candidate?.summary ?? "").indexOf(candidateBridgeAdvisory), true);
-  assert.equal((candidate?.summary ?? "").indexOf(candidateBridgeAdvisory) < (candidate?.summary ?? "").indexOf(candidateCoherenceAdvisory), true);
-  assert.equal(alternatives.summary.indexOf(alternativesAdvisory) < alternatives.summary.indexOf(alternativesReadinessAdvisory), true);
-  assert.equal(alternatives.summary.indexOf(alternativesReadinessAdvisory) < alternatives.summary.indexOf(alternativesBridgeAdvisory), true);
-  assert.equal(alternatives.summary.indexOf(alternativesBridgeAdvisory) < alternatives.summary.indexOf(alternativesCoherenceAdvisory), true);
+  assert.equal(
+    (candidate?.summary ?? "").indexOf(candidateAdvisory) <
+      (candidate?.summary ?? "").indexOf(candidateReadinessAdvisory),
+    true
+  );
+  assert.equal(
+    (candidate?.summary ?? "").indexOf(candidateReadinessAdvisory) <
+      (candidate?.summary ?? "").indexOf(candidateBridgeAdvisory),
+    true
+  );
+  assert.equal(
+    (candidate?.summary ?? "").indexOf(candidateBridgeAdvisory) <
+      (candidate?.summary ?? "").indexOf(candidateCoherenceAdvisory),
+    true
+  );
+  assert.equal(
+    alternatives.summary.indexOf(alternativesAdvisory) <
+      alternatives.summary.indexOf(alternativesReadinessAdvisory),
+    true
+  );
+  assert.equal(
+    alternatives.summary.indexOf(alternativesReadinessAdvisory) <
+      alternatives.summary.indexOf(alternativesBridgeAdvisory),
+    true
+  );
+  assert.equal(
+    alternatives.summary.indexOf(alternativesBridgeAdvisory) <
+      alternatives.summary.indexOf(alternativesCoherenceAdvisory),
+    true
+  );
+
+  const localizedCandidate = buildExecutionCandidateFromResolved({
+    executionPlan: chain.plan,
+    executionSimulation: chain.simulation,
+    executionReadiness: chain.readiness,
+    executionPayloadPreview: chain.payload,
+    executionReflection: chain.reflection,
+    executionAlternatives: chain.alternatives,
+    activeSelection: chain.selection,
+    inspectionMode: "audio",
+    locale: "tr",
+    sourceKind: "audio",
+  });
+  const localizedAlternatives = buildExecutionAlternatives({
+    executionPlan: chain.plan,
+    executionSimulation: chain.simulation,
+    executionReadiness: chain.readiness,
+    executionReflection: chain.reflection,
+    activeSelection: chain.selection,
+    inspectionMode: "audio",
+    locale: "tr",
+    sourceKind: "audio",
+  });
+
+  assert.ok(localizedCandidate);
+  assert.notEqual(localizedCandidate.summary, candidate?.summary);
+  assert.notEqual(localizedAlternatives.summary, alternatives.summary);
+  assert.equal(localizedCandidate.status, candidate.status);
+  assert.equal(localizedCandidate.confidence, candidate.confidence);
+  assert.deepEqual(localizedAlternatives.alternatives, alternatives.alternatives);
+  assert.equal(countLocalizedAdvisories(candidate.summary, "en"), 4);
+  assert.equal(countLocalizedAdvisories(localizedCandidate.summary, "tr"), 4);
+  assert.equal(countLocalizedAdvisories(alternatives.summary, "en"), 4);
+  assert.equal(countLocalizedAdvisories(localizedAlternatives.summary, "tr"), 4);
+  assertLocalizedAdvisoryOrder(candidate.summary, "en");
+  assertLocalizedAdvisoryOrder(localizedCandidate.summary, "tr");
+  assertLocalizedAdvisoryOrder(alternatives.summary, "en");
+  assertLocalizedAdvisoryOrder(localizedAlternatives.summary, "tr");
+  assert.doesNotMatch(
+    `${localizedCandidate.summary} ${localizedAlternatives.summary}`,
+    /descriptor\.view|readiness\.view|bridge\.view|coherence\.(view|aligned|mixed|conflicted)/
+  );
   assert.doesNotMatch(candidateAdvisory, DESCRIPTOR_EXECUTION_VERB_PATTERN);
   assert.doesNotMatch(alternativesAdvisory, DESCRIPTOR_EXECUTION_VERB_PATTERN);
   assert.doesNotMatch(candidateReadinessAdvisory, DESCRIPTOR_EXECUTION_VERB_PATTERN);
@@ -4277,7 +4575,10 @@ test("completed execution result feeds passive reflection candidate and alternat
   assert.equal(afterStaging.status, "staged");
   assert.equal(afterDispatchCandidate.dispatchId, beforeDispatchId);
   assert.equal(getActiveExecutionResult(store.getState())?.summary, "Inspected selected audio");
-  assert.match(afterAlternatives.summary, /Projected outcome suggests higher stability, better alignment, and stable coverage\./i);
+  assert.match(
+    afterAlternatives.summary,
+    /Projected outcome suggests higher stability, better alignment, and stable coverage\./i
+  );
   assert.doesNotMatch(afterCandidate.adaptiveDecisionHint, /Projected outcome suggests/i);
 });
 
@@ -4445,7 +4746,10 @@ test("session pattern awareness separates duration buckets roi presence and neut
     },
   });
   completeExecutionRuntimeWithResult(roiCurrent.store, strongResult);
-  assert.equal(getActiveExecutionGoalEvaluation(roiCurrent.store.getState())?.patternSignal, undefined);
+  assert.equal(
+    getActiveExecutionGoalEvaluation(roiCurrent.store.getState())?.patternSignal,
+    undefined
+  );
 
   __testOnlyResetExecutionPatternRegistry();
   const neutralSeed = createCommittedAudioExecutionStore();
@@ -4460,7 +4764,9 @@ test("session pattern awareness separates duration buckets roi presence and neut
 
   const neutralCurrent = createCommittedAudioExecutionStore();
   completeExecutionRuntimeWithResult(neutralCurrent.store, strongResult);
-  const neutralPatternEvaluation = getActiveExecutionGoalEvaluation(neutralCurrent.store.getState());
+  const neutralPatternEvaluation = getActiveExecutionGoalEvaluation(
+    neutralCurrent.store.getState()
+  );
   assert.ok(neutralPatternEvaluation);
   assert.equal(neutralPatternEvaluation.patternSignal?.executionCount, 1);
   assert.equal(neutralPatternEvaluation.patternSignal?.successRatio, 0);
@@ -4596,7 +4902,10 @@ test("session pattern signal softly biases candidate confidence and alternatives
   assert.match(strongAlternatives.summary, /historical execution feedback reinforces/i);
   assert.match(strongAlternatives.comparisonNote ?? "", /already stable pattern/i);
   assert.match(weakAlternatives.summary, /historical execution feedback shows similar paths/i);
-  assert.match(weakAlternatives.summary, /A softer alternative to compare next is: Slower temporal inspection/i);
+  assert.match(
+    weakAlternatives.summary,
+    /A softer alternative to compare next is: Slower temporal inspection/i
+  );
   assert.match(weakAlternatives.comparisonNote ?? "", /historically weak similar results/i);
   assert.match(weakAlternatives.comparisonNote ?? "", /Slower temporal inspection/i);
 });
@@ -5009,7 +5318,8 @@ test("counterfactual projection remains deterministic and pressure-aware", () =>
     expectedCoverage: "increase",
     expectedAlignment: "better",
     expectedStability: "higher",
-    summary: "Projected outcome suggests higher stability, better alignment, and increase coverage.",
+    summary:
+      "Projected outcome suggests higher stability, better alignment, and increase coverage.",
   });
   assert.deepEqual(
     buildCounterfactualProjection(
@@ -5291,6 +5601,21 @@ test("goal-aware feedback tightens failed outcomes without changing structure or
     executionResultInterpretation: interpretation,
     executionGoalEvaluation: goalEvaluation,
   });
+  const conflictedGoalCandidate = buildExecutionCandidateFromResolved({
+    ...baseInput,
+    executionResult: null,
+    executionResultInterpretation: interpretation,
+    executionGoalEvaluation: {
+      ...goalEvaluation,
+      patternSignal: {
+        averageCoverage: 0.28,
+        executionCount: 3,
+        failureRatio: 1,
+        strength: "weak" as const,
+        successRatio: 0,
+      },
+    },
+  });
   const failedGoalAlternatives = buildExecutionAlternatives({
     executionPlan: chain.plan,
     executionSimulation: chain.simulation,
@@ -5306,6 +5631,7 @@ test("goal-aware feedback tightens failed outcomes without changing structure or
 
   assert.ok(interpretationOnlyCandidate);
   assert.ok(failedGoalCandidate);
+  assert.ok(conflictedGoalCandidate);
   assert.equal(failedGoalCandidate.decisionPressure, "high");
   assert.equal(
     failedGoalCandidate.adaptiveDecisionHint,
@@ -5320,6 +5646,16 @@ test("goal-aware feedback tightens failed outcomes without changing structure or
   assert.equal(failedGoalCandidate.planId, interpretationOnlyCandidate.planId);
   assert.match(failedGoalCandidate.summary, /Current execution feedback indicates/);
   assert.match(failedGoalCandidate.summary, /Motion continuity inspection/);
+  const conflictedCoherenceAdvisory = extractDecisionCoherenceAdvisoryText(
+    conflictedGoalCandidate.summary
+  );
+  assert.match(conflictedCoherenceAdvisory, /Signals are conflicted/);
+  assertSummaryOrder(conflictedGoalCandidate.summary, [
+    extractDescriptorAdvisoryText(conflictedGoalCandidate.summary),
+    extractReadinessSignalAdvisoryText(conflictedGoalCandidate.summary),
+    extractExecutionBridgeAdvisoryText(conflictedGoalCandidate.summary),
+    conflictedCoherenceAdvisory,
+  ]);
   assert.equal(
     (failedGoalCandidate.confidence ?? 0) < (interpretationOnlyCandidate.confidence ?? 0),
     true
@@ -5335,10 +5671,7 @@ test("goal-aware feedback tightens failed outcomes without changing structure or
     `${failedGoalAlternatives.summary} ${failedGoalAlternatives.comparisonNote ?? ""}`,
     /\b(auto|commit|dispatch|execute|run|apply|switch|select|activate|choose)\b/i
   );
-  assert.match(
-    failedGoalAlternatives.comparisonNote ?? "",
-    /Motion continuity inspection/i
-  );
+  assert.match(failedGoalAlternatives.comparisonNote ?? "", /Motion continuity inspection/i);
 });
 
 test("decision posture integration stays additive and leaves inputs immutable", () => {
@@ -5412,6 +5745,28 @@ test("decision posture integration stays additive and leaves inputs immutable", 
   assert.equal(candidate.confidence, 0.98);
   assert.match(candidate.summary, /^Proceed: /);
   assert.match(alternatives.summary, /^Proceed: /);
+  const candidateDescriptorAdvisory = extractDescriptorAdvisoryText(candidate.summary);
+  const candidateReadinessAdvisory = extractReadinessSignalAdvisoryText(candidate.summary);
+  const candidateBridgeAdvisory = extractExecutionBridgeAdvisoryText(candidate.summary);
+  const candidateCoherenceAdvisory = extractDecisionCoherenceAdvisoryText(candidate.summary);
+  const alternativesDescriptorAdvisory = extractDescriptorAdvisoryText(alternatives.summary);
+  const alternativesReadinessAdvisory = extractReadinessSignalAdvisoryText(alternatives.summary);
+  const alternativesBridgeAdvisory = extractExecutionBridgeAdvisoryText(alternatives.summary);
+  const alternativesCoherenceAdvisory = extractDecisionCoherenceAdvisoryText(alternatives.summary);
+  assert.match(candidateCoherenceAdvisory, /Signals are aligned/);
+  assert.match(alternativesCoherenceAdvisory, /Signals are aligned/);
+  assertSummaryOrder(candidate.summary, [
+    candidateDescriptorAdvisory,
+    candidateReadinessAdvisory,
+    candidateBridgeAdvisory,
+    candidateCoherenceAdvisory,
+  ]);
+  assertSummaryOrder(alternatives.summary, [
+    alternativesDescriptorAdvisory,
+    alternativesReadinessAdvisory,
+    alternativesBridgeAdvisory,
+    alternativesCoherenceAdvisory,
+  ]);
   assert.deepEqual(alternatives.alternatives, chain.alternatives.alternatives);
   assert.equal(JSON.stringify(frozenCandidateInput), candidateBefore);
   assert.equal(JSON.stringify(frozenAlternativesInput), alternativesBefore);

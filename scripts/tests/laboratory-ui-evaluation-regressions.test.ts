@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { renderLabWaveformTimeline } from "../../rooms/laboratory/ui/lab-waveform-timeline.ts";
@@ -403,7 +403,9 @@ test("laboratory UI shell evaluates under minimal runtime stubs", async () => {
 
     assert.match(environment.runtimeRoot.innerHTML, /class="labx-shell"/);
     assert.match(environment.runtimeRoot.innerHTML, /data-ready="false"/);
-    assert.match(environment.runtimeRoot.innerHTML, /Laboratory environment starting|Initializing/);
+    assert.match(environment.runtimeRoot.innerHTML, /data-lab-center-skeleton="true"/);
+    assert.match(environment.runtimeRoot.innerHTML, /labx-center-skeleton__label/);
+    assert.match(environment.runtimeRoot.innerHTML, /labx-drawer-skeleton/);
     assert.deepEqual(environment.readyPayload(), {
       feature: "media-analysis",
       room: "laboratory",
@@ -470,7 +472,11 @@ test("laboratory shell preserves workspace preview nodes while diffing live pane
   );
   assert.match(
     labRootSource,
-    /updateRenderedElement\(\s*documentRef,\s*rightPanel as HTMLElement,\s*renderLabRightPanel\(state, surface, copy\),\s*true\s*\);/
+    /updateRenderedElement\(\s*documentRef,\s*drawer as HTMLElement,\s*renderLabDrawer\(state, surface, copy\),\s*true\s*\);/
+  );
+  assert.match(
+    labRootSource,
+    /updateRenderedElement\(\s*documentRef,\s*processStrip as HTMLElement,\s*renderLabProcessStrip\(state, copy\)\s*\);/
   );
   assert.match(workspaceSurfaceSource, /preserveKey \|\| "workspace-preview"/);
   assert.match(workspaceSurfaceSource, /data-lab-preserve-media="\$\{escapeHtml\(preserveKey\)\}"/);
@@ -480,6 +486,7 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   const labRootSource = readFileSync("rooms/laboratory/ui/lab-root.ts", "utf8");
   const toolOverlaySource = readFileSync("rooms/laboratory/ui/tool-management-overlay.ts", "utf8");
   const workspaceSurfaceSource = readFileSync("rooms/laboratory/ui/workspace-surface.ts", "utf8");
+  const drawerSource = readFileSync("rooms/laboratory/ui/lab-drawer.ts", "utf8");
 
   assert.match(labRootSource, /schemaVersion:\s*4,/);
   assert.match(labRootSource, /workspace:\s*state\.ui\.workspace,/);
@@ -491,30 +498,62 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   assert.match(toolOverlaySource, /data-lab-action="tool-update-all"/);
   assert.match(toolOverlaySource, /data-lab-action="tool-install"/);
   assert.match(toolOverlaySource, /data-lab-action="tool-check-updates"/);
+  assert.match(drawerSource, /renderSourceIntake\(state, copy\)/);
+  assert.match(drawerSource, /data-lab-action="run-deep-analysis"/);
+  assert.match(drawerSource, /buildIntentPreviewSentence\(state\)/);
+  assert.match(drawerSource, /buildExecutionBridge/);
+  assert.match(drawerSource, /data-lab-drawer-alternatives="true"/);
   assert.match(workspaceSurfaceSource, /Source setup controls/);
-  assert.match(workspaceSurfaceSource, /Analizi Başlat/);
-  assert.match(workspaceSurfaceSource, /data-lab-action="run-deep-analysis"/);
-  assert.match(workspaceSurfaceSource, /Bu analiz şunları yapacak:/);
+  assert.doesNotMatch(workspaceSurfaceSource, /renderLabTopbarActions\(state, copy\)/);
+  assert.doesNotMatch(workspaceSurfaceSource, /renderGlobalProcessSummary\(state, copy\)/);
 });
 
-test("laboratory theme widens the left rail and normalizes rail asset spacing", () => {
+test("laboratory process strip owns heartbeat and expanded runtime detail rendering", () => {
+  const labRootSource = readFileSync("rooms/laboratory/ui/lab-root.ts", "utf8");
+  const processStripSource = readFileSync("rooms/laboratory/ui/lab-process-strip.ts", "utf8");
+  const themeSource = readFileSync("rooms/laboratory/ui/lab-theme.css", "utf8");
+
+  assert.match(labRootSource, /processStripHeartbeatInterval/);
+  assert.match(labRootSource, /setInterval\(function \(\) \{\s*render\(\);/);
+  assert.match(processStripSource, /data-lab-process-expanded="true"/);
+  assert.match(processStripSource, /state\.userActions\.slice\(0, 4\)/);
+  assert.match(processStripSource, /state\.run\?\.rawLog/);
+  assert.match(
+    themeSource,
+    /\.labx-strip-expanded\s*\{[\s\S]*z-index:\s*40;[\s\S]*background:[\s\S]*#07111d;/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-strip-expanded section\s*\{[\s\S]*background:\s*rgba\(4, 11, 19, 0\.88\);/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-strip-expanded__list li,[\s\S]*\.labx-strip-expanded__log li\s*\{[\s\S]*background:\s*rgba\(14, 28, 43, 0\.92\);/
+  );
+});
+
+test("laboratory theme defines the v2 shell grid and drawer layout contract", () => {
   const themeSource = readFileSync("rooms/laboratory/ui/lab-theme.css", "utf8");
 
   assert.match(
     themeSource,
-    /grid-template-columns:\s*16\.8rem minmax\(0, 1fr\) minmax\(17rem, 20rem\);/
+    /\.labx-shell\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\) 22rem;[\s\S]*grid-template-rows:\s*48px minmax\(0, 1fr\) 56px;/
   );
   assert.match(
     themeSource,
-    /\.labx-left-rail\s*\{[\s\S]*gap:\s*0\.8rem;[\s\S]*padding:\s*0\.85rem;/
+    /\.labx-shell\s*\{[\s\S]*grid-template-areas:\s*"topbar topbar"\s*"center drawer"\s*"strip\s+strip";/
   );
   assert.match(
     themeSource,
-    /\.labx-project-assets\s*\{[\s\S]*gap:\s*0\.55rem;[\s\S]*padding:\s*0\.9rem 0\.95rem;/
+    /\.labx-shell\[data-drawer-collapsed="true"\]\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\) 2rem;/
   );
+  assert.match(themeSource, /\.labx-drawer--collapsed\s*\{[\s\S]*overflow:\s*visible;/);
+  assert.match(themeSource, /\.labx-drawer__expand-btn\s*\{[\s\S]*height:\s*100%;/);
+  assert.match(themeSource, /\.labx-center-skeleton__label\s*\{/);
+  assert.doesNotMatch(themeSource, /\.labx-shell\[data-ready="false"\]::after/);
   assert.match(
     themeSource,
-    /\.labx-project-assets__preview\s*\{[\s\S]*gap:\s*0\.45rem;[\s\S]*padding:\s*0\.42rem 0\.5rem;/
+    /\.labx-top-bar\s*\{\s*grid-area:\s*topbar;\s*\}[\s\S]*\.labx-drawer\s*\{\s*grid-area:\s*drawer;\s*\}[\s\S]*\.labx-process-strip\s*\{\s*grid-area:\s*strip;\s*\}/
   );
 });
 
@@ -1621,14 +1660,17 @@ test("laboratory phase 4.95 i18n keys keep English and Turkish catalog parity", 
   });
 });
 
-test("laboratory global process layer is single-source and right panel no longer embeds process dashboard", () => {
+test("laboratory process layer is single-source and old right panel is retired", () => {
   const surfaceSource = readFileSync("rooms/laboratory/ui/workspace-surface.ts", "utf8");
-  const rightPanelSource = readFileSync("rooms/laboratory/ui/lab-right-panel.ts", "utf8");
+  const drawerSource = readFileSync("rooms/laboratory/ui/lab-drawer.ts", "utf8");
+  const processStripSource = readFileSync("rooms/laboratory/ui/lab-process-strip.ts", "utf8");
+  const themeSource = readFileSync("rooms/laboratory/ui/lab-theme.css", "utf8");
 
-  assert.match(surfaceSource, /data-lab-global-process="true"/);
-  assert.match(surfaceSource, /getLaboratoryProcessSummary/);
+  assert.doesNotMatch(surfaceSource, /data-lab-global-process="true"/);
   assert.doesNotMatch(surfaceSource, /renderWorkspaceProcessPanel/);
-  assert.match(rightPanelSource, /data-lab-right-context="true"/);
-  assert.match(rightPanelSource, /getLaboratoryRightPanelContext/);
-  assert.doesNotMatch(rightPanelSource, /labx-process-panel/);
+  assert.equal(existsSync("rooms/laboratory/ui/workspace-process-panel.ts"), false);
+  assert.match(drawerSource, /getLaboratoryRightPanelContext/);
+  assert.match(processStripSource, /getLaboratoryProcessSummary/);
+  assert.doesNotMatch(drawerSource, /labx-process-panel/);
+  assert.doesNotMatch(themeSource, /labx-process-panel|labx-intent-map|labx-output-trace/);
 });

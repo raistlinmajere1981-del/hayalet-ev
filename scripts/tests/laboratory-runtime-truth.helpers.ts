@@ -27,6 +27,7 @@ import {
   buildAdaptiveDecisionSignal,
   buildCounterfactualProjection,
   buildDecisionPosture,
+  formatDecisionPostureLabel,
   buildGuidedAlternativeSignal,
   prependDecisionPostureLabel,
 } from "../../rooms/laboratory/runtime/lab-adaptive-decision.ts";
@@ -47,6 +48,11 @@ import {
   buildDecisionCoherence,
   formatDecisionCoherenceAdvisory,
 } from "../../rooms/laboratory/runtime/lab-decision-coherence.ts";
+import { reorderDecisionSummary } from "../../rooms/laboratory/runtime/lab-decision-priority.ts";
+import {
+  __testOnlyResolveLabI18nFromDictionaries,
+  resolveLabI18n,
+} from "../../rooms/laboratory/runtime/lab-i18n.ts";
 import {
   buildExecutionPayloadPreview,
   buildExecutionPayloadPreviewFromResolved,
@@ -154,8 +160,12 @@ export {
   buildAdaptiveDecisionSignal,
   buildCounterfactualProjection,
   buildDecisionPosture,
+  formatDecisionPostureLabel,
   buildGuidedAlternativeSignal,
   prependDecisionPostureLabel,
+  reorderDecisionSummary,
+  resolveLabI18n,
+  __testOnlyResolveLabI18nFromDictionaries,
   buildDecisionCoherence,
   buildExecutionAlternatives,
   buildExecutionAlternativesFromResolved,

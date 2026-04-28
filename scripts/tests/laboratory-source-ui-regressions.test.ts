@@ -2,20 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import {
-  getActiveExecutionCandidate,
-  getExecutionDispatchCandidate,
-  getAnalysisActionBlockReason,
-} from "../../rooms/laboratory/runtime/lab-selectors.ts";
-import { createMockExecutionResult } from "../../rooms/laboratory/runtime/lab-execution-dispatcher.ts";
+import { getAnalysisActionBlockReason } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import { renderLabAssetPreviewOverlay } from "../../rooms/laboratory/ui/lab-asset-preview-overlay.ts";
-import { renderLabLeftRail } from "../../rooms/laboratory/ui/lab-left-rail.ts";
+import { renderLabDrawer } from "../../rooms/laboratory/ui/lab-drawer.ts";
+import { renderLabProcessStrip } from "../../rooms/laboratory/ui/lab-process-strip.ts";
 import { renderLabProjectAssetsPanel } from "../../rooms/laboratory/ui/lab-project-assets-panel.ts";
+import { renderLabTopBar } from "../../rooms/laboratory/ui/lab-top-bar.ts";
 import { createLabI18n } from "../../rooms/laboratory/ui/lab-i18n.ts";
 import { renderReportOverlay } from "../../rooms/laboratory/ui/report-overlay.ts";
 import { renderToolManagementOverlay } from "../../rooms/laboratory/ui/tool-management-overlay.ts";
-import { renderWorkspaceProcessPanel } from "../../rooms/laboratory/ui/workspace-process-panel.ts";
 import { renderWorkspaceSurface } from "../../rooms/laboratory/ui/workspace-surface.ts";
 
 const sourcePresets = JSON.parse(
@@ -142,35 +138,123 @@ function createSeededState(ffmpegInstalled = false) {
   return store;
 }
 
-test("laboratory left rail reflects the active workspace shell navigation", () => {
+test("laboratory top bar reflects active v2 shell navigation", () => {
   const store = createSeededState();
   store.dispatch({ type: "tool-manager-toggled", open: true });
-  const html = renderLabLeftRail(store.getState());
+  const html = renderLabTopBar(store.getState());
 
-  assert.match(html, /Laboratory/);
-  assert.match(html, /Media workspace/);
-  assert.match(html, /Project Assets/);
-  assert.match(html, /Tool Management/);
-  assert.match(html, /INTENTS/);
-  assert.match(html, /Save/);
-  assert.match(html, /Delete/);
+  assert.match(html, /data-lab-field="project\.id"/);
+  assert.match(html, /data-lab-action="topbar-pill-source"/);
+  assert.match(html, /data-lab-action="topbar-pill-analyze"/);
+  assert.match(html, /data-lab-action="topbar-pill-results"/);
+  assert.match(html, /data-lab-action="toggle-tool-manager"/);
   assert.doesNotMatch(html, /Modül Yönetimi|Seçili Modüller|Yoğun operatör tezgahı/);
 });
 
-test("laboratory workspace surface renders source intake, preview media, and deep-analysis CTA", () => {
-  const surface = renderWorkspaceSurface(createSeededState().getState());
+test("laboratory v2 shell renders source intake in the setup drawer and preview media in center", () => {
+  const store = createSeededState();
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "clip-setup-drawer",
+      type: "clip",
+      name: "setup_clip.mp4",
+      localPath: "/tmp/setup_clip.mp4",
+      createdAt: 200,
+      sourceId: "source-1",
+      runId: "run-1",
+    },
+  });
+  const state = store.getState();
+  const surface = renderWorkspaceSurface(state);
+  const drawer = renderLabDrawer(state, surface);
 
-  assert.match(surface.main, /Source setup controls/);
-  assert.match(surface.main, /Active: lab-demo\.mp4/);
   assert.match(surface.main, /lab-demo\.mp4/);
   assert.match(
     surface.main,
     /<video class="labx-preview-media labx-preview-media--workspace-video"/
   );
-  assert.match(surface.main, /data-lab-action="workspace-toggle-source-intake"/);
-  assert.match(surface.side, /Analizi Başlat/);
-  assert.match(surface.side, /Raporu Görüntüle/);
+  assert.doesNotMatch(surface.main, /Source setup controls/);
+  assert.equal(surface.side.trim(), "");
+  assert.match(drawer, /Source setup controls/);
+  assert.match(drawer, /Active: lab-demo\.mp4/);
+  assert.match(drawer, /data-lab-drawer-assets="true"/);
+  assert.match(drawer, /Project Assets/);
+  assert.match(drawer, /setup_clip\.mp4/);
+  assert.match(drawer, /data-lab-action="asset-preview"/);
+  assert.match(drawer, /data-lab-action="asset-use-as-source" data-lab-value="clip-setup-drawer"/);
+  assert.match(drawer, /data-lab-action="save-project"/);
+  assert.match(drawer, /data-lab-action="project-delete"/);
+  assert.match(drawer, /data-lab-action="workspace-toggle-source-intake"/);
+  assert.match(drawer, /data-lab-action="run-deep-analysis"/);
   assert.doesNotMatch(surface.main, /Kaynak Seçimi|Hızlı modül seçimi burada yapılır/);
+});
+
+test("laboratory drawer keeps project assets visible in result and explore modes", () => {
+  const store = createSeededState();
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "report-drawer-result",
+      type: "report",
+      name: "analysis-report.md",
+      localPath: "/tmp/analysis-report.md",
+      createdAt: 300,
+      sourceId: "source-1",
+      runId: "run-with-report",
+    },
+  });
+
+  const state = store.getState() as ReturnType<typeof store.getState> & {
+    run: Record<string, unknown>;
+  };
+  state.run = {
+    id: "run-with-report",
+    state: "completed",
+    startedAt: Date.now() - 2000,
+    endedAt: Date.now() - 1000,
+    modules: {},
+    moduleOrder: [],
+    events: [],
+    rawLog: [],
+    artifacts: [],
+    findings: [],
+    liveFindings: [],
+    warnings: [],
+    error: null,
+    targetLabel: null,
+    progress: 100,
+    emptyReason: null,
+    analysisScope: null,
+    previewArtifacts: [],
+    confidence: null,
+    moduleTrace: [],
+    comparisonVariants: [],
+    hypothesisSummary: null,
+  };
+  state.reports.user = {
+    summary: "Report ready",
+    confidence: "high",
+    topFindings: [],
+    suspiciousFrames: [],
+    hypothesisResult: null,
+    elapsedSeconds: 1,
+    moduleSummary: [],
+  };
+
+  let surface = renderWorkspaceSurface(store.getState());
+  let drawer = renderLabDrawer(store.getState(), surface);
+  assert.match(drawer, /data-drawer-mode="result"/);
+  assert.match(drawer, /analysis-report\.md/);
+  assert.match(drawer, /data-lab-action="asset-download"/);
+  assert.doesNotMatch(drawer, /data-lab-action="save-project"/);
+
+  store.dispatch({ type: "drawer-explore-toggled" });
+  surface = renderWorkspaceSurface(store.getState());
+  drawer = renderLabDrawer(store.getState(), surface);
+  assert.match(drawer, /data-drawer-mode="explore"/);
+  assert.match(drawer, /analysis-report\.md/);
+  assert.match(drawer, /data-lab-action="asset-preview"/);
 });
 
 test("laboratory workspace treats reused local assets as ready sources", () => {
@@ -182,10 +266,12 @@ test("laboratory workspace treats reused local assets as ready sources", () => {
     },
   });
 
-  const surface = renderWorkspaceSurface(store.getState());
+  const state = store.getState();
+  const surface = renderWorkspaceSurface(state);
+  const drawer = renderLabDrawer(state, surface);
 
-  assert.match(surface.main, /Source ready/);
-  assert.match(surface.main, /Active: lab-demo\.mp4/);
+  assert.match(drawer, /Source ready/);
+  assert.match(drawer, /Active: lab-demo\.mp4/);
   assert.match(
     surface.main,
     /<video class="labx-preview-media labx-preview-media--workspace-video"/
@@ -193,12 +279,12 @@ test("laboratory workspace treats reused local assets as ready sources", () => {
   assert.doesNotMatch(surface.main, /Awaiting source|Select a source to begin/);
 });
 
-test("laboratory workspace surface previews intent outcomes before the analysis CTA", () => {
+test("laboratory setup drawer previews intent outcomes before the analysis CTA", () => {
   const store = createSeededState(true);
 
   let surface = renderWorkspaceSurface(store.getState());
-  assert.match(surface.side, /Bu analiz şunları yapacak:/);
-  assert.match(surface.side, /Analiz için intent seçin/);
+  let drawer = renderLabDrawer(store.getState(), surface);
+  assert.doesNotMatch(drawer, /Bu analiz .* tespit edecek/);
 
   store.dispatch({
     type: "workspace-intent-set",
@@ -206,163 +292,12 @@ test("laboratory workspace surface previews intent outcomes before the analysis 
   });
 
   surface = renderWorkspaceSurface(store.getState());
-  assert.match(surface.side, /Görsel yapı ve anomaliler analiz edilir/);
-  assert.match(surface.side, /Olası anormallikler tespit edilir/);
-  assert.match(surface.side, /Beklenen çıktılar:/);
-  assert.match(surface.side, /Nesne tespiti/);
-  assert.match(surface.side, /Öneriler/);
-});
-
-test("laboratory process panel previews intent execution before the first run", () => {
-  const store = createSeededState(true);
-  store.dispatch({
-    type: "workspace-intent-set",
-    intents: ["visual-inspection", "anomaly-detection"],
-  });
-
-  const html = renderWorkspaceProcessPanel(store.getState(), { sourceReady: true });
-
-  assert.match(html, /Intent → Execution Map/);
-  assert.match(html, /Henüz yürütme yok/);
-  assert.match(html, /Visual inspection/);
-  assert.match(html, /Anomaly detection/);
-  assert.match(html, /Visual Structure/);
-  assert.match(html, /Bekliyor/);
-});
-
-test("laboratory process panel shows minimal execution runtime state without controls", () => {
-  const store = createSeededState(true);
-  const state = store.getState();
-
-  state.ui.executionRuntime = {
-    status: "running",
-    activePlanId: "plan:audio-inspect",
-    dispatchId: "dispatch:test",
-    progress: 25,
-  };
-  const runningHtml = renderWorkspaceProcessPanel(state, { sourceReady: true });
-  assert.match(runningHtml, /class="labx-execution-runtime"/);
-  assert.match(runningHtml, /Executing plan/);
-  assert.match(runningHtml, /data-progress="25"/);
-  const indicatorStart = runningHtml.indexOf('class="labx-execution-runtime"');
-  const indicatorEnd = runningHtml.indexOf("</div>", indicatorStart);
-  const indicatorHtml = runningHtml.slice(indicatorStart, indicatorEnd);
-  assert.doesNotMatch(indicatorHtml, /<button/);
-
-  state.ui.executionRuntime = {
-    status: "completed",
-    activePlanId: "plan:audio-inspect",
-    dispatchId: "dispatch:test",
-    progress: 100,
-    result: {
-      summary: "Mock execution completed for plan:audio-inspect.",
-      insights: [],
-      artifacts: [],
-      metrics: {},
-    },
-  };
-  const completedHtml = renderWorkspaceProcessPanel(state, { sourceReady: true });
-  assert.match(completedHtml, /Execution complete/);
-  assert.match(completedHtml, /data-progress="100"/);
-});
-
-test("laboratory process panel renders materialized execution insights and elements", () => {
-  const store = createSeededState(true);
-  store.dispatch({
-    type: "workspace-timeline-updated",
-    startMs: 1000,
-    endMs: 3000,
-  });
-  store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
-  });
-  store.dispatch({
-    type: "workspace-selection-suggestion-preview-set",
-    suggestionId: "audio-inspect",
-  });
-  store.dispatch({
-    type: "workspace-selection-suggestion-accepted",
-    suggestionId: "audio-inspect",
-  });
-  const activeCandidate = getActiveExecutionCandidate(store.getState());
-  assert.ok(activeCandidate);
-  store.dispatch({
-    type: "workspace-execution-commitment-set",
-    planId: activeCandidate.planId,
-  });
-  const dispatchCandidate = getExecutionDispatchCandidate(store.getState());
-  assert.ok(dispatchCandidate);
-  store.dispatch({
-    type: "workspace-execution-dispatch",
-    planId: dispatchCandidate.planId,
-    dispatchId: dispatchCandidate.dispatchId,
-  });
-  store.dispatch({
-    type: "workspace-execution-completed",
-    planId: dispatchCandidate.planId,
-    dispatchId: dispatchCandidate.dispatchId,
-    result: createMockExecutionResult(dispatchCandidate),
-  });
-
-  const html = renderWorkspaceProcessPanel(store.getState(), { sourceReady: true });
-
-  assert.match(html, /Insights/);
-  assert.match(html, /Frequency cluster detected/);
-  assert.match(html, /Detected elements/);
-  assert.match(html, /Frequency cluster marker/);
-  assert.match(html, /Outcome evaluated/);
-  assert.match(html, /Goal evaluation: Audio goal remains inconclusive for the current result/);
-  assert.doesNotMatch(html, /data-lab-action="execution/);
-});
-
-test("laboratory process panel resolves evaluated outcome copy in Turkish", () => {
-  const store = createSeededState(true);
-  store.dispatch({
-    type: "workspace-timeline-updated",
-    startMs: 1000,
-    endMs: 3000,
-  });
-  store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
-  });
-  store.dispatch({
-    type: "workspace-selection-suggestion-preview-set",
-    suggestionId: "audio-inspect",
-  });
-  store.dispatch({
-    type: "workspace-selection-suggestion-accepted",
-    suggestionId: "audio-inspect",
-  });
-  const activeCandidate = getActiveExecutionCandidate(store.getState());
-  assert.ok(activeCandidate);
-  store.dispatch({
-    type: "workspace-execution-commitment-set",
-    planId: activeCandidate.planId,
-  });
-  const dispatchCandidate = getExecutionDispatchCandidate(store.getState());
-  assert.ok(dispatchCandidate);
-  store.dispatch({
-    type: "workspace-execution-dispatch",
-    planId: dispatchCandidate.planId,
-    dispatchId: dispatchCandidate.dispatchId,
-  });
-  store.dispatch({
-    type: "workspace-execution-completed",
-    planId: dispatchCandidate.planId,
-    dispatchId: dispatchCandidate.dispatchId,
-    result: createMockExecutionResult(dispatchCandidate),
-  });
-
-  const tr = createLabI18n({
-    locale: "tr",
-    translations: JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8")),
-  });
-  const html = renderWorkspaceProcessPanel(store.getState(), { sourceReady: true, copy: tr });
-
-  assert.match(html, /Sonuç değerlendirildi/);
-  assert.match(html, /Hedef değerlendirmesi: Audio goal remains inconclusive for the current result/);
+  drawer = renderLabDrawer(store.getState(), surface);
+  assert.match(drawer, /Bu analiz .* üzerinde/);
+  assert.match(drawer, /görsel yapıyı ve forensic işaretleri inceleyerek/);
+  assert.match(drawer, /görsel ve işitsel anomali taraması yaparak/);
+  assert.match(drawer, /yapısal anomaliler ve forensic kanıtlar/);
+  assert.match(drawer, /olası anormallikler ve sınıflandırılmış ses olayları/);
 });
 
 test("laboratory root owns mock execution dispatch outside the run controller", () => {
@@ -377,212 +312,6 @@ test("laboratory root owns mock execution dispatch outside the run controller", 
   assert.match(rootSource, /beforeunload/);
   assert.doesNotMatch(runControllerSource, /createLabExecutionDispatcher/);
   assert.doesNotMatch(runControllerSource, /workspace-execution-dispatch/);
-});
-
-test("laboratory process panel keeps the intent map visible when a run has no frozen scope snapshot", () => {
-  const store = createSeededState(true);
-  store.dispatch({
-    type: "workspace-intent-set",
-    intents: ["visual-inspection"],
-  });
-
-  const state = store.getState() as ReturnType<typeof store.getState> & {
-    run: Record<string, unknown>;
-  };
-  state.run = {
-    id: "run-live-fallback",
-    state: "running",
-    startedAt: Date.now() - 2000,
-    modules: {},
-    moduleOrder: [],
-    events: [],
-    rawLog: [],
-    artifacts: [],
-    findings: [],
-    liveFindings: [],
-    warnings: [],
-    error: null,
-    targetLabel: null,
-    progress: 10,
-    emptyReason: null,
-    analysisScope: null,
-    previewArtifacts: [],
-    confidence: null,
-    moduleTrace: [],
-    comparisonVariants: [],
-    hypothesisSummary: null,
-  };
-
-  const html = renderWorkspaceProcessPanel(state, { sourceReady: true });
-
-  assert.match(html, /Intent → Execution Map/);
-  assert.match(html, /Visual inspection/);
-});
-
-test("laboratory process panel renders intent output trace from project assets", () => {
-  const store = createSeededState(true);
-  store.dispatch({
-    type: "asset-added",
-    asset: {
-      id: "asset-frame-visual",
-      type: "frame",
-      name: "frame_01.png",
-      localPath: "/tmp/frame_01.png",
-      createdAt: 200,
-      sourceId: "source-1",
-      runId: "run-output-trace",
-      intentIds: ["visual-inspection"],
-    },
-  });
-
-  const state = store.getState() as ReturnType<typeof store.getState> & {
-    run: Record<string, unknown>;
-  };
-  state.ui.workspace.selectedIntents = ["anomaly-detection"];
-  state.run = {
-    id: "run-output-trace",
-    state: "completed",
-    startedAt: Date.now() - 2000,
-    endedAt: Date.now() - 500,
-    modules: {
-      motion: {
-        id: "motion",
-        title: "Motion Analysis",
-        status: "completed",
-      },
-    },
-    moduleOrder: ["motion"],
-    events: [],
-    rawLog: [],
-    artifacts: [],
-    findings: [],
-    liveFindings: [],
-    warnings: [],
-    error: null,
-    targetLabel: null,
-    progress: 100,
-    emptyReason: null,
-    analysisScope: {
-      focus: "visual",
-      intentIds: ["visual-inspection", "audio-investigation", "detail-enhancement"],
-    },
-    previewArtifacts: [],
-    confidence: "medium",
-    moduleTrace: [],
-    comparisonVariants: [],
-    hypothesisSummary: null,
-  };
-
-  const html = renderWorkspaceProcessPanel(state, { sourceReady: true });
-
-  assert.match(html, /INTENT OUTPUT TRACE/);
-  assert.match(html, /Frame outputs/);
-  assert.match(html, /Anomaly data/);
-  assert.match(html, /frame_01\.png/);
-  assert.match(html, /data-matched="true"/);
-  assert.match(html, /data-matched="false"/);
-  assert.match(html, /Bu intent herhangi bir çıktı üretmedi/);
-  assert.match(html, /Bu intent için beklenen çıktı tanımı yok/);
-  assert.ok(html.indexOf("INTENT OUTPUT TRACE") < html.indexOf("Pipeline"));
-});
-
-test("laboratory process panel output trace keeps frozen intent snapshot during live drift", () => {
-  const store = createSeededState(true);
-  store.dispatch({
-    type: "workspace-intent-set",
-    intents: ["audio-investigation"],
-  });
-  store.dispatch({
-    type: "asset-added",
-    asset: {
-      id: "asset-audio-live",
-      type: "audio",
-      name: "live_audio.wav",
-      localPath: "/tmp/live_audio.wav",
-      createdAt: 200,
-      sourceId: "source-1",
-      runId: "run-frozen-trace",
-      intentIds: ["audio-investigation"],
-    },
-  });
-
-  const state = store.getState() as ReturnType<typeof store.getState> & {
-    run: Record<string, unknown>;
-  };
-  state.run = {
-    id: "run-frozen-trace",
-    state: "running",
-    startedAt: Date.now() - 2000,
-    modules: {},
-    moduleOrder: [],
-    events: [],
-    rawLog: [],
-    artifacts: [],
-    findings: [],
-    liveFindings: [],
-    warnings: [],
-    error: null,
-    targetLabel: null,
-    progress: 20,
-    emptyReason: null,
-    analysisScope: {
-      focus: "visual",
-      intentIds: ["visual-inspection"],
-    },
-    previewArtifacts: [],
-    confidence: null,
-    moduleTrace: [],
-    comparisonVariants: [],
-    hypothesisSummary: null,
-  };
-
-  const html = renderWorkspaceProcessPanel(state, { sourceReady: true });
-
-  assert.match(html, /INTENT OUTPUT TRACE/);
-  assert.match(html, /Visual inspection/);
-  assert.doesNotMatch(html, /Audio investigation/);
-  assert.doesNotMatch(html, /live_audio\.wav/);
-});
-
-test("laboratory process panel trace keeps unknown frozen intent ids visible as unmapped observations", () => {
-  const store = createSeededState(true);
-  const state = store.getState() as ReturnType<typeof store.getState> & {
-    run: Record<string, unknown>;
-  };
-
-  state.run = {
-    id: "run-unknown-intent",
-    state: "completed",
-    startedAt: Date.now() - 2000,
-    endedAt: Date.now() - 500,
-    modules: {},
-    moduleOrder: [],
-    events: [],
-    rawLog: [],
-    artifacts: [],
-    findings: [],
-    liveFindings: [],
-    warnings: [],
-    error: null,
-    targetLabel: null,
-    progress: 100,
-    emptyReason: null,
-    analysisScope: {
-      focus: "visual",
-      intentIds: ["future-intent"],
-    },
-    previewArtifacts: [],
-    confidence: null,
-    moduleTrace: [],
-    comparisonVariants: [],
-    hypothesisSummary: null,
-  };
-
-  const html = renderWorkspaceProcessPanel(state, { sourceReady: true });
-
-  assert.match(html, /INTENT OUTPUT TRACE/);
-  assert.match(html, /future-intent/);
-  assert.match(html, /Bu intent için beklenen çıktı tanımı yok/);
 });
 
 test("laboratory analysis readiness allows intent-only selection when derived capabilities are ready", () => {
@@ -725,135 +454,16 @@ test("laboratory workspace panels show snapshot drift as a non-blocking visibili
 
   const state = store.getState();
   const surface = renderWorkspaceSurface(state);
-  const processPanel = renderWorkspaceProcessPanel(state, { sourceReady: true });
+  const drawer = renderLabDrawer(state, surface);
+  const strip = renderLabProcessStrip(state);
 
-  assert.match(processPanel, /Run Snapshot/);
-  assert.match(processPanel, /Visual inspection/);
-  assert.match(processPanel, /Anomaly detection/);
-  assert.match(processPanel, /Intent → Execution Map/);
-  assert.match(processPanel, /Çalışan modül: motion/);
-  assert.match(processPanel, /Tamamlanamadı/);
-  assert.match(processPanel, /Bu modül çalışmadı, diğerleri devam ediyor/);
-  assert.match(processPanel, /Bekliyor/);
-  assert.match(processPanel, /Live workspace changed in Timeline, Hypothesis, Intents/);
-  assert.match(processPanel, /Visual inspection, Anomaly detection/);
-  assert.match(surface.side, /Analizi İptal Et/);
-  assert.doesNotMatch(surface.side, /run-intent-analysis/);
-});
-
-test("laboratory process panel prefers preserved transport module metadata and fans audio transport across audio capabilities", () => {
-  const store = createSeededState(true);
-  const state = store.getState() as ReturnType<typeof store.getState> & {
-    run: Record<string, unknown>;
-  };
-
-  state.run = {
-    id: "run-transport-metadata",
-    state: "running",
-    startedAt: Date.now() - 2000,
-    modules: {
-      motion: {
-        id: "motion",
-        title: "Motion Analysis",
-        status: "running",
-        metadata: {
-          moduleIds: ["frame-consistency", "motion-anomaly"],
-        },
-      },
-      "visual-signal": {
-        id: "visual-signal",
-        title: "Visual Signal Amplification",
-        status: "failed",
-        metadata: {
-          moduleIds: ["visual-signal-amplification", "hidden-detail-reveal"],
-        },
-      },
-      audio: {
-        id: "audio",
-        title: "Audio Sweep",
-        status: "queued",
-      },
-    },
-    moduleOrder: ["motion", "visual-signal", "audio"],
-    events: [],
-    rawLog: [],
-    artifacts: [],
-    findings: [],
-    liveFindings: [],
-    warnings: [],
-    error: null,
-    targetLabel: null,
-    progress: 25,
-    emptyReason: null,
-    analysisScope: {
-      focus: "visual",
-      intentIds: [
-        "visual-inspection",
-        "audio-investigation",
-        "detail-enhancement",
-        "anomaly-detection",
-      ],
-    },
-    previewArtifacts: [],
-    confidence: null,
-    moduleTrace: [],
-    comparisonVariants: [],
-    hypothesisSummary: null,
-  };
-
-  const html = renderWorkspaceProcessPanel(state, { sourceReady: true });
-
-  assert.match(html, /frame-consistency/);
-  assert.match(html, /visual-signal-amplification/);
-  assert.match(html, /Audio Signal/);
-  assert.match(html, /Speaker Analysis/);
-  assert.match(html, /Source Separation/);
-  assert.ok((html.match(/Audio Sweep/g) || []).length >= 4);
-});
-
-test("laboratory process panel keeps report wrapper modules visible for single-intent runs", () => {
-  const store = createSeededState(true);
-  const state = store.getState() as ReturnType<typeof store.getState> & {
-    run: Record<string, unknown>;
-  };
-
-  state.run = {
-    id: "run-report-wrapper",
-    state: "completed",
-    startedAt: Date.now() - 2000,
-    endedAt: Date.now() - 500,
-    modules: {
-      report: {
-        id: "report",
-        title: "Report Wrapper",
-        status: "completed",
-      },
-    },
-    moduleOrder: ["report"],
-    events: [],
-    rawLog: [],
-    artifacts: [],
-    findings: [],
-    liveFindings: [],
-    warnings: [],
-    error: null,
-    targetLabel: null,
-    progress: 100,
-    emptyReason: null,
-    analysisScope: {
-      focus: "visual",
-      intentIds: ["visual-inspection"],
-    },
-    previewArtifacts: [],
-    confidence: "medium",
-    moduleTrace: [],
-    comparisonVariants: [],
-    hypothesisSummary: null,
-  };
-
-  const html = renderWorkspaceProcessPanel(state, { sourceReady: true });
-
-  assert.match(html, /Report Wrapper/);
+  assert.match(drawer, /Analiz İlerlemesi/);
+  assert.match(drawer, /Pipeline/);
+  assert.match(drawer, /motion/);
+  assert.match(drawer, /visual-signal/);
+  assert.match(drawer, /audio/);
+  assert.match(strip, /labx-process-strip/);
+  assert.doesNotMatch(drawer, /run-intent-analysis/);
 });
 
 test("laboratory transparency renderers tolerate sparse run payloads", () => {
@@ -907,14 +517,11 @@ test("laboratory transparency renderers tolerate sparse run payloads", () => {
   state.ui.workspace.reportOverlayOpen = true;
 
   assert.doesNotThrow(function () {
-    renderWorkspaceProcessPanel(state, { sourceReady: true });
-  });
-  assert.doesNotThrow(function () {
     renderReportOverlay(state);
   });
 });
 
-test("laboratory workspace surface renders action hub and recent action history from user actions", () => {
+test("laboratory process strip renders recent action history from user actions", () => {
   const store = createSeededState(true);
 
   store.dispatch({
@@ -962,18 +569,19 @@ test("laboratory workspace surface renders action hub and recent action history 
 
   const state = store.getState();
   const surface = renderWorkspaceSurface(state);
-  const processHtml = renderWorkspaceProcessPanel(state, { sourceReady: true });
 
-  assert.match(surface.main, /Klip çıkarılıyor/);
-  assert.match(surface.main, /labx-topbar-actions/);
-  assert.match(surface.main, /frame_01\.png/);
-  assert.match(processHtml, /Son işlemler/);
-  assert.match(processHtml, /Frame alındı/);
-  assert.match(processHtml, /frame_01\.png/);
-  assert.match(processHtml, /data-lab-action="asset-preview"/);
+  assert.doesNotMatch(surface.main, /labx-topbar-actions/);
+  assert.doesNotMatch(surface.main, /Klip çıkarılıyor/);
+
+  store.dispatch({ type: "workspace-process-view-toggled", force: true });
+  const stripHtml = renderLabProcessStrip(store.getState());
+  assert.match(stripHtml, /data-lab-process-expanded="true"/);
+  assert.match(stripHtml, /Son işlemler/);
+  assert.match(stripHtml, /Frame alındı/);
+  assert.match(stripHtml, /frame_01\.png/);
 });
 
-test("laboratory workspace surface renders multi-output action summaries with overflow counts", () => {
+test("laboratory process strip renders multi-output action summaries with overflow counts", () => {
   const store = createSeededState(true);
 
   store.dispatch({
@@ -1019,10 +627,11 @@ test("laboratory workspace surface renders multi-output action summaries with ov
 
   const state = store.getState();
   const surface = renderWorkspaceSurface(state);
-  const processHtml = renderWorkspaceProcessPanel(state, { sourceReady: true });
 
-  assert.match(surface.main, /report-user\.md \+1/);
-  assert.match(processHtml, /report-user\.md \+1/);
+  assert.doesNotMatch(surface.main, /report-user\.md \+1/);
+  store.dispatch({ type: "workspace-process-view-toggled", force: true });
+  const stripHtml = renderLabProcessStrip(store.getState());
+  assert.match(stripHtml, /report-user\.md, report-ai\.json/);
 });
 
 test("laboratory project assets panel renders registry groups and local asset actions only", () => {
@@ -1065,9 +674,7 @@ test("laboratory project assets panel renders registry groups and local asset ac
   });
 
   const panelHtml = renderLabProjectAssetsPanel(store.getState());
-  const leftRailHtml = renderLabLeftRail(store.getState());
 
-  assert.match(leftRailHtml, /Project Assets/);
   assert.match(panelHtml, /Clips/);
   assert.match(panelHtml, /Reports/);
   assert.match(panelHtml, /clip_01\.mp4/);

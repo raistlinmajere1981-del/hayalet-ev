@@ -1614,6 +1614,17 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     timelinePendingShiftKey = false;
   }
 
+  function handleKeyDown(event: KeyboardEvent) {
+    if (event.ctrlKey !== true || event.key.toLowerCase() !== "b") {
+      return;
+    }
+    if (isTextControl(event.target)) {
+      return;
+    }
+    event.preventDefault();
+    dispatch({ type: "drawer-collapsed-toggled" });
+  }
+
   function handleClick(event: Event) {
     const target = event.target instanceof Element ? event.target : null;
     if (!target) {
@@ -1655,6 +1666,24 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         return;
       case "toggle-tool-manager":
         dispatch({ type: "tool-manager-toggled" });
+        return;
+      case "drawer-collapsed-toggled":
+        dispatch({ type: "drawer-collapsed-toggled" });
+        return;
+      case "drawer-explore-toggled":
+        dispatch({ type: "drawer-explore-toggled" });
+        return;
+      case "topbar-pill-source":
+        if (isRunActive(state) !== true) {
+          dispatch({ type: "drawer-mode-requested", mode: "setup" });
+        }
+        return;
+      case "topbar-pill-analyze":
+        return;
+      case "topbar-pill-results":
+        if (hasReportPayload(state)) {
+          dispatch({ type: "drawer-mode-requested", mode: "result" });
+        }
         return;
       case "close-tool-manager":
       case "dismiss-tool-manager":
@@ -1810,13 +1839,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       }
       // V2.3 workspace actions
       case "run-deep-analysis": {
-        const run = getCurrentRun(state);
-        if (run && run.state === "running") {
-          sendMediaAction(
-            state.featureId === "audio-analysis" ? "audio-process-cancel" : "process-cancel"
-          );
-          return;
-        }
         // Controller guard — shared contract with UI
         const blockReason = getAnalysisActionBlockReason(state);
         if (blockReason !== null) {
@@ -1827,6 +1849,15 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           return;
         }
         startDeepAnalysis(state);
+        return;
+      }
+      case "cancel-analysis": {
+        const run = getCurrentRun(state);
+        if (run && run.state === "running") {
+          sendMediaAction(
+            state.featureId === "audio-analysis" ? "audio-process-cancel" : "process-cancel"
+          );
+        }
         return;
       }
       case "project-select": {
@@ -1978,8 +2009,8 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           });
         }
         return;
-      case "workspace-toggle-right-panel":
-        dispatch({ type: "workspace-right-panel-toggled" });
+      case "workspace-process-view-toggled":
+        dispatch({ type: "workspace-process-view-toggled" });
         return;
       case "workspace-image-analysis":
         dispatch({ type: "workspace-image-analysis-requested" });
@@ -2065,23 +2096,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         dispatch({ type: "workspace-timeline-updated", startMs: null, endMs: null });
         return;
       }
-      case "workspace-step-preview":
-        dispatch({
-          type: "workspace-step-preview-activated",
-          stepId: value.trim() !== "" ? value : null,
-        });
-        return;
       case "toggle-report-view":
         // Report overlay controls report UI; legacy stage is projected automatically
         dispatch({ type: "report-overlay-toggled", open: true });
-        return;
-      case "workspace-process-section-toggle":
-        if (value.trim() !== "") {
-          dispatch({
-            type: "workspace-process-section-toggled",
-            sectionId: value as import("../models/lab-types.js").LabProcessSectionId,
-          });
-        }
         return;
       case "open-report-overlay":
         dispatch({ type: "report-overlay-toggled", open: true });
@@ -2474,6 +2491,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     deps.documentRef.addEventListener("input", handleInput);
     deps.documentRef.addEventListener("change", handleChange);
     deps.documentRef.addEventListener("mousedown", handleMouseDown);
+    deps.documentRef.addEventListener("keydown", handleKeyDown as EventListener);
     deps.windowRef.addEventListener("mousemove", handleTimelineMouseMove as EventListener);
     deps.windowRef.addEventListener("mouseup", handleTimelineMouseUp as EventListener);
     deps.store.subscribe(function () {

@@ -1,4 +1,5 @@
 import type { LabExecutionDescriptor } from "./lab-execution-descriptor.js";
+import { resolveLabI18n, type LabI18nLocale } from "./lab-i18n.js";
 
 export type LabExecutionBridge = {
   adapter: string;
@@ -175,6 +176,14 @@ export function buildExecutionBridge(descriptor: LabExecutionDescriptor): LabExe
   };
 }
 
-export function formatExecutionBridgeAdvisory(bridge: LabExecutionBridge): string {
-  return `Execution bridge: This path ${bridge.summary}.`;
+export function formatExecutionBridgeAdvisory(
+  bridge: LabExecutionBridge,
+  locale: LabI18nLocale = "en"
+): string {
+  const view = resolveLabI18n("bridge.view", locale);
+  if (locale === "tr") {
+    const requiredInput = bridge.inputContract.required.join(", ") || "genel";
+    return `${view}: Bu yol ${bridge.adapter} adaptörüne ${bridge.operation} işlemiyle bağlanır; ${requiredInput} girdisi ve ${formatOutputType(bridge.outputContract.type)} çıktısı kullanır.`;
+  }
+  return `${view}: This path ${bridge.summary}.`;
 }

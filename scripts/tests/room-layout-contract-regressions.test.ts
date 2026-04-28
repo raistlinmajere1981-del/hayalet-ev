@@ -60,7 +60,7 @@ test("room root entrypoints stay orchestration-only after layout normalization",
   assert.doesNotMatch(laboratoryUiStyleSource, /main-functions\/media-analysis\/styles\.css/);
   assert.match(laboratoryThemeStyleSource, /\.labx-shell/);
   assert.match(laboratoryThemeStyleSource, /\.labx-source-intake__frame/);
-  assert.match(laboratoryThemeStyleSource, /\.labx-process-panel/);
+  assert.match(laboratoryThemeStyleSource, /\.labx-process-strip/);
   assert.match(laboratoryThemeStyleSource, /\.labx-module-overlay/);
   assert.doesNotMatch(laboratoryUiStyleSource, /audio-analysis\/styles\.css/);
 });

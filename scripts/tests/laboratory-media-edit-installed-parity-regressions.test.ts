@@ -17,7 +17,6 @@ const activeShellFiles = [
   "ui/lab-waveform-timeline.js",
   "ui/style.css",
   "ui/tool-management-overlay.js",
-  "ui/workspace-process-panel.js",
   "ui/workspace-surface.js",
   "ui/components/artifact-item.js",
   "ui/components/status-chip.js",
@@ -36,6 +35,7 @@ const removedLegacyFiles = [
   "main-functions/subtitle-analysis/ui/runtime.js",
   "services/pipeline-runner.js",
   "models/lab-report-types.js",
+  "ui/workspace-process-panel.js",
 ];
 
 function collectRelativeFiles(rootDir: string, currentDir: string = rootDir): string[] {

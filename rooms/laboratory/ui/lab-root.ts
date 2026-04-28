@@ -7,8 +7,9 @@ import { loadLabPersistedState, saveLabPersistedState } from "../runtime/lab-per
 import { createLabStore } from "../runtime/lab-store.js";
 import { renderLabCenterPanel } from "./lab-center-panel.js";
 import { renderLabLayout } from "./lab-layout.js";
-import { renderLabLeftRail } from "./lab-left-rail.js";
-import { renderLabRightPanel } from "./lab-right-panel.js";
+import { renderLabDrawer } from "./lab-drawer.js";
+import { renderLabProcessStrip } from "./lab-process-strip.js";
+import { renderLabTopBar } from "./lab-top-bar.js";
 import { bindLabAssetPreviewClicks } from "./lab-asset-preview-binder.js";
 import { bindLabPreviewInspectionInteractions } from "./lab-preview-inspection-binder.js";
 import { createLabPreviewInspectionController } from "./lab-preview-inspection-controller.js";
@@ -28,7 +29,10 @@ import {
   getExecutionDispatchCandidate,
   getRoiFocusActive,
   getSelectionSuggestions,
+  getDrawerCollapsed,
   getWorkspaceMode,
+  isRunActive,
+  resolveDrawerMode,
 } from "../runtime/lab-selectors.js";
 import { createLabI18n } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
@@ -341,6 +345,7 @@ export function startLaboratoryLabRoot() {
   });
   if (typeof windowRef.addEventListener === "function") {
     windowRef.addEventListener("beforeunload", executionDispatcher.dispose);
+    windowRef.addEventListener("beforeunload", stopProcessStripHeartbeat);
   }
   const previewInspectionController = createLabPreviewInspectionController({
     documentRef,
@@ -447,6 +452,7 @@ export function startLaboratoryLabRoot() {
   let bootBootstrapSeen = false;
   let bootOverlaySettleTimer: ReturnType<typeof setTimeout> | null = null;
   let bootOverlayFailsafeTimer: ReturnType<typeof setTimeout> | null = null;
+  let processStripHeartbeatInterval: ReturnType<typeof setInterval> | null = null;
   const bootOverlayStartedAt = Date.now();
 
   function clearBootOverlaySettleTimer() {
@@ -523,6 +529,8 @@ export function startLaboratoryLabRoot() {
     shell.dataset["stage"] = state.currentStage;
     shell.dataset["ready"] = isBootOverlayActive(state) ? "false" : "true";
     shell.dataset["workspaceMode"] = getWorkspaceMode(state);
+    shell.dataset["drawerMode"] = resolveDrawerMode(state);
+    shell.dataset["drawerCollapsed"] = getDrawerCollapsed(state) ? "true" : "false";
   }
 
   function startBootMessages() {
@@ -555,6 +563,25 @@ export function startLaboratoryLabRoot() {
       delete shell.dataset["bootMessage"];
       delete shell.dataset["bootFade"];
     }
+  }
+
+  function stopProcessStripHeartbeat() {
+    if (processStripHeartbeatInterval !== null) {
+      clearInterval(processStripHeartbeatInterval);
+      processStripHeartbeatInterval = null;
+    }
+  }
+
+  function syncProcessStripHeartbeat(state: LabStoreState) {
+    if (isRunActive(state)) {
+      if (processStripHeartbeatInterval === null) {
+        processStripHeartbeatInterval = setInterval(function () {
+          render();
+        }, 1000);
+      }
+      return;
+    }
+    stopProcessStripHeartbeat();
   }
 
   let shellMounted = false;
@@ -635,32 +662,36 @@ export function startLaboratoryLabRoot() {
       } else {
         stopBootMessages();
       }
+      syncProcessStripHeartbeat(state);
       return;
     }
 
     const shell = runtimeRoot.querySelector(".labx-shell");
-    const leftRail = runtimeRoot.querySelector(".labx-left-rail");
+    const topBar = runtimeRoot.querySelector(".labx-top-bar");
     const centerPanel = runtimeRoot.querySelector(".labx-center-panel");
-    const rightPanel = runtimeRoot.querySelector(".labx-right-panel");
+    const drawer = runtimeRoot.querySelector(".labx-drawer");
+    const processStrip = runtimeRoot.querySelector(".labx-process-strip");
     const overlayRoot = runtimeRoot.querySelector(".labx-overlay-root");
     const assetPreviewOverlayRoot = runtimeRoot.querySelector("#lab-asset-preview-overlay-root");
     const reportOverlayRoot = runtimeRoot.querySelector("#lab-report-overlay-root");
     if (
       !shell ||
-      !leftRail ||
+      !topBar ||
       !centerPanel ||
-      !rightPanel ||
+      !drawer ||
+      !processStrip ||
       !overlayRoot ||
       !assetPreviewOverlayRoot
     ) {
       runtimeRoot.innerHTML = renderLabLayout(state, surface, copy);
+      syncProcessStripHeartbeat(state);
       return;
     }
 
     if (shell instanceof HTMLElement) {
       syncShellState(shell, state);
     }
-    updateRenderedElement(documentRef, leftRail as HTMLElement, renderLabLeftRail(state, copy));
+    updateRenderedElement(documentRef, topBar as HTMLElement, renderLabTopBar(state, copy));
     updateRenderedElement(
       documentRef,
       centerPanel as HTMLElement,
@@ -669,9 +700,14 @@ export function startLaboratoryLabRoot() {
     );
     updateRenderedElement(
       documentRef,
-      rightPanel as HTMLElement,
-      renderLabRightPanel(state, surface, copy),
+      drawer as HTMLElement,
+      renderLabDrawer(state, surface, copy),
       true
+    );
+    updateRenderedElement(
+      documentRef,
+      processStrip as HTMLElement,
+      renderLabProcessStrip(state, copy)
     );
     updateRenderedElement(
       documentRef,
@@ -696,6 +732,7 @@ export function startLaboratoryLabRoot() {
     } else {
       stopBootMessages();
     }
+    syncProcessStripHeartbeat(state);
 
     const triggerEl = runtimeRoot.querySelector<HTMLElement>(".lab-execution-details-trigger");
     if (triggerEl) {

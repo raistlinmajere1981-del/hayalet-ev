@@ -4,6 +4,7 @@ import type {
   LabExecutionPatternStrength,
 } from "../models/lab-types.js";
 import type { LabCounterfactualProjection } from "./lab-adaptive-decision.js";
+import { resolveLabI18n, type LabI18nKey, type LabI18nLocale } from "./lab-i18n.js";
 
 export type LabExecutionReadinessSignalAlignment =
   | "matches-simulation"
@@ -178,7 +179,22 @@ function buildReasons(input: {
   ];
 }
 
-function getAlignmentPhrase(alignment: LabExecutionReadinessSignalAlignment) {
+function getAlignmentPhrase(
+  alignment: LabExecutionReadinessSignalAlignment,
+  locale: LabI18nLocale
+) {
+  if (locale === "tr") {
+    if (alignment === "matches-simulation") {
+      return "eşleşen uyum";
+    }
+    if (alignment === "deviates") {
+      return "sapan uyum";
+    }
+    if (alignment === "partial") {
+      return "kısmi uyum";
+    }
+    return "ölçülmemiş uyum";
+  }
   if (alignment === "matches-simulation") {
     return "matched alignment";
   }
@@ -191,17 +207,21 @@ function getAlignmentPhrase(alignment: LabExecutionReadinessSignalAlignment) {
   return "unmeasured alignment";
 }
 
-function getProjectionPhrase(alignment: LabExecutionReadinessSignalProjectionAlignment) {
+function getProjectionKey(alignment: LabExecutionReadinessSignalProjectionAlignment): LabI18nKey {
   if (alignment === "better") {
-    return "better projection";
+    return "projection.increase";
   }
   if (alignment === "worse") {
-    return "worse projection";
+    return "projection.decrease";
   }
-  if (alignment === "similar") {
-    return "similar projection";
-  }
-  return "neutral projection";
+  return "projection.stable";
+}
+
+function getProjectionPhrase(
+  alignment: LabExecutionReadinessSignalProjectionAlignment,
+  locale: LabI18nLocale
+) {
+  return resolveLabI18n(getProjectionKey(alignment), locale);
 }
 
 export function buildExecutionReadinessSignal(
@@ -241,6 +261,13 @@ export function buildExecutionReadinessSignal(
   };
 }
 
-export function formatExecutionReadinessSignalAdvisory(signal: LabExecutionReadinessSignal) {
-  return `Readiness view: ${signal.level} signal from ${signal.decisionPressure} pressure, ${signal.patternStrength} pattern, ${getAlignmentPhrase(signal.alignment)}, ${signal.alternativesConfidenceBand} alternative confidence, and ${getProjectionPhrase(signal.projectionAlignment)}.`;
+export function formatExecutionReadinessSignalAdvisory(
+  signal: LabExecutionReadinessSignal,
+  locale: LabI18nLocale = "en"
+) {
+  const view = resolveLabI18n("readiness.view", locale);
+  if (locale === "tr") {
+    return `${view}: ${signal.level} sinyal; ${signal.decisionPressure} baskı, ${signal.patternStrength} örüntü, ${getAlignmentPhrase(signal.alignment, locale)}, ${signal.alternativesConfidenceBand} alternatif güveni ve ${getProjectionPhrase(signal.projectionAlignment, locale)}.`;
+  }
+  return `${view}: ${signal.level} signal from ${signal.decisionPressure} pressure, ${signal.patternStrength} pattern, ${getAlignmentPhrase(signal.alignment, locale)}, ${signal.alternativesConfidenceBand} alternative confidence, and ${getProjectionPhrase(signal.projectionAlignment, locale)}.`;
 }

@@ -5,6 +5,7 @@ import type {
   LabExecutionGoalEvaluation,
   LabExecutionPatternStrength,
 } from "../models/lab-types.js";
+import { resolveLabI18n, type LabI18nKey, type LabI18nLocale } from "./lab-i18n.js";
 
 export type LabAdaptiveDecisionResultInterpretation = {
   alignment: "matches-simulation" | "partial" | "deviates";
@@ -56,20 +57,33 @@ type LabCounterfactualProjectionContext = LabAdaptiveDecisionInput & {
   decisionPressure?: LabExecutionDecisionPressure;
 };
 
-const DECISION_POSTURE_LABELS = ["Proceed with caution", "Proceed", "Reconsider"] as const;
+const DECISION_POSTURE_KEYS: Record<LabDecisionPosture, LabI18nKey> = {
+  proceed: "posture.proceed",
+  "proceed-with-caution": "posture.caution",
+  reconsider: "posture.reconsider",
+};
 
-function getDecisionPostureLabel(posture: LabDecisionPosture) {
-  if (posture === "proceed") {
-    return "Proceed";
-  }
-  if (posture === "reconsider") {
-    return "Reconsider";
-  }
-  return "Proceed with caution";
+function getDecisionPostureLabels() {
+  return (["en", "tr"] as const)
+    .flatMap(function (locale) {
+      return Object.values(DECISION_POSTURE_KEYS).map(function (key) {
+        return resolveLabI18n(key, locale);
+      });
+    })
+    .sort(function (left, right) {
+      return right.length - left.length;
+    });
+}
+
+export function formatDecisionPostureLabel(
+  posture: LabDecisionPosture,
+  locale: LabI18nLocale = "en"
+) {
+  return resolveLabI18n(DECISION_POSTURE_KEYS[posture], locale);
 }
 
 function stripLeadingDecisionPostureLabel(summary: string) {
-  for (const label of DECISION_POSTURE_LABELS) {
+  for (const label of getDecisionPostureLabels()) {
     const prefix = `${label}: `;
     if (summary.startsWith(prefix)) {
       return summary.slice(prefix.length);
@@ -111,13 +125,17 @@ export function buildDecisionPosture(input: LabDecisionPostureInput): LabDecisio
 
   return {
     posture,
-    shortLabel: getDecisionPostureLabel(posture),
+    shortLabel: formatDecisionPostureLabel(posture),
   };
 }
 
-export function prependDecisionPostureLabel(summary: string, posture: LabDecisionPostureSignal) {
+export function prependDecisionPostureLabel(
+  summary: string,
+  posture: LabDecisionPostureSignal,
+  locale: LabI18nLocale = "en"
+) {
   const body = stripLeadingDecisionPostureLabel(summary);
-  return `${posture.shortLabel}: ${body}`;
+  return `${formatDecisionPostureLabel(posture.posture, locale)}: ${body}`;
 }
 
 function getAdaptiveDecisionHint(

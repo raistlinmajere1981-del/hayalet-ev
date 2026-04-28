@@ -1,3 +1,5 @@
+import { resolveLabI18n, type LabI18nKey, type LabI18nLocale } from "./lab-i18n.js";
+
 export type LabDecisionCoherence = {
   state: "aligned" | "mixed" | "conflicted";
   dominantAxis: "safety" | "exploration" | "neutral";
@@ -96,7 +98,16 @@ function resolveDominantAxis(
   return "neutral";
 }
 
-function formatAxisHint(axis: LabDecisionCoherence["dominantAxis"]) {
+function formatAxisHint(axis: LabDecisionCoherence["dominantAxis"], locale: LabI18nLocale) {
+  if (locale === "tr") {
+    if (axis === "exploration") {
+      return " ve keşif eğilimi taşıyor";
+    }
+    if (axis === "safety") {
+      return " ve dikkat sinyalleri taşıyor";
+    }
+    return "";
+  }
   if (axis === "exploration") {
     return " with exploratory tendencies";
   }
@@ -106,22 +117,30 @@ function formatAxisHint(axis: LabDecisionCoherence["dominantAxis"]) {
   return "";
 }
 
-export function formatDecisionCoherenceAdvisory(coherence: LabDecisionCoherence): string {
-  const axisHint = formatAxisHint(coherence.dominantAxis);
-  if (coherence.state === "aligned") {
-    return `Coherence view: Signals are aligned toward a stable path${axisHint}.`;
+function getCoherenceKey(state: LabDecisionCoherence["state"]): LabI18nKey {
+  if (state === "aligned") {
+    return "coherence.aligned";
   }
-  if (coherence.state === "conflicted") {
-    return `Coherence view: Signals are conflicted, indicating a high-risk and unstable path${axisHint}.`;
+  if (state === "conflicted") {
+    return "coherence.conflicted";
   }
-  return `Coherence view: Signals are mixed, with trade-offs between stability and coverage${axisHint}.`;
+  return "coherence.mixed";
 }
 
-export function buildDecisionCoherence(
-  input: LabDecisionCoherenceInput
-): LabDecisionCoherence {
+export function formatDecisionCoherenceAdvisory(
+  coherence: LabDecisionCoherence,
+  locale: LabI18nLocale = "en"
+): string {
+  const view = resolveLabI18n("coherence.view", locale);
+  const axisHint = formatAxisHint(coherence.dominantAxis, locale);
+  return `${view}: ${resolveLabI18n(getCoherenceKey(coherence.state), locale)}${axisHint}.`;
+}
+
+export function buildDecisionCoherence(input: LabDecisionCoherenceInput): LabDecisionCoherence {
   const totalScore =
-    scorePosture(input.posture) + scoreReadiness(input.readiness) + scoreProjection(input.projection);
+    scorePosture(input.posture) +
+    scoreReadiness(input.readiness) +
+    scoreProjection(input.projection);
   const coherence = {
     state: resolveState(totalScore),
     dominantAxis: resolveDominantAxis(input.readiness, input.projection),

@@ -34,6 +34,8 @@ import type {
   LabWorkspaceDiff,
   PreflightSeverity,
   ReportFreshness,
+  LabDrawerMode,
+  LabIntentId,
 } from "../models/lab-types.js";
 import { CAPABILITY_FAMILIES, WORKSPACE_INTENTS } from "../models/lab-types.js";
 import { normalizeAnalysisScope } from "../shared/types/analysis-scope.js";
@@ -1997,19 +1999,6 @@ export function getIntentDirtyMap(state: LabStoreState): LabIntentDirtyMap {
   }, {} as LabIntentDirtyMap);
 }
 
-export function getProcessPanelCollapsedSections(
-  state: LabStoreState
-): import("../models/lab-types.js").LabProcessSectionId[] {
-  return state.ui.workspace.processPanelCollapsedSections;
-}
-
-export function isProcessSectionCollapsed(
-  state: LabStoreState,
-  sectionId: import("../models/lab-types.js").LabProcessSectionId
-): boolean {
-  return state.ui.workspace.processPanelCollapsedSections.includes(sectionId);
-}
-
 export function getReportOverlayOpen(state: LabStoreState): boolean {
   return state.ui.workspace.reportOverlayOpen;
 }
@@ -2177,11 +2166,22 @@ export function getToolRelevanceFilter(state: LabStoreState) {
 
 export function getReportFreshness(state: LabStoreState): ReportFreshness | null {
   const reports = getCurrentReports(state);
-  const hasReport = reports.user !== null || reports.ai !== null;
+  const reportStatus = asNonEmptyString(getCurrentFeatureReportRecord(state)["status"]);
+  const hasReport =
+    reports.user !== null ||
+    reports.ai !== null ||
+    reportStatus === "ready" ||
+    reportStatus === "stale";
   if (!hasReport) {
     return null;
   }
   const workspaceDirty = getWorkspaceDiff(state)?.workspaceDirty === true;
+  if (reportStatus === "stale") {
+    return {
+      state: "stale",
+      workspaceDirty,
+    };
+  }
   const run = getCurrentRun(state);
   if (!run) {
     return {
@@ -2215,6 +2215,89 @@ export function isWorkspaceDirty(state: LabStoreState): boolean {
 // ---------------------------------------------------------------------------
 // Legacy stage projection — single authoritative derivation for currentStage
 // ---------------------------------------------------------------------------
+
+export function resolveDrawerMode(state: LabStoreState): LabDrawerMode {
+  if (isRunActive(state)) return "running";
+  const run = getCurrentRun(state);
+  if (!getSourceReady(state)) return "setup";
+  if (!hasReportPayload(state)) {
+    if (isRunComplete(state) && asNonEmptyString(run?.emptyReason) !== null) {
+      return "explore";
+    }
+    return "setup";
+  }
+  if (state.ui.workspace.drawerModeOverride === "setup") {
+    return "setup";
+  }
+  if (state.ui.workspace.drawerModeOverride === "result") {
+    return "result";
+  }
+  const freshness = getReportFreshness(state);
+  if (
+    freshness?.state === "current" &&
+    state.ui.workspace.userExploreToggle !== true
+  ) {
+    return "result";
+  }
+  return "explore";
+}
+
+export function getDrawerCollapsed(state: LabStoreState): boolean {
+  return state.ui.workspace.drawerCollapsed === true;
+}
+
+const INTENT_ACTION_PHRASES: Record<LabIntentId, string> = {
+  "visual-inspection": "görsel yapıyı ve forensic işaretleri inceleyerek",
+  "audio-investigation": "ses sinyallerini analiz ederek",
+  "detail-enhancement": "transkript ve kaynak ayrıştırma yaparak",
+  "anomaly-detection": "görsel ve işitsel anomali taraması yaparak",
+};
+
+const INTENT_OUTPUT_PHRASES: Record<LabIntentId, string> = {
+  "visual-inspection": "yapısal anomaliler ve forensic kanıtlar",
+  "audio-investigation": "ses anomalileri ve sinyal detayları",
+  "detail-enhancement": "konuşma dökümleri ve ayrıştırılmış ses kaynakları",
+  "anomaly-detection": "olası anormallikler ve sınıflandırılmış ses olayları",
+};
+
+function formatMsAsTime(ms: number): string {
+  const totalSeconds = Math.round(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+export function buildIntentPreviewSentence(state: LabStoreState): string {
+  const selectedIntents = getSelectedIntents(state);
+  if (selectedIntents.length === 0) return "";
+  const timelineSelection = getTimelineSelection(state);
+  const metadata = getSourceMetadata(state);
+  const durationSeconds =
+    typeof metadata["durationSeconds"] === "number" ? metadata["durationSeconds"] : 0;
+  const durationMs = Math.round(durationSeconds * 1000);
+  const isFullRange =
+    (timelineSelection.startMs === null || timelineSelection.startMs <= 0) &&
+    (timelineSelection.endMs === null || timelineSelection.endMs >= durationMs - 500);
+  const scopeLabel = isFullRange
+    ? `tüm kaynak (${formatMsAsTime(durationMs)})`
+    : `${formatMsAsTime(timelineSelection.startMs ?? 0)} \u2013 ${formatMsAsTime(timelineSelection.endMs ?? durationMs)}`;
+  const actions = selectedIntents
+    .map(function (id) {
+      return INTENT_ACTION_PHRASES[id] || id;
+    })
+    .join(", ");
+  const outputs = selectedIntents
+    .map(function (id) {
+      return INTENT_OUTPUT_PHRASES[id] || id;
+    });
+  const uniqueOutputs = outputs.filter(function (output, index) {
+    return outputs.indexOf(output) === index;
+  });
+  const hypothesis = getHypothesis(state).trim();
+  const hypothesisAppend =
+    hypothesis.length > 0 ? ` Hipotez: \u201C${hypothesis}\u201D` : "";
+  return `Bu analiz ${scopeLabel} üzerinde ${actions} ${uniqueOutputs.join(", ")} tespit edecek.${hypothesisAppend}`;
+}
 
 export function deriveLegacyStage(state: LabStoreState): LabStage {
   if (state.ui.workspace.reportOverlayOpen && hasReportPayload(state)) {

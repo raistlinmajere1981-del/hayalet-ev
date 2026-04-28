@@ -28,6 +28,7 @@ import {
   LAB_USER_ACTION_HUB_SUCCESS_WINDOW_MS,
   test,
 } from "./laboratory-runtime-truth.helpers.ts";
+import { resolveDrawerMode } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 
 test("laboratory run controller dismisses successful user actions from the topbar after the success window", () => {
   const timerMock = installTimerMock();
@@ -405,6 +406,240 @@ test("laboratory run controller focuses the source preview through explicit sour
     clickListener?.({ target: new TestElement("focus-source-preview", "source-active") } as Event);
 
     assert.deepEqual(previewCalls, ["scroll", "focus"]);
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
+test("laboratory run controller wires v2 shell action buttons into workspace state", () => {
+  const originalElement = globalThis.Element;
+  const originalInput = globalThis.HTMLInputElement;
+  const originalSelect = globalThis.HTMLSelectElement;
+  const originalTextarea = globalThis.HTMLTextAreaElement;
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  class TestElement extends FakeActionElement {}
+  class TestInputElement {}
+  class TestSelectElement {}
+  class TestTextareaElement {}
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+  Object.defineProperty(globalThis, "HTMLInputElement", {
+    configurable: true,
+    value: TestInputElement,
+  });
+  Object.defineProperty(globalThis, "HTMLSelectElement", {
+    configurable: true,
+    value: TestSelectElement,
+  });
+  Object.defineProperty(globalThis, "HTMLTextAreaElement", {
+    configurable: true,
+    value: TestTextareaElement,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent() {},
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    const clickListener = documentRef.listeners.get("click");
+    const keyListener = documentRef.listeners.get("keydown");
+    assert.ok(clickListener);
+    assert.ok(keyListener);
+
+    clickListener?.({ target: new TestElement("drawer-collapsed-toggled") } as Event);
+    assert.equal(store.getState().ui.workspace.drawerCollapsed, true);
+
+    let prevented = false;
+    keyListener?.({
+      ctrlKey: true,
+      key: "b",
+      target: new TestElement("not-a-text-control"),
+      preventDefault() {
+        prevented = true;
+      },
+    } as unknown as Event);
+    assert.equal(prevented, true);
+    assert.equal(store.getState().ui.workspace.drawerCollapsed, false);
+
+    clickListener?.({ target: new TestElement("workspace-intent-toggle", "visual-inspection") } as Event);
+    assert.deepEqual(store.getState().ui.workspace.selectedIntents, ["visual-inspection"]);
+
+    clickListener?.({ target: new TestElement("workspace-process-view-toggled") } as Event);
+    assert.equal(store.getState().ui.workspace.processViewActive, true);
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+    if (originalInput === undefined) {
+      delete (globalThis as Record<string, unknown>).HTMLInputElement;
+    } else {
+      Object.defineProperty(globalThis, "HTMLInputElement", {
+        configurable: true,
+        value: originalInput,
+      });
+    }
+    if (originalSelect === undefined) {
+      delete (globalThis as Record<string, unknown>).HTMLSelectElement;
+    } else {
+      Object.defineProperty(globalThis, "HTMLSelectElement", {
+        configurable: true,
+        value: originalSelect,
+      });
+    }
+    if (originalTextarea === undefined) {
+      delete (globalThis as Record<string, unknown>).HTMLTextAreaElement;
+    } else {
+      Object.defineProperty(globalThis, "HTMLTextAreaElement", {
+        configurable: true,
+        value: originalTextarea,
+      });
+    }
+  }
+});
+
+test("laboratory run controller routes topbar pills and cancel through v2 contracts", () => {
+  const originalElement = globalThis.Element;
+  const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  class TestElement extends FakeActionElement {}
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent(eventName: string, payload: Record<string, unknown>) {
+            sentEvents.push({ eventName, payload });
+          },
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    const state = store.getState() as ReturnType<typeof store.getState> & {
+      run: Record<string, unknown>;
+      source: Record<string, unknown>;
+      sourceProbeStatus: "idle" | "running" | "completed" | "failed";
+    };
+    state.source = {
+      kind: "video",
+      mode: "local",
+      status: "ready",
+      storedPath: "/tmp/lab-demo.mp4",
+    };
+    state.sourceProbeStatus = "completed";
+    state.run = {
+      id: "run-v2-shell-actions",
+      state: "completed",
+      startedAt: Date.now() - 2000,
+      completedAt: Date.now() - 1000,
+      modules: {},
+      moduleOrder: [],
+      events: [],
+      rawLog: [],
+      artifacts: [],
+      findings: [],
+      liveFindings: [],
+      warnings: [],
+      error: null,
+      targetLabel: null,
+      progress: 100,
+      emptyReason: null,
+      analysisScope: {
+        focus: "visual",
+        intentIds: ["visual-inspection"],
+      },
+      previewArtifacts: [],
+      confidence: "high",
+      moduleTrace: [],
+      comparisonVariants: [],
+      hypothesisSummary: null,
+    };
+    state.reports.user = {
+      summary: "Report ready",
+      confidence: "high",
+      topFindings: [],
+      suspiciousFrames: [],
+      hypothesisResult: null,
+      elapsedSeconds: 1,
+      moduleSummary: [],
+    };
+
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
+
+    clickListener?.({ target: new TestElement("drawer-explore-toggled") } as Event);
+    assert.equal(resolveDrawerMode(store.getState()), "explore");
+
+    clickListener?.({ target: new TestElement("topbar-pill-results") } as Event);
+    assert.equal(store.getState().ui.workspace.drawerModeOverride, "result");
+    assert.equal(resolveDrawerMode(store.getState()), "result");
+
+    clickListener?.({ target: new TestElement("topbar-pill-source") } as Event);
+    assert.equal(store.getState().ui.workspace.drawerModeOverride, "setup");
+    assert.equal(resolveDrawerMode(store.getState()), "setup");
+
+    const runningState = store.getState() as ReturnType<typeof store.getState> & {
+      run: Record<string, unknown>;
+    };
+    runningState.run = {
+      ...runningState.run,
+      state: "running",
+      completedAt: null,
+      progress: 42,
+    };
+    clickListener?.({ target: new TestElement("cancel-analysis") } as Event);
+
+    assert.equal(sentEvents.length, 1);
+    assert.equal(sentEvents[0]?.eventName, "media-action");
+    assert.equal(sentEvents[0]?.payload["action"], "process-cancel");
+    assert.equal((sentEvents[0]?.payload["payload"] as Record<string, unknown>)["featureId"], "media-analysis");
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;

@@ -41,6 +41,10 @@ export interface ReportFreshness {
 /** V2.5 preflight severity — shared contract between UI + controller */
 export type PreflightSeverity = "clear" | "warning" | "will-fail";
 
+/** V3 drawer mode — derived from system state, never manually toggled */
+export type LabDrawerMode = "setup" | "running" | "result" | "explore";
+export type LabDrawerModeOverride = "setup" | "result";
+
 /** V2.3 user-facing intent identifiers — NO tool names exposed */
 export type LabIntentId =
   | "visual-inspection"
@@ -474,8 +478,6 @@ export interface LabAudioFocusSettings {
   eqBands: LabParametricEQBand[];
 }
 
-export type LabProcessSectionId = "pipeline" | "findings" | "artifacts";
-
 export interface LabWorkspaceUiState {
   timelineStartMs: number | null;
   timelineEndMs: number | null;
@@ -490,11 +492,14 @@ export interface LabWorkspaceUiState {
   bookmarks: LabBookmark[];
   selectedIntents: LabIntentId[];
   sourceIntakeCollapsed: boolean;
-  rightPanelCollapsed: boolean;
   processViewActive: boolean;
-  activeStepPreviewId: string | null;
-  processPanelCollapsedSections: LabProcessSectionId[];
   reportOverlayOpen: boolean;
+  /** V3 explore toggle — user manually switches Result ↔ Explore */
+  userExploreToggle: boolean;
+  /** V3 top-bar requested mode, constrained by derived drawer mode rules */
+  drawerModeOverride: LabDrawerModeOverride | null;
+  /** V3 drawer collapsed state */
+  drawerCollapsed: boolean;
 }
 
 /** Capability families — user-facing groups that resolve to internal modules. */
@@ -1277,11 +1282,11 @@ export type LabStoreEvent =
   | { type: "workspace-intent-set"; intents: LabIntentId[] }
   | { type: "workspace-source-intake-toggled"; force?: boolean }
   | { type: "workspace-audio-updated"; patch: Partial<LabAudioFocusSettings> }
-  | { type: "workspace-right-panel-toggled"; force?: boolean }
   | { type: "workspace-process-view-toggled"; force?: boolean }
-  | { type: "workspace-step-preview-activated"; stepId: string | null }
-  | { type: "workspace-process-section-toggled"; sectionId: LabProcessSectionId }
-  | { type: "report-overlay-toggled"; open: boolean };
+  | { type: "report-overlay-toggled"; open: boolean }
+  | { type: "drawer-collapsed-toggled" }
+  | { type: "drawer-explore-toggled" }
+  | { type: "drawer-mode-requested"; mode: LabDrawerModeOverride | null };
 
 export function createLabFeatureMeta(featureId: LabFeatureId): LabFeatureMeta {
   return (

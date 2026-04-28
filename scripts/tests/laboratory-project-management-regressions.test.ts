@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
-import { renderLabLeftRail } from "../../rooms/laboratory/ui/lab-left-rail.ts";
+import { renderLabTopBar } from "../../rooms/laboratory/ui/lab-top-bar.ts";
 
 function hydrateState(
   overrides: {
@@ -49,8 +49,8 @@ function hydrateState(
   return store.getState();
 }
 
-test("laboratory left rail opens in new project mode with passive save and delete controls", () => {
-  const html = renderLabLeftRail(
+test("laboratory top bar opens in new project mode with a passive project selector", () => {
+  const html = renderLabTopBar(
     hydrateState({
       activeProjectId: "draft-1",
       projects: [
@@ -67,15 +67,15 @@ test("laboratory left rail opens in new project mode with passive save and delet
     })
   );
 
-  assert.match(html, /<option value="new" selected>-- New Project --<\/option>/);
-  assert.match(html, /data-lab-action="save-project"[\s\S]*disabled/);
-  assert.match(html, /data-lab-action="project-delete"[^>]*disabled/);
+  assert.match(html, /<option value="new" selected>Yeni Proje<\/option>/);
+  assert.match(html, /data-lab-field="project\.id"/);
+  assert.match(html, /2026-04-20 18-30 - evidence\.mp4/);
   assert.doesNotMatch(html, /workspace\.projectName/);
   assert.doesNotMatch(html, /toggle-report-view/);
 });
 
-test("laboratory left rail enables save and delete when the active project has a source", () => {
-  const html = renderLabLeftRail(
+test("laboratory top bar selects the active project when it has a source", () => {
+  const html = renderLabTopBar(
     hydrateState({
       activeProjectId: "project-1",
       projects: [{ id: "project-1", name: "2026-04-20 18-30 - evidence.mp4", hasSource: true }],
@@ -91,8 +91,8 @@ test("laboratory left rail enables save and delete when the active project has a
   );
 
   assert.match(html, /<option value="project-1" selected>/);
-  assert.doesNotMatch(html, /data-lab-action="save-project"[\s\S]*disabled/);
-  assert.doesNotMatch(html, /data-lab-action="project-delete"[^>]*disabled/);
+  assert.match(html, /2026-04-20 18-30 - evidence\.mp4/);
+  assert.match(html, /data-lab-action="toggle-tool-manager"/);
 });
 
 test("laboratory controller resets source intake when returning to new project and keeps naming/delete safeguards", () => {
@@ -102,7 +102,7 @@ test("laboratory controller resets source intake when returning to new project a
     "utf8"
   );
 
-  assert.match(source, /function buildAutoProjectName\(/);
+  assert.match(source, /buildAutoProjectName,/);
   assert.match(source, /function buildEmptySourceState\(/);
   assert.match(source, /if \(projectValue === "new"\)/);
   assert.match(source, /const resetSourceState = buildEmptySourceState\(state\);/);

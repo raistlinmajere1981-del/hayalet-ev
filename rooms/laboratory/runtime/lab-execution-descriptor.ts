@@ -1,4 +1,5 @@
 import type { LabExecutionPayloadPreview, LabExecutionPlan } from "../models/lab-types.js";
+import { resolveLabI18n, type LabI18nLocale } from "./lab-i18n.js";
 
 export type LabExecutionDescriptorParamShapeType =
   | "clip-boundary"
@@ -194,14 +195,26 @@ export function buildExecutionDescriptor(
 export function formatExecutionDescriptorAdvisory(input: {
   actionType: string;
   descriptor: LabExecutionDescriptor;
+  locale?: LabI18nLocale;
 }) {
   const mapping = getDescriptorMapping(input.actionType);
   const shape = input.descriptor.paramShape.type;
+  const locale = input.locale ?? "en";
+  const view = resolveLabI18n("descriptor.view", locale);
+  if (locale === "tr") {
+    if (mapping.advisoryStyle === "pattern") {
+      return `${view}: ${shape} biçimli bir ${input.descriptor.tool} örüntüsünü açıklar.`;
+    }
+    if (mapping.advisoryStyle === "behavior") {
+      return `${view}: ${input.descriptor.intent}, ${input.descriptor.tool} üzerinden temsil edilir (${shape} biçimi).`;
+    }
+    return `${view}: ${input.descriptor.tool} ile uyumlu (${shape} biçimi).`;
+  }
   if (mapping.advisoryStyle === "pattern") {
-    return `Descriptor view: describes a ${input.descriptor.tool} pattern with ${shape} shape.`;
+    return `${view}: describes a ${input.descriptor.tool} pattern with ${shape} shape.`;
   }
   if (mapping.advisoryStyle === "behavior") {
-    return `Descriptor view: ${input.descriptor.intent} is represented through ${input.descriptor.tool} (${shape} shape).`;
+    return `${view}: ${input.descriptor.intent} is represented through ${input.descriptor.tool} (${shape} shape).`;
   }
-  return `Descriptor view: aligns with ${input.descriptor.tool} (${shape} shape).`;
+  return `${view}: aligns with ${input.descriptor.tool} (${shape} shape).`;
 }

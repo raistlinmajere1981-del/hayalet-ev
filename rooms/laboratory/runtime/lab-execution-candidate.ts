@@ -28,7 +28,11 @@ import {
   buildExecutionReadinessSignal,
   formatExecutionReadinessSignalAdvisory,
 } from "./lab-execution-readiness-signal.js";
-import { buildDecisionCoherence } from "./lab-decision-coherence.js";
+import {
+  buildDecisionCoherence,
+  formatDecisionCoherenceAdvisory,
+} from "./lab-decision-coherence.js";
+import type { LabI18nLocale } from "./lab-i18n.js";
 
 export type LabExecutionCandidateResultInterpretation = {
   coverageLevel: "low" | "medium" | "high";
@@ -48,6 +52,7 @@ type LabExecutionCandidateInput = {
   executionResultInterpretation?: LabExecutionCandidateResultInterpretation | null;
   executionSimulation: LabExecutionSimulation;
   inspectionMode: LabInspectionMode;
+  locale?: LabI18nLocale;
   sourceKind: string;
 };
 
@@ -63,6 +68,7 @@ export type LabExecutionCandidateResolvedInput = {
   executionResultInterpretation?: LabExecutionCandidateResultInterpretation | null;
   executionSimulation: LabExecutionSimulation | null;
   inspectionMode: LabInspectionMode;
+  locale?: LabI18nLocale;
   sourceKind: string;
 };
 
@@ -321,20 +327,17 @@ function appendAdaptiveDecisionHint(summary: string, adaptiveDecisionHint: strin
   return `${summary} ${adaptiveDecisionHint}`;
 }
 
-function appendDescriptorAdvisory(summary: string, input: LabExecutionCandidateInput) {
+function buildDescriptorAdvisory(input: LabExecutionCandidateInput, locale: LabI18nLocale) {
   const descriptor = buildExecutionDescriptor({
     actionType: input.executionPlan.actionType,
     executionPayloadPreview: input.executionPayloadPreview,
     executionPlan: input.executionPlan,
   });
-  const advisory = formatExecutionDescriptorAdvisory({
+  return formatExecutionDescriptorAdvisory({
     actionType: input.executionPlan.actionType,
     descriptor,
+    locale,
   });
-  if (summary.includes(advisory)) {
-    return summary;
-  }
-  return `${summary} ${advisory}`;
 }
 
 function buildReadinessSignal(
@@ -353,47 +356,36 @@ function buildReadinessSignal(
   });
 }
 
-function appendReadinessSignalAdvisory(
-  summary: string,
-  signal: ReturnType<typeof buildExecutionReadinessSignal>
-) {
-  const advisory = formatExecutionReadinessSignalAdvisory(signal);
-  if (summary.includes(advisory)) {
-    return summary;
-  }
-  return `${summary} ${advisory}`;
-}
-
-function appendExecutionBridgeAdvisory(summary: string, input: LabExecutionCandidateInput) {
+function buildExecutionBridgeAdvisory(input: LabExecutionCandidateInput, locale: LabI18nLocale) {
   const descriptor = buildExecutionDescriptor({
     actionType: input.executionPlan.actionType,
     executionPayloadPreview: input.executionPayloadPreview,
     executionPlan: input.executionPlan,
   });
-  const advisory = formatExecutionBridgeAdvisory(buildExecutionBridge(descriptor));
-  if (summary.includes(advisory)) {
-    return summary;
-  }
-  return `${summary} ${advisory}`;
+  return formatExecutionBridgeAdvisory(buildExecutionBridge(descriptor), locale);
 }
 
-function appendDecisionCoherenceAdvisory(
-  summary: string,
-  context: {
-    decisionPosture: ReturnType<typeof buildDecisionPosture>;
-    readinessSignal: ReturnType<typeof buildExecutionReadinessSignal>;
-    projection: ReturnType<typeof buildCounterfactualProjection> | null;
-  }
-) {
-  const advisory = buildDecisionCoherence({
+function buildDecisionCoherenceSignal(context: {
+  decisionPosture: ReturnType<typeof buildDecisionPosture>;
+  readinessSignal: ReturnType<typeof buildExecutionReadinessSignal>;
+  projection: ReturnType<typeof buildCounterfactualProjection> | null;
+}) {
+  return buildDecisionCoherence({
     posture: context.decisionPosture.posture,
     readiness: context.readinessSignal,
     ...(context.projection === null ? {} : { projection: context.projection }),
-  }).summary;
-  if (summary.includes(advisory)) {
-    return summary;
-  }
-  return `${summary} ${advisory}`;
+  });
+}
+
+function joinSummaryParts(parts: string[]) {
+  return parts
+    .map(function (part) {
+      return part.trim();
+    })
+    .filter(function (part) {
+      return part !== "";
+    })
+    .join(" ");
 }
 
 function buildConfidence(
@@ -455,6 +447,7 @@ function buildConfidence(
 }
 
 function buildExecutionCandidate(input: LabExecutionCandidateInput): LabExecutionCandidate {
+  const locale = input.locale ?? "en";
   const materialAlternativePressure = hasMaterialAlternativePressure(input);
   const structuralIntegrity = evaluateStructuralIntegrity(input, materialAlternativePressure);
   const status = evaluateStatus(input, structuralIntegrity, materialAlternativePressure);
@@ -503,31 +496,31 @@ function buildExecutionCandidate(input: LabExecutionCandidateInput): LabExecutio
     decisionPressure: adaptiveDecision.decisionPressure,
     projection: counterfactualProjection,
   });
+  const decisionCoherence = buildDecisionCoherenceSignal({
+    decisionPosture,
+    readinessSignal,
+    projection: counterfactualProjection,
+  });
+  const advisorySummary = joinSummaryParts([
+    buildDescriptorAdvisory(input, locale),
+    formatExecutionReadinessSignalAdvisory(readinessSignal, locale),
+    buildExecutionBridgeAdvisory(input, locale),
+    formatDecisionCoherenceAdvisory(decisionCoherence, locale),
+  ]);
+  const summary = prependDecisionPostureLabel(
+    joinSummaryParts([
+      appendAdaptiveDecisionHint(buildSummary(status), adaptiveDecisionHint),
+      advisorySummary,
+    ]),
+    decisionPosture,
+    locale
+  );
 
   return {
     id: createCandidateId(input),
     planId: input.executionPlan.id,
     status,
-    summary: prependDecisionPostureLabel(
-      appendDecisionCoherenceAdvisory(
-        appendExecutionBridgeAdvisory(
-          appendReadinessSignalAdvisory(
-            appendDescriptorAdvisory(
-              appendAdaptiveDecisionHint(buildSummary(status), adaptiveDecisionHint),
-              input
-            ),
-            readinessSignal
-          ),
-          input
-        ),
-        {
-          decisionPosture,
-          readinessSignal,
-          projection: counterfactualProjection,
-        }
-      ),
-      decisionPosture
-    ),
+    summary,
     adaptiveDecisionHint,
     decisionPressure: adaptiveDecision.decisionPressure,
     structuralIntegrity,
@@ -567,6 +560,7 @@ export function buildExecutionCandidateFromResolved(
     executionResultInterpretation: input.executionResultInterpretation ?? null,
     executionSimulation: input.executionSimulation,
     inspectionMode: input.inspectionMode,
+    locale: input.locale ?? "en",
     sourceKind: input.sourceKind,
   };
 

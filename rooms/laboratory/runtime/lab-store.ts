@@ -235,11 +235,11 @@ function createDefaultWorkspaceUiState(): LabWorkspaceUiState {
     bookmarks: [],
     selectedIntents: [],
     sourceIntakeCollapsed: false,
-    rightPanelCollapsed: false,
     processViewActive: false,
-    activeStepPreviewId: null,
-    processPanelCollapsedSections: [],
     reportOverlayOpen: false,
+    userExploreToggle: false,
+    drawerModeOverride: null,
+    drawerCollapsed: false,
   };
 }
 
@@ -1294,6 +1294,8 @@ function syncRunStateFromHostEvent(state: LabStoreState, event: LabEventFeedItem
   }
   if (event.stage === "queued" || event.stage === "running") {
     ensurePendingRun(state, event.action).state = "running";
+    state.ui.workspace.userExploreToggle = false;
+    state.ui.workspace.drawerModeOverride = null;
   }
 }
 
@@ -1487,6 +1489,7 @@ function syncCanonicalStateFromSnapshot(
     state.ui.workspace = clearWorkspaceSelection({
       ...state.ui.workspace,
       sourceIntakeCollapsed: false,
+      drawerModeOverride: null,
     });
     healWorkspaceDualPreviewState(state);
     return state;
@@ -1536,17 +1539,22 @@ function syncCanonicalStateFromSnapshot(
     clearSuggestionPreview(state);
     resetInspectionMode(state);
     clearInspectionDepth(state);
-    state.ui.workspace = clearWorkspaceSelection(state.ui.workspace);
+    state.ui.workspace = {
+      ...clearWorkspaceSelection(state.ui.workspace),
+      drawerModeOverride: null,
+    };
   }
   if (previousActiveProjectId !== nextActiveProjectId) {
     state.ui.workspace = {
       ...state.ui.workspace,
       sourceIntakeCollapsed: nextSourceReady,
+      drawerModeOverride: null,
     };
   } else if (previousSourceReady !== nextSourceReady) {
     state.ui.workspace = {
       ...state.ui.workspace,
       sourceIntakeCollapsed: nextSourceReady,
+      drawerModeOverride: null,
     };
   }
 
@@ -1776,14 +1784,14 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
                 ? normalizeWorkspaceIntentIds(ws.selectedIntents)
                 : state.ui.workspace.selectedIntents,
               sourceIntakeCollapsed: ws.sourceIntakeCollapsed === true,
-              rightPanelCollapsed: ws.rightPanelCollapsed === true,
               processViewActive: ws.processViewActive === true,
-              activeStepPreviewId:
-                typeof ws.activeStepPreviewId === "string" ? ws.activeStepPreviewId : null,
-              processPanelCollapsedSections: Array.isArray(ws.processPanelCollapsedSections)
-                ? ws.processPanelCollapsedSections
-                : state.ui.workspace.processPanelCollapsedSections,
               reportOverlayOpen: ws.reportOverlayOpen === true,
+              userExploreToggle: ws.userExploreToggle === true,
+              drawerModeOverride:
+                ws.drawerModeOverride === "setup" || ws.drawerModeOverride === "result"
+                  ? ws.drawerModeOverride
+                  : null,
+              drawerCollapsed: ws.drawerCollapsed === true,
             },
             hydratedTimelineRange,
             {
@@ -2014,7 +2022,10 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         clearSuggestionPreview(state);
         resetInspectionMode(state);
         clearInspectionDepth(state);
-        state.ui.workspace = clearWorkspaceSelection(state.ui.workspace);
+        state.ui.workspace = {
+          ...clearWorkspaceSelection(state.ui.workspace),
+          drawerModeOverride: null,
+        };
       }
       if (
         event.patch["kind"] !== undefined ||
@@ -2025,6 +2036,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         state.ui.workspace = {
           ...state.ui.workspace,
           sourceIntakeCollapsed: false,
+          drawerModeOverride: null,
         };
       }
       healWorkspaceDualPreviewState(state);
@@ -2575,13 +2587,6 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         audioFocus: normalizeAudioFocusPatch(state.ui.workspace.audioFocus, event.patch),
       };
       return state;
-    case "workspace-right-panel-toggled":
-      state.ui.workspace = {
-        ...state.ui.workspace,
-        rightPanelCollapsed:
-          typeof event.force === "boolean" ? event.force : !state.ui.workspace.rightPanelCollapsed,
-      };
-      return state;
     case "workspace-process-view-toggled":
       state.ui.workspace = {
         ...state.ui.workspace,
@@ -2589,30 +2594,30 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
           typeof event.force === "boolean" ? event.force : !state.ui.workspace.processViewActive,
       };
       return state;
-    case "workspace-step-preview-activated":
-      state.ui.workspace = {
-        ...state.ui.workspace,
-        activeStepPreviewId: event.stepId,
-      };
-      return state;
-    case "workspace-process-section-toggled": {
-      const collapsed = state.ui.workspace.processPanelCollapsedSections.slice();
-      const idx = collapsed.indexOf(event.sectionId);
-      if (idx >= 0) {
-        collapsed.splice(idx, 1);
-      } else {
-        collapsed.push(event.sectionId);
-      }
-      state.ui.workspace = {
-        ...state.ui.workspace,
-        processPanelCollapsedSections: collapsed,
-      };
-      return state;
-    }
     case "report-overlay-toggled":
       state.ui.workspace = {
         ...state.ui.workspace,
         reportOverlayOpen: event.open,
+      };
+      return state;
+    case "drawer-collapsed-toggled":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        drawerCollapsed: !state.ui.workspace.drawerCollapsed,
+      };
+      return state;
+    case "drawer-explore-toggled":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        userExploreToggle: !state.ui.workspace.userExploreToggle,
+        drawerModeOverride: null,
+      };
+      return state;
+    case "drawer-mode-requested":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        drawerModeOverride: event.mode,
+        userExploreToggle: event.mode === "result" ? false : state.ui.workspace.userExploreToggle,
       };
       return state;
     default:
