@@ -26,7 +26,9 @@ import { buildInterpretationItems } from "../../rooms/laboratory/runtime/lab-int
 import {
   buildAdaptiveDecisionSignal,
   buildCounterfactualProjection,
+  buildDecisionPosture,
   buildGuidedAlternativeSignal,
+  prependDecisionPostureLabel,
 } from "../../rooms/laboratory/runtime/lab-adaptive-decision.ts";
 import {
   buildExecutionAlternatives,
@@ -34,11 +36,27 @@ import {
 } from "../../rooms/laboratory/runtime/lab-execution-alternatives.ts";
 import { buildExecutionCandidateFromResolved } from "../../rooms/laboratory/runtime/lab-execution-candidate.ts";
 import {
+  buildExecutionDescriptor,
+  formatExecutionDescriptorAdvisory,
+} from "../../rooms/laboratory/runtime/lab-execution-descriptor.ts";
+import {
+  buildExecutionBridge,
+  formatExecutionBridgeAdvisory,
+} from "../../rooms/laboratory/runtime/lab-execution-bridge.ts";
+import {
+  buildDecisionCoherence,
+  formatDecisionCoherenceAdvisory,
+} from "../../rooms/laboratory/runtime/lab-decision-coherence.ts";
+import {
   buildExecutionPayloadPreview,
   buildExecutionPayloadPreviewFromResolved,
-} from "../../rooms/laboratory/runtime/lab-execution-bridge.ts";
+} from "../../rooms/laboratory/runtime/lab-execution-payload-preview.ts";
 import { buildExecutionPlan } from "../../rooms/laboratory/runtime/lab-execution-planner.ts";
 import { buildExecutionReadiness } from "../../rooms/laboratory/runtime/lab-execution-readiness.ts";
+import {
+  buildExecutionReadinessSignal,
+  formatExecutionReadinessSignalAdvisory,
+} from "../../rooms/laboratory/runtime/lab-execution-readiness-signal.ts";
 import {
   buildExecutionReflection,
   buildExecutionReflectionFromResolved,
@@ -135,20 +153,30 @@ export {
   bindLabSelectionSuggestionClicks,
   buildAdaptiveDecisionSignal,
   buildCounterfactualProjection,
+  buildDecisionPosture,
   buildGuidedAlternativeSignal,
+  prependDecisionPostureLabel,
+  buildDecisionCoherence,
   buildExecutionAlternatives,
   buildExecutionAlternativesFromResolved,
   buildExecutionCandidateFromResolved,
+  buildExecutionBridge,
+  buildExecutionDescriptor,
   buildExecutionDispatchId,
   buildExecutionPayloadPreview,
   buildExecutionPayloadPreviewFromResolved,
   buildExecutionPlan,
   buildExecutionReadiness,
+  buildExecutionReadinessSignal,
   buildExecutionReflection,
   buildExecutionReflectionFromResolved,
   buildExecutionResultInterpretation,
   buildExecutionSimulation,
   buildExecutionStagingFromResolved,
+  formatExecutionBridgeAdvisory,
+  formatDecisionCoherenceAdvisory,
+  formatExecutionDescriptorAdvisory,
+  formatExecutionReadinessSignalAdvisory,
   buildInterpretationItems,
   buildSuggestionPreview,
   createAudioVisualizer,

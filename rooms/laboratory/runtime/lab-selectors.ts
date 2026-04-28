@@ -39,7 +39,7 @@ import { CAPABILITY_FAMILIES, WORKSPACE_INTENTS } from "../models/lab-types.js";
 import { normalizeAnalysisScope } from "../shared/types/analysis-scope.js";
 import { normalizeAudioFocusSettings } from "./lab-audio-focus-normalization.js";
 import { buildExecutionAlternativesFromResolved } from "./lab-execution-alternatives.js";
-import { buildExecutionPayloadPreviewFromResolved } from "./lab-execution-bridge.js";
+import { buildExecutionPayloadPreviewFromResolved } from "./lab-execution-payload-preview.js";
 import { buildExecutionCandidateFromResolved } from "./lab-execution-candidate.js";
 import { buildExecutionPlan } from "./lab-execution-planner.js";
 import { buildExecutionReadiness } from "./lab-execution-readiness.js";

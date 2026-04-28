@@ -15,8 +15,20 @@ import type {
 import {
   buildAdaptiveDecisionSignal,
   buildCounterfactualProjection,
+  buildDecisionPosture,
   buildGuidedAlternativeSignal,
+  prependDecisionPostureLabel,
 } from "./lab-adaptive-decision.js";
+import {
+  buildExecutionDescriptor,
+  formatExecutionDescriptorAdvisory,
+} from "./lab-execution-descriptor.js";
+import { buildExecutionBridge, formatExecutionBridgeAdvisory } from "./lab-execution-bridge.js";
+import {
+  buildExecutionReadinessSignal,
+  formatExecutionReadinessSignalAdvisory,
+} from "./lab-execution-readiness-signal.js";
+import { buildDecisionCoherence } from "./lab-decision-coherence.js";
 
 export type LabExecutionCandidateResultInterpretation = {
   coverageLevel: "low" | "medium" | "high";
@@ -309,6 +321,81 @@ function appendAdaptiveDecisionHint(summary: string, adaptiveDecisionHint: strin
   return `${summary} ${adaptiveDecisionHint}`;
 }
 
+function appendDescriptorAdvisory(summary: string, input: LabExecutionCandidateInput) {
+  const descriptor = buildExecutionDescriptor({
+    actionType: input.executionPlan.actionType,
+    executionPayloadPreview: input.executionPayloadPreview,
+    executionPlan: input.executionPlan,
+  });
+  const advisory = formatExecutionDescriptorAdvisory({
+    actionType: input.executionPlan.actionType,
+    descriptor,
+  });
+  if (summary.includes(advisory)) {
+    return summary;
+  }
+  return `${summary} ${advisory}`;
+}
+
+function buildReadinessSignal(
+  input: LabExecutionCandidateInput,
+  context: {
+    decisionPressure: LabExecutionCandidate["decisionPressure"];
+    projection: ReturnType<typeof buildCounterfactualProjection> | null;
+  }
+) {
+  return buildExecutionReadinessSignal({
+    decisionPressure: context.decisionPressure,
+    goalEvaluation: input.executionGoalEvaluation ?? null,
+    alignment: input.executionResultInterpretation?.alignment ?? null,
+    alternativesConfidence: input.executionAlternatives.confidence ?? null,
+    projection: context.projection,
+  });
+}
+
+function appendReadinessSignalAdvisory(
+  summary: string,
+  signal: ReturnType<typeof buildExecutionReadinessSignal>
+) {
+  const advisory = formatExecutionReadinessSignalAdvisory(signal);
+  if (summary.includes(advisory)) {
+    return summary;
+  }
+  return `${summary} ${advisory}`;
+}
+
+function appendExecutionBridgeAdvisory(summary: string, input: LabExecutionCandidateInput) {
+  const descriptor = buildExecutionDescriptor({
+    actionType: input.executionPlan.actionType,
+    executionPayloadPreview: input.executionPayloadPreview,
+    executionPlan: input.executionPlan,
+  });
+  const advisory = formatExecutionBridgeAdvisory(buildExecutionBridge(descriptor));
+  if (summary.includes(advisory)) {
+    return summary;
+  }
+  return `${summary} ${advisory}`;
+}
+
+function appendDecisionCoherenceAdvisory(
+  summary: string,
+  context: {
+    decisionPosture: ReturnType<typeof buildDecisionPosture>;
+    readinessSignal: ReturnType<typeof buildExecutionReadinessSignal>;
+    projection: ReturnType<typeof buildCounterfactualProjection> | null;
+  }
+) {
+  const advisory = buildDecisionCoherence({
+    posture: context.decisionPosture.posture,
+    readiness: context.readinessSignal,
+    ...(context.projection === null ? {} : { projection: context.projection }),
+  }).summary;
+  if (summary.includes(advisory)) {
+    return summary;
+  }
+  return `${summary} ${advisory}`;
+}
+
 function buildConfidence(
   input: LabExecutionCandidateInput,
   status: LabExecutionCandidate["status"],
@@ -376,6 +463,11 @@ function buildExecutionCandidate(input: LabExecutionCandidateInput): LabExecutio
     executionGoalEvaluation: input.executionGoalEvaluation ?? null,
     executionResultInterpretation: input.executionResultInterpretation ?? null,
   });
+  const decisionPosture = buildDecisionPosture({
+    decisionPressure: adaptiveDecision.decisionPressure,
+    executionGoalEvaluation: input.executionGoalEvaluation ?? null,
+    executionResultInterpretation: input.executionResultInterpretation ?? null,
+  });
   const guidedAlternative = buildGuidedAlternativeSignal({
     alternatives: input.executionAlternatives.alternatives,
     alternativesConfidence: input.executionAlternatives.confidence ?? null,
@@ -386,7 +478,8 @@ function buildExecutionCandidate(input: LabExecutionCandidateInput): LabExecutio
   const preferredAlternative =
     guidedAlternative.preferredAlternativeIndex === null
       ? null
-      : input.executionAlternatives.alternatives[guidedAlternative.preferredAlternativeIndex] ?? null;
+      : (input.executionAlternatives.alternatives[guidedAlternative.preferredAlternativeIndex] ??
+        null);
   const counterfactualProjection =
     adaptiveDecision.decisionPressure !== "high" ||
     preferredAlternative === null ||
@@ -406,14 +499,34 @@ function buildExecutionCandidate(input: LabExecutionCandidateInput): LabExecutio
     ),
     counterfactualProjection?.summary ?? ""
   );
+  const readinessSignal = buildReadinessSignal(input, {
+    decisionPressure: adaptiveDecision.decisionPressure,
+    projection: counterfactualProjection,
+  });
 
   return {
     id: createCandidateId(input),
     planId: input.executionPlan.id,
     status,
-    summary: appendAdaptiveDecisionHint(
-      buildSummary(status),
-      adaptiveDecisionHint
+    summary: prependDecisionPostureLabel(
+      appendDecisionCoherenceAdvisory(
+        appendExecutionBridgeAdvisory(
+          appendReadinessSignalAdvisory(
+            appendDescriptorAdvisory(
+              appendAdaptiveDecisionHint(buildSummary(status), adaptiveDecisionHint),
+              input
+            ),
+            readinessSignal
+          ),
+          input
+        ),
+        {
+          decisionPosture,
+          readinessSignal,
+          projection: counterfactualProjection,
+        }
+      ),
+      decisionPosture
     ),
     adaptiveDecisionHint,
     decisionPressure: adaptiveDecision.decisionPressure,

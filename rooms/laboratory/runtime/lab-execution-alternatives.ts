@@ -2,6 +2,7 @@ import type {
   LabActiveExecutionResult,
   LabExecutionAlternative,
   LabExecutionAlternatives,
+  LabExecutionDecisionPressure,
   LabExecutionGoalEvaluation,
   LabExecutionPlan,
   LabExecutionReadiness,
@@ -13,9 +14,22 @@ import type {
 import {
   buildAdaptiveDecisionSignal,
   buildCounterfactualProjection,
+  buildDecisionPosture,
   buildGuidedAlternativeSignal,
+  prependDecisionPostureLabel,
+  type LabDecisionPostureSignal,
   type LabGuidedAlternativeSignal,
 } from "./lab-adaptive-decision.js";
+import {
+  buildExecutionDescriptor,
+  formatExecutionDescriptorAdvisory,
+} from "./lab-execution-descriptor.js";
+import { buildExecutionBridge, formatExecutionBridgeAdvisory } from "./lab-execution-bridge.js";
+import { buildDecisionCoherence } from "./lab-decision-coherence.js";
+import {
+  buildExecutionReadinessSignal,
+  formatExecutionReadinessSignalAdvisory,
+} from "./lab-execution-readiness-signal.js";
 
 export type LabExecutionAlternativesResultInterpretation = {
   coverageLevel: "low" | "medium" | "high";
@@ -395,21 +409,90 @@ function buildBaseSummary(input: LabExecutionAlternativesInput) {
 function buildSummary(
   input: LabExecutionAlternativesInput,
   guidedAlternative: LabGuidedAlternativeSignal,
-  counterfactualSummary: string
+  counterfactualSummary: string,
+  descriptorAdvisory: string,
+  readinessSignalAdvisory: string,
+  bridgeAdvisory: string,
+  coherenceAdvisory: string,
+  decisionPosture: LabDecisionPostureSignal | null
 ) {
   const baseSummary = buildBaseSummary(input);
-  const suffix = [guidedAlternative.guidanceText, counterfactualSummary]
+  const suffix = [
+    guidedAlternative.guidanceText,
+    counterfactualSummary,
+    descriptorAdvisory,
+    readinessSignalAdvisory,
+    bridgeAdvisory,
+    coherenceAdvisory,
+  ]
     .filter(function (entry) {
       return entry !== "";
     })
     .join(" ");
+  let summary = baseSummary;
   if (suffix === "") {
-    return baseSummary;
+    summary = baseSummary;
+  } else if (!baseSummary.includes(suffix)) {
+    summary = `${baseSummary} ${suffix}`;
   }
-  if (baseSummary.includes(suffix)) {
-    return baseSummary;
+  return decisionPosture === null ? summary : prependDecisionPostureLabel(summary, decisionPosture);
+}
+
+function buildReadinessSignal(
+  input: LabExecutionAlternativesInput,
+  decisionPressure: LabExecutionDecisionPressure,
+  alternativesConfidence: number,
+  projection: ReturnType<typeof buildCounterfactualProjection> | null
+) {
+  return buildExecutionReadinessSignal({
+    decisionPressure,
+    goalEvaluation: input.executionGoalEvaluation ?? null,
+    alignment: input.executionResultInterpretation?.alignment ?? null,
+    alternativesConfidence,
+    projection,
+  });
+}
+
+function buildReadinessSignalAdvisory(signal: ReturnType<typeof buildExecutionReadinessSignal>) {
+  return formatExecutionReadinessSignalAdvisory(signal);
+}
+
+function buildDecisionCoherenceAdvisory(context: {
+  decisionPosture: LabDecisionPostureSignal;
+  readinessSignal: ReturnType<typeof buildExecutionReadinessSignal>;
+  projection: ReturnType<typeof buildCounterfactualProjection> | null;
+}) {
+  return buildDecisionCoherence({
+    posture: context.decisionPosture.posture,
+    readiness: context.readinessSignal,
+    ...(context.projection === null ? {} : { projection: context.projection }),
+  }).summary;
+}
+
+function buildAlternativeDescriptorAdvisory(alternative: LabExecutionAlternative | null) {
+  if (alternative === null) {
+    return "";
   }
-  return `${baseSummary} ${suffix}`;
+  const descriptor = buildExecutionDescriptor({
+    actionType: alternative.actionType,
+  });
+  return formatExecutionDescriptorAdvisory({
+    actionType: alternative.actionType,
+    descriptor,
+  });
+}
+
+function buildAlternativeBridgeAdvisory(alternative: LabExecutionAlternative | null) {
+  if (alternative === null) {
+    return "";
+  }
+  return formatExecutionBridgeAdvisory(
+    buildExecutionBridge(
+      buildExecutionDescriptor({
+        actionType: alternative.actionType,
+      })
+    )
+  );
 }
 
 function buildBaseComparisonNote(input: LabExecutionAlternativesInput) {
@@ -519,6 +602,11 @@ export function buildExecutionAlternatives(
     executionGoalEvaluation: input.executionGoalEvaluation ?? null,
     executionResultInterpretation: input.executionResultInterpretation ?? null,
   });
+  const decisionPosture = buildDecisionPosture({
+    decisionPressure: adaptiveDecision.decisionPressure,
+    executionGoalEvaluation: input.executionGoalEvaluation ?? null,
+    executionResultInterpretation: input.executionResultInterpretation ?? null,
+  });
   const guidedAlternative = buildGuidedAlternativeSignal({
     alternatives,
     alternativesConfidence: confidence,
@@ -529,9 +617,11 @@ export function buildExecutionAlternatives(
   const preferredAlternative =
     guidedAlternative.preferredAlternativeIndex === null
       ? null
-      : alternatives[guidedAlternative.preferredAlternativeIndex] ?? null;
+      : (alternatives[guidedAlternative.preferredAlternativeIndex] ?? null);
   const counterfactualProjection =
-    preferredAlternative === null || input.executionResult === undefined || input.executionResult === null
+    preferredAlternative === null ||
+    input.executionResult === undefined ||
+    input.executionResult === null
       ? null
       : buildCounterfactualProjection(preferredAlternative, {
           decisionPressure: adaptiveDecision.decisionPressure,
@@ -539,13 +629,38 @@ export function buildExecutionAlternatives(
           executionResult: input.executionResult,
           executionResultInterpretation: input.executionResultInterpretation ?? null,
         });
+  const descriptorAlternative = preferredAlternative ?? alternatives[0] ?? null;
+  const descriptorAdvisory = buildAlternativeDescriptorAdvisory(descriptorAlternative);
+  const bridgeAdvisory = buildAlternativeBridgeAdvisory(descriptorAlternative);
+  const readinessSignal = buildReadinessSignal(
+    input,
+    adaptiveDecision.decisionPressure,
+    confidence,
+    counterfactualProjection
+  );
+  const readinessSignalAdvisory = buildReadinessSignalAdvisory(readinessSignal);
+  const coherenceAdvisory = buildDecisionCoherenceAdvisory({
+    decisionPosture,
+    readinessSignal,
+    projection: counterfactualProjection,
+  });
+  const hasExecutionFeedbackContext =
+    (input.executionGoalEvaluation !== undefined && input.executionGoalEvaluation !== null) ||
+    (input.executionResultInterpretation !== undefined &&
+      input.executionResultInterpretation !== null);
+  const alternativesDecisionPosture = hasExecutionFeedbackContext ? decisionPosture : null;
   return {
     id: createAlternativesId(input),
     planId: input.executionPlan.id,
     summary: buildSummary(
       input,
       guidedAlternative,
-      counterfactualProjection?.summary ?? ""
+      counterfactualProjection?.summary ?? "",
+      descriptorAdvisory,
+      readinessSignalAdvisory,
+      bridgeAdvisory,
+      coherenceAdvisory,
+      alternativesDecisionPosture
     ),
     alternatives,
     comparisonNote: buildComparisonNote(input, guidedAlternative),

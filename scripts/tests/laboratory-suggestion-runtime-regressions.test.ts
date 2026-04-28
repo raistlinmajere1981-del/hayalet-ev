@@ -26,6 +26,23 @@ import {
 
 import type { LabActionSuggestion, LabSelection } from "./laboratory-runtime-truth.helpers.ts";
 
+function collectPersistedKeys(value: unknown, keys: string[] = []) {
+  if (value === null || typeof value !== "object") {
+    return keys;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectPersistedKeys(item, keys);
+    }
+    return keys;
+  }
+  for (const [key, child] of Object.entries(value)) {
+    keys.push(key);
+    collectPersistedKeys(child, keys);
+  }
+  return keys;
+}
+
 test("selection suggestion selector returns an empty list without a valid selection", () => {
   const store = createLabStore();
 
@@ -626,6 +643,10 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
   assert.equal("executionRuntime" in persistedState, false);
   assert.equal("patternSignal" in persistedState, false);
   assert.equal("decisionPressure" in persistedState, false);
+  assert.equal("decisionPosture" in persistedState, false);
+  assert.equal("decisionPostureSignal" in persistedState, false);
+  assert.equal("posture" in persistedState, false);
+  assert.equal("shortLabel" in persistedState, false);
   assert.equal("counterfactualProjection" in persistedState, false);
   assert.equal("expectedCoverage" in persistedState, false);
   assert.equal("expectedAlignment" in persistedState, false);
@@ -710,6 +731,23 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
     false
   );
   assert.equal(
+    "decisionPosture" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+  assert.equal(
+    "decisionPostureSignal" in
+      ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+  assert.equal(
+    "posture" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+  assert.equal(
+    "shortLabel" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    false
+  );
+  assert.equal(
     "counterfactualProjection" in
       ((persistedState["workspace"] as Record<string, unknown>) || {}),
     false
@@ -739,6 +777,14 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
     "preferredAlternativeLabel" in
       ((persistedState["workspace"] as Record<string, unknown>) || {}),
     false
+  );
+  const persistedKeys = collectPersistedKeys(persistedState);
+  for (const key of ["decisionPosture", "decisionPostureSignal", "posture", "shortLabel"]) {
+    assert.equal(persistedKeys.includes(key), false);
+  }
+  assert.doesNotMatch(
+    JSON.stringify(persistedState),
+    /\b(Proceed with caution|Proceed|Reconsider)\b/
   );
 
   __testOnlyResetExecutionPatternRegistry();

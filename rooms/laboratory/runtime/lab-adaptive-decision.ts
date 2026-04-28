@@ -15,6 +15,13 @@ export type LabAdaptiveDecisionSignal = {
   decisionPressure: LabExecutionDecisionPressure;
 };
 
+export type LabDecisionPosture = "proceed" | "proceed-with-caution" | "reconsider";
+
+export type LabDecisionPostureSignal = {
+  posture: LabDecisionPosture;
+  shortLabel: string;
+};
+
 export type LabGuidedAlternativeSignal = {
   candidateGuidanceText: string;
   guidanceText: string;
@@ -40,10 +47,36 @@ type LabGuidedAlternativeInput = LabAdaptiveDecisionInput & {
   decisionPressure?: LabExecutionDecisionPressure;
 };
 
+type LabDecisionPostureInput = LabAdaptiveDecisionInput & {
+  decisionPressure: LabExecutionDecisionPressure;
+};
+
 type LabCounterfactualProjectionContext = LabAdaptiveDecisionInput & {
   executionResult?: LabActiveExecutionResult | null;
   decisionPressure?: LabExecutionDecisionPressure;
 };
+
+const DECISION_POSTURE_LABELS = ["Proceed with caution", "Proceed", "Reconsider"] as const;
+
+function getDecisionPostureLabel(posture: LabDecisionPosture) {
+  if (posture === "proceed") {
+    return "Proceed";
+  }
+  if (posture === "reconsider") {
+    return "Reconsider";
+  }
+  return "Proceed with caution";
+}
+
+function stripLeadingDecisionPostureLabel(summary: string) {
+  for (const label of DECISION_POSTURE_LABELS) {
+    const prefix = `${label}: `;
+    if (summary.startsWith(prefix)) {
+      return summary.slice(prefix.length);
+    }
+  }
+  return summary;
+}
 
 function getNeutralCounterfactualProjection(): LabCounterfactualProjection {
   return {
@@ -52,6 +85,39 @@ function getNeutralCounterfactualProjection(): LabCounterfactualProjection {
     expectedStability: "similar",
     summary: "",
   };
+}
+
+export function buildDecisionPosture(input: LabDecisionPostureInput): LabDecisionPostureSignal {
+  const goalEvaluation = input.executionGoalEvaluation ?? null;
+  const interpretation = input.executionResultInterpretation ?? null;
+  const patternStrength = goalEvaluation?.patternSignal?.strength ?? null;
+  const outcome = goalEvaluation?.outcome ?? null;
+  const alignment = interpretation?.alignment ?? null;
+
+  let posture: LabDecisionPosture = "proceed-with-caution";
+
+  if (outcome !== null && patternStrength !== null && alignment !== null) {
+    if (
+      patternStrength === "strong" &&
+      outcome === "successful" &&
+      alignment === "matches-simulation" &&
+      input.decisionPressure === "low"
+    ) {
+      posture = "proceed";
+    } else if (outcome === "failed" && patternStrength === "weak" && alignment === "deviates") {
+      posture = "reconsider";
+    }
+  }
+
+  return {
+    posture,
+    shortLabel: getDecisionPostureLabel(posture),
+  };
+}
+
+export function prependDecisionPostureLabel(summary: string, posture: LabDecisionPostureSignal) {
+  const body = stripLeadingDecisionPostureLabel(summary);
+  return `${posture.shortLabel}: ${body}`;
 }
 
 function getAdaptiveDecisionHint(

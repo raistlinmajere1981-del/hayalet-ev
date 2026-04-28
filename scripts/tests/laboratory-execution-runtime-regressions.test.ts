@@ -4,9 +4,14 @@ import {
   assert,
   buildAdaptiveDecisionSignal,
   buildCounterfactualProjection,
+  buildDecisionPosture,
+  buildDecisionCoherence,
   buildExecutionAlternatives,
   buildExecutionAlternativesFromResolved,
+  buildExecutionBridge,
   buildExecutionCandidateFromResolved,
+  buildExecutionDescriptor,
+  buildExecutionReadinessSignal,
   buildGuidedAlternativeSignal,
   buildExecutionPayloadPreview,
   buildExecutionPayloadPreviewFromResolved,
@@ -40,7 +45,12 @@ import {
   getExecutionGoalEvaluation,
   getLaboratoryProcessSummary,
   getLaboratoryRightPanelContext,
+  formatExecutionBridgeAdvisory,
+  formatDecisionCoherenceAdvisory,
+  formatExecutionDescriptorAdvisory,
+  formatExecutionReadinessSignalAdvisory,
   installTimerMock,
+  prependDecisionPostureLabel,
   test,
 } from "./laboratory-runtime-truth.helpers.ts";
 
@@ -1600,6 +1610,578 @@ function createExecutionAlternativesChain(params: {
   };
 }
 
+function cloneForMutationCheck<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function deepFreeze<T>(value: T): T {
+  if (value !== null && typeof value === "object") {
+    Object.freeze(value);
+    for (const child of Object.values(value as Record<string, unknown>)) {
+      deepFreeze(child);
+    }
+  }
+  return value;
+}
+
+const DESCRIPTOR_EXECUTION_VERB_PATTERN =
+  /\b(auto|commit|dispatch|execute|run|apply|switch|select|activate|choose|trigger|invoke)\b/i;
+
+function sliceAdvisoryText(summary: string, marker: string, stopMarkers: string[]) {
+  const index = summary.indexOf(marker);
+  if (index === -1) {
+    return "";
+  }
+  const advisory = summary.slice(index);
+  const stopIndex = stopMarkers.reduce<number | null>(function (current, stopMarker) {
+    const markerIndex = advisory.indexOf(stopMarker);
+    if (markerIndex === -1) {
+      return current;
+    }
+    return current === null ? markerIndex : Math.min(current, markerIndex);
+  }, null);
+  return stopIndex === null ? advisory : advisory.slice(0, stopIndex);
+}
+
+function extractDescriptorAdvisoryText(summary: string) {
+  return sliceAdvisoryText(summary, "Descriptor view:", [
+    " Readiness view:",
+    " Execution bridge:",
+    " Coherence view:",
+  ]);
+}
+
+function extractReadinessSignalAdvisoryText(summary: string) {
+  return sliceAdvisoryText(summary, "Readiness view:", [
+    " Execution bridge:",
+    " Coherence view:",
+  ]);
+}
+
+function extractExecutionBridgeAdvisoryText(summary: string) {
+  return sliceAdvisoryText(summary, "Execution bridge:", [" Coherence view:"]);
+}
+
+function extractDecisionCoherenceAdvisoryText(summary: string) {
+  return sliceAdvisoryText(summary, "Coherence view:", []);
+}
+
+function countOccurrences(value: string, needle: string) {
+  if (needle === "") {
+    return 0;
+  }
+  return value.split(needle).length - 1;
+}
+
+function hasObjectKey(value: unknown, keyName: string): boolean {
+  if (value === null || typeof value !== "object") {
+    return false;
+  }
+  if (Array.isArray(value)) {
+    return value.some(function (entry) {
+      return hasObjectKey(entry, keyName);
+    });
+  }
+  return Object.entries(value as Record<string, unknown>).some(function ([key, entry]) {
+    return key === keyName || hasObjectKey(entry, keyName);
+  });
+}
+
+test("passive execution descriptor maps conceptual classes deterministically", () => {
+  const selection: LabSelection = {
+    id: "selection-peb-descriptor-map",
+    startMs: 1000,
+    endMs: 3600,
+    type: "inspect",
+    intent: "audio",
+    createdAt: 1,
+  };
+  const chain = createExecutionAlternativesChain({
+    actionType: "inspect-audio",
+    inspectionMode: "audio",
+    selection,
+    sourceKind: "audio",
+    suggestionId: "audio-inspect",
+  });
+  const descriptor = buildExecutionDescriptor({
+    actionType: chain.plan.actionType,
+    executionPayloadPreview: chain.payload,
+    executionPlan: chain.plan,
+  });
+
+  assert.deepEqual(descriptor, {
+    tool: "audio-analysis",
+    intent: "spectral-variation-inspection",
+    paramShape: {
+      type: "spectral-window",
+      fields: ["timeWindow", "frequencyBands", "signalFocus"],
+    },
+  });
+  assert.deepEqual(
+    buildExecutionDescriptor({
+      actionType: chain.plan.actionType,
+      executionPayloadPreview: chain.payload,
+      executionPlan: chain.plan,
+    }),
+    descriptor
+  );
+  assert.deepEqual(buildExecutionDescriptor({ actionType: "inspect-motion" }), {
+    tool: "motion-analysis",
+    intent: "motion-continuity-inspection",
+    paramShape: {
+      type: "motion-window",
+      fields: ["timeWindow", "motionScope", "referenceFrame"],
+    },
+  });
+  assert.deepEqual(buildExecutionDescriptor({ actionType: "unknown-action" }), {
+    tool: "signal-inspection",
+    intent: "evidence-shape-description",
+    paramShape: {
+      type: "generic-evidence-window",
+      fields: ["scope", "evidenceWindow", "reviewSurface"],
+    },
+  });
+
+  const advisory = formatExecutionDescriptorAdvisory({
+    actionType: chain.plan.actionType,
+    descriptor,
+  });
+  assert.equal(advisory, "Descriptor view: aligns with audio-analysis (spectral-window shape).");
+  assert.doesNotMatch(advisory, DESCRIPTOR_EXECUTION_VERB_PATTERN);
+  assert.doesNotMatch(advisory, /\b(ffmpeg|yt-dlp|opencv|sharp)\b/i);
+});
+
+test("execution bridge maps descriptors to passive contracts deterministically", () => {
+  const descriptor = buildExecutionDescriptor({ actionType: "inspect-audio" });
+  const bridge = buildExecutionBridge(descriptor);
+
+  assert.deepEqual(bridge, {
+    adapter: "librosa",
+    operation: "spectral_features_analysis",
+    inputContract: {
+      required: ["timeWindow", "frequencyBands"],
+      optional: ["signalFocus"],
+      constraints: {
+        timeWindow: "seconds-range",
+        frequencyBands: "hz-range",
+      },
+    },
+    outputContract: {
+      type: "timeseries",
+      fields: ["timestamp", "spectralCentroid", "bandwidth"],
+      interpretationHint: "spectral variation over time",
+    },
+    summary:
+      "maps to librosa using spectral_features_analysis, with a spectral-window shaped input and time-series output",
+  });
+  assert.deepEqual(buildExecutionBridge(descriptor), bridge);
+  assert.equal(formatExecutionBridgeAdvisory(bridge), `Execution bridge: This path ${bridge.summary}.`);
+  assert.doesNotMatch(formatExecutionBridgeAdvisory(bridge), DESCRIPTOR_EXECUTION_VERB_PATTERN);
+
+  assert.deepEqual(
+    buildExecutionBridge(buildExecutionDescriptor({ actionType: "analyze-segment" })),
+    {
+      adapter: "ffmpeg",
+      operation: "temporal_window_scan",
+      inputContract: {
+        required: ["timeWindow"],
+        optional: ["signalScope", "variationSurface"],
+        constraints: {
+          timeWindow: "seconds-range",
+        },
+      },
+      outputContract: {
+        type: "segments",
+        fields: ["start", "end"],
+        interpretationHint: "time-based segment boundaries",
+      },
+      summary:
+        "maps to ffmpeg using temporal_window_scan, with a temporal-window shaped input and segment output",
+    }
+  );
+  assert.equal(
+    buildExecutionBridge(buildExecutionDescriptor({ actionType: "inspect-motion" })).operation,
+    "frame_diff_analysis"
+  );
+  assert.equal(
+    buildExecutionBridge(buildExecutionDescriptor({ actionType: "inspect-motion" })).adapter,
+    "pyAudioAnalysis"
+  );
+  assert.equal(
+    buildExecutionBridge({
+      tool: "embedding-extraction",
+      intent: "embedding-summary",
+      paramShape: {
+        type: "generic-evidence-window",
+        fields: ["scope", "evidenceWindow", "reviewSurface"],
+      },
+    }).adapter,
+    "yamnet"
+  );
+  assert.deepEqual(
+    buildExecutionBridge({
+      tool: "speech-transcription",
+      intent: "speech-segment-description",
+      paramShape: {
+        type: "temporal-window",
+        fields: ["timeWindow", "signalScope", "variationSurface"],
+      },
+    }).outputContract,
+    {
+      type: "segments",
+      fields: ["timestamp", "text"],
+      interpretationHint: "transcribed speech segments",
+    }
+  );
+});
+
+test("execution bridge derives input shape without runtime payload values", () => {
+  const selection: LabSelection = {
+    id: "selection-bridge-param-shape",
+    startMs: 1000,
+    endMs: 3600,
+    type: "inspect",
+    intent: "audio",
+    createdAt: 1,
+  };
+  const chain = createExecutionAlternativesChain({
+    actionType: "inspect-audio",
+    inspectionMode: "audio",
+    selection,
+    sourceKind: "audio",
+    suggestionId: "audio-inspect",
+  });
+  const descriptor = buildExecutionDescriptor({
+    actionType: chain.plan.actionType,
+    executionPayloadPreview: chain.payload,
+    executionPlan: chain.plan,
+  });
+  const bridge = buildExecutionBridge(descriptor);
+  const serializedContract = JSON.stringify(bridge.inputContract);
+
+  assert.deepEqual(bridge.inputContract.required, ["timeWindow", "frequencyBands"]);
+  assert.deepEqual(bridge.inputContract.optional, ["signalFocus"]);
+  assert.equal(serializedContract.includes("selection-bridge-param-shape"), false);
+  assert.equal(serializedContract.includes("1000"), false);
+  assert.equal(serializedContract.includes("3600"), false);
+  assert.equal(hasObjectKey(bridge.inputContract, "previewInput"), false);
+  assert.equal(hasObjectKey(bridge.inputContract, "previewParameters"), false);
+});
+
+test("execution readiness signal maps pressure and projection deterministically", () => {
+  const steadySignal = buildExecutionReadinessSignal({
+    decisionPressure: "low",
+    goalEvaluation: {
+      outcome: "successful",
+      goalAlignment: 0.92,
+      summary: "Goal achieved",
+      patternSignal: {
+        averageCoverage: 0.86,
+        executionCount: 3,
+        failureRatio: 0,
+        strength: "strong",
+        successRatio: 1,
+      },
+    },
+    alignment: "matches-simulation",
+    alternativesConfidence: 0.82,
+  });
+  assert.deepEqual(steadySignal, {
+    level: "steady",
+    decisionPressure: "low",
+    goalOutcome: "successful",
+    patternStrength: "strong",
+    alignment: "matches-simulation",
+    alternativesConfidenceBand: "high",
+    projectionAlignment: "none",
+    score: -4,
+    reasons: [
+      "low-pressure",
+      "successful-goal",
+      "strong-pattern",
+      "matches-simulation-alignment",
+      "high-alternative-confidence",
+      "none-projection",
+    ],
+  });
+  assert.deepEqual(
+    buildExecutionReadinessSignal({
+      decisionPressure: "low",
+      goalEvaluation: {
+        outcome: "successful",
+        goalAlignment: 0.92,
+        summary: "Goal achieved",
+        patternSignal: {
+          averageCoverage: 0.86,
+          executionCount: 3,
+          failureRatio: 0,
+          strength: "strong",
+          successRatio: 1,
+        },
+      },
+      alignment: "matches-simulation",
+      alternativesConfidence: 0.82,
+    }),
+    steadySignal
+  );
+  assert.equal(
+    formatExecutionReadinessSignalAdvisory(steadySignal),
+    "Readiness view: steady signal from low pressure, strong pattern, matched alignment, high alternative confidence, and neutral projection."
+  );
+  assert.deepEqual(
+    buildExecutionReadinessSignal({
+      decisionPressure: "medium",
+      patternStrength: "weak",
+      alignment: "partial",
+      alternativesConfidence: 0.5,
+    }).level,
+    "guarded"
+  );
+  assert.deepEqual(
+    buildExecutionReadinessSignal({
+      decisionPressure: "high",
+      goalEvaluation: {
+        outcome: "failed",
+        goalAlignment: 0.2,
+        summary: "Goal failed",
+        patternSignal: {
+          averageCoverage: 0.32,
+          executionCount: 2,
+          failureRatio: 1,
+          strength: "weak",
+          successRatio: 0,
+        },
+      },
+      alignment: "deviates",
+      alternativesConfidence: 0.2,
+      projection: {
+        expectedAlignment: "worse",
+        expectedCoverage: "decrease",
+        expectedStability: "lower",
+        summary: "Projected outcome suggests lower stability, worse alignment, and decrease coverage.",
+      },
+    }).level,
+    "strained"
+  );
+  assert.equal(
+    buildExecutionReadinessSignal({
+      decisionPressure: "low",
+      goalEvaluation: {
+        outcome: "failed",
+        goalAlignment: 0.3,
+        summary: "Goal failed",
+      },
+      alignment: "partial",
+      alternativesConfidence: 0.5,
+      projection: {
+        expectedAlignment: "better",
+        expectedCoverage: "stable",
+        expectedStability: "higher",
+        summary: "Projected outcome suggests higher stability, better alignment, and stable coverage.",
+      },
+    }).level,
+    "steady"
+  );
+  assert.equal(
+    buildExecutionReadinessSignal({
+      decisionPressure: "low",
+      goalEvaluation: {
+        outcome: "failed",
+        goalAlignment: 0.3,
+        summary: "Goal failed",
+      },
+      alignment: "partial",
+      alternativesConfidence: 0.5,
+      projection: {
+        expectedAlignment: "worse",
+        expectedCoverage: "stable",
+        expectedStability: "lower",
+        summary: "Projected outcome suggests lower stability, worse alignment, and stable coverage.",
+      },
+    }).level,
+    "strained"
+  );
+  assert.doesNotMatch(
+    formatExecutionReadinessSignalAdvisory(steadySignal),
+    DESCRIPTOR_EXECUTION_VERB_PATTERN
+  );
+});
+
+test("decision coherence compresses posture readiness and projection deterministically", () => {
+  const aligned = buildDecisionCoherence({
+    posture: "proceed",
+    readiness: {
+      level: "steady",
+      score: -2,
+    },
+    projection: {
+      expectedAlignment: "better",
+      expectedStability: "higher",
+      expectedCoverage: "stable",
+    },
+  });
+  const mixed = buildDecisionCoherence({
+    posture: "proceed-with-caution",
+    readiness: {
+      level: "guarded",
+      score: 2,
+    },
+    projection: {
+      expectedAlignment: "similar",
+      expectedStability: "similar",
+      expectedCoverage: "increase",
+    },
+  });
+  const conflicted = buildDecisionCoherence({
+    posture: "reconsider",
+    readiness: {
+      level: "strained",
+      score: 6,
+    },
+    projection: {
+      expectedAlignment: "worse",
+      expectedStability: "lower",
+      expectedCoverage: "decrease",
+    },
+  });
+
+  assert.deepEqual(buildDecisionCoherence({
+    posture: "proceed",
+    readiness: {
+      level: "steady",
+      score: -2,
+    },
+    projection: {
+      expectedAlignment: "better",
+      expectedStability: "higher",
+      expectedCoverage: "stable",
+    },
+  }), aligned);
+  assert.deepEqual(aligned, {
+    state: "aligned",
+    dominantAxis: "neutral",
+    confidence: 1,
+    summary: "Coherence view: Signals are aligned toward a stable path.",
+  });
+  assert.deepEqual(mixed, {
+    state: "mixed",
+    dominantAxis: "exploration",
+    confidence: 0,
+    summary:
+      "Coherence view: Signals are mixed, with trade-offs between stability and coverage with exploratory tendencies.",
+  });
+  assert.deepEqual(conflicted, {
+    state: "conflicted",
+    dominantAxis: "safety",
+    confidence: 1,
+    summary:
+      "Coherence view: Signals are conflicted, indicating a high-risk and unstable path with cautionary signals.",
+  });
+  assert.equal(buildDecisionCoherence({ posture: "proceed" }).confidence, 1 / 3);
+  assert.deepEqual(buildDecisionCoherence({}), {
+    state: "mixed",
+    dominantAxis: "neutral",
+    confidence: 0,
+    summary: "Coherence view: Signals are mixed, with trade-offs between stability and coverage.",
+  });
+  assert.equal(formatDecisionCoherenceAdvisory(aligned), aligned.summary);
+  assert.doesNotMatch(aligned.summary, DESCRIPTOR_EXECUTION_VERB_PATTERN);
+  assert.doesNotMatch(mixed.summary, DESCRIPTOR_EXECUTION_VERB_PATTERN);
+  assert.doesNotMatch(conflicted.summary, DESCRIPTOR_EXECUTION_VERB_PATTERN);
+});
+
+test("passive execution descriptor remains stable across equivalent feedback contexts", () => {
+  const selection: LabSelection = {
+    id: "selection-peb-equivalent-feedback",
+    startMs: 1000,
+    endMs: 3200,
+    type: "inspect",
+    intent: "visual",
+    roi: {
+      x: 0.22,
+      y: 0.2,
+      width: 0.24,
+      height: 0.2,
+    },
+    createdAt: 1,
+  };
+  const chain = createExecutionAlternativesChain({
+    actionType: "focus-region",
+    inspectionMode: "visual",
+    selection,
+    sourceKind: "video",
+    suggestionId: "inspect-region",
+  });
+  const descriptor = buildExecutionDescriptor({
+    actionType: chain.plan.actionType,
+    executionPayloadPreview: chain.payload,
+    executionPlan: chain.plan,
+  });
+  const advisory = formatExecutionDescriptorAdvisory({
+    actionType: chain.plan.actionType,
+    descriptor,
+  });
+  const baseInput = {
+    executionPlan: chain.plan,
+    executionSimulation: chain.simulation,
+    executionReadiness: chain.readiness,
+    executionPayloadPreview: chain.payload,
+    executionReflection: chain.reflection,
+    executionAlternatives: chain.alternatives,
+    activeSelection: chain.selection,
+    inspectionMode: "visual" as const,
+    sourceKind: "video",
+  };
+  const weakPatternCandidate = buildExecutionCandidateFromResolved({
+    ...baseInput,
+    executionGoalEvaluation: {
+      outcome: "neutral",
+      goalAlignment: 0.48,
+      summary: "Goal remains inconclusive",
+      patternSignal: {
+        averageCoverage: 0.42,
+        executionCount: 2,
+        failureRatio: 0.5,
+        strength: "weak",
+        successRatio: 0.5,
+      },
+    },
+    executionResultInterpretation: {
+      alignment: "partial",
+      anomalyLevel: "moderate",
+      coverageLevel: "medium",
+    },
+  });
+  const failedDeviationCandidate = buildExecutionCandidateFromResolved({
+    ...baseInput,
+    executionGoalEvaluation: {
+      outcome: "failed",
+      goalAlignment: 0.22,
+      summary: "Goal missed the expected coverage",
+    },
+    executionResultInterpretation: {
+      alignment: "deviates",
+      anomalyLevel: "high",
+      coverageLevel: "low",
+    },
+  });
+
+  assert.ok(weakPatternCandidate);
+  assert.ok(failedDeviationCandidate);
+  assert.deepEqual(
+    buildExecutionDescriptor({
+      actionType: chain.plan.actionType,
+      executionPayloadPreview: chain.payload,
+      executionPlan: chain.plan,
+    }),
+    descriptor
+  );
+  assert.equal(weakPatternCandidate.summary.includes(advisory), true);
+  assert.equal(failedDeviationCandidate.summary.includes(advisory), true);
+  assert.equal(extractDescriptorAdvisoryText(weakPatternCandidate.summary), advisory);
+  assert.equal(extractDescriptorAdvisoryText(failedDeviationCandidate.summary), advisory);
+});
+
 test("execution alternatives compare deterministic counterfactuals across decisions", () => {
   const proceedSelection: LabSelection = {
     id: "selection-alternatives-proceed",
@@ -1636,6 +2218,10 @@ test("execution alternatives compare deterministic counterfactuals across decisi
   assert.equal(proceedChain.alternatives.id, `alternatives:${proceedChain.plan.id}`);
   assert.equal(proceedChain.alternatives.planId, proceedChain.plan.id);
   assert.equal(proceedChain.reflection.decision, "proceed");
+  assert.doesNotMatch(
+    proceedChain.alternatives.summary,
+    /^(Proceed|Proceed with caution|Reconsider):/
+  );
   assert.match(proceedChain.alternatives.summary, /selected path appears stable/i);
   assert.equal(proceedChain.alternatives.alternatives.length <= 3, true);
   assert.equal(
@@ -1710,6 +2296,140 @@ test("execution alternatives compare deterministic counterfactuals across decisi
     }),
     true
   );
+});
+
+test("passive descriptor and bridge advisories are summary-only and avoid execution verbs", () => {
+  const selection: LabSelection = {
+    id: "selection-peb-summary-advisory",
+    startMs: 1000,
+    endMs: 3600,
+    type: "inspect",
+    intent: "audio",
+    createdAt: 1,
+  };
+  const chain = createExecutionAlternativesChain({
+    actionType: "inspect-audio",
+    inspectionMode: "audio",
+    selection,
+    sourceKind: "audio",
+    suggestionId: "audio-inspect",
+  });
+  const candidate = buildExecutionCandidateFromResolved({
+    executionPlan: chain.plan,
+    executionSimulation: chain.simulation,
+    executionReadiness: chain.readiness,
+    executionPayloadPreview: chain.payload,
+    executionReflection: chain.reflection,
+    executionAlternatives: chain.alternatives,
+    activeSelection: chain.selection,
+    inspectionMode: "audio",
+    sourceKind: "audio",
+  });
+  const alternatives = buildExecutionAlternatives({
+    executionPlan: chain.plan,
+    executionSimulation: chain.simulation,
+    executionReadiness: chain.readiness,
+    executionReflection: chain.reflection,
+    activeSelection: chain.selection,
+    inspectionMode: "audio",
+    sourceKind: "audio",
+  });
+  const candidateAdvisory = extractDescriptorAdvisoryText(candidate?.summary ?? "");
+  const alternativesAdvisory = extractDescriptorAdvisoryText(alternatives.summary);
+  const candidateReadinessAdvisory = extractReadinessSignalAdvisoryText(candidate?.summary ?? "");
+  const alternativesReadinessAdvisory = extractReadinessSignalAdvisoryText(alternatives.summary);
+  const candidateBridgeAdvisory = extractExecutionBridgeAdvisoryText(candidate?.summary ?? "");
+  const alternativesBridgeAdvisory = extractExecutionBridgeAdvisoryText(alternatives.summary);
+  const candidateCoherenceAdvisory = extractDecisionCoherenceAdvisoryText(candidate?.summary ?? "");
+  const alternativesCoherenceAdvisory = extractDecisionCoherenceAdvisoryText(alternatives.summary);
+
+  assert.ok(candidate);
+  assert.match(candidate.summary, /This path is structurally ready for execution\./);
+  assert.match(alternatives.summary, /selected path appears stable/i);
+  assert.equal(
+    candidateAdvisory,
+    "Descriptor view: aligns with audio-analysis (spectral-window shape)."
+  );
+  assert.equal(
+    alternativesAdvisory,
+    "Descriptor view: describes a media-segmentation pattern with temporal-window shape."
+  );
+  assert.equal(
+    candidateReadinessAdvisory,
+    "Readiness view: steady signal from low pressure, neutral pattern, unmeasured alignment, high alternative confidence, and neutral projection."
+  );
+  assert.equal(
+    alternativesReadinessAdvisory,
+    "Readiness view: steady signal from low pressure, neutral pattern, unmeasured alignment, high alternative confidence, and neutral projection."
+  );
+  assert.equal(
+    candidateBridgeAdvisory,
+    "Execution bridge: This path maps to librosa using spectral_features_analysis, with a spectral-window shaped input and time-series output."
+  );
+  assert.equal(
+    alternativesBridgeAdvisory,
+    "Execution bridge: This path maps to ffmpeg using temporal_window_scan, with a temporal-window shaped input and segment output."
+  );
+  assert.equal(
+    candidateCoherenceAdvisory,
+    "Coherence view: Signals are mixed, with trade-offs between stability and coverage."
+  );
+  assert.equal(
+    alternativesCoherenceAdvisory,
+    "Coherence view: Signals are mixed, with trade-offs between stability and coverage."
+  );
+  assert.equal(countOccurrences(candidate?.summary ?? "", "Readiness view:"), 1);
+  assert.equal(countOccurrences(alternatives.summary, "Readiness view:"), 1);
+  assert.equal(countOccurrences(candidate?.summary ?? "", "Execution bridge:"), 1);
+  assert.equal(countOccurrences(alternatives.summary, "Execution bridge:"), 1);
+  assert.equal(countOccurrences(candidate?.summary ?? "", "Coherence view:"), 1);
+  assert.equal(countOccurrences(alternatives.summary, "Coherence view:"), 1);
+  assert.equal((candidate?.summary ?? "").indexOf(candidateAdvisory) < (candidate?.summary ?? "").indexOf(candidateReadinessAdvisory), true);
+  assert.equal((candidate?.summary ?? "").indexOf(candidateReadinessAdvisory) < (candidate?.summary ?? "").indexOf(candidateBridgeAdvisory), true);
+  assert.equal((candidate?.summary ?? "").indexOf(candidateBridgeAdvisory) < (candidate?.summary ?? "").indexOf(candidateCoherenceAdvisory), true);
+  assert.equal(alternatives.summary.indexOf(alternativesAdvisory) < alternatives.summary.indexOf(alternativesReadinessAdvisory), true);
+  assert.equal(alternatives.summary.indexOf(alternativesReadinessAdvisory) < alternatives.summary.indexOf(alternativesBridgeAdvisory), true);
+  assert.equal(alternatives.summary.indexOf(alternativesBridgeAdvisory) < alternatives.summary.indexOf(alternativesCoherenceAdvisory), true);
+  assert.doesNotMatch(candidateAdvisory, DESCRIPTOR_EXECUTION_VERB_PATTERN);
+  assert.doesNotMatch(alternativesAdvisory, DESCRIPTOR_EXECUTION_VERB_PATTERN);
+  assert.doesNotMatch(candidateReadinessAdvisory, DESCRIPTOR_EXECUTION_VERB_PATTERN);
+  assert.doesNotMatch(alternativesReadinessAdvisory, DESCRIPTOR_EXECUTION_VERB_PATTERN);
+  assert.doesNotMatch(candidateBridgeAdvisory, DESCRIPTOR_EXECUTION_VERB_PATTERN);
+  assert.doesNotMatch(alternativesBridgeAdvisory, DESCRIPTOR_EXECUTION_VERB_PATTERN);
+  assert.doesNotMatch(candidateCoherenceAdvisory, DESCRIPTOR_EXECUTION_VERB_PATTERN);
+  assert.doesNotMatch(alternativesCoherenceAdvisory, DESCRIPTOR_EXECUTION_VERB_PATTERN);
+  assert.equal(hasObjectKey(candidate, "descriptor"), false);
+  assert.equal(hasObjectKey(candidate, "readinessSignal"), false);
+  assert.equal(hasObjectKey(candidate, "signal"), false);
+  assert.equal(hasObjectKey(candidate, "adapter"), false);
+  assert.equal(hasObjectKey(candidate, "operation"), false);
+  assert.equal(hasObjectKey(candidate, "inputContract"), false);
+  assert.equal(hasObjectKey(candidate, "outputContract"), false);
+  assert.equal(hasObjectKey(candidate, "tool"), false);
+  assert.equal(hasObjectKey(candidate, "intent"), false);
+  assert.equal(hasObjectKey(candidate, "paramShape"), false);
+  assert.equal(hasObjectKey(candidate, "level"), false);
+  assert.equal(hasObjectKey(candidate, "reasons"), false);
+  assert.equal(hasObjectKey(candidate, "coherence"), false);
+  assert.equal(hasObjectKey(candidate, "dominantAxis"), false);
+  assert.equal(hasObjectKey(candidate, "coherenceState"), false);
+  assert.equal(hasObjectKey(candidate, "coherenceConfidence"), false);
+  assert.equal(hasObjectKey(alternatives, "descriptor"), false);
+  assert.equal(hasObjectKey(alternatives, "readinessSignal"), false);
+  assert.equal(hasObjectKey(alternatives, "signal"), false);
+  assert.equal(hasObjectKey(alternatives, "adapter"), false);
+  assert.equal(hasObjectKey(alternatives, "operation"), false);
+  assert.equal(hasObjectKey(alternatives, "inputContract"), false);
+  assert.equal(hasObjectKey(alternatives, "outputContract"), false);
+  assert.equal(hasObjectKey(alternatives, "tool"), false);
+  assert.equal(hasObjectKey(alternatives, "intent"), false);
+  assert.equal(hasObjectKey(alternatives, "paramShape"), false);
+  assert.equal(hasObjectKey(alternatives, "level"), false);
+  assert.equal(hasObjectKey(alternatives, "reasons"), false);
+  assert.equal(hasObjectKey(alternatives, "coherence"), false);
+  assert.equal(hasObjectKey(alternatives, "dominantAxis"), false);
+  assert.equal(hasObjectKey(alternatives, "coherenceState"), false);
+  assert.equal(hasObjectKey(alternatives, "coherenceConfidence"), false);
 });
 
 test("execution alternatives re-weight summary tone without changing structure", () => {
@@ -2039,6 +2759,7 @@ test("execution candidate synthesizes structural viability without downgrading s
   assert.equal(proceedCandidate.readinessStatus, "ready");
   assert.equal(proceedCandidate.reflectionDecision, "proceed");
   assert.equal(proceedCandidate.uncertainties, undefined);
+  assert.match(proceedCandidate.summary, /^Proceed with caution: /);
   assert.match(proceedCandidate.summary, /structurally ready/i);
   assert.equal(proceedChain.alternatives.alternatives.length > 0, true);
 
@@ -3870,6 +4591,8 @@ test("session pattern signal softly biases candidate confidence and alternatives
   assert.equal((weakCandidate.confidence ?? 0) < (baseCandidate.confidence ?? 0), true);
   assert.deepEqual(strongAlternatives.alternatives, chain.alternatives.alternatives);
   assert.deepEqual(weakAlternatives.alternatives, chain.alternatives.alternatives);
+  assert.match(strongAlternatives.summary, /^Proceed: /);
+  assert.match(weakAlternatives.summary, /^Proceed with caution: /);
   assert.match(strongAlternatives.summary, /historical execution feedback reinforces/i);
   assert.match(strongAlternatives.comparisonNote ?? "", /already stable pattern/i);
   assert.match(weakAlternatives.summary, /historical execution feedback shows similar paths/i);
@@ -3987,6 +4710,133 @@ test("adaptive decision signal maps goal pattern and alignment deterministically
     adaptiveDecisionHint: "",
     decisionPressure: "low",
   });
+});
+
+test("decision posture compresses adaptive feedback into deterministic labels", () => {
+  assert.deepEqual(
+    buildDecisionPosture({
+      decisionPressure: "low",
+      executionGoalEvaluation: {
+        outcome: "successful",
+        goalAlignment: 0.9,
+        summary: "Goal achieved",
+        patternSignal: {
+          averageCoverage: 0.88,
+          executionCount: 3,
+          failureRatio: 0,
+          strength: "strong",
+          successRatio: 1,
+        },
+      },
+      executionResultInterpretation: {
+        alignment: "matches-simulation",
+      },
+    }),
+    {
+      posture: "proceed",
+      shortLabel: "Proceed",
+    }
+  );
+  assert.deepEqual(
+    buildDecisionPosture({
+      decisionPressure: "high",
+      executionGoalEvaluation: {
+        outcome: "failed",
+        goalAlignment: 0.2,
+        summary: "Goal failed",
+        patternSignal: {
+          averageCoverage: 0.38,
+          executionCount: 2,
+          failureRatio: 1,
+          strength: "weak",
+          successRatio: 0,
+        },
+      },
+      executionResultInterpretation: {
+        alignment: "deviates",
+      },
+    }),
+    {
+      posture: "reconsider",
+      shortLabel: "Reconsider",
+    }
+  );
+  assert.deepEqual(
+    buildDecisionPosture({
+      decisionPressure: "low",
+    }),
+    {
+      posture: "proceed-with-caution",
+      shortLabel: "Proceed with caution",
+    }
+  );
+  assert.deepEqual(
+    buildDecisionPosture({
+      decisionPressure: "medium",
+      executionGoalEvaluation: {
+        outcome: "successful",
+        goalAlignment: 0.8,
+        summary: "Goal achieved with divergence",
+        patternSignal: {
+          averageCoverage: 0.72,
+          executionCount: 2,
+          failureRatio: 0.5,
+          strength: "neutral",
+          successRatio: 0.5,
+        },
+      },
+      executionResultInterpretation: {
+        alignment: "deviates",
+      },
+    }),
+    {
+      posture: "proceed-with-caution",
+      shortLabel: "Proceed with caution",
+    }
+  );
+});
+
+test("decision posture prefix formatter stays idempotent across rerenders", () => {
+  const caution = buildDecisionPosture({
+    decisionPressure: "low",
+  });
+  const proceed = buildDecisionPosture({
+    decisionPressure: "low",
+    executionGoalEvaluation: {
+      outcome: "successful",
+      goalAlignment: 0.9,
+      summary: "Goal achieved",
+      patternSignal: {
+        averageCoverage: 0.88,
+        executionCount: 3,
+        failureRatio: 0,
+        strength: "strong",
+        successRatio: 1,
+      },
+    },
+    executionResultInterpretation: {
+      alignment: "matches-simulation",
+    },
+  });
+
+  assert.equal(
+    prependDecisionPostureLabel("This path is structurally ready for execution.", caution),
+    "Proceed with caution: This path is structurally ready for execution."
+  );
+  assert.equal(
+    prependDecisionPostureLabel(
+      "Proceed with caution: This path is structurally ready for execution.",
+      caution
+    ),
+    "Proceed with caution: This path is structurally ready for execution."
+  );
+  assert.equal(
+    prependDecisionPostureLabel(
+      "Reconsider: This path is structurally ready for execution.",
+      proceed
+    ),
+    "Proceed: This path is structurally ready for execution."
+  );
 });
 
 test("guided alternative signal ranks advisory alternatives deterministically", () => {
@@ -4489,6 +5339,82 @@ test("goal-aware feedback tightens failed outcomes without changing structure or
     failedGoalAlternatives.comparisonNote ?? "",
     /Motion continuity inspection/i
   );
+});
+
+test("decision posture integration stays additive and leaves inputs immutable", () => {
+  const selection: LabSelection = {
+    id: "selection-posture-immutable",
+    startMs: 1200,
+    endMs: 4400,
+    type: "inspect",
+    intent: "audio",
+    createdAt: 1,
+  };
+  const chain = createExecutionAlternativesChain({
+    actionType: "inspect-audio",
+    inspectionMode: "audio",
+    selection,
+    sourceKind: "audio",
+    suggestionId: "audio-inspect",
+  });
+  const executionGoalEvaluation = {
+    outcome: "successful" as const,
+    goalAlignment: 0.9,
+    summary: "Audio goal achieved",
+    patternSignal: {
+      averageCoverage: 0.9,
+      executionCount: 3,
+      failureRatio: 0,
+      strength: "strong" as const,
+      successRatio: 1,
+    },
+  };
+  const executionResultInterpretation = {
+    alignment: "matches-simulation" as const,
+    anomalyLevel: "moderate" as const,
+    coverageLevel: "high" as const,
+  };
+  const candidateInput = {
+    executionPlan: chain.plan,
+    executionSimulation: chain.simulation,
+    executionReadiness: chain.readiness,
+    executionPayloadPreview: chain.payload,
+    executionReflection: chain.reflection,
+    executionAlternatives: chain.alternatives,
+    executionGoalEvaluation,
+    executionResultInterpretation,
+    activeSelection: chain.selection,
+    inspectionMode: "audio" as const,
+    sourceKind: "audio",
+  };
+  const alternativesInput = {
+    executionPlan: chain.plan,
+    executionSimulation: chain.simulation,
+    executionReadiness: chain.readiness,
+    executionReflection: chain.reflection,
+    executionGoalEvaluation,
+    executionResultInterpretation,
+    activeSelection: chain.selection,
+    inspectionMode: "audio" as const,
+    sourceKind: "audio",
+  };
+  const frozenCandidateInput = deepFreeze(cloneForMutationCheck(candidateInput));
+  const frozenAlternativesInput = deepFreeze(cloneForMutationCheck(alternativesInput));
+  const candidateBefore = JSON.stringify(frozenCandidateInput);
+  const alternativesBefore = JSON.stringify(frozenAlternativesInput);
+  const candidate = buildExecutionCandidateFromResolved(frozenCandidateInput);
+  const alternatives = buildExecutionAlternatives(frozenAlternativesInput);
+
+  assert.ok(candidate);
+  assert.equal(candidate.status, "viable");
+  assert.equal(candidate.decisionPressure, "low");
+  assert.equal(candidate.adaptiveDecisionHint, "");
+  assert.equal(candidate.confidence, 0.98);
+  assert.match(candidate.summary, /^Proceed: /);
+  assert.match(alternatives.summary, /^Proceed: /);
+  assert.deepEqual(alternatives.alternatives, chain.alternatives.alternatives);
+  assert.equal(JSON.stringify(frozenCandidateInput), candidateBefore);
+  assert.equal(JSON.stringify(frozenAlternativesInput), alternativesBefore);
 });
 
 test("execution dispatcher emits deterministic mock progress and cleans up stale timers", () => {
