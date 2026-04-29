@@ -9,14 +9,14 @@ import com.hayaletev.androidcompanion.capture.CaptureLens
 import com.hayaletev.androidcompanion.capture.CapturePhotoQuality
 import com.hayaletev.androidcompanion.debug.CompanionDiagnostics
 import com.hayaletev.androidcompanion.model.CompanionManifest
-import com.hayaletev.androidcompanion.speech.CommandPhraseCatalog
-import com.hayaletev.androidcompanion.speech.CommandSpeechConfig
-import com.hayaletev.androidcompanion.speech.CommandSpeechController
-import com.hayaletev.androidcompanion.speech.CommandSpeechResult
-import com.hayaletev.androidcompanion.speech.SpeechFallbackMode
+import com.hayaletev.androidcompanion.transcript.AndroidAudioRecorder
+import com.hayaletev.androidcompanion.transcript.AndroidRecordingResult
+import com.hayaletev.androidcompanion.transcript.AndroidWhisperTranscriber
+import com.hayaletev.androidcompanion.transcript.TranscriptModelManager
 import com.hayaletev.androidcompanion.transport.BridgeCommand
 import com.hayaletev.androidcompanion.transport.BridgeCommandProfile
 import com.hayaletev.androidcompanion.transport.BridgePermissions
+import com.hayaletev.androidcompanion.transport.BridgeTranscriptModelProfile
 import com.hayaletev.androidcompanion.transport.DesktopBridgeClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,7 +37,7 @@ data class CompanionLaunchContext(
     val deviceId: String = "android-companion",
     val target: String = "analyze-compose",
     val cameraConfig: CameraSessionConfig = CameraSessionConfig(),
-    val speechConfig: CommandSpeechConfig = CommandSpeechConfig(),
+    val transcriptModel: BridgeTranscriptModelProfile? = null,
 )
 
 class CompanionSessionCoordinator(
@@ -53,37 +53,13 @@ class CompanionSessionCoordinator(
     private var lastBridgeFailureSignature: String? = null
     private var lastDiagnosticsSyncFailureSignature: String? = null
     private var bridgeConnected = false
-    private val speechController =
-        CommandSpeechController(appContext, scope) { result ->
-            scope.launch {
-                runCatching {
-                    bridgeClient.submitTranscript(
-                        deviceId = launchContext.deviceId,
-                        target = launchContext.target,
-                        text = result.transcript,
-                        isFinal = true,
-                        metadata = buildTranscriptMetadata(result),
-                    )
-                }.onFailure { error ->
-                    CompanionDiagnostics.w(
-                        "speech",
-                        "Transcript submission failed.",
-                        throwable = error,
-                    )
-                }
-            }
-        }
+    private val audioRecorder = AndroidAudioRecorder(appContext, scope)
+    private val modelManager = TranscriptModelManager(appContext, bridgeClient)
+    private val transcriber = AndroidWhisperTranscriber()
 
     fun updateLaunchContext(intent: Intent?) {
         val deviceId = intent?.getStringExtra("deviceId")?.trim().orEmpty()
         val target = intent?.getStringExtra("target")?.trim().orEmpty()
-        val speechEnabled = intent?.getBooleanExtra("speechEnabled", true) ?: true
-        val fallbackMode =
-            when (intent?.getStringExtra("speechFallbackMode")) {
-                "vosk-seam" -> SpeechFallbackMode.VOSK_SEAM
-                else -> SpeechFallbackMode.SYSTEM
-            }
-        val phraseCatalog = parsePhraseCatalog(intent?.getStringExtra("commandCatalogJson"))
 
         launchContext =
             launchContext.copy(
@@ -104,15 +80,8 @@ class CompanionSessionCoordinator(
                                 CapturePhotoQuality.HIGH
                             },
                     ),
-                speechConfig =
-                    CommandSpeechConfig(
-                        enabled = speechEnabled,
-                        fallbackMode = fallbackMode,
-                        phraseCatalog = phraseCatalog,
-                    ),
             )
 
-        speechController.updateConfig(launchContext.speechConfig)
         publishLaunchContextDiagnostics()
         CompanionDiagnostics.i(
             "intent",
@@ -234,14 +203,13 @@ class CompanionSessionCoordinator(
         bridgeConnected = false
         CompanionDiagnostics.setState("Session loop", "Stopped")
         CompanionDiagnostics.setState("Bridge", "Idle")
-        speechController.stop()
+        audioRecorder.cancel()
         cameraController.stopSession()
     }
 
     fun destroy() {
         CompanionDiagnostics.i("session", "Destroying session coordinator.")
         stop()
-        speechController.destroy()
     }
 
     private suspend fun handleCommand(command: BridgeCommand) {
@@ -256,9 +224,6 @@ class CompanionSessionCoordinator(
             when (command.kind) {
                 "open-camera" -> {
                     cameraController.ensurePreview(launchContext.cameraConfig)
-                    if (launchContext.speechConfig.enabled) {
-                        speechController.start()
-                    }
                     bridgeClient.acknowledgeCommand(
                         deviceId = launchContext.deviceId,
                         command = command,
@@ -272,7 +237,12 @@ class CompanionSessionCoordinator(
                     cameraController.ensurePreview(launchContext.cameraConfig)
                     val file = File.createTempFile("analyze-capture-", ".jpg", appContext.cacheDir)
                     val captured = cameraController.takePhoto(file)
-                    bridgeClient.uploadAnalyzeCapture(launchContext.deviceId, captured)
+                    bridgeClient.uploadAnalyzeCapture(
+                        launchContext.deviceId,
+                        command.target,
+                        command.requestId ?: command.id,
+                        captured,
+                    )
                     bridgeClient.acknowledgeCommand(
                         deviceId = launchContext.deviceId,
                         command = command,
@@ -294,13 +264,60 @@ class CompanionSessionCoordinator(
                 }
 
                 "close-camera" -> {
-                    speechController.stop()
+                    audioRecorder.cancel()
                     cameraController.stopSession()
                     bridgeClient.acknowledgeCommand(
                         deviceId = launchContext.deviceId,
                         command = command,
                         status = "done",
                         message = "Phone capture session closed.",
+                        previewActive = cameraController.isPreviewBound(),
+                    )
+                }
+
+                "start-dictation" -> {
+                    val file = audioRecorder.start()
+                    bridgeClient.acknowledgeCommand(
+                        deviceId = launchContext.deviceId,
+                        command = command,
+                        status = "accepted",
+                        message = "Android microphone recording started.",
+                        previewActive = cameraController.isPreviewBound(),
+                    )
+                    CompanionDiagnostics.setState("Dictation recording", file.name)
+                }
+
+                "stop-dictation" -> {
+                    val recording = audioRecorder.stop()
+                    bridgeClient.acknowledgeCommand(
+                        deviceId = launchContext.deviceId,
+                        command = command,
+                        status = "accepted",
+                        message = "Android microphone recording stopped; transcribing on phone.",
+                        previewActive = cameraController.isPreviewBound(),
+                    )
+                    val modelProfile =
+                        launchContext.transcriptModel
+                            ?: throw IllegalStateException("Android transcript model profile is missing.")
+                    val model = modelManager.ensureModel(modelProfile)
+                    val transcript = transcriber.transcribe(
+                        modelFile = model,
+                        audioFile = recording.file,
+                        language = modelProfile.language,
+                    )
+                    bridgeClient.submitTranscript(
+                        requestId = command.requestId ?: command.id,
+                        deviceId = launchContext.deviceId,
+                        target = command.target,
+                        text = transcript,
+                        isFinal = true,
+                        metadata = buildTranscriptMetadata(recording, modelProfile),
+                    )
+                    bridgeClient.acknowledgeCommand(
+                        deviceId = launchContext.deviceId,
+                        command = command,
+                        status = "done",
+                        message = "Android whisper.cpp transcript submitted.",
                         previewActive = cameraController.isPreviewBound(),
                     )
                 }
@@ -312,65 +329,49 @@ class CompanionSessionCoordinator(
                 throwable = error,
             )
             CompanionDiagnostics.setState("Last bridge error", summarizeError(error))
+            if (command.kind == "start-dictation") {
+                audioRecorder.cancel()
+            }
+            runCatching {
+                bridgeClient.acknowledgeCommand(
+                    deviceId = launchContext.deviceId,
+                    command = command,
+                    status = "failed",
+                    message = summarizeError(error),
+                    previewActive = cameraController.isPreviewBound(),
+                )
+            }.onFailure { ackError ->
+                CompanionDiagnostics.e(
+                    "bridge",
+                    "Failed to report command failure to desktop.",
+                    throwable = ackError,
+                )
+            }
             throw error
         }
     }
 
-    private fun buildTranscriptMetadata(result: CommandSpeechResult): JSONObject {
-        val metadata = JSONObject().put("speechBackend", result.backend)
-        result.commandCandidate?.let { candidate ->
-            metadata.put(
-                "commandCandidate",
-                JSONObject()
-                    .put("intent", candidate.intent)
-                    .put("matchedPhrase", candidate.matchedPhrase),
-            )
-        }
-        return metadata
-    }
-
-    private fun parsePhraseCatalog(rawJson: String?): CommandPhraseCatalog {
-        if (rawJson.isNullOrBlank()) {
-            return CommandPhraseCatalog()
-        }
-
-        val parsed = runCatching { JSONObject(rawJson) }.getOrNull() ?: return CommandPhraseCatalog()
-        return CommandPhraseCatalog(
-            openCamera = parsed.readPhraseList("openCamera"),
-            capture = parsed.readPhraseList("capture"),
-            retake = parsed.readPhraseList("retake"),
-            attach = parsed.readPhraseList("attach"),
-            stop = parsed.readPhraseList("stop"),
-            cancel = parsed.readPhraseList("cancel"),
-        )
+    private fun buildTranscriptMetadata(
+        recording: AndroidRecordingResult,
+        modelProfile: BridgeTranscriptModelProfile,
+    ): JSONObject {
+        return JSONObject()
+            .put("speechBackend", "whisper.cpp-android")
+            .put("recordedOn", "android-device")
+            .put("microphone", "android-default-mic")
+            .put("audioPath", recording.file.absolutePath)
+            .put("durationMs", recording.durationMs)
+            .put("sampleRate", recording.sampleRate)
+            .put("bytesWritten", recording.bytesWritten)
+            .put("modelId", modelProfile.modelId)
+            .put("modelFile", modelProfile.fileName)
+            .put("language", modelProfile.language)
     }
 
     private fun applyCommandProfile(profile: BridgeCommandProfile?) {
         if (profile == null) {
             return
         }
-
-        val phraseCatalog =
-            launchContext.speechConfig.phraseCatalog.copy(
-                openCamera =
-                    profile.commandPhrases.openCamera.takeIf { it.isNotEmpty() }
-                        ?: launchContext.speechConfig.phraseCatalog.openCamera,
-                capture =
-                    profile.commandPhrases.capture.takeIf { it.isNotEmpty() }
-                        ?: launchContext.speechConfig.phraseCatalog.capture,
-                retake =
-                    profile.commandPhrases.retake.takeIf { it.isNotEmpty() }
-                        ?: launchContext.speechConfig.phraseCatalog.retake,
-                attach =
-                    profile.commandPhrases.attach.takeIf { it.isNotEmpty() }
-                        ?: launchContext.speechConfig.phraseCatalog.attach,
-                stop =
-                    profile.commandPhrases.stop.takeIf { it.isNotEmpty() }
-                        ?: launchContext.speechConfig.phraseCatalog.stop,
-                cancel =
-                    profile.commandPhrases.cancel.takeIf { it.isNotEmpty() }
-                        ?: launchContext.speechConfig.phraseCatalog.cancel,
-            )
 
         launchContext =
             launchContext.copy(
@@ -389,28 +390,15 @@ class CompanionSessionCoordinator(
                                 else -> launchContext.cameraConfig.photoQuality
                             },
                     ),
-                speechConfig = launchContext.speechConfig.copy(phraseCatalog = phraseCatalog),
+                transcriptModel = profile.transcriptModel ?: launchContext.transcriptModel,
             )
 
-        speechController.updateConfig(launchContext.speechConfig)
         publishLaunchContextDiagnostics()
         CompanionDiagnostics.d(
             "command",
             "Applied command profile overrides.",
             "defaultLens=${profile.defaultLens ?: "unchanged"}, photoQuality=${profile.photoQuality ?: "unchanged"}",
         )
-    }
-
-    private fun JSONObject.readPhraseList(key: String): List<String> {
-        val array = optJSONArray(key) ?: return emptyList()
-        return buildList {
-            for (index in 0 until array.length()) {
-                val value = array.optString(index).trim()
-                if (value.isNotEmpty() && contains(value).not()) {
-                    add(value)
-                }
-            }
-        }
     }
 
     private fun publishLaunchContextDiagnostics() {
@@ -421,12 +409,8 @@ class CompanionSessionCoordinator(
             "${launchContext.cameraConfig.lens.name.lowercase()} / ${launchContext.cameraConfig.photoQuality.name.lowercase()}",
         )
         CompanionDiagnostics.setState(
-            "Speech",
-            if (launchContext.speechConfig.enabled) {
-                "Enabled (${launchContext.speechConfig.fallbackMode.name.lowercase()})"
-            } else {
-                "Disabled"
-            },
+            "Transcript model",
+            launchContext.transcriptModel?.modelId ?: "Waiting for desktop command",
         )
     }
 
@@ -440,10 +424,8 @@ class CompanionSessionCoordinator(
             append(launchContext.cameraConfig.lens.name.lowercase())
             append(", photoQuality=")
             append(launchContext.cameraConfig.photoQuality.name.lowercase())
-            append(", speechEnabled=")
-            append(launchContext.speechConfig.enabled)
-            append(", fallback=")
-            append(launchContext.speechConfig.fallbackMode.name.lowercase())
+            append(", transcriptModel=")
+            append(launchContext.transcriptModel?.modelId ?: "pending")
         }
     }
 

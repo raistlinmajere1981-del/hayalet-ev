@@ -27,8 +27,8 @@ data class CompanionManifest(
                     "foregroundService",
                     "com.hayaletev.androidcompanion/.capture.CaptureForegroundService"
                 ),
-                versionName = json.optString("versionName", "0.1.0-dev"),
-                versionCode = json.optInt("versionCode", 1),
+                versionName = json.optString("versionName", "0.2.0-dev"),
+                versionCode = json.optInt("versionCode", 2),
                 bridgePort = json.optInt("bridgePort", 48561),
                 commandPollIntervalMs = json.optInt("commandPollIntervalMs", 1500),
                 previewMode = json.optString("previewMode", "phone-screen")

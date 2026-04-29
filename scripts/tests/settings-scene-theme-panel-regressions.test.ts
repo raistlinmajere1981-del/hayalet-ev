@@ -90,10 +90,7 @@ test("settings capture panel centralizes transcript runtime and android manageme
   assert.match(htmlSource, /id="capture-android-host-status"/);
   assert.match(htmlSource, /id="capture-android-preview-note"/);
   assert.match(htmlSource, /id="capture-default-device-select"/);
-  assert.match(htmlSource, /id="capture-provider-android-speech"/);
-  assert.match(htmlSource, /id="capture-provider-local-whisper"/);
   assert.match(htmlSource, /id="capture-provider-android-companion"/);
-  assert.match(htmlSource, /id="capture-command-open-input"/);
   assert.match(htmlSource, /id="capture-android-device-list"/);
   assert.match(htmlSource, /id="capture-android-progress-shell"/);
   assert.match(htmlSource, /id="capture-android-progress-bar"/);
@@ -115,10 +112,7 @@ test("settings capture panel centralizes transcript runtime and android manageme
   assert.match(panelSource, /capture-android-bridge-status/);
   assert.match(panelSource, /saveCapturePolicy/);
   assert.match(panelSource, /capture-default-device-select/);
-  assert.match(panelSource, /capture-provider-android-speech/);
-  assert.match(panelSource, /capture-provider-local-whisper/);
   assert.match(panelSource, /capture-provider-android-companion/);
-  assert.match(panelSource, /capture-command-open-input/);
   assert.match(panelSource, /capture-android-device-list/);
   assert.match(panelSource, /renderAndroidOperationState/);
   assert.match(panelSource, /startActionProgressPolling/);
@@ -130,9 +124,11 @@ test("settings capture panel centralizes transcript runtime and android manageme
   assert.match(panelSource, /disconnectCaptureDevice/);
   assert.match(panelSource, /setPreferredDevice/);
   assert.match(panelSource, /captureT\("android\.previewHint"\)/);
-  assert.equal((htmlSource.match(/id="capture-provider-fallback-select"/g) ?? []).length, 1);
+  assert.equal((htmlSource.match(/id="capture-provider-fallback-select"/g) ?? []).length, 0);
   assert.equal((htmlSource.match(/id="capture-policy-feedback"/g) ?? []).length, 1);
-  assert.equal((htmlSource.match(/id="capture-provider-android-speech"/g) ?? []).length, 1);
+  assert.equal((htmlSource.match(/id="capture-provider-android-speech"/g) ?? []).length, 0);
+  assert.equal((htmlSource.match(/id="capture-provider-local-whisper"/g) ?? []).length, 0);
+  assert.equal((htmlSource.match(/id="capture-command-open-input"/g) ?? []).length, 0);
   assert.equal((htmlSource.match(/id="capture-android-device-list"/g) ?? []).length, 1);
 
   assert.match(transcriptSource, /ensureTranscriptRuntime/);

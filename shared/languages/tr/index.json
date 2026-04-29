@@ -120,13 +120,15 @@
           "insertedMessage": "Transcript metin alanına eklendi.",
           "androidToggleLabel": "Android dictate",
           "androidIdleTitle": "Bağlı Android cihaz üzerinden dikte başlat",
-          "androidPreparingMessage": "Android dictate telefon üzerinde hazırlanıyor. Companion uygulamasını açık tutup telefona konuş.",
-          "androidListeningMessage": "Android dictate telefon üzerinde aktif. Bağlı cihaza konuşabilirsin.",
-          "androidUnavailableTitle": "Android dictate için hazır bir telefon seçip Ayarlar > Capture altında Android ses köprüsünü açık tut.",
-          "disabledTitle": "Lokal Whisper dikte, Ayarlar > Capture altında kapalı.",
+          "androidPreparingMessage": "Android dictate telefon üzerinde hazırlanıyor. Companion uygulamasını açık tut.",
+          "androidListeningMessage": "Android kaydı telefon üzerinde aktif. Bitirdiğinde tekrar tıkla.",
+          "androidUnavailableTitle": "Android dictate için hazır bir telefon seç.",
+          "disabledTitle": "Lokal Whisper dikte kullanılamıyor.",
           "captureError": "Mikrofon başlatılamadı: {{message}}",
           "transcriptionError": "Ses çözümlenemedi: {{message}}",
-          "androidError": "Android dictate hazırlanamadı: {{message}}"
+          "androidError": "Android dictate hazırlanamadı: {{message}}",
+          "voiceCommandActive": "Voice command aktif",
+          "voiceCommandInactive": "Voice command pasif"
         },
         "captureImport": {
           "empty": "Merkezi analyze inbox içinde bekleyen telefon çekimi bulunmuyor.",
@@ -770,7 +772,7 @@
       },
       "capture": {
         "title": "Capture Kontrolü",
-        "subtitle": "Lokal ses runtime'ı, Android companion durumu ve kamera capture akışını tek güverteden yönet."
+        "subtitle": "Android companion durumu, kamera capture akışı ve ortak oda capture varsayılanlarını tek güverteden yönet."
       },
       "scene": {
         "ariaLabel": "Ayar odası",
@@ -5015,13 +5017,13 @@
         }
       },
       "policy": {
-        "title": "Android Ses Politikası",
-        "subtitle": "Telefon tarafı ses yolunu ve companion uygulamasının yerelde normalize ettiği komut ifadelerini buradan yönet.",
-        "fallbackMode": "Fallback stratejisi",
+        "title": "Android Companion Politikası",
+        "subtitle": "Android companion'ın telefon tarafı kamera capture ve dikte sağlayıp sağlamayacağını buradan yönet.",
+        "fallbackMode": "Eski fallback stratejisi",
         "providers": {
-          "localWhisper": "Lokal Whisper dikteyi etkinleştir",
+          "localWhisper": "Eski lokal Whisper dikte",
           "androidCompanion": "Android companion capture etkin",
-          "androidSpeech": "Android ses köprüsünü aç"
+          "androidSpeech": "Eski Android ses köprüsü"
         },
         "commands": {
           "openCamera": "Oturum açma ifadeleri",
@@ -5030,10 +5032,10 @@
           "attach": "Ekleme ifadeleri",
           "stop": "Durdurma ifadeleri"
         },
-        "hint": "İfadeleri virgülle ayır. Analyze telefon oturumu başlatırken bu liste companion uygulamasına gönderilir.",
+        "hint": "Voice command ifadeleri Capture dışında yönetilir; companion yalnızca hedef ve model bilgisini alır.",
         "fallbackOptions": {
-          "system": "Sistem tanıyıcıya düş",
-          "voskSeam": "Vosk fallback dikişini ayır"
+          "system": "Eski sistem tanıyıcı",
+          "voskSeam": "Eski Vosk yolu"
         }
       },
       "transcript": {

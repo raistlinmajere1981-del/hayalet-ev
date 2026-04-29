@@ -2,9 +2,12 @@ import type {
   CaptureActionOutcome,
   CaptureAndroidDeviceStatus,
   CaptureAndroidStatus,
+  CaptureDictationStatusPayload,
   CaptureHostAction,
   CaptureImportedAsset,
+  CaptureMediaIngressPayload,
   CaptureServiceStatus,
+  CaptureTargetActionOptions,
   CaptureTranscriptStatusSnapshot,
 } from "../../../types/capture.js";
 
@@ -240,7 +243,10 @@ export async function consumeAnalyzeCaptureAssets(): Promise<CaptureImportedAsse
     .filter((entry): entry is CaptureImportedAsset => entry !== null);
 }
 
-export async function runCaptureAction(action: CaptureHostAction): Promise<CaptureActionOutcome> {
+export async function runCaptureAction(
+  action: CaptureHostAction,
+  options: CaptureTargetActionOptions = {}
+): Promise<CaptureActionOutcome> {
   const api = getElectronApi();
   switch (action) {
     case "install-companion":
@@ -253,35 +259,49 @@ export async function runCaptureAction(action: CaptureHostAction): Promise<Captu
     case "launch-companion":
       return normalizeActionOutcome(
         typeof api?.captureLaunchCompanion === "function"
-          ? await api.captureLaunchCompanion()
+          ? await api.captureLaunchCompanion(options)
           : null,
         action
       );
     case "start-analyze-session":
       return normalizeActionOutcome(
         typeof api?.captureStartAnalyzeSession === "function"
-          ? await api.captureStartAnalyzeSession()
+          ? await api.captureStartAnalyzeSession(options)
           : null,
         action
       );
     case "stop-analyze-session":
       return normalizeActionOutcome(
         typeof api?.captureStopAnalyzeSession === "function"
-          ? await api.captureStopAnalyzeSession()
+          ? await api.captureStopAnalyzeSession(options)
+          : null,
+        action
+      );
+    case "start-analyze-dictation":
+      return normalizeActionOutcome(
+        typeof api?.captureStartAnalyzeDictation === "function"
+          ? await api.captureStartAnalyzeDictation(options)
+          : null,
+        action
+      );
+    case "stop-analyze-dictation":
+      return normalizeActionOutcome(
+        typeof api?.captureStopAnalyzeDictation === "function"
+          ? await api.captureStopAnalyzeDictation(options)
           : null,
         action
       );
     case "capture-analyze-photo":
       return normalizeActionOutcome(
         typeof api?.captureRequestAnalyzePhoto === "function"
-          ? await api.captureRequestAnalyzePhoto()
+          ? await api.captureRequestAnalyzePhoto(options)
           : null,
         action
       );
     case "retake-analyze-photo":
       return normalizeActionOutcome(
         typeof api?.captureRetakeAnalyzePhoto === "function"
-          ? await api.captureRetakeAnalyzePhoto()
+          ? await api.captureRetakeAnalyzePhoto(options)
           : null,
         action
       );
@@ -331,4 +351,45 @@ export async function dismissCaptureOperation(): Promise<CaptureServiceStatus> {
   }
 
   return normalizeCaptureStatus(await api.captureDismissOperation());
+}
+
+export function onCaptureMediaIngress(
+  callback: (payload: CaptureMediaIngressPayload) => void
+): () => void {
+  const api = getElectronApi();
+  if (api == null) {
+    return () => {};
+  }
+
+  const { captureOnMediaIngress, captureOffMediaIngress } = api;
+  if (typeof captureOnMediaIngress !== "function" || typeof captureOffMediaIngress !== "function") {
+    return () => {};
+  }
+
+  captureOnMediaIngress(callback);
+  return () => {
+    captureOffMediaIngress(callback);
+  };
+}
+
+export function onCaptureDictationStatus(
+  callback: (payload: CaptureDictationStatusPayload) => void
+): () => void {
+  const api = getElectronApi();
+  if (api == null) {
+    return () => {};
+  }
+
+  const { captureOnDictationStatus, captureOffDictationStatus } = api;
+  if (
+    typeof captureOnDictationStatus !== "function" ||
+    typeof captureOffDictationStatus !== "function"
+  ) {
+    return () => {};
+  }
+
+  captureOnDictationStatus(callback);
+  return () => {
+    captureOffDictationStatus(callback);
+  };
 }

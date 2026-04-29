@@ -6,17 +6,33 @@ plugins {
 android {
   namespace = "com.hayaletev.androidcompanion"
   compileSdk = 35
+  ndkVersion = "26.3.11579264"
+
+  val repoRoot = rootProject.projectDir.parentFile
+  val whisperCppDir = providers
+    .environmentVariable("HAYALET_EV_WHISPER_CPP_DIR")
+    .orElse(repoRoot.resolve("data/transcript/whisper.cpp-src").absolutePath)
 
   defaultConfig {
     applicationId = "com.hayaletev.androidcompanion"
     minSdk = 28
     targetSdk = 35
-    versionCode = 1
-    versionName = "0.1.0-dev"
+    versionCode = 2
+    versionName = "0.2.0-dev"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     vectorDrawables {
       useSupportLibrary = true
+    }
+
+    ndk {
+      abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+    }
+
+    externalNativeBuild {
+      cmake {
+        arguments += listOf("-DWHISPER_CPP_DIR=${whisperCppDir.get()}")
+      }
     }
   }
 
@@ -41,6 +57,13 @@ android {
 
   buildFeatures {
     viewBinding = true
+  }
+
+  externalNativeBuild {
+    cmake {
+      path = file("src/main/cpp/CMakeLists.txt")
+      version = "3.22.1"
+    }
   }
 
   packaging {

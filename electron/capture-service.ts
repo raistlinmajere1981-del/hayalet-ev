@@ -1,15 +1,20 @@
 import { randomUUID } from "crypto";
 import { spawn } from "child_process";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "http";
-import { constants as fsConstants } from "fs";
+import { constants as fsConstants, createReadStream } from "fs";
 import { access, mkdir, readdir, readFile, rename, stat, writeFile } from "fs/promises";
 import { basename, extname, join } from "path";
+import { BrowserWindow } from "electron";
 import { Paths } from "./paths.ts";
 import { loadSettings } from "./settings-manager.ts";
 import { transcriptService } from "./transcript-service.ts";
-import { DEFAULT_CAPTURE_COMMAND_PHRASES } from "../shared/capture/command-catalog.js";
 import { normalizeAppLanguage } from "../shared/i18n/locale.js";
-import { normalizeTranscriptModelVariant } from "../shared/transcript/model-catalog.js";
+import {
+  getTranscriptModelDescriptor,
+  normalizeTranscriptModelVariant,
+  resolveTranscriptModelId,
+  resolveTranscriptSupportedLanguage,
+} from "../shared/transcript/model-catalog.js";
 import { inspectCompanionArtifactCache } from "../scripts/lib/android-companion-artifact.mjs";
 import type {
   CaptureActionOutcome,
@@ -25,15 +30,21 @@ import type {
   CaptureCompanionCommandEnvelope,
   CaptureCompanionCommandKind,
   CaptureCompanionCommandProfile,
+  CaptureCompanionTranscriptModelProfile,
+  CaptureDictationStatusPayload,
   CaptureImportedAsset,
+  CaptureMediaIngressPayload,
   CaptureServiceStatus,
 } from "../src/types/capture.ts";
+import type { TranscriptManagedModelDescriptor, TranscriptTargetId } from "../src/types/transcript.ts";
 
 const CAPTURE_ADB_TIMEOUT_MS = 12_000;
 const CAPTURE_ANDROID_COMPANION_PACKAGE = "com.hayaletev.androidcompanion";
 const CAPTURE_ANDROID_MAIN_ACTIVITY = "com.hayaletev.androidcompanion/.MainActivity";
 const CAPTURE_BRIDGE_PORT = 48_561;
-const CAPTURE_ANALYZE_TARGET = "analyze-compose";
+const CAPTURE_ANALYZE_TARGET = "analyze-compose" satisfies TranscriptTargetId;
+const CAPTURE_MEDIA_INGRESS_CHANNEL = "capture:media-ingress";
+const CAPTURE_DICTATION_STATUS_CHANNEL = "capture:dictation-status";
 const CAPTURE_SESSION_STALE_MS = 20_000;
 const CAPTURE_COMPANION_DIAGNOSTICS_MAX_LOG_ENTRIES = 400;
 const CAPTURE_COMPANION_DIAGNOSTICS_MAX_TEXT_CHARS = 220_000;
@@ -116,18 +127,7 @@ interface ResolvedCaptureSettings {
   photoQuality: "high" | "balanced";
   attachMode: "manual-sync" | "auto-stage";
   commandConfirmation: "toast" | "none";
-  localWhisperEnabled: boolean;
   androidCompanionEnabled: boolean;
-  androidSpeechEnabled: boolean;
-  speechFallbackMode: "system" | "vosk-seam";
-  commandPhrases: {
-    openCamera: string[];
-    capture: string[];
-    retake: string[];
-    attach: string[];
-    stop: string[];
-    cancel: string[];
-  };
 }
 
 function normalizeCommandChunk(chunk: Buffer | string): string {
@@ -192,6 +192,24 @@ function normalizeText(value: unknown): string | null {
 
   const normalized = value.trim();
   return normalized === "" ? null : normalized;
+}
+
+function normalizeTranscriptTarget(value: unknown): TranscriptTargetId | null {
+  const normalized = normalizeText(value);
+  if (normalized === null) {
+    return null;
+  }
+
+  if (normalized === "analyze-compose" || normalized === "assistant-opencode-native") {
+    return normalized;
+  }
+
+  if (normalized.startsWith("room:")) {
+    const roomId = normalizeText(normalized.slice("room:".length));
+    return roomId === null ? null : `room:${roomId}`;
+  }
+
+  return null;
 }
 
 function normalizeModelLabel(value: string | null): string | null {
@@ -275,20 +293,10 @@ function normalizeCompanionDiagnosticsLogEntries(value: unknown): CompanionDiagn
     });
 }
 
-function normalizeStringList(value: unknown, fallback: string[]): string[] {
-  const source = Array.isArray(value) ? value : typeof value === "string" ? value.split(",") : [];
-  const normalized = source
-    .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
-    .filter((entry, index, list) => entry !== "" && list.indexOf(entry) === index);
-  return normalized.length > 0 ? normalized : [...fallback];
-}
-
 function resolveCaptureSettings(settings: unknown): ResolvedCaptureSettings {
   const capture = isRecord(settings) && isRecord(settings["capture"]) ? settings["capture"] : null;
   const defaults = capture && isRecord(capture["defaults"]) ? capture["defaults"] : null;
   const providers = capture && isRecord(capture["providers"]) ? capture["providers"] : null;
-  const commandPhrases =
-    capture && isRecord(capture["commandPhrases"]) ? capture["commandPhrases"] : null;
 
   return {
     preferredDeviceId: normalizeText(defaults?.["preferredDeviceId"]),
@@ -296,50 +304,55 @@ function resolveCaptureSettings(settings: unknown): ResolvedCaptureSettings {
     photoQuality: defaults?.["photoQuality"] === "balanced" ? "balanced" : "high",
     attachMode: defaults?.["attachMode"] === "auto-stage" ? "auto-stage" : "manual-sync",
     commandConfirmation: defaults?.["commandConfirmation"] === "none" ? "none" : "toast",
-    localWhisperEnabled: providers?.["localWhisperEnabled"] !== false,
     androidCompanionEnabled: providers?.["androidCompanionEnabled"] !== false,
-    androidSpeechEnabled: providers?.["androidSpeechEnabled"] !== false,
-    speechFallbackMode: providers?.["speechFallbackMode"] === "vosk-seam" ? "vosk-seam" : "system",
-    commandPhrases: {
-      openCamera: normalizeStringList(commandPhrases?.["openCamera"], [
-        ...DEFAULT_CAPTURE_COMMAND_PHRASES.openCamera,
-      ]),
-      capture: normalizeStringList(commandPhrases?.["capture"], [
-        ...DEFAULT_CAPTURE_COMMAND_PHRASES.capture,
-      ]),
-      retake: normalizeStringList(commandPhrases?.["retake"], [
-        ...DEFAULT_CAPTURE_COMMAND_PHRASES.retake,
-      ]),
-      attach: normalizeStringList(commandPhrases?.["attach"], [
-        ...DEFAULT_CAPTURE_COMMAND_PHRASES.attach,
-      ]),
-      stop: normalizeStringList(commandPhrases?.["stop"], [
-        ...DEFAULT_CAPTURE_COMMAND_PHRASES.stop,
-      ]),
-      cancel: normalizeStringList(commandPhrases?.["cancel"], [
-        ...DEFAULT_CAPTURE_COMMAND_PHRASES.cancel,
-      ]),
-    },
   };
 }
 
 function buildCompanionCommandProfile(
-  settings: ResolvedCaptureSettings
+  settings: ResolvedCaptureSettings,
+  transcriptModel: CaptureCompanionTranscriptModelProfile | null
 ): CaptureCompanionCommandProfile {
   return {
     defaultLens: settings.defaultLens,
     photoQuality: settings.photoQuality,
     attachMode: settings.attachMode,
     commandConfirmation: settings.commandConfirmation,
-    commandPhrases: {
-      openCamera: [...settings.commandPhrases.openCamera],
-      capture: [...settings.commandPhrases.capture],
-      retake: [...settings.commandPhrases.retake],
-      attach: [...settings.commandPhrases.attach],
-      stop: [...settings.commandPhrases.stop],
-      cancel: [...settings.commandPhrases.cancel],
-    },
+    transcriptModel,
   };
+}
+
+function resolveCompanionTranscriptModelProfile(
+  settings: unknown
+): CaptureCompanionTranscriptModelProfile {
+  const appSettings = isRecord(settings) ? settings : {};
+  const general = isRecord(appSettings["general"]) ? appSettings["general"] : {};
+  const appLanguage = normalizeAppLanguage(general["language"]);
+  const language = resolveTranscriptSupportedLanguage(appLanguage);
+  const variant = normalizeTranscriptModelVariant(general["transcriptModelVariant"], "full");
+  const descriptor = getTranscriptModelDescriptor(resolveTranscriptModelId(language, variant));
+  if (descriptor === null) {
+    throw new Error("Android transcript model descriptor could not be resolved.");
+  }
+
+  return {
+    modelId: descriptor.modelId,
+    fileName: descriptor.fileName,
+    expectedSha1: descriptor.expectedSha1,
+    expectedBytes: descriptor.expectedBytes,
+    language: descriptor.englishOnly === true ? "en" : language,
+    variant: descriptor.variant,
+  };
+}
+
+function findTranscriptDescriptorByFileName(
+  fileName: string
+): TranscriptManagedModelDescriptor | null {
+  const candidates = ["tiny", "base", "tiny.en", "base.en"] as const;
+  return (
+    candidates
+      .map((modelId) => getTranscriptModelDescriptor(modelId))
+      .find((descriptor) => descriptor?.fileName === fileName) ?? null
+  );
 }
 
 function resolveCaptureActionFromCommand(
@@ -354,9 +367,21 @@ function resolveCaptureActionFromCommand(
       return "capture-analyze-photo";
     case "retake-photo":
       return "retake-analyze-photo";
+    case "start-dictation":
+      return "start-analyze-dictation";
+    case "stop-dictation":
+      return "stop-analyze-dictation";
     default:
       throw new Error(`Unsupported capture companion command: ${String(kind)}`);
   }
+}
+
+function isMediaCaptureCommand(kind: CaptureCompanionCommandKind): boolean {
+  return kind === "capture-photo" || kind === "retake-photo";
+}
+
+function getCommandRequestId(command: PendingBridgeCommand): string {
+  return command.requestId ?? command.id;
 }
 
 async function isExecutable(filePath: string | null): Promise<boolean> {
@@ -835,6 +860,7 @@ async function readCompanionManifest(): Promise<CaptureAndroidArtifactStatus> {
     const artifactState = await inspectCompanionArtifactCache({
       companionRoot: getCompanionSourceRoot(),
       artifactManifestPath: companionArtifactManifestPath,
+      extraInputRoots: [join(getCaptureProjectRoot(), "data", "transcript", "whisper.cpp-src")],
     });
     const artifactReady =
       artifactState.artifactReady === true && artifactState.artifactFresh === true;
@@ -949,6 +975,38 @@ async function writeAnalyzeAsset(
   const existingNames = await readDirectoryNameSet(targetDir);
   const nextName = resolveAvailableFileName(existingNames, normalizedName);
 
+  const targetPath = join(targetDir, nextName);
+  await writeFile(targetPath, Buffer.from(contentBase64, "base64"));
+  const fileStat = await stat(targetPath).catch(() => null);
+
+  return {
+    name: nextName,
+    originalName: normalizedName,
+    path: targetPath,
+    importedAt: fileStat?.mtimeMs ?? Date.now(),
+  };
+}
+
+function sanitizeCaptureTargetPathSegment(target: TranscriptTargetId): string {
+  const normalized = target.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 96);
+  return normalized === "" ? "target" : normalized;
+}
+
+async function writeTargetCaptureAsset(
+  target: TranscriptTargetId,
+  fileName: string,
+  contentBase64: string
+): Promise<CaptureImportedAsset> {
+  if (target === CAPTURE_ANALYZE_TARGET) {
+    return await writeAnalyzeAsset(fileName, contentBase64, "staged");
+  }
+
+  const { rootDir } = await ensureCaptureIngressPaths();
+  const targetDir = join(rootDir, "staged", sanitizeCaptureTargetPathSegment(target));
+  await mkdir(targetDir, { recursive: true });
+  const normalizedName = normalizeText(fileName) ?? `capture-${Date.now()}.jpg`;
+  const existingNames = await readDirectoryNameSet(targetDir);
+  const nextName = resolveAvailableFileName(existingNames, normalizedName);
   const targetPath = join(targetDir, nextName);
   await writeFile(targetPath, Buffer.from(contentBase64, "base64"));
   const fileStat = await stat(targetPath).catch(() => null);
@@ -1190,6 +1248,7 @@ class CaptureService {
   };
   private readonly bridgeSessions = new Map<string, CompanionBridgeSessionRecord>();
   private readonly pendingCommands = new Map<string, PendingBridgeCommand[]>();
+  private readonly activeAnalyzeMediaRequestIds = new Set<string>();
   private analyzeState = createDefaultAnalyzeState();
   private operationState = createDefaultOperationState();
 
@@ -1420,9 +1479,11 @@ class CaptureService {
     );
   }
 
-  async launchCompanion(): Promise<CaptureActionOutcome> {
+  async launchCompanion(options: { target?: TranscriptTargetId | null } = {}): Promise<CaptureActionOutcome> {
     const status = await this.refreshStatus();
-    const captureSettings = resolveCaptureSettings(await loadSettings());
+    const settings = await loadSettings();
+    const captureSettings = resolveCaptureSettings(settings);
+    const target = options.target ?? CAPTURE_ANALYZE_TARGET;
     const adbPath = status.android.adbPath;
     const deviceId = status.android.selectedDeviceId;
     if (captureSettings.androidCompanionEnabled !== true) {
@@ -1462,22 +1523,13 @@ class CaptureService {
       deviceId,
       "--es",
       "target",
-      CAPTURE_ANALYZE_TARGET,
+      target,
       "--es",
       "defaultLens",
       captureSettings.defaultLens,
       "--es",
       "photoQuality",
       captureSettings.photoQuality,
-      "--ez",
-      "speechEnabled",
-      captureSettings.androidSpeechEnabled ? "true" : "false",
-      "--es",
-      "speechFallbackMode",
-      captureSettings.speechFallbackMode,
-      "--es",
-      "commandCatalogJson",
-      JSON.stringify(captureSettings.commandPhrases),
     ]).catch((error) => {
       throw new Error(error instanceof Error ? error.message : String(error));
     });
@@ -1491,13 +1543,15 @@ class CaptureService {
       );
     }
 
-    this.analyzeState = {
-      ...this.analyzeState,
-      deviceId,
-      state: "pending-launch",
-      message:
-        "Companion launch requested. Open the app on the phone and keep the preview on the phone screen.",
-    };
+    if (target === CAPTURE_ANALYZE_TARGET) {
+      this.analyzeState = {
+        ...this.analyzeState,
+        deviceId,
+        state: "pending-launch",
+        message:
+          "Companion launch requested. Open the app on the phone and keep the preview on the phone screen.",
+      };
+    }
     return await this.buildActionOutcome(
       "launch-companion",
       true,
@@ -1505,22 +1559,95 @@ class CaptureService {
     );
   }
 
-  async requestAnalyzeSession(): Promise<CaptureActionOutcome> {
-    const launchOutcome = await this.launchCompanion();
+  async requestAnalyzeSession(
+    options: { target?: TranscriptTargetId | null; requestId?: string | null } = {}
+  ): Promise<CaptureActionOutcome> {
+    const target = options.target ?? CAPTURE_ANALYZE_TARGET;
+    const requestId = normalizeText(options.requestId);
+    const launchOutcome = await this.launchCompanion({ target });
     if (launchOutcome.ok !== true) {
       return launchOutcome;
     }
 
     return await this.enqueueAnalyzeCommand("open-camera", "Analyze capture session requested.", {
+      target,
+      requestId,
       replaceExisting: true,
     });
   }
 
-  async stopAnalyzeSession(): Promise<CaptureActionOutcome> {
+  async requestAnalyzeDictation(
+    action: "start" | "stop",
+    options: { requestId?: string | null; target?: TranscriptTargetId | null } = {}
+  ): Promise<CaptureActionOutcome> {
+    const target = options.target ?? CAPTURE_ANALYZE_TARGET;
+    const requestId = normalizeText(options.requestId);
+    if (action === "start") {
+      if (requestId === null) {
+        return await this.buildActionOutcome(
+          "start-analyze-dictation",
+          false,
+          "Android dictation requestId is required."
+        );
+      }
+
+      const launchOutcome = await this.launchCompanion({ target });
+      if (launchOutcome.ok !== true) {
+        return launchOutcome;
+      }
+
+      return await this.enqueueAnalyzeCommand(
+        "start-dictation",
+        "Android dictation recording was requested.",
+        {
+          target,
+          requestId,
+          replaceExistingKinds: ["start-dictation", "stop-dictation"],
+        }
+      );
+    }
+
+    if (requestId === null) {
+      return await this.buildActionOutcome(
+        "stop-analyze-dictation",
+        false,
+        "Android dictation requestId is required."
+      );
+    }
+
     const status = await this.refreshStatus();
     const deviceId = this.resolveAnalyzeCommandDeviceId(status, false);
     if (deviceId === null) {
-      this.resetAnalyzeSessionState("Analyze capture session is already idle.");
+      return await this.buildActionOutcome(
+        "stop-analyze-dictation",
+        false,
+        status.android.message ?? "No ready Android device is available."
+      );
+    }
+
+    return await this.enqueueAnalyzeCommand(
+      "stop-dictation",
+      "Android dictation recording was stopped.",
+      {
+        target,
+        requestId,
+        deviceId,
+        replaceExistingKinds: ["stop-dictation"],
+      }
+    );
+  }
+
+  async stopAnalyzeSession(
+    options: { target?: TranscriptTargetId | null; requestId?: string | null } = {}
+  ): Promise<CaptureActionOutcome> {
+    const target = options.target ?? CAPTURE_ANALYZE_TARGET;
+    const requestId = normalizeText(options.requestId);
+    const status = await this.refreshStatus();
+    const deviceId = this.resolveAnalyzeCommandDeviceId(status, false);
+    if (deviceId === null) {
+      if (target === CAPTURE_ANALYZE_TARGET) {
+        this.resetAnalyzeSessionState("Analyze capture session is already idle.");
+      }
       return await this.buildActionOutcome(
         "stop-analyze-session",
         true,
@@ -1528,10 +1655,12 @@ class CaptureService {
       );
     }
 
-    this.clearPendingAnalyzeCommands(deviceId);
-    const bridgeSession = this.getAnalyzeBridgeSession(deviceId);
+    this.clearPendingTargetCommands(deviceId, target);
+    const bridgeSession = this.getBridgeSessionForTarget(deviceId, target);
     if (bridgeSession === null) {
-      this.resetAnalyzeSessionState("Analyze capture session is idle.");
+      if (target === CAPTURE_ANALYZE_TARGET) {
+        this.resetAnalyzeSessionState("Analyze capture session is idle.");
+      }
       return await this.buildActionOutcome(
         "stop-analyze-session",
         true,
@@ -1541,17 +1670,24 @@ class CaptureService {
 
     return await this.enqueueAnalyzeCommand("close-camera", "Analyze capture session was closed.", {
       deviceId,
+      target,
+      requestId,
       replaceExisting: true,
       requireSession: true,
     });
   }
 
   async requestAnalyzeCapture(
-    kind: "capture-photo" | "retake-photo"
+    kind: "capture-photo" | "retake-photo",
+    options: { target?: TranscriptTargetId | null; requestId?: string | null } = {}
   ): Promise<CaptureActionOutcome> {
+    const target = options.target ?? CAPTURE_ANALYZE_TARGET;
+    const requestId = normalizeText(options.requestId);
     const status = await this.refreshStatus();
     const readyState =
-      this.analyzeState.state === "ready" || this.analyzeState.state === "result-ready";
+      target !== CAPTURE_ANALYZE_TARGET ||
+      this.analyzeState.state === "ready" ||
+      this.analyzeState.state === "result-ready";
     if (readyState !== true) {
       return await this.buildActionOutcome(
         kind === "capture-photo" ? "capture-analyze-photo" : "retake-analyze-photo",
@@ -1564,8 +1700,10 @@ class CaptureService {
       kind,
       kind === "capture-photo" ? "Phone photo capture requested." : "Phone retake requested.",
       {
-        deviceId: this.resolveAnalyzeCommandDeviceId(status, true),
-        requireSession: true,
+        target,
+        requestId,
+        deviceId: this.resolveAnalyzeCommandDeviceId(status, target === CAPTURE_ANALYZE_TARGET),
+        requireSession: target === CAPTURE_ANALYZE_TARGET,
       }
     );
   }
@@ -1625,19 +1763,35 @@ class CaptureService {
   }
 
   private getAnalyzeBridgeSession(deviceId: string | null): CompanionBridgeSessionRecord | null {
+    return this.getBridgeSessionForTarget(deviceId, CAPTURE_ANALYZE_TARGET);
+  }
+
+  private getBridgeSessionForTarget(
+    deviceId: string | null,
+    target: TranscriptTargetId
+  ): CompanionBridgeSessionRecord | null {
     if (deviceId === null) {
       return null;
     }
 
     const session = this.bridgeSessions.get(deviceId) ?? null;
-    return session?.target === CAPTURE_ANALYZE_TARGET && session.previewActive === true
-      ? session
-      : null;
+    return session?.target === target && session.previewActive === true ? session : null;
   }
 
   private clearPendingAnalyzeCommands(deviceId: string): void {
+    this.clearPendingTargetCommands(deviceId, CAPTURE_ANALYZE_TARGET);
+  }
+
+  private clearPendingTargetCommands(deviceId: string, target: TranscriptTargetId): void {
     const queue = this.pendingCommands.get(deviceId) ?? [];
-    const filtered = queue.filter((command) => command.target !== CAPTURE_ANALYZE_TARGET);
+    queue
+      .filter((command) => command.target === target)
+      .forEach((command) => {
+        if (target === CAPTURE_ANALYZE_TARGET && isMediaCaptureCommand(command.kind)) {
+          this.activeAnalyzeMediaRequestIds.delete(getCommandRequestId(command));
+        }
+      });
+    const filtered = queue.filter((command) => command.target !== target);
     if (filtered.length === 0) {
       this.pendingCommands.delete(deviceId);
       return;
@@ -1647,6 +1801,7 @@ class CaptureService {
   }
 
   private resetAnalyzeSessionState(message: string): void {
+    this.activeAnalyzeMediaRequestIds.clear();
     const nextState = createDefaultAnalyzeState();
     this.analyzeState = {
       ...nextState,
@@ -1862,15 +2017,62 @@ class CaptureService {
         }
 
         const commands = this.pendingCommands.get(deviceId) ?? [];
+        const acknowledgedCommand = commands.find((command) => command.id === commandId) ?? null;
         this.pendingCommands.set(
           deviceId,
           commands.filter((command) => command.id !== commandId)
         );
+        const commandKind = normalizeText(body["kind"]) ?? acknowledgedCommand?.kind ?? null;
+        const requestId = normalizeText(body["requestId"]) ?? acknowledgedCommand?.requestId ?? null;
+        const target = normalizeTranscriptTarget(body["target"]) ?? acknowledgedCommand?.target ?? null;
+        const statusText = normalizeText(body["status"]);
+        const fallbackMessage =
+          commandKind === "capture-photo"
+            ? "The phone is capturing a photo."
+            : commandKind === "close-camera"
+              ? "The phone capture session is idle."
+              : commandKind === "start-dictation"
+                ? "Android dictation is recording on the phone."
+                : commandKind === "stop-dictation"
+                  ? "Android dictation is transcribing on the phone."
+                  : "The phone acknowledged the latest command.";
+        const message = normalizeText(body["message"]) ?? fallbackMessage;
+        if (
+          requestId !== null &&
+          target !== null &&
+          (commandKind === "start-dictation" || commandKind === "stop-dictation")
+        ) {
+          this.emitCaptureDictationStatus({
+            requestId,
+            createdAt: new Date().toISOString(),
+            source: "android-bridge",
+            target,
+            deviceId,
+            status:
+              statusText === "failed"
+                ? "failed"
+                : statusText === "done"
+                  ? "done"
+                  : commandKind === "start-dictation"
+                    ? "started"
+                    : "transcribing",
+            message,
+          });
+        }
+        if (
+          requestId !== null &&
+          target === CAPTURE_ANALYZE_TARGET &&
+          (commandKind === "capture-photo" || commandKind === "retake-photo") &&
+          (statusText === "done" || statusText === "failed")
+        ) {
+          this.activeAnalyzeMediaRequestIds.delete(requestId);
+        }
         if (
           this.analyzeState.deviceId === deviceId &&
-          (body["status"] === "accepted" || body["status"] === "done")
+          (body["status"] === "accepted" ||
+            body["status"] === "done" ||
+            body["status"] === "failed")
         ) {
-          const commandKind = body["kind"];
           const session = this.bridgeSessions.get(deviceId) ?? null;
           const previewActive =
             typeof body["previewActive"] === "boolean"
@@ -1884,21 +2086,30 @@ class CaptureService {
           this.analyzeState = {
             ...this.analyzeState,
             state:
-              commandKind === "capture-photo"
-                ? "capture-requested"
-                : commandKind === "close-camera"
-                  ? "idle"
-                  : previewActive === true
+              statusText === "failed"
+                ? "ready"
+                : commandKind === "capture-photo"
+                  ? this.analyzeState.state === "result-ready"
+                    ? "result-ready"
+                    : "capture-requested"
+                  : commandKind === "close-camera"
+                    ? "idle"
+                  : commandKind === "start-dictation" || commandKind === "stop-dictation"
+                    ? this.analyzeState.state === "idle"
+                      ? "pending-launch"
+                      : this.analyzeState.state
+                    : previewActive === true
                     ? "ready"
                     : "pending-launch",
-            pendingCommand: commandKind === "capture-photo" ? "capture-photo" : null,
-            message:
-              normalizeText(body["message"]) ??
-              (commandKind === "capture-photo"
-                ? "The phone is capturing a photo."
-                : commandKind === "close-camera"
-                  ? "The phone capture session is idle."
-                  : "The phone acknowledged the latest command."),
+            pendingCommand:
+              statusText === "failed" || statusText === "done"
+                ? null
+                : commandKind === "capture-photo"
+                ? "capture-photo"
+                : commandKind === "start-dictation"
+                  ? "start-dictation"
+                  : null,
+            message,
           };
         }
 
@@ -1923,6 +2134,11 @@ class CaptureService {
         return;
       }
 
+      if (method === "GET" && requestUrl.pathname === "/api/v1/transcript/model") {
+        await this.handleTranscriptModelDownload(requestUrl, response);
+        return;
+      }
+
       if (method === "POST" && requestUrl.pathname === "/api/v1/transcript/ingress") {
         const body = await this.readJsonBody(request);
         const text = normalizeText(body["text"]);
@@ -1931,12 +2147,22 @@ class CaptureService {
           return;
         }
 
-        const target = normalizeText(body["target"]) ?? CAPTURE_ANALYZE_TARGET;
+        const requestId = normalizeText(body["requestId"]);
+        const target = normalizeTranscriptTarget(body["target"]);
+        if (requestId === null || target === null) {
+          this.sendJson(response, 400, {
+            ok: false,
+            error: "requestId and target are required.",
+          });
+          return;
+        }
+
         const requestMetadata = this.normalizeMetadata(body["metadata"]) ?? {};
         const ingress = transcriptService.submitIngress({
+          requestId,
           text,
           source: "android-bridge",
-          target: target as "analyze-compose",
+          target,
           isFinal: body["isFinal"] !== false,
           metadata: {
             ...requestMetadata,
@@ -1956,12 +2182,52 @@ class CaptureService {
           return;
         }
 
+        const requestId = normalizeText(body["requestId"]);
+        const target = normalizeTranscriptTarget(body["target"]);
+        if (requestId === null || target === null) {
+          this.sendJson(response, 400, {
+            ok: false,
+            error: "requestId and target are required.",
+          });
+          return;
+        }
+
+        const fileName = normalizeText(body["fileName"]) ?? `capture-${Date.now()}.jpg`;
+        if (target !== CAPTURE_ANALYZE_TARGET) {
+          const storedAsset = await writeTargetCaptureAsset(target, fileName, contentBase64);
+          this.emitCaptureMediaIngress({
+            requestId,
+            createdAt: new Date().toISOString(),
+            source: "android-bridge",
+            target,
+            asset: storedAsset,
+            metadata: {
+              deviceId: normalizeText(body["deviceId"]),
+              transport: "adb-reverse",
+            },
+          });
+          this.sendJson(response, 200, {
+            ok: true,
+            storedPath: storedAsset.path,
+          });
+          return;
+        }
+
+        if (this.activeAnalyzeMediaRequestIds.has(requestId) !== true) {
+          this.sendJson(response, 409, {
+            ok: false,
+            error: "Analyze capture request is not active.",
+          });
+          return;
+        }
+
         const captureSettings = resolveCaptureSettings(await loadSettings());
         const storedAsset = await writeAnalyzeAsset(
-          normalizeText(body["fileName"]) ?? `capture-${Date.now()}.jpg`,
+          fileName,
           contentBase64,
           captureSettings.attachMode === "auto-stage" ? "staged" : "inbox"
         );
+        this.activeAnalyzeMediaRequestIds.delete(requestId);
         this.analyzeState = {
           ...this.analyzeState,
           state: "result-ready",
@@ -1997,10 +2263,71 @@ class CaptureService {
     }
   }
 
+  private async handleTranscriptModelDownload(
+    requestUrl: URL,
+    response: ServerResponse
+  ): Promise<void> {
+    const fileName = normalizeText(requestUrl.searchParams.get("fileName"));
+    if (fileName === null) {
+      this.sendJson(response, 400, { ok: false, error: "fileName is required." });
+      return;
+    }
+
+    const descriptor = findTranscriptDescriptorByFileName(fileName);
+    if (descriptor === null) {
+      this.sendJson(response, 404, { ok: false, error: "Transcript model is unknown." });
+      return;
+    }
+
+    const model = await transcriptService.installModel(descriptor.modelId);
+    if (model.ready !== true || model.path === null) {
+      this.sendJson(response, 500, {
+        ok: false,
+        error: model.lastError ?? "Transcript model could not be prepared.",
+      });
+      return;
+    }
+
+    const fileStat = await stat(model.path);
+    response.statusCode = 200;
+    response.setHeader("content-type", "application/octet-stream");
+    response.setHeader("content-length", String(fileStat.size));
+    response.setHeader("x-transcript-model-id", descriptor.modelId);
+    response.setHeader("x-transcript-model-sha1", descriptor.expectedSha1);
+    response.setHeader("x-transcript-model-file", descriptor.fileName);
+    await new Promise<void>((resolvePromise, rejectPromise) => {
+      const stream = createReadStream(model.path ?? "");
+      stream.once("error", rejectPromise);
+      response.once("error", rejectPromise);
+      response.once("finish", resolvePromise);
+      stream.pipe(response);
+    });
+  }
+
   private sendJson(response: ServerResponse, statusCode: number, payload: unknown): void {
     response.statusCode = statusCode;
     response.setHeader("content-type", "application/json; charset=utf-8");
     response.end(`${JSON.stringify(payload)}\n`);
+  }
+
+  private emitCaptureMediaIngress(payload: CaptureMediaIngressPayload): void {
+    for (const window of BrowserWindow.getAllWindows()) {
+      try {
+        window.webContents.send(CAPTURE_MEDIA_INGRESS_CHANNEL, payload);
+      } catch {
+        // NOTE: Capture fan-out is best-effort so one detached window cannot abort the bridge upload.
+      }
+    }
+  }
+
+  private emitCaptureDictationStatus(payload: CaptureDictationStatusPayload): void {
+    for (const window of BrowserWindow.getAllWindows()) {
+      try {
+        window.webContents.send(CAPTURE_DICTATION_STATUS_CHANNEL, payload);
+      } catch {
+        // NOTE: Dictation status fan-out is best-effort for detached renderer windows.
+      }
+    }
   }
 
   private async readJsonBody(request: IncomingMessage): Promise<Record<string, unknown>> {
@@ -2363,12 +2690,16 @@ class CaptureService {
     successMessage: string,
     options?: {
       deviceId?: string | null;
+      target?: TranscriptTargetId | null;
+      requestId?: string | null;
       replaceExisting?: boolean;
+      replaceExistingKinds?: CaptureCompanionCommandKind[];
       requireSession?: boolean;
     }
   ): Promise<CaptureActionOutcome> {
     const status = await this.refreshStatus();
-    const captureSettings = resolveCaptureSettings(await loadSettings());
+    const settings = await loadSettings();
+    const captureSettings = resolveCaptureSettings(settings);
     if (captureSettings.androidCompanionEnabled !== true) {
       return await this.buildActionOutcome(
         resolveCaptureActionFromCommand(kind),
@@ -2387,7 +2718,8 @@ class CaptureService {
       );
     }
 
-    if (options?.requireSession === true && this.getAnalyzeBridgeSession(deviceId) === null) {
+    const target = options?.target ?? CAPTURE_ANALYZE_TARGET;
+    if (options?.requireSession === true && this.getBridgeSessionForTarget(deviceId, target) === null) {
       return await this.buildActionOutcome(
         resolveCaptureActionFromCommand(kind),
         false,
@@ -2395,33 +2727,55 @@ class CaptureService {
       );
     }
 
+    const transcriptModel = resolveCompanionTranscriptModelProfile(settings);
     const command: PendingBridgeCommand = {
       id: randomUUID(),
       kind,
-      target: CAPTURE_ANALYZE_TARGET,
+      target,
+      requestId: normalizeText(options?.requestId),
       createdAt: Date.now(),
-      profile: buildCompanionCommandProfile(captureSettings),
+      profile: buildCompanionCommandProfile(captureSettings, transcriptModel),
     };
+    if (target === CAPTURE_ANALYZE_TARGET && isMediaCaptureCommand(kind)) {
+      this.activeAnalyzeMediaRequestIds.add(getCommandRequestId(command));
+    }
+    const replaceExistingKinds = options?.replaceExistingKinds ?? [];
+    const currentQueue = this.pendingCommands.get(deviceId) ?? [];
     const queue =
       options?.replaceExisting === true
-        ? (this.pendingCommands.get(deviceId) ?? []).filter(
-            (entry) => entry.target !== CAPTURE_ANALYZE_TARGET
-          )
-        : (this.pendingCommands.get(deviceId) ?? []);
+        ? currentQueue.filter((entry) => entry.target !== target)
+        : replaceExistingKinds.length > 0
+          ? currentQueue.filter(
+              (entry) =>
+                entry.target !== target ||
+                replaceExistingKinds.includes(entry.kind) !== true
+            )
+        : currentQueue;
+    currentQueue
+      .filter((entry) => queue.includes(entry) !== true)
+      .forEach((entry) => {
+        if (entry.target === CAPTURE_ANALYZE_TARGET && isMediaCaptureCommand(entry.kind)) {
+          this.activeAnalyzeMediaRequestIds.delete(getCommandRequestId(entry));
+        }
+      });
     queue.push(command);
     this.pendingCommands.set(deviceId, queue);
-    this.analyzeState = {
-      ...this.analyzeState,
-      state:
-        kind === "open-camera"
-          ? "pending-launch"
-          : kind === "close-camera"
-            ? "idle"
-            : "capture-requested",
-      deviceId,
-      pendingCommand: kind === "close-camera" ? null : kind,
-      message: successMessage,
-    };
+    if (target === CAPTURE_ANALYZE_TARGET) {
+      this.analyzeState = {
+        ...this.analyzeState,
+        state:
+          kind === "open-camera"
+            ? "pending-launch"
+            : kind === "close-camera"
+              ? "idle"
+              : kind === "start-dictation" || kind === "stop-dictation"
+                ? this.analyzeState.state
+                : "capture-requested",
+        deviceId,
+        pendingCommand: kind === "close-camera" || kind === "stop-dictation" ? null : kind,
+        message: successMessage,
+      };
+    }
 
     return await this.buildActionOutcome(
       resolveCaptureActionFromCommand(kind),

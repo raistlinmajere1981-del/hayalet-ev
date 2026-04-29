@@ -40,8 +40,8 @@ test("android companion diagnostics panel stays wired across ui and runtime flow
     "android-companion/app/src/main/kotlin/com/hayaletev/androidcompanion/capture/CameraSessionController.kt",
     "utf8"
   );
-  const speechSource = readFileSync(
-    "android-companion/app/src/main/kotlin/com/hayaletev/androidcompanion/speech/CommandSpeechController.kt",
+  const recorderSource = readFileSync(
+    "android-companion/app/src/main/kotlin/com/hayaletev/androidcompanion/transcript/AndroidAudioRecorder.kt",
     "utf8"
   );
 
@@ -90,6 +90,6 @@ test("android companion diagnostics panel stays wired across ui and runtime flow
   assert.match(cameraSource, /CompanionDiagnostics\.i\("camera", "Binding camera preview\."/);
   assert.match(cameraSource, /CompanionDiagnostics\.e\("camera", "Photo capture failed\."/);
 
-  assert.match(speechSource, /CompanionDiagnostics\.w\("speech", "Speech recognizer reported error code/);
-  assert.match(speechSource, /CompanionDiagnostics\.setState\("Speech backend"/);
+  assert.match(recorderSource, /CompanionDiagnostics\.i\(\s*"transcript"/);
+  assert.match(recorderSource, /Android microphone recording started/);
 });

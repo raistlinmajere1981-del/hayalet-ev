@@ -74,12 +74,12 @@ export function createDefaultSettings(): AppSettings {
         commandConfirmation: "toast",
       },
       providers: {
-        localWhisperEnabled: true,
         androidCompanionEnabled: true,
-        androidSpeechEnabled: true,
-        speechFallbackMode: "system",
       },
-      commandPhrases: {
+    },
+    voiceCommands: {
+      analyzeEnabled: false,
+      analyzePhrases: {
         openCamera: [...DEFAULT_CAPTURE_COMMAND_PHRASES.openCamera],
         capture: [...DEFAULT_CAPTURE_COMMAND_PHRASES.capture],
         retake: [...DEFAULT_CAPTURE_COMMAND_PHRASES.retake],

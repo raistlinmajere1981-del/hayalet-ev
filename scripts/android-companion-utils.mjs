@@ -22,9 +22,13 @@ const currentDir = dirname(fileURLToPath(import.meta.url));
 
 const ANDROID_COMPILE_SDK = "35";
 const ANDROID_BUILD_TOOLS = "35.0.0";
+const ANDROID_CMAKE_VERSION = "3.22.1";
+const ANDROID_NDK_VERSION = "26.3.11579264";
 const ANDROID_CMDLINE_TOOLS_REPOSITORY_URL =
   "https://dl.google.com/android/repository/repository2-1.xml";
 const ADOPTIUM_API_URL = "https://api.adoptium.net/v3/assets/latest/21/hotspot";
+const WHISPER_CPP_REPOSITORY_URL = "https://github.com/ggml-org/whisper.cpp.git";
+const WHISPER_CPP_TAG = "v1.8.4";
 const USER_AGENT = "HayaletEvAndroidCompanion/1.0";
 
 export const projectRoot = resolve(currentDir, "..");
@@ -34,6 +38,7 @@ export const toolchainRoot = join(projectRoot, "dist", "android-toolchain");
 export const downloadCacheRoot = join(toolchainRoot, "downloads");
 export const managedJdkRoot = join(toolchainRoot, "jdk");
 export const managedAndroidSdkRoot = join(toolchainRoot, "android-sdk");
+export const whisperCppSourceRoot = join(projectRoot, "data", "transcript", "whisper.cpp-src");
 export const sourceManifestPath = join(
   companionRoot,
   "app",
@@ -198,6 +203,8 @@ function getExpectedAndroidSdkPaths(rootPath) {
   return {
     platformPath: join(rootPath, "platforms", `android-${ANDROID_COMPILE_SDK}`),
     buildToolsPath: join(rootPath, "build-tools", ANDROID_BUILD_TOOLS),
+    cmakePath: join(rootPath, "cmake", ANDROID_CMAKE_VERSION),
+    ndkPath: join(rootPath, "ndk", ANDROID_NDK_VERSION),
     sdkManagerPath: join(
       rootPath,
       "cmdline-tools",
@@ -277,10 +284,13 @@ async function inspectAndroidSdkRoot(rootPath) {
   }
 
   const normalizedRoot = rootPath.trim();
-  const { platformPath, buildToolsPath, sdkManagerPath } = getExpectedAndroidSdkPaths(normalizedRoot);
-  const [platformReady, buildToolsReady, sdkManagerReady] = await Promise.all([
+  const { platformPath, buildToolsPath, cmakePath, ndkPath, sdkManagerPath } =
+    getExpectedAndroidSdkPaths(normalizedRoot);
+  const [platformReady, buildToolsReady, cmakeReady, ndkReady, sdkManagerReady] = await Promise.all([
     fileExists(platformPath),
     fileExists(buildToolsPath),
+    fileExists(cmakePath),
+    fileExists(ndkPath),
     isExecutable(sdkManagerPath),
   ]);
 
@@ -289,8 +299,10 @@ async function inspectAndroidSdkRoot(rootPath) {
     sdkManagerPath,
     platformReady,
     buildToolsReady,
+    cmakeReady,
+    ndkReady,
     sdkManagerReady,
-    complete: platformReady && buildToolsReady && sdkManagerReady,
+    complete: platformReady && buildToolsReady && cmakeReady && ndkReady && sdkManagerReady,
     source: normalizedRoot === managedAndroidSdkRoot ? "managed" : "system",
   };
 }
@@ -610,7 +622,8 @@ async function installManagedAndroidSdk(javaRuntime, emitProgress) {
   notify({
     message: "Installing Android SDK packages for API 35.",
     progress: 0.64,
-    detail: "platform-tools, platforms;android-35, and build-tools;35.0.0 are being installed.",
+    detail:
+      "platform-tools, platforms;android-35, build-tools;35.0.0, CMake, and NDK are being installed.",
   });
   const packageResult = await runCommand(
     sdkManagerPath,
@@ -619,6 +632,8 @@ async function installManagedAndroidSdk(javaRuntime, emitProgress) {
       "platform-tools",
       `platforms;android-${ANDROID_COMPILE_SDK}`,
       `build-tools;${ANDROID_BUILD_TOOLS}`,
+      `cmake;${ANDROID_CMAKE_VERSION}`,
+      `ndk;${ANDROID_NDK_VERSION}`,
     ],
     {
       env: sdkEnv,
@@ -658,12 +673,79 @@ export async function planCompanionBuildEnvironment() {
   const androidSdk = await resolveUsableAndroidSdk();
   if (androidSdk === null) {
     plan.details.push(
-      `Android SDK command-line tools and API ${ANDROID_COMPILE_SDK} packages will be installed into ${managedAndroidSdkRoot}.`
+      `Android SDK command-line tools, API ${ANDROID_COMPILE_SDK}, CMake, and NDK packages will be installed into ${managedAndroidSdkRoot}.`
     );
+  }
+
+  if ((await fileExists(join(whisperCppSourceRoot, "CMakeLists.txt"))) !== true) {
+    plan.details.push(`whisper.cpp ${WHISPER_CPP_TAG} will be cloned into ${whisperCppSourceRoot}.`);
   }
 
   plan.needsConfirmation = plan.details.length > 0;
   return plan;
+}
+
+async function resolveWhisperCppCheckoutTag(rootPath) {
+  if ((await fileExists(join(rootPath, ".git"))) !== true) {
+    return null;
+  }
+
+  const gitPath = await resolveExecutableOnPath("git");
+  if (gitPath === null) {
+    return null;
+  }
+
+  const result = await runCommand(gitPath, ["-C", rootPath, "describe", "--tags", "--exact-match"]);
+  return result.exitCode === 0 ? result.stdout.trim() : null;
+}
+
+async function ensureWhisperCppSource(emitProgress) {
+  const notify = normalizeProgressEmitter(emitProgress);
+  if ((await fileExists(join(whisperCppSourceRoot, "CMakeLists.txt"))) === true) {
+    const checkoutTag = await resolveWhisperCppCheckoutTag(whisperCppSourceRoot);
+    if (checkoutTag === WHISPER_CPP_TAG) {
+      notify({
+        message: "Using the prepared whisper.cpp source checkout.",
+        progress: 0.76,
+        detail: `whisper.cpp ${WHISPER_CPP_TAG} source is ready at ${whisperCppSourceRoot}.`,
+      });
+      return whisperCppSourceRoot;
+    }
+
+    notify({
+      message: "Refreshing whisper.cpp source checkout.",
+      progress: 0.73,
+      detail: `Existing checkout is ${checkoutTag ?? "unverified"}; ${WHISPER_CPP_TAG} is required.`,
+    });
+  }
+
+  const gitPath = await resolveExecutableOnPath("git");
+  if (gitPath === null) {
+    throw new Error("Android companion build needs git to prepare whisper.cpp sources.");
+  }
+
+  notify({
+    message: "Cloning whisper.cpp for the Android native transcript runtime.",
+    progress: 0.74,
+    detail: `whisper.cpp ${WHISPER_CPP_TAG} will be cloned into ${whisperCppSourceRoot}.`,
+  });
+  await mkdir(dirname(whisperCppSourceRoot), { recursive: true });
+  await rm(whisperCppSourceRoot, { recursive: true, force: true });
+  const cloneResult = await runCommand(gitPath, [
+    "clone",
+    "--depth",
+    "1",
+    "--branch",
+    WHISPER_CPP_TAG,
+    WHISPER_CPP_REPOSITORY_URL,
+    whisperCppSourceRoot,
+  ]);
+  if (cloneResult.exitCode !== 0) {
+    throw new Error(
+      cloneResult.stderr.trim() || cloneResult.stdout.trim() || "whisper.cpp clone failed."
+    );
+  }
+  return whisperCppSourceRoot;
 }
 
 export async function prepareCompanionBuildEnvironment(options = {}) {
@@ -733,6 +815,8 @@ export async function buildCompanionArtifact(options = {}) {
     );
   }
 
+  await ensureWhisperCppSource(notify);
+
   const javaRuntime = await inspectJavaHome(env.JAVA_HOME ?? "") ?? (await inspectPathJava());
   if (javaRuntime === null) {
     throw new Error("Android companion build is blocked: Java was not found on PATH.");
@@ -751,7 +835,10 @@ export async function buildCompanionArtifact(options = {}) {
   const buildResult = await runCommand(wrapperPath, ["assembleDebug"], {
     cwd: companionRoot,
     stdio,
-    env,
+    env: {
+      ...env,
+      HAYALET_EV_WHISPER_CPP_DIR: whisperCppSourceRoot,
+    },
   });
   if (buildResult.exitCode !== 0) {
     throw new Error(
@@ -814,6 +901,7 @@ export async function resolveInstallableArtifact({
       typeof paths?.artifactManifestPath === "string"
         ? paths.artifactManifestPath
         : artifactManifestPath,
+    extraInputRoots: [whisperCppSourceRoot],
   };
   const artifactState = await inspectCompanionArtifactCache(resolvedPaths);
   if (artifactState.artifactReady === true && artifactState.artifactFresh === true) {

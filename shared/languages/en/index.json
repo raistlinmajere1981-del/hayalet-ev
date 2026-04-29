@@ -120,13 +120,15 @@
           "insertedMessage": "The transcript was inserted into the text field.",
           "androidToggleLabel": "Android dictate",
           "androidIdleTitle": "Start dictation through the connected Android device",
-          "androidPreparingMessage": "Android dictate is preparing on the phone. Keep the companion app open and speak into the device.",
-          "androidListeningMessage": "Android dictate is active on the phone. You can speak into the connected device now.",
-          "androidUnavailableTitle": "Choose a ready phone and keep the Android speech bridge enabled in Settings > Capture before using Android dictate.",
-          "disabledTitle": "Local Whisper dictation is disabled in Settings > Capture.",
+          "androidPreparingMessage": "Android dictate is preparing on the phone. Keep the companion app open.",
+          "androidListeningMessage": "Android recording is active on the phone. Click again when you are done.",
+          "androidUnavailableTitle": "Choose a ready phone before using Android dictate.",
+          "disabledTitle": "Local Whisper dictation is unavailable.",
           "captureError": "Could not start the microphone: {{message}}",
           "transcriptionError": "Could not transcribe the audio: {{message}}",
-          "androidError": "Android dictate could not be prepared: {{message}}"
+          "androidError": "Android dictate could not be prepared: {{message}}",
+          "voiceCommandActive": "Voice command active",
+          "voiceCommandInactive": "Voice command passive"
         },
         "captureImport": {
           "empty": "No phone captures are waiting in the central analyze inbox.",
@@ -770,7 +772,7 @@
       },
       "capture": {
         "title": "Capture Control",
-        "subtitle": "Manage local speech runtime, Android companion state, and camera capture from one deck."
+        "subtitle": "Manage Android companion state, camera capture, and shared room capture defaults from one deck."
       },
       "scene": {
         "ariaLabel": "Settings room",
@@ -5015,13 +5017,13 @@
         }
       },
       "policy": {
-        "title": "Android Speech Policy",
-        "subtitle": "Control the phone-side speech path and the command phrases that the companion normalizes locally.",
-        "fallbackMode": "Fallback strategy",
+        "title": "Android Companion Policy",
+        "subtitle": "Control whether the Android companion can provide phone-side camera capture and dictation.",
+        "fallbackMode": "Legacy fallback strategy",
         "providers": {
-          "localWhisper": "Enable local Whisper dictation",
+          "localWhisper": "Legacy local Whisper dictation",
           "androidCompanion": "Enable Android companion capture",
-          "androidSpeech": "Enable Android speech bridge"
+          "androidSpeech": "Legacy Android speech bridge"
         },
         "commands": {
           "openCamera": "Open session phrases",
@@ -5030,10 +5032,10 @@
           "attach": "Attach phrases",
           "stop": "Stop phrases"
         },
-        "hint": "Phrase inputs are comma-separated and are passed to the companion app when Analyze starts a phone session.",
+        "hint": "Voice command phrases are managed outside Capture; the companion receives only target and model metadata.",
         "fallbackOptions": {
-          "system": "Fallback to system recognizer",
-          "voskSeam": "Reserve Vosk fallback seam"
+          "system": "Legacy system recognizer",
+          "voskSeam": "Legacy Vosk path"
         }
       },
       "transcript": {

@@ -11,12 +11,14 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
 
 data class BridgeCommand(
     val id: String,
     val kind: String,
     val target: String,
+    val requestId: String? = null,
     val profile: BridgeCommandProfile? = null,
 )
 
@@ -25,19 +27,19 @@ data class BridgePermissions(
     val microphone: String
 )
 
-data class BridgeCommandPhraseProfile(
-    val openCamera: List<String> = emptyList(),
-    val capture: List<String> = emptyList(),
-    val retake: List<String> = emptyList(),
-    val attach: List<String> = emptyList(),
-    val stop: List<String> = emptyList(),
-    val cancel: List<String> = emptyList(),
-)
-
 data class BridgeCommandProfile(
     val defaultLens: String? = null,
     val photoQuality: String? = null,
-    val commandPhrases: BridgeCommandPhraseProfile = BridgeCommandPhraseProfile(),
+    val transcriptModel: BridgeTranscriptModelProfile? = null,
+)
+
+data class BridgeTranscriptModelProfile(
+    val modelId: String,
+    val fileName: String,
+    val expectedSha1: String,
+    val expectedBytes: Long?,
+    val language: String,
+    val variant: String,
 )
 
 class DesktopBridgeClient(private val manifest: CompanionManifest) {
@@ -100,6 +102,8 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
             .put("deviceId", deviceId)
             .put("commandId", command.id)
             .put("kind", command.kind)
+            .put("target", command.target)
+            .put("requestId", command.requestId ?: command.id)
             .put("status", status)
             .put("message", message)
         if (previewActive != null) {
@@ -115,11 +119,15 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
 
     suspend fun uploadAnalyzeCapture(
         deviceId: String,
+        target: String,
+        requestId: String,
         file: File
     ) {
         val bytes = withContext(Dispatchers.IO) { file.readBytes() }
         val payload = JSONObject()
+            .put("requestId", requestId)
             .put("deviceId", deviceId)
+            .put("target", target)
             .put("fileName", file.name)
             .put("contentBase64", android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP))
         postJson("/api/v1/media/analyze", payload)
@@ -131,6 +139,7 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
     }
 
     suspend fun submitTranscript(
+        requestId: String,
         deviceId: String,
         target: String,
         text: String,
@@ -138,6 +147,7 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
         metadata: JSONObject? = null,
     ) {
         val payload = JSONObject()
+            .put("requestId", requestId)
             .put("deviceId", deviceId)
             .put("target", target)
             .put("text", text)
@@ -151,6 +161,41 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
             "Submitted transcript to desktop bridge.",
             "target=$target, final=$isFinal",
         )
+    }
+
+    suspend fun downloadTranscriptModel(
+        fileName: String,
+        destination: File,
+    ) = withContext(Dispatchers.IO) {
+        destination.parentFile?.mkdirs()
+        val request = Request.Builder()
+            .url("$baseUrl/api/v1/transcript/model?fileName=$fileName")
+            .get()
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                val body = response.body?.string().orEmpty()
+                CompanionDiagnostics.e(
+                    "transcript",
+                    "Transcript model download failed with ${response.code}.",
+                    body.ifBlank { "Bridge model download failed." },
+                )
+                throw IllegalStateException(body.ifBlank { "Bridge model download failed: ${response.code}" })
+            }
+
+            val body = response.body ?: throw IllegalStateException("Bridge model response was empty.")
+            FileOutputStream(destination).use { output ->
+                body.byteStream().use { input ->
+                    input.copyTo(output)
+                }
+            }
+            CompanionDiagnostics.i(
+                "transcript",
+                "Downloaded transcript model from desktop bridge.",
+                "file=${destination.name}, bytes=${destination.length()}",
+            )
+        }
     }
 
     suspend fun submitDiagnosticsSnapshot(deviceId: String) {
@@ -238,6 +283,7 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
                         id = id,
                         kind = kind,
                         target = target,
+                        requestId = item.optString("requestId").trim().ifBlank { null },
                         profile = item.optJSONObject("profile")?.toBridgeCommandProfile(),
                     )
                 )
@@ -246,34 +292,35 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
     }
 
     private fun JSONObject.toBridgeCommandProfile(): BridgeCommandProfile {
-        val phrases =
-            optJSONObject("commandPhrases")?.let { commandPhrases ->
-                BridgeCommandPhraseProfile(
-                    openCamera = commandPhrases.readPhraseList("openCamera"),
-                    capture = commandPhrases.readPhraseList("capture"),
-                    retake = commandPhrases.readPhraseList("retake"),
-                    attach = commandPhrases.readPhraseList("attach"),
-                    stop = commandPhrases.readPhraseList("stop"),
-                    cancel = commandPhrases.readPhraseList("cancel"),
-                )
-            } ?: BridgeCommandPhraseProfile()
-
         return BridgeCommandProfile(
             defaultLens = optString("defaultLens").ifBlank { null },
             photoQuality = optString("photoQuality").ifBlank { null },
-            commandPhrases = phrases,
+            transcriptModel = optJSONObject("transcriptModel")?.toBridgeTranscriptModelProfile(),
         )
     }
 
-    private fun JSONObject.readPhraseList(key: String): List<String> {
-        val array = optJSONArray(key) ?: return emptyList()
-        return buildList {
-            for (index in 0 until array.length()) {
-                val value = array.optString(index).trim()
-                if (value.isNotEmpty() && contains(value).not()) {
-                    add(value)
-                }
-            }
+    private fun JSONObject.toBridgeTranscriptModelProfile(): BridgeTranscriptModelProfile? {
+        val modelId = optString("modelId").trim()
+        val fileName = optString("fileName").trim()
+        val expectedSha1 = optString("expectedSha1").trim()
+        val language = optString("language").trim().ifBlank { "tr" }
+        val variant = optString("variant").trim().ifBlank { "full" }
+        if (modelId.isBlank() || fileName.isBlank() || expectedSha1.isBlank()) {
+            return null
         }
+
+        return BridgeTranscriptModelProfile(
+            modelId = modelId,
+            fileName = fileName,
+            expectedSha1 = expectedSha1,
+            expectedBytes = if (has("expectedBytes") && isNull("expectedBytes").not()) {
+                optLong("expectedBytes")
+            } else {
+                null
+            },
+            language = language,
+            variant = variant,
+        )
     }
+
 }

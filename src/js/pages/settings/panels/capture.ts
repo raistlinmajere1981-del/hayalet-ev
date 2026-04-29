@@ -109,6 +109,10 @@ function describeOperationAction(action: CaptureHostAction | null): string {
       return "Phone capture";
     case "retake-analyze-photo":
       return "Phone retake";
+    case "start-analyze-dictation":
+      return "Android dictation";
+    case "stop-analyze-dictation":
+      return "Android dictation stop";
     default:
       return "Android companion";
   }
@@ -255,13 +259,6 @@ function formatDeviceHint(device: CaptureAndroidDeviceStatus): string {
   }
 }
 
-function parsePhraseInput(value: string): string[] {
-  return value
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter((entry, index, list) => entry !== "" && list.indexOf(entry) === index);
-}
-
 function shouldShowCaptureConfirmation(): boolean {
   return getCaptureSettingsSnapshot().defaults?.commandConfirmation !== "none";
 }
@@ -323,46 +320,13 @@ function renderCaptureDefaults(root: HTMLElement, state: CapturePanelState): voi
 function renderCaptureSpeechPolicy(root: HTMLElement): void {
   const settings = getCaptureSettingsSnapshot();
   const providers = settings.providers;
-  const phrases = settings.commandPhrases;
-  const localWhisperInput = root.querySelector<HTMLInputElement>("#capture-provider-local-whisper");
   const androidCompanionInput = root.querySelector<HTMLInputElement>(
     "#capture-provider-android-companion"
   );
-  const enabledInput = root.querySelector<HTMLInputElement>("#capture-provider-android-speech");
-  const fallbackSelect = root.querySelector<HTMLSelectElement>("#capture-provider-fallback-select");
-  const openInput = root.querySelector<HTMLInputElement>("#capture-command-open-input");
-  const captureInput = root.querySelector<HTMLInputElement>("#capture-command-capture-input");
-  const retakeInput = root.querySelector<HTMLInputElement>("#capture-command-retake-input");
-  const attachInput = root.querySelector<HTMLInputElement>("#capture-command-attach-input");
-  const stopInput = root.querySelector<HTMLInputElement>("#capture-command-stop-input");
   const feedbackEl = root.querySelector<HTMLElement>("#capture-policy-feedback");
 
-  if (localWhisperInput) {
-    localWhisperInput.checked = providers?.localWhisperEnabled !== false;
-  }
   if (androidCompanionInput) {
     androidCompanionInput.checked = providers?.androidCompanionEnabled !== false;
-  }
-  if (enabledInput) {
-    enabledInput.checked = providers?.androidSpeechEnabled !== false;
-  }
-  if (fallbackSelect) {
-    fallbackSelect.value = providers?.speechFallbackMode ?? "system";
-  }
-  if (openInput) {
-    openInput.value = (phrases?.openCamera ?? []).join(", ");
-  }
-  if (captureInput) {
-    captureInput.value = (phrases?.capture ?? []).join(", ");
-  }
-  if (retakeInput) {
-    retakeInput.value = (phrases?.retake ?? []).join(", ");
-  }
-  if (attachInput) {
-    attachInput.value = (phrases?.attach ?? []).join(", ");
-  }
-  if (stopInput) {
-    stopInput.value = (phrases?.stop ?? []).join(", ");
   }
   if (feedbackEl) {
     feedbackEl.textContent = captureT("policy.hint");
@@ -703,25 +667,14 @@ async function saveCapturePolicy(root: HTMLElement, state: CapturePanelState): P
   const confirmationSelect = root.querySelector<HTMLSelectElement>(
     "#capture-default-confirmation-select"
   );
-  const localWhisperEnabled = root.querySelector<HTMLInputElement>(
-    "#capture-provider-local-whisper"
-  );
   const androidCompanionEnabled = root.querySelector<HTMLInputElement>(
     "#capture-provider-android-companion"
   );
-  const speechEnabled = root.querySelector<HTMLInputElement>("#capture-provider-android-speech");
-  const fallbackSelect = root.querySelector<HTMLSelectElement>("#capture-provider-fallback-select");
-  const openInput = root.querySelector<HTMLInputElement>("#capture-command-open-input");
-  const captureInput = root.querySelector<HTMLInputElement>("#capture-command-capture-input");
-  const retakeInput = root.querySelector<HTMLInputElement>("#capture-command-retake-input");
-  const attachInput = root.querySelector<HTMLInputElement>("#capture-command-attach-input");
-  const stopInput = root.querySelector<HTMLInputElement>("#capture-command-stop-input");
 
   await SettingsManager.patch((settings) => {
     const nextCapture = (settings["capture"] ?? {}) as Record<string, unknown>;
     const nextDefaults = (nextCapture["defaults"] ?? {}) as Record<string, unknown>;
     const nextProviders = (nextCapture["providers"] ?? {}) as Record<string, unknown>;
-    const nextPhrases = (nextCapture["commandPhrases"] ?? {}) as Record<string, unknown>;
 
     nextDefaults["preferredDeviceId"] =
       deviceSelect && deviceSelect.value.trim() !== "" ? deviceSelect.value.trim() : null;
@@ -731,21 +684,11 @@ async function saveCapturePolicy(root: HTMLElement, state: CapturePanelState): P
       attachSelect?.value === "auto-stage" ? "auto-stage" : "manual-sync";
     nextDefaults["commandConfirmation"] = confirmationSelect?.value === "none" ? "none" : "toast";
 
-    nextProviders["localWhisperEnabled"] = localWhisperEnabled?.checked !== false;
     nextProviders["androidCompanionEnabled"] = androidCompanionEnabled?.checked !== false;
-    nextProviders["androidSpeechEnabled"] = speechEnabled?.checked !== false;
-    nextProviders["speechFallbackMode"] =
-      fallbackSelect?.value === "vosk-seam" ? "vosk-seam" : "system";
-
-    nextPhrases["openCamera"] = parsePhraseInput(openInput?.value ?? "");
-    nextPhrases["capture"] = parsePhraseInput(captureInput?.value ?? "");
-    nextPhrases["retake"] = parsePhraseInput(retakeInput?.value ?? "");
-    nextPhrases["attach"] = parsePhraseInput(attachInput?.value ?? "");
-    nextPhrases["stop"] = parsePhraseInput(stopInput?.value ?? "");
 
     nextCapture["defaults"] = nextDefaults;
     nextCapture["providers"] = nextProviders;
-    nextCapture["commandPhrases"] = nextPhrases;
+    delete nextCapture["commandPhrases"];
     settings["capture"] = nextCapture;
   });
 
@@ -807,15 +750,7 @@ function bindActions(root: HTMLElement, state: CapturePanelState): void {
     root.querySelector<HTMLSelectElement>("#capture-default-quality-select"),
     root.querySelector<HTMLSelectElement>("#capture-default-attach-mode-select"),
     root.querySelector<HTMLSelectElement>("#capture-default-confirmation-select"),
-    root.querySelector<HTMLInputElement>("#capture-provider-local-whisper"),
     root.querySelector<HTMLInputElement>("#capture-provider-android-companion"),
-    root.querySelector<HTMLInputElement>("#capture-provider-android-speech"),
-    root.querySelector<HTMLSelectElement>("#capture-provider-fallback-select"),
-    root.querySelector<HTMLInputElement>("#capture-command-open-input"),
-    root.querySelector<HTMLInputElement>("#capture-command-capture-input"),
-    root.querySelector<HTMLInputElement>("#capture-command-retake-input"),
-    root.querySelector<HTMLInputElement>("#capture-command-attach-input"),
-    root.querySelector<HTMLInputElement>("#capture-command-stop-input"),
   ];
   const deviceList = root.querySelector<HTMLElement>("#capture-android-device-list");
 

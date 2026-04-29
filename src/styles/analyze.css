@@ -535,6 +535,17 @@
   color: var(--color-accent);
 }
 
+.compose-voice-command-btn {
+  min-height: var(--btn-height-sm);
+  padding: 0 var(--space-2);
+  white-space: nowrap;
+}
+
+.compose-voice-command-btn.is-active {
+  border-color: color-mix(in srgb, var(--color-success) 58%, var(--border-default));
+  color: var(--color-success);
+}
+
 .compose-start-action {
   margin-right: auto;
 }

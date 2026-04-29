@@ -226,7 +226,6 @@ export type CaptureDefaultLens = "back" | "front";
 export type CapturePhotoQuality = "balanced" | "high";
 export type CaptureAttachMode = "manual-sync" | "auto-stage";
 export type CaptureCommandConfirmation = "none" | "toast";
-export type CaptureSpeechFallbackMode = "system" | "vosk-seam";
 
 export interface CaptureDefaultsSettings {
   preferredDeviceId?: string | null;
@@ -237,10 +236,7 @@ export interface CaptureDefaultsSettings {
 }
 
 export interface CaptureProviderSettings {
-  localWhisperEnabled?: boolean;
   androidCompanionEnabled?: boolean;
-  androidSpeechEnabled?: boolean;
-  speechFallbackMode?: CaptureSpeechFallbackMode;
 }
 
 export interface CaptureCommandPhraseSettings {
@@ -255,7 +251,12 @@ export interface CaptureCommandPhraseSettings {
 export interface CaptureSettings {
   defaults?: CaptureDefaultsSettings;
   providers?: CaptureProviderSettings;
+}
+
+export interface VoiceCommandSettings {
+  analyzeEnabled?: boolean;
   commandPhrases?: CaptureCommandPhraseSettings;
+  analyzePhrases?: CaptureCommandPhraseSettings;
 }
 
 export interface UploadSettings {
@@ -370,6 +371,7 @@ export interface AppSettings {
   version?: string;
   general?: GeneralSettings;
   capture?: CaptureSettings;
+  voiceCommands?: VoiceCommandSettings;
   scene?: SceneSettings;
   user?: {
     nickname?: string;

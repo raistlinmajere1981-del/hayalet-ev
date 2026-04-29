@@ -1,5 +1,6 @@
 import { registerHandler } from "./ipc-helpers.ts";
 import { captureService } from "../capture-service.ts";
+import type { CaptureTargetActionOptions } from "../../src/types/capture.ts";
 
 export function setupCaptureHandlers(): void {
   registerHandler("capture-status", async () => {
@@ -33,23 +34,52 @@ export function setupCaptureHandlers(): void {
     return await captureService.disconnectDevice(deviceId);
   });
 
-  registerHandler("capture-launch-companion", async () => {
-    return await captureService.launchCompanion();
-  });
+  registerHandler(
+    "capture-launch-companion",
+    async (_event, options?: CaptureTargetActionOptions) => {
+      return await captureService.launchCompanion(options);
+    }
+  );
 
-  registerHandler("capture-start-analyze-session", async () => {
-    return await captureService.requestAnalyzeSession();
-  });
+  registerHandler(
+    "capture-start-analyze-session",
+    async (_event, options?: CaptureTargetActionOptions) => {
+      return await captureService.requestAnalyzeSession(options);
+    }
+  );
 
-  registerHandler("capture-stop-analyze-session", async () => {
-    return await captureService.stopAnalyzeSession();
-  });
+  registerHandler(
+    "capture-stop-analyze-session",
+    async (_event, options?: CaptureTargetActionOptions) => {
+      return await captureService.stopAnalyzeSession(options);
+    }
+  );
 
-  registerHandler("capture-request-analyze-photo", async () => {
-    return await captureService.requestAnalyzeCapture("capture-photo");
-  });
+  registerHandler(
+    "capture-start-analyze-dictation",
+    async (_event, options?: CaptureTargetActionOptions) => {
+      return await captureService.requestAnalyzeDictation("start", options);
+    }
+  );
 
-  registerHandler("capture-retake-analyze-photo", async () => {
-    return await captureService.requestAnalyzeCapture("retake-photo");
-  });
+  registerHandler(
+    "capture-stop-analyze-dictation",
+    async (_event, options?: CaptureTargetActionOptions) => {
+      return await captureService.requestAnalyzeDictation("stop", options);
+    }
+  );
+
+  registerHandler(
+    "capture-request-analyze-photo",
+    async (_event, options?: CaptureTargetActionOptions) => {
+      return await captureService.requestAnalyzeCapture("capture-photo", options);
+    }
+  );
+
+  registerHandler(
+    "capture-retake-analyze-photo",
+    async (_event, options?: CaptureTargetActionOptions) => {
+      return await captureService.requestAnalyzeCapture("retake-photo", options);
+    }
+  );
 }

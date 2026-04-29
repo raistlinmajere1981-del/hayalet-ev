@@ -277,12 +277,6 @@ class MainActivity : AppCompatActivity() {
                 intent.getStringExtra("photoQuality")?.takeIf { it.isNotBlank() }?.let {
                     add("photoQuality=$it")
                 }
-                intent.getStringExtra("speechFallbackMode")?.takeIf { it.isNotBlank() }?.let {
-                    add("speechFallbackMode=$it")
-                }
-                if (intent.hasExtra("speechEnabled")) {
-                    add("speechEnabled=${intent.getBooleanExtra("speechEnabled", true)}")
-                }
             }
         return summary.joinToString(", ").ifBlank { null }
     }

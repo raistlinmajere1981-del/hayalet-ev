@@ -1,4 +1,10 @@
-import type { TranscriptModelVariant, TranscriptRuntimeStatus } from "./transcript.js";
+import type {
+  TranscriptManagedModelId,
+  TranscriptModelVariant,
+  TranscriptRuntimeStatus,
+  TranscriptSupportedLanguage,
+  TranscriptTargetId,
+} from "./transcript.js";
 
 export type CaptureAndroidHostState =
   | "checking"
@@ -84,33 +90,63 @@ export interface CaptureImportedAsset {
   importedAt: number;
 }
 
+export interface CaptureMediaIngressPayload {
+  requestId: string;
+  createdAt: string;
+  source: "android-bridge";
+  target: TranscriptTargetId;
+  asset: CaptureImportedAsset;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface CaptureDictationStatusPayload {
+  requestId: string;
+  createdAt: string;
+  source: "android-bridge";
+  target: TranscriptTargetId;
+  deviceId: string | null;
+  status: "started" | "transcribing" | "done" | "failed";
+  message: string;
+}
+
 export type CaptureCompanionCommandKind =
   | "open-camera"
   | "capture-photo"
   | "retake-photo"
-  | "close-camera";
+  | "close-camera"
+  | "start-dictation"
+  | "stop-dictation";
+
+export interface CaptureCompanionTranscriptModelProfile {
+  modelId: TranscriptManagedModelId;
+  fileName: string;
+  expectedSha1: string;
+  expectedBytes: number | null;
+  language: TranscriptSupportedLanguage;
+  variant: TranscriptModelVariant;
+}
 
 export interface CaptureCompanionCommandProfile {
   defaultLens: "back" | "front";
   photoQuality: "balanced" | "high";
   attachMode: "manual-sync" | "auto-stage";
   commandConfirmation: "none" | "toast";
-  commandPhrases: {
-    openCamera: string[];
-    capture: string[];
-    retake: string[];
-    attach: string[];
-    stop: string[];
-    cancel: string[];
-  };
+  transcriptModel: CaptureCompanionTranscriptModelProfile | null;
 }
 
 export interface CaptureCompanionCommandEnvelope {
   id: string;
   kind: CaptureCompanionCommandKind;
-  target: string;
+  target: TranscriptTargetId;
+  requestId?: string | null;
   createdAt: number;
   profile: CaptureCompanionCommandProfile | null;
+}
+
+export interface CaptureTargetActionOptions {
+  target?: TranscriptTargetId | null;
+  requestId?: string | null;
+  deviceId?: string | null;
 }
 
 export type CaptureAnalyzeSessionState =
@@ -167,7 +203,9 @@ export type CaptureHostAction =
   | "start-analyze-session"
   | "stop-analyze-session"
   | "capture-analyze-photo"
-  | "retake-analyze-photo";
+  | "retake-analyze-photo"
+  | "start-analyze-dictation"
+  | "stop-analyze-dictation";
 
 export interface CaptureActionOutcome {
   action: CaptureHostAction;

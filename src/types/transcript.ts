@@ -48,6 +48,7 @@ export interface TranscriptRuntimeStatus {
 }
 
 export interface TranscriptTranscriptionRequest {
+  requestId?: string | null;
   audioBase64: string;
   language?: string | null;
   modelId?: TranscriptManagedModelId | null;
@@ -93,8 +94,9 @@ export interface TranscriptIngressPayload {
 }
 
 export interface TranscriptSubmitIngressRequest {
+  requestId?: string | null;
   text: string;
-  source?: Exclude<TranscriptIngressSource, "pc-mic"> | null;
+  source?: TranscriptIngressSource | null;
   target?: TranscriptTargetId | null;
   isFinal?: boolean | null;
   metadata?: TranscriptIngressMetadata | null;

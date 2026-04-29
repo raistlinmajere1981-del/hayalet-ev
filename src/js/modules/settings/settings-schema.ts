@@ -6,7 +6,6 @@ import type {
   CaptureCommandConfirmation,
   CaptureDefaultLens,
   CapturePhotoQuality,
-  CaptureSpeechFallbackMode,
   SceneAppearanceSettings,
   SlotSettings,
   RemoteUserIdentity,
@@ -118,10 +117,6 @@ function normalizeCaptureCommandConfirmation(value: unknown): CaptureCommandConf
   return value === "none" ? "none" : "toast";
 }
 
-function normalizeCaptureSpeechFallbackMode(value: unknown): CaptureSpeechFallbackMode {
-  return value === "vosk-seam" ? "vosk-seam" : "system";
-}
-
 function normalizeCaptureSettings(raw: unknown): AppSettings["capture"] | undefined {
   if (!isPlainObject(raw)) {
     return undefined;
@@ -129,16 +124,6 @@ function normalizeCaptureSettings(raw: unknown): AppSettings["capture"] | undefi
 
   const defaults = isPlainObject(raw["defaults"]) ? raw["defaults"] : {};
   const providers = isPlainObject(raw["providers"]) ? raw["providers"] : {};
-  const commandPhrases = isPlainObject(raw["commandPhrases"]) ? raw["commandPhrases"] : {};
-  const defaultCapturePhrases: Required<CaptureCommandPhraseSettings> = {
-    openCamera: [...DEFAULT_CAPTURE_COMMAND_PHRASES.openCamera],
-    capture: [...DEFAULT_CAPTURE_COMMAND_PHRASES.capture],
-    retake: [...DEFAULT_CAPTURE_COMMAND_PHRASES.retake],
-    attach: [...DEFAULT_CAPTURE_COMMAND_PHRASES.attach],
-    stop: [...DEFAULT_CAPTURE_COMMAND_PHRASES.stop],
-    cancel: [...DEFAULT_CAPTURE_COMMAND_PHRASES.cancel],
-  };
-
   return {
     defaults: {
       preferredDeviceId:
@@ -152,22 +137,47 @@ function normalizeCaptureSettings(raw: unknown): AppSettings["capture"] | undefi
       commandConfirmation: normalizeCaptureCommandConfirmation(defaults["commandConfirmation"]),
     },
     providers: {
-      localWhisperEnabled: providers["localWhisperEnabled"] !== false,
       androidCompanionEnabled: providers["androidCompanionEnabled"] !== false,
-      androidSpeechEnabled: providers["androidSpeechEnabled"] !== false,
-      speechFallbackMode: normalizeCaptureSpeechFallbackMode(providers["speechFallbackMode"]),
     },
-    commandPhrases: {
-      openCamera: normalizeCapturePhraseList(
-        commandPhrases["openCamera"],
-        defaultCapturePhrases.openCamera
-      ),
-      capture: normalizeCapturePhraseList(commandPhrases["capture"], defaultCapturePhrases.capture),
-      retake: normalizeCapturePhraseList(commandPhrases["retake"], defaultCapturePhrases.retake),
-      attach: normalizeCapturePhraseList(commandPhrases["attach"], defaultCapturePhrases.attach),
-      stop: normalizeCapturePhraseList(commandPhrases["stop"], defaultCapturePhrases.stop),
-      cancel: normalizeCapturePhraseList(commandPhrases["cancel"], defaultCapturePhrases.cancel),
-    },
+  };
+}
+
+function normalizeCaptureCommandPhrases(raw: unknown): Required<CaptureCommandPhraseSettings> {
+  const commandPhrases = isPlainObject(raw) ? raw : {};
+  return {
+    openCamera: normalizeCapturePhraseList(
+      commandPhrases["openCamera"],
+      DEFAULT_CAPTURE_COMMAND_PHRASES.openCamera
+    ),
+    capture: normalizeCapturePhraseList(
+      commandPhrases["capture"],
+      DEFAULT_CAPTURE_COMMAND_PHRASES.capture
+    ),
+    retake: normalizeCapturePhraseList(commandPhrases["retake"], DEFAULT_CAPTURE_COMMAND_PHRASES.retake),
+    attach: normalizeCapturePhraseList(commandPhrases["attach"], DEFAULT_CAPTURE_COMMAND_PHRASES.attach),
+    stop: normalizeCapturePhraseList(commandPhrases["stop"], DEFAULT_CAPTURE_COMMAND_PHRASES.stop),
+    cancel: normalizeCapturePhraseList(commandPhrases["cancel"], DEFAULT_CAPTURE_COMMAND_PHRASES.cancel),
+  };
+}
+
+function normalizeVoiceCommandSettings(
+  raw: unknown,
+  legacyCapture: unknown
+): AppSettings["voiceCommands"] | undefined {
+  const voiceCommands = isPlainObject(raw) ? raw : {};
+  const legacyCapturePhrases =
+    isPlainObject(legacyCapture) && isPlainObject(legacyCapture["commandPhrases"])
+      ? legacyCapture["commandPhrases"]
+      : undefined;
+  const rawPhrases =
+    voiceCommands["analyzePhrases"] ?? voiceCommands["commandPhrases"] ?? legacyCapturePhrases;
+
+  return {
+    analyzeEnabled:
+      typeof voiceCommands["analyzeEnabled"] === "boolean"
+        ? voiceCommands["analyzeEnabled"]
+        : false,
+    analyzePhrases: normalizeCaptureCommandPhrases(rawPhrases),
   };
 }
 
@@ -1024,6 +1034,11 @@ function normalizeKnownSettings(raw: unknown): Record<string, unknown> {
   const capture = normalizeCaptureSettings(r.capture);
   if (capture !== undefined) {
     out.capture = capture;
+  }
+
+  const voiceCommands = normalizeVoiceCommandSettings(r.voiceCommands, r.capture);
+  if (voiceCommands !== undefined) {
+    out.voiceCommands = voiceCommands;
   }
 
   const integrations: NonNullable<AppSettings["integrations"]> = {};

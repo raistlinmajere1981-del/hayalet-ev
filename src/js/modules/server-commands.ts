@@ -124,7 +124,16 @@ function getDisabledCommandsForProvider(provider: string): string[] {
   return [];
 }
 
-function getCommandDefinition(commandName: string): CommandDefinition | null {
+function getPayloadRoomId(payload: Record<string, unknown>): string | null {
+  return typeof payload["roomId"] === "string" && payload["roomId"].trim() !== ""
+    ? payload["roomId"].trim()
+    : null;
+}
+
+function getCommandDefinition(
+  commandName: string,
+  roomId?: string | null
+): CommandDefinition | null {
   const canonicalName = resolveCanonicalCommandName(commandName);
   const key = canonicalName !== "" ? canonicalName.toLowerCase() : "";
   const builtIn = BUILTIN_BY_KEY.get(key);
@@ -132,7 +141,7 @@ function getCommandDefinition(commandName: string): CommandDefinition | null {
     return builtIn;
   }
 
-  const roomMetadata = RoomCommandRegistry.getMetadata(canonicalName);
+  const roomMetadata = RoomCommandRegistry.getMetadata(canonicalName, roomId);
   if (roomMetadata !== null) {
     return {
       name: roomMetadata.name,
@@ -173,9 +182,7 @@ function resolveSlotBridgeRoomCommandName(payload: Record<string, unknown>): str
 }
 
 function getRoomCommandCatalog(category?: CommandCategory): CommandCatalogItem[] {
-  return RoomCommandRegistry.listCommands(category)
-    .map((name) => RoomCommandRegistry.getMetadata(name))
-    .filter((metadata): metadata is NonNullable<typeof metadata> => metadata !== null)
+  return RoomCommandRegistry.listMetadata(category, { publicOnly: true })
     .filter((metadata) => BUILTIN_BY_KEY.has(metadata.name.toLowerCase()) !== true)
     .map((metadata) => ({
       name: metadata.name,
@@ -194,7 +201,7 @@ function checkCommandAccess(
 } {
   const provider = normalizeProvider(payload["provider"]);
   const providerCategory = resolveProviderCategory(provider);
-  const commandDefinition = getCommandDefinition(commandName);
+  const commandDefinition = getCommandDefinition(commandName, getPayloadRoomId(payload));
   const slotBridgeAction =
     resolveCanonicalCommandName(commandName).toLowerCase() ===
     SLOT_BRIDGE_COMMAND_NAME.toLowerCase()
@@ -340,7 +347,7 @@ const serverCommands = {
       return handler(payload);
     }
 
-    if (RoomCommandRegistry.has(canonicalCommandName)) {
+    if (RoomCommandRegistry.has(canonicalCommandName, getPayloadRoomId(payload))) {
       return await RoomCommandRegistry.run(canonicalCommandName, payload);
     }
 

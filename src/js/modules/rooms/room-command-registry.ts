@@ -1,6 +1,6 @@
 import type { InstalledRoomRecord, RoomCommandExposure, RoomCommandScope } from "@shared/index.js";
 import { AppI18n } from "../i18n/index.js";
-import { Logger, LogCategory } from "../logger/index.js";
+import { matchVoiceCommand, type VoiceCommandSpec } from "../transcript/voice-command-matcher.js";
 
 export type RoomCommandCategory = "ai1-ai2" | "ai0" | "us1";
 
@@ -28,8 +28,17 @@ interface RoomCommandEntry {
   handler?: RoomCommandHandler;
 }
 
+export interface RoomVoiceCommandMatch {
+  commandName: string;
+  matchedPhrase: string;
+}
+
 function normalizeCommandName(commandName: string): string {
   return commandName.trim().toLowerCase();
+}
+
+function normalizeRoomCommandKey(roomId: string, commandName: string): string {
+  return `${roomId.trim().toLowerCase()}:${normalizeCommandName(commandName)}`;
 }
 
 function scopeToCategory(scope: RoomCommandScope): RoomCommandCategory {
@@ -105,39 +114,20 @@ function isScopeAllowed(scope: RoomCommandScope, provider: string): boolean {
 
 class RoomCommandRegistryClass {
   private entries = new Map<string, RoomCommandEntry>();
+  private voiceCommandSpecs = new Map<string, VoiceCommandSpec[]>();
+  private voiceCommandEnabled = new Map<string, boolean>();
 
   syncInstalledRooms(rooms: InstalledRoomRecord[]): void {
     const nextEntries = new Map<string, RoomCommandEntry>();
 
     rooms.forEach((room) => {
       (room.commandSpecs ?? []).forEach((spec) => {
-        const key = normalizeCommandName(spec.name);
-        if (key === "") {
+        if (normalizeCommandName(spec.name) === "") {
           return;
         }
 
-        const nextExisting = nextEntries.get(key);
-        const current = nextExisting ?? this.entries.get(key);
-        if (current !== undefined && current.metadata.roomId !== room.id) {
-          Logger.warnT(
-            LogCategory.SERVER_COMMANDS,
-            "app.logs.roomCommandRegistry.collisionSkipped",
-            {
-              commandName: spec.name,
-              existingRoomId: current.metadata.roomId,
-              skippedRoomId: room.id,
-            },
-            {
-              context: {
-                commandName: spec.name,
-                existingRoomId: current.metadata.roomId,
-                skippedRoomId: room.id,
-              },
-            }
-          );
-          nextEntries.set(key, current);
-          return;
-        }
+        const key = normalizeRoomCommandKey(room.id, spec.name);
+        const current = nextEntries.get(key) ?? this.entries.get(key);
 
         const metadata: RoomCommandMetadata = {
           roomId: room.id,
@@ -172,10 +162,8 @@ class RoomCommandRegistryClass {
       throw new Error(roomCommandT("commandNameRequired"));
     }
 
-    const existing = this.entries.get(key);
-    if (existing !== undefined && existing.metadata.roomId !== roomId) {
-      throw new Error(roomCommandT("commandCollision", { commandName }));
-    }
+    const roomKey = normalizeRoomCommandKey(roomId, commandName);
+    const existing = this.entries.get(roomKey);
 
     const scope = normalizeScope(options.scope ?? existing?.metadata.scope);
     const metadata: RoomCommandMetadata = {
@@ -191,7 +179,7 @@ class RoomCommandRegistryClass {
       exposure: existing?.metadata.exposure ?? "public",
     };
 
-    this.entries.set(key, {
+    this.entries.set(roomKey, {
       metadata,
       handler,
     });
@@ -203,14 +191,33 @@ class RoomCommandRegistryClass {
         this.entries.delete(key);
       }
     });
+    this.voiceCommandSpecs.delete(roomId);
+    this.voiceCommandEnabled.delete(roomId);
   }
 
-  has(commandName: string): boolean {
-    return this.entries.has(normalizeCommandName(commandName));
+  private resolveEntry(commandName: string, roomId?: string | null): RoomCommandEntry | undefined {
+    const normalizedCommandName = normalizeCommandName(commandName);
+    if (normalizedCommandName === "") {
+      return undefined;
+    }
+
+    const normalizedRoomId = typeof roomId === "string" ? roomId.trim() : "";
+    if (normalizedRoomId !== "") {
+      return this.entries.get(normalizeRoomCommandKey(normalizedRoomId, commandName));
+    }
+
+    const matches = Array.from(this.entries.values()).filter(
+      (entry) => normalizeCommandName(entry.metadata.name) === normalizedCommandName
+    );
+    return matches.length === 1 ? matches[0] : undefined;
   }
 
-  getMetadata(commandName: string): RoomCommandMetadata | null {
-    return this.entries.get(normalizeCommandName(commandName))?.metadata ?? null;
+  has(commandName: string, roomId?: string | null): boolean {
+    return this.resolveEntry(commandName, roomId) !== undefined;
+  }
+
+  getMetadata(commandName: string, roomId?: string | null): RoomCommandMetadata | null {
+    return this.resolveEntry(commandName, roomId)?.metadata ?? null;
   }
 
   listCommands(category?: RoomCommandCategory): string[] {
@@ -226,6 +233,22 @@ class RoomCommandRegistryClass {
       .filter((entry) => (category !== undefined ? entry.metadata.category === category : true))
       .map((entry) => entry.metadata.name)
       .sort((left, right) => left.localeCompare(right));
+  }
+
+  listMetadata(
+    category?: RoomCommandCategory,
+    options: { publicOnly?: boolean } = {}
+  ): RoomCommandMetadata[] {
+    return Array.from(this.entries.values())
+      .filter((entry) =>
+        options.publicOnly === true ? entry.metadata.exposure === "public" : true
+      )
+      .filter((entry) => (category !== undefined ? entry.metadata.category === category : true))
+      .map((entry) => entry.metadata)
+      .sort((left, right) => {
+        const nameOrder = left.name.localeCompare(right.name);
+        return nameOrder !== 0 ? nameOrder : left.roomId.localeCompare(right.roomId);
+      });
   }
 
   getCatalog(category?: RoomCommandCategory): Array<{
@@ -255,8 +278,66 @@ class RoomCommandRegistryClass {
     return `${metadata.description}\n\nRoom: ${metadata.roomId}\nScope: ${metadata.scope}`;
   }
 
+  registerVoiceCommands(
+    roomId: string,
+    commands: Record<string, readonly string[]>,
+    options: { enabled?: boolean } = {}
+  ): void {
+    const specs = Object.entries(commands)
+      .map(([commandName, phrases]): VoiceCommandSpec | null => {
+        const metadata = this.getMetadata(commandName, roomId);
+        if (metadata?.roomId !== roomId || metadata.scope !== "room-ui") {
+          return null;
+        }
+        const normalizedPhrases = phrases
+          .map((phrase) => phrase.trim())
+          .filter((phrase, index, list) => phrase !== "" && list.indexOf(phrase) === index);
+        return normalizedPhrases.length === 0
+          ? null
+          : { id: metadata.name, phrases: normalizedPhrases };
+      })
+      .filter((spec): spec is VoiceCommandSpec => spec !== null);
+
+    if (specs.length === 0) {
+      this.voiceCommandSpecs.delete(roomId);
+      this.voiceCommandEnabled.delete(roomId);
+      return;
+    }
+
+    this.voiceCommandSpecs.set(roomId, specs);
+    this.voiceCommandEnabled.set(roomId, options.enabled === true);
+  }
+
+  setVoiceCommandsEnabled(roomId: string, enabled: boolean): void {
+    if (this.voiceCommandSpecs.has(roomId) !== true) {
+      this.voiceCommandEnabled.delete(roomId);
+      return;
+    }
+
+    this.voiceCommandEnabled.set(roomId, enabled);
+  }
+
+  areVoiceCommandsEnabled(roomId: string): boolean {
+    return this.voiceCommandEnabled.get(roomId) === true;
+  }
+
+  matchVoiceCommand(roomId: string, text: string): RoomVoiceCommandMatch | null {
+    if (this.areVoiceCommandsEnabled(roomId) !== true) {
+      return null;
+    }
+
+    const match = matchVoiceCommand(text, this.voiceCommandSpecs.get(roomId) ?? []);
+    return match === null
+      ? null
+      : {
+          commandName: match.id,
+          matchedPhrase: match.matchedPhrase,
+        };
+  }
+
   async run(commandName: string, payload: Record<string, unknown> = {}): Promise<unknown> {
-    const entry = this.entries.get(normalizeCommandName(commandName));
+    const payloadRoomId = typeof payload["roomId"] === "string" ? payload["roomId"] : null;
+    const entry = this.resolveEntry(commandName, payloadRoomId);
     if (entry === undefined) {
       return { success: false, message: roomCommandT("undefinedCommand") };
     }
@@ -287,6 +368,8 @@ class RoomCommandRegistryClass {
 
   reset(): void {
     this.entries.clear();
+    this.voiceCommandSpecs.clear();
+    this.voiceCommandEnabled.clear();
   }
 }
 

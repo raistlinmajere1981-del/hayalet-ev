@@ -75,6 +75,36 @@ const room: InstalledRoomRecord = {
   updatedAt: "2026-03-08T00:00:00.000Z",
 };
 
+const roomWithSharedCommand: InstalledRoomRecord = {
+  ...room,
+  commandSpecs: [
+    ...(room.commandSpecs ?? []),
+    {
+      name: "SharedRoomAction",
+      description: "Shared command name owned by game room",
+      scope: "room-ui",
+    },
+  ],
+};
+
+const forgeRoomWithSharedCommand: InstalledRoomRecord = {
+  ...room,
+  id: "forge-room",
+  name: "Forge Room",
+  installedDir: "/workspace/rooms/.build/forge-room/runtime",
+  sourceDir: "/workspace/rooms/forge-room",
+  manifestPath: "/workspace/rooms/.build/forge-room/runtime/manifest.json",
+  runtimeEntryPath: "/workspace/rooms/.build/forge-room/runtime/ui/index.html",
+  hostEntryPath: "/workspace/rooms/.build/forge-room/runtime/host/index.js",
+  commandSpecs: [
+    {
+      name: "SharedRoomAction",
+      description: "Shared command name owned by forge room",
+      scope: "room-ui",
+    },
+  ],
+};
+
 test("RoomCommandRegistry syncs manifest command metadata into catalog", () => {
   RoomCommandRegistry.reset();
   RoomCommandRegistry.syncInstalledRooms([room]);
@@ -135,6 +165,66 @@ test("RoomCommandRegistry runs room-ui commands with structured payloads", async
   });
 
   assert.deepEqual(result, { cell: 4, symbol: "X" });
+});
+
+test("RoomCommandRegistry scopes duplicate command names by room id", async () => {
+  RoomCommandRegistry.reset();
+  RoomCommandRegistry.syncInstalledRooms([roomWithSharedCommand, forgeRoomWithSharedCommand]);
+
+  RoomCommandRegistry.registerHandler(
+    "game-room",
+    "SharedRoomAction",
+    async (payload) => payload.roomId
+  );
+  RoomCommandRegistry.registerHandler(
+    "forge-room",
+    "SharedRoomAction",
+    async (payload) => payload.roomId
+  );
+
+  const ambiguous = (await RoomCommandRegistry.run("SharedRoomAction", {
+    provider: "room-ui",
+  })) as { success?: boolean };
+  const gameRoomResult = await RoomCommandRegistry.run("SharedRoomAction", {
+    provider: "room-ui",
+    roomId: "game-room",
+  });
+  const forgeRoomResult = await RoomCommandRegistry.run("SharedRoomAction", {
+    provider: "room-ui",
+    roomId: "forge-room",
+  });
+
+  assert.equal(RoomCommandRegistry.has("SharedRoomAction"), false);
+  assert.equal(RoomCommandRegistry.has("SharedRoomAction", "game-room"), true);
+  assert.equal(
+    RoomCommandRegistry.getMetadata("SharedRoomAction", "forge-room")?.roomId,
+    "forge-room"
+  );
+  assert.equal(ambiguous.success, false);
+  assert.equal(gameRoomResult, "game-room");
+  assert.equal(forgeRoomResult, "forge-room");
+});
+
+test("RoomCommandRegistry matches room-local transcript voice commands", () => {
+  RoomCommandRegistry.reset();
+  RoomCommandRegistry.syncInstalledRooms([room]);
+
+  RoomCommandRegistry.registerVoiceCommands("game-room", {
+    GameRoomXoxUserMove: ["mark center", "mark center", " "],
+    GameRoomXoxAiMove: ["ai move"],
+    MissingRoomCommand: ["missing"],
+  });
+
+  assert.equal(RoomCommandRegistry.matchVoiceCommand("game-room", "mark center"), null);
+  RoomCommandRegistry.setVoiceCommandsEnabled("game-room", true);
+
+  assert.deepEqual(RoomCommandRegistry.matchVoiceCommand("game-room", "mark center"), {
+    commandName: "GameRoomXoxUserMove",
+    matchedPhrase: "mark center",
+  });
+  assert.equal(RoomCommandRegistry.matchVoiceCommand("game-room", "please mark center now"), null);
+  assert.equal(RoomCommandRegistry.matchVoiceCommand("game-room", "ai move"), null);
+  assert.equal(RoomCommandRegistry.matchVoiceCommand("forge-room", "mark center"), null);
 });
 
 test("RoomCommandRegistry parses AI args and enforces scope rules", async () => {

@@ -109,6 +109,14 @@ function normalizeTarget(value: unknown): TranscriptTargetId | null {
   return null;
 }
 
+function normalizeIngressSource(value: unknown): TranscriptIngressPayload["source"] {
+  if (value === "pc-mic" || value === "android-bridge" || value === "synthetic-test") {
+    return value;
+  }
+
+  return "synthetic-test";
+}
+
 function normalizeTranscriptLanguage(value: unknown): TranscriptSupportedLanguage | null {
   const normalized = normalizeText(value);
   if (normalized === null || normalized === "auto") {
@@ -586,7 +594,7 @@ export class TranscriptService {
     const paths = this.getPaths();
     await ensureRuntimeDirectories(paths);
 
-    const requestId = randomUUID();
+    const requestId = normalizeText(request.requestId) ?? randomUUID();
     const wavPath = join(paths.tempDir, `${requestId}.wav`);
     const outputBase = join(paths.tempDir, `${requestId}-transcript`);
     const transcriptPath = `${outputBase}.txt`;
@@ -708,10 +716,10 @@ export class TranscriptService {
     }
 
     const payload: TranscriptIngressPayload = {
-      requestId: randomUUID(),
+      requestId: normalizeText(request.requestId) ?? randomUUID(),
       createdAt: new Date().toISOString(),
       text,
-      source: request.source === "android-bridge" ? "android-bridge" : "synthetic-test",
+      source: normalizeIngressSource(request.source),
       target: normalizeTarget(request.target),
       isFinal: request.isFinal !== false,
       metadata: request.metadata ?? null,

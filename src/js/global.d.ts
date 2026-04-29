@@ -47,8 +47,11 @@ import type {
 } from "../types/transcript.js";
 import type {
   CaptureActionOutcome,
+  CaptureDictationStatusPayload,
   CaptureImportedAsset,
+  CaptureMediaIngressPayload,
   CaptureServiceStatus,
+  CaptureTargetActionOptions,
 } from "../types/capture.js";
 import type { SceneThemeRegistration } from "./scene-system/scene-theme-registry-contract.js";
 
@@ -1145,11 +1148,29 @@ declare global {
     captureDismissOperation?: () => Promise<CaptureServiceStatus>;
     captureConnectDevice?: (address: string) => Promise<CaptureActionOutcome>;
     captureDisconnectDevice?: (deviceId: string) => Promise<CaptureActionOutcome>;
-    captureLaunchCompanion?: () => Promise<CaptureActionOutcome>;
-    captureStartAnalyzeSession?: () => Promise<CaptureActionOutcome>;
-    captureStopAnalyzeSession?: () => Promise<CaptureActionOutcome>;
-    captureRequestAnalyzePhoto?: () => Promise<CaptureActionOutcome>;
-    captureRetakeAnalyzePhoto?: () => Promise<CaptureActionOutcome>;
+    captureLaunchCompanion?: (options?: CaptureTargetActionOptions) => Promise<CaptureActionOutcome>;
+    captureStartAnalyzeSession?: (
+      options?: CaptureTargetActionOptions
+    ) => Promise<CaptureActionOutcome>;
+    captureStopAnalyzeSession?: (
+      options?: CaptureTargetActionOptions
+    ) => Promise<CaptureActionOutcome>;
+    captureStartAnalyzeDictation?: (
+      options?: CaptureTargetActionOptions
+    ) => Promise<CaptureActionOutcome>;
+    captureStopAnalyzeDictation?: (
+      options?: CaptureTargetActionOptions
+    ) => Promise<CaptureActionOutcome>;
+    captureRequestAnalyzePhoto?: (
+      options?: CaptureTargetActionOptions
+    ) => Promise<CaptureActionOutcome>;
+    captureRetakeAnalyzePhoto?: (
+      options?: CaptureTargetActionOptions
+    ) => Promise<CaptureActionOutcome>;
+    captureOnMediaIngress?: (callback: (payload: CaptureMediaIngressPayload) => void) => void;
+    captureOffMediaIngress?: (callback: (payload: CaptureMediaIngressPayload) => void) => void;
+    captureOnDictationStatus?: (callback: (payload: CaptureDictationStatusPayload) => void) => void;
+    captureOffDictationStatus?: (callback: (payload: CaptureDictationStatusPayload) => void) => void;
     transcriptStatus: () => Promise<TranscriptRuntimeStatus>;
     transcriptEnsureRuntime: () => Promise<TranscriptRuntimeStatus>;
     transcriptListModels?: () => Promise<TranscriptManagedModelStatus[]>;

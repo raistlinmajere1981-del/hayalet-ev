@@ -1,8 +1,18 @@
 import type { InstalledRoomRecord, RoomCommandScope } from "@shared/index.js";
 import { getErrorMessage } from "@shared/index.js";
 import type { RemoteUserIdentity } from "@shared/settings.js";
+import type {
+  CaptureActionOutcome,
+  CaptureDictationStatusPayload,
+  CaptureMediaIngressPayload,
+} from "../../../types/capture.js";
 import type { TranscriptIngressPayload } from "../../../types/transcript.js";
 import { AppState } from "../app-state.js";
+import {
+  onCaptureDictationStatus,
+  onCaptureMediaIngress,
+  runCaptureAction,
+} from "../capture/electron-client.js";
 import { AppI18n } from "../i18n/index.js";
 import { Logger, LogCategory, LogLevel } from "../logger/index.js";
 import { ServerCommands } from "../server-commands.js";
@@ -37,6 +47,8 @@ interface RoomHostRegistration {
   bridge: RoomBridge | null;
   hooks: RoomHostHooks;
   state: Map<string, unknown>;
+  activeTranscriptRequestIds: Set<string>;
+  activeMediaRequestIds: Set<string>;
   hostModuleCleanup: (() => void) | null;
   loadPromise: Promise<boolean> | null;
   loaded: boolean;
@@ -50,6 +62,19 @@ interface RoomHostApi {
     handler: RoomCommandHandler,
     options?: { description?: string; scope?: RoomCommandScope }
   ) => void;
+  registerVoiceCommands: (
+    commands: Record<string, readonly string[]>,
+    options?: { enabled?: boolean }
+  ) => void;
+  setVoiceCommandsEnabled: (enabled: boolean) => void;
+  capture: {
+    startSession: () => Promise<CaptureActionOutcome>;
+    stopSession: () => Promise<CaptureActionOutcome>;
+    capturePhoto: (requestId?: string) => Promise<CaptureActionOutcome>;
+    retakePhoto: (requestId?: string) => Promise<CaptureActionOutcome>;
+    startDictation: (requestId?: string) => Promise<{ requestId: string; outcome: CaptureActionOutcome }>;
+    stopDictation: (requestId: string) => Promise<CaptureActionOutcome>;
+  };
   registerProtocols: (protocols: Record<string, string>) => void;
   notifyRoom: (type: string, payload?: Record<string, unknown>) => void;
   dispatchRoomCommand: (commandName: string, payload?: Record<string, unknown>) => Promise<unknown>;
@@ -73,6 +98,7 @@ interface RoomHostExports {
   onRoomCommand?: RoomHostLifecycleHandler;
   dispose?: RoomHostDisposeHandler;
   commands?: Record<string, RoomCommandHandler>;
+  voiceCommands?: Record<string, readonly string[]>;
   protocols?: Record<string, string>;
 }
 
@@ -156,6 +182,9 @@ class RoomHostRuntimeClass {
     ) {
       electronApi.transcriptOnIngress(this.handleTranscriptIngress);
     }
+
+    onCaptureMediaIngress(this.handleCaptureMediaIngress);
+    onCaptureDictationStatus(this.handleCaptureDictationStatus);
   }
 
   private handleExpectedCommandCaptureFailureEvent = (event: Event): void => {
@@ -184,8 +213,96 @@ class RoomHostRuntimeClass {
       return;
     }
 
+    if (
+      payload.source === "android-bridge" &&
+      registration.activeTranscriptRequestIds.has(payload.requestId) !== true
+    ) {
+      return;
+    }
+
     registration.bridge?.sendToRoom({
       type: "transcript-ingress",
+      payload,
+    });
+
+    if (payload.isFinal === true && payload.text.trim() !== "") {
+      const match = RoomCommandRegistry.matchVoiceCommand(roomId, payload.text);
+      if (match !== null) {
+        void RoomCommandRegistry.run(match.commandName, {
+          provider: "room-ui",
+          source: "transcript",
+          roomId,
+          roomPayload: {
+            transcript: payload.text,
+            requestId: payload.requestId,
+            matchedPhrase: match.matchedPhrase,
+          },
+        }).then((result) => {
+          registration.bridge?.sendToRoom({
+            type: "command-result",
+            command: match.commandName,
+            result: toRecord(result),
+          });
+        });
+      }
+    }
+
+    if (payload.isFinal === true) {
+      registration.activeTranscriptRequestIds.delete(payload.requestId);
+    }
+  };
+
+  private handleCaptureMediaIngress = (payload: CaptureMediaIngressPayload): void => {
+    if (payload.target.startsWith("room:") !== true) {
+      return;
+    }
+
+    const roomId = payload.target.slice("room:".length).trim();
+    if (roomId === "") {
+      return;
+    }
+
+    const registration = this.rooms.get(roomId);
+    if (registration === undefined) {
+      return;
+    }
+
+    if (registration.activeMediaRequestIds.has(payload.requestId) !== true) {
+      return;
+    }
+
+    registration.activeMediaRequestIds.delete(payload.requestId);
+    registration.bridge?.sendToRoom({
+      type: "capture-media-ingress",
+      payload,
+    });
+  };
+
+  private handleCaptureDictationStatus = (payload: CaptureDictationStatusPayload): void => {
+    if (payload.target.startsWith("room:") !== true) {
+      return;
+    }
+
+    const roomId = payload.target.slice("room:".length).trim();
+    if (roomId === "") {
+      return;
+    }
+
+    const registration = this.rooms.get(roomId);
+    if (registration === undefined) {
+      return;
+    }
+
+    if (registration.activeTranscriptRequestIds.has(payload.requestId) !== true) {
+      return;
+    }
+
+    if (payload.status === "failed" || payload.status === "done") {
+      registration.activeTranscriptRequestIds.delete(payload.requestId);
+    }
+
+    registration.bridge?.sendToRoom({
+      type: "capture-dictation-status",
       payload,
     });
   };
@@ -204,6 +321,8 @@ class RoomHostRuntimeClass {
         },
         hostModuleCleanup: null,
         state: new Map<string, unknown>(),
+        activeTranscriptRequestIds: new Set<string>(),
+        activeMediaRequestIds: new Set<string>(),
         loadPromise: null,
         loaded: false,
       };
@@ -523,6 +642,10 @@ class RoomHostRuntimeClass {
       api.registerCommand(commandName, handler);
     });
 
+    if (data.voiceCommands !== undefined) {
+      api.registerVoiceCommands(data.voiceCommands);
+    }
+
     if (data.protocols !== undefined && Object.keys(data.protocols).length > 0) {
       const protocolMap: Record<string, string> = {};
       Object.entries(data.protocols).forEach(([key, value]) => {
@@ -533,6 +656,7 @@ class RoomHostRuntimeClass {
   }
 
   private createApi(registration: RoomHostRegistration): RoomHostApi {
+    const transcriptTarget = `room:${registration.room.id}` as const;
     const dispatchBridge = async (payload: Record<string, unknown> = {}): Promise<unknown> => {
       return await ServerCommands.run(SLOT_BRIDGE_COMMAND_NAME, {
         provider: "room-ui",
@@ -548,6 +672,55 @@ class RoomHostRuntimeClass {
       dispatchBridge,
       registerCommand: (commandName, handler, options = {}): void => {
         RoomCommandRegistry.registerHandler(registration.room.id, commandName, handler, options);
+      },
+      registerVoiceCommands: (commands, options = {}): void => {
+        RoomCommandRegistry.registerVoiceCommands(registration.room.id, commands, options);
+      },
+      setVoiceCommandsEnabled: (enabled): void => {
+        RoomCommandRegistry.setVoiceCommandsEnabled(registration.room.id, enabled);
+      },
+      capture: {
+        startSession: async (): Promise<CaptureActionOutcome> =>
+          await runCaptureAction("start-analyze-session", { target: transcriptTarget }),
+        stopSession: async (): Promise<CaptureActionOutcome> =>
+          await runCaptureAction("stop-analyze-session", { target: transcriptTarget }),
+        capturePhoto: async (requestId = crypto.randomUUID()): Promise<CaptureActionOutcome> => {
+          registration.activeMediaRequestIds.add(requestId);
+          const outcome = await runCaptureAction("capture-analyze-photo", {
+            target: transcriptTarget,
+            requestId,
+          });
+          if (outcome.ok !== true) {
+            registration.activeMediaRequestIds.delete(requestId);
+          }
+          return outcome;
+        },
+        retakePhoto: async (requestId = crypto.randomUUID()): Promise<CaptureActionOutcome> => {
+          registration.activeMediaRequestIds.add(requestId);
+          const outcome = await runCaptureAction("retake-analyze-photo", {
+            target: transcriptTarget,
+            requestId,
+          });
+          if (outcome.ok !== true) {
+            registration.activeMediaRequestIds.delete(requestId);
+          }
+          return outcome;
+        },
+        startDictation: async (
+          requestId = crypto.randomUUID()
+        ): Promise<{ requestId: string; outcome: CaptureActionOutcome }> => {
+          registration.activeTranscriptRequestIds.add(requestId);
+          const outcome = await runCaptureAction("start-analyze-dictation", {
+            target: transcriptTarget,
+            requestId,
+          });
+          if (outcome.ok !== true) {
+            registration.activeTranscriptRequestIds.delete(requestId);
+          }
+          return { requestId, outcome };
+        },
+        stopDictation: async (requestId): Promise<CaptureActionOutcome> =>
+          await runCaptureAction("stop-analyze-dictation", { target: transcriptTarget, requestId }),
       },
       registerProtocols: (protocols): void => {
         RoomProtocolRegistry.registerRuntimeProtocols(registration.room.id, protocols);

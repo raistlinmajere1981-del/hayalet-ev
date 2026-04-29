@@ -16,6 +16,7 @@ import { join } from "node:path";
  * @typedef {{
  *   companionRoot: string,
  *   artifactManifestPath: string,
+ *   extraInputRoots?: string[],
  * }} CompanionArtifactCacheOptions
  */
 
@@ -150,6 +151,25 @@ async function resolveLatestCompanionInput(companionRoot) {
 }
 
 /**
+ * @param {CompanionLatestInputInfo[]} inputs
+ * @returns {CompanionLatestInputInfo}
+ */
+function resolveLatestInput(inputs) {
+  return inputs.reduce(
+    (latest, input) => {
+      if (
+        input.latestMtimeMs !== null &&
+        (latest.latestMtimeMs === null || input.latestMtimeMs > latest.latestMtimeMs)
+      ) {
+        return input;
+      }
+      return latest;
+    },
+    { latestPath: null, latestMtimeMs: null }
+  );
+}
+
+/**
  * @param {string} artifactManifestPath
  * @param {CompanionArtifactManifest | null} artifactManifest
  * @param {string | null} apkPath
@@ -186,7 +206,7 @@ async function resolveArtifactTimestampMs(artifactManifestPath, artifactManifest
  * @returns {Promise<CompanionArtifactCacheStatus>}
  */
 export async function inspectCompanionArtifactCache(options) {
-  const { companionRoot, artifactManifestPath } = options;
+  const { companionRoot, artifactManifestPath, extraInputRoots = [] } = options;
   if ((await fileExists(artifactManifestPath)) !== true) {
     return {
       artifactManifest: null,
@@ -205,7 +225,18 @@ export async function inspectCompanionArtifactCache(options) {
   const artifactManifest = JSON.parse(await readFile(artifactManifestPath, "utf8"));
   const apkPath = normalizeText(artifactManifest?.["apkPath"]);
   const artifactReady = apkPath !== null && (await fileExists(apkPath)) === true;
-  const { latestPath, latestMtimeMs } = await resolveLatestCompanionInput(companionRoot);
+  const { latestPath, latestMtimeMs } = resolveLatestInput(
+    await Promise.all([
+      resolveLatestCompanionInput(companionRoot),
+      ...extraInputRoots.map(async (inputRoot) => {
+        const input = await resolveLatestCompanionInput(inputRoot);
+        return {
+          latestPath: input.latestPath === null ? null : `${inputRoot}:${input.latestPath}`,
+          latestMtimeMs: input.latestMtimeMs,
+        };
+      }),
+    ])
+  );
   const buildTimestampMs = await resolveArtifactTimestampMs(
     artifactManifestPath,
     artifactManifest,

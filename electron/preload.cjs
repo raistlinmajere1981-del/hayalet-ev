@@ -5,11 +5,15 @@ const OPENCODE_UI_SESSION_UPDATED_CHANNEL = "opencode-ui:session-updated";
 const PROVIDER_SCENARIO_PROGRESS_CHANNEL = "provider-scenario:progress";
 const ROOM_TOOLS_PROGRESS_CHANNEL = "room-tools:progress";
 const TRANSCRIPT_INGRESS_CHANNEL = "transcript:ingress";
+const CAPTURE_MEDIA_INGRESS_CHANNEL = "capture:media-ingress";
+const CAPTURE_DICTATION_STATUS_CHANNEL = "capture:dictation-status";
 const SETTINGS_BROADCAST_NAME = "app-settings";
 const opencodeUiSessionUpdatedHandlers = new Map();
 const providerScenarioProgressHandlers = new Map();
 const roomToolsProgressHandlers = new Map();
 const transcriptIngressHandlers = new Map();
+const captureMediaIngressHandlers = new Map();
+const captureDictationStatusHandlers = new Map();
 let __app_preload_locale = "tr";
 let __app_preload_catalog = null;
 let __app_preload_settings_channel = null;
@@ -462,11 +466,47 @@ contextBridge.exposeInMainWorld("electronAPI", {
   captureDismissOperation: () => ipcRenderer.invoke("capture-dismiss-operation"),
   captureConnectDevice: (address) => ipcRenderer.invoke("capture-connect-device", address),
   captureDisconnectDevice: (deviceId) => ipcRenderer.invoke("capture-disconnect-device", deviceId),
-  captureLaunchCompanion: () => ipcRenderer.invoke("capture-launch-companion"),
-  captureStartAnalyzeSession: () => ipcRenderer.invoke("capture-start-analyze-session"),
-  captureStopAnalyzeSession: () => ipcRenderer.invoke("capture-stop-analyze-session"),
-  captureRequestAnalyzePhoto: () => ipcRenderer.invoke("capture-request-analyze-photo"),
-  captureRetakeAnalyzePhoto: () => ipcRenderer.invoke("capture-retake-analyze-photo"),
+  captureLaunchCompanion: (options) => ipcRenderer.invoke("capture-launch-companion", options),
+  captureStartAnalyzeSession: (options) =>
+    ipcRenderer.invoke("capture-start-analyze-session", options),
+  captureStopAnalyzeSession: (options) =>
+    ipcRenderer.invoke("capture-stop-analyze-session", options),
+  captureStartAnalyzeDictation: (options) =>
+    ipcRenderer.invoke("capture-start-analyze-dictation", options),
+  captureStopAnalyzeDictation: (options) =>
+    ipcRenderer.invoke("capture-stop-analyze-dictation", options),
+  captureRequestAnalyzePhoto: (options) =>
+    ipcRenderer.invoke("capture-request-analyze-photo", options),
+  captureRetakeAnalyzePhoto: (options) =>
+    ipcRenderer.invoke("capture-retake-analyze-photo", options),
+  captureOnMediaIngress: (callback) => {
+    if (typeof callback !== "function" || captureMediaIngressHandlers.has(callback)) {
+      return;
+    }
+    const handler = (_event, payload) => callback(payload);
+    captureMediaIngressHandlers.set(callback, handler);
+    ipcRenderer.on(CAPTURE_MEDIA_INGRESS_CHANNEL, handler);
+  },
+  captureOffMediaIngress: (callback) => {
+    const handler = captureMediaIngressHandlers.get(callback);
+    if (!handler) return;
+    ipcRenderer.removeListener(CAPTURE_MEDIA_INGRESS_CHANNEL, handler);
+    captureMediaIngressHandlers.delete(callback);
+  },
+  captureOnDictationStatus: (callback) => {
+    if (typeof callback !== "function" || captureDictationStatusHandlers.has(callback)) {
+      return;
+    }
+    const handler = (_event, payload) => callback(payload);
+    captureDictationStatusHandlers.set(callback, handler);
+    ipcRenderer.on(CAPTURE_DICTATION_STATUS_CHANNEL, handler);
+  },
+  captureOffDictationStatus: (callback) => {
+    const handler = captureDictationStatusHandlers.get(callback);
+    if (!handler) return;
+    ipcRenderer.removeListener(CAPTURE_DICTATION_STATUS_CHANNEL, handler);
+    captureDictationStatusHandlers.delete(callback);
+  },
   transcriptStatus: () => ipcRenderer.invoke("transcript-status"),
   transcriptEnsureRuntime: () => ipcRenderer.invoke("transcript-ensure-runtime"),
   transcriptListModels: () => ipcRenderer.invoke("transcript-list-models"),
