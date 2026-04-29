@@ -3,6 +3,7 @@ import type { ToolContext } from "../registry.js";
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 
 import { createElectronTools } from "./electron-handlers.js";
+import { createAndroidTools } from "./android-handlers.js";
 import { createCdpTools } from "./cdp-handlers.js";
 import { createFilesystemTools } from "./filesystem-handlers.js";
 import { createDevTools } from "./dev-handlers.js";
@@ -17,6 +18,7 @@ function startupT(key: string, params?: Record<string, string | number | boolean
 
 export function registerAllTools(context: ToolContext): void {
   registerTools(createElectronTools(context), "electron");
+  registerTools(createAndroidTools(context), "android");
   registerTools(createCdpTools(), "cdp");
   registerTools(createFilesystemTools(context), "filesystem");
   registerTools(createDevTools(context), "dev");
