@@ -1,6 +1,6 @@
 import { escapeHtml } from "../models/lab-types.js";
 import type { LabDrawerMode, LabStoreState } from "../models/lab-types.js";
-import { resolveDrawerMode } from "../runtime/lab-selectors.js";
+import { getDrawerCollapsed, resolveDrawerMode } from "../runtime/lab-selectors.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
@@ -56,6 +56,10 @@ export function renderLabTopBar(
   copy: LabI18n = LAB_FALLBACK_I18N
 ) {
   const drawerMode = resolveDrawerMode(state);
+  const drawerCollapsed = getDrawerCollapsed(state);
+  const drawerToggleLabel = drawerCollapsed
+    ? copy.t("mediaAnalysis.drawer.expand", "Paneli aç")
+    : copy.t("mediaAnalysis.drawer.collapse", "Paneli kapat");
 
   const pills = [
     { id: "source" as const, label: copy.t("mediaAnalysis.topBar.source", "Kaynak"), action: "topbar-pill-source" },
@@ -98,6 +102,16 @@ export function renderLabTopBar(
           title="${escapeHtml(copy.t("mediaAnalysis.topBar.toolMgmt", "Araç Yönetimi"))}"
         >
           ⚙
+        </button>
+        <button
+          class="labx-top-bar__tool-btn labx-top-bar__drawer-toggle"
+          type="button"
+          data-lab-action="drawer-collapsed-toggled"
+          title="${escapeHtml(drawerToggleLabel)}"
+          aria-label="${escapeHtml(drawerToggleLabel)}"
+          aria-pressed="${drawerCollapsed ? "true" : "false"}"
+        >
+          ${drawerCollapsed ? "\u00BB" : "\u00AB"}
         </button>
       </div>
     </header>

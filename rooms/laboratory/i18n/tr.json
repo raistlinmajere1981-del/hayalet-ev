@@ -198,13 +198,15 @@
     "eyebrow": "Obsidian Laboratuvar",
     "operatorLabel": "Operator",
     "loading": {
+      "ariaLabel": "Laboratuvar yukleniyor",
       "eyebrow": "Hayalet Ev Laboratuvari",
       "title": "Laboratuvar ortami hazirlaniyor",
       "body": "Oda baglami ve oda yerel cevirileri yuklenirken shell gorunur kalir.",
-      "contractEyebrow": "Boot",
-      "contractTitle": "Shell durumu",
-      "contractBody": "Room-ready baglami tamamlanirken tezgah gorunur kalir.",
-      "currentStage": "Gecerli asama: {stage}"
+      "steps": {
+        "context": "Oda baglami yukleniyor",
+        "modules": "Moduller hazirlaniyor",
+        "tools": "Araclar kontrol ediliyor"
+      }
     },
     "processSummary": {
       "ariaLabel": "Laboratuvar islem durumu",
@@ -218,7 +220,6 @@
         "analyzing": "Analiz",
         "staging": "Hazir"
       },
-      "bootPhase": "Laboratuvar ortami baslatiliyor...",
       "thinking": {
         "running": "Dusunuyor...",
         "analyzing": "Analiz ediyor..."
@@ -228,6 +229,33 @@
       },
       "progress": {
         "oneActiveTask": "1 aktif is"
+      }
+    },
+    "strip": {
+      "ariaLabel": "Surec durumu",
+      "failed": "Basarisiz",
+      "cancelled": "Iptal edildi",
+      "empty": "Sonuc bos",
+      "partial": "Tamamlandi (uyarilarla)",
+      "complete": "Tamamlandi",
+      "idle": "Hazir",
+      "idleNoSource": "Hazir - kaynak bekleniyor",
+      "processing": "Isleniyor...",
+      "analyzing": "Analiz ediliyor...",
+      "staging": "Staging hazirlaniyor...",
+      "retry": "Analizi Tekrar Dene",
+      "cancel": "Durdur",
+      "log": "Log",
+      "noRecentActions": "Son islem yok",
+      "noRawLog": "Raw log yok",
+      "recentActions": "Son islemler",
+      "rawLog": "Raw log",
+      "steps": {
+        "select": "Secim",
+        "plan": "Plan",
+        "evaluate": "Degerlendirme",
+        "decide": "Karar",
+        "stage": "Staging"
       }
     },
     "journey": {
@@ -254,14 +282,16 @@
       "emptyTitle": "Karar yuzeyi",
       "emptyBody": "Karar akisini baslatmak icin bir kaynak yukle.",
       "status": {
-        "none": "—",
-        "viable": "Uygun",
-        "unstable": "Kararsiz",
-        "not-viable": "Uygun degil",
-        "committed": "Secildi",
-        "revoked": "Geri alindi",
-        "staged": "Hazirlandi",
-        "not-staged": "Hazirlanmadi"
+        "none": "-",
+        "viable": "Gecerli",
+        "unstable": "Dengesiz",
+        "not-viable": "Gecersiz",
+        "notViable": "Gecersiz",
+        "committed": "Onaylandi",
+        "revoked": "Iptal Edildi",
+        "staged": "Hazir",
+        "not-staged": "Beklemede",
+        "notStaged": "Beklemede"
       },
       "implication": {
         "candidate": {
@@ -536,7 +566,6 @@
       "latestLabel": "Guncel",
       "pathLabel": "Binary Yolu",
       "busyHint": "Bu arac icin oda-yonetimli bir islem calisiyor.",
-      "currentStageTitle": "Aktif asama araclari",
       "noStageTools": "Bu asama icin ayrica yonetilen bir arac gerekmiyor.",
       "otherToolsTitle": "Diger oda araclari",
       "otherToolsSubtitle": "Asamaya komsu kurulumlar ayni overlay icinde acik kalir.",
@@ -815,6 +844,21 @@
         "complete": "Ice aktarma tamamlandi",
         "failed": "Ice aktarma basarisiz",
         "awaiting": "Ice aktarma bekleniyor"
+      },
+      "viewport": {
+        "loadingTitle": "Kaynak hazirligi suruyor",
+        "loadingBody": "Probe tamamlandiginda onizleme acilacak.",
+        "errorTitle": "Kaynak hazirligi basarisiz",
+        "errorBody": "Kaynak ayarlarini kontrol edip probe islemini tekrar dene.",
+        "retry": "Kaynak Probe'unu Tekrar Dene",
+        "retryBlocked": {
+          "activeRun": "Aktif analiz sirasinda kaynak tekrar denenemez.",
+          "notFailed": "Tekrar deneme yalnizca kaynak hazirligi basarisiz olduktan sonra kullanilabilir.",
+          "missingUrl": "Kaynak URL gerekli.",
+          "missingYoutubeUrl": "YouTube URL gerekli.",
+          "missingYtDlp": "YouTube tekrar denemesi icin yt-dlp gerekli.",
+          "localReselectRequired": "Yerel kaynak otomatik tekrar denenemez. Dosyayi kaynak panelinden yeniden sec."
+        }
       },
       "lockedHint": "Analiz sirasinda kaynak kilitli",
       "workspacePreviewAlt": "Workspace onizlemesi",
@@ -1724,7 +1768,8 @@
       "hints": {
         "redefine": "Inceleme bolgesini yeniden tanimlamak icin surukle veya odaklamak icin cift tikla",
         "define": "Inceleme bolgesi tanimlamak icin surukle",
-        "selectRange": "Once zaman araligi sec, sonra ilgi bolgesini tanimlamak icin surukle"
+        "selectRange": "Once zaman araligi sec, sonra ilgi bolgesini tanimlamak icin surukle",
+        "locked": "Analiz calisirken ROI duzenlemeleri kilitli"
       },
       "inspectionModes": {
         "none": "Yok",
@@ -2066,7 +2111,6 @@
       "eyebrow": "Arac Odasi",
       "title": "Ses Analizi Ayarlari",
       "subtitle": "Bu feature, Medya Analizi ile ayni oda-yerel arac akislarini kullanir; transcript runtime sahipligi ise Settings tarafinda kalir.",
-      "currentStageTitle": "Aktif asama araclari",
       "providersEyebrow": "Saglayici Hazirligi",
       "providersTitle": "Ses saglayici paneli",
       "providersSubtitle": "Descriptor-driven saglayici kartlari ayni room-local kurulum akisi ve gelecekteki v2 placeholder yollarla hizali kalir.",

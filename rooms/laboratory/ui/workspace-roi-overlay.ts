@@ -6,6 +6,7 @@ import type { LabI18n } from "./lab-i18n.js";
 type RenderWorkspaceROIOverlayOptions = {
   inspectionMode: LabInspectionMode;
   legacyRegions: LabROIRegion[];
+  mutationLocked?: boolean;
   roiFocusActive?: boolean;
   selectionRoi?: LabSelectionROI | null;
   selectionRoiEnabled: boolean;
@@ -79,7 +80,8 @@ function renderSelectionRoi(selectionRoi: LabSelectionROI, roiFocusActive: boole
   `;
 }
 
-function renderLegacyRegions(regions: LabROIRegion[], copy: LabI18n) {
+function renderLegacyRegions(regions: LabROIRegion[], mutationLocked: boolean, copy: LabI18n) {
+  const mutationDisabledAttr = mutationLocked ? 'disabled aria-disabled="true"' : "";
   return regions
     .map(function (region) {
       return `
@@ -98,6 +100,7 @@ function renderLegacyRegions(regions: LabROIRegion[], copy: LabI18n) {
             data-lab-action="workspace-roi-toggle"
             data-lab-value="${escapeHtml(region.id)}"
             title="${escapeHtml(region.active ? copy.t("mediaAnalysis.roi.actions.deactivate", "Deactivate") : copy.t("mediaAnalysis.roi.actions.activate", "Activate"))}"
+            ${mutationDisabledAttr}
           >${region.active ? "●" : "○"}</button>
           <button
             class="labx-roi-btn labx-roi-btn--export"
@@ -112,6 +115,7 @@ function renderLegacyRegions(regions: LabROIRegion[], copy: LabI18n) {
             data-lab-action="workspace-roi-remove"
             data-lab-value="${escapeHtml(region.id)}"
             title="${escapeHtml(copy.t("mediaAnalysis.roi.actions.remove", "Remove"))}"
+            ${mutationDisabledAttr}
           >✕</button>
         </div>
       </div>
@@ -125,8 +129,10 @@ function renderInlineInspectionControls(
   selectionRoi: LabSelectionROI | null,
   sourceKind: string,
   roiFocusActive: boolean,
+  mutationLocked: boolean,
   copy: LabI18n
 ) {
+  const mutationDisabledAttr = mutationLocked ? 'disabled aria-disabled="true"' : "";
   return `
     <div class="labx-roi-selection-toolbar" data-lab-selection-roi-ignore="true">
       <div class="labx-roi-selection-toolbar__status">
@@ -158,11 +164,13 @@ function renderInlineInspectionControls(
                 class="labx-roi-selection-toolbar__action"
                 type="button"
                 data-lab-selection-roi-capture="true"
+                ${mutationDisabledAttr}
               >${escapeHtml(copy.t("mediaAnalysis.roi.actions.captureRegion", "Capture region"))}</button>
               <button
                 class="labx-roi-selection-toolbar__clear"
                 type="button"
                 data-lab-selection-roi-clear="true"
+                ${mutationDisabledAttr}
               >${escapeHtml(copy.t("mediaAnalysis.roi.actions.clearRegion", "Clear region"))}</button>
             `
             : ""
@@ -178,7 +186,8 @@ export function renderWorkspaceROIOverlay(
 ) {
   const selectionRoi = options.selectionRoi ?? null;
   const roiFocusActive = options.roiFocusActive === true;
-  const regionElements = renderLegacyRegions(options.legacyRegions, copy);
+  const mutationLocked = options.mutationLocked === true;
+  const regionElements = renderLegacyRegions(options.legacyRegions, mutationLocked, copy);
   const summaryMarkup =
     options.legacyRegions.length > 0
       ? `
@@ -195,7 +204,14 @@ export function renderWorkspaceROIOverlay(
         <div class="labx-roi-hint">
           ${
             options.selectionRoiEnabled
-              ? selectionRoi
+              ? mutationLocked
+                ? escapeHtml(
+                    copy.t(
+                      "mediaAnalysis.roi.hints.locked",
+                      "ROI edits are locked while analysis is running"
+                    )
+                  )
+                : selectionRoi
                 ? escapeHtml(
                     copy.t(
                       "mediaAnalysis.roi.hints.redefine",
@@ -221,6 +237,7 @@ export function renderWorkspaceROIOverlay(
       id="lab-roi-overlay"
       data-lab-selection-roi-overlay="true"
       data-lab-roi-focus-active="${roiFocusActive ? "true" : "false"}"
+      data-lab-roi-mutation-locked="${mutationLocked ? "true" : "false"}"
       data-lab-source-kind="${escapeHtml(options.sourceKind)}"
     >
       ${selectionRoi ? renderSelectionRoi(selectionRoi, roiFocusActive, copy) : ""}
@@ -233,6 +250,7 @@ export function renderWorkspaceROIOverlay(
               selectionRoi,
               options.sourceKind,
               roiFocusActive,
+              mutationLocked,
               copy
             )
           : ""

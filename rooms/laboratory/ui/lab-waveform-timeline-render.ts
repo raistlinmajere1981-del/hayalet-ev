@@ -939,16 +939,17 @@ function renderInterpretationPanel(
   `;
 }
 
-function renderFineTuneButtons(prefix: string, msValue: number) {
+function renderFineTuneButtons(prefix: string, msValue: number, locked = false) {
+  const disabledAttr = locked ? 'disabled aria-disabled="true"' : "";
   return `
     <div class="labx-timeline__finetune">
-      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:-1000" title="-1s">&#9664;&#9664;</button>
-      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:-100" title="-100ms">&#9664;</button>
-      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:-10" title="-10ms">&#8249;</button>
+      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:-1000" title="-1s" ${disabledAttr}>&#9664;&#9664;</button>
+      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:-100" title="-100ms" ${disabledAttr}>&#9664;</button>
+      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:-10" title="-10ms" ${disabledAttr}>&#8249;</button>
       <span class="labx-timeline__finetune-value">${formatTimePrecise(msValue)}</span>
-      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:+10" title="+10ms">&#8250;</button>
-      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:+100" title="+100ms">&#9654;</button>
-      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:+1000" title="+1s">&#9654;&#9654;</button>
+      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:+10" title="+10ms" ${disabledAttr}>&#8250;</button>
+      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:+100" title="+100ms" ${disabledAttr}>&#9654;</button>
+      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:+1000" title="+1s" ${disabledAttr}>&#9654;&#9654;</button>
     </div>
   `;
 }
@@ -1002,6 +1003,9 @@ function renderExecutionDetailsOverlay(
 
 export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
   const copy = model.copy ?? LAB_FALLBACK_I18N;
+  const timelineLocked = model.lockState?.timeline === true;
+  const lockDisabledAttr = timelineLocked ? 'disabled aria-disabled="true"' : "";
+  const lockHandleAttr = timelineLocked ? 'aria-disabled="true" data-lab-locked="true"' : "";
   const durationMs = Math.max(1, model.durationMs);
   const rawStartMs = model.startMs ?? 0;
   const rawEndMs = model.endMs ?? durationMs;
@@ -1157,7 +1161,7 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
   const hasExecutionDetails = executionDetailsBody.trim() !== "";
 
   return `
-    <div class="labx-timeline" id="lab-timeline" data-duration="${String(durationMs)}" data-waveform-mode="${model.dualPreviewActive ? "linked-audio" : "source-audio"}">
+    <div class="labx-timeline" id="lab-timeline" data-duration="${String(durationMs)}" data-waveform-mode="${model.dualPreviewActive ? "linked-audio" : "source-audio"}" data-timeline-locked="${timelineLocked ? "true" : "false"}">
       <div class="labx-timeline__header">
         <div class="labx-timeline__header-copy">
           <p class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.timeline.eyebrow", "Timeline"))}</p>
@@ -1191,7 +1195,7 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
         <div class="labx-timeline__playhead" data-lab-role="timeline-playhead" style="left: 0%">
           <span class="labx-timeline__playhead-label" data-lab-role="timeline-playhead-label">00:00.000</span>
         </div>
-        <div class="labx-timeline__rail" data-lab-action="timeline-interact"></div>
+        <div class="labx-timeline__rail" data-lab-action="timeline-interact" ${lockHandleAttr}></div>
         ${
           hasSelection
             ? `
@@ -1336,9 +1340,9 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
             style="left: ${String(startPct)}%; width: ${String(endPct - startPct)}%"
             data-selection-intent="${escapeHtml(selectionIntent)}"
           >
-            <div class="labx-timeline__handle labx-timeline__handle--start" data-lab-action="timeline-drag-start"></div>
-            <div class="labx-timeline__handle labx-timeline__handle--end" data-lab-action="timeline-drag-end"></div>
-            <div class="labx-timeline__selection-body" data-lab-action="timeline-drag-body"></div>
+            <div class="labx-timeline__handle labx-timeline__handle--start" data-lab-action="timeline-drag-start" ${lockHandleAttr}></div>
+            <div class="labx-timeline__handle labx-timeline__handle--end" data-lab-action="timeline-drag-end" ${lockHandleAttr}></div>
+            <div class="labx-timeline__selection-body" data-lab-action="timeline-drag-body" ${lockHandleAttr}></div>
             <div class="labx-timeline__selection-duration">${formatDuration(selectionDurationMs)}</div>
           </div>
         `
@@ -1363,8 +1367,8 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
         <div class="labx-timeline__actions">
           ${
             hasSelection
-              ? `<button class="labx-timeline__clear-btn" type="button" data-lab-action="timeline-clear">Clear</button>
-                 <button class="labx-timeline__export-btn" type="button" data-lab-action="timeline-export-clip" title="Export selected range as video clip">Export Clip</button>`
+              ? `<button class="labx-timeline__clear-btn" type="button" data-lab-action="timeline-clear" ${lockDisabledAttr}>Clear</button>
+                 <button class="labx-timeline__export-btn" type="button" data-lab-action="timeline-export-clip" title="Export selected range as video clip" ${lockDisabledAttr}>Export Clip</button>`
               : ""
           }
           <button class="labx-timeline__export-btn" type="button" data-lab-action="timeline-grab-frame" title="Capture current frame as image">Grab Frame</button>
@@ -1378,11 +1382,11 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
           ? `
         <div class="labx-timeline__finetune-row">
           <label class="labx-timeline__finetune-label">Start</label>
-          ${renderFineTuneButtons("start", startMs)}
+          ${renderFineTuneButtons("start", startMs, timelineLocked)}
         </div>
         <div class="labx-timeline__finetune-row">
           <label class="labx-timeline__finetune-label">End</label>
-          ${renderFineTuneButtons("end", endMs)}
+          ${renderFineTuneButtons("end", endMs, timelineLocked)}
         </div>
       `
           : ""
@@ -1390,11 +1394,11 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
       <div class="labx-timeline__numeric">
         <label class="labx-field labx-field--compact">
           <span>Start (ms)</span>
-          <input class="labx-input labx-input--compact" type="number" min="0" max="${String(durationMs)}" data-lab-field="workspace.timelineStartMs" value="${model.startMs !== null ? String(model.startMs) : ""}" placeholder="ms" />
+          <input class="labx-input labx-input--compact" type="number" min="0" max="${String(durationMs)}" data-lab-field="workspace.timelineStartMs" value="${model.startMs !== null ? String(model.startMs) : ""}" placeholder="ms" ${lockDisabledAttr} />
         </label>
         <label class="labx-field labx-field--compact">
           <span>End (ms)</span>
-          <input class="labx-input labx-input--compact" type="number" min="0" max="${String(durationMs)}" data-lab-field="workspace.timelineEndMs" value="${model.endMs !== null ? String(model.endMs) : ""}" placeholder="ms" />
+          <input class="labx-input labx-input--compact" type="number" min="0" max="${String(durationMs)}" data-lab-field="workspace.timelineEndMs" value="${model.endMs !== null ? String(model.endMs) : ""}" placeholder="ms" ${lockDisabledAttr} />
         </label>
       </div>
     </div>

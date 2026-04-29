@@ -6,7 +6,7 @@ import { createLabHostBridge } from "../runtime/lab-host-bridge.js";
 import { loadLabPersistedState, saveLabPersistedState } from "../runtime/lab-persistence.js";
 import { createLabStore } from "../runtime/lab-store.js";
 import { renderLabCenterPanel } from "./lab-center-panel.js";
-import { renderLabLayout } from "./lab-layout.js";
+import { renderLabBootOverlay, renderLabLayout } from "./lab-layout.js";
 import { renderLabDrawer } from "./lab-drawer.js";
 import { renderLabProcessStrip } from "./lab-process-strip.js";
 import { renderLabTopBar } from "./lab-top-bar.js";
@@ -30,6 +30,7 @@ import {
   getRoiFocusActive,
   getSelectionSuggestions,
   getDrawerCollapsed,
+  getWorkspaceLockState,
   getWorkspaceMode,
   isRunActive,
   resolveDrawerMode,
@@ -385,6 +386,9 @@ export function startLaboratoryLabRoot() {
       const sourceKind = asNonEmptyString(asLabRecord(store.getState().source)["kind"]);
       return sourceKind || "video";
     },
+    isMutationLocked() {
+      return getWorkspaceLockState(store.getState()).roi;
+    },
   });
   bindLabPreviewInspectionInteractions({
     controller: previewInspectionController,
@@ -438,20 +442,17 @@ export function startLaboratoryLabRoot() {
   const hostBridge = createLabHostBridge({
     emit: eventBus.emit,
   });
-  const BOOT_MESSAGES = [
-    "Preparing Laboratory environment\u2026",
-    "Loading analysis context\u2026",
-    "Initializing modules\u2026",
-  ];
   const BOOT_OVERLAY_SETTLE_MS = 450;
   const BOOT_OVERLAY_MIN_VISIBLE_MS = 350;
-  const BOOT_OVERLAY_FAILSAFE_MS = 12000;
-  let bootMessageIndex = 0;
-  let bootMessageInterval: ReturnType<typeof setInterval> | null = null;
+  const BOOT_OVERLAY_FALLBACK_READY_MS = 8000;
+  const BOOT_OVERLAY_FAILSAFE_MS = 20000;
   let bootOverlayLocked = true;
   let bootBootstrapSeen = false;
   let bootOverlaySettleTimer: ReturnType<typeof setTimeout> | null = null;
+  let bootOverlayFallbackTimer: ReturnType<typeof setTimeout> | null = null;
   let bootOverlayFailsafeTimer: ReturnType<typeof setTimeout> | null = null;
+  let bootOverlayIdleTimer: ReturnType<typeof setTimeout> | null = null;
+  let bootOverlayIdleCallback: number | null = null;
   let processStripHeartbeatInterval: ReturnType<typeof setInterval> | null = null;
   const bootOverlayStartedAt = Date.now();
 
@@ -469,6 +470,29 @@ export function startLaboratoryLabRoot() {
     }
   }
 
+  function clearBootOverlayFallbackTimer() {
+    if (bootOverlayFallbackTimer !== null) {
+      clearTimeout(bootOverlayFallbackTimer);
+      bootOverlayFallbackTimer = null;
+    }
+  }
+
+  function clearBootOverlayIdleGate() {
+    if (bootOverlayIdleTimer !== null) {
+      clearTimeout(bootOverlayIdleTimer);
+      bootOverlayIdleTimer = null;
+    }
+    if (bootOverlayIdleCallback !== null) {
+      const idleWindow = windowRef as Window & {
+        cancelIdleCallback?: (handle: number) => void;
+      };
+      if (typeof idleWindow.cancelIdleCallback === "function") {
+        idleWindow.cancelIdleCallback(bootOverlayIdleCallback);
+      }
+      bootOverlayIdleCallback = null;
+    }
+  }
+
   function getBootOverlayBootstrapStatus(state: LabStoreState) {
     const snapshot = asLabRecord(state.snapshot);
     const bootstrap = asLabRecord(snapshot["bootstrap"]);
@@ -479,10 +503,17 @@ export function startLaboratoryLabRoot() {
     return null;
   }
 
+  function hasRoomReadyBridge() {
+    return Boolean(windowRef.roomAPI && typeof windowRef.roomAPI.ready === "function");
+  }
+
   function hasBootOverlayCompletionSignal(state: LabStoreState) {
     const bootstrapStatus = getBootOverlayBootstrapStatus(state);
     if (bootstrapStatus !== null) {
       return bootstrapStatus === "ready" || bootstrapStatus === "error";
+    }
+    if (!hasRoomReadyBridge()) {
+      return true;
     }
     if (state.snapshot === null) {
       return false;
@@ -501,14 +532,63 @@ export function startLaboratoryLabRoot() {
     return bootOverlayLocked;
   }
 
+  function requestBootOverlayInteractiveUnlock() {
+    if (!bootOverlayLocked) {
+      return;
+    }
+    clearBootOverlaySettleTimer();
+    clearBootOverlayFallbackTimer();
+    clearBootOverlayIdleGate();
+
+    const finishUnlock = function () {
+      if (!bootOverlayLocked) {
+        return;
+      }
+      const animationWindow = windowRef as Window & {
+        requestAnimationFrame?: (callback: FrameRequestCallback) => number;
+      };
+      if (typeof animationWindow.requestAnimationFrame === "function") {
+        animationWindow.requestAnimationFrame(function () {
+          animationWindow.requestAnimationFrame(function () {
+            unlockBootOverlay();
+          });
+        });
+        return;
+      }
+      unlockBootOverlay();
+    };
+
+    const idleWindow = windowRef as Window & {
+      requestIdleCallback?: (
+        callback: IdleRequestCallback,
+        options?: IdleRequestOptions
+      ) => number;
+    };
+    if (typeof idleWindow.requestIdleCallback === "function") {
+      bootOverlayIdleCallback = idleWindow.requestIdleCallback(
+        function () {
+          bootOverlayIdleCallback = null;
+          finishUnlock();
+        },
+        { timeout: 4000 }
+      );
+      return;
+    }
+    bootOverlayIdleTimer = setTimeout(function () {
+      bootOverlayIdleTimer = null;
+      finishUnlock();
+    }, 250);
+  }
+
   function unlockBootOverlay() {
     if (!bootOverlayLocked) {
       return;
     }
     bootOverlayLocked = false;
     clearBootOverlaySettleTimer();
+    clearBootOverlayFallbackTimer();
     clearBootOverlayFailsafeTimer();
-    stopBootMessages();
+    clearBootOverlayIdleGate();
     render();
   }
 
@@ -521,7 +601,7 @@ export function startLaboratoryLabRoot() {
     const minVisibleRemainder = Math.max(0, BOOT_OVERLAY_MIN_VISIBLE_MS - elapsed);
     const delay = Math.max(BOOT_OVERLAY_SETTLE_MS, minVisibleRemainder);
     bootOverlaySettleTimer = setTimeout(function () {
-      unlockBootOverlay();
+      requestBootOverlayInteractiveUnlock();
     }, delay);
   }
 
@@ -533,36 +613,18 @@ export function startLaboratoryLabRoot() {
     shell.dataset["drawerCollapsed"] = getDrawerCollapsed(state) ? "true" : "false";
   }
 
-  function startBootMessages() {
-    const shell = runtimeRoot.querySelector<HTMLElement>(".labx-shell");
-    if (shell) {
-      shell.dataset["bootMessage"] = BOOT_MESSAGES[bootMessageIndex] ?? "";
-      shell.dataset["bootFade"] = "in";
+  function syncBootOverlay(shell: HTMLElement, state: LabStoreState, copy: LabI18n) {
+    const existingOverlay = shell.querySelector<HTMLElement>(".labx-boot-overlay");
+    if (!isBootOverlayActive(state)) {
+      existingOverlay?.remove();
+      return;
     }
-    if (bootMessageInterval !== null) return;
-    bootMessageInterval = setInterval(function () {
-      bootMessageIndex = (bootMessageIndex + 1) % BOOT_MESSAGES.length;
-      const s = runtimeRoot.querySelector<HTMLElement>(".labx-shell");
-      if (s) {
-        s.dataset["bootFade"] = "out";
-        setTimeout(function () {
-          s.dataset["bootMessage"] = BOOT_MESSAGES[bootMessageIndex] ?? "";
-          s.dataset["bootFade"] = "in";
-        }, 150);
-      }
-    }, 2500);
-  }
-
-  function stopBootMessages() {
-    if (bootMessageInterval !== null) {
-      clearInterval(bootMessageInterval);
-      bootMessageInterval = null;
+    const overlayMarkup = renderLabBootOverlay(copy);
+    if (existingOverlay) {
+      updateRenderedElement(documentRef, existingOverlay, overlayMarkup);
+      return;
     }
-    const shell = runtimeRoot.querySelector<HTMLElement>(".labx-shell");
-    if (shell) {
-      delete shell.dataset["bootMessage"];
-      delete shell.dataset["bootFade"];
-    }
+    shell.insertAdjacentHTML("beforeend", overlayMarkup);
   }
 
   function stopProcessStripHeartbeat() {
@@ -651,16 +713,14 @@ export function startLaboratoryLabRoot() {
     reconcileExecutionDetailsOverlay(state);
     const surface = renderSurface(state, copy);
     if (shellMounted !== true) {
-      runtimeRoot.innerHTML = renderLabLayout(state, surface, copy);
+      runtimeRoot.innerHTML = renderLabLayout(state, surface, copy, {
+        bootOverlayActive: isBootOverlayActive(state),
+      });
       shellMounted = true;
       const mountedShell = runtimeRoot.querySelector<HTMLElement>(".labx-shell");
       if (mountedShell) {
         syncShellState(mountedShell, state);
-      }
-      if (isBootOverlayActive(state)) {
-        startBootMessages();
-      } else {
-        stopBootMessages();
+        syncBootOverlay(mountedShell, state, copy);
       }
       syncProcessStripHeartbeat(state);
       return;
@@ -683,13 +743,16 @@ export function startLaboratoryLabRoot() {
       !overlayRoot ||
       !assetPreviewOverlayRoot
     ) {
-      runtimeRoot.innerHTML = renderLabLayout(state, surface, copy);
+      runtimeRoot.innerHTML = renderLabLayout(state, surface, copy, {
+        bootOverlayActive: isBootOverlayActive(state),
+      });
       syncProcessStripHeartbeat(state);
       return;
     }
 
     if (shell instanceof HTMLElement) {
       syncShellState(shell, state);
+      syncBootOverlay(shell, state, copy);
     }
     updateRenderedElement(documentRef, topBar as HTMLElement, renderLabTopBar(state, copy));
     updateRenderedElement(
@@ -727,11 +790,6 @@ export function startLaboratoryLabRoot() {
       );
     }
 
-    if (isBootOverlayActive(state)) {
-      startBootMessages();
-    } else {
-      stopBootMessages();
-    }
     syncProcessStripHeartbeat(state);
 
     const triggerEl = runtimeRoot.querySelector<HTMLElement>(".lab-execution-details-trigger");
@@ -768,8 +826,12 @@ export function startLaboratoryLabRoot() {
   }
 
   bootOverlayFailsafeTimer = setTimeout(function () {
-    unlockBootOverlay();
+    requestBootOverlayInteractiveUnlock();
   }, BOOT_OVERLAY_FAILSAFE_MS);
+  bootOverlayFallbackTimer = setTimeout(function () {
+    bootBootstrapSeen = true;
+    requestBootOverlayInteractiveUnlock();
+  }, BOOT_OVERLAY_FALLBACK_READY_MS);
 
   render();
   previewInspectionController.sync();
@@ -783,6 +845,9 @@ export function startLaboratoryLabRoot() {
     eventBus.emit({
       type: "bootstrap-ready-sent",
     });
+  } else {
+    bootBootstrapSeen = true;
+    scheduleBootOverlayUnlock(store.getState());
   }
 }
 

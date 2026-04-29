@@ -5,6 +5,7 @@ import {
   getLaboratoryProcessSummary,
   getRunElapsedSeconds,
   getSourceReady,
+  getUserActions,
   isRunActive,
   isRunComplete,
 } from "../runtime/lab-selectors.js";
@@ -29,11 +30,14 @@ function getDotState(
   stepIndex: number,
   journeyStep: number,
   runFailed: boolean,
-  failedAtStep: number
-): "hollow" | "done" | "active" | "error" {
+  failedAtStep: number,
+  warningSteps: Set<number>,
+  showActive: boolean
+): "hollow" | "done" | "active" | "warning" | "error" {
   if (runFailed && stepIndex === failedAtStep) return "error";
+  if (warningSteps.has(stepIndex)) return "warning";
   if (stepIndex < journeyStep) return "done";
-  if (stepIndex === journeyStep) return "active";
+  if (showActive === true && stepIndex === journeyStep) return "active";
   return "hollow";
 }
 
@@ -48,10 +52,10 @@ function getStripTaskLabel(state: LabStoreState, copy: LabI18n): string {
     return copy.t("mediaAnalysis.strip.cancelled", "İptal edildi");
   }
   if (run?.emptyReason) {
-    return copy.t("mediaAnalysis.strip.empty", "Sonuç boş");
+    return `${copy.t("mediaAnalysis.strip.empty", "Sonuç boş")}: ${run.emptyReason}`;
   }
   if ((run?.warnings ?? []).length > 0 && isRunComplete(state) && !isRunActive(state)) {
-    return copy.t("mediaAnalysis.strip.partial", "Kısmi sonuç");
+    return copy.t("mediaAnalysis.strip.partial", "Tamamlandı (uyarılarla)");
   }
   if (isRunComplete(state) && !isRunActive(state)) {
     return copy.t("mediaAnalysis.strip.complete", "Tamamlandı");
@@ -77,6 +81,7 @@ function getStripState(state: LabStoreState): string {
   const run = getCurrentRunFromState(state);
   if (run?.state === "failed") return "error";
   if (run?.state === "cancelled") return "cancelled";
+  if ((run?.warnings ?? []).length > 0 && isRunComplete(state) && !isRunActive(state)) return "partial";
   if (isRunComplete(state) && !isRunActive(state)) return "complete";
   const summary = getLaboratoryProcessSummary(state);
   return summary.state;
@@ -100,7 +105,7 @@ function renderExpandedStrip(state: LabStoreState, copy: LabI18n) {
   if (state.ui.workspace.processViewActive !== true) {
     return "";
   }
-  const recentActions = state.userActions.slice(0, 4);
+  const recentActions = getUserActions(state).slice(0, 5);
   const rawLog = (state.run?.rawLog ?? []).slice(-6);
   const actionMarkup =
     recentActions.length > 0
@@ -138,6 +143,131 @@ function renderExpandedStrip(state: LabStoreState, copy: LabI18n) {
   `;
 }
 
+function getCancelledJourneyStep(run: LabStoreState["run"], fallback: number) {
+  if (!run || run.state !== "cancelled" || run.moduleOrder.length === 0) {
+    return fallback;
+  }
+  const completedCount = run.moduleOrder.filter(function (moduleId) {
+    const status = run.modules[moduleId]?.status;
+    return status === "completed" || status === "ready";
+  }).length;
+  if (completedCount === 0) {
+    return 0;
+  }
+  return Math.max(
+    1,
+    Math.min(
+      PIPELINE_STEPS.length,
+      Math.round((completedCount / run.moduleOrder.length) * PIPELINE_STEPS.length)
+    )
+  );
+}
+
+function getPipelineStepIndexForStage(stage: string | null) {
+  const normalized = (stage || "").trim().toLowerCase();
+  const directIndex = PIPELINE_STEPS.findIndex(function (step) {
+    return step === normalized;
+  });
+  if (directIndex >= 0) {
+    return directIndex;
+  }
+  if (normalized === "source" || normalized === "intake") {
+    return 0;
+  }
+  if (normalized === "planning" || normalized === "preflight") {
+    return 1;
+  }
+  if (normalized === "process" || normalized === "analysis" || normalized === "analyzing") {
+    return 2;
+  }
+  if (normalized === "decision" || normalized === "report") {
+    return 3;
+  }
+  if (normalized === "staging" || normalized === "completed") {
+    return 4;
+  }
+  return -1;
+}
+
+function getPipelineStepIndexForModule(run: NonNullable<LabStoreState["run"]>, moduleId: string | null) {
+  if (moduleId === null || run.moduleOrder.length === 0) {
+    return -1;
+  }
+  const moduleIndex = run.moduleOrder.indexOf(moduleId);
+  if (moduleIndex < 0) {
+    return -1;
+  }
+  return Math.max(
+    0,
+    Math.min(
+      PIPELINE_STEPS.length - 1,
+      Math.floor((moduleIndex / Math.max(1, run.moduleOrder.length)) * PIPELINE_STEPS.length)
+    )
+  );
+}
+
+function warningMentionsModule(warning: string, moduleId: string, moduleTitle: string | null) {
+  const normalizedWarning = warning.toLowerCase();
+  return (
+    normalizedWarning.includes(moduleId.toLowerCase()) ||
+    (moduleTitle !== null && normalizedWarning.includes(moduleTitle.toLowerCase()))
+  );
+}
+
+function getWarningStepIndexes(
+  run: LabStoreState["run"],
+  runPartial: boolean,
+  journeyStep: number
+) {
+  const steps = new Set<number>();
+  if (!run || run.warnings.length === 0) {
+    return steps;
+  }
+
+  run.moduleTrace.forEach(function (entry) {
+    const message = [entry.message, entry.detail].filter(Boolean).join(" ");
+    const traceMatchesWarning =
+      entry.status.toLowerCase().includes("warning") ||
+      run.warnings.some(function (warning) {
+        return message !== "" && warning.toLowerCase().includes(message.toLowerCase());
+      });
+    if (traceMatchesWarning !== true) {
+      return;
+    }
+    const stageStep = getPipelineStepIndexForStage(entry.stage);
+    if (stageStep >= 0) {
+      steps.add(stageStep);
+      return;
+    }
+    const moduleStep = getPipelineStepIndexForModule(run, entry.moduleId);
+    if (moduleStep >= 0) {
+      steps.add(moduleStep);
+    }
+  });
+
+  run.moduleOrder.forEach(function (moduleId) {
+    const moduleState = run.modules[moduleId];
+    if (!moduleState) {
+      return;
+    }
+    const title = moduleState.title ?? null;
+    const mentioned = run.warnings.some(function (warning) {
+      return warningMentionsModule(warning, moduleId, title);
+    });
+    if (mentioned || moduleState.status === "skipped" || moduleState.status === "stale") {
+      const moduleStep = getPipelineStepIndexForModule(run, moduleId);
+      if (moduleStep >= 0) {
+        steps.add(moduleStep);
+      }
+    }
+  });
+
+  if (runPartial && steps.size === 0) {
+    steps.add(Math.max(0, Math.min(PIPELINE_STEPS.length - 1, journeyStep)));
+  }
+  return steps;
+}
+
 export function renderLabProcessStrip(
   state: LabStoreState,
   copy: LabI18n = LAB_FALLBACK_I18N
@@ -149,7 +279,9 @@ export function renderLabProcessStrip(
   const runComplete = isRunComplete(state) && !runActive;
   const run = getCurrentRunFromState(state);
   const runFailed = run?.state === "failed";
+  const runPartial = (run?.warnings ?? []).length > 0 && runComplete;
   const failedAtStep = runFailed ? Math.max(0, journeyStep) : -1;
+  const warningSteps = getWarningStepIndexes(run, runPartial, journeyStep);
   const stripState = getStripState(state);
   const taskLabel = getStripTaskLabel(state, copy);
 
@@ -159,16 +291,29 @@ export function renderLabProcessStrip(
       : 0;
   const showProgress = runActive || runComplete || runFailed;
   const showElapsed = runActive || runComplete;
+  const indeterminateProgress = runActive && summary.totalCount === 0;
 
   const dotsMarkup = PIPELINE_STEPS.map(function (key, i) {
     const label = copy.t(
       `mediaAnalysis.strip.steps.${key}`,
       PIPELINE_LABELS_TR[i] ?? key
     );
-    const effectiveJourney = runComplete ? PIPELINE_STEPS.length : journeyStep;
-    const dotState = getDotState(i, effectiveJourney, runFailed === true, failedAtStep);
+    const effectiveJourney =
+      run?.state === "cancelled"
+        ? getCancelledJourneyStep(run, Math.max(0, journeyStep))
+        : runComplete
+          ? PIPELINE_STEPS.length
+          : journeyStep;
+    const dotState = getDotState(
+      i,
+      effectiveJourney,
+      runFailed === true,
+      failedAtStep,
+      warningSteps,
+      run?.state !== "cancelled"
+    );
     return `
-      <div class="labx-strip-step" data-dot="${dotState}">
+      <div class="labx-strip-step" data-step="${escapeHtml(key)}" data-dot="${dotState}">
         <span class="labx-strip-step__dot" aria-hidden="true"></span>
         <span class="labx-strip-step__label">${escapeHtml(label)}</span>
       </div>
@@ -178,11 +323,11 @@ export function renderLabProcessStrip(
   const progressMarkup = showProgress
     ? `
       <div class="labx-strip-progress">
-        <div class="labx-strip-progress__bar">
+        <div class="labx-strip-progress__bar" data-progress-mode="${indeterminateProgress ? "indeterminate" : "measured"}">
           <div
             class="labx-strip-progress__fill"
-            style="width:${String(runFailed ? progressPercent : runComplete ? 100 : progressPercent)}%"
-            data-tone="${runFailed ? "error" : "running"}"
+            style="width:${String(indeterminateProgress ? 100 : runFailed ? progressPercent : runComplete ? 100 : progressPercent)}%"
+            data-tone="${runFailed ? "error" : runPartial ? "warning" : runComplete ? "success" : "running"}"
           ></div>
         </div>
         ${summary.totalCount > 0 ? `<span class="labx-strip-progress__pct">${String(progressPercent)}%</span>` : ""}

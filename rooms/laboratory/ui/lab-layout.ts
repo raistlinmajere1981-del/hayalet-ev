@@ -1,3 +1,4 @@
+import { escapeHtml } from "../models/lab-types.js";
 import type { LabStageSurface, LabStoreState } from "../models/lab-types.js";
 import { renderLabCenterPanel } from "./lab-center-panel.js";
 import { renderLabDrawer } from "./lab-drawer.js";
@@ -10,19 +11,56 @@ import { getDrawerCollapsed, getWorkspaceMode, resolveDrawerMode } from "../runt
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
+type LabLayoutOptions = {
+  bootOverlayActive?: boolean;
+};
+
+export function renderLabBootOverlay(copy: LabI18n = LAB_FALLBACK_I18N) {
+  const steps = [
+    copy.t("mediaAnalysis.loading.steps.context", "Loading room context"),
+    copy.t("mediaAnalysis.loading.steps.modules", "Initializing modules"),
+    copy.t("mediaAnalysis.loading.steps.tools", "Checking tools"),
+  ];
+  return `
+    <div class="labx-boot-overlay" data-lab-boot-overlay="true" role="status" aria-live="polite" aria-label="${escapeHtml(copy.t("mediaAnalysis.loading.ariaLabel", "Laboratory loading"))}">
+      <section class="labx-boot-panel">
+        <div class="labx-boot-panel__header">
+          <span class="labx-boot-mark" aria-hidden="true"></span>
+          <div>
+            <p class="labx-boot-panel__eyebrow">${escapeHtml(copy.t("mediaAnalysis.loading.eyebrow", "Ghost House Laboratory"))}</p>
+            <h2>${escapeHtml(copy.t("mediaAnalysis.loading.title", "Preparing Laboratory environment"))}</h2>
+          </div>
+        </div>
+        <p class="labx-boot-panel__body">${escapeHtml(copy.t("mediaAnalysis.loading.body", "The shell stays visible while room context and room-local translations finish loading."))}</p>
+        <div class="labx-boot-progress" aria-hidden="true"><span></span></div>
+        <ol class="labx-boot-steps">
+          ${steps
+            .map(function (step) {
+              return `<li>${escapeHtml(step)}</li>`;
+            })
+            .join("")}
+        </ol>
+      </section>
+    </div>
+  `;
+}
+
 export function renderLabLayout(
   state: LabStoreState,
   surface: LabStageSurface,
-  copy: LabI18n = LAB_FALLBACK_I18N
+  copy: LabI18n = LAB_FALLBACK_I18N,
+  options: LabLayoutOptions = {}
 ) {
   const drawerCollapsed = getDrawerCollapsed(state);
   const drawerMode = resolveDrawerMode(state);
+  const bootOverlayActive = options.bootOverlayActive === true;
   return `
-    <div class="labx-shell" data-stage="${state.currentStage}" data-ready="${state.bootReady ? "true" : "false"}" data-workspace-mode="${getWorkspaceMode(state)}" data-drawer-mode="${drawerMode}" data-drawer-collapsed="${drawerCollapsed ? "true" : "false"}">
+    <div class="labx-shell" data-stage="${state.currentStage}" data-ready="${bootOverlayActive ? "false" : "true"}" data-workspace-mode="${getWorkspaceMode(state)}" data-drawer-mode="${drawerMode}" data-drawer-collapsed="${drawerCollapsed ? "true" : "false"}">
       ${renderLabTopBar(state, copy)}
       ${renderLabCenterPanel(surface)}
       ${renderLabDrawer(state, surface, copy)}
       ${renderLabProcessStrip(state, copy)}
+      ${bootOverlayActive ? renderLabBootOverlay(copy) : ""}
     </div>
     ${renderToolManagementOverlay(state, copy)}
     ${renderLabAssetPreviewOverlay(state, copy)}

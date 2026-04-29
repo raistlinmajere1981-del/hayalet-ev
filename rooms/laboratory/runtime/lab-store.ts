@@ -1677,6 +1677,10 @@ function ensurePendingRun(state: LabStoreState, action: string) {
   return nextRun;
 }
 
+function isRunMutationLocked(state: LabStoreState) {
+  return state.run !== null && (state.run.state === "running" || state.run.state === "queued");
+}
+
 function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState {
   switch (event.type) {
     case "hydrate":
@@ -1926,6 +1930,10 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     case "run-started":
       ensurePendingRun(state, event.action).state = "running";
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        userExploreToggle: false,
+      };
       return state;
     case "run-cancelled":
       if (state.run) {
@@ -2011,6 +2019,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         asNonEmptyString(state.workbench["activeLiveFindingsStreamId"]) !== null;
       return state;
     case "source-config-patched": {
+      if (isRunMutationLocked(state)) {
+        return state;
+      }
       const previousSourceSelectionKey = getWorkspaceSourceSelectionResetKey(state.source);
       state.source = {
         ...(state.source || {}),
@@ -2043,6 +2054,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     }
     case "source-drafts-updated":
+      if (isRunMutationLocked(state)) {
+        return state;
+      }
       state.ui.sourceDrafts = {
         ...state.ui.sourceDrafts,
         ...event.patch,
@@ -2225,6 +2239,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     // V2.3 workspace events
     case "workspace-timeline-updated": {
+      if (isRunMutationLocked(state)) {
+        return state;
+      }
       const nextTimelineRange = normalizeWorkspaceTimelineRange(event.startMs, event.endMs);
       if (
         nextTimelineRange.startMs !== state.ui.workspace.timelineStartMs ||
@@ -2238,6 +2255,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     }
     case "workspace-selection-intent-updated": {
+      if (isRunMutationLocked(state)) {
+        return state;
+      }
       if (state.ui.workspace.activeSelection === null) {
         return state;
       }
@@ -2378,6 +2398,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       clearRoiFocus(state);
       return state;
     case "selection-roi-updated": {
+      if (isRunMutationLocked(state)) {
+        return state;
+      }
       const normalizedRoi = normalizeLabSelectionRoi(event.roi);
       if (!normalizedRoi) {
         return state;
@@ -2407,6 +2430,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     }
     case "selection-roi-cleared": {
+      if (isRunMutationLocked(state)) {
+        return state;
+      }
       const activeSelection = state.ui.workspace.activeSelection;
       if (activeSelection === null) {
         clearExecutionIntent(state);
@@ -2438,6 +2464,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     }
     case "selection-roi-snapshot-set": {
+      if (isRunMutationLocked(state)) {
+        return state;
+      }
       const activeSelection = state.ui.workspace.activeSelection;
       if (
         activeSelection === null ||
@@ -2451,6 +2480,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     }
     case "selection-roi-snapshot-cleared":
+      if (isRunMutationLocked(state)) {
+        return state;
+      }
       clearInspectionSnapshot(state);
       return state;
     case "selection-inspection-mode-updated": {
@@ -2464,12 +2496,18 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     }
     case "workspace-roi-added":
+      if (isRunMutationLocked(state)) {
+        return state;
+      }
       state.ui.workspace = {
         ...state.ui.workspace,
         roiRegions: state.ui.workspace.roiRegions.concat(event.region),
       };
       return state;
     case "workspace-roi-updated":
+      if (isRunMutationLocked(state)) {
+        return state;
+      }
       state.ui.workspace = {
         ...state.ui.workspace,
         roiRegions: state.ui.workspace.roiRegions.map(function (entry) {
@@ -2478,6 +2516,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       };
       return state;
     case "workspace-roi-removed":
+      if (isRunMutationLocked(state)) {
+        return state;
+      }
       state.ui.workspace = {
         ...state.ui.workspace,
         roiRegions: state.ui.workspace.roiRegions.filter(function (entry) {
@@ -2486,6 +2527,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       };
       return state;
     case "workspace-roi-toggled":
+      if (isRunMutationLocked(state)) {
+        return state;
+      }
       state.ui.workspace = {
         ...state.ui.workspace,
         roiRegions: state.ui.workspace.roiRegions.map(function (entry) {
@@ -2530,6 +2574,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       };
       return state;
     case "workspace-hypothesis-updated":
+      if (isRunMutationLocked(state)) {
+        return state;
+      }
       state.ui.workspace = {
         ...state.ui.workspace,
         hypothesis: event.text,
@@ -2550,6 +2597,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       };
       return state;
     case "workspace-intent-set": {
+      if (isRunMutationLocked(state)) {
+        return state;
+      }
       const nextIntents = normalizeWorkspaceIntentIds(event.intents);
       state.ui.workspace = {
         ...state.ui.workspace,
@@ -2559,6 +2609,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     }
     case "workspace-intent-toggled": {
+      if (isRunMutationLocked(state)) {
+        return state;
+      }
       const intents = normalizeWorkspaceIntentIds(state.ui.workspace.selectedIntents);
       const nextIntents = intents.includes(event.intentId)
         ? intents.filter(function (entry) {

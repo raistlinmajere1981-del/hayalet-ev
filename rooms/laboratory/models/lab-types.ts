@@ -30,6 +30,14 @@ export type LabStage = "source" | "edit" | "process" | "report";
 
 /** V2.3 workspace mode — replaces stage navigation */
 export type WorkspaceMode = "loading" | "workspace" | "analyzing" | "complete";
+export type LabMediaViewportState = "empty" | "loading" | "active" | "error";
+export type LabSourceRetryBlockReason =
+  | "active-run"
+  | "not-failed"
+  | "missing-url"
+  | "missing-youtube-url"
+  | "missing-yt-dlp"
+  | "local-reselect-required";
 
 /** V2.4 report freshness — condition-driven, never gates UI */
 export type ReportFreshnessState = "current" | "stale" | "previous-run";
@@ -44,6 +52,15 @@ export type PreflightSeverity = "clear" | "warning" | "will-fail";
 /** V3 drawer mode — derived from system state, never manually toggled */
 export type LabDrawerMode = "setup" | "running" | "result" | "explore";
 export type LabDrawerModeOverride = "setup" | "result";
+
+export interface LabWorkspaceLockState {
+  source: boolean;
+  timeline: boolean;
+  roi: boolean;
+  intents: boolean;
+  hypothesis: boolean;
+  focusControls: boolean;
+}
 
 /** V2.3 user-facing intent identifiers — NO tool names exposed */
 export type LabIntentId =

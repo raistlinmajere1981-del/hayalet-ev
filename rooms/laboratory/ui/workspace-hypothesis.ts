@@ -2,9 +2,14 @@ import { escapeHtml } from "../models/lab-types.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
-export function renderWorkspaceHypothesis(hypothesis: string, copy: LabI18n = LAB_FALLBACK_I18N) {
+export function renderWorkspaceHypothesis(
+  hypothesis: string,
+  copy: LabI18n = LAB_FALLBACK_I18N,
+  options: { locked?: boolean } = {}
+) {
+  const locked = options.locked === true;
   return `
-    <div class="labx-hypothesis" id="lab-hypothesis">
+    <div class="labx-hypothesis" id="lab-hypothesis" data-hypothesis-locked="${locked ? "true" : "false"}">
       <label class="labx-field">
         <span class="labx-hypothesis__label">${escapeHtml(copy.t("mediaAnalysis.hypothesis.label", "Hypothesis"))}</span>
         <textarea
@@ -12,6 +17,7 @@ export function renderWorkspaceHypothesis(hypothesis: string, copy: LabI18n = LA
           data-lab-field="workspace.hypothesis"
           placeholder="${escapeHtml(copy.t("mediaAnalysis.hypothesis.placeholder", "Describe what you're looking for — e.g. check splice around 01:30, verify audio sync..."))}"
           rows="2"
+          ${locked ? 'disabled aria-disabled="true"' : ""}
         >${escapeHtml(hypothesis)}</textarea>
       </label>
     </div>

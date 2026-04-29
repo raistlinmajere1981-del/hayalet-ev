@@ -18,6 +18,7 @@ import type {
   LabPreviewArtifactProjection,
   LabSelection,
   LabSuggestionPreview,
+  LabWorkspaceLockState,
 } from "../models/lab-types.js";
 import type { LabI18n } from "./lab-i18n.js";
 
@@ -56,6 +57,7 @@ export type LabWaveformTimelineModel = {
   inspectionMode?: LabInspectionMode;
   interpretationItems?: LabInterpretationItem[];
   linkedAudioAssetId?: string | null;
+  lockState?: LabWorkspaceLockState;
   roiFocusActive?: boolean;
   selectionSuggestions?: LabActionSuggestion[];
   sourceKind?: string;

@@ -198,13 +198,15 @@
     "eyebrow": "Obsidian Laboratory",
     "operatorLabel": "Operator",
     "loading": {
+      "ariaLabel": "Laboratory loading",
       "eyebrow": "Ghost House Laboratory",
       "title": "Preparing Laboratory environment",
       "body": "The shell stays visible while room context and room-local translations finish loading.",
-      "contractEyebrow": "Boot",
-      "contractTitle": "Shell status",
-      "contractBody": "The workbench stays mounted while the room-ready context finishes.",
-      "currentStage": "Current stage: {stage}"
+      "steps": {
+        "context": "Loading room context",
+        "modules": "Initializing modules",
+        "tools": "Checking tools"
+      }
     },
     "processSummary": {
       "ariaLabel": "Laboratory process state",
@@ -218,7 +220,6 @@
         "analyzing": "Analyzing",
         "staging": "Staged"
       },
-      "bootPhase": "Laboratory environment starting...",
       "thinking": {
         "running": "Thinking...",
         "analyzing": "Analyzing..."
@@ -228,6 +229,33 @@
       },
       "progress": {
         "oneActiveTask": "1 active task"
+      }
+    },
+    "strip": {
+      "ariaLabel": "Process state",
+      "failed": "Failed",
+      "cancelled": "Cancelled",
+      "empty": "Empty result",
+      "partial": "Completed with warnings",
+      "complete": "Completed",
+      "idle": "Ready",
+      "idleNoSource": "Ready - waiting for source",
+      "processing": "Processing...",
+      "analyzing": "Analyzing...",
+      "staging": "Preparing staging...",
+      "retry": "Retry Analysis",
+      "cancel": "Stop",
+      "log": "Log",
+      "noRecentActions": "No recent actions",
+      "noRawLog": "No raw log",
+      "recentActions": "Recent actions",
+      "rawLog": "Raw log",
+      "steps": {
+        "select": "Select",
+        "plan": "Plan",
+        "evaluate": "Evaluate",
+        "decide": "Decide",
+        "stage": "Stage"
       }
     },
     "journey": {
@@ -254,14 +282,16 @@
       "emptyTitle": "Decision surface",
       "emptyBody": "Load a source to begin decision flow.",
       "status": {
-        "none": "—",
-        "viable": "Viable",
+        "none": "-",
+        "viable": "Valid",
         "unstable": "Unstable",
-        "not-viable": "Not viable",
-        "committed": "Committed",
+        "not-viable": "Invalid",
+        "notViable": "Invalid",
+        "committed": "Approved",
         "revoked": "Revoked",
-        "staged": "Staged",
-        "not-staged": "Not staged"
+        "staged": "Ready",
+        "not-staged": "Pending",
+        "notStaged": "Pending"
       },
       "implication": {
         "candidate": {
@@ -536,7 +566,6 @@
       "latestLabel": "Latest",
       "pathLabel": "Binary Path",
       "busyHint": "A room-managed job is running for this tool.",
-      "currentStageTitle": "Current stage tools",
       "noStageTools": "This stage does not require a dedicated room-managed tool.",
       "otherToolsTitle": "Other room tools",
       "otherToolsSubtitle": "Stage-adjacent installs stay available from the same overlay.",
@@ -815,6 +844,21 @@
         "complete": "Import complete",
         "failed": "Import failed",
         "awaiting": "Awaiting import"
+      },
+      "viewport": {
+        "loadingTitle": "Source preparation in progress",
+        "loadingBody": "The preview will unlock after the probe completes.",
+        "errorTitle": "Source preparation failed",
+        "errorBody": "Check the source settings and retry the source probe.",
+        "retry": "Retry Source Probe",
+        "retryBlocked": {
+          "activeRun": "Source retry is locked while an analysis is running.",
+          "notFailed": "Retry is available only after source preparation fails.",
+          "missingUrl": "A source URL is required.",
+          "missingYoutubeUrl": "A YouTube URL is required.",
+          "missingYtDlp": "yt-dlp is required for YouTube retry.",
+          "localReselectRequired": "Local sources cannot be retried automatically. Choose the file again from the source panel."
+        }
       },
       "lockedHint": "Source locked during analysis",
       "workspacePreviewAlt": "Workspace preview",
@@ -1724,7 +1768,8 @@
       "hints": {
         "redefine": "Drag to redefine the inspection region or double click to focus",
         "define": "Drag to define an inspection region",
-        "selectRange": "Select a time range, then drag to define region of interest"
+        "selectRange": "Select a time range, then drag to define region of interest",
+        "locked": "ROI edits are locked while analysis is running"
       },
       "inspectionModes": {
         "none": "None",
@@ -2066,7 +2111,6 @@
       "eyebrow": "Tool Room",
       "title": "Audio Analysis Settings",
       "subtitle": "This feature reuses the same room-local tooling flow as Media Analysis, while transcript runtime ownership stays in Settings.",
-      "currentStageTitle": "Current stage tools",
       "providersEyebrow": "Provider Readiness",
       "providersTitle": "Audio provider dashboard",
       "providersSubtitle": "Descriptor-driven provider cards stay aligned with the same room-local install workflow and future v2 placeholder paths.",

@@ -26,6 +26,7 @@ type SelectionRoiBinderDeps = {
   emit: (event: LabStoreEvent) => void;
   getActiveSelection: () => LabSelection | null;
   getSourceKind: () => string;
+  isMutationLocked?: () => boolean;
 };
 
 type DragState = {
@@ -108,10 +109,17 @@ function canDrawSelectionRoi(activeSelection: LabSelection | null, sourceKind: s
 export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
   let dragState: DragState | null = null;
 
+  function isMutationLocked() {
+    return deps.isMutationLocked?.() === true;
+  }
+
   function handleClick(event: Event) {
     const target = event.target;
     const clearTrigger = getClosestTarget(target, "[data-lab-selection-roi-clear]");
     if (clearTrigger) {
+      if (isMutationLocked()) {
+        return;
+      }
       event.preventDefault();
       deps.emit({
         type: "selection-roi-cleared",
@@ -148,6 +156,9 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
     if (!stage) {
       return;
     }
+    if (isMutationLocked()) {
+      return;
+    }
 
     const sourceKind = deps.getSourceKind();
     if (!canDrawSelectionRoi(deps.getActiveSelection(), sourceKind)) {
@@ -172,6 +183,10 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
 
   function handleMouseMove(rawEvent: Event) {
     if (dragState === null) {
+      return;
+    }
+    if (isMutationLocked()) {
+      dragState = null;
       return;
     }
     const event = rawEvent as MouseLikeEvent;

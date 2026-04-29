@@ -24,14 +24,17 @@ import type {
   LabIntentDirtyMap,
   LabPreflightResult,
   LabRun,
+  LabMediaViewportState,
   LabSelection,
   LabSelectionIntent,
+  LabSourceRetryBlockReason,
   LabSuggestionPreview,
   LabStage,
   LabStoreState,
   LabRightPanelContext,
   LabUserActionEvent,
   LabWorkspaceDiff,
+  LabWorkspaceLockState,
   PreflightSeverity,
   ReportFreshness,
   LabDrawerMode,
@@ -983,6 +986,57 @@ export function getSourceReady(state: LabStoreState): boolean {
   return state.source !== null && state.sourceProbeStatus === "completed";
 }
 
+function normalizeSourceModeToken(value: string | null) {
+  return (value || "").replaceAll(/\s+/g, "").toLowerCase();
+}
+
+function isLocalSourceRouteLabel(routeLabel: string) {
+  return routeLabel === "localcopy" || routeLabel === "assetreuse";
+}
+
+export function isLoadedSourceMatchingMode(source: Record<string, unknown>, mode: string) {
+  const normalizedMode = normalizeSourceModeToken(mode);
+  const routeLabel = normalizeSourceModeToken(asNonEmptyString(source["routeLabel"]));
+  if (routeLabel !== "") {
+    if (normalizedMode === "url") {
+      return routeLabel === "directurl";
+    }
+    if (normalizedMode === "youtube") {
+      return routeLabel === "youtube";
+    }
+    return isLocalSourceRouteLabel(routeLabel);
+  }
+  const sourceMode = normalizeSourceModeToken(asNonEmptyString(source["mode"]));
+  return sourceMode !== "" && sourceMode === normalizedMode;
+}
+
+export function getWorkspaceLockState(state: LabStoreState): LabWorkspaceLockState {
+  const active = isRunActive(state);
+  return {
+    source: active,
+    timeline: active,
+    roi: active,
+    intents: active,
+    hypothesis: active,
+    focusControls: false,
+  };
+}
+
+export function getMediaViewportState(state: LabStoreState): LabMediaViewportState {
+  const probeStatus = getSourceProbeStatus(state);
+  if (probeStatus === "running") {
+    return "loading";
+  }
+  if (probeStatus === "failed") {
+    return "error";
+  }
+  const source = getProjectSource(state);
+  if (getSourceReady(state) && isLoadedSourceMatchingMode(source, getSourceMode(state))) {
+    return "active";
+  }
+  return "empty";
+}
+
 export function getActiveSelection(state: LabStoreState): LabSelection | null {
   return state.ui.workspace.activeSelection;
 }
@@ -1719,6 +1773,7 @@ export function getWaveformTimelineModel(state: LabStoreState) {
     linkedAudioAssetId: selectedAudioAsset?.id || null,
     roiFocusActive: getRoiFocusActive(state),
     selectionSuggestions: getSelectionSuggestions(state),
+    lockState: getWorkspaceLockState(state),
     startMs: selection.startMs,
     sourceKind,
     visualizationArtifact: getAudioVisualizationArtifact(state),
@@ -2028,6 +2083,40 @@ export function getSourceActionBlockReason(state: LabStoreState): string | null 
     return "YouTube URL gerekli";
   }
   return null;
+}
+
+export function getSourceRetryBlockReason(state: LabStoreState): LabSourceRetryBlockReason | null {
+  if (isRunActive(state)) {
+    return "active-run";
+  }
+  if (getSourceProbeStatus(state) !== "failed") {
+    return "not-failed";
+  }
+  const sourceMode = getSourceMode(state);
+  const drafts = state.ui.sourceDrafts;
+  const source = getProjectSource(state);
+  if (sourceMode === "url") {
+    const sourceUrl =
+      drafts.urlInput.trim() || asNonEmptyString(source["sourceUrl"]) || asNonEmptyString(source["url"]);
+    return sourceUrl ? null : "missing-url";
+  }
+  if (sourceMode === "youtube") {
+    const youtubeUrl =
+      drafts.youtubeUrl.trim() ||
+      asNonEmptyString(source["youtubeUrl"]) ||
+      asNonEmptyString(source["sourceUrl"]) ||
+      asNonEmptyString(source["url"]);
+    if (!youtubeUrl) {
+      return "missing-youtube-url";
+    }
+    const tools = asLabRecord(getToolState(state)["tools"]);
+    const ytDlp = asLabRecord(tools["yt-dlp"]);
+    if (ytDlp["installed"] !== true && asNonEmptyString(ytDlp["status"]) !== "installed") {
+      return "missing-yt-dlp";
+    }
+    return null;
+  }
+  return "local-reselect-required";
 }
 
 export function getPreflightSeverity(state: LabStoreState): PreflightSeverity {
