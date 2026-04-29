@@ -1,6 +1,0 @@
-{
-  "schemaVersion": 1,
-  "modules": {
-    "transcript-support": { "phase": "v2.2", "status": "ready" }
-  }
-}

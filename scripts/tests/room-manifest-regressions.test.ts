@@ -126,7 +126,7 @@ test("validateRoomManifest allows workbench rooms to keep scene entries only for
     workbench: {
       experienceId: "analysis-workbench",
       primaryFeatureId: "media-analysis",
-      availableFeatureIds: ["media-analysis", "audio-analysis", "subtitle-analysis"],
+      availableFeatureIds: ["media-analysis", "audio-analysis"],
     },
     features: [
       {
@@ -147,10 +147,6 @@ test("validateRoomManifest allows workbench rooms to keep scene entries only for
       {
         id: "audio-analysis",
         name: "Audio Analysis",
-      },
-      {
-        id: "subtitle-analysis",
-        name: "Subtitle Analysis",
       },
     ],
     scene: {

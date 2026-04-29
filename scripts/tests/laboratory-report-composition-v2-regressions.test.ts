@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { createLaboratoryReportExportRuntime } from "../../rooms/laboratory/shared/host/reporting-export.ts";
 
-test("laboratory subtitle report export carries AI payload and channel batch artifacts into exports", async () => {
+test("laboratory report export persists only canonical user and AI report files", async () => {
   const writes: Array<{ path: string; value: string }> = [];
   let persistedExports: Array<Record<string, unknown>> = [];
   const project = {
@@ -11,7 +11,7 @@ test("laboratory subtitle report export carries AI payload and channel batch art
     slug: "lab-project",
     report: {
       records: {
-        "subtitle-analysis": {
+        "media-analysis": {
           exports: [],
         },
       },
@@ -28,14 +28,14 @@ test("laboratory subtitle report export carries AI payload and channel batch art
         aiReport: { version: 2 },
         artifacts: [
           {
-            kind: "subtitle-ai-payload",
-            path: "/tmp/subtitle-ai-payload.json",
-            fileName: "subtitle-ai-payload.json",
+            kind: "legacy-ai-payload",
+            path: "/tmp/legacy-ai-payload.json",
+            fileName: "legacy-ai-payload.json",
           },
           {
-            kind: "subtitle-channel-batch",
-            path: "/tmp/subtitle-channel-batch.json",
-            fileName: "subtitle-channel-batch.json",
+            kind: "legacy-channel-batch",
+            path: "/tmp/legacy-channel-batch.json",
+            fileName: "legacy-channel-batch.json",
           },
         ],
         exports: [],
@@ -97,9 +97,16 @@ test("laboratory subtitle report export carries AI payload and channel batch art
     },
   });
 
-  await runtime.exportFeatureReport({}, {}, "req-1", "subtitle-analysis");
+  await runtime.exportFeatureReport({}, {}, "req-1", "media-analysis");
 
   assert.equal(writes.length, 2);
-  assert.ok(persistedExports.some((entry) => entry["fileName"] === "subtitle-ai-payload.json"));
-  assert.ok(persistedExports.some((entry) => entry["fileName"] === "subtitle-channel-batch.json"));
+  assert.equal(persistedExports.length, 2);
+  assert.equal(
+    persistedExports.some((entry) => entry["fileName"] === "legacy-ai-payload.json"),
+    false
+  );
+  assert.equal(
+    persistedExports.some((entry) => entry["fileName"] === "legacy-channel-batch.json"),
+    false
+  );
 });

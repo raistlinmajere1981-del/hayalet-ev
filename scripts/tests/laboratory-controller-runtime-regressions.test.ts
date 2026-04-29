@@ -828,6 +828,154 @@ test("laboratory run controller routes YouTube import mode without starting down
   }
 });
 
+test("laboratory run controller sends project import draft fields without mutating committed source", () => {
+  const originalElement = globalThis.Element;
+  const originalInput = globalThis.HTMLInputElement;
+  const originalSelect = globalThis.HTMLSelectElement;
+  const originalTextarea = globalThis.HTMLTextAreaElement;
+  const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "video",
+      mode: "local",
+      status: "ready",
+      storedPath: "/tmp/existing-lab-source.mp4",
+      storedFileName: "existing-lab-source.mp4",
+      sourceUrl: null,
+      routeLabel: "Local Copy",
+      metadata: {},
+    },
+  });
+  const committedSourceBeforeImport = JSON.parse(JSON.stringify(store.getState().source));
+
+  class TestElement extends FakeActionElement {}
+  class TestInputElement {
+    checked = false;
+    dataset: Record<string, string>;
+    type = "text";
+
+    constructor(
+      field: string,
+      public value: string
+    ) {
+      this.dataset = {
+        labField: field,
+      };
+    }
+  }
+  class TestSelectElement {}
+  class TestTextareaElement {}
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+  Object.defineProperty(globalThis, "HTMLInputElement", {
+    configurable: true,
+    value: TestInputElement,
+  });
+  Object.defineProperty(globalThis, "HTMLSelectElement", {
+    configurable: true,
+    value: TestSelectElement,
+  });
+  Object.defineProperty(globalThis, "HTMLTextAreaElement", {
+    configurable: true,
+    value: TestTextareaElement,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent(eventName: string, payload: Record<string, unknown>) {
+            sentEvents.push({ eventName, payload });
+          },
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    const clickListener = documentRef.listeners.get("click");
+    const inputListener = documentRef.listeners.get("input");
+    assert.ok(clickListener);
+    assert.ok(inputListener);
+
+    clickListener?.({ target: new TestElement("project-import-kind", "image") } as Event);
+    clickListener?.({ target: new TestElement("project-import-method", "url") } as Event);
+    inputListener?.({
+      target: new TestInputElement("project-import.urlInput", "https://example.com/evidence.png"),
+    } as unknown as Event);
+    inputListener?.({
+      target: new TestInputElement("project-import.fileNameHint", "evidence.png"),
+    } as unknown as Event);
+
+    assert.deepEqual(store.getState().source, committedSourceBeforeImport);
+    assert.equal(store.getState().ui.projectImport.activeKind, "image");
+    assert.equal(store.getState().ui.projectImport.methods.image, "url");
+
+    clickListener?.({ target: new TestElement("project-import-add") } as Event);
+
+    assert.equal(sentEvents.length, 1);
+    assert.equal(sentEvents[0]?.eventName, "media-action");
+    assert.equal(sentEvents[0]?.payload["action"], "source-download-url");
+    const mediaPayload = sentEvents[0]?.payload["payload"] as Record<string, unknown>;
+    const fields = mediaPayload["fields"] as Record<string, unknown>;
+    assert.equal(fields["kind"], "image");
+    assert.equal(fields["mode"], "url");
+    assert.equal(fields["urlInput"], "https://example.com/evidence.png");
+    assert.equal(fields["fileNameHint"], "evidence.png");
+    assert.deepEqual(store.getState().source, committedSourceBeforeImport);
+    assert.equal(store.getState().ui.projectImport.reviewFocus, "running");
+    assert.equal(store.getState().ui.projectImport.lastAction, "source-download-url");
+    assert.equal(store.getState().ui.projectImport.lastRequestId, sentEvents[0]?.payload["requestId"]);
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+    if (originalInput === undefined) {
+      delete (globalThis as Record<string, unknown>).HTMLInputElement;
+    } else {
+      Object.defineProperty(globalThis, "HTMLInputElement", {
+        configurable: true,
+        value: originalInput,
+      });
+    }
+    if (originalSelect === undefined) {
+      delete (globalThis as Record<string, unknown>).HTMLSelectElement;
+    } else {
+      Object.defineProperty(globalThis, "HTMLSelectElement", {
+        configurable: true,
+        value: originalSelect,
+      });
+    }
+    if (originalTextarea === undefined) {
+      delete (globalThis as Record<string, unknown>).HTMLTextAreaElement;
+    } else {
+      Object.defineProperty(globalThis, "HTMLTextAreaElement", {
+        configurable: true,
+        value: originalTextarea,
+      });
+    }
+  }
+});
+
 test("laboratory run controller routes topbar pills and cancel through v2 contracts", () => {
   const originalElement = globalThis.Element;
   const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
@@ -1675,7 +1823,6 @@ test("laboratory inspection micro state stays UI-scoped and resets on hydrate", 
   store.dispatch({
     type: "hydrate",
     payload: {
-      currentStage: "source",
       featureId: "media-analysis",
       projectIndex: {
         activeProjectId: null,

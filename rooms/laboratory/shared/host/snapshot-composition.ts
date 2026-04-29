@@ -27,12 +27,7 @@ type LaboratorySnapshotCompositionDeps = LaboratoryProjectManifestRuntimeDeps & 
     extra: LaboratoryRecord
   ) => LaboratoryRecord;
   normalizeAudioAnalysisState: (rawValue: unknown, runtime: LaboratoryRecord) => LaboratoryRecord;
-  normalizeSubtitleAnalysisState: (
-    rawValue: unknown,
-    runtime: LaboratoryRecord
-  ) => LaboratoryRecord;
   roomId: string;
-  subtitleFeatureId: string;
   syncProjectFeatureProjections: (runtime: LaboratoryRecord, project: LaboratoryRecord) => void;
   toFileUrl: (path: unknown) => string;
 };
@@ -70,7 +65,6 @@ export function createLaboratorySnapshotCompositionRuntime(
     featureIds: deps.featureIds,
     mediaStages: deps.mediaStages,
     audioFeatureId: deps.audioFeatureId,
-    subtitleFeatureId: deps.subtitleFeatureId,
     getFeatureProcessRecord: deps.getFeatureProcessRecord,
     getFeatureReportRecord: deps.getFeatureReportRecord,
     getRuntimeToolIds: deps.getRuntimeToolIds,
@@ -79,7 +73,6 @@ export function createLaboratorySnapshotCompositionRuntime(
     mediaFeatureId: deps.mediaFeatureId,
     normalizeAudioAnalysisModuleResult: deps.normalizeAudioAnalysisModuleResult,
     normalizeAudioAnalysisState: deps.normalizeAudioAnalysisState,
-    normalizeSubtitleAnalysisState: deps.normalizeSubtitleAnalysisState,
     roomId: deps.roomId,
     syncProjectFeatureProjections: deps.syncProjectFeatureProjections,
     toFileUrl: deps.toFileUrl,

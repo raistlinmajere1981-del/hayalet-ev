@@ -19,7 +19,7 @@ Do not edit `data/rooms/laboratory` as a peer source tree. Installed/runtime cop
 - Keep path-loaded roots in the cleanup keep-list: manifest asset paths, `i18n.baseDir`, `ui/index.html`, `ui/style.css`, `shared/data/tools/**`, and feature asset folders.
 - Remove generated or installed output only through the room build/sync lifecycle.
 - Prefer compatibility wrapper exports for first-pass god-file splits. Rewrite import paths only after the new domain module has passed targeted tests.
-- Treat `subtitle-analysis` as internal transcript support. Do not partially remove it from manifest, model types, project schema, host runtime, or tests.
+- Transcript/runtime ownership stays outside Laboratory.
 
 ## Validation Shortlist
 

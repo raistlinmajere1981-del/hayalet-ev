@@ -3,8 +3,7 @@
   "subtitle": "Obsidian media analysis room for staged capture, cleanup, profiling, processing, and reporting.",
   "features": {
     "media-analysis": "Media Analysis",
-    "audio-analysis": "Audio Analysis",
-    "subtitle-analysis": "Subtitle Analysis"
+    "audio-analysis": "Audio Analysis"
   },
   "workbench": {
     "eyebrow": "Central Laboratory",
@@ -111,10 +110,7 @@
         "tool-update-all": "Bulk module update",
         "profile-model-install": "Profile model download",
         "source-download-url": "Direct URL intake",
-        "source-download-youtube": "YouTube intake",
-        "subtitle-source-download-url": "Subtitle URL intake",
-        "subtitle-source-download-youtube": "YouTube subtitle intake",
-        "subtitle-source-discover-youtube": "YouTube subtitle discovery"
+        "source-download-youtube": "YouTube intake"
       },
       "operations": {
         "download-file": "Downloading file",
@@ -157,9 +153,6 @@
       },
       "audio-analysis": {
         "summary": "Audio-first module checks, provider readiness, and signal summaries."
-      },
-      "subtitle-analysis": {
-        "summary": "Subtitle discovery, cleanup, batch entry review, and QC."
       }
     },
     "stages": {
@@ -187,7 +180,6 @@
     "stageGuards": {
       "noProject": "Select or create a project before leaving the source stage.",
       "sourceRequired": "Prepare a source file before continuing to the next stage.",
-      "subtitleSourceRequired": "Import subtitle entries before continuing to the next stage.",
       "profileRequired": "Resolve the profile blockers before starting the guided analysis.",
       "preflightRequired": "Run the profile preflight before starting the guided analysis.",
       "processRequired": "Finish the guided analysis before opening the report stage.",
@@ -713,18 +705,6 @@
       "source-pick-local": "Local source copied into the project.",
       "source-download-url": "Direct URL source downloaded into the project.",
       "source-download-youtube": "YouTube source captured into the project.",
-      "subtitle-source-set-mode": "Subtitle source mode updated.",
-      "subtitle-source-update-drafts": "Subtitle source filters saved.",
-      "subtitle-source-pick-local": "Subtitle file copied into the project.",
-      "subtitle-source-pick-folder": "Subtitle folder imported into the project.",
-      "subtitle-source-download-url": "Subtitle URL downloaded into the project.",
-      "subtitle-source-discover-youtube": "YouTube subtitle candidates refreshed.",
-      "subtitle-source-download-youtube": "Selected YouTube subtitles downloaded into the project.",
-      "subtitle-source-toggle-discovery": "Subtitle candidate selection updated.",
-      "subtitle-source-select-all-discovery": "All subtitle candidates selected.",
-      "subtitle-source-clear-discovery-selection": "Subtitle candidate selection cleared.",
-      "subtitle-source-select-entry": "Active subtitle entry updated.",
-      "subtitle-source-toggle-selection": "Subtitle batch selection updated.",
       "tool-install": "Tool installation completed.",
       "tool-update": "Tool update completed.",
       "tool-check-updates": "Update check completed.",
@@ -732,10 +712,6 @@
       "tools-refresh": "Tool status refreshed.",
       "refresh": "Source state refreshed.",
       "edit-set-mode": "Edit mode updated.",
-      "subtitle-edit-apply-preset": "Subtitle cleanup preset applied.",
-      "subtitle-edit-update-recipe": "Subtitle cleanup recipe saved.",
-      "subtitle-edit-preview": "Subtitle cleanup preview generated.",
-      "subtitle-edit-apply": "Subtitle cleanup output rendered.",
       "edit-apply-preset": "Edit preset applied.",
       "edit-update-recipe": "Edit recipe saved.",
       "edit-set-output": "Derived output selected.",
@@ -760,6 +736,44 @@
       "audio-process-cancel": "Audio analysis run cancelled.",
       "report-export": "Report export completed.",
       "audio-report-export": "Audio report export completed."
+    },
+    "projectImport": {
+      "eyebrow": "Project Source",
+      "title": "Source Import Workspace",
+      "tabsLabel": "Media type",
+      "methodsLabel": "Import method",
+      "tabs": {
+        "video": "Video",
+        "audio": "Sound",
+        "image": "Image"
+      },
+      "methods": {
+        "local": {
+          "label": "Local File",
+          "description": "Copy a file into the active project"
+        },
+        "url": {
+          "label": "Direct URL",
+          "description": "Download from a remote media URL"
+        },
+        "youtube": {
+          "label": "YouTube",
+          "description": "Preview and extract with strategy controls",
+          "missingTool": "Install yt-dlp to use YouTube imports",
+          "videoOnly": "Only video imports can use YouTube"
+        }
+      },
+      "localHint": "The file picker opens when you press Add.",
+      "clear": "Clear",
+      "add": "Add",
+      "review": {
+        "title": "Import Review",
+        "details": "Details",
+        "progress": "Progress",
+        "kind": "Type",
+        "method": "Method",
+        "pendingFile": "Pending file"
+      }
     },
     "source": {
       "title": "Prepare the analysis source",
@@ -1704,7 +1718,6 @@
       "usedBy": {
         "media-intake": "Media intake",
         "youtube-capture": "YouTube capture",
-        "subtitle-discovery": "Subtitle discovery",
         "media-edit": "Media edit",
         "profile-artifacts": "Profile artifacts",
         "managed-process-runs": "Managed process runs",
@@ -2489,399 +2502,6 @@
       "music-rhythm-essentia": {
         "title": "Music and tonal fallback",
         "summary": "Planned Essentia-backed fallback path for deeper tonal and music descriptor expansion."
-      }
-    }
-  },
-  "subtitleAnalysis": {
-    "eyebrow": "Subtitle Workbench",
-    "operatorLabel": "Subtitle Operator",
-    "labels": {
-      "subtitle": "Subtitle"
-    },
-    "loading": {
-      "title": "Loading Subtitle Analysis",
-      "body": "Preparing subtitle-local descriptors and project state."
-    },
-    "stages": {
-      "source": {
-        "title": "Subtitle Source",
-        "subtitle": "Manage local files, folders, direct URLs, and YouTube batch subtitle intake."
-      },
-      "edit": {
-        "title": "Subtitle Edit",
-        "subtitle": "Clean and format subtitle text with reusable presets."
-      },
-      "profile": {
-        "title": "Subtitle Profile",
-        "subtitle": "This stage is reserved for the next rollout."
-      },
-      "process": {
-        "title": "Subtitle Analysis",
-        "subtitle": "Run QC, readability, timing, and lexical checks across the active selection."
-      },
-      "report": {
-        "title": "Subtitle Report",
-        "subtitle": "Turn core findings and batch summaries into report outputs."
-      }
-    },
-    "settings": {
-      "eyebrow": "Subtitle Tool Room",
-      "title": "Subtitle Analysis Settings",
-      "subtitle": "Review subtitle import, cleanup, and report tooling for the active stage."
-    },
-    "source": {
-      "modeLabel": "Subtitle intake",
-      "intakeTitle": "Choose how subtitles enter the project",
-      "sourceKindLabel": "Source family",
-      "youtubeDisabled": "yt-dlp must be available before YouTube subtitle capture can run.",
-      "modes": {
-        "localFile": "Single Subtitle",
-        "localFolder": "Folder",
-        "youtubeSingle": "YouTube Single",
-        "youtubePlaylist": "YouTube Playlist",
-        "youtubeChannel": "YouTube Channel"
-      },
-      "summary": {
-        "eyebrow": "Source Summary",
-        "emptyTitle": "No subtitle selected",
-        "activeSubtitle": "Active subtitle entry and current batch selection.",
-        "prepareHint": "Prepare a subtitle entry from the source stage.",
-        "labels": {
-          "workspaceMode": "Workspace mode",
-          "selectedEntries": "Selected entries",
-          "discoveryCandidates": "Discovery candidates",
-          "format": "Format",
-          "language": "Language",
-          "published": "Published",
-          "discovery": "Discovery",
-          "status": "Status"
-        }
-      },
-      "fields": {
-        "subtitleUrl": "Subtitle URL",
-        "youtubeUrl": "YouTube URL",
-        "subtitleMode": "Subtitle mode",
-        "languageFilter": "Language filter",
-        "publishedAfter": "Published after",
-        "publishedBefore": "Published before",
-        "weekdays": "Weekdays",
-        "durationMin": "Min duration sec",
-        "durationMax": "Max duration sec",
-        "shorts": "Shorts",
-        "liveStatus": "Live status",
-        "titleInclude": "Title include",
-        "titleExclude": "Title exclude",
-        "playlistItems": "Playlist items",
-        "limitCount": "Max videos"
-      },
-      "options": {
-        "subtitleMode": {
-          "manual": "Manual",
-          "auto": "Automatic",
-          "both": "Both"
-        },
-        "shorts": {
-          "all": "All",
-          "only": "Only shorts",
-          "exclude": "Exclude shorts"
-        },
-        "liveStatus": {
-          "all": "All uploads",
-          "excludeLive": "Exclude live",
-          "onlyLive": "Only live"
-        }
-      },
-      "placeholders": {
-        "subtitleUrl": "https://example.com/file.vtt",
-        "youtubeUrl": "Channel, playlist, or video URL",
-        "languageFilter": "tr,en or all",
-        "weekdays": "mon wed fri",
-        "titleInclude": "interview, summary",
-        "titleExclude": "teaser, shorts",
-        "playlistItems": "for example 1-10"
-      },
-      "actions": {
-        "pickLocal": "Pick subtitle file",
-        "pickFolder": "Pick subtitle folder",
-        "downloadUrl": "Download URL",
-        "discoverYoutube": "Discover candidates",
-        "downloadSelected": "Download selected subtitles"
-      },
-      "discovery": {
-        "eyebrow": "YouTube Discovery",
-        "title": "Candidate Table",
-        "subtitle": "Inspect matching videos first, then download subtitles only for the selected rows.",
-        "selectionHint": "{count} selected candidate(s) are ready for download.",
-        "labels": {
-          "status": "Status",
-          "totalCandidates": "Total candidates",
-          "matched": "Matched",
-          "selected": "Selected"
-        },
-        "headers": {
-          "select": "Select",
-          "title": "Title",
-          "published": "Published",
-          "duration": "Duration",
-          "languages": "Languages",
-          "live": "Live"
-        },
-        "actions": {
-          "selectAll": "Select all",
-          "clearSelection": "Clear selection",
-          "select": "Select",
-          "remove": "Remove"
-        },
-        "empty": "Run discovery in a YouTube mode to populate the candidate table."
-      },
-      "entries": {
-        "eyebrow": "Entries",
-        "title": "Subtitle List",
-        "empty": "No subtitle entries yet.",
-        "actions": {
-          "makeActive": "Make active",
-          "removeFromBatch": "Remove from batch",
-          "addToBatch": "Add to batch"
-        }
-      }
-    },
-    "edit": {
-      "workspaceTitle": "Subtitle Cleanup Workspace",
-      "workspaceHint": "Review a subtitle entry, preview cleanup rules, then export a normalized output.",
-      "emptySelection": "Select a subtitle entry before using the edit stage.",
-      "jobs": {
-        "preview": "Cleanup Preview",
-        "apply": "Apply Cleanup",
-        "default": "Subtitle Edit"
-      },
-      "preset": {
-        "eyebrow": "Preset",
-        "title": "Cleanup Profile"
-      },
-      "workspace": {
-        "emptyTitle": "No subtitle selected",
-        "previewEmpty": "Choose a preset and run preview to inspect output.",
-        "labels": {
-          "cues": "Cues",
-          "lines": "Lines",
-          "maxLine": "Max line",
-          "output": "Output"
-        }
-      },
-      "controls": {
-        "eyebrow": "Cleanup Controls",
-        "title": "Line and text operations",
-        "labels": {
-          "maxChars": "Max chars"
-        },
-        "toggles": {
-          "trimWhitespace": "Trim whitespace",
-          "collapseBlankLines": "Collapse blank lines",
-          "normalizeQuotes": "Normalize quotes",
-          "stripHtml": "Strip HTML",
-          "removeMusicTags": "Remove music tags",
-          "mergeShortCues": "Merge short cues",
-          "splitLongLines": "Split long lines"
-        }
-      },
-      "actions": {
-        "eyebrow": "Actions",
-        "title": "Preview and output",
-        "preview": "Generate preview",
-        "apply": "Apply cleanup"
-      },
-      "outputs": {
-        "eyebrow": "Outputs",
-        "title": "Cleaned files",
-        "empty": "No outputs yet.",
-        "labels": {
-          "cues": "Cues"
-        }
-      },
-      "summary": {
-        "eyebrow": "Summary",
-        "labels": {
-          "previewStatus": "Preview status",
-          "changed": "Changed",
-          "sourceCues": "Source cues",
-          "outputCues": "Output cues",
-          "maxLine": "Max line"
-        },
-        "values": {
-          "yes": "Yes",
-          "no": "No"
-        }
-      },
-      "fields": {
-        "outputFormat": "Output format"
-      },
-      "outputFormats": {
-        "source": "Keep source format"
-      }
-    },
-    "process": {
-      "subtitle": "Run subtitle QC and summary analyzers over the active entry or selected workspace.",
-      "catalog": {
-        "eyebrow": "Analysis Plan",
-        "title": "Initial Module Set",
-        "subtitle": "QC, readability, timing, and batch summary modules live here.",
-        "status": {
-          "implemented": "Implemented",
-          "planned": "Planned"
-        },
-        "modules": {
-          "format-qc": {
-            "label": "Format QC",
-            "summary": "Validate ordering, overlaps, gaps, and container-level subtitle integrity."
-          },
-          "readability-density": {
-            "label": "Readability",
-            "summary": "Track cue density, line pressure, and reading comfort across the selection."
-          },
-          "cue-timing-structure": {
-            "label": "Cue timing",
-            "summary": "Inspect cue durations, pacing windows, and structure consistency."
-          },
-          "lexical-frequency": {
-            "label": "Lexical frequency",
-            "summary": "Surface repeated terms, channel vocabulary, and basic text distribution."
-          },
-          "batch-summary": {
-            "label": "Batch summary",
-            "summary": "Roll active-entry metrics into a compact batch-level overview."
-          },
-          "logical-consistency-check": {
-            "label": "Logical consistency",
-            "summary": "Check subtitle statements for coarse logic slips, implausible transitions, and cue-level reasoning gaps."
-          },
-          "contradiction-detection": {
-            "label": "Contradiction detection",
-            "summary": "Flag conflicting claims, polarity flips, and inconsistent assertions across the active selection."
-          },
-          "narrative-drift": {
-            "label": "Narrative drift",
-            "summary": "Track whether topic focus drifts sharply across files or sequential subtitle blocks."
-          },
-          "repetition-structure": {
-            "label": "Repetition structure",
-            "summary": "Surface repeated phrases, slogan loops, and over-compressed vocabulary patterns."
-          },
-          "semantic-coherence": {
-            "label": "Semantic coherence",
-            "summary": "Estimate whether subtitle density, cadence, and term reuse still form a coherent narrative flow."
-          },
-          "archive-to-ai-payload": {
-            "label": "Archive to AI payload",
-            "summary": "Export a compact analysis payload tuned for downstream AI review and replay prompts."
-          },
-          "channel-batch-analysis": {
-            "label": "Channel batch analysis",
-            "summary": "Summarize multi-file subtitle archives as a single channel-level narrative bundle."
-          },
-          "entities-keyphrases": {
-            "label": "Entities and keyphrases",
-            "summary": "Planned entity and glossary extraction for people, brands, and recurring terms."
-          },
-          "semantic-search": {
-            "label": "Semantic search",
-            "summary": "Planned embedding-backed lookup for quote finding and related cue discovery."
-          }
-        }
-      },
-      "providers": {
-        "eyebrow": "Providers",
-        "title": "Execution Layer",
-        "emptyModules": "No linked modules",
-        "labels": {
-          "modules": "Modules: {value}"
-        },
-        "status": {
-          "ready": "Ready",
-          "planned": "Planned"
-        },
-        "items": {
-          "native-subtitle-qc": {
-            "label": "Native subtitle QC",
-            "summary": "Runs built-in subtitle validation and summary analyzers inside the room."
-          },
-          "subtitle-archive-export": {
-            "label": "Subtitle archive export",
-            "summary": "Packages subtitle archives into AI-ready payloads and batch-level exports inside the room."
-          },
-          "planned-entity-provider": {
-            "label": "Planned entity provider",
-            "summary": "Reserved provider slot for entity, glossary, and keyphrase extraction."
-          },
-          "planned-semantic-provider": {
-            "label": "Planned semantic provider",
-            "summary": "Reserved provider slot for semantic search and similarity workflows."
-          }
-        }
-      }
-    },
-    "report": {
-      "title": "Review the subtitle handoff",
-      "subtitle": "Review subtitle findings, readability metrics, module rollups, and export history without leaving the room.",
-      "stagedHint": "This report keeps subtitle QA concrete: file-level counts, timing issues, readability warnings, and exports stay tied to the active selection.",
-      "overviewTitle": "Subtitle Report Overview",
-      "findingsTitle": "Subtitle Findings",
-      "sideTitle": "Subtitle Detail",
-      "latestExportEyebrow": "Latest Export",
-      "latestExportTitle": "Latest subtitle report file",
-      "latestExportSubtitle": "Review the generated markdown file, its location, and the next follow-up actions here.",
-      "latestExportEmpty": "Once you export the subtitle report, the latest file will appear here.",
-      "emptyFindings": "No subtitle summary cards are ready yet.",
-      "emptyBody": "Run the subtitle process stage first, then this report will render persisted subtitle findings, module results, and exports.",
-      "overviewMeta": {
-        "target": "Target",
-        "status": "Status",
-        "findings": "Findings",
-        "artifacts": "Artifacts",
-        "exports": "Exports",
-        "generated": "Generated"
-      },
-      "summaryCards": {
-        "target": "Target",
-        "files": "Files",
-        "cues": "Cues",
-        "findings": "Findings",
-        "languages": "Languages",
-        "topTerm": "Top term",
-        "modules": "Completed modules"
-      },
-      "findingMeta": {
-        "module": "Module",
-        "severity": "Severity",
-        "confidence": "Confidence",
-        "evidence": "Evidence",
-        "artifacts": "Artifacts"
-      },
-      "moduleRollupEyebrow": "Module Rollup",
-      "moduleRollupTitle": "Subtitle module status",
-      "moduleRollupSubtitle": "Each subtitle analyzer stays visible with its status, findings, and artifact footprint.",
-      "moduleMeta": {
-        "status": "Status",
-        "findings": "Findings",
-        "artifacts": "Artifacts",
-        "warnings": "Warnings"
-      },
-      "exportHistoryEyebrow": "Export History",
-      "exportHistoryTitle": "Generated report files",
-      "exportHistorySubtitle": "Track the latest persisted report artifacts from the subtitle workspace.",
-      "exportMeta": {
-        "format": "Format",
-        "created": "Created",
-        "status": "Status",
-        "path": "Location"
-      },
-      "openFileSuccess": "The latest subtitle report file was opened.",
-      "openFolderSuccess": "The subtitle report folder was opened.",
-      "openPathFailure": "The subtitle report output could not be opened.",
-      "actions": {
-        "restart": "Start New Subtitle Run",
-        "export": "Export Subtitle Report",
-        "openFile": "Open File",
-        "openFolder": "Open Folder"
       }
     }
   }

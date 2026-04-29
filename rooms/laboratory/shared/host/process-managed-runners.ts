@@ -1,11 +1,7 @@
 import { createLaboratoryManagedAudioRunnerRuntime } from "./process-managed-audio-runner.js";
 import { createLaboratoryManagedMediaRunnerRuntime } from "./process-managed-media-runner.js";
-import { createLaboratoryManagedSubtitleRunnerRuntime } from "./process-managed-subtitle-runner.js";
 
 type LaboratoryRecord = Record<string, unknown>;
-type LaboratoryManagedSubtitleRunnerDeps = Parameters<
-  typeof createLaboratoryManagedSubtitleRunnerRuntime
->[0];
 type LaboratoryManagedAudioRunnerDeps = Parameters<
   typeof createLaboratoryManagedAudioRunnerRuntime
 >[0];
@@ -16,7 +12,6 @@ type LaboratoryManagedMediaRunnerDeps = Parameters<
 type LaboratoryManagedProcessRunnersDeps = {
   asNonEmptyString: (value: unknown) => string | null;
   buildProcessSpeechAvailability: LaboratoryManagedMediaRunnerDeps["buildProcessSpeechAvailability"];
-  buildSubtitleAnalysisStats: LaboratoryManagedSubtitleRunnerDeps["buildSubtitleAnalysisStats"];
   clampProfileTranscriptSampleSeconds: (value: unknown) => number;
   clone: <T>(value: T) => T;
   createProcessArtifact: (
@@ -94,7 +89,6 @@ type LaboratoryManagedProcessRunnersDeps = {
     moduleId: string
   ) => string;
   getAudioAnalysisModuleRunner: LaboratoryManagedAudioRunnerDeps["getAudioAnalysisModuleRunner"];
-  getProjectSubtitleProcessDir: (runtime: LaboratoryRecord, project: LaboratoryRecord) => string;
   maybeRunWhisperProfileSample: (
     runtime: LaboratoryRecord,
     project: LaboratoryRecord,
@@ -135,20 +129,6 @@ type LaboratoryManagedProcessUpdateEmitter = (payload: LaboratoryRecord) => void
 export function createLaboratoryManagedProcessRunnersRuntime(
   deps: LaboratoryManagedProcessRunnersDeps
 ) {
-  const laboratoryManagedSubtitleRunnerRuntime = createLaboratoryManagedSubtitleRunnerRuntime({
-    asNonEmptyString: deps.asNonEmptyString,
-    buildSubtitleAnalysisStats: deps.buildSubtitleAnalysisStats,
-    clone: deps.clone,
-    createProcessArtifact: deps.createProcessArtifact,
-    createProcessFinding: deps.createProcessFinding,
-    getProjectSubtitleProcessDir: deps.getProjectSubtitleProcessDir,
-    normalizeProcessFinding: deps.normalizeProcessFinding,
-    toRecord: deps.toRecord,
-    updateProcessModule: deps.updateProcessModule,
-    writeJsonFile: deps.writeJsonFile,
-    writeTextFile: deps.writeTextFile,
-  });
-
   const laboratoryManagedAudioRunnerRuntime = createLaboratoryManagedAudioRunnerRuntime({
     asNonEmptyString: deps.asNonEmptyString,
     getAudioAnalysisModuleProcessDir: deps.getAudioAnalysisModuleProcessDir,
@@ -181,23 +161,6 @@ export function createLaboratoryManagedProcessRunnersRuntime(
   });
 
   return {
-    runSubtitleManagedProcess(
-      runtime: LaboratoryRecord,
-      project: LaboratoryRecord,
-      target: LaboratoryRecord,
-      artifactBase: string,
-      processRecord: LaboratoryRecord,
-      emitRuntimeUpdate?: LaboratoryManagedProcessUpdateEmitter | null
-    ) {
-      return laboratoryManagedSubtitleRunnerRuntime.runSubtitleManagedProcess(
-        runtime,
-        project,
-        target,
-        artifactBase,
-        processRecord,
-        emitRuntimeUpdate || null
-      );
-    },
     runAudioManagedProcess(
       runtime: LaboratoryRecord,
       project: LaboratoryRecord,

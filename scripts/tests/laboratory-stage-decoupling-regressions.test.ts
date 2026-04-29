@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import {
-  deriveLegacyStage,
+  getToolLifecycleStage,
   getActiveModule,
   getSourceActionBlockReason,
   getEditActionBlockReason,
@@ -17,14 +17,13 @@ import {
   getToolRelevanceFilter,
 } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 
-test("deriveLegacyStage returns 'source' when no source is loaded", () => {
+test("getToolLifecycleStage returns 'source' when no source is loaded", () => {
   const store = createLabStore();
   const state = store.getState();
-  assert.equal(deriveLegacyStage(state), "source");
-  assert.equal(state.currentStage, "source");
+  assert.equal(getToolLifecycleStage(state), "source");
 });
 
-test("deriveLegacyStage returns 'edit' when source probe is completed", () => {
+test("getToolLifecycleStage returns 'edit' when source probe is completed", () => {
   const store = createLabStore();
   store.dispatch({
     type: "source-config-patched",
@@ -32,11 +31,10 @@ test("deriveLegacyStage returns 'edit' when source probe is completed", () => {
   });
   store.dispatch({ type: "source-probe-completed", action: "source-pick-local" });
   const state = store.getState();
-  assert.equal(deriveLegacyStage(state), "edit");
-  assert.equal(state.currentStage, "edit");
+  assert.equal(getToolLifecycleStage(state), "edit");
 });
 
-test("deriveLegacyStage returns 'process' when a run is active", () => {
+test("getToolLifecycleStage returns 'process' when a run is active", () => {
   const store = createLabStore();
   store.dispatch({
     type: "source-config-patched",
@@ -61,8 +59,7 @@ test("deriveLegacyStage returns 'process' when a run is active", () => {
     },
   });
   const state = store.getState();
-  assert.equal(deriveLegacyStage(state), "process");
-  assert.equal(state.currentStage, "process");
+  assert.equal(getToolLifecycleStage(state), "process");
   assert.equal(isRunActive(state), true);
 });
 
@@ -150,7 +147,7 @@ test("getActiveModule returns the first running module and clears when none are 
   assert.equal(getActiveModule(state), null);
 });
 
-test("deriveLegacyStage returns 'report' when run is complete and reports exist", () => {
+test("getToolLifecycleStage returns 'report' when run is complete and reports exist", () => {
   const store = createLabStore();
   store.dispatch({
     type: "source-config-patched",
@@ -212,38 +209,7 @@ test("deriveLegacyStage returns 'report' when run is complete and reports exist"
   const state = store.getState();
   assert.equal(hasReportPayload(state), true);
   assert.equal(isRunComplete(state), true);
-  assert.equal(deriveLegacyStage(state), "report");
-  assert.equal(state.currentStage, "report");
-});
-
-test("stale hydrated stage is corrected by deriveLegacyStage projection", () => {
-  const store = createLabStore();
-  // Hydrate with a stale stage of 'process' but no active run
-  store.dispatch({
-    type: "hydrate",
-    payload: {
-      currentStage: "process",
-      featureId: "media-analysis",
-      projectIndex: { activeProjectId: null, projects: [] },
-      workbench: {},
-      sourceProbeStatus: "idle",
-      reports: { user: null, ai: null, emptyReason: "Rapor yok." },
-      activityFeed: [],
-      lastRun: null,
-    },
-  });
-  const state = store.getState();
-  // deriveLegacyStage overwrites stale 'process' with 'source' since no source is loaded
-  assert.equal(state.currentStage, "source");
-});
-
-test("[data-lab-stage] click no longer gates behavior (stage-changed is passive)", () => {
-  const store = createLabStore();
-  // Dispatch stage-changed to 'edit' with no source — should be corrected to 'source'
-  store.dispatch({ type: "stage-changed", stage: "edit" });
-  const state = store.getState();
-  // deriveLegacyStage projection wins: no source → 'source'
-  assert.equal(state.currentStage, "source");
+  assert.equal(getToolLifecycleStage(state), "report");
 });
 
 test("source action block reason checks draft fields", () => {
@@ -301,7 +267,7 @@ test("report action block reason checks report availability", () => {
   assert.equal(getReportActionBlockReason(state), "Rapor henüz üretilmedi.");
 });
 
-test("featureStage in tool payloads uses projected legacy stage", () => {
+test("featureStage in tool payloads uses projected lifecycle stage", () => {
   const store = createLabStore();
   store.dispatch({
     type: "source-config-patched",
@@ -309,9 +275,7 @@ test("featureStage in tool payloads uses projected legacy stage", () => {
   });
   store.dispatch({ type: "source-probe-completed", action: "source-pick-local" });
   const state = store.getState();
-  // The projected stage for a ready source with no run is 'edit'
-  assert.equal(deriveLegacyStage(state), "edit");
-  assert.equal(state.currentStage, "edit");
+  assert.equal(getToolLifecycleStage(state), "edit");
 });
 
 // ---------------------------------------------------------------------------
@@ -326,7 +290,7 @@ test("tool relevance filter with no intents produces empty requiredToolIds", () 
   assert.deepEqual(relevance.selectedIntents, []);
 });
 
-test("tool relevance filter groups by intent capabilities, not by currentStage", () => {
+test("tool relevance filter groups by intent capabilities, not by lifecycle stage", () => {
   const store = createLabStore();
   store.dispatch({
     type: "source-config-patched",
@@ -341,8 +305,7 @@ test("tool relevance filter groups by intent capabilities, not by currentStage",
   // All require ffmpeg; speaker-analysis requires pyaudioanalysis
   assert.equal(relevance.requiredToolIds.includes("ffmpeg"), true);
   assert.equal(relevance.requiredToolIds.includes("pyaudioanalysis"), true);
-  // currentStage is 'edit' but that should NOT affect the relevance grouping
-  assert.equal(state.currentStage, "edit");
+  assert.equal(getToolLifecycleStage(state), "edit");
 });
 
 test("switching intents changes tool relevance without stage change", () => {
@@ -360,8 +323,7 @@ test("switching intents changes tool relevance without stage change", () => {
   assert.equal(relevance.requiredToolIds.includes("whisper.cpp"), true);
   assert.equal(relevance.requiredToolIds.includes("demucs"), true);
   assert.equal(relevance.requiredToolIds.includes("ffmpeg"), true);
-  // Stage is still 'edit' — irrelevant to tool relevance
-  assert.equal(state.currentStage, "edit");
+  assert.equal(getToolLifecycleStage(state), "edit");
 });
 
 test("workspace intent hydration replaces stale capability state in selectors", () => {
@@ -371,7 +333,6 @@ test("workspace intent hydration replaces stale capability state in selectors", 
   store.dispatch({
     type: "hydrate",
     payload: {
-      currentStage: "edit",
       featureId: "media-analysis",
       source: { kind: "video", mode: "local", storedPath: "/tmp/test.mp4" },
       sourceProbeStatus: "completed",
@@ -407,7 +368,6 @@ test("workspace intent hydration clears stale capabilities when no intents remai
   store.dispatch({
     type: "hydrate",
     payload: {
-      currentStage: "edit",
       featureId: "media-analysis",
       source: { kind: "video", mode: "local", storedPath: "/tmp/test.mp4" },
       sourceProbeStatus: "completed",

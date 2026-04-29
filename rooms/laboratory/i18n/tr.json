@@ -3,8 +3,7 @@
   "subtitle": "Yakalama, temizleme, profil secimi, islem ve raporlama icin obsidian medya analizi odasi.",
   "features": {
     "media-analysis": "Medya Analizi",
-    "audio-analysis": "Ses Analizi",
-    "subtitle-analysis": "Altyazi Analizi"
+    "audio-analysis": "Ses Analizi"
   },
   "workbench": {
     "eyebrow": "Merkezi Laboratuvar",
@@ -111,10 +110,7 @@
         "tool-update-all": "Toplu modul guncellemesi",
         "profile-model-install": "Profil modeli indiriliyor",
         "source-download-url": "Dogrudan URL alimi",
-        "source-download-youtube": "YouTube alimi",
-        "subtitle-source-download-url": "Altyazi URL alimi",
-        "subtitle-source-download-youtube": "YouTube altyazi alimi",
-        "subtitle-source-discover-youtube": "YouTube altyazi kesfi"
+        "source-download-youtube": "YouTube alimi"
       },
       "operations": {
         "download-file": "Dosya indiriliyor",
@@ -157,9 +153,6 @@
       },
       "audio-analysis": {
         "summary": "Ses odakli modul kontrolleri, provider readiness ve sinyal ozetleri."
-      },
-      "subtitle-analysis": {
-        "summary": "Altyazi kesfi, temizleme, toplu girdi inceleme ve QC."
       }
     },
     "stages": {
@@ -187,7 +180,6 @@
     "stageGuards": {
       "noProject": "Kaynak asamasindan cikmadan once bir proje sec ya da olustur.",
       "sourceRequired": "Sonraki asamaya gecmeden once bir kaynak dosyasi hazirla.",
-      "subtitleSourceRequired": "Sonraki asamaya gecmeden once altyazi girdilerini ice aktar.",
       "profileRequired": "Rehberli analize baslamadan once profil blokajlarini cozumle.",
       "preflightRequired": "Rehberli analize baslamadan once profile preflight calistir.",
       "processRequired": "Rapor asamasini acmadan once rehberli analizi tamamla.",
@@ -713,18 +705,6 @@
       "source-pick-local": "Yerel kaynak proje icine kopyalandi.",
       "source-download-url": "Dogrudan URL kaynagi proje icine indirildi.",
       "source-download-youtube": "YouTube kaynagi proje icine alindi.",
-      "subtitle-source-set-mode": "Altyazi kaynak modu guncellendi.",
-      "subtitle-source-update-drafts": "Altyazi kaynak filtreleri kaydedildi.",
-      "subtitle-source-pick-local": "Altyazi dosyasi proje icine kopyalandi.",
-      "subtitle-source-pick-folder": "Altyazi klasoru proje icine alindi.",
-      "subtitle-source-download-url": "Altyazi URL'si proje icine indirildi.",
-      "subtitle-source-discover-youtube": "YouTube altyazi adaylari yenilendi.",
-      "subtitle-source-download-youtube": "Secili YouTube altyazilari proje icine indirildi.",
-      "subtitle-source-toggle-discovery": "Altyazi aday secimi guncellendi.",
-      "subtitle-source-select-all-discovery": "Tum altyazi adaylari secildi.",
-      "subtitle-source-clear-discovery-selection": "Altyazi aday secimi temizlendi.",
-      "subtitle-source-select-entry": "Aktif altyazi girdisi guncellendi.",
-      "subtitle-source-toggle-selection": "Altyazi batch secimi guncellendi.",
       "tool-install": "Arac kurulumu tamamlandi.",
       "tool-update": "Arac guncellemesi tamamlandi.",
       "tool-check-updates": "Guncelleme kontrolu tamamlandi.",
@@ -732,10 +712,6 @@
       "tools-refresh": "Arac durumu yenilendi.",
       "refresh": "Kaynak durumu yenilendi.",
       "edit-set-mode": "Duzenleme modu guncellendi.",
-      "subtitle-edit-apply-preset": "Altyazi temizleme preset'i uygulandi.",
-      "subtitle-edit-update-recipe": "Altyazi temizleme tarifi kaydedildi.",
-      "subtitle-edit-preview": "Altyazi temizleme onizlemesi olusturuldu.",
-      "subtitle-edit-apply": "Altyazi temizleme ciktisi olusturuldu.",
       "edit-apply-preset": "Duzenleme preset'i uygulandi.",
       "edit-update-recipe": "Duzenleme tarifi kaydedildi.",
       "edit-set-output": "Turetilmis cikti secildi.",
@@ -760,6 +736,44 @@
       "audio-process-cancel": "Ses analizi kosusu iptal edildi.",
       "report-export": "Rapor disa aktarma tamamlandi.",
       "audio-report-export": "Ses raporu disa aktarma tamamlandi."
+    },
+    "projectImport": {
+      "eyebrow": "Proje Kaynagi",
+      "title": "Kaynak Ice Aktarma Calisma Alani",
+      "tabsLabel": "Medya tipi",
+      "methodsLabel": "Ice aktarma yontemi",
+      "tabs": {
+        "video": "Video",
+        "audio": "Ses",
+        "image": "Gorsel"
+      },
+      "methods": {
+        "local": {
+          "label": "Yerel Dosya",
+          "description": "Dosyayi aktif projeye kopyala"
+        },
+        "url": {
+          "label": "Dogrudan URL",
+          "description": "Uzak medya URL'sinden indir"
+        },
+        "youtube": {
+          "label": "YouTube",
+          "description": "Strateji kontrolleriyle onizle ve cikar",
+          "missingTool": "YouTube ice aktarma icin yt-dlp kur",
+          "videoOnly": "YouTube yalniz video ice aktarma icin kullanilir"
+        }
+      },
+      "localHint": "Dosya secici Ekle dugmesine bastiginda acilir.",
+      "clear": "Temizle",
+      "add": "Ekle",
+      "review": {
+        "title": "Ice Aktarma Onizlemesi",
+        "details": "Detaylar",
+        "progress": "Ilerleme",
+        "kind": "Tip",
+        "method": "Yontem",
+        "pendingFile": "Bekleyen dosya"
+      }
     },
     "source": {
       "title": "Analiz kaynagini hazirla",
@@ -1704,7 +1718,6 @@
       "usedBy": {
         "media-intake": "Medya içe alma",
         "youtube-capture": "YouTube yakalama",
-        "subtitle-discovery": "Altyazı keşfi",
         "media-edit": "Medya düzenleme",
         "profile-artifacts": "Profil çıktıları",
         "managed-process-runs": "Yönetilen analiz koşuları",
@@ -2489,399 +2502,6 @@
       "music-rhythm-essentia": {
         "title": "Muzik ve tonal fallback",
         "summary": "Daha derin tonal ve muzik descriptor genislemesi icin planli Essentia tabanli fallback yolu."
-      }
-    }
-  },
-  "subtitleAnalysis": {
-    "eyebrow": "Altyazi Tezgahi",
-    "operatorLabel": "Altyazi Operatoru",
-    "labels": {
-      "subtitle": "Altyazi"
-    },
-    "loading": {
-      "title": "Altyazi Analizi Yukleniyor",
-      "body": "Altyazi odakli descriptor dosyalari ve proje durumu hazirlaniyor."
-    },
-    "stages": {
-      "source": {
-        "title": "Altyazi Kaynagi",
-        "subtitle": "Local dosya, klasor, URL ya da YouTube toplu altyazi alim akisini yonet."
-      },
-      "edit": {
-        "title": "Altyazi Edit",
-        "subtitle": "Temizleme ve bicimlendirme presetleriyle altyazi metnini duzenle."
-      },
-      "profile": {
-        "title": "Altyazi Profil",
-        "subtitle": "Bu asama sonraki rollout icin saklandi."
-      },
-      "process": {
-        "title": "Altyazi Analizi",
-        "subtitle": "QC, okunabilirlik, zamanlama ve kelime sinyallerini toplu olarak calistir."
-      },
-      "report": {
-        "title": "Altyazi Raporu",
-        "subtitle": "Temel bulgulari ve batch ozetini rapor ciktilarina dondur."
-      }
-    },
-    "settings": {
-      "eyebrow": "Altyazi Arac Odasi",
-      "title": "Altyazi Analizi Ayarlari",
-      "subtitle": "Aktif asama icin altyazi ice aktarma, temizleme ve rapor araclarini incele."
-    },
-    "source": {
-      "modeLabel": "Altyazi girisi",
-      "intakeTitle": "Altyazilarin projeye nasil alinacagini sec",
-      "sourceKindLabel": "Kaynak ailesi",
-      "youtubeDisabled": "YouTube altyazi yakalama icin once yt-dlp hazir olmali.",
-      "modes": {
-        "localFile": "Tek Altyazi",
-        "localFolder": "Klasor",
-        "youtubeSingle": "YouTube Tek Video",
-        "youtubePlaylist": "YouTube Playlist",
-        "youtubeChannel": "YouTube Kanal"
-      },
-      "summary": {
-        "eyebrow": "Kaynak Ozet",
-        "emptyTitle": "Altyazi secilmedi",
-        "activeSubtitle": "Aktif altyazi girisi ve secili batch durumu.",
-        "prepareHint": "Source asamasindan bir altyazi girisi hazirla.",
-        "labels": {
-          "workspaceMode": "Calisma modu",
-          "selectedEntries": "Secili giris",
-          "discoveryCandidates": "Kesif adayi",
-          "format": "Format",
-          "language": "Dil",
-          "published": "Yayin",
-          "discovery": "Kesif",
-          "status": "Durum"
-        }
-      },
-      "fields": {
-        "subtitleUrl": "Altyazi URL",
-        "youtubeUrl": "YouTube URL",
-        "subtitleMode": "Altyazi modu",
-        "languageFilter": "Dil filtresi",
-        "publishedAfter": "Yayin tarihi baslangic",
-        "publishedBefore": "Yayin tarihi bitis",
-        "weekdays": "Haftanin gunleri",
-        "durationMin": "Min sure sn",
-        "durationMax": "Max sure sn",
-        "shorts": "Shorts",
-        "liveStatus": "Canli durumu",
-        "titleInclude": "Baslik dahil",
-        "titleExclude": "Baslik haric",
-        "playlistItems": "Playlist araligi",
-        "limitCount": "Max video"
-      },
-      "options": {
-        "subtitleMode": {
-          "manual": "Manual",
-          "auto": "Otomatik",
-          "both": "Ikisi de"
-        },
-        "shorts": {
-          "all": "Tum",
-          "only": "Sadece shorts",
-          "exclude": "Shorts haric"
-        },
-        "liveStatus": {
-          "all": "Tum yuklemeler",
-          "excludeLive": "Canli haric",
-          "onlyLive": "Sadece canli"
-        }
-      },
-      "placeholders": {
-        "subtitleUrl": "https://example.com/file.vtt",
-        "youtubeUrl": "Kanal, playlist ya da video linki",
-        "languageFilter": "tr,en ya da all",
-        "weekdays": "mon wed fri",
-        "titleInclude": "roportaj, ozet",
-        "titleExclude": "teaser, shorts",
-        "playlistItems": "1-10 gibi"
-      },
-      "actions": {
-        "pickLocal": "Tek altyazi sec",
-        "pickFolder": "Klasor sec",
-        "downloadUrl": "URL indir",
-        "discoverYoutube": "Adaylari kesfet",
-        "downloadSelected": "Secili altyazilari indir"
-      },
-      "discovery": {
-        "eyebrow": "YouTube Kesfi",
-        "title": "Aday Tablosu",
-        "subtitle": "Filtreye uyan videolari once inceleyip sonra secili altyazilari indirebilirsin.",
-        "selectionHint": "{count} secili aday indirilmeye hazir.",
-        "labels": {
-          "status": "Durum",
-          "totalCandidates": "Toplam aday",
-          "matched": "Eslesen",
-          "selected": "Secili"
-        },
-        "headers": {
-          "select": "Sec",
-          "title": "Baslik",
-          "published": "Yayin",
-          "duration": "Sure",
-          "languages": "Dil",
-          "live": "Canli"
-        },
-        "actions": {
-          "selectAll": "Tumunu sec",
-          "clearSelection": "Secimi temizle",
-          "select": "Sec",
-          "remove": "Cikar"
-        },
-        "empty": "YouTube modunda aday tablosunu doldurmak icin kesif calistir."
-      },
-      "entries": {
-        "eyebrow": "Girisler",
-        "title": "Altyazi Listesi",
-        "empty": "Henuz altyazi girisi yok.",
-        "actions": {
-          "makeActive": "Aktif yap",
-          "removeFromBatch": "Batchten cikar",
-          "addToBatch": "Batche ekle"
-        }
-      }
-    },
-    "edit": {
-      "workspaceTitle": "Altyazi Temizleme Alani",
-      "workspaceHint": "Bir altyazi kaydini incele, temizleme kurallarini onizle ve normalize cikti olustur.",
-      "emptySelection": "Edit asamasi icin once bir altyazi girisi sec.",
-      "jobs": {
-        "preview": "Temizleme Onizlemesi",
-        "apply": "Temizleme Uygula",
-        "default": "Altyazi Duzenleme"
-      },
-      "preset": {
-        "eyebrow": "Preset",
-        "title": "Temizleme Profili"
-      },
-      "workspace": {
-        "emptyTitle": "Altyazi secilmedi",
-        "previewEmpty": "Preview icin bir preset secip onizleme calistir.",
-        "labels": {
-          "cues": "Cue",
-          "lines": "Satir",
-          "maxLine": "Max satir",
-          "output": "Cikti"
-        }
-      },
-      "controls": {
-        "eyebrow": "Temizleme Ayarlari",
-        "title": "Satir ve metin islemleri",
-        "labels": {
-          "maxChars": "Max karakter"
-        },
-        "toggles": {
-          "trimWhitespace": "Bosluk temizle",
-          "collapseBlankLines": "Bos satirlari daralt",
-          "normalizeQuotes": "Tirnak normalize et",
-          "stripHtml": "HTML etiketlerini sil",
-          "removeMusicTags": "Muzik etiketlerini sil",
-          "mergeShortCues": "Kisa satirlari birlestir",
-          "splitLongLines": "Uzun satirlari bol"
-        }
-      },
-      "actions": {
-        "eyebrow": "Aksiyonlar",
-        "title": "Preview ve cikti",
-        "preview": "Onizleme uret",
-        "apply": "Temizlemeyi uygula"
-      },
-      "outputs": {
-        "eyebrow": "Ciktilar",
-        "title": "Temizlenmis dosyalar",
-        "empty": "Henuz cikti yok.",
-        "labels": {
-          "cues": "Cue"
-        }
-      },
-      "summary": {
-        "eyebrow": "Ozet",
-        "labels": {
-          "previewStatus": "Preview durumu",
-          "changed": "Degisti",
-          "sourceCues": "Kaynak cue",
-          "outputCues": "Cikti cue",
-          "maxLine": "Max satir"
-        },
-        "values": {
-          "yes": "Evet",
-          "no": "Hayir"
-        }
-      },
-      "fields": {
-        "outputFormat": "Cikti formati"
-      },
-      "outputFormats": {
-        "source": "Kaynak formati"
-      }
-    },
-    "process": {
-      "subtitle": "Aktif kayit ya da secili workspace uzerinde altyazi QC ve ozet analizlerini calistir.",
-      "catalog": {
-        "eyebrow": "Analiz Plani",
-        "title": "Ilk Modul Seti",
-        "subtitle": "QC, okunabilirlik, zamanlama ve batch ozet modulleri burada gorunur.",
-        "status": {
-          "implemented": "Hazir",
-          "planned": "Planli"
-        },
-        "modules": {
-          "format-qc": {
-            "label": "Format QC",
-            "summary": "Cue sirasi, overlap, gap ve kapsayici duzeyindeki altyazi butunlugunu dogrular."
-          },
-          "readability-density": {
-            "label": "Okunabilirlik",
-            "summary": "Secili alanda cue yogunlugu, satir baskisi ve okuma rahatligini izler."
-          },
-          "cue-timing-structure": {
-            "label": "Cue zamanlama",
-            "summary": "Cue sureleri, pacing pencereleri ve yapi tutarliligini inceler."
-          },
-          "lexical-frequency": {
-            "label": "Kelime frekansi",
-            "summary": "Tekrarlayan terimleri, kanal kelime haznesini ve temel metin dagilimini ortaya cikarir."
-          },
-          "batch-summary": {
-            "label": "Batch ozeti",
-            "summary": "Aktif giris metriklerini kompakt bir batch seviyesi ozete toplar."
-          },
-          "logical-consistency-check": {
-            "label": "Mantiksal tutarlilik",
-            "summary": "Altyazi ifadelerinde kaba mantik kaymalarini, olasilik disi gecisleri ve cue duzeyindeki akil yurutme bosluklarini yoklar."
-          },
-          "contradiction-detection": {
-            "label": "Celiski tespiti",
-            "summary": "Aktif secim boyunca celisen iddialari, kutup degisimlerini ve tutarsiz ifadeleri isaretler."
-          },
-          "narrative-drift": {
-            "label": "Anlati kaymasi",
-            "summary": "Dosyalar veya ardilsik altyazi bloklari boyunca konu odaginin sert sekilde kayip kaymadigini izler."
-          },
-          "repetition-structure": {
-            "label": "Tekrar yapisi",
-            "summary": "Tekrarlayan ifadeleri, slogan dongulerini ve fazla sikismis kelime haznesi pattern'lerini ortaya cikarir."
-          },
-          "semantic-coherence": {
-            "label": "Anlamsal butunluk",
-            "summary": "Altyazi yogunlugu, tempo ve terim tekrarinin hala tutarli bir anlati akisina donusup donusmedigini tahmin eder."
-          },
-          "archive-to-ai-payload": {
-            "label": "AI payload arsivi",
-            "summary": "Asagidaki AI inceleme ve replay prompt'lari icin uygun kompakt analiz payload'i uretir."
-          },
-          "channel-batch-analysis": {
-            "label": "Kanal batch analizi",
-            "summary": "Coklu dosya altyazi arsivlerini tek kanal seviyeli anlati paketine toplar."
-          },
-          "entities-keyphrases": {
-            "label": "Varlik ve anahtar ifadeler",
-            "summary": "Kisi, marka ve tekrar eden terimler icin planli entity ve glossary cikarma modu."
-          },
-          "semantic-search": {
-            "label": "Anlamsal arama",
-            "summary": "Alinti bulma ve benzer cue kesfi icin planli embedding tabanli arama modu."
-          }
-        }
-      },
-      "providers": {
-        "eyebrow": "Saglayicilar",
-        "title": "Calisma Katmani",
-        "emptyModules": "Modul bagli degil",
-        "labels": {
-          "modules": "Moduller: {value}"
-        },
-        "status": {
-          "ready": "Hazir",
-          "planned": "Planli"
-        },
-        "items": {
-          "native-subtitle-qc": {
-            "label": "Yerel altyazi QC",
-            "summary": "Yerlesik altyazi dogrulama ve ozet analizlerini oda icinde calistirir."
-          },
-          "subtitle-archive-export": {
-            "label": "Altyazi arsiv export",
-            "summary": "Altyazi arsivlerini oda icinde AI'ya hazir payload ve batch export'lara paketler."
-          },
-          "planned-entity-provider": {
-            "label": "Planli entity saglayicisi",
-            "summary": "Entity, glossary ve anahtar ifade cikarma icin ayrilan saglayici yuvasi."
-          },
-          "planned-semantic-provider": {
-            "label": "Planli anlamsal saglayici",
-            "summary": "Anlamsal arama ve benzerlik akislari icin ayrilan saglayici yuvasi."
-          }
-        }
-      }
-    },
-    "report": {
-      "title": "Altyazi handoff'unu incele",
-      "subtitle": "Odadan cikmadan altyazi bulgularini, okunabilirlik metriklerini, modul dagilimini ve export gecmisini gor.",
-      "stagedHint": "Bu rapor altyazi QA gorunumunu somut tutar: dosya sayilari, zamanlama sorunlari, okunabilirlik uyarilari ve export kayitlari aktif secime bagli kalir.",
-      "overviewTitle": "Altyazi Raporu Ozeti",
-      "findingsTitle": "Altyazi Bulgulari",
-      "sideTitle": "Altyazi Detayi",
-      "latestExportEyebrow": "Son Disa Aktarim",
-      "latestExportTitle": "Son altyazi raporu cikisi",
-      "latestExportSubtitle": "Olusan markdown dosyasini, konumunu ve takip aksiyonlarini buradan gor.",
-      "latestExportEmpty": "Altyazi raporunu disa aktardiginda son dosya burada gorunur.",
-      "emptyFindings": "Henuz hazir altyazi ozet karti yok.",
-      "emptyBody": "Once altyazi process asamasini calistir; sonra bu rapor kalici altyazi bulgularini, modul sonucunu ve export'lari gosterecek.",
-      "overviewMeta": {
-        "target": "Hedef",
-        "status": "Durum",
-        "findings": "Bulgular",
-        "artifacts": "Artifact'ler",
-        "exports": "Export'lar",
-        "generated": "Uretildi"
-      },
-      "summaryCards": {
-        "target": "Hedef",
-        "files": "Dosyalar",
-        "cues": "Cue'lar",
-        "findings": "Bulgular",
-        "languages": "Diller",
-        "topTerm": "Ust terim",
-        "modules": "Tamamlanan moduller"
-      },
-      "findingMeta": {
-        "module": "Modul",
-        "severity": "Seviye",
-        "confidence": "Guven",
-        "evidence": "Kanit",
-        "artifacts": "Artifact'ler"
-      },
-      "moduleRollupEyebrow": "Modul Dagilimi",
-      "moduleRollupTitle": "Altyazi modul durumu",
-      "moduleRollupSubtitle": "Her altyazi analizoru durumu, bulgu sayisi ve artifact iziyle birlikte gorunur kalir.",
-      "moduleMeta": {
-        "status": "Durum",
-        "findings": "Bulgular",
-        "artifacts": "Artifact'ler",
-        "warnings": "Uyarilar"
-      },
-      "exportHistoryEyebrow": "Export Gecmisi",
-      "exportHistoryTitle": "Uretilen rapor dosyalari",
-      "exportHistorySubtitle": "Altyazi workspace'inden kalici olarak yazilan son rapor artifact'lerini izle.",
-      "exportMeta": {
-        "format": "Format",
-        "created": "Olusturuldu",
-        "status": "Durum",
-        "path": "Konum"
-      },
-      "openFileSuccess": "Son altyazi raporu dosyasi acildi.",
-      "openFolderSuccess": "Altyazi raporu klasoru acildi.",
-      "openPathFailure": "Altyazi raporu cikisi acilamadi.",
-      "actions": {
-        "restart": "Yeni Altyazi Kosusu Baslat",
-        "export": "Altyazi Raporunu Disa Aktar",
-        "openFile": "Dosyayi Ac",
-        "openFolder": "Klasoru Ac"
       }
     }
   }

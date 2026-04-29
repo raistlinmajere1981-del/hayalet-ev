@@ -11,12 +11,6 @@ type LaboratoryProjectConfigRuntime = {
   profilePresets: unknown;
   projectSchema: unknown;
   sourcePresets: unknown;
-  subtitleAnalysisCapabilities: unknown;
-  subtitleAnalysisCatalog: unknown;
-  subtitleAnalysisProviders: unknown;
-  subtitleEditPresets: unknown;
-  subtitleSourcePresets: unknown;
-  subtitleYoutubeForm: unknown;
   toolchainManifest: unknown;
   visualAnalysisCapabilities: unknown;
   visualAnalysisCatalog: unknown;
@@ -52,12 +46,6 @@ export function createLaboratoryProjectConfigLoader(deps: LaboratoryProjectConfi
       profilePresets,
       profileCapabilities,
       profileModels,
-      subtitleSourcePresets,
-      subtitleYoutubeForm,
-      subtitleEditPresets,
-      subtitleAnalysisCatalog,
-      subtitleAnalysisCapabilities,
-      subtitleAnalysisProviders,
       visualAnalysisCatalog,
       visualAnalysisCapabilities,
       visualAnalysisProviders,
@@ -75,12 +63,6 @@ export function createLaboratoryProjectConfigLoader(deps: LaboratoryProjectConfi
       readJsonFile(`${baseDir}/profile-presets.json`),
       readJsonFile(`${baseDir}/profile-capabilities.json`),
       readJsonFile(`${baseDir}/profile-models.json`),
-      readJsonFile(`${baseDir}/subtitle-source-presets.json`),
-      readJsonFile(`${baseDir}/subtitle-youtube.form.json`),
-      readJsonFile(`${baseDir}/subtitle-edit-presets.json`),
-      readJsonFile(`${baseDir}/subtitle-analysis-catalog.json`),
-      readJsonFile(`${baseDir}/subtitle-analysis-capabilities.json`),
-      readJsonFile(`${baseDir}/subtitle-analysis-providers.json`),
       readJsonFile(`${baseDir}/visual-analysis-catalog.json`),
       readJsonFile(`${baseDir}/visual-analysis-capabilities.json`),
       readJsonFile(`${baseDir}/visual-analysis-providers.json`),
@@ -100,12 +82,6 @@ export function createLaboratoryProjectConfigLoader(deps: LaboratoryProjectConfi
     runtime.profilePresets = profilePresets || {};
     runtime.profileCapabilities = profileCapabilities || {};
     runtime.profileModels = profileModels || {};
-    runtime.subtitleSourcePresets = subtitleSourcePresets || {};
-    runtime.subtitleYoutubeForm = subtitleYoutubeForm || {};
-    runtime.subtitleEditPresets = subtitleEditPresets || {};
-    runtime.subtitleAnalysisCatalog = subtitleAnalysisCatalog || {};
-    runtime.subtitleAnalysisCapabilities = subtitleAnalysisCapabilities || {};
-    runtime.subtitleAnalysisProviders = subtitleAnalysisProviders || {};
     runtime.visualAnalysisCatalog = visualAnalysisCatalog || {};
     runtime.visualAnalysisCapabilities = visualAnalysisCapabilities || {};
     runtime.visualAnalysisProviders = visualAnalysisProviders || {};

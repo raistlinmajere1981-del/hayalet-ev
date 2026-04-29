@@ -7,7 +7,6 @@ import { createLaboratoryHostUtils } from "../shared/host/host-utils.js";
 import { createLaboratoryHostIoRuntime } from "../shared/host/io-runtime.js";
 import { createLaboratoryRuntimeBootstrap } from "../shared/host/runtime-bootstrap.js";
 import { createLaboratoryPresetRuntime } from "../shared/host/preset-runtime.js";
-import { createSubtitleDocumentRuntime } from "../main-functions/subtitle-analysis/host/document-runtime.js";
 import { createAudioAnalysisUtilityRuntime } from "../main-functions/audio-analysis/host/analysis-utils.js";
 
 type LaboratoryRecord = Record<string, unknown>;
@@ -79,12 +78,6 @@ export function createLaboratoryHostFoundation(deps: LaboratoryHostFoundationDep
     toRecord: deps.toRecord,
   });
 
-  const subtitleDocument = createSubtitleDocumentRuntime({
-    asNonEmptyString: deps.asNonEmptyString,
-    asNumber: preset.asNumber,
-    toRecord: deps.toRecord,
-  });
-
   const audioAnalysisUtility = createAudioAnalysisUtilityRuntime({
     asNonEmptyString: deps.asNonEmptyString,
     asNumber: preset.asNumber,
@@ -102,6 +95,5 @@ export function createLaboratoryHostFoundation(deps: LaboratoryHostFoundationDep
     io,
     preset,
     profileModelState,
-    subtitleDocument,
   };
 }

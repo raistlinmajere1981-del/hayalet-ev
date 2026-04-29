@@ -6,7 +6,7 @@ import {
   formatDurationSeconds,
 } from "../models/lab-types.js";
 import type {
-  LabStageSurface,
+  LabWorkspaceSurface,
   LabStoreState,
   LabAsset,
   LabInteractiveSettings,
@@ -1349,7 +1349,7 @@ function renderCenterSkeleton(copy: LabI18n) {
 export function renderWorkspaceSurface(
   state: LabStoreState,
   options: WorkspaceSurfaceOptions = {}
-): LabStageSurface {
+): LabWorkspaceSurface {
   const copy = options.copy ?? LAB_FALLBACK_I18N;
   if (!state.bootReady) {
     return {

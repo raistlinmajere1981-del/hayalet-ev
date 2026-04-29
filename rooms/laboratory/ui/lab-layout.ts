@@ -1,5 +1,5 @@
 import { escapeHtml } from "../models/lab-types.js";
-import type { LabStageSurface, LabStoreState } from "../models/lab-types.js";
+import type { LabStoreState, LabWorkspaceSurface } from "../models/lab-types.js";
 import { renderLabCenterPanel } from "./lab-center-panel.js";
 import { renderLabDrawer } from "./lab-drawer.js";
 import { renderLabProcessStrip } from "./lab-process-strip.js";
@@ -61,7 +61,7 @@ export function renderLabBootOverlay(copy: LabI18n = LAB_FALLBACK_I18N) {
 
 export function renderLabLayout(
   state: LabStoreState,
-  surface: LabStageSurface,
+  surface: LabWorkspaceSurface,
   copy: LabI18n = LAB_FALLBACK_I18N,
   options: LabLayoutOptions = {}
 ) {
@@ -72,7 +72,7 @@ export function renderLabLayout(
 
   if (layoutKind === "import-only") {
     return `
-      <div class="labx-shell" data-layout-kind="${layoutKind}" data-stage="${state.currentStage}" data-ready="true" data-workspace-mode="${getWorkspaceMode(state)}" data-lab-mode="${state.ui.labMode}" data-drawer-mode="${drawerMode}" data-drawer-collapsed="true">
+      <div class="labx-shell" data-layout-kind="${layoutKind}" data-ready="true" data-workspace-mode="${getWorkspaceMode(state)}" data-lab-mode="${state.ui.labMode}" data-drawer-mode="${drawerMode}" data-drawer-collapsed="true">
         ${renderLabCenterPanel(surface)}
       </div>
       <div class="labx-overlay-root" data-open="false" aria-hidden="true"></div>
@@ -83,7 +83,7 @@ export function renderLabLayout(
   }
 
   return `
-    <div class="labx-shell" data-layout-kind="${layoutKind}" data-stage="${state.currentStage}" data-ready="${bootOverlayActive ? "false" : "true"}" data-workspace-mode="${getWorkspaceMode(state)}" data-lab-mode="${state.ui.labMode}" data-drawer-mode="${drawerMode}" data-drawer-collapsed="${drawerCollapsed ? "true" : "false"}">
+    <div class="labx-shell" data-layout-kind="${layoutKind}" data-ready="${bootOverlayActive ? "false" : "true"}" data-workspace-mode="${getWorkspaceMode(state)}" data-lab-mode="${state.ui.labMode}" data-drawer-mode="${drawerMode}" data-drawer-collapsed="${drawerCollapsed ? "true" : "false"}">
       ${renderLabTopBar(state, copy)}
       ${renderLabCenterPanel(surface)}
       ${renderLabDrawer(state, surface, copy)}

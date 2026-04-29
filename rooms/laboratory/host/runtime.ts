@@ -5,7 +5,6 @@ import {
   LABORATORY_MEDIA_FEATURE_ID as FEATURE_ID,
   LABORATORY_MEDIA_STAGES as MEDIA_STAGES,
   LABORATORY_ROOM_ID as ROOM_ID,
-  LABORATORY_SUBTITLE_FEATURE_ID as SUBTITLE_FEATURE_ID,
   cloneLaboratoryValue as clone,
   getLaboratoryFeatureProcessDir as getFeatureProcessDir,
   getLaboratoryFeatureReportDir as getFeatureReportDir,
@@ -49,14 +48,10 @@ const runtimeRefs: {
     | LaboratoryHostFeatureRuntimes["processComposition"]["laboratoryProcessCoordinationRuntime"]
     | null;
   projectState: LaboratoryHostFeatureRuntimes["projectState"] | null;
-  subtitleAnalysisHost:
-    | LaboratoryHostFeatureRuntimes["featureAdapters"]["laboratorySubtitleAnalysisHostRuntime"]
-    | null;
 } = {
   closeoutStaleness: null,
   processCoordination: null,
   projectState: null,
-  subtitleAnalysisHost: null,
 };
 
 let projectRuntimes: LaboratoryHostProjectRuntimes | null = null;
@@ -184,7 +179,6 @@ const projectRuntimesDeps = {
   ) {
     runtimeRefs.closeoutStaleness = value;
   },
-  subtitleFeatureId: SUBTITLE_FEATURE_ID,
   toRecord,
 };
 
@@ -200,9 +194,6 @@ const featureRuntimesDeps = {
   foundation,
   getFeatureProcessDir,
   getFeatureReportDir,
-  getSubtitleAnalysisHostRuntime() {
-    return runtimeRefs.subtitleAnalysisHost;
-  },
   markCloseoutAsStale,
   markFeatureProcessStale,
   markFeatureReportStale,
@@ -219,12 +210,6 @@ const featureRuntimesDeps = {
   setProjectStateRuntime(value: LaboratoryHostFeatureRuntimes["projectState"]) {
     runtimeRefs.projectState = value;
   },
-  setSubtitleAnalysisHostRuntime(
-    value: LaboratoryHostFeatureRuntimes["featureAdapters"]["laboratorySubtitleAnalysisHostRuntime"]
-  ) {
-    runtimeRefs.subtitleAnalysisHost = value;
-  },
-  subtitleFeatureId: SUBTITLE_FEATURE_ID,
   toRecord,
 };
 

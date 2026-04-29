@@ -15,7 +15,7 @@ function toRecord(value: unknown) {
     : {};
 }
 
-const featureIds = ["media-analysis", "audio-analysis", "subtitle-analysis"];
+const featureIds = ["media-analysis", "audio-analysis"];
 
 test("laboratory workbench collapses analysis controls by default", () => {
   const workbench = createLaboratoryWorkbenchState({});
@@ -132,7 +132,6 @@ test("queued process instance metadata survives normalized process state", () =>
         },
       },
       "audio-analysis": {},
-      "subtitle-analysis": {},
     },
   }) as {
     records: Record<string, Record<string, unknown>>;

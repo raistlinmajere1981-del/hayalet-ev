@@ -16,10 +16,6 @@ type LaboratoryAudioAnalysisHostRuntime = ReturnType<
 type LaboratoryAudioAnalysisProjectionRuntime =
   LaboratoryAudioAnalysisHostRuntime["audioAnalysisProjectionRuntime"];
 type LaboratoryProcessDelegatesRuntime = ReturnType<typeof createLaboratoryProcessDelegatesRuntime>;
-type LaboratorySubtitleAnalysisHostRuntime = {
-  buildSubtitleAnalysisStats: (...args: unknown[]) => unknown;
-  buildSubtitleProcessModules: (...args: unknown[]) => unknown[];
-};
 
 type LaboratoryHostProcessCompositionDeps = LaboratoryProcessRuntimeDeps &
   LaboratoryReportingRuntimeDeps & {
@@ -30,11 +26,8 @@ type LaboratoryHostProcessCompositionDeps = LaboratoryProcessRuntimeDeps &
     buildSourceTargetSignature: UnknownFn;
     ensureRuntimeDirectory: UnknownFn;
     findEditOutputById: UnknownFn;
-    getActiveSubtitleEntry: UnknownFn;
     getPreferredFeatureSourceKind: UnknownFn;
     getStageSupport: UnknownFn;
-    getSubtitleAnalysisHostRuntime: () => LaboratorySubtitleAnalysisHostRuntime | null;
-    getSubtitleMimeType: UnknownFn;
     getToolManifest: UnknownFn;
     getVisualAnalysisCapabilityState: UnknownFn;
     getVisualAnalysisModulesForRuntime: UnknownFn;
@@ -42,7 +35,6 @@ type LaboratoryHostProcessCompositionDeps = LaboratoryProcessRuntimeDeps &
     listDirectory: UnknownFn;
     normalizeEditOutput: UnknownFn;
     normalizeSourceMetadata: UnknownFn;
-    normalizeSubtitleAnalysisState: UnknownFn;
     partitionVisualAnalysisModuleIds: UnknownFn;
     parseAspectralStatsText: UnknownFn;
     readJsonFile: UnknownFn;
@@ -75,13 +67,8 @@ export function createLaboratoryHostProcessCompositionRuntime(
 
   const laboratoryProcessTargetingRuntimeDeps = {
     audioFeatureId: deps.audioFeatureId,
-    subtitleFeatureId: deps.subtitleFeatureId,
     asNonEmptyString: deps.asNonEmptyString,
     toRecord: deps.toRecord,
-    normalizeSubtitleAnalysisState: deps.normalizeSubtitleAnalysisState,
-    getSubtitleSelectedEntries: deps.getSubtitleSelectedEntries,
-    getActiveSubtitleEntry: deps.getActiveSubtitleEntry,
-    getSubtitleMimeType: deps.getSubtitleMimeType,
     getVisualAnalysisCapabilityState: deps.getVisualAnalysisCapabilityState,
     getVisualAnalysisModulesForRuntime: deps.getVisualAnalysisModulesForRuntime,
     getVisualAnalysisProviderState: deps.getVisualAnalysisProviderState,
@@ -89,7 +76,7 @@ export function createLaboratoryHostProcessCompositionRuntime(
     resolveAudioFeatureTarget,
     resolveProfileTarget: deps.resolveProfileTarget,
     resolveEnabledVisualAnalysisModuleIds: deps.resolveEnabledVisualAnalysisModuleIds,
-    normalizeProcessModule: deps.normalizeProcessModule,
+    normalizeProcessModule: deps["normalizeProcessModule"],
     buildProfileModelSummary: deps.buildProfileModelSummary,
   };
   const laboratoryProcessTargetingRuntime = createLaboratoryProcessTargetingRuntime(
@@ -100,7 +87,7 @@ export function createLaboratoryHostProcessCompositionRuntime(
 
   const processOrchestrationRuntimeDeps = {
     asNonEmptyString: deps.asNonEmptyString,
-    asNumber: deps.asNumber,
+    asNumber: deps["asNumber"],
     audioAnalysisProjectionRuntime: {
       buildAudioAnalysisModules(
         ...args: Parameters<LaboratoryProcessRuntimeDeps["buildAudioAnalysisModules"]>
@@ -114,7 +101,7 @@ export function createLaboratoryHostProcessCompositionRuntime(
       },
     },
     createEmptyFeatureProcessRecord: deps.createEmptyFeatureProcessRecord,
-    normalizeProcessModule: deps.normalizeProcessModule,
+    normalizeProcessModule: deps["normalizeProcessModule"],
     processTargetingRuntime: laboratoryProcessTargetingRuntime,
     toRecord: deps.toRecord,
   };
@@ -157,7 +144,7 @@ export function createLaboratoryHostProcessCompositionRuntime(
     laboratoryAudioProcessDelegatesRuntime,
   } = createLaboratoryAudioAnalysisHostRuntime({
     asNonEmptyString: deps.asNonEmptyString,
-    asNumber: deps.asNumber,
+    asNumber: deps["asNumber"],
     audioAnalysisSchemaVersion: deps.audioAnalysisSchemaVersion,
     audioFeatureId: deps.audioFeatureId,
     buildDerivedTargetSignature: deps.buildDerivedTargetSignature,
@@ -181,9 +168,9 @@ export function createLaboratoryHostProcessCompositionRuntime(
     normalizeAudioAnalysisModuleResult: deps.normalizeAudioAnalysisModuleResult,
     normalizeAudioAnalysisState: deps.normalizeAudioAnalysisState,
     normalizeEditOutput: deps.normalizeEditOutput,
-    normalizeProcessArtifact: deps.normalizeProcessArtifact,
+    normalizeProcessArtifact: deps["normalizeProcessArtifact"],
     normalizeProcessFinding: deps.normalizeProcessFinding,
-    normalizeProcessModule: deps.normalizeProcessModule,
+    normalizeProcessModule: deps["normalizeProcessModule"],
     normalizeReportExport: deps.normalizeReportExport,
     normalizeSourceMetadata: deps.normalizeSourceMetadata,
     normalizeStringArray: deps.normalizeStringArray,
@@ -210,7 +197,7 @@ export function createLaboratoryHostProcessCompositionRuntime(
 
   const laboratoryReportingRuntimeDeps = {
     asNonEmptyString: deps.asNonEmptyString,
-    asNumber: deps.asNumber,
+    asNumber: deps["asNumber"],
     clearJob: deps.clearJob,
     clone: deps.clone,
     createEmptyFeatureReportRecord: deps.createEmptyFeatureReportRecord,
@@ -224,14 +211,12 @@ export function createLaboratoryHostProcessCompositionRuntime(
     getFeatureReportExportAction,
     getFeatureReportRecord: deps.getFeatureReportRecord,
     getFindingSeverityRank: deps.getFindingSeverityRank,
-    getSubtitleAnalysisModuleDescriptors: deps.getSubtitleAnalysisModuleDescriptors,
-    getSubtitleSelectedEntries: deps.getSubtitleSelectedEntries,
     normalizeAudioAnalysisModuleResult: deps.normalizeAudioAnalysisModuleResult,
     normalizeAudioAnalysisState: deps.normalizeAudioAnalysisState,
     normalizeFeatureReportRecord: deps.normalizeFeatureReportRecord,
-    normalizeProcessArtifact: deps.normalizeProcessArtifact,
+    normalizeProcessArtifact: deps["normalizeProcessArtifact"],
     normalizeProcessFinding: deps.normalizeProcessFinding,
-    normalizeProcessModule: deps.normalizeProcessModule,
+    normalizeProcessModule: deps["normalizeProcessModule"],
     normalizeReportExport: deps.normalizeReportExport,
     normalizeStringArray: deps.normalizeStringArray,
     patchActiveProject: deps.patchActiveProject,
@@ -243,7 +228,6 @@ export function createLaboratoryHostProcessCompositionRuntime(
     toRecord: deps.toRecord,
     writeTextFile: deps.writeTextFile,
     audioFeatureId: deps.audioFeatureId,
-    subtitleFeatureId: deps.subtitleFeatureId,
     mediaFeatureId: deps.mediaFeatureId,
   };
   const laboratoryReportingRuntime = createLaboratoryReportingRuntime(
@@ -255,24 +239,6 @@ export function createLaboratoryHostProcessCompositionRuntime(
     buildAudioAnalysisModules,
     buildMediaProcessModules,
     buildProcessSpeechAvailability,
-    buildSubtitleAnalysisStats(
-      ...args: Parameters<LaboratorySubtitleAnalysisHostRuntime["buildSubtitleAnalysisStats"]>
-    ) {
-      const subtitleAnalysisHostRuntime = deps.getSubtitleAnalysisHostRuntime();
-      if (!subtitleAnalysisHostRuntime) {
-        throw new Error("Subtitle analysis host runtime is not initialized");
-      }
-      return subtitleAnalysisHostRuntime.buildSubtitleAnalysisStats(...args);
-    },
-    buildSubtitleProcessModules(
-      ...args: Parameters<LaboratorySubtitleAnalysisHostRuntime["buildSubtitleProcessModules"]>
-    ) {
-      const subtitleAnalysisHostRuntime = deps.getSubtitleAnalysisHostRuntime();
-      if (!subtitleAnalysisHostRuntime) {
-        throw new Error("Subtitle analysis host runtime is not initialized");
-      }
-      return subtitleAnalysisHostRuntime.buildSubtitleProcessModules(...args);
-    },
     cancelProcessJobsForProject: deps.cancelProcessJobsForProject,
     clampProfileTranscriptSampleSeconds: deps["clampProfileTranscriptSampleSeconds"],
     clearJob: deps.clearJob,
@@ -306,9 +272,8 @@ export function createLaboratoryHostProcessCompositionRuntime(
     getFeatureProcessDir: deps.getFeatureProcessDir,
     getFeatureProcessJobAction,
     getFeatureProcessRecord: deps.getFeatureProcessRecord,
-    getProjectSubtitleProcessDir: deps["getProjectSubtitleProcessDir"],
     maybeRunWhisperProfileSample: deps["maybeRunWhisperProfileSample"],
-    normalizeProcessArtifact: deps.normalizeProcessArtifact,
+    normalizeProcessArtifact: deps["normalizeProcessArtifact"],
     normalizeProcessFinding: deps.normalizeProcessFinding,
     patchActiveProject: deps.patchActiveProject,
     pushJobState: deps.pushJobState,
@@ -330,7 +295,6 @@ export function createLaboratoryHostProcessCompositionRuntime(
     writeTextFile: deps.writeTextFile,
     markFeatureReportStale: deps.markFeatureReportStale,
     audioFeatureId: deps.audioFeatureId,
-    subtitleFeatureId: deps.subtitleFeatureId,
   };
   const laboratoryProcessRuntime = createLaboratoryProcessRuntime(laboratoryProcessRuntimeDeps);
 

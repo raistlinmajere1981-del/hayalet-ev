@@ -55,7 +55,6 @@ function getActionLabel(action: string | null) {
     case "source-pick-local":
       return "Yerel kaynak içeri alınıyor";
     case "edit-preview":
-    case "subtitle-edit-preview":
       return "Önizleme hazırlanıyor";
     case "profile-run-preflight":
       return "Ön kontrol çalışıyor";
@@ -301,7 +300,6 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
       actionId === "refresh" ||
       actionId === "tools-refresh" ||
       actionId.startsWith("source-") ||
-      actionId.startsWith("subtitle-source-") ||
       actionId.startsWith("project-") ||
       actionId.startsWith("tool-")
     );

@@ -72,7 +72,7 @@ function createSeededState(ffmpegInstalled = false) {
       },
       workbench: {
         activeModuleId: "media-analysis",
-        availableModuleIds: ["media-analysis", "audio-analysis", "subtitle-analysis"],
+        availableModuleIds: ["media-analysis", "audio-analysis"],
         selectedModuleIds: ["media-analysis", "audio-analysis"],
       },
       sourcePresets,
@@ -107,7 +107,7 @@ function createSeededState(ffmpegInstalled = false) {
           stageSupport: {
             process: "optional",
           },
-          usedBy: ["subtitle-analysis"],
+          usedBy: ["audio-analysis"],
         },
       ],
       toolState: {
@@ -143,7 +143,8 @@ test("laboratory top bar reflects active v2 shell navigation", () => {
   store.dispatch({ type: "tool-manager-toggled", open: true });
   const html = renderLabTopBar(store.getState());
 
-  assert.match(html, /data-lab-field="project\.id"/);
+  assert.match(html, /data-lab-action="project-workspace-open"/);
+  assert.match(html, /2026-04-21 12-00 - lab-demo\.mp4/);
   assert.match(html, /data-lab-action="topbar-pill-source"/);
   assert.match(html, /data-lab-action="topbar-pill-analyze"/);
   assert.match(html, /data-lab-action="topbar-pill-results"/);
@@ -176,17 +177,10 @@ test("laboratory v2 shell renders source intake in the setup drawer and preview 
   );
   assert.doesNotMatch(surface.main, /Source setup controls/);
   assert.equal(surface.side.trim(), "");
-  assert.match(drawer, /Source setup controls/);
-  assert.match(drawer, /Active: lab-demo\.mp4/);
-  assert.match(drawer, /data-lab-drawer-assets="true"/);
-  assert.match(drawer, /Project Assets/);
-  assert.match(drawer, /setup_clip\.mp4/);
-  assert.match(drawer, /data-lab-action="asset-preview"/);
-  assert.match(drawer, /data-lab-action="asset-use-as-source" data-lab-value="clip-setup-drawer"/);
-  assert.match(drawer, /data-lab-action="save-project"/);
-  assert.match(drawer, /data-lab-action="project-delete"/);
-  assert.match(drawer, /data-lab-action="workspace-toggle-source-intake"/);
+  assert.match(drawer, /data-drawer-mode="setup"/);
+  assert.match(drawer, /Analiz Amaçları/);
   assert.match(drawer, /data-lab-action="run-deep-analysis"/);
+  assert.doesNotMatch(drawer, /Source setup controls|Project Assets|data-lab-action="save-project"/);
   assert.doesNotMatch(surface.main, /Kaynak Seçimi|Hızlı modül seçimi burada yapılır/);
 });
 
@@ -245,16 +239,16 @@ test("laboratory drawer keeps project assets visible in result and explore modes
   let surface = renderWorkspaceSurface(store.getState());
   let drawer = renderLabDrawer(store.getState(), surface);
   assert.match(drawer, /data-drawer-mode="result"/);
-  assert.match(drawer, /analysis-report\.md/);
-  assert.match(drawer, /data-lab-action="asset-download"/);
-  assert.doesNotMatch(drawer, /data-lab-action="save-project"/);
+  assert.match(drawer, /data-lab-action="open-report-overlay"/);
+  assert.match(drawer, /data-lab-action="drawer-explore-toggled"/);
+  assert.doesNotMatch(drawer, /analysis-report\.md|data-lab-action="asset-download"|data-lab-action="save-project"/);
 
   store.dispatch({ type: "drawer-explore-toggled" });
   surface = renderWorkspaceSurface(store.getState());
   drawer = renderLabDrawer(store.getState(), surface);
   assert.match(drawer, /data-drawer-mode="explore"/);
-  assert.match(drawer, /analysis-report\.md/);
-  assert.match(drawer, /data-lab-action="asset-preview"/);
+  assert.match(drawer, /data-lab-action="run-deep-analysis"/);
+  assert.doesNotMatch(drawer, /analysis-report\.md|data-lab-action="asset-preview"/);
 });
 
 test("laboratory workspace treats reused local assets as ready sources", () => {
@@ -270,8 +264,8 @@ test("laboratory workspace treats reused local assets as ready sources", () => {
   const surface = renderWorkspaceSurface(state);
   const drawer = renderLabDrawer(state, surface);
 
-  assert.match(drawer, /Source ready/);
-  assert.match(drawer, /Active: lab-demo\.mp4/);
+  assert.match(drawer, /data-drawer-mode="setup"/);
+  assert.match(drawer, /Analiz Amaçları/);
   assert.match(
     surface.main,
     /<video class="labx-preview-media labx-preview-media--workspace-video"/
@@ -743,7 +737,6 @@ test("laboratory report overlay renders snapshot summary and workspace-dirty fre
   store.dispatch({
     type: "hydrate",
     payload: {
-      currentStage: "report",
       featureId: "media-analysis",
       projectIndex: {
         activeProjectId: "project-1",
@@ -825,7 +818,6 @@ test("laboratory report overlay keeps scoped report-level findings inside the ac
   store.dispatch({
     type: "hydrate",
     payload: {
-      currentStage: "report",
       featureId: "media-analysis",
       projectIndex: {
         activeProjectId: "project-1",
@@ -920,7 +912,6 @@ test("laboratory report overlay groups transport-module evidence into selected i
   store.dispatch({
     type: "hydrate",
     payload: {
-      currentStage: "report",
       featureId: "media-analysis",
       projectIndex: {
         activeProjectId: "project-1",
@@ -1080,7 +1071,6 @@ test("laboratory report overlay fans audio transport evidence across every match
   store.dispatch({
     type: "hydrate",
     payload: {
-      currentStage: "report",
       featureId: "media-analysis",
       projectIndex: {
         activeProjectId: "project-1",
@@ -1187,8 +1177,8 @@ test("laboratory store applies optimistic source and workbench patches for sourc
     type: "workbench-updated",
     workbench: {
       activeModuleId: "audio-analysis",
-      availableModuleIds: ["media-analysis", "audio-analysis", "subtitle-analysis"],
-      selectedModuleIds: ["media-analysis", "audio-analysis", "subtitle-analysis"],
+      availableModuleIds: ["media-analysis", "audio-analysis"],
+      selectedModuleIds: ["media-analysis", "audio-analysis"],
     },
   });
   store.dispatch({ type: "tool-manager-toggled", open: true });

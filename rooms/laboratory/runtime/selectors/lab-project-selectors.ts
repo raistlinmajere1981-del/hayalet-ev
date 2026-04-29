@@ -27,8 +27,7 @@ export function getProjects(state: LabStoreState): LabRecord[] {
 
 export function getCurrentFeatureId(state: LabStoreState): LabFeatureId {
   const activeModuleId = asNonEmptyString(state.workbench["activeModuleId"]);
-  const featureId = (activeModuleId as LabFeatureId) || state.featureId;
-  return featureId === "subtitle-analysis" ? "audio-analysis" : featureId;
+  return (activeModuleId as LabFeatureId) || state.featureId;
 }
 
 export function getCurrentFeatureMeta(state: LabStoreState) {

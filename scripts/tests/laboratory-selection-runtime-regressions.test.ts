@@ -1947,7 +1947,6 @@ test("selection intent updates stay fenced from workspace analysis intents", () 
   store.dispatch({
     type: "hydrate",
     payload: {
-      currentStage: "report",
       featureId: "media-analysis",
       projectIndex: {
         activeProjectId: "project-1",
@@ -2047,7 +2046,6 @@ test("selection suggestion clicks stay fenced from analysis intents and run exec
   store.dispatch({
     type: "hydrate",
     payload: {
-      currentStage: "report",
       featureId: "media-analysis",
       projectIndex: {
         activeProjectId: "project-1",

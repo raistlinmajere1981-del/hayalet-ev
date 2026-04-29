@@ -17,7 +17,7 @@ function toRecord(value: unknown) {
     : {};
 }
 
-const featureIds = ["media-analysis", "audio-analysis", "subtitle-analysis"];
+const featureIds = ["media-analysis", "audio-analysis"];
 
 test("analysis scope normalization keeps ordered ranges, intent ids, and freeze lifecycle", () => {
   const normalized = normalizeAnalysisScope({
@@ -182,7 +182,6 @@ test("process normalization freezes scope snapshots after process start and carr
         ],
       },
       "audio-analysis": {},
-      "subtitle-analysis": {},
     },
   }) as {
     records: Record<string, Record<string, unknown>>;

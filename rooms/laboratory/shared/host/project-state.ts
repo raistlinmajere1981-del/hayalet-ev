@@ -16,7 +16,6 @@ type LaboratoryProjectStateRuntimeDeps = {
   };
   syncProjectAudioAnalysisProjection: (runtime: unknown, project: LaboratoryRecord) => unknown;
   syncProjectProfileProjection: (runtime: unknown, project: LaboratoryRecord) => unknown;
-  syncProjectSubtitleAnalysisProjection: (runtime: unknown, project: LaboratoryRecord) => unknown;
   toFileUrl: (path: string) => string;
 };
 
@@ -26,7 +25,6 @@ export function createLaboratoryProjectStateRuntime(deps: LaboratoryProjectState
     runtimeStorage,
     syncProjectAudioAnalysisProjection,
     syncProjectProfileProjection,
-    syncProjectSubtitleAnalysisProjection,
     toFileUrl,
   } = deps;
 
@@ -44,7 +42,6 @@ export function createLaboratoryProjectStateRuntime(deps: LaboratoryProjectState
   ): LaboratoryRecord {
     syncProjectProfileProjection(runtime, project);
     syncProjectAudioAnalysisProjection(runtime, project);
-    syncProjectSubtitleAnalysisProjection(runtime, project);
     return project;
   }
 

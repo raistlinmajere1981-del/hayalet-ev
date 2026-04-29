@@ -12,7 +12,6 @@ type LaboratoryActionRuntimeDeps = {
   createRequestId: () => string;
   ensureHydrated: (api: unknown, runtime: unknown) => Promise<unknown>;
   getFeatureIdFromContext: (payload: unknown) => string | null;
-  getSubtitleActionRuntime: () => LaboratoryActionRouterDeps["subtitleActionRuntime"];
   loadContext: (payload: unknown) => LaboratoryRecord;
   mediaActionRuntime: LaboratoryActionRouterDeps["mediaActionRuntime"];
   persistProfileModelState: (runtime: unknown) => Promise<unknown> | unknown;
@@ -54,7 +53,6 @@ export function createLaboratoryHostActionRuntime(deps: LaboratoryActionRuntimeD
         persistToolState: deps.persistToolState,
         pushActionResult: deps.pushActionResult,
         pushMediaState: deps.pushMediaState,
-        subtitleActionRuntime: deps.getSubtitleActionRuntime(),
         toRecord: deps.toRecord,
       }) as LaboratoryActionRouter;
     }

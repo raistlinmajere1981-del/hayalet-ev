@@ -1,9 +1,7 @@
 import type { createMediaActionRuntime } from "../../main-functions/media-analysis/host/action-handlers.js";
-import type { createSubtitleActionRuntime } from "../../main-functions/subtitle-analysis/host/action-handlers.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 type LaboratoryMediaActionRuntime = ReturnType<typeof createMediaActionRuntime>;
-type LaboratorySubtitleActionRuntime = ReturnType<typeof createSubtitleActionRuntime>;
 
 type LaboratoryRuntimeRecord = {
   activeProjectId?: string | null;
@@ -49,7 +47,6 @@ type LaboratoryActionRouterDeps = {
     requestId: string,
     action: string
   ) => void;
-  subtitleActionRuntime: LaboratorySubtitleActionRuntime;
   toRecord: (value: unknown) => LaboratoryRecord;
 };
 
@@ -65,7 +62,6 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
     persistToolState,
     pushActionResult,
     pushMediaState,
-    subtitleActionRuntime,
     toRecord,
   } = deps;
 
@@ -124,42 +120,6 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
         case "project-rename":
           await mediaActionRuntime.renameProject(runtime, requestId, featureId, actionPayload);
           break;
-        case "subtitle-source-set-mode":
-          await subtitleActionRuntime.setSourceMode(runtime, actionPayload);
-          break;
-        case "subtitle-source-update-drafts":
-          await subtitleActionRuntime.updateDrafts(runtime, toRecord(actionPayload.fields));
-          break;
-        case "subtitle-source-pick-local":
-          await subtitleActionRuntime.pickLocal(api, runtime, requestId, actionPayload);
-          break;
-        case "subtitle-source-pick-folder":
-          await subtitleActionRuntime.pickFolder(api, runtime, requestId, actionPayload);
-          break;
-        case "subtitle-source-download-url":
-          await subtitleActionRuntime.downloadUrl(api, runtime, requestId, actionPayload);
-          break;
-        case "subtitle-source-discover-youtube":
-          await subtitleActionRuntime.discoverYoutube(api, runtime, requestId, actionPayload);
-          break;
-        case "subtitle-source-download-youtube":
-          await subtitleActionRuntime.downloadYoutube(api, runtime, requestId, actionPayload);
-          break;
-        case "subtitle-source-toggle-discovery":
-          await subtitleActionRuntime.toggleDiscovery(runtime, actionPayload);
-          break;
-        case "subtitle-source-select-all-discovery":
-          await subtitleActionRuntime.selectAllDiscovery(runtime);
-          break;
-        case "subtitle-source-clear-discovery-selection":
-          await subtitleActionRuntime.clearDiscoverySelection(runtime);
-          break;
-        case "subtitle-source-select-entry":
-          await subtitleActionRuntime.selectEntry(runtime, actionPayload);
-          break;
-        case "subtitle-source-toggle-selection":
-          await subtitleActionRuntime.toggleSelection(runtime, actionPayload);
-          break;
         case "source-set-kind":
           await mediaActionRuntime.setSourceKind(runtime, actionPayload);
           break;
@@ -186,18 +146,6 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
           break;
         case "edit-set-mode":
           await mediaActionRuntime.setEditMode(runtime, actionPayload);
-          break;
-        case "subtitle-edit-apply-preset":
-          await subtitleActionRuntime.applyEditPreset(runtime, actionPayload);
-          break;
-        case "subtitle-edit-update-recipe":
-          await subtitleActionRuntime.updateEditRecipe(runtime, actionPayload);
-          break;
-        case "subtitle-edit-preview":
-          await subtitleActionRuntime.previewEdit(runtime, requestId, actionPayload);
-          break;
-        case "subtitle-edit-apply":
-          await subtitleActionRuntime.applyEdit(runtime, requestId, actionPayload);
           break;
         case "edit-apply-preset":
           await mediaActionRuntime.applyEditPreset(runtime, actionPayload);

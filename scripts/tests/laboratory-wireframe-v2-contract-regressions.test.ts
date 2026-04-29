@@ -141,7 +141,7 @@ test("laboratory wireframe v2 derives active-run workspace locks and blocks lock
   assert.equal(state.ui.workspace.interactiveSettings.brightness, 112);
 });
 
-test("laboratory wireframe v2 renders locked timeline and hypothesis while preserving preview controls", () => {
+test("laboratory wireframe v2 renders locked timeline and roi while preserving preview controls", () => {
   const store = createReadyStore();
   store.dispatch({ type: "workspace-timeline-updated", startMs: 1000, endMs: 3000 });
   setRun(store.getState());
@@ -149,8 +149,8 @@ test("laboratory wireframe v2 renders locked timeline and hypothesis while prese
   const surface = renderWorkspaceSurface(store.getState());
 
   assert.match(surface.main, /data-timeline-locked="true"/);
-  assert.match(surface.main, /data-hypothesis-locked="true"/);
-  assert.match(surface.main, /data-lab-field="workspace\.hypothesis"[\s\S]*disabled/);
+  assert.match(surface.main, /data-lab-roi-mutation-locked="true"/);
+  assert.doesNotMatch(surface.main, /data-lab-field="workspace\.hypothesis"/);
   assert.match(surface.main, /labx-preview-media--workspace-video/);
   assert.match(surface.main, /Visual Adjustments/);
 });

@@ -3,8 +3,6 @@ import {
   getProjectEditOutputDir,
   getProjectEditPreviewDir,
   getProjectSourceDir,
-  getProjectSubtitleEditOutputDir,
-  getProjectSubtitleProcessDir,
 } from "../shared/host/project-paths.js";
 import { createLaboratoryProjectStateRuntime } from "../shared/host/project-state.js";
 import { createLaboratoryRoomToolsProgressRuntime } from "../shared/host/room-tools-progress.js";
@@ -15,7 +13,6 @@ import { createLaboratoryMediaAnalysisHostRuntime } from "../main-functions/medi
 import { createLaboratoryFeatureAdapters } from "./feature-adapters.js";
 import type { createLaboratoryHostFoundation } from "./foundation-runtimes.js";
 import type { createLaboratoryHostProjectRuntimes } from "./project-runtimes.js";
-import type { createLaboratorySubtitleAnalysisHostRuntime } from "../main-functions/subtitle-analysis/host/runtime.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 
@@ -35,10 +32,6 @@ type LaboratoryProcessCompositionRuntime = ReturnType<
   laboratoryProcessDelegatesRuntime: LaboratoryProcessDelegatesRuntime | null;
 };
 type LaboratoryProjectStateRuntime = ReturnType<typeof createLaboratoryProjectStateRuntime>;
-type LaboratoryFeatureAdaptersRuntime = ReturnType<typeof createLaboratoryFeatureAdapters>;
-type LaboratorySubtitleAnalysisHostRuntime = ReturnType<
-  typeof createLaboratorySubtitleAnalysisHostRuntime
->;
 
 type LaboratoryHostFeatureRuntimesDeps = {
   asNonEmptyString: (value: unknown) => string | null;
@@ -48,7 +41,6 @@ type LaboratoryHostFeatureRuntimesDeps = {
   foundation: LaboratoryHostFoundationRuntime;
   getFeatureProcessDir: (runtime: unknown, project: unknown, featureId: string) => string;
   getFeatureReportDir: (runtime: unknown, project: unknown, featureId: string) => string;
-  getSubtitleAnalysisHostRuntime: () => LaboratorySubtitleAnalysisHostRuntime | null;
   markCloseoutAsStale: (project: LaboratoryRecord, reason: string, featureIds: string[]) => unknown;
   markFeatureProcessStale: (
     project: LaboratoryRecord,
@@ -69,16 +61,12 @@ type LaboratoryHostFeatureRuntimesDeps = {
     value: LaboratoryProcessCompositionRuntime["laboratoryProcessCoordinationRuntime"]
   ) => void;
   setProjectStateRuntime: (value: LaboratoryProjectStateRuntime) => void;
-  setSubtitleAnalysisHostRuntime: (
-    value: LaboratoryFeatureAdaptersRuntime["laboratorySubtitleAnalysisHostRuntime"]
-  ) => void;
-  subtitleFeatureId: string;
   toRecord: (value: unknown) => LaboratoryRecord;
 };
 
 export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureRuntimesDeps) {
   const { foundation, projectRuntimes } = deps;
-  const { bootstrap, hostUtils, io, preset, profileModelState, subtitleDocument } = foundation;
+  const { bootstrap, hostUtils, io, preset, profileModelState } = foundation;
 
   let sourceComposition: LaboratorySourceCompositionRuntime | null = null;
 
@@ -190,18 +178,7 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     getFeatureReportRecord: projectRuntimes.stateComposition.getFeatureReportRecord,
     getFindingSeverityRank: projectRuntimes.analysisArtifact.getFindingSeverityRank,
     getPreferredFeatureSourceKind: hostUtils.getPreferredFeatureSourceKind,
-    getProjectSubtitleProcessDir,
     getStageSupport: bootstrap.getStageSupport,
-    getSubtitleAnalysisHostRuntime: deps.getSubtitleAnalysisHostRuntime,
-    getSubtitleSelectedEntries: projectRuntimes.stateComposition.getSubtitleSelectedEntries,
-    getActiveSubtitleEntry: projectRuntimes.stateComposition.getActiveSubtitleEntry,
-    getSubtitleMimeType: projectRuntimes.stateComposition.getSubtitleMimeType,
-    getSubtitleAnalysisModuleDescriptors(runtime: unknown) {
-      const runtimeRecord = deps.toRecord(runtime);
-      const subtitleAnalysisCatalog = deps.toRecord(runtimeRecord["subtitleAnalysisCatalog"]);
-      const modules = subtitleAnalysisCatalog["modules"];
-      return Array.isArray(modules) ? modules.map(deps.toRecord) : [];
-    },
     getToolManifest: bootstrap.getToolManifest,
     generateProcessMetadataArtifact:
       projectRuntimes.analysisArtifact.generateProcessMetadataArtifact,
@@ -223,7 +200,6 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     normalizeReportExport: projectRuntimes.stateComposition.normalizeReportExport,
     normalizeSourceMetadata: preset.normalizeSourceMetadata,
     normalizeStringArray: preset.normalizeStringArray,
-    normalizeSubtitleAnalysisState: projectRuntimes.stateComposition.normalizeSubtitleAnalysisState,
     parseAspectralStatsText: foundation.audioAnalysisUtility.parseAspectralStatsText,
     patchActiveProject: projectRuntimes.lifecycle.patchActiveProject,
     pushJobState: projectRuntimes.snapshot.pushJobState,
@@ -275,7 +251,6 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     },
     setFeatureProcessRecord: projectRuntimes.stateComposition.setFeatureProcessRecord,
     setFeatureReportRecord: projectRuntimes.stateComposition.setFeatureReportRecord,
-    subtitleFeatureId: deps.subtitleFeatureId,
     toRecord: deps.toRecord,
     writeJsonFile: io.writeJsonFile,
     writeTextFile: io.writeTextFile,
@@ -376,8 +351,6 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
       );
     },
     syncProjectProfileProjection: projectRuntimes.profileProjection.syncProjectProfileProjection,
-    syncProjectSubtitleAnalysisProjection:
-      projectRuntimes.stateComposition.syncProjectSubtitleAnalysisProjection,
     toFileUrl: hostUtils.toFileUrl,
   } as unknown as Parameters<typeof createLaboratoryProjectStateRuntime>[0];
 
@@ -398,7 +371,6 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     asNonEmptyString: deps.asNonEmptyString,
     asNumber: preset.asNumber,
     audioFeatureId: deps.audioFeatureId,
-    buildSubtitleEditSummary: subtitleDocument.buildSubtitleEditSummary,
     callRoomTools: io.callRoomTools,
     cancelJobById: projectRuntimes.jobRuntime.cancelJobById,
     cancelEditJobsForProject: projectRuntimes.jobRuntime.cancelEditJobsForProject,
@@ -411,35 +383,23 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     clearJob: projectRuntimes.jobState.clearJob,
     createDefaultEditState: preset.createDefaultEditState,
     createDefaultToolEntry: bootstrap.createDefaultToolEntry,
-    createEmptySubtitleDiscoveryState:
-      projectRuntimes.stateComposition.createEmptySubtitleDiscoveryState,
     createProject: projectRuntimes.lifecycle.createProject,
     createRequestId: projectRuntimes.jobState.createRequestId,
-    createSubtitleEntryRecord: projectRuntimes.stateComposition.createSubtitleEntryRecord,
     deleteProject: projectRuntimes.lifecycle.deleteProject,
     ensureHydrated: projectRuntimes.lifecycle.ensureHydrated,
-    ensureProjectDirectories: io.ensureProjectDirectories,
     ensureProjectExists: projectRuntimes.lifecycle.ensureProjectExists,
     exportFeatureReport: processDelegates.exportFeatureReport,
     findEditPreset: mediaAnalysis.findEditPreset,
     findProfilePreset: preset.findProfilePreset,
-    formatIdentifierLabel: projectRuntimes.analysisArtifact.formatIdentifierLabel,
     getActiveProject,
-    getActiveSubtitleEntry: projectRuntimes.stateComposition.getActiveSubtitleEntry,
     getDefaultMode: preset.getDefaultMode,
     getDefaultSourceType: preset.getDefaultSourceType,
-    getDefaultSubtitleEditPresetId: projectRuntimes.stateComposition.getDefaultSubtitleEditPresetId,
-    getDefaultSubtitleEditRecipe: projectRuntimes.stateComposition.getDefaultSubtitleEditRecipe,
-    getElectronApi: io.getElectronApi,
     getFeatureIdFromContext: bootstrap.getFeatureIdFromContext,
     getProfileModelDescriptorMap: profileModelState.readProfileModelDescriptorMap,
     getProjectEditDir,
     getProjectEditOutputDir,
     getProjectSourceDir,
-    getProjectSubtitleEditOutputDir,
     getRuntimeToolIds: bootstrap.getRuntimeToolIds,
-    getSubtitleEntries: projectRuntimes.stateComposition.getSubtitleEntries,
-    getSubtitleMimeType: projectRuntimes.stateComposition.getSubtitleMimeType,
     handleAssetAsSource:
       sourceCompositionRuntime.laboratorySourceDelegatesRuntime.handleAssetAsSource,
     handleLocalPick: sourceCompositionRuntime.laboratorySourceDelegatesRuntime.handleLocalPick,
@@ -447,22 +407,11 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     handleYoutubeDownload:
       sourceCompositionRuntime.laboratorySourceDelegatesRuntime.handleYoutubeDownload,
     installProfileModel: projectRuntimes.mediaProfileModel.installProfileModel,
-    isSubtitleFileName: projectRuntimes.stateComposition.isSubtitleFileName,
-    listDirectory: io.listDirectory,
     loadContext: bootstrap.loadContext,
     markCloseoutAsStale: deps.markCloseoutAsStale,
-    markFeatureProcessStale: deps.markFeatureProcessStale,
-    markFeatureReportStale: deps.markFeatureReportStale,
     markProfileAsStale: projectRuntimes.mediaProfileState.markProfileAsStale,
-    mergeObjects: preset.mergeObjects,
-    normalizeProcessModule: projectRuntimes.stateComposition.normalizeProcessModule,
     normalizeProfileArtifactPreferences:
       projectRuntimes.mediaProfileState.normalizeProfileArtifactPreferences,
-    normalizeStringArray: preset.normalizeStringArray,
-    normalizeSubtitleAnalysisState: projectRuntimes.stateComposition.normalizeSubtitleAnalysisState,
-    normalizeSubtitleDiscoveryItem: projectRuntimes.stateComposition.normalizeSubtitleDiscoveryItem,
-    normalizeSubtitleOutputRecord: projectRuntimes.stateComposition.normalizeSubtitleOutputRecord,
-    parseSubtitleCues: subtitleDocument.parseSubtitleCues,
     patchActiveProject: projectRuntimes.lifecycle.patchActiveProject,
     patchActiveProjectDrafts: projectRuntimes.lifecycle.patchActiveProjectDrafts,
     persistProfileModelState: runtimeStorage.persistProfileModelState,
@@ -479,23 +428,15 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     removeProfileModel: projectRuntimes.mediaProfileModel.removeProfileModel,
     resetEditForCurrentSource: mediaAnalysis.resetEditForCurrentSource,
     resetProfileForCurrentSource: projectRuntimes.mediaProfileState.resetProfileForCurrentSource,
-    resetSubtitleDiscovery: projectRuntimes.stateComposition.resetSubtitleDiscovery,
-    resolveSubtitleOutputFormat: subtitleDocument.resolveSubtitleOutputFormat,
     roomId: deps.roomId,
     runEditPipeline: mediaAnalysis.runEditPipeline,
     runFeatureProcess: processDelegates.runFeatureProcess,
     runProfilePreflight: mediaAnalysis.runProfilePreflight,
     sanitizeFileSegment: mediaAnalysis.sanitizeFileSegment,
-    subtitleFeatureId: deps.subtitleFeatureId,
     toRecord: deps.toRecord,
-    transformSubtitleDocument: subtitleDocument.transformSubtitleDocument,
-    upsertSubtitleEntries: projectRuntimes.stateComposition.upsertSubtitleEntries,
-    writeTextFile: io.writeTextFile,
   } as unknown as Parameters<typeof createLaboratoryFeatureAdapters>[0];
 
   const featureAdapters = createLaboratoryFeatureAdapters(featureAdaptersDeps);
-
-  deps.setSubtitleAnalysisHostRuntime(featureAdapters.laboratorySubtitleAnalysisHostRuntime);
 
   return {
     featureAdapters,

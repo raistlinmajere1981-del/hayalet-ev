@@ -2,17 +2,10 @@ import { createLaboratoryCloseoutStalenessRuntime } from "./closeout-staleness.j
 import { createLaboratoryProcessReportStateRuntime } from "./process-report-state.js";
 import { createLaboratoryProjectRecordsRuntime } from "./project-records.js";
 import { createLaboratoryProjectStateDelegatesRuntime } from "./project-state-delegates.js";
-import { createLaboratorySubtitleProjectionRuntime } from "./subtitle-projection.js";
-import { createSubtitleStateDelegatesRuntime } from "../../main-functions/subtitle-analysis/host/state-delegates.js";
-import { createSubtitleStateRuntime } from "../../main-functions/subtitle-analysis/host/state.js";
 
 type LaboratoryRecord = Record<string, unknown>;
-type SubtitleStateRuntimeDeps = Parameters<typeof createSubtitleStateRuntime>[0];
 type LaboratoryProjectRecordsRuntimeDeps = Parameters<
   typeof createLaboratoryProjectRecordsRuntime
->[0];
-type LaboratorySubtitleProjectionRuntimeDeps = Parameters<
-  typeof createLaboratorySubtitleProjectionRuntime
 >[0];
 
 type LaboratoryMediaProfileStateRuntime = {
@@ -69,7 +62,6 @@ type LaboratoryHostStateCompositionDeps = {
   normalizeSourceMetadata: (rawValue: unknown) => LaboratoryRecord | null;
   normalizeStringArray: (value: unknown) => string[];
   projectSchemaVersion: number;
-  subtitleFeatureId: string;
   toRecord: (value: unknown) => LaboratoryRecord;
 };
 
@@ -120,41 +112,6 @@ export function createLaboratoryHostStateCompositionRuntime(
     getProjectStateRuntime: deps.getProjectStateRuntime,
   });
 
-  const subtitleStateRuntimeDeps: SubtitleStateRuntimeDeps = {
-    asNonEmptyString: deps.asNonEmptyString,
-    asNumber: deps.asNumber,
-    markFeatureProcessStale: deps.markFeatureProcessStale,
-    markFeatureReportStale: deps.markFeatureReportStale,
-    normalizeReportExport,
-    normalizeStringArray: deps.normalizeStringArray,
-    subtitleFeatureId: deps.subtitleFeatureId,
-    toRecord: deps.toRecord,
-  };
-  const subtitleStateRuntime = createSubtitleStateRuntime(subtitleStateRuntimeDeps);
-  const laboratorySubtitleStateDelegatesRuntime = createSubtitleStateDelegatesRuntime({
-    subtitleStateRuntime,
-  });
-  const {
-    createEmptySubtitleAnalysisState,
-    createEmptySubtitleDiscoveryState,
-    createSubtitleEntryRecord,
-    getActiveSubtitleEntry,
-    getDefaultSubtitleEditPresetId,
-    getDefaultSubtitleEditRecipe,
-    getSubtitleEntries,
-    getSubtitleEntryById,
-    getSubtitleMimeType,
-    getSubtitleSelectedEntries,
-    isSubtitleFileName,
-    normalizeSubtitleAnalysisState,
-    normalizeSubtitleDiscoveryItem,
-    normalizeSubtitleEntryRecord,
-    normalizeSubtitleOutputRecord,
-    resetSubtitleDiscovery,
-    resetSubtitleFeatureState,
-    upsertSubtitleEntries,
-  } = laboratorySubtitleStateDelegatesRuntime;
-
   const laboratoryProjectRecordsRuntimeDeps: LaboratoryProjectRecordsRuntimeDeps = {
     asNonEmptyString: deps.asNonEmptyString,
     buildProjectName: deps.buildProjectName,
@@ -165,8 +122,6 @@ export function createLaboratoryHostStateCompositionRuntime(
     createEmptyAudioAnalysisState: deps.createEmptyAudioAnalysisState,
     createEmptyProcessState,
     createEmptyReportState,
-    createEmptySubtitleAnalysisState:
-      createEmptySubtitleAnalysisState as LaboratoryProjectRecordsRuntimeDeps["createEmptySubtitleAnalysisState"],
     createEmptySourceDrafts: deps.createEmptySourceDrafts,
     getDefaultMode: deps.getDefaultMode,
     getDefaultSourceType: deps.getDefaultSourceType,
@@ -179,8 +134,6 @@ export function createLaboratoryHostStateCompositionRuntime(
     normalizeProcessState,
     normalizeReportState,
     normalizeSourceMetadata: deps.normalizeSourceMetadata,
-    normalizeSubtitleAnalysisState:
-      normalizeSubtitleAnalysisState as LaboratoryProjectRecordsRuntimeDeps["normalizeSubtitleAnalysisState"],
     projectSchemaVersion: deps.projectSchemaVersion,
     toRecord: deps.toRecord,
   };
@@ -195,51 +148,20 @@ export function createLaboratoryHostStateCompositionRuntime(
     updateProjectTimestamps,
   } = laboratoryProjectRecordsRuntime;
 
-  const laboratorySubtitleProjectionRuntimeDeps: LaboratorySubtitleProjectionRuntimeDeps = {
-    asNonEmptyString: deps.asNonEmptyString,
-    normalizeProcessFinding,
-    normalizeProcessModule,
-    normalizeReportExport,
-    normalizeReportSummaryCard,
-    normalizeSubtitleAnalysisState:
-      normalizeSubtitleAnalysisState as LaboratorySubtitleProjectionRuntimeDeps["normalizeSubtitleAnalysisState"],
-    readFeatureProcessRecord: getFeatureProcessRecord,
-    readFeatureReportRecord: getFeatureReportRecord,
-    subtitleFeatureId: deps.subtitleFeatureId,
-    toRecord: deps.toRecord,
-  };
-  const laboratorySubtitleProjectionRuntime = createLaboratorySubtitleProjectionRuntime(
-    laboratorySubtitleProjectionRuntimeDeps
-  );
-  const { syncProjectSubtitleAnalysisProjection } = laboratorySubtitleProjectionRuntime;
-
   return {
     createEmptyFeatureProcessRecord,
     createEmptyFeatureReportRecord,
     createEmptyProcessState,
     createEmptyReportState,
-    createEmptySubtitleAnalysisState,
-    createEmptySubtitleDiscoveryState,
     createProjectRecord,
-    createSubtitleEntryRecord,
     findProject,
     getActiveProject,
-    getActiveSubtitleEntry,
-    getDefaultSubtitleEditPresetId,
-    getDefaultSubtitleEditRecipe,
     getFeatureProcessRecord,
     getFeatureReportRecord,
-    getSubtitleEntries,
-    getSubtitleEntryById,
-    getSubtitleMimeType,
-    getSubtitleSelectedEntries,
-    isSubtitleFileName,
     laboratoryCloseoutStalenessRuntime,
     laboratoryProcessReportStateRuntime,
     laboratoryProjectRecordsRuntime,
     laboratoryProjectStateDelegatesRuntime,
-    laboratorySubtitleProjectionRuntime,
-    laboratorySubtitleStateDelegatesRuntime,
     normalizeFeatureProcessRecord,
     normalizeFeatureReportRecord,
     normalizeProcessArtifact,
@@ -249,17 +171,9 @@ export function createLaboratoryHostStateCompositionRuntime(
     normalizeReportExport,
     normalizeReportState,
     normalizeReportSummaryCard,
-    normalizeSubtitleAnalysisState,
-    normalizeSubtitleDiscoveryItem,
-    normalizeSubtitleEntryRecord,
-    normalizeSubtitleOutputRecord,
     normalizeProject,
-    resetSubtitleDiscovery,
-    resetSubtitleFeatureState,
     setFeatureProcessRecord,
     setFeatureReportRecord,
-    syncProjectSubtitleAnalysisProjection,
     updateProjectTimestamps,
-    upsertSubtitleEntries,
   };
 }

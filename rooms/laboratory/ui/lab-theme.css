@@ -83,20 +83,6 @@
   gap: 1rem;
 }
 
-.labx-stage-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  align-items: flex-start;
-  padding: 1.3rem 1.45rem;
-  border: 1px solid var(--labx-border);
-  border-radius: 1.4rem;
-  background:
-    linear-gradient(180deg, rgba(15, 28, 45, 0.96), rgba(10, 18, 31, 0.95)),
-    var(--labx-surface-strong);
-  box-shadow: var(--labx-shadow);
-}
-
 .labx-card__eyebrow {
   display: flex;
   gap: 0.65rem;
@@ -149,10 +135,6 @@
   gap: 0.75rem;
 }
 
-.labx-card__footer {
-  margin-top: 0.95rem;
-}
-
 .labx-field {
   display: flex;
   flex-direction: column;
@@ -181,13 +163,6 @@
   resize: vertical;
 }
 
-.labx-inline-grid,
-.labx-stat-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.7rem;
-}
-
 .labx-selection-strip {
   display: flex;
   flex-wrap: wrap;
@@ -206,39 +181,13 @@
   font-size: 0.76rem;
 }
 
-.labx-stat-grid article {
-  padding: 0.8rem;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: var(--labx-radius-tight);
-  background: rgba(6, 12, 20, 0.78);
-}
-
-.labx-stat-grid span {
-  display: block;
-  margin-bottom: 0.3rem;
-  color: var(--labx-text-dim);
-  font-size: 0.74rem;
-}
-
-.labx-stat-grid strong {
-  display: block;
-  font-size: 1rem;
-}
-
 .labx-chip-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
 }
 
-.labx-module-grid,
 .labx-module-catalog {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
-}
-
-.labx-capability-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
@@ -437,33 +386,10 @@
   font-size: 0.96rem;
 }
 
-.labx-empty-state__description,
-.labx-empty-state__hint {
+.labx-empty-state__description {
   margin: 0.45rem 0 0;
   color: var(--labx-text-soft);
   line-height: 1.55;
-}
-
-.labx-preview-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-
-.labx-preview-frame {
-  display: grid;
-  place-items: center;
-  min-height: 13.5rem;
-  padding: 0.85rem;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 1rem;
-  background:
-    radial-gradient(circle at top, rgba(92, 215, 223, 0.08), transparent 44%), rgba(3, 8, 14, 0.92);
-  overflow: hidden;
-}
-
-.labx-preview-frame--workspace {
-  min-height: 24rem;
 }
 
 .labx-preview-media {
@@ -473,47 +399,9 @@
   background: rgba(0, 0, 0, 0.24);
 }
 
-.labx-preview-media--video,
-.labx-preview-media--image {
-  max-height: 18rem;
-  object-fit: contain;
-}
-
 .labx-preview-media--audio {
   display: block;
   width: min(100%, 42rem);
-}
-
-.labx-preview-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-}
-
-.labx-preview-surface__placeholder {
-  display: grid;
-  gap: 0.55rem;
-  width: 100%;
-}
-
-.labx-preview-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.85rem;
-  align-items: flex-start;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.labx-preview-row span {
-  color: var(--labx-text-dim);
-  font-size: 0.76rem;
-}
-
-.labx-preview-row strong {
-  font-size: 0.84rem;
-  text-align: right;
-  word-break: break-word;
 }
 
 .labx-overlay-root {
@@ -664,11 +552,6 @@
   object-fit: contain;
 }
 
-.labx-asset-preview__media--audio {
-  align-self: center;
-  height: auto;
-}
-
 .labx-asset-preview__audio-shell {
   display: grid;
   gap: 1.1rem;
@@ -763,12 +646,6 @@
   background:
     linear-gradient(180deg, rgba(14, 25, 41, 0.96), rgba(9, 16, 28, 0.96)), var(--labx-surface);
   box-shadow: var(--labx-shadow);
-}
-
-.labx-workspace-strip__row {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.75rem;
 }
 
 .labx-source-intake {
@@ -945,14 +822,9 @@
   }
 
   .labx-drawer,
-  .labx-inline-grid,
-  .labx-stat-grid,
-  .labx-capability-grid,
-  .labx-module-grid,
   .labx-module-catalog,
   .labx-module-overlay__summary,
   .labx-source-intake__top,
-  .labx-workspace-strip__row,
   .labx-source-bar,
   .labx-workspace-focus-row,
   .labx-source-intake__mode-grid,
@@ -1219,18 +1091,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
-}
-
-.labx-dual-preview-audio__viz {
-  padding: 0.85rem 0.75rem;
-  border-radius: 0.8rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.labx-audio-viz--dual-preview {
-  display: block;
-  min-height: 5rem;
 }
 
 .labx-dual-preview-audio__meta {
@@ -3898,20 +3758,6 @@
     rgba(255, 255, 255, 0.025);
 }
 
-/* Hypothesis */
-.labx-hypothesis {
-  padding: 0;
-}
-
-.labx-hypothesis__label {
-  display: block;
-  margin-bottom: 0.25rem;
-  color: var(--labx-text-dim);
-  font-size: 0.74rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-
 .labx-textarea--compact {
   min-height: 3.5rem;
   font-size: 0.88rem;
@@ -3989,53 +3835,6 @@
 .labx-inline-action--small {
   padding: 0.35rem 0.6rem;
   font-size: 0.74rem;
-}
-
-.labx-text-error {
-  color: var(--labx-error);
-}
-
-/* Analysis Trigger */
-.labx-analysis-trigger {
-  margin-top: 0.25rem;
-}
-
-.labx-intent-preview {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  margin-bottom: 0.6rem;
-  padding: 0.7rem 0.8rem;
-  border: 1px solid rgba(92, 215, 223, 0.12);
-  border-radius: 0.75rem;
-  background: rgba(9, 18, 31, 0.68);
-}
-
-.labx-intent-preview__section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.labx-intent-preview__title {
-  font-size: 0.78rem;
-  color: var(--labx-text);
-}
-
-.labx-intent-preview__list {
-  margin: 0;
-  padding-left: 1rem;
-  display: grid;
-  gap: 0.25rem;
-  color: var(--labx-text-soft);
-  font-size: 0.73rem;
-  line-height: 1.45;
-}
-
-.labx-intent-preview__empty {
-  margin: 0;
-  color: var(--labx-text-dim);
-  font-size: 0.73rem;
 }
 
 /* Workspace mode shell adjustments */
@@ -4319,16 +4118,6 @@
   padding: 0.55rem;
   color: var(--labx-text-dim);
   font-size: 0.74rem;
-}
-
-.labx-process-snapshot {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-  padding: 0.75rem 0.85rem;
-  border-radius: 0.8rem;
-  border: 1px solid rgba(92, 215, 223, 0.14);
-  background: rgba(9, 18, 31, 0.72);
 }
 
 .labx-process-snapshot__head {
@@ -4657,14 +4446,6 @@
   min-width: 5.5rem;
 }
 
-.labx-report-export-row {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-
 .labx-report-warning,
 .labx-report-error {
   padding: 0.4rem 0.6rem;
@@ -4714,27 +4495,6 @@
   font-size: 0.68rem;
   color: var(--labx-text-dim, rgba(255, 255, 255, 0.45));
   margin-top: 0.2rem;
-}
-
-.labx-right-context {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-  padding: 1rem;
-  border: 1px solid rgba(72, 214, 222, 0.24);
-  border-radius: 1rem;
-  background:
-    linear-gradient(180deg, rgba(12, 32, 48, 0.92), rgba(6, 16, 28, 0.9)), var(--labx-surface);
-}
-
-.labx-right-context__header h2 {
-  margin: 0.15rem 0 0;
-  font-size: 1rem;
-}
-
-.labx-right-context__grid {
-  display: grid;
-  gap: 0.55rem;
 }
 
 .labx-right-context__item {
@@ -5028,37 +4788,6 @@
   }
 }
 
-/* ===== §2a JOURNEY HINT ===== */
-
-.labx-journey-hint {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.15rem 0;
-  font-size: 0.63rem;
-  color: var(--labx-text-dim);
-  letter-spacing: 0.05em;
-}
-
-.labx-journey-hint__arrow {
-  opacity: 0.4;
-}
-
-.labx-journey-hint [data-active="true"] {
-  color: var(--labx-accent);
-  font-weight: 600;
-  border-bottom: 1px solid rgba(92, 215, 223, 0.45);
-  padding-bottom: 1px;
-}
-
-.labx-journey-hint [data-reached="true"][data-active="false"] {
-  opacity: 0.5;
-}
-
-.labx-journey-hint [data-reached="false"] {
-  opacity: 0.28;
-}
-
 /* ===== §3 DECISION SURFACE TIERS ===== */
 
 .labx-right-context__tier-1 {
@@ -5177,19 +4906,6 @@
   }
 }
 
-.labx-right-context__causal-line {
-  margin: 0.2rem 0 0;
-  font-size: 0.64rem;
-  font-style: italic;
-  color: var(--labx-text-dim);
-  line-height: 1.4;
-  animation: labx-fade-in 0.18s ease forwards;
-}
-
-.labx-right-context__causal-line--intent {
-  color: rgba(92, 215, 223, 0.55);
-}
-
 .labx-right-context__decision-card[data-accent="staging"] {
   animation: labx-staging-arrive 0.45s ease forwards;
 }
@@ -5198,8 +4914,7 @@
 
 .labx-chip-button,
 .labx-inline-action,
-.labx-module-card,
-.labx-source-intake__toggle {
+.labx-module-card {
   transition:
     border-color 0.15s,
     background 0.15s,
@@ -5659,12 +5374,6 @@
   color: var(--labx-text-soft);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-}
-
-.labx-drawer__hint {
-  margin: 0;
-  color: var(--labx-text-dim);
-  font-size: 0.75rem;
 }
 
 /* Drawer — Intent list */

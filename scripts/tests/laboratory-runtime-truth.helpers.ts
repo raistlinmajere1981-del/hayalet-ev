@@ -325,9 +325,6 @@ export class FakeActionElement {
   }
 
   closest(selector: string): FakeActionElement | null {
-    if (selector === "[data-lab-stage]") {
-      return null;
-    }
     if (
       selector === "[data-lab-action]" ||
       (selector === "[data-lab-action='asset-preview']" &&

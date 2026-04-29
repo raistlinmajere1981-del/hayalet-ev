@@ -1,5 +1,3 @@
-import type { createSubtitleActionRuntime } from "../../main-functions/subtitle-analysis/host/action-handlers.js";
-
 import { createMediaActionRuntime } from "../../main-functions/media-analysis/host/action-handlers.js";
 import { createLaboratoryHostActionRuntime } from "./action-runtime.js";
 import { createLaboratoryToolMutationRuntime } from "./tool-mutations.js";
@@ -11,7 +9,6 @@ type LaboratoryHostActionRuntime = ReturnType<typeof createLaboratoryHostActionR
 type LaboratoryHostActionRuntimeDeps = Parameters<typeof createLaboratoryHostActionRuntime>[0];
 type LaboratoryToolMutationRuntime = ReturnType<typeof createLaboratoryToolMutationRuntime>;
 type LaboratoryToolMutationRuntimeDeps = Parameters<typeof createLaboratoryToolMutationRuntime>[0];
-type LaboratorySubtitleActionRuntime = ReturnType<typeof createSubtitleActionRuntime>;
 type LaboratoryMediaActionRuntime = ReturnType<typeof createMediaActionRuntime>;
 
 type LaboratoryMediaActionRuntimeDeps = {
@@ -69,12 +66,10 @@ type LaboratoryMediaActionRuntimeDeps = {
 
 type LaboratoryActionCompositionDeps = Omit<
   LaboratoryHostActionRuntimeDeps,
-  "getSubtitleActionRuntime" | "mediaActionRuntime" | "toolMutationRuntime"
+  "mediaActionRuntime" | "toolMutationRuntime"
 > &
   LaboratoryToolMutationRuntimeDeps &
-  LaboratoryMediaActionRuntimeDeps & {
-    getSubtitleActionRuntime: () => LaboratorySubtitleActionRuntime;
-  };
+  LaboratoryMediaActionRuntimeDeps;
 
 export function createLaboratoryActionCompositionRuntime(deps: LaboratoryActionCompositionDeps) {
   let laboratoryHostActionRuntime: LaboratoryHostActionRuntime | null = null;
@@ -181,7 +176,6 @@ export function createLaboratoryActionCompositionRuntime(deps: LaboratoryActionC
     createRequestId: deps.createRequestId,
     ensureHydrated: deps.ensureHydrated,
     getFeatureIdFromContext: deps.getFeatureIdFromContext,
-    getSubtitleActionRuntime: deps.getSubtitleActionRuntime,
     loadContext: deps.loadContext,
     mediaActionRuntime,
     persistProfileModelState: deps.persistProfileModelState,

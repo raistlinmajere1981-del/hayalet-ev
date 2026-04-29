@@ -21,20 +21,14 @@ type LaboratoryProjectRecord = LaboratoryRecord & {
 export const LABORATORY_ROOM_ID = "laboratory";
 export const LABORATORY_MEDIA_FEATURE_ID = "media-analysis";
 export const LABORATORY_AUDIO_FEATURE_ID = "audio-analysis";
-export const LABORATORY_SUBTITLE_FEATURE_ID = "subtitle-analysis";
 export const LABORATORY_WORKBENCH_EXPERIENCE_ID = "analysis-workbench";
 export const LABORATORY_WORKBENCH_MODE = "guided";
 export const LABORATORY_WORKBENCH_SCHEMA_VERSION = 1;
-export const LABORATORY_FEATURE_IDS = [
-  LABORATORY_MEDIA_FEATURE_ID,
-  LABORATORY_AUDIO_FEATURE_ID,
-  LABORATORY_SUBTITLE_FEATURE_ID,
-];
+export const LABORATORY_FEATURE_IDS = [LABORATORY_MEDIA_FEATURE_ID, LABORATORY_AUDIO_FEATURE_ID];
 export const LABORATORY_MEDIA_STAGES = ["source", "edit", "profile", "process", "report"];
 export const LABORATORY_FEATURE_NAMESPACES = {
   [LABORATORY_MEDIA_FEATURE_ID]: "mediaAnalysis",
   [LABORATORY_AUDIO_FEATURE_ID]: "audioAnalysis",
-  [LABORATORY_SUBTITLE_FEATURE_ID]: "subtitleAnalysis",
 };
 
 export function isLaboratoryFeatureId(value: unknown): value is string {

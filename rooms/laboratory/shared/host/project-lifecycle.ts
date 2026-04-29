@@ -113,7 +113,6 @@ type LaboratoryProjectLifecycleRuntimeDeps = LaboratoryProjectConfigLoaderDeps &
       profilePresets: unknown,
       profileModels: unknown,
       profileCapabilities: unknown,
-      subtitleRuntime: LaboratoryProjectLifecycleRuntime,
       featureId: string | null
     ) => LaboratoryProjectRecord;
     defaultFeatureId: string;
@@ -379,7 +378,6 @@ export function createLaboratoryProjectLifecycleRuntime(
       runtime.profilePresets,
       runtime.profileModels,
       runtime.profileCapabilities,
-      runtime,
       resolvedFeatureId
     );
     syncProjectFeatureProjections(runtime, project);
@@ -544,7 +542,6 @@ export function createLaboratoryProjectLifecycleRuntime(
       runtime.profilePresets,
       runtime.profileModels,
       runtime.profileCapabilities,
-      runtime,
       featureId
     );
     syncProjectFeatureProjections(runtime, project);

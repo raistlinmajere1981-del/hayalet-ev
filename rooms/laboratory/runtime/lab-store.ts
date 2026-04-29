@@ -7,7 +7,6 @@ import {
   createLabEventId,
   normalizeFindingKind,
   normalizeLabFeatureId,
-  normalizeLabStage,
   toTimestamp,
   WORKSPACE_INTENTS,
 } from "../models/lab-types.js";
@@ -27,6 +26,10 @@ import type {
   LabPreflightResult,
   LabPreviewArtifactProjection,
   LabPersistedState,
+  LabProjectImportKind,
+  LabProjectImportMethod,
+  LabProjectImportReviewFocus,
+  LabProjectImportUiState,
   LabRun,
   LabSelection,
   LabSourceDrafts,
@@ -51,7 +54,6 @@ import {
   normalizeAnalysisScope,
 } from "../shared/types/analysis-scope.js";
 import {
-  deriveLegacyStage,
   getActiveExecutionCandidate,
   getExecutionDispatchCandidate,
 } from "./lab-selectors.js";
@@ -83,6 +85,39 @@ function createDefaultSourceDrafts(): LabSourceDrafts {
     youtubePreset: null,
     youtubeCustom: {},
     youtubeCaptureMode: "video+audio",
+  };
+}
+
+function cloneSourceDrafts(drafts: LabSourceDrafts): LabSourceDrafts {
+  return {
+    fileNameHint: drafts.fileNameHint,
+    urlInput: drafts.urlInput,
+    youtubeUrl: drafts.youtubeUrl,
+    youtubePreset: drafts.youtubePreset,
+    youtubeCustom: { ...asLabRecord(drafts.youtubeCustom) },
+    youtubeCaptureMode: drafts.youtubeCaptureMode,
+  };
+}
+
+function createDefaultProjectImportState(): LabProjectImportUiState {
+  const videoDrafts = createDefaultSourceDrafts();
+  const audioDrafts = createDefaultSourceDrafts();
+  const imageDrafts = createDefaultSourceDrafts();
+  return {
+    activeKind: "video",
+    methods: {
+      video: "local",
+      audio: "local",
+      image: "local",
+    },
+    drafts: {
+      video: videoDrafts,
+      audio: audioDrafts,
+      image: imageDrafts,
+    },
+    reviewFocus: "idle",
+    lastAction: null,
+    lastRequestId: null,
   };
 }
 
@@ -158,9 +193,8 @@ function deriveCapabilitiesFromIntentIds(intentIds: unknown): CapabilityFamilyId
   return Array.from(capabilitySet);
 }
 
-function createInitialState(): LabStoreState {
+  function createInitialState(): LabStoreState {
   return {
-    currentStage: "source",
     featureId: "media-analysis",
     selectedCapabilities: [],
     bootReady: false,
@@ -189,6 +223,7 @@ function createInitialState(): LabStoreState {
     ui: {
       labMode: "normal",
       youtubeImport: createIdleYoutubeImportState(),
+      projectImport: createDefaultProjectImportState(),
       sourceDrafts: createDefaultSourceDrafts(),
       editDrafts: {
         outputNameHint: "",
@@ -788,6 +823,9 @@ function syncDraftsFromSnapshot(state: LabStoreState, snapshot: Record<string, u
       youtubeCaptureMode:
         captureMode === "audio-only" || captureMode === "video-only" ? captureMode : "video+audio",
     };
+    syncProjectImportDraftFromSourceDrafts(state, source["kind"], {
+      force: state.ui.lastHydratedProjectId !== activeProjectId,
+    });
   }
 
   const edit = asLabRecord(activeProject["edit"]);
@@ -1224,7 +1262,7 @@ function syncRunModuleFromFeedEvent(state: LabStoreState, event: LabEventFeedIte
 }
 
 function isSourceAction(action: string | null) {
-  return (action || "").startsWith("source-") || (action || "").startsWith("subtitle-source-");
+  return (action || "").startsWith("source-");
 }
 
 function syncSourceProbeFromHostEvent(state: LabStoreState, event: LabEventFeedItem) {
@@ -1247,9 +1285,7 @@ function syncSourceProbeFromHostEvent(state: LabStoreState, event: LabEventFeedI
 function syncPreviewFromHostEvent(state: LabStoreState, event: LabEventFeedItem) {
   if (
     event.action !== "edit-preview" &&
-    event.action !== "subtitle-edit-preview" &&
-    event.action !== "edit-apply" &&
-    event.action !== "subtitle-edit-apply"
+    event.action !== "edit-apply"
   ) {
     return;
   }
@@ -1758,6 +1794,139 @@ function normalizeYoutubeImportCustomSettings(
   };
 }
 
+function normalizeProjectImportKind(value: unknown, fallback: LabProjectImportKind = "video") {
+  return value === "audio" || value === "image" || value === "video" ? value : fallback;
+}
+
+function normalizeProjectImportMethod(
+  value: unknown,
+  kind: LabProjectImportKind,
+  fallback: LabProjectImportMethod = "local"
+): LabProjectImportMethod {
+  if (value === "youtube") {
+    return kind === "video" ? "youtube" : fallback;
+  }
+  if (value === "url" || value === "local") {
+    return value;
+  }
+  return fallback;
+}
+
+function normalizeYoutubeCaptureMode(value: unknown): LabSourceDrafts["youtubeCaptureMode"] {
+  return value === "audio-only" || value === "video-only" ? value : "video+audio";
+}
+
+function normalizeSourceDraftPatch(
+  patch: Partial<LabSourceDrafts>,
+  current: LabSourceDrafts
+): LabSourceDrafts {
+  return {
+    ...current,
+    ...patch,
+    youtubeCustom:
+      patch.youtubeCustom !== undefined
+        ? {
+            ...asLabRecord(current.youtubeCustom),
+            ...asLabRecord(patch.youtubeCustom),
+          }
+        : asLabRecord(current.youtubeCustom),
+    youtubeCaptureMode:
+      patch.youtubeCaptureMode !== undefined
+        ? normalizeYoutubeCaptureMode(patch.youtubeCaptureMode)
+        : normalizeYoutubeCaptureMode(current.youtubeCaptureMode),
+  };
+}
+
+function getProjectImportActiveDraft(state: LabStoreState) {
+  return state.ui.projectImport.drafts[state.ui.projectImport.activeKind];
+}
+
+function syncSourceDraftsFromProjectImport(state: LabStoreState) {
+  state.ui.sourceDrafts = cloneSourceDrafts(getProjectImportActiveDraft(state));
+}
+
+function isPristineSourceDraft(draft: LabSourceDrafts) {
+  return (
+    draft.fileNameHint === "" &&
+    draft.urlInput === "" &&
+    draft.youtubeUrl === "" &&
+    draft.youtubePreset === null &&
+    Object.keys(asLabRecord(draft.youtubeCustom)).length === 0 &&
+    draft.youtubeCaptureMode === "video+audio"
+  );
+}
+
+function syncProjectImportDraftFromSourceDrafts(
+  state: LabStoreState,
+  sourceKind: unknown,
+  options: { force?: boolean } = {}
+) {
+  const kind = normalizeProjectImportKind(sourceKind, state.ui.projectImport.activeKind);
+  if (options.force !== true && !isPristineSourceDraft(state.ui.projectImport.drafts[kind])) {
+    return;
+  }
+  state.ui.projectImport = {
+    ...state.ui.projectImport,
+    drafts: {
+      ...state.ui.projectImport.drafts,
+      [kind]: cloneSourceDrafts(state.ui.sourceDrafts),
+    },
+  };
+}
+
+function updateTrackedProjectImportProbe(
+  state: LabStoreState,
+  action: string,
+  focus: LabProjectImportReviewFocus
+) {
+  if (
+    state.ui.projectImport.lastRequestId === null ||
+    state.ui.projectImport.lastAction !== action
+  ) {
+    return;
+  }
+  state.ui.projectImport = {
+    ...state.ui.projectImport,
+    reviewFocus: focus,
+    lastAction: action,
+  };
+}
+
+function normalizeProjectImportState(
+  value: unknown,
+  current: LabProjectImportUiState = createDefaultProjectImportState()
+): LabProjectImportUiState {
+  const record = asLabRecord(value);
+  const activeKind = normalizeProjectImportKind(record["activeKind"], current.activeKind);
+  const methodsRecord = asLabRecord(record["methods"]);
+  const draftsRecord = asLabRecord(record["drafts"]);
+  const nextMethods: LabProjectImportUiState["methods"] = { ...current.methods };
+  const nextDrafts: LabProjectImportUiState["drafts"] = {
+    video: cloneSourceDrafts(current.drafts.video),
+    audio: cloneSourceDrafts(current.drafts.audio),
+    image: cloneSourceDrafts(current.drafts.image),
+  };
+  (["video", "audio", "image"] as LabProjectImportKind[]).forEach(function (kind) {
+    nextMethods[kind] = normalizeProjectImportMethod(methodsRecord[kind], kind, nextMethods[kind]);
+    nextDrafts[kind] = normalizeSourceDraftPatch(
+      asLabRecord(draftsRecord[kind]) as Partial<LabSourceDrafts>,
+      nextDrafts[kind]
+    );
+  });
+  const reviewFocus = record["reviewFocus"];
+  return {
+    activeKind,
+    methods: nextMethods,
+    drafts: nextDrafts,
+    reviewFocus:
+      reviewFocus === "draft" || reviewFocus === "running" || reviewFocus === "completed"
+        ? reviewFocus
+        : "idle",
+    lastAction: asNonEmptyString(record["lastAction"]),
+    lastRequestId: asNonEmptyString(record["lastRequestId"]),
+  };
+}
+
 function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState {
   switch (event.type) {
     case "enter-youtube-import-mode":
@@ -1818,6 +1987,93 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
     case "youtube-import-clear":
       state.ui.youtubeImport = createIdleYoutubeImportState();
       return state;
+    case "project-import-kind-changed": {
+      const kind = normalizeProjectImportKind(event.kind, state.ui.projectImport.activeKind);
+      state.ui.projectWorkspaceSelectedEntityIds = [];
+      state.ui.projectWorkspaceConfirmReplace = null;
+      state.ui.projectImport = {
+        ...state.ui.projectImport,
+        activeKind: kind,
+        reviewFocus: "draft",
+      };
+      syncSourceDraftsFromProjectImport(state);
+      return state;
+    }
+    case "project-import-method-changed": {
+      const kind = normalizeProjectImportKind(event.kind, state.ui.projectImport.activeKind);
+      const method = normalizeProjectImportMethod(
+        event.method,
+        kind,
+        state.ui.projectImport.methods[kind]
+      );
+      state.ui.projectWorkspaceSelectedEntityIds = [];
+      state.ui.projectWorkspaceConfirmReplace = null;
+      state.ui.projectImport = {
+        ...state.ui.projectImport,
+        activeKind: kind,
+        methods: {
+          ...state.ui.projectImport.methods,
+          [kind]: method,
+        },
+        reviewFocus: "draft",
+      };
+      syncSourceDraftsFromProjectImport(state);
+      return state;
+    }
+    case "project-import-draft-updated": {
+      const kind = normalizeProjectImportKind(event.kind, state.ui.projectImport.activeKind);
+      const currentDraft = state.ui.projectImport.drafts[kind];
+      const nextDraft = normalizeSourceDraftPatch(event.patch, currentDraft);
+      state.ui.projectWorkspaceSelectedEntityIds = [];
+      state.ui.projectWorkspaceConfirmReplace = null;
+      state.ui.projectImport = {
+        ...state.ui.projectImport,
+        activeKind: kind,
+        drafts: {
+          ...state.ui.projectImport.drafts,
+          [kind]: nextDraft,
+        },
+        reviewFocus: "draft",
+      };
+      if (kind === state.ui.projectImport.activeKind) {
+        state.ui.sourceDrafts = cloneSourceDrafts(nextDraft);
+      }
+      state.ui.sourceDraftDirty = true;
+      return state;
+    }
+    case "project-import-cleared": {
+      const kind = normalizeProjectImportKind(event.kind, state.ui.projectImport.activeKind);
+      const nextDrafts = {
+        ...state.ui.projectImport.drafts,
+        [kind]: createDefaultSourceDrafts(),
+      };
+      state.ui.projectWorkspaceSelectedEntityIds = [];
+      state.ui.projectWorkspaceConfirmReplace = null;
+      state.ui.projectImport = {
+        ...state.ui.projectImport,
+        drafts: nextDrafts,
+        reviewFocus: "idle",
+        lastAction: null,
+        lastRequestId: null,
+      };
+      if (kind === state.ui.projectImport.activeKind) {
+        state.ui.sourceDrafts = cloneSourceDrafts(nextDrafts[kind]);
+      }
+      state.ui.sourceDraftDirty = true;
+      return state;
+    }
+    case "project-import-review-focused":
+      state.ui.projectImport = {
+        ...state.ui.projectImport,
+        reviewFocus: event.focus,
+        lastAction:
+          event.action === undefined ? state.ui.projectImport.lastAction : asNonEmptyString(event.action),
+        lastRequestId:
+          event.requestId === undefined
+            ? state.ui.projectImport.lastRequestId
+            : asNonEmptyString(event.requestId),
+      };
+      return state;
     case "hydrate":
       state.ui.labMode = "normal";
       state.ui.youtubeImport = createIdleYoutubeImportState();
@@ -1833,7 +2089,6 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
           youtubeImport?: unknown;
         };
         state.persisted = persistedPayload as LabPersistedState;
-        state.currentStage = normalizeLabStage(event.payload.currentStage, state.currentStage);
         state.featureId = normalizeLabFeatureId(event.payload.featureId, state.featureId);
         state.selectedCapabilities = Array.isArray(event.payload.selectedCapabilities)
           ? (event.payload.selectedCapabilities as unknown[]).filter(
@@ -1871,6 +2126,15 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
           ...state.ui.sourceDrafts,
           ...(event.payload.sourceDrafts || {}),
         };
+        state.ui.projectImport = normalizeProjectImportState(
+          event.payload.projectImport,
+          state.ui.projectImport
+        );
+        if (event.payload.projectImport === undefined || event.payload.projectImport === null) {
+          syncProjectImportDraftFromSourceDrafts(state, asLabRecord(state.source)["kind"], {
+            force: true,
+          });
+        }
         state.ui.editDrafts = {
           ...state.ui.editDrafts,
           ...(event.payload.editDrafts || {}),
@@ -1992,14 +2256,17 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     case "source-probe-started":
       state.sourceProbeStatus = "running";
+      updateTrackedProjectImportProbe(state, event.action, "running");
       healWorkspaceDualPreviewState(state);
       return state;
     case "source-probe-progress":
       state.sourceProbeStatus = "running";
+      updateTrackedProjectImportProbe(state, event.action, "running");
       healWorkspaceDualPreviewState(state);
       return state;
     case "source-probe-completed":
       state.sourceProbeStatus = "completed";
+      updateTrackedProjectImportProbe(state, event.action, "completed");
       state.ui.workspace = {
         ...state.ui.workspace,
         sourceIntakeCollapsed: true,
@@ -2008,6 +2275,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     case "source-probe-failed":
       state.sourceProbeStatus = "failed";
+      updateTrackedProjectImportProbe(state, event.action, "completed");
       state.ui.workspace = {
         ...state.ui.workspace,
         sourceIntakeCollapsed: false,
@@ -2140,11 +2408,6 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       module.message = event.detail || module.message || null;
       return state;
     }
-    case "stage-changed":
-      // Legacy compat: accept the stage value passively but it will be
-      // overwritten by the projection in syncLegacyStage after reduce.
-      state.currentStage = event.stage;
-      return state;
     case "feature-changed":
       state.featureId = event.featureId;
       if (state.snapshot) {
@@ -2202,6 +2465,16 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       state.ui.sourceDrafts = {
         ...state.ui.sourceDrafts,
         ...event.patch,
+      };
+      state.ui.projectImport = {
+        ...state.ui.projectImport,
+        drafts: {
+          ...state.ui.projectImport.drafts,
+          [state.ui.projectImport.activeKind]: normalizeSourceDraftPatch(
+            event.patch,
+            state.ui.projectImport.drafts[state.ui.projectImport.activeKind]
+          ),
+        },
       };
       state.ui.sourceDraftDirty = true;
       return state;
@@ -2873,8 +3146,6 @@ export function createLabStore() {
 
   function dispatch(event: LabStoreEvent) {
     state = reduceEvent(structuredClone(state), event);
-    // Recompute legacy stage from real state after every mutation
-    state.currentStage = deriveLegacyStage(state);
     listeners.forEach(function (listener) {
       listener(state);
     });

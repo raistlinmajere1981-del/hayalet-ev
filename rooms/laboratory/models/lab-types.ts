@@ -25,11 +25,9 @@ export interface LabExpectedOutput {
   assetTypes: LabAssetType[];
 }
 
-/** @deprecated V2.3 uses WorkspaceMode — kept for hydration and internal pipeline compat */
-export type LabStage = "source" | "edit" | "process" | "report";
-
 /** V2.3 workspace mode — replaces stage navigation */
 export type WorkspaceMode = "loading" | "workspace" | "analyzing" | "complete";
+export type LabFeatureStage = "source" | "edit" | "process" | "report";
 export type LabMediaViewportState = "empty" | "loading" | "active" | "error";
 export type LabSourceRetryBlockReason =
   | "active-run"
@@ -736,7 +734,7 @@ export function getIntentIdsForModuleId(moduleId: string | null | undefined): La
   }
   return getIntentIdsForCapabilityFamily(capabilityId);
 }
-export type LabFeatureId = "media-analysis" | "audio-analysis" | "subtitle-analysis";
+export type LabFeatureId = "media-analysis" | "audio-analysis";
 export type LabEventSeverity = "info" | "success" | "warning" | "error";
 export type LabEventScope = "global" | "run";
 export type LabModuleStatus =
@@ -752,7 +750,6 @@ export type LabModuleStatus =
 export type LabSourceProbeStatus = "idle" | "running" | "completed" | "failed";
 export type LabPreflightStatus = "idle" | "ready" | "warning" | "blocked";
 
-export const LAB_STAGES: LabStage[] = ["source", "edit", "process", "report"];
 export const LAB_FEATURES: Array<{
   id: LabFeatureId;
   label: string;
@@ -770,14 +767,6 @@ export const LAB_FEATURES: Array<{
     label: "Ses Analizi",
     shortLabel: "Ses",
     description: "Ses odaklı analiz modülleri ve çıktı takibi.",
-  },
-  {
-    // NOTE: subtitle-analysis is internal transcript support while the public workbench stays unified.
-    id: "subtitle-analysis",
-    label: "Transcript Support",
-    shortLabel: "Transcript",
-    description:
-      "Timestamped transcript artifact support for source intake, cleanup, and reporting.",
   },
 ];
 
@@ -1101,9 +1090,23 @@ export interface LabYoutubeImportState {
   custom: LabYoutubeImportCustomSettings;
 }
 
+export type LabProjectImportKind = "video" | "audio" | "image";
+export type LabProjectImportMethod = "local" | "url" | "youtube";
+export type LabProjectImportReviewFocus = "idle" | "draft" | "running" | "completed";
+
+export interface LabProjectImportUiState {
+  activeKind: LabProjectImportKind;
+  methods: Record<LabProjectImportKind, LabProjectImportMethod>;
+  drafts: Record<LabProjectImportKind, LabSourceDrafts>;
+  reviewFocus: LabProjectImportReviewFocus;
+  lastAction: string | null;
+  lastRequestId: string | null;
+}
+
 export interface LabStoreUiState {
   labMode: LabMode;
   youtubeImport: LabYoutubeImportState;
+  projectImport: LabProjectImportUiState;
   sourceDrafts: LabSourceDrafts;
   editDrafts: LabEditDrafts;
   profileDrafts: LabProfileDrafts;
@@ -1147,7 +1150,6 @@ export interface LabStoreUiState {
 
 export interface LabPersistedState {
   schemaVersion?: number;
-  currentStage: LabStage;
   featureId: LabFeatureId;
   selectedCapabilities: CapabilityFamilyId[];
   projectIndex: {
@@ -1182,10 +1184,10 @@ export interface LabPersistedState {
   rawLogCollapsed?: boolean;
   /** V2.3 workspace state persistence */
   workspace?: Partial<LabWorkspaceUiState>;
+  projectImport?: Partial<LabProjectImportUiState>;
 }
 
 export interface LabStoreState {
-  currentStage: LabStage;
   featureId: LabFeatureId;
   /** Selected capability families — replaces module selection in v2.2 */
   selectedCapabilities: CapabilityFamilyId[];
@@ -1215,7 +1217,7 @@ export interface LabStoreState {
   persisted: LabPersistedState | null;
 }
 
-export interface LabStageSurface {
+export interface LabWorkspaceSurface {
   main: string;
   side: string;
 }
@@ -1231,6 +1233,16 @@ export type LabStoreEvent =
   | { type: "youtube-import-set-strategy"; strategy: LabYoutubeImportStrategy }
   | { type: "youtube-import-custom-updated"; patch: Partial<LabYoutubeImportCustomSettings> }
   | { type: "youtube-import-clear" }
+  | { type: "project-import-kind-changed"; kind: LabProjectImportKind }
+  | { type: "project-import-method-changed"; kind?: LabProjectImportKind; method: LabProjectImportMethod }
+  | { type: "project-import-draft-updated"; kind?: LabProjectImportKind; patch: Partial<LabSourceDrafts> }
+  | { type: "project-import-cleared"; kind?: LabProjectImportKind }
+  | {
+      type: "project-import-review-focused";
+      focus: LabProjectImportReviewFocus;
+      action?: string | null;
+      requestId?: string | null;
+    }
   | { type: "bootstrap-ready-sent" }
   | { type: "context-received"; payload: LabRecord }
   | { type: "snapshot-received"; payload: LabRecord }
@@ -1268,7 +1280,6 @@ export type LabStoreEvent =
   | { type: "module-finished"; action: string; moduleId: string; detail?: string | null }
   | { type: "module-failed"; action: string; moduleId: string; detail?: string | null }
   | { type: "module-skipped"; action: string; moduleId: string; detail?: string | null }
-  | { type: "stage-changed"; stage: LabStage }
   | { type: "feature-changed"; featureId: LabFeatureId }
   | { type: "workbench-updated"; workbench: LabRecord }
   | { type: "source-config-patched"; patch: LabRecord }
@@ -1495,15 +1506,11 @@ export function createLabEventId(prefix: string): string {
 }
 
 export function isLabFeatureId(value: unknown): value is LabFeatureId {
-  return value === "media-analysis" || value === "audio-analysis" || value === "subtitle-analysis";
+  return value === "media-analysis" || value === "audio-analysis";
 }
 
 export function normalizeLabFeatureId(value: unknown, fallback: LabFeatureId = "media-analysis") {
   return isLabFeatureId(value) ? value : fallback;
-}
-
-export function normalizeLabStage(value: unknown, fallback: LabStage = "source"): LabStage {
-  return LAB_STAGES.includes(value as LabStage) ? (value as LabStage) : fallback;
 }
 
 export function formatStatusLabel(value: unknown): string {

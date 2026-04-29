@@ -4,7 +4,6 @@ function asNonEmptyString(value: unknown): string | null {
 
 const MEDIA_FEATURE_ID = "media-analysis";
 const AUDIO_FEATURE_ID = "audio-analysis";
-const SUBTITLE_FEATURE_ID = "subtitle-analysis";
 
 export function getProjectDir(
   runtime: { paths: { projectsDir: string } },
@@ -25,13 +24,6 @@ export function getProjectSourceDir(
   project: { slug: string }
 ): string {
   return `${getProjectDir(runtime, project)}/source`;
-}
-
-export function getProjectSubtitleSourceDir(
-  runtime: { paths: { projectsDir: string } },
-  project: { slug: string }
-): string {
-  return `${getProjectSourceDir(runtime, project)}/subtitles`;
 }
 
 export function getProjectMainFunctionsDir(
@@ -72,13 +64,6 @@ export function getProjectEditDir(
   return getProjectFeatureStageDir(runtime, project, MEDIA_FEATURE_ID, "edit");
 }
 
-export function getProjectSubtitleEditDir(
-  runtime: { paths: { projectsDir: string } },
-  project: { slug: string }
-): string {
-  return getProjectFeatureStageDir(runtime, project, SUBTITLE_FEATURE_ID, "edit");
-}
-
 export function getProjectEditPreviewDir(
   runtime: { paths: { projectsDir: string } },
   project: { slug: string }
@@ -86,25 +71,11 @@ export function getProjectEditPreviewDir(
   return `${getProjectEditDir(runtime, project)}/preview`;
 }
 
-export function getProjectSubtitleEditPreviewDir(
-  runtime: { paths: { projectsDir: string } },
-  project: { slug: string }
-): string {
-  return `${getProjectSubtitleEditDir(runtime, project)}/preview`;
-}
-
 export function getProjectEditOutputDir(
   runtime: { paths: { projectsDir: string } },
   project: { slug: string }
 ): string {
   return `${getProjectEditDir(runtime, project)}/output`;
-}
-
-export function getProjectSubtitleEditOutputDir(
-  runtime: { paths: { projectsDir: string } },
-  project: { slug: string }
-): string {
-  return `${getProjectSubtitleEditDir(runtime, project)}/output`;
 }
 
 export function getProjectEditManifestPath(
@@ -148,13 +119,6 @@ export function getProjectProcessDir(
   project: { slug: string }
 ): string {
   return getProjectFeatureProcessDir(runtime, project, MEDIA_FEATURE_ID);
-}
-
-export function getProjectSubtitleProcessDir(
-  runtime: { paths: { projectsDir: string } },
-  project: { slug: string }
-): string {
-  return getProjectFeatureProcessDir(runtime, project, SUBTITLE_FEATURE_ID);
 }
 
 export function getProjectFeatureProcessManifestPath(
@@ -209,7 +173,6 @@ export function getProjectDirectoryList(
   return [
     getProjectDir(runtime, project),
     getProjectSourceDir(runtime, project),
-    getProjectSubtitleSourceDir(runtime, project),
     getProjectMainFunctionsDir(runtime, project),
     getProjectFeatureDir(runtime, project, MEDIA_FEATURE_ID),
     getProjectEditDir(runtime, project),
@@ -218,16 +181,10 @@ export function getProjectDirectoryList(
     getProjectProfileDir(runtime, project),
     getProjectProfilePreflightDir(runtime, project),
     getProjectProcessDir(runtime, project),
-    getProjectSubtitleProcessDir(runtime, project),
     getProjectReportDir(runtime, project),
     getProjectFeatureDir(runtime, project, AUDIO_FEATURE_ID),
     getAudioAnalysisProcessRootDir(runtime, project),
     getProjectFeatureReportDir(runtime, project, AUDIO_FEATURE_ID),
-    getProjectFeatureDir(runtime, project, SUBTITLE_FEATURE_ID),
-    getProjectSubtitleEditDir(runtime, project),
-    getProjectSubtitleEditPreviewDir(runtime, project),
-    getProjectSubtitleEditOutputDir(runtime, project),
-    getProjectFeatureReportDir(runtime, project, SUBTITLE_FEATURE_ID),
   ];
 }
 
@@ -236,23 +193,17 @@ export function getProjectDirectoryFallbackMarkerList(
   project: { slug: string }
 ): string[] {
   return [
-    getProjectSubtitleSourceDir(runtime, project),
     getProjectSourceDir(runtime, project),
     getProjectMainFunctionsDir(runtime, project),
     getProjectFeatureDir(runtime, project, MEDIA_FEATURE_ID),
     getProjectEditPreviewDir(runtime, project),
     getProjectEditOutputDir(runtime, project),
     getProjectProfilePreflightDir(runtime, project),
-    getProjectSubtitleEditPreviewDir(runtime, project),
-    getProjectSubtitleEditOutputDir(runtime, project),
     getProjectProcessDir(runtime, project),
     getProjectFeatureDir(runtime, project, AUDIO_FEATURE_ID),
     getAudioAnalysisProcessRootDir(runtime, project),
-    getProjectSubtitleProcessDir(runtime, project),
     getProjectReportDir(runtime, project),
     getProjectFeatureReportDir(runtime, project, AUDIO_FEATURE_ID),
-    getProjectFeatureDir(runtime, project, SUBTITLE_FEATURE_ID),
-    getProjectFeatureReportDir(runtime, project, SUBTITLE_FEATURE_ID),
   ];
 }
 

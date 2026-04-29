@@ -80,23 +80,6 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
     buildReportMarkdown,
   } = deps;
 
-  function buildSupplementalArtifactExports(reportRecord: LaboratoryFeatureReportRecord) {
-    const artifacts = Array.isArray(reportRecord.artifacts) ? reportRecord.artifacts : [];
-    return artifacts
-      .filter(function (entry) {
-        const kind = typeof entry["kind"] === "string" ? entry["kind"] : "";
-        return kind === "subtitle-ai-payload" || kind === "subtitle-channel-batch";
-      })
-      .map(function (entry) {
-        return normalizeReportExport({
-          format: "json",
-          path: entry["path"],
-          fileName: entry["fileName"],
-          status: "ready",
-        });
-      });
-  }
-
   async function exportFeatureReport(
     api: unknown,
     runtime: unknown,
@@ -158,8 +141,6 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
         fileName: aiFileName,
         status: "ready",
       });
-      const supplementalExports = buildSupplementalArtifactExports(reportRecord);
-
       await patchActiveProject(runtime, function (nextProject) {
         const nextReportRecord = composeFeatureReport(runtime, nextProject, featureId);
         const currentReportRecord = getFeatureReportRecord(nextProject, featureId);
@@ -167,7 +148,6 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
           ? currentReportRecord.exports
           : [];
         const nextExportEntries = [userExportEntry, aiExportEntry]
-          .concat(supplementalExports)
           .concat(currentExports)
           .reduce<LaboratoryReportExportEntry[]>(function (accumulator, entry) {
             const candidate = normalizeReportExport(entry);

@@ -21,7 +21,6 @@ import { createLabI18n } from "../ui/lab-i18n.js";
 import { formatSourceRetryBlockReason } from "../ui/lab-source-retry-copy.js";
 import {
   getActionOutputs,
-  deriveLegacyStage,
   getActiveEditOutput,
   getAnalysisActionBlockReason,
   getCurrentRun,
@@ -35,6 +34,7 @@ import {
   getSourceProbeStatus,
   getSourceRetryBlockReason,
   getSourceStatus,
+  getToolLifecycleStage,
   getUserActions,
   getWaveformTimelineModel,
   getWorkbench,
@@ -60,6 +60,11 @@ import {
   toStringArray,
   toStringValue,
 } from "./controller/lab-controller-helpers.js";
+import {
+  buildProjectImportHostAction,
+  normalizeProjectImportKindValue,
+  normalizeProjectImportMethodValue,
+} from "./lab-project-import.js";
 
 type LabRoomApi = {
   onHostMessage?: (listener: (message: unknown) => void) => void;
@@ -900,6 +905,42 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     }
   }
 
+  function buildProjectImportDraftPatch(
+    state: ReturnType<typeof deps.store.getState>,
+    field: string,
+    value: unknown
+  ): Partial<LabSourceDrafts> | null {
+    const currentDrafts = state.ui.projectImport.drafts[state.ui.projectImport.activeKind];
+    switch (field) {
+      case "project-import.fileNameHint":
+        return {
+          fileNameHint: typeof value === "string" ? value : "",
+        };
+      case "project-import.urlInput":
+        return {
+          urlInput: typeof value === "string" ? value : "",
+        };
+      case "project-import.youtubeUrl":
+        return {
+          youtubeUrl: typeof value === "string" ? value : "",
+        };
+      default:
+        if (field.startsWith("project-import.youtubeCustom.")) {
+          const customField = field.replace("project-import.youtubeCustom.", "");
+          const presetId =
+            asNonEmptyString(currentDrafts.youtubePreset) || getDefaultYoutubePreset(state);
+          return {
+            youtubeCustom: {
+              ...getYoutubePresetDefaults(state, presetId),
+              ...asLabRecord(currentDrafts.youtubeCustom),
+              [customField]: value,
+            },
+          };
+        }
+        return null;
+    }
+  }
+
   function persistSourceDraftField(field: string, value: unknown) {
     const state = deps.store.getState();
     if (getWorkspaceLockState(state).source === true) {
@@ -923,7 +964,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     const state = deps.store.getState();
     if (projectValue === "new") {
       const resetSourceState = buildEmptySourceState(state);
-      // Reset real source state first; legacy stage is projected automatically
       dispatch({
         type: "source-config-patched",
         patch: resetSourceState,
@@ -1208,6 +1248,39 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     startProbe("source-pick-local", { fields });
   }
 
+  function runProjectImportAdd() {
+    const state = deps.store.getState();
+    if (getWorkspaceLockState(state).source === true || isRunActive(state)) {
+      pushLockedWorkspaceEvent("Kaynak ayarları aktif analiz sırasında kilitli.");
+      return;
+    }
+    const importAction = buildProjectImportHostAction(state);
+    if (importAction.disabledReason !== null) {
+      dispatch({
+        type: "push-event",
+        event: buildUiEvent(importAction.disabledReason, "warning"),
+      });
+      return;
+    }
+    const requestId = sendMediaAction(importAction.action, { fields: importAction.fields });
+    dispatch({
+      type: "project-import-review-focused",
+      focus: requestId === null ? "draft" : "running",
+      action: importAction.action,
+      requestId,
+    });
+  }
+
+  function clearProjectImportDraft() {
+    const state = deps.store.getState();
+    const route = state.ui.projectImport;
+    clearYoutubeImportParseTimer();
+    dispatch({ type: "project-import-cleared", kind: route.activeKind });
+    if (route.activeKind === "video" && route.methods.video === "youtube") {
+      dispatch({ type: "youtube-import-clear" });
+    }
+  }
+
   function getRetrySourceFields(state: ReturnType<typeof deps.store.getState>) {
     const source = asLabRecord(state.source);
     const drafts = state.ui.sourceDrafts;
@@ -1325,7 +1398,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       return;
     }
 
-    // Source action — default fallback
+    // Source action — default route
     runSourcePrimaryAction();
   }
 
@@ -2028,13 +2101,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       return;
     }
 
-    const stageButton = target.closest<HTMLElement>("[data-lab-stage]");
-    if (stageButton) {
-      // Neutralized: stage clicks are legacy-only compat.
-      // The store projection via deriveLegacyStage() owns currentStage.
-      return;
-    }
-
     const actionButton = target.closest<HTMLElement>("[data-lab-action]");
     if (!actionButton) {
       return;
@@ -2052,6 +2118,27 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           return;
         }
         runSourcePrimaryAction();
+        return;
+      case "project-import-kind": {
+        const kind = normalizeProjectImportKindValue(value);
+        if (kind !== null) {
+          dispatch({ type: "project-import-kind-changed", kind });
+        }
+        return;
+      }
+      case "project-import-method": {
+        const activeKind = deps.store.getState().ui.projectImport.activeKind;
+        const method = normalizeProjectImportMethodValue(value, activeKind);
+        if (method !== null) {
+          dispatch({ type: "project-import-method-changed", kind: activeKind, method });
+        }
+        return;
+      }
+      case "project-import-clear":
+        clearProjectImportDraft();
+        return;
+      case "project-import-add":
+        runProjectImportAdd();
         return;
       case "source-probe-retry":
         runSourceRetryAction();
@@ -2115,7 +2202,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         return;
       case "tool-update-all":
         sendMediaAction("tool-update-all", {
-          featureStage: deriveLegacyStage(state),
+          featureStage: getToolLifecycleStage(state),
           actionFamily: "tool-lifecycle",
         });
         return;
@@ -2127,7 +2214,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         }
         sendMediaAction(action, {
           toolId: value,
-          featureStage: deriveLegacyStage(state),
+          featureStage: getToolLifecycleStage(state),
           actionFamily: "tool-lifecycle",
         });
         return;
@@ -2230,7 +2317,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
             };
           });
         }
-        // Seed editable workspace state; legacy stage is projected automatically
         dispatch({ type: "preview-artifact-activated", artifactId: null });
         dispatch({ type: "report-overlay-toggled", open: false });
         return;
@@ -2546,7 +2632,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         return;
       }
       case "toggle-report-view":
-        // Report overlay controls report UI; legacy stage is projected automatically
         dispatch({ type: "report-overlay-toggled", open: true });
         return;
       case "open-report-overlay":
@@ -2665,6 +2750,32 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
     if (field === "youtube-import.url") {
       scheduleYoutubeImportParse(target.value || "");
+      return;
+    }
+
+    if (field.startsWith("project-import.")) {
+      if (isWorkspaceMutationLocked("source")) {
+        pushLockedWorkspaceEvent("Kaynak ayarları aktif analiz sırasında kilitli.");
+        return;
+      }
+      const rawValue =
+        target instanceof HTMLInputElement && target.type === "checkbox"
+          ? target.checked
+          : target instanceof HTMLInputElement && target.type === "number"
+            ? target.value === ""
+              ? null
+              : Number(target.value)
+            : target.value;
+      const patch = buildProjectImportDraftPatch(deps.store.getState(), field, rawValue);
+      if (patch !== null) {
+        dispatch({
+          type: "project-import-draft-updated",
+          patch,
+        });
+        if (field === "project-import.youtubeUrl") {
+          scheduleYoutubeImportParse(String(rawValue || ""));
+        }
+      }
       return;
     }
 
@@ -2949,6 +3060,25 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           search: String(targetValue || ""),
         });
         return;
+      case "project-import.fileNameHint":
+      case "project-import.urlInput":
+      case "project-import.youtubeUrl": {
+        if (isWorkspaceMutationLocked("source")) {
+          pushLockedWorkspaceEvent("Kaynak ayarları aktif analiz sırasında kilitli.");
+          return;
+        }
+        const patch = buildProjectImportDraftPatch(state, field, targetValue);
+        if (patch !== null) {
+          dispatch({
+            type: "project-import-draft-updated",
+            patch,
+          });
+          if (field === "project-import.youtubeUrl") {
+            scheduleYoutubeImportParse(String(targetValue || ""));
+          }
+        }
+        return;
+      }
       case "source.kind":
         if (isWorkspaceMutationLocked("source")) {
           pushLockedWorkspaceEvent("Kaynak ayarları aktif analiz sırasında kilitli.");

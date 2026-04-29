@@ -224,9 +224,6 @@ test("installed laboratory manifest exposes one workbench hotspot while legacy f
     const audioFeature = Array.isArray(manifest.features)
       ? manifest.features.find((feature) => feature.id === "audio-analysis")
       : null;
-    const subtitleFeature = Array.isArray(manifest.features)
-      ? manifest.features.find((feature) => feature.id === "subtitle-analysis")
-      : null;
 
     assert.equal(manifest.workbench?.experienceId, "analysis-workbench");
     assert.equal(mediaFeature?.scene?.hotspot?.id, "laboratory-media-analysis");
@@ -236,7 +233,6 @@ test("installed laboratory manifest exposes one workbench hotspot while legacy f
       "main-functions/media-analysis/assets/media-analysis-view.webp"
     );
     assert.equal(audioFeature?.scene, undefined);
-    assert.equal(subtitleFeature?.scene, undefined);
   } finally {
     await installedCopy.cleanup();
   }

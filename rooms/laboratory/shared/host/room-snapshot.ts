@@ -12,7 +12,6 @@ interface SnapshotRecord extends Record<string, unknown> {
   edit?: unknown;
   profile?: unknown;
   audioAnalysis?: unknown;
-  subtitleAnalysis?: unknown;
   process?: unknown;
   report?: unknown;
   routeLabel?: unknown;
@@ -64,12 +63,6 @@ interface SnapshotRecord extends Record<string, unknown> {
   profilePresets?: unknown;
   profileCapabilities?: unknown;
   profileModels?: unknown;
-  subtitleSourcePresets?: unknown;
-  subtitleYoutubeForm?: unknown;
-  subtitleEditPresets?: unknown;
-  subtitleAnalysisCatalog?: unknown;
-  subtitleAnalysisCapabilities?: unknown;
-  subtitleAnalysisProviders?: unknown;
   visualAnalysisCatalog?: unknown;
   visualAnalysisCapabilities?: unknown;
   visualAnalysisProviders?: unknown;
@@ -97,7 +90,6 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
     featureIds,
     mediaStages,
     audioFeatureId,
-    subtitleFeatureId,
     getFeatureProcessRecord,
     getFeatureReportRecord,
     getRuntimeToolIds,
@@ -106,7 +98,6 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
     mediaFeatureId,
     normalizeAudioAnalysisModuleResult,
     normalizeAudioAnalysisState,
-    normalizeSubtitleAnalysisState,
     roomId,
     syncProjectFeatureProjections,
     toFileUrl,
@@ -118,7 +109,6 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
     featureIds: string[];
     mediaStages: string[];
     audioFeatureId: string;
-    subtitleFeatureId: string;
     getFeatureProcessRecord: (project: SnapshotRecord, featureId: string) => SnapshotRecord;
     getFeatureReportRecord: (project: SnapshotRecord, featureId: string) => SnapshotRecord;
     getRuntimeToolIds: (runtime: SnapshotRecord) => string[];
@@ -131,7 +121,6 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
       extra: Record<string, unknown>
     ) => SnapshotRecord;
     normalizeAudioAnalysisState: (rawValue: unknown, runtime: SnapshotRecord) => SnapshotRecord;
-    normalizeSubtitleAnalysisState: (rawValue: unknown, runtime: SnapshotRecord) => SnapshotRecord;
     roomId: string;
     syncProjectFeatureProjections: (runtime: SnapshotRecord, project: SnapshotRecord) => void;
     toFileUrl: (path: unknown) => string;
@@ -157,14 +146,11 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
     const audioProcess = getFeatureProcessRecord(project, audioFeatureId);
     const mediaReport = getFeatureReportRecord(project, mediaFeatureId);
     const audioReport = getFeatureReportRecord(project, audioFeatureId);
-    const subtitleProcess = getFeatureProcessRecord(project, subtitleFeatureId);
-    const subtitleReport = getFeatureReportRecord(project, subtitleFeatureId);
     const projectSource = toRecord(project.source);
     const projectEdit = toRecord(project.edit);
     const projectProfile = toRecord(project.profile);
     const profilePreflight = toRecord(projectProfile.preflight);
     const audioAnalysis = toRecord(project.audioAnalysis);
-    const subtitleAnalysis = toRecord(project.subtitleAnalysis);
     const workbench = toRecord(project.workbench);
     const assets = Array.isArray(project.assets) ? project.assets : [];
 
@@ -192,11 +178,6 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
       audioProcessStatus: audioProcess.status,
       audioReportStatus: audioReport.status,
       audioModuleCount: Object.keys(toRecord(audioAnalysis.results)).length,
-      subtitleProcessStatus: subtitleProcess.status,
-      subtitleReportStatus: subtitleReport.status,
-      subtitleEntryCount: Array.isArray(subtitleAnalysis.entries)
-        ? (subtitleAnalysis.entries as unknown[]).length
-        : 0,
       assetCount: assets.length,
       workbench: clone(workbench),
     };
@@ -212,8 +193,6 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
     const projectEditPreview = toRecord(projectEdit.preview);
     const projectProfile = toRecord(project.profile);
     const audioAnalysis = normalizeAudioAnalysisState(project.audioAnalysis, runtime);
-    const subtitleAnalysis = normalizeSubtitleAnalysisState(project.subtitleAnalysis, runtime);
-    const subtitleEdit = toRecord(subtitleAnalysis.edit);
     const workbench = toRecord(project.workbench);
     const assets = (Array.isArray(project.assets) ? (project.assets as unknown[]) : [])
       .map(function (entry: unknown) {
@@ -308,41 +287,6 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
           ...(clone(toRecord(audioAnalysis.export)) as Record<string, unknown>),
           items: (Array.isArray(toRecord(audioAnalysis.export).items)
             ? (toRecord(audioAnalysis.export).items as unknown[])
-            : []
-          ).map(function (entry: unknown) {
-            return {
-              ...(clone(entry) as Record<string, unknown>),
-              fileUrl: toFileUrl(toRecord(entry).path),
-            };
-          }),
-        },
-      },
-      subtitleAnalysis: {
-        ...(clone(subtitleAnalysis) as Record<string, unknown>),
-        entries: (Array.isArray(subtitleAnalysis.entries) ? subtitleAnalysis.entries : []).map(
-          function (entry: unknown) {
-            return {
-              ...(clone(entry) as Record<string, unknown>),
-              fileUrl: toFileUrl(toRecord(entry).path),
-            };
-          }
-        ),
-        edit: {
-          ...(clone(subtitleAnalysis.edit) as Record<string, unknown>),
-          outputs: (Array.isArray(subtitleEdit.outputs)
-            ? (subtitleEdit.outputs as unknown[])
-            : []
-          ).map(function (entry: unknown) {
-            return {
-              ...(clone(entry) as Record<string, unknown>),
-              fileUrl: toFileUrl(toRecord(entry).path),
-            };
-          }),
-        },
-        export: {
-          ...(clone(toRecord(subtitleAnalysis.export)) as Record<string, unknown>),
-          items: (Array.isArray(toRecord(subtitleAnalysis.export).items)
-            ? (toRecord(subtitleAnalysis.export).items as unknown[])
             : []
           ).map(function (entry: unknown) {
             return {
@@ -542,12 +486,6 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
       profilePresets: clone(runtimeRecord.profilePresets || {}),
       profileCapabilities: clone(runtimeRecord.profileCapabilities || {}),
       profileModels: clone(runtimeRecord.profileModels || {}),
-      subtitleSourcePresets: clone(runtimeRecord.subtitleSourcePresets || {}),
-      subtitleYoutubeForm: clone(runtimeRecord.subtitleYoutubeForm || {}),
-      subtitleEditPresets: clone(runtimeRecord.subtitleEditPresets || {}),
-      subtitleAnalysisCatalog: clone(runtimeRecord.subtitleAnalysisCatalog || {}),
-      subtitleAnalysisCapabilities: clone(runtimeRecord.subtitleAnalysisCapabilities || {}),
-      subtitleAnalysisProviders: clone(runtimeRecord.subtitleAnalysisProviders || {}),
       visualAnalysisCatalog: clone(runtimeRecord.visualAnalysisCatalog || {}),
       visualAnalysisCapabilities: clone(runtimeRecord.visualAnalysisCapabilities || {}),
       visualAnalysisProviders: clone(runtimeRecord.visualAnalysisProviders || {}),

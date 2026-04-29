@@ -139,12 +139,6 @@ type LaboratoryRuntimeState = {
   roomToolsProgressHandler: unknown;
   roomToolsSubscribed: boolean;
   sourcePresets: unknown;
-  subtitleAnalysisCapabilities: unknown;
-  subtitleAnalysisCatalog: unknown;
-  subtitleAnalysisProviders: unknown;
-  subtitleEditPresets: unknown;
-  subtitleSourcePresets: unknown;
-  subtitleYoutubeForm: unknown;
   toolState: LaboratoryToolState;
   toolchainManifest: LaboratoryRecord | null;
   visualAnalysisCapabilities: unknown;
@@ -414,12 +408,6 @@ export function createLaboratoryRuntimeBootstrap(deps: LaboratoryRuntimeBootstra
       profilePresets: null,
       profileCapabilities: null,
       profileModels: null,
-      subtitleSourcePresets: null,
-      subtitleYoutubeForm: null,
-      subtitleEditPresets: null,
-      subtitleAnalysisCatalog: null,
-      subtitleAnalysisCapabilities: null,
-      subtitleAnalysisProviders: null,
       visualAnalysisCatalog: null,
       visualAnalysisCapabilities: null,
       visualAnalysisProviders: null,

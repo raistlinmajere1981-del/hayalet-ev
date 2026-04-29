@@ -29,7 +29,7 @@ import type {
   LabSelectionIntent,
   LabSourceRetryBlockReason,
   LabSuggestionPreview,
-  LabStage,
+  LabFeatureStage,
   LabStoreState,
   LabRightPanelContext,
   LabUserActionEvent,
@@ -704,68 +704,7 @@ export function isExpectedOutputMatched(
   });
 }
 
-/** @deprecated Use condition-driven readiness selectors instead (getSourceActionBlockReason, getEditActionBlockReason, etc.) */
-export function getStageBlockReason(state: LabStoreState, stage: LabStage): string | null {
-  const source = getProjectSource(state);
-  const preflight = getCurrentPreflight(state);
-  const reports = getCurrentReports(state);
-  const reportStatus = asNonEmptyString(getCurrentFeatureReportRecord(state)["status"]);
-  const probeStatus = getSourceProbeStatus(state);
-
-  if (stage === "source") {
-    return null;
-  }
-  if (stage === "edit") {
-    if (Object.keys(source).length === 0) {
-      return "Önce kaynak seçilmelidir.";
-    }
-    if (probeStatus === "running") {
-      return "Kaynak probe işlemi tamamlanmadı.";
-    }
-    if (probeStatus === "failed") {
-      return "Kaynak probe hata verdi.";
-    }
-    if (probeStatus !== "completed") {
-      return "Kaynak probe tamamlanmalı.";
-    }
-    return null;
-  }
-  if (stage === "process") {
-    if (probeStatus !== "completed") {
-      return "Analizden önce kaynak probe tamamlanmalı.";
-    }
-    if (preflight.status === "blocked") {
-      if (preflight.missingDependencies.length > 0) {
-        return `Eksik dependency: ${preflight.missingDependencies.join(", ")}`;
-      }
-      return "Ön kontrol bu aşamayı blokladı.";
-    }
-    if (preflight.stageReady !== true) {
-      return "Ön kontrol henüz hazır değil.";
-    }
-    return null;
-  }
-  if (stage === "report") {
-    if (
-      reports.user !== null ||
-      reports.ai !== null ||
-      reportStatus === "ready" ||
-      reportStatus === "stale"
-    ) {
-      return null;
-    }
-    return "Rapor henüz üretilmedi.";
-  }
-  return "Bu aşama henüz hazır değil.";
-}
-
-/** @deprecated Use condition-driven readiness selectors instead */
-export function canAdvanceToStage(state: LabStoreState, stage: LabStage) {
-  return getStageBlockReason(state, stage) === null;
-}
-
-export function getPrimaryActionLabel(state: LabStoreState, _stage: LabStage) {
-  // Condition-driven: _stage parameter is accepted for compat but real state decides
+export function getPrimaryActionLabel(state: LabStoreState) {
   const sourceProbeStatus = getSourceProbeStatus(state);
 
   if (hasReportPayload(state) && (state.ui.workspace.reportOverlayOpen || isRunComplete(state))) {
@@ -2304,10 +2243,6 @@ export function isWorkspaceDirty(state: LabStoreState): boolean {
   return getWorkspaceDiff(state)?.workspaceDirty === true;
 }
 
-// ---------------------------------------------------------------------------
-// Legacy stage projection — single authoritative derivation for currentStage
-// ---------------------------------------------------------------------------
-
 export function resolveDrawerMode(state: LabStoreState): LabDrawerMode {
   if (isRunActive(state)) return "running";
   const run = getCurrentRun(state);
@@ -2386,7 +2321,7 @@ export function buildIntentPreviewSentence(state: LabStoreState): string {
   return `Bu analiz ${scopeLabel} üzerinde ${actions} ${uniqueOutputs.join(", ")} tespit edecek.${hypothesisAppend}`;
 }
 
-export function deriveLegacyStage(state: LabStoreState): LabStage {
+export function getToolLifecycleStage(state: LabStoreState): LabFeatureStage {
   if (state.ui.workspace.reportOverlayOpen && hasReportPayload(state)) {
     return "report";
   }

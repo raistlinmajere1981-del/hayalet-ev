@@ -435,10 +435,6 @@ const ACTION_LABELS: Record<string, RuntimeCopyDescriptor> = {
     key: "mediaAnalysis.runtime.actions.editPreview",
     fallback: "Preparing preview",
   },
-  "subtitle-edit-preview": {
-    key: "mediaAnalysis.runtime.actions.editPreview",
-    fallback: "Preparing preview",
-  },
   "profile-run-preflight": {
     key: "mediaAnalysis.runtime.actions.runPreflight",
     fallback: "Running preflight",

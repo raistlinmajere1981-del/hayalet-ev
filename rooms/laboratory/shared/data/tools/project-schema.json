@@ -12,11 +12,13 @@
       "edit",
       "profile",
       "audioAnalysis",
-      "subtitleAnalysis",
       "process",
       "report"
     ],
-    "optional": ["workbench", "assets"],
+    "optional": [
+      "workbench",
+      "assets"
+    ],
     "workbench": {
       "required": [
         "schemaVersion",
@@ -36,7 +38,12 @@
       ]
     },
     "source": {
-      "required": ["kind", "mode", "status", "drafts"],
+      "required": [
+        "kind",
+        "mode",
+        "status",
+        "drafts"
+      ],
       "optional": [
         "storedPath",
         "storedFileName",
@@ -47,10 +54,24 @@
         "metadata",
         "metadataError"
       ],
-      "kinds": ["video", "audio", "image"],
-      "videoModes": ["youtube", "local", "url"],
-      "audioModes": ["local", "url"],
-      "imageModes": ["local", "url"],
+      "kinds": [
+        "video",
+        "audio",
+        "image"
+      ],
+      "videoModes": [
+        "youtube",
+        "local",
+        "url"
+      ],
+      "audioModes": [
+        "local",
+        "url"
+      ],
+      "imageModes": [
+        "local",
+        "url"
+      ],
       "metadata": {
         "optional": [
           "durationSeconds",
@@ -71,7 +92,12 @@
     },
     "assets": {
       "item": {
-        "required": ["id", "type", "name", "createdAt"],
+        "required": [
+          "id",
+          "type",
+          "name",
+          "createdAt"
+        ],
         "optional": [
           "url",
           "localPath",
@@ -82,7 +108,15 @@
           "intentIds",
           "metadata"
         ],
-        "types": ["source", "clip", "frame", "audio", "image", "report", "artifact"]
+        "types": [
+          "source",
+          "clip",
+          "frame",
+          "audio",
+          "image",
+          "report",
+          "artifact"
+        ]
       }
     },
     "edit": {
@@ -96,11 +130,23 @@
         "recipe",
         "outputs"
       ],
-      "optional": ["lastError", "lastActionAt"],
-      "modes": ["beginner", "advanced"],
-      "handoffModes": ["source", "derived"],
+      "optional": [
+        "lastError",
+        "lastActionAt"
+      ],
+      "modes": [
+        "beginner",
+        "advanced"
+      ],
+      "handoffModes": [
+        "source",
+        "derived"
+      ],
       "preview": {
-        "required": ["status", "outputId"],
+        "required": [
+          "status",
+          "outputId"
+        ],
         "optional": [
           "jobId",
           "requestId",
@@ -115,7 +161,12 @@
         ]
       },
       "recipe": {
-        "required": ["common", "video", "audio", "image"],
+        "required": [
+          "common",
+          "video",
+          "audio",
+          "image"
+        ],
         "common": {
           "required": [
             "focusRegionId",
@@ -137,7 +188,9 @@
             "includeAudio",
             "blurFocusOutside"
           ],
-          "optional": ["frameGrabCount"]
+          "optional": [
+            "frameGrabCount"
+          ]
         },
         "audio": {
           "required": [
@@ -178,7 +231,12 @@
             "recipeSignature",
             "metadata"
           ],
-          "optional": ["label", "jobId", "sourcePath", "artifacts"]
+          "optional": [
+            "label",
+            "jobId",
+            "sourcePath",
+            "artifacts"
+          ]
         }
       }
     },
@@ -203,13 +261,35 @@
         "signals",
         "artifacts"
       ],
-      "optional": ["lastError", "lastActionAt"],
-      "modes": ["beginner", "advanced"],
-      "targetAssetModes": ["source", "derived"],
-      "depthModes": ["quick", "balanced", "deep"],
-      "frameSampleDensityModes": ["sparse", "balanced", "dense"],
+      "optional": [
+        "lastError",
+        "lastActionAt"
+      ],
+      "modes": [
+        "beginner",
+        "advanced"
+      ],
+      "targetAssetModes": [
+        "source",
+        "derived"
+      ],
+      "depthModes": [
+        "quick",
+        "balanced",
+        "deep"
+      ],
+      "frameSampleDensityModes": [
+        "sparse",
+        "balanced",
+        "dense"
+      ],
       "artifactPreferences": {
-        "required": ["metadata", "frame-strip", "spectrogram", "transcript"]
+        "required": [
+          "metadata",
+          "frame-strip",
+          "spectrogram",
+          "transcript"
+        ]
       },
       "laneSelection": {
         "required": [
@@ -221,25 +301,65 @@
         ]
       },
       "readiness": {
-        "required": ["stageReady", "requiredTools", "optionalTools", "models", "blockers", "warnings"]
+        "required": [
+          "stageReady",
+          "requiredTools",
+          "optionalTools",
+          "models",
+          "blockers",
+          "warnings"
+        ]
       },
       "estimate": {
-        "required": ["runtimeSeconds", "artifactCount", "sampleWindowSeconds"]
+        "required": [
+          "runtimeSeconds",
+          "artifactCount",
+          "sampleWindowSeconds"
+        ]
       },
       "preflight": {
-        "required": ["status", "jobId", "requestId", "ranAt", "targetSummary", "warnings"],
-        "optional": ["error"]
+        "required": [
+          "status",
+          "jobId",
+          "requestId",
+          "ranAt",
+          "targetSummary",
+          "warnings"
+        ],
+        "optional": [
+          "error"
+        ]
       },
       "signals": {
         "item": {
-          "required": ["id", "laneId", "kind", "level", "confidence", "title", "detail", "evidenceCount"],
-          "optional": ["artifactIds"]
+          "required": [
+            "id",
+            "laneId",
+            "kind",
+            "level",
+            "confidence",
+            "title",
+            "detail",
+            "evidenceCount"
+          ],
+          "optional": [
+            "artifactIds"
+          ]
         }
       },
       "artifacts": {
         "item": {
-          "required": ["id", "kind", "path", "fileName", "createdAt"],
-          "optional": ["label", "metadata"]
+          "required": [
+            "id",
+            "kind",
+            "path",
+            "fileName",
+            "createdAt"
+          ],
+          "optional": [
+            "label",
+            "metadata"
+          ]
         }
       }
     },
@@ -291,7 +411,11 @@
             "blockers",
             "warnings"
           ],
-          "optional": ["titleKey", "summaryKey", "requiredToolIds"]
+          "optional": [
+            "titleKey",
+            "summaryKey",
+            "requiredToolIds"
+          ]
         }
       },
       "providerState": {
@@ -367,65 +491,18 @@
         }
       },
       "export": {
-        "required": ["items"],
-        "optional": ["lastGeneratedAt"]
-      }
-    },
-    "subtitleAnalysis": {
-      "required": [
-        "workspace",
-        "discovery",
-        "entries",
-        "activeEntryId",
-        "edit",
-        "analysis",
-        "export"
-      ],
-      "workspace": {
-        "required": ["mode", "drafts", "selection"],
-        "optional": ["lastError", "lastActionAt", "lastImportAt"]
-      },
-      "discovery": {
-        "required": ["status", "scope", "items", "selectedCandidateIds", "totalCandidateCount"],
-        "optional": ["lastError", "lastRunAt", "lastDownloadAt"]
-      },
-      "entries": {
-        "item": {
-          "required": [
-            "id",
-            "sourceType",
-            "status",
-            "fileName",
-            "path",
-            "format",
-            "createdAt"
-          ],
-          "optional": [
-            "sourceUrl",
-            "language",
-            "publishedAt",
-            "durationSeconds",
-            "isShort",
-            "warnings",
-            "metadata"
-          ]
-        }
-      },
-      "edit": {
-        "required": ["presetId", "recipe", "preview", "outputs"],
-        "optional": ["lastError", "lastActionAt"]
-      },
-      "analysis": {
-        "required": ["status", "summaryCards", "findings", "warnings", "moduleResults"],
-        "optional": ["lastRunAt", "sourceSelection"]
-      },
-      "export": {
-        "required": ["items"],
-        "optional": ["lastGeneratedAt"]
+        "required": [
+          "items"
+        ],
+        "optional": [
+          "lastGeneratedAt"
+        ]
       }
     },
     "process": {
-      "required": ["records"],
+      "required": [
+        "records"
+      ],
       "records": {
         "media-analysis": {
           "required": [
@@ -458,36 +535,6 @@
           ]
         },
         "audio-analysis": {
-          "required": [
-            "featureId",
-            "status",
-            "jobId",
-            "requestId",
-            "runId",
-            "startedAt",
-            "completedAt",
-            "percent",
-            "targetSummary",
-            "modules",
-            "events",
-            "rawLog",
-            "findings",
-            "artifacts",
-            "warnings",
-            "error",
-            "emptyReason"
-          ],
-          "optional": [
-            "analysisScope",
-            "liveFindings",
-            "previewArtifacts",
-            "confidence",
-            "moduleTrace",
-            "comparisonVariants",
-            "hypothesisSummary"
-          ]
-        },
-        "subtitle-analysis": {
           "required": [
             "featureId",
             "status",
@@ -520,7 +567,9 @@
       }
     },
     "report": {
-      "required": ["records"],
+      "required": [
+        "records"
+      ],
       "records": {
         "media-analysis": {
           "required": [
@@ -573,32 +622,6 @@
             "comparisonVariants",
             "hypothesisSummary"
           ]
-        },
-        "subtitle-analysis": {
-          "required": [
-            "featureId",
-            "status",
-            "sourceRunId",
-            "generatedAt",
-            "summaryCards",
-            "findings",
-            "caveats",
-            "warnings",
-            "exports",
-            "error",
-            "emptyReason"
-          ],
-          "optional": [
-            "userReport",
-            "aiReport",
-            "analysisScope",
-            "liveFindings",
-            "previewArtifacts",
-            "confidence",
-            "moduleTrace",
-            "comparisonVariants",
-            "hypothesisSummary"
-          ]
         }
       }
     }
@@ -606,7 +629,6 @@
   "files": {
     "projectMeta": "project.json",
     "sourceDir": "source",
-    "subtitleSourceDir": "source/subtitles",
     "mainFunctionsDir": "main-functions",
     "editDir": "main-functions/media-analysis/edit",
     "editPreviewDir": "main-functions/media-analysis/edit/preview",
@@ -638,14 +660,6 @@
         "rootDir": "main-functions/audio-analysis",
         "processDir": "main-functions/audio-analysis/process",
         "reportDir": "main-functions/audio-analysis/report"
-      },
-      "subtitle-analysis": {
-        "rootDir": "main-functions/subtitle-analysis",
-        "editDir": "main-functions/subtitle-analysis/edit",
-        "editPreviewDir": "main-functions/subtitle-analysis/edit/preview",
-        "editOutputDir": "main-functions/subtitle-analysis/edit/output",
-        "processDir": "main-functions/subtitle-analysis/process",
-        "reportDir": "main-functions/subtitle-analysis/report"
       }
     },
     "legacy": {

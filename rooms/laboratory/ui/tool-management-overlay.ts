@@ -1,7 +1,11 @@
 import { asLabRecord, asNonEmptyString, escapeHtml } from "../models/lab-types.js";
 import type { LabRecord, LabStoreState } from "../models/lab-types.js";
 import { renderStatusChip } from "./components/status-chip.js";
-import { getToolRelevanceFilter, getWorkspaceMode } from "../runtime/lab-selectors.js";
+import {
+  getToolLifecycleStage,
+  getToolRelevanceFilter,
+  getWorkspaceMode,
+} from "../runtime/lab-selectors.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
@@ -462,10 +466,10 @@ export function renderToolManagementOverlay(
 ) {
   const isOpen = state.ui.toolManagerOpen === true;
   const descriptors = getToolRegistry(state);
-  // Relevance-based grouping: tools needed by intent-derived capabilities
+  // Relevance-based grouping: tools needed by intent-derived capabilities.
   const relevance = getToolRelevanceFilter(state);
   const requiredToolSet = new Set(relevance.requiredToolIds);
-  const stageId = state.currentStage; // kept for card-level metadata display only
+  const stageId = getToolLifecycleStage(state);
   const relevantTools = descriptors.filter(function (descriptor) {
     const toolId = asNonEmptyString(descriptor.toolId);
     return toolId !== null && requiredToolSet.has(toolId);

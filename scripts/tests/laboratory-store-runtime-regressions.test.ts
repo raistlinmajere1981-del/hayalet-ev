@@ -302,11 +302,105 @@ test("laboratory store keeps YouTube import mode UI-only and non-persistent", ()
   assert.equal(store.getState().ui.sourceDrafts.youtubeUrl, "https://youtube.com/watch?v=abc123");
 });
 
+test("laboratory store preserves persisted project import route across hydrate and source snapshots", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "hydrate",
+    payload: {
+      projectIndex: {
+        activeProjectId: "project-1",
+        projects: [{ id: "project-1", name: "Workspace Project", hasSource: true }],
+      },
+      source: {
+        kind: "video",
+        mode: "local",
+        status: "ready",
+        drafts: {
+          fileNameHint: "committed-video.mp4",
+          urlInput: "",
+          youtubeUrl: "",
+          youtubePreset: null,
+          youtubeCustom: {},
+          youtubeCaptureMode: "video+audio",
+        },
+      },
+      projectImport: {
+        activeKind: "image",
+        methods: {
+          video: "youtube",
+          audio: "url",
+          image: "url",
+        },
+        drafts: {
+          image: {
+            fileNameHint: "evidence.png",
+            urlInput: "https://example.com/evidence.png",
+            youtubeUrl: "",
+            youtubePreset: null,
+            youtubeCustom: {},
+            youtubeCaptureMode: "video+audio",
+          },
+        },
+        reviewFocus: "draft",
+      },
+    },
+  });
+
+  assert.equal(store.getState().ui.projectImport.activeKind, "image");
+  assert.equal(store.getState().ui.projectImport.methods.image, "url");
+  assert.equal(
+    store.getState().ui.projectImport.drafts.image.urlInput,
+    "https://example.com/evidence.png"
+  );
+
+  store.dispatch({
+    type: "snapshot-received",
+    payload: {
+      ready: true,
+      activeProjectId: "project-1",
+      projects: [{ id: "project-1", name: "Workspace Project", hasSource: true }],
+      activeProject: {
+        id: "project-1",
+        name: "Workspace Project",
+        source: {
+          kind: "video",
+          mode: "local",
+          status: "ready",
+          drafts: {
+            fileNameHint: "snapshot-video.mp4",
+            urlInput: "",
+            youtubeUrl: "",
+            youtubePreset: null,
+            youtubeCustom: {},
+            youtubeCaptureMode: "video+audio",
+          },
+        },
+        edit: {},
+        profile: { preflight: {} },
+        process: { records: {} },
+        report: { records: {} },
+        assets: [],
+      },
+      workbench: {},
+      toolState: { tools: {} },
+    },
+  });
+
+  assert.equal(store.getState().ui.projectImport.activeKind, "image");
+  assert.equal(store.getState().ui.projectImport.methods.image, "url");
+  assert.equal(store.getState().ui.projectImport.drafts.video.fileNameHint, "snapshot-video.mp4");
+  assert.equal(store.getState().ui.projectImport.drafts.image.fileNameHint, "evidence.png");
+  assert.equal(
+    store.getState().ui.projectImport.drafts.image.urlInput,
+    "https://example.com/evidence.png"
+  );
+});
+
 test("laboratory process output parser translates known ffmpeg and download lines", () => {
   const blackdetectEvent = parseProcessOutput("blackdetect=duration:0.42");
   const frameEvent = parseProcessOutput("frame= 248 fps=24");
   const downloadEvent = parseProcessOutput("[download] 42.1% of 12.31MiB");
-  const subtitleEvent = parseProcessOutput("subtitle stream has 12 entries");
   const mergeEvent = parseProcessOutput('Merging formats into "clip.mp4"');
 
   assert.equal(blackdetectEvent?.message, "Siyah sahne tespiti calisiyor");
@@ -314,7 +408,6 @@ test("laboratory process output parser translates known ffmpeg and download line
   assert.equal(frameEvent?.detail, "248 kare incelendi");
   assert.equal(downloadEvent?.message, "Kaynak indiriliyor");
   assert.equal(downloadEvent?.scope, "global");
-  assert.equal(subtitleEvent?.message, "Altyazi girdisi taraniyor");
   assert.equal(mergeEvent?.message, "Kaynak birlestiriliyor");
 });
 
@@ -918,7 +1011,6 @@ test("laboratory hydrate restores dual preview workspace fields with valid linke
   store.dispatch({
     type: "hydrate",
     payload: {
-      currentStage: "source",
       featureId: "media-analysis",
       projectIndex: {
         activeProjectId: "project-dual-preview",
@@ -988,7 +1080,6 @@ test("laboratory hydrate restores dual preview workspace fields with valid linke
 test("laboratory hydrate ignores retired module manager persisted ui flags", () => {
   const store = createLabStore();
   const legacyPersistedPayload = {
-    currentStage: "source",
     featureId: "media-analysis",
     projectIndex: {
       activeProjectId: null,
@@ -1020,7 +1111,6 @@ test("laboratory hydrate reconstructs an active selection from a valid persisted
   store.dispatch({
     type: "hydrate",
     payload: {
-      currentStage: "source",
       featureId: "media-analysis",
       projectIndex: {
         activeProjectId: null,
@@ -1078,7 +1168,6 @@ test("laboratory hydrate drops legacy pixel-like persisted selection roi values"
   store.dispatch({
     type: "hydrate",
     payload: {
-      currentStage: "source",
       featureId: "media-analysis",
       projectIndex: {
         activeProjectId: null,
@@ -1134,7 +1223,6 @@ test("laboratory hydrate rebuilds selection identity from the primitive bridge o
     store.dispatch({
       type: "hydrate",
       payload: {
-        currentStage: "source",
         featureId: "media-analysis",
         projectIndex: {
           activeProjectId: null,
@@ -1174,7 +1262,6 @@ test("laboratory hydrate normalizes malformed persisted selection intent to gene
   store.dispatch({
     type: "hydrate",
     payload: {
-      currentStage: "source",
       featureId: "media-analysis",
       projectIndex: {
         activeProjectId: null,
@@ -1213,7 +1300,6 @@ test("laboratory hydrate suppresses persisted selection entities when the primit
   store.dispatch({
     type: "hydrate",
     payload: {
-      currentStage: "source",
       featureId: "media-analysis",
       projectIndex: {
         activeProjectId: null,

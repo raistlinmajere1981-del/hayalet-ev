@@ -18,7 +18,6 @@ const activeShellFiles = [
   "ui/style.css",
   "ui/tool-management-overlay.js",
   "ui/workspace-surface.js",
-  "ui/components/artifact-item.js",
   "ui/components/status-chip.js",
 ];
 
@@ -32,7 +31,6 @@ const removedLegacyFiles = [
   "ui/stages/source-stage.js",
   "main-functions/media-analysis/ui/runtime.js",
   "main-functions/audio-analysis/ui/module.js",
-  "main-functions/subtitle-analysis/ui/runtime.js",
   "services/pipeline-runner.js",
   "models/lab-report-types.js",
   "ui/workspace-process-panel.js",

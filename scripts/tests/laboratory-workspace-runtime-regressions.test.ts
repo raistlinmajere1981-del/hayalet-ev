@@ -972,7 +972,6 @@ test("laboratory store hydration normalizes live runs into safe persisted summar
   store.dispatch({
     type: "hydrate",
     payload: {
-      currentStage: "process",
       featureId: "media-analysis",
       projectIndex: {
         activeProjectId: "project-1",
@@ -1151,7 +1150,6 @@ test("laboratory selectors expose frozen snapshot summary and live workspace dri
   store.dispatch({
     type: "hydrate",
     payload: {
-      currentStage: "report",
       featureId: "media-analysis",
       projectIndex: {
         activeProjectId: "project-1",

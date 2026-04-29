@@ -81,7 +81,7 @@ test("laboratory host activation unwraps host-context room-event payloads before
     featureId: "audio-analysis",
     workbench: {
       activeModuleId: "audio-analysis",
-      selectedModuleIds: ["audio-analysis", "subtitle-analysis"],
+      selectedModuleIds: ["audio-analysis"],
     },
   };
   runtime.onRoomEvent({
@@ -95,10 +95,10 @@ test("laboratory host activation unwraps host-context room-event payloads before
   const directContext = {
     type: "host-context",
     roomId: "laboratory",
-    featureId: "subtitle-analysis",
+    featureId: "media-analysis",
     workbench: {
-      activeModuleId: "subtitle-analysis",
-      selectedModuleIds: ["subtitle-analysis"],
+      activeModuleId: "media-analysis",
+      selectedModuleIds: ["media-analysis"],
     },
   };
   runtime.onRoomEvent(directContext);
@@ -195,17 +195,12 @@ test("laboratory host action composition is extracted into a shared host boundar
     workspaceFeatureAdaptersSource,
     /export function createLaboratoryFeatureAdapters\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
-  assert.match(workspaceFeatureAdaptersSource, /deleteProject:\s*UnknownFn;/);
-  assert.match(workspaceFeatureAdaptersSource, /deleteProject:\s*deps\.deleteProject,/);
   assert.match(
     workspaceHostFeatureSource,
     /deleteProject:\s*projectRuntimes\.lifecycle\.deleteProject,/
   );
   assert.match(workspaceFeatureAdaptersSource, /from "\.\.\/shared\/host\/action-composition\.js"/);
-  assert.match(
-    workspaceFeatureAdaptersSource,
-    /from "\.\.\/main-functions\/subtitle-analysis\/host\/runtime\.js"/
-  );
+  assert.doesNotMatch(workspaceFeatureAdaptersSource, /main-functions\/[^"]+\/host\/runtime\.js/);
   assert.match(workspaceHostFeatureSource, /from "\.\/feature-adapters\.js"/);
   assert.doesNotMatch(
     workspaceHostRuntimeSource,

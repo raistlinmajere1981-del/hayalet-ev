@@ -18,11 +18,6 @@ interface LaboratoryProcessDeps {
     project: Record<string, unknown>,
     target: Record<string, unknown>
   ) => unknown[];
-  buildSubtitleProcessModules: (
-    runtime: Record<string, unknown>,
-    project: Record<string, unknown>,
-    target: Record<string, unknown>
-  ) => unknown[];
   cancelProcessJobsForProject: (
     api: Record<string, unknown>,
     runtime: Record<string, unknown>,
@@ -100,7 +95,6 @@ interface LaboratoryProcessDeps {
     reason: string
   ) => void;
   audioFeatureId: string;
-  subtitleFeatureId: string;
   [key: string]: unknown;
 }
 
@@ -114,7 +108,6 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     asNonEmptyString,
     buildAudioAnalysisModules,
     buildMediaProcessModules,
-    buildSubtitleProcessModules,
     cancelProcessJobsForProject,
     clearJob,
     clone,
@@ -140,7 +133,6 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     updateProcessRecordPercent,
     markFeatureReportStale,
     audioFeatureId,
-    subtitleFeatureId,
   } = deps;
 
   function shouldPersistProcessWorkbench(workbenchSource: unknown) {
@@ -151,7 +143,6 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
   const managedProcessRunnersDeps = {
     asNonEmptyString: deps["asNonEmptyString"],
     buildProcessSpeechAvailability: deps["buildProcessSpeechAvailability"],
-    buildSubtitleAnalysisStats: deps["buildSubtitleAnalysisStats"],
     clampProfileTranscriptSampleSeconds: deps["clampProfileTranscriptSampleSeconds"],
     clone: deps["clone"],
     createProcessArtifact: deps["createProcessArtifact"],
@@ -162,7 +153,6 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     generateProcessVisualTransformArtifact: deps["generateProcessVisualTransformArtifact"],
     getAudioAnalysisModuleProcessDir: deps["getAudioAnalysisModuleProcessDir"],
     getAudioAnalysisModuleRunner: deps["getAudioAnalysisModuleRunner"],
-    getProjectSubtitleProcessDir: deps["getProjectSubtitleProcessDir"],
     maybeRunWhisperProfileSample: deps["maybeRunWhisperProfileSample"],
     normalizeProcessArtifact: deps["normalizeProcessArtifact"],
     normalizeProcessFinding: deps["normalizeProcessFinding"],
@@ -225,18 +215,14 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     const rawLogCount = Array.isArray(processRecord["rawLog"]) ? processRecord["rawLog"].length : 0;
 
     if (semanticEventCount === 0 && rawLogCount === 0) {
-      return featureId === subtitleFeatureId
-        ? "Altyazi analizi tamamlandi ancak islenebilir arac cikisi gelmedigi icin rapor bos kaldi."
-        : featureId === audioFeatureId
-          ? "Ses analizi tamamlandi ancak okunabilir is izi uretilmedigi icin rapor bos kaldi."
-          : "Analiz tamamlandi ancak araclardan anlamli cikti gelmedigi icin rapor bos kaldi.";
+      return featureId === audioFeatureId
+        ? "Ses analizi tamamlandi ancak okunabilir is izi uretilmedigi icin rapor bos kaldi."
+        : "Analiz tamamlandi ancak araclardan anlamli cikti gelmedigi icin rapor bos kaldi.";
     }
 
-    return featureId === subtitleFeatureId
-      ? "Secili altyazi girdilerinden raporlanabilir bulgu veya artefakt cikmadi."
-      : featureId === audioFeatureId
-        ? "Ses modulleri raporlanabilir bir sinyal veya artefakt uretmedi."
-        : "Analiz akisi tamamlandi ancak raporlanabilir bulgu veya artefakt cikmadi.";
+    return featureId === audioFeatureId
+      ? "Ses modulleri raporlanabilir bir sinyal veya artefakt uretmedi."
+      : "Analiz akisi tamamlandi ancak raporlanabilir bulgu veya artefakt cikmadi.";
   }
 
   async function runManagedProcess(
@@ -250,11 +236,7 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
   ) {
     const target = resolveProcessTarget(project, featureId);
     const action = getFeatureProcessJobAction(featureId);
-    if (featureId === subtitleFeatureId) {
-      if (!Array.isArray(target["entries"]) || target["entries"].length === 0) {
-        throw new Error("Import subtitle files before starting subtitle analysis.");
-      }
-    } else if (target["path"] === null) {
+    if (target["path"] === null) {
       throw new Error("Prepare a valid target before starting the process stage.");
     }
 
@@ -298,9 +280,7 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     processRecord["modules"] =
       featureId === audioFeatureId
         ? buildAudioAnalysisModules(runtime, project, target)
-        : featureId === subtitleFeatureId
-          ? buildSubtitleProcessModules(runtime, project, target)
-          : buildMediaProcessModules(runtime, project, target);
+        : buildMediaProcessModules(runtime, project, target);
     function appendProcessCollection(
       key: string,
       entry: Record<string, unknown>,
@@ -424,16 +404,7 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     }
 
     const results =
-      featureId === subtitleFeatureId
-        ? await laboratoryManagedProcessRunnersRuntime.runSubtitleManagedProcess(
-            runtime,
-            project,
-            target,
-            artifactBase,
-            processRecord,
-            emitManagedRuntimeUpdate
-          )
-        : featureId === audioFeatureId
+      featureId === audioFeatureId
           ? await laboratoryManagedProcessRunnersRuntime.runAudioManagedProcess(
               runtime,
               project,
@@ -529,9 +500,7 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     const workbench = resolveProcessWorkbench(project, featureId, workbenchSource);
     const persistProcessWorkbench = shouldPersistProcessWorkbench(workbenchSource);
 
-    if (featureId !== subtitleFeatureId) {
-      ensureEditToolReady(runtime);
-    }
+    ensureEditToolReady(runtime);
     await ensureProjectDirectories(runtime, project, requestId);
     const action = getFeatureProcessJobAction(featureId);
     ensureProcessJobSlotAvailable(runtime, project["id"] as string, action);

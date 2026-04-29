@@ -1,6 +1,6 @@
 type AnalysisScopeRecord = Record<string, unknown>;
 
-export type AnalysisFocus = "visual" | "audio" | "subtitle" | "cross-modal";
+export type AnalysisFocus = "visual" | "audio" | "cross-modal";
 
 export interface AnalysisTimeRange {
   startMs: number;
@@ -163,8 +163,7 @@ export function normalizeAnalysisScope(rawValue: unknown): AnalysisScope | null 
 
   return {
     ...(reference || {}),
-    ...(focus &&
-    (focus === "visual" || focus === "audio" || focus === "subtitle" || focus === "cross-modal")
+    ...(focus && (focus === "visual" || focus === "audio" || focus === "cross-modal")
       ? { focus }
       : {}),
     ...(hypothesis ? { hypothesis } : {}),

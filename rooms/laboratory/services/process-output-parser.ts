@@ -97,16 +97,6 @@ export function parseProcessOutput(
     });
   }
 
-  if (
-    /subtitle/i.test(normalizedLine) &&
-    /(track|stream|entry|entries|cue)/i.test(normalizedLine)
-  ) {
-    return createSemanticEvent("Altyazi girdisi taraniyor", normalizedLine, {
-      ...context,
-      moduleId: context.moduleId || "subtitle",
-    });
-  }
-
   if (/Press \[q\] to stop/i.test(normalizedLine)) {
     return createSemanticEvent("Arac cikisi akiyor", normalizedLine, context);
   }

@@ -1,6 +1,5 @@
 import { createLaboratoryAudioReportRuntime } from "./reporting-audio.js";
 import { createLaboratoryReportMarkdownRuntime } from "./reporting-markdown.js";
-import { createLaboratorySubtitleReportRuntime } from "./reporting-subtitle.js";
 import { buildAiReport, buildUserReport } from "../../services/report-builder.js";
 import type { LabRun } from "../../models/lab-types.js";
 
@@ -14,7 +13,6 @@ type LaboratoryComposedFeatureReportRecord = LaboratoryRecord & {
 };
 
 type LaboratoryFeatureReportRuntimeDeps = Parameters<typeof createLaboratoryAudioReportRuntime>[0] &
-  Parameters<typeof createLaboratorySubtitleReportRuntime>[0] &
   Omit<
     Parameters<typeof createLaboratoryReportMarkdownRuntime>[0],
     "buildAudioAnalysisReportProjection"
@@ -35,7 +33,6 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
   } = deps;
 
   const laboratoryAudioReportRuntime = createLaboratoryAudioReportRuntime(deps);
-  const laboratorySubtitleReportRuntime = createLaboratorySubtitleReportRuntime(deps);
   const laboratoryReportMarkdownRuntime = createLaboratoryReportMarkdownRuntime({
     ...deps,
     buildAudioAnalysisReportProjection:
@@ -44,8 +41,6 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
 
   const { buildAudioAnalysisReportProjection, composeAudioAnalysisReport } =
     laboratoryAudioReportRuntime;
-  const { composeSubtitleAnalysisReport, getProcessArtifactByKind } =
-    laboratorySubtitleReportRuntime;
   const { buildReportMarkdown, formatReportCardLabel } = laboratoryReportMarkdownRuntime;
 
   function toRunProjection(processRecord: LaboratoryRecord) {
@@ -186,21 +181,6 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
         featureId
       ) as unknown as LaboratoryComposedFeatureReportRecord;
     }
-    if (featureId === deps.subtitleFeatureId) {
-      const processRecord = getFeatureProcessRecord(project, featureId);
-      return normalizeFeatureReportRecord(
-        attachDualReports(
-          featureId,
-          processRecord,
-          composeSubtitleAnalysisReport(
-            runtime as LaboratoryRecord,
-            project
-          ) as unknown as LaboratoryComposedFeatureReportRecord
-        ),
-        featureId
-      ) as unknown as LaboratoryComposedFeatureReportRecord;
-    }
-
     const processRecord = getFeatureProcessRecord(project, featureId);
     if (processRecord.status !== "ready" && processRecord.status !== "stale") {
       return normalizeFeatureReportRecord(
@@ -297,10 +277,8 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
   return {
     buildAudioAnalysisReportProjection,
     composeAudioAnalysisReport,
-    composeSubtitleAnalysisReport,
     composeFeatureReport,
     buildReportMarkdown,
     formatReportCardLabel,
-    getProcessArtifactByKind,
   };
 }

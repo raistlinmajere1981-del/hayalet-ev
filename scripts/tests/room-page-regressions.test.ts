@@ -454,9 +454,6 @@ test("installed laboratory manifest keeps one workbench scene entry for room-pag
   const audioFeature = Array.isArray(manifest.features)
     ? manifest.features.find((feature) => feature.id === "audio-analysis")
     : null;
-  const subtitleFeature = Array.isArray(manifest.features)
-    ? manifest.features.find((feature) => feature.id === "subtitle-analysis")
-    : null;
 
   assert.equal(manifest.workbench?.experienceId, "analysis-workbench");
   assert.equal(mediaFeature?.name, "Analysis Workbench");
@@ -467,5 +464,4 @@ test("installed laboratory manifest keeps one workbench scene entry for room-pag
     "main-functions/media-analysis/assets/media-analysis-view.webp"
   );
   assert.equal(audioFeature?.scene, undefined);
-  assert.equal(subtitleFeature?.scene, undefined);
 });

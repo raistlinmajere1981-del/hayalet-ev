@@ -792,7 +792,6 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
   store.dispatch({
     type: "hydrate",
     payload: {
-      currentStage: "report",
       featureId: "media-analysis",
       projectIndex: {
         activeProjectId: "project-1",

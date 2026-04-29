@@ -36,17 +36,6 @@ type LaboratoryFeatureReportRecord = LaboratoryRecord & {
   warnings?: unknown;
 };
 
-type LaboratoryProcessModuleRecord = LaboratoryRecord & {
-  id?: unknown;
-  status?: unknown;
-  summary?: unknown;
-  title?: unknown;
-};
-
-type LaboratoryFeatureProcessRecord = LaboratoryRecord & {
-  modules?: unknown;
-};
-
 type LaboratoryAudioMetricRecord = LaboratoryRecord & {
   id?: unknown;
   label?: unknown;
@@ -74,12 +63,6 @@ type LaboratoryReportMarkdownRuntimeDeps = {
     project: LaboratoryProjectRecord
   ) => LaboratoryAudioReportProjection;
   formatIdentifierLabel: (value: string) => string;
-  getFeatureProcessRecord: (
-    project: LaboratoryProjectRecord,
-    featureId: string
-  ) => LaboratoryFeatureProcessRecord;
-  normalizeProcessModule: (rawValue: unknown) => LaboratoryProcessModuleRecord;
-  subtitleFeatureId: string;
   toRecord: (value: unknown) => LaboratoryRecord;
 };
 
@@ -89,9 +72,6 @@ export function createLaboratoryReportMarkdownRuntime(deps: LaboratoryReportMark
     audioFeatureId,
     buildAudioAnalysisReportProjection,
     formatIdentifierLabel,
-    getFeatureProcessRecord,
-    normalizeProcessModule,
-    subtitleFeatureId,
     toRecord,
   } = deps;
 
@@ -104,14 +84,6 @@ export function createLaboratoryReportMarkdownRuntime(deps: LaboratoryReportMark
   }
 
   function toFeatureReportRecord(value: unknown): LaboratoryFeatureReportRecord {
-    return toRecord(value);
-  }
-
-  function toFeatureProcessRecord(value: unknown): LaboratoryFeatureProcessRecord {
-    return toRecord(value);
-  }
-
-  function toProcessModuleRecord(value: unknown): LaboratoryProcessModuleRecord {
     return toRecord(value);
   }
 
@@ -176,20 +148,7 @@ export function createLaboratoryReportMarkdownRuntime(deps: LaboratoryReportMark
     if (featureId === audioFeatureId) {
       return "Audio Analysis";
     }
-    if (featureId === subtitleFeatureId) {
-      return "Subtitle Analysis";
-    }
     return "Media Analysis";
-  }
-
-  function getSubtitleProcessModules(
-    project: LaboratoryProjectRecord,
-    featureId: string
-  ): LaboratoryProcessModuleRecord[] {
-    const processRecord = toFeatureProcessRecord(getFeatureProcessRecord(project, featureId));
-    return Array.isArray(processRecord.modules)
-      ? processRecord.modules.map(normalizeProcessModule).map(toProcessModuleRecord)
-      : [];
   }
 
   function buildReportMarkdown(
@@ -257,15 +216,6 @@ export function createLaboratoryReportMarkdownRuntime(deps: LaboratoryReportMark
         if (warnings.length > 0) {
           lines.push(`  Warnings: ${warnings.join(" | ")}`);
         }
-      });
-    } else if (featureId === subtitleFeatureId) {
-      lines.push("", "## Modules");
-      getSubtitleProcessModules(projectRecord, subtitleFeatureId).forEach(function (moduleEntry) {
-        lines.push(
-          `- ${toString(moduleEntry.title) || formatIdentifierLabel(toString(moduleEntry.id, "module"))}: ${formatIdentifierLabel(
-            toString(moduleEntry.status, "idle")
-          )}${toString(moduleEntry.summary) !== "" ? ` - ${toString(moduleEntry.summary)}` : ""}`
-        );
       });
     }
 

@@ -7,7 +7,6 @@ type LaboratoryProjectRecord = LaboratoryRecord & {
   name?: unknown;
   profile?: unknown;
   source?: unknown;
-  subtitleAnalysis?: unknown;
   workbench?: unknown;
 };
 
@@ -25,22 +24,6 @@ type LaboratoryProjectEditRecord = LaboratoryRecord & {
 
 type LaboratoryProfileReadinessRecord = LaboratoryRecord & {
   enabledLaneIds?: unknown;
-};
-
-type LaboratorySubtitleStateRecord = LaboratoryRecord & {
-  analysis?: unknown;
-};
-
-type LaboratorySubtitleAnalysisRecord = LaboratoryRecord & {
-  sourceSelection?: unknown;
-};
-
-type LaboratorySubtitleEntryRecord = LaboratoryRecord & {
-  fileName?: unknown;
-  id?: unknown;
-  language?: unknown;
-  metadata?: unknown;
-  path?: unknown;
 };
 
 type LaboratoryProcessTargetRecord = LaboratoryRecord & {
@@ -78,16 +61,7 @@ type LaboratoryProcessTargetingRuntimeDeps = {
     sourceKind?: string | null
   ) => LaboratoryRecord[];
   getVisualAnalysisProviderState: (runtime: LaboratoryRecord) => LaboratoryRecord;
-  getActiveSubtitleEntry: (
-    project: LaboratoryProjectRecord
-  ) => LaboratorySubtitleEntryRecord | null;
-  getSubtitleMimeType: (fileName: string) => string | null;
-  getSubtitleSelectedEntries: (project: LaboratoryProjectRecord) => LaboratorySubtitleEntryRecord[];
   normalizeProcessModule: (rawValue: unknown) => LaboratoryProcessModuleRecord;
-  normalizeSubtitleAnalysisState: (
-    rawValue: unknown,
-    runtime: LaboratoryRecord
-  ) => LaboratorySubtitleStateRecord;
   partitionVisualAnalysisModuleIds: (
     runtime: LaboratoryRecord,
     moduleIds: string[]
@@ -100,7 +74,6 @@ type LaboratoryProcessTargetingRuntimeDeps = {
     workbenchSource?: unknown
   ) => string[];
   resolveProfileTarget: (project: LaboratoryProjectRecord) => LaboratoryProcessTargetRecord;
-  subtitleFeatureId: string;
   toRecord: (value: unknown) => LaboratoryRecord;
 };
 
@@ -109,17 +82,12 @@ export function createLaboratoryProcessTargetingRuntime(
 ) {
   const {
     audioFeatureId,
-    subtitleFeatureId,
     asNonEmptyString,
     buildProfileModelSummary,
     getVisualAnalysisCapabilityState,
     getVisualAnalysisModulesForRuntime,
     getVisualAnalysisProviderState,
-    getActiveSubtitleEntry,
-    getSubtitleMimeType,
-    getSubtitleSelectedEntries,
     normalizeProcessModule,
-    normalizeSubtitleAnalysisState,
     partitionVisualAnalysisModuleIds,
     resolveAudioFeatureTarget,
     resolveEnabledVisualAnalysisModuleIds,
@@ -140,14 +108,6 @@ export function createLaboratoryProcessTargetingRuntime(
   }
 
   function toReadinessRecord(value: unknown): LaboratoryProfileReadinessRecord {
-    return toRecord(value);
-  }
-
-  function toSubtitleAnalysisRecord(value: unknown): LaboratorySubtitleAnalysisRecord {
-    return toRecord(value);
-  }
-
-  function toSubtitleEntryRecord(value: unknown): LaboratorySubtitleEntryRecord {
     return toRecord(value);
   }
 
@@ -226,42 +186,6 @@ export function createLaboratoryProcessTargetingRuntime(
   function resolveProcessTarget(project: LaboratoryProjectRecord, featureId: string | null) {
     if (featureId === audioFeatureId) {
       return resolveAudioFeatureTarget(project);
-    }
-
-    if (featureId === subtitleFeatureId) {
-      const subtitleState = normalizeSubtitleAnalysisState(project.subtitleAnalysis, {});
-      const analysis = toSubtitleAnalysisRecord(subtitleState.analysis);
-      const selectedEntries = getSubtitleSelectedEntries(project).map(toSubtitleEntryRecord);
-      const activeEntry = selectedEntries[0] || getActiveSubtitleEntry(project);
-
-      return {
-        requestedMode: asNonEmptyString(analysis.sourceSelection) || "active-entry",
-        mode: selectedEntries.length > 1 ? "batch" : "entry",
-        outputId: null,
-        path: activeEntry ? activeEntry.path : null,
-        fileName: activeEntry ? activeEntry.fileName : null,
-        mimeType:
-          activeEntry && typeof activeEntry.fileName === "string"
-            ? getSubtitleMimeType(activeEntry.fileName)
-            : null,
-        metadata: activeEntry ? toRecord(activeEntry.metadata) : null,
-        signature: selectedEntries
-          .map(function (entry) {
-            return `${String(entry.id || "")}:${String(entry.path || entry.fileName || "")}`;
-          })
-          .join("|"),
-        label:
-          selectedEntries.length > 1
-            ? `${selectedEntries.length} subtitle files`
-            : activeEntry
-              ? asNonEmptyString(activeEntry.fileName) ||
-                asNonEmptyString(project.name) ||
-                "Project"
-              : asNonEmptyString(project.name) || "Project",
-        entries: selectedEntries,
-        usingFallback: false,
-        reason: null,
-      };
     }
 
     return resolveProfileTarget(project);

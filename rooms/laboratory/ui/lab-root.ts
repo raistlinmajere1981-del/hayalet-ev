@@ -1,5 +1,5 @@
 import { asLabRecord, asNonEmptyString } from "../models/lab-types.js";
-import type { LabStageSurface, LabStoreState } from "../models/lab-types.js";
+import type { LabStoreState, LabWorkspaceSurface } from "../models/lab-types.js";
 import { createLabEventBus } from "../runtime/lab-event-bus.js";
 import { createLabExecutionDispatcher } from "../runtime/lab-execution-dispatcher.js";
 import { createLabHostBridge } from "../runtime/lab-host-bridge.js";
@@ -340,7 +340,6 @@ function readPersistableState(state: LabStoreState) {
     activePreviewArtifactId: state.ui.activePreviewArtifactId,
     activityFeed: state.activityFeed.slice(0, 40),
     analysisControlsCollapsed: state.ui.analysisControlsCollapsed,
-    currentStage: state.currentStage,
     editDrafts: state.ui.editDrafts,
     editConfig: state.editConfig,
     editSidePanelCollapsed: state.ui.editSidePanelCollapsed,
@@ -364,6 +363,7 @@ function readPersistableState(state: LabStoreState) {
     profileModels: state.profileModels,
     preflight: state.preflight,
     projectIndex: state.projectIndex,
+    projectImport: state.ui.projectImport,
     reportExports: state.reportExports,
     reports: state.reports,
     reportView: state.ui.reportView,
@@ -671,7 +671,6 @@ export function startLaboratoryLabRoot() {
     shell.dataset["layoutKind"] = getLabLayoutKind(state, {
       bootOverlayActive: isBootOverlayActive(state),
     });
-    shell.dataset["stage"] = state.currentStage;
     shell.dataset["ready"] = isBootOverlayActive(state) ? "false" : "true";
     shell.dataset["workspaceMode"] = getWorkspaceMode(state);
     shell.dataset["labMode"] = state.ui.labMode;
@@ -723,7 +722,7 @@ export function startLaboratoryLabRoot() {
     simulation: true,
   };
 
-  function replaceLabLayout(state: LabStoreState, surface: LabStageSurface, copy: LabI18n) {
+  function replaceLabLayout(state: LabStoreState, surface: LabWorkspaceSurface, copy: LabI18n) {
     runtimeRoot.innerHTML = renderLabLayout(state, surface, copy, {
       bootOverlayActive: isBootOverlayActive(state),
     });

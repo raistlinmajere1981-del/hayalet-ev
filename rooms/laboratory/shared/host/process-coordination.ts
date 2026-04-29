@@ -90,13 +90,6 @@ export function createLaboratoryProcessCoordinationRuntime(deps: Record<string, 
     return (reportingRuntime["formatReportCardLabel"] as UnknownFn)(card);
   }
 
-  function composeSubtitleAnalysisReport(
-    runtime: Record<string, unknown>,
-    project: Record<string, unknown>
-  ) {
-    return (reportingRuntime["composeSubtitleAnalysisReport"] as UnknownFn)(runtime, project);
-  }
-
   function composeFeatureReport(
     runtime: Record<string, unknown>,
     project: Record<string, unknown>,
@@ -125,7 +118,6 @@ export function createLaboratoryProcessCoordinationRuntime(deps: Record<string, 
     cancelFeatureProcess: cancelFeatureProcess,
     composeAudioAnalysisReport: composeAudioAnalysisReport,
     composeFeatureReport: composeFeatureReport,
-    composeSubtitleAnalysisReport: composeSubtitleAnalysisReport,
     exportFeatureReport: exportFeatureReport,
     formatReportCardLabel: formatReportCardLabel,
     getProcessArtifactByKind: getProcessArtifactByKind,

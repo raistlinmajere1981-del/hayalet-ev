@@ -1,5 +1,5 @@
 import { escapeHtml } from "../models/lab-types.js";
-import type { LabDrawerMode, LabStageSurface, LabStoreState } from "../models/lab-types.js";
+import type { LabDrawerMode, LabStoreState, LabWorkspaceSurface } from "../models/lab-types.js";
 import {
   buildIntentPreviewSentence,
   getActiveExecutionAlternatives,
@@ -57,7 +57,7 @@ function renderDrawerHeader(mode: LabDrawerMode, copy: LabI18n) {
 // Setup mode
 // ---------------------------------------------------------------------------
 
-function renderSetupMode(state: LabStoreState, surface: LabStageSurface, copy: LabI18n) {
+function renderSetupMode(state: LabStoreState, surface: LabWorkspaceSurface, copy: LabI18n) {
   const sourceReady = getSourceReady(state);
   const intents = getAvailableIntents(state);
   const selectedIntents = getSelectedIntents(state);
@@ -562,7 +562,7 @@ function renderDrawerSkeleton() {
 
 export function renderLabDrawer(
   state: LabStoreState,
-  surface: LabStageSurface,
+  surface: LabWorkspaceSurface,
   copy: LabI18n = LAB_FALLBACK_I18N
 ) {
   const collapsed = getDrawerCollapsed(state);

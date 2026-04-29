@@ -58,7 +58,6 @@ type LaboratoryHostProjectRuntimesDeps = {
   setCloseoutStalenessRuntime: (
     value: LaboratoryHostProjectStateComposition["laboratoryCloseoutStalenessRuntime"]
   ) => void;
-  subtitleFeatureId: string;
   toRecord: (value: unknown) => LaboratoryRecord;
 };
 
@@ -139,22 +138,8 @@ export function createLaboratoryHostProjectRuntimes(deps: LaboratoryHostProjectR
       );
     },
     normalizeSourceMetadata: preset.normalizeSourceMetadata,
-    normalizeSubtitleAnalysisState(
-      rawValue: Parameters<
-        LaboratoryHostProjectStateComposition["laboratorySubtitleStateDelegatesRuntime"]["normalizeSubtitleAnalysisState"]
-      >[0],
-      runtime: Parameters<
-        LaboratoryHostProjectStateComposition["laboratorySubtitleStateDelegatesRuntime"]["normalizeSubtitleAnalysisState"]
-      >[1]
-    ) {
-      return requireStateComposition().laboratorySubtitleStateDelegatesRuntime.normalizeSubtitleAnalysisState(
-        rawValue,
-        runtime
-      ) as unknown;
-    },
     projectSchemaVersion: deps.projectSchemaVersion,
     roomId: deps.roomId,
-    subtitleFeatureId: deps.subtitleFeatureId,
     syncProjectFeatureProjections(
       ...args: Parameters<
         LaboratoryHostProjectStateComposition["laboratoryProjectStateDelegatesRuntime"]["syncProjectFeatureProjections"]
@@ -346,7 +331,6 @@ export function createLaboratoryHostProjectRuntimes(deps: LaboratoryHostProjectR
     normalizeSourceMetadata: preset.normalizeSourceMetadata,
     normalizeStringArray: preset.normalizeStringArray,
     projectSchemaVersion: deps.projectSchemaVersion,
-    subtitleFeatureId: deps.subtitleFeatureId,
     toRecord: deps.toRecord,
   };
   stateComposition = createLaboratoryHostStateCompositionRuntime(

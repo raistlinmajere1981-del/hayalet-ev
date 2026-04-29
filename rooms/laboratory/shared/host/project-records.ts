@@ -30,7 +30,6 @@ type LaboratoryProjectRecordValue = Record<string, unknown> & {
   status?: unknown;
   storedFileName?: unknown;
   storedPath?: unknown;
-  subtitleAnalysis?: unknown;
   updatedAt?: unknown;
   urlInput?: unknown;
   workbench?: unknown;
@@ -67,7 +66,6 @@ type LaboratoryProjectRecord = {
   schemaVersion: number;
   slug: string;
   source: LaboratoryProjectSource;
-  subtitleAnalysis: unknown;
   updatedAt: string;
   workbench: ReturnType<typeof createLaboratoryWorkbenchState>;
 };
@@ -93,7 +91,6 @@ type LaboratoryProjectRecordsRuntimeDeps = {
   createEmptyProcessState: () => unknown;
   createEmptyReportState: () => unknown;
   createEmptySourceDrafts: (sourcePresets: unknown) => LaboratoryProjectRecordValue;
-  createEmptySubtitleAnalysisState: (runtime: unknown) => unknown;
   getDefaultMode: (sourcePresets: unknown, sourceKind: string) => string;
   getDefaultSourceType: (sourcePresets: unknown) => string;
   getDefaultYoutubePreset: (sourcePresets: unknown) => string;
@@ -114,7 +111,6 @@ type LaboratoryProjectRecordsRuntimeDeps = {
   ) => unknown;
   normalizeReportState: (rawValue: unknown) => unknown;
   normalizeSourceMetadata: (rawValue: unknown) => LaboratoryProjectRecordValue | null;
-  normalizeSubtitleAnalysisState: (rawValue: unknown, runtime: unknown) => unknown;
   projectSchemaVersion: number;
   toRecord: (value: unknown) => LaboratoryProjectRecordValue;
 };
@@ -129,7 +125,6 @@ export function createLaboratoryProjectRecordsRuntime(deps: LaboratoryProjectRec
     createEmptyAudioAnalysisState,
     createEmptyProcessState,
     createEmptyReportState,
-    createEmptySubtitleAnalysisState,
     createEmptySourceDrafts,
     getDefaultMode,
     getDefaultSourceType,
@@ -142,7 +137,6 @@ export function createLaboratoryProjectRecordsRuntime(deps: LaboratoryProjectRec
     normalizeProcessState,
     normalizeReportState,
     normalizeSourceMetadata,
-    normalizeSubtitleAnalysisState,
     projectSchemaVersion,
     toRecord,
   } = deps;
@@ -153,7 +147,6 @@ export function createLaboratoryProjectRecordsRuntime(deps: LaboratoryProjectRec
     profilePresets: unknown,
     profileModels: unknown,
     profileCapabilities: unknown,
-    subtitleRuntime: unknown,
     featureId: unknown
   ): LaboratoryProjectRecord {
     const now = new Date().toISOString();
@@ -185,7 +178,6 @@ export function createLaboratoryProjectRecordsRuntime(deps: LaboratoryProjectRec
       edit: createDefaultEditState(editPresets, kind),
       profile: createDefaultProfileState(profilePresets, profileModels, profileCapabilities, kind),
       audioAnalysis: createEmptyAudioAnalysisState(),
-      subtitleAnalysis: createEmptySubtitleAnalysisState(subtitleRuntime || {}),
       process: createEmptyProcessState(),
       report: createEmptyReportState(),
       assets: [],
@@ -262,7 +254,6 @@ export function createLaboratoryProjectRecordsRuntime(deps: LaboratoryProjectRec
         kind
       ),
       audioAnalysis: normalizeAudioAnalysisState(rawProject.audioAnalysis, runtime || {}),
-      subtitleAnalysis: normalizeSubtitleAnalysisState(rawProject.subtitleAnalysis, runtime || {}),
       process: normalizeProcessState(rawProject.process),
       report: normalizeReportState(rawProject.report),
       assets: normalizeLabAssets(rawProject.assets),

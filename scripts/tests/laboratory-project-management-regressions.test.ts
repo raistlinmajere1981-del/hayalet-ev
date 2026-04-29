@@ -15,7 +15,6 @@ function hydrateState(overrides: {
   store.dispatch({
     type: "hydrate",
     payload: {
-      currentStage: "source",
       featureId: "media-analysis",
       projectIndex: {
         activeProjectId: overrides.activeProjectId,
@@ -23,7 +22,7 @@ function hydrateState(overrides: {
       },
       workbench: {
         activeModuleId: "media-analysis",
-        availableModuleIds: ["media-analysis", "audio-analysis", "subtitle-analysis"],
+        availableModuleIds: ["media-analysis", "audio-analysis"],
         selectedModuleIds: ["media-analysis"],
       },
       source:

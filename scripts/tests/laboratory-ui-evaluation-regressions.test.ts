@@ -1119,6 +1119,10 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   const workspaceSurfaceSource = readFileSync("rooms/laboratory/ui/workspace-surface.ts", "utf8");
   const drawerSource = readFileSync("rooms/laboratory/ui/lab-drawer.ts", "utf8");
   const projectNavigationSource = readFileSync("rooms/laboratory/ui/project-navigation.ts", "utf8");
+  const projectWorkspaceSource = readFileSync(
+    "rooms/laboratory/ui/project-workspace-overlay.ts",
+    "utf8"
+  );
   const assetGridSource = readFileSync("rooms/laboratory/ui/asset-grid.ts", "utf8");
 
   assert.match(labRootSource, /schemaVersion:\s*4,/);
@@ -1133,7 +1137,9 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   assert.match(toolOverlaySource, /data-lab-action="tool-check-updates"/);
   assert.doesNotMatch(drawerSource, /renderSourceIntake\(state, copy\)/);
   assert.doesNotMatch(drawerSource, /renderLabProjectAssetsPanel/);
-  assert.match(projectNavigationSource, /renderSourceIntake\(state, copy\)/);
+  assert.doesNotMatch(projectNavigationSource, /renderSourceIntake\(state, copy\)/);
+  assert.match(projectWorkspaceSource, /renderProjectSourceImport\(state, copy\)/);
+  assert.match(projectWorkspaceSource, /renderProjectImportReview\(state, copy\)/);
   assert.match(assetGridSource, /data-lab-field="workspace\.hypothesis"/);
   assert.match(drawerSource, /data-lab-action="run-deep-analysis"/);
   assert.match(drawerSource, /buildIntentPreviewSentence\(state\)/);

@@ -149,7 +149,6 @@ function collectLaboratoryLegacyMappings(schema) {
 
   const mappings = [];
   const mediaFiles = mainFunctions["media-analysis"] ?? {};
-  const subtitleFiles = mainFunctions["subtitle-analysis"] ?? {};
 
   if (legacy.editDir && mediaFiles.editDir) {
     mappings.push({ legacyRelative: legacy.editDir, targetRelative: mediaFiles.editDir });
@@ -163,10 +162,6 @@ function collectLaboratoryLegacyMappings(schema) {
   if (legacy.reportDir && files.reportDir) {
     mappings.push({ legacyRelative: legacy.reportDir, targetRelative: files.reportDir });
   }
-  if (subtitleFiles.editDir && legacy.editDir) {
-    void subtitleFiles.editDir;
-  }
-
   return mappings;
 }
 

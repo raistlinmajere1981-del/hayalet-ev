@@ -3,7 +3,7 @@
   "id": "laboratory",
   "name": "Laboratory",
   "version": "1.0.0",
-  "description": "An obsidian analysis room with a guided workbench for intake, readiness, processing, and reporting across media, audio, and subtitle modules.",
+  "description": "An obsidian analysis room with a guided workbench for intake, readiness, processing, and reporting across media and audio modules.",
   "menu": {
     "label": "Laboratory",
     "icon": "LB",
@@ -18,10 +18,10 @@
   "workbench": {
     "experienceId": "analysis-workbench",
     "label": "Laboratory Workbench",
-    "description": "A guided desktop workbench that unifies media, audio, and subtitle analysis into one room flow.",
+    "description": "A guided desktop workbench that unifies media and audio analysis into one room flow.",
     "mode": "guided",
     "primaryFeatureId": "media-analysis",
-    "availableFeatureIds": ["media-analysis", "audio-analysis", "subtitle-analysis"]
+    "availableFeatureIds": ["media-analysis", "audio-analysis"]
   },
   "i18n": {
     "baseDir": "i18n"
@@ -96,12 +96,6 @@
       "name": "Audio Analysis",
       "description": "An audio-first analysis desk that reuses the laboratory tool room for source prep, signal checks, speech tooling, and reporting.",
       "icon": "AU"
-    },
-    {
-      "id": "subtitle-analysis",
-      "name": "Subtitle Analysis",
-      "description": "A subtitle-first workbench for local subtitle intake, YouTube subtitle capture, cleanup, QC, and reporting.",
-      "icon": "SB"
     }
   ]
 }
