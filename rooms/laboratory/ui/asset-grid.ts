@@ -78,6 +78,19 @@ function filterAssets(
     filtered = filtered.filter(function (asset) {
       return asset.type === filterType;
     });
+  } else {
+    const sourceLikeAssets = filtered.filter(function (asset) {
+      return (
+        asset.type === "source" ||
+        asset.type === "clip" ||
+        asset.type === "frame" ||
+        asset.type === "audio" ||
+        asset.type === "image"
+      );
+    });
+    if (sourceLikeAssets.length > 0) {
+      filtered = sourceLikeAssets;
+    }
   }
   if (searchTerm.trim() !== "") {
     const lowerSearch = searchTerm.toLowerCase();

@@ -120,20 +120,26 @@ test("laboratory project workspace keeps a closed placeholder root", () => {
   assert.doesNotMatch(html, /class="labx-pw-overlay"/);
 });
 
-test("laboratory project workspace owns source intake, hypothesis, grid, and empty inspector", () => {
+test("laboratory project workspace owns project import, hypothesis, grid, and empty inspector", () => {
   const html = renderProjectWorkspaceOverlay(createProjectWorkspaceState(true));
 
   assert.match(html, /class="labx-pw-overlay"/);
   assert.match(html, /data-lab-action="project-workspace-close"/);
-  assert.match(html, /class="labx-pw-nav__intake"/);
-  assert.match(html, /data-lab-field="source\.kind"/);
+  assert.match(html, /class="labx-project-import"/);
+  assert.match(html, /data-lab-action="project-import-kind"/);
+  assert.match(html, /data-lab-action="project-import-method"/);
+  assert.match(html, /data-lab-action="project-import-clear"/);
+  assert.match(html, /data-lab-action="project-import-add"/);
+  assert.match(html, /data-lab-field="project-import\.fileNameHint"/);
+  assert.doesNotMatch(html, /class="labx-pw-nav__intake"/);
+  assert.doesNotMatch(html, /data-lab-field="source\.kind"/);
   assert.match(html, /data-lab-field="workspace\.hypothesis"/);
   assert.match(html, /data-lab-field="project-workspace-sort"/);
   assert.match(html, /data-lab-field="project-workspace-filter"/);
   assert.match(html, /data-lab-field="project-workspace-group"/);
   assert.match(html, /data-lab-field="project-workspace-search"/);
   assert.match(html, /class="labx-pw-inspector labx-pw-inspector--empty"/);
-  assert.match(html, /class="labx-pw-bar labx-pw-bar--hidden"/);
+  assert.doesNotMatch(html, /class="labx-pw-bar/);
 });
 
 test("laboratory project workspace keeps the active source-less project navigable", () => {
@@ -229,11 +235,59 @@ test("laboratory project workspace renders localized asset groups and context ac
   assert.match(html, /FRM/);
   assert.match(html, /AUD/);
   assert.match(html, /IMG/);
-  assert.match(html, /RPT/);
-  assert.match(html, /AST/);
-  assert.match(html, /2 secili/);
-  assert.match(html, /Kaynak Olarak Kullan/);
+  assert.doesNotMatch(html, /RPT/);
+  assert.doesNotMatch(html, /AST/);
+  assert.doesNotMatch(html, /secili/);
+  assert.match(html, /Analiz Kaynagi Olarak Kullan/);
   assert.match(html, /AI&#39;ye Gonder/);
+});
+
+test("laboratory project workspace lets selected assets override stale import review state", () => {
+  const state = createProjectWorkspaceState(true, {
+    assets: [
+      {
+        id: "asset-image-1",
+        type: "image",
+        name: "selected-image.png",
+        localPath: "/tmp/selected-image.png",
+        createdAt: 500,
+      },
+    ],
+    selectedEntityIds: ["asset-image-1"],
+  });
+  state.sourceProbeStatus = "completed";
+  state.ui.projectImport.reviewFocus = "completed";
+  state.ui.projectImport.lastAction = "source-pick-local";
+  state.ui.projectImport.lastRequestId = "req-old-import";
+
+  const html = renderProjectWorkspaceOverlay(state);
+
+  assert.match(html, /selected-image\.png/);
+  assert.match(html, /Metadata/);
+  assert.doesNotMatch(html, /Import Review/);
+});
+
+test("laboratory project workspace draft review does not borrow the committed source preview", () => {
+  const state = createProjectWorkspaceState(true);
+  state.source = {
+    kind: "video",
+    mode: "local",
+    status: "ready",
+    storedFileName: "existing-source.mp4",
+    storedPath: "/tmp/existing-source.mp4",
+    previewUrl: "file:///tmp/existing-source.mp4",
+    metadata: { durationSeconds: 99 },
+  };
+  state.ui.projectImport.activeKind = "image";
+  state.ui.projectImport.reviewFocus = "draft";
+
+  const html = renderProjectWorkspaceOverlay(state);
+
+  assert.match(html, /Import Review/);
+  assert.match(html, /Pending file/);
+  assert.doesNotMatch(html, /existing-source\.mp4/);
+  assert.doesNotMatch(html, /file:\/\/\/tmp\/existing-source\.mp4/);
+  assert.doesNotMatch(html, /1:39/);
 });
 
 test("laboratory project workspace hides download for assets without a file target", () => {
@@ -262,9 +316,10 @@ test("laboratory project workspace i18n keys exist in English and Turkish catalo
     "rooms/laboratory/ui/asset-card.ts",
     "rooms/laboratory/ui/asset-grid.ts",
     "rooms/laboratory/ui/asset-inspector.ts",
-    "rooms/laboratory/ui/context-action-bar.ts",
     "rooms/laboratory/ui/lab-top-bar.ts",
+    "rooms/laboratory/ui/project-import-review.ts",
     "rooms/laboratory/ui/project-navigation.ts",
+    "rooms/laboratory/ui/project-source-import.ts",
     "rooms/laboratory/ui/project-workspace-overlay.ts",
   ];
   const keys = new Set<string>();
@@ -272,7 +327,7 @@ test("laboratory project workspace i18n keys exist in English and Turkish catalo
   sourceFiles.forEach(function (filePath) {
     const source = readFileSync(filePath, "utf8");
     for (const match of source.matchAll(
-      /copy\.t\("((?:mediaAnalysis\.(?:projectWorkspace|topBar))[^"]+)"/g
+      /copy\.t\("((?:mediaAnalysis\.(?:projectWorkspace|projectImport|topBar))[^"]+)"/g
     )) {
       keys.add(match[1]!);
     }
@@ -286,7 +341,7 @@ test("laboratory project workspace i18n keys exist in English and Turkish catalo
     }, record);
   }
 
-  assert.ok(keys.size > 60);
+  assert.ok(keys.size > 80);
   keys.forEach(function (key) {
     assert.equal(typeof readPath(enTranslations, key), "string", key);
     assert.equal(typeof readPath(trTranslations, key), "string", key);
@@ -303,8 +358,11 @@ test("laboratory project workspace css is imported and owns overlay/topbar/timel
     overlayCss,
     /\.labx-pw-overlay\s*\{[\s\S]*grid-template-areas:[\s\S]*"nav\s+grid\s+inspect"/
   );
+  assert.match(overlayCss, /\.labx-pw-main\s*\{[\s\S]*grid-area:\s*grid;/);
+  assert.match(overlayCss, /\.labx-project-import\s*\{[\s\S]*border-bottom:/);
+  assert.match(overlayCss, /\.labx-project-import__methods\s*\{[\s\S]*display:\s*grid;/);
+  assert.match(overlayCss, /\.labx-import-review__progress\s*\{[\s\S]*display:\s*grid;/);
   assert.match(overlayCss, /\.labx-pw-card\[data-selected="true"\]/);
-  assert.match(overlayCss, /\.labx-pw-bar\s*\{[\s\S]*grid-area:\s*bar;/);
   assert.match(themeSource, /\.labx-top-bar__project-btn\s*\{/);
   assert.match(themeSource, /\.labx-timeline__highlight\s*\{/);
 });

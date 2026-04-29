@@ -1,6 +1,5 @@
 import { asNonEmptyString, escapeHtml } from "../models/lab-types.js";
 import type { LabRecord, LabStoreState } from "../models/lab-types.js";
-import { renderSourceIntake } from "./workspace-surface.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
@@ -38,13 +37,8 @@ export function renderProjectNavigation(state: LabStoreState, copy: LabI18n = LA
     })
     .join("");
 
-  const sourceIntakeMarkup = renderSourceIntake(state, copy);
-
   return `
     <nav class="labx-pw-nav" aria-label="${escapeHtml(copy.t("mediaAnalysis.projectWorkspace.nav", "Projects"))}">
-      <div class="labx-pw-nav__intake">
-        ${sourceIntakeMarkup}
-      </div>
       <div class="labx-pw-nav__title">${escapeHtml(copy.t("mediaAnalysis.projectWorkspace.projects", "Projects"))}</div>
       <div class="labx-pw-nav__list">
         ${projectItems || `<div style="padding:0.5rem 0.9rem;color:var(--labx-text-dim);font-size:0.78rem">${escapeHtml(copy.t("mediaAnalysis.projectWorkspace.noProjects", "No projects yet"))}</div>`}

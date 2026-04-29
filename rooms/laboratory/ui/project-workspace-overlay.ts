@@ -2,8 +2,8 @@ import { escapeHtml, asNonEmptyString } from "../models/lab-types.js";
 import type { LabStoreState } from "../models/lab-types.js";
 import { renderProjectNavigation } from "./project-navigation.js";
 import { renderAssetGrid } from "./asset-grid.js";
-import { renderAssetInspector } from "./asset-inspector.js";
-import { renderContextActionBar } from "./context-action-bar.js";
+import { renderProjectImportReview } from "./project-import-review.js";
+import { renderProjectSourceImport } from "./project-source-import.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
@@ -53,9 +53,11 @@ export function renderProjectWorkspaceOverlay(
       <div class="labx-pw-overlay" data-overlay="project-workspace">
         ${renderHeader(state, copy)}
         ${renderProjectNavigation(state, copy)}
-        ${renderAssetGrid(state, copy)}
-        ${renderAssetInspector(state, copy)}
-        ${renderContextActionBar(state, copy)}
+        <main class="labx-pw-main">
+          ${renderProjectSourceImport(state, copy)}
+          ${renderAssetGrid(state, copy)}
+        </main>
+        ${renderProjectImportReview(state, copy)}
       </div>
     </div>
   `;

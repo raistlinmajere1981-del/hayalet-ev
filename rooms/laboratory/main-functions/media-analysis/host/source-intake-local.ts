@@ -8,6 +8,7 @@ type LaboratoryMediaLocalRuntime = LaboratoryRecord & {
 };
 
 type LaboratoryProjectSourceRecord = LaboratoryRecord & {
+  drafts?: unknown;
   kind?: unknown;
 };
 
@@ -115,6 +116,11 @@ export function createMediaLocalSourceIntakeRuntime(deps: MediaLocalSourceIntake
   }
 
   function getProjectSourceKind(project: LaboratoryProjectRecord): string {
+    const drafts = toRecord(project.source.drafts);
+    const draftKind = asNonEmptyString(drafts["kind"]);
+    if (draftKind === "video" || draftKind === "audio" || draftKind === "image") {
+      return draftKind;
+    }
     return typeof project.source.kind === "string" && project.source.kind.trim() !== ""
       ? project.source.kind
       : "video";
@@ -145,7 +151,8 @@ export function createMediaLocalSourceIntakeRuntime(deps: MediaLocalSourceIntake
     requestId: string
   ) {
     const project = getActiveProject(runtime);
-    const sourceConfig = getSourceConfig(runtime.sourcePresets, project.source.kind);
+    const sourceKind = getProjectSourceKind(project);
+    const sourceConfig = getSourceConfig(runtime.sourcePresets, sourceKind);
     const electronApi = getElectronApi();
     if (electronApi === null || typeof electronApi.showOpenDialog !== "function") {
       throw new Error("File picker is unavailable.");
@@ -178,12 +185,13 @@ export function createMediaLocalSourceIntakeRuntime(deps: MediaLocalSourceIntake
       requestId: requestId,
       storedPath: storedPath,
       storedFileName: storedFileName,
-      mimeType: normalizeMimeType(storedFileName, getProjectSourceKind(project)),
+      mimeType: normalizeMimeType(storedFileName, sourceKind),
     });
 
     await patchActiveProject(runtime, function (nextProject) {
       setProjectSource(nextProject, function (nextSource) {
         nextSource["mode"] = "local";
+        nextSource["kind"] = sourceKind;
         nextSource["status"] = "ready";
         nextSource["storedPath"] = preparedSource.storedPath;
         nextSource["storedFileName"] = preparedSource.storedFileName;

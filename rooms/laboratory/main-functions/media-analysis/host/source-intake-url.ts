@@ -109,6 +109,11 @@ export function createMediaUrlSourceIntakeRuntime(deps: MediaUrlSourceIntakeRunt
 
   function getProjectSourceKind(project: LaboratoryProjectRecord): string {
     const sourceRecord = toProjectSourceRecord(project.source);
+    const drafts = getProjectDrafts(project);
+    const draftKind = asNonEmptyString(drafts["kind"]);
+    if (draftKind === "video" || draftKind === "audio" || draftKind === "image") {
+      return draftKind;
+    }
     return typeof sourceRecord.kind === "string" && sourceRecord.kind.trim() !== ""
       ? sourceRecord.kind
       : "video";
@@ -139,6 +144,7 @@ export function createMediaUrlSourceIntakeRuntime(deps: MediaUrlSourceIntakeRunt
 
     const projectId = getProjectId(project);
     const sourceDrafts = getProjectDrafts(project);
+    const sourceKind = getProjectSourceKind(project);
     const urlValue = asNonEmptyString(sourceDrafts.urlInput);
     if (urlValue === null) {
       throw new Error("Direct URL is empty.");
@@ -148,7 +154,7 @@ export function createMediaUrlSourceIntakeRuntime(deps: MediaUrlSourceIntakeRunt
 
     const fileName = deriveFilename(
       urlValue,
-      getProjectSourceKind(project),
+      sourceKind,
       sourceDrafts.fileNameHint
     );
     const jobId = `room-url-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -191,7 +197,7 @@ export function createMediaUrlSourceIntakeRuntime(deps: MediaUrlSourceIntakeRunt
         storedFileName: storedFileName,
         mimeType:
           asNonEmptyString(downloaded.contentType) ||
-          normalizeMimeType(storedFileName, getProjectSourceKind(project)),
+          normalizeMimeType(storedFileName, sourceKind),
       });
 
       await patchActiveProject(runtime, function (nextProject) {
@@ -200,6 +206,7 @@ export function createMediaUrlSourceIntakeRuntime(deps: MediaUrlSourceIntakeRunt
         }
         setProjectSource(nextProject, function (nextSource) {
           nextSource["mode"] = "url";
+          nextSource["kind"] = sourceKind;
           nextSource["status"] = "ready";
           nextSource["storedPath"] = preparedSource.storedPath;
           nextSource["storedFileName"] = preparedSource.storedFileName;

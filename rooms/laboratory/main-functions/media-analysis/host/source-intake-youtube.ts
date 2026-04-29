@@ -334,8 +334,13 @@ export function createMediaYoutubeSourceIntakeRuntime(
       throw new Error("YouTube URL is empty.");
     }
     const captureMode = asNonEmptyString(drafts.youtubeCaptureMode) || "video+audio";
+    const draftKind = asNonEmptyString(drafts["kind"]);
     const derivedSourceKind =
-      captureMode === "audio-only" ? "audio" : toString(source["kind"]) || "video";
+      captureMode === "audio-only"
+        ? "audio"
+        : draftKind === "video" || draftKind === "audio" || draftKind === "image"
+          ? draftKind
+          : toString(source["kind"]) || "video";
 
     await cancelJobsForProject(runtime, projectId, requestId);
 
