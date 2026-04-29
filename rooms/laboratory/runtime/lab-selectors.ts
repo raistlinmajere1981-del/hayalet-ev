@@ -2332,7 +2332,7 @@ export function resolveDrawerMode(state: LabStoreState): LabDrawerMode {
 }
 
 export function getDrawerCollapsed(state: LabStoreState): boolean {
-  return state.ui.workspace.drawerCollapsed === true;
+  return state.ui.labMode === "import-youtube" || state.ui.workspace.drawerCollapsed === true;
 }
 
 const INTENT_ACTION_PHRASES: Record<LabIntentId, string> = {

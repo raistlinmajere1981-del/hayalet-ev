@@ -259,6 +259,11 @@ test("laboratory controller keeps youtube preset and custom draft wiring on the 
   assert.match(source, /case "source-youtube-preset":/);
   assert.match(source, /field\.startsWith\("source\.youtubeCustom\."\)/);
   assert.match(source, /mode: getDefaultSourceMode\(state, targetValue\)/);
+  assert.match(source, /case "source\.mode":/);
+  assert.match(
+    source,
+    /case "source\.mode":\s*if \(targetValue === "youtube"\) \{\s*dispatch\(\{ type: "enter-youtube-import-mode" \}\);\s*return;\s*\}\s*if \(isWorkspaceMutationLocked\("source"\)\)/
+  );
   assert.match(
     source,
     /sendMediaAction\("source-update-draft", \{\s*fields: mergeSourceDrafts\(state, patch\)/

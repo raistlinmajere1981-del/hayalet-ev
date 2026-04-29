@@ -22,6 +22,22 @@
     "strip";
 }
 
+.labx-shell[data-layout-kind="import-only"] {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "center";
+}
+
+.labx-shell[data-lab-mode="import-youtube"] .labx-center-panel {
+  position: relative;
+  gap: 0;
+  overflow: hidden;
+}
+
+.labx-shell[data-lab-mode="import-youtube"] .labx-drawer {
+  display: none;
+}
+
 .labx-top-bar {
   grid-area: topbar;
 }

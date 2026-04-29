@@ -1,12 +1,12 @@
 import { asLabRecord, asNonEmptyString } from "../models/lab-types.js";
-import type { LabStoreState } from "../models/lab-types.js";
+import type { LabStageSurface, LabStoreState } from "../models/lab-types.js";
 import { createLabEventBus } from "../runtime/lab-event-bus.js";
 import { createLabExecutionDispatcher } from "../runtime/lab-execution-dispatcher.js";
 import { createLabHostBridge } from "../runtime/lab-host-bridge.js";
 import { loadLabPersistedState, saveLabPersistedState } from "../runtime/lab-persistence.js";
 import { createLabStore } from "../runtime/lab-store.js";
 import { renderLabCenterPanel } from "./lab-center-panel.js";
-import { renderLabBootOverlay, renderLabLayout } from "./lab-layout.js";
+import { getLabLayoutKind, renderLabBootOverlay, renderLabLayout } from "./lab-layout.js";
 import { renderLabDrawer } from "./lab-drawer.js";
 import { renderLabProcessStrip } from "./lab-process-strip.js";
 import { renderLabTopBar } from "./lab-top-bar.js";
@@ -17,6 +17,7 @@ import { bindLabSelectionIntentClicks } from "./lab-selection-intent-binder.js";
 import { bindLabSelectionRoiInteractions } from "./lab-selection-roi-binder.js";
 import { bindLabSelectionSuggestionClicks } from "./lab-selection-suggestion-binder.js";
 import { renderWorkspaceSurface } from "./workspace-surface.js";
+import { renderYoutubeImportWorkspaceMarkup } from "./youtube-import-workspace.js";
 import { createLabRunController } from "../runtime/lab-run-controller.js";
 import { renderToolManagementOverlay } from "./tool-management-overlay.js";
 import { renderReportOverlay } from "./report-overlay.js";
@@ -667,9 +668,13 @@ export function startLaboratoryLabRoot() {
   }
 
   function syncShellState(shell: HTMLElement, state: LabStoreState) {
+    shell.dataset["layoutKind"] = getLabLayoutKind(state, {
+      bootOverlayActive: isBootOverlayActive(state),
+    });
     shell.dataset["stage"] = state.currentStage;
     shell.dataset["ready"] = isBootOverlayActive(state) ? "false" : "true";
     shell.dataset["workspaceMode"] = getWorkspaceMode(state);
+    shell.dataset["labMode"] = state.ui.labMode;
     shell.dataset["drawerMode"] = resolveDrawerMode(state);
     shell.dataset["drawerCollapsed"] = getDrawerCollapsed(state) ? "true" : "false";
   }
@@ -718,6 +723,17 @@ export function startLaboratoryLabRoot() {
     simulation: true,
   };
 
+  function replaceLabLayout(state: LabStoreState, surface: LabStageSurface, copy: LabI18n) {
+    runtimeRoot.innerHTML = renderLabLayout(state, surface, copy, {
+      bootOverlayActive: isBootOverlayActive(state),
+    });
+    const mountedShell = runtimeRoot.querySelector<HTMLElement>(".labx-shell");
+    if (mountedShell) {
+      syncShellState(mountedShell, state);
+      syncBootOverlay(mountedShell, state, copy);
+    }
+  }
+
   function getExecutionDetailsIdentity(state: LabStoreState) {
     const selection = getActiveSelection(state);
     const intentId = getActiveExecutionIntentId(state);
@@ -760,6 +776,13 @@ export function startLaboratoryLabRoot() {
   }
 
   function renderSurface(state: LabStoreState, copy: LabI18n) {
+    if (state.ui.labMode === "import-youtube") {
+      return {
+        main: renderYoutubeImportWorkspaceMarkup(state, copy),
+        side: "",
+      };
+    }
+
     // V2.3: single workspace surface replaces stage routing
     return renderWorkspaceSurface(state, {
       activeOverlay,
@@ -774,29 +797,60 @@ export function startLaboratoryLabRoot() {
     reconcileExecutionDetailsOverlay(state);
     const surface = renderSurface(state, copy);
     if (shellMounted !== true) {
-      runtimeRoot.innerHTML = renderLabLayout(state, surface, copy, {
-        bootOverlayActive: isBootOverlayActive(state),
-      });
+      replaceLabLayout(state, surface, copy);
       shellMounted = true;
-      const mountedShell = runtimeRoot.querySelector<HTMLElement>(".labx-shell");
-      if (mountedShell) {
-        syncShellState(mountedShell, state);
-        syncBootOverlay(mountedShell, state, copy);
-      }
       syncProcessStripHeartbeat(state);
       return;
     }
 
     const shell = runtimeRoot.querySelector(".labx-shell");
-    const topBar = runtimeRoot.querySelector(".labx-top-bar");
     const centerPanel = runtimeRoot.querySelector(".labx-center-panel");
+    const nextLayoutKind = getLabLayoutKind(state, {
+      bootOverlayActive: isBootOverlayActive(state),
+    });
+    const currentLayoutKind = shell?.getAttribute("data-layout-kind") ?? "laboratory";
+    if (!shell || currentLayoutKind !== nextLayoutKind) {
+      replaceLabLayout(state, surface, copy);
+      syncProcessStripHeartbeat(state);
+      return;
+    }
+
+    if (nextLayoutKind === "import-only") {
+      const overlayRoot = runtimeRoot.querySelector(".labx-overlay-root");
+      const assetPreviewOverlayRoot = runtimeRoot.querySelector("#lab-asset-preview-overlay-root");
+      const reportOverlayRoot = runtimeRoot.querySelector("#lab-report-overlay-root");
+      const projectWorkspaceRoot = runtimeRoot.querySelector("#lab-project-workspace-root");
+      if (
+        !centerPanel ||
+        !overlayRoot ||
+        !assetPreviewOverlayRoot ||
+        !reportOverlayRoot ||
+        !projectWorkspaceRoot
+      ) {
+        replaceLabLayout(state, surface, copy);
+        syncProcessStripHeartbeat(state);
+        return;
+      }
+      if (shell instanceof HTMLElement) {
+        syncShellState(shell, state);
+      }
+      updateRenderedElement(
+        documentRef,
+        centerPanel as HTMLElement,
+        renderLabCenterPanel(surface),
+        true
+      );
+      syncProcessStripHeartbeat(state);
+      return;
+    }
+
+    const topBar = runtimeRoot.querySelector(".labx-top-bar");
     const drawer = runtimeRoot.querySelector(".labx-drawer");
     const processStrip = runtimeRoot.querySelector(".labx-process-strip");
     const overlayRoot = runtimeRoot.querySelector(".labx-overlay-root");
     const assetPreviewOverlayRoot = runtimeRoot.querySelector("#lab-asset-preview-overlay-root");
     const reportOverlayRoot = runtimeRoot.querySelector("#lab-report-overlay-root");
     if (
-      !shell ||
       !topBar ||
       !centerPanel ||
       !drawer ||
@@ -804,9 +858,7 @@ export function startLaboratoryLabRoot() {
       !overlayRoot ||
       !assetPreviewOverlayRoot
     ) {
-      runtimeRoot.innerHTML = renderLabLayout(state, surface, copy, {
-        bootOverlayActive: isBootOverlayActive(state),
-      });
+      replaceLabLayout(state, surface, copy);
       syncProcessStripHeartbeat(state);
       return;
     }

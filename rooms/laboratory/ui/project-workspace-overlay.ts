@@ -44,7 +44,7 @@ export function renderProjectWorkspaceOverlay(
   state: LabStoreState,
   copy: LabI18n = LAB_FALLBACK_I18N
 ): string {
-  if (!state.ui.projectWorkspaceOpen) {
+  if (!state.ui.projectWorkspaceOpen || state.ui.labMode === "import-youtube") {
     return `<div id="lab-project-workspace-root" aria-hidden="true"></div>`;
   }
 

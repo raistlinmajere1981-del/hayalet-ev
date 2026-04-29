@@ -8,13 +8,26 @@ import { renderToolManagementOverlay } from "./tool-management-overlay.js";
 import { renderReportOverlay } from "./report-overlay.js";
 import { renderLabAssetPreviewOverlay } from "./lab-asset-preview-overlay.js";
 import { renderProjectWorkspaceOverlay } from "./project-workspace-overlay.js";
-import { getDrawerCollapsed, getWorkspaceMode, resolveDrawerMode } from "../runtime/lab-selectors.js";
+import {
+  getDrawerCollapsed,
+  getWorkspaceMode,
+  resolveDrawerMode,
+} from "../runtime/lab-selectors.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
 type LabLayoutOptions = {
   bootOverlayActive?: boolean;
 };
+
+type LabLayoutKind = "laboratory" | "import-only";
+
+export function getLabLayoutKind(
+  state: LabStoreState,
+  _options: LabLayoutOptions = {}
+): LabLayoutKind {
+  return state.ui.labMode === "import-youtube" ? "import-only" : "laboratory";
+}
 
 export function renderLabBootOverlay(copy: LabI18n = LAB_FALLBACK_I18N) {
   const steps = [
@@ -55,8 +68,22 @@ export function renderLabLayout(
   const drawerCollapsed = getDrawerCollapsed(state);
   const drawerMode = resolveDrawerMode(state);
   const bootOverlayActive = options.bootOverlayActive === true;
+  const layoutKind = getLabLayoutKind(state, { bootOverlayActive });
+
+  if (layoutKind === "import-only") {
+    return `
+      <div class="labx-shell" data-layout-kind="${layoutKind}" data-stage="${state.currentStage}" data-ready="true" data-workspace-mode="${getWorkspaceMode(state)}" data-lab-mode="${state.ui.labMode}" data-drawer-mode="${drawerMode}" data-drawer-collapsed="true">
+        ${renderLabCenterPanel(surface)}
+      </div>
+      <div class="labx-overlay-root" data-open="false" aria-hidden="true"></div>
+      <div class="labx-overlay-root labx-asset-preview-root" data-open="false" id="lab-asset-preview-overlay-root" aria-hidden="true"></div>
+      <div class="labx-overlay-root" data-open="false" id="lab-report-overlay-root" aria-hidden="true"></div>
+      <div id="lab-project-workspace-root" aria-hidden="true"></div>
+    `;
+  }
+
   return `
-    <div class="labx-shell" data-stage="${state.currentStage}" data-ready="${bootOverlayActive ? "false" : "true"}" data-workspace-mode="${getWorkspaceMode(state)}" data-drawer-mode="${drawerMode}" data-drawer-collapsed="${drawerCollapsed ? "true" : "false"}">
+    <div class="labx-shell" data-layout-kind="${layoutKind}" data-stage="${state.currentStage}" data-ready="${bootOverlayActive ? "false" : "true"}" data-workspace-mode="${getWorkspaceMode(state)}" data-lab-mode="${state.ui.labMode}" data-drawer-mode="${drawerMode}" data-drawer-collapsed="${drawerCollapsed ? "true" : "false"}">
       ${renderLabTopBar(state, copy)}
       ${renderLabCenterPanel(surface)}
       ${renderLabDrawer(state, surface, copy)}
