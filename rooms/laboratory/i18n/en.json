@@ -813,6 +813,75 @@
         "replaceYoutube": "Replace YouTube Source",
         "replaceLocal": "Replace Local Source"
       },
+      "youtubeImport": {
+        "title": "YouTube Import Workspace",
+        "back": "Back to Laboratory",
+        "clear": "Clear",
+        "preview": "YouTube Preview Area",
+        "previewFallbackTitle": "Sample Video Title",
+        "emptyTitle": "Paste YouTube URL to begin",
+        "urlPlaceholder": "https://youtube.com/watch?v=...",
+        "statusParsing": "Analyzing video metadata...",
+        "statusError": "Invalid YouTube URL or network error",
+        "hintIntro": "This workspace allows you to:",
+        "hintPreview": "Preview video before download",
+        "hintStrategy": "Control extraction strategy",
+        "hintFormats": "Select output formats",
+        "panelIdle": "Paste a YouTube URL to preview available import options.",
+        "panelParsing": "Analyzing video...",
+        "panelStrategyPending": "Strategy selection appears after metadata is ready.",
+        "panelError": "Check the URL and paste a valid YouTube link.",
+        "readyFormat": "Format: {format}",
+        "readyEstimatedSize": "Estimated size: {size}",
+        "readyDescription": "Strategy: {description}",
+        "readyDuration": "Duration: {duration}",
+        "formatLabel": "Format",
+        "bestAvailable": "Best available",
+        "keepAudio": "Keep audio track",
+        "strategyListLabel": "Extraction strategy",
+        "strategies": {
+          "videoBest": {
+            "label": "Best Quality",
+            "description": "Maximum resolution and bitrate",
+            "size": "~14 MB",
+            "format": "Best available"
+          },
+          "audioOnly": {
+            "label": "Audio Only",
+            "description": "Extract audio track only",
+            "size": "~2 MB",
+            "format": "MP3 / AAC"
+          },
+          "lowSize": {
+            "label": "Small Size",
+            "description": "Compressed for quick use",
+            "size": "~5 MB",
+            "format": "MP4 compressed"
+          },
+          "custom": {
+            "label": "Advanced",
+            "description": "Manual control over formats",
+            "size": "Manual",
+            "format": "Manual"
+          }
+        },
+        "advancedResolution": "Resolution",
+        "advancedFormat": "Format",
+        "advancedAudioExtraction": "Extract audio only",
+        "resolutions": {
+          "best": "Best available",
+          "1080p": "1080p",
+          "720p": "720p",
+          "480p": "480p"
+        },
+        "url": "URL Input (placeholder)",
+        "basic": "Basic Options (placeholder)",
+        "advanced": "Advanced Settings (placeholder)",
+        "download": "Download",
+        "downloadWithStrategy": "Download ({strategy} · {size})",
+        "downloadAnalyze": "Download + Analyze",
+        "downloadAnalyzeWithStrategy": "Download & Analyze ({strategy})"
+      },
       "youtubeDisabled": "YouTube mode stays disabled until the room-local yt-dlp installation is ready.",
       "intakeFrame": {
         "title": "Source Intake Controls",

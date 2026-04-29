@@ -32,6 +32,8 @@ import type {
   LabSourceDrafts,
   LabStoreEvent,
   LabStoreState,
+  LabYoutubeImportCustomSettings,
+  LabYoutubeImportStrategy,
   LabUserActionEvent,
   LabUserReport,
   CapabilityFamilyId,
@@ -113,6 +115,24 @@ function createIdleExecutionRuntime(): LabStoreState["ui"]["executionRuntime"] {
   };
 }
 
+function createDefaultYoutubeImportCustomSettings(): LabYoutubeImportCustomSettings {
+  return {
+    resolution: "best",
+    format: "mp4",
+    audioExtraction: false,
+  };
+}
+
+function createIdleYoutubeImportState(): LabStoreState["ui"]["youtubeImport"] {
+  return {
+    url: null,
+    status: "idle",
+    preview: null,
+    strategy: "video_best",
+    custom: createDefaultYoutubeImportCustomSettings(),
+  };
+}
+
 function normalizeWorkspaceIntentIds(value: unknown) {
   const knownIntentIds = new Set<string>(
     WORKSPACE_INTENTS.map(function (intent) {
@@ -167,6 +187,8 @@ function createInitialState(): LabStoreState {
     userActions: [],
     persisted: null,
     ui: {
+      labMode: "normal",
+      youtubeImport: createIdleYoutubeImportState(),
       sourceDrafts: createDefaultSourceDrafts(),
       editDrafts: {
         outputNameHint: "",
@@ -1690,16 +1712,127 @@ function isRunMutationLocked(state: LabStoreState) {
   return state.run !== null && (state.run.state === "running" || state.run.state === "queued");
 }
 
+function normalizeYoutubeImportUrl(url: string | null): string | null {
+  if (typeof url !== "string") {
+    return null;
+  }
+  const normalizedUrl = url.trim();
+  return normalizedUrl === "" ? null : normalizedUrl;
+}
+
+function normalizeYoutubeImportStrategy(value: unknown): LabYoutubeImportStrategy {
+  switch (value) {
+    case "audio_only":
+    case "low_size":
+    case "custom":
+    case "video_best":
+      return value;
+    default:
+      return "video_best";
+  }
+}
+
+function normalizeYoutubeImportCustomSettings(
+  patch: unknown,
+  current: LabYoutubeImportCustomSettings = createDefaultYoutubeImportCustomSettings()
+): LabYoutubeImportCustomSettings {
+  const record = asLabRecord(patch);
+  const nextResolution = asNonEmptyString(record["resolution"]);
+  const nextFormat = asNonEmptyString(record["format"]);
+  return {
+    resolution:
+      nextResolution === "1080p" ||
+      nextResolution === "720p" ||
+      nextResolution === "480p" ||
+      nextResolution === "best"
+        ? nextResolution
+        : current.resolution,
+    format:
+      nextFormat === "webm" || nextFormat === "mkv" || nextFormat === "mp4"
+        ? nextFormat
+        : current.format,
+    audioExtraction:
+      typeof record["audioExtraction"] === "boolean"
+        ? record["audioExtraction"]
+        : current.audioExtraction,
+  };
+}
+
 function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState {
   switch (event.type) {
+    case "enter-youtube-import-mode":
+      state.ui.labMode = "import-youtube";
+      return state;
+    case "exit-youtube-import-mode":
+      state.ui.labMode = "normal";
+      return state;
+    case "youtube-import-set-url": {
+      const nextUrl = normalizeYoutubeImportUrl(event.url);
+      const sameUrl = nextUrl !== null && nextUrl === state.ui.youtubeImport.url;
+      state.ui.youtubeImport = {
+        ...state.ui.youtubeImport,
+        url: nextUrl,
+        status: sameUrl ? state.ui.youtubeImport.status : "idle",
+        preview: sameUrl ? state.ui.youtubeImport.preview : null,
+      };
+      return state;
+    }
+    case "youtube-import-parse-start":
+      state.ui.youtubeImport = {
+        ...state.ui.youtubeImport,
+        status: "parsing",
+        preview: null,
+      };
+      return state;
+    case "youtube-import-parse-success": {
+      const eventUrl = normalizeYoutubeImportUrl(event.url ?? null);
+      if (eventUrl !== null && eventUrl !== state.ui.youtubeImport.url) {
+        return state;
+      }
+      state.ui.youtubeImport = {
+        ...state.ui.youtubeImport,
+        status: "ready",
+        preview: { ...event.preview },
+      };
+      return state;
+    }
+    case "youtube-import-parse-error":
+      state.ui.youtubeImport = {
+        ...state.ui.youtubeImport,
+        status: "error",
+        preview: null,
+      };
+      return state;
+    case "youtube-import-set-strategy":
+      state.ui.youtubeImport = {
+        ...state.ui.youtubeImport,
+        strategy: normalizeYoutubeImportStrategy(event.strategy),
+      };
+      return state;
+    case "youtube-import-custom-updated":
+      state.ui.youtubeImport = {
+        ...state.ui.youtubeImport,
+        custom: normalizeYoutubeImportCustomSettings(event.patch, state.ui.youtubeImport.custom),
+      };
+      return state;
+    case "youtube-import-clear":
+      state.ui.youtubeImport = createIdleYoutubeImportState();
+      return state;
     case "hydrate":
+      state.ui.labMode = "normal";
+      state.ui.youtubeImport = createIdleYoutubeImportState();
       clearExecutionRuntime(state);
       if (event.payload) {
         clearExecutionIntent(state);
         clearSuggestionPreview(state);
         resetInspectionMode(state);
         clearInspectionDepth(state);
-        state.persisted = event.payload as LabPersistedState;
+        const { youtubeImport: _youtubeImport, ...persistedPayload } = event.payload as Partial<
+          LabPersistedState
+        > & {
+          youtubeImport?: unknown;
+        };
+        state.persisted = persistedPayload as LabPersistedState;
         state.currentStage = normalizeLabStage(event.payload.currentStage, state.currentStage);
         state.featureId = normalizeLabFeatureId(event.payload.featureId, state.featureId);
         state.selectedCapabilities = Array.isArray(event.payload.selectedCapabilities)

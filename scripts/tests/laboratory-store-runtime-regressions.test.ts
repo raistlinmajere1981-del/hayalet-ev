@@ -25,6 +25,283 @@ import {
   test,
 } from "./laboratory-runtime-truth.helpers.ts";
 
+test("laboratory store keeps YouTube import mode UI-only and non-persistent", () => {
+  const store = createLabStore();
+  assert.equal(store.getState().ui.labMode, "normal");
+  assert.deepEqual(store.getState().ui.youtubeImport, {
+    url: null,
+    status: "idle",
+    preview: null,
+    strategy: "video_best",
+    custom: {
+      resolution: "best",
+      format: "mp4",
+      audioExtraction: false,
+    },
+  });
+
+  store.dispatch({
+    type: "source-drafts-updated",
+    patch: {
+      youtubeUrl: "https://youtube.com/watch?v=abc123",
+      youtubePreset: "custom",
+      youtubeCustom: {
+        format: "best",
+      },
+    },
+  });
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-source",
+      type: "source",
+      name: "source.mp4",
+      createdAt: Date.now(),
+      localPath: "/tmp/source.mp4",
+      url: "file:///tmp/source.mp4",
+      metadata: {},
+    },
+  });
+  store.dispatch({ type: "project-workspace-toggled", open: true });
+
+  store.dispatch({
+    type: "youtube-import-set-url",
+    url: " https://www.youtube.com/watch?v=abc123DEF45 ",
+  });
+  assert.deepEqual(store.getState().ui.youtubeImport, {
+    url: "https://www.youtube.com/watch?v=abc123DEF45",
+    status: "idle",
+    preview: null,
+    strategy: "video_best",
+    custom: {
+      resolution: "best",
+      format: "mp4",
+      audioExtraction: false,
+    },
+  });
+  const strategySnapshots = {
+    sourceDrafts: JSON.parse(JSON.stringify(store.getState().ui.sourceDrafts)),
+    youtubeImportStableFields: {
+      url: store.getState().ui.youtubeImport.url,
+      status: store.getState().ui.youtubeImport.status,
+      preview: store.getState().ui.youtubeImport.preview,
+      custom: JSON.parse(JSON.stringify(store.getState().ui.youtubeImport.custom)),
+    },
+    source: JSON.parse(JSON.stringify(store.getState().source)),
+    assets: JSON.parse(JSON.stringify(store.getState().assets)),
+    run: JSON.parse(JSON.stringify(store.getState().run)),
+    reports: JSON.parse(JSON.stringify(store.getState().reports)),
+  };
+  store.dispatch({ type: "youtube-import-set-strategy", strategy: "audio_only" });
+  assert.equal(store.getState().ui.youtubeImport.strategy, "audio_only");
+  store.dispatch({ type: "youtube-import-set-strategy", strategy: "low_size" });
+  assert.equal(store.getState().ui.youtubeImport.strategy, "low_size");
+  store.dispatch({ type: "youtube-import-set-strategy", strategy: "custom" });
+  assert.equal(store.getState().ui.youtubeImport.strategy, "custom");
+  store.dispatch({ type: "youtube-import-set-strategy", strategy: "video_best" });
+  assert.equal(store.getState().ui.youtubeImport.strategy, "video_best");
+  assert.deepEqual(
+    {
+      url: store.getState().ui.youtubeImport.url,
+      status: store.getState().ui.youtubeImport.status,
+      preview: store.getState().ui.youtubeImport.preview,
+      custom: store.getState().ui.youtubeImport.custom,
+    },
+    strategySnapshots.youtubeImportStableFields
+  );
+  assert.deepEqual(store.getState().ui.sourceDrafts, strategySnapshots.sourceDrafts);
+  assert.deepEqual(store.getState().source, strategySnapshots.source);
+  assert.deepEqual(store.getState().assets, strategySnapshots.assets);
+  assert.deepEqual(store.getState().run, strategySnapshots.run);
+  assert.deepEqual(store.getState().reports, strategySnapshots.reports);
+  store.dispatch({ type: "youtube-import-set-strategy", strategy: "audio_only" });
+  store.dispatch({
+    type: "youtube-import-custom-updated",
+    patch: {
+      resolution: "720p",
+      format: "webm",
+      audioExtraction: true,
+    },
+  });
+  assert.equal(store.getState().ui.youtubeImport.strategy, "audio_only");
+  assert.deepEqual(store.getState().ui.youtubeImport.custom, {
+    resolution: "720p",
+    format: "webm",
+    audioExtraction: true,
+  });
+  store.dispatch({ type: "youtube-import-parse-start" });
+  assert.equal(store.getState().ui.youtubeImport.status, "parsing");
+  store.dispatch({
+    type: "youtube-import-parse-success",
+    url: "https://www.youtube.com/watch?v=stale00000",
+    preview: {
+      title: "Stale Video",
+      duration: 1,
+      thumbnail: "https://img.youtube.com/vi/stale00000/hqdefault.jpg",
+    },
+  });
+  assert.equal(store.getState().ui.youtubeImport.status, "parsing");
+  assert.equal(store.getState().ui.youtubeImport.preview, null);
+  store.dispatch({
+    type: "youtube-import-parse-success",
+    url: "https://www.youtube.com/watch?v=abc123DEF45",
+    preview: {
+      title: "Sample Video Title",
+      duration: 154,
+      thumbnail: "https://img.youtube.com/vi/abc123DEF45/hqdefault.jpg",
+    },
+  });
+  assert.deepEqual(store.getState().ui.youtubeImport.preview, {
+    title: "Sample Video Title",
+    duration: 154,
+    thumbnail: "https://img.youtube.com/vi/abc123DEF45/hqdefault.jpg",
+  });
+  assert.equal(store.getState().ui.youtubeImport.status, "ready");
+  assert.equal(store.getState().ui.youtubeImport.strategy, "audio_only");
+  assert.deepEqual(store.getState().ui.youtubeImport.custom, {
+    resolution: "720p",
+    format: "webm",
+    audioExtraction: true,
+  });
+  store.dispatch({ type: "youtube-import-parse-error", reason: "invalid-url" });
+  assert.deepEqual(store.getState().ui.youtubeImport, {
+    url: "https://www.youtube.com/watch?v=abc123DEF45",
+    status: "error",
+    preview: null,
+    strategy: "audio_only",
+    custom: {
+      resolution: "720p",
+      format: "webm",
+      audioExtraction: true,
+    },
+  });
+  store.dispatch({ type: "youtube-import-set-url", url: "   " });
+  assert.deepEqual(store.getState().ui.youtubeImport, {
+    url: null,
+    status: "idle",
+    preview: null,
+    strategy: "audio_only",
+    custom: {
+      resolution: "720p",
+      format: "webm",
+      audioExtraction: true,
+    },
+  });
+  store.dispatch({ type: "youtube-import-clear" });
+  assert.deepEqual(store.getState().ui.youtubeImport, {
+    url: null,
+    status: "idle",
+    preview: null,
+    strategy: "video_best",
+    custom: {
+      resolution: "best",
+      format: "mp4",
+      audioExtraction: false,
+    },
+  });
+  store.dispatch({
+    type: "youtube-import-set-url",
+    url: "https://youtu.be/abc123DEF45",
+  });
+  store.dispatch({ type: "youtube-import-parse-start" });
+  store.dispatch({ type: "youtube-import-clear" });
+  assert.deepEqual(store.getState().ui.youtubeImport, {
+    url: null,
+    status: "idle",
+    preview: null,
+    strategy: "video_best",
+    custom: {
+      resolution: "best",
+      format: "mp4",
+      audioExtraction: false,
+    },
+  });
+
+  const sourceDraftsBefore = store.getState().ui.sourceDrafts;
+  const assetsBefore = store.getState().assets;
+  const projectWorkspaceOpenBefore = store.getState().ui.projectWorkspaceOpen;
+
+  store.dispatch({ type: "enter-youtube-import-mode" });
+  assert.equal(store.getState().ui.labMode, "import-youtube");
+  assert.deepEqual(store.getState().ui.sourceDrafts, sourceDraftsBefore);
+  assert.deepEqual(store.getState().assets, assetsBefore);
+  assert.equal(store.getState().ui.projectWorkspaceOpen, projectWorkspaceOpenBefore);
+
+  store.dispatch({ type: "exit-youtube-import-mode" });
+  assert.equal(store.getState().ui.labMode, "normal");
+  assert.deepEqual(store.getState().ui.sourceDrafts, sourceDraftsBefore);
+  assert.deepEqual(store.getState().assets, assetsBefore);
+  assert.equal(store.getState().ui.projectWorkspaceOpen, projectWorkspaceOpenBefore);
+
+  store.dispatch({
+    type: "youtube-import-set-url",
+    url: "https://youtu.be/ready12345",
+  });
+  store.dispatch({ type: "youtube-import-set-strategy", strategy: "low_size" });
+  store.dispatch({
+    type: "youtube-import-custom-updated",
+    patch: {
+      resolution: "480p",
+      format: "mkv",
+      audioExtraction: false,
+    },
+  });
+  store.dispatch({
+    type: "youtube-import-parse-success",
+    url: "https://youtu.be/ready12345",
+    preview: {
+      title: "Ready Video",
+      duration: 44,
+      thumbnail: "https://img.youtube.com/vi/ready12345/hqdefault.jpg",
+    },
+  });
+  const readyImportBeforeExit = store.getState().ui.youtubeImport;
+  store.dispatch({ type: "exit-youtube-import-mode" });
+  assert.equal(store.getState().ui.labMode, "normal");
+  assert.deepEqual(store.getState().ui.youtubeImport, readyImportBeforeExit);
+  store.dispatch({ type: "enter-youtube-import-mode" });
+  assert.deepEqual(store.getState().ui.youtubeImport, readyImportBeforeExit);
+
+  store.dispatch({ type: "enter-youtube-import-mode" });
+  store.dispatch({ type: "youtube-import-set-url", url: "https://youtu.be/abc123DEF45" });
+  store.dispatch({ type: "youtube-import-parse-start" });
+  store.dispatch({
+    type: "hydrate",
+    payload: {
+      source: {
+        kind: "video",
+        mode: "youtube",
+        status: "idle",
+      },
+      sourceDrafts: {
+        fileNameHint: "",
+        urlInput: "",
+        youtubeUrl: "https://youtube.com/watch?v=abc123",
+        youtubePreset: "custom",
+        youtubeCustom: {
+          format: "best",
+        },
+        youtubeCaptureMode: "video+audio",
+      },
+    },
+  });
+
+  assert.equal(store.getState().ui.labMode, "normal");
+  assert.deepEqual(store.getState().ui.youtubeImport, {
+    url: null,
+    status: "idle",
+    preview: null,
+    strategy: "video_best",
+    custom: {
+      resolution: "best",
+      format: "mp4",
+      audioExtraction: false,
+    },
+  });
+  assert.equal("youtubeImport" in (store.getState().persisted as Record<string, unknown>), false);
+  assert.equal(store.getState().ui.sourceDrafts.youtubeUrl, "https://youtube.com/watch?v=abc123");
+});
+
 test("laboratory process output parser translates known ffmpeg and download lines", () => {
   const blackdetectEvent = parseProcessOutput("blackdetect=duration:0.42");
   const frameEvent = parseProcessOutput("frame= 248 fps=24");

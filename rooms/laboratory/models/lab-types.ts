@@ -1075,7 +1075,35 @@ export interface LabPreflightResult {
   reason: string | null;
 }
 
+export type LabMode = "normal" | "import-youtube";
+export type LabYoutubeImportStatus = "idle" | "parsing" | "ready" | "error";
+export type LabYoutubeImportStrategy = "video_best" | "audio_only" | "low_size" | "custom";
+export type LabYoutubeImportCustomResolution = "best" | "1080p" | "720p" | "480p";
+export type LabYoutubeImportCustomFormat = "mp4" | "webm" | "mkv";
+
+export interface LabYoutubeImportPreview {
+  title?: string;
+  duration?: number;
+  thumbnail?: string;
+}
+
+export interface LabYoutubeImportCustomSettings {
+  resolution: LabYoutubeImportCustomResolution;
+  format: LabYoutubeImportCustomFormat;
+  audioExtraction: boolean;
+}
+
+export interface LabYoutubeImportState {
+  url: string | null;
+  status: LabYoutubeImportStatus;
+  preview: LabYoutubeImportPreview | null;
+  strategy: LabYoutubeImportStrategy;
+  custom: LabYoutubeImportCustomSettings;
+}
+
 export interface LabStoreUiState {
+  labMode: LabMode;
+  youtubeImport: LabYoutubeImportState;
   sourceDrafts: LabSourceDrafts;
   editDrafts: LabEditDrafts;
   profileDrafts: LabProfileDrafts;
@@ -1194,6 +1222,15 @@ export interface LabStageSurface {
 
 export type LabStoreEvent =
   | { type: "hydrate"; payload: Partial<LabPersistedState> | null }
+  | { type: "enter-youtube-import-mode" }
+  | { type: "exit-youtube-import-mode" }
+  | { type: "youtube-import-set-url"; url: string | null }
+  | { type: "youtube-import-parse-start" }
+  | { type: "youtube-import-parse-success"; preview: LabYoutubeImportPreview; url?: string | null }
+  | { type: "youtube-import-parse-error"; reason?: string | null }
+  | { type: "youtube-import-set-strategy"; strategy: LabYoutubeImportStrategy }
+  | { type: "youtube-import-custom-updated"; patch: Partial<LabYoutubeImportCustomSettings> }
+  | { type: "youtube-import-clear" }
   | { type: "bootstrap-ready-sent" }
   | { type: "context-received"; payload: LabRecord }
   | { type: "snapshot-received"; payload: LabRecord }

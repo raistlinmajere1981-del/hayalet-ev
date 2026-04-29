@@ -813,6 +813,75 @@
         "replaceYoutube": "YouTube Kaynagini Degistir",
         "replaceLocal": "Yerel Kaynagi Degistir"
       },
+      "youtubeImport": {
+        "title": "YouTube Ice Aktarma Calisma Alani",
+        "back": "Laboratuvara Don",
+        "clear": "Temizle",
+        "preview": "YouTube Onizleme Alani",
+        "previewFallbackTitle": "Ornek Video Basligi",
+        "emptyTitle": "Baslamak icin YouTube URL'si yapistir",
+        "urlPlaceholder": "https://youtube.com/watch?v=...",
+        "statusParsing": "Video metadatasi inceleniyor...",
+        "statusError": "Gecersiz YouTube URL'si veya ag hatasi",
+        "hintIntro": "Bu calisma alani sunlari saglar:",
+        "hintPreview": "Indirmeden once videoyu onizleme",
+        "hintStrategy": "Cikarma stratejisini kontrol etme",
+        "hintFormats": "Cikti formatlarini secme",
+        "panelIdle": "Kullanilabilir ice aktarma seceneklerini onizlemek icin bir YouTube URL'si yapistir.",
+        "panelParsing": "Video inceleniyor...",
+        "panelStrategyPending": "Strateji secimi metadata hazir oldugunda gorunur.",
+        "panelError": "URL'yi kontrol et ve gecerli bir YouTube baglantisi yapistir.",
+        "readyFormat": "Format: {format}",
+        "readyEstimatedSize": "Tahmini boyut: {size}",
+        "readyDescription": "Strateji: {description}",
+        "readyDuration": "Sure: {duration}",
+        "formatLabel": "Format",
+        "bestAvailable": "En iyi kullanilabilir",
+        "keepAudio": "Ses izini koru",
+        "strategyListLabel": "Cikarma stratejisi",
+        "strategies": {
+          "videoBest": {
+            "label": "En Iyi Kalite",
+            "description": "Maksimum cozunurluk ve bitrate",
+            "size": "~14 MB",
+            "format": "En iyi kullanilabilir"
+          },
+          "audioOnly": {
+            "label": "Sadece Ses",
+            "description": "Yalnizca ses izini cikar",
+            "size": "~2 MB",
+            "format": "MP3 / AAC"
+          },
+          "lowSize": {
+            "label": "Kucuk Boyut",
+            "description": "Hizli kullanim icin sikistirilmis",
+            "size": "~5 MB",
+            "format": "Sikistirilmis MP4"
+          },
+          "custom": {
+            "label": "Gelismis",
+            "description": "Formatlar uzerinde elle kontrol",
+            "size": "Manuel",
+            "format": "Manuel"
+          }
+        },
+        "advancedResolution": "Cozunurluk",
+        "advancedFormat": "Format",
+        "advancedAudioExtraction": "Yalnizca sesi cikar",
+        "resolutions": {
+          "best": "En iyi kullanilabilir",
+          "1080p": "1080p",
+          "720p": "720p",
+          "480p": "480p"
+        },
+        "url": "URL Girisi (placeholder)",
+        "basic": "Temel Secenekler (placeholder)",
+        "advanced": "Gelismis Ayarlar (placeholder)",
+        "download": "Indir",
+        "downloadWithStrategy": "Indir ({strategy} · {size})",
+        "downloadAnalyze": "Indir + Analiz Et",
+        "downloadAnalyzeWithStrategy": "Indir ve Analiz Et ({strategy})"
+      },
       "youtubeDisabled": "Oda-yerel yt-dlp kurulumu hazir olana kadar YouTube modu pasif kalir.",
       "intakeFrame": {
         "title": "Kaynak Ekleme Kontrolleri",

@@ -4,7 +4,13 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { renderLabWaveformTimeline } from "../../rooms/laboratory/ui/lab-waveform-timeline.ts";
+import { getLabLayoutKind, renderLabLayout } from "../../rooms/laboratory/ui/lab-layout.ts";
 import { createLabI18n } from "../../rooms/laboratory/ui/lab-i18n.ts";
+import { renderProjectWorkspaceOverlay } from "../../rooms/laboratory/ui/project-workspace-overlay.ts";
+import {
+  renderYoutubeImportWorkspace,
+  renderYoutubeImportWorkspaceMarkup,
+} from "../../rooms/laboratory/ui/youtube-import-workspace.ts";
 import { createMockExecutionResult } from "../../rooms/laboratory/runtime/lab-execution-dispatcher.ts";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import {
@@ -157,6 +163,226 @@ function createMinimalLaboratoryUiEnvironment(options: MinimalLaboratoryUiEnviro
           return candidate.delay <= maxDelay;
         });
       }
+    },
+    readyPayload: () => readyPayload,
+    restore() {
+      Object.entries(descriptors).forEach(([key, descriptor]) => {
+        if (descriptor) {
+          Object.defineProperty(globalThis, key, descriptor);
+        } else {
+          Reflect.deleteProperty(globalThis, key);
+        }
+      });
+    },
+    runtimeRoot,
+  };
+}
+
+class MountedRootElement extends ElementStub {
+  mountedQueriesEnabled = false;
+
+  override querySelector(selector: string): MountedQueryElement | null {
+    if (this.mountedQueriesEnabled !== true) {
+      return null;
+    }
+    if (selector === ".labx-shell" && this.innerHTML.includes('class="labx-shell"')) {
+      return new MountedQueryElement(this, selector);
+    }
+    return null;
+  }
+}
+
+class MountedQueryElement extends ElementStub {
+  constructor(
+    private readonly root: MountedRootElement,
+    private readonly selector: string
+  ) {
+    super();
+  }
+
+  getAttribute(name: string): string | null {
+    if (this.selector !== ".labx-shell") {
+      return null;
+    }
+    const shellMatch = this.root.innerHTML.match(/<div class="labx-shell"([^>]*)>/);
+    const shellAttributes = shellMatch?.[1] ?? "";
+    const attributeMatch = shellAttributes.match(new RegExp(`${name}="([^"]*)"`));
+    return attributeMatch?.[1] ?? null;
+  }
+
+  setAttribute(): void {}
+
+  removeAttribute(): void {}
+
+  hasAttribute(name: string): boolean {
+    return this.getAttribute(name) !== null;
+  }
+
+  getAttributeNames(): string[] {
+    return [];
+  }
+
+  insertAdjacentHTML(_position: InsertPosition, html: string): void {
+    this.root.innerHTML += html;
+  }
+}
+
+class MountedActionElement extends ElementStub {
+  constructor(action: string) {
+    super();
+    this.dataset["labAction"] = action;
+  }
+
+  closest(selector: string): MountedActionElement | null {
+    return selector === "[data-lab-action]" ? this : null;
+  }
+}
+
+class MountedSelectElement extends ElementStub {
+  type = "select-one";
+
+  constructor(
+    field: string,
+    public value: string
+  ) {
+    super();
+    this.dataset["labField"] = field;
+  }
+}
+
+function createMountedLaboratoryTransitionEnvironment() {
+  const runtimeRoot = new MountedRootElement();
+  const listeners = new Map<string, (event: Event) => void>();
+  let readyPayload: Record<string, unknown> | null = null;
+  let timerId = 1;
+  const storage = new Map<string, string>();
+  storage.set(
+    "hayalet-ev:laboratory-refactor:v4",
+    JSON.stringify({
+      schemaVersion: 4,
+      source: {
+        kind: "video",
+        mode: "local",
+        previewUrl: "file:///tmp/mounted-transition.mp4",
+        status: "ready",
+        storedFileName: "mounted-transition.mp4",
+        storedPath: "/tmp/mounted-transition.mp4",
+      },
+    })
+  );
+
+  const descriptors = {
+    clearTimeout: Object.getOwnPropertyDescriptor(globalThis, "clearTimeout"),
+    document: Object.getOwnPropertyDescriptor(globalThis, "document"),
+    Element: Object.getOwnPropertyDescriptor(globalThis, "Element"),
+    HTMLElement: Object.getOwnPropertyDescriptor(globalThis, "HTMLElement"),
+    HTMLInputElement: Object.getOwnPropertyDescriptor(globalThis, "HTMLInputElement"),
+    HTMLSelectElement: Object.getOwnPropertyDescriptor(globalThis, "HTMLSelectElement"),
+    HTMLTextAreaElement: Object.getOwnPropertyDescriptor(globalThis, "HTMLTextAreaElement"),
+    navigator: Object.getOwnPropertyDescriptor(globalThis, "navigator"),
+    setTimeout: Object.getOwnPropertyDescriptor(globalThis, "setTimeout"),
+    window: Object.getOwnPropertyDescriptor(globalThis, "window"),
+  };
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: ElementStub,
+  });
+  Object.defineProperty(globalThis, "HTMLElement", {
+    configurable: true,
+    value: ElementStub,
+  });
+  Object.defineProperty(globalThis, "HTMLInputElement", {
+    configurable: true,
+    value: ElementStub,
+  });
+  Object.defineProperty(globalThis, "HTMLSelectElement", {
+    configurable: true,
+    value: MountedSelectElement,
+  });
+  Object.defineProperty(globalThis, "HTMLTextAreaElement", {
+    configurable: true,
+    value: ElementStub,
+  });
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    value: {
+      language: "en-US",
+    },
+  });
+  Object.defineProperty(globalThis, "setTimeout", {
+    configurable: true,
+    value() {
+      const id = timerId;
+      timerId += 1;
+      return id;
+    },
+  });
+  Object.defineProperty(globalThis, "clearTimeout", {
+    configurable: true,
+    value() {},
+  });
+  Object.defineProperty(globalThis, "document", {
+    configurable: true,
+    value: {
+      documentElement: {
+        dataset: {},
+        lang: "en",
+        style: {
+          setProperty() {},
+        },
+      },
+      body: Object.assign(new ElementStub(), {
+        style: {
+          setProperty() {},
+        },
+      }),
+      addEventListener(type: string, listener: (event: Event) => void) {
+        listeners.set(type, listener);
+      },
+      removeEventListener(type: string) {
+        listeners.delete(type);
+      },
+      getElementById(id: string) {
+        return id === "app" ? runtimeRoot : null;
+      },
+      querySelector() {
+        return null;
+      },
+    },
+  });
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      addEventListener() {},
+      clearTimeout() {},
+      localStorage: {
+        getItem(key: string) {
+          return storage.get(key) ?? null;
+        },
+        setItem(key: string, value: string) {
+          storage.set(key, value);
+        },
+      },
+      removeEventListener() {},
+      roomAPI: {
+        onHostMessage() {},
+        ready(payload: Record<string, unknown>) {
+          readyPayload = payload;
+        },
+        sendEvent() {},
+      },
+      setTimeout() {
+        const id = timerId;
+        timerId += 1;
+        return id;
+      },
+    },
+  });
+
+  return {
+    listener(type: string) {
+      return listeners.get(type);
     },
     readyPayload: () => readyPayload,
     restore() {
@@ -565,11 +791,15 @@ test("laboratory shell routes host traffic through lab-root orchestration seams"
 
   assert.match(uiIndexSource, /import "\.\/lab-root\.js";/);
   assert.match(labRootSource, /return renderWorkspaceSurface\(state, \{/);
+  assert.doesNotMatch(labRootSource, /state\.bootReady && state\.ui\.labMode/);
   assert.match(
     labRootSource,
     /runtimeRoot\.innerHTML = renderLabLayout\(state, surface, copy, \{\s*bootOverlayActive: isBootOverlayActive\(state\),\s*\}\);/
   );
   assert.match(labRootSource, /renderLabBootOverlay\(copy\)/);
+  assert.match(labRootSource, /getLabLayoutKind\(state, \{/);
+  assert.match(labRootSource, /currentLayoutKind !== nextLayoutKind/);
+  assert.match(labRootSource, /nextLayoutKind === "import-only"/);
   assert.match(labRootSource, /function syncBootOverlay\(/);
   assert.match(labRootSource, /const BOOT_OVERLAY_SETTLE_MS = 450;/);
   assert.match(labRootSource, /const BOOT_OVERLAY_FALLBACK_READY_MS = 8000;/);
@@ -604,6 +834,251 @@ test("laboratory shell routes host traffic through lab-root orchestration seams"
   assert.match(hostBridgeSource, /type:\s*"source-snapshot-received"/);
   assert.match(hostBridgeSource, /type === "lab-event"/);
   assert.doesNotMatch(hostBridgeSource, /buildLifecycleEventsFromHostEvent/);
+});
+
+test("laboratory mounted shell swaps chrome across YouTube import mode transitions", async () => {
+  const environment = createMountedLaboratoryTransitionEnvironment();
+
+  try {
+    await import(
+      `${pathToFileURL(resolve("rooms/laboratory/ui/lab-root.ts")).href}?mountedImport=${Date.now()}`
+    );
+
+    assert.deepEqual(environment.readyPayload(), {
+      feature: "media-analysis",
+      room: "laboratory",
+      stage: "ui-ready",
+    });
+    assert.match(environment.runtimeRoot.innerHTML, /data-layout-kind="laboratory"/);
+    assert.match(environment.runtimeRoot.innerHTML, /data-ready="false"/);
+    assert.match(environment.runtimeRoot.innerHTML, /class="labx-top-bar"/);
+    assert.match(environment.runtimeRoot.innerHTML, /class="labx-drawer"/);
+    assert.match(environment.runtimeRoot.innerHTML, /class="labx-process-strip"/);
+
+    environment.runtimeRoot.mountedQueriesEnabled = true;
+
+    const changeListener = environment.listener("change");
+    assert.ok(changeListener);
+    changeListener({
+      target: new MountedSelectElement("source.mode", "youtube"),
+    } as unknown as Event);
+
+    assert.match(environment.runtimeRoot.innerHTML, /data-layout-kind="import-only"/);
+    assert.match(environment.runtimeRoot.innerHTML, /data-ready="true"/);
+    assert.match(environment.runtimeRoot.innerHTML, /class="labx-import-workspace"/);
+    assert.doesNotMatch(environment.runtimeRoot.innerHTML, /class="labx-top-bar"/);
+    assert.doesNotMatch(environment.runtimeRoot.innerHTML, /class="labx-drawer"/);
+    assert.doesNotMatch(environment.runtimeRoot.innerHTML, /class="labx-process-strip"/);
+
+    const clickListener = environment.listener("click");
+    assert.ok(clickListener);
+    clickListener({
+      target: new MountedActionElement("exit-youtube-import-mode"),
+    } as unknown as Event);
+
+    assert.match(environment.runtimeRoot.innerHTML, /data-layout-kind="laboratory"/);
+    assert.match(environment.runtimeRoot.innerHTML, /class="labx-top-bar"/);
+    assert.match(environment.runtimeRoot.innerHTML, /class="labx-drawer"/);
+    assert.match(environment.runtimeRoot.innerHTML, /class="labx-process-strip"/);
+  } finally {
+    environment.restore();
+  }
+});
+
+test("laboratory YouTube import mode renders as an additive shell override", () => {
+  const store = createLabStore();
+  store.dispatch({ type: "project-workspace-toggled", open: true });
+  store.dispatch({ type: "enter-youtube-import-mode" });
+  const state = store.getState();
+
+  const idleMarkup = renderYoutubeImportWorkspaceMarkup(state);
+  assert.match(idleMarkup, /class="labx-import-workspace"/);
+  assert.match(idleMarkup, /data-import-status="idle"/);
+  assert.match(idleMarkup, /data-has-preview="false"/);
+  assert.match(idleMarkup, /class="labx-import-title"/);
+  assert.match(idleMarkup, /YouTube Import Workspace/);
+  assert.match(idleMarkup, /class="labx-import-back"/);
+  assert.match(idleMarkup, /data-lab-action="exit-youtube-import-mode"/);
+  assert.match(idleMarkup, /data-lab-action="youtube-import-clear"/);
+  assert.match(idleMarkup, /class="labx-import-empty"/);
+  assert.match(idleMarkup, /Paste YouTube URL to begin/);
+  assert.match(idleMarkup, /class="labx-import-url-input"/);
+  assert.match(idleMarkup, /type="url"/);
+  assert.match(idleMarkup, /data-lab-field="youtube-import\.url"/);
+  assert.match(idleMarkup, /placeholder="https:\/\/youtube\.com\/watch\?v=\.\.\."/);
+  assert.match(idleMarkup, /Paste a YouTube URL to preview available import options/);
+  assert.match(idleMarkup, /class="labx-import-hint"/);
+  assert.match(idleMarkup, /Preview video before download/);
+  assert.match(idleMarkup, /Control extraction strategy/);
+  assert.match(idleMarkup, /Select output formats/);
+  assert.doesNotMatch(idleMarkup, /YouTube Preview Area/);
+  assert.doesNotMatch(idleMarkup, /URL Input \(placeholder\)/);
+  assert.doesNotMatch(idleMarkup, /Basic Options \(placeholder\)/);
+  assert.doesNotMatch(idleMarkup, /Advanced Settings \(placeholder\)/);
+  assert.doesNotMatch(idleMarkup, /data-lab-action="load-source"/);
+  assert.doesNotMatch(idleMarkup, /source-download-youtube/);
+  assert.doesNotMatch(idleMarkup, /source-set-mode/);
+  assert.doesNotMatch(idleMarkup, /data-lab-field="youtube-import\.format"/);
+
+  store.dispatch({ type: "youtube-import-set-url", url: "https://youtu.be/abc123DEF45" });
+  store.dispatch({ type: "youtube-import-parse-start" });
+  const parsingMarkup = renderYoutubeImportWorkspaceMarkup(store.getState());
+  assert.match(parsingMarkup, /data-import-status="parsing"/);
+  assert.match(parsingMarkup, /value="https:\/\/youtu\.be\/abc123DEF45"/);
+  assert.match(parsingMarkup, /id="5zfn1x"/);
+  assert.match(parsingMarkup, /Analyzing video metadata\.\.\./);
+  assert.match(parsingMarkup, /id="jp9w3v"/);
+  assert.match(parsingMarkup, /Analyzing video\.\.\./);
+  assert.match(parsingMarkup, /Strategy selection appears after metadata is ready/);
+  assert.doesNotMatch(parsingMarkup, /<fieldset class="labx-import-control-group" disabled>/);
+  assert.doesNotMatch(parsingMarkup, /data-lab-field="youtube-import\.format"/);
+  assert.doesNotMatch(parsingMarkup, /Keep audio track/);
+
+  store.dispatch({
+    type: "youtube-import-parse-success",
+    url: "https://youtu.be/abc123DEF45",
+    preview: {
+      title: "Sample Video Title",
+      duration: 154,
+      thumbnail: "https://img.youtube.com/vi/abc123DEF45/hqdefault.jpg",
+    },
+  });
+  const readyMarkup = renderYoutubeImportWorkspaceMarkup(store.getState());
+  assert.match(readyMarkup, /data-import-status="ready"/);
+  assert.match(readyMarkup, /data-has-preview="true"/);
+  assert.match(readyMarkup, /class="labx-import-thumb"/);
+  assert.match(readyMarkup, /class="labx-import-meta"/);
+  assert.match(readyMarkup, /Sample Video Title/);
+  assert.match(readyMarkup, /02:34/);
+  assert.match(readyMarkup, /id="0zznv2"/);
+  assert.match(readyMarkup, /Format: Best available/);
+  assert.match(readyMarkup, /Estimated size: ~14 MB/);
+  assert.match(readyMarkup, /Strategy: Maximum resolution and bitrate/);
+  assert.match(readyMarkup, /Duration: 2:34/);
+  assert.match(readyMarkup, /class="labx-strategy-list"/);
+  assert.match(readyMarkup, /data-lab-action="youtube-import-set-strategy"/);
+  assert.match(readyMarkup, /data-lab-value="video_best"/);
+  assert.match(readyMarkup, /data-lab-value="audio_only"/);
+  assert.match(readyMarkup, /data-lab-value="low_size"/);
+  assert.match(readyMarkup, /data-lab-value="custom"/);
+  assert.match(readyMarkup, /class="strategy-card labx-strategy-card active"/);
+  assert.match(readyMarkup, /Best Quality/);
+  assert.match(readyMarkup, /Audio Only/);
+  assert.match(readyMarkup, /Small Size/);
+  assert.match(readyMarkup, /Advanced/);
+  assert.doesNotMatch(readyMarkup, /data-lab-field="youtube-import\.format"/);
+  assert.doesNotMatch(readyMarkup, /<input type="checkbox" checked \/>/);
+  const readyFooterMarkup = readyMarkup.match(
+    /<div class="labx-import-footer">[\s\S]*?<\/div>/
+  )?.[0];
+  assert.ok(readyFooterMarkup);
+  assert.match(readyFooterMarkup, /Download \(Best Quality · ~14 MB\)/);
+  assert.match(readyFooterMarkup, /Download &amp; Analyze \(Best Quality\)/);
+  assert.doesNotMatch(readyFooterMarkup, /data-lab-action/);
+  assert.doesNotMatch(readyMarkup, /Paste YouTube URL to begin/);
+  assert.doesNotMatch(readyMarkup, /data-lab-action="source-download-youtube"/);
+  assert.doesNotMatch(readyMarkup, /data-lab-action="load-source"/);
+
+  store.dispatch({ type: "youtube-import-set-strategy", strategy: "audio_only" });
+  const audioOnlyMarkup = renderYoutubeImportWorkspaceMarkup(store.getState());
+  assert.match(audioOnlyMarkup, /Format: MP3 \/ AAC/);
+  assert.match(audioOnlyMarkup, /Estimated size: ~2 MB/);
+  assert.match(audioOnlyMarkup, /Strategy: Extract audio track only/);
+  assert.match(audioOnlyMarkup, /Download \(Audio Only · ~2 MB\)/);
+  assert.match(audioOnlyMarkup, /Download &amp; Analyze \(Audio Only\)/);
+
+  store.dispatch({ type: "youtube-import-set-strategy", strategy: "low_size" });
+  const lowSizeMarkup = renderYoutubeImportWorkspaceMarkup(store.getState());
+  assert.match(lowSizeMarkup, /Format: MP4 compressed/);
+  assert.match(lowSizeMarkup, /Estimated size: ~5 MB/);
+  assert.match(lowSizeMarkup, /Strategy: Compressed for quick use/);
+  assert.match(lowSizeMarkup, /Download \(Small Size · ~5 MB\)/);
+  assert.match(lowSizeMarkup, /Download &amp; Analyze \(Small Size\)/);
+
+  store.dispatch({ type: "youtube-import-set-strategy", strategy: "custom" });
+  store.dispatch({
+    type: "youtube-import-custom-updated",
+    patch: {
+      resolution: "720p",
+      format: "webm",
+      audioExtraction: true,
+    },
+  });
+  const customMarkup = renderYoutubeImportWorkspaceMarkup(store.getState());
+  assert.match(customMarkup, /Format: Manual/);
+  assert.match(customMarkup, /Estimated size: Manual/);
+  assert.match(customMarkup, /Strategy: Manual control over formats/);
+  assert.match(customMarkup, /class="labx-advanced-settings"/);
+  assert.match(customMarkup, /data-lab-field="youtube-import\.custom\.resolution"/);
+  assert.match(customMarkup, /value="720p" selected/);
+  assert.match(customMarkup, /data-lab-field="youtube-import\.custom\.format"/);
+  assert.match(customMarkup, /value="webm" selected/);
+  assert.match(customMarkup, /data-lab-field="youtube-import\.custom\.audioExtraction" checked/);
+  assert.match(customMarkup, /Download \(Advanced · Manual\)/);
+  assert.doesNotMatch(customMarkup, /data-lab-field="youtube-import\.format"/);
+
+  store.dispatch({ type: "youtube-import-set-url", url: "https://example.com/watch?v=nope" });
+  store.dispatch({ type: "youtube-import-parse-error", reason: "invalid-url" });
+  const errorMarkup = renderYoutubeImportWorkspaceMarkup(store.getState());
+  assert.match(errorMarkup, /data-import-status="error"/);
+  assert.match(errorMarkup, /id="b8nq4m"/);
+  assert.match(errorMarkup, /Invalid YouTube URL or network error/);
+  assert.match(errorMarkup, /Check the URL and paste a valid YouTube link/);
+  assert.doesNotMatch(errorMarkup, /Sample Video Title/);
+  assert.doesNotMatch(errorMarkup, /data-lab-field="youtube-import\.format"/);
+
+  const shellMarkup = renderLabLayout(state, { main: idleMarkup, side: "" });
+  assert.equal(getLabLayoutKind(state), "import-only");
+  assert.match(shellMarkup, /data-layout-kind="import-only"/);
+  assert.match(shellMarkup, /data-lab-mode="import-youtube"/);
+  assert.match(shellMarkup, /data-drawer-collapsed="true"/);
+  assert.match(shellMarkup, /class="labx-import-workspace"/);
+  assert.doesNotMatch(shellMarkup, /class="labx-top-bar"/);
+  assert.doesNotMatch(shellMarkup, /class="labx-process-strip"/);
+  assert.doesNotMatch(shellMarkup, /class="labx-drawer"/);
+  assert.doesNotMatch(shellMarkup, /labx-source-intake/);
+  assert.doesNotMatch(shellMarkup, /id="lab-workspace-main"/);
+  assert.doesNotMatch(shellMarkup, /labx-pw-grid/);
+
+  const overlayMarkup = renderProjectWorkspaceOverlay(state);
+  assert.match(overlayMarkup, /id="lab-project-workspace-root" aria-hidden="true"/);
+  assert.doesNotMatch(overlayMarkup, /labx-pw-overlay/);
+  assert.equal(state.ui.projectWorkspaceOpen, true);
+
+  const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));
+  const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
+  assert.deepEqual(
+    Object.keys(enTranslations.mediaAnalysis.source.youtubeImport).sort(),
+    Object.keys(trTranslations.mediaAnalysis.source.youtubeImport).sort()
+  );
+
+  store.dispatch({ type: "exit-youtube-import-mode" });
+  const restoredState = store.getState();
+  const restoredMarkup = renderLabLayout(restoredState, {
+    main: `<div id="lab-workspace-main"></div>`,
+    side: "",
+  });
+  assert.equal(getLabLayoutKind(restoredState), "laboratory");
+  assert.match(restoredMarkup, /data-layout-kind="laboratory"/);
+  assert.match(restoredMarkup, /class="labx-top-bar"/);
+  assert.match(restoredMarkup, /class="labx-process-strip"/);
+});
+
+test("laboratory YouTube import HTMLElement bridge requires an explicit document outside the browser", () => {
+  const documentDescriptor = Object.getOwnPropertyDescriptor(globalThis, "document");
+  const store = createLabStore();
+  store.dispatch({ type: "enter-youtube-import-mode" });
+
+  try {
+    delete (globalThis as { document?: Document }).document;
+    assert.throws(function () {
+      renderYoutubeImportWorkspace(store.getState());
+    }, /requires a browser Document/);
+  } finally {
+    if (documentDescriptor !== undefined) {
+      Object.defineProperty(globalThis, "document", documentDescriptor);
+    }
+  }
 });
 
 test("laboratory shell preserves workspace preview nodes while diffing live panels", () => {
@@ -728,6 +1203,10 @@ test("laboratory process strip owns heartbeat and expanded runtime detail render
 
 test("laboratory theme defines the v2 shell grid and drawer layout contract", () => {
   const themeSource = readFileSync("rooms/laboratory/ui/lab-theme.css", "utf8");
+  const projectWorkspaceSource = readFileSync(
+    "rooms/laboratory/ui/styles/project-workspace.css",
+    "utf8"
+  );
 
   assert.match(
     themeSource,
@@ -754,6 +1233,30 @@ test("laboratory theme defines the v2 shell grid and drawer layout contract", ()
     themeSource,
     /\.labx-top-bar\s*\{\s*grid-area:\s*topbar;\s*\}[\s\S]*\.labx-drawer\s*\{\s*grid-area:\s*drawer;\s*\}[\s\S]*\.labx-process-strip\s*\{\s*grid-area:\s*strip;\s*\}/
   );
+  assert.match(
+    themeSource,
+    /\.labx-shell\[data-layout-kind="import-only"\]\s*\{[\s\S]*grid-template-rows:\s*minmax\(0, 1fr\);[\s\S]*grid-template-areas:\s*"center";/
+  );
+  assert.match(
+    projectWorkspaceSource,
+    /\.labx-import-body\s*\{[\s\S]*grid-template-columns:\s*1\.4fr 1fr;/
+  );
+  assert.match(
+    projectWorkspaceSource,
+    /\.labx-import-body\[data-has-preview="true"\]\s*\{[\s\S]*grid-template-columns:\s*1\.2fr 1fr;/
+  );
+  assert.match(projectWorkspaceSource, /\.labx-import-title\s*\{[\s\S]*font-size:\s*14px;/);
+  assert.match(projectWorkspaceSource, /\.labx-import-empty\s*\{[\s\S]*gap:\s*16px;/);
+  assert.match(projectWorkspaceSource, /\.labx-import-hint\s*\{[\s\S]*font-size:\s*12px;/);
+  assert.match(projectWorkspaceSource, /\.labx-import-status\s*\{[\s\S]*font-size:\s*12px;/);
+  assert.match(projectWorkspaceSource, /\.labx-import-thumb\s*\{[\s\S]*aspect-ratio:\s*16 \/ 9;/);
+  assert.match(projectWorkspaceSource, /\.labx-strategy-list\s*\{[\s\S]*display:\s*grid;/);
+  assert.match(projectWorkspaceSource, /\.labx-strategy-list\s*\{[\s\S]*gap:\s*10px;/);
+  assert.match(
+    projectWorkspaceSource,
+    /\.labx-strategy-list \.strategy-card\.active\s*\{[\s\S]*border:\s*2px solid var\(--labx-accent\);[\s\S]*background:\s*var\(--labx-accent-soft\);/
+  );
+  assert.match(projectWorkspaceSource, /\.labx-advanced-settings\s*\{[\s\S]*display:\s*grid;/);
 });
 
 test("laboratory micro inspection UI exposes roi focus precedence and lens affordances in the preview shell", () => {

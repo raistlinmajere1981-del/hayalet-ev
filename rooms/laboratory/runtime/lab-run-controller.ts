@@ -12,6 +12,9 @@ import type {
   LabSourceDrafts,
   LabStoreEvent,
   LabUserActionEvent,
+  LabYoutubeImportCustomSettings,
+  LabYoutubeImportPreview,
+  LabYoutubeImportStrategy,
 } from "../models/lab-types.js";
 import { createLabWaveformTimelineVisualizer } from "../ui/lab-waveform-timeline.js";
 import { createLabI18n } from "../ui/lab-i18n.js";
@@ -75,8 +78,12 @@ type LabRunControllerDeps = {
   windowRef: ControllerWindow;
 };
 
+const YOUTUBE_IMPORT_PARSE_DELAY_MS = 800;
+
 export function createLabRunController(deps: LabRunControllerDeps) {
   let attached = false;
+  let youtubeImportParseTimer: ReturnType<typeof setTimeout> | null = null;
+  let youtubeImportParseUrl: string | null = null;
   const hubDismissTimers = new Map<string, ReturnType<typeof setTimeout>>();
   type MediaLikeElement = {
     currentTime: number;
@@ -120,6 +127,142 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
   function dispatch(event: Parameters<ReturnType<typeof createLabStore>["dispatch"]>[0]) {
     deps.eventBus.emit(event);
+  }
+
+  function normalizeYoutubeImportUrlInput(value: unknown) {
+    if (typeof value !== "string") {
+      return null;
+    }
+    const normalizedUrl = value.trim();
+    return normalizedUrl === "" ? null : normalizedUrl;
+  }
+
+  function extractYoutubeImportVideoId(urlText: string): string | null {
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(urlText);
+    } catch {
+      return null;
+    }
+
+    const host = parsedUrl.hostname.toLowerCase().replace(/^www\./, "");
+    let candidate: string | null = null;
+    if (host === "youtu.be") {
+      candidate = parsedUrl.pathname.split("/").filter(Boolean)[0] ?? null;
+    } else if (
+      host === "youtube.com" ||
+      host === "m.youtube.com" ||
+      host === "youtube-nocookie.com"
+    ) {
+      if (parsedUrl.pathname === "/watch") {
+        candidate = parsedUrl.searchParams.get("v");
+      } else {
+        const pathParts = parsedUrl.pathname.split("/").filter(Boolean);
+        if (pathParts[0] === "embed" || pathParts[0] === "shorts" || pathParts[0] === "live") {
+          candidate = pathParts[1] ?? null;
+        }
+      }
+    }
+
+    if (candidate === null || /^[A-Za-z0-9_-]{3,32}$/.test(candidate) !== true) {
+      return null;
+    }
+    return candidate;
+  }
+
+  function buildYoutubeImportPreview(urlText: string): LabYoutubeImportPreview | null {
+    const videoId = extractYoutubeImportVideoId(urlText);
+    if (videoId === null) {
+      return null;
+    }
+    return {
+      title: "Sample Video Title",
+      duration: 154,
+      thumbnail: `https://img.youtube.com/vi/${encodeURIComponent(videoId)}/hqdefault.jpg`,
+    };
+  }
+
+  function clearYoutubeImportParseTimer() {
+    if (youtubeImportParseTimer !== null) {
+      clearTimeout(youtubeImportParseTimer);
+      youtubeImportParseTimer = null;
+    }
+    youtubeImportParseUrl = null;
+  }
+
+  function normalizeYoutubeImportStrategyValue(value: string): LabYoutubeImportStrategy | null {
+    switch (value) {
+      case "video_best":
+      case "audio_only":
+      case "low_size":
+      case "custom":
+        return value;
+      default:
+        return null;
+    }
+  }
+
+  function buildYoutubeImportCustomPatch(
+    field: string,
+    value: unknown
+  ): Partial<LabYoutubeImportCustomSettings> | null {
+    const customField = field.replace("youtube-import.custom.", "");
+    switch (customField) {
+      case "resolution":
+      case "format":
+      case "audioExtraction":
+        return { [customField]: value } as Partial<LabYoutubeImportCustomSettings>;
+      default:
+        return null;
+    }
+  }
+
+  function updateYoutubeImportCustomField(field: string, value: unknown) {
+    const patch = buildYoutubeImportCustomPatch(field, value);
+    if (patch === null) {
+      return;
+    }
+    dispatch({
+      type: "youtube-import-custom-updated",
+      patch,
+    });
+  }
+
+  function scheduleYoutubeImportParse(rawUrl: string) {
+    const url = normalizeYoutubeImportUrlInput(rawUrl);
+    clearYoutubeImportParseTimer();
+    if (url === null) {
+      dispatch({ type: "youtube-import-set-url", url: null });
+      return;
+    }
+
+    dispatch({ type: "youtube-import-set-url", url });
+    const preview = buildYoutubeImportPreview(url);
+    if (preview === null) {
+      dispatch({ type: "youtube-import-parse-error", reason: "invalid-url" });
+      return;
+    }
+
+    dispatch({ type: "youtube-import-parse-start" });
+    youtubeImportParseUrl = url;
+    youtubeImportParseTimer = setTimeout(function () {
+      youtubeImportParseTimer = null;
+      const state = deps.store.getState();
+      if (
+        youtubeImportParseUrl !== url ||
+        state.ui.labMode !== "import-youtube" ||
+        state.ui.youtubeImport.url !== url ||
+        state.ui.youtubeImport.status !== "parsing"
+      ) {
+        return;
+      }
+      youtubeImportParseUrl = null;
+      dispatch({
+        type: "youtube-import-parse-success",
+        url,
+        preview,
+      });
+    }, YOUTUBE_IMPORT_PARSE_DELAY_MS);
   }
 
   function formatClockTime(totalSeconds: number) {
@@ -1916,6 +2059,27 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "workspace-toggle-source-intake":
         dispatch({ type: "workspace-source-intake-toggled" });
         return;
+      case "enter-youtube-import-mode":
+        dispatch({ type: "enter-youtube-import-mode" });
+        return;
+      case "exit-youtube-import-mode":
+        clearYoutubeImportParseTimer();
+        if (state.ui.youtubeImport.status === "parsing") {
+          dispatch({ type: "youtube-import-clear" });
+        }
+        dispatch({ type: "exit-youtube-import-mode" });
+        return;
+      case "youtube-import-clear":
+        clearYoutubeImportParseTimer();
+        dispatch({ type: "youtube-import-clear" });
+        return;
+      case "youtube-import-set-strategy": {
+        const strategy = normalizeYoutubeImportStrategyValue(value);
+        if (strategy !== null) {
+          dispatch({ type: "youtube-import-set-strategy", strategy });
+        }
+        return;
+      }
       case "source-youtube-preset":
         if (value.trim() !== "") {
           persistSourceDraftField("source.youtubePreset", value);
@@ -2499,6 +2663,20 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       return;
     }
 
+    if (field === "youtube-import.url") {
+      scheduleYoutubeImportParse(target.value || "");
+      return;
+    }
+
+    if (field.startsWith("youtube-import.custom.")) {
+      const rawValue =
+        target instanceof HTMLInputElement && target.type === "checkbox"
+          ? target.checked
+          : target.value;
+      updateYoutubeImportCustomField(field, rawValue);
+      return;
+    }
+
     if (
       field === "source.fileNameHint" ||
       field === "source.urlInput" ||
@@ -2729,6 +2907,14 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "project.id":
         selectProjectByValue(String(targetValue || ""));
         return;
+      case "youtube-import.url":
+        scheduleYoutubeImportParse(String(targetValue || ""));
+        return;
+      case "youtube-import.custom.resolution":
+      case "youtube-import.custom.format":
+      case "youtube-import.custom.audioExtraction":
+        updateYoutubeImportCustomField(field, targetValue);
+        return;
       // V4 project workspace toolbar fields
       case "project-workspace-sort":
         dispatch({
@@ -2787,6 +2973,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         sendMediaAction("source-set-kind", { kind: targetValue });
         return;
       case "source.mode":
+        if (targetValue === "youtube") {
+          dispatch({ type: "enter-youtube-import-mode" });
+          return;
+        }
         if (isWorkspaceMutationLocked("source")) {
           pushLockedWorkspaceEvent("Kaynak ayarları aktif analiz sırasında kilitli.");
           return;

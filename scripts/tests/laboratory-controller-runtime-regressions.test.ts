@@ -533,6 +533,301 @@ test("laboratory run controller wires v2 shell action buttons into workspace sta
   }
 });
 
+test("laboratory run controller routes YouTube import mode without starting downloads", () => {
+  const timerMock = installTimerMock();
+  const originalElement = globalThis.Element;
+  const originalInput = globalThis.HTMLInputElement;
+  const originalSelect = globalThis.HTMLSelectElement;
+  const originalTextarea = globalThis.HTMLTextAreaElement;
+  const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "video",
+      mode: "local",
+      status: "ready",
+      storedPath: "/tmp/existing-lab-source.mp4",
+      storedFileName: "existing-lab-source.mp4",
+      sourceUrl: null,
+      previewUrl: "file:///tmp/existing-lab-source.mp4",
+      routeLabel: "Local Copy",
+      metadata: {
+        durationSeconds: 42,
+      },
+    },
+  });
+  const sourceBeforeYoutubeSelection = JSON.parse(JSON.stringify(store.getState().source));
+
+  class TestElement extends FakeActionElement {}
+  class TestInputElement {
+    checked: boolean;
+    dataset: Record<string, string>;
+
+    constructor(
+      field: string,
+      public value: string,
+      public type = "url",
+      checked = false
+    ) {
+      this.checked = checked;
+      this.dataset = {
+        labField: field,
+      };
+    }
+  }
+  class TestSelectElement {
+    dataset: Record<string, string>;
+
+    constructor(
+      field: string,
+      public value: string
+    ) {
+      this.dataset = {
+        labField: field,
+      };
+    }
+  }
+  class TestTextareaElement {}
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+  Object.defineProperty(globalThis, "HTMLInputElement", {
+    configurable: true,
+    value: TestInputElement,
+  });
+  Object.defineProperty(globalThis, "HTMLSelectElement", {
+    configurable: true,
+    value: TestSelectElement,
+  });
+  Object.defineProperty(globalThis, "HTMLTextAreaElement", {
+    configurable: true,
+    value: TestTextareaElement,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent(eventName: string, payload: Record<string, unknown>) {
+            sentEvents.push({ eventName, payload });
+          },
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    const clickListener = documentRef.listeners.get("click");
+    const changeListener = documentRef.listeners.get("change");
+    const inputListener = documentRef.listeners.get("input");
+    assert.ok(clickListener);
+    assert.ok(changeListener);
+    assert.ok(inputListener);
+
+    clickListener?.({ target: new TestElement("enter-youtube-import-mode") } as Event);
+    assert.equal(store.getState().ui.labMode, "import-youtube");
+
+    clickListener?.({ target: new TestElement("exit-youtube-import-mode") } as Event);
+    assert.equal(store.getState().ui.labMode, "normal");
+
+    changeListener?.({
+      target: new TestSelectElement("source.mode", "youtube"),
+    } as unknown as Event);
+
+    assert.equal(store.getState().ui.labMode, "import-youtube");
+    assert.deepEqual(store.getState().source, sourceBeforeYoutubeSelection);
+    inputListener?.({
+      target: new TestInputElement("source.youtubeUrl", "https://youtube.com/watch?v=focus"),
+    } as unknown as Event);
+    assert.equal(store.getState().ui.sourceDrafts.youtubeUrl, "https://youtube.com/watch?v=focus");
+    assert.deepEqual(store.getState().source, sourceBeforeYoutubeSelection);
+
+    inputListener?.({
+      target: new TestInputElement(
+        "youtube-import.url",
+        "https://www.youtube.com/watch?v=abc123DEF45"
+      ),
+    } as unknown as Event);
+    assert.equal(
+      store.getState().ui.youtubeImport.url,
+      "https://www.youtube.com/watch?v=abc123DEF45"
+    );
+    assert.equal(store.getState().ui.youtubeImport.status, "parsing");
+    assert.equal(timerMock.scheduled[0]?.delay, 800);
+
+    inputListener?.({
+      target: new TestInputElement("youtube-import.url", "https://youtu.be/new123DEF45"),
+    } as unknown as Event);
+    assert.equal(store.getState().ui.youtubeImport.url, "https://youtu.be/new123DEF45");
+    assert.equal(store.getState().ui.youtubeImport.status, "parsing");
+    assert.equal(timerMock.scheduled[1]?.delay, 800);
+    timerMock.scheduled[0]?.fn();
+    assert.equal(store.getState().ui.youtubeImport.status, "parsing");
+    assert.equal(store.getState().ui.youtubeImport.preview, null);
+    timerMock.scheduled[1]?.fn();
+    assert.equal(store.getState().ui.youtubeImport.status, "ready");
+    assert.deepEqual(store.getState().ui.youtubeImport.preview, {
+      title: "Sample Video Title",
+      duration: 154,
+      thumbnail: "https://img.youtube.com/vi/new123DEF45/hqdefault.jpg",
+    });
+
+    clickListener?.({
+      target: new TestElement("youtube-import-set-strategy", "audio_only"),
+    } as Event);
+    assert.equal(store.getState().ui.youtubeImport.strategy, "audio_only");
+    clickListener?.({
+      target: new TestElement("youtube-import-set-strategy", "video_best"),
+    } as Event);
+    assert.equal(store.getState().ui.youtubeImport.strategy, "video_best");
+    clickListener?.({
+      target: new TestElement("youtube-import-set-strategy", "low_size"),
+    } as Event);
+    assert.equal(store.getState().ui.youtubeImport.strategy, "low_size");
+    clickListener?.({
+      target: new TestElement("youtube-import-set-strategy", "audio_only"),
+    } as Event);
+    assert.equal(store.getState().ui.youtubeImport.strategy, "audio_only");
+    clickListener?.({
+      target: new TestElement("youtube-import-set-strategy", "bogus"),
+    } as Event);
+    assert.equal(store.getState().ui.youtubeImport.strategy, "audio_only");
+    clickListener?.({
+      target: new TestElement("youtube-import-set-strategy", "custom"),
+    } as Event);
+    assert.equal(store.getState().ui.youtubeImport.strategy, "custom");
+    inputListener?.({
+      target: new TestInputElement("youtube-import.custom.format", "webm"),
+    } as unknown as Event);
+    changeListener?.({
+      target: new TestSelectElement("youtube-import.custom.resolution", "720p"),
+    } as unknown as Event);
+    changeListener?.({
+      target: new TestInputElement("youtube-import.custom.audioExtraction", "", "checkbox", true),
+    } as unknown as Event);
+    assert.equal(sentEvents.length, 0);
+    assert.deepEqual(store.getState().ui.youtubeImport.custom, {
+      resolution: "720p",
+      format: "webm",
+      audioExtraction: true,
+    });
+
+    inputListener?.({
+      target: new TestInputElement("youtube-import.url", "https://example.com/watch?v=nope"),
+    } as unknown as Event);
+    assert.equal(store.getState().ui.youtubeImport.status, "error");
+    assert.equal(store.getState().ui.youtubeImport.url, "https://example.com/watch?v=nope");
+
+    inputListener?.({
+      target: new TestInputElement("youtube-import.url", ""),
+    } as unknown as Event);
+    assert.deepEqual(store.getState().ui.youtubeImport, {
+      url: null,
+      status: "idle",
+      preview: null,
+      strategy: "custom",
+      custom: {
+        resolution: "720p",
+        format: "webm",
+        audioExtraction: true,
+      },
+    });
+
+    inputListener?.({
+      target: new TestInputElement("youtube-import.url", "https://youtu.be/clear12345"),
+    } as unknown as Event);
+    assert.equal(store.getState().ui.youtubeImport.status, "parsing");
+    clickListener?.({ target: new TestElement("youtube-import-clear") } as Event);
+    assert.deepEqual(store.getState().ui.youtubeImport, {
+      url: null,
+      status: "idle",
+      preview: null,
+      strategy: "video_best",
+      custom: {
+        resolution: "best",
+        format: "mp4",
+        audioExtraction: false,
+      },
+    });
+    timerMock.scheduled[2]?.fn();
+    assert.equal(store.getState().ui.youtubeImport.status, "idle");
+
+    inputListener?.({
+      target: new TestInputElement("youtube-import.url", "https://youtu.be/exit12345"),
+    } as unknown as Event);
+    assert.equal(store.getState().ui.youtubeImport.status, "parsing");
+    clickListener?.({ target: new TestElement("exit-youtube-import-mode") } as Event);
+    assert.equal(store.getState().ui.labMode, "normal");
+    assert.deepEqual(store.getState().ui.youtubeImport, {
+      url: null,
+      status: "idle",
+      preview: null,
+      strategy: "video_best",
+      custom: {
+        resolution: "best",
+        format: "mp4",
+        audioExtraction: false,
+      },
+    });
+    timerMock.scheduled[3]?.fn();
+    assert.equal(store.getState().ui.youtubeImport.status, "idle");
+
+    assert.equal(sentEvents.length, 0);
+    assert.equal(
+      sentEvents.some(function (entry) {
+        return entry.payload.action === "source-download-youtube";
+      }),
+      false
+    );
+  } finally {
+    timerMock.restore();
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+    if (originalInput === undefined) {
+      delete (globalThis as Record<string, unknown>).HTMLInputElement;
+    } else {
+      Object.defineProperty(globalThis, "HTMLInputElement", {
+        configurable: true,
+        value: originalInput,
+      });
+    }
+    if (originalSelect === undefined) {
+      delete (globalThis as Record<string, unknown>).HTMLSelectElement;
+    } else {
+      Object.defineProperty(globalThis, "HTMLSelectElement", {
+        configurable: true,
+        value: originalSelect,
+      });
+    }
+    if (originalTextarea === undefined) {
+      delete (globalThis as Record<string, unknown>).HTMLTextAreaElement;
+    } else {
+      Object.defineProperty(globalThis, "HTMLTextAreaElement", {
+        configurable: true,
+        value: originalTextarea,
+      });
+    }
+  }
+});
+
 test("laboratory run controller routes topbar pills and cancel through v2 contracts", () => {
   const originalElement = globalThis.Element;
   const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
