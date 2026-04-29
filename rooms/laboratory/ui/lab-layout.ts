@@ -7,6 +7,7 @@ import { renderLabTopBar } from "./lab-top-bar.js";
 import { renderToolManagementOverlay } from "./tool-management-overlay.js";
 import { renderReportOverlay } from "./report-overlay.js";
 import { renderLabAssetPreviewOverlay } from "./lab-asset-preview-overlay.js";
+import { renderProjectWorkspaceOverlay } from "./project-workspace-overlay.js";
 import { getDrawerCollapsed, getWorkspaceMode, resolveDrawerMode } from "../runtime/lab-selectors.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
@@ -65,5 +66,6 @@ export function renderLabLayout(
     ${renderToolManagementOverlay(state, copy)}
     ${renderLabAssetPreviewOverlay(state, copy)}
     ${renderReportOverlay(state, copy)}
+    ${renderProjectWorkspaceOverlay(state, copy)}
   `;
 }

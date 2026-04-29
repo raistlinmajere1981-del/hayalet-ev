@@ -20,6 +20,7 @@ import { renderWorkspaceSurface } from "./workspace-surface.js";
 import { createLabRunController } from "../runtime/lab-run-controller.js";
 import { renderToolManagementOverlay } from "./tool-management-overlay.js";
 import { renderReportOverlay } from "./report-overlay.js";
+import { renderProjectWorkspaceOverlay } from "./project-workspace-overlay.js";
 import { renderLabAssetPreviewOverlay } from "./lab-asset-preview-overlay.js";
 import {
   getActiveSelection,
@@ -243,6 +244,66 @@ export const __testOnlyLabRootPersistence = {
   readPersistableState,
 };
 
+function hasNonEmptySourceDrafts(state: LabStoreState) {
+  const drafts = state.ui.sourceDrafts;
+  return (
+    drafts.fileNameHint.trim() !== "" ||
+    drafts.urlInput.trim() !== "" ||
+    drafts.youtubeUrl.trim() !== "" ||
+    drafts.youtubePreset !== null ||
+    Object.keys(asLabRecord(drafts.youtubeCustom)).length > 0
+  );
+}
+
+function hasWorkspaceActivity(state: LabStoreState) {
+  const workspace = state.ui.workspace;
+  return (
+    workspace.hypothesis.trim() !== "" ||
+    workspace.bookmarks.length > 0 ||
+    workspace.timelineStartMs !== null ||
+    workspace.timelineEndMs !== null ||
+    workspace.activeSelection !== null ||
+    workspace.roiRegions.length > 0
+  );
+}
+
+function hasLoadedSourceMaterial(state: LabStoreState) {
+  if (state.source === null) {
+    return false;
+  }
+  const source = asLabRecord(state.source);
+  return (
+    asNonEmptyString(source["status"]) === "ready" ||
+    asNonEmptyString(source["storedPath"]) !== null ||
+    asNonEmptyString(source["storedFileName"]) !== null ||
+    asNonEmptyString(source["previewUrl"]) !== null ||
+    asNonEmptyString(source["sourceUrl"]) !== null
+  );
+}
+
+function shouldAutoOpenProjectWorkspaceOnBoot(state: LabStoreState) {
+  const activeProjectId = state.projectIndex.activeProjectId;
+  const activeProject =
+    activeProjectId !== null
+      ? state.projectIndex.projects.find(function (project) {
+          return asNonEmptyString(asLabRecord(project)["id"]) === activeProjectId;
+        })
+      : null;
+  const activeProjectHasSource = asLabRecord(activeProject)["hasSource"] === true;
+  return (
+    hasLoadedSourceMaterial(state) !== true &&
+    activeProjectHasSource !== true &&
+    state.assets.length === 0 &&
+    state.activityFeed.length === 0 &&
+    hasNonEmptySourceDrafts(state) !== true &&
+    hasWorkspaceActivity(state) !== true
+  );
+}
+
+export const __testOnlyProjectWorkspaceAutoOpen = {
+  shouldAutoOpenProjectWorkspaceOnBoot,
+};
+
 function updateRenderedElement(
   documentRef: Document,
   currentElement: HTMLElement,
@@ -426,7 +487,14 @@ export function startLaboratoryLabRoot() {
     }
   });
   documentRef.addEventListener("keydown", function (event) {
-    if (event.key !== "Escape" || activeOverlay !== "execution-details") {
+    if (event.key !== "Escape") {
+      return;
+    }
+    if (store.getState().ui.projectWorkspaceOpen) {
+      eventBus.emit({ type: "project-workspace-toggled", open: false });
+      return;
+    }
+    if (activeOverlay !== "execution-details") {
       return;
     }
     closeExecutionDetailsOverlay();
@@ -483,11 +551,8 @@ export function startLaboratoryLabRoot() {
       bootOverlayIdleTimer = null;
     }
     if (bootOverlayIdleCallback !== null) {
-      const idleWindow = windowRef as Window & {
-        cancelIdleCallback?: (handle: number) => void;
-      };
-      if (typeof idleWindow.cancelIdleCallback === "function") {
-        idleWindow.cancelIdleCallback(bootOverlayIdleCallback);
+      if (typeof windowRef.cancelIdleCallback === "function") {
+        windowRef.cancelIdleCallback(bootOverlayIdleCallback);
       }
       bootOverlayIdleCallback = null;
     }
@@ -544,12 +609,9 @@ export function startLaboratoryLabRoot() {
       if (!bootOverlayLocked) {
         return;
       }
-      const animationWindow = windowRef as Window & {
-        requestAnimationFrame?: (callback: FrameRequestCallback) => number;
-      };
-      if (typeof animationWindow.requestAnimationFrame === "function") {
-        animationWindow.requestAnimationFrame(function () {
-          animationWindow.requestAnimationFrame(function () {
+      if (typeof windowRef.requestAnimationFrame === "function") {
+        windowRef.requestAnimationFrame(function () {
+          windowRef.requestAnimationFrame(function () {
             unlockBootOverlay();
           });
         });
@@ -558,14 +620,8 @@ export function startLaboratoryLabRoot() {
       unlockBootOverlay();
     };
 
-    const idleWindow = windowRef as Window & {
-      requestIdleCallback?: (
-        callback: IdleRequestCallback,
-        options?: IdleRequestOptions
-      ) => number;
-    };
-    if (typeof idleWindow.requestIdleCallback === "function") {
-      bootOverlayIdleCallback = idleWindow.requestIdleCallback(
+    if (typeof windowRef.requestIdleCallback === "function") {
+      bootOverlayIdleCallback = windowRef.requestIdleCallback(
         function () {
           bootOverlayIdleCallback = null;
           finishUnlock();
@@ -590,6 +646,11 @@ export function startLaboratoryLabRoot() {
     clearBootOverlayFailsafeTimer();
     clearBootOverlayIdleGate();
     render();
+    // V4: Auto-open project workspace only for a genuinely clean intake state.
+    const bootState = store.getState();
+    if (shouldAutoOpenProjectWorkspaceOnBoot(bootState) && !bootState.ui.projectWorkspaceOpen) {
+      eventBus.emit({ type: "project-workspace-toggled", open: true });
+    }
   }
 
   function scheduleBootOverlayUnlock(state: LabStoreState) {
@@ -787,6 +848,14 @@ export function startLaboratoryLabRoot() {
         documentRef,
         reportOverlayRoot as HTMLElement,
         renderReportOverlay(state, copy)
+      );
+    }
+    const projectWorkspaceRoot = runtimeRoot.querySelector("#lab-project-workspace-root");
+    if (projectWorkspaceRoot) {
+      updateRenderedElement(
+        documentRef,
+        projectWorkspaceRoot as HTMLElement,
+        renderProjectWorkspaceOverlay(state, copy)
       );
     }
 

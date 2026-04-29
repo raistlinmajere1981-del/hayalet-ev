@@ -7,29 +7,30 @@ import type { LabI18n } from "./lab-i18n.js";
 function renderProjectSelector(state: LabStoreState, copy: LabI18n) {
   const projects = state.projectIndex.projects;
   const activeId = state.projectIndex.activeProjectId;
-  const selectableProjects = projects.filter(function (project) {
-    return (project as Record<string, unknown>)["hasSource"] !== false;
-  });
-  const hasActiveProject = activeId !== null && selectableProjects.some(function (project) {
-    return String((project as Record<string, unknown>)["id"] || "") === activeId;
-  });
-  const projectOptions = selectableProjects
-    .map(function (project) {
-      const record = project as Record<string, unknown>;
-      const id = String(record["id"] || "");
-      const name = String(record["name"] || id || copy.t("mediaAnalysis.topBar.project", "Proje"));
-      return `<option value="${escapeHtml(id)}" ${id === activeId ? "selected" : ""}>${escapeHtml(name)}</option>`;
-    })
-    .join("");
+  const activeProject =
+    activeId !== null
+      ? projects.find(function (project) {
+          return String((project as Record<string, unknown>)["id"] || "") === activeId;
+        })
+      : undefined;
+  const projectName = activeProject
+    ? String(
+        (activeProject as Record<string, unknown>)["name"] ||
+          activeId ||
+          copy.t("mediaAnalysis.topBar.project", "Project")
+      )
+    : copy.t("mediaAnalysis.topBar.newProject", "New Project");
 
   return `
-    <label class="labx-top-bar__project">
-      <span class="labx-top-bar__project-label">${escapeHtml(copy.t("mediaAnalysis.topBar.project", "Proje"))}</span>
-      <select class="labx-top-bar__project-select" data-lab-field="project.id">
-        <option value="new" ${hasActiveProject ? "" : "selected"}>${escapeHtml(copy.t("mediaAnalysis.topBar.newProject", "Yeni Proje"))}</option>
-        ${projectOptions}
-      </select>
-    </label>
+    <button
+      class="labx-top-bar__project-btn"
+      type="button"
+      data-lab-action="project-workspace-open"
+      title="${escapeHtml(copy.t("mediaAnalysis.topBar.openWorkspace", "Open Project Workspace"))}"
+    >
+      <span class="labx-top-bar__project-label">${escapeHtml(copy.t("mediaAnalysis.topBar.project", "Project"))}</span>
+      <span class="labx-top-bar__project-name">${escapeHtml(projectName)}</span>
+    </button>
   `;
 }
 
@@ -43,18 +44,13 @@ function getPillState(
     case "analyze":
       return drawerMode === "running" ? "active" : "inactive";
     case "results":
-      return drawerMode === "result" || drawerMode === "explore"
-        ? "active"
-        : "inactive";
+      return drawerMode === "result" || drawerMode === "explore" ? "active" : "inactive";
     default:
       return "inactive";
   }
 }
 
-export function renderLabTopBar(
-  state: LabStoreState,
-  copy: LabI18n = LAB_FALLBACK_I18N
-) {
+export function renderLabTopBar(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
   const drawerMode = resolveDrawerMode(state);
   const drawerCollapsed = getDrawerCollapsed(state);
   const drawerToggleLabel = drawerCollapsed
@@ -62,9 +58,21 @@ export function renderLabTopBar(
     : copy.t("mediaAnalysis.drawer.collapse", "Paneli kapat");
 
   const pills = [
-    { id: "source" as const, label: copy.t("mediaAnalysis.topBar.source", "Kaynak"), action: "topbar-pill-source" },
-    { id: "analyze" as const, label: copy.t("mediaAnalysis.topBar.analyze", "Analiz"), action: "topbar-pill-analyze" },
-    { id: "results" as const, label: copy.t("mediaAnalysis.topBar.results", "Sonuçlar"), action: "topbar-pill-results" },
+    {
+      id: "source" as const,
+      label: copy.t("mediaAnalysis.topBar.source", "Source"),
+      action: "topbar-pill-source",
+    },
+    {
+      id: "analyze" as const,
+      label: copy.t("mediaAnalysis.topBar.analyze", "Analyze"),
+      action: "topbar-pill-analyze",
+    },
+    {
+      id: "results" as const,
+      label: copy.t("mediaAnalysis.topBar.results", "Results"),
+      action: "topbar-pill-results",
+    },
   ];
 
   const pillsMarkup = pills
@@ -99,7 +107,7 @@ export function renderLabTopBar(
           class="labx-top-bar__tool-btn"
           type="button"
           data-lab-action="toggle-tool-manager"
-          title="${escapeHtml(copy.t("mediaAnalysis.topBar.toolMgmt", "Araç Yönetimi"))}"
+          title="${escapeHtml(copy.t("mediaAnalysis.topBar.toolMgmt", "Tool Management"))}"
         >
           ⚙
         </button>

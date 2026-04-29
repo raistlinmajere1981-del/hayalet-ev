@@ -225,6 +225,7 @@ import { setupBackupHandlers } from "./handlers/ipc-backup.ts";
 import { setupCaptureHandlers } from "./handlers/ipc-capture.ts";
 import { setupTranscriptHandlers } from "./handlers/ipc-transcript.ts";
 import { setupUs1MailHandlers } from "./handlers/ipc-us1-mail.ts";
+import { captureService } from "./capture-service.ts";
 
 import { registerHandler, handleLoggerAppendBatch } from "./handlers/ipc-helpers.ts";
 import { initLogger, shutdownLogger, getLoggerCore } from "./logger/index.js";
@@ -515,6 +516,16 @@ async function performCleanup(): Promise<void> {
       keepServersOnAppClose,
     }
   );
+
+  try {
+    await captureService.shutdown();
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.info(`Capture cleanup failed: ${message}`);
+    await logger.logInternal(LogCategory.MAIN, LogLevel.ERROR, "Capture cleanup failed.", {
+      message,
+    });
+  }
 
   try {
     if (keepServersOnAppClose) {

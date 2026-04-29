@@ -5,14 +5,12 @@ import { readFileSync } from "node:fs";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import { renderLabTopBar } from "../../rooms/laboratory/ui/lab-top-bar.ts";
 
-function hydrateState(
-  overrides: {
-    activeProjectId: string | null;
-    projects: Array<Record<string, unknown>>;
-    source: Record<string, unknown> | null;
-    sourceProbeStatus?: "idle" | "running" | "completed" | "failed";
-  }
-) {
+function hydrateState(overrides: {
+  activeProjectId: string | null;
+  projects: Array<Record<string, unknown>>;
+  source: Record<string, unknown> | null;
+  sourceProbeStatus?: "idle" | "running" | "completed" | "failed";
+}) {
   const store = createLabStore();
   store.dispatch({
     type: "hydrate",
@@ -67,9 +65,11 @@ test("laboratory top bar opens in new project mode with a passive project select
     })
   );
 
-  assert.match(html, /<option value="new" selected>Yeni Proje<\/option>/);
-  assert.match(html, /data-lab-field="project\.id"/);
-  assert.match(html, /2026-04-20 18-30 - evidence\.mp4/);
+  assert.match(html, /data-lab-action="project-workspace-open"/);
+  assert.match(html, /Lab Session 2026-04-21 11:00/);
+  assert.doesNotMatch(html, /data-lab-field="project\.id"/);
+  assert.doesNotMatch(html, /<select/);
+  assert.doesNotMatch(html, /2026-04-20 18-30 - evidence\.mp4/);
   assert.doesNotMatch(html, /workspace\.projectName/);
   assert.doesNotMatch(html, /toggle-report-view/);
 });
@@ -90,8 +90,9 @@ test("laboratory top bar selects the active project when it has a source", () =>
     })
   );
 
-  assert.match(html, /<option value="project-1" selected>/);
+  assert.match(html, /data-lab-action="project-workspace-open"/);
   assert.match(html, /2026-04-20 18-30 - evidence\.mp4/);
+  assert.doesNotMatch(html, /data-lab-field="project\.id"/);
   assert.match(html, /data-lab-action="toggle-tool-manager"/);
 });
 

@@ -204,6 +204,15 @@ function createInitialState(): LabStoreState {
       editSidePanelCollapsed: false,
       rawLogCollapsed: true,
       workspace: createDefaultWorkspaceUiState(),
+      // V4 project & entity workspace
+      projectWorkspaceOpen: false,
+      projectWorkspaceSelectedEntityIds: [],
+      projectWorkspaceSort: "createdAt",
+      projectWorkspaceFilter: null,
+      projectWorkspaceGroup: "type",
+      projectWorkspaceSearch: "",
+      projectWorkspaceConfirmReplace: null,
+      projectWorkspaceTimelineHighlight: null,
     },
   };
 }
@@ -2672,6 +2681,42 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         drawerModeOverride: event.mode,
         userExploreToggle: event.mode === "result" ? false : state.ui.workspace.userExploreToggle,
       };
+      return state;
+    // V4 project & entity workspace
+    case "project-workspace-toggled":
+      state.ui.projectWorkspaceOpen =
+        typeof event.open === "boolean" ? event.open : !state.ui.projectWorkspaceOpen;
+      if (!state.ui.projectWorkspaceOpen) {
+        state.ui.projectWorkspaceSelectedEntityIds = [];
+        state.ui.projectWorkspaceConfirmReplace = null;
+        state.ui.projectWorkspaceTimelineHighlight = null;
+      }
+      return state;
+    case "project-workspace-entity-selected":
+      state.ui.projectWorkspaceSelectedEntityIds = event.entityIds.filter(function (id) {
+        return state.assets.some(function (asset) {
+          return asset.id === id;
+        });
+      });
+      state.ui.projectWorkspaceConfirmReplace = null;
+      return state;
+    case "project-workspace-sort-changed":
+      state.ui.projectWorkspaceSort = event.sort;
+      return state;
+    case "project-workspace-filter-changed":
+      state.ui.projectWorkspaceFilter = event.filter;
+      return state;
+    case "project-workspace-group-changed":
+      state.ui.projectWorkspaceGroup = event.group;
+      return state;
+    case "project-workspace-search-changed":
+      state.ui.projectWorkspaceSearch = event.search;
+      return state;
+    case "project-workspace-confirm-replace":
+      state.ui.projectWorkspaceConfirmReplace = event.assetId;
+      return state;
+    case "project-workspace-timeline-highlighted":
+      state.ui.projectWorkspaceTimelineHighlight = event.highlight;
       return state;
     default:
       return state;

@@ -1078,6 +1078,20 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
   const endPct = hasSelection ? Math.max(0, Math.min(100, (endMs / durationMs) * 100)) : 100;
   const selectionCenterPct = hasSelection ? startPct + (endPct - startPct) / 2 : 0;
   const selectionDurationMs = hasSelection ? Math.max(0, endMs - startMs) : 0;
+  const timelineHighlight =
+    model.timelineHighlight &&
+    model.timelineHighlight.endMs > model.timelineHighlight.startMs &&
+    model.timelineHighlight.endMs > 0
+      ? model.timelineHighlight
+      : null;
+  const highlightStartPct =
+    timelineHighlight !== null
+      ? Math.max(0, Math.min(100, (timelineHighlight.startMs / durationMs) * 100))
+      : 0;
+  const highlightEndPct =
+    timelineHighlight !== null
+      ? Math.max(highlightStartPct, Math.min(100, (timelineHighlight.endMs / durationMs) * 100))
+      : 0;
   const selectionRoi = activeSelection?.roi;
   const selectionRoiLabel = selectionRoi
     ? copy.t(
@@ -1196,6 +1210,18 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
           <span class="labx-timeline__playhead-label" data-lab-role="timeline-playhead-label">00:00.000</span>
         </div>
         <div class="labx-timeline__rail" data-lab-action="timeline-interact" ${lockHandleAttr}></div>
+        ${
+          timelineHighlight !== null && highlightEndPct > highlightStartPct
+            ? `
+          <div
+            class="labx-timeline__highlight"
+            style="left: ${String(highlightStartPct)}%; width: ${String(highlightEndPct - highlightStartPct)}%"
+            data-lab-timeline-highlight="${escapeHtml(timelineHighlight.assetId)}"
+            title="${escapeHtml(timelineHighlight.label || "")}"
+          ></div>
+        `
+            : ""
+        }
         ${
           hasSelection
             ? `

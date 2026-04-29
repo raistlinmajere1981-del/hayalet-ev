@@ -49,9 +49,7 @@ type MinimalLaboratoryUiEnvironmentOptions = {
   roomApi?: "full" | "none";
 };
 
-function createMinimalLaboratoryUiEnvironment(
-  options: MinimalLaboratoryUiEnvironmentOptions = {}
-) {
+function createMinimalLaboratoryUiEnvironment(options: MinimalLaboratoryUiEnvironmentOptions = {}) {
   const runtimeRoot = new ElementStub();
   let readyPayload: Record<string, unknown> | null = null;
   let timerId = 1;
@@ -447,7 +445,9 @@ function createCompletedAudioExecutionStore() {
 }
 
 test("laboratory UI shell evaluates under minimal runtime stubs", async () => {
-  const environment = createMinimalLaboratoryUiEnvironment();
+  const environment = createMinimalLaboratoryUiEnvironment({
+    fakeTimers: true,
+  });
   const buildArtifact = await createRoomBuiltArtifact("laboratory");
 
   try {
@@ -495,6 +495,7 @@ test("laboratory boot overlay unlocks from local ready without a room API bridge
     assert.doesNotMatch(environment.runtimeRoot.innerHTML, /data-lab-boot-overlay="true"/);
     assert.match(environment.runtimeRoot.innerHTML, /data-lab-center-skeleton="true"/);
     assert.match(environment.runtimeRoot.innerHTML, /labx-drawer-skeleton/);
+    assert.match(environment.runtimeRoot.innerHTML, /data-overlay="project-workspace"/);
   } finally {
     await buildArtifact.cleanup();
     environment.restore();
@@ -642,6 +643,8 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   const toolOverlaySource = readFileSync("rooms/laboratory/ui/tool-management-overlay.ts", "utf8");
   const workspaceSurfaceSource = readFileSync("rooms/laboratory/ui/workspace-surface.ts", "utf8");
   const drawerSource = readFileSync("rooms/laboratory/ui/lab-drawer.ts", "utf8");
+  const projectNavigationSource = readFileSync("rooms/laboratory/ui/project-navigation.ts", "utf8");
+  const assetGridSource = readFileSync("rooms/laboratory/ui/asset-grid.ts", "utf8");
 
   assert.match(labRootSource, /schemaVersion:\s*4,/);
   assert.match(labRootSource, /workspace:\s*state\.ui\.workspace,/);
@@ -653,7 +656,10 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   assert.match(toolOverlaySource, /data-lab-action="tool-update-all"/);
   assert.match(toolOverlaySource, /data-lab-action="tool-install"/);
   assert.match(toolOverlaySource, /data-lab-action="tool-check-updates"/);
-  assert.match(drawerSource, /renderSourceIntake\(state, copy\)/);
+  assert.doesNotMatch(drawerSource, /renderSourceIntake\(state, copy\)/);
+  assert.doesNotMatch(drawerSource, /renderLabProjectAssetsPanel/);
+  assert.match(projectNavigationSource, /renderSourceIntake\(state, copy\)/);
+  assert.match(assetGridSource, /data-lab-field="workspace\.hypothesis"/);
   assert.match(drawerSource, /data-lab-action="run-deep-analysis"/);
   assert.match(drawerSource, /buildIntentPreviewSentence\(state\)/);
   assert.match(drawerSource, /buildExecutionBridge/);
@@ -671,8 +677,9 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   assert.match(workspaceSurfaceSource, /data-lab-media-workbench="true"/);
   assert.match(
     workspaceSurfaceSource,
-    /class="labx-media-workbench"[\s\S]*class="labx-workspace-preview"[\s\S]*\$\{dualPreviewTransport\}[\s\S]*renderLabWaveformTimeline\(timelineModel\)[\s\S]*\$\{renderWorkspaceHypothesis/
+    /class="labx-media-workbench"[\s\S]*class="labx-workspace-preview"[\s\S]*\$\{dualPreviewTransport\}[\s\S]*renderLabWaveformTimeline\(timelineModel\)/
   );
+  assert.doesNotMatch(workspaceSurfaceSource, /renderWorkspaceHypothesis/);
   assert.match(
     themeSource,
     /\.labx-media-workbench\s*\{[\s\S]*gap:\s*0;[\s\S]*border:\s*1px solid rgba\(134, 187, 214, 0\.18\);[\s\S]*border-radius:\s*var\(--labx-radius-tight\);/
@@ -741,10 +748,7 @@ test("laboratory theme defines the v2 shell grid and drawer layout contract", ()
   assert.match(themeSource, /\.labx-boot-panel\s*\{[\s\S]*border-radius:\s*0\.5rem;/);
   assert.match(themeSource, /@keyframes labx-skeleton-breathe/);
   assert.doesNotMatch(themeSource, /\.labx-shell\[data-ready="false"\]::after/);
-  assert.doesNotMatch(
-    themeSource,
-    /\.labx-shell\[data-ready="false"\]\s+\.labx-center-panel/
-  );
+  assert.doesNotMatch(themeSource, /\.labx-shell\[data-ready="false"\]\s+\.labx-center-panel/);
   assert.doesNotMatch(themeSource, /labx-boot-breathe/);
   assert.match(
     themeSource,
@@ -1825,6 +1829,8 @@ test("laboratory phase 4.95 i18n keys keep English and Turkish catalog parity", 
     "mediaAnalysis.executionDetails",
     "mediaAnalysis.executionPanels",
     "mediaAnalysis.timeline",
+    "mediaAnalysis.topBar",
+    "mediaAnalysis.projectWorkspace",
   ];
 
   function readPath(record: Record<string, unknown>, key: string): unknown {

@@ -20,7 +20,6 @@ import {
   getDualPreviewLinkedAudioAssets,
   getDualPreviewVolume,
   getEffectivePreviewAudioFocusSettings,
-  getHypothesis,
   getInspectionMode,
   getInteractiveSettings,
   getLinkedAudioAssets,
@@ -45,7 +44,6 @@ import { renderLabWaveformTimeline } from "./lab-waveform-timeline.js";
 import { renderWorkspaceROIOverlay } from "./workspace-roi-overlay.js";
 import { renderWorkspaceInteractiveControls } from "./workspace-interactive-controls.js";
 import { renderWorkspaceAudioFocus } from "./workspace-audio-focus.js";
-import { renderWorkspaceHypothesis } from "./workspace-hypothesis.js";
 import { renderWorkspaceBookmarks } from "./workspace-bookmarks.js";
 import { formatSourceRetryBlockReason } from "./lab-source-retry-copy.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
@@ -1383,7 +1381,6 @@ export function renderWorkspaceSurface(
   };
   const roiFocusActive = timeline.roiFocusActive === true;
   const bookmarks = getBookmarks(state);
-  const hypothesis = getHypothesis(state);
   const hasAudio = sourceKind === "audio" || sourceKind === "video";
   const sourceReady =
     viewportState === "active" && probeStatus === "completed" && isLoadedSourceMatchingMode(source, sourceMode);
@@ -1494,7 +1491,6 @@ export function renderWorkspaceSurface(
         ${dualPreviewTransport}
         ${durationMs > 0 ? renderLabWaveformTimeline(timelineModel) : ""}
       </div>
-      ${renderWorkspaceHypothesis(hypothesis, copy, { locked: lockState.hypothesis })}
       ${focusSection}
       ${renderWorkspaceBookmarks(bookmarks, copy)}
     </section>

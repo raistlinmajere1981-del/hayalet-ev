@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
+import { renderProjectWorkspaceOverlay } from "../../rooms/laboratory/ui/project-workspace-overlay.ts";
 import { renderWorkspaceSurface } from "../../rooms/laboratory/ui/workspace-surface.ts";
 
 const sourcePresets = JSON.parse(
@@ -61,104 +62,114 @@ function createWorkspaceState(overrides: {
       event: event as never,
     });
   });
+  store.dispatch({
+    type: "project-workspace-toggled",
+    open: true,
+  });
   return store.getState();
 }
 
-test("laboratory workspace places the source action beside import method and shows live import progress in the source bar", () => {
-  const html = renderWorkspaceSurface(
-    createWorkspaceState({
-      activityFeed: [
-        {
-          id: "evt-1",
-          message: "YouTube source is being prepared",
-          detail: "Fetching media streams and writing into the project source folder.",
-          action: "source-download-youtube",
-          stage: "running",
-          percent: 42,
-          timestamp: Date.now(),
-          source: "host",
-          kind: "activity",
-          severity: "info",
-          scope: "global",
-          moduleId: null,
-          rawLine: null,
-        },
-      ],
-      sourceProbeStatus: "running",
-      toolState: {
-        tools: {
-          "yt-dlp": { installed: true },
-        },
-      },
-      source: {
-        kind: "video",
-        mode: "youtube",
-        status: "idle",
-        storedFileName: null,
-        storedPath: null,
-        routeLabel: null,
-        metadata: {},
-        drafts: {
-          fileNameHint: "",
-          urlInput: "",
-          youtubeUrl: "https://youtube.com/watch?v=abc123",
-          youtubePreset: "custom",
-          youtubeCustom: {
-            format: "best[height<=720]/best",
-            mergeOutputFormat: "mp4",
-            recodeVideo: "none",
-            audioFormat: "none",
-            writeSubtitles: true,
-            writeAutoSubtitles: false,
-            subtitlesLang: "en.*",
-            playlistItems: "",
-            limitRate: "2M",
-            retries: 12,
-          },
-        },
-      },
-    })
-  ).main;
+function renderProjectWorkspaceHtml(overrides: Parameters<typeof createWorkspaceState>[0]) {
+  return renderProjectWorkspaceOverlay(createWorkspaceState(overrides));
+}
 
-  assert.match(html, /data-lab-field="source\.kind"/);
+test("laboratory workspace places the source action beside import method and shows live import progress in the source bar", () => {
+  const state = createWorkspaceState({
+    activityFeed: [
+      {
+        id: "evt-1",
+        message: "YouTube source is being prepared",
+        detail: "Fetching media streams and writing into the project source folder.",
+        action: "source-download-youtube",
+        stage: "running",
+        percent: 42,
+        timestamp: Date.now(),
+        source: "host",
+        kind: "activity",
+        severity: "info",
+        scope: "global",
+        moduleId: null,
+        rawLine: null,
+      },
+    ],
+    sourceProbeStatus: "running",
+    toolState: {
+      tools: {
+        "yt-dlp": { installed: true },
+      },
+    },
+    source: {
+      kind: "video",
+      mode: "youtube",
+      status: "idle",
+      storedFileName: null,
+      storedPath: null,
+      routeLabel: null,
+      metadata: {},
+      drafts: {
+        fileNameHint: "",
+        urlInput: "",
+        youtubeUrl: "https://youtube.com/watch?v=abc123",
+        youtubePreset: "custom",
+        youtubeCustom: {
+          format: "best[height<=720]/best",
+          mergeOutputFormat: "mp4",
+          recodeVideo: "none",
+          audioFormat: "none",
+          writeSubtitles: true,
+          writeAutoSubtitles: false,
+          subtitlesLang: "en.*",
+          playlistItems: "",
+          limitRate: "2M",
+          retries: 12,
+        },
+      },
+    },
+  });
+  const overlayHtml = renderProjectWorkspaceOverlay(state);
+  const centerHtml = renderWorkspaceSurface(state).main;
+
+  assert.match(overlayHtml, /data-lab-field="source\.kind"/);
   assert.match(
-    html,
+    overlayHtml,
     /data-lab-field="source\.mode"[\s\S]*?<\/label>\s*<div class="labx-source-intake__action">[\s\S]*?Capture from YouTube/
   );
-  assert.match(html, /data-lab-field="source\.youtubeUrl"/);
-  assert.match(html, /class="labx-source-bar__progress"[\s\S]*?42%/);
-  assert.doesNotMatch(html, /class="labx-source-intake__progress"/);
-  assert.match(html, /Fetching media streams and writing into the project source folder\./);
+  assert.match(overlayHtml, /data-lab-field="source\.youtubeUrl"/);
+  assert.doesNotMatch(centerHtml, /data-lab-field="source\.kind"/);
+  assert.match(centerHtml, /class="labx-source-bar__progress"[\s\S]*?42%/);
+  assert.doesNotMatch(centerHtml, /class="labx-source-intake__progress"/);
+  assert.match(centerHtml, /Fetching media streams and writing into the project source folder\./);
   assert.doesNotMatch(
-    html,
+    overlayHtml + centerHtml,
     /yt-dlp downloads the media into the project source folder and keeps the resolved preset with the project draft\./
   );
 });
 
 test("laboratory workspace keeps audio import limited to local and direct url methods", () => {
-  const html = renderWorkspaceSurface(
-    createWorkspaceState({
-      source: {
-        kind: "audio",
-        mode: "url",
-        status: "idle",
-        storedFileName: null,
-        storedPath: null,
-        routeLabel: null,
-        metadata: {},
-        drafts: {
-          fileNameHint: "clip.mp3",
-          urlInput: "https://example.com/clip.mp3",
-          youtubeUrl: "",
-          youtubePreset: "medium",
-          youtubeCustom: {},
-        },
+  const html = renderProjectWorkspaceHtml({
+    source: {
+      kind: "audio",
+      mode: "url",
+      status: "idle",
+      storedFileName: null,
+      storedPath: null,
+      routeLabel: null,
+      metadata: {},
+      drafts: {
+        fileNameHint: "clip.mp3",
+        urlInput: "https://example.com/clip.mp3",
+        youtubeUrl: "",
+        youtubePreset: "medium",
+        youtubeCustom: {},
       },
-    })
-  ).main;
+    },
+  });
 
   assert.match(html, /<option value="audio" selected>Audio<\/option>/);
-  assert.match(html, /<option value="local" >Local Copy<\/option>|<option value="local">Local Copy<\/option>/);
+  assert.match(
+    html,
+    /<option value="local" >Local Copy<\/option>|<option value="local">Local Copy<\/option>/
+  );
   assert.match(html, /<option value="url" selected>Direct URL<\/option>/);
   assert.doesNotMatch(html, /<option value="youtube"/);
   assert.match(html, /data-lab-field="source\.urlInput"/);
@@ -167,42 +178,40 @@ test("laboratory workspace keeps audio import limited to local and direct url me
 });
 
 test("laboratory workspace keeps youtube custom controls under the url and preset row in a dedicated two-row grid", () => {
-  const html = renderWorkspaceSurface(
-    createWorkspaceState({
-      toolState: {
-        tools: {
-          "yt-dlp": { installed: true },
+  const html = renderProjectWorkspaceHtml({
+    toolState: {
+      tools: {
+        "yt-dlp": { installed: true },
+      },
+    },
+    source: {
+      kind: "video",
+      mode: "youtube",
+      status: "idle",
+      storedFileName: null,
+      storedPath: null,
+      routeLabel: null,
+      metadata: {},
+      drafts: {
+        fileNameHint: "",
+        urlInput: "",
+        youtubeUrl: "https://youtube.com/watch?v=abc123",
+        youtubePreset: "custom",
+        youtubeCustom: {
+          format: "best[height<=720]/best",
+          mergeOutputFormat: "mp4",
+          recodeVideo: "none",
+          audioFormat: "none",
+          writeSubtitles: true,
+          writeAutoSubtitles: false,
+          subtitlesLang: "en.*",
+          playlistItems: "",
+          limitRate: "2M",
+          retries: 12,
         },
       },
-      source: {
-        kind: "video",
-        mode: "youtube",
-        status: "idle",
-        storedFileName: null,
-        storedPath: null,
-        routeLabel: null,
-        metadata: {},
-        drafts: {
-          fileNameHint: "",
-          urlInput: "",
-          youtubeUrl: "https://youtube.com/watch?v=abc123",
-          youtubePreset: "custom",
-          youtubeCustom: {
-            format: "best[height<=720]/best",
-            mergeOutputFormat: "mp4",
-            recodeVideo: "none",
-            audioFormat: "none",
-            writeSubtitles: true,
-            writeAutoSubtitles: false,
-            subtitlesLang: "en.*",
-            playlistItems: "",
-            limitRate: "2M",
-            retries: 12,
-          },
-        },
-      },
-    })
-  ).main;
+    },
+  });
 
   assert.match(html, /class="labx-source-intake__youtube-stack"/);
   assert.match(html, /class="labx-source-intake__youtube-main"/);
@@ -217,26 +226,24 @@ test("laboratory workspace keeps youtube custom controls under the url and prese
 });
 
 test("laboratory workspace removes the legacy local-copy helper copy from the intake panel", () => {
-  const html = renderWorkspaceSurface(
-    createWorkspaceState({
-      source: {
-        kind: "video",
-        mode: "local",
-        status: "idle",
-        storedFileName: null,
-        storedPath: null,
-        routeLabel: null,
-        metadata: {},
-        drafts: {
-          fileNameHint: "",
-          urlInput: "",
-          youtubeUrl: "",
-          youtubePreset: "medium",
-          youtubeCustom: {},
-        },
+  const html = renderProjectWorkspaceHtml({
+    source: {
+      kind: "video",
+      mode: "local",
+      status: "idle",
+      storedFileName: null,
+      storedPath: null,
+      routeLabel: null,
+      metadata: {},
+      drafts: {
+        fileNameHint: "",
+        urlInput: "",
+        youtubeUrl: "",
+        youtubePreset: "medium",
+        youtubeCustom: {},
       },
-    })
-  ).main;
+    },
+  });
 
   assert.match(html, /Copy Local Source/);
   assert.doesNotMatch(
@@ -252,5 +259,8 @@ test("laboratory controller keeps youtube preset and custom draft wiring on the 
   assert.match(source, /case "source-youtube-preset":/);
   assert.match(source, /field\.startsWith\("source\.youtubeCustom\."\)/);
   assert.match(source, /mode: getDefaultSourceMode\(state, targetValue\)/);
-  assert.match(source, /sendMediaAction\("source-update-draft", \{\s*fields: mergeSourceDrafts\(state, patch\)/);
+  assert.match(
+    source,
+    /sendMediaAction\("source-update-draft", \{\s*fields: mergeSourceDrafts\(state, patch\)/
+  );
 });

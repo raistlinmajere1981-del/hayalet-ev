@@ -48,6 +48,7 @@ const CAPTURE_DICTATION_STATUS_CHANNEL = "capture:dictation-status";
 const CAPTURE_SESSION_STALE_MS = 20_000;
 const CAPTURE_COMPANION_DIAGNOSTICS_MAX_LOG_ENTRIES = 400;
 const CAPTURE_COMPANION_DIAGNOSTICS_MAX_TEXT_CHARS = 220_000;
+const CAPTURE_ADB_SHUTDOWN_TIMEOUT_MS = 5_000;
 
 interface CommandResult {
   exitCode: number;
@@ -87,6 +88,7 @@ interface CompanionBridgeSessionRecord {
 }
 
 type PendingBridgeCommand = CaptureCompanionCommandEnvelope;
+let adbServerTouchedByCaptureService = false;
 
 interface CaptureIngressPaths {
   rootDir: string;
@@ -453,12 +455,21 @@ async function resolveExecutableOnPath(executableName: string): Promise<string |
   return executableChecks.find((result) => result.executable)?.candidate ?? null;
 }
 
+function isAdbExecutablePath(command: string): boolean {
+  const executableName = basename(command).toLowerCase();
+  return executableName === "adb" || executableName === "adb.exe";
+}
+
 async function runCommand(
   command: string,
   args: string[],
   timeoutMs = CAPTURE_ADB_TIMEOUT_MS,
   options?: { cwd?: string; stdio?: "pipe" | "inherit" }
 ): Promise<CommandResult> {
+  if (isAdbExecutablePath(command)) {
+    adbServerTouchedByCaptureService = true;
+  }
+
   return await new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       stdio: options?.stdio === "inherit" ? "inherit" : ["ignore", "pipe", "pipe"],
@@ -518,6 +529,26 @@ async function runCommand(
       });
     });
   });
+}
+
+async function shutdownAdbServerIfTouched(): Promise<void> {
+  if (adbServerTouchedByCaptureService !== true) {
+    return;
+  }
+
+  const adbPath = await resolveExecutableOnPath("adb");
+  if (adbPath === null) {
+    adbServerTouchedByCaptureService = false;
+    return;
+  }
+
+  const result = await runCommand(adbPath, ["kill-server"], CAPTURE_ADB_SHUTDOWN_TIMEOUT_MS);
+  adbServerTouchedByCaptureService = false;
+  if (result.exitCode !== 0) {
+    throw new Error(
+      normalizeText(result.stderr) ?? normalizeText(result.stdout) ?? "ADB server cleanup failed."
+    );
+  }
 }
 
 async function runStreamingCommand(
@@ -1254,6 +1285,41 @@ class CaptureService {
 
   async getStatus(): Promise<CaptureServiceStatus> {
     return this.lastStatus ?? (await this.refreshStatus());
+  }
+
+  async shutdown(): Promise<void> {
+    await this.closeBridgeServer();
+    this.bridgeSessions.clear();
+    this.pendingCommands.clear();
+    this.activeAnalyzeMediaRequestIds.clear();
+    this.lastStatus = null;
+    await shutdownAdbServerIfTouched();
+  }
+
+  private async closeBridgeServer(): Promise<void> {
+    const server = this.bridgeServer;
+    if (server === null) {
+      return;
+    }
+
+    this.bridgeServer = null;
+    await new Promise<void>((resolvePromise, rejectPromise) => {
+      server.close((error?: Error) => {
+        const closeError = error as NodeJS.ErrnoException | undefined;
+        if (closeError !== undefined && closeError.code !== "ERR_SERVER_NOT_RUNNING") {
+          rejectPromise(closeError);
+          return;
+        }
+        resolvePromise();
+      });
+    });
+    this.bridgeState = {
+      ...this.bridgeState,
+      state: "starting",
+      registeredDeviceId: null,
+      lastSeenAt: null,
+      lastError: null,
+    };
   }
 
   async refreshStatus(): Promise<CaptureServiceStatus> {

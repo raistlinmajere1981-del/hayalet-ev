@@ -32,6 +32,13 @@ export type LabWaveformInspectionLensModel = {
   windowStartMs: number;
 };
 
+export type LabWaveformTimelineHighlightModel = {
+  assetId: string;
+  endMs: number;
+  label?: string;
+  startMs: number;
+};
+
 export type LabWaveformTimelineModel = {
   activeExecutionAlternatives?: LabExecutionAlternatives | null;
   activeExecutionCandidate?: LabExecutionCandidate | null;
@@ -62,6 +69,7 @@ export type LabWaveformTimelineModel = {
   selectionSuggestions?: LabActionSuggestion[];
   sourceKind?: string;
   startMs: number | null;
+  timelineHighlight?: LabWaveformTimelineHighlightModel | null;
   visualizationArtifact?: LabArtifactProjection | LabPreviewArtifactProjection | null;
   visualizationMode?: LabAudioFocusSettings["visualizationMode"];
   waveformInspectionLens?: LabWaveformInspectionLensModel;

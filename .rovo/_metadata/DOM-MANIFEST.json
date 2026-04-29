@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-28T10:34:49.437Z",
+  "generatedAt": "2026-04-29T11:34:54.224Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,11 +9,11 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 521,
-    "ids": 656,
+    "filesScanned": 522,
+    "ids": 649,
     "testIds": 15,
     "querySelectors": 150,
-    "totalSelectors": 821
+    "totalSelectors": 814
   },
   "lookup": {
     "id": {
@@ -222,11 +222,6 @@
       "capture-android-refresh-btn": "#capture-android-refresh-btn",
       "capture-android-reverse-status": "#capture-android-reverse-status",
       "capture-android-scan-btn": "#capture-android-scan-btn",
-      "capture-command-attach-input": "#capture-command-attach-input",
-      "capture-command-capture-input": "#capture-command-capture-input",
-      "capture-command-open-input": "#capture-command-open-input",
-      "capture-command-retake-input": "#capture-command-retake-input",
-      "capture-command-stop-input": "#capture-command-stop-input",
       "capture-default-attach-mode-select": "#capture-default-attach-mode-select",
       "capture-default-confirmation-select": "#capture-default-confirmation-select",
       "capture-default-device-select": "#capture-default-device-select",
@@ -238,9 +233,6 @@
       "capture-photo-btn": "#capture-photo-btn",
       "capture-policy-feedback": "#capture-policy-feedback",
       "capture-provider-android-companion": "#capture-provider-android-companion",
-      "capture-provider-android-speech": "#capture-provider-android-speech",
-      "capture-provider-fallback-select": "#capture-provider-fallback-select",
-      "capture-provider-local-whisper": "#capture-provider-local-whisper",
       "capture-retake-btn": "#capture-retake-btn",
       "capture-session-btn": "#capture-session-btn",
       "capture-stop-btn": "#capture-stop-btn",
@@ -285,6 +277,7 @@
       "compose-send-btn": "#compose-send-btn",
       "compose-start-btn": "#compose-start-btn",
       "compose-stop-btn": "#compose-stop-btn",
+      "compose-voice-command-btn": "#compose-voice-command-btn",
       "composer-plus-btn": "#composer-plus-btn",
       "composer-submit-button": "#composer-submit-button",
       "conversation-ai0": "#conversation-ai0",

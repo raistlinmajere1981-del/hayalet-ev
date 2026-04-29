@@ -30,8 +30,6 @@ import { formatExecutionReadinessSignalAdvisory } from "../runtime/lab-execution
 import type { LabExecutionReadinessSignal } from "../runtime/lab-execution-readiness-signal.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
-import { renderLabProjectAssetsPanel } from "./lab-project-assets-panel.js";
-import { renderSourceIntake } from "./workspace-surface.js";
 
 // ---------------------------------------------------------------------------
 // Mode headers
@@ -54,20 +52,6 @@ function renderDrawerHeader(mode: LabDrawerMode, copy: LabI18n) {
   `;
 }
 
-function renderDrawerAssetsPanel(
-  state: LabStoreState,
-  copy: LabI18n,
-  options: { includeProjectControls?: boolean } = {}
-) {
-  return `
-    <section class="labx-drawer__section labx-drawer__assets" data-lab-drawer-assets="true">
-      ${renderLabProjectAssetsPanel(state, {
-        copy,
-        includeProjectControls: options.includeProjectControls === true,
-      })}
-    </section>
-  `;
-}
 
 // ---------------------------------------------------------------------------
 // Setup mode
@@ -81,9 +65,6 @@ function renderSetupMode(state: LabStoreState, surface: LabStageSurface, copy: L
   const preflightSeverity = getPreflightSeverity(state);
   const preflightWarnings = getPreflightWarnings(state);
   const previewSentence = buildIntentPreviewSentence(state);
-
-  const sourceIntakeSection = renderSourceIntake(state, copy);
-  const assetsPanel = renderDrawerAssetsPanel(state, copy, { includeProjectControls: true });
 
   const intentsMarkup = sourceReady
     ? `<section class="labx-drawer__section labx-drawer__intents">
@@ -144,7 +125,7 @@ function renderSetupMode(state: LabStoreState, surface: LabStageSurface, copy: L
 
   const sideControls = surface.side.trim() !== "" ? `<div class="labx-drawer__side-controls">${surface.side}</div>` : "";
 
-  return `${sourceIntakeSection}${assetsPanel}${intentsMarkup}${preflightSection}${ctaMarkup}${sideControls}`;
+  return `${intentsMarkup}${preflightSection}${ctaMarkup}${sideControls}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -494,9 +475,7 @@ function renderResultMode(state: LabStoreState, copy: LabI18n) {
     </button>
   `;
 
-  const assetsPanel = renderDrawerAssetsPanel(state, copy);
-
-  return `${warningsBanner}${tier1}${tier2}${advisories}${reportCta}${assetsPanel}${exploreCta}`;
+  return `${warningsBanner}${tier1}${tier2}${advisories}${reportCta}${exploreCta}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -560,9 +539,7 @@ function renderExploreMode(state: LabStoreState, copy: LabI18n) {
     </button>
   `;
 
-  const assetsPanel = renderDrawerAssetsPanel(state, copy);
-
-  return `${warningBanner}${warningsMarkup}${comparisonMarkup}${alternativesMarkup}${assetsPanel}${reanalyzeCta}${backToggle}`;
+  return `${warningBanner}${warningsMarkup}${comparisonMarkup}${alternativesMarkup}${reanalyzeCta}${backToggle}`;
 }
 
 // ---------------------------------------------------------------------------

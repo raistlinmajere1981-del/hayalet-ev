@@ -62,6 +62,13 @@ export interface LabWorkspaceLockState {
   focusControls: boolean;
 }
 
+export interface LabTimelineHighlight {
+  assetId: string;
+  startMs: number;
+  endMs: number;
+  label?: string;
+}
+
 /** V2.3 user-facing intent identifiers — NO tool names exposed */
 export type LabIntentId =
   | "visual-inspection"
@@ -1099,6 +1106,15 @@ export interface LabStoreUiState {
   rawLogCollapsed: boolean;
   /** V2.3 workspace state */
   workspace: LabWorkspaceUiState;
+  /** V4 project & entity workspace overlay */
+  projectWorkspaceOpen: boolean;
+  projectWorkspaceSelectedEntityIds: string[];
+  projectWorkspaceSort: "createdAt" | "name" | "type";
+  projectWorkspaceFilter: LabAssetType | null;
+  projectWorkspaceGroup: "type" | "run" | "intent" | null;
+  projectWorkspaceSearch: string;
+  projectWorkspaceConfirmReplace: string | null;
+  projectWorkspaceTimelineHighlight: LabTimelineHighlight | null;
 }
 
 export interface LabPersistedState {
@@ -1303,7 +1319,16 @@ export type LabStoreEvent =
   | { type: "report-overlay-toggled"; open: boolean }
   | { type: "drawer-collapsed-toggled" }
   | { type: "drawer-explore-toggled" }
-  | { type: "drawer-mode-requested"; mode: LabDrawerModeOverride | null };
+  | { type: "drawer-mode-requested"; mode: LabDrawerModeOverride | null }
+  // V4 project & entity workspace events
+  | { type: "project-workspace-toggled"; open?: boolean }
+  | { type: "project-workspace-entity-selected"; entityIds: string[] }
+  | { type: "project-workspace-sort-changed"; sort: "createdAt" | "name" | "type" }
+  | { type: "project-workspace-filter-changed"; filter: LabAssetType | null }
+  | { type: "project-workspace-group-changed"; group: "type" | "run" | "intent" | null }
+  | { type: "project-workspace-search-changed"; search: string }
+  | { type: "project-workspace-confirm-replace"; assetId: string | null }
+  | { type: "project-workspace-timeline-highlighted"; highlight: LabTimelineHighlight | null };
 
 export function createLabFeatureMeta(featureId: LabFeatureId): LabFeatureMeta {
   return (

@@ -1776,6 +1776,7 @@ export function getWaveformTimelineModel(state: LabStoreState) {
     lockState: getWorkspaceLockState(state),
     startMs: selection.startMs,
     sourceKind,
+    timelineHighlight: state.ui.projectWorkspaceTimelineHighlight,
     visualizationArtifact: getAudioVisualizationArtifact(state),
     visualizationMode: state.ui.workspace.audioFocus.visualizationMode,
     waveformContentDurationMs,
@@ -2097,7 +2098,9 @@ export function getSourceRetryBlockReason(state: LabStoreState): LabSourceRetryB
   const source = getProjectSource(state);
   if (sourceMode === "url") {
     const sourceUrl =
-      drafts.urlInput.trim() || asNonEmptyString(source["sourceUrl"]) || asNonEmptyString(source["url"]);
+      drafts.urlInput.trim() ||
+      asNonEmptyString(source["sourceUrl"]) ||
+      asNonEmptyString(source["url"]);
     return sourceUrl ? null : "missing-url";
   }
   if (sourceMode === "youtube") {
@@ -2322,10 +2325,7 @@ export function resolveDrawerMode(state: LabStoreState): LabDrawerMode {
     return "result";
   }
   const freshness = getReportFreshness(state);
-  if (
-    freshness?.state === "current" &&
-    state.ui.workspace.userExploreToggle !== true
-  ) {
+  if (freshness?.state === "current" && state.ui.workspace.userExploreToggle !== true) {
     return "result";
   }
   return "explore";
@@ -2375,16 +2375,14 @@ export function buildIntentPreviewSentence(state: LabStoreState): string {
       return INTENT_ACTION_PHRASES[id] || id;
     })
     .join(", ");
-  const outputs = selectedIntents
-    .map(function (id) {
-      return INTENT_OUTPUT_PHRASES[id] || id;
-    });
+  const outputs = selectedIntents.map(function (id) {
+    return INTENT_OUTPUT_PHRASES[id] || id;
+  });
   const uniqueOutputs = outputs.filter(function (output, index) {
     return outputs.indexOf(output) === index;
   });
   const hypothesis = getHypothesis(state).trim();
-  const hypothesisAppend =
-    hypothesis.length > 0 ? ` Hipotez: \u201C${hypothesis}\u201D` : "";
+  const hypothesisAppend = hypothesis.length > 0 ? ` Hipotez: \u201C${hypothesis}\u201D` : "";
   return `Bu analiz ${scopeLabel} üzerinde ${actions} ${uniqueOutputs.join(", ")} tespit edecek.${hypothesisAppend}`;
 }
 
