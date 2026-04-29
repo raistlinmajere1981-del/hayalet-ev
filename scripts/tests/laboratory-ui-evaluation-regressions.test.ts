@@ -44,13 +44,24 @@ class ElementStub {
   replaceChildren(): void {}
 }
 
-function createMinimalLaboratoryUiEnvironment() {
+type MinimalLaboratoryUiEnvironmentOptions = {
+  fakeTimers?: boolean;
+  roomApi?: "full" | "none";
+};
+
+function createMinimalLaboratoryUiEnvironment(
+  options: MinimalLaboratoryUiEnvironmentOptions = {}
+) {
   const runtimeRoot = new ElementStub();
   let readyPayload: Record<string, unknown> | null = null;
+  let timerId = 1;
+  const queuedTimers: Array<{ callback: () => void; delay: number; id: number }> = [];
 
   const descriptors = {
+    clearTimeout: Object.getOwnPropertyDescriptor(globalThis, "clearTimeout"),
     document: Object.getOwnPropertyDescriptor(globalThis, "document"),
     navigator: Object.getOwnPropertyDescriptor(globalThis, "navigator"),
+    setTimeout: Object.getOwnPropertyDescriptor(globalThis, "setTimeout"),
     window: Object.getOwnPropertyDescriptor(globalThis, "window"),
     HTMLElement: Object.getOwnPropertyDescriptor(globalThis, "HTMLElement"),
   };
@@ -90,22 +101,65 @@ function createMinimalLaboratoryUiEnvironment() {
       },
     },
   });
+  if (options.fakeTimers === true) {
+    Object.defineProperty(globalThis, "setTimeout", {
+      configurable: true,
+      value(callback: (...args: unknown[]) => void, delay = 0, ...args: unknown[]) {
+        const id = timerId;
+        timerId += 1;
+        queuedTimers.push({
+          callback() {
+            callback(...args);
+          },
+          delay: Number(delay) || 0,
+          id,
+        });
+        return id;
+      },
+    });
+    Object.defineProperty(globalThis, "clearTimeout", {
+      configurable: true,
+      value(id: number) {
+        const timerIndex = queuedTimers.findIndex(function (timer) {
+          return timer.id === id;
+        });
+        if (timerIndex >= 0) {
+          queuedTimers.splice(timerIndex, 1);
+        }
+      },
+    });
+  }
+  const windowStub: Record<string, unknown> = {
+    addEventListener() {},
+    removeEventListener() {},
+  };
+  if (options.roomApi !== "none") {
+    windowStub["roomAPI"] = {
+      onHostMessage() {},
+      ready(payload: Record<string, unknown>) {
+        readyPayload = payload;
+      },
+      sendEvent() {},
+    };
+  }
   Object.defineProperty(globalThis, "window", {
     configurable: true,
-    value: {
-      addEventListener() {},
-      removeEventListener() {},
-      roomAPI: {
-        onHostMessage() {},
-        ready(payload: Record<string, unknown>) {
-          readyPayload = payload;
-        },
-        sendEvent() {},
-      },
-    },
+    value: windowStub,
   });
 
   return {
+    flushTimers(maxDelay = Number.POSITIVE_INFINITY) {
+      let nextIndex = queuedTimers.findIndex(function (timer) {
+        return timer.delay <= maxDelay;
+      });
+      while (nextIndex >= 0) {
+        const [timer] = queuedTimers.splice(nextIndex, 1);
+        timer.callback();
+        nextIndex = queuedTimers.findIndex(function (candidate) {
+          return candidate.delay <= maxDelay;
+        });
+      }
+    },
     readyPayload: () => readyPayload,
     restore() {
       Object.entries(descriptors).forEach(([key, descriptor]) => {
@@ -403,6 +457,8 @@ test("laboratory UI shell evaluates under minimal runtime stubs", async () => {
 
     assert.match(environment.runtimeRoot.innerHTML, /class="labx-shell"/);
     assert.match(environment.runtimeRoot.innerHTML, /data-ready="false"/);
+    assert.match(environment.runtimeRoot.innerHTML, /data-lab-boot-overlay="true"/);
+    assert.match(environment.runtimeRoot.innerHTML, /class="labx-boot-panel"/);
     assert.match(environment.runtimeRoot.innerHTML, /data-lab-center-skeleton="true"/);
     assert.match(environment.runtimeRoot.innerHTML, /labx-center-skeleton__label/);
     assert.match(environment.runtimeRoot.innerHTML, /labx-drawer-skeleton/);
@@ -417,6 +473,89 @@ test("laboratory UI shell evaluates under minimal runtime stubs", async () => {
   }
 });
 
+test("laboratory boot overlay unlocks from local ready without a room API bridge", async () => {
+  const environment = createMinimalLaboratoryUiEnvironment({
+    fakeTimers: true,
+    roomApi: "none",
+  });
+  const buildArtifact = await createRoomBuiltArtifact("laboratory");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(buildArtifact.rootDir, "ui/index.js")).href}?localBoot=${Date.now()}`
+    );
+
+    assert.match(environment.runtimeRoot.innerHTML, /data-ready="false"/);
+    assert.match(environment.runtimeRoot.innerHTML, /data-lab-boot-overlay="true"/);
+    assert.equal(environment.readyPayload(), null);
+
+    environment.flushTimers(999);
+
+    assert.match(environment.runtimeRoot.innerHTML, /data-ready="true"/);
+    assert.doesNotMatch(environment.runtimeRoot.innerHTML, /data-lab-boot-overlay="true"/);
+    assert.match(environment.runtimeRoot.innerHTML, /data-lab-center-skeleton="true"/);
+    assert.match(environment.runtimeRoot.innerHTML, /labx-drawer-skeleton/);
+  } finally {
+    await buildArtifact.cleanup();
+    environment.restore();
+  }
+});
+
+test("laboratory boot overlay waits for host data when a room API bridge exists", async () => {
+  const environment = createMinimalLaboratoryUiEnvironment({
+    fakeTimers: true,
+  });
+  const buildArtifact = await createRoomBuiltArtifact("laboratory");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(buildArtifact.rootDir, "ui/index.js")).href}?bridgeBoot=${Date.now()}`
+    );
+
+    assert.deepEqual(environment.readyPayload(), {
+      feature: "media-analysis",
+      room: "laboratory",
+      stage: "ui-ready",
+    });
+
+    environment.flushTimers(999);
+
+    assert.match(environment.runtimeRoot.innerHTML, /data-ready="false"/);
+    assert.match(environment.runtimeRoot.innerHTML, /data-lab-boot-overlay="true"/);
+    assert.match(environment.runtimeRoot.innerHTML, /data-lab-center-skeleton="true"/);
+    assert.match(environment.runtimeRoot.innerHTML, /labx-drawer-skeleton/);
+  } finally {
+    await buildArtifact.cleanup();
+    environment.restore();
+  }
+});
+
+test("laboratory boot overlay fallback waits for idle before unlocking bridge loads", async () => {
+  const environment = createMinimalLaboratoryUiEnvironment({
+    fakeTimers: true,
+  });
+  const buildArtifact = await createRoomBuiltArtifact("laboratory");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(buildArtifact.rootDir, "ui/index.js")).href}?fallbackBoot=${Date.now()}`
+    );
+
+    environment.flushTimers(7999);
+
+    assert.match(environment.runtimeRoot.innerHTML, /data-ready="false"/);
+    assert.match(environment.runtimeRoot.innerHTML, /data-lab-boot-overlay="true"/);
+
+    environment.flushTimers(8000);
+
+    assert.match(environment.runtimeRoot.innerHTML, /data-ready="true"/);
+    assert.doesNotMatch(environment.runtimeRoot.innerHTML, /data-lab-boot-overlay="true"/);
+  } finally {
+    await buildArtifact.cleanup();
+    environment.restore();
+  }
+});
+
 test("laboratory shell routes host traffic through lab-root orchestration seams", () => {
   const uiIndexSource = readFileSync("rooms/laboratory/ui/index.ts", "utf8");
   const labRootSource = readFileSync("rooms/laboratory/ui/lab-root.ts", "utf8");
@@ -425,12 +564,24 @@ test("laboratory shell routes host traffic through lab-root orchestration seams"
 
   assert.match(uiIndexSource, /import "\.\/lab-root\.js";/);
   assert.match(labRootSource, /return renderWorkspaceSurface\(state, \{/);
-  assert.match(labRootSource, /runtimeRoot\.innerHTML = renderLabLayout\(state, surface, copy\);/);
+  assert.match(
+    labRootSource,
+    /runtimeRoot\.innerHTML = renderLabLayout\(state, surface, copy, \{\s*bootOverlayActive: isBootOverlayActive\(state\),\s*\}\);/
+  );
+  assert.match(labRootSource, /renderLabBootOverlay\(copy\)/);
+  assert.match(labRootSource, /function syncBootOverlay\(/);
   assert.match(labRootSource, /const BOOT_OVERLAY_SETTLE_MS = 450;/);
+  assert.match(labRootSource, /const BOOT_OVERLAY_FALLBACK_READY_MS = 8000;/);
+  assert.match(labRootSource, /const BOOT_OVERLAY_FAILSAFE_MS = 20000;/);
   assert.match(labRootSource, /let bootBootstrapSeen = false;/);
   assert.match(labRootSource, /function getBootOverlayBootstrapStatus\(state: LabStoreState\)/);
+  assert.match(labRootSource, /function hasRoomReadyBridge\(\)/);
+  assert.match(labRootSource, /function requestBootOverlayInteractiveUnlock\(\)/);
+  assert.match(labRootSource, /requestIdleCallback/);
   assert.match(labRootSource, /const bootstrapStatus = getBootOverlayBootstrapStatus\(state\);/);
   assert.match(labRootSource, /bootstrapStatus === "ready" \|\| bootstrapStatus === "error"/);
+  assert.match(labRootSource, /!hasRoomReadyBridge\(\)/);
+  assert.doesNotMatch(labRootSource, /state\.roomReadySent \|\| !hasRoomReadyBridge\(\)/);
   assert.match(
     labRootSource,
     /shell\.dataset\["ready"\] = isBootOverlayActive\(state\) \? "false" : "true";/
@@ -443,7 +594,11 @@ test("laboratory shell routes host traffic through lab-root orchestration seams"
     labRootSource,
     /roomAPI\.ready\(\{\s*feature:\s*"media-analysis",\s*room:\s*"laboratory",\s*stage:\s*"ui-ready"/
   );
+  assert.doesNotMatch(labRootSource, /BOOT_MESSAGES/);
+  assert.doesNotMatch(labRootSource, /startBootMessages/);
+  assert.doesNotMatch(labRootSource, /stopBootMessages/);
   assert.match(labLayoutSource, /renderToolManagementOverlay\(state, copy\)/);
+  assert.match(labLayoutSource, /data-lab-boot-overlay="true"/);
   assert.match(hostBridgeSource, /type === "source-state"/);
   assert.match(hostBridgeSource, /type:\s*"source-snapshot-received"/);
   assert.match(hostBridgeSource, /type === "lab-event"/);
@@ -508,6 +663,38 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   assert.doesNotMatch(workspaceSurfaceSource, /renderGlobalProcessSummary\(state, copy\)/);
 });
 
+test("laboratory center workbench attaches media viewport and timeline as one surface", () => {
+  const workspaceSurfaceSource = readFileSync("rooms/laboratory/ui/workspace-surface.ts", "utf8");
+  const themeSource = readFileSync("rooms/laboratory/ui/lab-theme.css", "utf8");
+
+  assert.match(workspaceSurfaceSource, /class="labx-media-workbench"/);
+  assert.match(workspaceSurfaceSource, /data-lab-media-workbench="true"/);
+  assert.match(
+    workspaceSurfaceSource,
+    /class="labx-media-workbench"[\s\S]*class="labx-workspace-preview"[\s\S]*\$\{dualPreviewTransport\}[\s\S]*renderLabWaveformTimeline\(timelineModel\)[\s\S]*\$\{renderWorkspaceHypothesis/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-media-workbench\s*\{[\s\S]*gap:\s*0;[\s\S]*border:\s*1px solid rgba\(134, 187, 214, 0\.18\);[\s\S]*border-radius:\s*var\(--labx-radius-tight\);/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-workspace-preview\s*\{[\s\S]*min-height:\s*clamp\(24rem, 60vh, 42rem\);[\s\S]*border:\s*0;[\s\S]*border-radius:\s*0;[\s\S]*box-shadow:\s*none;/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-media-workbench\s*>\s*\.labx-timeline\s*\{[\s\S]*border-width:\s*1px 0 0;[\s\S]*border-radius:\s*0;[\s\S]*box-shadow:\s*none;/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-dual-preview-transport\s*\{[\s\S]*border:\s*0;[\s\S]*border-top:\s*1px solid rgba\(122, 162, 255, 0\.18\);[\s\S]*border-radius:\s*0;/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-media-workbench \.labx-preview-media--workspace-video,[\s\S]*\.labx-media-workbench \.labx-preview-media--workspace-image\s*\{[\s\S]*height:\s*100%;[\s\S]*max-height:\s*100%;/
+  );
+});
+
 test("laboratory process strip owns heartbeat and expanded runtime detail rendering", () => {
   const labRootSource = readFileSync("rooms/laboratory/ui/lab-root.ts", "utf8");
   const processStripSource = readFileSync("rooms/laboratory/ui/lab-process-strip.ts", "utf8");
@@ -516,7 +703,7 @@ test("laboratory process strip owns heartbeat and expanded runtime detail render
   assert.match(labRootSource, /processStripHeartbeatInterval/);
   assert.match(labRootSource, /setInterval\(function \(\) \{\s*render\(\);/);
   assert.match(processStripSource, /data-lab-process-expanded="true"/);
-  assert.match(processStripSource, /state\.userActions\.slice\(0, 4\)/);
+  assert.match(processStripSource, /getUserActions\(state\)\.slice\(0, 5\)/);
   assert.match(processStripSource, /state\.run\?\.rawLog/);
   assert.match(
     themeSource,
@@ -545,12 +732,20 @@ test("laboratory theme defines the v2 shell grid and drawer layout contract", ()
   );
   assert.match(
     themeSource,
-    /\.labx-shell\[data-drawer-collapsed="true"\]\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\) 2rem;/
+    /\.labx-shell\[data-drawer-collapsed="true"\]\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\);[\s\S]*grid-template-areas:\s*"topbar"\s*"center"\s*"strip";/
   );
-  assert.match(themeSource, /\.labx-drawer--collapsed\s*\{[\s\S]*overflow:\s*visible;/);
-  assert.match(themeSource, /\.labx-drawer__expand-btn\s*\{[\s\S]*height:\s*100%;/);
+  assert.doesNotMatch(themeSource, /\.labx-drawer--collapsed/);
+  assert.doesNotMatch(themeSource, /\.labx-drawer__expand-btn/);
   assert.match(themeSource, /\.labx-center-skeleton__label\s*\{/);
+  assert.match(themeSource, /\.labx-boot-overlay\s*\{[\s\S]*pointer-events:\s*auto;/);
+  assert.match(themeSource, /\.labx-boot-panel\s*\{[\s\S]*border-radius:\s*0\.5rem;/);
+  assert.match(themeSource, /@keyframes labx-skeleton-breathe/);
   assert.doesNotMatch(themeSource, /\.labx-shell\[data-ready="false"\]::after/);
+  assert.doesNotMatch(
+    themeSource,
+    /\.labx-shell\[data-ready="false"\]\s+\.labx-center-panel/
+  );
+  assert.doesNotMatch(themeSource, /labx-boot-breathe/);
   assert.match(
     themeSource,
     /\.labx-top-bar\s*\{\s*grid-area:\s*topbar;\s*\}[\s\S]*\.labx-drawer\s*\{\s*grid-area:\s*drawer;\s*\}[\s\S]*\.labx-process-strip\s*\{\s*grid-area:\s*strip;\s*\}/

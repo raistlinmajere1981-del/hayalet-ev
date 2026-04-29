@@ -13,6 +13,8 @@ import type {
   LabUserActionEvent,
 } from "../models/lab-types.js";
 import { createLabWaveformTimelineVisualizer } from "../ui/lab-waveform-timeline.js";
+import { createLabI18n } from "../ui/lab-i18n.js";
+import { formatSourceRetryBlockReason } from "../ui/lab-source-retry-copy.js";
 import {
   getActionOutputs,
   deriveLegacyStage,
@@ -27,10 +29,12 @@ import {
   getSourceReady,
   getSourceMode,
   getSourceProbeStatus,
+  getSourceRetryBlockReason,
   getSourceStatus,
   getUserActions,
   getWaveformTimelineModel,
   getWorkbench,
+  getWorkspaceLockState,
   hasReportPayload,
   isDualPreviewActive,
   isRunActive,
@@ -613,6 +617,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
   function persistSourceDraftField(field: string, value: unknown) {
     const state = deps.store.getState();
+    if (getWorkspaceLockState(state).source === true) {
+      pushLockedWorkspaceEvent("Kaynak ayarları aktif analiz sırasında kilitli.");
+      return;
+    }
     const patch = buildSourceDraftPatch(state, field, value);
     if (patch === null) {
       return;
@@ -913,6 +921,56 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       return;
     }
     startProbe("source-pick-local", { fields });
+  }
+
+  function getRetrySourceFields(state: ReturnType<typeof deps.store.getState>) {
+    const source = asLabRecord(state.source);
+    const drafts = state.ui.sourceDrafts;
+    return {
+      fileNameHint:
+        drafts.fileNameHint ||
+        asNonEmptyString(source["storedFileName"]) ||
+        asNonEmptyString(source["fileNameHint"]) ||
+        "",
+      urlInput:
+        drafts.urlInput ||
+        asNonEmptyString(source["sourceUrl"]) ||
+        asNonEmptyString(source["url"]) ||
+        "",
+      youtubeUrl:
+        drafts.youtubeUrl ||
+        asNonEmptyString(source["youtubeUrl"]) ||
+        asNonEmptyString(source["sourceUrl"]) ||
+        asNonEmptyString(source["url"]) ||
+        "",
+      youtubePreset: drafts.youtubePreset,
+      youtubeCustom: drafts.youtubeCustom,
+      youtubeCaptureMode: drafts.youtubeCaptureMode,
+    };
+  }
+
+  function runSourceRetryAction() {
+    const state = deps.store.getState();
+    const blockReason = getSourceRetryBlockReason(state);
+    if (blockReason !== null) {
+      const copy = createLabI18n(state.context);
+      dispatch({
+        type: "push-event",
+        event: buildUiEvent(formatSourceRetryBlockReason(blockReason, copy), "warning"),
+      });
+      return;
+    }
+    const mode = getSourceMode(state);
+    const fields = getRetrySourceFields(state);
+    if (mode === "url") {
+      sendMediaAction("source-download-url", { fields });
+      return;
+    }
+    if (mode === "youtube") {
+      sendMediaAction("source-download-youtube", { fields });
+      return;
+    }
+    sendMediaAction("source-pick-local", { fields, retry: true });
   }
 
   function collectIntentCapabilities(selectedIntents: LabIntentId[]): CapabilityFamilyId[] {
@@ -1290,7 +1348,8 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       updateTimelinePlaybackUi();
       return true;
     }
-    const mediaEls = deps.documentRef.querySelectorAll<HTMLMediaElement>(".labx-preview-media");
+    const mediaEls =
+      deps.documentRef.querySelectorAll?.<HTMLMediaElement>(".labx-preview-media") || [];
     mediaEls.forEach(function (el) {
       el.currentTime = timeMs / 1000;
     });
@@ -1311,6 +1370,17 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       return false;
     }
     return seekSinglePreviewToMs(timeMs);
+  }
+
+  function centerTimelineTarget(target: Element) {
+    const track = target.closest<HTMLElement>(".labx-timeline__track");
+    if (!track || track.scrollWidth <= track.clientWidth) {
+      return;
+    }
+    const targetRect = (target as HTMLElement).getBoundingClientRect();
+    const trackRect = track.getBoundingClientRect();
+    const targetCenter = targetRect.left - trackRect.left + targetRect.width / 2;
+    track.scrollLeft = Math.max(0, targetCenter - track.clientWidth / 2);
   }
 
   function handleDualPreviewMasterPlay() {
@@ -1437,6 +1507,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   let timelineDragTrack: HTMLElement | null = null;
   let timelineDragDurationMs: number = 0;
   let timelineDragAnchorMs: number = 0;
+  let timelineDragFinalMs: number = 0;
   let timelineDragBodyOffsetStart: number = 0;
   let timelineDragBodyOffsetEnd: number = 0;
   let timelineDragBodyPointerOffsetMs: number = 0;
@@ -1456,12 +1527,25 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     return msFromTrackClientX(timelineDragTrack, timelineDragDurationMs, clientX);
   }
 
+  function isWorkspaceMutationLocked(lockKey: keyof ReturnType<typeof getWorkspaceLockState>) {
+    return getWorkspaceLockState(deps.store.getState())[lockKey] === true;
+  }
+
+  function pushLockedWorkspaceEvent(message: string) {
+    dispatch({
+      type: "push-event",
+      event: buildUiEvent(message, "warning"),
+    });
+  }
+
   function startTimelineDrag(track: Element, anchorMs: number, durationMs: number) {
     timelineDragMode = "rail";
     timelineDragTrack = track as HTMLElement;
     timelineDragDurationMs = durationMs;
     timelineDragAnchorMs = anchorMs;
+    timelineDragFinalMs = anchorMs;
     dispatch({ type: "workspace-timeline-updated", startMs: anchorMs, endMs: anchorMs });
+    seekTimelineToMs(anchorMs);
   }
 
   function startTimelinePendingSeek(
@@ -1538,6 +1622,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       "[data-lab-action='timeline-interact'], [data-lab-action='timeline-drag-start'], [data-lab-action='timeline-drag-end'], [data-lab-action='timeline-drag-body']"
     );
     if (!handleEl) return;
+    if (isWorkspaceMutationLocked("timeline")) {
+      return;
+    }
 
     const action = toStringValue(handleEl.dataset["labAction"]);
     const timeline = handleEl.closest<HTMLElement>(".labx-timeline");
@@ -1563,6 +1650,11 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
   function handleTimelineMouseMove(event: MouseEvent) {
     if (timelineDragMode === "none" || !timelineDragTrack) return;
+    if (isWorkspaceMutationLocked("timeline")) {
+      timelineDragMode = "none";
+      timelineDragTrack = null;
+      return;
+    }
 
     if (timelineDragMode === "pending-seek") {
       const shiftPx = Math.abs(event.clientX - timelinePendingClientX);
@@ -1578,6 +1670,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     if (timelineDragMode === "rail") {
       const startMs = Math.min(timelineDragAnchorMs, ms);
       const endMs = Math.max(timelineDragAnchorMs, ms);
+      timelineDragFinalMs = ms;
       dispatch({ type: "workspace-timeline-updated", startMs, endMs });
     } else if (timelineDragMode === "start") {
       const currentEnd = state.ui.workspace.timelineEndMs ?? timelineDragDurationMs;
@@ -1600,15 +1693,33 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
   function handleTimelineMouseUp() {
     if (timelineDragMode === "none") return;
+    if (isWorkspaceMutationLocked("timeline")) {
+      timelineDragMode = "none";
+      timelineDragTrack = null;
+      return;
+    }
     if (timelineDragMode === "pending-seek") {
       if (timelinePendingShiftKey === true) {
         extendTimelineSelectionToMs(timelineDragAnchorMs);
+        seekTimelineToMs(timelineDragAnchorMs);
       } else {
         seekTimelineToMs(timelineDragAnchorMs);
+      }
+    } else if (timelineDragMode === "rail") {
+      seekTimelineToMs(timelineDragFinalMs);
+    } else {
+      const state = deps.store.getState();
+      const selectionStart = state.ui.workspace.timelineStartMs;
+      const selectionEnd = state.ui.workspace.timelineEndMs;
+      if (timelineDragMode === "end" && typeof selectionEnd === "number") {
+        seekTimelineToMs(selectionEnd);
+      } else if (typeof selectionStart === "number") {
+        seekTimelineToMs(selectionStart);
       }
     }
     timelineDragMode = "none";
     timelineDragTrack = null;
+    timelineDragFinalMs = 0;
     timelineDragBodyPointerOffsetMs = 0;
     timelinePendingClientX = 0;
     timelinePendingShiftKey = false;
@@ -1655,6 +1766,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           return;
         }
         runSourcePrimaryAction();
+        return;
+      case "source-probe-retry":
+        runSourceRetryAction();
         return;
       case "workspace-toggle-source-intake":
         dispatch({ type: "workspace-source-intake-toggled" });
@@ -1888,11 +2002,19 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         return;
       }
       case "workspace-roi-toggle":
+        if (isWorkspaceMutationLocked("roi")) {
+          pushLockedWorkspaceEvent("ROI düzenleme aktif analiz sırasında kilitli.");
+          return;
+        }
         if (value.trim() !== "") {
           dispatch({ type: "workspace-roi-toggled", regionId: value });
         }
         return;
       case "workspace-roi-remove":
+        if (isWorkspaceMutationLocked("roi")) {
+          pushLockedWorkspaceEvent("ROI düzenleme aktif analiz sırasında kilitli.");
+          return;
+        }
         if (value.trim() !== "") {
           dispatch({ type: "workspace-roi-removed", regionId: value });
         }
@@ -1916,6 +2038,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         return;
       }
       case "timeline-export-clip": {
+        if (isWorkspaceMutationLocked("timeline")) {
+          pushLockedWorkspaceEvent("Zaman aralığı dışa aktarımı aktif analiz sırasında kilitli.");
+          return;
+        }
         const clipState = deps.store.getState();
         const clipWs = clipState.ui.workspace;
         if (clipWs.timelineStartMs !== null && clipWs.timelineEndMs !== null) {
@@ -2002,6 +2128,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         }
         return;
       case "workspace-intent-toggle":
+        if (isWorkspaceMutationLocked("intents")) {
+          pushLockedWorkspaceEvent("Analiz amaçları aktif analiz sırasında kilitli.");
+          return;
+        }
         if (value.trim() !== "") {
           dispatch({
             type: "workspace-intent-toggled",
@@ -2054,12 +2184,16 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         }
         return;
       case "timeline-seek":
+        if (isWorkspaceMutationLocked("timeline")) {
+          return;
+        }
         if (value.trim() !== "") {
           const timeMs = Number(value);
           if (Number.isFinite(timeMs) !== true) {
             return;
           }
           seekTimelineToMs(timeMs);
+          centerTimelineTarget(actionButton);
         }
         return;
       case "timeline-interact":
@@ -2068,6 +2202,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "timeline-drag-body":
         return;
       case "timeline-finetune": {
+        if (isWorkspaceMutationLocked("timeline")) {
+          pushLockedWorkspaceEvent("Zaman aralığı aktif analiz sırasında kilitli.");
+          return;
+        }
         const parts = value.split(":");
         if (parts.length === 2) {
           const prefix = parts[0];
@@ -2093,6 +2231,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         return;
       }
       case "timeline-clear": {
+        if (isWorkspaceMutationLocked("timeline")) {
+          pushLockedWorkspaceEvent("Zaman aralığı aktif analiz sırasında kilitli.");
+          return;
+        }
         dispatch({ type: "workspace-timeline-updated", startMs: null, endMs: null });
         return;
       }
@@ -2149,6 +2291,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       field === "source.youtubeUrl" ||
       field.startsWith("source.youtubeCustom.")
     ) {
+      if (isWorkspaceMutationLocked("source")) {
+        pushLockedWorkspaceEvent("Kaynak ayarları aktif analiz sırasında kilitli.");
+        return;
+      }
       const rawValue =
         target instanceof HTMLInputElement && target.type === "checkbox"
           ? target.checked
@@ -2223,7 +2369,13 @@ export function createLabRunController(deps: LabRunControllerDeps) {
               : target.value;
 
       if (workspaceField === "timelineStartMs" || workspaceField === "timelineEndMs") {
+        if (isWorkspaceMutationLocked("timeline")) {
+          pushLockedWorkspaceEvent("Zaman aralığı aktif analiz sırasında kilitli.");
+          return;
+        }
         const state = deps.store.getState();
+        const requestedSeekMs =
+          typeof rawValue === "number" && Number.isFinite(rawValue) ? rawValue : null;
         dispatch({
           type: "workspace-timeline-updated",
           startMs:
@@ -2235,6 +2387,14 @@ export function createLabRunController(deps: LabRunControllerDeps) {
               ? (rawValue as number | null)
               : state.ui.workspace.timelineEndMs,
         });
+        const acceptedWorkspace = deps.store.getState().ui.workspace;
+        const acceptedSeekMs =
+          workspaceField === "timelineStartMs"
+            ? acceptedWorkspace.timelineStartMs
+            : acceptedWorkspace.timelineEndMs;
+        if (requestedSeekMs !== null && acceptedSeekMs === requestedSeekMs) {
+          seekTimelineToMs(requestedSeekMs);
+        }
         return;
       }
       if (workspaceField === "dualPreviewVolume") {
@@ -2247,6 +2407,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         return;
       }
       if (workspaceField === "hypothesis") {
+        if (isWorkspaceMutationLocked("hypothesis")) {
+          pushLockedWorkspaceEvent("Hipotez aktif analiz sırasında kilitli.");
+          return;
+        }
         dispatch({ type: "workspace-hypothesis-updated", text: String(rawValue || "") });
         return;
       }
@@ -2352,6 +2516,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         selectProjectByValue(String(targetValue || ""));
         return;
       case "source.kind":
+        if (isWorkspaceMutationLocked("source")) {
+          pushLockedWorkspaceEvent("Kaynak ayarları aktif analiz sırasında kilitli.");
+          return;
+        }
         dispatch({
           type: "source-config-patched",
           patch: {
@@ -2371,6 +2539,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         sendMediaAction("source-set-kind", { kind: targetValue });
         return;
       case "source.mode":
+        if (isWorkspaceMutationLocked("source")) {
+          pushLockedWorkspaceEvent("Kaynak ayarları aktif analiz sırasında kilitli.");
+          return;
+        }
         dispatch({
           type: "source-config-patched",
           patch: {

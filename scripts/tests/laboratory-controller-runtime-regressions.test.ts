@@ -224,12 +224,12 @@ test("laboratory run controller threads frozen run intent ids into tracked expor
     const mediaActions = sentEvents.filter(function (entry) {
       return entry.eventName === "media-action";
     });
-    assert.equal(mediaActions.length, 4);
+    assert.equal(mediaActions.length, 3);
     assert.deepEqual(
       mediaActions.map(function (entry) {
         return (entry.payload["action"] as string) || null;
       }),
-      ["export-roi-image", "export-timeline-clip", "export-frame-grab", "export-audio-track"]
+      ["export-roi-image", "export-frame-grab", "export-audio-track"]
     );
     mediaActions.forEach(function (entry) {
       const payload = entry.payload["payload"] as Record<string, unknown>;
@@ -846,9 +846,10 @@ test("laboratory run controller keeps click-to-seek and drag-to-select separated
     mouseMoveListener?.(
       new FakeMouseEvent(railTarget as unknown as EventTarget, 550) as unknown as Event
     );
+    assert.equal(preview.currentTime, 2.5);
     mouseUpListener?.({} as Event);
 
-    assert.equal(preview.currentTime, 2.5);
+    assert.equal(preview.currentTime, 4.5);
     assert.equal(store.getState().ui.workspace.timelineStartMs, 2500);
     assert.equal(store.getState().ui.workspace.timelineEndMs, 4500);
   } finally {
@@ -874,7 +875,12 @@ test("laboratory run controller keeps click-to-seek and drag-to-select separated
 test("laboratory run controller drags timeline start and end handles independently", () => {
   const originalElement = globalThis.Element;
   const originalMouseEvent = globalThis.MouseEvent;
-  const documentRef = new FakeControllerDocument();
+  const preview = new FakeMediaElement();
+  preview.duration = 10;
+  const documentRef = new FakeDualPreviewDocument(
+    new Map<string, unknown>([['video[data-lab-preserve-media="workspace-preview"]', preview]]),
+    [preview]
+  );
   const windowRef = new FakeWindowEventTarget();
   const eventBus = createLabEventBus();
   const store = createLabStore();
@@ -927,6 +933,7 @@ test("laboratory run controller drags timeline start and end handles independent
 
     assert.equal(store.getState().ui.workspace.timelineStartMs, 500);
     assert.equal(store.getState().ui.workspace.timelineEndMs, 3000);
+    assert.equal(preview.currentTime, 0.5);
 
     mouseDownListener?.(
       new FakeMouseEvent(
@@ -939,6 +946,7 @@ test("laboratory run controller drags timeline start and end handles independent
 
     assert.equal(store.getState().ui.workspace.timelineStartMs, 500);
     assert.equal(store.getState().ui.workspace.timelineEndMs, 5500);
+    assert.equal(preview.currentTime, 5.5);
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;
@@ -962,7 +970,12 @@ test("laboratory run controller drags timeline start and end handles independent
 test("laboratory run controller drags the timeline selection body from the pointer-down offset", () => {
   const originalElement = globalThis.Element;
   const originalMouseEvent = globalThis.MouseEvent;
-  const documentRef = new FakeControllerDocument();
+  const preview = new FakeMediaElement();
+  preview.duration = 10;
+  const documentRef = new FakeDualPreviewDocument(
+    new Map<string, unknown>([['video[data-lab-preserve-media="workspace-preview"]', preview]]),
+    [preview]
+  );
   const windowRef = new FakeWindowEventTarget();
   const eventBus = createLabEventBus();
   const store = createLabStore();
@@ -1017,6 +1030,7 @@ test("laboratory run controller drags the timeline selection body from the point
     assert.equal(store.getState().ui.workspace.timelineEndMs, 7000);
 
     mouseUpListener?.({} as Event);
+    assert.equal(preview.currentTime, 5);
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;

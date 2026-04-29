@@ -10,6 +10,7 @@ import type {
   LabStoreState,
   LabAsset,
   LabInteractiveSettings,
+  LabSourceRetryBlockReason,
 } from "../models/lab-types.js";
 import {
   getActiveSelection,
@@ -23,6 +24,7 @@ import {
   getInspectionMode,
   getInteractiveSettings,
   getLinkedAudioAssets,
+  getMediaViewportState,
   getProjectSource,
   getROIRegions,
   getSelectedDualPreviewAudioAsset,
@@ -30,9 +32,12 @@ import {
   getSourceMode,
   getSourceMetadata,
   getSourceProbeStatus,
+  getSourceRetryBlockReason,
   getWaveformTimelineModel,
+  getWorkspaceLockState,
   isDualPreviewActive,
   isDualPreviewAvailable,
+  isLoadedSourceMatchingMode,
   isRunActive,
 } from "../runtime/lab-selectors.js";
 import { renderStatusChip } from "./components/status-chip.js";
@@ -42,6 +47,7 @@ import { renderWorkspaceInteractiveControls } from "./workspace-interactive-cont
 import { renderWorkspaceAudioFocus } from "./workspace-audio-focus.js";
 import { renderWorkspaceHypothesis } from "./workspace-hypothesis.js";
 import { renderWorkspaceBookmarks } from "./workspace-bookmarks.js";
+import { formatSourceRetryBlockReason } from "./lab-source-retry-copy.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 import type { LabWaveformTimelineModel } from "./lab-waveform-timeline-types.js";
@@ -408,28 +414,6 @@ function getSourceActionForMode(mode: string) {
     return "source-download-youtube";
   }
   return "source-pick-local";
-}
-
-function normalizeModeToken(value: string | null) {
-  return (value || "").replaceAll(/\s+/g, "").toLowerCase();
-}
-
-function isLocalSourceRouteLabel(routeLabel: string) {
-  return routeLabel === "localcopy" || routeLabel === "assetreuse";
-}
-
-function isLoadedSourceMatchingMode(source: Record<string, unknown>, mode: string) {
-  const routeLabel = normalizeModeToken(asNonEmptyString(source["routeLabel"]));
-  if (routeLabel === "") {
-    return false;
-  }
-  if (mode === "url") {
-    return routeLabel === "directurl";
-  }
-  if (mode === "youtube") {
-    return routeLabel === "youtube";
-  }
-  return isLocalSourceRouteLabel(routeLabel);
 }
 
 function getSourceProgressModel(
@@ -804,6 +788,51 @@ function renderPreviewMedia(
   return renderVideoPreviewMedia(previewUrl, settings);
 }
 
+function renderViewportStatePanel(
+  viewportState: "empty" | "loading" | "error",
+  retryBlockReason: LabSourceRetryBlockReason | null,
+  copy: LabI18n = LAB_FALLBACK_I18N
+) {
+  if (viewportState === "loading") {
+    return `
+      <div class="labx-empty-state labx-workspace-loading" data-media-viewport-state="loading">
+        <div class="labx-viewport-skeleton" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <strong class="labx-empty-state__title">${escapeHtml(copy.t("mediaAnalysis.source.viewport.loadingTitle", "Source preparation in progress"))}</strong>
+        <p>${escapeHtml(copy.t("mediaAnalysis.source.viewport.loadingBody", "The preview will unlock after the probe completes."))}</p>
+      </div>
+    `;
+  }
+  if (viewportState === "error") {
+    const retryBlockMessage =
+      retryBlockReason === null ? null : formatSourceRetryBlockReason(retryBlockReason, copy);
+    return `
+      <div class="labx-empty-state labx-workspace-error" data-media-viewport-state="error">
+        <strong class="labx-empty-state__title">${escapeHtml(copy.t("mediaAnalysis.source.viewport.errorTitle", "Source preparation failed"))}</strong>
+        <p>${escapeHtml(copy.t("mediaAnalysis.source.viewport.errorBody", "Check the source settings and retry the source probe."))}</p>
+        <button
+          class="labx-inline-action"
+          type="button"
+          data-lab-action="source-probe-retry"
+          ${retryBlockReason !== null ? "disabled" : ""}
+          ${retryBlockMessage !== null ? `title="${escapeHtml(retryBlockMessage)}"` : ""}
+        >
+          ${escapeHtml(copy.t("mediaAnalysis.source.viewport.retry", "Retry Source Probe"))}
+        </button>
+        ${retryBlockMessage !== null ? `<small>${escapeHtml(retryBlockMessage)}</small>` : ""}
+      </div>
+    `;
+  }
+  return `
+    <div class="labx-empty-state labx-workspace-empty" data-media-viewport-state="empty">
+      <strong class="labx-empty-state__title">${escapeHtml(copy.t("mediaAnalysis.source.previewEmptyTitle", "Select a source to begin"))}</strong>
+    </div>
+  `;
+}
+
 function formatDurationMs(durationMs: number | null) {
   if (typeof durationMs !== "number" || Number.isFinite(durationMs) !== true) {
     return "00:00";
@@ -1031,6 +1060,8 @@ export function renderSourceIntake(state: LabStoreState, copy: LabI18n = LAB_FAL
   const sourceReadyForMode =
     asNonEmptyString(source["storedPath"]) !== null &&
     isLoadedSourceMatchingMode(source, sourceMode);
+  const sourceLocked = getWorkspaceLockState(state).source;
+  const sourceFieldDisabledAttr = sourceLocked ? 'disabled aria-disabled="true"' : "";
   const collapsed = state.ui.workspace.sourceIntakeCollapsed === true;
   const sourceSummaryLabel =
     asNonEmptyString(source["storedFileName"]) ||
@@ -1058,11 +1089,11 @@ export function renderSourceIntake(state: LabStoreState, copy: LabI18n = LAB_FAL
           <div class="labx-source-intake__mode-grid">
             <label class="labx-field">
               <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.urlInput", "Source URL"))}</span>
-              <input class="labx-input" data-lab-field="source.urlInput" value="${escapeHtml(sourceDrafts.urlInput)}" placeholder="https://..." />
+              <input class="labx-input" data-lab-field="source.urlInput" value="${escapeHtml(sourceDrafts.urlInput)}" placeholder="https://..." ${sourceFieldDisabledAttr} />
             </label>
             <label class="labx-field">
               <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.fileNameHint", "Stored File Name"))}</span>
-              <input class="labx-input" data-lab-field="source.fileNameHint" value="${escapeHtml(sourceDrafts.fileNameHint)}" placeholder="downloaded-source.mp4" />
+              <input class="labx-input" data-lab-field="source.fileNameHint" value="${escapeHtml(sourceDrafts.fileNameHint)}" placeholder="downloaded-source.mp4" ${sourceFieldDisabledAttr} />
             </label>
           </div>
         </section>
@@ -1080,15 +1111,15 @@ export function renderSourceIntake(state: LabStoreState, copy: LabI18n = LAB_FAL
               <div class="labx-source-intake__youtube-main">
                 <label class="labx-field labx-source-intake__youtube-main-item labx-source-intake__youtube-main-item--wide">
                   <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.youtubeUrl", "YouTube URL"))}</span>
-                  <input class="labx-input" data-lab-field="source.youtubeUrl" value="${escapeHtml(sourceDrafts.youtubeUrl)}" placeholder="https://youtube.com/watch?v=..." />
+                  <input class="labx-input" data-lab-field="source.youtubeUrl" value="${escapeHtml(sourceDrafts.youtubeUrl)}" placeholder="https://youtube.com/watch?v=..." ${sourceFieldDisabledAttr} />
                 </label>
                 <label class="labx-field labx-source-intake__youtube-main-item">
                   <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.fileNameHint", "Stored File Name"))}</span>
-                  <input class="labx-input" data-lab-field="source.fileNameHint" value="${escapeHtml(sourceDrafts.fileNameHint)}" placeholder="youtube-source.mp4" />
+                  <input class="labx-input" data-lab-field="source.fileNameHint" value="${escapeHtml(sourceDrafts.fileNameHint)}" placeholder="youtube-source.mp4" ${sourceFieldDisabledAttr} />
                 </label>
                 <label class="labx-field labx-source-intake__youtube-main-item">
                   <span>${escapeHtml(copy.t("mediaAnalysis.source.youtubeForm.fields.captureMode", "Capture Mode"))}</span>
-                  <select class="labx-select" data-lab-field="source.youtubeCaptureMode">
+                  <select class="labx-select" data-lab-field="source.youtubeCaptureMode" ${sourceFieldDisabledAttr}>
                     <option value="video+audio" ${sourceDrafts.youtubeCaptureMode === "video+audio" ? "selected" : ""}>${escapeHtml(getYoutubeOptionLabel("captureMode", "video+audio", copy))}</option>
                     <option value="audio-only" ${sourceDrafts.youtubeCaptureMode === "audio-only" ? "selected" : ""}>${escapeHtml(getYoutubeOptionLabel("captureMode", "audio-only", copy))}</option>
                     <option value="video-only" ${sourceDrafts.youtubeCaptureMode === "video-only" ? "selected" : ""}>${escapeHtml(getYoutubeOptionLabel("captureMode", "video-only", copy))}</option>
@@ -1112,6 +1143,7 @@ export function renderSourceIntake(state: LabStoreState, copy: LabI18n = LAB_FAL
                           data-lab-action="source-youtube-preset"
                           data-lab-value="${escapeHtml(presetId)}"
                           data-selected="${presetId === youtubePreset ? "true" : "false"}"
+                          ${sourceFieldDisabledAttr}
                         >
                           ${escapeHtml(getYoutubePresetLabel(presetId, copy))}
                         </button>
@@ -1153,7 +1185,7 @@ export function renderSourceIntake(state: LabStoreState, copy: LabI18n = LAB_FAL
             <div class="labx-source-intake__mode-grid">
               <label class="labx-field">
                 <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.fileNameHint", "Stored File Name"))}</span>
-                <input class="labx-input" data-lab-field="source.fileNameHint" value="${escapeHtml(sourceDrafts.fileNameHint)}" placeholder="project-source.mp4" />
+              <input class="labx-input" data-lab-field="source.fileNameHint" value="${escapeHtml(sourceDrafts.fileNameHint)}" placeholder="project-source.mp4" ${sourceFieldDisabledAttr} />
               </label>
             </div>
           </section>
@@ -1206,7 +1238,7 @@ export function renderSourceIntake(state: LabStoreState, copy: LabI18n = LAB_FAL
                 <div class="labx-source-intake__top">
                   <label class="labx-field">
                     <span>${escapeHtml(copy.t("mediaAnalysis.source.formatLabel", "Source Type"))}</span>
-                    <select class="labx-select" data-lab-field="source.kind">
+                    <select class="labx-select" data-lab-field="source.kind" ${sourceFieldDisabledAttr}>
                       ${kindOptions
                         .map(function (entry) {
                           return `<option value="${escapeHtml(entry)}" ${
@@ -1218,7 +1250,7 @@ export function renderSourceIntake(state: LabStoreState, copy: LabI18n = LAB_FAL
                   </label>
                   <label class="labx-field">
                     <span>${escapeHtml(copy.t("mediaAnalysis.source.modeLabel", "Import Method"))}</span>
-                    <select class="labx-select" data-lab-field="source.mode">
+                    <select class="labx-select" data-lab-field="source.mode" ${sourceFieldDisabledAttr}>
                       ${modeOptions
                         .map(function (entry) {
                           return `<option value="${escapeHtml(entry)}" ${
@@ -1333,6 +1365,8 @@ export function renderWorkspaceSurface(
   const sourceMode = getEffectiveSourceMode(state, sourceKind);
   const metadata = getSourceMetadata(state);
   const probeStatus = getSourceProbeStatus(state);
+  const viewportState = getMediaViewportState(state);
+  const lockState = getWorkspaceLockState(state);
   const previewUrl = asNonEmptyString(source["previewUrl"]);
   const settings = getInteractiveSettings(state);
   const audioFocus = getAudioFocusSettings(state);
@@ -1351,7 +1385,8 @@ export function renderWorkspaceSurface(
   const bookmarks = getBookmarks(state);
   const hypothesis = getHypothesis(state);
   const hasAudio = sourceKind === "audio" || sourceKind === "video";
-  const sourceReady = probeStatus === "completed" && isLoadedSourceMatchingMode(source, sourceMode);
+  const sourceReady =
+    viewportState === "active" && probeStatus === "completed" && isLoadedSourceMatchingMode(source, sourceMode);
   const dualPreviewAvailable = isDualPreviewAvailable(state);
   const dualPreviewActive = sourceReady && isDualPreviewActive(state);
   const dualPreviewLinkedAudioAssets = getDualPreviewLinkedAudioAssets(state);
@@ -1394,6 +1429,7 @@ export function renderWorkspaceSurface(
             selectionRoiEnabled:
               sourceKind === "image" ||
               (activeSelection !== null && activeSelection.endMs > activeSelection.startMs),
+            mutationLocked: lockState.roi,
             showInlineInspectionControls: sourceKind === "image",
             sourceKind,
           },
@@ -1415,7 +1451,13 @@ export function renderWorkspaceSurface(
           dualPreviewLinkedAudioAssets,
           copy
         )
-      : renderPreviewMedia(sourceKind, sourceReady ? previewUrl : null, settings, copy);
+      : viewportState === "active"
+        ? renderPreviewMedia(sourceKind, sourceReady ? previewUrl : null, settings, copy)
+        : renderViewportStatePanel(
+            viewportState === "loading" || viewportState === "error" ? viewportState : "empty",
+            getSourceRetryBlockReason(state),
+            copy
+          );
   const previewMarkup =
     sourceReady && (sourceKind === "video" || sourceKind === "image") && dualPreviewActive !== true
       ? `
@@ -1445,12 +1487,14 @@ export function renderWorkspaceSurface(
     ${renderSourceBar(state, copy)}
     <section class="labx-workspace-main" id="lab-workspace-main">
       ${renderLinkedAudioBar(state, copy)}
-      <div class="labx-workspace-preview" id="lab-workspace-preview" data-preview-mode="${dualPreviewActive ? "dual" : "single"}" data-dual-preview-available="${dualPreviewAvailable ? "true" : "false"}">
-        ${previewMarkup}
+      <div class="labx-media-workbench" data-lab-media-workbench="true" data-preview-mode="${dualPreviewActive ? "dual" : "single"}">
+        <div class="labx-workspace-preview" id="lab-workspace-preview" data-preview-mode="${dualPreviewActive ? "dual" : "single"}" data-dual-preview-available="${dualPreviewAvailable ? "true" : "false"}">
+          ${previewMarkup}
+        </div>
+        ${dualPreviewTransport}
+        ${durationMs > 0 ? renderLabWaveformTimeline(timelineModel) : ""}
       </div>
-      ${dualPreviewTransport}
-      ${durationMs > 0 ? renderLabWaveformTimeline(timelineModel) : ""}
-      ${renderWorkspaceHypothesis(hypothesis, copy)}
+      ${renderWorkspaceHypothesis(hypothesis, copy, { locked: lockState.hypothesis })}
       ${focusSection}
       ${renderWorkspaceBookmarks(bookmarks, copy)}
     </section>

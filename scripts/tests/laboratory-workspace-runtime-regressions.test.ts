@@ -297,7 +297,12 @@ test("laboratory run controller accepts numeric timeline input edits and normali
   const originalInput = Object.getOwnPropertyDescriptor(globalThis, "HTMLInputElement");
   const originalSelect = Object.getOwnPropertyDescriptor(globalThis, "HTMLSelectElement");
   const originalTextArea = Object.getOwnPropertyDescriptor(globalThis, "HTMLTextAreaElement");
-  const documentRef = new FakeControllerDocument();
+  const preview = new FakeMediaElement();
+  preview.duration = 10;
+  const documentRef = new FakeDualPreviewDocument(
+    new Map<string, unknown>([['video[data-lab-preserve-media="workspace-preview"]', preview]]),
+    [preview]
+  );
   const eventBus = createLabEventBus();
   const store = createLabStore();
 
@@ -346,18 +351,28 @@ test("laboratory run controller accepts numeric timeline input edits and normali
     inputListener?.({ target: startInput } as Event);
     assert.equal(store.getState().ui.workspace.timelineStartMs, 1500);
     assert.equal(store.getState().ui.workspace.timelineEndMs, 3000);
+    assert.equal(preview.currentTime, 1.5);
+
+    const validEndInput = new FakeHtmlInputElement("workspace.timelineEndMs", "4200");
+    validEndInput.type = "number";
+    inputListener?.({ target: validEndInput } as Event);
+    assert.equal(store.getState().ui.workspace.timelineStartMs, 1500);
+    assert.equal(store.getState().ui.workspace.timelineEndMs, 4200);
+    assert.equal(preview.currentTime, 4.2);
 
     const invalidEndInput = new FakeHtmlInputElement("workspace.timelineEndMs", "1400");
     invalidEndInput.type = "number";
     inputListener?.({ target: invalidEndInput } as Event);
     assert.equal(store.getState().ui.workspace.timelineStartMs, 1500);
     assert.equal(store.getState().ui.workspace.timelineEndMs, null);
+    assert.equal(preview.currentTime, 4.2);
 
     const endInput = new FakeHtmlInputElement("workspace.timelineEndMs", "");
     endInput.type = "number";
     inputListener?.({ target: endInput } as Event);
     assert.equal(store.getState().ui.workspace.timelineStartMs, 1500);
     assert.equal(store.getState().ui.workspace.timelineEndMs, null);
+    assert.equal(preview.currentTime, 4.2);
   } finally {
     if (originalInput) {
       Object.defineProperty(globalThis, "HTMLInputElement", originalInput);
