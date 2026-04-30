@@ -9,7 +9,6 @@ type LaboratoryProjectRecordValue = Record<string, unknown> & {
   createdAt?: unknown;
   drafts?: LaboratoryProjectRecordValue;
   edit?: unknown;
-  fileNameHint?: unknown;
   id?: unknown;
   kind?: unknown;
   lastError?: unknown;
@@ -237,7 +236,6 @@ export function createLaboratoryProjectRecordsRuntime(deps: LaboratoryProjectRec
         drafts: {
           urlInput: asNonEmptyString(drafts.urlInput) || "",
           youtubeUrl: asNonEmptyString(drafts.youtubeUrl) || "",
-          fileNameHint: asNonEmptyString(drafts.fileNameHint) || "",
           youtubePreset: youtubePreset,
           youtubeCustom: {
             ...getPresetDefaultCustomValues(sourcePresets, youtubePreset),

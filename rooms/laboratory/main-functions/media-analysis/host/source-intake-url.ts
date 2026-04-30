@@ -3,7 +3,6 @@ type LaboratoryRecord = Record<string, unknown>;
 type LaboratoryMediaUrlRuntime = LaboratoryRecord;
 
 type LaboratoryProjectSourceDraftsRecord = LaboratoryRecord & {
-  fileNameHint?: unknown;
   urlInput?: unknown;
 };
 
@@ -40,7 +39,7 @@ type MediaUrlSourceIntakeRuntimeDeps = {
     requestId: string
   ) => Promise<unknown>;
   clearJob: (runtime: LaboratoryMediaUrlRuntime, jobId: string) => void;
-  deriveFilename: (urlValue: string, sourceKind: unknown, hintValue: unknown) => string;
+  deriveFilename: (urlValue: string, sourceKind: unknown) => string;
   getActiveProject: (runtime: LaboratoryMediaUrlRuntime) => LaboratoryProjectRecord | null;
   getProjectSourceDir: (
     runtime: LaboratoryMediaUrlRuntime,
@@ -152,11 +151,7 @@ export function createMediaUrlSourceIntakeRuntime(deps: MediaUrlSourceIntakeRunt
 
     await cancelJobsForProject(runtime, projectId, requestId);
 
-    const fileName = deriveFilename(
-      urlValue,
-      sourceKind,
-      sourceDrafts.fileNameHint
-    );
+    const fileName = deriveFilename(urlValue, sourceKind);
     const jobId = `room-url-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     registerJob(runtime, {
       jobId: jobId,
@@ -196,8 +191,7 @@ export function createMediaUrlSourceIntakeRuntime(deps: MediaUrlSourceIntakeRunt
         storedPath: storedPath,
         storedFileName: storedFileName,
         mimeType:
-          asNonEmptyString(downloaded.contentType) ||
-          normalizeMimeType(storedFileName, sourceKind),
+          asNonEmptyString(downloaded.contentType) || normalizeMimeType(storedFileName, sourceKind),
       });
 
       await patchActiveProject(runtime, function (nextProject) {

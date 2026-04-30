@@ -191,6 +191,7 @@
     "operatorLabel": "Operator",
     "topBar": {
       "project": "Proje",
+      "projectManagement": "Proje Yönetimi",
       "newProject": "Yeni Proje",
       "openWorkspace": "Proje Calisma Alanini Ac",
       "source": "Kaynak",
@@ -330,6 +331,8 @@
       "retry": "Analizi Tekrar Dene",
       "cancel": "Durdur",
       "log": "Log",
+      "showDetails": "Detayları Göster",
+      "hideDetails": "Detayları Gizle",
       "noRecentActions": "Son islem yok",
       "noRawLog": "Raw log yok",
       "recentActions": "Son islemler",
@@ -546,6 +549,13 @@
       "staticFrame": "Sabit kare",
       "regionSnapshot": "Bolge goruntusu",
       "snapshotAlt": "Gecici inceleme goruntusu",
+      "playPause": "Oynat / duraklat",
+      "volume": "Ses",
+      "markCurrent": "Isaretle",
+      "markCurrentTitle": "Simdiki ani isaretle",
+      "bookmarkNotePlaceholder": "Kisa not",
+      "bookmarkDefaultNote": "Isaret {time}",
+      "removeBookmark": "Isareti sil",
       "microZoom": "Secim mikro yakinlastirma",
       "inspectionMode": "Inceleme modu",
       "selectionHint": "Bu secim gelecekteki analize rehberlik eder",
@@ -764,6 +774,20 @@
         }
       },
       "localHint": "Dosya secici Ekle dugmesine bastiginda acilir.",
+      "localUnifiedTitle": "Local Dosya Ekle",
+      "localUnifiedHint": "Video, ses veya gorsel dosyasi sec; secilen dosya aktif projeye kopyalanir.",
+      "localUnifiedButton": "Local Dosya Ekle",
+      "url": {
+        "check": "Kontrol Et",
+        "checking": "Kontrol ediliyor",
+        "add": "Projeye Ekle",
+        "formatCount": "{count} format",
+        "videoFormat": "Video akisi",
+        "audioFormat": "Ses akisi",
+        "noVideo": "Video yok, sadece ses",
+        "noAudio": "Ayri ses yok",
+        "directReady": "Dogrudan URL {type} olarak hazir"
+      },
       "clear": "Temizle",
       "add": "Ekle",
       "review": {
@@ -811,13 +835,11 @@
       },
       "fields": {
         "youtubeUrl": "YouTube URL",
-        "urlInput": "Dogrudan Medya URL",
-        "fileNameHint": "Opsiyonel Dosya Adi"
+        "urlInput": "Dogrudan Medya URL"
       },
       "placeholders": {
         "youtubeUrl": "https://www.youtube.com/watch?v=...",
-        "urlInput": "https://example.com/media.mp4",
-        "fileNameHint": "Bos birakirsan kaynak dosya adi korunur"
+        "urlInput": "https://example.com/media.mp4"
       },
       "actions": {
         "pickLocal": "Yerel Kaynagi Kopyala",
@@ -1041,7 +1063,7 @@
       "currentSource": "aktif kaynak",
       "directUrl": {
         "title": "Dogrudan URL Kaynagi",
-        "hint": "Uzak URL yapistir ve gerekirse yeniden adlandir."
+        "hint": "Uzak URL yapistir."
       },
       "youtubeCapture": {
         "title": "YouTube Yakalama",
@@ -1792,11 +1814,6 @@
         "highpass": "Highpass",
         "bandpass": "Bandpass"
       }
-    },
-    "bookmarks": {
-      "title": "Yer isaretleri",
-      "addAction": "+ Simdiki Ani Isaretle",
-      "removeAction": "Kaldir"
     },
     "hypothesis": {
       "label": "Hipotez",

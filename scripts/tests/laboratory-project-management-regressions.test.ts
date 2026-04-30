@@ -46,7 +46,7 @@ function hydrateState(overrides: {
   return store.getState();
 }
 
-test("laboratory top bar opens in new project mode with a passive project selector", () => {
+test("laboratory top bar opens project management without exposing draft names", () => {
   const html = renderLabTopBar(
     hydrateState({
       activeProjectId: "draft-1",
@@ -65,7 +65,8 @@ test("laboratory top bar opens in new project mode with a passive project select
   );
 
   assert.match(html, /data-lab-action="project-workspace-open"/);
-  assert.match(html, /Lab Session 2026-04-21 11:00/);
+  assert.match(html, /Project Management/);
+  assert.doesNotMatch(html, /Lab Session 2026-04-21 11:00/);
   assert.doesNotMatch(html, /data-lab-field="project\.id"/);
   assert.doesNotMatch(html, /<select/);
   assert.doesNotMatch(html, /2026-04-20 18-30 - evidence\.mp4/);
@@ -73,7 +74,7 @@ test("laboratory top bar opens in new project mode with a passive project select
   assert.doesNotMatch(html, /toggle-report-view/);
 });
 
-test("laboratory top bar selects the active project when it has a source", () => {
+test("laboratory top bar keeps active project names out of the management button", () => {
   const html = renderLabTopBar(
     hydrateState({
       activeProjectId: "project-1",
@@ -90,33 +91,43 @@ test("laboratory top bar selects the active project when it has a source", () =>
   );
 
   assert.match(html, /data-lab-action="project-workspace-open"/);
-  assert.match(html, /2026-04-20 18-30 - evidence\.mp4/);
+  assert.match(html, /Project Management/);
+  assert.doesNotMatch(html, /2026-04-20 18-30 - evidence\.mp4/);
   assert.doesNotMatch(html, /data-lab-field="project\.id"/);
   assert.match(html, /data-lab-action="toggle-tool-manager"/);
 });
 
-test("laboratory controller resets source intake when returning to new project and keeps naming/delete safeguards", () => {
+test("laboratory controller starts clean projects and keeps naming/delete safeguards", () => {
   const source = readFileSync("rooms/laboratory/runtime/lab-run-controller.ts", "utf8");
   const hostSource = readFileSync(
     "rooms/laboratory/main-functions/media-analysis/host/action-handlers-project.ts",
     "utf8"
   );
+  const lifecycleSource = readFileSync(
+    "rooms/laboratory/shared/host/project-lifecycle.ts",
+    "utf8"
+  );
 
   assert.match(source, /buildAutoProjectName,/);
   assert.match(source, /function buildEmptySourceState\(/);
+  assert.match(source, /function startCleanProjectSession\(\)/);
   assert.match(source, /if \(projectValue === "new"\)/);
+  assert.match(source, /case "project-create":/);
   assert.match(source, /const resetSourceState = buildEmptySourceState\(state\);/);
   assert.match(source, /type: "source-config-patched",\s*patch: resetSourceState/);
   assert.match(source, /type: "source-drafts-updated",\s*patch: resetSourceState\.drafts/);
   assert.match(source, /type: "source-drafts-committed"/);
   assert.match(source, /sendMediaAction\("project-create"\)/);
-  assert.match(
-    source,
-    /sendMediaAction\("project-select", \{ projectId: blankProjectId, resetSourceState \}\)/
-  );
+  assert.match(source, /function removeAssetsWithConfirmation\(/);
+  assert.doesNotMatch(source, /findBlankProjectId/);
+  assert.doesNotMatch(source, /hasActiveSource/);
   assert.match(source, /sendMediaAction\("project-rename", \{\s*name: buildAutoProjectName\(/);
   assert.match(source, /deps\.windowRef\.confirm\(/);
   assert.match(hostSource, /rawResetSourceState = actionPayload\["resetSourceState"\]/);
   assert.match(hostSource, /await patchActiveProject\(runtime, function \(project\) \{/);
   assert.match(hostSource, /source: \{\s*\.\.\.resetSourceState,\s*\}/);
+  assert.match(lifecycleSource, /function pruneEmptyDraftProjects\(/);
+  assert.match(lifecycleSource, /function isEmptyProjectDraft\(/);
+  assert.match(lifecycleSource, /operation: "delete-path"/);
+  assert.match(lifecycleSource, /recursive: true/);
 });

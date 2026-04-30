@@ -48,6 +48,48 @@ MCP tool yüzeyi değiştiğinde varsayılan akış:
 
 ---
 
+## ⚡ Terminal Sade Session Override — Opsiyonel
+
+Bu profil, kullanıcı proje tasarımını yalnızca terminal üzerinden yürütürken app/ghost/Rovo ayrıntılarının her işlemde context ve zaman tüketmesini azaltır.
+
+### Aktivasyon
+
+- Kullanıcı session başında tek başına `sade` yazarsa veya ilk görevini `sade:` ile başlatırsa `terminal-sade` profili aktif olur.
+- Aktivasyon `data/assistant-session-profile.json` runtime marker'ına yazılır; bu dosya ignored runtime verisidir ve compact sonrası tekrar okunur.
+- Kullanıcı `sade kapat`, `normal mod` veya `npm run assistant:profile -- clear` derse marker temizlenir.
+- Marker yönetimi için önerilen komut: `npm run assistant:profile -- <sade|status|clear>`.
+
+### Kapsam
+
+- Sade profil yalnızca `workflow:terminal-mode` için geçerlidir.
+- `npm run mode:status` sonucu `terminal` ise veya `npm run whereami` içindeki `effectiveMode` sonucu `other-provider-cli` / `opencode-terminal-mode` ise terminal sade davranışı uygulanabilir.
+- Runtime `app` ve `whereami.effectiveMode` sonucu `app` olduğunda sade profil otomatik uygulanmaz; standart app/ghost-agent protokolü korunur.
+- Electron/app/ghost-agent geçişi, UI interaction, DB migration, destructive git işlemi, package install veya geniş refactor gibi riskli işlerde güncel mod kontrolü ve standart güvenlik onayı gerekir.
+
+### Sade Onay Formatı
+
+Kod değişikliği gerekiyorsa onay korunur; ancak terminal sade profilde format aşağıdaki kadar kısa tutulur:
+
+```
+[ONAY]
+Önanaliz: [kısa bağlam]
+Hata: [tek cümle]
+Çözüm: [kısa işlem özeti]
+
+Devam için "evet" yaz.
+```
+
+- Sade onayda değişecek dosya listesi, mod/yüzey dökümü, muhatap sınıflandırması, hedef workflow ve geçiş planı yazılmaz.
+- `evet` veya açık onay gelmeden kod değişikliği uygulanmaz.
+- Onay sonrası kullanıcı tekrar bekletilmez; işlem tamamlanır, doğrulama yapılır ve kısa sonuç verilir.
+
+### Bypass Edilen Maliyetler
+
+- Sade profil aktifken her işlemde `whoareyou`, Rovo interaction payload, `rovo-ui:v1` token üretimi ve otomatik ghost-agent geçişi yapılmaz.
+- Session başında `hev_mcp_health` ve `hev_memory_bootstrap_policy` yalnızca MCP/policy işi gerçekten gerekiyorsa çalıştırılır.
+- Terminal-only sıradan kod/dosya işlerinde `mode:status` + `whereami` her işlemde tekrar edilmez; ilk aktivasyonda, mod/geçiş içeren işlerde veya çakışma şüphesinde tekrar kontrol edilir.
+- Dosya düzenleme güvenliği değişmez: ilgili dosya okunur, değişiklik uygulanır, syntax/test doğrulaması yapılır.
+
 ## 🚨 #2 KURAL: DEĞİŞİKLİK ONAY PROTOKOLÜ — ZORUNLU
 
 Plan aşamasında kullanıcıya kod gösterme, planı basit ve kısa biçimde açıkla.
@@ -152,6 +194,8 @@ V1 pack kullanım kuralı:
 ---
 
 ## 🔄 Session Bootstrap: Adaptive — Varsayılan, Düşük Context
+
+Terminal Sade istisnası: `data/assistant-session-profile.json` içinde aktif `sade` profili varsa session başında yalnızca bu marker okunur; MCP health/policy bootstrap adımları MCP veya policy işi gerektiğinde çalıştırılır.
 
 Base — her session, düşük maliyet:
 
@@ -316,6 +360,7 @@ Agent workflow kararını iki sinyali birlikte değerlendirerek verir:
 | `mode:status` = `ghost-agent`                                                                                           | `workflow:ghost-agent-mode` | Mevcut ghost akışı korunur                                                                            |
 
 **Kural:** `npm run mode:status` her işlem öncesi çağrılır — aynı session içinde bile.
+**Terminal Sade İstisnası:** Aktif sade marker varken ve çalışma yüzeyi terminal ise sıradan terminal dosya/kod işlerinde bu tekrar zorunlu değildir; mod/geçiş/Electron/app/ghost-agent/riskli işlem varsa güncel `mode:status` + `whereami` tekrar alınır.
 **Kural:** `npm run whereami` çıktısı `mode:status` için cross-check olarak kullanılır.
 **Kural:** `mode:status` sonucu `conflict` ise işlem durdurulur; `transitioning` ise `mode:wait` ile geçiş tamamlanması beklenir.
 **Kural:** Mod kararı agent tarafından planlama aşamasında verilir, onay formatında gösterilir.

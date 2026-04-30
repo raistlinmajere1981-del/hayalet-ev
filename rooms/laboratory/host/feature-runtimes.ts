@@ -406,6 +406,7 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     handleUrlDownload: sourceCompositionRuntime.laboratorySourceDelegatesRuntime.handleUrlDownload,
     handleYoutubeDownload:
       sourceCompositionRuntime.laboratorySourceDelegatesRuntime.handleYoutubeDownload,
+    handleYoutubeProbe: sourceCompositionRuntime.laboratorySourceDelegatesRuntime.handleYoutubeProbe,
     installProfileModel: projectRuntimes.mediaProfileModel.installProfileModel,
     loadContext: bootstrap.loadContext,
     markCloseoutAsStale: deps.markCloseoutAsStale,

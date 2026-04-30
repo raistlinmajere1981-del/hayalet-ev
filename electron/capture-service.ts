@@ -36,7 +36,10 @@ import type {
   CaptureMediaIngressPayload,
   CaptureServiceStatus,
 } from "../src/types/capture.ts";
-import type { TranscriptManagedModelDescriptor, TranscriptTargetId } from "../src/types/transcript.ts";
+import type {
+  TranscriptManagedModelDescriptor,
+  TranscriptTargetId,
+} from "../src/types/transcript.ts";
 
 const CAPTURE_ADB_TIMEOUT_MS = 12_000;
 const CAPTURE_ANDROID_COMPANION_PACKAGE = "com.hayaletev.androidcompanion";
@@ -1545,7 +1548,9 @@ class CaptureService {
     );
   }
 
-  async launchCompanion(options: { target?: TranscriptTargetId | null } = {}): Promise<CaptureActionOutcome> {
+  async launchCompanion(
+    options: { target?: TranscriptTargetId | null } = {}
+  ): Promise<CaptureActionOutcome> {
     const status = await this.refreshStatus();
     const settings = await loadSettings();
     const captureSettings = resolveCaptureSettings(settings);
@@ -2089,8 +2094,10 @@ class CaptureService {
           commands.filter((command) => command.id !== commandId)
         );
         const commandKind = normalizeText(body["kind"]) ?? acknowledgedCommand?.kind ?? null;
-        const requestId = normalizeText(body["requestId"]) ?? acknowledgedCommand?.requestId ?? null;
-        const target = normalizeTranscriptTarget(body["target"]) ?? acknowledgedCommand?.target ?? null;
+        const requestId =
+          normalizeText(body["requestId"]) ?? acknowledgedCommand?.requestId ?? null;
+        const target =
+          normalizeTranscriptTarget(body["target"]) ?? acknowledgedCommand?.target ?? null;
         const statusText = normalizeText(body["status"]);
         const fallbackMessage =
           commandKind === "capture-photo"
@@ -2160,21 +2167,21 @@ class CaptureService {
                     : "capture-requested"
                   : commandKind === "close-camera"
                     ? "idle"
-                  : commandKind === "start-dictation" || commandKind === "stop-dictation"
-                    ? this.analyzeState.state === "idle"
-                      ? "pending-launch"
-                      : this.analyzeState.state
-                    : previewActive === true
-                    ? "ready"
-                    : "pending-launch",
+                    : commandKind === "start-dictation" || commandKind === "stop-dictation"
+                      ? this.analyzeState.state === "idle"
+                        ? "pending-launch"
+                        : this.analyzeState.state
+                      : previewActive === true
+                        ? "ready"
+                        : "pending-launch",
             pendingCommand:
               statusText === "failed" || statusText === "done"
                 ? null
                 : commandKind === "capture-photo"
-                ? "capture-photo"
-                : commandKind === "start-dictation"
-                  ? "start-dictation"
-                  : null,
+                  ? "capture-photo"
+                  : commandKind === "start-dictation"
+                    ? "start-dictation"
+                    : null,
             message,
           };
         }
@@ -2785,7 +2792,10 @@ class CaptureService {
     }
 
     const target = options?.target ?? CAPTURE_ANALYZE_TARGET;
-    if (options?.requireSession === true && this.getBridgeSessionForTarget(deviceId, target) === null) {
+    if (
+      options?.requireSession === true &&
+      this.getBridgeSessionForTarget(deviceId, target) === null
+    ) {
       return await this.buildActionOutcome(
         resolveCaptureActionFromCommand(kind),
         false,
@@ -2813,10 +2823,9 @@ class CaptureService {
         : replaceExistingKinds.length > 0
           ? currentQueue.filter(
               (entry) =>
-                entry.target !== target ||
-                replaceExistingKinds.includes(entry.kind) !== true
+                entry.target !== target || replaceExistingKinds.includes(entry.kind) !== true
             )
-        : currentQueue;
+          : currentQueue;
     currentQueue
       .filter((entry) => queue.includes(entry) !== true)
       .forEach((entry) => {

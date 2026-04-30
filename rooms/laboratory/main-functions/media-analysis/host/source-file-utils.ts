@@ -172,12 +172,7 @@ export function createMediaSourceFileRuntime(deps: MediaSourceFileRuntimeDeps) {
     return match || null;
   }
 
-  function deriveFilename(urlValue: string, kind: string, hint: unknown) {
-    const hintValue = asNonEmptyString(hint);
-    if (hintValue) {
-      return hintValue;
-    }
-
+  function deriveFilename(urlValue: string, kind: string) {
     try {
       const parsed = new URL(urlValue);
       const pathname = decodeURIComponent(parsed.pathname || "");

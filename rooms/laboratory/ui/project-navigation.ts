@@ -47,7 +47,7 @@ export function renderProjectNavigation(state: LabStoreState, copy: LabI18n = LA
         <button
           class="labx-pw-nav__action-btn"
           type="button"
-          data-lab-action="save-project"
+          data-lab-action="project-create"
         >
           ${escapeHtml(copy.t("mediaAnalysis.projectWorkspace.newProject", "New"))}
         </button>

@@ -392,6 +392,143 @@ test("laboratory run controller accepts numeric timeline input edits and normali
   }
 });
 
+test("laboratory run controller wires compact timeline transport to primary preview media", async () => {
+  const originalElement = Object.getOwnPropertyDescriptor(globalThis, "Element");
+  const originalInput = Object.getOwnPropertyDescriptor(globalThis, "HTMLInputElement");
+  const originalSelect = Object.getOwnPropertyDescriptor(globalThis, "HTMLSelectElement");
+  const originalTextArea = Object.getOwnPropertyDescriptor(globalThis, "HTMLTextAreaElement");
+  const preview = new FakeMediaElement();
+  const playLabel = new FakeTextElement(null);
+  const volumeRoleInput = new FakeRangeElement("0", "1");
+  const bookmarkNoteInput = { value: "red flash" };
+  const documentRef = new FakeDualPreviewDocument(
+    new Map<string, unknown>([
+      ['video[data-lab-preserve-media="workspace-preview"]', preview],
+      ['[data-lab-role="timeline-play-toggle-label"]', playLabel],
+      ['[data-lab-role="timeline-volume"]', volumeRoleInput],
+      ['[data-lab-role="timeline-bookmark-note"]', bookmarkNoteInput],
+    ]),
+    [preview]
+  );
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  class TestElement extends FakeActionElement {}
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+  Object.defineProperty(globalThis, "HTMLInputElement", {
+    configurable: true,
+    value: FakeHtmlInputElement,
+  });
+  Object.defineProperty(globalThis, "HTMLSelectElement", {
+    configurable: true,
+    value: FakeHtmlSelectElement,
+  });
+  Object.defineProperty(globalThis, "HTMLTextAreaElement", {
+    configurable: true,
+    value: FakeHtmlTextAreaElement,
+  });
+
+  try {
+    preview.duration = 12;
+    preview.currentTime = 4.321;
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent() {},
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+    controller.attach();
+    await Promise.resolve();
+
+    assert.equal(playLabel.textContent, "▶");
+    assert.equal(volumeRoleInput.value, "1");
+
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
+    clickListener?.({ target: new TestElement("timeline-toggle-playback") } as Event);
+    await Promise.resolve();
+
+    assert.equal(preview.playCalls, 1);
+    assert.equal(preview.paused, false);
+    assert.equal(playLabel.textContent, "❚❚");
+
+    clickListener?.({ target: new TestElement("timeline-toggle-playback") } as Event);
+    assert.equal(preview.pauseCalls, 1);
+    assert.equal(preview.paused, true);
+    assert.equal(playLabel.textContent, "▶");
+
+    clickListener?.({ target: new TestElement("timeline-add-bookmark") } as Event);
+    assert.equal(store.getState().ui.workspace.bookmarks.length, 1);
+    assert.equal(store.getState().ui.workspace.bookmarks[0]?.timeMs, 4321);
+    assert.equal(store.getState().ui.workspace.bookmarks[0]?.note, "red flash");
+    assert.equal(bookmarkNoteInput.value, "");
+
+    preview.currentTime = 5.5;
+    clickListener?.({ target: new TestElement("timeline-add-bookmark") } as Event);
+    assert.equal(store.getState().ui.workspace.bookmarks.length, 2);
+    assert.equal(store.getState().ui.workspace.bookmarks[1]?.timeMs, 5500);
+    assert.equal(store.getState().ui.workspace.bookmarks[1]?.note, "Mark 00:05.500");
+    const firstBookmarkId = store.getState().ui.workspace.bookmarks[0]?.id;
+    assert.ok(firstBookmarkId);
+    clickListener?.({
+      target: new TestElement("timeline-remove-bookmark", firstBookmarkId),
+    } as Event);
+    assert.equal(store.getState().ui.workspace.bookmarks.length, 1);
+    assert.equal(store.getState().ui.workspace.bookmarks[0]?.timeMs, 5500);
+
+    const inputListener = documentRef.listeners.get("input");
+    assert.ok(inputListener);
+    const volumeInput = new FakeHtmlInputElement("workspace.dualPreviewVolume", "0.35");
+    volumeInput.type = "range";
+    inputListener?.({ target: volumeInput } as Event);
+
+    assert.equal(preview.volume, 0.35);
+    assert.equal(preview.muted, false);
+    assert.equal(volumeRoleInput.value, "0.35");
+
+    const muteInput = new FakeHtmlInputElement("workspace.dualPreviewVolume", "0");
+    muteInput.type = "range";
+    inputListener?.({ target: muteInput } as Event);
+    assert.equal(preview.volume, 0);
+    assert.equal(preview.muted, true);
+    assert.equal(volumeRoleInput.value, "0");
+  } finally {
+    if (originalElement) {
+      Object.defineProperty(globalThis, "Element", originalElement);
+    } else {
+      delete (globalThis as Record<string, unknown>).Element;
+    }
+    if (originalInput) {
+      Object.defineProperty(globalThis, "HTMLInputElement", originalInput);
+    } else {
+      delete (globalThis as Record<string, unknown>).HTMLInputElement;
+    }
+    if (originalSelect) {
+      Object.defineProperty(globalThis, "HTMLSelectElement", originalSelect);
+    } else {
+      delete (globalThis as Record<string, unknown>).HTMLSelectElement;
+    }
+    if (originalTextArea) {
+      Object.defineProperty(globalThis, "HTMLTextAreaElement", originalTextArea);
+    } else {
+      delete (globalThis as Record<string, unknown>).HTMLTextAreaElement;
+    }
+  }
+});
+
 test("laboratory run controller keeps invalid scope time ranges out of the analysis draft", () => {
   const originalInput = Object.getOwnPropertyDescriptor(globalThis, "HTMLInputElement");
   const originalSelect = Object.getOwnPropertyDescriptor(globalThis, "HTMLSelectElement");

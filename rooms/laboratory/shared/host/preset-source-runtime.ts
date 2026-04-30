@@ -17,7 +17,6 @@ type LaboratorySourceMetadata = {
 };
 
 type LaboratorySourceDrafts = {
-  fileNameHint: string;
   urlInput: string;
   youtubeCustom: LaboratoryRecord;
   youtubePreset: string;
@@ -133,7 +132,6 @@ export function createLaboratoryPresetSourceRuntime(deps: LaboratoryPresetSource
     return {
       urlInput: "",
       youtubeUrl: "",
-      fileNameHint: "",
       youtubePreset: defaultPreset,
       youtubeCustom: getPresetDefaultCustomValues(sourcePresets, defaultPreset),
     };

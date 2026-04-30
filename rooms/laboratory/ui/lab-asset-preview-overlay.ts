@@ -4,6 +4,7 @@ import {
   buildLabAssetMetadataTitle,
   getLabAssetPath,
   getLabAssetPathLeaf,
+  toLabAssetDisplayUrl,
 } from "./lab-asset-display.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
@@ -35,27 +36,6 @@ function getActiveAssetPreview(state: LabStoreState): LabAsset | null {
       return asset.id === activeAssetId;
     }) || null
   );
-}
-
-function encodeFilePathSegment(segment: string, index: number): string {
-  if (index === 0 && /^[A-Za-z]:$/.test(segment)) {
-    return segment;
-  }
-  return encodeURIComponent(segment);
-}
-
-function toAssetPreviewUrl(path: string): string {
-  if (/^(blob|data|file|https?):/i.test(path)) {
-    return path;
-  }
-  const normalizedPath = path.replace(/\\/g, "/");
-  if (normalizedPath.startsWith("/")) {
-    return `file://${normalizedPath.split("/").map(encodeFilePathSegment).join("/")}`;
-  }
-  if (/^[A-Za-z]:\//.test(normalizedPath)) {
-    return `file:///${normalizedPath.split("/").map(encodeFilePathSegment).join("/")}`;
-  }
-  return path;
 }
 
 function getAssetExtension(path: string | null): string | null {
@@ -163,7 +143,7 @@ export function renderLabAssetPreviewOverlay(
   const asset = getActiveAssetPreview(state);
   const isOpen = asset !== null;
   const path = asset === null ? null : getLabAssetPath(asset);
-  const previewUrl = path === null ? null : toAssetPreviewUrl(path);
+  const previewUrl = path === null ? null : toLabAssetDisplayUrl(path);
   const previewKind = asset === null ? "unsupported" : inferPreviewKind(asset, path);
 
   return `

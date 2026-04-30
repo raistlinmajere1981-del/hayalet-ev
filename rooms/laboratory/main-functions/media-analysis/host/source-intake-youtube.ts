@@ -45,6 +45,12 @@ type LaboratoryYoutubeSettings = {
   values: LaboratoryRecord;
 };
 
+type LaboratoryYoutubeFormatRecord = LaboratoryRecord & {
+  formatId: string;
+  kind: "video" | "audio" | "muxed";
+  label: string;
+};
+
 type LaboratoryMediaYoutubeSourceIntakeDeps = {
   asNonEmptyString: (value: unknown) => string | null;
   callRoomTools: (payload: LaboratoryRecord) => Promise<unknown>;
@@ -123,6 +129,11 @@ export function createMediaYoutubeSourceIntakeRuntime(
     return typeof value === "string" && value.trim() !== "" ? value : null;
   }
 
+  function toNumber(value: unknown): number | null {
+    const numeric = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(numeric) ? numeric : null;
+  }
+
   function getProjectId(project: LaboratoryProjectRecord): string {
     return toString(project.id) || "unknown-project";
   }
@@ -192,6 +203,160 @@ export function createMediaYoutubeSourceIntakeRuntime(
     return null;
   }
 
+  function parseYtDlpJson(stdoutValue: unknown): LaboratoryRecord {
+    const stdout = String(stdoutValue || "").trim();
+    const startIndex = stdout.indexOf("{");
+    const endIndex = stdout.lastIndexOf("}");
+    if (startIndex < 0 || endIndex <= startIndex) {
+      throw new Error("yt-dlp did not return video metadata.");
+    }
+    return toRecord(JSON.parse(stdout.slice(startIndex, endIndex + 1)));
+  }
+
+  function getBestThumbnail(metadata: LaboratoryRecord) {
+    const directThumbnail = asNonEmptyString(metadata["thumbnail"]);
+    if (directThumbnail !== null) {
+      return directThumbnail;
+    }
+    const thumbnails = Array.isArray(metadata["thumbnails"]) ? metadata["thumbnails"] : [];
+    for (let index = thumbnails.length - 1; index >= 0; index -= 1) {
+      const url = asNonEmptyString(toRecord(thumbnails[index])["url"]);
+      if (url !== null) {
+        return url;
+      }
+    }
+    return null;
+  }
+
+  function getYoutubeFormatKind(format: LaboratoryRecord) {
+    const videoCodec = asNonEmptyString(format["vcodec"]);
+    const audioCodec = asNonEmptyString(format["acodec"]);
+    const hasVideo = videoCodec !== null && videoCodec !== "none";
+    const hasAudio = audioCodec !== null && audioCodec !== "none";
+    if (hasVideo && hasAudio) {
+      return "muxed";
+    }
+    if (hasVideo) {
+      return "video";
+    }
+    if (hasAudio) {
+      return "audio";
+    }
+    return "unknown";
+  }
+
+  function formatYoutubeFormatLabel(format: LaboratoryRecord, kind: string, formatId: string) {
+    const parts = [
+      asNonEmptyString(format["format_note"]),
+      asNonEmptyString(format["resolution"]),
+      asNonEmptyString(format["ext"])?.toUpperCase() || null,
+      toNumber(format["fps"]) !== null ? `${Math.round(toNumber(format["fps"]) || 0)} fps` : null,
+      toNumber(format["tbr"]) !== null ? `${Math.round(toNumber(format["tbr"]) || 0)} kbps` : null,
+    ].filter((entry): entry is string => typeof entry === "string" && entry.trim() !== "");
+    const prefix = kind === "audio" ? "Audio" : kind === "video" ? "Video" : "Muxed";
+    return `${prefix} ${formatId}${parts.length > 0 ? ` · ${parts.join(" · ")}` : ""}`;
+  }
+
+  function normalizeYoutubeFormat(formatValue: unknown): LaboratoryYoutubeFormatRecord | null {
+    const format = toRecord(formatValue);
+    const formatId = asNonEmptyString(format["format_id"]);
+    if (formatId === null) {
+      return null;
+    }
+    const kind = getYoutubeFormatKind(format);
+    if (kind === "unknown") {
+      return null;
+    }
+    return {
+      formatId,
+      label: formatYoutubeFormatLabel(format, kind, formatId),
+      kind: kind as "video" | "audio" | "muxed",
+      extension: asNonEmptyString(format["ext"]),
+      resolution: asNonEmptyString(format["resolution"]),
+      fps: toNumber(format["fps"]),
+      videoCodec: asNonEmptyString(format["vcodec"]),
+      audioCodec: asNonEmptyString(format["acodec"]),
+      bitrateKbps: toNumber(format["tbr"]),
+      filesizeBytes: toNumber(format["filesize"]),
+      filesizeApproxBytes: toNumber(format["filesize_approx"]),
+      note: asNonEmptyString(format["format_note"]),
+    };
+  }
+
+  function normalizeYoutubeFormats(metadata: LaboratoryRecord) {
+    const formats = Array.isArray(metadata["formats"]) ? metadata["formats"] : [];
+    return formats
+      .map(normalizeYoutubeFormat)
+      .filter((format): format is LaboratoryYoutubeFormatRecord => format !== null)
+      .sort(function (left, right) {
+        const kindWeight = { video: 0, muxed: 1, audio: 2, unknown: 3 } as Record<string, number>;
+        const leftKind = kindWeight[String(left["kind"])] ?? 3;
+        const rightKind = kindWeight[String(right["kind"])] ?? 3;
+        if (leftKind !== rightKind) {
+          return leftKind - rightKind;
+        }
+        return (Number(right["bitrateKbps"]) || 0) - (Number(left["bitrateKbps"]) || 0);
+      })
+      .slice(0, 120);
+  }
+
+  function chooseDefaultYoutubeFormats(formats: LaboratoryYoutubeFormatRecord[]) {
+    const videoFormat =
+      formats.find((format) => format["kind"] === "video") ||
+      formats.find((format) => format["kind"] === "muxed") ||
+      null;
+    const audioFormat = formats.find((format) => format["kind"] === "audio") || null;
+    return {
+      selectedVideoFormatId: asNonEmptyString(videoFormat?.["formatId"]),
+      selectedAudioFormatId: asNonEmptyString(audioFormat?.["formatId"]),
+    };
+  }
+
+  async function handleYoutubeProbe(
+    _api: unknown,
+    runtime: LaboratoryMediaYoutubeRuntime,
+    requestId: string,
+    url: string
+  ) {
+    const project = getActiveProject(runtime);
+    if (project === null) {
+      throw new Error("Active project is missing.");
+    }
+    const ytDlpState = getYoutubeToolState(runtime);
+    if (ytDlpState.installed !== true) {
+      throw new Error("yt-dlp is not installed.");
+    }
+    const sourceDir = getProjectSourceDir(runtime, project);
+    const runResult = await callRoomTools({
+      args: ["--dump-single-json", "--skip-download", "--no-playlist", url],
+      cwd: sourceDir,
+      jobId: `room-youtube-probe-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      operation: "tool-run",
+      requestId,
+      roomId,
+      timeoutMs: 90 * 1000,
+      toolId: "yt-dlp",
+    });
+    const runPayload = toRecord(toRecord(runResult)["run"]);
+    const metadata = parseYtDlpJson(runPayload["stdout"]);
+    const formats = normalizeYoutubeFormats(metadata);
+    const defaults = chooseDefaultYoutubeFormats(formats);
+    return {
+      url,
+      isYoutube: true,
+      kind: "video",
+      preview: {
+        title: asNonEmptyString(metadata["title"]) || "YouTube video",
+        duration: toNumber(metadata["duration"]),
+        thumbnail: getBestThumbnail(metadata),
+        uploader: asNonEmptyString(metadata["uploader"]) || asNonEmptyString(metadata["channel"]),
+        webpageUrl: asNonEmptyString(metadata["webpage_url"]) || url,
+      },
+      formats,
+      ...defaults,
+    };
+  }
+
   function buildYtDlpArgs(
     project: LaboratoryProjectRecord,
     toolState: LaboratoryToolStateRecord,
@@ -214,6 +379,10 @@ export function createMediaYoutubeSourceIntakeRuntime(
     ];
 
     if (isAudioOnly) {
+      const formatValue = asNonEmptyString(values["format"]);
+      if (formatValue) {
+        args.push("-f", formatValue);
+      }
       args.push("-x");
       const audioFormat = asNonEmptyString(values["audioFormat"]);
       if (audioFormat && audioFormat !== "none") {
@@ -472,5 +641,6 @@ export function createMediaYoutubeSourceIntakeRuntime(
     findYtDlpFinalPath,
     getResolvedYoutubeSettings,
     handleYoutubeDownload,
+    handleYoutubeProbe,
   };
 }

@@ -72,7 +72,7 @@ export function renderLabLayout(
 
   if (layoutKind === "import-only") {
     return `
-      <div class="labx-shell" data-layout-kind="${layoutKind}" data-ready="true" data-workspace-mode="${getWorkspaceMode(state)}" data-lab-mode="${state.ui.labMode}" data-drawer-mode="${drawerMode}" data-drawer-collapsed="true">
+      <div class="labx-shell" data-layout-kind="${layoutKind}" data-ready="true" data-workspace-mode="${getWorkspaceMode(state)}" data-lab-mode="${state.ui.labMode}" data-drawer-mode="${drawerMode}" data-drawer-collapsed="true" data-process-view="compact">
         ${renderLabCenterPanel(surface)}
       </div>
       <div class="labx-overlay-root" data-open="false" aria-hidden="true"></div>
@@ -83,7 +83,7 @@ export function renderLabLayout(
   }
 
   return `
-    <div class="labx-shell" data-layout-kind="${layoutKind}" data-ready="${bootOverlayActive ? "false" : "true"}" data-workspace-mode="${getWorkspaceMode(state)}" data-lab-mode="${state.ui.labMode}" data-drawer-mode="${drawerMode}" data-drawer-collapsed="${drawerCollapsed ? "true" : "false"}">
+    <div class="labx-shell" data-layout-kind="${layoutKind}" data-ready="${bootOverlayActive ? "false" : "true"}" data-workspace-mode="${getWorkspaceMode(state)}" data-lab-mode="${state.ui.labMode}" data-drawer-mode="${drawerMode}" data-drawer-collapsed="${drawerCollapsed ? "true" : "false"}" data-process-view="${state.ui.workspace.processViewActive ? "expanded" : "compact"}">
       ${renderLabTopBar(state, copy)}
       ${renderLabCenterPanel(surface)}
       ${renderLabDrawer(state, surface, copy)}

@@ -46,7 +46,6 @@ function createSeededState(ffmpegInstalled = false) {
           storedPath: "/tmp/lab-demo.mp4",
           routeLabel: "Local Copy",
           drafts: {
-            fileNameHint: "lab-demo.mp4",
             urlInput: "",
             youtubeUrl: "",
             youtubePreset: "medium",
@@ -144,7 +143,8 @@ test("laboratory top bar reflects active v2 shell navigation", () => {
   const html = renderLabTopBar(store.getState());
 
   assert.match(html, /data-lab-action="project-workspace-open"/);
-  assert.match(html, /2026-04-21 12-00 - lab-demo\.mp4/);
+  assert.match(html, /Project Management/);
+  assert.doesNotMatch(html, /2026-04-21 12-00 - lab-demo\.mp4/);
   assert.match(html, /data-lab-action="topbar-pill-source"/);
   assert.match(html, /data-lab-action="topbar-pill-analyze"/);
   assert.match(html, /data-lab-action="topbar-pill-results"/);
@@ -166,6 +166,16 @@ test("laboratory v2 shell renders source intake in the setup drawer and preview 
       runId: "run-1",
     },
   });
+  store.dispatch({
+    type: "workspace-bookmark-added",
+    bookmark: {
+      id: "bookmark-note-1",
+      timeMs: 18565,
+      frameIndex: null,
+      note: "Red flash",
+      createdAt: 1,
+    },
+  });
   const state = store.getState();
   const surface = renderWorkspaceSurface(state);
   const drawer = renderLabDrawer(state, surface);
@@ -175,6 +185,19 @@ test("laboratory v2 shell renders source intake in the setup drawer and preview 
     surface.main,
     /<video class="labx-preview-media labx-preview-media--workspace-video"/
   );
+  assert.doesNotMatch(surface.main, /labx-preview-media--workspace-video"[^>]*\scontrols(?:\s|>|=)/);
+  assert.match(surface.main, /data-lab-selection-roi-controls-reserve="0"/);
+  assert.match(surface.main, /data-lab-action="timeline-toggle-playback"/);
+  assert.match(surface.main, /data-lab-role="timeline-volume"/);
+  assert.match(surface.main, /data-lab-role="timeline-bookmark-note"/);
+  assert.match(surface.main, /data-lab-action="timeline-add-bookmark"/);
+  assert.match(surface.main, /data-lab-action="timeline-remove-bookmark"/);
+  assert.match(surface.main, /labx-timeline__pin-popover/);
+  assert.match(surface.main, /Red flash/);
+  assert.match(surface.main, /data-lab-field="workspace\.dualPreviewVolume"/);
+  assert.doesNotMatch(surface.main, /labx-timeline__range-info/);
+  assert.doesNotMatch(surface.main, /labx-bookmarks/);
+  assert.doesNotMatch(surface.main, /labx-timeline__header|Embedded audio|Preview and waveform share/);
   assert.doesNotMatch(surface.main, /Source setup controls/);
   assert.equal(surface.side.trim(), "");
   assert.match(drawer, /data-drawer-mode="setup"/);
@@ -259,6 +282,16 @@ test("laboratory workspace treats reused local assets as ready sources", () => {
       routeLabel: "Asset reuse",
     },
   });
+  store.dispatch({
+    type: "workspace-bookmark-added",
+    bookmark: {
+      id: "bookmark-note-2",
+      timeMs: 2200,
+      frameIndex: null,
+      note: "Audio pop",
+      createdAt: 2,
+    },
+  });
 
   const state = store.getState();
   const surface = renderWorkspaceSurface(state);
@@ -270,6 +303,19 @@ test("laboratory workspace treats reused local assets as ready sources", () => {
     surface.main,
     /<video class="labx-preview-media labx-preview-media--workspace-video"/
   );
+  assert.doesNotMatch(surface.main, /labx-preview-media--workspace-video"[^>]*\scontrols(?:\s|>|=)/);
+  assert.match(surface.main, /data-lab-selection-roi-controls-reserve="0"/);
+  assert.match(surface.main, /data-lab-action="timeline-toggle-playback"/);
+  assert.match(surface.main, /data-lab-role="timeline-volume"/);
+  assert.match(surface.main, /data-lab-role="timeline-bookmark-note"/);
+  assert.match(surface.main, /data-lab-action="timeline-add-bookmark"/);
+  assert.match(surface.main, /data-lab-action="timeline-remove-bookmark"/);
+  assert.match(surface.main, /labx-timeline__pin-popover/);
+  assert.match(surface.main, /Audio pop/);
+  assert.match(surface.main, /data-lab-field="workspace\.dualPreviewVolume"/);
+  assert.doesNotMatch(surface.main, /labx-timeline__range-info/);
+  assert.doesNotMatch(surface.main, /labx-bookmarks/);
+  assert.doesNotMatch(surface.main, /labx-timeline__header|Embedded audio|Preview and waveform share/);
   assert.doesNotMatch(surface.main, /Awaiting source|Select a source to begin/);
 });
 
@@ -567,9 +613,19 @@ test("laboratory process strip renders recent action history from user actions",
   assert.doesNotMatch(surface.main, /labx-topbar-actions/);
   assert.doesNotMatch(surface.main, /Klip çıkarılıyor/);
 
+  const collapsedStripHtml = renderLabProcessStrip(store.getState());
+  assert.match(collapsedStripHtml, /data-process-view="compact"/);
+  assert.match(collapsedStripHtml, /class="labx-strip-detail-toggle"/);
+  assert.match(collapsedStripHtml, /aria-expanded="false"/);
+  assert.doesNotMatch(collapsedStripHtml, /data-lab-process-expanded="true"/);
+  assert.doesNotMatch(collapsedStripHtml, /class="labx-strip-expand"/);
+  assert.doesNotMatch(collapsedStripHtml, /class="labx-strip-cancel"/);
+
   store.dispatch({ type: "workspace-process-view-toggled", force: true });
   const stripHtml = renderLabProcessStrip(store.getState());
+  assert.match(stripHtml, /data-process-view="expanded"/);
   assert.match(stripHtml, /data-lab-process-expanded="true"/);
+  assert.match(stripHtml, /aria-expanded="true"/);
   assert.match(stripHtml, /Son işlemler/);
   assert.match(stripHtml, /Frame alındı/);
   assert.match(stripHtml, /frame_01\.png/);

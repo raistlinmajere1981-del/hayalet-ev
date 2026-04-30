@@ -54,7 +54,9 @@ interface BindDictationTriggerOptions {
   ) => () => void;
   onFinalTranscript?: (payload: TranscriptIngressPayload) => boolean | Promise<boolean>;
   getMode?: () => DictationMode;
-  requestAndroidDictation?: (request: AndroidDictationRequest) => Promise<AndroidDictationRequestState>;
+  requestAndroidDictation?: (
+    request: AndroidDictationRequest
+  ) => Promise<AndroidDictationRequestState>;
 }
 
 const MICROPHONE_ICON = `

@@ -6,6 +6,33 @@ export function getLabAssetPath(asset: LabAsset): string | null {
   return asNonEmptyString(asset.localPath) || asNonEmptyString(asset.url);
 }
 
+function encodeFilePathSegment(segment: string, index: number): string {
+  if (index === 0 && /^[A-Za-z]:$/.test(segment)) {
+    return segment;
+  }
+  return encodeURIComponent(segment);
+}
+
+export function toLabAssetDisplayUrl(path: string): string {
+  if (/^(blob|data|file|https?):/i.test(path)) {
+    return path;
+  }
+  const normalizedPath = path.replace(/\\/g, "/");
+  if (normalizedPath.startsWith("/")) {
+    return `file://${normalizedPath.split("/").map(encodeFilePathSegment).join("/")}`;
+  }
+  if (/^[A-Za-z]:\//.test(normalizedPath)) {
+    return `file:///${normalizedPath.split("/").map(encodeFilePathSegment).join("/")}`;
+  }
+  return path;
+}
+
+export function getLabAssetPreviewUrl(asset: LabAsset): string | null {
+  const metadata = asLabRecord(asset.metadata);
+  const path = asNonEmptyString(metadata["thumbnailUrl"]) || getLabAssetPath(asset);
+  return path === null ? null : toLabAssetDisplayUrl(path);
+}
+
 export function getLabAssetPathLeaf(asset: LabAsset): string | null {
   const path = getLabAssetPath(asset);
   if (path === null) {

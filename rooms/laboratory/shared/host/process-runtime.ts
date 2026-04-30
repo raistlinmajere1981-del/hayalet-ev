@@ -405,27 +405,27 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
 
     const results =
       featureId === audioFeatureId
-          ? await laboratoryManagedProcessRunnersRuntime.runAudioManagedProcess(
-              runtime,
-              project,
-              requestId,
-              jobId,
-              target,
-              artifactBase,
-              processRecord,
-              emitManagedRuntimeUpdate
-            )
-          : await laboratoryManagedProcessRunnersRuntime.runMediaManagedProcess(
-              runtime,
-              project,
-              requestId,
-              jobId,
-              target,
-              artifactBase,
-              outputDir,
-              processRecord,
-              emitManagedRuntimeUpdate
-            );
+        ? await laboratoryManagedProcessRunnersRuntime.runAudioManagedProcess(
+            runtime,
+            project,
+            requestId,
+            jobId,
+            target,
+            artifactBase,
+            processRecord,
+            emitManagedRuntimeUpdate
+          )
+        : await laboratoryManagedProcessRunnersRuntime.runMediaManagedProcess(
+            runtime,
+            project,
+            requestId,
+            jobId,
+            target,
+            artifactBase,
+            outputDir,
+            processRecord,
+            emitManagedRuntimeUpdate
+          );
 
     const collectedFindings = Array.isArray(results["findings"]) ? results["findings"] : [];
     const derivedFindings = extractFindings(

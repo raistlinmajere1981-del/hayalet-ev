@@ -126,6 +126,78 @@ export function createMediaLocalSourceIntakeRuntime(deps: MediaLocalSourceIntake
       : "video";
   }
 
+  function normalizeSourceKind(value: unknown): string | null {
+    const sourceKind = asNonEmptyString(value);
+    return sourceKind === "video" || sourceKind === "audio" || sourceKind === "image"
+      ? sourceKind
+      : null;
+  }
+
+  function isAutoSourceKind(value: unknown): boolean {
+    return asNonEmptyString(value) === "auto";
+  }
+
+  function getRequestedSourceKind(
+    project: LaboratoryProjectRecord,
+    localFields: unknown
+  ): string {
+    const fieldKind = normalizeSourceKind(toRecord(localFields)["kind"]);
+    return fieldKind || getProjectSourceKind(project);
+  }
+
+  function getFileDialogFilters(
+    runtime: LaboratoryMediaLocalRuntime,
+    localFields: unknown,
+    fallbackKind: string
+  ) {
+    if (isAutoSourceKind(toRecord(localFields)["kind"]) !== true) {
+      const sourceConfig = getSourceConfig(
+        runtime.sourcePresets,
+        normalizeSourceKind(toRecord(localFields)["kind"]) || fallbackKind
+      );
+      return Array.isArray(sourceConfig.fileDialogFilters) ? sourceConfig.fileDialogFilters : [];
+    }
+
+    const extensionSet = new Set<string>();
+    const filters = (["video", "audio", "image"] as const).flatMap(function (kind) {
+      const sourceConfig = getSourceConfig(runtime.sourcePresets, kind);
+      return Array.isArray(sourceConfig.fileDialogFilters)
+        ? sourceConfig.fileDialogFilters.map(toRecord)
+        : [];
+    });
+    filters.forEach(function (filter) {
+      toStringArray(filter["extensions"]).forEach(function (extension) {
+        extensionSet.add(extension);
+      });
+    });
+    return [
+      {
+        name: "Media",
+        extensions: Array.from(extensionSet),
+      },
+      ...filters,
+    ];
+  }
+
+  function inferSourceKindFromPath(runtime: LaboratoryMediaLocalRuntime, filePath: string) {
+    const extension = filePath.split(/[\\/]/).pop()?.split(".").pop()?.toLowerCase() || "";
+    for (const kind of ["video", "audio", "image"] as const) {
+      const sourceConfig = getSourceConfig(runtime.sourcePresets, kind);
+      const filters = Array.isArray(sourceConfig.fileDialogFilters)
+        ? sourceConfig.fileDialogFilters.map(toRecord)
+        : [];
+      const matches = filters.some(function (filter) {
+        return toStringArray(filter["extensions"]).some(
+          (candidate) => candidate.toLowerCase() === extension
+        );
+      });
+      if (matches === true) {
+        return kind;
+      }
+    }
+    return null;
+  }
+
   function inferAssetSourceKind(asset: LabAsset, fallbackKind: string): string {
     const metadata = toRecord(asset.metadata);
     const metadataKind =
@@ -148,11 +220,11 @@ export function createMediaLocalSourceIntakeRuntime(deps: MediaLocalSourceIntake
   async function handleLocalPick(
     _api: unknown,
     runtime: LaboratoryMediaLocalRuntime,
-    requestId: string
+    requestId: string,
+    localFields?: unknown
   ) {
     const project = getActiveProject(runtime);
-    const sourceKind = getProjectSourceKind(project);
-    const sourceConfig = getSourceConfig(runtime.sourcePresets, sourceKind);
+    const requestedSourceKind = getRequestedSourceKind(project, localFields);
     const electronApi = getElectronApi();
     if (electronApi === null || typeof electronApi.showOpenDialog !== "function") {
       throw new Error("File picker is unavailable.");
@@ -160,13 +232,17 @@ export function createMediaLocalSourceIntakeRuntime(deps: MediaLocalSourceIntake
 
     const dialogResult = await electronApi.showOpenDialog({
       properties: ["openFile"],
-      filters: Array.isArray(sourceConfig.fileDialogFilters) ? sourceConfig.fileDialogFilters : [],
+      filters: getFileDialogFilters(runtime, localFields, requestedSourceKind),
     });
 
     const selectedPath = asNonEmptyString(toStringArray(dialogResult.filePaths)[0]);
     if (dialogResult.canceled === true || selectedPath === null) {
       return { cancelled: true };
     }
+    const sourceKind =
+      isAutoSourceKind(toRecord(localFields)["kind"]) === true
+        ? inferSourceKindFromPath(runtime, selectedPath) || requestedSourceKind
+        : requestedSourceKind;
 
     const sourceDir = getProjectSourceDir(runtime, project);
     const copyResult = await electronApi.copyFileTo(selectedPath, sourceDir);
@@ -234,25 +310,10 @@ export function createMediaLocalSourceIntakeRuntime(deps: MediaLocalSourceIntake
       throw new Error("Only local project assets can be used as a source.");
     }
 
-    const electronApi = getElectronApi();
-    if (electronApi === null || typeof electronApi.copyFileTo !== "function") {
-      throw new Error("Asset source import is unavailable.");
-    }
-
     const sourceKind = inferAssetSourceKind(asset, getProjectSourceKind(project));
-    const sourceDir = getProjectSourceDir(runtime, project);
-    const copyResult = await electronApi.copyFileTo(assetPath, sourceDir);
-    if (copyResult.success !== true) {
-      throw new Error(
-        (typeof copyResult.message === "string" && copyResult.message) ||
-          (typeof copyResult.error === "string" && copyResult.error) ||
-          "Asset copy failed."
-      );
-    }
-
-    const storedPath = asNonEmptyString(copyResult.path);
+    const storedPath = assetPath;
     const storedFileName =
-      asNonEmptyString(copyResult.name) || (storedPath ? storedPath.split(/[\\/]/).pop() : null);
+      asNonEmptyString(asset.name) || storedPath.split(/[\\/]/).pop() || asset.id;
     const preparedProject = {
       ...project,
       source: {

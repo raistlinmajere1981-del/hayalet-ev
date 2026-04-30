@@ -45,6 +45,7 @@ type LaboratoryMediaActionRuntimeDeps = {
   handleLocalPick: UnknownFn;
   handleUrlDownload: UnknownFn;
   handleYoutubeDownload: UnknownFn;
+  handleYoutubeProbe: UnknownFn;
   installProfileModel: UnknownFn;
   markCloseoutAsStale: UnknownFn;
   markProfileAsStale: UnknownFn;
@@ -133,6 +134,7 @@ export function createLaboratoryActionCompositionRuntime(deps: LaboratoryActionC
     },
     handleUrlDownload: deps.handleUrlDownload,
     handleYoutubeDownload: deps.handleYoutubeDownload,
+    handleYoutubeProbe: deps.handleYoutubeProbe,
     installProfileModel: deps.installProfileModel,
     markCloseoutAsStale: deps.markCloseoutAsStale,
     markProfileAsStale: deps.markProfileAsStale,

@@ -35,11 +35,34 @@ import type { LabI18n } from "./lab-i18n.js";
 // Mode headers
 // ---------------------------------------------------------------------------
 
-const MODE_HEADERS: Record<LabDrawerMode, { eyebrowKey: string; eyebrowFallback: string; titleKey: string; titleFallback: string }> = {
-  setup: { eyebrowKey: "mediaAnalysis.drawer.setup.eyebrow", eyebrowFallback: "Yapılandırma", titleKey: "mediaAnalysis.drawer.setup.title", titleFallback: "Analiz Hazırlığı" },
-  running: { eyebrowKey: "mediaAnalysis.drawer.running.eyebrow", eyebrowFallback: "Çalışıyor", titleKey: "mediaAnalysis.drawer.running.title", titleFallback: "Analiz İlerlemesi" },
-  result: { eyebrowKey: "mediaAnalysis.drawer.result.eyebrow", eyebrowFallback: "Sonuç", titleKey: "mediaAnalysis.drawer.result.title", titleFallback: "Karar Yüzeyi" },
-  explore: { eyebrowKey: "mediaAnalysis.drawer.explore.eyebrow", eyebrowFallback: "Keşif", titleKey: "mediaAnalysis.drawer.explore.title", titleFallback: "Alternatifler ve Karşılaştırma" },
+const MODE_HEADERS: Record<
+  LabDrawerMode,
+  { eyebrowKey: string; eyebrowFallback: string; titleKey: string; titleFallback: string }
+> = {
+  setup: {
+    eyebrowKey: "mediaAnalysis.drawer.setup.eyebrow",
+    eyebrowFallback: "Yapılandırma",
+    titleKey: "mediaAnalysis.drawer.setup.title",
+    titleFallback: "Analiz Hazırlığı",
+  },
+  running: {
+    eyebrowKey: "mediaAnalysis.drawer.running.eyebrow",
+    eyebrowFallback: "Çalışıyor",
+    titleKey: "mediaAnalysis.drawer.running.title",
+    titleFallback: "Analiz İlerlemesi",
+  },
+  result: {
+    eyebrowKey: "mediaAnalysis.drawer.result.eyebrow",
+    eyebrowFallback: "Sonuç",
+    titleKey: "mediaAnalysis.drawer.result.title",
+    titleFallback: "Karar Yüzeyi",
+  },
+  explore: {
+    eyebrowKey: "mediaAnalysis.drawer.explore.eyebrow",
+    eyebrowFallback: "Keşif",
+    titleKey: "mediaAnalysis.drawer.explore.title",
+    titleFallback: "Alternatifler ve Karşılaştırma",
+  },
 };
 
 function renderDrawerHeader(mode: LabDrawerMode, copy: LabI18n) {
@@ -51,7 +74,6 @@ function renderDrawerHeader(mode: LabDrawerMode, copy: LabI18n) {
     </div>
   `;
 }
-
 
 // ---------------------------------------------------------------------------
 // Setup mode
@@ -97,15 +119,22 @@ function renderSetupMode(state: LabStoreState, surface: LabWorkspaceSurface, cop
     selectedIntents.length > 0
       ? `<section class="labx-drawer__section labx-drawer__preflight" data-severity="${escapeHtml(preflightSeverity)}">
           <h3>${escapeHtml(copy.t("mediaAnalysis.drawer.setup.preflightTitle", "Ön Kontrol"))}</h3>
-          ${preflightWarnings.length > 0
-            ? `<ul class="labx-drawer__preflight-list">${preflightWarnings.map(function (w) { return `<li>${escapeHtml(w)}</li>`; }).join("")}</ul>`
-            : `<p class="labx-drawer__ok">${escapeHtml(copy.t("mediaAnalysis.drawer.setup.preflightOk", "Tüm araçlar hazır"))}</p>`}
+          ${
+            preflightWarnings.length > 0
+              ? `<ul class="labx-drawer__preflight-list">${preflightWarnings
+                  .map(function (w) {
+                    return `<li>${escapeHtml(w)}</li>`;
+                  })
+                  .join("")}</ul>`
+              : `<p class="labx-drawer__ok">${escapeHtml(copy.t("mediaAnalysis.drawer.setup.preflightOk", "Tüm araçlar hazır"))}</p>`
+          }
         </section>`
       : "";
 
-  const previewMarkup = previewSentence !== ""
-    ? `<p class="labx-drawer__preview">${escapeHtml(previewSentence)}</p>`
-    : "";
+  const previewMarkup =
+    previewSentence !== ""
+      ? `<p class="labx-drawer__preview">${escapeHtml(previewSentence)}</p>`
+      : "";
 
   const ctaMarkup = `
     <div class="labx-drawer__cta">
@@ -123,7 +152,10 @@ function renderSetupMode(state: LabStoreState, surface: LabWorkspaceSurface, cop
     </div>
   `;
 
-  const sideControls = surface.side.trim() !== "" ? `<div class="labx-drawer__side-controls">${surface.side}</div>` : "";
+  const sideControls =
+    surface.side.trim() !== ""
+      ? `<div class="labx-drawer__side-controls">${surface.side}</div>`
+      : "";
 
   return `${intentsMarkup}${preflightSection}${ctaMarkup}${sideControls}`;
 }
@@ -138,33 +170,41 @@ function renderRunningMode(state: LabStoreState, copy: LabI18n) {
   const moduleOrder = run?.moduleOrder ?? [];
   const modules = run?.modules ?? {};
 
-  const pipelineMarkup = moduleOrder.length > 0
-    ? `<section class="labx-drawer__section labx-drawer__pipeline">
+  const pipelineMarkup =
+    moduleOrder.length > 0
+      ? `<section class="labx-drawer__section labx-drawer__pipeline">
         <h3>${escapeHtml(copy.t("mediaAnalysis.drawer.running.pipelineTitle", "Pipeline"))}</h3>
         <ul class="labx-drawer__module-list">
-          ${moduleOrder.map(function (modId) {
-            const mod = modules[modId];
-            const status = mod?.status ?? "idle";
-            const label = mod?.title ?? modId;
-            return `<li class="labx-drawer__module" data-status="${escapeHtml(status)}"><span class="labx-drawer__module-dot" aria-hidden="true"></span>${escapeHtml(label)}</li>`;
-          }).join("")}
+          ${moduleOrder
+            .map(function (modId) {
+              const mod = modules[modId];
+              const status = mod?.status ?? "idle";
+              const label = mod?.title ?? modId;
+              return `<li class="labx-drawer__module" data-status="${escapeHtml(status)}"><span class="labx-drawer__module-dot" aria-hidden="true"></span>${escapeHtml(label)}</li>`;
+            })
+            .join("")}
         </ul>
       </section>`
-    : "";
+      : "";
 
   const earlySignals = run?.liveFindings ?? [];
-  const earlySignalMarkup = earlySignals.length > 0
-    ? `<section class="labx-drawer__section labx-drawer__signals">
+  const earlySignalMarkup =
+    earlySignals.length > 0
+      ? `<section class="labx-drawer__section labx-drawer__signals">
         <h3>${escapeHtml(copy.t("mediaAnalysis.drawer.running.signalsTitle", "Erken Sinyaller"))}</h3>
         <ul class="labx-drawer__signal-list">
-          ${earlySignals.slice(0, 8).map(function (f) {
-            return `<li class="labx-drawer__signal" data-severity="${escapeHtml(f.severity ?? "info")}"><strong>${escapeHtml(f.title)}</strong><span>${escapeHtml(f.detail)}</span></li>`;
-          }).join("")}
+          ${earlySignals
+            .slice(0, 8)
+            .map(function (f) {
+              return `<li class="labx-drawer__signal" data-severity="${escapeHtml(f.severity ?? "info")}"><strong>${escapeHtml(f.title)}</strong><span>${escapeHtml(f.detail)}</span></li>`;
+            })
+            .join("")}
         </ul>
       </section>`
-    : "";
+      : "";
 
-  const taskLabel = summary.activeTaskLabel ?? copy.t("mediaAnalysis.drawer.running.task", "Analiz devam ediyor…");
+  const taskLabel =
+    summary.activeTaskLabel ?? copy.t("mediaAnalysis.drawer.running.task", "Analiz devam ediyor…");
   const progressLabel = summary.progressLabel ?? "";
 
   const statusMarkup = `
@@ -201,11 +241,16 @@ function assertUnhandledDrawerStatus(status: never): never {
 
 function getCandidateAccent(status: DrawerCandidateStatus): string {
   switch (status) {
-    case "viable": return "success";
-    case "unstable": return "warning";
-    case "not-viable": return "error";
-    case null: return "none";
-    default: return assertUnhandledDrawerStatus(status);
+    case "viable":
+      return "success";
+    case "unstable":
+      return "warning";
+    case "not-viable":
+      return "error";
+    case null:
+      return "none";
+    default:
+      return assertUnhandledDrawerStatus(status);
   }
 }
 
@@ -215,32 +260,45 @@ function getRuntimeLocale(copy: LabI18n): RuntimeLocale {
 
 function getCandidateDisplayLabel(status: DrawerCandidateStatus, copy: LabI18n): string {
   switch (status) {
-    case "viable": return copy.t("mediaAnalysis.rightContext.status.viable", "Valid");
-    case "unstable": return copy.t("mediaAnalysis.rightContext.status.unstable", "Unstable");
-    case "not-viable": return copy.t("mediaAnalysis.rightContext.status.notViable", "Invalid");
-    case null: return copy.t("mediaAnalysis.rightContext.status.none", "-");
-    default: return assertUnhandledDrawerStatus(status);
+    case "viable":
+      return copy.t("mediaAnalysis.rightContext.status.viable", "Valid");
+    case "unstable":
+      return copy.t("mediaAnalysis.rightContext.status.unstable", "Unstable");
+    case "not-viable":
+      return copy.t("mediaAnalysis.rightContext.status.notViable", "Invalid");
+    case null:
+      return copy.t("mediaAnalysis.rightContext.status.none", "-");
+    default:
+      return assertUnhandledDrawerStatus(status);
   }
 }
 
 function getCommitmentDisplayLabel(status: DrawerCommitmentStatus, copy: LabI18n): string {
   switch (status) {
-    case "committed": return copy.t("mediaAnalysis.rightContext.status.committed", "Approved");
-    case "revoked": return copy.t("mediaAnalysis.rightContext.status.revoked", "Revoked");
+    case "committed":
+      return copy.t("mediaAnalysis.rightContext.status.committed", "Approved");
+    case "revoked":
+      return copy.t("mediaAnalysis.rightContext.status.revoked", "Revoked");
     case "inactive":
     case "none":
-    case null: return copy.t("mediaAnalysis.rightContext.status.none", "-");
-    default: return assertUnhandledDrawerStatus(status);
+    case null:
+      return copy.t("mediaAnalysis.rightContext.status.none", "-");
+    default:
+      return assertUnhandledDrawerStatus(status);
   }
 }
 
 function getStagingDisplayLabel(status: DrawerStagingStatus, copy: LabI18n): string {
   switch (status) {
-    case "staged": return copy.t("mediaAnalysis.rightContext.status.staged", "Ready");
-    case "not-staged": return copy.t("mediaAnalysis.rightContext.status.notStaged", "Pending");
+    case "staged":
+      return copy.t("mediaAnalysis.rightContext.status.staged", "Ready");
+    case "not-staged":
+      return copy.t("mediaAnalysis.rightContext.status.notStaged", "Pending");
     case "none":
-    case null: return copy.t("mediaAnalysis.rightContext.status.none", "-");
-    default: return assertUnhandledDrawerStatus(status);
+    case null:
+      return copy.t("mediaAnalysis.rightContext.status.none", "-");
+    default:
+      return assertUnhandledDrawerStatus(status);
   }
 }
 
@@ -258,32 +316,57 @@ function getStagingAccent(status: DrawerStagingStatus): string {
 
 function getCandidateImplication(status: DrawerCandidateStatus, copy: LabI18n): string {
   switch (status) {
-    case "viable": return copy.t("mediaAnalysis.drawer.result.impl.candidateViable", "Yapısal olarak çalıştırılabilir");
-    case "unstable": return copy.t("mediaAnalysis.drawer.result.impl.candidateUnstable", "Yapı eksik \u2014 değerlendirme gerekli");
-    case "not-viable": return copy.t("mediaAnalysis.drawer.result.impl.candidateNotViable", "Geçersiz \u2014 yol revizyonu gerekli");
-    case null: return copy.t("mediaAnalysis.drawer.result.impl.candidateNone", "Değerlendirme bekleniyor");
-    default: return assertUnhandledDrawerStatus(status);
+    case "viable":
+      return copy.t(
+        "mediaAnalysis.drawer.result.impl.candidateViable",
+        "Yapısal olarak çalıştırılabilir"
+      );
+    case "unstable":
+      return copy.t(
+        "mediaAnalysis.drawer.result.impl.candidateUnstable",
+        "Yapı eksik \u2014 değerlendirme gerekli"
+      );
+    case "not-viable":
+      return copy.t(
+        "mediaAnalysis.drawer.result.impl.candidateNotViable",
+        "Geçersiz \u2014 yol revizyonu gerekli"
+      );
+    case null:
+      return copy.t("mediaAnalysis.drawer.result.impl.candidateNone", "Değerlendirme bekleniyor");
+    default:
+      return assertUnhandledDrawerStatus(status);
   }
 }
 
 function getCommitmentImplication(status: DrawerCommitmentStatus, copy: LabI18n): string {
   switch (status) {
-    case "committed": return copy.t("mediaAnalysis.drawer.result.impl.commitmentCommitted", "Yol staging için seçildi");
-    case "revoked": return copy.t("mediaAnalysis.drawer.result.impl.commitmentRevoked", "Onay geri çekildi");
+    case "committed":
+      return copy.t(
+        "mediaAnalysis.drawer.result.impl.commitmentCommitted",
+        "Yol staging için seçildi"
+      );
+    case "revoked":
+      return copy.t("mediaAnalysis.drawer.result.impl.commitmentRevoked", "Onay geri çekildi");
     case "inactive":
     case "none":
-    case null: return copy.t("mediaAnalysis.drawer.result.impl.commitmentNone", "Henüz onaylanmış yol yok");
-    default: return assertUnhandledDrawerStatus(status);
+    case null:
+      return copy.t("mediaAnalysis.drawer.result.impl.commitmentNone", "Henüz onaylanmış yol yok");
+    default:
+      return assertUnhandledDrawerStatus(status);
   }
 }
 
 function getStagingImplication(status: DrawerStagingStatus, copy: LabI18n): string {
   switch (status) {
-    case "staged": return copy.t("mediaAnalysis.drawer.result.impl.stagingStaged", "Çalıştırma için hazırlandı");
-    case "not-staged": return copy.t("mediaAnalysis.drawer.result.impl.stagingNotStaged", "Henüz hazırlanmadı");
+    case "staged":
+      return copy.t("mediaAnalysis.drawer.result.impl.stagingStaged", "Çalıştırma için hazırlandı");
+    case "not-staged":
+      return copy.t("mediaAnalysis.drawer.result.impl.stagingNotStaged", "Henüz hazırlanmadı");
     case "none":
-    case null: return copy.t("mediaAnalysis.drawer.result.impl.stagingNone", "Staging hazırlığı bekleniyor");
-    default: return assertUnhandledDrawerStatus(status);
+    case null:
+      return copy.t("mediaAnalysis.drawer.result.impl.stagingNone", "Staging hazırlığı bekleniyor");
+    default:
+      return assertUnhandledDrawerStatus(status);
   }
 }
 
@@ -361,16 +444,22 @@ function renderResultMode(state: LabStoreState, copy: LabI18n) {
         )
       : null;
   const readinessSummary = buildReadinessSignalSummary(candidate, readiness, runtimeLocale);
-  const bridgeSummary = bridge !== null ? formatExecutionBridgeAdvisory(bridge, runtimeLocale) : null;
+  const bridgeSummary =
+    bridge !== null ? formatExecutionBridgeAdvisory(bridge, runtimeLocale) : null;
   const run = state.run;
   const runWarnings = run?.warnings ?? [];
 
-  const warningsBanner = runWarnings.length > 0 && isRunComplete(state)
-    ? `<div class="labx-drawer__banner labx-drawer__banner--warning">
+  const warningsBanner =
+    runWarnings.length > 0 && isRunComplete(state)
+      ? `<div class="labx-drawer__banner labx-drawer__banner--warning">
         <p>${escapeHtml(copy.t("mediaAnalysis.drawer.result.partialWarn", "Analiz tamamlandı ancak bazı modüller uyarı verdi."))}</p>
-        <ul>${runWarnings.map(function (w) { return `<li>${escapeHtml(w)}</li>`; }).join("")}</ul>
+        <ul>${runWarnings
+          .map(function (w) {
+            return `<li>${escapeHtml(w)}</li>`;
+          })
+          .join("")}</ul>
       </div>`
-    : "";
+      : "";
 
   const tier1 = `
     <div class="labx-right-context__tier-1">
@@ -405,8 +494,9 @@ function renderResultMode(state: LabStoreState, copy: LabI18n) {
     </div>
   `;
 
-  const coherenceSection = candidate !== null
-    ? `<details class="labx-drawer__advisory-details"${coherenceState === "conflicted" ? " open" : ""}>
+  const coherenceSection =
+    candidate !== null
+      ? `<details class="labx-drawer__advisory-details"${coherenceState === "conflicted" ? " open" : ""}>
         <summary>${escapeHtml(coherenceSummary ?? candidate.summary)}</summary>
         <div class="labx-drawer__advisory-body">
           <p><strong>${escapeHtml(copy.t("mediaAnalysis.drawer.result.coherenceState", "State"))}</strong> ${escapeHtml(coherenceState)}</p>
@@ -418,22 +508,32 @@ function renderResultMode(state: LabStoreState, copy: LabI18n) {
           </div>
         </div>
       </details>`
-    : "";
+      : "";
 
-  const readinessSection = readiness !== null
-    ? `<details class="labx-drawer__advisory-details"${getReadinessSignalLevel(readiness.status) === "strained" ? " open" : ""}>
+  const readinessSection =
+    readiness !== null
+      ? `<details class="labx-drawer__advisory-details"${getReadinessSignalLevel(readiness.status) === "strained" ? " open" : ""}>
         <summary>${escapeHtml(readinessSummary ?? readiness.summary)}</summary>
         <div class="labx-drawer__advisory-body">
           <p><strong>${escapeHtml(copy.t("mediaAnalysis.drawer.result.readinessLevel", "Seviye"))}</strong> ${escapeHtml(readiness.status)}</p>
           ${candidate !== null ? `<p><strong>${escapeHtml(copy.t("mediaAnalysis.drawer.result.readinessPressure", "Decision pressure"))}</strong> ${escapeHtml(candidate.decisionPressure)}</p>` : ""}
           ${typeof readiness.confidence === "number" ? `<p><strong>${escapeHtml(copy.t("mediaAnalysis.drawer.result.readinessConfidence", "Güven"))}</strong> ${String(Math.round(readiness.confidence * 100))}%</p>` : ""}
-          ${(readiness.blockers ?? []).length > 0 ? `<ul>${(readiness.blockers ?? []).map(function (b) { return `<li>${escapeHtml(b)}</li>`; }).join("")}</ul>` : ""}
+          ${
+            (readiness.blockers ?? []).length > 0
+              ? `<ul>${(readiness.blockers ?? [])
+                  .map(function (b) {
+                    return `<li>${escapeHtml(b)}</li>`;
+                  })
+                  .join("")}</ul>`
+              : ""
+          }
         </div>
       </details>`
-    : "";
+      : "";
 
-  const bridgeSection = bridge !== null
-    ? `<details class="labx-drawer__advisory-details">
+  const bridgeSection =
+    bridge !== null
+      ? `<details class="labx-drawer__advisory-details">
         <summary>${escapeHtml(bridgeSummary ?? plan?.title ?? bridge.summary)}</summary>
         <div class="labx-drawer__advisory-body">
           <p><strong>${escapeHtml(copy.t("mediaAnalysis.drawer.result.bridgeAdapter", "Adapter"))}</strong> ${escapeHtml(bridge.adapter)}</p>
@@ -442,20 +542,22 @@ function renderResultMode(state: LabStoreState, copy: LabI18n) {
           <p><strong>${escapeHtml(copy.t("mediaAnalysis.drawer.result.bridgeOutput", "Output"))}</strong> ${escapeHtml(bridge.outputContract.type)}</p>
         </div>
       </details>`
-    : "";
+      : "";
 
-  const advisories = coherenceSection !== "" || readinessSection !== "" || bridgeSection !== ""
-    ? `<section class="labx-drawer__section labx-drawer__advisories">
+  const advisories =
+    coherenceSection !== "" || readinessSection !== "" || bridgeSection !== ""
+      ? `<section class="labx-drawer__section labx-drawer__advisories">
         <h3>${escapeHtml(copy.t("mediaAnalysis.drawer.result.advisoriesTitle", "Değerlendirmeler"))}</h3>
         ${coherenceSection}${readinessSection}${bridgeSection}
       </section>`
-    : "";
-
-  const freshnessLabel = freshness?.state === "current"
-    ? copy.t("mediaAnalysis.drawer.result.fresh", "Güncel")
-    : freshness?.state === "stale"
-      ? copy.t("mediaAnalysis.drawer.result.stale", "Eski")
       : "";
+
+  const freshnessLabel =
+    freshness?.state === "current"
+      ? copy.t("mediaAnalysis.drawer.result.fresh", "Güncel")
+      : freshness?.state === "stale"
+        ? copy.t("mediaAnalysis.drawer.result.stale", "Eski")
+        : "";
   const dirtyBadge = dirty
     ? `<span class="labx-drawer__dirty-badge">${escapeHtml(copy.t("mediaAnalysis.drawer.result.dirty", "Workspace farklı"))}</span>`
     : "";
@@ -487,12 +589,17 @@ function renderExploreMode(state: LabStoreState, copy: LabI18n) {
   const changedKeys = diff?.changedKeys ?? [];
   const alternatives = getActiveExecutionAlternatives(state);
 
-  const comparisonMarkup = changedKeys.length > 0
-    ? `<section class="labx-drawer__section labx-drawer__comparison">
+  const comparisonMarkup =
+    changedKeys.length > 0
+      ? `<section class="labx-drawer__section labx-drawer__comparison">
         <h3>${escapeHtml(copy.t("mediaAnalysis.drawer.explore.comparisonTitle", "Değişiklikler"))}</h3>
-        <ul>${changedKeys.map(function (k) { return `<li>${escapeHtml(k)}</li>`; }).join("")}</ul>
+        <ul>${changedKeys
+          .map(function (k) {
+            return `<li>${escapeHtml(k)}</li>`;
+          })
+          .join("")}</ul>
       </section>`
-    : `<section class="labx-drawer__section"><p>${escapeHtml(copy.t("mediaAnalysis.drawer.explore.noDiff", "Parametrelerde değişiklik yok"))}</p></section>`;
+      : `<section class="labx-drawer__section"><p>${escapeHtml(copy.t("mediaAnalysis.drawer.explore.noDiff", "Parametrelerde değişiklik yok"))}</p></section>`;
 
   const run = state.run;
   const emptyReason = run?.emptyReason;
@@ -501,12 +608,17 @@ function renderExploreMode(state: LabStoreState, copy: LabI18n) {
     : "";
 
   const runWarnings = run?.warnings ?? [];
-  const warningsMarkup = runWarnings.length > 0
-    ? `<div class="labx-drawer__banner labx-drawer__banner--info">
+  const warningsMarkup =
+    runWarnings.length > 0
+      ? `<div class="labx-drawer__banner labx-drawer__banner--info">
         <p>${escapeHtml(copy.t("mediaAnalysis.drawer.explore.partialWarn", "Analiz tamamlandı ancak bazı modüller uyarı verdi."))}</p>
-        <ul>${runWarnings.map(function (w) { return `<li>${escapeHtml(w)}</li>`; }).join("")}</ul>
+        <ul>${runWarnings
+          .map(function (w) {
+            return `<li>${escapeHtml(w)}</li>`;
+          })
+          .join("")}</ul>
       </div>`
-    : "";
+      : "";
 
   const alternativesMarkup =
     alternatives !== null && alternatives.alternatives.length > 0

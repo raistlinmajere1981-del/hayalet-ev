@@ -245,60 +245,8 @@ export const __testOnlyLabRootPersistence = {
   readPersistableState,
 };
 
-function hasNonEmptySourceDrafts(state: LabStoreState) {
-  const drafts = state.ui.sourceDrafts;
-  return (
-    drafts.fileNameHint.trim() !== "" ||
-    drafts.urlInput.trim() !== "" ||
-    drafts.youtubeUrl.trim() !== "" ||
-    drafts.youtubePreset !== null ||
-    Object.keys(asLabRecord(drafts.youtubeCustom)).length > 0
-  );
-}
-
-function hasWorkspaceActivity(state: LabStoreState) {
-  const workspace = state.ui.workspace;
-  return (
-    workspace.hypothesis.trim() !== "" ||
-    workspace.bookmarks.length > 0 ||
-    workspace.timelineStartMs !== null ||
-    workspace.timelineEndMs !== null ||
-    workspace.activeSelection !== null ||
-    workspace.roiRegions.length > 0
-  );
-}
-
-function hasLoadedSourceMaterial(state: LabStoreState) {
-  if (state.source === null) {
-    return false;
-  }
-  const source = asLabRecord(state.source);
-  return (
-    asNonEmptyString(source["status"]) === "ready" ||
-    asNonEmptyString(source["storedPath"]) !== null ||
-    asNonEmptyString(source["storedFileName"]) !== null ||
-    asNonEmptyString(source["previewUrl"]) !== null ||
-    asNonEmptyString(source["sourceUrl"]) !== null
-  );
-}
-
 function shouldAutoOpenProjectWorkspaceOnBoot(state: LabStoreState) {
-  const activeProjectId = state.projectIndex.activeProjectId;
-  const activeProject =
-    activeProjectId !== null
-      ? state.projectIndex.projects.find(function (project) {
-          return asNonEmptyString(asLabRecord(project)["id"]) === activeProjectId;
-        })
-      : null;
-  const activeProjectHasSource = asLabRecord(activeProject)["hasSource"] === true;
-  return (
-    hasLoadedSourceMaterial(state) !== true &&
-    activeProjectHasSource !== true &&
-    state.assets.length === 0 &&
-    state.activityFeed.length === 0 &&
-    hasNonEmptySourceDrafts(state) !== true &&
-    hasWorkspaceActivity(state) !== true
-  );
+  return state.ui.labMode !== "import-youtube";
 }
 
 export const __testOnlyProjectWorkspaceAutoOpen = {
@@ -647,7 +595,6 @@ export function startLaboratoryLabRoot() {
     clearBootOverlayFailsafeTimer();
     clearBootOverlayIdleGate();
     render();
-    // V4: Auto-open project workspace only for a genuinely clean intake state.
     const bootState = store.getState();
     if (shouldAutoOpenProjectWorkspaceOnBoot(bootState) && !bootState.ui.projectWorkspaceOpen) {
       eventBus.emit({ type: "project-workspace-toggled", open: true });
@@ -676,6 +623,7 @@ export function startLaboratoryLabRoot() {
     shell.dataset["labMode"] = state.ui.labMode;
     shell.dataset["drawerMode"] = resolveDrawerMode(state);
     shell.dataset["drawerCollapsed"] = getDrawerCollapsed(state) ? "true" : "false";
+    shell.dataset["processView"] = state.ui.workspace.processViewActive ? "expanded" : "compact";
   }
 
   function syncBootOverlay(shell: HTMLElement, state: LabStoreState, copy: LabI18n) {

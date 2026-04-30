@@ -1,5 +1,6 @@
 import { asLabRecord, asNonEmptyString, escapeHtml, formatBytes } from "../models/lab-types.js";
 import type { LabAsset } from "../models/lab-types.js";
+import { getLabAssetPreviewUrl } from "./lab-asset-display.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
@@ -22,6 +23,47 @@ const BADGE_LABELS: Record<string, string> = {
   report: "RPT",
   artifact: "AST",
 };
+
+const CARD_IMAGE_EXTENSIONS = new Set(["avif", "gif", "jpeg", "jpg", "png", "svg", "webp"]);
+const CARD_VIDEO_EXTENSIONS = new Set(["m4v", "mkv", "mov", "mp4", "webm"]);
+
+function getPathExtension(path: string | null): string | null {
+  if (path === null) {
+    return null;
+  }
+  const cleanPath = path.split(/[?#]/)[0] || "";
+  const leaf = cleanPath.split(/[\\/]/).pop() || cleanPath;
+  const dotIndex = leaf.lastIndexOf(".");
+  if (dotIndex < 0 || dotIndex === leaf.length - 1) {
+    return null;
+  }
+  return leaf.slice(dotIndex + 1).toLowerCase();
+}
+
+function getCardPreviewKind(
+  asset: LabAsset,
+  metadata: Record<string, unknown>,
+  previewUrl: string | null
+): "image" | "video" | null {
+  if (asNonEmptyString(metadata["thumbnailUrl"]) !== null) {
+    return "image";
+  }
+  const sourceKind = asNonEmptyString(metadata["kind"]);
+  if (sourceKind === "image" || asset.type === "frame" || asset.type === "image") {
+    return "image";
+  }
+  if (sourceKind === "video") {
+    return "video";
+  }
+  const extension = getPathExtension(previewUrl);
+  if (extension !== null && CARD_IMAGE_EXTENSIONS.has(extension)) {
+    return "image";
+  }
+  if (extension !== null && CARD_VIDEO_EXTENSIONS.has(extension)) {
+    return "video";
+  }
+  return asset.type === "source" || asset.type === "clip" ? "video" : null;
+}
 
 function formatCardDuration(metadata: Record<string, unknown>): string | null {
   const duration = Number(metadata["duration"]);
@@ -98,7 +140,7 @@ function getEntityMetaLine(asset: LabAsset, copy: LabI18n): string {
 
 function renderCardThumb(asset: LabAsset): string {
   const metadata = asLabRecord(asset.metadata);
-  const previewUrl = asNonEmptyString(metadata["thumbnailUrl"]) || asNonEmptyString(asset.url);
+  const previewUrl = getLabAssetPreviewUrl(asset);
   const isVisual =
     asset.type === "source" ||
     asset.type === "clip" ||
@@ -107,7 +149,11 @@ function renderCardThumb(asset: LabAsset): string {
 
   let thumbContent: string;
   if (isVisual && previewUrl !== null) {
-    thumbContent = `<img class="labx-pw-card__thumb-img" src="${escapeHtml(previewUrl)}" alt="" loading="lazy" />`;
+    const previewKind = getCardPreviewKind(asset, metadata, previewUrl);
+    thumbContent =
+      previewKind === "video"
+        ? `<video class="labx-pw-card__thumb-img labx-pw-card__thumb-video" src="${escapeHtml(previewUrl)}" muted playsinline preload="metadata" aria-hidden="true"></video>`
+        : `<img class="labx-pw-card__thumb-img" src="${escapeHtml(previewUrl)}" alt="" loading="lazy" />`;
   } else {
     thumbContent = `<span>${ENTITY_ICONS[asset.type] || "\u2699"}</span>`;
   }

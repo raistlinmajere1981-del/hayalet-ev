@@ -54,6 +54,8 @@ function getActionLabel(action: string | null) {
       return "YouTube kaynağı hazırlanıyor";
     case "source-pick-local":
       return "Yerel kaynak içeri alınıyor";
+    case "project-import-check-url":
+      return "URL kontrol ediliyor";
     case "edit-preview":
       return "Önizleme hazırlanıyor";
     case "profile-run-preflight":
@@ -182,6 +184,7 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
       return;
     }
     const resultAssetIds = Array.from(new Set(toStringArray(throttledPayload["resultAssetIds"])));
+    const result = toRecord(throttledPayload["result"]);
     notifyRoom(api, "lab-event", {
       ...throttledPayload,
       id:
@@ -198,6 +201,12 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
           ? throttledPayload["message"]
           : getActionLabel(asNonEmptyString(throttledPayload["action"])),
       detail: typeof throttledPayload["detail"] === "string" ? throttledPayload["detail"] : null,
+      bytesReceived:
+        typeof throttledPayload["bytesReceived"] === "number"
+          ? throttledPayload["bytesReceived"]
+          : null,
+      bytesTotal:
+        typeof throttledPayload["bytesTotal"] === "number" ? throttledPayload["bytesTotal"] : null,
       timestamp:
         typeof throttledPayload["timestamp"] === "number"
           ? throttledPayload["timestamp"]
@@ -212,6 +221,7 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
           : "global",
       moduleId: asNonEmptyString(throttledPayload["moduleId"]),
       rawLine: typeof throttledPayload["rawLine"] === "string" ? throttledPayload["rawLine"] : null,
+      ...(Object.keys(result).length > 0 ? { result } : {}),
       ...(resultAssetIds.length > 0 ? { resultAssetIds } : {}),
     });
   }
@@ -224,6 +234,9 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
     const requestId = asNonEmptyString(payload["requestId"]);
     const jobId = asNonEmptyString(payload["jobId"]);
     const projectId = asNonEmptyString(payload["projectId"]);
+    const bytesReceived =
+      typeof payload["bytesReceived"] === "number" ? payload["bytesReceived"] : null;
+    const bytesTotal = typeof payload["bytesTotal"] === "number" ? payload["bytesTotal"] : null;
     const resultAssetIds = Array.from(new Set(toStringArray(payload["resultAssetIds"])));
     if (isCustomProcessEventKind(kind)) {
       return {
@@ -240,6 +253,8 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
         requestId,
         jobId,
         projectId,
+        bytesReceived,
+        bytesTotal,
         ...(resultAssetIds.length > 0 ? { resultAssetIds } : {}),
         scope: String(action || "").includes("process") ? "run" : "global",
       };
@@ -265,6 +280,8 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
       requestId,
       jobId,
       projectId,
+      bytesReceived,
+      bytesTotal,
       ...(resultAssetIds.length > 0 ? { resultAssetIds } : {}),
       scope: String(action || "").includes("process") ? "run" : "global",
     };
@@ -274,6 +291,7 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
     const action = asNonEmptyString(payload["action"]);
     const success = payload["success"] === true;
     const resultAssetIds = Array.from(new Set(toStringArray(payload["resultAssetIds"])));
+    const result = toRecord(payload["result"]);
     return {
       kind: "request-result",
       severity: success ? "success" : "error",
@@ -286,6 +304,7 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
       requestId: asNonEmptyString(payload["requestId"]),
       jobId: asNonEmptyString(payload["jobId"]),
       projectId: asNonEmptyString(payload["projectId"]),
+      ...(Object.keys(result).length > 0 ? { result } : {}),
       ...(resultAssetIds.length > 0 ? { resultAssetIds } : {}),
       scope: String(action || "").includes("process") ? "run" : "global",
     };

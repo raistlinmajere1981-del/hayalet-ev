@@ -6,6 +6,7 @@ import type {
   LabSourceDrafts,
   LabStoreState,
   LabYoutubeImportCustomFormat,
+  LabYoutubeImportFormat,
   LabYoutubeImportCustomResolution,
 } from "../models/lab-types.js";
 
@@ -17,6 +18,12 @@ export type LabProjectImportHostAction = {
   fields: Record<string, unknown>;
   kind: LabProjectImportKind;
   method: LabProjectImportMethod;
+};
+
+export type LabProjectImportUrlCheckAction = {
+  disabledReason: string | null;
+  fields: Record<string, unknown>;
+  url: string;
 };
 
 function getSnapshotRecord(state: LabStoreState) {
@@ -68,11 +75,11 @@ export function getProjectImportMethodOptions(
   kind: LabProjectImportKind
 ): LabProjectImportMethod[] {
   const sourceConfig = asLabRecord(getSourceTypes(state)[kind]);
-  const configuredModes = toStringArray(sourceConfig["modes"]).filter(function (
-    mode
-  ): mode is LabProjectImportMethod {
-    return normalizeProjectImportMethodValue(mode, kind) !== null;
-  });
+  const configuredModes = toStringArray(sourceConfig["modes"]).filter(
+    function (mode): mode is LabProjectImportMethod {
+      return normalizeProjectImportMethodValue(mode, kind) !== null;
+    }
+  );
   if (configuredModes.length > 0) {
     return configuredModes;
   }
@@ -100,6 +107,50 @@ function getProjectImportActionForMethod(method: LabProjectImportMethod) {
     return "source-download-url" as const;
   }
   return "source-pick-local" as const;
+}
+
+function getYoutubeFormatById(formats: LabYoutubeImportFormat[], formatId: string | null) {
+  if (formatId === null) {
+    return null;
+  }
+  return formats.find((format) => format.formatId === formatId) || null;
+}
+
+function getSelectedYoutubeFormatExpression(state: LabStoreState) {
+  const youtubeState = state.ui.youtubeImport;
+  const videoFormat = getYoutubeFormatById(
+    youtubeState.formats,
+    youtubeState.selectedVideoFormatId
+  );
+  const audioFormat = getYoutubeFormatById(
+    youtubeState.formats,
+    youtubeState.selectedAudioFormatId
+  );
+  const videoId = videoFormat?.formatId || null;
+  const audioId = audioFormat?.formatId || null;
+
+  if (videoId !== null && audioId !== null && videoId !== audioId) {
+    return {
+      captureMode: "video+audio" as const,
+      format: `${videoId}+${audioId}/${videoId}/${audioId}`,
+      kind: "video" as const,
+    };
+  }
+  if (videoId !== null) {
+    return {
+      captureMode: "video+audio" as const,
+      format: videoId,
+      kind: "video" as const,
+    };
+  }
+  if (audioId !== null) {
+    return {
+      captureMode: "audio-only" as const,
+      format: audioId,
+      kind: "audio" as const,
+    };
+  }
+  return null;
 }
 
 function getCustomFormat(format: LabYoutubeImportCustomFormat) {
@@ -177,36 +228,119 @@ function buildYoutubeStrategyFields(state: LabStoreState, draft: LabSourceDrafts
   };
 }
 
-export function buildProjectImportHostAction(
+function buildYoutubeFormatSelectionFields(state: LabStoreState, draft: LabSourceDrafts) {
+  const selection = getSelectedYoutubeFormatExpression(state);
+  if (selection === null) {
+    return null;
+  }
+  return {
+    kind: selection.kind,
+    youtubePreset: "custom",
+    youtubeCaptureMode: selection.captureMode,
+    youtubeCustom: {
+      ...getYoutubePresetDefaults(state, "custom"),
+      ...asLabRecord(draft.youtubeCustom),
+      format: selection.format,
+      selectedVideoFormatId: state.ui.youtubeImport.selectedVideoFormatId,
+      selectedAudioFormatId: state.ui.youtubeImport.selectedAudioFormatId,
+      audioFormat: selection.captureMode === "audio-only" ? "best" : "none",
+    },
+  };
+}
+
+export function getProjectImportUrlInput(state: LabStoreState) {
+  const activeDraft = state.ui.projectImport.drafts[state.ui.projectImport.activeKind];
+  return (
+    activeDraft.urlInput ||
+    state.ui.projectImport.urlCheck.url ||
+    state.ui.projectImport.drafts.video.urlInput ||
+    state.ui.projectImport.drafts.video.youtubeUrl ||
+    ""
+  );
+}
+
+export function buildProjectImportUrlCheckAction(
+  state: LabStoreState
+): LabProjectImportUrlCheckAction {
+  const url = getProjectImportUrlInput(state).trim();
+  return {
+    disabledReason: url === "" ? "URL is required." : null,
+    fields: {
+      urlInput: url,
+      kind: state.ui.projectImport.activeKind,
+      mode: "url",
+    },
+    url,
+  };
+}
+
+export function buildProjectImportLocalHostAction(
   state: LabStoreState
 ): LabProjectImportHostAction {
   const route = getProjectImportRoute(state);
-  const action = getProjectImportActionForMethod(route.method);
-  const baseFields: Record<string, unknown> = {
+  return {
+    action: "source-pick-local",
+    disabledReason: null,
+    fields: {
+      kind: "auto",
+      mode: "local",
+    },
     kind: route.kind,
-    mode: route.method,
-    fileNameHint: route.draft.fileNameHint,
-    urlInput: route.draft.urlInput,
-    youtubeUrl: route.draft.youtubeUrl,
-    youtubePreset: route.draft.youtubePreset,
-    youtubeCustom: route.draft.youtubeCustom,
-    youtubeCaptureMode: route.draft.youtubeCaptureMode,
+    method: "local",
+  };
+}
+
+export function buildProjectImportHostAction(state: LabStoreState): LabProjectImportHostAction {
+  const route = getProjectImportRoute(state);
+  const checkedUrl = state.ui.projectImport.urlCheck;
+  const checkedKind = checkedUrl.kind || route.kind;
+  const checkedMethod: LabProjectImportMethod =
+    checkedUrl.status === "ready" && checkedUrl.isYoutube === true
+      ? "youtube"
+      : checkedUrl.status === "ready"
+        ? "url"
+        : route.method;
+  const effectiveKind = checkedUrl.status === "ready" ? checkedKind : route.kind;
+  const effectiveDraft = state.ui.projectImport.drafts[effectiveKind];
+  const action = getProjectImportActionForMethod(checkedMethod);
+  const urlInput =
+    checkedUrl.status === "ready" && checkedUrl.url !== null
+      ? checkedUrl.url
+      : effectiveDraft.urlInput;
+  const baseFields: Record<string, unknown> = {
+    kind: effectiveKind,
+    mode: checkedMethod,
+    urlInput,
+    youtubeUrl: effectiveDraft.youtubeUrl,
+    youtubePreset: effectiveDraft.youtubePreset,
+    youtubeCustom: effectiveDraft.youtubeCustom,
+    youtubeCaptureMode: effectiveDraft.youtubeCaptureMode,
   };
 
   let disabledReason: string | null = null;
-  if (route.method === "url" && route.draft.urlInput.trim() === "") {
-    disabledReason = "Direct URL is required.";
+  if (checkedMethod === "url") {
+    if (urlInput.trim() === "") {
+      disabledReason = "Direct URL is required.";
+    } else if (checkedUrl.status !== "ready" || checkedUrl.isYoutube !== false) {
+      disabledReason = "Check the URL before adding it to the project.";
+    }
   }
-  if (route.method === "youtube") {
-    const youtubeUrl = state.ui.youtubeImport.url || route.draft.youtubeUrl;
+  if (checkedMethod === "youtube") {
+    const youtubeUrl = state.ui.youtubeImport.url || effectiveDraft.youtubeUrl || urlInput;
     const ytDlpInstalled = getToolInstalled(state, "yt-dlp") === true;
-    Object.assign(baseFields, buildYoutubeStrategyFields(state, route.draft), {
+    const selectedFormatFields = buildYoutubeFormatSelectionFields(state, effectiveDraft);
+    Object.assign(baseFields, selectedFormatFields || buildYoutubeStrategyFields(state, effectiveDraft), {
       youtubeUrl,
     });
+    if (selectedFormatFields !== null) {
+      baseFields["kind"] = selectedFormatFields["kind"];
+    }
     if (!ytDlpInstalled) {
       disabledReason = "yt-dlp is required.";
     } else if (String(youtubeUrl || "").trim() === "") {
       disabledReason = "YouTube URL is required.";
+    } else if (checkedUrl.status !== "ready" || checkedUrl.isYoutube !== true) {
+      disabledReason = "Check the YouTube URL before adding it to the project.";
     }
   }
 
@@ -214,8 +348,8 @@ export function buildProjectImportHostAction(
     action,
     disabledReason,
     fields: baseFields,
-    kind: route.kind,
-    method: route.method,
+    kind: (baseFields["kind"] as LabProjectImportKind) || effectiveKind,
+    method: checkedMethod,
   };
 }
 
@@ -239,12 +373,9 @@ export function getLatestProjectImportEvent(
 }
 
 export function hasProjectImportDraftValue(state: LabStoreState) {
-  const route = getProjectImportRoute(state);
-  const draft = route.draft;
   return (
-    draft.fileNameHint.trim() !== "" ||
-    draft.urlInput.trim() !== "" ||
-    draft.youtubeUrl.trim() !== "" ||
-    (route.method === "youtube" && state.ui.youtubeImport.url !== null)
+    getProjectImportUrlInput(state).trim() !== "" ||
+    state.ui.projectImport.urlCheck.status !== "idle" ||
+    state.ui.youtubeImport.url !== null
   );
 }

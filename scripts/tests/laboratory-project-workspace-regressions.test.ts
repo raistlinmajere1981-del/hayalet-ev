@@ -61,7 +61,6 @@ function createProjectWorkspaceState(
           routeLabel: null,
           metadata: {},
           drafts: {
-            fileNameHint: "",
             urlInput: "",
             youtubeUrl: "",
             youtubePreset: "medium",
@@ -126,11 +125,12 @@ test("laboratory project workspace owns project import, hypothesis, grid, and em
   assert.match(html, /class="labx-pw-overlay"/);
   assert.match(html, /data-lab-action="project-workspace-close"/);
   assert.match(html, /class="labx-project-import"/);
-  assert.match(html, /data-lab-action="project-import-kind"/);
-  assert.match(html, /data-lab-action="project-import-method"/);
+  assert.match(html, /data-lab-action="project-import-local-add"/);
+  assert.match(html, /data-lab-action="project-import-check-url"/);
   assert.match(html, /data-lab-action="project-import-clear"/);
-  assert.match(html, /data-lab-action="project-import-add"/);
-  assert.match(html, /data-lab-field="project-import\.fileNameHint"/);
+  assert.doesNotMatch(html, /data-lab-action="project-import-kind"/);
+  assert.doesNotMatch(html, /data-lab-action="project-import-method"/);
+  assert.equal(html.includes("project-import." + "file" + "NameHint"), false);
   assert.doesNotMatch(html, /class="labx-pw-nav__intake"/);
   assert.doesNotMatch(html, /data-lab-field="source\.kind"/);
   assert.match(html, /data-lab-field="workspace\.hypothesis"/);
@@ -156,7 +156,21 @@ test("laboratory project workspace keeps the active source-less project navigabl
 
   assert.match(html, /Workspace Project/);
   assert.match(html, /Draft Intake/);
+  assert.match(html, /data-lab-action="project-create"/);
+  assert.match(html, /data-lab-action="project-delete"/);
   assert.doesNotMatch(html, /Hidden Draft/);
+});
+
+test("laboratory project workspace controller skips redundant button dispatches", () => {
+  const source = readFileSync("rooms/laboratory/runtime/lab-run-controller.ts", "utf8");
+
+  assert.match(source, /state\.ui\.projectImport\.activeKind !== kind/);
+  assert.match(source, /state\.ui\.projectImport\.methods\[activeKind\] !== method/);
+  assert.match(source, /state\.ui\.youtubeImport\.strategy !== strategy/);
+  assert.match(source, /state\.ui\.projectWorkspaceSelectedEntityIds\.length === 1/);
+  assert.match(source, /state\.ui\.projectWorkspaceSort === sort/);
+  assert.match(source, /state\.ui\.projectWorkspaceFilter === filter/);
+  assert.match(source, /state\.ui\.projectWorkspaceGroup === group/);
 });
 
 test("laboratory project workspace renders localized asset groups and context actions", () => {
@@ -309,6 +323,32 @@ test("laboratory project workspace hides download for assets without a file targ
   assert.doesNotMatch(html, /data-lab-action="asset-download"/);
 });
 
+test("laboratory project workspace renders video source thumbnails as media", () => {
+  const html = renderProjectWorkspaceOverlay(
+    createProjectWorkspaceState(true, {
+      assets: [
+        {
+          id: "asset-source-1",
+          type: "source",
+          name: "CGI Analizi -1.mp4",
+          localPath: "/tmp/CGI Analizi -1.mp4",
+          createdAt: 700,
+          metadata: { kind: "video" },
+        },
+      ],
+      selectedEntityIds: ["asset-source-1"],
+    })
+  );
+
+  assert.match(html, /<video class="labx-pw-card__thumb-img labx-pw-card__thumb-video"/);
+  assert.match(
+    html,
+    /<video class="labx-pw-inspector__preview-media labx-pw-inspector__preview-media--video"/
+  );
+  assert.match(html, /file:\/\/\/tmp\/CGI%20Analizi%20-1\.mp4/);
+  assert.doesNotMatch(html, /<img class="labx-pw-card__thumb-img"/);
+});
+
 test("laboratory project workspace i18n keys exist in English and Turkish catalogs", () => {
   const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));
   const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
@@ -363,6 +403,8 @@ test("laboratory project workspace css is imported and owns overlay/topbar/timel
   assert.match(overlayCss, /\.labx-project-import__methods\s*\{[\s\S]*display:\s*grid;/);
   assert.match(overlayCss, /\.labx-import-review__progress\s*\{[\s\S]*display:\s*grid;/);
   assert.match(overlayCss, /\.labx-pw-card\[data-selected="true"\]/);
+  assert.match(overlayCss, /\.labx-pw-main\s*\{[\s\S]*background:\s*rgb\(4, 14, 21\);/);
+  assert.match(overlayCss, /\.labx-pw-grid\s*\{[\s\S]*background:\s*rgb\(4, 14, 21\);/);
   assert.match(themeSource, /\.labx-top-bar__project-btn\s*\{/);
   assert.match(themeSource, /\.labx-timeline__highlight\s*\{/);
 });

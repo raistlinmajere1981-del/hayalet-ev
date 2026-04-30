@@ -212,15 +212,18 @@ export function renderWorkspaceROIOverlay(
                     )
                   )
                 : selectionRoi
-                ? escapeHtml(
-                    copy.t(
-                      "mediaAnalysis.roi.hints.redefine",
-                      "Drag to redefine the inspection region or double click to focus"
+                  ? escapeHtml(
+                      copy.t(
+                        "mediaAnalysis.roi.hints.redefine",
+                        "Drag to redefine the inspection region or double click to focus"
+                      )
                     )
-                  )
-                : escapeHtml(
-                    copy.t("mediaAnalysis.roi.hints.define", "Drag to define an inspection region")
-                  )
+                  : escapeHtml(
+                      copy.t(
+                        "mediaAnalysis.roi.hints.define",
+                        "Drag to define an inspection region"
+                      )
+                    )
               : escapeHtml(
                   copy.t(
                     "mediaAnalysis.roi.hints.selectRange",

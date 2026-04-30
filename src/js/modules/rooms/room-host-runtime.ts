@@ -72,7 +72,9 @@ interface RoomHostApi {
     stopSession: () => Promise<CaptureActionOutcome>;
     capturePhoto: (requestId?: string) => Promise<CaptureActionOutcome>;
     retakePhoto: (requestId?: string) => Promise<CaptureActionOutcome>;
-    startDictation: (requestId?: string) => Promise<{ requestId: string; outcome: CaptureActionOutcome }>;
+    startDictation: (
+      requestId?: string
+    ) => Promise<{ requestId: string; outcome: CaptureActionOutcome }>;
     stopDictation: (requestId: string) => Promise<CaptureActionOutcome>;
   };
   registerProtocols: (protocols: Record<string, string>) => void;

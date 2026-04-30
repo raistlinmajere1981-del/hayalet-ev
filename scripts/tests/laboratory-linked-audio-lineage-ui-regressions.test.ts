@@ -41,7 +41,6 @@ function createLineageState(
           storedPath: "/tmp/lab-demo.mp4",
           routeLabel: "Local Copy",
           drafts: {
-            fileNameHint: "lab-demo.mp4",
             urlInput: "",
             youtubeUrl: "",
             youtubePreset: "medium",

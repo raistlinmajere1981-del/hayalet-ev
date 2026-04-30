@@ -2,7 +2,6 @@ import {
   asLabRecord,
   asNonEmptyString,
   escapeHtml,
-  formatBytes,
   formatDurationSeconds,
 } from "../models/lab-types.js";
 import type {
@@ -15,7 +14,6 @@ import type {
 import {
   getActiveSelection,
   getAudioFocusSettings,
-  getBookmarks,
   getCurrentSourceAsset,
   getDualPreviewLinkedAudioAssets,
   getDualPreviewVolume,
@@ -44,7 +42,6 @@ import { renderLabWaveformTimeline } from "./lab-waveform-timeline.js";
 import { renderWorkspaceROIOverlay } from "./workspace-roi-overlay.js";
 import { renderWorkspaceInteractiveControls } from "./workspace-interactive-controls.js";
 import { renderWorkspaceAudioFocus } from "./workspace-audio-focus.js";
-import { renderWorkspaceBookmarks } from "./workspace-bookmarks.js";
 import { formatSourceRetryBlockReason } from "./lab-source-retry-copy.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
@@ -404,96 +401,6 @@ function getLoadSourceDisabled(state: LabStoreState, mode: string) {
   return false;
 }
 
-function getSourceActionForMode(mode: string) {
-  if (mode === "url") {
-    return "source-download-url";
-  }
-  if (mode === "youtube") {
-    return "source-download-youtube";
-  }
-  return "source-pick-local";
-}
-
-function getSourceProgressModel(
-  state: LabStoreState,
-  mode: string,
-  copy: LabI18n = LAB_FALLBACK_I18N
-) {
-  const source = getProjectSource(state);
-  const probeStatus = getSourceProbeStatus(state);
-  const expectedAction = getSourceActionForMode(mode);
-  const latestEvent =
-    state.activityFeed.find(function (entry) {
-      return entry.action === expectedAction;
-    }) || null;
-  const hasSource =
-    asNonEmptyString(source["storedFileName"]) !== null ||
-    asNonEmptyString(source["storedPath"]) !== null;
-  const loadedSourceMatchesMode = isLoadedSourceMatchingMode(source, mode);
-  const hasSourceForMode = hasSource && loadedSourceMatchesMode;
-  const showRunningState = probeStatus === "running";
-  const showCompletedState = probeStatus === "completed" && loadedSourceMatchesMode;
-  const showFailedState = probeStatus === "failed";
-  const visibleEvent =
-    showRunningState || showCompletedState || showFailedState ? latestEvent : null;
-  const latestStage = asNonEmptyString(visibleEvent?.stage) || null;
-  const tone = showFailedState
-    ? "error"
-    : showCompletedState
-      ? "success"
-      : showRunningState
-        ? "running"
-        : "idle";
-
-  let percent =
-    typeof visibleEvent?.percent === "number"
-      ? Math.max(0, Math.min(100, visibleEvent.percent))
-      : 0;
-  if (showRunningState) {
-    if (percent <= 0) {
-      percent = latestStage === "queued" ? 12 : 48;
-    }
-  } else if (showCompletedState) {
-    percent = 100;
-  } else if (showFailedState && percent <= 0) {
-    percent = 100;
-  } else {
-    percent = 0;
-  }
-
-  const detail =
-    asNonEmptyString(source["lastError"]) ||
-    asNonEmptyString(visibleEvent?.detail) ||
-    (showCompletedState
-      ? null
-      : showRunningState
-        ? copy.t(
-            "mediaAnalysis.source.progress.runningDetail",
-            "Import is running. The source will be saved into this project."
-          )
-        : hasSourceForMode
-          ? copy.t(
-              "mediaAnalysis.source.progress.readyToReplace",
-              "Ready to replace the current project source."
-            )
-          : null);
-
-  const label = showCompletedState
-    ? copy.t("mediaAnalysis.source.progress.complete", "Import complete")
-    : showFailedState
-      ? copy.t("mediaAnalysis.source.progress.failed", "Import failed")
-      : showRunningState
-        ? `${String(percent)}%`
-        : copy.t("mediaAnalysis.source.progress.awaiting", "Awaiting import");
-
-  return {
-    detail,
-    label,
-    percent,
-    tone,
-  };
-}
-
 function renderSourceActionPanel(
   state: LabStoreState,
   mode: string,
@@ -515,29 +422,6 @@ function renderSourceActionPanel(
         ${escapeHtml(getLoadSourceActionLabel(mode, hasSourceForMode, copy))}
       </button>
       ${sourceLocked ? `<span class="labx-source-locked-hint">${escapeHtml(lockHint)}</span>` : ""}
-    </div>
-  `;
-}
-
-function renderSourceProgressPanel(
-  state: LabStoreState,
-  mode: string,
-  copy: LabI18n = LAB_FALLBACK_I18N
-) {
-  const progress = getSourceProgressModel(state, mode, copy);
-  return `
-    <div class="labx-source-bar__progress" data-tone="${escapeHtml(progress.tone)}">
-      <div class="labx-source-bar__progress-head">
-        <span>${escapeHtml(progress.label)}</span>
-      </div>
-      <div class="labx-progress labx-source-bar__progress-bar">
-        <span style="width:${String(progress.percent)}%"></span>
-      </div>
-      ${
-        progress.detail
-          ? `<p class="labx-source-bar__progress-detail">${escapeHtml(progress.detail)}</p>`
-          : ""
-      }
     </div>
   `;
 }
@@ -720,7 +604,7 @@ function renderVideoPreviewMedia(
   } = {}
 ) {
   const { svgFilter, filterCss } = buildPreviewFilterState(settings);
-  const controls = options.controls !== false ? "controls" : "";
+  const controls = options.controls === true ? "controls" : "";
   const muted = options.muted === true ? "muted" : "";
   const preserveKey = options.preserveKey || "workspace-preview";
   const roleAttr = options.role ? `data-lab-role="${escapeHtml(options.role)}"` : "";
@@ -998,52 +882,6 @@ function renderDualPreviewShell(
   `;
 }
 
-function renderSourceBar(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
-  const source = getProjectSource(state);
-  const sourceKind = getSourceKind(state);
-  const sourceMode = getEffectiveSourceMode(state, sourceKind);
-  const metadata = getSourceMetadata(state);
-  const probeStatus = getSourceProbeStatus(state);
-  const hasStoredSource =
-    asNonEmptyString(source["storedFileName"]) !== null ||
-    asNonEmptyString(source["storedPath"]) !== null;
-  const hasSourceForMode = hasStoredSource && isLoadedSourceMatchingMode(source, sourceMode);
-  const storedFileName =
-    asNonEmptyString(source["storedFileName"]) ||
-    asNonEmptyString(source["routeLabel"]) ||
-    copy.t("mediaAnalysis.source.noSource", "No source");
-
-  const statusTone =
-    probeStatus === "completed" && hasSourceForMode
-      ? "success"
-      : probeStatus === "failed"
-        ? "error"
-        : probeStatus === "running"
-          ? "running"
-          : "neutral";
-
-  const resolution =
-    typeof metadata["width"] === "number" && typeof metadata["height"] === "number"
-      ? `${String(metadata["width"])}×${String(metadata["height"])}`
-      : null;
-
-  return `
-    <div class="labx-source-bar">
-      <div class="labx-source-bar__info">
-        <strong>${escapeHtml(storedFileName)}</strong>
-        <div class="labx-source-bar__meta">
-          ${renderStatusChip(getSourceKindLabel(sourceKind, copy), statusTone)}
-          ${renderStatusChip(getSourceModeLabel(sourceMode, copy), "neutral")}
-          ${resolution ? `<span>${escapeHtml(resolution)}</span>` : ""}
-          <span>${escapeHtml(formatDurationSeconds(metadata["durationSeconds"]))}</span>
-          <span>${escapeHtml(formatBytes(metadata["sizeBytes"]))}</span>
-        </div>
-      </div>
-      ${renderSourceProgressPanel(state, sourceMode, copy)}
-    </div>
-  `;
-}
-
 export function renderSourceIntake(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
   const source = getProjectSource(state);
   const sourceKind = getSourceKind(state);
@@ -1081,17 +919,13 @@ export function renderSourceIntake(state: LabStoreState, copy: LabI18n = LAB_FAL
             <div class="labx-source-intake__frame-head">
               <div>
               <strong>${escapeHtml(copy.t("mediaAnalysis.source.directUrl.title", "Direct URL Source"))}</strong>
-              <p class="labx-panel-hint">${escapeHtml(copy.t("mediaAnalysis.source.directUrl.hint", "Paste a remote URL and optionally rename."))}</p>
+              <p class="labx-panel-hint">${escapeHtml(copy.t("mediaAnalysis.source.directUrl.hint", "Paste a remote URL."))}</p>
             </div>
           </div>
           <div class="labx-source-intake__mode-grid">
             <label class="labx-field">
               <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.urlInput", "Source URL"))}</span>
               <input class="labx-input" data-lab-field="source.urlInput" value="${escapeHtml(sourceDrafts.urlInput)}" placeholder="https://..." ${sourceFieldDisabledAttr} />
-            </label>
-            <label class="labx-field">
-              <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.fileNameHint", "Stored File Name"))}</span>
-              <input class="labx-input" data-lab-field="source.fileNameHint" value="${escapeHtml(sourceDrafts.fileNameHint)}" placeholder="downloaded-source.mp4" ${sourceFieldDisabledAttr} />
             </label>
           </div>
         </section>
@@ -1110,10 +944,6 @@ export function renderSourceIntake(state: LabStoreState, copy: LabI18n = LAB_FAL
                 <label class="labx-field labx-source-intake__youtube-main-item labx-source-intake__youtube-main-item--wide">
                   <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.youtubeUrl", "YouTube URL"))}</span>
                   <input class="labx-input" data-lab-field="source.youtubeUrl" value="${escapeHtml(sourceDrafts.youtubeUrl)}" placeholder="https://youtube.com/watch?v=..." ${sourceFieldDisabledAttr} />
-                </label>
-                <label class="labx-field labx-source-intake__youtube-main-item">
-                  <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.fileNameHint", "Stored File Name"))}</span>
-                  <input class="labx-input" data-lab-field="source.fileNameHint" value="${escapeHtml(sourceDrafts.fileNameHint)}" placeholder="youtube-source.mp4" ${sourceFieldDisabledAttr} />
                 </label>
                 <label class="labx-field labx-source-intake__youtube-main-item">
                   <span>${escapeHtml(copy.t("mediaAnalysis.source.youtubeForm.fields.captureMode", "Capture Mode"))}</span>
@@ -1179,12 +1009,6 @@ export function renderSourceIntake(state: LabStoreState, copy: LabI18n = LAB_FAL
               <div>
                 <strong>${escapeHtml(copy.t("mediaAnalysis.source.localCopy.title", "Local Source Copy"))}</strong>
               </div>
-            </div>
-            <div class="labx-source-intake__mode-grid">
-              <label class="labx-field">
-                <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.fileNameHint", "Stored File Name"))}</span>
-              <input class="labx-input" data-lab-field="source.fileNameHint" value="${escapeHtml(sourceDrafts.fileNameHint)}" placeholder="project-source.mp4" ${sourceFieldDisabledAttr} />
-              </label>
             </div>
           </section>
         `;
@@ -1380,10 +1204,11 @@ export function renderWorkspaceSurface(
     copy,
   };
   const roiFocusActive = timeline.roiFocusActive === true;
-  const bookmarks = getBookmarks(state);
   const hasAudio = sourceKind === "audio" || sourceKind === "video";
   const sourceReady =
-    viewportState === "active" && probeStatus === "completed" && isLoadedSourceMatchingMode(source, sourceMode);
+    viewportState === "active" &&
+    probeStatus === "completed" &&
+    isLoadedSourceMatchingMode(source, sourceMode);
   const dualPreviewAvailable = isDualPreviewAvailable(state);
   const dualPreviewActive = sourceReady && isDualPreviewActive(state);
   const dualPreviewLinkedAudioAssets = getDualPreviewLinkedAudioAssets(state);
@@ -1461,7 +1286,7 @@ export function renderWorkspaceSurface(
         <div
           class="labx-workspace-preview__single-stage"
           data-lab-selection-roi-stage="true"
-          data-lab-selection-roi-controls-reserve="${sourceKind === "video" ? "56" : "0"}"
+          data-lab-selection-roi-controls-reserve="0"
           data-lab-preview-inspection-stage="true"
           data-lab-preview-inspection-topology="single-${escapeHtml(sourceKind)}"
           data-lab-roi-focus-active="${roiFocusActive ? "true" : "false"}"
@@ -1481,7 +1306,6 @@ export function renderWorkspaceSurface(
       : "";
 
   const main = `
-    ${renderSourceBar(state, copy)}
     <section class="labx-workspace-main" id="lab-workspace-main">
       ${renderLinkedAudioBar(state, copy)}
       <div class="labx-media-workbench" data-lab-media-workbench="true" data-preview-mode="${dualPreviewActive ? "dual" : "single"}">
@@ -1492,7 +1316,6 @@ export function renderWorkspaceSurface(
         ${durationMs > 0 ? renderLabWaveformTimeline(timelineModel) : ""}
       </div>
       ${focusSection}
-      ${renderWorkspaceBookmarks(bookmarks, copy)}
     </section>
   `;
 

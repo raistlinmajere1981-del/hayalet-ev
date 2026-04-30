@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-04-29T22:08:13.002Z",
+  "updatedAt": "2026-04-30T13:34:10.695Z",
   "rooms": [
     {
       "id": "laboratory",
@@ -99,8 +99,8 @@
         }
       },
       "i18nBaseDir": "/home/raistlin/hayalet-ev/rooms/.build/laboratory/runtime/i18n",
-      "installedAt": "2026-04-29T22:08:13.002Z",
-      "updatedAt": "2026-04-29T22:08:13.002Z"
+      "installedAt": "2026-04-30T13:34:10.695Z",
+      "updatedAt": "2026-04-30T13:34:10.695Z"
     }
   ]
 }

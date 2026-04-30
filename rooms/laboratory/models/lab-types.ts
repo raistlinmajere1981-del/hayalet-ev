@@ -784,6 +784,8 @@ export interface LabEventFeedItem {
   message: string;
   detail: string | null;
   percent?: number | null;
+  bytesReceived?: number | null;
+  bytesTotal?: number | null;
   timestamp: number;
   source: "host" | "ui" | "system";
   action: string | null;
@@ -802,6 +804,7 @@ export interface LabEventFeedItem {
   requestId?: string | null;
   jobId?: string | null;
   projectId?: string | null;
+  result?: LabRecord | null;
   resultAssetIds?: string[];
 }
 
@@ -828,7 +831,6 @@ export interface LabUserActionEvent {
 export type YoutubeCaptureMode = "video+audio" | "audio-only" | "video-only";
 
 export interface LabSourceDrafts {
-  fileNameHint: string;
   urlInput: string;
   youtubeUrl: string;
   youtubePreset: string | null;
@@ -1074,6 +1076,25 @@ export interface LabYoutubeImportPreview {
   title?: string;
   duration?: number;
   thumbnail?: string;
+  uploader?: string;
+  webpageUrl?: string;
+}
+
+export type LabYoutubeImportFormatKind = "video" | "audio" | "muxed" | "unknown";
+
+export interface LabYoutubeImportFormat {
+  formatId: string;
+  label: string;
+  kind: LabYoutubeImportFormatKind;
+  extension?: string | null;
+  resolution?: string | null;
+  fps?: number | null;
+  videoCodec?: string | null;
+  audioCodec?: string | null;
+  bitrateKbps?: number | null;
+  filesizeBytes?: number | null;
+  filesizeApproxBytes?: number | null;
+  note?: string | null;
 }
 
 export interface LabYoutubeImportCustomSettings {
@@ -1086,6 +1107,9 @@ export interface LabYoutubeImportState {
   url: string | null;
   status: LabYoutubeImportStatus;
   preview: LabYoutubeImportPreview | null;
+  formats: LabYoutubeImportFormat[];
+  selectedVideoFormatId: string | null;
+  selectedAudioFormatId: string | null;
   strategy: LabYoutubeImportStrategy;
   custom: LabYoutubeImportCustomSettings;
 }
@@ -1093,11 +1117,21 @@ export interface LabYoutubeImportState {
 export type LabProjectImportKind = "video" | "audio" | "image";
 export type LabProjectImportMethod = "local" | "url" | "youtube";
 export type LabProjectImportReviewFocus = "idle" | "draft" | "running" | "completed";
+export type LabProjectImportUrlCheckStatus = "idle" | "checking" | "ready" | "error";
+
+export interface LabProjectImportUrlCheckState {
+  status: LabProjectImportUrlCheckStatus;
+  url: string | null;
+  isYoutube: boolean | null;
+  kind: LabProjectImportKind | null;
+  error: string | null;
+}
 
 export interface LabProjectImportUiState {
   activeKind: LabProjectImportKind;
   methods: Record<LabProjectImportKind, LabProjectImportMethod>;
   drafts: Record<LabProjectImportKind, LabSourceDrafts>;
+  urlCheck: LabProjectImportUrlCheckState;
   reviewFocus: LabProjectImportReviewFocus;
   lastAction: string | null;
   lastRequestId: string | null;
@@ -1228,15 +1262,38 @@ export type LabStoreEvent =
   | { type: "exit-youtube-import-mode" }
   | { type: "youtube-import-set-url"; url: string | null }
   | { type: "youtube-import-parse-start" }
-  | { type: "youtube-import-parse-success"; preview: LabYoutubeImportPreview; url?: string | null }
+  | {
+      type: "youtube-import-parse-success";
+      preview: LabYoutubeImportPreview;
+      url?: string | null;
+      formats?: LabYoutubeImportFormat[];
+      selectedVideoFormatId?: string | null;
+      selectedAudioFormatId?: string | null;
+    }
   | { type: "youtube-import-parse-error"; reason?: string | null }
   | { type: "youtube-import-set-strategy"; strategy: LabYoutubeImportStrategy }
+  | {
+      type: "youtube-import-format-selected";
+      audioFormatId?: string | null;
+      videoFormatId?: string | null;
+    }
   | { type: "youtube-import-custom-updated"; patch: Partial<LabYoutubeImportCustomSettings> }
   | { type: "youtube-import-clear" }
   | { type: "project-import-kind-changed"; kind: LabProjectImportKind }
-  | { type: "project-import-method-changed"; kind?: LabProjectImportKind; method: LabProjectImportMethod }
-  | { type: "project-import-draft-updated"; kind?: LabProjectImportKind; patch: Partial<LabSourceDrafts> }
+  | {
+      type: "project-import-method-changed";
+      kind?: LabProjectImportKind;
+      method: LabProjectImportMethod;
+    }
+  | {
+      type: "project-import-draft-updated";
+      kind?: LabProjectImportKind;
+      patch: Partial<LabSourceDrafts>;
+    }
   | { type: "project-import-cleared"; kind?: LabProjectImportKind }
+  | { type: "project-import-url-check-started"; url: string }
+  | { type: "project-import-url-check-cleared" }
+  | { type: "project-import-url-check-failed"; url?: string | null; error?: string | null }
   | {
       type: "project-import-review-focused";
       focus: LabProjectImportReviewFocus;

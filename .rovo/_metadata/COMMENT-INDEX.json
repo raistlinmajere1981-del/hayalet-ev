@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-29T11:34:53.682Z",
+  "generatedAt": "2026-04-29T22:22:21.985Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -47,8 +47,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 2384,
-          "endLine": 2384,
+          "startLine": 2391,
+          "endLine": 2391,
           "text": "NOTE: Capture fan-out is best-effort so one detached window cannot abort the bridge upload.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -56,8 +56,8 @@
         },
         {
           "kind": "note",
-          "startLine": 2394,
-          "endLine": 2394,
+          "startLine": 2401,
+          "endLine": 2401,
           "text": "NOTE: Dictation status fan-out is best-effort for detached renderer windows.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2454,8 +2454,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 1134,
-          "endLine": 1134,
+          "startLine": 1135,
+          "endLine": 1135,
           "text": "NOTE: Prevent duplicate sends while the button is already loading.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2463,8 +2463,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1185,
-          "endLine": 1185,
+          "startLine": 1186,
+          "endLine": 1186,
           "text": "NOTE: Allow Ctrl+Enter sends while still preventing duplicate dispatches.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2472,8 +2472,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1432,
-          "endLine": 1432,
+          "startLine": 1433,
+          "endLine": 1433,
           "text": "NOTE: Keep the last known capture snapshot so the dictate toggle can still evaluate fallback state.",
           "prefix": "NOTE",
           "scopeType": "file",

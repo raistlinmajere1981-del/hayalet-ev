@@ -50,7 +50,8 @@ test("waveform timeline model maps linked audio offset onto the shared master ax
   );
   assert.match(markup, /id="lab-audio-viz"/);
   assert.match(markup, /data-lab-role="timeline-playhead"/);
-  assert.match(markup, /Linked audio offset \+250 ms/);
+  assert.equal(model.waveformSyncLabel, "Linked audio offset +250 ms");
+  assert.doesNotMatch(markup, /Linked audio offset \+250 ms/);
 });
 
 test("waveform timeline model clips negative linked audio offsets against the master range", () => {

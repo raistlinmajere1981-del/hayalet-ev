@@ -62,6 +62,7 @@ type LaboratoryProjectSourceRecord = LaboratoryRecord & {
 };
 
 type LaboratoryProjectRecord = LaboratoryRecord & {
+  assets?: unknown;
   id?: unknown;
   source?: unknown;
   updatedAt?: unknown;
@@ -345,6 +346,47 @@ export function createLaboratoryProjectLifecycleRuntime(
     );
   }
 
+  function isEmptyProjectDraft(project: LaboratoryProjectRecord): boolean {
+    return isProjectSourceEmpty(project) && (!Array.isArray(project.assets) || project.assets.length === 0);
+  }
+
+  async function pruneEmptyDraftProjects(runtime: LaboratoryProjectLifecycleRuntime) {
+    const draftProjects = runtime.projects.filter(isEmptyProjectDraft);
+    if (draftProjects.length === 0) {
+      return;
+    }
+
+    const draftIds = new Set(
+      draftProjects
+        .map(function (project) {
+          return asNonEmptyString(project.id);
+        })
+        .filter((projectId): projectId is string => projectId !== null)
+    );
+
+    for (let index = 0; index < draftProjects.length; index += 1) {
+      const project = draftProjects[index];
+      if (!project) {
+        continue;
+      }
+      // eslint-disable-next-line no-await-in-loop -- NOTE: delete project directories one by one so partial cleanup remains traceable.
+      await callRoomTools({
+        operation: "delete-path",
+        roomId,
+        requestId: null,
+        targetPath: getProjectDir(runtime, project),
+        recursive: true,
+      });
+    }
+
+    runtime.projects = runtime.projects.filter(function (project) {
+      return !draftIds.has(String(project.id || ""));
+    });
+    if (draftIds.has(String(runtime.activeProjectId || ""))) {
+      runtime.activeProjectId = null;
+    }
+  }
+
   async function ensureProjectExists(
     runtime: LaboratoryProjectLifecycleRuntime,
     featureId: string | null,
@@ -536,6 +578,7 @@ export function createLaboratoryProjectLifecycleRuntime(
     runtime: LaboratoryProjectLifecycleRuntime,
     featureId: string | null
   ) {
+    await pruneEmptyDraftProjects(runtime);
     const project = createProjectRecord(
       runtime.sourcePresets,
       runtime.editPresets,

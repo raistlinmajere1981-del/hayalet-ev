@@ -724,8 +724,8 @@ test("laboratory source intake resolves use-as-source from registered local asse
 
   await sourceRuntime.handleAssetAsSource({}, {}, "req-local", "asset-local-clip");
 
-  assert.deepEqual(copiedPaths, ["/tmp/clip_01.mp4->/tmp/project/source"]);
-  assert.equal(activeProject.source["storedPath"], "/tmp/project/source/clip_01.mp4");
+  assert.deepEqual(copiedPaths, []);
+  assert.equal(activeProject.source["storedPath"], "/tmp/clip_01.mp4");
   assert.equal(activeProject.source["routeLabel"], "Asset reuse");
   assert.equal(activeProject.source["mimeType"], "video/mp4");
   const metadata = activeProject.source["metadata"] as Record<string, unknown>;
@@ -740,6 +740,89 @@ test("laboratory source intake resolves use-as-source from registered local asse
   assert.equal(sourceAsset?.derivedFromSourceId, "source-1");
   assert.equal(editResetCount, 1);
   assert.equal(profileResetCount, 1);
+});
+
+test("laboratory local source picker uses requested import kind filters", async () => {
+  let activeProject = {
+    id: "project-local-source",
+    source: {
+      kind: "video",
+      status: "idle",
+    },
+  } as Record<string, unknown> & { source: Record<string, unknown> };
+  const requestedKinds: unknown[] = [];
+  const dialogFilters: unknown[] = [];
+  const selectedPaths = ["/tmp/sound.wav", "/tmp/frame.png"];
+
+  const sourceRuntime = createMediaLocalSourceIntakeRuntime({
+    asNonEmptyString(value: unknown) {
+      return typeof value === "string" && value.trim() !== "" ? value : null;
+    },
+    getActiveProject() {
+      return activeProject;
+    },
+    getElectronApi() {
+      return {
+        async copyFileTo(sourcePath: string, destinationDir: string) {
+          const fileName = sourcePath.split(/[\\/]/).pop() || "source.bin";
+          return {
+            success: true,
+            path: `${destinationDir}/${fileName}`,
+            name: fileName,
+          };
+        },
+        async showOpenDialog(options: Record<string, unknown>) {
+          dialogFilters.push(options["filters"]);
+          return {
+            canceled: false,
+            filePaths: [selectedPaths[dialogFilters.length - 1]],
+          };
+        },
+      };
+    },
+    getProjectSourceDir() {
+      return "/tmp/project/source";
+    },
+    getSourceConfig(_sourcePresets, sourceKind) {
+      requestedKinds.push(sourceKind);
+      if (sourceKind === "audio") {
+        return { fileDialogFilters: [{ name: "Audio", extensions: ["wav"] }] };
+      }
+      if (sourceKind === "image") {
+        return { fileDialogFilters: [{ name: "Images", extensions: ["png"] }] };
+      }
+      return { fileDialogFilters: [{ name: "Video", extensions: ["mp4"] }] };
+    },
+    normalizeMimeType(_fileName: unknown, kind: string) {
+      return kind === "audio" ? "audio/wav" : kind === "image" ? "image/png" : "video/mp4";
+    },
+    async patchActiveProject(_runtime, updater) {
+      activeProject = updater(activeProject);
+    },
+    resetEditForCurrentSource() {},
+    resetProfileForCurrentSource() {},
+    async resolvePreparedSource(_runtime, _project, options) {
+      return {
+        metadata: null,
+        metadataError: null,
+        mimeType: options["mimeType"] as string,
+        storedFileName: options["storedFileName"] as string,
+        storedPath: options["storedPath"] as string,
+      };
+    },
+  });
+
+  await sourceRuntime.handleLocalPick({}, {}, "req-audio", { kind: "audio" });
+  await sourceRuntime.handleLocalPick({}, {}, "req-image", { kind: "image" });
+
+  assert.deepEqual(requestedKinds, ["audio", "image"]);
+  assert.deepEqual(dialogFilters, [
+    [{ name: "Audio", extensions: ["wav"] }],
+    [{ name: "Images", extensions: ["png"] }],
+  ]);
+  assert.equal(activeProject.source["kind"], "image");
+  assert.equal(activeProject.source["storedFileName"], "frame.png");
+  assert.equal(activeProject.source["mimeType"], "image/png");
 });
 
 test("laboratory report export registers user and ai report assets", async () => {

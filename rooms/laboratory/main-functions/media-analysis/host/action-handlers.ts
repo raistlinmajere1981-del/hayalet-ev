@@ -10,7 +10,12 @@ type MediaSourceActionRuntimeDeps = {
   asNonEmptyString: (value: unknown) => string | null;
   getDefaultMode: (sourcePresets: unknown, sourceKind: unknown) => string;
   getDefaultSourceType: (sourcePresets: unknown) => string;
-  handleLocalPick: (api: unknown, runtime: LaboratoryRecord, requestId: string) => Promise<unknown>;
+  handleLocalPick: (
+    api: unknown,
+    runtime: LaboratoryRecord,
+    requestId: string,
+    localFields?: unknown
+  ) => Promise<unknown>;
   handleAssetAsSource: (
     api: unknown,
     runtime: LaboratoryRecord,
@@ -26,6 +31,12 @@ type MediaSourceActionRuntimeDeps = {
     api: unknown,
     runtime: LaboratoryRecord,
     requestId: string
+  ) => Promise<unknown>;
+  handleYoutubeProbe: (
+    api: unknown,
+    runtime: LaboratoryRecord,
+    requestId: string,
+    url: string
   ) => Promise<unknown>;
   patchActiveProject: (
     runtime: LaboratoryRecord,
@@ -66,6 +77,7 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     handleAssetAsSource: deps.handleAssetAsSource,
     handleUrlDownload: deps.handleUrlDownload,
     handleYoutubeDownload: deps.handleYoutubeDownload,
+    handleYoutubeProbe: deps.handleYoutubeProbe,
     patchActiveProject: deps.patchActiveProject,
     patchActiveProjectDrafts: deps.patchActiveProjectDrafts,
     resetEditForCurrentSource: deps.resetEditForCurrentSource,

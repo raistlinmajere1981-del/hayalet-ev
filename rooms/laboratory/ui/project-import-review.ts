@@ -35,7 +35,8 @@ function getMethodLabel(method: string, copy: LabI18n) {
 }
 
 function formatDuration(totalSeconds: unknown) {
-  const seconds = typeof totalSeconds === "number" && Number.isFinite(totalSeconds) ? totalSeconds : 0;
+  const seconds =
+    typeof totalSeconds === "number" && Number.isFinite(totalSeconds) ? totalSeconds : 0;
   if (seconds <= 0) {
     return null;
   }
@@ -147,8 +148,14 @@ function renderProgress(state: LabStoreState, copy: LabI18n) {
         : tracked && state.sourceProbeStatus === "running"
           ? `${String(percent)}%`
           : copy.t("mediaAnalysis.source.progress.awaiting", "Awaiting import");
+  const byteDetail =
+    typeof latestEvent?.bytesReceived === "number" && latestEvent.bytesReceived > 0
+      ? `${formatBytes(latestEvent.bytesReceived)}${typeof latestEvent.bytesTotal === "number" && latestEvent.bytesTotal > 0 ? ` / ${formatBytes(latestEvent.bytesTotal)}` : ""}`
+      : null;
   const detail =
     asNonEmptyString(latestEvent?.detail) ||
+    asNonEmptyString(latestEvent?.message) ||
+    byteDetail ||
     (actionState.disabledReason !== null ? actionState.disabledReason : null);
   return `
     <div class="labx-import-review__progress" data-tone="${escapeHtml(tone)}">
@@ -167,7 +174,6 @@ function renderDetails(state: LabStoreState, copy: LabI18n) {
   const source = useCommittedSource ? asLabRecord(state.source) : asLabRecord(null);
   const metadata = useCommittedSource ? asLabRecord(source["metadata"]) : asLabRecord(null);
   const fileName =
-    route.draft.fileNameHint ||
     (useCommittedSource ? asNonEmptyString(source["storedFileName"]) : null) ||
     (useCommittedSource ? asNonEmptyString(source["routeLabel"]) : null) ||
     copy.t("mediaAnalysis.projectImport.review.pendingFile", "Pending file");
@@ -187,7 +193,10 @@ function renderDetails(state: LabStoreState, copy: LabI18n) {
   ];
   const duration = formatDuration(metadata["durationSeconds"] ?? metadata["duration"]);
   if (duration !== null) {
-    rows.push({ label: copy.t("mediaAnalysis.projectWorkspace.metadataDuration", "Duration"), value: duration });
+    rows.push({
+      label: copy.t("mediaAnalysis.projectWorkspace.metadataDuration", "Duration"),
+      value: duration,
+    });
   }
   if (typeof metadata["sizeBytes"] === "number") {
     rows.push({
@@ -233,10 +242,7 @@ function shouldRenderImportReview(state: LabStoreState) {
   return hasProjectImportDraftValue(state);
 }
 
-export function renderProjectImportReview(
-  state: LabStoreState,
-  copy: LabI18n = LAB_FALLBACK_I18N
-) {
+export function renderProjectImportReview(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
   if (shouldRenderImportReview(state) !== true) {
     return renderAssetInspector(state, copy);
   }

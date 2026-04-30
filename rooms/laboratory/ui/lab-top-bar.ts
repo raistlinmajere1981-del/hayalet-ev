@@ -4,23 +4,8 @@ import { getDrawerCollapsed, resolveDrawerMode } from "../runtime/lab-selectors.
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
-function renderProjectSelector(state: LabStoreState, copy: LabI18n) {
-  const projects = state.projectIndex.projects;
-  const activeId = state.projectIndex.activeProjectId;
-  const activeProject =
-    activeId !== null
-      ? projects.find(function (project) {
-          return String((project as Record<string, unknown>)["id"] || "") === activeId;
-        })
-      : undefined;
-  const projectName = activeProject
-    ? String(
-        (activeProject as Record<string, unknown>)["name"] ||
-          activeId ||
-          copy.t("mediaAnalysis.topBar.project", "Project")
-      )
-    : copy.t("mediaAnalysis.topBar.newProject", "New Project");
-
+function renderProjectSelector(copy: LabI18n) {
+  const label = copy.t("mediaAnalysis.topBar.projectManagement", "Project Management");
   return `
     <button
       class="labx-top-bar__project-btn"
@@ -28,8 +13,7 @@ function renderProjectSelector(state: LabStoreState, copy: LabI18n) {
       data-lab-action="project-workspace-open"
       title="${escapeHtml(copy.t("mediaAnalysis.topBar.openWorkspace", "Open Project Workspace"))}"
     >
-      <span class="labx-top-bar__project-label">${escapeHtml(copy.t("mediaAnalysis.topBar.project", "Project"))}</span>
-      <span class="labx-top-bar__project-name">${escapeHtml(projectName)}</span>
+      <span class="labx-top-bar__project-name">${escapeHtml(label)}</span>
     </button>
   `;
 }
@@ -97,7 +81,7 @@ export function renderLabTopBar(state: LabStoreState, copy: LabI18n = LAB_FALLBA
   return `
     <header class="labx-top-bar" data-drawer-mode="${escapeHtml(drawerMode)}">
       <div class="labx-top-bar__left">
-        ${renderProjectSelector(state, copy)}
+        ${renderProjectSelector(copy)}
       </div>
       <nav class="labx-top-bar__center" aria-label="${escapeHtml(copy.t("mediaAnalysis.topBar.navLabel", "Mode indicators"))}">
         ${pillsMarkup}

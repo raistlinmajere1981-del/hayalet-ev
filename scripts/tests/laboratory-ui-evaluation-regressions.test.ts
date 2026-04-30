@@ -1152,10 +1152,28 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
 
 test("laboratory center workbench attaches media viewport and timeline as one surface", () => {
   const workspaceSurfaceSource = readFileSync("rooms/laboratory/ui/workspace-surface.ts", "utf8");
+  const timelineSource = readFileSync(
+    "rooms/laboratory/ui/lab-waveform-timeline-render.ts",
+    "utf8"
+  );
   const themeSource = readFileSync("rooms/laboratory/ui/lab-theme.css", "utf8");
 
   assert.match(workspaceSurfaceSource, /class="labx-media-workbench"/);
   assert.match(workspaceSurfaceSource, /data-lab-media-workbench="true"/);
+  assert.match(
+    workspaceSurfaceSource,
+    /const controls = options\.controls === true \? "controls" : "";/
+  );
+  assert.match(workspaceSurfaceSource, /data-lab-selection-roi-controls-reserve="0"/);
+  assert.match(timelineSource, /data-lab-action="timeline-toggle-playback"/);
+  assert.match(timelineSource, /data-lab-role="timeline-volume"/);
+  assert.match(timelineSource, /data-lab-role="timeline-bookmark-note"/);
+  assert.match(timelineSource, /data-lab-action="timeline-add-bookmark"/);
+  assert.match(timelineSource, /data-lab-action="timeline-remove-bookmark"/);
+  assert.match(timelineSource, /labx-timeline__pin-popover/);
+  assert.match(timelineSource, /transportVolume/);
+  assert.doesNotMatch(timelineSource, /labx-timeline__range-info/);
+  assert.doesNotMatch(workspaceSurfaceSource, /renderWorkspaceBookmarks|workspace-bookmarks/);
   assert.match(
     workspaceSurfaceSource,
     /class="labx-media-workbench"[\s\S]*class="labx-workspace-preview"[\s\S]*\$\{dualPreviewTransport\}[\s\S]*renderLabWaveformTimeline\(timelineModel\)/
@@ -1163,16 +1181,27 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   assert.doesNotMatch(workspaceSurfaceSource, /renderWorkspaceHypothesis/);
   assert.match(
     themeSource,
-    /\.labx-media-workbench\s*\{[\s\S]*gap:\s*0;[\s\S]*border:\s*1px solid rgba\(134, 187, 214, 0\.18\);[\s\S]*border-radius:\s*var\(--labx-radius-tight\);/
+    /\.labx-media-workbench\s*\{[\s\S]*gap:\s*0;[\s\S]*min-height:\s*0;[\s\S]*border:\s*1px solid rgba\(134, 187, 214, 0\.18\);[\s\S]*border-radius:\s*var\(--labx-radius-tight\);/
   );
   assert.match(
     themeSource,
-    /\.labx-workspace-preview\s*\{[\s\S]*min-height:\s*clamp\(24rem, 60vh, 42rem\);[\s\S]*border:\s*0;[\s\S]*border-radius:\s*0;[\s\S]*box-shadow:\s*none;/
+    /\.labx-workspace-preview\s*\{[\s\S]*min-height:\s*clamp\(18rem, 52vh, 36rem\);[\s\S]*border:\s*0;[\s\S]*border-radius:\s*0;[\s\S]*box-shadow:\s*none;/
   );
   assert.match(
     themeSource,
-    /\.labx-media-workbench\s*>\s*\.labx-timeline\s*\{[\s\S]*border-width:\s*1px 0 0;[\s\S]*border-radius:\s*0;[\s\S]*box-shadow:\s*none;/
+    /\.labx-media-workbench\s*>\s*\.labx-timeline\s*\{[\s\S]*padding:\s*0 0 0\.45rem;[\s\S]*border-width:\s*0;[\s\S]*border-radius:\s*0;[\s\S]*box-shadow:\s*none;/
   );
+  assert.match(themeSource, /\.labx-timeline__track\s*\{[\s\S]*height:\s*3\.5rem;/);
+  assert.match(themeSource, /\.labx-timeline__controls\s*\{[\s\S]*flex-wrap:\s*nowrap;/);
+  assert.match(themeSource, /\.labx-timeline__transport\s*\{/);
+  assert.match(themeSource, /\.labx-timeline__volume\s*\{/);
+  assert.match(themeSource, /\.labx-timeline__bookmark\s*\{/);
+  assert.match(themeSource, /\.labx-timeline__pin-popover\s*\{/);
+  assert.match(themeSource, /\.labx-timeline__pin-remove\s*\{/);
+  assert.doesNotMatch(themeSource, /\.labx-timeline__range-info\s*\{/);
+  assert.doesNotMatch(themeSource, /\.labx-bookmarks\s*\{/);
+  assert.doesNotMatch(themeSource, /\.labx-timeline__header\s*\{/);
+  assert.doesNotMatch(themeSource, /\.labx-timeline__sync\s*\{/);
   assert.match(
     themeSource,
     /\.labx-dual-preview-transport\s*\{[\s\S]*border:\s*0;[\s\S]*border-top:\s*1px solid rgba\(122, 162, 255, 0\.18\);[\s\S]*border-radius:\s*0;/
@@ -1190,12 +1219,24 @@ test("laboratory process strip owns heartbeat and expanded runtime detail render
 
   assert.match(labRootSource, /processStripHeartbeatInterval/);
   assert.match(labRootSource, /setInterval\(function \(\) \{\s*render\(\);/);
+  assert.match(labRootSource, /shell\.dataset\["processView"\]/);
   assert.match(processStripSource, /data-lab-process-expanded="true"/);
+  assert.match(processStripSource, /class="labx-strip-detail-toggle"/);
+  assert.doesNotMatch(processStripSource, /class="labx-strip-expand"/);
+  assert.doesNotMatch(processStripSource, /class="labx-strip-cancel"/);
   assert.match(processStripSource, /getUserActions\(state\)\.slice\(0, 5\)/);
   assert.match(processStripSource, /state\.run\?\.rawLog/);
   assert.match(
     themeSource,
-    /\.labx-strip-expanded\s*\{[\s\S]*z-index:\s*40;[\s\S]*background:[\s\S]*#07111d;/
+    /\.labx-shell\[data-process-view="expanded"\]\s*\{[\s\S]*grid-template-rows:\s*48px minmax\(0, 1fr\) 236px;/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-process-strip\s*\{[\s\S]*flex-direction:\s*column;[\s\S]*height:\s*100%;/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-strip-expanded\s*\{[\s\S]*display:\s*grid;[\s\S]*background:\s*var\(--labx-bg-main\);/
   );
   assert.match(
     themeSource,

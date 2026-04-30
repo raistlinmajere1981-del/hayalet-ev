@@ -62,6 +62,9 @@ import {
 } from "./controller/lab-controller-helpers.js";
 import {
   buildProjectImportHostAction,
+  buildProjectImportLocalHostAction,
+  buildProjectImportUrlCheckAction,
+  hasProjectImportDraftValue,
   normalizeProjectImportKindValue,
   normalizeProjectImportMethodValue,
 } from "./lab-project-import.js";
@@ -110,6 +113,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
   type TextLikeElement = {
     textContent: string | null;
+  };
+
+  type BookmarkNoteInputElement = {
+    value: string;
   };
 
   let boundDualPreviewMaster: MediaLikeElement | null = null;
@@ -347,6 +354,46 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       : null;
   }
 
+  function getTimelinePlayToggleLabel() {
+    return deps.documentRef.querySelector?.(
+      '[data-lab-role="timeline-play-toggle-label"]'
+    ) as TextLikeElement | null;
+  }
+
+  function getTimelineVolumeInput() {
+    return deps.documentRef.querySelector?.(
+      '[data-lab-role="timeline-volume"]'
+    ) as RangeLikeElement | null;
+  }
+
+  function getTimelineBookmarkNoteInput() {
+    return deps.documentRef.querySelector?.(
+      '[data-lab-role="timeline-bookmark-note"]'
+    ) as BookmarkNoteInputElement | null;
+  }
+
+  function syncTimelineTransportVolume() {
+    const state = deps.store.getState();
+    const volume = getDualPreviewVolume(state);
+    const volumeInput = getTimelineVolumeInput();
+
+    if (volumeInput) {
+      volumeInput.value = String(volume);
+    }
+    if (isDualPreviewActive(state) === true) {
+      syncDualPreviewVolume();
+      return;
+    }
+
+    const media = getPrimaryWorkspacePreviewMedia();
+    if (media) {
+      media.muted = volume <= 0;
+      if (typeof media.volume === "number") {
+        media.volume = volume;
+      }
+    }
+  }
+
   function getTimelineDurationMs(media: MediaLikeElement | null) {
     const timeline = deps.documentRef.querySelector?.(".labx-timeline") as {
       dataset?: Record<string, string | undefined>;
@@ -365,6 +412,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     const media = getTimelineSyncMedia();
     const playhead = getTimelinePlayhead();
     const playheadLabel = getTimelinePlayheadLabel();
+    const playToggleLabel = getTimelinePlayToggleLabel();
     const durationMs = Math.max(1, getTimelineDurationMs(media));
     const currentMs =
       media && typeof media.currentTime === "number" && Number.isFinite(media.currentTime)
@@ -381,6 +429,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     if (playheadLabel) {
       playheadLabel.textContent = formatTimelineTimeMs(clampedCurrentMs);
     }
+    if (playToggleLabel) {
+      playToggleLabel.textContent = media && media.paused === false ? "❚❚" : "▶";
+    }
+    syncTimelineTransportVolume();
   }
 
   function handleTimelineMediaPlaybackChange() {
@@ -423,6 +475,74 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
   function syncTimelinePlaybackUiFromState() {
     bindTimelinePlaybackListeners();
+    updateTimelinePlaybackUi();
+  }
+
+  function toggleTimelinePlayback() {
+    const media = getTimelineSyncMedia();
+    if (media === null) {
+      return;
+    }
+    syncTimelineTransportVolume();
+    if (media.paused === false) {
+      media.pause?.();
+    } else {
+      safePlay(media);
+      syncSlaveToMaster({ force: true, play: true, explicitPlaybackAttempt: true });
+    }
+    updateTimelinePlaybackUi();
+  }
+
+  function getTimelineBookmarkFrameIndex(timeMs: number) {
+    const metadata = asLabRecord(asLabRecord(deps.store.getState().source)["metadata"]);
+    const fps = typeof metadata["fps"] === "number" ? metadata["fps"] : null;
+    if (fps === null || Number.isFinite(fps) !== true || fps <= 0) {
+      return null;
+    }
+    return Math.max(0, Math.round((timeMs / 1000) * fps));
+  }
+
+  function addCurrentTimelineBookmark() {
+    const media = getTimelineSyncMedia();
+    if (
+      media === null ||
+      typeof media.currentTime !== "number" ||
+      Number.isFinite(media.currentTime) !== true
+    ) {
+      dispatch({
+        type: "push-event",
+        event: buildUiEvent("Önizleme zamanı okunamadı.", "warning"),
+      });
+      return;
+    }
+
+    const durationMs = getTimelineDurationMs(media);
+    const rawTimeMs = Math.max(0, Math.round(media.currentTime * 1000));
+    const timeMs = durationMs > 0 ? Math.min(durationMs, rawTimeMs) : rawTimeMs;
+    const noteInput = getTimelineBookmarkNoteInput();
+    const state = deps.store.getState();
+    const copy = createLabI18n(state.context);
+    const timeLabel = formatTimelineTimeMs(timeMs);
+    const note =
+      asNonEmptyString(noteInput?.value) ||
+      copy.t("mediaAnalysis.timeline.bookmarkDefaultNote", "Mark {time}", {
+        time: timeLabel,
+      });
+    const bookmarkId = `bm-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+    dispatch({
+      type: "workspace-bookmark-added",
+      bookmark: {
+        id: bookmarkId,
+        timeMs,
+        frameIndex: getTimelineBookmarkFrameIndex(timeMs),
+        note,
+        createdAt: Date.now(),
+      },
+    });
+    if (noteInput) {
+      noteInput.value = "";
+    }
     updateTimelinePlaybackUi();
   }
 
@@ -488,6 +608,12 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     }
     const state = deps.store.getState();
     if (isProjectWorkspaceSelectionToggle(event) !== true) {
+      if (
+        state.ui.projectWorkspaceSelectedEntityIds.length === 1 &&
+        state.ui.projectWorkspaceSelectedEntityIds[0] === assetId
+      ) {
+        return;
+      }
       dispatch({
         type: "project-workspace-entity-selected",
         entityIds: [assetId],
@@ -505,6 +631,22 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       type: "project-workspace-entity-selected",
       entityIds: selectedIds,
     });
+  }
+
+  function normalizeProjectWorkspaceSortValue(value: unknown): "createdAt" | "name" | "type" {
+    return String(value) === "name" || String(value) === "type"
+      ? (String(value) as "name" | "type")
+      : "createdAt";
+  }
+
+  function normalizeProjectWorkspaceFilterValue(value: unknown): LabAssetType | null {
+    return String(value || "").trim() !== "" ? (String(value) as LabAssetType) : null;
+  }
+
+  function normalizeProjectWorkspaceGroupValue(value: unknown): "type" | "run" | "intent" | null {
+    return String(value) === "type" || String(value) === "run" || String(value) === "intent"
+      ? (String(value) as "type" | "run" | "intent")
+      : null;
   }
 
   function readProjectWorkspaceCardTimelineHighlight(card: HTMLElement) {
@@ -728,13 +870,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     });
   }
 
-  function findBlankProjectId(state: ReturnType<typeof deps.store.getState>): string | null {
-    const blankProject = state.projectIndex.projects.find(function (project) {
-      return (project as Record<string, unknown>)["hasSource"] === false;
-    }) as Record<string, unknown> | undefined;
-    return asNonEmptyString(blankProject?.["id"]) || null;
-  }
-
   function getActiveProjectCreatedAt(state: ReturnType<typeof deps.store.getState>): unknown {
     const snapshot = asLabRecord(state.snapshot);
     const activeProject = asLabRecord(snapshot["activeProject"]);
@@ -823,7 +958,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       metadataError: null,
       previewUrl: null,
       drafts: {
-        fileNameHint: "",
         urlInput: "",
         youtubeUrl: "",
         youtubePreset,
@@ -859,15 +993,17 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   ): Partial<LabSourceDrafts> | null {
     const currentDrafts = state.ui.sourceDrafts;
     switch (field) {
-      case "source.fileNameHint":
-        return {
-          fileNameHint: typeof value === "string" ? value : "",
-        };
       case "source.urlInput":
+        if (currentDrafts.urlInput === value) {
+          return null;
+        }
         return {
           urlInput: typeof value === "string" ? value : "",
         };
       case "source.youtubeUrl":
+        if (currentDrafts.youtubeUrl === value) {
+          return null;
+        }
         return {
           youtubeUrl: typeof value === "string" ? value : "",
         };
@@ -912,15 +1048,17 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   ): Partial<LabSourceDrafts> | null {
     const currentDrafts = state.ui.projectImport.drafts[state.ui.projectImport.activeKind];
     switch (field) {
-      case "project-import.fileNameHint":
-        return {
-          fileNameHint: typeof value === "string" ? value : "",
-        };
       case "project-import.urlInput":
+        if (currentDrafts.urlInput === value) {
+          return null;
+        }
         return {
           urlInput: typeof value === "string" ? value : "",
         };
       case "project-import.youtubeUrl":
+        if (currentDrafts.youtubeUrl === value) {
+          return null;
+        }
         return {
           youtubeUrl: typeof value === "string" ? value : "",
         };
@@ -960,27 +1098,26 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     });
   }
 
-  function selectProjectByValue(projectValue: string) {
+  function startCleanProjectSession() {
     const state = deps.store.getState();
+    const resetSourceState = buildEmptySourceState(state);
+    dispatch({
+      type: "source-config-patched",
+      patch: resetSourceState,
+    });
+    dispatch({
+      type: "source-drafts-updated",
+      patch: resetSourceState.drafts,
+    });
+    dispatch({
+      type: "source-drafts-committed",
+    });
+    sendMediaAction("project-create");
+  }
+
+  function selectProjectByValue(projectValue: string) {
     if (projectValue === "new") {
-      const resetSourceState = buildEmptySourceState(state);
-      dispatch({
-        type: "source-config-patched",
-        patch: resetSourceState,
-      });
-      dispatch({
-        type: "source-drafts-updated",
-        patch: resetSourceState.drafts,
-      });
-      dispatch({
-        type: "source-drafts-committed",
-      });
-      const blankProjectId = findBlankProjectId(state);
-      if (blankProjectId !== null) {
-        sendMediaAction("project-select", { projectId: blankProjectId, resetSourceState });
-        return;
-      }
-      sendMediaAction("project-create");
+      startCleanProjectSession();
       return;
     }
     if (projectValue.trim() !== "") {
@@ -1230,7 +1367,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
     const mode = getSourceMode(state);
     const fields = {
-      fileNameHint: sourceDrafts.fileNameHint,
       urlInput: sourceDrafts.urlInput,
       youtubeUrl: sourceDrafts.youtubeUrl,
       youtubePreset: sourceDrafts.youtubePreset,
@@ -1248,13 +1384,12 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     startProbe("source-pick-local", { fields });
   }
 
-  function runProjectImportAdd() {
+  function runProjectImportAction(importAction: ReturnType<typeof buildProjectImportHostAction>) {
     const state = deps.store.getState();
     if (getWorkspaceLockState(state).source === true || isRunActive(state)) {
       pushLockedWorkspaceEvent("Kaynak ayarları aktif analiz sırasında kilitli.");
       return;
     }
-    const importAction = buildProjectImportHostAction(state);
     if (importAction.disabledReason !== null) {
       dispatch({
         type: "push-event",
@@ -1271,8 +1406,50 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     });
   }
 
+  function runProjectImportAdd() {
+    runProjectImportAction(buildProjectImportHostAction(deps.store.getState()));
+  }
+
+  function runProjectImportLocalAdd() {
+    runProjectImportAction(buildProjectImportLocalHostAction(deps.store.getState()));
+  }
+
+  function runProjectImportUrlCheck() {
+    const state = deps.store.getState();
+    if (getWorkspaceLockState(state).source === true || isRunActive(state)) {
+      pushLockedWorkspaceEvent("Kaynak ayarları aktif analiz sırasında kilitli.");
+      return;
+    }
+    const checkAction = buildProjectImportUrlCheckAction(state);
+    if (checkAction.disabledReason !== null) {
+      dispatch({
+        type: "push-event",
+        event: buildUiEvent(checkAction.disabledReason, "warning"),
+      });
+      return;
+    }
+    const requestId = sendMediaAction("project-import-check-url", {
+      fields: checkAction.fields,
+    });
+    if (requestId === null) {
+      dispatch({
+        type: "project-import-url-check-failed",
+        url: checkAction.url,
+        error: "Room API bridge is not connected.",
+      });
+      return;
+    }
+    dispatch({
+      type: "project-import-url-check-started",
+      url: checkAction.url,
+    });
+  }
+
   function clearProjectImportDraft() {
     const state = deps.store.getState();
+    if (hasProjectImportDraftValue(state) !== true) {
+      return;
+    }
     const route = state.ui.projectImport;
     clearYoutubeImportParseTimer();
     dispatch({ type: "project-import-cleared", kind: route.activeKind });
@@ -1285,11 +1462,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     const source = asLabRecord(state.source);
     const drafts = state.ui.sourceDrafts;
     return {
-      fileNameHint:
-        drafts.fileNameHint ||
-        asNonEmptyString(source["storedFileName"]) ||
-        asNonEmptyString(source["fileNameHint"]) ||
-        "",
       urlInput:
         drafts.urlInput ||
         asNonEmptyString(source["sourceUrl"]) ||
@@ -1429,6 +1601,41 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     }
     dispatch({ type: "asset-preview-opened", assetId });
     return true;
+  }
+
+  function confirmAssetRemoval(assetIds: string[]) {
+    const ids = assetIds.filter(function (assetId, index, allIds) {
+      return assetId.trim() !== "" && allIds.indexOf(assetId) === index;
+    });
+    if (ids.length === 0) {
+      return false;
+    }
+    if (typeof deps.windowRef.confirm !== "function") {
+      return true;
+    }
+
+    const labels = ids.map(function (assetId) {
+      const asset = findAsset(assetId);
+      return asset ? asNonEmptyString(asset.name) || assetId : assetId;
+    });
+    const message =
+      labels.length === 1
+        ? `"${labels[0]}" varlığı silinsin mi?`
+        : `${labels.length} varlık silinsin mi?\n${labels.join("\n")}`;
+    return deps.windowRef.confirm(message);
+  }
+
+  function removeAssetsWithConfirmation(assetIds: string[]) {
+    const ids = assetIds.filter(function (assetId, index, allIds) {
+      return assetId.trim() !== "" && allIds.indexOf(assetId) === index;
+    });
+    if (!confirmAssetRemoval(ids)) {
+      return false;
+    }
+    ids.forEach(function (assetId) {
+      sendMediaAction("asset-remove", { assetId });
+    });
+    return ids.length > 0;
   }
 
   function downloadAsset(assetId: string) {
@@ -2121,7 +2328,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         return;
       case "project-import-kind": {
         const kind = normalizeProjectImportKindValue(value);
-        if (kind !== null) {
+        if (kind !== null && state.ui.projectImport.activeKind !== kind) {
           dispatch({ type: "project-import-kind-changed", kind });
         }
         return;
@@ -2129,7 +2336,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "project-import-method": {
         const activeKind = deps.store.getState().ui.projectImport.activeKind;
         const method = normalizeProjectImportMethodValue(value, activeKind);
-        if (method !== null) {
+        if (method !== null && state.ui.projectImport.methods[activeKind] !== method) {
           dispatch({ type: "project-import-method-changed", kind: activeKind, method });
         }
         return;
@@ -2137,8 +2344,27 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "project-import-clear":
         clearProjectImportDraft();
         return;
+      case "project-import-local-add":
+        runProjectImportLocalAdd();
+        return;
+      case "project-import-check-url":
+        runProjectImportUrlCheck();
+        return;
+      case "project-import-url-add":
       case "project-import-add":
         runProjectImportAdd();
+        return;
+      case "project-import-youtube-video-format":
+        dispatch({
+          type: "youtube-import-format-selected",
+          videoFormatId: value.trim() === "" ? null : value,
+        });
+        return;
+      case "project-import-youtube-audio-format":
+        dispatch({
+          type: "youtube-import-format-selected",
+          audioFormatId: value.trim() === "" ? null : value,
+        });
         return;
       case "source-probe-retry":
         runSourceRetryAction();
@@ -2162,13 +2388,13 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         return;
       case "youtube-import-set-strategy": {
         const strategy = normalizeYoutubeImportStrategyValue(value);
-        if (strategy !== null) {
+        if (strategy !== null && state.ui.youtubeImport.strategy !== strategy) {
           dispatch({ type: "youtube-import-set-strategy", strategy });
         }
         return;
       }
       case "source-youtube-preset":
-        if (value.trim() !== "") {
+        if (value.trim() !== "" && state.ui.sourceDrafts.youtubePreset !== value) {
           persistSourceDraftField("source.youtubePreset", value);
         }
         return;
@@ -2371,13 +2597,13 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         selectProjectByValue(value);
         return;
       }
+      case "project-create": {
+        startCleanProjectSession();
+        return;
+      }
       case "project-delete": {
         const activeProjectId = state.projectIndex.activeProjectId;
-        const sourceRecord = asLabRecord(state.source);
-        const hasActiveSource =
-          asNonEmptyString(sourceRecord["storedFileName"]) !== null ||
-          asNonEmptyString(sourceRecord["routeLabel"]) !== null;
-        if (!activeProjectId || !hasActiveSource) {
+        if (!activeProjectId) {
           return;
         }
         const activeProjectSummary = state.projectIndex.projects.find(function (project) {
@@ -2459,6 +2685,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "timeline-extract-audio":
         startTrackedUserAction("export-audio-track", getCurrentRunIntentPayload(state));
         return;
+      case "timeline-toggle-playback":
+        toggleTimelinePlayback();
+        return;
       case "asset-preview":
         if (value.trim() !== "") {
           previewAsset(value);
@@ -2516,9 +2745,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         }
         return;
       case "asset-remove":
-        if (value.trim() !== "") {
-          sendMediaAction("asset-remove", { assetId: value });
-        }
+        removeAssetsWithConfirmation([value]);
         return;
       case "workspace-intent-toggle":
         if (isWorkspaceMutationLocked("intents")) {
@@ -2557,21 +2784,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           },
         });
         return;
-      case "workspace-add-bookmark": {
-        const bookmarkId = `bm-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-        dispatch({
-          type: "workspace-bookmark-added",
-          bookmark: {
-            id: bookmarkId,
-            timeMs: 0,
-            frameIndex: null,
-            note: "",
-            createdAt: Date.now(),
-          },
-        });
+      case "timeline-add-bookmark":
+        addCurrentTimelineBookmark();
         return;
-      }
-      case "workspace-remove-bookmark":
+      case "timeline-remove-bookmark":
         if (value.trim() !== "") {
           dispatch({ type: "workspace-bookmark-removed", bookmarkId: value });
         }
@@ -2654,21 +2870,30 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         return;
       // V4 project & entity workspace actions
       case "project-workspace-open":
+        if (state.ui.projectWorkspaceOpen === true) {
+          return;
+        }
         dispatch({ type: "project-workspace-toggled", open: true });
         return;
       case "project-workspace-close":
+        if (state.ui.projectWorkspaceOpen !== true) {
+          return;
+        }
         dispatch({ type: "project-workspace-toggled", open: false });
         return;
       case "project-workspace-entity-click":
         selectProjectWorkspaceEntity(value, event);
         return;
       case "project-workspace-switch":
+        if (value === state.projectIndex.activeProjectId) {
+          return;
+        }
         selectProjectByValue(value);
         return;
       case "project-workspace-use-source":
         {
           const sourceAssetId = findFirstSourceCapableAssetId(getProjectWorkspaceActionIds(value));
-          if (sourceAssetId !== null) {
+          if (sourceAssetId !== null && state.ui.projectWorkspaceConfirmReplace !== sourceAssetId) {
             dispatch({ type: "project-workspace-confirm-replace", assetId: sourceAssetId });
           }
         }
@@ -2680,6 +2905,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         }
         return;
       case "project-workspace-cancel-replace":
+        if (state.ui.projectWorkspaceConfirmReplace === null) {
+          return;
+        }
         dispatch({ type: "project-workspace-confirm-replace", assetId: null });
         return;
       case "project-workspace-open-report":
@@ -2693,10 +2921,8 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "project-workspace-delete":
         {
           const assetIds = getProjectWorkspaceActionIds(value);
-          assetIds.forEach(function (assetId) {
-            sendMediaAction("asset-remove", { assetId });
-          });
-          if (assetIds.length > 0) {
+          const removed = removeAssetsWithConfirmation(assetIds);
+          if (removed && state.ui.projectWorkspaceSelectedEntityIds.length > 0) {
             dispatch({
               type: "project-workspace-entity-selected",
               entityIds: [],
@@ -2753,6 +2979,22 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       return;
     }
 
+    if (field === "project-import.youtubeVideoFormat") {
+      dispatch({
+        type: "youtube-import-format-selected",
+        videoFormatId: target.value.trim() === "" ? null : target.value,
+      });
+      return;
+    }
+
+    if (field === "project-import.youtubeAudioFormat") {
+      dispatch({
+        type: "youtube-import-format-selected",
+        audioFormatId: target.value.trim() === "" ? null : target.value,
+      });
+      return;
+    }
+
     if (field.startsWith("project-import.")) {
       if (isWorkspaceMutationLocked("source")) {
         pushLockedWorkspaceEvent("Kaynak ayarları aktif analiz sırasında kilitli.");
@@ -2789,7 +3031,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     }
 
     if (
-      field === "source.fileNameHint" ||
       field === "source.urlInput" ||
       field === "source.youtubeUrl" ||
       field.startsWith("source.youtubeCustom.")
@@ -2906,7 +3147,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           volume: typeof rawValue === "number" ? rawValue : Number(rawValue),
         });
         syncDualPreviewVolume();
+        syncTimelineTransportVolume();
         updateDualPreviewTransportUi();
+        updateTimelinePlaybackUi();
         return;
       }
       if (workspaceField === "hypothesis") {
@@ -3027,40 +3270,48 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         updateYoutubeImportCustomField(field, targetValue);
         return;
       // V4 project workspace toolbar fields
-      case "project-workspace-sort":
+      case "project-workspace-sort": {
+        const sort = normalizeProjectWorkspaceSortValue(targetValue);
+        if (state.ui.projectWorkspaceSort === sort) {
+          return;
+        }
         dispatch({
           type: "project-workspace-sort-changed",
-          sort:
-            String(targetValue) === "name" || String(targetValue) === "type"
-              ? (String(targetValue) as "name" | "type")
-              : "createdAt",
+          sort,
         });
         return;
-      case "project-workspace-filter":
+      }
+      case "project-workspace-filter": {
+        const filter = normalizeProjectWorkspaceFilterValue(targetValue);
+        if (state.ui.projectWorkspaceFilter === filter) {
+          return;
+        }
         dispatch({
           type: "project-workspace-filter-changed",
-          filter:
-            String(targetValue || "").trim() !== "" ? (String(targetValue) as LabAssetType) : null,
+          filter,
         });
         return;
-      case "project-workspace-group":
+      }
+      case "project-workspace-group": {
+        const group = normalizeProjectWorkspaceGroupValue(targetValue);
+        if (state.ui.projectWorkspaceGroup === group) {
+          return;
+        }
         dispatch({
           type: "project-workspace-group-changed",
-          group:
-            String(targetValue) === "type" ||
-            String(targetValue) === "run" ||
-            String(targetValue) === "intent"
-              ? (String(targetValue) as "type" | "run" | "intent")
-              : null,
+          group,
         });
         return;
+      }
       case "project-workspace-search":
+        if (state.ui.projectWorkspaceSearch === String(targetValue || "")) {
+          return;
+        }
         dispatch({
           type: "project-workspace-search-changed",
           search: String(targetValue || ""),
         });
         return;
-      case "project-import.fileNameHint":
       case "project-import.urlInput":
       case "project-import.youtubeUrl": {
         if (isWorkspaceMutationLocked("source")) {
@@ -3079,6 +3330,18 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         }
         return;
       }
+      case "project-import.youtubeVideoFormat":
+        dispatch({
+          type: "youtube-import-format-selected",
+          videoFormatId: String(targetValue || "").trim() === "" ? null : String(targetValue),
+        });
+        return;
+      case "project-import.youtubeAudioFormat":
+        dispatch({
+          type: "youtube-import-format-selected",
+          audioFormatId: String(targetValue || "").trim() === "" ? null : String(targetValue),
+        });
+        return;
       case "source.kind":
         if (isWorkspaceMutationLocked("source")) {
           pushLockedWorkspaceEvent("Kaynak ayarları aktif analiz sırasında kilitli.");
@@ -3129,7 +3392,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         });
         sendMediaAction("source-set-mode", { mode: targetValue });
         return;
-      case "source.fileNameHint":
       case "source.urlInput":
       case "source.youtubeUrl":
       case "source.youtubePreset":

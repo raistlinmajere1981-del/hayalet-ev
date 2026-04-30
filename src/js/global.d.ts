@@ -1148,7 +1148,9 @@ declare global {
     captureDismissOperation?: () => Promise<CaptureServiceStatus>;
     captureConnectDevice?: (address: string) => Promise<CaptureActionOutcome>;
     captureDisconnectDevice?: (deviceId: string) => Promise<CaptureActionOutcome>;
-    captureLaunchCompanion?: (options?: CaptureTargetActionOptions) => Promise<CaptureActionOutcome>;
+    captureLaunchCompanion?: (
+      options?: CaptureTargetActionOptions
+    ) => Promise<CaptureActionOutcome>;
     captureStartAnalyzeSession?: (
       options?: CaptureTargetActionOptions
     ) => Promise<CaptureActionOutcome>;
@@ -1170,7 +1172,9 @@ declare global {
     captureOnMediaIngress?: (callback: (payload: CaptureMediaIngressPayload) => void) => void;
     captureOffMediaIngress?: (callback: (payload: CaptureMediaIngressPayload) => void) => void;
     captureOnDictationStatus?: (callback: (payload: CaptureDictationStatusPayload) => void) => void;
-    captureOffDictationStatus?: (callback: (payload: CaptureDictationStatusPayload) => void) => void;
+    captureOffDictationStatus?: (
+      callback: (payload: CaptureDictationStatusPayload) => void
+    ) => void;
     transcriptStatus: () => Promise<TranscriptRuntimeStatus>;
     transcriptEnsureRuntime: () => Promise<TranscriptRuntimeStatus>;
     transcriptListModels?: () => Promise<TranscriptManagedModelStatus[]>;

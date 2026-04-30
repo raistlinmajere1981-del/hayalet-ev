@@ -289,7 +289,8 @@ export class AnalyzeController {
     this._captureStatusPollTimer = null;
     this._lastAutoStagedCapturePath = null;
     this._capturePanelOpen = false;
-    this._voiceCommandsEnabled = SettingsManager.getSnapshot().voiceCommands?.analyzeEnabled === true;
+    this._voiceCommandsEnabled =
+      SettingsManager.getSnapshot().voiceCommands?.analyzeEnabled === true;
   }
 
   async init(): Promise<void> {

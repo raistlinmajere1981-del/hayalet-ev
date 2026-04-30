@@ -7,7 +7,12 @@ type LaboratorySourceIntakeRuntime = {
     requestId: string,
     assetId: string
   ) => Promise<unknown>;
-  handleLocalPick: (api: unknown, runtime: unknown, requestId: string) => Promise<unknown>;
+  handleLocalPick: (
+    api: unknown,
+    runtime: unknown,
+    requestId: string,
+    localFields?: unknown
+  ) => Promise<unknown>;
   handleUrlDownload: (api: unknown, runtime: unknown, requestId: string) => Promise<unknown>;
   getResolvedYoutubeSettings: (
     project: LaboratorySourceDelegatesRecord,
@@ -20,6 +25,12 @@ type LaboratorySourceIntakeRuntime = {
     sourceDir: string
   ) => unknown[];
   handleYoutubeDownload: (api: unknown, runtime: unknown, requestId: string) => Promise<unknown>;
+  handleYoutubeProbe: (
+    api: unknown,
+    runtime: unknown,
+    requestId: string,
+    url: string
+  ) => Promise<unknown>;
 };
 
 type LaboratorySourceDelegatesRuntimeDeps = {
@@ -37,5 +48,6 @@ export function createLaboratorySourceDelegatesRuntime(deps: LaboratorySourceDel
     handleLocalPick: mediaSourceIntakeRuntime.handleLocalPick,
     handleUrlDownload: mediaSourceIntakeRuntime.handleUrlDownload,
     handleYoutubeDownload: mediaSourceIntakeRuntime.handleYoutubeDownload,
+    handleYoutubeProbe: mediaSourceIntakeRuntime.handleYoutubeProbe,
   };
 }

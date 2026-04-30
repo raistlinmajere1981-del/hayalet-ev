@@ -32,10 +32,7 @@ const SOURCE_RETRY_BLOCK_COPY: Record<
   },
 };
 
-export function formatSourceRetryBlockReason(
-  reason: LabSourceRetryBlockReason,
-  copy: LabI18n
-) {
+export function formatSourceRetryBlockReason(reason: LabSourceRetryBlockReason, copy: LabI18n) {
   const entry = SOURCE_RETRY_BLOCK_COPY[reason];
   return copy.t(entry.key, entry.fallback);
 }

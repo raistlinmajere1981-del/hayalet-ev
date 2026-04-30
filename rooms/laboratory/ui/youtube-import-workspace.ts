@@ -75,7 +75,10 @@ function getYoutubeImportStrategyView(
     case "audio_only":
       return {
         strategy,
-        label: copy.t("mediaAnalysis.source.youtubeImport.strategies.audioOnly.label", "Audio Only"),
+        label: copy.t(
+          "mediaAnalysis.source.youtubeImport.strategies.audioOnly.label",
+          "Audio Only"
+        ),
         description: copy.t(
           "mediaAnalysis.source.youtubeImport.strategies.audioOnly.description",
           "Extract audio track only"
@@ -365,10 +368,14 @@ export function renderYoutubeImportWorkspaceMarkup(
   const executionDisabled = hasPreview ? "" : " disabled";
   const strategyView = getYoutubeImportStrategyView(importState.strategy, copy);
   const downloadLabel = hasPreview
-    ? copy.t("mediaAnalysis.source.youtubeImport.downloadWithStrategy", "Download ({strategy} · {size})", {
-        strategy: strategyView.label,
-        size: strategyView.estimatedSize,
-      })
+    ? copy.t(
+        "mediaAnalysis.source.youtubeImport.downloadWithStrategy",
+        "Download ({strategy} · {size})",
+        {
+          strategy: strategyView.label,
+          size: strategyView.estimatedSize,
+        }
+      )
     : copy.t("mediaAnalysis.source.youtubeImport.download", "Download");
   const downloadAnalyzeLabel = hasPreview
     ? copy.t(

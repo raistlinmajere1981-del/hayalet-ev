@@ -71,7 +71,9 @@ function getStripTaskLabel(state: LabStoreState, copy: LabI18n): string {
     case "analyzing":
       return summary.activeTaskLabel ?? copy.t("mediaAnalysis.strip.analyzing", "Analiz ediliyor…");
     case "staging":
-      return summary.activeTaskLabel ?? copy.t("mediaAnalysis.strip.staging", "Staging hazırlanıyor…");
+      return (
+        summary.activeTaskLabel ?? copy.t("mediaAnalysis.strip.staging", "Staging hazırlanıyor…")
+      );
     default:
       return "";
   }
@@ -81,7 +83,8 @@ function getStripState(state: LabStoreState): string {
   const run = getCurrentRunFromState(state);
   if (run?.state === "failed") return "error";
   if (run?.state === "cancelled") return "cancelled";
-  if ((run?.warnings ?? []).length > 0 && isRunComplete(state) && !isRunActive(state)) return "partial";
+  if ((run?.warnings ?? []).length > 0 && isRunComplete(state) && !isRunActive(state))
+    return "partial";
   if (isRunComplete(state) && !isRunActive(state)) return "complete";
   const summary = getLaboratoryProcessSummary(state);
   return summary.state;
@@ -92,9 +95,11 @@ function renderActionOutputNames(state: LabStoreState, assetIds: string[] | unde
     return "";
   }
   const names = assetIds.map(function (assetId) {
-    return state.assets.find(function (asset) {
-      return asset.id === assetId;
-    })?.name ?? assetId;
+    return (
+      state.assets.find(function (asset) {
+        return asset.id === assetId;
+      })?.name ?? assetId
+    );
   });
   const visible = names.slice(0, 2).join(", ");
   const overflow = names.length > 2 ? ` +${String(names.length - 2)}` : "";
@@ -189,7 +194,10 @@ function getPipelineStepIndexForStage(stage: string | null) {
   return -1;
 }
 
-function getPipelineStepIndexForModule(run: NonNullable<LabStoreState["run"]>, moduleId: string | null) {
+function getPipelineStepIndexForModule(
+  run: NonNullable<LabStoreState["run"]>,
+  moduleId: string | null
+) {
   if (moduleId === null || run.moduleOrder.length === 0) {
     return -1;
   }
@@ -268,10 +276,7 @@ function getWarningStepIndexes(
   return steps;
 }
 
-export function renderLabProcessStrip(
-  state: LabStoreState,
-  copy: LabI18n = LAB_FALLBACK_I18N
-) {
+export function renderLabProcessStrip(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
   const summary = getLaboratoryProcessSummary(state);
   const journeyStep = getExecutionJourneyStep(state);
   const elapsed = getRunElapsedSeconds(state);
@@ -286,18 +291,13 @@ export function renderLabProcessStrip(
   const taskLabel = getStripTaskLabel(state, copy);
 
   const progressPercent =
-    summary.totalCount > 0
-      ? Math.round((summary.completedCount / summary.totalCount) * 100)
-      : 0;
+    summary.totalCount > 0 ? Math.round((summary.completedCount / summary.totalCount) * 100) : 0;
   const showProgress = runActive || runComplete || runFailed;
   const showElapsed = runActive || runComplete;
   const indeterminateProgress = runActive && summary.totalCount === 0;
 
   const dotsMarkup = PIPELINE_STEPS.map(function (key, i) {
-    const label = copy.t(
-      `mediaAnalysis.strip.steps.${key}`,
-      PIPELINE_LABELS_TR[i] ?? key
-    );
+    const label = copy.t(`mediaAnalysis.strip.steps.${key}`, PIPELINE_LABELS_TR[i] ?? key);
     const effectiveJourney =
       run?.state === "cancelled"
         ? getCancelledJourneyStep(run, Math.max(0, journeyStep))
@@ -342,33 +342,32 @@ export function renderLabProcessStrip(
   const retryMarkup = runFailed
     ? `<button class="labx-strip-retry" type="button" data-lab-action="run-deep-analysis">${escapeHtml(copy.t("mediaAnalysis.strip.retry", "Tekrar Dene"))}</button>`
     : "";
-
-  const cancelMarkup = runActive
-    ? `<button class="labx-strip-cancel" type="button" data-lab-action="cancel-analysis">${escapeHtml(copy.t("mediaAnalysis.strip.cancel", "Durdur"))}</button>`
-    : "";
-
-  const expandMarkup = (runActive || runComplete)
-    ? `<button class="labx-strip-expand" type="button" data-lab-action="workspace-process-view-toggled">${escapeHtml(copy.t("mediaAnalysis.strip.log", "Log ▾"))}</button>`
-    : "";
+  const processViewActive = state.ui.workspace.processViewActive === true;
+  const toggleLabel = processViewActive
+    ? copy.t("mediaAnalysis.strip.hideDetails", "Detayları Gizle")
+    : copy.t("mediaAnalysis.strip.showDetails", "Detayları Göster");
+  const toggleMarkup = `<button class="labx-strip-detail-toggle" type="button" data-lab-action="workspace-process-view-toggled" aria-expanded="${processViewActive ? "true" : "false"}">${escapeHtml(toggleLabel)}</button>`;
 
   return `
     <footer
       class="labx-process-strip"
       data-strip-state="${escapeHtml(stripState)}"
+      data-process-view="${processViewActive ? "expanded" : "compact"}"
       aria-label="${escapeHtml(copy.t("mediaAnalysis.strip.ariaLabel", "Process state"))}"
     >
-      <div class="labx-strip-pipeline">
-        ${dotsMarkup}
-      </div>
-      <div class="labx-strip-info">
-        <span class="labx-strip-task">${escapeHtml(taskLabel)}</span>
-        ${progressMarkup}
-        ${elapsedMarkup}
-      </div>
-      <div class="labx-strip-actions">
-        ${expandMarkup}
-        ${cancelMarkup}
-        ${retryMarkup}
+      <div class="labx-strip-main">
+        <div class="labx-strip-pipeline">
+          ${dotsMarkup}
+        </div>
+        <div class="labx-strip-info">
+          <span class="labx-strip-task">${escapeHtml(taskLabel)}</span>
+          ${progressMarkup}
+          ${elapsedMarkup}
+        </div>
+        <div class="labx-strip-actions">
+          ${retryMarkup}
+          ${toggleMarkup}
+        </div>
       </div>
       ${renderExpandedStrip(state, copy)}
     </footer>

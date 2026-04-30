@@ -191,6 +191,7 @@
     "operatorLabel": "Operator",
     "topBar": {
       "project": "Project",
+      "projectManagement": "Project Management",
       "newProject": "New Project",
       "openWorkspace": "Open Project Workspace",
       "source": "Source",
@@ -330,6 +331,8 @@
       "retry": "Retry Analysis",
       "cancel": "Stop",
       "log": "Log",
+      "showDetails": "Show Details",
+      "hideDetails": "Hide Details",
       "noRecentActions": "No recent actions",
       "noRawLog": "No raw log",
       "recentActions": "Recent actions",
@@ -546,6 +549,13 @@
       "staticFrame": "Static frame",
       "regionSnapshot": "Region snapshot",
       "snapshotAlt": "Temporary inspection snapshot",
+      "playPause": "Play / pause",
+      "volume": "Volume",
+      "markCurrent": "Mark",
+      "markCurrentTitle": "Mark current moment",
+      "bookmarkNotePlaceholder": "Short note",
+      "bookmarkDefaultNote": "Mark {time}",
+      "removeBookmark": "Remove mark",
       "microZoom": "Selection micro zoom",
       "inspectionMode": "Inspection mode",
       "selectionHint": "This selection will guide future analysis",
@@ -764,6 +774,20 @@
         }
       },
       "localHint": "The file picker opens when you press Add.",
+      "localUnifiedTitle": "Local Dosya Ekle",
+      "localUnifiedHint": "Pick a video, audio, or image file; the selected file is copied into the active project.",
+      "localUnifiedButton": "Local Dosya Ekle",
+      "url": {
+        "check": "Check",
+        "checking": "Checking",
+        "add": "Add to Project",
+        "formatCount": "{count} formats",
+        "videoFormat": "Video stream",
+        "audioFormat": "Audio stream",
+        "noVideo": "No video, audio only",
+        "noAudio": "No separate audio",
+        "directReady": "Direct URL ready as {type}"
+      },
       "clear": "Clear",
       "add": "Add",
       "review": {
@@ -811,13 +835,11 @@
       },
       "fields": {
         "youtubeUrl": "YouTube URL",
-        "urlInput": "Direct Media URL",
-        "fileNameHint": "Optional File Name"
+        "urlInput": "Direct Media URL"
       },
       "placeholders": {
         "youtubeUrl": "https://www.youtube.com/watch?v=...",
-        "urlInput": "https://example.com/media.mp4",
-        "fileNameHint": "Leave empty to keep the source file name"
+        "urlInput": "https://example.com/media.mp4"
       },
       "actions": {
         "pickLocal": "Copy Local Source",
@@ -1041,7 +1063,7 @@
       "currentSource": "current source",
       "directUrl": {
         "title": "Direct URL Source",
-        "hint": "Paste a remote URL and optionally rename."
+        "hint": "Paste a remote URL."
       },
       "youtubeCapture": {
         "title": "YouTube Capture",
@@ -1792,11 +1814,6 @@
         "highpass": "Highpass",
         "bandpass": "Bandpass"
       }
-    },
-    "bookmarks": {
-      "title": "Bookmarks",
-      "addAction": "+ Mark Current",
-      "removeAction": "Remove"
     },
     "hypothesis": {
       "label": "Hypothesis",

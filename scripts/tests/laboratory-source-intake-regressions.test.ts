@@ -19,6 +19,7 @@ function createWorkspaceState(overrides: {
   toolState?: Record<string, unknown>;
   projectImportKind?: "video" | "audio" | "image";
   projectImportMethod?: "local" | "url" | "youtube";
+  urlCheckResult?: Record<string, unknown>;
   youtubeStrategy?: "video_best" | "audio_only" | "low_size" | "custom";
   youtubeCustom?: Record<string, unknown>;
   source: Record<string, unknown>;
@@ -90,6 +91,26 @@ function createWorkspaceState(overrides: {
       patch: overrides.youtubeCustom as never,
     });
   }
+  if (overrides.urlCheckResult) {
+    store.dispatch({
+      type: "host-event-received",
+      event: {
+        id: "evt-url-check",
+        kind: "request-result",
+        severity: "success",
+        message: "URL check completed",
+        detail: null,
+        action: "project-import-check-url",
+        stage: "completed",
+        timestamp: Date.now(),
+        source: "host",
+        scope: "global",
+        moduleId: null,
+        rawLine: null,
+        result: overrides.urlCheckResult,
+      } as never,
+    });
+  }
   store.dispatch({
     type: "project-workspace-toggled",
     open: true,
@@ -101,7 +122,7 @@ function renderProjectWorkspaceHtml(overrides: Parameters<typeof createWorkspace
   return renderProjectWorkspaceOverlay(createWorkspaceState(overrides));
 }
 
-test("laboratory workspace places project import controls above the source list and mirrors live import progress", () => {
+test("laboratory workspace keeps import progress in project management instead of the center surface", () => {
   const state = createWorkspaceState({
     activityFeed: [
       {
@@ -135,7 +156,6 @@ test("laboratory workspace places project import controls above the source list 
       routeLabel: null,
       metadata: {},
       drafts: {
-        fileNameHint: "",
         urlInput: "",
         youtubeUrl: "https://youtube.com/watch?v=abc123",
         youtubePreset: "custom",
@@ -158,24 +178,25 @@ test("laboratory workspace places project import controls above the source list 
   const centerHtml = renderWorkspaceSurface(state).main;
 
   assert.match(overlayHtml, /class="labx-project-import"/);
-  assert.match(overlayHtml, /data-lab-action="project-import-kind"/);
-  assert.match(overlayHtml, /data-lab-action="project-import-method"/);
-  assert.match(overlayHtml, /data-lab-field="project-import\.youtubeUrl"/);
-  assert.match(overlayHtml, /data-lab-action="project-import-add"/);
+  assert.match(overlayHtml, /data-lab-action="project-import-local-add"/);
+  assert.match(overlayHtml, /data-lab-action="project-import-check-url"/);
+  assert.match(overlayHtml, /data-lab-field="project-import\.urlInput"/);
+  assert.doesNotMatch(overlayHtml, /data-lab-action="project-import-kind"/);
+  assert.doesNotMatch(overlayHtml, /data-lab-action="project-import-method"/);
   assert.match(overlayHtml, /class="labx-import-review__progress"[\s\S]*?42%/);
   assert.doesNotMatch(overlayHtml, /data-lab-field="source\.kind"/);
   assert.doesNotMatch(overlayHtml, /data-lab-field="source\.mode"/);
   assert.doesNotMatch(centerHtml, /data-lab-field="source\.kind"/);
-  assert.match(centerHtml, /class="labx-source-bar__progress"[\s\S]*?42%/);
+  assert.doesNotMatch(centerHtml, /class="labx-source-bar/);
   assert.doesNotMatch(centerHtml, /class="labx-source-intake__progress"/);
-  assert.match(centerHtml, /Fetching media streams and writing into the project source folder\./);
+  assert.doesNotMatch(centerHtml, /Fetching media streams and writing into the project source folder\./);
   assert.doesNotMatch(
     overlayHtml + centerHtml,
     /yt-dlp downloads the media into the project source folder and keeps the resolved preset with the project draft\./
   );
 });
 
-test("laboratory workspace keeps audio import limited to local and direct url methods", () => {
+test("laboratory workspace exposes one local picker and one URL checker for every media type", () => {
   const html = renderProjectWorkspaceHtml({
     source: {
       kind: "audio",
@@ -186,7 +207,6 @@ test("laboratory workspace keeps audio import limited to local and direct url me
       routeLabel: null,
       metadata: {},
       drafts: {
-        fileNameHint: "clip.mp3",
         urlInput: "https://example.com/clip.mp3",
         youtubeUrl: "",
         youtubePreset: "medium",
@@ -195,18 +215,25 @@ test("laboratory workspace keeps audio import limited to local and direct url me
     },
   });
 
-  assert.match(html, /data-lab-value="audio"[\s\S]*aria-selected="true"/);
-  assert.match(html, /data-lab-action="project-import-method"[\s\S]*data-lab-value="local"/);
-  assert.match(html, /data-lab-action="project-import-method"[\s\S]*data-lab-value="url"[\s\S]*data-active="true"/);
-  assert.doesNotMatch(html, /data-lab-action="project-import-method"[\s\S]*data-lab-value="youtube"/);
+  assert.match(html, /Local Dosya Ekle/);
+  assert.match(html, /data-lab-action="project-import-local-add"/);
+  assert.match(html, /data-lab-action="project-import-check-url"/);
+  assert.doesNotMatch(html, /data-lab-action="project-import-method"/);
   assert.match(html, /data-lab-field="project-import\.urlInput"/);
-  assert.match(html, /data-lab-field="project-import\.fileNameHint"/);
-  assert.match(html, /data-lab-action="project-import-add"/);
+  assert.equal(html.includes("project-import." + "file" + "NameHint"), false);
 });
 
-test("laboratory workspace surfaces missing yt-dlp on the embedded youtube method card", () => {
+test("laboratory workspace surfaces missing yt-dlp after a checked YouTube URL", () => {
   const html = renderProjectWorkspaceHtml({
     toolState: { tools: {} },
+    urlCheckResult: {
+      url: "https://youtube.com/watch?v=abc123",
+      isYoutube: true,
+      kind: "video",
+      preview: { title: "Evidence clip", thumbnail: "https://img.youtube.com/vi/abc123/0.jpg" },
+      formats: [{ formatId: "18", label: "MP4 360p", kind: "muxed", extension: "mp4" }],
+      selectedVideoFormatId: "18",
+    },
     source: {
       kind: "video",
       mode: "youtube",
@@ -216,7 +243,6 @@ test("laboratory workspace surfaces missing yt-dlp on the embedded youtube metho
       routeLabel: null,
       metadata: {},
       drafts: {
-        fileNameHint: "",
         urlInput: "",
         youtubeUrl: "https://youtube.com/watch?v=abc123",
         youtubePreset: "medium",
@@ -225,23 +251,44 @@ test("laboratory workspace surfaces missing yt-dlp on the embedded youtube metho
     },
   });
 
-  assert.match(html, /data-lab-value="youtube"[\s\S]*disabled/);
-  assert.match(html, /Install yt-dlp to use YouTube imports/);
+  assert.match(html, /data-lab-action="project-import-url-add"[\s\S]*disabled/);
   assert.match(html, /title="yt-dlp is required\."/);
 });
 
-test("laboratory workspace keeps youtube custom controls inside the project import workspace", () => {
+test("laboratory workspace replaces YouTube presets with checked format selectors", () => {
   const html = renderProjectWorkspaceHtml({
     toolState: {
       tools: {
         "yt-dlp": { installed: true },
       },
     },
-    youtubeStrategy: "custom",
-    youtubeCustom: {
-      resolution: "720p",
-      format: "webm",
-      audioExtraction: true,
+    urlCheckResult: {
+      url: "https://youtube.com/watch?v=abc123",
+      isYoutube: true,
+      kind: "video",
+      preview: {
+        title: "Evidence clip",
+        duration: 154,
+        thumbnail: "https://img.youtube.com/vi/abc123/0.jpg",
+      },
+      formats: [
+        {
+          formatId: "137",
+          label: "Video 1080p",
+          kind: "video",
+          extension: "mp4",
+          resolution: "1920x1080",
+        },
+        {
+          formatId: "140",
+          label: "Audio m4a",
+          kind: "audio",
+          extension: "m4a",
+          bitrateKbps: 128,
+        },
+      ],
+      selectedVideoFormatId: "137",
+      selectedAudioFormatId: "140",
     },
     source: {
       kind: "video",
@@ -252,7 +299,6 @@ test("laboratory workspace keeps youtube custom controls inside the project impo
       routeLabel: null,
       metadata: {},
       drafts: {
-        fileNameHint: "",
         urlInput: "",
         youtubeUrl: "https://youtube.com/watch?v=abc123",
         youtubePreset: "custom",
@@ -272,16 +318,14 @@ test("laboratory workspace keeps youtube custom controls inside the project impo
     },
   });
 
-  assert.match(html, /class="labx-project-import__fields" data-method="youtube"/);
-  assert.match(html, /class="labx-strategy-list labx-project-import__strategies"/);
-  assert.match(html, /class="labx-advanced-settings labx-project-import__advanced"/);
-  assert.match(html, /data-lab-action="youtube-import-set-strategy"/);
-  assert.match(html, /data-lab-field="project-import\.youtubeUrl"/);
-  assert.match(html, /data-lab-field="youtube-import\.custom\.resolution"/);
-  assert.match(html, /value="720p" selected/);
-  assert.match(html, /data-lab-field="youtube-import\.custom\.format"/);
-  assert.match(html, /value="webm" selected/);
-  assert.match(html, /data-lab-field="youtube-import\.custom\.audioExtraction" checked/);
+  assert.match(html, /class="labx-project-import__youtube-result"/);
+  assert.match(html, /data-lab-field="project-import\.youtubeVideoFormat"/);
+  assert.match(html, /value="137" selected/);
+  assert.match(html, /data-lab-field="project-import\.youtubeAudioFormat"/);
+  assert.match(html, /value="140" selected/);
+  assert.match(html, /data-lab-action="project-import-url-add"/);
+  assert.doesNotMatch(html, /data-lab-action="youtube-import-set-strategy"/);
+  assert.doesNotMatch(html, /data-lab-field="youtube-import\.custom\.resolution"/);
   assert.doesNotMatch(html, /class="labx-source-intake__youtube-stack"/);
   assert.doesNotMatch(html, /data-lab-field="source\.youtubeCustom\.format"/);
   assert.doesNotMatch(
@@ -301,7 +345,6 @@ test("laboratory workspace removes the legacy local-copy helper copy from the in
       routeLabel: null,
       metadata: {},
       drafts: {
-        fileNameHint: "",
         urlInput: "",
         youtubeUrl: "",
         youtubePreset: "medium",
@@ -310,8 +353,8 @@ test("laboratory workspace removes the legacy local-copy helper copy from the in
     },
   });
 
-  assert.match(html, /Local File/);
-  assert.match(html, /data-lab-action="project-import-add"/);
+  assert.match(html, /Local Dosya Ekle/);
+  assert.match(html, /data-lab-action="project-import-local-add"/);
   assert.doesNotMatch(html, /Copy Local Source/);
   assert.doesNotMatch(
     html,
@@ -323,14 +366,20 @@ test("laboratory controller keeps project import draft and add wiring on the act
   const source = readFileSync("rooms/laboratory/runtime/lab-run-controller.ts", "utf8");
 
   assert.match(source, /function buildProjectImportDraftPatch/);
-  assert.match(source, /case "project-import\.fileNameHint":/);
+  assert.equal(source.includes("project-import." + "file" + "NameHint"), false);
   assert.match(source, /case "project-import\.urlInput":/);
-  assert.match(source, /case "project-import\.youtubeUrl":/);
+  assert.match(source, /case "project-import\.youtubeVideoFormat":/);
+  assert.match(source, /case "project-import\.youtubeAudioFormat":/);
   assert.match(source, /type: "project-import-draft-updated"/);
-  assert.match(source, /if \(field === "project-import\.youtubeUrl"\) \{/);
+  assert.match(source, /type: "youtube-import-format-selected"/);
   assert.match(source, /function runProjectImportAdd/);
-  assert.match(source, /buildProjectImportHostAction\(state\)/);
+  assert.match(source, /buildProjectImportHostAction\(deps\.store\.getState\(\)\)/);
+  assert.match(source, /buildProjectImportLocalHostAction/);
+  assert.match(source, /buildProjectImportUrlCheckAction/);
   assert.match(source, /sendMediaAction\(importAction\.action, \{ fields: importAction\.fields \}\)/);
+  assert.match(source, /case "project-import-local-add":/);
+  assert.match(source, /case "project-import-check-url":/);
+  assert.match(source, /case "project-import-url-add":/);
   assert.match(source, /case "project-import-add":/);
   assert.match(source, /case "project-import-clear":/);
   assert.match(source, /youtubeCustom: sourceDrafts\.youtubeCustom/);

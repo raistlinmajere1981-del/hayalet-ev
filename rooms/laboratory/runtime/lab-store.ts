@@ -29,6 +29,7 @@ import type {
   LabProjectImportKind,
   LabProjectImportMethod,
   LabProjectImportReviewFocus,
+  LabProjectImportUrlCheckState,
   LabProjectImportUiState,
   LabRun,
   LabSelection,
@@ -36,6 +37,7 @@ import type {
   LabStoreEvent,
   LabStoreState,
   LabYoutubeImportCustomSettings,
+  LabYoutubeImportFormat,
   LabYoutubeImportStrategy,
   LabUserActionEvent,
   LabUserReport,
@@ -53,10 +55,7 @@ import {
   normalizeAnalysisReference,
   normalizeAnalysisScope,
 } from "../shared/types/analysis-scope.js";
-import {
-  getActiveExecutionCandidate,
-  getExecutionDispatchCandidate,
-} from "./lab-selectors.js";
+import { getActiveExecutionCandidate, getExecutionDispatchCandidate } from "./lab-selectors.js";
 import {
   DEFAULT_AUDIO_FOCUS_SETTINGS,
   normalizeAudioFocusPatch,
@@ -79,7 +78,6 @@ import {
 
 function createDefaultSourceDrafts(): LabSourceDrafts {
   return {
-    fileNameHint: "",
     urlInput: "",
     youtubeUrl: "",
     youtubePreset: null,
@@ -90,7 +88,6 @@ function createDefaultSourceDrafts(): LabSourceDrafts {
 
 function cloneSourceDrafts(drafts: LabSourceDrafts): LabSourceDrafts {
   return {
-    fileNameHint: drafts.fileNameHint,
     urlInput: drafts.urlInput,
     youtubeUrl: drafts.youtubeUrl,
     youtubePreset: drafts.youtubePreset,
@@ -115,9 +112,20 @@ function createDefaultProjectImportState(): LabProjectImportUiState {
       audio: audioDrafts,
       image: imageDrafts,
     },
+    urlCheck: createIdleProjectImportUrlCheckState(),
     reviewFocus: "idle",
     lastAction: null,
     lastRequestId: null,
+  };
+}
+
+function createIdleProjectImportUrlCheckState(): LabProjectImportUrlCheckState {
+  return {
+    status: "idle",
+    url: null,
+    isYoutube: null,
+    kind: null,
+    error: null,
   };
 }
 
@@ -163,6 +171,9 @@ function createIdleYoutubeImportState(): LabStoreState["ui"]["youtubeImport"] {
     url: null,
     status: "idle",
     preview: null,
+    formats: [],
+    selectedVideoFormatId: null,
+    selectedAudioFormatId: null,
     strategy: "video_best",
     custom: createDefaultYoutubeImportCustomSettings(),
   };
@@ -193,7 +204,7 @@ function deriveCapabilitiesFromIntentIds(intentIds: unknown): CapabilityFamilyId
   return Array.from(capabilitySet);
 }
 
-  function createInitialState(): LabStoreState {
+function createInitialState(): LabStoreState {
   return {
     featureId: "media-analysis",
     selectedCapabilities: [],
@@ -504,6 +515,8 @@ function toEventFeedItem(
     message,
     detail: asNonEmptyString(record["detail"]),
     percent: clampPercent(record["percent"]),
+    bytesReceived: asNumber(record["bytesReceived"]),
+    bytesTotal: asNumber(record["bytesTotal"]),
     timestamp: toTimestamp(record["timestamp"]),
     source: source === "ui" || source === "system" ? source : "host",
     action: asNonEmptyString(record["action"]),
@@ -524,6 +537,7 @@ function toEventFeedItem(
     requestId: asNonEmptyString(record["requestId"]),
     jobId: asNonEmptyString(record["jobId"]),
     projectId: asNonEmptyString(record["projectId"]),
+    result: asLabRecord(record["result"]),
     throttleWindow: asNonEmptyString(record["throttleWindow"]),
     ...(resultAssetIds.length > 0 ? { resultAssetIds: Array.from(new Set(resultAssetIds)) } : {}),
   };
@@ -815,7 +829,6 @@ function syncDraftsFromSnapshot(state: LabStoreState, snapshot: Record<string, u
   if (state.ui.sourceDraftDirty !== true || state.ui.lastHydratedProjectId !== activeProjectId) {
     const captureMode = asNonEmptyString(sourceDrafts["youtubeCaptureMode"]);
     state.ui.sourceDrafts = {
-      fileNameHint: asNonEmptyString(sourceDrafts["fileNameHint"]) || "",
       urlInput: asNonEmptyString(sourceDrafts["urlInput"]) || "",
       youtubeUrl: asNonEmptyString(sourceDrafts["youtubeUrl"]) || "",
       youtubePreset: asNonEmptyString(sourceDrafts["youtubePreset"]),
@@ -1282,11 +1295,123 @@ function syncSourceProbeFromHostEvent(state: LabStoreState, event: LabEventFeedI
   }
 }
 
+function chooseDefaultYoutubeFormats(formats: LabYoutubeImportFormat[]) {
+  const videoFormats = formats.filter(
+    (format) => format.kind === "video" || format.kind === "muxed"
+  );
+  const audioFormats = formats.filter(
+    (format) => format.kind === "audio" || format.kind === "muxed"
+  );
+  const pickHighestBitrate = (entries: LabYoutubeImportFormat[]) =>
+    entries.slice().sort(function (left, right) {
+      const rightBitrate = right.bitrateKbps || 0;
+      const leftBitrate = left.bitrateKbps || 0;
+      return rightBitrate - leftBitrate;
+    })[0] || null;
+  return {
+    videoFormatId:
+      videoFormats.find((format) => format.kind === "video")?.formatId ||
+      pickHighestBitrate(videoFormats)?.formatId ||
+      null,
+    audioFormatId:
+      audioFormats.find((format) => format.kind === "audio")?.formatId ||
+      (videoFormats.some((format) => format.kind === "video")
+        ? pickHighestBitrate(audioFormats)?.formatId || null
+        : null),
+  };
+}
+
+function syncProjectImportUrlCheckFromHostEvent(state: LabStoreState, event: LabEventFeedItem) {
+  if (event.action !== "project-import-check-url") {
+    return;
+  }
+  if (event.stage === "failed" || event.stage === "cancelled") {
+    state.ui.projectImport = {
+      ...state.ui.projectImport,
+      urlCheck: {
+        status: "error",
+        url: state.ui.projectImport.urlCheck.url,
+        isYoutube: null,
+        kind: null,
+        error: event.detail || event.message || "URL check failed.",
+      },
+      reviewFocus: "draft",
+    };
+    state.ui.youtubeImport = {
+      ...state.ui.youtubeImport,
+      status: "error",
+      preview: null,
+      formats: [],
+      selectedVideoFormatId: null,
+      selectedAudioFormatId: null,
+    };
+    return;
+  }
+  if (event.stage !== "completed") {
+    return;
+  }
+
+  const result = asLabRecord(event.result);
+  const url = asNonEmptyString(result["url"]) || state.ui.projectImport.urlCheck.url;
+  const kind = normalizeProjectImportUrlCheckKind(result["kind"]) || "video";
+  const isYoutube = result["isYoutube"] === true;
+  const method: LabProjectImportMethod = isYoutube ? "youtube" : "url";
+  const currentDraft = state.ui.projectImport.drafts[kind];
+  const nextDraft = normalizeSourceDraftPatch(
+    {
+      urlInput: url || currentDraft.urlInput,
+      youtubeUrl: isYoutube ? url || currentDraft.youtubeUrl : currentDraft.youtubeUrl,
+    },
+    currentDraft
+  );
+
+  state.ui.projectImport = {
+    ...state.ui.projectImport,
+    activeKind: kind,
+    methods: {
+      ...state.ui.projectImport.methods,
+      [kind]: method,
+    },
+    drafts: {
+      ...state.ui.projectImport.drafts,
+      [kind]: nextDraft,
+    },
+    urlCheck: {
+      status: "ready",
+      url,
+      isYoutube,
+      kind,
+      error: null,
+    },
+    reviewFocus: "draft",
+  };
+  state.ui.sourceDrafts = cloneSourceDrafts(nextDraft);
+  state.ui.sourceDraftDirty = true;
+
+  if (isYoutube) {
+    const formats = normalizeYoutubeImportFormats(result["formats"]);
+    const selectedDefaults = chooseDefaultYoutubeFormats(formats);
+    state.ui.youtubeImport = {
+      ...state.ui.youtubeImport,
+      url,
+      status: "ready",
+      preview: normalizeYoutubeImportPreview(result["preview"]),
+      formats,
+      selectedVideoFormatId:
+        normalizeYoutubeFormatSelection(result["selectedVideoFormatId"], formats) ||
+        selectedDefaults.videoFormatId,
+      selectedAudioFormatId:
+        normalizeYoutubeFormatSelection(result["selectedAudioFormatId"], formats) ||
+        selectedDefaults.audioFormatId,
+    };
+    return;
+  }
+
+  state.ui.youtubeImport = createIdleYoutubeImportState();
+}
+
 function syncPreviewFromHostEvent(state: LabStoreState, event: LabEventFeedItem) {
-  if (
-    event.action !== "edit-preview" &&
-    event.action !== "edit-apply"
-  ) {
+  if (event.action !== "edit-preview" && event.action !== "edit-apply") {
     return;
   }
   if (!state.editConfig) {
@@ -1367,6 +1492,7 @@ function syncRunStateFromHostEvent(state: LabStoreState, event: LabEventFeedItem
 }
 
 function syncCanonicalStateFromHostEvent(state: LabStoreState, event: LabEventFeedItem) {
+  syncProjectImportUrlCheckFromHostEvent(state, event);
   syncSourceProbeFromHostEvent(state, event);
   syncPreviewFromHostEvent(state, event);
   syncPreflightFromHostEvent(state, event);
@@ -1794,6 +1920,91 @@ function normalizeYoutubeImportCustomSettings(
   };
 }
 
+function normalizeYoutubeImportFormat(value: unknown): LabYoutubeImportFormat | null {
+  const record = asLabRecord(value);
+  const formatId = asNonEmptyString(record["formatId"]) || asNonEmptyString(record["format_id"]);
+  if (formatId === null) {
+    return null;
+  }
+  const kind = asNonEmptyString(record["kind"]);
+  const fps = asNumber(record["fps"]);
+  const bitrateKbps = asNumber(record["bitrateKbps"] ?? record["tbr"]);
+  const filesizeBytes = asNumber(record["filesizeBytes"] ?? record["filesize"]);
+  const filesizeApproxBytes = asNumber(record["filesizeApproxBytes"] ?? record["filesize_approx"]);
+  return {
+    formatId,
+    label: asNonEmptyString(record["label"]) || formatId,
+    kind: kind === "video" || kind === "audio" || kind === "muxed" ? kind : "unknown",
+    extension: asNonEmptyString(record["extension"] ?? record["ext"]),
+    resolution: asNonEmptyString(record["resolution"]),
+    fps: fps !== null ? fps : null,
+    videoCodec: asNonEmptyString(record["videoCodec"] ?? record["vcodec"]),
+    audioCodec: asNonEmptyString(record["audioCodec"] ?? record["acodec"]),
+    bitrateKbps: bitrateKbps !== null ? bitrateKbps : null,
+    filesizeBytes: filesizeBytes !== null ? filesizeBytes : null,
+    filesizeApproxBytes: filesizeApproxBytes !== null ? filesizeApproxBytes : null,
+    note: asNonEmptyString(record["note"] ?? record["format_note"]),
+  };
+}
+
+function normalizeYoutubeImportFormats(value: unknown): LabYoutubeImportFormat[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const seen = new Set<string>();
+  return value
+    .map(normalizeYoutubeImportFormat)
+    .filter((format): format is LabYoutubeImportFormat => {
+      if (format === null || seen.has(format.formatId)) {
+        return false;
+      }
+      seen.add(format.formatId);
+      return true;
+    });
+}
+
+function normalizeYoutubeFormatSelection(
+  value: unknown,
+  formats: LabYoutubeImportFormat[]
+): string | null {
+  const selected = asNonEmptyString(value);
+  if (selected === null) {
+    return null;
+  }
+  return formats.some((format) => format.formatId === selected) ? selected : null;
+}
+
+function normalizeYoutubeImportPreview(
+  value: unknown
+): LabStoreState["ui"]["youtubeImport"]["preview"] {
+  const record = asLabRecord(value);
+  const title = asNonEmptyString(record["title"]);
+  const thumbnail = asNonEmptyString(record["thumbnail"]);
+  const duration = asNumber(record["duration"]);
+  const uploader = asNonEmptyString(record["uploader"]);
+  const webpageUrl = asNonEmptyString(record["webpageUrl"] ?? record["webpage_url"]);
+  if (
+    title === null &&
+    thumbnail === null &&
+    duration === null &&
+    uploader === null &&
+    webpageUrl === null
+  ) {
+    return null;
+  }
+  return {
+    ...(title !== null ? { title } : {}),
+    ...(duration !== null ? { duration } : {}),
+    ...(thumbnail !== null ? { thumbnail } : {}),
+    ...(uploader !== null ? { uploader } : {}),
+    ...(webpageUrl !== null ? { webpageUrl } : {}),
+  };
+}
+
+function normalizeProjectImportUrlCheckKind(value: unknown): LabProjectImportKind | null {
+  return value === "video" || value === "audio" || value === "image" ? value : null;
+}
+
 function normalizeProjectImportKind(value: unknown, fallback: LabProjectImportKind = "video") {
   return value === "audio" || value === "image" || value === "video" ? value : fallback;
 }
@@ -1847,7 +2058,6 @@ function syncSourceDraftsFromProjectImport(state: LabStoreState) {
 
 function isPristineSourceDraft(draft: LabSourceDrafts) {
   return (
-    draft.fileNameHint === "" &&
     draft.urlInput === "" &&
     draft.youtubeUrl === "" &&
     draft.youtubePreset === null &&
@@ -1914,10 +2124,23 @@ function normalizeProjectImportState(
     );
   });
   const reviewFocus = record["reviewFocus"];
+  const urlCheckRecord = asLabRecord(record["urlCheck"]);
+  const urlCheckStatus = asNonEmptyString(urlCheckRecord["status"]);
   return {
     activeKind,
     methods: nextMethods,
     drafts: nextDrafts,
+    urlCheck: {
+      status:
+        urlCheckStatus === "checking" || urlCheckStatus === "ready" || urlCheckStatus === "error"
+          ? urlCheckStatus
+          : "idle",
+      url: asNonEmptyString(urlCheckRecord["url"]),
+      isYoutube:
+        typeof urlCheckRecord["isYoutube"] === "boolean" ? urlCheckRecord["isYoutube"] : null,
+      kind: normalizeProjectImportUrlCheckKind(urlCheckRecord["kind"]),
+      error: asNonEmptyString(urlCheckRecord["error"]),
+    },
     reviewFocus:
       reviewFocus === "draft" || reviewFocus === "running" || reviewFocus === "completed"
         ? reviewFocus
@@ -1943,6 +2166,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         url: nextUrl,
         status: sameUrl ? state.ui.youtubeImport.status : "idle",
         preview: sameUrl ? state.ui.youtubeImport.preview : null,
+        formats: sameUrl ? state.ui.youtubeImport.formats : [],
+        selectedVideoFormatId: sameUrl ? state.ui.youtubeImport.selectedVideoFormatId : null,
+        selectedAudioFormatId: sameUrl ? state.ui.youtubeImport.selectedAudioFormatId : null,
       };
       return state;
     }
@@ -1951,6 +2177,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         ...state.ui.youtubeImport,
         status: "parsing",
         preview: null,
+        formats: [],
+        selectedVideoFormatId: null,
+        selectedAudioFormatId: null,
       };
       return state;
     case "youtube-import-parse-success": {
@@ -1958,10 +2187,26 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       if (eventUrl !== null && eventUrl !== state.ui.youtubeImport.url) {
         return state;
       }
+      const formats = normalizeYoutubeImportFormats(event.formats);
       state.ui.youtubeImport = {
         ...state.ui.youtubeImport,
         status: "ready",
         preview: { ...event.preview },
+        formats,
+        selectedVideoFormatId:
+          event.selectedVideoFormatId !== undefined
+            ? normalizeYoutubeFormatSelection(event.selectedVideoFormatId, formats)
+            : normalizeYoutubeFormatSelection(
+                state.ui.youtubeImport.selectedVideoFormatId,
+                formats
+              ),
+        selectedAudioFormatId:
+          event.selectedAudioFormatId !== undefined
+            ? normalizeYoutubeFormatSelection(event.selectedAudioFormatId, formats)
+            : normalizeYoutubeFormatSelection(
+                state.ui.youtubeImport.selectedAudioFormatId,
+                formats
+              ),
       };
       return state;
     }
@@ -1970,12 +2215,28 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         ...state.ui.youtubeImport,
         status: "error",
         preview: null,
+        formats: [],
+        selectedVideoFormatId: null,
+        selectedAudioFormatId: null,
       };
       return state;
     case "youtube-import-set-strategy":
       state.ui.youtubeImport = {
         ...state.ui.youtubeImport,
         strategy: normalizeYoutubeImportStrategy(event.strategy),
+      };
+      return state;
+    case "youtube-import-format-selected":
+      state.ui.youtubeImport = {
+        ...state.ui.youtubeImport,
+        selectedVideoFormatId:
+          event.videoFormatId !== undefined
+            ? normalizeYoutubeFormatSelection(event.videoFormatId, state.ui.youtubeImport.formats)
+            : state.ui.youtubeImport.selectedVideoFormatId,
+        selectedAudioFormatId:
+          event.audioFormatId !== undefined
+            ? normalizeYoutubeFormatSelection(event.audioFormatId, state.ui.youtubeImport.formats)
+            : state.ui.youtubeImport.selectedAudioFormatId,
       };
       return state;
     case "youtube-import-custom-updated":
@@ -2033,8 +2294,15 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
           ...state.ui.projectImport.drafts,
           [kind]: nextDraft,
         },
+        urlCheck:
+          event.patch.urlInput !== undefined || event.patch.youtubeUrl !== undefined
+            ? createIdleProjectImportUrlCheckState()
+            : state.ui.projectImport.urlCheck,
         reviewFocus: "draft",
       };
+      if (event.patch.urlInput !== undefined || event.patch.youtubeUrl !== undefined) {
+        state.ui.youtubeImport = createIdleYoutubeImportState();
+      }
       if (kind === state.ui.projectImport.activeKind) {
         state.ui.sourceDrafts = cloneSourceDrafts(nextDraft);
       }
@@ -2052,6 +2320,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       state.ui.projectImport = {
         ...state.ui.projectImport,
         drafts: nextDrafts,
+        urlCheck: createIdleProjectImportUrlCheckState(),
         reviewFocus: "idle",
         lastAction: null,
         lastRequestId: null,
@@ -2062,12 +2331,66 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       state.ui.sourceDraftDirty = true;
       return state;
     }
+    case "project-import-url-check-started":
+      state.ui.projectImport = {
+        ...state.ui.projectImport,
+        urlCheck: {
+          status: "checking",
+          url: event.url.trim(),
+          isYoutube: null,
+          kind: null,
+          error: null,
+        },
+        reviewFocus: "draft",
+      };
+      state.ui.youtubeImport = {
+        ...state.ui.youtubeImport,
+        url: event.url.trim(),
+        status: "parsing",
+        preview: null,
+        formats: [],
+        selectedVideoFormatId: null,
+        selectedAudioFormatId: null,
+      };
+      return state;
+    case "project-import-url-check-cleared":
+      state.ui.projectImport = {
+        ...state.ui.projectImport,
+        urlCheck: createIdleProjectImportUrlCheckState(),
+        lastAction: null,
+        lastRequestId: null,
+      };
+      state.ui.youtubeImport = createIdleYoutubeImportState();
+      return state;
+    case "project-import-url-check-failed":
+      state.ui.projectImport = {
+        ...state.ui.projectImport,
+        urlCheck: {
+          status: "error",
+          url: normalizeYoutubeImportUrl(event.url ?? null),
+          isYoutube: null,
+          kind: null,
+          error: event.error || "URL check failed.",
+        },
+        reviewFocus: "draft",
+      };
+      state.ui.youtubeImport = {
+        ...state.ui.youtubeImport,
+        status: "error",
+        preview: null,
+        formats: [],
+        selectedVideoFormatId: null,
+        selectedAudioFormatId: null,
+      };
+      return state;
     case "project-import-review-focused":
       state.ui.projectImport = {
         ...state.ui.projectImport,
         reviewFocus: event.focus,
         lastAction:
-          event.action === undefined ? state.ui.projectImport.lastAction : asNonEmptyString(event.action),
+          event.action === undefined
+            ? state.ui.projectImport.lastAction
+            : asNonEmptyString(event.action),
         lastRequestId:
           event.requestId === undefined
             ? state.ui.projectImport.lastRequestId
@@ -2083,11 +2406,10 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         clearSuggestionPreview(state);
         resetInspectionMode(state);
         clearInspectionDepth(state);
-        const { youtubeImport: _youtubeImport, ...persistedPayload } = event.payload as Partial<
-          LabPersistedState
-        > & {
-          youtubeImport?: unknown;
-        };
+        const { youtubeImport: _youtubeImport, ...persistedPayload } =
+          event.payload as Partial<LabPersistedState> & {
+            youtubeImport?: unknown;
+          };
         state.persisted = persistedPayload as LabPersistedState;
         state.featureId = normalizeLabFeatureId(event.payload.featureId, state.featureId);
         state.selectedCapabilities = Array.isArray(event.payload.selectedCapabilities)

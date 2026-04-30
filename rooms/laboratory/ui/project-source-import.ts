@@ -1,43 +1,21 @@
-import { asLabRecord, escapeHtml } from "../models/lab-types.js";
+import { escapeHtml, formatBytes } from "../models/lab-types.js";
 import type {
   LabProjectImportKind,
-  LabProjectImportMethod,
   LabStoreState,
-  LabYoutubeImportCustomFormat,
-  LabYoutubeImportCustomResolution,
-  LabYoutubeImportStrategy,
+  LabYoutubeImportFormat,
 } from "../models/lab-types.js";
 import {
-  LAB_PROJECT_IMPORT_KINDS,
   buildProjectImportHostAction,
-  getProjectImportMethodOptions,
+  buildProjectImportLocalHostAction,
+  buildProjectImportUrlCheckAction,
   getProjectImportRoute,
+  getProjectImportUrlInput,
 } from "../runtime/lab-project-import.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
-const YOUTUBE_IMPORT_STRATEGIES: LabYoutubeImportStrategy[] = [
-  "video_best",
-  "audio_only",
-  "low_size",
-  "custom",
-];
-
-const YOUTUBE_IMPORT_CUSTOM_RESOLUTIONS: LabYoutubeImportCustomResolution[] = [
-  "best",
-  "1080p",
-  "720p",
-  "480p",
-];
-
-const YOUTUBE_IMPORT_CUSTOM_FORMATS: LabYoutubeImportCustomFormat[] = ["mp4", "webm", "mkv"];
-
-function selectedAttr(current: string, value: string) {
+function selectedAttr(current: string | null, value: string) {
   return current === value ? " selected" : "";
-}
-
-function checkedAttr(value: boolean) {
-  return value ? " checked" : "";
 }
 
 function getKindLabel(kind: LabProjectImportKind, copy: LabI18n) {
@@ -52,7 +30,7 @@ function getKindLabel(kind: LabProjectImportKind, copy: LabI18n) {
   }
 }
 
-function getMethodLabel(method: LabProjectImportMethod, copy: LabI18n) {
+function getMethodLabel(method: string, copy: LabI18n) {
   switch (method) {
     case "youtube":
       return copy.t("mediaAnalysis.projectImport.methods.youtube.label", "YouTube");
@@ -64,299 +42,213 @@ function getMethodLabel(method: LabProjectImportMethod, copy: LabI18n) {
   }
 }
 
-function getMethodDescription(method: LabProjectImportMethod, copy: LabI18n) {
-  switch (method) {
-    case "youtube":
-      return copy.t(
-        "mediaAnalysis.projectImport.methods.youtube.description",
-        "Preview and extract with strategy controls"
-      );
-    case "url":
-      return copy.t(
-        "mediaAnalysis.projectImport.methods.url.description",
-        "Download from a remote media URL"
-      );
-    case "local":
-    default:
-      return copy.t(
-        "mediaAnalysis.projectImport.methods.local.description",
-        "Copy a file into the active project"
-      );
+function formatDuration(totalSeconds: unknown) {
+  const seconds =
+    typeof totalSeconds === "number" && Number.isFinite(totalSeconds) ? totalSeconds : 0;
+  if (seconds <= 0) {
+    return null;
   }
+  const rounded = Math.round(seconds);
+  const hours = Math.floor(rounded / 3600);
+  const minutes = Math.floor((rounded % 3600) / 60);
+  const remainder = rounded % 60;
+  if (hours > 0) {
+    return `${String(hours)}:${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
+  }
+  return `${String(minutes)}:${String(remainder).padStart(2, "0")}`;
 }
 
-function getToolInstalled(state: LabStoreState, toolId: string) {
-  const toolState = asLabRecord(state.toolState);
-  const tools = asLabRecord(toolState["tools"]);
-  return asLabRecord(tools[toolId])["installed"] === true;
+function formatBitrate(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? `${Math.round(value)} kbps`
+    : null;
 }
 
-function getMethodDisabledReason(
-  state: LabStoreState,
-  kind: LabProjectImportKind,
-  method: LabProjectImportMethod,
-  copy: LabI18n
+function getFormatSize(format: LabYoutubeImportFormat) {
+  return format.filesizeBytes || format.filesizeApproxBytes || null;
+}
+
+function getFormatTechnicalLabel(format: LabYoutubeImportFormat) {
+  const parts = [
+    format.formatId,
+    format.extension ? format.extension.toUpperCase() : null,
+    format.resolution,
+    typeof format.fps === "number" && format.fps > 0 ? `${Math.round(format.fps)} fps` : null,
+    format.videoCodec && format.videoCodec !== "none" ? `V:${format.videoCodec}` : null,
+    format.audioCodec && format.audioCodec !== "none" ? `A:${format.audioCodec}` : null,
+    formatBitrate(format.bitrateKbps),
+    getFormatSize(format) !== null ? formatBytes(getFormatSize(format) || 0) : null,
+    format.note,
+  ].filter((entry): entry is string => typeof entry === "string" && entry.trim() !== "");
+  return parts.join(" · ");
+}
+
+function getYoutubeVideoFormats(formats: LabYoutubeImportFormat[]) {
+  return formats.filter((format) => format.kind === "video" || format.kind === "muxed");
+}
+
+function getYoutubeAudioFormats(formats: LabYoutubeImportFormat[]) {
+  return formats.filter((format) => format.kind === "audio" || format.kind === "muxed");
+}
+
+function renderYoutubeFormatSelect(
+  label: string,
+  field: string,
+  selectedFormatId: string | null,
+  formats: LabYoutubeImportFormat[],
+  emptyLabel: string
 ) {
-  if (method === "youtube" && kind !== "video") {
-    return copy.t("mediaAnalysis.projectImport.methods.youtube.videoOnly", "Only video imports can use YouTube");
-  }
-  if (method === "youtube" && getToolInstalled(state, "yt-dlp") !== true) {
-    return copy.t(
-      "mediaAnalysis.projectImport.methods.youtube.missingTool",
-      "Install yt-dlp to use YouTube imports"
-    );
-  }
-  return null;
-}
-
-function getYoutubeStrategyView(strategy: LabYoutubeImportStrategy, copy: LabI18n) {
-  switch (strategy) {
-    case "audio_only":
-      return {
-        label: copy.t("mediaAnalysis.source.youtubeImport.strategies.audioOnly.label", "Audio Only"),
-        description: copy.t(
-          "mediaAnalysis.source.youtubeImport.strategies.audioOnly.description",
-          "Extract audio track only"
-        ),
-        estimatedSize: copy.t(
-          "mediaAnalysis.source.youtubeImport.strategies.audioOnly.size",
-          "~2 MB"
-        ),
-        formatLabel: copy.t(
-          "mediaAnalysis.source.youtubeImport.strategies.audioOnly.format",
-          "MP3 / AAC"
-        ),
-      };
-    case "low_size":
-      return {
-        label: copy.t("mediaAnalysis.source.youtubeImport.strategies.lowSize.label", "Small Size"),
-        description: copy.t(
-          "mediaAnalysis.source.youtubeImport.strategies.lowSize.description",
-          "Compressed for quick use"
-        ),
-        estimatedSize: copy.t("mediaAnalysis.source.youtubeImport.strategies.lowSize.size", "~5 MB"),
-        formatLabel: copy.t(
-          "mediaAnalysis.source.youtubeImport.strategies.lowSize.format",
-          "MP4 compressed"
-        ),
-      };
-    case "custom":
-      return {
-        label: copy.t("mediaAnalysis.source.youtubeImport.strategies.custom.label", "Advanced"),
-        description: copy.t(
-          "mediaAnalysis.source.youtubeImport.strategies.custom.description",
-          "Manual control over formats"
-        ),
-        estimatedSize: copy.t("mediaAnalysis.source.youtubeImport.strategies.custom.size", "Manual"),
-        formatLabel: copy.t("mediaAnalysis.source.youtubeImport.strategies.custom.format", "Manual"),
-      };
-    case "video_best":
-    default:
-      return {
-        label: copy.t(
-          "mediaAnalysis.source.youtubeImport.strategies.videoBest.label",
-          "Best Quality"
-        ),
-        description: copy.t(
-          "mediaAnalysis.source.youtubeImport.strategies.videoBest.description",
-          "Maximum resolution and bitrate"
-        ),
-        estimatedSize: copy.t(
-          "mediaAnalysis.source.youtubeImport.strategies.videoBest.size",
-          "~14 MB"
-        ),
-        formatLabel: copy.t(
-          "mediaAnalysis.source.youtubeImport.strategies.videoBest.format",
-          "Best available"
-        ),
-      };
-  }
-}
-
-function renderKindTabs(state: LabStoreState, copy: LabI18n) {
-  const activeKind = state.ui.projectImport.activeKind;
   return `
-    <div class="labx-project-import__tabs" role="tablist" aria-label="${escapeHtml(copy.t("mediaAnalysis.projectImport.tabsLabel", "Media type"))}">
-      ${LAB_PROJECT_IMPORT_KINDS.map(function (kind) {
-        const active = kind === activeKind;
-        return `
-          <button
-            class="labx-project-import__tab"
-            type="button"
-            role="tab"
-            data-lab-action="project-import-kind"
-            data-lab-value="${escapeHtml(kind)}"
-            aria-selected="${active ? "true" : "false"}"
-            data-active="${active ? "true" : "false"}"
-          >
-            ${escapeHtml(getKindLabel(kind, copy))}
-          </button>
-        `;
-      }).join("")}
-    </div>
+    <label class="labx-field labx-project-import__format-select">
+      <span>${escapeHtml(label)}</span>
+      <select data-lab-field="${escapeHtml(field)}">
+        <option value="">${escapeHtml(emptyLabel)}</option>
+        ${formats
+          .map(function (format) {
+            const technical = getFormatTechnicalLabel(format);
+            return `<option value="${escapeHtml(format.formatId)}"${selectedAttr(selectedFormatId, format.formatId)}>${escapeHtml(format.label || technical || format.formatId)}${technical !== "" ? ` — ${escapeHtml(technical)}` : ""}</option>`;
+          })
+          .join("")}
+      </select>
+    </label>
   `;
 }
 
-function renderMethodCards(state: LabStoreState, copy: LabI18n) {
-  const route = getProjectImportRoute(state);
-  const methods = getProjectImportMethodOptions(state, route.kind);
-  return `
-    <div class="labx-project-import__methods" aria-label="${escapeHtml(copy.t("mediaAnalysis.projectImport.methodsLabel", "Import method"))}">
-      ${methods
-        .map(function (method) {
-          const active = method === route.method;
-          const disabledReason = getMethodDisabledReason(state, route.kind, method, copy);
-          const disabled = disabledReason !== null;
-          return `
-            <button
-              class="labx-project-import__method"
-              type="button"
-              data-lab-action="project-import-method"
-              data-lab-value="${escapeHtml(method)}"
-              data-active="${active ? "true" : "false"}"
-              ${disabled ? `disabled title="${escapeHtml(disabledReason || "")}"` : ""}
-            >
-              <span>${escapeHtml(getMethodLabel(method, copy))}</span>
-              <small>${escapeHtml(getMethodDescription(method, copy))}</small>
-              ${disabledReason !== null ? `<small class="labx-project-import__method-warning">${escapeHtml(disabledReason)}</small>` : ""}
-            </button>
-          `;
-        })
-        .join("")}
-    </div>
-  `;
-}
-
-function renderYoutubeStrategyCards(activeStrategy: LabYoutubeImportStrategy, copy: LabI18n) {
-  return `
-    <div class="labx-strategy-list labx-project-import__strategies" aria-label="${escapeHtml(copy.t("mediaAnalysis.source.youtubeImport.strategyListLabel", "Extraction strategy"))}">
-      ${YOUTUBE_IMPORT_STRATEGIES.map(function (strategy) {
-        const view = getYoutubeStrategyView(strategy, copy);
-        const active = strategy === activeStrategy;
-        return `
-          <button
-            class="strategy-card labx-strategy-card${active ? " active" : ""}"
-            type="button"
-            data-lab-action="youtube-import-set-strategy"
-            data-lab-value="${escapeHtml(strategy)}"
-            aria-pressed="${active ? "true" : "false"}"
-          >
-            <span class="labx-strategy-card__main">
-              <span class="labx-strategy-card__label">${escapeHtml(view.label)}</span>
-              <span class="labx-strategy-card__description">${escapeHtml(view.description)}</span>
-            </span>
-            <span class="labx-strategy-card__size">${escapeHtml(view.estimatedSize)}</span>
-          </button>
-        `;
-      }).join("")}
-    </div>
-  `;
-}
-
-function renderYoutubeAdvancedSettings(state: LabStoreState, copy: LabI18n) {
-  if (state.ui.youtubeImport.strategy !== "custom") {
-    return "";
-  }
-  const custom = state.ui.youtubeImport.custom;
-  return `
-    <div class="labx-advanced-settings labx-project-import__advanced">
-      <label class="labx-import-control">
-        <span>${escapeHtml(copy.t("mediaAnalysis.source.youtubeImport.advancedResolution", "Resolution"))}</span>
-        <select data-lab-field="youtube-import.custom.resolution">
-          ${YOUTUBE_IMPORT_CUSTOM_RESOLUTIONS.map(function (resolution) {
-            const label = copy.t(
-              `mediaAnalysis.source.youtubeImport.resolutions.${resolution}`,
-              resolution === "best" ? "Best available" : resolution
-            );
-            return `<option value="${escapeHtml(resolution)}"${selectedAttr(custom.resolution, resolution)}>${escapeHtml(label)}</option>`;
-          }).join("")}
-        </select>
-      </label>
-      <label class="labx-import-control">
-        <span>${escapeHtml(copy.t("mediaAnalysis.source.youtubeImport.advancedFormat", "Format"))}</span>
-        <select data-lab-field="youtube-import.custom.format">
-          ${YOUTUBE_IMPORT_CUSTOM_FORMATS.map(function (format) {
-            return `<option value="${escapeHtml(format)}"${selectedAttr(custom.format, format)}>${escapeHtml(format.toUpperCase())}</option>`;
-          }).join("")}
-        </select>
-      </label>
-      <label class="labx-import-check">
-        <input type="checkbox" data-lab-field="youtube-import.custom.audioExtraction"${checkedAttr(custom.audioExtraction)} />
-        <span>${escapeHtml(copy.t("mediaAnalysis.source.youtubeImport.advancedAudioExtraction", "Extract audio only"))}</span>
-      </label>
-    </div>
-  `;
-}
-
-function renderYoutubeStatus(state: LabStoreState, copy: LabI18n) {
-  if (state.ui.youtubeImport.status === "parsing") {
+function renderYoutubeCheckResult(state: LabStoreState, copy: LabI18n) {
+  const youtube = state.ui.youtubeImport;
+  if (youtube.status === "parsing" || state.ui.projectImport.urlCheck.status === "checking") {
     return `<p class="labx-project-import__status" role="status">${escapeHtml(copy.t("mediaAnalysis.source.youtubeImport.statusParsing", "Analyzing video metadata..."))}</p>`;
   }
-  if (state.ui.youtubeImport.status === "error") {
-    return `<p class="labx-project-import__status" data-tone="error" role="alert">${escapeHtml(copy.t("mediaAnalysis.source.youtubeImport.statusError", "Invalid YouTube URL or network error"))}</p>`;
+  if (youtube.status === "error" || state.ui.projectImport.urlCheck.status === "error") {
+    const error =
+      state.ui.projectImport.urlCheck.error ||
+      copy.t("mediaAnalysis.source.youtubeImport.statusError", "Invalid YouTube URL or network error");
+    return `<p class="labx-project-import__status" data-tone="error" role="alert">${escapeHtml(error)}</p>`;
   }
-  if (state.ui.youtubeImport.status === "ready") {
-    const view = getYoutubeStrategyView(state.ui.youtubeImport.strategy, copy);
-    return `<p class="labx-project-import__status">${escapeHtml(copy.t("mediaAnalysis.source.youtubeImport.readyEstimatedSize", "Estimated size: {size}", { size: view.estimatedSize }))}</p>`;
+  if (
+    state.ui.projectImport.urlCheck.status !== "ready" ||
+    state.ui.projectImport.urlCheck.isYoutube !== true
+  ) {
+    return "";
   }
-  return "";
-}
 
-function renderRouteFields(state: LabStoreState, copy: LabI18n) {
-  const route = getProjectImportRoute(state);
-  const draft = route.draft;
-  if (route.method === "url") {
-    return `
-      <div class="labx-project-import__fields" data-method="url">
-        <label class="labx-field">
-          <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.urlInput", "Source URL"))}</span>
-          <input class="labx-input" data-lab-field="project-import.urlInput" value="${escapeHtml(draft.urlInput)}" placeholder="https://..." />
-        </label>
-        <label class="labx-field">
-          <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.fileNameHint", "Stored File Name"))}</span>
-          <input class="labx-input" data-lab-field="project-import.fileNameHint" value="${escapeHtml(draft.fileNameHint)}" placeholder="${escapeHtml(route.kind === "audio" ? "audio-source.mp3" : route.kind === "image" ? "image-source.png" : "video-source.mp4")}" />
-        </label>
-      </div>
-    `;
-  }
-  if (route.method === "youtube") {
-    const youtubeUrl = state.ui.youtubeImport.url || draft.youtubeUrl;
-    return `
-      <div class="labx-project-import__fields" data-method="youtube">
-        <label class="labx-field labx-project-import__field-wide">
-          <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.youtubeUrl", "YouTube URL"))}</span>
-          <input class="labx-input" data-lab-field="project-import.youtubeUrl" value="${escapeHtml(youtubeUrl || "")}" placeholder="https://youtube.com/watch?v=..." />
-        </label>
-        <label class="labx-field">
-          <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.fileNameHint", "Stored File Name"))}</span>
-          <input class="labx-input" data-lab-field="project-import.fileNameHint" value="${escapeHtml(draft.fileNameHint)}" placeholder="youtube-source.mp4" />
-        </label>
-        ${renderYoutubeStatus(state, copy)}
-        ${renderYoutubeStrategyCards(state.ui.youtubeImport.strategy, copy)}
-        ${renderYoutubeAdvancedSettings(state, copy)}
-      </div>
-    `;
-  }
+  const preview = youtube.preview;
+  const title =
+    preview?.title ||
+    copy.t("mediaAnalysis.source.youtubeImport.previewFallbackTitle", "YouTube video");
+  const videoFormats = getYoutubeVideoFormats(youtube.formats);
+  const audioFormats = getYoutubeAudioFormats(youtube.formats);
   return `
-    <div class="labx-project-import__fields" data-method="local">
-      <label class="labx-field">
-        <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.fileNameHint", "Stored File Name"))}</span>
-        <input class="labx-input" data-lab-field="project-import.fileNameHint" value="${escapeHtml(draft.fileNameHint)}" placeholder="${escapeHtml(route.kind === "audio" ? "audio-source.mp3" : route.kind === "image" ? "image-source.png" : "video-source.mp4")}" />
-      </label>
-      <p class="labx-project-import__hint">${escapeHtml(copy.t("mediaAnalysis.projectImport.localHint", "The file picker opens when you press Add."))}</p>
+    <div class="labx-project-import__youtube-result">
+      <div class="labx-project-import__youtube-preview">
+        ${
+          preview?.thumbnail
+            ? `<img src="${escapeHtml(preview.thumbnail)}" alt="${escapeHtml(title)}" />`
+            : `<div class="labx-project-import__thumb-placeholder">YouTube</div>`
+        }
+        <div>
+          <strong>${escapeHtml(title)}</strong>
+          <span>${escapeHtml(
+            [
+              preview?.uploader || null,
+              formatDuration(preview?.duration),
+              youtube.formats.length > 0
+                ? copy.t("mediaAnalysis.projectImport.url.formatCount", "{count} formats", {
+                    count: String(youtube.formats.length),
+                  })
+                : null,
+            ]
+              .filter((entry): entry is string => typeof entry === "string" && entry !== "")
+              .join(" · ")
+          )}</span>
+        </div>
+      </div>
+      <div class="labx-project-import__format-grid">
+        ${renderYoutubeFormatSelect(
+          copy.t("mediaAnalysis.projectImport.url.videoFormat", "Video stream"),
+          "project-import.youtubeVideoFormat",
+          youtube.selectedVideoFormatId,
+          videoFormats,
+          copy.t("mediaAnalysis.projectImport.url.noVideo", "No video, audio only")
+        )}
+        ${renderYoutubeFormatSelect(
+          copy.t("mediaAnalysis.projectImport.url.audioFormat", "Audio stream"),
+          "project-import.youtubeAudioFormat",
+          youtube.selectedAudioFormatId,
+          audioFormats,
+          copy.t("mediaAnalysis.projectImport.url.noAudio", "No separate audio")
+        )}
+      </div>
     </div>
   `;
 }
 
-export function renderProjectSourceImport(
-  state: LabStoreState,
-  copy: LabI18n = LAB_FALLBACK_I18N
-) {
+function renderDirectUrlCheckResult(state: LabStoreState, copy: LabI18n) {
+  const check = state.ui.projectImport.urlCheck;
+  if (check.status !== "ready" || check.isYoutube === true) {
+    return "";
+  }
+  return `
+    <p class="labx-project-import__status" data-tone="success">
+      ${escapeHtml(
+        copy.t("mediaAnalysis.projectImport.url.directReady", "Direct URL ready as {type}", {
+          type: getKindLabel(check.kind || "video", copy),
+        })
+      )}
+    </p>
+  `;
+}
+
+function renderLocalImportSection(state: LabStoreState, copy: LabI18n) {
+  const localAction = buildProjectImportLocalHostAction(state);
+  const disabledAttr = localAction.disabledReason !== null ? " disabled" : "";
+  return `
+    <section class="labx-project-import__panel" data-panel="local">
+      <div>
+        <h3>${escapeHtml(copy.t("mediaAnalysis.projectImport.localUnifiedTitle", "Local Dosya Ekle"))}</h3>
+        <p>${escapeHtml(copy.t("mediaAnalysis.projectImport.localUnifiedHint", "Video, ses veya görsel dosyası seç; seçilen dosya aktif projeye kopyalanır."))}</p>
+      </div>
+      <button class="labx-project-import__btn labx-project-import__btn--accent" type="button" data-lab-action="project-import-local-add"${disabledAttr}>
+        ${escapeHtml(copy.t("mediaAnalysis.projectImport.localUnifiedButton", "Local Dosya Ekle"))}
+      </button>
+    </section>
+  `;
+}
+
+function renderUrlImportSection(state: LabStoreState, copy: LabI18n) {
+  const checkAction = buildProjectImportUrlCheckAction(state);
+  const addAction = buildProjectImportHostAction(state);
+  const check = state.ui.projectImport.urlCheck;
+  const ready = check.status === "ready";
+  const checking = check.status === "checking";
+  const buttonAction = ready ? "project-import-url-add" : "project-import-check-url";
+  const disabledReason = ready ? addAction.disabledReason : checkAction.disabledReason;
+  const disabledAttr = checking || disabledReason !== null ? " disabled" : "";
+  const disabledTitle = disabledReason !== null ? ` title="${escapeHtml(disabledReason)}"` : "";
+  const buttonLabel = checking
+    ? copy.t("mediaAnalysis.projectImport.url.checking", "Kontrol ediliyor")
+    : ready
+      ? copy.t("mediaAnalysis.projectImport.url.add", "Projeye Ekle")
+      : copy.t("mediaAnalysis.projectImport.url.check", "Kontrol Et");
+  return `
+    <section class="labx-project-import__panel" data-panel="url">
+      <div class="labx-project-import__url-row">
+        <label class="labx-field">
+          <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.urlInput", "Source URL"))}</span>
+          <input class="labx-input" data-lab-field="project-import.urlInput" value="${escapeHtml(getProjectImportUrlInput(state))}" placeholder="https://..." />
+        </label>
+        <button class="labx-project-import__btn labx-project-import__btn--accent" type="button" data-lab-action="${escapeHtml(buttonAction)}"${disabledAttr}${disabledTitle}>
+          ${escapeHtml(buttonLabel)}
+        </button>
+      </div>
+      ${renderYoutubeCheckResult(state, copy)}
+      ${renderDirectUrlCheckResult(state, copy)}
+    </section>
+  `;
+}
+
+export function renderProjectSourceImport(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
   const route = getProjectImportRoute(state);
-  const addState = buildProjectImportHostAction(state);
-  const disabledAttr = addState.disabledReason !== null ? " disabled" : "";
-  const disabledTitle =
-    addState.disabledReason !== null ? ` title="${escapeHtml(addState.disabledReason)}"` : "";
   return `
     <section class="labx-project-import" aria-label="${escapeHtml(copy.t("mediaAnalysis.projectImport.title", "Source Import Workspace"))}">
       <div class="labx-project-import__header">
@@ -366,17 +258,13 @@ export function renderProjectSourceImport(
         </div>
         <span class="labx-project-import__route">${escapeHtml(getKindLabel(route.kind, copy))} / ${escapeHtml(getMethodLabel(route.method, copy))}</span>
       </div>
-      ${renderKindTabs(state, copy)}
-      <div class="labx-project-import__body">
-        ${renderMethodCards(state, copy)}
-        ${renderRouteFields(state, copy)}
+      <div class="labx-project-import__body labx-project-import__body--unified">
+        ${renderLocalImportSection(state, copy)}
+        ${renderUrlImportSection(state, copy)}
       </div>
       <div class="labx-project-import__footer">
         <button class="labx-project-import__btn" type="button" data-lab-action="project-import-clear">
           ${escapeHtml(copy.t("mediaAnalysis.projectImport.clear", "Clear"))}
-        </button>
-        <button class="labx-project-import__btn labx-project-import__btn--accent" type="button" data-lab-action="project-import-add"${disabledAttr}${disabledTitle}>
-          ${escapeHtml(copy.t("mediaAnalysis.projectImport.add", "Add"))}
         </button>
       </div>
     </section>

@@ -97,10 +97,11 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
 
     try {
       await ensureHydrated(api, runtime);
+      let result: unknown = null;
 
       switch (action) {
         case "refresh":
-          await mediaActionRuntime.refresh(runtime, requestId);
+          result = await mediaActionRuntime.refresh(runtime, requestId);
           break;
         case "tools-refresh":
           await mediaActionRuntime.refreshTools(runtime);
@@ -133,10 +134,18 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
           await mediaActionRuntime.pickLocal(api, runtime, requestId, actionPayload);
           break;
         case "source-download-url":
-          await mediaActionRuntime.downloadUrl(api, runtime, requestId, actionPayload);
+          result = await mediaActionRuntime.downloadUrl(api, runtime, requestId, actionPayload);
           break;
         case "source-download-youtube":
-          await mediaActionRuntime.downloadYoutube(api, runtime, requestId, actionPayload);
+          result = await mediaActionRuntime.downloadYoutube(api, runtime, requestId, actionPayload);
+          break;
+        case "project-import-check-url":
+          result = await mediaActionRuntime.checkProjectImportUrl(
+            api,
+            runtime,
+            requestId,
+            actionPayload
+          );
           break;
         case "asset-use-as-source":
           await mediaActionRuntime.useAssetAsSource(api, runtime, requestId, actionPayload);
@@ -259,6 +268,7 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
         requestId,
         success: true,
         action,
+        ...(result !== null && result !== undefined ? { result } : {}),
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

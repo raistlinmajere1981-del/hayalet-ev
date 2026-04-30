@@ -1716,6 +1716,7 @@ export function getWaveformTimelineModel(state: LabStoreState) {
     startMs: selection.startMs,
     sourceKind,
     timelineHighlight: state.ui.projectWorkspaceTimelineHighlight,
+    transportVolume: state.ui.workspace.dualPreviewVolume,
     visualizationArtifact: getAudioVisualizationArtifact(state),
     visualizationMode: state.ui.workspace.audioFocus.visualizationMode,
     waveformContentDurationMs,

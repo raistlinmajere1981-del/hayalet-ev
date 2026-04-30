@@ -54,6 +54,7 @@
     "ghost:handoff": "npm run ghost:build:all && npm run electron:build && node scripts/ghost-agent-wrapper.mjs",
     "whereami": "node scripts/whereami.mjs",
     "whereami:mode": "node scripts/whereami.mjs --mode-only",
+    "assistant:profile": "node scripts/assistant-session-profile.mjs",
     "mode:status": "node scripts/transition.mjs status",
     "mode:wait": "node scripts/transition.mjs wait",
     "mode:trigger": "node scripts/transition.mjs trigger",

@@ -32,6 +32,9 @@ test("laboratory store keeps YouTube import mode UI-only and non-persistent", ()
     url: null,
     status: "idle",
     preview: null,
+    formats: [],
+    selectedVideoFormatId: null,
+    selectedAudioFormatId: null,
     strategy: "video_best",
     custom: {
       resolution: "best",
@@ -72,6 +75,9 @@ test("laboratory store keeps YouTube import mode UI-only and non-persistent", ()
     url: "https://www.youtube.com/watch?v=abc123DEF45",
     status: "idle",
     preview: null,
+    formats: [],
+    selectedVideoFormatId: null,
+    selectedAudioFormatId: null,
     strategy: "video_best",
     custom: {
       resolution: "best",
@@ -168,6 +174,9 @@ test("laboratory store keeps YouTube import mode UI-only and non-persistent", ()
     url: "https://www.youtube.com/watch?v=abc123DEF45",
     status: "error",
     preview: null,
+    formats: [],
+    selectedVideoFormatId: null,
+    selectedAudioFormatId: null,
     strategy: "audio_only",
     custom: {
       resolution: "720p",
@@ -180,6 +189,9 @@ test("laboratory store keeps YouTube import mode UI-only and non-persistent", ()
     url: null,
     status: "idle",
     preview: null,
+    formats: [],
+    selectedVideoFormatId: null,
+    selectedAudioFormatId: null,
     strategy: "audio_only",
     custom: {
       resolution: "720p",
@@ -192,6 +204,9 @@ test("laboratory store keeps YouTube import mode UI-only and non-persistent", ()
     url: null,
     status: "idle",
     preview: null,
+    formats: [],
+    selectedVideoFormatId: null,
+    selectedAudioFormatId: null,
     strategy: "video_best",
     custom: {
       resolution: "best",
@@ -209,6 +224,9 @@ test("laboratory store keeps YouTube import mode UI-only and non-persistent", ()
     url: null,
     status: "idle",
     preview: null,
+    formats: [],
+    selectedVideoFormatId: null,
+    selectedAudioFormatId: null,
     strategy: "video_best",
     custom: {
       resolution: "best",
@@ -274,7 +292,6 @@ test("laboratory store keeps YouTube import mode UI-only and non-persistent", ()
         status: "idle",
       },
       sourceDrafts: {
-        fileNameHint: "",
         urlInput: "",
         youtubeUrl: "https://youtube.com/watch?v=abc123",
         youtubePreset: "custom",
@@ -291,6 +308,9 @@ test("laboratory store keeps YouTube import mode UI-only and non-persistent", ()
     url: null,
     status: "idle",
     preview: null,
+    formats: [],
+    selectedVideoFormatId: null,
+    selectedAudioFormatId: null,
     strategy: "video_best",
     custom: {
       resolution: "best",
@@ -317,7 +337,6 @@ test("laboratory store preserves persisted project import route across hydrate a
         mode: "local",
         status: "ready",
         drafts: {
-          fileNameHint: "committed-video.mp4",
           urlInput: "",
           youtubeUrl: "",
           youtubePreset: null,
@@ -334,7 +353,6 @@ test("laboratory store preserves persisted project import route across hydrate a
         },
         drafts: {
           image: {
-            fileNameHint: "evidence.png",
             urlInput: "https://example.com/evidence.png",
             youtubeUrl: "",
             youtubePreset: null,
@@ -368,7 +386,6 @@ test("laboratory store preserves persisted project import route across hydrate a
           mode: "local",
           status: "ready",
           drafts: {
-            fileNameHint: "snapshot-video.mp4",
             urlInput: "",
             youtubeUrl: "",
             youtubePreset: null,
@@ -389,8 +406,6 @@ test("laboratory store preserves persisted project import route across hydrate a
 
   assert.equal(store.getState().ui.projectImport.activeKind, "image");
   assert.equal(store.getState().ui.projectImport.methods.image, "url");
-  assert.equal(store.getState().ui.projectImport.drafts.video.fileNameHint, "snapshot-video.mp4");
-  assert.equal(store.getState().ui.projectImport.drafts.image.fileNameHint, "evidence.png");
   assert.equal(
     store.getState().ui.projectImport.drafts.image.urlInput,
     "https://example.com/evidence.png"

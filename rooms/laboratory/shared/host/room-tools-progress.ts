@@ -187,15 +187,27 @@ export function createLaboratoryRoomToolsProgressRuntime(
     }
     job.message = asNonEmptyString(eventPayload.message) || job.message;
 
-    if (
+    const toolRunStream =
       asNonEmptyString(eventPayload.operation) === "tool-run" &&
-      (eventPayload.stage === "stdout" || eventPayload.stage === "stderr")
-    ) {
+      (eventPayload.stage === "stdout" || eventPayload.stage === "stderr");
+    if (toolRunStream) {
       const chunk = asNonEmptyString(eventPayload.chunk);
       if (chunk) {
         const match = chunk.match(/(\d{1,3}(?:\.\d+)?)%/);
         if (match) {
           job.percent = Number(match[1]);
+        }
+        const totalMatch = chunk.match(/of\s+~?\s*([0-9.]+\s*[KMGTPE]?i?B)/i);
+        const speedMatch = chunk.match(/at\s+([0-9.]+\s*[KMGTPE]?i?B\/s)/i);
+        const etaMatch = chunk.match(/ETA\s+([0-9:]+)/i);
+        const details = [
+          typeof job.percent === "number" ? `${Math.round(job.percent)}%` : null,
+          totalMatch?.[1] ? `boyut ${totalMatch[1].trim()}` : null,
+          speedMatch?.[1] ? `hız ${speedMatch[1].trim()}` : null,
+          etaMatch?.[1] ? `ETA ${etaMatch[1]}` : null,
+        ].filter((entry): entry is string => typeof entry === "string");
+        if (details.length > 0) {
+          job.message = details.join(" · ");
         }
       }
     }
@@ -214,8 +226,7 @@ export function createLaboratoryRoomToolsProgressRuntime(
       bytesTotal: job.bytesTotal,
       message: job.message,
       suppressCanonicalEvent:
-        asNonEmptyString(eventPayload.operation) === "tool-run" &&
-        (eventPayload.stage === "stdout" || eventPayload.stage === "stderr"),
+        toolRunStream && job.action !== "source-download-youtube",
     };
   }
 

@@ -141,7 +141,7 @@ test("laboratory wireframe v2 derives active-run workspace locks and blocks lock
   assert.equal(state.ui.workspace.interactiveSettings.brightness, 112);
 });
 
-test("laboratory wireframe v2 renders locked timeline and roi while preserving preview controls", () => {
+test("laboratory wireframe v2 renders locked timeline and roi without native preview controls", () => {
   const store = createReadyStore();
   store.dispatch({ type: "workspace-timeline-updated", startMs: 1000, endMs: 3000 });
   setRun(store.getState());
@@ -152,6 +152,7 @@ test("laboratory wireframe v2 renders locked timeline and roi while preserving p
   assert.match(surface.main, /data-lab-roi-mutation-locked="true"/);
   assert.doesNotMatch(surface.main, /data-lab-field="workspace\.hypothesis"/);
   assert.match(surface.main, /labx-preview-media--workspace-video/);
+  assert.doesNotMatch(surface.main, /labx-preview-media--workspace-video"[^>]*\scontrols(?:\s|>|=)/);
   assert.match(surface.main, /Visual Adjustments/);
 });
 
@@ -370,5 +371,7 @@ test("laboratory wireframe v2 process strip covers partial, cancelled, and indet
   setRun(activeStore.getState());
   const activeStrip = renderLabProcessStrip(activeStore.getState());
   assert.match(activeStrip, /data-progress-mode="indeterminate"/);
+  assert.match(activeStrip, /class="labx-strip-detail-toggle"/);
+  assert.doesNotMatch(activeStrip, /data-lab-action="cancel-analysis"/);
   assert.doesNotMatch(activeStrip, /labx-strip-progress__pct">0%/);
 });

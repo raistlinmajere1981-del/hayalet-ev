@@ -737,6 +737,9 @@ test("laboratory run controller routes YouTube import mode without starting down
       url: null,
       status: "idle",
       preview: null,
+      formats: [],
+      selectedVideoFormatId: null,
+      selectedAudioFormatId: null,
       strategy: "custom",
       custom: {
         resolution: "720p",
@@ -754,6 +757,9 @@ test("laboratory run controller routes YouTube import mode without starting down
       url: null,
       status: "idle",
       preview: null,
+      formats: [],
+      selectedVideoFormatId: null,
+      selectedAudioFormatId: null,
       strategy: "video_best",
       custom: {
         resolution: "best",
@@ -774,6 +780,9 @@ test("laboratory run controller routes YouTube import mode without starting down
       url: null,
       status: "idle",
       preview: null,
+      formats: [],
+      selectedVideoFormatId: null,
+      selectedAudioFormatId: null,
       strategy: "video_best",
       custom: {
         resolution: "best",
@@ -912,34 +921,57 @@ test("laboratory run controller sends project import draft fields without mutati
     assert.ok(clickListener);
     assert.ok(inputListener);
 
-    clickListener?.({ target: new TestElement("project-import-kind", "image") } as Event);
-    clickListener?.({ target: new TestElement("project-import-method", "url") } as Event);
     inputListener?.({
       target: new TestInputElement("project-import.urlInput", "https://example.com/evidence.png"),
     } as unknown as Event);
-    inputListener?.({
-      target: new TestInputElement("project-import.fileNameHint", "evidence.png"),
-    } as unknown as Event);
 
     assert.deepEqual(store.getState().source, committedSourceBeforeImport);
-    assert.equal(store.getState().ui.projectImport.activeKind, "image");
-    assert.equal(store.getState().ui.projectImport.methods.image, "url");
 
-    clickListener?.({ target: new TestElement("project-import-add") } as Event);
+    clickListener?.({ target: new TestElement("project-import-check-url") } as Event);
 
     assert.equal(sentEvents.length, 1);
     assert.equal(sentEvents[0]?.eventName, "media-action");
-    assert.equal(sentEvents[0]?.payload["action"], "source-download-url");
-    const mediaPayload = sentEvents[0]?.payload["payload"] as Record<string, unknown>;
+    assert.equal(sentEvents[0]?.payload["action"], "project-import-check-url");
+    store.dispatch({
+      type: "host-event-received",
+      event: {
+        id: "evt-url-check",
+        kind: "request-result",
+        severity: "success",
+        message: "URL check completed",
+        detail: null,
+        action: "project-import-check-url",
+        stage: "completed",
+        timestamp: Date.now(),
+        source: "host",
+        scope: "global",
+        moduleId: null,
+        rawLine: null,
+        result: {
+          url: "https://example.com/evidence.png",
+          isYoutube: false,
+          kind: "image",
+        },
+      } as never,
+    });
+    assert.equal(store.getState().ui.projectImport.activeKind, "image");
+    assert.equal(store.getState().ui.projectImport.methods.image, "url");
+
+    clickListener?.({ target: new TestElement("project-import-url-add") } as Event);
+
+    assert.equal(sentEvents.length, 2);
+    assert.equal(sentEvents[1]?.eventName, "media-action");
+    assert.equal(sentEvents[1]?.payload["action"], "source-download-url");
+    const mediaPayload = sentEvents[1]?.payload["payload"] as Record<string, unknown>;
     const fields = mediaPayload["fields"] as Record<string, unknown>;
     assert.equal(fields["kind"], "image");
     assert.equal(fields["mode"], "url");
     assert.equal(fields["urlInput"], "https://example.com/evidence.png");
-    assert.equal(fields["fileNameHint"], "evidence.png");
+    assert.equal(Object.prototype.hasOwnProperty.call(fields, "file" + "NameHint"), false);
     assert.deepEqual(store.getState().source, committedSourceBeforeImport);
     assert.equal(store.getState().ui.projectImport.reviewFocus, "running");
     assert.equal(store.getState().ui.projectImport.lastAction, "source-download-url");
-    assert.equal(store.getState().ui.projectImport.lastRequestId, sentEvents[0]?.payload["requestId"]);
+    assert.equal(store.getState().ui.projectImport.lastRequestId, sentEvents[1]?.payload["requestId"]);
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;
@@ -1913,6 +1945,7 @@ test("laboratory source changes clear semantic roi and reset inspection mode", (
 test("laboratory project workspace supports multi-select delete actions", () => {
   const originalElement = globalThis.Element;
   const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
+  const confirmMessages: string[] = [];
   const documentRef = new FakeControllerDocument();
   const eventBus = createLabEventBus();
   const store = createLabStore();
@@ -1959,6 +1992,10 @@ test("laboratory project workspace supports multi-select delete actions", () => 
             sentEvents.push({ eventName, payload });
           },
         },
+        confirm(message: string) {
+          confirmMessages.push(message);
+          return true;
+        },
         addEventListener() {},
       } as unknown as Window,
     });
@@ -1985,6 +2022,8 @@ test("laboratory project workspace supports multi-select delete actions", () => 
     } as Event);
 
     assert.deepEqual(store.getState().ui.projectWorkspaceSelectedEntityIds, []);
+    assert.equal(confirmMessages.length, 1);
+    assert.match(confirmMessages[0] || "", /2 varlık silinsin mi\?/);
     assert.deepEqual(
       sentEvents.map(function (event) {
         return {
@@ -1998,6 +2037,77 @@ test("laboratory project workspace supports multi-select delete actions", () => 
         { eventName: "media-action", action: "asset-remove", assetId: "asset-report-1" },
       ]
     );
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
+test("laboratory asset delete actions stop when confirmation is rejected", () => {
+  const originalElement = globalThis.Element;
+  const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
+  const confirmMessages: string[] = [];
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  class TestElement extends FakeActionElement {}
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+    store.dispatch({
+      type: "asset-added",
+      asset: {
+        id: "asset-cancel-delete",
+        type: "report",
+        name: "keep-report.md",
+        localPath: "/tmp/keep-report.md",
+        createdAt: 300,
+      },
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent(eventName: string, payload: Record<string, unknown>) {
+            sentEvents.push({ eventName, payload });
+          },
+        },
+        confirm(message: string) {
+          confirmMessages.push(message);
+          return false;
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
+
+    clickListener?.({
+      target: new TestElement("asset-remove", "asset-cancel-delete"),
+    } as Event);
+
+    assert.deepEqual(sentEvents, []);
+    assert.equal(confirmMessages.length, 1);
+    assert.match(confirmMessages[0] || "", /keep-report\.md/);
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;
@@ -2190,7 +2300,7 @@ test("laboratory project workspace hover highlights timeline ranges without chan
   }
 });
 
-test("laboratory project workspace auto-open treats host-backed idle source state as clean", async () => {
+test("laboratory project workspace auto-open requests normal boot workspace", async () => {
   const store = createLabStore();
   const labRootModule = await importLabRootModuleWithDomStub<{
     __testOnlyProjectWorkspaceAutoOpen: {
@@ -2227,6 +2337,13 @@ test("laboratory project workspace auto-open treats host-backed idle source stat
     status: "ready",
     storedPath: "/tmp/source.mp4",
   };
+
+  assert.equal(
+    labRootModule.__testOnlyProjectWorkspaceAutoOpen.shouldAutoOpenProjectWorkspaceOnBoot(state),
+    true
+  );
+
+  state.ui.labMode = "import-youtube";
 
   assert.equal(
     labRootModule.__testOnlyProjectWorkspaceAutoOpen.shouldAutoOpenProjectWorkspaceOnBoot(state),
