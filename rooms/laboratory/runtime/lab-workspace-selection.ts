@@ -159,16 +159,18 @@ export function syncWorkspaceSelectionWithRange(
     persistedSelection?: unknown;
   } = {}
 ): LabWorkspaceUiState {
+  const activeSelection = createActiveSelectionFromRange(
+    range.startMs,
+    range.endMs,
+    workspace.activeSelection,
+    options
+  );
   return {
     ...workspace,
     timelineStartMs: range.startMs,
     timelineEndMs: range.endMs,
-    activeSelection: createActiveSelectionFromRange(
-      range.startMs,
-      range.endMs,
-      workspace.activeSelection,
-      options
-    ),
+    activeSelection,
+    selectionMicroZoomOpen: activeSelection === null ? false : workspace.selectionMicroZoomOpen,
   };
 }
 
@@ -178,6 +180,7 @@ export function clearWorkspaceSelection(workspace: LabWorkspaceUiState): LabWork
     timelineStartMs: null,
     timelineEndMs: null,
     activeSelection: null,
+    selectionMicroZoomOpen: false,
   };
 }
 

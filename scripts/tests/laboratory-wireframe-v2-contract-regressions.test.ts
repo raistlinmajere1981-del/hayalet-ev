@@ -152,13 +152,22 @@ test("laboratory wireframe v2 renders locked timeline and roi without native pre
   assert.match(surface.main, /data-lab-roi-mutation-locked="true"/);
   assert.doesNotMatch(surface.main, /data-lab-field="workspace\.hypothesis"/);
   assert.match(surface.main, /labx-preview-media--workspace-video/);
-  assert.doesNotMatch(surface.main, /labx-preview-media--workspace-video"[^>]*\scontrols(?:\s|>|=)/);
+  assert.doesNotMatch(
+    surface.main,
+    /labx-preview-media--workspace-video"[^>]*\scontrols(?:\s|>|=)/
+  );
   assert.match(surface.main, /Visual Adjustments/);
+  assert.match(surface.main, /workspace\.interactive\.brightness/);
+  assert.match(surface.main, /data-lab-action="workspace-setting-adjust"/);
 });
 
 test("laboratory wireframe v2 failed source stays in setup with error viewport and idle strip", () => {
   const store = createReadyStore();
-  store.dispatch({ type: "source-probe-failed", action: "source-pick-local", detail: "probe failed" });
+  store.dispatch({
+    type: "source-probe-failed",
+    action: "source-pick-local",
+    detail: "probe failed",
+  });
 
   const state = store.getState();
   const retryBlockReason = getSourceRetryBlockReason(state);
@@ -231,7 +240,11 @@ test("laboratory wireframe v2 source retry contract separates local block and re
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
 
-    store.dispatch({ type: "source-probe-failed", action: "source-pick-local", detail: "probe failed" });
+    store.dispatch({
+      type: "source-probe-failed",
+      action: "source-pick-local",
+      detail: "probe failed",
+    });
     clickListener?.({ target: new TestElement("source-probe-retry") } as Event);
     assert.equal(sentEvents.length, 0);
     assert.match(store.getState().activityFeed[0]?.message ?? "", /Choose the file again/);
@@ -322,11 +335,42 @@ test("laboratory wireframe v2 process strip covers partial, cancelled, and indet
     endedAt: Date.now(),
     moduleOrder: ["source", "planner", "audio", "decision", "staging"],
     modules: {
-      source: { id: "source", status: "completed", message: null, progress: 100, progressMode: "measured" },
-      planner: { id: "planner", status: "completed", message: null, progress: 100, progressMode: "measured" },
-      audio: { id: "audio", title: "Audio", status: "completed", message: null, progress: 100, progressMode: "measured" },
-      decision: { id: "decision", status: "completed", message: null, progress: 100, progressMode: "measured" },
-      staging: { id: "staging", status: "completed", message: null, progress: 100, progressMode: "measured" },
+      source: {
+        id: "source",
+        status: "completed",
+        message: null,
+        progress: 100,
+        progressMode: "measured",
+      },
+      planner: {
+        id: "planner",
+        status: "completed",
+        message: null,
+        progress: 100,
+        progressMode: "measured",
+      },
+      audio: {
+        id: "audio",
+        title: "Audio",
+        status: "completed",
+        message: null,
+        progress: 100,
+        progressMode: "measured",
+      },
+      decision: {
+        id: "decision",
+        status: "completed",
+        message: null,
+        progress: 100,
+        progressMode: "measured",
+      },
+      staging: {
+        id: "staging",
+        status: "completed",
+        message: null,
+        progress: 100,
+        progressMode: "measured",
+      },
     },
     moduleTrace: [
       {
@@ -358,8 +402,20 @@ test("laboratory wireframe v2 process strip covers partial, cancelled, and indet
     endedAt: Date.now(),
     moduleOrder: ["visual", "audio"],
     modules: {
-      visual: { id: "visual", status: "completed", message: null, progress: 100, progressMode: "measured" },
-      audio: { id: "audio", status: "cancelled", message: null, progress: null, progressMode: "none" },
+      visual: {
+        id: "visual",
+        status: "completed",
+        message: null,
+        progress: 100,
+        progressMode: "measured",
+      },
+      audio: {
+        id: "audio",
+        status: "cancelled",
+        message: null,
+        progress: null,
+        progressMode: "none",
+      },
     },
   });
   const cancelledStrip = renderLabProcessStrip(cancelledStore.getState());

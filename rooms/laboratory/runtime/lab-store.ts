@@ -324,6 +324,7 @@ function createDefaultWorkspaceUiState(): LabWorkspaceUiState {
     bookmarks: [],
     selectedIntents: [],
     sourceIntakeCollapsed: false,
+    selectionMicroZoomOpen: false,
     controlsDrawerOpen: true,
     controlsDrawerTab: "audio",
     processViewActive: false,
@@ -2536,6 +2537,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
                 ? normalizeWorkspaceIntentIds(ws.selectedIntents)
                 : state.ui.workspace.selectedIntents,
               sourceIntakeCollapsed: ws.sourceIntakeCollapsed === true,
+              selectionMicroZoomOpen: ws.selectionMicroZoomOpen === true,
               controlsDrawerOpen: ws.controlsDrawerOpen !== false,
               controlsDrawerTab:
                 ws.controlsDrawerTab === "visual" || ws.controlsDrawerTab === "audio"
@@ -3398,6 +3400,17 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
             : !state.ui.workspace.sourceIntakeCollapsed,
       };
       return state;
+    case "workspace-selection-micro-zoom-toggled": {
+      const selection = state.ui.workspace.activeSelection;
+      const canOpen = selection !== null && selection.endMs > selection.startMs;
+      const nextOpen =
+        typeof event.force === "boolean" ? event.force : !state.ui.workspace.selectionMicroZoomOpen;
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        selectionMicroZoomOpen: canOpen === true ? nextOpen : false,
+      };
+      return state;
+    }
     case "workspace-controls-drawer-toggled":
       state.ui.workspace = {
         ...state.ui.workspace,

@@ -1178,6 +1178,9 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   assert.match(timelineSource, /labx-timeline__pin-popover/);
   assert.match(timelineSource, /transportVolume/);
   assert.doesNotMatch(timelineSource, /labx-timeline__range-info/);
+  assert.doesNotMatch(timelineSource, /labx-timeline__numeric/);
+  assert.doesNotMatch(timelineSource, /Start \(ms\)|End \(ms\)/);
+  assert.doesNotMatch(themeSource, /\.labx-timeline__numeric/);
   assert.doesNotMatch(workspaceSurfaceSource, /renderWorkspaceBookmarks|workspace-bookmarks/);
   assert.match(
     workspaceSurfaceSource,
@@ -1229,6 +1232,14 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   assert.match(
     themeSource,
     /\.labx-media-workbench \.labx-preview-media--workspace-video,[\s\S]*\.labx-media-workbench \.labx-preview-media--workspace-image\s*\{[\s\S]*height:\s*100%;[\s\S]*max-height:\s*100%;/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-preview-filter-wrap\s*\{[\s\S]*position:\s*relative;[\s\S]*width:\s*100%;[\s\S]*height:\s*100%;[\s\S]*max-height:\s*100%;[\s\S]*overflow:\s*hidden;/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-preview-filter-wrap\s*>\s*\.labx-preview-media--workspace-video\s*\{[\s\S]*position:\s*absolute;[\s\S]*inset:\s*0;[\s\S]*height:\s*100%;[\s\S]*object-fit:\s*contain;/
   );
 });
 
@@ -1343,6 +1354,7 @@ test("laboratory micro inspection UI exposes roi focus precedence and lens affor
   assert.match(surfaceSource, /data-lab-preview-inspection-stage="true"/);
   assert.match(surfaceSource, /data-lab-preview-inspection-content="true"/);
   assert.match(timelineSelectionSource, /Selection micro zoom/);
+  assert.match(timelineSelectionSource, /model\.selectionMicroZoomOpen !== true/);
   assert.match(timelineSelectionSource, /id="lab-audio-viz-inspection"/);
 });
 

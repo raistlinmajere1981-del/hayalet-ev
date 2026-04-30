@@ -47,9 +47,7 @@ import {
   test,
 } from "./laboratory-runtime-truth.helpers.ts";
 
-import type {
-  LabSelection,
-} from "./laboratory-runtime-truth.helpers.ts";
+import type { LabSelection } from "./laboratory-runtime-truth.helpers.ts";
 
 test("interpretation engine explains audio focus and selection rules with deterministic guidance", () => {
   const context = {
@@ -388,7 +386,20 @@ test("selection suggestions and waveform model deepen when semantic roi inspecti
   );
   assert.match(markup, /Inspection tools/);
   assert.match(markup, /Focus region/);
-  assert.match(markup, /lab-audio-viz-inspection/);
+  assert.equal(model.selectionMicroZoomOpen, false);
+  assert.match(markup, /data-lab-action="timeline-toggle-micro-zoom"/);
+  assert.match(markup, /aria-pressed="false"/);
+  assert.doesNotMatch(markup, /lab-audio-viz-inspection/);
+
+  store.dispatch({
+    type: "workspace-selection-micro-zoom-toggled",
+  });
+
+  const openModel = getWaveformTimelineModel(store.getState());
+  const openMarkup = renderLabWaveformTimeline(openModel);
+  assert.equal(openModel.selectionMicroZoomOpen, true);
+  assert.match(openMarkup, /aria-pressed="true"/);
+  assert.match(openMarkup, /lab-audio-viz-inspection/);
 });
 
 test("lab root preserves interpretation panel details state across embedded and standalone rerenders", async () => {

@@ -517,6 +517,7 @@ export interface LabWorkspaceUiState {
   bookmarks: LabBookmark[];
   selectedIntents: LabIntentId[];
   sourceIntakeCollapsed: boolean;
+  selectionMicroZoomOpen: boolean;
   controlsDrawerOpen: boolean;
   controlsDrawerTab: LabWorkspaceControlTab;
   processViewActive: boolean;
@@ -1428,6 +1429,7 @@ export type LabStoreEvent =
   | { type: "workspace-intent-toggled"; intentId: LabIntentId }
   | { type: "workspace-intent-set"; intents: LabIntentId[] }
   | { type: "workspace-source-intake-toggled"; force?: boolean }
+  | { type: "workspace-selection-micro-zoom-toggled"; force?: boolean }
   | { type: "workspace-controls-drawer-toggled"; force?: boolean }
   | { type: "workspace-controls-tab-selected"; tab: LabWorkspaceControlTab }
   | { type: "workspace-audio-updated"; patch: Partial<LabAudioFocusSettings> }

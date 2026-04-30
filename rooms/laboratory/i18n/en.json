@@ -558,6 +558,8 @@
       "bookmarkDefaultNote": "Mark {time}",
       "removeBookmark": "Remove mark",
       "microZoom": "Selection micro zoom",
+      "microZoomToggle": "Micro Zoom",
+      "microZoomToggleTitle": "Show or hide selection micro zoom",
       "inspectionMode": "Inspection mode",
       "selectionHint": "This selection will guide future analysis",
       "interpretation": "Interpretation",
@@ -1820,6 +1822,7 @@
       "dualPreviewLocked": "Dual preview keeps temporal playback fixed at 1x with preserved pitch.",
       "visualizerHint": "A single real-time waveform layer is used below the timeline preview. Spectrum mode draws a live frequency view on the same canvas.",
       "eqTitle": "PARAMETRIC EQ",
+      "resetAction": "Reset All",
       "filters": {
         "none": "None",
         "lowpass": "Lowpass",

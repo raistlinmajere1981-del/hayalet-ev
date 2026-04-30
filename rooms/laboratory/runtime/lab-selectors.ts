@@ -1712,6 +1712,7 @@ export function getWaveformTimelineModel(state: LabStoreState) {
     interpretationItems: getInterpretationItems(state),
     linkedAudioAssetId: selectedAudioAsset?.id || null,
     roiFocusActive: getRoiFocusActive(state),
+    selectionMicroZoomOpen: state.ui.workspace.selectionMicroZoomOpen,
     selectionSuggestions: getSelectionSuggestions(state),
     lockState: getWorkspaceLockState(state),
     startMs: selection.startMs,

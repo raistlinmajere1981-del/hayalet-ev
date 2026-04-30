@@ -250,6 +250,64 @@ test("laboratory run controller threads frozen run intent ids into tracked expor
   }
 });
 
+test("laboratory run controller toggles selection micro zoom from the timeline action", () => {
+  const originalElement = globalThis.Element;
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  class TestElement extends FakeActionElement {}
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        addEventListener() {},
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    store.dispatch({
+      type: "workspace-timeline-updated",
+      startMs: 1200,
+      endMs: 3600,
+    });
+
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
+
+    clickListener?.({ target: new TestElement("timeline-toggle-micro-zoom") } as Event);
+    assert.equal(store.getState().ui.workspace.selectionMicroZoomOpen, true);
+
+    clickListener?.({ target: new TestElement("timeline-toggle-micro-zoom") } as Event);
+    assert.equal(store.getState().ui.workspace.selectionMicroZoomOpen, false);
+
+    store.dispatch({ type: "workspace-timeline-updated", startMs: null, endMs: null });
+    clickListener?.({ target: new TestElement("timeline-toggle-micro-zoom") } as Event);
+    assert.equal(store.getState().ui.workspace.selectionMicroZoomOpen, false);
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
 test("laboratory asset preview binder opens action-linked assets through the room overlay", async () => {
   const originalElement = globalThis.Element;
   const emittedAssetIds: string[] = [];
@@ -528,6 +586,126 @@ test("laboratory run controller wires v2 shell action buttons into workspace sta
       Object.defineProperty(globalThis, "HTMLTextAreaElement", {
         configurable: true,
         value: originalTextarea,
+      });
+    }
+  }
+});
+
+test("laboratory run controller applies fine adjustment controls for audio and visual panels", () => {
+  const originalElement = globalThis.Element;
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  class TestElement extends FakeActionElement {
+    constructor(dataset: Record<string, string>) {
+      super(dataset["labAction"] || "workspace-setting-adjust");
+      this.dataset = dataset;
+    }
+  }
+
+  function settingButton(field: string, attrs: Record<string, string>) {
+    return new TestElement({
+      labAction: "workspace-setting-adjust",
+      labField: field,
+      ...attrs,
+    });
+  }
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        addEventListener() {},
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
+
+    clickListener?.({
+      target: settingButton("workspace.interactive.brightness", {
+        labDelta: "1",
+        labMin: "0",
+        labMax: "200",
+        labStep: "1",
+        labResetValue: "100",
+      }),
+    } as Event);
+    assert.equal(store.getState().ui.workspace.interactiveSettings.brightness, 101);
+
+    clickListener?.({
+      target: settingButton("workspace.audioFocus.gain", {
+        labDelta: "-0.1",
+        labMin: "0",
+        labMax: "3",
+        labStep: "0.1",
+        labResetValue: "1",
+      }),
+    } as Event);
+    assert.equal(store.getState().ui.workspace.audioFocus.gain, 0.9);
+
+    clickListener?.({
+      target: settingButton("workspace.audioFocus.filterType", {
+        labDelta: "1",
+        labOptions: "none|lowpass|highpass|bandpass",
+        labResetValue: "none",
+      }),
+    } as Event);
+    assert.equal(store.getState().ui.workspace.audioFocus.filterType, "lowpass");
+
+    clickListener?.({
+      target: settingButton("workspace.audioFocus.filterType", {
+        labReset: "true",
+        labOptions: "none|lowpass|highpass|bandpass",
+        labResetValue: "none",
+      }),
+    } as Event);
+    assert.equal(store.getState().ui.workspace.audioFocus.filterType, "none");
+
+    store.dispatch({
+      type: "workspace-audio-updated",
+      patch: {
+        eqBands: store.getState().ui.workspace.audioFocus.eqBands.map(function (band, index) {
+          return index === 1 ? { ...band, gain: 4 } : band;
+        }),
+      },
+    });
+    clickListener?.({
+      target: settingButton("workspace.audioFocus.eqBands.1.gain", {
+        labReset: "true",
+        labMin: "-12",
+        labMax: "12",
+        labStep: "0.5",
+        labResetValue: "0",
+      }),
+    } as Event);
+    assert.equal(store.getState().ui.workspace.audioFocus.eqBands[1]?.gain, 0);
+
+    clickListener?.({
+      target: new TestElement({ labAction: "workspace-reset-audio-focus" }),
+    } as Event);
+    assert.equal(store.getState().ui.workspace.audioFocus.gain, 1);
+    assert.equal(store.getState().ui.workspace.audioFocus.playbackRate, 1);
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
       });
     }
   }
@@ -971,7 +1149,10 @@ test("laboratory run controller sends project import draft fields without mutati
     assert.deepEqual(store.getState().source, committedSourceBeforeImport);
     assert.equal(store.getState().ui.projectImport.reviewFocus, "running");
     assert.equal(store.getState().ui.projectImport.lastAction, "source-download-url");
-    assert.equal(store.getState().ui.projectImport.lastRequestId, sentEvents[1]?.payload["requestId"]);
+    assert.equal(
+      store.getState().ui.projectImport.lastRequestId,
+      sentEvents[1]?.payload["requestId"]
+    );
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;

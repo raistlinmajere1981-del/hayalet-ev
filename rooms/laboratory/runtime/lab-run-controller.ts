@@ -8,7 +8,9 @@ import type {
   CapabilityFamilyId,
   LabFeatureId,
   LabIntentId,
+  LabAudioFocusSettings,
   LabAssetType,
+  LabInteractiveSettings,
   LabSourceDrafts,
   LabStoreEvent,
   LabWorkspaceControlTab,
@@ -70,6 +72,21 @@ import {
   normalizeProjectImportMethodValue,
 } from "./lab-project-import.js";
 import { getWorkspaceSourceSelectionResetKey } from "./lab-workspace-selection.js";
+import { DEFAULT_AUDIO_FOCUS_SETTINGS } from "./lab-audio-focus-normalization.js";
+
+const DEFAULT_INTERACTIVE_SETTINGS: LabInteractiveSettings = {
+  brightness: 100,
+  contrast: 100,
+  gamma: 1.0,
+  saturation: 100,
+  hueRotate: 0,
+  sharpness: 100,
+  channelR: true,
+  channelG: true,
+  channelB: true,
+  edgeHighlight: false,
+  invert: false,
+};
 
 type LabRoomApi = {
   onHostMessage?: (listener: (message: unknown) => void) => void;
@@ -2343,6 +2360,140 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     dispatch({ type: "drawer-collapsed-toggled" });
   }
 
+  function parseFiniteNumber(value: string | undefined, fallback: number) {
+    if (value === undefined || value.trim() === "") {
+      return fallback;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  function roundForStep(value: number, step: number) {
+    const [, decimalPart = ""] = String(step).split(".");
+    const precision = Math.min(6, decimalPart.length + 2);
+    return Number(value.toFixed(precision));
+  }
+
+  function clampAdjustedValue(value: number, min: number, max: number, step: number) {
+    return roundForStep(Math.max(min, Math.min(max, value)), step);
+  }
+
+  function readWorkspaceSetting(field: string): unknown {
+    const state = deps.store.getState();
+    if (field.startsWith("workspace.interactive.")) {
+      const settingKey = field.replace("workspace.interactive.", "");
+      return (state.ui.workspace.interactiveSettings as unknown as Record<string, unknown>)[
+        settingKey
+      ];
+    }
+    if (field.startsWith("workspace.audioFocus.eqBands.")) {
+      const parts = field.replace("workspace.audioFocus.", "").split(".");
+      const bandIndex = parts.length > 1 ? parseInt(parts[1] as string, 10) : NaN;
+      const bandProp = parts.length > 2 ? parts[2] : undefined;
+      if (!Number.isNaN(bandIndex) && bandIndex >= 0 && typeof bandProp === "string") {
+        return (
+          state.ui.workspace.audioFocus.eqBands[bandIndex] as Record<string, unknown> | undefined
+        )?.[bandProp];
+      }
+      return undefined;
+    }
+    if (field.startsWith("workspace.audioFocus.")) {
+      const audioKey = field.replace("workspace.audioFocus.", "");
+      return (state.ui.workspace.audioFocus as unknown as Record<string, unknown>)[audioKey];
+    }
+    return undefined;
+  }
+
+  function patchInteractiveSetting(settingKey: string, rawValue: unknown) {
+    dispatch({
+      type: "workspace-interactive-updated",
+      patch: { [settingKey]: rawValue } as Partial<LabInteractiveSettings>,
+    });
+  }
+
+  function patchAudioFocusSetting(audioKey: string, rawValue: unknown) {
+    if (audioKey.startsWith("eqBands.")) {
+      const eqState = deps.store.getState();
+      const currentBands = eqState.ui.workspace.audioFocus.eqBands.map(function (band) {
+        return { ...band };
+      });
+      const parts = audioKey.split(".");
+      const bandIndex = parts.length > 1 ? parseInt(parts[1] as string, 10) : NaN;
+      const bandProp = parts.length > 2 ? parts[2] : "";
+      if (
+        !Number.isNaN(bandIndex) &&
+        bandIndex >= 0 &&
+        bandIndex < currentBands.length &&
+        bandProp
+      ) {
+        const numValue = typeof rawValue === "number" ? rawValue : parseFloat(String(rawValue));
+        if (!Number.isNaN(numValue)) {
+          (currentBands[bandIndex] as Record<string, unknown>)[bandProp] = numValue;
+        }
+      }
+      dispatch({
+        type: "workspace-audio-updated",
+        patch: { eqBands: currentBands } as Partial<LabAudioFocusSettings>,
+      });
+      return;
+    }
+    dispatch({
+      type: "workspace-audio-updated",
+      patch: { [audioKey]: rawValue } as Partial<LabAudioFocusSettings>,
+    });
+  }
+
+  function patchWorkspaceSetting(field: string, rawValue: unknown) {
+    if (field.startsWith("workspace.interactive.")) {
+      patchInteractiveSetting(field.replace("workspace.interactive.", ""), rawValue);
+      return;
+    }
+    if (field.startsWith("workspace.audioFocus.")) {
+      patchAudioFocusSetting(field.replace("workspace.audioFocus.", ""), rawValue);
+    }
+  }
+
+  function applyWorkspaceSettingAdjustment(actionButton: HTMLElement) {
+    const field = toStringValue(actionButton.dataset["labField"]);
+    if (field.trim() === "") {
+      return;
+    }
+    const resetRequested = actionButton.dataset["labReset"] === "true";
+    const optionValues = toStringValue(actionButton.dataset["labOptions"])
+      .split("|")
+      .filter(function (entry) {
+        return entry.trim() !== "";
+      });
+    if (optionValues.length > 0) {
+      const currentValue = String(readWorkspaceSetting(field) ?? optionValues[0]);
+      const resetValue =
+        toStringValue(actionButton.dataset["labResetValue"]) || optionValues[0] || "";
+      if (resetRequested) {
+        patchWorkspaceSetting(field, resetValue);
+        return;
+      }
+      const delta = parseFiniteNumber(actionButton.dataset["labDelta"], 0);
+      const currentIndex = Math.max(0, optionValues.indexOf(currentValue));
+      const nextIndex = Math.max(
+        0,
+        Math.min(optionValues.length - 1, currentIndex + (delta < 0 ? -1 : 1))
+      );
+      patchWorkspaceSetting(field, optionValues[nextIndex]);
+      return;
+    }
+
+    const min = parseFiniteNumber(actionButton.dataset["labMin"], Number.NEGATIVE_INFINITY);
+    const max = parseFiniteNumber(actionButton.dataset["labMax"], Number.POSITIVE_INFINITY);
+    const step = parseFiniteNumber(actionButton.dataset["labStep"], 1);
+    const currentValue = parseFiniteNumber(String(readWorkspaceSetting(field) ?? ""), 0);
+    const resetValue = parseFiniteNumber(actionButton.dataset["labResetValue"], currentValue);
+    const delta = parseFiniteNumber(actionButton.dataset["labDelta"], 0);
+    const nextValue = resetRequested
+      ? resetValue
+      : clampAdjustedValue(currentValue + delta, min, max, step);
+    patchWorkspaceSetting(field, clampAdjustedValue(nextValue, min, max, step));
+  }
+
   function handleClick(event: Event) {
     const target = event.target instanceof Element ? event.target : null;
     if (!target) {
@@ -2738,6 +2889,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "timeline-extract-audio":
         startTrackedUserAction("export-audio-track", getCurrentRunIntentPayload(state));
         return;
+      case "timeline-toggle-micro-zoom":
+        dispatch({ type: "workspace-selection-micro-zoom-toggled" });
+        return;
       case "timeline-toggle-playback":
         toggleTimelinePlayback();
         return;
@@ -2815,6 +2969,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "workspace-process-view-toggled":
         dispatch({ type: "workspace-process-view-toggled" });
         return;
+      case "workspace-setting-adjust":
+        applyWorkspaceSettingAdjustment(actionButton);
+        return;
       case "workspace-image-analysis":
         dispatch({ type: "workspace-image-analysis-requested" });
         sendMediaAction("edit-preview");
@@ -2822,19 +2979,13 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "workspace-reset-controls":
         dispatch({
           type: "workspace-interactive-updated",
-          patch: {
-            brightness: 100,
-            contrast: 100,
-            gamma: 1.0,
-            saturation: 100,
-            hueRotate: 0,
-            sharpness: 100,
-            channelR: true,
-            channelG: true,
-            channelB: true,
-            edgeHighlight: false,
-            invert: false,
-          },
+          patch: DEFAULT_INTERACTIVE_SETTINGS,
+        });
+        return;
+      case "workspace-reset-audio-focus":
+        dispatch({
+          type: "workspace-audio-updated",
+          patch: DEFAULT_AUDIO_FOCUS_SETTINGS,
         });
         return;
       case "timeline-add-bookmark":
@@ -3215,44 +3366,12 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       }
       if (workspaceField.startsWith("interactive.")) {
         const settingKey = workspaceField.replace("interactive.", "");
-        dispatch({
-          type: "workspace-interactive-updated",
-          patch: { [settingKey]: rawValue } as Partial<
-            import("../models/lab-types.js").LabInteractiveSettings
-          >,
-        });
+        patchInteractiveSetting(settingKey, rawValue);
         return;
       }
       if (workspaceField.startsWith("audioFocus.")) {
         const audioKey = workspaceField.replace("audioFocus.", "");
-        if (audioKey.startsWith("eqBands.")) {
-          const eqState = deps.store.getState();
-          const currentBands = eqState.ui.workspace.audioFocus.eqBands.map(function (b) {
-            return { ...b };
-          });
-          const parts = audioKey.split(".");
-          const bandIndex = parts.length > 1 ? parseInt(parts[1] as string, 10) : NaN;
-          const bandProp = parts.length > 2 ? parts[2] : "";
-          if (!isNaN(bandIndex) && bandIndex >= 0 && bandIndex < currentBands.length && bandProp) {
-            const numValue = typeof rawValue === "number" ? rawValue : parseFloat(String(rawValue));
-            if (!isNaN(numValue)) {
-              (currentBands[bandIndex] as Record<string, unknown>)[bandProp] = numValue;
-            }
-          }
-          dispatch({
-            type: "workspace-audio-updated",
-            patch: { eqBands: currentBands } as Partial<
-              import("../models/lab-types.js").LabAudioFocusSettings
-            >,
-          });
-        } else {
-          dispatch({
-            type: "workspace-audio-updated",
-            patch: { [audioKey]: rawValue } as Partial<
-              import("../models/lab-types.js").LabAudioFocusSettings
-            >,
-          });
-        }
+        patchAudioFocusSetting(audioKey, rawValue);
         return;
       }
     }

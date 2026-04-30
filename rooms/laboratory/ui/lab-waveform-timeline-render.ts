@@ -1262,6 +1262,8 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
   const rawEndMs = model.endMs ?? durationMs;
   const hasSelection =
     model.startMs !== null && model.endMs !== null && model.endMs > model.startMs;
+  const microZoomAvailable = model.waveformInspectionLens?.enabled === true;
+  const microZoomOpen = microZoomAvailable === true && model.selectionMicroZoomOpen === true;
   const interpretationItems = model.interpretationItems ?? [];
   const selectionIntent = hasSelection ? (model.activeSelection?.intent ?? "general") : "general";
   const startMs = hasSelection ? rawStartMs : 0;
@@ -1457,16 +1459,6 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
         `
             : ""
         }
-        <div class="labx-timeline__numeric">
-          <label class="labx-field labx-field--compact">
-            <span>Start (ms)</span>
-            <input class="labx-input labx-input--compact" type="number" min="0" max="${String(durationMs)}" data-lab-field="workspace.timelineStartMs" value="${model.startMs !== null ? String(model.startMs) : ""}" placeholder="ms" ${lockDisabledAttr} />
-          </label>
-          <label class="labx-field labx-field--compact">
-            <span>End (ms)</span>
-            <input class="labx-input labx-input--compact" type="number" min="0" max="${String(durationMs)}" data-lab-field="workspace.timelineEndMs" value="${model.endMs !== null ? String(model.endMs) : ""}" placeholder="ms" ${lockDisabledAttr} />
-          </label>
-        </div>
         <div class="labx-timeline__actions">
           ${
             hasSelection
@@ -1475,6 +1467,14 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
               : ""
           }
           <button class="labx-timeline__export-btn" type="button" data-lab-action="timeline-grab-frame" title="Capture current frame as image">Grab Frame</button>
+          <button
+            class="labx-timeline__export-btn labx-timeline__micro-zoom-toggle"
+            type="button"
+            data-lab-action="timeline-toggle-micro-zoom"
+            aria-pressed="${microZoomOpen ? "true" : "false"}"
+            title="${escapeHtml(copy.t("mediaAnalysis.timeline.microZoomToggleTitle", "Show or hide selection micro zoom"))}"
+            ${microZoomAvailable ? "" : "disabled"}
+          >${escapeHtml(copy.t("mediaAnalysis.timeline.microZoomToggle", "Micro Zoom"))}</button>
           <button class="labx-timeline__export-btn" type="button" data-lab-action="timeline-extract-audio" title="Extract source audio">Extract Audio</button>
         </div>
       </div>

@@ -558,6 +558,8 @@
       "bookmarkDefaultNote": "Isaret {time}",
       "removeBookmark": "Isareti sil",
       "microZoom": "Secim mikro yakinlastirma",
+      "microZoomToggle": "Mikro Zoom",
+      "microZoomToggleTitle": "Secim mikro yakinlastirmayi goster veya gizle",
       "inspectionMode": "Inceleme modu",
       "selectionHint": "Bu secim gelecekteki analize rehberlik eder",
       "interpretation": "Yorum",
@@ -1820,6 +1822,7 @@
       "dualPreviewLocked": "Cift onizleme zamansal oynatmayi pitch korunarak 1x sabit tutar.",
       "visualizerHint": "Timeline preview altinda tek realtime waveform katmani kullanilir. Spectrum modu ayni canvas uzerinde canli frekans gorunumu cizer.",
       "eqTitle": "PARAMETRIK EQ",
+      "resetAction": "Tumunu Sifirla",
       "filters": {
         "none": "Yok",
         "lowpass": "Lowpass",

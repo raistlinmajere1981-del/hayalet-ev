@@ -10,11 +10,14 @@ function renderSlider(
   min: number,
   max: number,
   step: number,
-  unit: string
+  unit: string,
+  resetValue: number
 ) {
+  const fullField = `workspace.interactive.${field}`;
+  const escapedLabel = escapeHtml(label);
   return `
-    <label class="labx-control-row">
-      <span class="labx-control-row__label">${escapeHtml(label)}</span>
+    <div class="labx-control-row">
+      <span class="labx-control-row__label">${escapedLabel}</span>
       <input
         class="labx-range"
         type="range"
@@ -22,10 +25,15 @@ function renderSlider(
         max="${String(max)}"
         step="${String(step)}"
         value="${String(value)}"
-        data-lab-field="workspace.interactive.${field}"
+        data-lab-field="${escapeHtml(fullField)}"
       />
       <span class="labx-control-row__value">${String(value)}${unit}</span>
-    </label>
+      <div class="labx-control-stepper" aria-label="${escapedLabel}">
+        <button class="labx-control-stepper__btn" type="button" data-lab-action="workspace-setting-adjust" data-lab-field="${escapeHtml(fullField)}" data-lab-delta="-${String(step)}" data-lab-min="${String(min)}" data-lab-max="${String(max)}" data-lab-step="${String(step)}" data-lab-reset-value="${String(resetValue)}" title="Decrease ${escapedLabel}">-</button>
+        <button class="labx-control-stepper__btn" type="button" data-lab-action="workspace-setting-adjust" data-lab-field="${escapeHtml(fullField)}" data-lab-reset="true" data-lab-min="${String(min)}" data-lab-max="${String(max)}" data-lab-step="${String(step)}" data-lab-reset-value="${String(resetValue)}" title="Reset ${escapedLabel}">R</button>
+        <button class="labx-control-stepper__btn" type="button" data-lab-action="workspace-setting-adjust" data-lab-field="${escapeHtml(fullField)}" data-lab-delta="${String(step)}" data-lab-min="${String(min)}" data-lab-max="${String(max)}" data-lab-step="${String(step)}" data-lab-reset-value="${String(resetValue)}" title="Increase ${escapedLabel}">+</button>
+      </div>
+    </div>
   `;
 }
 
@@ -55,12 +63,12 @@ export function renderWorkspaceInteractiveControls(
       </div>
       <div class="labx-card__body">
         <div class="labx-controls-stack">
-          ${renderSlider(copy.t("mediaAnalysis.interactiveControls.fields.brightness", "Brightness"), "brightness", settings.brightness, 0, 200, 1, "%")}
-          ${renderSlider(copy.t("mediaAnalysis.interactiveControls.fields.contrast", "Contrast"), "contrast", settings.contrast, 0, 200, 1, "%")}
-          ${renderSlider(copy.t("mediaAnalysis.interactiveControls.fields.gamma", "Gamma"), "gamma", settings.gamma, 0.1, 5.0, 0.1, "")}
-          ${renderSlider(copy.t("mediaAnalysis.interactiveControls.fields.saturation", "Saturation"), "saturation", settings.saturation, 0, 200, 1, "%")}
-          ${renderSlider(copy.t("mediaAnalysis.interactiveControls.fields.hueRotate", "Hue Rotate"), "hueRotate", settings.hueRotate, 0, 360, 1, "°")}
-          ${renderSlider(copy.t("mediaAnalysis.interactiveControls.fields.sharpness", "Sharpness"), "sharpness", settings.sharpness, 0, 200, 1, "%")}
+          ${renderSlider(copy.t("mediaAnalysis.interactiveControls.fields.brightness", "Brightness"), "brightness", settings.brightness, 0, 200, 1, "%", 100)}
+          ${renderSlider(copy.t("mediaAnalysis.interactiveControls.fields.contrast", "Contrast"), "contrast", settings.contrast, 0, 200, 1, "%", 100)}
+          ${renderSlider(copy.t("mediaAnalysis.interactiveControls.fields.gamma", "Gamma"), "gamma", settings.gamma, 0.1, 5.0, 0.1, "", 1)}
+          ${renderSlider(copy.t("mediaAnalysis.interactiveControls.fields.saturation", "Saturation"), "saturation", settings.saturation, 0, 200, 1, "%", 100)}
+          ${renderSlider(copy.t("mediaAnalysis.interactiveControls.fields.hueRotate", "Hue Rotate"), "hueRotate", settings.hueRotate, 0, 360, 1, "°", 0)}
+          ${renderSlider(copy.t("mediaAnalysis.interactiveControls.fields.sharpness", "Sharpness"), "sharpness", settings.sharpness, 0, 200, 1, "%", 100)}
         </div>
         <div class="labx-controls-toggles">
           <p class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.interactiveControls.channelTitle", "CHANNEL ISOLATE"))}</p>

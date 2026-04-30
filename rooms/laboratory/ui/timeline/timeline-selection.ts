@@ -335,7 +335,7 @@ export function renderInspectionSnapshot(snapshot: LabInspectionSnapshot | null,
 
 export function renderWaveformInspectionLens(model: LabWaveformTimelineModel, copy: LabI18n) {
   const lens = model.waveformInspectionLens;
-  if (!lens || lens.enabled !== true) {
+  if (!lens || lens.enabled !== true || model.selectionMicroZoomOpen !== true) {
     return "";
   }
   return `
