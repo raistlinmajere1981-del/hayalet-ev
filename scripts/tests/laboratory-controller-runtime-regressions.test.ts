@@ -1355,6 +1355,101 @@ test("laboratory run controller keeps click-to-seek and drag-to-select separated
   }
 });
 
+test("laboratory run controller keeps timeline drag selection stable after timeline rerender", () => {
+  const originalElement = globalThis.Element;
+  const originalMouseEvent = globalThis.MouseEvent;
+  const preview = new FakeMediaElement();
+  preview.duration = 10;
+  const documentRef = new FakeDualPreviewDocument(
+    new Map<string, unknown>([['video[data-lab-preserve-media="workspace-preview"]', preview]]),
+    [preview]
+  );
+  const windowRef = new FakeWindowEventTarget();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  class RelayoutTimelineTrack extends FakeTimelineTrack {
+    private collapsed = false;
+
+    collapse() {
+      this.collapsed = true;
+    }
+
+    override getBoundingClientRect() {
+      return {
+        left: 100,
+        width: this.collapsed ? 0 : 1000,
+      };
+    }
+  }
+
+  const track = new RelayoutTimelineTrack(100, 1000);
+  const timeline = new FakeTimelineRoot(track, 10000);
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: FakeTimelineActionElement,
+  });
+  Object.defineProperty(globalThis, "MouseEvent", {
+    configurable: true,
+    value: FakeMouseEvent,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: windowRef as unknown as Window,
+    });
+
+    controller.attach();
+
+    const mouseDownListener = documentRef.listeners.get("mousedown");
+    const mouseMoveListener = windowRef.listeners.get("mousemove");
+    const mouseUpListener = windowRef.listeners.get("mouseup");
+    assert.ok(mouseDownListener);
+    assert.ok(mouseMoveListener);
+    assert.ok(mouseUpListener);
+
+    const railTarget = new FakeTimelineActionElement("timeline-interact", timeline);
+
+    mouseDownListener?.(
+      new FakeMouseEvent(railTarget as unknown as EventTarget, 350) as unknown as Event
+    );
+    track.collapse();
+    mouseMoveListener?.(
+      new FakeMouseEvent(railTarget as unknown as EventTarget, 550) as unknown as Event
+    );
+    mouseUpListener?.({} as Event);
+
+    assert.equal(preview.currentTime, 4.5);
+    assert.equal(store.getState().ui.workspace.timelineStartMs, 2500);
+    assert.equal(store.getState().ui.workspace.timelineEndMs, 4500);
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+    if (originalMouseEvent === undefined) {
+      delete (globalThis as Record<string, unknown>).MouseEvent;
+    } else {
+      Object.defineProperty(globalThis, "MouseEvent", {
+        configurable: true,
+        value: originalMouseEvent,
+      });
+    }
+  }
+});
+
 test("laboratory run controller drags timeline start and end handles independently", () => {
   const originalElement = globalThis.Element;
   const originalMouseEvent = globalThis.MouseEvent;

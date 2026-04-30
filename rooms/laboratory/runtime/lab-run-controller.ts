@@ -2077,8 +2077,13 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
   // --- Timeline drag state ---
   type TimelineDragMode = "none" | "pending-seek" | "rail" | "start" | "end" | "body";
+  type TimelineTrackGeometry = {
+    left: number;
+    width: number;
+  };
   let timelineDragMode: TimelineDragMode = "none";
   let timelineDragTrack: HTMLElement | null = null;
+  let timelineDragTrackGeometry: TimelineTrackGeometry | null = null;
   let timelineDragDurationMs: number = 0;
   let timelineDragAnchorMs: number = 0;
   let timelineDragFinalMs: number = 0;
@@ -2089,16 +2094,36 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   let timelinePendingShiftKey = false;
   const TIMELINE_DRAG_THRESHOLD_PX = 4;
 
-  function msFromTrackClientX(track: Element, durationMs: number, clientX: number): number {
+  function getTimelineTrackGeometry(track: Element): TimelineTrackGeometry | null {
     const rect = (track as HTMLElement).getBoundingClientRect();
-    const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
-    const pct = x / rect.width;
+    if (rect.width <= 0 || Number.isFinite(rect.width) !== true) {
+      return null;
+    }
+    return {
+      left: rect.left,
+      width: rect.width,
+    };
+  }
+
+  function msFromTrackGeometry(
+    geometry: TimelineTrackGeometry,
+    durationMs: number,
+    clientX: number
+  ): number {
+    const x = Math.max(0, Math.min(clientX - geometry.left, geometry.width));
+    const pct = x / geometry.width;
     return Math.max(0, Math.round(durationMs * pct));
+  }
+
+  function msFromTrackClientX(track: Element, durationMs: number, clientX: number): number {
+    const geometry = getTimelineTrackGeometry(track);
+    return geometry === null ? 0 : msFromTrackGeometry(geometry, durationMs, clientX);
   }
 
   function msFromTrackX(clientX: number): number {
     if (!timelineDragTrack) return 0;
-    return msFromTrackClientX(timelineDragTrack, timelineDragDurationMs, clientX);
+    const geometry = timelineDragTrackGeometry ?? getTimelineTrackGeometry(timelineDragTrack);
+    return geometry === null ? 0 : msFromTrackGeometry(geometry, timelineDragDurationMs, clientX);
   }
 
   function isWorkspaceMutationLocked(lockKey: keyof ReturnType<typeof getWorkspaceLockState>) {
@@ -2115,6 +2140,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   function startTimelineDrag(track: Element, anchorMs: number, durationMs: number) {
     timelineDragMode = "rail";
     timelineDragTrack = track as HTMLElement;
+    timelineDragTrackGeometry = timelineDragTrackGeometry ?? getTimelineTrackGeometry(track);
     timelineDragDurationMs = durationMs;
     timelineDragAnchorMs = anchorMs;
     timelineDragFinalMs = anchorMs;
@@ -2133,6 +2159,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     event.preventDefault();
     timelineDragMode = "pending-seek";
     timelineDragTrack = track as HTMLElement;
+    timelineDragTrackGeometry = getTimelineTrackGeometry(track);
     timelineDragDurationMs = durationMs;
     timelineDragAnchorMs = anchorMs;
     timelinePendingClientX = clientX;
@@ -2149,6 +2176,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     event.stopPropagation();
     timelineDragMode = mode;
     timelineDragTrack = track as HTMLElement;
+    timelineDragTrackGeometry = getTimelineTrackGeometry(track);
     timelineDragDurationMs = durationMs;
   }
 
@@ -2161,6 +2189,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     const pointerMs = msFromTrackClientX(track, durationMs, event.clientX);
     timelineDragMode = "body";
     timelineDragTrack = track as HTMLElement;
+    timelineDragTrackGeometry = getTimelineTrackGeometry(track);
     timelineDragDurationMs = durationMs;
     timelineDragBodyOffsetStart = currentStart;
     timelineDragBodyOffsetEnd = currentEnd;
@@ -2227,8 +2256,11 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     if (isWorkspaceMutationLocked("timeline")) {
       timelineDragMode = "none";
       timelineDragTrack = null;
+      timelineDragTrackGeometry = null;
       return;
     }
+
+    const ms = msFromTrackX(event.clientX);
 
     if (timelineDragMode === "pending-seek") {
       const shiftPx = Math.abs(event.clientX - timelinePendingClientX);
@@ -2238,7 +2270,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       startTimelineDrag(timelineDragTrack, timelineDragAnchorMs, timelineDragDurationMs);
     }
 
-    const ms = msFromTrackX(event.clientX);
     const state = deps.store.getState();
 
     if (timelineDragMode === "rail") {
@@ -2270,6 +2301,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     if (isWorkspaceMutationLocked("timeline")) {
       timelineDragMode = "none";
       timelineDragTrack = null;
+      timelineDragTrackGeometry = null;
       return;
     }
     if (timelineDragMode === "pending-seek") {
@@ -2293,6 +2325,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     }
     timelineDragMode = "none";
     timelineDragTrack = null;
+    timelineDragTrackGeometry = null;
     timelineDragFinalMs = 0;
     timelineDragBodyPointerOffsetMs = 0;
     timelinePendingClientX = 0;
