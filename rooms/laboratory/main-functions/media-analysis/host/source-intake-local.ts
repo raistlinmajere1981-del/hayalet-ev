@@ -155,7 +155,9 @@ export function createMediaLocalSourceIntakeRuntime(deps: MediaLocalSourceIntake
         runtime.sourcePresets,
         normalizeSourceKind(toRecord(localFields)["kind"]) || fallbackKind
       );
-      return Array.isArray(sourceConfig.fileDialogFilters) ? sourceConfig.fileDialogFilters : [];
+      return Array.isArray(sourceConfig.fileDialogFilters)
+        ? sourceConfig.fileDialogFilters.map(toRecord)
+        : [];
     }
 
     const extensionSet = new Set<string>();
