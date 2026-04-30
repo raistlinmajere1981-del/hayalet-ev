@@ -11,10 +11,12 @@ import type {
   LabInteractiveSettings,
   LabSourceRetryBlockReason,
   LabWorkspaceControlTab,
+  LabOperationCapabilityId,
 } from "../models/lab-types.js";
 import {
   getActiveSelection,
   getAudioFocusSettings,
+  getAvailableOperationCapabilities,
   getCurrentSourceAsset,
   getDualPreviewLinkedAudioAssets,
   getDualPreviewVolume,
@@ -46,6 +48,7 @@ import {
 import { renderWorkspaceROIOverlay } from "./workspace-roi-overlay.js";
 import { renderWorkspaceInteractiveControls } from "./workspace-interactive-controls.js";
 import { renderWorkspaceAudioFocus } from "./workspace-audio-focus.js";
+import { renderWorkspaceOperationControls } from "./workspace-operation-controls.js";
 import { formatSourceRetryBlockReason } from "./lab-source-retry-copy.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
@@ -62,6 +65,31 @@ type WorkspaceInspectorPanel = {
   label: string;
   markup: string;
 };
+
+function getOperationCapabilityIdForAction(
+  actionType: string | null | undefined
+): LabOperationCapabilityId | null {
+  switch (actionType) {
+    case null:
+    case undefined:
+      return null;
+    case "extract-clip":
+      return "clip-export";
+    case "crop-region":
+      return "roi-crop";
+    case "enhance-visual":
+    case "enhance-frame":
+      return "enhanced-frame";
+    case "clean-audio":
+      return "audio-cleanup";
+    case "separate-stems":
+      return "stem-separation";
+    case "stabilize-segment":
+      return "segment-stabilization";
+    default:
+      return null;
+  }
+}
 
 function getSourceKindLabel(kind: string, copy: LabI18n = LAB_FALLBACK_I18N) {
   switch (kind) {
@@ -1300,6 +1328,10 @@ export function renderWorkspaceSurface(
   const dualPreviewLinkedAudioAssets = getDualPreviewLinkedAudioAssets(state);
   const selectedDualPreviewAudioAsset = getSelectedDualPreviewAudioAsset(state);
   const hasVisualControls = sourceReady && (sourceKind === "video" || sourceKind === "image");
+  const operationCapabilities = sourceReady ? getAvailableOperationCapabilities(state) : [];
+  const activeOperationCapabilityId = getOperationCapabilityIdForAction(
+    timeline.activeExecutionIntent?.actionType
+  );
   const durationMs =
     sourceReady && typeof metadata["durationSeconds"] === "number"
       ? Math.round(metadata["durationSeconds"] * 1000)
@@ -1325,6 +1357,17 @@ export function renderWorkspaceSurface(
           id: "visual",
           label: copy.t("mediaAnalysis.interactiveControls.title", "Görsel Ayarlar"),
           markup: renderWorkspaceInteractiveControls(settings, copy),
+        }
+      : null,
+    operationCapabilities.length > 0
+      ? {
+          id: "operations",
+          label: copy.t("mediaAnalysis.operations.tab", "Operations"),
+          markup: renderWorkspaceOperationControls(
+            operationCapabilities,
+            activeOperationCapabilityId,
+            copy
+          ),
         }
       : null,
   ].filter((panel): panel is WorkspaceInspectorPanel => panel !== null);

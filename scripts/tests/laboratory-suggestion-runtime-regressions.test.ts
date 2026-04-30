@@ -69,9 +69,9 @@ test("selection suggestion selector provides a general fallback for timeline med
 
   assert.deepEqual(getSelectionSuggestions(store.getState()), [
     {
-      id: "extract-clip",
-      label: "Bu bolumu kes",
-      actionType: "extract-clip",
+      id: "audio-inspect",
+      label: "Ses detaylarini incele",
+      actionType: "inspect-audio",
       confidence: 0.68,
     },
   ]);
@@ -103,12 +103,6 @@ test("selection suggestion selector fences recommendations by intent and media k
       label: "Ses detaylarini incele",
       actionType: "inspect-audio",
       confidence: 0.9,
-    },
-    {
-      id: "extract-clip",
-      label: "Bu bolumu kes",
-      actionType: "extract-clip",
-      confidence: 0.6,
     },
   ]);
 
@@ -363,7 +357,7 @@ test("suggestion preview builder returns a dry-run plan for supported actions", 
       suggestionId: "extract-clip",
       title: "Clip olusturulacak",
       steps: ["6.6s secim hazirlanacak", "Secilen segment yeni bir clip olarak hazirlanacak"],
-      expectedOutputs: ["Video veya audio clip"],
+      expectedOutputs: ["Video clip"],
       estimatedCost: "low",
     }
   );
@@ -710,8 +704,7 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
     false
   );
   assert.equal(
-    "executionPatternRegistry" in
-      ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "executionPatternRegistry" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
     false
   );
   assert.equal(
@@ -735,8 +728,7 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
     false
   );
   assert.equal(
-    "decisionPostureSignal" in
-      ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "decisionPostureSignal" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
     false
   );
   assert.equal(
@@ -748,8 +740,7 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
     false
   );
   assert.equal(
-    "counterfactualProjection" in
-      ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "counterfactualProjection" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
     false
   );
   assert.equal(
@@ -769,13 +760,11 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
     false
   );
   assert.equal(
-    "preferredAlternativeIndex" in
-      ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "preferredAlternativeIndex" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
     false
   );
   assert.equal(
-    "preferredAlternativeLabel" in
-      ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "preferredAlternativeLabel" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
     false
   );
   const persistedKeys = collectPersistedKeys(persistedState);

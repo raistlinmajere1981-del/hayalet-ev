@@ -6,12 +6,13 @@ import type {
 } from "../models/lab-types.js";
 
 type SelectionSuggestionContext = {
+  expandedTaxonomy?: boolean;
   inspectionMode?: LabInspectionMode;
   sourceKind: string;
 };
 
 function sourceSupportsClipSuggestion(sourceKind: string): boolean {
-  return sourceKind === "audio" || sourceKind === "video";
+  return sourceKind === "video";
 }
 
 function sourceSupportsAudioSuggestion(sourceKind: string): boolean {
@@ -149,6 +150,13 @@ export function getSelectionSuggestionsForContext(
       actionType: "extract-clip",
       confidence: suggestions.length > 0 ? 0.6 : 0.68,
     });
+  } else if (sourceKind === "audio" && suggestions.length === 0) {
+    pushSuggestion({
+      id: "audio-inspect",
+      label: "Ses detaylarini incele",
+      actionType: "inspect-audio",
+      confidence: inspectionMode === "audio" ? 0.93 : 0.68,
+    });
   } else if (sourceSupportsFocusSuggestion(sourceKind) && hasSelectionRoi !== true) {
     pushSuggestion({
       id: "focus-region",
@@ -158,7 +166,160 @@ export function getSelectionSuggestionsForContext(
     });
   }
 
-  return suggestions;
+  if (context.expandedTaxonomy !== true) {
+    return suggestions;
+  }
+
+  const expandedSuggestions: LabActionSuggestion[] = suggestions.map(function (suggestion) {
+    switch (suggestion.actionType) {
+      case "extract-clip":
+        return {
+          ...suggestion,
+          flowKind: "operation-result" as const,
+          operationCapabilityId: "clip-export" as const,
+          outputKind: "clip" as const,
+          toolIds: ["ffmpeg"],
+        };
+      case "enhance-visual":
+        return {
+          ...suggestion,
+          flowKind: "operation-result" as const,
+          operationCapabilityId: "enhanced-frame" as const,
+          outputKind: "frame" as const,
+          toolIds: ["ffmpeg"],
+        };
+      case "stabilize-segment":
+        return {
+          ...suggestion,
+          flowKind: "operation-result" as const,
+          operationCapabilityId: "segment-stabilization" as const,
+          outputKind: "clip" as const,
+          toolIds: ["ffmpeg"],
+        };
+      case "inspect-audio":
+        return {
+          ...suggestion,
+          analysisCapabilityId: "audio-signal" as const,
+          flowKind: "analysis-report" as const,
+          toolIds: ["ffmpeg"],
+        };
+      case "inspect-motion":
+        return {
+          ...suggestion,
+          analysisCapabilityId: "visual-structure" as const,
+          flowKind: "analysis-report" as const,
+          toolIds: ["ffmpeg"],
+        };
+      case "focus-region":
+        return {
+          ...suggestion,
+          analysisCapabilityId: "visual-forensics" as const,
+          flowKind: "analysis-report" as const,
+          toolIds: ["ffmpeg"],
+        };
+      default:
+        return {
+          ...suggestion,
+          analysisCapabilityId: "visual-forensics" as const,
+          flowKind: "analysis-report" as const,
+          toolIds: ["ffmpeg"],
+        };
+    }
+  });
+
+  function pushExpandedSuggestion(suggestion: LabActionSuggestion) {
+    if (expandedSuggestions.some((entry) => entry.id === suggestion.id)) {
+      return;
+    }
+    expandedSuggestions.push(suggestion);
+  }
+
+  if (hasSelectionRoi && sourceSupportsVisualSuggestion(sourceKind)) {
+    pushExpandedSuggestion({
+      id: "crop-region",
+      label: "Bolgeyi kirp",
+      actionType: "crop-region",
+      confidence: inspectionMode === "visual" ? 0.84 : 0.78,
+      flowKind: "operation-result",
+      operationCapabilityId: "roi-crop",
+      outputKind: "image",
+      toolIds: ["ffmpeg"],
+    });
+    pushExpandedSuggestion({
+      id: "ocr-region",
+      label: "Bolgede OCR tara",
+      actionType: "ocr-region",
+      confidence: 0.62,
+      flowKind: "analysis-report",
+      analysisCapabilityId: "visual-forensics",
+      outputKind: "artifact",
+      toolIds: ["tesseract"],
+    });
+  }
+
+  if (sourceSupportsAudioSuggestion(sourceKind)) {
+    pushExpandedSuggestion({
+      id: "clean-audio",
+      label: "Sesi temizle",
+      actionType: "clean-audio",
+      confidence: inspectionMode === "audio" ? 0.74 : 0.66,
+      flowKind: "operation-result",
+      operationCapabilityId: "audio-cleanup",
+      outputKind: "audio",
+      toolIds: ["ffmpeg"],
+    });
+    pushExpandedSuggestion({
+      id: "separate-stems",
+      label: "Kaynaklari ayir",
+      actionType: "separate-stems",
+      confidence: 0.58,
+      flowKind: "operation-result",
+      operationCapabilityId: "stem-separation",
+      outputKind: "stem",
+      toolIds: ["demucs", "ffmpeg"],
+    });
+  }
+
+  pushExpandedSuggestion({
+    id: "metadata-audit",
+    label: "Metadata kontrolu",
+    actionType: "metadata-audit",
+    confidence: 0.55,
+    flowKind: "analysis-report",
+    analysisCapabilityId: sourceSupportsVisualSuggestion(sourceKind)
+      ? "visual-forensics"
+      : "audio-signal",
+    outputKind: "artifact",
+    toolIds: ["exiftool", "mediainfo"],
+  });
+
+  if (sourceKind === "video") {
+    pushExpandedSuggestion({
+      id: "detect-scenes",
+      label: "Sahne gecislerini tara",
+      actionType: "detect-scenes",
+      confidence: 0.61,
+      flowKind: "analysis-report",
+      analysisCapabilityId: "visual-structure",
+      outputKind: "artifact",
+      toolIds: ["pyscenedetect"],
+    });
+  }
+
+  if (sourceSupportsVisualSuggestion(sourceKind)) {
+    pushExpandedSuggestion({
+      id: "detect-objects",
+      label: "Nesne ve bolge ipuclari",
+      actionType: "detect-objects",
+      confidence: 0.57,
+      flowKind: "analysis-report",
+      analysisCapabilityId: "visual-structure",
+      outputKind: "artifact",
+      toolIds: ["opencv", "yolo", "mediapipe"],
+    });
+  }
+
+  return expandedSuggestions;
 }
 
 export function buildSelectionSuggestionPreview(
@@ -209,7 +370,7 @@ export function buildSelectionSuggestionPreview(
         suggestionId: suggestion.id,
         title: "Clip olusturulacak",
         steps: [preparationStep, "Secilen segment yeni bir clip olarak hazirlanacak"],
-        expectedOutputs: ["Video veya audio clip"],
+        expectedOutputs: ["Video clip"],
         estimatedCost: "low",
       };
     case "focus-region":
@@ -235,6 +396,65 @@ export function buildSelectionSuggestionPreview(
         ],
         expectedOutputs: ["Hareket odakli notlar", "Frame referanslari"],
         estimatedCost: "low",
+      };
+    case "crop-region":
+      return {
+        suggestionId: suggestion.id,
+        title: "Bolge kirpma onizlemesi hazirlanacak",
+        steps: [preparationStep, "Secili ROI yeni bir goruntu varligi olarak hazirlanacak"],
+        expectedOutputs: ["Kirpilmis goruntu", "ROI metadata"],
+        estimatedCost: "low",
+      };
+    case "clean-audio":
+      return {
+        suggestionId: suggestion.id,
+        title: "Ses temizleme onizlemesi hazirlanacak",
+        steps: [
+          preparationStep,
+          "Ses penceresi temizleme veya band-pass varyanti icin hazirlanacak",
+        ],
+        expectedOutputs: ["Temizlenmis ses varyanti", "Filtre metadata"],
+        estimatedCost: "medium",
+      };
+    case "separate-stems":
+      return {
+        suggestionId: suggestion.id,
+        title: "Kaynak ayirma onizlemesi hazirlanacak",
+        steps: [preparationStep, "Secili ses penceresi stem ayirma icin paketlenecek"],
+        expectedOutputs: ["Izole stem varliklari", "Stem kanit ozeti"],
+        estimatedCost: "high",
+      };
+    case "ocr-region":
+      return {
+        suggestionId: suggestion.id,
+        title: "OCR analizi hazirlanacak",
+        steps: [preparationStep, "Secili goruntu bolgesi metin taramasi icin hazirlanacak"],
+        expectedOutputs: ["OCR metni", "Guven ozeti"],
+        estimatedCost: "medium",
+      };
+    case "metadata-audit":
+      return {
+        suggestionId: suggestion.id,
+        title: "Metadata kontrolu hazirlanacak",
+        steps: [preparationStep, "Kaynak metadata ve provenance sinyalleri rapor icin okunacak"],
+        expectedOutputs: ["Metadata raporu", "Provenance notlari"],
+        estimatedCost: "low",
+      };
+    case "detect-scenes":
+      return {
+        suggestionId: suggestion.id,
+        title: "Sahne gecisi analizi hazirlanacak",
+        steps: [preparationStep, "Secili aralik sahne sinirlari icin taranacak"],
+        expectedOutputs: ["Sahne sinirlari", "Zaman cizelgesi isaretleri"],
+        estimatedCost: "medium",
+      };
+    case "detect-objects":
+      return {
+        suggestionId: suggestion.id,
+        title: "Nesne analizi hazirlanacak",
+        steps: [preparationStep, "Goruntu bolgesi nesne ve poz ipuclari icin taranacak"],
+        expectedOutputs: ["Nesne/bolge ipuclari", "Frame referanslari"],
+        estimatedCost: "medium",
       };
     default:
       if (suggestion.actionType === "stabilize-segment") {

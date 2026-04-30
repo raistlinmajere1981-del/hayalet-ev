@@ -68,6 +68,30 @@ const ACTION_DESCRIPTOR_MAPPINGS: Record<string, LabExecutionDescriptorMapping> 
     paramShapeType: "clarity-region",
     advisoryStyle: "alignment",
   },
+  "enhance-frame": {
+    tool: "visual-operation",
+    intent: "visual-clarity-inspection",
+    paramShapeType: "clarity-region",
+    advisoryStyle: "alignment",
+  },
+  "crop-region": {
+    tool: "visual-operation",
+    intent: "spatial-crop-framing",
+    paramShapeType: "regional-window",
+    advisoryStyle: "pattern",
+  },
+  "clean-audio": {
+    tool: "audio-analysis",
+    intent: "spectral-cleanup-framing",
+    paramShapeType: "spectral-window",
+    advisoryStyle: "pattern",
+  },
+  "separate-stems": {
+    tool: "audio-analysis",
+    intent: "source-separation-framing",
+    paramShapeType: "spectral-window",
+    advisoryStyle: "pattern",
+  },
   "extract-clip": {
     tool: "media-segmentation",
     intent: "boundary-range-framing",
@@ -96,6 +120,30 @@ const ACTION_DESCRIPTOR_MAPPINGS: Record<string, LabExecutionDescriptorMapping> 
     tool: "motion-analysis",
     intent: "motion-continuity-inspection",
     paramShapeType: "motion-window",
+    advisoryStyle: "alignment",
+  },
+  "ocr-region": {
+    tool: "ocr-analysis",
+    intent: "text-evidence-extraction",
+    paramShapeType: "regional-window",
+    advisoryStyle: "alignment",
+  },
+  "metadata-audit": {
+    tool: "metadata-analysis",
+    intent: "provenance-metadata-review",
+    paramShapeType: "generic-evidence-window",
+    advisoryStyle: "behavior",
+  },
+  "detect-scenes": {
+    tool: "media-segmentation",
+    intent: "scene-boundary-detection",
+    paramShapeType: "temporal-window",
+    advisoryStyle: "pattern",
+  },
+  "detect-objects": {
+    tool: "object-analysis",
+    intent: "object-region-detection",
+    paramShapeType: "regional-window",
     advisoryStyle: "alignment",
   },
   "narrowed-inspection": {

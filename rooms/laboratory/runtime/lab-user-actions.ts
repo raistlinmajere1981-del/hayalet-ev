@@ -26,12 +26,33 @@ const TRACKED_USER_ACTION_DEFINITIONS: Record<string, LabTrackedUserActionDefini
     successMessage: "Frame alındı",
     errorMessage: "Frame alınamadı",
   },
+  "export-enhanced-frame": {
+    sourceAction: "export-enhanced-frame",
+    type: "custom",
+    label: "İyileştirilmiş frame hazırlanıyor",
+    successMessage: "İyileştirilmiş frame hazır",
+    errorMessage: "İyileştirilmiş frame hazırlanamadı",
+  },
   "export-audio-track": {
     sourceAction: "export-audio-track",
     type: "extract-audio",
     label: "Ses çıkarılıyor",
     successMessage: "Ses çıkarıldı",
     errorMessage: "Ses çıkarılamadı",
+  },
+  "export-clean-audio": {
+    sourceAction: "export-clean-audio",
+    type: "custom",
+    label: "Ses temizleniyor",
+    successMessage: "Temiz ses hazır",
+    errorMessage: "Ses temizlenemedi",
+  },
+  "export-band-pass-voice": {
+    sourceAction: "export-band-pass-voice",
+    type: "custom",
+    label: "Ses band-pass hazırlanıyor",
+    successMessage: "Band-pass ses hazır",
+    errorMessage: "Band-pass ses hazırlanamadı",
   },
   "export-roi-image": {
     sourceAction: "export-roi-image",

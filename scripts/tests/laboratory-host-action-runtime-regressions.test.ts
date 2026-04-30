@@ -437,6 +437,32 @@ test("laboratory media export runtime cancels only prior export jobs for every e
           bytesTotal: null,
           message: null,
         },
+        "old-clean-audio-job": {
+          requestId: "req-export-clean-audio-old",
+          action: "export-clean-audio",
+          projectId: "project-1",
+          toolId: "ffmpeg",
+          featureStage: "edit",
+          operation: "tool-run",
+          stage: "queued",
+          percent: null,
+          bytesReceived: null,
+          bytesTotal: null,
+          message: null,
+        },
+        "old-band-pass-job": {
+          requestId: "req-export-band-pass-old",
+          action: "export-band-pass-voice",
+          projectId: "project-1",
+          toolId: "ffmpeg",
+          featureStage: "edit",
+          operation: "tool-run",
+          stage: "queued",
+          percent: null,
+          bytesReceived: null,
+          bytesTotal: null,
+          message: null,
+        },
       } as Record<string, Record<string, unknown>>,
     };
 
@@ -447,6 +473,8 @@ test("laboratory media export runtime cancels only prior export jobs for every e
       "old-frame-job",
       "old-clip-job",
       "old-audio-job",
+      "old-clean-audio-job",
+      "old-band-pass-job",
     ]);
     assert.equal(Boolean(runtime.jobs["process-job"]), true);
     assert.deepEqual(Object.keys(runtime.jobs), ["process-job"]);
@@ -460,15 +488,31 @@ test("laboratory media export runtime cancels only prior export jobs for every e
     const outputAsset = assets.find(function (asset) {
       return asset["type"] === expectedAssetType;
     });
+    const metadata = (outputAsset?.["metadata"] || {}) as Record<string, unknown>;
     assert.equal(outputAsset?.["runId"], "run-1");
     assert.deepEqual(outputAsset?.["intentIds"], ["visual-inspection"]);
     assert.equal(typeof outputAsset?.["sourceId"], "string");
+    assert.equal(outputAsset?.["derivedFromAssetId"], outputAsset?.["sourceId"]);
+    assert.equal(outputAsset?.["derivedFromSourceId"], outputAsset?.["sourceId"]);
+    assert.equal(metadata["flowKind"], "operation-result");
+    assert.equal(metadata["evidenceRole"], "derived");
     if (expectedAssetType === "audio") {
-      assert.equal(outputAsset?.["derivedFromAssetId"], outputAsset?.["sourceId"]);
-      assert.equal(outputAsset?.["derivedFromSourceId"], outputAsset?.["sourceId"]);
-      const metadata = (outputAsset?.["metadata"] || {}) as Record<string, unknown>;
+      assert.equal(metadata["operationId"], "audio-extract");
+      assert.equal(metadata["filterPreset"], "audio-extract");
       assert.equal(metadata["durationMs"], 1400);
+      assert.deepEqual(metadata["sourceRange"], { endMs: 1400, startMs: 0 });
       assert.equal(metadata["startOffsetMs"], 0);
+    } else if (expectedAssetType === "clip") {
+      assert.equal(metadata["operationId"], "clip-export");
+      assert.equal(metadata["filterPreset"], "clip-export");
+      assert.deepEqual(metadata["sourceRange"], { endMs: 2400, startMs: 1000 });
+    } else if (expectedAssetType === "frame") {
+      assert.equal(metadata["operationId"], "frame-grab");
+      assert.equal(metadata["filterPreset"], "frame-grab");
+      assert.deepEqual(metadata["sourceRange"], { endMs: 1200, startMs: 1200 });
+    } else {
+      assert.equal(metadata["operationId"], "roi-crop");
+      assert.equal(metadata["filterPreset"], "roi-crop");
     }
     const completedPayload =
       pushedJobStates.find(function (payload) {
@@ -626,6 +670,237 @@ test("laboratory media export runtime preserves payload intent ids before workbe
   await runExportCase("audio", function (intentIds?: unknown) {
     return intentIds === undefined ? {} : { intentIds };
   });
+});
+
+test("laboratory audio variant exports preserve filter and lineage metadata", async () => {
+  async function runAudioVariant(action: "clean" | "voice"): Promise<{
+    args: string[];
+    completedPayload: Record<string, unknown> | null;
+    metadata: Record<string, unknown>;
+    outputAssetId: unknown;
+  }> {
+    const sourceKind = action === "voice" ? "audio" : "video";
+    let activeProject: Record<string, unknown> = {
+      id: `project-audio-${action}`,
+      source: {
+        kind: sourceKind,
+        storedPath: "/tmp/lab-demo.mp4",
+        metadata: {
+          audioCodec: "aac",
+          durationSeconds: 2.5,
+        },
+      },
+      process: {
+        records: {
+          "media-analysis": {
+            runId: "run-audio-variant",
+          },
+        },
+      },
+      workbench: {
+        analysisScope: {
+          intentIds: ["audio-investigation"],
+        },
+      },
+      assets: [],
+    };
+    const pushedJobStates: Array<Record<string, unknown>> = [];
+    const toolRuns: Array<Record<string, unknown>> = [];
+    const jobState = createLaboratoryJobStateRuntime({
+      roomId: "laboratory",
+      cancelRoomTool: async function () {},
+    });
+    const exportRuntime = createMediaExportActionRuntime({
+      asNonEmptyString(value: unknown) {
+        return typeof value === "string" && value.trim() !== "" ? value : null;
+      },
+      asNumber(value: unknown) {
+        return typeof value === "number" && Number.isFinite(value) ? value : null;
+      },
+      async callRoomTools(payload) {
+        toolRuns.push({ ...payload });
+        return {
+          run: {
+            exitCode: 0,
+          },
+        };
+      },
+      getActiveProject() {
+        return activeProject;
+      },
+      getProjectEditOutputDir() {
+        return "/tmp";
+      },
+      async patchActiveProject(_runtime, patcher) {
+        const nextProject = patcher(activeProject);
+        activeProject = {
+          ...nextProject,
+          assets: syncSourceLabAssetForProject(nextProject, nextProject["assets"]),
+        };
+      },
+      pushJobState(_api, payload) {
+        pushedJobStates.push({ ...payload });
+      },
+      registerJob: jobState.registerJob,
+      clearJob: jobState.clearJob,
+      cancelJobsForProject: jobState.cancelJobsForProject,
+      toRecord(value: unknown) {
+        return value !== null && typeof value === "object" && Array.isArray(value) === false
+          ? (value as Record<string, unknown>)
+          : {};
+      },
+    });
+
+    if (action === "clean") {
+      await exportRuntime.exportCleanAudio({}, { roomId: "laboratory", jobs: {} }, "req-clean", {});
+    } else {
+      await exportRuntime.exportBandPassVoice(
+        {},
+        { roomId: "laboratory", jobs: {} },
+        "req-voice",
+        {}
+      );
+    }
+
+    const outputAsset = (activeProject.assets as Array<Record<string, unknown>>).find(
+      function (asset) {
+        return asset["type"] === "audio";
+      }
+    );
+    return {
+      args: toolRuns[0]?.["args"] as string[],
+      completedPayload:
+        pushedJobStates.find(function (payload) {
+          return payload["stage"] === "completed";
+        }) || null,
+      metadata: (outputAsset?.["metadata"] || {}) as Record<string, unknown>,
+      outputAssetId: outputAsset?.["id"],
+    };
+  }
+
+  const clean = await runAudioVariant("clean");
+  assert.equal(clean.metadata["operationId"], "audio-cleanup");
+  assert.equal(clean.metadata["filterPreset"], "cleanup-basic");
+  assert.deepEqual(clean.metadata["sourceRange"], { endMs: 2500, startMs: 0 });
+  assert.deepEqual(clean.completedPayload?.["resultAssetIds"], [clean.outputAssetId]);
+  assert.equal(
+    clean.args.some((arg) => arg.includes("afftdn=nf=-25")),
+    true
+  );
+
+  const voice = await runAudioVariant("voice");
+  assert.equal(voice.metadata["operationId"], "band-pass-voice");
+  assert.equal(voice.metadata["filterPreset"], "voice-band-pass");
+  assert.deepEqual(voice.completedPayload?.["resultAssetIds"], [voice.outputAssetId]);
+  assert.equal(voice.args.includes("highpass=f=120,lowpass=f=3800,dynaudnorm=f=150:g=12"), true);
+  assert.equal(voice.args[voice.args.indexOf("-ac") + 1], "1");
+});
+
+test("laboratory ROI exports normalize crop pixels and preserve operation lineage metadata", async () => {
+  let activeProject: Record<string, unknown> = {
+    id: "project-roi-lineage",
+    source: {
+      kind: "video",
+      storedPath: "/tmp/lab-demo.mp4",
+      metadata: {
+        durationSeconds: 8,
+        height: 360,
+        width: 640,
+      },
+    },
+    process: {
+      records: {
+        "media-analysis": {
+          runId: "run-roi-lineage",
+        },
+      },
+    },
+    workbench: {
+      analysisScope: {
+        intentIds: ["visual-inspection"],
+      },
+    },
+    assets: [],
+  };
+  const toolRuns: Array<Record<string, unknown>> = [];
+  const jobState = createLaboratoryJobStateRuntime({
+    roomId: "laboratory",
+    cancelRoomTool: async function () {},
+  });
+  const exportRuntime = createMediaExportActionRuntime({
+    asNonEmptyString(value: unknown) {
+      return typeof value === "string" && value.trim() !== "" ? value : null;
+    },
+    asNumber(value: unknown) {
+      return typeof value === "number" && Number.isFinite(value) ? value : null;
+    },
+    async callRoomTools(payload) {
+      toolRuns.push({ ...payload });
+      return {
+        run: {
+          exitCode: 0,
+        },
+      };
+    },
+    getActiveProject() {
+      return activeProject;
+    },
+    getProjectEditOutputDir() {
+      return "/tmp";
+    },
+    async patchActiveProject(_runtime, patcher) {
+      const nextProject = patcher(activeProject);
+      activeProject = {
+        ...nextProject,
+        assets: syncSourceLabAssetForProject(nextProject, nextProject["assets"]),
+      };
+    },
+    pushJobState() {},
+    registerJob: jobState.registerJob,
+    clearJob: jobState.clearJob,
+    cancelJobsForProject: jobState.cancelJobsForProject,
+    toRecord(value: unknown) {
+      return value !== null && typeof value === "object" && Array.isArray(value) === false
+        ? (value as Record<string, unknown>)
+        : {};
+    },
+  });
+
+  await exportRuntime.exportROIImage(
+    {},
+    {
+      roomId: "laboratory",
+      jobs: {},
+    },
+    "req-roi-lineage",
+    {
+      normalizedRoi: {
+        height: 0.5,
+        width: 0.5,
+        x: 0.1,
+        y: 0.1,
+      },
+      regionId: "selection",
+      seekMs: 1500,
+    }
+  );
+
+  const args = toolRuns[0]?.["args"] as string[];
+  assert.equal(args.includes("crop=320:180:64:36"), true);
+  const assets = activeProject.assets as Array<Record<string, unknown>>;
+  const outputAsset = assets.find(function (asset) {
+    return asset["type"] === "image";
+  });
+  const metadata = (outputAsset?.["metadata"] || {}) as Record<string, unknown>;
+  assert.equal(outputAsset?.["runId"], "run-roi-lineage");
+  assert.equal(outputAsset?.["derivedFromAssetId"], outputAsset?.["sourceId"]);
+  assert.equal(metadata["operationId"], "roi-crop");
+  assert.equal(metadata["flowKind"], "operation-result");
+  assert.equal(metadata["evidenceRole"], "derived");
+  assert.equal(metadata["filterPreset"], "roi-crop");
+  assert.deepEqual(metadata["cropPixels"], { height: 180, width: 320, x: 64, y: 36 });
+  assert.deepEqual(metadata["sourceDimensions"], { height: 360, width: 640 });
+  assert.deepEqual(metadata["sourceRange"], { endMs: 1500, startMs: 1500 });
 });
 
 test("laboratory source intake resolves use-as-source from registered local asset ids only", async () => {

@@ -21,17 +21,29 @@ const TOOL_ADAPTERS: Record<string, string> = {
   "audio-analysis": "librosa",
   "embedding-extraction": "yamnet",
   "media-segmentation": "ffmpeg",
+  "metadata-analysis": "exiftool",
+  "object-analysis": "onnx-runtime",
+  "ocr-analysis": "tesseract",
   "signal-inspection": "pyAudioAnalysis",
   "speech-transcription": "whisper.cpp",
+  "visual-operation": "ffmpeg",
 };
 
 const INTENT_OPERATIONS: Record<string, string> = {
   "boundary-range-framing": "media_segment_extraction",
+  "object-region-detection": "object_region_detection",
+  "provenance-metadata-review": "metadata_provenance_review",
+  "scene-boundary-detection": "scene_boundary_detection",
   "motion-continuity-inspection": "frame_diff_analysis",
+  "source-separation-framing": "source_separation_preview",
+  "spatial-crop-framing": "roi_crop_preview",
   segmentation: "media_segment_extraction",
+  "spectral-cleanup-framing": "audio_cleanup_preview",
   "spectral-variation-inspection": "spectral_features_analysis",
+  "text-evidence-extraction": "ocr_region_extraction",
   "temporal-inspection": "temporal_window_scan",
   "temporal-variation-inspection": "temporal_window_scan",
+  "visual-clarity-inspection": "visual_clarity_preview",
 };
 
 const REQUIRED_FIELDS_BY_SHAPE: Record<string, readonly string[]> = {

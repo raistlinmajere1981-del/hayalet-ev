@@ -186,11 +186,20 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
         case "export-frame-grab":
           await mediaActionRuntime.exportFrameGrab(api, runtime, requestId, actionPayload);
           break;
+        case "export-enhanced-frame":
+          await mediaActionRuntime.exportEnhancedFrame(api, runtime, requestId, actionPayload);
+          break;
         case "export-timeline-clip":
           await mediaActionRuntime.exportTimelineClip(api, runtime, requestId, actionPayload);
           break;
         case "export-audio-track":
           await mediaActionRuntime.exportAudioTrack(api, runtime, requestId, actionPayload);
+          break;
+        case "export-clean-audio":
+          await mediaActionRuntime.exportCleanAudio(api, runtime, requestId, actionPayload);
+          break;
+        case "export-band-pass-voice":
+          await mediaActionRuntime.exportBandPassVoice(api, runtime, requestId, actionPayload);
           break;
         case "profile-set-mode":
           await mediaActionRuntime.setProfileMode(runtime, actionPayload);

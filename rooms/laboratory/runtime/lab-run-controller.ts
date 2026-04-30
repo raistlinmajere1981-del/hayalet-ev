@@ -22,6 +22,7 @@ import type {
 import { createLabWaveformTimelineVisualizer } from "../ui/lab-waveform-timeline.js";
 import { createLabI18n } from "../ui/lab-i18n.js";
 import { formatSourceRetryBlockReason } from "../ui/lab-source-retry-copy.js";
+import { getTrackedOperationActionId } from "./lab-operation-action-map.js";
 import {
   getActionOutputs,
   getActiveEditOutput,
@@ -234,7 +235,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   }
 
   function normalizeWorkspaceControlTab(value: string): LabWorkspaceControlTab | null {
-    return value === "audio" || value === "visual" ? value : null;
+    return value === "audio" || value === "visual" || value === "operations" ? value : null;
   }
 
   function buildYoutubeImportCustomPatch(
@@ -812,6 +813,36 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   function getCurrentRunIntentPayload(state = deps.store.getState()): Record<string, unknown> {
     const intentIds = toStringArray(getCurrentRun(state)?.analysisScope?.intentIds);
     return intentIds.length > 0 ? { intentIds } : {};
+  }
+
+  function getActiveSelectionOperationPayload(state = deps.store.getState()) {
+    const selection = state.ui.workspace.activeSelection;
+    const seekMs =
+      state.ui.workspace.timelineStartMs !== null
+        ? state.ui.workspace.timelineStartMs
+        : (selection?.startMs ?? 0);
+    return {
+      seekMs,
+      ...(selection?.roi
+        ? {
+            normalizedRoi: {
+              height: selection.roi.height,
+              width: selection.roi.width,
+              x: selection.roi.x,
+              y: selection.roi.y,
+            },
+          }
+        : {}),
+      ...getCurrentRunIntentPayload(state),
+    };
+  }
+
+  function startTrackedOperationForUiAction(uiActionId: string, payload?: Record<string, unknown>) {
+    const trackedActionId = getTrackedOperationActionId(uiActionId);
+    if (trackedActionId === null) {
+      return null;
+    }
+    return startTrackedUserAction(trackedActionId, payload);
   }
 
   function clearHubDismissTimer(actionId: string) {
@@ -2860,6 +2891,30 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         }
         return;
       }
+      case "workspace-selection-roi-export": {
+        const roiState = deps.store.getState();
+        const selection = roiState.ui.workspace.activeSelection;
+        if (selection?.roi === undefined) {
+          dispatch({
+            type: "push-event",
+            event: buildUiEvent("ROI çıktısı için önce görüntü üzerinde bölge seç.", "warning"),
+          });
+          return;
+        }
+        startTrackedOperationForUiAction("workspace-selection-roi-export", {
+          regionId: "selection",
+          ...getActiveSelectionOperationPayload(roiState),
+        });
+        return;
+      }
+      case "workspace-enhanced-frame-export": {
+        const frameState = deps.store.getState();
+        startTrackedOperationForUiAction(
+          "workspace-enhanced-frame-export",
+          getActiveSelectionOperationPayload(frameState)
+        );
+        return;
+      }
       case "timeline-export-clip": {
         if (isWorkspaceMutationLocked("timeline")) {
           pushLockedWorkspaceEvent("Zaman aralığı dışa aktarımı aktif analiz sırasında kilitli.");
@@ -2868,7 +2923,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         const clipState = deps.store.getState();
         const clipWs = clipState.ui.workspace;
         if (clipWs.timelineStartMs !== null && clipWs.timelineEndMs !== null) {
-          startTrackedUserAction("export-timeline-clip", {
+          startTrackedOperationForUiAction("timeline-export-clip", {
             startMs: clipWs.timelineStartMs,
             endMs: clipWs.timelineEndMs,
             ...getCurrentRunIntentPayload(clipState),
@@ -2880,14 +2935,29 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         const frameState = deps.store.getState();
         const frameWs = frameState.ui.workspace;
         const seekMs = frameWs.timelineStartMs !== null ? frameWs.timelineStartMs : 0;
-        startTrackedUserAction("export-frame-grab", {
+        startTrackedOperationForUiAction("timeline-grab-frame", {
           seekMs: seekMs,
           ...getCurrentRunIntentPayload(frameState),
         });
         return;
       }
       case "timeline-extract-audio":
-        startTrackedUserAction("export-audio-track", getCurrentRunIntentPayload(state));
+        startTrackedOperationForUiAction(
+          "timeline-extract-audio",
+          getCurrentRunIntentPayload(state)
+        );
+        return;
+      case "workspace-audio-cleanup-export":
+        startTrackedOperationForUiAction(
+          "workspace-audio-cleanup-export",
+          getCurrentRunIntentPayload(deps.store.getState())
+        );
+        return;
+      case "workspace-band-pass-voice-export":
+        startTrackedOperationForUiAction(
+          "workspace-band-pass-voice-export",
+          getCurrentRunIntentPayload(deps.store.getState())
+        );
         return;
       case "timeline-toggle-micro-zoom":
         dispatch({ type: "workspace-selection-micro-zoom-toggled" });
@@ -2962,6 +3032,14 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         if (value.trim() !== "") {
           dispatch({
             type: "workspace-intent-toggled",
+            intentId: value as import("../models/lab-types.js").LabIntentId,
+          });
+        }
+        return;
+      case "analysis-prep-group-toggle":
+        if (value.trim() !== "") {
+          dispatch({
+            type: "analysis-prep-group-toggled",
             intentId: value as import("../models/lab-types.js").LabIntentId,
           });
         }

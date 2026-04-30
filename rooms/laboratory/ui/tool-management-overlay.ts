@@ -35,6 +35,16 @@ type LabToolEntryRecord = LabRecord & {
   version?: unknown;
 };
 
+type LabToolProgressItem = {
+  action: string | null;
+  detail: string;
+  id: string;
+  percent: number | null;
+  stage: string | null;
+  title: string;
+  toolId: string | null;
+};
+
 const STAGE_LABELS: Record<string, string> = {
   source: "Kaynak",
   edit: "Düzene",
@@ -98,6 +108,252 @@ function translateUsedByLabel(entry: string, copy: LabI18n): string {
     return entry;
   }
   return copy.t(`mediaAnalysis.toolManager.usedBy.${key}`, entry);
+}
+
+function clampProgress(value: unknown): number | null {
+  if (typeof value !== "number" || Number.isFinite(value) !== true) {
+    return null;
+  }
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function isToolLifecycleAction(action: string | null): boolean {
+  return action === "tool-install" || action === "tool-update" || action === "tool-check-updates";
+}
+
+function isActiveProgressStage(stage: string | null): boolean {
+  return stage === null || stage === "queued" || stage === "running";
+}
+
+function getToolDisplayName(
+  descriptors: LabToolDescriptorRecord[],
+  toolId: string | null,
+  fallback: string
+): string {
+  if (toolId === null) {
+    return fallback;
+  }
+  const descriptor = descriptors.find(function (entry) {
+    return asNonEmptyString(entry.toolId) === toolId;
+  });
+  return asNonEmptyString(descriptor?.displayName) || toolId;
+}
+
+function getProgressActionLabel(action: string | null, copy: LabI18n): string {
+  switch (action) {
+    case null:
+      return copy.t("mediaAnalysis.toolManager.progress.actions.generic", "Araç işlemi");
+    case "tool-install":
+      return copy.t("mediaAnalysis.toolManager.progress.actions.install", "Kurulum");
+    case "tool-update":
+      return copy.t("mediaAnalysis.toolManager.progress.actions.update", "Güncelleme");
+    case "tool-check-updates":
+      return copy.t(
+        "mediaAnalysis.toolManager.progress.actions.checkUpdates",
+        "Güncelleme kontrolü"
+      );
+    default:
+      return copy.t("mediaAnalysis.toolManager.progress.actions.generic", "Araç işlemi");
+  }
+}
+
+function getProgressStageLabel(stage: string | null, copy: LabI18n): string {
+  switch (stage) {
+    case null:
+      return copy.t("mediaAnalysis.toolManager.progress.stage.tracking", "İzleniyor");
+    case "queued":
+      return copy.t("mediaAnalysis.toolManager.progress.stage.queued", "Kuyrukta");
+    case "running":
+      return copy.t("mediaAnalysis.toolManager.progress.stage.running", "Çalışıyor");
+    case "completed":
+      return copy.t("mediaAnalysis.toolManager.progress.stage.completed", "Tamamlandı");
+    case "failed":
+      return copy.t("mediaAnalysis.toolManager.progress.stage.failed", "Hata");
+    case "cancelled":
+      return copy.t("mediaAnalysis.toolManager.progress.stage.cancelled", "İptal edildi");
+    default:
+      return copy.t("mediaAnalysis.toolManager.progress.stage.tracking", "İzleniyor");
+  }
+}
+
+function getSnapshotToolJobs(
+  state: LabStoreState,
+  descriptors: LabToolDescriptorRecord[],
+  copy: LabI18n
+): LabToolProgressItem[] {
+  const snapshot = asLabRecord(state.snapshot);
+  const jobs = Array.isArray(snapshot["jobs"]) ? (snapshot["jobs"] as unknown[]) : [];
+
+  return jobs
+    .map(function (entry) {
+      const job = asLabRecord(entry);
+      const action = asNonEmptyString(job["action"]);
+      const toolId = asNonEmptyString(job["toolId"]);
+      if (isToolLifecycleAction(action) !== true && toolId === null) {
+        return null;
+      }
+      if (isToolLifecycleAction(action) !== true) {
+        return null;
+      }
+
+      const stage = asNonEmptyString(job["stage"]);
+      const toolLabel = getToolDisplayName(
+        descriptors,
+        toolId,
+        copy.t("mediaAnalysis.toolManager.progress.unknownTool", "Araç")
+      );
+      return {
+        action,
+        detail:
+          asNonEmptyString(job["phaseLabel"]) ||
+          asNonEmptyString(job["message"]) ||
+          copy.t(
+            "mediaAnalysis.toolManager.progress.fallbackDetail",
+            "İşlem ayrıntısı bekleniyor."
+          ),
+        id: asNonEmptyString(job["jobId"]) || `${action}:${toolId || "tool"}`,
+        percent: clampProgress(job["percent"]),
+        stage,
+        title: `${toolLabel} · ${getProgressActionLabel(action, copy)}`,
+        toolId,
+      };
+    })
+    .filter((entry): entry is LabToolProgressItem => entry !== null)
+    .sort(function (left, right) {
+      const leftActive = isActiveProgressStage(left.stage) ? 0 : 1;
+      const rightActive = isActiveProgressStage(right.stage) ? 0 : 1;
+      if (leftActive !== rightActive) {
+        return leftActive - rightActive;
+      }
+      return left.title.localeCompare(right.title, copy.locale || "tr");
+    });
+}
+
+function getBusyToolFallbackItems(
+  state: LabStoreState,
+  descriptors: LabToolDescriptorRecord[],
+  jobs: LabToolProgressItem[],
+  copy: LabI18n
+): LabToolProgressItem[] {
+  const activeToolIds = new Set(
+    jobs
+      .map(function (job) {
+        return job.toolId;
+      })
+      .filter((toolId): toolId is string => toolId !== null)
+  );
+
+  return descriptors
+    .map(function (descriptor): LabToolProgressItem | null {
+      const toolId = asNonEmptyString(descriptor.toolId);
+      if (toolId === null || activeToolIds.has(toolId)) {
+        return null;
+      }
+      const entry = getToolEntry(state, toolId);
+      if (entry.busy !== true) {
+        return null;
+      }
+      const toolLabel = getToolDisplayName(descriptors, toolId, toolId);
+      return {
+        action: null,
+        detail: copy.t(
+          "mediaAnalysis.toolManager.progress.fallbackDetail",
+          "İşlem ayrıntısı bekleniyor."
+        ),
+        id: `busy:${toolId}`,
+        percent: null,
+        stage: "running",
+        title: `${toolLabel} · ${getProgressActionLabel(null, copy)}`,
+        toolId,
+      };
+    })
+    .filter((entry): entry is LabToolProgressItem => entry !== null);
+}
+
+function getToolProgressItems(
+  state: LabStoreState,
+  descriptors: LabToolDescriptorRecord[],
+  copy: LabI18n
+): LabToolProgressItem[] {
+  const snapshotJobs = getSnapshotToolJobs(state, descriptors, copy);
+  return snapshotJobs.concat(getBusyToolFallbackItems(state, descriptors, snapshotJobs, copy));
+}
+
+function renderToolProgressCard(item: LabToolProgressItem, copy: LabI18n): string {
+  const active = isActiveProgressStage(item.stage);
+  const progressValue =
+    item.stage === "completed" ? 100 : item.percent === null ? null : item.percent;
+  const progressStyle =
+    progressValue === null
+      ? ""
+      : ` style="width: ${escapeHtml(String(Math.max(4, progressValue)))}%;"`;
+  const ariaValue =
+    progressValue === null ? "" : ` aria-valuenow="${escapeHtml(String(progressValue))}"`;
+  const percentLabel =
+    progressValue === null
+      ? copy.t("mediaAnalysis.toolManager.progress.pendingPercent", "Hazırlanıyor")
+      : copy.t("mediaAnalysis.toolManager.progress.percent", "{percent}%", {
+          percent: progressValue,
+        });
+
+  return `
+    <article class="labx-tool-progress-card" data-stage="${escapeHtml(item.stage || "tracking")}">
+      <div class="labx-tool-progress-card__head">
+        <strong>${escapeHtml(item.title)}</strong>
+        <span>${escapeHtml(getProgressStageLabel(item.stage, copy))}</span>
+      </div>
+      <div
+        class="labx-tool-progress-card__bar"
+        role="progressbar"
+        aria-label="${escapeHtml(item.title)}"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        data-indeterminate="${active && progressValue === null ? "true" : "false"}"
+        ${ariaValue}
+      >
+        <span${progressStyle}></span>
+      </div>
+      <div class="labx-tool-progress-card__meta">
+        <span>${escapeHtml(item.detail)}</span>
+        <strong>${escapeHtml(percentLabel)}</strong>
+      </div>
+    </article>
+  `;
+}
+
+function renderToolProgressRail(
+  state: LabStoreState,
+  descriptors: LabToolDescriptorRecord[],
+  copy: LabI18n = LAB_FALLBACK_I18N
+): string {
+  const progressItems = getToolProgressItems(state, descriptors, copy);
+  const activeCount = progressItems.filter(function (item) {
+    return isActiveProgressStage(item.stage);
+  }).length;
+
+  return `
+    <aside class="labx-tool-progress-rail" aria-label="${escapeHtml(copy.t("mediaAnalysis.toolManager.progress.ariaLabel", "Kurulum ve güncelleme ilerlemesi"))}">
+      <div class="labx-tool-progress-rail__header">
+        <p class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.toolManager.progress.eyebrow", "İşlem takibi"))}</p>
+        <h3 class="labx-card__title">${escapeHtml(copy.t("mediaAnalysis.toolManager.progress.title", "Kurulum ve güncelleme"))}</h3>
+        <span>${escapeHtml(copy.t("mediaAnalysis.toolManager.progress.activeCount", "{count} aktif", { count: activeCount }))}</span>
+      </div>
+      ${
+        progressItems.length > 0
+          ? `<div class="labx-tool-progress-rail__list">${progressItems
+              .map(function (item) {
+                return renderToolProgressCard(item, copy);
+              })
+              .join("")}</div>`
+          : `
+            <div class="labx-tool-progress-empty">
+              <strong>${escapeHtml(copy.t("mediaAnalysis.toolManager.progress.idle", "Aktif kurulum veya güncelleme yok."))}</strong>
+              <p>${escapeHtml(copy.t("mediaAnalysis.toolManager.progress.idleDetail", "Bir araç işlemi başladığında ilerleme burada görünür."))}</p>
+            </div>
+          `
+      }
+    </aside>
+  `;
 }
 
 function getToolRegistry(state: LabStoreState): LabToolDescriptorRecord[] {
@@ -547,44 +803,49 @@ export function renderToolManagementOverlay(
                   </button>
                 </div>
               </div>
-              <div class="labx-module-overlay__summary">
-                <article class="labx-overlay-stat">
-                  <span>${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.relevant", "İlgili araçlar"))}</span>
-                  <strong>${escapeHtml(String(relevantTools.length))}</strong>
-                </article>
-                <article class="labx-overlay-stat">
-                  <span>${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.installed", "Kurulu araç"))}</span>
-                  <strong>${escapeHtml(String(installedCount))}</strong>
-                </article>
-                <article class="labx-overlay-stat">
-                  <span>${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.updates", "Güncelleme bekleyen"))}</span>
-                  <strong>${escapeHtml(String(updateCount))}</strong>
-                </article>
+              <div class="labx-tool-manager-layout">
+                ${renderToolProgressRail(state, descriptors, copy)}
+                <div class="labx-tool-manager-main">
+                  <div class="labx-module-overlay__summary">
+                    <article class="labx-overlay-stat">
+                      <span>${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.relevant", "İlgili araçlar"))}</span>
+                      <strong>${escapeHtml(String(relevantTools.length))}</strong>
+                    </article>
+                    <article class="labx-overlay-stat">
+                      <span>${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.installed", "Kurulu araç"))}</span>
+                      <strong>${escapeHtml(String(installedCount))}</strong>
+                    </article>
+                    <article class="labx-overlay-stat">
+                      <span>${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.updates", "Güncelleme bekleyen"))}</span>
+                      <strong>${escapeHtml(String(updateCount))}</strong>
+                    </article>
+                  </div>
+                  ${renderToolSection(
+                    state,
+                    stageId,
+                    modeLabel,
+                    copy.t("mediaAnalysis.toolManager.sections.relevant.title", "İlgili araçlar"),
+                    copy.t(
+                      "mediaAnalysis.toolManager.sections.relevant.hint",
+                      "Seçili intent ve yetenek aileleri için gerekli araçlar önce listelenir."
+                    ),
+                    relevantTools,
+                    copy
+                  )}
+                  ${renderToolSection(
+                    state,
+                    stageId,
+                    copy.t("mediaAnalysis.toolManager.sections.other.eyebrow", "Oda geneli"),
+                    copy.t("mediaAnalysis.toolManager.sections.other.title", "Diğer araçlar"),
+                    copy.t(
+                      "mediaAnalysis.toolManager.sections.other.hint",
+                      "Diğer modül ve kapasitelere ait araçlar burada tutulur."
+                    ),
+                    otherTools,
+                    copy
+                  )}
+                </div>
               </div>
-              ${renderToolSection(
-                state,
-                stageId,
-                modeLabel,
-                copy.t("mediaAnalysis.toolManager.sections.relevant.title", "İlgili araçlar"),
-                copy.t(
-                  "mediaAnalysis.toolManager.sections.relevant.hint",
-                  "Seçili intent ve yetenek aileleri için gerekli araçlar önce listelenir."
-                ),
-                relevantTools,
-                copy
-              )}
-              ${renderToolSection(
-                state,
-                stageId,
-                copy.t("mediaAnalysis.toolManager.sections.other.eyebrow", "Oda geneli"),
-                copy.t("mediaAnalysis.toolManager.sections.other.title", "Diğer araçlar"),
-                copy.t(
-                  "mediaAnalysis.toolManager.sections.other.hint",
-                  "Diğer modül ve kapasitelere ait araçlar burada tutulur."
-                ),
-                otherTools,
-                copy
-              )}
             </section>
           `
           : ""

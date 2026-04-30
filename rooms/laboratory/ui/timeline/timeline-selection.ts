@@ -91,13 +91,21 @@ function getSuggestionPriorityClass(suggestion: LabActionSuggestion) {
   return suggestion.confidence >= 0.8 ? "is-primary" : "is-secondary";
 }
 
-export function renderSelectionSuggestions(suggestions: LabActionSuggestion[], copy: LabI18n) {
+export function renderSelectionSuggestions(
+  suggestions: LabActionSuggestion[],
+  copy: LabI18n,
+  options: { titleFallback?: string; titleKey?: string } = {}
+) {
   if (suggestions.length === 0) {
     return "";
   }
+  const title = copy.t(
+    options.titleKey || "mediaAnalysis.timeline.suggestedActions",
+    options.titleFallback || "Suggested actions"
+  );
   return `
     <div class="lab-selection-panel__suggestions">
-      <div class="lab-selection-panel__suggestions-title">${escapeHtml(copy.t("mediaAnalysis.timeline.suggestedActions", "Suggested actions"))}</div>
+      <div class="lab-selection-panel__suggestions-title">${escapeHtml(title)}</div>
       <div class="lab-selection-panel__suggestions-list">
         ${suggestions
           .map(function (suggestion) {

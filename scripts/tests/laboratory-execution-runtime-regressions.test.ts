@@ -6037,11 +6037,11 @@ test("execution runtime clears on upstream invalidation edges", () => {
       mutate(store) {
         store.dispatch({
           type: "workspace-selection-suggestion-preview-set",
-          suggestionId: "extract-clip",
+          suggestionId: "clean-audio",
         });
         store.dispatch({
           type: "workspace-selection-suggestion-accepted",
-          suggestionId: "extract-clip",
+          suggestionId: "clean-audio",
         });
       },
     },

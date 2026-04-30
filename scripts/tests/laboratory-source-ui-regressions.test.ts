@@ -2,7 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { getAnalysisActionBlockReason } from "../../rooms/laboratory/runtime/lab-selectors.ts";
+import {
+  getActiveExecutionIntent,
+  getActiveSuggestionPreview,
+  getAnalysisActionBlockReason,
+} from "../../rooms/laboratory/runtime/lab-selectors.ts";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import { renderLabAssetPreviewOverlay } from "../../rooms/laboratory/ui/lab-asset-preview-overlay.ts";
 import { renderLabDrawer } from "../../rooms/laboratory/ui/lab-drawer.ts";
@@ -12,6 +16,7 @@ import { renderLabTopBar } from "../../rooms/laboratory/ui/lab-top-bar.ts";
 import { createLabI18n } from "../../rooms/laboratory/ui/lab-i18n.ts";
 import { renderReportOverlay } from "../../rooms/laboratory/ui/report-overlay.ts";
 import { renderToolManagementOverlay } from "../../rooms/laboratory/ui/tool-management-overlay.ts";
+import { renderWorkspaceOperationControls } from "../../rooms/laboratory/ui/workspace-operation-controls.ts";
 import { renderWorkspaceSurface } from "../../rooms/laboratory/ui/workspace-surface.ts";
 
 const sourcePresets = JSON.parse(
@@ -52,6 +57,7 @@ function createSeededState(ffmpegInstalled = false) {
             youtubeCustom: {},
           },
           metadata: {
+            audioCodec: "aac",
             width: 640,
             height: 360,
             durationSeconds: 801,
@@ -215,7 +221,7 @@ test("laboratory v2 shell renders source intake in the setup drawer and preview 
   assert.doesNotMatch(surface.main, /Source setup controls/);
   assert.equal(surface.side.trim(), "");
   assert.match(drawer, /data-drawer-mode="setup"/);
-  assert.match(drawer, /Analiz Amaçları/);
+  assert.match(drawer, /Analysis Goals/);
   assert.match(drawer, /data-lab-action="run-deep-analysis"/);
   assert.doesNotMatch(
     drawer,
@@ -318,7 +324,7 @@ test("laboratory workspace treats reused local assets as ready sources", () => {
   const drawer = renderLabDrawer(state, surface);
 
   assert.match(drawer, /data-drawer-mode="setup"/);
-  assert.match(drawer, /Analiz Amaçları/);
+  assert.match(drawer, /Analysis Goals/);
   assert.match(
     surface.main,
     /<video class="labx-preview-media labx-preview-media--workspace-video"/
@@ -402,6 +408,195 @@ test("laboratory workspace inspector drawer persists collapsed visual tab state"
   assert.match(surface.main, /data-inspector-panel="visual"/);
 });
 
+test("laboratory workspace inspector exposes operation-result controls and active operation focus", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 2400,
+    endMs: 5600,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "visual",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "enhance-visual",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "enhance-visual",
+  });
+
+  const surface = renderWorkspaceSurface(store.getState());
+
+  assert.match(surface.main, /data-active-tab="operations"/);
+  assert.match(surface.main, /data-inspector-panel="operations"/);
+  assert.match(surface.main, /data-operation-id="enhanced-frame"/);
+  assert.match(surface.main, /data-operation-id="before-after-variant"/);
+  assert.match(surface.main, /data-operation-id="band-pass-voice"/);
+  assert.match(surface.main, /data-operation-id="stem-separation"/);
+  assert.match(surface.main, /data-operation-id="enhanced-frame"[\s\S]*data-active="true"/);
+});
+
+test("laboratory operation buttons reflect scoped running action state", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "user-action-added",
+    actionEvent: {
+      id: "user-action-enhanced-frame",
+      type: "custom",
+      label: "İyileştirilmiş frame hazırlanıyor",
+      status: "running",
+      startedAt: 1,
+      requestId: "request-enhanced-frame",
+      projectId: "project-1",
+      sourceAction: "export-enhanced-frame",
+      progress: 42,
+    },
+  });
+
+  const surface = renderWorkspaceSurface(store.getState());
+
+  assert.match(
+    surface.main,
+    /data-operation-id="enhanced-frame"[\s\S]*data-action-status="running"/
+  );
+  assert.match(
+    surface.main,
+    /data-lab-operation-capability="enhanced-frame"[\s\S]*aria-busy="true"/
+  );
+  assert.match(surface.main, /İyileştirilmiş frame hazırlanıyor/);
+  assert.match(surface.main, /data-lab-operation-capability="audio-cleanup"/);
+  assert.match(surface.main, /data-lab-operation-capability="band-pass-voice"/);
+});
+
+test("laboratory operation error buttons keep retry label short and expose message in title", () => {
+  const html = renderWorkspaceOperationControls([
+    {
+      actionId: "workspace-enhanced-frame-export",
+      actionStatus: "error",
+      activeActionLabel: "İyileştirilmiş frame hazırlanıyor",
+      activeActionMessage: "ffmpeg returned a very long diagnostic about an unsupported filter",
+      activeJobId: null,
+      activeRequestId: "request-enhanced-frame",
+      blockReason: null,
+      description: "Generate a clarity-focused frame or ROI variant.",
+      flowKind: "operation-result",
+      groupId: "frame",
+      id: "enhanced-frame",
+      label: "Enhanced Frame",
+      outputKinds: ["frame", "image", "variant"],
+      providerIds: ["ffmpeg-visual-reveal"],
+      readiness: "ready",
+      sourceKinds: ["video", "image"],
+      toolIds: ["ffmpeg"],
+    },
+  ]);
+
+  assert.match(html, /data-action-status="error"/);
+  assert.match(html, />Retry<\/button>/);
+  assert.match(html, /title="ffmpeg returned a very long diagnostic about an unsupported filter"/);
+  assert.match(html, /class="labx-operation-card__action-state"/);
+});
+
+test("laboratory analysis preparation groups default closed and expand on demand", () => {
+  const store = createSeededState(true);
+
+  const closedDrawer = renderLabDrawer(store.getState(), renderWorkspaceSurface(store.getState()));
+  assert.match(closedDrawer, /data-lab-action="analysis-prep-group-toggle"/);
+  assert.match(closedDrawer, /aria-expanded="false"/);
+  assert.doesNotMatch(closedDrawer, /class="labx-analysis-module"/);
+
+  store.dispatch({ type: "analysis-prep-group-toggled", intentId: "audio-investigation" });
+  const openDrawer = renderLabDrawer(store.getState(), renderWorkspaceSurface(store.getState()));
+
+  assert.match(openDrawer, /data-lab-value="audio-investigation"[\s\S]*aria-expanded="true"/);
+  assert.match(openDrawer, /class="labx-analysis-module"/);
+  assert.match(openDrawer, /Audio signal/);
+});
+
+test("laboratory selection guidance splits expanded operation and analysis suggestions", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 2400,
+    endMs: 5600,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+
+  const surface = renderWorkspaceSurface(store.getState());
+
+  assert.match(surface.side, /Önerilen İşlemler/);
+  assert.match(surface.side, /Önerilen Analizler/);
+  assert.match(surface.side, /Sesi temizle/);
+  assert.match(surface.side, /Kaynaklari ayir/);
+  assert.match(surface.side, /Metadata kontrolu/);
+  assert.match(surface.side, /Sahne gecislerini tara/);
+});
+
+test("laboratory operation suggestions resolve expanded preview and avoid analysis rail highlight", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 2400,
+    endMs: 5600,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "clean-audio",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "clean-audio",
+  });
+
+  const surface = renderWorkspaceSurface(store.getState());
+  const drawer = renderLabDrawer(store.getState(), surface);
+
+  assert.equal(getActiveSuggestionPreview(store.getState())?.suggestionId, "clean-audio");
+  assert.equal(getActiveExecutionIntent(store.getState())?.flowKind, "operation-result");
+  assert.match(surface.main, /data-active-tab="operations"/);
+  assert.doesNotMatch(drawer, /data-active="true"[\s\S]*Audio signal/);
+});
+
+test("laboratory analysis suggestion acceptance opens and highlights the preparation rail", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 2400,
+    endMs: 5600,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+  store.dispatch({ type: "drawer-collapsed-toggled" });
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "audio-inspect",
+  });
+
+  const surface = renderWorkspaceSurface(store.getState());
+  const drawer = renderLabDrawer(store.getState(), surface);
+
+  assert.notEqual(drawer, "");
+  assert.match(drawer, /data-drawer-mode="setup"/);
+  assert.match(drawer, /data-active="true"[\s\S]*Audio signal/);
+  assert.match(drawer, /data-active="true"[\s\S]*Audio recovery/);
+});
+
 test("laboratory root owns mock execution dispatch outside the run controller", () => {
   const rootSource = readFileSync("rooms/laboratory/ui/lab-root.ts", "utf8");
   const runControllerSource = readFileSync(
@@ -426,12 +621,33 @@ test("laboratory analysis readiness allows intent-only selection when derived ca
 test("laboratory tool overlay lists room-local tool lifecycle actions inside the live shell", () => {
   const store = createSeededState();
   store.dispatch({ type: "tool-manager-toggled", open: true });
+  const state = store.getState();
+  state.snapshot = {
+    ...(state.snapshot || {}),
+    jobs: [
+      {
+        jobId: "job-yt-dlp-install",
+        action: "tool-install",
+        toolId: "yt-dlp",
+        stage: "running",
+        percent: 64,
+        phaseLabel: "Arşiv indiriliyor",
+        message: "Paket indiriliyor",
+      },
+    ],
+  };
   const html = renderToolManagementOverlay(store.getState());
 
   assert.match(html, /Araç Yönetimi/);
   assert.match(html, /Toplu güncelle/);
   assert.match(html, /Kurulu araç/);
   assert.match(html, /Güncelleme bekleyen/);
+  assert.match(html, /İşlem takibi/);
+  assert.match(html, /Kurulum ve güncelleme/);
+  assert.match(html, /yt-dlp[\s\S]*Kurulum/);
+  assert.match(html, /Arşiv indiriliyor/);
+  assert.match(html, /64%/);
+  assert.match(html, /role="progressbar"/);
   assert.match(html, /yt-dlp/);
   assert.match(html, /FFmpeg/);
   assert.match(html, /data-lab-action="tool-check-updates"/);
@@ -443,6 +659,7 @@ test("laboratory tool overlay lists room-local tool lifecycle actions inside the
     translations: JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8")),
   });
   const translatedHtml = renderToolManagementOverlay(store.getState(), trCopy);
+  assert.match(translatedHtml, /İşlem takibi/);
   assert.match(translatedHtml, /Seçili niyet ve yetenek aileleri/);
   assert.match(
     translatedHtml,
@@ -559,7 +776,7 @@ test("laboratory workspace panels show snapshot drift as a non-blocking visibili
   const drawer = renderLabDrawer(state, surface);
   const strip = renderLabProcessStrip(state);
 
-  assert.match(drawer, /Analiz İlerlemesi/);
+  assert.match(drawer, /Analysis Progress/);
   assert.match(drawer, /Pipeline/);
   assert.match(drawer, /motion/);
   assert.match(drawer, /visual-signal/);
@@ -674,7 +891,7 @@ test("laboratory process strip renders recent action history from user actions",
   const surface = renderWorkspaceSurface(state);
 
   assert.doesNotMatch(surface.main, /labx-topbar-actions/);
-  assert.doesNotMatch(surface.main, /Klip çıkarılıyor/);
+  assert.match(surface.main, /data-operation-id="clip-export"[\s\S]*Klip çıkarılıyor/);
 
   const collapsedStripHtml = renderLabProcessStrip(store.getState());
   assert.match(collapsedStripHtml, /data-process-view="compact"/);

@@ -1,13 +1,16 @@
 import { escapeHtml } from "../models/lab-types.js";
+import type { CapabilityFamilyId } from "../models/lab-types.js";
 import type { LabDrawerMode, LabStoreState, LabWorkspaceSurface } from "../models/lab-types.js";
 import {
   buildIntentPreviewSentence,
   getActiveExecutionAlternatives,
   getActiveExecutionCandidate,
+  getActiveExecutionIntent,
   getActiveExecutionPayloadPreview,
   getActiveExecutionPlan,
   getActiveExecutionReadiness,
   getAnalysisActionBlockReason,
+  getAnalysisPreparationGroups,
   getAvailableIntents,
   getDrawerCollapsed,
   getLaboratoryProcessSummary,
@@ -31,6 +34,9 @@ import type { LabExecutionReadinessSignal } from "../runtime/lab-execution-readi
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
+type AnalysisPreparationGroup = ReturnType<typeof getAnalysisPreparationGroups>[number];
+type AvailableIntent = ReturnType<typeof getAvailableIntents>[number];
+
 // ---------------------------------------------------------------------------
 // Mode headers
 // ---------------------------------------------------------------------------
@@ -41,27 +47,27 @@ const MODE_HEADERS: Record<
 > = {
   setup: {
     eyebrowKey: "mediaAnalysis.drawer.setup.eyebrow",
-    eyebrowFallback: "Yapılandırma",
+    eyebrowFallback: "Configuration",
     titleKey: "mediaAnalysis.drawer.setup.title",
-    titleFallback: "Analiz Hazırlığı",
+    titleFallback: "Analysis Preparation",
   },
   running: {
     eyebrowKey: "mediaAnalysis.drawer.running.eyebrow",
-    eyebrowFallback: "Çalışıyor",
+    eyebrowFallback: "Running",
     titleKey: "mediaAnalysis.drawer.running.title",
-    titleFallback: "Analiz İlerlemesi",
+    titleFallback: "Analysis Progress",
   },
   result: {
     eyebrowKey: "mediaAnalysis.drawer.result.eyebrow",
-    eyebrowFallback: "Sonuç",
+    eyebrowFallback: "Result",
     titleKey: "mediaAnalysis.drawer.result.title",
-    titleFallback: "Karar Yüzeyi",
+    titleFallback: "Decision Surface",
   },
   explore: {
     eyebrowKey: "mediaAnalysis.drawer.explore.eyebrow",
-    eyebrowFallback: "Keşif",
+    eyebrowFallback: "Explore",
     titleKey: "mediaAnalysis.drawer.explore.title",
-    titleFallback: "Alternatifler ve Karşılaştırma",
+    titleFallback: "Alternatives and Comparison",
   },
 };
 
@@ -79,9 +85,167 @@ function renderDrawerHeader(mode: LabDrawerMode, copy: LabI18n) {
 // Setup mode
 // ---------------------------------------------------------------------------
 
+function renderAnalysisPreparationGroupBody(
+  group: AnalysisPreparationGroup,
+  activeCapabilityIds: CapabilityFamilyId[],
+  copy: LabI18n
+) {
+  const outputSummary =
+    group.expectedOutputs.length > 0
+      ? group.expectedOutputs
+          .map(function (output) {
+            return output.label;
+          })
+          .join(", ")
+      : copy.t("mediaAnalysis.drawer.setup.defaultReportOutput", "Report evidence");
+
+  return `
+    <div
+      class="labx-analysis-group"
+      data-selected="${group.selected ? "true" : "false"}"
+      data-readiness="${escapeHtml(group.readiness)}"
+    >
+      <div class="labx-analysis-group__modules">
+        ${group.modules
+          .map(function (module) {
+            return `
+              <label
+                class="labx-analysis-module"
+                data-readiness="${escapeHtml(module.readiness)}"
+                data-active="${activeCapabilityIds.includes(module.capabilityId) ? "true" : "false"}"
+              >
+                <input
+                  type="checkbox"
+                  ${module.enabled ? "checked" : ""}
+                  data-lab-action="module-toggle"
+                  data-lab-value="${escapeHtml(module.moduleId)}"
+                />
+                <span>
+                  <strong>${escapeHtml(module.label)}</strong>
+                  <small>${escapeHtml(module.reportSection)}${module.blockReason ? ` · ${escapeHtml(module.blockReason)}` : ""}</small>
+                </span>
+              </label>
+            `;
+          })
+          .join("")}
+      </div>
+      <p class="labx-analysis-group__outputs">${escapeHtml(copy.t("mediaAnalysis.drawer.setup.reportOutputs", "Report outputs"))}: ${escapeHtml(outputSummary)}</p>
+    </div>
+  `;
+}
+
+function renderAnalysisPreparationAccordion(
+  intent: AvailableIntent,
+  group: AnalysisPreparationGroup | undefined,
+  expanded: boolean,
+  activeCapabilityIds: CapabilityFamilyId[],
+  copy: LabI18n
+) {
+  const selected = intent.selected;
+  const blocked = intent.readiness === "blocked";
+  const groupActive =
+    group?.modules.some(function (module) {
+      return activeCapabilityIds.includes(module.capabilityId);
+    }) === true;
+  const readiness = group?.readiness ?? intent.readiness;
+  const moduleCount = group?.modules.length ?? 0;
+  const enabledModuleCount =
+    group?.modules.filter(function (module) {
+      return module.enabled;
+    }).length ?? 0;
+  const toggleLabel = expanded
+    ? copy.t("mediaAnalysis.drawer.setup.collapseGroup", "Collapse")
+    : copy.t("mediaAnalysis.drawer.setup.expandGroup", "Expand");
+
+  return `
+    <div
+      class="labx-drawer__intent-cluster"
+      data-selected="${String(selected)}"
+      data-expanded="${String(expanded)}"
+      data-readiness="${escapeHtml(readiness)}"
+      data-active="${String(groupActive)}"
+    >
+      <div class="labx-drawer__intent-head">
+        <label class="labx-drawer__intent-item" data-blocked="${String(blocked)}">
+          <input
+            type="checkbox"
+            ${selected ? "checked" : ""}
+            ${blocked ? "disabled" : ""}
+            data-lab-action="workspace-intent-toggle"
+            data-lab-value="${escapeHtml(intent.id)}"
+          />
+          <span>
+            <strong>${escapeHtml(intent.label)}</strong>
+            <small>${escapeHtml(intent.description)}</small>
+          </span>
+          ${intent.blockReason ? `<small class="labx-drawer__intent-block">${escapeHtml(intent.blockReason)}</small>` : ""}
+        </label>
+        ${
+          group
+            ? `<button
+                class="labx-drawer__intent-toggle"
+                type="button"
+                data-lab-action="analysis-prep-group-toggle"
+                data-lab-value="${escapeHtml(intent.id)}"
+                aria-expanded="${String(expanded)}"
+                aria-label="${escapeHtml(toggleLabel)}"
+                title="${escapeHtml(toggleLabel)}"
+              >
+                ${expanded ? "-" : "+"}
+              </button>`
+            : ""
+        }
+      </div>
+      <div class="labx-drawer__intent-summary">
+        <span>${escapeHtml(readiness)}</span>
+        ${
+          moduleCount > 0
+            ? `<span>${escapeHtml(String(enabledModuleCount))}/${escapeHtml(String(moduleCount))}</span>`
+            : ""
+        }
+      </div>
+      ${expanded && group ? renderAnalysisPreparationGroupBody(group, activeCapabilityIds, copy) : ""}
+    </div>
+  `;
+}
+
+function getActiveAnalysisCapabilityIds(state: LabStoreState): CapabilityFamilyId[] {
+  const activeExecutionIntent = getActiveExecutionIntent(state);
+  if (activeExecutionIntent?.flowKind === "operation-result") {
+    return [];
+  }
+  switch (activeExecutionIntent?.actionType) {
+    case "inspect-audio":
+      return ["audio-signal", "audio-recovery"];
+    case "inspect-motion":
+    case "detect-scenes":
+    case "detect-objects":
+      return ["visual-structure"];
+    case "focus-region":
+    case "ocr-region":
+    case "metadata-audit":
+      return ["visual-forensics"];
+    case "analyze-segment":
+      return ["visual-structure", "visual-forensics", "audio-signal"];
+    case "extract-clip":
+    case "enhance-visual":
+    case "enhance-frame":
+    case "crop-region":
+    case "clean-audio":
+    case "separate-stems":
+    case "stabilize-segment":
+    case undefined:
+      return [];
+    default:
+      return [];
+  }
+}
+
 function renderSetupMode(state: LabStoreState, surface: LabWorkspaceSurface, copy: LabI18n) {
   const sourceReady = getSourceReady(state);
   const intents = getAvailableIntents(state);
+  const analysisGroups = getAnalysisPreparationGroups(state);
+  const activeAnalysisCapabilityIds = getActiveAnalysisCapabilityIds(state);
   const selectedIntents = getSelectedIntents(state);
   const blockReason = getAnalysisActionBlockReason(state);
   const preflightSeverity = getPreflightSeverity(state);
@@ -90,25 +254,21 @@ function renderSetupMode(state: LabStoreState, surface: LabWorkspaceSurface, cop
 
   const intentsMarkup = sourceReady
     ? `<section class="labx-drawer__section labx-drawer__intents">
-        <h3>${escapeHtml(copy.t("mediaAnalysis.drawer.setup.intentsTitle", "Analiz Amaçları"))}</h3>
+        <h3>${escapeHtml(copy.t("mediaAnalysis.drawer.setup.intentsTitle", "Analysis Goals"))}</h3>
         <div class="labx-drawer__intent-list">
           ${intents
             .map(function (intent) {
-              const selected = intent.selected;
-              const blocked = intent.readiness === "blocked";
-              return `
-                <label class="labx-drawer__intent-item" data-blocked="${String(blocked)}">
-                  <input
-                    type="checkbox"
-                    ${selected ? "checked" : ""}
-                    ${blocked ? "disabled" : ""}
-                    data-lab-action="workspace-intent-toggle"
-                    data-lab-value="${escapeHtml(intent.id)}"
-                  />
-                  <span>${escapeHtml(intent.label)}</span>
-                  ${intent.blockReason ? `<small class="labx-drawer__intent-block">${escapeHtml(intent.blockReason)}</small>` : ""}
-                </label>
-              `;
+              const analysisGroup = analysisGroups.find(function (group) {
+                return group.intentId === intent.id;
+              });
+              const expanded = state.ui.workspace.analysisPrepExpandedIntentIds.includes(intent.id);
+              return renderAnalysisPreparationAccordion(
+                intent,
+                analysisGroup,
+                expanded,
+                activeAnalysisCapabilityIds,
+                copy
+              );
             })
             .join("")}
         </div>
@@ -118,7 +278,7 @@ function renderSetupMode(state: LabStoreState, surface: LabWorkspaceSurface, cop
   const preflightSection =
     selectedIntents.length > 0
       ? `<section class="labx-drawer__section labx-drawer__preflight" data-severity="${escapeHtml(preflightSeverity)}">
-          <h3>${escapeHtml(copy.t("mediaAnalysis.drawer.setup.preflightTitle", "Ön Kontrol"))}</h3>
+          <h3>${escapeHtml(copy.t("mediaAnalysis.drawer.setup.preflightTitle", "Preflight"))}</h3>
           ${
             preflightWarnings.length > 0
               ? `<ul class="labx-drawer__preflight-list">${preflightWarnings
@@ -126,7 +286,7 @@ function renderSetupMode(state: LabStoreState, surface: LabWorkspaceSurface, cop
                     return `<li>${escapeHtml(w)}</li>`;
                   })
                   .join("")}</ul>`
-              : `<p class="labx-drawer__ok">${escapeHtml(copy.t("mediaAnalysis.drawer.setup.preflightOk", "Tüm araçlar hazır"))}</p>`
+              : `<p class="labx-drawer__ok">${escapeHtml(copy.t("mediaAnalysis.drawer.setup.preflightOk", "All tools are ready"))}</p>`
           }
         </section>`
       : "";
@@ -145,10 +305,10 @@ function renderSetupMode(state: LabStoreState, surface: LabWorkspaceSurface, cop
         ${blockReason !== null ? "disabled" : ""}
         ${blockReason !== null ? `title="${escapeHtml(blockReason)}"` : ""}
       >
-        ${escapeHtml(copy.t("mediaAnalysis.drawer.setup.cta", "Analizi Başlat"))}
+        ${escapeHtml(copy.t("mediaAnalysis.drawer.setup.cta", "Start Analysis"))}
       </button>
       ${previewMarkup}
-      ${preflightSeverity === "warning" ? `<p class="labx-drawer__cta-warn">${escapeHtml(copy.t("mediaAnalysis.drawer.setup.partialWarn", "Bazı araçlar eksik — kısmi sonuç olabilir."))}</p>` : ""}
+      ${preflightSeverity === "warning" ? `<p class="labx-drawer__cta-warn">${escapeHtml(copy.t("mediaAnalysis.drawer.setup.partialWarn", "Some tools are missing; results may be partial."))}</p>` : ""}
     </div>
   `;
 

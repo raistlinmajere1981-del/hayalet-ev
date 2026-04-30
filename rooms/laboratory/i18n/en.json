@@ -346,6 +346,54 @@
         "stage": "Stage"
       }
     },
+    "drawer": {
+      "setup": {
+        "eyebrow": "Configuration",
+        "title": "Analysis Preparation",
+        "intentsTitle": "Analysis Goals",
+        "defaultReportOutput": "Report evidence",
+        "reportOutputs": "Report outputs",
+        "expandGroup": "Expand",
+        "collapseGroup": "Collapse",
+        "preflightTitle": "Preflight",
+        "preflightOk": "All tools are ready",
+        "cta": "Start Analysis",
+        "partialWarn": "Some tools are missing; results may be partial."
+      },
+      "running": {
+        "eyebrow": "Running",
+        "title": "Analysis Progress"
+      },
+      "result": {
+        "eyebrow": "Result",
+        "title": "Decision Surface"
+      },
+      "explore": {
+        "eyebrow": "Explore",
+        "title": "Alternatives and Comparison"
+      }
+    },
+    "operations": {
+      "tab": "Operations",
+      "title": "Operations",
+      "notReady": "Not ready",
+      "runningAction": "Running",
+      "successAction": "Ready",
+      "errorAction": "Retry",
+      "plannedAction": "Planned",
+      "runAction": "Run",
+      "ready": "Ready",
+      "partial": "Partial",
+      "blocked": "Blocked",
+      "output": "Output",
+      "tools": "Tools",
+      "groups": {
+        "clip": "Clip Outputs",
+        "frame": "Frame & Region",
+        "audio": "Audio Outputs",
+        "stems": "Stem Outputs"
+      }
+    },
     "journey": {
       "ariaLabel": "Execution journey",
       "steps": {
@@ -1739,6 +1787,32 @@
         "relevant": "Relevant tools",
         "installed": "Installed tools",
         "updates": "Pending updates"
+      },
+      "progress": {
+        "ariaLabel": "Install and update progress",
+        "eyebrow": "Operation tracking",
+        "title": "Install and update",
+        "activeCount": "{count} active",
+        "unknownTool": "Tool",
+        "fallbackDetail": "Waiting for operation details.",
+        "pendingPercent": "Preparing",
+        "percent": "{percent}%",
+        "idle": "No active install or update.",
+        "idleDetail": "Progress appears here when a tool operation starts.",
+        "actions": {
+          "install": "Install",
+          "update": "Update",
+          "checkUpdates": "Update check",
+          "generic": "Tool operation"
+        },
+        "stage": {
+          "queued": "Queued",
+          "running": "Running",
+          "completed": "Completed",
+          "failed": "Failed",
+          "cancelled": "Cancelled",
+          "tracking": "Tracking"
+        }
       },
       "sections": {
         "relevant": {

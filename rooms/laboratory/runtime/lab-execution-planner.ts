@@ -89,8 +89,12 @@ function buildConfidence(input: LabExecutionPlannerInput) {
   if (roi !== undefined) {
     if (
       input.suggestion.actionType === "focus-region" ||
+      input.suggestion.actionType === "crop-region" ||
+      input.suggestion.actionType === "ocr-region" ||
+      input.suggestion.actionType === "detect-objects" ||
       input.suggestion.actionType === "inspect-motion" ||
       input.suggestion.actionType === "enhance-visual" ||
+      input.suggestion.actionType === "enhance-frame" ||
       input.suggestion.actionType === "stabilize-segment"
     ) {
       confidence += 0.04;
@@ -176,9 +180,15 @@ export function buildExecutionPlan(input: LabExecutionPlannerInput): LabExecutio
         ["Anomaly markers", "Temporal patterns", "Confidence summary"]
       );
     case "inspect-audio":
+    case "clean-audio":
+    case "separate-stems":
       return createPlan(
         input,
-        "Audio inspection plan",
+        input.suggestion.actionType === "inspect-audio"
+          ? "Audio inspection plan"
+          : input.suggestion.actionType === "clean-audio"
+            ? "Audio cleanup plan"
+            : "Source separation plan",
         [
           {
             id: "isolate",
@@ -229,12 +239,23 @@ export function buildExecutionPlan(input: LabExecutionPlannerInput): LabExecutio
             tool: "clip-packaging",
           },
         ],
-        ["Video or audio clip", "Segment timing metadata"]
+        ["Video clip", "Segment timing metadata"]
       );
     case "focus-region":
+    case "crop-region":
+    case "ocr-region":
+    case "detect-objects":
       return createPlan(
         input,
-        hasRoi ? "Region focus plan" : "Focused review plan",
+        input.suggestion.actionType === "crop-region"
+          ? "Region crop plan"
+          : input.suggestion.actionType === "ocr-region"
+            ? "OCR region plan"
+            : input.suggestion.actionType === "detect-objects"
+              ? "Object region plan"
+              : hasRoi
+                ? "Region focus plan"
+                : "Focused review plan",
         [
           {
             id: "region-scope",
@@ -292,6 +313,7 @@ export function buildExecutionPlan(input: LabExecutionPlannerInput): LabExecutio
         ["Motion continuity notes", "Frame reference set", "Movement ambiguity summary"]
       );
     case "enhance-visual":
+    case "enhance-frame":
       return createPlan(
         input,
         "Visual clarity plan",

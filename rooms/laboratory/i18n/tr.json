@@ -346,6 +346,54 @@
         "stage": "Staging"
       }
     },
+    "drawer": {
+      "setup": {
+        "eyebrow": "Yapilandirma",
+        "title": "Analiz Hazirligi",
+        "intentsTitle": "Analiz Amaclari",
+        "defaultReportOutput": "Rapor kaniti",
+        "reportOutputs": "Rapor ciktilari",
+        "expandGroup": "Genislet",
+        "collapseGroup": "Daralt",
+        "preflightTitle": "On Kontrol",
+        "preflightOk": "Tum araclar hazir",
+        "cta": "Analizi Baslat",
+        "partialWarn": "Bazi araclar eksik; sonuc kismi olabilir."
+      },
+      "running": {
+        "eyebrow": "Calisiyor",
+        "title": "Analiz Ilerlemesi"
+      },
+      "result": {
+        "eyebrow": "Sonuc",
+        "title": "Karar Yuzeyi"
+      },
+      "explore": {
+        "eyebrow": "Kesif",
+        "title": "Alternatifler ve Karsilastirma"
+      }
+    },
+    "operations": {
+      "tab": "Islemler",
+      "title": "Islemler",
+      "notReady": "Hazir degil",
+      "runningAction": "Isleniyor",
+      "successAction": "Hazir",
+      "errorAction": "Tekrar Dene",
+      "plannedAction": "Planli",
+      "runAction": "Calistir",
+      "ready": "Hazir",
+      "partial": "Kismi",
+      "blocked": "Bloke",
+      "output": "Cikti",
+      "tools": "Araclar",
+      "groups": {
+        "clip": "Klip Ciktilari",
+        "frame": "Kare ve Bolge",
+        "audio": "Ses Ciktilari",
+        "stems": "Stem Ciktilari"
+      }
+    },
     "journey": {
       "ariaLabel": "Calisma akisi",
       "steps": {
@@ -1739,6 +1787,32 @@
         "relevant": "İlgili araçlar",
         "installed": "Kurulu araç",
         "updates": "Güncelleme bekleyen"
+      },
+      "progress": {
+        "ariaLabel": "Kurulum ve güncelleme ilerlemesi",
+        "eyebrow": "İşlem takibi",
+        "title": "Kurulum ve güncelleme",
+        "activeCount": "{count} aktif",
+        "unknownTool": "Araç",
+        "fallbackDetail": "İşlem ayrıntısı bekleniyor.",
+        "pendingPercent": "Hazırlanıyor",
+        "percent": "{percent}%",
+        "idle": "Aktif kurulum veya güncelleme yok.",
+        "idleDetail": "Bir araç işlemi başladığında ilerleme burada görünür.",
+        "actions": {
+          "install": "Kurulum",
+          "update": "Güncelleme",
+          "checkUpdates": "Güncelleme kontrolü",
+          "generic": "Araç işlemi"
+        },
+        "stage": {
+          "queued": "Kuyrukta",
+          "running": "Çalışıyor",
+          "completed": "Tamamlandı",
+          "failed": "Hata",
+          "cancelled": "İptal edildi",
+          "tracking": "İzleniyor"
+        }
       },
       "sections": {
         "relevant": {

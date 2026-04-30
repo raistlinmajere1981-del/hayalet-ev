@@ -228,9 +228,12 @@ class MountedQueryElement extends ElementStub {
 }
 
 class MountedActionElement extends ElementStub {
-  constructor(action: string) {
+  constructor(action: string, value?: string) {
     super();
     this.dataset["labAction"] = action;
+    if (value !== undefined) {
+      this.dataset["labValue"] = value;
+    }
   }
 
   closest(selector: string): MountedActionElement | null {
@@ -260,6 +263,7 @@ function createMountedLaboratoryTransitionEnvironment() {
     "hayalet-ev:laboratory-refactor:v4",
     JSON.stringify({
       schemaVersion: 4,
+      sourceProbeStatus: "completed",
       source: {
         kind: "video",
         mode: "local",
@@ -857,6 +861,25 @@ test("laboratory mounted shell swaps chrome across YouTube import mode transitio
 
     environment.runtimeRoot.mountedQueriesEnabled = true;
 
+    const clickListener = environment.listener("click");
+    assert.ok(clickListener);
+    clickListener({
+      target: new MountedActionElement("analysis-prep-group-toggle", "audio-investigation"),
+    } as unknown as Event);
+    assert.match(environment.runtimeRoot.innerHTML, /data-lab-value="audio-investigation"/);
+    assert.match(
+      environment.runtimeRoot.innerHTML,
+      /data-lab-value="audio-investigation"[\s\S]*aria-expanded="true"/
+    );
+
+    clickListener({
+      target: new MountedActionElement("analysis-prep-group-toggle", "audio-investigation"),
+    } as unknown as Event);
+    assert.match(
+      environment.runtimeRoot.innerHTML,
+      /data-lab-value="audio-investigation"[\s\S]*aria-expanded="false"/
+    );
+
     const changeListener = environment.listener("change");
     assert.ok(changeListener);
     changeListener({
@@ -870,8 +893,6 @@ test("laboratory mounted shell swaps chrome across YouTube import mode transitio
     assert.doesNotMatch(environment.runtimeRoot.innerHTML, /class="labx-drawer"/);
     assert.doesNotMatch(environment.runtimeRoot.innerHTML, /class="labx-process-strip"/);
 
-    const clickListener = environment.listener("click");
-    assert.ok(clickListener);
     clickListener({
       target: new MountedActionElement("exit-youtube-import-mode"),
     } as unknown as Event);
@@ -1126,7 +1147,11 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   const assetGridSource = readFileSync("rooms/laboratory/ui/asset-grid.ts", "utf8");
 
   assert.match(labRootSource, /schemaVersion:\s*4,/);
-  assert.match(labRootSource, /workspace:\s*state\.ui\.workspace,/);
+  assert.match(
+    labRootSource,
+    /analysisPrepExpandedIntentIds:\s*_analysisPrepExpandedIntentIds,\s*\.\.\.workspace/
+  );
+  assert.match(labRootSource, /workspace,/);
   assert.match(
     labRootSource,
     /state\.run\.state === "running" \|\| state\.run\.state === "queued"/

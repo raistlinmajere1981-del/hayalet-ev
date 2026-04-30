@@ -195,6 +195,11 @@ export interface LabActionSuggestion {
   label: string;
   description?: string;
   toolHint?: string;
+  flowKind?: LabCapabilityFlowKind;
+  operationCapabilityId?: LabOperationCapabilityId;
+  analysisCapabilityId?: CapabilityFamilyId;
+  toolIds?: string[];
+  outputKind?: LabOperationOutputKind;
   actionType:
     | "analyze-segment"
     | "extract-clip"
@@ -202,7 +207,15 @@ export interface LabActionSuggestion {
     | "inspect-motion"
     | "inspect-audio"
     | "enhance-visual"
-    | "stabilize-segment";
+    | "enhance-frame"
+    | "crop-region"
+    | "clean-audio"
+    | "separate-stems"
+    | "stabilize-segment"
+    | "ocr-region"
+    | "metadata-audit"
+    | "detect-scenes"
+    | "detect-objects";
   confidence: number;
 }
 
@@ -483,7 +496,7 @@ export interface LabInteractiveSettings {
 }
 
 export type AudioVisualizationMode = "none" | "waveform" | "spectrum";
-export type LabWorkspaceControlTab = "audio" | "visual";
+export type LabWorkspaceControlTab = "audio" | "visual" | "operations";
 
 export interface LabParametricEQBand {
   frequency: number;
@@ -516,6 +529,7 @@ export interface LabWorkspaceUiState {
   hypothesis: string;
   bookmarks: LabBookmark[];
   selectedIntents: LabIntentId[];
+  analysisPrepExpandedIntentIds: LabIntentId[];
   sourceIntakeCollapsed: boolean;
   selectionMicroZoomOpen: boolean;
   controlsDrawerOpen: boolean;
@@ -544,6 +558,71 @@ export type CapabilityFamilyId =
   | "music-analysis";
 
 export type CapabilityReadiness = "ready" | "optional" | "blocked";
+export type LabCapabilityFlowKind = "operation-result" | "analysis-report";
+export type LabOperationOutputKind = LabAssetType | "variant" | "stem";
+
+export type LabOperationCapabilityId =
+  | "clip-export"
+  | "frame-grab"
+  | "roi-crop"
+  | "enhanced-frame"
+  | "before-after-variant"
+  | "audio-extract"
+  | "audio-cleanup"
+  | "band-pass-voice"
+  | "stem-separation"
+  | "segment-stabilization";
+
+export interface LabOperationCapabilityMeta {
+  id: LabOperationCapabilityId;
+  flowKind: "operation-result";
+  label: string;
+  description: string;
+  sourceKinds: Array<"video" | "audio" | "image">;
+  outputKinds: LabOperationOutputKind[];
+  providerIds: string[];
+  toolIds: string[];
+  actionId: string | null;
+  groupId: "clip" | "frame" | "audio" | "stems";
+  requiresSelection?: boolean;
+  requiresRoi?: boolean;
+  planned?: boolean;
+}
+
+export interface LabOperationCapabilityProjection extends LabOperationCapabilityMeta {
+  readiness: CapabilityReadiness;
+  blockReason: string | null;
+  actionStatus: "idle" | "running" | "success" | "error";
+  activeActionLabel: string | null;
+  activeActionMessage: string | null;
+  activeJobId: string | null;
+  activeRequestId: string | null;
+  resultAssetIds?: string[];
+  progress?: number | null;
+}
+
+export interface LabAnalysisCapabilityModuleProjection {
+  capabilityId: CapabilityFamilyId;
+  moduleId: string;
+  label: string;
+  flowKind: "analysis-report";
+  requiredTools: string[];
+  readiness: CapabilityReadiness;
+  blockReason: string | null;
+  enabled: boolean;
+  reportSection: string;
+}
+
+export interface LabAnalysisPreparationGroup {
+  intentId: LabIntentId;
+  label: string;
+  description: string;
+  selected: boolean;
+  readiness: CapabilityReadiness;
+  blockReason: string | null;
+  expectedOutputs: LabExpectedOutput[];
+  modules: LabAnalysisCapabilityModuleProjection[];
+}
 
 export interface CapabilityFamilyMeta {
   id: CapabilityFamilyId;
@@ -552,6 +631,135 @@ export interface CapabilityFamilyMeta {
   primaryTool: string;
   requiredTools: string[];
 }
+
+export const LAB_OPERATION_CAPABILITIES: LabOperationCapabilityMeta[] = [
+  {
+    id: "clip-export",
+    flowKind: "operation-result",
+    label: "Clip Export",
+    description: "Create a standalone clip from the active timeline selection.",
+    sourceKinds: ["video"],
+    outputKinds: ["clip"],
+    providerIds: ["ffmpeg-export"],
+    toolIds: ["ffmpeg"],
+    actionId: "timeline-export-clip",
+    groupId: "clip",
+    requiresSelection: true,
+  },
+  {
+    id: "segment-stabilization",
+    flowKind: "operation-result",
+    label: "Stabilized Review Clip",
+    description: "Prepare a stabilized clip variant for motion readability.",
+    sourceKinds: ["video"],
+    outputKinds: ["clip", "variant"],
+    providerIds: ["ffmpeg-stabilization"],
+    toolIds: ["ffmpeg"],
+    actionId: null,
+    groupId: "clip",
+    requiresSelection: true,
+    planned: true,
+  },
+  {
+    id: "frame-grab",
+    flowKind: "operation-result",
+    label: "Frame Grab",
+    description: "Capture the current video frame as a project asset.",
+    sourceKinds: ["video"],
+    outputKinds: ["frame"],
+    providerIds: ["ffmpeg-export"],
+    toolIds: ["ffmpeg"],
+    actionId: "timeline-grab-frame",
+    groupId: "frame",
+  },
+  {
+    id: "roi-crop",
+    flowKind: "operation-result",
+    label: "Crop ROI",
+    description: "Export the active inspection region as an image asset.",
+    sourceKinds: ["video", "image"],
+    outputKinds: ["image"],
+    providerIds: ["ffmpeg-export"],
+    toolIds: ["ffmpeg"],
+    actionId: "workspace-selection-roi-export",
+    groupId: "frame",
+    requiresRoi: true,
+  },
+  {
+    id: "enhanced-frame",
+    flowKind: "operation-result",
+    label: "Enhanced Frame",
+    description: "Generate a clarity-focused frame or ROI variant.",
+    sourceKinds: ["video", "image"],
+    outputKinds: ["frame", "image", "variant"],
+    providerIds: ["ffmpeg-visual-reveal"],
+    toolIds: ["ffmpeg"],
+    actionId: "workspace-enhanced-frame-export",
+    groupId: "frame",
+  },
+  {
+    id: "before-after-variant",
+    flowKind: "operation-result",
+    label: "Before/After Variant",
+    description: "Prepare an original-versus-enhanced comparison asset for review.",
+    sourceKinds: ["video", "image"],
+    outputKinds: ["image", "variant"],
+    providerIds: ["ffmpeg-visual-reveal"],
+    toolIds: ["ffmpeg"],
+    actionId: null,
+    groupId: "frame",
+    planned: true,
+  },
+  {
+    id: "audio-extract",
+    flowKind: "operation-result",
+    label: "Extract Audio",
+    description: "Export the source audio track as a WAV asset.",
+    sourceKinds: ["video", "audio"],
+    outputKinds: ["audio"],
+    providerIds: ["ffmpeg-export"],
+    toolIds: ["ffmpeg"],
+    actionId: "timeline-extract-audio",
+    groupId: "audio",
+  },
+  {
+    id: "audio-cleanup",
+    flowKind: "operation-result",
+    label: "Clean Audio",
+    description: "Create a denoised or band-pass focused audio variant.",
+    sourceKinds: ["video", "audio"],
+    outputKinds: ["audio", "variant"],
+    providerIds: ["ffmpeg-signal-recovery"],
+    toolIds: ["ffmpeg"],
+    actionId: "workspace-audio-cleanup-export",
+    groupId: "audio",
+  },
+  {
+    id: "band-pass-voice",
+    flowKind: "operation-result",
+    label: "Band-pass Voice",
+    description: "Create a voice-focused audio variant with a constrained frequency pass.",
+    sourceKinds: ["video", "audio"],
+    outputKinds: ["audio", "variant"],
+    providerIds: ["ffmpeg-signal-recovery"],
+    toolIds: ["ffmpeg"],
+    actionId: "workspace-band-pass-voice-export",
+    groupId: "audio",
+  },
+  {
+    id: "stem-separation",
+    flowKind: "operation-result",
+    label: "Separate Sources",
+    description: "Create isolated stems for speech, ambience, or music review.",
+    sourceKinds: ["video", "audio"],
+    outputKinds: ["audio", "stem"],
+    providerIds: ["source-separation-runner"],
+    toolIds: ["demucs", "ffmpeg"],
+    actionId: null,
+    groupId: "stems",
+    planned: true,
+  },
+];
 
 export const CAPABILITY_FAMILIES: CapabilityFamilyMeta[] = [
   {
@@ -834,6 +1042,7 @@ export interface LabUserActionEvent {
   jobId?: string | null;
   projectId?: string | null;
   resultAssetIds?: string[];
+  progress?: number | null;
   sourceAction?: string | null;
   dismissedFromHubAt?: number | null;
 }
@@ -1428,6 +1637,8 @@ export type LabStoreEvent =
   | { type: "workspace-bookmark-removed"; bookmarkId: string }
   | { type: "workspace-intent-toggled"; intentId: LabIntentId }
   | { type: "workspace-intent-set"; intents: LabIntentId[] }
+  | { type: "analysis-prep-group-toggled"; intentId: LabIntentId }
+  | { type: "analysis-prep-group-expanded"; intentIds: LabIntentId[] }
   | { type: "workspace-source-intake-toggled"; force?: boolean }
   | { type: "workspace-selection-micro-zoom-toggled"; force?: boolean }
   | { type: "workspace-controls-drawer-toggled"; force?: boolean }

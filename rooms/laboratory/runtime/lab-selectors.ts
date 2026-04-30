@@ -2,6 +2,7 @@ import { asLabRecord, asNonEmptyString } from "../models/lab-types.js";
 import type {
   CapabilityFamilyId,
   LabActionSuggestion,
+  LabCapabilityFlowKind,
   LabAsset,
   LabActiveExecutionResult,
   LabExecutionAlternatives,
@@ -19,9 +20,11 @@ import type {
   LabExecutionStaging,
   LabExpectedOutput,
   LabGlobalProcessSummary,
+  LabAnalysisPreparationGroup,
   LabInspectionMode,
   LabInterpretationItem,
   LabIntentDirtyMap,
+  LabOperationCapabilityProjection,
   LabPreflightResult,
   LabRun,
   LabMediaViewportState,
@@ -39,8 +42,14 @@ import type {
   ReportFreshness,
   LabDrawerMode,
   LabIntentId,
+  CapabilityReadiness,
 } from "../models/lab-types.js";
-import { CAPABILITY_FAMILIES, WORKSPACE_INTENTS } from "../models/lab-types.js";
+import {
+  CAPABILITY_FAMILIES,
+  LAB_OPERATION_CAPABILITIES,
+  WORKSPACE_INTENTS,
+  getModuleIdsForCapabilityFamily,
+} from "../models/lab-types.js";
 import { normalizeAnalysisScope } from "../shared/types/analysis-scope.js";
 import { normalizeAudioFocusSettings } from "./lab-audio-focus-normalization.js";
 import { buildExecutionAlternativesFromResolved } from "./lab-execution-alternatives.js";
@@ -62,6 +71,7 @@ import {
   getProjectSource,
 } from "./selectors/lab-project-selectors.js";
 import { getWorkspaceSourceSelectionResetKey } from "./lab-workspace-selection.js";
+import { getTrackedOperationActionId } from "./lab-operation-action-map.js";
 import {
   getActiveModule,
   getAssetById,
@@ -880,6 +890,211 @@ export function getAvailableCapabilities(state: LabStoreState) {
   });
 }
 
+function getMissingToolIds(state: LabStoreState, toolIds: string[]) {
+  const toolState = getToolState(state);
+  const toolRegistry = asLabRecord(toolState["tools"]);
+  return toolIds.filter(function (toolId) {
+    const tool = asLabRecord(toolRegistry[toolId]);
+    return tool["installed"] !== true && asNonEmptyString(tool["status"]) !== "installed";
+  });
+}
+
+function getReadableModuleLabel(moduleId: string) {
+  return moduleId
+    .split("-")
+    .filter(function (part) {
+      return part.trim() !== "";
+    })
+    .map(function (part) {
+      return `${part.charAt(0).toUpperCase()}${part.slice(1)}`;
+    })
+    .join(" ");
+}
+
+function getReportSectionForCapability(capabilityId: CapabilityFamilyId) {
+  switch (capabilityId) {
+    case "visual-structure":
+      return "Visual structure";
+    case "visual-forensics":
+      return "Visual forensics";
+    case "audio-signal":
+      return "Audio signal";
+    case "audio-recovery":
+      return "Audio recovery";
+    case "transcription":
+    case "speaker-analysis":
+      return "Speech evidence";
+    case "prosody-emotion":
+      return "Prosody and emotion";
+    case "sound-classification":
+      return "Sound events";
+    case "source-separation":
+      return "Separated sources";
+    case "music-analysis":
+      return "Music descriptors";
+    default:
+      return "Analysis evidence";
+  }
+}
+
+function getLatestOperationUserAction(
+  state: LabStoreState,
+  capability: (typeof LAB_OPERATION_CAPABILITIES)[number]
+): LabUserActionEvent | null {
+  const trackedAction = getTrackedOperationActionId(capability.actionId);
+  if (trackedAction === null) {
+    return null;
+  }
+  return (
+    getUserActions(state).find(function (entry) {
+      return entry.sourceAction === trackedAction;
+    }) || null
+  );
+}
+
+function getOperationAudioBlockReason(state: LabStoreState, sourceKind: string) {
+  if (sourceKind === "audio") {
+    return null;
+  }
+  if (sourceKind !== "video") {
+    return "Bu işlem için ses akışı gerekir.";
+  }
+  const metadata = asLabRecord(asLabRecord(state.source)["metadata"]);
+  const audioCodec = asNonEmptyString(metadata["audioCodec"]);
+  const codec = asNonEmptyString(metadata["codec"]);
+  if (audioCodec !== null || (codec !== null && codec.includes("+"))) {
+    return null;
+  }
+  return Object.keys(metadata).length > 0 ? "Bu kaynakta ses akışı algılanmadı." : null;
+}
+
+export function getAvailableOperationCapabilities(
+  state: LabStoreState
+): LabOperationCapabilityProjection[] {
+  const sourceKind = getSourceKind(state);
+  const sourceReady = getSourceReady(state);
+  const selection = state.ui.workspace.activeSelection;
+  const hasSelection = selection !== null && selection.endMs > selection.startMs;
+  const hasRoi = selection?.roi !== undefined;
+
+  return LAB_OPERATION_CAPABILITIES.map(function (capability) {
+    const sourceCompatible = capability.sourceKinds.includes(
+      sourceKind as "video" | "audio" | "image"
+    );
+    const missingTools = getMissingToolIds(state, capability.toolIds);
+    const activeAction = getLatestOperationUserAction(state, capability);
+    const audioBlockReason =
+      capability.groupId === "audio" || capability.groupId === "stems"
+        ? getOperationAudioBlockReason(state, sourceKind)
+        : null;
+
+    let readiness: CapabilityReadiness = "ready";
+    let blockReason: string | null = null;
+
+    if (!sourceReady) {
+      readiness = "blocked";
+      blockReason = "Kaynak henüz hazır değil.";
+    } else if (!sourceCompatible) {
+      readiness = "blocked";
+      blockReason = `Bu kaynak türü (${sourceKind}) desteklenmiyor.`;
+    } else if (audioBlockReason !== null) {
+      readiness = "blocked";
+      blockReason = audioBlockReason;
+    } else if (capability.requiresSelection === true && !hasSelection) {
+      readiness = "blocked";
+      blockReason = "Önce zaman aralığı seçilmelidir.";
+    } else if (capability.requiresRoi === true && !hasRoi) {
+      readiness = "blocked";
+      blockReason = "Önce görüntü üzerinde ROI seçilmelidir.";
+    } else if (missingTools.length > 0) {
+      readiness = "blocked";
+      blockReason = `Eksik araç: ${missingTools.join(", ")}`;
+    } else if (capability.planned === true || capability.actionId === null) {
+      readiness = "blocked";
+      blockReason = "Bu işlem için runner henüz bağlanmadı.";
+    }
+
+    return {
+      ...capability,
+      readiness,
+      blockReason,
+      actionStatus: activeAction?.status ?? "idle",
+      activeActionLabel: activeAction?.label ?? null,
+      activeActionMessage: activeAction?.message ?? null,
+      activeJobId: activeAction?.jobId ?? null,
+      activeRequestId: activeAction?.requestId ?? null,
+      progress: activeAction?.progress ?? null,
+      ...(activeAction?.resultAssetIds === undefined
+        ? {}
+        : { resultAssetIds: activeAction.resultAssetIds }),
+    };
+  }).filter(function (capability) {
+    return capability.sourceKinds.includes(sourceKind as "video" | "audio" | "image");
+  });
+}
+
+export function getAnalysisPreparationGroups(state: LabStoreState): LabAnalysisPreparationGroup[] {
+  const availableCapabilities = getAvailableCapabilities(state);
+  const selectedIntents = getSelectedIntents(state);
+  const moduleToggles = asLabRecord(asLabRecord(state.workbench)["moduleToggles"]);
+
+  return WORKSPACE_INTENTS.map(function (intent) {
+    const modules = intent.internalCapabilities.flatMap(function (capabilityId) {
+      const capability = availableCapabilities.find(function (entry) {
+        return entry.id === capabilityId;
+      });
+      const readiness = capability?.readiness ?? "blocked";
+      const blockReason = capability?.blockReason ?? null;
+      const requiredTools = capability?.requiredTools ?? [];
+      return getModuleIdsForCapabilityFamily(capabilityId).map(function (moduleId) {
+        return {
+          capabilityId,
+          moduleId,
+          label: getReadableModuleLabel(moduleId),
+          flowKind: "analysis-report" as const,
+          requiredTools: requiredTools.slice(),
+          readiness,
+          blockReason,
+          enabled: moduleToggles[moduleId] !== false,
+          reportSection: getReportSectionForCapability(capabilityId),
+        };
+      });
+    });
+    const selected = selectedIntents.includes(intent.id);
+    const selectedModules = modules.filter(function (module) {
+      return module.enabled;
+    });
+    const blockedModules = selectedModules.filter(function (module) {
+      return module.readiness === "blocked";
+    });
+    const optionalModules = selectedModules.filter(function (module) {
+      return module.readiness === "optional";
+    });
+    const readiness: CapabilityReadiness =
+      selectedModules.length === 0 || blockedModules.length === selectedModules.length
+        ? "blocked"
+        : blockedModules.length > 0 || optionalModules.length > 0
+          ? "optional"
+          : "ready";
+
+    return {
+      intentId: intent.id,
+      label: intent.label,
+      description: intent.description,
+      selected,
+      readiness,
+      blockReason:
+        readiness === "blocked"
+          ? blockedModules[0]?.blockReason || "Seçili rapor modülleri hazır değil."
+          : readiness === "optional"
+            ? "Bazı modüller kısmi veya kapalı durumda."
+            : null,
+      expectedOutputs: getExpectedOutputs(intent.id),
+      modules,
+    };
+  });
+}
+
 export function getCapabilityWorkflowSummary(state: LabStoreState) {
   const selected = getEffectiveSelectedCapabilities(state);
   const available = getAvailableCapabilities(state);
@@ -1025,6 +1240,48 @@ export function getSelectionSuggestions(state: LabStoreState): LabActionSuggesti
   });
 }
 
+function getWorkspaceSurfaceSuggestionFlowKind(
+  suggestion: LabActionSuggestion
+): LabCapabilityFlowKind {
+  if (suggestion.flowKind !== undefined) {
+    return suggestion.flowKind;
+  }
+  switch (suggestion.actionType) {
+    case "extract-clip":
+    case "enhance-visual":
+    case "enhance-frame":
+    case "crop-region":
+    case "clean-audio":
+    case "separate-stems":
+    case "stabilize-segment":
+      return "operation-result";
+    default:
+      return "analysis-report";
+  }
+}
+
+function getWorkspaceSurfaceSuggestions(state: LabStoreState): LabActionSuggestion[] {
+  return getSelectionSuggestionsForContext(getActiveSelection(state), {
+    expandedTaxonomy: true,
+    inspectionMode: getInspectionMode(state),
+    sourceKind: getSourceKind(state),
+  }).map(function (suggestion) {
+    return {
+      ...suggestion,
+      flowKind: getWorkspaceSurfaceSuggestionFlowKind(suggestion),
+    };
+  });
+}
+
+function getExecutionSelectionSuggestions(state: LabStoreState): LabActionSuggestion[] {
+  const activeSelection = getActiveSelection(state);
+  return getSelectionSuggestionsForContext(activeSelection, {
+    expandedTaxonomy: true,
+    inspectionMode: getInspectionMode(state),
+    sourceKind: getSourceKind(state),
+  });
+}
+
 export function getInterpretationItems(state: LabStoreState): LabInterpretationItem[] {
   return buildInterpretationItems({
     activeSelection: getActiveSelection(state),
@@ -1051,9 +1308,13 @@ export function getActiveSuggestionPreview(state: LabStoreState): LabSuggestionP
   ) {
     return null;
   }
-  const suggestion = getSelectionSuggestions(state).find(function (entry) {
-    return entry.id === previewId;
-  });
+  const suggestion =
+    getSelectionSuggestions(state).find(function (entry) {
+      return entry.id === previewId;
+    }) ||
+    getExecutionSelectionSuggestions(state).find(function (entry) {
+      return entry.id === previewId;
+    });
   if (!suggestion) {
     return null;
   }
@@ -1068,7 +1329,11 @@ export function getActiveExecutionIntent(state: LabStoreState): LabActionSuggest
   return (
     getSelectionSuggestions(state).find(function (entry) {
       return entry.id === activeExecutionIntentId;
-    }) || null
+    }) ||
+    getExecutionSelectionSuggestions(state).find(function (entry) {
+      return entry.id === activeExecutionIntentId;
+    }) ||
+    null
   );
 }
 
@@ -1713,7 +1978,7 @@ export function getWaveformTimelineModel(state: LabStoreState) {
     linkedAudioAssetId: selectedAudioAsset?.id || null,
     roiFocusActive: getRoiFocusActive(state),
     selectionMicroZoomOpen: state.ui.workspace.selectionMicroZoomOpen,
-    selectionSuggestions: getSelectionSuggestions(state),
+    selectionSuggestions: getWorkspaceSurfaceSuggestions(state),
     lockState: getWorkspaceLockState(state),
     startMs: selection.startMs,
     sourceKind,

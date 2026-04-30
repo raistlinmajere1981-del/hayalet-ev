@@ -10,6 +10,7 @@ import type {
   LabExecutionSimulation,
   LabExecutionStaging,
   LabInterpretationItem,
+  LabActionSuggestion,
 } from "../models/lab-types.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
@@ -47,6 +48,20 @@ const DEFAULT_COLLAPSED_PANELS: Partial<Record<ExecutionPanelId, boolean>> = {
   reflection: true,
   simulation: true,
 };
+
+function isOperationSuggestion(suggestion: LabActionSuggestion) {
+  if (suggestion.flowKind === "operation-result") {
+    return true;
+  }
+  if (suggestion.flowKind === "analysis-report") {
+    return false;
+  }
+  return (
+    suggestion.actionType === "extract-clip" ||
+    suggestion.actionType === "enhance-visual" ||
+    suggestion.actionType === "stabilize-segment"
+  );
+}
 
 function formatTimePrecise(ms: number) {
   const totalMs = Math.round(ms);
@@ -1061,9 +1076,22 @@ export function renderLabWaveformSelectionPanel(
       ? (model.activeExecutionStaging ?? null)
       : null;
   const activeExecutionIntent = hasSemanticSelection ? (model.activeExecutionIntent ?? null) : null;
-  const actionSuggestions = selectionSuggestions.filter(function (suggestion) {
-    return typeof suggestion.toolHint !== "string" || suggestion.toolHint.trim() === "";
+  const hasFlowTaggedSuggestions = selectionSuggestions.some(function (suggestion) {
+    return suggestion.flowKind === "operation-result" || suggestion.flowKind === "analysis-report";
   });
+  const actionSuggestions = hasFlowTaggedSuggestions
+    ? selectionSuggestions
+    : selectionSuggestions.filter(function (suggestion) {
+        return typeof suggestion.toolHint !== "string" || suggestion.toolHint.trim() === "";
+      });
+  const operationSuggestions = hasFlowTaggedSuggestions
+    ? actionSuggestions.filter(isOperationSuggestion)
+    : [];
+  const analysisSuggestions = hasFlowTaggedSuggestions
+    ? actionSuggestions.filter(function (suggestion) {
+        return !isOperationSuggestion(suggestion);
+      })
+    : [];
   const suggestionPreview = hasSemanticSelection ? (model.activeSuggestionPreview ?? null) : null;
   const activeInspectionSnapshot = model.activeInspectionSnapshot ?? null;
   const interpretationItems = model.interpretationItems ?? [];
@@ -1188,7 +1216,17 @@ export function renderLabWaveformSelectionPanel(
       ${renderExecutionIntentStrip(activeExecutionIntent, copy)}
       ${renderInspectionToolHints(selectionSuggestions, copy)}
       ${renderInspectionSnapshot(activeInspectionSnapshot, copy)}
-      ${renderSelectionSuggestions(actionSuggestions, copy)}
+      ${
+        hasFlowTaggedSuggestions
+          ? `${renderSelectionSuggestions(operationSuggestions, copy, {
+              titleFallback: "Önerilen İşlemler",
+              titleKey: "mediaAnalysis.timeline.suggestedOperations",
+            })}${renderSelectionSuggestions(analysisSuggestions, copy, {
+              titleFallback: "Önerilen Analizler",
+              titleKey: "mediaAnalysis.timeline.suggestedAnalyses",
+            })}`
+          : renderSelectionSuggestions(actionSuggestions, copy)
+      }
       ${renderSuggestionPreview(suggestionPreview, activeExecutionIntent, copy)}
       ${renderExecutionDetailsTrigger(copy, hasExecutionDetails)}
       ${renderCollapsibleExecutionPanel({

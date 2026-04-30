@@ -263,17 +263,26 @@ export function buildExecutionPayloadPreview(
     case "analyze-segment":
       return buildAnalyzeSegmentPayload(input);
     case "inspect-audio":
+    case "clean-audio":
+    case "separate-stems":
       return buildInspectAudioPayload(input);
     case "extract-clip":
       return buildExtractClipPayload(input);
     case "focus-region":
+    case "crop-region":
+    case "ocr-region":
+    case "detect-objects":
       return buildFocusRegionPayload(input);
     case "inspect-motion":
       return buildInspectMotionPayload(input);
     case "enhance-visual":
+    case "enhance-frame":
       return buildVisualPayload(input, "enhance");
     case "stabilize-segment":
       return buildVisualPayload(input, "stabilize");
+    case "metadata-audit":
+    case "detect-scenes":
+      return buildAnalyzeSegmentPayload(input);
     default:
       return buildFallbackPayload(input);
   }

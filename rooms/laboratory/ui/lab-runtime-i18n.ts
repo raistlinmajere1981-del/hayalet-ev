@@ -545,6 +545,24 @@ const USER_ACTIONS: Record<string, Record<LabUserActionEvent["status"], RuntimeC
       fallback: "Frame could not be grabbed",
     },
   },
+  "export-enhanced-frame": {
+    idle: {
+      key: "mediaAnalysis.runtime.userActions.exportEnhancedFrame.running",
+      fallback: "Preparing enhanced frame",
+    },
+    running: {
+      key: "mediaAnalysis.runtime.userActions.exportEnhancedFrame.running",
+      fallback: "Preparing enhanced frame",
+    },
+    success: {
+      key: "mediaAnalysis.runtime.userActions.exportEnhancedFrame.success",
+      fallback: "Enhanced frame ready",
+    },
+    error: {
+      key: "mediaAnalysis.runtime.userActions.exportEnhancedFrame.error",
+      fallback: "Enhanced frame could not be prepared",
+    },
+  },
   "export-audio-track": {
     idle: {
       key: "mediaAnalysis.runtime.userActions.exportAudioTrack.running",

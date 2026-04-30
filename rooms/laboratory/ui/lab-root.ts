@@ -280,6 +280,8 @@ function updateRenderedElement(
 }
 
 function readPersistableState(state: LabStoreState) {
+  const { analysisPrepExpandedIntentIds: _analysisPrepExpandedIntentIds, ...workspace } =
+    state.ui.workspace;
   return {
     schemaVersion: 4,
     artifactRenderCount: state.ui.artifactRenderCount,
@@ -323,7 +325,7 @@ function readPersistableState(state: LabStoreState) {
     rawLogCollapsed: state.ui.rawLogCollapsed,
     workbench: state.workbench,
     // V2.3 workspace persistence
-    workspace: state.ui.workspace,
+    workspace,
   };
 }
 

@@ -10,8 +10,11 @@ type LaboratoryRecord = Record<string, unknown>;
 const MEDIA_EXPORT_ACTION_IDS = [
   "export-roi-image",
   "export-frame-grab",
+  "export-enhanced-frame",
   "export-timeline-clip",
   "export-audio-track",
+  "export-clean-audio",
+  "export-band-pass-voice",
 ] as const;
 
 type LaboratoryExportActionRuntimeDeps = {
@@ -91,6 +94,96 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     return normalizedIntentIds.length > 0 ? Array.from(new Set(normalizedIntentIds)) : undefined;
   }
 
+  function clampNumber(value: number, min: number, max: number) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function toEvenInteger(value: number, minimum: number) {
+    const rounded = Math.max(minimum, Math.round(value));
+    return rounded % 2 === 0 ? rounded : Math.max(minimum, rounded - 1);
+  }
+
+  function getSourceDimensions(source: LaboratoryRecord) {
+    const metadata = toRecord(source["metadata"]);
+    const width = asNumber(metadata["width"]);
+    const height = asNumber(metadata["height"]);
+    return width !== null && height !== null && width > 0 && height > 0 ? { width, height } : null;
+  }
+
+  function getSourceDurationMs(source: LaboratoryRecord): number | null {
+    const durationSeconds = asNumber(toRecord(source["metadata"])["durationSeconds"]);
+    return durationSeconds !== null && durationSeconds > 0
+      ? Math.round(durationSeconds * 1000)
+      : null;
+  }
+
+  function sourceAudioAvailability(
+    sourceKind: string,
+    source: LaboratoryRecord
+  ): "ready" | "missing" {
+    if (sourceKind === "audio") {
+      return "ready";
+    }
+    const metadata = toRecord(source["metadata"]);
+    const audioCodec = asNonEmptyString(metadata["audioCodec"]);
+    if (audioCodec !== null) {
+      return "ready";
+    }
+    const codec = asNonEmptyString(metadata["codec"]);
+    if (codec !== null && codec.includes("+")) {
+      return "ready";
+    }
+    return Object.keys(metadata).length > 0 && sourceKind === "video" ? "missing" : "ready";
+  }
+
+  function resolveNormalizedCropPixels(
+    source: LaboratoryRecord,
+    normalizedRoiValue: unknown
+  ): {
+    height: number;
+    sourceDimensions: { height: number; width: number };
+    width: number;
+    x: number;
+    y: number;
+  } | null {
+    const normalizedRoi = toRecord(normalizedRoiValue);
+    const dimensions = getSourceDimensions(source);
+    if (dimensions === null || Object.keys(normalizedRoi).length === 0) {
+      return null;
+    }
+
+    const rawX = clampNumber(asNumber(normalizedRoi["x"]) ?? 0, 0, 1);
+    const rawY = clampNumber(asNumber(normalizedRoi["y"]) ?? 0, 0, 1);
+    const rawWidth = clampNumber(asNumber(normalizedRoi["width"]) ?? 1, 0.02, 1);
+    const rawHeight = clampNumber(asNumber(normalizedRoi["height"]) ?? 1, 0.02, 1);
+    const width = Math.min(dimensions.width, toEvenInteger(dimensions.width * rawWidth, 2));
+    const height = Math.min(dimensions.height, toEvenInteger(dimensions.height * rawHeight, 2));
+    const maxX = Math.max(0, dimensions.width - width);
+    const maxY = Math.max(0, dimensions.height - height);
+
+    return {
+      height,
+      sourceDimensions: dimensions,
+      width,
+      x: Math.min(maxX, Math.max(0, Math.floor(dimensions.width * rawX))),
+      y: Math.min(maxY, Math.max(0, Math.floor(dimensions.height * rawY))),
+    };
+  }
+
+  function hasNormalizedRoiPayload(payload: LaboratoryRecord) {
+    return Object.keys(toRecord(payload["normalizedRoi"])).length > 0;
+  }
+
+  function getCurrentSourceAssetLink(project: LaboratoryRecord) {
+    const sourceAssetId = deriveLabSourceId(project);
+    return sourceAssetId === null
+      ? {}
+      : {
+          derivedFromAssetId: sourceAssetId,
+          derivedFromSourceId: sourceAssetId,
+        };
+  }
+
   async function registerOutputAsset(
     runtime: LaboratoryRecord,
     inputProject: LaboratoryRecord,
@@ -133,12 +226,17 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     }
 
     const regionId = asNonEmptyString(payload["regionId"]) || "unknown";
-    const cropX = asNumber(payload["x"]) || 0;
-    const cropY = asNumber(payload["y"]) || 0;
-    const cropW = asNumber(payload["width"]) || 100;
-    const cropH = asNumber(payload["height"]) || 100;
+    const normalizedCrop = resolveNormalizedCropPixels(source, payload["normalizedRoi"]);
+    if (hasNormalizedRoiPayload(payload) && normalizedCrop === null) {
+      throw new Error("Source dimensions are required for normalized ROI export.");
+    }
+    const cropX = normalizedCrop?.x ?? asNumber(payload["x"]) ?? 0;
+    const cropY = normalizedCrop?.y ?? asNumber(payload["y"]) ?? 0;
+    const cropW = normalizedCrop?.width ?? asNumber(payload["width"]) ?? 100;
+    const cropH = normalizedCrop?.height ?? asNumber(payload["height"]) ?? 100;
     const sourceKind = asNonEmptyString(source["kind"]) || "video";
     const intentIds = getPayloadIntentIds(payload);
+    const seekMs = asNumber(payload["seekMs"]);
 
     await cancelJobsForProject(runtime, projectId, requestId, {
       actionIds: Array.from(MEDIA_EXPORT_ACTION_IDS),
@@ -172,7 +270,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
       const args: string[] = ["-y"];
 
       if (sourceKind === "video") {
-        const seekMs = asNumber(payload["seekMs"]);
         if (seekMs !== null && seekMs > 0) {
           args.push("-ss", String(seekMs / 1000));
         }
@@ -210,12 +307,37 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         type: "image",
         name: outputFileName,
         localPath: outputPath,
+        ...getCurrentSourceAssetLink(project),
         ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: "export-roi-image",
+          evidenceRole: "derived",
           fileName: outputFileName,
+          filterPreset: "roi-crop",
+          flowKind: "operation-result",
+          operationId: "roi-crop",
           regionId,
           requestId,
+          ...(seekMs === null
+            ? {}
+            : {
+                sourceRange: {
+                  endMs: seekMs,
+                  startMs: seekMs,
+                },
+              }),
+          ...(normalizedCrop === null
+            ? {}
+            : {
+                cropPixels: {
+                  height: normalizedCrop.height,
+                  width: normalizedCrop.width,
+                  x: normalizedCrop.x,
+                  y: normalizedCrop.y,
+                },
+                normalizedRoi: toRecord(payload["normalizedRoi"]),
+                sourceDimensions: normalizedCrop.sourceDimensions,
+              }),
           toolId: "ffmpeg",
         },
       });
@@ -343,12 +465,21 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         type: "frame",
         name: outputFileName,
         localPath: outputPath,
+        ...getCurrentSourceAssetLink(project),
         ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: "export-frame-grab",
+          evidenceRole: "derived",
           fileName: outputFileName,
+          filterPreset: "frame-grab",
+          flowKind: "operation-result",
+          operationId: "frame-grab",
           requestId,
           seekMs,
+          sourceRange: {
+            endMs: seekMs,
+            startMs: seekMs,
+          },
           toolId: "ffmpeg",
         },
       });
@@ -372,6 +503,175 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
       const errorMessage = error instanceof Error ? error.message : String(error);
       pushJobState(api, {
         action: "export-frame-grab",
+        jobId,
+        message: errorMessage,
+        projectId,
+        requestId,
+        stage: "failed",
+        toolId: "ffmpeg",
+      });
+      throw error;
+    } finally {
+      clearJob(runtime, jobId);
+    }
+  }
+
+  async function exportEnhancedFrame(
+    api: unknown,
+    runtime: LaboratoryRecord,
+    requestId: string,
+    payload: LaboratoryRecord
+  ) {
+    const project = getActiveProject(runtime);
+    if (project === null) {
+      throw new Error("No active project for enhanced frame export.");
+    }
+
+    const projectId = getProjectId(project);
+    const source = getSourceRecord(project);
+    const storedPath = asNonEmptyString(source["storedPath"]);
+    if (storedPath === null) {
+      throw new Error("No source file available for enhanced frame export.");
+    }
+
+    const sourceKind = asNonEmptyString(source["kind"]) || "video";
+    if (sourceKind !== "video" && sourceKind !== "image") {
+      throw new Error("Enhanced frame export is only available for video or image sources.");
+    }
+
+    const seekMs = asNumber(payload["seekMs"]) || 0;
+    const intentIds = getPayloadIntentIds(payload);
+    const normalizedCrop = resolveNormalizedCropPixels(source, payload["normalizedRoi"]);
+    if (hasNormalizedRoiPayload(payload) && normalizedCrop === null) {
+      throw new Error("Source dimensions are required for normalized enhanced frame export.");
+    }
+
+    await cancelJobsForProject(runtime, projectId, requestId, {
+      actionIds: Array.from(MEDIA_EXPORT_ACTION_IDS),
+    });
+
+    const jobId = `export-enhanced-frame-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    registerJob(runtime, {
+      action: "export-enhanced-frame",
+      featureStage: "edit",
+      jobId,
+      projectId,
+      requestId,
+      toolId: "ffmpeg",
+    });
+
+    pushJobState(api, {
+      action: "export-enhanced-frame",
+      featureStage: "edit",
+      jobId,
+      projectId,
+      requestId,
+      stage: "queued",
+      toolId: "ffmpeg",
+    });
+
+    try {
+      const outputDir = getProjectEditOutputDir(runtime, project);
+      const outputFileName = `enhanced-frame-${String(Math.round(seekMs))}ms-${Date.now()}.png`;
+      const outputPath = `${outputDir}/${outputFileName}`;
+      const filters = [
+        ...(normalizedCrop === null
+          ? []
+          : [
+              `crop=${String(normalizedCrop.width)}:${String(normalizedCrop.height)}:${String(
+                normalizedCrop.x
+              )}:${String(normalizedCrop.y)}`,
+            ]),
+        "eq=contrast=1.25:brightness=0.04:saturation=1.15",
+        "unsharp=5:5:0.8:3:3:0.4",
+      ];
+      const args: string[] = ["-y"];
+
+      if (sourceKind === "video") {
+        if (seekMs > 0) {
+          args.push("-ss", String(seekMs / 1000));
+        }
+        args.push("-i", storedPath, "-frames:v", "1");
+      } else {
+        args.push("-i", storedPath, "-frames:v", "1");
+      }
+      args.push("-filter:v", filters.join(","), outputPath);
+
+      const runResult = toRecord(
+        await callRoomTools({
+          args,
+          cwd: outputDir,
+          jobId,
+          operation: "tool-run",
+          requestId,
+          roomId: asNonEmptyString(runtime["roomId"]) || "laboratory",
+          timeoutMs: 30 * 1000,
+          toolId: "ffmpeg",
+        })
+      );
+
+      const runPayload = toRecord(runResult["run"]);
+      const exitCode = typeof runPayload["exitCode"] === "number" ? runPayload["exitCode"] : 0;
+      if (runPayload["cancelled"] === true || exitCode !== 0) {
+        throw new Error(
+          asNonEmptyString(runPayload["stderr"]) || "ffmpeg enhanced frame export failed."
+        );
+      }
+
+      const createdAsset = await registerOutputAsset(runtime, project, {
+        type: sourceKind === "video" ? "frame" : "image",
+        name: outputFileName,
+        localPath: outputPath,
+        ...getCurrentSourceAssetLink(project),
+        ...(intentIds === undefined ? {} : { intentIds }),
+        metadata: {
+          action: "export-enhanced-frame",
+          evidenceRole: "derived",
+          fileName: outputFileName,
+          filterPreset: "clarity-basic",
+          flowKind: "operation-result",
+          operationId: "enhanced-frame",
+          requestId,
+          seekMs,
+          sourceRange: {
+            endMs: seekMs,
+            startMs: seekMs,
+          },
+          ...(normalizedCrop === null
+            ? {}
+            : {
+                cropPixels: {
+                  height: normalizedCrop.height,
+                  width: normalizedCrop.width,
+                  x: normalizedCrop.x,
+                  y: normalizedCrop.y,
+                },
+                normalizedRoi: toRecord(payload["normalizedRoi"]),
+                sourceDimensions: normalizedCrop.sourceDimensions,
+              }),
+          toolId: "ffmpeg",
+        },
+      });
+
+      pushJobState(api, {
+        action: "export-enhanced-frame",
+        jobId,
+        percent: 100,
+        projectId,
+        requestId,
+        resultAssetIds: [createdAsset.id],
+        stage: "completed",
+        toolId: "ffmpeg",
+      });
+
+      return {
+        outputPath,
+        outputFileName,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      pushJobState(api, {
+        action: "export-enhanced-frame",
         jobId,
         message: errorMessage,
         projectId,
@@ -496,15 +796,34 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         type: "clip",
         name: outputFileName,
         localPath: outputPath,
+        ...getCurrentSourceAssetLink(project),
         ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: "export-timeline-clip",
           durationMs: endMs - startMs,
           endMs,
+          evidenceRole: "derived",
           fileName: outputFileName,
+          filterPreset: hasCrop ? "clip-export-crop" : "clip-export",
+          flowKind: "operation-result",
+          operationId: "clip-export",
           requestId,
+          sourceRange: {
+            endMs,
+            startMs,
+          },
           startMs,
           toolId: "ffmpeg",
+          ...(hasCrop
+            ? {
+                cropPixels: {
+                  height: Number(cropRegion["height"]),
+                  width: Number(cropRegion["width"]),
+                  x: Number(cropRegion["x"]),
+                  y: Number(cropRegion["y"]),
+                },
+              }
+            : {}),
         },
       });
 
@@ -538,6 +857,200 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     } finally {
       clearJob(runtime, jobId);
     }
+  }
+
+  async function exportAudioVariant(
+    api: unknown,
+    runtime: LaboratoryRecord,
+    requestId: string,
+    payload: LaboratoryRecord,
+    config: {
+      action: "export-clean-audio" | "export-band-pass-voice";
+      audioChannels: number;
+      filterChain: string;
+      filterPreset: string;
+      operationId: "audio-cleanup" | "band-pass-voice";
+      outputPrefix: string;
+    }
+  ) {
+    const project = getActiveProject(runtime);
+    if (project === null) {
+      throw new Error("No active project for audio variant export.");
+    }
+
+    const projectId = getProjectId(project);
+    const source = getSourceRecord(project);
+    const storedPath = asNonEmptyString(source["storedPath"]);
+    if (storedPath === null) {
+      throw new Error("No source file available for audio variant export.");
+    }
+
+    const sourceKind = asNonEmptyString(source["kind"]) || "video";
+    if (sourceKind !== "video" && sourceKind !== "audio") {
+      throw new Error("Audio variants are only available for video or audio sources.");
+    }
+    if (sourceAudioAvailability(sourceKind, source) === "missing") {
+      throw new Error("The current video source does not expose an audio track.");
+    }
+
+    const intentIds = getPayloadIntentIds(payload);
+
+    await cancelJobsForProject(runtime, projectId, requestId, {
+      actionIds: Array.from(MEDIA_EXPORT_ACTION_IDS),
+    });
+
+    const jobId = `${config.action}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    registerJob(runtime, {
+      action: config.action,
+      featureStage: "edit",
+      jobId,
+      projectId,
+      requestId,
+      toolId: "ffmpeg",
+    });
+
+    pushJobState(api, {
+      action: config.action,
+      featureStage: "edit",
+      jobId,
+      projectId,
+      requestId,
+      stage: "queued",
+      toolId: "ffmpeg",
+    });
+
+    try {
+      const outputDir = getProjectEditOutputDir(runtime, project);
+      const outputFileName = `${config.outputPrefix}-${Date.now()}.wav`;
+      const outputPath = `${outputDir}/${outputFileName}`;
+      const args = [
+        "-y",
+        "-i",
+        storedPath,
+        "-vn",
+        "-af",
+        config.filterChain,
+        "-acodec",
+        "pcm_s16le",
+        "-ar",
+        "48000",
+        "-ac",
+        String(config.audioChannels),
+        outputPath,
+      ];
+
+      const runResult = toRecord(
+        await callRoomTools({
+          args,
+          cwd: outputDir,
+          jobId,
+          operation: "tool-run",
+          requestId,
+          roomId: asNonEmptyString(runtime["roomId"]) || "laboratory",
+          timeoutMs: 5 * 60 * 1000,
+          toolId: "ffmpeg",
+        })
+      );
+
+      const runPayload = toRecord(runResult["run"]);
+      const exitCode = typeof runPayload["exitCode"] === "number" ? runPayload["exitCode"] : 0;
+      if (runPayload["cancelled"] === true || exitCode !== 0) {
+        throw new Error(asNonEmptyString(runPayload["stderr"]) || "ffmpeg audio variant failed.");
+      }
+
+      const durationMs = getSourceDurationMs(source);
+      const createdAsset = await registerOutputAsset(runtime, project, {
+        type: "audio",
+        name: outputFileName,
+        localPath: outputPath,
+        ...getCurrentSourceAssetLink(project),
+        ...(intentIds === undefined ? {} : { intentIds }),
+        metadata: {
+          action: config.action,
+          audioChannels: config.audioChannels,
+          evidenceRole: "derived",
+          fileName: outputFileName,
+          filterChain: config.filterChain,
+          filterPreset: config.filterPreset,
+          flowKind: "operation-result",
+          operationId: config.operationId,
+          requestId,
+          toolId: "ffmpeg",
+          ...(durationMs === null ? {} : { durationMs }),
+          ...(durationMs === null
+            ? {}
+            : {
+                sourceRange: {
+                  endMs: durationMs,
+                  startMs: 0,
+                },
+              }),
+          startOffsetMs: 0,
+        },
+      });
+
+      pushJobState(api, {
+        action: config.action,
+        jobId,
+        percent: 100,
+        projectId,
+        requestId,
+        resultAssetIds: [createdAsset.id],
+        stage: "completed",
+        toolId: "ffmpeg",
+      });
+
+      return {
+        outputPath,
+        outputFileName,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      pushJobState(api, {
+        action: config.action,
+        jobId,
+        message: errorMessage,
+        projectId,
+        requestId,
+        stage: "failed",
+        toolId: "ffmpeg",
+      });
+      throw error;
+    } finally {
+      clearJob(runtime, jobId);
+    }
+  }
+
+  async function exportCleanAudio(
+    api: unknown,
+    runtime: LaboratoryRecord,
+    requestId: string,
+    payload: LaboratoryRecord
+  ) {
+    return exportAudioVariant(api, runtime, requestId, payload, {
+      action: "export-clean-audio",
+      audioChannels: 2,
+      filterChain: "highpass=f=80,lowpass=f=12000,afftdn=nf=-25,dynaudnorm=f=150:g=15",
+      filterPreset: "cleanup-basic",
+      operationId: "audio-cleanup",
+      outputPrefix: "clean-audio",
+    });
+  }
+
+  async function exportBandPassVoice(
+    api: unknown,
+    runtime: LaboratoryRecord,
+    requestId: string,
+    payload: LaboratoryRecord
+  ) {
+    return exportAudioVariant(api, runtime, requestId, payload, {
+      action: "export-band-pass-voice",
+      audioChannels: 1,
+      filterChain: "highpass=f=120,lowpass=f=3800,dynaudnorm=f=150:g=12",
+      filterPreset: "voice-band-pass",
+      operationId: "band-pass-voice",
+      outputPrefix: "band-pass-voice",
+    });
   }
 
   async function exportAudioTrack(
@@ -625,7 +1138,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         throw new Error(asNonEmptyString(runPayload["stderr"]) || "ffmpeg audio export failed.");
       }
 
-      const currentSourceAssetId = deriveLabSourceId(project);
       const sourceMetadata = toRecord(source["metadata"]);
       const sourceDurationSeconds = asNumber(sourceMetadata["durationSeconds"]);
       const durationMs =
@@ -637,19 +1149,26 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         type: "audio",
         name: outputFileName,
         localPath: outputPath,
-        ...(currentSourceAssetId === null
-          ? {}
-          : {
-              derivedFromAssetId: currentSourceAssetId,
-              derivedFromSourceId: currentSourceAssetId,
-            }),
+        ...getCurrentSourceAssetLink(project),
         ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: "export-audio-track",
+          evidenceRole: "derived",
           fileName: outputFileName,
+          filterPreset: "audio-extract",
+          flowKind: "operation-result",
+          operationId: "audio-extract",
           requestId,
           toolId: "ffmpeg",
           ...(durationMs === null ? {} : { durationMs }),
+          ...(durationMs === null
+            ? {}
+            : {
+                sourceRange: {
+                  endMs: durationMs,
+                  startMs: 0,
+                },
+              }),
           startOffsetMs: 0,
         },
       });
@@ -688,6 +1207,9 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
 
   return {
     exportAudioTrack,
+    exportBandPassVoice,
+    exportCleanAudio,
+    exportEnhancedFrame,
     exportROIImage,
     exportFrameGrab,
     exportTimelineClip,

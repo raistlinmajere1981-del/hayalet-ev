@@ -9,6 +9,7 @@ import {
   normalizeLabFeatureId,
   toTimestamp,
   WORKSPACE_INTENTS,
+  getIntentIdsForCapabilityFamily,
 } from "../models/lab-types.js";
 import type {
   LabComparisonVariant,
@@ -20,6 +21,7 @@ import type {
   LabExecutionCommitment,
   LabFindingProjection,
   LabInspectionMode,
+  LabIntentId,
   LabLiveFindingProjection,
   LabModuleState,
   LabModuleTraceEntry,
@@ -37,6 +39,7 @@ import type {
   LabStoreEvent,
   LabStoreState,
   LabBookmark,
+  LabActionSuggestion,
   LabYoutubeImportCustomSettings,
   LabYoutubeImportFormat,
   LabYoutubeImportStrategy,
@@ -323,6 +326,7 @@ function createDefaultWorkspaceUiState(): LabWorkspaceUiState {
     hypothesis: "",
     bookmarks: [],
     selectedIntents: [],
+    analysisPrepExpandedIntentIds: [],
     sourceIntakeCollapsed: false,
     selectionMicroZoomOpen: false,
     controlsDrawerOpen: true,
@@ -348,6 +352,28 @@ function normalizeInspectionMode(value: unknown): LabInspectionMode {
 
 function resetInspectionMode(state: LabStoreState) {
   state.ui.inspectionMode = "none";
+}
+
+function isLabIntentId(value: unknown): value is LabIntentId {
+  return (
+    typeof value === "string" &&
+    WORKSPACE_INTENTS.some(function (intent) {
+      return intent.id === value;
+    })
+  );
+}
+
+function normalizeLabIntentIds(values: unknown): LabIntentId[] {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+  return Array.from(
+    new Set(
+      values.filter(function (value): value is LabIntentId {
+        return isLabIntentId(value);
+      })
+    )
+  );
 }
 
 function clearRoiFocus(state: LabStoreState) {
@@ -485,6 +511,7 @@ function canStoreSelectionSuggestionPreview(state: LabStoreState, suggestionId: 
 
   const sourceKind = getWorkspaceSelectionSuggestionSourceKind(state);
   return getSelectionSuggestionsForContext(activeSelection, {
+    expandedTaxonomy: true,
     inspectionMode: state.ui.inspectionMode,
     sourceKind,
   }).some((suggestion) => suggestion.id === normalizedSuggestionId);
@@ -507,6 +534,75 @@ function canAcceptSelectionExecutionIntent(state: LabStoreState, suggestionId: s
     return false;
   }
   return canResolveSelectionExecutionIntent(state, normalizedSuggestionId);
+}
+
+function getSelectionSuggestionById(
+  state: LabStoreState,
+  suggestionId: string
+): LabActionSuggestion | null {
+  const normalizedSuggestionId = normalizeSelectionSuggestionId(suggestionId);
+  if (normalizedSuggestionId === null) {
+    return null;
+  }
+  const activeSelection = state.ui.workspace.activeSelection;
+  if (activeSelection === null || activeSelection.endMs <= activeSelection.startMs) {
+    return null;
+  }
+  const sourceKind = getWorkspaceSelectionSuggestionSourceKind(state);
+  return (
+    getSelectionSuggestionsForContext(activeSelection, {
+      expandedTaxonomy: true,
+      inspectionMode: state.ui.inspectionMode,
+      sourceKind,
+    }).find(function (suggestion) {
+      return suggestion.id === normalizedSuggestionId;
+    }) || null
+  );
+}
+
+function isOperationResultSuggestion(suggestion: LabActionSuggestion) {
+  if (suggestion.flowKind === "operation-result") {
+    return true;
+  }
+  if (suggestion.flowKind === "analysis-report") {
+    return false;
+  }
+  return (
+    suggestion.actionType === "extract-clip" ||
+    suggestion.actionType === "enhance-visual" ||
+    suggestion.actionType === "enhance-frame" ||
+    suggestion.actionType === "crop-region" ||
+    suggestion.actionType === "clean-audio" ||
+    suggestion.actionType === "separate-stems" ||
+    suggestion.actionType === "stabilize-segment"
+  );
+}
+
+function getAnalysisPreparationIntentIdsForSuggestion(
+  suggestion: LabActionSuggestion | null
+): LabIntentId[] {
+  if (suggestion === null || isOperationResultSuggestion(suggestion)) {
+    return [];
+  }
+  if (suggestion.analysisCapabilityId !== undefined) {
+    return getIntentIdsForCapabilityFamily(suggestion.analysisCapabilityId);
+  }
+  switch (suggestion.actionType) {
+    case "inspect-audio":
+      return ["audio-investigation"];
+    case "inspect-motion":
+    case "detect-scenes":
+    case "detect-objects":
+      return ["visual-inspection"];
+    case "focus-region":
+    case "ocr-region":
+    case "metadata-audit":
+      return ["visual-inspection", "detail-enhancement"];
+    case "analyze-segment":
+      return ["visual-inspection", "audio-investigation", "anomaly-detection"];
+    default:
+      return [];
+  }
 }
 
 function toEventFeedItem(
@@ -1198,6 +1294,7 @@ function syncUserActionsFromHostEvent(state: LabStoreState, event: LabEventFeedI
   if (event.stage === "queued" || event.stage === "running") {
     patchUserAction(state, matchedAction.id, {
       ...basePatch,
+      progress: typeof event.percent === "number" ? clampPercent(event.percent) : null,
       status: "running",
     });
     return;
@@ -1210,6 +1307,7 @@ function syncUserActionsFromHostEvent(state: LabStoreState, event: LabEventFeedI
       status: "success",
       finishedAt: event.timestamp || Date.now(),
       message: trackedDefinition.successMessage,
+      progress: 100,
       ...(normalizedResultAssetIds === undefined
         ? {}
         : { resultAssetIds: normalizedResultAssetIds }),
@@ -1223,6 +1321,7 @@ function syncUserActionsFromHostEvent(state: LabStoreState, event: LabEventFeedI
       status: "error",
       finishedAt: event.timestamp || Date.now(),
       message: event.detail || trackedDefinition.errorMessage,
+      progress: null,
     });
   }
 }
@@ -1702,6 +1801,7 @@ function syncCanonicalStateFromSnapshot(
     clearInspectionDepth(state);
     state.ui.workspace = clearWorkspaceSelection({
       ...state.ui.workspace,
+      analysisPrepExpandedIntentIds: [],
       sourceIntakeCollapsed: false,
       drawerModeOverride: null,
     });
@@ -1755,6 +1855,7 @@ function syncCanonicalStateFromSnapshot(
     clearInspectionDepth(state);
     state.ui.workspace = {
       ...clearWorkspaceSelection(state.ui.workspace),
+      analysisPrepExpandedIntentIds: [],
       drawerModeOverride: null,
     };
   }
@@ -2536,11 +2637,14 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
               selectedIntents: Array.isArray(ws.selectedIntents)
                 ? normalizeWorkspaceIntentIds(ws.selectedIntents)
                 : state.ui.workspace.selectedIntents,
+              analysisPrepExpandedIntentIds: [],
               sourceIntakeCollapsed: ws.sourceIntakeCollapsed === true,
               selectionMicroZoomOpen: ws.selectionMicroZoomOpen === true,
               controlsDrawerOpen: ws.controlsDrawerOpen !== false,
               controlsDrawerTab:
-                ws.controlsDrawerTab === "visual" || ws.controlsDrawerTab === "audio"
+                ws.controlsDrawerTab === "visual" ||
+                ws.controlsDrawerTab === "audio" ||
+                ws.controlsDrawerTab === "operations"
                   ? ws.controlsDrawerTab
                   : state.ui.workspace.controlsDrawerTab,
               processViewActive: ws.processViewActive === true,
@@ -2789,6 +2893,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         clearInspectionDepth(state);
         state.ui.workspace = {
           ...clearWorkspaceSelection(state.ui.workspace),
+          analysisPrepExpandedIntentIds: [],
           drawerModeOverride: null,
         };
       }
@@ -3052,6 +3157,30 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
           clearExecutionCommitment(state);
         }
         state.ui.activeExecutionIntentId = nextExecutionIntentId;
+        const suggestion =
+          nextExecutionIntentId === null
+            ? null
+            : getSelectionSuggestionById(state, nextExecutionIntentId);
+        if (suggestion !== null && isOperationResultSuggestion(suggestion)) {
+          state.ui.workspace = {
+            ...state.ui.workspace,
+            controlsDrawerOpen: true,
+            controlsDrawerTab: "operations",
+          };
+        } else {
+          const expandedIntentIds = getAnalysisPreparationIntentIdsForSuggestion(suggestion);
+          state.ui.workspace = {
+            ...state.ui.workspace,
+            drawerCollapsed: false,
+            drawerModeOverride: "setup",
+            analysisPrepExpandedIntentIds:
+              expandedIntentIds.length > 0
+                ? normalizeLabIntentIds(
+                    state.ui.workspace.analysisPrepExpandedIntentIds.concat(expandedIntentIds)
+                  )
+                : state.ui.workspace.analysisPrepExpandedIntentIds,
+          };
+        }
       }
       return state;
     case "workspace-selection-suggestion-dismissed":
@@ -3389,6 +3518,29 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         selectedIntents: nextIntents,
       };
       state.selectedCapabilities = deriveCapabilitiesFromIntentIds(nextIntents);
+      return state;
+    }
+    case "analysis-prep-group-toggled": {
+      const expandedIntentIds = normalizeLabIntentIds(
+        state.ui.workspace.analysisPrepExpandedIntentIds
+      );
+      const nextExpandedIntentIds = expandedIntentIds.includes(event.intentId)
+        ? expandedIntentIds.filter(function (entry) {
+            return entry !== event.intentId;
+          })
+        : expandedIntentIds.concat(event.intentId);
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        analysisPrepExpandedIntentIds: nextExpandedIntentIds,
+      };
+      return state;
+    }
+    case "analysis-prep-group-expanded": {
+      const nextExpandedIntentIds = normalizeLabIntentIds(event.intentIds);
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        analysisPrepExpandedIntentIds: nextExpandedIntentIds,
+      };
       return state;
     }
     case "workspace-source-intake-toggled":
