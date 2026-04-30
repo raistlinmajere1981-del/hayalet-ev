@@ -3070,7 +3070,8 @@
 .labx-timeline__pin-popover {
   position: absolute;
   left: 50%;
-  top: 0.9rem;
+  top: auto;
+  bottom: calc(100% + 0.35rem);
   display: grid;
   grid-template-columns: auto minmax(7rem, 13rem) auto;
   align-items: center;
@@ -3084,7 +3085,7 @@
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.42);
   opacity: 0;
   pointer-events: none;
-  transform: translate(-50%, 0.2rem);
+  transform: translate(-50%, -0.2rem);
   transition:
     opacity 0.12s,
     transform 0.12s;

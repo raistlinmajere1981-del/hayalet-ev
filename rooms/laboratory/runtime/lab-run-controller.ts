@@ -68,6 +68,7 @@ import {
   normalizeProjectImportKindValue,
   normalizeProjectImportMethodValue,
 } from "./lab-project-import.js";
+import { getWorkspaceSourceSelectionResetKey } from "./lab-workspace-selection.js";
 
 type LabRoomApi = {
   onHostMessage?: (listener: (message: unknown) => void) => void;
@@ -538,6 +539,8 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         frameIndex: getTimelineBookmarkFrameIndex(timeMs),
         note,
         createdAt: Date.now(),
+        projectId: state.projectIndex.activeProjectId,
+        sourceKey: getWorkspaceSourceSelectionResetKey(state.source),
       },
     });
     if (noteInput) {

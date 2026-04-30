@@ -154,6 +154,8 @@ export interface LabBookmark {
   frameIndex: number | null;
   note: string;
   createdAt: number;
+  projectId?: string | null;
+  sourceKey?: string | null;
 }
 
 export interface LabROIRegion {

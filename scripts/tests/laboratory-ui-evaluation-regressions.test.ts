@@ -1196,7 +1196,10 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   assert.match(themeSource, /\.labx-timeline__transport\s*\{/);
   assert.match(themeSource, /\.labx-timeline__volume\s*\{/);
   assert.match(themeSource, /\.labx-timeline__bookmark\s*\{/);
-  assert.match(themeSource, /\.labx-timeline__pin-popover\s*\{/);
+  assert.match(
+    themeSource,
+    /\.labx-timeline__pin-popover\s*\{[\s\S]*bottom:\s*calc\(100% \+ 0\.35rem\);/
+  );
   assert.match(themeSource, /\.labx-timeline__pin-remove\s*\{/);
   assert.doesNotMatch(themeSource, /\.labx-timeline__range-info\s*\{/);
   assert.doesNotMatch(themeSource, /\.labx-bookmarks\s*\{/);

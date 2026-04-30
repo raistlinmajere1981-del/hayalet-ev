@@ -36,6 +36,7 @@ import type {
   LabSourceDrafts,
   LabStoreEvent,
   LabStoreState,
+  LabBookmark,
   LabYoutubeImportCustomSettings,
   LabYoutubeImportFormat,
   LabYoutubeImportStrategy,
@@ -83,6 +84,17 @@ function createDefaultSourceDrafts(): LabSourceDrafts {
     youtubePreset: null,
     youtubeCustom: {},
     youtubeCaptureMode: "video+audio",
+  };
+}
+
+function scopeWorkspaceBookmark(state: LabStoreState, bookmark: LabBookmark): LabBookmark {
+  const bookmarkRecord = asLabRecord(bookmark);
+  return {
+    ...bookmark,
+    projectId: asNonEmptyString(bookmarkRecord["projectId"]) ?? state.projectIndex.activeProjectId,
+    sourceKey:
+      asNonEmptyString(bookmarkRecord["sourceKey"]) ??
+      getWorkspaceSourceSelectionResetKey(state.source),
   };
 }
 
@@ -3322,7 +3334,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
     case "workspace-bookmark-added":
       state.ui.workspace = {
         ...state.ui.workspace,
-        bookmarks: state.ui.workspace.bookmarks.concat(event.bookmark),
+        bookmarks: state.ui.workspace.bookmarks.concat(
+          scopeWorkspaceBookmark(state, event.bookmark)
+        ),
       };
       return state;
     case "workspace-bookmark-removed":

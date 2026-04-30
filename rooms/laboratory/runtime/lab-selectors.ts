@@ -61,6 +61,7 @@ import {
   getCurrentFeatureReportRecord,
   getProjectSource,
 } from "./selectors/lab-project-selectors.js";
+import { getWorkspaceSourceSelectionResetKey } from "./lab-workspace-selection.js";
 import {
   getActiveModule,
   getAssetById,
@@ -1829,7 +1830,14 @@ export function isDualPreviewActive(state: LabStoreState) {
 }
 
 export function getBookmarks(state: LabStoreState) {
-  return state.ui.workspace.bookmarks;
+  const activeProjectId = state.projectIndex.activeProjectId;
+  const activeSourceKey = getWorkspaceSourceSelectionResetKey(state.source);
+  return state.ui.workspace.bookmarks.filter(function (bookmark) {
+    const bookmarkRecord = asLabRecord(bookmark);
+    const bookmarkProjectId = asNonEmptyString(bookmarkRecord["projectId"]);
+    const bookmarkSourceKey = asNonEmptyString(bookmarkRecord["sourceKey"]);
+    return bookmarkProjectId === activeProjectId && bookmarkSourceKey === activeSourceKey;
+  });
 }
 
 export function getHypothesis(state: LabStoreState) {

@@ -20,7 +20,7 @@ import {
   getWorkspaceDiff,
   test,
 } from "./laboratory-runtime-truth.helpers.ts";
-import { resolveDrawerMode } from "../../rooms/laboratory/runtime/lab-selectors.ts";
+import { getBookmarks, resolveDrawerMode } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 
 function createReadySourceStore(reportStatus: "ready" | "stale" | null = null) {
   const store = createLabStore();
@@ -291,6 +291,58 @@ test("laboratory store clears semantic and primitive selection state when the ac
   assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
   assert.equal(store.getState().ui.activeExecutionIntentId, null);
   assert.equal(getActiveExecutionIntent(store.getState()), null);
+});
+
+test("laboratory timeline bookmarks stay scoped to the active project source", () => {
+  const store = createLabStore();
+  const firstSnapshot = createDualPreviewSnapshot(0);
+  store.dispatch({
+    type: "snapshot-received",
+    payload: firstSnapshot,
+  });
+  store.dispatch({
+    type: "workspace-bookmark-added",
+    bookmark: {
+      id: "scoped-bookmark",
+      timeMs: 2100,
+      frameIndex: null,
+      note: "First project note",
+      createdAt: 1,
+    },
+  });
+
+  assert.equal(store.getState().ui.workspace.bookmarks.length, 1);
+  assert.equal(store.getState().ui.workspace.bookmarks[0]?.projectId, "project-dual-preview");
+  assert.equal(getBookmarks(store.getState()).length, 1);
+
+  const secondSnapshot = createDualPreviewSnapshot(0);
+  secondSnapshot.activeProjectId = "project-second";
+  secondSnapshot.projects = [{ id: "project-second", name: "second.mp4", hasSource: true }];
+  secondSnapshot.activeProject = {
+    ...secondSnapshot.activeProject,
+    id: "project-second",
+    name: "second.mp4",
+    source: {
+      ...secondSnapshot.activeProject.source,
+      previewUrl: "file:///tmp/second.mp4",
+      storedFileName: "second.mp4",
+      storedPath: "/tmp/second.mp4",
+    },
+  };
+  store.dispatch({
+    type: "snapshot-received",
+    payload: secondSnapshot,
+  });
+
+  assert.equal(store.getState().ui.workspace.bookmarks.length, 1);
+  assert.equal(getBookmarks(store.getState()).length, 0);
+
+  store.dispatch({
+    type: "snapshot-received",
+    payload: createDualPreviewSnapshot(0),
+  });
+
+  assert.equal(getBookmarks(store.getState()).length, 1);
 });
 
 test("laboratory run controller accepts numeric timeline input edits and normalizes invalid ranges", () => {
