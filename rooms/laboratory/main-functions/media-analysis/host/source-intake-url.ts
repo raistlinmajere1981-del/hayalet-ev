@@ -166,6 +166,7 @@ export function createMediaUrlSourceIntakeRuntime(deps: MediaUrlSourceIntakeRunt
       jobId: jobId,
       action: "source-download-url",
       projectId: projectId,
+      percent: 0,
       stage: "queued",
     });
 
@@ -225,6 +226,7 @@ export function createMediaUrlSourceIntakeRuntime(deps: MediaUrlSourceIntakeRunt
         jobId: jobId,
         action: "source-download-url",
         projectId: projectId,
+        message: "Download complete.",
         stage: "completed",
         percent: 100,
       });

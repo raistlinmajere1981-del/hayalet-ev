@@ -324,6 +324,8 @@ function createDefaultWorkspaceUiState(): LabWorkspaceUiState {
     bookmarks: [],
     selectedIntents: [],
     sourceIntakeCollapsed: false,
+    controlsDrawerOpen: true,
+    controlsDrawerTab: "audio",
     processViewActive: false,
     reportOverlayOpen: false,
     userExploreToggle: false,
@@ -1302,7 +1304,13 @@ function syncSourceProbeFromHostEvent(state: LabStoreState, event: LabEventFeedI
     state.sourceProbeStatus = "failed";
     return;
   }
-  if (event.stage === "queued" || event.stage === "running") {
+  if (
+    event.stage === "queued" ||
+    event.stage === "running" ||
+    event.stage === "downloading" ||
+    event.stage === "stdout" ||
+    event.stage === "stderr"
+  ) {
     state.sourceProbeStatus = "running";
   }
 }
@@ -2528,6 +2536,11 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
                 ? normalizeWorkspaceIntentIds(ws.selectedIntents)
                 : state.ui.workspace.selectedIntents,
               sourceIntakeCollapsed: ws.sourceIntakeCollapsed === true,
+              controlsDrawerOpen: ws.controlsDrawerOpen !== false,
+              controlsDrawerTab:
+                ws.controlsDrawerTab === "visual" || ws.controlsDrawerTab === "audio"
+                  ? ws.controlsDrawerTab
+                  : state.ui.workspace.controlsDrawerTab,
               processViewActive: ws.processViewActive === true,
               reportOverlayOpen: ws.reportOverlayOpen === true,
               userExploreToggle: ws.userExploreToggle === true,
@@ -3383,6 +3396,20 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
           typeof event.force === "boolean"
             ? event.force
             : !state.ui.workspace.sourceIntakeCollapsed,
+      };
+      return state;
+    case "workspace-controls-drawer-toggled":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        controlsDrawerOpen:
+          typeof event.force === "boolean" ? event.force : !state.ui.workspace.controlsDrawerOpen,
+      };
+      return state;
+    case "workspace-controls-tab-selected":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        controlsDrawerOpen: true,
+        controlsDrawerTab: event.tab,
       };
       return state;
     case "workspace-audio-updated":

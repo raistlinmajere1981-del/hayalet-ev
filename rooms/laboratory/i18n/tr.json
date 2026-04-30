@@ -202,6 +202,7 @@
     },
     "projectWorkspace": {
       "title": "Proje Calisma Alani",
+      "managementTitle": "Proje Yönetimi",
       "back": "Geri",
       "close": "Kapat",
       "nav": "Projeler",
@@ -797,6 +798,17 @@
         "kind": "Tip",
         "method": "Yontem",
         "pendingFile": "Bekleyen dosya"
+      },
+      "progress": {
+        "started": "Aktarım başladı",
+        "localPicking": "Aşama: dosya seçimi bekleniyor",
+        "urlDownloading": "Aşama: dosya indiriliyor",
+        "youtubePreparing": "Aşama: YouTube aktarımı hazırlanıyor",
+        "stages": "Aşamalar",
+        "stagePrepare": "Hazırlık",
+        "stageDownload": "İndirme",
+        "stageProcess": "Birleştirme",
+        "stageStore": "Kayıt"
       }
     },
     "source": {

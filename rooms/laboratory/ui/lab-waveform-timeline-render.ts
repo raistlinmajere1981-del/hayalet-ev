@@ -994,27 +994,32 @@ function renderExecutionDetailsOverlay(
   `;
 }
 
-export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
+export function renderLabWaveformSelectionPanel(
+  model: LabWaveformTimelineModel,
+  options: {
+    placement?: "drawer" | "timeline";
+    selectionCenterPct?: number;
+  } = {}
+) {
   const copy = model.copy ?? LAB_FALLBACK_I18N;
-  const timelineLocked = model.lockState?.timeline === true;
-  const lockDisabledAttr = timelineLocked ? 'disabled aria-disabled="true"' : "";
-  const lockHandleAttr = timelineLocked ? 'aria-disabled="true" data-lab-locked="true"' : "";
   const durationMs = Math.max(1, model.durationMs);
   const rawStartMs = model.startMs ?? 0;
   const rawEndMs = model.endMs ?? durationMs;
   const hasSelection =
     model.startMs !== null && model.endMs !== null && model.endMs > model.startMs;
-  const activeSelection =
-    hasSelection === true
-      ? (model.activeSelection ?? {
-          id: "selection-preview",
-          startMs: rawStartMs,
-          endMs: rawEndMs,
-          type: "clip",
-          intent: "general",
-          createdAt: 0,
-        })
-      : null;
+
+  if (hasSelection !== true) {
+    return "";
+  }
+
+  const activeSelection = model.activeSelection ?? {
+    id: "selection-preview",
+    startMs: rawStartMs,
+    endMs: rawEndMs,
+    type: "clip",
+    intent: "general",
+    createdAt: 0,
+  };
   const hasSemanticSelection =
     model.activeSelection !== null &&
     model.activeSelection !== undefined &&
@@ -1064,7 +1069,201 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
   const interpretationItems = model.interpretationItems ?? [];
   const inspectionMode = model.inspectionMode ?? "none";
   const roiFocusActive = model.roiFocusActive === true;
-  const selectionIntent = activeSelection?.intent ?? "general";
+  const selectionIntent = activeSelection.intent;
+  const startMs = rawStartMs;
+  const endMs = rawEndMs;
+  const selectionDurationMs = Math.max(0, endMs - startMs);
+  const selectionRoi = activeSelection.roi;
+  const selectionRoiLabel = selectionRoi
+    ? copy.t(
+        roiFocusActive
+          ? "mediaAnalysis.timeline.regionActiveFocused"
+          : "mediaAnalysis.timeline.regionActive",
+        roiFocusActive
+          ? "Region active · Focused · {width}% × {height}%"
+          : "Region active · {width}% × {height}%",
+        {
+          width: String(Math.round(selectionRoi.width * 100)),
+          height: String(Math.round(selectionRoi.height * 100)),
+        }
+      )
+    : copy.t("mediaAnalysis.timeline.regionInactive", "Region inactive");
+  const executionPlanMarkup = renderExecutionPlan(activeExecutionPlan, copy);
+  const executionSimulationMarkup = renderExecutionSimulation(activeExecutionSimulation, copy);
+  const executionReadinessMarkup = renderExecutionReadiness(activeExecutionReadiness, copy);
+  const executionPayloadMarkup = renderExecutionPayloadPreview(activeExecutionPayloadPreview, copy);
+  const executionReflectionMarkup = renderExecutionReflection(activeExecutionReflection, copy);
+  const executionAlternativesMarkup = renderExecutionAlternatives(
+    activeExecutionAlternatives,
+    copy
+  );
+  const executionCandidateMarkup = renderExecutionCandidate(activeExecutionCandidate, copy);
+  const executionCommitmentMarkup = renderExecutionCommitment(
+    activeExecutionCandidate,
+    activeExecutionCommitment,
+    copy
+  );
+  const executionStagingMarkup = renderExecutionStaging(activeExecutionStaging, copy);
+  const executionDetailsBody = [
+    executionPlanMarkup,
+    executionSimulationMarkup,
+    executionReadinessMarkup,
+    executionReflectionMarkup,
+    executionAlternativesMarkup,
+  ]
+    .filter(function (entry) {
+      return entry.trim() !== "";
+    })
+    .join("");
+  const hasExecutionDetails = executionDetailsBody.trim() !== "";
+  const placement = options.placement ?? "drawer";
+  const className =
+    placement === "timeline"
+      ? "lab-selection-panel"
+      : "lab-selection-panel lab-selection-panel--drawer";
+  const styleAttr =
+    placement === "timeline" ? `style="left: ${String(options.selectionCenterPct ?? 0)}%"` : "";
+
+  return `
+    <div
+      class="${className}"
+      ${styleAttr}
+      data-selection-intent="${escapeHtml(selectionIntent)}"
+      data-lab-selection-panel="true"
+    >
+      <div class="lab-selection-panel__eyebrow">${escapeHtml(copy.t("mediaAnalysis.timeline.selection", "Selection"))}</div>
+      <div class="lab-selection-panel__range">
+        ${formatTimePrecise(startMs)} &#8594; ${formatTimePrecise(endMs)}
+        <span class="lab-selection-panel__duration">(${formatDuration(selectionDurationMs)})</span>
+      </div>
+      <div class="lab-selection-panel__meta">${escapeHtml(copy.t("mediaAnalysis.timeline.type", "Type"))}: ${escapeHtml(formatSelectionType(activeSelection.type, copy))}</div>
+      <div class="lab-selection-panel__intent-summary">${escapeHtml(copy.t("mediaAnalysis.timeline.intent", "Intent"))}: ${escapeHtml(formatSelectionIntent(selectionIntent, copy))}</div>
+      ${
+        typeof activeSelection.label === "string" && activeSelection.label.trim() !== ""
+          ? `<div class="lab-selection-panel__label">${escapeHtml(activeSelection.label)}</div>`
+          : ""
+      }
+      <div class="lab-selection-panel__region-row">
+        <span class="lab-selection-panel__region-state${selectionRoi ? " is-active" : ""}">${escapeHtml(selectionRoiLabel)}</span>
+        ${
+          selectionRoi
+            ? `<button class="lab-selection-panel__region-clear" type="button" data-lab-selection-roi-clear="true">${escapeHtml(copy.t("mediaAnalysis.timeline.clearRegion", "Clear region"))}</button>`
+            : ""
+        }
+      </div>
+      ${renderSelectionRegionTools({
+        copy,
+        roiFocusActive,
+        selectionRoi,
+        snapshot: activeInspectionSnapshot,
+        sourceKind: model.sourceKind,
+      })}
+      <div class="lab-selection-panel__inspection">
+        <div class="lab-selection-panel__inspection-title">${escapeHtml(copy.t("mediaAnalysis.timeline.inspectionMode", "Inspection mode"))}</div>
+        <div class="lab-selection-panel__inspection-modes">
+          ${INSPECTION_MODE_OPTIONS.map(function (mode) {
+            const isActive = inspectionMode === mode;
+            const isSupported = supportsInspectionMode(mode, model.sourceKind);
+            return `<button
+              class="lab-selection-panel__inspection-pill${isActive ? " is-active" : ""}"
+              type="button"
+              aria-pressed="${String(isActive)}"
+              ${isSupported ? `data-lab-selection-inspection-mode="${mode}"` : "disabled"}
+            >${escapeHtml(formatInspectionMode(mode, copy))}</button>`;
+          }).join("")}
+        </div>
+      </div>
+      <div class="lab-selection-panel__intent-picker" data-lab-role="selection-intent-picker">
+        ${SELECTION_INTENT_OPTIONS.map(function (intent) {
+          const isActive = selectionIntent === intent;
+          return `<button
+            class="lab-selection-panel__intent-pill${isActive ? " is-active" : ""}"
+            type="button"
+            aria-pressed="${String(isActive)}"
+            data-lab-selection-intent="${intent}"
+          >${escapeHtml(formatSelectionIntent(intent, copy))}</button>`;
+        }).join("")}
+      </div>
+      <div class="lab-selection-panel__hint">${escapeHtml(copy.t("mediaAnalysis.timeline.selectionHint", "This selection will guide future analysis"))}</div>
+      ${renderExecutionIntentStrip(activeExecutionIntent, copy)}
+      ${renderInspectionToolHints(selectionSuggestions, copy)}
+      ${renderInspectionSnapshot(activeInspectionSnapshot, copy)}
+      ${renderSelectionSuggestions(actionSuggestions, copy)}
+      ${renderSuggestionPreview(suggestionPreview, activeExecutionIntent, copy)}
+      ${renderExecutionDetailsTrigger(copy, hasExecutionDetails)}
+      ${renderCollapsibleExecutionPanel({
+        body: executionSimulationMarkup,
+        copy,
+        defaultCollapsed: getPanelCollapsed(model, "simulation"),
+        panelId: "simulation",
+        title: copy.t("mediaAnalysis.executionPanels.simulation.eyebrow", "Simulation preview"),
+      })}
+      ${renderCollapsibleExecutionPanel({
+        body: executionPayloadMarkup,
+        copy,
+        defaultCollapsed: getPanelCollapsed(model, "payload"),
+        panelId: "payload",
+        title: copy.t(
+          "mediaAnalysis.executionPanels.payload.eyebrow",
+          "Execution payload (preview)"
+        ),
+      })}
+      ${renderCollapsibleExecutionPanel({
+        body: executionReflectionMarkup,
+        copy,
+        defaultCollapsed: getPanelCollapsed(model, "reflection"),
+        panelId: "reflection",
+        title: copy.t("mediaAnalysis.executionPanels.reflection.eyebrow", "Execution reflection"),
+      })}
+      ${renderCollapsibleExecutionPanel({
+        body: executionAlternativesMarkup,
+        copy,
+        defaultCollapsed: getPanelCollapsed(model, "alternatives"),
+        panelId: "alternatives",
+        title: copy.t(
+          "mediaAnalysis.executionPanels.alternatives.eyebrow",
+          "Alternative evaluation"
+        ),
+      })}
+      ${renderCollapsibleExecutionPanel({
+        body: executionCandidateMarkup,
+        copy,
+        defaultCollapsed: getPanelCollapsed(model, "candidate"),
+        panelId: "candidate",
+        title: copy.t("mediaAnalysis.executionPanels.candidate.eyebrow", "Execution candidate"),
+      })}
+      ${renderCollapsibleExecutionPanel({
+        body: executionCommitmentMarkup,
+        copy,
+        defaultCollapsed: getPanelCollapsed(model, "commitment"),
+        panelId: "commitment",
+        title: copy.t("mediaAnalysis.executionPanels.commitment.eyebrow", "Execution commitment"),
+      })}
+      ${renderCollapsibleExecutionPanel({
+        body: executionStagingMarkup,
+        copy,
+        defaultCollapsed: getPanelCollapsed(model, "staging"),
+        panelId: "staging",
+        title: copy.t("mediaAnalysis.executionPanels.staging.eyebrow", "Execution staging"),
+      })}
+      ${renderInterpretationPanel(interpretationItems, "embedded", copy)}
+      ${renderExecutionDetailsOverlay(copy, model, executionDetailsBody)}
+    </div>
+  `;
+}
+
+export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
+  const copy = model.copy ?? LAB_FALLBACK_I18N;
+  const timelineLocked = model.lockState?.timeline === true;
+  const lockDisabledAttr = timelineLocked ? 'disabled aria-disabled="true"' : "";
+  const lockHandleAttr = timelineLocked ? 'aria-disabled="true" data-lab-locked="true"' : "";
+  const durationMs = Math.max(1, model.durationMs);
+  const rawStartMs = model.startMs ?? 0;
+  const rawEndMs = model.endMs ?? durationMs;
+  const hasSelection =
+    model.startMs !== null && model.endMs !== null && model.endMs > model.startMs;
+  const interpretationItems = model.interpretationItems ?? [];
+  const selectionIntent = hasSelection ? (model.activeSelection?.intent ?? "general") : "general";
   const startMs = hasSelection ? rawStartMs : 0;
   const endMs = hasSelection ? rawEndMs : durationMs;
   const startPct = hasSelection ? Math.max(0, Math.min(100, (startMs / durationMs) * 100)) : 0;
@@ -1086,21 +1285,6 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
     timelineHighlight !== null
       ? Math.max(highlightStartPct, Math.min(100, (timelineHighlight.endMs / durationMs) * 100))
       : 0;
-  const selectionRoi = activeSelection?.roi;
-  const selectionRoiLabel = selectionRoi
-    ? copy.t(
-        roiFocusActive
-          ? "mediaAnalysis.timeline.regionActiveFocused"
-          : "mediaAnalysis.timeline.regionActive",
-        roiFocusActive
-          ? "Region active · Focused · {width}% × {height}%"
-          : "Region active · {width}% × {height}%",
-        {
-          width: String(Math.round(selectionRoi.width * 100)),
-          height: String(Math.round(selectionRoi.height * 100)),
-        }
-      )
-    : copy.t("mediaAnalysis.timeline.regionInactive", "Region inactive");
   const waveformWindowStartPct = Math.max(
     0,
     Math.min(100, (model.waveformWindowStartMs / durationMs) * 100)
@@ -1156,35 +1340,6 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
           "mediaAnalysis.timeline.outsideRangeHint",
           "Waveform falls outside the visible master range."
         );
-  const executionPlanMarkup = renderExecutionPlan(activeExecutionPlan, copy);
-  const executionSimulationMarkup = renderExecutionSimulation(activeExecutionSimulation, copy);
-  const executionReadinessMarkup = renderExecutionReadiness(activeExecutionReadiness, copy);
-  const executionPayloadMarkup = renderExecutionPayloadPreview(activeExecutionPayloadPreview, copy);
-  const executionReflectionMarkup = renderExecutionReflection(activeExecutionReflection, copy);
-  const executionAlternativesMarkup = renderExecutionAlternatives(
-    activeExecutionAlternatives,
-    copy
-  );
-  const executionCandidateMarkup = renderExecutionCandidate(activeExecutionCandidate, copy);
-  const executionCommitmentMarkup = renderExecutionCommitment(
-    activeExecutionCandidate,
-    activeExecutionCommitment,
-    copy
-  );
-  const executionStagingMarkup = renderExecutionStaging(activeExecutionStaging, copy);
-  const executionDetailsBody = [
-    executionPlanMarkup,
-    executionSimulationMarkup,
-    executionReadinessMarkup,
-    executionReflectionMarkup,
-    executionAlternativesMarkup,
-  ]
-    .filter(function (entry) {
-      return entry.trim() !== "";
-    })
-    .join("");
-  const hasExecutionDetails = executionDetailsBody.trim() !== "";
-
   return `
     <div class="labx-timeline" id="lab-timeline" data-duration="${String(durationMs)}" data-waveform-mode="${model.dualPreviewActive ? "linked-audio" : "source-audio"}" data-timeline-locked="${timelineLocked ? "true" : "false"}">
       <div class="labx-timeline__track">
@@ -1229,142 +1384,14 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
         ${
           hasSelection
             ? `
-          <div
-            class="lab-selection-panel"
-            style="left: ${String(selectionCenterPct)}%"
-            data-selection-intent="${escapeHtml(selectionIntent)}"
-            data-lab-selection-panel="true"
-          >
-            <div class="lab-selection-panel__eyebrow">${escapeHtml(copy.t("mediaAnalysis.timeline.selection", "Selection"))}</div>
-            <div class="lab-selection-panel__range">
-              ${formatTimePrecise(startMs)} &#8594; ${formatTimePrecise(endMs)}
-              <span class="lab-selection-panel__duration">(${formatDuration(selectionDurationMs)})</span>
-            </div>
-            <div class="lab-selection-panel__meta">${escapeHtml(copy.t("mediaAnalysis.timeline.type", "Type"))}: ${escapeHtml(formatSelectionType(activeSelection?.type, copy))}</div>
-            <div class="lab-selection-panel__intent-summary">${escapeHtml(copy.t("mediaAnalysis.timeline.intent", "Intent"))}: ${escapeHtml(formatSelectionIntent(selectionIntent, copy))}</div>
-            ${
-              typeof activeSelection?.label === "string" && activeSelection.label.trim() !== ""
-                ? `<div class="lab-selection-panel__label">${escapeHtml(activeSelection.label)}</div>`
-                : ""
-            }
-            <div class="lab-selection-panel__region-row">
-              <span class="lab-selection-panel__region-state${selectionRoi ? " is-active" : ""}">${escapeHtml(selectionRoiLabel)}</span>
-              ${
-                selectionRoi
-                  ? `<button class="lab-selection-panel__region-clear" type="button" data-lab-selection-roi-clear="true">${escapeHtml(copy.t("mediaAnalysis.timeline.clearRegion", "Clear region"))}</button>`
-                  : ""
-              }
-            </div>
-            ${renderSelectionRegionTools({
-              copy,
-              roiFocusActive,
-              selectionRoi,
-              snapshot: activeInspectionSnapshot,
-              sourceKind: model.sourceKind,
-            })}
-            <div class="lab-selection-panel__inspection">
-              <div class="lab-selection-panel__inspection-title">${escapeHtml(copy.t("mediaAnalysis.timeline.inspectionMode", "Inspection mode"))}</div>
-              <div class="lab-selection-panel__inspection-modes">
-                ${INSPECTION_MODE_OPTIONS.map(function (mode) {
-                  const isActive = inspectionMode === mode;
-                  const isSupported = supportsInspectionMode(mode, model.sourceKind);
-                  return `<button
-                    class="lab-selection-panel__inspection-pill${isActive ? " is-active" : ""}"
-                    type="button"
-                    aria-pressed="${String(isActive)}"
-                    ${isSupported ? `data-lab-selection-inspection-mode="${mode}"` : "disabled"}
-                  >${escapeHtml(formatInspectionMode(mode, copy))}</button>`;
-                }).join("")}
-              </div>
-            </div>
-            <div class="lab-selection-panel__intent-picker" data-lab-role="selection-intent-picker">
-              ${SELECTION_INTENT_OPTIONS.map(function (intent) {
-                const isActive = selectionIntent === intent;
-                return `<button
-                  class="lab-selection-panel__intent-pill${isActive ? " is-active" : ""}"
-                  type="button"
-                  aria-pressed="${String(isActive)}"
-                  data-lab-selection-intent="${intent}"
-                >${escapeHtml(formatSelectionIntent(intent, copy))}</button>`;
-              }).join("")}
-            </div>
-            <div class="lab-selection-panel__hint">${escapeHtml(copy.t("mediaAnalysis.timeline.selectionHint", "This selection will guide future analysis"))}</div>
-            ${renderExecutionIntentStrip(activeExecutionIntent, copy)}
-            ${renderInspectionToolHints(selectionSuggestions, copy)}
-            ${renderInspectionSnapshot(activeInspectionSnapshot, copy)}
-            ${renderSelectionSuggestions(actionSuggestions, copy)}
-            ${renderSuggestionPreview(suggestionPreview, activeExecutionIntent, copy)}
-            ${renderExecutionDetailsTrigger(copy, hasExecutionDetails)}
-            ${renderCollapsibleExecutionPanel({
-              body: executionSimulationMarkup,
-              copy,
-              defaultCollapsed: getPanelCollapsed(model, "simulation"),
-              panelId: "simulation",
-              title: copy.t(
-                "mediaAnalysis.executionPanels.simulation.eyebrow",
-                "Simulation preview"
-              ),
-            })}
-            ${renderCollapsibleExecutionPanel({
-              body: executionPayloadMarkup,
-              copy,
-              defaultCollapsed: getPanelCollapsed(model, "payload"),
-              panelId: "payload",
-              title: copy.t(
-                "mediaAnalysis.executionPanels.payload.eyebrow",
-                "Execution payload (preview)"
-              ),
-            })}
-            ${renderCollapsibleExecutionPanel({
-              body: executionReflectionMarkup,
-              copy,
-              defaultCollapsed: getPanelCollapsed(model, "reflection"),
-              panelId: "reflection",
-              title: copy.t(
-                "mediaAnalysis.executionPanels.reflection.eyebrow",
-                "Execution reflection"
-              ),
-            })}
-            ${renderCollapsibleExecutionPanel({
-              body: executionAlternativesMarkup,
-              copy,
-              defaultCollapsed: getPanelCollapsed(model, "alternatives"),
-              panelId: "alternatives",
-              title: copy.t(
-                "mediaAnalysis.executionPanels.alternatives.eyebrow",
-                "Alternative evaluation"
-              ),
-            })}
-            ${renderCollapsibleExecutionPanel({
-              body: executionCandidateMarkup,
-              copy,
-              defaultCollapsed: getPanelCollapsed(model, "candidate"),
-              panelId: "candidate",
-              title: copy.t(
-                "mediaAnalysis.executionPanels.candidate.eyebrow",
-                "Execution candidate"
-              ),
-            })}
-            ${renderCollapsibleExecutionPanel({
-              body: executionCommitmentMarkup,
-              copy,
-              defaultCollapsed: getPanelCollapsed(model, "commitment"),
-              panelId: "commitment",
-              title: copy.t(
-                "mediaAnalysis.executionPanels.commitment.eyebrow",
-                "Execution commitment"
-              ),
-            })}
-            ${renderCollapsibleExecutionPanel({
-              body: executionStagingMarkup,
-              copy,
-              defaultCollapsed: getPanelCollapsed(model, "staging"),
-              panelId: "staging",
-              title: copy.t("mediaAnalysis.executionPanels.staging.eyebrow", "Execution staging"),
-            })}
-            ${renderInterpretationPanel(interpretationItems, "embedded", copy)}
-            ${renderExecutionDetailsOverlay(copy, model, executionDetailsBody)}
-          </div>
+          ${
+            model.selectionPanelPlacement === "side"
+              ? ""
+              : renderLabWaveformSelectionPanel(model, {
+                  placement: "timeline",
+                  selectionCenterPct,
+                })
+          }
           <div
             class="labx-timeline__selection lab-selection-overlay"
             style="left: ${String(startPct)}%; width: ${String(endPct - startPct)}%"

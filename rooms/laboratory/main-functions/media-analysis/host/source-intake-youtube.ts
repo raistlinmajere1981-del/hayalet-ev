@@ -270,7 +270,7 @@ export function createMediaYoutubeSourceIntakeRuntime(
     return {
       formatId,
       label: formatYoutubeFormatLabel(format, kind, formatId),
-      kind: kind as "video" | "audio" | "muxed",
+      kind,
       extension: asNonEmptyString(format["ext"]),
       resolution: asNonEmptyString(format["resolution"]),
       fps: toNumber(format["fps"]),
@@ -529,12 +529,32 @@ export function createMediaYoutubeSourceIntakeRuntime(
       jobId: jobId,
       projectId: projectId,
       requestId: requestId,
+      percent: 0,
+      phaseCount: 4,
+      phaseIndex: 0,
+      phaseLabel: "Hazırlık",
+      phasePercent: null,
       stage: "queued",
       toolId: "yt-dlp",
     });
 
     try {
       const sourceDir = getProjectSourceDir(runtime, project);
+      pushJobState(api, {
+        action: "source-download-youtube",
+        featureStage: "source",
+        jobId: jobId,
+        message: "Aşama: YouTube aktarımı hazırlanıyor",
+        percent: 4,
+        phaseCount: 4,
+        phaseIndex: 0,
+        phaseLabel: "Hazırlık",
+        phasePercent: null,
+        projectId: projectId,
+        requestId: requestId,
+        stage: "running",
+        toolId: "yt-dlp",
+      });
       const runResult = await callRoomTools({
         args: buildYtDlpArgs(
           project,
@@ -560,6 +580,21 @@ export function createMediaYoutubeSourceIntakeRuntime(
         throw new Error("yt-dlp finished without a final output path.");
       }
 
+      pushJobState(api, {
+        action: "source-download-youtube",
+        featureStage: "source",
+        jobId: jobId,
+        message: "Aşama: Dosya projeye kaydediliyor",
+        percent: 97,
+        phaseCount: 4,
+        phaseIndex: 3,
+        phaseLabel: "Dosya projeye kaydediliyor",
+        phasePercent: null,
+        projectId: projectId,
+        requestId: requestId,
+        stage: "running",
+        toolId: "yt-dlp",
+      });
       const preparedSource = await resolvePreparedSource(runtime, project, {
         jobId: jobId,
         mimeType: normalizeMimeType(storedFileName, derivedSourceKind),
@@ -597,7 +632,12 @@ export function createMediaYoutubeSourceIntakeRuntime(
       pushJobState(api, {
         action: "source-download-youtube",
         jobId: jobId,
+        message: "Aşama: Kayıt tamamlandı",
         percent: 100,
+        phaseCount: 4,
+        phaseIndex: 3,
+        phaseLabel: "Kayıt tamamlandı",
+        phasePercent: 100,
         projectId: projectId,
         requestId: requestId,
         stage: "completed",

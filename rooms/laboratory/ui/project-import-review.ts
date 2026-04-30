@@ -1,8 +1,7 @@
-import { asLabRecord, asNonEmptyString, escapeHtml, formatBytes } from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, escapeHtml } from "../models/lab-types.js";
 import type { LabStoreState } from "../models/lab-types.js";
 import {
   buildProjectImportHostAction,
-  getLatestProjectImportEvent,
   getProjectImportRoute,
   hasProjectImportDraftValue,
 } from "../runtime/lab-project-import.js";
@@ -55,7 +54,7 @@ function isTrackedCurrentImport(state: LabStoreState) {
 }
 
 function canUseCommittedSourceForReview(state: LabStoreState) {
-  if (state.ui.projectImport.reviewFocus !== "completed" || !isTrackedCurrentImport(state)) {
+  if (state.sourceProbeStatus !== "completed" || !isTrackedCurrentImport(state)) {
     return false;
   }
   const route = getProjectImportRoute(state);
@@ -69,21 +68,16 @@ function canUseCommittedSourceForReview(state: LabStoreState) {
 
 function renderPreview(state: LabStoreState, copy: LabI18n) {
   const route = getProjectImportRoute(state);
-  if (route.method === "youtube" && state.ui.youtubeImport.preview !== null) {
+  if (route.method === "youtube") {
     const preview = state.ui.youtubeImport.preview;
     const title =
-      asNonEmptyString(preview.title) ||
+      asNonEmptyString(preview?.title) ||
       copy.t("mediaAnalysis.source.youtubeImport.previewFallbackTitle", "Sample Video Title");
-    const thumbnail = asNonEmptyString(preview.thumbnail);
     return `
       <div class="labx-import-review__preview">
-        ${
-          thumbnail !== null
-            ? `<img class="labx-import-review__media" src="${escapeHtml(thumbnail)}" alt="${escapeHtml(title)}" />`
-            : `<div class="labx-import-review__placeholder">${escapeHtml(getKindLabel(route.kind, copy))}</div>`
-        }
+        <div class="labx-import-review__placeholder">${escapeHtml(getMethodLabel("youtube", copy))}</div>
         <strong>${escapeHtml(title)}</strong>
-        ${formatDuration(preview.duration) ? `<span>${escapeHtml(formatDuration(preview.duration) || "")}</span>` : ""}
+        ${formatDuration(preview?.duration) ? `<span>${escapeHtml(formatDuration(preview?.duration) || "")}</span>` : ""}
       </div>
     `;
   }
@@ -116,101 +110,6 @@ function renderPreview(state: LabStoreState, copy: LabI18n) {
   return `
     <div class="labx-import-review__preview">
       <div class="labx-import-review__placeholder">${escapeHtml(getKindLabel(route.kind, copy))}</div>
-    </div>
-  `;
-}
-
-function renderProgress(state: LabStoreState, copy: LabI18n) {
-  const actionState = buildProjectImportHostAction(state);
-  const latestEvent = getLatestProjectImportEvent(state, actionState.action);
-  const tracked = isTrackedCurrentImport(state) && state.ui.projectImport.reviewFocus !== "draft";
-  const tone =
-    tracked && state.sourceProbeStatus === "failed"
-      ? "error"
-      : tracked && state.sourceProbeStatus === "completed"
-        ? "success"
-        : tracked && state.sourceProbeStatus === "running"
-          ? "running"
-          : "idle";
-  const percent =
-    tracked && state.sourceProbeStatus === "completed"
-      ? 100
-      : typeof latestEvent?.percent === "number"
-        ? Math.max(0, Math.min(100, latestEvent.percent))
-        : tracked && state.sourceProbeStatus === "running"
-          ? 48
-          : 0;
-  const label =
-    tracked && state.sourceProbeStatus === "completed"
-      ? copy.t("mediaAnalysis.source.progress.complete", "Import complete")
-      : tracked && state.sourceProbeStatus === "failed"
-        ? copy.t("mediaAnalysis.source.progress.failed", "Import failed")
-        : tracked && state.sourceProbeStatus === "running"
-          ? `${String(percent)}%`
-          : copy.t("mediaAnalysis.source.progress.awaiting", "Awaiting import");
-  const byteDetail =
-    typeof latestEvent?.bytesReceived === "number" && latestEvent.bytesReceived > 0
-      ? `${formatBytes(latestEvent.bytesReceived)}${typeof latestEvent.bytesTotal === "number" && latestEvent.bytesTotal > 0 ? ` / ${formatBytes(latestEvent.bytesTotal)}` : ""}`
-      : null;
-  const detail =
-    asNonEmptyString(latestEvent?.detail) ||
-    asNonEmptyString(latestEvent?.message) ||
-    byteDetail ||
-    (actionState.disabledReason !== null ? actionState.disabledReason : null);
-  return `
-    <div class="labx-import-review__progress" data-tone="${escapeHtml(tone)}">
-      <div class="labx-import-review__progress-head">
-        <span>${escapeHtml(label)}</span>
-      </div>
-      <div class="labx-progress"><span style="width:${String(percent)}%"></span></div>
-      ${detail !== null ? `<p>${escapeHtml(detail)}</p>` : ""}
-    </div>
-  `;
-}
-
-function renderDetails(state: LabStoreState, copy: LabI18n) {
-  const route = getProjectImportRoute(state);
-  const useCommittedSource = canUseCommittedSourceForReview(state);
-  const source = useCommittedSource ? asLabRecord(state.source) : asLabRecord(null);
-  const metadata = useCommittedSource ? asLabRecord(source["metadata"]) : asLabRecord(null);
-  const fileName =
-    (useCommittedSource ? asNonEmptyString(source["storedFileName"]) : null) ||
-    (useCommittedSource ? asNonEmptyString(source["routeLabel"]) : null) ||
-    copy.t("mediaAnalysis.projectImport.review.pendingFile", "Pending file");
-  const rows: Array<{ label: string; value: string }> = [
-    {
-      label: copy.t("mediaAnalysis.projectImport.review.kind", "Type"),
-      value: getKindLabel(route.kind, copy),
-    },
-    {
-      label: copy.t("mediaAnalysis.projectImport.review.method", "Method"),
-      value: getMethodLabel(route.method, copy),
-    },
-    {
-      label: copy.t("mediaAnalysis.projectWorkspace.metadataName", "Name"),
-      value: fileName,
-    },
-  ];
-  const duration = formatDuration(metadata["durationSeconds"] ?? metadata["duration"]);
-  if (duration !== null) {
-    rows.push({
-      label: copy.t("mediaAnalysis.projectWorkspace.metadataDuration", "Duration"),
-      value: duration,
-    });
-  }
-  if (typeof metadata["sizeBytes"] === "number") {
-    rows.push({
-      label: copy.t("mediaAnalysis.projectWorkspace.metadataSize", "Size"),
-      value: formatBytes(metadata["sizeBytes"]),
-    });
-  }
-  return `
-    <div class="labx-import-review__details">
-      ${rows
-        .map(function (row) {
-          return `<div class="labx-pw-inspector__meta-row"><span class="labx-pw-inspector__meta-label">${escapeHtml(row.label)}</span><span>${escapeHtml(row.value)}</span></div>`;
-        })
-        .join("")}
     </div>
   `;
 }
@@ -251,14 +150,6 @@ export function renderProjectImportReview(state: LabStoreState, copy: LabI18n = 
       <div class="labx-pw-inspector__section">
         <div class="labx-pw-inspector__section-title">${escapeHtml(copy.t("mediaAnalysis.projectImport.review.title", "Import Review"))}</div>
         ${renderPreview(state, copy)}
-      </div>
-      <div class="labx-pw-inspector__section">
-        <div class="labx-pw-inspector__section-title">${escapeHtml(copy.t("mediaAnalysis.projectImport.review.details", "Details"))}</div>
-        ${renderDetails(state, copy)}
-      </div>
-      <div class="labx-pw-inspector__section">
-        <div class="labx-pw-inspector__section-title">${escapeHtml(copy.t("mediaAnalysis.projectImport.review.progress", "Progress"))}</div>
-        ${renderProgress(state, copy)}
       </div>
     </aside>
   `;

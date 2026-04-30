@@ -137,10 +137,7 @@ export function createMediaLocalSourceIntakeRuntime(deps: MediaLocalSourceIntake
     return asNonEmptyString(value) === "auto";
   }
 
-  function getRequestedSourceKind(
-    project: LaboratoryProjectRecord,
-    localFields: unknown
-  ): string {
+  function getRequestedSourceKind(project: LaboratoryProjectRecord, localFields: unknown): string {
     const fieldKind = normalizeSourceKind(toRecord(localFields)["kind"]);
     return fieldKind || getProjectSourceKind(project);
   }

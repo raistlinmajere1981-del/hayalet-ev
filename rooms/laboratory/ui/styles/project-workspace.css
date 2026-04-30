@@ -371,6 +371,40 @@
   min-width: 0;
 }
 
+.labx-project-import__details {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+  border: 1px solid rgba(121, 211, 224, 0.12);
+  border-radius: 8px;
+  background: rgba(3, 13, 21, 0.62);
+  padding: 0.55rem 0.65rem;
+}
+
+.labx-project-import__detail-row {
+  min-width: 0;
+  display: grid;
+  gap: 0.12rem;
+}
+
+.labx-project-import__detail-row span {
+  color: var(--labx-text-dim);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.labx-project-import__detail-row strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--labx-text-soft);
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .labx-project-import__methods {
   display: grid;
   gap: 0.45rem;
@@ -445,8 +479,76 @@
 
 .labx-project-import__footer {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: flex-end;
   gap: 0.45rem;
+}
+
+.labx-project-import__progress {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: grid;
+  gap: 0.35rem;
+  border: 1px solid rgba(121, 211, 224, 0.12);
+  border-radius: 8px;
+  background: rgba(3, 13, 21, 0.72);
+  padding: 0.5rem 0.6rem;
+}
+
+.labx-project-import__progress-main {
+  min-width: 0;
+  display: grid;
+  gap: 0.32rem;
+}
+
+.labx-project-import__progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--labx-text);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.labx-project-import__progress p {
+  margin: 0;
+  overflow: hidden;
+  color: var(--labx-text-soft);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.labx-project-import__stages {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.3rem;
+}
+
+.labx-project-import__stages span {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--labx-border);
+  border-radius: 999px;
+  color: var(--labx-text-dim);
+  font-size: 0.66rem;
+  padding: 0.16rem 0.38rem;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.labx-project-import__stages span[data-state="active"] {
+  border-color: rgba(92, 215, 223, 0.38);
+  color: var(--labx-accent);
+  background: var(--labx-accent-soft);
+}
+
+.labx-project-import__stages span[data-state="done"] {
+  border-color: rgba(107, 226, 183, 0.28);
+  color: var(--labx-success);
 }
 
 .labx-project-import__btn:disabled {
@@ -1275,6 +1377,10 @@
     grid-template-columns: 1fr;
   }
 
+  .labx-project-import__details {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .labx-project-import__methods {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -1305,12 +1411,17 @@
   }
 
   .labx-project-import__fields,
+  .labx-project-import__details,
   .labx-project-import__strategies,
   .labx-project-import__methods,
   .labx-project-import__url-row,
   .labx-project-import__format-grid,
   .labx-project-import__youtube-preview {
     grid-template-columns: 1fr;
+  }
+
+  .labx-project-import__stages {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .labx-import-body,

@@ -185,7 +185,10 @@ test("laboratory v2 shell renders source intake in the setup drawer and preview 
     surface.main,
     /<video class="labx-preview-media labx-preview-media--workspace-video"/
   );
-  assert.doesNotMatch(surface.main, /labx-preview-media--workspace-video"[^>]*\scontrols(?:\s|>|=)/);
+  assert.doesNotMatch(
+    surface.main,
+    /labx-preview-media--workspace-video"[^>]*\scontrols(?:\s|>|=)/
+  );
   assert.match(surface.main, /data-lab-selection-roi-controls-reserve="0"/);
   assert.match(surface.main, /data-lab-action="timeline-toggle-playback"/);
   assert.match(surface.main, /data-lab-role="timeline-volume"/);
@@ -195,15 +198,29 @@ test("laboratory v2 shell renders source intake in the setup drawer and preview 
   assert.match(surface.main, /labx-timeline__pin-popover/);
   assert.match(surface.main, /Red flash/);
   assert.match(surface.main, /data-lab-field="workspace\.dualPreviewVolume"/);
+  assert.match(surface.main, /class="labx-workspace-stage"/);
+  assert.match(surface.main, /data-lab-workspace-inspector="true"/);
+  assert.match(surface.main, /data-open="true"/);
+  assert.match(surface.main, /data-lab-action="workspace-controls-drawer-toggle"/);
+  assert.match(surface.main, /data-lab-action="workspace-controls-tab-select"/);
+  assert.match(surface.main, /data-inspector-panel="audio"[\s\S]*id="lab-audio-focus"/);
+  assert.match(surface.main, /data-inspector-panel="visual"[\s\S]*labx-controls-card/);
+  assert.doesNotMatch(surface.main, /class="labx-workspace-focus-row"/);
   assert.doesNotMatch(surface.main, /labx-timeline__range-info/);
   assert.doesNotMatch(surface.main, /labx-bookmarks/);
-  assert.doesNotMatch(surface.main, /labx-timeline__header|Embedded audio|Preview and waveform share/);
+  assert.doesNotMatch(
+    surface.main,
+    /labx-timeline__header|Embedded audio|Preview and waveform share/
+  );
   assert.doesNotMatch(surface.main, /Source setup controls/);
   assert.equal(surface.side.trim(), "");
   assert.match(drawer, /data-drawer-mode="setup"/);
   assert.match(drawer, /Analiz Amaçları/);
   assert.match(drawer, /data-lab-action="run-deep-analysis"/);
-  assert.doesNotMatch(drawer, /Source setup controls|Project Assets|data-lab-action="save-project"/);
+  assert.doesNotMatch(
+    drawer,
+    /Source setup controls|Project Assets|data-lab-action="save-project"/
+  );
   assert.doesNotMatch(surface.main, /Kaynak Seçimi|Hızlı modül seçimi burada yapılır/);
 });
 
@@ -264,7 +281,10 @@ test("laboratory drawer keeps project assets visible in result and explore modes
   assert.match(drawer, /data-drawer-mode="result"/);
   assert.match(drawer, /data-lab-action="open-report-overlay"/);
   assert.match(drawer, /data-lab-action="drawer-explore-toggled"/);
-  assert.doesNotMatch(drawer, /analysis-report\.md|data-lab-action="asset-download"|data-lab-action="save-project"/);
+  assert.doesNotMatch(
+    drawer,
+    /analysis-report\.md|data-lab-action="asset-download"|data-lab-action="save-project"/
+  );
 
   store.dispatch({ type: "drawer-explore-toggled" });
   surface = renderWorkspaceSurface(store.getState());
@@ -303,7 +323,10 @@ test("laboratory workspace treats reused local assets as ready sources", () => {
     surface.main,
     /<video class="labx-preview-media labx-preview-media--workspace-video"/
   );
-  assert.doesNotMatch(surface.main, /labx-preview-media--workspace-video"[^>]*\scontrols(?:\s|>|=)/);
+  assert.doesNotMatch(
+    surface.main,
+    /labx-preview-media--workspace-video"[^>]*\scontrols(?:\s|>|=)/
+  );
   assert.match(surface.main, /data-lab-selection-roi-controls-reserve="0"/);
   assert.match(surface.main, /data-lab-action="timeline-toggle-playback"/);
   assert.match(surface.main, /data-lab-role="timeline-volume"/);
@@ -315,7 +338,10 @@ test("laboratory workspace treats reused local assets as ready sources", () => {
   assert.match(surface.main, /data-lab-field="workspace\.dualPreviewVolume"/);
   assert.doesNotMatch(surface.main, /labx-timeline__range-info/);
   assert.doesNotMatch(surface.main, /labx-bookmarks/);
-  assert.doesNotMatch(surface.main, /labx-timeline__header|Embedded audio|Preview and waveform share/);
+  assert.doesNotMatch(
+    surface.main,
+    /labx-timeline__header|Embedded audio|Preview and waveform share/
+  );
   assert.doesNotMatch(surface.main, /Awaiting source|Select a source to begin/);
 });
 
@@ -338,6 +364,42 @@ test("laboratory setup drawer previews intent outcomes before the analysis CTA",
   assert.match(drawer, /görsel ve işitsel anomali taraması yaparak/);
   assert.match(drawer, /yapısal anomaliler ve forensic kanıtlar/);
   assert.match(drawer, /olası anormallikler ve sınıflandırılmış ses olayları/);
+});
+
+test("laboratory setup drawer owns active source selection controls under the analysis CTA", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 2400,
+    endMs: 5600,
+  });
+
+  const surface = renderWorkspaceSurface(store.getState());
+  const drawer = renderLabDrawer(store.getState(), surface);
+  const ctaIndex = drawer.indexOf('data-lab-action="run-deep-analysis"');
+  const selectionPanelIndex = drawer.indexOf("lab-selection-panel--drawer");
+
+  assert.match(surface.main, /class="labx-timeline__selection lab-selection-overlay"/);
+  assert.doesNotMatch(surface.main, /class="lab-selection-panel"/);
+  assert.match(surface.side, /class="lab-selection-panel lab-selection-panel--drawer"/);
+  assert.match(drawer, /class="lab-selection-panel lab-selection-panel--drawer"/);
+  assert.ok(ctaIndex > -1);
+  assert.ok(selectionPanelIndex > -1);
+  assert.ok(selectionPanelIndex > ctaIndex);
+});
+
+test("laboratory workspace inspector drawer persists collapsed visual tab state", () => {
+  const store = createSeededState(true);
+  store.dispatch({ type: "workspace-controls-tab-selected", tab: "visual" });
+  store.dispatch({ type: "workspace-controls-drawer-toggled", force: false });
+
+  const surface = renderWorkspaceSurface(store.getState());
+
+  assert.match(surface.main, /data-lab-workspace-inspector="true"/);
+  assert.match(surface.main, /data-open="false"/);
+  assert.match(surface.main, /data-active-tab="visual"/);
+  assert.match(surface.main, /aria-expanded="false"/);
+  assert.match(surface.main, /data-inspector-panel="visual"/);
 });
 
 test("laboratory root owns mock execution dispatch outside the run controller", () => {
@@ -513,7 +575,7 @@ test("laboratory transparency renderers tolerate sparse run payloads", () => {
     reports: Record<string, unknown>;
   };
 
-  state.run = {
+  const sparseRunPayload = {
     id: undefined,
     state: "completed",
     startedAt: Date.now() - 1000,
@@ -539,6 +601,7 @@ test("laboratory transparency renderers tolerate sparse run payloads", () => {
     comparisonVariants: undefined,
     hypothesisSummary: null,
   };
+  state.run = sparseRunPayload as unknown as typeof state.run;
   state.reports = {
     user: null,
     ai: {
@@ -549,11 +612,11 @@ test("laboratory transparency renderers tolerate sparse run payloads", () => {
       errors: [],
       degradedConditions: [],
       moduleTrace: undefined,
-      analysisScope: state.run["analysisScope"],
+      analysisScope: sparseRunPayload.analysisScope,
       comparisonVariants: [],
     },
     emptyReason: null,
-  };
+  } as unknown as typeof state.reports;
   state.ui.workspace.reportOverlayOpen = true;
 
   assert.doesNotThrow(function () {

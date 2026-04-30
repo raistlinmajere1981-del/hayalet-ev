@@ -71,8 +71,7 @@ function createWorkspaceState(overrides: {
   if (sourceKind === "video" || sourceKind === "audio" || sourceKind === "image") {
     store.dispatch({ type: "project-import-kind-changed", kind: sourceKind });
   }
-  const sourceMethod =
-    overrides.projectImportMethod || String(overrides.source["mode"] || "local");
+  const sourceMethod = overrides.projectImportMethod || String(overrides.source["mode"] || "local");
   if (sourceMethod === "local" || sourceMethod === "url" || sourceMethod === "youtube") {
     store.dispatch({
       type: "project-import-method-changed",
@@ -183,13 +182,18 @@ test("laboratory workspace keeps import progress in project management instead o
   assert.match(overlayHtml, /data-lab-field="project-import\.urlInput"/);
   assert.doesNotMatch(overlayHtml, /data-lab-action="project-import-kind"/);
   assert.doesNotMatch(overlayHtml, /data-lab-action="project-import-method"/);
-  assert.match(overlayHtml, /class="labx-import-review__progress"[\s\S]*?42%/);
+  assert.match(overlayHtml, /class="labx-project-import__progress"[\s\S]*?42%/);
+  assert.match(overlayHtml, /class="labx-project-import__details"/);
+  assert.doesNotMatch(overlayHtml, /<img class="labx-import-review__media"/);
   assert.doesNotMatch(overlayHtml, /data-lab-field="source\.kind"/);
   assert.doesNotMatch(overlayHtml, /data-lab-field="source\.mode"/);
   assert.doesNotMatch(centerHtml, /data-lab-field="source\.kind"/);
   assert.doesNotMatch(centerHtml, /class="labx-source-bar/);
   assert.doesNotMatch(centerHtml, /class="labx-source-intake__progress"/);
-  assert.doesNotMatch(centerHtml, /Fetching media streams and writing into the project source folder\./);
+  assert.doesNotMatch(
+    centerHtml,
+    /Fetching media streams and writing into the project source folder\./
+  );
   assert.doesNotMatch(
     overlayHtml + centerHtml,
     /yt-dlp downloads the media into the project source folder and keeps the resolved preset with the project draft\./
@@ -218,6 +222,7 @@ test("laboratory workspace exposes one local picker and one URL checker for ever
   assert.match(html, /Local Dosya Ekle/);
   assert.match(html, /data-lab-action="project-import-local-add"/);
   assert.match(html, /data-lab-action="project-import-check-url"/);
+  assert.match(html, /data-lab-action="project-import-url-add"[\s\S]*disabled/);
   assert.doesNotMatch(html, /data-lab-action="project-import-method"/);
   assert.match(html, /data-lab-field="project-import\.urlInput"/);
   assert.equal(html.includes("project-import." + "file" + "NameHint"), false);
@@ -252,6 +257,7 @@ test("laboratory workspace surfaces missing yt-dlp after a checked YouTube URL",
   });
 
   assert.match(html, /data-lab-action="project-import-url-add"[\s\S]*disabled/);
+  assert.match(html, /data-lab-action="project-import-check-url"/);
   assert.match(html, /title="yt-dlp is required\."/);
 });
 
@@ -324,6 +330,7 @@ test("laboratory workspace replaces YouTube presets with checked format selector
   assert.match(html, /data-lab-field="project-import\.youtubeAudioFormat"/);
   assert.match(html, /value="140" selected/);
   assert.match(html, /data-lab-action="project-import-url-add"/);
+  assert.match(html, /data-lab-action="project-import-check-url"/);
   assert.doesNotMatch(html, /data-lab-action="youtube-import-set-strategy"/);
   assert.doesNotMatch(html, /data-lab-field="youtube-import\.custom\.resolution"/);
   assert.doesNotMatch(html, /class="labx-source-intake__youtube-stack"/);
@@ -376,7 +383,10 @@ test("laboratory controller keeps project import draft and add wiring on the act
   assert.match(source, /buildProjectImportHostAction\(deps\.store\.getState\(\)\)/);
   assert.match(source, /buildProjectImportLocalHostAction/);
   assert.match(source, /buildProjectImportUrlCheckAction/);
-  assert.match(source, /sendMediaAction\(importAction\.action, \{ fields: importAction\.fields \}\)/);
+  assert.match(
+    source,
+    /sendMediaAction\(importAction\.action, \{ fields: importAction\.fields \}\)/
+  );
   assert.match(source, /case "project-import-local-add":/);
   assert.match(source, /case "project-import-check-url":/);
   assert.match(source, /case "project-import-url-add":/);
@@ -395,4 +405,19 @@ test("laboratory controller keeps project import draft and add wiring on the act
     source,
     /sendMediaAction\("source-update-draft", \{\s*fields: mergeSourceDrafts\(state, patch\)/
   );
+});
+
+test("laboratory YouTube import progress hides tool command streams", () => {
+  const roomToolService = readFileSync("electron/room-tool-service.ts", "utf8");
+  const progressRuntime = readFileSync(
+    "rooms/laboratory/shared/host/room-tools-progress.ts",
+    "utf8"
+  );
+  const runtimeEvents = readFileSync("rooms/laboratory/shared/host/runtime-events.ts", "utf8");
+
+  assert.match(roomToolService, /message: "Tool run started\."/);
+  assert.doesNotMatch(roomToolService, /message:\s*\(request\.args \?\? \[\]\)\.join/);
+  assert.match(progressRuntime, /job\.action !== "source-download-youtube"/);
+  assert.match(progressRuntime, /phaseLabel/);
+  assert.match(runtimeEvents, /percent: typeof throttledPayload\["percent"\]/);
 });

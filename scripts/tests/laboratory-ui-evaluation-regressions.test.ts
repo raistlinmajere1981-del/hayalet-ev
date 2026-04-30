@@ -1159,6 +1159,11 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   const themeSource = readFileSync("rooms/laboratory/ui/lab-theme.css", "utf8");
 
   assert.match(workspaceSurfaceSource, /class="labx-media-workbench"/);
+  assert.match(workspaceSurfaceSource, /class="labx-workspace-stage"/);
+  assert.match(workspaceSurfaceSource, /renderWorkspaceInspectorDrawer/);
+  assert.match(workspaceSurfaceSource, /data-lab-workspace-inspector="true"/);
+  assert.match(workspaceSurfaceSource, /data-lab-action="workspace-controls-drawer-toggle"/);
+  assert.match(workspaceSurfaceSource, /data-lab-action="workspace-controls-tab-select"/);
   assert.match(workspaceSurfaceSource, /data-lab-media-workbench="true"/);
   assert.match(
     workspaceSurfaceSource,
@@ -1176,7 +1181,7 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   assert.doesNotMatch(workspaceSurfaceSource, /renderWorkspaceBookmarks|workspace-bookmarks/);
   assert.match(
     workspaceSurfaceSource,
-    /class="labx-media-workbench"[\s\S]*class="labx-workspace-preview"[\s\S]*\$\{dualPreviewTransport\}[\s\S]*renderLabWaveformTimeline\(timelineModel\)/
+    /class="labx-workspace-stage"[\s\S]*class="labx-media-workbench"[\s\S]*class="labx-workspace-preview"[\s\S]*\$\{dualPreviewTransport\}[\s\S]*renderLabWaveformTimeline\(timelineModel\)[\s\S]*\$\{inspectorMarkup\}/
   );
   assert.doesNotMatch(workspaceSurfaceSource, /renderWorkspaceHypothesis/);
   assert.match(
@@ -1185,7 +1190,19 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   );
   assert.match(
     themeSource,
-    /\.labx-workspace-preview\s*\{[\s\S]*min-height:\s*clamp\(18rem, 52vh, 36rem\);[\s\S]*border:\s*0;[\s\S]*border-radius:\s*0;[\s\S]*box-shadow:\s*none;/
+    /\.labx-workspace-preview\s*\{[\s\S]*min-height:\s*0;[\s\S]*height:\s*100%;[\s\S]*border:\s*0;[\s\S]*border-radius:\s*0;[\s\S]*box-shadow:\s*none;/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-workspace-stage\s*\{[\s\S]*position:\s*relative;[\s\S]*flex:\s*1 1 auto;[\s\S]*min-height:\s*0;/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-workspace-inspector\s*\{[\s\S]*position:\s*absolute;[\s\S]*right:\s*0\.75rem;[\s\S]*bottom:\s*0\.75rem;/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-workspace-inspector\[data-open="false"\]\s*\.labx-workspace-inspector__body\s*\{[\s\S]*display:\s*none;/
   );
   assert.match(
     themeSource,

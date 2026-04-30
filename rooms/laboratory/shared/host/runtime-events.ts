@@ -207,6 +207,7 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
           : null,
       bytesTotal:
         typeof throttledPayload["bytesTotal"] === "number" ? throttledPayload["bytesTotal"] : null,
+      percent: typeof throttledPayload["percent"] === "number" ? throttledPayload["percent"] : null,
       timestamp:
         typeof throttledPayload["timestamp"] === "number"
           ? throttledPayload["timestamp"]
@@ -237,6 +238,12 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
     const bytesReceived =
       typeof payload["bytesReceived"] === "number" ? payload["bytesReceived"] : null;
     const bytesTotal = typeof payload["bytesTotal"] === "number" ? payload["bytesTotal"] : null;
+    const percent = typeof payload["percent"] === "number" ? payload["percent"] : null;
+    const phaseLabel = asNonEmptyString(payload["phaseLabel"]);
+    const phasePercent =
+      typeof payload["phasePercent"] === "number" ? payload["phasePercent"] : null;
+    const phaseIndex = typeof payload["phaseIndex"] === "number" ? payload["phaseIndex"] : null;
+    const phaseCount = typeof payload["phaseCount"] === "number" ? payload["phaseCount"] : null;
     const resultAssetIds = Array.from(new Set(toStringArray(payload["resultAssetIds"])));
     if (isCustomProcessEventKind(kind)) {
       return {
@@ -255,6 +262,11 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
         projectId,
         bytesReceived,
         bytesTotal,
+        percent,
+        phaseLabel,
+        phasePercent,
+        phaseIndex,
+        phaseCount,
         ...(resultAssetIds.length > 0 ? { resultAssetIds } : {}),
         scope: String(action || "").includes("process") ? "run" : "global",
       };
@@ -282,6 +294,11 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
       projectId,
       bytesReceived,
       bytesTotal,
+      percent,
+      phaseLabel,
+      phasePercent,
+      phaseIndex,
+      phaseCount,
       ...(resultAssetIds.length > 0 ? { resultAssetIds } : {}),
       scope: String(action || "").includes("process") ? "run" : "global",
     };

@@ -885,7 +885,7 @@ class RoomToolService {
       requestId,
       jobId,
       stage: "queued",
-      message: request.url,
+      message: "Download queued.",
     });
 
     try {
@@ -916,7 +916,7 @@ class RoomToolService {
         stage: "running",
         bytesReceived: 0,
         ...(totalBytes > 0 ? { bytesTotal: totalBytes } : {}),
-        message: targetPath,
+        message: "Download started.",
       });
 
       const pumpDownload = async (): Promise<void> => {
@@ -962,7 +962,7 @@ class RoomToolService {
         bytesReceived: writtenBytes,
         ...(totalBytes > 0 ? { bytesTotal: totalBytes } : {}),
         percent: 100,
-        message: targetPath,
+        message: "Download complete.",
       });
 
       return {
@@ -1421,7 +1421,7 @@ class RoomToolService {
       jobId,
       toolId: request.toolId,
       stage: "queued",
-      message: binaryPath,
+      message: "Tool run queued.",
     });
 
     return await new Promise<RoomToolCallResult>((resolvePromise, rejectPromise) => {
@@ -1473,7 +1473,7 @@ class RoomToolService {
           jobId,
           toolId: request.toolId,
           stage: cancelled ? "cancelled" : "completed",
-          message: binaryPath,
+          message: cancelled ? "Tool run cancelled." : "Tool run complete.",
           exitCode: exitCode ?? null,
         });
 
@@ -1509,7 +1509,7 @@ class RoomToolService {
         jobId,
         toolId: request.toolId,
         stage: "running",
-        message: (request.args ?? []).join(" "),
+        message: "Tool run started.",
       });
 
       child.stdout.on("data", (chunk: Buffer) => {

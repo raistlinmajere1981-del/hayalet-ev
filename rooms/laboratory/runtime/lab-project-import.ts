@@ -329,9 +329,13 @@ export function buildProjectImportHostAction(state: LabStoreState): LabProjectIm
     const youtubeUrl = state.ui.youtubeImport.url || effectiveDraft.youtubeUrl || urlInput;
     const ytDlpInstalled = getToolInstalled(state, "yt-dlp") === true;
     const selectedFormatFields = buildYoutubeFormatSelectionFields(state, effectiveDraft);
-    Object.assign(baseFields, selectedFormatFields || buildYoutubeStrategyFields(state, effectiveDraft), {
-      youtubeUrl,
-    });
+    Object.assign(
+      baseFields,
+      selectedFormatFields || buildYoutubeStrategyFields(state, effectiveDraft),
+      {
+        youtubeUrl,
+      }
+    );
     if (selectedFormatFields !== null) {
       baseFields["kind"] = selectedFormatFields["kind"];
     }

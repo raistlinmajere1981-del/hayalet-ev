@@ -68,6 +68,11 @@
   scrollbar-gutter: stable;
 }
 
+.labx-shell[data-lab-mode="normal"] .labx-center-panel {
+  overflow: hidden;
+  scrollbar-gutter: auto;
+}
+
 .labx-chip-button,
 .labx-inline-action {
   border: 1px solid var(--labx-border);
@@ -862,14 +867,28 @@
 .labx-workspace-main {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
   gap: 0.85rem;
+  height: 100%;
+  min-height: 0;
+}
+
+.labx-workspace-stage {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
 }
 
 .labx-media-workbench {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  flex: 1 1 auto;
   gap: 0;
+  height: 100%;
   min-height: 0;
+  min-width: 0;
   border: 1px solid rgba(134, 187, 214, 0.18);
   border-radius: var(--labx-radius-tight);
   background:
@@ -879,7 +898,8 @@
 
 .labx-workspace-preview {
   position: relative;
-  min-height: clamp(18rem, 52vh, 36rem);
+  min-height: 0;
+  height: 100%;
   border: 0;
   border-radius: 0;
   background:
@@ -949,7 +969,8 @@
   grid-template-columns: minmax(0, 1.7fr) minmax(18rem, 0.9fr);
   gap: 0.85rem;
   align-items: stretch;
-  min-height: 26rem;
+  min-height: 0;
+  height: 100%;
 }
 
 .labx-workspace-preview__video-pane,
@@ -1118,11 +1139,11 @@
 
 @media (max-width: 960px) {
   .labx-media-workbench {
-    min-height: auto;
+    min-height: 0;
   }
 
   .labx-workspace-preview {
-    min-height: clamp(18rem, 54vh, 34rem);
+    min-height: 0;
   }
 
   .labx-workspace-preview__dual-shell {
@@ -1294,6 +1315,19 @@
     0 18px 28px rgba(0, 0, 0, 0.3),
     0 0 24px rgba(var(--lab-selection-accent-rgb), 0.08);
   z-index: 7;
+}
+
+.lab-selection-panel--drawer {
+  position: static;
+  top: auto;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  box-sizing: border-box;
+  transform: none;
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.22),
+    0 0 18px rgba(var(--lab-selection-accent-rgb), 0.06);
 }
 
 .lab-selection-overlay[data-selection-intent="anomaly"],
@@ -3545,6 +3579,141 @@
 .labx-roi-selection-toolbar__mode:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+/* Workspace inspector drawer */
+.labx-workspace-inspector {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 14;
+  display: flex;
+  flex-direction: column;
+  width: min(23rem, calc(100% - 1.5rem));
+  min-width: 0;
+  border: 1px solid rgba(92, 215, 223, 0.2);
+  border-radius: var(--labx-radius-tight);
+  background:
+    linear-gradient(180deg, rgba(8, 18, 30, 0.97), rgba(5, 11, 19, 0.98)), rgba(5, 11, 19, 0.96);
+  box-shadow:
+    0 24px 42px rgba(0, 0, 0, 0.34),
+    0 0 0 1px rgba(255, 255, 255, 0.025);
+}
+
+.labx-workspace-inspector[data-open="false"] {
+  bottom: auto;
+  width: auto;
+  border-color: rgba(92, 215, 223, 0.24);
+  background: rgba(8, 18, 30, 0.9);
+}
+
+.labx-workspace-inspector__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  min-height: 2.15rem;
+  padding: 0.42rem 0.62rem;
+  border: 0;
+  border-bottom: 1px solid rgba(92, 215, 223, 0.14);
+  background: rgba(92, 215, 223, 0.08);
+  color: rgba(241, 249, 252, 0.94);
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.labx-workspace-inspector[data-open="false"] .labx-workspace-inspector__toggle {
+  border-bottom: 0;
+  border-radius: var(--labx-radius-tight);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
+}
+
+.labx-workspace-inspector__toggle-icon {
+  color: var(--labx-accent);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.labx-workspace-inspector__body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.labx-workspace-inspector[data-open="false"] .labx-workspace-inspector__body {
+  display: none;
+}
+
+.labx-workspace-inspector__tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+  padding: 0.55rem 0.55rem 0;
+}
+
+.labx-workspace-inspector__tab {
+  min-width: 0;
+  min-height: 2rem;
+  padding: 0.35rem 0.48rem;
+  border: 1px solid rgba(136, 170, 204, 0.16);
+  border-radius: 0.6rem;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--labx-text-soft);
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.labx-workspace-inspector__tab[data-selected="true"] {
+  border-color: rgba(92, 215, 223, 0.34);
+  background: rgba(92, 215, 223, 0.14);
+  color: rgba(255, 255, 255, 0.94);
+}
+
+.labx-workspace-inspector__panels {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0.6rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.labx-workspace-inspector__panel[hidden] {
+  display: none;
+}
+
+.labx-workspace-inspector .labx-workspace-focus-row__panel,
+.labx-workspace-inspector .labx-audio-focus,
+.labx-workspace-inspector .labx-controls-card {
+  min-height: 0;
+  height: auto;
+}
+
+.labx-workspace-inspector .labx-audio-focus,
+.labx-workspace-inspector .labx-controls-card {
+  border-radius: 0.65rem;
+  box-shadow: none;
+}
+
+.labx-workspace-inspector .labx-card {
+  padding: 0.75rem 0.8rem;
+}
+
+.labx-workspace-inspector .labx-card__header {
+  margin-bottom: 0.65rem;
+}
+
+.labx-workspace-inspector .labx-card__title {
+  font-size: 0.92rem;
+}
+
+.labx-workspace-inspector .labx-control-row {
+  grid-template-columns: 4.7rem minmax(0, 1fr) 2.8rem;
 }
 
 /* Interactive Controls */

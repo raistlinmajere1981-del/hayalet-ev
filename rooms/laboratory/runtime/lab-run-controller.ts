@@ -11,6 +11,7 @@ import type {
   LabAssetType,
   LabSourceDrafts,
   LabStoreEvent,
+  LabWorkspaceControlTab,
   LabUserActionEvent,
   LabYoutubeImportCustomSettings,
   LabYoutubeImportPreview,
@@ -213,6 +214,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       default:
         return null;
     }
+  }
+
+  function normalizeWorkspaceControlTab(value: string): LabWorkspaceControlTab | null {
+    return value === "audio" || value === "visual" ? value : null;
   }
 
   function buildYoutubeImportCustomPatch(
@@ -2375,6 +2380,18 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "workspace-toggle-source-intake":
         dispatch({ type: "workspace-source-intake-toggled" });
         return;
+      case "workspace-controls-drawer-toggle":
+        dispatch({ type: "workspace-controls-drawer-toggled" });
+        return;
+      case "workspace-controls-tab-select": {
+        const tab = normalizeWorkspaceControlTab(value);
+        if (tab !== null && state.ui.workspace.controlsDrawerTab !== tab) {
+          dispatch({ type: "workspace-controls-tab-selected", tab });
+        } else if (tab !== null && state.ui.workspace.controlsDrawerOpen !== true) {
+          dispatch({ type: "workspace-controls-drawer-toggled", force: true });
+        }
+        return;
+      }
       case "enter-youtube-import-mode":
         dispatch({ type: "enter-youtube-import-mode" });
         return;

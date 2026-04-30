@@ -347,7 +347,10 @@ export function createLaboratoryProjectLifecycleRuntime(
   }
 
   function isEmptyProjectDraft(project: LaboratoryProjectRecord): boolean {
-    return isProjectSourceEmpty(project) && (!Array.isArray(project.assets) || project.assets.length === 0);
+    return (
+      isProjectSourceEmpty(project) &&
+      (!Array.isArray(project.assets) || project.assets.length === 0)
+    );
   }
 
   async function pruneEmptyDraftProjects(runtime: LaboratoryProjectLifecycleRuntime) {

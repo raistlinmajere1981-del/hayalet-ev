@@ -10,6 +10,7 @@ import type {
   LabAsset,
   LabInteractiveSettings,
   LabSourceRetryBlockReason,
+  LabWorkspaceControlTab,
 } from "../models/lab-types.js";
 import {
   getActiveSelection,
@@ -38,7 +39,10 @@ import {
   isRunActive,
 } from "../runtime/lab-selectors.js";
 import { renderStatusChip } from "./components/status-chip.js";
-import { renderLabWaveformTimeline } from "./lab-waveform-timeline.js";
+import {
+  renderLabWaveformSelectionPanel,
+  renderLabWaveformTimeline,
+} from "./lab-waveform-timeline.js";
 import { renderWorkspaceROIOverlay } from "./workspace-roi-overlay.js";
 import { renderWorkspaceInteractiveControls } from "./workspace-interactive-controls.js";
 import { renderWorkspaceAudioFocus } from "./workspace-audio-focus.js";
@@ -51,6 +55,12 @@ type WorkspaceSurfaceOptions = {
   activeOverlay?: LabWaveformTimelineModel["activeOverlay"];
   collapsedPanels?: Record<string, boolean>;
   copy?: LabI18n;
+};
+
+type WorkspaceInspectorPanel = {
+  id: LabWorkspaceControlTab;
+  label: string;
+  markup: string;
 };
 
 function getSourceKindLabel(kind: string, copy: LabI18n = LAB_FALLBACK_I18N) {
@@ -1170,6 +1180,81 @@ function renderCenterSkeleton(copy: LabI18n) {
   `;
 }
 
+function renderWorkspaceInspectorDrawer(input: {
+  activeTab: LabWorkspaceControlTab;
+  copy: LabI18n;
+  open: boolean;
+  panels: WorkspaceInspectorPanel[];
+}) {
+  const { copy, open, panels } = input;
+  if (panels.length === 0) {
+    return "";
+  }
+  const activeTab = panels.some(function (panel) {
+    return panel.id === input.activeTab;
+  })
+    ? input.activeTab
+    : panels[0]?.id || "audio";
+  const toggleLabel = copy.t("mediaAnalysis.workspaceInspector.toggle", "Kontroller");
+  const ariaLabel = copy.t(
+    "mediaAnalysis.workspaceInspector.ariaLabel",
+    "Çalışma alanı kontrolleri"
+  );
+
+  return `
+    <aside
+      class="labx-workspace-inspector"
+      data-lab-workspace-inspector="true"
+      data-open="${open ? "true" : "false"}"
+      data-active-tab="${escapeHtml(activeTab)}"
+      aria-label="${escapeHtml(ariaLabel)}"
+    >
+      <button
+        class="labx-workspace-inspector__toggle"
+        type="button"
+        data-lab-action="workspace-controls-drawer-toggle"
+        aria-expanded="${open ? "true" : "false"}"
+      >
+        <span>${escapeHtml(toggleLabel)}</span>
+        <span class="labx-workspace-inspector__toggle-icon" aria-hidden="true">${open ? "›" : "‹"}</span>
+      </button>
+      <div class="labx-workspace-inspector__body" aria-hidden="${open ? "false" : "true"}">
+        <div class="labx-workspace-inspector__tabs" role="tablist" aria-label="${escapeHtml(copy.t("mediaAnalysis.workspaceInspector.tabs", "Kontrol sekmeleri"))}">
+          ${panels
+            .map(function (panel) {
+              const selected = panel.id === activeTab;
+              return `<button
+                class="labx-workspace-inspector__tab"
+                type="button"
+                role="tab"
+                aria-selected="${selected ? "true" : "false"}"
+                data-selected="${selected ? "true" : "false"}"
+                data-lab-action="workspace-controls-tab-select"
+                data-lab-value="${escapeHtml(panel.id)}"
+              >${escapeHtml(panel.label)}</button>`;
+            })
+            .join("")}
+        </div>
+        <div class="labx-workspace-inspector__panels">
+          ${panels
+            .map(function (panel) {
+              const selected = panel.id === activeTab;
+              return `<section
+                class="labx-workspace-inspector__panel"
+                data-inspector-panel="${escapeHtml(panel.id)}"
+                role="tabpanel"
+                ${selected ? "" : "hidden"}
+              >
+                ${panel.markup}
+              </section>`;
+            })
+            .join("")}
+        </div>
+      </div>
+    </aside>
+  `;
+}
+
 export function renderWorkspaceSurface(
   state: LabStoreState,
   options: WorkspaceSurfaceOptions = {}
@@ -1202,6 +1287,7 @@ export function renderWorkspaceSurface(
     activeOverlay: options.activeOverlay ?? "none",
     collapsedPanels: options.collapsedPanels ?? {},
     copy,
+    selectionPanelPlacement: "side",
   };
   const roiFocusActive = timeline.roiFocusActive === true;
   const hasAudio = sourceKind === "audio" || sourceKind === "video";
@@ -1218,28 +1304,36 @@ export function renderWorkspaceSurface(
     sourceReady && typeof metadata["durationSeconds"] === "number"
       ? Math.round(metadata["durationSeconds"] * 1000)
       : 0;
-  const focusPanels = [
+  const inspectorPanels: WorkspaceInspectorPanel[] = [
     hasAudio && sourceReady
-      ? renderWorkspaceAudioFocus(
-          audioFocus,
-          {
-            previewTarget: sourceKind === "video" ? "video" : "audio",
-            temporalAudioFocus: effectivePreviewAudioFocus,
-            temporalControlsEnabled: dualPreviewActive !== true,
-          },
-          copy
-        )
-      : "",
-    hasVisualControls ? renderWorkspaceInteractiveControls(settings, copy) : "",
-  ].filter(Boolean);
-  const focusSection =
-    focusPanels.length > 0
-      ? `
-        <div class="labx-workspace-focus-row" data-layout="${focusPanels.length > 1 ? "split" : "single"}">
-          ${focusPanels.join("")}
-        </div>
-      `
-      : "";
+      ? {
+          id: "audio",
+          label: copy.t("mediaAnalysis.audioFocus.eyebrow", "Ses Odağı"),
+          markup: renderWorkspaceAudioFocus(
+            audioFocus,
+            {
+              previewTarget: sourceKind === "video" ? "video" : "audio",
+              temporalAudioFocus: effectivePreviewAudioFocus,
+              temporalControlsEnabled: dualPreviewActive !== true,
+            },
+            copy
+          ),
+        }
+      : null,
+    hasVisualControls
+      ? {
+          id: "visual",
+          label: copy.t("mediaAnalysis.interactiveControls.title", "Görsel Ayarlar"),
+          markup: renderWorkspaceInteractiveControls(settings, copy),
+        }
+      : null,
+  ].filter((panel): panel is WorkspaceInspectorPanel => panel !== null);
+  const inspectorMarkup = renderWorkspaceInspectorDrawer({
+    activeTab: state.ui.workspace.controlsDrawerTab,
+    copy,
+    open: state.ui.workspace.controlsDrawerOpen,
+    panels: inspectorPanels,
+  });
   const roiOverlayMarkup =
     sourceReady && (sourceKind === "video" || sourceKind === "image")
       ? renderWorkspaceROIOverlay(
@@ -1304,20 +1398,23 @@ export function renderWorkspaceSurface(
     dualPreviewActive && selectedDualPreviewAudioAsset !== null && durationMs > 0
       ? renderDualPreviewTransportBar(state, durationMs, copy)
       : "";
+  const selectionPanelMarkup = renderLabWaveformSelectionPanel(timelineModel);
 
   const main = `
     <section class="labx-workspace-main" id="lab-workspace-main">
       ${renderLinkedAudioBar(state, copy)}
-      <div class="labx-media-workbench" data-lab-media-workbench="true" data-preview-mode="${dualPreviewActive ? "dual" : "single"}">
-        <div class="labx-workspace-preview" id="lab-workspace-preview" data-preview-mode="${dualPreviewActive ? "dual" : "single"}" data-dual-preview-available="${dualPreviewAvailable ? "true" : "false"}">
-          ${previewMarkup}
+      <div class="labx-workspace-stage" data-lab-workspace-stage="true">
+        <div class="labx-media-workbench" data-lab-media-workbench="true" data-preview-mode="${dualPreviewActive ? "dual" : "single"}">
+          <div class="labx-workspace-preview" id="lab-workspace-preview" data-preview-mode="${dualPreviewActive ? "dual" : "single"}" data-dual-preview-available="${dualPreviewAvailable ? "true" : "false"}">
+            ${previewMarkup}
+          </div>
+          ${dualPreviewTransport}
+          ${durationMs > 0 ? renderLabWaveformTimeline(timelineModel) : ""}
         </div>
-        ${dualPreviewTransport}
-        ${durationMs > 0 ? renderLabWaveformTimeline(timelineModel) : ""}
+        ${inspectorMarkup}
       </div>
-      ${focusSection}
     </section>
   `;
 
-  return { main, side: "" };
+  return { main, side: selectionPanelMarkup };
 }

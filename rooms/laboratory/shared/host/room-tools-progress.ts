@@ -10,6 +10,10 @@ type LaboratoryJobRecord = LaboratoryRecord & {
   message: string | null;
   operation: string | null;
   percent: number | null;
+  phaseCount?: number | null;
+  phaseIndex?: number | null;
+  phaseLabel?: string | null;
+  phasePercent?: number | null;
   projectId: string | null;
   requestId: string | null;
   stage: string | null;
@@ -49,6 +53,10 @@ type LaboratoryRoomToolsProgressPayload = {
   message: string | null;
   operation: string | null;
   percent: number | null;
+  phaseCount?: number | null;
+  phaseIndex?: number | null;
+  phaseLabel?: string | null;
+  phasePercent?: number | null;
   projectId: string | null;
   requestId: string | null;
   suppressCanonicalEvent?: boolean;
@@ -93,6 +101,71 @@ export function createLaboratoryRoomToolsProgressRuntime(
 
   function trimFeed(entries: LaboratoryRecord[], limit: number) {
     return entries.slice(Math.max(0, entries.length - limit));
+  }
+
+  function clampPercent(value: number) {
+    return Math.max(0, Math.min(100, Math.round(value)));
+  }
+
+  function getLatestLine(chunk: string) {
+    const lines = chunk
+      .replace(/\r/g, "\n")
+      .split("\n")
+      .map(function (entry) {
+        return entry.trim();
+      })
+      .filter(Boolean);
+    return lines.length > 0 ? lines[lines.length - 1] || null : null;
+  }
+
+  function readPercent(line: string) {
+    const match = line.match(/(\d{1,3}(?:\.\d+)?)%/);
+    if (!match) {
+      return null;
+    }
+    const value = Number(match[1]);
+    return Number.isFinite(value) ? clampPercent(value) : null;
+  }
+
+  function resolveYoutubePhase(line: string, previousPercent: number | null) {
+    const percent = readPercent(line);
+    if (/\[download\]/i.test(line)) {
+      return {
+        phaseIndex: 1,
+        phaseCount: 4,
+        phaseLabel: percent === null ? "İndirme hazırlanıyor" : "Medya indiriliyor",
+        phasePercent: percent,
+        percent: percent ?? previousPercent,
+      };
+    }
+    if (/\[(Merger|Fixup)\]|Merging formats/i.test(line)) {
+      return {
+        phaseIndex: 2,
+        phaseCount: 4,
+        phaseLabel: "Akışlar birleştiriliyor",
+        phasePercent: null,
+        percent: Math.max(previousPercent ?? 0, 90),
+      };
+    }
+    if (/\[(ExtractAudio|VideoConvertor|EmbedSubtitle|SubtitlesConvertor)\]/i.test(line)) {
+      return {
+        phaseIndex: 2,
+        phaseCount: 4,
+        phaseLabel: "Çıktı dönüştürülüyor",
+        phasePercent: null,
+        percent: Math.max(previousPercent ?? 0, 94),
+      };
+    }
+    if (/^\[MoveFiles\]|\[Metadata\]|^\S.*\.(mp4|mkv|webm|mp3|m4a|opus|wav|flac)$/i.test(line)) {
+      return {
+        phaseIndex: 3,
+        phaseCount: 4,
+        phaseLabel: "Dosya projeye kaydediliyor",
+        phasePercent: null,
+        percent: Math.max(previousPercent ?? 0, 97),
+      };
+    }
+    return null;
   }
 
   function appendProcessFeed(
@@ -193,14 +266,28 @@ export function createLaboratoryRoomToolsProgressRuntime(
     if (toolRunStream) {
       const chunk = asNonEmptyString(eventPayload.chunk);
       if (chunk) {
-        const match = chunk.match(/(\d{1,3}(?:\.\d+)?)%/);
-        if (match) {
-          job.percent = Number(match[1]);
+        const line = getLatestLine(chunk) || chunk.trim();
+        const parsedPercent = readPercent(line);
+        if (parsedPercent !== null) {
+          job.percent = parsedPercent;
         }
-        const totalMatch = chunk.match(/of\s+~?\s*([0-9.]+\s*[KMGTPE]?i?B)/i);
-        const speedMatch = chunk.match(/at\s+([0-9.]+\s*[KMGTPE]?i?B\/s)/i);
-        const etaMatch = chunk.match(/ETA\s+([0-9:]+)/i);
+        if (job.action === "source-download-youtube") {
+          const youtubePhase = resolveYoutubePhase(line, job.percent);
+          if (youtubePhase !== null) {
+            job.phaseLabel = youtubePhase.phaseLabel;
+            job.phasePercent = youtubePhase.phasePercent;
+            job.phaseIndex = youtubePhase.phaseIndex;
+            job.phaseCount = youtubePhase.phaseCount;
+            if (typeof youtubePhase.percent === "number") {
+              job.percent = clampPercent(youtubePhase.percent);
+            }
+          }
+        }
+        const totalMatch = line.match(/of\s+~?\s*([0-9.]+\s*[KMGTPE]?i?B)/i);
+        const speedMatch = line.match(/at\s+([0-9.]+\s*[KMGTPE]?i?B\/s)/i);
+        const etaMatch = line.match(/ETA\s+([0-9:]+)/i);
         const details = [
+          job.phaseLabel ? `Aşama: ${job.phaseLabel}` : null,
           typeof job.percent === "number" ? `${Math.round(job.percent)}%` : null,
           totalMatch?.[1] ? `boyut ${totalMatch[1].trim()}` : null,
           speedMatch?.[1] ? `hız ${speedMatch[1].trim()}` : null,
@@ -220,13 +307,16 @@ export function createLaboratoryRoomToolsProgressRuntime(
       toolId: job.toolId,
       featureStage: job.featureStage || null,
       operation: job.operation || null,
-      stage: job.stage,
+      stage: toolRunStream && job.action === "source-download-youtube" ? "running" : job.stage,
       percent: job.percent,
+      phaseCount: job.phaseCount ?? null,
+      phaseIndex: job.phaseIndex ?? null,
+      phaseLabel: job.phaseLabel ?? null,
+      phasePercent: job.phasePercent ?? null,
       bytesReceived: job.bytesReceived,
       bytesTotal: job.bytesTotal,
       message: job.message,
-      suppressCanonicalEvent:
-        toolRunStream && job.action !== "source-download-youtube",
+      suppressCanonicalEvent: toolRunStream && job.action !== "source-download-youtube",
     };
   }
 
@@ -258,7 +348,7 @@ export function createLaboratoryRoomToolsProgressRuntime(
         const streamStage = payload.stage;
         const job = runtime.jobs[nextJobPayload.jobId];
         const chunk = asNonEmptyString(payload.chunk);
-        if (job && chunk) {
+        if (job && chunk && job.action !== "source-download-youtube") {
           flushBufferedToolLines(api, job, streamStage, chunk);
         }
       }

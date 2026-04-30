@@ -202,6 +202,7 @@
     },
     "projectWorkspace": {
       "title": "Project Workspace",
+      "managementTitle": "Proje Yönetimi",
       "back": "Back",
       "close": "Close",
       "nav": "Projects",
@@ -797,6 +798,17 @@
         "kind": "Type",
         "method": "Method",
         "pendingFile": "Pending file"
+      },
+      "progress": {
+        "started": "Import started",
+        "localPicking": "Stage: waiting for file selection",
+        "urlDownloading": "Stage: downloading file",
+        "youtubePreparing": "Stage: preparing YouTube import",
+        "stages": "Stages",
+        "stagePrepare": "Prepare",
+        "stageDownload": "Download",
+        "stageProcess": "Merge",
+        "stageStore": "Store"
       }
     },
     "source": {

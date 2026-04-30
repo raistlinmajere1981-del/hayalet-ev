@@ -66,6 +66,7 @@ export type LabWaveformTimelineModel = {
   linkedAudioAssetId?: string | null;
   lockState?: LabWorkspaceLockState;
   roiFocusActive?: boolean;
+  selectionPanelPlacement?: "side" | "timeline";
   selectionSuggestions?: LabActionSuggestion[];
   sourceKind?: string;
   startMs: number | null;

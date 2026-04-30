@@ -483,6 +483,7 @@ export interface LabInteractiveSettings {
 }
 
 export type AudioVisualizationMode = "none" | "waveform" | "spectrum";
+export type LabWorkspaceControlTab = "audio" | "visual";
 
 export interface LabParametricEQBand {
   frequency: number;
@@ -516,6 +517,8 @@ export interface LabWorkspaceUiState {
   bookmarks: LabBookmark[];
   selectedIntents: LabIntentId[];
   sourceIntakeCollapsed: boolean;
+  controlsDrawerOpen: boolean;
+  controlsDrawerTab: LabWorkspaceControlTab;
   processViewActive: boolean;
   reportOverlayOpen: boolean;
   /** V3 explore toggle — user manually switches Result ↔ Explore */
@@ -788,6 +791,10 @@ export interface LabEventFeedItem {
   percent?: number | null;
   bytesReceived?: number | null;
   bytesTotal?: number | null;
+  phaseLabel?: string | null;
+  phasePercent?: number | null;
+  phaseIndex?: number | null;
+  phaseCount?: number | null;
   timestamp: number;
   source: "host" | "ui" | "system";
   action: string | null;
@@ -1421,6 +1428,8 @@ export type LabStoreEvent =
   | { type: "workspace-intent-toggled"; intentId: LabIntentId }
   | { type: "workspace-intent-set"; intents: LabIntentId[] }
   | { type: "workspace-source-intake-toggled"; force?: boolean }
+  | { type: "workspace-controls-drawer-toggled"; force?: boolean }
+  | { type: "workspace-controls-tab-selected"; tab: LabWorkspaceControlTab }
   | { type: "workspace-audio-updated"; patch: Partial<LabAudioFocusSettings> }
   | { type: "workspace-process-view-toggled"; force?: boolean }
   | { type: "report-overlay-toggled"; open: boolean }

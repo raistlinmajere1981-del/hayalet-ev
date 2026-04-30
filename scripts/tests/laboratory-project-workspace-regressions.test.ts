@@ -236,7 +236,7 @@ test("laboratory project workspace renders localized asset groups and context ac
     trCopy
   );
 
-  assert.match(html, /Proje Calisma Alani/);
+  assert.match(html, /Proje Yönetimi/);
   assert.match(html, /Kaynaklar/);
   assert.match(html, /Klipler/);
   assert.match(html, /Kareler/);
@@ -298,7 +298,7 @@ test("laboratory project workspace draft review does not borrow the committed so
   const html = renderProjectWorkspaceOverlay(state);
 
   assert.match(html, /Import Review/);
-  assert.match(html, /Pending file/);
+  assert.match(html, /Bekleyen dosya|Pending file/);
   assert.doesNotMatch(html, /existing-source\.mp4/);
   assert.doesNotMatch(html, /file:\/\/\/tmp\/existing-source\.mp4/);
   assert.doesNotMatch(html, /1:39/);
@@ -401,7 +401,7 @@ test("laboratory project workspace css is imported and owns overlay/topbar/timel
   assert.match(overlayCss, /\.labx-pw-main\s*\{[\s\S]*grid-area:\s*grid;/);
   assert.match(overlayCss, /\.labx-project-import\s*\{[\s\S]*border-bottom:/);
   assert.match(overlayCss, /\.labx-project-import__methods\s*\{[\s\S]*display:\s*grid;/);
-  assert.match(overlayCss, /\.labx-import-review__progress\s*\{[\s\S]*display:\s*grid;/);
+  assert.match(overlayCss, /\.labx-project-import__progress\s*\{[\s\S]*display:\s*grid;/);
   assert.match(overlayCss, /\.labx-pw-card\[data-selected="true"\]/);
   assert.match(overlayCss, /\.labx-pw-main\s*\{[\s\S]*background:\s*rgb\(4, 14, 21\);/);
   assert.match(overlayCss, /\.labx-pw-grid\s*\{[\s\S]*background:\s*rgb\(4, 14, 21\);/);
