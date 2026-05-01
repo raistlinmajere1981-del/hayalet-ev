@@ -132,14 +132,22 @@ export function renderSelectionSuggestions(
 function getToolHintGlyph(suggestion: LabActionSuggestion) {
   switch (suggestion.actionType) {
     case "analyze-segment":
+    case "clean-audio":
+    case "crop-region":
+    case "detect-objects":
     case "extract-clip":
     case "focus-region":
     case "inspect-audio":
+    case "ocr-region":
+    case "separate-stems":
       return "+";
+    case "detect-scenes":
     case "inspect-motion":
       return ">";
+    case "enhance-frame":
     case "enhance-visual":
       return "*";
+    case "metadata-audit":
     case "stabilize-segment":
       return "=";
     default:

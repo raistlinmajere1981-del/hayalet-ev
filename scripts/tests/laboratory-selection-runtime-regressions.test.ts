@@ -753,6 +753,7 @@ test("waveform timeline renders selector-driven suggested actions alongside live
   assert.match(markup, /Intent: General/);
   assert.match(markup, /Region inactive/);
   assert.match(markup, /Inspection mode/);
+  assert.match(markup, /Selection intent/);
   assert.match(markup, /data-lab-selection-inspection-mode="none"/);
   assert.match(markup, /This selection will guide future analysis/);
   assert.match(markup, /data-selection-intent="general"/);
@@ -975,6 +976,61 @@ test("selection suggestion binder emits a passive selection suggestion event", (
   );
 });
 
+test("selection suggestion binder previews expanded timeline suggestions shown in the panel", () => {
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  eventBus.subscribe(store.dispatch);
+  bindLabSelectionSuggestionClicks({
+    canPreviewSuggestion(suggestionId) {
+      const visibleSuggestions = getWaveformTimelineModel(store.getState()).selectionSuggestions;
+      return visibleSuggestions.some(function (suggestion) {
+        return suggestion.id === suggestionId;
+      });
+    },
+    documentRef: documentRef as unknown as Document,
+    emit: eventBus.emit,
+    getActivePreviewSuggestionId() {
+      return getActiveSuggestionPreviewId(store.getState());
+    },
+  });
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "video",
+      mode: "local",
+      storedPath: "/tmp/source.mp4",
+    },
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1200,
+    endMs: 2600,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+
+  const clickListener = documentRef.listeners.get("click");
+  assert.ok(clickListener);
+
+  const clickEvent = new FakeClickEvent(
+    new FakeSelectionSuggestionTarget(
+      new FakeSelectionSuggestionTrigger("clean-audio")
+    ) as unknown as EventTarget
+  );
+  clickListener?.(clickEvent as unknown as Event);
+
+  assert.equal(clickEvent.defaultPrevented, true);
+  assert.equal(store.getState().ui.activeSuggestionPreviewId, "clean-audio");
+  assert.equal(
+    getActiveSuggestionPreview(store.getState())?.title,
+    "Ses temizleme onizlemesi hazirlanacak"
+  );
+});
+
 test("selection suggestion binder gates soft execution intent actions by the exact active preview id", () => {
   class FakeClosestTarget extends FakeDomElement {
     constructor(private readonly selectors: Record<string, object | null>) {
@@ -1074,6 +1130,12 @@ test("selection suggestion binder gates soft execution intent actions by the exa
   );
   clickListener?.(queueEvent as unknown as Event);
   assert.equal(queueEvent.defaultPrevented, true);
+  assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
+
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
 
   const dismissEvent = new FakeClickEvent(
     new FakeClosestTarget({
@@ -1086,6 +1148,7 @@ test("selection suggestion binder gates soft execution intent actions by the exa
   clickListener?.(dismissEvent as unknown as Event);
   assert.equal(dismissEvent.defaultPrevented, true);
   assert.equal(getActiveExecutionIntent(store.getState()), null);
+  assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
 
   const clearEvent = new FakeClickEvent(
     new FakeClosestTarget({

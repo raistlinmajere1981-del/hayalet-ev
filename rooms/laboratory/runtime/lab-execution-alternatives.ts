@@ -33,7 +33,7 @@ import {
   buildExecutionReadinessSignal,
   formatExecutionReadinessSignalAdvisory,
 } from "./lab-execution-readiness-signal.js";
-import type { LabI18nLocale } from "./lab-i18n.js";
+import { formatLabI18n, resolveLabI18n, type LabI18nLocale } from "./lab-i18n.js";
 
 export type LabExecutionAlternativesResultInterpretation = {
   coverageLevel: "low" | "medium" | "high";
@@ -125,291 +125,307 @@ function capAlternatives(alternatives: LabExecutionAlternative[]) {
   return alternatives.slice(0, 3);
 }
 
-function broadSegmentAlternative(): LabExecutionAlternative {
+function broadSegmentAlternative(locale: LabI18nLocale): LabExecutionAlternative {
   return {
     actionType: "analyze-segment",
-    label: "Broader segment review",
-    summary:
-      "An alternative approach would evaluate the full selected window before narrowing the evidence.",
-    tradeoff: "This path would trade local clarity for higher contextual coverage.",
+    label: resolveLabI18n("alternatives.item.broadSegment.label", locale),
+    summary: resolveLabI18n("alternatives.item.broadSegment.summary", locale),
+    tradeoff: resolveLabI18n("alternatives.item.broadSegment.tradeoff", locale),
     relativeAdvantage: "higher-coverage",
   };
 }
 
-function focusedRegionAlternative(hasRoi: boolean): LabExecutionAlternative {
+function focusedRegionAlternative(hasRoi: boolean, locale: LabI18nLocale): LabExecutionAlternative {
   return {
     actionType: "focus-region",
-    label: hasRoi ? "Region-focused inspection" : "Region-first inspection",
+    label: hasRoi
+      ? resolveLabI18n("alternatives.item.focusedRegion.label.withRoi", locale)
+      : resolveLabI18n("alternatives.item.focusedRegion.label.withoutRoi", locale),
     summary: hasRoi
-      ? "An alternative approach would isolate the active ROI and compare local detail against the selected span."
-      : "An alternative approach would define a smaller visual region before comparing local detail.",
-    tradeoff: "This path would trade broad coverage for higher spatial precision.",
+      ? resolveLabI18n("alternatives.item.focusedRegion.summary.withRoi", locale)
+      : resolveLabI18n("alternatives.item.focusedRegion.summary.withoutRoi", locale),
+    tradeoff: resolveLabI18n("alternatives.item.focusedRegion.tradeoff", locale),
     relativeAdvantage: "higher-precision",
   };
 }
 
-function audioInspectionAlternative(): LabExecutionAlternative {
+function audioInspectionAlternative(locale: LabI18nLocale): LabExecutionAlternative {
   return {
     actionType: "inspect-audio",
-    label: "Spectral audio inspection",
-    summary:
-      "An alternative approach would shift attention from the current path into frequency and transient behavior.",
-    tradeoff: "This path would trade cross-modal coverage for clearer signal detail.",
+    label: resolveLabI18n("alternatives.item.audioInspection.label", locale),
+    summary: resolveLabI18n("alternatives.item.audioInspection.summary", locale),
+    tradeoff: resolveLabI18n("alternatives.item.audioInspection.tradeoff", locale),
     relativeAdvantage: "higher-precision",
   };
 }
 
-function narrowedInspectionAlternative(): LabExecutionAlternative {
+function narrowedInspectionAlternative(locale: LabI18nLocale): LabExecutionAlternative {
   return {
     actionType: "narrowed-inspection",
-    label: "Narrowed inspection window",
-    summary:
-      "An alternative approach would reduce the reviewed span before comparing the evidence again.",
-    tradeoff: "This path would trade coverage for a more precise, lower-noise comparison.",
+    label: resolveLabI18n("alternatives.item.narrowedInspection.label", locale),
+    summary: resolveLabI18n("alternatives.item.narrowedInspection.summary", locale),
+    tradeoff: resolveLabI18n("alternatives.item.narrowedInspection.tradeoff", locale),
     relativeAdvantage: "higher-precision",
   };
 }
 
-function slowerPlaybackAlternative(): LabExecutionAlternative {
+function slowerPlaybackAlternative(locale: LabI18nLocale): LabExecutionAlternative {
   return {
     actionType: "slow-playback-inspection",
-    label: "Slower temporal inspection",
-    summary:
-      "An alternative approach would slow preview review to make transient or motion detail easier to compare.",
-    tradeoff: "This path would trade speed for temporal clarity and steadier interpretation.",
+    label: resolveLabI18n("alternatives.item.slowerPlayback.label", locale),
+    summary: resolveLabI18n("alternatives.item.slowerPlayback.summary", locale),
+    tradeoff: resolveLabI18n("alternatives.item.slowerPlayback.tradeoff", locale),
     relativeAdvantage: "more-stable",
   };
 }
 
-function motionInspectionAlternative(): LabExecutionAlternative {
+function motionInspectionAlternative(locale: LabI18nLocale): LabExecutionAlternative {
   return {
     actionType: "inspect-motion",
-    label: "Motion continuity inspection",
-    summary:
-      "An alternative approach would compare frame-to-frame continuity instead of prioritizing static detail.",
-    tradeoff: "This path would trade still-frame clarity for motion stability evidence.",
+    label: resolveLabI18n("alternatives.item.motionInspection.label", locale),
+    summary: resolveLabI18n("alternatives.item.motionInspection.summary", locale),
+    tradeoff: resolveLabI18n("alternatives.item.motionInspection.tradeoff", locale),
     relativeAdvantage: "more-stable",
   };
 }
 
-function visualClarityAlternative(): LabExecutionAlternative {
+function visualClarityAlternative(locale: LabI18nLocale): LabExecutionAlternative {
   return {
     actionType: "enhance-visual",
-    label: "Visual clarity comparison",
-    summary: "An alternative approach would emphasize visual readability before deeper comparison.",
-    tradeoff: "This path would trade neutral observation for clearer local structure.",
+    label: resolveLabI18n("alternatives.item.visualClarity.label", locale),
+    summary: resolveLabI18n("alternatives.item.visualClarity.summary", locale),
+    tradeoff: resolveLabI18n("alternatives.item.visualClarity.tradeoff", locale),
     relativeAdvantage: "higher-precision",
   };
 }
 
-function stabilizationAlternative(): LabExecutionAlternative {
+function stabilizationAlternative(locale: LabI18nLocale): LabExecutionAlternative {
   return {
     actionType: "stabilize-segment",
-    label: "Stability-first comparison",
-    summary:
-      "An alternative approach would align the inspected frames before judging detail or motion.",
-    tradeoff: "This path would trade immediacy for a more stable comparison surface.",
+    label: resolveLabI18n("alternatives.item.stabilization.label", locale),
+    summary: resolveLabI18n("alternatives.item.stabilization.summary", locale),
+    tradeoff: resolveLabI18n("alternatives.item.stabilization.tradeoff", locale),
     relativeAdvantage: "more-stable",
   };
 }
 
-function semanticReviewAlternative(): LabExecutionAlternative {
+function semanticReviewAlternative(locale: LabI18nLocale): LabExecutionAlternative {
   return {
     actionType: "analyze-segment",
-    label: "Semantic pre-review",
-    summary:
-      "An alternative approach would inspect the selected range for meaning before treating it as a handoff candidate.",
-    tradeoff: "This path would trade speed for lower risk and better context.",
+    label: resolveLabI18n("alternatives.item.semanticReview.label", locale),
+    summary: resolveLabI18n("alternatives.item.semanticReview.summary", locale),
+    tradeoff: resolveLabI18n("alternatives.item.semanticReview.tradeoff", locale),
     relativeAdvantage: "lower-risk",
   };
 }
 
-function genericNarrowAlternative(): LabExecutionAlternative {
+function genericNarrowAlternative(locale: LabI18nLocale): LabExecutionAlternative {
   return {
     actionType: "generic-narrowed-inspection",
-    label: "Narrowed evidence pass",
-    summary:
-      "An alternative approach would reduce the evidence window and compare fewer signals at once.",
-    tradeoff: "This path would trade breadth for a simpler interpretation surface.",
+    label: resolveLabI18n("alternatives.item.genericNarrow.label", locale),
+    summary: resolveLabI18n("alternatives.item.genericNarrow.summary", locale),
+    tradeoff: resolveLabI18n("alternatives.item.genericNarrow.tradeoff", locale),
     relativeAdvantage: "higher-precision",
   };
 }
 
-function buildAnalyzeSegmentAlternatives(input: LabExecutionAlternativesInput) {
+function buildAnalyzeSegmentAlternatives(
+  input: LabExecutionAlternativesInput,
+  locale: LabI18nLocale
+) {
   const alternatives: LabExecutionAlternative[] = [];
   const durationMs = getSelectionDurationMs(input.activeSelection);
   const hasRoi = input.activeSelection.roi !== undefined;
 
   if (hasRoi) {
-    pushAlternative(alternatives, focusedRegionAlternative(true));
+    pushAlternative(alternatives, focusedRegionAlternative(true, locale));
   }
   if (isAudioOriented(input)) {
-    pushAlternative(alternatives, audioInspectionAlternative());
+    pushAlternative(alternatives, audioInspectionAlternative(locale));
   }
   if (durationMs > 10000 || alternatives.length === 0) {
-    pushAlternative(alternatives, narrowedInspectionAlternative());
+    pushAlternative(alternatives, narrowedInspectionAlternative(locale));
   }
 
   return capAlternatives(alternatives);
 }
 
-function buildFocusRegionAlternatives(input: LabExecutionAlternativesInput) {
+function buildFocusRegionAlternatives(
+  input: LabExecutionAlternativesInput,
+  locale: LabI18nLocale
+) {
   const alternatives: LabExecutionAlternative[] = [];
 
-  pushAlternative(alternatives, broadSegmentAlternative());
+  pushAlternative(alternatives, broadSegmentAlternative(locale));
   if (isVideoOriented(input)) {
-    pushAlternative(alternatives, motionInspectionAlternative());
+    pushAlternative(alternatives, motionInspectionAlternative(locale));
   }
   if (isVisualOriented(input)) {
-    pushAlternative(alternatives, visualClarityAlternative());
+    pushAlternative(alternatives, visualClarityAlternative(locale));
   }
 
   return capAlternatives(alternatives);
 }
 
-function buildInspectAudioAlternatives(input: LabExecutionAlternativesInput) {
+function buildInspectAudioAlternatives(
+  input: LabExecutionAlternativesInput,
+  locale: LabI18nLocale
+) {
   const alternatives: LabExecutionAlternative[] = [];
 
-  pushAlternative(alternatives, broadSegmentAlternative());
-  pushAlternative(alternatives, slowerPlaybackAlternative());
+  pushAlternative(alternatives, broadSegmentAlternative(locale));
+  pushAlternative(alternatives, slowerPlaybackAlternative(locale));
   if (input.activeSelection.roi !== undefined && isVideoOriented(input)) {
-    pushAlternative(alternatives, focusedRegionAlternative(true));
+    pushAlternative(alternatives, focusedRegionAlternative(true, locale));
   }
 
   return capAlternatives(alternatives);
 }
 
-function buildExtractClipAlternatives(input: LabExecutionAlternativesInput) {
+function buildExtractClipAlternatives(
+  input: LabExecutionAlternativesInput,
+  locale: LabI18nLocale
+) {
   const alternatives: LabExecutionAlternative[] = [];
 
-  pushAlternative(alternatives, semanticReviewAlternative());
+  pushAlternative(alternatives, semanticReviewAlternative(locale));
   if (isAudioOriented(input)) {
-    pushAlternative(alternatives, audioInspectionAlternative());
+    pushAlternative(alternatives, audioInspectionAlternative(locale));
   }
   if (input.activeSelection.roi !== undefined || isVisualOriented(input)) {
     pushAlternative(
       alternatives,
-      focusedRegionAlternative(input.activeSelection.roi !== undefined)
+      focusedRegionAlternative(input.activeSelection.roi !== undefined, locale)
     );
   }
 
   return capAlternatives(alternatives);
 }
 
-function buildInspectMotionAlternatives(input: LabExecutionAlternativesInput) {
+function buildInspectMotionAlternatives(
+  input: LabExecutionAlternativesInput,
+  locale: LabI18nLocale
+) {
   const alternatives: LabExecutionAlternative[] = [];
 
   if (input.activeSelection.roi !== undefined || isVideoOriented(input)) {
     pushAlternative(
       alternatives,
-      focusedRegionAlternative(input.activeSelection.roi !== undefined)
+      focusedRegionAlternative(input.activeSelection.roi !== undefined, locale)
     );
   }
-  pushAlternative(alternatives, slowerPlaybackAlternative());
-  pushAlternative(alternatives, broadSegmentAlternative());
+  pushAlternative(alternatives, slowerPlaybackAlternative(locale));
+  pushAlternative(alternatives, broadSegmentAlternative(locale));
 
   return capAlternatives(alternatives);
 }
 
-function buildVisualAlternatives(input: LabExecutionAlternativesInput) {
+function buildVisualAlternatives(input: LabExecutionAlternativesInput, locale: LabI18nLocale) {
   const alternatives: LabExecutionAlternative[] = [];
 
-  pushAlternative(alternatives, focusedRegionAlternative(input.activeSelection.roi !== undefined));
-  pushAlternative(alternatives, broadSegmentAlternative());
+  pushAlternative(
+    alternatives,
+    focusedRegionAlternative(input.activeSelection.roi !== undefined, locale)
+  );
+  pushAlternative(alternatives, broadSegmentAlternative(locale));
   if (isVideoOriented(input)) {
-    pushAlternative(alternatives, stabilizationAlternative());
+    pushAlternative(alternatives, stabilizationAlternative(locale));
   }
 
   return capAlternatives(alternatives);
 }
 
-function buildStabilizeAlternatives(input: LabExecutionAlternativesInput) {
+function buildStabilizeAlternatives(
+  input: LabExecutionAlternativesInput,
+  locale: LabI18nLocale
+) {
   const alternatives: LabExecutionAlternative[] = [];
 
-  pushAlternative(alternatives, motionInspectionAlternative());
+  pushAlternative(alternatives, motionInspectionAlternative(locale));
   if (input.activeSelection.roi !== undefined || isVisualOriented(input)) {
     pushAlternative(
       alternatives,
-      focusedRegionAlternative(input.activeSelection.roi !== undefined)
+      focusedRegionAlternative(input.activeSelection.roi !== undefined, locale)
     );
   }
-  pushAlternative(alternatives, visualClarityAlternative());
+  pushAlternative(alternatives, visualClarityAlternative(locale));
 
   return capAlternatives(alternatives);
 }
 
-function buildFallbackAlternatives() {
-  return [broadSegmentAlternative(), genericNarrowAlternative()];
+function buildFallbackAlternatives(locale: LabI18nLocale) {
+  return [broadSegmentAlternative(locale), genericNarrowAlternative(locale)];
 }
 
-function buildAlternatives(input: LabExecutionAlternativesInput) {
+function buildAlternatives(input: LabExecutionAlternativesInput, locale: LabI18nLocale) {
   switch (input.executionPlan.actionType) {
     case "analyze-segment":
-      return buildAnalyzeSegmentAlternatives(input);
+      return buildAnalyzeSegmentAlternatives(input, locale);
     case "extract-clip":
-      return buildExtractClipAlternatives(input);
+      return buildExtractClipAlternatives(input, locale);
     case "focus-region":
-      return buildFocusRegionAlternatives(input);
+      return buildFocusRegionAlternatives(input, locale);
     case "inspect-audio":
-      return buildInspectAudioAlternatives(input);
+      return buildInspectAudioAlternatives(input, locale);
     case "inspect-motion":
-      return buildInspectMotionAlternatives(input);
+      return buildInspectMotionAlternatives(input, locale);
     case "enhance-visual":
-      return buildVisualAlternatives(input);
+      return buildVisualAlternatives(input, locale);
     case "stabilize-segment":
-      return buildStabilizeAlternatives(input);
+      return buildStabilizeAlternatives(input, locale);
     default:
-      return buildFallbackAlternatives();
+      return buildFallbackAlternatives(locale);
   }
 }
 
-function buildBaseSummary(input: LabExecutionAlternativesInput) {
+function buildBaseSummary(input: LabExecutionAlternativesInput, locale: LabI18nLocale) {
   const goalEvaluation = input.executionGoalEvaluation;
   const patternStrength = goalEvaluation?.patternSignal?.strength;
   const interpretation = input.executionResultInterpretation;
   const adaptiveDecision = buildAdaptiveDecisionSignal({
     executionGoalEvaluation: goalEvaluation ?? null,
     executionResultInterpretation: interpretation ?? null,
+    locale,
   });
   if (adaptiveDecision.decisionPressure === "high") {
-    return "Adaptive decision pressure is high; alternatives should be evaluated before continuing this route.";
+    return resolveLabI18n("alternatives.summary.adaptiveHigh", locale);
   }
   if (goalEvaluation !== undefined && goalEvaluation !== null) {
     if (patternStrength === "weak") {
-      return "Historical execution feedback shows similar paths have been weak; alternative paths should be treated as stronger next routes.";
+      return resolveLabI18n("alternatives.summary.historicalWeak", locale);
     }
     if (goalEvaluation.outcome === "failed") {
-      return "Goal evaluation indicates the current result missed its intended outcome; alternative paths should be treated as stronger next routes.";
+      return resolveLabI18n("alternatives.summary.goalFailed", locale);
     }
     if (goalEvaluation.outcome === "successful") {
       if (patternStrength === "strong" && interpretation?.alignment !== "deviates") {
-        return "Historical execution feedback reinforces this successful path; alternatives remain light comparative backups.";
+        return resolveLabI18n("alternatives.summary.goalSuccessfulStrong", locale);
       }
       if (interpretation?.alignment === "deviates") {
-        return "Goal evaluation indicates the intended outcome was achieved, but execution still diverges from simulation; alternatives remain comparative safeguards.";
+        return resolveLabI18n("alternatives.summary.goalSuccessfulDeviates", locale);
       }
-      return "Goal evaluation indicates the intended outcome was achieved; alternatives remain comparative backup routes.";
+      return resolveLabI18n("alternatives.summary.goalSuccessful", locale);
     }
   }
   if (interpretation !== undefined && interpretation !== null) {
     if (interpretation.coverageLevel === "low" || interpretation.alignment === "deviates") {
-      return "Execution feedback suggests alternative paths may yield better outcomes than the current route.";
+      return resolveLabI18n("alternatives.summary.feedbackWeak", locale);
     }
     if (
       interpretation.coverageLevel === "high" &&
       interpretation.alignment === "matches-simulation"
     ) {
-      return "Execution feedback reinforces current path stability; alternatives remain comparative backup routes.";
+      return resolveLabI18n("alternatives.summary.feedbackStable", locale);
     }
-    return "Execution feedback is mixed; alternatives may clarify coverage or alignment before carrying the result further.";
+    return resolveLabI18n("alternatives.summary.feedbackMixed", locale);
   }
   if (input.executionReflection.decision === "proceed") {
-    return "The selected path appears stable; alternatives mainly trade precision, coverage, or tempo against that stable baseline.";
+    return resolveLabI18n("alternatives.summary.reflectionProceed", locale);
   }
   if (input.executionReflection.decision === "review") {
-    return "The selected path still needs review; alternatives may reduce uncertainty or add context before carrying it further.";
+    return resolveLabI18n("alternatives.summary.reflectionReview", locale);
   }
-  return "The selected path is not recommended in its current form; alternatives outline safer comparison routes.";
+  return resolveLabI18n("alternatives.summary.reflectionAvoid", locale);
 }
 
 function buildSummary(
@@ -423,7 +439,7 @@ function buildSummary(
   decisionPosture: LabDecisionPostureSignal | null,
   locale: LabI18nLocale
 ) {
-  const baseSummary = buildBaseSummary(input);
+  const baseSummary = buildBaseSummary(input, locale);
   const leadingSummary = joinSummaryParts([
     baseSummary,
     guidedAlternative.guidanceText,
@@ -520,67 +536,72 @@ function joinSummaryParts(parts: string[]) {
     .join(" ");
 }
 
-function buildBaseComparisonNote(input: LabExecutionAlternativesInput) {
+function buildBaseComparisonNote(input: LabExecutionAlternativesInput, locale: LabI18nLocale) {
   const goalEvaluation = input.executionGoalEvaluation;
   const patternStrength = goalEvaluation?.patternSignal?.strength;
   const interpretation = input.executionResultInterpretation;
   const adaptiveDecision = buildAdaptiveDecisionSignal({
     executionGoalEvaluation: goalEvaluation ?? null,
     executionResultInterpretation: interpretation ?? null,
+    locale,
   });
   if (adaptiveDecision.decisionPressure === "high") {
-    return "Compared to this route, the alternatives provide safer evidence checks before carrying it further.";
+    return resolveLabI18n("alternatives.comparison.adaptiveHigh", locale);
   }
   if (goalEvaluation !== undefined && goalEvaluation !== null) {
     if (patternStrength === "weak") {
-      return "Compared to historically weak similar results, these alternatives may recover coverage or reduce repeat failure.";
+      return resolveLabI18n("alternatives.comparison.historicalWeak", locale);
     }
     if (goalEvaluation.outcome === "failed") {
-      return "Compared to the current result, these alternatives are better positioned to recover coverage or reduce divergence.";
+      return resolveLabI18n("alternatives.comparison.goalFailed", locale);
     }
     if (goalEvaluation.outcome === "successful") {
       if (patternStrength === "strong" && interpretation?.alignment !== "deviates") {
-        return "Compared to the current result, these alternatives are backup routes against an already stable pattern.";
+        return resolveLabI18n("alternatives.comparison.goalSuccessfulStrong", locale);
       }
       if (interpretation?.alignment === "deviates") {
-        return "Compared to the current result, these alternatives can validate the achieved outcome against the remaining divergence.";
+        return resolveLabI18n("alternatives.comparison.goalSuccessfulDeviates", locale);
       }
-      return "Compared to the current result, these alternatives are backup routes rather than stronger paths.";
+      return resolveLabI18n("alternatives.comparison.goalSuccessful", locale);
     }
   }
   if (interpretation !== undefined && interpretation !== null) {
     if (interpretation.coverageLevel === "low" || interpretation.alignment === "deviates") {
-      return "Compared to the current result, these alternatives may improve coverage or reduce divergence.";
+      return resolveLabI18n("alternatives.comparison.feedbackWeak", locale);
     }
     if (
       interpretation.coverageLevel === "high" &&
       interpretation.alignment === "matches-simulation"
     ) {
-      return "Compared to the current result, these alternatives are backup routes rather than stronger paths.";
+      return resolveLabI18n("alternatives.comparison.feedbackStable", locale);
     }
-    return "Compared to the current result, these alternatives can clarify the mixed execution signal.";
+    return resolveLabI18n("alternatives.comparison.feedbackMixed", locale);
   }
   if (input.executionReflection.decision === "proceed") {
-    return "Compared to the selected path, these alternatives can expose different evidence at the cost of changing the current balance.";
+    return resolveLabI18n("alternatives.comparison.reflectionProceed", locale);
   }
   if (input.executionReflection.decision === "review") {
-    return "Compared to the selected path, these alternatives trade the current uncertainty for clearer scope or steadier context.";
+    return resolveLabI18n("alternatives.comparison.reflectionReview", locale);
   }
-  return "Compared to the selected path, these alternatives lower risk by changing scope, method, or intensity before any future handoff.";
+  return resolveLabI18n("alternatives.comparison.reflectionAvoid", locale);
 }
 
 function buildComparisonNote(
   input: LabExecutionAlternativesInput,
-  guidedAlternative: LabGuidedAlternativeSignal
+  guidedAlternative: LabGuidedAlternativeSignal,
+  locale: LabI18nLocale
 ) {
-  const baseComparisonNote = buildBaseComparisonNote(input);
+  const baseComparisonNote = buildBaseComparisonNote(input, locale);
   if (
     guidedAlternative.preferredAlternativeLabel === null ||
     baseComparisonNote.includes(guidedAlternative.preferredAlternativeLabel)
   ) {
     return baseComparisonNote;
   }
-  return `${baseComparisonNote} ${guidedAlternative.preferredAlternativeLabel} is the clearest comparison point.`;
+  return formatLabI18n("alternatives.comparison.preferred", locale, {
+    base: baseComparisonNote,
+    label: guidedAlternative.preferredAlternativeLabel,
+  });
 }
 
 function buildConfidence(input: LabExecutionAlternativesInput, alternativeCount: number) {
@@ -622,11 +643,12 @@ export function buildExecutionAlternatives(
   input: LabExecutionAlternativesInput
 ): LabExecutionAlternatives {
   const locale = input.locale ?? "en";
-  const alternatives = buildAlternatives(input);
+  const alternatives = buildAlternatives(input, locale);
   const confidence = buildConfidence(input, alternatives.length);
   const adaptiveDecision = buildAdaptiveDecisionSignal({
     executionGoalEvaluation: input.executionGoalEvaluation ?? null,
     executionResultInterpretation: input.executionResultInterpretation ?? null,
+    locale,
   });
   const decisionPosture = buildDecisionPosture({
     decisionPressure: adaptiveDecision.decisionPressure,
@@ -639,6 +661,7 @@ export function buildExecutionAlternatives(
     decisionPressure: adaptiveDecision.decisionPressure,
     executionGoalEvaluation: input.executionGoalEvaluation ?? null,
     executionResultInterpretation: input.executionResultInterpretation ?? null,
+    locale,
   });
   const preferredAlternative =
     guidedAlternative.preferredAlternativeIndex === null
@@ -654,6 +677,7 @@ export function buildExecutionAlternatives(
           executionGoalEvaluation: input.executionGoalEvaluation ?? null,
           executionResult: input.executionResult,
           executionResultInterpretation: input.executionResultInterpretation ?? null,
+          locale,
         });
   const descriptorAlternative = preferredAlternative ?? alternatives[0] ?? null;
   const descriptorAdvisory = buildAlternativeDescriptorAdvisory(descriptorAlternative, locale);
@@ -690,7 +714,7 @@ export function buildExecutionAlternatives(
       locale
     ),
     alternatives,
-    comparisonNote: buildComparisonNote(input, guidedAlternative),
+    comparisonNote: buildComparisonNote(input, guidedAlternative, locale),
     confidence,
   };
 }

@@ -1,570 +1,458 @@
-# Plan: Laboratory Cleanup And God File Reduction
+# Plan: Laboratory Cleanup
 
-**Generated**: 2026-04-26
+**Generated**: 2026-04-30
 **Estimated Complexity**: High
 
 ## Overview
+Laboratory cleanup will remove old system residue across four connected surfaces: legacy stage compatibility, old UI fallback paths, unused CSS, and the removed `subtitle-analysis` feature. The work should be done as a controlled, testable cleanup rather than a broad rewrite, because Laboratory has persisted project state, room manifest contracts, host runtime composition, and many targeted regression tests.
 
-Laboratory has accumulated several revision layers across UI, runtime selectors, store reducers, host orchestration, process runners, and room-local catalogs. This cleanup should be aggressive, but it must be evidence-led: remove only code proven unused, retire legacy compatibility only after hydration and installed-room parity are protected, and split god files along existing room boundaries instead of introducing a new architecture.
+Primary goals:
+- Remove `subtitle-analysis` as a supported Laboratory feature and clean its remaining host, runtime, schema, manifest, i18n, and test traces.
+- Retire the `LabStage/currentStage` legacy projection once the UI and runtime no longer need stage-shaped state.
+- Remove old UI fallback components and fallback copy that only supported prior Laboratory shells.
+- Delete unused CSS classes proven by inventory plus targeted `rg` checks.
+- Keep media and audio analysis behavior intact.
 
-The work should stay source-first:
-
-- Source of truth is `rooms/laboratory/**`.
-- `data/rooms/laboratory/**` is generated/installed output and must not be edited directly.
-- Tests may be updated under `scripts/tests/laboratory-*.test.ts` only when the removed behavior is intentionally retired.
-- Global Electron or room packaging files should be touched only if the cleanup exposes a real package-boundary issue.
-
-## Research Snapshot
-
-- Current mode during planning: `terminal`; `whereami.effectiveMode`: `other-provider-cli`; workflow should be plain `workflow:terminal-mode`.
-- Laboratory source inventory is large: about 73k lines across `rooms/laboratory` code, JSON, CSS, and HTML.
-- Largest god-file candidates found:
-  - `rooms/laboratory/ui/lab-theme.css` at about 6.1k lines.
-  - `rooms/laboratory/runtime/lab-store.ts` at about 2.6k lines.
-  - `rooms/laboratory/runtime/lab-run-controller.ts` at about 2.6k lines.
-  - `rooms/laboratory/runtime/lab-selectors.ts` at about 1.9k lines with high fan-in.
-  - `rooms/laboratory/ui/lab-waveform-timeline-render.ts` at about 1.7k lines.
-  - `rooms/laboratory/ui/workspace-surface.ts` at about 1.6k lines.
-  - `rooms/laboratory/models/lab-types.ts` at about 1.3k lines and about 95 import references.
-- Initial dead-code candidate:
-  - `rooms/laboratory/ui/workspace-intents.ts` has zero Laboratory import references.
-  - Its matching CSS selectors appear only in `lab-theme.css`.
-- CSS audit baseline:
-  - `rooms/laboratory/ui/lab-theme.css` plus `style.css` define about 643 class selectors.
-  - A conservative static scan found about 76 possibly unused class selectors.
-  - Because Laboratory markup is template-string heavy, CSS removal needs runtime or markup-snapshot confirmation before deletion.
-- Baseline validation observed during planning:
-  - `npm run rooms:typecheck` passed.
-  - Targeted host/UI smoke tests passed:
-    `npm run rooms:test:file -- scripts/tests/laboratory-host-import-smoke-regressions.test.ts scripts/tests/laboratory-ui-evaluation-regressions.test.ts`
-  - Global `knip:strict` currently reports many repo-level false positives and is not yet Laboratory-scoped enough to be a cleanup gate.
+Safe assumptions:
+- `subtitle-analysis` has already been intentionally removed as a product feature, so remaining references are cleanup targets unless they are needed for migration of stored project data.
+- Audio/tool fallbacks are out of scope unless they are UI-only remnants of the old Laboratory shell.
+- Saved Laboratory projects were deleted before implementation, so no persisted-project migration is required for `subtitleAnalysis`, `currentStage`, or `workbench.activeModuleId = "subtitle-analysis"`. New state contracts can be simplified directly.
+- `data/rooms/laboratory` must not be edited as peer source. Workspace source of truth is `rooms/laboratory`.
 
 ## Prerequisites
-
-- Before implementation, present the repository change-approval block unless the next user request explicitly starts with `Fast:`.
-- Confirm mode before implementation with `npm run mode:status` and `npm run whereami`.
-- Start from a clean mental boundary: ignore unrelated current worktree changes unless they touch `rooms/laboratory/**` or relevant Laboratory tests.
-- Do not edit `data/rooms/laboratory/**` directly; refresh installed output through the room build/sync flow only if verification needs it.
-- Run a focused baseline before deletion:
+- Start each implementation session with `npm run mode:status` and `npm run whereami`.
+- If code changes are made later, follow the repo approval and syntax-check flow before editing.
+- Baseline inventory:
+  - `npm run laboratory:cleanup:inventory`
+  - `npm run laboratory:cleanup:gate`
+- Baseline validation:
   - `npm run rooms:typecheck`
-  - `npm run rooms:test:file -- scripts/tests/laboratory-host-import-smoke-regressions.test.ts scripts/tests/laboratory-ui-evaluation-regressions.test.ts`
-  - Relevant feature tests listed in the Testing Strategy.
-- Treat comments marked `@deprecated`, `legacy`, `fallback`, `compat`, and `stale` as audit targets, not automatic deletion targets.
+  - `npm run rooms:test:file -- scripts/tests/laboratory-host-import-smoke-regressions.test.ts scripts/tests/laboratory-source-ui-regressions.test.ts scripts/tests/laboratory-workspace-runtime-regressions.test.ts`
+- Do not manually edit installed/runtime copies under `data/rooms/laboratory`.
 
-## Sprint 1: Cleanup Safety Harness
-
-**Goal**: Build a reliable map of what is actually reachable before removing anything.
-
+## Sprint 1: Baseline And Cleanup Guardrails
+**Goal**: Establish a reproducible cleanup inventory before removing anything.
 **Demo/Validation**:
+- `npm run laboratory:cleanup:inventory` produces a saved or copied baseline.
+- `npm run laboratory:cleanup:gate` reports known current findings.
+- Targeted `rg` lists for `subtitle-analysis`, `currentStage`, `LabStage`, `legacy`, `compat`, and `fallback` are captured for implementation reference.
 
-- A repeatable audit command or documented command set identifies Laboratory reachability, largest files, CSS candidates, and fallback/legacy markers.
-- No production behavior changes.
-- Existing typecheck and targeted tests still pass.
-
-### Task 1.1: Capture The Laboratory Entry Graph
-
-- **Location**:
-  - `rooms/laboratory/manifest.json`
-  - `rooms/laboratory/ui/index.html`
-  - `rooms/laboratory/host/index.ts`
-  - `rooms/laboratory/host/runtime.ts`
-  - `rooms/laboratory/ui/index.ts`
-  - `rooms/laboratory/ui/bootstrap.ts`
-  - `rooms/laboratory/ui/lab-root.ts`
-  - `rooms/laboratory/i18n/**`
-  - `rooms/laboratory/shared/data/tools/**`
-  - `rooms/laboratory/main-functions/**/assets/**`
-- **Description**: Document the runtime entry chain from manifest to host activation and UI bootstrap, then list dynamic seams that static import tools may miss.
-- **Complexity**: 3
+### Task 1.1: Capture Cleanup Inventory
+- **Location**: `rooms/laboratory/scripts/laboratory-cleanup-inventory.ts`, `rooms/laboratory/scripts/laboratory-dead-code-gate.ts`
+- **Description**: Run the inventory and gate scripts, record the current unused exports, zero-indegree files, CSS candidates, and legacy markers.
+- **Complexity**: 2
 - **Dependencies**: None
 - **Acceptance Criteria**:
-  - Entry files and dynamic loader expectations are known before deletion.
-  - The keep-list includes manifest asset paths, `i18n.baseDir`, `ui/index.html` stylesheet loading, room-local tool JSON, Python/conf payloads, feature assets, and files copied into installed room output.
-  - Dead-code tooling treats path-loaded data and assets differently from TS import reachability.
-  - Installed copy behavior is explicitly classified as generated output.
+  - The current 7 unused exports and 3 zero-indegree UI files are confirmed or superseded by fresh output.
+  - The current CSS candidate list is available for manual verification.
 - **Validation**:
-  - `npm run rooms:test:file -- scripts/tests/laboratory-host-import-smoke-regressions.test.ts`
+  - `npm run laboratory:cleanup:inventory`
+  - `npm run laboratory:cleanup:gate`
 
-### Task 1.2: Add A Local Cleanup Inventory Script
-
-- **Location**:
-  - Preferred: `scripts/rooms/`
-  - Optional generated output path: `tmp/laboratory-cleanup-inventory-*.json` or a documented stdout format.
-- **Description**: Produce an inventory for file sizes, import fan-in/fan-out, zero-reference files, fallback markers, and CSS selector candidates scoped to `rooms/laboratory`.
-- **Complexity**: 4
+### Task 1.2: Tighten Cleanup Definitions
+- **Location**: `rooms/laboratory/README.md`
+- **Description**: Update Laboratory cleanup ownership notes so `subtitle-analysis` is no longer protected as internal transcript support. Replace the old protection rule with a migration rule for stale persisted `subtitleAnalysis` data.
+- **Complexity**: 2
 - **Dependencies**: Task 1.1
 - **Acceptance Criteria**:
-  - The report includes god-file ranking.
-  - The report distinguishes static certainty from dynamic-risk candidates.
-  - The report can be rerun after each sprint.
-  - The script emits before/after artifacts or a stable diffable report for deletion proof.
+  - README no longer says `subtitle-analysis` must be preserved.
+  - README clearly says path-loaded tool data is still protected unless proven unrelated.
 - **Validation**:
-  - Run the script twice and confirm stable output on an unchanged tree.
+  - `rg -n "subtitle-analysis|internal transcript support" rooms/laboratory/README.md`
 
-### Task 1.3: Create A Laboratory-Specific Dead-Code Gate
-
-- **Location**:
-  - `knip.config.ts` or a new local audit script, depending on false-positive rate.
-  - `package.json` only if adding a durable `laboratory:*` script is justified.
-- **Description**: Configure a Laboratory-specific unused-file/export pass that understands room entries and excludes generated `data/rooms/**`.
-- **Complexity**: 5
+### Task 1.3: Classify Fallback Hits
+- **Location**: `rooms/laboratory/runtime`, `rooms/laboratory/ui`, `rooms/laboratory/shared/host`, `rooms/laboratory/main-functions`
+- **Description**: Split fallback hits into three buckets: UI legacy fallback to remove, valid i18n/runtime default to keep, and data migration fallback to keep temporarily.
+- **Complexity**: 3
 - **Dependencies**: Task 1.1
 - **Acceptance Criteria**:
-  - The gate can flag `rooms/laboratory/ui/workspace-intents.ts` or explain why it is intentionally ignored.
-  - Repo-level false positives from Electron, MCP, and other pages do not block Laboratory cleanup.
+  - UI-only fallback cleanup targets are listed.
+  - Audio/tool operational fallbacks are explicitly excluded.
+  - Data migration fallbacks are either scoped for deletion in later sprints or documented as temporary.
 - **Validation**:
-  - Run the new scoped gate and compare with the custom import inventory.
+  - `rg -n "fallback|legacy|deprecated|compat" rooms/laboratory/runtime rooms/laboratory/ui rooms/laboratory/shared/host rooms/laboratory/main-functions -g '*.ts'`
 
-## Sprint 2: First Confirmed Deletions
-
-**Goal**: Remove low-risk dead UI and CSS after proving they are unreachable.
-
+## Sprint 2: Remove Dead UI Files And Unused Exports
+**Goal**: Make the existing dead-code gate pass for known low-risk findings.
 **Demo/Validation**:
+- `npm run laboratory:cleanup:gate` no longer reports the initial unused files or exports.
+- Focused UI tests continue to pass.
 
-- Laboratory still boots through host import and UI smoke tests.
-- CSS class count decreases with no visual-contract test failures.
-- No installed-copy edits are made.
-
-### Task 2.1: Remove The Unused Workspace Intents Renderer
-
-- **Location**:
-  - `rooms/laboratory/ui/workspace-intents.ts`
-  - `rooms/laboratory/ui/lab-theme.css`
-- **Description**: Delete `renderWorkspaceIntents` and the CSS block for `.labx-intents-card` / `.labx-intent-item*` if the Sprint 1 gate confirms no dynamic usage.
+### Task 2.1: Remove Zero-Indegree UI Components
+- **Location**: `rooms/laboratory/ui/components/artifact-item.ts`, `rooms/laboratory/ui/context-action-bar.ts`, `rooms/laboratory/ui/workspace-hypothesis.ts`
+- **Description**: Delete the three currently unreferenced UI files after confirming no dynamic import or string-based loader references exist.
 - **Complexity**: 2
 - **Dependencies**: Sprint 1
 - **Acceptance Criteria**:
-  - No imports or tests reference `renderWorkspaceIntents`.
-  - Related CSS selectors are removed in the same commit.
-  - Typecheck passes.
+  - The files are removed.
+  - No import, test, or manifest references remain.
 - **Validation**:
-  - `rg "renderWorkspaceIntents|labx-intents-card|labx-intent-item" rooms/laboratory scripts/tests`
-  - `npm run rooms:typecheck`
-  - Targeted UI tests.
+  - `rg -n "artifact-item|context-action-bar|workspace-hypothesis" rooms/laboratory scripts/tests`
+  - `npm run laboratory:cleanup:gate`
+  - `npm run rooms:test:file -- scripts/tests/laboratory-media-profile-installed-parity-regressions.test.ts scripts/tests/laboratory-media-edit-installed-parity-regressions.test.ts`
 
-### Task 2.2: Remove CSS Blocks With No Markup Or Test References
-
-- **Location**:
-  - `rooms/laboratory/ui/lab-theme.css`
-  - Related UI template files under `rooms/laboratory/ui/*.ts`
-- **Description**: Remove only selector groups whose class names have no source, test, generated snapshot, or runtime DOM evidence. Start with obvious stale families such as old stage grids, preview cards, raw log blocks, and obsolete module rows.
-- **Complexity**: 5
-- **Dependencies**: Task 2.1
-- **Acceptance Criteria**:
-  - Each removed selector family has a matching `rg` proof before deletion.
-  - Each non-trivial selector family also has one stronger proof: runtime DOM snapshot, markup fixture snapshot, or Electron screenshot smoke.
-  - Composed classes, conditional class fragments, and `data-*` state selectors are reviewed manually before deletion.
-  - Adjacent active selectors are not reformatted unnecessarily.
-  - UI smoke tests still pass.
-- **Validation**:
-  - Re-run CSS inventory.
-  - `npm run rooms:test:file -- scripts/tests/laboratory-ui-evaluation-regressions.test.ts`
-
-### Task 2.3: Retire Obsolete Room-Local Visible Copy
-
-- **Location**:
-  - `rooms/laboratory/i18n/en.json`
-  - `rooms/laboratory/i18n/tr.json`
-  - UI files that referenced removed copy.
-- **Description**: Remove i18n keys used only by deleted UI blocks while preserving key parity between English and Turkish catalogs.
-- **Complexity**: 4
-- **Dependencies**: Task 2.1, Task 2.2
-- **Acceptance Criteria**:
-  - Removed keys are not referenced by `copy.t(...)`.
-  - `en.json` and `tr.json` retain matching key paths.
-- **Validation**:
-  - Existing i18n parity tests in `laboratory-ui-evaluation-regressions.test.ts`.
-  - `npm run rooms:typecheck`
-
-## Sprint 3: Fallback And Legacy Retirement
-
-**Goal**: Remove compatibility branches that no longer match supported persisted state or user-facing behavior.
-
-**Demo/Validation**:
-
-- Hydration tests continue to pass for supported migrations.
-- Tests that still assert retired legacy behavior are updated only after explicit acceptance that the behavior is no longer supported.
-- Runtime state shape becomes simpler.
-
-### Task 3.1: Classify Legacy Markers By Owner
-
-- **Location**:
-  - `rooms/laboratory/models/lab-types.ts`
-  - `rooms/laboratory/runtime/lab-store.ts`
-  - `rooms/laboratory/runtime/lab-selectors.ts`
-  - `rooms/laboratory/shared/host/**`
-  - `rooms/laboratory/main-functions/**/host/**`
-- **Description**: Build a table of `@deprecated`, `legacy`, `compat`, and fallback markers. Classify each as supported migration, active safety fallback, obsolete UI fallback, or process-tool fallback.
-- **Complexity**: 4
+### Task 2.2: Remove Unused Project Import Export
+- **Location**: `rooms/laboratory/runtime/lab-project-import.ts`
+- **Description**: Remove `getProjectImportActionForMethod` if fresh import graph confirms it is not used.
+- **Complexity**: 2
 - **Dependencies**: Sprint 1
 - **Acceptance Criteria**:
-  - Every marker has an owner and removal decision.
-  - Tool/runtime fallbacks are not removed just because the word "fallback" appears.
+  - Export is removed or converted to local only if a local use exists.
+  - No tests import the symbol.
 - **Validation**:
-  - `rg -n "fallback|legacy|deprecated|compat|stale" rooms/laboratory`
+  - `rg -n "getProjectImportActionForMethod" rooms/laboratory scripts/tests`
+  - `npm run rooms:typecheck`
 
-### Task 3.2: Remove Retired UI Compatibility State
+### Task 2.3: Remove Unused User Action Display Exports
+- **Location**: `rooms/laboratory/runtime/lab-user-actions.ts`
+- **Description**: Remove unused display helpers `getLabUserActionDisplayText`, `getLabUserActionPrimaryOutput`, and `getLabUserActionOutputLabel` if the fresh gate still reports them.
+- **Complexity**: 2
+- **Dependencies**: Sprint 1
+- **Acceptance Criteria**:
+  - Unused exports are gone.
+  - Any remaining user action helpers are still covered by imports or tests.
+- **Validation**:
+  - `rg -n "getLabUserActionDisplayText|getLabUserActionPrimaryOutput|getLabUserActionOutputLabel" rooms/laboratory scripts/tests`
+  - `npm run laboratory:cleanup:gate`
 
-- **Location**:
-  - `rooms/laboratory/models/lab-types.ts`
-  - `rooms/laboratory/runtime/lab-store.ts`
-  - Tests under `scripts/tests/laboratory-*`
-- **Description**: Remove fields such as obsolete module-manager UI state only if hydration tests show no supported persisted payload still needs them.
+## Sprint 3: Remove Subtitle Analysis Feature Surface
+**Goal**: Remove `subtitle-analysis` from public room, host composition, runtime config, project state, reporting, and tests while preserving media and audio analysis.
+**Demo/Validation**:
+- Manifest exposes only `media-analysis` and `audio-analysis`.
+- Typecheck passes without `subtitle-analysis` feature types.
+- Updated tests assert the new two-feature Laboratory contract.
+
+### Task 3.1: Update Manifest And Room Contract
+- **Location**: `rooms/laboratory/manifest.json`
+- **Description**: Remove `subtitle-analysis` from `workbench.availableFeatureIds`, `features`, and description copy.
+- **Complexity**: 3
+- **Dependencies**: Sprint 1
+- **Acceptance Criteria**:
+  - Manifest feature list contains only `media-analysis` and `audio-analysis`.
+  - Room description no longer promises subtitle modules.
+- **Validation**:
+  - `rg -n "subtitle-analysis|subtitle" rooms/laboratory/manifest.json`
+  - `npm run rooms:test:file -- scripts/tests/room-manifest-regressions.test.ts scripts/tests/room-page-regressions.test.ts scripts/tests/scene-debug-room-regressions.test.ts`
+
+### Task 3.2: Shrink Laboratory Feature Types
+- **Location**: `rooms/laboratory/models/lab-types.ts`, `rooms/laboratory/shared/host/runtime-primitives.ts`
+- **Description**: Remove `subtitle-analysis` from `LabFeatureId`, `LAB_FEATURES`, feature normalization, runtime feature constants, and feature-to-state maps.
 - **Complexity**: 5
 - **Dependencies**: Task 3.1
 - **Acceptance Criteria**:
-  - Removed fields are absent from state creation, hydration, reducer handling, selectors, and tests.
-  - Migration tests are updated to assert the new supported boundary.
+  - `isLabFeatureId` rejects `subtitle-analysis`.
+  - Default/normalization paths land on media or audio only.
+  - Compile errors identify all downstream references for planned cleanup.
+- **Validation**:
+  - `npm run rooms:typecheck`
+
+### Task 3.3: Remove Subtitle Host Runtime Composition
+- **Location**: `rooms/laboratory/host/feature-adapters.ts`, `rooms/laboratory/host/feature-runtimes.ts`, `rooms/laboratory/host/runtime.ts`, `rooms/laboratory/shared/host/action-composition.ts`, `rooms/laboratory/shared/host/action-router.ts`, `rooms/laboratory/shared/host/process-composition.ts`, `rooms/laboratory/shared/host/state-composition.ts`
+- **Description**: Remove imports, dependency slots, runtime factories, and delegation methods that only exist for subtitle analysis.
+- **Complexity**: 7
+- **Dependencies**: Task 3.2
+- **Acceptance Criteria**:
+  - No host composition imports from `main-functions/subtitle-analysis`.
+  - Media and audio runtime adapters still initialize.
+  - Missing subtitle runtime no longer requires defensive fallback code.
+- **Validation**:
+  - `rg -n "subtitle-analysis|SubtitleAnalysis|subtitleAnalysis|Subtitle" rooms/laboratory/host rooms/laboratory/shared/host -g '*.ts'`
+  - `npm run rooms:typecheck`
+  - `npm run rooms:test:file -- scripts/tests/laboratory-host-import-smoke-regressions.test.ts scripts/tests/laboratory-host-action-runtime-regressions.test.ts`
+
+### Task 3.4: Remove Subtitle Project State And Schema
+- **Location**: `rooms/laboratory/shared/data/tools/project-schema.json`, `rooms/laboratory/shared/host/project-records.ts`, `rooms/laboratory/shared/host/project-state.ts`, `rooms/laboratory/shared/host/project-paths.ts`, `rooms/laboratory/shared/host/room-snapshot.ts`, `rooms/laboratory/shared/host/runtime-bootstrap.ts`, `rooms/laboratory/shared/host/project-config-loader.ts`
+- **Description**: Remove active `subtitleAnalysis` project state, paths, config loading, snapshot fields, and bootstrap config. Because saved projects were deleted before implementation, do not keep migration-only rehydration code.
+- **Complexity**: 8
+- **Dependencies**: Task 3.3
+- **Acceptance Criteria**:
+  - New projects do not create `subtitleAnalysis`.
+  - No active normalizer or snapshot code rehydrates `subtitleAnalysis`.
+  - Runtime no longer loads subtitle catalog/capability/provider JSON.
+- **Validation**:
+  - `rg -n "subtitleAnalysis|subtitle-analysis|subtitle" rooms/laboratory/shared/host rooms/laboratory/shared/data/tools/project-schema.json`
+  - `npm run rooms:test:file -- scripts/tests/laboratory-state-persistence-v2-regressions.test.ts scripts/tests/laboratory-scope-aware-analysis-regressions.test.ts`
+
+### Task 3.5: Classify And Remove Extended Subtitle References
+- **Location**: `rooms/laboratory/i18n`, `rooms/laboratory/services/process-output-parser.ts`, `rooms/laboratory/runtime/selectors/lab-project-selectors.ts`, `rooms/laboratory/shared/host/runtime-events.ts`, `rooms/laboratory/shared/host/reporting-export.ts`, `rooms/laboratory/shared/types/analysis-scope.ts`, `rooms/laboratory/shared/data/tools/toolchain.manifest.json`, migration/build scripts that mention subtitle paths`
+- **Description**: Remove non-obvious subtitle traces outside the main host/schema path: i18n sections, parser aliases, selector aliases, runtime event feature maps, report export labels, analysis-scope feature lists, toolchain entries, and migration/build references.
+- **Complexity**: 7
+- **Dependencies**: Task 3.4
+- **Acceptance Criteria**:
+  - `rg` subtitle scans show only intentional historical notes or none.
+  - Media/audio parser, event, scope, and report export behavior still works.
+  - Removed subtitle i18n keys do not leave dangling lookups.
+- **Validation**:
+  - `rg -n "subtitle-analysis|subtitleAnalysis|SubtitleAnalysis|subtitle" rooms/laboratory -g '*.ts' -g '*.json' -g '*.md'`
+  - `npm run rooms:typecheck`
+
+### Task 3.6: Remove Subtitle Reports And Managed Runner
+- **Location**: `rooms/laboratory/shared/host/reporting-subtitle.ts`, `rooms/laboratory/shared/host/reporting-feature-report.ts`, `rooms/laboratory/shared/host/process-delegates.ts`, `rooms/laboratory/shared/host/process-managed-subtitle-runner.ts`, `rooms/laboratory/shared/host/process-managed-runners.ts`, `rooms/laboratory/shared/host/process-runtime.ts`
+- **Description**: Delete subtitle-only reporting and runner modules, then simplify process routing to media/audio only.
+- **Complexity**: 7
+- **Dependencies**: Task 3.5
+- **Acceptance Criteria**:
+  - No process runner branch can dispatch subtitle analysis.
+  - Report export handles media/audio only.
+  - Removed subtitle report tests are updated or deleted.
+- **Validation**:
+  - `npm run rooms:typecheck`
+  - `npm run rooms:test:file -- scripts/tests/laboratory-report-composition-v2-regressions.test.ts scripts/tests/laboratory-media-edit-behavior-regressions.test.ts`
+
+### Task 3.7: Delete Subtitle Main Function Package And Tool Data
+- **Location**: `rooms/laboratory/main-functions/subtitle-analysis`, `rooms/laboratory/shared/data/tools/subtitle-*`
+- **Description**: Delete the subtitle main-function directory and subtitle-only tool catalog/capability/provider/form JSON files after all imports and dynamic loaders are removed.
+- **Complexity**: 5
+- **Dependencies**: Tasks 3.3, 3.4, 3.5, 3.6
+- **Acceptance Criteria**:
+  - Subtitle main function files are gone.
+  - Subtitle-only tool data files are gone.
+  - Cleanup inventory keep-list no longer preserves removed subtitle paths indirectly.
+- **Validation**:
+  - `rg --files rooms/laboratory | rg "subtitle-analysis|subtitle-"`
+  - `npm run laboratory:cleanup:gate`
+
+### Task 3.8: Update Subtitle-Dependent Tests
+- **Location**: `scripts/tests`
+- **Description**: Update tests that assert `subtitle-analysis` is present. Delete tests whose only purpose was subtitle runtime behavior, and change generic Laboratory tests to assert media/audio only.
+- **Complexity**: 6
+- **Dependencies**: Tasks 3.1 through 3.7
+- **Acceptance Criteria**:
+  - Tests no longer expect subtitle feature IDs, runtime imports, installed parity paths, or subtitle reports.
+  - Generic room, manifest, source UI, and host action tests still cover media/audio.
+- **Validation**:
+  - `rg -n "subtitle-analysis|subtitleAnalysis|SubtitleAnalysis" scripts/tests`
+  - `npm run rooms:test:file -- scripts/tests/room-manifest-regressions.test.ts scripts/tests/laboratory-source-ui-regressions.test.ts scripts/tests/laboratory-host-action-runtime-regressions.test.ts scripts/tests/laboratory-report-composition-v2-regressions.test.ts`
+
+## Sprint 4: Retire Legacy Stage Compatibility
+**Goal**: Remove `LabStage/currentStage` as an active UI/runtime contract and replace it with condition-driven workspace state.
+**Demo/Validation**:
+- UI no longer depends on `data-stage` or stage-click compatibility.
+- Store/selectors no longer expose deprecated stage navigation helpers.
+- Persisted old `currentStage` does not break load.
+
+### Task 4.1: Map Current Stage Consumers
+- **Location**: `rooms/laboratory/runtime/lab-store.ts`, `rooms/laboratory/runtime/lab-selectors.ts`, `rooms/laboratory/runtime/lab-run-controller.ts`, `rooms/laboratory/ui/lab-root.ts`, `rooms/laboratory/ui/lab-drawer.ts`, `rooms/laboratory/ui/tool-management-overlay.ts`
+- **Description**: Confirm every `currentStage`, `LabStage`, `LabStageSurface`, `stage-changed`, and `deriveLegacyStage` consumer and classify it as UI metadata, persisted hydration, action routing, or dead compatibility.
+- **Complexity**: 4
+- **Dependencies**: Sprint 3
+- **Acceptance Criteria**:
+  - A removal map exists before edits.
+  - Any persisted migration requirement is identified.
+- **Validation**:
+  - `rg -n "currentStage|LabStage|LabStageSurface|stage-changed|deriveLegacyStage|getStageBlockReason|canAdvanceToStage" rooms/laboratory -g '*.ts'`
+
+### Task 4.2: Remove Deprecated Stage Selectors
+- **Location**: `rooms/laboratory/runtime/lab-selectors.ts`
+- **Description**: Remove `getStageBlockReason`, `canAdvanceToStage`, and `getPrimaryActionLabel` stage parameter compatibility after replacing call sites with condition-driven selectors. Keep `deriveLegacyStage` until `currentStage` is removed from store/persistence in the same state-contract slice.
+- **Complexity**: 6
+- **Dependencies**: Task 4.1
+- **Acceptance Criteria**:
+  - Deprecated selectors are gone.
+  - Readiness is still derived from source/edit/process/report conditions through current selector APIs.
+- **Validation**:
+  - `npm run rooms:test:file -- scripts/tests/laboratory-stage-decoupling-regressions.test.ts scripts/tests/laboratory-store-runtime-regressions.test.ts scripts/tests/laboratory-selection-runtime-regressions.test.ts`
+
+### Task 4.3: Remove Stage Events And Controller No-Ops
+- **Location**: `rooms/laboratory/runtime/lab-run-controller.ts`, `rooms/laboratory/models/lab-types.ts`
+- **Description**: Remove `stage-changed` events and no-op stage click handling that only preserved old UI navigation.
+- **Complexity**: 5
+- **Dependencies**: Task 4.2
+- **Acceptance Criteria**:
+  - No stage click compatibility code remains.
+  - Controller actions are driven by explicit source/edit/process/report commands or workspace state.
+- **Validation**:
+  - `rg -n "stage-changed|legacy stage|stage clicks|deriveLegacyStage" rooms/laboratory/runtime rooms/laboratory/models`
+  - `npm run rooms:typecheck`
+
+### Task 4.4: Remove Current Stage From Store State
+- **Location**: `rooms/laboratory/models/lab-types.ts`, `rooms/laboratory/runtime/lab-store.ts`, `rooms/laboratory/runtime/lab-persistence.ts`
+- **Description**: Remove active `currentStage` from `LabStoreState` and stop persisting it. Saved projects were deleted before implementation, so no persisted-project migration branch is required.
+- **Complexity**: 8
+- **Dependencies**: Task 4.3
+- **Acceptance Criteria**:
+  - New persisted Laboratory state no longer writes `currentStage`.
+  - `schemaVersion` and persistence payloads no longer require `currentStage`.
+  - `LabStage` type is removed unless still needed by migration-only code.
 - **Validation**:
   - `npm run rooms:test:file -- scripts/tests/laboratory-state-persistence-v2-regressions.test.ts scripts/tests/laboratory-store-runtime-regressions.test.ts`
 
-### Task 3.3: Collapse Legacy Feature Visibility
-
-- **Location**:
-  - `rooms/laboratory/models/lab-types.ts`
-  - `rooms/laboratory/manifest.json`
-  - `rooms/laboratory/host/feature-runtimes.ts`
-  - `rooms/laboratory/main-functions/subtitle-analysis/**`
-  - `rooms/laboratory/i18n/en.json`
-  - `rooms/laboratory/i18n/tr.json`
-  - `rooms/laboratory/shared/data/tools/project-schema.json`
-  - `rooms/laboratory/shared/data/tools/subtitle-*`
-- **Description**: Decide whether `subtitle-analysis` remains a hidden internal feature or is fully retired. If retired, remove manifest feature exposure, host adapters, source intake, and tests in one controlled chain.
-- **Complexity**: 8
-- **Dependencies**: Task 3.1
-- **Acceptance Criteria**:
-  - No partial state exists where manifest, host runtime, and UI disagree.
-  - The decision covers `workbench.availableFeatureIds`, `LabFeatureId`, `isLabFeatureId`, feature metadata, i18n labels/content, project schema records, subtitle tool configs, report composition, room page expectations, scene/debug expectations, and installed parity.
-  - If kept, comments and names stop implying accidental legacy debt.
-  - If removed, installed host import and report composition tests still pass.
-- **Validation**:
-  - `npm run rooms:test:file -- scripts/tests/laboratory-host-action-runtime-regressions.test.ts scripts/tests/laboratory-report-composition-v2-regressions.test.ts scripts/tests/laboratory-host-import-smoke-regressions.test.ts`
-  - `npm run rooms:test:file -- scripts/tests/room-manifest-regressions.test.ts scripts/tests/room-page-regressions.test.ts scripts/tests/scene-debug-room-regressions.test.ts scripts/tests/laboratory-source-intake-regressions.test.ts`
-  - `npm run rooms:test:file -- scripts/tests/laboratory-media-edit-installed-parity-regressions.test.ts scripts/tests/laboratory-media-profile-installed-parity-regressions.test.ts`
-
-## Sprint 4: Centralize Repeated Host Utilities
-
-**Goal**: Reduce repeated helper logic across media, audio, subtitle, and shared host files without broad rewrites.
-
-**Demo/Validation**:
-
-- Helper duplication decreases.
-- Feature host behavior remains unchanged.
-- Existing process and reporting tests pass.
-
-### Task 4.1: Centralize File And String Sanitizers
-
-- **Location**:
-  - Current repeats in:
-    - `rooms/laboratory/main-functions/media-analysis/host/edit-support.ts`
-    - `rooms/laboratory/main-functions/subtitle-analysis/host/edit-workspace.ts`
-    - `rooms/laboratory/main-functions/audio-analysis/host/process-model-speaker-diarization.ts`
-  - Target:
-    - `rooms/laboratory/shared/host/host-utils.ts` or a new narrow utility module.
-- **Description**: Move repeated `sanitizeFileSegment`, timestamp formatting, and safe-string helpers into a shared host utility if call sites share identical semantics.
-- **Complexity**: 5
-- **Dependencies**: Sprint 3 marker classification
-- **Acceptance Criteria**:
-  - Golden-case filename/timestamp sanitization tests exist before extraction.
-  - No behavior drift in generated artifact names.
-  - Tests using sanitize stubs are updated to import the real shared helper where practical.
-- **Validation**:
-  - `npm run rooms:test:file -- scripts/tests/laboratory-host-action-runtime-regressions.test.ts scripts/tests/laboratory-report-composition-v2-regressions.test.ts`
-
-### Task 4.2: Centralize Clamp And Number Normalization
-
-- **Location**:
-  - `rooms/laboratory/main-functions/media-analysis/host/profile-state.ts`
-  - `rooms/laboratory/main-functions/media-analysis/host/profile-preflight.ts`
-  - `rooms/laboratory/main-functions/media-analysis/host/action-handlers-profile.ts`
-  - `rooms/laboratory/main-functions/media-analysis/host/edit-artifacts.ts`
-  - Target shared helper under `rooms/laboratory/shared/host/`.
-- **Description**: Replace duplicated clamp/number coercion helpers with one tested implementation.
-- **Complexity**: 4
-- **Dependencies**: Task 4.1
-- **Acceptance Criteria**:
-  - Numeric clamp boundary-table tests exist before extraction.
-  - Numeric bounds remain identical.
-  - Strict room typecheck passes without widening to `any`.
-- **Validation**:
-  - `npm run rooms:typecheck`
-  - Relevant profile and edit tests.
-
-### Task 4.3: Consolidate Process Runner Support
-
-- **Location**:
-  - `rooms/laboratory/shared/host/process-managed-media-runner.ts`
-  - `rooms/laboratory/shared/host/process-managed-audio-runner.ts`
-  - `rooms/laboratory/shared/host/process-managed-subtitle-runner.ts`
-  - `rooms/laboratory/shared/host/process-managed-runners.ts`
-  - `rooms/laboratory/shared/host/process-runtime.ts`
-- **Description**: Identify duplicated process lifecycle, artifact collection, and progress mapping. Extract only stable common pieces; keep feature-specific command construction local.
-- **Complexity**: 7
-- **Dependencies**: Task 4.1
-- **Acceptance Criteria**:
-  - Process event mapping fixtures exist before extraction.
-  - Shared process primitives are smaller and easier to test.
-  - Feature-specific runner files stay readable and do not become config blobs.
-- **Validation**:
-  - `npm run rooms:test:file -- scripts/tests/laboratory-audio-runtime-regressions.test.ts scripts/tests/laboratory-execution-runtime-regressions.test.ts scripts/tests/laboratory-runtime-event-v2-regressions.test.ts`
-
-## Sprint 5: God File Split - Runtime State And Selectors
-
-**Goal**: Split large runtime files along domain boundaries while preserving public imports for incremental safety.
-
-**Demo/Validation**:
-
-- `lab-store.ts`, `lab-run-controller.ts`, and `lab-selectors.ts` shrink without changing their exported contract in the first pass.
-- Tests pass after each moved domain.
-- Follow-up tasks can remove barrels once imports settle.
-
-### Task 5.1: Split Store Normalization Domains
-
-- **Location**:
-  - Source: `rooms/laboratory/runtime/lab-store.ts`
-  - Targets:
-    - `rooms/laboratory/runtime/store/lab-store-assets.ts`
-    - `rooms/laboratory/runtime/store/lab-store-projects.ts`
-    - `rooms/laboratory/runtime/store/lab-store-workspace.ts`
-    - `rooms/laboratory/runtime/store/lab-store-reducer.ts`
-- **Description**: Move normalization and reducer helpers by state domain. Keep `createLabStore` exported from `lab-store.ts` during the split.
-- **Complexity**: 8
-- **Dependencies**: Sprint 3
-- **Acceptance Criteria**:
-  - `lab-store.ts` becomes an orchestrating module rather than a mixed reducer/normalizer file.
-  - No public import path changes are required outside runtime internals in the first commit.
-- **Validation**:
-  - `npm run rooms:test:file -- scripts/tests/laboratory-store-runtime-regressions.test.ts scripts/tests/laboratory-workspace-runtime-regressions.test.ts scripts/tests/laboratory-project-management-regressions.test.ts`
-
-### Task 5.2: Split Selector Domains
-
-- **Location**:
-  - Source: `rooms/laboratory/runtime/lab-selectors.ts`
-  - Targets:
-    - `rooms/laboratory/runtime/selectors/lab-project-selectors.ts`
-    - `rooms/laboratory/runtime/selectors/lab-source-selectors.ts`
-    - `rooms/laboratory/runtime/selectors/lab-execution-selectors.ts`
-    - `rooms/laboratory/runtime/selectors/lab-report-selectors.ts`
-- **Description**: Move selectors by domain, then re-export from `lab-selectors.ts` to avoid a big-bang import rewrite.
-- **Complexity**: 7
-- **Dependencies**: Task 5.1
-- **Acceptance Criteria**:
-  - Circular imports do not increase.
-  - Fan-in remains on the compatibility barrel during the transition.
-  - Domain files have clear ownership.
-- **Validation**:
-  - `npm run rooms:typecheck`
-  - `npm run rooms:test:file -- scripts/tests/laboratory-selection-runtime-regressions.test.ts scripts/tests/laboratory-suggestion-runtime-regressions.test.ts scripts/tests/laboratory-execution-runtime-regressions.test.ts`
-
-### Task 5.3: Split Controller Event Binding Domains
-
-- **Location**:
-  - Source: `rooms/laboratory/runtime/lab-run-controller.ts`
-  - Targets:
-    - `rooms/laboratory/runtime/controller/lab-controller-source-actions.ts`
-    - `rooms/laboratory/runtime/controller/lab-controller-workspace-actions.ts`
-    - `rooms/laboratory/runtime/controller/lab-controller-media-sync.ts`
-    - `rooms/laboratory/runtime/controller/lab-controller-host-messages.ts`
-- **Description**: Extract event handlers and media synchronization helpers behind small dependency objects. Keep lifecycle attach/detach orchestration in `lab-run-controller.ts`.
-- **Complexity**: 8
-- **Dependencies**: Task 5.2
-- **Acceptance Criteria**:
-  - No listener is registered twice.
-  - Timers and media element bindings are disposed in the same conditions as before.
-  - UI tests that exercise host traffic and media preservation still pass.
-- **Validation**:
-  - `npm run rooms:test:file -- scripts/tests/laboratory-ui-evaluation-regressions.test.ts scripts/tests/laboratory-waveform-runtime-regressions.test.ts scripts/tests/laboratory-runtime-truth-regressions.test.ts`
-
-## Sprint 6: God File Split - UI And CSS
-
-**Goal**: Make UI styling and rendering maintainable without a visual rewrite.
-
-**Demo/Validation**:
-
-- CSS is split into imported modules with no visual-contract regressions.
-- Large render files become domain modules with stable public wrappers.
-- The room still builds and imports as an installed room.
-
-### Task 6.1: Split `lab-theme.css` Into Layered CSS Modules
-
-- **Location**:
-  - Source: `rooms/laboratory/ui/lab-theme.css`
-  - Target candidates:
-    - `rooms/laboratory/ui/styles/base.css`
-    - `rooms/laboratory/ui/styles/layout.css`
-    - `rooms/laboratory/ui/styles/workspace.css`
-    - `rooms/laboratory/ui/styles/process.css`
-    - `rooms/laboratory/ui/styles/timeline.css`
-    - `rooms/laboratory/ui/styles/overlays.css`
-    - `rooms/laboratory/ui/styles/tools.css`
-  - Import owner: `rooms/laboratory/ui/style.css`
-- **Description**: Move CSS by visible surface. Preserve selector names unless a selector was already proven dead in Sprint 2.
-- **Complexity**: 7
-- **Dependencies**: Sprint 2
-- **Acceptance Criteria**:
-  - CSS import order is explicit.
-  - No broad color/theme rewrite happens in this cleanup.
-  - Removed CSS remains limited to proven-dead selectors.
-- **Validation**:
-  - UI evaluation tests.
-  - `npm run rooms:build`
-  - `npm run rooms:test:file -- scripts/tests/room-bundle-import-regressions.test.ts scripts/tests/room-host-source-regressions.test.ts`
-  - Optional Electron smoke screenshot if app mode is available.
-
-### Task 6.2: Split Workspace Surface Rendering
-
-- **Location**:
-  - Source: `rooms/laboratory/ui/workspace-surface.ts`
-  - Target candidates:
-    - `rooms/laboratory/ui/workspace/source-panel.ts`
-    - `rooms/laboratory/ui/workspace/preview-panel.ts`
-    - `rooms/laboratory/ui/workspace/asset-strip.ts`
-    - `rooms/laboratory/ui/workspace/analysis-controls.ts`
-- **Description**: Extract pure render helpers by panel. Keep `renderWorkspaceSurface` as the compatibility wrapper.
+### Task 4.5: Remove Stage UI Metadata
+- **Location**: `rooms/laboratory/ui/lab-root.ts`, `rooms/laboratory/ui/lab-layout.ts`, `rooms/laboratory/ui/lab-drawer.ts`, `rooms/laboratory/ui/tool-management-overlay.ts`, `rooms/laboratory/ui/lab-theme.css`
+- **Description**: Remove `data-stage`, `LabStageSurface`, and any CSS or render logic that exists only for stage metadata.
 - **Complexity**: 6
-- **Dependencies**: Sprint 2
+- **Dependencies**: Task 4.4
 - **Acceptance Criteria**:
-  - No DOM behavior changes.
-  - Tests that parse workspace markup still pass with minimal fixture updates.
+  - UI renders from workspace, process, report, and project state rather than stage labels.
+  - No `data-stage` selector is required by CSS or tests.
 - **Validation**:
-  - `npm run rooms:test:file -- scripts/tests/laboratory-source-ui-regressions.test.ts scripts/tests/laboratory-linked-audio-lineage-ui-regressions.test.ts`
+  - `rg -n "data-stage|LabStageSurface|currentStage" rooms/laboratory/ui rooms/laboratory/ui/*.css rooms/laboratory/ui/styles`
+  - `npm run rooms:test:file -- scripts/tests/laboratory-source-ui-regressions.test.ts scripts/tests/laboratory-workspace-runtime-regressions.test.ts scripts/tests/laboratory-ui-evaluation-regressions.test.ts`
 
-### Task 6.3: Split Waveform Timeline Rendering
+## Sprint 5: Remove Old UI Fallbacks
+**Goal**: Remove UI fallback paths that only existed for older Laboratory shells, while keeping legitimate translation fallbacks.
+**Demo/Validation**:
+- UI tests pass with fallback UI remnants removed.
+- Runtime i18n remains resilient through explicit catalog fallback behavior.
 
-- **Location**:
-  - Source: `rooms/laboratory/ui/lab-waveform-timeline-render.ts`
-  - Target candidates:
-    - `rooms/laboratory/ui/timeline/timeline-axis.ts`
-    - `rooms/laboratory/ui/timeline/timeline-selection.ts`
-    - `rooms/laboratory/ui/timeline/timeline-execution-panels.ts`
-    - `rooms/laboratory/ui/timeline/timeline-audio-focus.ts`
-- **Description**: Move independent timeline render sections into focused modules. Keep `renderLabWaveformTimeline` stable.
-- **Complexity**: 7
+### Task 5.1: Remove Legacy Source And Layout Copy
+- **Location**: `rooms/laboratory/ui/lab-source-retry-copy.ts`, `rooms/laboratory/ui/project-source-import.ts`, `rooms/laboratory/ui/workspace-surface.ts`, `rooms/laboratory/ui/lab-root.ts`
+- **Description**: Remove old source retry/helper copy that duplicates current project import UI behavior. Keep error copy that is still emitted by active source actions.
+- **Complexity**: 4
+- **Dependencies**: Sprint 4
+- **Acceptance Criteria**:
+  - No old local-copy helper copy remains.
+  - Source import still presents valid local, URL, and YouTube states for supported media/audio flows.
+- **Validation**:
+  - `npm run rooms:test:file -- scripts/tests/laboratory-source-intake-regressions.test.ts scripts/tests/laboratory-source-ui-regressions.test.ts`
+
+### Task 5.2: Remove UI Shell Fallbacks
+- **Location**: `rooms/laboratory/ui/lab-root.ts`, `rooms/laboratory/ui/lab-layout.ts`, `rooms/laboratory/ui/lab-center-panel.ts`, `rooms/laboratory/ui/lab-drawer.ts`, `rooms/laboratory/ui/project-workspace-overlay.ts`
+- **Description**: Remove fallback rendering paths that display old shell or empty workbench variants no longer reachable after the current project workspace flow.
+- **Complexity**: 6
+- **Dependencies**: Sprint 4
+- **Acceptance Criteria**:
+  - Empty/error states are still intentional and testable.
+  - No branch exists only to support the removed stage shell or subtitle feature.
+- **Validation**:
+  - `rg -n "fallback|legacy|compat|deprecated" rooms/laboratory/ui -g '*.ts'`
+  - `npm run rooms:test:file -- scripts/tests/laboratory-workspace-runtime-regressions.test.ts scripts/tests/laboratory-project-management-regressions.test.ts`
+
+### Task 5.3: Keep Legitimate I18n Fallbacks Explicit
+- **Location**: `rooms/laboratory/ui/lab-i18n.ts`, `rooms/laboratory/ui/lab-runtime-i18n.ts`, `rooms/laboratory/runtime/lab-i18n.ts`
+- **Description**: Keep translation fallback mechanics, but rename or document them as catalog defaults if the term `fallback` causes inventory noise.
+- **Complexity**: 3
+- **Dependencies**: Sprint 5.2
+- **Acceptance Criteria**:
+  - Translation behavior remains intact.
+  - Cleanup inventory no longer treats valid i18n defaults as old UI fallback targets, or the plan documents why they remain.
+- **Validation**:
+  - `npm run rooms:test:file -- scripts/tests/i18n-ui-regressions.test.ts scripts/tests/i18n-language-loader-regressions.test.ts`
+
+## Sprint 6: CSS Prune
+**Goal**: Delete unused Laboratory CSS classes after code and feature cleanup have made the inventory stable.
+**Demo/Validation**:
+- CSS inventory has no stale candidates except intentionally documented dynamic class names.
+- Visual contract tests pass.
+
+### Task 6.1: Re-run CSS Inventory After Code Cleanup
+- **Location**: `rooms/laboratory/ui/style.css`, `rooms/laboratory/ui/lab-theme.css`, `rooms/laboratory/ui/styles/base.css`, `rooms/laboratory/ui/styles/project-workspace.css`, `rooms/laboratory/main-functions/media-analysis/styles.css`
+- **Description**: Re-run `npm run laboratory:cleanup:inventory` after Sprints 2-5. Use the fresh `possiblyUnused` list rather than the initial 40-class list.
+- **Complexity**: 2
+- **Dependencies**: Sprints 2 through 5
+- **Acceptance Criteria**:
+  - Fresh CSS candidate list is available.
+  - Any dynamic class generation is verified with `rg`.
+- **Validation**:
+  - `npm run laboratory:cleanup:inventory`
+
+### Task 6.1a: Decide Media Analysis Stylesheet Fate
+- **Location**: `rooms/laboratory/main-functions/media-analysis/styles.css`
+- **Description**: Before selector deletion, decide whether this file is an obsolete stylesheet entry or a stylesheet that should be restored. It currently imports missing-looking `./styles/edit.css` and `./styles/profile.css` paths, so it must not be treated as normal selector inventory without this decision.
+- **Complexity**: 3
 - **Dependencies**: Task 6.1
 - **Acceptance Criteria**:
-  - Snapshot extraction helpers in tests still find expected panels.
-  - Execution-chain render ownership remains unchanged.
+  - The file is deleted if obsolete, or repaired if it is still part of a valid entrypoint.
+  - Cleanup inventory no longer reports misleading CSS state from this file.
 - **Validation**:
-  - `npm run rooms:test:file -- scripts/tests/laboratory-ui-evaluation-regressions.test.ts scripts/tests/laboratory-waveform-runtime-regressions.test.ts`
+  - `rg -n "main-functions/media-analysis/styles.css|media-analysis/styles.css" rooms/laboratory scripts/tests`
+  - `npm run laboratory:cleanup:inventory`
 
-## Sprint 7: Final Hardening And Documentation
-
-**Goal**: Lock the cleanup behind tests and document the new ownership boundaries.
-
-**Demo/Validation**:
-
-- Full room checks pass.
-- Cleanup inventory shows lower LOC in the original god files.
-- Follow-up work can extend Laboratory without reintroducing dead layers.
-
-### Task 7.1: Update Laboratory Architecture Notes
-
-- **Location**:
-  - `LABORATORY.md`
-  - Optional new `rooms/laboratory/README.md` section if room-local ownership needs to live with code.
-- **Description**: Document source-of-truth boundaries, generated installed-copy policy, main runtime modules, UI/CSS module ownership, and supported legacy/hydration policy.
-- **Complexity**: 3
-- **Dependencies**: Sprints 2-6
-- **Acceptance Criteria**:
-  - New contributors can identify where to add UI, selector, store, and host logic.
-  - The doc explicitly says not to edit `data/rooms/laboratory` directly.
-- **Validation**:
-  - Documentation review plus `rg "data/rooms/laboratory" LABORATORY.md rooms/laboratory/README.md`
-
-### Task 7.2: Add Regression Coverage For Removed Legacy Paths
-
-- **Location**:
-  - `scripts/tests/laboratory-*.test.ts`
-- **Description**: Where legacy behavior is intentionally removed, add tests that assert the new boundary rather than leaving stale expectations deleted without replacement.
+### Task 6.2: Delete Proven Unused CSS Selectors
+- **Location**: `rooms/laboratory/ui/lab-theme.css`, `rooms/laboratory/ui/styles/base.css`, `rooms/laboratory/ui/styles/project-workspace.css`, `rooms/laboratory/main-functions/media-analysis/styles.css`
+- **Description**: Remove selectors whose class names are absent from UI source, tests, HTML, and dynamic class builders. Initial likely candidates include stage/header preview remnants and right-context/intent-preview classes, but only the fresh inventory should drive deletion.
 - **Complexity**: 5
-- **Dependencies**: Sprint 3
+- **Dependencies**: Task 6.1a
 - **Acceptance Criteria**:
-  - Tests distinguish supported migration from unsupported retired payloads.
-  - No test relies on generated installed source paths.
+  - Deleted selectors have no source references.
+  - Remaining CSS files still form the same entry chain from `ui/style.css`.
+  - No CSS import path is broken.
 - **Validation**:
-  - Relevant focused tests plus `npm run rooms:test:core` when practical.
+  - `rg -n "<deleted-class-name>" rooms/laboratory scripts/tests`
+  - `npm run rooms:test:file -- scripts/tests/room-layout-contract-regressions.test.ts scripts/tests/laboratory-source-ui-regressions.test.ts`
+
+### Task 6.3: Update Cleanup Gate Expectations If Needed
+- **Location**: `rooms/laboratory/scripts/laboratory-cleanup-inventory.ts`, `rooms/laboratory/scripts/laboratory-dead-code-gate.ts`
+- **Description**: If the cleanup tool flags dynamic class names incorrectly, add narrow keep-list logic or improve class detection rather than leaving recurring false positives.
+- **Complexity**: 4
+- **Dependencies**: Task 6.2
+- **Acceptance Criteria**:
+  - Gate catches real dead code.
+  - False positives are minimized and documented in tool logic.
+- **Validation**:
+  - `npm run laboratory:cleanup:inventory`
+  - `npm run laboratory:cleanup:gate`
+
+## Sprint 7: Final Regression And Packaging
+**Goal**: Prove Laboratory still builds and runs as a media/audio workbench after cleanup.
+**Demo/Validation**:
+- Typecheck, targeted tests, room build, and cleanup gate pass.
+- Installed room parity tests no longer expect subtitle artifacts.
+
+### Task 7.1: Run Targeted Laboratory Regression Set
+- **Location**: `scripts/tests`
+- **Description**: Run the focused Laboratory suites most likely to catch feature contract, store, UI, and host regressions.
+- **Complexity**: 3
+- **Dependencies**: Sprints 2 through 6
+- **Acceptance Criteria**:
+  - All targeted suites pass or are updated for the intentional two-feature contract.
+- **Validation**:
+  - `npm run rooms:test:file -- scripts/tests/laboratory-host-import-smoke-regressions.test.ts scripts/tests/laboratory-host-action-runtime-regressions.test.ts scripts/tests/laboratory-store-runtime-regressions.test.ts scripts/tests/laboratory-source-ui-regressions.test.ts scripts/tests/laboratory-workspace-runtime-regressions.test.ts scripts/tests/laboratory-state-persistence-v2-regressions.test.ts scripts/tests/laboratory-media-profile-installed-parity-regressions.test.ts scripts/tests/laboratory-media-edit-installed-parity-regressions.test.ts`
+
+### Task 7.2: Run Global Room Validation
+- **Location**: repo root
+- **Description**: Run broad room validation after targeted suites pass.
+- **Complexity**: 4
+- **Dependencies**: Task 7.1
+- **Acceptance Criteria**:
+  - Typecheck passes.
+  - Room build passes.
+  - Core room tests pass or known unrelated failures are documented.
+- **Validation**:
+  - `npm run rooms:typecheck`
+  - `npm run rooms:build`
+  - `npm run rooms:test:core`
 
 ### Task 7.3: Final Cleanup Gate
-
-- **Location**:
-  - Whole Laboratory source and relevant tests.
-- **Description**: Run the final validation matrix and compare the before/after inventory.
-- **Complexity**: 4
-- **Dependencies**: All prior tasks
+- **Location**: `rooms/laboratory`
+- **Description**: Run the cleanup inventory and gate one final time and confirm no unintended dead-code or CSS findings remain.
+- **Complexity**: 2
+- **Dependencies**: Task 7.2
 - **Acceptance Criteria**:
-  - God-file LOC drops are recorded.
-  - Dead CSS and unused file candidates are either removed or documented with rationale.
-  - Typecheck, lint, and focused tests pass.
+  - `laboratory:cleanup:gate` passes.
+  - Any remaining inventory marker is intentional and documented.
 - **Validation**:
-  - `npm run rooms:typecheck`
-  - `npm run rooms:lint`
-  - `npm run rooms:test:file -- scripts/tests/laboratory-host-import-smoke-regressions.test.ts scripts/tests/laboratory-ui-evaluation-regressions.test.ts`
-  - `npm run rooms:test:core` if runtime allows.
+  - `npm run laboratory:cleanup:inventory`
+  - `npm run laboratory:cleanup:gate`
 
 ## Testing Strategy
+- Start with cleanup scripts to avoid guessing about dead code.
+- Use typecheck after each subtitle-removal slice because TypeScript will reveal hidden contract references.
+- Keep test updates in the same sprint as the behavior they intentionally change.
+- Run UI-focused tests after removing fallback UI and CSS.
+- Run room build only after imports and CSS entrypoints are stable.
 
-- **Always run after each sprint**:
-  - `npm run rooms:typecheck`
-  - `npm run rooms:test:file -- scripts/tests/laboratory-host-import-smoke-regressions.test.ts scripts/tests/laboratory-ui-evaluation-regressions.test.ts`
-- **Run when touching store/hydration**:
-  - `scripts/tests/laboratory-store-runtime-regressions.test.ts`
-  - `scripts/tests/laboratory-state-persistence-v2-regressions.test.ts`
-  - `scripts/tests/laboratory-project-management-regressions.test.ts`
-- **Run when touching source/workspace UI**:
-  - `scripts/tests/laboratory-source-ui-regressions.test.ts`
-  - `scripts/tests/laboratory-source-intake-regressions.test.ts`
-  - `scripts/tests/laboratory-media-source-portability-regressions.test.ts`
-  - `scripts/tests/laboratory-workspace-runtime-regressions.test.ts`
-  - `scripts/tests/laboratory-linked-audio-lineage-ui-regressions.test.ts`
-  - `scripts/tests/laboratory-asset-lineage-regressions.test.ts`
-- **Run when touching execution layers**:
-  - `scripts/tests/laboratory-execution-runtime-regressions.test.ts`
-  - `scripts/tests/laboratory-suggestion-runtime-regressions.test.ts`
-  - `scripts/tests/laboratory-selection-runtime-regressions.test.ts`
-  - `scripts/tests/laboratory-runtime-truth-regressions.test.ts`
-  - `scripts/tests/laboratory-stage-decoupling-regressions.test.ts`
-- **Run when touching host/process/reporting**:
-  - `scripts/tests/laboratory-host-action-runtime-regressions.test.ts`
-  - `scripts/tests/laboratory-audio-runtime-regressions.test.ts`
-  - `scripts/tests/laboratory-report-composition-v2-regressions.test.ts`
-  - `scripts/tests/laboratory-media-edit-behavior-regressions.test.ts`
-  - `scripts/tests/laboratory-scope-aware-analysis-regressions.test.ts`
-  - `scripts/tests/laboratory-media-edit-installed-parity-regressions.test.ts`
-  - `scripts/tests/laboratory-media-profile-installed-parity-regressions.test.ts`
-- **Final pass**:
-  - `npm run rooms:check`
-  - `npm run rooms:test:core` if the branch has enough time for the larger room suite.
+Recommended command order:
+1. `npm run laboratory:cleanup:inventory`
+2. `npm run laboratory:cleanup:gate`
+3. `npm run rooms:typecheck`
+4. `npm run rooms:test:file -- scripts/tests/laboratory-host-import-smoke-regressions.test.ts scripts/tests/laboratory-source-ui-regressions.test.ts scripts/tests/laboratory-workspace-runtime-regressions.test.ts`
+5. `npm run rooms:test:file -- scripts/tests/room-manifest-regressions.test.ts scripts/tests/room-page-regressions.test.ts scripts/tests/scene-debug-room-regressions.test.ts`
+6. `npm run rooms:build`
+7. `npm run rooms:test:core`
 
-## Potential Risks And Gotchas
-
-- Static CSS scans can lie because Laboratory uses template strings, conditional class fragments, and runtime-preserved DOM nodes. Use markup tests or runtime coverage before deleting non-obvious selectors.
-- Dynamic room roots can look unused to TS import analysis. Manifest assets, i18n directories, room-local tool data, Python/conf payloads, and copied installed-room files need an explicit keep-list.
-- `knip:strict` is currently too noisy at repo level. Use a Laboratory-scoped gate or it will bury real cleanup signals.
-- `lab-types.ts` is high fan-in. Splitting it too early can create import churn across host, UI, runtime, and tests. Prefer removing obsolete fields first, then split types by domain only if fan-in pain remains.
-- Some fallbacks are operational safety, not legacy debt. Tool fallbacks for model/process runners and source metadata extraction should stay unless an equivalent hard-failure UX is deliberately chosen.
-- `subtitle-analysis` is both marked legacy-internal and still present in manifest/workbench feature lists. Retiring it is a product decision, not just a cleanup step.
-- Installed room parity tests may build temporary copies. Do not "fix" failures by editing `data/rooms/laboratory`; fix source and rebuild/sync.
-- Current worktree has many unrelated changes and generated deletions. Implementation commits should avoid mixing Laboratory cleanup with room-source/build-data separation work unless explicitly requested.
-
-## Open Decisions Before Implementation
-
-- Should `subtitle-analysis` remain an internal transcript support feature, or should it be removed from Laboratory entirely?
-- Should the cleanup add durable audit scripts to `package.json`, or keep audit commands as PR-local/checklist-only tooling?
-- Is the desired end state smaller files only, or also stricter import boundaries that prevent future god-file growth?
-- Should runtime screenshot smoke be required for CSS deletion, or are existing UI markup tests enough for this pass?
-
-## Planner Review Notes
-
-- Start with confirmed deletion and audit gates before splitting god files. A god-file split without deletion first would preserve too much stale surface area.
-- Do not remove every fallback marker. Process runner fallbacks, metadata extraction fallbacks, and model availability fallbacks may be active user-facing safety behavior.
-- Keep first-pass splits compatible through wrapper exports. Import-path rewrites can happen later after the domain boundaries prove stable.
-- Treat `subtitle-analysis` as the main product decision in the cleanup. It can be hidden, renamed as transcript support, or removed, but partial retirement is the highest-risk path.
-- Subagent review was run on 2026-04-26 and its actionable feedback was incorporated: dynamic keep-list, stronger `subtitle-analysis` chain, durable inventory script, stronger CSS validation, CSS build validation, broader Laboratory test matrix, and golden-case centralization tests.
+## Potential Risks & Gotchas
+- Saved projects were deleted before implementation, so `subtitleAnalysis/currentStage` migration is intentionally skipped. If old project data is reintroduced later, this cleanup may need a one-off importer or reset path.
+- The cleanup inventory protects path-loaded data. After subtitle removal, keep-list behavior may need to change so subtitle tool JSON is not preserved by default.
+- CSS inventory is conservative. Dynamic class names and state attributes must be checked manually before deleting selectors.
+- `deriveLegacyStage` must not be removed before `currentStage` is removed from store/persistence; otherwise the store dispatch loop will break.
+- Tests that mention subtitle may be generic room contract tests, not subtitle-only tests. Update expected feature lists carefully.
+- `rooms/laboratory/main-functions/media-analysis/styles.css` currently imports missing-looking `./styles/edit.css` and `./styles/profile.css` paths. Verify whether this file is obsolete before deleting or altering it.
+- I18n fallback mechanics are probably valid defaults, not old UI fallback residue. Avoid removing translation resilience.
 
 ## Rollback Plan
-
-- Keep each sprint atomic and committable.
-- For deletion commits, record the exact `rg` proof and validation command in the commit body or PR notes.
-- If a deletion breaks behavior, revert the specific deletion commit instead of rolling back unrelated centralization work.
-- If a god-file split introduces circular imports or lifecycle bugs, keep the new domain files but restore the old public wrapper until tests are green.
-- Regenerate installed room output only from source after rollback decisions are complete.
+- Keep each sprint as a separate commit-sized change.
+- If subtitle removal breaks startup despite deleted saved projects, restore the last safe state normalization boundary and add a narrow reset path rather than reintroducing the feature.
+- If CSS deletion causes layout regressions, revert only the CSS prune commit and rerun inventory with a dynamic keep-list.
+- If stage removal is too risky, stop after deleting deprecated selector exports and leave `currentStage` as migration-only state for a later sprint.
+- If broad room tests fail for unrelated rooms, keep targeted Laboratory validation results and document the unrelated failures before proceeding.

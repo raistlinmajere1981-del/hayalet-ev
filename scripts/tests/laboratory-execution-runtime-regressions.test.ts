@@ -2675,7 +2675,19 @@ test("passive descriptor and bridge advisories are summary-only and avoid execut
   assert.notEqual(localizedAlternatives.summary, alternatives.summary);
   assert.equal(localizedCandidate.status, candidate.status);
   assert.equal(localizedCandidate.confidence, candidate.confidence);
-  assert.deepEqual(localizedAlternatives.alternatives, alternatives.alternatives);
+  assert.notDeepEqual(localizedAlternatives.alternatives, alternatives.alternatives);
+  assert.doesNotMatch(
+    [
+      localizedCandidate.summary,
+      ...(localizedCandidate.notes ?? []),
+      localizedAlternatives.summary,
+      ...localizedAlternatives.alternatives.flatMap(function (alternative) {
+        return [alternative.label, alternative.summary, alternative.tradeoff];
+      }),
+      localizedAlternatives.comparisonNote ?? "",
+    ].join(" "),
+    /This path may require|Readiness status is|Payload preview asks|Broader segment review|An alternative approach|The selected path still needs review/
+  );
   assert.equal(countLocalizedAdvisories(candidate.summary, "en"), 4);
   assert.equal(countLocalizedAdvisories(localizedCandidate.summary, "tr"), 4);
   assert.equal(countLocalizedAdvisories(alternatives.summary, "en"), 4);

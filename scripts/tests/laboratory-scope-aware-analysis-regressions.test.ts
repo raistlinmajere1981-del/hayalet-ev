@@ -73,6 +73,19 @@ test("laboratory workbench preserves scope and density controls without dropping
     activePreviewArtifactId: "preview-1",
     activeLiveFindingsStreamId: "media-analysis",
     controlsCollapsed: true,
+    operationSettings: {
+      "clip-export": {
+        format: "webm",
+        includeAudio: false,
+      },
+    },
+    analysisSettings: {
+      modules: {
+        "sound-events": {
+          threshold: 0.42,
+        },
+      },
+    },
   });
 
   assert.equal(workbench.activeModuleId, "media-analysis");
@@ -81,6 +94,11 @@ test("laboratory workbench preserves scope and density controls without dropping
   assert.equal(workbench.activePreviewArtifactId, "preview-1");
   assert.equal(workbench.activeLiveFindingsStreamId, "media-analysis");
   assert.equal(workbench.controlsCollapsed, true);
+  assert.equal(toRecord(toRecord(workbench.operationSettings)["clip-export"])["format"], "webm");
+  assert.equal(
+    toRecord(toRecord(toRecord(workbench.analysisSettings)["modules"])["sound-events"])["threshold"],
+    0.42,
+  );
 });
 
 test("process normalization freezes scope snapshots after process start and carries v2 report fields", () => {

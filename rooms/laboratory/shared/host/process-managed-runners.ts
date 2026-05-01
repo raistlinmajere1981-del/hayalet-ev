@@ -50,7 +50,8 @@ type LaboratoryManagedProcessRunnersDeps = {
     moduleId: string,
     sampleWindowSeconds: number,
     tileCount: unknown,
-    label?: string
+    label?: string,
+    filterGraph?: string | null
   ) => Promise<unknown>;
   generateProcessSpectrogram: (
     runtime: LaboratoryRecord,

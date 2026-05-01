@@ -1,3 +1,6 @@
+import { normalizeLabAnalysisModuleSettings } from "../../../models/lab-types.js";
+import type { LabSettingsRecord } from "../../../models/lab-types.js";
+
 type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryAudioProcessRuntime = LaboratoryRecord;
@@ -58,6 +61,12 @@ type LaboratoryLocalProcessResult = {
   status: string;
   summary: string;
   warnings: string[];
+};
+
+type LaboratoryTranscriptSampleOptions = {
+  language?: string | null;
+  modelPolicy?: string | null;
+  sampleSeconds: number;
 };
 
 type AudioAnalysisLocalProcessRunnerDeps = {
@@ -155,7 +164,7 @@ type AudioAnalysisLocalProcessRunnerDeps = {
     jobId: string,
     target: LaboratoryAudioTargetRecord,
     artifactBase: string,
-    transcriptSampleSeconds: number
+    transcriptSampleSeconds: number | LaboratoryTranscriptSampleOptions
   ) => Promise<unknown>;
   normalizeProcessArtifact: (value: unknown) => LaboratoryProcessArtifactRecord;
   resolveOpenSmileProsodyRuntime: (runtime: LaboratoryAudioProcessRuntime) => unknown | null;
@@ -252,11 +261,78 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
       .filter((artifactId): artifactId is string => artifactId !== null);
   }
 
+  function getModuleSettings(
+    project: LaboratoryProjectRecord,
+    moduleId: string
+  ): LabSettingsRecord {
+    const workbench = toRecord(project["workbench"]);
+    const analysisSettings = toRecord(workbench["analysisSettings"]);
+    const moduleSettings = toRecord(analysisSettings["modules"]);
+    return normalizeLabAnalysisModuleSettings(moduleId, moduleSettings[moduleId]);
+  }
+
+  function readStringSetting(settings: LabSettingsRecord, key: string, fallback: string): string {
+    const value = settings[key];
+    return typeof value === "string" && value.trim() !== "" ? value : fallback;
+  }
+
+  function readNumberSetting(settings: LabSettingsRecord, key: string, fallback: number): number {
+    const value = settings[key];
+    return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+  }
+
+  function getSampleWindowSeconds(settings: LabSettingsRecord, fallback: number): number {
+    return Math.max(
+      5,
+      Math.min(600, Math.round(readNumberSetting(settings, "sampleWindowSeconds", fallback)))
+    );
+  }
+
+  function getSensitivityLevel(
+    settings: LabSettingsRecord,
+    baseLevel: "low" | "medium" | "high",
+    evidenceCount: number
+  ): "low" | "medium" | "high" {
+    const sensitivity = readStringSetting(settings, "sensitivity", "medium");
+    if (sensitivity === "high" && evidenceCount > 0 && baseLevel === "low") {
+      return "medium";
+    }
+    if (sensitivity === "low" && evidenceCount < 3 && baseLevel === "medium") {
+      return "low";
+    }
+    return baseLevel;
+  }
+
+  function getArtifactPath(artifact: unknown): string | null {
+    const record = toProcessArtifactRecord(artifact);
+    return typeof record.path === "string" && record.path.trim() !== "" ? record.path : null;
+  }
+
+  function buildSampleWindowFilter(sampleWindowSeconds: number) {
+    return `atrim=0:${String(sampleWindowSeconds)},asetpts=N/SR/TB`;
+  }
+
+  function fixedFilterNumber(value: number): string {
+    return Number(value.toFixed(3)).toString();
+  }
+
+  function getDenoiseNoiseFloor(settings: LabSettingsRecord, fallback = -25): number {
+    const denoise = readStringSetting(settings, "denoise", "medium");
+    if (denoise === "strong") {
+      return -35;
+    }
+    if (denoise === "light") {
+      return -18;
+    }
+    return fallback;
+  }
+
   type RecoveryExperimentConfig = {
     detail: string;
     filterGraph: string;
     label: string;
     manifestLabel: string;
+    settings?: LabSettingsRecord;
     summary: string;
     title: string;
     warning: string;
@@ -290,6 +366,7 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
         {
           experiment: moduleId,
           scope: "audio-recovery",
+          settingsUsed: config.settings || {},
         }
       )
     );
@@ -312,6 +389,7 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
             {
               experiment: moduleId,
               sourceArtifactId: typeof filteredAudio.id === "string" ? filteredAudio.id : null,
+              settingsUsed: config.settings || {},
             }
           )
         )
@@ -322,6 +400,7 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
       generatedAt: new Date().toISOString(),
       target: toRecord(clone(target)),
       filterGraph: config.filterGraph,
+      settingsUsed: config.settings || {},
       artifacts: [filteredAudio, spectrogram].filter(Boolean),
       detail: config.detail,
       summary: config.summary,
@@ -335,6 +414,7 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
       {
         experiment: moduleId,
         filterGraph: config.filterGraph,
+        settingsUsed: config.settings || {},
       }
     );
     const artifacts = compactArtifacts([spectrogram, filteredAudio, manifestArtifact]);
@@ -370,6 +450,9 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
     _moduleOutputDir: string,
     moduleId: string
   ): Promise<LaboratoryLocalProcessResult> {
+    const settings = getModuleSettings(project, moduleId);
+    const sampleWindowSeconds = getSampleWindowSeconds(settings, 60);
+    const silenceThresholdDb = readNumberSetting(settings, "silenceThresholdDb", -38);
     const audioProbe = toAudioProbeRecord(
       await runAudioStructureProbe(runtime, project, requestId, jobId, target)
     );
@@ -385,10 +468,10 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
         createProcessFinding(
           moduleId,
           "measured",
-          silenceCount > 3 ? "medium" : "low",
+          getSensitivityLevel(settings, silenceCount > 3 ? "medium" : "low", silenceCount),
           "medium",
           "Silence pockets detected",
-          `Silence detection found ${silenceCount} pocket(s) inside the sampled audio path.`,
+          `Silence detection found ${silenceCount} pocket(s) in the ${sampleWindowSeconds}s focus window using a ${silenceThresholdDb} dB threshold.`,
           silenceCount,
           []
         )
@@ -396,13 +479,28 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
     }
     if (typeof volume.meanVolumeDb === "number" && Number.isFinite(volume.meanVolumeDb)) {
       warnings.push(`Mean volume: ${volume.meanVolumeDb} dB`);
+      if (volume.meanVolumeDb <= silenceThresholdDb && silenceCount === 0) {
+        findings.push(
+          createProcessFinding(
+            moduleId,
+            "measured",
+            getSensitivityLevel(settings, "low", 1),
+            "medium",
+            "Low-volume window detected",
+            `Mean volume ${volume.meanVolumeDb} dB is below the configured ${silenceThresholdDb} dB silence threshold for the ${sampleWindowSeconds}s focus window.`,
+            1,
+            []
+          )
+        );
+      }
     }
+    warnings.push(`Signal window: ${sampleWindowSeconds}s @ ${silenceThresholdDb} dB`);
 
     return {
       artifacts: [],
       findings: findings,
       status: "ready",
-      summary: "Signal health checks finished on the current target.",
+      summary: `Signal health checks finished on a ${sampleWindowSeconds}s configured focus window.`,
       warnings: warnings,
     };
   }
@@ -419,12 +517,38 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
   ): Promise<LaboratoryLocalProcessResult> {
     await ensureProcessRuntimeDirectories(runtime, project, requestId, moduleOutputDir);
 
-    const spectrogram = await generateProcessSpectrogram(
+    const settings = getModuleSettings(project, moduleId);
+    const sampleWindowSeconds = getSampleWindowSeconds(settings, 60);
+    const windowedAudio = await generateFilteredAudioArtifact(
       runtime,
       project,
       requestId,
       jobId,
       target,
+      `${artifactBase}-window`,
+      moduleOutputDir,
+      moduleId,
+      buildSampleWindowFilter(sampleWindowSeconds),
+      `Spectral ${sampleWindowSeconds}s Window`,
+      {
+        settingsUsed: settings,
+        windowSeconds: sampleWindowSeconds,
+      }
+    );
+    const windowedAudioPath = getArtifactPath(windowedAudio);
+    const scopedTarget =
+      windowedAudioPath === null
+        ? target
+        : {
+            ...target,
+            path: windowedAudioPath,
+          };
+    const spectrogram = await generateProcessSpectrogram(
+      runtime,
+      project,
+      requestId,
+      jobId,
+      scopedTarget,
       artifactBase,
       moduleOutputDir,
       moduleId
@@ -434,7 +558,7 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
       project,
       requestId,
       jobId,
-      target,
+      scopedTarget,
       artifactBase,
       moduleOutputDir,
       moduleId
@@ -444,12 +568,12 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
       project,
       requestId,
       jobId,
-      target,
+      scopedTarget,
       artifactBase,
       moduleOutputDir,
       moduleId
     );
-    const artifacts = compactArtifacts([spectrogram, waveform, descriptorArtifact]);
+    const artifacts = compactArtifacts([windowedAudio, spectrogram, waveform, descriptorArtifact]);
     const descriptorArtifactRecord = descriptorArtifact
       ? toProcessArtifactRecord(descriptorArtifact)
       : null;
@@ -461,17 +585,17 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
             createProcessFinding(
               moduleId,
               "derived",
-              "low",
+              getSensitivityLevel(settings, "low", 4),
               "medium",
               "Spectral descriptor baseline captured",
-              "Centroid, rolloff, flatness, and flux summaries were derived from the active audio target.",
+              `Centroid, rolloff, flatness, and flux summaries were derived from a ${sampleWindowSeconds}s configured audio window.`,
               4,
               [String(descriptorArtifactRecord.id || "")]
             ),
           ]
         : [],
       status: "ready",
-      summary: "Spectral artifacts and descriptor summaries were generated for the current target.",
+      summary: `Spectral artifacts and descriptor summaries were generated from a ${sampleWindowSeconds}s configured window.`,
       warnings: [],
     };
   }
@@ -497,6 +621,13 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
       };
     }
 
+    const settings = getModuleSettings(project, moduleId);
+    const sampleSeconds = Math.round(readNumberSetting(settings, "sampleSeconds", 45));
+    const transcriptOptions: LaboratoryTranscriptSampleOptions = {
+      language: readStringSetting(settings, "language", "auto"),
+      modelPolicy: readStringSetting(settings, "modelPolicy", "selected"),
+      sampleSeconds,
+    };
     const transcriptResult = toTranscriptResultRecord(
       await maybeRunWhisperProfileSample(
         runtime,
@@ -505,7 +636,7 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
         jobId,
         target,
         artifactBase,
-        45
+        transcriptOptions
       )
     );
     const transcriptArtifact = transcriptResult.artifact
@@ -530,7 +661,7 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
             "Transcript sample captured",
             `Transcript sampling returned ${
               transcriptText.split(/\s+/).filter(Boolean).length
-            } words for the active audio target.`,
+            } words from a ${sampleSeconds} second sample for the active audio target.`,
             1,
             [String(transcriptArtifactRecord.id || "")]
           ),
@@ -572,13 +703,46 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
       };
     }
 
+    const settings = getModuleSettings(project, moduleId);
+    const windowSeconds = Math.max(
+      0.5,
+      Math.min(10, readNumberSetting(settings, "windowSeconds", 3))
+    );
+    const silenceThresholdDb = readNumberSetting(settings, "silenceThresholdDb", -38);
+    const prosodyFocusAudio = await generateFilteredAudioArtifact(
+      runtime,
+      project,
+      requestId,
+      jobId,
+      target,
+      `${artifactBase}-prosody-focus`,
+      moduleOutputDir,
+      moduleId,
+      `silenceremove=stop_periods=-1:stop_duration=${fixedFilterNumber(
+        windowSeconds
+      )}:stop_threshold=${String(silenceThresholdDb)}dB`,
+      "Prosody Focus Audio",
+      {
+        settingsUsed: settings,
+        silenceThresholdDb,
+        windowSeconds,
+      }
+    );
+    const prosodyFocusPath = getArtifactPath(prosodyFocusAudio);
+    const prosodyTarget =
+      prosodyFocusPath === null
+        ? target
+        : {
+            ...target,
+            path: prosodyFocusPath,
+          };
     const extraction = toProsodyExtractionRecord(
       await runOpenSmileProsodyExtraction(
         runtime,
         project,
         requestId,
         jobId,
-        target,
+        prosodyTarget,
         artifactBase,
         moduleOutputDir,
         "prosody"
@@ -590,6 +754,7 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
     await writeJsonFile(summaryPath, {
       generatedAt: new Date().toISOString(),
       prosodySummary: prosodySummary,
+      settingsUsed: settings,
       target: toRecord(clone(target)),
     });
 
@@ -602,6 +767,7 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
         columnCount: Array.isArray(prosodySummary.columns) ? prosodySummary.columns.length : 0,
         frameCount:
           typeof prosodySummary.frameCount === "number" ? prosodySummary.frameCount : null,
+        settingsUsed: settings,
       }
     );
     const summaryArtifact = createProcessArtifact(
@@ -611,9 +777,10 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
       "Prosody Summary",
       {
         prosodySummary: prosodySummary,
+        settingsUsed: settings,
       }
     );
-    const artifacts = compactArtifacts([contourArtifact, summaryArtifact]);
+    const artifacts = compactArtifacts([prosodyFocusAudio, contourArtifact, summaryArtifact]);
     const artifactIds = artifacts
       .map(function (artifact) {
         return typeof artifact.id === "string" && artifact.id.trim() !== "" ? artifact.id : null;
@@ -639,14 +806,14 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
           "medium",
           "Prosody contour baseline captured",
           detailParts.length > 0
-            ? `openSMILE produced ${detailParts.join(", ")} for the active audio target.`
-            : "openSMILE produced a prosody contour baseline for the active audio target.",
+            ? `openSMILE produced ${detailParts.join(", ")} after applying the ${windowSeconds}s / ${silenceThresholdDb} dB prosody focus settings.`
+            : `openSMILE produced a prosody contour baseline after applying the ${windowSeconds}s / ${silenceThresholdDb} dB prosody focus settings.`,
           detailParts.length,
           artifactIds
         ),
       ],
       status: "ready",
-      summary: "Prosody contours and pacing metrics were generated for the current target.",
+      summary: "Prosody contours and pacing metrics were generated with the configured focus settings.",
       warnings: [],
     };
   }
@@ -673,6 +840,7 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
       };
     }
 
+    const settings = getModuleSettings(project, moduleId);
     const extraction = toProsodyExtractionRecord(
       await runOpenSmileProsodyExtraction(
         runtime,
@@ -688,10 +856,22 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
     const heuristic = toEmotionHeuristicRecord(
       buildEmotionHeuristicFromProsody(toProsodySummaryRecord(extraction.prosodySummary))
     );
+    const sensitivity = readStringSetting(settings, "heuristicSensitivity", "medium");
+    const heuristicScore =
+      typeof heuristic["score"] === "number" && Number.isFinite(heuristic["score"])
+        ? heuristic["score"]
+        : 0;
+    const adjustedConfidence =
+      sensitivity === "high" && Math.abs(heuristicScore) >= 2
+        ? "medium"
+        : sensitivity === "low"
+          ? "low"
+          : heuristic.confidence;
     const summaryPath = `${moduleOutputDir}/${artifactBase}-emotion.json`;
     await writeJsonFile(summaryPath, {
       emotionHeuristic: heuristic,
       generatedAt: new Date().toISOString(),
+      settingsUsed: settings,
       target: toRecord(clone(target)),
     });
 
@@ -702,6 +882,7 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
       "Emotion Heuristic Summary",
       {
         emotionHeuristic: heuristic,
+        settingsUsed: settings,
       }
     );
     const artifacts = compactArtifacts([summaryArtifact]);
@@ -716,8 +897,8 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
       typeof heuristic.disclaimer === "string" ? heuristic.disclaimer : "Heuristic output only.";
     const label = typeof heuristic.label === "string" ? heuristic.label : "Emotion label";
     const confidence =
-      typeof heuristic.confidence === "string" && heuristic.confidence.trim() !== ""
-        ? heuristic.confidence
+      typeof adjustedConfidence === "string" && adjustedConfidence.trim() !== ""
+        ? adjustedConfidence
         : "low";
 
     return {
@@ -750,6 +931,11 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
     moduleOutputDir: string,
     moduleId: string
   ): Promise<LaboratoryLocalProcessResult> {
+    const settings = getModuleSettings(project, moduleId);
+    const preset = readStringSetting(settings, "recoveryPreset", "speech");
+    const gain = readNumberSetting(settings, "gain", 2.2);
+    const lowpass = preset === "broadband" ? 12000 : preset === "hidden" ? 6400 : 4800;
+    const highpass = preset === "broadband" ? 40 : preset === "hidden" ? 120 : 80;
     return runRecoveryExperiment(
       runtime,
       project,
@@ -760,10 +946,13 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
       moduleOutputDir,
       moduleId,
       {
-        filterGraph:
-          "highpass=f=80,lowpass=f=4800,afftdn=nf=-25,acompressor=threshold=-18dB:ratio=2:attack=20:release=250,volume=2.2",
+        filterGraph: `highpass=f=${highpass},lowpass=f=${lowpass},afftdn=nf=${getDenoiseNoiseFloor(
+          settings,
+          -25
+        )},acompressor=threshold=-18dB:ratio=2:attack=20:release=250,volume=${fixedFilterNumber(gain)}`,
         label: "Signal Recovery Mix",
         manifestLabel: "Signal Recovery Manifest",
+        settings,
         title: "Signal recovery experiment generated",
         detail:
           "A broadband recovery pass combined denoising, band limiting, and light compression to surface masked content.",
@@ -785,6 +974,11 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
     moduleOutputDir: string,
     moduleId: string
   ): Promise<LaboratoryLocalProcessResult> {
+    const settings = getModuleSettings(project, moduleId);
+    const shiftHz = readNumberSetting(settings, "shiftHz", -120);
+    const lowHz = readNumberSetting(settings, "lowHz", 100);
+    const highHz = readNumberSetting(settings, "highHz", 5200);
+    const gain = readNumberSetting(settings, "gain", 2.1);
     return runRecoveryExperiment(
       runtime,
       project,
@@ -795,9 +989,12 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
       moduleOutputDir,
       moduleId,
       {
-        filterGraph: "afreqshift=shift=-120,highpass=f=100,lowpass=f=5200,volume=2.1",
+        filterGraph: `afreqshift=shift=${fixedFilterNumber(shiftHz)},highpass=f=${fixedFilterNumber(
+          lowHz
+        )},lowpass=f=${fixedFilterNumber(highHz)},volume=${fixedFilterNumber(gain)}`,
         label: "Frequency Shift Reversal",
         manifestLabel: "Frequency Shift Reversal Manifest",
+        settings,
         title: "Frequency-shift reversal variant generated",
         detail:
           "A small inverse frequency shift was applied to probe whether heterodyned or pitch-shifted material becomes more intelligible.",
@@ -817,6 +1014,10 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
     moduleOutputDir: string,
     moduleId: string
   ): Promise<LaboratoryLocalProcessResult> {
+    const settings = getModuleSettings(project, moduleId);
+    const centerHz = readNumberSetting(settings, "centerHz", 1700);
+    const widthHz = readNumberSetting(settings, "widthHz", 1800);
+    const gain = readNumberSetting(settings, "gain", 6);
     return runRecoveryExperiment(
       runtime,
       project,
@@ -827,9 +1028,12 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
       moduleOutputDir,
       moduleId,
       {
-        filterGraph: "bandpass=f=1700:w=1800,volume=6",
+        filterGraph: `bandpass=f=${fixedFilterNumber(centerHz)}:w=${fixedFilterNumber(
+          widthHz
+        )},volume=${fixedFilterNumber(gain)}`,
         label: "Band-pass Exploration",
         manifestLabel: "Band-pass Exploration Manifest",
+        settings,
         title: "Band-pass exploration variant generated",
         detail:
           "A focused mid-band isolation pass was generated to inspect speech-like or masked content inside the intelligibility range.",
@@ -850,6 +1054,10 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
     moduleOutputDir: string,
     moduleId: string
   ): Promise<LaboratoryLocalProcessResult> {
+    const settings = getModuleSettings(project, moduleId);
+    const lowHz = readNumberSetting(settings, "lowHz", 120);
+    const highHz = readNumberSetting(settings, "highHz", 4200);
+    const gain = readNumberSetting(settings, "gain", 2.6);
     return runRecoveryExperiment(
       runtime,
       project,
@@ -860,9 +1068,12 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
       moduleOutputDir,
       moduleId,
       {
-        filterGraph: "highpass=f=120,lowpass=f=4200,afftdn=nf=-20,volume=2.6",
+        filterGraph: `highpass=f=${fixedFilterNumber(lowHz)},lowpass=f=${fixedFilterNumber(
+          highHz
+        )},afftdn=nf=${getDenoiseNoiseFloor(settings, -20)},volume=${fixedFilterNumber(gain)}`,
         label: "Spectrogram-guided Recovery",
         manifestLabel: "Spectrogram-guided Recovery Manifest",
+        settings,
         title: "Spectrogram-guided recovery variant generated",
         detail:
           "A recovery pass emphasized the speech-intelligibility band so spectral ridges can be inspected before deeper transcription attempts.",
@@ -883,6 +1094,17 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
     moduleOutputDir: string,
     moduleId: string
   ): Promise<LaboratoryLocalProcessResult> {
+    const settings = getModuleSettings(project, moduleId);
+    const lowHz = readNumberSetting(settings, "lowHz", 220);
+    const highHz = readNumberSetting(settings, "highHz", 6400);
+    const gain = readNumberSetting(settings, "gain", 5.5);
+    const compression = readStringSetting(settings, "compression", "strong");
+    const compand =
+      compression === "off"
+        ? null
+        : compression === "light"
+          ? "compand=attacks=0:decays=0.35:points=-80/-80|-30/-18|-12/-8|0/-3"
+          : "compand=attacks=0:decays=0.25:points=-80/-80|-30/-12|-12/-6|0/-2";
     return runRecoveryExperiment(
       runtime,
       project,
@@ -893,10 +1115,17 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
       moduleOutputDir,
       moduleId,
       {
-        filterGraph:
-          "highpass=f=220,lowpass=f=6400,compand=attacks=0:decays=0.25:points=-80/-80|-30/-12|-12/-6|0/-2,volume=5.5",
+        filterGraph: [
+          `highpass=f=${fixedFilterNumber(lowHz)}`,
+          `lowpass=f=${fixedFilterNumber(highHz)}`,
+          compand,
+          `volume=${fixedFilterNumber(gain)}`,
+        ]
+          .filter(Boolean)
+          .join(","),
         label: "Hidden Pattern Extraction",
         manifestLabel: "Hidden Pattern Extraction Manifest",
+        settings,
         title: "Hidden-pattern extraction variant generated",
         detail:
           "Dynamic-range expansion and band limiting were applied to expose low-level or intermittently masked audio patterns.",
@@ -917,6 +1146,19 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
     moduleOutputDir: string,
     moduleId: string
   ): Promise<LaboratoryLocalProcessResult> {
+    const settings = getModuleSettings(project, moduleId);
+    const phaseMode = readStringSetting(settings, "phaseMode", "side");
+    const lowHz = readNumberSetting(settings, "lowHz", 100);
+    const highHz = readNumberSetting(settings, "highHz", 5200);
+    const gain = readNumberSetting(settings, "gain", 8);
+    const panFilter =
+      phaseMode === "left"
+        ? "pan=mono|c0=c0"
+        : phaseMode === "right"
+          ? "pan=mono|c0=c1"
+          : phaseMode === "mono"
+            ? "pan=mono|c0=0.5*c0+0.5*c1"
+            : "pan=mono|c0=0.5*c0-0.5*c1";
     return runRecoveryExperiment(
       runtime,
       project,
@@ -927,10 +1169,12 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
       moduleOutputDir,
       moduleId,
       {
-        filterGraph:
-          "aformat=channel_layouts=stereo,pan=mono|c0=0.5*c0-0.5*c1,highpass=f=100,lowpass=f=5200,volume=8",
+        filterGraph: `aformat=channel_layouts=stereo,${panFilter},highpass=f=${fixedFilterNumber(
+          lowHz
+        )},lowpass=f=${fixedFilterNumber(highHz)},volume=${fixedFilterNumber(gain)}`,
         label: "Phase Recovery Experiment",
         manifestLabel: "Phase Recovery Manifest",
+        settings,
         title: "Phase-isolation recovery variant generated",
         detail:
           "A side-channel phase isolation experiment was generated to inspect content that may cancel in mono or sit between stereo channels.",

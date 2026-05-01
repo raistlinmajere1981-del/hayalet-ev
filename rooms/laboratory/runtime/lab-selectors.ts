@@ -46,9 +46,13 @@ import type {
 } from "../models/lab-types.js";
 import {
   CAPABILITY_FAMILIES,
+  LAB_ANALYSIS_MODULE_SETTINGS_FIELDS,
   LAB_OPERATION_CAPABILITIES,
+  LAB_OPERATION_SETTINGS_FIELDS,
   WORKSPACE_INTENTS,
   getModuleIdsForCapabilityFamily,
+  normalizeLabAnalysisModuleSettings,
+  normalizeLabOperationSettings,
 } from "../models/lab-types.js";
 import { normalizeAnalysisScope } from "../shared/types/analysis-scope.js";
 import { normalizeAudioFocusSettings } from "./lab-audio-focus-normalization.js";
@@ -79,7 +83,9 @@ import {
   getAudioVisualizationArtifact,
   getCurrentReports,
   getCurrentRun,
+  getCurrentSourceAsset,
   getEditPreview,
+  getLinkedAudioAssets,
   getRunSnapshotSummary,
   getSourceKind,
   getSourceMetadata,
@@ -87,6 +93,7 @@ import {
   getSourceProbeStatus,
   getToolState,
 } from "./selectors/lab-source-selectors.js";
+import type { LabI18nLocale } from "./lab-i18n.js";
 
 function stableStringify(value: unknown): string {
   if (value === null || typeof value !== "object") {
@@ -105,6 +112,10 @@ function stableStringify(value: unknown): string {
       return `${JSON.stringify(key)}:${stableStringify(record[key])}`;
     })
     .join(",")}}`;
+}
+
+function getRuntimeLocale(state: LabStoreState): LabI18nLocale {
+  return state.context["locale"] === "tr" ? "tr" : "en";
 }
 
 export function buildExecutionDispatchId(input: {
@@ -966,6 +977,14 @@ function getOperationAudioBlockReason(state: LabStoreState, sourceKind: string) 
   return Object.keys(metadata).length > 0 ? "Bu kaynakta ses akışı algılanmadı." : null;
 }
 
+export function getOperationSettings(
+  state: LabStoreState,
+  capabilityId: (typeof LAB_OPERATION_CAPABILITIES)[number]["id"]
+) {
+  const settings = asLabRecord(asLabRecord(state.workbench)["operationSettings"]);
+  return normalizeLabOperationSettings(capabilityId, settings[capabilityId]);
+}
+
 export function getAvailableOperationCapabilities(
   state: LabStoreState
 ): LabOperationCapabilityProjection[] {
@@ -1016,6 +1035,8 @@ export function getAvailableOperationCapabilities(
       ...capability,
       readiness,
       blockReason,
+      settings: getOperationSettings(state, capability.id),
+      settingsFields: LAB_OPERATION_SETTINGS_FIELDS[capability.id] || [],
       actionStatus: activeAction?.status ?? "idle",
       activeActionLabel: activeAction?.label ?? null,
       activeActionMessage: activeAction?.message ?? null,
@@ -1035,6 +1056,8 @@ export function getAnalysisPreparationGroups(state: LabStoreState): LabAnalysisP
   const availableCapabilities = getAvailableCapabilities(state);
   const selectedIntents = getSelectedIntents(state);
   const moduleToggles = asLabRecord(asLabRecord(state.workbench)["moduleToggles"]);
+  const analysisSettings = asLabRecord(asLabRecord(state.workbench)["analysisSettings"]);
+  const moduleSettings = asLabRecord(analysisSettings["modules"]);
 
   return WORKSPACE_INTENTS.map(function (intent) {
     const modules = intent.internalCapabilities.flatMap(function (capabilityId) {
@@ -1054,6 +1077,8 @@ export function getAnalysisPreparationGroups(state: LabStoreState): LabAnalysisP
           readiness,
           blockReason,
           enabled: moduleToggles[moduleId] !== false,
+          settings: normalizeLabAnalysisModuleSettings(moduleId, moduleSettings[moduleId]),
+          settingsFields: LAB_ANALYSIS_MODULE_SETTINGS_FIELDS[moduleId] || [],
           reportSection: getReportSectionForCapability(capabilityId),
         };
       });
@@ -1415,6 +1440,7 @@ function getBaseActiveExecutionReflection(state: LabStoreState): LabExecutionRef
     executionPayloadPreview: getActiveExecutionPayloadPreview(state),
     activeSelection: getActiveSelection(state),
     inspectionMode: getInspectionMode(state),
+    locale: getRuntimeLocale(state),
     sourceKind: getSourceKind(state),
   });
 }
@@ -1439,6 +1465,7 @@ function getBaseActiveExecutionAlternatives(state: LabStoreState): LabExecutionA
     executionReflection: getBaseActiveExecutionReflection(state),
     activeSelection: getActiveSelection(state),
     inspectionMode: getInspectionMode(state),
+    locale: getRuntimeLocale(state),
     sourceKind: getSourceKind(state),
   });
 }
@@ -1456,6 +1483,7 @@ export function getActiveExecutionAlternatives(
     executionResultInterpretation: getActiveExecutionResultInterpretation(state),
     activeSelection: getActiveSelection(state),
     inspectionMode: getInspectionMode(state),
+    locale: getRuntimeLocale(state),
     sourceKind: getSourceKind(state),
   });
 }
@@ -1470,6 +1498,7 @@ function getBaseActiveExecutionCandidate(state: LabStoreState): LabExecutionCand
     executionAlternatives: getBaseActiveExecutionAlternatives(state),
     activeSelection: getActiveSelection(state),
     inspectionMode: getInspectionMode(state),
+    locale: getRuntimeLocale(state),
     sourceKind: getSourceKind(state),
   });
 }
@@ -1487,6 +1516,7 @@ export function getActiveExecutionCandidate(state: LabStoreState): LabExecutionC
     executionResultInterpretation: getActiveExecutionResultInterpretation(state),
     activeSelection: getActiveSelection(state),
     inspectionMode: getInspectionMode(state),
+    locale: getRuntimeLocale(state),
     sourceKind: getSourceKind(state),
   });
 }
@@ -2005,6 +2035,43 @@ export function getEffectivePreviewAudioFocusSettings(state: LabStoreState) {
 
 export function getPreviewVolume(state: LabStoreState) {
   return Math.max(0, Math.min(1, state.ui.workspace.previewVolume));
+}
+
+export function getDualPreviewVolume(state: LabStoreState) {
+  const workspace = asLabRecord(state.ui.workspace);
+  const legacyVolume = workspace["dualPreviewVolume"];
+  return typeof legacyVolume === "number" && Number.isFinite(legacyVolume)
+    ? Math.max(0, Math.min(1, legacyVolume))
+    : getPreviewVolume(state);
+}
+
+export function getSelectedDualPreviewAudioAsset(state: LabStoreState): LabAsset | null {
+  const currentSource = getCurrentSourceAsset(state);
+  if (currentSource === null) {
+    return null;
+  }
+  const linkedAudioAssets = getLinkedAudioAssets(state, currentSource.id);
+  if (linkedAudioAssets.length === 0) {
+    return null;
+  }
+  const workspace = asLabRecord(state.ui.workspace);
+  const selectedAssetId = asNonEmptyString(workspace["dualPreviewAudioAssetId"]);
+  return (
+    linkedAudioAssets.find(function (asset) {
+      return asset.id === selectedAssetId;
+    }) ||
+    linkedAudioAssets[0] ||
+    null
+  );
+}
+
+export function isDualPreviewAvailable(state: LabStoreState) {
+  return getSelectedDualPreviewAudioAsset(state) !== null;
+}
+
+export function isDualPreviewActive(state: LabStoreState) {
+  const workspace = asLabRecord(state.ui.workspace);
+  return workspace["dualPreviewEnabled"] === true && isDualPreviewAvailable(state);
 }
 
 export function getBookmarks(state: LabStoreState) {

@@ -5,7 +5,7 @@ import type {
   LabExecutionGoalEvaluation,
   LabExecutionPatternStrength,
 } from "../models/lab-types.js";
-import { resolveLabI18n, type LabI18nKey, type LabI18nLocale } from "./lab-i18n.js";
+import { formatLabI18n, resolveLabI18n, type LabI18nKey, type LabI18nLocale } from "./lab-i18n.js";
 
 export type LabAdaptiveDecisionResultInterpretation = {
   alignment: "matches-simulation" | "partial" | "deviates";
@@ -40,6 +40,7 @@ export type LabCounterfactualProjection = {
 type LabAdaptiveDecisionInput = {
   executionGoalEvaluation?: LabExecutionGoalEvaluation | null;
   executionResultInterpretation?: LabAdaptiveDecisionResultInterpretation | null;
+  locale?: LabI18nLocale;
 };
 
 type LabGuidedAlternativeInput = LabAdaptiveDecisionInput & {
@@ -140,16 +141,17 @@ export function prependDecisionPostureLabel(
 
 function getAdaptiveDecisionHint(
   pressure: LabExecutionDecisionPressure,
-  patternStrength: LabExecutionPatternStrength
+  patternStrength: LabExecutionPatternStrength,
+  locale: LabI18nLocale
 ) {
   if (pressure === "high") {
     if (patternStrength === "weak") {
-      return "This path has historically underperformed under similar conditions.";
+      return resolveLabI18n("adaptive.hint.highWeak", locale);
     }
-    return "Current execution feedback indicates this path needs careful review.";
+    return resolveLabI18n("adaptive.hint.high", locale);
   }
   if (pressure === "medium") {
-    return "Alternative strategies may yield more stable results.";
+    return resolveLabI18n("adaptive.hint.medium", locale);
   }
   return "";
 }
@@ -232,7 +234,18 @@ function getCounterfactualStability(
   return "similar";
 }
 
-function buildCounterfactualSummary(projection: LabCounterfactualProjection) {
+function formatExpectedProjectionValue(
+  axis: "alignment" | "coverage" | "stability",
+  value: string,
+  locale: LabI18nLocale
+) {
+  return resolveLabI18n(`projection.expected.${axis}.${value}` as LabI18nKey, locale);
+}
+
+function buildCounterfactualSummary(
+  projection: LabCounterfactualProjection,
+  locale: LabI18nLocale
+) {
   if (
     projection.expectedCoverage === "stable" &&
     projection.expectedAlignment === "similar" &&
@@ -240,7 +253,11 @@ function buildCounterfactualSummary(projection: LabCounterfactualProjection) {
   ) {
     return "";
   }
-  return `Projected outcome suggests ${projection.expectedStability} stability, ${projection.expectedAlignment} alignment, and ${projection.expectedCoverage} coverage.`;
+  return formatLabI18n("projection.summary", locale, {
+    alignment: formatExpectedProjectionValue("alignment", projection.expectedAlignment, locale),
+    coverage: formatExpectedProjectionValue("coverage", projection.expectedCoverage, locale),
+    stability: formatExpectedProjectionValue("stability", projection.expectedStability, locale),
+  });
 }
 
 function getEmptyGuidedAlternativeSignal(): LabGuidedAlternativeSignal {
@@ -293,6 +310,7 @@ function scoreAlternative(
 export function buildAdaptiveDecisionSignal(
   input: LabAdaptiveDecisionInput
 ): LabAdaptiveDecisionSignal {
+  const locale = input.locale ?? "en";
   const goalEvaluation = input.executionGoalEvaluation ?? null;
   const interpretation = input.executionResultInterpretation ?? null;
   const patternStrength = goalEvaluation?.patternSignal?.strength ?? "neutral";
@@ -321,7 +339,7 @@ export function buildAdaptiveDecisionSignal(
   }
 
   return {
-    adaptiveDecisionHint: getAdaptiveDecisionHint(decisionPressure, patternStrength),
+    adaptiveDecisionHint: getAdaptiveDecisionHint(decisionPressure, patternStrength, locale),
     decisionPressure,
   };
 }
@@ -329,12 +347,14 @@ export function buildAdaptiveDecisionSignal(
 export function buildGuidedAlternativeSignal(
   input: LabGuidedAlternativeInput
 ): LabGuidedAlternativeSignal {
+  const locale = input.locale ?? "en";
   const alternatives = input.alternatives;
   const decisionPressure =
     input.decisionPressure ??
     buildAdaptiveDecisionSignal({
       executionGoalEvaluation: input.executionGoalEvaluation ?? null,
       executionResultInterpretation: input.executionResultInterpretation ?? null,
+      locale,
     }).decisionPressure;
 
   if (
@@ -366,10 +386,14 @@ export function buildGuidedAlternativeSignal(
 
   const guidanceText =
     decisionPressure === "high"
-      ? `A more stable alternative under current conditions is: ${preferredAlternative.label}.`
-      : `A softer alternative to compare next is: ${preferredAlternative.label}.`;
+      ? formatLabI18n("adaptive.guidance.high", locale, { label: preferredAlternative.label })
+      : formatLabI18n("adaptive.guidance.medium", locale, {
+          label: preferredAlternative.label,
+        });
   return {
-    candidateGuidanceText: `Consider comparing ${preferredAlternative.label} for steadier context.`,
+    candidateGuidanceText: formatLabI18n("adaptive.guidance.candidate", locale, {
+      label: preferredAlternative.label,
+    }),
     guidanceText,
     preferredAlternativeIndex,
     preferredAlternativeLabel: preferredAlternative.label,
@@ -380,6 +404,7 @@ export function buildCounterfactualProjection(
   alternative: LabExecutionAlternative,
   context: LabCounterfactualProjectionContext
 ): LabCounterfactualProjection {
+  const locale = context.locale ?? "en";
   const goalEvaluation = context.executionGoalEvaluation ?? null;
   const interpretation = context.executionResultInterpretation ?? null;
   const executionResult = context.executionResult ?? null;
@@ -391,6 +416,7 @@ export function buildCounterfactualProjection(
     buildAdaptiveDecisionSignal({
       executionGoalEvaluation: goalEvaluation,
       executionResultInterpretation: interpretation,
+      locale,
     }).decisionPressure;
   const outcome = goalEvaluation?.outcome ?? "neutral";
   const patternStrength = goalEvaluation?.patternSignal?.strength ?? "neutral";
@@ -436,6 +462,6 @@ export function buildCounterfactualProjection(
     projection.expectedAlignment = "better";
   }
 
-  projection.summary = buildCounterfactualSummary(projection);
+  projection.summary = buildCounterfactualSummary(projection, locale);
   return projection;
 }

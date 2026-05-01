@@ -4,7 +4,7 @@ import type {
   LabExecutionPatternStrength,
 } from "../models/lab-types.js";
 import type { LabCounterfactualProjection } from "./lab-adaptive-decision.js";
-import { resolveLabI18n, type LabI18nKey, type LabI18nLocale } from "./lab-i18n.js";
+import { formatLabI18n, resolveLabI18n, type LabI18nKey, type LabI18nLocale } from "./lab-i18n.js";
 
 export type LabExecutionReadinessSignalAlignment =
   | "matches-simulation"
@@ -183,28 +183,15 @@ function getAlignmentPhrase(
   alignment: LabExecutionReadinessSignalAlignment,
   locale: LabI18nLocale
 ) {
-  if (locale === "tr") {
-    if (alignment === "matches-simulation") {
-      return "eşleşen uyum";
-    }
-    if (alignment === "deviates") {
-      return "sapan uyum";
-    }
-    if (alignment === "partial") {
-      return "kısmi uyum";
-    }
-    return "ölçülmemiş uyum";
-  }
-  if (alignment === "matches-simulation") {
-    return "matched alignment";
-  }
-  if (alignment === "deviates") {
-    return "deviating alignment";
-  }
-  if (alignment === "partial") {
-    return "partial alignment";
-  }
-  return "unmeasured alignment";
+  return resolveLabI18n(`readiness.alignment.${alignment}`, locale);
+}
+
+function formatReadinessSignalToken(
+  namespace: "confidence" | "level" | "pattern" | "pressure",
+  value: string,
+  locale: LabI18nLocale
+) {
+  return resolveLabI18n(`readiness.${namespace}.${value}` as LabI18nKey, locale);
 }
 
 function getProjectionKey(alignment: LabExecutionReadinessSignalProjectionAlignment): LabI18nKey {
@@ -265,9 +252,17 @@ export function formatExecutionReadinessSignalAdvisory(
   signal: LabExecutionReadinessSignal,
   locale: LabI18nLocale = "en"
 ) {
-  const view = resolveLabI18n("readiness.view", locale);
-  if (locale === "tr") {
-    return `${view}: ${signal.level} sinyal; ${signal.decisionPressure} baskı, ${signal.patternStrength} örüntü, ${getAlignmentPhrase(signal.alignment, locale)}, ${signal.alternativesConfidenceBand} alternatif güveni ve ${getProjectionPhrase(signal.projectionAlignment, locale)}.`;
-  }
-  return `${view}: ${signal.level} signal from ${signal.decisionPressure} pressure, ${signal.patternStrength} pattern, ${getAlignmentPhrase(signal.alignment, locale)}, ${signal.alternativesConfidenceBand} alternative confidence, and ${getProjectionPhrase(signal.projectionAlignment, locale)}.`;
+  return formatLabI18n("readiness.advisory", locale, {
+    alignment: getAlignmentPhrase(signal.alignment, locale),
+    confidence: formatReadinessSignalToken(
+      "confidence",
+      signal.alternativesConfidenceBand,
+      locale
+    ),
+    level: formatReadinessSignalToken("level", signal.level, locale),
+    pattern: formatReadinessSignalToken("pattern", signal.patternStrength, locale),
+    pressure: formatReadinessSignalToken("pressure", signal.decisionPressure, locale),
+    projection: getProjectionPhrase(signal.projectionAlignment, locale),
+    view: resolveLabI18n("readiness.view", locale),
+  });
 }

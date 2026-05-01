@@ -1345,6 +1345,11 @@
   line-height: 1.35;
 }
 
+.lab-selection-panel__intent {
+  display: grid;
+  gap: 0.3rem;
+}
+
 .lab-selection-panel__intent-picker {
   display: flex;
   flex-wrap: wrap;
@@ -1474,7 +1479,8 @@
   gap: 0.3rem;
 }
 
-.lab-selection-panel__inspection-title {
+.lab-selection-panel__inspection-title,
+.lab-selection-panel__intent-title {
   color: rgba(var(--lab-selection-accent-rgb), 0.84);
   font-size: 0.67rem;
   letter-spacing: 0.08em;
@@ -3181,6 +3187,73 @@
   flex: 0 0 auto;
 }
 
+.labx-timeline__playhead-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+  padding: 0.12rem 0.35rem;
+  border: 1px solid rgba(92, 215, 223, 0.14);
+  border-radius: var(--labx-radius-tight);
+  background: rgba(5, 13, 22, 0.48);
+}
+
+.labx-timeline__time-readout {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 9.2rem;
+  color: var(--labx-accent);
+  font-family: var(--labx-mono, monospace);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.labx-timeline__time-separator {
+  color: var(--labx-text-dim);
+}
+
+.labx-timeline__step-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.labx-timeline__step-btn {
+  display: grid;
+  place-items: center;
+  min-width: 2rem;
+  height: 1.4rem;
+  padding: 0 0.35rem;
+  border: 1px solid var(--labx-border);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--labx-text-dim);
+  font-size: 0.6rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.1s,
+    color 0.1s,
+    border-color 0.1s;
+}
+
+.labx-timeline__step-btn:hover {
+  background: rgba(92, 215, 223, 0.12);
+  color: var(--labx-accent);
+  border-color: rgba(92, 215, 223, 0.3);
+}
+
+.labx-timeline__step-btn:disabled,
+.labx-timeline__step-btn:disabled:hover {
+  cursor: not-allowed;
+  opacity: 0.45;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--labx-text-dim);
+  border-color: var(--labx-border);
+}
+
 .labx-timeline__play-btn {
   display: grid;
   place-items: center;
@@ -3292,6 +3365,7 @@
   border-color: rgba(92, 215, 223, 0.3);
 }
 
+.labx-timeline__step-btn:active,
 .labx-timeline__finetune-btn:active {
   background: rgba(92, 215, 223, 0.2);
 }
@@ -3827,6 +3901,168 @@
   background: rgba(255, 255, 255, 0.04);
   color: var(--labx-text-dim);
   cursor: not-allowed;
+}
+
+.labx-settings-block {
+  width: 100%;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 0.45rem;
+}
+
+.labx-settings-block__summary {
+  display: grid;
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  min-height: 2.35rem;
+  border: 1px solid rgba(78, 221, 221, 0.42);
+  border-radius: 0.42rem;
+  padding: 0.34rem 0.42rem;
+  background: linear-gradient(180deg, rgba(78, 221, 221, 0.15), rgba(78, 221, 221, 0.07));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: rgba(229, 255, 255, 0.88);
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease,
+    color 140ms ease;
+}
+
+.labx-settings-block__summary::-webkit-details-marker {
+  display: none;
+}
+
+.labx-settings-block__summary::marker {
+  content: "";
+}
+
+.labx-settings-block__summary:hover,
+.labx-settings-block__summary:focus-visible {
+  border-color: rgba(78, 221, 221, 0.72);
+  background: linear-gradient(180deg, rgba(78, 221, 221, 0.23), rgba(78, 221, 221, 0.11));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 0 0 2px rgba(78, 221, 221, 0.1);
+  color: var(--labx-text);
+  outline: none;
+}
+
+.labx-settings-block__summary-main {
+  display: grid;
+  gap: 0.16rem;
+  min-width: 0;
+}
+
+.labx-settings-block__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  min-width: 0;
+}
+
+.labx-settings-block__title::before {
+  content: "";
+  width: 0.38rem;
+  height: 0.38rem;
+  border-right: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 140ms ease;
+}
+
+.labx-settings-block[open] .labx-settings-block__title::before {
+  transform: rotate(45deg);
+}
+
+.labx-settings-block__state {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--labx-text-dim);
+  font-size: 0.66rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.labx-settings-block__action {
+  border: 1px solid rgba(78, 221, 221, 0.38);
+  border-radius: 0.35rem;
+  background: rgba(2, 18, 27, 0.7);
+  color: var(--labx-accent);
+  font-size: 0.66rem;
+  line-height: 1;
+  padding: 0.28rem 0.42rem;
+}
+
+.labx-settings-block__toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.45rem;
+}
+
+.labx-settings-block__reset {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 0.35rem;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--labx-text-soft);
+  cursor: pointer;
+  font-size: 0.68rem;
+  line-height: 1;
+  padding: 0.28rem 0.42rem;
+}
+
+.labx-settings-grid {
+  display: grid;
+  gap: 0.38rem;
+  grid-template-columns: minmax(0, 1fr);
+  padding-top: 0.48rem;
+}
+
+.labx-settings-field {
+  display: grid;
+  align-items: center;
+  gap: 0.45rem;
+  grid-template-columns: minmax(5.8rem, 0.72fr) minmax(0, 1fr);
+  min-width: 0;
+}
+
+.labx-settings-field__label,
+.labx-settings-field__unit {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--labx-text-dim);
+  font-size: 0.72rem;
+}
+
+.labx-settings-field__input {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.labx-settings-field__control {
+  width: 100%;
+  min-width: 0;
+  min-height: 1.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.35rem;
+  background: rgba(4, 10, 18, 0.62);
+  color: var(--labx-text);
+  font: inherit;
+  font-size: 0.75rem;
+  padding: 0.24rem 0.36rem;
+}
+
+.labx-settings-field[data-setting-kind="toggle"] .labx-settings-field__control {
+  width: 1rem;
+  min-height: 1rem;
 }
 
 .labx-controls-stack {
@@ -5789,11 +6025,17 @@
 }
 
 .labx-analysis-module {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
   gap: 0.42rem;
   color: var(--labx-text-primary);
   font-size: 0.68rem;
+}
+
+.labx-analysis-module__toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.42rem;
+  cursor: pointer;
 }
 
 .labx-analysis-module small {

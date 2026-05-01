@@ -32,6 +32,8 @@ import { formatExecutionReadinessSignalAdvisory } from "../runtime/lab-execution
 import type { LabExecutionReadinessSignal } from "../runtime/lab-execution-readiness-signal.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
+import { formatLabExpectedOutputLabel, translateLabRuntimeText } from "./lab-runtime-i18n.js";
+import { renderLabSettingsFields } from "./lab-settings-controls.js";
 
 type AnalysisPreparationGroup = ReturnType<typeof getAnalysisPreparationGroups>[number];
 type AvailableIntent = ReturnType<typeof getAvailableIntents>[number];
@@ -80,6 +82,33 @@ function renderDrawerHeader(mode: LabDrawerMode, copy: LabI18n) {
   `;
 }
 
+function getIntentCopy(intent: AvailableIntent, copy: LabI18n) {
+  return {
+    label: copy.t(`mediaAnalysis.workspace.intents.${intent.id}.label`, intent.label),
+    description: copy.t(
+      `mediaAnalysis.workspace.intents.${intent.id}.description`,
+      intent.description
+    ),
+  };
+}
+
+function getAnalysisModuleLabel(
+  module: AnalysisPreparationGroup["modules"][number],
+  copy: LabI18n
+) {
+  if (module.capabilityId === "visual-structure" || module.capabilityId === "visual-forensics") {
+    return copy.t(`visualAnalysis.catalog.modules.${module.moduleId}.title`, module.label);
+  }
+  return copy.t(`audioAnalysis.catalog.modules.${module.moduleId}.title`, module.label);
+}
+
+function getReportSectionLabel(module: AnalysisPreparationGroup["modules"][number], copy: LabI18n) {
+  return copy.t(
+    `mediaAnalysis.drawer.setup.reportSections.${module.capabilityId}`,
+    module.reportSection
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Setup mode
 // ---------------------------------------------------------------------------
@@ -93,7 +122,7 @@ function renderAnalysisPreparationGroupBody(
     group.expectedOutputs.length > 0
       ? group.expectedOutputs
           .map(function (output) {
-            return output.label;
+            return formatLabExpectedOutputLabel(output, copy);
           })
           .join(", ")
       : copy.t("mediaAnalysis.drawer.setup.defaultReportOutput", "Report evidence");
@@ -107,23 +136,41 @@ function renderAnalysisPreparationGroupBody(
       <div class="labx-analysis-group__modules">
         ${group.modules
           .map(function (module) {
+            const moduleLabel = getAnalysisModuleLabel(module, copy);
+            const reportSection = getReportSectionLabel(module, copy);
+            const blockReason = module.blockReason
+              ? translateLabRuntimeText(module.blockReason, copy)
+              : "";
             return `
-              <label
+              <div
                 class="labx-analysis-module"
                 data-readiness="${escapeHtml(module.readiness)}"
                 data-active="${activeCapabilityIds.includes(module.capabilityId) ? "true" : "false"}"
               >
-                <input
-                  type="checkbox"
-                  ${module.enabled ? "checked" : ""}
-                  data-lab-action="module-toggle"
-                  data-lab-value="${escapeHtml(module.moduleId)}"
-                />
-                <span>
-                  <strong>${escapeHtml(module.label)}</strong>
-                  <small>${escapeHtml(module.reportSection)}${module.blockReason ? ` · ${escapeHtml(module.blockReason)}` : ""}</small>
-                </span>
-              </label>
+                <label class="labx-analysis-module__toggle">
+                  <input
+                    type="checkbox"
+                    ${module.enabled ? "checked" : ""}
+                    data-lab-action="module-toggle"
+                    data-lab-value="${escapeHtml(module.moduleId)}"
+                  />
+                  <span>
+                    <strong>${escapeHtml(moduleLabel)}</strong>
+                    <small>${escapeHtml(reportSection)}${blockReason !== "" ? ` · ${escapeHtml(blockReason)}` : ""}</small>
+                  </span>
+                </label>
+                ${renderLabSettingsFields({
+                  fields: module.settingsFields,
+                  prefix: `analysisSettings.modules.${module.moduleId}`,
+                  resetAction: "analysis-settings-reset",
+                  resetLabel: copy.t("mediaAnalysis.settings.reset", "Reset"),
+                  resetValue: module.moduleId,
+                  settings: module.settings,
+                  title: copy.t("mediaAnalysis.drawer.setup.moduleSettings", "Settings"),
+                  toggleLabel: copy.t("mediaAnalysis.settings.edit", "Edit"),
+                  translate: copy.t,
+                })}
+              </div>
             `;
           })
           .join("")}
@@ -155,6 +202,10 @@ function renderAnalysisPreparationAccordion(
   const toggleLabel = expanded
     ? copy.t("mediaAnalysis.drawer.setup.collapseGroup", "Collapse")
     : copy.t("mediaAnalysis.drawer.setup.expandGroup", "Expand");
+  const intentCopy = getIntentCopy(intent, copy);
+  const intentBlockReason = intent.blockReason
+    ? translateLabRuntimeText(intent.blockReason, copy)
+    : "";
 
   return `
     <div
@@ -174,10 +225,10 @@ function renderAnalysisPreparationAccordion(
             data-lab-value="${escapeHtml(intent.id)}"
           />
           <span>
-            <strong>${escapeHtml(intent.label)}</strong>
-            <small>${escapeHtml(intent.description)}</small>
+            <strong>${escapeHtml(intentCopy.label)}</strong>
+            <small>${escapeHtml(intentCopy.description)}</small>
           </span>
-          ${intent.blockReason ? `<small class="labx-drawer__intent-block">${escapeHtml(intent.blockReason)}</small>` : ""}
+          ${intentBlockReason !== "" ? `<small class="labx-drawer__intent-block">${escapeHtml(intentBlockReason)}</small>` : ""}
         </label>
         ${
           group
@@ -231,10 +282,7 @@ function getRunningPlanStatusLabel(status: string, copy: LabI18n) {
   }
 }
 
-function getRunningPlanGroupStatus(
-  group: AnalysisPreparationGroup,
-  state: LabStoreState
-): string {
+function getRunningPlanGroupStatus(group: AnalysisPreparationGroup, state: LabStoreState): string {
   const statuses = group.modules
     .filter(function (module) {
       return module.enabled;
@@ -259,7 +307,10 @@ function renderRunningPlanModule(
   const status = runModule?.status ?? "idle";
   const active = status === "running" || status === "queued";
   const statusLabel = getRunningPlanStatusLabel(status, copy);
-  const message = runModule?.message || module.reportSection;
+  const moduleLabel = getAnalysisModuleLabel(module, copy);
+  const message = runModule?.message
+    ? translateLabRuntimeText(runModule.message, copy)
+    : getReportSectionLabel(module, copy);
 
   return `
     <div
@@ -270,7 +321,7 @@ function renderRunningPlanModule(
     >
       <span class="labx-analysis-module__status" aria-hidden="true"></span>
       <span>
-        <strong>${escapeHtml(module.label)}</strong>
+        <strong>${escapeHtml(moduleLabel)}</strong>
         <small>${escapeHtml(statusLabel)}${message ? ` · ${escapeHtml(message)}` : ""}</small>
       </span>
     </div>
@@ -289,6 +340,7 @@ function renderRunningPlanGroup(
   const status = getRunningPlanGroupStatus(group, state);
   const active = status === "running" || status === "queued";
   const statusLabel = getRunningPlanStatusLabel(status, copy);
+  const intentCopy = getIntentCopy(intent, copy);
 
   return `
     <div
@@ -302,8 +354,8 @@ function renderRunningPlanGroup(
       <div class="labx-drawer__intent-head labx-drawer__intent-head--locked">
         <div class="labx-drawer__intent-item labx-drawer__intent-item--static">
           <span>
-            <strong>${escapeHtml(intent.label)}</strong>
-            <small>${escapeHtml(intent.description)}</small>
+            <strong>${escapeHtml(intentCopy.label)}</strong>
+            <small>${escapeHtml(intentCopy.description)}</small>
           </span>
         </div>
       </div>

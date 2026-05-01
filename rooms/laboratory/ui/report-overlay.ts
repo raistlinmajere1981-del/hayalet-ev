@@ -153,7 +153,7 @@ function renderIntentGroups(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I
               : "";
           return `
             <div class="labx-report-section">
-              <h4 class="labx-report-section__title">${escapeHtml(group.label)}</h4>
+              <h4 class="labx-report-section__title">${escapeHtml(getReportIntentLabel(group.intentId, copy))}</h4>
               <p class="labx-report-section__hint">${escapeHtml(
                 copy.t(
                   "mediaAnalysis.reportOverlay.intentGroups.counts",

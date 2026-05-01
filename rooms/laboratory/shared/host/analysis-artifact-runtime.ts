@@ -34,6 +34,12 @@ type RunProfileToolOptions = {
   roomId?: string;
 };
 
+type TranscriptSampleOptions = {
+  language?: string | null;
+  modelPolicy?: string | null;
+  sampleSeconds: number;
+};
+
 export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRuntimeDeps) {
   const {
     asNonEmptyString,
@@ -79,6 +85,52 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
       createdAt: new Date().toISOString(),
       metadata: toRecord(metadata),
     });
+  }
+
+  function normalizeTranscriptSampleOptions(value: unknown): TranscriptSampleOptions {
+    if (typeof value === "number") {
+      return {
+        sampleSeconds: Math.max(5, Math.round(value)),
+      };
+    }
+    const record = toRecord(value);
+    return {
+      language: asNonEmptyString(record["language"]),
+      modelPolicy: asNonEmptyString(record["modelPolicy"]),
+      sampleSeconds: Math.max(5, Math.round(asNumber(record["sampleSeconds"]) || 45)),
+    };
+  }
+
+  function selectTranscriptModelRecord(
+    models: LaboratoryRecord[],
+    modelPolicy: string | null | undefined
+  ) {
+    const readyModels = models.filter(function (entry) {
+      return entry["ready"] === true && asNonEmptyString(entry["modelId"]) !== null;
+    });
+    if (modelPolicy === "fastest") {
+      return (
+        readyModels
+          .slice()
+          .sort(function (left, right) {
+            return (asNumber(left["sizeBytes"]) || 0) - (asNumber(right["sizeBytes"]) || 0);
+          })[0] || null
+      );
+    }
+    if (modelPolicy === "best-ready") {
+      return (
+        readyModels
+          .slice()
+          .sort(function (left, right) {
+            return (asNumber(right["sizeBytes"]) || 0) - (asNumber(left["sizeBytes"]) || 0);
+          })[0] || null
+      );
+    }
+    return (
+      readyModels.find(function (entry) {
+        return entry["selected"] === true;
+      }) || null
+    );
   }
 
   function createProfileSignal(
@@ -295,13 +347,13 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
     artifactBase: string,
     transcriptSampleSeconds: unknown
   ) {
+    const sampleOptions = normalizeTranscriptSampleOptions(transcriptSampleSeconds);
     const profileReadiness = toRecord(toRecord(project["profile"])["readiness"]);
-    const selectedModel =
-      toUnknownArray(profileReadiness["models"]).find(function (entry) {
-        return toRecord(entry)["selected"] === true;
-      }) || null;
-    const selectedModelRecord = selectedModel === null ? null : toRecord(selectedModel);
-    if (selectedModelRecord === null || selectedModelRecord["ready"] !== true) {
+    const selectedModelRecord = selectTranscriptModelRecord(
+      toUnknownArray(profileReadiness["models"]).map(toRecord),
+      sampleOptions.modelPolicy
+    );
+    if (selectedModelRecord === null) {
       return null;
     }
 
@@ -310,8 +362,13 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
       return null;
     }
 
-    const selectedLanguage = asNonEmptyString(selectedModelRecord["language"]) || "en";
-    const languageOverride = selectedLanguage === "multilingual" ? null : selectedLanguage;
+    const requestedLanguage = asNonEmptyString(sampleOptions.language);
+    const selectedLanguage =
+      requestedLanguage !== null && requestedLanguage !== "auto"
+        ? requestedLanguage
+        : asNonEmptyString(selectedModelRecord["language"]) || "en";
+    const languageOverride =
+      selectedLanguage === "multilingual" || selectedLanguage === "auto" ? null : selectedLanguage;
     const sampleWavPath = `${getProjectProfilePreflightDir(runtime, project as { slug: string })}/${artifactBase}-speech.wav`;
     const transcriptBase = `${getProjectProfilePreflightDir(runtime, project as { slug: string })}/${artifactBase}-transcript`;
     const transcriptPath = `${transcriptBase}.txt`;
@@ -331,7 +388,7 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
         "-ar",
         "16000",
         "-t",
-        String(Math.max(5, Math.round(asNumber(transcriptSampleSeconds) || 45))),
+        String(sampleOptions.sampleSeconds),
         sampleWavPath,
       ],
       timeoutMs: 120_000,
@@ -343,6 +400,8 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
           artifactBase,
           featureStage: "profile",
           jobId,
+          sampleSeconds: sampleOptions.sampleSeconds,
+          settingsUsed: sampleOptions,
           requestId,
         },
         ...(languageOverride ? { language: languageOverride } : {}),
@@ -366,6 +425,8 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
     const artifact = createProfileArtifact("transcript", transcriptPath, "Transcript Sample", {
       wordCount: transcriptText.split(/\s+/).filter(Boolean).length,
       language: languageOverride || "app-default",
+      modelPolicy: sampleOptions.modelPolicy || "selected",
+      sampleSeconds: sampleOptions.sampleSeconds,
     });
 
     return {
@@ -433,7 +494,8 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
     moduleId: string,
     sampleWindowSeconds: number,
     tileCount: unknown,
-    label: string = "Frame Preview"
+    label: string = "Frame Preview",
+    filterGraph: string | null = null
   ) {
     const sourceKind =
       asNonEmptyString((project["source"] as LaboratoryRecord | undefined)?.["kind"]) || "video";
@@ -450,7 +512,9 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
           "-i",
           target["path"] as string,
           "-vf",
-          "scale=1280:-1:flags=lanczos",
+          [filterGraph, "scale=1280:-1:flags=lanczos"]
+            .filter((entry): entry is string => typeof entry === "string" && entry.trim() !== "")
+            .join(","),
           "-frames:v",
           "1",
           outputPath,
@@ -458,6 +522,7 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
         timeoutMs: 90_000,
       });
       return createProcessArtifact(moduleId, "frame-preview", outputPath, label, {
+        filterGraph,
         sourceKind,
       });
     }
@@ -477,7 +542,14 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
         "-i",
         target["path"] as string,
         "-vf",
-        `fps=1/${intervalSeconds},scale=420:-1:flags=lanczos,tile=${normalizedTileCount}x1`,
+        [
+          `fps=1/${intervalSeconds}`,
+          filterGraph,
+          "scale=420:-1:flags=lanczos",
+          `tile=${normalizedTileCount}x1`,
+        ]
+          .filter((entry): entry is string => typeof entry === "string" && entry.trim() !== "")
+          .join(","),
         "-frames:v",
         "1",
         outputPath,
@@ -486,6 +558,7 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
     });
     return createProcessArtifact(moduleId, "frame-preview", outputPath, label, {
       sourceKind,
+      filterGraph,
       tileCount: normalizedTileCount,
       intervalSeconds,
     });

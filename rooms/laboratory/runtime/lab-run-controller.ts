@@ -1,8 +1,14 @@
 import {
   asLabRecord,
   asNonEmptyString,
+  asNumber,
   createLabEventId,
+  LAB_OPERATION_CAPABILITIES,
+  LAB_OPERATION_SETTINGS_DEFAULTS,
+  LAB_ANALYSIS_MODULE_SETTINGS_DEFAULTS,
   WORKSPACE_INTENTS,
+  normalizeLabAnalysisModuleSettings,
+  normalizeLabOperationSettings,
 } from "../models/lab-types.js";
 import type {
   CapabilityFamilyId,
@@ -11,6 +17,7 @@ import type {
   LabAudioFocusSettings,
   LabAssetType,
   LabInteractiveSettings,
+  LabOperationCapabilityId,
   LabSourceDrafts,
   LabStoreEvent,
   LabWorkspaceControlTab,
@@ -86,6 +93,7 @@ const DEFAULT_INTERACTIVE_SETTINGS: LabInteractiveSettings = {
   edgeHighlight: false,
   invert: false,
 };
+const FALLBACK_TIMELINE_FRAME_DURATION_SECONDS = 1 / 30;
 
 type LabRoomApi = {
   onHostMessage?: (listener: (message: unknown) => void) => void;
@@ -120,6 +128,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     play?: () => Promise<void> | void;
     pause?: () => void;
     volume?: number;
+    getVideoPlaybackQuality?: () => { totalVideoFrames?: number };
     addEventListener?: (type: string, listener: EventListenerOrEventListenerObject) => void;
     removeEventListener?: (type: string, listener: EventListenerOrEventListenerObject) => void;
   };
@@ -339,6 +348,18 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       : null;
   }
 
+  function getTimelineCurrentTimeLabel() {
+    return deps.documentRef.querySelector?.(
+      '[data-lab-role="timeline-current-time-label"]'
+    ) as TextLikeElement | null;
+  }
+
+  function getTimelineTotalDurationLabel() {
+    return deps.documentRef.querySelector?.(
+      '[data-lab-role="timeline-total-duration-label"]'
+    ) as TextLikeElement | null;
+  }
+
   function getTimelinePlayToggleLabel() {
     return deps.documentRef.querySelector?.(
       '[data-lab-role="timeline-play-toggle-label"]'
@@ -393,14 +414,18 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     const media = getTimelineSyncMedia();
     const playhead = getTimelinePlayhead();
     const playheadLabel = getTimelinePlayheadLabel();
+    const currentTimeLabel = getTimelineCurrentTimeLabel();
+    const totalDurationLabel = getTimelineTotalDurationLabel();
     const playToggleLabel = getTimelinePlayToggleLabel();
-    const durationMs = Math.max(1, getTimelineDurationMs(media));
+    const rawDurationMs = getTimelineDurationMs(media);
+    const durationMs = Math.max(1, rawDurationMs);
     const currentMs =
       media && typeof media.currentTime === "number" && Number.isFinite(media.currentTime)
         ? Math.max(0, Math.round(media.currentTime * 1000))
         : 0;
     const clampedCurrentMs = Math.max(0, Math.min(durationMs, currentMs));
     const leftPct = Math.max(0, Math.min(100, (clampedCurrentMs / durationMs) * 100));
+    const currentTimeText = formatTimelineTimeMs(clampedCurrentMs);
 
     if (playhead?.style) {
       playhead.style.left = `${String(leftPct)}%`;
@@ -408,7 +433,13 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     }
     playhead?.setAttribute?.("data-active", media === null ? "false" : "true");
     if (playheadLabel) {
-      playheadLabel.textContent = formatTimelineTimeMs(clampedCurrentMs);
+      playheadLabel.textContent = currentTimeText;
+    }
+    if (currentTimeLabel) {
+      currentTimeLabel.textContent = currentTimeText;
+    }
+    if (totalDurationLabel) {
+      totalDurationLabel.textContent = formatTimelineTimeMs(Math.max(0, rawDurationMs));
     }
     if (playToggleLabel) {
       playToggleLabel.textContent = media && media.paused === false ? "❚❚" : "▶";
@@ -771,6 +802,36 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     return intentIds.length > 0 ? { intentIds } : {};
   }
 
+  function getOperationCapabilityIdForUiAction(
+    uiActionId: string
+  ): LabOperationCapabilityId | null {
+    return (
+      LAB_OPERATION_CAPABILITIES.find(function (capability) {
+        return capability.actionId === uiActionId;
+      })?.id || null
+    );
+  }
+
+  function getOperationSettingsPayload(
+    capabilityId: LabOperationCapabilityId | null,
+    state = deps.store.getState()
+  ): Record<string, unknown> {
+    if (capabilityId === null) {
+      return {};
+    }
+    const operationSettings = asLabRecord(state.workbench["operationSettings"]);
+    const normalizedSettings = normalizeLabOperationSettings(
+      capabilityId,
+      operationSettings[capabilityId]
+    );
+    return {
+      operationSettings: normalizedSettings,
+      ...(capabilityId === "enhanced-frame" && normalizedSettings["applyPreviewSettings"] === true
+        ? { previewSettings: state.ui.workspace.interactiveSettings }
+        : {}),
+    };
+  }
+
   function getActiveSelectionOperationPayload(state = deps.store.getState()) {
     const selection = state.ui.workspace.activeSelection;
     const seekMs =
@@ -798,7 +859,11 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     if (trackedActionId === null) {
       return null;
     }
-    return startTrackedUserAction(trackedActionId, payload);
+    const capabilityId = getOperationCapabilityIdForUiAction(uiActionId);
+    return startTrackedUserAction(trackedActionId, {
+      ...(payload || {}),
+      ...getOperationSettingsPayload(capabilityId),
+    });
   }
 
   function clearHubDismissTimer(actionId: string) {
@@ -1714,6 +1779,36 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     return safeSeconds;
   }
 
+  function getTimelineFrameDurationSeconds(media: MediaLikeElement | null) {
+    const sourceMetadata = asLabRecord(asLabRecord(deps.store.getState().source)["metadata"]);
+    const metadataFps = asNumber(sourceMetadata["fps"]);
+    if (metadataFps !== null && metadataFps >= 12 && metadataFps <= 240) {
+      return 1 / metadataFps;
+    }
+
+    const totalFrames =
+      typeof media?.getVideoPlaybackQuality === "function"
+        ? (media.getVideoPlaybackQuality().totalVideoFrames ?? 0)
+        : 0;
+    if (media !== null && totalFrames > 1 && media.currentTime > 0) {
+      const inferredFps = totalFrames / media.currentTime;
+      if (Number.isFinite(inferredFps) && inferredFps >= 12 && inferredFps <= 240) {
+        return 1 / inferredFps;
+      }
+    }
+
+    return FALLBACK_TIMELINE_FRAME_DURATION_SECONDS;
+  }
+
+  function getTimelinePlayheadShiftMs(value: string, media: MediaLikeElement | null) {
+    if (value === "-frame" || value === "+frame") {
+      const frameMs = Math.max(1, Math.round(getTimelineFrameDurationSeconds(media) * 1000));
+      return value === "-frame" ? -frameMs : frameMs;
+    }
+    const deltaMs = Number(value);
+    return Number.isFinite(deltaMs) ? deltaMs : null;
+  }
+
   function safePlay(media: MediaLikeElement | null) {
     try {
       const result = media?.play?.();
@@ -1746,6 +1841,28 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
   function seekTimelineToMs(timeMs: number) {
     return seekSinglePreviewToMs(timeMs);
+  }
+
+  function shiftTimelinePlayhead(value: string) {
+    const media = getTimelineSyncMedia();
+    if (media === null || typeof media.currentTime !== "number") {
+      return;
+    }
+    const deltaMs = getTimelinePlayheadShiftMs(value, media);
+    if (deltaMs === null) {
+      return;
+    }
+    if ((value === "-frame" || value === "+frame") && media.paused !== true) {
+      media.pause?.();
+    }
+    const durationMs = getTimelineDurationMs(media);
+    const currentMs = Math.max(0, Math.round(media.currentTime * 1000));
+    const unclampedNextMs = currentMs + deltaMs;
+    const nextMs =
+      durationMs > 0
+        ? Math.max(0, Math.min(durationMs, unclampedNextMs))
+        : Math.max(0, unclampedNextMs);
+    seekTimelineToMs(nextMs);
   }
 
   function centerTimelineTarget(target: Element) {
@@ -2118,6 +2235,125 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     if (field.startsWith("workspace.audioFocus.")) {
       patchAudioFocusSetting(field.replace("workspace.audioFocus.", ""), rawValue);
     }
+  }
+
+  function isOperationCapabilityId(value: string): value is LabOperationCapabilityId {
+    return LAB_OPERATION_CAPABILITIES.some(function (capability) {
+      return capability.id === value;
+    });
+  }
+
+  function patchOperationSetting(field: string, rawValue: unknown) {
+    if (isRunActive(deps.store.getState())) {
+      pushLockedWorkspaceEvent("İşlem ayarları aktif analiz sırasında kilitli.");
+      return;
+    }
+    const parts = field.replace("operationSettings.", "").split(".");
+    const capabilityId = parts[0] || "";
+    const settingKey = parts[1] || "";
+    if (!isOperationCapabilityId(capabilityId) || settingKey === "") {
+      return;
+    }
+    updateWorkbench(function (workbench) {
+      const operationSettings = { ...asLabRecord(workbench["operationSettings"]) };
+      const currentSettings = asLabRecord(operationSettings[capabilityId]);
+      operationSettings[capabilityId] = normalizeLabOperationSettings(capabilityId, {
+        ...currentSettings,
+        [settingKey]: rawValue,
+      });
+      return {
+        ...workbench,
+        operationSettings,
+      };
+    });
+  }
+
+  function resetOperationSettings(capabilityId: string) {
+    if (isRunActive(deps.store.getState())) {
+      pushLockedWorkspaceEvent("İşlem ayarları aktif analiz sırasında kilitli.");
+      return;
+    }
+    if (!isOperationCapabilityId(capabilityId)) {
+      return;
+    }
+    updateWorkbench(function (workbench) {
+      return {
+        ...workbench,
+        operationSettings: {
+          ...asLabRecord(workbench["operationSettings"]),
+          [capabilityId]: normalizeLabOperationSettings(
+            capabilityId,
+            LAB_OPERATION_SETTINGS_DEFAULTS[capabilityId]
+          ),
+        },
+      };
+    });
+  }
+
+  function patchAnalysisModuleSetting(field: string, rawValue: unknown) {
+    if (isRunActive(deps.store.getState())) {
+      pushLockedWorkspaceEvent("Analiz ayarları aktif analiz sırasında kilitli.");
+      return;
+    }
+    const parts = field.replace("analysisSettings.modules.", "").split(".");
+    const moduleId = parts[0] || "";
+    const settingKey = parts[1] || "";
+    if (moduleId === "" || settingKey === "") {
+      return;
+    }
+    updateWorkbench(function (workbench) {
+      const analysisSettings = { ...asLabRecord(workbench["analysisSettings"]) };
+      const modules = { ...asLabRecord(analysisSettings["modules"]) };
+      const currentSettings = asLabRecord(modules[moduleId]);
+      modules[moduleId] = normalizeLabAnalysisModuleSettings(moduleId, {
+        ...currentSettings,
+        [settingKey]: rawValue,
+      });
+      return {
+        ...workbench,
+        analysisSettings: {
+          ...analysisSettings,
+          modules,
+        },
+      };
+    });
+  }
+
+  function resetAnalysisModuleSettings(moduleId: string) {
+    if (isRunActive(deps.store.getState())) {
+      pushLockedWorkspaceEvent("Analiz ayarları aktif analiz sırasında kilitli.");
+      return;
+    }
+    if (moduleId.trim() === "") {
+      return;
+    }
+    updateWorkbench(function (workbench) {
+      const analysisSettings = { ...asLabRecord(workbench["analysisSettings"]) };
+      const modules = { ...asLabRecord(analysisSettings["modules"]) };
+      modules[moduleId] = normalizeLabAnalysisModuleSettings(
+        moduleId,
+        LAB_ANALYSIS_MODULE_SETTINGS_DEFAULTS[moduleId] || {}
+      );
+      return {
+        ...workbench,
+        analysisSettings: {
+          ...analysisSettings,
+          modules,
+        },
+      };
+    });
+  }
+
+  function readControlValue(target: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) {
+    return target instanceof HTMLInputElement && target.type === "number"
+      ? target.value === ""
+        ? null
+        : Number(target.value)
+      : target instanceof HTMLInputElement && target.type === "checkbox"
+        ? target.checked
+        : target instanceof HTMLInputElement && target.type === "range"
+          ? Number(target.value)
+          : target.value;
   }
 
   function applyWorkspaceSettingAdjustment(actionButton: HTMLElement) {
@@ -2521,7 +2757,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           return r.id === value;
         });
         if (roiRegion) {
-          startTrackedUserAction("export-roi-image", {
+          startTrackedOperationForUiAction("workspace-selection-roi-export", {
             regionId: roiRegion.id,
             x: roiRegion.x,
             y: roiRegion.y,
@@ -2578,15 +2814,18 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         const seekMs = frameWs.timelineStartMs !== null ? frameWs.timelineStartMs : 0;
         startTrackedOperationForUiAction("timeline-grab-frame", {
           seekMs: seekMs,
+          startMs: frameWs.timelineStartMs,
+          endMs: frameWs.timelineEndMs,
           ...getCurrentRunIntentPayload(frameState),
         });
         return;
       }
       case "timeline-extract-audio":
-        startTrackedOperationForUiAction(
-          "timeline-extract-audio",
-          getCurrentRunIntentPayload(state)
-        );
+        startTrackedOperationForUiAction("timeline-extract-audio", {
+          startMs: state.ui.workspace.timelineStartMs,
+          endMs: state.ui.workspace.timelineEndMs,
+          ...getCurrentRunIntentPayload(state),
+        });
         return;
       case "workspace-audio-cleanup-export":
         startTrackedOperationForUiAction(
@@ -2605,6 +2844,12 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         return;
       case "timeline-toggle-playback":
         toggleTimelinePlayback();
+        return;
+      case "timeline-shift-playhead":
+        if (isWorkspaceMutationLocked("timeline")) {
+          return;
+        }
+        shiftTimelinePlayhead(value);
         return;
       case "asset-preview":
         if (value.trim() !== "") {
@@ -2657,6 +2902,12 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         return;
       case "workspace-setting-adjust":
         applyWorkspaceSettingAdjustment(actionButton);
+        return;
+      case "operation-settings-reset":
+        resetOperationSettings(value);
+        return;
+      case "analysis-settings-reset":
+        resetAnalysisModuleSettings(value);
         return;
       case "workspace-image-analysis":
         dispatch({ type: "workspace-image-analysis-requested" });
@@ -2848,6 +3099,16 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
     const field = target.dataset["labField"];
     if (!field) {
+      return;
+    }
+
+    if (field.startsWith("operationSettings.")) {
+      patchOperationSetting(field, readControlValue(target));
+      return;
+    }
+
+    if (field.startsWith("analysisSettings.modules.")) {
+      patchAnalysisModuleSetting(field, readControlValue(target));
       return;
     }
 
@@ -3084,6 +3345,16 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
     const field = target.dataset["labField"];
     if (!field) {
+      return;
+    }
+
+    if (field.startsWith("operationSettings.")) {
+      patchOperationSetting(field, readControlValue(target));
+      return;
+    }
+
+    if (field.startsWith("analysisSettings.modules.")) {
+      patchAnalysisModuleSetting(field, readControlValue(target));
       return;
     }
 

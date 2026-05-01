@@ -17,6 +17,7 @@ type LaboratoryManagedMediaTargetRecord = LaboratoryRecord & {
 };
 
 type LaboratoryManagedMediaProcessRecord = LaboratoryRecord & {
+  analysisSettings?: unknown;
   analysisScope?: unknown;
   modules?: unknown;
 };
@@ -97,7 +98,8 @@ type LaboratoryManagedMediaRunnerDeps = {
     moduleId: string,
     sampleWindowSeconds: number,
     tileCount: unknown,
-    label?: string
+    label?: string,
+    filterGraph?: string | null
   ) => Promise<unknown>;
   generateProcessMetadataArtifact: (
     runtime: LaboratoryManagedMediaRuntime,
@@ -270,6 +272,7 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
       detail: string;
       evidenceCount?: number;
       level?: string;
+      settingsUsed?: LaboratoryRecord;
       title: string;
     }
   ) {
@@ -290,6 +293,7 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
         sourceModule,
         reference: getScopeReference(processRecord),
         hypothesis: getScopeHypothesis(processRecord),
+        ...(options.settingsUsed === undefined ? {} : { settingsUsed: options.settingsUsed }),
       })
     );
   }
@@ -357,48 +361,217 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
     };
   }
 
-  function getRevealFilterConfig(moduleId: string): {
+  function getAnalysisModuleSettings(
+    processRecord: LaboratoryManagedMediaProcessRecord,
+    moduleId: string
+  ): LaboratoryRecord {
+    const settings = toRecord(processRecord.analysisSettings);
+    return toRecord(toRecord(settings["modules"])[moduleId]);
+  }
+
+  function readStringSetting(settings: LaboratoryRecord, key: string, fallback: string): string {
+    const value = settings[key];
+    return typeof value === "string" && value.trim() !== "" ? value : fallback;
+  }
+
+  function readNumberSetting(settings: LaboratoryRecord, key: string, fallback: number): number {
+    const value = settings[key];
+    return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+  }
+
+  function readBooleanSetting(settings: LaboratoryRecord, key: string, fallback: boolean): boolean {
+    const value = settings[key];
+    return typeof value === "boolean" ? value : fallback;
+  }
+
+  function readFiniteRecordNumber(record: LaboratoryRecord, key: string): number | null {
+    const value = Number(record[key]);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  function getScopeCropFilter(processRecord: LaboratoryManagedMediaProcessRecord): string | null {
+    const region = toReferenceRecord(toRecord(processRecord.analysisScope)["region"]);
+    const x = readFiniteRecordNumber(region, "x");
+    const y = readFiniteRecordNumber(region, "y");
+    const width = readFiniteRecordNumber(region, "width");
+    const height = readFiniteRecordNumber(region, "height");
+    if (
+      x === null ||
+      y === null ||
+      width === null ||
+      height === null ||
+      width <= 0 ||
+      height <= 0
+    ) {
+      return null;
+    }
+    return `crop=${String(Math.round(width))}:${String(Math.round(height))}:${String(
+      Math.max(0, Math.round(x))
+    )}:${String(Math.max(0, Math.round(y)))}`;
+  }
+
+  function applyRoiScopeFilter(
+    processRecord: LaboratoryManagedMediaProcessRecord,
+    settings: LaboratoryRecord,
+    filterGraph: string
+  ) {
+    if (readBooleanSetting(settings, "roiOnly", false) !== true) {
+      return filterGraph;
+    }
+    const scopeCropFilter = getScopeCropFilter(processRecord);
+    return scopeCropFilter === null ? filterGraph : `${scopeCropFilter},${filterGraph}`;
+  }
+
+  function getRangeWeightedSetting(
+    settings: LaboratoryRecord,
+    minKey: string,
+    maxKey: string,
+    fallbackMin: number,
+    fallbackMax: number,
+    weight: number
+  ) {
+    const rawMin = readNumberSetting(settings, minKey, fallbackMin);
+    const rawMax = readNumberSetting(settings, maxKey, fallbackMax);
+    const low = Math.min(rawMin, rawMax);
+    const high = Math.max(rawMin, rawMax);
+    const normalizedWeight = Math.max(0, Math.min(1, weight));
+    return low + (high - low) * normalizedWeight;
+  }
+
+  function getSamplingWindowSeconds(settings: LaboratoryRecord) {
+    const density = readStringSetting(settings, "samplingDensity", "balanced");
+    return density === "dense" ? 90 : density === "sparse" ? 30 : 60;
+  }
+
+  function getSamplingTileCount(settings: LaboratoryRecord) {
+    const density = readStringSetting(settings, "samplingDensity", "balanced");
+    const densityTiles = density === "dense" ? 8 : density === "sparse" ? 3 : 5;
+    const frameStep = Math.max(1, Math.round(readNumberSetting(settings, "frameStep", 24)));
+    const stepTiles = Math.max(3, Math.min(12, Math.round(120 / frameStep)));
+    return Math.max(3, Math.min(12, Math.round((densityTiles + stepTiles) / 2)));
+  }
+
+  function getSensitivityAdjustedLevel(
+    level: string,
+    settings: LaboratoryRecord,
+    evidenceCount: number
+  ) {
+    const sensitivity = readStringSetting(settings, "sensitivity", "medium");
+    if (sensitivity === "high" && evidenceCount > 0 && level === "low") {
+      return "medium";
+    }
+    if (sensitivity === "low" && evidenceCount < 3 && level === "medium") {
+      return "low";
+    }
+    return level;
+  }
+
+  function fixedFilterNumber(value: number): string {
+    return Number(value.toFixed(3)).toString();
+  }
+
+  function getChannelIsolationFilter(channelMode: string): string {
+    if (channelMode === "green") {
+      return "colorchannelmixer=rr=0:rg=0:rb=0:gr=0:gg=1:gb=0:br=0:bg=0:bb=0";
+    }
+    if (channelMode === "blue") {
+      return "colorchannelmixer=rr=0:rg=0:rb=0:gr=0:gg=0:gb=0:br=0:bg=0:bb=1";
+    }
+    return "colorchannelmixer=rr=1:rg=0:rb=0:gr=0:gg=0:gb=0:br=0:bg=0:bb=0";
+  }
+
+  function getRevealFilterConfig(
+    moduleId: string,
+    settings: LaboratoryRecord
+  ): {
     filterGraph: string;
     label: string;
   } {
+    const revealStrength = Math.max(
+      0.25,
+      Math.min(2, readNumberSetting(settings, "revealStrength", 1))
+    );
     if (moduleId === "color-channel-isolation") {
+      const channelMode = readStringSetting(settings, "channelMode", "red");
       return {
-        filterGraph: "colorchannelmixer=rr=1:rg=0:rb=0:gr=0:gg=0:gb=0:br=0:bg=0:bb=0",
-        label: "Red Channel Isolation",
+        filterGraph: `${getChannelIsolationFilter(channelMode)},eq=contrast=${fixedFilterNumber(
+          1 + revealStrength * 0.12
+        )}`,
+        label: `${channelMode.charAt(0).toUpperCase()}${channelMode.slice(1)} Channel Isolation`,
       };
     }
     if (moduleId === "gamma-scan") {
+      const rangeWeight = Math.max(0, Math.min(1, (revealStrength - 0.25) / 1.75));
+      const gamma = getRangeWeightedSetting(
+        settings,
+        "gammaMin",
+        "gammaMax",
+        0.7,
+        1.7,
+        rangeWeight
+      );
       return {
-        filterGraph: "eq=gamma=1.7:contrast=1.12:brightness=0.03",
+        filterGraph: `eq=gamma=${fixedFilterNumber(gamma)}:contrast=${fixedFilterNumber(
+          1.04 + revealStrength * 0.08
+        )}:brightness=${fixedFilterNumber(0.02 + revealStrength * 0.01)}`,
         label: "Gamma Scan",
       };
     }
     if (moduleId === "contrast-scan") {
+      const rangeWeight = Math.max(0, Math.min(1, (revealStrength - 0.25) / 1.75));
+      const contrast = getRangeWeightedSetting(
+        settings,
+        "contrastMin",
+        "contrastMax",
+        1.1,
+        1.6,
+        rangeWeight
+      );
       return {
-        filterGraph: "eq=contrast=1.45:brightness=0.02:saturation=1.05",
+        filterGraph: `eq=contrast=${fixedFilterNumber(contrast)}:brightness=${fixedFilterNumber(
+          0.015 + revealStrength * 0.008
+        )}:saturation=${fixedFilterNumber(1 + revealStrength * 0.05)}`,
         label: "Contrast Scan",
       };
     }
     if (moduleId === "edge-enhancement") {
+      const edgeStrength = Math.max(
+        0.25,
+        Math.min(2, readNumberSetting(settings, "edgeStrength", 1))
+      );
       return {
-        filterGraph: "unsharp=7:7:1.8:7:7:0.0",
+        filterGraph: `unsharp=7:7:${fixedFilterNumber(1.8 * edgeStrength)}:7:7:0.0`,
         label: "Edge Enhancement",
       };
     }
     if (moduleId === "histogram-equalization") {
+      const histogramStrength = Math.max(
+        0.05,
+        Math.min(1, readNumberSetting(settings, "histogramStrength", 0.35))
+      );
       return {
-        filterGraph: "histeq=strength=0.35:intensity=0.25",
+        filterGraph: `histeq=strength=${fixedFilterNumber(histogramStrength)}:intensity=${fixedFilterNumber(
+          Math.min(0.75, histogramStrength * 0.7)
+        )}`,
         label: "Histogram Equalization",
       };
     }
     if (moduleId === "hidden-detail-reveal") {
       return {
-        filterGraph: "eq=brightness=0.06:contrast=1.55:gamma=1.45,unsharp=5:5:1.4:5:5:0.0",
+        filterGraph: `eq=brightness=${fixedFilterNumber(0.04 + revealStrength * 0.016)}:contrast=${fixedFilterNumber(
+          1.1 + revealStrength * 0.38
+        )}:gamma=${fixedFilterNumber(1.05 + revealStrength * 0.32)},unsharp=5:5:${fixedFilterNumber(
+          1.1 + revealStrength * 0.24
+        )}:5:5:0.0`,
         label: "Hidden Detail Reveal",
       };
     }
+    const channelMode = readStringSetting(settings, "channelMode", "rgb");
+    const channelPrefix = channelMode === "rgb" ? "" : `${getChannelIsolationFilter(channelMode)},`;
     return {
-      filterGraph: "eq=brightness=0.05:contrast=1.2:gamma=1.2",
+      filterGraph: `${channelPrefix}eq=brightness=${fixedFilterNumber(0.04 + revealStrength * 0.01)}:contrast=${fixedFilterNumber(
+        1.05 + revealStrength * 0.15
+      )}:gamma=${fixedFilterNumber(1.05 + revealStrength * 0.15)}`,
       label: "Visual Signal Amplification",
     };
   }
@@ -518,6 +691,21 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
       const structureModuleIds = toUnknownArray(visualPartitions["structure"])
         .map(asNonEmptyString)
         .filter((entry): entry is string => entry !== null);
+      const roiScopedStructureSettings =
+        structureModuleIds
+          .map(function (visualModuleId) {
+            return getAnalysisModuleSettings(processRecord, visualModuleId);
+          })
+          .find(function (settings) {
+            return readBooleanSetting(settings, "roiOnly", false) === true;
+          }) || null;
+      const previewStructureSettings =
+        roiScopedStructureSettings ||
+        getAnalysisModuleSettings(processRecord, structureModuleIds[0] || "frame-consistency");
+      const previewScopeFilter =
+        readBooleanSetting(previewStructureSettings, "roiOnly", false) === true
+          ? getScopeCropFilter(processRecord)
+          : null;
 
       updateProcessModule(processRecord, "motion", {
         status: "running",
@@ -549,9 +737,10 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
           `${artifactBase}-motion`,
           outputDir,
           "motion",
-          60,
-          5,
-          sourceKind === "image" ? "Visual Reference Frame" : "Structure Frame Preview"
+          getSamplingWindowSeconds(previewStructureSettings),
+          getSamplingTileCount(previewStructureSettings),
+          sourceKind === "image" ? "Visual Reference Frame" : "Structure Frame Preview",
+          previewScopeFilter
         )
       );
       if (framePreview !== null) {
@@ -569,6 +758,7 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
       const structureArtifactIds =
         framePreview && typeof framePreview.id === "string" ? [framePreview.id] : [];
       structureModuleIds.forEach(function (visualModuleId) {
+        const moduleSettings = getAnalysisModuleSettings(processRecord, visualModuleId);
         const descriptor = buildVisualFindingDetail(
           visualModuleId,
           freezeCount,
@@ -578,10 +768,24 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
         findings.push(
           createMediaFinding(processRecord, "motion", visualModuleId, {
             artifactIds: structureArtifactIds,
-            detail: descriptor.detail,
+            detail: `${descriptor.detail} Sampling used ${readStringSetting(
+              moduleSettings,
+              "samplingDensity",
+              "balanced"
+            )} density with a ${String(getSamplingTileCount(moduleSettings))}-tile preview.`,
             evidenceCount:
               descriptor.level === "medium" ? Math.max(1, freezeCount + blackCount) : 1,
-            level: descriptor.level,
+            level: getSensitivityAdjustedLevel(
+              descriptor.level,
+              moduleSettings,
+              freezeCount + blackCount
+            ),
+            settingsUsed: {
+              ...moduleSettings,
+              roiOnly: readBooleanSetting(moduleSettings, "roiOnly", false),
+              sampleWindowSeconds: getSamplingWindowSeconds(moduleSettings),
+              tileCount: getSamplingTileCount(moduleSettings),
+            },
             title: descriptor.title,
           })
         );
@@ -714,7 +918,13 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
         if (!visualModuleId) {
           return;
         }
-        const filterConfig = getRevealFilterConfig(visualModuleId);
+        const moduleSettings = getAnalysisModuleSettings(processRecord, visualModuleId);
+        const filterConfig = getRevealFilterConfig(visualModuleId, moduleSettings);
+        const filterGraph = applyRoiScopeFilter(
+          processRecord,
+          moduleSettings,
+          filterConfig.filterGraph
+        );
         const transformArtifact = normalizeOptionalArtifact(
           await generateProcessVisualTransformArtifact(
             runtime,
@@ -725,11 +935,13 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
             `${artifactBase}-${visualModuleId}`,
             outputDir,
             "visual-signal",
-            filterConfig.filterGraph,
+            filterGraph,
             filterConfig.label,
             {
+              scopeReference: getScopeReference(processRecord),
               sourceModule: visualModuleId,
               sourceKind,
+              settingsUsed: moduleSettings,
             }
           )
         );
@@ -741,7 +953,8 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
 
       const comparisonVariants: LaboratoryRecord[] = [];
       revealModuleIds.forEach(function (visualModuleId, index) {
-        const filterConfig = getRevealFilterConfig(visualModuleId);
+        const moduleSettings = getAnalysisModuleSettings(processRecord, visualModuleId);
+        const filterConfig = getRevealFilterConfig(visualModuleId, moduleSettings);
         const transformArtifact = revealArtifacts[index] || revealArtifacts[0] || null;
         const artifactIds =
           transformArtifact && typeof transformArtifact.id === "string"
@@ -752,6 +965,7 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
           moduleId: "visual-signal",
           sourceModule: visualModuleId,
           label: filterConfig.label,
+          settingsUsed: moduleSettings,
           artifactId: transformArtifact ? asNonEmptyString(transformArtifact.id) : null,
           artifactPath: transformArtifact ? asNonEmptyString(transformArtifact.path) : null,
           active: index === 0,

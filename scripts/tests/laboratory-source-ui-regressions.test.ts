@@ -26,6 +26,13 @@ const ytDlpForm = JSON.parse(
   readFileSync("rooms/laboratory/shared/data/tools/yt-dlp.form.json", "utf8")
 );
 
+function createTurkishCopy() {
+  return createLabI18n({
+    locale: "tr",
+    translations: JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8")),
+  });
+}
+
 function createSeededState(ffmpegInstalled = false) {
   const store = createLabStore();
   store.dispatch({
@@ -437,6 +444,11 @@ test("laboratory workspace inspector exposes operation-result controls and activ
   assert.match(surface.main, /data-operation-id="band-pass-voice"/);
   assert.match(surface.main, /data-operation-id="stem-separation"/);
   assert.match(surface.main, /data-operation-id="enhanced-frame"[\s\S]*data-active="true"/);
+  assert.match(surface.main, /class="labx-settings-block"/);
+  assert.match(surface.main, /class="labx-settings-block__state"/);
+  assert.match(surface.main, /class="labx-settings-block__action"/);
+  assert.match(surface.main, /data-lab-field="operationSettings\.enhanced-frame\.preset"/);
+  assert.match(surface.main, /data-lab-action="operation-settings-reset"/);
 });
 
 test("laboratory operation buttons reflect scoped running action state", () => {
@@ -489,6 +501,8 @@ test("laboratory operation error buttons keep retry label short and expose messa
       outputKinds: ["frame", "image", "variant"],
       providerIds: ["ffmpeg-visual-reveal"],
       readiness: "ready",
+      settings: {},
+      settingsFields: [],
       sourceKinds: ["video", "image"],
       toolIds: ["ffmpeg"],
     },
@@ -498,6 +512,40 @@ test("laboratory operation error buttons keep retry label short and expose messa
   assert.match(html, />Retry<\/button>/);
   assert.match(html, /title="ffmpeg returned a very long diagnostic about an unsupported filter"/);
   assert.match(html, /class="labx-operation-card__action-state"/);
+});
+
+test("laboratory Turkish workspace controls localize operation and intent catalog labels", () => {
+  const store = createSeededState(true);
+  store.dispatch({ type: "analysis-prep-group-toggled", intentId: "audio-investigation" });
+  const trCopy = createTurkishCopy();
+  const surface = renderWorkspaceSurface(store.getState(), { copy: trCopy });
+  const drawer = renderLabDrawer(store.getState(), surface, trCopy);
+
+  assert.match(surface.main, /Klip Dışa Aktarma/);
+  assert.match(surface.main, /Aktif zaman aralığı seçiminden bağımsız bir klip oluştur/);
+  assert.match(surface.main, /Kare Yakalama/);
+  assert.match(surface.main, /Çıktı: klip/);
+  assert.match(surface.main, /Duzenle/);
+  assert.match(surface.main, /On ayar/);
+  assert.doesNotMatch(
+    surface.main,
+    /Clip Export|Frame Grab|Create a standalone clip|Capture the current video frame|>Preset<|>Apply preview</
+  );
+  assert.match(drawer, /Görsel inceleme/);
+  assert.match(drawer, /Ses araştırması/);
+  assert.match(drawer, /Görsel yapıyı, kare kompozisyonunu/);
+  assert.match(drawer, /Ses sinyali/);
+  assert.match(drawer, /Sinyal sagligi/);
+  assert.doesNotMatch(
+    drawer,
+    /Visual inspection|Audio investigation|forensic markers|Audio signal|Speech evidence/
+  );
+
+  const blockedStore = createSeededState(false);
+  const blockedSurface = renderWorkspaceSurface(blockedStore.getState(), { copy: trCopy });
+  const blockedDrawer = renderLabDrawer(blockedStore.getState(), blockedSurface, trCopy);
+  assert.match(blockedDrawer, /Gerekli araçlar kurulu değil/);
+  assert.doesNotMatch(blockedDrawer, /Required tools not installed/);
 });
 
 test("laboratory analysis preparation groups default closed and expand on demand", () => {
@@ -514,6 +562,11 @@ test("laboratory analysis preparation groups default closed and expand on demand
   assert.match(openDrawer, /data-lab-value="audio-investigation"[\s\S]*aria-expanded="true"/);
   assert.match(openDrawer, /class="labx-analysis-module"/);
   assert.match(openDrawer, /Audio signal/);
+  assert.match(
+    openDrawer,
+    /data-lab-field="analysisSettings\.modules\.signal-recovery\.recoveryPreset"/
+  );
+  assert.match(openDrawer, /data-lab-action="analysis-settings-reset"/);
 });
 
 test("laboratory selection guidance splits expanded operation and analysis suggestions", () => {
@@ -654,10 +707,7 @@ test("laboratory tool overlay lists room-local tool lifecycle actions inside the
   assert.match(html, /data-lab-action="tool-install"/);
   assert.doesNotMatch(html, /Dense operator workbench|Modules|Focus/);
 
-  const trCopy = createLabI18n({
-    locale: "tr",
-    translations: JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8")),
-  });
+  const trCopy = createTurkishCopy();
   const translatedHtml = renderToolManagementOverlay(store.getState(), trCopy);
   assert.match(translatedHtml, /İşlem takibi/);
   assert.match(translatedHtml, /Seçili niyet ve yetenek aileleri/);
@@ -1147,6 +1197,11 @@ test("laboratory report overlay renders snapshot summary and workspace-dirty fre
   assert.match(html, /Workspace farklı/);
   assert.match(html, /Report still reflects the frozen snapshot/);
   assert.match(html, /Visual inspection, Anomaly detection/);
+
+  const translatedHtml = renderReportOverlay(store.getState(), createTurkishCopy());
+  assert.match(translatedHtml, /Niyet Grupları/);
+  assert.match(translatedHtml, /Görsel inceleme, Anomali tespiti/);
+  assert.doesNotMatch(translatedHtml, /Intent Groups|Visual inspection|Anomaly detection/);
 });
 
 test("laboratory report overlay keeps scoped report-level findings inside the active intent group", () => {

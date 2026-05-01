@@ -91,6 +91,22 @@ const RUNTIME_TEXT: Record<string, RuntimeCopyDescriptor> = {
     key: "mediaAnalysis.runtime.blockReasons.sourceNotReady",
     fallback: "Source is not ready yet.",
   },
+  "Source not ready.": {
+    key: "mediaAnalysis.runtime.blockReasons.sourceNotReady",
+    fallback: "Source not ready.",
+  },
+  "Not available for this source type.": {
+    key: "mediaAnalysis.runtime.blockReasons.intentSourceUnsupported",
+    fallback: "Not available for this source type.",
+  },
+  "Required tools not installed.": {
+    key: "mediaAnalysis.runtime.blockReasons.requiredToolsNotInstalled",
+    fallback: "Required tools not installed.",
+  },
+  "Some tools missing — partial results.": {
+    key: "mediaAnalysis.runtime.blockReasons.someToolsMissingPartial",
+    fallback: "Some tools missing — partial results.",
+  },
   "Kaynak URL gerekli": {
     key: "mediaAnalysis.runtime.blockReasons.sourceUrlRequired",
     fallback: "Source URL is required",

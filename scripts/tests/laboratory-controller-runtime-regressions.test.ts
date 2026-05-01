@@ -1386,6 +1386,90 @@ test("laboratory run controller syncs the unified timeline playhead to the activ
   assert.equal(playheadLabel.textContent, "00:02.500");
 });
 
+test("laboratory run controller shifts normal playback from timeline step controls", async () => {
+  const originalElement = Object.getOwnPropertyDescriptor(globalThis, "Element");
+  const preview = new FakeMediaElement();
+  preview.duration = 12;
+  preview.currentTime = 4.321;
+  preview.paused = false;
+  const playhead = new FakePlayheadElement();
+  const playheadLabel = new FakeTextElement(null);
+  const currentTimeLabel = new FakeTextElement(null);
+  const totalDurationLabel = new FakeTextElement(null);
+  const playToggleLabel = new FakeTextElement(null);
+  const timelineRoot = { dataset: { duration: "12000" } };
+  const documentRef = new FakeDualPreviewDocument(
+    new Map<string, unknown>([
+      ['video[data-lab-preserve-media="workspace-preview"]', preview],
+      ['[data-lab-role="timeline-playhead"]', playhead],
+      ['[data-lab-role="timeline-playhead-label"]', playheadLabel],
+      ['[data-lab-role="timeline-current-time-label"]', currentTimeLabel],
+      ['[data-lab-role="timeline-total-duration-label"]', totalDurationLabel],
+      ['[data-lab-role="timeline-play-toggle-label"]', playToggleLabel],
+      [".labx-timeline", timelineRoot],
+    ]),
+    [preview]
+  );
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: FakeActionElement,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent() {},
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+
+    controller.attach();
+    await Promise.resolve();
+
+    assert.equal(currentTimeLabel.textContent, "00:04.321");
+    assert.equal(totalDurationLabel.textContent, "00:12.000");
+    assert.equal(playToggleLabel.textContent, "❚❚");
+
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
+    clickListener?.({
+      target: new FakeActionElement("timeline-shift-playhead", "+1000"),
+    } as Event);
+
+    assert.equal(preview.currentTime, 5.321);
+    assert.equal(preview.pauseCalls, 0);
+    assert.equal(currentTimeLabel.textContent, "00:05.321");
+
+    clickListener?.({
+      target: new FakeActionElement("timeline-shift-playhead", "-frame"),
+    } as Event);
+
+    assert.equal(preview.currentTime, 5.288);
+    assert.equal(preview.pauseCalls, 1);
+    assert.equal(preview.paused, true);
+    assert.equal(currentTimeLabel.textContent, "00:05.288");
+    assert.equal(playToggleLabel.textContent, "▶");
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", originalElement);
+    }
+  }
+});
+
 test("laboratory run controller rebinds the unified timeline playhead between single preview and dual preview master", async () => {
   const singlePreview = new FakeMediaElement();
   singlePreview.duration = 6;

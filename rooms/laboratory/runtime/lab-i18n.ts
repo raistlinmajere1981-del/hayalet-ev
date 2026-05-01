@@ -1,26 +1,12 @@
 import { labI18nEn } from "./lab-i18n-en.js";
 import { labI18nTr } from "./lab-i18n-tr.js";
 
-export type LabI18nKey =
-  | "posture.proceed"
-  | "posture.caution"
-  | "posture.reconsider"
-  | "descriptor.view"
-  | "readiness.view"
-  | "bridge.view"
-  | "coherence.view"
-  | "coherence.aligned"
-  | "coherence.mixed"
-  | "coherence.conflicted"
-  | "coherence.neutral"
-  | "projection.increase"
-  | "projection.decrease"
-  | "projection.stable";
-
+export type LabI18nKey = keyof typeof labI18nEn;
 export type LabI18nLocale = "en" | "tr";
 
 type LabI18nDictionary = Partial<Record<LabI18nKey, string>>;
 type LabI18nDictionaryBundle = Partial<Record<LabI18nLocale, LabI18nDictionary>>;
+type LabI18nParams = Record<string, string | number>;
 
 const LAB_I18N_DICTIONARIES: Record<LabI18nLocale, Record<LabI18nKey, string>> = {
   en: labI18nEn,
@@ -49,4 +35,15 @@ export function __testOnlyResolveLabI18nFromDictionaries(
 
 export function resolveLabI18n(key: LabI18nKey, locale: LabI18nLocale): string {
   return __testOnlyResolveLabI18nFromDictionaries(key, locale, LAB_I18N_DICTIONARIES);
+}
+
+export function formatLabI18n(
+  key: LabI18nKey,
+  locale: LabI18nLocale,
+  params: LabI18nParams = {}
+): string {
+  const template = resolveLabI18n(key, locale);
+  return Object.entries(params).reduce(function (copy, [name, value]) {
+    return copy.replaceAll(`{${name}}`, String(value));
+  }, template);
 }

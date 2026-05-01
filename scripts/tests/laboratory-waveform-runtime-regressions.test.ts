@@ -18,9 +18,7 @@ import {
   test,
 } from "./laboratory-runtime-truth.helpers.ts";
 
-import type {
-  LabArtifactProjection,
-} from "./laboratory-runtime-truth.helpers.ts";
+import type { LabArtifactProjection } from "./laboratory-runtime-truth.helpers.ts";
 
 test("waveform timeline model maps linked audio offset onto the shared master axis", () => {
   const store = createLabStore();
@@ -76,6 +74,23 @@ test("waveform timeline model clips negative linked audio offsets against the ma
     Number((500 / 6000).toFixed(6))
   );
   assert.match(markup, /data-waveform-crop-start="0\.08333333333333333"/);
+});
+
+test("waveform timeline renders normal playback timing and step controls without a selection", () => {
+  const store = createLabStore();
+  store.dispatch({
+    type: "snapshot-received",
+    payload: createDualPreviewSnapshot(),
+  });
+
+  const markup = renderLabWaveformTimeline(getWaveformTimelineModel(store.getState()));
+
+  assert.doesNotMatch(markup, /data-lab-selection-panel="true"/);
+  assert.match(markup, /data-lab-role="timeline-current-time-label"/);
+  assert.match(markup, /data-lab-role="timeline-total-duration-label"/);
+  assert.match(markup, /data-lab-action="timeline-shift-playhead"/);
+  assert.match(markup, /data-lab-value="-frame"/);
+  assert.match(markup, /data-lab-value="\+frame"/);
 });
 
 test("workspace audio visualizer renders a loadable artifact before live analyser init", async () => {

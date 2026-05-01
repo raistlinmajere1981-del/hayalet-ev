@@ -962,6 +962,34 @@ function renderFineTuneButtons(prefix: string, msValue: number, locked = false) 
   `;
 }
 
+function renderPlaybackStepControls(
+  copy: LabI18n,
+  durationMs: number,
+  locked = false,
+  sourceKind?: string
+) {
+  const disabledAttr = locked ? 'disabled aria-disabled="true"' : "";
+  const frameDisabledAttr = locked || sourceKind !== "video" ? 'disabled aria-disabled="true"' : "";
+  return `
+    <div
+      class="labx-timeline__playhead-tools"
+      aria-label="${escapeHtml(copy.t("mediaAnalysis.timeline.playheadTools", "Playback timing"))}"
+    >
+      <div class="labx-timeline__time-readout">
+        <span data-lab-role="timeline-current-time-label">00:00.000</span>
+        <span class="labx-timeline__time-separator">/</span>
+        <span data-lab-role="timeline-total-duration-label">${formatTimePrecise(durationMs)}</span>
+      </div>
+      <div class="labx-timeline__step-controls">
+        <button class="labx-timeline__step-btn" type="button" data-lab-action="timeline-shift-playhead" data-lab-value="-1000" title="${escapeHtml(copy.t("mediaAnalysis.timeline.jumpBackOneSecond", "Back 1 second"))}" ${disabledAttr}>-1s</button>
+        <button class="labx-timeline__step-btn" type="button" data-lab-action="timeline-shift-playhead" data-lab-value="-frame" title="${escapeHtml(copy.t("mediaAnalysis.timeline.frameBack", "Frame -1"))}" ${frameDisabledAttr}>-1f</button>
+        <button class="labx-timeline__step-btn" type="button" data-lab-action="timeline-shift-playhead" data-lab-value="+frame" title="${escapeHtml(copy.t("mediaAnalysis.timeline.frameForward", "Frame +1"))}" ${frameDisabledAttr}>+1f</button>
+        <button class="labx-timeline__step-btn" type="button" data-lab-action="timeline-shift-playhead" data-lab-value="+1000" title="${escapeHtml(copy.t("mediaAnalysis.timeline.jumpForwardOneSecond", "Forward 1 second"))}" ${disabledAttr}>+1s</button>
+      </div>
+    </div>
+  `;
+}
+
 function renderExecutionDetailsTrigger(copy: LabI18n, hasDetails: boolean) {
   if (hasDetails !== true) {
     return "";
@@ -1201,16 +1229,19 @@ export function renderLabWaveformSelectionPanel(
           }).join("")}
         </div>
       </div>
-      <div class="lab-selection-panel__intent-picker" data-lab-role="selection-intent-picker">
-        ${SELECTION_INTENT_OPTIONS.map(function (intent) {
-          const isActive = selectionIntent === intent;
-          return `<button
-            class="lab-selection-panel__intent-pill${isActive ? " is-active" : ""}"
-            type="button"
-            aria-pressed="${String(isActive)}"
-            data-lab-selection-intent="${intent}"
-          >${escapeHtml(formatSelectionIntent(intent, copy))}</button>`;
-        }).join("")}
+      <div class="lab-selection-panel__intent">
+        <div class="lab-selection-panel__intent-title">${escapeHtml(copy.t("mediaAnalysis.timeline.selectionIntent", "Selection intent"))}</div>
+        <div class="lab-selection-panel__intent-picker" data-lab-role="selection-intent-picker">
+          ${SELECTION_INTENT_OPTIONS.map(function (intent) {
+            const isActive = selectionIntent === intent;
+            return `<button
+              class="lab-selection-panel__intent-pill${isActive ? " is-active" : ""}"
+              type="button"
+              aria-pressed="${String(isActive)}"
+              data-lab-selection-intent="${intent}"
+            >${escapeHtml(formatSelectionIntent(intent, copy))}</button>`;
+          }).join("")}
+        </div>
       </div>
       <div class="lab-selection-panel__hint">${escapeHtml(copy.t("mediaAnalysis.timeline.selectionHint", "This selection will guide future analysis"))}</div>
       ${renderExecutionIntentStrip(activeExecutionIntent, copy)}
@@ -1468,6 +1499,7 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
             />
           </label>
         </div>
+        ${renderPlaybackStepControls(copy, durationMs, timelineLocked, model.sourceKind)}
         <div class="labx-timeline__bookmark">
           <input
             class="labx-input labx-input--compact labx-timeline__bookmark-note"

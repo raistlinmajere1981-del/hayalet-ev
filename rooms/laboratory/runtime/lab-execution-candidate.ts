@@ -32,7 +32,7 @@ import {
   buildDecisionCoherence,
   formatDecisionCoherenceAdvisory,
 } from "./lab-decision-coherence.js";
-import type { LabI18nLocale } from "./lab-i18n.js";
+import { formatLabI18n, resolveLabI18n, type LabI18nKey, type LabI18nLocale } from "./lab-i18n.js";
 
 export type LabExecutionCandidateResultInterpretation = {
   coverageLevel: "low" | "medium" | "high";
@@ -192,24 +192,46 @@ function hasMaterialAlternativePressure(input: LabExecutionCandidateInput) {
   });
 }
 
-function buildNotes(input: LabExecutionCandidateInput, materialAlternativePressure: boolean) {
+function formatRuntimeStatus(
+  namespace: "readiness" | "reflection" | "simulationRisk",
+  value: string,
+  locale: LabI18nLocale
+) {
+  return resolveLabI18n(`status.${namespace}.${value}` as LabI18nKey, locale);
+}
+
+function buildNotes(
+  input: LabExecutionCandidateInput,
+  materialAlternativePressure: boolean,
+  locale: LabI18nLocale
+) {
   const notes: string[] = [];
 
-  pushUnique(notes, `Readiness status is ${input.executionReadiness.status}.`);
-  pushUnique(notes, `Reflection decision is ${input.executionReflection.decision}.`);
+  pushUnique(
+    notes,
+    formatLabI18n("candidate.notes.readinessStatus", locale, {
+      status: formatRuntimeStatus("readiness", input.executionReadiness.status, locale),
+    })
+  );
+  pushUnique(
+    notes,
+    formatLabI18n("candidate.notes.reflectionDecision", locale, {
+      decision: formatRuntimeStatus("reflection", input.executionReflection.decision, locale),
+    })
+  );
 
   if (input.executionPayloadPreview.readinessPassesPreview) {
-    pushUnique(notes, "Payload preview is structurally aligned with the readiness signal.");
+    pushUnique(notes, resolveLabI18n("candidate.notes.payloadAligned", locale));
   } else {
-    pushUnique(notes, "Payload preview still reports a readiness mismatch.");
+    pushUnique(notes, resolveLabI18n("candidate.notes.payloadMismatch", locale));
   }
 
   if (input.executionAlternatives.alternatives.length > 0) {
-    pushUnique(notes, "Alternative paths are documented for comparison without changing state.");
+    pushUnique(notes, resolveLabI18n("candidate.notes.alternativesDocumented", locale));
   }
 
   if (materialAlternativePressure) {
-    pushUnique(notes, "Alternative tradeoffs materially affect this candidate assessment.");
+    pushUnique(notes, resolveLabI18n("candidate.notes.alternativePressure", locale));
   }
 
   return notes;
@@ -217,28 +239,40 @@ function buildNotes(input: LabExecutionCandidateInput, materialAlternativePressu
 
 function buildUncertainties(
   input: LabExecutionCandidateInput,
-  materialAlternativePressure: boolean
+  materialAlternativePressure: boolean,
+  locale: LabI18nLocale
 ) {
   const uncertainties: string[] = [];
   const simulationRisk = getSimulationRisk(input);
 
   for (const blocker of input.executionReadiness.blockers ?? []) {
-    pushUnique(uncertainties, `Readiness blocker: ${blocker}`);
+    pushUnique(
+      uncertainties,
+      formatLabI18n("candidate.uncertainty.readinessBlocker", locale, { blocker })
+    );
   }
   for (const warning of input.executionSimulation.warnings ?? []) {
-    pushUnique(uncertainties, `Simulation warning: ${warning}`);
+    pushUnique(
+      uncertainties,
+      formatLabI18n("candidate.uncertainty.simulationWarning", locale, { warning })
+    );
   }
   if (input.executionPayloadPreview.readinessPassesPreview === false) {
-    pushUnique(uncertainties, "Payload preview does not yet pass its readiness check.");
+    pushUnique(uncertainties, resolveLabI18n("candidate.uncertainty.payloadMismatch", locale));
   }
   if (simulationRisk !== "low") {
-    pushUnique(uncertainties, `Simulation risk remains ${simulationRisk}.`);
+    pushUnique(
+      uncertainties,
+      formatLabI18n("candidate.uncertainty.simulationRisk", locale, {
+        risk: formatRuntimeStatus("simulationRisk", simulationRisk, locale),
+      })
+    );
   }
   if (getBaseConfidence(input) < 0.68) {
-    pushUnique(uncertainties, "Upstream confidence is low enough to keep structural uncertainty.");
+    pushUnique(uncertainties, resolveLabI18n("candidate.uncertainty.lowConfidence", locale));
   }
   if (materialAlternativePressure) {
-    pushUnique(uncertainties, "Alternative paths expose meaningful tradeoffs for this route.");
+    pushUnique(uncertainties, resolveLabI18n("candidate.uncertainty.alternativeTradeoffs", locale));
   }
 
   return uncertainties.length > 0 ? uncertainties : undefined;
@@ -307,14 +341,14 @@ function evaluateStatus(
   return "unstable";
 }
 
-function buildSummary(status: LabExecutionCandidate["status"]) {
+function buildSummary(status: LabExecutionCandidate["status"], locale: LabI18nLocale) {
   if (status === "viable") {
-    return "This path is structurally ready for execution.";
+    return resolveLabI18n("candidate.summary.viable", locale);
   }
   if (status === "unstable") {
-    return "This path may require refinement before execution.";
+    return resolveLabI18n("candidate.summary.unstable", locale);
   }
-  return "This path is not structurally suitable for execution.";
+  return resolveLabI18n("candidate.summary.not-viable", locale);
 }
 
 function appendAdaptiveDecisionHint(summary: string, adaptiveDecisionHint: string) {
@@ -451,15 +485,17 @@ function buildExecutionCandidate(input: LabExecutionCandidateInput): LabExecutio
   const materialAlternativePressure = hasMaterialAlternativePressure(input);
   const structuralIntegrity = evaluateStructuralIntegrity(input, materialAlternativePressure);
   const status = evaluateStatus(input, structuralIntegrity, materialAlternativePressure);
-  const uncertainties = buildUncertainties(input, materialAlternativePressure);
+  const uncertainties = buildUncertainties(input, materialAlternativePressure, locale);
   const adaptiveDecision = buildAdaptiveDecisionSignal({
     executionGoalEvaluation: input.executionGoalEvaluation ?? null,
     executionResultInterpretation: input.executionResultInterpretation ?? null,
+    locale,
   });
   const decisionPosture = buildDecisionPosture({
     decisionPressure: adaptiveDecision.decisionPressure,
     executionGoalEvaluation: input.executionGoalEvaluation ?? null,
     executionResultInterpretation: input.executionResultInterpretation ?? null,
+    locale,
   });
   const guidedAlternative = buildGuidedAlternativeSignal({
     alternatives: input.executionAlternatives.alternatives,
@@ -484,6 +520,7 @@ function buildExecutionCandidate(input: LabExecutionCandidateInput): LabExecutio
           executionGoalEvaluation: input.executionGoalEvaluation ?? null,
           executionResult: input.executionResult,
           executionResultInterpretation: input.executionResultInterpretation ?? null,
+          locale,
         });
   const adaptiveDecisionHint = appendAdaptiveDecisionHint(
     appendAdaptiveDecisionHint(
@@ -509,7 +546,7 @@ function buildExecutionCandidate(input: LabExecutionCandidateInput): LabExecutio
   ]);
   const summary = prependDecisionPostureLabel(
     joinSummaryParts([
-      appendAdaptiveDecisionHint(buildSummary(status), adaptiveDecisionHint),
+      appendAdaptiveDecisionHint(buildSummary(status, locale), adaptiveDecisionHint),
       advisorySummary,
     ]),
     decisionPosture,
@@ -526,7 +563,7 @@ function buildExecutionCandidate(input: LabExecutionCandidateInput): LabExecutio
     structuralIntegrity,
     readinessStatus: input.executionReadiness.status,
     reflectionDecision: input.executionReflection.decision,
-    notes: buildNotes(input, materialAlternativePressure),
+    notes: buildNotes(input, materialAlternativePressure, locale),
     ...(uncertainties ? { uncertainties } : {}),
     confidence: buildConfidence(input, status, structuralIntegrity, uncertainties?.length ?? 0),
   };

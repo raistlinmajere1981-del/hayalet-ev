@@ -3230,8 +3230,18 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       if (state.ui.activeExecutionIntentId === normalizeSelectionSuggestionId(event.suggestionId)) {
         clearExecutionIntent(state);
       }
+      if (
+        state.ui.activeSuggestionPreviewId === normalizeSelectionSuggestionId(event.suggestionId)
+      ) {
+        clearSuggestionPreview(state);
+      }
       return state;
     case "workspace-selection-suggestion-queued":
+      if (
+        state.ui.activeSuggestionPreviewId === normalizeSelectionSuggestionId(event.suggestionId)
+      ) {
+        clearSuggestionPreview(state);
+      }
       return state;
     case "workspace-execution-intent-cleared":
       clearExecutionIntent(state);

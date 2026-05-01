@@ -1,4 +1,6 @@
 import { getAudioAnalysisProcessRootDir } from "../../../shared/host/project-paths.js";
+import { normalizeLabAnalysisModuleSettings } from "../../../models/lab-types.js";
+import type { LabSettingsRecord } from "../../../models/lab-types.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 
@@ -8,6 +10,7 @@ type LaboratoryRuntimeRecord = LaboratoryRecord & {
 
 type LaboratoryProjectRecord = LaboratoryRecord & {
   slug?: unknown;
+  workbench?: unknown;
 };
 
 type LaboratoryProcessTargetRecord = LaboratoryRecord & {
@@ -97,6 +100,11 @@ function isNonNullString(value: string | null): value is string {
   return typeof value === "string" && value.length > 0;
 }
 
+function readStringSetting(settings: LabSettingsRecord, key: string, fallback: string): string {
+  const value = settings[key];
+  return typeof value === "string" && value.trim() !== "" ? value : fallback;
+}
+
 function toDirectoryEntryRecord(value: unknown): LaboratoryDirectoryEntryRecord {
   return toRecord(value);
 }
@@ -137,6 +145,16 @@ export function createAudioAnalysisSourceSeparationModelRunner(
     );
   }
 
+  function getModuleSettings(
+    project: LaboratoryProjectRecord,
+    moduleId: string
+  ): LabSettingsRecord {
+    const workbench = toRecord(project.workbench);
+    const analysisSettings = toRecord(workbench["analysisSettings"]);
+    const moduleSettings = toRecord(analysisSettings["modules"]);
+    return normalizeLabAnalysisModuleSettings(moduleId, moduleSettings[moduleId]);
+  }
+
   return async function runSourceSeparationAudioAnalyzer(
     runtime: LaboratoryRuntimeRecord,
     project: LaboratoryProjectRecord,
@@ -160,7 +178,10 @@ export function createAudioAnalysisSourceSeparationModelRunner(
       };
     }
 
-    const modelName = "htdemucs";
+    const settings = getModuleSettings(project, moduleId);
+    const modelName = readStringSetting(settings, "model", "htdemucs");
+    const device = readStringSetting(settings, "device", "cpu");
+    const stemsMode = readStringSetting(settings, "stems", "all");
     const preparedInputBase = sanitizeFileSegment(`${artifactBase}-demucs-input`, "demucs-input");
     const preparedInputPath = `${moduleOutputDir}/${preparedInputBase}.wav`;
     const stemDir = `${moduleOutputDir}/separated/${modelName}/${preparedInputBase}`;
@@ -180,7 +201,16 @@ export function createAudioAnalysisSourceSeparationModelRunner(
       jobId: jobId,
       toolId: "demucs",
       cwd: moduleOutputDir,
-      args: ["-m", "demucs", "-d", "cpu", "-n", modelName, preparedInputPath],
+      args: [
+        "-m",
+        "demucs",
+        "-d",
+        device,
+        "-n",
+        modelName,
+        ...(stemsMode === "all" ? [] : ["--two-stems", stemsMode]),
+        preparedInputPath,
+      ],
       timeoutMs: 30 * 60 * 1000,
     });
 
@@ -216,6 +246,9 @@ export function createAudioAnalysisSourceSeparationModelRunner(
       generatedAt: new Date().toISOString(),
       target: clone(target),
       modelName: modelName,
+      device,
+      stemsMode,
+      settingsUsed: settings,
       preparedInputPath: preparedInputPath,
       stemDir: stemDir,
       stems: stems,
@@ -230,6 +263,9 @@ export function createAudioAnalysisSourceSeparationModelRunner(
         {
           stemName: stem.stemName,
           modelName: modelName,
+          device,
+          stemsMode,
+          settingsUsed: settings,
         }
       );
     });
@@ -240,7 +276,10 @@ export function createAudioAnalysisSourceSeparationModelRunner(
       "Source Separation Manifest",
       {
         modelName: modelName,
+        device,
+        stemsMode,
         stemCount: stems.length,
+        settingsUsed: settings,
         stemNames: stems.map(function (stem) {
           return stem.stemName;
         }),

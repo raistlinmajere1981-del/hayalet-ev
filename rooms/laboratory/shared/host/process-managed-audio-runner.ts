@@ -1,6 +1,7 @@
 type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryProcessRecord = LaboratoryRecord & {
+  analysisSettings?: unknown;
   modules?: unknown;
 };
 
@@ -86,6 +87,23 @@ export function createLaboratoryManagedAudioRunnerRuntime(deps: LaboratoryManage
     return toRecord(value);
   }
 
+  function getProjectWithProcessAnalysisSettings(
+    project: LaboratoryRecord,
+    processRecord: LaboratoryProcessRecord
+  ): LaboratoryRecord {
+    const analysisSettings = toRecord(processRecord.analysisSettings);
+    if (Object.keys(analysisSettings).length === 0) {
+      return project;
+    }
+    return {
+      ...project,
+      workbench: {
+        ...toRecord(project["workbench"]),
+        analysisSettings: analysisSettings,
+      },
+    };
+  }
+
   async function runAudioManagedProcess(
     runtime: LaboratoryRecord,
     project: LaboratoryRecord,
@@ -159,11 +177,12 @@ export function createLaboratoryManagedAudioRunnerRuntime(deps: LaboratoryManage
         continue;
       }
 
-      const moduleOutputDir = getAudioAnalysisModuleProcessDir(runtime, project, moduleId);
+      const runnerProject = getProjectWithProcessAnalysisSettings(project, processRecord);
+      const moduleOutputDir = getAudioAnalysisModuleProcessDir(runtime, runnerProject, moduleId);
       // eslint-disable-next-line no-await-in-loop -- NOTE: module progress updates are emitted in execution order.
       const runnerOutput = await moduleRunner(
         runtime,
-        project,
+        runnerProject,
         requestId,
         jobId,
         target,

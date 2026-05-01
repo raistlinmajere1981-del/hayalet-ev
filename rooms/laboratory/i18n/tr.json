@@ -74,7 +74,7 @@
     "dependencySubtitle": "",
     "dependencyOverview": "Arac kurulumlarini, guncellemeleri ve oda desteklerini tek panelden yonet.",
     "dependencyFocus": "Aktif adim odagi:",
-    "readinessTitle": "Readiness",
+    "readinessTitle": "Hazırlık",
     "readinessSubtitle": "Kapsam gorunumu",
     "blockerTitle": "Guncel blokajlar",
     "readyHint": "Mevcut calisma alani aktif modul ile devam etmek icin yeterli kapsama sahip.",
@@ -102,7 +102,7 @@
       "cancelAction": "Iptal Et",
       "operationLabel": "Islem",
       "stepLabel": "Adim",
-      "transferLabel": "Transfer",
+      "transferLabel": "Aktarım",
       "actions": {
         "tool-install": "Arac kurulumu",
         "tool-update": "Arac guncellemesi",
@@ -199,6 +199,15 @@
       "results": "Sonuclar",
       "navLabel": "Mod gostergeleri",
       "toolMgmt": "Arac Yonetimi"
+    },
+    "center": {
+      "loading": "Laboratuvar merkezi yukleniyor",
+      "loadingLabel": "Calisma alani hazirlaniyor..."
+    },
+    "workspaceInspector": {
+      "toggle": "Kontroller",
+      "ariaLabel": "Calisma alani kontrolleri",
+      "tabs": "Kontrol sekmeleri"
     },
     "projectWorkspace": {
       "title": "Proje Calisma Alani",
@@ -335,18 +344,30 @@
       "showDetails": "Detayları Göster",
       "hideDetails": "Detayları Gizle",
       "noRecentActions": "Son islem yok",
-      "noRawLog": "Raw log yok",
+      "noRawLog": "Ham log yok",
       "recentActions": "Son islemler",
-      "rawLog": "Raw log",
+      "rawLog": "Ham log",
+      "analysisSummary": "Analiz ozeti",
+      "moduleStatus": {
+        "waiting": "Bekliyor",
+        "running": "Inceleniyor",
+        "queued": "Sirada",
+        "completed": "Tamamlandi",
+        "failed": "Kontrol gerekiyor",
+        "cancelled": "Iptal edildi",
+        "skipped": "Atlandi"
+      },
       "steps": {
         "select": "Secim",
         "plan": "Plan",
         "evaluate": "Degerlendirme",
         "decide": "Karar",
-        "stage": "Staging"
+        "stage": "Hazırlama"
       }
     },
     "drawer": {
+      "expand": "Paneli ac",
+      "collapse": "Paneli kapat",
       "setup": {
         "eyebrow": "Yapilandirma",
         "title": "Analiz Hazirligi",
@@ -355,6 +376,19 @@
         "reportOutputs": "Rapor ciktilari",
         "expandGroup": "Genislet",
         "collapseGroup": "Daralt",
+        "moduleSettings": "Ayarlar",
+        "reportSections": {
+          "visual-structure": "Görsel yapı",
+          "visual-forensics": "Görsel adli inceleme",
+          "audio-signal": "Ses sinyali",
+          "audio-recovery": "Ses kurtarma",
+          "transcription": "Konuşma kanıtı",
+          "speaker-analysis": "Konuşma kanıtı",
+          "prosody-emotion": "Prozodi ve duygu",
+          "sound-classification": "Ses olayları",
+          "source-separation": "Ayrılmış kaynaklar",
+          "music-analysis": "Müzik betimleyicileri"
+        },
         "preflightTitle": "On Kontrol",
         "preflightOk": "Tum araclar hazir",
         "cta": "Analizi Baslat",
@@ -362,36 +396,138 @@
       },
       "running": {
         "eyebrow": "Calisiyor",
-        "title": "Analiz Ilerlemesi"
+        "title": "Analiz Ilerlemesi",
+        "planStatus": {
+          "running": "Analiz ediliyor",
+          "queued": "Sirada",
+          "completed": "Tamamlandi",
+          "failed": "Hata verdi",
+          "cancelled": "Iptal edildi",
+          "skipped": "Atlandi",
+          "ready": "Hazir"
+        },
+        "planResolving": "Analiz plani hazirlaniyor.",
+        "cancelPending": "Analiz iptal ediliyor",
+        "cancel": "Analizi Iptal Et",
+        "cancelPendingSub": "Iptal istegi isleniyor",
+        "cancelSub": "Calisan analiz durdurulacak"
       },
       "result": {
         "eyebrow": "Sonuc",
-        "title": "Karar Yuzeyi"
+        "title": "Karar Yuzeyi",
+        "impl": {
+          "candidateViable": "Yapisal olarak calistirilabilir",
+          "candidateUnstable": "Yapi eksik - degerlendirme gerekli",
+          "candidateNotViable": "Gecersiz - yol revizyonu gerekli",
+          "candidateNone": "Degerlendirme bekleniyor",
+          "commitmentCommitted": "Yol staging icin secildi",
+          "commitmentRevoked": "Onay geri cekildi",
+          "commitmentNone": "Henuz onaylanmis yol yok",
+          "stagingStaged": "Calistirma icin hazirlandi",
+          "stagingNotStaged": "Henuz hazirlanmadi",
+          "stagingNone": "Staging hazirligi bekleniyor"
+        },
+        "partialWarn": "Analiz tamamlandi ancak bazi moduller uyari verdi.",
+        "coherenceState": "Durum",
+        "coherenceAxis": "Baskin eksen",
+        "coherenceIntegrity": "Yapisal butunluk",
+        "coherenceConfidence": "Guven",
+        "readinessLevel": "Seviye",
+        "readinessPressure": "Karar baskisi",
+        "readinessConfidence": "Guven",
+        "bridgeAdapter": "Bağdaştırıcı",
+        "bridgeOperation": "Operasyon",
+        "bridgeRequired": "Gerekli",
+        "bridgeOutput": "Cikti",
+        "advisoriesTitle": "Degerlendirmeler",
+        "fresh": "Guncel",
+        "stale": "Eski",
+        "dirty": "Workspace farkli",
+        "reportCta": "Raporu Goruntule",
+        "explore": "Kesif Moduna Gec"
       },
       "explore": {
         "eyebrow": "Kesif",
-        "title": "Alternatifler ve Karsilastirma"
+        "title": "Alternatifler ve Karsilastirma",
+        "comparisonTitle": "Degisiklikler",
+        "noDiff": "Parametrelerde degisiklik yok",
+        "partialWarn": "Analiz tamamlandi ancak bazi moduller uyari verdi.",
+        "alternativesTitle": "Alternatifler",
+        "reanalyze": "Tekrar Analiz Et",
+        "reanalyzeSub": "Guncel parametrelerle yeni analiz baslat",
+        "backToResult": "Sonuc Moduna Don"
       }
     },
     "operations": {
-      "tab": "Islemler",
-      "title": "Islemler",
-      "notReady": "Hazir degil",
-      "runningAction": "Isleniyor",
-      "successAction": "Hazir",
+      "tab": "İşlemler",
+      "title": "İşlemler",
+      "notReady": "Hazır değil",
+      "runningAction": "İşleniyor",
+      "successAction": "Hazır",
       "errorAction": "Tekrar Dene",
-      "plannedAction": "Planli",
-      "runAction": "Calistir",
-      "ready": "Hazir",
-      "partial": "Kismi",
+      "plannedAction": "Planlı",
+      "runAction": "Çalıştır",
+      "settings": "Ayarlar",
+      "ready": "Hazır",
+      "partial": "Kısmi",
       "blocked": "Bloke",
-      "output": "Cikti",
-      "tools": "Araclar",
+      "output": "Çıktı",
+      "tools": "Araçlar",
       "groups": {
-        "clip": "Klip Ciktilari",
-        "frame": "Kare ve Bolge",
-        "audio": "Ses Ciktilari",
-        "stems": "Stem Ciktilari"
+        "clip": "Klip Çıktıları",
+        "frame": "Kare ve Bölge",
+        "audio": "Ses Çıktıları",
+        "stems": "Stem Çıktıları"
+      },
+      "outputs": {
+        "clip": "klip",
+        "frame": "kare",
+        "image": "görsel",
+        "audio": "ses",
+        "variant": "varyant",
+        "stem": "stem"
+      },
+      "capabilities": {
+        "clip-export": {
+          "label": "Klip Dışa Aktarma",
+          "description": "Aktif zaman aralığı seçiminden bağımsız bir klip oluştur."
+        },
+        "segment-stabilization": {
+          "label": "Stabilize İnceleme Klibi",
+          "description": "Hareket okunabilirliği için stabilize edilmiş bir klip varyantı hazırla."
+        },
+        "frame-grab": {
+          "label": "Kare Yakalama",
+          "description": "Geçerli video karesini proje varlığı olarak yakala."
+        },
+        "roi-crop": {
+          "label": "ROI Kırpma",
+          "description": "Aktif inceleme bölgesini görsel varlık olarak dışa aktar."
+        },
+        "enhanced-frame": {
+          "label": "İyileştirilmiş Kare",
+          "description": "Kare veya ROI için netlik odaklı bir varyant üret."
+        },
+        "before-after-variant": {
+          "label": "Önce/Sonra Varyantı",
+          "description": "İnceleme için özgün ve iyileştirilmiş karşılaştırma varlığı hazırla."
+        },
+        "audio-extract": {
+          "label": "Sesi Çıkar",
+          "description": "Kaynak ses izini WAV varlığı olarak dışa aktar."
+        },
+        "audio-cleanup": {
+          "label": "Sesi Temizle",
+          "description": "Gürültüsü azaltılmış veya bant geçiş odaklı bir ses varyantı oluştur."
+        },
+        "band-pass-voice": {
+          "label": "Bant Geçişli Ses",
+          "description": "Sınırlı frekans geçişiyle konuşma odaklı bir ses varyantı oluştur."
+        },
+        "stem-separation": {
+          "label": "Kaynakları Ayır",
+          "description": "Konuşma, ortam veya müzik incelemesi için ayrılmış stemler oluştur."
+        }
       }
     },
     "journey": {
@@ -599,6 +735,9 @@
       "regionSnapshot": "Bolge goruntusu",
       "snapshotAlt": "Gecici inceleme goruntusu",
       "playPause": "Oynat / duraklat",
+      "playheadTools": "Oynatma zamani",
+      "jumpBackOneSecond": "1 saniye geri",
+      "jumpForwardOneSecond": "1 saniye ileri",
       "volume": "Ses",
       "markCurrent": "Isaretle",
       "markCurrentTitle": "Simdiki ani isaretle",
@@ -609,7 +748,10 @@
       "microZoomToggle": "Mikro Zoom",
       "microZoomToggleTitle": "Secim mikro yakinlastirmayi goster veya gizle",
       "inspectionMode": "Inceleme modu",
+      "selectionIntent": "Secim niyeti",
       "selectionHint": "Bu secim gelecekteki analize rehberlik eder",
+      "suggestedOperations": "Onerilen islemler",
+      "suggestedAnalyses": "Onerilen analizler",
       "interpretation": "Yorum",
       "invalidRangeHint": "Gecerli secim icin bitis baslangictan buyuk olmali.",
       "seekDragHint": "Aramak icin tikla, secim olusturmak icin surukle.",
@@ -668,12 +810,12 @@
       "ready": "Hazir",
       "duration": "Sure",
       "resolution": "Cozunurluk",
-      "codec": "Codec",
-      "format": "Format",
+      "codec": "Kodek",
+      "format": "Biçim",
       "bitrate": "Bit hizi",
       "range": "Aralik",
       "focus": "Odak",
-      "preset": "Preset",
+      "preset": "Ön ayar",
       "region": "Bolge",
       "route": "Hat",
       "localSample": "Yerel ornek",
@@ -700,6 +842,182 @@
       "subtitle": "Oda-yerel yakalama, duzenleme ve profil araclarini kontrol et, kur, guncelle ve incele.",
       "refreshAction": "Araclari Yenile",
       "bulkUpdateAction": "Modulleri Guncelle",
+      "reset": "Sifirla",
+      "edit": "Duzenle",
+      "fields": {
+        "format": "Format",
+        "quality": "Kalite",
+        "fps": "FPS",
+        "scale": "Olcek",
+        "includeAudio": "Ses",
+        "applyRoiCrop": "ROI kullan",
+        "shakiness": "Sarsinti",
+        "smoothing": "Yumusatma",
+        "cropMode": "Kirpma",
+        "stabilizationStrength": "Stabilite",
+        "zoomCompensation": "Zoom koruma",
+        "frameMode": "Kare modu",
+        "burstCount": "Seri",
+        "timestampLabel": "Zaman etiketi",
+        "padding": "Pay",
+        "paddingPercent": "Pay",
+        "outputSize": "Boyut",
+        "aspectLock": "Oran",
+        "preset": "On ayar",
+        "strength": "Guc",
+        "applyPreviewSettings": "Onizleme",
+        "layout": "Yerlesim",
+        "revealPreset": "Ortaya cikar",
+        "variantCount": "Varyant",
+        "comparisonLayout": "Yerlesim",
+        "diffMode": "Fark",
+        "channels": "Kanallar",
+        "sampleRate": "Ornekleme",
+        "timelineOnly": "Sadece aralik",
+        "denoise": "Gurultu azalt",
+        "highpassHz": "High-pass",
+        "lowpassHz": "Low-pass",
+        "normalize": "Normalize",
+        "normalizeTargetDb": "Hedef ses duzeyi",
+        "compressor": "Kompresor",
+        "lowHz": "Alt",
+        "highHz": "Ust",
+        "widthQ": "Genislik Q",
+        "gainDb": "Kazanc",
+        "gain": "Kazanc",
+        "stemSet": "Stemler",
+        "model": "Model",
+        "samplingDensity": "Tarama",
+        "frameStep": "Kare adimi",
+        "sensitivity": "Hassasiyet",
+        "revealStrength": "Ortaya cikar",
+        "channelMode": "Kanal",
+        "roiOnly": "Sadece ROI",
+        "gammaMin": "Gamma min",
+        "gammaMax": "Gamma max",
+        "contrastMin": "Kontrast min",
+        "contrastMax": "Kontrast max",
+        "edgeStrength": "Kenar",
+        "histogramStrength": "Histogram",
+        "sampleWindowSeconds": "Pencere",
+        "silenceThresholdDb": "Sessizlik",
+        "recoveryPreset": "On ayar",
+        "shiftHz": "Kaydirma",
+        "centerHz": "Merkez",
+        "widthHz": "Genislik",
+        "modelPolicy": "Model",
+        "language": "Dil",
+        "sampleSeconds": "Ornek",
+        "speakerCount": "Konusmaci",
+        "minSegmentSeconds": "Min segment",
+        "topK": "Top K",
+        "threshold": "Esik",
+        "device": "Cihaz",
+        "stems": "Stemler",
+        "segmentPreset": "Segment",
+        "focus": "Odak",
+        "musicFocus": "Odak",
+        "essentiaFallback": "Essentia",
+        "harmonicSensitivity": "Harmonik",
+        "percussiveSensitivity": "Perkusif",
+        "heuristicSensitivity": "Heuristik",
+        "windowSeconds": "Pencere",
+        "compression": "Sikistirma",
+        "phaseMode": "Faz"
+      },
+      "options": {
+        "enabled": "Acik",
+        "disabled": "Kapali",
+        "mp4": "MP4",
+        "webm": "WebM",
+        "gif": "GIF",
+        "mov": "MOV",
+        "wav": "WAV",
+        "flac": "FLAC",
+        "mp3": "MP3",
+        "png": "PNG",
+        "jpg": "JPG",
+        "webp": "WebP",
+        "low": "Dusuk",
+        "medium": "Orta",
+        "high": "Yuksek",
+        "compact": "Kompakt",
+        "source": "Kaynak",
+        "480p": "480p",
+        "720p": "720p",
+        "1080p": "1080p",
+        "current": "Gecerli",
+        "middle": "Orta nokta",
+        "burst": "Seri",
+        "free": "Serbest",
+        "square": "Kare",
+        "16:9": "16:9",
+        "4:3": "4:3",
+        "512": "512 px",
+        "1024": "1024 px",
+        "2048": "2048 px",
+        "detail": "Detay",
+        "keep": "Koru",
+        "adaptive": "Uyarlanir",
+        "fixed": "Sabit",
+        "fast": "Hizli",
+        "quality": "Kalite",
+        "clarity": "Netlik",
+        "low-light": "Dusuk isik",
+        "edge": "Kenar",
+        "forensic": "Forensik",
+        "side-by-side": "Yan yana",
+        "stacked": "Alt alta",
+        "wipe": "Silme gecisi",
+        "luma": "Luma",
+        "rgb": "RGB",
+        "red": "Kirmizi",
+        "green": "Yesil",
+        "blue": "Mavi",
+        "mono": "Mono",
+        "stereo": "Stereo",
+        "speech": "Konusma",
+        "broadband": "Genis bant",
+        "hidden": "Gizli",
+        "light": "Hafif",
+        "strong": "Guclu",
+        "selected": "Secili",
+        "fastest": "En hizli",
+        "best-ready": "En iyi hazir",
+        "auto": "Otomatik",
+        "tr": "Turkce",
+        "en": "Ingilizce",
+        "cpu": "CPU",
+        "cuda": "CUDA",
+        "gpu": "GPU",
+        "all": "Tumu",
+        "htdemucs": "HTDemucs",
+        "htdemucs_ft": "HTDemucs FT",
+        "mdx_extra": "MDX Extra",
+        "vocal": "Vokal",
+        "standard": "Standart",
+        "extended": "Genisletilmis",
+        "sparse": "Seyrek",
+        "balanced": "Dengeli",
+        "dense": "Yogun",
+        "2stems": "2 stem",
+        "4stems": "4 stem",
+        "vocals": "Vokal",
+        "drums": "Davul",
+        "bass": "Bas",
+        "other": "Diger",
+        "music": "Muzik",
+        "percussion": "Perkusyon",
+        "rhythm": "Ritim",
+        "tonal": "Tonal",
+        "tempo": "Tempo",
+        "off": "Kapali",
+        "side": "Yan",
+        "left": "Sol",
+        "right": "Sag",
+        "mid": "Orta",
+        "inverted": "Ters"
+      },
       "closeAction": "Kapat",
       "installAction": "Kur",
       "updateAction": "Guncelle",
@@ -773,7 +1091,7 @@
       "tools-refresh": "Arac durumu yenilendi.",
       "refresh": "Kaynak durumu yenilendi.",
       "edit-set-mode": "Duzenleme modu guncellendi.",
-      "edit-apply-preset": "Duzenleme preset'i uygulandi.",
+      "edit-apply-preset": "Duzenleme ön ayarı uygulandi.",
       "edit-update-recipe": "Duzenleme tarifi kaydedildi.",
       "edit-set-output": "Turetilmis cikti secildi.",
       "edit-set-handoff": "Sonraki asama gecisi guncellendi.",
@@ -783,7 +1101,7 @@
       "edit-cancel-preview": "Onizleme render'i iptal edildi.",
       "edit-cancel-apply": "Turetilmis render iptal edildi.",
       "profile-set-mode": "Profil modu guncellendi.",
-      "profile-apply-preset": "Profil preset'i uygulandi.",
+      "profile-apply-preset": "Profil ön ayarı uygulandi.",
       "profile-update": "Profil ayarlari kaydedildi.",
       "profile-set-target": "Profil hedefi guncellendi.",
       "profile-set-model": "Transkript modeli guncellendi.",
@@ -801,6 +1119,7 @@
     "projectImport": {
       "eyebrow": "Proje Kaynagi",
       "title": "Kaynak Ice Aktarma Calisma Alani",
+      "ariaLabel": "Proje kaynagi ice aktarma",
       "tabsLabel": "Medya tipi",
       "methodsLabel": "Ice aktarma yontemi",
       "tabs": {
@@ -825,9 +1144,9 @@
         }
       },
       "localHint": "Dosya secici Ekle dugmesine bastiginda acilir.",
-      "localUnifiedTitle": "Local Dosya Ekle",
+      "localUnifiedTitle": "Yerel Dosya Ekle",
       "localUnifiedHint": "Video, ses veya gorsel dosyasi sec; secilen dosya aktif projeye kopyalanir.",
-      "localUnifiedButton": "Local Dosya Ekle",
+      "localUnifiedButton": "Yerel Dosya Ekle",
       "url": {
         "check": "Kontrol Et",
         "checking": "Kontrol ediliyor",
@@ -929,11 +1248,11 @@
         "panelParsing": "Video inceleniyor...",
         "panelStrategyPending": "Strateji secimi metadata hazir oldugunda gorunur.",
         "panelError": "URL'yi kontrol et ve gecerli bir YouTube baglantisi yapistir.",
-        "readyFormat": "Format: {format}",
+        "readyFormat": "Biçim: {format}",
         "readyEstimatedSize": "Tahmini boyut: {size}",
         "readyDescription": "Strateji: {description}",
         "readyDuration": "Sure: {duration}",
-        "formatLabel": "Format",
+        "formatLabel": "Biçim",
         "bestAvailable": "En iyi kullanilabilir",
         "keepAudio": "Ses izini koru",
         "strategyListLabel": "Cikarma stratejisi",
@@ -964,7 +1283,7 @@
           }
         },
         "advancedResolution": "Cozunurluk",
-        "advancedFormat": "Format",
+        "advancedFormat": "Biçim",
         "advancedAudioExtraction": "Yalnizca sesi cikar",
         "resolutions": {
           "best": "En iyi kullanilabilir",
@@ -990,8 +1309,8 @@
         "showAction": "Ayarlari goster",
         "hideAction": "Ayarlari gizle"
       },
-      "youtubePresetLabel": "YouTube Presetleri",
-      "youtubePresetHint": "Hizli alislar icin preset kullan, oda onayli yt-dlp ince ayarlari icin Ozel moda gec.",
+      "youtubePresetLabel": "YouTube ön ayarları",
+      "youtubePresetHint": "Hizli alislar icin ön ayar kullan, oda onayli yt-dlp ince ayarlari icin Ozel moda gec.",
       "youtubePresets": {
         "low": "Dusuk",
         "medium": "Dengeli",
@@ -1011,12 +1330,12 @@
             "subtitle": "Manuel ve otomatik altyazi seceneklerini dil filtresiyle birlikte tek cercevede topla."
           },
           "network": {
-            "title": "Transfer Kontrolleri",
+            "title": "Aktarım Kontrolleri",
             "subtitle": "Playlist kapsami ve tekrar deneme davranisini fazla yer harcamadan ayarla."
           }
         },
         "fields": {
-          "format": "Format Stratejisi",
+          "format": "Biçim stratejisi",
           "mergeOutputFormat": "Birlesim Container",
           "recodeVideo": "Videoyu Recode Et",
           "audioFormat": "Sesi Ayir",
@@ -1139,7 +1458,7 @@
     "download": {
       "title": "Video Download Hatti",
       "subtitle": "Analiz baslamadan once asamali yakalama icin dummy kuyruk.",
-      "presetLabel": "Presetler",
+      "presetLabel": "Ön ayarlar",
       "qualityLabel": "Detayli Ayarlar",
       "captions": "Altyazi yak",
       "separateAudio": "Ayri ses stem'i",
@@ -1149,7 +1468,7 @@
       "statusActive": "Dummy transfer suruyor",
       "statusDone": "Ornek yakalama tamamlandi",
       "actionStarted": "Dummy download darbasi baslatildi.",
-      "presetActivated": "{preset} preset'i aktif edildi.",
+      "presetActivated": "{preset} ön ayarı aktif edildi.",
       "presets": {
         "archive": "Arsiv Aynasi",
         "evidence": "Kanit Cikisi",
@@ -1178,7 +1497,7 @@
         "beginner": "Baslangic",
         "advanced": "Gelismis"
       },
-      "presetTitle": "Tarif Presetleri",
+      "presetTitle": "Tarif Ön Ayarları",
       "presetSubtitle": "",
       "commonTitle": "Ortak Tarif",
       "commonSubtitle": "Bu alanlar onizleme ve turetilmis render boyunca korunur.",
@@ -1253,7 +1572,7 @@
         "blurFocusOutside": "Odak disini bulaniklastir",
         "trimStartSeconds": "Kirpma baslangici",
         "trimEndSeconds": "Kirpma bitisi",
-        "resizePreset": "Yeniden boyut preset'i",
+        "resizePreset": "Yeniden boyut ön ayarı",
         "fpsLimit": "FPS limiti",
         "customWidth": "Ozel genislik",
         "customHeight": "Ozel yukseklik",
@@ -1263,8 +1582,8 @@
         "mono": "Mono'ya cevir",
         "spectrogram": "Spektrogram uret",
         "normalizeTargetDb": "Hedef ses duzeyi",
-        "highpassHz": "High-pass Hz",
-        "lowpassHz": "Low-pass Hz",
+        "highpassHz": "Yüksek geçiren Hz",
+        "lowpassHz": "Alçak geçiren Hz",
         "brightness": "Parlaklik",
         "contrast": "Kontrast",
         "blurStrength": "Bulaniklastirma gucu",
@@ -1324,13 +1643,13 @@
       "targetOutputLabel": "Turetilmis cikti",
       "targetOutputEmpty": "Aktif turetilmis ciktayi kullan",
       "modeTitle": "Operator Modu",
-      "modeSubtitle": "Yonlendirmeli presetlerle basla ya da tum hat konsolunu ac.",
+      "modeSubtitle": "Yonlendirmeli ön ayarlarla basla ya da tum hat konsolunu ac.",
       "modes": {
         "beginner": "Yonlendirmeli",
         "advanced": "Gelismis"
       },
-      "presetTitle": "Profil Presetleri",
-      "presetSubtitle": "Her preset ozgunluk, sureklilik ve transkript destekli kontrolleri farkli karisir.",
+      "presetTitle": "Profil Ön Ayarları",
+      "presetSubtitle": "Her ön ayar ozgunluk, sureklilik ve transkript destekli kontrolleri farkli karisir.",
       "advancedTitle": "Gelismis Kontroller",
       "advancedSubtitle": "Tarama derinligini, hassasiyeti, hat karisimini ve opsiyonel transkript modelini ayarla.",
       "advancedGroups": {
@@ -1403,7 +1722,7 @@
       "summaryTitle": "Profil Ozeti",
       "summary": {
         "target": "Hedef medya",
-        "preset": "Preset",
+        "preset": "Ön ayar",
         "sampleWindow": "Ornek pencere",
         "runtime": "Tahmini sure",
         "signals": "Isaretler",
@@ -1655,7 +1974,7 @@
     },
     "reportOverlay": {
       "diff": {
-        "timeline": "Timeline",
+        "timeline": "Zaman çizgisi",
         "hypothesis": "Hipotez",
         "intents": "Niyetler"
       },
@@ -1665,7 +1984,7 @@
         "title": "Snapshot Ozeti",
         "focus": "Odak",
         "unspecified": "Belirtilmemis",
-        "timeline": "Timeline",
+        "timeline": "Zaman çizgisi",
         "intents": "Niyetler",
         "liveWorkspaceChanged": "Canli workspace {keys} alanlarinda degisti. Rapor donmus snapshotu yansitmaya devam eder.",
         "frozen": "Rapor donmus kosu snapshotunu yansitir."
@@ -1898,9 +2217,9 @@
       "resetAction": "Tumunu Sifirla",
       "filters": {
         "none": "Yok",
-        "lowpass": "Lowpass",
-        "highpass": "Highpass",
-        "bandpass": "Bandpass"
+        "lowpass": "Alçak geçiren",
+        "highpass": "Yüksek geçiren",
+        "bandpass": "Bant geçiren"
       }
     },
     "hypothesis": {
@@ -1958,7 +2277,7 @@
         "goalEvaluation": "Hedef değerlendirmesi: {summary}"
       },
       "diff": {
-        "timeline": "Timeline",
+        "timeline": "Zaman çizgisi",
         "hypothesis": "Hipotez",
         "intents": "Niyetler"
       },
@@ -1968,7 +2287,7 @@
         "noExecution": "Henüz yürütme yok",
         "noIntentSelection": "Niyet seçimi yok",
         "noCapabilityMatch": "Yetenek eşleşmesi yok",
-        "pipelineResolving": "Pipeline cozumleniyor...",
+        "pipelineResolving": "İş akışı çözümleniyor...",
         "noFindings": "Bulgu yok",
         "noArtifacts": "Artefakt yok",
         "noRecentActions": "Henüz işlem yok"
@@ -1997,7 +2316,7 @@
       },
       "progressLabel": "{completed}/{total} adım · {percent}%",
       "sections": {
-        "pipeline": "Pipeline",
+        "pipeline": "İş Akışı",
         "findings": "Bulgular",
         "artifacts": "Artefaktlar"
       },
@@ -2077,24 +2396,24 @@
     "workspace": {
       "intents": {
         "visual-inspection": {
-          "label": "Gorsel inceleme",
-          "description": "Gorsel yapiyi, kare kompozisyonunu ve forensic isaretleri incele.",
-          "preview": "Gorsel yapi ve anomaliler analiz edilir"
+          "label": "Görsel inceleme",
+          "description": "Görsel yapıyı, kare kompozisyonunu ve adli işaretleri incele.",
+          "preview": "Görsel yapı ve anomaliler analiz edilir"
         },
         "audio-investigation": {
-          "label": "Ses arastirmasi",
-          "description": "Ses sinyallerini analiz et, ayrintilari kurtar ve konusmacilari belirle.",
+          "label": "Ses araştırması",
+          "description": "Ses sinyallerini analiz et, ayrıntıları kurtar ve konuşmacıları belirle.",
           "preview": "Ses sinyali ve anomaliler analiz edilir"
         },
         "detail-enhancement": {
-          "label": "Detay iyilestirme",
-          "description": "Daha derin inceleme icin transkript uret ve ses kaynaklarini ayir.",
-          "preview": "Goruntu detaylari iyilestirilir"
+          "label": "Detay iyileştirme",
+          "description": "Daha derin inceleme için transkript üret ve ses kaynaklarını ayır.",
+          "preview": "Görüntü detayları iyileştirilir"
         },
         "anomaly-detection": {
           "label": "Anomali tespiti",
-          "description": "Gorsel ve isitsel anomalileri tespit et, sesleri siniflandir ve prozodiyi analiz et.",
-          "preview": "Olasi anormallikler tespit edilir"
+          "description": "Görsel ve işitsel anomalileri tespit et, sesleri sınıflandır ve prozodiyi analiz et.",
+          "preview": "Olası anormallikler tespit edilir"
         }
       }
     },
@@ -2163,6 +2482,9 @@
         "prepareSourceAndProbe": "Önce kaynak hazırlanmalı ve probe tamamlanmalı.",
         "selectAnalysisModule": "En az bir analiz modülü seçilmelidir.",
         "sourceNotReady": "Kaynak henüz hazır değil.",
+        "intentSourceUnsupported": "Bu kaynak türü için kullanılamaz.",
+        "requiredToolsNotInstalled": "Gerekli araçlar kurulu değil.",
+        "someToolsMissingPartial": "Bazı araçlar eksik — sonuçlar kısmi olabilir.",
         "sourceUrlRequired": "Kaynak URL gerekli",
         "youtubeUrlRequired": "YouTube URL gerekli",
         "capabilityPartiallyReady": "{label} kısmi hazırlıkta.",
@@ -2247,6 +2569,11 @@
           "running": "Frame alınıyor",
           "success": "Frame alındı",
           "error": "Frame alınamadı"
+        },
+        "exportEnhancedFrame": {
+          "running": "Iyilestirilmis frame hazirlaniyor",
+          "success": "Iyilestirilmis frame hazir",
+          "error": "Iyilestirilmis frame hazirlanamadi"
         },
         "exportAudioTrack": {
           "running": "Ses çıkarılıyor",
@@ -2515,6 +2842,10 @@
         "transcription": {
           "title": "Transkript",
           "summary": "Opsiyonel transkript yakalama, Settings sahipli merkezi Whisper.cpp runtime'ini ve aktif modeli yeniden kullanir."
+        },
+        "transcript-support": {
+          "title": "Transkript desteği",
+          "summary": "Transkript ön koşullarını kontrol eder ve konuşma kanıtı yönlendirmesini görünür tutar."
         },
         "speaker-diarization": {
           "title": "Konusmaci zaman cizgisi",

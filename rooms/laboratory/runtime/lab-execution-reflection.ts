@@ -7,6 +7,7 @@ import type {
   LabInspectionMode,
   LabSelection,
 } from "../models/lab-types.js";
+import { formatLabI18n, resolveLabI18n, type LabI18nKey, type LabI18nLocale } from "./lab-i18n.js";
 
 type LabExecutionReflectionInput = {
   activeSelection: LabSelection;
@@ -15,6 +16,7 @@ type LabExecutionReflectionInput = {
   executionReadiness: LabExecutionReadiness;
   executionSimulation: LabExecutionSimulation;
   inspectionMode: LabInspectionMode;
+  locale?: LabI18nLocale;
   sourceKind: string;
 };
 
@@ -25,6 +27,7 @@ export type LabExecutionReflectionResolvedInput = {
   executionReadiness: LabExecutionReadiness | null;
   executionSimulation: LabExecutionSimulation | null;
   inspectionMode: LabInspectionMode;
+  locale?: LabI18nLocale;
   sourceKind: string;
 };
 
@@ -106,19 +109,28 @@ function decide(input: LabExecutionReflectionInput): LabExecutionReflection["dec
   return "proceed";
 }
 
-function buildSummary(decision: LabExecutionReflection["decision"]) {
+function formatRuntimeStatus(
+  namespace: "readiness" | "simulationRisk",
+  value: string,
+  locale: LabI18nLocale
+) {
+  return resolveLabI18n(`status.${namespace}.${value}` as LabI18nKey, locale);
+}
+
+function buildSummary(decision: LabExecutionReflection["decision"], locale: LabI18nLocale) {
   if (decision === "proceed") {
-    return "This path appears stable as a passive dry-run decision.";
+    return resolveLabI18n("reflection.summary.proceed", locale);
   }
   if (decision === "review") {
-    return "This path may require additional review before it is carried further.";
+    return resolveLabI18n("reflection.summary.review", locale);
   }
-  return "This path is not recommended in its current form.";
+  return resolveLabI18n("reflection.summary.avoid", locale);
 }
 
 function buildReasoning(
   input: LabExecutionReflectionInput,
-  decision: LabExecutionReflection["decision"]
+  decision: LabExecutionReflection["decision"],
+  locale: LabI18nLocale
 ) {
   const reasoning: string[] = [];
   const durationMs = getSelectionDurationMs(input.activeSelection);
@@ -127,56 +139,72 @@ function buildReasoning(
   const simulationRisk = getSimulationRisk(input);
 
   if (decision === "proceed") {
-    pushUnique(reasoning, "Readiness and simulation signals align with a stable dry-run path.");
+    pushUnique(reasoning, resolveLabI18n("reflection.reasoning.proceed", locale));
   }
 
   pushUnique(
     reasoning,
     input.executionPayloadPreview.readinessPassesPreview
-      ? "Payload preview reports a passing readiness signal."
-      : "Payload preview asks for additional review before this path is carried further."
+      ? resolveLabI18n("reflection.reasoning.payloadPassing", locale)
+      : resolveLabI18n("reflection.reasoning.payloadReview", locale)
   );
 
   if (input.executionReadiness.status !== "ready") {
-    pushUnique(reasoning, `Readiness status is ${input.executionReadiness.status}.`);
+    pushUnique(
+      reasoning,
+      formatLabI18n("reflection.reasoning.readinessStatus", locale, {
+        status: formatRuntimeStatus("readiness", input.executionReadiness.status, locale),
+      })
+    );
   }
 
   for (const blocker of input.executionReadiness.blockers ?? []) {
-    pushUnique(reasoning, `Readiness blocker: ${blocker}`);
+    pushUnique(
+      reasoning,
+      formatLabI18n("reflection.reasoning.readinessBlocker", locale, { blocker })
+    );
   }
 
   for (const note of input.executionReadiness.notes ?? []) {
-    pushUnique(reasoning, `Review note: ${note}`);
+    pushUnique(reasoning, formatLabI18n("reflection.reasoning.reviewNote", locale, { note }));
   }
 
   for (const warning of input.executionSimulation.warnings ?? []) {
-    pushUnique(reasoning, `Simulation warning: ${warning}`);
+    pushUnique(
+      reasoning,
+      formatLabI18n("reflection.reasoning.simulationWarning", locale, { warning })
+    );
   }
 
   if (simulationRisk !== "low") {
-    pushUnique(reasoning, `Simulation risk is ${simulationRisk}.`);
+    pushUnique(
+      reasoning,
+      formatLabI18n("reflection.reasoning.simulationRisk", locale, {
+        risk: formatRuntimeStatus("simulationRisk", simulationRisk, locale),
+      })
+    );
   }
 
   if (durationMs > 0 && durationMs < 500) {
-    pushUnique(reasoning, "Selection window may be too narrow for reliable interpretation.");
+    pushUnique(reasoning, resolveLabI18n("reflection.reasoning.selectionTooNarrow", locale));
   } else if (durationMs > 10000) {
-    pushUnique(reasoning, "Selection window is broad enough to trade precision for context.");
+    pushUnique(reasoning, resolveLabI18n("reflection.reasoning.selectionBroad", locale));
   }
 
   if (roiArea > 0 && roiArea < 0.03) {
-    pushUnique(reasoning, "ROI coverage is tight and may leave limited surrounding context.");
+    pushUnique(reasoning, resolveLabI18n("reflection.reasoning.roiTight", locale));
   } else if (roiArea >= 0.03 && roiArea <= 0.6) {
-    pushUnique(reasoning, "ROI coverage is sufficient for focused inspection.");
+    pushUnique(reasoning, resolveLabI18n("reflection.reasoning.roiSufficient", locale));
   } else if (roiArea > 0.6) {
-    pushUnique(reasoning, "ROI coverage is broad and may dilute local detail.");
+    pushUnique(reasoning, resolveLabI18n("reflection.reasoning.roiBroad", locale));
   }
 
   if (roiAspectRatio !== null && Number.isFinite(roiAspectRatio) && roiAspectRatio > 3.5) {
-    pushUnique(reasoning, "ROI aspect ratio is extreme enough to affect framing judgment.");
+    pushUnique(reasoning, resolveLabI18n("reflection.reasoning.roiExtreme", locale));
   }
 
   if (reasoning.length === 0) {
-    pushUnique(reasoning, "The dry-run path has enough context for a passive decision.");
+    pushUnique(reasoning, resolveLabI18n("reflection.reasoning.default", locale));
   }
 
   return reasoning;
@@ -184,7 +212,8 @@ function buildReasoning(
 
 function buildTradeoffs(
   input: LabExecutionReflectionInput,
-  decision: LabExecutionReflection["decision"]
+  decision: LabExecutionReflection["decision"],
+  locale: LabI18nLocale
 ) {
   const tradeoffs: string[] = [];
   const durationMs = getSelectionDurationMs(input.activeSelection);
@@ -192,37 +221,25 @@ function buildTradeoffs(
   const actionType = input.executionPlan.actionType;
 
   if (actionType === "inspect-audio") {
-    pushUnique(
-      tradeoffs,
-      "Audio-focused review can expose signal detail while amplifying preview bias."
-    );
+    pushUnique(tradeoffs, resolveLabI18n("reflection.tradeoff.inspect-audio", locale));
   } else if (actionType === "focus-region") {
-    pushUnique(
-      tradeoffs,
-      "Region focus improves local detail while reducing surrounding scene context."
-    );
+    pushUnique(tradeoffs, resolveLabI18n("reflection.tradeoff.focus-region", locale));
   } else if (actionType === "inspect-motion") {
-    pushUnique(
-      tradeoffs,
-      "Motion review clarifies continuity while depending heavily on playback cadence."
-    );
+    pushUnique(tradeoffs, resolveLabI18n("reflection.tradeoff.inspect-motion", locale));
   } else if (actionType === "analyze-segment") {
-    pushUnique(tradeoffs, "Segment review balances anomaly coverage against selection precision.");
+    pushUnique(tradeoffs, resolveLabI18n("reflection.tradeoff.analyze-segment", locale));
   }
 
   if (durationMs > 10000) {
-    pushUnique(tradeoffs, "A wider selection keeps context but can reduce decision precision.");
+    pushUnique(tradeoffs, resolveLabI18n("reflection.tradeoff.wideSelection", locale));
   }
 
   if (roiArea > 0 && roiArea < 0.05) {
-    pushUnique(tradeoffs, "A smaller ROI increases focus but can hide nearby evidence.");
+    pushUnique(tradeoffs, resolveLabI18n("reflection.tradeoff.smallRoi", locale));
   }
 
   if (decision === "proceed" && tradeoffs.length === 0) {
-    pushUnique(
-      tradeoffs,
-      "The path is stable, but the reflection remains advisory rather than executable."
-    );
+    pushUnique(tradeoffs, resolveLabI18n("reflection.tradeoff.stableAdvisory", locale));
   }
 
   return tradeoffs.length > 0 ? tradeoffs : undefined;
@@ -230,7 +247,8 @@ function buildTradeoffs(
 
 function buildAlternatives(
   input: LabExecutionReflectionInput,
-  decision: LabExecutionReflection["decision"]
+  decision: LabExecutionReflection["decision"],
+  locale: LabI18nLocale
 ) {
   if (decision === "proceed") {
     return undefined;
@@ -246,26 +264,23 @@ function buildAlternatives(
   ].join(" ");
 
   if (durationMs > 0 && durationMs < 500) {
-    pushUnique(alternatives, "Expand selection range");
+    pushUnique(alternatives, resolveLabI18n("reflection.alternative.expandSelection", locale));
   }
   if (durationMs > 10000) {
-    pushUnique(alternatives, "Narrow selection range");
+    pushUnique(alternatives, resolveLabI18n("reflection.alternative.narrowSelection", locale));
   }
   if (roiArea > 0 && (roiArea < 0.03 || roiArea > 0.6)) {
-    pushUnique(alternatives, "Refine ROI boundaries");
+    pushUnique(alternatives, resolveLabI18n("reflection.alternative.refineRoi", locale));
   }
   if (/playback|motion/i.test(textSignals)) {
-    pushUnique(alternatives, "Reduce playback rate");
+    pushUnique(alternatives, resolveLabI18n("reflection.alternative.reducePlayback", locale));
   }
   if (/gain|distort/i.test(textSignals)) {
-    pushUnique(alternatives, "Lower preview gain");
+    pushUnique(alternatives, resolveLabI18n("reflection.alternative.lowerGain", locale));
   }
 
   if (alternatives.length === 0) {
-    pushUnique(
-      alternatives,
-      "Review the selection and dry-run notes before carrying this path further"
-    );
+    pushUnique(alternatives, resolveLabI18n("reflection.alternative.reviewNotes", locale));
   }
 
   return alternatives;
@@ -291,14 +306,15 @@ function buildConfidence(
 export function buildExecutionReflection(
   input: LabExecutionReflectionInput
 ): LabExecutionReflection {
+  const locale = input.locale ?? "en";
   const decision = decide(input);
-  const reasoning = buildReasoning(input, decision);
-  const tradeoffs = buildTradeoffs(input, decision);
-  const alternatives = buildAlternatives(input, decision);
+  const reasoning = buildReasoning(input, decision, locale);
+  const tradeoffs = buildTradeoffs(input, decision, locale);
+  const alternatives = buildAlternatives(input, decision, locale);
   return {
     id: createReflectionId(input),
     planId: input.executionPlan.id,
-    summary: buildSummary(decision),
+    summary: buildSummary(decision, locale),
     decision,
     reasoning,
     ...(tradeoffs ? { tradeoffs } : {}),
@@ -327,6 +343,7 @@ export function buildExecutionReflectionFromResolved(
     executionReadiness: input.executionReadiness,
     executionSimulation: input.executionSimulation,
     inspectionMode: input.inspectionMode,
+    locale: input.locale ?? "en",
     sourceKind: input.sourceKind,
   });
 }

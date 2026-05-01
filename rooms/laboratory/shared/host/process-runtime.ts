@@ -2,6 +2,7 @@ import { createLaboratoryManagedProcessRunnersRuntime } from "./process-managed-
 import { extractFindings } from "../../services/finding-engine.js";
 import { freezeAnalysisScope } from "../types/analysis-scope.js";
 import { createLabOutputAsset, upsertLabAsset } from "./lab-assets.js";
+import { normalizeLabAnalysisSettingsMap } from "../../models/lab-types.js";
 
 interface LaboratoryProcessDeps {
   appendProcessEvent: (
@@ -542,6 +543,9 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
       toRecord(toRecord(project["workbench"])["analysisScope"]),
       processRecord["runId"] as string,
       processRecord["startedAt"] as string
+    );
+    processRecord["analysisSettings"] = normalizeLabAnalysisSettingsMap(
+      toRecord(toRecord(project["workbench"])["analysisSettings"])
     );
     processRecord["hypothesisSummary"] = asNonEmptyString(
       toRecord(toRecord(processRecord["analysisScope"]))["hypothesis"]

@@ -81,15 +81,24 @@ def main():
     parser = argparse.ArgumentParser(description="Generate a lightweight music/rhythm descriptor summary.")
     parser.add_argument("--input", required=True, help="Path to the prepared WAV input.")
     parser.add_argument("--output", required=True, help="Path to the JSON summary output.")
+    parser.add_argument("--sample-rate", type=int, default=22050, help="Analysis sample rate.")
+    parser.add_argument("--focus", default="balanced", choices=["balanced", "rhythm", "tonal"])
+    parser.add_argument("--skip-essentia", action="store_true", help="Skip optional Essentia descriptors.")
     args = parser.parse_args()
 
-    audio, sample_rate = librosa.load(args.input, sr=22050, mono=True)
+    audio, sample_rate = librosa.load(args.input, sr=max(8000, args.sample_rate), mono=True)
     payload = {
         "generatedAt": dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z"),
         "inputPath": args.input,
+        "focus": args.focus,
         "sampleRate": int(sample_rate),
         "musicSummary": build_music_summary(audio, sample_rate),
-        "essentia": build_essentia_summary(audio),
+        "essentia": {
+            "available": False,
+            "error": "Essentia extraction disabled by analysis settings.",
+        }
+        if args.skip_essentia
+        else build_essentia_summary(audio),
     }
 
     output_path = Path(args.output)

@@ -3,6 +3,8 @@ import {
   getAudioAnalysisYamnetDir,
   getAudioAnalysisYamnetScriptPath,
 } from "../../../shared/host/project-paths.js";
+import { normalizeLabAnalysisModuleSettings } from "../../../models/lab-types.js";
+import type { LabSettingsRecord } from "../../../models/lab-types.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 
@@ -13,6 +15,7 @@ type LaboratoryRuntimeRecord = LaboratoryRecord & {
 
 type LaboratoryProjectRecord = LaboratoryRecord & {
   slug?: unknown;
+  workbench?: unknown;
 };
 
 type LaboratoryProcessTargetRecord = LaboratoryRecord & {
@@ -102,6 +105,11 @@ function isNonNullString(value: string | null): value is string {
   return typeof value === "string" && value.length > 0;
 }
 
+function readNumberSetting(settings: LabSettingsRecord, key: string, fallback: number): number {
+  const value = settings[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
 export function createAudioAnalysisSoundEventsModelRunner(
   deps: AudioAnalysisSoundEventsModelRunnerDeps
 ) {
@@ -133,6 +141,16 @@ export function createAudioAnalysisSoundEventsModelRunner(
         return asNonEmptyString(artifact.id);
       })
       .filter(isNonNullString);
+  }
+
+  function getModuleSettings(
+    project: LaboratoryProjectRecord,
+    moduleId: string
+  ): LabSettingsRecord {
+    const workbench = toRecord(project.workbench);
+    const analysisSettings = toRecord(workbench["analysisSettings"]);
+    const moduleSettings = toRecord(analysisSettings["modules"]);
+    return normalizeLabAnalysisModuleSettings(moduleId, moduleSettings[moduleId]);
   }
 
   function getProcessRootDir(
@@ -185,6 +203,9 @@ export function createAudioAnalysisSoundEventsModelRunner(
 
     const wavPath = `${moduleOutputDir}/${artifactBase}-yamnet.wav`;
     const summaryPath = `${moduleOutputDir}/${artifactBase}-sound-events.json`;
+    const settings = getModuleSettings(project, moduleId);
+    const topK = Math.round(readNumberSetting(settings, "topK", 8));
+    const threshold = readNumberSetting(settings, "threshold", 0.15);
 
     await runProfileTool(runtime, {
       requestId: requestId,
@@ -209,9 +230,9 @@ export function createAudioAnalysisSoundEventsModelRunner(
         "--output",
         summaryPath,
         "--top-k",
-        "8",
+        String(topK),
         "--threshold",
-        "0.15",
+        String(threshold),
       ],
       timeoutMs: 8 * 60 * 1000,
     });
@@ -230,6 +251,9 @@ export function createAudioAnalysisSoundEventsModelRunner(
         topClasses: topClasses,
         modelVersion: asNonEmptyString(summaryPayload.modelVersion),
         classCount: topClasses.length,
+        topK,
+        threshold,
+        settingsUsed: settings,
       }
     );
     const artifacts = [summaryArtifact];

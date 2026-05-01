@@ -3,6 +3,8 @@ import {
   getAudioAnalysisDiarizationScriptPath,
   getAudioAnalysisProcessRootDir,
 } from "../../../shared/host/project-paths.js";
+import { normalizeLabAnalysisModuleSettings } from "../../../models/lab-types.js";
+import type { LabSettingsRecord } from "../../../models/lab-types.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 
@@ -13,6 +15,7 @@ type LaboratoryRuntimeRecord = LaboratoryRecord & {
 
 type LaboratoryProjectRecord = LaboratoryRecord & {
   slug?: unknown;
+  workbench?: unknown;
 };
 
 type LaboratoryProcessTargetRecord = LaboratoryRecord & {
@@ -95,6 +98,16 @@ function isNonNullString(value: string | null): value is string {
   return typeof value === "string" && value.length > 0;
 }
 
+function readStringSetting(settings: LabSettingsRecord, key: string, fallback: string): string {
+  const value = settings[key];
+  return typeof value === "string" && value.trim() !== "" ? value : fallback;
+}
+
+function readNumberSetting(settings: LabSettingsRecord, key: string, fallback: number): number {
+  const value = settings[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
 export function createAudioAnalysisSpeakerDiarizationModelRunner(
   deps: AudioAnalysisSpeakerDiarizationModelRunnerDeps
 ) {
@@ -124,6 +137,16 @@ export function createAudioAnalysisSpeakerDiarizationModelRunner(
         return asNonEmptyString(artifact.id);
       })
       .filter(isNonNullString);
+  }
+
+  function getModuleSettings(
+    project: LaboratoryProjectRecord,
+    moduleId: string
+  ): LabSettingsRecord {
+    const workbench = toRecord(project.workbench);
+    const analysisSettings = toRecord(workbench["analysisSettings"]);
+    const moduleSettings = toRecord(analysisSettings["modules"]);
+    return normalizeLabAnalysisModuleSettings(moduleId, moduleSettings[moduleId]);
   }
 
   function getProcessRootDir(
@@ -177,6 +200,14 @@ export function createAudioAnalysisSpeakerDiarizationModelRunner(
     const preparedInputBase = sanitizeFileSegment(`${artifactBase}-speaker-input`, "speaker-input");
     const preparedInputPath = `${moduleOutputDir}/${preparedInputBase}.wav`;
     const summaryPath = `${moduleOutputDir}/${artifactBase}-speaker-diarization.json`;
+    const settings = getModuleSettings(project, moduleId);
+    const speakerCountSetting = readStringSetting(settings, "speakerCount", "auto");
+    const speakerCount =
+      speakerCountSetting === "auto"
+        ? 0
+        : Math.max(0, Math.round(Number(speakerCountSetting) || 0));
+    const minSegmentSeconds = readNumberSetting(settings, "minSegmentSeconds", 1.5);
+    const midStep = Math.max(0.05, minSegmentSeconds / 5);
 
     await runProfileTool(runtime, {
       requestId: requestId,
@@ -194,7 +225,19 @@ export function createAudioAnalysisSpeakerDiarizationModelRunner(
       cwd:
         getAudioAnalysisDiarizationDir(runtime as unknown as AudioAnalysisDiarizationRuntime) ||
         getProcessRootDir(runtime, project),
-      args: [diarizationScriptPath, "--input", preparedInputPath, "--output", summaryPath],
+      args: [
+        diarizationScriptPath,
+        "--input",
+        preparedInputPath,
+        "--output",
+        summaryPath,
+        "--num-speakers",
+        String(speakerCount),
+        "--mid-window",
+        String(minSegmentSeconds),
+        "--mid-step",
+        String(midStep),
+      ],
       timeoutMs: 12 * 60 * 1000,
     });
 
@@ -214,6 +257,7 @@ export function createAudioAnalysisSpeakerDiarizationModelRunner(
       effectiveNumSpeakers: effectiveNumSpeakers,
       speakerCountMode: asNonEmptyString(summaryPayload.speakerCountMode),
       fallbackApplied: fallbackApplied,
+      settingsUsed: settings,
     };
     const summaryArtifact = createProcessArtifact(
       moduleId,
@@ -223,6 +267,7 @@ export function createAudioAnalysisSpeakerDiarizationModelRunner(
       {
         diarizationSummary: diarizationSummary,
         segments: segments,
+        settingsUsed: settings,
       }
     );
     const artifacts = [summaryArtifact];

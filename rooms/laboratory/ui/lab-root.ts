@@ -31,7 +31,7 @@ import {
   getActiveSuggestionPreviewId,
   getExecutionDispatchCandidate,
   getRoiFocusActive,
-  getSelectionSuggestions,
+  getWaveformTimelineModel,
   getDrawerCollapsed,
   getWorkspaceLockState,
   getWorkspaceMode,
@@ -409,7 +409,8 @@ export function startLaboratoryLabRoot() {
   });
   bindLabSelectionSuggestionClicks({
     canPreviewSuggestion(suggestionId) {
-      return getSelectionSuggestions(store.getState()).some(function (suggestion) {
+      const visibleSuggestions = getWaveformTimelineModel(store.getState()).selectionSuggestions;
+      return visibleSuggestions.some(function (suggestion) {
         return suggestion.id === suggestionId;
       });
     },

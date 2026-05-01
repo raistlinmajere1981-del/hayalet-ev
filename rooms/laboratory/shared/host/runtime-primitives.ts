@@ -5,6 +5,10 @@ import {
   getProjectReportDir as getProjectReportDirFromPaths,
 } from "./project-paths.js";
 import { normalizeAnalysisScope, serializeAnalysisScope } from "../types/analysis-scope.js";
+import {
+  normalizeLabAnalysisSettingsMap,
+  normalizeLabOperationSettingsMap,
+} from "../../models/lab-types.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 
@@ -87,6 +91,8 @@ export function createLaboratoryWorkbenchState(overrides: unknown = {}) {
         ? selectedModuleIds
         : [availableModuleIds.includes(activeModuleId) ? activeModuleId : primaryFeatureId],
     analysisScope,
+    operationSettings: normalizeLabOperationSettingsMap(source["operationSettings"]),
+    analysisSettings: normalizeLabAnalysisSettingsMap(source["analysisSettings"]),
     moduleToggles: toLaboratoryRecord(source["moduleToggles"]),
     activePreviewArtifactId: readNonEmptyString(source["activePreviewArtifactId"]),
     activeLiveFindingsStreamId: readNonEmptyString(source["activeLiveFindingsStreamId"]),

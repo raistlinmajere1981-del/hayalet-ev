@@ -2,6 +2,7 @@ import { escapeHtml } from "../models/lab-types.js";
 import type { LabOperationCapabilityProjection } from "../models/lab-types.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
+import { renderLabSettingsFields } from "./lab-settings-controls.js";
 
 const GROUP_LABEL_FALLBACKS: Record<LabOperationCapabilityProjection["groupId"], string> = {
   audio: "Audio Outputs",
@@ -16,6 +17,24 @@ const GROUP_ORDER: LabOperationCapabilityProjection["groupId"][] = [
   "audio",
   "stems",
 ];
+
+function getCapabilityCopy(capability: LabOperationCapabilityProjection, copy: LabI18n) {
+  return {
+    label: copy.t(`mediaAnalysis.operations.capabilities.${capability.id}.label`, capability.label),
+    description: copy.t(
+      `mediaAnalysis.operations.capabilities.${capability.id}.description`,
+      capability.description
+    ),
+  };
+}
+
+function formatOutputKinds(capability: LabOperationCapabilityProjection, copy: LabI18n) {
+  return capability.outputKinds
+    .map(function (kind) {
+      return copy.t(`mediaAnalysis.operations.outputs.${kind}`, kind);
+    })
+    .join(", ");
+}
 
 function renderOperationButton(capability: LabOperationCapabilityProjection, copy: LabI18n) {
   const running = capability.actionStatus === "running";
@@ -61,7 +80,8 @@ function renderCapabilityCard(
       : capability.readiness === "optional"
         ? copy.t("mediaAnalysis.operations.partial", "Partial")
         : copy.t("mediaAnalysis.operations.blocked", "Blocked");
-  const outputLabel = capability.outputKinds.join(", ");
+  const operationCopy = getCapabilityCopy(capability, copy);
+  const outputLabel = formatOutputKinds(capability, copy);
   return `
     <article
       class="labx-operation-card"
@@ -72,8 +92,8 @@ function renderCapabilityCard(
     >
       <div class="labx-operation-card__main">
         <div>
-          <h3>${escapeHtml(capability.label)}</h3>
-          <p>${escapeHtml(capability.description)}</p>
+          <h3>${escapeHtml(operationCopy.label)}</h3>
+          <p>${escapeHtml(operationCopy.description)}</p>
         </div>
         <span class="labx-operation-card__status">${escapeHtml(readinessLabel)}</span>
       </div>
@@ -95,6 +115,17 @@ function renderCapabilityCard(
           ? `<p class="labx-operation-card__action-state">${escapeHtml(capability.activeActionMessage)}</p>`
           : ""
       }
+      ${renderLabSettingsFields({
+        fields: capability.settingsFields,
+        prefix: `operationSettings.${capability.id}`,
+        resetAction: "operation-settings-reset",
+        resetLabel: copy.t("mediaAnalysis.settings.reset", "Reset"),
+        resetValue: capability.id,
+        settings: capability.settings,
+        title: copy.t("mediaAnalysis.operations.settings", "Settings"),
+        toggleLabel: copy.t("mediaAnalysis.settings.edit", "Edit"),
+        translate: copy.t,
+      })}
       ${renderOperationButton(capability, copy)}
     </article>
   `;

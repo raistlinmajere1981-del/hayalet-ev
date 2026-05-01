@@ -1421,7 +1421,16 @@ test("laboratory audio variant exports preserve filter and lineage metadata", as
   assert.equal(voice.metadata["operationId"], "band-pass-voice");
   assert.equal(voice.metadata["filterPreset"], "voice-band-pass");
   assert.deepEqual(voice.completedPayload?.["resultAssetIds"], [voice.outputAssetId]);
-  assert.equal(voice.args.includes("highpass=f=120,lowpass=f=3800,dynaudnorm=f=150:g=12"), true);
+  assert.equal(
+    voice.args.some(function (arg) {
+      return (
+        arg.includes("highpass=f=120,lowpass=f=3800") &&
+        arg.includes("equalizer=f=1960:t=q:w=1:g=6") &&
+        arg.includes("dynaudnorm=f=150:g=12")
+      );
+    }),
+    true
+  );
   assert.equal(voice.args[voice.args.indexOf("-ac") + 1], "1");
 });
 
@@ -1531,6 +1540,165 @@ test("laboratory ROI exports normalize crop pixels and preserve operation lineag
   assert.deepEqual(metadata["cropPixels"], { height: 180, width: 320, x: 64, y: 36 });
   assert.deepEqual(metadata["sourceDimensions"], { height: 360, width: 640 });
   assert.deepEqual(metadata["sourceRange"], { endMs: 1500, startMs: 1500 });
+});
+
+test("laboratory frame export settings drive burst and preview filter arguments", async () => {
+  let activeProject: Record<string, unknown> = {
+    id: "project-frame-settings",
+    source: {
+      kind: "video",
+      storedPath: "/tmp/lab-demo.mp4",
+      metadata: {
+        durationSeconds: 4,
+        height: 360,
+        width: 640,
+      },
+    },
+    process: {
+      records: {
+        "media-analysis": {
+          runId: "run-frame-settings",
+        },
+      },
+    },
+    workbench: {},
+    assets: [],
+  };
+  const toolRuns: Array<Record<string, unknown>> = [];
+  const jobState = createLaboratoryJobStateRuntime({
+    roomId: "laboratory",
+    cancelRoomTool: async function () {},
+  });
+  const exportRuntime = createMediaExportActionRuntime({
+    asNonEmptyString(value: unknown) {
+      return typeof value === "string" && value.trim() !== "" ? value : null;
+    },
+    asNumber(value: unknown) {
+      return typeof value === "number" && Number.isFinite(value) ? value : null;
+    },
+    async callRoomTools(payload) {
+      toolRuns.push({ ...payload });
+      return {
+        run: {
+          exitCode: 0,
+        },
+      };
+    },
+    getActiveProject() {
+      return activeProject;
+    },
+    getProjectEditOutputDir() {
+      return "/tmp";
+    },
+    async handleAssetAsSource() {},
+    async patchActiveProject(_runtime, patcher) {
+      const nextProject = patcher(activeProject);
+      activeProject = {
+        ...nextProject,
+        assets: syncSourceLabAssetForProject(nextProject, nextProject["assets"]),
+      };
+    },
+    pushJobState() {},
+    registerJob: jobState.registerJob,
+    clearJob: jobState.clearJob,
+    cancelJobsForProject: jobState.cancelJobsForProject,
+    toRecord(value: unknown) {
+      return value !== null && typeof value === "object" && Array.isArray(value) === false
+        ? (value as Record<string, unknown>)
+        : {};
+    },
+  });
+
+  await exportRuntime.exportFrameGrab(
+    {},
+    {
+      jobs: {},
+      roomId: "laboratory",
+    },
+    "req-frame-burst",
+    {
+      endMs: 2000,
+      operationSettings: {
+        burstCount: 3,
+        frameMode: "burst",
+        format: "jpg",
+        timestampLabel: true,
+      },
+      seekMs: 1000,
+      startMs: 1000,
+    }
+  );
+
+  assert.equal(toolRuns.length, 3);
+  assert.deepEqual(
+    toolRuns.map(function (run) {
+      const args = run["args"] as string[];
+      return args[args.indexOf("-ss") + 1];
+    }),
+    ["1", "1.5", "2"]
+  );
+  assert.equal(
+    toolRuns.every(function (run) {
+      return (run["args"] as string[]).some(function (arg) {
+        return arg.includes("drawtext=");
+      });
+    }),
+    true
+  );
+  const burstAssets = (activeProject.assets as Array<Record<string, unknown>>).filter(function (
+    asset
+  ) {
+    return asset["type"] === "frame";
+  });
+  assert.equal(burstAssets.length, 3);
+
+  toolRuns.length = 0;
+  await exportRuntime.exportEnhancedFrame(
+    {},
+    {
+      jobs: {},
+      roomId: "laboratory",
+    },
+    "req-enhanced-preview",
+    {
+      operationSettings: {
+        applyPreviewSettings: true,
+        preset: "clarity",
+      },
+      previewSettings: {
+        brightness: 130,
+        channelB: false,
+        channelG: true,
+        channelR: true,
+        contrast: 120,
+        edgeHighlight: true,
+        gamma: 1.2,
+        hueRotate: 15,
+        invert: true,
+        saturation: 90,
+        sharpness: 130,
+      },
+      seekMs: 1200,
+    }
+  );
+
+  const enhancedArgs = toolRuns[0]?.["args"] as string[];
+  const filterGraph = enhancedArgs[enhancedArgs.indexOf("-filter:v") + 1] || "";
+  assert.match(filterGraph, /colorchannelmixer/);
+  assert.match(filterGraph, /edgedetect/);
+  assert.match(filterGraph, /negate/);
+  const enhancedAsset = (activeProject.assets as Array<Record<string, unknown>>).find(function (
+    asset
+  ) {
+    return asset["type"] === "frame" && String(asset["name"] || "").includes("enhanced-frame");
+  });
+  assert.equal(
+    ((enhancedAsset?.["metadata"] as Record<string, unknown>)["settingsUsed"] as Record<
+      string,
+      unknown
+    >)["applyPreviewSettings"],
+    true
+  );
 });
 
 test("laboratory source intake resolves use-as-source from registered local asset ids only", async () => {
