@@ -1074,6 +1074,12 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         return {
           youtubeUrl: typeof value === "string" ? value : "",
         };
+      case "project-import.youtubeCaptureMode": {
+        const mode = value === "audio-only" || value === "video-only" ? value : "video+audio";
+        return {
+          youtubeCaptureMode: mode,
+        };
+      }
       default:
         if (field.startsWith("project-import.youtubeCustom.")) {
           const customField = field.replace("project-import.youtubeCustom.", "");
@@ -1113,6 +1119,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   function startCleanProjectSession() {
     const state = deps.store.getState();
     const resetSourceState = buildEmptySourceState(state);
+    dispatch({ type: "project-import-reset" });
     dispatch({
       type: "source-config-patched",
       patch: resetSourceState,
@@ -2771,6 +2778,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         if (value === state.projectIndex.activeProjectId) {
           return;
         }
+        dispatch({ type: "project-import-reset" });
         selectProjectByValue(value);
         return;
       case "project-workspace-use-source":
@@ -3089,6 +3097,21 @@ export function createLabRunController(deps: LabRunControllerDeps) {
             : Number(target.value)
           : target.value;
 
+    if (field.startsWith("project-import.youtubeCustom.")) {
+      if (isWorkspaceMutationLocked("source")) {
+        pushLockedWorkspaceEvent("Kaynak ayarları aktif analiz sırasında kilitli.");
+        return;
+      }
+      const patch = buildProjectImportDraftPatch(state, field, targetValue);
+      if (patch !== null) {
+        dispatch({
+          type: "project-import-draft-updated",
+          patch,
+        });
+      }
+      return;
+    }
+
     switch (field) {
       case "scope.focus":
       case "scope.timeStartMs":
@@ -3157,7 +3180,8 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         });
         return;
       case "project-import.urlInput":
-      case "project-import.youtubeUrl": {
+      case "project-import.youtubeUrl":
+      case "project-import.youtubeCaptureMode": {
         if (isWorkspaceMutationLocked("source")) {
           pushLockedWorkspaceEvent("Kaynak ayarları aktif analiz sırasında kilitli.");
           return;

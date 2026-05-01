@@ -116,7 +116,7 @@ function getYoutubeFormatById(formats: LabYoutubeImportFormat[], formatId: strin
   return formats.find((format) => format.formatId === formatId) || null;
 }
 
-function getSelectedYoutubeFormatExpression(state: LabStoreState) {
+function getSelectedYoutubeFormatExpression(state: LabStoreState, draft: LabSourceDrafts) {
   const youtubeState = state.ui.youtubeImport;
   const videoFormat = getYoutubeFormatById(
     youtubeState.formats,
@@ -128,6 +128,31 @@ function getSelectedYoutubeFormatExpression(state: LabStoreState) {
   );
   const videoId = videoFormat?.formatId || null;
   const audioId = audioFormat?.formatId || null;
+  const captureMode = draft.youtubeCaptureMode || "video+audio";
+
+  if (captureMode === "audio-only") {
+    const fallbackMuxedId = videoFormat?.kind === "muxed" ? videoId : null;
+    const targetId = audioId || fallbackMuxedId;
+    if (targetId !== null) {
+      return {
+        captureMode: "audio-only" as const,
+        format: targetId,
+        kind: "audio" as const,
+      };
+    }
+    return null;
+  }
+
+  if (captureMode === "video-only") {
+    if (videoId !== null) {
+      return {
+        captureMode: "video-only" as const,
+        format: videoId,
+        kind: "video" as const,
+      };
+    }
+    return null;
+  }
 
   if (videoId !== null && audioId !== null && videoId !== audioId) {
     return {
@@ -229,22 +254,28 @@ function buildYoutubeStrategyFields(state: LabStoreState, draft: LabSourceDrafts
 }
 
 function buildYoutubeFormatSelectionFields(state: LabStoreState, draft: LabSourceDrafts) {
-  const selection = getSelectedYoutubeFormatExpression(state);
+  const selection = getSelectedYoutubeFormatExpression(state, draft);
   if (selection === null) {
     return null;
+  }
+  const nextCustom: Record<string, unknown> = {
+    ...getYoutubePresetDefaults(state, "custom"),
+    ...asLabRecord(draft.youtubeCustom),
+    format: selection.format,
+    selectedVideoFormatId: state.ui.youtubeImport.selectedVideoFormatId,
+    selectedAudioFormatId: state.ui.youtubeImport.selectedAudioFormatId,
+  };
+  if (
+    selection.captureMode === "audio-only" &&
+    typeof nextCustom["audioFormat"] !== "string"
+  ) {
+    nextCustom["audioFormat"] = "best";
   }
   return {
     kind: selection.kind,
     youtubePreset: "custom",
     youtubeCaptureMode: selection.captureMode,
-    youtubeCustom: {
-      ...getYoutubePresetDefaults(state, "custom"),
-      ...asLabRecord(draft.youtubeCustom),
-      format: selection.format,
-      selectedVideoFormatId: state.ui.youtubeImport.selectedVideoFormatId,
-      selectedAudioFormatId: state.ui.youtubeImport.selectedAudioFormatId,
-      audioFormat: selection.captureMode === "audio-only" ? "best" : "none",
-    },
+    youtubeCustom: nextCustom,
   };
 }
 

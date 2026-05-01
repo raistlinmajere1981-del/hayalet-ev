@@ -3,7 +3,6 @@ import type { LabStoreState } from "../models/lab-types.js";
 import {
   buildProjectImportHostAction,
   getProjectImportRoute,
-  hasProjectImportDraftValue,
 } from "../runtime/lab-project-import.js";
 import { renderAssetInspector } from "./asset-inspector.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
@@ -123,22 +122,10 @@ function shouldRenderImportReview(state: LabStoreState) {
   if (focus === "running" || focus === "completed") {
     return tracked;
   }
-  if (focus === "draft") {
-    return true;
-  }
   if (state.sourceProbeStatus === "running") {
     return tracked;
   }
-  if (state.sourceProbeStatus === "completed" || state.sourceProbeStatus === "failed") {
-    return false;
-  }
-  if (state.ui.projectImport.lastAction !== buildProjectImportHostAction(state).action) {
-    return hasProjectImportDraftValue(state);
-  }
-  if (state.ui.projectImport.lastRequestId !== null) {
-    return true;
-  }
-  return hasProjectImportDraftValue(state);
+  return false;
 }
 
 export function renderProjectImportReview(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {

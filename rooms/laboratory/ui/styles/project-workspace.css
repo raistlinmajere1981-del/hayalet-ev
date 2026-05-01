@@ -305,11 +305,12 @@
 .labx-project-import__url-row {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 0.55rem;
   align-items: end;
 }
 
+.labx-project-import__direct-result,
 .labx-project-import__youtube-result {
   min-width: 0;
   display: grid;
@@ -369,6 +370,62 @@
 
 .labx-project-import__format-select select {
   min-width: 0;
+}
+
+.labx-project-import__yt-controls {
+  min-width: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.labx-project-import__yt-section {
+  min-width: 0;
+  display: grid;
+  gap: 0.45rem;
+  border: 1px solid rgba(121, 211, 224, 0.12);
+  border-radius: 8px;
+  margin: 0;
+  padding: 0.55rem 0.65rem 0.65rem;
+}
+
+.labx-project-import__yt-section legend {
+  color: var(--labx-text);
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0 0.25rem;
+}
+
+.labx-project-import__yt-section p {
+  margin: 0;
+  color: var(--labx-text-soft);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.labx-project-import__yt-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.labx-project-import__yt-field {
+  min-width: 0;
+}
+
+.labx-project-import__yt-field[data-span="full"] {
+  grid-column: 1 / -1;
+}
+
+.labx-project-import__yt-field--toggle {
+  align-content: center;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.4rem;
+  min-height: 2.25rem;
+}
+
+.labx-project-import__yt-field--toggle input {
+  margin: 0;
 }
 
 .labx-project-import__details {
@@ -1416,15 +1473,16 @@
     flex-direction: column;
   }
 
-  .labx-project-import__fields,
-  .labx-project-import__details,
-  .labx-project-import__strategies,
-  .labx-project-import__methods,
-  .labx-project-import__url-row,
-  .labx-project-import__format-grid,
-  .labx-project-import__youtube-preview {
-    grid-template-columns: 1fr;
-  }
+	  .labx-project-import__fields,
+	  .labx-project-import__details,
+	  .labx-project-import__strategies,
+	  .labx-project-import__methods,
+	  .labx-project-import__url-row,
+	  .labx-project-import__format-grid,
+	  .labx-project-import__yt-grid,
+	  .labx-project-import__youtube-preview {
+	    grid-template-columns: 1fr;
+	  }
 
   .labx-project-import__stages {
     grid-template-columns: repeat(2, minmax(0, 1fr));

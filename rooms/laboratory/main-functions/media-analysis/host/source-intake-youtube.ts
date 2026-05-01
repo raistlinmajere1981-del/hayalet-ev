@@ -395,7 +395,8 @@ export function createMediaYoutubeSourceIntakeRuntime(
         args.push("--audio-quality", audioQuality);
       }
     } else if (isVideoOnly) {
-      args.push("-f", "bestvideo");
+      const formatValue = asNonEmptyString(values["format"]) || "bestvideo";
+      args.push("-f", formatValue);
       const mergeOutputFormat = asNonEmptyString(values["mergeOutputFormat"]);
       if (mergeOutputFormat && mergeOutputFormat !== "auto") {
         args.push("--merge-output-format", mergeOutputFormat);

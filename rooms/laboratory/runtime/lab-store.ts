@@ -1448,6 +1448,27 @@ function clearProjectWorkspaceTransientState(state: LabStoreState) {
   state.ui.projectWorkspaceTimelineHighlight = null;
 }
 
+function resetProjectImportState(
+  state: LabStoreState,
+  options: {
+    keepTracking?: boolean;
+    markSourceDraftDirty?: boolean;
+    reviewFocus?: LabProjectImportReviewFocus;
+  } = {}
+) {
+  const previousImport = state.ui.projectImport;
+  const nextImport = createDefaultProjectImportState();
+  if (options.keepTracking === true) {
+    nextImport.lastAction = previousImport.lastAction;
+    nextImport.lastRequestId = previousImport.lastRequestId;
+    nextImport.reviewFocus = options.reviewFocus || previousImport.reviewFocus;
+  }
+  state.ui.projectImport = nextImport;
+  state.ui.youtubeImport = createIdleYoutubeImportState();
+  state.ui.sourceDrafts = cloneSourceDrafts(nextImport.drafts[nextImport.activeKind]);
+  state.ui.sourceDraftDirty = options.markSourceDraftDirty === false ? false : true;
+}
+
 function completeTrackedProjectImport(state: LabStoreState, event: LabEventFeedItem) {
   const action = event.action;
   if (
@@ -1460,11 +1481,7 @@ function completeTrackedProjectImport(state: LabStoreState, event: LabEventFeedI
     return;
   }
 
-  state.ui.projectImport = {
-    ...state.ui.projectImport,
-    reviewFocus: "completed",
-    lastAction: action,
-  };
+  resetProjectImportState(state, { keepTracking: true, reviewFocus: "completed" });
   clearProjectWorkspaceTransientState(state);
   state.ui.activeAssetPreviewId = null;
   state.ui.activePreviewArtifactId = null;
@@ -1887,6 +1904,7 @@ function syncCanonicalStateFromSnapshot(
     };
   }
   if (previousActiveProjectId !== nextActiveProjectId) {
+    resetProjectImportState(state, { markSourceDraftDirty: false });
     state.ui.workspace = {
       ...state.ui.workspace,
       sourceIntakeCollapsed: nextSourceReady,
@@ -2457,6 +2475,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       state.ui.sourceDraftDirty = true;
       return state;
     }
+    case "project-import-reset":
+      resetProjectImportState(state);
+      return state;
     case "project-import-cleared": {
       const kind = normalizeProjectImportKind(event.kind, state.ui.projectImport.activeKind);
       const nextDrafts = {

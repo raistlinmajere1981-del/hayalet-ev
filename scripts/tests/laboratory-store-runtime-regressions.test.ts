@@ -412,6 +412,346 @@ test("laboratory store preserves persisted project import route across hydrate a
   );
 });
 
+test("laboratory store resets project import drafts and checked YouTube state on demand", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "project-import-draft-updated",
+    kind: "video",
+    patch: { urlInput: "https://youtube.com/watch?v=abc123" },
+  });
+  store.dispatch({
+    type: "project-import-url-check-started",
+    url: "https://youtube.com/watch?v=abc123",
+  });
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-url-check",
+      kind: "request-result",
+      severity: "success",
+      message: "URL check completed",
+      detail: null,
+      action: "project-import-check-url",
+      stage: "completed",
+      timestamp: Date.now(),
+      source: "host",
+      scope: "global",
+      moduleId: null,
+      rawLine: null,
+      result: {
+        url: "https://youtube.com/watch?v=abc123",
+        isYoutube: true,
+        kind: "video",
+        preview: { title: "Evidence clip" },
+        formats: [{ formatId: "18", label: "MP4 360p", kind: "muxed", extension: "mp4" }],
+        selectedVideoFormatId: "18",
+      },
+    } as never,
+  });
+
+  assert.equal(store.getState().ui.projectImport.urlCheck.status, "ready");
+  assert.equal(store.getState().ui.youtubeImport.status, "ready");
+
+  store.dispatch({ type: "project-import-reset" });
+
+  assert.equal(store.getState().ui.projectImport.urlCheck.status, "idle");
+  assert.equal(store.getState().ui.projectImport.drafts.video.urlInput, "");
+  assert.equal(store.getState().ui.projectImport.drafts.video.youtubeUrl, "");
+  assert.equal(store.getState().ui.projectImport.lastAction, null);
+  assert.equal(store.getState().ui.projectImport.lastRequestId, null);
+  assert.deepEqual(store.getState().ui.youtubeImport, {
+    url: null,
+    status: "idle",
+    preview: null,
+    formats: [],
+    selectedVideoFormatId: null,
+    selectedAudioFormatId: null,
+    strategy: "video_best",
+    custom: {
+      resolution: "best",
+      format: "mp4",
+      audioExtraction: false,
+    },
+  });
+});
+
+test("laboratory store resets project import check state when active project changes", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "snapshot-received",
+    payload: {
+      ready: true,
+      featureId: "media-analysis",
+      activeProjectId: "project-1",
+      projects: [
+        { id: "project-1", name: "Import Draft", hasSource: false },
+        { id: "project-2", name: "Saved Project", hasSource: true },
+      ],
+      activeProject: {
+        id: "project-1",
+        name: "Import Draft",
+        source: {
+          kind: "video",
+          mode: "youtube",
+          status: "idle",
+          drafts: {
+            urlInput: "",
+            youtubeUrl: "",
+            youtubePreset: null,
+            youtubeCustom: {},
+            youtubeCaptureMode: "video+audio",
+          },
+        },
+        edit: {},
+        profile: { preflight: {} },
+        process: { records: {} },
+        report: { records: {} },
+        assets: [],
+      },
+      workbench: {},
+      toolState: { tools: {} },
+    },
+  });
+  store.dispatch({
+    type: "project-import-draft-updated",
+    kind: "video",
+    patch: { urlInput: "https://youtube.com/watch?v=abc123" },
+  });
+  store.dispatch({
+    type: "project-import-url-check-started",
+    url: "https://youtube.com/watch?v=abc123",
+  });
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-project-switch-url-check",
+      kind: "request-result",
+      severity: "success",
+      message: "URL check completed",
+      detail: null,
+      action: "project-import-check-url",
+      stage: "completed",
+      timestamp: Date.now(),
+      source: "host",
+      scope: "global",
+      moduleId: null,
+      rawLine: null,
+      result: {
+        url: "https://youtube.com/watch?v=abc123",
+        isYoutube: true,
+        kind: "video",
+        preview: { title: "Evidence clip" },
+        formats: [{ formatId: "18", label: "MP4 360p", kind: "muxed", extension: "mp4" }],
+        selectedVideoFormatId: "18",
+      },
+    } as never,
+  });
+
+  assert.equal(store.getState().ui.projectImport.urlCheck.status, "ready");
+  assert.equal(store.getState().ui.youtubeImport.status, "ready");
+
+  store.dispatch({
+    type: "snapshot-received",
+    payload: {
+      ready: true,
+      featureId: "media-analysis",
+      activeProjectId: "project-2",
+      projects: [
+        { id: "project-1", name: "Import Draft", hasSource: false },
+        { id: "project-2", name: "Saved Project", hasSource: true },
+      ],
+      activeProject: {
+        id: "project-2",
+        name: "Saved Project",
+        source: {
+          kind: "video",
+          mode: "local",
+          status: "ready",
+          storedPath: "/tmp/saved.mp4",
+          storedFileName: "saved.mp4",
+          drafts: {
+            urlInput: "",
+            youtubeUrl: "",
+            youtubePreset: null,
+            youtubeCustom: {},
+            youtubeCaptureMode: "video+audio",
+          },
+        },
+        edit: {},
+        profile: { preflight: {} },
+        process: { records: {} },
+        report: { records: {} },
+        assets: [],
+      },
+      workbench: {},
+      toolState: { tools: {} },
+    },
+  });
+
+  assert.equal(store.getState().projectIndex.activeProjectId, "project-2");
+  assert.equal(store.getState().ui.projectImport.urlCheck.status, "idle");
+  assert.equal(store.getState().ui.projectImport.drafts.video.urlInput, "");
+  assert.equal(store.getState().ui.projectImport.drafts.video.youtubeUrl, "");
+  assert.equal(store.getState().ui.youtubeImport.status, "idle");
+});
+
+test("laboratory store clears import controls after completed tracked YouTube add", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "project-import-draft-updated",
+    kind: "video",
+    patch: { urlInput: "https://youtube.com/watch?v=abc123" },
+  });
+  store.dispatch({
+    type: "project-import-url-check-started",
+    url: "https://youtube.com/watch?v=abc123",
+  });
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-url-check",
+      kind: "request-result",
+      severity: "success",
+      message: "URL check completed",
+      detail: null,
+      action: "project-import-check-url",
+      stage: "completed",
+      timestamp: Date.now(),
+      source: "host",
+      scope: "global",
+      moduleId: null,
+      rawLine: null,
+      result: {
+        url: "https://youtube.com/watch?v=abc123",
+        isYoutube: true,
+        kind: "video",
+        preview: { title: "Evidence clip" },
+        formats: [{ formatId: "18", label: "MP4 360p", kind: "muxed", extension: "mp4" }],
+        selectedVideoFormatId: "18",
+      },
+    } as never,
+  });
+  store.dispatch({
+    type: "project-import-review-focused",
+    focus: "running",
+    action: "source-download-youtube",
+    requestId: "req-add",
+  });
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "video",
+      mode: "youtube",
+      status: "ready",
+      storedFileName: "clip.mp4",
+      storedPath: "/tmp/clip.mp4",
+      metadata: { duration: 12 },
+    },
+  });
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-youtube-add",
+      kind: "activity",
+      severity: "success",
+      message: "YouTube import completed",
+      detail: null,
+      action: "source-download-youtube",
+      stage: "completed",
+      timestamp: Date.now(),
+      source: "host",
+      scope: "global",
+      moduleId: null,
+      rawLine: null,
+      requestId: "req-add",
+    } as never,
+  });
+
+  assert.equal(store.getState().sourceProbeStatus, "completed");
+  assert.equal(store.getState().ui.projectImport.reviewFocus, "completed");
+  assert.equal(store.getState().ui.projectImport.lastAction, "source-download-youtube");
+  assert.equal(store.getState().ui.projectImport.lastRequestId, "req-add");
+  assert.equal(store.getState().ui.projectImport.urlCheck.status, "idle");
+  assert.equal(store.getState().ui.projectImport.drafts.video.urlInput, "");
+  assert.equal(store.getState().ui.youtubeImport.status, "idle");
+  assert.equal((store.getState().source as Record<string, unknown>)["status"], "ready");
+  assert.equal((store.getState().source as Record<string, unknown>)["storedFileName"], "clip.mp4");
+});
+
+test("laboratory store preserves URL draft after failed tracked YouTube add", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "project-import-draft-updated",
+    kind: "video",
+    patch: { urlInput: "https://youtube.com/watch?v=abc123" },
+  });
+  store.dispatch({
+    type: "project-import-url-check-started",
+    url: "https://youtube.com/watch?v=abc123",
+  });
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-url-check",
+      kind: "request-result",
+      severity: "success",
+      message: "URL check completed",
+      detail: null,
+      action: "project-import-check-url",
+      stage: "completed",
+      timestamp: Date.now(),
+      source: "host",
+      scope: "global",
+      moduleId: null,
+      rawLine: null,
+      result: {
+        url: "https://youtube.com/watch?v=abc123",
+        isYoutube: true,
+        kind: "video",
+        preview: { title: "Evidence clip" },
+        formats: [{ formatId: "18", label: "MP4 360p", kind: "muxed", extension: "mp4" }],
+        selectedVideoFormatId: "18",
+      },
+    } as never,
+  });
+  store.dispatch({
+    type: "project-import-review-focused",
+    focus: "running",
+    action: "source-download-youtube",
+    requestId: "req-add",
+  });
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-youtube-add-failed",
+      kind: "activity",
+      severity: "error",
+      message: "YouTube import failed",
+      detail: "Network error",
+      action: "source-download-youtube",
+      stage: "failed",
+      timestamp: Date.now(),
+      source: "host",
+      scope: "global",
+      moduleId: null,
+      rawLine: null,
+      requestId: "req-add",
+    } as never,
+  });
+
+  assert.equal(store.getState().sourceProbeStatus, "failed");
+  assert.equal(store.getState().ui.projectImport.urlCheck.status, "ready");
+  assert.equal(
+    store.getState().ui.projectImport.drafts.video.urlInput,
+    "https://youtube.com/watch?v=abc123"
+  );
+  assert.equal(store.getState().ui.youtubeImport.status, "ready");
+});
+
 test("laboratory process output parser translates known ffmpeg and download lines", () => {
   const blackdetectEvent = parseProcessOutput("blackdetect=duration:0.42");
   const frameEvent = parseProcessOutput("frame= 248 fps=24");

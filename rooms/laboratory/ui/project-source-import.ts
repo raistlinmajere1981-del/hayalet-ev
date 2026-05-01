@@ -3,7 +3,6 @@ import type {
   LabEventFeedItem,
   LabProjectImportKind,
   LabStoreState,
-  LabYoutubeImportFormat,
 } from "../models/lab-types.js";
 import {
   buildProjectImportHostAction,
@@ -12,12 +11,252 @@ import {
   getLatestProjectImportEvent,
   getProjectImportRoute,
   getProjectImportUrlInput,
+  hasProjectImportDraftValue,
 } from "../runtime/lab-project-import.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
+type YtDlpFormFieldOption = {
+  labelKey: string;
+  value: string;
+};
+
+type YtDlpFormField = {
+  id: string;
+  labelKey: string;
+  max?: number;
+  min?: number;
+  options?: YtDlpFormFieldOption[];
+  placeholderKey?: string;
+  span?: string;
+  type: "number" | "select" | "text" | "toggle";
+};
+
+type YtDlpFormSection = {
+  fields: YtDlpFormField[];
+  id: string;
+};
+
+type YtDlpFormSchema = {
+  sections: YtDlpFormSection[];
+};
+
+const YT_DLP_FORM_SCHEMA = {
+  sections: [
+    {
+      id: "download",
+      fields: [
+        {
+          id: "captureMode",
+          type: "select",
+          labelKey: "mediaAnalysis.source.youtubeForm.fields.captureMode",
+          options: [
+            {
+              value: "video+audio",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.captureMode.videoAudio",
+            },
+            {
+              value: "audio-only",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.captureMode.audioOnly",
+            },
+            {
+              value: "video-only",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.captureMode.videoOnly",
+            },
+          ],
+        },
+        {
+          id: "format",
+          type: "select",
+          labelKey: "mediaAnalysis.source.youtubeForm.fields.format",
+          options: [
+            {
+              value: "bestvideo*+bestaudio/best",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.format.best",
+            },
+            {
+              value: "best[height<=1080][ext=mp4]/best[height<=1080]/best",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.format.mp4_1080",
+            },
+            {
+              value: "best[height<=720][ext=mp4]/best[height<=720]/best",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.format.mp4_720",
+            },
+            {
+              value: "best[height<=480][ext=mp4]/best[height<=480]/best",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.format.mp4_480",
+            },
+            {
+              value: "best[height<=360][ext=mp4]/best[height<=360]/worst[ext=mp4]/worst",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.format.low",
+            },
+          ],
+        },
+        {
+          id: "mergeOutputFormat",
+          type: "select",
+          labelKey: "mediaAnalysis.source.youtubeForm.fields.mergeOutputFormat",
+          options: [
+            {
+              value: "auto",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.container.auto",
+            },
+            {
+              value: "mp4",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.container.mp4",
+            },
+            {
+              value: "mkv",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.container.mkv",
+            },
+            {
+              value: "webm",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.container.webm",
+            },
+          ],
+        },
+        {
+          id: "recodeVideo",
+          type: "select",
+          labelKey: "mediaAnalysis.source.youtubeForm.fields.recodeVideo",
+          options: [
+            {
+              value: "none",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.recode.none",
+            },
+            {
+              value: "mp4",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.recode.mp4",
+            },
+            {
+              value: "mkv",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.recode.mkv",
+            },
+            {
+              value: "webm",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.recode.webm",
+            },
+          ],
+        },
+        {
+          id: "audioFormat",
+          type: "select",
+          labelKey: "mediaAnalysis.source.youtubeForm.fields.audioFormat",
+          options: [
+            {
+              value: "none",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.audio.none",
+            },
+            {
+              value: "mp3",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.audio.mp3",
+            },
+            {
+              value: "aac",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.audio.aac",
+            },
+            {
+              value: "m4a",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.audio.m4a",
+            },
+            {
+              value: "opus",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.audio.opus",
+            },
+            {
+              value: "wav",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.audio.wav",
+            },
+            {
+              value: "flac",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.audio.flac",
+            },
+          ],
+        },
+        {
+          id: "audioQuality",
+          type: "select",
+          labelKey: "mediaAnalysis.source.youtubeForm.fields.audioQuality",
+          options: [
+            {
+              value: "best",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.audioQuality.best",
+            },
+            {
+              value: "0",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.audioQuality.max",
+            },
+            {
+              value: "2",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.audioQuality.high",
+            },
+            {
+              value: "5",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.audioQuality.medium",
+            },
+            {
+              value: "7",
+              labelKey: "mediaAnalysis.source.youtubeForm.options.audioQuality.small",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "captions",
+      fields: [
+        {
+          id: "writeSubtitles",
+          type: "toggle",
+          labelKey: "mediaAnalysis.source.youtubeForm.fields.writeSubtitles",
+        },
+        {
+          id: "writeAutoSubtitles",
+          type: "toggle",
+          labelKey: "mediaAnalysis.source.youtubeForm.fields.writeAutoSubtitles",
+        },
+        {
+          id: "subtitlesLang",
+          type: "text",
+          labelKey: "mediaAnalysis.source.youtubeForm.fields.subtitlesLang",
+          placeholderKey: "mediaAnalysis.source.youtubeForm.placeholders.subtitlesLang",
+          span: "full",
+        },
+      ],
+    },
+    {
+      id: "network",
+      fields: [
+        {
+          id: "playlistItems",
+          type: "text",
+          labelKey: "mediaAnalysis.source.youtubeForm.fields.playlistItems",
+          placeholderKey: "mediaAnalysis.source.youtubeForm.placeholders.playlistItems",
+        },
+        {
+          id: "limitRate",
+          type: "text",
+          labelKey: "mediaAnalysis.source.youtubeForm.fields.limitRate",
+          placeholderKey: "mediaAnalysis.source.youtubeForm.placeholders.limitRate",
+        },
+        {
+          id: "retries",
+          type: "number",
+          labelKey: "mediaAnalysis.source.youtubeForm.fields.retries",
+          min: 1,
+          max: 50,
+        },
+      ],
+    },
+  ],
+} satisfies YtDlpFormSchema;
+
 function selectedAttr(current: string | null, value: string) {
   return current === value ? " selected" : "";
+}
+
+function checkedAttr(value: boolean) {
+  return value ? " checked" : "";
 }
 
 function getKindLabel(kind: LabProjectImportKind, copy: LabI18n) {
@@ -60,59 +299,125 @@ function formatDuration(totalSeconds: unknown) {
   return `${String(minutes)}:${String(remainder).padStart(2, "0")}`;
 }
 
-function formatBitrate(value: number | null | undefined) {
-  return typeof value === "number" && Number.isFinite(value) && value > 0
-    ? `${Math.round(value)} kbps`
-    : null;
+function getLabelFallback(labelKey: string, fallback: string) {
+  const leaf = labelKey.split(".").filter(Boolean).pop();
+  return leaf || fallback;
 }
 
-function getFormatSize(format: LabYoutubeImportFormat) {
-  return format.filesizeBytes || format.filesizeApproxBytes || null;
+function getProjectImportYoutubeDraft(state: LabStoreState) {
+  const route = getProjectImportRoute(state);
+  return route.kind === "video" ? route.draft : state.ui.projectImport.drafts.video;
 }
 
-function getFormatTechnicalLabel(format: LabYoutubeImportFormat) {
-  const parts = [
-    format.formatId,
-    format.extension ? format.extension.toUpperCase() : null,
-    format.resolution,
-    typeof format.fps === "number" && format.fps > 0 ? `${Math.round(format.fps)} fps` : null,
-    format.videoCodec && format.videoCodec !== "none" ? `V:${format.videoCodec}` : null,
-    format.audioCodec && format.audioCodec !== "none" ? `A:${format.audioCodec}` : null,
-    formatBitrate(format.bitrateKbps),
-    getFormatSize(format) !== null ? formatBytes(getFormatSize(format) || 0) : null,
-    format.note,
-  ].filter((entry): entry is string => typeof entry === "string" && entry.trim() !== "");
-  return parts.join(" · ");
+function getYoutubeCustomDefaults(state: LabStoreState) {
+  const snapshot = asLabRecord(state.snapshot);
+  const sourcePresets = asLabRecord(snapshot["sourcePresets"]);
+  const youtubePresets = asLabRecord(sourcePresets["youtubePresets"]);
+  return asLabRecord(asLabRecord(youtubePresets["custom"])["defaultCustomValues"]);
 }
 
-function getYoutubeVideoFormats(formats: LabYoutubeImportFormat[]) {
-  return formats.filter((format) => format.kind === "video" || format.kind === "muxed");
+function getYoutubeCustomValue(state: LabStoreState, fieldId: string) {
+  const draft = getProjectImportYoutubeDraft(state);
+  if (fieldId === "captureMode") {
+    return draft.youtubeCaptureMode;
+  }
+  const custom = asLabRecord(draft.youtubeCustom);
+  const defaults = getYoutubeCustomDefaults(state);
+  return custom[fieldId] ?? defaults[fieldId] ?? "";
 }
 
-function getYoutubeAudioFormats(formats: LabYoutubeImportFormat[]) {
-  return formats.filter((format) => format.kind === "audio" || format.kind === "muxed");
+function getYoutubeControlFieldName(fieldId: string) {
+  return fieldId === "captureMode"
+    ? "project-import.youtubeCaptureMode"
+    : `project-import.youtubeCustom.${fieldId}`;
 }
 
-function renderYoutubeFormatSelect(
-  label: string,
-  field: string,
-  selectedFormatId: string | null,
-  formats: LabYoutubeImportFormat[],
-  emptyLabel: string
-) {
+function renderYoutubeFormField(field: YtDlpFormField, state: LabStoreState, copy: LabI18n) {
+  const label = copy.t(field.labelKey, getLabelFallback(field.labelKey, field.id));
+  const value = getYoutubeCustomValue(state, field.id);
+  const fieldName = getYoutubeControlFieldName(field.id);
+  const spanAttr = field.span === "full" ? ' data-span="full"' : "";
+
+  if (field.type === "toggle") {
+    return `
+      <label class="labx-field labx-project-import__yt-field labx-project-import__yt-field--toggle"${spanAttr}>
+        <input type="checkbox" data-lab-field="${escapeHtml(fieldName)}"${checkedAttr(value === true)} />
+        <span>${escapeHtml(label)}</span>
+      </label>
+    `;
+  }
+
+  if (field.type === "select") {
+    const selectedValue = typeof value === "string" ? value : String(value);
+    return `
+      <label class="labx-field labx-project-import__yt-field"${spanAttr}>
+        <span>${escapeHtml(label)}</span>
+        <select data-lab-field="${escapeHtml(fieldName)}">
+          ${(field.options || [])
+            .map(function (option) {
+              const optionLabel = copy.t(
+                option.labelKey,
+                getLabelFallback(option.labelKey, option.value)
+              );
+              return `<option value="${escapeHtml(option.value)}"${selectedAttr(selectedValue, option.value)}>${escapeHtml(optionLabel)}</option>`;
+            })
+            .join("")}
+        </select>
+      </label>
+    `;
+  }
+
+  const placeholder =
+    field.placeholderKey !== undefined
+      ? copy.t(field.placeholderKey, getLabelFallback(field.placeholderKey, ""))
+      : "";
+  const numberAttrs =
+    field.type === "number"
+      ? `${typeof field.min === "number" ? ` min="${String(field.min)}"` : ""}${typeof field.max === "number" ? ` max="${String(field.max)}"` : ""}`
+      : "";
   return `
-    <label class="labx-field labx-project-import__format-select">
+    <label class="labx-field labx-project-import__yt-field"${spanAttr}>
       <span>${escapeHtml(label)}</span>
-      <select data-lab-field="${escapeHtml(field)}">
-        <option value="">${escapeHtml(emptyLabel)}</option>
-        ${formats
-          .map(function (format) {
-            const technical = getFormatTechnicalLabel(format);
-            return `<option value="${escapeHtml(format.formatId)}"${selectedAttr(selectedFormatId, format.formatId)}>${escapeHtml(format.label || technical || format.formatId)}${technical !== "" ? ` — ${escapeHtml(technical)}` : ""}</option>`;
-          })
-          .join("")}
-      </select>
+      <input
+        class="labx-input"
+        type="${field.type === "number" ? "number" : "text"}"
+        data-lab-field="${escapeHtml(fieldName)}"
+        value="${escapeHtml(String(value))}"
+        placeholder="${escapeHtml(placeholder)}"${numberAttrs}
+      />
     </label>
+  `;
+}
+
+function renderYoutubeDetailedControls(state: LabStoreState, copy: LabI18n) {
+  return `
+    <div class="labx-project-import__yt-controls">
+      ${YT_DLP_FORM_SCHEMA.sections
+        .map(function (section) {
+          const title = copy.t(
+            `mediaAnalysis.source.youtubeForm.sections.${section.id}.title`,
+            section.id
+          );
+          const subtitle = copy.t(
+            `mediaAnalysis.source.youtubeForm.sections.${section.id}.subtitle`,
+            ""
+          );
+          return `
+            <fieldset class="labx-project-import__yt-section">
+              <legend>${escapeHtml(title)}</legend>
+              ${subtitle !== "" ? `<p>${escapeHtml(subtitle)}</p>` : ""}
+              <div class="labx-project-import__yt-grid">
+                ${section.fields
+                  .map(function (field) {
+                    return renderYoutubeFormField(field, state, copy);
+                  })
+                  .join("")}
+              </div>
+            </fieldset>
+          `;
+        })
+        .join("")}
+    </div>
   `;
 }
 
@@ -141,8 +446,6 @@ function renderYoutubeCheckResult(state: LabStoreState, copy: LabI18n) {
   const title =
     preview?.title ||
     copy.t("mediaAnalysis.source.youtubeImport.previewFallbackTitle", "YouTube video");
-  const videoFormats = getYoutubeVideoFormats(youtube.formats);
-  const audioFormats = getYoutubeAudioFormats(youtube.formats);
   return `
     <div class="labx-project-import__youtube-result">
       <div class="labx-project-import__youtube-preview">
@@ -168,22 +471,8 @@ function renderYoutubeCheckResult(state: LabStoreState, copy: LabI18n) {
           )}</span>
         </div>
       </div>
-      <div class="labx-project-import__format-grid">
-        ${renderYoutubeFormatSelect(
-          copy.t("mediaAnalysis.projectImport.url.videoFormat", "Video stream"),
-          "project-import.youtubeVideoFormat",
-          youtube.selectedVideoFormatId,
-          videoFormats,
-          copy.t("mediaAnalysis.projectImport.url.noVideo", "No video, audio only")
-        )}
-        ${renderYoutubeFormatSelect(
-          copy.t("mediaAnalysis.projectImport.url.audioFormat", "Audio stream"),
-          "project-import.youtubeAudioFormat",
-          youtube.selectedAudioFormatId,
-          audioFormats,
-          copy.t("mediaAnalysis.projectImport.url.noAudio", "No separate audio")
-        )}
-      </div>
+      ${renderProjectImportDetails(state, copy)}
+      ${renderYoutubeDetailedControls(state, copy)}
     </div>
   `;
 }
@@ -194,13 +483,16 @@ function renderDirectUrlCheckResult(state: LabStoreState, copy: LabI18n) {
     return "";
   }
   return `
-    <p class="labx-project-import__status" data-tone="success">
-      ${escapeHtml(
-        copy.t("mediaAnalysis.projectImport.url.directReady", "Direct URL ready as {type}", {
-          type: getKindLabel(check.kind || "video", copy),
-        })
-      )}
-    </p>
+    <div class="labx-project-import__direct-result">
+      <p class="labx-project-import__status" data-tone="success">
+        ${escapeHtml(
+          copy.t("mediaAnalysis.projectImport.url.directReady", "Direct URL ready as {type}", {
+            type: getKindLabel(check.kind || "video", copy),
+          })
+        )}
+      </p>
+      ${renderProjectImportDetails(state, copy)}
+    </div>
   `;
 }
 
@@ -291,6 +583,7 @@ function renderProjectImportDetails(state: LabStoreState, copy: LabI18n) {
   const route = getProjectImportRoute(state);
   const action = getTrackedProjectImportAction(state);
   const method = getMethodForAction(action, route.method);
+  const check = state.ui.projectImport.urlCheck;
   const source = asLabRecord(state.source);
   const sourceMode = asNonEmptyString(source["mode"]);
   const useCommittedSource =
@@ -302,6 +595,7 @@ function renderProjectImportDetails(state: LabStoreState, copy: LabI18n) {
   const fileName =
     (useCommittedSource ? asNonEmptyString(source["storedFileName"]) : null) ||
     asNonEmptyString(youtubePreview?.title) ||
+    (method === "url" ? asNonEmptyString(check.url) : null) ||
     copy.t("mediaAnalysis.projectImport.review.pendingFile", "Bekleyen dosya");
   const rows: Array<{ label: string; value: string }> = [
     {
@@ -451,16 +745,21 @@ function renderUrlImportSection(state: LabStoreState, copy: LabI18n) {
   const check = state.ui.projectImport.urlCheck;
   const ready = check.status === "ready";
   const checking = check.status === "checking";
-  const checkDisabledAttr = checking || checkAction.disabledReason !== null ? " disabled" : "";
-  const checkDisabledTitle =
-    checkAction.disabledReason !== null ? ` title="${escapeHtml(checkAction.disabledReason)}"` : "";
-  const addDisabledReason = ready ? addAction.disabledReason : "Check the URL before adding it.";
-  const addDisabledAttr = addDisabledReason !== null ? " disabled" : "";
-  const addDisabledTitle =
-    addDisabledReason !== null ? ` title="${escapeHtml(addDisabledReason)}"` : "";
-  const checkButtonLabel = checking
-    ? copy.t("mediaAnalysis.projectImport.url.checking", "Kontrol ediliyor")
-    : copy.t("mediaAnalysis.projectImport.url.check", "Kontrol Et");
+  const primaryAction = ready ? "project-import-url-add" : "project-import-check-url";
+  const primaryDisabledReason = ready
+    ? addAction.disabledReason
+    : checking
+      ? copy.t("mediaAnalysis.projectImport.url.checking", "Kontrol ediliyor")
+      : checkAction.disabledReason;
+  const primaryDisabledAttr = primaryDisabledReason !== null ? " disabled" : "";
+  const primaryDisabledTitle =
+    primaryDisabledReason !== null ? ` title="${escapeHtml(primaryDisabledReason)}"` : "";
+  const primaryButtonLabel = ready
+    ? copy.t("mediaAnalysis.projectImport.url.add", "Projeye Ekle")
+    : checking
+      ? copy.t("mediaAnalysis.projectImport.url.checking", "Kontrol ediliyor")
+      : copy.t("mediaAnalysis.projectImport.url.check", "Kontrol Et");
+  const clearDisabled = hasProjectImportDraftValue(state) !== true;
   return `
     <section class="labx-project-import__panel" data-panel="url">
       <div class="labx-project-import__url-row">
@@ -468,11 +767,11 @@ function renderUrlImportSection(state: LabStoreState, copy: LabI18n) {
           <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.urlInput", "Source URL"))}</span>
           <input class="labx-input" data-lab-field="project-import.urlInput" value="${escapeHtml(getProjectImportUrlInput(state))}" placeholder="https://..." />
         </label>
-        <button class="labx-project-import__btn" type="button" data-lab-action="project-import-check-url"${checkDisabledAttr}${checkDisabledTitle}>
-          ${escapeHtml(checkButtonLabel)}
+        <button class="labx-project-import__btn labx-project-import__btn--accent" type="button" data-lab-action="${escapeHtml(primaryAction)}"${primaryDisabledAttr}${primaryDisabledTitle}>
+          ${escapeHtml(primaryButtonLabel)}
         </button>
-        <button class="labx-project-import__btn labx-project-import__btn--accent" type="button" data-lab-action="project-import-url-add"${addDisabledAttr}${addDisabledTitle}>
-          ${escapeHtml(copy.t("mediaAnalysis.projectImport.url.add", "Projeye Ekle"))}
+        <button class="labx-project-import__btn" type="button" data-lab-action="project-import-clear"${clearDisabled ? " disabled" : ""}>
+          ${escapeHtml(copy.t("mediaAnalysis.projectImport.clear", "Clear"))}
         </button>
       </div>
       ${renderYoutubeCheckResult(state, copy)}
@@ -482,26 +781,14 @@ function renderUrlImportSection(state: LabStoreState, copy: LabI18n) {
 }
 
 export function renderProjectSourceImport(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
-  const route = getProjectImportRoute(state);
   return `
-    <section class="labx-project-import" aria-label="${escapeHtml(copy.t("mediaAnalysis.projectImport.title", "Source Import Workspace"))}">
-      <div class="labx-project-import__header">
-        <div>
-          <p class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.projectImport.eyebrow", "Project Source"))}</p>
-          <h2>${escapeHtml(copy.t("mediaAnalysis.projectImport.title", "Source Import Workspace"))}</h2>
-        </div>
-        <span class="labx-project-import__route">${escapeHtml(getKindLabel(route.kind, copy))} / ${escapeHtml(getMethodLabel(route.method, copy))}</span>
-      </div>
+    <section class="labx-project-import" aria-label="${escapeHtml(copy.t("mediaAnalysis.projectImport.ariaLabel", "Project source import"))}">
       <div class="labx-project-import__body labx-project-import__body--unified">
         ${renderLocalImportSection(state, copy)}
         ${renderUrlImportSection(state, copy)}
       </div>
-      ${renderProjectImportDetails(state, copy)}
       <div class="labx-project-import__footer">
         ${renderProjectImportProgress(state, copy)}
-        <button class="labx-project-import__btn" type="button" data-lab-action="project-import-clear">
-          ${escapeHtml(copy.t("mediaAnalysis.projectImport.clear", "Clear"))}
-        </button>
       </div>
     </section>
   `;

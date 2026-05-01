@@ -1508,6 +1508,7 @@ export type LabStoreEvent =
       kind?: LabProjectImportKind;
       patch: Partial<LabSourceDrafts>;
     }
+  | { type: "project-import-reset" }
   | { type: "project-import-cleared"; kind?: LabProjectImportKind }
   | { type: "project-import-url-check-started"; url: string }
   | { type: "project-import-url-check-cleared" }
