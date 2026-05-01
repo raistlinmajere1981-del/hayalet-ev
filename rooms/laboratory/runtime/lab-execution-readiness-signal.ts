@@ -254,11 +254,7 @@ export function formatExecutionReadinessSignalAdvisory(
 ) {
   return formatLabI18n("readiness.advisory", locale, {
     alignment: getAlignmentPhrase(signal.alignment, locale),
-    confidence: formatReadinessSignalToken(
-      "confidence",
-      signal.alternativesConfidenceBand,
-      locale
-    ),
+    confidence: formatReadinessSignalToken("confidence", signal.alternativesConfidenceBand, locale),
     level: formatReadinessSignalToken("level", signal.level, locale),
     pattern: formatReadinessSignalToken("pattern", signal.patternStrength, locale),
     pressure: formatReadinessSignalToken("pressure", signal.decisionPressure, locale),

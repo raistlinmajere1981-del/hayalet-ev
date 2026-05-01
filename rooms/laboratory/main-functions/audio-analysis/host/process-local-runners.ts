@@ -813,7 +813,8 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
         ),
       ],
       status: "ready",
-      summary: "Prosody contours and pacing metrics were generated with the configured focus settings.",
+      summary:
+        "Prosody contours and pacing metrics were generated with the configured focus settings.",
       warnings: [],
     };
   }

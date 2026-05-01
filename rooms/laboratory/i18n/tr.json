@@ -463,6 +463,8 @@
       "title": "İşlemler",
       "notReady": "Hazır değil",
       "runningAction": "İşleniyor",
+      "cancelAction": "İptal",
+      "cancelTitle": "Bu işlemi iptal et",
       "successAction": "Hazır",
       "errorAction": "Tekrar Dene",
       "plannedAction": "Planlı",

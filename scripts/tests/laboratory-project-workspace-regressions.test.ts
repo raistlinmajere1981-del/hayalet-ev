@@ -283,7 +283,7 @@ test("laboratory project workspace lets selected assets override stale import re
   assert.doesNotMatch(html, /Import Review/);
 });
 
-test("laboratory project workspace draft review does not borrow the committed source preview", () => {
+test("laboratory project workspace hides draft review instead of borrowing committed source preview", () => {
   const state = createProjectWorkspaceState(true);
   state.source = {
     kind: "video",
@@ -299,8 +299,7 @@ test("laboratory project workspace draft review does not borrow the committed so
 
   const html = renderProjectWorkspaceOverlay(state);
 
-  assert.match(html, /Import Review/);
-  assert.match(html, /Bekleyen dosya|Pending file/);
+  assert.doesNotMatch(html, /Import Review/);
   assert.doesNotMatch(html, /existing-source\.mp4/);
   assert.doesNotMatch(html, /file:\/\/\/tmp\/existing-source\.mp4/);
   assert.doesNotMatch(html, /1:39/);

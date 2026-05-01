@@ -4,7 +4,6 @@ import { readFileSync } from "node:fs";
 
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import { renderLabProjectAssetsPanel } from "../../rooms/laboratory/ui/lab-project-assets-panel.ts";
-import { renderWorkspaceSurface } from "../../rooms/laboratory/ui/workspace-surface.ts";
 
 const sourcePresets = JSON.parse(
   readFileSync("rooms/laboratory/shared/data/tools/source-presets.json", "utf8")
@@ -15,8 +14,6 @@ const ytDlpForm = JSON.parse(
 
 function createLineageState(
   options: {
-    dualPreviewEnabled?: boolean;
-    dualPreviewAudioAssetId?: string | null;
     startOffsetMs?: number;
   } = {}
 ) {
@@ -125,13 +122,6 @@ function createLineageState(
       activityFeed: [],
     },
   });
-  if (options.dualPreviewEnabled === true) {
-    store.dispatch({
-      type: "workspace-dual-preview-toggled",
-      force: true,
-      audioAssetId: options.dualPreviewAudioAssetId || "asset-audio-linked-newer",
-    });
-  }
   return store.getState();
 }
 
@@ -142,48 +132,4 @@ test("laboratory project assets panel renders linked source and sync label for a
   assert.match(panelHtml, /data-lab-action="focus-source-preview"/);
   assert.match(panelHtml, /Source: lab-demo\.mp4/);
   assert.match(panelHtml, /Senkron: ✓ Aynı zaman ekseni/);
-});
-
-test("laboratory workspace surface renders linked audio bar above the preview in deterministic order", () => {
-  const surface = renderWorkspaceSurface(createLineageState());
-
-  assert.match(surface.main, /Bu kaynağın ses çıktıları mevcut:/);
-  assert.match(surface.main, /audio\.wav/);
-  assert.match(surface.main, /audio-newer\.wav/);
-  assert.match(surface.main, /🎧 Ses ile birlikte aç/);
-  assert.match(
-    surface.main,
-    /data-lab-action="asset-preview"[\s\S]*data-lab-value="asset-audio-linked"/
-  );
-  assert.ok(
-    surface.main.indexOf("labx-linked-audio-bar") < surface.main.indexOf("lab-workspace-preview")
-  );
-  assert.ok(surface.main.indexOf("audio-newer.wav") < surface.main.indexOf("audio.wav"));
-});
-
-test("laboratory workspace surface renders split dual preview with shared transport controls", () => {
-  const surface = renderWorkspaceSurface(
-    createLineageState({
-      dualPreviewEnabled: true,
-      dualPreviewAudioAssetId: "asset-audio-linked-newer",
-      startOffsetMs: 250,
-    })
-  );
-
-  assert.match(surface.main, /data-preview-mode="dual"/);
-  assert.match(surface.main, /data-lab-role="dual-preview-master"/);
-  assert.match(surface.main, /data-lab-role="dual-preview-slave"/);
-  assert.match(surface.main, /data-lab-action="dual-preview-toggle-play"/);
-  assert.match(surface.main, /data-lab-action="workspace-close-dual-preview"/);
-  assert.match(surface.main, /data-lab-action="workspace-dual-preview-audio-select"/);
-  assert.match(surface.main, /Senkron: Ofset \+250 ms/);
-  assert.match(surface.main, /labx-timeline__waveform-window/);
-  assert.match(surface.main, /id="lab-audio-viz"/);
-  assert.doesNotMatch(surface.main, /workspace\.audioFocus\.visualizationMode/);
-  assert.doesNotMatch(surface.main, /labx-dual-preview-audio__meter/);
-  assert.ok(
-    surface.main.indexOf("labx-workspace-preview__video-stage") <
-      surface.main.indexOf("labx-roi-overlay")
-  );
-  assert.ok(surface.main.indexOf("labx-dual-preview-audio__meta") < surface.main.indexOf("lab-audio-viz"));
 });

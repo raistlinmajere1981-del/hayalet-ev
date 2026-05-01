@@ -415,6 +415,27 @@ test("laboratory workspace inspector drawer persists collapsed visual tab state"
   assert.match(surface.main, /data-inspector-panel="visual"/);
 });
 
+test("laboratory workspace focus layer classes map to preview timeline and inspector", () => {
+  const store = createSeededState(true);
+
+  let surface = renderWorkspaceSurface(store.getState());
+  assert.match(surface.main, /class="labx-workspace-preview labx-focus-primary"/);
+  assert.match(surface.main, /class="labx-timeline labx-focus-passive"/);
+  assert.match(surface.main, /class="labx-workspace-inspector labx-focus-passive"/);
+
+  store.dispatch({ type: "lab-focus-layer-changed", layer: "timeline" });
+  surface = renderWorkspaceSurface(store.getState());
+  assert.match(surface.main, /class="labx-workspace-preview labx-focus-passive"/);
+  assert.match(surface.main, /class="labx-timeline labx-focus-secondary"/);
+  assert.match(surface.main, /class="labx-workspace-inspector labx-focus-passive"/);
+
+  store.dispatch({ type: "lab-focus-layer-changed", layer: "inspector" });
+  surface = renderWorkspaceSurface(store.getState());
+  assert.match(surface.main, /class="labx-workspace-preview labx-focus-passive"/);
+  assert.match(surface.main, /class="labx-timeline labx-focus-passive"/);
+  assert.match(surface.main, /class="labx-workspace-inspector labx-focus-secondary"/);
+});
+
 test("laboratory workspace inspector exposes operation-result controls and active operation focus", () => {
   const store = createSeededState(true);
   store.dispatch({
@@ -445,6 +466,8 @@ test("laboratory workspace inspector exposes operation-result controls and activ
   assert.match(surface.main, /data-operation-id="stem-separation"/);
   assert.match(surface.main, /data-operation-id="enhanced-frame"[\s\S]*data-active="true"/);
   assert.match(surface.main, /class="labx-settings-block"/);
+  assert.match(surface.main, /data-lab-collapsible-panel="true"/);
+  assert.match(surface.main, /data-panel-id="operationSettings\.enhanced-frame"/);
   assert.match(surface.main, /class="labx-settings-block__state"/);
   assert.match(surface.main, /class="labx-settings-block__action"/);
   assert.match(surface.main, /data-lab-field="operationSettings\.enhanced-frame\.preset"/);
@@ -478,7 +501,11 @@ test("laboratory operation buttons reflect scoped running action state", () => {
     surface.main,
     /data-lab-operation-capability="enhanced-frame"[\s\S]*aria-busy="true"/
   );
-  assert.match(surface.main, /İyileştirilmiş frame hazırlanıyor/);
+  assert.match(
+    surface.main,
+    /data-lab-action="operation-cancel"[\s\S]*data-lab-value="enhanced-frame"/
+  );
+  assert.match(surface.main, />Cancel<\/button>/);
   assert.match(surface.main, /data-lab-operation-capability="audio-cleanup"/);
   assert.match(surface.main, /data-lab-operation-capability="band-pass-voice"/);
 });
@@ -959,6 +986,8 @@ test("laboratory process strip renders recent action history from user actions",
   assert.match(stripHtml, /data-lab-process-expanded="true"/);
   assert.match(stripHtml, /aria-expanded="true"/);
   assert.match(stripHtml, /Analiz özeti/);
+  assert.match(stripHtml, /Ham log/);
+  assert.match(stripHtml, /Ham log yok/);
   assert.match(stripHtml, /Frame alındı/);
   assert.match(stripHtml, /frame_01\.png/);
 });

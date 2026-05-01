@@ -110,20 +110,16 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
     });
     if (modelPolicy === "fastest") {
       return (
-        readyModels
-          .slice()
-          .sort(function (left, right) {
-            return (asNumber(left["sizeBytes"]) || 0) - (asNumber(right["sizeBytes"]) || 0);
-          })[0] || null
+        readyModels.slice().sort(function (left, right) {
+          return (asNumber(left["sizeBytes"]) || 0) - (asNumber(right["sizeBytes"]) || 0);
+        })[0] || null
       );
     }
     if (modelPolicy === "best-ready") {
       return (
-        readyModels
-          .slice()
-          .sort(function (left, right) {
-            return (asNumber(right["sizeBytes"]) || 0) - (asNumber(left["sizeBytes"]) || 0);
-          })[0] || null
+        readyModels.slice().sort(function (left, right) {
+          return (asNumber(right["sizeBytes"]) || 0) - (asNumber(left["sizeBytes"]) || 0);
+        })[0] || null
       );
     }
     return (

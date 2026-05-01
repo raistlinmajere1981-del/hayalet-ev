@@ -3,6 +3,7 @@ import type { AnalysisReference, AnalysisScope } from "../shared/types/analysis-
 export type LabRecord = Record<string, unknown>;
 
 export type LabAssetType = "source" | "clip" | "frame" | "audio" | "image" | "report" | "artifact";
+export type LabFocusLayer = "preview" | "timeline" | "inspector";
 
 export interface LabAsset {
   id: string;
@@ -2444,6 +2445,7 @@ export interface LabProjectImportUiState {
 }
 
 export interface LabStoreUiState {
+  labFocusLayer: LabFocusLayer;
   labMode: LabMode;
   youtubeImport: LabYoutubeImportState;
   projectImport: LabProjectImportUiState;
@@ -2565,6 +2567,7 @@ export interface LabWorkspaceSurface {
 
 export type LabStoreEvent =
   | { type: "hydrate"; payload: Partial<LabPersistedState> | null }
+  | { type: "lab-focus-layer-changed"; layer: LabFocusLayer }
   | { type: "enter-youtube-import-mode" }
   | { type: "exit-youtube-import-mode" }
   | { type: "youtube-import-set-url"; url: string | null }

@@ -202,6 +202,17 @@ test("laboratory settings controls persist and join operation execution payloads
     assert.equal(operationSettings["format"], "webm");
     assert.equal(operationSettings["includeAudio"], false);
 
+    clickListener({
+      target: new FakeActionElement("operation-cancel", "clip-export"),
+    } as Event);
+    const cancelAction = sentEvents.find(function (entry) {
+      return entry.payload["action"] === "job-cancel";
+    });
+    assert.ok(cancelAction);
+    const cancelPayload = asRecord(cancelAction.payload["payload"]);
+    assert.equal(cancelPayload["actionId"], "export-timeline-clip");
+    assert.equal(cancelPayload["sourceRequestId"], clipAction.payload["requestId"]);
+
     changeListener({
       target: new FakeSelectElement("operationSettings.roi-crop.format", "webp"),
     } as unknown as Event);

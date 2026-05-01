@@ -1046,7 +1046,8 @@
   position: relative;
   min-height: 0;
   height: 100%;
-  border: 0;
+  box-sizing: border-box;
+  border: 1px solid transparent;
   border-radius: 0;
   background:
     radial-gradient(circle at top, rgba(92, 215, 223, 0.06), transparent 44%), rgba(3, 8, 14, 0.94);
@@ -1054,6 +1055,48 @@
   display: grid;
   place-items: center;
   box-shadow: none;
+  opacity: 1;
+  filter: brightness(1);
+  scale: 1;
+  transition:
+    opacity 140ms ease-out,
+    filter 140ms ease-out,
+    box-shadow 160ms ease-out;
+}
+
+.labx-focus-primary,
+.labx-focus-secondary,
+.labx-focus-passive {
+  transition:
+    opacity 140ms ease-out,
+    filter 140ms ease-out,
+    box-shadow 160ms ease-out;
+}
+
+.labx-workspace-preview.labx-focus-primary {
+  border: 1px solid var(--labx-accent);
+  opacity: 1;
+  filter: brightness(1);
+  scale: 1;
+  box-shadow:
+    0 0 0 1px var(--labx-accent-soft),
+    0 0 24px rgba(0, 0, 0, 0.35);
+}
+
+.labx-workspace-preview.labx-focus-passive {
+  opacity: 0.85;
+  filter: brightness(0.85);
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .labx-focus-primary,
+  .labx-focus-secondary,
+  .labx-focus-passive,
+  .labx-workspace-preview,
+  .labx-workspace-inspector {
+    transition: none;
+  }
 }
 
 .labx-audio-visualizer {
@@ -1150,6 +1193,14 @@
   box-shadow: none;
 }
 
+.labx-timeline.labx-focus-secondary {
+  opacity: 1;
+}
+
+.labx-timeline.labx-focus-passive {
+  opacity: 0.7;
+}
+
 .labx-media-workbench > .labx-timeline .labx-timeline__controls,
 .labx-media-workbench > .labx-timeline .lab-interpretation-panel {
   margin-inline: 0.85rem;
@@ -1157,6 +1208,14 @@
 
 .labx-timeline[data-timeline-locked="true"] {
   opacity: 0.82;
+}
+
+.labx-timeline[data-timeline-locked="true"].labx-focus-secondary {
+  opacity: 1;
+}
+
+.labx-timeline[data-timeline-locked="true"].labx-focus-passive {
+  opacity: 0.7;
 }
 
 .labx-timeline__track {
@@ -1182,6 +1241,13 @@
   z-index: 0;
 }
 
+.labx-timeline.labx-focus-secondary .labx-timeline__waveform-bed {
+  border-color: rgba(92, 215, 223, 0.18);
+  background:
+    linear-gradient(180deg, rgba(92, 215, 223, 0.12), rgba(106, 166, 235, 0.04)),
+    rgba(255, 255, 255, 0.035);
+}
+
 .labx-media-workbench > .labx-timeline .labx-timeline__waveform-bed {
   border-right: 0;
   border-left: 0;
@@ -1202,6 +1268,16 @@
     inset 0 0 0 1px rgba(92, 215, 223, 0.08),
     inset 0 -10px 18px rgba(0, 0, 0, 0.18);
   z-index: 1;
+}
+
+.labx-timeline.labx-focus-secondary .labx-timeline__waveform-window {
+  background:
+    linear-gradient(180deg, rgba(92, 215, 223, 0.18), rgba(122, 162, 255, 0.08)),
+    rgba(10, 18, 27, 0.88);
+  box-shadow:
+    inset 0 0 0 1px rgba(92, 215, 223, 0.18),
+    inset 0 -10px 18px rgba(0, 0, 0, 0.22),
+    0 0 18px rgba(92, 215, 223, 0.1);
 }
 
 .labx-timeline__rail {
@@ -3153,6 +3229,13 @@
   z-index: 5;
 }
 
+.labx-timeline.labx-focus-secondary .labx-timeline__playhead {
+  border-left-color: #ffe7a6;
+  box-shadow:
+    0 0 0 1px rgba(255, 214, 102, 0.18),
+    0 0 18px rgba(255, 214, 102, 0.34);
+}
+
 .labx-timeline__playhead-label {
   position: absolute;
   top: -1.55rem;
@@ -3167,6 +3250,12 @@
   line-height: 1;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+.labx-timeline.labx-focus-secondary .labx-timeline__playhead-label {
+  background: rgba(255, 214, 102, 0.2);
+  border-color: rgba(255, 214, 102, 0.44);
+  color: #fff1bd;
 }
 
 .labx-timeline__controls {
@@ -3632,17 +3721,37 @@
   border: 1px solid rgba(92, 215, 223, 0.2);
   border-radius: var(--labx-radius-tight);
   background:
-    linear-gradient(180deg, rgba(8, 18, 30, 0.97), rgba(5, 11, 19, 0.98)), rgba(5, 11, 19, 0.96);
+    linear-gradient(180deg, rgba(4, 10, 17, 0.98), rgba(2, 6, 11, 0.99)), rgba(2, 6, 11, 0.98);
   box-shadow:
     0 24px 42px rgba(0, 0, 0, 0.34),
     0 0 0 1px rgba(255, 255, 255, 0.025);
+  opacity: 0.65;
+  transition:
+    opacity 140ms ease-out,
+    filter 140ms ease-out,
+    box-shadow 160ms ease-out;
+}
+
+.labx-workspace-inspector.labx-focus-secondary {
+  opacity: 1;
+  box-shadow:
+    0 24px 42px rgba(0, 0, 0, 0.38),
+    0 0 0 1px rgba(92, 215, 223, 0.14);
+}
+
+.labx-workspace-inspector.labx-focus-passive {
+  opacity: 0.65;
 }
 
 .labx-workspace-inspector[data-open="false"] {
   bottom: auto;
   width: auto;
   border-color: rgba(92, 215, 223, 0.24);
-  background: rgba(8, 18, 30, 0.9);
+  background: rgba(2, 7, 12, 0.94);
+}
+
+.labx-workspace-inspector[data-open="false"].labx-focus-passive {
+  opacity: 0.78;
 }
 
 .labx-workspace-inspector__toggle {
@@ -3901,6 +4010,18 @@
   background: rgba(255, 255, 255, 0.04);
   color: var(--labx-text-dim);
   cursor: not-allowed;
+}
+
+.labx-operation-card__action[data-action-status="running"] {
+  border-color: rgba(255, 133, 133, 0.48);
+  background: rgba(255, 133, 133, 0.13);
+  color: rgba(255, 238, 238, 0.96);
+}
+
+.labx-operation-card__action[data-action-status="running"]:hover,
+.labx-operation-card__action[data-action-status="running"]:focus-visible {
+  border-color: rgba(255, 163, 163, 0.7);
+  background: rgba(255, 133, 133, 0.2);
 }
 
 .labx-settings-block {

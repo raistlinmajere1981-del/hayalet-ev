@@ -20,62 +20,6 @@ import {
 
 import type { LabArtifactProjection } from "./laboratory-runtime-truth.helpers.ts";
 
-test("waveform timeline model maps linked audio offset onto the shared master axis", () => {
-  const store = createLabStore();
-  store.dispatch({
-    type: "snapshot-received",
-    payload: createDualPreviewSnapshot(250),
-  });
-  store.dispatch({
-    type: "workspace-dual-preview-toggled",
-    force: true,
-    audioAssetId: "asset-audio-linked",
-  });
-  store.dispatch({
-    type: "workspace-timeline-updated",
-    startMs: 800,
-    endMs: 1800,
-  });
-
-  const model = getWaveformTimelineModel(store.getState());
-  const markup = renderLabWaveformTimeline(model);
-
-  assert.equal(model.waveformWindowStartMs, 250);
-  assert.equal(model.waveformWindowDurationMs, 5750);
-  assert.equal(
-    Number((model.waveformCropEndRatio || 0).toFixed(6)),
-    Number((5750 / 6000).toFixed(6))
-  );
-  assert.match(markup, /id="lab-audio-viz"/);
-  assert.match(markup, /data-lab-role="timeline-playhead"/);
-  assert.equal(model.waveformSyncLabel, "Linked audio offset +250 ms");
-  assert.doesNotMatch(markup, /Linked audio offset \+250 ms/);
-});
-
-test("waveform timeline model clips negative linked audio offsets against the master range", () => {
-  const store = createLabStore();
-  store.dispatch({
-    type: "snapshot-received",
-    payload: createDualPreviewSnapshot(-500),
-  });
-  store.dispatch({
-    type: "workspace-dual-preview-toggled",
-    force: true,
-    audioAssetId: "asset-audio-linked",
-  });
-
-  const model = getWaveformTimelineModel(store.getState());
-  const markup = renderLabWaveformTimeline(model);
-
-  assert.equal(model.waveformWindowStartMs, 0);
-  assert.equal(model.waveformWindowDurationMs, 5500);
-  assert.equal(
-    Number((model.waveformCropStartRatio || 0).toFixed(6)),
-    Number((500 / 6000).toFixed(6))
-  );
-  assert.match(markup, /data-waveform-crop-start="0\.08333333333333333"/);
-});
-
 test("waveform timeline renders normal playback timing and step controls without a selection", () => {
   const store = createLabStore();
   store.dispatch({
@@ -239,34 +183,6 @@ test("workspace audio visualizer redraws when the shared waveform crop changes w
   assert.equal(canvas.context.drawImageCalls, 2);
   assert.equal(canvas.context.lastDrawImageArgs?.[1], 100);
   assert.equal(canvas.context.lastDrawImageArgs?.[3], 1000);
-});
-
-test("workspace audio visualizer binds to the dual preview companion audio element when present", async () => {
-  FakeVisualizerAudioContext.constructed = [];
-  const primaryVideo = new FakeMediaElement();
-  const dualAudio = new FakeMediaElement();
-  const canvas = new FakeCanvasElement();
-  const documentRef = new FakeVisualizerDocument(primaryVideo, dualAudio, canvas);
-  const windowRef = new FakeVisualizerWindow();
-  const visualizer = createLabWaveformTimelineVisualizer({
-    documentRef: documentRef as unknown as Document,
-    getVisualizationArtifact() {
-      return null;
-    },
-    getVisualizationMode() {
-      return "waveform";
-    },
-    windowRef: windowRef as unknown as Window,
-  });
-
-  visualizer.sync();
-  assert.equal(FakeVisualizerAudioContext.constructed.length, 0);
-
-  await dualAudio.play();
-  await flushVisualizerWork();
-
-  assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
-  assert.equal(windowRef.scheduledFrames.size, 1);
 });
 
 test("workspace audio visualizer initializes lazily and disconnects on source changes", async () => {

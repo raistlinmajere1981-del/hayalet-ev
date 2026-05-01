@@ -1473,16 +1473,16 @@
     flex-direction: column;
   }
 
-	  .labx-project-import__fields,
-	  .labx-project-import__details,
-	  .labx-project-import__strategies,
-	  .labx-project-import__methods,
-	  .labx-project-import__url-row,
-	  .labx-project-import__format-grid,
-	  .labx-project-import__yt-grid,
-	  .labx-project-import__youtube-preview {
-	    grid-template-columns: 1fr;
-	  }
+  .labx-project-import__fields,
+  .labx-project-import__details,
+  .labx-project-import__strategies,
+  .labx-project-import__methods,
+  .labx-project-import__url-row,
+  .labx-project-import__format-grid,
+  .labx-project-import__yt-grid,
+  .labx-project-import__youtube-preview {
+    grid-template-columns: 1fr;
+  }
 
   .labx-project-import__stages {
     grid-template-columns: repeat(2, minmax(0, 1fr));

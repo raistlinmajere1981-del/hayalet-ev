@@ -1209,7 +1209,7 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   assert.doesNotMatch(workspaceSurfaceSource, /renderWorkspaceBookmarks|workspace-bookmarks/);
   assert.match(
     workspaceSurfaceSource,
-    /class="labx-workspace-stage"[\s\S]*class="labx-media-workbench"[\s\S]*class="labx-workspace-preview"[\s\S]*renderLabWaveformTimeline\(timelineModel\)[\s\S]*\$\{inspectorMarkup\}/
+    /class="labx-workspace-stage"[\s\S]*class="labx-media-workbench"[\s\S]*class="labx-workspace-preview \$\{escapeHtml\(previewFocusClassName\)\}"[\s\S]*renderLabWaveformTimeline\(timelineModel\)[\s\S]*\$\{inspectorMarkup\}/
   );
   assert.doesNotMatch(workspaceSurfaceSource, /renderWorkspaceHypothesis/);
   assert.match(
@@ -1218,8 +1218,18 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   );
   assert.match(
     themeSource,
-    /\.labx-workspace-preview\s*\{[\s\S]*min-height:\s*0;[\s\S]*height:\s*100%;[\s\S]*border:\s*0;[\s\S]*border-radius:\s*0;[\s\S]*box-shadow:\s*none;/
+    /\.labx-workspace-preview\s*\{[\s\S]*min-height:\s*0;[\s\S]*height:\s*100%;[\s\S]*border:\s*1px solid transparent;[\s\S]*border-radius:\s*0;[\s\S]*box-shadow:\s*none;/
   );
+  assert.match(themeSource, /\.labx-focus-primary,[\s\S]*\.labx-focus-secondary,[\s\S]*\.labx-focus-passive\s*\{[\s\S]*opacity 140ms ease-out,[\s\S]*filter 140ms ease-out,[\s\S]*box-shadow 160ms ease-out;/);
+  assert.match(themeSource, /\.labx-workspace-preview\.labx-focus-primary\s*\{[\s\S]*border:\s*1px solid var\(--labx-accent\);[\s\S]*box-shadow:[\s\S]*0 0 0 1px var\(--labx-accent-soft\),[\s\S]*0 0 24px rgba\(0, 0, 0, 0\.35\);/);
+  assert.match(themeSource, /\.labx-workspace-preview\.labx-focus-passive\s*\{[\s\S]*opacity:\s*0\.85;[\s\S]*filter:\s*brightness\(0\.85\);/);
+  assert.match(themeSource, /\.labx-timeline\.labx-focus-secondary\s*\{[\s\S]*opacity:\s*1;/);
+  assert.match(themeSource, /\.labx-timeline\.labx-focus-passive\s*\{[\s\S]*opacity:\s*0\.7;/);
+  assert.match(themeSource, /\.labx-timeline\[data-timeline-locked="true"\]\.labx-focus-secondary\s*\{[\s\S]*opacity:\s*1;/);
+  assert.match(themeSource, /\.labx-timeline\[data-timeline-locked="true"\]\.labx-focus-passive\s*\{[\s\S]*opacity:\s*0\.7;/);
+  assert.match(themeSource, /\.labx-workspace-inspector\.labx-focus-secondary\s*\{[\s\S]*opacity:\s*1;/);
+  assert.match(themeSource, /\.labx-workspace-inspector\.labx-focus-passive\s*\{[\s\S]*opacity:\s*0\.65;/);
+  assert.match(themeSource, /@media \(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*transition:\s*none;/);
   assert.match(
     themeSource,
     /\.labx-workspace-stage\s*\{[\s\S]*position:\s*relative;[\s\S]*flex:\s*1 1 auto;[\s\S]*min-height:\s*0;/

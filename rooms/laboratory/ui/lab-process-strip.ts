@@ -160,6 +160,23 @@ function renderProcessSummaryRows(state: LabStoreState, copy: LabI18n) {
   </ul>`;
 }
 
+function renderRawLogRows(state: LabStoreState, copy: LabI18n) {
+  const rawLog = Array.isArray(state.run?.rawLog) ? state.run.rawLog : [];
+  const visibleRawLog = rawLog.slice(0, state.ui.eventFeedExpanded ? 40 : 12);
+  if (visibleRawLog.length === 0) {
+    return `<p>${escapeHtml(copy.t("mediaAnalysis.strip.noRawLog", "Ham log yok"))}</p>`;
+  }
+
+  return `<ul class="labx-strip-expanded__log">
+    ${visibleRawLog
+      .map(function (entry) {
+        const line = entry.rawLine || entry.detail || entry.message;
+        return `<li data-severity="${escapeHtml(entry.severity)}" title="${escapeHtml(line)}">${escapeHtml(line)}</li>`;
+      })
+      .join("")}
+  </ul>`;
+}
+
 function renderExpandedStrip(state: LabStoreState, copy: LabI18n) {
   if (state.ui.workspace.processViewActive !== true) {
     return "";
@@ -170,6 +187,10 @@ function renderExpandedStrip(state: LabStoreState, copy: LabI18n) {
       <section>
         <strong>${escapeHtml(copy.t("mediaAnalysis.strip.analysisSummary", "Analiz özeti"))}</strong>
         ${renderProcessSummaryRows(state, copy)}
+      </section>
+      <section>
+        <strong>${escapeHtml(copy.t("mediaAnalysis.strip.rawLog", "Ham log"))}</strong>
+        ${renderRawLogRows(state, copy)}
       </section>
     </div>
   `;

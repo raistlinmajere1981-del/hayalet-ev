@@ -54,8 +54,7 @@ export const labI18nTr: Record<LabI18nKey, string> = {
   "readiness.alignment.none": "ölçülmemiş uyum",
   "readiness.advisory":
     "{view}: {pressure} baskıdan gelen {level} sinyal; {pattern} örüntü, {alignment}, {confidence} alternatif güveni ve {projection}.",
-  "adaptive.hint.highWeak":
-    "Bu yol benzer koşullarda geçmişte zayıf performans gösterdi.",
+  "adaptive.hint.highWeak": "Bu yol benzer koşullarda geçmişte zayıf performans gösterdi.",
   "adaptive.hint.high": "Güncel yürütme geri bildirimi bu yolun dikkatli incelenmesini istiyor.",
   "adaptive.hint.medium": "Alternatif stratejiler daha kararlı sonuçlar verebilir.",
   "adaptive.guidance.high": "Mevcut koşullarda daha kararlı alternatif: {label}.",
@@ -66,8 +65,7 @@ export const labI18nTr: Record<LabI18nKey, string> = {
   "candidate.summary.not-viable": "Bu yol yürütme için yapısal olarak uygun değil.",
   "candidate.notes.readinessStatus": "Hazırlık durumu {status}.",
   "candidate.notes.reflectionDecision": "Değerlendirme kararı {decision}.",
-  "candidate.notes.payloadAligned":
-    "Payload önizlemesi hazırlık sinyaliyle yapısal olarak uyumlu.",
+  "candidate.notes.payloadAligned": "Payload önizlemesi hazırlık sinyaliyle yapısal olarak uyumlu.",
   "candidate.notes.payloadMismatch": "Payload önizlemesi hâlâ hazırlık uyumsuzluğu bildiriyor.",
   "candidate.notes.alternativesDocumented":
     "Alternatif yollar durum değiştirmeden karşılaştırma için belgelendi.",
@@ -86,7 +84,8 @@ export const labI18nTr: Record<LabI18nKey, string> = {
   "reflection.summary.avoid": "Bu yol mevcut haliyle önerilmiyor.",
   "reflection.reasoning.proceed":
     "Hazırlık ve simülasyon sinyalleri kararlı bir dry-run yoluyla uyumlu.",
-  "reflection.reasoning.payloadPassing": "Payload önizlemesi geçen bir hazırlık sinyali bildiriyor.",
+  "reflection.reasoning.payloadPassing":
+    "Payload önizlemesi geçen bir hazırlık sinyali bildiriyor.",
   "reflection.reasoning.payloadReview":
     "Payload önizlemesi bu yol ilerletilmeden önce ek inceleme istiyor.",
   "reflection.reasoning.readinessStatus": "Hazırlık durumu {status}.",
@@ -98,12 +97,10 @@ export const labI18nTr: Record<LabI18nKey, string> = {
     "Seçim penceresi güvenilir yorum için fazla dar olabilir.",
   "reflection.reasoning.selectionBroad":
     "Seçim penceresi bağlam uğruna hassasiyetten ödün verecek kadar geniş.",
-  "reflection.reasoning.roiTight":
-    "ROI kapsamı sıkı ve çevre bağlamı sınırlı bırakabilir.",
+  "reflection.reasoning.roiTight": "ROI kapsamı sıkı ve çevre bağlamı sınırlı bırakabilir.",
   "reflection.reasoning.roiSufficient": "ROI kapsamı odaklı inceleme için yeterli.",
   "reflection.reasoning.roiBroad": "ROI kapsamı geniş ve yerel ayrıntıyı seyreltebilir.",
-  "reflection.reasoning.roiExtreme":
-    "ROI en-boy oranı çerçeveleme kararını etkileyecek kadar uç.",
+  "reflection.reasoning.roiExtreme": "ROI en-boy oranı çerçeveleme kararını etkileyecek kadar uç.",
   "reflection.reasoning.default": "Dry-run yolu pasif karar için yeterli bağlama sahip.",
   "reflection.tradeoff.inspect-audio":
     "Ses odaklı inceleme sinyal ayrıntısını açığa çıkarırken önizleme yanlılığını büyütebilir.",
@@ -226,6 +223,5 @@ export const labI18nTr: Record<LabI18nKey, string> = {
     "Seçili yola kıyasla bu alternatifler mevcut belirsizliği daha net kapsam ya da daha kararlı bağlamla takas eder.",
   "alternatives.comparison.reflectionAvoid":
     "Seçili yola kıyasla bu alternatifler gelecekteki herhangi bir devirden önce kapsamı, yöntemi ya da yoğunluğu değiştirerek riski azaltır.",
-  "alternatives.comparison.preferred":
-    "{base} En net karşılaştırma noktası {label}.",
+  "alternatives.comparison.preferred": "{base} En net karşılaştırma noktası {label}.",
 };

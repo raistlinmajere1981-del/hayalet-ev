@@ -1174,6 +1174,94 @@ test("laboratory media export runtime cancels only prior export jobs for every e
   });
 });
 
+test("laboratory media export runtime reports cancelled tool runs without leaking ffmpeg output", async () => {
+  const pushedJobStates: Array<Record<string, unknown>> = [];
+  let activeProject: Record<string, unknown> = {
+    id: "project-1",
+    source: {
+      kind: "video",
+      storedPath: "/tmp/lab-demo.mp4",
+      metadata: {
+        durationSeconds: 8,
+        height: 360,
+        width: 640,
+      },
+    },
+    process: {
+      records: {},
+    },
+    workbench: {
+      analysisScope: {},
+    },
+    assets: [],
+  };
+  const jobState = createLaboratoryJobStateRuntime({
+    roomId: "laboratory",
+    cancelRoomTool: async function () {},
+  });
+  const exportRuntime = createMediaExportActionRuntime({
+    asNonEmptyString(value: unknown) {
+      return typeof value === "string" && value.trim() !== "" ? value : null;
+    },
+    asNumber(value: unknown) {
+      return typeof value === "number" && Number.isFinite(value) ? value : null;
+    },
+    async callRoomTools() {
+      return {
+        run: {
+          cancelled: true,
+          stderr: "ffmpeg version n6.1 -i /tmp/lab-demo.mp4 leaked command output",
+        },
+      };
+    },
+    getActiveProject() {
+      return activeProject;
+    },
+    getProjectEditOutputDir() {
+      return "/tmp";
+    },
+    async handleAssetAsSource() {},
+    async patchActiveProject(_runtime, patcher) {
+      activeProject = patcher(activeProject);
+    },
+    pushJobState(_api, payload) {
+      pushedJobStates.push({ ...payload });
+    },
+    registerJob: jobState.registerJob,
+    clearJob: jobState.clearJob,
+    cancelJobsForProject: jobState.cancelJobsForProject,
+    toRecord(value: unknown) {
+      return value !== null && typeof value === "object" && Array.isArray(value) === false
+        ? (value as Record<string, unknown>)
+        : {};
+    },
+  });
+  const runtime = {
+    roomId: "laboratory",
+    jobs: {},
+  };
+
+  const result = (await exportRuntime.exportTimelineClip({}, runtime, "req-export-cancel", {
+    endMs: 1200,
+    startMs: 0,
+  })) as Record<string, unknown>;
+
+  assert.equal(result["cancelled"], true);
+  const cancelledPayload =
+    pushedJobStates.find(function (payload) {
+      return payload["stage"] === "cancelled";
+    }) || null;
+  assert.equal(cancelledPayload?.["message"], "İşlem iptal edildi.");
+  assert.doesNotMatch(String(cancelledPayload?.["message"] || ""), /ffmpeg|-i/);
+  assert.equal(
+    pushedJobStates.some(function (payload) {
+      return payload["stage"] === "failed";
+    }),
+    false
+  );
+  assert.deepEqual(Object.keys(runtime.jobs), []);
+});
+
 test("laboratory media export runtime preserves payload intent ids before workbench fallback", async () => {
   async function runExportCase(
     assetType: string,

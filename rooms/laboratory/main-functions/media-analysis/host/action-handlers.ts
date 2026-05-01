@@ -133,6 +133,7 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
   const mediaProjectActionRuntime = createMediaProjectActionRuntime({
     asNonEmptyString: deps.asNonEmptyString,
     cancelJobById: deps.cancelJobById,
+    cancelJobsForProject: deps.cancelJobsForProject,
     cancelFeatureProcess: deps.cancelFeatureProcess,
     checkToolUpdates: deps.checkToolUpdates,
     createProject: deps.createProject,

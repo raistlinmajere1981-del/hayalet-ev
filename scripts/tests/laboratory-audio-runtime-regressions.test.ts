@@ -781,27 +781,3 @@ test("workspace audio focus points users to the unified waveform timeline", () =
   assert.doesNotMatch(markup, /workspace\.audioFocus\.visualizationMode/);
   assert.doesNotMatch(markup, /lab-audio-viz/);
 });
-
-test("workspace audio focus fences temporal controls while dual preview is active", () => {
-  const markup = renderWorkspaceAudioFocus(
-    createTestAudioFocusSettings({
-      playbackRate: 0.4,
-      preservePitch: false,
-    }),
-    {
-      previewTarget: "video",
-      temporalAudioFocus: createTestAudioFocusSettings({
-        playbackRate: 1,
-        preservePitch: true,
-      }),
-      temporalControlsEnabled: false,
-    }
-  );
-
-  assert.match(markup, /workspace\.audioFocus\.playbackRate" disabled/);
-  assert.match(markup, /workspace\.audioFocus\.preservePitch"/);
-  assert.match(markup, />1x</);
-  assert.match(markup, /checked disabled/);
-  assert.match(markup, /Dual preview keeps temporal playback fixed at 1x with preserved pitch\./);
-  assert.match(markup, /Playback rate affects the bound preview media transport\./);
-});

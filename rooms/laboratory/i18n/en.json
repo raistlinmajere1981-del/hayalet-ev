@@ -463,6 +463,8 @@
       "title": "Operations",
       "notReady": "Not ready",
       "runningAction": "Running",
+      "cancelAction": "Cancel",
+      "cancelTitle": "Cancel this operation",
       "successAction": "Ready",
       "errorAction": "Retry",
       "plannedAction": "Planned",

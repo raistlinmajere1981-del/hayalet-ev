@@ -1,6 +1,5 @@
 import {
   assert,
-  createDualPreviewSnapshot,
   createLabHostBridge,
   createLabStore,
   extractFindings,
@@ -320,6 +319,27 @@ test("laboratory store keeps YouTube import mode UI-only and non-persistent", ()
   });
   assert.equal("youtubeImport" in (store.getState().persisted as Record<string, unknown>), false);
   assert.equal(store.getState().ui.sourceDrafts.youtubeUrl, "https://youtube.com/watch?v=abc123");
+});
+
+test("laboratory store tracks focus layer as guarded UI-only state", () => {
+  const store = createLabStore();
+
+  assert.equal(store.getState().ui.labFocusLayer, "preview");
+
+  store.dispatch({ type: "lab-focus-layer-changed", layer: "timeline" });
+  assert.equal(store.getState().ui.labFocusLayer, "timeline");
+
+  store.dispatch({ type: "lab-focus-layer-changed", layer: "inspector" });
+  assert.equal(store.getState().ui.labFocusLayer, "inspector");
+
+  store.dispatch({
+    type: "lab-focus-layer-changed",
+    layer: "unknown",
+  } as unknown as Parameters<typeof store.dispatch>[0]);
+  assert.equal(store.getState().ui.labFocusLayer, "inspector");
+
+  store.dispatch({ type: "hydrate", payload: null });
+  assert.equal(store.getState().ui.labFocusLayer, "preview");
 });
 
 test("laboratory store preserves persisted project import route across hydrate and source snapshots", () => {
@@ -995,6 +1015,85 @@ test("laboratory store keeps export user actions separate from analysis run stat
   assert.equal(state.run?.events[0]?.action, "process-run");
 });
 
+test("laboratory store keeps tracked export failures and cancellations UI-safe", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "user-action-added",
+    actionEvent: {
+      id: "user-action-failed",
+      type: "export-clip",
+      label: "Klip çıkarılıyor",
+      status: "running",
+      startedAt: Date.now() - 1000,
+      requestId: "req-export-failed",
+      sourceAction: "export-timeline-clip",
+    },
+  });
+  store.dispatch({
+    type: "user-action-added",
+    actionEvent: {
+      id: "user-action-cancelled",
+      type: "export-clip",
+      label: "Klip çıkarılıyor",
+      status: "running",
+      startedAt: Date.now() - 1000,
+      requestId: "req-export-cancelled",
+      sourceAction: "export-timeline-clip",
+    },
+  });
+
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-export-failed",
+      kind: "activity",
+      severity: "error",
+      message: "Klip çıkarılıyor hata verdi",
+      detail: "ffmpeg version n6.1 -i /tmp/source.mp4 leaked command output",
+      timestamp: Date.now(),
+      source: "host",
+      action: "export-timeline-clip",
+      stage: "failed",
+      scope: "global",
+      moduleId: null,
+      rawLine: null,
+      requestId: "req-export-failed",
+      jobId: "job-export-failed",
+    },
+  });
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-export-cancelled",
+      kind: "activity",
+      severity: "warning",
+      message: "Klip çıkarılıyor iptal edildi",
+      detail: "ffmpeg version n6.1 -i /tmp/source.mp4 leaked command output",
+      timestamp: Date.now(),
+      source: "host",
+      action: "export-timeline-clip",
+      stage: "cancelled",
+      scope: "global",
+      moduleId: null,
+      rawLine: null,
+      requestId: "req-export-cancelled",
+      jobId: "job-export-cancelled",
+    },
+  });
+
+  const failedAction = store.getState().userActions.find(function (entry) {
+    return entry.id === "user-action-failed";
+  });
+  const cancelledAction = store.getState().userActions.find(function (entry) {
+    return entry.id === "user-action-cancelled";
+  });
+  assert.equal(failedAction?.status, "error");
+  assert.equal(failedAction?.message, "Klip çıkarılamadı");
+  assert.equal(cancelledAction?.status, "idle");
+  assert.equal(cancelledAction?.message, "İşlem iptal edildi.");
+});
+
 test("laboratory store hydrates project assets and selectors keep registry lookups scoped", () => {
   const store = createLabStore();
 
@@ -1327,109 +1426,6 @@ test("laboratory lineage selectors resolve current source, linked audio, and par
     getAssetById(store.getState(), "asset-audio-linked")?.derivedFromSourceId,
     "source-active"
   );
-});
-
-test("laboratory workspace dual preview state heals across source churn and stale selections", () => {
-  const store = createLabStore();
-
-  store.dispatch({
-    type: "snapshot-received",
-    payload: createDualPreviewSnapshot(),
-  });
-  store.dispatch({
-    type: "workspace-dual-preview-toggled",
-    force: true,
-    audioAssetId: "asset-missing",
-  });
-
-  assert.equal(isDualPreviewActive(store.getState()), true);
-  assert.equal(getSelectedDualPreviewAudioAsset(store.getState())?.id, "asset-audio-linked");
-
-  store.dispatch({
-    type: "source-config-patched",
-    patch: {
-      kind: "image",
-      status: "idle",
-      storedPath: null,
-      previewUrl: null,
-    },
-  });
-
-  assert.equal(isDualPreviewAvailable(store.getState()), false);
-  assert.equal(isDualPreviewActive(store.getState()), false);
-  assert.equal(getSelectedDualPreviewAudioAsset(store.getState()), null);
-});
-
-test("laboratory hydrate restores dual preview workspace fields with valid linked audio fallback", () => {
-  const store = createLabStore();
-
-  store.dispatch({
-    type: "hydrate",
-    payload: {
-      featureId: "media-analysis",
-      projectIndex: {
-        activeProjectId: "project-dual-preview",
-        projects: [{ id: "project-dual-preview", name: "lab-demo.mp4", hasSource: true }],
-      },
-      workbench: {
-        activeModuleId: "media-analysis",
-        availableModuleIds: ["media-analysis"],
-        selectedModuleIds: ["media-analysis"],
-      },
-      source: {
-        status: "ready",
-        kind: "video",
-        mode: "local",
-        previewUrl: "file:///tmp/lab-demo.mp4",
-        storedFileName: "lab-demo.mp4",
-        storedPath: "/tmp/lab-demo.mp4",
-        routeLabel: "Local Copy",
-      },
-      sourceProbeStatus: "completed",
-      assets: [
-        {
-          id: "source-active",
-          type: "source",
-          name: "lab-demo.mp4",
-          localPath: "/tmp/lab-demo.mp4",
-          createdAt: 100,
-          sourceId: "source-active",
-          metadata: {
-            storedFileName: "lab-demo.mp4",
-          },
-        },
-        {
-          id: "asset-audio-linked",
-          type: "audio",
-          name: "audio.wav",
-          localPath: "/tmp/audio.wav",
-          createdAt: 200,
-          sourceId: "source-active",
-          derivedFromAssetId: "source-active",
-          derivedFromSourceId: "source-active",
-          metadata: {
-            durationMs: 6000,
-            startOffsetMs: 0,
-          },
-        },
-      ],
-      reports: {
-        user: null,
-        ai: null,
-        emptyReason: "Rapor henüz üretilmedi.",
-      },
-      activityFeed: [],
-      workspace: {
-        dualPreviewEnabled: true,
-        dualPreviewAudioAssetId: "asset-missing",
-        dualPreviewVolume: 0.35,
-      },
-    },
-  });
-
-  assert.equal(isDualPreviewActive(store.getState()), true);
-  assert.equal(getSelectedDualPreviewAudioAsset(store.getState())?.id, "asset-audio-linked");
-  assert.equal(getDualPreviewVolume(store.getState()), 0.35);
 });
 
 test("laboratory hydrate ignores retired module manager persisted ui flags", () => {

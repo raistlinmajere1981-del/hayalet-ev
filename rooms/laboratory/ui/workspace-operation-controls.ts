@@ -39,9 +39,11 @@ function formatOutputKinds(capability: LabOperationCapabilityProjection, copy: L
 function renderOperationButton(capability: LabOperationCapabilityProjection, copy: LabI18n) {
   const running = capability.actionStatus === "running";
   const ready = capability.readiness === "ready" && capability.actionId !== null && !running;
+  const actionable = ready || running;
+  const actionId = running ? "operation-cancel" : capability.actionId || "";
   const reason = capability.blockReason || copy.t("mediaAnalysis.operations.notReady", "Not ready");
   const label = running
-    ? capability.activeActionLabel || copy.t("mediaAnalysis.operations.runningAction", "Running")
+    ? copy.t("mediaAnalysis.operations.cancelAction", "Cancel")
     : capability.actionStatus === "success"
       ? capability.activeActionMessage || copy.t("mediaAnalysis.operations.successAction", "Ready")
       : capability.actionStatus === "error"
@@ -53,14 +55,15 @@ function renderOperationButton(capability: LabOperationCapabilityProjection, cop
     capability.actionStatus === "error"
       ? capability.activeActionMessage || reason
       : running
-        ? capability.activeActionMessage || label
+        ? copy.t("mediaAnalysis.operations.cancelTitle", "Cancel this operation")
         : reason;
 
   return `
     <button
       class="labx-operation-card__action"
       type="button"
-      ${ready ? `data-lab-action="${escapeHtml(capability.actionId || "")}"` : "disabled"}
+      ${actionable ? `data-lab-action="${escapeHtml(actionId)}"` : "disabled"}
+      ${running ? `data-lab-value="${escapeHtml(capability.id)}"` : ""}
       data-action-status="${escapeHtml(capability.actionStatus)}"
       data-lab-operation-capability="${escapeHtml(capability.id)}"
       ${running ? 'aria-busy="true"' : ""}
@@ -82,6 +85,9 @@ function renderCapabilityCard(
         : copy.t("mediaAnalysis.operations.blocked", "Blocked");
   const operationCopy = getCapabilityCopy(capability, copy);
   const outputLabel = formatOutputKinds(capability, copy);
+  const actionStateMessage =
+    capability.activeActionMessage ||
+    (capability.actionStatus === "running" ? capability.activeActionLabel : null);
   return `
     <article
       class="labx-operation-card"
@@ -111,8 +117,8 @@ function renderCapabilityCard(
           : ""
       }
       ${
-        capability.actionStatus !== "idle" && capability.activeActionMessage
-          ? `<p class="labx-operation-card__action-state">${escapeHtml(capability.activeActionMessage)}</p>`
+        capability.actionStatus !== "idle" && actionStateMessage
+          ? `<p class="labx-operation-card__action-state">${escapeHtml(actionStateMessage)}</p>`
           : ""
       }
       ${renderLabSettingsFields({

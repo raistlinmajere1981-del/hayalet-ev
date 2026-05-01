@@ -13,6 +13,12 @@ type ProjectDeps = {
     jobId: string,
     requestId: string
   ) => Promise<unknown>;
+  cancelJobsForProject: (
+    runtime: MediaProjectRuntimeRecord,
+    projectId: string,
+    requestId: string,
+    options?: { actionIds?: string[] }
+  ) => Promise<unknown>;
   cancelFeatureProcess: (
     api: MediaProjectActionApi,
     runtime: MediaProjectRuntimeRecord,
@@ -80,6 +86,7 @@ export function createMediaProjectActionRuntime(deps: ProjectDeps) {
   const {
     asNonEmptyString,
     cancelJobById,
+    cancelJobsForProject,
     cancelFeatureProcess,
     checkToolUpdates,
     createProject: createProjectRecord,
@@ -200,6 +207,13 @@ export function createMediaProjectActionRuntime(deps: ProjectDeps) {
     const jobId = asNonEmptyString(actionPayload["jobId"]);
     if (jobId !== null) {
       await cancelJobById(api, runtime, jobId, requestId);
+    } else {
+      const actionId = asNonEmptyString(actionPayload["actionId"]);
+      const projectId =
+        asNonEmptyString(actionPayload["projectId"]) || runtime.activeProjectId || null;
+      if (actionId !== null && projectId !== null) {
+        await cancelJobsForProject(runtime, projectId, requestId, { actionIds: [actionId] });
+      }
     }
     return refreshActiveProjectMetadata(runtime, requestId);
   }

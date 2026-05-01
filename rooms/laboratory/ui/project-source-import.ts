@@ -1,9 +1,5 @@
 import { asLabRecord, asNonEmptyString, escapeHtml, formatBytes } from "../models/lab-types.js";
-import type {
-  LabEventFeedItem,
-  LabProjectImportKind,
-  LabStoreState,
-} from "../models/lab-types.js";
+import type { LabEventFeedItem, LabProjectImportKind, LabStoreState } from "../models/lab-types.js";
 import {
   buildProjectImportHostAction,
   buildProjectImportLocalHostAction,

@@ -1365,6 +1365,7 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
     Math.min(100 - waveformWindowStartPct, (model.waveformWindowDurationMs / durationMs) * 100)
   );
   const hasVisibleWaveform = waveformWindowWidthPct > 0;
+  const focusClassName = model.focusClassName ? ` ${escapeHtml(model.focusClassName)}` : "";
   const bookmarkPins = model.bookmarks
     .map(function (bookmark) {
       const pct = Math.max(0, Math.min(100, (bookmark.timeMs / durationMs) * 100));
@@ -1412,7 +1413,7 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
           "Waveform falls outside the visible master range."
         );
   return `
-    <div class="labx-timeline" id="lab-timeline" data-duration="${String(durationMs)}" data-waveform-mode="source-audio" data-timeline-locked="${timelineLocked ? "true" : "false"}">
+    <div class="labx-timeline${focusClassName}" id="lab-timeline" data-duration="${String(durationMs)}" data-waveform-mode="source-audio" data-timeline-locked="${timelineLocked ? "true" : "false"}">
       <div class="labx-timeline__track">
         <div class="labx-timeline__waveform-bed"></div>
         ${

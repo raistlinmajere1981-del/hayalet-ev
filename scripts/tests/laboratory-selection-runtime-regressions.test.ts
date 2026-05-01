@@ -632,43 +632,6 @@ test("laboratory store treats reused local assets as ready sources during snapsh
   assert.equal(state.ui.workspace.sourceIntakeCollapsed, true);
 });
 
-test("effective preview audio focus fences temporal controls while dual preview is active", () => {
-  const store = createLabStore();
-  store.dispatch({
-    type: "snapshot-received",
-    payload: createDualPreviewSnapshot(250),
-  });
-  store.dispatch({
-    type: "workspace-audio-updated",
-    patch: {
-      playbackRate: 0.4,
-      preservePitch: false,
-    },
-  });
-  store.dispatch({
-    type: "workspace-dual-preview-toggled",
-    force: true,
-    audioAssetId: "asset-audio-linked",
-  });
-
-  const rawAudioFocus = store.getState().ui.workspace.audioFocus;
-  const effectiveAudioFocus = getEffectivePreviewAudioFocusSettings(store.getState());
-  const interpretationItems = getInterpretationItems(store.getState());
-  const timelineModel = getWaveformTimelineModel(store.getState());
-
-  assert.equal(rawAudioFocus.playbackRate, 0.4);
-  assert.equal(rawAudioFocus.preservePitch, false);
-  assert.equal(effectiveAudioFocus.playbackRate, 1);
-  assert.equal(effectiveAudioFocus.preservePitch, true);
-  assert.equal(timelineModel.audioFocus?.playbackRate, 1);
-  assert.equal(
-    interpretationItems.some(function (item) {
-      return item.id === "audio-slow-playback";
-    }),
-    false
-  );
-});
-
 test("waveform timeline hides selection affordances for invalid numeric ranges", () => {
   const baseModel = {
     bookmarks: [],
@@ -778,8 +741,8 @@ test("waveform timeline renders selector-driven suggested actions alongside live
   assert.doesNotMatch(markup, /data-lab-action="[^"]*">Ses detaylarini incele/);
   assert.doesNotMatch(markup, /data-lab-action="[^"]*">Bu bolumu kes/);
   assert.doesNotMatch(markup, /data-lab-action="workspace-intent-toggle"/);
-  assert.match(markup, /timeline-export-clip/);
-  assert.match(markup, /timeline-grab-frame/);
+  assert.doesNotMatch(markup, /timeline-export-clip/);
+  assert.doesNotMatch(markup, /timeline-grab-frame/);
 });
 
 test("waveform timeline does not render suggested actions from fallback-only selection markup", () => {
@@ -844,39 +807,6 @@ test("workspace surface renders semantic roi overlay and focus mask inside the v
   assert.match(surface.main, /data-lab-selection-roi-overlay="true"/);
   assert.match(surface.main, /data-lab-selection-roi="true"/);
   assert.match(surface.main, /labx-selection-roi-mask/);
-});
-
-test("workspace surface fences semantic roi overlay to the dual preview video pane", () => {
-  const store = createLabStore();
-  store.dispatch({
-    type: "snapshot-received",
-    payload: createDualPreviewSnapshot(0),
-  });
-  store.dispatch({
-    type: "workspace-dual-preview-toggled",
-    force: true,
-  });
-  store.dispatch({
-    type: "workspace-timeline-updated",
-    startMs: 1000,
-    endMs: 3000,
-  });
-  store.dispatch({
-    type: "selection-roi-updated",
-    roi: {
-      x: 0.2,
-      y: 0.2,
-      width: 0.2,
-      height: 0.2,
-    },
-  });
-
-  const surface = renderWorkspaceSurface(store.getState());
-  const overlayMatches = surface.main.match(/data-lab-selection-roi-overlay="true"/g) ?? [];
-
-  assert.equal(overlayMatches.length, 1);
-  assert.match(surface.main, /labx-workspace-preview__video-stage/);
-  assert.match(surface.main, /labx-workspace-preview__audio-pane/);
 });
 
 test("selection intent binder emits a dedicated semantic selection event", () => {

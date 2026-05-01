@@ -250,10 +250,7 @@ function buildAnalyzeSegmentAlternatives(
   return capAlternatives(alternatives);
 }
 
-function buildFocusRegionAlternatives(
-  input: LabExecutionAlternativesInput,
-  locale: LabI18nLocale
-) {
+function buildFocusRegionAlternatives(input: LabExecutionAlternativesInput, locale: LabI18nLocale) {
   const alternatives: LabExecutionAlternative[] = [];
 
   pushAlternative(alternatives, broadSegmentAlternative(locale));
@@ -282,10 +279,7 @@ function buildInspectAudioAlternatives(
   return capAlternatives(alternatives);
 }
 
-function buildExtractClipAlternatives(
-  input: LabExecutionAlternativesInput,
-  locale: LabI18nLocale
-) {
+function buildExtractClipAlternatives(input: LabExecutionAlternativesInput, locale: LabI18nLocale) {
   const alternatives: LabExecutionAlternative[] = [];
 
   pushAlternative(alternatives, semanticReviewAlternative(locale));
@@ -335,10 +329,7 @@ function buildVisualAlternatives(input: LabExecutionAlternativesInput, locale: L
   return capAlternatives(alternatives);
 }
 
-function buildStabilizeAlternatives(
-  input: LabExecutionAlternativesInput,
-  locale: LabI18nLocale
-) {
+function buildStabilizeAlternatives(input: LabExecutionAlternativesInput, locale: LabI18nLocale) {
   const alternatives: LabExecutionAlternative[] = [];
 
   pushAlternative(alternatives, motionInspectionAlternative(locale));

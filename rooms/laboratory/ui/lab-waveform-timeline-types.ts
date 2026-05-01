@@ -60,6 +60,7 @@ export type LabWaveformTimelineModel = {
   copy?: LabI18n;
   durationMs: number;
   endMs: number | null;
+  focusClassName?: string;
   inspectionMode?: LabInspectionMode;
   interpretationItems?: LabInterpretationItem[];
   lockState?: LabWorkspaceLockState;

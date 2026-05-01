@@ -36,6 +36,7 @@ import type {
   LabRun,
   LabSelection,
   LabSourceDrafts,
+  LabFocusLayer,
   LabStoreEvent,
   LabStoreState,
   LabBookmark,
@@ -219,6 +220,10 @@ function deriveCapabilitiesFromIntentIds(intentIds: unknown): CapabilityFamilyId
   return Array.from(capabilitySet);
 }
 
+function isLabFocusLayer(value: unknown): value is LabFocusLayer {
+  return value === "preview" || value === "timeline" || value === "inspector";
+}
+
 function createInitialState(): LabStoreState {
   return {
     featureId: "media-analysis",
@@ -247,6 +252,7 @@ function createInitialState(): LabStoreState {
     userActions: [],
     persisted: null,
     ui: {
+      labFocusLayer: "preview",
       labMode: "normal",
       youtubeImport: createIdleYoutubeImportState(),
       projectImport: createDefaultProjectImportState(),
@@ -1288,6 +1294,7 @@ function syncRunAugmentationsFromHostEvent(state: LabStoreState, event: LabEvent
 }
 
 function syncUserActionsFromHostEvent(state: LabStoreState, event: LabEventFeedItem) {
+  const cancelledMessage = "İşlem iptal edildi.";
   const requestId = asNonEmptyString(event.requestId);
   if (requestId === null) {
     return;
@@ -1311,11 +1318,19 @@ function syncUserActionsFromHostEvent(state: LabStoreState, event: LabEventFeedI
     if (matchedAction.jobId !== null && matchedAction.jobId !== undefined) {
       return;
     }
-    if (event.stage === "failed" || event.stage === "cancelled") {
+    if (event.stage === "cancelled") {
+      patchUserAction(state, matchedAction.id, {
+        status: "idle",
+        finishedAt: event.timestamp || Date.now(),
+        message: cancelledMessage,
+        projectId: asNonEmptyString(event.projectId) || matchedAction.projectId || null,
+        progress: null,
+      });
+    } else if (event.stage === "failed") {
       patchUserAction(state, matchedAction.id, {
         status: "error",
         finishedAt: event.timestamp || Date.now(),
-        message: event.detail || trackedDefinition.errorMessage,
+        message: trackedDefinition.errorMessage,
         projectId: asNonEmptyString(event.projectId) || matchedAction.projectId || null,
       });
     }
@@ -1352,12 +1367,23 @@ function syncUserActionsFromHostEvent(state: LabStoreState, event: LabEventFeedI
     return;
   }
 
-  if (event.stage === "failed" || event.stage === "cancelled") {
+  if (event.stage === "cancelled") {
+    patchUserAction(state, matchedAction.id, {
+      ...basePatch,
+      status: "idle",
+      finishedAt: event.timestamp || Date.now(),
+      message: cancelledMessage,
+      progress: null,
+    });
+    return;
+  }
+
+  if (event.stage === "failed") {
     patchUserAction(state, matchedAction.id, {
       ...basePatch,
       status: "error",
       finishedAt: event.timestamp || Date.now(),
-      message: event.detail || trackedDefinition.errorMessage,
+      message: trackedDefinition.errorMessage,
       progress: null,
     });
   }
@@ -2318,6 +2344,12 @@ function normalizeProjectImportState(
 
 function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState {
   switch (event.type) {
+    case "lab-focus-layer-changed":
+      if (!isLabFocusLayer(event.layer) || state.ui.labFocusLayer === event.layer) {
+        return state;
+      }
+      state.ui.labFocusLayer = event.layer;
+      return state;
     case "enter-youtube-import-mode":
       state.ui.labMode = "import-youtube";
       return state;
@@ -2567,6 +2599,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       };
       return state;
     case "hydrate":
+      state.ui.labFocusLayer = "preview";
       state.ui.labMode = "normal";
       state.ui.youtubeImport = createIdleYoutubeImportState();
       clearExecutionRuntime(state);

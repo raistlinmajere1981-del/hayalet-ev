@@ -13,6 +13,7 @@ import {
 import type {
   CapabilityFamilyId,
   LabFeatureId,
+  LabFocusLayer,
   LabIntentId,
   LabAudioFocusSettings,
   LabAssetType,
@@ -156,6 +157,30 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
   function dispatch(event: Parameters<ReturnType<typeof createLabStore>["dispatch"]>[0]) {
     deps.eventBus.emit(event);
+  }
+
+  function setLabFocusLayer(layer: LabFocusLayer) {
+    if (deps.store.getState().ui.labFocusLayer === layer) {
+      return;
+    }
+    dispatch({ type: "lab-focus-layer-changed", layer });
+  }
+
+  function isInsideWorkspacePreview(target: Element) {
+    return (
+      typeof target.closest === "function" && target.closest(".labx-workspace-preview") !== null
+    );
+  }
+
+  function isInsideWorkspaceInspector(target: Element) {
+    return (
+      typeof target.closest === "function" &&
+      target.closest("[data-lab-workspace-inspector='true']") !== null
+    );
+  }
+
+  function isTimelineAction(action: string) {
+    return action.startsWith("timeline-");
   }
 
   function normalizeYoutubeImportUrlInput(value: unknown) {
@@ -863,6 +888,47 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     return startTrackedUserAction(trackedActionId, {
       ...(payload || {}),
       ...getOperationSettingsPayload(capabilityId),
+    });
+  }
+
+  function cancelTrackedOperation(capabilityId: string) {
+    if (!isOperationCapabilityId(capabilityId)) {
+      return;
+    }
+    const state = deps.store.getState();
+    const capability =
+      LAB_OPERATION_CAPABILITIES.find(function (entry) {
+        return entry.id === capabilityId;
+      }) || null;
+    const trackedActionId = getTrackedOperationActionId(capability?.actionId);
+    if (trackedActionId === null) {
+      return;
+    }
+    const activeAction =
+      getUserActions(state).find(function (entry) {
+        return entry.sourceAction === trackedActionId && entry.status === "running";
+      }) || null;
+    if (activeAction === null) {
+      dispatch({
+        type: "push-event",
+        event: buildUiEvent("İptal edilecek aktif işlem bulunamadı.", "warning"),
+      });
+      return;
+    }
+
+    dispatch({
+      type: "user-action-updated",
+      id: activeAction.id,
+      patch: {
+        message: "İptal isteği gönderildi.",
+        progress: null,
+      },
+    });
+    sendMediaAction("job-cancel", {
+      actionId: trackedActionId,
+      jobId: activeAction.jobId || null,
+      projectId: activeAction.projectId || state.projectIndex.activeProjectId || null,
+      sourceRequestId: activeAction.requestId || null,
     });
   }
 
@@ -2022,10 +2088,15 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     const target = event.target instanceof Element ? event.target : null;
     if (!target) return;
 
+    if (isInsideWorkspacePreview(target)) {
+      setLabFocusLayer("preview");
+    }
+
     const handleEl = target.closest<HTMLElement>(
       "[data-lab-action='timeline-interact'], [data-lab-action='timeline-drag-start'], [data-lab-action='timeline-drag-end'], [data-lab-action='timeline-drag-body']"
     );
     if (!handleEl) return;
+    setLabFocusLayer("timeline");
     if (isWorkspaceMutationLocked("timeline")) {
       return;
     }
@@ -2131,6 +2202,28 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     timelineDragBodyPointerOffsetMs = 0;
     timelinePendingClientX = 0;
     timelinePendingShiftKey = false;
+  }
+
+  function handleFocusSurfacePointer(event: Event) {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) {
+      return;
+    }
+    if (isInsideWorkspaceInspector(target)) {
+      setLabFocusLayer("inspector");
+      return;
+    }
+    if (isInsideWorkspacePreview(target)) {
+      setLabFocusLayer("preview");
+      return;
+    }
+    if (target.closest(".labx-timeline") !== null) {
+      setLabFocusLayer("timeline");
+    }
+  }
+
+  function handleFocusIn(event: Event) {
+    handleFocusSurfacePointer(event);
   }
 
   function handleKeyDown(event: KeyboardEvent) {
@@ -2411,6 +2504,11 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     const action = toStringValue(actionButton.dataset["labAction"]);
     const value = toStringValue(actionButton.dataset["labValue"]);
     const state = deps.store.getState();
+    if (isInsideWorkspaceInspector(target)) {
+      setLabFocusLayer("inspector");
+    } else if (isTimelineAction(action)) {
+      setLabFocusLayer("timeline");
+    }
     switch (action) {
       case "primary-action":
         runPrimaryAction();
@@ -2903,6 +3001,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "workspace-setting-adjust":
         applyWorkspaceSettingAdjustment(actionButton);
         return;
+      case "operation-cancel":
+        cancelTrackedOperation(value);
+        return;
       case "operation-settings-reset":
         resetOperationSettings(value);
         return;
@@ -3102,6 +3203,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       return;
     }
 
+    if (isInsideWorkspaceInspector(target)) {
+      setLabFocusLayer("inspector");
+    }
+
     if (field.startsWith("operationSettings.")) {
       patchOperationSetting(field, readControlValue(target));
       return;
@@ -3289,6 +3394,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         return;
       }
       if (workspaceField === "previewVolume") {
+        setLabFocusLayer("timeline");
         dispatch({
           type: "workspace-preview-volume-updated",
           volume: typeof rawValue === "number" ? rawValue : Number(rawValue),
@@ -3346,6 +3452,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     const field = target.dataset["labField"];
     if (!field) {
       return;
+    }
+
+    if (isInsideWorkspaceInspector(target)) {
+      setLabFocusLayer("inspector");
     }
 
     if (field.startsWith("operationSettings.")) {
@@ -3651,7 +3761,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     deps.documentRef.addEventListener("contextmenu", handleContextMenu);
     deps.documentRef.addEventListener("input", handleInput);
     deps.documentRef.addEventListener("change", handleChange);
+    deps.documentRef.addEventListener("focusin", handleFocusIn);
     deps.documentRef.addEventListener("mousedown", handleMouseDown);
+    deps.documentRef.addEventListener("pointerdown", handleFocusSurfacePointer);
     deps.documentRef.addEventListener("keydown", handleKeyDown as EventListener);
     deps.windowRef.addEventListener("mousemove", handleTimelineMouseMove as EventListener);
     deps.windowRef.addEventListener("mouseup", handleTimelineMouseUp as EventListener);

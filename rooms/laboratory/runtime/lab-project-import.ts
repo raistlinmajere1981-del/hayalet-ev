@@ -265,10 +265,7 @@ function buildYoutubeFormatSelectionFields(state: LabStoreState, draft: LabSourc
     selectedVideoFormatId: state.ui.youtubeImport.selectedVideoFormatId,
     selectedAudioFormatId: state.ui.youtubeImport.selectedAudioFormatId,
   };
-  if (
-    selection.captureMode === "audio-only" &&
-    typeof nextCustom["audioFormat"] !== "string"
-  ) {
+  if (selection.captureMode === "audio-only" && typeof nextCustom["audioFormat"] !== "string") {
     nextCustom["audioFormat"] = "best";
   }
   return {

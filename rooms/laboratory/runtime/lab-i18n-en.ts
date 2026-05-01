@@ -52,12 +52,10 @@ export const labI18nEn = {
   "readiness.alignment.none": "unmeasured alignment",
   "readiness.advisory":
     "{view}: {level} signal from {pressure} pressure, {pattern} pattern, {alignment}, {confidence} alternative confidence, and {projection}.",
-  "adaptive.hint.highWeak":
-    "This path has historically underperformed under similar conditions.",
+  "adaptive.hint.highWeak": "This path has historically underperformed under similar conditions.",
   "adaptive.hint.high": "Current execution feedback indicates this path needs careful review.",
   "adaptive.hint.medium": "Alternative strategies may yield more stable results.",
-  "adaptive.guidance.high":
-    "A more stable alternative under current conditions is: {label}.",
+  "adaptive.guidance.high": "A more stable alternative under current conditions is: {label}.",
   "adaptive.guidance.medium": "A softer alternative to compare next is: {label}.",
   "adaptive.guidance.candidate": "Consider comparing {label} for steadier context.",
   "candidate.summary.viable": "This path is structurally ready for execution.",
@@ -74,8 +72,7 @@ export const labI18nEn = {
     "Alternative tradeoffs materially affect this candidate assessment.",
   "candidate.uncertainty.readinessBlocker": "Readiness blocker: {blocker}",
   "candidate.uncertainty.simulationWarning": "Simulation warning: {warning}",
-  "candidate.uncertainty.payloadMismatch":
-    "Payload preview does not yet pass its readiness check.",
+  "candidate.uncertainty.payloadMismatch": "Payload preview does not yet pass its readiness check.",
   "candidate.uncertainty.simulationRisk": "Simulation risk remains {risk}.",
   "candidate.uncertainty.lowConfidence":
     "Upstream confidence is low enough to keep structural uncertainty.",
@@ -105,8 +102,7 @@ export const labI18nEn = {
   "reflection.reasoning.roiBroad": "ROI coverage is broad and may dilute local detail.",
   "reflection.reasoning.roiExtreme":
     "ROI aspect ratio is extreme enough to affect framing judgment.",
-  "reflection.reasoning.default":
-    "The dry-run path has enough context for a passive decision.",
+  "reflection.reasoning.default": "The dry-run path has enough context for a passive decision.",
   "reflection.tradeoff.inspect-audio":
     "Audio-focused review can expose signal detail while amplifying preview bias.",
   "reflection.tradeoff.focus-region":
@@ -228,6 +224,5 @@ export const labI18nEn = {
     "Compared to the selected path, these alternatives trade the current uncertainty for clearer scope or steadier context.",
   "alternatives.comparison.reflectionAvoid":
     "Compared to the selected path, these alternatives lower risk by changing scope, method, or intensity before any future handoff.",
-  "alternatives.comparison.preferred":
-    "{base} {label} is the clearest comparison point.",
+  "alternatives.comparison.preferred": "{base} {label} is the clearest comparison point.",
 } as const;

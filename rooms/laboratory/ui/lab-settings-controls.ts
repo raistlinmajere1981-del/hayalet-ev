@@ -132,7 +132,9 @@ function renderSettingsSummary(
     })
     .filter((entry): entry is string => entry !== null)
     .join(" · ");
-  return summary === "" ? "" : `<span class="labx-settings-block__state">${escapeHtml(summary)}</span>`;
+  return summary === ""
+    ? ""
+    : `<span class="labx-settings-block__state">${escapeHtml(summary)}</span>`;
 }
 
 export function renderLabSettingsFields(params: {
@@ -151,7 +153,11 @@ export function renderLabSettingsFields(params: {
   }
   const resetLabel = params.resetLabel || "Reset";
   return `
-    <details class="labx-settings-block">
+    <details
+      class="labx-settings-block"
+      data-lab-collapsible-panel="true"
+      data-panel-id="${escapeHtml(params.prefix)}"
+    >
       <summary class="labx-settings-block__summary">
         <span class="labx-settings-block__summary-main">
           <span class="labx-settings-block__title">${escapeHtml(params.title)}</span>

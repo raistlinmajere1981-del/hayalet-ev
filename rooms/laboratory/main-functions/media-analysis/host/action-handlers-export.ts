@@ -13,6 +13,8 @@ import type {
 
 type LaboratoryRecord = Record<string, unknown>;
 
+const OPERATION_CANCELLED_MESSAGE = "İşlem iptal edildi.";
+
 const MEDIA_EXPORT_ACTION_IDS = [
   "export-roi-image",
   "export-frame-grab",
@@ -137,6 +139,45 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     return typeof value === "boolean" ? value : fallback;
   }
 
+  class OperationCancelledError extends Error {
+    constructor() {
+      super(OPERATION_CANCELLED_MESSAGE);
+      this.name = "OperationCancelledError";
+    }
+  }
+
+  function isOperationCancelledError(error: unknown): error is OperationCancelledError {
+    return error instanceof OperationCancelledError;
+  }
+
+  function assertToolRunSucceeded(runPayload: LaboratoryRecord, fallbackMessage: string) {
+    const exitCode = typeof runPayload["exitCode"] === "number" ? runPayload["exitCode"] : 0;
+    if (runPayload["cancelled"] === true) {
+      throw new OperationCancelledError();
+    }
+    if (exitCode !== 0) {
+      throw new Error(asNonEmptyString(runPayload["stderr"]) || fallbackMessage);
+    }
+  }
+
+  function pushCancelledJobState(
+    api: unknown,
+    action: string,
+    jobId: string,
+    projectId: string,
+    requestId: string
+  ) {
+    pushJobState(api, {
+      action,
+      jobId,
+      message: OPERATION_CANCELLED_MESSAGE,
+      projectId,
+      requestId,
+      stage: "cancelled",
+      toolId: "ffmpeg",
+    });
+  }
+
   function clampRoundedSetting(
     settings: LabSettingsRecord,
     key: string,
@@ -259,7 +300,9 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
       );
     }
     if (sharpness > 100) {
-      filters.push(`unsharp=5:5:${fixedFilterNumber(0.3 + ((sharpness - 100) / 100) * 1.2)}:3:3:0.0`);
+      filters.push(
+        `unsharp=5:5:${fixedFilterNumber(0.3 + ((sharpness - 100) / 100) * 1.2)}:3:3:0.0`
+      );
     } else if (sharpness < 100) {
       filters.push(`boxblur=${fixedFilterNumber(Math.max(0.2, (100 - sharpness) / 200))}:1`);
     }
@@ -287,7 +330,10 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
       ? buildPreviewSettingsFilters(previewSettings)
       : [];
     if (preset === "low-light") {
-      return [`eq=brightness=${scaled(0.08)}:contrast=${scaled(1.2)}:gamma=1.45`, ...previewFilters];
+      return [
+        `eq=brightness=${scaled(0.08)}:contrast=${scaled(1.2)}:gamma=1.45`,
+        ...previewFilters,
+      ];
     }
     if (preset === "edge") {
       return [`unsharp=7:7:${scaled(1.6)}:7:7:0.0`, ...previewFilters];
@@ -337,7 +383,12 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     startMs: number | null;
   }) {
     const frameMode = readStringSetting(params.settings, "frameMode", "current");
-    if (frameMode === "middle" && params.startMs !== null && params.endMs !== null && params.endMs > params.startMs) {
+    if (
+      frameMode === "middle" &&
+      params.startMs !== null &&
+      params.endMs !== null &&
+      params.endMs > params.startMs
+    ) {
       return [Math.round(params.startMs + (params.endMs - params.startMs) / 2)];
     }
     if (frameMode !== "burst") {
@@ -607,10 +658,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
       );
 
       const runPayload = toRecord(runResult["run"]);
-      const exitCode = typeof runPayload["exitCode"] === "number" ? runPayload["exitCode"] : 0;
-      if (runPayload["cancelled"] === true || exitCode !== 0) {
-        throw new Error(asNonEmptyString(runPayload["stderr"]) || "ffmpeg ROI export failed.");
-      }
+      assertToolRunSucceeded(runPayload, "ffmpeg ROI export failed.");
 
       const createdAsset = await registerOutputAsset(runtime, project, {
         type: "image",
@@ -669,6 +717,10 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         outputFileName,
       };
     } catch (error) {
+      if (isOperationCancelledError(error)) {
+        pushCancelledJobState(api, "export-roi-image", jobId, projectId, requestId);
+        return { cancelled: true };
+      }
       const errorMessage = error instanceof Error ? error.message : String(error);
       pushJobState(api, {
         action: "export-roi-image",
@@ -788,10 +840,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         );
 
         const runPayload = toRecord(runResult["run"]);
-        const exitCode = typeof runPayload["exitCode"] === "number" ? runPayload["exitCode"] : 0;
-        if (runPayload["cancelled"] === true || exitCode !== 0) {
-          throw new Error(asNonEmptyString(runPayload["stderr"]) || "ffmpeg frame grab failed.");
-        }
+        assertToolRunSucceeded(runPayload, "ffmpeg frame grab failed.");
 
         const asset = await registerOutputAsset(runtime, project, {
           type: "frame",
@@ -852,6 +901,10 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         outputPaths,
       };
     } catch (error) {
+      if (isOperationCancelledError(error)) {
+        pushCancelledJobState(api, "export-frame-grab", jobId, projectId, requestId);
+        return { cancelled: true };
+      }
       const errorMessage = error instanceof Error ? error.message : String(error);
       pushJobState(api, {
         action: "export-frame-grab",
@@ -966,12 +1019,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
       );
 
       const runPayload = toRecord(runResult["run"]);
-      const exitCode = typeof runPayload["exitCode"] === "number" ? runPayload["exitCode"] : 0;
-      if (runPayload["cancelled"] === true || exitCode !== 0) {
-        throw new Error(
-          asNonEmptyString(runPayload["stderr"]) || "ffmpeg enhanced frame export failed."
-        );
-      }
+      assertToolRunSucceeded(runPayload, "ffmpeg enhanced frame export failed.");
 
       const createdAsset = await registerOutputAsset(runtime, project, {
         type: sourceKind === "video" ? "frame" : "image",
@@ -1026,6 +1074,10 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         outputFileName,
       };
     } catch (error) {
+      if (isOperationCancelledError(error)) {
+        pushCancelledJobState(api, "export-enhanced-frame", jobId, projectId, requestId);
+        return { cancelled: true };
+      }
       const errorMessage = error instanceof Error ? error.message : String(error);
       pushJobState(api, {
         action: "export-enhanced-frame",
@@ -1196,10 +1248,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
       );
 
       const runPayload = toRecord(runResult["run"]);
-      const exitCode = typeof runPayload["exitCode"] === "number" ? runPayload["exitCode"] : 0;
-      if (runPayload["cancelled"] === true || exitCode !== 0) {
-        throw new Error(asNonEmptyString(runPayload["stderr"]) || "ffmpeg clip export failed.");
-      }
+      assertToolRunSucceeded(runPayload, "ffmpeg clip export failed.");
 
       const createdAsset = await registerOutputAsset(runtime, project, {
         type: "clip",
@@ -1254,6 +1303,10 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         outputFileName,
       };
     } catch (error) {
+      if (isOperationCancelledError(error)) {
+        pushCancelledJobState(api, "export-timeline-clip", jobId, projectId, requestId);
+        return { cancelled: true };
+      }
       const errorMessage = error instanceof Error ? error.message : String(error);
       pushJobState(api, {
         action: "export-timeline-clip",
@@ -1399,10 +1452,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
       );
 
       const runPayload = toRecord(runResult["run"]);
-      const exitCode = typeof runPayload["exitCode"] === "number" ? runPayload["exitCode"] : 0;
-      if (runPayload["cancelled"] === true || exitCode !== 0) {
-        throw new Error(asNonEmptyString(runPayload["stderr"]) || "ffmpeg audio variant failed.");
-      }
+      assertToolRunSucceeded(runPayload, "ffmpeg audio variant failed.");
 
       const durationMs = getSourceDurationMs(source);
       const createdAsset = await registerOutputAsset(runtime, project, {
@@ -1453,6 +1503,10 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         outputFileName,
       };
     } catch (error) {
+      if (isOperationCancelledError(error)) {
+        pushCancelledJobState(api, config.action, jobId, projectId, requestId);
+        return { cancelled: true };
+      }
       const errorMessage = error instanceof Error ? error.message : String(error);
       pushJobState(api, {
         action: config.action,
@@ -1603,10 +1657,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
       );
 
       const runPayload = toRecord(runResult["run"]);
-      const exitCode = typeof runPayload["exitCode"] === "number" ? runPayload["exitCode"] : 0;
-      if (runPayload["cancelled"] === true || exitCode !== 0) {
-        throw new Error(asNonEmptyString(runPayload["stderr"]) || "ffmpeg audio export failed.");
-      }
+      assertToolRunSucceeded(runPayload, "ffmpeg audio export failed.");
 
       const sourceMetadata = toRecord(source["metadata"]);
       const sourceDurationSeconds = asNumber(sourceMetadata["durationSeconds"]);
@@ -1663,6 +1714,10 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         outputFileName,
       };
     } catch (error) {
+      if (isOperationCancelledError(error)) {
+        pushCancelledJobState(api, "export-audio-track", jobId, projectId, requestId);
+        return { cancelled: true };
+      }
       const errorMessage = error instanceof Error ? error.message : String(error);
       pushJobState(api, {
         action: "export-audio-track",

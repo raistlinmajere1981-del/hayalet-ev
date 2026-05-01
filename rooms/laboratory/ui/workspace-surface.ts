@@ -53,6 +53,15 @@ type WorkspaceInspectorPanel = {
   markup: string;
 };
 
+type LabFocusTarget = "preview" | "timeline" | "inspector";
+
+function getLabFocusClassName(state: LabStoreState, target: LabFocusTarget) {
+  if (state.ui.labFocusLayer === target) {
+    return target === "preview" ? "labx-focus-primary" : "labx-focus-secondary";
+  }
+  return "labx-focus-passive";
+}
+
 function getOperationCapabilityIdForAction(
   actionType: string | null | undefined
 ): LabOperationCapabilityId | null {
@@ -968,6 +977,7 @@ function renderCenterSkeleton(copy: LabI18n) {
 function renderWorkspaceInspectorDrawer(input: {
   activeTab: LabWorkspaceControlTab;
   copy: LabI18n;
+  focusClassName: string;
   open: boolean;
   panels: WorkspaceInspectorPanel[];
 }) {
@@ -988,7 +998,7 @@ function renderWorkspaceInspectorDrawer(input: {
 
   return `
     <aside
-      class="labx-workspace-inspector"
+      class="labx-workspace-inspector ${escapeHtml(input.focusClassName)}"
       data-lab-workspace-inspector="true"
       data-open="${open ? "true" : "false"}"
       data-active-tab="${escapeHtml(activeTab)}"
@@ -1072,6 +1082,7 @@ export function renderWorkspaceSurface(
     activeOverlay: options.activeOverlay ?? "none",
     collapsedPanels: options.collapsedPanels ?? {},
     copy,
+    focusClassName: getLabFocusClassName(state, "timeline"),
     selectionPanelPlacement: "side",
   };
   const roiFocusActive = timeline.roiFocusActive === true;
@@ -1126,6 +1137,7 @@ export function renderWorkspaceSurface(
   const inspectorMarkup = renderWorkspaceInspectorDrawer({
     activeTab: state.ui.workspace.controlsDrawerTab,
     copy,
+    focusClassName: getLabFocusClassName(state, "inspector"),
     open: state.ui.workspace.controlsDrawerOpen,
     panels: inspectorPanels,
   });
@@ -1176,12 +1188,13 @@ export function renderWorkspaceSurface(
       `
       : previewMediaMarkup;
   const selectionPanelMarkup = renderLabWaveformSelectionPanel(timelineModel);
+  const previewFocusClassName = getLabFocusClassName(state, "preview");
 
   const main = `
     <section class="labx-workspace-main" id="lab-workspace-main">
       <div class="labx-workspace-stage" data-lab-workspace-stage="true">
         <div class="labx-media-workbench" data-lab-media-workbench="true" data-preview-mode="single">
-          <div class="labx-workspace-preview" id="lab-workspace-preview" data-preview-mode="single">
+          <div class="labx-workspace-preview ${escapeHtml(previewFocusClassName)}" id="lab-workspace-preview" data-preview-mode="single">
             ${previewMarkup}
           </div>
           ${durationMs > 0 ? renderLabWaveformTimeline(timelineModel) : ""}

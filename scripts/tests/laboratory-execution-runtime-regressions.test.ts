@@ -288,6 +288,10 @@ test("execution plan is derived only from accepted intents and survives preview 
   assert.equal(getActiveExecutionPlan(store.getState()), null);
 
   store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+  store.dispatch({
     type: "workspace-selection-suggestion-accepted",
     suggestionId: "audio-inspect",
   });
@@ -517,6 +521,10 @@ test("execution simulation is derived only from active plans and survives previe
   assert.equal(getActiveExecutionSimulation(store.getState()), null);
 
   store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+  store.dispatch({
     type: "workspace-selection-suggestion-accepted",
     suggestionId: "audio-inspect",
   });
@@ -653,52 +661,6 @@ test("execution simulation is deterministic and stays stable across audio-focus-
       return warning.includes("High preview gain");
     }),
     true
-  );
-});
-
-test("execution simulation uses effective preview audio focus when dual preview is active", () => {
-  const store = createLabStore();
-  store.dispatch({
-    type: "snapshot-received",
-    payload: createDualPreviewSnapshot(250),
-  });
-  store.dispatch({
-    type: "workspace-timeline-updated",
-    startMs: 1000,
-    endMs: 3000,
-  });
-  store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "anomaly",
-  });
-  store.dispatch({
-    type: "workspace-selection-suggestion-preview-set",
-    suggestionId: "analyze-anomaly",
-  });
-  store.dispatch({
-    type: "workspace-selection-suggestion-accepted",
-    suggestionId: "analyze-anomaly",
-  });
-  store.dispatch({
-    type: "workspace-audio-updated",
-    patch: {
-      playbackRate: 0.4,
-      preservePitch: false,
-    },
-  });
-  store.dispatch({
-    type: "workspace-dual-preview-toggled",
-    force: true,
-    audioAssetId: "asset-audio-linked",
-  });
-
-  const simulation = getActiveExecutionSimulation(store.getState());
-  assert.equal(simulation?.id, `simulation:${getActiveExecutionPlan(store.getState())?.id}`);
-  assert.equal(
-    simulation?.predictedEffects.some(function (effect) {
-      return effect.includes("Slower preview transport");
-    }),
-    false
   );
 });
 
@@ -866,6 +828,10 @@ test("execution readiness is derived only from active plan and simulation", () =
   assert.equal(getActiveExecutionReadiness(store.getState()), null);
 
   store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+  store.dispatch({
     type: "workspace-selection-suggestion-accepted",
     suggestionId: "audio-inspect",
   });
@@ -985,6 +951,10 @@ test("execution payload preview is derived only from active readiness", () => {
   });
   assert.equal(getActiveExecutionPayloadPreview(store.getState()), null);
 
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
   store.dispatch({
     type: "workspace-selection-suggestion-accepted",
     suggestionId: "audio-inspect",
@@ -1430,6 +1400,10 @@ test("execution reflection is derived only from the complete active dry-run chai
   });
   assert.equal(getActiveExecutionReflection(store.getState()), null);
 
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
   store.dispatch({
     type: "workspace-selection-suggestion-accepted",
     suggestionId: "audio-inspect",
@@ -2913,6 +2887,10 @@ test("execution alternatives are derived only from the complete active reflectio
   assert.equal(getActiveExecutionAlternatives(store.getState()), null);
 
   store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+  store.dispatch({
     type: "workspace-selection-suggestion-accepted",
     suggestionId: "audio-inspect",
   });
@@ -3389,6 +3367,10 @@ test("execution candidate is derived only from the complete active alternatives 
   });
   assert.equal(getActiveExecutionCandidate(store.getState()), null);
 
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
   store.dispatch({
     type: "workspace-selection-suggestion-accepted",
     suggestionId: "audio-inspect",

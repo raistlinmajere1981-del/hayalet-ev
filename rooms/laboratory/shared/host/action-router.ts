@@ -275,9 +275,7 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
       await persistToolState(runtime);
       await persistProfileModelState(runtime);
       const resultRecord = toRecord(result);
-      const cancelled =
-        (action === "process-run" || action === "audio-process-run") &&
-        resultRecord["cancelled"] === true;
+      const cancelled = resultRecord["cancelled"] === true;
       pushMediaState(api, runtime, requestId, action);
       pushActionResult(api, {
         requestId,

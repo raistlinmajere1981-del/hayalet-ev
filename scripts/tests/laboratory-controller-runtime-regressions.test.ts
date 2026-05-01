@@ -1,7 +1,6 @@
 import {
   assert,
   bindLabAssetPreviewClicks,
-  createDualPreviewSnapshot,
   createLabEventBus,
   createLabRunController,
   createLabStore,
@@ -1386,6 +1385,115 @@ test("laboratory run controller syncs the unified timeline playhead to the activ
   assert.equal(playheadLabel.textContent, "00:02.500");
 });
 
+test("laboratory run controller updates focus layer from user workspace interactions", async () => {
+  const originalElement = Object.getOwnPropertyDescriptor(globalThis, "Element");
+  const preview = new FakeMediaElement();
+  const documentRef = new FakeDualPreviewDocument(
+    new Map<string, unknown>([['video[data-lab-preserve-media="workspace-preview"]', preview]]),
+    [preview]
+  );
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  class FakeFocusTarget {
+    dataset: Record<string, string>;
+
+    constructor(
+      options: {
+        action?: string;
+        surface?: "inspector" | "preview" | "timeline";
+        value?: string;
+      } = {}
+    ) {
+      this.dataset = {
+        ...(options.action === undefined ? {} : { labAction: options.action }),
+        ...(options.value === undefined ? {} : { labValue: options.value }),
+      };
+      this.surface = options.surface ?? null;
+    }
+
+    private readonly surface: "inspector" | "preview" | "timeline" | null;
+
+    closest(selector: string): FakeFocusTarget | null {
+      if (selector === "[data-lab-action]" && this.dataset.labAction !== undefined) {
+        return this;
+      }
+      if (selector === ".labx-workspace-preview" && this.surface === "preview") {
+        return this;
+      }
+      if (selector === ".labx-timeline" && this.surface === "timeline") {
+        return this;
+      }
+      if (
+        selector === "[data-lab-workspace-inspector='true']" &&
+        this.surface === "inspector"
+      ) {
+        return this;
+      }
+      return null;
+    }
+  }
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: FakeFocusTarget,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent() {},
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+
+    controller.attach();
+    await Promise.resolve();
+
+    const clickListener = documentRef.listeners.get("click");
+    const pointerDownListener = documentRef.listeners.get("pointerdown");
+    assert.ok(clickListener);
+    assert.ok(pointerDownListener);
+
+    clickListener?.({
+      target: new FakeFocusTarget({ action: "timeline-shift-playhead", surface: "timeline" }),
+    } as Event);
+    assert.equal(store.getState().ui.labFocusLayer, "timeline");
+
+    pointerDownListener?.({
+      target: new FakeFocusTarget({ surface: "preview" }),
+    } as Event);
+    assert.equal(store.getState().ui.labFocusLayer, "preview");
+
+    clickListener?.({
+      target: new FakeFocusTarget({
+        action: "workspace-controls-drawer-toggle",
+        surface: "inspector",
+      }),
+    } as Event);
+    assert.equal(store.getState().ui.labFocusLayer, "inspector");
+
+    await preview.play();
+    preview.dispatch("timeupdate");
+    assert.equal(store.getState().ui.labFocusLayer, "inspector");
+  } finally {
+    if (originalElement) {
+      Object.defineProperty(globalThis, "Element", originalElement);
+    } else {
+      Reflect.deleteProperty(globalThis, "Element");
+    }
+  }
+});
+
 test("laboratory run controller shifts normal playback from timeline step controls", async () => {
   const originalElement = Object.getOwnPropertyDescriptor(globalThis, "Element");
   const preview = new FakeMediaElement();
@@ -1468,86 +1576,6 @@ test("laboratory run controller shifts normal playback from timeline step contro
       Object.defineProperty(globalThis, "Element", originalElement);
     }
   }
-});
-
-test("laboratory run controller rebinds the unified timeline playhead between single preview and dual preview master", async () => {
-  const singlePreview = new FakeMediaElement();
-  singlePreview.duration = 6;
-  singlePreview.currentTime = 1;
-  const master = new FakeMediaElement();
-  master.duration = 6;
-  master.currentTime = 2;
-  const slave = new FakeMediaElement();
-  slave.duration = 8;
-  const playhead = new FakePlayheadElement();
-  const playheadLabel = new FakeTextElement(null);
-  const timelineRoot = { dataset: { duration: "6000" } };
-  const queryMap = new Map<string, unknown>([
-    ['video[data-lab-preserve-media="workspace-preview"]', singlePreview],
-    ['[data-lab-role="dual-preview-master"]', master],
-    ['[data-lab-role="dual-preview-slave"]', slave],
-    ['[data-lab-role="timeline-playhead"]', playhead],
-    ['[data-lab-role="timeline-playhead-label"]', playheadLabel],
-    [".labx-timeline", timelineRoot],
-  ]);
-  const documentRef = new FakeDualPreviewDocument(queryMap, [singlePreview, master, slave]);
-  const eventBus = createLabEventBus();
-  const store = createLabStore();
-
-  eventBus.subscribe(function (event) {
-    store.dispatch(event);
-  });
-
-  const controller = createLabRunController({
-    documentRef: documentRef as unknown as Document,
-    eventBus,
-    store,
-    windowRef: {
-      roomAPI: {
-        sendEvent() {},
-      },
-      addEventListener() {},
-    } as unknown as Window,
-  });
-
-  controller.attach();
-  await Promise.resolve();
-
-  assert.equal(playhead.style.left, "16.666666666666664%");
-  assert.equal(playheadLabel.textContent, "00:01.000");
-
-  store.dispatch({
-    type: "snapshot-received",
-    payload: createDualPreviewSnapshot(),
-  });
-  store.dispatch({
-    type: "workspace-dual-preview-toggled",
-    force: true,
-    audioAssetId: "asset-audio-linked",
-  });
-  await Promise.resolve();
-
-  assert.equal(playhead.style.left, "33.33333333333333%");
-  assert.equal(playheadLabel.textContent, "00:02.000");
-
-  singlePreview.currentTime = 4;
-  singlePreview.dispatch("timeupdate");
-  assert.equal(playhead.style.left, "33.33333333333333%");
-
-  master.currentTime = 3;
-  master.dispatch("timeupdate");
-  assert.equal(playhead.style.left, "50%");
-  assert.equal(playheadLabel.textContent, "00:03.000");
-
-  store.dispatch({
-    type: "workspace-dual-preview-toggled",
-    force: false,
-  });
-  await Promise.resolve();
-
-  singlePreview.dispatch("timeupdate");
-  assert.equal(playhead.style.left, "66.66666666666666%");
-  assert.equal(playheadLabel.textContent, "00:04.000");
 });
 
 test("laboratory run controller keeps click-to-seek and drag-to-select separated by the rail threshold", () => {
