@@ -11,6 +11,7 @@ import { renderLabDrawer } from "./lab-drawer.js";
 import { renderLabProcessStrip } from "./lab-process-strip.js";
 import { renderLabTopBar } from "./lab-top-bar.js";
 import { bindLabAssetPreviewClicks } from "./lab-asset-preview-binder.js";
+import { getLabAssetPreviewUrl } from "./lab-asset-display.js";
 import { bindLabPreviewInspectionInteractions } from "./lab-preview-inspection-binder.js";
 import { createLabPreviewInspectionController } from "./lab-preview-inspection-controller.js";
 import { bindLabSelectionIntentClicks } from "./lab-selection-intent-binder.js";
@@ -385,7 +386,7 @@ export function startLaboratoryLabRoot() {
       const asset = store.getState().assets.find(function (candidate) {
         return candidate.id === assetId;
       });
-      return asNonEmptyString(asset?.localPath) || asNonEmptyString(asset?.url) || null;
+      return asset === undefined ? null : getLabAssetPreviewUrl(asset);
     },
   });
   bindLabSelectionRoiInteractions({

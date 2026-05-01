@@ -1,38 +1,8 @@
 import { asLabRecord, asNonEmptyString, escapeHtml, formatBytes } from "../models/lab-types.js";
 import type { LabAsset, LabStoreState } from "../models/lab-types.js";
-import { getLabAssetPreviewUrl } from "./lab-asset-display.js";
+import { getLabAssetPreviewKind, getLabAssetPreviewUrl } from "./lab-asset-display.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
-
-const INSPECTOR_VIDEO_EXTENSIONS = new Set(["m4v", "mkv", "mov", "mp4", "webm"]);
-
-function getPathExtension(path: string | null): string | null {
-  if (path === null) {
-    return null;
-  }
-  const cleanPath = path.split(/[?#]/)[0] || "";
-  const leaf = cleanPath.split(/[\\/]/).pop() || cleanPath;
-  const dotIndex = leaf.lastIndexOf(".");
-  if (dotIndex < 0 || dotIndex === leaf.length - 1) {
-    return null;
-  }
-  return leaf.slice(dotIndex + 1).toLowerCase();
-}
-
-function shouldRenderVideoPreview(
-  metadata: Record<string, unknown>,
-  previewUrl: string | null
-): boolean {
-  if (asNonEmptyString(metadata["thumbnailUrl"]) !== null) {
-    return false;
-  }
-  const sourceKind = asNonEmptyString(metadata["kind"]);
-  if (sourceKind === "video") {
-    return true;
-  }
-  const extension = getPathExtension(previewUrl);
-  return extension !== null && INSPECTOR_VIDEO_EXTENSIONS.has(extension);
-}
 
 function getSelectedEntity(state: LabStoreState): LabAsset | null {
   const ids = state.ui.projectWorkspaceSelectedEntityIds;
@@ -212,25 +182,26 @@ function buildMeaningPlaceholder(asset: LabAsset, copy: LabI18n): string {
 }
 
 function renderPreview(asset: LabAsset): string {
-  const metadata = asLabRecord(asset.metadata);
   const previewUrl = getLabAssetPreviewUrl(asset);
+  const previewKind =
+    previewUrl === null
+      ? "unsupported"
+      : getLabAssetPreviewKind(asset, previewUrl, { usesThumbnail: true });
 
-  const isVisual =
-    asset.type === "source" ||
-    asset.type === "clip" ||
-    asset.type === "frame" ||
-    asset.type === "image";
-  const isAudio = asset.type === "audio";
-
-  if (isVisual && previewUrl !== null) {
-    if (shouldRenderVideoPreview(metadata, previewUrl)) {
-      return `<div class="labx-pw-inspector__preview"><video class="labx-pw-inspector__preview-media labx-pw-inspector__preview-media--video" src="${escapeHtml(previewUrl)}" controls preload="metadata" playsinline></video></div>`;
-    }
+  if (previewUrl !== null && previewKind === "image") {
     return `<div class="labx-pw-inspector__preview"><img class="labx-pw-inspector__preview-media" src="${escapeHtml(previewUrl)}" alt="${escapeHtml(asset.name)}" /></div>`;
   }
 
-  if (isAudio && previewUrl !== null) {
+  if (previewUrl !== null && previewKind === "video") {
+    return `<div class="labx-pw-inspector__preview"><video class="labx-pw-inspector__preview-media labx-pw-inspector__preview-media--video" src="${escapeHtml(previewUrl)}" controls preload="metadata" playsinline></video></div>`;
+  }
+
+  if (previewUrl !== null && previewKind === "audio") {
     return `<div class="labx-pw-inspector__preview"><audio controls preload="metadata" style="width:100%"><source src="${escapeHtml(previewUrl)}" /></audio></div>`;
+  }
+
+  if (previewUrl !== null && previewKind === "document") {
+    return `<div class="labx-pw-inspector__preview"><iframe class="labx-pw-inspector__preview-document" src="${escapeHtml(previewUrl)}" title="${escapeHtml(asset.name)}"></iframe></div>`;
   }
 
   const icons: Record<string, string> = {

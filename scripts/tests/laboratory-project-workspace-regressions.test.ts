@@ -349,6 +349,32 @@ test("laboratory project workspace renders video source thumbnails as media", ()
   assert.doesNotMatch(html, /<img class="labx-pw-card__thumb-img"/);
 });
 
+test("laboratory project workspace renders visual analysis artifacts as previews", () => {
+  const html = renderProjectWorkspaceOverlay(
+    createProjectWorkspaceState(true, {
+      assets: [
+        {
+          id: "asset-artifact-preview-1",
+          type: "artifact",
+          name: "contrast-scan.png",
+          localPath: "/tmp/lab-analysis-contrast-scan.png",
+          createdAt: 800,
+          metadata: { kind: "transform-preview" },
+        },
+      ],
+      selectedEntityIds: ["asset-artifact-preview-1"],
+    })
+  );
+
+  assert.match(html, /data-lab-entity-type="artifact"/);
+  assert.match(html, /class="labx-pw-card__thumb-img"/);
+  assert.match(html, /src="file:\/\/\/tmp\/lab-analysis-contrast-scan\.png"/);
+  assert.match(
+    html,
+    /class="labx-pw-inspector__preview"><img class="labx-pw-inspector__preview-media"/
+  );
+});
+
 test("laboratory project workspace i18n keys exist in English and Turkish catalogs", () => {
   const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));
   const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));

@@ -2,6 +2,23 @@ import { asLabRecord, asNonEmptyString, asNumber } from "../models/lab-types.js"
 import type { LabAsset } from "../models/lab-types.js";
 import type { LabI18n } from "./lab-i18n.js";
 
+export type LabAssetPreviewKind = "video" | "audio" | "image" | "document" | "unsupported";
+
+const IMAGE_EXTENSIONS = new Set(["avif", "gif", "jpeg", "jpg", "png", "svg", "webp"]);
+const VIDEO_EXTENSIONS = new Set(["m4v", "mkv", "mov", "mp4", "webm"]);
+const AUDIO_EXTENSIONS = new Set(["aac", "flac", "m4a", "mp3", "ogg", "opus", "wav", "webm"]);
+const DOCUMENT_EXTENSIONS = new Set([
+  "csv",
+  "html",
+  "htm",
+  "json",
+  "log",
+  "md",
+  "pdf",
+  "txt",
+  "xml",
+]);
+
 export function getLabAssetPath(asset: LabAsset): string | null {
   return asNonEmptyString(asset.localPath) || asNonEmptyString(asset.url);
 }
@@ -31,6 +48,63 @@ export function getLabAssetPreviewUrl(asset: LabAsset): string | null {
   const metadata = asLabRecord(asset.metadata);
   const path = asNonEmptyString(metadata["thumbnailUrl"]) || getLabAssetPath(asset);
   return path === null ? null : toLabAssetDisplayUrl(path);
+}
+
+export function getLabAssetPathExtension(path: string | null): string | null {
+  if (path === null) {
+    return null;
+  }
+  const cleanPath = path.split(/[?#]/)[0] || "";
+  const leaf = cleanPath.split(/[\\/]/).pop() || cleanPath;
+  const dotIndex = leaf.lastIndexOf(".");
+  if (dotIndex < 0 || dotIndex === leaf.length - 1) {
+    return null;
+  }
+  return leaf.slice(dotIndex + 1).toLowerCase();
+}
+
+export function getLabAssetPreviewKind(
+  asset: LabAsset,
+  path: string | null,
+  options: { usesThumbnail?: boolean } = {}
+): LabAssetPreviewKind {
+  const metadata = asLabRecord(asset.metadata);
+  if (options.usesThumbnail === true && asNonEmptyString(metadata["thumbnailUrl"]) !== null) {
+    return "image";
+  }
+
+  const sourceKind = asNonEmptyString(metadata["kind"]);
+  if (sourceKind === "image") {
+    return "image";
+  }
+  if (sourceKind === "audio") {
+    return "audio";
+  }
+  if (sourceKind === "video") {
+    return "video";
+  }
+  if (asset.type === "frame" || asset.type === "image") {
+    return "image";
+  }
+  if (asset.type === "audio") {
+    return "audio";
+  }
+
+  const extension = getLabAssetPathExtension(path);
+  if (extension !== null && IMAGE_EXTENSIONS.has(extension)) {
+    return "image";
+  }
+  if (extension !== null && VIDEO_EXTENSIONS.has(extension)) {
+    return "video";
+  }
+  if (extension !== null && AUDIO_EXTENSIONS.has(extension)) {
+    return "audio";
+  }
+  if (extension !== null && DOCUMENT_EXTENSIONS.has(extension)) {
+    return "document";
+  }
+
+  return asset.type === "source" || asset.type === "clip" ? "video" : "unsupported";
 }
 
 export function getLabAssetPathLeaf(asset: LabAsset): string | null {

@@ -1500,11 +1500,9 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
         <div class="labx-timeline__actions">
           ${
             hasSelection
-              ? `<button class="labx-timeline__clear-btn" type="button" data-lab-action="timeline-clear" ${lockDisabledAttr}>Clear</button>
-                 <button class="labx-timeline__export-btn" type="button" data-lab-action="timeline-export-clip" title="Export selected range as video clip" ${lockDisabledAttr}>Export Clip</button>`
+              ? `<button class="labx-timeline__clear-btn" type="button" data-lab-action="timeline-clear" ${lockDisabledAttr}>Clear</button>`
               : ""
           }
-          <button class="labx-timeline__export-btn" type="button" data-lab-action="timeline-grab-frame" title="Capture current frame as image">Grab Frame</button>
           <button
             class="labx-timeline__export-btn labx-timeline__micro-zoom-toggle"
             type="button"
@@ -1513,7 +1511,6 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
             title="${escapeHtml(copy.t("mediaAnalysis.timeline.microZoomToggleTitle", "Show or hide selection micro zoom"))}"
             ${microZoomAvailable ? "" : "disabled"}
           >${escapeHtml(copy.t("mediaAnalysis.timeline.microZoomToggle", "Micro Zoom"))}</button>
-          <button class="labx-timeline__export-btn" type="button" data-lab-action="timeline-extract-audio" title="Extract source audio">Extract Audio</button>
         </div>
       </div>
       ${renderWaveformInspectionLens(model, copy)}

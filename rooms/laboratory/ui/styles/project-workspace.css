@@ -808,6 +808,12 @@
   object-fit: contain;
 }
 
+.labx-pw-inspector__preview-document {
+  width: 100%;
+  min-height: 180px;
+  border: 0;
+}
+
 .labx-pw-inspector__section {
   display: flex;
   flex-direction: column;

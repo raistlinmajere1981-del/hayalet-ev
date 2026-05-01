@@ -1643,7 +1643,12 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     if (asset === null) {
       return null;
     }
-    return asNonEmptyString(asset.url) || asNonEmptyString(asset.localPath);
+    const metadata = asLabRecord(asset.metadata);
+    return (
+      asNonEmptyString(asset.url) ||
+      asNonEmptyString(asset.localPath) ||
+      asNonEmptyString(metadata["thumbnailUrl"])
+    );
   }
 
   function previewAsset(assetId: string) {

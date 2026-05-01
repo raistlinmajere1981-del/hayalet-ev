@@ -4,27 +4,13 @@ import {
   buildLabAssetMetadataTitle,
   getLabAssetPath,
   getLabAssetPathLeaf,
+  getLabAssetPreviewKind,
+  getLabAssetPreviewUrl,
   toLabAssetDisplayUrl,
 } from "./lab-asset-display.js";
+import type { LabAssetPreviewKind } from "./lab-asset-display.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
-
-type AssetPreviewKind = "video" | "audio" | "image" | "document" | "unsupported";
-
-const IMAGE_EXTENSIONS = new Set(["avif", "gif", "jpeg", "jpg", "png", "svg", "webp"]);
-const VIDEO_EXTENSIONS = new Set(["m4v", "mkv", "mov", "mp4", "webm"]);
-const AUDIO_EXTENSIONS = new Set(["aac", "flac", "m4a", "mp3", "ogg", "opus", "wav", "webm"]);
-const DOCUMENT_EXTENSIONS = new Set([
-  "csv",
-  "html",
-  "htm",
-  "json",
-  "log",
-  "md",
-  "pdf",
-  "txt",
-  "xml",
-]);
 
 function getActiveAssetPreview(state: LabStoreState): LabAsset | null {
   const activeAssetId = asNonEmptyString(state.ui.activeAssetPreviewId);
@@ -38,50 +24,10 @@ function getActiveAssetPreview(state: LabStoreState): LabAsset | null {
   );
 }
 
-function getAssetExtension(path: string | null): string | null {
-  if (path === null) {
-    return null;
-  }
-  const cleanPath = path.split(/[?#]/)[0] || "";
-  const match = /\.([A-Za-z0-9]+)$/.exec(cleanPath);
-  const extension = match?.[1];
-  return extension ? extension.toLowerCase() : null;
-}
-
-function inferPreviewKind(asset: LabAsset, path: string | null): AssetPreviewKind {
-  if (asset.type === "source" || asset.type === "clip") {
-    return "video";
-  }
-  if (asset.type === "audio") {
-    return "audio";
-  }
-  if (asset.type === "frame" || asset.type === "image") {
-    return "image";
-  }
-
-  const extension = getAssetExtension(path);
-  if (extension === null) {
-    return "unsupported";
-  }
-  if (IMAGE_EXTENSIONS.has(extension)) {
-    return "image";
-  }
-  if (VIDEO_EXTENSIONS.has(extension)) {
-    return "video";
-  }
-  if (AUDIO_EXTENSIONS.has(extension)) {
-    return "audio";
-  }
-  if (DOCUMENT_EXTENSIONS.has(extension)) {
-    return "document";
-  }
-  return "unsupported";
-}
-
 function renderPreviewMedia(
   asset: LabAsset,
   previewUrl: string,
-  kind: AssetPreviewKind,
+  kind: LabAssetPreviewKind,
   copy: LabI18n
 ): string {
   const label = escapeHtml(asset.name);
@@ -143,8 +89,16 @@ export function renderLabAssetPreviewOverlay(
   const asset = getActiveAssetPreview(state);
   const isOpen = asset !== null;
   const path = asset === null ? null : getLabAssetPath(asset);
-  const previewUrl = path === null ? null : toLabAssetDisplayUrl(path);
-  const previewKind = asset === null ? "unsupported" : inferPreviewKind(asset, path);
+  const previewUrl =
+    asset === null
+      ? null
+      : path === null
+        ? getLabAssetPreviewUrl(asset)
+        : toLabAssetDisplayUrl(path);
+  const previewKind =
+    asset === null
+      ? "unsupported"
+      : getLabAssetPreviewKind(asset, previewUrl, { usesThumbnail: path === null });
 
   return `
     <div class="labx-overlay-root labx-asset-preview-root" data-open="${isOpen ? "true" : "false"}" id="lab-asset-preview-overlay-root">
