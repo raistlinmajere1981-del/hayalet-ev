@@ -36,8 +36,10 @@ type LaboratoryActionRouterDeps = {
     api: LaboratoryRoomApi,
     payload: {
       action: string;
+      cancelled?: boolean;
       error?: string;
       requestId: string;
+      result?: unknown;
       success: boolean;
     }
   ) => void;
@@ -230,7 +232,7 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
           break;
         case "process-run":
         case "audio-process-run":
-          await mediaActionRuntime.runProcess(api, runtime, requestId, featureId);
+          result = await mediaActionRuntime.runProcess(api, runtime, requestId, featureId);
           break;
         case "process-cancel":
         case "audio-process-cancel":
@@ -272,11 +274,16 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
 
       await persistToolState(runtime);
       await persistProfileModelState(runtime);
+      const resultRecord = toRecord(result);
+      const cancelled =
+        (action === "process-run" || action === "audio-process-run") &&
+        resultRecord["cancelled"] === true;
       pushMediaState(api, runtime, requestId, action);
       pushActionResult(api, {
         requestId,
-        success: true,
+        success: cancelled !== true,
         action,
+        ...(cancelled ? { cancelled: true } : {}),
         ...(result !== null && result !== undefined ? { result } : {}),
       });
     } catch (error) {

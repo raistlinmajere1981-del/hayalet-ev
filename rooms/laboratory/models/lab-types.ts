@@ -523,9 +523,7 @@ export interface LabWorkspaceUiState {
   roiRegions: LabROIRegion[];
   interactiveSettings: LabInteractiveSettings;
   audioFocus: LabAudioFocusSettings;
-  dualPreviewEnabled: boolean;
-  dualPreviewAudioAssetId: string | null;
-  dualPreviewVolume: number;
+  previewVolume: number;
   hypothesis: string;
   bookmarks: LabBookmark[];
   selectedIntents: LabIntentId[];
@@ -1384,6 +1382,7 @@ export interface LabStoreUiState {
   roiFocusActive: boolean;
   liveFindingsExpanded: boolean;
   analysisControlsCollapsed: boolean;
+  analysisCancelPending: boolean;
   /** Workspace side panel collapsed state (Edit stage) */
   editSidePanelCollapsed: boolean;
   /** Raw log section collapsed in Process stage */
@@ -1577,6 +1576,7 @@ export type LabStoreEvent =
   | { type: "asset-preview-closed" }
   | { type: "live-findings-expanded"; force?: boolean }
   | { type: "analysis-controls-collapsed"; force?: boolean }
+  | { type: "analysis-cancel-requested" }
   | { type: "capability-select"; capabilityId: CapabilityFamilyId }
   | { type: "capability-deselect"; capabilityId: CapabilityFamilyId }
   | { type: "capability-set"; capabilities: CapabilityFamilyId[] }
@@ -1627,9 +1627,7 @@ export type LabStoreEvent =
   | { type: "workspace-roi-updated"; region: LabROIRegion }
   | { type: "workspace-roi-removed"; regionId: string }
   | { type: "workspace-roi-toggled"; regionId: string }
-  | { type: "workspace-dual-preview-toggled"; force?: boolean; audioAssetId?: string | null }
-  | { type: "workspace-dual-preview-audio-selected"; audioAssetId: string | null }
-  | { type: "workspace-dual-preview-volume-updated"; volume: number }
+  | { type: "workspace-preview-volume-updated"; volume: number }
   | { type: "workspace-interactive-updated"; patch: Partial<LabInteractiveSettings> }
   | { type: "workspace-hypothesis-updated"; text: string }
   | { type: "workspace-bookmark-added"; bookmark: LabBookmark }

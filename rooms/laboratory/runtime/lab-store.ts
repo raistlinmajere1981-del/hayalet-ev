@@ -284,6 +284,7 @@ function createInitialState(): LabStoreState {
       roiFocusActive: false,
       liveFindingsExpanded: true,
       analysisControlsCollapsed: true,
+      analysisCancelPending: false,
       editSidePanelCollapsed: false,
       rawLogCollapsed: true,
       workspace: createDefaultWorkspaceUiState(),
@@ -320,9 +321,7 @@ function createDefaultWorkspaceUiState(): LabWorkspaceUiState {
       invert: false,
     },
     audioFocus: normalizeAudioFocusSettings(DEFAULT_AUDIO_FOCUS_SETTINGS),
-    dualPreviewEnabled: false,
-    dualPreviewAudioAssetId: null,
-    dualPreviewVolume: 1.0,
+    previewVolume: 1.0,
     hypothesis: "",
     bookmarks: [],
     selectedIntents: [],
@@ -995,6 +994,44 @@ function pushActivityEvent(state: LabStoreState, event: LabEventFeedItem) {
   }
 }
 
+function isProcessRunAction(action: string | null | undefined) {
+  return action === "process-run" || action === "audio-process-run";
+}
+
+function canCreatePendingRunFromFeedEvent(event: LabEventFeedItem) {
+  return isProcessRunAction(event.action);
+}
+
+function isPendingProcessRun(run: LabRun) {
+  return (
+    run.id.startsWith("pending-process-run-") || run.id.startsWith("pending-audio-process-run-")
+  );
+}
+
+function shouldKeepPendingRunDuringSnapshot(state: LabStoreState, nextRun: LabRun | null) {
+  if (
+    state.run === null ||
+    isPendingProcessRun(state.run) !== true ||
+    (state.run.state !== "running" && state.run.state !== "queued")
+  ) {
+    return false;
+  }
+
+  if (nextRun === null) {
+    return true;
+  }
+
+  if (nextRun.state === "running" || nextRun.state === "queued") {
+    return false;
+  }
+
+  if (state.ui.analysisCancelPending === true && nextRun.state === "cancelled") {
+    return false;
+  }
+
+  return true;
+}
+
 function pushRunEvent(
   state: LabStoreState,
   event: LabEventFeedItem,
@@ -1328,6 +1365,10 @@ function syncUserActionsFromHostEvent(state: LabStoreState, event: LabEventFeedI
 
 function routeFeedEvent(state: LabStoreState, event: LabEventFeedItem) {
   if (event.scope === "run") {
+    if (state.run === null && canCreatePendingRunFromFeedEvent(event) !== true) {
+      pushActivityEvent(state, event);
+      return;
+    }
     syncRunModuleFromFeedEvent(state, event);
     pushRunEvent(state, event, { raw: event.kind === "raw-log" });
     return;
@@ -1392,12 +1433,57 @@ function isSourceAction(action: string | null) {
   return (action || "").startsWith("source-");
 }
 
+function isProjectImportSourceAction(action: string | null) {
+  return (
+    action === "source-pick-local" ||
+    action === "source-download-url" ||
+    action === "source-download-youtube"
+  );
+}
+
+function clearProjectWorkspaceTransientState(state: LabStoreState) {
+  state.ui.projectWorkspaceOpen = false;
+  state.ui.projectWorkspaceSelectedEntityIds = [];
+  state.ui.projectWorkspaceConfirmReplace = null;
+  state.ui.projectWorkspaceTimelineHighlight = null;
+}
+
+function completeTrackedProjectImport(state: LabStoreState, event: LabEventFeedItem) {
+  const action = event.action;
+  if (
+    event.stage !== "completed" ||
+    isProjectImportSourceAction(action) !== true ||
+    state.ui.projectImport.lastRequestId === null ||
+    event.requestId !== state.ui.projectImport.lastRequestId ||
+    state.ui.projectImport.lastAction !== action
+  ) {
+    return;
+  }
+
+  state.ui.projectImport = {
+    ...state.ui.projectImport,
+    reviewFocus: "completed",
+    lastAction: action,
+  };
+  clearProjectWorkspaceTransientState(state);
+  state.ui.activeAssetPreviewId = null;
+  state.ui.activePreviewArtifactId = null;
+  state.ui.workspace = {
+    ...state.ui.workspace,
+    drawerModeOverride: "setup",
+    reportOverlayOpen: false,
+    sourceIntakeCollapsed: true,
+    userExploreToggle: false,
+  };
+}
+
 function syncSourceProbeFromHostEvent(state: LabStoreState, event: LabEventFeedItem) {
   if (isSourceAction(event.action) !== true) {
     return;
   }
   if (event.stage === "completed") {
     state.sourceProbeStatus = "completed";
+    completeTrackedProjectImport(state, event);
     return;
   }
   if (event.stage === "failed" || event.stage === "cancelled") {
@@ -1586,22 +1672,31 @@ function syncRunStateFromHostEvent(state: LabStoreState, event: LabEventFeedItem
   if (event.action !== "process-run" && event.action !== "audio-process-run") {
     return;
   }
+  if (
+    state.run?.state === "cancelled" &&
+    (event.stage === "completed" || event.stage === "failed")
+  ) {
+    return;
+  }
   if (event.stage === "failed") {
     const run = ensurePendingRun(state, event.action);
     run.state = "failed";
     run.error = event.detail || run.error;
+    state.ui.analysisCancelPending = false;
     return;
   }
   if (event.stage === "cancelled") {
     const run = ensurePendingRun(state, event.action);
     run.state = "cancelled";
     run.endedAt = run.endedAt || Date.now();
+    state.ui.analysisCancelPending = false;
     return;
   }
   if (event.stage === "completed") {
     const run = ensurePendingRun(state, event.action);
     run.state = "completed";
     run.endedAt = run.endedAt || Date.now();
+    state.ui.analysisCancelPending = false;
     return;
   }
   if (event.stage === "queued" || event.stage === "running") {
@@ -1611,12 +1706,22 @@ function syncRunStateFromHostEvent(state: LabStoreState, event: LabEventFeedItem
   }
 }
 
+function syncAnalysisCancelPendingFromHostEvent(state: LabStoreState, event: LabEventFeedItem) {
+  if (event.action !== "process-cancel" && event.action !== "audio-process-cancel") {
+    return;
+  }
+  if (event.stage === "completed" || event.stage === "failed" || event.stage === "cancelled") {
+    state.ui.analysisCancelPending = false;
+  }
+}
+
 function syncCanonicalStateFromHostEvent(state: LabStoreState, event: LabEventFeedItem) {
   syncProjectImportUrlCheckFromHostEvent(state, event);
   syncSourceProbeFromHostEvent(state, event);
   syncPreviewFromHostEvent(state, event);
   syncPreflightFromHostEvent(state, event);
   syncRunStateFromHostEvent(state, event);
+  syncAnalysisCancelPendingFromHostEvent(state, event);
   syncUserActionsFromHostEvent(state, event);
 }
 
@@ -1671,86 +1776,11 @@ function isWorkspaceSourceReady(source: Record<string, unknown> | null) {
   return isWorkspaceSourceMatchingMode(sourceRecord, mode);
 }
 
-function clampDualPreviewVolume(value: unknown) {
+function clampPreviewVolume(value: unknown) {
   if (typeof value !== "number" || Number.isFinite(value) !== true) {
     return 1.0;
   }
   return Math.max(0, Math.min(1, value));
-}
-
-function findWorkspaceCurrentSourceAsset(state: LabStoreState) {
-  const sourceRecord = asLabRecord(state.source);
-  const storedPath = asNonEmptyString(sourceRecord["storedPath"]);
-  const sourceUrl = asNonEmptyString(sourceRecord["sourceUrl"]);
-  const storedFileName = asNonEmptyString(sourceRecord["storedFileName"]);
-
-  return (
-    state.assets.find(function (asset) {
-      if (asset.type !== "source") {
-        return false;
-      }
-      if (storedPath !== null && asset.localPath === storedPath) {
-        return true;
-      }
-      if (sourceUrl !== null && asset.url === sourceUrl) {
-        return true;
-      }
-      if (storedFileName === null) {
-        return false;
-      }
-      return (
-        asset.name === storedFileName &&
-        asNonEmptyString(asLabRecord(asset.metadata)["storedFileName"]) === storedFileName
-      );
-    }) || null
-  );
-}
-
-function getWorkspaceLinkedAudioAssets(state: LabStoreState) {
-  const currentSourceAsset = findWorkspaceCurrentSourceAsset(state);
-  if (currentSourceAsset === null) {
-    return [];
-  }
-  return state.assets
-    .filter(function (asset) {
-      return asset.type === "audio" && asset.derivedFromSourceId === currentSourceAsset.id;
-    })
-    .sort(function (left, right) {
-      if (left.createdAt !== right.createdAt) {
-        return right.createdAt - left.createdAt;
-      }
-      if (left.name !== right.name) {
-        return left.name.localeCompare(right.name);
-      }
-      return left.id.localeCompare(right.id);
-    });
-}
-
-function healWorkspaceDualPreviewState(state: LabStoreState) {
-  const sourceRecord = asLabRecord(state.source);
-  const sourceKind = asNonEmptyString(sourceRecord["kind"]);
-  const linkedAudioAssets =
-    sourceKind === "video" &&
-    state.sourceProbeStatus === "completed" &&
-    isWorkspaceSourceReady(state.source)
-      ? getWorkspaceLinkedAudioAssets(state)
-      : [];
-  const dualPreviewAvailable = linkedAudioAssets.length > 0;
-  const currentSelection = asNonEmptyString(state.ui.workspace.dualPreviewAudioAssetId);
-  const resolvedSelection =
-    linkedAudioAssets.find(function (asset) {
-      return asset.id === currentSelection;
-    }) ||
-    linkedAudioAssets[0] ||
-    null;
-
-  state.ui.workspace = {
-    ...state.ui.workspace,
-    dualPreviewEnabled:
-      dualPreviewAvailable === true ? state.ui.workspace.dualPreviewEnabled === true : false,
-    dualPreviewAudioAssetId: resolvedSelection?.id || null,
-    dualPreviewVolume: clampDualPreviewVolume(state.ui.workspace.dualPreviewVolume),
-  };
 }
 
 function syncCanonicalStateFromSnapshot(
@@ -1805,7 +1835,6 @@ function syncCanonicalStateFromSnapshot(
       sourceIntakeCollapsed: false,
       drawerModeOverride: null,
     });
-    healWorkspaceDualPreviewState(state);
     return state;
   }
 
@@ -1822,15 +1851,13 @@ function syncCanonicalStateFromSnapshot(
     state.featureId
   ];
   const nextRun = toRunFromProcessRecord(asLabRecord(processRecord));
-  if (
-    nextRun === null &&
-    state.run &&
-    state.run.id.startsWith("pending-") &&
-    state.run.state === "running"
-  ) {
+  if (shouldKeepPendingRunDuringSnapshot(state, nextRun)) {
     // Keep the pending local run alive until the host creates the process record
   } else {
     state.run = nextRun;
+  }
+  if (state.run === null || (state.run.state !== "running" && state.run.state !== "queued")) {
+    state.ui.analysisCancelPending = false;
   }
 
   const reportRecord = asLabRecord(
@@ -1874,7 +1901,6 @@ function syncCanonicalStateFromSnapshot(
   }
 
   syncDraftsFromSnapshot(state, snapshot);
-  healWorkspaceDualPreviewState(state);
   return state;
 }
 
@@ -2624,13 +2650,10 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
                 ? { ...state.ui.workspace.interactiveSettings, ...ws.interactiveSettings }
                 : state.ui.workspace.interactiveSettings,
               audioFocus: normalizeAudioFocusPatch(state.ui.workspace.audioFocus, ws.audioFocus),
-              dualPreviewEnabled: ws.dualPreviewEnabled === true,
-              dualPreviewAudioAssetId:
-                typeof ws.dualPreviewAudioAssetId === "string" ? ws.dualPreviewAudioAssetId : null,
-              dualPreviewVolume:
-                typeof ws.dualPreviewVolume === "number"
-                  ? clampDualPreviewVolume(ws.dualPreviewVolume)
-                  : state.ui.workspace.dualPreviewVolume,
+              previewVolume:
+                typeof ws.previewVolume === "number"
+                  ? clampPreviewVolume(ws.previewVolume)
+                  : state.ui.workspace.previewVolume,
               hypothesis:
                 typeof ws.hypothesis === "string" ? ws.hypothesis : state.ui.workspace.hypothesis,
               bookmarks: Array.isArray(ws.bookmarks) ? ws.bookmarks : state.ui.workspace.bookmarks,
@@ -2666,7 +2689,6 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
               state.ui.workspace.selectedIntents
             );
           }
-          healWorkspaceDualPreviewState(state);
         }
         state.bootReady =
           state.bootReady ||
@@ -2710,12 +2732,10 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
     case "source-probe-started":
       state.sourceProbeStatus = "running";
       updateTrackedProjectImportProbe(state, event.action, "running");
-      healWorkspaceDualPreviewState(state);
       return state;
     case "source-probe-progress":
       state.sourceProbeStatus = "running";
       updateTrackedProjectImportProbe(state, event.action, "running");
-      healWorkspaceDualPreviewState(state);
       return state;
     case "source-probe-completed":
       state.sourceProbeStatus = "completed";
@@ -2724,7 +2744,6 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         ...state.ui.workspace,
         sourceIntakeCollapsed: true,
       };
-      healWorkspaceDualPreviewState(state);
       return state;
     case "source-probe-failed":
       state.sourceProbeStatus = "failed";
@@ -2733,7 +2752,6 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         ...state.ui.workspace,
         sourceIntakeCollapsed: false,
       };
-      healWorkspaceDualPreviewState(state);
       return state;
     case "preview-started":
     case "preview-progress": {
@@ -2793,12 +2811,14 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     case "run-started":
       ensurePendingRun(state, event.action).state = "running";
+      state.ui.analysisCancelPending = false;
       state.ui.workspace = {
         ...state.ui.workspace,
         userExploreToggle: false,
       };
       return state;
     case "run-cancelled":
+      state.ui.analysisCancelPending = false;
       if (state.run) {
         state.run.state = "cancelled";
         state.run.endedAt = state.run.endedAt || Date.now();
@@ -2816,6 +2836,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     case "run-failed":
       ensurePendingRun(state, event.action).state = "failed";
+      state.ui.analysisCancelPending = false;
       if (state.run) {
         state.run.error = event.detail || state.run.error;
       }
@@ -2909,7 +2930,6 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
           drawerModeOverride: null,
         };
       }
-      healWorkspaceDualPreviewState(state);
       return state;
     }
     case "source-drafts-updated":
@@ -3020,6 +3040,11 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         controlsCollapsed: state.ui.analysisControlsCollapsed,
       };
       return state;
+    case "analysis-cancel-requested":
+      if (isRunMutationLocked(state)) {
+        state.ui.analysisCancelPending = true;
+      }
+      return state;
     case "capability-select": {
       const nextCaps = state.selectedCapabilities.includes(event.capabilityId)
         ? state.selectedCapabilities
@@ -3049,7 +3074,6 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     case "asset-added":
       state.assets = upsertStoreAsset(state.assets, event.asset);
-      healWorkspaceDualPreviewState(state);
       return state;
     case "asset-removed":
       state.assets = state.assets.filter(function (asset) {
@@ -3058,7 +3082,6 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       if (state.ui.activeAssetPreviewId === event.id) {
         state.ui.activeAssetPreviewId = null;
       }
-      healWorkspaceDualPreviewState(state);
       return state;
     case "asset-updated":
       state.assets = state.assets.map(function (asset) {
@@ -3076,7 +3099,6 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
           }) || asset
         );
       });
-      healWorkspaceDualPreviewState(state);
       return state;
     case "user-action-added":
       const normalizedResultAssetIds = normalizeUserActionResultAssetIds(
@@ -3430,31 +3452,10 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         }),
       };
       return state;
-    case "workspace-dual-preview-toggled": {
-      const nextEnabled =
-        typeof event.force === "boolean" ? event.force : !state.ui.workspace.dualPreviewEnabled;
+    case "workspace-preview-volume-updated":
       state.ui.workspace = {
         ...state.ui.workspace,
-        dualPreviewEnabled: nextEnabled,
-        dualPreviewAudioAssetId:
-          typeof event.audioAssetId === "string"
-            ? event.audioAssetId
-            : state.ui.workspace.dualPreviewAudioAssetId,
-      };
-      healWorkspaceDualPreviewState(state);
-      return state;
-    }
-    case "workspace-dual-preview-audio-selected":
-      state.ui.workspace = {
-        ...state.ui.workspace,
-        dualPreviewAudioAssetId: event.audioAssetId,
-      };
-      healWorkspaceDualPreviewState(state);
-      return state;
-    case "workspace-dual-preview-volume-updated":
-      state.ui.workspace = {
-        ...state.ui.workspace,
-        dualPreviewVolume: clampDualPreviewVolume(event.volume),
+        previewVolume: clampPreviewVolume(event.volume),
       };
       return state;
     case "workspace-interactive-updated":

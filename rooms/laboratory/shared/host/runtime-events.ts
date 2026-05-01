@@ -307,17 +307,20 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
   function buildActionResultEventPayload(payload: LaboratoryRecord) {
     const action = asNonEmptyString(payload["action"]);
     const success = payload["success"] === true;
+    const cancelled = payload["cancelled"] === true;
     const resultAssetIds = Array.from(new Set(toStringArray(payload["resultAssetIds"])));
     const result = toRecord(payload["result"]);
     return {
       kind: "request-result",
-      severity: success ? "success" : "error",
-      message: success
-        ? `${getActionLabel(action)} tamamlandı`
-        : `${getActionLabel(action)} hata verdi`,
+      severity: cancelled ? "warning" : success ? "success" : "error",
+      message: cancelled
+        ? `${getActionLabel(action)} iptal edildi`
+        : success
+          ? `${getActionLabel(action)} tamamlandı`
+          : `${getActionLabel(action)} hata verdi`,
       detail: asNonEmptyString(payload["error"]) || asNonEmptyString(payload["message"]),
       action,
-      stage: success ? "completed" : "failed",
+      stage: cancelled ? "cancelled" : success ? "completed" : "failed",
       requestId: asNonEmptyString(payload["requestId"]),
       jobId: asNonEmptyString(payload["jobId"]),
       projectId: asNonEmptyString(payload["projectId"]),

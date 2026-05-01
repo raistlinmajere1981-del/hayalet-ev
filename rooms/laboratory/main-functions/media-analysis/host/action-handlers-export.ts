@@ -23,6 +23,12 @@ type LaboratoryExportActionRuntimeDeps = {
   callRoomTools: (payload: LaboratoryRecord) => Promise<unknown>;
   getActiveProject: (runtime: LaboratoryRecord) => LaboratoryRecord | null;
   getProjectEditOutputDir: (runtime: LaboratoryRecord, project: LaboratoryRecord) => string;
+  handleAssetAsSource: (
+    api: unknown,
+    runtime: LaboratoryRecord,
+    requestId: string,
+    assetId: string
+  ) => Promise<unknown>;
   patchActiveProject: (
     runtime: LaboratoryRecord,
     patcher: (project: LaboratoryRecord) => LaboratoryRecord
@@ -48,6 +54,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     callRoomTools,
     getActiveProject,
     getProjectEditOutputDir,
+    handleAssetAsSource,
     patchActiveProject,
     pushJobState,
     registerJob,
@@ -207,6 +214,15 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     return createdAsset;
   }
 
+  async function activateCreatedAssetAsSource(
+    api: unknown,
+    runtime: LaboratoryRecord,
+    requestId: string,
+    asset: LabAsset
+  ) {
+    await handleAssetAsSource(api, runtime, requestId, asset.id);
+  }
+
   async function exportROIImage(
     api: unknown,
     runtime: LaboratoryRecord,
@@ -341,6 +357,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
           toolId: "ffmpeg",
         },
       });
+      await activateCreatedAssetAsSource(api, runtime, requestId, createdAsset);
 
       pushJobState(api, {
         action: "export-roi-image",
@@ -483,6 +500,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
           toolId: "ffmpeg",
         },
       });
+      await activateCreatedAssetAsSource(api, runtime, requestId, createdAsset);
 
       pushJobState(api, {
         action: "export-frame-grab",
@@ -652,6 +670,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
           toolId: "ffmpeg",
         },
       });
+      await activateCreatedAssetAsSource(api, runtime, requestId, createdAsset);
 
       pushJobState(api, {
         action: "export-enhanced-frame",
@@ -826,6 +845,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
             : {}),
         },
       });
+      await activateCreatedAssetAsSource(api, runtime, requestId, createdAsset);
 
       pushJobState(api, {
         action: "export-timeline-clip",
@@ -988,6 +1008,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
           startOffsetMs: 0,
         },
       });
+      await activateCreatedAssetAsSource(api, runtime, requestId, createdAsset);
 
       pushJobState(api, {
         action: config.action,
@@ -1172,6 +1193,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
           startOffsetMs: 0,
         },
       });
+      await activateCreatedAssetAsSource(api, runtime, requestId, createdAsset);
 
       pushJobState(api, {
         action: "export-audio-track",

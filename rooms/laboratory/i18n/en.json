@@ -1893,7 +1893,6 @@
       "analysisAid": "ANALYSIS AID",
       "preservePitch": "Preserve pitch while changing speed",
       "transportNote": "Slow down to inspect. Speed up to detect patterns.",
-      "dualPreviewLocked": "Dual preview keeps temporal playback fixed at 1x with preserved pitch.",
       "visualizerHint": "A single real-time waveform layer is used below the timeline preview. Spectrum mode draws a live frequency view on the same canvas.",
       "eqTitle": "PARAMETRIC EQ",
       "resetAction": "Reset All",
@@ -2069,22 +2068,6 @@
         "recommendations": "Recommendations"
       }
     },
-    "dualPreview": {
-      "syncSameAxis": "Sync: ✓ Same timeline",
-      "syncOffset": "Sync: Offset {offset} ms",
-      "linkedAudio": "LINKED AUDIO",
-      "audioHint": "Video is master, audio is slave. Separate controls remain intact.",
-      "duration": "Duration",
-      "volume": "Volume",
-      "singlePreview": "Single preview"
-    },
-    "linkedAudio": {
-      "single": "An audio output is available for this source:",
-      "multiple": "Audio outputs are available for this source:",
-      "closeDualPreview": "Return to single preview",
-      "openDualPreview": "🎧 Open with audio",
-      "openAsset": "Open"
-    },
     "analysisActions": {
       "viewReport": "View Report",
       "cancel": "Cancel Analysis",
@@ -2192,7 +2175,6 @@
         "roomApiDisconnected": "Room API bridge is not connected.",
         "assetPreviewUnavailable": "Asset preview is unavailable.",
         "sourcePreviewUnavailable": "Source preview is unavailable.",
-        "dualPreviewSeekUnavailable": "Dual preview seek is unavailable until media is ready.",
         "projectCheckpointSaved": "Project saved with the current checkpoint state."
       },
       "emptyReasons": {

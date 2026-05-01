@@ -1893,7 +1893,6 @@
       "analysisAid": "ANALIZ YARDIMI",
       "preservePitch": "Hiz degisirken pitch korunsun",
       "transportNote": "Incelemek icin yavaslat. Paternleri yakalamak icin hizlandir.",
-      "dualPreviewLocked": "Cift onizleme zamansal oynatmayi pitch korunarak 1x sabit tutar.",
       "visualizerHint": "Timeline preview altinda tek realtime waveform katmani kullanilir. Spectrum modu ayni canvas uzerinde canli frekans gorunumu cizer.",
       "eqTitle": "PARAMETRIK EQ",
       "resetAction": "Tumunu Sifirla",
@@ -2069,22 +2068,6 @@
         "recommendations": "Öneriler"
       }
     },
-    "dualPreview": {
-      "syncSameAxis": "Senkron: ✓ Aynı zaman ekseni",
-      "syncOffset": "Senkron: Ofset {offset} ms",
-      "linkedAudio": "BAGLI SES",
-      "audioHint": "Video master, audio slave. Ayrı kontrol hissi korunur.",
-      "duration": "Süre",
-      "volume": "Ses Duzeyi",
-      "singlePreview": "Tek preview"
-    },
-    "linkedAudio": {
-      "single": "Bu kaynağın ses çıktısı mevcut:",
-      "multiple": "Bu kaynağın ses çıktıları mevcut:",
-      "closeDualPreview": "Tek preview'a dön",
-      "openDualPreview": "🎧 Ses ile birlikte aç",
-      "openAsset": "Aç"
-    },
     "analysisActions": {
       "viewReport": "Raporu Görüntüle",
       "cancel": "Analizi İptal Et",
@@ -2192,7 +2175,6 @@
         "roomApiDisconnected": "Room API bridge bağlı değil.",
         "assetPreviewUnavailable": "Varlık önizlemesi kullanılamıyor.",
         "sourcePreviewUnavailable": "Kaynak preview kullanılamıyor.",
-        "dualPreviewSeekUnavailable": "Medya hazır olana kadar dual preview seek kullanılamaz.",
         "projectCheckpointSaved": "Proje mevcut checkpoint durumu ile kaydedildi."
       },
       "emptyReasons": {

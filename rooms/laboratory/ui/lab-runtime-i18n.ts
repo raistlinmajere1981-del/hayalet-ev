@@ -223,10 +223,6 @@ const RUNTIME_TEXT: Record<string, RuntimeCopyDescriptor> = {
     key: "mediaAnalysis.runtime.controller.sourcePreviewUnavailable",
     fallback: "Source preview is unavailable.",
   },
-  "Dual preview seek is unavailable until media is ready.": {
-    key: "mediaAnalysis.runtime.controller.dualPreviewSeekUnavailable",
-    fallback: "Dual preview seek is unavailable until media is ready.",
-  },
   "Proje mevcut checkpoint durumu ile kaydedildi.": {
     key: "mediaAnalysis.runtime.controller.projectCheckpointSaved",
     fallback: "Project saved with the current checkpoint state.",

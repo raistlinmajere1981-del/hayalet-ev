@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
+import { resolveDrawerMode } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 import { renderProjectWorkspaceOverlay } from "../../rooms/laboratory/ui/project-workspace-overlay.ts";
 import { renderWorkspaceSurface } from "../../rooms/laboratory/ui/workspace-surface.ts";
 
@@ -120,6 +121,133 @@ function createWorkspaceState(overrides: {
 function renderProjectWorkspaceHtml(overrides: Parameters<typeof createWorkspaceState>[0]) {
   return renderProjectWorkspaceOverlay(createWorkspaceState(overrides));
 }
+
+type ProjectImportSourceAction =
+  | "source-pick-local"
+  | "source-download-url"
+  | "source-download-youtube";
+
+function createTrackedProjectImportStore(
+  requestId = "req-project-import",
+  action: ProjectImportSourceAction = "source-download-url"
+) {
+  const store = createLabStore();
+  store.dispatch({
+    type: "snapshot-received",
+    payload: {
+      ready: true,
+      featureId: "media-analysis",
+      activeProjectId: "project-1",
+      projects: [{ id: "project-1", name: "Import Project", hasSource: true }],
+      activeProject: {
+        id: "project-1",
+        name: "Import Project",
+        source: {
+          kind: "video",
+          mode: "url",
+          status: "ready",
+          storedFileName: "source.mp4",
+          storedPath: "/tmp/source.mp4",
+          routeLabel: "Direct URL",
+          metadata: { durationSeconds: 4 },
+          drafts: {},
+        },
+        edit: {},
+        profile: { preflight: {} },
+        process: { records: {} },
+        report: { records: {} },
+      },
+      workbench: {
+        activeModuleId: "media-analysis",
+        availableModuleIds: ["media-analysis"],
+        selectedModuleIds: ["media-analysis"],
+      },
+      sourcePresets,
+      ytDlpForm,
+      toolState: { tools: {} },
+      profileModels: [],
+      sourceProbeStatus: "idle",
+      activityFeed: [],
+    },
+  });
+  store.dispatch({ type: "project-workspace-toggled", open: true });
+  store.dispatch({ type: "drawer-mode-requested", mode: "result" });
+  store.dispatch({ type: "report-overlay-toggled", open: true });
+  store.dispatch({
+    type: "project-import-review-focused",
+    focus: "running",
+    action,
+    requestId,
+  });
+  return store;
+}
+
+for (const action of [
+  "source-pick-local",
+  "source-download-url",
+  "source-download-youtube",
+] as const) {
+  test(`laboratory project import completion closes project management for ${action}`, () => {
+    const store = createTrackedProjectImportStore("req-project-import", action);
+
+    store.dispatch({
+      type: "host-event-received",
+      event: {
+        id: `evt-import-complete-${action}`,
+        kind: "request-result",
+        severity: "success",
+        message: "Project source imported",
+        detail: null,
+        action,
+        stage: "completed",
+        requestId: "req-project-import",
+        timestamp: Date.now(),
+        source: "host",
+        scope: "global",
+        moduleId: null,
+        rawLine: null,
+      },
+    });
+
+    const state = store.getState();
+    assert.equal(state.sourceProbeStatus, "completed");
+    assert.equal(state.ui.projectImport.reviewFocus, "completed");
+    assert.equal(state.ui.projectWorkspaceOpen, false);
+    assert.equal(state.ui.workspace.sourceIntakeCollapsed, true);
+    assert.equal(state.ui.workspace.reportOverlayOpen, false);
+    assert.equal(state.ui.workspace.drawerModeOverride, "setup");
+    assert.equal(resolveDrawerMode(state), "setup");
+  });
+}
+
+test("laboratory project import completion ignores unrelated source requests", () => {
+  const store = createTrackedProjectImportStore();
+
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-import-other-complete",
+      kind: "request-result",
+      severity: "success",
+      message: "URL source downloaded",
+      detail: null,
+      action: "source-download-url",
+      stage: "completed",
+      requestId: "req-other",
+      timestamp: Date.now(),
+      source: "host",
+      scope: "global",
+      moduleId: null,
+      rawLine: null,
+    },
+  });
+
+  const state = store.getState();
+  assert.equal(state.sourceProbeStatus, "completed");
+  assert.equal(state.ui.projectImport.reviewFocus, "running");
+  assert.equal(state.ui.projectWorkspaceOpen, true);
+  assert.equal(state.ui.workspace.reportOverlayOpen, true);
+});
 
 test("laboratory workspace keeps import progress in project management instead of the center surface", () => {
   const state = createWorkspaceState({

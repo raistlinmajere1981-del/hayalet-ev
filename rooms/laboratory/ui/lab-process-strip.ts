@@ -106,43 +106,70 @@ function renderActionOutputNames(state: LabStoreState, assetIds: string[] | unde
   return `${visible}${overflow}`;
 }
 
+function getModuleStatusLabel(status: string | null | undefined, copy: LabI18n) {
+  if (status === null || status === undefined) {
+    return copy.t("mediaAnalysis.strip.moduleStatus.waiting", "Bekliyor");
+  }
+
+  switch (status) {
+    case "running":
+      return copy.t("mediaAnalysis.strip.moduleStatus.running", "İnceleniyor");
+    case "queued":
+      return copy.t("mediaAnalysis.strip.moduleStatus.queued", "Sırada");
+    case "completed":
+    case "ready":
+      return copy.t("mediaAnalysis.strip.moduleStatus.completed", "Tamamlandı");
+    case "failed":
+      return copy.t("mediaAnalysis.strip.moduleStatus.failed", "Kontrol gerekiyor");
+    case "cancelled":
+      return copy.t("mediaAnalysis.strip.moduleStatus.cancelled", "İptal edildi");
+    case "skipped":
+      return copy.t("mediaAnalysis.strip.moduleStatus.skipped", "Atlandı");
+    default:
+      return copy.t("mediaAnalysis.strip.moduleStatus.waiting", "Bekliyor");
+  }
+}
+
+function renderProcessSummaryRows(state: LabStoreState, copy: LabI18n) {
+  const run = state.run;
+  if (run && run.moduleOrder.length > 0) {
+    return `<ul class="labx-strip-expanded__list">
+      ${run.moduleOrder
+        .slice(0, 6)
+        .map(function (moduleId) {
+          const moduleState = run.modules[moduleId];
+          const title = moduleState?.title || moduleState?.id || moduleId;
+          return `<li data-status="${escapeHtml(moduleState?.status ?? "idle")}"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(getModuleStatusLabel(moduleState?.status, copy))}</span></li>`;
+        })
+        .join("")}
+    </ul>`;
+  }
+
+  const recentActions = getUserActions(state).slice(0, 5);
+  if (recentActions.length === 0) {
+    return `<p>${escapeHtml(copy.t("mediaAnalysis.strip.noRecentActions", "Son işlem yok"))}</p>`;
+  }
+
+  return `<ul class="labx-strip-expanded__list">
+    ${recentActions
+      .map(function (action) {
+        const output = renderActionOutputNames(state, action.resultAssetIds);
+        return `<li data-status="${escapeHtml(action.status)}"><strong>${escapeHtml(action.label)}</strong><span>${escapeHtml(action.message ?? action.status)}</span>${output !== "" ? `<em>${escapeHtml(output)}</em>` : ""}</li>`;
+      })
+      .join("")}
+  </ul>`;
+}
+
 function renderExpandedStrip(state: LabStoreState, copy: LabI18n) {
   if (state.ui.workspace.processViewActive !== true) {
     return "";
   }
-  const recentActions = getUserActions(state).slice(0, 5);
-  const rawLog = (state.run?.rawLog ?? []).slice(-6);
-  const actionMarkup =
-    recentActions.length > 0
-      ? `<ul class="labx-strip-expanded__list">
-          ${recentActions
-            .map(function (action) {
-              const output = renderActionOutputNames(state, action.resultAssetIds);
-              return `<li data-status="${escapeHtml(action.status)}"><strong>${escapeHtml(action.label)}</strong><span>${escapeHtml(action.message ?? action.status)}</span>${output !== "" ? `<em>${escapeHtml(output)}</em>` : ""}</li>`;
-            })
-            .join("")}
-        </ul>`
-      : `<p>${escapeHtml(copy.t("mediaAnalysis.strip.noRecentActions", "Son işlem yok"))}</p>`;
-  const rawLogMarkup =
-    rawLog.length > 0
-      ? `<ol class="labx-strip-expanded__log">
-          ${rawLog
-            .map(function (entry) {
-              return `<li>${escapeHtml(entry.rawLine ?? entry.message)}</li>`;
-            })
-            .join("")}
-        </ol>`
-      : `<p>${escapeHtml(copy.t("mediaAnalysis.strip.noRawLog", "Raw log yok"))}</p>`;
 
   return `
     <div class="labx-strip-expanded" data-lab-process-expanded="true">
       <section>
-        <strong>${escapeHtml(copy.t("mediaAnalysis.strip.recentActions", "Son işlemler"))}</strong>
-        ${actionMarkup}
-      </section>
-      <section>
-        <strong>${escapeHtml(copy.t("mediaAnalysis.strip.rawLog", "Raw log"))}</strong>
-        ${rawLogMarkup}
+        <strong>${escapeHtml(copy.t("mediaAnalysis.strip.analysisSummary", "Analiz özeti"))}</strong>
+        ${renderProcessSummaryRows(state, copy)}
       </section>
     </div>
   `;

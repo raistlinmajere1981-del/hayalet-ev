@@ -161,6 +161,18 @@ test("laboratory wireframe v2 renders locked timeline and roi without native pre
   assert.match(surface.main, /data-lab-action="workspace-setting-adjust"/);
 });
 
+test("laboratory running drawer disables cancel while cancellation is pending", () => {
+  const store = createReadyStore();
+  setRun(store.getState());
+  store.dispatch({ type: "analysis-cancel-requested" });
+
+  const drawer = renderLabDrawer(store.getState(), renderWorkspaceSurface(store.getState()));
+
+  assert.match(drawer, /data-lab-action="cancel-analysis"[\s\S]*disabled/);
+  assert.match(drawer, /aria-busy="true"/);
+  assert.match(drawer, /Analiz iptal ediliyor/);
+});
+
 test("laboratory wireframe v2 failed source stays in setup with error viewport and idle strip", () => {
   const store = createReadyStore();
   store.dispatch({

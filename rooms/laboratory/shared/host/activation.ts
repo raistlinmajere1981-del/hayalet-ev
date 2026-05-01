@@ -138,8 +138,8 @@ export function createLaboratoryHostActivation(deps: LaboratoryHostActivationDep
               emitEvent(api, {
                 kind: "interactive-adjustment-applied",
                 action: "host-context",
-                stage: "process",
-                scope: "run",
+                stage: "updated",
+                scope: "global",
                 message: "Analysis controls updated",
                 detail:
                   (typeof scope["hypothesis"] === "string" && scope["hypothesis"].trim() !== ""

@@ -203,7 +203,7 @@ test("laboratory v2 shell renders source intake in the setup drawer and preview 
   assert.match(surface.main, /data-lab-action="timeline-remove-bookmark"/);
   assert.match(surface.main, /labx-timeline__pin-popover/);
   assert.match(surface.main, /Red flash/);
-  assert.match(surface.main, /data-lab-field="workspace\.dualPreviewVolume"/);
+  assert.match(surface.main, /data-lab-field="workspace\.previewVolume"/);
   assert.match(surface.main, /class="labx-workspace-stage"/);
   assert.match(surface.main, /data-lab-workspace-inspector="true"/);
   assert.match(surface.main, /data-open="true"/);
@@ -341,7 +341,7 @@ test("laboratory workspace treats reused local assets as ready sources", () => {
   assert.match(surface.main, /data-lab-action="timeline-remove-bookmark"/);
   assert.match(surface.main, /labx-timeline__pin-popover/);
   assert.match(surface.main, /Audio pop/);
-  assert.match(surface.main, /data-lab-field="workspace\.dualPreviewVolume"/);
+  assert.match(surface.main, /data-lab-field="workspace\.previewVolume"/);
   assert.doesNotMatch(surface.main, /labx-timeline__range-info/);
   assert.doesNotMatch(surface.main, /labx-bookmarks/);
   assert.doesNotMatch(
@@ -732,7 +732,7 @@ test("laboratory workspace panels show snapshot drift as a non-blocking visibili
       action: "process-run",
       stage: "running",
       scope: "run",
-      moduleId: "motion",
+      moduleId: "motion-anomaly",
       rawLine: null,
     },
   });
@@ -749,7 +749,7 @@ test("laboratory workspace panels show snapshot drift as a non-blocking visibili
       action: "process-run",
       stage: "failed",
       scope: "run",
-      moduleId: "visual-signal",
+      moduleId: "frame-consistency",
       rawLine: null,
     },
   });
@@ -777,10 +777,12 @@ test("laboratory workspace panels show snapshot drift as a non-blocking visibili
   const strip = renderLabProcessStrip(state);
 
   assert.match(drawer, /Analysis Progress/);
-  assert.match(drawer, /Pipeline/);
-  assert.match(drawer, /motion/);
-  assert.match(drawer, /visual-signal/);
-  assert.match(drawer, /audio/);
+  assert.match(drawer, /data-lab-running-plan="true"/);
+  assert.match(drawer, /Motion Anomaly/);
+  assert.match(drawer, /Frame Consistency/);
+  assert.match(drawer, /data-status="running"/);
+  assert.doesNotMatch(drawer, /Pipeline/);
+  assert.doesNotMatch(drawer, /Audio investigation/);
   assert.match(strip, /labx-process-strip/);
   assert.doesNotMatch(drawer, /run-intent-analysis/);
 });
@@ -906,7 +908,7 @@ test("laboratory process strip renders recent action history from user actions",
   assert.match(stripHtml, /data-process-view="expanded"/);
   assert.match(stripHtml, /data-lab-process-expanded="true"/);
   assert.match(stripHtml, /aria-expanded="true"/);
-  assert.match(stripHtml, /Son işlemler/);
+  assert.match(stripHtml, /Analiz özeti/);
   assert.match(stripHtml, /Frame alındı/);
   assert.match(stripHtml, /frame_01\.png/);
 });

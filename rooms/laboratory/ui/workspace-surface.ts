@@ -1,13 +1,7 @@
-import {
-  asLabRecord,
-  asNonEmptyString,
-  escapeHtml,
-  formatDurationSeconds,
-} from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, escapeHtml } from "../models/lab-types.js";
 import type {
   LabWorkspaceSurface,
   LabStoreState,
-  LabAsset,
   LabInteractiveSettings,
   LabSourceRetryBlockReason,
   LabWorkspaceControlTab,
@@ -17,17 +11,12 @@ import {
   getActiveSelection,
   getAudioFocusSettings,
   getAvailableOperationCapabilities,
-  getCurrentSourceAsset,
-  getDualPreviewLinkedAudioAssets,
-  getDualPreviewVolume,
   getEffectivePreviewAudioFocusSettings,
   getInspectionMode,
   getInteractiveSettings,
-  getLinkedAudioAssets,
   getMediaViewportState,
   getProjectSource,
   getROIRegions,
-  getSelectedDualPreviewAudioAsset,
   getSourceKind,
   getSourceMode,
   getSourceMetadata,
@@ -35,8 +24,6 @@ import {
   getSourceRetryBlockReason,
   getWaveformTimelineModel,
   getWorkspaceLockState,
-  isDualPreviewActive,
-  isDualPreviewAvailable,
   isLoadedSourceMatchingMode,
   isRunActive,
 } from "../runtime/lab-selectors.js";
@@ -753,173 +740,6 @@ function renderViewportStatePanel(
   `;
 }
 
-function formatDurationMs(durationMs: number | null) {
-  if (typeof durationMs !== "number" || Number.isFinite(durationMs) !== true) {
-    return "00:00";
-  }
-  return formatDurationSeconds(durationMs / 1000);
-}
-
-function renderDualPreviewAudioPane(
-  selectedAudio: LabAsset,
-  linkedAudioAssets: LabAsset[],
-  copy: LabI18n = LAB_FALLBACK_I18N
-) {
-  const metadata = asLabRecord(selectedAudio.metadata);
-  const durationMs =
-    typeof metadata["durationMs"] === "number"
-      ? Math.max(0, Math.round(metadata["durationMs"]))
-      : null;
-  const startOffsetMs =
-    typeof metadata["startOffsetMs"] === "number" ? Math.round(metadata["startOffsetMs"]) : 0;
-  const offsetLabel =
-    startOffsetMs === 0
-      ? copy.t("mediaAnalysis.dualPreview.syncSameAxis", "Senkron: ✓ Aynı zaman ekseni")
-      : copy.t("mediaAnalysis.dualPreview.syncOffset", "Senkron: Ofset {offset} ms", {
-          offset: `${startOffsetMs > 0 ? "+" : ""}${String(startOffsetMs)}`,
-        });
-  return `
-    <aside class="labx-dual-preview-audio">
-      <div class="labx-dual-preview-audio__header">
-        <span class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.dualPreview.linkedAudio", "LINKED AUDIO"))}</span>
-        <strong>${escapeHtml(selectedAudio.name)}</strong>
-        <p class="labx-panel-hint">${escapeHtml(copy.t("mediaAnalysis.dualPreview.audioHint", "Video master, audio slave. Ayrı kontrol hissi korunur."))}</p>
-      </div>
-      ${
-        linkedAudioAssets.length > 1
-          ? `
-      <div class="labx-dual-preview-audio__switcher">
-        ${linkedAudioAssets
-          .map(function (asset) {
-            return `
-              <button
-                class="labx-chip-button"
-                type="button"
-                data-lab-action="workspace-dual-preview-audio-select"
-                data-lab-value="${escapeHtml(asset.id)}"
-                data-selected="${asset.id === selectedAudio.id ? "true" : "false"}"
-              >
-                ${escapeHtml(asset.name)}
-              </button>
-            `;
-          })
-          .join("")}
-      </div>
-      `
-          : ""
-      }
-      <div class="labx-dual-preview-audio__meta">
-        <span>${escapeHtml(offsetLabel)}</span>
-        ${
-          durationMs === null
-            ? ""
-            : `<span>${escapeHtml(copy.t("mediaAnalysis.dualPreview.duration", "Süre"))} ${escapeHtml(formatDurationMs(durationMs))}</span>`
-        }
-      </div>
-      ${renderAudioPreviewMedia(
-        asNonEmptyString(selectedAudio.url) || asNonEmptyString(selectedAudio.localPath) || "",
-        {
-          controls: false,
-          preserveKey: "workspace-preview-dual-audio",
-          role: "dual-preview-slave",
-          className: "labx-preview-media--dual-audio",
-        }
-      )}
-    </aside>
-  `;
-}
-
-function renderDualPreviewTransportBar(
-  state: LabStoreState,
-  durationMs: number,
-  copy: LabI18n = LAB_FALLBACK_I18N
-) {
-  return `
-    <div class="labx-dual-preview-transport">
-      <button
-        class="labx-dual-preview-transport__play"
-        type="button"
-        data-lab-action="dual-preview-toggle-play"
-      >
-        <span data-lab-role="dual-preview-play-label">▶</span>
-      </button>
-      <div class="labx-dual-preview-transport__scrub">
-        <input
-          class="labx-dual-preview-transport__range"
-          type="range"
-          min="0"
-          max="${String(durationMs)}"
-          step="10"
-          value="0"
-          data-lab-action="dual-preview-seek"
-          data-lab-role="dual-preview-progress"
-        />
-        <span class="labx-dual-preview-transport__time" data-lab-role="dual-preview-time">00:00 / ${escapeHtml(formatDurationMs(durationMs))}</span>
-      </div>
-      <label class="labx-dual-preview-transport__volume">
-        <span>${escapeHtml(copy.t("mediaAnalysis.dualPreview.volume", "Volume"))}</span>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.05"
-          value="${String(getDualPreviewVolume(state))}"
-          data-lab-field="workspace.dualPreviewVolume"
-          data-lab-role="dual-preview-volume"
-        />
-      </label>
-      <button
-        class="labx-inline-action labx-inline-action--small"
-        type="button"
-        data-lab-action="workspace-close-dual-preview"
-      >
-        ${escapeHtml(copy.t("mediaAnalysis.dualPreview.singlePreview", "Tek preview"))}
-      </button>
-    </div>
-  `;
-}
-
-function renderDualPreviewShell(
-  previewUrl: string,
-  settings: LabInteractiveSettings,
-  overlayMarkup: string,
-  roiFocusActive: boolean,
-  selectedAudio: LabAsset,
-  linkedAudioAssets: LabAsset[],
-  copy: LabI18n = LAB_FALLBACK_I18N
-) {
-  return `
-    <div class="labx-workspace-preview__dual-shell">
-      <div class="labx-workspace-preview__video-pane">
-        <div
-          class="labx-workspace-preview__video-stage"
-          data-lab-selection-roi-stage="true"
-          data-lab-selection-roi-controls-reserve="0"
-          data-lab-preview-inspection-stage="true"
-          data-lab-preview-inspection-topology="dual-video"
-          data-lab-roi-focus-active="${roiFocusActive ? "true" : "false"}"
-        >
-          <div class="labx-workspace-preview__inspection-viewport" data-lab-preview-inspection-viewport="true">
-            <div class="labx-workspace-preview__inspection-content" data-lab-preview-inspection-content="true">
-              ${renderVideoPreviewMedia(previewUrl, settings, {
-                controls: false,
-                muted: true,
-                preserveKey: "workspace-preview-dual-video",
-                role: "dual-preview-master",
-                className: "labx-preview-media--workspace-video",
-              })}
-              ${overlayMarkup}
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="labx-workspace-preview__audio-pane">
-        ${renderDualPreviewAudioPane(selectedAudio, linkedAudioAssets, copy)}
-      </div>
-    </div>
-  `;
-}
-
 export function renderSourceIntake(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
   const source = getProjectSource(state);
   const sourceKind = getSourceKind(state);
@@ -1131,69 +951,6 @@ export function renderSourceIntake(state: LabStoreState, copy: LabI18n = LAB_FAL
   `;
 }
 
-function renderLinkedAudioBar(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
-  const currentSourceAsset = getCurrentSourceAsset(state);
-  if (currentSourceAsset === null) {
-    return "";
-  }
-
-  const linkedAudioAssets = getLinkedAudioAssets(state, currentSourceAsset.id);
-  if (linkedAudioAssets.length === 0) {
-    return "";
-  }
-  const dualPreviewAvailable = isDualPreviewAvailable(state);
-  const dualPreviewActive = isDualPreviewActive(state);
-  const selectedAudio = getSelectedDualPreviewAudioAsset(state);
-
-  const label =
-    linkedAudioAssets.length === 1
-      ? copy.t("mediaAnalysis.linkedAudio.single", "Bu kaynağın ses çıktısı mevcut:")
-      : copy.t("mediaAnalysis.linkedAudio.multiple", "Bu kaynağın ses çıktıları mevcut:");
-
-  return `
-    <div class="labx-linked-audio-bar">
-      <span class="labx-linked-audio-bar__label">${escapeHtml(label)}</span>
-      <div class="labx-linked-audio-bar__items">
-        ${
-          dualPreviewAvailable
-            ? `
-              <button
-                class="labx-inline-action"
-                type="button"
-                data-lab-action="${dualPreviewActive ? "workspace-close-dual-preview" : "workspace-open-dual-preview"}"
-                data-lab-value="${escapeHtml(selectedAudio?.id || linkedAudioAssets[0]?.id || "")}"
-              >
-                ${escapeHtml(
-                  dualPreviewActive
-                    ? copy.t("mediaAnalysis.linkedAudio.closeDualPreview", "Tek preview'a dön")
-                    : copy.t("mediaAnalysis.linkedAudio.openDualPreview", "🎧 Ses ile birlikte aç")
-                )}
-              </button>
-            `
-            : ""
-        }
-        ${linkedAudioAssets
-          .map(function (asset) {
-            return `
-              <span class="labx-linked-audio-bar__item">
-                <strong>${escapeHtml(asset.name)}</strong>
-                <button
-                  class="labx-inline-action labx-inline-action--small"
-                  type="button"
-                  data-lab-action="asset-preview"
-                  data-lab-value="${escapeHtml(asset.id)}"
-                >
-                  ${escapeHtml(copy.t("mediaAnalysis.linkedAudio.openAsset", "Aç"))}
-                </button>
-              </span>
-            `;
-          })
-          .join("")}
-      </div>
-    </div>
-  `;
-}
-
 function renderCenterSkeleton(copy: LabI18n) {
   return `
     <section
@@ -1323,10 +1080,6 @@ export function renderWorkspaceSurface(
     viewportState === "active" &&
     probeStatus === "completed" &&
     isLoadedSourceMatchingMode(source, sourceMode);
-  const dualPreviewAvailable = isDualPreviewAvailable(state);
-  const dualPreviewActive = sourceReady && isDualPreviewActive(state);
-  const dualPreviewLinkedAudioAssets = getDualPreviewLinkedAudioAssets(state);
-  const selectedDualPreviewAudioAsset = getSelectedDualPreviewAudioAsset(state);
   const hasVisualControls = sourceReady && (sourceKind === "video" || sourceKind === "image");
   const operationCapabilities = sourceReady ? getAvailableOperationCapabilities(state) : [];
   const activeOperationCapabilityId = getOperationCapabilityIdForAction(
@@ -1346,7 +1099,6 @@ export function renderWorkspaceSurface(
             {
               previewTarget: sourceKind === "video" ? "video" : "audio",
               temporalAudioFocus: effectivePreviewAudioFocus,
-              temporalControlsEnabled: dualPreviewActive !== true,
             },
             copy
           ),
@@ -1396,29 +1148,15 @@ export function renderWorkspaceSurface(
         )
       : "";
   const previewMediaMarkup =
-    sourceReady &&
-    dualPreviewActive &&
-    previewUrl !== null &&
-    selectedDualPreviewAudioAsset !== null &&
-    dualPreviewLinkedAudioAssets.length > 0
-      ? renderDualPreviewShell(
-          previewUrl,
-          settings,
-          roiOverlayMarkup,
-          roiFocusActive,
-          selectedDualPreviewAudioAsset,
-          dualPreviewLinkedAudioAssets,
+    viewportState === "active"
+      ? renderPreviewMedia(sourceKind, sourceReady ? previewUrl : null, settings, copy)
+      : renderViewportStatePanel(
+          viewportState === "loading" || viewportState === "error" ? viewportState : "empty",
+          getSourceRetryBlockReason(state),
           copy
-        )
-      : viewportState === "active"
-        ? renderPreviewMedia(sourceKind, sourceReady ? previewUrl : null, settings, copy)
-        : renderViewportStatePanel(
-            viewportState === "loading" || viewportState === "error" ? viewportState : "empty",
-            getSourceRetryBlockReason(state),
-            copy
-          );
+        );
   const previewMarkup =
-    sourceReady && (sourceKind === "video" || sourceKind === "image") && dualPreviewActive !== true
+    sourceReady && (sourceKind === "video" || sourceKind === "image")
       ? `
         <div
           class="labx-workspace-preview__single-stage"
@@ -1437,21 +1175,15 @@ export function renderWorkspaceSurface(
         </div>
       `
       : previewMediaMarkup;
-  const dualPreviewTransport =
-    dualPreviewActive && selectedDualPreviewAudioAsset !== null && durationMs > 0
-      ? renderDualPreviewTransportBar(state, durationMs, copy)
-      : "";
   const selectionPanelMarkup = renderLabWaveformSelectionPanel(timelineModel);
 
   const main = `
     <section class="labx-workspace-main" id="lab-workspace-main">
-      ${renderLinkedAudioBar(state, copy)}
       <div class="labx-workspace-stage" data-lab-workspace-stage="true">
-        <div class="labx-media-workbench" data-lab-media-workbench="true" data-preview-mode="${dualPreviewActive ? "dual" : "single"}">
-          <div class="labx-workspace-preview" id="lab-workspace-preview" data-preview-mode="${dualPreviewActive ? "dual" : "single"}" data-dual-preview-available="${dualPreviewAvailable ? "true" : "false"}">
+        <div class="labx-media-workbench" data-lab-media-workbench="true" data-preview-mode="single">
+          <div class="labx-workspace-preview" id="lab-workspace-preview" data-preview-mode="single">
             ${previewMarkup}
           </div>
-          ${dualPreviewTransport}
           ${durationMs > 0 ? renderLabWaveformTimeline(timelineModel) : ""}
         </div>
         ${inspectorMarkup}

@@ -79,9 +79,7 @@ import {
   getAudioVisualizationArtifact,
   getCurrentReports,
   getCurrentRun,
-  getCurrentSourceAsset,
   getEditPreview,
-  getLinkedAudioAssets,
   getRunSnapshotSummary,
   getSourceKind,
   getSourceMetadata,
@@ -1860,18 +1858,6 @@ export function getTimelineSelection(state: LabStoreState) {
   };
 }
 
-function getRoundedAssetMetadataNumber(
-  asset: LabAsset | null,
-  key: "durationMs" | "startOffsetMs"
-): number | null {
-  if (asset === null) {
-    return null;
-  }
-  const metadata = asLabRecord(asset.metadata);
-  const rawValue = metadata[key];
-  return typeof rawValue === "number" && Number.isFinite(rawValue) ? Math.round(rawValue) : null;
-}
-
 export function getWaveformTimelineModel(state: LabStoreState) {
   const sourceKind = getSourceKind(state);
   const sourceReady = getSourceReady(state);
@@ -1881,25 +1867,11 @@ export function getWaveformTimelineModel(state: LabStoreState) {
       ? Math.max(0, Math.round(metadata["durationSeconds"] * 1000))
       : 0;
   const selection = getTimelineSelection(state);
-  const dualPreviewActive = isDualPreviewActive(state);
-  const selectedAudioAsset = dualPreviewActive ? getSelectedDualPreviewAudioAsset(state) : null;
-  const rawWaveformOffsetMs =
-    getRoundedAssetMetadataNumber(selectedAudioAsset, "startOffsetMs") || 0;
-  const selectedAudioDurationMs = getRoundedAssetMetadataNumber(selectedAudioAsset, "durationMs");
-  const waveformContentDurationMs =
-    selectedAudioAsset !== null && selectedAudioDurationMs !== null
-      ? Math.max(0, selectedAudioDurationMs)
-      : durationMs;
-  const waveformVisibleStartMs = Math.max(0, rawWaveformOffsetMs);
-  const waveformVisibleEndMs = Math.min(
-    durationMs,
-    rawWaveformOffsetMs + waveformContentDurationMs
-  );
-  const waveformContentVisibleStartMs = Math.max(0, 0 - rawWaveformOffsetMs);
-  const waveformContentVisibleEndMs = Math.max(
-    waveformContentVisibleStartMs,
-    Math.min(waveformContentDurationMs, durationMs - rawWaveformOffsetMs)
-  );
+  const waveformContentDurationMs = durationMs;
+  const waveformVisibleStartMs = 0;
+  const waveformVisibleEndMs = durationMs;
+  const waveformContentVisibleStartMs = 0;
+  const waveformContentVisibleEndMs = waveformContentDurationMs;
   const waveformWindowDurationMs =
     durationMs > 0 ? Math.max(0, waveformVisibleEndMs - waveformVisibleStartMs) : 0;
   const waveformCropStartRatio =
@@ -1929,17 +1901,12 @@ export function getWaveformTimelineModel(state: LabStoreState) {
       ? Math.max(1, waveformInspectionLensWindowEndMs - waveformInspectionLensWindowStartMs)
       : 0;
   const waveformInspectionLensContentStartMs =
-    hasSelectionInspectionLens === true
-      ? Math.max(0, waveformInspectionLensWindowStartMs - rawWaveformOffsetMs)
-      : 0;
+    hasSelectionInspectionLens === true ? Math.max(0, waveformInspectionLensWindowStartMs) : 0;
   const waveformInspectionLensContentEndMs =
     hasSelectionInspectionLens === true
       ? Math.max(
           waveformInspectionLensContentStartMs,
-          Math.min(
-            waveformContentDurationMs,
-            waveformInspectionLensWindowEndMs - rawWaveformOffsetMs
-          )
+          Math.min(waveformContentDurationMs, waveformInspectionLensWindowEndMs)
         )
       : 0;
   const waveformInspectionLensCropStartRatio =
@@ -1970,12 +1937,10 @@ export function getWaveformTimelineModel(state: LabStoreState) {
     activeSuggestionPreview: getActiveSuggestionPreview(state),
     audioFocus: getEffectivePreviewAudioFocusSettings(state),
     bookmarks: getBookmarks(state),
-    dualPreviewActive,
     durationMs,
     endMs: selection.endMs,
     inspectionMode: getInspectionMode(state),
     interpretationItems: getInterpretationItems(state),
-    linkedAudioAssetId: selectedAudioAsset?.id || null,
     roiFocusActive: getRoiFocusActive(state),
     selectionMicroZoomOpen: state.ui.workspace.selectionMicroZoomOpen,
     selectionSuggestions: getWorkspaceSurfaceSuggestions(state),
@@ -1983,26 +1948,20 @@ export function getWaveformTimelineModel(state: LabStoreState) {
     startMs: selection.startMs,
     sourceKind,
     timelineHighlight: state.ui.projectWorkspaceTimelineHighlight,
-    transportVolume: state.ui.workspace.dualPreviewVolume,
+    transportVolume: getPreviewVolume(state),
     visualizationArtifact: getAudioVisualizationArtifact(state),
     visualizationMode: state.ui.workspace.audioFocus.visualizationMode,
     waveformContentDurationMs,
     waveformCropEndRatio,
     waveformCropStartRatio,
-    waveformOffsetMs: rawWaveformOffsetMs,
+    waveformOffsetMs: 0,
     waveformSourceLabel:
-      selectedAudioAsset?.name ||
-      (sourceKind === "audio"
+      sourceKind === "audio"
         ? "Source audio"
         : sourceKind === "video"
           ? "Embedded audio"
-          : "Waveform"),
-    waveformSyncLabel:
-      selectedAudioAsset === null
-        ? "Preview and waveform share the same master axis."
-        : rawWaveformOffsetMs === 0
-          ? "Linked audio is aligned to the master axis."
-          : `Linked audio offset ${rawWaveformOffsetMs > 0 ? "+" : ""}${String(rawWaveformOffsetMs)} ms`,
+          : "Waveform",
+    waveformSyncLabel: "Preview and waveform share the same master axis.",
     waveformInspectionLens: {
       cropEndRatio: waveformInspectionLensCropEndRatio,
       cropStartRatio: waveformInspectionLensCropStartRatio,
@@ -2041,58 +2000,11 @@ export function getAudioFocusSettings(state: LabStoreState) {
 }
 
 export function getEffectivePreviewAudioFocusSettings(state: LabStoreState) {
-  const normalizedSettings = getAudioFocusSettings(state);
-  if (isDualPreviewActive(state) !== true) {
-    return normalizedSettings;
-  }
-  return {
-    ...normalizedSettings,
-    playbackRate: 1,
-    preservePitch: true,
-  };
+  return getAudioFocusSettings(state);
 }
 
-export function getDualPreviewEnabled(state: LabStoreState) {
-  return state.ui.workspace.dualPreviewEnabled === true;
-}
-
-export function getDualPreviewVolume(state: LabStoreState) {
-  return Math.max(0, Math.min(1, state.ui.workspace.dualPreviewVolume));
-}
-
-export function getDualPreviewLinkedAudioAssets(state: LabStoreState): LabAsset[] {
-  const currentSourceAsset = getCurrentSourceAsset(state);
-  if (
-    currentSourceAsset === null ||
-    getSourceKind(state) !== "video" ||
-    getSourceReady(state) !== true
-  ) {
-    return [];
-  }
-  return getLinkedAudioAssets(state, currentSourceAsset.id);
-}
-
-export function getSelectedDualPreviewAudioAsset(state: LabStoreState): LabAsset | null {
-  const linkedAudioAssets = getDualPreviewLinkedAudioAssets(state);
-  if (linkedAudioAssets.length === 0) {
-    return null;
-  }
-  const selectedId = asNonEmptyString(state.ui.workspace.dualPreviewAudioAssetId);
-  return (
-    linkedAudioAssets.find(function (asset) {
-      return asset.id === selectedId;
-    }) ||
-    linkedAudioAssets[0] ||
-    null
-  );
-}
-
-export function isDualPreviewAvailable(state: LabStoreState) {
-  return getDualPreviewLinkedAudioAssets(state).length > 0;
-}
-
-export function isDualPreviewActive(state: LabStoreState) {
-  return getDualPreviewEnabled(state) && isDualPreviewAvailable(state);
+export function getPreviewVolume(state: LabStoreState) {
+  return Math.max(0, Math.min(1, state.ui.workspace.previewVolume));
 }
 
 export function getBookmarks(state: LabStoreState) {

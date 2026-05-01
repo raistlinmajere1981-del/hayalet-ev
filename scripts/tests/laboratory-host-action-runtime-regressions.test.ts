@@ -6,6 +6,7 @@ import { createLaboratoryHostActivation } from "../../rooms/laboratory/shared/ho
 import { createMediaExportActionRuntime } from "../../rooms/laboratory/main-functions/media-analysis/host/action-handlers-export.ts";
 import { createMediaLocalSourceIntakeRuntime } from "../../rooms/laboratory/main-functions/media-analysis/host/source-intake-local.ts";
 import { createLaboratoryJobStateRuntime } from "../../rooms/laboratory/shared/host/job-state.ts";
+import { createLaboratoryProcessRuntime } from "../../rooms/laboratory/shared/host/process-runtime.ts";
 import { syncSourceLabAssetForProject } from "../../rooms/laboratory/shared/host/lab-assets.ts";
 import { createLaboratoryReportExportRuntime } from "../../rooms/laboratory/shared/host/reporting-export.ts";
 import {
@@ -41,6 +42,7 @@ test("laboratory host utility helpers preserve file, timestamp, and clamp golden
 
 test("laboratory host activation unwraps host-context room-event payloads before saving context", () => {
   const savedContexts: Array<Record<string, unknown>> = [];
+  const emittedEvents: Array<Record<string, unknown>> = [];
   const pushCalls: Array<string | null> = [];
 
   let currentContext: Record<string, unknown> = {};
@@ -49,7 +51,9 @@ test("laboratory host activation unwraps host-context room-event payloads before
     createRuntimeState() {
       return {};
     },
-    emitEvent() {},
+    emitEvent(_api, payload) {
+      emittedEvents.push(payload);
+    },
     ensureHydrated: async function () {},
     ensureRoomToolsSubscription: function () {},
     handleMediaAction: async function () {},
@@ -82,6 +86,12 @@ test("laboratory host activation unwraps host-context room-event payloads before
     workbench: {
       activeModuleId: "audio-analysis",
       selectedModuleIds: ["audio-analysis"],
+      analysisScope: {
+        intentIds: ["audio-investigation"],
+      },
+      moduleToggles: {
+        "audio-analysis": true,
+      },
     },
   };
   runtime.onRoomEvent({
@@ -91,6 +101,8 @@ test("laboratory host activation unwraps host-context room-event payloads before
 
   assert.deepEqual(savedContexts.at(-1), nestedContext);
   assert.deepEqual(pushCalls, [null]);
+  assert.equal(emittedEvents.at(-1)?.["action"], "host-context");
+  assert.equal(emittedEvents.at(-1)?.["scope"], "global");
 
   const directContext = {
     type: "host-context",
@@ -99,12 +111,622 @@ test("laboratory host activation unwraps host-context room-event payloads before
     workbench: {
       activeModuleId: "media-analysis",
       selectedModuleIds: ["media-analysis"],
+      analysisScope: {
+        intentIds: ["visual-inspection"],
+      },
+      moduleToggles: {
+        "media-analysis": true,
+      },
     },
   };
   runtime.onRoomEvent(directContext);
 
   assert.deepEqual(savedContexts.at(-1), directContext);
   assert.deepEqual(pushCalls, [null, null]);
+  assert.equal(emittedEvents.at(-1)?.["action"], "host-context");
+  assert.equal(emittedEvents.at(-1)?.["scope"], "global");
+});
+
+test("laboratory process runtime keeps cancelled runs cancelled after the active module resolves", async () => {
+  function toRecord(value: unknown): Record<string, unknown> {
+    return value !== null && typeof value === "object" && Array.isArray(value) === false
+      ? (value as Record<string, unknown>)
+      : {};
+  }
+
+  function asNonEmptyString(value: unknown) {
+    return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+  }
+
+  function updateProcessModule(
+    processRecord: Record<string, unknown>,
+    moduleId: string,
+    patch: Record<string, unknown>
+  ) {
+    const modules = Array.isArray(processRecord["modules"])
+      ? (processRecord["modules"] as Array<Record<string, unknown>>)
+      : [];
+    const moduleIndex = modules.findIndex(function (entry) {
+      return entry["id"] === moduleId;
+    });
+    const nextModule = {
+      ...(moduleIndex >= 0 ? modules[moduleIndex] : { id: moduleId }),
+      ...patch,
+    };
+    if (moduleIndex >= 0) {
+      modules[moduleIndex] = nextModule;
+    } else {
+      modules.push(nextModule);
+    }
+    processRecord["modules"] = modules;
+    return nextModule;
+  }
+
+  let activeProject: Record<string, unknown> = {
+    id: "project-cancel-process",
+    slug: "project-cancel-process",
+    source: {
+      kind: "audio",
+      status: "ready",
+      storedPath: "/tmp/lab-audio.wav",
+    },
+    edit: {},
+    process: {
+      records: {},
+    },
+    report: {
+      records: {},
+    },
+    workbench: {
+      analysisScope: {
+        focus: "audio",
+        intentIds: ["audio-investigation"],
+      },
+    },
+    assets: [],
+  };
+  const runtime: Record<string, unknown> = {
+    jobs: {},
+  };
+  const pushedJobStates: Array<Record<string, unknown>> = [];
+  let resolveRunner: ((value: unknown) => void) | null = null;
+  let resolveRunnerStarted: (() => void) | null = null;
+  const runnerOutput = new Promise<unknown>(function (resolve) {
+    resolveRunner = resolve;
+  });
+  const runnerStarted = new Promise<void>(function (resolve) {
+    resolveRunnerStarted = resolve;
+  });
+  let releaseCancelJobs: (() => void) | null = null;
+  const cancelJobsBlocked = new Promise<void>(function (resolve) {
+    releaseCancelJobs = resolve;
+  });
+
+  const processRuntime = createLaboratoryProcessRuntime({
+    appendProcessEvent(record, event) {
+      record["events"] = (Array.isArray(record["events"]) ? record["events"] : []).concat(event);
+      return record;
+    },
+    asNonEmptyString,
+    buildAudioAnalysisModules() {
+      return [{ id: "audio-core", title: "Audio Core", status: "queued" }];
+    },
+    buildMediaProcessModules() {
+      return [];
+    },
+    async cancelProcessJobsForProject(_api, runtimeRecord, projectId, requestId) {
+      await cancelJobsBlocked;
+      const jobs = toRecord(runtimeRecord["jobs"]);
+      Object.keys(jobs).forEach(function (jobId) {
+        const job = toRecord(jobs[jobId]);
+        if (job["projectId"] !== projectId) {
+          return;
+        }
+        pushedJobStates.push({
+          requestId,
+          jobId,
+          action: job["action"],
+          projectId,
+          featureStage: "process",
+          stage: "cancelled",
+        });
+        delete jobs[jobId];
+      });
+    },
+    clearJob(runtimeRecord, jobId) {
+      delete toRecord(runtimeRecord["jobs"])[jobId];
+    },
+    clone<T>(value: T): T {
+      return structuredClone(value);
+    },
+    composeFeatureReport() {
+      return { summary: "report skipped" };
+    },
+    createEmptyFeatureProcessRecord(featureId) {
+      return { featureId, status: "idle", events: [], modules: [] };
+    },
+    createEmptyProcessRun(featureId) {
+      return { featureId, status: "idle", events: [], modules: [] };
+    },
+    ensureEditToolReady() {},
+    ensureProcessJobSlotAvailable() {},
+    async ensureProjectDirectories() {},
+    getActiveProject() {
+      return activeProject;
+    },
+    getFeatureProcessDir() {
+      return "/tmp";
+    },
+    getFeatureProcessJobAction(featureId) {
+      return featureId === "audio-analysis" ? "audio-process-run" : "process-run";
+    },
+    getFeatureProcessRecord(project, featureId) {
+      return toRecord(toRecord(toRecord(project["process"])["records"])[featureId]);
+    },
+    async patchActiveProject(_runtime, patcher) {
+      activeProject = patcher(activeProject);
+    },
+    pushJobState(_api, payload) {
+      pushedJobStates.push({ ...payload });
+    },
+    registerJob(runtimeRecord, job) {
+      toRecord(runtimeRecord["jobs"])[String(job["jobId"])] = job;
+    },
+    resolveProcessRunFeatureIds() {
+      return ["audio-analysis"];
+    },
+    resolveProcessWorkbench(project) {
+      return toRecord(project["workbench"]);
+    },
+    resolveProcessTarget() {
+      return {
+        requestedMode: "original",
+        mode: "original",
+        outputId: null,
+        signature: "audio-signature",
+        label: "Audio source",
+        fileName: "lab-audio.wav",
+        mimeType: "audio/wav",
+        path: "/tmp/lab-audio.wav",
+        entries: [],
+      };
+    },
+    sanitizeFileSegment(value, fallbackValue) {
+      return asNonEmptyString(value.replace(/[^a-z0-9-]+/gi, "-").toLowerCase()) || fallbackValue;
+    },
+    setFeatureProcessRecord(project, featureId, record) {
+      const processState = toRecord(project["process"]);
+      const records = toRecord(processState["records"]);
+      records[featureId] = record;
+      project["process"] = {
+        ...processState,
+        records,
+      };
+    },
+    setFeatureReportRecord(project, featureId, report) {
+      const reportState = toRecord(project["report"]);
+      const records = toRecord(reportState["records"]);
+      records[featureId] = report;
+      project["report"] = {
+        ...reportState,
+        records,
+      };
+    },
+    toRecord,
+    updateProcessRecordPercent() {},
+    markFeatureReportStale() {},
+    audioFeatureId: "audio-analysis",
+    buildProcessSpeechAvailability() {
+      return {};
+    },
+    clampProfileTranscriptSampleSeconds() {
+      return 30;
+    },
+    createProcessArtifact(moduleId, kind, path, title, metadata) {
+      return { id: `${moduleId}-${kind}`, moduleId, kind, path, title, metadata };
+    },
+    createProcessFinding(
+      moduleId,
+      kind,
+      level,
+      confidence,
+      title,
+      detail,
+      evidenceCount,
+      artifactIds
+    ) {
+      return {
+        id: `${moduleId}-${kind}`,
+        moduleId,
+        kind,
+        level,
+        confidence,
+        title,
+        detail,
+        evidenceCount,
+        artifactIds,
+      };
+    },
+    async generateProcessFramePreviewArtifact() {
+      return null;
+    },
+    async generateProcessMetadataArtifact() {
+      return null;
+    },
+    async generateProcessSpectrogram() {
+      return null;
+    },
+    async generateProcessVisualTransformArtifact() {
+      return null;
+    },
+    getAudioAnalysisModuleProcessDir() {
+      return "/tmp";
+    },
+    getAudioAnalysisModuleRunner() {
+      return async function () {
+        resolveRunnerStarted?.();
+        return runnerOutput;
+      };
+    },
+    async maybeRunWhisperProfileSample() {
+      return null;
+    },
+    normalizeProcessArtifact(rawValue) {
+      return toRecord(rawValue);
+    },
+    normalizeProcessFinding(rawValue) {
+      return toRecord(rawValue);
+    },
+    partitionVisualAnalysisModuleIds() {
+      return {};
+    },
+    resolveEnabledVisualAnalysisModuleIds() {
+      return [];
+    },
+    async runAudioStructureProbe() {
+      return null;
+    },
+    async runVideoStructureProbe() {
+      return null;
+    },
+    updateProcessModule,
+    async writeJsonFile() {},
+    async writeTextFile() {},
+  });
+
+  const runPromise = processRuntime.runFeatureProcess(
+    {},
+    runtime,
+    "req-process-run",
+    "audio-analysis",
+    activeProject["workbench"]
+  );
+  await runnerStarted;
+
+  const cancelPromise = processRuntime.cancelFeatureProcess(
+    {},
+    runtime,
+    "req-process-cancel",
+    "audio-analysis",
+    activeProject["workbench"]
+  );
+  const immediateCancelResult = await Promise.race([
+    cancelPromise,
+    new Promise<string>(function (resolve) {
+      setTimeout(function () {
+        resolve("blocked");
+      }, 0);
+    }),
+  ]);
+  assert.deepEqual(immediateCancelResult, { cancelled: true });
+  assert.equal(
+    toRecord(toRecord(toRecord(activeProject["process"])["records"])["audio-analysis"])["status"],
+    "cancelled"
+  );
+  releaseCancelJobs?.();
+  await cancelJobsBlocked;
+  await Promise.resolve();
+  resolveRunner?.({ status: "ready", summary: "late success", findings: [], artifacts: [] });
+  const result = await runPromise;
+
+  const processRecord = toRecord(
+    toRecord(toRecord(activeProject["process"])["records"])["audio-analysis"]
+  );
+  assert.deepEqual(result, { cancelled: true });
+  assert.equal(processRecord["status"], "cancelled");
+  assert.equal(processRecord["jobId"], null);
+  assert.equal(processRecord["requestId"], null);
+  assert.equal(
+    pushedJobStates.some(function (entry) {
+      return entry["stage"] === "completed";
+    }),
+    false
+  );
+  assert.equal(
+    pushedJobStates.some(function (entry) {
+      return entry["stage"] === "cancelled" && entry["action"] === "audio-process-run";
+    }),
+    true
+  );
+});
+
+test("laboratory process runtime registers generated artifacts as project assets", async () => {
+  function toRecord(value: unknown): Record<string, unknown> {
+    return value !== null && typeof value === "object" && Array.isArray(value) === false
+      ? (value as Record<string, unknown>)
+      : {};
+  }
+
+  function asNonEmptyString(value: unknown) {
+    return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+  }
+
+  function updateProcessModule(
+    processRecord: Record<string, unknown>,
+    moduleId: string,
+    patch: Record<string, unknown>
+  ) {
+    const modules = Array.isArray(processRecord["modules"])
+      ? (processRecord["modules"] as Array<Record<string, unknown>>)
+      : [];
+    const moduleIndex = modules.findIndex(function (entry) {
+      return entry["id"] === moduleId;
+    });
+    const nextModule = {
+      ...(moduleIndex >= 0 ? modules[moduleIndex] : { id: moduleId }),
+      ...patch,
+    };
+    if (moduleIndex >= 0) {
+      modules[moduleIndex] = nextModule;
+    } else {
+      modules.push(nextModule);
+    }
+    processRecord["modules"] = modules;
+    return nextModule;
+  }
+
+  let activeProject: Record<string, unknown> = {
+    id: "project-artifact-process",
+    slug: "project-artifact-process",
+    name: "Artifact Process Project",
+    source: {
+      kind: "video",
+      mode: "local",
+      status: "ready",
+      storedPath: "/tmp/source.mp4",
+      metadata: {},
+    },
+    edit: {},
+    process: { records: {} },
+    report: { records: {} },
+    workbench: {
+      analysisScope: {
+        hypothesis: "check motion",
+        intentIds: ["visual-inspection"],
+      },
+    },
+    assets: [],
+  };
+  const runtime: Record<string, unknown> = {
+    jobs: {},
+  };
+
+  const processRuntime = createLaboratoryProcessRuntime({
+    appendProcessEvent(record, event) {
+      record["events"] = (Array.isArray(record["events"]) ? record["events"] : []).concat(event);
+      return record;
+    },
+    asNonEmptyString,
+    buildAudioAnalysisModules() {
+      return [];
+    },
+    buildMediaProcessModules() {
+      return [];
+    },
+    async cancelProcessJobsForProject() {},
+    clearJob(runtimeRecord, jobId) {
+      delete toRecord(runtimeRecord["jobs"])[jobId];
+    },
+    clone<T>(value: T): T {
+      return structuredClone(value);
+    },
+    composeFeatureReport() {
+      return { status: "ready" };
+    },
+    createEmptyFeatureProcessRecord(featureId) {
+      return { featureId, status: "idle", events: [], modules: [] };
+    },
+    createEmptyProcessRun(featureId) {
+      return { featureId, status: "idle", events: [], modules: [] };
+    },
+    ensureEditToolReady() {},
+    ensureProcessJobSlotAvailable() {},
+    async ensureProjectDirectories() {},
+    getActiveProject() {
+      return activeProject;
+    },
+    getFeatureProcessDir() {
+      return "/tmp/process";
+    },
+    getFeatureProcessJobAction() {
+      return "process-run";
+    },
+    getFeatureProcessRecord(project, featureId) {
+      return toRecord(toRecord(toRecord(project["process"])["records"])[featureId]);
+    },
+    async patchActiveProject(_runtime, patcher) {
+      activeProject = patcher(activeProject);
+    },
+    pushJobState() {},
+    registerJob(runtimeRecord, job) {
+      toRecord(runtimeRecord["jobs"])[String(job["jobId"])] = job;
+    },
+    resolveProcessRunFeatureIds() {
+      return ["media-analysis"];
+    },
+    resolveProcessWorkbench(project) {
+      return toRecord(project["workbench"]);
+    },
+    resolveProcessTarget() {
+      return {
+        requestedMode: "original",
+        mode: "original",
+        outputId: null,
+        signature: "video-signature",
+        label: "Video source",
+        fileName: "source.mp4",
+        mimeType: "video/mp4",
+        path: "/tmp/source.mp4",
+        entries: [],
+      };
+    },
+    sanitizeFileSegment(value, fallbackValue) {
+      return asNonEmptyString(value.replace(/[^a-z0-9-]+/gi, "-").toLowerCase()) || fallbackValue;
+    },
+    setFeatureProcessRecord(project, featureId, record) {
+      const processState = toRecord(project["process"]);
+      const records = toRecord(processState["records"]);
+      records[featureId] = record;
+      project["process"] = { ...processState, records };
+    },
+    setFeatureReportRecord(project, featureId, report) {
+      const reportState = toRecord(project["report"]);
+      const records = toRecord(reportState["records"]);
+      records[featureId] = report;
+      project["report"] = { ...reportState, records };
+    },
+    toRecord,
+    updateProcessRecordPercent() {},
+    markFeatureReportStale() {},
+    audioFeatureId: "audio-analysis",
+    buildProcessSpeechAvailability() {
+      return {};
+    },
+    clampProfileTranscriptSampleSeconds() {
+      return 30;
+    },
+    createProcessArtifact(moduleId, kind, path, title, metadata) {
+      return {
+        id: `${moduleId}-${kind}`,
+        moduleId,
+        kind,
+        path,
+        fileName: "metadata.json",
+        title,
+        metadata,
+      };
+    },
+    createProcessFinding(
+      moduleId,
+      kind,
+      level,
+      confidence,
+      title,
+      detail,
+      evidenceCount,
+      artifactIds
+    ) {
+      return {
+        id: `${moduleId}-${kind}`,
+        moduleId,
+        kind,
+        level,
+        confidence,
+        title,
+        detail,
+        evidenceCount,
+        artifactIds,
+      };
+    },
+    async generateProcessFramePreviewArtifact() {
+      return null;
+    },
+    async generateProcessMetadataArtifact() {
+      return {
+        id: "artifact-metadata-1",
+        moduleId: "intake",
+        kind: "metadata",
+        label: "Metadata Snapshot",
+        fileName: "source-metadata.json",
+        path: "/tmp/process/source-metadata.json",
+        status: "ready",
+        metadata: { format: "json" },
+      };
+    },
+    async generateProcessSpectrogram() {
+      return null;
+    },
+    async generateProcessVisualTransformArtifact() {
+      return null;
+    },
+    getAudioAnalysisModuleProcessDir() {
+      return "/tmp";
+    },
+    getAudioAnalysisModuleRunner() {
+      return async function () {
+        return { findings: [], artifacts: [], warnings: [] };
+      };
+    },
+    async maybeRunWhisperProfileSample() {
+      return null;
+    },
+    normalizeProcessArtifact(rawValue) {
+      return toRecord(rawValue);
+    },
+    normalizeProcessFinding(rawValue) {
+      return toRecord(rawValue);
+    },
+    partitionVisualAnalysisModuleIds() {
+      return {};
+    },
+    resolveEnabledVisualAnalysisModuleIds() {
+      return [];
+    },
+    async runAudioStructureProbe() {
+      return null;
+    },
+    async runVideoStructureProbe() {
+      return null;
+    },
+    updateProcessModule,
+    async writeJsonFile() {},
+    async writeTextFile() {},
+  });
+
+  await processRuntime.runFeatureProcess(
+    {},
+    runtime,
+    "req-process-artifact",
+    "media-analysis",
+    activeProject["workbench"]
+  );
+
+  const assets = Array.isArray(activeProject["assets"])
+    ? (activeProject["assets"] as Array<Record<string, unknown>>)
+    : [];
+  const artifactAsset = assets.find(function (asset) {
+    return asset["id"] === "process-artifact-artifact-metadata-1";
+  });
+
+  assert.equal(artifactAsset?.["type"], "artifact");
+  assert.equal(artifactAsset?.["name"], "source-metadata.json");
+  assert.equal(artifactAsset?.["localPath"], "/tmp/process/source-metadata.json");
+  assert.equal(toRecord(artifactAsset?.["metadata"])["processArtifactId"], "artifact-metadata-1");
+  assert.equal(toRecord(artifactAsset?.["metadata"])["featureId"], "media-analysis");
+  assert.deepEqual(artifactAsset?.["intentIds"], ["visual-inspection"]);
+
+  const reportAssets = assets.filter(function (asset) {
+    return asset["type"] === "report";
+  });
+  assert.equal(reportAssets.length, 2);
+  assert.deepEqual(
+    reportAssets.map(function (asset) {
+      return asset["name"];
+    }),
+    ["Media Analysis User Report", "Media Analysis AI Report"]
+  );
+  assert.equal(toRecord(reportAssets[0]?.["metadata"])["format"], "inline");
+  assert.equal(toRecord(reportAssets[0]?.["metadata"])["reportView"], "user");
 });
 
 test("laboratory host action composition is extracted into a shared host boundary", async () => {
@@ -299,6 +921,7 @@ test("laboratory media export runtime cancels only prior export jobs for every e
   ) {
     const cancelledJobIds: string[] = [];
     const pushedJobStates: Array<Record<string, unknown>> = [];
+    const sourceActivationAssetIds: string[] = [];
     let activeProject: Record<string, unknown> = {
       id: "project-1",
       source: {
@@ -348,6 +971,9 @@ test("laboratory media export runtime cancels only prior export jobs for every e
       },
       getProjectEditOutputDir() {
         return "/tmp";
+      },
+      async handleAssetAsSource(_api, _runtime, _requestId, assetId) {
+        sourceActivationAssetIds.push(assetId);
       },
       async patchActiveProject(_runtime, patcher) {
         const nextProject = patcher(activeProject);
@@ -519,6 +1145,7 @@ test("laboratory media export runtime cancels only prior export jobs for every e
         return payload["stage"] === "completed";
       }) || null;
     assert.deepEqual(completedPayload?.["resultAssetIds"], [outputAsset?.["id"]]);
+    assert.deepEqual(sourceActivationAssetIds, [outputAsset?.["id"]]);
   }
 
   await runExportCase("image", function (exportRuntime, runtime) {
@@ -598,6 +1225,7 @@ test("laboratory media export runtime preserves payload intent ids before workbe
         getProjectEditOutputDir() {
           return "/tmp";
         },
+        async handleAssetAsSource() {},
         async patchActiveProject(_runtime, patcher) {
           const nextProject = patcher(activeProject);
           activeProject = {
@@ -731,6 +1359,7 @@ test("laboratory audio variant exports preserve filter and lineage metadata", as
       getProjectEditOutputDir() {
         return "/tmp";
       },
+      async handleAssetAsSource() {},
       async patchActiveProject(_runtime, patcher) {
         const nextProject = patcher(activeProject);
         activeProject = {
@@ -848,6 +1477,7 @@ test("laboratory ROI exports normalize crop pixels and preserve operation lineag
     getProjectEditOutputDir() {
       return "/tmp";
     },
+    async handleAssetAsSource() {},
     async patchActiveProject(_runtime, patcher) {
       const nextProject = patcher(activeProject);
       activeProject = {

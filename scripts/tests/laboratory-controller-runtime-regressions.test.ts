@@ -1298,12 +1298,33 @@ test("laboratory run controller routes topbar pills and cancel through v2 contra
     clickListener?.({ target: new TestElement("cancel-analysis") } as Event);
 
     assert.equal(sentEvents.length, 1);
+    assert.equal(store.getState().ui.analysisCancelPending, true);
     assert.equal(sentEvents[0]?.eventName, "media-action");
     assert.equal(sentEvents[0]?.payload["action"], "process-cancel");
     assert.equal(
       (sentEvents[0]?.payload["payload"] as Record<string, unknown>)["featureId"],
       "media-analysis"
     );
+    clickListener?.({ target: new TestElement("cancel-analysis") } as Event);
+    assert.equal(sentEvents.length, 1);
+    store.dispatch({
+      type: "host-event-received",
+      event: {
+        id: "evt-run-cancelled",
+        kind: "activity",
+        severity: "warning",
+        message: "Analiz iptal edildi",
+        detail: null,
+        timestamp: Date.now(),
+        source: "host",
+        action: "process-run",
+        stage: "cancelled",
+        scope: "run",
+        moduleId: null,
+        rawLine: null,
+      },
+    });
+    assert.equal(store.getState().ui.analysisCancelPending, false);
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;
@@ -2457,6 +2478,70 @@ test("laboratory project workspace opens the first selected report asset preview
 
     assert.equal(store.getState().ui.activeAssetPreviewId, "asset-report-1");
     assert.equal(store.getState().ui.projectWorkspaceOpen, false);
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
+test("laboratory project workspace opens inline report assets in the report overlay", () => {
+  const originalElement = globalThis.Element;
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  class TestElement extends FakeActionElement {}
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+    store.dispatch({ type: "project-workspace-toggled", open: true });
+    store.dispatch({
+      type: "asset-added",
+      asset: {
+        id: "asset-report-inline",
+        type: "report",
+        name: "Media Analysis User Report",
+        createdAt: 200,
+        metadata: { format: "inline", reportView: "user" },
+      },
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent() {},
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
+
+    clickListener?.({
+      target: new TestElement("project-workspace-open-report", "asset-report-inline"),
+    } as Event);
+
+    assert.equal(store.getState().ui.activeAssetPreviewId, null);
+    assert.equal(store.getState().ui.projectWorkspaceOpen, false);
+    assert.equal(store.getState().ui.workspace.reportOverlayOpen, true);
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;

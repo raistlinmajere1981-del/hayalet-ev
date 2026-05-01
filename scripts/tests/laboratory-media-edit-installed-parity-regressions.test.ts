@@ -107,15 +107,15 @@ test("laboratory shipped room keeps parity with the active lab-root shell build 
       "utf8"
     );
 
-    assert.match(workspaceSurfaceSource, /workspace-open-dual-preview/);
-    assert.match(workspaceSurfaceSource, /dual-preview-master/);
-    assert.match(runtimeControllerSource, /workspace-dual-preview-toggled/);
-    assert.match(
+    assert.doesNotMatch(workspaceSurfaceSource, /workspace-open-dual-preview|dual-preview-master/);
+    assert.doesNotMatch(runtimeControllerSource, /workspace-dual-preview-toggled/);
+    assert.match(runtimeControllerSource, /workspace-preview-volume-updated/);
+    assert.doesNotMatch(
       runtimeControllerSource,
       /Dual preview seek is unavailable until media is ready\./
     );
-    assert.match(shippedWorkspaceSurfaceSource, /workspace-open-dual-preview/);
-    assert.match(shippedRuntimeControllerSource, /workspace-dual-preview-toggled/);
+    assert.doesNotMatch(shippedWorkspaceSurfaceSource, /workspace-open-dual-preview/);
+    assert.doesNotMatch(shippedRuntimeControllerSource, /workspace-dual-preview-toggled/);
 
     assertRoomParity(buildArtifact.rootDir, shippedParityRoot);
   } finally {

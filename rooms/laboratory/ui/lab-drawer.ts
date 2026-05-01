@@ -13,7 +13,6 @@ import {
   getAnalysisPreparationGroups,
   getAvailableIntents,
   getDrawerCollapsed,
-  getLaboratoryProcessSummary,
   getLaboratoryRightPanelContext,
   getPreflightSeverity,
   getPreflightWarnings,
@@ -209,6 +208,154 @@ function renderAnalysisPreparationAccordion(
   `;
 }
 
+function getRunningPlanModuleStatus(state: LabStoreState, moduleId: string) {
+  return state.run?.modules[moduleId]?.status ?? "idle";
+}
+
+function getRunningPlanStatusLabel(status: string, copy: LabI18n) {
+  switch (status) {
+    case "running":
+      return copy.t("mediaAnalysis.drawer.running.planStatus.running", "Analiz ediliyor");
+    case "queued":
+      return copy.t("mediaAnalysis.drawer.running.planStatus.queued", "Sırada");
+    case "completed":
+      return copy.t("mediaAnalysis.drawer.running.planStatus.completed", "Tamamlandı");
+    case "failed":
+      return copy.t("mediaAnalysis.drawer.running.planStatus.failed", "Hata verdi");
+    case "cancelled":
+      return copy.t("mediaAnalysis.drawer.running.planStatus.cancelled", "İptal edildi");
+    case "skipped":
+      return copy.t("mediaAnalysis.drawer.running.planStatus.skipped", "Atlandı");
+    default:
+      return copy.t("mediaAnalysis.drawer.running.planStatus.ready", "Hazır");
+  }
+}
+
+function getRunningPlanGroupStatus(
+  group: AnalysisPreparationGroup,
+  state: LabStoreState
+): string {
+  const statuses = group.modules
+    .filter(function (module) {
+      return module.enabled;
+    })
+    .map(function (module) {
+      return getRunningPlanModuleStatus(state, module.moduleId);
+    });
+  if (statuses.some((status) => status === "running")) return "running";
+  if (statuses.some((status) => status === "queued")) return "queued";
+  if (statuses.some((status) => status === "failed")) return "failed";
+  if (statuses.some((status) => status === "cancelled")) return "cancelled";
+  if (statuses.length > 0 && statuses.every((status) => status === "completed")) return "completed";
+  return "ready";
+}
+
+function renderRunningPlanModule(
+  module: AnalysisPreparationGroup["modules"][number],
+  state: LabStoreState,
+  copy: LabI18n
+) {
+  const runModule = state.run?.modules[module.moduleId];
+  const status = runModule?.status ?? "idle";
+  const active = status === "running" || status === "queued";
+  const statusLabel = getRunningPlanStatusLabel(status, copy);
+  const message = runModule?.message || module.reportSection;
+
+  return `
+    <div
+      class="labx-analysis-module labx-analysis-module--locked"
+      data-readiness="${escapeHtml(module.readiness)}"
+      data-status="${escapeHtml(status)}"
+      data-active="${active ? "true" : "false"}"
+    >
+      <span class="labx-analysis-module__status" aria-hidden="true"></span>
+      <span>
+        <strong>${escapeHtml(module.label)}</strong>
+        <small>${escapeHtml(statusLabel)}${message ? ` · ${escapeHtml(message)}` : ""}</small>
+      </span>
+    </div>
+  `;
+}
+
+function renderRunningPlanGroup(
+  intent: AvailableIntent,
+  group: AnalysisPreparationGroup,
+  state: LabStoreState,
+  copy: LabI18n
+) {
+  const enabledModules = group.modules.filter(function (module) {
+    return module.enabled;
+  });
+  const status = getRunningPlanGroupStatus(group, state);
+  const active = status === "running" || status === "queued";
+  const statusLabel = getRunningPlanStatusLabel(status, copy);
+
+  return `
+    <div
+      class="labx-drawer__intent-cluster labx-drawer__intent-cluster--locked"
+      data-selected="true"
+      data-expanded="true"
+      data-readiness="${escapeHtml(group.readiness)}"
+      data-status="${escapeHtml(status)}"
+      data-active="${active ? "true" : "false"}"
+    >
+      <div class="labx-drawer__intent-head labx-drawer__intent-head--locked">
+        <div class="labx-drawer__intent-item labx-drawer__intent-item--static">
+          <span>
+            <strong>${escapeHtml(intent.label)}</strong>
+            <small>${escapeHtml(intent.description)}</small>
+          </span>
+        </div>
+      </div>
+      <div class="labx-drawer__intent-summary">
+        <span>${escapeHtml(statusLabel)}</span>
+        <span>${escapeHtml(String(enabledModules.length))}/${escapeHtml(String(group.modules.length))}</span>
+      </div>
+      <div class="labx-analysis-group labx-analysis-group--locked" data-selected="true" data-readiness="${escapeHtml(group.readiness)}">
+        <div class="labx-analysis-group__modules">
+          ${enabledModules
+            .map(function (module) {
+              return renderRunningPlanModule(module, state, copy);
+            })
+            .join("")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderRunningAnalysisPlan(state: LabStoreState, copy: LabI18n) {
+  const runIntentIds = state.run?.analysisScope?.intentIds ?? [];
+  const selectedIntentIds = runIntentIds.length > 0 ? runIntentIds : getSelectedIntents(state);
+  const intents = getAvailableIntents(state).filter(function (intent) {
+    return selectedIntentIds.includes(intent.id);
+  });
+  const analysisGroups = getAnalysisPreparationGroups(state);
+  const groupsMarkup = intents
+    .map(function (intent) {
+      const group = analysisGroups.find(function (entry) {
+        return entry.intentId === intent.id;
+      });
+      return group ? renderRunningPlanGroup(intent, group, state, copy) : "";
+    })
+    .join("");
+
+  return `
+    <section
+      class="labx-drawer__section labx-drawer__intents labx-drawer__intents--running"
+      data-lab-running-plan="true"
+      aria-disabled="true"
+    >
+      <h3>${escapeHtml(copy.t("mediaAnalysis.drawer.setup.intentsTitle", "Analysis Goals"))}</h3>
+      ${
+        groupsMarkup !== ""
+          ? `<div class="labx-drawer__intent-list">${groupsMarkup}</div>`
+          : `<p class="labx-drawer__ok">${escapeHtml(copy.t("mediaAnalysis.drawer.running.planResolving", "Analiz planı hazırlanıyor."))}</p>`
+      }
+    </section>
+  `;
+}
+
 function getActiveAnalysisCapabilityIds(state: LabStoreState): CapabilityFamilyId[] {
   const activeExecutionIntent = getActiveExecutionIntent(state);
   if (activeExecutionIntent?.flowKind === "operation-result") {
@@ -325,65 +472,24 @@ function renderSetupMode(state: LabStoreState, surface: LabWorkspaceSurface, cop
 // ---------------------------------------------------------------------------
 
 function renderRunningMode(state: LabStoreState, copy: LabI18n) {
-  const summary = getLaboratoryProcessSummary(state);
-  const run = state.run;
-  const moduleOrder = run?.moduleOrder ?? [];
-  const modules = run?.modules ?? {};
-
-  const pipelineMarkup =
-    moduleOrder.length > 0
-      ? `<section class="labx-drawer__section labx-drawer__pipeline">
-        <h3>${escapeHtml(copy.t("mediaAnalysis.drawer.running.pipelineTitle", "Pipeline"))}</h3>
-        <ul class="labx-drawer__module-list">
-          ${moduleOrder
-            .map(function (modId) {
-              const mod = modules[modId];
-              const status = mod?.status ?? "idle";
-              const label = mod?.title ?? modId;
-              return `<li class="labx-drawer__module" data-status="${escapeHtml(status)}"><span class="labx-drawer__module-dot" aria-hidden="true"></span>${escapeHtml(label)}</li>`;
-            })
-            .join("")}
-        </ul>
-      </section>`
-      : "";
-
-  const earlySignals = run?.liveFindings ?? [];
-  const earlySignalMarkup =
-    earlySignals.length > 0
-      ? `<section class="labx-drawer__section labx-drawer__signals">
-        <h3>${escapeHtml(copy.t("mediaAnalysis.drawer.running.signalsTitle", "Erken Sinyaller"))}</h3>
-        <ul class="labx-drawer__signal-list">
-          ${earlySignals
-            .slice(0, 8)
-            .map(function (f) {
-              return `<li class="labx-drawer__signal" data-severity="${escapeHtml(f.severity ?? "info")}"><strong>${escapeHtml(f.title)}</strong><span>${escapeHtml(f.detail)}</span></li>`;
-            })
-            .join("")}
-        </ul>
-      </section>`
-      : "";
-
-  const taskLabel =
-    summary.activeTaskLabel ?? copy.t("mediaAnalysis.drawer.running.task", "Analiz devam ediyor…");
-  const progressLabel = summary.progressLabel ?? "";
-
-  const statusMarkup = `
-    <section class="labx-drawer__section labx-drawer__status">
-      <p class="labx-drawer__task-label">${escapeHtml(taskLabel)}</p>
-      ${progressLabel !== "" ? `<p class="labx-drawer__progress-label">${escapeHtml(progressLabel)}</p>` : ""}
-    </section>
-  `;
+  const cancelPending = state.ui.analysisCancelPending === true;
+  const cancelLabel = cancelPending
+    ? copy.t("mediaAnalysis.drawer.running.cancelPending", "Analiz iptal ediliyor")
+    : copy.t("mediaAnalysis.drawer.running.cancel", "Analizi İptal Et");
+  const cancelSub = cancelPending
+    ? copy.t("mediaAnalysis.drawer.running.cancelPendingSub", "İptal isteği işleniyor")
+    : copy.t("mediaAnalysis.drawer.running.cancelSub", "Çalışan analiz durdurulacak");
 
   const cancelCta = `
     <div class="labx-drawer__cta">
-      <button class="labx-cta labx-cta--danger" type="button" data-lab-action="cancel-analysis">
-        ${escapeHtml(copy.t("mediaAnalysis.drawer.running.cancel", "Analizi İptal Et"))}
+      <button class="labx-cta labx-cta--danger" type="button" data-lab-action="cancel-analysis" ${cancelPending ? 'disabled aria-busy="true"' : ""}>
+        ${escapeHtml(cancelLabel)}
       </button>
-      <p class="labx-drawer__cta-sub">${escapeHtml(copy.t("mediaAnalysis.drawer.running.cancelSub", "Çalışan analiz durdurulacak"))}</p>
+      <p class="labx-drawer__cta-sub">${escapeHtml(cancelSub)}</p>
     </div>
   `;
 
-  return `${statusMarkup}${pipelineMarkup}${earlySignalMarkup}${cancelCta}`;
+  return `${renderRunningAnalysisPlan(state, copy)}${cancelCta}`;
 }
 
 // ---------------------------------------------------------------------------

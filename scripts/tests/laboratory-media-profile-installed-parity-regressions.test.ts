@@ -79,7 +79,10 @@ test("laboratory installed room mirrors the workspace package for the active lab
       assert.equal(existsSync(join(installedCopy.rootDir, relativePath)), false, relativePath);
     });
 
-    const workspaceSurfaceSource = readFileSync(join(buildArtifact.rootDir, "ui/workspace-surface.js"), "utf8");
+    const workspaceSurfaceSource = readFileSync(
+      join(buildArtifact.rootDir, "ui/workspace-surface.js"),
+      "utf8"
+    );
     const installedWorkspaceSurfaceSource = readFileSync(
       join(installedCopy.rootDir, "ui/workspace-surface.js"),
       "utf8"
@@ -93,11 +96,11 @@ test("laboratory installed room mirrors the workspace package for the active lab
       "utf8"
     );
 
-    assert.match(workspaceSurfaceSource, /workspace-open-dual-preview/);
-    assert.match(workspaceSurfaceSource, /dual-preview-master/);
-    assert.match(runtimeControllerSource, /workspace-dual-preview-toggled/);
-    assert.match(installedWorkspaceSurfaceSource, /workspace-open-dual-preview/);
-    assert.match(installedRuntimeControllerSource, /workspace-dual-preview-toggled/);
+    assert.doesNotMatch(workspaceSurfaceSource, /workspace-open-dual-preview|dual-preview-master/);
+    assert.doesNotMatch(runtimeControllerSource, /workspace-dual-preview-toggled/);
+    assert.match(runtimeControllerSource, /workspace-preview-volume-updated/);
+    assert.doesNotMatch(installedWorkspaceSurfaceSource, /workspace-open-dual-preview/);
+    assert.doesNotMatch(installedRuntimeControllerSource, /workspace-dual-preview-toggled/);
 
     assertRoomParity(buildArtifact.rootDir, installedCopy.rootDir);
   } finally {

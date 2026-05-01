@@ -17,7 +17,6 @@ type AudioBufferLike = {
 };
 
 const WORKSPACE_AUDIO_MEDIA_SELECTORS = [
-  'audio[data-lab-preserve-media="workspace-preview-dual-audio"]',
   'audio[data-lab-preserve-media="workspace-preview"]',
   'video[data-lab-preserve-media="workspace-preview"]',
 ] as const;
@@ -94,7 +93,6 @@ export function createLabWaveformTimelineVisualizer(deps: LabWaveformTimelineVis
     return {
       activeSelection: null,
       bookmarks: [],
-      dualPreviewActive: false,
       durationMs: 0,
       endMs: null,
       startMs: null,
@@ -177,7 +175,6 @@ export function createLabWaveformTimelineVisualizer(deps: LabWaveformTimelineVis
       artifact.kind,
       imageUrl,
       artifact.createdAt || "",
-      model.linkedAudioAssetId || "",
       String(Number((model.waveformCropStartRatio ?? 0).toFixed(6))),
       String(Number((model.waveformCropEndRatio ?? 1).toFixed(6))),
       String(model.waveformOffsetMs ?? 0),
@@ -247,7 +244,7 @@ export function createLabWaveformTimelineVisualizer(deps: LabWaveformTimelineVis
         return getVisualizationMode();
       },
       getTemporalAudioEnabled() {
-        return getTimelineModel().dualPreviewActive !== true;
+        return true;
       },
       windowRef: deps.windowRef,
     });
@@ -358,7 +355,6 @@ export function createLabWaveformTimelineVisualizer(deps: LabWaveformTimelineVis
   function createDecodedWaveformRenderKey(model: LabWaveformTimelineModel, sourceUrl: string) {
     return [
       sourceUrl,
-      model.linkedAudioAssetId || "",
       String(Number((model.waveformCropStartRatio ?? 0).toFixed(6))),
       String(Number((model.waveformCropEndRatio ?? 1).toFixed(6))),
       String(model.waveformOffsetMs ?? 0),

@@ -120,3 +120,41 @@ test("laboratory runtime events preserve correlation metadata for export jobs an
   assert.equal(notifications[1]?.payload["jobId"], "job-export-1");
   assert.equal(notifications[1]?.payload["projectId"], "project-1");
 });
+
+test("laboratory runtime events can publish cancelled process action results", () => {
+  const notifications: Array<{ type: string; payload: Record<string, unknown> }> = [];
+  const runtimeEvents = createLaboratoryRuntimeEvents({
+    asNonEmptyString,
+    defaultFeatureId: "media-analysis",
+    getFeatureIdFromContext() {
+      return "media-analysis";
+    },
+    loadContext() {
+      return {
+        featureId: "media-analysis",
+      };
+    },
+    roomSnapshotRuntime: {
+      buildMediaSnapshot() {
+        return {};
+      },
+    },
+  });
+
+  const api = {
+    notifyRoom(type: string, payload: Record<string, unknown>) {
+      notifications.push({ type, payload });
+    },
+  };
+
+  runtimeEvents.pushActionResult(api, {
+    action: "process-run",
+    requestId: "req-process-run",
+    success: false,
+    cancelled: true,
+  });
+
+  assert.equal(notifications[0]?.payload["stage"], "cancelled");
+  assert.equal(notifications[0]?.payload["severity"], "warning");
+  assert.equal(notifications[0]?.payload["scope"], "run");
+});

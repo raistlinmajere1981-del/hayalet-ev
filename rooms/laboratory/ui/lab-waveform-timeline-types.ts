@@ -58,12 +58,10 @@ export type LabWaveformTimelineModel = {
   bookmarks: LabBookmark[];
   collapsedPanels?: Record<string, boolean>;
   copy?: LabI18n;
-  dualPreviewActive: boolean;
   durationMs: number;
   endMs: number | null;
   inspectionMode?: LabInspectionMode;
   interpretationItems?: LabInterpretationItem[];
-  linkedAudioAssetId?: string | null;
   lockState?: LabWorkspaceLockState;
   roiFocusActive?: boolean;
   selectionMicroZoomOpen?: boolean;

@@ -249,8 +249,10 @@ test("laboratory project workspace renders localized asset groups and context ac
   assert.match(html, /FRM/);
   assert.match(html, /AUD/);
   assert.match(html, /IMG/);
-  assert.doesNotMatch(html, /RPT/);
-  assert.doesNotMatch(html, /AST/);
+  assert.match(html, /RPT/);
+  assert.match(html, /AST/);
+  assert.match(html, /report\.md/);
+  assert.match(html, /artifact\.json/);
   assert.doesNotMatch(html, /secili/);
   assert.match(html, /Analiz Kaynagi Olarak Kullan/);
   assert.match(html, /AI&#39;ye Gonder/);

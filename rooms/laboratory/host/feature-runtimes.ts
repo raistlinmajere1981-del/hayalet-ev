@@ -157,6 +157,7 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     buildSourceTargetSignature: projectRuntimes.snapshot.buildSourceTargetSignature,
     clampProfileTranscriptSampleSeconds:
       projectRuntimes.mediaProfileState.clampProfileTranscriptSampleSeconds,
+    cancelProcessJobsForProject: projectRuntimes.jobRuntime.cancelProcessJobsForProject,
     clearJob: projectRuntimes.jobState.clearJob,
     clone: deps.clone,
     createEmptyFeatureProcessRecord:

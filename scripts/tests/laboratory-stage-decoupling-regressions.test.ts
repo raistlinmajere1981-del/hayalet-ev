@@ -63,6 +63,179 @@ test("getToolLifecycleStage returns 'process' when a run is active", () => {
   assert.equal(isRunActive(state), true);
 });
 
+test("laboratory store keeps host-context adjustments out of pending runs", () => {
+  const store = createLabStore();
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-host-context-adjustment",
+      kind: "interactive-adjustment-applied",
+      severity: "info",
+      message: "Analysis controls updated",
+      detail: "Module controls changed",
+      timestamp: Date.now(),
+      source: "host",
+      action: "host-context",
+      stage: "updated",
+      scope: "run",
+      moduleId: null,
+      rawLine: null,
+    },
+  });
+
+  const state = store.getState();
+  assert.equal(state.run, null);
+  assert.equal(isRunActive(state), false);
+  assert.equal(state.activityFeed[0]?.scope, "global");
+});
+
+test("laboratory store keeps cancel pending until the process run reaches a terminal state", () => {
+  const store = createLabStore();
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-run",
+      kind: "activity",
+      severity: "info",
+      message: "Analiz basladi",
+      detail: null,
+      timestamp: Date.now(),
+      source: "host",
+      action: "process-run",
+      stage: "running",
+      scope: "run",
+      moduleId: null,
+      rawLine: null,
+    },
+  });
+  store.dispatch({ type: "analysis-cancel-requested" });
+  assert.equal(store.getState().ui.analysisCancelPending, true);
+
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-run-cancelled",
+      kind: "activity",
+      severity: "warning",
+      message: "Analiz iptal edildi",
+      detail: null,
+      timestamp: Date.now() + 1,
+      source: "host",
+      action: "process-run",
+      stage: "cancelled",
+      scope: "run",
+      moduleId: null,
+      rawLine: null,
+    },
+  });
+
+  assert.equal(store.getState().ui.analysisCancelPending, false);
+});
+
+test("laboratory store clears cancel pending when the cancel request fails", () => {
+  const store = createLabStore();
+  store.dispatch({ type: "run-started", action: "process-run" });
+  store.dispatch({ type: "analysis-cancel-requested" });
+  assert.equal(store.getState().ui.analysisCancelPending, true);
+
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-cancel-failed",
+      kind: "request-result",
+      severity: "error",
+      message: "Analiz iptal edilemedi",
+      detail: "cancel failed",
+      timestamp: Date.now(),
+      source: "host",
+      action: "process-cancel",
+      stage: "failed",
+      scope: "run",
+      moduleId: null,
+      rawLine: null,
+    },
+  });
+
+  assert.equal(store.getState().ui.analysisCancelPending, false);
+});
+
+test("laboratory store keeps optimistic running state through stale terminal snapshots", () => {
+  const store = createLabStore();
+  store.dispatch({ type: "run-started", action: "process-run" });
+  const pendingRunId = store.getState().run?.id;
+
+  store.dispatch({
+    type: "snapshot-received",
+    payload: {
+      ready: true,
+      featureId: "media-analysis",
+      activeProjectId: "project-stale-run",
+      projects: [],
+      workbench: {},
+      activeProject: {
+        id: "project-stale-run",
+        source: { kind: "video", status: "ready", storedPath: "/tmp/test.mp4" },
+        edit: {},
+        profile: {},
+        process: {
+          records: {
+            "media-analysis": {
+              runId: "previous-run",
+              status: "cancelled",
+              startedAt: "2026-04-30T23:00:00.000Z",
+              completedAt: "2026-04-30T23:00:01.000Z",
+            },
+          },
+        },
+        report: { records: {} },
+        assets: [],
+      },
+    },
+  });
+
+  assert.equal(store.getState().run?.id, pendingRunId);
+  assert.equal(isRunActive(store.getState()), true);
+});
+
+test("laboratory store accepts cancelled snapshots after a cancel request", () => {
+  const store = createLabStore();
+  store.dispatch({ type: "run-started", action: "process-run" });
+  store.dispatch({ type: "analysis-cancel-requested" });
+
+  store.dispatch({
+    type: "snapshot-received",
+    payload: {
+      ready: true,
+      featureId: "media-analysis",
+      activeProjectId: "project-cancelled-run",
+      projects: [],
+      workbench: {},
+      activeProject: {
+        id: "project-cancelled-run",
+        source: { kind: "video", status: "ready", storedPath: "/tmp/test.mp4" },
+        edit: {},
+        profile: {},
+        process: {
+          records: {
+            "media-analysis": {
+              runId: "cancelled-run",
+              status: "cancelled",
+              startedAt: "2026-04-30T23:00:00.000Z",
+              completedAt: "2026-04-30T23:00:01.000Z",
+            },
+          },
+        },
+        report: { records: {} },
+        assets: [],
+      },
+    },
+  });
+
+  assert.equal(store.getState().run?.id, "cancelled-run");
+  assert.equal(store.getState().run?.state, "cancelled");
+  assert.equal(store.getState().ui.analysisCancelPending, false);
+});
+
 test("getActiveModule returns the first running module and clears when none are running", () => {
   const store = createLabStore();
   store.dispatch({
@@ -422,10 +595,9 @@ test("controller startDeepAnalysis prefers live workspace intents before stale c
     source,
     /const \{ activeFeatureId \} = deriveFeatureSelectionFromCapabilities\(intentCapabilities\);/
   );
-  assert.match(
-    source,
-    /sendMediaAction\(activeFeatureId === "audio-analysis" \? "audio-process-run" : "process-run"\);/
-  );
+  assert.match(source, /const runAction = activeFeatureId === "audio-analysis" \? "audio-process-run" : "process-run";/);
+  assert.match(source, /dispatch\(\{ type: "run-started", action: runAction \}\);/);
+  assert.match(source, /sendMediaAction\(runAction\)/);
 });
 
 // ---------------------------------------------------------------------------
@@ -516,7 +688,11 @@ test("runtime-events derives scope from action name, not featureStage", async ()
   });
 
   assert.equal(emitted.length, 1);
-  assert.equal(emitted[0]?.scope, "run", "scope should be 'run' based on action name containing 'process'");
+  assert.equal(
+    emitted[0]?.scope,
+    "run",
+    "scope should be 'run' based on action name containing 'process'"
+  );
 
   // Emit event with tool action — should get scope "global"
   runtimeEvents.emitEvent(fakeApi, {
@@ -527,5 +703,9 @@ test("runtime-events derives scope from action name, not featureStage", async ()
   });
 
   assert.equal(emitted.length, 2);
-  assert.equal(emitted[1]?.scope, "global", "scope should be 'global' for non-process actions even if featureStage says process");
+  assert.equal(
+    emitted[1]?.scope,
+    "global",
+    "scope should be 'global' for non-process actions even if featureStage says process"
+  );
 });

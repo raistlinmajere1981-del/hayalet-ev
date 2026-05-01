@@ -121,6 +121,7 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     callRoomTools: deps.callRoomTools,
     getActiveProject: deps.getActiveProject,
     getProjectEditOutputDir: deps.getProjectEditOutputDir,
+    handleAssetAsSource: deps.handleAssetAsSource,
     patchActiveProject: deps.patchActiveProject,
     pushJobState: deps.pushJobState,
     registerJob: deps.registerJob,

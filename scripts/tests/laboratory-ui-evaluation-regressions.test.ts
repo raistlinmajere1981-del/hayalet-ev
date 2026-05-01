@@ -1209,7 +1209,7 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   assert.doesNotMatch(workspaceSurfaceSource, /renderWorkspaceBookmarks|workspace-bookmarks/);
   assert.match(
     workspaceSurfaceSource,
-    /class="labx-workspace-stage"[\s\S]*class="labx-media-workbench"[\s\S]*class="labx-workspace-preview"[\s\S]*\$\{dualPreviewTransport\}[\s\S]*renderLabWaveformTimeline\(timelineModel\)[\s\S]*\$\{inspectorMarkup\}/
+    /class="labx-workspace-stage"[\s\S]*class="labx-media-workbench"[\s\S]*class="labx-workspace-preview"[\s\S]*renderLabWaveformTimeline\(timelineModel\)[\s\S]*\$\{inspectorMarkup\}/
   );
   assert.doesNotMatch(workspaceSurfaceSource, /renderWorkspaceHypothesis/);
   assert.match(
@@ -1250,10 +1250,7 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   assert.doesNotMatch(themeSource, /\.labx-bookmarks\s*\{/);
   assert.doesNotMatch(themeSource, /\.labx-timeline__header\s*\{/);
   assert.doesNotMatch(themeSource, /\.labx-timeline__sync\s*\{/);
-  assert.match(
-    themeSource,
-    /\.labx-dual-preview-transport\s*\{[\s\S]*border:\s*0;[\s\S]*border-top:\s*1px solid rgba\(122, 162, 255, 0\.18\);[\s\S]*border-radius:\s*0;/
-  );
+  assert.doesNotMatch(themeSource, /\.labx-dual-preview-transport\s*\{/);
   assert.match(
     themeSource,
     /\.labx-media-workbench \.labx-preview-media--workspace-video,[\s\S]*\.labx-media-workbench \.labx-preview-media--workspace-image\s*\{[\s\S]*height:\s*100%;[\s\S]*max-height:\s*100%;/
