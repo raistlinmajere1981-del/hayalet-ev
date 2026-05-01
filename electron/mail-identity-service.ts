@@ -663,6 +663,7 @@ export class MailIdentityService {
           remoteUser.remoteUserId === selectedRemoteUserId && remoteUser.handshakeState === "active"
       );
       if (!hasSelectedRemoteUser && settings.us1Slot) {
+        settings.us1Slot.selectedIdentityId = null;
         settings.us1Slot.selectedRemoteUserId = null;
         settings.us1Slot.selectedAccountId = null;
         settings.us1Slot.connectionState = "disconnected";

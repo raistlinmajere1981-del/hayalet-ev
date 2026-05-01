@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("opencode-ui page scaffold contains providers tab and list anchor", () => {
+test("opencode-ui page scaffold contains current provider and tool list anchors", () => {
   const html = readFileSync("src/pages/opencode-ui.html", "utf8");
 
-  assert.match(html, /id="rtab-btn-providers"/);
-  assert.match(html, /id="rtab-providers"/);
-  assert.match(html, /id="providers-list"/);
+  assert.match(html, /id="model-settings-provider-list"/);
+  assert.match(html, /data-i18n-text="modelSettings\.providerSectionTitle"/);
+  assert.match(html, /id="tools-list"/);
 });
 
 test("opencode-ui periodic refresh does not reload provider or model lists", () => {

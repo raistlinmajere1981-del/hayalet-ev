@@ -260,6 +260,15 @@ function buildToolNotice(
   statusMessage: string
 ): OpencodeUiSessionMessage["notices"][number] | null {
   const detail = statusMessage.trim();
+  if (detail !== "" && isLimitToolMessage(detail)) {
+    return {
+      tone: "warning",
+      title: detail,
+      detail,
+      ...(status === "retrying" ? { meta: opencodeUiParserT("message.toolStateRetryMeta") } : {}),
+    };
+  }
+
   if (status === "retrying") {
     return {
       tone: "warning",
@@ -274,14 +283,6 @@ function buildToolNotice(
       tone: "warning",
       title: opencodeUiParserT("message.runtimeNotice.interruptedTitle"),
       ...(detail !== "" ? { detail } : {}),
-    };
-  }
-
-  if (detail !== "" && isLimitToolMessage(detail)) {
-    return {
-      tone: "warning",
-      title: opencodeUiParserT("message.runtimeNotice.limitTitle"),
-      detail,
     };
   }
 

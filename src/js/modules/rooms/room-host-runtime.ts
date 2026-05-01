@@ -168,6 +168,10 @@ class RoomHostRuntimeClass {
   private rooms = new Map<string, RoomHostRegistration>();
 
   constructor() {
+    if (typeof window === "undefined") {
+      return;
+    }
+
     window.addEventListener(
       EXPECTED_COMMAND_CAPTURE_FAILURE_EVENT,
       this.handleExpectedCommandCaptureFailureEvent

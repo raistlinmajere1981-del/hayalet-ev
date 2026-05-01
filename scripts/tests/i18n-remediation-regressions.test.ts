@@ -157,9 +157,11 @@ test("room runtime locale bridge refreshes game-room UI and host copy", () => {
 
   assert.match(roomPageSource, /runtimeContextRuntime\.sync\("locale-change"\)/);
   assert.match(roomPageSource, /\.\/room-page\/runtime-context-runtime\.js/);
-  assert.match(runtimeContextSource, /nickname:\s*AppState\.getNickname\("user"\)/);
+  assert.match(runtimeContextSource, /const user = buildRoomUserPresenceSnapshot\(\)/);
+  assert.match(runtimeContextSource, /const presence = createRoomPresenceSnapshot\(user, slots/);
   assert.match(runtimeContextSource, /ai1:\s*buildRoomSlotContext\("ai1"\)/);
-  assert.match(runtimeSubscriptionsSource, /SlotController\.on\(eventName/);
+  assert.match(runtimeSubscriptionsSource, /bindRoomPresenceSubscriptions\(\{/);
+  assert.match(runtimeSubscriptionsSource, /onPresenceChange:\s*\(\)\s*=>\s*\{/);
   assert.match(roomHostRuntimeSource, /getLocale:\s*\(\): string => AppI18n\.getLocale\(\)/);
   assert.match(gameRoomUiEntrySource, /createGameRoomUiRuntime\(\)\.start\(\)/);
   assert.match(gameRoomUiRuntimeSource, /(messageType|message\.type) === "host-context"/);
@@ -229,7 +231,7 @@ class FakeElement {
 }
 
 class FakeDocument {
-  documentElement = { lang: "und" };
+  documentElement = { dataset: {} as Record<string, string>, lang: "und" };
   title = "";
   readonly body: FakeElement;
 

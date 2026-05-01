@@ -34,7 +34,13 @@ export function isBuiltInAppLanguage(value: unknown): value is BuiltInAppLanguag
 
 export function resolveSelectorLanguage(value: unknown): SelectorLanguage {
   const normalized = normalizeAppLanguage(value).toLowerCase();
-  return normalized === "tr" || normalized.startsWith("tr-") ? "tr" : "en";
+  if (normalized === "tr" || normalized.startsWith("tr-")) {
+    return "tr";
+  }
+  if (normalized === "en" || normalized.startsWith("en-")) {
+    return "en";
+  }
+  return DEFAULT_APP_LANGUAGE === "tr" ? "tr" : "en";
 }
 
 export function resolveIntlLocale(value: unknown): string {

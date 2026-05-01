@@ -616,7 +616,8 @@ export class EntranceHallController {
 
   shouldAutoConnectSlot(slotId: "ai1" | "ai2", settings: AppSettings): boolean {
     const slotSettings = settings.slots[slotId];
-    const hasAssignedAccount = AppState.isAssigned(slotId);
+    const accountId = slotSettings.accountId;
+    const hasAssignedAccount = typeof accountId === "string" && accountId !== "";
 
     return (
       hasAssignedAccount &&

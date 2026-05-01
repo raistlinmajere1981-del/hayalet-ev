@@ -2310,7 +2310,10 @@ export class AssistantController {
 
   _updateConnectionUI(skipSystemServerSync = false): void {
     const hasAccount = AppState.isAssigned("ai0");
-    const shouldDismissScenarioPanel = !hasAccount;
+    const slotState = SlotController.getState("ai0") as SlotStateInfo | null;
+    const isConnected = slotState?.state === SlotState.CONNECTED || this._isServerRunning;
+    const isConnecting = slotState?.state === SlotState.CONNECTING || this._connectFlowActive;
+    const shouldDismissScenarioPanel = !hasAccount || (!isConnected && !isConnecting);
 
     if (shouldDismissScenarioPanel) {
       this._dismissScenarioPanelForUnavailableSlot();

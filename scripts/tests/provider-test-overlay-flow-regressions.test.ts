@@ -107,7 +107,7 @@ test("only entrance renderer wires sync buttons to the webview-sync launcher flo
 
   assert.match(entranceContent, /handleSyncClick\("ai1"\)/);
   assert.match(entranceContent, /handleSyncClick\("ai2"\)/);
-  assert.match(entranceContent, /openScenarioLauncher\(slot, "webview-sync", "webview-sync"\)/);
+  assert.match(entranceContent, /openScenarioLauncher\(slot, "webview-sync"\)/);
 
   assert.doesNotMatch(assistantContent, /_handleSyncClick\(\)/);
   assert.doesNotMatch(assistantContent, /_openScenarioPanel\("webview-sync", "webview-sync"\)/);

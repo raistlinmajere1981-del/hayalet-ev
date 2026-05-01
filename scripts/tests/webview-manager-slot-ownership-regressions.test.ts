@@ -16,6 +16,12 @@ type MockStyle = {
 type MockWebview = {
   style: MockStyle;
   attrs: Map<string, string>;
+  classes: Set<string>;
+  classList: {
+    add: (value: string) => void;
+    remove: (value: string) => void;
+    contains: (value: string) => boolean;
+  };
   setAttribute: (key: string, value: string) => void;
   getAttribute: (key: string) => string | null;
   removeAttribute: (key: string) => void;
@@ -23,6 +29,7 @@ type MockWebview = {
 
 function createWebview(): MockWebview {
   const attrs = new Map<string, string>();
+  const classes = new Set<string>();
   return {
     style: {
       position: "",
@@ -33,6 +40,16 @@ function createWebview(): MockWebview {
       display: "",
     },
     attrs,
+    classes,
+    classList: {
+      add: (value: string) => {
+        classes.add(value);
+      },
+      remove: (value: string) => {
+        classes.delete(value);
+      },
+      contains: (value: string) => classes.has(value),
+    },
     setAttribute: (key: string, value: string) => {
       attrs.set(key, value);
     },
@@ -86,7 +103,7 @@ test("cleanupInactiveWebviews detaches stale disconnected slot webview", () => {
 
   assert.equal(webview.getAttribute("data-detached"), "1");
   assert.equal(webview.getAttribute("src"), null);
-  assert.equal(webview.style.display, "none");
+  assert.equal(webview.classList.contains("is-hidden"), true);
 
   resetSlot("ai2");
 });

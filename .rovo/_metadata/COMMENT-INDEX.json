@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-05-01T10:51:40.204Z",
+  "generatedAt": "2026-05-01T19:36:38.751Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -1816,8 +1816,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 75,
-          "endLine": 75,
+          "startLine": 81,
+          "endLine": 81,
           "text": "NOTE: Use debug to avoid toast triggers during init.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2332,8 +2332,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 262,
-          "endLine": 262,
+          "startLine": 266,
+          "endLine": 266,
           "text": "NOTE: ChatGPT can expose user turns with explicit role markers while assistant turns live",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2341,8 +2341,8 @@
         },
         {
           "kind": "note",
-          "startLine": 263,
-          "endLine": 263,
+          "startLine": 267,
+          "endLine": 267,
           "text": "only on the surrounding conversation wrapper/article. Keep both sources so assistant replies",
           "prefix": null,
           "scopeType": "file",
@@ -2350,8 +2350,8 @@
         },
         {
           "kind": "note",
-          "startLine": 264,
-          "endLine": 264,
+          "startLine": 268,
+          "endLine": 268,
           "text": "still get scraped when role attributes disappear during UI changes.",
           "prefix": null,
           "scopeType": "file",
@@ -2569,8 +2569,8 @@
         },
         {
           "kind": "note",
-          "startLine": 2515,
-          "endLine": 2515,
+          "startLine": 2518,
+          "endLine": 2518,
           "text": "NOTE: Ignore if the webview is not ready yet.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2578,8 +2578,8 @@
         },
         {
           "kind": "note",
-          "startLine": 2554,
-          "endLine": 2554,
+          "startLine": 2557,
+          "endLine": 2557,
           "text": "NOTE: Ignore if the webview has not finished loading yet.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2754,8 +2754,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 670,
-          "endLine": 670,
+          "startLine": 671,
+          "endLine": 671,
           "text": "NOTE: Escape HTML to prevent XSS.",
           "prefix": "NOTE",
           "scopeType": "file",

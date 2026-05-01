@@ -1733,6 +1733,12 @@
       "relayButtonSetupError": "Relay buton kurulumu hatası: {{message}}",
       "relayButtonStates": "Buton durumları - ai1={{ai1}}, ai2={{ai2}}, ai0={{ai0}}, us1={{us1}}",
       "relayButtonStateUpdateError": "Relay buton durum güncelleme hatası: {{message}}",
+      "catchManager": {
+        "commandFound": "Komut yakalandı: ++{{prefix}}:{{name}}{{args}}"
+      },
+      "roomProtocolRegistry": {
+        "collisionSkipped": "Protokol anahtarı {{protocolKey}} zaten {{existingRoomId}} ile eşleşiyor; {{skippedRoomId}} atlandı."
+      },
       "themeManager": {
         "listenerError": "Tema dinleyici hatası: {{message}}",
         "invalidTheme": "Geçersiz tema: {{theme}}"

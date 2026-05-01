@@ -36,7 +36,7 @@ export function normalizeSlot(candidate: unknown, slotId: string): GameRoomSlotS
   const connected = source["connected"] === true;
   const urlExcluded = source["urlExcluded"] === true;
   const ready = source["ready"] === true || (assigned && connected && urlExcluded !== true);
-  const dispatchable = source["dispatchable"] === true || (assigned && urlExcluded !== true);
+  const dispatchable = source["dispatchable"] === true || ready;
 
   return {
     slotId,
@@ -77,8 +77,16 @@ export function sanitizeContext(payload: unknown): GameRoomContextSnapshot {
   const source = isRecord(payload) ? payload : {};
   const fallbackContext = createGameRoomContextState();
   const presenceSource = isRecord(source["presence"]) ? source["presence"] : {};
-  const slotsSource = isRecord(presenceSource["slots"]) ? presenceSource["slots"] : {};
-  const userSource = isRecord(presenceSource["user"]) ? presenceSource["user"] : {};
+  const slotsSource = isRecord(presenceSource["slots"])
+    ? presenceSource["slots"]
+    : isRecord(source["slots"])
+      ? source["slots"]
+      : {};
+  const userSource = isRecord(presenceSource["user"])
+    ? presenceSource["user"]
+    : isRecord(source["user"])
+      ? source["user"]
+      : {};
   const defaultFeatures = getDefaultFeatureRecords();
   const featureMap = new Map<string, GameRoomFeatureRecord>(
     defaultFeatures.map((feature): [string, GameRoomFeatureRecord] => [feature.id, feature])

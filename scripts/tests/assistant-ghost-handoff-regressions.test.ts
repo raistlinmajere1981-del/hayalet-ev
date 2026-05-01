@@ -40,14 +40,16 @@ test("ghost handoff patch remains transition-only", () => {
   assert.equal("port" in patch, false);
 });
 
-test("assistant page moves ghost-agent into the topbar mode dropdown", () => {
+test("assistant page leaves ghost-agent handoff to the runtime mode controller", () => {
   const assistantHtml = readFileSync(assistantHtmlPath, "utf8");
   const assistantController = readFileSync(assistantControllerPath, "utf8");
 
-  assert.match(assistantHtml, /data-assistant-mode-dropdown="true"/);
-  assert.match(assistantHtml, /data-assistant-mode-option="ghost-agent"/);
-  assert.match(assistantHtml, /assistant\.page\.modeMenuTitle/);
   assert.doesNotMatch(assistantHtml, /assistant-ghost-agent-btn/);
+  assert.doesNotMatch(assistantHtml, /data-assistant-mode-option="ghost-agent"/);
   assert.doesNotMatch(assistantController, /assistant-ghost-agent-btn/);
   assert.doesNotMatch(assistantController, /ghostAgentBtn/);
+  assert.match(
+    readFileSync("src/js/pages/assistant/assistant-runtime.ts", "utf8"),
+    /AssistantRuntimeMode = "terminal" \| "soft" \| "ghost-agent"/
+  );
 });

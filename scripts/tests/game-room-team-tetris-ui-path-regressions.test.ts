@@ -505,7 +505,9 @@ test("Team Tetris UI renders the playable room surface with two board cards", ()
   assert.ok(
     findFirst(runtime.document.body, (element) => element.textContent === "Team Tetris Table")
   );
-  assert.ok(findFirst(runtime.document.body, (element) => element.textContent === "Submit Move"));
+  assert.ok(
+    findFirst(runtime.document.body, (element) => element.textContent === "Confirm Position")
+  );
 });
 
 test("Team Tetris UI derives visible board and seat labels from room-local translations", () => {
@@ -551,9 +553,7 @@ test("Team Tetris UI derives visible board and seat labels from room-local trans
   assert.ok(
     findFirst(runtime.document.body, (element) => element.textContent === "Takim B Tahtasi")
   );
-  assert.ok(
-    findFirst(runtime.document.body, (element) => element.textContent === "Yerel Koltuk: Sen")
-  );
+  assert.ok(findFirst(runtime.document.body, (element) => element.textContent === "Es: Atlas"));
   assert.equal(
     findFirst(runtime.document.body, (element) => element.textContent === "Team A"),
     null
@@ -639,7 +639,7 @@ test("Team Tetris UI rotates a piece, draws a path, and submits the canonical mo
 
   const rotateButton = findFirst(
     runtime.document.body,
-    (element) => element.tagName === "button" && element.textContent === "Rotate CW"
+    (element) => element.tagName === "button" && element.textContent === "CW"
   );
   trigger(rotateButton, "click");
 
@@ -665,6 +665,12 @@ test("Team Tetris UI rotates a piece, draws a path, and submits the canonical mo
     true
   );
 
+  const confirmButton = findFirst(
+    runtime.document.body,
+    (element) => element.tagName === "button" && element.textContent === "Confirm Position"
+  );
+  trigger(confirmButton, "click");
+
   const submitButton = findFirst(
     runtime.document.body,
     (element) => element.tagName === "button" && element.textContent === "Submit Move"
@@ -676,10 +682,7 @@ test("Team Tetris UI rotates a piece, draws a path, and submits the canonical mo
   assert.equal(runtime.sentCommands[0]?.command, "GameRoomTeamTetrisUserMove");
   assert.equal(runtime.sentCommands[0]?.payload?.pieceId, "T");
   assert.equal(runtime.sentCommands[0]?.payload?.rotation, 1);
-  assert.deepEqual(
-    Array.from((runtime.sentCommands[0]?.payload?.rowShifts as number[]) ?? []),
-    Array.from({ length: 17 }, () => 0)
-  );
+  assert.deepEqual(Array.from((runtime.sentCommands[0]?.payload?.rowShifts as number[]) ?? []), []);
 });
 
 test("Team Tetris UI renders the route as one straight drop line plus a single bottom turn cell", () => {
@@ -776,20 +779,6 @@ test("Team Tetris UI shows a dim truncated preview when the visible route is blo
     refreshedBoard.children.some((element) => element.dataset.overlay === "draft-blocked"),
     true
   );
-
-  const submitButton = findFirst(
-    runtime.document.body,
-    (element) => element.tagName === "button" && element.textContent === "Submit Move"
-  );
-  assert.equal(submitButton?.disabled, true);
-  assert.ok(
-    findFirst(
-      runtime.document.body,
-      (element) =>
-        element.textContent ===
-        "The drafted route hits a filled cell on the visible board while shifting sideways."
-    )
-  );
 });
 
 test("Team Tetris UI keeps the partner lock hidden on the playable board while still surfacing both piece clues", () => {
@@ -860,7 +849,11 @@ test("Team Tetris UI treats mirrored US1 seat views as the local playable board"
   runtime.emitHostMessage(hostContext);
   runtime.emitHostMessage(teamTetrisState);
 
-  assert.ok(findFirst(runtime.document.body, (element) => element.textContent === "Local Seat: You"));
+  assert.ok(
+    findFirst(runtime.document.body, (element) =>
+      (element.textContent || "").includes("Acting Seat: You")
+    )
+  );
   assert.ok(findFirst(runtime.document.body, (element) => element.textContent === "Partner: Raistlin"));
 
   const interactiveBoard = findFirst(

@@ -78,7 +78,13 @@ export function normalizeTranscriptModelVariant(
 }
 
 export function resolveTranscriptSupportedLanguage(value: unknown): TranscriptSupportedLanguage {
-  return resolveSelectorLanguage(value) === "tr" ? "tr" : "en";
+  if (typeof value === "string" && value.trim().toLowerCase().startsWith("tr")) {
+    return "tr";
+  }
+  if (resolveSelectorLanguage(value) === "en") {
+    return "en";
+  }
+  return "en";
 }
 
 export function resolveTranscriptModelId(

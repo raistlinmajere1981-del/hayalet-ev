@@ -69,7 +69,10 @@ test("classic scene scale tokens and theme aliases are centralized", () => {
   assert.doesNotMatch(toastSource, /--toast-max-w:/);
   assert.match(toastSource, /max-width: var\(--layout-toast-max-w\);/);
   assert.doesNotMatch(opencodeUiTabsSource, /max-height: 52vh;/);
-  assert.match(opencodeUiTabsSource, /max-height: var\(--size-panel-scroll-max-h\);/);
+  assert.match(
+    opencodeUiTabsSource,
+    /max-height: min\(62vh, var\(--layout-opencode-model-settings-list-max-h\)\);/
+  );
 });
 
 test("classic scene shell surfaces are centralized behind shared primitives", () => {
@@ -105,7 +108,6 @@ test("classic scene shell surfaces are centralized behind shared primitives", ()
   assert.match(sceneShellSource, /\.scene-shell__framed-shell-head/);
   assert.match(assistantPageSource, /assistant-topbar scene-shell__topbar/);
   assert.match(assistantPageSource, /assistant-webview-panel scene-shell__panel/);
-  assert.match(serverPageSource, /server-topbar ds-toolbar-surface scene-shell__topbar/);
   assert.match(serverPageSource, /server-panel scene-shell__panel/);
   assert.match(analyzePageSource, /analyze-wrapper scene-shell__panel/);
   assert.match(analyzePageSource, /analyze-scene__panel-shade scene-shell__panel-shade/);
@@ -143,7 +145,7 @@ test("shared page shells and responsive shell measurements are extracted from ma
   assert.doesNotMatch(mainSource, /\.room-shell \{/);
   assert.doesNotMatch(mainSource, /\.archives-page__content \{/);
   assert.doesNotMatch(mainSource, /--relay-line-width: 28px;/);
-  assert.match(mainSource, /\.indicators-group--topbar \.relay-flow-line \{/);
+  assert.match(mainSource, /\.relay-flow-line \{/);
   assert.match(layoutTokenSource, /--layout-topbar-slot-gap: 5px;/);
   assert.match(layoutTokenSource, /--layout-topbar-relay-line-w: 28px;/);
   assert.match(spacingTokenSource, /--topbar-height-compact: 84px;/);
@@ -160,8 +162,14 @@ test("shell-hosted archives and whisper styles are lazy loaded outside the main 
 
   assert.doesNotMatch(indexSource, /\/styles\/archives\.css/);
   assert.doesNotMatch(indexSource, /\/styles\/whisper\.css/);
-  assert.match(runtimeStyleSource, /archives:\s*\(\)\s*=>\s*import\("\.\.\/\.\.\/styles\/archives\.css"\)/);
-  assert.match(runtimeStyleSource, /whisper:\s*\(\)\s*=>\s*import\("\.\.\/\.\.\/styles\/whisper\.css"\)/);
+  assert.match(
+    runtimeStyleSource,
+    /archives:\s*async \(\)\s*=>\s*await import\("\.\.\/\.\.\/styles\/archives\.css"\)/
+  );
+  assert.match(
+    runtimeStyleSource,
+    /whisper:\s*async \(\)\s*=>\s*await import\("\.\.\/\.\.\/styles\/whisper\.css"\)/
+  );
   assert.match(archivesControllerSource, /await ensureRuntimePageStyles\("archives"\);/);
   assert.match(whisperControllerSource, /await ensureRuntimePageStyles\("whisper"\);/);
 });

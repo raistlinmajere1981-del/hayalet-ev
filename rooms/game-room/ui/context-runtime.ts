@@ -232,7 +232,8 @@
       const assigned = source["assigned"] === true;
       const connected = source["connected"] === true;
       const urlExcluded = source["urlExcluded"] === true;
-      const dispatchable = source["dispatchable"] === true || (assigned && urlExcluded !== true);
+      const ready = source["ready"] === true || (assigned && connected && urlExcluded !== true);
+      const dispatchable = source["dispatchable"] === true || ready;
       return {
         slotId: slotId,
         label: readString(source["label"], slotId.toUpperCase()),
@@ -241,7 +242,7 @@
         assigned,
         connected,
         dispatchable,
-        ready: source["ready"] === true || (assigned && connected && urlExcluded !== true),
+        ready,
         state: readString(source["state"], "empty"),
         urlExcluded,
         providerId: readString(source["providerId"], "") || null,
@@ -253,9 +254,17 @@
     function normalizeContext(payload: unknown): ContextState {
       const source = isRecord(payload) ? payload : {};
       const presenceSource = isRecord(source["presence"]) ? source["presence"] : {};
-      const slotsSource = isRecord(presenceSource["slots"]) ? presenceSource["slots"] : {};
+      const slotsSource = isRecord(presenceSource["slots"])
+        ? presenceSource["slots"]
+        : isRecord(source["slots"])
+          ? source["slots"]
+          : {};
       const roomSource = isRecord(source["room"]) ? source["room"] : {};
-      const userSource = isRecord(presenceSource["user"]) ? presenceSource["user"] : {};
+      const userSource = isRecord(presenceSource["user"])
+        ? presenceSource["user"]
+        : isRecord(source["user"])
+          ? source["user"]
+          : {};
       const features: FeatureRecord[] = Array.isArray(source["features"])
         ? source["features"].map(function (feature) {
             const featureSource = isRecord(feature) ? feature : {};

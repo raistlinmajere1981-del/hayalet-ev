@@ -28,6 +28,12 @@ function loggerT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.logs.logger.${key}`, params);
 }
 
+function isNodeTestRuntime(): boolean {
+  const processLike = (globalThis as { process?: { env?: Record<string, string | undefined> } })
+    .process;
+  return typeof processLike?.env?.["NODE_TEST_CONTEXT"] === "string";
+}
+
 class Logger {
   private static instance: Logger | null = null;
 
@@ -335,7 +341,9 @@ class Logger {
     metadata?: LogMetadata
   ): void {
     if (!this.isInitialized) {
-      console.warn(loggerT("notInitialized"));
+      if (!isNodeTestRuntime()) {
+        console.warn(loggerT("notInitialized"));
+      }
       return;
     }
 

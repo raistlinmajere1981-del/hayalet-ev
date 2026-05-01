@@ -436,18 +436,24 @@
 
       const maxOriginX = Math.max(0, BOARD_WIDTH - bounds.width);
       const clampedOriginX = clampNumber(stagedOriginX, 0, maxOriginX);
-      const totalRows = BOARD_HEIGHT - 1;
+      const maxSafeSteps = Math.max(0, BOARD_HEIGHT - bounds.height - spawn.y);
+      const bendStart =
+        routeMode !== "straight" && bendRow !== null ? clampNumber(bendRow, 0, maxSafeSteps) : null;
 
       const rowShifts: number[] = [];
       let currentX = spawn.x;
 
-      for (let rowIndex = 0; rowIndex < totalRows; rowIndex += 1) {
+      while (rowShifts.length < maxSafeSteps) {
+        const rowIndex = rowShifts.length;
         const desiredX =
-          routeMode !== "straight" && bendRow !== null && rowIndex >= bendRow
+          routeMode !== "straight" && bendStart !== null && rowIndex >= bendStart
             ? clampNumber(clampedOriginX + (routeMode === "bend-left" ? -1 : 1), 0, maxOriginX)
             : clampedOriginX;
 
         const shift = clampNumber(desiredX - currentX, -1, 1);
+        if (shift === 0 && desiredX === currentX && (bendStart === null || rowIndex >= bendStart)) {
+          break;
+        }
         rowShifts.push(shift);
         currentX += shift;
       }

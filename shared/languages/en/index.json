@@ -1733,6 +1733,12 @@
       "relayButtonSetupError": "Relay button setup error: {{message}}",
       "relayButtonStates": "Button states - ai1={{ai1}}, ai2={{ai2}}, ai0={{ai0}}, us1={{us1}}",
       "relayButtonStateUpdateError": "Relay button state update error: {{message}}",
+      "catchManager": {
+        "commandFound": "Detected command: ++{{prefix}}:{{name}}{{args}}"
+      },
+      "roomProtocolRegistry": {
+        "collisionSkipped": "Protocol key {{protocolKey}} already belongs to {{existingRoomId}}; skipping {{skippedRoomId}}."
+      },
       "themeManager": {
         "listenerError": "Theme listener error: {{message}}",
         "invalidTheme": "Invalid theme: {{theme}}"

@@ -182,7 +182,7 @@ function resolveSlotBridgeRoomCommandName(payload: Record<string, unknown>): str
 }
 
 function getRoomCommandCatalog(category?: CommandCategory): CommandCatalogItem[] {
-  return RoomCommandRegistry.listMetadata(category, { publicOnly: true })
+  return RoomCommandRegistry.listMetadata(category, { publicOnly: false })
     .filter((metadata) => BUILTIN_BY_KEY.has(metadata.name.toLowerCase()) !== true)
     .map((metadata) => ({
       name: metadata.name,

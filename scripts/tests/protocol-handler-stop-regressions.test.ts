@@ -1,13 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { AppState } from "../../src/js/modules/app-state.ts";
 import { ProtocolHandler } from "../../src/js/modules/protocol-handler.ts";
 import { SlotController, SlotState } from "../../src/js/modules/slot-controller.ts";
 
 test("user-ai-ai-stop payload stays header-only by omitting protocolKey", () => {
   const originalGetState = SlotController.getState;
+  const originalIsAssigned = AppState.isAssigned;
 
   try {
+    AppState.isAssigned = () => true;
     SlotController.getState = () => {
       return {
         state: SlotState.CONNECTED,
@@ -27,13 +30,16 @@ test("user-ai-ai-stop payload stays header-only by omitting protocolKey", () => 
     assert.deepEqual(payload.targets, ["ai1", "ai2"]);
   } finally {
     SlotController.getState = originalGetState;
+    AppState.isAssigned = originalIsAssigned;
   }
 });
 
 test("ai-assistant-stop payload is produced without protocol body key", () => {
   const originalGetState = SlotController.getState;
+  const originalIsAssigned = AppState.isAssigned;
 
   try {
+    AppState.isAssigned = () => true;
     SlotController.getState = () => {
       return {
         state: SlotState.CONNECTED,
@@ -53,13 +59,16 @@ test("ai-assistant-stop payload is produced without protocol body key", () => {
     assert.deepEqual(payload.targets, ["ai1"]);
   } finally {
     SlotController.getState = originalGetState;
+    AppState.isAssigned = originalIsAssigned;
   }
 });
 
 test("user-ai-ai start payload uses unified start header format", () => {
   const originalGetState = SlotController.getState;
+  const originalIsAssigned = AppState.isAssigned;
 
   try {
+    AppState.isAssigned = () => true;
     SlotController.getState = () => {
       return {
         state: SlotState.CONNECTED,
@@ -78,5 +87,6 @@ test("user-ai-ai start payload uses unified start header format", () => {
     assert.equal(payload.protocolKey, "analyze-user-AI-AI");
   } finally {
     SlotController.getState = originalGetState;
+    AppState.isAssigned = originalIsAssigned;
   }
 });

@@ -80,16 +80,20 @@ export function scrapeMessages(): ScrapedMessage[] {
   }
 
   function readElementText(element: Element | null): string {
-    if (!(element instanceof HTMLElement)) {
+    if (element === null) {
       return "";
     }
 
-    const innerText = element.innerText.trim();
+    const maybeTextElement = element as Element & {
+      innerText?: unknown;
+    };
+    const innerText =
+      typeof maybeTextElement.innerText === "string" ? maybeTextElement.innerText.trim() : "";
     if (innerText !== "") {
       return innerText;
     }
 
-    return element.textContent.trim();
+    return maybeTextElement.textContent.trim();
   }
 
   function cleanAssistantChrome(value: string): string {

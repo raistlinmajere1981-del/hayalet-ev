@@ -84,8 +84,14 @@ test("room tool service can describe planned and system-command tools without fo
   assert.match(serviceSource, /lastError: probe\.exitCode === 0 \? null : summarizeCommandFailure\(probe\),/);
   assert.match(serviceSource, /throw new Error\(\s*asNonEmptyString\(probeTool\?\.lastError\) \?\?/);
   assert.match(projectToolStatusSource, /lastError:\s*typeof probeTool\["lastError"\] === "string"/);
-  assert.match(manifestSource, /"packages": \["tensorflow", "tensorflow_hub", "numpy", "scipy", "setuptools<81"\]/);
-  assert.match(manifestSource, /"packages": \["pyAudioAnalysis", "numpy", "scipy", "scikit-learn", "hmmlearn", "matplotlib", "eyed3", "pydub"\]/);
+  assert.match(
+    manifestSource,
+    /"packages":\s*\[\s*"tensorflow",\s*"tensorflow_hub",\s*"numpy",\s*"scipy",\s*"setuptools<81"\s*\]/
+  );
+  assert.match(
+    manifestSource,
+    /"packages":\s*\[\s*"pyAudioAnalysis",\s*"numpy",\s*"scipy",\s*"scikit-learn",\s*"hmmlearn",\s*"matplotlib",\s*"eyed3",\s*"pydub"\s*\]/
+  );
   assert.match(
     serviceSource,
     /private resolveSystemCommandTool\(\s*manifest: ToolchainManifest,\s*toolId: string\s*\): \{/
