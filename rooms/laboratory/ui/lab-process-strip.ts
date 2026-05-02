@@ -399,6 +399,7 @@ export function renderLabProcessStrip(state: LabStoreState, copy: LabI18n = LAB_
   return `
     <footer
       class="labx-process-strip"
+      data-lab-region="process-strip"
       data-strip-state="${escapeHtml(stripState)}"
       data-process-view="${processViewActive ? "expanded" : "compact"}"
       aria-label="${escapeHtml(copy.t("mediaAnalysis.strip.ariaLabel", "Process state"))}"

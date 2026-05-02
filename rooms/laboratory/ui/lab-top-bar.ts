@@ -3,6 +3,7 @@ import type { LabDrawerMode, LabStoreState } from "../models/lab-types.js";
 import { getDrawerCollapsed, resolveDrawerMode } from "../runtime/lab-selectors.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
+import { renderLeftRail } from "./laboratory-layout.js";
 
 function renderProjectSelector(copy: LabI18n) {
   const label = copy.t("mediaAnalysis.topBar.projectManagement", "Project Management");
@@ -34,13 +35,8 @@ function getPillState(
   }
 }
 
-export function renderLabTopBar(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
+function renderModePills(state: LabStoreState, copy: LabI18n) {
   const drawerMode = resolveDrawerMode(state);
-  const drawerCollapsed = getDrawerCollapsed(state);
-  const drawerToggleLabel = drawerCollapsed
-    ? copy.t("mediaAnalysis.drawer.expand", "Paneli aç")
-    : copy.t("mediaAnalysis.drawer.collapse", "Paneli kapat");
-
   const pills = [
     {
       id: "source" as const,
@@ -59,7 +55,7 @@ export function renderLabTopBar(state: LabStoreState, copy: LabI18n = LAB_FALLBA
     },
   ];
 
-  const pillsMarkup = pills
+  return pills
     .map(function (pill) {
       const pillState = getPillState(pill.id, drawerMode);
       const pulsing = pill.id === "analyze" && drawerMode === "running";
@@ -67,25 +63,40 @@ export function renderLabTopBar(state: LabStoreState, copy: LabI18n = LAB_FALLBA
         <button
           class="labx-topbar-pill"
           type="button"
+          aria-label="${escapeHtml(pill.label)}"
+          title="${escapeHtml(pill.label)}"
           data-lab-action="${escapeHtml(pill.action)}"
           data-pill-state="${pillState}"
           data-pill-pulsing="${pulsing ? "true" : "false"}"
         >
           <span class="labx-topbar-pill__dot" aria-hidden="true"></span>
-          <span>${escapeHtml(pill.label)}</span>
+          <span class="labx-topbar-pill__label">${escapeHtml(pill.label)}</span>
         </button>
       `;
     })
     .join("");
+}
+
+export function renderLabLeftRail(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
+  return renderLeftRail({
+    ariaLabel: copy.t("mediaAnalysis.topBar.navLabel", "Mode indicators"),
+    controlsMarkup: renderModePills(state, copy),
+  });
+}
+
+export function renderLabTopBar(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
+  const drawerMode = resolveDrawerMode(state);
+  const drawerCollapsed = getDrawerCollapsed(state);
+  const drawerToggleLabel = drawerCollapsed
+    ? copy.t("mediaAnalysis.drawer.expand", "Paneli aç")
+    : copy.t("mediaAnalysis.drawer.collapse", "Paneli kapat");
 
   return `
-    <header class="labx-top-bar" data-drawer-mode="${escapeHtml(drawerMode)}">
+    <header class="labx-top-bar" data-lab-region="topbar" data-drawer-mode="${escapeHtml(drawerMode)}">
       <div class="labx-top-bar__left">
         ${renderProjectSelector(copy)}
       </div>
-      <nav class="labx-top-bar__center" aria-label="${escapeHtml(copy.t("mediaAnalysis.topBar.navLabel", "Mode indicators"))}">
-        ${pillsMarkup}
-      </nav>
+      <div class="labx-top-bar__center labx-top-bar__center--empty" aria-hidden="true"></div>
       <div class="labx-top-bar__right">
         <button
           class="labx-top-bar__tool-btn"

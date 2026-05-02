@@ -1,5 +1,6 @@
 import type { LabWorkspaceSurface } from "../models/lab-types.js";
+import { renderMainStage } from "./laboratory-layout.js";
 
 export function renderLabCenterPanel(surface: LabWorkspaceSurface) {
-  return `<main class="labx-center-panel">${surface.main}</main>`;
+  return renderMainStage(surface.main);
 }

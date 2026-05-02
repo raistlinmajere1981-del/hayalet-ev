@@ -24,9 +24,10 @@ import {
   translateLabRuntimeText,
 } from "../../rooms/laboratory/ui/lab-runtime-i18n.ts";
 import { createRoomBuiltArtifact } from "./helpers/room-installed-copy.ts";
+import { importLabRootModuleWithDomStub } from "./laboratory-runtime-truth.helpers.ts";
 
 class ElementStub {
-  innerHTML = "";
+  private innerHtmlValue = "";
   scrollTop = 0;
   dataset: Record<string, string> = {};
   classList = {
@@ -34,6 +35,14 @@ class ElementStub {
     remove() {},
     toggle() {},
   };
+
+  get innerHTML(): string {
+    return this.innerHtmlValue;
+  }
+
+  set innerHTML(value: string) {
+    this.innerHtmlValue = value;
+  }
 
   querySelector(): null {
     return null;
@@ -48,6 +57,91 @@ class ElementStub {
   removeEventListener(): void {}
 
   replaceChildren(): void {}
+}
+
+function captureDebugLogs(run: () => void) {
+  const descriptor = Object.getOwnPropertyDescriptor(console, "info");
+  const logs: unknown[][] = [];
+  Object.defineProperty(console, "info", {
+    configurable: true,
+    value(...args: unknown[]) {
+      logs.push(args);
+    },
+  });
+  try {
+    run();
+  } finally {
+    if (descriptor) {
+      Object.defineProperty(console, "info", descriptor);
+    } else {
+      Reflect.deleteProperty(console, "info");
+    }
+  }
+  return logs;
+}
+
+function createObservabilityShell(input: {
+  debug: boolean;
+  drawerMode?: string;
+  existingPanel?: boolean;
+  pipelineBlocks?: number;
+  regions?: number;
+}) {
+  let panelRemoved = false;
+  let insertedHtml = "";
+  const panelAttributes = new Map<string, string>();
+  const panel = {
+    innerHTML: "",
+    remove() {
+      panelRemoved = true;
+    },
+    setAttribute(name: string, value: string) {
+      panelAttributes.set(name, value);
+    },
+  };
+  const contextPanel = {
+    getAttribute(name: string) {
+      return name === "data-drawer-mode" ? (input.drawerMode ?? "setup") : null;
+    },
+  };
+  return {
+    get insertedHtml() {
+      return insertedHtml;
+    },
+    get panelAttributes() {
+      return panelAttributes;
+    },
+    get panelInnerHtml() {
+      return panel.innerHTML;
+    },
+    get panelRemoved() {
+      return panelRemoved;
+    },
+    getAttribute(name: string) {
+      return name === "data-lab-debug-regions" && input.debug ? "true" : null;
+    },
+    insertAdjacentHTML(_position: InsertPosition, html: string) {
+      insertedHtml = html;
+    },
+    querySelector(selector: string) {
+      if (selector === '[data-lab-debug-panel="true"]') {
+        return input.existingPanel === true ? panel : null;
+      }
+      if (selector === '[data-lab-region="context-panel"], .labx-drawer') {
+        return contextPanel;
+      }
+      return null;
+    },
+    querySelectorAll(selector: string) {
+      if (selector === "[data-lab-region]") {
+        return Array.from({ length: input.regions ?? 0 });
+      }
+      if (selector === ".labx-pipeline-block") {
+        return Array.from({ length: input.pipelineBlocks ?? 0 });
+      }
+      return [];
+    },
+  };
 }
 
 type MinimalLaboratoryUiEnvironmentOptions = {
@@ -179,7 +273,35 @@ function createMinimalLaboratoryUiEnvironment(options: MinimalLaboratoryUiEnviro
 }
 
 class MountedRootElement extends ElementStub {
+  layoutWrites: string[] = [];
   mountedQueriesEnabled = false;
+  private mountedInnerHtmlValue = "";
+
+  override get innerHTML(): string {
+    return this.mountedInnerHtmlValue;
+  }
+
+  override set innerHTML(value: string) {
+    this.layoutWrites.push(value);
+    this.mountedInnerHtmlValue = value;
+  }
+
+  clearLayoutWrites(): void {
+    this.layoutWrites = [];
+  }
+
+  setShellAttribute(name: string, value: string): void {
+    const shellMatch = this.mountedInnerHtmlValue.match(/<div class="labx-shell"([^>]*)>/);
+    if (!shellMatch) {
+      return;
+    }
+    const shellTag = shellMatch[0];
+    const attributePattern = new RegExp(`${name}="[^"]*"`);
+    const nextTag = attributePattern.test(shellTag)
+      ? shellTag.replace(attributePattern, `${name}="${value}"`)
+      : shellTag.replace(/>$/, ` ${name}="${value}">`);
+    this.mountedInnerHtmlValue = this.mountedInnerHtmlValue.replace(shellTag, nextTag);
+  }
 
   override querySelector(selector: string): MountedQueryElement | null {
     if (this.mountedQueriesEnabled !== true) {
@@ -210,8 +332,6 @@ class MountedQueryElement extends ElementStub {
     return attributeMatch?.[1] ?? null;
   }
 
-  setAttribute(): void {}
-
   removeAttribute(): void {}
 
   hasAttribute(name: string): boolean {
@@ -224,6 +344,12 @@ class MountedQueryElement extends ElementStub {
 
   insertAdjacentHTML(_position: InsertPosition, html: string): void {
     this.root.innerHTML += html;
+  }
+
+  setAttribute(name: string, value: string): void {
+    if (this.selector === ".labx-shell") {
+      this.root.setShellAttribute(name, value);
+    }
   }
 }
 
@@ -856,7 +982,7 @@ test("laboratory mounted shell swaps chrome across YouTube import mode transitio
     assert.match(environment.runtimeRoot.innerHTML, /data-layout-kind="laboratory"/);
     assert.match(environment.runtimeRoot.innerHTML, /data-ready="false"/);
     assert.match(environment.runtimeRoot.innerHTML, /class="labx-top-bar"/);
-    assert.match(environment.runtimeRoot.innerHTML, /class="labx-drawer"/);
+    assert.match(environment.runtimeRoot.innerHTML, /class="labx-drawer labx-context-panel"/);
     assert.match(environment.runtimeRoot.innerHTML, /class="labx-process-strip"/);
 
     environment.runtimeRoot.mountedQueriesEnabled = true;
@@ -899,8 +1025,55 @@ test("laboratory mounted shell swaps chrome across YouTube import mode transitio
 
     assert.match(environment.runtimeRoot.innerHTML, /data-layout-kind="laboratory"/);
     assert.match(environment.runtimeRoot.innerHTML, /class="labx-top-bar"/);
-    assert.match(environment.runtimeRoot.innerHTML, /class="labx-drawer"/);
+    assert.match(environment.runtimeRoot.innerHTML, /class="labx-drawer labx-context-panel"/);
     assert.match(environment.runtimeRoot.innerHTML, /class="labx-process-strip"/);
+  } finally {
+    environment.restore();
+  }
+});
+
+test("laboratory mounted fallback logs missing region diagnostics before preserving debug replacement", async () => {
+  const environment = createMountedLaboratoryTransitionEnvironment();
+
+  try {
+    await import(
+      `${pathToFileURL(resolve("rooms/laboratory/ui/lab-root.ts")).href}?mountedFallback=${Date.now()}`
+    );
+
+    environment.runtimeRoot.mountedQueriesEnabled = true;
+    environment.runtimeRoot.setShellAttribute("data-lab-debug-regions", "true");
+    environment.runtimeRoot.clearLayoutWrites();
+
+    const clickListener = environment.listener("click");
+    assert.ok(clickListener);
+
+    const debugLogs = captureDebugLogs(function () {
+      clickListener({
+        target: new MountedActionElement("analysis-prep-group-toggle", "audio-investigation"),
+      } as unknown as Event);
+    });
+    const debugMessages = debugLogs.map(function (entry) {
+      return entry[0];
+    });
+
+    assert.equal(debugMessages[0], "[lab][fallback] triggered -> regionsFound: 0");
+    assert.deepEqual(debugLogs[0]?.[1], {
+      missing: ["topbar", "left-rail", "main-stage", "context-panel", "inspector", "process-strip"],
+      regionsFound: 0,
+    });
+    assert.deepEqual(
+      debugMessages.slice(1, 7).sort(),
+      [
+        "[lab][region] context-panel -> missing",
+        "[lab][region] inspector -> missing",
+        "[lab][region] topbar -> missing",
+        "[lab][region] left-rail -> missing",
+        "[lab][region] main-stage -> missing",
+        "[lab][region] process-strip -> missing",
+      ].sort()
+    );
+    assert.ok(environment.runtimeRoot.layoutWrites.length >= 1);
+    assert.match(environment.runtimeRoot.innerHTML, /data-lab-debug-regions="true"/);
   } finally {
     environment.restore();
   }
@@ -1109,6 +1282,71 @@ test("laboratory shell preserves workspace preview nodes while diffing live pane
   assert.match(labRootSource, /function updateRenderedElement\(/);
   assert.match(labRootSource, /function syncChildNodes\(/);
   assert.match(labRootSource, /function canReuseElement\(/);
+  assert.match(labRootSource, /const LAB_REGION_SELECTORS = \{/);
+  assert.match(
+    labRootSource,
+    /topBar: \['\[data-lab-region="topbar"\]', '\[data-lab-region="top-bar"\]', "\.labx-top-bar"\]/
+  );
+  assert.match(
+    labRootSource,
+    /leftRail: \[\s*'\[data-lab-region="left-rail-source"\]',\s*'\[data-lab-region="left-rail"\]',\s*"\.labx-left-rail",\s*\]/
+  );
+  assert.match(
+    labRootSource,
+    /mainStage: \['\[data-lab-region="main-stage"\]', "\.labx-center-panel"\]/
+  );
+  assert.match(
+    labRootSource,
+    /contextPanel: \['\[data-lab-region="context-panel"\]', "\.labx-drawer"\]/
+  );
+  assert.match(
+    labRootSource,
+    /inspectorPanel: \['\[data-lab-region="inspector-panel"\]', "\.labx-workspace-inspector"\]/
+  );
+  assert.match(
+    labRootSource,
+    /processStrip: \['\[data-lab-region="process-strip"\]', "\.labx-process-strip"\]/
+  );
+  assert.match(
+    labRootSource,
+    /function queryRegion\(root: ParentNode, selectors: readonly string\[\]\)/
+  );
+  assert.match(labRootSource, /for \(const selector of selectors\)/);
+  assert.match(labRootSource, /queryRegion\(runtimeRoot, LAB_REGION_SELECTORS\.mainStage\)/);
+  assert.match(
+    labRootSource,
+    /element:\s*queryRegion\(runtimeRoot, LAB_REGION_SELECTORS\[descriptor\.key\]\)/
+  );
+  assert.match(labRootSource, /function syncRegion\(input: \{/);
+  assert.match(
+    labRootSource,
+    /const currentElement = queryRegion\(input\.root, input\.selectors\);/
+  );
+  assert.match(labRootSource, /return false;/);
+  assert.match(labRootSource, /function shouldFallback\(regionsFound: number\)/);
+  assert.match(labRootSource, /return regionsFound < 3;/);
+  assert.match(labRootSource, /const LAB_OVERLAY_SELECTORS = \{/);
+  assert.match(labRootSource, /function syncOverlayRoot\(/);
+  assert.match(labRootSource, /const regionDescriptors: LabRegionDescriptor\[\] = \[/);
+  assert.match(
+    labRootSource,
+    /key: "topBar"[\s\S]*key: "leftRail"[\s\S]*key: "mainStage"[\s\S]*key: "contextPanel"[\s\S]*key: "inspectorPanel"[\s\S]*key: "processStrip"/
+  );
+  assert.match(labRootSource, /shouldFallback\(regionsFound\)/);
+  assert.doesNotMatch(labRootSource, /shouldFallback\(regionsFound\) \|\| !overlayRoot/);
+  assert.match(labRootSource, /function debugLabRegionLifecycle\(/);
+  assert.match(labRootSource, /function debugLabFallback\(/);
+  assert.match(labRootSource, /function debugLabOverlay\(/);
+  assert.match(labRootSource, /function syncLabDebugPanel\(/);
+  assert.match(labRootSource, /\[lab\]\[region\]/);
+  assert.match(labRootSource, /\[lab\]\[fallback\]/);
+  assert.match(labRootSource, /\[lab\]\[overlay\]/);
+  assert.match(
+    labRootSource,
+    /debugLabFallback\(shell, regionsFound, missingRegions\);[\s\S]*replaceLabLayout\(state, surface, copy\);/
+  );
+  assert.match(labRootSource, /mountedShell\.setAttribute\("data-lab-debug-regions", "true"\)/);
+  assert.doesNotMatch(labRootSource, /\[lab-root\] regions synced/);
   assert.match(
     labRootSource,
     /const preserveKey = readPreservedMediaKey\(currentElement\) \|\| readPreservedMediaKey\(nextElement\);/
@@ -1120,18 +1358,387 @@ test("laboratory shell preserves workspace preview nodes while diffing live pane
   assert.match(labRootSource, /currentElement\.scrollTop = scrollTop;/);
   assert.match(
     labRootSource,
-    /updateRenderedElement\(\s*documentRef,\s*centerPanel as HTMLElement,\s*renderLabCenterPanel\(surface\),\s*true\s*\);/
-  );
-  assert.match(
-    labRootSource,
-    /updateRenderedElement\(\s*documentRef,\s*drawer as HTMLElement,\s*renderLabDrawer\(state, surface, copy\),\s*true\s*\);/
-  );
-  assert.match(
-    labRootSource,
-    /updateRenderedElement\(\s*documentRef,\s*processStrip as HTMLElement,\s*renderLabProcessStrip\(state, copy\)\s*\);/
+    /syncRegion\(\{[\s\S]*debugShell: shell,[\s\S]*documentRef,[\s\S]*regionKey: region\.key,[\s\S]*render: region\.render,[\s\S]*root: runtimeRoot,[\s\S]*selectors: LAB_REGION_SELECTORS\[region\.key\],[\s\S]*\}\);/
   );
   assert.match(workspaceSurfaceSource, /preserveKey \|\| "workspace-preview"/);
   assert.match(workspaceSurfaceSource, /data-lab-preserve-media="\$\{escapeHtml\(preserveKey\)\}"/);
+});
+
+test("laboratory observability helpers are debug gated and structured", async () => {
+  const labRootModule = await importLabRootModuleWithDomStub<{
+    __testOnlyLabRootObservability: {
+      debugLabFallback: (
+        shell: Element | null,
+        regionsFound: number,
+        missingRegions: string[]
+      ) => void;
+      debugLabOverlay: (
+        shell: Element | null,
+        overlayKey: "assetPreview" | "projectWorkspace" | "report" | "tools",
+        event: "invalid" | "missing",
+        detail?: Record<string, unknown>
+      ) => void;
+      debugLabRegionLifecycle: (
+        shell: Element | null,
+        regionKey:
+          | "contextPanel"
+          | "inspectorPanel"
+          | "leftRail"
+          | "mainStage"
+          | "processStrip"
+          | "topBar",
+        event: "fallback" | "missing" | "mount" | "update",
+        detail?: Record<string, unknown>
+      ) => void;
+      isLabRegionDebugEnabled: (shell: Element | null) => boolean;
+      syncLabDebugPanel: (shell: HTMLElement | null) => void;
+    };
+  }>();
+  const observability = labRootModule.__testOnlyLabRootObservability;
+  const debugShell = createObservabilityShell({
+    debug: true,
+    drawerMode: "result",
+    pipelineBlocks: 4,
+    regions: 9,
+  });
+  const quietShell = createObservabilityShell({ debug: false, existingPanel: true });
+
+  const debugLogs = captureDebugLogs(function () {
+    observability.debugLabRegionLifecycle(debugShell as unknown as Element, "topBar", "mount");
+    observability.debugLabRegionLifecycle(
+      debugShell as unknown as Element,
+      "inspectorPanel",
+      "update"
+    );
+    observability.debugLabFallback(debugShell as unknown as Element, 2, [
+      "inspector",
+      "context-panel",
+    ]);
+    observability.debugLabOverlay(debugShell as unknown as Element, "tools", "missing", {
+      selector: ".labx-overlay-root",
+    });
+  });
+
+  assert.deepEqual(
+    debugLogs.map(function (entry) {
+      return entry[0];
+    }),
+    [
+      "[lab][region] topbar -> mounted",
+      "[lab][region] inspector -> updated",
+      "[lab][fallback] triggered -> regionsFound: 2",
+      "[lab][overlay] tools -> missing",
+    ]
+  );
+  assert.deepEqual(debugLogs[2]?.[1], {
+    missing: ["inspector", "context-panel"],
+    regionsFound: 2,
+  });
+
+  const quietLogs = captureDebugLogs(function () {
+    observability.debugLabRegionLifecycle(quietShell as unknown as Element, "topBar", "mount");
+    observability.debugLabFallback(quietShell as unknown as Element, 2, ["topbar"]);
+    observability.debugLabOverlay(quietShell as unknown as Element, "tools", "missing");
+  });
+  assert.equal(quietLogs.length, 0);
+  assert.equal(observability.isLabRegionDebugEnabled(debugShell as unknown as Element), true);
+  assert.equal(observability.isLabRegionDebugEnabled(quietShell as unknown as Element), false);
+
+  observability.syncLabDebugPanel(debugShell as unknown as HTMLElement);
+  assert.match(debugShell.insertedHtml, /data-lab-debug-panel="true"/);
+  assert.match(debugShell.insertedHtml, /data-region-count="9"/);
+  assert.match(debugShell.insertedHtml, /data-pipeline-block-count="4"/);
+  assert.match(debugShell.insertedHtml, /data-drawer-mode="result"/);
+
+  observability.syncLabDebugPanel(quietShell as unknown as HTMLElement);
+  assert.equal(quietShell.panelRemoved, true);
+});
+
+test("laboratory observability runtime paths log region fallback and overlay health without replacing shell", async () => {
+  class RuntimeHarnessElement extends ElementStub {
+    appendedChildren: RuntimeHarnessElement[] = [];
+    attributes = new Map<string, string>();
+    childNodes: RuntimeHarnessElement[] = [];
+    className = "";
+    outerHtmlWrites: string[] = [];
+    parentElement: RuntimeHarnessElement | null = null;
+    private readonly queries = new Map<string, RuntimeHarnessElement | null>();
+
+    constructor(
+      readonly tagName = "DIV",
+      attributes: Record<string, string> = {}
+    ) {
+      super();
+      Object.entries(attributes).forEach(([key, value]) => {
+        this.setAttribute(key, value);
+      });
+      this.className = attributes["class"] ?? "";
+    }
+
+    appendChild(child: RuntimeHarnessElement): RuntimeHarnessElement {
+      child.parentElement = this;
+      this.appendedChildren.push(child);
+      this.childNodes.push(child);
+      return child;
+    }
+
+    cloneNode(): RuntimeHarnessElement {
+      return new RuntimeHarnessElement(this.tagName, Object.fromEntries(this.attributes));
+    }
+
+    get outerHTML(): string {
+      return this.innerHTML;
+    }
+
+    set outerHTML(value: string) {
+      this.outerHtmlWrites.push(value);
+      this.innerHTML = value;
+    }
+
+    getAttribute(name: string): string | null {
+      return this.attributes.get(name) ?? null;
+    }
+
+    getAttributeNames(): string[] {
+      return Array.from(this.attributes.keys());
+    }
+
+    hasAttribute(name: string): boolean {
+      return this.attributes.has(name);
+    }
+
+    override querySelector(selector: string): RuntimeHarnessElement | null {
+      return this.queries.get(selector) ?? null;
+    }
+
+    remove(): void {
+      this.parentElement?.childNodes.splice(this.parentElement.childNodes.indexOf(this), 1);
+    }
+
+    removeAttribute(name: string): void {
+      this.attributes.delete(name);
+    }
+
+    replaceWith(next: RuntimeHarnessElement): void {
+      this.outerHtmlWrites.push(next.outerHTML);
+    }
+
+    setAttribute(name: string, value: string): void {
+      this.attributes.set(name, value);
+      if (name === "class") {
+        this.className = value;
+      }
+    }
+
+    setQuery(selector: string, element: RuntimeHarnessElement | null): void {
+      this.queries.set(selector, element);
+    }
+  }
+
+  class RuntimeHarnessTemplate {
+    content: { firstElementChild: RuntimeHarnessElement | null } = {
+      firstElementChild: null,
+    };
+
+    set innerHTML(markup: string) {
+      const trimmed = markup.trim();
+      const tag = /^<([a-z0-9-]+)/i.exec(trimmed)?.[1]?.toUpperCase() ?? "";
+      if (tag === "") {
+        this.content.firstElementChild = null;
+        return;
+      }
+      const className = /\sclass="([^"]*)"/.exec(trimmed)?.[1] ?? "";
+      this.content.firstElementChild = new RuntimeHarnessElement(tag, { class: className });
+      this.content.firstElementChild.innerHTML = trimmed;
+    }
+  }
+
+  type LabRootObservabilityRuntime = {
+    __testOnlyLabRootObservability: {
+      queryRegion: (root: ParentNode, selectors: readonly string[]) => HTMLElement | null;
+      shouldFallback: (regionsFound: number) => boolean;
+      syncOverlayRoot: (
+        documentRef: Document,
+        root: HTMLElement,
+        overlayKey: "assetPreview" | "projectWorkspace" | "report" | "tools",
+        selector: string,
+        render: () => string,
+        debugShell?: Element | null
+      ) => boolean;
+      syncRegion: (input: {
+        debugShell?: Element | null;
+        documentRef: Document;
+        preserveScroll?: boolean;
+        regionKey?:
+          | "contextPanel"
+          | "inspectorPanel"
+          | "leftRail"
+          | "mainStage"
+          | "processStrip"
+          | "topBar";
+        render: () => string;
+        root: ParentNode;
+        selectors: readonly string[];
+      }) => boolean;
+    };
+  };
+
+  const labRootModule = await importLabRootModuleWithDomStub<LabRootObservabilityRuntime>();
+  const observability = labRootModule.__testOnlyLabRootObservability;
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, "HTMLElement");
+  const documentRef = {
+    createElement(tagName: string) {
+      if (tagName === "template") {
+        return new RuntimeHarnessTemplate();
+      }
+      return new RuntimeHarnessElement(tagName.toUpperCase());
+    },
+  } as unknown as Document;
+
+  Object.defineProperty(globalThis, "HTMLElement", {
+    configurable: true,
+    value: RuntimeHarnessElement,
+  });
+  try {
+    const root = new RuntimeHarnessElement("DIV");
+    const debugShell = new RuntimeHarnessElement("DIV", {
+      "data-lab-debug-regions": "true",
+    });
+    const topbar = new RuntimeHarnessElement("SECTION", {
+      class: "labx-top-bar",
+      "data-lab-region": "topbar",
+    });
+    topbar.scrollTop = 17;
+    topbar.parentElement = root;
+    root.setQuery('[data-lab-region="topbar"]', topbar);
+
+    const regionLogs = captureDebugLogs(function () {
+      const updated = observability.syncRegion({
+        debugShell,
+        documentRef,
+        preserveScroll: true,
+        regionKey: "topBar",
+        render() {
+          return '<article class="labx-top-bar">updated</article>';
+        },
+        root,
+        selectors: ['[data-lab-region="topbar"]', ".labx-top-bar"],
+      });
+      const missing = observability.syncRegion({
+        debugShell,
+        documentRef,
+        regionKey: "inspectorPanel",
+        render() {
+          return '<aside class="labx-workspace-inspector">missing</aside>';
+        },
+        root,
+        selectors: ['[data-lab-region="inspector-panel"]', ".labx-workspace-inspector"],
+      });
+
+      assert.equal(updated, true);
+      assert.equal(missing, false);
+    });
+
+    assert.equal(observability.queryRegion(root, ['[data-lab-region="topbar"]']), topbar);
+    assert.equal(topbar.outerHtmlWrites.length, 1);
+    assert.match(topbar.outerHtmlWrites[0] ?? "", /class="labx-top-bar"/);
+    assert.deepEqual(
+      regionLogs.map(function (entry) {
+        return entry[0];
+      }),
+      ["[lab][region] topbar -> updated", "[lab][region] inspector -> missing"]
+    );
+
+    assert.equal(observability.shouldFallback(2), true);
+    assert.equal(observability.shouldFallback(3), false);
+
+    const overlayRoot = new RuntimeHarnessElement("DIV");
+    const existingOverlay = new RuntimeHarnessElement("DIV", { class: "labx-overlay-root" });
+    existingOverlay.parentElement = overlayRoot;
+    overlayRoot.setQuery(".labx-overlay-root", existingOverlay);
+
+    const overlayLogs = captureDebugLogs(function () {
+      const updatedOverlay = observability.syncOverlayRoot(
+        documentRef,
+        overlayRoot,
+        "tools",
+        ".labx-overlay-root",
+        function () {
+          return '<aside class="labx-overlay-root">updated</aside>';
+        },
+        debugShell
+      );
+      const appendedOverlay = observability.syncOverlayRoot(
+        documentRef,
+        overlayRoot,
+        "assetPreview",
+        "#lab-asset-preview-overlay-root",
+        function () {
+          return '<section id="lab-asset-preview-overlay-root">new</section>';
+        },
+        debugShell
+      );
+      const invalidOverlay = observability.syncOverlayRoot(
+        documentRef,
+        overlayRoot,
+        "report",
+        "#lab-report-overlay-root",
+        function () {
+          return "";
+        },
+        debugShell
+      );
+
+      assert.equal(updatedOverlay, true);
+      assert.equal(appendedOverlay, true);
+      assert.equal(invalidOverlay, false);
+    });
+
+    assert.equal(existingOverlay.outerHtmlWrites.length, 1);
+    assert.equal(overlayRoot.outerHtmlWrites.length, 0);
+    assert.equal(overlayRoot.appendedChildren.length, 1);
+    assert.deepEqual(
+      overlayLogs.map(function (entry) {
+        return entry[0];
+      }),
+      [
+        "[lab][overlay] asset-preview -> missing",
+        "[lab][overlay] report -> missing",
+        "[lab][overlay] report -> invalid",
+      ]
+    );
+
+    const quietShell = new RuntimeHarnessElement("DIV");
+    const quietLogs = captureDebugLogs(function () {
+      observability.syncRegion({
+        debugShell: quietShell,
+        documentRef,
+        regionKey: "processStrip",
+        render() {
+          return '<div class="labx-process-strip"></div>';
+        },
+        root,
+        selectors: ['[data-lab-region="process-strip"]'],
+      });
+      observability.syncOverlayRoot(
+        documentRef,
+        overlayRoot,
+        "projectWorkspace",
+        "#lab-project-workspace-root",
+        function () {
+          return "";
+        },
+        quietShell
+      );
+    });
+    assert.equal(quietLogs.length, 0);
+  } finally {
+    if (descriptor) {
+      Object.defineProperty(globalThis, "HTMLElement", descriptor);
+    } else {
+      Reflect.deleteProperty(globalThis, "HTMLElement");
+    }
+  }
 });
 
 test("laboratory shell persists workspace-facing state and exposes tool lifecycle controls", () => {
@@ -1176,17 +1783,77 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
 });
 
 test("laboratory center workbench attaches media viewport and timeline as one surface", () => {
+  const labTypesSource = readFileSync("rooms/laboratory/models/lab-types.ts", "utf8");
   const workspaceSurfaceSource = readFileSync("rooms/laboratory/ui/workspace-surface.ts", "utf8");
+  const laboratoryLayoutSource = readFileSync("rooms/laboratory/ui/laboratory-layout.ts", "utf8");
+  const centerPanelSource = readFileSync("rooms/laboratory/ui/lab-center-panel.ts", "utf8");
+  const topBarSource = readFileSync("rooms/laboratory/ui/lab-top-bar.ts", "utf8");
+  const drawerSource = readFileSync("rooms/laboratory/ui/lab-drawer.ts", "utf8");
+  const processStripSource = readFileSync("rooms/laboratory/ui/lab-process-strip.ts", "utf8");
   const timelineSource = readFileSync(
     "rooms/laboratory/ui/lab-waveform-timeline-render.ts",
     "utf8"
   );
   const themeSource = readFileSync("rooms/laboratory/ui/lab-theme.css", "utf8");
 
+  assert.match(labTypesSource, /export type LabPipelineBlock = \{/);
+  assert.match(labTypesSource, /type: "section" \| "action" \| "status" \| "output";/);
+  assert.match(laboratoryLayoutSource, /export function renderLaboratoryLayout/);
+  assert.match(laboratoryLayoutSource, /export function renderMainStage/);
+  assert.match(laboratoryLayoutSource, /export function renderLeftRail/);
+  assert.match(laboratoryLayoutSource, /export function renderPreviewArea/);
+  assert.match(laboratoryLayoutSource, /export function renderTimelineArea/);
+  assert.match(laboratoryLayoutSource, /export function renderPipeline/);
+  assert.match(laboratoryLayoutSource, /function getPipelineDebugShell\(/);
+  assert.match(laboratoryLayoutSource, /\[lab\]\[pipeline\]/);
+  assert.match(laboratoryLayoutSource, /data-block-id="\$\{escapeHtml\(block\.id\)\}"/);
+  assert.match(laboratoryLayoutSource, /data-block-type="\$\{escapeHtml\(block\.type\)\}"/);
+  assert.match(laboratoryLayoutSource, /data-block-mode="\$\{escapeHtml\(mode\)\}"/);
+  assert.match(laboratoryLayoutSource, /export function renderContextPanel/);
+  assert.match(laboratoryLayoutSource, /export function renderInspectorPanel/);
+  assert.match(centerPanelSource, /renderMainStage\(surface\.main\)/);
+  assert.match(
+    laboratoryLayoutSource,
+    /class="labx-center-panel labx-main-stage" data-lab-region="main-stage"/
+  );
+  assert.match(topBarSource, /class="labx-top-bar" data-lab-region="topbar"/);
+  assert.match(topBarSource, /export function renderLabLeftRail/);
+  assert.match(topBarSource, /class="labx-top-bar__center labx-top-bar__center--empty"/);
+  assert.doesNotMatch(
+    topBarSource,
+    /class="labx-top-bar__center" data-lab-region="left-rail-source"/
+  );
+  assert.match(
+    laboratoryLayoutSource,
+    /class="labx-left-rail labx-top-bar__center" data-lab-region="left-rail-source"/
+  );
+  assert.match(drawerSource, /renderContextPanel/);
+  assert.match(drawerSource, /if \(collapsed\) \{[\s\S]*renderContextPanel\(\{[\s\S]*hidden: true/);
+  assert.match(
+    laboratoryLayoutSource,
+    /class="labx-drawer labx-context-panel" data-lab-region="context-panel"/
+  );
+  assert.match(laboratoryLayoutSource, /data-empty="\$\{empty\}"/);
+  assert.match(processStripSource, /data-lab-region="process-strip"/);
   assert.match(workspaceSurfaceSource, /class="labx-media-workbench"/);
+  assert.match(workspaceSurfaceSource, /data-lab-region="main-stage-inner"/);
+  assert.match(workspaceSurfaceSource, /renderPreviewArea\(/);
+  assert.match(
+    workspaceSurfaceSource,
+    /renderTimelineArea\(durationMs > 0 \? renderLabWaveformTimeline\(timelineModel\) : ""\)/
+  );
+  assert.match(workspaceSurfaceSource, /renderInspectorPanel\(/);
+  assert.match(
+    workspaceSurfaceSource,
+    /panels\.length === 0[\s\S]*renderInspectorPanel\(\{[\s\S]*empty: true,[\s\S]*hidden: true/
+  );
+  assert.match(laboratoryLayoutSource, /data-lab-region="preview-area"/);
+  assert.match(laboratoryLayoutSource, /data-lab-region="inspector-panel"/);
+  assert.match(laboratoryLayoutSource, /data-timeline-empty="true"/);
+  assert.match(laboratoryLayoutSource, /hidden aria-hidden="true"/);
   assert.match(workspaceSurfaceSource, /class="labx-workspace-stage"/);
   assert.match(workspaceSurfaceSource, /renderWorkspaceInspectorDrawer/);
-  assert.match(workspaceSurfaceSource, /data-lab-workspace-inspector="true"/);
+  assert.match(laboratoryLayoutSource, /data-lab-workspace-inspector="true"/);
   assert.match(workspaceSurfaceSource, /data-lab-action="workspace-controls-drawer-toggle"/);
   assert.match(workspaceSurfaceSource, /data-lab-action="workspace-controls-tab-select"/);
   assert.match(workspaceSurfaceSource, /data-lab-media-workbench="true"/);
@@ -1196,6 +1863,10 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   );
   assert.match(workspaceSurfaceSource, /data-lab-selection-roi-controls-reserve="0"/);
   assert.match(timelineSource, /data-lab-action="timeline-toggle-playback"/);
+  assert.match(
+    timelineSource,
+    /class="labx-timeline labx-timeline-area\$\{focusClassName\}" id="lab-timeline" data-lab-region="timeline-area"/
+  );
   assert.match(timelineSource, /data-lab-role="timeline-volume"/);
   assert.match(timelineSource, /data-lab-role="timeline-bookmark-note"/);
   assert.match(timelineSource, /data-lab-action="timeline-add-bookmark"/);
@@ -1206,10 +1877,44 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   assert.doesNotMatch(timelineSource, /labx-timeline__numeric/);
   assert.doesNotMatch(timelineSource, /Start \(ms\)|End \(ms\)/);
   assert.doesNotMatch(themeSource, /\.labx-timeline__numeric/);
+  assert.match(
+    themeSource,
+    /\.labx-shell\[data-lab-debug-regions="true"\] \[data-lab-region\]\s*\{/
+  );
+  assert.match(themeSource, /\.labx-pipeline-block\s*\{\s*display:\s*block;\s*\}/);
+  assert.match(
+    themeSource,
+    /\.labx-shell\[data-lab-debug-regions="true"\] \.labx-pipeline-block\s*\{[\s\S]*outline:\s*1px dashed rgba\(0, 255, 200, 0\.2\);/
+  );
+  const debugPanelRule =
+    themeSource.match(
+      /\.labx-shell\[data-lab-debug-regions="true"\] \.labx-debug-panel\s*\{([\s\S]*?)\}/
+    )?.[1] ?? "";
+  assert.match(debugPanelRule, /position:\s*(absolute|fixed);/);
+  assert.match(debugPanelRule, /pointer-events:\s*none;/);
+  assert.doesNotMatch(debugPanelRule, /grid-area:/);
+  assert.doesNotMatch(debugPanelRule, /margin:/);
+  assert.doesNotMatch(themeSource, /^\.labx-pipeline-block\s*\{[^}]*outline:/m);
+  assert.match(
+    themeSource,
+    /\.labx-drawer\[hidden\],[\s\S]*\.labx-workspace-inspector\[hidden\]\s*\{[\s\S]*display:\s*none;/
+  );
+  assert.match(themeSource, /\[data-lab-region="topbar"\]/);
+  assert.match(themeSource, /\[data-lab-region="main-stage-inner"\]/);
+  assert.match(themeSource, /\[data-lab-region="process-strip"\]/);
+  assert.doesNotMatch(themeSource, /^\[data-lab-region\]\s*\{/m);
   assert.doesNotMatch(workspaceSurfaceSource, /renderWorkspaceBookmarks|workspace-bookmarks/);
   assert.match(
     workspaceSurfaceSource,
-    /class="labx-workspace-stage"[\s\S]*class="labx-media-workbench"[\s\S]*class="labx-workspace-preview \$\{escapeHtml\(previewFocusClassName\)\}"[\s\S]*renderLabWaveformTimeline\(timelineModel\)[\s\S]*\$\{inspectorMarkup\}/
+    /class="labx-workspace-stage"[\s\S]*class="labx-media-workbench"[\s\S]*renderPreviewArea\(\{ content: previewMarkup, focusClassName: previewFocusClassName \}\)[\s\S]*renderTimelineArea\(durationMs > 0 \? renderLabWaveformTimeline\(timelineModel\) : ""\)/
+  );
+  assert.doesNotMatch(
+    workspaceSurfaceSource,
+    /class="labx-workspace-stage"[\s\S]*\$\{inspectorMarkup\}/
+  );
+  assert.match(
+    workspaceSurfaceSource,
+    /return \{ inspector: inspectorMarkup, main, side: selectionPanelMarkup \};/
   );
   assert.doesNotMatch(workspaceSurfaceSource, /renderWorkspaceHypothesis/);
   assert.match(
@@ -1220,23 +1925,51 @@ test("laboratory center workbench attaches media viewport and timeline as one su
     themeSource,
     /\.labx-workspace-preview\s*\{[\s\S]*min-height:\s*0;[\s\S]*height:\s*100%;[\s\S]*border:\s*1px solid transparent;[\s\S]*border-radius:\s*0;[\s\S]*box-shadow:\s*none;/
   );
-  assert.match(themeSource, /\.labx-focus-primary,[\s\S]*\.labx-focus-secondary,[\s\S]*\.labx-focus-passive\s*\{[\s\S]*opacity 140ms ease-out,[\s\S]*filter 140ms ease-out,[\s\S]*box-shadow 160ms ease-out;/);
-  assert.match(themeSource, /\.labx-workspace-preview\.labx-focus-primary\s*\{[\s\S]*border:\s*1px solid var\(--labx-accent\);[\s\S]*box-shadow:[\s\S]*0 0 0 1px var\(--labx-accent-soft\),[\s\S]*0 0 24px rgba\(0, 0, 0, 0\.35\);/);
-  assert.match(themeSource, /\.labx-workspace-preview\.labx-focus-passive\s*\{[\s\S]*opacity:\s*0\.85;[\s\S]*filter:\s*brightness\(0\.85\);/);
+  assert.match(
+    themeSource,
+    /\.labx-focus-primary,[\s\S]*\.labx-focus-secondary,[\s\S]*\.labx-focus-passive\s*\{[\s\S]*opacity 140ms ease-out,[\s\S]*filter 140ms ease-out,[\s\S]*box-shadow 160ms ease-out;/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-workspace-preview\.labx-focus-primary\s*\{[\s\S]*border:\s*1px solid var\(--labx-accent\);[\s\S]*box-shadow:[\s\S]*0 0 0 1px var\(--labx-accent-soft\),[\s\S]*0 0 24px rgba\(0, 0, 0, 0\.35\);/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-workspace-preview\.labx-focus-passive\s*\{[\s\S]*opacity:\s*0\.85;[\s\S]*filter:\s*brightness\(0\.85\);/
+  );
   assert.match(themeSource, /\.labx-timeline\.labx-focus-secondary\s*\{[\s\S]*opacity:\s*1;/);
   assert.match(themeSource, /\.labx-timeline\.labx-focus-passive\s*\{[\s\S]*opacity:\s*0\.7;/);
-  assert.match(themeSource, /\.labx-timeline\[data-timeline-locked="true"\]\.labx-focus-secondary\s*\{[\s\S]*opacity:\s*1;/);
-  assert.match(themeSource, /\.labx-timeline\[data-timeline-locked="true"\]\.labx-focus-passive\s*\{[\s\S]*opacity:\s*0\.7;/);
-  assert.match(themeSource, /\.labx-workspace-inspector\.labx-focus-secondary\s*\{[\s\S]*opacity:\s*1;/);
-  assert.match(themeSource, /\.labx-workspace-inspector\.labx-focus-passive\s*\{[\s\S]*opacity:\s*0\.65;/);
-  assert.match(themeSource, /@media \(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*transition:\s*none;/);
+  assert.match(
+    themeSource,
+    /\.labx-timeline\[hidden\],[\s\S]*\.labx-timeline-area--empty\s*\{[\s\S]*display:\s*none;/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-timeline\[data-timeline-locked="true"\]\.labx-focus-secondary\s*\{[\s\S]*opacity:\s*1;/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-timeline\[data-timeline-locked="true"\]\.labx-focus-passive\s*\{[\s\S]*opacity:\s*0\.7;/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-workspace-inspector\.labx-focus-secondary\s*\{[\s\S]*opacity:\s*1;/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-workspace-inspector\.labx-focus-passive\s*\{[\s\S]*opacity:\s*0\.65;/
+  );
+  assert.match(
+    themeSource,
+    /@media \(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*transition:\s*none;/
+  );
   assert.match(
     themeSource,
     /\.labx-workspace-stage\s*\{[\s\S]*position:\s*relative;[\s\S]*flex:\s*1 1 auto;[\s\S]*min-height:\s*0;/
   );
   assert.match(
     themeSource,
-    /\.labx-workspace-inspector\s*\{[\s\S]*position:\s*absolute;[\s\S]*right:\s*0\.75rem;[\s\S]*bottom:\s*0\.75rem;/
+    /\.labx-workspace-inspector\s*\{[\s\S]*position:\s*relative;[\s\S]*z-index:\s*1;[\s\S]*width:\s*100%;[\s\S]*height:\s*100%;/
   );
   assert.match(
     themeSource,
@@ -1311,7 +2044,7 @@ test("laboratory process strip owns heartbeat and expanded runtime detail render
   );
 });
 
-test("laboratory theme defines the v2 shell grid and drawer layout contract", () => {
+test("laboratory theme defines the multi-region shell grid and drawer layout contract", () => {
   const themeSource = readFileSync("rooms/laboratory/ui/lab-theme.css", "utf8");
   const projectWorkspaceSource = readFileSync(
     "rooms/laboratory/ui/styles/project-workspace.css",
@@ -1320,15 +2053,15 @@ test("laboratory theme defines the v2 shell grid and drawer layout contract", ()
 
   assert.match(
     themeSource,
-    /\.labx-shell\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\) 22rem;[\s\S]*grid-template-rows:\s*48px minmax\(0, 1fr\) 56px;/
+    /\.labx-shell\s*\{[\s\S]*grid-template-columns:\s*3\.25rem minmax\(0, 1fr\) minmax\(18rem, 22rem\) minmax\(14rem, 18rem\);[\s\S]*grid-template-rows:\s*48px minmax\(0, 1fr\) 56px;/
   );
   assert.match(
     themeSource,
-    /\.labx-shell\s*\{[\s\S]*grid-template-areas:\s*"topbar topbar"\s*"center drawer"\s*"strip\s+strip";/
+    /\.labx-shell\s*\{[\s\S]*grid-template-areas:\s*"topbar topbar topbar topbar"\s*"rail\s+center context inspector"\s*"strip\s+strip\s+strip\s+strip";/
   );
   assert.match(
     themeSource,
-    /\.labx-shell\[data-drawer-collapsed="true"\]\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\);[\s\S]*grid-template-areas:\s*"topbar"\s*"center"\s*"strip";/
+    /\.labx-shell\[data-drawer-collapsed="true"\]\s*\{[\s\S]*grid-template-columns:\s*3\.25rem minmax\(0, 1fr\) minmax\(14rem, 18rem\);[\s\S]*grid-template-areas:\s*"topbar topbar topbar"\s*"rail\s+center inspector"\s*"strip\s+strip\s+strip";/
   );
   assert.doesNotMatch(themeSource, /\.labx-drawer--collapsed/);
   assert.doesNotMatch(themeSource, /\.labx-drawer__expand-btn/);
@@ -1341,7 +2074,7 @@ test("laboratory theme defines the v2 shell grid and drawer layout contract", ()
   assert.doesNotMatch(themeSource, /labx-boot-breathe/);
   assert.match(
     themeSource,
-    /\.labx-top-bar\s*\{\s*grid-area:\s*topbar;\s*\}[\s\S]*\.labx-drawer\s*\{\s*grid-area:\s*drawer;\s*\}[\s\S]*\.labx-process-strip\s*\{\s*grid-area:\s*strip;\s*\}/
+    /\.labx-top-bar\s*\{\s*grid-area:\s*topbar;\s*\}[\s\S]*\.labx-left-rail\s*\{\s*grid-area:\s*rail;\s*\}[\s\S]*\.labx-center-panel\s*\{\s*grid-area:\s*center;\s*\}[\s\S]*\.labx-drawer\s*\{\s*grid-area:\s*context;\s*\}[\s\S]*\.labx-workspace-inspector\s*\{\s*grid-area:\s*inspector;\s*\}[\s\S]*\.labx-process-strip\s*\{\s*grid-area:\s*strip;\s*\}/
   );
   assert.match(
     themeSource,

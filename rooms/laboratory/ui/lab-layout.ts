@@ -3,11 +3,12 @@ import type { LabStoreState, LabWorkspaceSurface } from "../models/lab-types.js"
 import { renderLabCenterPanel } from "./lab-center-panel.js";
 import { renderLabDrawer } from "./lab-drawer.js";
 import { renderLabProcessStrip } from "./lab-process-strip.js";
-import { renderLabTopBar } from "./lab-top-bar.js";
+import { renderLabLeftRail, renderLabTopBar } from "./lab-top-bar.js";
 import { renderToolManagementOverlay } from "./tool-management-overlay.js";
 import { renderReportOverlay } from "./report-overlay.js";
 import { renderLabAssetPreviewOverlay } from "./lab-asset-preview-overlay.js";
 import { renderProjectWorkspaceOverlay } from "./project-workspace-overlay.js";
+import { renderLaboratoryLayout } from "./laboratory-layout.js";
 import {
   getDrawerCollapsed,
   getWorkspaceMode,
@@ -72,9 +73,10 @@ export function renderLabLayout(
 
   if (layoutKind === "import-only") {
     return `
-      <div class="labx-shell" data-layout-kind="${layoutKind}" data-ready="true" data-workspace-mode="${getWorkspaceMode(state)}" data-lab-mode="${state.ui.labMode}" data-drawer-mode="${drawerMode}" data-drawer-collapsed="true" data-process-view="compact">
-        ${renderLabCenterPanel(surface)}
-      </div>
+      ${renderLaboratoryLayout({
+        mainStage: renderLabCenterPanel(surface),
+        shellAttributes: `data-layout-kind="${layoutKind}" data-ready="true" data-workspace-mode="${getWorkspaceMode(state)}" data-lab-mode="${state.ui.labMode}" data-drawer-mode="${drawerMode}" data-drawer-collapsed="true" data-process-view="compact"`,
+      })}
       <div class="labx-overlay-root" data-open="false" aria-hidden="true"></div>
       <div class="labx-overlay-root labx-asset-preview-root" data-open="false" id="lab-asset-preview-overlay-root" aria-hidden="true"></div>
       <div class="labx-overlay-root" data-open="false" id="lab-report-overlay-root" aria-hidden="true"></div>
@@ -83,13 +85,16 @@ export function renderLabLayout(
   }
 
   return `
-    <div class="labx-shell" data-layout-kind="${layoutKind}" data-ready="${bootOverlayActive ? "false" : "true"}" data-workspace-mode="${getWorkspaceMode(state)}" data-lab-mode="${state.ui.labMode}" data-drawer-mode="${drawerMode}" data-drawer-collapsed="${drawerCollapsed ? "true" : "false"}" data-process-view="${state.ui.workspace.processViewActive ? "expanded" : "compact"}">
-      ${renderLabTopBar(state, copy)}
-      ${renderLabCenterPanel(surface)}
-      ${renderLabDrawer(state, surface, copy)}
-      ${renderLabProcessStrip(state, copy)}
-      ${bootOverlayActive ? renderLabBootOverlay(copy) : ""}
-    </div>
+    ${renderLaboratoryLayout({
+      bootOverlay: bootOverlayActive ? renderLabBootOverlay(copy) : "",
+      contextPanel: renderLabDrawer(state, surface, copy),
+      inspectorPanel: surface.inspector ?? "",
+      leftRail: renderLabLeftRail(state, copy),
+      mainStage: renderLabCenterPanel(surface),
+      processStrip: renderLabProcessStrip(state, copy),
+      shellAttributes: `data-layout-kind="${layoutKind}" data-ready="${bootOverlayActive ? "false" : "true"}" data-workspace-mode="${getWorkspaceMode(state)}" data-lab-mode="${state.ui.labMode}" data-drawer-mode="${drawerMode}" data-drawer-collapsed="${drawerCollapsed ? "true" : "false"}" data-process-view="${state.ui.workspace.processViewActive ? "expanded" : "compact"}"`,
+      topBar: renderLabTopBar(state, copy),
+    })}
     ${renderToolManagementOverlay(state, copy)}
     ${renderLabAssetPreviewOverlay(state, copy)}
     ${renderReportOverlay(state, copy)}

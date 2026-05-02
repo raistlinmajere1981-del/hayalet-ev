@@ -1413,7 +1413,7 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
           "Waveform falls outside the visible master range."
         );
   return `
-    <div class="labx-timeline${focusClassName}" id="lab-timeline" data-duration="${String(durationMs)}" data-waveform-mode="source-audio" data-timeline-locked="${timelineLocked ? "true" : "false"}">
+    <div class="labx-timeline labx-timeline-area${focusClassName}" id="lab-timeline" data-lab-region="timeline-area" data-duration="${String(durationMs)}" data-waveform-mode="source-audio" data-timeline-locked="${timelineLocked ? "true" : "false"}">
       <div class="labx-timeline__track">
         <div class="labx-timeline__waveform-bed"></div>
         ${

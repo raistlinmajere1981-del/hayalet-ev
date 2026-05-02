@@ -1,12 +1,12 @@
 .labx-shell {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 22rem;
+  grid-template-columns: 3.25rem minmax(0, 1fr) minmax(18rem, 22rem) minmax(14rem, 18rem);
   grid-template-rows: 48px minmax(0, 1fr) 56px;
   grid-template-areas:
-    "topbar topbar"
-    "center drawer"
-    "strip  strip";
+    "topbar topbar topbar topbar"
+    "rail   center context inspector"
+    "strip  strip  strip   strip";
   gap: 0;
   height: 100vh;
   min-height: 100vh;
@@ -20,11 +20,11 @@
 }
 
 .labx-shell[data-drawer-collapsed="true"] {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: 3.25rem minmax(0, 1fr) minmax(14rem, 18rem);
   grid-template-areas:
-    "topbar"
-    "center"
-    "strip";
+    "topbar topbar topbar"
+    "rail   center inspector"
+    "strip  strip  strip";
 }
 
 .labx-shell[data-layout-kind="import-only"] {
@@ -43,21 +43,96 @@
   display: none;
 }
 
+.labx-shell[data-drawer-collapsed="true"] .labx-drawer,
+.labx-drawer[hidden],
+.labx-workspace-inspector[hidden] {
+  display: none;
+}
+
 .labx-top-bar {
   grid-area: topbar;
+}
+.labx-left-rail {
+  grid-area: rail;
 }
 .labx-center-panel {
   grid-area: center;
 }
 .labx-drawer {
-  grid-area: drawer;
+  grid-area: context;
+}
+.labx-workspace-inspector {
+  grid-area: inspector;
 }
 .labx-process-strip {
   grid-area: strip;
 }
 
+/* Temporary region outlines are gated so the default UI remains unchanged. */
+.labx-shell[data-lab-debug-regions="true"] [data-lab-region] {
+  outline: 1px dashed rgba(255, 255, 255, 0.06);
+}
+
+.labx-shell[data-lab-debug-regions="true"] [data-lab-region="preview-area"] {
+  outline-color: rgba(0, 255, 0, 0.15);
+}
+
+.labx-shell[data-lab-debug-regions="true"] [data-lab-region="topbar"] {
+  outline-color: rgba(255, 255, 255, 0.14);
+}
+
+.labx-shell[data-lab-debug-regions="true"] [data-lab-region="main-stage-inner"] {
+  outline-color: rgba(92, 215, 223, 0.14);
+}
+
+.labx-shell[data-lab-debug-regions="true"] [data-lab-region="timeline-area"] {
+  outline-color: rgba(0, 128, 255, 0.15);
+}
+
+.labx-shell[data-lab-debug-regions="true"] [data-lab-region="context-panel"] {
+  outline-color: rgba(255, 128, 0, 0.15);
+}
+
+.labx-shell[data-lab-debug-regions="true"] [data-lab-region="inspector-panel"] {
+  outline-color: rgba(255, 0, 128, 0.15);
+}
+
+.labx-shell[data-lab-debug-regions="true"] [data-lab-region="left-rail-source"] {
+  outline-color: rgba(255, 255, 0, 0.14);
+}
+
+.labx-shell[data-lab-debug-regions="true"] [data-lab-region="main-stage"] {
+  outline-color: rgba(0, 255, 255, 0.12);
+}
+
+.labx-shell[data-lab-debug-regions="true"] [data-lab-region="process-strip"] {
+  outline-color: rgba(255, 255, 255, 0.1);
+}
+
+.labx-shell[data-lab-debug-regions="true"] .labx-pipeline-block {
+  outline: 1px dashed rgba(0, 255, 200, 0.2);
+}
+
+.labx-shell[data-lab-debug-regions="true"] .labx-debug-panel {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  z-index: 20;
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.52);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.64rem;
+  line-height: 1;
+  pointer-events: none;
+}
+
 .labx-center-panel,
-.labx-drawer {
+.labx-drawer,
+.labx-workspace-inspector {
   min-height: 0;
 }
 
@@ -947,37 +1022,39 @@
 
 @media (max-width: 1180px) {
   .labx-shell {
-    grid-template-columns: minmax(0, 1fr) 18rem;
+    grid-template-columns: 3rem minmax(0, 1fr) minmax(16rem, 20rem) minmax(12rem, 16rem);
   }
 }
 
 @media (max-width: 860px) {
   .labx-shell {
-    grid-template-columns: 1fr;
-    grid-template-rows: 48px minmax(0, 1fr) auto 56px;
+    grid-template-columns: 3rem minmax(0, 1fr);
+    grid-template-rows: 48px minmax(0, 1fr) auto auto 56px;
     grid-template-areas:
-      "topbar"
-      "center"
-      "drawer"
-      "strip";
+      "topbar topbar"
+      "rail   center"
+      "context context"
+      "inspector inspector"
+      "strip  strip";
     height: auto;
     overflow: visible;
   }
 
   .labx-shell[data-drawer-collapsed="true"] {
-    grid-template-rows: 48px minmax(0, 1fr) 56px;
+    grid-template-rows: 48px minmax(0, 1fr) auto 56px;
     grid-template-areas:
-      "topbar"
-      "center"
-      "strip";
+      "topbar topbar"
+      "rail   center"
+      "inspector inspector"
+      "strip  strip";
   }
 
   .labx-shell[data-process-view="expanded"] {
-    grid-template-rows: 48px minmax(0, 1fr) auto 236px;
+    grid-template-rows: 48px minmax(0, 1fr) auto auto 236px;
   }
 
   .labx-shell[data-drawer-collapsed="true"][data-process-view="expanded"] {
-    grid-template-rows: 48px minmax(0, 1fr) 236px;
+    grid-template-rows: 48px minmax(0, 1fr) auto 236px;
   }
 
   .labx-drawer,
@@ -1181,6 +1258,11 @@
   border-radius: var(--labx-radius-tight);
   background: rgba(6, 12, 20, 0.88);
   user-select: none;
+}
+
+.labx-timeline[hidden],
+.labx-timeline-area--empty {
+  display: none;
 }
 
 .labx-media-workbench > .labx-timeline {
@@ -3709,15 +3791,15 @@
 
 /* Workspace inspector drawer */
 .labx-workspace-inspector {
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  bottom: 0.75rem;
-  z-index: 14;
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  width: min(23rem, calc(100% - 1.5rem));
+  width: 100%;
+  height: 100%;
   min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
   border: 1px solid rgba(92, 215, 223, 0.2);
   border-radius: var(--labx-radius-tight);
   background:
@@ -3744,8 +3826,9 @@
 }
 
 .labx-workspace-inspector[data-open="false"] {
-  bottom: auto;
-  width: auto;
+  align-self: start;
+  height: auto;
+  width: 100%;
   border-color: rgba(92, 215, 223, 0.24);
   background: rgba(2, 7, 12, 0.94);
 }
@@ -5630,6 +5713,24 @@
   align-items: center;
   justify-content: center;
   gap: 0.25rem;
+  min-width: 0;
+}
+
+.labx-top-bar__center--empty {
+  pointer-events: none;
+}
+
+.labx-left-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 0;
+  padding: 0.55rem 0.35rem;
+  border-right: 1px solid var(--labx-border);
+  background: rgba(2, 7, 12, 0.96);
+  overflow: hidden;
 }
 
 .labx-topbar-pill {
@@ -5647,6 +5748,25 @@
   transition:
     background 0.15s,
     color 0.15s;
+}
+
+.labx-left-rail .labx-topbar-pill {
+  position: relative;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0;
+  border-radius: var(--labx-radius-tight);
+}
+
+.labx-left-rail .labx-topbar-pill__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .labx-topbar-pill:hover {
@@ -6003,6 +6123,10 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+}
+
+.labx-pipeline-block {
+  display: block;
 }
 
 .labx-drawer__section {

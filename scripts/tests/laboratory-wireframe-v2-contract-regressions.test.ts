@@ -22,6 +22,12 @@ import { FakeActionElement, FakeControllerDocument } from "./laboratory-runtime-
 const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));
 const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
 
+function getPipelineBlockIds(markup: string): string[] {
+  return Array.from(markup.matchAll(/data-block-id="([^"]+)"/g), function (match) {
+    return match[1]!;
+  });
+}
+
 function createReadyStore() {
   const store = createLabStore();
   store.dispatch({
@@ -156,9 +162,9 @@ test("laboratory wireframe v2 renders locked timeline and roi without native pre
     surface.main,
     /labx-preview-media--workspace-video"[^>]*\scontrols(?:\s|>|=)/
   );
-  assert.match(surface.main, /Visual Adjustments/);
-  assert.match(surface.main, /workspace\.interactive\.brightness/);
-  assert.match(surface.main, /data-lab-action="workspace-setting-adjust"/);
+  assert.match(surface.inspector ?? "", /Visual Adjustments/);
+  assert.match(surface.inspector ?? "", /workspace\.interactive\.brightness/);
+  assert.match(surface.inspector ?? "", /data-lab-action="workspace-setting-adjust"/);
 });
 
 test("laboratory running drawer disables cancel while cancellation is pending", () => {
@@ -168,6 +174,15 @@ test("laboratory running drawer disables cancel while cancellation is pending", 
 
   const drawer = renderLabDrawer(store.getState(), renderWorkspaceSurface(store.getState()));
 
+  assert.deepEqual(getPipelineBlockIds(drawer), ["execution-status", "cancel-analysis"]);
+  assert.match(
+    drawer,
+    /data-block-id="execution-status" data-block-type="status" data-block-mode="running"/
+  );
+  assert.match(
+    drawer,
+    /data-block-id="cancel-analysis" data-block-type="action" data-block-mode="running"/
+  );
   assert.match(drawer, /data-lab-action="cancel-analysis"[\s\S]*disabled/);
   assert.match(drawer, /aria-busy="true"/);
   assert.match(drawer, /Analiz iptal ediliyor/);
@@ -194,7 +209,10 @@ test("laboratory wireframe v2 failed source stays in setup with error viewport a
   assert.match(surface.main, /data-lab-action="source-probe-retry"[\s\S]*disabled/);
   assert.match(surface.main, /Choose the file again from the source panel/);
   assert.doesNotMatch(surface.main, /Yerel kaynak/);
-  assert.doesNotMatch(surface.main, /class="labx-timeline"/);
+  assert.match(surface.main, /class="labx-timeline labx-timeline-area labx-timeline-area--empty"/);
+  assert.match(surface.main, /data-lab-region="timeline-area"[\s\S]*data-timeline-empty="true"/);
+  assert.match(surface.main, /hidden aria-hidden="true"/);
+  assert.doesNotMatch(surface.main, /data-lab-action="timeline-interact"/);
   assert.doesNotMatch(drawer, /labx-drawer__intent-list/);
   assert.match(drawer, /data-lab-action="run-deep-analysis"[\s\S]*disabled/);
   assert.match(strip, /data-strip-state="idle"/);
@@ -214,7 +232,9 @@ test("laboratory wireframe v2 treats stale completed sources as empty viewport s
 
   assert.equal(getMediaViewportState(state), "empty");
   assert.match(surface.main, /data-media-viewport-state="empty"/);
-  assert.doesNotMatch(surface.main, /class="labx-timeline"/);
+  assert.match(surface.main, /class="labx-timeline labx-timeline-area labx-timeline-area--empty"/);
+  assert.match(surface.main, /data-lab-region="timeline-area"[\s\S]*data-timeline-empty="true"/);
+  assert.doesNotMatch(surface.main, /data-lab-action="timeline-interact"/);
 });
 
 test("laboratory wireframe v2 source retry contract separates local block and replayable URLs", () => {
@@ -317,6 +337,7 @@ test("laboratory wireframe v2 result drawer uses localized decision labels and a
   setRun(state, {
     state: "completed",
     endedAt: Date.now(),
+    warnings: ["audio module returned partial confidence"],
   });
   state.reports.user = {
     summary: "Report ready",
@@ -333,11 +354,35 @@ test("laboratory wireframe v2 result drawer uses localized decision labels and a
   const trDrawer = renderLabDrawer(state, renderWorkspaceSurface(state, { copy: trCopy }), trCopy);
   const enDrawer = renderLabDrawer(state, renderWorkspaceSurface(state, { copy: enCopy }), enCopy);
 
+  assert.deepEqual(getPipelineBlockIds(enDrawer), [
+    "run-warnings",
+    "context-summary",
+    "decision-status",
+    "execution-advisories",
+    "report-action",
+    "explore-toggle",
+  ]);
   assert.match(trDrawer, /data-decision-card="candidate"[\s\S]*(Gecerli|Dengesiz|Gecersiz)/);
   assert.match(trDrawer, /data-decision-card="commitment"[\s\S]*-/);
   assert.match(trDrawer, /data-decision-card="staging"[\s\S]*(Hazir|Beklemede|-)/);
   assert.match(enDrawer, /data-decision-card="candidate"[\s\S]*(Valid|Unstable|Invalid)/);
   assert.doesNotMatch(trDrawer, /<strong>viable<\/strong>|<strong>not-viable<\/strong>/);
+
+  store.dispatch({ type: "drawer-explore-toggled" });
+  const exploreState = store.getState();
+  const enExploreDrawer = renderLabDrawer(
+    exploreState,
+    renderWorkspaceSurface(exploreState, { copy: enCopy }),
+    enCopy
+  );
+  assert.deepEqual(getPipelineBlockIds(enExploreDrawer), [
+    "run-warnings",
+    "workspace-comparison",
+    "execution-alternatives",
+    "reanalyze-action",
+    "result-toggle",
+  ]);
+  assert.match(enExploreDrawer, /data-lab-drawer-alternatives="true"/);
 });
 
 test("laboratory wireframe v2 process strip covers partial, cancelled, and indeterminate states", () => {

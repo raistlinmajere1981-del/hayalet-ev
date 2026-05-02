@@ -39,6 +39,11 @@ import { renderWorkspaceOperationControls } from "./workspace-operation-controls
 import { formatSourceRetryBlockReason } from "./lab-source-retry-copy.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
+import {
+  renderInspectorPanel,
+  renderPreviewArea,
+  renderTimelineArea,
+} from "./laboratory-layout.js";
 import type { LabWaveformTimelineModel } from "./lab-waveform-timeline-types.js";
 
 type WorkspaceSurfaceOptions = {
@@ -982,28 +987,32 @@ function renderWorkspaceInspectorDrawer(input: {
   panels: WorkspaceInspectorPanel[];
 }) {
   const { copy, open, panels } = input;
+  const toggleLabel = copy.t("mediaAnalysis.workspaceInspector.toggle", "Kontroller");
+  const ariaLabel = copy.t(
+    "mediaAnalysis.workspaceInspector.ariaLabel",
+    "Çalışma alanı kontrolleri"
+  );
   if (panels.length === 0) {
-    return "";
+    return renderInspectorPanel({
+      activeTab: input.activeTab,
+      ariaLabel,
+      content: "",
+      empty: true,
+      focusClassName: input.focusClassName,
+      hidden: true,
+      open: false,
+    });
   }
   const activeTab = panels.some(function (panel) {
     return panel.id === input.activeTab;
   })
     ? input.activeTab
     : panels[0]?.id || "audio";
-  const toggleLabel = copy.t("mediaAnalysis.workspaceInspector.toggle", "Kontroller");
-  const ariaLabel = copy.t(
-    "mediaAnalysis.workspaceInspector.ariaLabel",
-    "Çalışma alanı kontrolleri"
-  );
 
-  return `
-    <aside
-      class="labx-workspace-inspector ${escapeHtml(input.focusClassName)}"
-      data-lab-workspace-inspector="true"
-      data-open="${open ? "true" : "false"}"
-      data-active-tab="${escapeHtml(activeTab)}"
-      aria-label="${escapeHtml(ariaLabel)}"
-    >
+  return renderInspectorPanel({
+    activeTab,
+    ariaLabel,
+    content: `
       <button
         class="labx-workspace-inspector__toggle"
         type="button"
@@ -1046,8 +1055,10 @@ function renderWorkspaceInspectorDrawer(input: {
             .join("")}
         </div>
       </div>
-    </aside>
-  `;
+    `,
+    focusClassName: input.focusClassName,
+    open,
+  });
 }
 
 export function renderWorkspaceSurface(
@@ -1057,6 +1068,13 @@ export function renderWorkspaceSurface(
   const copy = options.copy ?? LAB_FALLBACK_I18N;
   if (!state.bootReady) {
     return {
+      inspector: renderWorkspaceInspectorDrawer({
+        activeTab: state.ui.workspace.controlsDrawerTab,
+        copy,
+        focusClassName: "",
+        open: false,
+        panels: [],
+      }),
       main: renderCenterSkeleton(copy),
       side: "",
     };
@@ -1193,16 +1211,13 @@ export function renderWorkspaceSurface(
   const main = `
     <section class="labx-workspace-main" id="lab-workspace-main">
       <div class="labx-workspace-stage" data-lab-workspace-stage="true">
-        <div class="labx-media-workbench" data-lab-media-workbench="true" data-preview-mode="single">
-          <div class="labx-workspace-preview ${escapeHtml(previewFocusClassName)}" id="lab-workspace-preview" data-preview-mode="single">
-            ${previewMarkup}
-          </div>
-          ${durationMs > 0 ? renderLabWaveformTimeline(timelineModel) : ""}
+        <div class="labx-media-workbench" data-lab-region="main-stage-inner" data-lab-media-workbench="true" data-preview-mode="single">
+          ${renderPreviewArea({ content: previewMarkup, focusClassName: previewFocusClassName })}
+          ${renderTimelineArea(durationMs > 0 ? renderLabWaveformTimeline(timelineModel) : "")}
         </div>
-        ${inspectorMarkup}
       </div>
     </section>
   `;
 
-  return { main, side: selectionPanelMarkup };
+  return { inspector: inspectorMarkup, main, side: selectionPanelMarkup };
 }

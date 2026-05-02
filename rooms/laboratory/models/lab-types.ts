@@ -51,6 +51,12 @@ export type PreflightSeverity = "clear" | "warning" | "will-fail";
 /** V3 drawer mode — derived from system state, never manually toggled */
 export type LabDrawerMode = "setup" | "running" | "result" | "explore";
 export type LabDrawerModeOverride = "setup" | "result";
+export type LabPipelineBlock = {
+  id: string;
+  type: "section" | "action" | "status" | "output";
+  render: () => string;
+  visible?: () => boolean;
+};
 
 export interface LabWorkspaceLockState {
   source: boolean;
@@ -2561,6 +2567,7 @@ export interface LabStoreState {
 }
 
 export interface LabWorkspaceSurface {
+  inspector?: string;
   main: string;
   side: string;
 }

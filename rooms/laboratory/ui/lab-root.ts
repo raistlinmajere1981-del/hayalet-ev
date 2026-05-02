@@ -9,7 +9,7 @@ import { renderLabCenterPanel } from "./lab-center-panel.js";
 import { getLabLayoutKind, renderLabBootOverlay, renderLabLayout } from "./lab-layout.js";
 import { renderLabDrawer } from "./lab-drawer.js";
 import { renderLabProcessStrip } from "./lab-process-strip.js";
-import { renderLabTopBar } from "./lab-top-bar.js";
+import { renderLabLeftRail, renderLabTopBar } from "./lab-top-bar.js";
 import { bindLabAssetPreviewClicks } from "./lab-asset-preview-binder.js";
 import { getLabAssetPreviewUrl } from "./lab-asset-display.js";
 import { bindLabPreviewInspectionInteractions } from "./lab-preview-inspection-binder.js";
@@ -48,6 +48,64 @@ type RootWindow = Window & {
     ready?: (payload: { feature: string; room: string; stage: string }) => void;
   };
 };
+
+const LAB_REGION_SELECTORS = {
+  contextPanel: ['[data-lab-region="context-panel"]', ".labx-drawer"],
+  inspectorPanel: ['[data-lab-region="inspector-panel"]', ".labx-workspace-inspector"],
+  leftRail: [
+    '[data-lab-region="left-rail-source"]',
+    '[data-lab-region="left-rail"]',
+    ".labx-left-rail",
+  ],
+  mainStage: ['[data-lab-region="main-stage"]', ".labx-center-panel"],
+  processStrip: ['[data-lab-region="process-strip"]', ".labx-process-strip"],
+  topBar: ['[data-lab-region="topbar"]', '[data-lab-region="top-bar"]', ".labx-top-bar"],
+} as const;
+
+const LAB_OVERLAY_SELECTORS = {
+  assetPreview: "#lab-asset-preview-overlay-root",
+  projectWorkspace: "#lab-project-workspace-root",
+  report: "#lab-report-overlay-root",
+  tools:
+    ".labx-overlay-root:not(#lab-asset-preview-overlay-root):not(.labx-asset-preview-root):not(#lab-report-overlay-root)",
+} as const;
+
+type LabRegionKey = keyof typeof LAB_REGION_SELECTORS;
+
+type LabRegionDescriptor = {
+  key: LabRegionKey;
+  preserveScroll?: boolean;
+  render: () => string;
+};
+
+type LabRegionLifecycleEvent = "fallback" | "missing" | "mount" | "update";
+type LabOverlayKey = keyof typeof LAB_OVERLAY_SELECTORS;
+
+const LAB_REGION_DEBUG_NAMES: Record<LabRegionKey, string> = {
+  contextPanel: "context-panel",
+  inspectorPanel: "inspector",
+  leftRail: "left-rail",
+  mainStage: "main-stage",
+  processStrip: "process-strip",
+  topBar: "topbar",
+};
+
+const LAB_OVERLAY_DEBUG_NAMES: Record<LabOverlayKey, string> = {
+  assetPreview: "asset-preview",
+  projectWorkspace: "project-workspace",
+  report: "report",
+  tools: "tools",
+};
+
+const LAB_DEBUG_PANEL_SELECTOR = '[data-lab-debug-panel="true"]';
+
+function getRegionDebugName(key: LabRegionKey) {
+  return LAB_REGION_DEBUG_NAMES[key];
+}
+
+function getOverlayDebugName(key: LabOverlayKey) {
+  return LAB_OVERLAY_DEBUG_NAMES[key];
+}
 
 function createRenderedElement(documentRef: Document, markup: string) {
   const template = documentRef.createElement("template");
@@ -279,6 +337,216 @@ function updateRenderedElement(
     currentElement.scrollTop = scrollTop;
   }
 }
+
+function queryRegion(root: ParentNode, selectors: readonly string[]) {
+  for (const selector of selectors) {
+    const element = root.querySelector(selector);
+    if (element instanceof HTMLElement) {
+      return element;
+    }
+  }
+  return null;
+}
+
+function syncRegion(input: {
+  debugShell?: Element | null;
+  documentRef: Document;
+  preserveScroll?: boolean;
+  regionKey?: LabRegionKey;
+  render: () => string;
+  root: ParentNode;
+  selectors: readonly string[];
+}) {
+  const currentElement = queryRegion(input.root, input.selectors);
+  if (!currentElement) {
+    if (input.regionKey) {
+      debugLabRegionLifecycle(input.debugShell ?? null, input.regionKey, "missing", {
+        selectors: input.selectors,
+      });
+    }
+    return false;
+  }
+  const nextMarkup = input.render();
+  if (nextMarkup.trim() === "") {
+    currentElement.innerHTML = "";
+    if (input.regionKey) {
+      debugLabRegionLifecycle(input.debugShell ?? null, input.regionKey, "update", {
+        empty: true,
+        selectors: input.selectors,
+      });
+    }
+    return true;
+  }
+  updateRenderedElement(
+    input.documentRef,
+    currentElement,
+    nextMarkup,
+    input.preserveScroll === true
+  );
+  if (input.regionKey) {
+    debugLabRegionLifecycle(input.debugShell ?? null, input.regionKey, "update", {
+      empty: false,
+      selectors: input.selectors,
+    });
+  }
+  return true;
+}
+
+function shouldFallback(regionsFound: number) {
+  return regionsFound < 3;
+}
+
+function syncOverlayRoot(
+  documentRef: Document,
+  root: HTMLElement,
+  overlayKey: LabOverlayKey,
+  selector: string,
+  render: () => string,
+  debugShell?: Element | null
+) {
+  const nextMarkup = render();
+  const currentElement = root.querySelector(selector);
+  const nextElement = createRenderedElement(documentRef, nextMarkup);
+  if (!currentElement) {
+    debugLabOverlay(debugShell ?? null, overlayKey, "missing", { selector });
+  }
+  if (!nextElement) {
+    debugLabOverlay(debugShell ?? null, overlayKey, "invalid", { selector });
+  }
+  if (currentElement instanceof HTMLElement) {
+    updateRenderedElement(documentRef, currentElement, nextMarkup);
+    return true;
+  }
+  if (nextElement instanceof HTMLElement) {
+    root.appendChild(nextElement);
+    return true;
+  }
+  return false;
+}
+
+function isLabRegionDebugEnabled(shell: Element | null | undefined) {
+  return shell?.getAttribute("data-lab-debug-regions") === "true";
+}
+
+function debugConsole(message: string, payload: Record<string, unknown>) {
+  if (typeof console === "undefined" || typeof console.info !== "function") {
+    return;
+  }
+  console.info(message, payload);
+}
+
+function debugLabRegionLifecycle(
+  shell: Element | null | undefined,
+  regionKey: LabRegionKey,
+  event: LabRegionLifecycleEvent,
+  detail: Record<string, unknown> = {}
+) {
+  if (isLabRegionDebugEnabled(shell) !== true) {
+    return;
+  }
+  const region = getRegionDebugName(regionKey);
+  const eventLabel = event === "mount" ? "mounted" : event === "update" ? "updated" : event;
+  debugConsole(`[lab][region] ${region} -> ${eventLabel}`, {
+    event,
+    key: regionKey,
+    region,
+    ...detail,
+  });
+}
+
+function debugLabFallback(
+  shell: Element | null | undefined,
+  regionsFound: number,
+  missingRegions: string[]
+) {
+  if (isLabRegionDebugEnabled(shell) !== true) {
+    return;
+  }
+  debugConsole(`[lab][fallback] triggered -> regionsFound: ${String(regionsFound)}`, {
+    missing: missingRegions,
+    regionsFound,
+  });
+}
+
+function debugLabOverlay(
+  shell: Element | null | undefined,
+  overlayKey: LabOverlayKey,
+  event: "invalid" | "missing",
+  detail: Record<string, unknown> = {}
+) {
+  if (isLabRegionDebugEnabled(shell) !== true) {
+    return;
+  }
+  const overlay = getOverlayDebugName(overlayKey);
+  debugConsole(`[lab][overlay] ${overlay} -> ${event}`, {
+    event,
+    overlay,
+    ...detail,
+  });
+}
+
+function readDebugPanelSnapshot(shell: Element) {
+  const contextPanel = shell.querySelector('[data-lab-region="context-panel"], .labx-drawer');
+  return {
+    drawerMode: contextPanel?.getAttribute("data-drawer-mode") ?? "unknown",
+    pipelineBlockCount: shell.querySelectorAll(".labx-pipeline-block").length,
+    regionCount: shell.querySelectorAll("[data-lab-region]").length,
+  };
+}
+
+function renderLabDebugPanelMarkup(snapshot: ReturnType<typeof readDebugPanelSnapshot>) {
+  return `
+    <div
+      class="labx-debug-panel"
+      data-lab-debug-panel="true"
+      data-region-count="${String(snapshot.regionCount)}"
+      data-pipeline-block-count="${String(snapshot.pipelineBlockCount)}"
+      data-drawer-mode="${snapshot.drawerMode}"
+      aria-hidden="true"
+    >
+      <span>regions ${String(snapshot.regionCount)}</span>
+      <span>pipeline ${String(snapshot.pipelineBlockCount)}</span>
+      <span>mode ${snapshot.drawerMode}</span>
+    </div>
+  `;
+}
+
+function syncLabDebugPanel(shell: HTMLElement | null | undefined) {
+  if (!shell) {
+    return;
+  }
+  const panel = shell.querySelector<HTMLElement>(LAB_DEBUG_PANEL_SELECTOR);
+  if (isLabRegionDebugEnabled(shell) !== true) {
+    panel?.remove();
+    return;
+  }
+  const snapshot = readDebugPanelSnapshot(shell);
+  const markup = renderLabDebugPanelMarkup(snapshot);
+  if (panel) {
+    panel.setAttribute("data-region-count", String(snapshot.regionCount));
+    panel.setAttribute("data-pipeline-block-count", String(snapshot.pipelineBlockCount));
+    panel.setAttribute("data-drawer-mode", snapshot.drawerMode);
+    panel.innerHTML = `
+      <span>regions ${String(snapshot.regionCount)}</span>
+      <span>pipeline ${String(snapshot.pipelineBlockCount)}</span>
+      <span>mode ${snapshot.drawerMode}</span>
+    `;
+    return;
+  }
+  shell.insertAdjacentHTML("beforeend", markup);
+}
+
+export const __testOnlyLabRootObservability = {
+  debugLabFallback,
+  debugLabOverlay,
+  debugLabRegionLifecycle,
+  isLabRegionDebugEnabled,
+  queryRegion,
+  shouldFallback,
+  syncOverlayRoot,
+  syncLabDebugPanel,
+  syncRegion,
+};
 
 function readPersistableState(state: LabStoreState) {
   const { analysisPrepExpandedIntentIds: _analysisPrepExpandedIntentIds, ...workspace } =
@@ -675,13 +943,27 @@ export function startLaboratoryLabRoot() {
   };
 
   function replaceLabLayout(state: LabStoreState, surface: LabWorkspaceSurface, copy: LabI18n) {
+    const previousShell = runtimeRoot.querySelector<HTMLElement>(".labx-shell");
+    const preserveDebug = isLabRegionDebugEnabled(previousShell);
     runtimeRoot.innerHTML = renderLabLayout(state, surface, copy, {
       bootOverlayActive: isBootOverlayActive(state),
     });
     const mountedShell = runtimeRoot.querySelector<HTMLElement>(".labx-shell");
     if (mountedShell) {
+      if (preserveDebug) {
+        mountedShell.setAttribute("data-lab-debug-regions", "true");
+      }
       syncShellState(mountedShell, state);
       syncBootOverlay(mountedShell, state, copy);
+      if (preserveDebug) {
+        (Object.keys(LAB_REGION_SELECTORS) as LabRegionKey[]).forEach(function (regionKey) {
+          const element = queryRegion(runtimeRoot, LAB_REGION_SELECTORS[regionKey]);
+          debugLabRegionLifecycle(mountedShell, regionKey, element ? "mount" : "missing", {
+            selectors: LAB_REGION_SELECTORS[regionKey],
+          });
+        });
+      }
+      syncLabDebugPanel(mountedShell);
     }
   }
 
@@ -754,8 +1036,8 @@ export function startLaboratoryLabRoot() {
       return;
     }
 
-    const shell = runtimeRoot.querySelector(".labx-shell");
-    const centerPanel = runtimeRoot.querySelector(".labx-center-panel");
+    const shell = runtimeRoot.querySelector<HTMLElement>(".labx-shell");
+    const centerPanel = queryRegion(runtimeRoot, LAB_REGION_SELECTORS.mainStage);
     const nextLayoutKind = getLabLayoutKind(state, {
       bootOverlayActive: isBootOverlayActive(state),
     });
@@ -767,9 +1049,9 @@ export function startLaboratoryLabRoot() {
     }
 
     if (nextLayoutKind === "import-only") {
-      const overlayRoot = runtimeRoot.querySelector(".labx-overlay-root");
-      const assetPreviewOverlayRoot = runtimeRoot.querySelector("#lab-asset-preview-overlay-root");
-      const reportOverlayRoot = runtimeRoot.querySelector("#lab-report-overlay-root");
+      const overlayRoot = runtimeRoot.querySelector(LAB_OVERLAY_SELECTORS.tools);
+      const assetPreviewOverlayRoot = runtimeRoot.querySelector(LAB_OVERLAY_SELECTORS.assetPreview);
+      const reportOverlayRoot = runtimeRoot.querySelector(LAB_OVERLAY_SELECTORS.report);
       const projectWorkspaceRoot = runtimeRoot.querySelector("#lab-project-workspace-root");
       if (
         !centerPanel ||
@@ -778,6 +1060,27 @@ export function startLaboratoryLabRoot() {
         !reportOverlayRoot ||
         !projectWorkspaceRoot
       ) {
+        if (!centerPanel) {
+          debugLabRegionLifecycle(shell, "mainStage", "missing", {
+            selectors: LAB_REGION_SELECTORS.mainStage,
+          });
+        }
+        if (!overlayRoot) {
+          debugLabOverlay(shell, "tools", "missing", { selector: LAB_OVERLAY_SELECTORS.tools });
+        }
+        if (!assetPreviewOverlayRoot) {
+          debugLabOverlay(shell, "assetPreview", "missing", {
+            selector: LAB_OVERLAY_SELECTORS.assetPreview,
+          });
+        }
+        if (!reportOverlayRoot) {
+          debugLabOverlay(shell, "report", "missing", { selector: LAB_OVERLAY_SELECTORS.report });
+        }
+        if (!projectWorkspaceRoot) {
+          debugLabOverlay(shell, "projectWorkspace", "missing", {
+            selector: LAB_OVERLAY_SELECTORS.projectWorkspace,
+          });
+        }
         replaceLabLayout(state, surface, copy);
         syncProcessStripHeartbeat(state);
         return;
@@ -785,30 +1088,71 @@ export function startLaboratoryLabRoot() {
       if (shell instanceof HTMLElement) {
         syncShellState(shell, state);
       }
-      updateRenderedElement(
-        documentRef,
-        centerPanel as HTMLElement,
-        renderLabCenterPanel(surface),
-        true
-      );
+      updateRenderedElement(documentRef, centerPanel, renderLabCenterPanel(surface), true);
+      syncLabDebugPanel(shell);
       syncProcessStripHeartbeat(state);
       return;
     }
 
-    const topBar = runtimeRoot.querySelector(".labx-top-bar");
-    const drawer = runtimeRoot.querySelector(".labx-drawer");
-    const processStrip = runtimeRoot.querySelector(".labx-process-strip");
-    const overlayRoot = runtimeRoot.querySelector(".labx-overlay-root");
-    const assetPreviewOverlayRoot = runtimeRoot.querySelector("#lab-asset-preview-overlay-root");
-    const reportOverlayRoot = runtimeRoot.querySelector("#lab-report-overlay-root");
-    if (
-      !topBar ||
-      !centerPanel ||
-      !drawer ||
-      !processStrip ||
-      !overlayRoot ||
-      !assetPreviewOverlayRoot
-    ) {
+    const regionDescriptors: LabRegionDescriptor[] = [
+      {
+        key: "topBar",
+        render() {
+          return renderLabTopBar(state, copy);
+        },
+      },
+      {
+        key: "leftRail",
+        render() {
+          return renderLabLeftRail(state, copy);
+        },
+      },
+      {
+        key: "mainStage",
+        preserveScroll: true,
+        render() {
+          return renderLabCenterPanel(surface);
+        },
+      },
+      {
+        key: "contextPanel",
+        preserveScroll: true,
+        render() {
+          return renderLabDrawer(state, surface, copy);
+        },
+      },
+      {
+        key: "inspectorPanel",
+        preserveScroll: true,
+        render() {
+          return surface.inspector ?? "";
+        },
+      },
+      {
+        key: "processStrip",
+        render() {
+          return renderLabProcessStrip(state, copy);
+        },
+      },
+    ];
+    const resolvedRegions = regionDescriptors.map(function (descriptor) {
+      return {
+        ...descriptor,
+        element: queryRegion(runtimeRoot, LAB_REGION_SELECTORS[descriptor.key]),
+      };
+    });
+    const regionsFound = resolvedRegions.filter(function (region) {
+      return region.element !== null;
+    }).length;
+    if (shouldFallback(regionsFound)) {
+      const missingRegions = resolvedRegions
+        .filter(function (region) {
+          return region.element === null;
+        })
+        .map(function (region) {
+          return getRegionDebugName(region.key);
+        });
+      debugLabFallback(shell, regionsFound, missingRegions);
       replaceLabLayout(state, surface, copy);
       syncProcessStripHeartbeat(state);
       return;
@@ -818,49 +1162,58 @@ export function startLaboratoryLabRoot() {
       syncShellState(shell, state);
       syncBootOverlay(shell, state, copy);
     }
-    updateRenderedElement(documentRef, topBar as HTMLElement, renderLabTopBar(state, copy));
-    updateRenderedElement(
-      documentRef,
-      centerPanel as HTMLElement,
-      renderLabCenterPanel(surface),
-      true
-    );
-    updateRenderedElement(
-      documentRef,
-      drawer as HTMLElement,
-      renderLabDrawer(state, surface, copy),
-      true
-    );
-    updateRenderedElement(
-      documentRef,
-      processStrip as HTMLElement,
-      renderLabProcessStrip(state, copy)
-    );
-    updateRenderedElement(
-      documentRef,
-      overlayRoot as HTMLElement,
-      renderToolManagementOverlay(state, copy)
-    );
-    updateRenderedElement(
-      documentRef,
-      assetPreviewOverlayRoot as HTMLElement,
-      renderLabAssetPreviewOverlay(state, copy)
-    );
-    if (reportOverlayRoot) {
-      updateRenderedElement(
+    resolvedRegions.forEach(function (region) {
+      syncRegion({
+        debugShell: shell,
         documentRef,
-        reportOverlayRoot as HTMLElement,
-        renderReportOverlay(state, copy)
-      );
-    }
-    const projectWorkspaceRoot = runtimeRoot.querySelector("#lab-project-workspace-root");
-    if (projectWorkspaceRoot) {
-      updateRenderedElement(
-        documentRef,
-        projectWorkspaceRoot as HTMLElement,
-        renderProjectWorkspaceOverlay(state, copy)
-      );
-    }
+        preserveScroll: region.preserveScroll === true,
+        regionKey: region.key,
+        render: region.render,
+        root: runtimeRoot,
+        selectors: LAB_REGION_SELECTORS[region.key],
+      });
+    });
+    syncOverlayRoot(
+      documentRef,
+      runtimeRoot,
+      "tools",
+      LAB_OVERLAY_SELECTORS.tools,
+      function () {
+        return renderToolManagementOverlay(state, copy);
+      },
+      shell
+    );
+    syncOverlayRoot(
+      documentRef,
+      runtimeRoot,
+      "assetPreview",
+      LAB_OVERLAY_SELECTORS.assetPreview,
+      function () {
+        return renderLabAssetPreviewOverlay(state, copy);
+      },
+      shell
+    );
+    syncOverlayRoot(
+      documentRef,
+      runtimeRoot,
+      "report",
+      LAB_OVERLAY_SELECTORS.report,
+      function () {
+        return renderReportOverlay(state, copy);
+      },
+      shell
+    );
+    syncOverlayRoot(
+      documentRef,
+      runtimeRoot,
+      "projectWorkspace",
+      LAB_OVERLAY_SELECTORS.projectWorkspace,
+      function () {
+        return renderProjectWorkspaceOverlay(state, copy);
+      },
+      shell
+    );
+    syncLabDebugPanel(shell);
 
     syncProcessStripHeartbeat(state);
 

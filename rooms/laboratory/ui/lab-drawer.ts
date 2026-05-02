@@ -1,6 +1,11 @@
 import { escapeHtml } from "../models/lab-types.js";
-import type { CapabilityFamilyId } from "../models/lab-types.js";
-import type { LabDrawerMode, LabStoreState, LabWorkspaceSurface } from "../models/lab-types.js";
+import type {
+  CapabilityFamilyId,
+  LabDrawerMode,
+  LabPipelineBlock,
+  LabStoreState,
+  LabWorkspaceSurface,
+} from "../models/lab-types.js";
 import {
   buildIntentPreviewSentence,
   getActiveExecutionAlternatives,
@@ -32,6 +37,7 @@ import { formatExecutionReadinessSignalAdvisory } from "../runtime/lab-execution
 import type { LabExecutionReadinessSignal } from "../runtime/lab-execution-readiness-signal.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
+import { renderContextPanel, renderPipeline } from "./laboratory-layout.js";
 import { formatLabExpectedOutputLabel, translateLabRuntimeText } from "./lab-runtime-i18n.js";
 import { renderLabSettingsFields } from "./lab-settings-controls.js";
 
@@ -78,6 +84,14 @@ function renderDrawerHeader(mode: LabDrawerMode, copy: LabI18n) {
     <div class="labx-drawer__header">
       <p class="labx-card__eyebrow">${escapeHtml(copy.t(h.eyebrowKey, h.eyebrowFallback))}</p>
       <h2>${escapeHtml(copy.t(h.titleKey, h.titleFallback))}</h2>
+    </div>
+  `;
+}
+
+function renderDrawerBody(blocks: LabPipelineBlock[], mode: LabDrawerMode) {
+  return `
+    <div class="labx-drawer__body">
+      ${renderPipeline(blocks, mode)}
     </div>
   `;
 }
@@ -516,7 +530,47 @@ function renderSetupMode(state: LabStoreState, surface: LabWorkspaceSurface, cop
       ? `<div class="labx-drawer__side-controls">${surface.side}</div>`
       : "";
 
-  return `${intentsMarkup}${preflightSection}${ctaMarkup}${sideControls}`;
+  const blocks: LabPipelineBlock[] = [
+    {
+      id: "analysis-prep",
+      render() {
+        return intentsMarkup;
+      },
+      type: "section",
+      visible() {
+        return sourceReady;
+      },
+    },
+    {
+      id: "preflight",
+      render() {
+        return preflightSection;
+      },
+      type: "status",
+      visible() {
+        return selectedIntents.length > 0;
+      },
+    },
+    {
+      id: "analysis-cta",
+      render() {
+        return ctaMarkup;
+      },
+      type: "action",
+    },
+    {
+      id: "selection-panel",
+      render() {
+        return sideControls;
+      },
+      type: "section",
+      visible() {
+        return surface.side.trim() !== "";
+      },
+    },
+  ];
+
+  return renderPipeline(blocks, "setup");
 }
 
 // ---------------------------------------------------------------------------
@@ -541,7 +595,24 @@ function renderRunningMode(state: LabStoreState, copy: LabI18n) {
     </div>
   `;
 
-  return `${renderRunningAnalysisPlan(state, copy)}${cancelCta}`;
+  const blocks: LabPipelineBlock[] = [
+    {
+      id: "execution-status",
+      render() {
+        return renderRunningAnalysisPlan(state, copy);
+      },
+      type: "status",
+    },
+    {
+      id: "cancel-analysis",
+      render() {
+        return cancelCta;
+      },
+      type: "action",
+    },
+  ];
+
+  return renderPipeline(blocks, "running");
 }
 
 // ---------------------------------------------------------------------------
@@ -895,7 +966,58 @@ function renderResultMode(state: LabStoreState, copy: LabI18n) {
     </button>
   `;
 
-  return `${warningsBanner}${tier1}${tier2}${advisories}${reportCta}${exploreCta}`;
+  const blocks: LabPipelineBlock[] = [
+    {
+      id: "run-warnings",
+      render() {
+        return warningsBanner;
+      },
+      type: "status",
+      visible() {
+        return warningsBanner.trim() !== "";
+      },
+    },
+    {
+      id: "context-summary",
+      render() {
+        return tier1;
+      },
+      type: "section",
+    },
+    {
+      id: "decision-status",
+      render() {
+        return tier2;
+      },
+      type: "status",
+    },
+    {
+      id: "execution-advisories",
+      render() {
+        return advisories;
+      },
+      type: "status",
+      visible() {
+        return advisories.trim() !== "";
+      },
+    },
+    {
+      id: "report-action",
+      render() {
+        return reportCta;
+      },
+      type: "action",
+    },
+    {
+      id: "explore-toggle",
+      render() {
+        return exploreCta;
+      },
+      type: "action",
+    },
+  ];
+
+  return renderPipeline(blocks, "result");
 }
 
 // ---------------------------------------------------------------------------
@@ -969,7 +1091,61 @@ function renderExploreMode(state: LabStoreState, copy: LabI18n) {
     </button>
   `;
 
-  return `${warningBanner}${warningsMarkup}${comparisonMarkup}${alternativesMarkup}${reanalyzeCta}${backToggle}`;
+  const blocks: LabPipelineBlock[] = [
+    {
+      id: "empty-warning",
+      render() {
+        return warningBanner;
+      },
+      type: "status",
+      visible() {
+        return warningBanner.trim() !== "";
+      },
+    },
+    {
+      id: "run-warnings",
+      render() {
+        return warningsMarkup;
+      },
+      type: "status",
+      visible() {
+        return warningsMarkup.trim() !== "";
+      },
+    },
+    {
+      id: "workspace-comparison",
+      render() {
+        return comparisonMarkup;
+      },
+      type: "section",
+    },
+    {
+      id: "execution-alternatives",
+      render() {
+        return alternativesMarkup;
+      },
+      type: "output",
+      visible() {
+        return alternativesMarkup.trim() !== "";
+      },
+    },
+    {
+      id: "reanalyze-action",
+      render() {
+        return reanalyzeCta;
+      },
+      type: "action",
+    },
+    {
+      id: "result-toggle",
+      render() {
+        return backToggle;
+      },
+      type: "action",
+    },
+  ];
+
+  return renderPipeline(blocks, "explore");
 }
 
 // ---------------------------------------------------------------------------
@@ -999,16 +1175,31 @@ export function renderLabDrawer(
   const mode = resolveDrawerMode(state);
 
   if (collapsed) {
-    return "";
+    return renderContextPanel({
+      content: renderDrawerBody([], mode),
+      drawerMode: mode,
+      empty: true,
+      hidden: true,
+    });
   }
 
   if (!state.bootReady) {
-    return `
-      <aside class="labx-drawer" data-drawer-mode="${escapeHtml(mode)}">
+    return renderContextPanel({
+      content: `
         ${renderDrawerHeader(mode, copy)}
-        ${renderDrawerSkeleton()}
-      </aside>
-    `;
+        ${renderDrawerBody(
+          [
+            {
+              id: "drawer-skeleton",
+              render: renderDrawerSkeleton,
+              type: "status",
+            },
+          ],
+          mode
+        )}
+      `,
+      drawerMode: mode,
+    });
   }
 
   let modeContent: string;
@@ -1029,12 +1220,13 @@ export function renderLabDrawer(
       modeContent = "";
   }
 
-  return `
-    <aside class="labx-drawer" data-drawer-mode="${escapeHtml(mode)}">
+  return renderContextPanel({
+    content: `
       ${renderDrawerHeader(mode, copy)}
       <div class="labx-drawer__body">
         ${modeContent}
       </div>
-    </aside>
-  `;
+    `,
+    drawerMode: mode,
+  });
 }
