@@ -1,5 +1,9 @@
 import { asLabRecord, asNonEmptyString } from "../models/lab-types.js";
-import type { LabStoreState, LabWorkspaceSurface } from "../models/lab-types.js";
+import type {
+  LabDecisionSnapshot,
+  LabStoreState,
+  LabWorkspaceSurface,
+} from "../models/lab-types.js";
 import { createLabEventBus } from "../runtime/lab-event-bus.js";
 import { createLabExecutionDispatcher } from "../runtime/lab-execution-dispatcher.js";
 import { createLabHostBridge } from "../runtime/lab-host-bridge.js";
@@ -24,6 +28,7 @@ import { renderToolManagementOverlay } from "./tool-management-overlay.js";
 import { renderReportOverlay } from "./report-overlay.js";
 import { renderProjectWorkspaceOverlay } from "./project-workspace-overlay.js";
 import { renderLabAssetPreviewOverlay } from "./lab-asset-preview-overlay.js";
+import { buildLabDecisionSnapshot, getLabDecisionStableKey } from "./lab-decision-layer.js";
 import {
   getActiveSelection,
   getActiveExecutionIntentId,
@@ -485,11 +490,17 @@ function debugLabOverlay(
   });
 }
 
-function readDebugPanelSnapshot(shell: Element) {
+function readDebugPanelSnapshot(shell: Element, decisionSnapshot?: LabDecisionSnapshot | null) {
   const contextPanel = shell.querySelector('[data-lab-region="context-panel"], .labx-drawer');
+  const pipelineBlockCount = shell.querySelectorAll(".labx-pipeline-block").length;
+  const drawerMode =
+    decisionSnapshot?.mode ?? contextPanel?.getAttribute("data-drawer-mode") ?? "unknown";
   return {
-    drawerMode: contextPanel?.getAttribute("data-drawer-mode") ?? "unknown",
-    pipelineBlockCount: shell.querySelectorAll(".labx-pipeline-block").length,
+    activeBlockCount: decisionSnapshot?.activeBlocks.length ?? pipelineBlockCount,
+    decisionIntent: decisionSnapshot?.intent ?? "idle",
+    decisionState: decisionSnapshot?.state ?? "idle",
+    drawerMode,
+    pipelineBlockCount,
     regionCount: shell.querySelectorAll("[data-lab-region]").length,
   };
 }
@@ -501,17 +512,24 @@ function renderLabDebugPanelMarkup(snapshot: ReturnType<typeof readDebugPanelSna
       data-lab-debug-panel="true"
       data-region-count="${String(snapshot.regionCount)}"
       data-pipeline-block-count="${String(snapshot.pipelineBlockCount)}"
+      data-active-block-count="${String(snapshot.activeBlockCount)}"
       data-drawer-mode="${snapshot.drawerMode}"
+      data-decision-intent="${snapshot.decisionIntent}"
+      data-decision-state="${snapshot.decisionState}"
       aria-hidden="true"
     >
-      <span>regions ${String(snapshot.regionCount)}</span>
-      <span>pipeline ${String(snapshot.pipelineBlockCount)}</span>
       <span>mode ${snapshot.drawerMode}</span>
+      <span>intent ${snapshot.decisionIntent}</span>
+      <span>blocks ${String(snapshot.activeBlockCount)}</span>
+      <span>state ${snapshot.decisionState}</span>
     </div>
   `;
 }
 
-function syncLabDebugPanel(shell: HTMLElement | null | undefined) {
+function syncLabDebugPanel(
+  shell: HTMLElement | null | undefined,
+  decisionSnapshot?: LabDecisionSnapshot | null
+) {
   if (!shell) {
     return;
   }
@@ -520,16 +538,20 @@ function syncLabDebugPanel(shell: HTMLElement | null | undefined) {
     panel?.remove();
     return;
   }
-  const snapshot = readDebugPanelSnapshot(shell);
+  const snapshot = readDebugPanelSnapshot(shell, decisionSnapshot);
   const markup = renderLabDebugPanelMarkup(snapshot);
   if (panel) {
     panel.setAttribute("data-region-count", String(snapshot.regionCount));
     panel.setAttribute("data-pipeline-block-count", String(snapshot.pipelineBlockCount));
+    panel.setAttribute("data-active-block-count", String(snapshot.activeBlockCount));
     panel.setAttribute("data-drawer-mode", snapshot.drawerMode);
+    panel.setAttribute("data-decision-intent", snapshot.decisionIntent);
+    panel.setAttribute("data-decision-state", snapshot.decisionState);
     panel.innerHTML = `
-      <span>regions ${String(snapshot.regionCount)}</span>
-      <span>pipeline ${String(snapshot.pipelineBlockCount)}</span>
       <span>mode ${snapshot.drawerMode}</span>
+      <span>intent ${snapshot.decisionIntent}</span>
+      <span>blocks ${String(snapshot.activeBlockCount)}</span>
+      <span>state ${snapshot.decisionState}</span>
     `;
     return;
   }
@@ -934,6 +956,7 @@ export function startLaboratoryLabRoot() {
   let shellMounted = false;
   let activeOverlay: LabWaveformTimelineModel["activeOverlay"] = "none";
   let activeOverlayIdentity: string | null = null;
+  let lastDecisionLogKey: string | null = null;
 
   const collapsedPanels: Record<string, boolean> = {
     alternatives: true,
@@ -941,6 +964,31 @@ export function startLaboratoryLabRoot() {
     reflection: true,
     simulation: true,
   };
+
+  function syncDecisionLayer(shell: HTMLElement | null | undefined, state: LabStoreState) {
+    if (!shell) {
+      return null;
+    }
+    const snapshot = buildLabDecisionSnapshot({ shell, state });
+    if (isLabRegionDebugEnabled(shell) === true) {
+      const stableKey = getLabDecisionStableKey(snapshot);
+      if (stableKey !== lastDecisionLogKey) {
+        debugConsole(`[lab][decision] mode=${snapshot.mode} intent=${snapshot.intent}`, {
+          activeBlocks: snapshot.activeBlocks,
+          intent: snapshot.intent,
+          mode: snapshot.mode,
+          state: snapshot.state,
+          timestamp: snapshot.timestamp,
+          triggers: snapshot.triggers,
+        });
+        lastDecisionLogKey = stableKey;
+      }
+    } else {
+      lastDecisionLogKey = null;
+    }
+    syncLabDebugPanel(shell, snapshot);
+    return snapshot;
+  }
 
   function replaceLabLayout(state: LabStoreState, surface: LabWorkspaceSurface, copy: LabI18n) {
     const previousShell = runtimeRoot.querySelector<HTMLElement>(".labx-shell");
@@ -963,7 +1011,7 @@ export function startLaboratoryLabRoot() {
           });
         });
       }
-      syncLabDebugPanel(mountedShell);
+      syncDecisionLayer(mountedShell, state);
     }
   }
 
@@ -1089,7 +1137,7 @@ export function startLaboratoryLabRoot() {
         syncShellState(shell, state);
       }
       updateRenderedElement(documentRef, centerPanel, renderLabCenterPanel(surface), true);
-      syncLabDebugPanel(shell);
+      syncDecisionLayer(shell, state);
       syncProcessStripHeartbeat(state);
       return;
     }
@@ -1213,7 +1261,7 @@ export function startLaboratoryLabRoot() {
       },
       shell
     );
-    syncLabDebugPanel(shell);
+    syncDecisionLayer(shell, state);
 
     syncProcessStripHeartbeat(state);
 

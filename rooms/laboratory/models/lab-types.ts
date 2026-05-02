@@ -51,6 +51,23 @@ export type PreflightSeverity = "clear" | "warning" | "will-fail";
 /** V3 drawer mode — derived from system state, never manually toggled */
 export type LabDrawerMode = "setup" | "running" | "result" | "explore";
 export type LabDrawerModeOverride = "setup" | "result";
+export type LabDecisionIntent =
+  | "idle"
+  | "preparing-analysis"
+  | "ready-to-run"
+  | "running-analysis"
+  | "reviewing-results"
+  | "exploring-alternatives";
+export type LabDecisionSignal = "has-selection" | "has-source" | "is-running" | "has-result";
+export type LabDecisionState = "idle" | "ready" | "running" | "done";
+export type LabDecisionSnapshot = {
+  mode: LabDrawerMode;
+  intent: LabDecisionIntent;
+  triggers: LabDecisionSignal[];
+  activeBlocks: string[];
+  state: LabDecisionState;
+  timestamp: number;
+};
 export type LabPipelineBlock = {
   id: string;
   type: "section" | "action" | "status" | "output";
