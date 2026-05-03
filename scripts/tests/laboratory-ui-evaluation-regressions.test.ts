@@ -2279,7 +2279,7 @@ test("laboratory process strip owns heartbeat and expanded runtime detail render
   assert.match(processStripSource, /state\.run\?\.rawLog/);
   assert.match(
     themeSource,
-    /\.labx-shell\[data-process-view="expanded"\]\s*\{[\s\S]*grid-template-rows:\s*48px minmax\(0, 1fr\) 236px;/
+    /\.labx-shell\[data-process-view="expanded"\]\s*\{[\s\S]*grid-template-rows:\s*var\(--labx-topbar-height\) minmax\(0, 1fr\) 200px;/
   );
   assert.match(
     themeSource,
@@ -2300,15 +2300,21 @@ test("laboratory process strip owns heartbeat and expanded runtime detail render
 });
 
 test("laboratory theme defines the multi-region shell grid and drawer layout contract", () => {
+  const baseSource = readFileSync("rooms/laboratory/ui/styles/base.css", "utf8");
   const themeSource = readFileSync("rooms/laboratory/ui/lab-theme.css", "utf8");
   const projectWorkspaceSource = readFileSync(
     "rooms/laboratory/ui/styles/project-workspace.css",
     "utf8"
   );
 
+  assert.match(baseSource, /--labx-bg-main:\s*var\(--labx-bg\);/);
+  assert.match(baseSource, /--labx-bg-elevated:\s*var\(--labx-bg-soft\);/);
+  assert.match(baseSource, /--labx-text-primary:\s*var\(--labx-text\);/);
+  assert.match(baseSource, /--labx-text-muted:\s*var\(--labx-text-dim\);/);
+  assert.match(baseSource, /--labx-danger:\s*var\(--labx-error\);/);
   assert.match(
     themeSource,
-    /\.labx-shell\s*\{[\s\S]*grid-template-columns:\s*3\.25rem minmax\(0, 1fr\) minmax\(18rem, 22rem\) minmax\(14rem, 18rem\);[\s\S]*grid-template-rows:\s*48px minmax\(0, 1fr\) 56px;/
+    /\.labx-shell\s*\{[\s\S]*grid-template-columns:\s*var\(--labx-rail-width\) minmax\(0, 1fr\) minmax\(18rem, 22rem\) minmax\(14rem, 18rem\);[\s\S]*grid-template-rows:\s*var\(--labx-topbar-height\) minmax\(0, 1fr\) var\(--labx-strip-height\);/
   );
   assert.match(
     themeSource,
@@ -2316,13 +2322,13 @@ test("laboratory theme defines the multi-region shell grid and drawer layout con
   );
   assert.match(
     themeSource,
-    /\.labx-shell\[data-drawer-collapsed="true"\]\s*\{[\s\S]*grid-template-columns:\s*3\.25rem minmax\(0, 1fr\) minmax\(14rem, 18rem\);[\s\S]*grid-template-areas:\s*"topbar topbar topbar"\s*"rail\s+center inspector"\s*"strip\s+strip\s+strip";/
+    /\.labx-shell\[data-drawer-collapsed="true"\]\s*\{[\s\S]*grid-template-columns:\s*var\(--labx-rail-width\) minmax\(0, 1fr\) minmax\(14rem, 18rem\);[\s\S]*grid-template-areas:\s*"topbar topbar topbar"\s*"rail\s+center inspector"\s*"strip\s+strip\s+strip";/
   );
   assert.doesNotMatch(themeSource, /\.labx-drawer--collapsed/);
   assert.doesNotMatch(themeSource, /\.labx-drawer__expand-btn/);
   assert.match(themeSource, /\.labx-center-skeleton__label\s*\{/);
   assert.match(themeSource, /\.labx-boot-overlay\s*\{[\s\S]*pointer-events:\s*auto;/);
-  assert.match(themeSource, /\.labx-boot-panel\s*\{[\s\S]*border-radius:\s*0\.5rem;/);
+  assert.match(themeSource, /\.labx-boot-panel\s*\{[\s\S]*border-radius:\s*var\(--labx-radius-card\);/);
   assert.match(themeSource, /@keyframes labx-skeleton-breathe/);
   assert.doesNotMatch(themeSource, /\.labx-shell\[data-ready="false"\]::after/);
   assert.doesNotMatch(themeSource, /\.labx-shell\[data-ready="false"\]\s+\.labx-center-panel/);
@@ -2348,6 +2354,20 @@ test("laboratory theme defines the multi-region shell grid and drawer layout con
   assert.match(projectWorkspaceSource, /\.labx-import-hint\s*\{[\s\S]*font-size:\s*12px;/);
   assert.match(projectWorkspaceSource, /\.labx-import-status\s*\{[\s\S]*font-size:\s*12px;/);
   assert.match(projectWorkspaceSource, /\.labx-import-thumb\s*\{[\s\S]*aspect-ratio:\s*16 \/ 9;/);
+  assert.match(
+    projectWorkspaceSource,
+    /\.labx-pw-grid__cards\s*\{[\s\S]*grid-template-columns:\s*repeat\(auto-fill, minmax\(220px, 1fr\)\);/
+  );
+  assert.match(projectWorkspaceSource, /\.labx-pw-card__thumb\s*\{[\s\S]*aspect-ratio:\s*16 \/ 9;/);
+  assert.match(
+    projectWorkspaceSource,
+    /@media \(max-width:\s*760px\)\s*\{[\s\S]*\.labx-pw-grid__cards\s*\{[\s\S]*grid-template-columns:\s*1fr;/
+  );
+  assert.doesNotMatch(projectWorkspaceSource, /minmax\(165px, 1fr\)/);
+  assert.doesNotMatch(
+    projectWorkspaceSource,
+    /\.labx-pw-card__thumb\s*\{[\s\S]*height:\s*96px;/
+  );
   assert.match(projectWorkspaceSource, /\.labx-strategy-list\s*\{[\s\S]*display:\s*grid;/);
   assert.match(projectWorkspaceSource, /\.labx-strategy-list\s*\{[\s\S]*gap:\s*10px;/);
   assert.match(

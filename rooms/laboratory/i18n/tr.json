@@ -216,6 +216,7 @@
       }
     },
     "topBar": {
+      "brand": "Laboratuvar",
       "project": "Proje",
       "projectManagement": "Proje Yönetimi",
       "newProject": "Yeni Proje",
@@ -224,7 +225,9 @@
       "analyze": "Analiz",
       "results": "Sonuclar",
       "navLabel": "Mod gostergeleri",
-      "toolMgmt": "Arac Yonetimi"
+      "toolMgmt": "Arac Yonetimi",
+      "drawerExpand": "Paneli ac",
+      "drawerCollapse": "Paneli kapat"
     },
     "center": {
       "loading": "Laboratuvar merkezi yukleniyor",

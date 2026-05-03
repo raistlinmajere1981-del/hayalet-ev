@@ -216,6 +216,7 @@
       }
     },
     "topBar": {
+      "brand": "Laboratory",
       "project": "Project",
       "projectManagement": "Project Management",
       "newProject": "New Project",
@@ -224,7 +225,9 @@
       "analyze": "Analyze",
       "results": "Results",
       "navLabel": "Mode indicators",
-      "toolMgmt": "Tool Management"
+      "toolMgmt": "Tool Management",
+      "drawerExpand": "Open panel",
+      "drawerCollapse": "Close panel"
     },
     "center": {
       "loading": "Laboratory center loading",
