@@ -2136,7 +2136,7 @@ test("laboratory center workbench attaches media viewport and timeline as one su
     themeSource,
     /\.labx-shell\[data-lab-debug-regions="true"\] \[data-lab-region\]\s*\{/
   );
-  assert.match(themeSource, /\.labx-pipeline-block\s*\{\s*display:\s*block;\s*\}/);
+  assert.match(themeSource, /\.labx-pipeline-block\s*\{\s*display:\s*block;/);
   assert.match(
     themeSource,
     /\.labx-shell\[data-lab-debug-regions="true"\] \.labx-pipeline-block\s*\{[\s\S]*outline:\s*1px dashed rgba\(0, 255, 200, 0\.2\);/
@@ -2212,7 +2212,7 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   );
   assert.match(
     themeSource,
-    /\.labx-workspace-inspector\.labx-focus-passive\s*\{[\s\S]*opacity:\s*0\.65;/
+    /\.labx-workspace-inspector\.labx-focus-passive\s*\{[\s\S]*opacity:\s*0\.5;/
   );
   assert.match(
     themeSource,

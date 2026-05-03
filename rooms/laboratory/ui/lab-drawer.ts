@@ -1,6 +1,8 @@
 import { escapeHtml } from "../models/lab-types.js";
 import type {
   CapabilityFamilyId,
+  LabDecisionIntent,
+  LabDecisionState,
   LabDrawerMode,
   LabPipelineBlock,
   LabStoreState,
@@ -40,6 +42,7 @@ import type { LabI18n } from "./lab-i18n.js";
 import { renderContextPanel, renderPipeline } from "./laboratory-layout.js";
 import { formatLabExpectedOutputLabel, translateLabRuntimeText } from "./lab-runtime-i18n.js";
 import { renderLabSettingsFields } from "./lab-settings-controls.js";
+import { buildLabDecisionSnapshot } from "./lab-decision-layer.js";
 
 type AnalysisPreparationGroup = ReturnType<typeof getAnalysisPreparationGroups>[number];
 type AvailableIntent = ReturnType<typeof getAvailableIntents>[number];
@@ -84,6 +87,35 @@ function renderDrawerHeader(mode: LabDrawerMode, copy: LabI18n) {
     <div class="labx-drawer__header">
       <p class="labx-card__eyebrow">${escapeHtml(copy.t(h.eyebrowKey, h.eyebrowFallback))}</p>
       <h2>${escapeHtml(copy.t(h.titleKey, h.titleFallback))}</h2>
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------------------
+// Decision-driven header
+// ---------------------------------------------------------------------------
+
+const DECISION_HEADER_LABELS: Record<LabDecisionIntent, { title: string; subtitle: string }> = {
+  idle: { title: "Beklemede", subtitle: "Kaynak yükleyin" },
+  "preparing-analysis": { title: "Hazırlanıyor", subtitle: "Kaynak veya seçim bekleniyor" },
+  "ready-to-run": { title: "Hazır", subtitle: "Analiz başlatılabilir" },
+  "running-analysis": { title: "Analiz Ediliyor", subtitle: "Modüller çalışıyor" },
+  "reviewing-results": { title: "Sonuçlar", subtitle: "Analiz tamamlandı" },
+  "exploring-alternatives": { title: "Keşif", subtitle: "Alternatifler değerlendiriliyor" },
+};
+
+function renderDecisionHeader(
+  intent: LabDecisionIntent,
+  decisionState: LabDecisionState,
+  copy: LabI18n
+) {
+  const labels = DECISION_HEADER_LABELS[intent];
+  const title = copy.t(`mediaAnalysis.decisionHeader.${intent}.title`, labels.title);
+  const subtitle = copy.t(`mediaAnalysis.decisionHeader.${intent}.subtitle`, labels.subtitle);
+  return `
+    <div class="labx-decision-header" data-decision-state="${escapeHtml(decisionState)}">
+      <h2 class="labx-decision-header__title">${escapeHtml(title)}</h2>
+      <p class="labx-decision-header__subtitle">${escapeHtml(subtitle)}</p>
     </div>
   `;
 }
@@ -1183,9 +1215,17 @@ export function renderLabDrawer(
     });
   }
 
+  const decisionSnapshot = buildLabDecisionSnapshot({ mode, state });
+  const decisionHeader = renderDecisionHeader(
+    decisionSnapshot.intent,
+    decisionSnapshot.state,
+    copy
+  );
+
   if (!state.bootReady) {
     return renderContextPanel({
       content: `
+        ${decisionHeader}
         ${renderDrawerHeader(mode, copy)}
         ${renderDrawerBody(
           [
@@ -1222,6 +1262,7 @@ export function renderLabDrawer(
 
   return renderContextPanel({
     content: `
+      ${decisionHeader}
       ${renderDrawerHeader(mode, copy)}
       <div class="labx-drawer__body">
         ${modeContent}
