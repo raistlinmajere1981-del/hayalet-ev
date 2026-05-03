@@ -189,6 +189,32 @@
   "mediaAnalysis": {
     "eyebrow": "Obsidian Laboratuvar",
     "operatorLabel": "Operator",
+    "decisionHeader": {
+      "idle": {
+        "title": "Beklemede",
+        "subtitle": "Kaynak yukleyin"
+      },
+      "preparing-analysis": {
+        "title": "Hazirlaniyor",
+        "subtitle": "Kaynak veya secim bekleniyor"
+      },
+      "ready-to-run": {
+        "title": "Hazir",
+        "subtitle": "Analiz baslatilabilir"
+      },
+      "running-analysis": {
+        "title": "Analiz Ediliyor",
+        "subtitle": "Moduller calisiyor"
+      },
+      "reviewing-results": {
+        "title": "Sonuclar",
+        "subtitle": "Analiz tamamlandi"
+      },
+      "exploring-alternatives": {
+        "title": "Kesif",
+        "subtitle": "Alternatifler degerlendiriliyor"
+      }
+    },
     "topBar": {
       "project": "Proje",
       "projectManagement": "Proje Yönetimi",

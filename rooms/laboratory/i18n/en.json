@@ -189,6 +189,32 @@
   "mediaAnalysis": {
     "eyebrow": "Obsidian Laboratory",
     "operatorLabel": "Operator",
+    "decisionHeader": {
+      "idle": {
+        "title": "Idle",
+        "subtitle": "Load a source"
+      },
+      "preparing-analysis": {
+        "title": "Preparing",
+        "subtitle": "Waiting for a source or selection"
+      },
+      "ready-to-run": {
+        "title": "Ready",
+        "subtitle": "Analysis can start"
+      },
+      "running-analysis": {
+        "title": "Analyzing",
+        "subtitle": "Modules are running"
+      },
+      "reviewing-results": {
+        "title": "Results",
+        "subtitle": "Analysis complete"
+      },
+      "exploring-alternatives": {
+        "title": "Explore",
+        "subtitle": "Alternatives are being evaluated"
+      }
+    },
     "topBar": {
       "project": "Project",
       "projectManagement": "Project Management",

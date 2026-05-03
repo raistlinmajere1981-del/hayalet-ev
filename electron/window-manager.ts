@@ -1,5 +1,5 @@
 import { BrowserWindow, session, Tray, Menu, nativeImage, app, shell, screen } from "electron";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { getLoggerCore } from "./logger/index.js";
@@ -23,9 +23,122 @@ let _trayIconPath: string | null = null;
 let _isMinimizedToTray: boolean = false;
 let _mainWindow: BrowserWindow | null = null;
 const SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE = process.platform === "linux";
+const LINUX_VISIBLE_WORK_AREA_GUARD = {
+  width: 2,
+  height: 1,
+};
 
 async function windowT(key: string, params?: TranslationParams): Promise<string> {
   return await translateElectronMessage(`electron.window.${key}`, params);
+}
+
+function boundsAreInsideWorkArea(
+  bounds: Electron.Rectangle,
+  workArea: Electron.Rectangle
+): boolean {
+  return (
+    bounds.x >= workArea.x &&
+    bounds.y >= workArea.y &&
+    bounds.x + bounds.width <= workArea.x + workArea.width &&
+    bounds.y + bounds.height <= workArea.y + workArea.height
+  );
+}
+
+function intersectWorkAreas(
+  first: Electron.Rectangle,
+  second: Electron.Rectangle
+): Electron.Rectangle | null {
+  const x = Math.max(first.x, second.x);
+  const y = Math.max(first.y, second.y);
+  const right = Math.min(first.x + first.width, second.x + second.width);
+  const bottom = Math.min(first.y + first.height, second.y + second.height);
+  const width = right - x;
+  const height = bottom - y;
+
+  if (width <= 0 || height <= 0) {
+    return null;
+  }
+
+  return { x, y, width, height };
+}
+
+function parseLinuxEwmhWorkArea(rawOutput: string): Electron.Rectangle | null {
+  const workAreaMatch = rawOutput.match(/_NET_WORKAREA\(CARDINAL\)\s*=\s*([0-9,\s-]+)/);
+  if (workAreaMatch === null) {
+    return null;
+  }
+
+  const currentDesktopMatch = rawOutput.match(/_NET_CURRENT_DESKTOP\(CARDINAL\)\s*=\s*(\d+)/);
+  const currentDesktop =
+    currentDesktopMatch === null ? 0 : Number.parseInt(currentDesktopMatch[1] ?? "0", 10);
+  const values = (workAreaMatch[1] ?? "")
+    .split(",")
+    .map((value) => Number.parseInt(value.trim(), 10))
+    .filter((value) => Number.isFinite(value));
+  const offset = Number.isFinite(currentDesktop) ? currentDesktop * 4 : 0;
+
+  if (values.length < offset + 4) {
+    return null;
+  }
+
+  const [x, y, width, height] = values.slice(offset, offset + 4);
+  if (
+    x === undefined ||
+    y === undefined ||
+    width === undefined ||
+    height === undefined ||
+    width <= 0 ||
+    height <= 0
+  ) {
+    return null;
+  }
+
+  return { x, y, width, height };
+}
+
+function readLinuxEwmhWorkArea(): Electron.Rectangle | null {
+  if (!SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE) {
+    return null;
+  }
+
+  try {
+    const output = execFileSync("xprop", ["-root", "_NET_WORKAREA", "_NET_CURRENT_DESKTOP"], {
+      encoding: "utf8",
+      timeout: 250,
+    });
+    return parseLinuxEwmhWorkArea(output);
+  } catch {
+    return null;
+  }
+}
+
+function resolveVisibleWorkArea(workArea: Electron.Rectangle): Electron.Rectangle {
+  if (!SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE) {
+    return workArea;
+  }
+
+  // NOTE: KDE/Wayland can report full display height through Electron while EWMH exposes the panel-aware work area.
+  const ewmhWorkArea = readLinuxEwmhWorkArea();
+  const constrainedWorkArea =
+    ewmhWorkArea === null ? workArea : (intersectWorkAreas(workArea, ewmhWorkArea) ?? ewmhWorkArea);
+
+  return {
+    ...constrainedWorkArea,
+    width: Math.max(1, constrainedWorkArea.width - LINUX_VISIBLE_WORK_AREA_GUARD.width),
+    height: Math.max(1, constrainedWorkArea.height - LINUX_VISIBLE_WORK_AREA_GUARD.height),
+  };
+}
+
+function constrainWindowToVisibleWorkArea(win: BrowserWindow): void {
+  const bounds = win.getBounds();
+  const { workArea } = screen.getDisplayMatching(bounds);
+  const visibleWorkArea = resolveVisibleWorkArea(workArea);
+
+  if (boundsAreInsideWorkArea(bounds, visibleWorkArea)) {
+    return;
+  }
+
+  win.setBounds(visibleWorkArea);
 }
 
 function resolveCorsAllowOrigin(isDev: boolean, referrer?: string): string {
@@ -58,6 +171,7 @@ function restoreWindowedBounds(win: BrowserWindow): void {
   if (SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE) {
     win.setResizable(true);
     win.maximize();
+    constrainWindowToVisibleWorkArea(win);
     return;
   }
 
@@ -382,6 +496,11 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
       restoreWindowedBounds(win);
     }
     win.show();
+    if (SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE) {
+      setTimeout(() => {
+        constrainWindowToVisibleWorkArea(win);
+      }, 0);
+    }
   });
 
   return win;
