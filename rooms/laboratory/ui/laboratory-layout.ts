@@ -55,14 +55,6 @@ export function renderMainStage(content: string) {
   return `<main class="labx-center-panel labx-main-stage" data-lab-region="main-stage">${content}</main>`;
 }
 
-export function renderLeftRail(input: { ariaLabel: string; controlsMarkup: string }) {
-  return `
-    <nav class="labx-left-rail labx-top-bar__center" data-lab-region="left-rail-source" aria-label="${escapeHtml(input.ariaLabel)}">
-      ${input.controlsMarkup}
-    </nav>
-  `;
-}
-
 export function renderPreviewArea(input: { content: string; focusClassName: string }) {
   const focusClassName =
     input.focusClassName.trim() !== "" ? ` ${escapeHtml(input.focusClassName.trim())}` : "";

@@ -23,7 +23,7 @@ type LabDecisionSignalFacts = {
 
 const LAB_DECISION_MODES: readonly LabDrawerMode[] = ["setup", "running", "result", "explore"];
 
-export function isLabDecisionMode(value: unknown): value is LabDrawerMode {
+function isLabDecisionMode(value: unknown): value is LabDrawerMode {
   return typeof value === "string" && LAB_DECISION_MODES.includes(value as LabDrawerMode);
 }
 

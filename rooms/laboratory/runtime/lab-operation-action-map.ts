@@ -1,4 +1,4 @@
-export const LAB_OPERATION_UI_ACTION_TO_TRACKED_ACTION = {
+const LAB_OPERATION_UI_ACTION_TO_TRACKED_ACTION = {
   "timeline-export-clip": "export-timeline-clip",
   "timeline-grab-frame": "export-frame-grab",
   "timeline-extract-audio": "export-audio-track",

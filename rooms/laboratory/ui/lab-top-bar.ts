@@ -27,7 +27,6 @@ function renderBrand(copy: LabI18n) {
   `;
 }
 
-
 function renderSourceMetaStrip(state: LabStoreState) {
   const source = asLabRecord(state.source);
   const storedFileName = asNonEmptyString(source["storedFileName"]);

@@ -64,8 +64,6 @@ test("laboratory store keeps YouTube import mode UI-only and non-persistent", ()
       metadata: {},
     },
   });
-  store.dispatch({ type: "project-workspace-toggled", open: true });
-
   store.dispatch({
     type: "youtube-import-set-url",
     url: " https://www.youtube.com/watch?v=abc123DEF45 ",
@@ -236,19 +234,16 @@ test("laboratory store keeps YouTube import mode UI-only and non-persistent", ()
 
   const sourceDraftsBefore = store.getState().ui.sourceDrafts;
   const assetsBefore = store.getState().assets;
-  const projectWorkspaceOpenBefore = store.getState().ui.projectWorkspaceOpen;
 
   store.dispatch({ type: "enter-youtube-import-mode" });
   assert.equal(store.getState().ui.labMode, "import-youtube");
   assert.deepEqual(store.getState().ui.sourceDrafts, sourceDraftsBefore);
   assert.deepEqual(store.getState().assets, assetsBefore);
-  assert.equal(store.getState().ui.projectWorkspaceOpen, projectWorkspaceOpenBefore);
 
   store.dispatch({ type: "exit-youtube-import-mode" });
   assert.equal(store.getState().ui.labMode, "normal");
   assert.deepEqual(store.getState().ui.sourceDrafts, sourceDraftsBefore);
   assert.deepEqual(store.getState().assets, assetsBefore);
-  assert.equal(store.getState().ui.projectWorkspaceOpen, projectWorkspaceOpenBefore);
 
   store.dispatch({
     type: "youtube-import-set-url",
@@ -1236,89 +1231,18 @@ test("laboratory action output selector resolves linked assets and ignores stale
   assert.deepEqual(getActionOutputs(store.getState(), "user-action-missing"), []);
 });
 
-test("laboratory project workspace ui state stays transient and filters stale selections", () => {
+test("laboratory store no longer carries retired source project ui state", () => {
   const store = createLabStore();
+  const uiState = store.getState().ui as Record<string, unknown>;
 
-  store.dispatch({
-    type: "asset-added",
-    asset: {
-      id: "asset-source-1",
-      type: "source",
-      name: "source.mp4",
-      localPath: "/tmp/source.mp4",
-      createdAt: 100,
-    },
-  });
-  store.dispatch({
-    type: "asset-added",
-    asset: {
-      id: "asset-report-1",
-      type: "report",
-      name: "report.md",
-      localPath: "/tmp/report.md",
-      createdAt: 200,
-    },
-  });
-
-  store.dispatch({ type: "project-workspace-toggled", open: true });
-  store.dispatch({
-    type: "project-workspace-entity-selected",
-    entityIds: ["asset-source-1", "asset-missing", "asset-report-1"],
-  });
-  store.dispatch({
-    type: "project-workspace-sort-changed",
-    sort: "name",
-  });
-  store.dispatch({
-    type: "project-workspace-filter-changed",
-    filter: "report",
-  });
-  store.dispatch({
-    type: "project-workspace-group-changed",
-    group: "run",
-  });
-  store.dispatch({
-    type: "project-workspace-search-changed",
-    search: "report",
-  });
-  store.dispatch({
-    type: "project-workspace-confirm-replace",
-    assetId: "asset-source-1",
-  });
-  store.dispatch({
-    type: "project-workspace-timeline-highlighted",
-    highlight: {
-      assetId: "asset-source-1",
-      startMs: 1000,
-      endMs: 3000,
-      label: "source clip",
-    },
-  });
-
-  assert.equal(store.getState().ui.projectWorkspaceOpen, true);
-  assert.deepEqual(store.getState().ui.projectWorkspaceSelectedEntityIds, [
-    "asset-source-1",
-    "asset-report-1",
-  ]);
-  assert.equal(store.getState().ui.projectWorkspaceSort, "name");
-  assert.equal(store.getState().ui.projectWorkspaceFilter, "report");
-  assert.equal(store.getState().ui.projectWorkspaceGroup, "run");
-  assert.equal(store.getState().ui.projectWorkspaceSearch, "report");
-  assert.equal(store.getState().ui.projectWorkspaceConfirmReplace, "asset-source-1");
-  assert.deepEqual(store.getState().ui.projectWorkspaceTimelineHighlight, {
-    assetId: "asset-source-1",
-    startMs: 1000,
-    endMs: 3000,
-    label: "source clip",
-  });
-
-  store.dispatch({ type: "project-workspace-toggled", open: false });
-
-  assert.equal(store.getState().ui.projectWorkspaceOpen, false);
-  assert.deepEqual(store.getState().ui.projectWorkspaceSelectedEntityIds, []);
-  assert.equal(store.getState().ui.projectWorkspaceConfirmReplace, null);
-  assert.equal(store.getState().ui.projectWorkspaceTimelineHighlight, null);
-  assert.equal(store.getState().ui.projectWorkspaceSearch, "report");
+  assert.equal("projectWorkspaceOpen" in uiState, false);
+  assert.equal("projectWorkspaceSelectedEntityIds" in uiState, false);
+  assert.equal("projectWorkspaceSort" in uiState, false);
+  assert.equal("projectWorkspaceFilter" in uiState, false);
+  assert.equal("projectWorkspaceGroup" in uiState, false);
+  assert.equal("projectWorkspaceSearch" in uiState, false);
+  assert.equal("projectWorkspaceConfirmReplace" in uiState, false);
+  assert.equal("projectWorkspaceTimelineHighlight" in uiState, false);
 });
 
 test("laboratory lineage selectors resolve current source, linked audio, and parent assets", () => {

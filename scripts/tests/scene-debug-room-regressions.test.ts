@@ -73,13 +73,15 @@ test("entrance scene layout keeps room targets and whisper return in one layout 
     "whisper"
   );
 
+  const originalWhisperLeft =
+    entranceSceneLayout.objects.find((node) => node.id === "board-whisper")?.rect.leftPx;
   const cloned = cloneSceneLayout(entranceSceneLayout);
   cloned.objects.find((node) => node.id === "board-whisper")!.rect.leftPx = 408;
   cloned.backs.find((node) => node.id === "back-whisper")!.rect.widthPx = 140;
 
   assert.equal(
     entranceSceneLayout.objects.find((node) => node.id === "board-whisper")?.rect.leftPx,
-    322
+    originalWhisperLeft
   );
   assert.equal(cloned.objects.find((node) => node.id === "board-whisper")?.rect.leftPx, 408);
   assert.equal(cloned.backs.find((node) => node.id === "back-whisper")?.rect.widthPx, 140);

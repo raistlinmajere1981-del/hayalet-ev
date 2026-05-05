@@ -50,7 +50,7 @@ export function getLabAssetPreviewUrl(asset: LabAsset): string | null {
   return path === null ? null : toLabAssetDisplayUrl(path);
 }
 
-export function getLabAssetPathExtension(path: string | null): string | null {
+function getLabAssetPathExtension(path: string | null): string | null {
   if (path === null) {
     return null;
   }

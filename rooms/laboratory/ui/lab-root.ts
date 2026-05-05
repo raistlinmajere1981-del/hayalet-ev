@@ -319,14 +319,6 @@ export const __testOnlyLabRootPersistence = {
   readPersistableState,
 };
 
-function shouldAutoOpenProjectWorkspaceOnBoot(state: LabStoreState) {
-  return state.ui.labMode !== "import-youtube";
-}
-
-export const __testOnlyProjectWorkspaceAutoOpen = {
-  shouldAutoOpenProjectWorkspaceOnBoot,
-};
-
 function updateRenderedElement(
   documentRef: Document,
   currentElement: HTMLElement,
@@ -743,10 +735,6 @@ export function startLaboratoryLabRoot() {
     if (event.key !== "Escape") {
       return;
     }
-    if (store.getState().ui.projectWorkspaceOpen) {
-      eventBus.emit({ type: "project-workspace-toggled", open: false });
-      return;
-    }
     if (activeOverlay !== "execution-details") {
       return;
     }
@@ -899,10 +887,6 @@ export function startLaboratoryLabRoot() {
     clearBootOverlayFailsafeTimer();
     clearBootOverlayIdleGate();
     render();
-    const bootState = store.getState();
-    if (shouldAutoOpenProjectWorkspaceOnBoot(bootState) && !bootState.ui.projectWorkspaceOpen) {
-      eventBus.emit({ type: "project-workspace-toggled", open: true });
-    }
   }
 
   function scheduleBootOverlayUnlock(state: LabStoreState) {

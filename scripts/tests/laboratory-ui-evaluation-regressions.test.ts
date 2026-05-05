@@ -860,7 +860,11 @@ test("laboratory boot overlay unlocks from local ready without a room API bridge
     assert.doesNotMatch(environment.runtimeRoot.innerHTML, /data-lab-boot-overlay="true"/);
     assert.match(environment.runtimeRoot.innerHTML, /data-lab-center-skeleton="true"/);
     assert.match(environment.runtimeRoot.innerHTML, /labx-drawer-skeleton/);
-    assert.match(environment.runtimeRoot.innerHTML, /data-overlay="project-workspace"/);
+    assert.match(
+      environment.runtimeRoot.innerHTML,
+      /id="lab-project-workspace-root" aria-hidden="true"/
+    );
+    assert.doesNotMatch(environment.runtimeRoot.innerHTML, /data-overlay="project-workspace"/);
   } finally {
     await buildArtifact.cleanup();
     environment.restore();
@@ -1095,7 +1099,6 @@ test("laboratory mounted fallback logs missing region diagnostics before preserv
 
 test("laboratory YouTube import mode renders as an additive shell override", () => {
   const store = createLabStore();
-  store.dispatch({ type: "project-workspace-toggled", open: true });
   store.dispatch({ type: "enter-youtube-import-mode" });
   const state = store.getState();
 
@@ -1251,7 +1254,6 @@ test("laboratory YouTube import mode renders as an additive shell override", () 
   const overlayMarkup = renderProjectWorkspaceOverlay(state);
   assert.match(overlayMarkup, /id="lab-project-workspace-root" aria-hidden="true"/);
   assert.doesNotMatch(overlayMarkup, /labx-pw-overlay/);
-  assert.equal(state.ui.projectWorkspaceOpen, true);
 
   const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));
   const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
@@ -1303,7 +1305,7 @@ test("laboratory shell preserves workspace preview nodes while diffing live pane
   );
   assert.match(
     labRootSource,
-    /leftRail: \[\s*'\[data-lab-region="left-rail-source"\]',\s*'\[data-lab-region="left-rail"\]',\s*"\.labx-left-rail",\s*\]/
+    /leftRail: \[\s*'\[data-lab-region="source-panel"\]',\s*'\[data-lab-region="left-rail-source"\]',\s*'\[data-lab-region="left-rail"\]',\s*"\.labx-source-panel",\s*"\.labx-left-rail",\s*\]/
   );
   assert.match(
     labRootSource,
@@ -2001,12 +2003,12 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   const toolOverlaySource = readFileSync("rooms/laboratory/ui/tool-management-overlay.ts", "utf8");
   const workspaceSurfaceSource = readFileSync("rooms/laboratory/ui/workspace-surface.ts", "utf8");
   const drawerSource = readFileSync("rooms/laboratory/ui/lab-drawer.ts", "utf8");
-  const projectNavigationSource = readFileSync("rooms/laboratory/ui/project-navigation.ts", "utf8");
+  const sourcePanelSource = readFileSync("rooms/laboratory/ui/lab-source-panel.ts", "utf8");
+  const topBarSource = readFileSync("rooms/laboratory/ui/lab-top-bar.ts", "utf8");
   const projectWorkspaceSource = readFileSync(
     "rooms/laboratory/ui/project-workspace-overlay.ts",
     "utf8"
   );
-  const assetGridSource = readFileSync("rooms/laboratory/ui/asset-grid.ts", "utf8");
 
   assert.match(labRootSource, /schemaVersion:\s*4,/);
   assert.match(
@@ -2024,10 +2026,14 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   assert.match(toolOverlaySource, /data-lab-action="tool-check-updates"/);
   assert.doesNotMatch(drawerSource, /renderSourceIntake\(state, copy\)/);
   assert.doesNotMatch(drawerSource, /renderLabProjectAssetsPanel/);
-  assert.doesNotMatch(projectNavigationSource, /renderSourceIntake\(state, copy\)/);
-  assert.match(projectWorkspaceSource, /renderProjectSourceImport\(state, copy\)/);
-  assert.match(projectWorkspaceSource, /renderProjectImportReview\(state, copy\)/);
-  assert.match(assetGridSource, /data-lab-field="workspace\.hypothesis"/);
+  assert.equal(existsSync("rooms/laboratory/ui/project-navigation.ts"), false);
+  assert.equal(existsSync("rooms/laboratory/ui/asset-grid.ts"), false);
+  assert.match(sourcePanelSource, /renderProjectImportProgress\(state, copy\)/);
+  assert.match(sourcePanelSource, /data-lab-field="project\.id"/);
+  assert.match(projectWorkspaceSource, /id="lab-project-workspace-root"/);
+  assert.doesNotMatch(projectWorkspaceSource, /renderProjectSourceImport\(state, copy\)/);
+  assert.doesNotMatch(projectWorkspaceSource, /renderProjectImportReview\(state, copy\)/);
+  assert.match(topBarSource, /data-lab-field="workspace\.hypothesis"/);
   assert.match(drawerSource, /data-lab-action="run-deep-analysis"/);
   assert.match(drawerSource, /buildIntentPreviewSentence\(state\)/);
   assert.match(drawerSource, /buildExecutionBridge/);
@@ -2055,7 +2061,7 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   assert.match(labTypesSource, /type: "section" \| "action" \| "status" \| "output";/);
   assert.match(laboratoryLayoutSource, /export function renderLaboratoryLayout/);
   assert.match(laboratoryLayoutSource, /export function renderMainStage/);
-  assert.match(laboratoryLayoutSource, /export function renderLeftRail/);
+  assert.doesNotMatch(laboratoryLayoutSource, /export function renderLeftRail/);
   assert.match(laboratoryLayoutSource, /export function renderPreviewArea/);
   assert.match(laboratoryLayoutSource, /export function renderTimelineArea/);
   assert.match(laboratoryLayoutSource, /export function renderPipeline/);
@@ -2078,10 +2084,7 @@ test("laboratory center workbench attaches media viewport and timeline as one su
     topBarSource,
     /class="labx-top-bar__center" data-lab-region="left-rail-source"/
   );
-  assert.match(
-    laboratoryLayoutSource,
-    /class="labx-left-rail labx-top-bar__center" data-lab-region="left-rail-source"/
-  );
+  assert.doesNotMatch(laboratoryLayoutSource, /data-lab-region="left-rail-source"/);
   assert.match(drawerSource, /renderContextPanel/);
   assert.match(drawerSource, /if \(collapsed\) \{[\s\S]*renderContextPanel\(\{[\s\S]*hidden: true/);
   assert.match(
@@ -2314,15 +2317,23 @@ test("laboratory theme defines the multi-region shell grid and drawer layout con
   assert.match(baseSource, /--labx-danger:\s*var\(--labx-error\);/);
   assert.match(
     themeSource,
-    /\.labx-shell\s*\{[\s\S]*grid-template-columns:\s*var\(--labx-rail-width\) minmax\(0, 1fr\) minmax\(18rem, 22rem\) minmax\(14rem, 18rem\);[\s\S]*grid-template-rows:\s*var\(--labx-topbar-height\) minmax\(0, 1fr\) var\(--labx-strip-height\);/
+    /\.labx-shell\s*\{[\s\S]*grid-template-columns:\s*minmax\(14rem, 18rem\) minmax\(0, 1fr\) minmax\(18rem, 22rem\);[\s\S]*grid-template-rows:\s*var\(--labx-topbar-height\) minmax\(0, 1fr\) var\(--labx-strip-height\);/
   );
   assert.match(
     themeSource,
-    /\.labx-shell\s*\{[\s\S]*grid-template-areas:\s*"topbar topbar topbar topbar"\s*"rail\s+center context inspector"\s*"strip\s+strip\s+strip\s+strip";/
+    /\.labx-shell\s*\{[\s\S]*grid-template-areas:\s*"topbar topbar\s+topbar"\s*"panel\s+center\s+context"\s*"panel\s+strip\s+strip";/
   );
   assert.match(
     themeSource,
-    /\.labx-shell\[data-drawer-collapsed="true"\]\s*\{[\s\S]*grid-template-columns:\s*var\(--labx-rail-width\) minmax\(0, 1fr\) minmax\(14rem, 18rem\);[\s\S]*grid-template-areas:\s*"topbar topbar topbar"\s*"rail\s+center inspector"\s*"strip\s+strip\s+strip";/
+    /\.labx-shell\[data-source-panel-collapsed="true"\]\s*\{[\s\S]*grid-template-columns:\s*0 minmax\(0, 1fr\) minmax\(18rem, 22rem\);/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-shell\[data-drawer-collapsed="true"\]\s*\{[\s\S]*grid-template-columns:\s*minmax\(14rem, 18rem\) minmax\(0, 1fr\) 0;/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-shell\[data-source-panel-collapsed="true"\]\[data-drawer-collapsed="true"\]\s*\{[\s\S]*grid-template-columns:\s*0 minmax\(0, 1fr\) 0;/
   );
   assert.doesNotMatch(themeSource, /\.labx-drawer--collapsed/);
   assert.doesNotMatch(themeSource, /\.labx-drawer__expand-btn/);
@@ -2335,11 +2346,11 @@ test("laboratory theme defines the multi-region shell grid and drawer layout con
   assert.doesNotMatch(themeSource, /labx-boot-breathe/);
   assert.match(
     themeSource,
-    /\.labx-top-bar\s*\{\s*grid-area:\s*topbar;\s*\}[\s\S]*\.labx-left-rail\s*\{\s*grid-area:\s*rail;\s*\}[\s\S]*\.labx-center-panel\s*\{\s*grid-area:\s*center;\s*\}[\s\S]*\.labx-drawer\s*\{\s*grid-area:\s*context;\s*\}[\s\S]*\.labx-workspace-inspector\s*\{\s*grid-area:\s*inspector;\s*\}[\s\S]*\.labx-process-strip\s*\{\s*grid-area:\s*strip;\s*\}/
+    /\.labx-top-bar\s*\{\s*grid-area:\s*topbar;\s*\}[\s\S]*\.labx-source-panel\s*\{\s*grid-area:\s*panel;\s*\}[\s\S]*\.labx-center-panel\s*\{\s*grid-area:\s*center;\s*\}[\s\S]*\.labx-drawer\s*\{\s*grid-area:\s*context;\s*\}[\s\S]*\.labx-process-strip\s*\{\s*grid-area:\s*strip;\s*\}/
   );
   assert.match(
     themeSource,
-    /\.labx-shell\[data-layout-kind="import-only"\]\s*\{[\s\S]*grid-template-rows:\s*minmax\(0, 1fr\);[\s\S]*grid-template-areas:\s*"center";/
+    /\.labx-shell\[data-layout-kind="import-only"\]\s*\{[\s\S]*grid-template-columns:\s*0 minmax\(0, 1fr\) 0;[\s\S]*grid-template-rows:\s*minmax\(0, 1fr\);[\s\S]*grid-template-areas:\s*"panel\s+center\s+context"\s*"panel\s+strip\s+strip";/
   );
   assert.match(
     projectWorkspaceSource,
@@ -2354,20 +2365,13 @@ test("laboratory theme defines the multi-region shell grid and drawer layout con
   assert.match(projectWorkspaceSource, /\.labx-import-hint\s*\{[\s\S]*font-size:\s*12px;/);
   assert.match(projectWorkspaceSource, /\.labx-import-status\s*\{[\s\S]*font-size:\s*12px;/);
   assert.match(projectWorkspaceSource, /\.labx-import-thumb\s*\{[\s\S]*aspect-ratio:\s*16 \/ 9;/);
+  assert.doesNotMatch(projectWorkspaceSource, /\.labx-pw-/);
+  assert.doesNotMatch(projectWorkspaceSource, /\.labx-import-review/);
   assert.match(
     projectWorkspaceSource,
-    /\.labx-pw-grid__cards\s*\{[\s\S]*grid-template-columns:\s*repeat\(auto-fill, minmax\(220px, 1fr\)\);/
+    /\.labx-project-import__youtube-preview\s*\{[\s\S]*display:\s*grid;/
   );
-  assert.match(projectWorkspaceSource, /\.labx-pw-card__thumb\s*\{[\s\S]*aspect-ratio:\s*16 \/ 9;/);
-  assert.match(
-    projectWorkspaceSource,
-    /@media \(max-width:\s*760px\)\s*\{[\s\S]*\.labx-pw-grid__cards\s*\{[\s\S]*grid-template-columns:\s*1fr;/
-  );
-  assert.doesNotMatch(projectWorkspaceSource, /minmax\(165px, 1fr\)/);
-  assert.doesNotMatch(
-    projectWorkspaceSource,
-    /\.labx-pw-card__thumb\s*\{[\s\S]*height:\s*96px;/
-  );
+  assert.match(projectWorkspaceSource, /\.labx-project-import__progress\s*\{[\s\S]*display:\s*grid;/);
   assert.match(projectWorkspaceSource, /\.labx-strategy-list\s*\{[\s\S]*display:\s*grid;/);
   assert.match(projectWorkspaceSource, /\.labx-strategy-list\s*\{[\s\S]*gap:\s*10px;/);
   assert.match(

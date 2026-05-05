@@ -218,17 +218,17 @@ test("laboratory top bar reflects active v2 shell navigation", () => {
   const leftRail = renderLabLeftRail(store.getState());
 
   assert.match(html, /class="labx-top-bar" data-lab-region="topbar"/);
-  assert.match(
-    leftRail,
-    /class="labx-left-rail labx-top-bar__center" data-lab-region="left-rail-source"/
-  );
-  assert.match(html, /data-lab-action="project-workspace-open"/);
-  assert.match(html, /Project Management/);
+  assert.equal(leftRail, "");
+  assert.match(html, /data-lab-action="source-panel-toggle"/);
+  assert.doesNotMatch(html, /data-lab-action="project-workspace-open"/);
+  assert.doesNotMatch(html, /Project Management/);
+  assert.match(html, /lab-demo\.mp4/);
+  assert.match(html, /640×360/);
   assert.doesNotMatch(html, /2026-04-21 12-00 - lab-demo\.mp4/);
   assert.doesNotMatch(html, /data-lab-action="topbar-pill-source"/);
-  assert.match(leftRail, /data-lab-action="topbar-pill-source"/);
-  assert.match(leftRail, /data-lab-action="topbar-pill-analyze"/);
-  assert.match(leftRail, /data-lab-action="topbar-pill-results"/);
+  assert.doesNotMatch(leftRail, /data-lab-action="topbar-pill-source"/);
+  assert.doesNotMatch(leftRail, /data-lab-action="topbar-pill-analyze"/);
+  assert.doesNotMatch(leftRail, /data-lab-action="topbar-pill-results"/);
   assert.match(html, /data-lab-action="toggle-tool-manager"/);
   assert.doesNotMatch(html, /Modül Yönetimi|Seçili Modüller|Yoğun operatör tezgahı/);
 });
@@ -647,15 +647,13 @@ test("laboratory setup drawer owns active source selection controls under the an
   assert.match(surface.main, /class="labx-timeline__selection lab-selection-overlay"/);
   assert.doesNotMatch(surface.main, /class="lab-selection-panel"/);
   assert.match(surface.side, /class="lab-selection-panel lab-selection-panel--drawer"/);
-  assert.match(drawer, /class="lab-selection-panel lab-selection-panel--drawer"/);
+  assert.doesNotMatch(drawer, /class="lab-selection-panel lab-selection-panel--drawer"/);
   assert.deepEqual(getPipelineBlockIds(drawer), [
     "analysis-prep",
     "analysis-cta",
-    "selection-panel",
   ]);
   assert.ok(ctaIndex > -1);
-  assert.ok(selectionPanelIndex > -1);
-  assert.ok(selectionPanelIndex > ctaIndex);
+  assert.equal(selectionPanelIndex, -1);
 });
 
 test("laboratory workspace inspector drawer persists collapsed visual tab state", () => {

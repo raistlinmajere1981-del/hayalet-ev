@@ -5775,36 +5775,6 @@
   gap: 0.5rem;
 }
 
-.labx-top-bar__project-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: var(--labx-font-label);
-  border: 1px solid var(--labx-border);
-  border-radius: var(--labx-radius-button);
-  background: var(--labx-bg-elevated);
-  color: var(--labx-text-primary);
-  padding: 0.25rem 0.6rem;
-  cursor: pointer;
-  transition:
-    background 120ms ease-out,
-    border-color 120ms ease-out;
-  max-width: 14rem;
-}
-
-.labx-top-bar__project-btn:hover {
-  background: var(--labx-surface-highlight);
-  border-color: var(--labx-border-strong);
-}
-
-.labx-top-bar__project-name {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: var(--labx-font-label);
-  color: var(--labx-text);
-}
-
 .labx-top-bar__center {
   display: flex;
   align-items: center;
@@ -5953,30 +5923,6 @@
 
 .labx-top-bar__tool-btn:focus-visible,
 .labx-topbar-pill:focus-visible {
-  outline: 2px solid var(--labx-accent);
-  outline-offset: 2px;
-}
-
-.labx-top-bar__new-btn {
-  all: unset;
-  cursor: pointer;
-  width: 1.75rem;
-  height: 1.75rem;
-  display: grid;
-  place-items: center;
-  border-radius: var(--labx-radius-button);
-  color: var(--labx-text-soft);
-  transition:
-    background 120ms ease-out,
-    color 120ms ease-out;
-}
-
-.labx-top-bar__new-btn:hover {
-  background: var(--labx-bg-elevated);
-  color: var(--labx-text);
-}
-
-.labx-top-bar__new-btn:focus-visible {
   outline: 2px solid var(--labx-accent);
   outline-offset: 2px;
 }
@@ -7398,14 +7344,21 @@
 }
 
 @keyframes labx-pulse-dot {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.45; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
 }
 
 /* ===== Left rail pill — active border accent ===== */
 
 .labx-rail-segment .labx-topbar-pill[data-pill-state="active"] {
-  box-shadow: inset 3px 0 0 var(--labx-accent), inset 0 0 0 1px rgba(92, 215, 223, 0.18);
+  box-shadow:
+    inset 3px 0 0 var(--labx-accent),
+    inset 0 0 0 1px rgba(92, 215, 223, 0.18);
 }
 
 /* ===== Drawer selection slot — above mode nav ===== */
@@ -7582,7 +7535,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: border-color 0.12s, background 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
 }
 
 .labx-sp-header__new-btn:hover {
@@ -7605,7 +7560,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: border-color 0.12s, background 0.12s, color 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s,
+    color 0.12s;
 }
 
 .labx-sp-header__del-btn:hover:not(:disabled) {
@@ -7638,7 +7596,9 @@
   color: var(--labx-text-soft, #9cb6c8);
   font-size: 0.7rem;
   cursor: pointer;
-  transition: border-color 0.12s, background 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -7647,13 +7607,6 @@
 .labx-sp-add-bar__btn:hover {
   border-color: rgba(92, 215, 223, 0.35);
   background: rgba(92, 215, 223, 0.08);
-}
-
-.labx-sp-add-bar__btn--active,
-.labx-sp-add-bar__btn--url.labx-sp-add-bar__btn--active {
-  border-color: rgba(92, 215, 223, 0.4);
-  background: rgba(92, 215, 223, 0.12);
-  color: var(--labx-accent, #5cd7df);
 }
 
 .labx-sp-add-bar__btn:disabled {
@@ -7704,25 +7657,6 @@
   border-color: rgba(92, 215, 223, 0.4);
 }
 
-.labx-sp-url__yt-hint {
-  font-size: 0.68rem;
-  color: rgba(255, 210, 115, 0.9);
-  padding: 0.15rem 0;
-}
-
-.labx-sp-url__status {
-  font-size: 0.68rem;
-  margin: 0;
-}
-
-.labx-sp-url__status[data-tone="error"] {
-  color: rgba(255, 127, 136, 0.9);
-}
-
-.labx-sp-url__status[data-tone="success"] {
-  color: var(--labx-success, #82e3b1);
-}
-
 .labx-sp-url__actions {
   display: flex;
   gap: 0.3rem;
@@ -7758,47 +7692,6 @@
 .labx-sp-url__btn:disabled {
   opacity: 0.38;
   cursor: not-allowed;
-}
-
-/* --- Import progress --- */
-
-.labx-sp-progress {
-  flex-shrink: 0;
-  padding: 0.35rem 0.6rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.labx-sp-progress__label {
-  font-size: 0.68rem;
-  color: var(--labx-text-dim, #6a8096);
-  display: block;
-  margin-bottom: 0.2rem;
-}
-
-.labx-sp-progress[data-tone="running"] .labx-sp-progress__label {
-  color: rgba(255, 210, 115, 0.9);
-}
-
-.labx-sp-progress[data-tone="error"] .labx-sp-progress__label {
-  color: rgba(255, 127, 136, 0.9);
-}
-
-.labx-sp-progress[data-tone="success"] .labx-sp-progress__label {
-  color: var(--labx-success, #82e3b1);
-}
-
-.labx-sp-progress__bar {
-  height: 2px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 1px;
-  overflow: hidden;
-}
-
-.labx-sp-progress__bar > span {
-  display: block;
-  height: 100%;
-  background: var(--labx-accent, #5cd7df);
-  transition: width 0.3s ease;
 }
 
 /* --- Asset list --- */
@@ -7959,11 +7852,17 @@
   letter-spacing: 0.05em;
   list-style: none;
   border-radius: 3px;
-  transition: color 0.1s, background 0.1s;
+  transition:
+    color 0.1s,
+    background 0.1s;
 }
 
-.labx-sp-asset__menu-trigger::-webkit-details-marker { display: none; }
-.labx-sp-asset__menu-trigger::marker { display: none; }
+.labx-sp-asset__menu-trigger::-webkit-details-marker {
+  display: none;
+}
+.labx-sp-asset__menu-trigger::marker {
+  display: none;
+}
 
 .labx-sp-asset__menu-trigger:hover {
   color: var(--labx-text, #ecf4ff);
@@ -8040,7 +7939,10 @@
   background: rgba(255, 255, 255, 0.04);
   color: var(--labx-text-soft, #9cb6c8);
   font-size: 0.72rem;
-  transition: border-color 0.15s, background 0.15s, width 0.2s;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    width 0.2s;
   box-sizing: border-box;
 }
 

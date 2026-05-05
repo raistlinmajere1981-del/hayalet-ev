@@ -16,7 +16,6 @@ import type {
   LabFocusLayer,
   LabIntentId,
   LabAudioFocusSettings,
-  LabAssetType,
   LabInteractiveSettings,
   LabOperationCapabilityId,
   LabSourceDrafts,
@@ -585,169 +584,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     updateTimelinePlaybackUi();
   }
 
-  function canUseAssetAsSource(assetId: string) {
-    const asset = deps.store.getState().assets.find(function (entry) {
-      return entry.id === assetId;
-    });
-    if (!asset || asNonEmptyString(asset.localPath) === null) {
-      return false;
-    }
-    return (
-      asset.type === "source" ||
-      asset.type === "clip" ||
-      asset.type === "frame" ||
-      asset.type === "audio" ||
-      asset.type === "image"
-    );
-  }
-
-  function getProjectWorkspaceActionIds(value: string) {
-    const ids = value
-      .split(",")
-      .map(function (entry) {
-        return entry.trim();
-      })
-      .filter(function (entry, index, allEntries) {
-        return entry !== "" && allEntries.indexOf(entry) === index;
-      });
-    return ids.length > 0
-      ? ids
-      : deps.store.getState().ui.projectWorkspaceSelectedEntityIds.slice();
-  }
-
-  function findFirstSourceCapableAssetId(ids: string[]) {
-    return (
-      ids.find(function (assetId) {
-        return canUseAssetAsSource(assetId);
-      }) || null
-    );
-  }
-
-  function findFirstReportAssetId(ids: string[]) {
-    return (
-      ids.find(function (assetId) {
-        return deps.store.getState().assets.some(function (asset) {
-          return asset.id === assetId && asset.type === "report";
-        });
-      }) || null
-    );
-  }
-
-  function isProjectWorkspaceSelectionToggle(event: Event) {
-    const candidate = event as Event & {
-      ctrlKey?: boolean;
-      metaKey?: boolean;
-    };
-    return candidate.ctrlKey === true || candidate.metaKey === true;
-  }
-
-  function selectProjectWorkspaceEntity(assetId: string, event: Event) {
-    if (assetId.trim() === "") {
-      return;
-    }
-    const state = deps.store.getState();
-    if (isProjectWorkspaceSelectionToggle(event) !== true) {
-      if (
-        state.ui.projectWorkspaceSelectedEntityIds.length === 1 &&
-        state.ui.projectWorkspaceSelectedEntityIds[0] === assetId
-      ) {
-        return;
-      }
-      dispatch({
-        type: "project-workspace-entity-selected",
-        entityIds: [assetId],
-      });
-      return;
-    }
-    const selectedIds = state.ui.projectWorkspaceSelectedEntityIds.slice();
-    const existingIndex = selectedIds.indexOf(assetId);
-    if (existingIndex >= 0) {
-      selectedIds.splice(existingIndex, 1);
-    } else {
-      selectedIds.push(assetId);
-    }
-    dispatch({
-      type: "project-workspace-entity-selected",
-      entityIds: selectedIds,
-    });
-  }
-
-  function normalizeProjectWorkspaceSortValue(value: unknown): "createdAt" | "name" | "type" {
-    return String(value) === "name" || String(value) === "type"
-      ? (String(value) as "name" | "type")
-      : "createdAt";
-  }
-
-  function normalizeProjectWorkspaceFilterValue(value: unknown): LabAssetType | null {
-    return String(value || "").trim() !== "" ? (String(value) as LabAssetType) : null;
-  }
-
-  function normalizeProjectWorkspaceGroupValue(value: unknown): "type" | "run" | "intent" | null {
-    return String(value) === "type" || String(value) === "run" || String(value) === "intent"
-      ? (String(value) as "type" | "run" | "intent")
-      : null;
-  }
-
-  function readProjectWorkspaceCardTimelineHighlight(card: HTMLElement) {
-    const assetId = toStringValue(card.dataset["labValue"]);
-    const startMs = Number(card.dataset["labTimelineStartMs"]);
-    const endMs = Number(card.dataset["labTimelineEndMs"]);
-    if (assetId.trim() === "" || !Number.isFinite(startMs) || !Number.isFinite(endMs)) {
-      return null;
-    }
-    if (endMs <= startMs) {
-      return null;
-    }
-    const label = card.getAttribute("aria-label") || null;
-    const highlight = {
-      assetId,
-      startMs: Math.max(0, Math.round(startMs)),
-      endMs: Math.max(0, Math.round(endMs)),
-    };
-    return label !== null ? { ...highlight, label } : highlight;
-  }
-
-  function handleProjectWorkspaceCardHover(event: Event) {
-    const target = event.target instanceof Element ? event.target : null;
-    if (!target) {
-      return;
-    }
-    const card = target.closest<HTMLElement>("[data-lab-action='project-workspace-entity-click']");
-    if (!card) {
-      return;
-    }
-    const highlight = readProjectWorkspaceCardTimelineHighlight(card);
-    if (highlight === null) {
-      return;
-    }
-    dispatch({
-      type: "project-workspace-timeline-highlighted",
-      highlight,
-    });
-  }
-
-  function handleProjectWorkspaceCardLeave(event: Event) {
-    const target = event.target instanceof Element ? event.target : null;
-    if (!target) {
-      return;
-    }
-    const card = target.closest<HTMLElement>("[data-lab-action='project-workspace-entity-click']");
-    if (!card) {
-      return;
-    }
-    const relatedTarget = (event as FocusEvent | MouseEvent).relatedTarget;
-    if (relatedTarget instanceof Element && card.contains(relatedTarget)) {
-      return;
-    }
-    if (readProjectWorkspaceCardTimelineHighlight(card) === null) {
-      return;
-    }
-    dispatch({
-      type: "project-workspace-timeline-highlighted",
-      highlight: null,
-    });
-  }
-
   function getRoomApi() {
     return deps.windowRef.roomAPI;
   }
@@ -1272,6 +1108,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       return;
     }
     if (projectValue.trim() !== "") {
+      if (projectValue !== deps.store.getState().projectIndex.activeProjectId) {
+        dispatch({ type: "project-import-reset" });
+      }
       sendMediaAction("project-select", { projectId: projectValue });
     }
   }
@@ -3127,83 +2966,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "source-panel-toggle":
         dispatch({ type: "source-panel-toggled" });
         return;
-      // V4 project & entity workspace actions
-      case "project-workspace-open":
-        if (state.ui.projectWorkspaceOpen === true) {
-          return;
-        }
-        dispatch({ type: "project-workspace-toggled", open: true });
-        return;
-      case "project-workspace-close":
-        if (state.ui.projectWorkspaceOpen !== true) {
-          return;
-        }
-        dispatch({ type: "project-workspace-toggled", open: false });
-        return;
-      case "project-workspace-entity-click":
-        selectProjectWorkspaceEntity(value, event);
-        return;
-      case "project-workspace-switch":
-        if (value === state.projectIndex.activeProjectId) {
-          return;
-        }
-        dispatch({ type: "project-import-reset" });
-        selectProjectByValue(value);
-        return;
-      case "project-workspace-use-source":
-        {
-          const sourceAssetId = findFirstSourceCapableAssetId(getProjectWorkspaceActionIds(value));
-          if (sourceAssetId !== null && state.ui.projectWorkspaceConfirmReplace !== sourceAssetId) {
-            dispatch({ type: "project-workspace-confirm-replace", assetId: sourceAssetId });
-          }
-        }
-        return;
-      case "project-workspace-confirm-use-source":
-        if (canUseAssetAsSource(value)) {
-          sendMediaAction("asset-use-as-source", { assetId: value });
-          dispatch({ type: "project-workspace-toggled", open: false });
-        }
-        return;
-      case "project-workspace-cancel-replace":
-        if (state.ui.projectWorkspaceConfirmReplace === null) {
-          return;
-        }
-        dispatch({ type: "project-workspace-confirm-replace", assetId: null });
-        return;
-      case "project-workspace-open-report":
-        {
-          const reportAssetId = findFirstReportAssetId(getProjectWorkspaceActionIds(value));
-          if (reportAssetId !== null && getAssetHref(reportAssetId) !== null) {
-            previewAsset(reportAssetId);
-            dispatch({ type: "project-workspace-toggled", open: false });
-          } else if (reportAssetId !== null) {
-            dispatch({ type: "project-workspace-toggled", open: false });
-            dispatch({ type: "report-overlay-toggled", open: true });
-          }
-        }
-        return;
-      case "project-workspace-delete":
-        {
-          const assetIds = getProjectWorkspaceActionIds(value);
-          const removed = removeAssetsWithConfirmation(assetIds);
-          if (removed && state.ui.projectWorkspaceSelectedEntityIds.length > 0) {
-            dispatch({
-              type: "project-workspace-entity-selected",
-              entityIds: [],
-            });
-          }
-        }
-        return;
-      case "project-workspace-jump-timeline": {
-        const timeMs = Number(value);
-        if (Number.isFinite(timeMs)) {
-          dispatch({ type: "project-workspace-toggled", open: false });
-          seekTimelineToMs(timeMs);
-        }
-        return;
-      }
-      case "project-workspace-send-to-ai":
-        return;
       // V4B icon rail inspector actions
       case "inspector-pin-toggle":
         dispatch({ type: "inspector-pin-toggle" });
@@ -3244,15 +3006,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
     if (field.startsWith("analysisSettings.modules.")) {
       patchAnalysisModuleSetting(field, readControlValue(target));
-      return;
-    }
-
-    // V4 project workspace search (live input)
-    if (field === "project-workspace-search") {
-      dispatch({
-        type: "project-workspace-search-changed",
-        search: target.value || "",
-      });
       return;
     }
 
@@ -3550,49 +3303,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "youtube-import.custom.audioExtraction":
         updateYoutubeImportCustomField(field, targetValue);
         return;
-      // V4 project workspace toolbar fields
-      case "project-workspace-sort": {
-        const sort = normalizeProjectWorkspaceSortValue(targetValue);
-        if (state.ui.projectWorkspaceSort === sort) {
-          return;
-        }
-        dispatch({
-          type: "project-workspace-sort-changed",
-          sort,
-        });
-        return;
-      }
-      case "project-workspace-filter": {
-        const filter = normalizeProjectWorkspaceFilterValue(targetValue);
-        if (state.ui.projectWorkspaceFilter === filter) {
-          return;
-        }
-        dispatch({
-          type: "project-workspace-filter-changed",
-          filter,
-        });
-        return;
-      }
-      case "project-workspace-group": {
-        const group = normalizeProjectWorkspaceGroupValue(targetValue);
-        if (state.ui.projectWorkspaceGroup === group) {
-          return;
-        }
-        dispatch({
-          type: "project-workspace-group-changed",
-          group,
-        });
-        return;
-      }
-      case "project-workspace-search":
-        if (state.ui.projectWorkspaceSearch === String(targetValue || "")) {
-          return;
-        }
-        dispatch({
-          type: "project-workspace-search-changed",
-          search: String(targetValue || ""),
-        });
-        return;
       case "project-import.urlInput":
       case "project-import.youtubeUrl":
       case "project-import.youtubeCaptureMode": {
@@ -3771,26 +3481,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     }
     attached = true;
     deps.documentRef.addEventListener("click", handleClick);
-    deps.documentRef.addEventListener("dblclick", function (event: Event) {
-      const target = event.target instanceof Element ? event.target : null;
-      if (!target) {
-        return;
-      }
-      const card = target.closest<HTMLElement>(
-        "[data-lab-action='project-workspace-entity-click']"
-      );
-      if (card) {
-        const assetId = card.dataset["labValue"] || "";
-        if (canUseAssetAsSource(assetId)) {
-          sendMediaAction("asset-use-as-source", { assetId });
-          dispatch({ type: "project-workspace-toggled", open: false });
-        }
-      }
-    });
-    deps.documentRef.addEventListener("mouseover", handleProjectWorkspaceCardHover);
-    deps.documentRef.addEventListener("mouseout", handleProjectWorkspaceCardLeave);
-    deps.documentRef.addEventListener("focusin", handleProjectWorkspaceCardHover);
-    deps.documentRef.addEventListener("focusout", handleProjectWorkspaceCardLeave);
     deps.documentRef.addEventListener("contextmenu", handleContextMenu);
     deps.documentRef.addEventListener("input", handleInput);
     deps.documentRef.addEventListener("change", handleChange);

@@ -1978,7 +1978,7 @@ export function getWaveformTimelineModel(state: LabStoreState) {
     lockState: getWorkspaceLockState(state),
     startMs: selection.startMs,
     sourceKind,
-    timelineHighlight: state.ui.projectWorkspaceTimelineHighlight,
+    timelineHighlight: null,
     transportVolume: getPreviewVolume(state),
     visualizationArtifact: getAudioVisualizationArtifact(state),
     visualizationMode: state.ui.workspace.audioFocus.visualizationMode,

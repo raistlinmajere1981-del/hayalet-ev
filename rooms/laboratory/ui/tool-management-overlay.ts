@@ -690,9 +690,10 @@ function renderToolCard(
           ${getStatusChip(descriptor, entry, stageId, copy)}
         </div>
       </div>
-      ${hasError
-        ? `<p class="labx-module-card__error-hint">${escapeHtml(truncateErrorMessage(entry.lastError as string))}</p>`
-        : `<p class="labx-panel-hint">${escapeHtml(lifecycleHint)}</p>`
+      ${
+        hasError
+          ? `<p class="labx-module-card__error-hint">${escapeHtml(truncateErrorMessage(entry.lastError as string))}</p>`
+          : `<p class="labx-panel-hint">${escapeHtml(lifecycleHint)}</p>`
       }
       ${renderUsedBy(descriptor, copy)}
       <details class="labx-module-card__meta-details">

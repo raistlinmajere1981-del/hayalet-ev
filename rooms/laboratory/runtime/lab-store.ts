@@ -296,15 +296,6 @@ function createInitialState(): LabStoreState {
       workspace: createDefaultWorkspaceUiState(),
       // V5 source panel
       sourcePanelCollapsed: false,
-      // V4 project & entity workspace
-      projectWorkspaceOpen: false,
-      projectWorkspaceSelectedEntityIds: [],
-      projectWorkspaceSort: "createdAt",
-      projectWorkspaceFilter: null,
-      projectWorkspaceGroup: "type",
-      projectWorkspaceSearch: "",
-      projectWorkspaceConfirmReplace: null,
-      projectWorkspaceTimelineHighlight: null,
     },
   };
 }
@@ -1472,13 +1463,6 @@ function isProjectImportSourceAction(action: string | null) {
   );
 }
 
-function clearProjectWorkspaceTransientState(state: LabStoreState) {
-  state.ui.projectWorkspaceOpen = false;
-  state.ui.projectWorkspaceSelectedEntityIds = [];
-  state.ui.projectWorkspaceConfirmReplace = null;
-  state.ui.projectWorkspaceTimelineHighlight = null;
-}
-
 function resetProjectImportState(
   state: LabStoreState,
   options: {
@@ -1513,7 +1497,6 @@ function completeTrackedProjectImport(state: LabStoreState, event: LabEventFeedI
   }
 
   resetProjectImportState(state, { keepTracking: true, reviewFocus: "completed" });
-  clearProjectWorkspaceTransientState(state);
   state.ui.activeAssetPreviewId = null;
   state.ui.activePreviewArtifactId = null;
   state.ui.workspace = {
@@ -2453,8 +2436,6 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     case "project-import-kind-changed": {
       const kind = normalizeProjectImportKind(event.kind, state.ui.projectImport.activeKind);
-      state.ui.projectWorkspaceSelectedEntityIds = [];
-      state.ui.projectWorkspaceConfirmReplace = null;
       state.ui.projectImport = {
         ...state.ui.projectImport,
         activeKind: kind,
@@ -2470,8 +2451,6 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         kind,
         state.ui.projectImport.methods[kind]
       );
-      state.ui.projectWorkspaceSelectedEntityIds = [];
-      state.ui.projectWorkspaceConfirmReplace = null;
       state.ui.projectImport = {
         ...state.ui.projectImport,
         activeKind: kind,
@@ -2488,8 +2467,6 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       const kind = normalizeProjectImportKind(event.kind, state.ui.projectImport.activeKind);
       const currentDraft = state.ui.projectImport.drafts[kind];
       const nextDraft = normalizeSourceDraftPatch(event.patch, currentDraft);
-      state.ui.projectWorkspaceSelectedEntityIds = [];
-      state.ui.projectWorkspaceConfirmReplace = null;
       state.ui.projectImport = {
         ...state.ui.projectImport,
         activeKind: kind,
@@ -2521,8 +2498,6 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         ...state.ui.projectImport.drafts,
         [kind]: createDefaultSourceDrafts(),
       };
-      state.ui.projectWorkspaceSelectedEntityIds = [];
-      state.ui.projectWorkspaceConfirmReplace = null;
       state.ui.projectImport = {
         ...state.ui.projectImport,
         drafts: nextDrafts,
@@ -3694,42 +3669,6 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         drawerModeOverride: event.mode,
         userExploreToggle: event.mode === "result" ? false : state.ui.workspace.userExploreToggle,
       };
-      return state;
-    // V4 project & entity workspace
-    case "project-workspace-toggled":
-      state.ui.projectWorkspaceOpen =
-        typeof event.open === "boolean" ? event.open : !state.ui.projectWorkspaceOpen;
-      if (!state.ui.projectWorkspaceOpen) {
-        state.ui.projectWorkspaceSelectedEntityIds = [];
-        state.ui.projectWorkspaceConfirmReplace = null;
-        state.ui.projectWorkspaceTimelineHighlight = null;
-      }
-      return state;
-    case "project-workspace-entity-selected":
-      state.ui.projectWorkspaceSelectedEntityIds = event.entityIds.filter(function (id) {
-        return state.assets.some(function (asset) {
-          return asset.id === id;
-        });
-      });
-      state.ui.projectWorkspaceConfirmReplace = null;
-      return state;
-    case "project-workspace-sort-changed":
-      state.ui.projectWorkspaceSort = event.sort;
-      return state;
-    case "project-workspace-filter-changed":
-      state.ui.projectWorkspaceFilter = event.filter;
-      return state;
-    case "project-workspace-group-changed":
-      state.ui.projectWorkspaceGroup = event.group;
-      return state;
-    case "project-workspace-search-changed":
-      state.ui.projectWorkspaceSearch = event.search;
-      return state;
-    case "project-workspace-confirm-replace":
-      state.ui.projectWorkspaceConfirmReplace = event.assetId;
-      return state;
-    case "project-workspace-timeline-highlighted":
-      state.ui.projectWorkspaceTimelineHighlight = event.highlight;
       return state;
     case "inspector-pin-toggle":
       state.ui.workspace = {

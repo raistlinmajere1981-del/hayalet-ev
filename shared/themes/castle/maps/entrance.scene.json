@@ -14,9 +14,9 @@
         "page": "analyze"
       },
       "rect": {
-        "leftPx": 41,
-        "topPx": 530,
-        "widthPx": 169,
+        "leftPx": 28,
+        "topPx": 614,
+        "widthPx": 196,
         "heightPx": 279
       },
       "frame": {
@@ -30,7 +30,7 @@
         "visible": true,
         "textKey": "sideNav.analyzeLabel",
         "centerXPx": 113,
-        "topPx": 476,
+        "topPx": 526,
         "widthPx": 193,
         "heightPx": 46,
         "rotateDeg": 9,
@@ -49,9 +49,9 @@
         "page": "assistant"
       },
       "rect": {
-        "leftPx": 1366,
-        "topPx": 172,
-        "widthPx": 146,
+        "leftPx": 1516,
+        "topPx": 192,
+        "widthPx": 176,
         "heightPx": 227
       },
       "frame": {
@@ -64,8 +64,8 @@
       "label": {
         "visible": true,
         "textKey": "sideNav.assistantLabel",
-        "centerXPx": 1452,
-        "topPx": 118,
+        "centerXPx": 1612,
+        "topPx": 138,
         "widthPx": 197,
         "heightPx": 45,
         "rotateDeg": 0,
@@ -84,10 +84,10 @@
         "page": "server"
       },
       "rect": {
-        "leftPx": 1362,
-        "topPx": 550,
-        "widthPx": 144,
-        "heightPx": 238
+        "leftPx": 1502,
+        "topPx": 610,
+        "widthPx": 194,
+        "heightPx": 248
       },
       "frame": {
         "variant": "flat",
@@ -99,8 +99,8 @@
       "label": {
         "visible": true,
         "textKey": "sideNav.serverLabel",
-        "centerXPx": 1437,
-        "topPx": 499,
+        "centerXPx": 1607,
+        "topPx": 554,
         "widthPx": 187,
         "heightPx": 44,
         "rotateDeg": 0,
@@ -119,8 +119,8 @@
         "panel": null
       },
       "rect": {
-        "leftPx": 1713,
-        "topPx": 528,
+        "leftPx": 1918,
+        "topPx": 608,
         "widthPx": 169,
         "heightPx": 279
       },
@@ -134,8 +134,8 @@
       "label": {
         "visible": true,
         "textKey": "settingsHub.openButton",
-        "centerXPx": 1815,
-        "topPx": 476,
+        "centerXPx": 2015,
+        "topPx": 526,
         "widthPx": 203,
         "heightPx": 46,
         "rotateDeg": -7,
@@ -154,8 +154,8 @@
         "page": "rooms"
       },
       "rect": {
-        "leftPx": 384,
-        "topPx": 846,
+        "leftPx": 434,
+        "topPx": 951,
         "widthPx": 108,
         "heightPx": 134
       },
@@ -169,7 +169,7 @@
       "label": {
         "visible": true,
         "textKey": "sideNav.roomsLabel",
-        "centerXPx": 436,
+        "centerXPx": 461,
         "topPx": 894,
         "widthPx": 300,
         "heightPx": 41,
@@ -188,9 +188,9 @@
         "type": "whisper"
       },
       "rect": {
-        "leftPx": 322,
-        "topPx": 512,
-        "widthPx": 296,
+        "leftPx": 362,
+        "topPx": 577,
+        "widthPx": 311,
         "heightPx": 166
       },
       "frame": {
@@ -203,8 +203,8 @@
       "label": {
         "visible": true,
         "textKey": "entrance.panels.whisper",
-        "centerXPx": 470,
-        "topPx": 578,
+        "centerXPx": 515,
+        "topPx": 513,
         "widthPx": 272,
         "heightPx": 42,
         "rotateDeg": 0,
@@ -254,7 +254,7 @@
       "id": "anchor-user",
       "kind": "character",
       "characterKind": "user",
-      "leftPx": 774,
+      "leftPx": 884,
       "bottomPx": 108,
       "scale": 0.9,
       "depth": 1
@@ -273,7 +273,7 @@
       "kind": "character",
       "characterKind": "ai",
       "preferredSlot": "ai1",
-      "leftPx": 653,
+      "leftPx": 1343,
       "bottomPx": 151,
       "scale": 0.84,
       "depth": 3
@@ -303,7 +303,7 @@
       "kind": "character",
       "characterKind": "ai",
       "preferredSlot": "ai2",
-      "leftPx": 1594,
+      "leftPx": 1794,
       "bottomPx": 151,
       "scale": 0.84,
       "depth": 6

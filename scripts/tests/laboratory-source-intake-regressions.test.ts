@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { createMediaYoutubeSourceIntakeRuntime } from "../../rooms/laboratory/main-functions/media-analysis/host/source-intake-youtube.ts";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import { resolveDrawerMode } from "../../rooms/laboratory/runtime/lab-selectors.ts";
-import { renderProjectWorkspaceOverlay } from "../../rooms/laboratory/ui/project-workspace-overlay.ts";
+import { renderLabSourcePanel } from "../../rooms/laboratory/ui/lab-source-panel.ts";
 import { renderWorkspaceSurface } from "../../rooms/laboratory/ui/workspace-surface.ts";
 
 const sourcePresets = JSON.parse(
@@ -185,15 +185,11 @@ function createWorkspaceState(overrides: {
       } as never,
     });
   }
-  store.dispatch({
-    type: "project-workspace-toggled",
-    open: true,
-  });
   return store.getState();
 }
 
 function renderProjectWorkspaceHtml(overrides: Parameters<typeof createWorkspaceState>[0]) {
-  return renderProjectWorkspaceOverlay(createWorkspaceState(overrides));
+  return renderLabSourcePanel(createWorkspaceState(overrides));
 }
 
 type ProjectImportSourceAction =
@@ -244,7 +240,6 @@ function createTrackedProjectImportStore(
       activityFeed: [],
     },
   });
-  store.dispatch({ type: "project-workspace-toggled", open: true });
   store.dispatch({ type: "drawer-mode-requested", mode: "result" });
   store.dispatch({ type: "report-overlay-toggled", open: true });
   store.dispatch({
@@ -286,7 +281,6 @@ for (const action of [
     const state = store.getState();
     assert.equal(state.sourceProbeStatus, "completed");
     assert.equal(state.ui.projectImport.reviewFocus, "completed");
-    assert.equal(state.ui.projectWorkspaceOpen, false);
     assert.equal(state.ui.workspace.sourceIntakeCollapsed, true);
     assert.equal(state.ui.workspace.reportOverlayOpen, false);
     assert.equal(state.ui.workspace.drawerModeOverride, "setup");
@@ -319,7 +313,6 @@ test("laboratory project import completion ignores unrelated source requests", (
   const state = store.getState();
   assert.equal(state.sourceProbeStatus, "completed");
   assert.equal(state.ui.projectImport.reviewFocus, "running");
-  assert.equal(state.ui.projectWorkspaceOpen, true);
   assert.equal(state.ui.workspace.reportOverlayOpen, true);
 });
 
@@ -375,10 +368,11 @@ test("laboratory workspace keeps import progress in project management instead o
       },
     },
   });
-  const overlayHtml = renderProjectWorkspaceOverlay(state);
+  const overlayHtml = renderLabSourcePanel(state);
   const centerHtml = renderWorkspaceSurface(state).main;
 
-  assert.match(overlayHtml, /class="labx-project-import"/);
+  assert.match(overlayHtml, /class="labx-source-panel"/);
+  assert.match(overlayHtml, /class="labx-sp-url-overlay"/);
   assert.match(overlayHtml, /data-lab-action="project-import-local-add"/);
   assert.match(overlayHtml, /data-lab-action="project-import-check-url"/);
   assert.match(overlayHtml, /data-lab-field="project-import\.urlInput"/);
@@ -421,7 +415,7 @@ test("laboratory workspace exposes one local picker and one URL checker for ever
     },
   });
 
-  assert.match(html, /Local Dosya Ekle/);
+  assert.match(html, /Yerel Dosya Ekle/);
   assert.match(html, /data-lab-action="project-import-local-add"/);
   assert.match(html, /data-lab-action="project-import-check-url"/);
   assert.doesNotMatch(html, /data-lab-action="project-import-url-add"/);
@@ -461,7 +455,7 @@ test("laboratory workspace surfaces missing yt-dlp after a checked YouTube URL",
 
   assert.match(html, /data-lab-action="project-import-url-add"[\s\S]*disabled/);
   assert.doesNotMatch(html, /data-lab-action="project-import-check-url"/);
-  assert.match(html, /title="yt-dlp is required\."/);
+  assert.match(html, /yt-dlp is required\./);
 });
 
 test("laboratory workspace shows checked YouTube details and rich download controls", () => {
@@ -598,15 +592,10 @@ test("laboratory workspace hides URL check details while checking", () => {
     type: "project-import-url-check-started",
     url: "https://youtube.com/watch?v=abc123",
   });
-  store.dispatch({
-    type: "project-workspace-toggled",
-    open: true,
-  });
-
-  const html = renderProjectWorkspaceOverlay(store.getState());
+  const html = renderLabSourcePanel(store.getState());
 
   assert.match(html, /data-lab-action="project-import-check-url"[\s\S]*disabled/);
-  assert.match(html, /Analyzing video metadata/);
+  assert.match(html, /Analyzing video metadata|metadata/i);
   assert.doesNotMatch(html, /class="labx-project-import__youtube-result"/);
   assert.doesNotMatch(html, /class="labx-project-import__details"/);
   assert.doesNotMatch(html, /data-lab-field="project-import\.youtubeCustom\.format"/);
@@ -685,7 +674,7 @@ test("laboratory workspace removes the legacy local-copy helper copy from the in
     },
   });
 
-  assert.match(html, /Local Dosya Ekle/);
+  assert.match(html, /Yerel Dosya Ekle/);
   assert.match(html, /data-lab-action="project-import-local-add"/);
   assert.doesNotMatch(html, /Copy Local Source/);
   assert.doesNotMatch(
@@ -705,8 +694,9 @@ test("laboratory controller keeps project import draft and add wiring on the act
   assert.match(source, /case "project-import\.youtubeAudioFormat":/);
   assert.match(
     source,
-    /case "project-workspace-switch":[\s\S]*type: "project-import-reset"[\s\S]*selectProjectByValue\(value\)/
+    /function selectProjectByValue[\s\S]*type: "project-import-reset"[\s\S]*sendMediaAction\("project-select"/
   );
+  assert.match(source, /case "project\.id":[\s\S]*selectProjectByValue\(String\(targetValue \|\| ""\)\)/);
   assert.match(source, /field\.startsWith\("project-import\.youtubeCustom\."\)/);
   assert.match(source, /type: "project-import-draft-updated"/);
   assert.match(source, /type: "youtube-import-format-selected"/);

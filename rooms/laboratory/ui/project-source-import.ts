@@ -2,14 +2,9 @@ import { asLabRecord, asNonEmptyString, escapeHtml, formatBytes } from "../model
 import type { LabEventFeedItem, LabProjectImportKind, LabStoreState } from "../models/lab-types.js";
 import {
   buildProjectImportHostAction,
-  buildProjectImportLocalHostAction,
-  buildProjectImportUrlCheckAction,
   getLatestProjectImportEvent,
   getProjectImportRoute,
-  getProjectImportUrlInput,
-  hasProjectImportDraftValue,
 } from "../runtime/lab-project-import.js";
-import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
 type YtDlpFormFieldOption = {
@@ -716,76 +711,5 @@ export function renderProjectImportProgress(state: LabStoreState, copy: LabI18n)
         ${showYoutubeStages ? renderYoutubeProgressStages(latestEvent, tracked, complete, copy) : ""}
       </div>
     </div>
-  `;
-}
-
-function renderLocalImportSection(state: LabStoreState, copy: LabI18n) {
-  const localAction = buildProjectImportLocalHostAction(state);
-  const disabledAttr = localAction.disabledReason !== null ? " disabled" : "";
-  return `
-    <section class="labx-project-import__panel" data-panel="local">
-      <div>
-        <h3>${escapeHtml(copy.t("mediaAnalysis.projectImport.localUnifiedTitle", "Local Dosya Ekle"))}</h3>
-        <p>${escapeHtml(copy.t("mediaAnalysis.projectImport.localUnifiedHint", "Video, ses veya görsel dosyası seç; seçilen dosya aktif projeye kopyalanır."))}</p>
-      </div>
-      <button class="labx-project-import__btn labx-project-import__btn--accent" type="button" data-lab-action="project-import-local-add"${disabledAttr}>
-        ${escapeHtml(copy.t("mediaAnalysis.projectImport.localUnifiedButton", "Local Dosya Ekle"))}
-      </button>
-    </section>
-  `;
-}
-
-function renderUrlImportSection(state: LabStoreState, copy: LabI18n) {
-  const checkAction = buildProjectImportUrlCheckAction(state);
-  const addAction = buildProjectImportHostAction(state);
-  const check = state.ui.projectImport.urlCheck;
-  const ready = check.status === "ready";
-  const checking = check.status === "checking";
-  const primaryAction = ready ? "project-import-url-add" : "project-import-check-url";
-  const primaryDisabledReason = ready
-    ? addAction.disabledReason
-    : checking
-      ? copy.t("mediaAnalysis.projectImport.url.checking", "Kontrol ediliyor")
-      : checkAction.disabledReason;
-  const primaryDisabledAttr = primaryDisabledReason !== null ? " disabled" : "";
-  const primaryDisabledTitle =
-    primaryDisabledReason !== null ? ` title="${escapeHtml(primaryDisabledReason)}"` : "";
-  const primaryButtonLabel = ready
-    ? copy.t("mediaAnalysis.projectImport.url.add", "Projeye Ekle")
-    : checking
-      ? copy.t("mediaAnalysis.projectImport.url.checking", "Kontrol ediliyor")
-      : copy.t("mediaAnalysis.projectImport.url.check", "Kontrol Et");
-  const clearDisabled = hasProjectImportDraftValue(state) !== true;
-  return `
-    <section class="labx-project-import__panel" data-panel="url">
-      <div class="labx-project-import__url-row">
-        <label class="labx-field">
-          <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.urlInput", "Source URL"))}</span>
-          <input class="labx-input" data-lab-field="project-import.urlInput" value="${escapeHtml(getProjectImportUrlInput(state))}" placeholder="https://..." />
-        </label>
-        <button class="labx-project-import__btn labx-project-import__btn--accent" type="button" data-lab-action="${escapeHtml(primaryAction)}"${primaryDisabledAttr}${primaryDisabledTitle}>
-          ${escapeHtml(primaryButtonLabel)}
-        </button>
-        <button class="labx-project-import__btn" type="button" data-lab-action="project-import-clear"${clearDisabled ? " disabled" : ""}>
-          ${escapeHtml(copy.t("mediaAnalysis.projectImport.clear", "Clear"))}
-        </button>
-      </div>
-      ${renderYoutubeCheckResult(state, copy)}
-      ${renderDirectUrlCheckResult(state, copy)}
-    </section>
-  `;
-}
-
-export function renderProjectSourceImport(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
-  return `
-    <section class="labx-project-import" aria-label="${escapeHtml(copy.t("mediaAnalysis.projectImport.ariaLabel", "Project source import"))}">
-      <div class="labx-project-import__body labx-project-import__body--unified">
-        ${renderLocalImportSection(state, copy)}
-        ${renderUrlImportSection(state, copy)}
-      </div>
-      <div class="labx-project-import__footer">
-        ${renderProjectImportProgress(state, copy)}
-      </div>
-    </section>
   `;
 }

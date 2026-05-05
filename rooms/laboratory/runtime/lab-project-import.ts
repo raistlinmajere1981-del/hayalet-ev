@@ -10,8 +10,6 @@ import type {
   LabYoutubeImportCustomResolution,
 } from "../models/lab-types.js";
 
-export const LAB_PROJECT_IMPORT_KINDS: LabProjectImportKind[] = ["video", "audio", "image"];
-
 export type LabProjectImportHostAction = {
   action: "source-pick-local" | "source-download-url" | "source-download-youtube";
   disabledReason: string | null;
@@ -70,7 +68,7 @@ export function normalizeProjectImportMethodValue(
   return value === "local" || value === "url" ? value : null;
 }
 
-export function getProjectImportMethodOptions(
+function getProjectImportMethodOptions(
   state: LabStoreState,
   kind: LabProjectImportKind
 ): LabProjectImportMethod[] {

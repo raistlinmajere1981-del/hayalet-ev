@@ -27,10 +27,7 @@ import {
   LAB_USER_ACTION_HUB_SUCCESS_WINDOW_MS,
   test,
 } from "./laboratory-runtime-truth.helpers.ts";
-import {
-  getWaveformTimelineModel,
-  resolveDrawerMode,
-} from "../../rooms/laboratory/runtime/lab-selectors.ts";
+import { resolveDrawerMode } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 
 test("laboratory run controller dismisses successful user actions from the topbar after the success window", () => {
   const timerMock = installTimerMock();
@@ -2351,7 +2348,7 @@ test("laboratory source changes clear semantic roi and reset inspection mode", (
   assert.equal(getActiveInspectionSnapshot(store.getState()), null);
 });
 
-test("laboratory project workspace supports multi-select delete actions", () => {
+test("laboratory source panel delete action removes a confirmed asset", () => {
   const originalElement = globalThis.Element;
   const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
   const confirmMessages: string[] = [];
@@ -2380,16 +2377,6 @@ test("laboratory project workspace supports multi-select delete actions", () => 
         createdAt: 100,
       },
     });
-    store.dispatch({
-      type: "asset-added",
-      asset: {
-        id: "asset-report-1",
-        type: "report",
-        name: "report.md",
-        localPath: "/tmp/report.md",
-        createdAt: 200,
-      },
-    });
 
     const controller = createLabRunController({
       documentRef: documentRef as unknown as Document,
@@ -2414,25 +2401,11 @@ test("laboratory project workspace supports multi-select delete actions", () => 
     assert.ok(clickListener);
 
     clickListener?.({
-      target: new TestElement("project-workspace-entity-click", "asset-source-1"),
-    } as Event);
-    clickListener?.({
-      ctrlKey: true,
-      target: new TestElement("project-workspace-entity-click", "asset-report-1"),
-    } as unknown as Event);
-
-    assert.deepEqual(store.getState().ui.projectWorkspaceSelectedEntityIds, [
-      "asset-source-1",
-      "asset-report-1",
-    ]);
-
-    clickListener?.({
-      target: new TestElement("project-workspace-delete", "asset-source-1,asset-report-1"),
+      target: new TestElement("asset-remove", "asset-source-1"),
     } as Event);
 
-    assert.deepEqual(store.getState().ui.projectWorkspaceSelectedEntityIds, []);
     assert.equal(confirmMessages.length, 1);
-    assert.match(confirmMessages[0] || "", /2 varlık silinsin mi\?/);
+    assert.match(confirmMessages[0] || "", /source\.mp4/);
     assert.deepEqual(
       sentEvents.map(function (event) {
         return {
@@ -2443,7 +2416,6 @@ test("laboratory project workspace supports multi-select delete actions", () => 
       }),
       [
         { eventName: "media-action", action: "asset-remove", assetId: "asset-source-1" },
-        { eventName: "media-action", action: "asset-remove", assetId: "asset-report-1" },
       ]
     );
   } finally {
@@ -2529,302 +2501,7 @@ test("laboratory asset delete actions stop when confirmation is rejected", () =>
   }
 });
 
-test("laboratory project workspace opens the first selected report asset preview", () => {
-  const originalElement = globalThis.Element;
-  const documentRef = new FakeControllerDocument();
-  const eventBus = createLabEventBus();
-  const store = createLabStore();
-
-  class TestElement extends FakeActionElement {}
-
-  Object.defineProperty(globalThis, "Element", {
-    configurable: true,
-    value: TestElement,
-  });
-
-  try {
-    eventBus.subscribe(function (event) {
-      store.dispatch(event);
-    });
-    store.dispatch({ type: "project-workspace-toggled", open: true });
-    store.dispatch({
-      type: "asset-added",
-      asset: {
-        id: "asset-source-1",
-        type: "source",
-        name: "source.mp4",
-        localPath: "/tmp/source.mp4",
-        createdAt: 100,
-      },
-    });
-    store.dispatch({
-      type: "asset-added",
-      asset: {
-        id: "asset-report-1",
-        type: "report",
-        name: "report.html",
-        localPath: "/tmp/report.html",
-        createdAt: 200,
-      },
-    });
-
-    const controller = createLabRunController({
-      documentRef: documentRef as unknown as Document,
-      eventBus,
-      store,
-      windowRef: {
-        roomAPI: {
-          sendEvent() {},
-        },
-        addEventListener() {},
-      } as unknown as Window,
-    });
-    controller.attach();
-
-    const clickListener = documentRef.listeners.get("click");
-    assert.ok(clickListener);
-
-    clickListener?.({
-      target: new TestElement("project-workspace-open-report", "asset-source-1,asset-report-1"),
-    } as Event);
-
-    assert.equal(store.getState().ui.activeAssetPreviewId, "asset-report-1");
-    assert.equal(store.getState().ui.projectWorkspaceOpen, false);
-  } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
-    } else {
-      Object.defineProperty(globalThis, "Element", {
-        configurable: true,
-        value: originalElement,
-      });
-    }
-  }
-});
-
-test("laboratory project workspace opens inline report assets in the report overlay", () => {
-  const originalElement = globalThis.Element;
-  const documentRef = new FakeControllerDocument();
-  const eventBus = createLabEventBus();
-  const store = createLabStore();
-
-  class TestElement extends FakeActionElement {}
-
-  Object.defineProperty(globalThis, "Element", {
-    configurable: true,
-    value: TestElement,
-  });
-
-  try {
-    eventBus.subscribe(function (event) {
-      store.dispatch(event);
-    });
-    store.dispatch({ type: "project-workspace-toggled", open: true });
-    store.dispatch({
-      type: "asset-added",
-      asset: {
-        id: "asset-report-inline",
-        type: "report",
-        name: "Media Analysis User Report",
-        createdAt: 200,
-        metadata: { format: "inline", reportView: "user" },
-      },
-    });
-
-    const controller = createLabRunController({
-      documentRef: documentRef as unknown as Document,
-      eventBus,
-      store,
-      windowRef: {
-        roomAPI: {
-          sendEvent() {},
-        },
-        addEventListener() {},
-      } as unknown as Window,
-    });
-    controller.attach();
-
-    const clickListener = documentRef.listeners.get("click");
-    assert.ok(clickListener);
-
-    clickListener?.({
-      target: new TestElement("project-workspace-open-report", "asset-report-inline"),
-    } as Event);
-
-    assert.equal(store.getState().ui.activeAssetPreviewId, null);
-    assert.equal(store.getState().ui.projectWorkspaceOpen, false);
-    assert.equal(store.getState().ui.workspace.reportOverlayOpen, true);
-  } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
-    } else {
-      Object.defineProperty(globalThis, "Element", {
-        configurable: true,
-        value: originalElement,
-      });
-    }
-  }
-});
-
-test("laboratory project workspace hover highlights timeline ranges without changing selection", () => {
-  const originalElement = globalThis.Element;
-  const documentRef = new FakeControllerDocument();
-  const eventBus = createLabEventBus();
-  const store = createLabStore();
-
-  class TestElement extends FakeActionElement {}
-
-  class ProjectWorkspaceCardElement extends TestElement {
-    private label: string;
-
-    constructor(id: string, label: string) {
-      super("project-workspace-entity-click", id);
-      this.label = label;
-      this.dataset["labTimelineStartMs"] = "1500";
-      this.dataset["labTimelineEndMs"] = "3600";
-    }
-
-    closest(selector: string): FakeActionElement | null {
-      if (selector === "[data-lab-action='project-workspace-entity-click']") {
-        return this;
-      }
-      return super.closest(selector);
-    }
-
-    contains(candidate: unknown): boolean {
-      return candidate === this;
-    }
-
-    getAttribute(name: string): string | null {
-      if (name === "aria-label") {
-        return this.label;
-      }
-      return super.getAttribute(name);
-    }
-  }
-
-  Object.defineProperty(globalThis, "Element", {
-    configurable: true,
-    value: TestElement,
-  });
-
-  try {
-    eventBus.subscribe(function (event) {
-      store.dispatch(event);
-    });
-    store.dispatch({
-      type: "asset-added",
-      asset: {
-        id: "asset-source-1",
-        type: "source",
-        name: "source.mp4",
-        localPath: "/tmp/source.mp4",
-        createdAt: 100,
-        metadata: {
-          selectionStartMs: 1500,
-          selectionEndMs: 3600,
-        },
-      },
-    });
-
-    const controller = createLabRunController({
-      documentRef: documentRef as unknown as Document,
-      eventBus,
-      store,
-      windowRef: {
-        roomAPI: {
-          sendEvent() {},
-        },
-        addEventListener() {},
-      } as unknown as Window,
-    });
-    controller.attach();
-
-    const mouseoverListener = documentRef.listeners.get("mouseover");
-    const mouseoutListener = documentRef.listeners.get("mouseout");
-    assert.ok(mouseoverListener);
-    assert.ok(mouseoutListener);
-
-    const card = new ProjectWorkspaceCardElement("asset-source-1", "source.mp4");
-    mouseoverListener?.({ target: card } as unknown as Event);
-
-    assert.deepEqual(store.getState().ui.projectWorkspaceSelectedEntityIds, []);
-    assert.deepEqual(getWaveformTimelineModel(store.getState()).timelineHighlight, {
-      assetId: "asset-source-1",
-      startMs: 1500,
-      endMs: 3600,
-      label: "source.mp4",
-    });
-    assert.equal(store.getState().ui.workspace.timelineStartMs, null);
-    assert.equal(store.getState().ui.workspace.timelineEndMs, null);
-
-    mouseoutListener?.({ target: card, relatedTarget: null } as unknown as Event);
-
-    assert.equal(store.getState().ui.projectWorkspaceTimelineHighlight, null);
-  } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
-    } else {
-      Object.defineProperty(globalThis, "Element", {
-        configurable: true,
-        value: originalElement,
-      });
-    }
-  }
-});
-
-test("laboratory project workspace auto-open requests normal boot workspace", async () => {
-  const store = createLabStore();
-  const labRootModule = await importLabRootModuleWithDomStub<{
-    __testOnlyProjectWorkspaceAutoOpen: {
-      shouldAutoOpenProjectWorkspaceOnBoot: (state: ReturnType<typeof store.getState>) => boolean;
-    };
-  }>();
-  const state = store.getState();
-
-  state.projectIndex.activeProjectId = "project-draft";
-  state.projectIndex.projects = [
-    {
-      id: "project-draft",
-      name: "Draft project",
-      hasSource: false,
-    },
-  ];
-  state.source = {
-    kind: "video",
-    mode: "local",
-    status: "idle",
-    storedPath: null,
-    storedFileName: null,
-    sourceUrl: null,
-    previewUrl: null,
-  };
-
-  assert.equal(
-    labRootModule.__testOnlyProjectWorkspaceAutoOpen.shouldAutoOpenProjectWorkspaceOnBoot(state),
-    true
-  );
-
-  state.source = {
-    ...state.source,
-    status: "ready",
-    storedPath: "/tmp/source.mp4",
-  };
-
-  assert.equal(
-    labRootModule.__testOnlyProjectWorkspaceAutoOpen.shouldAutoOpenProjectWorkspaceOnBoot(state),
-    true
-  );
-
-  state.ui.labMode = "import-youtube";
-
-  assert.equal(
-    labRootModule.__testOnlyProjectWorkspaceAutoOpen.shouldAutoOpenProjectWorkspaceOnBoot(state),
-    false
-  );
-});
-
-test("laboratory project workspace double-click only replaces source-capable assets", () => {
+test("laboratory source panel use-as-source action sends asset source replacement", () => {
   const originalElement = globalThis.Element;
   const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
   const documentRef = new FakeControllerDocument();
@@ -2833,19 +2510,6 @@ test("laboratory project workspace double-click only replaces source-capable ass
 
   class TestElement extends FakeActionElement {}
 
-  class ProjectWorkspaceCardElement extends TestElement {
-    constructor(id: string) {
-      super("project-workspace-entity-click", id);
-    }
-
-    closest(selector: string): FakeActionElement | null {
-      if (selector === "[data-lab-action='project-workspace-entity-click']") {
-        return this;
-      }
-      return super.closest(selector);
-    }
-  }
-
   Object.defineProperty(globalThis, "Element", {
     configurable: true,
     value: TestElement,
@@ -2865,17 +2529,6 @@ test("laboratory project workspace double-click only replaces source-capable ass
         createdAt: 100,
       },
     });
-    store.dispatch({
-      type: "asset-added",
-      asset: {
-        id: "asset-report-1",
-        type: "report",
-        name: "report.md",
-        localPath: "/tmp/report.md",
-        createdAt: 200,
-      },
-    });
-    store.dispatch({ type: "project-workspace-toggled", open: true });
 
     const controller = createLabRunController({
       documentRef: documentRef as unknown as Document,
@@ -2892,18 +2545,12 @@ test("laboratory project workspace double-click only replaces source-capable ass
     });
     controller.attach();
 
-    const dblclickListener = documentRef.listeners.get("dblclick");
-    assert.ok(dblclickListener);
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
 
-    dblclickListener?.({
-      target: new ProjectWorkspaceCardElement("asset-report-1"),
-    } as unknown as Event);
-    assert.equal(sentEvents.length, 0);
-    assert.equal(store.getState().ui.projectWorkspaceOpen, true);
-
-    dblclickListener?.({
-      target: new ProjectWorkspaceCardElement("asset-source-1"),
-    } as unknown as Event);
+    clickListener?.({
+      target: new TestElement("asset-use-as-source", "asset-source-1"),
+    } as Event);
 
     assert.equal(sentEvents.length, 1);
     assert.equal(sentEvents[0]?.eventName, "media-action");
@@ -2912,7 +2559,58 @@ test("laboratory project workspace double-click only replaces source-capable ass
       (sentEvents[0]?.payload["payload"] as Record<string, unknown>)["assetId"],
       "asset-source-1"
     );
-    assert.equal(store.getState().ui.projectWorkspaceOpen, false);
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
+test("laboratory source panel report action opens the report overlay", () => {
+  const originalElement = globalThis.Element;
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  class TestElement extends FakeActionElement {}
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent() {},
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
+
+    clickListener?.({
+      target: new TestElement("open-report-overlay", "asset-report-inline"),
+    } as Event);
+
+    assert.equal(store.getState().ui.activeAssetPreviewId, null);
+    assert.equal(store.getState().ui.workspace.reportOverlayOpen, true);
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;

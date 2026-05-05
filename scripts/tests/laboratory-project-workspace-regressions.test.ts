@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import { createLabI18n } from "../../rooms/laboratory/ui/lab-i18n.ts";
+import { renderLabSourcePanel } from "../../rooms/laboratory/ui/lab-source-panel.ts";
 import { renderProjectWorkspaceOverlay } from "../../rooms/laboratory/ui/project-workspace-overlay.ts";
 
 const sourcePresets = JSON.parse(
@@ -13,8 +14,8 @@ const ytDlpForm = JSON.parse(
   readFileSync("rooms/laboratory/shared/data/tools/yt-dlp.form.json", "utf8")
 );
 
-function createProjectWorkspaceState(
-  open: boolean,
+function createSourceProjectState(
+  _open: boolean,
   options: {
     activeProjectId?: string;
     assets?: Array<{
@@ -92,59 +93,52 @@ function createProjectWorkspaceState(
       activityFeed: [],
     },
   });
-  store.dispatch({
-    type: "project-workspace-toggled",
-    open,
-  });
   options.assets?.forEach(function (asset) {
     store.dispatch({
       type: "asset-added",
       asset,
     });
   });
-  if (options.selectedEntityIds && options.selectedEntityIds.length > 0) {
-    store.dispatch({
-      type: "project-workspace-entity-selected",
-      entityIds: options.selectedEntityIds,
-    });
-  }
   return store.getState();
 }
 
-test("laboratory project workspace keeps a closed placeholder root", () => {
-  const html = renderProjectWorkspaceOverlay(createProjectWorkspaceState(false));
+test("laboratory keeps the compatibility project root closed", () => {
+  const html = renderProjectWorkspaceOverlay(createSourceProjectState(false));
 
   assert.match(html, /id="lab-project-workspace-root"/);
   assert.match(html, /aria-hidden="true"/);
   assert.doesNotMatch(html, /class="labx-pw-overlay"/);
 });
 
-test("laboratory project workspace owns project import, hypothesis, grid, and empty inspector", () => {
-  const html = renderProjectWorkspaceOverlay(createProjectWorkspaceState(true));
+test("laboratory source project management owns controls while the compatibility root stays empty", () => {
+  const state = createSourceProjectState(true);
+  const html = renderProjectWorkspaceOverlay(state);
+  const sourcePanel = renderLabSourcePanel(state);
 
-  assert.match(html, /class="labx-pw-overlay"/);
-  assert.match(html, /data-lab-action="project-workspace-close"/);
-  assert.match(html, /class="labx-project-import"/);
-  assert.match(html, /data-lab-action="project-import-local-add"/);
-  assert.match(html, /data-lab-action="project-import-check-url"/);
-  assert.match(html, /data-lab-action="project-import-clear"/);
+  assert.equal(html, `<div id="lab-project-workspace-root" aria-hidden="true"></div>`);
+  assert.doesNotMatch(html, /class="labx-pw-overlay"/);
+  assert.doesNotMatch(html, /data-lab-action="project-workspace-close"/);
+  assert.match(sourcePanel, /class="labx-source-panel"/);
+  assert.match(sourcePanel, /data-lab-action="project-import-local-add"/);
+  assert.match(sourcePanel, /data-lab-action="project-import-check-url"/);
+  assert.match(sourcePanel, /data-lab-action="project-import-clear"/);
   assert.doesNotMatch(html, /data-lab-action="project-import-kind"/);
   assert.doesNotMatch(html, /data-lab-action="project-import-method"/);
   assert.equal(html.includes("project-import." + "file" + "NameHint"), false);
   assert.doesNotMatch(html, /class="labx-pw-nav__intake"/);
   assert.doesNotMatch(html, /data-lab-field="source\.kind"/);
-  assert.match(html, /data-lab-field="workspace\.hypothesis"/);
-  assert.match(html, /data-lab-field="project-workspace-sort"/);
-  assert.match(html, /data-lab-field="project-workspace-filter"/);
-  assert.match(html, /data-lab-field="project-workspace-group"/);
-  assert.match(html, /data-lab-field="project-workspace-search"/);
-  assert.match(html, /class="labx-pw-inspector labx-pw-inspector--empty"/);
+  assert.doesNotMatch(html, /data-lab-field="workspace\.hypothesis"/);
+  assert.doesNotMatch(html, /data-lab-field="project-workspace-sort"/);
+  assert.doesNotMatch(html, /data-lab-field="project-workspace-filter"/);
+  assert.doesNotMatch(html, /data-lab-field="project-workspace-group"/);
+  assert.doesNotMatch(html, /data-lab-field="project-workspace-search"/);
+  assert.doesNotMatch(html, /class="labx-pw-inspector/);
   assert.doesNotMatch(html, /class="labx-pw-bar/);
 });
 
-test("laboratory project workspace keeps the active source-less project navigable", () => {
-  const html = renderProjectWorkspaceOverlay(
-    createProjectWorkspaceState(true, {
+test("laboratory source project management keeps the active source-less project navigable", () => {
+  const html = renderLabSourcePanel(
+    createSourceProjectState(true, {
       activeProjectId: "project-draft-active",
       projects: [
         { id: "project-1", name: "Workspace Project", hasSource: true },
@@ -161,23 +155,23 @@ test("laboratory project workspace keeps the active source-less project navigabl
   assert.doesNotMatch(html, /Hidden Draft/);
 });
 
-test("laboratory project workspace controller skips redundant button dispatches", () => {
+test("laboratory source project controls skip redundant button dispatches", () => {
   const source = readFileSync("rooms/laboratory/runtime/lab-run-controller.ts", "utf8");
 
   assert.match(source, /state\.ui\.projectImport\.activeKind !== kind/);
   assert.match(source, /state\.ui\.projectImport\.methods\[activeKind\] !== method/);
   assert.match(source, /state\.ui\.youtubeImport\.strategy !== strategy/);
-  assert.match(source, /state\.ui\.projectWorkspaceSelectedEntityIds\.length === 1/);
-  assert.match(source, /state\.ui\.projectWorkspaceSort === sort/);
-  assert.match(source, /state\.ui\.projectWorkspaceFilter === filter/);
-  assert.match(source, /state\.ui\.projectWorkspaceGroup === group/);
+  assert.doesNotMatch(source, /projectWorkspaceSelectedEntityIds/);
+  assert.doesNotMatch(source, /projectWorkspaceSort/);
+  assert.doesNotMatch(source, /projectWorkspaceFilter/);
+  assert.doesNotMatch(source, /projectWorkspaceGroup/);
 });
 
-test("laboratory project workspace renders localized asset groups and context actions", () => {
+test("laboratory source panel renders localized asset groups and context actions", () => {
   const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
   const trCopy = createLabI18n({ locale: "tr", translations: trTranslations });
-  const html = renderProjectWorkspaceOverlay(
-    createProjectWorkspaceState(true, {
+  const html = renderLabSourcePanel(
+    createSourceProjectState(true, {
       assets: [
         {
           id: "asset-source-1",
@@ -236,14 +230,13 @@ test("laboratory project workspace renders localized asset groups and context ac
     trCopy
   );
 
-  assert.match(html, /Proje Yönetimi/);
   assert.match(html, /Kaynaklar/);
   assert.match(html, /Klipler/);
   assert.match(html, /Kareler/);
   assert.match(html, /Ses/);
-  assert.match(html, /Gorseller/);
+  assert.match(html, /Goruntuler/);
   assert.match(html, /Raporlar/);
-  assert.match(html, /Ciktilar/);
+  assert.match(html, /data-group-type="artifact"/);
   assert.match(html, /SRC/);
   assert.match(html, /CLP/);
   assert.match(html, /FRM/);
@@ -254,12 +247,13 @@ test("laboratory project workspace renders localized asset groups and context ac
   assert.match(html, /report\.md/);
   assert.match(html, /artifact\.json/);
   assert.doesNotMatch(html, /secili/);
-  assert.match(html, /Analiz Kaynagi Olarak Kullan/);
-  assert.match(html, /AI&#39;ye Gonder/);
+  assert.match(html, /data-lab-action="asset-use-as-source"/);
+  assert.match(html, /data-lab-action="open-report-overlay"/);
+  assert.match(html, /data-lab-action="asset-remove"/);
 });
 
-test("laboratory project workspace lets selected assets override stale import review state", () => {
-  const state = createProjectWorkspaceState(true, {
+test("laboratory source panel keeps selected assets separate from import progress review state", () => {
+  const state = createSourceProjectState(true, {
     assets: [
       {
         id: "asset-image-1",
@@ -276,15 +270,15 @@ test("laboratory project workspace lets selected assets override stale import re
   state.ui.projectImport.lastAction = "source-pick-local";
   state.ui.projectImport.lastRequestId = "req-old-import";
 
-  const html = renderProjectWorkspaceOverlay(state);
+  const html = renderLabSourcePanel(state);
 
   assert.match(html, /selected-image\.png/);
-  assert.match(html, /Metadata/);
   assert.doesNotMatch(html, /Import Review/);
+  assert.doesNotMatch(html, /class="labx-pw-inspector/);
 });
 
-test("laboratory project workspace hides draft review instead of borrowing committed source preview", () => {
-  const state = createProjectWorkspaceState(true);
+test("laboratory compatibility root hides draft review content from committed source preview", () => {
+  const state = createSourceProjectState(true);
   state.source = {
     kind: "video",
     mode: "local",
@@ -305,9 +299,9 @@ test("laboratory project workspace hides draft review instead of borrowing commi
   assert.doesNotMatch(html, /1:39/);
 });
 
-test("laboratory project workspace hides download for assets without a file target", () => {
-  const html = renderProjectWorkspaceOverlay(
-    createProjectWorkspaceState(true, {
+test("laboratory source panel hides download for assets without a file target", () => {
+  const html = renderLabSourcePanel(
+    createSourceProjectState(true, {
       assets: [
         {
           id: "asset-artifact-1",
@@ -321,12 +315,13 @@ test("laboratory project workspace hides download for assets without a file targ
   );
 
   assert.match(html, /virtual artifact/);
+  assert.match(html, /data-lab-action="asset-preview"/);
   assert.doesNotMatch(html, /data-lab-action="asset-download"/);
 });
 
-test("laboratory project workspace renders video source thumbnails as media", () => {
-  const html = renderProjectWorkspaceOverlay(
-    createProjectWorkspaceState(true, {
+test("laboratory source panel renders video source assets as selectable rows", () => {
+  const html = renderLabSourcePanel(
+    createSourceProjectState(true, {
       assets: [
         {
           id: "asset-source-1",
@@ -341,18 +336,16 @@ test("laboratory project workspace renders video source thumbnails as media", ()
     })
   );
 
-  assert.match(html, /<video class="labx-pw-card__thumb-img labx-pw-card__thumb-video"/);
-  assert.match(
-    html,
-    /<video class="labx-pw-inspector__preview-media labx-pw-inspector__preview-media--video"/
-  );
-  assert.match(html, /file:\/\/\/tmp\/CGI%20Analizi%20-1\.mp4/);
-  assert.doesNotMatch(html, /<img class="labx-pw-card__thumb-img"/);
+  assert.match(html, /data-asset-type="source"/);
+  assert.match(html, /CGI Analizi -1\.mp4/);
+  assert.match(html, /data-lab-action="asset-use-as-source"/);
+  assert.doesNotMatch(html, /class="labx-pw-card__thumb-img/);
+  assert.doesNotMatch(html, /class="labx-pw-inspector__preview-media/);
 });
 
-test("laboratory project workspace renders visual analysis artifacts as previews", () => {
-  const html = renderProjectWorkspaceOverlay(
-    createProjectWorkspaceState(true, {
+test("laboratory source panel renders visual analysis artifacts as asset rows", () => {
+  const html = renderLabSourcePanel(
+    createSourceProjectState(true, {
       assets: [
         {
           id: "asset-artifact-preview-1",
@@ -367,34 +360,27 @@ test("laboratory project workspace renders visual analysis artifacts as previews
     })
   );
 
-  assert.match(html, /data-lab-entity-type="artifact"/);
-  assert.match(html, /class="labx-pw-card__thumb-img"/);
-  assert.match(html, /src="file:\/\/\/tmp\/lab-analysis-contrast-scan\.png"/);
-  assert.match(
-    html,
-    /class="labx-pw-inspector__preview"><img class="labx-pw-inspector__preview-media"/
-  );
+  assert.match(html, /data-asset-type="artifact"/);
+  assert.match(html, /contrast-scan\.png/);
+  assert.match(html, /data-lab-action="asset-download"/);
+  assert.match(html, /data-lab-action="asset-remove"/);
+  assert.doesNotMatch(html, /class="labx-pw-card__thumb-img/);
+  assert.doesNotMatch(html, /class="labx-pw-inspector__preview/);
 });
 
-test("laboratory project workspace i18n keys exist in English and Turkish catalogs", () => {
+test("laboratory source project management i18n keys exist in English and Turkish catalogs", () => {
   const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));
   const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
   const sourceFiles = [
-    "rooms/laboratory/ui/asset-card.ts",
-    "rooms/laboratory/ui/asset-grid.ts",
-    "rooms/laboratory/ui/asset-inspector.ts",
-    "rooms/laboratory/ui/lab-top-bar.ts",
-    "rooms/laboratory/ui/project-import-review.ts",
-    "rooms/laboratory/ui/project-navigation.ts",
+    "rooms/laboratory/ui/lab-source-panel.ts",
     "rooms/laboratory/ui/project-source-import.ts",
-    "rooms/laboratory/ui/project-workspace-overlay.ts",
   ];
   const keys = new Set<string>();
 
   sourceFiles.forEach(function (filePath) {
     const source = readFileSync(filePath, "utf8");
     for (const match of source.matchAll(
-      /copy\.t\("((?:mediaAnalysis\.(?:projectWorkspace|projectImport|topBar))[^"]+)"/g
+      /copy\.t\("((?:mediaAnalysis\.(?:projectWorkspace|projectImport))[^"]+)"/g
     )) {
       keys.add(match[1]!);
     }
@@ -408,30 +394,44 @@ test("laboratory project workspace i18n keys exist in English and Turkish catalo
     }, record);
   }
 
-  assert.ok(keys.size > 80);
+  const expectedProjectWorkspaceKeys = [
+    "deleteProject",
+    "managementTitle",
+    "metadataDuration",
+    "metadataName",
+    "metadataSize",
+    "newProject",
+    "untitledProject",
+  ];
+  assert.deepEqual(
+    Object.keys(enTranslations.mediaAnalysis.projectWorkspace).sort(),
+    expectedProjectWorkspaceKeys
+  );
+  assert.deepEqual(
+    Object.keys(trTranslations.mediaAnalysis.projectWorkspace).sort(),
+    expectedProjectWorkspaceKeys
+  );
+  assert.ok(keys.has("mediaAnalysis.projectWorkspace.managementTitle"));
+  assert.ok(keys.has("mediaAnalysis.projectWorkspace.metadataName"));
   keys.forEach(function (key) {
     assert.equal(typeof readPath(enTranslations, key), "string", key);
     assert.equal(typeof readPath(trTranslations, key), "string", key);
   });
 });
 
-test("laboratory project workspace css is imported and owns overlay/topbar/timeline contracts", () => {
+test("laboratory source management css keeps active import styles without retired shell styles", () => {
   const styleSource = readFileSync("rooms/laboratory/ui/style.css", "utf8");
   const overlayCss = readFileSync("rooms/laboratory/ui/styles/project-workspace.css", "utf8");
   const themeSource = readFileSync("rooms/laboratory/ui/lab-theme.css", "utf8");
 
   assert.match(styleSource, /@import "\.\/styles\/project-workspace\.css";/);
-  assert.match(
-    overlayCss,
-    /\.labx-pw-overlay\s*\{[\s\S]*grid-template-areas:[\s\S]*"nav\s+grid\s+inspect"/
-  );
-  assert.match(overlayCss, /\.labx-pw-main\s*\{[\s\S]*grid-area:\s*grid;/);
-  assert.match(overlayCss, /\.labx-project-import\s*\{[\s\S]*border-bottom:/);
-  assert.match(overlayCss, /\.labx-project-import__methods\s*\{[\s\S]*display:\s*grid;/);
+  assert.doesNotMatch(overlayCss, /\.labx-pw-/);
+  assert.doesNotMatch(overlayCss, /\.labx-import-review/);
   assert.match(overlayCss, /\.labx-project-import__progress\s*\{[\s\S]*display:\s*grid;/);
-  assert.match(overlayCss, /\.labx-pw-card\[data-selected="true"\]/);
-  assert.match(overlayCss, /\.labx-pw-main\s*\{[\s\S]*background:\s*rgb\(4, 14, 21\);/);
-  assert.match(overlayCss, /\.labx-pw-grid\s*\{[\s\S]*background:\s*rgb\(4, 14, 21\);/);
-  assert.match(themeSource, /\.labx-top-bar__project-btn\s*\{/);
+  assert.match(overlayCss, /\.labx-project-import__youtube-preview\s*\{[\s\S]*display:\s*grid;/);
+  assert.match(overlayCss, /\.labx-import-body\s*\{[\s\S]*display:\s*grid;/);
+  assert.match(overlayCss, /\.labx-strategy-list\s*\{[\s\S]*display:\s*grid;/);
+  assert.match(overlayCss, /\.labx-advanced-settings\s*\{[\s\S]*display:\s*grid;/);
+  assert.doesNotMatch(themeSource, /\.labx-top-bar__project-btn\s*\{/);
   assert.match(themeSource, /\.labx-timeline__highlight\s*\{/);
 });
