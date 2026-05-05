@@ -5,6 +5,10 @@ import type {
   LabExecutionSelectionSnapshot,
   LabStoreEvent,
 } from "../models/lab-types.js";
+import {
+  getLabSelectionDurationMs,
+  getLabSelectionRoiArea as getRoiArea,
+} from "./lab-execution-metrics.js";
 
 type TimerId = unknown;
 
@@ -22,7 +26,7 @@ const MOCK_PROGRESS_STEPS = [
 const MOCK_COMPLETION_DELAY_MS = 1500;
 
 function getSelectionDurationMs(selection: LabExecutionSelectionSnapshot) {
-  return Math.max(1, selection.endMs - selection.startMs);
+  return getLabSelectionDurationMs(selection, 1);
 }
 
 function getSelectionVariant(selection: LabExecutionSelectionSnapshot) {
@@ -41,13 +45,6 @@ function getRoiGeometryVariant(selection: LabExecutionSelectionSnapshot) {
       Math.round(roi.height * 1000)) %
     12
   );
-}
-
-function getRoiArea(selection: LabExecutionSelectionSnapshot) {
-  if (selection.roi === undefined) {
-    return 0;
-  }
-  return selection.roi.width * selection.roi.height;
 }
 
 function getRoiZoneLabel(selection: LabExecutionSelectionSnapshot) {

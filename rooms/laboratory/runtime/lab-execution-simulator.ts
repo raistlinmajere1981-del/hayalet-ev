@@ -5,6 +5,11 @@ import type {
   LabInspectionMode,
   LabSelection,
 } from "../models/lab-types.js";
+import {
+  clampLabConfidence,
+  getLabSelectionDurationMs as getSelectionDurationMs,
+  getLabSelectionRoiArea as getRoiArea,
+} from "./lab-execution-metrics.js";
 
 type LabExecutionSimulationInput = {
   activeSelection: LabSelection;
@@ -14,24 +19,12 @@ type LabExecutionSimulationInput = {
   sourceKind: string;
 };
 
-function clampConfidence(value: number) {
-  return Math.max(0.3, Math.min(0.98, Number(value.toFixed(2))));
-}
-
 function createSimulationId(input: LabExecutionSimulationInput) {
   return `simulation:${input.executionPlan.id}`;
 }
 
 function getActionType(input: LabExecutionSimulationInput) {
   return input.executionPlan.actionType || "unknown-action";
-}
-
-function getSelectionDurationMs(selection: LabSelection) {
-  return Math.max(0, selection.endMs - selection.startMs);
-}
-
-function getRoiArea(selection: LabSelection) {
-  return selection.roi ? selection.roi.width * selection.roi.height : 0;
 }
 
 function buildConfidence(input: LabExecutionSimulationInput) {
@@ -61,7 +54,7 @@ function buildConfidence(input: LabExecutionSimulationInput) {
     confidence -= 0.04;
   }
 
-  return clampConfidence(confidence);
+  return clampLabConfidence(confidence, 0.3);
 }
 
 function buildWarnings(input: LabExecutionSimulationInput, actionType: string) {

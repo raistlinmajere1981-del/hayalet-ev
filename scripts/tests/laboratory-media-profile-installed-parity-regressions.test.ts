@@ -91,16 +91,25 @@ test("laboratory installed room mirrors the workspace package for the active lab
       join(buildArtifact.rootDir, "runtime/lab-run-controller.js"),
       "utf8"
     );
+    const formActionControllerSource = readFileSync(
+      join(buildArtifact.rootDir, "runtime/controller/lab-form-action-controller.js"),
+      "utf8"
+    );
     const installedRuntimeControllerSource = readFileSync(
       join(installedCopy.rootDir, "runtime/lab-run-controller.js"),
+      "utf8"
+    );
+    const installedFormActionControllerSource = readFileSync(
+      join(installedCopy.rootDir, "runtime/controller/lab-form-action-controller.js"),
       "utf8"
     );
 
     assert.doesNotMatch(workspaceSurfaceSource, /workspace-open-dual-preview|dual-preview-master/);
     assert.doesNotMatch(runtimeControllerSource, /workspace-dual-preview-toggled/);
-    assert.match(runtimeControllerSource, /workspace-preview-volume-updated/);
+    assert.match(formActionControllerSource, /workspace-preview-volume-updated/);
     assert.doesNotMatch(installedWorkspaceSurfaceSource, /workspace-open-dual-preview/);
     assert.doesNotMatch(installedRuntimeControllerSource, /workspace-dual-preview-toggled/);
+    assert.match(installedFormActionControllerSource, /workspace-preview-volume-updated/);
 
     assertRoomParity(buildArtifact.rootDir, installedCopy.rootDir);
   } finally {

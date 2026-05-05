@@ -30,38 +30,16 @@ export type LabExecutionReflectionResolvedInput = {
   locale?: LabI18nLocale;
   sourceKind: string;
 };
-
-function clampConfidence(value: number) {
-  return Math.max(0.25, Math.min(0.98, Number(value.toFixed(2))));
-}
+import {
+  clampLabConfidence as clampConfidence,
+  getLabSelectionDurationMs as getSelectionDurationMs,
+  getLabSelectionRoiArea as getRoiArea,
+  getLabSelectionRoiAspectRatio as getRoiAspectRatio,
+  pushUniqueString as pushUnique,
+} from "./lab-execution-metrics.js";
 
 function createReflectionId(input: LabExecutionReflectionInput) {
   return `reflection:${input.executionPlan.id}`;
-}
-
-function getSelectionDurationMs(selection: LabSelection) {
-  return Math.max(0, selection.endMs - selection.startMs);
-}
-
-function getRoiArea(selection: LabSelection) {
-  return selection.roi ? selection.roi.width * selection.roi.height : 0;
-}
-
-function getRoiAspectRatio(selection: LabSelection) {
-  if (selection.roi === undefined) {
-    return null;
-  }
-  const { height, width } = selection.roi;
-  if (height <= 0 || width <= 0) {
-    return Infinity;
-  }
-  return Math.max(width / height, height / width);
-}
-
-function pushUnique(target: string[], value: string) {
-  if (!target.includes(value)) {
-    target.push(value);
-  }
 }
 
 function getSimulationRisk(input: LabExecutionReflectionInput) {

@@ -1,0 +1,126 @@
+import type { createLabStore } from "../lab-store.js";
+import { buildUiEvent } from "./lab-controller-helpers.js";
+
+type LabStoreState = ReturnType<ReturnType<typeof createLabStore>["getState"]>;
+
+type LabWorkspaceOperationControllerDeps = {
+  dispatch: ReturnType<typeof createLabStore>["dispatch"];
+  getActiveSelectionOperationPayload: (state?: LabStoreState) => Record<string, unknown>;
+  getCurrentRunIntentPayload: (state?: LabStoreState) => Record<string, unknown>;
+  isWorkspaceMutationLocked: (
+    area: "source" | "timeline" | "roi" | "intents" | "hypothesis"
+  ) => boolean;
+  pushLockedWorkspaceEvent: (message: string) => void;
+  startTrackedOperationForUiAction: (
+    uiActionId: string,
+    payload?: Record<string, unknown>
+  ) => string | null;
+  store: ReturnType<typeof createLabStore>;
+};
+
+export function createLabWorkspaceOperationController(deps: LabWorkspaceOperationControllerDeps) {
+  function exportWorkspaceRoi(regionId: string) {
+    const state = deps.store.getState();
+    const roiRegion =
+      state.ui.workspace.roiRegions.find(function (entry) {
+        return entry.id === regionId;
+      }) || null;
+    if (roiRegion === null) {
+      return;
+    }
+    deps.startTrackedOperationForUiAction("workspace-selection-roi-export", {
+      regionId: roiRegion.id,
+      x: roiRegion.x,
+      y: roiRegion.y,
+      width: roiRegion.width,
+      height: roiRegion.height,
+      ...deps.getCurrentRunIntentPayload(state),
+    });
+  }
+
+  function exportSelectionRoi() {
+    const state = deps.store.getState();
+    const selection = state.ui.workspace.activeSelection;
+    if (selection?.roi === undefined) {
+      deps.dispatch({
+        type: "push-event",
+        event: buildUiEvent("ROI çıktısı için önce görüntü üzerinde bölge seç.", "warning"),
+      });
+      return;
+    }
+    deps.startTrackedOperationForUiAction("workspace-selection-roi-export", {
+      regionId: "selection",
+      ...deps.getActiveSelectionOperationPayload(state),
+    });
+  }
+
+  function exportEnhancedFrame() {
+    const state = deps.store.getState();
+    deps.startTrackedOperationForUiAction(
+      "workspace-enhanced-frame-export",
+      deps.getActiveSelectionOperationPayload(state)
+    );
+  }
+
+  function exportTimelineClip() {
+    if (deps.isWorkspaceMutationLocked("timeline")) {
+      deps.pushLockedWorkspaceEvent("Zaman aralığı dışa aktarımı aktif analiz sırasında kilitli.");
+      return;
+    }
+    const state = deps.store.getState();
+    const ws = state.ui.workspace;
+    if (ws.timelineStartMs !== null && ws.timelineEndMs !== null) {
+      deps.startTrackedOperationForUiAction("timeline-export-clip", {
+        startMs: ws.timelineStartMs,
+        endMs: ws.timelineEndMs,
+        ...deps.getCurrentRunIntentPayload(state),
+      });
+    }
+  }
+
+  function grabTimelineFrame() {
+    const state = deps.store.getState();
+    const ws = state.ui.workspace;
+    const seekMs = ws.timelineStartMs !== null ? ws.timelineStartMs : 0;
+    deps.startTrackedOperationForUiAction("timeline-grab-frame", {
+      seekMs,
+      startMs: ws.timelineStartMs,
+      endMs: ws.timelineEndMs,
+      ...deps.getCurrentRunIntentPayload(state),
+    });
+  }
+
+  function extractTimelineAudio() {
+    const state = deps.store.getState();
+    deps.startTrackedOperationForUiAction("timeline-extract-audio", {
+      startMs: state.ui.workspace.timelineStartMs,
+      endMs: state.ui.workspace.timelineEndMs,
+      ...deps.getCurrentRunIntentPayload(state),
+    });
+  }
+
+  function exportAudioCleanup() {
+    deps.startTrackedOperationForUiAction(
+      "workspace-audio-cleanup-export",
+      deps.getCurrentRunIntentPayload(deps.store.getState())
+    );
+  }
+
+  function exportBandPassVoice() {
+    deps.startTrackedOperationForUiAction(
+      "workspace-band-pass-voice-export",
+      deps.getCurrentRunIntentPayload(deps.store.getState())
+    );
+  }
+
+  return {
+    exportAudioCleanup,
+    exportBandPassVoice,
+    exportEnhancedFrame,
+    exportSelectionRoi,
+    exportTimelineClip,
+    exportWorkspaceRoi,
+    extractTimelineAudio,
+    grabTimelineFrame,
+  };
+}

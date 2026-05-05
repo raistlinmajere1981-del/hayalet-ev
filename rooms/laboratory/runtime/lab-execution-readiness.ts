@@ -6,6 +6,13 @@ import type {
   LabInspectionMode,
   LabSelection,
 } from "../models/lab-types.js";
+import {
+  clampLabConfidence as clampConfidence,
+  getLabSelectionDurationMs as getSelectionDurationMs,
+  getLabSelectionRoiArea as getRoiArea,
+  getLabSelectionRoiAspectRatio as getRoiAspectRatio,
+  pushUniqueString as pushUnique,
+} from "./lab-execution-metrics.js";
 
 type LabExecutionReadinessInput = {
   activeSelection: LabSelection;
@@ -16,10 +23,6 @@ type LabExecutionReadinessInput = {
   sourceKind: string;
 };
 
-function clampConfidence(value: number) {
-  return Math.max(0.25, Math.min(0.98, Number(value.toFixed(2))));
-}
-
 function createReadinessId(input: LabExecutionReadinessInput) {
   return `readiness:${input.executionPlan.id}`;
 }
@@ -28,37 +31,12 @@ function getActionType(input: LabExecutionReadinessInput) {
   return input.executionPlan.actionType || "unknown-action";
 }
 
-function getSelectionDurationMs(selection: LabSelection) {
-  return Math.max(0, selection.endMs - selection.startMs);
-}
-
-function getRoiArea(selection: LabSelection) {
-  return selection.roi ? selection.roi.width * selection.roi.height : 0;
-}
-
-function getRoiAspectRatio(selection: LabSelection) {
-  if (selection.roi === undefined) {
-    return null;
-  }
-  const { width, height } = selection.roi;
-  if (width <= 0 || height <= 0) {
-    return Infinity;
-  }
-  return Math.max(width / height, height / width);
-}
-
 function isAudioCapableSource(sourceKind: string) {
   return sourceKind === "audio" || sourceKind === "video";
 }
 
 function isVisualSource(sourceKind: string) {
   return sourceKind === "image" || sourceKind === "video";
-}
-
-function pushUnique(target: string[], value: string) {
-  if (!target.includes(value)) {
-    target.push(value);
-  }
 }
 
 function buildConfidence(

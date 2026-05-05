@@ -5,8 +5,11 @@ import type {
   LabExecutionSimulation,
   LabInspectionMode,
   LabSelection,
-  LabSelectionROI,
 } from "../models/lab-types.js";
+import {
+  getLabRoiArea as getRoiArea,
+  getLabSelectionDurationMs as getSelectionDurationMs,
+} from "./lab-execution-metrics.js";
 
 type LabExecutionPayloadPreviewInput = {
   activeSelection: LabSelection;
@@ -25,14 +28,6 @@ export type LabExecutionPayloadPreviewResolvedInput = {
   inspectionMode: LabInspectionMode;
   sourceKind: string;
 };
-
-function getSelectionDurationMs(selection: LabSelection) {
-  return Math.max(0, selection.endMs - selection.startMs);
-}
-
-function getRoiArea(roi: LabSelectionROI | undefined) {
-  return roi ? roi.width * roi.height : 0;
-}
 
 function formatDurationBucket(durationMs: number) {
   if (durationMs < 500) {

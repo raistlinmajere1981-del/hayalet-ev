@@ -1,0 +1,592 @@
+import type {
+  LabActionSuggestion,
+  LabActiveExecutionResult,
+  LabCapabilityFlowKind,
+  LabExecutionAlternatives,
+  LabExecutionCandidate,
+  LabExecutionCommitment,
+  LabExecutionDispatchCandidate,
+  LabExecutionGoalEvaluation,
+  LabExecutionPayloadPreview,
+  LabExecutionPlan,
+  LabExecutionReadiness,
+  LabExecutionReflection,
+  LabExecutionSelectionSnapshot,
+  LabExecutionSimulation,
+  LabExecutionStaging,
+  LabInspectionMode,
+  LabInterpretationItem,
+  LabSelection,
+  LabSelectionIntent,
+  LabStoreState,
+  LabSuggestionPreview,
+} from "../../models/lab-types.js";
+import { buildExecutionAlternativesFromResolved } from "../lab-execution-alternatives.js";
+import { buildExecutionPayloadPreviewFromResolved } from "../lab-execution-payload-preview.js";
+import { buildExecutionCandidateFromResolved } from "../lab-execution-candidate.js";
+import { buildExecutionPlan } from "../lab-execution-planner.js";
+import { buildExecutionReadiness } from "../lab-execution-readiness.js";
+import { buildExecutionReflectionFromResolved } from "../lab-execution-reflection.js";
+import { buildExecutionSimulation } from "../lab-execution-simulator.js";
+import { buildExecutionStagingFromResolved } from "../lab-execution-staging.js";
+import { buildInterpretationItems } from "../lab-interpretation-engine.js";
+import {
+  buildSelectionSuggestionPreview,
+  getSelectionSuggestionsForContext,
+} from "../lab-selection-suggestion-logic.js";
+import {
+  appendReflectionFeedback,
+  buildExecutionDispatchId,
+  buildExecutionResultInterpretation,
+  getCachedExecutionGoalEvaluation,
+} from "./lab-execution-result-selectors.js";
+import type {
+  ActiveExecutionRuntimeContext,
+  LabExecutionResultInterpretation,
+} from "./lab-execution-result-selectors.js";
+import { getSourceKind } from "./lab-source-selectors.js";
+import { getEffectivePreviewAudioFocusSettings } from "./lab-workspace-media-selectors.js";
+import type { LabI18nLocale } from "../lab-i18n.js";
+
+function getRuntimeLocale(state: LabStoreState): LabI18nLocale {
+  return state.context["locale"] === "tr" ? "tr" : "en";
+}
+
+function createExecutionSelectionSnapshot(
+  state: LabStoreState,
+  selection: LabSelection
+): LabExecutionSelectionSnapshot {
+  const roi = selection.roi;
+  return {
+    endMs: selection.endMs,
+    inspectionMode: getInspectionMode(state),
+    intent: selection.intent,
+    sourceKind: getSourceKind(state) || "unknown",
+    startMs: selection.startMs,
+    type: selection.type,
+    ...(roi
+      ? {
+          roi: {
+            height: Number(roi.height.toFixed(4)),
+            width: Number(roi.width.toFixed(4)),
+            x: Number(roi.x.toFixed(4)),
+            y: Number(roi.y.toFixed(4)),
+          },
+        }
+      : {}),
+  };
+}
+
+export function getActiveSelection(state: LabStoreState): LabSelection | null {
+  return state.ui.workspace.activeSelection;
+}
+
+export function isSelectionValid(state: LabStoreState): boolean {
+  const selection = getActiveSelection(state);
+  return selection !== null && selection.endMs > selection.startMs;
+}
+
+export function getSelectionDuration(state: LabStoreState): number {
+  const selection = getActiveSelection(state);
+  if (selection === null || selection.endMs <= selection.startMs) {
+    return 0;
+  }
+  return selection.endMs - selection.startMs;
+}
+
+export function getSelectionIntent(state: LabStoreState): LabSelectionIntent {
+  return state.ui.workspace.activeSelection?.intent ?? "unknown";
+}
+
+export function getInspectionMode(state: LabStoreState): LabInspectionMode {
+  return state.ui.inspectionMode;
+}
+
+export function getRoiFocusActive(state: LabStoreState): boolean {
+  return state.ui.roiFocusActive === true;
+}
+
+export function getActiveInspectionSnapshot(state: LabStoreState) {
+  return state.ui.activeInspectionSnapshot;
+}
+
+export function getActiveSuggestionPreviewId(state: LabStoreState): string | null {
+  return state.ui.activeSuggestionPreviewId;
+}
+
+export function getActiveExecutionIntentId(state: LabStoreState): string | null {
+  return state.ui.activeExecutionIntentId;
+}
+
+export function getSelectionSuggestions(state: LabStoreState): LabActionSuggestion[] {
+  return getSelectionSuggestionsForContext(getActiveSelection(state), {
+    inspectionMode: getInspectionMode(state),
+    sourceKind: getSourceKind(state),
+  });
+}
+
+function getWorkspaceSurfaceSuggestionFlowKind(
+  suggestion: LabActionSuggestion
+): LabCapabilityFlowKind {
+  if (suggestion.flowKind !== undefined) {
+    return suggestion.flowKind;
+  }
+  switch (suggestion.actionType) {
+    case "extract-clip":
+    case "enhance-visual":
+    case "enhance-frame":
+    case "crop-region":
+    case "clean-audio":
+    case "separate-stems":
+    case "stabilize-segment":
+      return "operation-result";
+    default:
+      return "analysis-report";
+  }
+}
+
+export function getWorkspaceSurfaceSuggestions(state: LabStoreState): LabActionSuggestion[] {
+  return getSelectionSuggestionsForContext(getActiveSelection(state), {
+    expandedTaxonomy: true,
+    inspectionMode: getInspectionMode(state),
+    sourceKind: getSourceKind(state),
+  }).map(function (suggestion) {
+    return {
+      ...suggestion,
+      flowKind: getWorkspaceSurfaceSuggestionFlowKind(suggestion),
+    };
+  });
+}
+
+function getExecutionSelectionSuggestions(state: LabStoreState): LabActionSuggestion[] {
+  const activeSelection = getActiveSelection(state);
+  return getSelectionSuggestionsForContext(activeSelection, {
+    expandedTaxonomy: true,
+    inspectionMode: getInspectionMode(state),
+    sourceKind: getSourceKind(state),
+  });
+}
+
+export function getInterpretationItems(state: LabStoreState): LabInterpretationItem[] {
+  return buildInterpretationItems({
+    activeSelection: getActiveSelection(state),
+    audioFocus: getEffectivePreviewAudioFocusSettings(state),
+    inspectionMode: getInspectionMode(state),
+    sourceKind: getSourceKind(state),
+  });
+}
+
+export function buildSuggestionPreview(
+  suggestion: LabActionSuggestion,
+  selection: LabSelection
+): LabSuggestionPreview {
+  return buildSelectionSuggestionPreview(suggestion, selection);
+}
+
+export function getActiveSuggestionPreview(state: LabStoreState): LabSuggestionPreview | null {
+  const previewId = getActiveSuggestionPreviewId(state);
+  const activeSelection = getActiveSelection(state);
+  if (
+    previewId === null ||
+    activeSelection === null ||
+    activeSelection.endMs <= activeSelection.startMs
+  ) {
+    return null;
+  }
+  const suggestion =
+    getSelectionSuggestions(state).find(function (entry) {
+      return entry.id === previewId;
+    }) ||
+    getExecutionSelectionSuggestions(state).find(function (entry) {
+      return entry.id === previewId;
+    });
+  if (!suggestion) {
+    return null;
+  }
+  return buildSuggestionPreview(suggestion, activeSelection);
+}
+
+export function getActiveExecutionIntent(state: LabStoreState): LabActionSuggestion | null {
+  const activeExecutionIntentId = getActiveExecutionIntentId(state);
+  if (activeExecutionIntentId === null) {
+    return null;
+  }
+  return (
+    getSelectionSuggestions(state).find(function (entry) {
+      return entry.id === activeExecutionIntentId;
+    }) ||
+    getExecutionSelectionSuggestions(state).find(function (entry) {
+      return entry.id === activeExecutionIntentId;
+    }) ||
+    null
+  );
+}
+
+export function getActiveExecutionPlan(state: LabStoreState): LabExecutionPlan | null {
+  const activeExecutionIntent = getActiveExecutionIntent(state);
+  const activeSelection = getActiveSelection(state);
+  if (
+    activeExecutionIntent === null ||
+    activeSelection === null ||
+    activeSelection.endMs <= activeSelection.startMs
+  ) {
+    return null;
+  }
+  return buildExecutionPlan({
+    suggestion: activeExecutionIntent,
+    activeSelection,
+    inspectionMode: getInspectionMode(state),
+    sourceKind: getSourceKind(state),
+  });
+}
+
+export function getActiveExecutionSimulation(state: LabStoreState): LabExecutionSimulation | null {
+  const activeExecutionPlan = getActiveExecutionPlan(state);
+  const activeSelection = getActiveSelection(state);
+  if (
+    activeExecutionPlan === null ||
+    activeSelection === null ||
+    activeSelection.endMs <= activeSelection.startMs
+  ) {
+    return null;
+  }
+  return buildExecutionSimulation({
+    executionPlan: activeExecutionPlan,
+    activeSelection,
+    inspectionMode: getInspectionMode(state),
+    sourceKind: getSourceKind(state),
+    audioFocus: getEffectivePreviewAudioFocusSettings(state),
+  });
+}
+
+export function getActiveExecutionReadiness(state: LabStoreState): LabExecutionReadiness | null {
+  const activeExecutionPlan = getActiveExecutionPlan(state);
+  const activeExecutionSimulation = getActiveExecutionSimulation(state);
+  const activeSelection = getActiveSelection(state);
+  if (
+    activeExecutionPlan === null ||
+    activeExecutionSimulation === null ||
+    activeSelection === null ||
+    activeSelection.endMs <= activeSelection.startMs
+  ) {
+    return null;
+  }
+  return buildExecutionReadiness({
+    executionPlan: activeExecutionPlan,
+    executionSimulation: activeExecutionSimulation,
+    activeSelection,
+    inspectionMode: getInspectionMode(state),
+    sourceKind: getSourceKind(state),
+    audioFocus: getEffectivePreviewAudioFocusSettings(state),
+  });
+}
+
+export function getActiveExecutionPayloadPreview(
+  state: LabStoreState
+): LabExecutionPayloadPreview | null {
+  return buildExecutionPayloadPreviewFromResolved({
+    executionPlan: getActiveExecutionPlan(state),
+    executionSimulation: getActiveExecutionSimulation(state),
+    executionReadiness: getActiveExecutionReadiness(state),
+    activeSelection: getActiveSelection(state),
+    inspectionMode: getInspectionMode(state),
+    sourceKind: getSourceKind(state),
+  });
+}
+
+function getBaseActiveExecutionReflection(state: LabStoreState): LabExecutionReflection | null {
+  return buildExecutionReflectionFromResolved({
+    executionPlan: getActiveExecutionPlan(state),
+    executionSimulation: getActiveExecutionSimulation(state),
+    executionReadiness: getActiveExecutionReadiness(state),
+    executionPayloadPreview: getActiveExecutionPayloadPreview(state),
+    activeSelection: getActiveSelection(state),
+    inspectionMode: getInspectionMode(state),
+    locale: getRuntimeLocale(state),
+    sourceKind: getSourceKind(state),
+  });
+}
+
+export function getActiveExecutionReflection(state: LabStoreState): LabExecutionReflection | null {
+  const reflection = getBaseActiveExecutionReflection(state);
+  if (reflection === null) {
+    return null;
+  }
+  return appendReflectionFeedback(
+    reflection,
+    getActiveExecutionResultInterpretation(state),
+    getActiveExecutionGoalEvaluation(state)
+  );
+}
+
+function getBaseActiveExecutionAlternatives(state: LabStoreState): LabExecutionAlternatives | null {
+  return buildExecutionAlternativesFromResolved({
+    executionPlan: getActiveExecutionPlan(state),
+    executionSimulation: getActiveExecutionSimulation(state),
+    executionReadiness: getActiveExecutionReadiness(state),
+    executionReflection: getBaseActiveExecutionReflection(state),
+    activeSelection: getActiveSelection(state),
+    inspectionMode: getInspectionMode(state),
+    locale: getRuntimeLocale(state),
+    sourceKind: getSourceKind(state),
+  });
+}
+
+export function getActiveExecutionAlternatives(
+  state: LabStoreState
+): LabExecutionAlternatives | null {
+  return buildExecutionAlternativesFromResolved({
+    executionPlan: getActiveExecutionPlan(state),
+    executionSimulation: getActiveExecutionSimulation(state),
+    executionReadiness: getActiveExecutionReadiness(state),
+    executionReflection: getActiveExecutionReflection(state),
+    executionResult: getActiveExecutionResult(state),
+    executionGoalEvaluation: getActiveExecutionGoalEvaluation(state),
+    executionResultInterpretation: getActiveExecutionResultInterpretation(state),
+    activeSelection: getActiveSelection(state),
+    inspectionMode: getInspectionMode(state),
+    locale: getRuntimeLocale(state),
+    sourceKind: getSourceKind(state),
+  });
+}
+
+function getBaseActiveExecutionCandidate(state: LabStoreState): LabExecutionCandidate | null {
+  return buildExecutionCandidateFromResolved({
+    executionPlan: getActiveExecutionPlan(state),
+    executionSimulation: getActiveExecutionSimulation(state),
+    executionReadiness: getActiveExecutionReadiness(state),
+    executionPayloadPreview: getActiveExecutionPayloadPreview(state),
+    executionReflection: getBaseActiveExecutionReflection(state),
+    executionAlternatives: getBaseActiveExecutionAlternatives(state),
+    activeSelection: getActiveSelection(state),
+    inspectionMode: getInspectionMode(state),
+    locale: getRuntimeLocale(state),
+    sourceKind: getSourceKind(state),
+  });
+}
+
+export function getActiveExecutionCandidate(state: LabStoreState): LabExecutionCandidate | null {
+  return buildExecutionCandidateFromResolved({
+    executionPlan: getActiveExecutionPlan(state),
+    executionSimulation: getActiveExecutionSimulation(state),
+    executionReadiness: getActiveExecutionReadiness(state),
+    executionPayloadPreview: getActiveExecutionPayloadPreview(state),
+    executionReflection: getActiveExecutionReflection(state),
+    executionAlternatives: getActiveExecutionAlternatives(state),
+    executionResult: getActiveExecutionResult(state),
+    executionGoalEvaluation: getActiveExecutionGoalEvaluation(state),
+    executionResultInterpretation: getActiveExecutionResultInterpretation(state),
+    activeSelection: getActiveSelection(state),
+    inspectionMode: getInspectionMode(state),
+    locale: getRuntimeLocale(state),
+    sourceKind: getSourceKind(state),
+  });
+}
+
+function getBaseActiveExecutionCommitment(state: LabStoreState): LabExecutionCommitment | null {
+  const commitment = state.ui.activeExecutionCommitment;
+  if (commitment === null || commitment.status !== "committed") {
+    return null;
+  }
+  const candidate = getBaseActiveExecutionCandidate(state);
+  if (
+    candidate === null ||
+    candidate.planId !== commitment.planId ||
+    candidate.status !== commitment.candidateStatus ||
+    candidate.status === "not-viable"
+  ) {
+    return null;
+  }
+  return commitment;
+}
+
+export function getActiveExecutionCommitment(state: LabStoreState): LabExecutionCommitment | null {
+  const commitment = state.ui.activeExecutionCommitment;
+  if (commitment === null || commitment.status !== "committed") {
+    return null;
+  }
+  const candidate = getActiveExecutionCandidate(state);
+  if (
+    candidate === null ||
+    candidate.planId !== commitment.planId ||
+    candidate.status !== commitment.candidateStatus ||
+    candidate.status === "not-viable"
+  ) {
+    return null;
+  }
+  return commitment;
+}
+
+function getBaseActiveExecutionStaging(state: LabStoreState): LabExecutionStaging | null {
+  return buildExecutionStagingFromResolved({
+    executionPlan: getActiveExecutionPlan(state),
+    executionSimulation: getActiveExecutionSimulation(state),
+    executionReadiness: getActiveExecutionReadiness(state),
+    executionPayloadPreview: getActiveExecutionPayloadPreview(state),
+    executionReflection: getBaseActiveExecutionReflection(state),
+    executionAlternatives: getBaseActiveExecutionAlternatives(state),
+    executionCandidate: getBaseActiveExecutionCandidate(state),
+    executionCommitment: getBaseActiveExecutionCommitment(state),
+    activeSelection: getActiveSelection(state),
+  });
+}
+
+export function getActiveExecutionStaging(state: LabStoreState): LabExecutionStaging | null {
+  return buildExecutionStagingFromResolved({
+    executionPlan: getActiveExecutionPlan(state),
+    executionSimulation: getActiveExecutionSimulation(state),
+    executionReadiness: getActiveExecutionReadiness(state),
+    executionPayloadPreview: getActiveExecutionPayloadPreview(state),
+    executionReflection: getActiveExecutionReflection(state),
+    executionAlternatives: getActiveExecutionAlternatives(state),
+    executionCandidate: getActiveExecutionCandidate(state),
+    executionCommitment: getActiveExecutionCommitment(state),
+    activeSelection: getActiveSelection(state),
+  });
+}
+
+function getBaseExecutionDispatchCandidate(
+  state: LabStoreState
+): LabExecutionDispatchCandidate | null {
+  const commitment = getBaseActiveExecutionCommitment(state);
+  const staging = getBaseActiveExecutionStaging(state);
+  const payloadPreview = getActiveExecutionPayloadPreview(state);
+  const activeSelection = getActiveSelection(state);
+  if (
+    commitment === null ||
+    staging === null ||
+    payloadPreview === null ||
+    activeSelection === null ||
+    activeSelection.endMs <= activeSelection.startMs ||
+    staging.status !== "staged" ||
+    staging.planId !== commitment.planId ||
+    payloadPreview.planId !== commitment.planId
+  ) {
+    return null;
+  }
+  const selectionSnapshot = createExecutionSelectionSnapshot(state, activeSelection);
+  return {
+    dispatchId: buildExecutionDispatchId({
+      payloadPreview,
+      planId: commitment.planId,
+      selectionSnapshot,
+      staging,
+    }),
+    actionType: payloadPreview.actionType,
+    planId: commitment.planId,
+    payloadPreview,
+    selectionSnapshot,
+    staging,
+  };
+}
+
+export function getExecutionDispatchCandidate(
+  state: LabStoreState
+): LabExecutionDispatchCandidate | null {
+  const commitment = getActiveExecutionCommitment(state);
+  const staging = getActiveExecutionStaging(state);
+  const payloadPreview = getActiveExecutionPayloadPreview(state);
+  const activeSelection = getActiveSelection(state);
+  if (
+    commitment === null ||
+    staging === null ||
+    payloadPreview === null ||
+    activeSelection === null ||
+    activeSelection.endMs <= activeSelection.startMs ||
+    staging.status !== "staged" ||
+    staging.planId !== commitment.planId ||
+    payloadPreview.planId !== commitment.planId
+  ) {
+    return null;
+  }
+  const selectionSnapshot = createExecutionSelectionSnapshot(state, activeSelection);
+  return {
+    dispatchId: buildExecutionDispatchId({
+      payloadPreview,
+      planId: commitment.planId,
+      selectionSnapshot,
+      staging,
+    }),
+    actionType: payloadPreview.actionType,
+    planId: commitment.planId,
+    payloadPreview,
+    selectionSnapshot,
+    staging,
+  };
+}
+
+function getActiveExecutionRuntimeContext(
+  state: LabStoreState
+): ActiveExecutionRuntimeContext | null {
+  const executionRuntime = state.ui.executionRuntime;
+  if (
+    executionRuntime.status !== "completed" ||
+    executionRuntime.result === undefined ||
+    executionRuntime.dispatchId === undefined
+  ) {
+    return null;
+  }
+  const dispatchCandidate = getBaseExecutionDispatchCandidate(state);
+  if (
+    dispatchCandidate === null ||
+    dispatchCandidate.dispatchId !== executionRuntime.dispatchId ||
+    dispatchCandidate.planId !== executionRuntime.activePlanId
+  ) {
+    return null;
+  }
+  return {
+    dispatchCandidate,
+    result: executionRuntime.result,
+  };
+}
+
+export function getActiveExecutionResult(state: LabStoreState): LabActiveExecutionResult | null {
+  const context = getActiveExecutionRuntimeContext(state);
+  if (context === null) {
+    return null;
+  }
+  return {
+    ...context.result,
+    selectionSnapshot: context.dispatchCandidate.selectionSnapshot,
+  };
+}
+
+export function getActiveExecutionResultInterpretation(
+  state: LabStoreState
+): LabExecutionResultInterpretation | null {
+  const context = getActiveExecutionRuntimeContext(state);
+  if (context === null) {
+    return null;
+  }
+  return buildExecutionResultInterpretation({
+    ...context.result,
+    actionType: context.dispatchCandidate.actionType,
+    selectionSnapshot: context.dispatchCandidate.selectionSnapshot,
+  });
+}
+
+export function getActiveExecutionGoalEvaluation(
+  state: LabStoreState
+): LabExecutionGoalEvaluation | null {
+  const context = getActiveExecutionRuntimeContext(state);
+  if (context === null) {
+    return null;
+  }
+  return getCachedExecutionGoalEvaluation(context);
+}
+
+export function getExecutionJourneyStep(state: LabStoreState): number {
+  if (getActiveExecutionStaging(state) !== null) return 4;
+  if (getActiveExecutionCandidate(state) !== null || getActiveExecutionCommitment(state) !== null)
+    return 3;
+  if (
+    getActiveExecutionSimulation(state) !== null ||
+    getActiveExecutionReadiness(state) !== null ||
+    getActiveExecutionReflection(state) !== null ||
+    getActiveExecutionAlternatives(state) !== null
+  )
+    return 2;
+  if (getActiveExecutionPlan(state) !== null) return 1;
+  if (getActiveSelection(state) !== null) return 0;
+  return -1;
+}

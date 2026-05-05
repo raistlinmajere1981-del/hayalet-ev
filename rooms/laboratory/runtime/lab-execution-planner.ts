@@ -4,6 +4,11 @@ import type {
   LabInspectionMode,
   LabSelection,
 } from "../models/lab-types.js";
+import {
+  clampLabConfidence,
+  getLabSelectionDurationMs,
+  getLabSelectionRoiArea,
+} from "./lab-execution-metrics.js";
 
 type LabExecutionPlannerInput = {
   activeSelection: LabSelection;
@@ -11,10 +16,6 @@ type LabExecutionPlannerInput = {
   sourceKind: string;
   suggestion: LabActionSuggestion;
 };
-
-function clampConfidence(value: number) {
-  return Math.max(0.3, Math.min(0.98, Number(value.toFixed(2))));
-}
 
 function createRoiSignature(selection: LabSelection) {
   if (selection.roi === undefined) {
@@ -45,12 +46,9 @@ function createExecutionPlanId(input: LabExecutionPlannerInput) {
 
 function buildRiskNotes(input: LabExecutionPlannerInput) {
   const riskNotes: string[] = [];
-  const selectionDurationMs = Math.max(
-    0,
-    input.activeSelection.endMs - input.activeSelection.startMs
-  );
+  const selectionDurationMs = getLabSelectionDurationMs(input.activeSelection);
   const roi = input.activeSelection.roi;
-  const roiArea = roi ? roi.width * roi.height : 0;
+  const roiArea = getLabSelectionRoiArea(input.activeSelection);
 
   if (selectionDurationMs > 0 && selectionDurationMs < 500) {
     riskNotes.push("Short selection windows may reduce context for reliable planning.");
@@ -80,10 +78,7 @@ function buildRiskNotes(input: LabExecutionPlannerInput) {
 
 function buildConfidence(input: LabExecutionPlannerInput) {
   let confidence = input.suggestion.confidence;
-  const selectionDurationMs = Math.max(
-    0,
-    input.activeSelection.endMs - input.activeSelection.startMs
-  );
+  const selectionDurationMs = getLabSelectionDurationMs(input.activeSelection);
   const roi = input.activeSelection.roi;
 
   if (roi !== undefined) {
@@ -109,7 +104,7 @@ function buildConfidence(input: LabExecutionPlannerInput) {
     confidence += 0.02;
   }
 
-  return clampConfidence(confidence);
+  return clampLabConfidence(confidence, 0.3);
 }
 
 function createPlan(
@@ -132,10 +127,7 @@ function createPlan(
 }
 
 export function buildExecutionPlan(input: LabExecutionPlannerInput): LabExecutionPlan {
-  const selectionDurationMs = Math.max(
-    0,
-    input.activeSelection.endMs - input.activeSelection.startMs
-  );
+  const selectionDurationMs = getLabSelectionDurationMs(input.activeSelection);
   const durationLabel =
     selectionDurationMs <= 0
       ? "current selection context"

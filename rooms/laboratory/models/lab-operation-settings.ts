@@ -1,0 +1,307 @@
+import type {
+  LabOperationCapabilityId,
+  LabOperationSettingsMap,
+  LabSettingsFieldMeta,
+} from "./lab-capabilities.js";
+
+export const LAB_OPERATION_SETTINGS_DEFAULTS: LabOperationSettingsMap = {
+  "clip-export": {
+    format: "mp4",
+    quality: "balanced",
+    fps: "source",
+    includeAudio: true,
+    applyRoiCrop: false,
+    scale: "source",
+  },
+  "segment-stabilization": {
+    shakiness: "medium",
+    smoothing: 12,
+    cropMode: "keep",
+    quality: "balanced",
+  },
+  "frame-grab": {
+    frameMode: "current",
+    burstCount: 1,
+    format: "png",
+    quality: 92,
+    timestampLabel: false,
+  },
+  "roi-crop": {
+    padding: 0,
+    aspectLock: "free",
+    outputSize: "source",
+    format: "png",
+  },
+  "enhanced-frame": {
+    preset: "clarity",
+    strength: 1,
+    applyPreviewSettings: false,
+    format: "png",
+  },
+  "before-after-variant": {
+    layout: "side-by-side",
+    revealPreset: "clarity",
+    strength: 1,
+    format: "png",
+  },
+  "audio-extract": {
+    format: "wav",
+    channels: "stereo",
+    sampleRate: 48000,
+    timelineOnly: false,
+  },
+  "audio-cleanup": {
+    denoise: "medium",
+    highpassHz: 80,
+    lowpassHz: 12000,
+    normalizeTargetDb: -16,
+    compressor: true,
+  },
+  "band-pass-voice": {
+    lowHz: 120,
+    highHz: 3800,
+    widthQ: 1,
+    gain: 1,
+    channels: "mono",
+  },
+  "stem-separation": {
+    model: "htdemucs",
+    device: "cpu",
+    stems: "all",
+    segmentPreset: "balanced",
+  },
+};
+
+export const LAB_OPERATION_SETTINGS_FIELDS: Record<
+  LabOperationCapabilityId,
+  LabSettingsFieldMeta[]
+> = {
+  "clip-export": [
+    {
+      id: "format",
+      label: "Format",
+      kind: "select",
+      options: ["mp4", "webm", "gif"].map((value) => ({ label: value.toUpperCase(), value })),
+    },
+    {
+      id: "quality",
+      label: "Quality",
+      kind: "select",
+      options: ["compact", "balanced", "high"].map((value) => ({ label: value, value })),
+    },
+    {
+      id: "fps",
+      label: "FPS",
+      kind: "select",
+      options: ["source", "12", "24", "30"].map((value) => ({ label: value, value })),
+    },
+    { id: "includeAudio", label: "Include audio", kind: "toggle" },
+    { id: "applyRoiCrop", label: "Apply ROI crop", kind: "toggle" },
+    {
+      id: "scale",
+      label: "Scale",
+      kind: "select",
+      options: ["source", "480p", "720p", "1080p"].map((value) => ({ label: value, value })),
+    },
+  ],
+  "segment-stabilization": [
+    {
+      id: "shakiness",
+      label: "Shakiness",
+      kind: "select",
+      options: ["low", "medium", "high"].map((value) => ({ label: value, value })),
+    },
+    { id: "smoothing", label: "Smoothing", kind: "number", min: 1, max: 30, step: 1 },
+    {
+      id: "cropMode",
+      label: "Crop",
+      kind: "select",
+      options: ["keep", "adaptive", "fixed"].map((value) => ({ label: value, value })),
+    },
+    {
+      id: "quality",
+      label: "Quality",
+      kind: "select",
+      options: ["compact", "balanced", "high"].map((value) => ({ label: value, value })),
+    },
+  ],
+  "frame-grab": [
+    {
+      id: "frameMode",
+      label: "Frame",
+      kind: "select",
+      options: ["current", "middle", "burst"].map((value) => ({ label: value, value })),
+    },
+    { id: "burstCount", label: "Burst", kind: "number", min: 1, max: 12, step: 1 },
+    {
+      id: "format",
+      label: "Format",
+      kind: "select",
+      options: ["png", "jpg", "webp"].map((value) => ({ label: value.toUpperCase(), value })),
+    },
+    { id: "quality", label: "Quality", kind: "number", min: 1, max: 100, step: 1, unit: "%" },
+    { id: "timestampLabel", label: "Timestamp label", kind: "toggle" },
+  ],
+  "roi-crop": [
+    { id: "padding", label: "Padding", kind: "number", min: 0, max: 100, step: 1, unit: "px" },
+    {
+      id: "aspectLock",
+      label: "Aspect",
+      kind: "select",
+      options: ["free", "square", "16:9", "4:3"].map((value) => ({ label: value, value })),
+    },
+    {
+      id: "outputSize",
+      label: "Size",
+      kind: "select",
+      options: ["source", "512", "1024", "2048"].map((value) => ({ label: value, value })),
+    },
+    {
+      id: "format",
+      label: "Format",
+      kind: "select",
+      options: ["png", "jpg", "webp"].map((value) => ({ label: value.toUpperCase(), value })),
+    },
+  ],
+  "enhanced-frame": [
+    {
+      id: "preset",
+      label: "Preset",
+      kind: "select",
+      options: ["clarity", "low-light", "edge", "forensic"].map((value) => ({
+        label: value,
+        value,
+      })),
+    },
+    { id: "strength", label: "Strength", kind: "number", min: 0.25, max: 2, step: 0.05 },
+    { id: "applyPreviewSettings", label: "Apply preview", kind: "toggle" },
+    {
+      id: "format",
+      label: "Format",
+      kind: "select",
+      options: ["png", "jpg", "webp"].map((value) => ({ label: value.toUpperCase(), value })),
+    },
+  ],
+  "before-after-variant": [
+    {
+      id: "layout",
+      label: "Layout",
+      kind: "select",
+      options: ["side-by-side", "stacked", "wipe"].map((value) => ({ label: value, value })),
+    },
+    {
+      id: "revealPreset",
+      label: "Reveal",
+      kind: "select",
+      options: ["clarity", "low-light", "edge", "forensic"].map((value) => ({
+        label: value,
+        value,
+      })),
+    },
+    { id: "strength", label: "Strength", kind: "number", min: 0.25, max: 2, step: 0.05 },
+    {
+      id: "format",
+      label: "Format",
+      kind: "select",
+      options: ["png", "jpg", "webp"].map((value) => ({ label: value.toUpperCase(), value })),
+    },
+  ],
+  "audio-extract": [
+    {
+      id: "format",
+      label: "Format",
+      kind: "select",
+      options: ["wav", "flac", "mp3"].map((value) => ({ label: value.toUpperCase(), value })),
+    },
+    {
+      id: "channels",
+      label: "Channels",
+      kind: "select",
+      options: ["mono", "stereo", "source"].map((value) => ({ label: value, value })),
+    },
+    {
+      id: "sampleRate",
+      label: "Sample rate",
+      kind: "select",
+      options: ["16000", "44100", "48000"].map((value) => ({ label: `${value} Hz`, value })),
+    },
+    { id: "timelineOnly", label: "Selection only", kind: "toggle" },
+  ],
+  "audio-cleanup": [
+    {
+      id: "denoise",
+      label: "Denoise",
+      kind: "select",
+      options: ["light", "medium", "strong"].map((value) => ({ label: value, value })),
+    },
+    {
+      id: "highpassHz",
+      label: "High-pass",
+      kind: "number",
+      min: 20,
+      max: 1000,
+      step: 10,
+      unit: "Hz",
+    },
+    {
+      id: "lowpassHz",
+      label: "Low-pass",
+      kind: "number",
+      min: 1000,
+      max: 20000,
+      step: 100,
+      unit: "Hz",
+    },
+    {
+      id: "normalizeTargetDb",
+      label: "Normalize",
+      kind: "number",
+      min: -30,
+      max: -6,
+      step: 1,
+      unit: "dB",
+    },
+    { id: "compressor", label: "Compressor", kind: "toggle" },
+  ],
+  "band-pass-voice": [
+    { id: "lowHz", label: "Low", kind: "number", min: 20, max: 1000, step: 10, unit: "Hz" },
+    { id: "highHz", label: "High", kind: "number", min: 1000, max: 10000, step: 100, unit: "Hz" },
+    { id: "widthQ", label: "Q", kind: "number", min: 0.1, max: 10, step: 0.1 },
+    { id: "gain", label: "Gain", kind: "number", min: 0.5, max: 8, step: 0.1, unit: "x" },
+    {
+      id: "channels",
+      label: "Channels",
+      kind: "select",
+      options: ["mono", "stereo"].map((value) => ({ label: value, value })),
+    },
+  ],
+  "stem-separation": [
+    {
+      id: "model",
+      label: "Model",
+      kind: "select",
+      options: ["htdemucs", "htdemucs_ft", "mdx_extra"].map((value) => ({ label: value, value })),
+    },
+    {
+      id: "device",
+      label: "Device",
+      kind: "select",
+      options: ["cpu", "cuda"].map((value) => ({ label: value, value })),
+    },
+    {
+      id: "stems",
+      label: "Stems",
+      kind: "select",
+      options: ["all", "vocals", "drums", "bass", "other"].map((value) => ({
+        label: value,
+        value,
+      })),
+    },
+    {
+      id: "segmentPreset",
+      label: "Segment",
+      kind: "select",
+      options: ["fast", "balanced", "quality"].map((value) => ({ label: value, value })),
+    },
+  ],
+};

@@ -102,20 +102,29 @@ test("laboratory shipped room keeps parity with the active lab-root shell build 
       join(buildArtifact.rootDir, "runtime/lab-run-controller.js"),
       "utf8"
     );
+    const formActionControllerSource = readFileSync(
+      join(buildArtifact.rootDir, "runtime/controller/lab-form-action-controller.js"),
+      "utf8"
+    );
     const shippedRuntimeControllerSource = readFileSync(
       join(shippedParityRoot, "runtime/lab-run-controller.js"),
+      "utf8"
+    );
+    const shippedFormActionControllerSource = readFileSync(
+      join(shippedParityRoot, "runtime/controller/lab-form-action-controller.js"),
       "utf8"
     );
 
     assert.doesNotMatch(workspaceSurfaceSource, /workspace-open-dual-preview|dual-preview-master/);
     assert.doesNotMatch(runtimeControllerSource, /workspace-dual-preview-toggled/);
-    assert.match(runtimeControllerSource, /workspace-preview-volume-updated/);
+    assert.match(formActionControllerSource, /workspace-preview-volume-updated/);
     assert.doesNotMatch(
       runtimeControllerSource,
       /Dual preview seek is unavailable until media is ready\./
     );
     assert.doesNotMatch(shippedWorkspaceSurfaceSource, /workspace-open-dual-preview/);
     assert.doesNotMatch(shippedRuntimeControllerSource, /workspace-dual-preview-toggled/);
+    assert.match(shippedFormActionControllerSource, /workspace-preview-volume-updated/);
 
     assertRoomParity(buildArtifact.rootDir, shippedParityRoot);
   } finally {

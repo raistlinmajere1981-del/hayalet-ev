@@ -6,6 +6,7 @@ import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import { createLabI18n } from "../../rooms/laboratory/ui/lab-i18n.ts";
 import { renderLabSourcePanel } from "../../rooms/laboratory/ui/lab-source-panel.ts";
 import { renderProjectWorkspaceOverlay } from "../../rooms/laboratory/ui/project-workspace-overlay.ts";
+import { readCssWithImports } from "./helpers/css-imports.ts";
 
 const sourcePresets = JSON.parse(
   readFileSync("rooms/laboratory/shared/data/tools/source-presets.json", "utf8")
@@ -13,6 +14,10 @@ const sourcePresets = JSON.parse(
 const ytDlpForm = JSON.parse(
   readFileSync("rooms/laboratory/shared/data/tools/yt-dlp.form.json", "utf8")
 );
+
+function readLabThemeSource() {
+  return readCssWithImports("rooms/laboratory/ui/lab-theme.css");
+}
 
 function createSourceProjectState(
   _open: boolean,
@@ -157,10 +162,14 @@ test("laboratory source project management keeps the active source-less project 
 
 test("laboratory source project controls skip redundant button dispatches", () => {
   const source = readFileSync("rooms/laboratory/runtime/lab-run-controller.ts", "utf8");
+  const sourceActionControllerSource = readFileSync(
+    "rooms/laboratory/runtime/controller/lab-source-action-controller.ts",
+    "utf8"
+  );
 
-  assert.match(source, /state\.ui\.projectImport\.activeKind !== kind/);
-  assert.match(source, /state\.ui\.projectImport\.methods\[activeKind\] !== method/);
-  assert.match(source, /state\.ui\.youtubeImport\.strategy !== strategy/);
+  assert.match(sourceActionControllerSource, /state\.ui\.projectImport\.activeKind !== kind/);
+  assert.match(sourceActionControllerSource, /state\.ui\.projectImport\.methods\[activeKind\] !== method/);
+  assert.match(sourceActionControllerSource, /state\.ui\.youtubeImport\.strategy !== strategy/);
   assert.doesNotMatch(source, /projectWorkspaceSelectedEntityIds/);
   assert.doesNotMatch(source, /projectWorkspaceSort/);
   assert.doesNotMatch(source, /projectWorkspaceFilter/);
@@ -422,7 +431,7 @@ test("laboratory source project management i18n keys exist in English and Turkis
 test("laboratory source management css keeps active import styles without retired shell styles", () => {
   const styleSource = readFileSync("rooms/laboratory/ui/style.css", "utf8");
   const overlayCss = readFileSync("rooms/laboratory/ui/styles/project-workspace.css", "utf8");
-  const themeSource = readFileSync("rooms/laboratory/ui/lab-theme.css", "utf8");
+  const themeSource = readLabThemeSource();
 
   assert.match(styleSource, /@import "\.\/styles\/project-workspace\.css";/);
   assert.doesNotMatch(overlayCss, /\.labx-pw-/);

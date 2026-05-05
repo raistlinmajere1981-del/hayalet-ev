@@ -1,5 +1,10 @@
 import { asNonEmptyString } from "../models/lab-types.js";
 import type { LabStoreEvent } from "../models/lab-types.js";
+import {
+  bindLabDocumentEvents,
+  consumeLabEvent,
+  isClosestCapableTarget,
+} from "./lab-dom-events.js";
 
 type AssetPreviewBinderDeps = {
   documentRef: Pick<Document, "addEventListener" | "removeEventListener">;
@@ -7,28 +12,9 @@ type AssetPreviewBinderDeps = {
   resolveHref: (assetId: string) => string | null;
 };
 
-type ClosestCapableTarget = EventTarget & {
-  closest: (selector: string) => {
-    getAttribute: (name: string) => string | null;
-  } | null;
+type AssetPreviewTrigger = {
+  getAttribute: (name: string) => string | null;
 };
-
-function isClosestCapableTarget(value: EventTarget | null): value is ClosestCapableTarget {
-  return typeof value === "object" && value !== null && "closest" in value;
-}
-
-function preventAction(event: Event) {
-  if (typeof event.preventDefault === "function") {
-    event.preventDefault();
-  }
-  if (typeof event.stopImmediatePropagation === "function") {
-    event.stopImmediatePropagation();
-    return;
-  }
-  if (typeof event.stopPropagation === "function") {
-    event.stopPropagation();
-  }
-}
 
 function emitPreviewWarning(deps: AssetPreviewBinderDeps, message: string) {
   deps.emit({
@@ -53,7 +39,7 @@ function emitPreviewWarning(deps: AssetPreviewBinderDeps, message: string) {
 export function bindLabAssetPreviewClicks(deps: AssetPreviewBinderDeps) {
   function handleClick(event: Event) {
     const target = event.target;
-    if (!isClosestCapableTarget(target)) {
+    if (!isClosestCapableTarget<AssetPreviewTrigger>(target)) {
       return;
     }
     const trigger = target.closest("[data-lab-action='asset-preview']");
@@ -64,7 +50,7 @@ export function bindLabAssetPreviewClicks(deps: AssetPreviewBinderDeps) {
     if (assetId === null) {
       return;
     }
-    preventAction(event);
+    consumeLabEvent(event);
     if (deps.resolveHref(assetId) === null) {
       emitPreviewWarning(deps, "Asset preview is unavailable.");
       return;
@@ -72,9 +58,5 @@ export function bindLabAssetPreviewClicks(deps: AssetPreviewBinderDeps) {
     deps.emit({ type: "asset-preview-opened", assetId });
   }
 
-  deps.documentRef.addEventListener("click", handleClick);
-
-  return function unbind() {
-    deps.documentRef.removeEventListener("click", handleClick);
-  };
+  return bindLabDocumentEvents(deps.documentRef, [{ type: "click", listener: handleClick }]);
 }

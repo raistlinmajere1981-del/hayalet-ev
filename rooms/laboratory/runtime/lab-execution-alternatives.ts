@@ -34,6 +34,10 @@ import {
   formatExecutionReadinessSignalAdvisory,
 } from "./lab-execution-readiness-signal.js";
 import { formatLabI18n, resolveLabI18n, type LabI18nLocale } from "./lab-i18n.js";
+import {
+  clampLabConfidence as clampConfidence,
+  getLabSelectionDurationMs as getSelectionDurationMs,
+} from "./lab-execution-metrics.js";
 
 export type LabExecutionAlternativesResultInterpretation = {
   coverageLevel: "low" | "medium" | "high";
@@ -69,16 +73,8 @@ export type LabExecutionAlternativesResolvedInput = {
   sourceKind: string;
 };
 
-function clampConfidence(value: number) {
-  return Math.max(0.25, Math.min(0.98, Number(value.toFixed(2))));
-}
-
 function createAlternativesId(input: LabExecutionAlternativesInput) {
   return `alternatives:${input.executionPlan.id}`;
-}
-
-function getSelectionDurationMs(selection: LabSelection) {
-  return Math.max(0, selection.endMs - selection.startMs);
 }
 
 function isAudioOriented(input: LabExecutionAlternativesInput) {

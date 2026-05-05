@@ -32,8 +32,24 @@ import {
   translateLabRuntimeText,
 } from "../../rooms/laboratory/ui/lab-runtime-i18n.ts";
 import { createRoomBuiltArtifact } from "./helpers/room-installed-copy.ts";
+import { readCssWithImports } from "./helpers/css-imports.ts";
 import { importLabRootModuleWithDomStub } from "./laboratory-runtime-truth.helpers.ts";
 import type { LabDecisionSnapshot, LabRun } from "../../rooms/laboratory/models/lab-types.ts";
+
+function readLabThemeSource() {
+  return readCssWithImports("rooms/laboratory/ui/lab-theme.css");
+}
+
+function readLabWaveformTimelineSource() {
+  return [
+    "rooms/laboratory/ui/lab-waveform-timeline-render.ts",
+    "rooms/laboratory/ui/lab-waveform-timeline-panels.ts",
+  ]
+    .map(function (filePath) {
+      return readFileSync(filePath, "utf8");
+    })
+    .join("\n");
+}
 
 class ElementStub {
   private innerHtmlValue = "";
@@ -1293,56 +1309,66 @@ test("laboratory YouTube import HTMLElement bridge requires an explicit document
 
 test("laboratory shell preserves workspace preview nodes while diffing live panels", () => {
   const labRootSource = readFileSync("rooms/laboratory/ui/lab-root.ts", "utf8");
+  const labRootObservabilitySource = readFileSync(
+    "rooms/laboratory/ui/lab-root-observability.ts",
+    "utf8"
+  );
+  const labDomSyncSource = readFileSync("rooms/laboratory/ui/lab-dom-sync.ts", "utf8");
   const workspaceSurfaceSource = readFileSync("rooms/laboratory/ui/workspace-surface.ts", "utf8");
+  const workspaceSourceIntakeSource = readFileSync(
+    "rooms/laboratory/ui/workspace-source-intake.ts",
+    "utf8"
+  );
 
-  assert.match(labRootSource, /function updateRenderedElement\(/);
-  assert.match(labRootSource, /function syncChildNodes\(/);
-  assert.match(labRootSource, /function canReuseElement\(/);
-  assert.match(labRootSource, /const LAB_REGION_SELECTORS = \{/);
+  assert.match(labDomSyncSource, /function updateRenderedElement\(/);
+  assert.match(labDomSyncSource, /function syncChildNodes\(/);
+  assert.match(labDomSyncSource, /function canReuseElement\(/);
+  assert.match(labRootSource, /from "\.\/lab-root-observability\.js"/);
+  assert.match(labRootObservabilitySource, /const LAB_REGION_SELECTORS = \{/);
   assert.match(
-    labRootSource,
+    labRootObservabilitySource,
     /topBar: \['\[data-lab-region="topbar"\]', '\[data-lab-region="top-bar"\]', "\.labx-top-bar"\]/
   );
   assert.match(
-    labRootSource,
+    labRootObservabilitySource,
     /leftRail: \[\s*'\[data-lab-region="source-panel"\]',\s*'\[data-lab-region="left-rail-source"\]',\s*'\[data-lab-region="left-rail"\]',\s*"\.labx-source-panel",\s*"\.labx-left-rail",\s*\]/
   );
   assert.match(
-    labRootSource,
+    labRootObservabilitySource,
     /mainStage: \['\[data-lab-region="main-stage"\]', "\.labx-center-panel"\]/
   );
   assert.match(
-    labRootSource,
+    labRootObservabilitySource,
     /contextPanel: \['\[data-lab-region="context-panel"\]', "\.labx-drawer"\]/
   );
   assert.match(
-    labRootSource,
+    labRootObservabilitySource,
     /inspectorPanel: \['\[data-lab-region="inspector-panel"\]', "\.labx-workspace-inspector"\]/
   );
   assert.match(
-    labRootSource,
+    labRootObservabilitySource,
     /processStrip: \['\[data-lab-region="process-strip"\]', "\.labx-process-strip"\]/
   );
   assert.match(
-    labRootSource,
+    labRootObservabilitySource,
     /function queryRegion\(root: ParentNode, selectors: readonly string\[\]\)/
   );
-  assert.match(labRootSource, /for \(const selector of selectors\)/);
+  assert.match(labRootObservabilitySource, /for \(const selector of selectors\)/);
   assert.match(labRootSource, /queryRegion\(runtimeRoot, LAB_REGION_SELECTORS\.mainStage\)/);
   assert.match(
     labRootSource,
     /element:\s*queryRegion\(runtimeRoot, LAB_REGION_SELECTORS\[descriptor\.key\]\)/
   );
-  assert.match(labRootSource, /function syncRegion\(input: \{/);
+  assert.match(labRootObservabilitySource, /function syncRegion\(input: \{/);
   assert.match(
-    labRootSource,
+    labRootObservabilitySource,
     /const currentElement = queryRegion\(input\.root, input\.selectors\);/
   );
-  assert.match(labRootSource, /return false;/);
-  assert.match(labRootSource, /function shouldFallback\(regionsFound: number\)/);
-  assert.match(labRootSource, /return regionsFound < 3;/);
-  assert.match(labRootSource, /const LAB_OVERLAY_SELECTORS = \{/);
-  assert.match(labRootSource, /function syncOverlayRoot\(/);
+  assert.match(labRootObservabilitySource, /return false;/);
+  assert.match(labRootObservabilitySource, /function shouldFallback\(regionsFound: number\)/);
+  assert.match(labRootObservabilitySource, /return regionsFound < 3;/);
+  assert.match(labRootObservabilitySource, /const LAB_OVERLAY_SELECTORS = \{/);
+  assert.match(labRootObservabilitySource, /function syncOverlayRoot\(/);
   assert.match(labRootSource, /const regionDescriptors: LabRegionDescriptor\[\] = \[/);
   assert.match(
     labRootSource,
@@ -1350,13 +1376,13 @@ test("laboratory shell preserves workspace preview nodes while diffing live pane
   );
   assert.match(labRootSource, /shouldFallback\(regionsFound\)/);
   assert.doesNotMatch(labRootSource, /shouldFallback\(regionsFound\) \|\| !overlayRoot/);
-  assert.match(labRootSource, /function debugLabRegionLifecycle\(/);
-  assert.match(labRootSource, /function debugLabFallback\(/);
-  assert.match(labRootSource, /function debugLabOverlay\(/);
-  assert.match(labRootSource, /function syncLabDebugPanel\(/);
-  assert.match(labRootSource, /\[lab\]\[region\]/);
-  assert.match(labRootSource, /\[lab\]\[fallback\]/);
-  assert.match(labRootSource, /\[lab\]\[overlay\]/);
+  assert.match(labRootObservabilitySource, /function debugLabRegionLifecycle\(/);
+  assert.match(labRootObservabilitySource, /function debugLabFallback\(/);
+  assert.match(labRootObservabilitySource, /function debugLabOverlay\(/);
+  assert.match(labRootObservabilitySource, /function syncLabDebugPanel\(/);
+  assert.match(labRootObservabilitySource, /\[lab\]\[region\]/);
+  assert.match(labRootObservabilitySource, /\[lab\]\[fallback\]/);
+  assert.match(labRootObservabilitySource, /\[lab\]\[overlay\]/);
   assert.match(labRootSource, /\[lab\]\[decision\]/);
   assert.match(labRootSource, /buildLabDecisionSnapshot\(\{ shell, state \}\)/);
   assert.match(labRootSource, /lastDecisionLogKey = null;/);
@@ -1367,20 +1393,23 @@ test("laboratory shell preserves workspace preview nodes while diffing live pane
   assert.match(labRootSource, /mountedShell\.setAttribute\("data-lab-debug-regions", "true"\)/);
   assert.doesNotMatch(labRootSource, /\[lab-root\] regions synced/);
   assert.match(
-    labRootSource,
+    labDomSyncSource,
     /const preserveKey = readPreservedMediaKey\(currentElement\) \|\| readPreservedMediaKey\(nextElement\);/
   );
-  assert.match(labRootSource, /function readPreservedDetailsState\(/);
-  assert.match(labRootSource, /element\.hasAttribute\("data-lab-interpretation-panel"\)/);
-  assert.match(labRootSource, /element\.hasAttribute\("data-lab-collapsible-panel"\)/);
-  assert.match(labRootSource, /currentElement\.open = preservedDetailsState;/);
-  assert.match(labRootSource, /currentElement\.scrollTop = scrollTop;/);
+  assert.match(labDomSyncSource, /function readPreservedDetailsState\(/);
+  assert.match(labDomSyncSource, /element\.hasAttribute\("data-lab-interpretation-panel"\)/);
+  assert.match(labDomSyncSource, /element\.hasAttribute\("data-lab-collapsible-panel"\)/);
+  assert.match(labDomSyncSource, /currentElement\.open = preservedDetailsState;/);
+  assert.match(labDomSyncSource, /currentElement\.scrollTop = scrollTop;/);
   assert.match(
     labRootSource,
     /syncRegion\(\{[\s\S]*debugShell: shell,[\s\S]*documentRef,[\s\S]*regionKey: region\.key,[\s\S]*render: region\.render,[\s\S]*root: runtimeRoot,[\s\S]*selectors: LAB_REGION_SELECTORS\[region\.key\],[\s\S]*\}\);/
   );
-  assert.match(workspaceSurfaceSource, /preserveKey \|\| "workspace-preview"/);
-  assert.match(workspaceSurfaceSource, /data-lab-preserve-media="\$\{escapeHtml\(preserveKey\)\}"/);
+  assert.match(workspaceSourceIntakeSource, /preserveKey \|\| "workspace-preview"/);
+  assert.match(
+    workspaceSourceIntakeSource,
+    /data-lab-preserve-media="\$\{escapeHtml\(preserveKey\)\}"/
+  );
 });
 
 test("laboratory decision layer maps compact signals into the intent backbone", () => {
@@ -2002,7 +2031,15 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   const labRootSource = readFileSync("rooms/laboratory/ui/lab-root.ts", "utf8");
   const toolOverlaySource = readFileSync("rooms/laboratory/ui/tool-management-overlay.ts", "utf8");
   const workspaceSurfaceSource = readFileSync("rooms/laboratory/ui/workspace-surface.ts", "utf8");
+  const workspaceSourceIntakeSource = readFileSync(
+    "rooms/laboratory/ui/workspace-source-intake.ts",
+    "utf8"
+  );
   const drawerSource = readFileSync("rooms/laboratory/ui/lab-drawer.ts", "utf8");
+  const drawerResultExploreSource = readFileSync(
+    "rooms/laboratory/ui/lab-drawer-result-explore.ts",
+    "utf8"
+  );
   const sourcePanelSource = readFileSync("rooms/laboratory/ui/lab-source-panel.ts", "utf8");
   const topBarSource = readFileSync("rooms/laboratory/ui/lab-top-bar.ts", "utf8");
   const projectWorkspaceSource = readFileSync(
@@ -2034,11 +2071,11 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   assert.doesNotMatch(projectWorkspaceSource, /renderProjectSourceImport\(state, copy\)/);
   assert.doesNotMatch(projectWorkspaceSource, /renderProjectImportReview\(state, copy\)/);
   assert.match(topBarSource, /data-lab-field="workspace\.hypothesis"/);
-  assert.match(drawerSource, /data-lab-action="run-deep-analysis"/);
+  assert.match(drawerResultExploreSource, /data-lab-action="run-deep-analysis"/);
   assert.match(drawerSource, /buildIntentPreviewSentence\(state\)/);
-  assert.match(drawerSource, /buildExecutionBridge/);
-  assert.match(drawerSource, /data-lab-drawer-alternatives="true"/);
-  assert.match(workspaceSurfaceSource, /Source setup controls/);
+  assert.match(drawerResultExploreSource, /buildExecutionBridge/);
+  assert.match(drawerResultExploreSource, /data-lab-drawer-alternatives="true"/);
+  assert.match(workspaceSourceIntakeSource, /Source setup controls/);
   assert.doesNotMatch(workspaceSurfaceSource, /renderLabTopbarActions\(state, copy\)/);
   assert.doesNotMatch(workspaceSurfaceSource, /renderGlobalProcessSummary\(state, copy\)/);
 });
@@ -2046,16 +2083,17 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
 test("laboratory center workbench attaches media viewport and timeline as one surface", () => {
   const labTypesSource = readFileSync("rooms/laboratory/models/lab-types.ts", "utf8");
   const workspaceSurfaceSource = readFileSync("rooms/laboratory/ui/workspace-surface.ts", "utf8");
+  const workspaceSourceIntakeSource = readFileSync(
+    "rooms/laboratory/ui/workspace-source-intake.ts",
+    "utf8"
+  );
   const laboratoryLayoutSource = readFileSync("rooms/laboratory/ui/laboratory-layout.ts", "utf8");
   const centerPanelSource = readFileSync("rooms/laboratory/ui/lab-center-panel.ts", "utf8");
   const topBarSource = readFileSync("rooms/laboratory/ui/lab-top-bar.ts", "utf8");
   const drawerSource = readFileSync("rooms/laboratory/ui/lab-drawer.ts", "utf8");
   const processStripSource = readFileSync("rooms/laboratory/ui/lab-process-strip.ts", "utf8");
-  const timelineSource = readFileSync(
-    "rooms/laboratory/ui/lab-waveform-timeline-render.ts",
-    "utf8"
-  );
-  const themeSource = readFileSync("rooms/laboratory/ui/lab-theme.css", "utf8");
+  const timelineSource = readLabWaveformTimelineSource();
+  const themeSource = readLabThemeSource();
 
   assert.match(labTypesSource, /export type LabPipelineBlock = \{/);
   assert.match(labTypesSource, /type: "section" \| "action" \| "status" \| "output";/);
@@ -2116,7 +2154,7 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   assert.match(workspaceSurfaceSource, /data-lab-action="workspace-controls-tab-select"/);
   assert.match(workspaceSurfaceSource, /data-lab-media-workbench="true"/);
   assert.match(
-    workspaceSurfaceSource,
+    workspaceSourceIntakeSource,
     /const controls = options\.controls === true \? "controls" : "";/
   );
   assert.match(workspaceSurfaceSource, /data-lab-selection-roi-controls-reserve="0"/);
@@ -2269,7 +2307,7 @@ test("laboratory center workbench attaches media viewport and timeline as one su
 test("laboratory process strip owns heartbeat and expanded runtime detail rendering", () => {
   const labRootSource = readFileSync("rooms/laboratory/ui/lab-root.ts", "utf8");
   const processStripSource = readFileSync("rooms/laboratory/ui/lab-process-strip.ts", "utf8");
-  const themeSource = readFileSync("rooms/laboratory/ui/lab-theme.css", "utf8");
+  const themeSource = readLabThemeSource();
 
   assert.match(labRootSource, /processStripHeartbeatInterval/);
   assert.match(labRootSource, /setInterval\(function \(\) \{\s*render\(\);/);
@@ -2304,7 +2342,7 @@ test("laboratory process strip owns heartbeat and expanded runtime detail render
 
 test("laboratory theme defines the multi-region shell grid and drawer layout contract", () => {
   const baseSource = readFileSync("rooms/laboratory/ui/styles/base.css", "utf8");
-  const themeSource = readFileSync("rooms/laboratory/ui/lab-theme.css", "utf8");
+  const themeSource = readLabThemeSource();
   const projectWorkspaceSource = readFileSync(
     "rooms/laboratory/ui/styles/project-workspace.css",
     "utf8"
@@ -2339,7 +2377,10 @@ test("laboratory theme defines the multi-region shell grid and drawer layout con
   assert.doesNotMatch(themeSource, /\.labx-drawer__expand-btn/);
   assert.match(themeSource, /\.labx-center-skeleton__label\s*\{/);
   assert.match(themeSource, /\.labx-boot-overlay\s*\{[\s\S]*pointer-events:\s*auto;/);
-  assert.match(themeSource, /\.labx-boot-panel\s*\{[\s\S]*border-radius:\s*var\(--labx-radius-card\);/);
+  assert.match(
+    themeSource,
+    /\.labx-boot-panel\s*\{[\s\S]*border-radius:\s*var\(--labx-radius-card\);/
+  );
   assert.match(themeSource, /@keyframes labx-skeleton-breathe/);
   assert.doesNotMatch(themeSource, /\.labx-shell\[data-ready="false"\]::after/);
   assert.doesNotMatch(themeSource, /\.labx-shell\[data-ready="false"\]\s+\.labx-center-panel/);
@@ -2371,7 +2412,10 @@ test("laboratory theme defines the multi-region shell grid and drawer layout con
     projectWorkspaceSource,
     /\.labx-project-import__youtube-preview\s*\{[\s\S]*display:\s*grid;/
   );
-  assert.match(projectWorkspaceSource, /\.labx-project-import__progress\s*\{[\s\S]*display:\s*grid;/);
+  assert.match(
+    projectWorkspaceSource,
+    /\.labx-project-import__progress\s*\{[\s\S]*display:\s*grid;/
+  );
   assert.match(projectWorkspaceSource, /\.labx-strategy-list\s*\{[\s\S]*display:\s*grid;/);
   assert.match(projectWorkspaceSource, /\.labx-strategy-list\s*\{[\s\S]*gap:\s*10px;/);
   assert.match(
@@ -2421,10 +2465,7 @@ test("laboratory selection preview exposes soft execution intent affordances wit
 });
 
 test("laboratory execution plan UI stays passive and derived from active intent", () => {
-  const timelineSource = readFileSync(
-    "rooms/laboratory/ui/lab-waveform-timeline-render.ts",
-    "utf8"
-  );
+  const timelineSource = readLabWaveformTimelineSource();
 
   assert.match(timelineSource, /data-lab-execution-plan="true"/);
   assert.match(timelineSource, /Execution plan/);
@@ -2436,10 +2477,7 @@ test("laboratory execution plan UI stays passive and derived from active intent"
 });
 
 test("laboratory execution simulation UI stays passive and derived from active plan", () => {
-  const timelineSource = readFileSync(
-    "rooms/laboratory/ui/lab-waveform-timeline-render.ts",
-    "utf8"
-  );
+  const timelineSource = readLabWaveformTimelineSource();
 
   assert.match(timelineSource, /data-lab-execution-simulation="true"/);
   assert.match(timelineSource, /Simulation preview/);
@@ -2452,10 +2490,7 @@ test("laboratory execution simulation UI stays passive and derived from active p
 });
 
 test("laboratory execution readiness UI stays passive and owned by active readiness only", () => {
-  const timelineSource = readFileSync(
-    "rooms/laboratory/ui/lab-waveform-timeline-render.ts",
-    "utf8"
-  );
+  const timelineSource = readLabWaveformTimelineSource();
 
   assert.match(timelineSource, /data-lab-execution-readiness="true"/);
   assert.match(timelineSource, /Execution readiness/);
@@ -2526,10 +2561,7 @@ test("laboratory execution readiness render ownership stays tied to active readi
 });
 
 test("laboratory execution payload preview UI stays passive and technical", () => {
-  const timelineSource = readFileSync(
-    "rooms/laboratory/ui/lab-waveform-timeline-render.ts",
-    "utf8"
-  );
+  const timelineSource = readLabWaveformTimelineSource();
 
   assert.match(timelineSource, /data-lab-execution-payload-preview="true"/);
   assert.match(timelineSource, /Execution payload \(preview\)/);
@@ -2638,10 +2670,7 @@ test("laboratory execution payload preview render ownership stays tied to active
 });
 
 test("laboratory execution reflection UI stays passive and advisory", () => {
-  const timelineSource = readFileSync(
-    "rooms/laboratory/ui/lab-waveform-timeline-render.ts",
-    "utf8"
-  );
+  const timelineSource = readLabWaveformTimelineSource();
 
   assert.match(timelineSource, /data-lab-execution-reflection="true"/);
   assert.match(timelineSource, /Execution reflection/);
@@ -2762,10 +2791,7 @@ test("laboratory execution reflection render ownership stays tied to active refl
 });
 
 test("laboratory execution alternatives UI stays passive and comparative", () => {
-  const timelineSource = readFileSync(
-    "rooms/laboratory/ui/lab-waveform-timeline-render.ts",
-    "utf8"
-  );
+  const timelineSource = readLabWaveformTimelineSource();
 
   assert.match(timelineSource, /data-lab-execution-alternatives="true"/);
   assert.match(timelineSource, /Alternative evaluation/);
@@ -2906,10 +2932,7 @@ test("laboratory execution alternatives render ownership stays tied to active re
 });
 
 test("laboratory execution candidate UI stays passive and structural", () => {
-  const timelineSource = readFileSync(
-    "rooms/laboratory/ui/lab-waveform-timeline-render.ts",
-    "utf8"
-  );
+  const timelineSource = readLabWaveformTimelineSource();
   const candidateFunctionStart = timelineSource.indexOf("function renderExecutionCandidate");
   const candidateFunctionEnd = timelineSource.indexOf(
     "function formatCommitmentTimestamp",
@@ -3287,10 +3310,7 @@ test("laboratory execution staging UI stays passive and avoids action language",
   assert.doesNotMatch(stagingPanel, /\b(Run|Execute|Apply|Start|Commit|Queue)\b/);
   assert.doesNotMatch(stagingPanel, /commitmentStatus|committed|commitment/i);
 
-  const timelineSource = readFileSync(
-    "rooms/laboratory/ui/lab-waveform-timeline-render.ts",
-    "utf8"
-  );
+  const timelineSource = readLabWaveformTimelineSource();
   assert.match(timelineSource, /data-lab-execution-staging="true"/);
   assert.match(timelineSource, /function renderExecutionStaging/);
   assert.doesNotMatch(timelineSource, /workspace-execution-staging/);
@@ -3490,13 +3510,17 @@ test("laboratory phase 4.95 i18n keys keep English and Turkish catalog parity", 
 test("laboratory process layer is single-source and old right panel is retired", () => {
   const surfaceSource = readFileSync("rooms/laboratory/ui/workspace-surface.ts", "utf8");
   const drawerSource = readFileSync("rooms/laboratory/ui/lab-drawer.ts", "utf8");
+  const drawerResultExploreSource = readFileSync(
+    "rooms/laboratory/ui/lab-drawer-result-explore.ts",
+    "utf8"
+  );
   const processStripSource = readFileSync("rooms/laboratory/ui/lab-process-strip.ts", "utf8");
-  const themeSource = readFileSync("rooms/laboratory/ui/lab-theme.css", "utf8");
+  const themeSource = readLabThemeSource();
 
   assert.doesNotMatch(surfaceSource, /data-lab-global-process="true"/);
   assert.doesNotMatch(surfaceSource, /renderWorkspaceProcessPanel/);
   assert.equal(existsSync("rooms/laboratory/ui/workspace-process-panel.ts"), false);
-  assert.match(drawerSource, /getLaboratoryRightPanelContext/);
+  assert.match(drawerResultExploreSource, /getLaboratoryRightPanelContext/);
   assert.match(processStripSource, /getLaboratoryProcessSummary/);
   assert.doesNotMatch(drawerSource, /labx-process-panel/);
   assert.doesNotMatch(themeSource, /labx-process-panel|labx-intent-map|labx-output-trace/);

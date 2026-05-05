@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
+import { readCssWithImports } from "./helpers/css-imports.ts";
 import { loadWorkspaceScriptForVm } from "./helpers/room-workspace-script.ts";
 
 test("rooms expose the shared shell seams expected by the normalized layout contract", () => {
@@ -35,7 +36,7 @@ test("room root entrypoints stay orchestration-only after layout normalization",
   const laboratoryHostIndexSource = readFileSync("rooms/laboratory/host/index.ts", "utf8");
   const laboratoryUiIndexSource = readFileSync("rooms/laboratory/ui/index.ts", "utf8");
   const laboratoryUiStyleSource = readFileSync("rooms/laboratory/ui/style.css", "utf8");
-  const laboratoryThemeStyleSource = readFileSync("rooms/laboratory/ui/lab-theme.css", "utf8");
+  const laboratoryThemeStyleSource = readCssWithImports("rooms/laboratory/ui/lab-theme.css");
 
   assert.match(gameRoomHostIndexSource, /from "\.\/runtime\.js"/);
   assert.match(gameRoomHostIndexSource, /export default createGameRoomHostRuntime\(\);/);

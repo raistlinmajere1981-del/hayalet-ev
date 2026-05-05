@@ -684,47 +684,64 @@ test("laboratory workspace removes the legacy local-copy helper copy from the in
 });
 
 test("laboratory controller keeps project import draft and add wiring on the active source flow", () => {
-  const source = readFileSync("rooms/laboratory/runtime/lab-run-controller.ts", "utf8");
+  const formActionControllerSource = readFileSync(
+    "rooms/laboratory/runtime/controller/lab-form-action-controller.ts",
+    "utf8"
+  );
+  const sourceDraftControllerSource = readFileSync(
+    "rooms/laboratory/runtime/controller/lab-source-draft-controller.ts",
+    "utf8"
+  );
+  const sourceActionControllerSource = readFileSync(
+    "rooms/laboratory/runtime/controller/lab-source-action-controller.ts",
+    "utf8"
+  );
 
-  assert.match(source, /function buildProjectImportDraftPatch/);
-  assert.equal(source.includes("project-import." + "file" + "NameHint"), false);
-  assert.match(source, /case "project-import\.urlInput":/);
-  assert.match(source, /case "project-import\.youtubeCaptureMode":/);
-  assert.match(source, /case "project-import\.youtubeVideoFormat":/);
-  assert.match(source, /case "project-import\.youtubeAudioFormat":/);
+  assert.match(sourceDraftControllerSource, /function buildProjectImportDraftPatch/);
+  assert.equal(formActionControllerSource.includes("project-import." + "file" + "NameHint"), false);
+  assert.match(formActionControllerSource, /case "project-import\.urlInput":/);
+  assert.match(formActionControllerSource, /case "project-import\.youtubeCaptureMode":/);
+  assert.match(formActionControllerSource, /case "project-import\.youtubeVideoFormat":/);
+  assert.match(formActionControllerSource, /case "project-import\.youtubeAudioFormat":/);
   assert.match(
-    source,
+    sourceActionControllerSource,
     /function selectProjectByValue[\s\S]*type: "project-import-reset"[\s\S]*sendMediaAction\("project-select"/
   );
-  assert.match(source, /case "project\.id":[\s\S]*selectProjectByValue\(String\(targetValue \|\| ""\)\)/);
-  assert.match(source, /field\.startsWith\("project-import\.youtubeCustom\."\)/);
-  assert.match(source, /type: "project-import-draft-updated"/);
-  assert.match(source, /type: "youtube-import-format-selected"/);
-  assert.match(source, /type: "project-import-reset"/);
-  assert.match(source, /function runProjectImportAdd/);
-  assert.match(source, /buildProjectImportHostAction\(deps\.store\.getState\(\)\)/);
-  assert.match(source, /buildProjectImportLocalHostAction/);
-  assert.match(source, /buildProjectImportUrlCheckAction/);
   assert.match(
-    source,
-    /sendMediaAction\(importAction\.action, \{ fields: importAction\.fields \}\)/
+    formActionControllerSource,
+    /case "project\.id":[\s\S]*selectProjectByValue\(String\(targetValue \|\| ""\)\)/
   );
-  assert.match(source, /case "project-import-local-add":/);
-  assert.match(source, /case "project-import-check-url":/);
-  assert.match(source, /case "project-import-url-add":/);
-  assert.match(source, /case "project-import-add":/);
-  assert.match(source, /case "project-import-clear":/);
-  assert.match(source, /youtubeCustom: sourceDrafts\.youtubeCustom/);
-  assert.match(source, /case "source-youtube-preset":/);
-  assert.match(source, /field\.startsWith\("source\.youtubeCustom\."\)/);
-  assert.match(source, /mode: getDefaultSourceMode\(state, targetValue\)/);
-  assert.match(source, /case "source\.mode":/);
+  assert.match(formActionControllerSource, /field\.startsWith\("project-import\.youtubeCustom\."\)/);
+  assert.match(formActionControllerSource, /type: "project-import-draft-updated"/);
+  assert.match(formActionControllerSource, /type: "youtube-import-format-selected"/);
+  assert.match(sourceActionControllerSource, /type: "project-import-reset"/);
+  assert.match(sourceActionControllerSource, /function runProjectImportAdd/);
   assert.match(
-    source,
-    /case "source\.mode":\s*if \(targetValue === "youtube"\) \{\s*dispatch\(\{ type: "enter-youtube-import-mode" \}\);\s*return;\s*\}\s*if \(isWorkspaceMutationLocked\("source"\)\)/
+    sourceActionControllerSource,
+    /buildProjectImportHostAction\(deps\.store\.getState\(\)\)/
+  );
+  assert.match(sourceActionControllerSource, /buildProjectImportLocalHostAction/);
+  assert.match(sourceActionControllerSource, /buildProjectImportUrlCheckAction/);
+  assert.match(
+    sourceActionControllerSource,
+    /deps\.sendMediaAction\(importAction\.action, \{ fields: importAction\.fields \}\)/
+  );
+  assert.match(sourceActionControllerSource, /case "project-import-local-add":/);
+  assert.match(sourceActionControllerSource, /case "project-import-check-url":/);
+  assert.match(sourceActionControllerSource, /case "project-import-url-add":/);
+  assert.match(sourceActionControllerSource, /case "project-import-add":/);
+  assert.match(sourceActionControllerSource, /case "project-import-clear":/);
+  assert.match(sourceActionControllerSource, /youtubeCustom: sourceDrafts\.youtubeCustom/);
+  assert.match(sourceActionControllerSource, /case "source-youtube-preset":/);
+  assert.match(formActionControllerSource, /field\.startsWith\("source\.youtubeCustom\."\)/);
+  assert.match(formActionControllerSource, /mode: getDefaultSourceMode\(state, targetValue\)/);
+  assert.match(formActionControllerSource, /case "source\.mode":/);
+  assert.match(
+    formActionControllerSource,
+    /case "source\.mode":[\s\S]*if \(targetValue === "youtube"\)[\s\S]*deps\.dispatch\(\{ type: "enter-youtube-import-mode" \}\)[\s\S]*deps\.isWorkspaceMutationLocked\("source"\)/
   );
   assert.match(
-    source,
+    sourceActionControllerSource,
     /sendMediaAction\("source-update-draft", \{\s*fields: mergeSourceDrafts\(state, patch\)/
   );
 });

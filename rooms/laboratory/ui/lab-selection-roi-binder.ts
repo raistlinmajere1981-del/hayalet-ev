@@ -4,6 +4,7 @@ import type {
   LabSelectionROI,
   LabStoreEvent,
 } from "../models/lab-types.js";
+import { bindLabDocumentEvents, isClosestCapableTarget } from "./lab-dom-events.js";
 
 const MIN_SELECTION_ROI_SIZE_PX = 8;
 
@@ -45,14 +46,8 @@ type MouseLikeEvent = Event & {
   target?: EventTarget | null;
 };
 
-function isClosestCapableTarget(value: EventTarget | null): value is EventTarget & {
-  closest: (selector: string) => StageElement | null;
-} {
-  return typeof value === "object" && value !== null && "closest" in value;
-}
-
 function getClosestTarget(target: EventTarget | null, selector: string): StageElement | null {
-  if (!isClosestCapableTarget(target)) {
+  if (!isClosestCapableTarget<StageElement>(target)) {
     return null;
   }
   return target.closest(selector);
@@ -216,17 +211,11 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
     dragState = null;
   }
 
-  deps.documentRef.addEventListener("click", handleClick);
-  deps.documentRef.addEventListener("mousedown", handleMouseDown);
-  deps.documentRef.addEventListener("mousemove", handleMouseMove);
-  deps.documentRef.addEventListener("mouseup", handleMouseUp);
-  deps.documentRef.addEventListener("keydown", handleKeyDown);
-
-  return function unbind() {
-    deps.documentRef.removeEventListener("click", handleClick);
-    deps.documentRef.removeEventListener("mousedown", handleMouseDown);
-    deps.documentRef.removeEventListener("mousemove", handleMouseMove);
-    deps.documentRef.removeEventListener("mouseup", handleMouseUp);
-    deps.documentRef.removeEventListener("keydown", handleKeyDown);
-  };
+  return bindLabDocumentEvents(deps.documentRef, [
+    { type: "click", listener: handleClick },
+    { type: "mousedown", listener: handleMouseDown },
+    { type: "mousemove", listener: handleMouseMove },
+    { type: "mouseup", listener: handleMouseUp },
+    { type: "keydown", listener: handleKeyDown },
+  ]);
 }

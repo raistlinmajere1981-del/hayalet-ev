@@ -108,30 +108,45 @@ test("laboratory source panel owns the active project selector", () => {
 
 test("laboratory controller starts clean projects and keeps naming/delete safeguards", () => {
   const source = readFileSync("rooms/laboratory/runtime/lab-run-controller.ts", "utf8");
+  const sourceDraftControllerSource = readFileSync(
+    "rooms/laboratory/runtime/controller/lab-source-draft-controller.ts",
+    "utf8"
+  );
+  const sourceActionControllerSource = readFileSync(
+    "rooms/laboratory/runtime/controller/lab-source-action-controller.ts",
+    "utf8"
+  );
+  const assetActionControllerSource = readFileSync(
+    "rooms/laboratory/runtime/controller/lab-asset-action-controller.ts",
+    "utf8"
+  );
   const hostSource = readFileSync(
     "rooms/laboratory/main-functions/media-analysis/host/action-handlers-project.ts",
     "utf8"
   );
-  const lifecycleSource = readFileSync(
-    "rooms/laboratory/shared/host/project-lifecycle.ts",
-    "utf8"
-  );
+  const lifecycleSource = readFileSync("rooms/laboratory/shared/host/project-lifecycle.ts", "utf8");
 
-  assert.match(source, /buildAutoProjectName,/);
-  assert.match(source, /function buildEmptySourceState\(/);
-  assert.match(source, /function startCleanProjectSession\(\)/);
-  assert.match(source, /if \(projectValue === "new"\)/);
+  assert.match(sourceActionControllerSource, /buildAutoProjectName,/);
+  assert.match(sourceDraftControllerSource, /function buildEmptySourceState\(/);
+  assert.match(sourceActionControllerSource, /function startCleanProjectSession\(\)/);
+  assert.match(sourceActionControllerSource, /if \(projectValue === "new"\)/);
   assert.match(source, /case "project-create":/);
-  assert.match(source, /const resetSourceState = buildEmptySourceState\(state\);/);
-  assert.match(source, /type: "source-config-patched",\s*patch: resetSourceState/);
-  assert.match(source, /type: "source-drafts-updated",\s*patch: resetSourceState\.drafts/);
-  assert.match(source, /type: "source-drafts-committed"/);
-  assert.match(source, /sendMediaAction\("project-create"\)/);
-  assert.match(source, /function removeAssetsWithConfirmation\(/);
+  assert.match(sourceActionControllerSource, /const resetSourceState = buildEmptySourceState\(state\);/);
+  assert.match(sourceActionControllerSource, /type: "source-config-patched",\s*patch: resetSourceState/);
+  assert.match(
+    sourceActionControllerSource,
+    /type: "source-drafts-updated",\s*patch: resetSourceState\.drafts/
+  );
+  assert.match(sourceActionControllerSource, /type: "source-drafts-committed"/);
+  assert.match(sourceActionControllerSource, /sendMediaAction\("project-create"\)/);
+  assert.match(assetActionControllerSource, /function removeAssetsWithConfirmation\(/);
   assert.doesNotMatch(source, /findBlankProjectId/);
   assert.doesNotMatch(source, /hasActiveSource/);
-  assert.match(source, /sendMediaAction\("project-rename", \{\s*name: buildAutoProjectName\(/);
-  assert.match(source, /deps\.windowRef\.confirm\(/);
+  assert.match(
+    sourceActionControllerSource,
+    /sendMediaAction\("project-rename", \{\s*name: buildAutoProjectName\(/
+  );
+  assert.match(sourceActionControllerSource, /deps\.windowRef\.confirm\(/);
   assert.match(hostSource, /rawResetSourceState = actionPayload\["resetSourceState"\]/);
   assert.match(hostSource, /await patchActiveProject\(runtime, function \(project\) \{/);
   assert.match(hostSource, /source: \{\s*\.\.\.resetSourceState,\s*\}/);

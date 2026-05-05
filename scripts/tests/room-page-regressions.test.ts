@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { toRoomRuntimeFileUrl } from "../../src/js/modules/rooms/room-runtime-url.ts";
+import { readCssWithImports } from "./helpers/css-imports.ts";
 
 test("toRoomRuntimeFileUrl normalizes linux paths", () => {
   assert.equal(
@@ -115,7 +116,7 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
     "utf8"
   );
   const laboratoryUiCssSource = readFileSync("rooms/laboratory/ui/style.css", "utf8");
-  const laboratoryThemeCssSource = readFileSync("rooms/laboratory/ui/lab-theme.css", "utf8");
+  const laboratoryThemeCssSource = readCssWithImports("rooms/laboratory/ui/lab-theme.css");
 
   assert.match(source, /private sceneFeatureId: string \| null = null;/);
   assert.match(

@@ -33,6 +33,10 @@ import {
   formatDecisionCoherenceAdvisory,
 } from "./lab-decision-coherence.js";
 import { formatLabI18n, resolveLabI18n, type LabI18nKey, type LabI18nLocale } from "./lab-i18n.js";
+import {
+  clampLabConfidence as clampConfidence,
+  pushUniqueString as pushUnique,
+} from "./lab-execution-metrics.js";
 
 export type LabExecutionCandidateResultInterpretation = {
   coverageLevel: "low" | "medium" | "high";
@@ -72,18 +76,8 @@ export type LabExecutionCandidateResolvedInput = {
   sourceKind: string;
 };
 
-function clampConfidence(value: number) {
-  return Math.max(0.25, Math.min(0.98, Number(value.toFixed(2))));
-}
-
 function createCandidateId(input: LabExecutionCandidateInput) {
   return `candidate:${input.executionPlan.id}`;
-}
-
-function pushUnique(target: string[], value: string) {
-  if (!target.includes(value)) {
-    target.push(value);
-  }
 }
 
 function hasEntries(value: Record<string, unknown>) {

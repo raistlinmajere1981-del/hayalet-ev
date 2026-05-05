@@ -5,6 +5,7 @@ import {
 } from "../../../shared/host/project-paths.js";
 import { normalizeLabAnalysisModuleSettings } from "../../../models/lab-types.js";
 import type { LabSettingsRecord } from "../../../models/lab-types.js";
+import { readNumberSetting } from "../../../shared/host/settings-readers.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 
@@ -103,11 +104,6 @@ function asNumber(value: unknown): number | null {
 
 function isNonNullString(value: string | null): value is string {
   return typeof value === "string" && value.length > 0;
-}
-
-function readNumberSetting(settings: LabSettingsRecord, key: string, fallback: number): number {
-  const value = settings[key];
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
 export function createAudioAnalysisSoundEventsModelRunner(

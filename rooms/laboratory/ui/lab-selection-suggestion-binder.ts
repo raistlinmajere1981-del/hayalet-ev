@@ -1,4 +1,5 @@
 import type { LabStoreEvent } from "../models/lab-types.js";
+import { bindLabDocumentEvents, isClosestCapableTarget } from "./lab-dom-events.js";
 
 type SelectionSuggestionBinderDeps = {
   canPreviewSuggestion: (suggestionId: string) => boolean;
@@ -7,14 +8,8 @@ type SelectionSuggestionBinderDeps = {
   getActivePreviewSuggestionId: () => string | null;
 };
 
-function isClosestCapableTarget(value: EventTarget | null): value is EventTarget & {
-  closest: (selector: string) => { getAttribute: (name: string) => string | null } | null;
-} {
-  return typeof value === "object" && value !== null && "closest" in value;
-}
-
 function isTargetInsideSelectionPanel(target: EventTarget | null) {
-  if (!isClosestCapableTarget(target)) {
+  if (!isClosestCapableTarget<{ getAttribute: (name: string) => string | null }>(target)) {
     return false;
   }
   const panel = target.closest("[data-lab-selection-panel]");
@@ -24,7 +19,7 @@ function isTargetInsideSelectionPanel(target: EventTarget | null) {
 export function bindLabSelectionSuggestionClicks(deps: SelectionSuggestionBinderDeps) {
   function handleClick(event: Event) {
     const target = event.target;
-    if (isClosestCapableTarget(target)) {
+    if (isClosestCapableTarget<{ getAttribute: (name: string) => string | null }>(target)) {
       const executionCommitmentSetTrigger = target.closest("[data-lab-execution-commitment-set]");
       if (
         executionCommitmentSetTrigger &&
@@ -178,11 +173,8 @@ export function bindLabSelectionSuggestionClicks(deps: SelectionSuggestionBinder
     });
   }
 
-  deps.documentRef.addEventListener("click", handleClick);
-  deps.documentRef.addEventListener("keydown", handleKeydown);
-
-  return function unbind() {
-    deps.documentRef.removeEventListener("click", handleClick);
-    deps.documentRef.removeEventListener("keydown", handleKeydown);
-  };
+  return bindLabDocumentEvents(deps.documentRef, [
+    { type: "click", listener: handleClick },
+    { type: "keydown", listener: handleKeydown },
+  ]);
 }

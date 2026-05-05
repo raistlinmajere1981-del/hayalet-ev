@@ -34,16 +34,10 @@ export type LabExecutionStagingResolvedInput = {
   executionReflection: LabExecutionReflection | null;
   executionSimulation: LabExecutionSimulation | null;
 };
-
-function clampConfidence(value: number) {
-  return Math.max(0.25, Math.min(0.98, Number(value.toFixed(2))));
-}
-
-function pushUnique(target: string[], value: string) {
-  if (!target.includes(value)) {
-    target.push(value);
-  }
-}
+import {
+  clampLabConfidence as clampConfidence,
+  pushUniqueString as pushUnique,
+} from "./lab-execution-metrics.js";
 
 function hasValidSelection(selection: LabSelection) {
   return (

@@ -1,3 +1,9 @@
+import {
+  bindLabDocumentEvents,
+  consumeLabEvent,
+  isClosestCapableTarget,
+} from "./lab-dom-events.js";
+
 type PreviewInspectionBinderDeps = {
   controller: {
     captureSnapshot: () => Promise<boolean> | boolean;
@@ -9,39 +15,18 @@ type PreviewInspectionBinderDeps = {
   documentRef: Pick<Document, "addEventListener" | "removeEventListener">;
 };
 
-type ClosestCapableTarget = EventTarget & {
-  closest: (selector: string) => Element | null;
-};
-
-function isClosestCapableTarget(value: EventTarget | null): value is ClosestCapableTarget {
-  return typeof value === "object" && value !== null && "closest" in value;
-}
-
 function isEditableTarget(target: EventTarget | null) {
-  if (!isClosestCapableTarget(target)) {
+  if (!isClosestCapableTarget<Element>(target)) {
     return false;
   }
   return target.closest("input, textarea, select, [contenteditable='true']") !== null;
-}
-
-function consumeEvent(event: Event) {
-  if (typeof event.preventDefault === "function") {
-    event.preventDefault();
-  }
-  if (typeof event.stopImmediatePropagation === "function") {
-    event.stopImmediatePropagation();
-    return;
-  }
-  if (typeof event.stopPropagation === "function") {
-    event.stopPropagation();
-  }
 }
 
 export function bindLabPreviewInspectionInteractions(deps: PreviewInspectionBinderDeps) {
   let interactionArmed = false;
 
   function setArmedFromTarget(target: EventTarget | null) {
-    if (!isClosestCapableTarget(target)) {
+    if (!isClosestCapableTarget<Element>(target)) {
       interactionArmed = false;
       return;
     }
@@ -52,7 +37,7 @@ export function bindLabPreviewInspectionInteractions(deps: PreviewInspectionBind
 
   function handleClick(event: Event) {
     const target = event.target;
-    if (!isClosestCapableTarget(target)) {
+    if (!isClosestCapableTarget<Element>(target)) {
       interactionArmed = false;
       return;
     }
@@ -60,7 +45,7 @@ export function bindLabPreviewInspectionInteractions(deps: PreviewInspectionBind
     const focusToggle = target.closest("[data-lab-selection-roi-focus-toggle]");
     if (focusToggle !== null) {
       interactionArmed = true;
-      consumeEvent(event);
+      consumeLabEvent(event);
       void deps.controller.toggleFocus();
       return;
     }
@@ -69,7 +54,7 @@ export function bindLabPreviewInspectionInteractions(deps: PreviewInspectionBind
     if (focusReset !== null) {
       interactionArmed = true;
       if (deps.controller.clearFocus()) {
-        consumeEvent(event);
+        consumeLabEvent(event);
       }
       return;
     }
@@ -77,7 +62,7 @@ export function bindLabPreviewInspectionInteractions(deps: PreviewInspectionBind
     const captureRegion = target.closest("[data-lab-selection-roi-capture]");
     if (captureRegion !== null) {
       interactionArmed = true;
-      consumeEvent(event);
+      consumeLabEvent(event);
       void deps.controller.captureSnapshot();
       return;
     }
@@ -86,7 +71,7 @@ export function bindLabPreviewInspectionInteractions(deps: PreviewInspectionBind
     if (clearSnapshot !== null) {
       interactionArmed = true;
       if (deps.controller.clearSnapshot()) {
-        consumeEvent(event);
+        consumeLabEvent(event);
       }
       return;
     }
@@ -97,7 +82,7 @@ export function bindLabPreviewInspectionInteractions(deps: PreviewInspectionBind
       const direction = directionValue === "-1" ? -1 : directionValue === "1" ? 1 : null;
       if (direction !== null && deps.controller.stepFrame(direction)) {
         interactionArmed = true;
-        consumeEvent(event);
+        consumeLabEvent(event);
       }
       return;
     }
@@ -107,14 +92,14 @@ export function bindLabPreviewInspectionInteractions(deps: PreviewInspectionBind
 
   function handleDoubleClick(event: Event) {
     const target = event.target;
-    if (!isClosestCapableTarget(target)) {
+    if (!isClosestCapableTarget<Element>(target)) {
       return;
     }
     if (target.closest("[data-lab-selection-roi='true']") === null) {
       return;
     }
     interactionArmed = true;
-    consumeEvent(event);
+    consumeLabEvent(event);
     void deps.controller.toggleFocus();
   }
 
@@ -125,26 +110,22 @@ export function bindLabPreviewInspectionInteractions(deps: PreviewInspectionBind
     }
     if (keyboardEvent.key === "Escape") {
       if (deps.controller.clearFocus()) {
-        consumeEvent(event);
+        consumeLabEvent(event);
       }
       return;
     }
     if (keyboardEvent.key === "ArrowLeft" && deps.controller.stepFrame(-1)) {
-      consumeEvent(event);
+      consumeLabEvent(event);
       return;
     }
     if (keyboardEvent.key === "ArrowRight" && deps.controller.stepFrame(1)) {
-      consumeEvent(event);
+      consumeLabEvent(event);
     }
   }
 
-  deps.documentRef.addEventListener("click", handleClick);
-  deps.documentRef.addEventListener("dblclick", handleDoubleClick);
-  deps.documentRef.addEventListener("keydown", handleKeyDown);
-
-  return function unbind() {
-    deps.documentRef.removeEventListener("click", handleClick);
-    deps.documentRef.removeEventListener("dblclick", handleDoubleClick);
-    deps.documentRef.removeEventListener("keydown", handleKeyDown);
-  };
+  return bindLabDocumentEvents(deps.documentRef, [
+    { type: "click", listener: handleClick },
+    { type: "dblclick", listener: handleDoubleClick },
+    { type: "keydown", listener: handleKeyDown },
+  ]);
 }

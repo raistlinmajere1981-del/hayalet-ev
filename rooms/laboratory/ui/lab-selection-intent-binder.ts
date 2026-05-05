@@ -1,4 +1,5 @@
 import type { LabSelectionIntent, LabStoreEvent } from "../models/lab-types.js";
+import { bindLabDocumentEvents, isClosestCapableTarget } from "./lab-dom-events.js";
 
 type SelectionIntentBinderDeps = {
   documentRef: Pick<Document, "addEventListener" | "removeEventListener">;
@@ -17,16 +18,10 @@ function isSelectionIntentValue(value: string): value is Exclude<LabSelectionInt
   return LAB_SELECTION_INTENT_VALUES.has(value as LabSelectionIntent);
 }
 
-function isClosestCapableTarget(value: EventTarget | null): value is EventTarget & {
-  closest: (selector: string) => { getAttribute: (name: string) => string | null } | null;
-} {
-  return typeof value === "object" && value !== null && "closest" in value;
-}
-
 export function bindLabSelectionIntentClicks(deps: SelectionIntentBinderDeps) {
   function handleClick(event: Event) {
     const target = event.target;
-    if (!isClosestCapableTarget(target)) {
+    if (!isClosestCapableTarget<{ getAttribute: (name: string) => string | null }>(target)) {
       return;
     }
     const trigger = target.closest("[data-lab-selection-intent]");
@@ -44,9 +39,5 @@ export function bindLabSelectionIntentClicks(deps: SelectionIntentBinderDeps) {
     });
   }
 
-  deps.documentRef.addEventListener("click", handleClick);
-
-  return function unbind() {
-    deps.documentRef.removeEventListener("click", handleClick);
-  };
+  return bindLabDocumentEvents(deps.documentRef, [{ type: "click", listener: handleClick }]);
 }

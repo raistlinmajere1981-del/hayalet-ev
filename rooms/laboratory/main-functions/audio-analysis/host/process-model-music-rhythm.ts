@@ -5,6 +5,11 @@ import {
 } from "../../../shared/host/project-paths.js";
 import { normalizeLabAnalysisModuleSettings } from "../../../models/lab-types.js";
 import type { LabSettingsRecord } from "../../../models/lab-types.js";
+import {
+  readBooleanSetting,
+  readNumberSetting,
+  readStringSetting,
+} from "../../../shared/host/settings-readers.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 
@@ -95,21 +100,6 @@ type AudioAnalysisMusicRhythmModelRunnerDeps = {
 
 function isNonNullString(value: string | null): value is string {
   return typeof value === "string" && value.length > 0;
-}
-
-function readStringSetting(settings: LabSettingsRecord, key: string, fallback: string): string {
-  const value = settings[key];
-  return typeof value === "string" && value.trim() !== "" ? value : fallback;
-}
-
-function readNumberSetting(settings: LabSettingsRecord, key: string, fallback: number): number {
-  const value = settings[key];
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
-}
-
-function readBooleanSetting(settings: LabSettingsRecord, key: string, fallback: boolean): boolean {
-  const value = settings[key];
-  return typeof value === "boolean" ? value : fallback;
 }
 
 export function createAudioAnalysisMusicRhythmModelRunner(
