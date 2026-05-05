@@ -1391,6 +1391,7 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
               data-lab-action="timeline-remove-bookmark"
               data-lab-value="${escapeHtml(bookmark.id)}"
               title="${escapeHtml(copy.t("mediaAnalysis.timeline.removeBookmark", "Remove mark"))}"
+              aria-label="${escapeHtml(copy.t("mediaAnalysis.timeline.removeBookmark", "Remove mark"))}"
             >×</button>
           </div>
         </div>
@@ -1486,6 +1487,7 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
             type="button"
             data-lab-action="timeline-toggle-playback"
             title="${escapeHtml(copy.t("mediaAnalysis.timeline.playPause", "Play / pause"))}"
+            ${lockDisabledAttr}
           ><span data-lab-role="timeline-play-toggle-label">▶</span></button>
           <label class="labx-timeline__volume" title="${escapeHtml(copy.t("mediaAnalysis.timeline.volume", "System volume"))}">
             <span>${escapeHtml(copy.t("mediaAnalysis.timeline.volume", "Volume"))}</span>
@@ -1497,6 +1499,7 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
               value="${String(transportVolume)}"
               data-lab-field="workspace.previewVolume"
               data-lab-role="timeline-volume"
+              ${lockDisabledAttr}
             />
           </label>
         </div>

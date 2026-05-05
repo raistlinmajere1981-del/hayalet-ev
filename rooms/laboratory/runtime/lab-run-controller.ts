@@ -51,6 +51,7 @@ import {
   getWorkbench,
   getWorkspaceLockState,
   hasReportPayload,
+  isAnyHeavyWorkActive,
   isRunActive,
   isRunComplete,
 } from "./lab-selectors.js";
@@ -2612,7 +2613,16 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "drawer-explore-toggled":
         dispatch({ type: "drawer-explore-toggled" });
         return;
+      case "topbar-pill-selection":
+        dispatch({
+          type: "selection-tab-toggled",
+          active: !state.ui.workspace.selectionTabActive,
+        });
+        return;
       case "topbar-pill-source":
+        if (state.ui.workspace.selectionTabActive) {
+          dispatch({ type: "selection-tab-toggled", active: false });
+        }
         if (isRunActive(state) !== true) {
           dispatch({ type: "drawer-mode-requested", mode: "setup" });
         }
@@ -2941,6 +2951,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         dispatch({ type: "workspace-selection-micro-zoom-toggled" });
         return;
       case "timeline-toggle-playback":
+        if (isWorkspaceMutationLocked("timeline")) {
+          return;
+        }
         toggleTimelinePlayback();
         return;
       case "timeline-shift-playhead":
@@ -3110,6 +3123,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "report-export-pdf":
         startTrackedReportExport();
         return;
+      // V5 source panel
+      case "source-panel-toggle":
+        dispatch({ type: "source-panel-toggled" });
+        return;
       // V4 project & entity workspace actions
       case "project-workspace-open":
         if (state.ui.projectWorkspaceOpen === true) {
@@ -3186,6 +3203,19 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         return;
       }
       case "project-workspace-send-to-ai":
+        return;
+      // V4B icon rail inspector actions
+      case "inspector-pin-toggle":
+        dispatch({ type: "inspector-pin-toggle" });
+        return;
+      case "icon-rail-slot-select":
+        dispatch({
+          type: "icon-rail-slot-selected",
+          slotId:
+            value.trim() !== ""
+              ? (value as import("../models/lab-types.js").LabIconRailSlotId)
+              : null,
+        });
         return;
       default:
         return;
@@ -3394,6 +3424,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         return;
       }
       if (workspaceField === "previewVolume") {
+        if (isWorkspaceMutationLocked("timeline")) {
+          return;
+        }
         setLabFocusLayer("timeline");
         dispatch({
           type: "workspace-preview-volume-updated",
@@ -3767,9 +3800,18 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     deps.documentRef.addEventListener("keydown", handleKeyDown as EventListener);
     deps.windowRef.addEventListener("mousemove", handleTimelineMouseMove as EventListener);
     deps.windowRef.addEventListener("mouseup", handleTimelineMouseUp as EventListener);
+    let prevHeavyWorkActive = isAnyHeavyWorkActive(deps.store.getState());
     deps.store.subscribe(function () {
       syncTimelinePlaybackUiFromState();
       workspaceAudioVisualizer.sync();
+      const currentHeavy = isAnyHeavyWorkActive(deps.store.getState());
+      if (currentHeavy && !prevHeavyWorkActive) {
+        const media = getTimelineSyncMedia();
+        if (media !== null && media.paused === false) {
+          media.pause?.();
+        }
+      }
+      prevHeavyWorkActive = currentHeavy;
     });
     queueMicrotask(function () {
       syncTimelinePlaybackUiFromState();

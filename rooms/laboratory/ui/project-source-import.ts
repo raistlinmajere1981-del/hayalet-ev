@@ -417,7 +417,7 @@ function renderYoutubeDetailedControls(state: LabStoreState, copy: LabI18n) {
   `;
 }
 
-function renderYoutubeCheckResult(state: LabStoreState, copy: LabI18n) {
+export function renderYoutubeCheckResult(state: LabStoreState, copy: LabI18n) {
   const youtube = state.ui.youtubeImport;
   if (youtube.status === "parsing" || state.ui.projectImport.urlCheck.status === "checking") {
     return `<p class="labx-project-import__status" role="status">${escapeHtml(copy.t("mediaAnalysis.source.youtubeImport.statusParsing", "Analyzing video metadata..."))}</p>`;
@@ -473,7 +473,7 @@ function renderYoutubeCheckResult(state: LabStoreState, copy: LabI18n) {
   `;
 }
 
-function renderDirectUrlCheckResult(state: LabStoreState, copy: LabI18n) {
+export function renderDirectUrlCheckResult(state: LabStoreState, copy: LabI18n) {
   const check = state.ui.projectImport.urlCheck;
   if (check.status !== "ready" || check.isYoutube === true) {
     return "";
@@ -670,7 +670,7 @@ function renderYoutubeProgressStages(
   `;
 }
 
-function renderProjectImportProgress(state: LabStoreState, copy: LabI18n) {
+export function renderProjectImportProgress(state: LabStoreState, copy: LabI18n) {
   const actionState = buildProjectImportHostAction(state);
   const action = getTrackedProjectImportAction(state);
   const latestEvent = getLatestProjectImportEvent(state, action);

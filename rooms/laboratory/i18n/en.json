@@ -238,6 +238,32 @@
       "ariaLabel": "Workspace controls",
       "tabs": "Control tabs"
     },
+    "iconRail": {
+      "roi-select": "Region Select",
+      "audio-focus": "Audio Focus",
+      "frame-export": "Frame Export",
+      "clip-export": "Clip Export",
+      "enhanced-frame": "Enhanced Frame",
+      "before-after": "Before / After",
+      "audio-extract": "Extract Audio",
+      "band-pass": "Band-pass Voice",
+      "denoise": "Denoise",
+      "stem-separate": "Stem Separation",
+      "stabilize": "Stabilize",
+      "visual-adjust": "Visual Adjustments",
+      "pin": "Pin panel",
+      "close": "Close",
+      "draft": "Draft",
+      "emptyAudio": "Audio controls are only available for audio or video sources.",
+      "emptyVisual": "Visual adjustments are only available for image or video sources.",
+      "emptyOperation": "No operation available for this slot.",
+      "operationUnavailable": "Operation unavailable. Load a source and try again."
+    },
+    "overlay": {
+      "processing": "Processing...",
+      "cancel": "Cancel",
+      "elapsed": "Elapsed"
+    },
     "projectWorkspace": {
       "title": "Project Workspace",
       "managementTitle": "Project Management",

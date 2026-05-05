@@ -19,9 +19,8 @@ Laboratory:
 - medya ile çalışır
 - ses ile çalışır
 - resim ile çalışır
-- altyazı ile çalışır
 
-Ama bunları üç ayrı dünya gibi kurmaz.
+Ama bunları ayrı dünya gibi kurmaz.
 
 👉 tek bir akışta toplar
 
@@ -168,15 +167,3 @@ Ve sonunda:
 > çalışılmış bir bulguya dönüşür.
 
 ---
-
-## Teknik Bakım Notu
-
-Laboratory kaynak kodu için oda-local sahiplik ve temizlik sınırları:
-
-- `rooms/laboratory/README.md`
-
-Kuralların kısa hali:
-
-- gerçek kaynak `rooms/laboratory` altındadır
-- `data/rooms/laboratory` generated/installed kopyadır
-- dinamik tool payloadları ve manifest assetleri import grafiğinde görünmese bile runtime girdisidir

@@ -4,16 +4,6 @@ import { getLabAssetPreviewKind, getLabAssetPreviewUrl } from "./lab-asset-displ
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
-const ENTITY_ICONS: Record<string, string> = {
-  source: "\u25B6",
-  clip: "\u25B6",
-  frame: "\uD83D\uDDBC",
-  audio: "\u266B",
-  image: "\uD83D\uDDBC",
-  report: "\uD83D\uDCC4",
-  artifact: "\u2699",
-};
-
 const BADGE_LABELS: Record<string, string> = {
   source: "SRC",
   clip: "CLP",
@@ -111,7 +101,7 @@ function renderCardThumb(asset: LabAsset): string {
         ? `<video class="labx-pw-card__thumb-img labx-pw-card__thumb-video" src="${escapeHtml(previewUrl)}" muted playsinline preload="metadata" aria-hidden="true"></video>`
         : `<img class="labx-pw-card__thumb-img" src="${escapeHtml(previewUrl)}" alt="" loading="lazy" />`;
   } else {
-    thumbContent = `<span>${ENTITY_ICONS[asset.type] || "\u2699"}</span>`;
+    thumbContent = `<span class="labx-pw-card__thumb-monogram">${escapeHtml(BADGE_LABELS[asset.type] || "ENT")}</span>`;
   }
 
   const scrubBar =

@@ -72,7 +72,7 @@ function renderOperationButton(capability: LabOperationCapabilityProjection, cop
   `;
 }
 
-function renderCapabilityCard(
+export function renderCapabilityCard(
   capability: LabOperationCapabilityProjection,
   activeCapabilityId: LabOperationCapabilityProjection["id"] | null,
   copy: LabI18n

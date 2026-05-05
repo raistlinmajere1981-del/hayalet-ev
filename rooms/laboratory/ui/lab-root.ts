@@ -13,7 +13,8 @@ import { renderLabCenterPanel } from "./lab-center-panel.js";
 import { getLabLayoutKind, renderLabBootOverlay, renderLabLayout } from "./lab-layout.js";
 import { renderLabDrawer } from "./lab-drawer.js";
 import { renderLabProcessStrip } from "./lab-process-strip.js";
-import { renderLabLeftRail, renderLabTopBar } from "./lab-top-bar.js";
+import { renderLabTopBar } from "./lab-top-bar.js";
+import { renderLabSourcePanel } from "./lab-source-panel.js";
 import { bindLabAssetPreviewClicks } from "./lab-asset-preview-binder.js";
 import { getLabAssetPreviewUrl } from "./lab-asset-display.js";
 import { bindLabPreviewInspectionInteractions } from "./lab-preview-inspection-binder.js";
@@ -58,8 +59,10 @@ const LAB_REGION_SELECTORS = {
   contextPanel: ['[data-lab-region="context-panel"]', ".labx-drawer"],
   inspectorPanel: ['[data-lab-region="inspector-panel"]', ".labx-workspace-inspector"],
   leftRail: [
+    '[data-lab-region="source-panel"]',
     '[data-lab-region="left-rail-source"]',
     '[data-lab-region="left-rail"]',
+    ".labx-source-panel",
     ".labx-left-rail",
   ],
   mainStage: ['[data-lab-region="main-stage"]', ".labx-center-panel"],
@@ -182,14 +185,21 @@ function syncFormState(currentElement: Element, nextElement: Element) {
 }
 
 function syncAttributes(currentElement: Element, nextElement: Element) {
+  const isDetails = currentElement.tagName === "DETAILS";
   const currentAttributeNames = currentElement.getAttributeNames();
   currentAttributeNames.forEach(function (attributeName) {
+    if (isDetails && attributeName === "open") {
+      return;
+    }
     if (nextElement.hasAttribute(attributeName) !== true) {
       currentElement.removeAttribute(attributeName);
     }
   });
 
   nextElement.getAttributeNames().forEach(function (attributeName) {
+    if (isDetails && attributeName === "open") {
+      return;
+    }
     const nextValue = nextElement.getAttribute(attributeName);
     if (currentElement.getAttribute(attributeName) !== nextValue) {
       if (nextValue === null) {
@@ -917,6 +927,7 @@ export function startLaboratoryLabRoot() {
     shell.dataset["labMode"] = state.ui.labMode;
     shell.dataset["drawerMode"] = resolveDrawerMode(state);
     shell.dataset["drawerCollapsed"] = getDrawerCollapsed(state) ? "true" : "false";
+    shell.dataset["sourcePanelCollapsed"] = state.ui.sourcePanelCollapsed ? "true" : "false";
     shell.dataset["processView"] = state.ui.workspace.processViewActive ? "expanded" : "compact";
   }
 
@@ -1151,8 +1162,9 @@ export function startLaboratoryLabRoot() {
       },
       {
         key: "leftRail",
+        preserveScroll: true,
         render() {
-          return renderLabLeftRail(state, copy);
+          return renderLabSourcePanel(state, copy);
         },
       },
       {
@@ -1173,7 +1185,7 @@ export function startLaboratoryLabRoot() {
         key: "inspectorPanel",
         preserveScroll: true,
         render() {
-          return surface.inspector ?? "";
+          return "";
         },
       },
       {

@@ -42,6 +42,7 @@ import type { LabI18n } from "./lab-i18n.js";
 import { renderContextPanel, renderPipeline } from "./laboratory-layout.js";
 import { formatLabExpectedOutputLabel, translateLabRuntimeText } from "./lab-runtime-i18n.js";
 import { renderLabSettingsFields } from "./lab-settings-controls.js";
+import { renderModePills } from "./lab-top-bar.js";
 import { buildLabDecisionSnapshot } from "./lab-decision-layer.js";
 
 type AnalysisPreparationGroup = ReturnType<typeof getAnalysisPreparationGroups>[number];
@@ -81,12 +82,25 @@ const MODE_HEADERS: Record<
   },
 };
 
+const MODE_BADGE_TONE: Record<LabDrawerMode, string> = {
+  setup: "",
+  running: "running",
+  result: "success",
+  explore: "",
+};
+
 function renderDrawerHeader(mode: LabDrawerMode, copy: LabI18n) {
   const h = MODE_HEADERS[mode];
+  const badgeTone = MODE_BADGE_TONE[mode];
+  const badgeLabel = copy.t(h.eyebrowKey, h.eyebrowFallback);
+  const badge =
+    badgeTone !== ""
+      ? `<span class="labx-drawer__status-badge" data-badge-tone="${escapeHtml(badgeTone)}">${escapeHtml(badgeLabel)}</span>`
+      : `<span class="labx-drawer__status-badge">${escapeHtml(badgeLabel)}</span>`;
   return `
     <div class="labx-drawer__header">
-      <p class="labx-card__eyebrow">${escapeHtml(copy.t(h.eyebrowKey, h.eyebrowFallback))}</p>
       <h2>${escapeHtml(copy.t(h.titleKey, h.titleFallback))}</h2>
+      ${badge}
     </div>
   `;
 }
@@ -486,7 +500,7 @@ function getActiveAnalysisCapabilityIds(state: LabStoreState): CapabilityFamilyI
   }
 }
 
-function renderSetupMode(state: LabStoreState, surface: LabWorkspaceSurface, copy: LabI18n) {
+function renderSetupMode(state: LabStoreState, copy: LabI18n) {
   const sourceReady = getSourceReady(state);
   const intents = getAvailableIntents(state);
   const analysisGroups = getAnalysisPreparationGroups(state);
@@ -557,11 +571,6 @@ function renderSetupMode(state: LabStoreState, surface: LabWorkspaceSurface, cop
     </div>
   `;
 
-  const sideControls =
-    surface.side.trim() !== ""
-      ? `<div class="labx-drawer__side-controls">${surface.side}</div>`
-      : "";
-
   const blocks: LabPipelineBlock[] = [
     {
       id: "analysis-prep",
@@ -589,16 +598,6 @@ function renderSetupMode(state: LabStoreState, surface: LabWorkspaceSurface, cop
         return ctaMarkup;
       },
       type: "action",
-    },
-    {
-      id: "selection-panel",
-      render() {
-        return sideControls;
-      },
-      type: "section",
-      visible() {
-        return surface.side.trim() !== "";
-      },
     },
   ];
 
@@ -1222,9 +1221,12 @@ export function renderLabDrawer(
     copy
   );
 
+  const modeNav = `<nav class="labx-drawer__mode-nav" aria-label="${escapeHtml(copy.t("mediaAnalysis.topBar.navLabel", "Mode indicators"))}">${renderModePills(state, copy)}</nav>`;
+
   if (!state.bootReady) {
     return renderContextPanel({
       content: `
+        ${modeNav}
         ${decisionHeader}
         ${renderDrawerHeader(mode, copy)}
         ${renderDrawerBody(
@@ -1245,7 +1247,7 @@ export function renderLabDrawer(
   let modeContent: string;
   switch (mode) {
     case "setup":
-      modeContent = renderSetupMode(state, surface, copy);
+      modeContent = renderSetupMode(state, copy);
       break;
     case "running":
       modeContent = renderRunningMode(state, copy);
@@ -1260,13 +1262,15 @@ export function renderLabDrawer(
       modeContent = "";
   }
 
+  const selectionTabActive = state.ui.workspace.selectionTabActive === true;
+  const selectionBody = selectionTabActive
+    ? `<div class="labx-drawer__body labx-drawer__body--selection">${surface.side || `<p class="labx-drawer__selection-empty">${escapeHtml(copy.t("mediaAnalysis.timeline.noSelection", "Zaman çizelgesinde bir alan seçin"))}</p>`}</div>`
+    : "";
+
   return renderContextPanel({
     content: `
-      ${decisionHeader}
-      ${renderDrawerHeader(mode, copy)}
-      <div class="labx-drawer__body">
-        ${modeContent}
-      </div>
+      ${modeNav}
+      ${selectionTabActive ? selectionBody : `${decisionHeader}${renderDrawerHeader(mode, copy)}<div class="labx-drawer__body">${modeContent}</div>`}
     `,
     drawerMode: mode,
   });

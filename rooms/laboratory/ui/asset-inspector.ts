@@ -204,16 +204,16 @@ function renderPreview(asset: LabAsset): string {
     return `<div class="labx-pw-inspector__preview"><iframe class="labx-pw-inspector__preview-document" src="${escapeHtml(previewUrl)}" title="${escapeHtml(asset.name)}"></iframe></div>`;
   }
 
-  const icons: Record<string, string> = {
-    source: "\u25B6",
-    clip: "\u25B6",
-    frame: "\uD83D\uDDBC",
-    audio: "\u266B",
-    image: "\uD83D\uDDBC",
-    report: "\uD83D\uDCC4",
-    artifact: "\u2699",
+  const labels: Record<string, string> = {
+    source: "SRC",
+    clip: "CLP",
+    frame: "FRM",
+    audio: "AUD",
+    image: "IMG",
+    report: "RPT",
+    artifact: "AST",
   };
-  return `<div class="labx-pw-inspector__preview">${icons[asset.type] || "\u2699"}</div>`;
+  return `<div class="labx-pw-inspector__preview"><span class="labx-pw-inspector__preview-monogram">${escapeHtml(labels[asset.type] || "ENT")}</span></div>`;
 }
 
 function renderMetadata(asset: LabAsset, copy: LabI18n): string {

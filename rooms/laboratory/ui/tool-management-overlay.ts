@@ -598,7 +598,7 @@ function renderToolActions(
       </button>
       ${
         entry.updateAvailable === true
-          ? `<button class="labx-inline-action" type="button" data-lab-action="tool-update" data-lab-value="${escapeHtml(toolId)}" ${disabled}>${escapeHtml(copy.t("mediaAnalysis.toolManager.actions.update", "Güncelle"))}</button>`
+          ? `<button class="labx-inline-action labx-inline-action--primary" type="button" data-lab-action="tool-update" data-lab-value="${escapeHtml(toolId)}" ${disabled}>${escapeHtml(copy.t("mediaAnalysis.toolManager.actions.update", "Güncelle"))}</button>`
           : ""
       }
     `;
@@ -606,7 +606,7 @@ function renderToolActions(
 
   if (installStrategy === "automatic") {
     return `
-      <button class="labx-inline-action" type="button" data-lab-action="tool-install" data-lab-value="${escapeHtml(toolId)}" ${disabled}>
+      <button class="labx-inline-action labx-inline-action--primary" type="button" data-lab-action="tool-install" data-lab-value="${escapeHtml(toolId)}" ${disabled}>
         ${escapeHtml(copy.t("mediaAnalysis.toolManager.actions.install", "Kur"))}
       </button>
     `;
@@ -617,6 +617,23 @@ function renderToolActions(
       ${escapeHtml(copy.t("mediaAnalysis.toolManager.actions.manualSetup", "Manuel kurulum"))}
     </button>
   `;
+}
+
+function truncateLocationPath(path: string): string {
+  if (path === "--" || path.trim() === "") return path;
+  const normalized = path.replace(/\\/g, "/");
+  const parts = normalized.split("/").filter(function (p) {
+    return p !== "";
+  });
+  if (parts.length <= 2) return path;
+  return `\u2026/${parts.slice(-2).join("/")}`;
+}
+
+function truncateErrorMessage(error: string): string {
+  const newlineIdx = error.indexOf("\n");
+  const firstLine = (newlineIdx >= 0 ? error.slice(0, newlineIdx) : error).trim();
+  if (firstLine.length <= 110) return firstLine;
+  return `${firstLine.slice(0, 107)}\u2026`;
 }
 
 function renderUsedBy(descriptor: LabToolDescriptorRecord, copy: LabI18n): string {
@@ -655,10 +672,16 @@ function renderToolCard(
     asNonEmptyString(entry.latestVersion) || asNonEmptyString(entry.latestReleaseName) || "--";
   const locationLabel =
     asNonEmptyString(entry.binaryPath) || asNonEmptyString(entry.installDir) || "--";
+  const monogram = displayName.slice(0, 2).toUpperCase();
+
+  const hasError = typeof entry.lastError === "string" && entry.lastError.trim() !== "";
+  const lifecycleHint = getLifecycleHint(descriptor, entry, copy);
+  const truncatedLocation = truncateLocationPath(locationLabel);
 
   return `
-    <article class="labx-module-card" data-selected="${entry.installed === true ? "true" : "false"}" data-active="${supportLevel === "required" ? "true" : "false"}">
+    <article class="labx-module-card" data-selected="${entry.installed === true ? "true" : "false"}" data-active="${supportLevel === "required" ? "true" : "false"}" data-has-error="${hasError ? "true" : "false"}">
       <div class="labx-module-card__head">
+        <span class="labx-tool-monogram" aria-hidden="true">${escapeHtml(monogram)}</span>
         <div>
           <strong>${escapeHtml(displayName)}</strong>
           <span>${escapeHtml(getInstallStrategyLabel(descriptor, copy))}</span>
@@ -667,14 +690,20 @@ function renderToolCard(
           ${getStatusChip(descriptor, entry, stageId, copy)}
         </div>
       </div>
-      <p class="labx-panel-hint">${escapeHtml(getLifecycleHint(descriptor, entry, copy))}</p>
-	      ${renderUsedBy(descriptor, copy)}
-      <div class="labx-summary-list">
-        <div><span>${escapeHtml(copy.t("mediaAnalysis.toolManager.labels.stageSupport", "Aşama desteği"))}</span><strong>${escapeHtml(getSupportLabel(supportLevel, stageId, copy))}</strong></div>
-        <div><span>${escapeHtml(copy.t("mediaAnalysis.toolManager.labels.installedVersion", "Kurulu sürüm"))}</span><strong>${escapeHtml(versionLabel)}</strong></div>
-        <div><span>${escapeHtml(copy.t("mediaAnalysis.toolManager.labels.latestVersion", "Son sürüm"))}</span><strong>${escapeHtml(latestLabel)}</strong></div>
-        <div><span>${escapeHtml(copy.t("mediaAnalysis.toolManager.labels.location", "Konum"))}</span><strong>${escapeHtml(locationLabel)}</strong></div>
-      </div>
+      ${hasError
+        ? `<p class="labx-module-card__error-hint">${escapeHtml(truncateErrorMessage(entry.lastError as string))}</p>`
+        : `<p class="labx-panel-hint">${escapeHtml(lifecycleHint)}</p>`
+      }
+      ${renderUsedBy(descriptor, copy)}
+      <details class="labx-module-card__meta-details">
+        <summary>${escapeHtml(copy.t("mediaAnalysis.toolManager.labels.details", "Sürüm ve konum"))}</summary>
+        <div class="labx-summary-list">
+          <div><span>${escapeHtml(copy.t("mediaAnalysis.toolManager.labels.stageSupport", "Aşama desteği"))}</span><strong>${escapeHtml(getSupportLabel(supportLevel, stageId, copy))}</strong></div>
+          <div><span>${escapeHtml(copy.t("mediaAnalysis.toolManager.labels.installedVersion", "Kurulu sürüm"))}</span><strong>${escapeHtml(versionLabel)}</strong></div>
+          <div><span>${escapeHtml(copy.t("mediaAnalysis.toolManager.labels.latestVersion", "Son sürüm"))}</span><strong>${escapeHtml(latestLabel)}</strong></div>
+          <div><span>${escapeHtml(copy.t("mediaAnalysis.toolManager.labels.location", "Konum"))}</span><strong class="labx-summary-list__path" title="${escapeHtml(locationLabel)}">${escapeHtml(truncatedLocation)}</strong></div>
+        </div>
+      </details>
       <div class="labx-module-card__actions">
         ${renderToolActions(descriptor, entry, copy)}
       </div>
@@ -798,7 +827,7 @@ export function renderToolManagementOverlay(
                   >
                     ${escapeHtml(copy.t("mediaAnalysis.toolManager.actions.refresh", "Yenile"))}
                   </button>
-                  <button class="labx-inline-action" type="button" data-lab-action="close-tool-manager">
+                  <button class="labx-inline-action labx-inline-action--ghost" type="button" data-lab-action="close-tool-manager">
                     ${escapeHtml(copy.t("mediaAnalysis.toolManager.actions.close", "Kapat"))}
                   </button>
                 </div>

@@ -3,9 +3,10 @@ import type { LabStoreState, LabWorkspaceSurface } from "../models/lab-types.js"
 import { renderLabCenterPanel } from "./lab-center-panel.js";
 import { renderLabDrawer } from "./lab-drawer.js";
 import { renderLabProcessStrip } from "./lab-process-strip.js";
-import { renderLabLeftRail, renderLabTopBar } from "./lab-top-bar.js";
+import { renderLabTopBar } from "./lab-top-bar.js";
 import { renderToolManagementOverlay } from "./tool-management-overlay.js";
 import { renderReportOverlay } from "./report-overlay.js";
+import { renderLabSourcePanel } from "./lab-source-panel.js";
 import { renderLabAssetPreviewOverlay } from "./lab-asset-preview-overlay.js";
 import { renderProjectWorkspaceOverlay } from "./project-workspace-overlay.js";
 import { renderLaboratoryLayout } from "./laboratory-layout.js";
@@ -84,15 +85,17 @@ export function renderLabLayout(
     `;
   }
 
+  const sourcePanelCollapsed = state.ui.sourcePanelCollapsed === true;
+
   return `
     ${renderLaboratoryLayout({
       bootOverlay: bootOverlayActive ? renderLabBootOverlay(copy) : "",
       contextPanel: renderLabDrawer(state, surface, copy),
-      inspectorPanel: surface.inspector ?? "",
-      leftRail: renderLabLeftRail(state, copy),
+      inspectorPanel: "",
+      leftRail: renderLabSourcePanel(state, copy),
       mainStage: renderLabCenterPanel(surface),
       processStrip: renderLabProcessStrip(state, copy),
-      shellAttributes: `data-layout-kind="${layoutKind}" data-ready="${bootOverlayActive ? "false" : "true"}" data-workspace-mode="${getWorkspaceMode(state)}" data-lab-mode="${state.ui.labMode}" data-drawer-mode="${drawerMode}" data-drawer-collapsed="${drawerCollapsed ? "true" : "false"}" data-process-view="${state.ui.workspace.processViewActive ? "expanded" : "compact"}"`,
+      shellAttributes: `data-layout-kind="${layoutKind}" data-ready="${bootOverlayActive ? "false" : "true"}" data-workspace-mode="${getWorkspaceMode(state)}" data-lab-mode="${state.ui.labMode}" data-drawer-mode="${drawerMode}" data-drawer-collapsed="${drawerCollapsed ? "true" : "false"}" data-source-panel-collapsed="${sourcePanelCollapsed ? "true" : "false"}" data-process-view="${state.ui.workspace.processViewActive ? "expanded" : "compact"}"`,
       topBar: renderLabTopBar(state, copy),
     })}
     ${renderToolManagementOverlay(state, copy)}

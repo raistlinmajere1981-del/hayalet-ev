@@ -238,6 +238,32 @@
       "ariaLabel": "Calisma alani kontrolleri",
       "tabs": "Kontrol sekmeleri"
     },
+    "iconRail": {
+      "roi-select": "Bolge Secimi",
+      "audio-focus": "Ses Odagi",
+      "frame-export": "Kare Disa Aktarma",
+      "clip-export": "Klip Disa Aktarma",
+      "enhanced-frame": "Iyilestirilmis Kare",
+      "before-after": "Once / Sonra",
+      "audio-extract": "Ses Cikar",
+      "band-pass": "Bant Gecis Sesi",
+      "denoise": "Gurultu Azaltma",
+      "stem-separate": "Stem Ayirma",
+      "stabilize": "Stabilizasyon",
+      "visual-adjust": "Gorsel Ayarlar",
+      "pin": "Paneli sabitle",
+      "close": "Kapat",
+      "draft": "Taslak",
+      "emptyAudio": "Ses kontrolleri yalnizca ses veya video kaynaklari icin kullanilabilir.",
+      "emptyVisual": "Gorsel ayarlar yalnizca goruntu veya video kaynaklari icin kullanilabilir.",
+      "emptyOperation": "Bu slot icin islem bulunmuyor.",
+      "operationUnavailable": "Islem kullanamyor. Bir kaynak yukleyin ve tekrar deneyin."
+    },
+    "overlay": {
+      "processing": "Isleniyor...",
+      "cancel": "Iptal",
+      "elapsed": "Gecen sure"
+    },
     "projectWorkspace": {
       "title": "Proje Calisma Alani",
       "managementTitle": "Proje Yönetimi",

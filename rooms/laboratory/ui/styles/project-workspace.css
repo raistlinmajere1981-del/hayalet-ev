@@ -123,8 +123,8 @@
   text-align: left;
   width: 100%;
   transition:
-    background 100ms ease-out,
-    color 100ms ease-out;
+    background 120ms ease-out,
+    color 120ms ease-out;
   border-radius: 0;
 }
 
@@ -232,7 +232,7 @@
 .labx-project-import__route {
   flex: 0 0 auto;
   border: 1px solid rgba(121, 211, 224, 0.16);
-  border-radius: 999px;
+  border-radius: var(--labx-radius-pill);
   color: var(--labx-text-soft);
   background: rgba(255, 255, 255, 0.035);
   font-size: 0.72rem;
@@ -588,7 +588,7 @@
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--labx-border);
-  border-radius: 999px;
+  border-radius: var(--labx-radius-pill);
   color: var(--labx-text-dim);
   font-size: 0.66rem;
   padding: 0.16rem 0.38rem;
@@ -707,9 +707,9 @@
   background: var(--labx-surface);
   cursor: pointer;
   transition:
-    transform 120ms ease,
-    border-color 120ms,
-    box-shadow 120ms;
+    transform 120ms ease-out,
+    border-color 120ms ease-out,
+    box-shadow 120ms ease-out;
   overflow: hidden;
   position: relative;
 }
@@ -744,6 +744,22 @@
   height: 100%;
   display: block;
   object-fit: cover;
+}
+
+.labx-pw-card__thumb-monogram,
+.labx-pw-inspector__preview-monogram {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0.2rem;
+  border: 1px solid rgba(92, 215, 223, 0.18);
+  border-radius: var(--labx-radius-button);
+  background: var(--labx-accent-soft);
+  color: var(--labx-accent);
+  font-size: var(--labx-font-label);
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 .labx-pw-card__badge {
@@ -789,7 +805,7 @@
   height: 4px;
   background: rgba(0, 0, 0, 0.4);
   opacity: 0;
-  transition: opacity 120ms;
+  transition: opacity 120ms ease-out;
 }
 
 .labx-pw-card:hover .labx-pw-card__scrub {
@@ -923,8 +939,8 @@
   font-size: 0.78rem;
   cursor: pointer;
   transition:
-    background 120ms,
-    color 120ms;
+    background 120ms ease-out,
+    color 120ms ease-out;
   text-align: left;
 }
 
@@ -977,7 +993,7 @@
   font-size: 0.74rem;
   cursor: pointer;
   color: var(--labx-text-soft);
-  transition: background 100ms;
+  transition: background 120ms ease-out;
 }
 
 .labx-pw-inspector__confirm-btn:hover {
@@ -1532,4 +1548,69 @@
   .labx-import-footer button {
     flex: 1;
   }
+}
+
+@media (max-width: 760px) {
+  .labx-pw-grid__cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .labx-pw-card,
+  .labx-pw-card__scrub,
+  .labx-pw-nav__item,
+  .labx-pw-inspector__action-btn,
+  .labx-pw-inspector__confirm-btn {
+    transition: none;
+  }
+}
+
+/* ===== UI PATCH — Import form improvements ===== */
+
+.labx-project-import__yt-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.labx-project-import__yt-section {
+  border-color: rgba(121, 211, 224, 0.16);
+  background: rgba(3, 12, 20, 0.4);
+}
+
+.labx-project-import__yt-section legend {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--labx-text-dim);
+}
+
+/* ===== Inspector action button hierarchy ===== */
+
+.labx-pw-inspector__action-btn--accent {
+  font-weight: 600;
+}
+
+.labx-pw-inspector__actions .labx-pw-inspector__action-btn:first-child {
+  border-color: rgba(92, 215, 223, 0.28);
+  background: rgba(92, 215, 223, 0.06);
+  color: var(--labx-accent);
+}
+
+.labx-pw-inspector__actions .labx-pw-inspector__action-btn:first-child:hover {
+  background: rgba(92, 215, 223, 0.12);
+  border-color: rgba(92, 215, 223, 0.42);
+  color: #ecf4ff;
+}
+
+/* ===== Import progress banner more visible ===== */
+
+.labx-project-import__progress {
+  border-color: rgba(92, 215, 223, 0.2);
+}
+
+/* ===== Section divider between local file and url panels ===== */
+
+.labx-project-import__panel + .labx-project-import__panel {
+  border-top: 1px solid rgba(121, 211, 224, 0.08);
 }

@@ -6,6 +6,7 @@ import {
   getActiveExecutionIntent,
   getActiveSuggestionPreview,
   getAnalysisActionBlockReason,
+  getProcessingOverlayState,
 } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import { renderLabAssetPreviewOverlay } from "../../rooms/laboratory/ui/lab-asset-preview-overlay.ts";
@@ -18,7 +19,10 @@ import { renderPipeline } from "../../rooms/laboratory/ui/laboratory-layout.ts";
 import { renderReportOverlay } from "../../rooms/laboratory/ui/report-overlay.ts";
 import { renderToolManagementOverlay } from "../../rooms/laboratory/ui/tool-management-overlay.ts";
 import { renderWorkspaceOperationControls } from "../../rooms/laboratory/ui/workspace-operation-controls.ts";
-import { renderWorkspaceSurface } from "../../rooms/laboratory/ui/workspace-surface.ts";
+import {
+  renderSourceIntake,
+  renderWorkspaceSurface,
+} from "../../rooms/laboratory/ui/workspace-surface.ts";
 
 const sourcePresets = JSON.parse(
   readFileSync("rooms/laboratory/shared/data/tools/source-presets.json", "utf8")
@@ -777,6 +781,45 @@ test("laboratory operation buttons reflect scoped running action state", () => {
   assert.match(surface.inspector ?? "", />Cancel<\/button>/);
   assert.match(surface.inspector ?? "", /data-lab-operation-capability="audio-cleanup"/);
   assert.match(surface.inspector ?? "", /data-lab-operation-capability="band-pass-voice"/);
+});
+
+test("laboratory processing overlay uses the active operation contract and locks source/timeline controls", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "user-action-added",
+    actionEvent: {
+      id: "user-action-enhanced-frame",
+      type: "custom",
+      label: "İyileştirilmiş frame hazırlanıyor",
+      status: "running",
+      startedAt: Date.now() - 2400,
+      requestId: "request-enhanced-frame",
+      projectId: "project-1",
+      sourceAction: "export-enhanced-frame",
+      progress: 42,
+    },
+  });
+  store.dispatch({ type: "workspace-source-intake-toggled", force: false });
+
+  const overlay = getProcessingOverlayState(store.getState());
+  const surface = renderWorkspaceSurface(store.getState());
+  const sourceIntake = renderSourceIntake(store.getState());
+
+  assert.equal(overlay.active, true);
+  assert.equal(overlay.cancelAction, "operation-cancel");
+  assert.equal(overlay.cancelValue, "enhanced-frame");
+  assert.equal(overlay.progress, 42);
+  assert.match(surface.main, /data-lab-region="processing-overlay"/);
+  assert.match(surface.main, /İyileştirilmiş frame hazırlanıyor/);
+  assert.match(surface.main, /data-indeterminate="false" style="width: 42%"/);
+  assert.match(
+    surface.main,
+    /data-lab-action="operation-cancel"[\s\S]*data-lab-value="enhanced-frame"/
+  );
+  assert.match(sourceIntake, /data-lab-action="load-source"[^>]*disabled/);
+  assert.match(surface.main, /data-lab-action="timeline-toggle-playback"[^>]*disabled/);
+  assert.match(surface.main, /data-lab-field="workspace\.previewVolume"[^>]*disabled/);
+  assert.match(surface.main, /class="labx-icon-rail"[^>]*data-locked="true"/);
 });
 
 test("laboratory operation error buttons keep retry label short and expose message in title", () => {

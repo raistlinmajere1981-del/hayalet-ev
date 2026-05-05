@@ -2174,7 +2174,7 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   assert.doesNotMatch(workspaceSurfaceSource, /renderWorkspaceHypothesis/);
   assert.match(
     themeSource,
-    /\.labx-media-workbench\s*\{[\s\S]*gap:\s*0;[\s\S]*min-height:\s*0;[\s\S]*border:\s*1px solid rgba\(134, 187, 214, 0\.18\);[\s\S]*border-radius:\s*var\(--labx-radius-tight\);/
+    /\.labx-media-workbench\s*\{[\s\S]*gap:\s*0;[\s\S]*min-height:\s*0;[\s\S]*border:\s*1px solid rgba\(134, 187, 214, 0\.16\);[\s\S]*border-radius:\s*var\(--labx-radius-card\);/
   );
   assert.match(
     themeSource,
@@ -2182,7 +2182,7 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   );
   assert.match(
     themeSource,
-    /\.labx-focus-primary,[\s\S]*\.labx-focus-secondary,[\s\S]*\.labx-focus-passive\s*\{[\s\S]*opacity 140ms ease-out,[\s\S]*filter 140ms ease-out,[\s\S]*box-shadow 160ms ease-out;/
+    /\.labx-focus-primary,[\s\S]*\.labx-focus-secondary,[\s\S]*\.labx-focus-passive\s*\{[\s\S]*opacity 120ms ease-out,[\s\S]*filter 120ms ease-out,[\s\S]*box-shadow 120ms ease-out;/
   );
   assert.match(
     themeSource,

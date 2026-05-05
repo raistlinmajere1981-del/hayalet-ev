@@ -294,6 +294,8 @@ function createInitialState(): LabStoreState {
       editSidePanelCollapsed: false,
       rawLogCollapsed: true,
       workspace: createDefaultWorkspaceUiState(),
+      // V5 source panel
+      sourcePanelCollapsed: false,
       // V4 project & entity workspace
       projectWorkspaceOpen: false,
       projectWorkspaceSelectedEntityIds: [],
@@ -338,9 +340,12 @@ function createDefaultWorkspaceUiState(): LabWorkspaceUiState {
     controlsDrawerTab: "audio",
     processViewActive: false,
     reportOverlayOpen: false,
+    selectionTabActive: false,
     userExploreToggle: false,
     drawerModeOverride: null,
     drawerCollapsed: false,
+    inspectorPinned: false,
+    activeIconRailSlot: null,
   };
 }
 
@@ -3661,6 +3666,15 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         reportOverlayOpen: event.open,
       };
       return state;
+    case "selection-tab-toggled":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        selectionTabActive: event.active,
+      };
+      return state;
+    case "source-panel-toggled":
+      state.ui.sourcePanelCollapsed = !state.ui.sourcePanelCollapsed;
+      return state;
     case "drawer-collapsed-toggled":
       state.ui.workspace = {
         ...state.ui.workspace,
@@ -3716,6 +3730,19 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     case "project-workspace-timeline-highlighted":
       state.ui.projectWorkspaceTimelineHighlight = event.highlight;
+      return state;
+    case "inspector-pin-toggle":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        inspectorPinned: !state.ui.workspace.inspectorPinned,
+      };
+      return state;
+    case "icon-rail-slot-selected":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        activeIconRailSlot:
+          state.ui.workspace.activeIconRailSlot === event.slotId ? null : event.slotId,
+      };
       return state;
     default:
       return state;

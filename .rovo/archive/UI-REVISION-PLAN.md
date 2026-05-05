@@ -2,7 +2,7 @@
 
 > Referans: Kullanicinin gonderdigi 3 panelli mockup (Arac Yonetimi / Ana Ekran / Proje Yonetimi)
 > Tarih: 2026-05-03
-> Durum: Review sonrasi revize edildi. Kayitli veri temizligi ve migration beklenmez; davranis ekleyen maddeler ayrica kontratlandirilmadan uygulanmaz.
+> Durum: **UYGULANDI + AUDIT DUZELTMESI SURUYOR** — Wave 0–7 kodu uygulanmis gorunuyor; 2026-05-03 audit'inde typecheck, hedefli Laboratory testleri ve `rooms:build` yesil. Screenshot smoke ve tum repo testleri ayrica dogrulanmadikca "not verified" sayilir.
 
 ---
 
@@ -23,7 +23,7 @@ Kritik ayrim:
 1. **Stil-only degisiklikler once gelir.** Token, radius, renk, spacing, grid, hover, focus ve responsive ayarlari mevcut markup/action kontratlarini bozmadan yapilir.
 2. **Davranis ekleyen her madde ayri kontrat ister.** Yeni buton, tab, metrik veya filtre gorunecekse once state -> renderer -> controller action -> host/snapshot destegi -> test zinciri netlestirilir.
 3. **Sahte veri yok.** GPU/RAM, versiyon, aktif proje statusu, arama kategorisi veya proje boyutu gibi alanlar mevcut snapshot/store tarafinda yoksa ilk turda gizlenir, disabled gosterilir veya "future" olarak ayrilir.
-4. **Installed copy elle degismez.** Source of truth `rooms/laboratory` altidir; `data/rooms/laboratory` startup/install/build sync ile yenilenir.
+4. **Generated runtime elle degismez.** Source of truth `rooms/laboratory` altidir; `rooms/.build/laboratory/runtime` build/install/startup sync ile uretilen runtime kopyasidir.
 5. **i18n zorunlu.** Gorunen yeni metinler `rooms/laboratory/i18n/en.json` ve `rooms/laboratory/i18n/tr.json` icine girer; UI icinde yalniz minimal bootstrap fallback kalabilir.
 6. **Regresyonlar planin parcasi sayilir.** Her faz en az ilgili renderer/store testi ve `npm run rooms:typecheck` ile kapanir.
 
@@ -82,7 +82,7 @@ Kritik ayrim:
 
 **Risk notu:** `lab-theme.css` buyuk ve daginik bir dosya oldugu icin token degisimleri kademeli uygulanir; global replace sonrasi responsive ve nested card gorunumu kontrol edilir.
 
-**Dogrulama:** `rooms:typecheck`, ilgili CSS snapshot/assert testleri, desktop/mobile screenshot smoke.
+**Dogrulama:** `rooms:typecheck`, ilgili CSS snapshot/assert testleri; desktop/mobile screenshot smoke kosulmadikca audit notunda "not verified" kalir.
 
 ---
 
@@ -167,7 +167,7 @@ Kritik ayrim:
 
 **Veri kapisi:** GPU, RAM, uygulama versiyonu veya sistem metrikleri mevcut Laboratory snapshot/store tarafindan gelmiyorsa ilk turda eklenmez. Bu metrikler istenecekse ayri host/snapshot kontrati acilir.
 
-**Dogrulama:** `laboratory-source-ui-regressions.test.ts` process strip testleri, expanded/compact state testleri, mobile overflow kontrolu.
+**Dogrulama:** `laboratory-source-ui-regressions.test.ts` process strip testleri, expanded/compact state testleri; mobile overflow screenshot smoke kosulmadikca "not verified" kalir.
 
 ---
 
@@ -189,7 +189,7 @@ Kritik ayrim:
 - Status yoksa bu tablar ilk turda eklenmez; mevcut type/sort/group/search toolbar korunur veya sadece stillenir.
 - "Toplam Proje / Toplam Boyut / Aktif Islemler" istatistikleri mevcut veriden turetilebiliyorsa eklenir; aksi halde future kontrat olarak kalir.
 
-**Dogrulama:** `laboratory-project-workspace-regressions.test.ts`, source intake/project switching testleri, mobile grid screenshot smoke.
+**Dogrulama:** `laboratory-project-workspace-regressions.test.ts`, source intake/project switching testleri; mobile grid screenshot smoke kosulmadikca "not verified" kalir.
 
 ---
 
@@ -224,7 +224,7 @@ Kritik ayrim:
 - Transition standardi `120ms ease-out` olur; reduced-motion kuralı korunur.
 - Button/chip/card stilleri ic ice card hissi vermeyecek sekilde sadeleştirilir.
 - Responsive breakpointler `860px`, `960px`, `1180px` ve project overlay `760px/1120px` tarafinda tekrar kontrol edilir.
-- Metin taşması, button label overflow ve toolbar sıkışması için desktop/mobile screenshot smoke yapılır.
+- Metin taşması, button label overflow ve toolbar sıkışması için desktop/mobile screenshot smoke hedeflenir; kosulmadiysa kapanis raporunda acik dogrulama olarak yazilir.
 
 **Dogrulama:** Tum hedefli Laboratory UI testleri + `npm run rooms:typecheck` + gerekiyorsa `npm run rooms:build`.
 
@@ -270,6 +270,8 @@ Screenshot smoke hedefleri:
 - Mobile/tablet: 390x844 veya 768x1024, project overlay ve tool overlay overflow kontrolu.
 - Kaynak yok, kaynak hazir, analiz calisiyor, analiz tamamlandi state'leri.
 
+Audit notu: 2026-05-03 itibariyla screenshot smoke matrisi repo testleriyle birebir kanitlanmiyor; bu hedef manuel/Playwright smoke kosulana kadar "not verified" kabul edilir.
+
 ---
 
 ## Tahmini Etki
@@ -298,8 +300,162 @@ Screenshot smoke hedefleri:
 
 ## Acik Kararlar
 
-1. Left rail kesin olarak `52px` ikon-only mi kalacak, yoksa label gorunurlugu icin genisletilecek mi?
-2. Top bar "Kaydet" butonu ilk surumde gizlensin mi, yoksa mevcut bir save action dogrulanip baglansin mi?
-3. Sistem metrikleri Laboratory snapshot kontratina alinacak mi, yoksa alt strip yalniz process status olarak mi kalacak?
-4. Project status tablari icin project record tarafinda status/archive alani eklenecek mi?
-5. Tool overlay arama/kategori state'i ilk surum kapsaminda mi, yoksa gorsel revizyon sonrasi ikinci turda mi?
+Orijinal 5 karar ve ikon rail + overlay fazlarindan gelen 7 ek karar asagida kapandi.
+
+### Kapali Kararlar
+
+| # | Konu | Karar |
+|---|---|---|
+| 1 | Left rail genisligi | `52px` ikon-only; active item `3px` accent bar. |
+| 2 | Top bar "Kaydet" | Ilk surumde gizli; guvenilir save action dogrulanmadan eklenmez. |
+| 3 | Sistem metrikleri | Alt strip yalniz process status; GPU/RAM/versiyon future kontrat. |
+| 4 | Project status tablari | status/archive alani yok; tablar ilk turde eklenmez. |
+| 5 | Tool arama/kategori state | Gorsel revizyon sonrasi ikinci turda. |
+| 6 | Sag rail ikon sayisi | Flat 6 ikon; gruplama yok, ince separator ile realtime/post-process ayirimi. |
+| 7 | Panel acilis modu | Hybrid: varsayilan popover (preview ustunde); pin ile push moda gecis (preview kuculur). |
+| 8 | Taslak/planlanan islemler | Dimmed + ikon uzerinde "Taslak/Draft" rozeti; tiklama engellenmez ama slot draft gorunur. |
+| 9 | Ikon rendering | Custom inline SVG; harici bagimlilik yok. |
+| 10 | Iptal modu | Direkt iptal, onay dialog yok; analiz run icin `cancel-analysis`, operation icin `operation-cancel` kullanilir. |
+| 11 | Durdurma gostergesi | Processing overlay mevcut is label/progress/elapsed bilgisini gosterir; cancel pending state mevcut drawer/run kontratindan izlenir. |
+| 12 | Kilit kapsami | Post-process operasyonlar + analiz run birlestirilerek `isAnyHeavyWorkActive` selectoru. |
+
+### Acik Kalan Kararlar
+
+Simdilik acik karar yok.
+
+---
+
+## Faz 4B — Icon Rail Inspector
+
+**Dosyalar:** `workspace-surface.ts`, `workspace-operation-controls.ts`, `lab-theme.css`, `lab-types.ts`, `lab-selectors.ts`, i18n kataloglari
+
+### Tasarim
+
+- Sagda sabit `52px` dikey ikon rayi; `workspace-surface.ts` icerisinde inspector drawer ile butunlesik render edilir.
+- Rail ust kisim **realtime** (aninda geri bildirim), alt kisim **post-process** (arka plan islemi) grubunu temsil eder; gruplar ince bir `hr` veya CSS separator ile ayrilir.
+- Her ikon icin `title` + `aria-label` zorunludur; aktif ikon `--labx-accent` ile vurgulanir.
+- Rail genisligi `--labx-rail-width: 52px` tokenini kullanir; workspace grid bu degere gore hesaplanir.
+
+### 6 Ikon Listesi
+
+| Slot | Grup | Kimlik | Aciklama |
+|---|---|---|---|
+| 1 | Realtime | roi-select | Bolge / ROI secimi |
+| 2 | Realtime | waveform-region | Dalga formu bolge secimi |
+| 3 | Realtime | frame-export | Frame / screenshot cikti |
+| 4 | Post-process | denoise | Gurultu azaltma |
+| 5 | Post-process | stabilize | Goruntu stabilizasyon |
+| 6 | Post-process | color-grade | Renk duzeltme |
+
+> Not: Yukaridaki kimlikler `LabOperationCapabilityId` degerlerine eslenmeden once `lab-types.ts` tarafindan dogrulanacak; eksik capability varsa o slot Taslak modda baslayacak.
+
+### Ikon Durumu
+
+- **Aktif:** Tiklandi, panel acik — `--labx-accent` arkaplan, `3px` sol border.
+- **Disabled:** `isAnyHeavyWorkActive === true` → tum rail ikonlari `disabled` + `pointer-events: none; opacity: 0.38`.
+- **Taslak:** Capability henuz implement edilmedi → `opacity: 0.45` + sag ust kosede kucuk "Taslak" rozeti.
+
+### Panel Acilis Modu — Hybrid
+
+- **Varsayilan — Popover:** Panel preview alaninin ustune gelir; layout kaymaz. `z-index: var(--labx-z-popover)`.
+- **Pinlenmis — Push:** Kucuk pin ikonu (panel header saginda) tiklaninca preview alani daralir, panel sag tarafa yerlesir; `--labx-inspector-width` tokenindan beslenir.
+- Pin durumu `LabStoreUiState` icinde `inspectorPinned: boolean` alani ile saklanir; controller action: `inspector-pin-toggle`.
+
+### Custom Inline SVG
+
+- Her ikon 24x24 viewBox, 1.5px stroke, round linecap/linejoin.
+- SVG literalleri `workspace-surface.ts` icerisinde template string olarak render edilir; harici ikon kutuphanesi kullanilmaz.
+
+**Cikis kriteri:** 6 ikon gorunur, hybrid popover/push calisiyor, Taslak ikonlar dimmed, `isAnyHeavyWorkActive` aktifken rail locked, typecheck yesil.
+
+---
+
+## Faz 4C — Processing Overlay & Lock Expansion
+
+**Dosyalar:** `lab-selectors.ts`, `workspace-surface.ts`, `lab-run-controller.ts`, `lab-theme.css`, i18n kataloglari
+
+### Selector Degisikligi
+
+`lab-selectors.ts` icine tek kaynakli heavy-work ve overlay view-model selectorlari eklenir:
+
+```ts
+export function isAnyHeavyWorkActive(state) {
+  return isRunActive(state) || getActiveOperationCount(state) > 0;
+}
+
+export function getProcessingOverlayState(state) {
+  // active, label, progress, elapsedSeconds, cancelAction/cancelValue
+}
+```
+
+### Kilit Durumu
+
+`isAnyHeavyWorkActive === true` iken asagidakiler disabled/locked:
+
+- Sag rail ikonlari (Faz 4B)
+- Playback / media kontrolleri (play, seek, step)
+- Source intake aksiyon butonlari
+- Top bar "Yeni Proje", "Ac" gibi navigasyon tetikleyicileri
+
+### Overlay Tasarimi
+
+- `position: fixed; inset: 0; z-index: var(--labx-z-overlay)` — tam ekran kaplama.
+- Arkaplan: `rgba(7, 17, 28, 0.82)` + `backdrop-filter: blur(8px)`.
+- Merkez kart `--labx-radius-card` ile yuvarlatilir; icerik:
+  - Buyuk spinner animasyonu (CSS `@keyframes` rotasyon).
+  - Islem adi (run target veya running operation label; fallback i18n key).
+  - Progress bar (biliniyorsa yuzde, degilse indeterminate animasyon).
+  - Gecen sure (`elapsed`).
+  - **"Iptal"** butonu — run icin `cancel-analysis`, operation icin `operation-cancel` dispatch eder; onay dialog yok.
+- Overlay render `workspace-surface.ts` icinde `isAnyHeavyWorkActive` kontrolune baglidir.
+
+### Preview Duraklatma
+
+- Overlay actiktan sonra controller lifecycle hook'u aktif media element uzerinde `media.pause()` cagirir; overlay kapaninca otomatik resume yoktur.
+
+### i18n Anahtarlari (yeni)
+
+| Anahtar | Turkce | Ingilizce |
+|---|---|---|
+| `mediaAnalysis.overlay.processing` | "Isleniyor..." | "Processing..." |
+| `mediaAnalysis.overlay.cancel` | "Iptal" | "Cancel" |
+| `mediaAnalysis.overlay.elapsed` | "Gecen sure" | "Elapsed" |
+| `mediaAnalysis.iconRail.roi-select` | "Bolge Sec" | "Select Region" |
+| `mediaAnalysis.iconRail.waveform-region` | "Dalga Formu Bolgesi" | "Waveform Region" |
+| `mediaAnalysis.iconRail.frame-export` | "Frame Cikti" | "Export Frame" |
+| `mediaAnalysis.iconRail.denoise` | "Gurultu Azalt" | "Denoise" |
+| `mediaAnalysis.iconRail.stabilize` | "Stabilize Et" | "Stabilize" |
+| `mediaAnalysis.iconRail.color-grade` | "Renk Duzelt" | "Color Grade" |
+
+**Cikis kriteri:** Overlay `isAnyHeavyWorkActive` ile tetikleniyor; label/progress/elapsed aktif isten geliyor; iptal calisiyor; media/source kontrolleri locked; typecheck yesil.
+
+---
+
+## Wave Haritasi
+
+| Wave | Kapsam | Fazlar | Model Onerisi | Giris Kosulu | Cikis Kriteri |
+|---|---|---|---|---|---|
+| 0 | Dokuman ve planlama | — | — | — | `UI-REVISION-PLAN.md` guncellendi, tum kararlar kapandi |
+| 1 | Baseline + token altyapisi | Faz 0 + Faz 1 | Claude Sonnet | Wave 0 tamam | typecheck yesil, yeni tokenlar `lab-theme.css` icinde mevcut |
+| 2 | Top bar + left rail | Faz 2 | Claude Sonnet | Wave 1 tamam | topbar/rail testleri yesil |
+| 3 | Center workspace | Faz 3 | Claude Sonnet | Wave 2 tamam | workspace/waveform testleri yesil |
+| 4 | Drawer + inspector + icon rail | Faz 4 + Faz 4B | Claude Opus (thinking) | Wave 3 tamam | inspector/rail testleri yesil, hybrid panel calisiyor |
+| 5 | Processing overlay + lock genisleme | Faz 4C | Claude Opus (thinking) | Wave 4 tamam | overlay locked state dogrulandi, typecheck yesil |
+| 6 | Process strip + proje overlay + tool overlay | Faz 5 + Faz 6 + Faz 7 | Claude Sonnet | Wave 5 tamam | ilgili overlay testleri yesil |
+| 7 | Final harmonizasyon + build | Faz 8 | Claude Sonnet | Wave 6 tamam | hedefli testler yesil, `npm run rooms:build` basarili, screenshot smoke durumu raporlandi |
+
+---
+
+## Uygulama Gunlugu
+
+| Tarih | Wave | Ozet |
+|---|---|---|
+| 2026-05-03 | Wave 0 | `UI-REVISION-PLAN.md` guncellendi: Faz 4B (Icon Rail), Faz 4C (Processing Overlay), Wave Haritasi ve Uygulama Gunlugu eklendi; 12 acik karar kapandi. |
+| 2026-05-03 | Wave 1 | Faz 0: baseline 92 test, 0 kirik. Faz 1: token blogu onceki commit'te mevcut; `lab-theme.css` letter-spacing duzeltildi, `base.css` gradient glow azaltildi. typecheck yesil, 78 UI testi gecti. Not: `--labx-border-strong` kasitli yuksek birakildi; inline opacity'ler Wave 2+ kapsami. |
+| 2026-05-03 | Wave 2 | Faz 2A/2B: top bar sol kisma New Project butonu + `project-create` action baglantisi eklendi; rail pillerine SVG ikonlari eklendi; focus-visible outline standardi uygulanmadi. typecheck yesil, 78 test gecti. Not: drawerMode pill segment stili yapilmadi — Wave 3'e tasindi. |
+| 2026-05-03 | Wave 3 | Wave 2 kalan: pill segment stili tamamlandi (`.labx-rail-segment` wrapper). Faz 3: preview container radius karta cekili, timeline border opacity standardi, playback control bar yuksekligi token hizasina alinaldi. typecheck yesil, 57 test gecti (source-ui + workspace-runtime + waveform-runtime). Acik nokta yok. |
+| 2026-05-03 | Wave 4 | Faz 4 + Faz 4B tamamlandi. `lab-types.ts`: `inspectorPinned`/`activeIconRailSlot` state, `LabIconRailSlot` tipleri, 2 yeni event. `lab-store.ts` + `lab-run-controller.ts`: reducer + handler'lar. `workspace-surface.ts`: `renderIconRail()` + `renderIconRailPopover()`, 6 SVG ikon, hybrid popover/push. `lab-theme.css`: rail + popover stiller. i18n: `mediaAnalysis.iconRail.*`. Draft slotlar: waveform-region, color-grade. typecheck yesil. |
+| 2026-05-03 | Wave 5 | Faz 4C tamamlandi. `lab-selectors.ts`: `getActiveOperationCount` + `isAnyHeavyWorkActive`; `getWorkspaceLockState` guncellendi. `workspace-surface.ts`: `renderProcessingOverlay()`, icon rail lock. `lab-top-bar.ts`: nav butonlari locked. `lab-run-controller.ts`: heavy work basinca `media.pause()`. `base.css`: z-index tokenlari. `lab-theme.css`: overlay CSS + keyframes. i18n: `overlay.*`. typecheck yesil. Acik: `laboratory-ui-evaluation-regressions` 1 test kirik (Wave 3 `.labx-media-workbench` degisikliginden — test guncellenmeli). |
+| 2026-05-03 | Wave 6 | Kirik test duzeltildi (`.labx-media-workbench` regex). Faz 5: process strip compact'ta pipeline gizlendi, expanded scroll guvenligi. Faz 6: proje overlay 760px tek kolon breakpoint. Faz 7: tool card monogram span + stil, tool progress-card padding kompaktlastirildi. typecheck ve hedefli testler yesil. Screenshot smoke henuz not verified. |
+| 2026-05-03 | Wave 7 | Faz 8 uygulandi. Radius/token, emoji fallback, box-shadow ve transition standardi audit edildi; kalan drift icin 2026-05-03 audit sprinti acildi. `rooms:build` basarili (forge-room, game-room, laboratory). |
+| 2026-05-03 | Audit | Subagent + local audit bulgulari plana islendi: processing overlay view-model, operation-only heavy lock, stale i18n namespace, generated runtime copy metni, screenshot/build/test kanit kapsam ayrimi. |

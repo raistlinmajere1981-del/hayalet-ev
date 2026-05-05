@@ -558,12 +558,17 @@ export interface LabWorkspaceUiState {
   controlsDrawerTab: LabWorkspaceControlTab;
   processViewActive: boolean;
   reportOverlayOpen: boolean;
+  selectionTabActive: boolean;
   /** V3 explore toggle — user manually switches Result ↔ Explore */
   userExploreToggle: boolean;
   /** V3 top-bar requested mode, constrained by derived drawer mode rules */
   drawerModeOverride: LabDrawerModeOverride | null;
   /** V3 drawer collapsed state */
   drawerCollapsed: boolean;
+  /** V4B inspector pinned state — push vs popover */
+  inspectorPinned: boolean;
+  /** V4B active icon rail slot */
+  activeIconRailSlot: LabIconRailSlotId | null;
 }
 
 /** Capability families — user-facing groups that resolve to internal modules. */
@@ -594,6 +599,126 @@ export type LabOperationCapabilityId =
   | "band-pass-voice"
   | "stem-separation"
   | "segment-stabilization";
+
+/** V4B Icon rail slot identifiers */
+export type LabIconRailSlotId =
+  | "roi-select"
+  | "audio-focus"
+  | "frame-export"
+  | "denoise"
+  | "stabilize"
+  | "visual-adjust"
+  | "clip-export"
+  | "enhanced-frame"
+  | "before-after"
+  | "audio-extract"
+  | "band-pass"
+  | "stem-separate";
+
+export type LabIconRailGroup = "realtime" | "post-process";
+
+/**
+ * V5A — Icon rail slot content kind:
+ *  - "operation": popover renders the matching operation capability card
+ *  - "audio-focus": popover renders Audio Focus controls
+ *  - "visual-adjust": popover renders Visual (Interactive) Controls
+ */
+export type LabIconRailSlotContent = "operation" | "audio-focus" | "visual-adjust";
+
+export interface LabIconRailSlot {
+  id: LabIconRailSlotId;
+  group: LabIconRailGroup;
+  capabilityId: LabOperationCapabilityId | null;
+  content: LabIconRailSlotContent;
+  draft: boolean;
+}
+
+export const ICON_RAIL_SLOTS: readonly LabIconRailSlot[] = [
+  {
+    id: "roi-select",
+    group: "realtime",
+    capabilityId: "roi-crop",
+    content: "operation",
+    draft: false,
+  },
+  {
+    id: "audio-focus",
+    group: "realtime",
+    capabilityId: null,
+    content: "audio-focus",
+    draft: false,
+  },
+  {
+    id: "frame-export",
+    group: "realtime",
+    capabilityId: "frame-grab",
+    content: "operation",
+    draft: false,
+  },
+  {
+    id: "clip-export",
+    group: "post-process",
+    capabilityId: "clip-export",
+    content: "operation",
+    draft: false,
+  },
+  {
+    id: "enhanced-frame",
+    group: "post-process",
+    capabilityId: "enhanced-frame",
+    content: "operation",
+    draft: false,
+  },
+  {
+    id: "before-after",
+    group: "post-process",
+    capabilityId: "before-after-variant",
+    content: "operation",
+    draft: false,
+  },
+  {
+    id: "audio-extract",
+    group: "post-process",
+    capabilityId: "audio-extract",
+    content: "operation",
+    draft: false,
+  },
+  {
+    id: "band-pass",
+    group: "post-process",
+    capabilityId: "band-pass-voice",
+    content: "operation",
+    draft: false,
+  },
+  {
+    id: "denoise",
+    group: "post-process",
+    capabilityId: "audio-cleanup",
+    content: "operation",
+    draft: false,
+  },
+  {
+    id: "stem-separate",
+    group: "post-process",
+    capabilityId: "stem-separation",
+    content: "operation",
+    draft: false,
+  },
+  {
+    id: "stabilize",
+    group: "post-process",
+    capabilityId: "segment-stabilization",
+    content: "operation",
+    draft: false,
+  },
+  {
+    id: "visual-adjust",
+    group: "post-process",
+    capabilityId: null,
+    content: "visual-adjust",
+    draft: false,
+  },
+];
 
 export type LabSettingsValue = string | number | boolean | null;
 export type LabSettingsRecord = Record<string, LabSettingsValue>;
@@ -973,6 +1098,16 @@ export interface LabOperationCapabilityProjection extends LabOperationCapability
   activeRequestId: string | null;
   resultAssetIds?: string[];
   progress?: number | null;
+}
+
+export interface LabProcessingOverlayState {
+  active: boolean;
+  label: string;
+  progress: number | null;
+  indeterminate: boolean;
+  elapsedSeconds: number;
+  cancelAction: "cancel-analysis" | "operation-cancel" | null;
+  cancelValue: string;
 }
 
 export interface LabAnalysisCapabilityModuleProjection {
@@ -2503,6 +2638,8 @@ export interface LabStoreUiState {
   rawLogCollapsed: boolean;
   /** V2.3 workspace state */
   workspace: LabWorkspaceUiState;
+  /** V5 source panel (left rail) */
+  sourcePanelCollapsed: boolean;
   /** V4 project & entity workspace overlay */
   projectWorkspaceOpen: boolean;
   projectWorkspaceSelectedEntityIds: string[];
@@ -2761,6 +2898,8 @@ export type LabStoreEvent =
   | { type: "workspace-audio-updated"; patch: Partial<LabAudioFocusSettings> }
   | { type: "workspace-process-view-toggled"; force?: boolean }
   | { type: "report-overlay-toggled"; open: boolean }
+  | { type: "selection-tab-toggled"; active: boolean }
+  | { type: "source-panel-toggled" }
   | { type: "drawer-collapsed-toggled" }
   | { type: "drawer-explore-toggled" }
   | { type: "drawer-mode-requested"; mode: LabDrawerModeOverride | null }
@@ -2772,7 +2911,10 @@ export type LabStoreEvent =
   | { type: "project-workspace-group-changed"; group: "type" | "run" | "intent" | null }
   | { type: "project-workspace-search-changed"; search: string }
   | { type: "project-workspace-confirm-replace"; assetId: string | null }
-  | { type: "project-workspace-timeline-highlighted"; highlight: LabTimelineHighlight | null };
+  | { type: "project-workspace-timeline-highlighted"; highlight: LabTimelineHighlight | null }
+  // V4B icon rail inspector events
+  | { type: "inspector-pin-toggle" }
+  | { type: "icon-rail-slot-selected"; slotId: LabIconRailSlotId | null };
 
 export function createLabFeatureMeta(featureId: LabFeatureId): LabFeatureMeta {
   return (

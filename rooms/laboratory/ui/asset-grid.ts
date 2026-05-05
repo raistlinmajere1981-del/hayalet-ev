@@ -1,6 +1,6 @@
 import { asNonEmptyString, escapeHtml } from "../models/lab-types.js";
 import type { LabAsset, LabAssetType, LabStoreState } from "../models/lab-types.js";
-import { getAssets, getHypothesis, getWorkspaceLockState } from "../runtime/lab-selectors.js";
+import { getAssets } from "../runtime/lab-selectors.js";
 import { renderEntityCard } from "./asset-card.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
@@ -232,27 +232,10 @@ export function renderAssetGrid(state: LabStoreState, copy: LabI18n = LAB_FALLBA
   const groups = groupAssets(filtered, state.ui.projectWorkspaceGroup, state, copy);
 
   const toolbar = renderToolbar(state, copy);
-  const hypothesis = getHypothesis(state);
-  const hypothesisLocked = getWorkspaceLockState(state).hypothesis;
-  const hypothesisMarkup = `
-    <div class="labx-pw-grid__hypothesis">
-      <label class="labx-field">
-        <span class="labx-pw-grid__hypothesis-label">${escapeHtml(copy.t("mediaAnalysis.hypothesis.label", "Hypothesis"))}</span>
-        <textarea
-          class="labx-textarea labx-textarea--compact"
-          data-lab-field="workspace.hypothesis"
-          placeholder="${escapeHtml(copy.t("mediaAnalysis.hypothesis.placeholder", "Describe what you're looking for \u2014 e.g. check splice around 01:30, verify audio sync..."))}"
-          rows="2"
-          ${hypothesisLocked ? 'disabled aria-disabled="true"' : ""}
-        >${escapeHtml(hypothesis)}</textarea>
-      </label>
-    </div>
-  `;
 
   if (filtered.length === 0) {
     return `
       <section class="labx-pw-grid">
-        ${hypothesisMarkup}
         ${toolbar}
         <div class="labx-pw-grid__empty">
           ${escapeHtml(
@@ -288,7 +271,6 @@ export function renderAssetGrid(state: LabStoreState, copy: LabI18n = LAB_FALLBA
 
   return `
     <section class="labx-pw-grid">
-      ${hypothesisMarkup}
       ${toolbar}
       ${groupSections}
     </section>

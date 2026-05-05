@@ -557,6 +557,30 @@ test("laboratory run controller wires compact timeline transport to primary prev
     assert.equal(preview.volume, 0);
     assert.equal(preview.muted, true);
     assert.equal(volumeRoleInput.value, "0");
+
+    store.dispatch({
+      type: "user-action-added",
+      actionEvent: {
+        id: "user-action-enhanced-frame-running",
+        type: "custom",
+        label: "İyileştirilmiş frame hazırlanıyor",
+        status: "running",
+        startedAt: Date.now() - 1000,
+        sourceAction: "export-enhanced-frame",
+        progress: 50,
+      },
+    });
+
+    clickListener?.({ target: new TestElement("timeline-toggle-playback") } as Event);
+    assert.equal(preview.playCalls, 1);
+    assert.equal(preview.paused, true);
+
+    const lockedVolumeInput = new FakeHtmlInputElement("workspace.previewVolume", "0.75");
+    lockedVolumeInput.type = "range";
+    inputListener?.({ target: lockedVolumeInput } as Event);
+    assert.equal(store.getState().ui.workspace.previewVolume, 0);
+    assert.equal(preview.volume, 0);
+    assert.equal(volumeRoleInput.value, "0");
   } finally {
     if (originalElement) {
       Object.defineProperty(globalThis, "Element", originalElement);
