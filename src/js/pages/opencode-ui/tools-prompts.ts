@@ -7,25 +7,14 @@ import {
   type ManagedOverlayController,
 } from "../../ui/overlay-system.js";
 import { createSharedActiveClassOverlayController } from "../../ui/overlay-presets.js";
+import {
+  loadOpenCodeServerToolSnapshot,
+  type ToolFetcher,
+  type ToolSnapshotResult,
+  type ToolSnapshotStatus,
+} from "./tool-catalog.js";
 
-export type ToolSnapshotStatus = "loaded" | "empty" | "error";
-
-export interface ToolSnapshotResult {
-  status: ToolSnapshotStatus;
-  toolIds: string[];
-}
-
-interface OpenCodeToolResult {
-  status: ToolSnapshotStatus;
-  toolIds: string[];
-}
-
-interface HevToolsResponse {
-  success?: boolean;
-  toolNames?: string[];
-}
-
-type ToolFetcher = (path: string) => Promise<unknown>;
+export type { ToolSnapshotResult, ToolSnapshotStatus };
 type QuickPromptAction = "apply" | "delete";
 
 interface QuickPromptRecord {
@@ -474,55 +463,6 @@ export async function refreshQuickPromptPanel(): Promise<void> {
   await refreshQuickPromptList(quickPromptPanelOptions);
 }
 
-function normalizeToolIds(data: unknown): string[] {
-  if (Array.isArray(data)) {
-    return data.filter((item): item is string => typeof item === "string" && item !== "");
-  }
-
-  if (data === null || data === undefined || typeof data !== "object") {
-    return [];
-  }
-
-  const record = data as Record<string, unknown>;
-
-  if (record["error"] !== undefined || record["errors"] !== undefined) {
-    return [];
-  }
-
-  const directIds = record["ids"];
-  if (Array.isArray(directIds)) {
-    return directIds.filter((item): item is string => typeof item === "string" && item !== "");
-  }
-
-  const nestedToolIds = record["toolIds"];
-  if (Array.isArray(nestedToolIds)) {
-    return nestedToolIds.filter((item): item is string => typeof item === "string" && item !== "");
-  }
-
-  const tools = record["tools"];
-  if (Array.isArray(tools)) {
-    return tools
-      .map((item) => {
-        if (item !== null && item !== undefined && typeof item === "object") {
-          const id = (item as { id?: unknown; name?: unknown }).id;
-          if (typeof id === "string" && id !== "") {
-            return id;
-          }
-
-          const name = (item as { id?: unknown; name?: unknown }).name;
-          if (typeof name === "string" && name !== "") {
-            return name;
-          }
-        }
-
-        return "";
-      })
-      .filter((item) => item !== "");
-  }
-
-  return [];
-}
-
 function renderToolSnapshot(opencodeToolIds: string[], hevToolIds: string[]): void {
   if (typeof document === "undefined") {
     return;
@@ -572,57 +512,6 @@ function renderToolSnapshot(opencodeToolIds: string[], hevToolIds: string[]): vo
   toolsListEl.innerHTML = sections.join("");
 }
 
-async function loadOpenCodeToolIds(get: ToolFetcher): Promise<OpenCodeToolResult> {
-  try {
-    const idsResponse = await get("/experimental/tool/ids");
-    const toolIds = normalizeToolIds(idsResponse);
-    return {
-      status: toolIds.length > 0 ? "loaded" : "empty",
-      toolIds,
-    };
-  } catch (_error) {
-    try {
-      const toolsResponse = await get("/experimental/tool");
-      const toolIds = normalizeToolIds(toolsResponse);
-      return {
-        status: toolIds.length > 0 ? "loaded" : "empty",
-        toolIds,
-      };
-    } catch (_nestedError) {
-      return {
-        status: "error",
-        toolIds: [],
-      };
-    }
-  }
-}
-
-async function loadHevToolIds(): Promise<string[]> {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
-  if (
-    window.electronAPI == null ||
-    typeof window.electronAPI["opencodeUiHevTools"] !== "function"
-  ) {
-    return [];
-  }
-
-  try {
-    const result = (await window.electronAPI["opencodeUiHevTools"]()) as HevToolsResponse;
-    if (result.success !== true || !Array.isArray(result.toolNames)) {
-      return [];
-    }
-
-    return result.toolNames.filter(
-      (toolName): toolName is string => typeof toolName === "string" && toolName !== ""
-    );
-  } catch (_error) {
-    return [];
-  }
-}
-
 export async function loadToolsFinalSnapshot(fetcher?: ToolFetcher): Promise<ToolSnapshotResult> {
   const get: ToolFetcher =
     fetcher ??
@@ -630,30 +519,11 @@ export async function loadToolsFinalSnapshot(fetcher?: ToolFetcher): Promise<Too
       return await apiCall<unknown>("GET", path);
     });
 
-  const [openCodeResult, hevToolIds] = await Promise.all([
-    loadOpenCodeToolIds(get),
-    loadHevToolIds(),
-  ]);
-  const combinedToolIds = [...openCodeResult.toolIds, ...hevToolIds];
-
-  renderToolSnapshot(openCodeResult.toolIds, hevToolIds);
-
-  if (combinedToolIds.length > 0) {
-    return {
-      status: "loaded",
-      toolIds: combinedToolIds,
-    };
-  }
-
-  if (openCodeResult.status === "error") {
-    return {
-      status: "error",
-      toolIds: [],
-    };
-  }
+  const snapshot = await loadOpenCodeServerToolSnapshot(get);
+  renderToolSnapshot(snapshot.openCodeToolIds, snapshot.hevToolIds);
 
   return {
-    status: "empty",
-    toolIds: [],
+    status: snapshot.status,
+    toolIds: snapshot.toolIds,
   };
 }

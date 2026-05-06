@@ -1,5 +1,6 @@
 import { apiCall } from "./api.js";
 import { t } from "./i18n.js";
+import { loadOpenCodeServerToolSnapshot } from "./tool-catalog.js";
 
 export type McpStatusMap = Record<string, unknown>;
 
@@ -13,12 +14,6 @@ interface PathResponse {
   path?: string;
   directory?: string;
   worktree?: string;
-}
-
-interface HevToolsResponse {
-  success?: boolean;
-  total?: number;
-  toolNames?: string[];
 }
 
 interface OpencodeConfigResponse {
@@ -88,31 +83,12 @@ function getMcpStatusBadge(status: string): {
   }
 }
 
-async function loadHevToolCount(): Promise<number | null> {
-  if (
-    window.electronAPI == null ||
-    typeof window.electronAPI["opencodeUiHevTools"] !== "function"
-  ) {
-    return null;
-  }
+async function loadHevToolCountFromOpenCodeServer(): Promise<number | null> {
+  const snapshot = await loadOpenCodeServerToolSnapshot(async (path) => {
+    return await apiCall<unknown>("GET", path);
+  });
 
-  try {
-    const result = (await window.electronAPI["opencodeUiHevTools"]()) as HevToolsResponse;
-    if (result.success !== true) {
-      return null;
-    }
-
-    if (typeof result.total === "number" && Number.isFinite(result.total)) {
-      return result.total;
-    }
-
-    if (Array.isArray(result.toolNames)) {
-      return result.toolNames.filter((toolName) => typeof toolName === "string" && toolName !== "")
-        .length;
-    }
-  } catch (_error) {}
-
-  return null;
+  return snapshot.status === "error" ? null : snapshot.hevToolIds.length;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -562,7 +538,7 @@ export async function checkHealth(): Promise<{ mcpServers: McpStatusMap }> {
     await Promise.all([
       apiCall<GlobalHealthResponse>("GET", "/global/health"),
       apiCall<McpStatusMap>("GET", "/mcp"),
-      loadHevToolCount(),
+      loadHevToolCountFromOpenCodeServer(),
       loadPluginSummaryFromConfig(),
       loadPluginSummaryFromApiClient(),
     ]);

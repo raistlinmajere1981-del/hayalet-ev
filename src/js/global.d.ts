@@ -1195,18 +1195,6 @@ declare global {
     assistantOnTranscriptIngress?: (callback: (payload: TranscriptIngressPayload) => void) => void;
     assistantOffTranscriptIngress?: (callback: (payload: TranscriptIngressPayload) => void) => void;
 
-    opencodeUiHevTools: () => Promise<{
-      success: boolean;
-      total: number;
-      generatedAt: string;
-      categories: Array<{
-        name: string;
-        count: number;
-        tools: Array<{ name: string; description: string }>;
-      }>;
-      toolNames: string[];
-      error?: string;
-    }>;
     opencodeUiQuickPromptsRead: () => Promise<{
       success: boolean;
       prompts: Array<{

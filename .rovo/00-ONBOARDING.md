@@ -76,20 +76,20 @@ hev_list_tools         → Kategorize tool listesi - her zaman güncel
 hev_suggest_tool{ intent } → Amaca göre en uygun tool önerisi
 ```
 
-**İkincil kaynak — offline fallback:** `.rovo/_metadata/` klasörü
+**İkincil kaynak — code graph fallback:** `assistant-intel`
 
-| Dosya             | İçerik                                       |
-| ----------------- | -------------------------------------------- |
-| `VERSION-INFO.md` | Proje versiyonu, dependency'ler              |
-| `TOOL-LIST.md`    | Tool listesi — referans, güncelliği değişken |
-| `COMMENT-INDEX.md` | High-signal comment özeti ve hızlı navigation |
-| `COMMENT-INDEX.json` | Structured comment lookup çıktısı |
+| Komut                                | İçerik                            |
+| ------------------------------------ | --------------------------------- |
+| `npm run intel:search -- <sorgu>`    | Sembol/kod/comment/selector keşfi |
+| `npm run intel:trace -- <fonksiyon>` | Caller/callee zinciri             |
+| `npm run intel:changes`              | Dirty değişiklik etki analizi     |
+| `.rovo/_metadata/CHARACTER.md`       | Kullanıcı karakter profili        |
 
-**⚠️ ÖNEMLİ:** Tool bilgisi için önce runtime discovery kullan. Metadata dosyaları yalnızca MCP erişilemediğinde kullanılmalıdır.
+**ÖNEMLİ:** Tool bilgisi için önce runtime discovery kullan. Eski `TOOL-LIST`, `COMMENT-INDEX`, `DOM-MANIFEST`, `SYSTEM-INFO` ve `VERSION-INFO` snapshot'ları kaldırıldı.
 
 **Comment Rule — Kısa:** Yeni comment'ler English-only yazılır. Comment, kodun ne yaptığını değil neden bu şekilde kaldığını anlatır. Banner, numbered step ve obvious inline comment eklenmez.
 
-**COMMENT-INDEX Kullanımı:** Önce `COMMENT-INDEX.md` ile yön bul. Structured lookup gerekiyorsa `COMMENT-INDEX.json` kullan. Düzenleme öncesi gerçek dosyayı açıp index bilgisini doğrula.
+**Code Graph Kullanımı:** Önce `npm run intel:search` veya `npm run intel:trace` ile yön bul. Düzenleme öncesi gerçek dosyayı açıp graph bilgisini doğrula.
 
 ---
 

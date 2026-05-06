@@ -8,9 +8,8 @@ type ReadyEvent = {
 };
 
 test("opencode-ui emits stage progression and ready=true only after settled mcp and final tool snapshot", async () => {
-  const { runOpencodeUiBootstrapPipeline } = await import(
-    "../../src/js/pages/opencode-ui/bootstrap-actions.ts"
-  );
+  const { runOpencodeUiBootstrapPipeline } =
+    await import("../../src/js/pages/opencode-ui/bootstrap-actions.ts");
 
   const stageEvents: StageEvent[] = [];
   const readyEvents: ReadyEvent[] = [];
@@ -54,9 +53,8 @@ test("opencode-ui emits stage progression and ready=true only after settled mcp 
 });
 
 test("opencode-ui keeps UI unlocked when mcp settle times out", async () => {
-  const { runOpencodeUiBootstrapPipeline } = await import(
-    "../../src/js/pages/opencode-ui/bootstrap-actions.ts"
-  );
+  const { runOpencodeUiBootstrapPipeline } =
+    await import("../../src/js/pages/opencode-ui/bootstrap-actions.ts");
 
   const readyEvents: Array<{
     ready: boolean;
@@ -96,7 +94,8 @@ test("opencode-ui keeps UI unlocked when mcp settle times out", async () => {
 });
 
 test("tools snapshot loader uses ids endpoint and falls back to tool listing endpoint", async () => {
-  const { loadToolsFinalSnapshot } = await import("../../src/js/pages/opencode-ui/tools-prompts.ts");
+  const { loadToolsFinalSnapshot } =
+    await import("../../src/js/pages/opencode-ui/tools-prompts.ts");
 
   const calls: string[] = [];
 
@@ -107,10 +106,7 @@ test("tools snapshot loader uses ids endpoint and falls back to tool listing end
     }
     if (path === "/experimental/tool") {
       return {
-        tools: [
-          { id: "app_hev_mcp_health" },
-          { id: "context7_query-docs" },
-        ],
+        tools: [{ id: "app_hev_mcp_health" }, { id: "context7_query-docs" }],
       };
     }
     throw new Error(`Unexpected path: ${path}`);
@@ -119,4 +115,48 @@ test("tools snapshot loader uses ids endpoint and falls back to tool listing end
   assert.deepEqual(calls, ["/experimental/tool/ids", "/experimental/tool"]);
   assert.equal(result.status, "loaded");
   assert.deepEqual(result.toolIds, ["app_hev_mcp_health", "context7_query-docs"]);
+});
+
+test("tools snapshot loader derives Hayalet Ev MCP tools from OpenCode server ids only", async () => {
+  const { loadToolsFinalSnapshot } =
+    await import("../../src/js/pages/opencode-ui/tools-prompts.ts");
+  const { splitOpenCodeServerToolIds } =
+    await import("../../src/js/pages/opencode-ui/tool-catalog.ts");
+  const globalWithWindow = globalThis as { window?: unknown };
+  const previousWindow = globalWithWindow.window;
+  let localMetadataProbeCount = 0;
+
+  globalWithWindow.window = {
+    electronAPI: {
+      opencodeUiHevTools: async () => {
+        localMetadataProbeCount += 1;
+        return { success: true, toolNames: ["stale_local_tool"] };
+      },
+    },
+  };
+
+  try {
+    const result = await loadToolsFinalSnapshot(async (path) => {
+      assert.equal(path, "/experimental/tool/ids");
+      return ["app_hev_mcp_health", "app_hev_list_tools", "context7_query-docs"];
+    });
+
+    assert.equal(localMetadataProbeCount, 0);
+    assert.equal(result.status, "loaded");
+    assert.deepEqual(result.toolIds, [
+      "app_hev_mcp_health",
+      "app_hev_list_tools",
+      "context7_query-docs",
+    ]);
+    assert.deepEqual(splitOpenCodeServerToolIds(result.toolIds), {
+      openCodeToolIds: ["context7_query-docs"],
+      hevToolIds: ["app_hev_mcp_health", "app_hev_list_tools"],
+    });
+  } finally {
+    if (previousWindow === undefined) {
+      delete globalWithWindow.window;
+    } else {
+      globalWithWindow.window = previousWindow;
+    }
+  }
 });

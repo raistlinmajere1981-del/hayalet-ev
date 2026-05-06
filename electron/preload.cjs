@@ -435,7 +435,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("opencode-ui-fs-read-session", sessionId, dbPath),
   opencodeUiFsArchiveSession: (sessionId, archived, dbPath) =>
     ipcRenderer.invoke("opencode-ui-fs-archive-session", sessionId, archived, dbPath),
-  opencodeUiHevTools: () => ipcRenderer.invoke("opencode-ui-hev-tools"),
   opencodeUiQuickPromptsRead: () => ipcRenderer.invoke("opencode-ui-quick-prompts-read"),
   opencodeUiQuickPromptsWrite: (prompts) =>
     ipcRenderer.invoke("opencode-ui-quick-prompts-write", prompts),

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-05-05T20:45:35.272Z",
+  "updatedAt": "2026-05-06T10:22:25.955Z",
   "rooms": [
     {
       "id": "forge-room",
@@ -1228,8 +1228,8 @@
         }
       },
       "i18nBaseDir": "/home/raistlin/hayalet-ev/rooms/.build/laboratory/runtime/i18n",
-      "installedAt": "2026-05-05T20:45:35.272Z",
-      "updatedAt": "2026-05-05T20:45:35.272Z"
+      "installedAt": "2026-05-06T10:22:25.955Z",
+      "updatedAt": "2026-05-06T10:22:25.955Z"
     }
   ]
 }

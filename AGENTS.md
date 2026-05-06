@@ -39,11 +39,11 @@
 | 3    | `hev_dev_smart_insert`        | Doğal dil ile pozisyon bulma — `"after function X"` |
 | 4    | `hev_dev_safe_batch_refactor` | Toplu refactor — auto-rollback destekli             |
 
-### MCP Metadata Yenileme
+### MCP Build Yenileme
 
 MCP tool yüzeyi değiştiğinde varsayılan akış:
 
-- `npm run mcp:build` → tool listesi ve metadata yeniden üretilir.
+- `npm run mcp:build` → MCP server build edilir.
 - Gerekirse MCP panel toggle otomasyonu için `hev_toggle_mcp_panel_servers` kullanılabilir — OpenCode.
 
 ---
@@ -208,11 +208,11 @@ Koşullu adımlar:
 
 1. Değişiklik veya mod kararı gerekiyorsa → `npm run mode:status`, `npm run whereami`
 2. Runtime mod `app` ve `whereami.effectiveMode` sonucu `app` ise ve muhatap sınıflandırması gerekiyorsa → whoareyou kontrolü
-3. Electron/CDP işi varsa → `hev_fs_read{ file_path: ".rovo/_metadata/DOM-MANIFEST.json" }`
-4. Performans/uzun job/yerel bağımlılık kararı varsa → `hev_fs_read{ file_path: ".rovo/_metadata/SYSTEM-INFO.md" }`
+3. Kod haritası, selector, comment veya etki analizi gerekiyorsa → `npm run intel:search`, `npm run intel:trace`, `npm run intel:changes`
+4. Performans/uzun job/yerel bağımlılık kararı varsa → runtime komutlarıyla anlık kontrol et (`node -v`, `uname`, `free`, `npm run intel:projects`)
 5. Karakter profili gerekiyorsa → `hev_fs_read{ file_path: ".rovo/_metadata/CHARACTER.md" }`
 
-> **SYSTEM-INFO Kullanım Kuralı:** `.rovo/_metadata/SYSTEM-INFO.md` build sırasında otomatik üretilen bir ortam snapshot'ıdır. CPU/RAM/OS/runtime kapasitesi hakkında planlama, performans beklentisi ve yerel araç uyumluluğu kararlarında kullanılabilir; anlık `free RAM` gibi değerler runtime gerçeği değil, build-time referans kabul edilir.
+> **Assistant Intel Kullanım Kuralı:** Eski statik `TOOL-LIST`, `COMMENT-INDEX`, `DOM-MANIFEST`, `SYSTEM-INFO` ve `VERSION-INFO` snapshot'ları emekliye ayrıldı. Kod ve ilişki keşfinde Codebase-Memory tabanlı `npm run intel:*` komutları, MCP tool keşfinde runtime discovery source of truth kabul edilir.
 
 ## 🧭 Hardcoded Workflow Senaryoları — Tek Kaynak: AGENTS.md
 
@@ -446,18 +446,16 @@ Memory akışı tamamen MCP üzerinden yürür.
 | `.rovo/02-MCP-ESSENTIALS.md` | Temel tool kullanım rehberi |
 | `.rovo/03-ARCHITECTURE.md`   | Proje mimarisi              |
 
-### Metadata — Otomatik Güncellenen
+### Assistant Intel ve Kalan Metadata
 
-| Dosya                                | İçerik                                          |
-| ------------------------------------ | ----------------------------------------------- |
-| `.rovo/_metadata/VERSION-INFO.md`    | Versiyon, dependency'ler                        |
-| `.rovo/_metadata/TOOL-LIST.md`       | Güncel tool listesi — referans                  |
-| `.rovo/_metadata/SYSTEM-INFO.md`     | Donanım, OS, runtime ve ortam profili           |
-| `.rovo/_metadata/DOM-MANIFEST.json`  | Statik DOM selector lookup indeksi              |
-| `.rovo/_metadata/COMMENT-INDEX.md`   | Yüksek sinyalli comment özeti ve hızlı gezinme  |
-| `.rovo/_metadata/COMMENT-INDEX.json` | Comment index'in makine tüketimine uygun sürümü |
+| Kaynak                               | İçerik                                        |
+| ------------------------------------ | --------------------------------------------- |
+| `npm run intel:search -- <sorgu>`    | Codebase graph üstünden sembol/kod keşfi      |
+| `npm run intel:trace -- <fonksiyon>` | Caller/callee zinciri                         |
+| `npm run intel:changes`              | Dirty dosyaların graph etkisi                 |
+| `.rovo/_metadata/CHARACTER.md`       | Kullanıcı tarafından yazılan karakter profili |
 
-> **Not:** Birincil keşif yöntemi runtime discovery'dir — `hev_list_tools`, `hev_suggest_tool`. `SYSTEM-INFO.md`, `DOM-MANIFEST.json` ve `COMMENT-INDEX` çıktıları build sırasında otomatik güncellenir; `SYSTEM-INFO.md` planlama için referans snapshot sağlar, runtime telemetry yerine geçmez.
+> **Not:** Birincil keşif yöntemi runtime discovery ve `assistant-intel` graph katmanıdır. Eski generated `TOOL-LIST`, `VERSION-INFO`, `SYSTEM-INFO`, `DOM-MANIFEST` ve `COMMENT-INDEX` dosyaları artık kullanılmaz.
 
 ### Comment Convention — Kısa
 
@@ -467,13 +465,12 @@ Memory akışı tamamen MCP üzerinden yürür.
 - Banner/separator comment, numbered step narration, stale TODO ve obvious inline açıklama eklenmez.
 - Prefix gerekiyorsa yalnızca `AI:`, `NOTE:`, `WARNING:` ve takip edilecekse `TODO:` kullanılır.
 
-### COMMENT-INDEX Kullanımı
+### Code Graph Kullanımı
 
-- Hızlı yön bulma için önce `.rovo/_metadata/COMMENT-INDEX.md` okunur.
-- Structured lookup veya otomasyon gerekiyorsa `.rovo/_metadata/COMMENT-INDEX.json` kullanılır.
-- Bu index source of truth değildir; gerçek düzenleme öncesi ilgili dosya mutlaka açılıp doğrulanır.
-- File-level intent, symbol-level rationale, fallback ve constraint notlarını bulmak için index tercih edilir.
-- Index'te görünmeyen bir comment'in yok olduğu varsayılmaz; yalnızca high-signal filtreye girmemiş olabilir.
+- Hızlı yön bulma için önce `npm run intel:search -- <sorgu>` kullanılır.
+- Caller/callee ilişkisi için `npm run intel:trace -- <fonksiyon> --path <alt-dizin>` kullanılır.
+- Etki analizi için `npm run intel:changes` kullanılır.
+- Graph sonucu source of truth değildir; gerçek düzenleme öncesi ilgili dosya mutlaka açılıp doğrulanır.
 
 ---
 
@@ -537,13 +534,11 @@ Bu tool, AI0 webview'de ilgili MCP panelini açıp switch'leri OFF→ON yapar ve
 
 ---
 
-## DOM Manifest — Statik
+## DOM Keşfi
 
-- Çıktı dosyası: `.rovo/_metadata/DOM-MANIFEST.json`
-- Üretici script: `scripts/generate-dom-manifest.js`
-- Build entegrasyonu: `npm run mcp:build` ve `npm run generate:docs` içinde otomatik çalışır
-- Kapsam: yalnızca statik tarama — `src`, `electron`, `ghost-agent` — Electron runtime testi/crawl yok
-- Kullanım kuralı: Electron/CDP adımlarında selector çözümleme için önce `lookup.id` ve `lookup.testid`, sonra gerekirse `lookup.query` kullanılır
+- Statik `DOM-MANIFEST.json` kaldırıldı.
+- Electron/CDP işlerinde önce runtime CDP araçları kullanılır.
+- Selector veya test id kod keşfi gerekiyorsa `npm run intel:search -- <selector veya testid>` ile graph araması yapılır.
 
 ---
 

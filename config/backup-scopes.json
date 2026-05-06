@@ -37,8 +37,6 @@
       "include": [
         "mcp-server/**",
         "mcp-server/tsconfig.mcp.json",
-        "scripts/generate-dom-manifest.js",
-        "scripts/generate-system-info.js",
         "scripts/sync-mcp-dist.mjs"
       ],
       "exclude": [
