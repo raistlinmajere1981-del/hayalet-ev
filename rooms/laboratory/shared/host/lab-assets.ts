@@ -257,15 +257,62 @@ export function buildSourceLabAsset(project: ProjectLike): LabAsset | null {
   };
 }
 
+function isReusedSourceAssetMirror(asset: LabAsset, assets: LabAsset[]): boolean {
+  if (asset.type !== "source") {
+    return false;
+  }
+
+  const metadata = toRecord(asset.metadata);
+  const originAssetType = asNonEmptyString(metadata["originAssetType"]);
+  if (originAssetType !== null && originAssetType !== "source") {
+    return true;
+  }
+
+  const originAssetId =
+    asNonEmptyString(metadata["originAssetId"]) ||
+    asNonEmptyString(metadata["derivedFromAssetId"]) ||
+    asNonEmptyString(asset.derivedFromAssetId);
+  if (originAssetId === null) {
+    return false;
+  }
+
+  return assets.some(function (candidate) {
+    return candidate.id === originAssetId && candidate.type !== "source";
+  });
+}
+
+function removeReusedSourceAssetMirrors(assets: LabAsset[]): LabAsset[] {
+  return assets.filter(function (asset) {
+    return isReusedSourceAssetMirror(asset, assets) !== true;
+  });
+}
+
 export function syncSourceLabAssetForProject(
   project: ProjectLike,
   assetsValue: unknown
 ): LabAsset[] {
+  const assets = removeReusedSourceAssetMirrors(normalizeLabAssets(assetsValue));
   const sourceAsset = buildSourceLabAsset(project);
   if (sourceAsset === null) {
-    return normalizeLabAssets(assetsValue);
+    return assets;
   }
-  return upsertLabAsset(assetsValue, sourceAsset);
+
+  const sourceMetadata = toRecord(getProjectSource(project)["metadata"]);
+  const originAssetId =
+    asNonEmptyString(sourceMetadata["originAssetId"]) ||
+    asNonEmptyString(sourceMetadata["derivedFromAssetId"]);
+  const originAssetType = asNonEmptyString(sourceMetadata["originAssetType"]);
+  const mirrorsReusedAsset =
+    originAssetId !== null &&
+    originAssetType !== "source" &&
+    (originAssetType !== null || originAssetId !== sourceAsset.id);
+
+  if (mirrorsReusedAsset) {
+    return assets.filter(function (asset) {
+      return asset.type !== "source" || asset.id !== sourceAsset.id;
+    });
+  }
+  return upsertLabAsset(assets, sourceAsset);
 }
 
 export function createLabOutputAsset(project: ProjectLike, input: OutputAssetInput): LabAsset {

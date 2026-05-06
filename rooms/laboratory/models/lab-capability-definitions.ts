@@ -277,11 +277,14 @@ export interface LabAnalysisCapabilityModuleProjection {
   reportSection: string;
 }
 
+export type LabAnalysisPreparationSelectionState = "none" | "partial" | "full";
+
 export interface LabAnalysisPreparationGroup {
   intentId: LabIntentId;
   label: string;
   description: string;
   selected: boolean;
+  selectionState: LabAnalysisPreparationSelectionState;
   readiness: CapabilityReadiness;
   blockReason: string | null;
   expectedOutputs: LabExpectedOutput[];

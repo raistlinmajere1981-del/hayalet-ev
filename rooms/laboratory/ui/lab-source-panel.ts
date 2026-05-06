@@ -1,4 +1,4 @@
-import { asNonEmptyString, escapeHtml } from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, escapeHtml } from "../models/lab-types.js";
 import type { LabAsset, LabAssetType, LabStoreState } from "../models/lab-types.js";
 import { getAssets, getCurrentSourceAsset, getProjectSource } from "../runtime/lab-selectors.js";
 import {
@@ -17,6 +17,7 @@ import {
   buildLabAssetMetadataTitle,
   getLabAssetPath,
   getLabAssetPathLeaf,
+  getLabAssetPreviewKind,
 } from "./lab-asset-display.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
@@ -52,13 +53,15 @@ const ASSET_TYPE_BADGES: Record<LabAssetType, string> = {
 // ---------------------------------------------------------------------------
 
 function canUseAsSource(asset: LabAsset): boolean {
+  const assetPath = getLabAssetPath(asset);
   return (
     asNonEmptyString(asset.localPath) !== null &&
     (asset.type === "source" ||
       asset.type === "clip" ||
       asset.type === "frame" ||
       asset.type === "audio" ||
-      asset.type === "image")
+      asset.type === "image" ||
+      (asset.type === "artifact" && getLabAssetPreviewKind(asset, assetPath) === "image"))
   );
 }
 
@@ -294,12 +297,13 @@ export function renderLabSourcePanel(
 
   const source = getProjectSource(state);
   const currentAsset = getCurrentSourceAsset(state);
-  const currentSourceId = currentAsset?.id ?? asNonEmptyString(source["assetId"]);
-  const assets = getAssets(state)
-    .slice()
-    .sort(function (a, b) {
-      return b.createdAt - a.createdAt;
-    });
+  const sourceMetadata = asLabRecord(source["metadata"]);
+  const currentSourceId =
+    currentAsset?.id ??
+    asNonEmptyString(sourceMetadata["originAssetId"]) ??
+    asNonEmptyString(sourceMetadata["derivedFromAssetId"]) ??
+    asNonEmptyString(source["assetId"]);
+  const assets = getAssets(state);
 
   const localAction = buildProjectImportLocalHostAction(state);
   const localDisabled = localAction.disabledReason !== null ? " disabled" : "";

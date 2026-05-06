@@ -10,6 +10,7 @@ import {
   buildLabAssetMetadataTitle,
   getLabAssetPath,
   getLabAssetPathLeaf,
+  getLabAssetPreviewKind,
   getLabAssetSyncLabel,
 } from "./lab-asset-display.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
@@ -68,13 +69,15 @@ function getAssetIcon(asset: LabAsset): string {
 }
 
 function canUseAsSource(asset: LabAsset): boolean {
+  const assetPath = getLabAssetPath(asset);
   return (
     asNonEmptyString(asset.localPath) !== null &&
     (asset.type === "source" ||
       asset.type === "clip" ||
       asset.type === "frame" ||
       asset.type === "audio" ||
-      asset.type === "image")
+      asset.type === "image" ||
+      (asset.type === "artifact" && getLabAssetPreviewKind(asset, assetPath) === "image"))
   );
 }
 
@@ -143,6 +146,8 @@ function renderAudioAssetDetails(state: LabStoreState, asset: LabAsset, copy: La
 function renderAssetItem(state: LabStoreState, asset: LabAsset, copy: LabI18n) {
   const createdAt = formatAssetTime(asset.createdAt);
   const escapedId = escapeHtml(asset.id);
+  const primaryAction =
+    asset.type === "artifact" && canUseAsSource(asset) ? "asset-use-as-source" : "asset-preview";
   return `
     <div class="labx-project-assets__item" data-lab-asset-id="${escapedId}" title="${escapeHtml(
       buildLabAssetMetadataTitle(asset)
@@ -150,7 +155,7 @@ function renderAssetItem(state: LabStoreState, asset: LabAsset, copy: LabI18n) {
       <button
         class="labx-project-assets__preview"
         type="button"
-        data-lab-action="asset-preview"
+        data-lab-action="${escapeHtml(primaryAction)}"
         data-lab-value="${escapedId}"
       >
         <span class="labx-project-assets__icon" data-asset-type="${escapeHtml(asset.type)}">
@@ -219,11 +224,7 @@ export function renderLabProjectAssetsPanel(
     return project["hasSource"] !== false;
   });
   const disableDelete = newProjectSelected || state.projectIndex.activeProjectId === null;
-  const assets = getAssets(state)
-    .slice()
-    .sort(function (left, right) {
-      return right.createdAt - left.createdAt;
-    });
+  const assets = getAssets(state);
   const projectControls = options.includeProjectControls
     ? `
       <div class="labx-project-assets__project-controls">

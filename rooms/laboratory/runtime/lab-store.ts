@@ -41,10 +41,13 @@ import {
   createImageInspectionSelection,
   createSnapshotEvent,
   deriveCapabilitiesFromIntentIds,
+  getAnalysisModuleIdsForIntentId,
   isLabFocusLayer,
   normalizeInspectionMode,
   normalizeLabIntentIds,
   normalizeWorkspaceIntentIds,
+  patchAnalysisPreparationIntentModuleToggles,
+  replaceAnalysisPreparationModuleToggles,
   resetInspectionMode,
   scopeWorkspaceBookmark,
 } from "./store/lab-store-workspace-state.js";
@@ -742,6 +745,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         ...state.ui.workspace,
         selectedIntents: nextIntents,
       };
+      state.workbench = replaceAnalysisPreparationModuleToggles(state.workbench, nextIntents);
       state.selectedCapabilities = deriveCapabilitiesFromIntentIds(nextIntents);
       return state;
     }
@@ -755,6 +759,46 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
             return entry !== event.intentId;
           })
         : intents.concat(event.intentId);
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        selectedIntents: nextIntents,
+      };
+      state.workbench = patchAnalysisPreparationIntentModuleToggles(
+        state.workbench,
+        event.intentId,
+        nextIntents,
+        !intents.includes(event.intentId)
+      );
+      state.selectedCapabilities = deriveCapabilitiesFromIntentIds(nextIntents);
+      return state;
+    }
+    case "analysis-prep-module-toggled": {
+      if (isRunMutationLocked(state)) {
+        return state;
+      }
+      const moduleId = event.moduleId.trim();
+      const intentModuleIds = getAnalysisModuleIdsForIntentId(event.intentId);
+      if (moduleId === "" || !intentModuleIds.includes(moduleId)) {
+        return state;
+      }
+      const moduleToggles = {
+        ...asLabRecord(asLabRecord(state.workbench)["moduleToggles"]),
+      };
+      moduleToggles[moduleId] = moduleToggles[moduleId] !== true;
+      state.workbench = {
+        ...state.workbench,
+        moduleToggles,
+      };
+      const hasEnabledModule = intentModuleIds.some(function (entry) {
+        return moduleToggles[entry] === true;
+      });
+      const intentSet = new Set(normalizeWorkspaceIntentIds(state.ui.workspace.selectedIntents));
+      if (hasEnabledModule) {
+        intentSet.add(event.intentId);
+      } else {
+        intentSet.delete(event.intentId);
+      }
+      const nextIntents = normalizeWorkspaceIntentIds(Array.from(intentSet));
       state.ui.workspace = {
         ...state.ui.workspace,
         selectedIntents: nextIntents,

@@ -902,6 +902,7 @@ export type LabStoreEvent =
   | { type: "workspace-bookmark-removed"; bookmarkId: string }
   | { type: "workspace-intent-toggled"; intentId: LabIntentId }
   | { type: "workspace-intent-set"; intents: LabIntentId[] }
+  | { type: "analysis-prep-module-toggled"; intentId: LabIntentId; moduleId: string }
   | { type: "analysis-prep-group-toggled"; intentId: LabIntentId }
   | { type: "analysis-prep-group-expanded"; intentIds: LabIntentId[] }
   | { type: "workspace-source-intake-toggled"; force?: boolean }

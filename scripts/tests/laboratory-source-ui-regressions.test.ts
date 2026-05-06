@@ -6,6 +6,7 @@ import {
   getActiveExecutionIntent,
   getActiveSuggestionPreview,
   getAnalysisActionBlockReason,
+  getAnalysisPreparationGroups,
   getProcessingOverlayState,
 } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
@@ -13,6 +14,7 @@ import { renderLabAssetPreviewOverlay } from "../../rooms/laboratory/ui/lab-asse
 import { renderLabDrawer } from "../../rooms/laboratory/ui/lab-drawer.ts";
 import { renderLabProcessStrip } from "../../rooms/laboratory/ui/lab-process-strip.ts";
 import { renderLabProjectAssetsPanel } from "../../rooms/laboratory/ui/lab-project-assets-panel.ts";
+import { renderLabSourcePanel } from "../../rooms/laboratory/ui/lab-source-panel.ts";
 import { renderLabLeftRail, renderLabTopBar } from "../../rooms/laboratory/ui/lab-top-bar.ts";
 import { createLabI18n } from "../../rooms/laboratory/ui/lab-i18n.ts";
 import { renderPipeline } from "../../rooms/laboratory/ui/laboratory-layout.ts";
@@ -887,6 +889,11 @@ test("laboratory Turkish workspace controls localize operation and intent catalo
 
 test("laboratory analysis preparation groups default closed and expand on demand", () => {
   const store = createSeededState(true);
+  const defaultGroups = getAnalysisPreparationGroups(store.getState());
+  assert.ok(defaultGroups.every((group) => group.selectionState === "none"));
+  assert.ok(
+    defaultGroups.every((group) => group.modules.every((module) => module.enabled === false))
+  );
 
   const closedDrawer = renderLabDrawer(store.getState(), renderWorkspaceSurface(store.getState()));
   assert.match(closedDrawer, /data-lab-action="analysis-prep-group-toggle"/);
@@ -899,11 +906,52 @@ test("laboratory analysis preparation groups default closed and expand on demand
   assert.match(openDrawer, /data-lab-value="audio-investigation"[\s\S]*aria-expanded="true"/);
   assert.match(openDrawer, /class="labx-analysis-module"/);
   assert.match(openDrawer, /Audio signal/);
+  const signalToggle = openDrawer.match(
+    /<input[\s\S]*data-lab-value="audio-investigation::signal-health"[\s\S]*?\/>/
+  )?.[0];
+  assert.ok(signalToggle);
+  assert.doesNotMatch(signalToggle, /\schecked(\s|>)/);
   assert.match(
     openDrawer,
     /data-lab-field="analysisSettings\.modules\.signal-recovery\.recoveryPreset"/
   );
   assert.match(openDrawer, /data-lab-action="analysis-settings-reset"/);
+});
+
+test("laboratory analysis preparation parent and child toggles stay synchronized", () => {
+  const store = createSeededState(true);
+
+  store.dispatch({ type: "workspace-intent-toggled", intentId: "audio-investigation" });
+  let audioGroup = getAnalysisPreparationGroups(store.getState()).find(function (group) {
+    return group.intentId === "audio-investigation";
+  });
+  assert.equal(audioGroup?.selectionState, "full");
+  assert.ok(audioGroup?.modules.every((module) => module.enabled));
+
+  store.dispatch({ type: "workspace-intent-toggled", intentId: "audio-investigation" });
+  audioGroup = getAnalysisPreparationGroups(store.getState()).find(function (group) {
+    return group.intentId === "audio-investigation";
+  });
+  assert.equal(audioGroup?.selectionState, "none");
+  assert.ok(audioGroup?.modules.every((module) => !module.enabled));
+
+  store.dispatch({
+    type: "analysis-prep-module-toggled",
+    intentId: "audio-investigation",
+    moduleId: "signal-health",
+  });
+  audioGroup = getAnalysisPreparationGroups(store.getState()).find(function (group) {
+    return group.intentId === "audio-investigation";
+  });
+  assert.equal(audioGroup?.selectionState, "partial");
+  assert.equal(
+    audioGroup?.modules.find((module) => module.moduleId === "signal-health")?.enabled,
+    true
+  );
+  assert.ok(store.getState().ui.workspace.selectedIntents.includes("audio-investigation"));
+
+  const drawer = renderLabDrawer(store.getState(), renderWorkspaceSurface(store.getState()));
+  assert.match(drawer, /data-selection-state="partial"[\s\S]*data-lab-value="audio-investigation"/);
 });
 
 test("laboratory selection guidance splits expanded operation and analysis suggestions", () => {
@@ -1395,6 +1443,17 @@ test("laboratory project assets panel renders registry groups and local asset ac
       runId: "run-1",
     },
   });
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "artifact-png-1",
+      type: "artifact",
+      name: "reveal-frame.png",
+      localPath: "/tmp/reveal-frame.png",
+      createdAt: 500,
+      runId: "run-1",
+    },
+  });
 
   const panelHtml = renderLabProjectAssetsPanel(store.getState());
 
@@ -1406,9 +1465,89 @@ test("laboratory project assets panel renders registry groups and local asset ac
   assert.match(panelHtml, /data-lab-action="asset-download"/);
   assert.match(panelHtml, /data-lab-action="asset-remove"/);
   assert.match(panelHtml, /data-lab-action="asset-use-as-source" data-lab-value="clip-local-1"/);
+  assert.match(
+    panelHtml,
+    /data-lab-action="asset-use-as-source" data-lab-value="artifact-png-1"/
+  );
   assert.doesNotMatch(
     panelHtml,
     /data-lab-action="asset-use-as-source" data-lab-value="clip-remote-1"/
+  );
+});
+
+test("laboratory source panel uses png artifacts as sources from the primary click", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "artifact-png-1",
+      type: "artifact",
+      name: "reveal-frame.png",
+      localPath: "/tmp/reveal-frame.png",
+      createdAt: 500,
+      runId: "run-1",
+    },
+  });
+
+  const panelHtml = renderLabSourcePanel(store.getState());
+
+  assert.match(
+    panelHtml,
+    /data-lab-action="asset-use-as-source" data-lab-value="artifact-png-1"/
+  );
+  assert.doesNotMatch(
+    panelHtml,
+    /class="labx-sp-asset__btn"[^>]*data-lab-action="asset-preview"[^>]*data-lab-value="artifact-png-1"/
+  );
+});
+
+test("laboratory source panel keeps asset order stable when active source timestamps change", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "source-stable-first",
+      type: "source",
+      name: "stable-first.mp4",
+      localPath: "/tmp/stable-first.mp4",
+      createdAt: 100,
+    },
+  });
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "source-active-newer",
+      type: "source",
+      name: "active-newer.mp4",
+      localPath: "/tmp/active-newer.mp4",
+      createdAt: 999_000,
+    },
+  });
+
+  const panelHtml = renderLabSourcePanel(store.getState());
+
+  assert.ok(panelHtml.indexOf("stable-first.mp4") < panelHtml.indexOf("active-newer.mp4"));
+});
+
+test("laboratory project assets panel uses png artifacts as sources from the primary click", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "artifact-png-primary",
+      type: "artifact",
+      name: "artifact-primary.png",
+      localPath: "/tmp/artifact-primary.png",
+      createdAt: 500,
+      runId: "run-1",
+    },
+  });
+
+  const panelHtml = renderLabProjectAssetsPanel(store.getState());
+
+  assert.match(
+    panelHtml,
+    /class="labx-project-assets__preview"[\s\S]*data-lab-action="asset-use-as-source"[\s\S]*data-lab-value="artifact-png-primary"/
   );
 });
 

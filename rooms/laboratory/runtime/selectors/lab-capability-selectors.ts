@@ -425,6 +425,7 @@ export function getAnalysisPreparationGroups(state: LabStoreState): LabAnalysisP
   const moduleSettings = asLabRecord(analysisSettings["modules"]);
 
   return WORKSPACE_INTENTS.map(function (intent) {
+    const intentSelected = selectedIntents.includes(intent.id);
     const modules = intent.internalCapabilities.flatMap(function (capabilityId) {
       const capability = availableCapabilities.find(function (entry) {
         return entry.id === capabilityId;
@@ -441,17 +442,23 @@ export function getAnalysisPreparationGroups(state: LabStoreState): LabAnalysisP
           requiredTools: requiredTools.slice(),
           readiness,
           blockReason,
-          enabled: moduleToggles[moduleId] !== false,
+          enabled: intentSelected && moduleToggles[moduleId] === true,
           settings: normalizeLabAnalysisModuleSettings(moduleId, moduleSettings[moduleId]),
           settingsFields: LAB_ANALYSIS_MODULE_SETTINGS_FIELDS[moduleId] || [],
           reportSection: getReportSectionForCapability(capabilityId),
         };
       });
     });
-    const selected = selectedIntents.includes(intent.id);
     const selectedModules = modules.filter(function (module) {
       return module.enabled;
     });
+    const selectionState =
+      !intentSelected || selectedModules.length === 0
+        ? "none"
+        : selectedModules.length === modules.length
+          ? "full"
+          : "partial";
+    const selected = selectionState !== "none";
     const blockedModules = selectedModules.filter(function (module) {
       return module.readiness === "blocked";
     });
@@ -470,6 +477,7 @@ export function getAnalysisPreparationGroups(state: LabStoreState): LabAnalysisP
       label: intent.label,
       description: intent.description,
       selected,
+      selectionState,
       readiness,
       blockReason:
         readiness === "blocked"

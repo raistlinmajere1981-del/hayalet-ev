@@ -25,6 +25,7 @@ import {
   clearInspectionDepth,
   deriveCapabilitiesFromIntentIds,
   normalizeWorkspaceIntentIds,
+  replaceAnalysisPreparationModuleToggles,
   resetInspectionMode,
 } from "./lab-store-workspace-state.js";
 import { clampPreviewVolume, syncProjectImportDraftFromSourceDrafts } from "./lab-store-sync.js";
@@ -184,6 +185,12 @@ function hydrateWorkspaceUi(state: LabStoreState, workspace: unknown) {
     }
   );
   if (Array.isArray(ws.selectedIntents)) {
+    if (Object.keys(asLabRecord(state.workbench["moduleToggles"])).length === 0) {
+      state.workbench = replaceAnalysisPreparationModuleToggles(
+        state.workbench,
+        state.ui.workspace.selectedIntents
+      );
+    }
     state.selectedCapabilities = deriveCapabilitiesFromIntentIds(
       state.ui.workspace.selectedIntents
     );

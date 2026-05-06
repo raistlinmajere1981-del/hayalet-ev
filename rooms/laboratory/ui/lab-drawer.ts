@@ -197,7 +197,7 @@ function renderAnalysisPreparationGroupBody(
                     type="checkbox"
                     ${module.enabled ? "checked" : ""}
                     data-lab-action="module-toggle"
-                    data-lab-value="${escapeHtml(module.moduleId)}"
+                    data-lab-value="${escapeHtml(`${group.intentId}::${module.moduleId}`)}"
                   />
                   <span>
                     <strong>${escapeHtml(moduleLabel)}</strong>
@@ -232,8 +232,9 @@ function renderAnalysisPreparationAccordion(
   activeCapabilityIds: CapabilityFamilyId[],
   copy: LabI18n
 ) {
-  const selected = intent.selected;
   const blocked = intent.readiness === "blocked";
+  const selectionState = group?.selectionState ?? (intent.selected ? "full" : "none");
+  const selected = selectionState !== "none";
   const groupActive =
     group?.modules.some(function (module) {
       return activeCapabilityIds.includes(module.capabilityId);
@@ -256,6 +257,7 @@ function renderAnalysisPreparationAccordion(
     <div
       class="labx-drawer__intent-cluster"
       data-selected="${String(selected)}"
+      data-selection-state="${escapeHtml(selectionState)}"
       data-expanded="${String(expanded)}"
       data-readiness="${escapeHtml(readiness)}"
       data-active="${String(groupActive)}"
@@ -265,6 +267,7 @@ function renderAnalysisPreparationAccordion(
           <input
             type="checkbox"
             ${selected ? "checked" : ""}
+            aria-checked="${selectionState === "partial" ? "mixed" : String(selected)}"
             ${blocked ? "disabled" : ""}
             data-lab-action="workspace-intent-toggle"
             data-lab-value="${escapeHtml(intent.id)}"

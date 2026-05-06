@@ -27,6 +27,7 @@ import {
   LAB_USER_ACTION_HUB_SUCCESS_WINDOW_MS,
   test,
 } from "./laboratory-runtime-truth.helpers.ts";
+import { closeLabAssetMenusForClick } from "../../rooms/laboratory/runtime/controller/lab-asset-context-menu-controller.ts";
 import { resolveDrawerMode } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 
 test("laboratory run controller dismisses successful user actions from the topbar after the success window", () => {
@@ -404,6 +405,82 @@ test("laboratory asset preview binder does not spawn blank windows for room prev
   }
 });
 
+test("laboratory asset menus close on menu actions and outside clicks", () => {
+  const originalElement = (globalThis as Record<string, unknown>).Element;
+
+  class TestElement {
+    constructor(
+      private readonly menu: HTMLDetailsElement | null,
+      private readonly action = false
+    ) {}
+
+    closest(selector: string) {
+      if (
+        selector === "details.labx-sp-asset__menu, details.labx-project-assets__menu"
+      ) {
+        return this.menu;
+      }
+      if (selector === "[data-lab-action]" && this.action) {
+        return this;
+      }
+      return null;
+    }
+  }
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+
+  try {
+    const sourceMenu = { open: true } as HTMLDetailsElement;
+    const projectMenu = { open: true } as HTMLDetailsElement;
+    const documentRef = {
+      querySelectorAll(selector: string) {
+        assert.equal(
+          selector,
+          "details.labx-sp-asset__menu, details.labx-project-assets__menu"
+        );
+        return [sourceMenu, projectMenu];
+      },
+    } as unknown as Document;
+
+    closeLabAssetMenusForClick(
+      { target: new TestElement(sourceMenu, true) } as unknown as Event,
+      documentRef
+    );
+    assert.equal(sourceMenu.open, false);
+    assert.equal(projectMenu.open, false);
+
+    sourceMenu.open = true;
+    projectMenu.open = true;
+    closeLabAssetMenusForClick(
+      { target: new TestElement(sourceMenu, false) } as unknown as Event,
+      documentRef
+    );
+    assert.equal(sourceMenu.open, true);
+    assert.equal(projectMenu.open, false);
+
+    sourceMenu.open = true;
+    projectMenu.open = true;
+    closeLabAssetMenusForClick(
+      { target: new TestElement(null, false) } as unknown as Event,
+      documentRef
+    );
+    assert.equal(sourceMenu.open, false);
+    assert.equal(projectMenu.open, false);
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
 test("laboratory run controller focuses the source preview through explicit source-preview actions", () => {
   const originalElement = globalThis.Element;
   const previewCalls: string[] = [];
@@ -548,6 +625,23 @@ test("laboratory run controller wires v2 shell action buttons into workspace sta
       target: new TestElement("workspace-intent-toggle", "visual-inspection"),
     } as Event);
     assert.deepEqual(store.getState().ui.workspace.selectedIntents, ["visual-inspection"]);
+    assert.equal(
+      (store.getState().workbench.moduleToggles as Record<string, unknown>)["frame-consistency"],
+      true
+    );
+    assert.equal(
+      (store.getState().workbench.moduleToggles as Record<string, unknown>)["hidden-detail-reveal"],
+      true
+    );
+
+    clickListener?.({
+      target: new TestElement("module-toggle", "audio-investigation::signal-health"),
+    } as Event);
+    assert.equal(
+      (store.getState().workbench.moduleToggles as Record<string, unknown>)["signal-health"],
+      true
+    );
+    assert.ok(store.getState().ui.workspace.selectedIntents.includes("audio-investigation"));
 
     clickListener?.({ target: new TestElement("workspace-process-view-toggled") } as Event);
     assert.equal(store.getState().ui.workspace.processViewActive, true);

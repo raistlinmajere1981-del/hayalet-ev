@@ -3,6 +3,7 @@ import {
   asNonEmptyString,
   asStringArray,
   createLabEventId,
+  getModuleIdsForCapabilityFamily,
   WORKSPACE_INTENTS,
 } from "../../models/lab-types.js";
 import type {
@@ -12,6 +13,7 @@ import type {
   LabFocusLayer,
   LabInspectionMode,
   LabIntentId,
+  LabRecord,
   LabSelection,
   LabStoreState,
 } from "../../models/lab-types.js";
@@ -51,6 +53,83 @@ export function deriveCapabilitiesFromIntentIds(intentIds: unknown): CapabilityF
     });
   });
   return Array.from(capabilitySet);
+}
+
+export function getAnalysisModuleIdsForIntentId(intentId: LabIntentId): string[] {
+  const intent = WORKSPACE_INTENTS.find(function (entry) {
+    return entry.id === intentId;
+  });
+  if (!intent) {
+    return [];
+  }
+  return Array.from(
+    new Set(
+      intent.internalCapabilities.flatMap(function (capabilityId) {
+        return getModuleIdsForCapabilityFamily(capabilityId);
+      })
+    )
+  );
+}
+
+export function deriveAnalysisModuleIdsFromIntentIds(intentIds: unknown): string[] {
+  return Array.from(
+    new Set(
+      normalizeWorkspaceIntentIds(intentIds).flatMap(function (intentId) {
+        return getAnalysisModuleIdsForIntentId(intentId);
+      })
+    )
+  );
+}
+
+export function replaceAnalysisPreparationModuleToggles(
+  workbench: LabRecord,
+  selectedIntentIds: unknown
+): LabRecord {
+  const selectedModuleIds = new Set(deriveAnalysisModuleIdsFromIntentIds(selectedIntentIds));
+  const moduleToggles = {
+    ...asLabRecord(workbench["moduleToggles"]),
+  };
+  deriveAnalysisModuleIdsFromIntentIds(
+    WORKSPACE_INTENTS.map(function (intent) {
+      return intent.id;
+    })
+  ).forEach(function (moduleId) {
+    moduleToggles[moduleId] = selectedModuleIds.has(moduleId);
+  });
+  return {
+    ...workbench,
+    moduleToggles,
+  };
+}
+
+export function patchAnalysisPreparationIntentModuleToggles(
+  workbench: LabRecord,
+  intentId: LabIntentId,
+  selectedIntentIds: unknown,
+  enabled: boolean
+): LabRecord {
+  const selectedIntentSet = new Set(normalizeWorkspaceIntentIds(selectedIntentIds));
+  const moduleToggles = {
+    ...asLabRecord(workbench["moduleToggles"]),
+  };
+  getAnalysisModuleIdsForIntentId(intentId).forEach(function (moduleId) {
+    if (enabled) {
+      moduleToggles[moduleId] = true;
+      return;
+    }
+    const neededByAnotherSelectedIntent = WORKSPACE_INTENTS.some(function (intent) {
+      return (
+        intent.id !== intentId &&
+        selectedIntentSet.has(intent.id) &&
+        getAnalysisModuleIdsForIntentId(intent.id).includes(moduleId)
+      );
+    });
+    moduleToggles[moduleId] = neededByAnotherSelectedIntent;
+  });
+  return {
+    ...workbench,
+    moduleToggles,
+  };
 }
 
 export function isLabFocusLayer(value: unknown): value is LabFocusLayer {

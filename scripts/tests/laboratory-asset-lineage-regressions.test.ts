@@ -6,6 +6,7 @@ import {
   createLabOutputAsset,
   normalizeLabAsset,
   serializeLabAssetForSnapshot,
+  syncSourceLabAssetForProject,
 } from "../../rooms/laboratory/shared/host/lab-assets.ts";
 
 test("laboratory asset normalization and serialization preserve lineage fields", () => {
@@ -81,4 +82,52 @@ test("laboratory source asset projection lifts lineage from source metadata", ()
 
   assert.equal(sourceAsset?.derivedFromAssetId, "asset-local-clip");
   assert.equal(sourceAsset?.derivedFromSourceId, "source-1");
+});
+
+test("laboratory source asset sync does not mirror reused non-source assets into source list", () => {
+  const sourcePath = "/tmp/project/artifacts/reveal-frame.png";
+  const syncedAssets = syncSourceLabAssetForProject(
+    {
+      id: "project-reused-artifact",
+      createdAt: "2026-04-23T18:30:00.000Z",
+      source: {
+        kind: "image",
+        storedPath: sourcePath,
+        storedFileName: "reveal-frame.png",
+        mode: "local",
+        metadata: {
+          originAssetId: "artifact-png-1",
+          originAssetType: "artifact",
+        },
+      },
+    },
+    [
+      {
+        id: "artifact-png-1",
+        type: "artifact",
+        name: "reveal-frame.png",
+        localPath: sourcePath,
+        createdAt: 200,
+      },
+      {
+        id: "source-stale-reveal-frame",
+        type: "source",
+        name: "reveal-frame.png",
+        localPath: sourcePath,
+        createdAt: 201,
+        metadata: {
+          originAssetId: "artifact-png-1",
+          originAssetType: "artifact",
+        },
+      },
+    ]
+  );
+
+  assert.equal(
+    syncedAssets.some(function (asset) {
+      return asset.type === "source" && asset.localPath === sourcePath;
+    }),
+    false
+  );
+  assert.equal(syncedAssets.some((asset) => asset.id === "artifact-png-1"), true);
 });

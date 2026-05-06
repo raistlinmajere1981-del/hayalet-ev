@@ -28,7 +28,10 @@ import {
   toStringValue,
 } from "./controller/lab-controller-helpers.js";
 import { applyAnalysisScopeField } from "./controller/lab-analysis-scope-controller.js";
-import { openLabAssetContextMenu } from "./controller/lab-asset-context-menu-controller.js";
+import {
+  closeLabAssetMenusForClick,
+  openLabAssetContextMenu,
+} from "./controller/lab-asset-context-menu-controller.js";
 import { createLabAssetActionController } from "./controller/lab-asset-action-controller.js";
 import { createLabFormActionController } from "./controller/lab-form-action-controller.js";
 import { createLabMediaActionController } from "./controller/lab-media-action-controller.js";
@@ -198,6 +201,14 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     roomApi.sendEvent("host-context", payload);
   }
 
+  function syncCurrentWorkbenchToHost() {
+    const state = deps.store.getState();
+    sendHostContext({
+      ...state.context,
+      workbench: getWorkbench(state),
+    });
+  }
+
   function updateWorkbench(
     update: (currentWorkbench: Record<string, unknown>) => Record<string, unknown>
   ) {
@@ -262,22 +273,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     updateYoutubeImportCustomField,
   });
   const { handleChange, handleInput } = formActions;
-
-  function toggleModule(moduleId: string) {
-    if (moduleId.trim() === "") {
-      return;
-    }
-    updateWorkbench(function (workbench) {
-      const moduleToggles = {
-        ...asLabRecord(workbench["moduleToggles"]),
-      };
-      moduleToggles[moduleId] = moduleToggles[moduleId] === false;
-      return {
-        ...workbench,
-        moduleToggles,
-      };
-    });
-  }
 
   function activateFeature(featureId: string) {
     dispatch({
@@ -362,6 +357,20 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       }
     });
     return intentCapabilities;
+  }
+
+  function parseAnalysisPreparationModuleValue(value: string) {
+    const [intentId, moduleId] = value.split("::");
+    const knownIntentId = WORKSPACE_INTENTS.some(function (intent) {
+      return intent.id === intentId;
+    });
+    if (!knownIntentId || typeof moduleId !== "string" || moduleId.trim() === "") {
+      return null;
+    }
+    return {
+      intentId: intentId as LabIntentId,
+      moduleId,
+    };
   }
 
   function startDeepAnalysis(state: ReturnType<typeof deps.store.getState>) {
@@ -459,6 +468,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   }
 
   function handleClick(event: Event) {
+    closeLabAssetMenusForClick(event, deps.documentRef);
     const target = event.target instanceof Element ? event.target : null;
     if (!target) {
       return;
@@ -588,7 +598,21 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         return;
       }
       case "module-toggle":
-        toggleModule(value);
+        if (isWorkspaceMutationLocked("intents")) {
+          pushLockedWorkspaceEvent("Analiz modülleri aktif analiz sırasında kilitli.");
+          return;
+        }
+        {
+          const parsed = parseAnalysisPreparationModuleValue(value);
+          if (parsed) {
+            dispatch({
+              type: "analysis-prep-module-toggled",
+              intentId: parsed.intentId,
+              moduleId: parsed.moduleId,
+            });
+            syncCurrentWorkbenchToHost();
+          }
+        }
         return;
       case "edit-mode":
         sendMediaAction("edit-set-mode", { mode: value });
@@ -797,6 +821,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
             type: "workspace-intent-toggled",
             intentId: value as import("../models/lab-types.js").LabIntentId,
           });
+          syncCurrentWorkbenchToHost();
         }
         return;
       case "analysis-prep-group-toggle":

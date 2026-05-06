@@ -242,6 +242,13 @@ export function createMediaLocalSourceIntakeRuntime(deps: MediaLocalSourceIntake
       isAutoSourceKind(toRecord(localFields)["kind"]) === true
         ? inferSourceKindFromPath(runtime, selectedPath) || requestedSourceKind
         : requestedSourceKind;
+    const preparedProject = {
+      ...project,
+      source: {
+        ...project.source,
+        kind: sourceKind,
+      },
+    };
 
     const sourceDir = getProjectSourceDir(runtime, project);
     const copyResult = await electronApi.copyFileTo(selectedPath, sourceDir);
@@ -256,7 +263,7 @@ export function createMediaLocalSourceIntakeRuntime(deps: MediaLocalSourceIntake
     const storedPath = asNonEmptyString(copyResult.path);
     const storedFileName =
       asNonEmptyString(copyResult.name) || (storedPath ? storedPath.split(/[\\/]/).pop() : null);
-    const preparedSource = await resolvePreparedSource(runtime, project, {
+    const preparedSource = await resolvePreparedSource(runtime, preparedProject, {
       requestId: requestId,
       storedPath: storedPath,
       storedFileName: storedFileName,
@@ -309,7 +316,10 @@ export function createMediaLocalSourceIntakeRuntime(deps: MediaLocalSourceIntake
       throw new Error("Only local project assets can be used as a source.");
     }
 
-    const sourceKind = inferAssetSourceKind(asset, getProjectSourceKind(project));
+    const sourceKind = inferAssetSourceKind(
+      asset,
+      inferSourceKindFromPath(runtime, assetPath) || getProjectSourceKind(project)
+    );
     const storedPath = assetPath;
     const storedFileName =
       asNonEmptyString(asset.name) || storedPath.split(/[\\/]/).pop() || asset.id;

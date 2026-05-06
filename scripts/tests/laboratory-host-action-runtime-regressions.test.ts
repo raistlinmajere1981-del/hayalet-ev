@@ -1897,8 +1897,8 @@ test("laboratory source intake resolves use-as-source from registered local asse
   const sourceAsset = syncedAssets.find(function (asset) {
     return asset.id === asset.sourceId;
   });
-  assert.equal(sourceAsset?.derivedFromAssetId, "asset-local-clip");
-  assert.equal(sourceAsset?.derivedFromSourceId, "source-1");
+  assert.equal(sourceAsset, undefined);
+  assert.equal(metadata["originAssetId"], "asset-local-clip");
   assert.equal(editResetCount, 1);
   assert.equal(profileResetCount, 1);
 });
@@ -1983,6 +1983,79 @@ test("laboratory local source picker uses requested import kind filters", async 
   ]);
   assert.equal(activeProject.source["kind"], "image");
   assert.equal(activeProject.source["storedFileName"], "frame.png");
+  assert.equal(activeProject.source["mimeType"], "image/png");
+});
+
+test("laboratory local source picker validates auto-detected image sources as images", async () => {
+  let activeProject = {
+    id: "project-auto-image-source",
+    source: {
+      kind: "video",
+      status: "idle",
+    },
+  } as Record<string, unknown> & { source: Record<string, unknown> };
+  const preparedKinds: unknown[] = [];
+
+  const sourceRuntime = createMediaLocalSourceIntakeRuntime({
+    asNonEmptyString(value: unknown) {
+      return typeof value === "string" && value.trim() !== "" ? value : null;
+    },
+    getActiveProject() {
+      return activeProject;
+    },
+    getElectronApi() {
+      return {
+        async copyFileTo() {
+          return {
+            success: true,
+            path: "/tmp/project/source/frame.png",
+            name: "frame.png",
+          };
+        },
+        async showOpenDialog() {
+          return {
+            canceled: false,
+            filePaths: ["/tmp/frame.png"],
+          };
+        },
+      };
+    },
+    getProjectSourceDir() {
+      return "/tmp/project/source";
+    },
+    getSourceConfig(_sourcePresets, sourceKind) {
+      if (sourceKind === "image") {
+        return { fileDialogFilters: [{ name: "Images", extensions: ["png"] }] };
+      }
+      if (sourceKind === "audio") {
+        return { fileDialogFilters: [{ name: "Audio", extensions: ["wav"] }] };
+      }
+      return { fileDialogFilters: [{ name: "Video", extensions: ["mp4"] }] };
+    },
+    normalizeMimeType(_fileName: unknown, kind: string) {
+      return kind === "image" ? "image/png" : "video/mp4";
+    },
+    async patchActiveProject(_runtime, updater) {
+      activeProject = updater(activeProject);
+    },
+    resetEditForCurrentSource() {},
+    resetProfileForCurrentSource() {},
+    async resolvePreparedSource(_runtime, project, options) {
+      preparedKinds.push(project.source["kind"]);
+      return {
+        metadata: null,
+        metadataError: null,
+        mimeType: options["mimeType"] as string,
+        storedFileName: options["storedFileName"] as string,
+        storedPath: options["storedPath"] as string,
+      };
+    },
+  });
+
+  await sourceRuntime.handleLocalPick({}, {}, "req-auto-image", { kind: "auto" });
+
+  assert.deepEqual(preparedKinds, ["image"]);
+  assert.equal(activeProject.source["kind"], "image");
   assert.equal(activeProject.source["mimeType"], "image/png");
 });
 
