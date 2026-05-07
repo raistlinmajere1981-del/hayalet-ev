@@ -497,14 +497,13 @@
     0 0 0 1px rgba(255, 221, 112, 0.12),
     0 0 28px rgba(255, 221, 112, 0.14);
   pointer-events: auto;
-  cursor: zoom-in;
+  cursor: default;
 }
 
 .labx-selection-roi--focused {
   box-shadow:
     0 0 0 1px rgba(255, 221, 112, 0.2),
     0 0 34px rgba(255, 221, 112, 0.22);
-  cursor: zoom-out;
 }
 
 .labx-selection-roi__label {
@@ -519,6 +518,104 @@
   line-height: 1.3rem;
   letter-spacing: 0.04em;
   white-space: nowrap;
+  pointer-events: none;
+}
+
+.labx-selection-roi__clear {
+  position: absolute;
+  top: -0.7rem;
+  right: -0.7rem;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  padding: 0;
+  border: 1px solid rgba(255, 221, 112, 0.42);
+  border-radius: 999px;
+  background: rgba(8, 14, 24, 0.94);
+  color: rgba(255, 236, 168, 0.96);
+  cursor: pointer;
+  font-size: 0.86rem;
+  line-height: 1;
+  pointer-events: auto;
+}
+
+.labx-selection-roi__clear:hover,
+.labx-selection-roi__clear:focus-visible {
+  border-color: rgba(255, 221, 112, 0.76);
+  background: rgba(48, 34, 20, 0.96);
+  color: #fff2bd;
+}
+
+.labx-selection-roi__resize-handle {
+  position: absolute;
+  z-index: 2;
+  display: block;
+  width: 0.72rem;
+  height: 0.72rem;
+  padding: 0;
+  border: 1px solid rgba(255, 221, 112, 0.8);
+  border-radius: 999px;
+  background: rgba(8, 14, 24, 0.92);
+  box-shadow: 0 0 0 2px rgba(255, 221, 112, 0.08);
+  pointer-events: auto;
+}
+
+.labx-selection-roi__resize-handle:hover,
+.labx-selection-roi__resize-handle:focus-visible {
+  background: rgba(255, 221, 112, 0.98);
+  box-shadow:
+    0 0 0 2px rgba(8, 14, 24, 0.74),
+    0 0 16px rgba(255, 221, 112, 0.3);
+}
+
+.labx-selection-roi__resize-handle--nw {
+  top: -0.36rem;
+  left: -0.36rem;
+  cursor: nwse-resize;
+}
+
+.labx-selection-roi__resize-handle--n {
+  top: -0.36rem;
+  left: calc(50% - 0.36rem);
+  cursor: ns-resize;
+}
+
+.labx-selection-roi__resize-handle--ne {
+  top: -0.36rem;
+  right: -0.36rem;
+  cursor: nesw-resize;
+}
+
+.labx-selection-roi__resize-handle--e {
+  top: calc(50% - 0.36rem);
+  right: -0.36rem;
+  cursor: ew-resize;
+}
+
+.labx-selection-roi__resize-handle--se {
+  right: -0.36rem;
+  bottom: -0.36rem;
+  cursor: nwse-resize;
+}
+
+.labx-selection-roi__resize-handle--s {
+  bottom: -0.36rem;
+  left: calc(50% - 0.36rem);
+  cursor: ns-resize;
+}
+
+.labx-selection-roi__resize-handle--sw {
+  bottom: -0.36rem;
+  left: -0.36rem;
+  cursor: nesw-resize;
+}
+
+.labx-selection-roi__resize-handle--w {
+  top: calc(50% - 0.36rem);
+  left: -0.36rem;
+  cursor: ew-resize;
 }
 
 .labx-roi-region {

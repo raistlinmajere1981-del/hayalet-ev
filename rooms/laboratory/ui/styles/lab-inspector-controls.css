@@ -314,6 +314,10 @@
   opacity: 1;
 }
 
+.labx-settings-block--inline {
+  opacity: 1;
+}
+
 .labx-settings-block__summary {
   display: grid;
   align-items: center;

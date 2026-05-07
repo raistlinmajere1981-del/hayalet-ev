@@ -160,8 +160,25 @@ function renderIconRail(input: {
     return s.group === "post-process";
   });
 
+  function isSlotEnabled(slot: (typeof ICON_RAIL_SLOTS)[number]) {
+    if (slot.content === "audio-focus") {
+      return content.hasAudio;
+    }
+    if (slot.content === "visual-adjust") {
+      return content.hasVisualControls;
+    }
+    if (slot.capabilityId === null) {
+      return false;
+    }
+    return content.operationCapabilities.some(function (capability) {
+      return capability.id === slot.capabilityId;
+    });
+  }
+
   function renderSlotButton(slot: (typeof ICON_RAIL_SLOTS)[number]) {
-    const active = activeSlotId === slot.id;
+    const enabled = isSlotEnabled(slot);
+    const disabled = locked || !enabled;
+    const active = activeSlotId === slot.id && enabled;
     const label = copy.t(`mediaAnalysis.iconRail.${slot.id}`, slot.id);
     const svg = ICON_RAIL_SVGS[slot.id];
     return `<button
@@ -171,9 +188,11 @@ function renderIconRail(input: {
       data-lab-value="${escapeHtml(slot.id)}"
       data-active="${active ? "true" : "false"}"
       data-draft="${slot.draft ? "true" : "false"}"
+      data-disabled="${disabled ? "true" : "false"}"
+      aria-disabled="${disabled ? "true" : "false"}"
       aria-label="${escapeHtml(label)}"
       title="${escapeHtml(label)}"
-      ${locked ? "disabled" : ""}
+      ${disabled ? "disabled" : ""}
     >${svg}${slot.draft ? `<span class="labx-icon-rail__draft-badge">${escapeHtml(copy.t("mediaAnalysis.iconRail.draft", "Draft"))}</span>` : ""}</button>`;
   }
 
@@ -183,13 +202,13 @@ function renderIconRail(input: {
 
   const activeSlot =
     ICON_RAIL_SLOTS.find(function (s) {
-      return s.id === activeSlotId;
+      return s.id === activeSlotId && isSlotEnabled(s);
     }) ?? null;
   const popoverMarkup =
     activeSlot !== null ? renderIconRailPopover({ content, copy, pinned, slot: activeSlot }) : "";
 
   return `
-    <aside class="labx-icon-rail" data-lab-region="icon-rail" data-pinned="${pinned ? "true" : "false"}" data-has-active="${activeSlotId !== null ? "true" : "false"}" data-locked="${locked ? "true" : "false"}">
+    <aside class="labx-icon-rail" data-lab-region="icon-rail" data-pinned="${pinned ? "true" : "false"}" data-has-active="${activeSlot !== null ? "true" : "false"}" data-locked="${locked ? "true" : "false"}">
       <div class="labx-icon-rail__group" data-group="realtime">${renderGroup(realtimeSlots)}</div>
       <div class="labx-icon-rail__divider"></div>
       <div class="labx-icon-rail__group" data-group="post-process">${renderGroup(postProcessSlots)}</div>
@@ -203,15 +222,9 @@ function renderIconRailPopoverBody(
   content: IconRailContentContext,
   copy: LabI18n
 ): string {
-  const emptyNotice = (messageKey: string, fallback: string) =>
-    `<p class="labx-icon-rail-popover__empty">${escapeHtml(copy.t(messageKey, fallback))}</p>`;
-
   if (slot.content === "audio-focus") {
     if (!content.hasAudio) {
-      return emptyNotice(
-        "mediaAnalysis.iconRail.emptyAudio",
-        "Ses kontrolleri yalnızca ses veya video kaynakları için kullanılabilir."
-      );
+      return "";
     }
     return renderWorkspaceAudioFocus(
       content.audioFocus,
@@ -225,26 +238,20 @@ function renderIconRailPopoverBody(
 
   if (slot.content === "visual-adjust") {
     if (!content.hasVisualControls) {
-      return emptyNotice(
-        "mediaAnalysis.iconRail.emptyVisual",
-        "Görsel ayarlar yalnızca görüntü veya video kaynakları için kullanılabilir."
-      );
+      return "";
     }
     return renderWorkspaceInteractiveControls(content.interactiveSettings, copy);
   }
 
   // operation
   if (slot.capabilityId === null) {
-    return emptyNotice("mediaAnalysis.iconRail.emptyOperation", "Bu slot için işlem bulunmuyor.");
+    return "";
   }
   const capability = content.operationCapabilities.find(function (c) {
     return c.id === slot.capabilityId;
   });
   if (!capability) {
-    return emptyNotice(
-      "mediaAnalysis.iconRail.operationUnavailable",
-      "İşlem şu an kullanılamıyor. Kaynağı yükleyip tekrar deneyin."
-    );
+    return "";
   }
   return renderCapabilityCard(capability, content.activeOperationCapabilityId, copy);
 }
@@ -528,7 +535,6 @@ export function renderWorkspaceSurface(
               sourceKind === "image" ||
               (activeSelection !== null && activeSelection.endMs > activeSelection.startMs),
             mutationLocked: lockState.roi,
-            showInlineInspectionControls: sourceKind === "image",
             sourceKind,
           },
           copy

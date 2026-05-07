@@ -812,6 +812,59 @@ test("workspace surface renders semantic roi overlay and focus mask inside the v
   assert.match(surface.main, /labx-selection-roi-mask/);
 });
 
+test("workspace surface keeps image roi controls out of the visual preview stage", () => {
+  const store = createLabStore();
+  store.dispatch({
+    type: "hydrate",
+    payload: {
+      featureId: "media-analysis",
+      projectIndex: {
+        activeProjectId: "project-image-roi",
+        projects: [],
+      },
+      workbench: {},
+      source: {
+        status: "ready",
+        kind: "image",
+        mode: "local",
+        previewUrl: "file:///tmp/source.png",
+        routeLabel: "Local Copy",
+        storedPath: "/tmp/source.png",
+        metadata: {
+          width: 1534,
+          height: 1024,
+        },
+      },
+      sourceProbeStatus: "completed",
+      workspace: {},
+      reports: {
+        user: null,
+        ai: null,
+        emptyReason: null,
+      },
+      activityFeed: [],
+      lastRun: null,
+    },
+  });
+  store.dispatch({
+    type: "selection-roi-updated",
+    roi: {
+      x: 0.32,
+      y: 0.35,
+      width: 0.18,
+      height: 0.28,
+    },
+  });
+
+  const surface = renderWorkspaceSurface(store.getState());
+
+  assert.match(surface.main, /data-lab-selection-roi-overlay="true"/);
+  assert.match(surface.main, /data-lab-selection-roi="true"/);
+  assert.doesNotMatch(surface.main, /labx-roi-selection-toolbar/);
+  assert.doesNotMatch(surface.main, /data-lab-selection-inspection-mode=/);
+  assert.match(surface.side, /data-lab-selection-inspection-mode=/);
+});
+
 test("selection intent binder emits a dedicated semantic selection event", () => {
   const documentRef = new FakeControllerDocument();
   const eventBus = createLabEventBus();

@@ -734,11 +734,11 @@ test("laboratory workspace inspector exposes operation-result controls and activ
     surface.inspector ?? "",
     /data-operation-id="enhanced-frame"[\s\S]*data-active="true"/
   );
-  assert.match(surface.inspector ?? "", /class="labx-settings-block"/);
-  assert.match(surface.inspector ?? "", /data-lab-collapsible-panel="true"/);
+  assert.match(surface.inspector ?? "", /class="labx-settings-block labx-settings-block--inline"/);
+  assert.doesNotMatch(surface.inspector ?? "", /data-lab-collapsible-panel="true"/);
   assert.match(surface.inspector ?? "", /data-panel-id="operationSettings\.enhanced-frame"/);
-  assert.match(surface.inspector ?? "", /class="labx-settings-block__state"/);
-  assert.match(surface.inspector ?? "", /class="labx-settings-block__action"/);
+  assert.doesNotMatch(surface.inspector ?? "", /class="labx-settings-block__state"/);
+  assert.doesNotMatch(surface.inspector ?? "", /class="labx-settings-block__action"/);
   assert.match(
     surface.inspector ?? "",
     /data-lab-field="operationSettings\.enhanced-frame\.preset"/

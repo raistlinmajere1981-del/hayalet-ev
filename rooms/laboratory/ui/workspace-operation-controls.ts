@@ -131,6 +131,7 @@ export function renderCapabilityCard(
         title: copy.t("mediaAnalysis.operations.settings", "Settings"),
         toggleLabel: copy.t("mediaAnalysis.settings.edit", "Edit"),
         translate: copy.t,
+        variant: "inline",
       })}
       ${renderOperationButton(capability, copy)}
     </article>

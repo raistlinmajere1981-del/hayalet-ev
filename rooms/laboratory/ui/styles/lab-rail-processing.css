@@ -43,12 +43,15 @@
     box-shadow 120ms ease-out;
 }
 
-.labx-icon-rail[data-locked="true"] .labx-icon-rail__btn {
+.labx-icon-rail[data-locked="true"] .labx-icon-rail__btn,
+.labx-icon-rail__btn:disabled,
+.labx-icon-rail__btn[data-disabled="true"] {
+  cursor: default;
   pointer-events: none;
   opacity: 0.38;
 }
 
-.labx-icon-rail__btn:hover {
+.labx-icon-rail__btn:not(:disabled):hover {
   color: var(--labx-text-soft);
   background: rgba(255, 255, 255, 0.06);
 }
@@ -63,7 +66,7 @@
   opacity: 0.45;
 }
 
-.labx-icon-rail__btn[data-draft="true"]:hover {
+.labx-icon-rail__btn[data-draft="true"]:not(:disabled):hover {
   opacity: 0.65;
 }
 

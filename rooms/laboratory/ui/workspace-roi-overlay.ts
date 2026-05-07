@@ -15,6 +15,7 @@ type RenderWorkspaceROIOverlayOptions = {
 };
 
 const INSPECTION_MODE_OPTIONS = ["none", "visual", "audio", "motion"] as const;
+const SELECTION_ROI_RESIZE_HANDLES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
 
 function formatInspectionMode(mode: LabInspectionMode) {
   return (
@@ -62,7 +63,28 @@ function renderSelectionFocusMask(selectionRoi: LabSelectionROI) {
   `;
 }
 
-function renderSelectionRoi(selectionRoi: LabSelectionROI, roiFocusActive: boolean, copy: LabI18n) {
+function renderSelectionResizeHandles(copy: LabI18n) {
+  const label = escapeHtml(copy.t("mediaAnalysis.roi.actions.resizeRegion", "Resize region"));
+  return SELECTION_ROI_RESIZE_HANDLES.map(function (handle) {
+    return `
+      <button
+        class="labx-selection-roi__resize-handle labx-selection-roi__resize-handle--${handle}"
+        type="button"
+        data-lab-selection-roi-resize="${handle}"
+        data-lab-selection-roi-ignore="true"
+        aria-label="${label}"
+        title="${label}"
+      ></button>
+    `;
+  }).join("");
+}
+
+function renderSelectionRoi(
+  selectionRoi: LabSelectionROI,
+  roiFocusActive: boolean,
+  mutationLocked: boolean,
+  copy: LabI18n
+) {
   return `
     ${renderSelectionFocusMask(selectionRoi)}
     <div
@@ -76,6 +98,21 @@ function renderSelectionRoi(selectionRoi: LabSelectionROI, roiFocusActive: boole
           ? copy.t("mediaAnalysis.roi.focusedLabel", "Focused ROI")
           : copy.t("mediaAnalysis.roi.inspectionLabel", "Inspection ROI")
       )}</div>
+      ${
+        mutationLocked
+          ? ""
+          : `
+            <button
+              class="labx-selection-roi__clear"
+              type="button"
+              data-lab-selection-roi-clear="true"
+              data-lab-selection-roi-ignore="true"
+              aria-label="${escapeHtml(copy.t("mediaAnalysis.roi.actions.clearRegion", "Clear region"))}"
+              title="${escapeHtml(copy.t("mediaAnalysis.roi.actions.clearRegion", "Clear region"))}"
+            >&times;</button>
+            ${renderSelectionResizeHandles(copy)}
+          `
+      }
     </div>
   `;
 }
@@ -188,51 +225,6 @@ export function renderWorkspaceROIOverlay(
   const roiFocusActive = options.roiFocusActive === true;
   const mutationLocked = options.mutationLocked === true;
   const regionElements = renderLegacyRegions(options.legacyRegions, mutationLocked, copy);
-  const summaryMarkup =
-    options.legacyRegions.length > 0
-      ? `
-        <div class="labx-roi-summary">
-          <span>${escapeHtml(copy.t("mediaAnalysis.roi.summary.regions", "{count} region(s)", { count: options.legacyRegions.length }))}</span>
-          <span>${String(
-            options.legacyRegions.filter(function (r) {
-              return r.active;
-            }).length
-          )} ${escapeHtml(copy.t("mediaAnalysis.roi.summary.active", "active"))}</span>
-        </div>
-      `
-      : `
-        <div class="labx-roi-hint">
-          ${
-            options.selectionRoiEnabled
-              ? mutationLocked
-                ? escapeHtml(
-                    copy.t(
-                      "mediaAnalysis.roi.hints.locked",
-                      "ROI edits are locked while analysis is running"
-                    )
-                  )
-                : selectionRoi
-                  ? escapeHtml(
-                      copy.t(
-                        "mediaAnalysis.roi.hints.redefine",
-                        "Drag to redefine the inspection region or double click to focus"
-                      )
-                    )
-                  : escapeHtml(
-                      copy.t(
-                        "mediaAnalysis.roi.hints.define",
-                        "Drag to define an inspection region"
-                      )
-                    )
-              : escapeHtml(
-                  copy.t(
-                    "mediaAnalysis.roi.hints.selectRange",
-                    "Select a time range, then drag to define region of interest"
-                  )
-                )
-          }
-        </div>
-      `;
 
   return `
     <div
@@ -243,9 +235,8 @@ export function renderWorkspaceROIOverlay(
       data-lab-roi-mutation-locked="${mutationLocked ? "true" : "false"}"
       data-lab-source-kind="${escapeHtml(options.sourceKind)}"
     >
-      ${selectionRoi ? renderSelectionRoi(selectionRoi, roiFocusActive, copy) : ""}
+      ${selectionRoi ? renderSelectionRoi(selectionRoi, roiFocusActive, mutationLocked, copy) : ""}
       ${regionElements}
-      ${summaryMarkup}
       ${
         options.showInlineInspectionControls === true
           ? renderInlineInspectionControls(

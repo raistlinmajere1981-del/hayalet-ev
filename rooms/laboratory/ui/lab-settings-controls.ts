@@ -147,11 +147,42 @@ export function renderLabSettingsFields(params: {
   title: string;
   toggleLabel?: string;
   translate?: LabSettingsTranslate;
+  variant?: "collapsible" | "inline";
 }) {
   if (params.fields.length === 0) {
     return "";
   }
   const resetLabel = params.resetLabel || "Reset";
+  const fieldsMarkup = params.fields
+    .map(function (field) {
+      return renderField(field, params.settings, params.prefix, params.translate);
+    })
+    .join("");
+  const toolbarMarkup = `
+    <div class="labx-settings-block__toolbar">
+      <button
+        class="labx-settings-block__reset"
+        type="button"
+        data-lab-action="${escapeHtml(params.resetAction)}"
+        data-lab-value="${escapeHtml(params.resetValue)}"
+      >${escapeHtml(resetLabel)}</button>
+    </div>
+  `;
+
+  if (params.variant === "inline") {
+    return `
+      <div
+        class="labx-settings-block labx-settings-block--inline"
+        data-panel-id="${escapeHtml(params.prefix)}"
+      >
+        ${toolbarMarkup}
+        <div class="labx-settings-grid">
+          ${fieldsMarkup}
+        </div>
+      </div>
+    `;
+  }
+
   return `
     <details
       class="labx-settings-block"
@@ -165,20 +196,9 @@ export function renderLabSettingsFields(params: {
         </span>
         <span class="labx-settings-block__action">${escapeHtml(params.toggleLabel || "Edit")}</span>
       </summary>
-      <div class="labx-settings-block__toolbar">
-        <button
-          class="labx-settings-block__reset"
-          type="button"
-          data-lab-action="${escapeHtml(params.resetAction)}"
-          data-lab-value="${escapeHtml(params.resetValue)}"
-        >${escapeHtml(resetLabel)}</button>
-      </div>
+      ${toolbarMarkup}
       <div class="labx-settings-grid">
-        ${params.fields
-          .map(function (field) {
-            return renderField(field, params.settings, params.prefix, params.translate);
-          })
-          .join("")}
+        ${fieldsMarkup}
       </div>
     </details>
   `;

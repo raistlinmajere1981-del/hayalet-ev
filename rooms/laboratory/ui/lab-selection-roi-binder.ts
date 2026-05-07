@@ -7,6 +7,8 @@ import type {
 import { bindLabDocumentEvents, isClosestCapableTarget } from "./lab-dom-events.js";
 
 const MIN_SELECTION_ROI_SIZE_PX = 8;
+const SELECTION_ROI_RESIZE_HANDLES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
+type SelectionRoiResizeHandle = (typeof SELECTION_ROI_RESIZE_HANDLES)[number];
 
 type RectLike = {
   bottom: number;
@@ -30,12 +32,25 @@ type SelectionRoiBinderDeps = {
   isMutationLocked?: () => boolean;
 };
 
-type DragState = {
+type DrawDragState = {
   lastSignature: string | null;
+  mode: "draw";
   stage: StageElement;
   startX: number;
   startY: number;
 };
+
+type ResizeDragState = {
+  handle: SelectionRoiResizeHandle;
+  initialRoi: LabSelectionROI;
+  lastSignature: string | null;
+  mode: "resize";
+  stage: StageElement;
+  startX: number;
+  startY: number;
+};
+
+type DragState = DrawDragState | ResizeDragState;
 
 type MouseLikeEvent = Event & {
   button?: number;
@@ -67,9 +82,45 @@ function clampPointToRect(event: MouseLikeEvent, rect: RectLike) {
   };
 }
 
+function clampUnit(value: number) {
+  if (Number.isFinite(value) !== true) {
+    return 0;
+  }
+  return Math.max(0, Math.min(1, value));
+}
+
+function isSelectionRoiResizeHandle(value: string | null): value is SelectionRoiResizeHandle {
+  return SELECTION_ROI_RESIZE_HANDLES.some(function (handle) {
+    return handle === value;
+  });
+}
+
+function createSelectionRoiResult(roi: LabSelectionROI, rect: RectLike) {
+  const x = clampUnit(roi.x);
+  const y = clampUnit(roi.y);
+  const width = Math.max(0, Math.min(1 - x, roi.width));
+  const height = Math.max(0, Math.min(1 - y, roi.height));
+  const widthPx = width * rect.width;
+  const heightPx = height * rect.height;
+
+  if (widthPx < MIN_SELECTION_ROI_SIZE_PX || heightPx < MIN_SELECTION_ROI_SIZE_PX) {
+    return null;
+  }
+
+  return {
+    roi: {
+      x,
+      y,
+      width,
+      height,
+    } satisfies LabSelectionROI,
+    signature: `${Math.round(x * 10000)}:${Math.round(y * 10000)}:${Math.round(width * 10000)}:${Math.round(height * 10000)}`,
+  };
+}
+
 function createSelectionRoiFromDrag(
   stage: StageElement,
-  dragState: DragState,
+  dragState: DrawDragState,
   event: MouseLikeEvent
 ) {
   const rect = stage.getBoundingClientRect();
@@ -79,19 +130,84 @@ function createSelectionRoiFromDrag(
   const widthPx = Math.abs(currentPoint.x - dragState.startX);
   const heightPx = Math.abs(currentPoint.y - dragState.startY);
 
-  if (widthPx < MIN_SELECTION_ROI_SIZE_PX || heightPx < MIN_SELECTION_ROI_SIZE_PX) {
+  if (
+    rect.width <= 0 ||
+    rect.height <= 0 ||
+    widthPx < MIN_SELECTION_ROI_SIZE_PX ||
+    heightPx < MIN_SELECTION_ROI_SIZE_PX
+  ) {
     return null;
   }
 
-  return {
-    roi: {
+  return createSelectionRoiResult(
+    {
       x: (left - rect.left) / rect.width,
       y: (top - rect.top) / rect.height,
       width: widthPx / rect.width,
       height: heightPx / rect.height,
-    } satisfies LabSelectionROI,
-    signature: `${Math.round(left)}:${Math.round(top)}:${Math.round(widthPx)}:${Math.round(heightPx)}`,
-  };
+    },
+    rect
+  );
+}
+
+function createSelectionRoiFromResize(
+  stage: StageElement,
+  dragState: ResizeDragState,
+  event: MouseLikeEvent
+) {
+  const rect = stage.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) {
+    return null;
+  }
+
+  const currentPoint = clampPointToRect(event, rect);
+  const nextX = clampUnit((currentPoint.x - rect.left) / rect.width);
+  const nextY = clampUnit((currentPoint.y - rect.top) / rect.height);
+  const handle = dragState.handle;
+  let left = clampUnit(dragState.initialRoi.x);
+  let top = clampUnit(dragState.initialRoi.y);
+  let right = clampUnit(dragState.initialRoi.x + dragState.initialRoi.width);
+  let bottom = clampUnit(dragState.initialRoi.y + dragState.initialRoi.height);
+  const minWidth = MIN_SELECTION_ROI_SIZE_PX / rect.width;
+  const minHeight = MIN_SELECTION_ROI_SIZE_PX / rect.height;
+
+  if (handle.indexOf("w") >= 0) {
+    left = nextX;
+  }
+  if (handle.indexOf("e") >= 0) {
+    right = nextX;
+  }
+  if (handle.indexOf("n") >= 0) {
+    top = nextY;
+  }
+  if (handle.indexOf("s") >= 0) {
+    bottom = nextY;
+  }
+
+  if (right - left < minWidth) {
+    if (handle.indexOf("w") >= 0) {
+      left = Math.max(0, right - minWidth);
+    } else {
+      right = Math.min(1, left + minWidth);
+    }
+  }
+  if (bottom - top < minHeight) {
+    if (handle.indexOf("n") >= 0) {
+      top = Math.max(0, bottom - minHeight);
+    } else {
+      bottom = Math.min(1, top + minHeight);
+    }
+  }
+
+  return createSelectionRoiResult(
+    {
+      x: left,
+      y: top,
+      width: right - left,
+      height: bottom - top,
+    },
+    rect
+  );
 }
 
 function canDrawSelectionRoi(activeSelection: LabSelection | null, sourceKind: string) {
@@ -143,6 +259,37 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
     }
 
     const target = event.target ?? null;
+    const resizeTrigger = getClosestTarget(target, "[data-lab-selection-roi-resize]");
+    if (resizeTrigger) {
+      if (isMutationLocked()) {
+        return;
+      }
+      const handle = resizeTrigger.getAttribute("data-lab-selection-roi-resize");
+      const stage = getClosestTarget(target, "[data-lab-selection-roi-stage='true']");
+      const activeSelection = deps.getActiveSelection();
+      const initialRoi = activeSelection?.roi ?? null;
+      if (
+        !isSelectionRoiResizeHandle(handle) ||
+        !stage ||
+        initialRoi === null ||
+        !canDrawSelectionRoi(activeSelection, deps.getSourceKind())
+      ) {
+        return;
+      }
+      const startPoint = clampPointToRect(event, stage.getBoundingClientRect());
+      event.preventDefault();
+      dragState = {
+        handle,
+        initialRoi,
+        lastSignature: null,
+        mode: "resize",
+        stage,
+        startX: startPoint.x,
+        startY: startPoint.y,
+      };
+      return;
+    }
+
     if (getClosestTarget(target, "[data-lab-selection-roi-ignore='true']")) {
       return;
     }
@@ -170,6 +317,7 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
     event.preventDefault();
     dragState = {
       lastSignature: null,
+      mode: "draw",
       stage,
       startX: startPoint.x,
       startY: startPoint.y,
@@ -185,7 +333,10 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
       return;
     }
     const event = rawEvent as MouseLikeEvent;
-    const nextSelectionRoi = createSelectionRoiFromDrag(dragState.stage, dragState, event);
+    const nextSelectionRoi =
+      dragState.mode === "resize"
+        ? createSelectionRoiFromResize(dragState.stage, dragState, event)
+        : createSelectionRoiFromDrag(dragState.stage, dragState, event);
     if (nextSelectionRoi === null || dragState.lastSignature === nextSelectionRoi.signature) {
       return;
     }

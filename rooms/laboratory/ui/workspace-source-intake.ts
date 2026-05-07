@@ -204,12 +204,12 @@ function renderAudioPreviewMedia(
     className?: string;
   } = {}
 ) {
-  const controls = options.controls !== false ? "controls" : "";
+  const controls = options.controls === true ? "controls" : "";
   const preserveKey = options.preserveKey || "workspace-preview";
   const roleAttr = options.role ? `data-lab-role="${escapeHtml(options.role)}"` : "";
   const className = options.className || "labx-preview-media--audio";
   return `
-    <audio class="labx-preview-media ${escapeHtml(className)}" data-lab-preserve-media="${escapeHtml(preserveKey)}" ${roleAttr} src="${escapeHtml(previewUrl)}" ${controls} preload="metadata"></audio>
+    <audio class="labx-preview-media ${escapeHtml(className)}" data-lab-preserve-media="${escapeHtml(preserveKey)}" ${roleAttr} src="${escapeHtml(previewUrl)}" ${controls} preload="metadata" aria-hidden="${controls ? "false" : "true"}"></audio>
   `;
 }
 
