@@ -228,6 +228,15 @@
       "drawerExpand": "Open panel",
       "drawerCollapse": "Close panel"
     },
+    "sourcePanel": {
+      "title": "Sources",
+      "project": {
+        "managementTitle": "Project",
+        "newProject": "New Project",
+        "deleteProject": "Delete Project",
+        "untitledProject": "Untitled"
+      }
+    },
     "center": {
       "loading": "Laboratory center loading",
       "loadingLabel": "Preparing workspace..."
@@ -262,15 +271,6 @@
       "processing": "Processing...",
       "cancel": "Cancel",
       "elapsed": "Elapsed"
-    },
-    "projectWorkspace": {
-      "managementTitle": "Project Management",
-      "newProject": "New",
-      "deleteProject": "Delete",
-      "untitledProject": "Untitled",
-      "metadataName": "Name",
-      "metadataDuration": "Duration",
-      "metadataSize": "Size"
     },
     "loading": {
       "ariaLabel": "Laboratory loading",
@@ -813,19 +813,7 @@
       "reportReady": "Report snapshot ready",
       "score": "Confidence",
       "risk": "Risk band",
-      "elevatedRisk": "Elevated",
-      "dummyHint": "Source, edit, profile, process, and report now run from room-managed state. Audio Analysis still keeps some modules explicitly planned."
-    },
-    "projects": {
-      "eyebrow": "Project Desk",
-      "title": "Project Management",
-      "newAction": "New Project",
-      "selectLabel": "Saved Projects",
-      "deleteAction": "Delete Project",
-      "deleteConfirm": "Delete This Project",
-      "deleteCancel": "Keep Project",
-      "empty": "No active project",
-      "detailsTitle": "Project Details"
+      "elevatedRisk": "Elevated"
     },
     "settings": {
       "eyebrow": "Tool Room",
@@ -1152,7 +1140,10 @@
         "progress": "Progress",
         "kind": "Type",
         "method": "Method",
-        "pendingFile": "Pending file"
+        "pendingFile": "Pending file",
+        "metadataName": "Name",
+        "metadataDuration": "Duration",
+        "metadataSize": "Size"
       },
       "progress": {
         "started": "Import started",
@@ -1823,19 +1814,16 @@
         "download": "Download",
         "ariaLabel": "Asset actions",
         "preview": "Preview",
+        "viewReport": "View report",
         "delete": "Delete"
       },
       "relation": {
         "source": "Source"
       },
       "projects": {
-        "newOption": "-- New Project --",
-        "saveAction": "Save",
-        "deleteAction": "Delete"
+        "newOption": "-- New Project --"
       },
       "empty": "No project assets yet",
-      "ariaLabel": "Project assets",
-      "title": "Project Assets",
       "groups": {
         "source": "Source",
         "clip": "Clips",
@@ -2588,7 +2576,6 @@
       "report": "Audio Report"
     },
     "shared": {
-      "dummyHint": "Audio Analysis shares the same room-local tools and settings overlay as Media Analysis. Implemented modules run live while planned modules stay clearly marked.",
       "toolingEyebrow": "Shared Tool Room",
       "toolingTitle": "Same tool workflow, audio-first surface",
       "toolingBody": "Tool installs and updates stay room-local here, but transcript runtime and model readiness are managed from the main Settings panel."

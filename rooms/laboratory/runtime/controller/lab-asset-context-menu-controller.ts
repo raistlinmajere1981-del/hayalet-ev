@@ -1,4 +1,4 @@
-const LAB_ASSET_MENU_SELECTOR = "details.labx-sp-asset__menu, details.labx-project-assets__menu";
+const LAB_ASSET_MENU_SELECTOR = "details.labx-sp-asset__menu";
 
 type QueryableDocument = Document & {
   querySelectorAll?: Document["querySelectorAll"];
@@ -11,7 +11,7 @@ function getAssetMenus(documentRef: QueryableDocument): HTMLDetailsElement[] {
   return Array.from(documentRef.querySelectorAll<HTMLDetailsElement>(LAB_ASSET_MENU_SELECTOR));
 }
 
-export function closeLabAssetMenus(
+function closeLabAssetMenus(
   documentRef: QueryableDocument,
   except: HTMLDetailsElement | null = null
 ) {

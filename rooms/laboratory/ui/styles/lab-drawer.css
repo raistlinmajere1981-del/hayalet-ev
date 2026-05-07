@@ -470,11 +470,6 @@
   vertical-align: middle;
 }
 
-/* Drawer — Side controls pass-through */
-.labx-drawer__side-controls {
-  padding-top: 0.5rem;
-}
-
 /* ===== V3 CTA BUTTON ===== */
 
 .labx-cta {

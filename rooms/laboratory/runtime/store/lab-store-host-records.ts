@@ -81,7 +81,7 @@ export function normalizeUserActionResultAssetIds(value: unknown): string[] | un
   return resultAssetIds.length > 0 ? Array.from(new Set(resultAssetIds)) : undefined;
 }
 
-export function toArtifactProjection(value: unknown): LabArtifactProjection | null {
+function toArtifactProjection(value: unknown): LabArtifactProjection | null {
   const record = asLabRecord(value);
   const id = asNonEmptyString(record["id"]);
   if (id === null) {
@@ -105,7 +105,7 @@ export function toArtifactProjection(value: unknown): LabArtifactProjection | nu
   };
 }
 
-export function toFindingProjection(value: unknown): LabFindingProjection | null {
+function toFindingProjection(value: unknown): LabFindingProjection | null {
   const record = asLabRecord(value);
   const id = asNonEmptyString(record["id"]);
   if (id === null) {

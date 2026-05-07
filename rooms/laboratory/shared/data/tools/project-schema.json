@@ -661,20 +661,6 @@
         "processDir": "main-functions/audio-analysis/process",
         "reportDir": "main-functions/audio-analysis/report"
       }
-    },
-    "legacy": {
-      "derivedDir": "derived",
-      "editDir": "derived/edit",
-      "editPreviewDir": "derived/edit/preview",
-      "editOutputDir": "derived/edit/output",
-      "editManifest": "derived/edit/manifest.json",
-      "profileDir": "derived/profile",
-      "profilePreflightDir": "derived/profile/preflight",
-      "profileManifest": "derived/profile/manifest.json",
-      "processDir": "derived/process",
-      "processManifest": "derived/process/manifest.json",
-      "reportDir": "reports",
-      "reportManifest": "reports/manifest.json"
     }
   }
 }

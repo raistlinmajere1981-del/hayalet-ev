@@ -8,7 +8,6 @@ import { renderToolManagementOverlay } from "./tool-management-overlay.js";
 import { renderReportOverlay } from "./report-overlay.js";
 import { renderLabSourcePanel } from "./lab-source-panel.js";
 import { renderLabAssetPreviewOverlay } from "./lab-asset-preview-overlay.js";
-import { renderProjectWorkspaceOverlay } from "./project-workspace-overlay.js";
 import { renderLaboratoryLayout } from "./laboratory-layout.js";
 import {
   getDrawerCollapsed,
@@ -88,6 +87,5 @@ export function renderLabLayout(
     ${renderToolManagementOverlay(state, copy)}
     ${renderLabAssetPreviewOverlay(state, copy)}
     ${renderReportOverlay(state, copy)}
-    ${renderProjectWorkspaceOverlay(state, copy)}
   `;
 }

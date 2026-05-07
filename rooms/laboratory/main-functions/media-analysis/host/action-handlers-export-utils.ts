@@ -13,7 +13,7 @@ import type {
 
 export type LaboratoryRecord = Record<string, unknown>;
 
-export const OPERATION_CANCELLED_MESSAGE = "İşlem iptal edildi.";
+const OPERATION_CANCELLED_MESSAGE = "İşlem iptal edildi.";
 
 export const MEDIA_EXPORT_ACTION_IDS = [
   "export-roi-image",

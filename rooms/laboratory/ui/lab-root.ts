@@ -22,7 +22,6 @@ import { renderWorkspaceSurface } from "./workspace-surface.js";
 import { createLabRunController } from "../runtime/lab-run-controller.js";
 import { renderToolManagementOverlay } from "./tool-management-overlay.js";
 import { renderReportOverlay } from "./report-overlay.js";
-import { renderProjectWorkspaceOverlay } from "./project-workspace-overlay.js";
 import { renderLabAssetPreviewOverlay } from "./lab-asset-preview-overlay.js";
 import { buildLabDecisionSnapshot, getLabDecisionStableKey } from "./lab-decision-layer.js";
 import {
@@ -690,16 +689,6 @@ export function startLaboratoryLabRoot() {
       LAB_OVERLAY_SELECTORS.report,
       function () {
         return renderReportOverlay(state, copy);
-      },
-      shell
-    );
-    syncOverlayRoot(
-      documentRef,
-      runtimeRoot,
-      "projectWorkspace",
-      LAB_OVERLAY_SELECTORS.projectWorkspace,
-      function () {
-        return renderProjectWorkspaceOverlay(state, copy);
       },
       shell
     );

@@ -71,7 +71,7 @@ export function getAnalysisModuleIdsForIntentId(intentId: LabIntentId): string[]
   );
 }
 
-export function deriveAnalysisModuleIdsFromIntentIds(intentIds: unknown): string[] {
+function deriveAnalysisModuleIdsFromIntentIds(intentIds: unknown): string[] {
   return Array.from(
     new Set(
       normalizeWorkspaceIntentIds(intentIds).flatMap(function (intentId) {

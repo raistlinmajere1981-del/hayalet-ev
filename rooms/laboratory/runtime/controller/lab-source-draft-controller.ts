@@ -1,66 +1,16 @@
 import { asLabRecord, asNonEmptyString } from "../../models/lab-types.js";
 import type { LabSourceDrafts, LabStoreState } from "../../models/lab-types.js";
-import { toStringArray, toStringValue } from "./lab-controller-helpers.js";
+import {
+  getDefaultSourceKind,
+  getDefaultSourceMode,
+  getDefaultYoutubePreset,
+  getYoutubePresetDefaults,
+} from "../lab-source-presets.js";
 
 export function getActiveProjectCreatedAt(state: LabStoreState): unknown {
   const snapshot = asLabRecord(state.snapshot);
   const activeProject = asLabRecord(snapshot["activeProject"]);
   return activeProject["createdAt"];
-}
-
-function getSourcePresets(state: LabStoreState) {
-  return asLabRecord(asLabRecord(state.snapshot)["sourcePresets"]);
-}
-
-export function getSourceModeOptions(state: LabStoreState, kind: unknown): string[] {
-  const sourcePresets = getSourcePresets(state);
-  const sourceTypes = asLabRecord(sourcePresets["sourceTypes"]);
-  const sourceConfig = asLabRecord(sourceTypes[toStringValue(kind)]);
-  const configuredModes = toStringArray(sourceConfig["modes"]);
-  return configuredModes.length > 0 ? configuredModes : ["local"];
-}
-
-export function getDefaultSourceMode(state: LabStoreState, kind: unknown): string {
-  const sourcePresets = getSourcePresets(state);
-  const sourceTypes = asLabRecord(sourcePresets["sourceTypes"]);
-  const sourceConfig = asLabRecord(sourceTypes[toStringValue(kind)]);
-  const configuredDefault = asNonEmptyString(sourceConfig["defaultMode"]);
-  if (configuredDefault) {
-    return configuredDefault;
-  }
-  return getSourceModeOptions(state, kind)[0] || "local";
-}
-
-function getDefaultSourceKind(state: LabStoreState): string {
-  const sourcePresets = getSourcePresets(state);
-  const configuredDefault = asNonEmptyString(sourcePresets["defaultSourceType"]);
-  if (configuredDefault) {
-    return configuredDefault;
-  }
-  const sourceTypes = asLabRecord(sourcePresets["sourceTypes"]);
-  const firstConfiguredKind = Object.keys(sourceTypes).find(function (entry) {
-    return entry.trim() !== "";
-  });
-  return firstConfiguredKind || "video";
-}
-
-function getDefaultYoutubePreset(state: LabStoreState): string {
-  const sourcePresets = getSourcePresets(state);
-  const presets = asLabRecord(sourcePresets["youtubePresets"]);
-  if (asLabRecord(presets)["medium"]) {
-    return "medium";
-  }
-  if (asLabRecord(presets)["custom"]) {
-    return "custom";
-  }
-  return Object.keys(presets)[0] || "medium";
-}
-
-function getYoutubePresetDefaults(state: LabStoreState, presetId: string | null) {
-  const sourcePresets = getSourcePresets(state);
-  const presets = asLabRecord(sourcePresets["youtubePresets"]);
-  const resolvedPresetId = presetId || getDefaultYoutubePreset(state);
-  return asLabRecord(asLabRecord(presets[resolvedPresetId])["defaultCustomValues"]);
 }
 
 export function buildEmptySourceState(state: LabStoreState) {

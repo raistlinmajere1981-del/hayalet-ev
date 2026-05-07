@@ -156,18 +156,12 @@
   scrollbar-gutter: auto;
 }
 
-.labx-chip-button,
 .labx-inline-action {
   border: 1px solid var(--labx-border);
   border-radius: var(--labx-radius-button);
   background: rgba(10, 18, 30, 0.8);
   color: var(--labx-text);
   cursor: pointer;
-}
-
-.labx-chip-button[data-selected="true"] {
-  border-color: var(--labx-border-strong);
-  background: linear-gradient(180deg, rgba(20, 38, 59, 0.92), rgba(11, 22, 37, 0.92));
 }
 
 .labx-center-panel {
@@ -240,8 +234,7 @@
 }
 
 .labx-input,
-.labx-select,
-.labx-textarea {
+.labx-select {
   width: 100%;
   padding: 0.55rem 0.7rem;
   box-sizing: border-box;
@@ -249,11 +242,6 @@
   border-radius: var(--labx-radius-button);
   background: rgba(6, 12, 20, 0.92);
   color: var(--labx-text);
-}
-
-.labx-textarea {
-  min-height: 7rem;
-  resize: vertical;
 }
 
 .labx-selection-strip {
@@ -293,7 +281,6 @@
   margin-top: 0.75rem;
 }
 
-.labx-chip-button,
 .labx-inline-action {
   padding: 0.62rem 0.8rem;
 }

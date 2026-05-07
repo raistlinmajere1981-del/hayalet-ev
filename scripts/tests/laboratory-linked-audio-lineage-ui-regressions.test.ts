@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
-import { renderLabProjectAssetsPanel } from "../../rooms/laboratory/ui/lab-project-assets-panel.ts";
+import { renderLabSourcePanel } from "../../rooms/laboratory/ui/lab-source-panel.ts";
 
 const sourcePresets = JSON.parse(
   readFileSync("rooms/laboratory/shared/data/tools/source-presets.json", "utf8")
@@ -125,11 +125,11 @@ function createLineageState(
   return store.getState();
 }
 
-test("laboratory project assets panel renders linked source and sync label for audio assets", () => {
-  const panelHtml = renderLabProjectAssetsPanel(createLineageState());
+test("laboratory source panel renders linked source and sync label for audio assets", () => {
+  const panelHtml = renderLabSourcePanel(createLineageState());
 
   assert.match(panelHtml, /audio\.wav/);
   assert.match(panelHtml, /data-lab-action="focus-source-preview"/);
-  assert.match(panelHtml, /Source: lab-demo\.mp4/);
+  assert.match(panelHtml, /Kaynak: lab-demo\.mp4/);
   assert.match(panelHtml, /Senkron: ✓ Aynı zaman ekseni/);
 });

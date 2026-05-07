@@ -7,6 +7,7 @@ import type {
   LabStoreState,
   LabYoutubeImportFormat,
 } from "../models/lab-types.js";
+import { getSourceTypePreset, getYoutubePresetDefaults } from "./lab-source-presets.js";
 
 export type LabProjectImportHostAction = {
   action: "source-pick-local" | "source-download-url" | "source-download-youtube";
@@ -22,28 +23,11 @@ export type LabProjectImportUrlCheckAction = {
   url: string;
 };
 
-function getSnapshotRecord(state: LabStoreState) {
-  return asLabRecord(state.snapshot);
-}
-
-function getSourcePresets(state: LabStoreState) {
-  return asLabRecord(getSnapshotRecord(state)["sourcePresets"]);
-}
-
-function getSourceTypes(state: LabStoreState) {
-  return asLabRecord(getSourcePresets(state)["sourceTypes"]);
-}
-
 function toStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) {
     return [];
   }
   return value.filter((entry): entry is string => typeof entry === "string" && entry.trim() !== "");
-}
-
-function getYoutubePresetDefaults(state: LabStoreState, presetId: string) {
-  const presetRecord = asLabRecord(getSourcePresets(state)["youtubePresets"]);
-  return asLabRecord(asLabRecord(presetRecord[presetId])["defaultCustomValues"]);
 }
 
 function getToolInstalled(state: LabStoreState, toolId: string) {
@@ -70,7 +54,7 @@ function getProjectImportMethodOptions(
   state: LabStoreState,
   kind: LabProjectImportKind
 ): LabProjectImportMethod[] {
-  const sourceConfig = asLabRecord(getSourceTypes(state)[kind]);
+  const sourceConfig = getSourceTypePreset(state, kind);
   const configuredModes = toStringArray(sourceConfig["modes"]).filter(
     function (mode): mode is LabProjectImportMethod {
       return normalizeProjectImportMethodValue(mode, kind) !== null;

@@ -391,6 +391,40 @@
   display: block;
 }
 
+.labx-sp-asset__relation {
+  display: flex;
+  flex: 0 1 7rem;
+  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.labx-sp-asset__relation-link,
+.labx-sp-asset__relation-text {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: rgba(92, 215, 223, 0.82);
+  font-size: 0.6rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.labx-sp-asset__relation-link {
+  padding: 0;
+  cursor: pointer;
+}
+
+.labx-sp-asset__relation-link:hover,
+.labx-sp-asset__relation-link:focus-visible {
+  color: var(--labx-accent, #5cd7df);
+  text-decoration: underline;
+}
+
 /* --- Asset context menu --- */
 
 .labx-sp-asset__menu {

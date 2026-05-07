@@ -520,28 +520,6 @@
     inset 0 0 0 1px rgba(92, 215, 223, 0.18);
 }
 
-/* ===== Drawer selection slot — above mode nav ===== */
-
-.labx-drawer__selection-slot {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-  overflow-y: auto;
-  max-height: 50vh;
-  flex-shrink: 0;
-}
-
-.labx-drawer__selection-slot-title {
-  padding: 0.38rem 0.7rem 0.2rem;
-  font-size: 0.64rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(var(--lab-selection-accent-rgb, 92, 215, 223), 0.9);
-}
-
-.labx-drawer__selection-slot .lab-selection-panel__eyebrow {
-  display: none;
-}
-
 /* ===== Drawer mode nav — horizontal pills ===== */
 
 .labx-drawer__mode-nav {

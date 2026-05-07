@@ -410,13 +410,6 @@
   border-color: var(--labx-border);
 }
 
-.labx-timeline__finetune-row {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  flex: 0 0 auto;
-}
-
 .labx-timeline__finetune-label {
   color: var(--labx-text-dim);
   font-size: 0.68rem;

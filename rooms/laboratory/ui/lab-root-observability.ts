@@ -18,7 +18,6 @@ export const LAB_REGION_SELECTORS = {
 
 export const LAB_OVERLAY_SELECTORS = {
   assetPreview: "#lab-asset-preview-overlay-root",
-  projectWorkspace: "#lab-project-workspace-root",
   report: "#lab-report-overlay-root",
   tools:
     ".labx-overlay-root:not(#lab-asset-preview-overlay-root):not(.labx-asset-preview-root):not(#lab-report-overlay-root)",
@@ -46,7 +45,6 @@ const LAB_REGION_DEBUG_NAMES: Record<LabRegionKey, string> = {
 
 const LAB_OVERLAY_DEBUG_NAMES: Record<LabOverlayKey, string> = {
   assetPreview: "asset-preview",
-  projectWorkspace: "project-workspace",
   report: "report",
   tools: "tools",
 };
@@ -191,7 +189,7 @@ export function debugLabFallback(
   });
 }
 
-export function debugLabOverlay(
+function debugLabOverlay(
   shell: Element | null | undefined,
   overlayKey: LabOverlayKey,
   event: "invalid" | "missing",

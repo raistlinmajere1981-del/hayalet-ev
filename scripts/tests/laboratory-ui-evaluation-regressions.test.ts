@@ -872,10 +872,7 @@ test("laboratory boot overlay unlocks from local ready without a room API bridge
     assert.doesNotMatch(environment.runtimeRoot.innerHTML, /data-lab-boot-overlay="true"/);
     assert.match(environment.runtimeRoot.innerHTML, /data-lab-center-skeleton="true"/);
     assert.match(environment.runtimeRoot.innerHTML, /labx-drawer-skeleton/);
-    assert.match(
-      environment.runtimeRoot.innerHTML,
-      /id="lab-project-workspace-root" aria-hidden="true"/
-    );
+    assert.doesNotMatch(environment.runtimeRoot.innerHTML, /lab-project-workspace-root/);
     assert.doesNotMatch(environment.runtimeRoot.innerHTML, /data-overlay="project-workspace"/);
   } finally {
     await buildArtifact.cleanup();
@@ -1544,12 +1541,12 @@ test("laboratory observability helpers are debug gated and structured", async ()
         regionsFound: number,
         missingRegions: string[]
       ) => void;
-      debugLabOverlay: (
-        shell: Element | null,
-        overlayKey: "assetPreview" | "projectWorkspace" | "report" | "tools",
-        event: "invalid" | "missing",
-        detail?: Record<string, unknown>
-      ) => void;
+	      debugLabOverlay: (
+	        shell: Element | null,
+	        overlayKey: "assetPreview" | "report" | "tools",
+	        event: "invalid" | "missing",
+	        detail?: Record<string, unknown>
+	      ) => void;
       debugLabRegionLifecycle: (
         shell: Element | null,
         regionKey:
@@ -1764,12 +1761,12 @@ test("laboratory observability runtime paths log region fallback and overlay hea
     __testOnlyLabRootObservability: {
       queryRegion: (root: ParentNode, selectors: readonly string[]) => HTMLElement | null;
       shouldFallback: (regionsFound: number) => boolean;
-      syncOverlayRoot: (
-        documentRef: Document,
-        root: HTMLElement,
-        overlayKey: "assetPreview" | "projectWorkspace" | "report" | "tools",
-        selector: string,
-        render: () => string,
+	      syncOverlayRoot: (
+	        documentRef: Document,
+	        root: HTMLElement,
+	        overlayKey: "assetPreview" | "report" | "tools",
+	        selector: string,
+	        render: () => string,
         debugShell?: Element | null
       ) => boolean;
       syncRegion: (input: {
@@ -1927,13 +1924,13 @@ test("laboratory observability runtime paths log region fallback and overlay hea
         root,
         selectors: ['[data-lab-region="process-strip"]'],
       });
-      observability.syncOverlayRoot(
-        documentRef,
-        overlayRoot,
-        "projectWorkspace",
-        "#lab-project-workspace-root",
-        function () {
-          return "";
+	      observability.syncOverlayRoot(
+	        documentRef,
+	        overlayRoot,
+	        "report",
+	        "#lab-report-overlay-root",
+	        function () {
+	          return "";
         },
         quietShell
       );
@@ -1963,10 +1960,6 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   );
   const sourcePanelSource = readFileSync("rooms/laboratory/ui/lab-source-panel.ts", "utf8");
   const topBarSource = readFileSync("rooms/laboratory/ui/lab-top-bar.ts", "utf8");
-  const projectWorkspaceSource = readFileSync(
-    "rooms/laboratory/ui/project-workspace-overlay.ts",
-    "utf8"
-  );
 
   assert.match(labRootSource, /schemaVersion:\s*4,/);
   assert.match(
@@ -1984,13 +1977,13 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   assert.match(toolOverlaySource, /data-lab-action="tool-check-updates"/);
   assert.doesNotMatch(drawerSource, /renderSourceIntake\(state, copy\)/);
   assert.doesNotMatch(drawerSource, /renderLabProjectAssetsPanel/);
+  assert.equal(existsSync("rooms/laboratory/ui/lab-project-assets-panel.ts"), false);
   assert.equal(existsSync("rooms/laboratory/ui/project-navigation.ts"), false);
   assert.equal(existsSync("rooms/laboratory/ui/asset-grid.ts"), false);
+  assert.equal(existsSync("rooms/laboratory/ui/project-workspace-overlay.ts"), false);
   assert.match(sourcePanelSource, /renderProjectImportProgress\(state, copy\)/);
   assert.match(sourcePanelSource, /data-lab-field="project\.id"/);
-  assert.match(projectWorkspaceSource, /id="lab-project-workspace-root"/);
-  assert.doesNotMatch(projectWorkspaceSource, /renderProjectSourceImport\(state, copy\)/);
-  assert.doesNotMatch(projectWorkspaceSource, /renderProjectImportReview\(state, copy\)/);
+  assert.doesNotMatch(labRootSource, /projectWorkspace|renderProjectWorkspaceOverlay/);
   assert.match(topBarSource, /data-lab-field="workspace\.hypothesis"/);
   assert.match(drawerResultExploreSource, /data-lab-action="run-deep-analysis"/);
   assert.match(drawerSource, /buildIntentPreviewSentence\(state\)/);
@@ -2267,8 +2260,8 @@ test("laboratory process strip owns heartbeat and expanded runtime detail render
 test("laboratory theme defines the multi-region shell grid and drawer layout contract", () => {
   const baseSource = readFileSync("rooms/laboratory/ui/styles/base.css", "utf8");
   const themeSource = readLabThemeSource();
-  const projectWorkspaceSource = readFileSync(
-    "rooms/laboratory/ui/styles/project-workspace.css",
+  const sourceImportSource = readFileSync(
+    "rooms/laboratory/ui/styles/lab-source-import.css",
     "utf8"
   );
 
@@ -2314,28 +2307,28 @@ test("laboratory theme defines the multi-region shell grid and drawer layout con
     /\.labx-top-bar\s*\{\s*grid-area:\s*topbar;\s*\}[\s\S]*\.labx-source-panel\s*\{\s*grid-area:\s*panel;\s*\}[\s\S]*\.labx-center-panel\s*\{\s*grid-area:\s*center;\s*\}[\s\S]*\.labx-drawer\s*\{\s*grid-area:\s*context;\s*\}[\s\S]*\.labx-process-strip\s*\{\s*grid-area:\s*strip;\s*\}/
   );
 	  assert.doesNotMatch(themeSource, /\.labx-shell\[data-layout-kind="import-only"\]/);
-	  assert.doesNotMatch(projectWorkspaceSource, /\.labx-import-/);
-	  assert.doesNotMatch(projectWorkspaceSource, /\.labx-strategy-/);
-	  assert.doesNotMatch(projectWorkspaceSource, /\.labx-pw-/);
-	  assert.doesNotMatch(projectWorkspaceSource, /\.labx-import-review/);
-	  assert.match(
-	    projectWorkspaceSource,
+  assert.doesNotMatch(sourceImportSource, /\.labx-import-/);
+  assert.doesNotMatch(sourceImportSource, /\.labx-strategy-/);
+  assert.doesNotMatch(sourceImportSource, /\.labx-pw-/);
+  assert.doesNotMatch(sourceImportSource, /\.labx-import-review/);
+  assert.match(
+    sourceImportSource,
 	    /\.labx-project-import__youtube-preview\s*\{[\s\S]*display:\s*grid;/
   );
   assert.match(
-	    projectWorkspaceSource,
-	    /\.labx-project-import__progress\s*\{[\s\S]*display:\s*grid;/
-	  );
-	  assert.match(
-	    projectWorkspaceSource,
-	    /\.labx-project-import__yt-controls\s*\{[\s\S]*display:\s*grid;/
-	  );
-	  assert.match(
-	    projectWorkspaceSource,
-	    /\.labx-project-import__yt-field\s*\{[\s\S]*grid-template-columns:\s*minmax\(5\.8rem, 0\.42fr\) minmax\(0, 1fr\);/
-	  );
-	  assert.doesNotMatch(projectWorkspaceSource, /\.labx-advanced-settings/);
-	});
+    sourceImportSource,
+    /\.labx-project-import__progress\s*\{[\s\S]*display:\s*grid;/
+  );
+  assert.match(
+    sourceImportSource,
+    /\.labx-project-import__yt-controls\s*\{[\s\S]*display:\s*grid;/
+  );
+  assert.match(
+    sourceImportSource,
+    /\.labx-project-import__yt-field\s*\{[\s\S]*grid-template-columns:\s*minmax\(5\.8rem, 0\.42fr\) minmax\(0, 1fr\);/
+  );
+  assert.doesNotMatch(sourceImportSource, /\.labx-advanced-settings/);
+});
 
 test("laboratory micro inspection UI exposes roi focus precedence and lens affordances in the preview shell", () => {
   const overlaySource = readFileSync("rooms/laboratory/ui/workspace-roi-overlay.ts", "utf8");
@@ -3388,7 +3381,8 @@ test("laboratory phase 4.95 i18n keys keep English and Turkish catalog parity", 
     "mediaAnalysis.executionPanels",
     "mediaAnalysis.timeline",
     "mediaAnalysis.topBar",
-    "mediaAnalysis.projectWorkspace",
+    "mediaAnalysis.sourcePanel",
+    "mediaAnalysis.projectImport",
   ];
 
   function readPath(record: Record<string, unknown>, key: string): unknown {

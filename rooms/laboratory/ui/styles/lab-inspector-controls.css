@@ -153,18 +153,6 @@
   grid-template-columns: 4.7rem minmax(0, 1fr) 2.8rem;
 }
 
-/* Interactive Controls */
-.labx-workspace-focus-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-  align-items: stretch;
-}
-
-.labx-workspace-focus-row[data-layout="single"] {
-  grid-template-columns: minmax(0, 1fr);
-}
-
 .labx-workspace-focus-row__panel {
   min-height: 100%;
 }
@@ -656,25 +644,6 @@
   gap: 0.45rem;
 }
 
-.labx-audio-focus__transport {
-  display: flex;
-  flex-direction: column;
-  gap: 0.42rem;
-  padding-top: 0.35rem;
-  border-top: 1px solid var(--labx-border);
-}
-
-.labx-audio-focus__transport-note {
-  margin: 0;
-  color: var(--labx-text-dim);
-  font-size: 0.7rem;
-  line-height: 1.45;
-}
-
-.labx-audio-focus__transport-note--muted {
-  color: rgba(234, 198, 93, 0.84);
-}
-
 .labx-audio-focus__eq {
   display: flex;
   flex-direction: column;
@@ -767,32 +736,14 @@
     rgba(255, 255, 255, 0.025);
 }
 
-.labx-textarea--compact {
-  min-height: 3.5rem;
-  font-size: 0.88rem;
-}
-
 .labx-input--compact {
   padding: 0.45rem 0.6rem;
   font-size: 0.82rem;
 }
 
-.labx-field--compact {
-  gap: 0.2rem;
-}
-
-.labx-field--compact span {
-  font-size: 0.7rem;
-}
-
 .labx-select--compact {
   padding: 0.45rem 0.6rem;
   font-size: 0.82rem;
-}
-
-.labx-inline-action--small {
-  padding: 0.35rem 0.6rem;
-  font-size: 0.74rem;
 }
 
 /* Workspace mode shell adjustments */
@@ -809,23 +760,4 @@
 .labx-workspace-preview audio {
   position: relative;
   z-index: 2;
-}
-
-/* Rail action buttons */
-.labx-rail-actions {
-  display: flex;
-  gap: 0.35rem;
-  flex-wrap: wrap;
-}
-
-.labx-inline-action--rail {
-  flex: 1;
-  min-width: 3.5rem;
-  padding: 0.45rem 0.5rem;
-  font-size: 0.74rem;
-  text-align: center;
-}
-
-.labx-inline-action--danger {
-  color: var(--labx-error);
 }

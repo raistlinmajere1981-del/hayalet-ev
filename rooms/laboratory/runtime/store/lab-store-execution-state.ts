@@ -110,7 +110,7 @@ export function canStoreSelectionSuggestionPreview(state: LabStoreState, suggest
   }).some((suggestion) => suggestion.id === normalizedSuggestionId);
 }
 
-export function canResolveSelectionExecutionIntent(state: LabStoreState, suggestionId: string) {
+function canResolveSelectionExecutionIntent(state: LabStoreState, suggestionId: string) {
   const normalizedSuggestionId = normalizeSelectionSuggestionId(suggestionId);
   if (normalizedSuggestionId === null) {
     return false;

@@ -13,7 +13,6 @@ import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import { renderLabAssetPreviewOverlay } from "../../rooms/laboratory/ui/lab-asset-preview-overlay.ts";
 import { renderLabDrawer } from "../../rooms/laboratory/ui/lab-drawer.ts";
 import { renderLabProcessStrip } from "../../rooms/laboratory/ui/lab-process-strip.ts";
-import { renderLabProjectAssetsPanel } from "../../rooms/laboratory/ui/lab-project-assets-panel.ts";
 import { renderLabSourcePanel } from "../../rooms/laboratory/ui/lab-source-panel.ts";
 import { renderLabLeftRail, renderLabTopBar } from "../../rooms/laboratory/ui/lab-top-bar.ts";
 import { createLabI18n } from "../../rooms/laboratory/ui/lab-i18n.ts";
@@ -1405,7 +1404,7 @@ test("laboratory process strip renders multi-output action summaries with overfl
   assert.match(stripHtml, /report-user\.md, report-ai\.json/);
 });
 
-test("laboratory project assets panel renders registry groups and local asset actions only", () => {
+test("laboratory source panel renders registry groups and local asset actions only", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "asset-added",
@@ -1455,13 +1454,13 @@ test("laboratory project assets panel renders registry groups and local asset ac
     },
   });
 
-  const panelHtml = renderLabProjectAssetsPanel(store.getState());
+  const panelHtml = renderLabSourcePanel(store.getState());
 
-  assert.match(panelHtml, /Clips/);
-  assert.match(panelHtml, /Reports/);
+  assert.match(panelHtml, /Klipler/);
+  assert.match(panelHtml, /Raporlar/);
   assert.match(panelHtml, /clip_01\.mp4/);
   assert.match(panelHtml, /run_report\.md/);
-  assert.match(panelHtml, /data-lab-action="asset-preview"/);
+  assert.match(panelHtml, /data-lab-action="open-report-overlay" data-lab-value="report-1"/);
   assert.match(panelHtml, /data-lab-action="asset-download"/);
   assert.match(panelHtml, /data-lab-action="asset-remove"/);
   assert.match(panelHtml, /data-lab-action="asset-use-as-source" data-lab-value="clip-local-1"/);
@@ -1529,7 +1528,7 @@ test("laboratory source panel keeps asset order stable when active source timest
   assert.ok(panelHtml.indexOf("stable-first.mp4") < panelHtml.indexOf("active-newer.mp4"));
 });
 
-test("laboratory project assets panel uses png artifacts as sources from the primary click", () => {
+test("laboratory source panel uses png artifacts as sources from the primary click path", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "asset-added",
@@ -1543,11 +1542,11 @@ test("laboratory project assets panel uses png artifacts as sources from the pri
     },
   });
 
-  const panelHtml = renderLabProjectAssetsPanel(store.getState());
+  const panelHtml = renderLabSourcePanel(store.getState());
 
   assert.match(
     panelHtml,
-    /class="labx-project-assets__preview"[\s\S]*data-lab-action="asset-use-as-source"[\s\S]*data-lab-value="artifact-png-primary"/
+    /class="labx-sp-asset__btn"[\s\S]*data-lab-action="asset-use-as-source"[\s\S]*data-lab-value="artifact-png-primary"/
   );
 });
 

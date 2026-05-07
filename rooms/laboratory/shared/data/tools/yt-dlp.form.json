@@ -15,18 +15,6 @@
           ]
         },
         {
-          "id": "format",
-          "type": "select",
-          "labelKey": "mediaAnalysis.source.youtubeForm.fields.format",
-          "options": [
-            { "value": "bestvideo*+bestaudio/best", "labelKey": "mediaAnalysis.source.youtubeForm.options.format.best" },
-            { "value": "best[height<=1080][ext=mp4]/best[height<=1080]/best", "labelKey": "mediaAnalysis.source.youtubeForm.options.format.mp4_1080" },
-            { "value": "best[height<=720][ext=mp4]/best[height<=720]/best", "labelKey": "mediaAnalysis.source.youtubeForm.options.format.mp4_720" },
-            { "value": "best[height<=480][ext=mp4]/best[height<=480]/best", "labelKey": "mediaAnalysis.source.youtubeForm.options.format.mp4_480" },
-            { "value": "best[height<=360][ext=mp4]/best[height<=360]/worst[ext=mp4]/worst", "labelKey": "mediaAnalysis.source.youtubeForm.options.format.low" }
-          ]
-        },
-        {
           "id": "mergeOutputFormat",
           "type": "select",
           "labelKey": "mediaAnalysis.source.youtubeForm.fields.mergeOutputFormat",

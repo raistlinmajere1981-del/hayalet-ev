@@ -228,6 +228,15 @@
       "drawerExpand": "Paneli ac",
       "drawerCollapse": "Paneli kapat"
     },
+    "sourcePanel": {
+      "title": "Kaynaklar",
+      "project": {
+        "managementTitle": "Proje",
+        "newProject": "Yeni Proje",
+        "deleteProject": "Projeyi Sil",
+        "untitledProject": "Adsiz"
+      }
+    },
     "center": {
       "loading": "Laboratuvar merkezi yukleniyor",
       "loadingLabel": "Calisma alani hazirlaniyor..."
@@ -262,15 +271,6 @@
       "processing": "Isleniyor...",
       "cancel": "Iptal",
       "elapsed": "Gecen sure"
-    },
-    "projectWorkspace": {
-      "managementTitle": "Proje Yönetimi",
-      "newProject": "Yeni",
-      "deleteProject": "Sil",
-      "untitledProject": "Adsiz",
-      "metadataName": "Ad",
-      "metadataDuration": "Sure",
-      "metadataSize": "Boyut"
     },
     "loading": {
       "ariaLabel": "Laboratuvar yukleniyor",
@@ -813,19 +813,7 @@
       "reportReady": "Rapor gorunumu hazir",
       "score": "Guven",
       "risk": "Risk bandi",
-      "elevatedRisk": "Yuksek",
-      "dummyHint": "Kaynak, duzenleme, profil, islem ve rapor artik oda-yonetimli durumdan calisir. Ses Analizi tarafinda ise bazi moduller bilincli olarak planli kalir."
-    },
-    "projects": {
-      "eyebrow": "Proje Masasi",
-      "detailsTitle": "Proje Detaylari",
-      "title": "Proje Yonetimi",
-      "newAction": "Yeni Proje",
-      "selectLabel": "Kayitli Projeler",
-      "deleteAction": "Projeyi Sil",
-      "deleteConfirm": "Bu Projeyi Sil",
-      "deleteCancel": "Projeyi Koru",
-      "empty": "Aktif proje yok"
+      "elevatedRisk": "Yuksek"
     },
     "settings": {
       "eyebrow": "Arac Odasi",
@@ -1152,7 +1140,10 @@
         "progress": "Ilerleme",
         "kind": "Tip",
         "method": "Yontem",
-        "pendingFile": "Bekleyen dosya"
+        "pendingFile": "Bekleyen dosya",
+        "metadataName": "Ad",
+        "metadataDuration": "Sure",
+        "metadataSize": "Boyut"
       },
       "progress": {
         "started": "Aktarım başladı",
@@ -1823,19 +1814,16 @@
         "download": "Indir",
         "ariaLabel": "Varlık aksiyonları",
         "preview": "Onizleme",
+        "viewReport": "Raporu Goruntule",
         "delete": "Sil"
       },
       "relation": {
         "source": "Kaynak"
       },
       "projects": {
-        "newOption": "-- Yeni Proje --",
-        "saveAction": "Kaydet",
-        "deleteAction": "Sil"
+        "newOption": "-- Yeni Proje --"
       },
       "empty": "Henüz proje varlığı yok",
-      "ariaLabel": "Proje varlıkları",
-      "title": "Proje Varlıkları",
       "groups": {
         "source": "Kaynak",
         "clip": "Klipler",
@@ -2588,7 +2576,6 @@
       "report": "Ses Raporu"
     },
     "shared": {
-      "dummyHint": "Ses Analizi, Medya Analizi ile ayni oda-yerel araclari ve settings overlay'i paylasir. Uygulanan moduller canli calisir; daha derin moduller ise acikca planli olarak isaretlenir.",
       "toolingEyebrow": "Ortak Arac Odasi",
       "toolingTitle": "Ayni arac akisi, ses odakli yuzey",
       "toolingBody": "Arac kurulumlari ve guncellemeleri oda-yerel kalir, ancak transcript runtime ve model hazirligi ana Settings panelinden yonetilir."

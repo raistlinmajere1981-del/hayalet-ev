@@ -1,4 +1,5 @@
 import { asNonEmptyString } from "../../models/lab-types.js";
+import { getDefaultSourceMode } from "../lab-source-presets.js";
 import { getActiveEditOutput } from "../lab-selectors.js";
 import type { getWorkspaceLockState } from "../lab-selectors.js";
 import type { createLabStore } from "../lab-store.js";
@@ -6,7 +7,6 @@ import { isTextControl } from "./lab-controller-helpers.js";
 import {
   buildProjectImportDraftPatch,
   buildSourceDraftPatch,
-  getDefaultSourceMode,
 } from "./lab-source-draft-controller.js";
 
 type TextControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;

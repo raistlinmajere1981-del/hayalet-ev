@@ -1,6 +1,11 @@
 import { asLabRecord, asNonEmptyString, escapeHtml } from "../models/lab-types.js";
 import type { LabAsset, LabAssetType, LabStoreState } from "../models/lab-types.js";
-import { getAssets, getCurrentSourceAsset, getProjectSource } from "../runtime/lab-selectors.js";
+import {
+  getAssets,
+  getCurrentSourceAsset,
+  getParentSourceForAsset,
+  getProjectSource,
+} from "../runtime/lab-selectors.js";
 import {
   buildProjectImportHostAction,
   buildProjectImportLocalHostAction,
@@ -19,6 +24,7 @@ import {
   getLabAssetPathLeaf,
   getLabAssetPreviewUrl,
   getLabAssetPreviewKind,
+  getLabAssetSyncLabel,
 } from "./lab-asset-display.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
@@ -163,7 +169,39 @@ function getAssetPrimaryAction(asset: LabAsset): { action: string; value: string
   return { action: "asset-preview", value: asset.id };
 }
 
-function renderAssetItem(asset: LabAsset, currentSourceId: string | null, copy: LabI18n): string {
+function renderAssetRelationMeta(state: LabStoreState, asset: LabAsset, copy: LabI18n): string {
+  if (asset.type !== "audio") {
+    return "";
+  }
+
+  const parentSource = getParentSourceForAsset(state, asset.id);
+  const currentSourceAsset = getCurrentSourceAsset(state);
+  const syncLabel = getLabAssetSyncLabel(asset, copy);
+  const relationMarkup =
+    parentSource === null
+      ? ""
+      : currentSourceAsset !== null && currentSourceAsset.id === parentSource.id
+        ? `<button class="labx-sp-asset__relation-link" type="button" data-lab-action="focus-source-preview" data-lab-value="${escapeHtml(parentSource.id)}">${escapeHtml(copy.t("mediaAnalysis.assets.relation.source", "Kaynak"))}: ${escapeHtml(parentSource.name)}</button>`
+        : `<span class="labx-sp-asset__relation-text">${escapeHtml(copy.t("mediaAnalysis.assets.relation.source", "Kaynak"))}: ${escapeHtml(parentSource.name)}</span>`;
+
+  if (relationMarkup === "" && syncLabel === null) {
+    return "";
+  }
+
+  return `
+    <span class="labx-sp-asset__relation">
+      ${relationMarkup}
+      ${syncLabel ? `<span class="labx-sp-asset__relation-text">${escapeHtml(syncLabel)}</span>` : ""}
+    </span>
+  `;
+}
+
+function renderAssetItem(
+  state: LabStoreState,
+  asset: LabAsset,
+  currentSourceId: string | null,
+  copy: LabI18n
+): string {
   const id = escapeHtml(asset.id);
   const isActive =
     canUseAsSource(asset) && asset.id === currentSourceId ? ' data-active="true"' : "";
@@ -205,6 +243,7 @@ function renderAssetItem(asset: LabAsset, currentSourceId: string | null, copy: 
           ${meta ? `<span class="labx-sp-asset__meta">${escapeHtml(meta)}</span>` : ""}
         </span>
       </button>
+      ${renderAssetRelationMeta(state, asset, copy)}
       <details class="labx-sp-asset__menu">
         <summary class="labx-sp-asset__menu-trigger" aria-label="${escapeHtml(copy.t("mediaAnalysis.assets.actions.ariaLabel", "Seçenekler"))}">···</summary>
         <div class="labx-sp-asset__menu-list">
@@ -227,6 +266,7 @@ function renderAssetItem(asset: LabAsset, currentSourceId: string | null, copy: 
 
 function renderAssetGroup(
   group: AssetGroup,
+  state: LabStoreState,
   assets: LabAsset[],
   currentSourceId: string | null,
   isOpen: boolean,
@@ -246,7 +286,7 @@ function renderAssetGroup(
       <div class="labx-sp-group__items">
         ${groupAssets
           .map(function (a) {
-            return renderAssetItem(a, currentSourceId, copy);
+            return renderAssetItem(state, a, currentSourceId, copy);
           })
           .join("")}
       </div>
@@ -321,7 +361,7 @@ function renderProjectSelector(state: LabStoreState, copy: LabI18n): string {
     const name =
       asNonEmptyString(p["name"]) ||
       asNonEmptyString(p["id"]) ||
-      copy.t("mediaAnalysis.projectWorkspace.untitledProject", "Adsız");
+      copy.t("mediaAnalysis.sourcePanel.project.untitledProject", "Adsız");
     const selected = id === activeId ? " selected" : "";
     return `<option value="${escapeHtml(id)}"${selected}>${escapeHtml(name)}</option>`;
   });
@@ -336,18 +376,18 @@ function renderProjectSelector(state: LabStoreState, copy: LabI18n): string {
   return `
     <div class="labx-sp-header__project-row">
       <select class="labx-sp-header__project-select labx-select labx-select--compact"
-              data-lab-field="project.id" title="${escapeHtml(copy.t("mediaAnalysis.projectWorkspace.managementTitle", "Proje"))}">
+              data-lab-field="project.id" title="${escapeHtml(copy.t("mediaAnalysis.sourcePanel.project.managementTitle", "Proje"))}">
         ${noProjectOpt}
         ${options.join("")}
       </select>
       <button class="labx-sp-header__new-btn" type="button"
               data-lab-action="project-create"
-              title="${escapeHtml(copy.t("mediaAnalysis.projectWorkspace.newProject", "Yeni Proje"))}"
-              aria-label="${escapeHtml(copy.t("mediaAnalysis.projectWorkspace.newProject", "Yeni Proje"))}">+</button>
+              title="${escapeHtml(copy.t("mediaAnalysis.sourcePanel.project.newProject", "Yeni Proje"))}"
+              aria-label="${escapeHtml(copy.t("mediaAnalysis.sourcePanel.project.newProject", "Yeni Proje"))}">+</button>
       <button class="labx-sp-header__del-btn" type="button"
               data-lab-action="project-delete"${deleteDisabled}
-              title="${escapeHtml(copy.t("mediaAnalysis.projectWorkspace.deleteProject", "Projeyi Sil"))}"
-              aria-label="${escapeHtml(copy.t("mediaAnalysis.projectWorkspace.deleteProject", "Projeyi Sil"))}">🗑</button>
+              title="${escapeHtml(copy.t("mediaAnalysis.sourcePanel.project.deleteProject", "Projeyi Sil"))}"
+              aria-label="${escapeHtml(copy.t("mediaAnalysis.sourcePanel.project.deleteProject", "Projeyi Sil"))}">🗑</button>
     </div>
   `;
 }
@@ -386,7 +426,7 @@ export function renderLabSourcePanel(
 
   const assetGroupsMarkup = ASSET_GROUPS.map(function (group) {
     const isOpen = firstGroupWithAssets?.type === group.type;
-    return renderAssetGroup(group, assets, currentSourceId, isOpen, copy);
+    return renderAssetGroup(group, state, assets, currentSourceId, isOpen, copy);
   }).join("");
 
   const emptyMarkup =

@@ -158,7 +158,6 @@
   .labx-tool-manager-layout,
   .labx-module-overlay__summary,
   .labx-source-intake__top,
-  .labx-workspace-focus-row,
   .labx-source-intake__mode-grid {
     grid-template-columns: 1fr;
   }

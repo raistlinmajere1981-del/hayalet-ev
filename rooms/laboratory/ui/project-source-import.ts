@@ -10,218 +10,16 @@ import {
   getLatestProjectImportEvent,
   getProjectImportRoute,
 } from "../runtime/lab-project-import.js";
+import { getYoutubePresetDefaults } from "../runtime/lab-source-presets.js";
+import {
+  findYtDlpFormField,
+  getYtDlpFormSchema,
+  shouldRenderAdvancedYtDlpFormField,
+} from "./project-source-form-schema.js";
+import type { YtDlpFormField } from "./project-source-form-schema.js";
 import type { LabI18n } from "./lab-i18n.js";
 
-type YtDlpFormFieldOption = {
-  labelKey: string;
-  value: string;
-};
-
-type YtDlpFormField = {
-  id: string;
-  labelKey: string;
-  max?: number;
-  min?: number;
-  options?: YtDlpFormFieldOption[];
-  placeholderKey?: string;
-  span?: string;
-  type: "number" | "select" | "text" | "toggle";
-};
-
-type YtDlpFormSection = {
-  fields: YtDlpFormField[];
-  id: string;
-};
-
-type YtDlpFormSchema = {
-  sections: YtDlpFormSection[];
-};
-
 type YoutubeCaptureMode = "video+audio" | "audio-only" | "video-only";
-
-const YT_DLP_FORM_SCHEMA = {
-  sections: [
-    {
-      id: "download",
-      fields: [
-        {
-          id: "mergeOutputFormat",
-          type: "select",
-          labelKey: "mediaAnalysis.source.youtubeForm.fields.mergeOutputFormat",
-          options: [
-            {
-              value: "auto",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.container.auto",
-            },
-            {
-              value: "mp4",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.container.mp4",
-            },
-            {
-              value: "mkv",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.container.mkv",
-            },
-            {
-              value: "webm",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.container.webm",
-            },
-          ],
-        },
-        {
-          id: "recodeVideo",
-          type: "select",
-          labelKey: "mediaAnalysis.source.youtubeForm.fields.recodeVideo",
-          options: [
-            {
-              value: "none",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.recode.none",
-            },
-            {
-              value: "mp4",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.recode.mp4",
-            },
-            {
-              value: "mkv",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.recode.mkv",
-            },
-            {
-              value: "webm",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.recode.webm",
-            },
-          ],
-        },
-        {
-          id: "audioFormat",
-          type: "select",
-          labelKey: "mediaAnalysis.source.youtubeForm.fields.audioFormat",
-          options: [
-            {
-              value: "none",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.audio.none",
-            },
-            {
-              value: "mp3",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.audio.mp3",
-            },
-            {
-              value: "aac",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.audio.aac",
-            },
-            {
-              value: "m4a",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.audio.m4a",
-            },
-            {
-              value: "opus",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.audio.opus",
-            },
-            {
-              value: "wav",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.audio.wav",
-            },
-            {
-              value: "flac",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.audio.flac",
-            },
-          ],
-        },
-        {
-          id: "audioQuality",
-          type: "select",
-          labelKey: "mediaAnalysis.source.youtubeForm.fields.audioQuality",
-          options: [
-            {
-              value: "best",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.audioQuality.best",
-            },
-            {
-              value: "0",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.audioQuality.max",
-            },
-            {
-              value: "2",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.audioQuality.high",
-            },
-            {
-              value: "5",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.audioQuality.medium",
-            },
-            {
-              value: "7",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.audioQuality.small",
-            },
-          ],
-        },
-      ],
-    },
-    {
-      id: "captions",
-      fields: [
-        {
-          id: "writeSubtitles",
-          type: "toggle",
-          labelKey: "mediaAnalysis.source.youtubeForm.fields.writeSubtitles",
-        },
-        {
-          id: "writeAutoSubtitles",
-          type: "toggle",
-          labelKey: "mediaAnalysis.source.youtubeForm.fields.writeAutoSubtitles",
-        },
-        {
-          id: "subtitlesLang",
-          type: "text",
-          labelKey: "mediaAnalysis.source.youtubeForm.fields.subtitlesLang",
-          placeholderKey: "mediaAnalysis.source.youtubeForm.placeholders.subtitlesLang",
-          span: "full",
-        },
-      ],
-    },
-    {
-      id: "network",
-      fields: [
-        {
-          id: "playlistItems",
-          type: "text",
-          labelKey: "mediaAnalysis.source.youtubeForm.fields.playlistItems",
-          placeholderKey: "mediaAnalysis.source.youtubeForm.placeholders.playlistItems",
-        },
-        {
-          id: "limitRate",
-          type: "text",
-          labelKey: "mediaAnalysis.source.youtubeForm.fields.limitRate",
-          placeholderKey: "mediaAnalysis.source.youtubeForm.placeholders.limitRate",
-        },
-        {
-          id: "retries",
-          type: "number",
-          labelKey: "mediaAnalysis.source.youtubeForm.fields.retries",
-          min: 1,
-          max: 50,
-        },
-      ],
-    },
-  ],
-} satisfies YtDlpFormSchema;
-
-const YOUTUBE_CAPTURE_MODE_FIELD: YtDlpFormField = {
-  id: "captureMode",
-  type: "select",
-  labelKey: "mediaAnalysis.source.youtubeForm.fields.captureMode",
-  options: [
-    {
-      value: "video+audio",
-      labelKey: "mediaAnalysis.source.youtubeForm.options.captureMode.videoAudio",
-    },
-    {
-      value: "audio-only",
-      labelKey: "mediaAnalysis.source.youtubeForm.options.captureMode.audioOnly",
-    },
-    {
-      value: "video-only",
-      labelKey: "mediaAnalysis.source.youtubeForm.options.captureMode.videoOnly",
-    },
-  ],
-};
 
 function selectedAttr(current: string | null, value: string) {
   return current === value ? " selected" : "";
@@ -281,20 +79,13 @@ function getProjectImportYoutubeDraft(state: LabStoreState) {
   return route.kind === "video" ? route.draft : state.ui.projectImport.drafts.video;
 }
 
-function getYoutubeCustomDefaults(state: LabStoreState) {
-  const snapshot = asLabRecord(state.snapshot);
-  const sourcePresets = asLabRecord(snapshot["sourcePresets"]);
-  const youtubePresets = asLabRecord(sourcePresets["youtubePresets"]);
-  return asLabRecord(asLabRecord(youtubePresets["custom"])["defaultCustomValues"]);
-}
-
 function getYoutubeCustomValue(state: LabStoreState, fieldId: string) {
   const draft = getProjectImportYoutubeDraft(state);
   if (fieldId === "captureMode") {
     return normalizeYoutubeCaptureMode(draft.youtubeCaptureMode);
   }
   const custom = asLabRecord(draft.youtubeCustom);
-  const defaults = getYoutubeCustomDefaults(state);
+  const defaults = getYoutubePresetDefaults(state, "custom");
   return custom[fieldId] ?? defaults[fieldId] ?? "";
 }
 
@@ -431,6 +222,8 @@ function renderYoutubeStreamSelect(input: {
 }
 
 function renderYoutubeStreamControls(state: LabStoreState, copy: LabI18n) {
+  const schema = getYtDlpFormSchema(state);
+  const captureModeField = findYtDlpFormField(schema, "captureMode");
   const captureMode = getYoutubeCaptureMode(state);
   const formats = state.ui.youtubeImport.formats;
   const videoFormats = getYoutubeStreamFormats(formats, "video");
@@ -442,7 +235,7 @@ function renderYoutubeStreamControls(state: LabStoreState, copy: LabI18n) {
     <fieldset class="labx-project-import__yt-section labx-project-import__yt-section--streams">
       <legend>${escapeHtml(copy.t("mediaAnalysis.source.youtubeForm.sections.streams.title", "Streams"))}</legend>
       <div class="labx-project-import__yt-grid">
-        ${renderYoutubeFormField(YOUTUBE_CAPTURE_MODE_FIELD, state, copy)}
+        ${captureModeField ? renderYoutubeFormField(captureModeField, state, copy) : ""}
         ${
           showVideoSelect
             ? renderYoutubeStreamSelect({
@@ -471,18 +264,24 @@ function renderYoutubeStreamControls(state: LabStoreState, copy: LabI18n) {
 }
 
 function renderYoutubeDetailedControls(state: LabStoreState, copy: LabI18n) {
+  const schema = getYtDlpFormSchema(state);
   return `
     <div class="labx-project-import__yt-controls">
       ${renderYoutubeStreamControls(state, copy)}
-      ${YT_DLP_FORM_SCHEMA.sections
+      ${schema.sections
         .map(function (section) {
           const title = copy.t(
             `mediaAnalysis.source.youtubeForm.sections.${section.id}.title`,
             section.id
           );
-          const visibleFields = section.fields.filter(function (field) {
-            return shouldRenderYoutubeFormField(field, state);
-          });
+          const visibleFields = section.fields
+            .filter(shouldRenderAdvancedYtDlpFormField)
+            .filter(function (field) {
+              return shouldRenderYoutubeFormField(field, state);
+            });
+          if (visibleFields.length === 0) {
+            return "";
+          }
           return `
             <fieldset class="labx-project-import__yt-section" data-section="${escapeHtml(section.id)}">
               <legend>${escapeHtml(title)}</legend>
@@ -687,7 +486,7 @@ function renderProjectImportDetails(state: LabStoreState, copy: LabI18n) {
       value: getMethodLabel(method, copy),
     },
     {
-      label: copy.t("mediaAnalysis.projectWorkspace.metadataName", "Ad"),
+      label: copy.t("mediaAnalysis.projectImport.review.metadataName", "Ad"),
       value: fileName,
     },
   ];
@@ -696,13 +495,13 @@ function renderProjectImportDetails(state: LabStoreState, copy: LabI18n) {
   );
   if (duration !== null) {
     rows.push({
-      label: copy.t("mediaAnalysis.projectWorkspace.metadataDuration", "Süre"),
+      label: copy.t("mediaAnalysis.projectImport.review.metadataDuration", "Süre"),
       value: duration,
     });
   }
   if (typeof metadata["sizeBytes"] === "number") {
     rows.push({
-      label: copy.t("mediaAnalysis.projectWorkspace.metadataSize", "Boyut"),
+      label: copy.t("mediaAnalysis.projectImport.review.metadataSize", "Boyut"),
       value: formatBytes(metadata["sizeBytes"]),
     });
   }

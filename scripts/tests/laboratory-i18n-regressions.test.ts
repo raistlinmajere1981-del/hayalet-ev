@@ -243,8 +243,6 @@ test("laboratory static i18n references resolve in both room catalogs", () => {
   const trCatalog = readCatalog(TR_CATALOG_PATH);
   const issues: string[] = [];
   const fallbackOnlyKeys = new Set([
-    "mediaAnalysis.assets.actions.viewReport",
-    "mediaAnalysis.sourcePanel.title",
     "mediaAnalysis.timeline.noSelection",
     "mediaAnalysis.toolManager.labels.details",
     "mediaAnalysis.topBar.deleteProject",

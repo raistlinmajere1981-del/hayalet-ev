@@ -416,7 +416,7 @@ test("laboratory asset menus close on menu actions and outside clicks", () => {
 
     closest(selector: string) {
       if (
-        selector === "details.labx-sp-asset__menu, details.labx-project-assets__menu"
+        selector === "details.labx-sp-asset__menu"
       ) {
         return this.menu;
       }
@@ -439,7 +439,7 @@ test("laboratory asset menus close on menu actions and outside clicks", () => {
       querySelectorAll(selector: string) {
         assert.equal(
           selector,
-          "details.labx-sp-asset__menu, details.labx-project-assets__menu"
+          "details.labx-sp-asset__menu"
         );
         return [sourceMenu, projectMenu];
       },

@@ -1,4 +1,4 @@
-import { asLabRecord, asNonEmptyString, escapeHtml } from "../models/lab-types.js";
+import { asNonEmptyString, escapeHtml } from "../models/lab-types.js";
 import type {
   LabInteractiveSettings,
   LabSourceRetryBlockReason,
@@ -11,6 +11,7 @@ import {
   getWorkspaceLockState,
   isLoadedSourceMatchingMode,
 } from "../runtime/lab-selectors.js";
+import { getSourceKindOptions, getSourceModeOptions } from "../runtime/lab-source-presets.js";
 import { renderStatusChip } from "./components/status-chip.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
@@ -40,36 +41,6 @@ function getSourceModeLabel(mode: string, copy: LabI18n = LAB_FALLBACK_I18N) {
     default:
       return mode;
   }
-}
-
-function toStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  return value.filter((entry): entry is string => typeof entry === "string" && entry.trim() !== "");
-}
-
-function getSnapshotRecord(state: LabStoreState) {
-  return asLabRecord(state.snapshot);
-}
-
-function getSourcePresets(state: LabStoreState) {
-  return asLabRecord(getSnapshotRecord(state)["sourcePresets"]);
-}
-
-function getSourceKindOptions(state: LabStoreState) {
-  const sourceTypes = asLabRecord(getSourcePresets(state)["sourceTypes"]);
-  const configuredKinds = Object.keys(sourceTypes).filter(function (entry) {
-    return entry.trim() !== "";
-  });
-  return configuredKinds.length > 0 ? configuredKinds : ["video", "audio", "image"];
-}
-
-function getSourceModeOptions(state: LabStoreState, kind: string) {
-  const sourceTypes = asLabRecord(getSourcePresets(state)["sourceTypes"]);
-  const sourceConfig = asLabRecord(sourceTypes[kind]);
-  const configuredModes = toStringArray(sourceConfig["modes"]);
-  return configuredModes.length > 0 ? configuredModes : ["local"];
 }
 
 export function getEffectiveSourceMode(state: LabStoreState, kind: string) {
