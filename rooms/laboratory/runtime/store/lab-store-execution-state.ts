@@ -8,9 +8,11 @@ import type {
   LabExecutionCandidate,
   LabExecutionCommitment,
   LabIntentId,
+  LabSelection,
   LabStoreState,
 } from "../../models/lab-types.js";
 import { getSelectionSuggestionsForContext } from "../lab-selection-suggestion-logic.js";
+import { resolveEffectiveWorkspaceSelection } from "../lab-workspace-selection.js";
 import { createIdleExecutionRuntime } from "./lab-store-defaults.js";
 
 export function clearSuggestionPreview(state: LabStoreState) {
@@ -92,12 +94,33 @@ export function getWorkspaceSelectionSuggestionSourceKind(state: LabStoreState) 
   return asNonEmptyString(asLabRecord(state.source)["kind"]) || "video";
 }
 
+function getWorkspaceSelectionSuggestionDurationMs(state: LabStoreState) {
+  const source = asLabRecord(state.source);
+  const metadata = asLabRecord(source["metadata"]);
+  const durationMs = metadata["durationMs"];
+  if (typeof durationMs === "number" && Number.isFinite(durationMs)) {
+    return Math.max(0, Math.round(durationMs));
+  }
+  const durationSeconds = metadata["durationSeconds"];
+  if (typeof durationSeconds === "number" && Number.isFinite(durationSeconds)) {
+    return Math.max(0, Math.round(durationSeconds * 1000));
+  }
+  return 0;
+}
+
+function getWorkspaceSelectionForSuggestion(state: LabStoreState): LabSelection | null {
+  return resolveEffectiveWorkspaceSelection(state.ui.workspace.activeSelection, {
+    durationMs: getWorkspaceSelectionSuggestionDurationMs(state),
+    sourceKind: getWorkspaceSelectionSuggestionSourceKind(state),
+  });
+}
+
 export function canStoreSelectionSuggestionPreview(state: LabStoreState, suggestionId: string) {
   const normalizedSuggestionId = normalizeSelectionSuggestionId(suggestionId);
   if (normalizedSuggestionId === null) {
     return false;
   }
-  const activeSelection = state.ui.workspace.activeSelection;
+  const activeSelection = getWorkspaceSelectionForSuggestion(state);
   if (activeSelection === null || activeSelection.endMs <= activeSelection.startMs) {
     return false;
   }
@@ -137,7 +160,7 @@ export function getSelectionSuggestionById(
   if (normalizedSuggestionId === null) {
     return null;
   }
-  const activeSelection = state.ui.workspace.activeSelection;
+  const activeSelection = getWorkspaceSelectionForSuggestion(state);
   if (activeSelection === null || activeSelection.endMs <= activeSelection.startMs) {
     return null;
   }

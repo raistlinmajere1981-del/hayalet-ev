@@ -65,6 +65,7 @@ import {
   getActiveInspectionSnapshot,
   getActiveSelection,
   getActiveSuggestionPreview,
+  getEffectiveActiveSelection,
   getInspectionMode,
   getInterpretationItems,
   getRoiFocusActive,
@@ -119,6 +120,7 @@ export {
   getActiveSelection,
   getActiveSuggestionPreview,
   getActiveSuggestionPreviewId,
+  getEffectiveActiveSelection,
   getExecutionDispatchCandidate,
   getExecutionJourneyStep,
   getInspectionMode,
@@ -458,6 +460,7 @@ export function getWaveformTimelineModel(state: LabStoreState) {
     sourceReady && typeof metadata["durationSeconds"] === "number"
       ? Math.max(0, Math.round(metadata["durationSeconds"] * 1000))
       : 0;
+  const effectiveSelection = getEffectiveActiveSelection(state);
   const selection = getTimelineSelection(state);
   const waveformContentDurationMs = durationMs;
   const waveformVisibleStartMs = 0;
@@ -524,7 +527,7 @@ export function getWaveformTimelineModel(state: LabStoreState) {
     activeExecutionSimulation: getActiveExecutionSimulation(state),
     activeExecutionStaging: getActiveExecutionStaging(state),
     activeExecutionIntent: getActiveExecutionIntent(state),
-    activeSelection: getActiveSelection(state),
+    activeSelection: effectiveSelection,
     activeInspectionSnapshot: getActiveInspectionSnapshot(state),
     activeSuggestionPreview: getActiveSuggestionPreview(state),
     audioFocus: getEffectivePreviewAudioFocusSettings(state),

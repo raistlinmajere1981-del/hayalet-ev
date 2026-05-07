@@ -181,16 +181,18 @@ export function renderLabWaveformSelectionPanel(
 ) {
   const copy = model.copy ?? LAB_FALLBACK_I18N;
   const durationMs = Math.max(1, model.durationMs);
-  const rawStartMs = model.startMs ?? 0;
-  const rawEndMs = model.endMs ?? durationMs;
+  const modelSelection = model.activeSelection ?? null;
+  const rawStartMs = modelSelection?.startMs ?? model.startMs ?? 0;
+  const rawEndMs = modelSelection?.endMs ?? model.endMs ?? durationMs;
   const hasSelection =
-    model.startMs !== null && model.endMs !== null && model.endMs > model.startMs;
+    (model.startMs !== null && model.endMs !== null && model.endMs > model.startMs) ||
+    (modelSelection !== null && modelSelection.endMs > modelSelection.startMs);
 
   if (hasSelection !== true) {
     return "";
   }
 
-  const activeSelection = model.activeSelection ?? {
+  const activeSelection = modelSelection ?? {
     id: "selection-preview",
     startMs: rawStartMs,
     endMs: rawEndMs,
@@ -199,9 +201,7 @@ export function renderLabWaveformSelectionPanel(
     createdAt: 0,
   };
   const hasSemanticSelection =
-    model.activeSelection !== null &&
-    model.activeSelection !== undefined &&
-    model.activeSelection.endMs > model.activeSelection.startMs;
+    modelSelection !== null && modelSelection.endMs > modelSelection.startMs;
   const selectionSuggestions = hasSemanticSelection ? (model.selectionSuggestions ?? []) : [];
   const activeExecutionPlan = hasSemanticSelection ? (model.activeExecutionPlan ?? null) : null;
   const activeExecutionSimulation =
@@ -468,7 +468,6 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
     model.startMs !== null && model.endMs !== null && model.endMs > model.startMs;
   const microZoomAvailable = model.waveformInspectionLens?.enabled === true;
   const microZoomOpen = microZoomAvailable === true && model.selectionMicroZoomOpen === true;
-  const interpretationItems = model.interpretationItems ?? [];
   const selectionIntent = hasSelection ? (model.activeSelection?.intent ?? "general") : "general";
   const startMs = hasSelection ? rawStartMs : 0;
   const endMs = hasSelection ? rawEndMs : durationMs;
@@ -721,7 +720,6 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
         </div>
       </div>
       ${renderWaveformInspectionLens(model, copy)}
-      ${hasSelection ? "" : renderInterpretationPanel(interpretationItems, "standalone", copy)}
     </div>
   `;
 }

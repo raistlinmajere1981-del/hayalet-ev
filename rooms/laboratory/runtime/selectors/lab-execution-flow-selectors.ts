@@ -34,6 +34,7 @@ import {
   buildSelectionSuggestionPreview,
   getSelectionSuggestionsForContext,
 } from "../lab-selection-suggestion-logic.js";
+import { resolveEffectiveWorkspaceSelection } from "../lab-workspace-selection.js";
 import {
   appendReflectionFeedback,
   buildExecutionDispatchId,
@@ -44,7 +45,7 @@ import type {
   ActiveExecutionRuntimeContext,
   LabExecutionResultInterpretation,
 } from "./lab-execution-result-selectors.js";
-import { getSourceKind } from "./lab-source-selectors.js";
+import { getSourceKind, getSourceMetadata } from "./lab-source-selectors.js";
 import { getEffectivePreviewAudioFocusSettings } from "./lab-workspace-media-selectors.js";
 import type { LabI18nLocale } from "../lab-i18n.js";
 
@@ -79,6 +80,26 @@ function createExecutionSelectionSnapshot(
 
 export function getActiveSelection(state: LabStoreState): LabSelection | null {
   return state.ui.workspace.activeSelection;
+}
+
+function getSourceDurationMs(state: LabStoreState): number {
+  const metadata = getSourceMetadata(state);
+  const durationMs = metadata["durationMs"];
+  if (typeof durationMs === "number" && Number.isFinite(durationMs)) {
+    return Math.max(0, Math.round(durationMs));
+  }
+  const durationSeconds = metadata["durationSeconds"];
+  if (typeof durationSeconds === "number" && Number.isFinite(durationSeconds)) {
+    return Math.max(0, Math.round(durationSeconds * 1000));
+  }
+  return 0;
+}
+
+export function getEffectiveActiveSelection(state: LabStoreState): LabSelection | null {
+  return resolveEffectiveWorkspaceSelection(getActiveSelection(state), {
+    durationMs: getSourceDurationMs(state),
+    sourceKind: getSourceKind(state),
+  });
 }
 
 export function isSelectionValid(state: LabStoreState): boolean {
@@ -119,7 +140,7 @@ export function getActiveExecutionIntentId(state: LabStoreState): string | null 
 }
 
 export function getSelectionSuggestions(state: LabStoreState): LabActionSuggestion[] {
-  return getSelectionSuggestionsForContext(getActiveSelection(state), {
+  return getSelectionSuggestionsForContext(getEffectiveActiveSelection(state), {
     inspectionMode: getInspectionMode(state),
     sourceKind: getSourceKind(state),
   });
@@ -146,7 +167,7 @@ function getWorkspaceSurfaceSuggestionFlowKind(
 }
 
 export function getWorkspaceSurfaceSuggestions(state: LabStoreState): LabActionSuggestion[] {
-  return getSelectionSuggestionsForContext(getActiveSelection(state), {
+  return getSelectionSuggestionsForContext(getEffectiveActiveSelection(state), {
     expandedTaxonomy: true,
     inspectionMode: getInspectionMode(state),
     sourceKind: getSourceKind(state),
@@ -159,7 +180,7 @@ export function getWorkspaceSurfaceSuggestions(state: LabStoreState): LabActionS
 }
 
 function getExecutionSelectionSuggestions(state: LabStoreState): LabActionSuggestion[] {
-  const activeSelection = getActiveSelection(state);
+  const activeSelection = getEffectiveActiveSelection(state);
   return getSelectionSuggestionsForContext(activeSelection, {
     expandedTaxonomy: true,
     inspectionMode: getInspectionMode(state),
@@ -169,7 +190,7 @@ function getExecutionSelectionSuggestions(state: LabStoreState): LabActionSugges
 
 export function getInterpretationItems(state: LabStoreState): LabInterpretationItem[] {
   return buildInterpretationItems({
-    activeSelection: getActiveSelection(state),
+    activeSelection: getEffectiveActiveSelection(state),
     audioFocus: getEffectivePreviewAudioFocusSettings(state),
     inspectionMode: getInspectionMode(state),
     sourceKind: getSourceKind(state),
@@ -185,7 +206,7 @@ export function buildSuggestionPreview(
 
 export function getActiveSuggestionPreview(state: LabStoreState): LabSuggestionPreview | null {
   const previewId = getActiveSuggestionPreviewId(state);
-  const activeSelection = getActiveSelection(state);
+  const activeSelection = getEffectiveActiveSelection(state);
   if (
     previewId === null ||
     activeSelection === null ||
@@ -224,7 +245,7 @@ export function getActiveExecutionIntent(state: LabStoreState): LabActionSuggest
 
 export function getActiveExecutionPlan(state: LabStoreState): LabExecutionPlan | null {
   const activeExecutionIntent = getActiveExecutionIntent(state);
-  const activeSelection = getActiveSelection(state);
+  const activeSelection = getEffectiveActiveSelection(state);
   if (
     activeExecutionIntent === null ||
     activeSelection === null ||
@@ -242,7 +263,7 @@ export function getActiveExecutionPlan(state: LabStoreState): LabExecutionPlan |
 
 export function getActiveExecutionSimulation(state: LabStoreState): LabExecutionSimulation | null {
   const activeExecutionPlan = getActiveExecutionPlan(state);
-  const activeSelection = getActiveSelection(state);
+  const activeSelection = getEffectiveActiveSelection(state);
   if (
     activeExecutionPlan === null ||
     activeSelection === null ||
@@ -262,7 +283,7 @@ export function getActiveExecutionSimulation(state: LabStoreState): LabExecution
 export function getActiveExecutionReadiness(state: LabStoreState): LabExecutionReadiness | null {
   const activeExecutionPlan = getActiveExecutionPlan(state);
   const activeExecutionSimulation = getActiveExecutionSimulation(state);
-  const activeSelection = getActiveSelection(state);
+  const activeSelection = getEffectiveActiveSelection(state);
   if (
     activeExecutionPlan === null ||
     activeExecutionSimulation === null ||
@@ -288,7 +309,7 @@ export function getActiveExecutionPayloadPreview(
     executionPlan: getActiveExecutionPlan(state),
     executionSimulation: getActiveExecutionSimulation(state),
     executionReadiness: getActiveExecutionReadiness(state),
-    activeSelection: getActiveSelection(state),
+    activeSelection: getEffectiveActiveSelection(state),
     inspectionMode: getInspectionMode(state),
     sourceKind: getSourceKind(state),
   });
@@ -300,7 +321,7 @@ function getBaseActiveExecutionReflection(state: LabStoreState): LabExecutionRef
     executionSimulation: getActiveExecutionSimulation(state),
     executionReadiness: getActiveExecutionReadiness(state),
     executionPayloadPreview: getActiveExecutionPayloadPreview(state),
-    activeSelection: getActiveSelection(state),
+    activeSelection: getEffectiveActiveSelection(state),
     inspectionMode: getInspectionMode(state),
     locale: getRuntimeLocale(state),
     sourceKind: getSourceKind(state),
@@ -325,7 +346,7 @@ function getBaseActiveExecutionAlternatives(state: LabStoreState): LabExecutionA
     executionSimulation: getActiveExecutionSimulation(state),
     executionReadiness: getActiveExecutionReadiness(state),
     executionReflection: getBaseActiveExecutionReflection(state),
-    activeSelection: getActiveSelection(state),
+    activeSelection: getEffectiveActiveSelection(state),
     inspectionMode: getInspectionMode(state),
     locale: getRuntimeLocale(state),
     sourceKind: getSourceKind(state),
@@ -343,7 +364,7 @@ export function getActiveExecutionAlternatives(
     executionResult: getActiveExecutionResult(state),
     executionGoalEvaluation: getActiveExecutionGoalEvaluation(state),
     executionResultInterpretation: getActiveExecutionResultInterpretation(state),
-    activeSelection: getActiveSelection(state),
+    activeSelection: getEffectiveActiveSelection(state),
     inspectionMode: getInspectionMode(state),
     locale: getRuntimeLocale(state),
     sourceKind: getSourceKind(state),
@@ -358,7 +379,7 @@ function getBaseActiveExecutionCandidate(state: LabStoreState): LabExecutionCand
     executionPayloadPreview: getActiveExecutionPayloadPreview(state),
     executionReflection: getBaseActiveExecutionReflection(state),
     executionAlternatives: getBaseActiveExecutionAlternatives(state),
-    activeSelection: getActiveSelection(state),
+    activeSelection: getEffectiveActiveSelection(state),
     inspectionMode: getInspectionMode(state),
     locale: getRuntimeLocale(state),
     sourceKind: getSourceKind(state),
@@ -376,7 +397,7 @@ export function getActiveExecutionCandidate(state: LabStoreState): LabExecutionC
     executionResult: getActiveExecutionResult(state),
     executionGoalEvaluation: getActiveExecutionGoalEvaluation(state),
     executionResultInterpretation: getActiveExecutionResultInterpretation(state),
-    activeSelection: getActiveSelection(state),
+    activeSelection: getEffectiveActiveSelection(state),
     inspectionMode: getInspectionMode(state),
     locale: getRuntimeLocale(state),
     sourceKind: getSourceKind(state),
@@ -427,7 +448,7 @@ function getBaseActiveExecutionStaging(state: LabStoreState): LabExecutionStagin
     executionAlternatives: getBaseActiveExecutionAlternatives(state),
     executionCandidate: getBaseActiveExecutionCandidate(state),
     executionCommitment: getBaseActiveExecutionCommitment(state),
-    activeSelection: getActiveSelection(state),
+    activeSelection: getEffectiveActiveSelection(state),
   });
 }
 
@@ -441,7 +462,7 @@ export function getActiveExecutionStaging(state: LabStoreState): LabExecutionSta
     executionAlternatives: getActiveExecutionAlternatives(state),
     executionCandidate: getActiveExecutionCandidate(state),
     executionCommitment: getActiveExecutionCommitment(state),
-    activeSelection: getActiveSelection(state),
+    activeSelection: getEffectiveActiveSelection(state),
   });
 }
 
@@ -451,7 +472,7 @@ function getBaseExecutionDispatchCandidate(
   const commitment = getBaseActiveExecutionCommitment(state);
   const staging = getBaseActiveExecutionStaging(state);
   const payloadPreview = getActiveExecutionPayloadPreview(state);
-  const activeSelection = getActiveSelection(state);
+  const activeSelection = getEffectiveActiveSelection(state);
   if (
     commitment === null ||
     staging === null ||
@@ -486,7 +507,7 @@ export function getExecutionDispatchCandidate(
   const commitment = getActiveExecutionCommitment(state);
   const staging = getActiveExecutionStaging(state);
   const payloadPreview = getActiveExecutionPayloadPreview(state);
-  const activeSelection = getActiveSelection(state);
+  const activeSelection = getEffectiveActiveSelection(state);
   if (
     commitment === null ||
     staging === null ||
@@ -587,6 +608,6 @@ export function getExecutionJourneyStep(state: LabStoreState): number {
   )
     return 2;
   if (getActiveExecutionPlan(state) !== null) return 1;
-  if (getActiveSelection(state) !== null) return 0;
+  if (getEffectiveActiveSelection(state) !== null) return 0;
   return -1;
 }

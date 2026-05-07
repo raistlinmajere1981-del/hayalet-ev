@@ -7,6 +7,13 @@ import type {
   LabWorkspaceUiState,
 } from "../models/lab-types.js";
 
+const DEFAULT_IMAGE_SELECTION_ROI: LabSelectionROI = {
+  x: 0,
+  y: 0,
+  width: 1,
+  height: 1,
+};
+
 export function normalizeWorkspaceTimelineRange(
   startMs: number | null | undefined,
   endMs: number | null | undefined
@@ -173,6 +180,54 @@ export function syncWorkspaceSelectionWithRange(
     selectionLoopEnabled: activeSelection === null ? false : workspace.selectionLoopEnabled,
     selectionMicroZoomOpen: activeSelection === null ? false : workspace.selectionMicroZoomOpen,
   };
+}
+
+export function createDefaultWorkspaceSelectionForSource(options: {
+  durationMs: number;
+  sourceKind: string;
+}): LabSelection | null {
+  if (options.sourceKind === "image") {
+    return {
+      id: "selection-default:full-image",
+      startMs: 0,
+      endMs: 1,
+      type: "inspect",
+      intent: "general",
+      roi: { ...DEFAULT_IMAGE_SELECTION_ROI },
+      createdAt: 0,
+    };
+  }
+
+  if (options.sourceKind !== "audio" && options.sourceKind !== "video") {
+    return null;
+  }
+
+  const durationMs = Math.max(0, Math.round(options.durationMs));
+  if (durationMs <= 0) {
+    return null;
+  }
+
+  return {
+    id: `selection-default:full-${options.sourceKind}`,
+    startMs: 0,
+    endMs: durationMs,
+    type: "clip",
+    intent: "general",
+    createdAt: 0,
+  };
+}
+
+export function resolveEffectiveWorkspaceSelection(
+  activeSelection: LabSelection | null,
+  options: {
+    durationMs: number;
+    sourceKind: string;
+  }
+): LabSelection | null {
+  if (activeSelection !== null && activeSelection.endMs > activeSelection.startMs) {
+    return activeSelection;
+  }
+  return createDefaultWorkspaceSelectionForSource(options);
 }
 
 export function clearWorkspaceSelection(workspace: LabWorkspaceUiState): LabWorkspaceUiState {

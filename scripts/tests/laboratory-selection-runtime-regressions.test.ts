@@ -127,7 +127,7 @@ test("interpretation engine explains audio focus and selection rules with determ
   );
 });
 
-test("waveform timeline renders interpretation guidance even without an active selection", () => {
+test("waveform timeline keeps interpretation guidance out of the player controls", () => {
   const store = createLabStore();
   store.dispatch({
     type: "snapshot-received",
@@ -146,13 +146,9 @@ test("waveform timeline renders interpretation guidance even without an active s
   const markup = renderLabWaveformTimeline(model);
 
   assert.ok((model.interpretationItems?.length || 0) >= 2);
-  assert.match(markup, /data-lab-interpretation-panel="true"/);
-  assert.match(markup, /data-severity="high"/);
-  assert.match(markup, /data-severity="medium"/);
-  assert.match(markup, /High gain may introduce clipping or noise amplification/);
-  assert.match(markup, /Reduce gain or apply EQ balancing/);
-  assert.match(markup, /Slow playback can reveal temporal anomalies/);
-  assert.match(markup, /Use slow playback to inspect transient details/);
+  assert.doesNotMatch(markup, /data-lab-interpretation-panel="true"/);
+  assert.doesNotMatch(markup, /High gain may introduce clipping or noise amplification/);
+  assert.doesNotMatch(markup, /Slow playback can reveal temporal anomalies/);
   assert.match(markup, /labx-timeline__player-row/);
   assert.match(markup, /labx-timeline__selection-row/);
   assert.match(markup, /workspace\.audioFocus\.playbackRate/);
