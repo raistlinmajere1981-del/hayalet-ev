@@ -23,10 +23,8 @@ import {
   getActiveProjectCreatedAt,
   mergeSourceDrafts,
 } from "./lab-source-draft-controller.js";
-import { normalizeYoutubeImportStrategyValue } from "./lab-youtube-import-controller.js";
 
 type LabSourceActionControllerDeps = {
-  clearYoutubeImportParseTimer: () => void;
   dispatch: ReturnType<typeof createLabStore>["dispatch"];
   pushLockedWorkspaceEvent: (message: string) => void;
   sendMediaAction: (action: string, payload?: Record<string, unknown>) => string | null;
@@ -179,7 +177,6 @@ export function createLabSourceActionController(deps: LabSourceActionControllerD
       return;
     }
     const route = state.ui.projectImport;
-    deps.clearYoutubeImportParseTimer();
     deps.dispatch({ type: "project-import-cleared", kind: route.activeKind });
     if (route.activeKind === "video" && route.methods.video === "youtube") {
       deps.dispatch({ type: "youtube-import-clear" });
@@ -326,27 +323,9 @@ export function createLabSourceActionController(deps: LabSourceActionControllerD
       case "source-probe-retry":
         runSourceRetryAction();
         return true;
-      case "enter-youtube-import-mode":
-        deps.dispatch({ type: "enter-youtube-import-mode" });
-        return true;
-      case "exit-youtube-import-mode":
-        deps.clearYoutubeImportParseTimer();
-        if (state.ui.youtubeImport.status === "parsing") {
-          deps.dispatch({ type: "youtube-import-clear" });
-        }
-        deps.dispatch({ type: "exit-youtube-import-mode" });
-        return true;
       case "youtube-import-clear":
-        deps.clearYoutubeImportParseTimer();
         deps.dispatch({ type: "youtube-import-clear" });
         return true;
-      case "youtube-import-set-strategy": {
-        const strategy = normalizeYoutubeImportStrategyValue(value);
-        if (strategy !== null && state.ui.youtubeImport.strategy !== strategy) {
-          deps.dispatch({ type: "youtube-import-set-strategy", strategy });
-        }
-        return true;
-      }
       case "source-youtube-preset":
         if (value.trim() !== "" && state.ui.sourceDrafts.youtubePreset !== value) {
           persistSourceDraftField("source.youtubePreset", value);

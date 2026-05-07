@@ -1,5 +1,10 @@
 import { asLabRecord, asNonEmptyString, escapeHtml, formatBytes } from "../models/lab-types.js";
-import type { LabEventFeedItem, LabProjectImportKind, LabStoreState } from "../models/lab-types.js";
+import type {
+  LabEventFeedItem,
+  LabProjectImportKind,
+  LabStoreState,
+  LabYoutubeImportFormat,
+} from "../models/lab-types.js";
 import {
   buildProjectImportHostAction,
   getLatestProjectImportEvent,
@@ -32,57 +37,13 @@ type YtDlpFormSchema = {
   sections: YtDlpFormSection[];
 };
 
+type YoutubeCaptureMode = "video+audio" | "audio-only" | "video-only";
+
 const YT_DLP_FORM_SCHEMA = {
   sections: [
     {
       id: "download",
       fields: [
-        {
-          id: "captureMode",
-          type: "select",
-          labelKey: "mediaAnalysis.source.youtubeForm.fields.captureMode",
-          options: [
-            {
-              value: "video+audio",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.captureMode.videoAudio",
-            },
-            {
-              value: "audio-only",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.captureMode.audioOnly",
-            },
-            {
-              value: "video-only",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.captureMode.videoOnly",
-            },
-          ],
-        },
-        {
-          id: "format",
-          type: "select",
-          labelKey: "mediaAnalysis.source.youtubeForm.fields.format",
-          options: [
-            {
-              value: "bestvideo*+bestaudio/best",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.format.best",
-            },
-            {
-              value: "best[height<=1080][ext=mp4]/best[height<=1080]/best",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.format.mp4_1080",
-            },
-            {
-              value: "best[height<=720][ext=mp4]/best[height<=720]/best",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.format.mp4_720",
-            },
-            {
-              value: "best[height<=480][ext=mp4]/best[height<=480]/best",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.format.mp4_480",
-            },
-            {
-              value: "best[height<=360][ext=mp4]/best[height<=360]/worst[ext=mp4]/worst",
-              labelKey: "mediaAnalysis.source.youtubeForm.options.format.low",
-            },
-          ],
-        },
         {
           id: "mergeOutputFormat",
           type: "select",
@@ -242,6 +203,26 @@ const YT_DLP_FORM_SCHEMA = {
   ],
 } satisfies YtDlpFormSchema;
 
+const YOUTUBE_CAPTURE_MODE_FIELD: YtDlpFormField = {
+  id: "captureMode",
+  type: "select",
+  labelKey: "mediaAnalysis.source.youtubeForm.fields.captureMode",
+  options: [
+    {
+      value: "video+audio",
+      labelKey: "mediaAnalysis.source.youtubeForm.options.captureMode.videoAudio",
+    },
+    {
+      value: "audio-only",
+      labelKey: "mediaAnalysis.source.youtubeForm.options.captureMode.audioOnly",
+    },
+    {
+      value: "video-only",
+      labelKey: "mediaAnalysis.source.youtubeForm.options.captureMode.videoOnly",
+    },
+  ],
+};
+
 function selectedAttr(current: string | null, value: string) {
   return current === value ? " selected" : "";
 }
@@ -310,17 +291,63 @@ function getYoutubeCustomDefaults(state: LabStoreState) {
 function getYoutubeCustomValue(state: LabStoreState, fieldId: string) {
   const draft = getProjectImportYoutubeDraft(state);
   if (fieldId === "captureMode") {
-    return draft.youtubeCaptureMode;
+    return normalizeYoutubeCaptureMode(draft.youtubeCaptureMode);
   }
   const custom = asLabRecord(draft.youtubeCustom);
   const defaults = getYoutubeCustomDefaults(state);
   return custom[fieldId] ?? defaults[fieldId] ?? "";
 }
 
+function isYoutubeAudioConversionEnabled(state: LabStoreState) {
+  const audioFormat = asNonEmptyString(getYoutubeCustomValue(state, "audioFormat"));
+  return audioFormat !== null && audioFormat !== "none";
+}
+
+function normalizeYoutubeCaptureMode(value: unknown): YoutubeCaptureMode {
+  return value === "audio-only" || value === "video-only" ? value : "video+audio";
+}
+
+function getYoutubeCaptureMode(state: LabStoreState): YoutubeCaptureMode {
+  return normalizeYoutubeCaptureMode(getProjectImportYoutubeDraft(state).youtubeCaptureMode);
+}
+
+function getYoutubeFormatOptionLabel(format: LabYoutubeImportFormat) {
+  const size =
+    typeof format.filesizeBytes === "number" && Number.isFinite(format.filesizeBytes)
+      ? formatBytes(format.filesizeBytes)
+      : typeof format.filesizeApproxBytes === "number" && Number.isFinite(format.filesizeApproxBytes)
+        ? `~${formatBytes(format.filesizeApproxBytes)}`
+        : null;
+  return [format.label, size].filter(Boolean).join(" · ");
+}
+
+function getYoutubeStreamFormats(
+  formats: LabYoutubeImportFormat[],
+  target: "video" | "audio"
+) {
+  return formats.filter(function (format) {
+    if (target === "video") {
+      return format.kind === "video" || format.kind === "muxed";
+    }
+    return format.kind === "audio" || format.kind === "muxed";
+  });
+}
+
 function getYoutubeControlFieldName(fieldId: string) {
   return fieldId === "captureMode"
     ? "project-import.youtubeCaptureMode"
     : `project-import.youtubeCustom.${fieldId}`;
+}
+
+function shouldRenderYoutubeFormField(field: YtDlpFormField, state: LabStoreState) {
+  if (field.id !== "audioQuality") {
+    return true;
+  }
+  const captureMode = getYoutubeCaptureMode(state);
+  return (
+    captureMode === "audio-only" ||
+    (captureMode !== "video-only" && isYoutubeAudioConversionEnabled(state))
+  );
 }
 
 function renderYoutubeFormField(field: YtDlpFormField, state: LabStoreState, copy: LabI18n) {
@@ -380,25 +407,87 @@ function renderYoutubeFormField(field: YtDlpFormField, state: LabStoreState, cop
   `;
 }
 
+function renderYoutubeStreamSelect(input: {
+  fieldName: string;
+  formats: LabYoutubeImportFormat[];
+  label: string;
+  placeholder: string;
+  selectedFormatId: string | null;
+}) {
+  const disabledAttr = input.formats.length === 0 ? " disabled" : "";
+  return `
+    <label class="labx-field labx-project-import__yt-field labx-project-import__yt-field--stream">
+      <span>${escapeHtml(input.label)}</span>
+      <select data-lab-field="${escapeHtml(input.fieldName)}"${disabledAttr}>
+        <option value=""${selectedAttr(input.selectedFormatId || "", "")}>${escapeHtml(input.placeholder)}</option>
+        ${input.formats
+          .map(function (format) {
+            return `<option value="${escapeHtml(format.formatId)}"${selectedAttr(input.selectedFormatId, format.formatId)}>${escapeHtml(getYoutubeFormatOptionLabel(format))}</option>`;
+          })
+          .join("")}
+      </select>
+    </label>
+  `;
+}
+
+function renderYoutubeStreamControls(state: LabStoreState, copy: LabI18n) {
+  const captureMode = getYoutubeCaptureMode(state);
+  const formats = state.ui.youtubeImport.formats;
+  const videoFormats = getYoutubeStreamFormats(formats, "video");
+  const audioFormats = getYoutubeStreamFormats(formats, "audio");
+  const showVideoSelect = captureMode !== "audio-only";
+  const showAudioSelect = captureMode !== "video-only";
+
+  return `
+    <fieldset class="labx-project-import__yt-section labx-project-import__yt-section--streams">
+      <legend>${escapeHtml(copy.t("mediaAnalysis.source.youtubeForm.sections.streams.title", "Streams"))}</legend>
+      <div class="labx-project-import__yt-grid">
+        ${renderYoutubeFormField(YOUTUBE_CAPTURE_MODE_FIELD, state, copy)}
+        ${
+          showVideoSelect
+            ? renderYoutubeStreamSelect({
+                fieldName: "project-import.youtubeVideoFormat",
+                formats: videoFormats,
+                label: copy.t("mediaAnalysis.projectImport.url.videoFormat", "Video stream"),
+                placeholder: copy.t("mediaAnalysis.projectImport.url.noVideo", "No video stream"),
+                selectedFormatId: state.ui.youtubeImport.selectedVideoFormatId,
+              })
+            : ""
+        }
+        ${
+          showAudioSelect
+            ? renderYoutubeStreamSelect({
+                fieldName: "project-import.youtubeAudioFormat",
+                formats: audioFormats,
+                label: copy.t("mediaAnalysis.projectImport.url.audioFormat", "Audio stream"),
+                placeholder: copy.t("mediaAnalysis.projectImport.url.noAudio", "No audio stream"),
+                selectedFormatId: state.ui.youtubeImport.selectedAudioFormatId,
+              })
+            : ""
+        }
+      </div>
+    </fieldset>
+  `;
+}
+
 function renderYoutubeDetailedControls(state: LabStoreState, copy: LabI18n) {
   return `
     <div class="labx-project-import__yt-controls">
+      ${renderYoutubeStreamControls(state, copy)}
       ${YT_DLP_FORM_SCHEMA.sections
         .map(function (section) {
           const title = copy.t(
             `mediaAnalysis.source.youtubeForm.sections.${section.id}.title`,
             section.id
           );
-          const subtitle = copy.t(
-            `mediaAnalysis.source.youtubeForm.sections.${section.id}.subtitle`,
-            ""
-          );
+          const visibleFields = section.fields.filter(function (field) {
+            return shouldRenderYoutubeFormField(field, state);
+          });
           return `
-            <fieldset class="labx-project-import__yt-section">
+            <fieldset class="labx-project-import__yt-section" data-section="${escapeHtml(section.id)}">
               <legend>${escapeHtml(title)}</legend>
-              ${subtitle !== "" ? `<p>${escapeHtml(subtitle)}</p>` : ""}
               <div class="labx-project-import__yt-grid">
-                ${section.fields
+                ${visibleFields
                   .map(function (field) {
                     return renderYoutubeFormField(field, state, copy);
                   })
@@ -415,7 +504,7 @@ function renderYoutubeDetailedControls(state: LabStoreState, copy: LabI18n) {
 export function renderYoutubeCheckResult(state: LabStoreState, copy: LabI18n) {
   const youtube = state.ui.youtubeImport;
   if (youtube.status === "parsing" || state.ui.projectImport.urlCheck.status === "checking") {
-    return `<p class="labx-project-import__status" role="status">${escapeHtml(copy.t("mediaAnalysis.source.youtubeImport.statusParsing", "Analyzing video metadata..."))}</p>`;
+    return `<p class="labx-project-import__status" role="status">${escapeHtml(copy.t("mediaAnalysis.source.youtubeImport.statusParsing", "Checking YouTube formats..."))}</p>`;
   }
   if (youtube.status === "error" || state.ui.projectImport.urlCheck.status === "error") {
     const error =

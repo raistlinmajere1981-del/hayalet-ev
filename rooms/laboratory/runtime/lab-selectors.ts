@@ -534,6 +534,7 @@ export function getWaveformTimelineModel(state: LabStoreState) {
     inspectionMode: getInspectionMode(state),
     interpretationItems: getInterpretationItems(state),
     roiFocusActive: getRoiFocusActive(state),
+    selectionLoopEnabled: state.ui.workspace.selectionLoopEnabled,
     selectionMicroZoomOpen: state.ui.workspace.selectionMicroZoomOpen,
     selectionSuggestions: getWorkspaceSurfaceSuggestions(state),
     lockState: getWorkspaceLockState(state),
@@ -922,7 +923,7 @@ export function resolveDrawerMode(state: LabStoreState): LabDrawerMode {
 }
 
 export function getDrawerCollapsed(state: LabStoreState): boolean {
-  return state.ui.labMode === "import-youtube" || state.ui.workspace.drawerCollapsed === true;
+  return state.ui.workspace.drawerCollapsed === true;
 }
 
 const INTENT_ACTION_PHRASES: Record<LabIntentId, string> = {

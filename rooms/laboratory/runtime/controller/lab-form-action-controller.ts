@@ -23,7 +23,6 @@ type LabFormActionControllerDeps = {
   persistSourceDraftField: (field: string, value: unknown) => void;
   pushLockedWorkspaceEvent: (message: string) => void;
   readControlValue: (target: TextControl) => unknown;
-  scheduleYoutubeImportParse: (url: string) => void;
   seekTimelineToMs: (timeMs: number) => void;
   selectProjectByValue: (projectId: string) => void;
   sendMediaAction: (action: string, payload?: Record<string, unknown>) => unknown;
@@ -32,7 +31,6 @@ type LabFormActionControllerDeps = {
   syncTimelineTransportVolume: () => void;
   updateAnalysisScopeField: (field: string, value: unknown) => void;
   updateTimelinePlaybackUi: () => void;
-  updateYoutubeImportCustomField: (field: string, value: unknown) => void;
 };
 
 export function createLabFormActionController(deps: LabFormActionControllerDeps) {
@@ -76,9 +74,6 @@ export function createLabFormActionController(deps: LabFormActionControllerDeps)
         type: "project-import-draft-updated",
         patch,
       });
-      if (field === "project-import.youtubeUrl") {
-        deps.scheduleYoutubeImportParse(String(rawValue || ""));
-      }
     }
   }
 
@@ -179,11 +174,6 @@ export function createLabFormActionController(deps: LabFormActionControllerDeps)
       return;
     }
 
-    if (field === "youtube-import.url") {
-      deps.scheduleYoutubeImportParse(target.value || "");
-      return;
-    }
-
     if (field === "project-import.youtubeVideoFormat") {
       deps.dispatch({
         type: "youtube-import-format-selected",
@@ -202,11 +192,6 @@ export function createLabFormActionController(deps: LabFormActionControllerDeps)
 
     if (field.startsWith("project-import.")) {
       handleProjectImportInput(field, target);
-      return;
-    }
-
-    if (field.startsWith("youtube-import.custom.")) {
-      deps.updateYoutubeImportCustomField(field, readRawControlValue(target));
       return;
     }
 
@@ -322,14 +307,6 @@ export function createLabFormActionController(deps: LabFormActionControllerDeps)
       case "project.id":
         deps.selectProjectByValue(String(targetValue || ""));
         return;
-      case "youtube-import.url":
-        deps.scheduleYoutubeImportParse(String(targetValue || ""));
-        return;
-      case "youtube-import.custom.resolution":
-      case "youtube-import.custom.format":
-      case "youtube-import.custom.audioExtraction":
-        deps.updateYoutubeImportCustomField(field, targetValue);
-        return;
       case "project-import.urlInput":
       case "project-import.youtubeUrl":
       case "project-import.youtubeCaptureMode": {
@@ -343,9 +320,6 @@ export function createLabFormActionController(deps: LabFormActionControllerDeps)
             type: "project-import-draft-updated",
             patch,
           });
-          if (field === "project-import.youtubeUrl") {
-            deps.scheduleYoutubeImportParse(String(targetValue || ""));
-          }
         }
         return;
       }
@@ -385,10 +359,6 @@ export function createLabFormActionController(deps: LabFormActionControllerDeps)
         deps.sendMediaAction("source-set-kind", { kind: targetValue });
         return;
       case "source.mode":
-        if (targetValue === "youtube") {
-          deps.dispatch({ type: "enter-youtube-import-mode" });
-          return;
-        }
         if (deps.isWorkspaceMutationLocked("source")) {
           deps.pushLockedWorkspaceEvent("Kaynak ayarları aktif analiz sırasında kilitli.");
           return;

@@ -20,11 +20,9 @@ import type {
   LabProjectImportMethod,
   LabProjectImportReviewFocus,
   LabProjectImportUiState,
-  LabYoutubeImportCustomSettings,
   LabYoutubeImportFormat,
   LabYoutubeImportPreview,
   LabYoutubeImportState,
-  LabYoutubeImportStrategy,
 } from "./lab-import-types.js";
 export * from "./lab-capabilities.js";
 export * from "./lab-execution-types.js";
@@ -269,6 +267,7 @@ export interface LabWorkspaceUiState {
   selectedIntents: LabIntentId[];
   analysisPrepExpandedIntentIds: LabIntentId[];
   sourceIntakeCollapsed: boolean;
+  selectionLoopEnabled: boolean;
   selectionMicroZoomOpen: boolean;
   controlsDrawerOpen: boolean;
   controlsDrawerTab: LabWorkspaceControlTab;
@@ -742,8 +741,6 @@ export interface LabWorkspaceSurface {
 export type LabStoreEvent =
   | { type: "hydrate"; payload: Partial<LabPersistedState> | null }
   | { type: "lab-focus-layer-changed"; layer: LabFocusLayer }
-  | { type: "enter-youtube-import-mode" }
-  | { type: "exit-youtube-import-mode" }
   | { type: "youtube-import-set-url"; url: string | null }
   | { type: "youtube-import-parse-start" }
   | {
@@ -755,13 +752,11 @@ export type LabStoreEvent =
       selectedAudioFormatId?: string | null;
     }
   | { type: "youtube-import-parse-error"; reason?: string | null }
-  | { type: "youtube-import-set-strategy"; strategy: LabYoutubeImportStrategy }
   | {
       type: "youtube-import-format-selected";
       audioFormatId?: string | null;
       videoFormatId?: string | null;
     }
-  | { type: "youtube-import-custom-updated"; patch: Partial<LabYoutubeImportCustomSettings> }
   | { type: "youtube-import-clear" }
   | { type: "project-import-kind-changed"; kind: LabProjectImportKind }
   | {
@@ -906,6 +901,7 @@ export type LabStoreEvent =
   | { type: "analysis-prep-group-toggled"; intentId: LabIntentId }
   | { type: "analysis-prep-group-expanded"; intentIds: LabIntentId[] }
   | { type: "workspace-source-intake-toggled"; force?: boolean }
+  | { type: "workspace-selection-loop-toggled"; force?: boolean }
   | { type: "workspace-selection-micro-zoom-toggled"; force?: boolean }
   | { type: "workspace-controls-drawer-toggled"; force?: boolean }
   | { type: "workspace-controls-tab-selected"; tab: LabWorkspaceControlTab }

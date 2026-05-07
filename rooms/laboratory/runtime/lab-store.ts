@@ -838,6 +838,17 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
             : !state.ui.workspace.sourceIntakeCollapsed,
       };
       return state;
+    case "workspace-selection-loop-toggled": {
+      const selection = state.ui.workspace.activeSelection;
+      const canLoop = selection !== null && selection.endMs > selection.startMs;
+      const nextEnabled =
+        typeof event.force === "boolean" ? event.force : !state.ui.workspace.selectionLoopEnabled;
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        selectionLoopEnabled: canLoop === true ? nextEnabled : false,
+      };
+      return state;
+    }
     case "workspace-selection-micro-zoom-toggled": {
       const selection = state.ui.workspace.activeSelection;
       const canOpen = selection !== null && selection.endMs > selection.startMs;

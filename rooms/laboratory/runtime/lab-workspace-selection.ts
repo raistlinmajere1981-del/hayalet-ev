@@ -170,6 +170,7 @@ export function syncWorkspaceSelectionWithRange(
     timelineStartMs: range.startMs,
     timelineEndMs: range.endMs,
     activeSelection,
+    selectionLoopEnabled: activeSelection === null ? false : workspace.selectionLoopEnabled,
     selectionMicroZoomOpen: activeSelection === null ? false : workspace.selectionMicroZoomOpen,
   };
 }
@@ -180,6 +181,7 @@ export function clearWorkspaceSelection(workspace: LabWorkspaceUiState): LabWork
     timelineStartMs: null,
     timelineEndMs: null,
     activeSelection: null,
+    selectionLoopEnabled: false,
     selectionMicroZoomOpen: false,
   };
 }

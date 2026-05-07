@@ -40,7 +40,6 @@ import { createLabTimelinePlaybackController } from "./controller/lab-timeline-p
 import { createLabWorkspaceSettingsController } from "./controller/lab-workspace-settings-controller.js";
 import { createLabSourceActionController } from "./controller/lab-source-action-controller.js";
 import { createLabWorkspaceOperationController } from "./controller/lab-workspace-operation-controller.js";
-import { createLabYoutubeImportSessionController } from "./controller/lab-youtube-import-session-controller.js";
 import {
   isTimelineAction,
   normalizeWorkspaceControlTab,
@@ -91,16 +90,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     startTrackedReportExport,
   } = mediaActions;
 
-  const youtubeImportSession = createLabYoutubeImportSessionController({
-    dispatch,
-    store: deps.store,
-  });
-  const {
-    clearYoutubeImportParseTimer,
-    scheduleYoutubeImportParse,
-    updateYoutubeImportCustomField,
-  } = youtubeImportSession;
-
   function setLabFocusLayer(layer: LabFocusLayer) {
     if (deps.store.getState().ui.labFocusLayer === layer) {
       return;
@@ -122,8 +111,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     handleTimelineMouseMove,
     handleTimelineMouseUp,
     isWorkspaceMutationLocked,
+    playSelectedTimelineRange,
     pushLockedWorkspaceEvent,
     seekTimelineToMs,
+    setTimelineSelectionBoundary,
     shiftTimelinePlayhead,
     syncTimelinePlaybackUiFromState,
     syncTimelineTransportVolume,
@@ -132,7 +123,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   } = timelinePlayback;
 
   const sourceActions = createLabSourceActionController({
-    clearYoutubeImportParseTimer,
     dispatch,
     pushLockedWorkspaceEvent,
     sendMediaAction,
@@ -261,7 +251,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     persistSourceDraftField,
     pushLockedWorkspaceEvent,
     readControlValue,
-    scheduleYoutubeImportParse,
     seekTimelineToMs,
     selectProjectByValue,
     sendMediaAction,
@@ -270,7 +259,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     syncTimelineTransportVolume,
     updateAnalysisScopeField,
     updateTimelinePlaybackUi,
-    updateYoutubeImportCustomField,
   });
   const { handleChange, handleInput } = formActions;
 
@@ -773,6 +761,18 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "timeline-toggle-micro-zoom":
         dispatch({ type: "workspace-selection-micro-zoom-toggled" });
         return;
+      case "timeline-toggle-selection-loop":
+        if (isWorkspaceMutationLocked("timeline")) {
+          return;
+        }
+        dispatch({ type: "workspace-selection-loop-toggled" });
+        return;
+      case "timeline-play-selection":
+        if (isWorkspaceMutationLocked("timeline")) {
+          return;
+        }
+        playSelectedTimelineRange();
+        return;
       case "timeline-toggle-playback":
         if (isWorkspaceMutationLocked("timeline")) {
           return;
@@ -883,6 +883,13 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           seekTimelineToMs(timeMs);
           centerTimelineTarget(actionButton);
         }
+        return;
+      case "timeline-set-selection-boundary":
+        if (isWorkspaceMutationLocked("timeline")) {
+          pushLockedWorkspaceEvent("Zaman aralığı aktif analiz sırasında kilitli.");
+          return;
+        }
+        setTimelineSelectionBoundary(value);
         return;
       case "timeline-interact":
       case "timeline-drag-start":

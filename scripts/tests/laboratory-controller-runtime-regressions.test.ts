@@ -801,8 +801,7 @@ test("laboratory run controller applies fine adjustment controls for audio and v
   }
 });
 
-test("laboratory run controller routes YouTube import mode without starting downloads", () => {
-  const timerMock = installTimerMock();
+test("laboratory run controller routes YouTube source selection without import mode or downloads", () => {
   const originalElement = globalThis.Element;
   const originalInput = globalThis.HTMLInputElement;
   const originalSelect = globalThis.HTMLSelectElement;
@@ -827,7 +826,6 @@ test("laboratory run controller routes YouTube import mode without starting down
       },
     },
   });
-  const sourceBeforeYoutubeSelection = JSON.parse(JSON.stringify(store.getState().source));
 
   class TestElement extends FakeActionElement {}
   class TestInputElement {
@@ -904,122 +902,85 @@ test("laboratory run controller routes YouTube import mode without starting down
     assert.ok(changeListener);
     assert.ok(inputListener);
 
-    clickListener?.({ target: new TestElement("enter-youtube-import-mode") } as Event);
-    assert.equal(store.getState().ui.labMode, "import-youtube");
-
-    clickListener?.({ target: new TestElement("exit-youtube-import-mode") } as Event);
-    assert.equal(store.getState().ui.labMode, "normal");
-
     changeListener?.({
       target: new TestSelectElement("source.mode", "youtube"),
     } as unknown as Event);
 
-    assert.equal(store.getState().ui.labMode, "import-youtube");
-    assert.deepEqual(store.getState().source, sourceBeforeYoutubeSelection);
+    assert.equal(store.getState().ui.labMode, "normal");
+    assert.equal(store.getState().source.mode, "youtube");
+    assert.equal(store.getState().source.storedPath, null);
+    assert.equal(sentEvents.length, 1);
+    assert.equal(sentEvents[0]?.eventName, "media-action");
+    assert.equal(sentEvents[0]?.payload["action"], "source-set-mode");
+    const sourceAfterModeSelection = JSON.parse(JSON.stringify(store.getState().source));
+
     inputListener?.({
       target: new TestInputElement("source.youtubeUrl", "https://youtube.com/watch?v=focus"),
     } as unknown as Event);
     assert.equal(store.getState().ui.sourceDrafts.youtubeUrl, "https://youtube.com/watch?v=focus");
-    assert.deepEqual(store.getState().source, sourceBeforeYoutubeSelection);
+    assert.deepEqual(store.getState().source, sourceAfterModeSelection);
 
-    inputListener?.({
-      target: new TestInputElement(
-        "youtube-import.url",
-        "https://www.youtube.com/watch?v=abc123DEF45"
-      ),
-    } as unknown as Event);
-    assert.equal(
-      store.getState().ui.youtubeImport.url,
-      "https://www.youtube.com/watch?v=abc123DEF45"
-    );
-    assert.equal(store.getState().ui.youtubeImport.status, "parsing");
-    assert.equal(timerMock.scheduled[0]?.delay, 800);
-
-    inputListener?.({
-      target: new TestInputElement("youtube-import.url", "https://youtu.be/new123DEF45"),
-    } as unknown as Event);
-    assert.equal(store.getState().ui.youtubeImport.url, "https://youtu.be/new123DEF45");
-    assert.equal(store.getState().ui.youtubeImport.status, "parsing");
-    assert.equal(timerMock.scheduled[1]?.delay, 800);
-    timerMock.scheduled[0]?.fn();
-    assert.equal(store.getState().ui.youtubeImport.status, "parsing");
-    assert.equal(store.getState().ui.youtubeImport.preview, null);
-    timerMock.scheduled[1]?.fn();
-    assert.equal(store.getState().ui.youtubeImport.status, "ready");
-    assert.deepEqual(store.getState().ui.youtubeImport.preview, {
-      title: "Sample Video Title",
-      duration: 154,
-      thumbnail: "https://img.youtube.com/vi/new123DEF45/hqdefault.jpg",
+    store.dispatch({
+      type: "youtube-import-set-url",
+      url: "https://www.youtube.com/watch?v=abc123DEF45",
     });
-
-    clickListener?.({
-      target: new TestElement("youtube-import-set-strategy", "audio_only"),
-    } as Event);
-    assert.equal(store.getState().ui.youtubeImport.strategy, "audio_only");
-    clickListener?.({
-      target: new TestElement("youtube-import-set-strategy", "video_best"),
-    } as Event);
-    assert.equal(store.getState().ui.youtubeImport.strategy, "video_best");
-    clickListener?.({
-      target: new TestElement("youtube-import-set-strategy", "low_size"),
-    } as Event);
-    assert.equal(store.getState().ui.youtubeImport.strategy, "low_size");
-    clickListener?.({
-      target: new TestElement("youtube-import-set-strategy", "audio_only"),
-    } as Event);
-    assert.equal(store.getState().ui.youtubeImport.strategy, "audio_only");
-    clickListener?.({
-      target: new TestElement("youtube-import-set-strategy", "bogus"),
-    } as Event);
-    assert.equal(store.getState().ui.youtubeImport.strategy, "audio_only");
-    clickListener?.({
-      target: new TestElement("youtube-import-set-strategy", "custom"),
-    } as Event);
-    assert.equal(store.getState().ui.youtubeImport.strategy, "custom");
-    inputListener?.({
-      target: new TestInputElement("youtube-import.custom.format", "webm"),
-    } as unknown as Event);
-    changeListener?.({
-      target: new TestSelectElement("youtube-import.custom.resolution", "720p"),
-    } as unknown as Event);
-    changeListener?.({
-      target: new TestInputElement("youtube-import.custom.audioExtraction", "", "checkbox", true),
-    } as unknown as Event);
-    assert.equal(sentEvents.length, 0);
-    assert.deepEqual(store.getState().ui.youtubeImport.custom, {
-      resolution: "720p",
-      format: "webm",
-      audioExtraction: true,
-    });
-
-    inputListener?.({
-      target: new TestInputElement("youtube-import.url", "https://example.com/watch?v=nope"),
-    } as unknown as Event);
-    assert.equal(store.getState().ui.youtubeImport.status, "error");
-    assert.equal(store.getState().ui.youtubeImport.url, "https://example.com/watch?v=nope");
-
-    inputListener?.({
-      target: new TestInputElement("youtube-import.url", ""),
-    } as unknown as Event);
-    assert.deepEqual(store.getState().ui.youtubeImport, {
-      url: null,
-      status: "idle",
-      preview: null,
-      formats: [],
-      selectedVideoFormatId: null,
-      selectedAudioFormatId: null,
-      strategy: "custom",
-      custom: {
-        resolution: "720p",
-        format: "webm",
-        audioExtraction: true,
+    store.dispatch({
+      type: "youtube-import-parse-success",
+      url: "https://www.youtube.com/watch?v=abc123DEF45",
+      preview: {
+        title: "Sample Video Title",
+        duration: 154,
+        thumbnail: "https://img.youtube.com/vi/abc123DEF45/hqdefault.jpg",
       },
+      formats: [
+        {
+          formatId: "137",
+          label: "Video 1080p",
+          kind: "video",
+          extension: "mp4",
+        },
+        {
+          formatId: "248",
+          label: "Video 1080p webm",
+          kind: "video",
+          extension: "webm",
+        },
+        {
+          formatId: "140",
+          label: "Audio m4a",
+          kind: "audio",
+          extension: "m4a",
+        },
+        {
+          formatId: "251",
+          label: "Audio opus",
+          kind: "audio",
+          extension: "webm",
+        },
+      ],
+      selectedVideoFormatId: "137",
+      selectedAudioFormatId: "140",
     });
+    assert.equal(store.getState().ui.youtubeImport.status, "ready");
+    assert.equal(store.getState().ui.youtubeImport.selectedVideoFormatId, "137");
+    assert.equal(store.getState().ui.youtubeImport.selectedAudioFormatId, "140");
 
-    inputListener?.({
-      target: new TestInputElement("youtube-import.url", "https://youtu.be/clear12345"),
+    changeListener?.({
+      target: new TestSelectElement("project-import.youtubeVideoFormat", "248"),
     } as unknown as Event);
-    assert.equal(store.getState().ui.youtubeImport.status, "parsing");
+    assert.equal(store.getState().ui.youtubeImport.selectedVideoFormatId, "248");
+
+    changeListener?.({
+      target: new TestSelectElement("project-import.youtubeAudioFormat", "251"),
+    } as unknown as Event);
+    assert.equal(store.getState().ui.youtubeImport.selectedAudioFormatId, "251");
+
+    changeListener?.({
+      target: new TestSelectElement("project-import.youtubeCaptureMode", "audio-only"),
+    } as unknown as Event);
+    assert.equal(store.getState().ui.projectImport.drafts.video.youtubeCaptureMode, "audio-only");
+
+    assert.equal(sentEvents.length, 1);
     clickListener?.({ target: new TestElement("youtube-import-clear") } as Event);
     assert.deepEqual(store.getState().ui.youtubeImport, {
       url: null,
@@ -1028,40 +989,8 @@ test("laboratory run controller routes YouTube import mode without starting down
       formats: [],
       selectedVideoFormatId: null,
       selectedAudioFormatId: null,
-      strategy: "video_best",
-      custom: {
-        resolution: "best",
-        format: "mp4",
-        audioExtraction: false,
-      },
     });
-    timerMock.scheduled[2]?.fn();
-    assert.equal(store.getState().ui.youtubeImport.status, "idle");
 
-    inputListener?.({
-      target: new TestInputElement("youtube-import.url", "https://youtu.be/exit12345"),
-    } as unknown as Event);
-    assert.equal(store.getState().ui.youtubeImport.status, "parsing");
-    clickListener?.({ target: new TestElement("exit-youtube-import-mode") } as Event);
-    assert.equal(store.getState().ui.labMode, "normal");
-    assert.deepEqual(store.getState().ui.youtubeImport, {
-      url: null,
-      status: "idle",
-      preview: null,
-      formats: [],
-      selectedVideoFormatId: null,
-      selectedAudioFormatId: null,
-      strategy: "video_best",
-      custom: {
-        resolution: "best",
-        format: "mp4",
-        audioExtraction: false,
-      },
-    });
-    timerMock.scheduled[3]?.fn();
-    assert.equal(store.getState().ui.youtubeImport.status, "idle");
-
-    assert.equal(sentEvents.length, 0);
     assert.equal(
       sentEvents.some(function (entry) {
         return entry.payload.action === "source-download-youtube";
@@ -1069,7 +998,6 @@ test("laboratory run controller routes YouTube import mode without starting down
       false
     );
   } finally {
-    timerMock.restore();
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;
     } else {

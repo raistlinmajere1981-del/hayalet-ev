@@ -38,6 +38,7 @@ export function createLabTimelinePlaybackController(deps: LabTimelinePlaybackCon
   };
 
   let boundTimelineSyncMedia: LabTimelineMediaLikeElement | null = null;
+  let selectedPlaybackActive = false;
 
   function getPrimaryWorkspacePreviewMedia() {
     const selectors = [
@@ -181,6 +182,7 @@ export function createLabTimelinePlaybackController(deps: LabTimelinePlaybackCon
 
   function handleTimelineMediaPlaybackChange() {
     updateTimelinePlaybackUi();
+    enforceSelectedPlaybackBoundary();
   }
 
   function bindTimelinePlaybackListeners() {
@@ -227,12 +229,123 @@ export function createLabTimelinePlaybackController(deps: LabTimelinePlaybackCon
     if (media === null) {
       return;
     }
+    selectedPlaybackActive = false;
     syncTimelineTransportVolume();
     if (media.paused === false) {
       media.pause?.();
     } else {
       safePlay(media);
     }
+    updateTimelinePlaybackUi();
+  }
+
+  function getValidTimelineSelectionRange() {
+    const state = deps.store.getState();
+    const startMs = state.ui.workspace.timelineStartMs;
+    const endMs = state.ui.workspace.timelineEndMs;
+    if (
+      typeof startMs !== "number" ||
+      typeof endMs !== "number" ||
+      Number.isFinite(startMs) !== true ||
+      Number.isFinite(endMs) !== true ||
+      endMs <= startMs
+    ) {
+      return null;
+    }
+    return { startMs, endMs };
+  }
+
+  function getCurrentTimelineTimeMs(media: LabTimelineMediaLikeElement | null = getTimelineSyncMedia()) {
+    if (media === null || typeof media.currentTime !== "number") {
+      return null;
+    }
+    const durationMs = getTimelineDurationMs(media);
+    const rawTimeMs = Math.max(0, Math.round(media.currentTime * 1000));
+    return durationMs > 0 ? Math.min(durationMs, rawTimeMs) : rawTimeMs;
+  }
+
+  function setTimelineSelectionBoundary(boundary: string) {
+    const media = getTimelineSyncMedia();
+    const timeMs = getCurrentTimelineTimeMs(media);
+    if (timeMs === null) {
+      dispatch({
+        type: "push-event",
+        event: buildUiEvent("Önizleme zamanı okunamadı.", "warning"),
+      });
+      return;
+    }
+
+    const state = deps.store.getState();
+    if (boundary === "start") {
+      const currentEnd = state.ui.workspace.timelineEndMs;
+      dispatch({
+        type: "workspace-timeline-updated",
+        startMs: timeMs,
+        endMs: typeof currentEnd === "number" && currentEnd > timeMs ? currentEnd : null,
+      });
+      return;
+    }
+
+    if (boundary === "end") {
+      const currentStart = state.ui.workspace.timelineStartMs;
+      if (typeof currentStart !== "number") {
+        dispatch({
+          type: "push-event",
+          event: buildUiEvent("Önce seçim başlangıcını işaretleyin.", "warning"),
+        });
+        return;
+      }
+      if (timeMs <= currentStart) {
+        dispatch({
+          type: "push-event",
+          event: buildUiEvent("Seçim bitişi başlangıçtan sonra olmalı.", "warning"),
+        });
+        return;
+      }
+      dispatch({ type: "workspace-timeline-updated", startMs: currentStart, endMs: timeMs });
+    }
+  }
+
+  function playSelectedTimelineRange() {
+    const media = getTimelineSyncMedia();
+    const range = getValidTimelineSelectionRange();
+    if (media === null || range === null) {
+      selectedPlaybackActive = false;
+      dispatch({
+        type: "push-event",
+        event: buildUiEvent("Oynatılacak geçerli seçim yok.", "warning"),
+      });
+      return;
+    }
+    selectedPlaybackActive = true;
+    syncTimelineTransportVolume();
+    seekTimelineToMs(range.startMs);
+    safePlay(media);
+    updateTimelinePlaybackUi();
+  }
+
+  function enforceSelectedPlaybackBoundary() {
+    if (selectedPlaybackActive !== true) {
+      return;
+    }
+    const media = getTimelineSyncMedia();
+    const range = getValidTimelineSelectionRange();
+    const currentMs = getCurrentTimelineTimeMs(media);
+    if (media === null || range === null || currentMs === null) {
+      selectedPlaybackActive = false;
+      return;
+    }
+    if (currentMs < range.endMs) {
+      return;
+    }
+    if (deps.store.getState().ui.workspace.selectionLoopEnabled === true) {
+      seekTimelineToMs(range.startMs);
+      safePlay(media);
+      return;
+    }
+    selectedPlaybackActive = false;
+    seekTimelineToMs(range.endMs);
+    media.pause?.();
     updateTimelinePlaybackUi();
   }
 
@@ -629,8 +742,10 @@ export function createLabTimelinePlaybackController(deps: LabTimelinePlaybackCon
     handleTimelineMouseMove,
     handleTimelineMouseUp,
     isWorkspaceMutationLocked,
+    playSelectedTimelineRange,
     pushLockedWorkspaceEvent,
     seekTimelineToMs,
+    setTimelineSelectionBoundary,
     shiftTimelinePlayhead,
     syncTimelinePlaybackUiFromState,
     syncTimelineTransportVolume,

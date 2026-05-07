@@ -11,21 +11,13 @@ import {
   normalizeProjectImportMethod,
   normalizeSourceDraftPatch,
   normalizeYoutubeFormatSelection,
-  normalizeYoutubeImportCustomSettings,
   normalizeYoutubeImportFormats,
-  normalizeYoutubeImportStrategy,
   normalizeYoutubeImportUrl,
 } from "./lab-store-import-state.js";
 import { resetProjectImportState, syncSourceDraftsFromProjectImport } from "./lab-store-sync.js";
 
 export function reduceLabImportUiEvent(state: LabStoreState, event: LabStoreEvent): boolean {
   switch (event.type) {
-    case "enter-youtube-import-mode":
-      state.ui.labMode = "import-youtube";
-      return true;
-    case "exit-youtube-import-mode":
-      state.ui.labMode = "normal";
-      return true;
     case "youtube-import-set-url": {
       const nextUrl = normalizeYoutubeImportUrl(event.url);
       const sameUrl = nextUrl !== null && nextUrl === state.ui.youtubeImport.url;
@@ -88,12 +80,6 @@ export function reduceLabImportUiEvent(state: LabStoreState, event: LabStoreEven
         selectedAudioFormatId: null,
       };
       return true;
-    case "youtube-import-set-strategy":
-      state.ui.youtubeImport = {
-        ...state.ui.youtubeImport,
-        strategy: normalizeYoutubeImportStrategy(event.strategy),
-      };
-      return true;
     case "youtube-import-format-selected":
       state.ui.youtubeImport = {
         ...state.ui.youtubeImport,
@@ -105,12 +91,6 @@ export function reduceLabImportUiEvent(state: LabStoreState, event: LabStoreEven
           event.audioFormatId !== undefined
             ? normalizeYoutubeFormatSelection(event.audioFormatId, state.ui.youtubeImport.formats)
             : state.ui.youtubeImport.selectedAudioFormatId,
-      };
-      return true;
-    case "youtube-import-custom-updated":
-      state.ui.youtubeImport = {
-        ...state.ui.youtubeImport,
-        custom: normalizeYoutubeImportCustomSettings(event.patch, state.ui.youtubeImport.custom),
       };
       return true;
     case "youtube-import-clear":

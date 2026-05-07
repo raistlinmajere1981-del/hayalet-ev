@@ -92,6 +92,7 @@
   top: 0.5rem;
   width: 16rem;
   max-height: calc(100% - 1rem);
+  overflow-x: hidden;
   overflow-y: auto;
   border: 1px solid var(--labx-border-strong);
   border-radius: var(--labx-radius-card);
@@ -120,6 +121,35 @@
 .labx-icon-rail[data-pinned="true"] {
   width: calc(var(--labx-rail-width, 52px) + 16rem);
   min-width: calc(var(--labx-rail-width, 52px) + 16rem);
+}
+
+.labx-icon-rail[data-pinned="true"][data-has-active="true"] {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-auto-rows: min-content;
+  align-content: start;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.5rem 0.55rem 0;
+}
+
+.labx-icon-rail[data-pinned="true"][data-has-active="true"] .labx-icon-rail__group {
+  display: contents;
+}
+
+.labx-icon-rail[data-pinned="true"][data-has-active="true"] .labx-icon-rail__btn {
+  justify-self: center;
+}
+
+.labx-icon-rail[data-pinned="true"][data-has-active="true"] .labx-icon-rail__divider {
+  display: none;
+}
+
+.labx-icon-rail[data-pinned="true"][data-has-active="true"]
+  .labx-icon-rail-popover[data-pinned="true"] {
+  grid-column: 1 / -1;
+  min-width: 0;
+  margin-top: 0.28rem;
 }
 
 .labx-icon-rail[data-pinned="true"][data-has-active="false"] {

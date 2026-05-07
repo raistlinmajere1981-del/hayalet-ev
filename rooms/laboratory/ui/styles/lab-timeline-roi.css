@@ -203,15 +203,25 @@
 }
 
 .labx-timeline__controls {
+  display: grid;
+  gap: 0.35rem;
+  padding-top: 0.2rem;
+  min-height: calc(var(--labx-strip-height) * 2);
+}
+
+.labx-timeline__controls-row {
   display: flex;
   justify-content: flex-start;
   align-items: center;
   gap: 0.4rem;
   flex-wrap: nowrap;
   overflow-x: auto;
-  padding-top: 0.2rem;
-  min-height: var(--labx-strip-height);
   scrollbar-width: thin;
+}
+
+.labx-timeline__selection-row {
+  padding-top: 0.22rem;
+  border-top: 1px solid rgba(92, 215, 223, 0.1);
 }
 
 .labx-timeline__transport {
@@ -318,6 +328,32 @@
   width: 5.5rem;
 }
 
+.labx-timeline__speed {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+  color: var(--labx-text-dim);
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.labx-timeline__speed input {
+  width: 5.4rem;
+}
+
+.labx-timeline__speed-value {
+  min-width: 2.4rem;
+  color: var(--labx-accent);
+  font-family: var(--labx-mono, monospace);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.labx-timeline__speed-stepper {
+  flex: 0 0 auto;
+}
+
 .labx-timeline__bookmark {
   display: flex;
   align-items: center;
@@ -331,8 +367,21 @@
 
 .labx-timeline__actions {
   display: flex;
+  align-items: center;
   gap: 0.4rem;
   flex: 0 0 auto;
+}
+
+.labx-timeline__selection-group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+  min-height: 1.9rem;
+  padding: 0.18rem 0.42rem;
+  border: 1px solid rgba(92, 215, 223, 0.16);
+  border-radius: var(--labx-radius-tight);
+  background: rgba(5, 13, 22, 0.42);
 }
 
 .labx-timeline__clear-btn {
@@ -351,6 +400,14 @@
 .labx-timeline__clear-btn:hover {
   color: var(--labx-danger);
   border-color: var(--labx-danger);
+}
+
+.labx-timeline__clear-btn:disabled,
+.labx-timeline__clear-btn:disabled:hover {
+  cursor: not-allowed;
+  opacity: 0.45;
+  color: var(--labx-text-dim);
+  border-color: var(--labx-border);
 }
 
 .labx-timeline__finetune-row {
@@ -397,6 +454,15 @@
   background: rgba(92, 215, 223, 0.12);
   color: var(--labx-accent);
   border-color: rgba(92, 215, 223, 0.3);
+}
+
+.labx-timeline__finetune-btn:disabled,
+.labx-timeline__finetune-btn:disabled:hover {
+  cursor: not-allowed;
+  opacity: 0.45;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--labx-text-dim);
+  border-color: var(--labx-border);
 }
 
 .labx-timeline__step-btn:active,

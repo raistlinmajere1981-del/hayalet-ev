@@ -50,6 +50,53 @@ function renderFineTuneButtons(prefix: string, msValue: number, locked = false) 
   `;
 }
 
+function formatPlaybackRateValue(value: number) {
+  return `${String(Number(value.toFixed(2)))}x`;
+}
+
+function renderTimelineSettingStepper(
+  label: string,
+  fullField: string,
+  min: number,
+  max: number,
+  step: number,
+  resetValue: number,
+  disabled = false
+) {
+  const escapedField = escapeHtml(fullField);
+  const escapedLabel = escapeHtml(label);
+  const disabledAttr = disabled ? " disabled" : "";
+  return `
+    <div class="labx-control-stepper labx-timeline__speed-stepper" aria-label="${escapedLabel}">
+      <button class="labx-control-stepper__btn" type="button" data-lab-action="workspace-setting-adjust" data-lab-field="${escapedField}" data-lab-delta="-${String(step)}" data-lab-min="${String(min)}" data-lab-max="${String(max)}" data-lab-step="${String(step)}" data-lab-reset-value="${String(resetValue)}" title="Decrease ${escapedLabel}"${disabledAttr}>-</button>
+      <button class="labx-control-stepper__btn" type="button" data-lab-action="workspace-setting-adjust" data-lab-field="${escapedField}" data-lab-reset="true" data-lab-min="${String(min)}" data-lab-max="${String(max)}" data-lab-step="${String(step)}" data-lab-reset-value="${String(resetValue)}" title="Reset ${escapedLabel}"${disabledAttr}>R</button>
+      <button class="labx-control-stepper__btn" type="button" data-lab-action="workspace-setting-adjust" data-lab-field="${escapedField}" data-lab-delta="${String(step)}" data-lab-min="${String(min)}" data-lab-max="${String(max)}" data-lab-step="${String(step)}" data-lab-reset-value="${String(resetValue)}" title="Increase ${escapedLabel}"${disabledAttr}>+</button>
+    </div>
+  `;
+}
+
+function renderTimelinePlaybackSpeedControl(copy: LabI18n, playbackRate: number, locked = false) {
+  const field = "workspace.audioFocus.playbackRate";
+  const label = copy.t("mediaAnalysis.timeline.playbackSpeed", "Playback Speed");
+  const disabledAttr = locked ? " disabled" : "";
+  return `
+    <label class="labx-timeline__speed" title="${escapeHtml(label)}">
+      <span>${escapeHtml(label)}</span>
+      <input
+        class="labx-range"
+        type="range"
+        min="0.25"
+        max="2"
+        step="0.05"
+        value="${String(playbackRate)}"
+        data-lab-field="${field}"${disabledAttr}
+      />
+      <span class="labx-timeline__speed-value">${escapeHtml(formatPlaybackRateValue(playbackRate))}</span>
+      ${renderTimelineSettingStepper(label, field, 0.25, 2, 0.05, 1, locked)}
+    </label>
+  `;
+}
+
 function renderPlaybackStepControls(
   copy: LabI18n,
   durationMs: number,
@@ -430,6 +477,13 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
   const selectionCenterPct = hasSelection ? startPct + (endPct - startPct) / 2 : 0;
   const selectionDurationMs = hasSelection ? Math.max(0, endMs - startMs) : 0;
   const transportVolume = Math.max(0, Math.min(1, model.transportVolume ?? 1));
+  const playbackRate = Math.max(0.25, Math.min(2, model.audioFocus?.playbackRate ?? 1));
+  const selectionLoopEnabled = hasSelection === true && model.selectionLoopEnabled === true;
+  const selectionDisabledAttr = timelineLocked || hasSelection !== true ? 'disabled aria-disabled="true"' : "";
+  const startBoundaryDisabled = timelineLocked;
+  const endBoundaryDisabled = timelineLocked || model.startMs === null;
+  const startBoundaryDisabledAttr = startBoundaryDisabled ? 'disabled aria-disabled="true"' : "";
+  const endBoundaryDisabledAttr = endBoundaryDisabled ? 'disabled aria-disabled="true"' : "";
   const timelineHighlight =
     model.timelineHighlight &&
     model.timelineHighlight.endMs > model.timelineHighlight.startMs &&
@@ -569,72 +623,101 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
         ${bookmarkPins}
       </div>
       <div class="labx-timeline__controls">
-        <div class="labx-timeline__transport">
-          <button
-            class="labx-timeline__play-btn"
-            type="button"
-            data-lab-action="timeline-toggle-playback"
-            title="${escapeHtml(copy.t("mediaAnalysis.timeline.playPause", "Play / pause"))}"
-            ${lockDisabledAttr}
-          ><span data-lab-role="timeline-play-toggle-label">▶</span></button>
-          <label class="labx-timeline__volume" title="${escapeHtml(copy.t("mediaAnalysis.timeline.volume", "System volume"))}">
-            <span>${escapeHtml(copy.t("mediaAnalysis.timeline.volume", "Volume"))}</span>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value="${String(transportVolume)}"
-              data-lab-field="workspace.previewVolume"
-              data-lab-role="timeline-volume"
+        <div class="labx-timeline__controls-row labx-timeline__player-row">
+          <div class="labx-timeline__transport">
+            <button
+              class="labx-timeline__play-btn"
+              type="button"
+              data-lab-action="timeline-toggle-playback"
+              title="${escapeHtml(copy.t("mediaAnalysis.timeline.playPause", "Play / pause"))}"
               ${lockDisabledAttr}
+            ><span data-lab-role="timeline-play-toggle-label">▶</span></button>
+            <button
+              class="labx-timeline__export-btn labx-timeline__selection-play-btn"
+              type="button"
+              data-lab-action="timeline-play-selection"
+              title="${escapeHtml(copy.t("mediaAnalysis.timeline.playSelectionTitle", "Play selected range"))}"
+              ${selectionDisabledAttr}
+            >${escapeHtml(copy.t("mediaAnalysis.timeline.playSelection", "Play selection"))}</button>
+            <button
+              class="labx-timeline__export-btn labx-timeline__selection-loop-btn"
+              type="button"
+              data-lab-action="timeline-toggle-selection-loop"
+              aria-pressed="${selectionLoopEnabled ? "true" : "false"}"
+              title="${escapeHtml(copy.t("mediaAnalysis.timeline.loopSelectionTitle", "Loop selected range playback"))}"
+              ${selectionDisabledAttr}
+            >${escapeHtml(copy.t("mediaAnalysis.timeline.loopSelection", "Loop"))}</button>
+            <label class="labx-timeline__volume" title="${escapeHtml(copy.t("mediaAnalysis.timeline.volume", "System volume"))}">
+              <span>${escapeHtml(copy.t("mediaAnalysis.timeline.volume", "Volume"))}</span>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value="${String(transportVolume)}"
+                data-lab-field="workspace.previewVolume"
+                data-lab-role="timeline-volume"
+                ${lockDisabledAttr}
+              />
+            </label>
+          </div>
+          ${renderPlaybackStepControls(copy, durationMs, timelineLocked, model.sourceKind)}
+          ${renderTimelinePlaybackSpeedControl(copy, playbackRate, timelineLocked)}
+          <div class="labx-timeline__bookmark">
+            <input
+              class="labx-input labx-input--compact labx-timeline__bookmark-note"
+              type="text"
+              maxlength="80"
+              data-lab-role="timeline-bookmark-note"
+              placeholder="${escapeHtml(copy.t("mediaAnalysis.timeline.bookmarkNotePlaceholder", "Short note"))}"
             />
-          </label>
-        </div>
-        ${renderPlaybackStepControls(copy, durationMs, timelineLocked, model.sourceKind)}
-        <div class="labx-timeline__bookmark">
-          <input
-            class="labx-input labx-input--compact labx-timeline__bookmark-note"
-            type="text"
-            maxlength="80"
-            data-lab-role="timeline-bookmark-note"
-            placeholder="${escapeHtml(copy.t("mediaAnalysis.timeline.bookmarkNotePlaceholder", "Short note"))}"
-          />
-          <button
-            class="labx-timeline__export-btn"
-            type="button"
-            data-lab-action="timeline-add-bookmark"
-            title="${escapeHtml(copy.t("mediaAnalysis.timeline.markCurrentTitle", "Mark current moment"))}"
-          >${escapeHtml(copy.t("mediaAnalysis.timeline.markCurrent", "Mark"))}</button>
-        </div>
-        ${
-          hasSelection
-            ? `
-          <div class="labx-timeline__finetune-row">
-            <label class="labx-timeline__finetune-label">Start</label>
-            ${renderFineTuneButtons("start", startMs, timelineLocked)}
+            <button
+              class="labx-timeline__export-btn"
+              type="button"
+              data-lab-action="timeline-add-bookmark"
+              title="${escapeHtml(copy.t("mediaAnalysis.timeline.markCurrentTitle", "Mark current moment"))}"
+            >${escapeHtml(copy.t("mediaAnalysis.timeline.markCurrent", "Mark"))}</button>
           </div>
-          <div class="labx-timeline__finetune-row">
-            <label class="labx-timeline__finetune-label">End</label>
-            ${renderFineTuneButtons("end", endMs, timelineLocked)}
+        </div>
+        <div class="labx-timeline__controls-row labx-timeline__selection-row">
+          <div class="labx-timeline__selection-group" data-selection-boundary="start">
+            <button
+              class="labx-timeline__export-btn labx-timeline__selection-boundary-btn"
+              type="button"
+              data-lab-action="timeline-set-selection-boundary"
+              data-lab-value="start"
+              ${startBoundaryDisabledAttr}
+            >${escapeHtml(copy.t("mediaAnalysis.timeline.selectionStartButton", "Set start"))}</button>
+            <label class="labx-timeline__finetune-label">${escapeHtml(copy.t("mediaAnalysis.timeline.selectionStart", "Start"))}</label>
+            ${renderFineTuneButtons("start", model.startMs ?? 0, startBoundaryDisabled || model.startMs === null)}
           </div>
-        `
-            : ""
-        }
-        <div class="labx-timeline__actions">
-          ${
-            hasSelection
-              ? `<button class="labx-timeline__clear-btn" type="button" data-lab-action="timeline-clear" ${lockDisabledAttr}>Clear</button>`
-              : ""
-          }
-          <button
-            class="labx-timeline__export-btn labx-timeline__micro-zoom-toggle"
-            type="button"
-            data-lab-action="timeline-toggle-micro-zoom"
-            aria-pressed="${microZoomOpen ? "true" : "false"}"
-            title="${escapeHtml(copy.t("mediaAnalysis.timeline.microZoomToggleTitle", "Show or hide selection micro zoom"))}"
-            ${microZoomAvailable ? "" : "disabled"}
-          >${escapeHtml(copy.t("mediaAnalysis.timeline.microZoomToggle", "Micro Zoom"))}</button>
+          <div class="labx-timeline__selection-group" data-selection-boundary="end">
+            <button
+              class="labx-timeline__export-btn labx-timeline__selection-boundary-btn"
+              type="button"
+              data-lab-action="timeline-set-selection-boundary"
+              data-lab-value="end"
+              ${endBoundaryDisabledAttr}
+            >${escapeHtml(copy.t("mediaAnalysis.timeline.selectionEndButton", "Set end"))}</button>
+            <label class="labx-timeline__finetune-label">${escapeHtml(copy.t("mediaAnalysis.timeline.selectionEnd", "End"))}</label>
+            ${renderFineTuneButtons("end", model.endMs ?? durationMs, endBoundaryDisabled || model.endMs === null)}
+          </div>
+          <div class="labx-timeline__actions">
+            <button
+              class="labx-timeline__clear-btn"
+              type="button"
+              data-lab-action="timeline-clear"
+              ${selectionDisabledAttr}
+            >${escapeHtml(copy.t("mediaAnalysis.timeline.clear", "Clear"))}</button>
+            <button
+              class="labx-timeline__export-btn labx-timeline__micro-zoom-toggle"
+              type="button"
+              data-lab-action="timeline-toggle-micro-zoom"
+              aria-pressed="${microZoomOpen ? "true" : "false"}"
+              title="${escapeHtml(copy.t("mediaAnalysis.timeline.microZoomToggleTitle", "Show or hide selection micro zoom"))}"
+              ${timelineLocked || microZoomAvailable !== true ? 'disabled aria-disabled="true"' : ""}
+            >${escapeHtml(copy.t("mediaAnalysis.timeline.microZoomToggle", "Micro Zoom"))}</button>
+          </div>
         </div>
       </div>
       ${renderWaveformInspectionLens(model, copy)}

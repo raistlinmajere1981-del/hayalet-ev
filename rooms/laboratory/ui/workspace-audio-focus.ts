@@ -102,21 +102,10 @@ type WorkspaceAudioFocusRenderOptions = {
 
 export function renderWorkspaceAudioFocus(
   audioFocus: LabAudioFocusSettings,
-  options: WorkspaceAudioFocusRenderOptions = {},
+  _options: WorkspaceAudioFocusRenderOptions = {},
   copy: LabI18n = LAB_FALLBACK_I18N
 ) {
   const showFilterControls = audioFocus.filterType !== "none";
-  const temporalAudioFocus = options.temporalAudioFocus || audioFocus;
-  const previewTargetHint =
-    options.previewTarget === "video"
-      ? copy.t(
-          "mediaAnalysis.audioFocus.previewTarget.video",
-          "Playback rate affects the bound preview media transport."
-        )
-      : copy.t(
-          "mediaAnalysis.audioFocus.previewTarget.audio",
-          "Playback rate affects the current preview audio."
-        );
   return `
     <section class="labx-audio-focus labx-workspace-focus-row__panel" id="lab-audio-focus">
       <div class="labx-audio-focus__header">
@@ -147,23 +136,6 @@ export function renderWorkspaceAudioFocus(
             : ""
         }
       </div>
-      <div class="labx-audio-focus__transport">
-        <p class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.audioFocus.analysisAid", "ANALYSIS AID"))}</p>
-        ${renderAudioSlider(copy.t("mediaAnalysis.audioFocus.fields.playbackSpeed", "Playback Speed"), "playbackRate", temporalAudioFocus.playbackRate, 0.25, 2, 0.05, "x", 1)}
-        <label class="labx-control-toggle">
-          <input
-            type="checkbox"
-            data-lab-field="workspace.audioFocus.preservePitch"
-            ${temporalAudioFocus.preservePitch ? "checked" : ""}
-          />
-          <span>${escapeHtml(copy.t("mediaAnalysis.audioFocus.preservePitch", "Preserve pitch while changing speed"))}</span>
-        </label>
-        <p class="labx-audio-focus__transport-note">${escapeHtml(copy.t("mediaAnalysis.audioFocus.transportNote", "Slow down to inspect. Speed up to detect patterns."))}</p>
-        <p class="labx-audio-focus__transport-note">${escapeHtml(previewTargetHint)}</p>
-      </div>
-      <p class="labx-panel-hint">
-        ${escapeHtml(copy.t("mediaAnalysis.audioFocus.visualizerHint", "Timeline preview altinda tek realtime waveform katmani kullanilir. Spectrum modu ayni canvas uzerinde canli frekans gorunumu cizer."))}
-      </p>
       <div class="labx-audio-focus__eq">
         <p class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.audioFocus.eqTitle", "PARAMETRIC EQ"))}</p>
         ${audioFocus.eqBands

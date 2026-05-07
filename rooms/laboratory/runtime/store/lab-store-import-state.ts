@@ -5,15 +5,9 @@ import type {
   LabProjectImportUiState,
   LabSourceDrafts,
   LabStoreState,
-  LabYoutubeImportCustomSettings,
   LabYoutubeImportFormat,
-  LabYoutubeImportStrategy,
 } from "../../models/lab-types.js";
-import {
-  cloneSourceDrafts,
-  createDefaultProjectImportState,
-  createDefaultYoutubeImportCustomSettings,
-} from "./lab-store-defaults.js";
+import { cloneSourceDrafts, createDefaultProjectImportState } from "./lab-store-defaults.js";
 
 export function chooseDefaultYoutubeFormats(formats: LabYoutubeImportFormat[]) {
   const videoFormats = formats.filter(
@@ -47,44 +41,6 @@ export function normalizeYoutubeImportUrl(url: string | null): string | null {
   }
   const normalizedUrl = url.trim();
   return normalizedUrl === "" ? null : normalizedUrl;
-}
-
-export function normalizeYoutubeImportStrategy(value: unknown): LabYoutubeImportStrategy {
-  switch (value) {
-    case "audio_only":
-    case "low_size":
-    case "custom":
-    case "video_best":
-      return value;
-    default:
-      return "video_best";
-  }
-}
-
-export function normalizeYoutubeImportCustomSettings(
-  patch: unknown,
-  current: LabYoutubeImportCustomSettings = createDefaultYoutubeImportCustomSettings()
-): LabYoutubeImportCustomSettings {
-  const record = asLabRecord(patch);
-  const nextResolution = asNonEmptyString(record["resolution"]);
-  const nextFormat = asNonEmptyString(record["format"]);
-  return {
-    resolution:
-      nextResolution === "1080p" ||
-      nextResolution === "720p" ||
-      nextResolution === "480p" ||
-      nextResolution === "best"
-        ? nextResolution
-        : current.resolution,
-    format:
-      nextFormat === "webm" || nextFormat === "mkv" || nextFormat === "mp4"
-        ? nextFormat
-        : current.format,
-    audioExtraction:
-      typeof record["audioExtraction"] === "boolean"
-        ? record["audioExtraction"]
-        : current.audioExtraction,
-  };
 }
 
 function normalizeYoutubeImportFormat(value: unknown): LabYoutubeImportFormat | null {

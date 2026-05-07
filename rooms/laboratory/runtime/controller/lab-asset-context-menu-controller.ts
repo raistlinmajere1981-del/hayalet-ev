@@ -1,5 +1,4 @@
-const LAB_ASSET_MENU_SELECTOR =
-  "details.labx-sp-asset__menu, details.labx-project-assets__menu";
+const LAB_ASSET_MENU_SELECTOR = "details.labx-sp-asset__menu, details.labx-project-assets__menu";
 
 type QueryableDocument = Document & {
   querySelectorAll?: Document["querySelectorAll"];

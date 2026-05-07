@@ -64,15 +64,15 @@
 
 .labx-project-import__yt-controls {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.55rem;
 }
 
 .labx-project-import__yt-section {
   display: grid;
-  gap: 0.6rem;
+  gap: 0.45rem;
   min-width: 0;
   margin: 0;
-  padding: 0.7rem;
+  padding: 0.55rem;
   border: 1px solid var(--labx-border);
   border-radius: var(--labx-radius-tight);
 }
@@ -80,25 +80,23 @@
 .labx-project-import__yt-section legend {
   padding: 0 0.3rem;
   color: var(--labx-text);
-  font-size: 0.78rem;
-  font-weight: 600;
-}
-
-.labx-project-import__yt-section p {
-  margin: 0;
-  color: var(--labx-text-soft);
   font-size: 0.72rem;
-  line-height: 1.4;
+  font-weight: 600;
 }
 
 .labx-project-import__yt-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.6rem;
+  gap: 0.4rem;
 }
 
 .labx-project-import__yt-field {
   min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(5.8rem, 0.42fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--labx-text-soft);
+  font-size: 0.72rem;
 }
 
 .labx-project-import__yt-field[data-span="full"] {
@@ -110,8 +108,27 @@
   align-items: center;
 }
 
+.labx-project-import__yt-field > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .labx-project-import__yt-field--toggle input {
   margin: 0;
+}
+
+.labx-project-import__yt-field select,
+.labx-project-import__yt-field input {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--labx-border);
+  border-radius: var(--labx-radius-tight);
+  background: var(--labx-surface);
+  color: var(--labx-text);
+  font: inherit;
+  padding: 0.38rem 0.45rem;
 }
 
 .labx-project-import__details {
@@ -188,412 +205,7 @@
   color: var(--labx-success);
 }
 
-.labx-import-workspace {
-  position: absolute;
-  inset: 0;
-  z-index: 20;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  background: var(--labx-bg);
-  color: var(--labx-text);
-}
-
-.labx-import-header {
-  min-height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0 20px;
-  border-bottom: 1px solid var(--labx-border);
-  background: var(--labx-surface-strong);
-}
-
-.labx-import-title {
-  min-width: 0;
-  color: var(--labx-text);
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.labx-import-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  border: 1px solid transparent;
-  border-radius: var(--labx-radius-tight);
-  background: transparent;
-  color: var(--labx-text-soft);
-  cursor: pointer;
-  font: inherit;
-  padding: 0.4rem 0.55rem;
-}
-
-.labx-import-back:hover {
-  border-color: var(--labx-border);
-  background: var(--labx-surface-highlight);
-  color: var(--labx-text);
-}
-
-.labx-import-body {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: 1.4fr 1fr;
-}
-
-.labx-import-body[data-has-preview="true"] {
-  grid-template-columns: 1.2fr 1fr;
-}
-
-.labx-import-preview {
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: stretch;
-  gap: 20px;
-  padding: 24px 32px 32px;
-}
-
-.labx-import-url-zone {
-  width: min(100%, 44rem);
-  flex: 0 0 auto;
-}
-
-.labx-import-url-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.labx-import-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  width: min(100%, 34rem);
-  height: 100%;
-  text-align: center;
-}
-
-.labx-import-stage {
-  flex: 1;
-  min-height: 0;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.labx-import-empty-title {
-  color: var(--labx-text);
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.labx-import-url-input {
-  box-sizing: border-box;
-  flex: 1 1 auto;
-  min-width: 0;
-  border: 1px dashed var(--labx-border-strong);
-  border-radius: var(--labx-radius-tight);
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--labx-text-soft);
-  font: inherit;
-  font-size: 0.86rem;
-  padding: 0.82rem 1rem;
-}
-
-.labx-import-url-input:focus {
-  border-color: var(--labx-accent);
-  color: var(--labx-text);
-  outline: 2px solid rgba(104, 172, 207, 0.24);
-  outline-offset: 2px;
-}
-
-.labx-import-clear {
-  flex: 0 0 auto;
-  border: 1px solid var(--labx-border);
-  border-radius: var(--labx-radius-tight);
-  background: transparent;
-  color: var(--labx-text-soft);
-  cursor: pointer;
-  font: inherit;
-  padding: 0.78rem 0.9rem;
-}
-
-.labx-import-clear:hover:not(:disabled) {
-  background: var(--labx-surface-highlight);
-  color: var(--labx-text);
-}
-
-.labx-import-clear:disabled {
-  cursor: default;
-  opacity: 0.42;
-}
-
-.labx-import-status {
-  min-height: 18px;
-  margin-top: 8px;
-  color: var(--labx-text-soft);
-  font-size: 12px;
-}
-
-.labx-import-status--error {
-  color: var(--labx-error);
-}
-
-.labx-import-hint {
-  color: var(--labx-text-soft);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.labx-import-hint p {
-  margin: 0 0 0.45rem;
-}
-
-.labx-import-hint ul {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  margin: 0;
-  padding-left: 1.15rem;
-  text-align: left;
-}
-
-.labx-import-preview-card {
-  width: min(100%, 42rem);
-  display: grid;
-  grid-template-columns: minmax(190px, 0.9fr) minmax(0, 1fr);
-  gap: 20px;
-  align-items: center;
-}
-
-.labx-import-thumb {
-  display: block;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  border-radius: var(--labx-radius-tight);
-  background: rgba(255, 255, 255, 0.04);
-  object-fit: cover;
-}
-
-.labx-import-thumb--fallback {
-  border: 1px dashed var(--labx-border);
-}
-
-.labx-import-meta {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.labx-import-meta .title {
-  color: var(--labx-text);
-  font-size: 1.02rem;
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-
-.labx-import-meta .duration {
-  color: var(--labx-text-soft);
-  font-size: 0.86rem;
-}
-
-.labx-import-config {
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 32px 28px;
-  border-left: 1px solid var(--labx-border);
-  background: rgba(255, 255, 255, 0.018);
-}
-
-.labx-import-context-message,
-.labx-import-ready,
-.labx-import-context-note {
-  color: var(--labx-text-soft);
-  font-size: 0.88rem;
-  line-height: 1.5;
-}
-
-.labx-import-context-message--error {
-  color: var(--labx-error);
-}
-
-.labx-import-ready {
-  display: grid;
-  gap: 8px;
-  color: var(--labx-text);
-}
-
-.labx-import-ready > div {
-  overflow-wrap: anywhere;
-}
-
-.labx-import-control-group {
-  display: grid;
-  gap: 14px;
-  border: 0;
-  margin: 0;
-  padding: 0;
-}
-
-.labx-strategy-list {
-  display: grid;
-  gap: 10px;
-}
-
-.labx-strategy-list .strategy-card {
-  width: 100%;
-  min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-  border: 2px solid transparent;
-  border-radius: var(--labx-radius-tight);
-  background: var(--labx-surface);
-  color: var(--labx-text-soft);
-  cursor: pointer;
-  font: inherit;
-  padding: 12px;
-  text-align: left;
-}
-
-.labx-strategy-list .strategy-card:hover {
-  border-color: var(--labx-border-strong);
-  background: var(--labx-surface-highlight);
-  color: var(--labx-text);
-}
-
-.labx-strategy-list .strategy-card:focus-visible {
-  border-color: var(--labx-accent);
-  outline: 2px solid rgba(104, 172, 207, 0.28);
-  outline-offset: 2px;
-}
-
-.labx-strategy-list .strategy-card.active {
-  border: 2px solid var(--labx-accent);
-  background: var(--labx-accent-soft);
-  color: var(--labx-text);
-}
-
-.labx-strategy-card__main {
-  min-width: 0;
-  display: grid;
-  gap: 4px;
-}
-
-.labx-strategy-card__label {
-  color: var(--labx-text);
-  font-size: 0.92rem;
-  font-weight: 600;
-}
-
-.labx-strategy-card__description,
-.labx-strategy-card__size {
-  color: var(--labx-text-soft);
-  font-size: 0.8rem;
-  line-height: 1.4;
-}
-
-.labx-strategy-card__description {
-  overflow-wrap: anywhere;
-}
-
-.labx-strategy-card__size {
-  white-space: nowrap;
-}
-
-.labx-advanced-settings {
-  display: grid;
-  gap: 12px;
-  padding-top: 4px;
-}
-
-.labx-import-control,
-.labx-import-check {
-  display: grid;
-  gap: 7px;
-  color: var(--labx-text-soft);
-  font-size: 0.82rem;
-}
-
-.labx-import-check {
-  grid-template-columns: auto 1fr;
-  align-items: center;
-}
-
-.labx-import-control select {
-  width: 100%;
-  border: 1px solid var(--labx-border);
-  border-radius: var(--labx-radius-tight);
-  background: var(--labx-surface);
-  color: var(--labx-text);
-  font: inherit;
-  padding: 0.58rem 0.65rem;
-}
-
-.labx-import-control-group:disabled {
-  opacity: 0.48;
-}
-
-.labx-import-footer {
-  min-height: 56px;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 16px;
-  border-top: 1px solid var(--labx-border);
-  background: var(--labx-surface-strong);
-}
-
-.labx-import-footer button {
-  min-width: 0;
-  border: 1px solid var(--labx-border);
-  border-radius: var(--labx-radius-tight);
-  background: transparent;
-  color: var(--labx-text-soft);
-  font: inherit;
-  overflow-wrap: anywhere;
-  padding: 0.45rem 0.85rem;
-}
-
-.labx-import-footer button:disabled {
-  cursor: default;
-  opacity: 0.48;
-}
-
 @media (max-width: 860px) {
-  .labx-import-body,
-  .labx-import-body[data-has-preview="true"] {
-    grid-template-columns: 1fr;
-  }
-
-  .labx-import-config {
-    border-left: 0;
-    border-top: 1px solid var(--labx-border);
-    padding: 20px;
-  }
-
-  .labx-import-preview {
-    padding: 20px;
-  }
-
-  .labx-import-preview-card {
-    grid-template-columns: 1fr;
-  }
-
   .labx-project-import__yt-grid,
   .labx-project-import__youtube-preview {
     grid-template-columns: 1fr;

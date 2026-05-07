@@ -5,9 +5,7 @@ import type {
   LabProjectImportMethod,
   LabSourceDrafts,
   LabStoreState,
-  LabYoutubeImportCustomFormat,
   LabYoutubeImportFormat,
-  LabYoutubeImportCustomResolution,
 } from "../models/lab-types.js";
 
 export type LabProjectImportHostAction = {
@@ -176,81 +174,6 @@ function getSelectedYoutubeFormatExpression(state: LabStoreState, draft: LabSour
   return null;
 }
 
-function getCustomFormat(format: LabYoutubeImportCustomFormat) {
-  switch (format) {
-    case "webm":
-      return "webm";
-    case "mkv":
-      return "mkv";
-    case "mp4":
-    default:
-      return "mp4";
-  }
-}
-
-function getCustomResolutionFormat(resolution: LabYoutubeImportCustomResolution) {
-  switch (resolution) {
-    case "1080p":
-      return "best[height<=1080][ext=mp4]/best[height<=1080]/best";
-    case "720p":
-      return "best[height<=720][ext=mp4]/best[height<=720]/best";
-    case "480p":
-      return "best[height<=480][ext=mp4]/best[height<=480]/best";
-    case "best":
-    default:
-      return "bestvideo*+bestaudio/best";
-  }
-}
-
-function buildYoutubeStrategyFields(state: LabStoreState, draft: LabSourceDrafts) {
-  const youtubeState = state.ui.youtubeImport;
-  if (youtubeState.strategy === "audio_only") {
-    return {
-      youtubePreset: "custom",
-      youtubeCaptureMode: "audio-only",
-      youtubeCustom: {
-        ...getYoutubePresetDefaults(state, "custom"),
-        ...asLabRecord(draft.youtubeCustom),
-        audioFormat: "mp3",
-        audioQuality: "2",
-      },
-    };
-  }
-  if (youtubeState.strategy === "low_size") {
-    return {
-      youtubePreset: "low",
-      youtubeCaptureMode: "video+audio",
-      youtubeCustom: {
-        ...getYoutubePresetDefaults(state, "low"),
-        ...asLabRecord(draft.youtubeCustom),
-      },
-    };
-  }
-  if (youtubeState.strategy === "custom") {
-    const customFormat = getCustomFormat(youtubeState.custom.format);
-    return {
-      youtubePreset: "custom",
-      youtubeCaptureMode: youtubeState.custom.audioExtraction ? "audio-only" : "video+audio",
-      youtubeCustom: {
-        ...getYoutubePresetDefaults(state, "custom"),
-        ...asLabRecord(draft.youtubeCustom),
-        format: getCustomResolutionFormat(youtubeState.custom.resolution),
-        mergeOutputFormat: customFormat,
-        recodeVideo: customFormat,
-        audioFormat: youtubeState.custom.audioExtraction ? "mp3" : "none",
-      },
-    };
-  }
-  return {
-    youtubePreset: "best",
-    youtubeCaptureMode: "video+audio",
-    youtubeCustom: {
-      ...getYoutubePresetDefaults(state, "best"),
-      ...asLabRecord(draft.youtubeCustom),
-    },
-  };
-}
-
 function buildYoutubeFormatSelectionFields(state: LabStoreState, draft: LabSourceDrafts) {
   const selection = getSelectedYoutubeFormatExpression(state, draft);
   if (selection === null) {
@@ -355,14 +278,18 @@ export function buildProjectImportHostAction(state: LabStoreState): LabProjectIm
     const youtubeUrl = state.ui.youtubeImport.url || effectiveDraft.youtubeUrl || urlInput;
     const ytDlpInstalled = getToolInstalled(state, "yt-dlp") === true;
     const selectedFormatFields = buildYoutubeFormatSelectionFields(state, effectiveDraft);
-    Object.assign(
-      baseFields,
-      selectedFormatFields || buildYoutubeStrategyFields(state, effectiveDraft),
-      {
-        youtubeUrl,
-      }
-    );
+    Object.assign(baseFields, {
+      youtubePreset: "custom",
+      youtubeCustom: {
+        ...getYoutubePresetDefaults(state, "custom"),
+        ...asLabRecord(effectiveDraft.youtubeCustom),
+      },
+      youtubeUrl,
+    });
     if (selectedFormatFields !== null) {
+      Object.assign(baseFields, selectedFormatFields, {
+        youtubeUrl,
+      });
       baseFields["kind"] = selectedFormatFields["kind"];
     }
     if (!ytDlpInstalled) {
@@ -371,6 +298,8 @@ export function buildProjectImportHostAction(state: LabStoreState): LabProjectIm
       disabledReason = "YouTube URL is required.";
     } else if (checkedUrl.status !== "ready" || checkedUrl.isYoutube !== true) {
       disabledReason = "Check the YouTube URL before adding it to the project.";
+    } else if (selectedFormatFields === null) {
+      disabledReason = "Choose a YouTube stream after checking the URL.";
     }
   }
 

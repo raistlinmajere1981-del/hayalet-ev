@@ -558,6 +558,38 @@ test("laboratory run controller wires compact timeline transport to primary prev
     assert.equal(preview.muted, true);
     assert.equal(volumeRoleInput.value, "0");
 
+    preview.currentTime = 2;
+    clickListener?.({ target: new TestElement("timeline-set-selection-boundary", "start") } as Event);
+    assert.equal(store.getState().ui.workspace.timelineStartMs, 2000);
+    assert.equal(store.getState().ui.workspace.timelineEndMs, null);
+
+    preview.currentTime = 6;
+    clickListener?.({ target: new TestElement("timeline-set-selection-boundary", "end") } as Event);
+    assert.equal(store.getState().ui.workspace.timelineStartMs, 2000);
+    assert.equal(store.getState().ui.workspace.timelineEndMs, 6000);
+
+    clickListener?.({ target: new TestElement("timeline-play-selection") } as Event);
+    assert.equal(preview.currentTime, 2);
+    assert.equal(preview.playCalls, 2);
+    preview.currentTime = 6.1;
+    preview.dispatch("timeupdate");
+    assert.equal(preview.currentTime, 6);
+    assert.equal(preview.pauseCalls, 2);
+
+    clickListener?.({ target: new TestElement("timeline-toggle-selection-loop") } as Event);
+    assert.equal(store.getState().ui.workspace.selectionLoopEnabled, true);
+    clickListener?.({ target: new TestElement("timeline-play-selection") } as Event);
+    preview.currentTime = 6.2;
+    preview.dispatch("timeupdate");
+    assert.equal(preview.currentTime, 2);
+    assert.equal(store.getState().ui.workspace.selectionLoopEnabled, true);
+
+    clickListener?.({ target: new TestElement("timeline-clear") } as Event);
+    assert.equal(store.getState().ui.workspace.timelineStartMs, null);
+    assert.equal(store.getState().ui.workspace.timelineEndMs, null);
+    assert.equal(store.getState().ui.workspace.selectionLoopEnabled, false);
+    preview.pause();
+
     store.dispatch({
       type: "user-action-added",
       actionEvent: {
@@ -572,7 +604,7 @@ test("laboratory run controller wires compact timeline transport to primary prev
     });
 
     clickListener?.({ target: new TestElement("timeline-toggle-playback") } as Event);
-    assert.equal(preview.playCalls, 1);
+    assert.equal(preview.playCalls, 4);
     assert.equal(preview.paused, true);
 
     const lockedVolumeInput = new FakeHtmlInputElement("workspace.previewVolume", "0.75");

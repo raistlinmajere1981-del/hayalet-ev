@@ -49,25 +49,6 @@
   transition: none; /* column animation handles the visual */
 }
 
-.labx-shell[data-layout-kind="import-only"] {
-  grid-template-columns: 0 minmax(0, 1fr) 0;
-  grid-template-rows: minmax(0, 1fr);
-  grid-template-areas:
-    "panel  center  context"
-    "panel  strip   strip";
-}
-
-.labx-shell[data-lab-mode="import-youtube"] .labx-center-panel {
-  position: relative;
-  gap: 0;
-  overflow: hidden;
-}
-
-.labx-shell[data-lab-mode="import-youtube"] .labx-drawer {
-  overflow: hidden;
-  pointer-events: none;
-}
-
 .labx-drawer[hidden],
 .labx-workspace-inspector[hidden] {
   display: none;

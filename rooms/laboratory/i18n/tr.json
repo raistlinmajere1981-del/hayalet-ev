@@ -717,6 +717,11 @@
       "regionSnapshot": "Bolge goruntusu",
       "snapshotAlt": "Gecici inceleme goruntusu",
       "playPause": "Oynat / duraklat",
+      "playSelection": "Secili alani oynat",
+      "playSelectionTitle": "Secili zaman araligini oynat",
+      "loopSelection": "Loop",
+      "loopSelectionTitle": "Secili zaman araligini donguye al",
+      "playbackSpeed": "Oynatma Hizi",
       "playheadTools": "Oynatma zamani",
       "jumpBackOneSecond": "1 saniye geri",
       "jumpForwardOneSecond": "1 saniye ileri",
@@ -729,6 +734,10 @@
       "microZoom": "Secim mikro yakinlastirma",
       "microZoomToggle": "Mikro Zoom",
       "microZoomToggleTitle": "Secim mikro yakinlastirmayi goster veya gizle",
+      "selectionStart": "Baslangic",
+      "selectionStartButton": "Baslangici ata",
+      "selectionEnd": "Bitis",
+      "selectionEndButton": "Bitisi ata",
       "inspectionMode": "Inceleme modu",
       "selectionIntent": "Secim niyeti",
       "selectionHint": "Bu secim gelecekteki analize rehberlik eder",
@@ -1099,11 +1108,6 @@
       "audio-report-export": "Ses raporu disa aktarma tamamlandi."
     },
     "projectImport": {
-      "eyebrow": "Proje Kaynagi",
-      "title": "Kaynak Ice Aktarma Calisma Alani",
-      "ariaLabel": "Proje kaynagi ice aktarma",
-      "tabsLabel": "Medya tipi",
-      "methodsLabel": "Ice aktarma yontemi",
       "tabs": {
         "video": "Video",
         "audio": "Ses",
@@ -1120,7 +1124,7 @@
         },
         "youtube": {
           "label": "YouTube",
-          "description": "Strateji kontrolleriyle onizle ve cikar",
+          "description": "Gercek yt-dlp formatlarini kontrol et ve secili akislari ekle",
           "missingTool": "YouTube ice aktarma icin yt-dlp kur",
           "videoOnly": "YouTube yalniz video ice aktarma icin kullanilir"
         }
@@ -1207,81 +1211,14 @@
       "actions": {
         "pickLocal": "Yerel Kaynagi Kopyala",
         "downloadUrl": "URL Kaynagini Indir",
-        "downloadYoutube": "YouTube'dan Al",
         "replaceUrl": "URL Kaynagini Degistir",
-        "replaceYoutube": "YouTube Kaynagini Degistir",
         "replaceLocal": "Yerel Kaynagi Degistir"
       },
       "youtubeImport": {
-        "title": "YouTube Ice Aktarma Calisma Alani",
-        "back": "Laboratuvara Don",
-        "clear": "Temizle",
-        "preview": "YouTube Onizleme Alani",
-        "previewFallbackTitle": "Ornek Video Basligi",
-        "emptyTitle": "Baslamak icin YouTube URL'si yapistir",
-        "urlPlaceholder": "https://youtube.com/watch?v=...",
-        "statusParsing": "Video metadatasi inceleniyor...",
-        "statusError": "Gecersiz YouTube URL'si veya ag hatasi",
-        "hintIntro": "Bu calisma alani sunlari saglar:",
-        "hintPreview": "Indirmeden once videoyu onizleme",
-        "hintStrategy": "Cikarma stratejisini kontrol etme",
-        "hintFormats": "Cikti formatlarini secme",
-        "panelIdle": "Kullanilabilir ice aktarma seceneklerini onizlemek icin bir YouTube URL'si yapistir.",
-        "panelParsing": "Video inceleniyor...",
-        "panelStrategyPending": "Strateji secimi metadata hazir oldugunda gorunur.",
-        "panelError": "URL'yi kontrol et ve gecerli bir YouTube baglantisi yapistir.",
-        "readyFormat": "Biçim: {format}",
-        "readyEstimatedSize": "Tahmini boyut: {size}",
-        "readyDescription": "Strateji: {description}",
-        "readyDuration": "Sure: {duration}",
-        "formatLabel": "Biçim",
-        "bestAvailable": "En iyi kullanilabilir",
-        "keepAudio": "Ses izini koru",
-        "strategyListLabel": "Cikarma stratejisi",
-        "strategies": {
-          "videoBest": {
-            "label": "En Iyi Kalite",
-            "description": "Maksimum cozunurluk ve bitrate",
-            "size": "~14 MB",
-            "format": "En iyi kullanilabilir"
-          },
-          "audioOnly": {
-            "label": "Sadece Ses",
-            "description": "Yalnizca ses izini cikar",
-            "size": "~2 MB",
-            "format": "MP3 / AAC"
-          },
-          "lowSize": {
-            "label": "Kucuk Boyut",
-            "description": "Hizli kullanim icin sikistirilmis",
-            "size": "~5 MB",
-            "format": "Sikistirilmis MP4"
-          },
-          "custom": {
-            "label": "Gelismis",
-            "description": "Formatlar uzerinde elle kontrol",
-            "size": "Manuel",
-            "format": "Manuel"
-          }
-        },
-        "advancedResolution": "Cozunurluk",
-        "advancedFormat": "Biçim",
-        "advancedAudioExtraction": "Yalnizca sesi cikar",
-        "resolutions": {
-          "best": "En iyi kullanilabilir",
-          "1080p": "1080p",
-          "720p": "720p",
-          "480p": "480p"
-        },
-        "url": "URL Girisi (placeholder)",
-        "basic": "Temel Secenekler (placeholder)",
-        "advanced": "Gelismis Ayarlar (placeholder)",
-        "download": "Indir",
-        "downloadWithStrategy": "Indir ({strategy} · {size})",
-        "downloadAnalyze": "Indir + Analiz Et",
-        "downloadAnalyzeWithStrategy": "Indir ve Analiz Et ({strategy})"
+        "previewFallbackTitle": "YouTube videosu",
+        "statusParsing": "YouTube formatlari kontrol ediliyor...",
+        "statusError": "Gecersiz YouTube URL'si veya ag hatasi"
       },
-      "youtubeDisabled": "Oda-yerel yt-dlp kurulumu hazir olana kadar YouTube modu pasif kalir.",
       "intakeFrame": {
         "title": "Kaynak Ekleme Kontrolleri",
         "subtitle": "Kaynak hazir oldugunda bu cerceveyi kapali tutabilir, rota degistirmek veya indirme planini guncellemek icin tekrar acabilirsin.",
@@ -1291,37 +1228,26 @@
         "showAction": "Ayarlari goster",
         "hideAction": "Ayarlari gizle"
       },
-      "youtubePresetLabel": "YouTube ön ayarları",
-      "youtubePresetHint": "Hizli alislar icin ön ayar kullan, oda onayli yt-dlp ince ayarlari icin Ozel moda gec.",
-      "youtubePresets": {
-        "low": "Dusuk",
-        "medium": "Dengeli",
-        "best": "En Iyi",
-        "custom": "Ozel"
-      },
-      "youtubeCustomTitle": "Ozel yt-dlp Ayarlari",
-      "youtubeCustomHint": "Bu kontroller, odanin izin verdigi yt-dlp yuzeyi icinde kalarak video, ses, altyazi ve tekrar deneme davranisini daha ayrintili yonetir.",
       "youtubeForm": {
         "sections": {
+          "streams": {
+            "title": "Akislar"
+          },
           "download": {
-            "title": "Yakala Formu",
-            "subtitle": "Cikti video profili, container davranisi ve opsiyonel ses ayirma ayarlarini bir arada yonet."
+            "title": "Cikti Politikasi"
           },
           "captions": {
-            "title": "Altyazi Yakalama",
-            "subtitle": "Manuel ve otomatik altyazi seceneklerini dil filtresiyle birlikte tek cercevede topla."
+            "title": "Altyazilar"
           },
           "network": {
-            "title": "Aktarım Kontrolleri",
-            "subtitle": "Playlist kapsami ve tekrar deneme davranisini fazla yer harcamadan ayarla."
+            "title": "Ag"
           }
         },
         "fields": {
-          "format": "Biçim stratejisi",
           "mergeOutputFormat": "Birlesim Container",
           "recodeVideo": "Videoyu Recode Et",
           "audioFormat": "Sesi Ayir",
-          "audioQuality": "Ses kalitesi",
+          "audioQuality": "Donusturme kalitesi",
           "writeSubtitles": "Altyazi yaz",
           "writeAutoSubtitles": "Otomatik altyazi yaz",
           "subtitlesLang": "Altyazi dilleri",
@@ -1336,13 +1262,6 @@
           "limitRate": "2M veya 500K"
         },
         "options": {
-          "format": {
-            "best": "En iyi mevcut kalite",
-            "mp4_1080": "1080p MP4 veya alti",
-            "mp4_720": "720p MP4 veya alti",
-            "mp4_480": "480p MP4 veya alti",
-            "low": "360p / dusuk bant genisligi"
-          },
           "container": {
             "auto": "Otomatik",
             "mp4": "MP4",
@@ -1427,10 +1346,6 @@
       "directUrl": {
         "title": "Dogrudan URL Kaynagi",
         "hint": "Uzak URL yapistir."
-      },
-      "youtubeCapture": {
-        "title": "YouTube Yakalama",
-        "hint": "yt-dlp kontrolleri tek yerde."
       },
       "localCopy": {
         "title": "Yerel Kaynak Kopyasi"

@@ -17,6 +17,7 @@ import {
   buildLabAssetMetadataTitle,
   getLabAssetPath,
   getLabAssetPathLeaf,
+  getLabAssetPreviewUrl,
   getLabAssetPreviewKind,
 } from "./lab-asset-display.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
@@ -38,15 +39,9 @@ const ASSET_GROUPS: AssetGroup[] = [
   { type: "artifact", labelKey: "mediaAnalysis.assets.groups.artifact", labelFallback: "Çıktılar" },
 ];
 
-const ASSET_TYPE_BADGES: Record<LabAssetType, string> = {
-  source: "SRC",
-  clip: "CLP",
-  frame: "FRM",
-  audio: "AUD",
-  image: "IMG",
-  report: "RPT",
-  artifact: "AST",
-};
+const IMAGE_EXTENSIONS = new Set(["avif", "gif", "jpeg", "jpg", "png", "svg", "webp"]);
+const VIDEO_EXTENSIONS = new Set(["m4v", "mkv", "mov", "mp4", "webm"]);
+const AUDIO_EXTENSIONS = new Set(["aac", "flac", "m4a", "mp3", "ogg", "opus", "wav"]);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -74,6 +69,81 @@ function formatAssetDate(value: number): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function getAssetPathExtension(path: string | null): string | null {
+  if (path === null) {
+    return null;
+  }
+  const cleanPath = path.split(/[?#]/)[0] || "";
+  const leaf = cleanPath.split(/[\\/]/).pop() || cleanPath;
+  const dotIndex = leaf.lastIndexOf(".");
+  if (dotIndex < 0 || dotIndex === leaf.length - 1) {
+    return null;
+  }
+  return leaf.slice(dotIndex + 1).toLowerCase();
+}
+
+function getAssetExtension(asset: LabAsset): string | null {
+  return (
+    getAssetPathExtension(getLabAssetPath(asset)) ||
+    getAssetPathExtension(getLabAssetPathLeaf(asset)) ||
+    getAssetPathExtension(asset.name)
+  );
+}
+
+function getAssetMediaKind(asset: LabAsset): "image" | "video" | "audio" | null {
+  const metadata = asLabRecord(asset.metadata);
+  const metadataKind =
+    asNonEmptyString(metadata["kind"]) || asNonEmptyString(metadata["sourceKind"]);
+  if (metadataKind === "image" || metadataKind === "video" || metadataKind === "audio") {
+    return metadataKind;
+  }
+
+  const extension = getAssetExtension(asset);
+  if (extension !== null && IMAGE_EXTENSIONS.has(extension)) {
+    return "image";
+  }
+  if (extension !== null && VIDEO_EXTENSIONS.has(extension)) {
+    return "video";
+  }
+  if (extension !== null && AUDIO_EXTENSIONS.has(extension)) {
+    return "audio";
+  }
+
+  if (asset.type === "frame" || asset.type === "image") {
+    return "image";
+  }
+  if (asset.type === "audio") {
+    return "audio";
+  }
+  if (asset.type === "clip") {
+    return "video";
+  }
+  return null;
+}
+
+function renderAssetVisual(asset: LabAsset): string {
+  const mediaKind = getAssetMediaKind(asset);
+  const previewUrl = getLabAssetPreviewUrl(asset);
+
+  if ((mediaKind === "image" || mediaKind === "video") && previewUrl !== null) {
+    const metadata = asLabRecord(asset.metadata);
+    const thumbnailUrl = asNonEmptyString(metadata["thumbnailUrl"]);
+    const mediaMarkup =
+      mediaKind === "image" || thumbnailUrl !== null
+        ? `<img class="labx-sp-asset__thumb-media" src="${escapeHtml(previewUrl)}" alt="" loading="lazy" />`
+        : `<video class="labx-sp-asset__thumb-media" src="${escapeHtml(previewUrl)}" muted preload="metadata" playsinline aria-hidden="true"></video>`;
+    return `<span class="labx-sp-asset__thumb" data-kind="${escapeHtml(mediaKind)}" aria-hidden="true">${mediaMarkup}</span>`;
+  }
+
+  if (mediaKind === "audio") {
+    return `<span class="labx-sp-asset__badge labx-sp-asset__badge--audio" data-type="${escapeHtml(asset.type)}" data-kind="audio" aria-hidden="true">&#119070;</span>`;
+  }
+
+  const extension = getAssetExtension(asset);
+  const label = (extension ?? "file").slice(0, 4).toUpperCase();
+  return `<span class="labx-sp-asset__badge" data-type="${escapeHtml(asset.type)}" data-kind="extension" data-extension="${escapeHtml(extension ?? "file")}">${escapeHtml(label)}</span>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -129,7 +199,7 @@ function renderAssetItem(asset: LabAsset, currentSourceId: string | null, copy: 
       <button class="labx-sp-asset__btn" type="button"
               data-lab-action="${escapeHtml(primary.action)}" data-lab-value="${escapeHtml(primary.value)}"
               aria-label="${escapeHtml(asset.name)}">
-        <span class="labx-sp-asset__badge" data-type="${escapeHtml(asset.type)}">${ASSET_TYPE_BADGES[asset.type]}</span>
+        ${renderAssetVisual(asset)}
         <span class="labx-sp-asset__info">
           <strong class="labx-sp-asset__name">${escapeHtml(asset.name)}</strong>
           ${meta ? `<span class="labx-sp-asset__meta">${escapeHtml(meta)}</span>` : ""}

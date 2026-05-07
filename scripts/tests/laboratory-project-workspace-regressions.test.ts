@@ -168,8 +168,11 @@ test("laboratory source project controls skip redundant button dispatches", () =
   );
 
   assert.match(sourceActionControllerSource, /state\.ui\.projectImport\.activeKind !== kind/);
-  assert.match(sourceActionControllerSource, /state\.ui\.projectImport\.methods\[activeKind\] !== method/);
-  assert.match(sourceActionControllerSource, /state\.ui\.youtubeImport\.strategy !== strategy/);
+  assert.match(
+    sourceActionControllerSource,
+    /state\.ui\.projectImport\.methods\[activeKind\] !== method/
+  );
+	  assert.doesNotMatch(sourceActionControllerSource, /youtube-import-set-strategy/);
   assert.doesNotMatch(source, /projectWorkspaceSelectedEntityIds/);
   assert.doesNotMatch(source, /projectWorkspaceSort/);
   assert.doesNotMatch(source, /projectWorkspaceFilter/);
@@ -246,13 +249,14 @@ test("laboratory source panel renders localized asset groups and context actions
   assert.match(html, /Goruntuler/);
   assert.match(html, /Raporlar/);
   assert.match(html, /data-group-type="artifact"/);
-  assert.match(html, /SRC/);
-  assert.match(html, /CLP/);
-  assert.match(html, /FRM/);
-  assert.match(html, /AUD/);
-  assert.match(html, /IMG/);
-  assert.match(html, /RPT/);
-  assert.match(html, /AST/);
+  assert.match(html, /class="labx-sp-asset__thumb" data-kind="video"/);
+  assert.match(html, /class="labx-sp-asset__thumb" data-kind="image"/);
+  assert.match(html, /class="labx-sp-asset__badge labx-sp-asset__badge--audio"/);
+  assert.match(html, /&#119070;/);
+  assert.match(html, /data-extension="md">MD<\/span>/);
+  assert.match(html, /data-extension="json">JSON<\/span>/);
+  assert.doesNotMatch(html, />SRC<\/span>/);
+  assert.doesNotMatch(html, />AUD<\/span>/);
   assert.match(html, /report\.md/);
   assert.match(html, /artifact\.json/);
   assert.doesNotMatch(html, /secili/);
@@ -348,6 +352,7 @@ test("laboratory source panel renders video source assets as selectable rows", (
   assert.match(html, /data-asset-type="source"/);
   assert.match(html, /CGI Analizi -1\.mp4/);
   assert.match(html, /data-lab-action="asset-use-as-source"/);
+  assert.match(html, /class="labx-sp-asset__thumb" data-kind="video"/);
   assert.doesNotMatch(html, /class="labx-pw-card__thumb-img/);
   assert.doesNotMatch(html, /class="labx-pw-inspector__preview-media/);
 });
@@ -434,13 +439,18 @@ test("laboratory source management css keeps active import styles without retire
   const themeSource = readLabThemeSource();
 
   assert.match(styleSource, /@import "\.\/styles\/project-workspace\.css";/);
-  assert.doesNotMatch(overlayCss, /\.labx-pw-/);
-  assert.doesNotMatch(overlayCss, /\.labx-import-review/);
-  assert.match(overlayCss, /\.labx-project-import__progress\s*\{[\s\S]*display:\s*grid;/);
-  assert.match(overlayCss, /\.labx-project-import__youtube-preview\s*\{[\s\S]*display:\s*grid;/);
-  assert.match(overlayCss, /\.labx-import-body\s*\{[\s\S]*display:\s*grid;/);
-  assert.match(overlayCss, /\.labx-strategy-list\s*\{[\s\S]*display:\s*grid;/);
-  assert.match(overlayCss, /\.labx-advanced-settings\s*\{[\s\S]*display:\s*grid;/);
+	  assert.doesNotMatch(overlayCss, /\.labx-pw-/);
+	  assert.doesNotMatch(overlayCss, /\.labx-import-review/);
+	  assert.doesNotMatch(overlayCss, /\.labx-import-/);
+	  assert.doesNotMatch(overlayCss, /\.labx-strategy-/);
+	  assert.match(overlayCss, /\.labx-project-import__progress\s*\{[\s\S]*display:\s*grid;/);
+	  assert.match(overlayCss, /\.labx-project-import__youtube-preview\s*\{[\s\S]*display:\s*grid;/);
+	  assert.match(overlayCss, /\.labx-project-import__yt-controls\s*\{[\s\S]*display:\s*grid;/);
+	  assert.match(
+	    overlayCss,
+	    /\.labx-project-import__yt-field\s*\{[\s\S]*display:\s*grid;/
+	  );
+	  assert.doesNotMatch(overlayCss, /\.labx-advanced-settings/);
   assert.doesNotMatch(themeSource, /\.labx-top-bar__project-btn\s*\{/);
   assert.match(themeSource, /\.labx-timeline__highlight\s*\{/);
 });

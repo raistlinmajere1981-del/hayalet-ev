@@ -19,7 +19,6 @@ import { bindLabSelectionIntentClicks } from "./lab-selection-intent-binder.js";
 import { bindLabSelectionRoiInteractions } from "./lab-selection-roi-binder.js";
 import { bindLabSelectionSuggestionClicks } from "./lab-selection-suggestion-binder.js";
 import { renderWorkspaceSurface } from "./workspace-surface.js";
-import { renderYoutubeImportWorkspaceMarkup } from "./youtube-import-workspace.js";
 import { createLabRunController } from "../runtime/lab-run-controller.js";
 import { renderToolManagementOverlay } from "./tool-management-overlay.js";
 import { renderReportOverlay } from "./report-overlay.js";
@@ -49,7 +48,6 @@ import {
   LAB_REGION_SELECTORS,
   debugConsole,
   debugLabFallback,
-  debugLabOverlay,
   debugLabRegionLifecycle,
   getRegionDebugName,
   isLabRegionDebugEnabled,
@@ -554,13 +552,6 @@ export function startLaboratoryLabRoot() {
   }
 
   function renderSurface(state: LabStoreState, copy: LabI18n) {
-    if (state.ui.labMode === "import-youtube") {
-      return {
-        main: renderYoutubeImportWorkspaceMarkup(state, copy),
-        side: "",
-      };
-    }
-
     // V2.3: single workspace surface replaces stage routing
     return renderWorkspaceSurface(state, {
       activeOverlay,
@@ -582,59 +573,12 @@ export function startLaboratoryLabRoot() {
     }
 
     const shell = runtimeRoot.querySelector<HTMLElement>(".labx-shell");
-    const centerPanel = queryRegion(runtimeRoot, LAB_REGION_SELECTORS.mainStage);
     const nextLayoutKind = getLabLayoutKind(state, {
       bootOverlayActive: isBootOverlayActive(state),
     });
     const currentLayoutKind = shell?.getAttribute("data-layout-kind") ?? "laboratory";
     if (!shell || currentLayoutKind !== nextLayoutKind) {
       replaceLabLayout(state, surface, copy);
-      syncProcessStripHeartbeat(state);
-      return;
-    }
-
-    if (nextLayoutKind === "import-only") {
-      const overlayRoot = runtimeRoot.querySelector(LAB_OVERLAY_SELECTORS.tools);
-      const assetPreviewOverlayRoot = runtimeRoot.querySelector(LAB_OVERLAY_SELECTORS.assetPreview);
-      const reportOverlayRoot = runtimeRoot.querySelector(LAB_OVERLAY_SELECTORS.report);
-      const projectWorkspaceRoot = runtimeRoot.querySelector("#lab-project-workspace-root");
-      if (
-        !centerPanel ||
-        !overlayRoot ||
-        !assetPreviewOverlayRoot ||
-        !reportOverlayRoot ||
-        !projectWorkspaceRoot
-      ) {
-        if (!centerPanel) {
-          debugLabRegionLifecycle(shell, "mainStage", "missing", {
-            selectors: LAB_REGION_SELECTORS.mainStage,
-          });
-        }
-        if (!overlayRoot) {
-          debugLabOverlay(shell, "tools", "missing", { selector: LAB_OVERLAY_SELECTORS.tools });
-        }
-        if (!assetPreviewOverlayRoot) {
-          debugLabOverlay(shell, "assetPreview", "missing", {
-            selector: LAB_OVERLAY_SELECTORS.assetPreview,
-          });
-        }
-        if (!reportOverlayRoot) {
-          debugLabOverlay(shell, "report", "missing", { selector: LAB_OVERLAY_SELECTORS.report });
-        }
-        if (!projectWorkspaceRoot) {
-          debugLabOverlay(shell, "projectWorkspace", "missing", {
-            selector: LAB_OVERLAY_SELECTORS.projectWorkspace,
-          });
-        }
-        replaceLabLayout(state, surface, copy);
-        syncProcessStripHeartbeat(state);
-        return;
-      }
-      if (shell instanceof HTMLElement) {
-        syncShellState(shell, state);
-      }
-      updateRenderedElement(documentRef, centerPanel, renderLabCenterPanel(surface), true);
-      syncDecisionLayer(shell, state);
       syncProcessStripHeartbeat(state);
       return;
     }

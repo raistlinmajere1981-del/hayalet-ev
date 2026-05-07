@@ -746,7 +746,7 @@ test("audio visualization selector keeps stable input order when artifact priori
   );
 });
 
-test("workspace audio focus points users to the unified waveform timeline", () => {
+test("workspace audio focus leaves transport controls on the unified waveform timeline", () => {
   const markup = renderWorkspaceAudioFocus(
     createTestAudioFocusSettings({
       gain: 1,
@@ -768,16 +768,13 @@ test("workspace audio focus points users to the unified waveform timeline", () =
     }
   );
 
-  assert.match(markup, /Timeline preview altinda tek realtime waveform katmani kullanilir\./);
-  assert.match(markup, /Spectrum modu ayni canvas uzerinde canli frekans gorunumu cizer\./);
-  assert.match(markup, /workspace\.audioFocus\.playbackRate/);
-  assert.match(markup, /workspace\.audioFocus\.preservePitch/);
   assert.match(markup, /data-lab-action="workspace-reset-audio-focus"/);
   assert.match(markup, /data-lab-action="workspace-setting-adjust"/);
   assert.match(markup, /workspace\.audioFocus\.gain/);
   assert.match(markup, /workspace\.audioFocus\.eqBands\.0\.gain/);
-  assert.match(markup, /Slow down to inspect\. Speed up to detect patterns\./);
-  assert.match(markup, /Playback rate affects the current preview audio\./);
+  assert.doesNotMatch(markup, /workspace\.audioFocus\.playbackRate/);
+  assert.doesNotMatch(markup, /workspace\.audioFocus\.preservePitch/);
+  assert.doesNotMatch(markup, /ANALYSIS AID/);
   assert.doesNotMatch(markup, /workspace\.audioFocus\.visualizationMode/);
   assert.doesNotMatch(markup, /lab-audio-viz/);
 });

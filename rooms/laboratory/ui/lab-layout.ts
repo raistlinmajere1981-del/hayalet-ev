@@ -22,13 +22,13 @@ type LabLayoutOptions = {
   bootOverlayActive?: boolean;
 };
 
-type LabLayoutKind = "laboratory" | "import-only";
+type LabLayoutKind = "laboratory";
 
 export function getLabLayoutKind(
-  state: LabStoreState,
+  _state: LabStoreState,
   _options: LabLayoutOptions = {}
 ): LabLayoutKind {
-  return state.ui.labMode === "import-youtube" ? "import-only" : "laboratory";
+  return "laboratory";
 }
 
 export function renderLabBootOverlay(copy: LabI18n = LAB_FALLBACK_I18N) {
@@ -71,19 +71,6 @@ export function renderLabLayout(
   const drawerMode = resolveDrawerMode(state);
   const bootOverlayActive = options.bootOverlayActive === true;
   const layoutKind = getLabLayoutKind(state, { bootOverlayActive });
-
-  if (layoutKind === "import-only") {
-    return `
-      ${renderLaboratoryLayout({
-        mainStage: renderLabCenterPanel(surface),
-        shellAttributes: `data-layout-kind="${layoutKind}" data-ready="true" data-workspace-mode="${getWorkspaceMode(state)}" data-lab-mode="${state.ui.labMode}" data-drawer-mode="${drawerMode}" data-drawer-collapsed="true" data-process-view="compact"`,
-      })}
-      <div class="labx-overlay-root" data-open="false" aria-hidden="true"></div>
-      <div class="labx-overlay-root labx-asset-preview-root" data-open="false" id="lab-asset-preview-overlay-root" aria-hidden="true"></div>
-      <div class="labx-overlay-root" data-open="false" id="lab-report-overlay-root" aria-hidden="true"></div>
-      <div id="lab-project-workspace-root" aria-hidden="true"></div>
-    `;
-  }
 
   const sourcePanelCollapsed = state.ui.sourcePanelCollapsed === true;
 

@@ -1,10 +1,7 @@
 import type { LabSourceDrafts } from "./lab-types.js";
 
-export type LabMode = "normal" | "import-youtube";
+export type LabMode = "normal";
 export type LabYoutubeImportStatus = "idle" | "parsing" | "ready" | "error";
-export type LabYoutubeImportStrategy = "video_best" | "audio_only" | "low_size" | "custom";
-export type LabYoutubeImportCustomResolution = "best" | "1080p" | "720p" | "480p";
-export type LabYoutubeImportCustomFormat = "mp4" | "webm" | "mkv";
 
 export interface LabYoutubeImportPreview {
   title?: string;
@@ -31,12 +28,6 @@ export interface LabYoutubeImportFormat {
   note?: string | null;
 }
 
-export interface LabYoutubeImportCustomSettings {
-  resolution: LabYoutubeImportCustomResolution;
-  format: LabYoutubeImportCustomFormat;
-  audioExtraction: boolean;
-}
-
 export interface LabYoutubeImportState {
   url: string | null;
   status: LabYoutubeImportStatus;
@@ -44,8 +35,6 @@ export interface LabYoutubeImportState {
   formats: LabYoutubeImportFormat[];
   selectedVideoFormatId: string | null;
   selectedAudioFormatId: string | null;
-  strategy: LabYoutubeImportStrategy;
-  custom: LabYoutubeImportCustomSettings;
 }
 
 export type LabProjectImportKind = "video" | "audio" | "image";

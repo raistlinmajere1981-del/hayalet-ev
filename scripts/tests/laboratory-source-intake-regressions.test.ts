@@ -92,13 +92,11 @@ function createWorkspaceState(overrides: {
   activityFeed?: Array<Record<string, unknown>>;
   sourceProbeStatus?: "idle" | "running" | "completed" | "failed";
   toolState?: Record<string, unknown>;
-  projectImportKind?: "video" | "audio" | "image";
-  projectImportMethod?: "local" | "url" | "youtube";
-  urlCheckResult?: Record<string, unknown>;
-  youtubeStrategy?: "video_best" | "audio_only" | "low_size" | "custom";
-  youtubeCustom?: Record<string, unknown>;
-  source: Record<string, unknown>;
-}) {
+	  projectImportKind?: "video" | "audio" | "image";
+	  projectImportMethod?: "local" | "url" | "youtube";
+	  urlCheckResult?: Record<string, unknown>;
+	  source: Record<string, unknown>;
+	}) {
   const store = createLabStore();
   store.dispatch({
     type: "snapshot-received",
@@ -153,19 +151,7 @@ function createWorkspaceState(overrides: {
       method: sourceMethod,
     });
   }
-  if (overrides.youtubeStrategy) {
-    store.dispatch({
-      type: "youtube-import-set-strategy",
-      strategy: overrides.youtubeStrategy,
-    });
-  }
-  if (overrides.youtubeCustom) {
-    store.dispatch({
-      type: "youtube-import-custom-updated",
-      patch: overrides.youtubeCustom as never,
-    });
-  }
-  if (overrides.urlCheckResult) {
+	  if (overrides.urlCheckResult) {
     store.dispatch({
       type: "host-event-received",
       event: {
@@ -527,17 +513,20 @@ test("laboratory workspace shows checked YouTube details and rich download contr
     /class="labx-project-import__youtube-result"[\s\S]*class="labx-project-import__details"/
   );
   assert.equal((html.match(/class="labx-project-import__details"/g) || []).length, 1);
-  assert.doesNotMatch(html, /data-lab-field="project-import\.youtubeVideoFormat"/);
-  assert.doesNotMatch(html, /data-lab-field="project-import\.youtubeAudioFormat"/);
+  assert.match(html, /data-lab-field="project-import\.youtubeVideoFormat"/);
+  assert.match(html, /data-lab-field="project-import\.youtubeAudioFormat"/);
+  assert.match(html, /<option value="137" selected>Video 1080p<\/option>/);
+  assert.match(html, /<option value="140" selected>Audio m4a<\/option>/);
   assert.doesNotMatch(html, /class="labx-project-import__format-grid"/);
   assert.doesNotMatch(html, /class="labx-pw-inspector labx-import-review"/);
   assert.match(html, /data-lab-action="project-import-url-add"/);
   assert.doesNotMatch(html, /data-lab-action="project-import-check-url"/);
   assert.match(html, /data-lab-field="project-import\.youtubeCaptureMode"/);
-  assert.match(html, /data-lab-field="project-import\.youtubeCustom\.format"/);
+  assert.doesNotMatch(html, /data-lab-field="project-import\.youtubeCustom\.format"/);
   assert.match(html, /data-lab-field="project-import\.youtubeCustom\.mergeOutputFormat"/);
   assert.match(html, /data-lab-field="project-import\.youtubeCustom\.writeSubtitles"/);
   assert.match(html, /data-lab-field="project-import\.youtubeCustom\.retries"/);
+  assert.doesNotMatch(html, /data-lab-field="project-import\.youtubeCustom\.audioQuality"/);
   assert.doesNotMatch(html, /Source Import Workspace/);
   assert.doesNotMatch(html, /Kaynak Ice Aktarma Calisma Alani/);
   assert.doesNotMatch(html, />Video \/ YouTube</);
@@ -548,6 +537,91 @@ test("laboratory workspace shows checked YouTube details and rich download contr
   assert.doesNotMatch(
     html,
     /yt-dlp downloads the media into the project source folder and keeps the resolved preset with the project draft\./
+  );
+});
+
+test("laboratory workspace shows YouTube conversion quality only when audio conversion applies", () => {
+  const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));
+  const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
+  const checkedYoutubeResult = {
+    url: "https://youtube.com/watch?v=abc123",
+    isYoutube: true,
+    kind: "video",
+    preview: { title: "Evidence clip" },
+    formats: [
+      { formatId: "137", label: "Video 1080p", kind: "video", extension: "mp4" },
+      { formatId: "140", label: "Audio m4a", kind: "audio", extension: "m4a" },
+    ],
+    selectedVideoFormatId: "137",
+    selectedAudioFormatId: "140",
+  };
+  const baseSource = {
+    kind: "video",
+    mode: "youtube",
+    status: "idle",
+    storedFileName: null,
+    storedPath: null,
+    routeLabel: null,
+    metadata: {},
+    drafts: {
+      urlInput: "",
+      youtubeUrl: "https://youtube.com/watch?v=abc123",
+      youtubePreset: "custom",
+      youtubeCaptureMode: "video+audio",
+      youtubeCustom: {
+        audioFormat: "none",
+      },
+    },
+  };
+
+  const keepOriginalHtml = renderProjectWorkspaceHtml({
+    toolState: { tools: { "yt-dlp": { installed: true } } },
+    urlCheckResult: checkedYoutubeResult,
+    source: baseSource,
+  });
+  assert.doesNotMatch(
+    keepOriginalHtml,
+    /data-lab-field="project-import\.youtubeCustom\.audioQuality"/
+  );
+
+  const extractAudioHtml = renderProjectWorkspaceHtml({
+    toolState: { tools: { "yt-dlp": { installed: true } } },
+    urlCheckResult: checkedYoutubeResult,
+    source: {
+      ...baseSource,
+      drafts: {
+        ...baseSource.drafts,
+        youtubeCustom: {
+          audioFormat: "mp3",
+        },
+      },
+    },
+  });
+  assert.match(
+    extractAudioHtml,
+    /data-lab-field="project-import\.youtubeCustom\.audioQuality"/
+  );
+
+  const audioOnlyHtml = renderProjectWorkspaceHtml({
+    toolState: { tools: { "yt-dlp": { installed: true } } },
+    urlCheckResult: checkedYoutubeResult,
+    source: {
+      ...baseSource,
+      drafts: {
+        ...baseSource.drafts,
+        youtubeCaptureMode: "audio-only",
+      },
+    },
+  });
+  assert.match(audioOnlyHtml, /data-lab-field="project-import\.youtubeCustom\.audioQuality"/);
+  assert.doesNotMatch(audioOnlyHtml, /data-lab-field="project-import\.youtubeVideoFormat"/);
+  assert.equal(
+    enTranslations.mediaAnalysis.source.youtubeForm.fields.audioQuality,
+    "Conversion quality"
+  );
+  assert.equal(
+    trTranslations.mediaAnalysis.source.youtubeForm.fields.audioQuality,
+    "Donusturme kalitesi"
   );
 });
 
@@ -595,10 +669,12 @@ test("laboratory workspace hides URL check details while checking", () => {
   const html = renderLabSourcePanel(store.getState());
 
   assert.match(html, /data-lab-action="project-import-check-url"[\s\S]*disabled/);
-  assert.match(html, /Analyzing video metadata|metadata/i);
-  assert.doesNotMatch(html, /class="labx-project-import__youtube-result"/);
-  assert.doesNotMatch(html, /class="labx-project-import__details"/);
-  assert.doesNotMatch(html, /data-lab-field="project-import\.youtubeCustom\.format"/);
+	  assert.match(html, /YouTube format/i);
+	  assert.doesNotMatch(html, /class="labx-project-import__youtube-result"/);
+	  assert.doesNotMatch(html, /class="labx-project-import__details"/);
+	  assert.doesNotMatch(html, /data-lab-field="project-import\.youtubeCustom\.format"/);
+	  assert.doesNotMatch(html, /data-lab-field="project-import\.youtubeVideoFormat"/);
+	  assert.doesNotMatch(html, /data-lab-field="project-import\.youtubeAudioFormat"/);
 });
 
 test("laboratory YouTube project import forwards selected yt-dlp streams to host args", () => {
@@ -733,15 +809,13 @@ test("laboratory controller keeps project import draft and add wiring on the act
   assert.match(sourceActionControllerSource, /case "project-import-clear":/);
   assert.match(sourceActionControllerSource, /youtubeCustom: sourceDrafts\.youtubeCustom/);
   assert.match(sourceActionControllerSource, /case "source-youtube-preset":/);
-  assert.match(formActionControllerSource, /field\.startsWith\("source\.youtubeCustom\."\)/);
-  assert.match(formActionControllerSource, /mode: getDefaultSourceMode\(state, targetValue\)/);
-  assert.match(formActionControllerSource, /case "source\.mode":/);
-  assert.match(
-    formActionControllerSource,
-    /case "source\.mode":[\s\S]*if \(targetValue === "youtube"\)[\s\S]*deps\.dispatch\(\{ type: "enter-youtube-import-mode" \}\)[\s\S]*deps\.isWorkspaceMutationLocked\("source"\)/
-  );
-  assert.match(
-    sourceActionControllerSource,
+	  assert.match(formActionControllerSource, /field\.startsWith\("source\.youtubeCustom\."\)/);
+	  assert.match(formActionControllerSource, /mode: getDefaultSourceMode\(state, targetValue\)/);
+	  assert.match(formActionControllerSource, /case "source\.mode":/);
+	  assert.match(formActionControllerSource, /deps\.sendMediaAction\("source-set-mode"/);
+	  assert.doesNotMatch(formActionControllerSource, /enter-youtube-import-mode/);
+	  assert.match(
+	    sourceActionControllerSource,
     /sendMediaAction\("source-update-draft", \{\s*fields: mergeSourceDrafts\(state, patch\)/
   );
 });

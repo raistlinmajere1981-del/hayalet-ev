@@ -24,7 +24,7 @@ import {
   test,
 } from "./laboratory-runtime-truth.helpers.ts";
 
-test("laboratory store keeps YouTube import mode UI-only and non-persistent", () => {
+test("laboratory store keeps checked YouTube import state UI-only and non-persistent", () => {
   const store = createLabStore();
   assert.equal(store.getState().ui.labMode, "normal");
   assert.deepEqual(store.getState().ui.youtubeImport, {
@@ -34,12 +34,6 @@ test("laboratory store keeps YouTube import mode UI-only and non-persistent", ()
     formats: [],
     selectedVideoFormatId: null,
     selectedAudioFormatId: null,
-    strategy: "video_best",
-    custom: {
-      resolution: "best",
-      format: "mp4",
-      audioExtraction: false,
-    },
   });
 
   store.dispatch({
@@ -75,63 +69,32 @@ test("laboratory store keeps YouTube import mode UI-only and non-persistent", ()
     formats: [],
     selectedVideoFormatId: null,
     selectedAudioFormatId: null,
-    strategy: "video_best",
-    custom: {
-      resolution: "best",
-      format: "mp4",
-      audioExtraction: false,
-    },
   });
-  const strategySnapshots = {
+  const formatSelectionSnapshots = {
     sourceDrafts: JSON.parse(JSON.stringify(store.getState().ui.sourceDrafts)),
     youtubeImportStableFields: {
       url: store.getState().ui.youtubeImport.url,
       status: store.getState().ui.youtubeImport.status,
       preview: store.getState().ui.youtubeImport.preview,
-      custom: JSON.parse(JSON.stringify(store.getState().ui.youtubeImport.custom)),
     },
     source: JSON.parse(JSON.stringify(store.getState().source)),
     assets: JSON.parse(JSON.stringify(store.getState().assets)),
     run: JSON.parse(JSON.stringify(store.getState().run)),
     reports: JSON.parse(JSON.stringify(store.getState().reports)),
   };
-  store.dispatch({ type: "youtube-import-set-strategy", strategy: "audio_only" });
-  assert.equal(store.getState().ui.youtubeImport.strategy, "audio_only");
-  store.dispatch({ type: "youtube-import-set-strategy", strategy: "low_size" });
-  assert.equal(store.getState().ui.youtubeImport.strategy, "low_size");
-  store.dispatch({ type: "youtube-import-set-strategy", strategy: "custom" });
-  assert.equal(store.getState().ui.youtubeImport.strategy, "custom");
-  store.dispatch({ type: "youtube-import-set-strategy", strategy: "video_best" });
-  assert.equal(store.getState().ui.youtubeImport.strategy, "video_best");
   assert.deepEqual(
     {
       url: store.getState().ui.youtubeImport.url,
       status: store.getState().ui.youtubeImport.status,
       preview: store.getState().ui.youtubeImport.preview,
-      custom: store.getState().ui.youtubeImport.custom,
     },
-    strategySnapshots.youtubeImportStableFields
+    formatSelectionSnapshots.youtubeImportStableFields
   );
-  assert.deepEqual(store.getState().ui.sourceDrafts, strategySnapshots.sourceDrafts);
-  assert.deepEqual(store.getState().source, strategySnapshots.source);
-  assert.deepEqual(store.getState().assets, strategySnapshots.assets);
-  assert.deepEqual(store.getState().run, strategySnapshots.run);
-  assert.deepEqual(store.getState().reports, strategySnapshots.reports);
-  store.dispatch({ type: "youtube-import-set-strategy", strategy: "audio_only" });
-  store.dispatch({
-    type: "youtube-import-custom-updated",
-    patch: {
-      resolution: "720p",
-      format: "webm",
-      audioExtraction: true,
-    },
-  });
-  assert.equal(store.getState().ui.youtubeImport.strategy, "audio_only");
-  assert.deepEqual(store.getState().ui.youtubeImport.custom, {
-    resolution: "720p",
-    format: "webm",
-    audioExtraction: true,
-  });
+  assert.deepEqual(store.getState().ui.sourceDrafts, formatSelectionSnapshots.sourceDrafts);
+  assert.deepEqual(store.getState().source, formatSelectionSnapshots.source);
+  assert.deepEqual(store.getState().assets, formatSelectionSnapshots.assets);
+  assert.deepEqual(store.getState().run, formatSelectionSnapshots.run);
+  assert.deepEqual(store.getState().reports, formatSelectionSnapshots.reports);
   store.dispatch({ type: "youtube-import-parse-start" });
   assert.equal(store.getState().ui.youtubeImport.status, "parsing");
   store.dispatch({
@@ -153,6 +116,12 @@ test("laboratory store keeps YouTube import mode UI-only and non-persistent", ()
       duration: 154,
       thumbnail: "https://img.youtube.com/vi/abc123DEF45/hqdefault.jpg",
     },
+    formats: [
+      { formatId: "137", label: "Video 1080p", kind: "video" },
+      { formatId: "140", label: "Audio m4a", kind: "audio" },
+    ],
+    selectedVideoFormatId: "137",
+    selectedAudioFormatId: "140",
   });
   assert.deepEqual(store.getState().ui.youtubeImport.preview, {
     title: "Sample Video Title",
@@ -160,12 +129,15 @@ test("laboratory store keeps YouTube import mode UI-only and non-persistent", ()
     thumbnail: "https://img.youtube.com/vi/abc123DEF45/hqdefault.jpg",
   });
   assert.equal(store.getState().ui.youtubeImport.status, "ready");
-  assert.equal(store.getState().ui.youtubeImport.strategy, "audio_only");
-  assert.deepEqual(store.getState().ui.youtubeImport.custom, {
-    resolution: "720p",
-    format: "webm",
-    audioExtraction: true,
+  assert.equal(store.getState().ui.youtubeImport.selectedVideoFormatId, "137");
+  assert.equal(store.getState().ui.youtubeImport.selectedAudioFormatId, "140");
+  store.dispatch({
+    type: "youtube-import-format-selected",
+    videoFormatId: "999",
+    audioFormatId: "140",
   });
+  assert.equal(store.getState().ui.youtubeImport.selectedVideoFormatId, null);
+  assert.equal(store.getState().ui.youtubeImport.selectedAudioFormatId, "140");
   store.dispatch({ type: "youtube-import-parse-error", reason: "invalid-url" });
   assert.deepEqual(store.getState().ui.youtubeImport, {
     url: "https://www.youtube.com/watch?v=abc123DEF45",
@@ -174,12 +146,6 @@ test("laboratory store keeps YouTube import mode UI-only and non-persistent", ()
     formats: [],
     selectedVideoFormatId: null,
     selectedAudioFormatId: null,
-    strategy: "audio_only",
-    custom: {
-      resolution: "720p",
-      format: "webm",
-      audioExtraction: true,
-    },
   });
   store.dispatch({ type: "youtube-import-set-url", url: "   " });
   assert.deepEqual(store.getState().ui.youtubeImport, {
@@ -189,12 +155,6 @@ test("laboratory store keeps YouTube import mode UI-only and non-persistent", ()
     formats: [],
     selectedVideoFormatId: null,
     selectedAudioFormatId: null,
-    strategy: "audio_only",
-    custom: {
-      resolution: "720p",
-      format: "webm",
-      audioExtraction: true,
-    },
   });
   store.dispatch({ type: "youtube-import-clear" });
   assert.deepEqual(store.getState().ui.youtubeImport, {
@@ -204,12 +164,6 @@ test("laboratory store keeps YouTube import mode UI-only and non-persistent", ()
     formats: [],
     selectedVideoFormatId: null,
     selectedAudioFormatId: null,
-    strategy: "video_best",
-    custom: {
-      resolution: "best",
-      format: "mp4",
-      audioExtraction: false,
-    },
   });
   store.dispatch({
     type: "youtube-import-set-url",
@@ -224,39 +178,16 @@ test("laboratory store keeps YouTube import mode UI-only and non-persistent", ()
     formats: [],
     selectedVideoFormatId: null,
     selectedAudioFormatId: null,
-    strategy: "video_best",
-    custom: {
-      resolution: "best",
-      format: "mp4",
-      audioExtraction: false,
-    },
   });
 
   const sourceDraftsBefore = store.getState().ui.sourceDrafts;
   const assetsBefore = store.getState().assets;
-
-  store.dispatch({ type: "enter-youtube-import-mode" });
-  assert.equal(store.getState().ui.labMode, "import-youtube");
-  assert.deepEqual(store.getState().ui.sourceDrafts, sourceDraftsBefore);
-  assert.deepEqual(store.getState().assets, assetsBefore);
-
-  store.dispatch({ type: "exit-youtube-import-mode" });
-  assert.equal(store.getState().ui.labMode, "normal");
   assert.deepEqual(store.getState().ui.sourceDrafts, sourceDraftsBefore);
   assert.deepEqual(store.getState().assets, assetsBefore);
 
   store.dispatch({
     type: "youtube-import-set-url",
     url: "https://youtu.be/ready12345",
-  });
-  store.dispatch({ type: "youtube-import-set-strategy", strategy: "low_size" });
-  store.dispatch({
-    type: "youtube-import-custom-updated",
-    patch: {
-      resolution: "480p",
-      format: "mkv",
-      audioExtraction: false,
-    },
   });
   store.dispatch({
     type: "youtube-import-parse-success",
@@ -266,15 +197,12 @@ test("laboratory store keeps YouTube import mode UI-only and non-persistent", ()
       duration: 44,
       thumbnail: "https://img.youtube.com/vi/ready12345/hqdefault.jpg",
     },
+    formats: [{ formatId: "18", label: "Muxed 360p", kind: "muxed" }],
+    selectedVideoFormatId: "18",
+    selectedAudioFormatId: "18",
   });
-  const readyImportBeforeExit = store.getState().ui.youtubeImport;
-  store.dispatch({ type: "exit-youtube-import-mode" });
   assert.equal(store.getState().ui.labMode, "normal");
-  assert.deepEqual(store.getState().ui.youtubeImport, readyImportBeforeExit);
-  store.dispatch({ type: "enter-youtube-import-mode" });
-  assert.deepEqual(store.getState().ui.youtubeImport, readyImportBeforeExit);
 
-  store.dispatch({ type: "enter-youtube-import-mode" });
   store.dispatch({ type: "youtube-import-set-url", url: "https://youtu.be/abc123DEF45" });
   store.dispatch({ type: "youtube-import-parse-start" });
   store.dispatch({
@@ -305,12 +233,6 @@ test("laboratory store keeps YouTube import mode UI-only and non-persistent", ()
     formats: [],
     selectedVideoFormatId: null,
     selectedAudioFormatId: null,
-    strategy: "video_best",
-    custom: {
-      resolution: "best",
-      format: "mp4",
-      audioExtraction: false,
-    },
   });
   assert.equal("youtubeImport" in (store.getState().persisted as Record<string, unknown>), false);
   assert.equal(store.getState().ui.sourceDrafts.youtubeUrl, "https://youtube.com/watch?v=abc123");
@@ -475,21 +397,15 @@ test("laboratory store resets project import drafts and checked YouTube state on
   assert.equal(store.getState().ui.projectImport.drafts.video.youtubeUrl, "");
   assert.equal(store.getState().ui.projectImport.lastAction, null);
   assert.equal(store.getState().ui.projectImport.lastRequestId, null);
-  assert.deepEqual(store.getState().ui.youtubeImport, {
-    url: null,
-    status: "idle",
-    preview: null,
-    formats: [],
-    selectedVideoFormatId: null,
-    selectedAudioFormatId: null,
-    strategy: "video_best",
-    custom: {
-      resolution: "best",
-      format: "mp4",
-      audioExtraction: false,
-    },
-  });
-});
+	  assert.deepEqual(store.getState().ui.youtubeImport, {
+	    url: null,
+	    status: "idle",
+	    preview: null,
+	    formats: [],
+	    selectedVideoFormatId: null,
+	    selectedAudioFormatId: null,
+	  });
+	});
 
 test("laboratory store resets project import check state when active project changes", () => {
   const store = createLabStore();

@@ -81,258 +81,6 @@ export function getEffectiveSourceMode(state: LabStoreState, kind: string) {
   return availableModes[0] || "local";
 }
 
-function getToolInstalled(state: LabStoreState, toolId: string) {
-  const toolState = asLabRecord(state.toolState);
-  const tools = asLabRecord(toolState["tools"]);
-  return asLabRecord(tools[toolId])["installed"] === true;
-}
-
-function getYoutubePresetIds(state: LabStoreState) {
-  const presetRecord = asLabRecord(getSourcePresets(state)["youtubePresets"]);
-  const configuredIds = Object.keys(presetRecord).filter(function (entry) {
-    return entry.trim() !== "";
-  });
-  const orderedIds = ["low", "medium", "best", "custom"].filter(function (entry) {
-    return configuredIds.includes(entry);
-  });
-  configuredIds.forEach(function (entry) {
-    if (!orderedIds.includes(entry)) {
-      orderedIds.push(entry);
-    }
-  });
-  return orderedIds.length > 0 ? orderedIds : ["medium"];
-}
-
-function getDefaultYoutubePreset(state: LabStoreState) {
-  const presetIds = getYoutubePresetIds(state);
-  if (presetIds.includes("medium")) {
-    return "medium";
-  }
-  if (presetIds.includes("custom")) {
-    return "custom";
-  }
-  return presetIds[0] || "medium";
-}
-
-function getYoutubePresetDefaults(state: LabStoreState, presetId: string) {
-  const presets = asLabRecord(getSourcePresets(state)["youtubePresets"]);
-  return asLabRecord(asLabRecord(presets[presetId])["defaultCustomValues"]);
-}
-
-function getYoutubeFormSections(state: LabStoreState) {
-  const ytDlpForm = asLabRecord(getSnapshotRecord(state)["ytDlpForm"]);
-  return Array.isArray(ytDlpForm["sections"]) ? (ytDlpForm["sections"] as unknown[]) : [];
-}
-
-function getYoutubePresetLabel(presetId: string, copy: LabI18n = LAB_FALLBACK_I18N) {
-  switch (presetId) {
-    case "low":
-      return copy.t("mediaAnalysis.source.youtubePresets.low", "Low");
-    case "medium":
-      return copy.t("mediaAnalysis.source.youtubePresets.medium", "Medium");
-    case "best":
-      return copy.t("mediaAnalysis.source.youtubePresets.best", "Best");
-    case "custom":
-      return copy.t("mediaAnalysis.source.youtubePresets.custom", "Custom");
-    default:
-      return presetId;
-  }
-}
-
-function getYoutubeSectionMeta(sectionId: string, copy: LabI18n = LAB_FALLBACK_I18N) {
-  switch (sectionId) {
-    case "download":
-      return {
-        title: copy.t("mediaAnalysis.source.youtubeForm.sections.download.title", "Capture Shape"),
-        hint: copy.t(
-          "mediaAnalysis.source.youtubeForm.sections.download.subtitle",
-          "Video profile, container handling, and optional audio extraction stay together here."
-        ),
-      };
-    case "captions":
-      return {
-        title: copy.t(
-          "mediaAnalysis.source.youtubeForm.sections.captions.title",
-          "Subtitle Capture"
-        ),
-        hint: copy.t(
-          "mediaAnalysis.source.youtubeForm.sections.captions.subtitle",
-          "Manual and auto subtitle switches share the same language filter frame."
-        ),
-      };
-    case "network":
-      return {
-        title: copy.t(
-          "mediaAnalysis.source.youtubeForm.sections.network.title",
-          "Transfer Controls"
-        ),
-        hint: copy.t(
-          "mediaAnalysis.source.youtubeForm.sections.network.subtitle",
-          "Playlist scope, rate limit, and retry behavior stay compact in one place."
-        ),
-      };
-    default:
-      return {
-        title: sectionId,
-        hint: copy.t(
-          "mediaAnalysis.source.youtubeForm.defaultSectionHint",
-          "Room-approved yt-dlp controls."
-        ),
-      };
-  }
-}
-
-function getYoutubeFieldLabel(fieldId: string, copy: LabI18n = LAB_FALLBACK_I18N) {
-  switch (fieldId) {
-    case "captureMode":
-      return copy.t("mediaAnalysis.source.youtubeForm.fields.captureMode", "Capture Mode");
-    case "format":
-      return copy.t("mediaAnalysis.source.youtubeForm.fields.format", "Format");
-    case "mergeOutputFormat":
-      return copy.t("mediaAnalysis.source.youtubeForm.fields.mergeOutputFormat", "Container");
-    case "recodeVideo":
-      return copy.t("mediaAnalysis.source.youtubeForm.fields.recodeVideo", "Recode Video");
-    case "audioFormat":
-      return copy.t("mediaAnalysis.source.youtubeForm.fields.audioFormat", "Audio Format");
-    case "audioQuality":
-      return copy.t("mediaAnalysis.source.youtubeForm.fields.audioQuality", "Audio Quality");
-    case "writeSubtitles":
-      return copy.t("mediaAnalysis.source.youtubeForm.fields.writeSubtitles", "Write Subtitles");
-    case "writeAutoSubtitles":
-      return copy.t(
-        "mediaAnalysis.source.youtubeForm.fields.writeAutoSubtitles",
-        "Write Auto Subtitles"
-      );
-    case "subtitlesLang":
-      return copy.t("mediaAnalysis.source.youtubeForm.fields.subtitlesLang", "Subtitle Languages");
-    case "playlistItems":
-      return copy.t("mediaAnalysis.source.youtubeForm.fields.playlistItems", "Playlist Items");
-    case "limitRate":
-      return copy.t("mediaAnalysis.source.youtubeForm.fields.limitRate", "Rate Limit");
-    case "retries":
-      return copy.t("mediaAnalysis.source.youtubeForm.fields.retries", "Retries");
-    default:
-      return fieldId;
-  }
-}
-
-function getYoutubePlaceholder(fieldId: string, copy: LabI18n = LAB_FALLBACK_I18N) {
-  switch (fieldId) {
-    case "subtitlesLang":
-      return copy.t("mediaAnalysis.source.youtubeForm.placeholders.subtitlesLang", "en.*,tr.*");
-    case "playlistItems":
-      return copy.t("mediaAnalysis.source.youtubeForm.placeholders.playlistItems", "1,3-5");
-    case "limitRate":
-      return copy.t("mediaAnalysis.source.youtubeForm.placeholders.limitRate", "2M");
-    default:
-      return "";
-  }
-}
-
-function getYoutubeOptionLabel(
-  fieldId: string,
-  optionValue: string,
-  copy: LabI18n = LAB_FALLBACK_I18N
-) {
-  if (fieldId === "captureMode") {
-    switch (optionValue) {
-      case "video+audio":
-        return copy.t(
-          "mediaAnalysis.source.youtubeForm.options.captureMode.videoAudio",
-          "Video + Audio"
-        );
-      case "audio-only":
-        return copy.t(
-          "mediaAnalysis.source.youtubeForm.options.captureMode.audioOnly",
-          "Audio Only"
-        );
-      case "video-only":
-        return copy.t(
-          "mediaAnalysis.source.youtubeForm.options.captureMode.videoOnly",
-          "Video Only"
-        );
-      default:
-        return optionValue;
-    }
-  }
-  if (fieldId === "format") {
-    switch (optionValue) {
-      case "bestvideo*+bestaudio/best":
-        return copy.t("mediaAnalysis.source.youtubeForm.options.format.best", "Best available");
-      case "best[height<=1080][ext=mp4]/best[height<=1080]/best":
-        return copy.t(
-          "mediaAnalysis.source.youtubeForm.options.format.mp4_1080",
-          "1080p MP4 or lower"
-        );
-      case "best[height<=720][ext=mp4]/best[height<=720]/best":
-        return copy.t(
-          "mediaAnalysis.source.youtubeForm.options.format.mp4_720",
-          "720p MP4 or lower"
-        );
-      case "best[height<=480][ext=mp4]/best[height<=480]/best":
-        return copy.t(
-          "mediaAnalysis.source.youtubeForm.options.format.mp4_480",
-          "480p MP4 or lower"
-        );
-      case "best[height<=360][ext=mp4]/best[height<=360]/worst[ext=mp4]/worst":
-        return copy.t(
-          "mediaAnalysis.source.youtubeForm.options.format.low",
-          "360p / low bandwidth"
-        );
-      default:
-        return optionValue;
-    }
-  }
-  if (fieldId === "audioFormat") {
-    if (optionValue === "none") {
-      return copy.t("mediaAnalysis.source.youtubeForm.options.audio.none", "Keep original media");
-    }
-    return optionValue.toUpperCase();
-  }
-  if (fieldId === "mergeOutputFormat") {
-    return optionValue === "auto"
-      ? copy.t("mediaAnalysis.source.youtubeForm.options.container.auto", "Auto")
-      : optionValue.toUpperCase();
-  }
-  if (fieldId === "recodeVideo") {
-    return optionValue === "none"
-      ? copy.t("mediaAnalysis.source.youtubeForm.options.recode.none", "No recode")
-      : optionValue.toUpperCase();
-  }
-  if (fieldId === "audioQuality") {
-    switch (optionValue) {
-      case "best":
-        return copy.t(
-          "mediaAnalysis.source.youtubeForm.options.audioQuality.best",
-          "Use extractor default"
-        );
-      case "0":
-        return copy.t(
-          "mediaAnalysis.source.youtubeForm.options.audioQuality.max",
-          "0 · Max quality"
-        );
-      case "2":
-        return copy.t(
-          "mediaAnalysis.source.youtubeForm.options.audioQuality.high",
-          "2 · High quality"
-        );
-      case "5":
-        return copy.t(
-          "mediaAnalysis.source.youtubeForm.options.audioQuality.medium",
-          "5 · Balanced"
-        );
-      case "7":
-        return copy.t(
-          "mediaAnalysis.source.youtubeForm.options.audioQuality.small",
-          "7 · Smaller file"
-        );
-      default:
-        return optionValue;
-    }
-  }
-  return optionValue;
-}
-
 function getLoadSourceActionLabel(
   mode: string,
   hasSource: boolean,
@@ -342,11 +90,6 @@ function getLoadSourceActionLabel(
     return hasSource
       ? copy.t("mediaAnalysis.source.actions.replaceUrl", "Replace URL Source")
       : copy.t("mediaAnalysis.source.actions.downloadUrl", "Download URL Source");
-  }
-  if (mode === "youtube") {
-    return hasSource
-      ? copy.t("mediaAnalysis.source.actions.replaceYoutube", "Replace YouTube Source")
-      : copy.t("mediaAnalysis.source.actions.downloadYoutube", "Capture from YouTube");
   }
   return hasSource
     ? copy.t("mediaAnalysis.source.actions.replaceLocal", "Replace Local Source")
@@ -358,9 +101,6 @@ function getLoadSourceDisabled(state: LabStoreState, mode: string) {
   if (mode === "url") {
     return drafts.urlInput.trim() === "";
   }
-  if (mode === "youtube") {
-    return drafts.youtubeUrl.trim() === "" || getToolInstalled(state, "yt-dlp") !== true;
-  }
   return false;
 }
 
@@ -369,6 +109,9 @@ function renderSourceActionPanel(
   mode: string,
   copy: LabI18n = LAB_FALLBACK_I18N
 ) {
+  if (mode === "youtube") {
+    return "";
+  }
   const source = getProjectSource(state);
   const hasSource =
     asNonEmptyString(source["storedFileName"]) !== null ||
@@ -386,109 +129,6 @@ function renderSourceActionPanel(
       </button>
       ${sourceLocked ? `<span class="labx-source-locked-hint">${escapeHtml(lockHint)}</span>` : ""}
     </div>
-  `;
-}
-
-function renderYoutubeCustomField(
-  fieldRecord: Record<string, unknown>,
-  youtubeCustomDrafts: Record<string, unknown>,
-  copy: LabI18n = LAB_FALLBACK_I18N
-) {
-  const fieldId = asNonEmptyString(fieldRecord["id"]);
-  if (fieldId === null) {
-    return "";
-  }
-  const fieldType = asNonEmptyString(fieldRecord["type"]) || "text";
-  const fieldValue = youtubeCustomDrafts[fieldId];
-  const fieldLabel = getYoutubeFieldLabel(fieldId, copy);
-  const itemClassName =
-    asNonEmptyString(fieldRecord["span"]) === "full"
-      ? "labx-source-intake__custom-item labx-source-intake__custom-item--full"
-      : "labx-source-intake__custom-item";
-
-  if (fieldType === "toggle") {
-    return `
-      <label class="labx-field ${itemClassName}">
-        <span>${escapeHtml(fieldLabel)}</span>
-        <span class="labx-source-intake__checkbox">
-          <input type="checkbox" data-lab-field="source.youtubeCustom.${escapeHtml(fieldId)}" ${
-            fieldValue === true ? "checked" : ""
-          } />
-        </span>
-      </label>
-    `;
-  }
-
-  if (fieldType === "select") {
-    const options = Array.isArray(fieldRecord["options"])
-      ? (fieldRecord["options"] as unknown[])
-      : [];
-    const labFieldName =
-      fieldId === "captureMode"
-        ? "source.youtubeCaptureMode"
-        : `source.youtubeCustom.${escapeHtml(fieldId)}`;
-    return `
-      <label class="labx-field ${itemClassName}">
-        <span>${escapeHtml(fieldLabel)}</span>
-        <select class="labx-select" data-lab-field="${labFieldName}">
-          ${options
-            .map(function (optionValue) {
-              const optionRecord = asLabRecord(optionValue);
-              const rawValue = asNonEmptyString(optionRecord["value"]) || "";
-              return `<option value="${escapeHtml(rawValue)}" ${
-                String(fieldValue || "") === rawValue ? "selected" : ""
-              }>${escapeHtml(getYoutubeOptionLabel(fieldId, rawValue, copy))}</option>`;
-            })
-            .join("")}
-        </select>
-      </label>
-    `;
-  }
-
-  return `
-    <label class="labx-field ${itemClassName}">
-      <span>${escapeHtml(fieldLabel)}</span>
-      <input
-        class="labx-input"
-        type="${fieldType === "number" ? "number" : "text"}"
-        data-lab-field="source.youtubeCustom.${escapeHtml(fieldId)}"
-        value="${fieldValue === null || fieldValue === undefined ? "" : escapeHtml(String(fieldValue))}"
-        placeholder="${escapeHtml(getYoutubePlaceholder(fieldId, copy))}"
-      />
-    </label>
-  `;
-}
-
-function renderYoutubeCustomSection(
-  sectionRecord: Record<string, unknown>,
-  youtubeCustomDrafts: Record<string, unknown>,
-  copy: LabI18n = LAB_FALLBACK_I18N
-) {
-  const sectionId = asNonEmptyString(sectionRecord["id"]) || "custom";
-  const sectionMeta = getYoutubeSectionMeta(sectionId, copy);
-  const fields = Array.isArray(sectionRecord["fields"])
-    ? (sectionRecord["fields"] as unknown[])
-    : [];
-  const fieldMarkup = fields
-    .map(function (fieldValue) {
-      return renderYoutubeCustomField(asLabRecord(fieldValue), youtubeCustomDrafts, copy);
-    })
-    .join("");
-
-  if (fieldMarkup.trim() === "") {
-    return "";
-  }
-
-  return `
-    <section class="labx-source-intake__custom-frame">
-      <div class="labx-source-intake__frame-head">
-        <div>
-          <strong>${escapeHtml(sectionMeta.title)}</strong>
-          <p class="labx-panel-hint">${escapeHtml(sectionMeta.hint)}</p>
-        </div>
-      </div>
-      <div class="labx-source-intake__custom-grid">${fieldMarkup}</div>
-    </section>
   `;
 }
 
@@ -683,12 +323,8 @@ export function renderSourceIntake(state: LabStoreState, copy: LabI18n = LAB_FAL
   const sourceKind = getSourceKind(state);
   const sourceMode = getEffectiveSourceMode(state, sourceKind);
   const sourceDrafts = state.ui.sourceDrafts;
-  const ytDlpInstalled = getToolInstalled(state, "yt-dlp");
   const kindOptions = getSourceKindOptions(state);
   const modeOptions = getSourceModeOptions(state, sourceKind);
-  const presetIds = getYoutubePresetIds(state);
-  const youtubePreset =
-    asNonEmptyString(sourceDrafts.youtubePreset) || getDefaultYoutubePreset(state);
   const sourceReadyForMode =
     asNonEmptyString(source["storedPath"]) !== null &&
     isLoadedSourceMatchingMode(source, sourceMode);
@@ -699,15 +335,6 @@ export function renderSourceIntake(state: LabStoreState, copy: LabI18n = LAB_FAL
     asNonEmptyString(source["storedFileName"]) ||
     asNonEmptyString(source["routeLabel"]) ||
     copy.t("mediaAnalysis.source.currentSource", "current source");
-  const youtubeCustomDrafts = {
-    ...getYoutubePresetDefaults(state, youtubePreset),
-    ...asLabRecord(sourceDrafts.youtubeCustom),
-  };
-  const customFields = getYoutubeFormSections(state)
-    .map(function (section) {
-      return renderYoutubeCustomSection(asLabRecord(section), youtubeCustomDrafts, copy);
-    })
-    .join("");
   const secondaryRowContent =
     sourceMode === "url"
       ? `
@@ -726,80 +353,8 @@ export function renderSourceIntake(state: LabStoreState, copy: LabI18n = LAB_FAL
           </div>
         </section>
       `
-      : sourceMode === "youtube"
+      : sourceMode === "local"
         ? `
-          <section class="labx-source-intake__frame labx-source-intake__frame--mode">
-            <div class="labx-source-intake__frame-head">
-              <div>
-                <strong>${escapeHtml(copy.t("mediaAnalysis.source.youtubeCapture.title", "YouTube Capture"))}</strong>
-                <p class="labx-panel-hint">${escapeHtml(copy.t("mediaAnalysis.source.youtubeCapture.hint", "yt-dlp controls in one place."))}</p>
-              </div>
-            </div>
-            <div class="labx-source-intake__youtube-stack">
-              <div class="labx-source-intake__youtube-main">
-                <label class="labx-field labx-source-intake__youtube-main-item labx-source-intake__youtube-main-item--wide">
-                  <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.youtubeUrl", "YouTube URL"))}</span>
-                  <input class="labx-input" data-lab-field="source.youtubeUrl" value="${escapeHtml(sourceDrafts.youtubeUrl)}" placeholder="https://youtube.com/watch?v=..." ${sourceFieldDisabledAttr} />
-                </label>
-                <label class="labx-field labx-source-intake__youtube-main-item">
-                  <span>${escapeHtml(copy.t("mediaAnalysis.source.youtubeForm.fields.captureMode", "Capture Mode"))}</span>
-                  <select class="labx-select" data-lab-field="source.youtubeCaptureMode" ${sourceFieldDisabledAttr}>
-                    <option value="video+audio" ${sourceDrafts.youtubeCaptureMode === "video+audio" ? "selected" : ""}>${escapeHtml(getYoutubeOptionLabel("captureMode", "video+audio", copy))}</option>
-                    <option value="audio-only" ${sourceDrafts.youtubeCaptureMode === "audio-only" ? "selected" : ""}>${escapeHtml(getYoutubeOptionLabel("captureMode", "audio-only", copy))}</option>
-                    <option value="video-only" ${sourceDrafts.youtubeCaptureMode === "video-only" ? "selected" : ""}>${escapeHtml(getYoutubeOptionLabel("captureMode", "video-only", copy))}</option>
-                  </select>
-                </label>
-              </div>
-              <section class="labx-source-intake__frame labx-source-intake__frame--sub">
-                <div class="labx-source-intake__frame-head">
-                  <div>
-                    <strong>${escapeHtml(copy.t("mediaAnalysis.source.youtubePresetLabel", "YouTube Preset"))}</strong>
-                    <p class="labx-panel-hint">${escapeHtml(copy.t("mediaAnalysis.source.youtubePresetHint", "Pick a preset or Custom."))}</p>
-                  </div>
-                </div>
-                <div class="labx-chip-row">
-                  ${presetIds
-                    .map(function (presetId) {
-                      return `
-                        <button
-                          class="labx-chip-button"
-                          type="button"
-                          data-lab-action="source-youtube-preset"
-                          data-lab-value="${escapeHtml(presetId)}"
-                          data-selected="${presetId === youtubePreset ? "true" : "false"}"
-                          ${sourceFieldDisabledAttr}
-                        >
-                          ${escapeHtml(getYoutubePresetLabel(presetId, copy))}
-                        </button>
-                      `;
-                    })
-                    .join("")}
-                </div>
-              </section>
-              ${
-                youtubePreset === "custom" && customFields.trim() !== ""
-                  ? `
-                    <section class="labx-source-intake__frame labx-source-intake__frame--sub">
-                      <div class="labx-source-intake__frame-head">
-                        <div>
-                          <strong>${escapeHtml(copy.t("mediaAnalysis.source.youtubeCustomTitle", "Custom yt-dlp Settings"))}</strong>
-                          <p class="labx-panel-hint">${escapeHtml(copy.t("mediaAnalysis.source.youtubeCustomHint", "Fine-tune yt-dlp options."))}</p>
-                        </div>
-                      </div>
-                      <div class="labx-source-intake__custom-shell">${customFields}</div>
-                    </section>
-                  `
-                  : ""
-              }
-              ${
-                ytDlpInstalled
-                  ? ""
-                  : `<p class="labx-panel-hint">${escapeHtml(copy.t("mediaAnalysis.source.youtubeDisabled", "yt-dlp is required for YouTube capture. Install it from Tool Manager to enable this import method."))}</p>`
-              }
-            </div>
-          </section>
-        `
-        : `
           <section class="labx-source-intake__frame labx-source-intake__frame--mode">
             <div class="labx-source-intake__frame-head">
               <div>
@@ -807,7 +362,8 @@ export function renderSourceIntake(state: LabStoreState, copy: LabI18n = LAB_FAL
               </div>
             </div>
           </section>
-        `;
+        `
+        : "";
 
   return `
     <section

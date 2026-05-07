@@ -162,6 +162,7 @@ function hydrateWorkspaceUi(state: LabStoreState, workspace: unknown) {
         : state.ui.workspace.selectedIntents,
       analysisPrepExpandedIntentIds: [],
       sourceIntakeCollapsed: ws.sourceIntakeCollapsed === true,
+      selectionLoopEnabled: ws.selectionLoopEnabled === true,
       selectionMicroZoomOpen: ws.selectionMicroZoomOpen === true,
       controlsDrawerOpen: ws.controlsDrawerOpen !== false,
       controlsDrawerTab:

@@ -536,6 +536,38 @@
   opacity: 0.42;
 }
 
+.labx-icon-rail-popover .labx-control-row {
+  grid-template-columns: minmax(0, 4.35rem) minmax(0, 1fr) max-content;
+  gap: 0.32rem 0.42rem;
+}
+
+.labx-icon-rail-popover .labx-control-row .labx-control-stepper {
+  grid-column: 2 / -1;
+  justify-self: end;
+}
+
+.labx-icon-rail-popover .labx-control-row__label,
+.labx-icon-rail-popover .labx-control-row__value,
+.labx-icon-rail-popover .labx-select,
+.labx-icon-rail-popover .labx-range {
+  min-width: 0;
+}
+
+.labx-icon-rail-popover .labx-control-row__label {
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+
+.labx-icon-rail-popover .labx-eq-band {
+  grid-template-columns: minmax(0, 3.8rem) minmax(0, 1fr) max-content;
+  gap: 0.3rem 0.4rem;
+}
+
+.labx-icon-rail-popover .labx-eq-band .labx-control-stepper {
+  grid-column: 2 / -1;
+  justify-self: end;
+}
+
 .labx-range {
   -webkit-appearance: none;
   appearance: none;

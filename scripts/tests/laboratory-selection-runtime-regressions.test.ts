@@ -153,6 +153,11 @@ test("waveform timeline renders interpretation guidance even without an active s
   assert.match(markup, /Reduce gain or apply EQ balancing/);
   assert.match(markup, /Slow playback can reveal temporal anomalies/);
   assert.match(markup, /Use slow playback to inspect transient details/);
+  assert.match(markup, /labx-timeline__player-row/);
+  assert.match(markup, /labx-timeline__selection-row/);
+  assert.match(markup, /workspace\.audioFocus\.playbackRate/);
+  assert.match(markup, /data-lab-action="timeline-play-selection"[^>]*disabled/);
+  assert.match(markup, /data-lab-action="timeline-set-selection-boundary"/);
 });
 
 test("interpretation engine maps fast playback and wide selection guidance deterministically", () => {
@@ -654,11 +659,13 @@ test("waveform timeline hides selection affordances for invalid numeric ranges",
     startMs: 2400,
   });
 
-  assert.doesNotMatch(zeroWidthMarkup, /timeline-export-clip/);
-  assert.doesNotMatch(zeroWidthMarkup, /labx-timeline__selection/);
+  assert.match(zeroWidthMarkup, /data-lab-action="timeline-set-selection-boundary"/);
+  assert.match(zeroWidthMarkup, /data-lab-action="timeline-clear"[^>]*disabled/);
+  assert.doesNotMatch(zeroWidthMarkup, /labx-timeline__selection lab-selection-overlay/);
   assert.match(zeroWidthMarkup, /End must be greater than start/);
-  assert.doesNotMatch(invertedMarkup, /timeline-export-clip/);
-  assert.doesNotMatch(invertedMarkup, /labx-timeline__selection/);
+  assert.match(invertedMarkup, /data-lab-action="timeline-set-selection-boundary"/);
+  assert.match(invertedMarkup, /data-lab-action="timeline-clear"[^>]*disabled/);
+  assert.doesNotMatch(invertedMarkup, /labx-timeline__selection lab-selection-overlay/);
 });
 
 test("waveform timeline renders selector-driven suggested actions alongside live actions", () => {

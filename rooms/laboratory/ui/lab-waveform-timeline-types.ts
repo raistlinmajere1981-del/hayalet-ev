@@ -65,6 +65,7 @@ export type LabWaveformTimelineModel = {
   interpretationItems?: LabInterpretationItem[];
   lockState?: LabWorkspaceLockState;
   roiFocusActive?: boolean;
+  selectionLoopEnabled?: boolean;
   selectionMicroZoomOpen?: boolean;
   selectionPanelPlacement?: "side" | "timeline";
   selectionSuggestions?: LabActionSuggestion[];

@@ -5,7 +5,6 @@ import type {
   LabSourceDrafts,
   LabStoreState,
   LabWorkspaceUiState,
-  LabYoutubeImportCustomSettings,
 } from "../../models/lab-types.js";
 import {
   DEFAULT_AUDIO_FOCUS_SETTINGS,
@@ -95,14 +94,6 @@ export function createIdleExecutionRuntime(): LabStoreState["ui"]["executionRunt
   };
 }
 
-export function createDefaultYoutubeImportCustomSettings(): LabYoutubeImportCustomSettings {
-  return {
-    resolution: "best",
-    format: "mp4",
-    audioExtraction: false,
-  };
-}
-
 export function createIdleYoutubeImportState(): LabStoreState["ui"]["youtubeImport"] {
   return {
     url: null,
@@ -111,8 +102,6 @@ export function createIdleYoutubeImportState(): LabStoreState["ui"]["youtubeImpo
     formats: [],
     selectedVideoFormatId: null,
     selectedAudioFormatId: null,
-    strategy: "video_best",
-    custom: createDefaultYoutubeImportCustomSettings(),
   };
 }
 
@@ -130,6 +119,7 @@ export function createDefaultWorkspaceUiState(): LabWorkspaceUiState {
     selectedIntents: [],
     analysisPrepExpandedIntentIds: [],
     sourceIntakeCollapsed: false,
+    selectionLoopEnabled: false,
     selectionMicroZoomOpen: false,
     controlsDrawerOpen: true,
     controlsDrawerTab: "audio",
