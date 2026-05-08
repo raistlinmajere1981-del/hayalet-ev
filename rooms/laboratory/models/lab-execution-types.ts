@@ -231,10 +231,7 @@ export interface LabGlobalProcessSummary {
 
 export interface LabRightPanelContext {
   activeIntentLabel: string | null;
-  candidateStatus: LabExecutionCandidate["status"] | null;
-  commitmentStatus: LabExecutionCommitment["status"] | "none";
   processSummary: LabGlobalProcessSummary;
   selectionLabel: string | null;
   selectionRangeLabel: string | null;
-  stagingStatus: LabExecutionStaging["status"] | "none";
 }

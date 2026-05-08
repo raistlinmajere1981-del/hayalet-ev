@@ -135,92 +135,6 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.labx-right-context__tier-2 {
-  display: grid;
-  gap: 0.5rem;
-  padding: 0.45rem 0;
-}
-
-.labx-right-context__decision-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  padding: 0.5rem 0.6rem;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-left-width: 2px;
-  border-radius: var(--labx-radius-card);
-  background: rgba(255, 255, 255, 0.025);
-  transition:
-    border-color 0.15s,
-    background 0.15s;
-}
-
-.labx-right-context__decision-card > span:first-child {
-  font-size: 0.66rem;
-  color: var(--labx-text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.labx-right-context__decision-card > strong {
-  font-size: 0.82rem;
-  transition: opacity 120ms ease-out;
-}
-
-.labx-right-context__decision-card[data-accent="none"] {
-  border-left-color: rgba(255, 255, 255, 0.1);
-}
-
-.labx-right-context__decision-card[data-accent="success"] {
-  border-left-color: var(--labx-success);
-  background: rgba(130, 227, 177, 0.03);
-}
-
-.labx-right-context__decision-card[data-accent="error"] {
-  border-left-color: var(--labx-error);
-  background: rgba(255, 127, 136, 0.03);
-}
-
-.labx-right-context__decision-card[data-accent="pending"] {
-  border-left-color: rgba(255, 255, 255, 0.22);
-}
-
-.labx-right-context__decision-card[data-accent="staging"] {
-  border-left-color: var(--labx-accent);
-  background: rgba(92, 215, 223, 0.04);
-}
-
-.labx-right-context__implication {
-  margin: 0.1rem 0 0;
-  font-size: 0.64rem;
-  color: var(--labx-text-dim);
-  font-style: italic;
-  line-height: 1.4;
-}
-
-/* ===== §6 EXECUTION PANEL SECONDARY TREATMENT ===== */
-
-.lab-execution-collapsible--secondary {
-  opacity: 0.78;
-  transition: opacity 120ms ease-out;
-}
-
-.lab-execution-collapsible--secondary[open] {
-  opacity: 1;
-}
-
-.lab-execution-collapsible--secondary .lab-execution-collapsible__summary {
-  font-size: 0.82rem;
-}
-
-/* ===== §7a OVERLAY TRIGGER GLOW ===== */
-
-.lab-execution-details-trigger[data-overlay-source="true"] {
-  box-shadow:
-    0 0 0 1px rgba(92, 215, 223, 0.3),
-    0 0 12px rgba(92, 215, 223, 0.15);
-}
-
 /* ===== §5 PHASE 5 — FLOW COHERENCE LAYER ===== */
 
 @keyframes labx-fade-in {
@@ -230,22 +144,6 @@
   to {
     opacity: 1;
   }
-}
-
-@keyframes labx-staging-arrive {
-  0% {
-    background: rgba(92, 215, 223, 0.12);
-  }
-  60% {
-    background: rgba(92, 215, 223, 0.07);
-  }
-  100% {
-    background: rgba(92, 215, 223, 0.04);
-  }
-}
-
-.labx-right-context__decision-card[data-accent="staging"] {
-  animation: labx-staging-arrive 0.45s ease forwards;
 }
 
 /* ===== §9a INTERACTIVE TRANSITIONS ===== */

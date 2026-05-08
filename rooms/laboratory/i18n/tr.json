@@ -393,33 +393,7 @@
         "cancelSub": "Calisan analiz durdurulacak"
       },
       "result": {
-        "eyebrow": "Sonuc",
-        "title": "Karar Yuzeyi",
-        "impl": {
-          "candidateViable": "Yapisal olarak calistirilabilir",
-          "candidateUnstable": "Yapi eksik - degerlendirme gerekli",
-          "candidateNotViable": "Gecersiz - yol revizyonu gerekli",
-          "candidateNone": "Degerlendirme bekleniyor",
-          "commitmentCommitted": "Yol staging icin secildi",
-          "commitmentRevoked": "Onay geri cekildi",
-          "commitmentNone": "Henuz onaylanmis yol yok",
-          "stagingStaged": "Calistirma icin hazirlandi",
-          "stagingNotStaged": "Henuz hazirlanmadi",
-          "stagingNone": "Staging hazirligi bekleniyor"
-        },
         "partialWarn": "Analiz tamamlandi ancak bazi moduller uyari verdi.",
-        "coherenceState": "Durum",
-        "coherenceAxis": "Baskin eksen",
-        "coherenceIntegrity": "Yapisal butunluk",
-        "coherenceConfidence": "Guven",
-        "readinessLevel": "Seviye",
-        "readinessPressure": "Karar baskisi",
-        "readinessConfidence": "Guven",
-        "bridgeAdapter": "Bağdaştırıcı",
-        "bridgeOperation": "Operasyon",
-        "bridgeRequired": "Gerekli",
-        "bridgeOutput": "Cikti",
-        "advisoriesTitle": "Degerlendirmeler",
         "fresh": "Guncel",
         "stale": "Eski",
         "dirty": "Workspace farkli",
@@ -512,180 +486,11 @@
         }
       }
     },
-    "journey": {
-      "ariaLabel": "Calisma akisi",
-      "steps": {
-        "select": "Sec",
-        "plan": "Planla",
-        "evaluate": "Degerlendir",
-        "decide": "Karar ver",
-        "stage": "Hazirla"
-      }
-    },
     "rightContext": {
-      "eyebrow": "Aktif durum",
-      "title": "Karar Yuzeyi",
       "selection": "Secim",
       "emptySelection": "Aktif secim yok",
       "intent": "Niyet",
-      "emptyIntent": "Secili niyet yok",
-      "candidate": "Aday",
-      "commitment": "Karar",
-      "staging": "Hazirlama",
-      "process": "Surec",
-      "emptyTitle": "Karar yuzeyi",
-      "emptyBody": "Karar akisini baslatmak icin bir kaynak yukle.",
-      "status": {
-        "none": "-",
-        "viable": "Gecerli",
-        "unstable": "Dengesiz",
-        "not-viable": "Gecersiz",
-        "notViable": "Gecersiz",
-        "committed": "Onaylandi",
-        "revoked": "Iptal Edildi",
-        "staged": "Hazir",
-        "not-staged": "Beklemede",
-        "notStaged": "Beklemede"
-      },
-      "implication": {
-        "candidate": {
-          "viable": "Yapisal olarak uygulanabilir",
-          "unstable": "Yapi eksik - ek degerlendirme gerekiyor",
-          "notViable": "Uygun degil - yol revizyon istiyor",
-          "none": "Degerlendirme bekleniyor"
-        },
-        "commitment": {
-          "committed": "Yol bir sonraki adim icin secildi",
-          "revoked": "Secim geri alindi - karara don",
-          "none": "Henuz bir yol secilmedi"
-        },
-        "staging": {
-          "staged": "Yurutme icin hazir",
-          "notStaged": "Henuz hazirlanmadi - onkosullari gozden gecir",
-          "none": "Hazirlama uygunlugu bekleniyor"
-        }
-      }
-    },
-    "executionDetails": {
-      "open": "Detaylari gor",
-      "close": "Detaylari kapat",
-      "eyebrow": "Calistirma zinciri",
-      "title": "Calistirma detaylari"
-    },
-    "executionPanels": {
-      "toggle": "Detay",
-      "shared": {
-        "steps": "Adimlar",
-        "expectedOutputs": "Beklenen ciktilar",
-        "notes": "Notlar",
-        "uncertainties": "Belirsizlikler",
-        "warnings": "Uyarilar",
-        "confidenceValue": "{value}% guven"
-      },
-      "metricValues": {
-        "low": "Dusuk",
-        "medium": "Orta",
-        "high": "Yuksek"
-      },
-      "plan": {
-        "eyebrow": "Calistirma plani",
-        "intro": "Sistem buna su sekilde yaklasirdi:",
-        "notes": "Plan notlari"
-      },
-      "simulation": {
-        "eyebrow": "Simulasyon onizlemesi",
-        "effects": "Ne olurdu",
-        "warnings": "Simulasyon uyarilari",
-        "intensity": "Yogunluk",
-        "risk": "Risk",
-        "outro": "Uygulansaydi, gercek calistirma baslamadan yukaridaki tahmini gozlemlerdin."
-      },
-      "readiness": {
-        "eyebrow": "Calistirma hazirligi",
-        "readyIntro": "Calistirma hazirligi stabil gorunuyor",
-        "reviewIntro": "Bu yol herhangi bir calistirma adimindan once inceleme ister",
-        "blockedIntro": "Bu yol henuz calistirmaya hazir degil",
-        "blockers": "Hazirlik blokajlari",
-        "notes": "Inceleme notlari",
-        "status": {
-          "ready": "Hazir",
-          "needs-review": "Inceleme gerekli",
-          "blocked": "Bloke"
-        }
-      },
-      "payload": {
-        "eyebrow": "Calistirma payload onizlemesi",
-        "intro": "Sistem calistirma girdisini bu sekilde yapilandirirdi. Hicbir calistirma yapilmaz.",
-        "action": "Aksiyon",
-        "readinessPass": "Hazirlik sinyali bu onizlemeden geciyor",
-        "readinessReview": "Hazirlik sinyali inceleme istiyor",
-        "input": "Onizleme girdisi",
-        "parameters": "Onizleme parametreleri",
-        "expectedOutputs": "Onizleme beklenen ciktilari",
-        "notes": "Onizleme notlari"
-      },
-      "reflection": {
-        "eyebrow": "Calistirma degerlendirmesi",
-        "proceed": "Bu yol stabil gorunuyor",
-        "review": "Bu yol ek inceleme gerektirebilir",
-        "avoid": "Bu yol mevcut haliyle onerilmiyor",
-        "reasoning": "Gerekce",
-        "tradeoffs": "Odunlesimler",
-        "alternatives": "Alternatifler",
-        "decisions": {
-          "avoid": "Kacin",
-          "proceed": "Ilerle",
-          "review": "Incele"
-        }
-      },
-      "alternatives": {
-        "eyebrow": "Alternatif degerlendirmesi",
-        "actionPrefix": "Alternatif yaklasim {actionType} olurdu."
-      },
-      "relativeAdvantages": {
-        "higher-precision": "Daha yuksek hassasiyet",
-        "higher-coverage": "Daha genis kapsam",
-        "lower-risk": "Daha dusuk risk",
-        "faster": "Daha hizli",
-        "more-stable": "Daha stabil"
-      },
-      "candidate": {
-        "eyebrow": "Calistirma adayi",
-        "structuralIntegrity": "Yapisal butunluk",
-        "readiness": "Hazirlik",
-        "reflection": "Degerlendirme",
-        "status": {
-          "not-viable": "Uygun degil",
-          "unstable": "Kararsiz",
-          "viable": "Uygun"
-        },
-        "integrity": {
-          "complete": "Tam",
-          "insufficient": "Yetersiz",
-          "partial": "Kismi"
-        }
-      },
-      "commitment": {
-        "eyebrow": "Calistirma secimi",
-        "blocked": "Bu yol henuz kullanici secimi icin yapisal olarak uygun degil.",
-        "pending": "Henuz bilincili olarak secilmis bir yol yok.",
-        "choose": "Bu yolu sec",
-        "committed": "Secildi",
-        "revoke": "Secimi geri al",
-        "chosenRecently": "Yakin zamanda secildi"
-      },
-      "staging": {
-        "eyebrow": "Calistirma hazirlama",
-        "userChoice": "Kullanici secimi",
-        "status": {
-          "not-staged": "Hazirlanmadi",
-          "staged": "Hazirlandi"
-        },
-        "choiceStatus": {
-          "committed": "Secildi",
-          "none": "Yok"
-        }
-      }
+      "emptyIntent": "Secili niyet yok"
     },
     "timeline": {
       "eyebrow": "Zaman cizgisi",
@@ -697,6 +502,7 @@
       "selectedAction": "Secili aksiyon",
       "clear": "Temizle",
       "preview": "Onizleme",
+      "steps": "Adimlar",
       "outputs": "Ciktilar",
       "estimatedCost": "Tahmini maliyet",
       "intentSelected": "Niyet secildi",

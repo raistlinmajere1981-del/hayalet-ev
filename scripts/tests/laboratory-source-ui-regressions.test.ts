@@ -464,7 +464,12 @@ test("laboratory v2 shell renders source intake in the setup drawer and preview 
     /labx-timeline__header|Embedded audio|Preview and waveform share/
   );
   assert.doesNotMatch(surface.main, /Source setup controls/);
-  assert.equal(surface.side.trim(), "");
+  assert.match(surface.side, /data-lab-selection-panel="true"/);
+  assert.match(surface.side, /Önerilen İşlemler/);
+  assert.doesNotMatch(
+    surface.side,
+    /data-lab-execution-plan|data-lab-execution-simulation|data-lab-execution-payload-preview|data-lab-execution-details/
+  );
   assert.match(drawer, /class="labx-drawer labx-context-panel" data-lab-region="context-panel"/);
   assert.match(drawer, /data-drawer-mode="setup"/);
   assert.deepEqual(getPipelineBlockIds(drawer), ["analysis-prep", "analysis-cta"]);
@@ -535,7 +540,6 @@ test("laboratory drawer keeps project assets visible in result and explore modes
   assert.match(drawer, /data-drawer-mode="result"/);
   assert.deepEqual(getPipelineBlockIds(drawer), [
     "context-summary",
-    "decision-status",
     "report-action",
     "explore-toggle",
   ]);
@@ -863,8 +867,8 @@ test("laboratory Turkish workspace controls localize operation and intent catalo
   assert.match(surface.inspector ?? "", /Aktif zaman aralığı seçiminden bağımsız bir klip oluştur/);
   assert.match(surface.inspector ?? "", /Kare Yakalama/);
   assert.match(surface.inspector ?? "", /Çıktı: klip/);
-  assert.match(surface.inspector ?? "", /Duzenle/);
-  assert.match(surface.inspector ?? "", /On ayar/);
+  assert.match(surface.inspector ?? "", /İşlemler/);
+  assert.match(surface.inspector ?? "", /Ön ayar|On ayar/);
   assert.doesNotMatch(
     surface.inspector ?? "",
     /Clip Export|Frame Grab|Create a standalone clip|Capture the current video frame|>Preset<|>Apply preview</
@@ -1034,16 +1038,23 @@ test("laboratory analysis suggestion acceptance opens and highlights the prepara
   assert.match(drawer, /data-active="true"[\s\S]*Audio recovery/);
 });
 
-test("laboratory root owns mock execution dispatch outside the run controller", () => {
+test("laboratory root keeps passive selection intents outside the run controller", () => {
   const rootSource = readFileSync("rooms/laboratory/ui/lab-root.ts", "utf8");
+  const binderSource = readFileSync(
+    "rooms/laboratory/ui/lab-selection-suggestion-binder.ts",
+    "utf8"
+  );
   const runControllerSource = readFileSync(
     "rooms/laboratory/runtime/lab-run-controller.ts",
     "utf8"
   );
 
-  assert.match(rootSource, /createLabExecutionDispatcher/);
-  assert.match(rootSource, /getExecutionDispatchCandidate/);
+  assert.match(rootSource, /bindLabSelectionSuggestionClicks/);
   assert.match(rootSource, /beforeunload/);
+  assert.match(binderSource, /workspace-selection-suggestion-accepted/);
+  assert.match(binderSource, /workspace-selection-suggestion-dismissed/);
+  assert.doesNotMatch(rootSource, /createLabExecutionDispatcher/);
+  assert.doesNotMatch(rootSource, /getExecutionDispatchCandidate/);
   assert.doesNotMatch(runControllerSource, /createLabExecutionDispatcher/);
   assert.doesNotMatch(runControllerSource, /workspace-execution-dispatch/);
 });

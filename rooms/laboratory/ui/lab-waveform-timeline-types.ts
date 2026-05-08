@@ -3,15 +3,6 @@ import type {
   LabArtifactProjection,
   LabAudioFocusSettings,
   LabBookmark,
-  LabExecutionAlternatives,
-  LabExecutionCandidate,
-  LabExecutionCommitment,
-  LabExecutionPayloadPreview,
-  LabExecutionPlan,
-  LabExecutionReadiness,
-  LabExecutionReflection,
-  LabExecutionSimulation,
-  LabExecutionStaging,
   LabInspectionSnapshot,
   LabInspectionMode,
   LabInterpretationItem,
@@ -40,23 +31,12 @@ export type LabWaveformTimelineHighlightModel = {
 };
 
 export type LabWaveformTimelineModel = {
-  activeExecutionAlternatives?: LabExecutionAlternatives | null;
-  activeExecutionCandidate?: LabExecutionCandidate | null;
-  activeExecutionCommitment?: LabExecutionCommitment | null;
-  activeExecutionPlan?: LabExecutionPlan | null;
-  activeExecutionPayloadPreview?: LabExecutionPayloadPreview | null;
-  activeExecutionReadiness?: LabExecutionReadiness | null;
-  activeExecutionReflection?: LabExecutionReflection | null;
-  activeExecutionSimulation?: LabExecutionSimulation | null;
-  activeExecutionStaging?: LabExecutionStaging | null;
   activeExecutionIntent?: LabActionSuggestion | null;
   activeSelection?: LabSelection | null;
   activeInspectionSnapshot?: LabInspectionSnapshot | null;
   activeSuggestionPreview?: LabSuggestionPreview | null;
-  activeOverlay?: "none" | "execution-details";
   audioFocus?: LabAudioFocusSettings;
   bookmarks: LabBookmark[];
-  collapsedPanels?: Record<string, boolean>;
   copy?: LabI18n;
   durationMs: number;
   endMs: number | null;

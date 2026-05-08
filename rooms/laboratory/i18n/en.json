@@ -393,33 +393,7 @@
         "cancelSub": "The running analysis will stop"
       },
       "result": {
-        "eyebrow": "Result",
-        "title": "Decision Surface",
-        "impl": {
-          "candidateViable": "Structurally executable",
-          "candidateUnstable": "Structure incomplete - review required",
-          "candidateNotViable": "Invalid - path revision required",
-          "candidateNone": "Awaiting evaluation",
-          "commitmentCommitted": "Path selected for staging",
-          "commitmentRevoked": "Approval withdrawn",
-          "commitmentNone": "No approved path yet",
-          "stagingStaged": "Prepared for execution",
-          "stagingNotStaged": "Not prepared yet",
-          "stagingNone": "Awaiting staging preparation"
-        },
         "partialWarn": "Analysis completed, but some modules reported warnings.",
-        "coherenceState": "State",
-        "coherenceAxis": "Dominant axis",
-        "coherenceIntegrity": "Structural integrity",
-        "coherenceConfidence": "Confidence",
-        "readinessLevel": "Level",
-        "readinessPressure": "Decision pressure",
-        "readinessConfidence": "Confidence",
-        "bridgeAdapter": "Adapter",
-        "bridgeOperation": "Operation",
-        "bridgeRequired": "Required",
-        "bridgeOutput": "Output",
-        "advisoriesTitle": "Assessments",
         "fresh": "Current",
         "stale": "Stale",
         "dirty": "Workspace differs",
@@ -512,180 +486,11 @@
         }
       }
     },
-    "journey": {
-      "ariaLabel": "Execution journey",
-      "steps": {
-        "select": "Select",
-        "plan": "Plan",
-        "evaluate": "Evaluate",
-        "decide": "Decide",
-        "stage": "Stage"
-      }
-    },
     "rightContext": {
-      "eyebrow": "Active State",
-      "title": "Decision Surface",
       "selection": "Selection",
       "emptySelection": "No active selection",
       "intent": "Intent",
-      "emptyIntent": "No intent selected",
-      "candidate": "Candidate",
-      "commitment": "Commitment",
-      "staging": "Staging",
-      "process": "Process",
-      "emptyTitle": "Decision surface",
-      "emptyBody": "Load a source to begin decision flow.",
-      "status": {
-        "none": "-",
-        "viable": "Valid",
-        "unstable": "Unstable",
-        "not-viable": "Invalid",
-        "notViable": "Invalid",
-        "committed": "Approved",
-        "revoked": "Revoked",
-        "staged": "Ready",
-        "not-staged": "Pending",
-        "notStaged": "Pending"
-      },
-      "implication": {
-        "candidate": {
-          "viable": "Structurally viable for execution",
-          "unstable": "Structure incomplete - needs evaluation",
-          "notViable": "Not viable - path requires revision",
-          "none": "Awaiting evaluation"
-        },
-        "commitment": {
-          "committed": "Path selected for further evaluation",
-          "revoked": "Commitment withdrawn - return to decision",
-          "none": "No path committed yet"
-        },
-        "staging": {
-          "staged": "Prepared for execution staging",
-          "notStaged": "Not yet staged - review prerequisites",
-          "none": "Awaiting staging readiness"
-        }
-      }
-    },
-    "executionDetails": {
-      "open": "View details",
-      "close": "Close details",
-      "eyebrow": "Execution chain",
-      "title": "Execution details"
-    },
-    "executionPanels": {
-      "toggle": "Details",
-      "shared": {
-        "steps": "Steps",
-        "expectedOutputs": "Expected outputs",
-        "notes": "Notes",
-        "uncertainties": "Uncertainties",
-        "warnings": "Warnings",
-        "confidenceValue": "{value}% confidence"
-      },
-      "metricValues": {
-        "low": "Low",
-        "medium": "Medium",
-        "high": "High"
-      },
-      "plan": {
-        "eyebrow": "Execution plan",
-        "intro": "The system would approach this by:",
-        "notes": "Planning notes"
-      },
-      "simulation": {
-        "eyebrow": "Simulation preview",
-        "effects": "What would happen",
-        "warnings": "Simulation warnings",
-        "intensity": "Intensity",
-        "risk": "Risk",
-        "outro": "If applied, you would observe the forecast above without starting any real execution."
-      },
-      "readiness": {
-        "eyebrow": "Execution readiness",
-        "readyIntro": "Execution readiness looks stable",
-        "reviewIntro": "This path needs review before any execution step",
-        "blockedIntro": "This path is not yet execution-ready",
-        "blockers": "Readiness blockers",
-        "notes": "Review notes",
-        "status": {
-          "ready": "Ready",
-          "needs-review": "Needs review",
-          "blocked": "Blocked"
-        }
-      },
-      "payload": {
-        "eyebrow": "Execution payload (preview)",
-        "intro": "This is how the system would structure the execution input. No execution is performed.",
-        "action": "Action",
-        "readinessPass": "Readiness signal passes this preview",
-        "readinessReview": "Readiness signal asks for review",
-        "input": "Preview input",
-        "parameters": "Preview parameters",
-        "expectedOutputs": "Preview expected outputs",
-        "notes": "Preview notes"
-      },
-      "reflection": {
-        "eyebrow": "Execution reflection",
-        "proceed": "This path appears stable",
-        "review": "This path may require additional review",
-        "avoid": "This path is not recommended in its current form",
-        "reasoning": "Reasoning",
-        "tradeoffs": "Tradeoffs",
-        "alternatives": "Alternatives",
-        "decisions": {
-          "avoid": "Avoid",
-          "proceed": "Proceed",
-          "review": "Review"
-        }
-      },
-      "alternatives": {
-        "eyebrow": "Alternative evaluation",
-        "actionPrefix": "An alternative approach would be {actionType}."
-      },
-      "relativeAdvantages": {
-        "higher-precision": "Higher precision",
-        "higher-coverage": "Higher coverage",
-        "lower-risk": "Lower risk",
-        "faster": "Faster",
-        "more-stable": "More stable"
-      },
-      "candidate": {
-        "eyebrow": "Execution candidate",
-        "structuralIntegrity": "Structural integrity",
-        "readiness": "Readiness",
-        "reflection": "Reflection",
-        "status": {
-          "not-viable": "Not viable",
-          "unstable": "Unstable",
-          "viable": "Viable"
-        },
-        "integrity": {
-          "complete": "Complete",
-          "insufficient": "Insufficient",
-          "partial": "Partial"
-        }
-      },
-      "commitment": {
-        "eyebrow": "Execution commitment",
-        "blocked": "This path is not structurally suitable for a user choice yet.",
-        "pending": "No path has been consciously chosen yet.",
-        "choose": "Choose this path",
-        "committed": "Committed",
-        "revoke": "Revoke choice",
-        "chosenRecently": "Chosen recently"
-      },
-      "staging": {
-        "eyebrow": "Execution staging",
-        "userChoice": "User choice",
-        "status": {
-          "not-staged": "Not staged",
-          "staged": "Staged"
-        },
-        "choiceStatus": {
-          "committed": "Chosen",
-          "none": "None"
-        }
-      }
+      "emptyIntent": "No intent selected"
     },
     "timeline": {
       "eyebrow": "Timeline",
@@ -697,6 +502,7 @@
       "selectedAction": "Selected action",
       "clear": "Clear",
       "preview": "Preview",
+      "steps": "Steps",
       "outputs": "Outputs",
       "estimatedCost": "Estimated cost",
       "intentSelected": "Intent selected",

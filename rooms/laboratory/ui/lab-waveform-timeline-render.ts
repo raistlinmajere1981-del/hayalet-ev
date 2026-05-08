@@ -5,18 +5,7 @@ import type { LabWaveformTimelineModel } from "./lab-waveform-timeline-types.js"
 import {
   formatDuration,
   formatTimePrecise,
-  getPanelCollapsed,
   isOperationSuggestion,
-  renderCollapsibleExecutionPanel,
-  renderExecutionAlternatives,
-  renderExecutionCandidate,
-  renderExecutionCommitment,
-  renderExecutionPayloadPreview,
-  renderExecutionPlan,
-  renderExecutionReadiness,
-  renderExecutionReflection,
-  renderExecutionSimulation,
-  renderExecutionStaging,
   renderInterpretationPanel,
 } from "./lab-waveform-timeline-panels.js";
 import {
@@ -125,53 +114,6 @@ function renderPlaybackStepControls(
   `;
 }
 
-function renderExecutionDetailsTrigger(copy: LabI18n, hasDetails: boolean) {
-  if (hasDetails !== true) {
-    return "";
-  }
-  return `
-    <button
-      class="lab-execution-details-trigger"
-      type="button"
-      data-lab-execution-details-open="true"
-    >
-      ${escapeHtml(copy.t("mediaAnalysis.executionDetails.open", "View details"))}
-    </button>
-  `;
-}
-
-function renderExecutionDetailsOverlay(
-  copy: LabI18n,
-  model: LabWaveformTimelineModel,
-  body: string
-) {
-  if (model.activeOverlay !== "execution-details" || body.trim() === "") {
-    return "";
-  }
-  return `
-    <div class="lab-execution-details-overlay" data-lab-execution-details-overlay="true" role="dialog" aria-modal="false">
-      <div class="lab-execution-details-overlay__backdrop" data-lab-execution-details-close="true"></div>
-      <section class="lab-execution-details-overlay__panel">
-        <div class="lab-execution-details-overlay__header">
-          <div>
-            <p class="lab-execution-details-overlay__eyebrow">${escapeHtml(copy.t("mediaAnalysis.executionDetails.eyebrow", "Execution chain"))}</p>
-            <h2>${escapeHtml(copy.t("mediaAnalysis.executionDetails.title", "Execution details"))}</h2>
-          </div>
-          <button
-            class="lab-execution-details-overlay__close"
-            type="button"
-            data-lab-execution-details-close="true"
-            aria-label="${escapeHtml(copy.t("mediaAnalysis.executionDetails.close", "Close details"))}"
-          >×</button>
-        </div>
-        <div class="lab-execution-details-overlay__body">
-          ${body}
-        </div>
-      </section>
-    </div>
-  `;
-}
-
 export function renderLabWaveformSelectionPanel(
   model: LabWaveformTimelineModel,
   options: {
@@ -203,41 +145,6 @@ export function renderLabWaveformSelectionPanel(
   const hasSemanticSelection =
     modelSelection !== null && modelSelection.endMs > modelSelection.startMs;
   const selectionSuggestions = hasSemanticSelection ? (model.selectionSuggestions ?? []) : [];
-  const activeExecutionPlan = hasSemanticSelection ? (model.activeExecutionPlan ?? null) : null;
-  const activeExecutionSimulation =
-    hasSemanticSelection && activeExecutionPlan !== null
-      ? (model.activeExecutionSimulation ?? null)
-      : null;
-  const activeExecutionReadiness =
-    hasSemanticSelection && activeExecutionPlan !== null && activeExecutionSimulation !== null
-      ? (model.activeExecutionReadiness ?? null)
-      : null;
-  const activeExecutionPayloadPreview =
-    hasSemanticSelection && activeExecutionReadiness !== null
-      ? (model.activeExecutionPayloadPreview ?? null)
-      : null;
-  const activeExecutionReflection =
-    hasSemanticSelection && activeExecutionPayloadPreview !== null
-      ? (model.activeExecutionReflection ?? null)
-      : null;
-  const activeExecutionAlternatives =
-    hasSemanticSelection && activeExecutionReflection !== null
-      ? (model.activeExecutionAlternatives ?? null)
-      : null;
-  const activeExecutionCandidate =
-    hasSemanticSelection &&
-    activeExecutionReflection !== null &&
-    activeExecutionAlternatives !== null
-      ? (model.activeExecutionCandidate ?? null)
-      : null;
-  const activeExecutionCommitment =
-    hasSemanticSelection && activeExecutionCandidate !== null
-      ? (model.activeExecutionCommitment ?? null)
-      : null;
-  const activeExecutionStaging =
-    hasSemanticSelection && activeExecutionCommitment !== null
-      ? (model.activeExecutionStaging ?? null)
-      : null;
   const activeExecutionIntent = hasSemanticSelection ? (model.activeExecutionIntent ?? null) : null;
   const hasFlowTaggedSuggestions = selectionSuggestions.some(function (suggestion) {
     return suggestion.flowKind === "operation-result" || suggestion.flowKind === "analysis-report";
@@ -279,34 +186,6 @@ export function renderLabWaveformSelectionPanel(
         }
       )
     : copy.t("mediaAnalysis.timeline.regionInactive", "Region inactive");
-  const executionPlanMarkup = renderExecutionPlan(activeExecutionPlan, copy);
-  const executionSimulationMarkup = renderExecutionSimulation(activeExecutionSimulation, copy);
-  const executionReadinessMarkup = renderExecutionReadiness(activeExecutionReadiness, copy);
-  const executionPayloadMarkup = renderExecutionPayloadPreview(activeExecutionPayloadPreview, copy);
-  const executionReflectionMarkup = renderExecutionReflection(activeExecutionReflection, copy);
-  const executionAlternativesMarkup = renderExecutionAlternatives(
-    activeExecutionAlternatives,
-    copy
-  );
-  const executionCandidateMarkup = renderExecutionCandidate(activeExecutionCandidate, copy);
-  const executionCommitmentMarkup = renderExecutionCommitment(
-    activeExecutionCandidate,
-    activeExecutionCommitment,
-    copy
-  );
-  const executionStagingMarkup = renderExecutionStaging(activeExecutionStaging, copy);
-  const executionDetailsBody = [
-    executionPlanMarkup,
-    executionSimulationMarkup,
-    executionReadinessMarkup,
-    executionReflectionMarkup,
-    executionAlternativesMarkup,
-  ]
-    .filter(function (entry) {
-      return entry.trim() !== "";
-    })
-    .join("");
-  const hasExecutionDetails = executionDetailsBody.trim() !== "";
   const placement = options.placement ?? "drawer";
   const className =
     placement === "timeline"
@@ -394,64 +273,7 @@ export function renderLabWaveformSelectionPanel(
           : renderSelectionSuggestions(actionSuggestions, copy)
       }
       ${renderSuggestionPreview(suggestionPreview, activeExecutionIntent, copy)}
-      ${renderExecutionDetailsTrigger(copy, hasExecutionDetails)}
-      ${renderCollapsibleExecutionPanel({
-        body: executionSimulationMarkup,
-        copy,
-        defaultCollapsed: getPanelCollapsed(model, "simulation"),
-        panelId: "simulation",
-        title: copy.t("mediaAnalysis.executionPanels.simulation.eyebrow", "Simulation preview"),
-      })}
-      ${renderCollapsibleExecutionPanel({
-        body: executionPayloadMarkup,
-        copy,
-        defaultCollapsed: getPanelCollapsed(model, "payload"),
-        panelId: "payload",
-        title: copy.t(
-          "mediaAnalysis.executionPanels.payload.eyebrow",
-          "Execution payload (preview)"
-        ),
-      })}
-      ${renderCollapsibleExecutionPanel({
-        body: executionReflectionMarkup,
-        copy,
-        defaultCollapsed: getPanelCollapsed(model, "reflection"),
-        panelId: "reflection",
-        title: copy.t("mediaAnalysis.executionPanels.reflection.eyebrow", "Execution reflection"),
-      })}
-      ${renderCollapsibleExecutionPanel({
-        body: executionAlternativesMarkup,
-        copy,
-        defaultCollapsed: getPanelCollapsed(model, "alternatives"),
-        panelId: "alternatives",
-        title: copy.t(
-          "mediaAnalysis.executionPanels.alternatives.eyebrow",
-          "Alternative evaluation"
-        ),
-      })}
-      ${renderCollapsibleExecutionPanel({
-        body: executionCandidateMarkup,
-        copy,
-        defaultCollapsed: getPanelCollapsed(model, "candidate"),
-        panelId: "candidate",
-        title: copy.t("mediaAnalysis.executionPanels.candidate.eyebrow", "Execution candidate"),
-      })}
-      ${renderCollapsibleExecutionPanel({
-        body: executionCommitmentMarkup,
-        copy,
-        defaultCollapsed: getPanelCollapsed(model, "commitment"),
-        panelId: "commitment",
-        title: copy.t("mediaAnalysis.executionPanels.commitment.eyebrow", "Execution commitment"),
-      })}
-      ${renderCollapsibleExecutionPanel({
-        body: executionStagingMarkup,
-        copy,
-        defaultCollapsed: getPanelCollapsed(model, "staging"),
-        panelId: "staging",
-        title: copy.t("mediaAnalysis.executionPanels.staging.eyebrow", "Execution staging"),
-      })}
       ${renderInterpretationPanel(interpretationItems, "embedded", copy)}
-      ${renderExecutionDetailsOverlay(copy, model, executionDetailsBody)}
     </div>
   `;
 }

@@ -527,48 +527,8 @@ test("lab root preserves interpretation panel details state across embedded and 
       standaloneNext as unknown as Element
     );
 
-    const collapsibleCurrent = new FakeDetailsElement({
-      class: "lab-execution-collapsible",
-      "data-lab-collapsible-panel": "true",
-      "data-panel-id": "simulation",
-      open: "",
-    });
-    const collapsibleNextSame = new FakeDetailsElement({
-      class: "lab-execution-collapsible",
-      "data-lab-collapsible-panel": "true",
-      "data-panel-id": "simulation",
-    });
-    collapsibleCurrent.open = true;
-    collapsibleNextSame.open = false;
-
-    labRootModule.__testOnlyLabRootDomSync.syncElement(
-      collapsibleCurrent as unknown as Element,
-      collapsibleNextSame as unknown as Element
-    );
-
-    const swappedCurrent = new FakeDetailsElement({
-      class: "lab-execution-collapsible",
-      "data-lab-collapsible-panel": "true",
-      "data-panel-id": "simulation",
-      open: "",
-    });
-    const swappedNext = new FakeDetailsElement({
-      class: "lab-execution-collapsible",
-      "data-lab-collapsible-panel": "true",
-      "data-panel-id": "candidate",
-    });
-    swappedCurrent.open = true;
-    swappedNext.open = false;
-
-    labRootModule.__testOnlyLabRootDomSync.syncElement(
-      swappedCurrent as unknown as Element,
-      swappedNext as unknown as Element
-    );
-
     assert.equal(embeddedCurrent.open, false);
     assert.equal(standaloneCurrent.open, true);
-    assert.equal(collapsibleCurrent.open, true);
-    assert.equal(swappedCurrent.open, false);
   } finally {
     Object.entries(descriptors).forEach(([key, descriptor]) => {
       if (descriptor) {

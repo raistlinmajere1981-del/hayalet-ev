@@ -15,13 +15,7 @@ import {
   resolveLabDecisionIntent,
   resolveLabDecisionState,
 } from "../../rooms/laboratory/ui/lab-decision-layer.ts";
-import { createMockExecutionResult } from "../../rooms/laboratory/runtime/lab-execution-dispatcher.ts";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
-import {
-  getActiveExecutionCandidate,
-  getExecutionDispatchCandidate,
-  getWaveformTimelineModel,
-} from "../../rooms/laboratory/runtime/lab-selectors.ts";
 import {
   formatLabExpectedOutputLabel,
   formatLabUserActionDisplayText,
@@ -572,253 +566,6 @@ function createExecutionReadinessTimelineModel(
     waveformWindowStartMs: 0,
     ...overrides,
   };
-}
-
-function extractCandidatePanelMarkup(markup: string) {
-  const attrIndex = markup.indexOf('data-lab-execution-candidate="true"');
-  assert.notEqual(attrIndex, -1);
-  const start = markup.lastIndexOf('<div class="lab-execution-candidate"', attrIndex);
-  let end = markup.indexOf('<div class="lab-execution-commitment', attrIndex);
-  if (end === -1) {
-    end = markup.indexOf('<div class="lab-interpretation-panel"', attrIndex);
-  }
-  if (end === -1) {
-    end = markup.indexOf('<div\n            class="labx-timeline__selection', attrIndex);
-  }
-  assert.notEqual(start, -1);
-  assert.notEqual(end, -1);
-  return markup.slice(start, end);
-}
-
-function extractCommitmentPanelMarkup(markup: string) {
-  const attrIndex = markup.indexOf('data-lab-execution-commitment="true"');
-  assert.notEqual(attrIndex, -1);
-  const start = markup.lastIndexOf('<div class="lab-execution-commitment', attrIndex);
-  let end = markup.indexOf('<div class="lab-execution-staging"', attrIndex);
-  if (end === -1) {
-    end = markup.indexOf('<div class="lab-interpretation-panel"', attrIndex);
-  }
-  if (end === -1) {
-    end = markup.indexOf('<div\n            class="labx-timeline__selection', attrIndex);
-  }
-  assert.notEqual(start, -1);
-  assert.notEqual(end, -1);
-  return markup.slice(start, end);
-}
-
-function extractStagingPanelMarkup(markup: string) {
-  const attrIndex = markup.indexOf('data-lab-execution-staging="true"');
-  assert.notEqual(attrIndex, -1);
-  const start = markup.lastIndexOf('<div class="lab-execution-staging"', attrIndex);
-  let end = markup.indexOf('<div class="lab-interpretation-panel"', attrIndex);
-  if (end === -1) {
-    end = markup.indexOf('<div\n            class="labx-timeline__selection', attrIndex);
-  }
-  assert.notEqual(start, -1);
-  assert.notEqual(end, -1);
-  return markup.slice(start, end);
-}
-
-function extractCollapsibleOpeningTag(markup: string, panelId: string) {
-  const match = new RegExp(`<details[\\s\\S]*?data-panel-id="${panelId}"[\\s\\S]*?>`).exec(markup);
-  assert.notEqual(match, null, `Expected collapsible panel ${panelId}`);
-  return match?.[0] ?? "";
-}
-
-function extractExecutionDetailsOverlayMarkup(markup: string) {
-  const attrIndex = markup.indexOf('data-lab-execution-details-overlay="true"');
-  assert.notEqual(attrIndex, -1);
-  const start = markup.lastIndexOf('<div class="lab-execution-details-overlay"', attrIndex);
-  const end = markup.indexOf('<div\n            class="labx-timeline__selection', attrIndex);
-  assert.notEqual(start, -1);
-  assert.notEqual(end, -1);
-  return markup.slice(start, end);
-}
-
-function createPassiveExecutionChainFixture() {
-  const activePlan = {
-    id: "plan:audio-inspect:inspect-audio:audio:audio:clip:audio:1000:3000:noroi",
-    suggestionId: "audio-inspect",
-    actionType: "inspect-audio" as const,
-    title: "Audio inspection plan",
-    steps: [
-      {
-        id: "isolate",
-        label: "Isolate",
-      },
-    ],
-    expectedOutputs: ["Spectral profile"],
-    confidence: 0.78,
-  };
-  const activeSimulation = {
-    id: `simulation:${activePlan.id}`,
-    planId: activePlan.id,
-    summary: "If applied, the preview would emphasize spectral behavior.",
-    predictedEffects: ["Frequency bands would read as more distinct."],
-    metrics: {
-      intensity: "medium" as const,
-      risk: "low" as const,
-      confidence: 0.78,
-    },
-  };
-  const activeReadiness = {
-    id: `readiness:${activePlan.id}`,
-    planId: activePlan.id,
-    status: "ready" as const,
-    summary: "This looks ready to carry forward as a preview-only execution candidate.",
-    confidence: 0.81,
-  };
-  const activePayload = {
-    id: `payload:${activePlan.id}`,
-    planId: activePlan.id,
-    actionType: "inspect-audio",
-    summary: "The dry-run bridge would describe the selected audio window.",
-    dryRunShape: {
-      previewInput: {
-        audioWindow: {
-          startMs: 1000,
-          endMs: 3000,
-          sourceKind: "audio",
-        },
-      },
-      previewParameters: {
-        bandFocus: "full-spectrum",
-        transientScan: "enabled",
-      },
-      previewExpectedOutputs: ["frequencyClusters", "transientPeaks"],
-    },
-    readinessStatus: "ready" as const,
-    readinessPassesPreview: true,
-  };
-  const activeReflection = {
-    id: `reflection:${activePlan.id}`,
-    planId: activePlan.id,
-    summary: "This path appears stable as a passive dry-run decision.",
-    decision: "proceed" as const,
-    reasoning: ["Readiness and simulation signals align with a stable dry-run path."],
-    tradeoffs: ["Audio-focused review can expose signal detail while amplifying preview bias."],
-    confidence: 0.82,
-  };
-  const activeAlternatives = {
-    id: `alternatives:${activePlan.id}`,
-    planId: activePlan.id,
-    summary:
-      "The selected path appears stable; alternatives mainly trade precision, coverage, or tempo against that stable baseline.",
-    alternatives: [
-      {
-        actionType: "analyze-segment",
-        label: "Broader segment review",
-        summary: "An alternative approach would evaluate the full selected window.",
-        tradeoff: "This path would trade local clarity for higher contextual coverage.",
-        relativeAdvantage: "higher-coverage" as const,
-      },
-    ],
-    comparisonNote:
-      "Compared to the selected path, these alternatives can expose different evidence at the cost of changing the current balance.",
-    confidence: 0.84,
-  };
-  const activeCandidate = {
-    id: `candidate:${activePlan.id}`,
-    planId: activePlan.id,
-    status: "viable" as const,
-    summary: "This path is structurally ready for execution.",
-    structuralIntegrity: "complete" as const,
-    readinessStatus: "ready" as const,
-    reflectionDecision: "proceed" as const,
-    notes: ["Payload preview is structurally aligned with the readiness signal."],
-    confidence: 0.87,
-  };
-  const activeCommitment = {
-    id: `commitment:${activePlan.id}`,
-    planId: activePlan.id,
-    status: "committed" as const,
-    candidateStatus: "viable" as const,
-    summary: "This path has been consciously chosen as the current passive commitment.",
-    committedAt: 1,
-    notes: activeCandidate.notes,
-    uncertainties: ["Alternative paths still trade precision for coverage."],
-    confidence: 0.87,
-  };
-  const activeStaging = {
-    id: `staging:${activePlan.id}`,
-    planId: activePlan.id,
-    status: "staged" as const,
-    summary: "This path is prepared and can be staged for execution.",
-    commitmentStatus: "committed" as const,
-    candidateStatus: "viable" as const,
-    readinessStatus: "ready" as const,
-    notes: ["Alternative paths remain visible for comparison before staging."],
-    warnings: ["Candidate uncertainty: Alternative paths still trade precision for coverage."],
-    confidence: 0.88,
-  };
-
-  return {
-    activeAlternatives,
-    activeCandidate,
-    activeCommitment,
-    activePayload,
-    activePlan,
-    activeReadiness,
-    activeReflection,
-    activeSimulation,
-    activeStaging,
-  };
-}
-
-function createCompletedAudioExecutionStore() {
-  const store = createLabStore();
-  store.dispatch({
-    type: "source-config-patched",
-    patch: {
-      kind: "audio",
-      mode: "local",
-      storedPath: "/tmp/source.wav",
-      metadata: {
-        durationSeconds: 4,
-      },
-    },
-  });
-  store.dispatch({
-    type: "source-probe-completed",
-    action: "probe",
-  });
-  store.dispatch({
-    type: "workspace-timeline-updated",
-    startMs: 1000,
-    endMs: 3000,
-  });
-  store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
-  });
-  store.dispatch({
-    type: "workspace-selection-suggestion-preview-set",
-    suggestionId: "audio-inspect",
-  });
-  store.dispatch({
-    type: "workspace-selection-suggestion-accepted",
-    suggestionId: "audio-inspect",
-  });
-  const activeCandidate = getActiveExecutionCandidate(store.getState());
-  assert.ok(activeCandidate);
-  store.dispatch({
-    type: "workspace-execution-commitment-set",
-    planId: activeCandidate.planId,
-  });
-  const dispatchCandidate = getExecutionDispatchCandidate(store.getState());
-  assert.ok(dispatchCandidate);
-  store.dispatch({
-    type: "workspace-execution-dispatch",
-    planId: dispatchCandidate.planId,
-    dispatchId: dispatchCandidate.dispatchId,
-  });
-  store.dispatch({
-    type: "workspace-execution-completed",
-    planId: dispatchCandidate.planId,
-    dispatchId: dispatchCandidate.dispatchId,
-    result: createMockExecutionResult(dispatchCandidate),
-  });
-  return store;
 }
 
 test("laboratory UI shell evaluates under minimal runtime stubs", async () => {
@@ -1987,8 +1734,11 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   assert.match(topBarSource, /data-lab-field="workspace\.hypothesis"/);
   assert.match(drawerResultExploreSource, /data-lab-action="run-deep-analysis"/);
   assert.match(drawerSource, /buildIntentPreviewSentence\(state\)/);
-  assert.match(drawerResultExploreSource, /buildExecutionBridge/);
-  assert.match(drawerResultExploreSource, /data-lab-drawer-alternatives="true"/);
+  assert.match(drawerResultExploreSource, /getLaboratoryRightPanelContext/);
+  assert.doesNotMatch(
+    drawerResultExploreSource,
+    /buildExecutionBridge|formatDecisionCoherenceAdvisory|formatExecutionReadinessSignalAdvisory|getActiveExecutionAlternatives|data-lab-drawer-alternatives/
+  );
   assert.match(workspaceSourceIntakeSource, /Source setup controls/);
   assert.doesNotMatch(workspaceSurfaceSource, /renderLabTopbarActions\(state, copy\)/);
   assert.doesNotMatch(workspaceSurfaceSource, /renderGlobalProcessSummary\(state, copy\)/);
@@ -2369,922 +2119,103 @@ test("laboratory selection preview exposes soft execution intent affordances wit
   assert.doesNotMatch(timelineSelectionSource, />Run</);
 });
 
-test("laboratory execution plan UI stays passive and derived from active intent", () => {
+test("laboratory execution detail helper panels are removed from the selection timeline surface", () => {
   const timelineSource = readLabWaveformTimelineSource();
-
-  assert.match(timelineSource, /data-lab-execution-plan="true"/);
-  assert.match(timelineSource, /Execution plan/);
-  assert.match(timelineSource, /The system would approach this by:/);
-  assert.match(timelineSource, /Expected outputs/);
-  assert.match(timelineSource, /Planning notes/);
-  assert.doesNotMatch(timelineSource, />Run this</);
-  assert.doesNotMatch(timelineSource, />Start execution</);
-});
-
-test("laboratory execution simulation UI stays passive and derived from active plan", () => {
-  const timelineSource = readLabWaveformTimelineSource();
-
-  assert.match(timelineSource, /data-lab-execution-simulation="true"/);
-  assert.match(timelineSource, /Simulation preview/);
-  assert.match(timelineSource, /What would happen/);
-  assert.match(timelineSource, /Simulation warnings/);
-  assert.match(timelineSource, /If applied, you would observe/);
-  assert.doesNotMatch(timelineSource, />Run</);
-  assert.doesNotMatch(timelineSource, />Apply</);
-  assert.doesNotMatch(timelineSource, />Execute</);
-});
-
-test("laboratory execution readiness UI stays passive and owned by active readiness only", () => {
-  const timelineSource = readLabWaveformTimelineSource();
-
-  assert.match(timelineSource, /data-lab-execution-readiness="true"/);
-  assert.match(timelineSource, /Execution readiness/);
-  assert.match(timelineSource, /Readiness blockers/);
-  assert.match(timelineSource, /Review notes/);
-  assert.match(timelineSource, /Execution readiness looks stable/);
-  assert.match(timelineSource, /This path needs review before any execution step/);
-  assert.match(timelineSource, /This path is not yet execution-ready/);
-  assert.match(
-    timelineSource,
-    /hasSemanticSelection && activeExecutionPlan !== null && activeExecutionSimulation !== null/
-  );
-  assert.doesNotMatch(timelineSource, />Run</);
-  assert.doesNotMatch(timelineSource, />Execute</);
-  assert.doesNotMatch(timelineSource, /Start execution/);
-});
-
-test("laboratory execution readiness render ownership stays tied to active readiness", () => {
-  const previewOnlyMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeSuggestionPreview: {
-        suggestionId: "audio-inspect",
-        title: "Audio preview",
-        steps: ["Step 1"],
-        expectedOutputs: ["Output"],
-      },
-    })
-  );
-  assert.doesNotMatch(previewOnlyMarkup, /data-lab-execution-readiness="true"/);
-
-  const queuedOnlyMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeExecutionIntent: null,
-      activeSuggestionPreview: null,
-      selectionSuggestions: [
-        {
-          id: "audio-inspect",
-          label: "Inspect audio",
-          actionType: "inspect-audio",
-          confidence: 0.82,
-        },
-      ],
-    })
-  );
-  assert.doesNotMatch(queuedOnlyMarkup, /data-lab-execution-readiness="true"/);
-
-  const simulationMissingMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeExecutionPlan: {
-        id: "plan:audio-inspect:inspect-audio:audio:audio:clip:audio:1000:3000:noroi",
-        suggestionId: "audio-inspect",
-        actionType: "inspect-audio",
-        title: "Audio inspection plan",
-        steps: [
-          {
-            id: "isolate",
-            label: "Isolate",
-          },
-        ],
-        expectedOutputs: ["Spectral profile"],
-        confidence: 0.78,
-      },
-      activeExecutionSimulation: null,
-      activeExecutionReadiness: null,
-    })
-  );
-  assert.doesNotMatch(simulationMissingMarkup, /data-lab-execution-readiness="true"/);
-});
-
-test("laboratory execution payload preview UI stays passive and technical", () => {
-  const timelineSource = readLabWaveformTimelineSource();
-
-  assert.match(timelineSource, /data-lab-execution-payload-preview="true"/);
-  assert.match(timelineSource, /Execution payload \(preview\)/);
-  assert.match(timelineSource, /This is how the system would structure the execution input/);
-  assert.match(timelineSource, /No execution is performed/);
-  assert.match(timelineSource, /Preview input/);
-  assert.match(timelineSource, /Preview parameters/);
-  assert.match(timelineSource, /Preview expected outputs/);
-  assert.doesNotMatch(timelineSource, /safeToExecute/);
-  assert.doesNotMatch(timelineSource, /safe-to-execute/);
-  assert.doesNotMatch(timelineSource, />Run</);
-  assert.doesNotMatch(timelineSource, />Execute</);
-  assert.doesNotMatch(timelineSource, />Apply</);
-  assert.doesNotMatch(timelineSource, /Start execution/);
-});
-
-test("laboratory execution payload preview render ownership stays tied to active payload", () => {
-  const activePlan = {
-    id: "plan:audio-inspect:inspect-audio:audio:audio:clip:audio:1000:3000:noroi",
-    suggestionId: "audio-inspect",
-    actionType: "inspect-audio" as const,
-    title: "Audio inspection plan",
-    steps: [
-      {
-        id: "isolate",
-        label: "Isolate",
-      },
-    ],
-    expectedOutputs: ["Spectral profile"],
-    confidence: 0.78,
-  };
-  const activeSimulation = {
-    id: `simulation:${activePlan.id}`,
-    planId: activePlan.id,
-    summary: "If applied, the preview would emphasize spectral behavior.",
-    predictedEffects: ["Frequency bands would read as more distinct."],
-    metrics: {
-      intensity: "medium" as const,
-      risk: "low" as const,
-      confidence: 0.78,
-    },
-  };
-  const activeReadiness = {
-    id: `readiness:${activePlan.id}`,
-    planId: activePlan.id,
-    status: "ready" as const,
-    summary: "This looks ready to carry forward as a preview-only execution candidate.",
-    confidence: 0.81,
-  };
-  const activePayload = {
-    id: `payload:${activePlan.id}`,
-    planId: activePlan.id,
-    actionType: "inspect-audio",
-    summary: "The dry-run bridge would describe the selected audio window.",
-    dryRunShape: {
-      previewInput: {
-        audioWindow: {
-          startMs: 1000,
-          endMs: 3000,
-          sourceKind: "audio",
-        },
-      },
-      previewParameters: {
-        bandFocus: "full-spectrum",
-        transientScan: "enabled",
-      },
-      previewExpectedOutputs: ["frequencyClusters", "transientPeaks"],
-    },
-    readinessStatus: "ready" as const,
-    readinessPassesPreview: true,
-  };
-
-  const previewOnlyMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeSuggestionPreview: {
-        suggestionId: "audio-inspect",
-        title: "Audio preview",
-        steps: ["Step 1"],
-        expectedOutputs: ["Output"],
-      },
-    })
-  );
-  assert.doesNotMatch(previewOnlyMarkup, /data-lab-execution-payload-preview="true"/);
-
-  const readinessMissingMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeExecutionPlan: activePlan,
-      activeExecutionSimulation: activeSimulation,
-      activeExecutionReadiness: null,
-      activeExecutionPayloadPreview: activePayload,
-    })
-  );
-  assert.doesNotMatch(readinessMissingMarkup, /data-lab-execution-payload-preview="true"/);
-
-  const payloadMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeExecutionPlan: activePlan,
-      activeExecutionSimulation: activeSimulation,
-      activeExecutionReadiness: activeReadiness,
-      activeExecutionPayloadPreview: activePayload,
-    })
-  );
-  assert.match(payloadMarkup, /data-lab-execution-payload-preview="true"/);
-  assert.match(payloadMarkup, /frequencyClusters/);
-  assert.match(payloadMarkup, /bandFocus/);
-});
-
-test("laboratory execution reflection UI stays passive and advisory", () => {
-  const timelineSource = readLabWaveformTimelineSource();
-
-  assert.match(timelineSource, /data-lab-execution-reflection="true"/);
-  assert.match(timelineSource, /Execution reflection/);
-  assert.match(timelineSource, /This path appears stable/);
-  assert.match(timelineSource, /This path may require additional review/);
-  assert.match(timelineSource, /This path is not recommended in its current form/);
-  assert.match(timelineSource, /Reasoning/);
-  assert.match(timelineSource, /Tradeoffs/);
-  assert.match(timelineSource, /Alternatives/);
-  assert.doesNotMatch(timelineSource, />\s*Run\s*</);
-  assert.doesNotMatch(timelineSource, />\s*Execute\s*</);
-  assert.doesNotMatch(timelineSource, />\s*Apply\s*</);
-  assert.doesNotMatch(timelineSource, /Start execution/);
-});
-
-test("laboratory execution reflection render ownership stays tied to active reflection", () => {
-  const activePlan = {
-    id: "plan:audio-inspect:inspect-audio:audio:audio:clip:audio:1000:3000:noroi",
-    suggestionId: "audio-inspect",
-    actionType: "inspect-audio" as const,
-    title: "Audio inspection plan",
-    steps: [
-      {
-        id: "isolate",
-        label: "Isolate",
-      },
-    ],
-    expectedOutputs: ["Spectral profile"],
-    confidence: 0.78,
-  };
-  const activeSimulation = {
-    id: `simulation:${activePlan.id}`,
-    planId: activePlan.id,
-    summary: "If applied, the preview would emphasize spectral behavior.",
-    predictedEffects: ["Frequency bands would read as more distinct."],
-    metrics: {
-      intensity: "medium" as const,
-      risk: "low" as const,
-      confidence: 0.78,
-    },
-  };
-  const activeReadiness = {
-    id: `readiness:${activePlan.id}`,
-    planId: activePlan.id,
-    status: "ready" as const,
-    summary: "This looks ready to carry forward as a preview-only execution candidate.",
-    confidence: 0.81,
-  };
-  const activePayload = {
-    id: `payload:${activePlan.id}`,
-    planId: activePlan.id,
-    actionType: "inspect-audio",
-    summary: "The dry-run bridge would describe the selected audio window.",
-    dryRunShape: {
-      previewInput: {
-        audioWindow: {
-          startMs: 1000,
-          endMs: 3000,
-          sourceKind: "audio",
-        },
-      },
-      previewParameters: {
-        bandFocus: "full-spectrum",
-        transientScan: "enabled",
-      },
-      previewExpectedOutputs: ["frequencyClusters", "transientPeaks"],
-    },
-    readinessStatus: "ready" as const,
-    readinessPassesPreview: true,
-  };
-  const activeReflection = {
-    id: `reflection:${activePlan.id}`,
-    planId: activePlan.id,
-    summary: "This path may require additional review before it is carried further.",
-    decision: "review" as const,
-    reasoning: ["Payload preview asks for additional review before this path is carried further."],
-    tradeoffs: ["Audio-focused review can expose signal detail while amplifying preview bias."],
-    alternatives: ["Expand selection range"],
-    confidence: 0.72,
-  };
-
-  const previewOnlyMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeSuggestionPreview: {
-        suggestionId: "audio-inspect",
-        title: "Audio preview",
-        steps: ["Step 1"],
-        expectedOutputs: ["Output"],
-      },
-    })
-  );
-  assert.doesNotMatch(previewOnlyMarkup, /data-lab-execution-reflection="true"/);
-
-  const payloadMissingMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeExecutionPlan: activePlan,
-      activeExecutionSimulation: activeSimulation,
-      activeExecutionReadiness: activeReadiness,
-      activeExecutionPayloadPreview: null,
-      activeExecutionReflection: activeReflection,
-    })
-  );
-  assert.doesNotMatch(payloadMissingMarkup, /data-lab-execution-reflection="true"/);
-
-  const reflectionMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeExecutionPlan: activePlan,
-      activeExecutionSimulation: activeSimulation,
-      activeExecutionReadiness: activeReadiness,
-      activeExecutionPayloadPreview: activePayload,
-      activeExecutionReflection: activeReflection,
-    })
-  );
-  assert.match(reflectionMarkup, /data-lab-execution-reflection="true"/);
-  assert.match(reflectionMarkup, /data-decision="review"/);
-  assert.match(reflectionMarkup, /Expand selection range/);
-  assert.match(reflectionMarkup, /Payload preview asks for additional review/);
-});
-
-test("laboratory execution alternatives UI stays passive and comparative", () => {
-  const timelineSource = readLabWaveformTimelineSource();
-
-  assert.match(timelineSource, /data-lab-execution-alternatives="true"/);
-  assert.match(timelineSource, /Alternative evaluation/);
-  assert.match(timelineSource, /An alternative approach would be/);
-  assert.match(timelineSource, /lab-execution-alternatives__tradeoff/);
-  assert.match(timelineSource, /lab-execution-alternatives__comparison/);
-  assert.doesNotMatch(timelineSource, /Try this instead/);
-  assert.doesNotMatch(timelineSource, /You should use/);
-  assert.doesNotMatch(timelineSource, /Better option/);
-  assert.doesNotMatch(timelineSource, /lab-execution-alternatives[\s\S]{0,2400}<button/);
-  assert.doesNotMatch(timelineSource, />\s*Run\s*</);
-  assert.doesNotMatch(timelineSource, />\s*Execute\s*</);
-  assert.doesNotMatch(timelineSource, />\s*Apply\s*</);
-  assert.doesNotMatch(timelineSource, /Start execution/);
-});
-
-test("laboratory execution alternatives render ownership stays tied to active reflection", () => {
-  const activePlan = {
-    id: "plan:audio-inspect:inspect-audio:audio:audio:clip:audio:1000:3000:noroi",
-    suggestionId: "audio-inspect",
-    actionType: "inspect-audio" as const,
-    title: "Audio inspection plan",
-    steps: [
-      {
-        id: "isolate",
-        label: "Isolate",
-      },
-    ],
-    expectedOutputs: ["Spectral profile"],
-    confidence: 0.78,
-  };
-  const activeSimulation = {
-    id: `simulation:${activePlan.id}`,
-    planId: activePlan.id,
-    summary: "If applied, the preview would emphasize spectral behavior.",
-    predictedEffects: ["Frequency bands would read as more distinct."],
-    metrics: {
-      intensity: "medium" as const,
-      risk: "low" as const,
-      confidence: 0.78,
-    },
-  };
-  const activeReadiness = {
-    id: `readiness:${activePlan.id}`,
-    planId: activePlan.id,
-    status: "ready" as const,
-    summary: "This looks ready to carry forward as a preview-only execution candidate.",
-    confidence: 0.81,
-  };
-  const activePayload = {
-    id: `payload:${activePlan.id}`,
-    planId: activePlan.id,
-    actionType: "inspect-audio",
-    summary: "The dry-run bridge would describe the selected audio window.",
-    dryRunShape: {
-      previewInput: {
-        audioWindow: {
-          startMs: 1000,
-          endMs: 3000,
-          sourceKind: "audio",
-        },
-      },
-      previewParameters: {
-        bandFocus: "full-spectrum",
-        transientScan: "enabled",
-      },
-      previewExpectedOutputs: ["frequencyClusters", "transientPeaks"],
-    },
-    readinessStatus: "ready" as const,
-    readinessPassesPreview: true,
-  };
-  const activeReflection = {
-    id: `reflection:${activePlan.id}`,
-    planId: activePlan.id,
-    summary: "This path appears stable as a passive dry-run decision.",
-    decision: "proceed" as const,
-    reasoning: ["Readiness and simulation signals align with a stable dry-run path."],
-    tradeoffs: ["Audio-focused review can expose signal detail while amplifying preview bias."],
-    confidence: 0.82,
-  };
-  const activeAlternatives = {
-    id: `alternatives:${activePlan.id}`,
-    planId: activePlan.id,
-    summary:
-      "The selected path appears stable; alternatives mainly trade precision, coverage, or tempo against that stable baseline.",
-    alternatives: [
-      {
-        actionType: "analyze-segment",
-        label: "Broader segment review",
-        summary: "An alternative approach would evaluate the full selected window.",
-        tradeoff: "This path would trade local clarity for higher contextual coverage.",
-        relativeAdvantage: "higher-coverage" as const,
-      },
-    ],
-    comparisonNote:
-      "Compared to the selected path, these alternatives can expose different evidence at the cost of changing the current balance.",
-    confidence: 0.84,
-  };
-
-  const previewOnlyMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeSuggestionPreview: {
-        suggestionId: "audio-inspect",
-        title: "Audio preview",
-        steps: ["Step 1"],
-        expectedOutputs: ["Output"],
-      },
-    })
-  );
-  assert.doesNotMatch(previewOnlyMarkup, /data-lab-execution-alternatives="true"/);
-
-  const reflectionMissingMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeExecutionPlan: activePlan,
-      activeExecutionSimulation: activeSimulation,
-      activeExecutionReadiness: activeReadiness,
-      activeExecutionPayloadPreview: activePayload,
-      activeExecutionReflection: null,
-      activeExecutionAlternatives: activeAlternatives,
-    })
-  );
-  assert.doesNotMatch(reflectionMissingMarkup, /data-lab-execution-alternatives="true"/);
-
-  const alternativesMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeExecutionPlan: activePlan,
-      activeExecutionSimulation: activeSimulation,
-      activeExecutionReadiness: activeReadiness,
-      activeExecutionPayloadPreview: activePayload,
-      activeExecutionReflection: activeReflection,
-      activeExecutionAlternatives: activeAlternatives,
-    })
-  );
-  assert.match(alternativesMarkup, /data-lab-execution-alternatives="true"/);
-  assert.match(alternativesMarkup, /Broader segment review/);
-  assert.match(alternativesMarkup, /This path would trade local clarity/);
-  assert.match(alternativesMarkup, /Higher Coverage/);
-});
-
-test("laboratory execution candidate UI stays passive and structural", () => {
-  const timelineSource = readLabWaveformTimelineSource();
-  const candidateFunctionStart = timelineSource.indexOf("function renderExecutionCandidate");
-  const candidateFunctionEnd = timelineSource.indexOf(
-    "function formatCommitmentTimestamp",
-    candidateFunctionStart
-  );
-  assert.notEqual(candidateFunctionStart, -1);
-  assert.notEqual(candidateFunctionEnd, -1);
-  const candidateFunctionSource = timelineSource.slice(
-    candidateFunctionStart,
-    candidateFunctionEnd
-  );
-
-  assert.match(timelineSource, /data-lab-execution-candidate="true"/);
-  assert.match(timelineSource, /Execution candidate/);
-  assert.match(timelineSource, /Structural integrity/);
-  assert.match(timelineSource, /formatCandidateStatus/);
-  assert.match(timelineSource, /formatStructuralIntegrity/);
-  assert.doesNotMatch(candidateFunctionSource, /<button/);
-  assert.doesNotMatch(candidateFunctionSource, /data-lab-action/);
-  assert.doesNotMatch(candidateFunctionSource, /onclick/);
-});
-
-test("laboratory execution candidate render ownership stays tied to complete candidate chain", () => {
-  const activePlan = {
-    id: "plan:audio-inspect:inspect-audio:audio:audio:clip:audio:1000:3000:noroi",
-    suggestionId: "audio-inspect",
-    actionType: "inspect-audio" as const,
-    title: "Audio inspection plan",
-    steps: [
-      {
-        id: "isolate",
-        label: "Isolate",
-      },
-    ],
-    expectedOutputs: ["Spectral profile"],
-    confidence: 0.78,
-  };
-  const activeSimulation = {
-    id: `simulation:${activePlan.id}`,
-    planId: activePlan.id,
-    summary: "If applied, the preview would emphasize spectral behavior.",
-    predictedEffects: ["Frequency bands would read as more distinct."],
-    metrics: {
-      intensity: "medium" as const,
-      risk: "low" as const,
-      confidence: 0.78,
-    },
-  };
-  const activeReadiness = {
-    id: `readiness:${activePlan.id}`,
-    planId: activePlan.id,
-    status: "ready" as const,
-    summary: "This looks ready to carry forward as a preview-only execution candidate.",
-    confidence: 0.81,
-  };
-  const activePayload = {
-    id: `payload:${activePlan.id}`,
-    planId: activePlan.id,
-    actionType: "inspect-audio",
-    summary: "The dry-run bridge would describe the selected audio window.",
-    dryRunShape: {
-      previewInput: {
-        audioWindow: {
-          startMs: 1000,
-          endMs: 3000,
-          sourceKind: "audio",
-        },
-      },
-      previewParameters: {
-        bandFocus: "full-spectrum",
-        transientScan: "enabled",
-      },
-      previewExpectedOutputs: ["frequencyClusters", "transientPeaks"],
-    },
-    readinessStatus: "ready" as const,
-    readinessPassesPreview: true,
-  };
-  const activeReflection = {
-    id: `reflection:${activePlan.id}`,
-    planId: activePlan.id,
-    summary: "This path appears stable as a passive dry-run decision.",
-    decision: "proceed" as const,
-    reasoning: ["Readiness and simulation signals align with a stable dry-run path."],
-    tradeoffs: ["Audio-focused review can expose signal detail while amplifying preview bias."],
-    confidence: 0.82,
-  };
-  const activeAlternatives = {
-    id: `alternatives:${activePlan.id}`,
-    planId: activePlan.id,
-    summary:
-      "The selected path appears stable; alternatives mainly trade precision, coverage, or tempo against that stable baseline.",
-    alternatives: [
-      {
-        actionType: "analyze-segment",
-        label: "Broader segment review",
-        summary: "An alternative approach would evaluate the full selected window.",
-        tradeoff: "This path would trade local clarity for higher contextual coverage.",
-        relativeAdvantage: "higher-coverage" as const,
-      },
-    ],
-    comparisonNote:
-      "Compared to the selected path, these alternatives can expose different evidence at the cost of changing the current balance.",
-    confidence: 0.84,
-  };
-  const activeCandidate = {
-    id: `candidate:${activePlan.id}`,
-    planId: activePlan.id,
-    status: "viable" as const,
-    summary: "This path is structurally ready for execution.",
-    structuralIntegrity: "complete" as const,
-    readinessStatus: "ready" as const,
-    reflectionDecision: "proceed" as const,
-    notes: ["Payload preview is structurally aligned with the readiness signal."],
-    confidence: 0.87,
-  };
-
-  const previewOnlyMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeSuggestionPreview: {
-        suggestionId: "audio-inspect",
-        title: "Audio preview",
-        steps: ["Step 1"],
-        expectedOutputs: ["Output"],
-      },
-      activeExecutionCandidate: activeCandidate,
-    })
-  );
-  assert.doesNotMatch(previewOnlyMarkup, /data-lab-execution-candidate="true"/);
-
-  const reflectionMissingMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeExecutionPlan: activePlan,
-      activeExecutionSimulation: activeSimulation,
-      activeExecutionReadiness: activeReadiness,
-      activeExecutionPayloadPreview: activePayload,
-      activeExecutionReflection: null,
-      activeExecutionAlternatives: activeAlternatives,
-      activeExecutionCandidate: activeCandidate,
-    })
-  );
-  assert.doesNotMatch(reflectionMissingMarkup, /data-lab-execution-candidate="true"/);
-
-  const alternativesMissingMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeExecutionPlan: activePlan,
-      activeExecutionSimulation: activeSimulation,
-      activeExecutionReadiness: activeReadiness,
-      activeExecutionPayloadPreview: activePayload,
-      activeExecutionReflection: activeReflection,
-      activeExecutionAlternatives: null,
-      activeExecutionCandidate: activeCandidate,
-    })
-  );
-  assert.doesNotMatch(alternativesMissingMarkup, /data-lab-execution-candidate="true"/);
-
-  const candidateMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeExecutionPlan: activePlan,
-      activeExecutionSimulation: activeSimulation,
-      activeExecutionReadiness: activeReadiness,
-      activeExecutionPayloadPreview: activePayload,
-      activeExecutionReflection: activeReflection,
-      activeExecutionAlternatives: activeAlternatives,
-      activeExecutionCandidate: activeCandidate,
-    })
-  );
-  const candidatePanel = extractCandidatePanelMarkup(candidateMarkup);
-
-  assert.match(candidatePanel, /data-lab-execution-candidate="true"/);
-  assert.match(candidatePanel, /Viable/);
-  assert.match(candidatePanel, /Complete/);
-  assert.match(candidatePanel, /Readiness/);
-  assert.match(candidatePanel, /Reflection/);
-  assert.match(candidatePanel, /87% confidence/);
-  assert.doesNotMatch(candidatePanel, /<button/);
-  assert.doesNotMatch(candidatePanel, /onclick/);
-  assert.doesNotMatch(candidatePanel, /data-lab-action/);
-  assert.doesNotMatch(candidatePanel, />\s*(Run|Execute|Apply|Start|Commit)\s*</);
-  assert.doesNotMatch(candidatePanel, /\bCommit\b/);
-});
-
-test("laboratory timeline renders selector-fed execution feedback after completion", () => {
-  const store = createCompletedAudioExecutionStore();
-  const markup = renderLabWaveformTimeline(getWaveformTimelineModel(store.getState()));
-  const candidatePanel = extractCandidatePanelMarkup(markup);
-
-  assert.match(markup, /Result partially aligns with simulated expectations/);
-  assert.match(markup, /Audio goal remains inconclusive for the current result/);
-  assert.match(markup, /Execution feedback is mixed/);
-  assert.match(markup, /mixed execution signal/);
-  assert.match(candidatePanel, /98% confidence/);
-  assert.doesNotMatch(markup, /data-lab-action="execution/);
-  assert.doesNotMatch(candidatePanel, />\s*(Run|Execute|Apply|Start|Commit)\s*</);
-});
-
-test("laboratory execution commitment UI is explicit, passive, and candidate-gated", () => {
-  const fixture = createPassiveExecutionChainFixture();
-
-  const previewOnlyMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeSuggestionPreview: {
-        suggestionId: "audio-inspect",
-        title: "Audio preview",
-        steps: ["Step 1"],
-        expectedOutputs: ["Output"],
-      },
-      activeExecutionCandidate: fixture.activeCandidate,
-      activeExecutionCommitment: fixture.activeCommitment,
-    })
-  );
-  assert.doesNotMatch(previewOnlyMarkup, /data-lab-execution-commitment="true"/);
-  assert.doesNotMatch(previewOnlyMarkup, /data-lab-execution-commitment-set=/);
-
-  const choiceMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeExecutionPlan: fixture.activePlan,
-      activeExecutionSimulation: fixture.activeSimulation,
-      activeExecutionReadiness: fixture.activeReadiness,
-      activeExecutionPayloadPreview: fixture.activePayload,
-      activeExecutionReflection: fixture.activeReflection,
-      activeExecutionAlternatives: fixture.activeAlternatives,
-      activeExecutionCandidate: fixture.activeCandidate,
-      activeExecutionCommitment: null,
-    })
-  );
-  const candidatePanel = extractCandidatePanelMarkup(choiceMarkup);
-  assert.match(choiceMarkup, /data-lab-execution-commitment-control="true"/);
-  assert.match(choiceMarkup, /data-lab-execution-commitment-set=/);
-  assert.match(choiceMarkup, /Choose this path/);
-  assert.doesNotMatch(choiceMarkup, /data-lab-execution-commitment="true"/);
-  assert.doesNotMatch(candidatePanel, /<button/);
-
-  const committedMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeExecutionPlan: fixture.activePlan,
-      activeExecutionSimulation: fixture.activeSimulation,
-      activeExecutionReadiness: fixture.activeReadiness,
-      activeExecutionPayloadPreview: fixture.activePayload,
-      activeExecutionReflection: fixture.activeReflection,
-      activeExecutionAlternatives: fixture.activeAlternatives,
-      activeExecutionCandidate: fixture.activeCandidate,
-      activeExecutionCommitment: fixture.activeCommitment,
-    })
-  );
-  const commitmentPanel = extractCommitmentPanelMarkup(committedMarkup);
-  assert.match(commitmentPanel, /data-lab-execution-commitment="true"/);
-  assert.match(commitmentPanel, /Committed/);
-  assert.match(commitmentPanel, /Candidate: Viable/);
-  assert.match(commitmentPanel, /Chosen recently/);
-  assert.match(commitmentPanel, /Payload preview is structurally aligned/);
-  assert.match(commitmentPanel, /Alternative paths still trade precision/);
-  assert.match(commitmentPanel, /87% confidence/);
-  assert.match(commitmentPanel, /data-lab-execution-commitment-revoke="true"/);
-  assert.match(commitmentPanel, /Revoke choice/);
-  assert.doesNotMatch(commitmentPanel, />\s*(Run|Execute|Apply|Start|Commit)\s*</);
-});
-
-test("laboratory execution commitment controls avoid not-viable candidates and execution dispatch", () => {
-  const fixture = createPassiveExecutionChainFixture();
-  const blockedCandidate = {
-    ...fixture.activeCandidate,
-    id: `candidate:${fixture.activePlan.id}:blocked`,
-    status: "not-viable" as const,
-    structuralIntegrity: "insufficient" as const,
-    readinessStatus: "blocked" as const,
-    reflectionDecision: "avoid" as const,
-    summary: "This path is not structurally suitable for execution.",
-  };
-  const blockedMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeExecutionPlan: fixture.activePlan,
-      activeExecutionSimulation: fixture.activeSimulation,
-      activeExecutionReadiness: fixture.activeReadiness,
-      activeExecutionPayloadPreview: fixture.activePayload,
-      activeExecutionReflection: fixture.activeReflection,
-      activeExecutionAlternatives: fixture.activeAlternatives,
-      activeExecutionCandidate: blockedCandidate,
-      activeExecutionCommitment: null,
-    })
-  );
-
-  assert.match(blockedMarkup, /data-lab-execution-commitment-control="true"/);
-  assert.match(blockedMarkup, /not structurally suitable for a user choice yet/);
-  assert.doesNotMatch(blockedMarkup, /data-lab-execution-commitment-set=/);
-
+  const rootSource = readFileSync("rooms/laboratory/ui/lab-root.ts", "utf8");
   const binderSource = readFileSync(
     "rooms/laboratory/ui/lab-selection-suggestion-binder.ts",
     "utf8"
   );
-  assert.match(binderSource, /data-lab-execution-commitment-set/);
-  assert.match(binderSource, /workspace-execution-commitment-set/);
-  assert.match(binderSource, /data-lab-execution-commitment-revoke/);
-  assert.match(binderSource, /workspace-execution-commitment-revoked/);
-  assert.doesNotMatch(binderSource, /lab-run-controller|run-started|asset-added/);
+  const drawerResultExploreSource = readFileSync(
+    "rooms/laboratory/ui/lab-drawer-result-explore.ts",
+    "utf8"
+  );
+  const themeSource = readLabThemeSource();
+
+  const removedTimelinePatterns = [
+    /data-lab-execution-plan/,
+    /data-lab-execution-simulation/,
+    /data-lab-execution-readiness/,
+    /data-lab-execution-payload-preview/,
+    /data-lab-execution-reflection/,
+    /data-lab-execution-alternatives/,
+    /data-lab-execution-candidate/,
+    /data-lab-execution-commitment/,
+    /data-lab-execution-staging/,
+    /data-lab-execution-details/,
+    /renderExecutionPlan/,
+    /renderExecutionSimulation/,
+    /renderExecutionReadiness/,
+    /renderExecutionPayloadPreview/,
+    /renderExecutionReflection/,
+    /renderExecutionAlternatives/,
+    /renderExecutionCandidate/,
+    /renderExecutionCommitment/,
+    /renderExecutionStaging/,
+    /renderCollapsibleExecutionPanel/,
+    /executionPanels/,
+    /executionDetails/,
+  ];
+
+  removedTimelinePatterns.forEach(function (pattern) {
+    assert.doesNotMatch(timelineSource, pattern);
+  });
+
+  assert.match(timelineSource, /renderExecutionIntentStrip/);
+  assert.match(timelineSource, /renderSuggestionPreview/);
+  assert.match(binderSource, /data-lab-execution-intent-accept/);
+  assert.match(binderSource, /data-lab-execution-intent-dismiss/);
+  assert.match(binderSource, /data-lab-execution-intent-queue/);
+  assert.match(binderSource, /data-lab-execution-intent-clear/);
+  assert.doesNotMatch(
+    binderSource,
+    /data-lab-execution-commitment-set|workspace-execution-commitment-set|data-lab-execution-commitment-revoke|workspace-execution-commitment-revoked/
+  );
+  assert.doesNotMatch(
+    rootSource,
+    /data-lab-execution-details-open|activeOverlay|collapsedPanels|createLabExecutionDispatcher|getExecutionDispatchCandidate/
+  );
+  assert.doesNotMatch(
+    drawerResultExploreSource,
+    /buildExecutionBridge|data-lab-drawer-alternatives|formatDecisionCoherenceAdvisory|formatExecutionReadinessSignalAdvisory|getActiveExecutionAlternatives/
+  );
+  assert.doesNotMatch(
+    themeSource,
+    /lab-execution-collapsible|lab-execution-details|lab-execution-plan|lab-execution-simulation|lab-execution-readiness|lab-execution-payload|lab-execution-reflection|lab-execution-candidate|lab-execution-commitment|lab-execution-staging/
+  );
 });
 
-test("laboratory execution staging UI renders only after a chosen candidate chain", () => {
-  const fixture = createPassiveExecutionChainFixture();
-
-  const previewOnlyMarkup = renderLabWaveformTimeline(
+test("laboratory accepted selection renders selected action feedback without helper panels", () => {
+  const markup = renderLabWaveformTimeline(
     createExecutionReadinessTimelineModel({
-      activeSuggestionPreview: {
-        suggestionId: "audio-inspect",
-        title: "Audio preview",
-        steps: ["Step 1"],
-        expectedOutputs: ["Output"],
+      activeExecutionIntent: {
+        id: "audio-inspect",
+        label: "Inspect audio",
+        actionType: "inspect-audio",
+        confidence: 0.82,
       },
-      activeExecutionStaging: fixture.activeStaging,
+      activeSuggestionPreview: null,
+      selectionSuggestions: [],
     })
   );
-  assert.doesNotMatch(previewOnlyMarkup, /data-lab-execution-staging="true"/);
 
-  const missingChoiceMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeExecutionPlan: fixture.activePlan,
-      activeExecutionSimulation: fixture.activeSimulation,
-      activeExecutionReadiness: fixture.activeReadiness,
-      activeExecutionPayloadPreview: fixture.activePayload,
-      activeExecutionReflection: fixture.activeReflection,
-      activeExecutionAlternatives: fixture.activeAlternatives,
-      activeExecutionCandidate: fixture.activeCandidate,
-      activeExecutionCommitment: null,
-      activeExecutionStaging: fixture.activeStaging,
-    })
-  );
-  assert.doesNotMatch(missingChoiceMarkup, /data-lab-execution-staging="true"/);
-
-  const stagingMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeExecutionPlan: fixture.activePlan,
-      activeExecutionSimulation: fixture.activeSimulation,
-      activeExecutionReadiness: fixture.activeReadiness,
-      activeExecutionPayloadPreview: fixture.activePayload,
-      activeExecutionReflection: fixture.activeReflection,
-      activeExecutionAlternatives: fixture.activeAlternatives,
-      activeExecutionCandidate: fixture.activeCandidate,
-      activeExecutionCommitment: fixture.activeCommitment,
-      activeExecutionStaging: fixture.activeStaging,
-    })
-  );
-  const stagingPanel = extractStagingPanelMarkup(stagingMarkup);
-  assert.match(stagingPanel, /data-lab-execution-staging="true"/);
-  assert.match(stagingPanel, /Staged/);
-  assert.match(stagingPanel, /User choice/);
-  assert.match(stagingPanel, /Chosen/);
-  assert.match(stagingPanel, /Candidate/);
-  assert.match(stagingPanel, /Readiness/);
-  assert.match(stagingPanel, /prepared and can be staged/);
-  assert.match(stagingPanel, /Alternative paths remain visible/);
-  assert.match(stagingPanel, /Candidate uncertainty/);
-  assert.match(stagingPanel, /88% confidence/);
+  assert.match(markup, /Selected action/);
+  assert.match(markup, /Inspect audio/);
+  assert.match(markup, /data-lab-execution-intent-clear="true"/);
+  assert.doesNotMatch(markup, /data-lab-execution-plan="true"/);
+  assert.doesNotMatch(markup, /data-lab-execution-simulation="true"/);
+  assert.doesNotMatch(markup, /data-lab-execution-readiness="true"/);
+  assert.doesNotMatch(markup, /data-lab-execution-payload-preview="true"/);
+  assert.doesNotMatch(markup, /data-lab-execution-reflection="true"/);
+  assert.doesNotMatch(markup, /data-lab-execution-alternatives="true"/);
+  assert.doesNotMatch(markup, /data-lab-execution-candidate="true"/);
+  assert.doesNotMatch(markup, /data-lab-execution-commitment="true"/);
+  assert.doesNotMatch(markup, /data-lab-execution-staging="true"/);
+  assert.doesNotMatch(markup, /data-lab-execution-details-overlay="true"/);
+  assert.doesNotMatch(markup, /Simulation preview|Execution payload|Execution candidate/);
 });
 
-test("laboratory execution staging UI stays passive and avoids action language", () => {
-  const fixture = createPassiveExecutionChainFixture();
-  const stagingMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeExecutionPlan: fixture.activePlan,
-      activeExecutionSimulation: fixture.activeSimulation,
-      activeExecutionReadiness: fixture.activeReadiness,
-      activeExecutionPayloadPreview: fixture.activePayload,
-      activeExecutionReflection: fixture.activeReflection,
-      activeExecutionAlternatives: fixture.activeAlternatives,
-      activeExecutionCandidate: fixture.activeCandidate,
-      activeExecutionCommitment: fixture.activeCommitment,
-      activeExecutionStaging: fixture.activeStaging,
-    })
-  );
-  const stagingPanel = extractStagingPanelMarkup(stagingMarkup);
-
-  assert.doesNotMatch(stagingPanel, /<button/);
-  assert.doesNotMatch(stagingPanel, /onclick/);
-  assert.doesNotMatch(stagingPanel, /data-lab-action/);
-  assert.doesNotMatch(stagingPanel, /data-lab-execution-commitment/);
-  assert.doesNotMatch(stagingPanel, /\b(Run|Execute|Apply|Start|Commit|Queue)\b/);
-  assert.doesNotMatch(stagingPanel, /commitmentStatus|committed|commitment/i);
-
-  const timelineSource = readLabWaveformTimelineSource();
-  assert.match(timelineSource, /data-lab-execution-staging="true"/);
-  assert.match(timelineSource, /function renderExecutionStaging/);
-  assert.doesNotMatch(timelineSource, /workspace-execution-staging/);
-});
-
-test("laboratory execution panels are collapse-first with a non-persistent details overlay", () => {
-  const fixture = createPassiveExecutionChainFixture();
-  const collapsedMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeExecutionPlan: fixture.activePlan,
-      activeExecutionSimulation: fixture.activeSimulation,
-      activeExecutionReadiness: fixture.activeReadiness,
-      activeExecutionPayloadPreview: fixture.activePayload,
-      activeExecutionReflection: fixture.activeReflection,
-      activeExecutionAlternatives: fixture.activeAlternatives,
-      activeExecutionCandidate: fixture.activeCandidate,
-      activeExecutionCommitment: fixture.activeCommitment,
-      activeExecutionStaging: fixture.activeStaging,
-    })
-  );
-
-  assert.match(collapsedMarkup, /data-lab-collapsible-panel="true"/);
-  assert.match(collapsedMarkup, /data-panel-id="simulation"/);
-  assert.match(collapsedMarkup, /data-panel-id="payload"/);
-  assert.match(collapsedMarkup, /data-panel-id="reflection"/);
-  assert.match(collapsedMarkup, /data-panel-id="alternatives"/);
-  assert.doesNotMatch(collapsedMarkup, /data-panel-id="plan"/);
-  assert.doesNotMatch(collapsedMarkup, /data-panel-id="readiness"/);
-  ["simulation", "payload", "reflection", "alternatives"].forEach(function (panelId) {
-    assert.doesNotMatch(extractCollapsibleOpeningTag(collapsedMarkup, panelId), /\sopen\b/);
-  });
-  ["candidate", "commitment", "staging"].forEach(function (panelId) {
-    assert.match(extractCollapsibleOpeningTag(collapsedMarkup, panelId), /\sopen\b/);
-  });
-  assert.doesNotMatch(collapsedMarkup, /data-lab-execution-details-overlay="true"/);
-
-  const overlayMarkup = renderLabWaveformTimeline(
-    createExecutionReadinessTimelineModel({
-      activeOverlay: "execution-details",
-      activeExecutionPlan: fixture.activePlan,
-      activeExecutionSimulation: fixture.activeSimulation,
-      activeExecutionReadiness: fixture.activeReadiness,
-      activeExecutionPayloadPreview: fixture.activePayload,
-      activeExecutionReflection: fixture.activeReflection,
-      activeExecutionAlternatives: fixture.activeAlternatives,
-      activeExecutionCandidate: fixture.activeCandidate,
-      activeExecutionCommitment: fixture.activeCommitment,
-      activeExecutionStaging: fixture.activeStaging,
-    })
-  );
-  assert.match(overlayMarkup, /data-lab-execution-details-overlay="true"/);
-  assert.match(overlayMarkup, /data-lab-execution-details-close="true"/);
-  const detailsOverlay = extractExecutionDetailsOverlayMarkup(overlayMarkup);
-  assert.match(detailsOverlay, /data-lab-execution-plan="true"/);
-  assert.match(detailsOverlay, /data-lab-execution-simulation="true"/);
-  assert.match(detailsOverlay, /data-lab-execution-readiness="true"/);
-  assert.match(detailsOverlay, /data-lab-execution-reflection="true"/);
-  assert.match(detailsOverlay, /data-lab-execution-alternatives="true"/);
-  assert.doesNotMatch(detailsOverlay, /data-lab-execution-payload-preview="true"/);
-
-  const rootSource = readFileSync("rooms/laboratory/ui/lab-root.ts", "utf8");
-  assert.match(rootSource, /data-lab-execution-details-open/);
-  assert.match(rootSource, /activeOverlay: LabWaveformTimelineModel\["activeOverlay"\]/);
-  assert.doesNotMatch(rootSource, /processPanelCollapsedSections/);
-  assert.doesNotMatch(rootSource, /workspace-process-section-toggled/);
-});
-
-test("laboratory phase 4.95 renders room-local i18n labels in English and Turkish", () => {
-  const fixture = createPassiveExecutionChainFixture();
+test("laboratory phase 4.95 renders room-local selection labels without execution detail copy", () => {
   const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));
   const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
   const enCopy = createLabI18n({ locale: "en", translations: enTranslations });
@@ -3292,47 +2223,37 @@ test("laboratory phase 4.95 renders room-local i18n labels in English and Turkis
 
   const enMarkup = renderLabWaveformTimeline(
     createExecutionReadinessTimelineModel({
-      activeOverlay: "execution-details",
-      activeExecutionPlan: fixture.activePlan,
-      activeExecutionSimulation: fixture.activeSimulation,
-      activeExecutionReadiness: fixture.activeReadiness,
-      activeExecutionPayloadPreview: fixture.activePayload,
-      activeExecutionReflection: fixture.activeReflection,
-      activeExecutionAlternatives: fixture.activeAlternatives,
-      activeExecutionCandidate: fixture.activeCandidate,
-      activeExecutionCommitment: fixture.activeCommitment,
-      activeExecutionStaging: fixture.activeStaging,
+      activeExecutionIntent: {
+        id: "audio-inspect",
+        label: "Inspect audio",
+        actionType: "inspect-audio",
+        confidence: 0.82,
+      },
       copy: enCopy,
     })
   );
   const trMarkup = renderLabWaveformTimeline(
     createExecutionReadinessTimelineModel({
-      activeOverlay: "execution-details",
-      activeExecutionPlan: fixture.activePlan,
-      activeExecutionSimulation: fixture.activeSimulation,
-      activeExecutionReadiness: fixture.activeReadiness,
-      activeExecutionPayloadPreview: fixture.activePayload,
-      activeExecutionReflection: fixture.activeReflection,
-      activeExecutionAlternatives: fixture.activeAlternatives,
-      activeExecutionCandidate: fixture.activeCandidate,
-      activeExecutionCommitment: fixture.activeCommitment,
-      activeExecutionStaging: fixture.activeStaging,
+      activeExecutionIntent: {
+        id: "audio-inspect",
+        label: "Ses incele",
+        actionType: "inspect-audio",
+        confidence: 0.82,
+      },
       copy: trCopy,
     })
   );
 
-  assert.match(enMarkup, /View details/);
-  assert.match(enMarkup, /Execution details/);
   assert.match(enMarkup, /Selection/);
   assert.match(enMarkup, /Type/);
-  assert.match(enMarkup, /Simulation preview/);
-  assert.match(enMarkup, /Execution candidate/);
-  assert.match(trMarkup, /Detaylari gor/);
-  assert.match(trMarkup, /Calistirma detaylari/);
+  assert.match(enMarkup, /Selected action/);
+  assert.match(enMarkup, /Inspect audio/);
   assert.match(trMarkup, /Secim/);
   assert.match(trMarkup, /Tip/);
-  assert.match(trMarkup, /Simulasyon onizlemesi/);
-  assert.match(trMarkup, /Calistirma adayi/);
+  assert.match(trMarkup, /Secili aksiyon/);
+  assert.match(trMarkup, /Ses incele/);
+  assert.doesNotMatch(enMarkup, /View details|Execution details|Simulation preview|Execution candidate/);
+  assert.doesNotMatch(trMarkup, /Detaylari gor|Calistirma detaylari|Simulasyon onizlemesi|Calistirma adayi/);
 });
 
 test("laboratory runtime status copy resolves through room-local i18n catalogs", () => {
@@ -3377,8 +2298,6 @@ test("laboratory phase 4.95 i18n keys keep English and Turkish catalog parity", 
   const phaseKeys = [
     "mediaAnalysis.processSummary",
     "mediaAnalysis.rightContext",
-    "mediaAnalysis.executionDetails",
-    "mediaAnalysis.executionPanels",
     "mediaAnalysis.timeline",
     "mediaAnalysis.topBar",
     "mediaAnalysis.sourcePanel",

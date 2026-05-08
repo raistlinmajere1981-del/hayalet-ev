@@ -1,8 +1,6 @@
 @import "./styles/lab-shell-layout.css";
 @import "./styles/lab-shell-source-intake.css";
 @import "./styles/lab-workspace-selection.css";
-@import "./styles/lab-execution-flow.css";
-@import "./styles/lab-execution-review.css";
 @import "./styles/lab-timeline-roi.css";
 @import "./styles/lab-inspector-controls.css";
 @import "./styles/lab-report-overlays.css";

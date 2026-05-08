@@ -1,7 +1,6 @@
 import { asLabRecord, asNonEmptyString } from "../models/lab-types.js";
 import type { LabStoreState, LabWorkspaceSurface } from "../models/lab-types.js";
 import { createLabEventBus } from "../runtime/lab-event-bus.js";
-import { createLabExecutionDispatcher } from "../runtime/lab-execution-dispatcher.js";
 import { createLabHostBridge } from "../runtime/lab-host-bridge.js";
 import { loadLabPersistedState, saveLabPersistedState } from "../runtime/lab-persistence.js";
 import { createLabStore } from "../runtime/lab-store.js";
@@ -26,10 +25,8 @@ import { renderLabAssetPreviewOverlay } from "./lab-asset-preview-overlay.js";
 import { buildLabDecisionSnapshot, getLabDecisionStableKey } from "./lab-decision-layer.js";
 import {
   getActiveSelection,
-  getActiveExecutionIntentId,
   getActiveInspectionSnapshot,
   getActiveSuggestionPreviewId,
-  getExecutionDispatchCandidate,
   getRoiFocusActive,
   getWaveformTimelineModel,
   getDrawerCollapsed,
@@ -40,7 +37,6 @@ import {
 } from "../runtime/lab-selectors.js";
 import { createLabI18n } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
-import type { LabWaveformTimelineModel } from "./lab-waveform-timeline-types.js";
 import { updateRenderedElement } from "./lab-dom-sync.js";
 import {
   LAB_OVERLAY_SELECTORS,
@@ -133,23 +129,7 @@ export function startLaboratoryLabRoot() {
   const eventBus = createLabEventBus();
   const store = createLabStore();
   eventBus.subscribe(store.dispatch);
-  const executionDispatcher = createLabExecutionDispatcher({
-    clearTimeoutFn:
-      typeof windowRef.clearTimeout === "function"
-        ? function (timerId) {
-            windowRef.clearTimeout(timerId as number);
-          }
-        : function (timerId) {
-            clearTimeout(timerId as ReturnType<typeof setTimeout>);
-          },
-    emit: eventBus.emit,
-    setTimeoutFn:
-      typeof windowRef.setTimeout === "function"
-        ? windowRef.setTimeout.bind(windowRef)
-        : setTimeout,
-  });
   if (typeof windowRef.addEventListener === "function") {
-    windowRef.addEventListener("beforeunload", executionDispatcher.dispose);
     windowRef.addEventListener("beforeunload", stopProcessStripHeartbeat);
   }
   const previewInspectionController = createLabPreviewInspectionController({
@@ -211,36 +191,6 @@ export function startLaboratoryLabRoot() {
       return getActiveSuggestionPreviewId(store.getState());
     },
   });
-  documentRef.addEventListener("click", function (event) {
-    const target = event.target;
-    if (!(target instanceof Element)) {
-      return;
-    }
-    if (target.closest("[data-lab-execution-details-open]")) {
-      const identity = getExecutionDetailsIdentity(store.getState());
-      if (identity !== null) {
-        activeOverlay = "execution-details";
-        activeOverlayIdentity = identity;
-        render();
-      }
-      return;
-    }
-    if (target.closest("[data-lab-execution-details-close]")) {
-      closeExecutionDetailsOverlay();
-      render();
-    }
-  });
-  documentRef.addEventListener("keydown", function (event) {
-    if (event.key !== "Escape") {
-      return;
-    }
-    if (activeOverlay !== "execution-details") {
-      return;
-    }
-    closeExecutionDetailsOverlay();
-    render();
-  });
-
   const controller = createLabRunController({
     documentRef,
     eventBus,
@@ -448,16 +398,7 @@ export function startLaboratoryLabRoot() {
   }
 
   let shellMounted = false;
-  let activeOverlay: LabWaveformTimelineModel["activeOverlay"] = "none";
-  let activeOverlayIdentity: string | null = null;
   let lastDecisionLogKey: string | null = null;
-
-  const collapsedPanels: Record<string, boolean> = {
-    alternatives: true,
-    payload: true,
-    reflection: true,
-    simulation: true,
-  };
 
   function syncDecisionLayer(shell: HTMLElement | null | undefined, state: LabStoreState) {
     if (!shell) {
@@ -509,60 +450,14 @@ export function startLaboratoryLabRoot() {
     }
   }
 
-  function getExecutionDetailsIdentity(state: LabStoreState) {
-    const selection = getActiveSelection(state);
-    const intentId = getActiveExecutionIntentId(state);
-    if (selection === null || selection.endMs <= selection.startMs || intentId === null) {
-      return null;
-    }
-    const roi = selection.roi
-      ? `${selection.roi.x}:${selection.roi.y}:${selection.roi.width}:${selection.roi.height}`
-      : "no-roi";
-    const source = asLabRecord(state.source);
-    const sourceIdentity =
-      asNonEmptyString(source["assetId"]) ||
-      asNonEmptyString(source["storedFileName"]) ||
-      asNonEmptyString(source["previewUrl"]) ||
-      "no-source";
-    return [
-      state.projectIndex.activeProjectId || "no-project",
-      sourceIdentity,
-      selection.id,
-      String(selection.startMs),
-      String(selection.endMs),
-      roi,
-      intentId,
-    ].join("|");
-  }
-
-  function closeExecutionDetailsOverlay() {
-    activeOverlay = "none";
-    activeOverlayIdentity = null;
-  }
-
-  function reconcileExecutionDetailsOverlay(state: LabStoreState) {
-    if (activeOverlay !== "execution-details") {
-      return;
-    }
-    const currentIdentity = getExecutionDetailsIdentity(state);
-    if (currentIdentity === null || currentIdentity !== activeOverlayIdentity) {
-      closeExecutionDetailsOverlay();
-    }
-  }
-
   function renderSurface(state: LabStoreState, copy: LabI18n) {
     // V2.3: single workspace surface replaces stage routing
-    return renderWorkspaceSurface(state, {
-      activeOverlay,
-      collapsedPanels,
-      copy,
-    });
+    return renderWorkspaceSurface(state, { copy });
   }
 
   function render() {
     const state = store.getState();
     const copy = createLabI18n(state.context);
-    reconcileExecutionDetailsOverlay(state);
     const surface = renderSurface(state, copy);
     if (shellMounted !== true) {
       replaceLabLayout(state, surface, copy);
@@ -695,21 +590,11 @@ export function startLaboratoryLabRoot() {
     syncDecisionLayer(shell, state);
 
     syncProcessStripHeartbeat(state);
-
-    const triggerEl = runtimeRoot.querySelector<HTMLElement>(".lab-execution-details-trigger");
-    if (triggerEl) {
-      if (activeOverlay === "execution-details") {
-        triggerEl.dataset["overlaySource"] = "true";
-      } else {
-        delete triggerEl.dataset["overlaySource"];
-      }
-    }
   }
 
   store.subscribe(function (state) {
     saveLabPersistedState(window, readPersistableState(state));
     render();
-    executionDispatcher.sync(getExecutionDispatchCandidate(state));
     previewInspectionController.sync();
     scheduleBootOverlayUnlock(state);
   });

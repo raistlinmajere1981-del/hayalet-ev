@@ -56,8 +56,6 @@ import {
 export { renderSourceIntake } from "./workspace-source-intake.js";
 
 type WorkspaceSurfaceOptions = {
-  activeOverlay?: LabWaveformTimelineModel["activeOverlay"];
-  collapsedPanels?: Record<string, boolean>;
   copy?: LabI18n;
 };
 
@@ -461,8 +459,6 @@ export function renderWorkspaceSurface(
   const timeline = getWaveformTimelineModel(state);
   const timelineModel: LabWaveformTimelineModel = {
     ...timeline,
-    activeOverlay: options.activeOverlay ?? "none",
-    collapsedPanels: options.collapsedPanels ?? {},
     copy,
     focusClassName: getLabFocusClassName(state, "timeline"),
     selectionPanelPlacement: "side",

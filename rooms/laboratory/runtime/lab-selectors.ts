@@ -52,16 +52,7 @@ import {
   getSourceReady,
 } from "./selectors/lab-capability-selectors.js";
 import {
-  getActiveExecutionAlternatives,
-  getActiveExecutionCandidate,
-  getActiveExecutionCommitment,
   getActiveExecutionIntent,
-  getActiveExecutionPayloadPreview,
-  getActiveExecutionPlan,
-  getActiveExecutionReadiness,
-  getActiveExecutionReflection,
-  getActiveExecutionSimulation,
-  getActiveExecutionStaging,
   getActiveInspectionSnapshot,
   getActiveSelection,
   getActiveSuggestionPreview,
@@ -334,30 +325,13 @@ function getModuleProgress(run: LabRun | null) {
   };
 }
 
-function getPassiveExecutionMilestoneCount(state: LabStoreState) {
-  return [
-    getActiveExecutionIntent(state),
-    getActiveExecutionPlan(state),
-    getActiveExecutionSimulation(state),
-    getActiveExecutionReadiness(state),
-    getActiveExecutionPayloadPreview(state),
-    getActiveExecutionReflection(state),
-    getActiveExecutionAlternatives(state),
-    getActiveExecutionCandidate(state),
-    getActiveExecutionCommitment(state),
-    getActiveExecutionStaging(state),
-  ].filter(Boolean).length;
-}
-
 export function getLaboratoryProcessSummary(state: LabStoreState): LabGlobalProcessSummary {
   const run = getCurrentRun(state);
   const activeModule = getActiveModule(state);
   const runningAction = getUserActions(state).find(function (action) {
     return action.status === "running";
   });
-  const activeStaging = getActiveExecutionStaging(state);
   const moduleProgress = getModuleProgress(run);
-  const passiveMilestones = getPassiveExecutionMilestoneCount(state);
 
   if (run !== null && (run.state === "running" || run.state === "queued")) {
     const activeTaskLabel =
@@ -393,17 +367,6 @@ export function getLaboratoryProcessSummary(state: LabStoreState): LabGlobalProc
     };
   }
 
-  if (activeStaging !== null) {
-    return {
-      state: "staging",
-      completedCount: passiveMilestones,
-      totalCount: 9,
-      activeTaskLabel: activeStaging.summary,
-      progressLabel: `${String(passiveMilestones)} / 9`,
-      tone: activeStaging.status === "staged" ? "success" : "warning",
-    };
-  }
-
   return {
     state: "idle",
     completedCount: 0,
@@ -424,17 +387,11 @@ function formatSelectionRangeLabel(selection: LabSelection | null) {
 export function getLaboratoryRightPanelContext(state: LabStoreState): LabRightPanelContext {
   const selection = getActiveSelection(state);
   const activeIntent = getActiveExecutionIntent(state);
-  const candidate = getActiveExecutionCandidate(state);
-  const commitment = getActiveExecutionCommitment(state);
-  const staging = getActiveExecutionStaging(state);
   return {
     activeIntentLabel: activeIntent?.label || null,
-    candidateStatus: candidate?.status || null,
-    commitmentStatus: commitment?.status || "none",
     processSummary: getLaboratoryProcessSummary(state),
     selectionLabel: selection?.label || selection?.intent || null,
     selectionRangeLabel: formatSelectionRangeLabel(selection),
-    stagingStatus: staging?.status || "none",
   };
 }
 
@@ -517,15 +474,6 @@ export function getWaveformTimelineModel(state: LabStoreState) {
       : 1;
 
   return {
-    activeExecutionAlternatives: getActiveExecutionAlternatives(state),
-    activeExecutionCandidate: getActiveExecutionCandidate(state),
-    activeExecutionCommitment: getActiveExecutionCommitment(state),
-    activeExecutionPlan: getActiveExecutionPlan(state),
-    activeExecutionPayloadPreview: getActiveExecutionPayloadPreview(state),
-    activeExecutionReadiness: getActiveExecutionReadiness(state),
-    activeExecutionReflection: getActiveExecutionReflection(state),
-    activeExecutionSimulation: getActiveExecutionSimulation(state),
-    activeExecutionStaging: getActiveExecutionStaging(state),
     activeExecutionIntent: getActiveExecutionIntent(state),
     activeSelection: effectiveSelection,
     activeInspectionSnapshot: getActiveInspectionSnapshot(state),

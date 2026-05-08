@@ -357,16 +357,15 @@ test("laboratory wireframe v2 result drawer uses localized decision labels and a
   assert.deepEqual(getPipelineBlockIds(enDrawer), [
     "run-warnings",
     "context-summary",
-    "decision-status",
-    "execution-advisories",
     "report-action",
     "explore-toggle",
   ]);
-  assert.match(trDrawer, /data-decision-card="candidate"[\s\S]*(Gecerli|Dengesiz|Gecersiz)/);
-  assert.match(trDrawer, /data-decision-card="commitment"[\s\S]*-/);
-  assert.match(trDrawer, /data-decision-card="staging"[\s\S]*(Hazir|Beklemede|-)/);
-  assert.match(enDrawer, /data-decision-card="candidate"[\s\S]*(Valid|Unstable|Invalid)/);
-  assert.doesNotMatch(trDrawer, /<strong>viable<\/strong>|<strong>not-viable<\/strong>/);
+  assert.match(trDrawer, /Secim/);
+  assert.match(trDrawer, /Niyet/);
+  assert.match(enDrawer, /Selection/);
+  assert.match(enDrawer, /Intent/);
+  assert.doesNotMatch(trDrawer, /data-decision-card="candidate"|data-decision-card="commitment"|data-decision-card="staging"/);
+  assert.doesNotMatch(enDrawer, /data-block-id="execution-advisories"/);
 
   store.dispatch({ type: "drawer-explore-toggled" });
   const exploreState = store.getState();
@@ -378,11 +377,10 @@ test("laboratory wireframe v2 result drawer uses localized decision labels and a
   assert.deepEqual(getPipelineBlockIds(enExploreDrawer), [
     "run-warnings",
     "workspace-comparison",
-    "execution-alternatives",
     "reanalyze-action",
     "result-toggle",
   ]);
-  assert.match(enExploreDrawer, /data-lab-drawer-alternatives="true"/);
+  assert.doesNotMatch(enExploreDrawer, /data-lab-drawer-alternatives="true"/);
 });
 
 test("laboratory wireframe v2 process strip covers partial, cancelled, and indeterminate states", () => {

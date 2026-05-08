@@ -231,7 +231,7 @@ export function renderSuggestionPreview(
       <div class="lab-selection-preview__eyebrow">${escapeHtml(copy.t("mediaAnalysis.timeline.preview", "Preview"))}</div>
       <div class="lab-selection-preview__title">${escapeHtml(preview.title)}</div>
       <div class="lab-selection-preview__section">
-        <div class="lab-selection-preview__section-title">${escapeHtml(copy.t("mediaAnalysis.executionPanels.shared.steps", "Steps"))}</div>
+        <div class="lab-selection-preview__section-title">${escapeHtml(copy.t("mediaAnalysis.timeline.steps", "Steps"))}</div>
         <ul class="lab-selection-preview__list lab-selection-preview__list--steps">
           ${preview.steps
             .map(function (step) {

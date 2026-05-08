@@ -125,8 +125,13 @@ test("laboratory process summary derives a single deterministic state", () => {
   });
 
   const stagingSummary = getLaboratoryProcessSummary(store.getState());
-  assert.equal(stagingSummary.state, "staging");
-  assert.equal(getLaboratoryRightPanelContext(store.getState()).stagingStatus, "staged");
+  assert.equal(stagingSummary.state, "idle");
+  assert.equal(
+    (getLaboratoryRightPanelContext(store.getState()) as Record<string, unknown>)[
+      "stagingStatus"
+    ],
+    undefined
+  );
 
   store.dispatch({
     type: "run-started",
