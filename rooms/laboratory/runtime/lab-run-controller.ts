@@ -147,8 +147,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     store: deps.store,
     windowRef: deps.windowRef,
   });
-  const { downloadAsset, focusSourcePreview, previewAsset, removeAssetsWithConfirmation } =
-    assetActions;
+  const { downloadAsset, focusSourcePreview, removeAssetsWithConfirmation } = assetActions;
 
   const workspaceOperations = createLabWorkspaceOperationController({
     dispatch,
@@ -785,13 +784,20 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         }
         shiftTimelinePlayhead(value);
         return;
-      case "asset-preview":
+      case "source-activate-asset":
         if (value.trim() !== "") {
-          previewAsset(value);
+          if (isRunActive(state)) {
+            pushLockedWorkspaceEvent("Kaynak ayarları aktif analiz sırasında kilitli.");
+            return;
+          }
+          sendMediaAction("source-activate-asset", { assetId: value });
         }
         return;
-      case "close-asset-preview":
-        dispatch({ type: "asset-preview-closed" });
+      case "workspace-content-open":
+        dispatch({
+          type: "workspace-content-opened",
+          assetId: value.trim() !== "" ? value : null,
+        });
         return;
       case "focus-source-preview":
         if (value.trim() !== "") {
@@ -801,11 +807,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "asset-download":
         if (value.trim() !== "") {
           downloadAsset(value);
-        }
-        return;
-      case "asset-use-as-source":
-        if (value.trim() !== "") {
-          sendMediaAction("asset-use-as-source", { assetId: value });
         }
         return;
       case "asset-remove":

@@ -1,5 +1,6 @@
 import {
   asLabRecord,
+  asNonEmptyString,
   createLabEventId,
   LAB_OPERATION_CAPABILITIES,
   normalizeLabOperationSettings,
@@ -105,7 +106,11 @@ export function createLabMediaActionController(deps: LabMediaActionControllerDep
 
   function getCurrentRunIntentPayload(state = deps.store.getState()): Record<string, unknown> {
     const intentIds = toStringArray(getCurrentRun(state)?.analysisScope?.intentIds);
-    return intentIds.length > 0 ? { intentIds } : {};
+    const workspaceTargetAssetId = asNonEmptyString(state.ui.activeWorkspaceAssetId);
+    return {
+      ...(intentIds.length > 0 ? { intentIds } : {}),
+      ...(workspaceTargetAssetId === null ? {} : { workspaceTargetAssetId }),
+    };
   }
 
   function getOperationCapabilityIdForUiAction(

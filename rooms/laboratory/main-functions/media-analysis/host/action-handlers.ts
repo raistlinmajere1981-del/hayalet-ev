@@ -8,6 +8,7 @@ type LaboratoryRecord = Record<string, unknown>;
 
 type MediaSourceActionRuntimeDeps = {
   asNonEmptyString: (value: unknown) => string | null;
+  getActiveProject: (runtime: LaboratoryRecord) => LaboratoryRecord;
   getDefaultMode: (sourcePresets: unknown, sourceKind: unknown) => string;
   getDefaultSourceType: (sourcePresets: unknown) => string;
   handleLocalPick: (
@@ -15,12 +16,6 @@ type MediaSourceActionRuntimeDeps = {
     runtime: LaboratoryRecord,
     requestId: string,
     localFields?: unknown
-  ) => Promise<unknown>;
-  handleAssetAsSource: (
-    api: unknown,
-    runtime: LaboratoryRecord,
-    requestId: string,
-    assetId: string
   ) => Promise<unknown>;
   handleUrlDownload: (
     api: unknown,
@@ -43,6 +38,7 @@ type MediaSourceActionRuntimeDeps = {
     patcher: (project: LaboratoryRecord) => LaboratoryRecord
   ) => Promise<unknown>;
   patchActiveProjectDrafts: (runtime: LaboratoryRecord, fields: unknown) => Promise<unknown>;
+  refreshActiveProjectMetadata: (runtime: LaboratoryRecord, requestId: string) => Promise<unknown>;
   resetEditForCurrentSource: (runtime: LaboratoryRecord, project: LaboratoryRecord) => void;
   resetProfileForCurrentSource: (
     runtime: LaboratoryRecord,
@@ -71,15 +67,16 @@ type MediaActionRuntime = ReturnType<typeof createMediaSourceActionRuntime> &
 export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaActionRuntime {
   const mediaSourceActionRuntime = createMediaSourceActionRuntime({
     asNonEmptyString: deps.asNonEmptyString,
+    getActiveProject: deps.getActiveProject,
     getDefaultMode: deps.getDefaultMode,
     getDefaultSourceType: deps.getDefaultSourceType,
     handleLocalPick: deps.handleLocalPick,
-    handleAssetAsSource: deps.handleAssetAsSource,
     handleUrlDownload: deps.handleUrlDownload,
     handleYoutubeDownload: deps.handleYoutubeDownload,
     handleYoutubeProbe: deps.handleYoutubeProbe,
     patchActiveProject: deps.patchActiveProject,
     patchActiveProjectDrafts: deps.patchActiveProjectDrafts,
+    refreshActiveProjectMetadata: deps.refreshActiveProjectMetadata,
     resetEditForCurrentSource: deps.resetEditForCurrentSource,
     resetProfileForCurrentSource: deps.resetProfileForCurrentSource,
   });
@@ -121,7 +118,6 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     callRoomTools: deps.callRoomTools,
     getActiveProject: deps.getActiveProject,
     getProjectEditOutputDir: deps.getProjectEditOutputDir,
-    handleAssetAsSource: deps.handleAssetAsSource,
     patchActiveProject: deps.patchActiveProject,
     pushJobState: deps.pushJobState,
     registerJob: deps.registerJob,

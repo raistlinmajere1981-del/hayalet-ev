@@ -456,6 +456,18 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
     });
   }
 
+  function getWorkbenchSourceResetAt(workbenchSource: unknown) {
+    return asNonEmptyString(toRecord(workbenchSource)["sourceActivationResetAt"]);
+  }
+
+  function shouldUseContextWorkbench(projectWorkbench: unknown, contextWorkbench: unknown) {
+    const projectResetAt = getWorkbenchSourceResetAt(projectWorkbench);
+    if (projectResetAt === null) {
+      return true;
+    }
+    return getWorkbenchSourceResetAt(contextWorkbench) === projectResetAt;
+  }
+
   function buildMediaSnapshot(
     runtime: SnapshotRecord,
     featureId: string,
@@ -467,9 +479,11 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
       projectedProjects.find(function (project: SnapshotRecord) {
         return project.id === runtimeRecord.activeProjectId;
       }) || null;
+    const projectWorkbench = activeProject === null ? {} : toRecord(activeProject.workbench);
+    const contextWorkbench = toRecord(workbenchSource);
     const workbenchSnapshot = buildWorkbenchSnapshot(featureId || defaultFeatureId, {
-      ...(activeProject === null ? {} : toRecord(activeProject.workbench)),
-      ...toRecord(workbenchSource),
+      ...projectWorkbench,
+      ...(shouldUseContextWorkbench(projectWorkbench, contextWorkbench) ? contextWorkbench : {}),
     });
 
     return {

@@ -1,4 +1,5 @@
-import { deriveLabSourceId } from "../../../shared/host/lab-assets.js";
+import { deriveLabSourceId, findLabAssetById } from "../../../shared/host/lab-assets.js";
+import { inferLabAssetSourceKind } from "../../../shared/lab-asset-kind.js";
 import {
   readBooleanSetting,
   readNumberSetting,
@@ -7,6 +8,7 @@ import {
 import { normalizeLabOperationSettings } from "../../../models/lab-types.js";
 import type {
   LabInteractiveSettings,
+  LabAsset,
   LabOperationCapabilityId,
   LabSettingsRecord,
 } from "../../../models/lab-types.js";
@@ -41,6 +43,85 @@ export function createMediaExportUtilities(deps: MediaExportUtilityDeps) {
 
   function getSourceRecord(project: LaboratoryRecord): LaboratoryRecord {
     return toRecord(project["source"]);
+  }
+
+  function getAssetOperationPath(asset: LabAsset): string | null {
+    return asNonEmptyString(asset.localPath);
+  }
+
+  function inferAssetSourceKind(asset: LabAsset, fallback: string): "video" | "audio" | "image" {
+    const sourceKind = inferLabAssetSourceKind(asset);
+    if (sourceKind !== null) {
+      return sourceKind;
+    }
+    return fallback === "audio" || fallback === "image" ? fallback : "video";
+  }
+
+  function getWorkspaceTargetAssetId(payload: LaboratoryRecord) {
+    return (
+      asNonEmptyString(payload["workspaceTargetAssetId"]) ||
+      asNonEmptyString(payload["targetAssetId"])
+    );
+  }
+
+  function getWorkspaceTargetAsset(project: LaboratoryRecord, payload: LaboratoryRecord) {
+    const assetId = getWorkspaceTargetAssetId(payload);
+    return assetId === null ? null : findLabAssetById(project, assetId);
+  }
+
+  function getImportSourceIdForAsset(project: LaboratoryRecord, asset: LabAsset): string | null {
+    const directSourceId =
+      asNonEmptyString(asset.sourceId) || asNonEmptyString(asset.derivedFromSourceId);
+    if (directSourceId !== null) {
+      return directSourceId;
+    }
+    if (asset.type === "source") {
+      return asNonEmptyString(asset.sourceId) || asset.id;
+    }
+    const parentAssetId = asNonEmptyString(asset.derivedFromAssetId);
+    const parentAsset = parentAssetId === null ? null : findLabAssetById(project, parentAssetId);
+    if (parentAsset?.type === "source") {
+      return asNonEmptyString(parentAsset.sourceId) || parentAsset.id;
+    }
+    return null;
+  }
+
+  function getOperationSourceRecord(project: LaboratoryRecord, payload: LaboratoryRecord) {
+    const source = getSourceRecord(project);
+    const targetAssetId = getWorkspaceTargetAssetId(payload);
+    const targetAsset = getWorkspaceTargetAsset(project, payload);
+    const targetPath = targetAsset === null ? null : getAssetOperationPath(targetAsset);
+    if (targetAssetId !== null && targetAsset === null) {
+      throw new Error("Selected project asset is not registered in this project.");
+    }
+    if (targetAsset === null) {
+      return source;
+    }
+    if (targetPath === null) {
+      throw new Error("Selected project asset is not available as a local operation target.");
+    }
+    const sourceKind = asNonEmptyString(source["kind"]) || "video";
+    const targetKind = inferAssetSourceKind(targetAsset, sourceKind);
+    const sourceMetadata = toRecord(source["metadata"]);
+    const assetMetadata = toRecord(targetAsset.metadata);
+    const derivedFromSourceId = getImportSourceIdForAsset(project, targetAsset);
+    return {
+      ...source,
+      kind: targetKind,
+      mode: "asset",
+      status: "ready",
+      storedPath: targetPath,
+      storedFileName: asNonEmptyString(targetAsset.name) || targetPath.split(/[\\/]/).pop(),
+      sourceUrl: asNonEmptyString(targetAsset.url) || targetPath,
+      metadata: {
+        ...sourceMetadata,
+        ...assetMetadata,
+        derivedFromAssetId: targetAsset.id,
+        ...(derivedFromSourceId === null ? {} : { derivedFromSourceId }),
+        originAssetId: targetAsset.id,
+        originAssetType: targetAsset.type,
+      },
+    };
   }
 
   function getCurrentMediaRunId(project: LaboratoryRecord): string | null {
@@ -447,6 +528,27 @@ export function createMediaExportUtilities(deps: MediaExportUtilityDeps) {
         };
   }
 
+  function getOperationSourceAssetLink(project: LaboratoryRecord, payload: LaboratoryRecord) {
+    const targetAssetId = getWorkspaceTargetAssetId(payload);
+    const targetAsset = getWorkspaceTargetAsset(project, payload);
+    const targetPath = targetAsset === null ? null : getAssetOperationPath(targetAsset);
+    if (targetAssetId !== null && targetAsset === null) {
+      throw new Error("Selected project asset is not registered in this project.");
+    }
+    if (targetAsset !== null && targetPath === null) {
+      throw new Error("Selected project asset is not available as a local operation target.");
+    }
+    if (targetAsset === null) {
+      return getCurrentSourceAssetLink(project);
+    }
+    const derivedFromSourceId = getImportSourceIdForAsset(project, targetAsset);
+    return {
+      ...(derivedFromSourceId === null ? {} : { sourceId: derivedFromSourceId }),
+      derivedFromAssetId: targetAsset.id,
+      ...(derivedFromSourceId === null ? {} : { derivedFromSourceId }),
+    };
+  }
+
   return {
     appendImageQualityArgs,
     assertToolRunSucceeded,
@@ -459,6 +561,8 @@ export function createMediaExportUtilities(deps: MediaExportUtilityDeps) {
     getCrfForQuality,
     getCurrentMediaRunId,
     getCurrentSourceAssetLink,
+    getOperationSourceAssetLink,
+    getOperationSourceRecord,
     getFpsFilter,
     getFrameGrabSeekPoints,
     getImageExtension,

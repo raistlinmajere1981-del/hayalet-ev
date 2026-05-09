@@ -13,16 +13,12 @@ import type {
   LabUserActionEvent,
 } from "../../models/lab-types.js";
 import { normalizeLabPreflight } from "../../services/preflight-service.js";
-import {
-  clearWorkspaceSelection,
-  getWorkspaceSourceSelectionResetKey,
-} from "../lab-workspace-selection.js";
+import { getWorkspaceSourceSelectionResetKey } from "../lab-workspace-selection.js";
 import {
   LAB_USER_ACTION_HISTORY_LIMIT,
   getTrackedLabUserActionDefinition,
   isTrackedLabUserAction,
 } from "../lab-user-actions.js";
-import { clearExecutionIntent, clearSuggestionPreview } from "./lab-store-execution-state.js";
 import { normalizeStoreAssets } from "./lab-store-assets.js";
 import {
   cloneSourceDrafts,
@@ -45,8 +41,8 @@ import {
   normalizeYoutubeImportFormats,
   normalizeYoutubeImportPreview,
 } from "./lab-store-import-state.js";
-import { clearInspectionDepth, resetInspectionMode } from "./lab-store-workspace-state.js";
 import { ensurePendingRun, shouldKeepPendingRunDuringSnapshot } from "./lab-store-run-sync.js";
+import { resetWorkspaceForSourceActivation } from "./lab-store-source-reset.js";
 
 function syncDraftsFromSnapshot(state: LabStoreState, snapshot: Record<string, unknown>) {
   const activeProject = asLabRecord(snapshot["activeProject"]);
@@ -288,7 +284,7 @@ function completeTrackedProjectImport(state: LabStoreState, event: LabEventFeedI
   }
 
   resetProjectImportState(state, { keepTracking: true, reviewFocus: "completed" });
-  state.ui.activeAssetPreviewId = null;
+  state.ui.activeWorkspaceAssetId = null;
   state.ui.activePreviewArtifactId = null;
   state.ui.workspace = {
     ...state.ui.workspace,
@@ -621,16 +617,7 @@ export function syncCanonicalStateFromSnapshot(
     state.assets = [];
     state.sourceProbeStatus = state.sourceProbeStatus === "running" ? "running" : "idle";
     state.ui.lastHydratedProjectId = null;
-    clearExecutionIntent(state);
-    clearSuggestionPreview(state);
-    resetInspectionMode(state);
-    clearInspectionDepth(state);
-    state.ui.workspace = clearWorkspaceSelection({
-      ...state.ui.workspace,
-      analysisPrepExpandedIntentIds: [],
-      sourceIntakeCollapsed: false,
-      drawerModeOverride: null,
-    });
+    resetWorkspaceForSourceActivation(state, { sourceIntakeCollapsed: false });
     return state;
   }
 
@@ -672,15 +659,9 @@ export function syncCanonicalStateFromSnapshot(
     previousActiveProjectId !== nextActiveProjectId ||
     previousSourceSelectionKey !== nextSourceSelectionKey
   ) {
-    clearExecutionIntent(state);
-    clearSuggestionPreview(state);
-    resetInspectionMode(state);
-    clearInspectionDepth(state);
-    state.ui.workspace = {
-      ...clearWorkspaceSelection(state.ui.workspace),
-      analysisPrepExpandedIntentIds: [],
-      drawerModeOverride: null,
-    };
+    resetWorkspaceForSourceActivation(state, {
+      sourceIntakeCollapsed: previousActiveProjectId !== nextActiveProjectId ? nextSourceReady : undefined,
+    });
   }
   if (previousActiveProjectId !== nextActiveProjectId) {
     resetProjectImportState(state, { markSourceDraftDirty: false });

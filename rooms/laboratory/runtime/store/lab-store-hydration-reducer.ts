@@ -115,6 +115,7 @@ export function reduceLabHydrationEvent(state: LabStoreState, event: LabStoreEve
     12,
     Math.round(event.payload.artifactRenderCount || state.ui.artifactRenderCount)
   );
+  state.ui.activeWorkspaceAssetId = null;
   state.ui.activePreviewArtifactId = event.payload.activePreviewArtifactId || null;
   state.ui.liveFindingsExpanded = event.payload.liveFindingsExpanded !== false;
   state.ui.analysisControlsCollapsed = event.payload.analysisControlsCollapsed === true;

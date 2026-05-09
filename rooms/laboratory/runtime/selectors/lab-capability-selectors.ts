@@ -25,9 +25,82 @@ import { getProjectSource } from "./lab-project-selectors.js";
 import { getAssets, getSourceKind, getToolState } from "./lab-source-selectors.js";
 import { getTrackedOperationActionId } from "../lab-operation-action-map.js";
 import { getUserActions } from "./lab-activity-selectors.js";
+import {
+  inferLabAssetSourceKind,
+  type LabAssetSourceKind,
+} from "../../shared/lab-asset-kind.js";
+
+type OperationSourceKind = LabAssetSourceKind;
+
+type OperationTargetContext = {
+  blockReason: string | null;
+  metadata: Record<string, unknown>;
+  sourceKind: OperationSourceKind | null;
+  sourceReady: boolean;
+};
 
 export function getSourceReady(state: LabStoreState): boolean {
   return state.source !== null && state.sourceProbeStatus === "completed";
+}
+
+function getAssetOperationKind(asset: LabAsset): OperationSourceKind | null {
+  return inferLabAssetSourceKind(asset);
+}
+
+function normalizeOperationSourceKind(value: string): OperationSourceKind {
+  return value === "audio" || value === "image" ? value : "video";
+}
+
+function getWorkspaceOperationTarget(state: LabStoreState): OperationTargetContext {
+  const assetId = asNonEmptyString(state.ui.activeWorkspaceAssetId);
+  if (assetId === null) {
+    const sourceKind = normalizeOperationSourceKind(getSourceKind(state));
+    return {
+      blockReason: getSourceReady(state) ? null : "Kaynak henüz hazır değil.",
+      metadata: asLabRecord(asLabRecord(state.source)["metadata"]),
+      sourceKind,
+      sourceReady: getSourceReady(state),
+    };
+  }
+
+  const asset =
+    state.assets.find(function (candidate) {
+      return candidate.id === assetId;
+    }) || null;
+  if (asset === null) {
+    return {
+      blockReason: "Seçili dosya bulunamadı.",
+      metadata: {},
+      sourceKind: null,
+      sourceReady: false,
+    };
+  }
+
+  const sourceKind = getAssetOperationKind(asset);
+  if (sourceKind === null) {
+    return {
+      blockReason: "Seçili dosya bu işlem için desteklenmiyor.",
+      metadata: asLabRecord(asset.metadata),
+      sourceKind: null,
+      sourceReady: false,
+    };
+  }
+
+  if (asNonEmptyString(asset.localPath) === null) {
+    return {
+      blockReason: "Seçili dosya yerel işlem hedefi değil.",
+      metadata: asLabRecord(asset.metadata),
+      sourceKind,
+      sourceReady: false,
+    };
+  }
+
+  return {
+    blockReason: null,
+    metadata: asLabRecord(asset.metadata),
+    sourceKind,
+    sourceReady: true,
+  };
 }
 
 export function getSelectedIntents(state: LabStoreState): LabIntentId[] {
@@ -35,12 +108,14 @@ export function getSelectedIntents(state: LabStoreState): LabIntentId[] {
 }
 
 export function getAvailableIntents(state: LabStoreState) {
-  const sourceKind = getSourceKind(state);
-  const sourceReady = getSourceReady(state);
+  const operationTarget = getWorkspaceOperationTarget(state);
+  const sourceKind = operationTarget.sourceKind;
+  const sourceReady = operationTarget.sourceReady;
   const availableCapabilities = getAvailableCapabilities(state);
 
   return WORKSPACE_INTENTS.map(function (intent) {
-    const sourceCompatible = intent.sourceKinds.includes(sourceKind as "video" | "audio" | "image");
+    const sourceCompatible =
+      sourceKind !== null && intent.sourceKinds.includes(sourceKind as "video" | "audio" | "image");
     const capabilityReadiness = intent.internalCapabilities.map(function (capId) {
       const cap = availableCapabilities.find(function (entry) {
         return entry.id === capId;
@@ -57,7 +132,10 @@ export function getAvailableIntents(state: LabStoreState) {
     let readiness: "ready" | "optional" | "blocked" = "ready";
     let blockReason: string | null = null;
 
-    if (!sourceReady) {
+    if (sourceKind === null) {
+      readiness = "blocked";
+      blockReason = operationTarget.blockReason || "Not available for this file type.";
+    } else if (!sourceReady) {
       readiness = "blocked";
       blockReason = "Source not ready.";
     } else if (!sourceCompatible) {
@@ -103,6 +181,7 @@ export function getEffectiveSelectedCapabilities(state: LabStoreState) {
 
 export function getCurrentPreflight(state: LabStoreState): LabPreflightResult {
   const source = getProjectSource(state);
+  const operationTarget = getWorkspaceOperationTarget(state);
   if (Object.keys(source).length === 0) {
     return {
       status: "idle",
@@ -116,7 +195,7 @@ export function getCurrentPreflight(state: LabStoreState): LabPreflightResult {
     };
   }
 
-  if (state.sourceProbeStatus !== "completed") {
+  if (operationTarget.sourceKind === null || operationTarget.sourceReady !== true) {
     return {
       status: "idle",
       missingDependencies: [],
@@ -125,7 +204,7 @@ export function getCurrentPreflight(state: LabStoreState): LabPreflightResult {
       enabledModules: [],
       stageReady: false,
       rawStatus: null,
-      reason: "Kaynak probe tamamlanmadan ön kontrol doğrulanamaz.",
+      reason: operationTarget.blockReason || "Kaynak probe tamamlanmadan ön kontrol doğrulanamaz.",
     };
   }
 
@@ -219,14 +298,16 @@ export function getSelectedCapabilities(state: LabStoreState): CapabilityFamilyI
 }
 
 export function getAvailableCapabilities(state: LabStoreState) {
-  const sourceKind = getSourceKind(state);
-  const sourceReady = state.source !== null && state.sourceProbeStatus === "completed";
+  const operationTarget = getWorkspaceOperationTarget(state);
+  const sourceKind = operationTarget.sourceKind;
+  const sourceReady = operationTarget.sourceReady;
   const toolState = getToolState(state);
   const toolRegistry = asLabRecord(toolState["tools"]);
   const effectiveSelectedCapabilities = getEffectiveSelectedCapabilities(state);
 
   return CAPABILITY_FAMILIES.map(function (family) {
-    const sourceCompatible = family.sourceKinds.includes(sourceKind as "video" | "audio" | "image");
+    const sourceCompatible =
+      sourceKind !== null && family.sourceKinds.includes(sourceKind as "video" | "audio" | "image");
     const toolsReady = family.requiredTools.every(function (toolId) {
       const tool = asLabRecord(toolRegistry[toolId]);
       return tool["installed"] === true || asNonEmptyString(tool["status"]) === "installed";
@@ -239,9 +320,12 @@ export function getAvailableCapabilities(state: LabStoreState) {
     let readiness: "ready" | "optional" | "blocked" = "ready";
     let blockReason: string | null = null;
 
-    if (!sourceReady) {
+    if (sourceKind === null) {
       readiness = "blocked";
-      blockReason = "Kaynak henüz hazır değil.";
+      blockReason = operationTarget.blockReason || "Bu dosya türü desteklenmiyor.";
+    } else if (!sourceReady) {
+      readiness = "blocked";
+      blockReason = operationTarget.blockReason || "Kaynak henüz hazır değil.";
     } else if (!sourceCompatible) {
       readiness = "blocked";
       blockReason = `Bu kaynak türü (${sourceKind}) desteklenmiyor.`;
@@ -326,14 +410,13 @@ function getLatestOperationUserAction(
   );
 }
 
-function getOperationAudioBlockReason(state: LabStoreState, sourceKind: string) {
+function getOperationAudioBlockReason(sourceKind: string, metadata: Record<string, unknown>) {
   if (sourceKind === "audio") {
     return null;
   }
   if (sourceKind !== "video") {
     return "Bu işlem için ses akışı gerekir.";
   }
-  const metadata = asLabRecord(asLabRecord(state.source)["metadata"]);
   const audioCodec = asNonEmptyString(metadata["audioCodec"]);
   const codec = asNonEmptyString(metadata["codec"]);
   if (audioCodec !== null || (codec !== null && codec.includes("+"))) {
@@ -353,8 +436,12 @@ export function getOperationSettings(
 export function getAvailableOperationCapabilities(
   state: LabStoreState
 ): LabOperationCapabilityProjection[] {
-  const sourceKind = getSourceKind(state);
-  const sourceReady = getSourceReady(state);
+  const operationTarget = getWorkspaceOperationTarget(state);
+  const sourceKind = operationTarget.sourceKind;
+  if (sourceKind === null) {
+    return [];
+  }
+  const sourceReady = operationTarget.sourceReady;
   const selection = state.ui.workspace.activeSelection;
   const hasSelection = selection !== null && selection.endMs > selection.startMs;
   const hasRoi = selection?.roi !== undefined;
@@ -367,7 +454,7 @@ export function getAvailableOperationCapabilities(
     const activeAction = getLatestOperationUserAction(state, capability);
     const audioBlockReason =
       capability.groupId === "audio" || capability.groupId === "stems"
-        ? getOperationAudioBlockReason(state, sourceKind)
+        ? getOperationAudioBlockReason(sourceKind, operationTarget.metadata)
         : null;
 
     let readiness: CapabilityReadiness = "ready";
@@ -375,7 +462,7 @@ export function getAvailableOperationCapabilities(
 
     if (!sourceReady) {
       readiness = "blocked";
-      blockReason = "Kaynak henüz hazır değil.";
+      blockReason = operationTarget.blockReason || "Kaynak henüz hazır değil.";
     } else if (!sourceCompatible) {
       readiness = "blocked";
       blockReason = `Bu kaynak türü (${sourceKind}) desteklenmiyor.`;

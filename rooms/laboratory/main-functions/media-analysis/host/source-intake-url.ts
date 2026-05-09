@@ -1,3 +1,5 @@
+import { resetLaboratoryWorkbenchForSourceActivation } from "../../../shared/host/runtime-primitives.js";
+
 type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryMediaUrlRuntime = LaboratoryRecord;
@@ -14,6 +16,7 @@ type LaboratoryProjectSourceRecord = LaboratoryRecord & {
 type LaboratoryProjectRecord = LaboratoryRecord & {
   id?: unknown;
   source?: unknown;
+  workbench?: unknown;
 };
 
 type LaboratoryPreparedSource = {
@@ -217,6 +220,9 @@ export function createMediaUrlSourceIntakeRuntime(deps: MediaUrlSourceIntakeRunt
           runtime,
           nextProject,
           "Source media changed; rerun the profile preflight."
+        );
+        nextProject["workbench"] = resetLaboratoryWorkbenchForSourceActivation(
+          nextProject["workbench"]
         );
         return nextProject;
       });

@@ -1290,7 +1290,7 @@ test("laboratory observability helpers are debug gated and structured", async ()
       ) => void;
 	      debugLabOverlay: (
 	        shell: Element | null,
-	        overlayKey: "assetPreview" | "report" | "tools",
+	        overlayKey: "report" | "tools",
 	        event: "invalid" | "missing",
 	        detail?: Record<string, unknown>
 	      ) => void;
@@ -1511,7 +1511,7 @@ test("laboratory observability runtime paths log region fallback and overlay hea
 	      syncOverlayRoot: (
 	        documentRef: Document,
 	        root: HTMLElement,
-	        overlayKey: "assetPreview" | "report" | "tools",
+	        overlayKey: "report" | "tools",
 	        selector: string,
 	        render: () => string,
         debugShell?: Element | null
@@ -1619,16 +1619,6 @@ test("laboratory observability runtime paths log region fallback and overlay hea
         },
         debugShell
       );
-      const appendedOverlay = observability.syncOverlayRoot(
-        documentRef,
-        overlayRoot,
-        "assetPreview",
-        "#lab-asset-preview-overlay-root",
-        function () {
-          return '<section id="lab-asset-preview-overlay-root">new</section>';
-        },
-        debugShell
-      );
       const invalidOverlay = observability.syncOverlayRoot(
         documentRef,
         overlayRoot,
@@ -1641,22 +1631,17 @@ test("laboratory observability runtime paths log region fallback and overlay hea
       );
 
       assert.equal(updatedOverlay, true);
-      assert.equal(appendedOverlay, true);
       assert.equal(invalidOverlay, false);
     });
 
     assert.equal(existingOverlay.outerHtmlWrites.length, 1);
     assert.equal(overlayRoot.outerHtmlWrites.length, 0);
-    assert.equal(overlayRoot.appendedChildren.length, 1);
+    assert.equal(overlayRoot.appendedChildren.length, 0);
     assert.deepEqual(
       overlayLogs.map(function (entry) {
         return entry[0];
       }),
-      [
-        "[lab][overlay] asset-preview -> missing",
-        "[lab][overlay] report -> missing",
-        "[lab][overlay] report -> invalid",
-      ]
+      ["[lab][overlay] report -> missing", "[lab][overlay] report -> invalid"]
     );
 
     const quietShell = new RuntimeHarnessElement("DIV");

@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createRoomBuiltArtifact, createRoomInstalledCopy } from "./helpers/room-installed-copy.ts";
 import { createLaboratoryHostActivation } from "../../rooms/laboratory/shared/host/activation.ts";
 import { createMediaExportActionRuntime } from "../../rooms/laboratory/main-functions/media-analysis/host/action-handlers-export.ts";
+import { createMediaSourceActionRuntime } from "../../rooms/laboratory/main-functions/media-analysis/host/action-handlers-source.ts";
 import { createMediaLocalSourceIntakeRuntime } from "../../rooms/laboratory/main-functions/media-analysis/host/source-intake-local.ts";
 import { createLaboratoryJobStateRuntime } from "../../rooms/laboratory/shared/host/job-state.ts";
 import { createLaboratoryProcessRuntime } from "../../rooms/laboratory/shared/host/process-runtime.ts";
@@ -38,6 +39,195 @@ test("laboratory host utility helpers preserve file, timestamp, and clamp golden
   assert.equal(toLaboratoryFfmpegTimestamp("bad", "2.000"), "2.000");
   assert.equal(hostUtils.clampNumber("3.5", 0, 2, 1), 2);
   assert.equal(hostUtils.clampNumber("bad", 0, 2, 1), 1);
+});
+
+test("laboratory source asset activation imports local assets and clears persistent workbench", async () => {
+  let activeProject: Record<string, unknown> = {
+    id: "project-1",
+    source: {},
+    workbench: {
+      activeModuleId: "media-analysis",
+      selectedModuleIds: ["media-analysis"],
+      activeLiveFindingsStreamId: "media-analysis",
+      activePreviewArtifactId: "preview-1",
+      analysisScope: { intentIds: ["visual-inspection"] },
+      analysisSettings: { modules: { "sound-events": { threshold: 0.7 } } },
+      controlsCollapsed: false,
+      moduleToggles: { "sound-events": true },
+      operationSettings: { "clip-export": { format: "webm" } },
+    },
+    assets: [
+      {
+        id: "clip-avi-1",
+        type: "artifact",
+        name: "camera-archive.avi",
+        localPath: "/tmp/camera-archive.avi",
+        createdAt: 0,
+      },
+    ],
+  };
+  const refreshCalls: string[] = [];
+
+  const runtime = createMediaSourceActionRuntime({
+    asNonEmptyString(value) {
+      return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+    },
+    getActiveProject() {
+      return activeProject;
+    },
+    getDefaultMode() {
+      return "local";
+    },
+    getDefaultSourceType() {
+      return "video";
+    },
+    async handleLocalPick() {
+      throw new Error("local picker should not be used for asset activation");
+    },
+    async handleUrlDownload() {
+      throw new Error("url download should not be used for local assets");
+    },
+    async handleYoutubeDownload() {
+      throw new Error("youtube download should not be used for local assets");
+    },
+    async handleYoutubeProbe() {
+      throw new Error("youtube probe should not be used for asset activation");
+    },
+    async patchActiveProject(_runtime, patcher) {
+      activeProject = patcher(activeProject);
+      return activeProject;
+    },
+    async patchActiveProjectDrafts() {},
+    async refreshActiveProjectMetadata(_runtime, requestId) {
+      refreshCalls.push(requestId);
+    },
+    resetEditForCurrentSource() {},
+    resetProfileForCurrentSource() {},
+  });
+
+  await runtime.activateAssetSource({}, {}, "req-local-asset", { assetId: "clip-avi-1" });
+
+  const source = activeProject["source"] as Record<string, unknown>;
+  const workbench = activeProject["workbench"] as Record<string, unknown>;
+  assert.equal(source["kind"], "video");
+  assert.equal(source["mode"], "local");
+  assert.equal(source["status"], "ready");
+  assert.equal(source["storedPath"], "/tmp/camera-archive.avi");
+  assert.equal(source["sourceAssetId"], "clip-avi-1");
+  assert.deepEqual(refreshCalls, ["req-local-asset"]);
+  assert.equal(workbench["activeLiveFindingsStreamId"], null);
+  assert.equal(workbench["activePreviewArtifactId"], null);
+  assert.equal(workbench["analysisScope"], null);
+  assert.equal(
+    (
+      (
+        (workbench["analysisSettings"] as Record<string, unknown>)["modules"] as Record<
+          string,
+          Record<string, unknown>
+        >
+      )["sound-events"] as Record<string, unknown>
+    )["threshold"],
+    0.15
+  );
+  assert.equal(workbench["controlsCollapsed"], true);
+  assert.deepEqual(workbench["moduleToggles"], {});
+  assert.equal(
+    ((workbench["operationSettings"] as Record<string, Record<string, unknown>>)["clip-export"])[
+      "format"
+    ],
+    "mp4"
+  );
+});
+
+test("laboratory source asset activation routes remote and youtube assets through import handlers", async () => {
+  let activeProject: Record<string, unknown> = {
+    id: "project-1",
+    source: {},
+    workbench: {
+      activeModuleId: "media-analysis",
+      selectedModuleIds: ["media-analysis"],
+      analysisScope: { intentIds: ["audio-investigation"] },
+      moduleToggles: { "audio-analysis": true },
+      operationSettings: { "audio-cleanup": { strength: "high" } },
+    },
+    assets: [
+      {
+        id: "remote-audio-1",
+        type: "artifact",
+        name: "voice-note.mp3",
+        url: "https://example.test/voice-note.mp3",
+        createdAt: 0,
+      },
+      {
+        id: "youtube-clip-1",
+        type: "clip",
+        name: "youtube-clip",
+        url: "https://youtu.be/example123",
+        createdAt: 0,
+      },
+    ],
+  };
+  const routedActions: string[] = [];
+  const draftPatches: Array<Record<string, unknown>> = [];
+
+  const runtime = createMediaSourceActionRuntime({
+    asNonEmptyString(value) {
+      return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+    },
+    getActiveProject() {
+      return activeProject;
+    },
+    getDefaultMode() {
+      return "url";
+    },
+    getDefaultSourceType() {
+      return "video";
+    },
+    async handleLocalPick() {
+      throw new Error("local picker should not be used for remote assets");
+    },
+    async handleUrlDownload() {
+      routedActions.push("url");
+      return { routed: "url" };
+    },
+    async handleYoutubeDownload() {
+      routedActions.push("youtube");
+      return { routed: "youtube" };
+    },
+    async handleYoutubeProbe() {
+      throw new Error("youtube probe should not be used for asset activation");
+    },
+    async patchActiveProject(_runtime, patcher) {
+      activeProject = patcher(activeProject);
+      return activeProject;
+    },
+    async patchActiveProjectDrafts(_runtime, fields) {
+      draftPatches.push(fields as Record<string, unknown>);
+    },
+    async refreshActiveProjectMetadata() {},
+    resetEditForCurrentSource() {},
+    resetProfileForCurrentSource() {},
+  });
+
+  await runtime.activateAssetSource({}, {}, "req-remote-audio", { assetId: "remote-audio-1" });
+  await runtime.activateAssetSource({}, {}, "req-youtube-clip", { assetId: "youtube-clip-1" });
+
+  assert.deepEqual(routedActions, ["url", "youtube"]);
+  assert.equal(draftPatches[0]?.["kind"], "audio");
+  assert.equal(draftPatches[0]?.["mode"], "url");
+  assert.equal(draftPatches[0]?.["urlInput"], "https://example.test/voice-note.mp3");
+  assert.equal(draftPatches[1]?.["kind"], "video");
+  assert.equal(draftPatches[1]?.["mode"], "youtube");
+  assert.equal(draftPatches[1]?.["youtubeUrl"], "https://youtu.be/example123");
+  const workbench = activeProject["workbench"] as Record<string, unknown>;
+  assert.equal(workbench["analysisScope"], null);
+  assert.deepEqual(workbench["moduleToggles"], {});
+  assert.equal(
+    ((workbench["operationSettings"] as Record<string, Record<string, unknown>>)["audio-cleanup"])[
+      "denoise"
+    ],
+    "medium"
+  );
 });
 
 test("laboratory host activation unwraps host-context room-event payloads before saving context", () => {
@@ -921,7 +1111,6 @@ test("laboratory media export runtime cancels only prior export jobs for every e
   ) {
     const cancelledJobIds: string[] = [];
     const pushedJobStates: Array<Record<string, unknown>> = [];
-    const sourceActivationAssetIds: string[] = [];
     let activeProject: Record<string, unknown> = {
       id: "project-1",
       source: {
@@ -971,9 +1160,6 @@ test("laboratory media export runtime cancels only prior export jobs for every e
       },
       getProjectEditOutputDir() {
         return "/tmp";
-      },
-      async handleAssetAsSource(_api, _runtime, _requestId, assetId) {
-        sourceActivationAssetIds.push(assetId);
       },
       async patchActiveProject(_runtime, patcher) {
         const nextProject = patcher(activeProject);
@@ -1145,7 +1331,6 @@ test("laboratory media export runtime cancels only prior export jobs for every e
         return payload["stage"] === "completed";
       }) || null;
     assert.deepEqual(completedPayload?.["resultAssetIds"], [outputAsset?.["id"]]);
-    assert.deepEqual(sourceActivationAssetIds, [outputAsset?.["id"]]);
   }
 
   await runExportCase("image", function (exportRuntime, runtime) {
@@ -1220,7 +1405,6 @@ test("laboratory media export runtime reports cancelled tool runs without leakin
     getProjectEditOutputDir() {
       return "/tmp";
     },
-    async handleAssetAsSource() {},
     async patchActiveProject(_runtime, patcher) {
       activeProject = patcher(activeProject);
     },
@@ -1313,7 +1497,6 @@ test("laboratory media export runtime preserves payload intent ids before workbe
         getProjectEditOutputDir() {
           return "/tmp";
         },
-        async handleAssetAsSource() {},
         async patchActiveProject(_runtime, patcher) {
           const nextProject = patcher(activeProject);
           activeProject = {
@@ -1447,7 +1630,6 @@ test("laboratory audio variant exports preserve filter and lineage metadata", as
       getProjectEditOutputDir() {
         return "/tmp";
       },
-      async handleAssetAsSource() {},
       async patchActiveProject(_runtime, patcher) {
         const nextProject = patcher(activeProject);
         activeProject = {
@@ -1574,7 +1756,6 @@ test("laboratory ROI exports normalize crop pixels and preserve operation lineag
     getProjectEditOutputDir() {
       return "/tmp";
     },
-    async handleAssetAsSource() {},
     async patchActiveProject(_runtime, patcher) {
       const nextProject = patcher(activeProject);
       activeProject = {
@@ -1628,6 +1809,97 @@ test("laboratory ROI exports normalize crop pixels and preserve operation lineag
   assert.deepEqual(metadata["cropPixels"], { height: 180, width: 320, x: 64, y: 36 });
   assert.deepEqual(metadata["sourceDimensions"], { height: 360, width: 640 });
   assert.deepEqual(metadata["sourceRange"], { endMs: 1500, startMs: 1500 });
+
+  activeProject = {
+    ...activeProject,
+    assets: [
+      ...((activeProject.assets as Array<Record<string, unknown>>) || []),
+      {
+        id: "asset-image-target",
+        type: "image",
+        name: "target.png",
+        localPath: "/tmp/target.png",
+        createdAt: 10,
+        derivedFromAssetId: "asset-analysis-artifact",
+        metadata: {
+          height: 240,
+          kind: "image",
+          width: 320,
+        },
+      },
+    ],
+  };
+
+  await exportRuntime.exportROIImage(
+    {},
+    {
+      roomId: "laboratory",
+      jobs: {},
+    },
+    "req-roi-selected-asset",
+    {
+      normalizedRoi: {
+        height: 0.5,
+        width: 0.5,
+        x: 0.1,
+        y: 0.1,
+      },
+      regionId: "selected-asset",
+      workspaceTargetAssetId: "asset-image-target",
+    }
+  );
+
+  const selectedArgs = toolRuns[1]?.["args"] as string[];
+  assert.equal(selectedArgs.includes("/tmp/target.png"), true);
+  assert.equal(selectedArgs.includes("-ss"), false);
+  const selectedOutputAsset = (activeProject.assets as Array<Record<string, unknown>>).find(
+    function (asset) {
+      return (
+        asset["type"] === "image" &&
+        (asset["metadata"] as Record<string, unknown> | undefined)?.["requestId"] ===
+          "req-roi-selected-asset"
+      );
+    }
+  );
+  const selectedMetadata = (selectedOutputAsset?.["metadata"] || {}) as Record<string, unknown>;
+  assert.equal(selectedOutputAsset?.["derivedFromAssetId"], "asset-image-target");
+  assert.notEqual(selectedOutputAsset?.["sourceId"], "asset-analysis-artifact");
+  assert.equal(selectedOutputAsset?.["derivedFromSourceId"], undefined);
+  assert.deepEqual(selectedMetadata["sourceDimensions"], { height: 240, width: 320 });
+
+  activeProject = {
+    ...activeProject,
+    assets: [
+      ...((activeProject.assets as Array<Record<string, unknown>>) || []),
+      {
+        id: "asset-remote-target",
+        type: "clip",
+        name: "remote.mp4",
+        url: "https://example.test/remote.mp4",
+        createdAt: 11,
+      },
+    ],
+  };
+
+  await assert.rejects(
+    exportRuntime.exportROIImage(
+      {},
+      {
+        roomId: "laboratory",
+        jobs: {},
+      },
+      "req-roi-remote-target",
+      {
+        height: 10,
+        regionId: "remote-target",
+        width: 10,
+        workspaceTargetAssetId: "asset-remote-target",
+        x: 0,
+        y: 0,
+      }
+    ),
+    /not available as a local operation target/
+  );
 });
 
 test("laboratory frame export settings drive burst and preview filter arguments", async () => {
@@ -1678,7 +1950,6 @@ test("laboratory frame export settings drive burst and preview filter arguments"
     getProjectEditOutputDir() {
       return "/tmp";
     },
-    async handleAssetAsSource() {},
     async patchActiveProject(_runtime, patcher) {
       const nextProject = patcher(activeProject);
       activeProject = {
@@ -1733,11 +2004,11 @@ test("laboratory frame export settings drive burst and preview filter arguments"
     }),
     true
   );
-  const burstAssets = (activeProject.assets as Array<Record<string, unknown>>).filter(function (
-    asset
-  ) {
-    return asset["type"] === "frame";
-  });
+  const burstAssets = (activeProject.assets as Array<Record<string, unknown>>).filter(
+    function (asset) {
+      return asset["type"] === "frame";
+    }
+  );
   assert.equal(burstAssets.length, 3);
 
   toolRuns.length = 0;
@@ -1775,72 +2046,36 @@ test("laboratory frame export settings drive burst and preview filter arguments"
   assert.match(filterGraph, /colorchannelmixer/);
   assert.match(filterGraph, /edgedetect/);
   assert.match(filterGraph, /negate/);
-  const enhancedAsset = (activeProject.assets as Array<Record<string, unknown>>).find(function (
-    asset
-  ) {
-    return asset["type"] === "frame" && String(asset["name"] || "").includes("enhanced-frame");
-  });
+  const enhancedAsset = (activeProject.assets as Array<Record<string, unknown>>).find(
+    function (asset) {
+      return asset["type"] === "frame" && String(asset["name"] || "").includes("enhanced-frame");
+    }
+  );
   assert.equal(
-    ((enhancedAsset?.["metadata"] as Record<string, unknown>)["settingsUsed"] as Record<
-      string,
-      unknown
-    >)["applyPreviewSettings"],
+    (
+      (enhancedAsset?.["metadata"] as Record<string, unknown>)["settingsUsed"] as Record<
+        string,
+        unknown
+      >
+    )["applyPreviewSettings"],
     true
   );
 });
 
-test("laboratory source intake resolves use-as-source from registered local asset ids only", async () => {
-  let activeProject = {
-    id: "project-asset-source",
-    source: {
-      kind: "video",
-      status: "ready",
-      storedPath: "/tmp/source.mp4",
-    },
-    assets: [
-      {
-        id: "asset-local-clip",
-        type: "clip",
-        name: "clip_01.mp4",
-        localPath: "/tmp/clip_01.mp4",
-        createdAt: 100,
-        sourceId: "source-1",
-        runId: "run-1",
-      },
-      {
-        id: "asset-url-clip",
-        type: "clip",
-        name: "remote_clip.mp4",
-        url: "https://example.test/remote_clip.mp4",
-        createdAt: 200,
-      },
-    ],
-  } as Record<string, unknown> & { source: Record<string, unknown> };
-  const copiedPaths: string[] = [];
-  let editResetCount = 0;
-  let profileResetCount = 0;
-
+test("laboratory source intake no longer exposes asset source promotion", () => {
   const sourceRuntime = createMediaLocalSourceIntakeRuntime({
     asNonEmptyString(value: unknown) {
       return typeof value === "string" && value.trim() !== "" ? value : null;
     },
     getActiveProject() {
-      return activeProject;
+      return {
+        id: "project-asset-source",
+        source: { kind: "video", status: "ready", storedPath: "/tmp/source.mp4" },
+        assets: [],
+      } as Record<string, unknown> & { source: Record<string, unknown> };
     },
     getElectronApi() {
-      return {
-        async copyFileTo(sourcePath: string, destinationDir: string) {
-          copiedPaths.push(`${sourcePath}->${destinationDir}`);
-          return {
-            success: true,
-            path: `${destinationDir}/clip_01.mp4`,
-            name: "clip_01.mp4",
-          };
-        },
-        async showOpenDialog() {
-          return { canceled: true, filePaths: [] };
-        },
-      };
+      return null;
     },
     getProjectSourceDir() {
       return "/tmp/project/source";
@@ -1851,56 +2086,15 @@ test("laboratory source intake resolves use-as-source from registered local asse
     normalizeMimeType(_fileName: unknown, kind: string) {
       return kind === "audio" ? "audio/wav" : kind === "image" ? "image/png" : "video/mp4";
     },
-    async patchActiveProject(_runtime, updater) {
-      activeProject = updater(activeProject);
-    },
-    resetEditForCurrentSource() {
-      editResetCount += 1;
-    },
-    resetProfileForCurrentSource() {
-      profileResetCount += 1;
-    },
-    async resolvePreparedSource(_runtime, _project, options) {
-      return {
-        metadata: {
-          durationSeconds: 1.4,
-        },
-        metadataError: null,
-        mimeType: options["mimeType"] as string,
-        storedFileName: options["storedFileName"] as string,
-        storedPath: options["storedPath"] as string,
-      };
+    async patchActiveProject() {},
+    resetEditForCurrentSource() {},
+    resetProfileForCurrentSource() {},
+    async resolvePreparedSource() {
+      throw new Error("not used");
     },
   });
 
-  await assert.rejects(
-    sourceRuntime.handleAssetAsSource({}, {}, "req-missing", "asset-missing"),
-    /not registered/
-  );
-  await assert.rejects(
-    sourceRuntime.handleAssetAsSource({}, {}, "req-url", "asset-url-clip"),
-    /Only local project assets/
-  );
-  assert.deepEqual(copiedPaths, []);
-
-  await sourceRuntime.handleAssetAsSource({}, {}, "req-local", "asset-local-clip");
-
-  assert.deepEqual(copiedPaths, []);
-  assert.equal(activeProject.source["storedPath"], "/tmp/clip_01.mp4");
-  assert.equal(activeProject.source["routeLabel"], "Asset reuse");
-  assert.equal(activeProject.source["mimeType"], "video/mp4");
-  const metadata = activeProject.source["metadata"] as Record<string, unknown>;
-  assert.equal(metadata["originAssetId"], "asset-local-clip");
-  assert.equal(metadata["derivedFromSourceId"], "source-1");
-  assert.equal(metadata["derivedFromRunId"], "run-1");
-  const syncedAssets = syncSourceLabAssetForProject(activeProject, activeProject["assets"]);
-  const sourceAsset = syncedAssets.find(function (asset) {
-    return asset.id === asset.sourceId;
-  });
-  assert.equal(sourceAsset, undefined);
-  assert.equal(metadata["originAssetId"], "asset-local-clip");
-  assert.equal(editResetCount, 1);
-  assert.equal(profileResetCount, 1);
+  assert.equal("handleAssetAsSource" in sourceRuntime, false);
 });
 
 test("laboratory local source picker uses requested import kind filters", async () => {

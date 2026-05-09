@@ -17,10 +17,8 @@ export const LAB_REGION_SELECTORS = {
 } as const;
 
 export const LAB_OVERLAY_SELECTORS = {
-  assetPreview: "#lab-asset-preview-overlay-root",
   report: "#lab-report-overlay-root",
-  tools:
-    ".labx-overlay-root:not(#lab-asset-preview-overlay-root):not(.labx-asset-preview-root):not(#lab-report-overlay-root)",
+  tools: ".labx-overlay-root:not(#lab-report-overlay-root)",
 } as const;
 
 export type LabRegionKey = keyof typeof LAB_REGION_SELECTORS;
@@ -44,7 +42,6 @@ const LAB_REGION_DEBUG_NAMES: Record<LabRegionKey, string> = {
 };
 
 const LAB_OVERLAY_DEBUG_NAMES: Record<LabOverlayKey, string> = {
-  assetPreview: "asset-preview",
   report: "report",
   tools: "tools",
 };

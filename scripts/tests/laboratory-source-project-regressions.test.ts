@@ -3,6 +3,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
+import {
+  inferLabAssetContentKind,
+  inferLabAssetSourceKind,
+} from "../../rooms/laboratory/shared/lab-asset-kind.ts";
 import { createLabI18n } from "../../rooms/laboratory/ui/lab-i18n.ts";
 import { renderLabSourcePanel } from "../../rooms/laboratory/ui/lab-source-panel.ts";
 import { readCssWithImports } from "./helpers/css-imports.ts";
@@ -106,6 +110,49 @@ function createSourceProjectState(
   return store.getState();
 }
 
+test("laboratory shared asset kind helper keeps source and content routing consistent", () => {
+  const baseAsset = {
+    id: "asset-1",
+    createdAt: 0,
+    type: "artifact" as const,
+  };
+
+  assert.equal(
+    inferLabAssetSourceKind({
+      ...baseAsset,
+      name: "camera-archive.avi",
+      localPath: "/tmp/camera-archive.avi",
+    }),
+    "video"
+  );
+  assert.equal(
+    inferLabAssetSourceKind({
+      ...baseAsset,
+      name: "evidence.mpeg",
+      url: "https://example.test/evidence.mpeg",
+    }),
+    "video"
+  );
+  assert.equal(
+    inferLabAssetSourceKind({
+      ...baseAsset,
+      name: "voice-note.webm",
+      metadata: {
+        sourceKind: "audio",
+      },
+    }),
+    "audio"
+  );
+  assert.equal(
+    inferLabAssetContentKind({
+      ...baseAsset,
+      name: "analysis-report.md",
+      localPath: "/tmp/analysis-report.md",
+    }),
+    "document"
+  );
+});
+
 test("laboratory source project management owns controls without the retired workspace overlay", () => {
   const state = createSourceProjectState(true);
   const sourcePanel = renderLabSourcePanel(state);
@@ -160,7 +207,7 @@ test("laboratory source project controls skip redundant button dispatches", () =
     sourceActionControllerSource,
     /state\.ui\.projectImport\.methods\[activeKind\] !== method/
   );
-	  assert.doesNotMatch(sourceActionControllerSource, /youtube-import-set-strategy/);
+  assert.doesNotMatch(sourceActionControllerSource, /youtube-import-set-strategy/);
   assert.doesNotMatch(source, /projectWorkspaceSelectedEntityIds/);
   assert.doesNotMatch(source, /projectWorkspaceSort/);
   assert.doesNotMatch(source, /projectWorkspaceFilter/);
@@ -233,8 +280,8 @@ test("laboratory source panel renders localized asset groups and context actions
   assert.match(html, /Kaynaklar/);
   assert.match(html, /Klipler/);
   assert.match(html, /Kareler/);
-  assert.match(html, /Ses/);
-  assert.match(html, /Goruntuler/);
+  assert.match(html, /Sesler/);
+  assert.doesNotMatch(html, /Goruntuler/);
   assert.match(html, /Raporlar/);
   assert.match(html, /data-group-type="artifact"/);
   assert.match(html, /class="labx-sp-asset__thumb" data-kind="video"/);
@@ -248,8 +295,10 @@ test("laboratory source panel renders localized asset groups and context actions
   assert.match(html, /report\.md/);
   assert.match(html, /artifact\.json/);
   assert.doesNotMatch(html, /secili/);
-  assert.match(html, /data-lab-action="asset-use-as-source"/);
-  assert.match(html, /data-lab-action="open-report-overlay"/);
+  assert.match(html, /data-lab-action="source-activate-asset"/);
+  assert.match(html, /data-lab-action="workspace-content-open"/);
+  assert.doesNotMatch(html, /data-lab-action="asset-use-as-source"/);
+  assert.doesNotMatch(html, /data-lab-action="open-report-overlay"/);
   assert.match(html, /data-lab-action="asset-remove"/);
 });
 
@@ -316,11 +365,11 @@ test("laboratory source panel hides download for assets without a file target", 
   );
 
   assert.match(html, /virtual artifact/);
-  assert.match(html, /data-lab-action="asset-preview"/);
+  assert.match(html, /data-lab-action="workspace-content-open"/);
   assert.doesNotMatch(html, /data-lab-action="asset-download"/);
 });
 
-test("laboratory source panel renders video source assets as selectable rows", () => {
+test("laboratory source panel renders video source assets as source activation rows", () => {
   const html = renderLabSourcePanel(
     createSourceProjectState(true, {
       assets: [
@@ -339,7 +388,8 @@ test("laboratory source panel renders video source assets as selectable rows", (
 
   assert.match(html, /data-asset-type="source"/);
   assert.match(html, /CGI Analizi -1\.mp4/);
-  assert.match(html, /data-lab-action="asset-use-as-source"/);
+  assert.match(html, /data-lab-action="source-activate-asset"/);
+  assert.doesNotMatch(html, /data-lab-action="asset-use-as-source"/);
   assert.match(html, /class="labx-sp-asset__thumb" data-kind="video"/);
   assert.doesNotMatch(html, /class="labx-pw-card__thumb-img/);
   assert.doesNotMatch(html, /class="labx-pw-inspector__preview-media/);
@@ -379,13 +429,13 @@ test("laboratory source project management i18n keys exist in English and Turkis
   ];
   const keys = new Set<string>();
 
-	  sourceFiles.forEach(function (filePath) {
-	    const source = readFileSync(filePath, "utf8");
-	    for (const match of source.matchAll(
-	      /copy\.t\("((?:mediaAnalysis\.(?:sourcePanel|projectImport))[^"]+)"/g
-	    )) {
-	      keys.add(match[1]!);
-	    }
+  sourceFiles.forEach(function (filePath) {
+    const source = readFileSync(filePath, "utf8");
+    for (const match of source.matchAll(
+      /copy\.t\("((?:mediaAnalysis\.(?:sourcePanel|projectImport))[^"]+)"/g
+    )) {
+      keys.add(match[1]!);
+    }
   });
 
   function readPath(record: Record<string, unknown>, key: string): unknown {
@@ -417,12 +467,12 @@ test("laboratory source management css keeps active import styles without retire
   assert.doesNotMatch(sourceImportCss, /\.labx-import-/);
   assert.doesNotMatch(sourceImportCss, /\.labx-strategy-/);
   assert.match(sourceImportCss, /\.labx-project-import__progress\s*\{[\s\S]*display:\s*grid;/);
-  assert.match(sourceImportCss, /\.labx-project-import__youtube-preview\s*\{[\s\S]*display:\s*grid;/);
-  assert.match(sourceImportCss, /\.labx-project-import__yt-controls\s*\{[\s\S]*display:\s*grid;/);
   assert.match(
     sourceImportCss,
-    /\.labx-project-import__yt-field\s*\{[\s\S]*display:\s*grid;/
+    /\.labx-project-import__youtube-preview\s*\{[\s\S]*display:\s*grid;/
   );
+  assert.match(sourceImportCss, /\.labx-project-import__yt-controls\s*\{[\s\S]*display:\s*grid;/);
+  assert.match(sourceImportCss, /\.labx-project-import__yt-field\s*\{[\s\S]*display:\s*grid;/);
   assert.doesNotMatch(sourceImportCss, /\.labx-advanced-settings/);
   assert.doesNotMatch(themeSource, /\.labx-top-bar__project-btn\s*\{/);
   assert.match(themeSource, /\.labx-timeline__highlight\s*\{/);

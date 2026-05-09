@@ -867,6 +867,7 @@
       "source-set-mode": "Source route updated.",
       "source-update-draft": "Source draft saved.",
       "source-pick-local": "Local source copied into the project.",
+      "source-activate-asset": "Project file opened as the source.",
       "source-download-url": "Direct URL source downloaded into the project.",
       "source-download-youtube": "YouTube source captured into the project.",
       "tool-install": "Tool installation completed.",
@@ -1616,7 +1617,6 @@
         "offset": "Sync: Offset {offset} ms"
       },
       "actions": {
-        "useAsSource": "Use as source",
         "download": "Download",
         "ariaLabel": "Asset actions",
         "preview": "Preview",
@@ -1634,18 +1634,14 @@
         "source": "Source",
         "clip": "Clips",
         "frame": "Frames",
-        "audio": "Audio",
+        "audio": "Sounds",
         "image": "Images",
         "report": "Reports",
         "artifact": "Artifacts"
       }
     },
-    "assetPreview": {
-      "unavailable": "Preview unavailable",
-      "closeAria": "Close asset preview",
-      "ariaLabel": "Asset preview",
-      "eyebrow": "ASSET PREVIEW",
-      "closeAction": "Close"
+    "assetContent": {
+      "unavailable": "Content unavailable"
     },
     "leftRail": {
       "toolManagement": "Tool Management",
@@ -2144,6 +2140,7 @@
       "actions": {
         "generic": "Action",
         "named": "{action}",
+        "sourceActivateAsset": "Opening project file as source",
         "sourceDownloadUrl": "Downloading URL source",
         "sourceDownloadYoutube": "Preparing YouTube source",
         "sourcePickLocal": "Importing local source",
@@ -2186,7 +2183,6 @@
       },
       "controller": {
         "roomApiDisconnected": "Room API bridge is not connected.",
-        "assetPreviewUnavailable": "Asset preview is unavailable.",
         "sourcePreviewUnavailable": "Source preview is unavailable.",
         "projectCheckpointSaved": "Project saved with the current checkpoint state."
       },

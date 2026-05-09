@@ -401,8 +401,6 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     getProjectEditOutputDir,
     getProjectSourceDir,
     getRuntimeToolIds: bootstrap.getRuntimeToolIds,
-    handleAssetAsSource:
-      sourceCompositionRuntime.laboratorySourceDelegatesRuntime.handleAssetAsSource,
     handleLocalPick: sourceCompositionRuntime.laboratorySourceDelegatesRuntime.handleLocalPick,
     handleUrlDownload: sourceCompositionRuntime.laboratorySourceDelegatesRuntime.handleUrlDownload,
     handleYoutubeDownload:

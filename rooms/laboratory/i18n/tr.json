@@ -867,6 +867,7 @@
       "source-set-mode": "Kaynak rotasi guncellendi.",
       "source-update-draft": "Kaynak taslagi kaydedildi.",
       "source-pick-local": "Yerel kaynak proje icine kopyalandi.",
+      "source-activate-asset": "Proje dosyasi kaynak olarak acildi.",
       "source-download-url": "Dogrudan URL kaynagi proje icine indirildi.",
       "source-download-youtube": "YouTube kaynagi proje icine alindi.",
       "tool-install": "Arac kurulumu tamamlandi.",
@@ -1616,7 +1617,6 @@
         "offset": "Senkron: Ofset {offset} ms"
       },
       "actions": {
-        "useAsSource": "Kaynak olarak kullan",
         "download": "Indir",
         "ariaLabel": "Varlık aksiyonları",
         "preview": "Onizleme",
@@ -1634,18 +1634,14 @@
         "source": "Kaynak",
         "clip": "Klipler",
         "frame": "Kareler",
-        "audio": "Ses",
+        "audio": "Sesler",
         "image": "Goruntuler",
         "report": "Raporlar",
         "artifact": "Artefaktlar"
       }
     },
-    "assetPreview": {
-      "unavailable": "Onizleme mevcut degil",
-      "closeAria": "Varlık önizlemesini kapat",
-      "ariaLabel": "Varlık önizlemesi",
-      "eyebrow": "VARLIK ÖNİZLEMESİ",
-      "closeAction": "Kapat"
+    "assetContent": {
+      "unavailable": "İçerik mevcut değil"
     },
     "leftRail": {
       "toolManagement": "Arac Yonetimi",
@@ -2144,6 +2140,7 @@
       "actions": {
         "generic": "İşlem",
         "named": "{action}",
+        "sourceActivateAsset": "Proje dosyası kaynak yapılıyor",
         "sourceDownloadUrl": "URL kaynağı indiriliyor",
         "sourceDownloadYoutube": "YouTube kaynağı hazırlanıyor",
         "sourcePickLocal": "Yerel kaynak içeri alınıyor",
@@ -2186,7 +2183,6 @@
       },
       "controller": {
         "roomApiDisconnected": "Room API bridge bağlı değil.",
-        "assetPreviewUnavailable": "Varlık önizlemesi kullanılamıyor.",
         "sourcePreviewUnavailable": "Kaynak preview kullanılamıyor.",
         "projectCheckpointSaved": "Proje mevcut checkpoint durumu ile kaydedildi."
       },

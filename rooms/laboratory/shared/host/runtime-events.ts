@@ -1,3 +1,5 @@
+import { resetLaboratoryWorkbenchForSourceActivation } from "./runtime-primitives.js";
+
 type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryRuntimeEventsApi = {
@@ -54,6 +56,8 @@ function getActionLabel(action: string | null) {
       return "YouTube kaynağı hazırlanıyor";
     case "source-pick-local":
       return "Yerel kaynak içeri alınıyor";
+    case "source-activate-asset":
+      return "Proje dosyası kaynak yapılıyor";
     case "project-import-check-url":
       return "URL kontrol ediliyor";
     case "edit-preview":
@@ -114,6 +118,18 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
 
   function buildSourceSnapshot(runtime: unknown) {
     return roomSnapshotRuntime.buildMediaSnapshot(runtime, defaultFeatureId);
+  }
+
+  function isSourceActivationAction(action: unknown) {
+    const actionId = asNonEmptyString(action);
+    return (
+      actionId === "source-activate-asset" ||
+      actionId === "source-download-url" ||
+      actionId === "source-download-youtube" ||
+      actionId === "source-pick-local" ||
+      actionId === "source-set-kind" ||
+      actionId === "source-set-mode"
+    );
   }
 
   function notifyRoom(
@@ -353,10 +369,14 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
     const context = loadContext(api);
     const contextRecord = toRecord(context);
     const featureId = getFeatureIdFromContext(context);
+    const workbenchSource =
+      isSourceActivationAction(action) === true
+        ? resetLaboratoryWorkbenchForSourceActivation(contextRecord["workbench"])
+        : contextRecord["workbench"];
     const payload = {
       requestId: requestId ?? null,
       action: asNonEmptyString(action),
-      snapshot: buildMediaSnapshot(runtime, featureId, contextRecord["workbench"]),
+      snapshot: buildMediaSnapshot(runtime, featureId, workbenchSource),
     };
 
     notifyRoom(api, "media-state", payload);

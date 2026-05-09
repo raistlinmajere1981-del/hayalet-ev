@@ -231,10 +231,6 @@ const RUNTIME_TEXT: Record<string, RuntimeCopyDescriptor> = {
     key: "mediaAnalysis.runtime.controller.roomApiDisconnected",
     fallback: "Room API bridge is not connected.",
   },
-  "Asset preview is unavailable.": {
-    key: "mediaAnalysis.runtime.controller.assetPreviewUnavailable",
-    fallback: "Asset preview is unavailable.",
-  },
   "Source preview is unavailable.": {
     key: "mediaAnalysis.runtime.controller.sourcePreviewUnavailable",
     fallback: "Source preview is unavailable.",
@@ -431,6 +427,10 @@ const RUNTIME_TEXT_PATTERNS: RuntimeTextPattern[] = [
 ];
 
 const ACTION_LABELS: Record<string, RuntimeCopyDescriptor> = {
+  "source-activate-asset": {
+    key: "mediaAnalysis.runtime.actions.sourceActivateAsset",
+    fallback: "Opening project file as source",
+  },
   "source-download-url": {
     key: "mediaAnalysis.runtime.actions.sourceDownloadUrl",
     fallback: "Downloading URL source",

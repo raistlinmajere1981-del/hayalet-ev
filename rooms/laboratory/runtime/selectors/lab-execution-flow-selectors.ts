@@ -1,3 +1,4 @@
+import { asLabRecord, asNonEmptyString } from "../../models/lab-types.js";
 import type {
   LabActionSuggestion,
   LabActiveExecutionResult,
@@ -48,9 +49,54 @@ import type {
 import { getSourceKind, getSourceMetadata } from "./lab-source-selectors.js";
 import { getEffectivePreviewAudioFocusSettings } from "./lab-workspace-media-selectors.js";
 import type { LabI18nLocale } from "../lab-i18n.js";
+import { inferLabAssetContentKind } from "../../shared/lab-asset-kind.js";
 
 function getRuntimeLocale(state: LabStoreState): LabI18nLocale {
   return state.context["locale"] === "tr" ? "tr" : "en";
+}
+
+function getActiveWorkspaceAsset(state: LabStoreState) {
+  const assetId = asNonEmptyString(state.ui.activeWorkspaceAssetId);
+  if (assetId === null) {
+    return null;
+  }
+  return (
+    state.assets.find(function (asset) {
+      return asset.id === assetId;
+    }) || null
+  );
+}
+
+function getAssetSelectionSourceKind(
+  asset: NonNullable<ReturnType<typeof getActiveWorkspaceAsset>>
+) {
+  const contentKind = inferLabAssetContentKind(asset);
+  return contentKind === "unsupported" ? "asset" : contentKind;
+}
+
+function getAssetDurationMs(
+  asset: NonNullable<ReturnType<typeof getActiveWorkspaceAsset>>
+): number {
+  const metadata = asLabRecord(asset.metadata);
+  const durationMs = metadata["durationMs"];
+  if (typeof durationMs === "number" && Number.isFinite(durationMs)) {
+    return Math.max(0, Math.round(durationMs));
+  }
+  const durationSeconds = metadata["durationSeconds"];
+  if (typeof durationSeconds === "number" && Number.isFinite(durationSeconds)) {
+    return Math.max(0, Math.round(durationSeconds * 1000));
+  }
+  return 0;
+}
+
+export function getSelectionContextSourceKind(state: LabStoreState): string {
+  const activeAsset = getActiveWorkspaceAsset(state);
+  return activeAsset === null ? getSourceKind(state) : getAssetSelectionSourceKind(activeAsset);
+}
+
+export function getSelectionContextDurationMs(state: LabStoreState): number {
+  const activeAsset = getActiveWorkspaceAsset(state);
+  return activeAsset === null ? getSourceDurationMs(state) : getAssetDurationMs(activeAsset);
 }
 
 function createExecutionSelectionSnapshot(
@@ -62,7 +108,7 @@ function createExecutionSelectionSnapshot(
     endMs: selection.endMs,
     inspectionMode: getInspectionMode(state),
     intent: selection.intent,
-    sourceKind: getSourceKind(state) || "unknown",
+    sourceKind: getSelectionContextSourceKind(state) || "unknown",
     startMs: selection.startMs,
     type: selection.type,
     ...(roi
@@ -97,8 +143,8 @@ function getSourceDurationMs(state: LabStoreState): number {
 
 export function getEffectiveActiveSelection(state: LabStoreState): LabSelection | null {
   return resolveEffectiveWorkspaceSelection(getActiveSelection(state), {
-    durationMs: getSourceDurationMs(state),
-    sourceKind: getSourceKind(state),
+    durationMs: getSelectionContextDurationMs(state),
+    sourceKind: getSelectionContextSourceKind(state),
   });
 }
 
@@ -142,7 +188,7 @@ export function getActiveExecutionIntentId(state: LabStoreState): string | null 
 export function getSelectionSuggestions(state: LabStoreState): LabActionSuggestion[] {
   return getSelectionSuggestionsForContext(getEffectiveActiveSelection(state), {
     inspectionMode: getInspectionMode(state),
-    sourceKind: getSourceKind(state),
+    sourceKind: getSelectionContextSourceKind(state),
   });
 }
 
@@ -170,7 +216,7 @@ export function getWorkspaceSurfaceSuggestions(state: LabStoreState): LabActionS
   return getSelectionSuggestionsForContext(getEffectiveActiveSelection(state), {
     expandedTaxonomy: true,
     inspectionMode: getInspectionMode(state),
-    sourceKind: getSourceKind(state),
+    sourceKind: getSelectionContextSourceKind(state),
   }).map(function (suggestion) {
     return {
       ...suggestion,
@@ -184,7 +230,7 @@ function getExecutionSelectionSuggestions(state: LabStoreState): LabActionSugges
   return getSelectionSuggestionsForContext(activeSelection, {
     expandedTaxonomy: true,
     inspectionMode: getInspectionMode(state),
-    sourceKind: getSourceKind(state),
+    sourceKind: getSelectionContextSourceKind(state),
   });
 }
 
@@ -193,7 +239,7 @@ export function getInterpretationItems(state: LabStoreState): LabInterpretationI
     activeSelection: getEffectiveActiveSelection(state),
     audioFocus: getEffectivePreviewAudioFocusSettings(state),
     inspectionMode: getInspectionMode(state),
-    sourceKind: getSourceKind(state),
+    sourceKind: getSelectionContextSourceKind(state),
   });
 }
 
@@ -257,7 +303,7 @@ export function getActiveExecutionPlan(state: LabStoreState): LabExecutionPlan |
     suggestion: activeExecutionIntent,
     activeSelection,
     inspectionMode: getInspectionMode(state),
-    sourceKind: getSourceKind(state),
+    sourceKind: getSelectionContextSourceKind(state),
   });
 }
 
@@ -275,7 +321,7 @@ export function getActiveExecutionSimulation(state: LabStoreState): LabExecution
     executionPlan: activeExecutionPlan,
     activeSelection,
     inspectionMode: getInspectionMode(state),
-    sourceKind: getSourceKind(state),
+    sourceKind: getSelectionContextSourceKind(state),
     audioFocus: getEffectivePreviewAudioFocusSettings(state),
   });
 }
@@ -297,7 +343,7 @@ export function getActiveExecutionReadiness(state: LabStoreState): LabExecutionR
     executionSimulation: activeExecutionSimulation,
     activeSelection,
     inspectionMode: getInspectionMode(state),
-    sourceKind: getSourceKind(state),
+    sourceKind: getSelectionContextSourceKind(state),
     audioFocus: getEffectivePreviewAudioFocusSettings(state),
   });
 }
@@ -311,7 +357,7 @@ export function getActiveExecutionPayloadPreview(
     executionReadiness: getActiveExecutionReadiness(state),
     activeSelection: getEffectiveActiveSelection(state),
     inspectionMode: getInspectionMode(state),
-    sourceKind: getSourceKind(state),
+    sourceKind: getSelectionContextSourceKind(state),
   });
 }
 
@@ -324,7 +370,7 @@ function getBaseActiveExecutionReflection(state: LabStoreState): LabExecutionRef
     activeSelection: getEffectiveActiveSelection(state),
     inspectionMode: getInspectionMode(state),
     locale: getRuntimeLocale(state),
-    sourceKind: getSourceKind(state),
+    sourceKind: getSelectionContextSourceKind(state),
   });
 }
 
@@ -349,7 +395,7 @@ function getBaseActiveExecutionAlternatives(state: LabStoreState): LabExecutionA
     activeSelection: getEffectiveActiveSelection(state),
     inspectionMode: getInspectionMode(state),
     locale: getRuntimeLocale(state),
-    sourceKind: getSourceKind(state),
+    sourceKind: getSelectionContextSourceKind(state),
   });
 }
 
@@ -367,7 +413,7 @@ export function getActiveExecutionAlternatives(
     activeSelection: getEffectiveActiveSelection(state),
     inspectionMode: getInspectionMode(state),
     locale: getRuntimeLocale(state),
-    sourceKind: getSourceKind(state),
+    sourceKind: getSelectionContextSourceKind(state),
   });
 }
 
@@ -382,7 +428,7 @@ function getBaseActiveExecutionCandidate(state: LabStoreState): LabExecutionCand
     activeSelection: getEffectiveActiveSelection(state),
     inspectionMode: getInspectionMode(state),
     locale: getRuntimeLocale(state),
-    sourceKind: getSourceKind(state),
+    sourceKind: getSelectionContextSourceKind(state),
   });
 }
 
@@ -400,7 +446,7 @@ export function getActiveExecutionCandidate(state: LabStoreState): LabExecutionC
     activeSelection: getEffectiveActiveSelection(state),
     inspectionMode: getInspectionMode(state),
     locale: getRuntimeLocale(state),
-    sourceKind: getSourceKind(state),
+    sourceKind: getSelectionContextSourceKind(state),
   });
 }
 

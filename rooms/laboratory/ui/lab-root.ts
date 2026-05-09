@@ -10,8 +10,6 @@ import { renderLabDrawer } from "./lab-drawer.js";
 import { renderLabProcessStrip } from "./lab-process-strip.js";
 import { renderLabTopBar } from "./lab-top-bar.js";
 import { renderLabSourcePanel } from "./lab-source-panel.js";
-import { bindLabAssetPreviewClicks } from "./lab-asset-preview-binder.js";
-import { getLabAssetPreviewUrl } from "./lab-asset-display.js";
 import { bindLabPreviewInspectionInteractions } from "./lab-preview-inspection-binder.js";
 import { createLabPreviewInspectionController } from "./lab-preview-inspection-controller.js";
 import { bindLabSelectionIntentClicks } from "./lab-selection-intent-binder.js";
@@ -21,7 +19,6 @@ import { renderWorkspaceSurface } from "./workspace-surface.js";
 import { createLabRunController } from "../runtime/lab-run-controller.js";
 import { renderToolManagementOverlay } from "./tool-management-overlay.js";
 import { renderReportOverlay } from "./report-overlay.js";
-import { renderLabAssetPreviewOverlay } from "./lab-asset-preview-overlay.js";
 import { buildLabDecisionSnapshot, getLabDecisionStableKey } from "./lab-decision-layer.js";
 import {
   getActiveSelection,
@@ -149,16 +146,6 @@ export function startLaboratoryLabRoot() {
   bindLabSelectionIntentClicks({
     documentRef,
     emit: eventBus.emit,
-  });
-  bindLabAssetPreviewClicks({
-    documentRef,
-    emit: eventBus.emit,
-    resolveHref(assetId) {
-      const asset = store.getState().assets.find(function (candidate) {
-        return candidate.id === assetId;
-      });
-      return asset === undefined ? null : getLabAssetPreviewUrl(asset);
-    },
   });
   bindLabSelectionRoiInteractions({
     documentRef,
@@ -564,16 +551,6 @@ export function startLaboratoryLabRoot() {
       LAB_OVERLAY_SELECTORS.tools,
       function () {
         return renderToolManagementOverlay(state, copy);
-      },
-      shell
-    );
-    syncOverlayRoot(
-      documentRef,
-      runtimeRoot,
-      "assetPreview",
-      LAB_OVERLAY_SELECTORS.assetPreview,
-      function () {
-        return renderLabAssetPreviewOverlay(state, copy);
       },
       shell
     );

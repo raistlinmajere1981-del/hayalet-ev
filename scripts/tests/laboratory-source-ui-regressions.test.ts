@@ -8,9 +8,9 @@ import {
   getAnalysisActionBlockReason,
   getAnalysisPreparationGroups,
   getProcessingOverlayState,
+  getWaveformTimelineModel,
 } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
-import { renderLabAssetPreviewOverlay } from "../../rooms/laboratory/ui/lab-asset-preview-overlay.ts";
 import { renderLabDrawer } from "../../rooms/laboratory/ui/lab-drawer.ts";
 import { renderLabProcessStrip } from "../../rooms/laboratory/ui/lab-process-strip.ts";
 import { renderLabSourcePanel } from "../../rooms/laboratory/ui/lab-source-panel.ts";
@@ -653,10 +653,7 @@ test("laboratory setup drawer owns active source selection controls under the an
   assert.doesNotMatch(surface.main, /class="lab-selection-panel"/);
   assert.match(surface.side, /class="lab-selection-panel lab-selection-panel--drawer"/);
   assert.doesNotMatch(drawer, /class="lab-selection-panel lab-selection-panel--drawer"/);
-  assert.deepEqual(getPipelineBlockIds(drawer), [
-    "analysis-prep",
-    "analysis-cta",
-  ]);
+  assert.deepEqual(getPipelineBlockIds(drawer), ["analysis-prep", "analysis-cta"]);
   assert.ok(ctaIndex > -1);
   assert.equal(selectionPanelIndex, -1);
 });
@@ -784,6 +781,114 @@ test("laboratory operation buttons reflect scoped running action state", () => {
   assert.match(surface.inspector ?? "", />Cancel<\/button>/);
   assert.match(surface.inspector ?? "", /data-lab-operation-capability="audio-cleanup"/);
   assert.match(surface.inspector ?? "", /data-lab-operation-capability="band-pass-voice"/);
+});
+
+test("laboratory workspace operations follow the selected asset media kind", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-audio-target",
+      type: "audio",
+      name: "voice-clean.wav",
+      localPath: "/tmp/voice-clean.wav",
+      createdAt: 300,
+      metadata: {
+        durationMs: 4200,
+        kind: "audio",
+      },
+    },
+  });
+  store.dispatch({
+    type: "workspace-content-opened",
+    assetId: "asset-audio-target",
+  });
+
+  const surface = renderWorkspaceSurface(store.getState());
+
+  assert.match(surface.main, /data-lab-workspace-asset-kind="audio"/);
+  assert.match(surface.inspector ?? "", /data-operation-id="audio-extract"/);
+  assert.match(surface.inspector ?? "", /data-operation-id="audio-cleanup"/);
+  assert.match(surface.inspector ?? "", /data-operation-id="band-pass-voice"/);
+  assert.doesNotMatch(surface.inspector ?? "", /data-operation-id="enhanced-frame"/);
+  assert.doesNotMatch(surface.inspector ?? "", /data-operation-id="frame-grab"/);
+});
+
+test("laboratory workspace asset preview resets timeline controls to the selected file", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 72_232,
+    endMs: 129_335,
+  });
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-audio-target",
+      type: "audio",
+      name: "voice-clean.wav",
+      localPath: "/tmp/voice-clean.wav",
+      createdAt: 300,
+      metadata: {
+        durationMs: 4200,
+        kind: "audio",
+      },
+    },
+  });
+
+  store.dispatch({
+    type: "workspace-content-opened",
+    assetId: "asset-audio-target",
+  });
+
+  const state = store.getState();
+  const timeline = getWaveformTimelineModel(state);
+  const surface = renderWorkspaceSurface(state);
+
+  assert.equal(state.ui.workspace.timelineStartMs, null);
+  assert.equal(state.ui.workspace.timelineEndMs, null);
+  assert.equal(state.ui.workspace.activeSelection, null);
+  assert.equal(timeline.sourceKind, "audio");
+  assert.equal(timeline.durationMs, 4200);
+  assert.equal(timeline.startMs, null);
+  assert.equal(timeline.endMs, null);
+  assert.equal(timeline.activeSelection?.startMs, 0);
+  assert.equal(timeline.activeSelection?.endMs, 4200);
+  assert.match(surface.main, /data-duration="4200"/);
+  assert.match(surface.main, /00:04\.200/);
+  assert.doesNotMatch(surface.main, /01:12\.232/);
+  assert.doesNotMatch(surface.main, /02:09\.335/);
+});
+
+test("laboratory workspace operations block remote asset targets instead of falling back to source", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-remote-clip",
+      type: "clip",
+      name: "remote_clip.mp4",
+      url: "https://example.test/remote_clip.mp4",
+      createdAt: 300,
+      metadata: {
+        kind: "video",
+      },
+    },
+  });
+  store.dispatch({
+    type: "workspace-content-opened",
+    assetId: "asset-remote-clip",
+  });
+
+  const surface = renderWorkspaceSurface(store.getState());
+
+  assert.match(surface.main, /data-lab-workspace-asset-kind="video"/);
+  assert.match(
+    surface.inspector ?? "",
+    /data-readiness="blocked"[\s\S]*data-operation-id="clip-export"/
+  );
+  assert.match(surface.inspector ?? "", /Seçili dosya yerel işlem hedefi değil/);
+  assert.doesNotMatch(surface.inspector ?? "", /data-lab-action="timeline-export-clip"/);
 });
 
 test("laboratory processing overlay uses the active operation contract and locks source/timeline controls", () => {
@@ -1415,7 +1520,7 @@ test("laboratory process strip renders multi-output action summaries with overfl
   assert.match(stripHtml, /report-user\.md, report-ai\.json/);
 });
 
-test("laboratory source panel renders registry groups and local asset actions only", () => {
+test("laboratory source panel renders registry groups and workspace preview actions", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "asset-added",
@@ -1471,21 +1576,25 @@ test("laboratory source panel renders registry groups and local asset actions on
   assert.match(panelHtml, /Raporlar/);
   assert.match(panelHtml, /clip_01\.mp4/);
   assert.match(panelHtml, /run_report\.md/);
-  assert.match(panelHtml, /data-lab-action="open-report-overlay" data-lab-value="report-1"/);
+  assert.match(panelHtml, /data-lab-action="workspace-content-open" data-lab-value="report-1"/);
   assert.match(panelHtml, /data-lab-action="asset-download"/);
   assert.match(panelHtml, /data-lab-action="asset-remove"/);
-  assert.match(panelHtml, /data-lab-action="asset-use-as-source" data-lab-value="clip-local-1"/);
   assert.match(
     panelHtml,
-    /data-lab-action="asset-use-as-source" data-lab-value="artifact-png-1"/
+    /data-lab-action="source-activate-asset" data-lab-value="clip-local-1"/
   );
-  assert.doesNotMatch(
+  assert.match(
     panelHtml,
-    /data-lab-action="asset-use-as-source" data-lab-value="clip-remote-1"/
+    /data-lab-action="source-activate-asset" data-lab-value="artifact-png-1"/
   );
+  assert.match(
+    panelHtml,
+    /data-lab-action="source-activate-asset" data-lab-value="clip-remote-1"/
+  );
+  assert.doesNotMatch(panelHtml, /data-lab-action="asset-use-as-source"/);
 });
 
-test("laboratory source panel uses png artifacts as sources from the primary click", () => {
+test("laboratory source panel previews png artifacts from the primary click", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "asset-added",
@@ -1503,11 +1612,11 @@ test("laboratory source panel uses png artifacts as sources from the primary cli
 
   assert.match(
     panelHtml,
-    /data-lab-action="asset-use-as-source" data-lab-value="artifact-png-1"/
+    /data-lab-action="source-activate-asset" data-lab-value="artifact-png-1"/
   );
   assert.doesNotMatch(
     panelHtml,
-    /class="labx-sp-asset__btn"[^>]*data-lab-action="asset-preview"[^>]*data-lab-value="artifact-png-1"/
+    /class="labx-sp-asset__btn"[^>]*data-lab-action="asset-use-as-source"[^>]*data-lab-value="artifact-png-1"/
   );
 });
 
@@ -1539,7 +1648,30 @@ test("laboratory source panel keeps asset order stable when active source timest
   assert.ok(panelHtml.indexOf("stable-first.mp4") < panelHtml.indexOf("active-newer.mp4"));
 });
 
-test("laboratory source panel uses png artifacts as sources from the primary click path", () => {
+test("laboratory source panel opens the selected workspace asset group", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-selected-audio",
+      type: "audio",
+      name: "selected-audio.wav",
+      localPath: "/tmp/selected-audio.wav",
+      createdAt: 300,
+    },
+  });
+  store.dispatch({
+    type: "workspace-content-opened",
+    assetId: "asset-selected-audio",
+  });
+
+  const panelHtml = renderLabSourcePanel(store.getState());
+
+  assert.match(panelHtml, /<details class="labx-sp-group" open data-group-type="audio">/);
+  assert.doesNotMatch(panelHtml, /<details class="labx-sp-group" open data-group-type="source">/);
+});
+
+test("laboratory source panel uses png artifacts as workspace previews from the primary click path", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "asset-added",
@@ -1557,55 +1689,8 @@ test("laboratory source panel uses png artifacts as sources from the primary cli
 
   assert.match(
     panelHtml,
-    /class="labx-sp-asset__btn"[\s\S]*data-lab-action="asset-use-as-source"[\s\S]*data-lab-value="artifact-png-primary"/
+    /class="labx-sp-asset__btn"[\s\S]*data-lab-action="source-activate-asset"[\s\S]*data-lab-value="artifact-png-primary"/
   );
-});
-
-test("laboratory asset preview overlay renders selected video and audio assets in-app", () => {
-  const store = createLabStore();
-  store.dispatch({
-    type: "asset-added",
-    asset: {
-      id: "asset-video-preview",
-      type: "source",
-      name: "CGI Analizi -1.mp4",
-      localPath: "/tmp/CGI Analizi -1.mp4",
-      createdAt: Date.now(),
-      metadata: {
-        durationSeconds: 32,
-        sizeBytes: 2900000,
-      },
-    },
-  });
-  store.dispatch({
-    type: "asset-added",
-    asset: {
-      id: "asset-audio-preview",
-      type: "audio",
-      name: "audio-track.wav",
-      localPath: "/tmp/audio-track.wav",
-      createdAt: Date.now(),
-    },
-  });
-
-  store.dispatch({ type: "asset-preview-opened", assetId: "asset-video-preview" });
-  const videoOverlay = renderLabAssetPreviewOverlay(store.getState());
-  assert.match(videoOverlay, /id="lab-asset-preview-overlay-root"/);
-  assert.match(videoOverlay, /data-open="true"/);
-  assert.match(
-    videoOverlay,
-    /<video class="labx-asset-preview__media labx-asset-preview__media--video"/
-  );
-  assert.match(videoOverlay, /src="file:\/\/\/tmp\/CGI%20Analizi%20-1\.mp4"/);
-
-  store.dispatch({ type: "asset-preview-opened", assetId: "asset-audio-preview" });
-  const audioOverlay = renderLabAssetPreviewOverlay(store.getState());
-  assert.match(audioOverlay, /class="labx-asset-preview__audio-shell"/);
-  assert.match(audioOverlay, /<audio class="labx-asset-preview__audio-control"/);
-  assert.match(audioOverlay, /src="file:\/\/\/tmp\/audio-track\.wav"/);
-
-  store.dispatch({ type: "asset-preview-closed" });
-  assert.match(renderLabAssetPreviewOverlay(store.getState()), /data-open="false"/);
 });
 
 test("laboratory report overlay renders snapshot summary and workspace-dirty freshness metadata", () => {

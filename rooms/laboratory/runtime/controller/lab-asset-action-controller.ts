@@ -32,19 +32,6 @@ export function createLabAssetActionController(deps: LabAssetActionControllerDep
     );
   }
 
-  function previewAsset(assetId: string) {
-    const href = getAssetHref(assetId);
-    if (href === null) {
-      deps.dispatch({
-        type: "push-event",
-        event: buildUiEvent("Asset preview is unavailable.", "warning"),
-      });
-      return false;
-    }
-    deps.dispatch({ type: "asset-preview-opened", assetId });
-    return true;
-  }
-
   function confirmAssetRemoval(assetIds: string[]) {
     const ids = assetIds.filter(function (assetId, index, allIds) {
       return assetId.trim() !== "" && allIds.indexOf(assetId) === index;
@@ -119,7 +106,6 @@ export function createLabAssetActionController(deps: LabAssetActionControllerDep
   return {
     downloadAsset,
     focusSourcePreview,
-    previewAsset,
     removeAssetsWithConfirmation,
   };
 }

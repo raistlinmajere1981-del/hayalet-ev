@@ -136,7 +136,6 @@ import {
   createLabWaveformTimelineVisualizer,
   renderLabWaveformTimeline,
 } from "../../rooms/laboratory/ui/lab-waveform-timeline.ts";
-import { bindLabAssetPreviewClicks } from "../../rooms/laboratory/ui/lab-asset-preview-binder.ts";
 import { bindLabPreviewInspectionInteractions } from "../../rooms/laboratory/ui/lab-preview-inspection-binder.ts";
 import {
   __testOnlyLabPreviewInspectionController,
@@ -153,7 +152,6 @@ export {
   __testOnlyLabPreviewInspectionController,
   __testOnlyResetExecutionPatternRegistry,
   assert,
-  bindLabAssetPreviewClicks,
   bindLabPreviewInspectionInteractions,
   bindLabSelectionIntentClicks,
   bindLabSelectionRoiInteractions,
@@ -327,11 +325,7 @@ export class FakeActionElement {
   }
 
   closest(selector: string): FakeActionElement | null {
-    if (
-      selector === "[data-lab-action]" ||
-      (selector === "[data-lab-action='asset-preview']" &&
-        this.dataset.labAction === "asset-preview")
-    ) {
+    if (selector === "[data-lab-action]") {
       return this;
     }
     return null;

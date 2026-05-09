@@ -105,7 +105,7 @@ export function createIdleYoutubeImportState(): LabStoreState["ui"]["youtubeImpo
   };
 }
 
-function createDefaultWorkspaceUiState(): LabWorkspaceUiState {
+export function createDefaultWorkspaceUiState(): LabWorkspaceUiState {
   return {
     timelineStartMs: null,
     timelineEndMs: null,
@@ -194,8 +194,8 @@ export function createInitialState(): LabStoreState {
       activeExecutionIntentId: null,
       activeSuggestionPreviewId: null,
       activeInspectionSnapshot: null,
+      activeWorkspaceAssetId: null,
       activePreviewArtifactId: null,
-      activeAssetPreviewId: null,
       inspectionMode: "none",
       roiFocusActive: false,
       liveFindingsExpanded: true,

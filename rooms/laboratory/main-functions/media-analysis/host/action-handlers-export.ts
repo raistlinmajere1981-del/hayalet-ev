@@ -18,12 +18,6 @@ type LaboratoryExportActionRuntimeDeps = {
   callRoomTools: (payload: LaboratoryRecord) => Promise<unknown>;
   getActiveProject: (runtime: LaboratoryRecord) => LaboratoryRecord | null;
   getProjectEditOutputDir: (runtime: LaboratoryRecord, project: LaboratoryRecord) => string;
-  handleAssetAsSource: (
-    api: unknown,
-    runtime: LaboratoryRecord,
-    requestId: string,
-    assetId: string
-  ) => Promise<unknown>;
   patchActiveProject: (
     runtime: LaboratoryRecord,
     patcher: (project: LaboratoryRecord) => LaboratoryRecord
@@ -49,7 +43,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     callRoomTools,
     getActiveProject,
     getProjectEditOutputDir,
-    handleAssetAsSource,
     patchActiveProject,
     pushJobState,
     registerJob,
@@ -68,16 +61,16 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     getAudioCodecForFormat,
     getCrfForQuality,
     getCurrentMediaRunId,
-    getCurrentSourceAssetLink,
     getFpsFilter,
     getFrameGrabSeekPoints,
     getImageExtension,
+    getOperationSourceAssetLink,
+    getOperationSourceRecord,
     getPayloadIntentIds,
     getProjectId,
     getScaleFilter,
     getSourceDimensions,
     getSourceDurationMs,
-    getSourceRecord,
     getWorkspaceIntentIds,
     hasNormalizedRoiPayload,
     isOperationCancelledError,
@@ -115,15 +108,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     return createdAsset;
   }
 
-  async function activateCreatedAssetAsSource(
-    api: unknown,
-    runtime: LaboratoryRecord,
-    requestId: string,
-    asset: LabAsset
-  ) {
-    await handleAssetAsSource(api, runtime, requestId, asset.id);
-  }
-
   async function exportROIImage(
     api: unknown,
     runtime: LaboratoryRecord,
@@ -136,7 +120,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     }
 
     const projectId = getProjectId(project);
-    const source = getSourceRecord(project);
+    const source = getOperationSourceRecord(project, payload);
     const storedPath = asNonEmptyString(source["storedPath"]);
     if (storedPath === null) {
       throw new Error("No source file available for ROI export.");
@@ -254,7 +238,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         type: "image",
         name: outputFileName,
         localPath: outputPath,
-        ...getCurrentSourceAssetLink(project),
+        ...getOperationSourceAssetLink(project, payload),
         ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: "export-roi-image",
@@ -289,8 +273,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
           toolId: "ffmpeg",
         },
       });
-      await activateCreatedAssetAsSource(api, runtime, requestId, createdAsset);
-
       pushJobState(api, {
         action: "export-roi-image",
         jobId,
@@ -339,7 +321,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     }
 
     const projectId = getProjectId(project);
-    const source = getSourceRecord(project);
+    const source = getOperationSourceRecord(project, payload);
     const storedPath = asNonEmptyString(source["storedPath"]);
     if (storedPath === null) {
       throw new Error("No source file available for frame export.");
@@ -436,7 +418,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
           type: "frame",
           name: outputFileName,
           localPath: outputPath,
-          ...getCurrentSourceAssetLink(project),
+          ...getOperationSourceAssetLink(project, payload),
           ...(intentIds === undefined ? {} : { intentIds }),
           metadata: {
             action: "export-frame-grab",
@@ -467,10 +449,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
       const outputFileNames = frameResults.map(function (result) {
         return result.outputFileName;
       });
-      if (createdAssets[0]) {
-        await activateCreatedAssetAsSource(api, runtime, requestId, createdAssets[0]);
-      }
-
       pushJobState(api, {
         action: "export-frame-grab",
         jobId,
@@ -523,7 +501,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     }
 
     const projectId = getProjectId(project);
-    const source = getSourceRecord(project);
+    const source = getOperationSourceRecord(project, payload);
     const storedPath = asNonEmptyString(source["storedPath"]);
     if (storedPath === null) {
       throw new Error("No source file available for enhanced frame export.");
@@ -615,7 +593,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         type: sourceKind === "video" ? "frame" : "image",
         name: outputFileName,
         localPath: outputPath,
-        ...getCurrentSourceAssetLink(project),
+        ...getOperationSourceAssetLink(project, payload),
         ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: "export-enhanced-frame",
@@ -646,8 +624,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
           toolId: "ffmpeg",
         },
       });
-      await activateCreatedAssetAsSource(api, runtime, requestId, createdAsset);
-
       pushJobState(api, {
         action: "export-enhanced-frame",
         jobId,
@@ -696,7 +672,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     }
 
     const projectId = getProjectId(project);
-    const source = getSourceRecord(project);
+    const source = getOperationSourceRecord(project, payload);
     const storedPath = asNonEmptyString(source["storedPath"]);
     if (storedPath === null) {
       throw new Error("No source file available for clip export.");
@@ -844,7 +820,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         type: "clip",
         name: outputFileName,
         localPath: outputPath,
-        ...getCurrentSourceAssetLink(project),
+        ...getOperationSourceAssetLink(project, payload),
         ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: "export-timeline-clip",
@@ -875,8 +851,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
             : {}),
         },
       });
-      await activateCreatedAssetAsSource(api, runtime, requestId, createdAsset);
-
       pushJobState(api, {
         action: "export-timeline-clip",
         jobId,
@@ -915,7 +889,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
 
   const { exportAudioTrack, exportBandPassVoice, exportCleanAudio } = createMediaAudioExportActions(
     {
-      activateCreatedAssetAsSource,
       asNonEmptyString,
       asNumber,
       assertToolRunSucceeded,
@@ -925,12 +898,12 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
       getActiveProject,
       getAudioChannelCount,
       getAudioCodecForFormat,
-      getCurrentSourceAssetLink,
+      getOperationSourceAssetLink,
+      getOperationSourceRecord,
       getPayloadIntentIds,
       getProjectEditOutputDir,
       getProjectId,
       getSourceDurationMs,
-      getSourceRecord,
       isOperationCancelledError,
       pushCancelledJobState,
       pushJobState,

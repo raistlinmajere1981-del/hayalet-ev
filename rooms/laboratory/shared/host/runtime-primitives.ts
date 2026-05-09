@@ -97,6 +97,27 @@ export function createLaboratoryWorkbenchState(overrides: unknown = {}) {
     activePreviewArtifactId: readNonEmptyString(source["activePreviewArtifactId"]),
     activeLiveFindingsStreamId: readNonEmptyString(source["activeLiveFindingsStreamId"]),
     controlsCollapsed: source["controlsCollapsed"] !== false,
+    sourceActivationResetAt: readNonEmptyString(source["sourceActivationResetAt"]),
+  };
+}
+
+export function resetLaboratoryWorkbenchForSourceActivation(workbenchSource: unknown = {}) {
+  const source = toLaboratoryRecord(workbenchSource);
+  const sourceActivationResetAt = new Date().toISOString();
+  return {
+    ...source,
+    ...createLaboratoryWorkbenchState({
+      ...source,
+      activeLiveFindingsStreamId: null,
+      activePreviewArtifactId: null,
+      analysisScope: null,
+      analysisSettings: {},
+      controlsCollapsed: true,
+      moduleToggles: {},
+      operationSettings: {},
+      sourceActivationResetAt,
+    }),
+    sourceActivationResetAt,
   };
 }
 

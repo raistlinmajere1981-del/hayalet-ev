@@ -1,5 +1,6 @@
 import { asLabRecord, asNonEmptyString, escapeHtml } from "../models/lab-types.js";
 import type { LabAsset, LabAssetType, LabStoreState } from "../models/lab-types.js";
+import { getLabPathExtension, inferLabAssetSourceKind } from "../shared/lab-asset-kind.js";
 import {
   getAssets,
   getCurrentSourceAsset,
@@ -23,7 +24,6 @@ import {
   getLabAssetPath,
   getLabAssetPathLeaf,
   getLabAssetPreviewUrl,
-  getLabAssetPreviewKind,
   getLabAssetSyncLabel,
 } from "./lab-asset-display.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
@@ -33,38 +33,55 @@ import type { LabI18n } from "./lab-i18n.js";
 // Types
 // ---------------------------------------------------------------------------
 
-type AssetGroup = { type: LabAssetType; labelKey: string; labelFallback: string };
+type AssetGroup = {
+  id: string;
+  labelKey: string;
+  labelFallback: string;
+  types: LabAssetType[];
+};
 
 const ASSET_GROUPS: AssetGroup[] = [
-  { type: "source", labelKey: "mediaAnalysis.assets.groups.source", labelFallback: "Kaynaklar" },
-  { type: "clip", labelKey: "mediaAnalysis.assets.groups.clip", labelFallback: "Klipler" },
-  { type: "frame", labelKey: "mediaAnalysis.assets.groups.frame", labelFallback: "Kareler" },
-  { type: "audio", labelKey: "mediaAnalysis.assets.groups.audio", labelFallback: "Ses" },
-  { type: "image", labelKey: "mediaAnalysis.assets.groups.image", labelFallback: "Görseller" },
-  { type: "report", labelKey: "mediaAnalysis.assets.groups.report", labelFallback: "Raporlar" },
-  { type: "artifact", labelKey: "mediaAnalysis.assets.groups.artifact", labelFallback: "Çıktılar" },
+  {
+    id: "source",
+    labelKey: "mediaAnalysis.assets.groups.source",
+    labelFallback: "Kaynaklar",
+    types: ["source"],
+  },
+  {
+    id: "clip",
+    labelKey: "mediaAnalysis.assets.groups.clip",
+    labelFallback: "Klipler",
+    types: ["clip"],
+  },
+  {
+    id: "frame",
+    labelKey: "mediaAnalysis.assets.groups.frame",
+    labelFallback: "Kareler",
+    types: ["frame", "image"],
+  },
+  {
+    id: "audio",
+    labelKey: "mediaAnalysis.assets.groups.audio",
+    labelFallback: "Sesler",
+    types: ["audio"],
+  },
+  {
+    id: "report",
+    labelKey: "mediaAnalysis.assets.groups.report",
+    labelFallback: "Raporlar",
+    types: ["report"],
+  },
+  {
+    id: "artifact",
+    labelKey: "mediaAnalysis.assets.groups.artifact",
+    labelFallback: "Artefaktlar",
+    types: ["artifact"],
+  },
 ];
-
-const IMAGE_EXTENSIONS = new Set(["avif", "gif", "jpeg", "jpg", "png", "svg", "webp"]);
-const VIDEO_EXTENSIONS = new Set(["m4v", "mkv", "mov", "mp4", "webm"]);
-const AUDIO_EXTENSIONS = new Set(["aac", "flac", "m4a", "mp3", "ogg", "opus", "wav"]);
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function canUseAsSource(asset: LabAsset): boolean {
-  const assetPath = getLabAssetPath(asset);
-  return (
-    asNonEmptyString(asset.localPath) !== null &&
-    (asset.type === "source" ||
-      asset.type === "clip" ||
-      asset.type === "frame" ||
-      asset.type === "audio" ||
-      asset.type === "image" ||
-      (asset.type === "artifact" && getLabAssetPreviewKind(asset, assetPath) === "image"))
-  );
-}
 
 function formatAssetDate(value: number): string {
   const d = new Date(value);
@@ -77,56 +94,16 @@ function formatAssetDate(value: number): string {
   });
 }
 
-function getAssetPathExtension(path: string | null): string | null {
-  if (path === null) {
-    return null;
-  }
-  const cleanPath = path.split(/[?#]/)[0] || "";
-  const leaf = cleanPath.split(/[\\/]/).pop() || cleanPath;
-  const dotIndex = leaf.lastIndexOf(".");
-  if (dotIndex < 0 || dotIndex === leaf.length - 1) {
-    return null;
-  }
-  return leaf.slice(dotIndex + 1).toLowerCase();
-}
-
 function getAssetExtension(asset: LabAsset): string | null {
   return (
-    getAssetPathExtension(getLabAssetPath(asset)) ||
-    getAssetPathExtension(getLabAssetPathLeaf(asset)) ||
-    getAssetPathExtension(asset.name)
+    getLabPathExtension(getLabAssetPath(asset)) ||
+    getLabPathExtension(getLabAssetPathLeaf(asset)) ||
+    getLabPathExtension(asset.name)
   );
 }
 
 function getAssetMediaKind(asset: LabAsset): "image" | "video" | "audio" | null {
-  const metadata = asLabRecord(asset.metadata);
-  const metadataKind =
-    asNonEmptyString(metadata["kind"]) || asNonEmptyString(metadata["sourceKind"]);
-  if (metadataKind === "image" || metadataKind === "video" || metadataKind === "audio") {
-    return metadataKind;
-  }
-
-  const extension = getAssetExtension(asset);
-  if (extension !== null && IMAGE_EXTENSIONS.has(extension)) {
-    return "image";
-  }
-  if (extension !== null && VIDEO_EXTENSIONS.has(extension)) {
-    return "video";
-  }
-  if (extension !== null && AUDIO_EXTENSIONS.has(extension)) {
-    return "audio";
-  }
-
-  if (asset.type === "frame" || asset.type === "image") {
-    return "image";
-  }
-  if (asset.type === "audio") {
-    return "audio";
-  }
-  if (asset.type === "clip") {
-    return "video";
-  }
-  return null;
+  return inferLabAssetSourceKind(asset);
 }
 
 function renderAssetVisual(asset: LabAsset): string {
@@ -157,16 +134,17 @@ function renderAssetVisual(asset: LabAsset): string {
 // ---------------------------------------------------------------------------
 
 function getAssetPrimaryAction(asset: LabAsset): { action: string; value: string } {
-  if (asset.type === "report") {
-    return { action: "open-report-overlay", value: asset.id };
+  if (getAssetMediaKind(asset) !== null) {
+    return { action: "source-activate-asset", value: asset.id };
   }
-  if (canUseAsSource(asset)) {
-    return { action: "asset-use-as-source", value: asset.id };
-  }
+  return { action: "workspace-content-open", value: asset.id };
+}
+
+function canDownloadAsset(asset: LabAsset): boolean {
   if (getLabAssetPath(asset) !== null) {
-    return { action: "asset-download", value: asset.id };
+    return true;
   }
-  return { action: "asset-preview", value: asset.id };
+  return false;
 }
 
 function renderAssetRelationMeta(state: LabStoreState, asset: LabAsset, copy: LabI18n): string {
@@ -203,33 +181,25 @@ function renderAssetItem(
   copy: LabI18n
 ): string {
   const id = escapeHtml(asset.id);
-  const isActive =
-    canUseAsSource(asset) && asset.id === currentSourceId ? ' data-active="true"' : "";
+  const isActive = asset.id === currentSourceId ? ' data-active="true"' : "";
   const leaf = getLabAssetPathLeaf(asset);
   const date = formatAssetDate(asset.createdAt);
   const meta = [date, leaf].filter(Boolean).join(" · ");
   const primary = getAssetPrimaryAction(asset);
 
-  const useAsSourceItem = canUseAsSource(asset)
-    ? `<button class="labx-sp-menu__item" type="button"
-         data-lab-action="asset-use-as-source" data-lab-value="${id}">
-         ${escapeHtml(copy.t("mediaAnalysis.assets.actions.useAsSource", "Kaynak olarak kullan"))}
-       </button>`
-    : "";
   const viewReportItem =
     asset.type === "report"
       ? `<button class="labx-sp-menu__item" type="button"
-         data-lab-action="open-report-overlay" data-lab-value="${id}">
+         data-lab-action="workspace-content-open" data-lab-value="${id}">
          ${escapeHtml(copy.t("mediaAnalysis.assets.actions.viewReport", "Raporu görüntüle"))}
        </button>`
       : "";
-  const downloadItem =
-    getLabAssetPath(asset) !== null
-      ? `<button class="labx-sp-menu__item" type="button"
+  const downloadItem = canDownloadAsset(asset)
+    ? `<button class="labx-sp-menu__item" type="button"
          data-lab-action="asset-download" data-lab-value="${id}">
          ${escapeHtml(copy.t("mediaAnalysis.assets.actions.download", "İndir"))}
        </button>`
-      : "";
+    : "";
 
   return `
     <div class="labx-sp-asset" data-asset-id="${id}" data-asset-type="${escapeHtml(asset.type)}"${isActive}
@@ -247,7 +217,6 @@ function renderAssetItem(
       <details class="labx-sp-asset__menu">
         <summary class="labx-sp-asset__menu-trigger" aria-label="${escapeHtml(copy.t("mediaAnalysis.assets.actions.ariaLabel", "Seçenekler"))}">···</summary>
         <div class="labx-sp-asset__menu-list">
-          ${useAsSourceItem}
           ${viewReportItem}
           ${downloadItem}
           <button class="labx-sp-menu__item labx-sp-menu__item--danger" type="button"
@@ -273,12 +242,12 @@ function renderAssetGroup(
   copy: LabI18n
 ): string {
   const groupAssets = assets.filter(function (a) {
-    return a.type === group.type;
+    return group.types.includes(a.type);
   });
   if (groupAssets.length === 0) return "";
   const label = copy.t(group.labelKey, group.labelFallback);
   return `
-    <details class="labx-sp-group" ${isOpen ? "open" : ""} data-group-type="${escapeHtml(group.type)}">
+    <details class="labx-sp-group" ${isOpen ? "open" : ""} data-group-type="${escapeHtml(group.id)}">
       <summary class="labx-sp-group__title">
         <span>${escapeHtml(label)}</span>
         <span class="labx-sp-group__count">${String(groupAssets.length)}</span>
@@ -409,6 +378,7 @@ export function renderLabSourcePanel(
   const currentAsset = getCurrentSourceAsset(state);
   const sourceMetadata = asLabRecord(source["metadata"]);
   const currentSourceId =
+    state.ui.activeWorkspaceAssetId ??
     currentAsset?.id ??
     asNonEmptyString(sourceMetadata["originAssetId"]) ??
     asNonEmptyString(sourceMetadata["derivedFromAssetId"]) ??
@@ -420,12 +390,25 @@ export function renderLabSourcePanel(
 
   const firstGroupWithAssets = ASSET_GROUPS.find(function (g) {
     return assets.some(function (a) {
-      return a.type === g.type;
+      return g.types.includes(a.type);
     });
   });
+  const activeAsset =
+    currentSourceId === null
+      ? null
+      : assets.find(function (asset) {
+          return asset.id === currentSourceId;
+        }) || null;
+  const activeGroupWithAsset =
+    activeAsset === null
+      ? null
+      : ASSET_GROUPS.find(function (group) {
+          return group.types.includes(activeAsset.type);
+        }) || null;
+  const openGroupId = activeGroupWithAsset?.id ?? firstGroupWithAssets?.id ?? null;
 
   const assetGroupsMarkup = ASSET_GROUPS.map(function (group) {
-    const isOpen = firstGroupWithAssets?.type === group.type;
+    const isOpen = openGroupId === group.id;
     return renderAssetGroup(group, state, assets, currentSourceId, isOpen, copy);
   }).join("");
 

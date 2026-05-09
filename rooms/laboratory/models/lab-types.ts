@@ -646,8 +646,8 @@ export interface LabStoreUiState {
   activeExecutionIntentId: string | null;
   activeSuggestionPreviewId: string | null;
   activeInspectionSnapshot: LabInspectionSnapshot | null;
+  activeWorkspaceAssetId: string | null;
   activePreviewArtifactId: string | null;
-  activeAssetPreviewId: string | null;
   inspectionMode: LabInspectionMode;
   roiFocusActive: boolean;
   liveFindingsExpanded: boolean;
@@ -833,9 +833,8 @@ export type LabStoreEvent =
   | { type: "toggle-artifacts"; force?: boolean }
   | { type: "show-more-artifacts" }
   | { type: "report-view-changed"; view: "user" | "ai" }
+  | { type: "workspace-content-opened"; assetId: string | null }
   | { type: "preview-artifact-activated"; artifactId: string | null }
-  | { type: "asset-preview-opened"; assetId: string }
-  | { type: "asset-preview-closed" }
   | { type: "live-findings-expanded"; force?: boolean }
   | { type: "analysis-controls-collapsed"; force?: boolean }
   | { type: "analysis-cancel-requested" }

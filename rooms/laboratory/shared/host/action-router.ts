@@ -135,6 +135,14 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
         case "source-pick-local":
           await mediaActionRuntime.pickLocal(api, runtime, requestId, actionPayload);
           break;
+        case "source-activate-asset":
+          result = await mediaActionRuntime.activateAssetSource(
+            api,
+            runtime,
+            requestId,
+            actionPayload
+          );
+          break;
         case "source-download-url":
           result = await mediaActionRuntime.downloadUrl(api, runtime, requestId, actionPayload);
           break;
@@ -148,9 +156,6 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
             requestId,
             actionPayload
           );
-          break;
-        case "asset-use-as-source":
-          await mediaActionRuntime.useAssetAsSource(api, runtime, requestId, actionPayload);
           break;
         case "asset-remove":
           await mediaActionRuntime.removeAsset(runtime, requestId, actionPayload);

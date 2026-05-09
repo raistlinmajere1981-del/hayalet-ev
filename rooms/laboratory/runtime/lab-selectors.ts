@@ -60,6 +60,8 @@ import {
   getInspectionMode,
   getInterpretationItems,
   getRoiFocusActive,
+  getSelectionContextDurationMs,
+  getSelectionContextSourceKind,
   getWorkspaceSurfaceSuggestions,
 } from "./selectors/lab-execution-flow-selectors.js";
 
@@ -117,6 +119,8 @@ export {
   getInspectionMode,
   getInterpretationItems,
   getRoiFocusActive,
+  getSelectionContextDurationMs,
+  getSelectionContextSourceKind,
   getSelectionDuration,
   getSelectionIntent,
   getSelectionSuggestions,
@@ -410,13 +414,8 @@ export function getTimelineSelection(state: LabStoreState) {
 }
 
 export function getWaveformTimelineModel(state: LabStoreState) {
-  const sourceKind = getSourceKind(state);
-  const sourceReady = getSourceReady(state);
-  const metadata = getSourceMetadata(state);
-  const durationMs =
-    sourceReady && typeof metadata["durationSeconds"] === "number"
-      ? Math.max(0, Math.round(metadata["durationSeconds"] * 1000))
-      : 0;
+  const sourceKind = getSelectionContextSourceKind(state);
+  const durationMs = getSelectionContextDurationMs(state);
   const effectiveSelection = getEffectiveActiveSelection(state);
   const selection = getTimelineSelection(state);
   const waveformContentDurationMs = durationMs;

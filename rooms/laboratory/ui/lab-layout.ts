@@ -7,7 +7,6 @@ import { renderLabTopBar } from "./lab-top-bar.js";
 import { renderToolManagementOverlay } from "./tool-management-overlay.js";
 import { renderReportOverlay } from "./report-overlay.js";
 import { renderLabSourcePanel } from "./lab-source-panel.js";
-import { renderLabAssetPreviewOverlay } from "./lab-asset-preview-overlay.js";
 import { renderLaboratoryLayout } from "./laboratory-layout.js";
 import {
   getDrawerCollapsed,
@@ -85,7 +84,6 @@ export function renderLabLayout(
       topBar: renderLabTopBar(state, copy),
     })}
     ${renderToolManagementOverlay(state, copy)}
-    ${renderLabAssetPreviewOverlay(state, copy)}
     ${renderReportOverlay(state, copy)}
   `;
 }

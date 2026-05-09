@@ -1,4 +1,4 @@
-import { asNonEmptyString, escapeHtml, ICON_RAIL_SLOTS } from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, escapeHtml, ICON_RAIL_SLOTS } from "../models/lab-types.js";
 import type {
   LabWorkspaceSurface,
   LabStoreState,
@@ -21,7 +21,6 @@ import {
   getProcessingOverlayState,
   getROIRegions,
   getSourceKind,
-  getSourceMetadata,
   getSourceProbeStatus,
   getSourceRetryBlockReason,
   getWaveformTimelineModel,
@@ -53,6 +52,12 @@ import {
   renderPreviewMedia,
   renderViewportStatePanel,
 } from "./workspace-source-intake.js";
+import {
+  buildLabAssetMetadataTitle,
+  getLabAssetPath,
+  getLabAssetPreviewKind,
+  getLabAssetPreviewUrl,
+} from "./lab-asset-display.js";
 export { renderSourceIntake } from "./workspace-source-intake.js";
 
 type WorkspaceSurfaceOptions = {
@@ -110,6 +115,102 @@ function renderCenterSkeleton(copy: LabI18n) {
       <div class="labx-skeleton-block"></div>
       <p class="labx-center-skeleton__label">${escapeHtml(copy.t("mediaAnalysis.center.loadingLabel", "Ortam hazırlanıyor..."))}</p>
     </section>
+  `;
+}
+
+function getActiveWorkspaceAsset(state: LabStoreState) {
+  const assetId = asNonEmptyString(state.ui.activeWorkspaceAssetId);
+  if (assetId === null) {
+    return null;
+  }
+  return (
+    state.assets.find(function (asset) {
+      return asset.id === assetId;
+    }) || null
+  );
+}
+
+function getWorkspaceAssetContentKind(
+  asset: NonNullable<ReturnType<typeof getActiveWorkspaceAsset>>
+) {
+  const assetPath = getLabAssetPath(asset);
+  const previewUrl = getLabAssetPreviewUrl(asset);
+  return getLabAssetPreviewKind(asset, previewUrl || assetPath, {
+    usesThumbnail: assetPath === null,
+  });
+}
+
+function getWorkspaceAssetSourceKind(
+  previewKind: ReturnType<typeof getWorkspaceAssetContentKind>,
+  fallback: string
+) {
+  return previewKind === "video" || previewKind === "audio" || previewKind === "image"
+    ? previewKind
+    : fallback;
+}
+
+function renderInlineReportPreview(
+  state: LabStoreState,
+  asset: NonNullable<ReturnType<typeof getActiveWorkspaceAsset>>,
+  copy: LabI18n
+) {
+  const metadata = asLabRecord(asset.metadata);
+  const reportView = asNonEmptyString(metadata["reportView"]);
+  const report =
+    reportView === "ai" ? state.reports.ai : reportView === "user" ? state.reports.user : null;
+  if (report === null) {
+    return "";
+  }
+  return `
+    <article class="labx-workspace-document" data-lab-workspace-asset-kind="report">
+      <header class="labx-workspace-document__header">
+        <span class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.assets.groups.report", "Raporlar"))}</span>
+        <strong>${escapeHtml(asset.name)}</strong>
+      </header>
+      <pre class="labx-workspace-document__content">${escapeHtml(JSON.stringify(report, null, 2))}</pre>
+    </article>
+  `;
+}
+
+function renderWorkspaceAssetContent(
+  state: LabStoreState,
+  asset: NonNullable<ReturnType<typeof getActiveWorkspaceAsset>>,
+  sourceKind: string,
+  settings: LabInteractiveSettings,
+  copy: LabI18n
+) {
+  const previewUrl = getLabAssetPreviewUrl(asset);
+  const previewKind = getWorkspaceAssetContentKind(asset);
+  const title = escapeHtml(buildLabAssetMetadataTitle(asset));
+  const sourceLikeKind = getWorkspaceAssetSourceKind(previewKind, sourceKind);
+  if (previewUrl !== null && previewKind !== "document" && previewKind !== "unsupported") {
+    return `
+      <div class="labx-workspace-content" data-lab-workspace-asset-id="${escapeHtml(asset.id)}" data-lab-workspace-asset-kind="${escapeHtml(previewKind)}" title="${title}">
+        ${renderPreviewMedia(sourceLikeKind, previewUrl, settings, copy)}
+      </div>
+    `;
+  }
+  if (previewUrl !== null && previewKind === "document") {
+    return `
+      <iframe
+        class="labx-preview-media labx-workspace-document-frame"
+        data-lab-workspace-asset-id="${escapeHtml(asset.id)}"
+        src="${escapeHtml(previewUrl)}"
+        title="${escapeHtml(asset.name)}"
+      ></iframe>
+    `;
+  }
+  if (asset.type === "report") {
+    const inlineReport = renderInlineReportPreview(state, asset, copy);
+    if (inlineReport !== "") {
+      return inlineReport;
+    }
+  }
+  return `
+    <div class="labx-empty-state labx-workspace-empty" data-lab-workspace-asset-id="${escapeHtml(asset.id)}" title="${title}">
+      <strong class="labx-empty-state__title">${escapeHtml(asset.name)}</strong>
+      <p>${escapeHtml(copy.t("mediaAnalysis.assetContent.unavailable", "Content unavailable"))}</p>
+    </div>
   `;
 }
 
@@ -445,7 +546,14 @@ export function renderWorkspaceSurface(
   const source = getProjectSource(state);
   const sourceKind = getSourceKind(state);
   const sourceMode = getEffectiveSourceMode(state, sourceKind);
-  const metadata = getSourceMetadata(state);
+  const workspaceAsset = getActiveWorkspaceAsset(state);
+  const workspaceAssetPreviewKind =
+    workspaceAsset === null ? null : getWorkspaceAssetContentKind(workspaceAsset);
+  const activePreviewKind = workspaceAssetPreviewKind ?? sourceKind;
+  const activeMediaKind =
+    activePreviewKind === "video" || activePreviewKind === "audio" || activePreviewKind === "image"
+      ? activePreviewKind
+      : "document";
   const probeStatus = getSourceProbeStatus(state);
   const viewportState = getMediaViewportState(state);
   const lockState = getWorkspaceLockState(state);
@@ -464,29 +572,32 @@ export function renderWorkspaceSurface(
     selectionPanelPlacement: "side",
   };
   const roiFocusActive = timeline.roiFocusActive === true;
-  const hasAudio = sourceKind === "audio" || sourceKind === "video";
+  const hasAudio = activeMediaKind === "audio" || activeMediaKind === "video";
   const sourceReady =
     viewportState === "active" &&
     probeStatus === "completed" &&
     isLoadedSourceMatchingMode(source, sourceMode);
-  const hasVisualControls = sourceReady && (sourceKind === "video" || sourceKind === "image");
-  const operationCapabilities = sourceReady ? getAvailableOperationCapabilities(state) : [];
+  const workspaceAssetReady =
+    workspaceAsset !== null &&
+    workspaceAssetPreviewKind !== null &&
+    workspaceAssetPreviewKind !== "unsupported";
+  const previewReady = workspaceAsset === null ? sourceReady : workspaceAssetReady;
+  const hasVisualControls =
+    previewReady && (activeMediaKind === "video" || activeMediaKind === "image");
+  const operationCapabilities = previewReady ? getAvailableOperationCapabilities(state) : [];
   const activeOperationCapabilityId = getOperationCapabilityIdForAction(
     timeline.activeExecutionIntent?.actionType
   );
-  const durationMs =
-    sourceReady && typeof metadata["durationSeconds"] === "number"
-      ? Math.round(metadata["durationSeconds"] * 1000)
-      : 0;
+  const durationMs = timelineModel.durationMs;
   const inspectorPanels: WorkspaceInspectorPanel[] = [
-    hasAudio && sourceReady
+    hasAudio && previewReady
       ? {
           id: "audio",
           label: copy.t("mediaAnalysis.audioFocus.eyebrow", "Ses Odağı"),
           markup: renderWorkspaceAudioFocus(
             audioFocus,
             {
-              previewTarget: sourceKind === "video" ? "video" : "audio",
+              previewTarget: activeMediaKind === "video" ? "video" : "audio",
               temporalAudioFocus: effectivePreviewAudioFocus,
             },
             copy
@@ -520,7 +631,7 @@ export function renderWorkspaceSurface(
     panels: inspectorPanels,
   });
   const roiOverlayMarkup =
-    sourceReady && (sourceKind === "video" || sourceKind === "image")
+    workspaceAsset === null && sourceReady && (sourceKind === "video" || sourceKind === "image")
       ? renderWorkspaceROIOverlay(
           {
             inspectionMode,
@@ -537,15 +648,17 @@ export function renderWorkspaceSurface(
         )
       : "";
   const previewMediaMarkup =
-    viewportState === "active"
-      ? renderPreviewMedia(sourceKind, sourceReady ? previewUrl : null, settings, copy)
-      : renderViewportStatePanel(
-          viewportState === "loading" || viewportState === "error" ? viewportState : "empty",
-          getSourceRetryBlockReason(state),
-          copy
-        );
+    workspaceAsset !== null
+      ? renderWorkspaceAssetContent(state, workspaceAsset, sourceKind, settings, copy)
+      : viewportState === "active"
+        ? renderPreviewMedia(sourceKind, sourceReady ? previewUrl : null, settings, copy)
+        : renderViewportStatePanel(
+            viewportState === "loading" || viewportState === "error" ? viewportState : "empty",
+            getSourceRetryBlockReason(state),
+            copy
+          );
   const previewMarkup =
-    sourceReady && (sourceKind === "video" || sourceKind === "image")
+    workspaceAsset === null && sourceReady && (sourceKind === "video" || sourceKind === "image")
       ? `
         <div
           class="labx-workspace-preview__single-stage"
@@ -567,13 +680,13 @@ export function renderWorkspaceSurface(
   const selectionPanelMarkup = renderLabWaveformSelectionPanel(timelineModel);
   const previewFocusClassName = getLabFocusClassName(state, "preview");
   const heavyWorkActive = isAnyHeavyWorkActive(state);
-  const iconRailMarkup = sourceReady
+  const iconRailMarkup = previewReady
     ? renderIconRail({
         activeSlotId: state.ui.workspace.activeIconRailSlot,
         content: {
           activeOperationCapabilityId,
           audioFocus,
-          audioPreviewTarget: sourceKind === "video" ? "video" : "audio",
+          audioPreviewTarget: activeMediaKind === "video" ? "video" : "audio",
           effectivePreviewAudioFocus,
           hasAudio,
           hasVisualControls,

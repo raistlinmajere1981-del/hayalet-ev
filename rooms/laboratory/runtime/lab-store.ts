@@ -4,7 +4,6 @@ import { normalizeStoreAsset, upsertStoreAsset } from "./store/lab-store-assets.
 import { getActiveExecutionCandidate, getExecutionDispatchCandidate } from "./lab-selectors.js";
 import { normalizeAudioFocusPatch } from "./lab-audio-focus-normalization.js";
 import {
-  clearWorkspaceSelection,
   getWorkspaceSourceSelectionResetKey,
   normalizeLabSelectionIntent,
   normalizeLabSelectionRoi,
@@ -48,7 +47,6 @@ import {
   normalizeWorkspaceIntentIds,
   patchAnalysisPreparationIntentModuleToggles,
   replaceAnalysisPreparationModuleToggles,
-  resetInspectionMode,
   scopeWorkspaceBookmark,
 } from "./store/lab-store-workspace-state.js";
 import {
@@ -64,6 +62,7 @@ import {
   syncActivePreviewArtifact,
   syncRunAugmentationsFromHostEvent,
 } from "./store/lab-store-run-sync.js";
+import { resetWorkspaceForSourceActivation } from "./store/lab-store-source-reset.js";
 
 function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState {
   if (reduceLabImportUiEvent(state, event)) {
@@ -142,15 +141,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       };
       const nextSourceSelectionKey = getWorkspaceSourceSelectionResetKey(state.source);
       if (previousSourceSelectionKey !== nextSourceSelectionKey) {
-        clearExecutionIntent(state);
-        clearSuggestionPreview(state);
-        resetInspectionMode(state);
-        clearInspectionDepth(state);
-        state.ui.workspace = {
-          ...clearWorkspaceSelection(state.ui.workspace),
-          analysisPrepExpandedIntentIds: [],
-          drawerModeOverride: null,
-        };
+        resetWorkspaceForSourceActivation(state);
       }
       if (
         event.patch["kind"] !== undefined ||
@@ -239,8 +230,15 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
     case "report-view-changed":
       state.ui.reportView = event.view;
       return state;
+    case "workspace-content-opened":
+      resetWorkspaceForSourceActivation(state, {
+        activeWorkspaceAssetId: event.assetId,
+        sourceIntakeCollapsed: state.ui.workspace.sourceIntakeCollapsed,
+      });
+      return state;
     case "preview-artifact-activated":
       state.ui.activePreviewArtifactId = event.artifactId;
+      state.ui.activeWorkspaceAssetId = null;
       if (state.run) {
         state.run.previewArtifacts = syncActivePreviewArtifact(
           state.run.previewArtifacts,
@@ -251,12 +249,6 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         ...state.workbench,
         activePreviewArtifactId: event.artifactId,
       };
-      return state;
-    case "asset-preview-opened":
-      state.ui.activeAssetPreviewId = event.assetId;
-      return state;
-    case "asset-preview-closed":
-      state.ui.activeAssetPreviewId = null;
       return state;
     case "live-findings-expanded":
       state.ui.liveFindingsExpanded =
@@ -313,8 +305,8 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       state.assets = state.assets.filter(function (asset) {
         return asset.id !== event.id;
       });
-      if (state.ui.activeAssetPreviewId === event.id) {
-        state.ui.activeAssetPreviewId = null;
+      if (state.ui.activeWorkspaceAssetId === event.id) {
+        state.ui.activeWorkspaceAssetId = null;
       }
       return state;
     case "asset-updated":

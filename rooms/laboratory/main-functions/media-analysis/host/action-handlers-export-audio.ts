@@ -11,12 +11,6 @@ import type { LaboratoryRecord } from "./action-handlers-export-utils.js";
 type RegisterOutputAssetInput = Parameters<typeof createLabOutputAsset>[1];
 
 type MediaAudioExportActionsDeps = {
-  activateCreatedAssetAsSource: (
-    api: unknown,
-    runtime: LaboratoryRecord,
-    requestId: string,
-    asset: LabAsset
-  ) => Promise<void>;
   asNonEmptyString: (value: unknown) => string | null;
   asNumber: (value: unknown) => number | null;
   assertToolRunSucceeded: (run: LaboratoryRecord, message: string) => void;
@@ -33,12 +27,18 @@ type MediaAudioExportActionsDeps = {
   getActiveProject: (runtime: LaboratoryRecord) => LaboratoryRecord | null;
   getAudioChannelCount: (value: string, fallback: number) => number;
   getAudioCodecForFormat: (format: string) => string;
-  getCurrentSourceAssetLink: (project: LaboratoryRecord) => Partial<RegisterOutputAssetInput>;
+  getOperationSourceAssetLink: (
+    project: LaboratoryRecord,
+    payload: LaboratoryRecord
+  ) => Partial<RegisterOutputAssetInput>;
+  getOperationSourceRecord: (
+    project: LaboratoryRecord,
+    payload: LaboratoryRecord
+  ) => LaboratoryRecord;
   getPayloadIntentIds: (payload: LaboratoryRecord) => string[] | undefined;
   getProjectEditOutputDir: (runtime: LaboratoryRecord, project: LaboratoryRecord) => string;
   getProjectId: (project: LaboratoryRecord) => string;
   getSourceDurationMs: (source: LaboratoryRecord) => number | null;
-  getSourceRecord: (project: LaboratoryRecord) => LaboratoryRecord;
   isOperationCancelledError: (error: unknown) => boolean;
   pushCancelledJobState: (
     api: unknown,
@@ -85,7 +85,7 @@ export function createMediaAudioExportActions(deps: MediaAudioExportActionsDeps)
     }
 
     const projectId = deps.getProjectId(project);
-    const source = deps.getSourceRecord(project);
+    const source = deps.getOperationSourceRecord(project, payload);
     const storedPath = deps.asNonEmptyString(source["storedPath"]);
     if (storedPath === null) {
       throw new Error("No source file available for audio variant export.");
@@ -201,7 +201,7 @@ export function createMediaAudioExportActions(deps: MediaAudioExportActionsDeps)
         type: "audio",
         name: outputFileName,
         localPath: outputPath,
-        ...deps.getCurrentSourceAssetLink(project),
+        ...deps.getOperationSourceAssetLink(project, payload),
         ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: config.action,
@@ -227,8 +227,6 @@ export function createMediaAudioExportActions(deps: MediaAudioExportActionsDeps)
           startOffsetMs: 0,
         },
       });
-      await deps.activateCreatedAssetAsSource(api, runtime, requestId, createdAsset);
-
       deps.pushJobState(api, {
         action: config.action,
         jobId,
@@ -309,7 +307,7 @@ export function createMediaAudioExportActions(deps: MediaAudioExportActionsDeps)
     }
 
     const projectId = deps.getProjectId(project);
-    const source = deps.getSourceRecord(project);
+    const source = deps.getOperationSourceRecord(project, payload);
     const storedPath = deps.asNonEmptyString(source["storedPath"]);
     if (storedPath === null) {
       throw new Error("No source file available for audio export.");
@@ -415,7 +413,7 @@ export function createMediaAudioExportActions(deps: MediaAudioExportActionsDeps)
         type: "audio",
         name: outputFileName,
         localPath: outputPath,
-        ...deps.getCurrentSourceAssetLink(project),
+        ...deps.getOperationSourceAssetLink(project, payload),
         ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: "export-audio-track",
@@ -441,8 +439,6 @@ export function createMediaAudioExportActions(deps: MediaAudioExportActionsDeps)
           startOffsetMs: 0,
         },
       });
-      await deps.activateCreatedAssetAsSource(api, runtime, requestId, createdAsset);
-
       deps.pushJobState(api, {
         action: "export-audio-track",
         jobId,

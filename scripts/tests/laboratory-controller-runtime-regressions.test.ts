@@ -1,6 +1,5 @@
 import {
   assert,
-  bindLabAssetPreviewClicks,
   createLabEventBus,
   createLabRunController,
   createLabStore,
@@ -305,106 +304,6 @@ test("laboratory run controller toggles selection micro zoom from the timeline a
   }
 });
 
-test("laboratory asset preview binder opens action-linked assets through the room overlay", async () => {
-  const originalElement = globalThis.Element;
-  const emittedAssetIds: string[] = [];
-  const documentRef = new FakeControllerDocument();
-
-  class TestElement extends FakeActionElement {}
-
-  Object.defineProperty(globalThis, "Element", {
-    configurable: true,
-    value: TestElement,
-  });
-
-  try {
-    bindLabAssetPreviewClicks({
-      documentRef: documentRef as unknown as Document,
-      emit(event) {
-        if (event.type === "asset-preview-opened") {
-          emittedAssetIds.push(event.assetId);
-        }
-      },
-      resolveHref(assetId) {
-        return assetId === "asset-frame-result" ? "/tmp/frame_01.png" : null;
-      },
-    });
-
-    const clickListener = documentRef.listeners.get("click");
-    assert.ok(clickListener);
-
-    let prevented = false;
-    let stopped = false;
-    clickListener?.({
-      target: new TestElement("asset-preview", "asset-frame-result"),
-      preventDefault() {
-        prevented = true;
-      },
-      stopImmediatePropagation() {
-        stopped = true;
-      },
-    } as Event);
-    await Promise.resolve();
-
-    assert.equal(prevented, true);
-    assert.equal(stopped, true);
-    assert.deepEqual(emittedAssetIds, ["asset-frame-result"]);
-  } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
-    } else {
-      Object.defineProperty(globalThis, "Element", {
-        configurable: true,
-        value: originalElement,
-      });
-    }
-  }
-});
-
-test("laboratory asset preview binder does not spawn blank windows for room previews", async () => {
-  const originalElement = globalThis.Element;
-  const emittedAssetIds: string[] = [];
-  const documentRef = new FakeControllerDocument();
-
-  class TestElement extends FakeActionElement {}
-
-  Object.defineProperty(globalThis, "Element", {
-    configurable: true,
-    value: TestElement,
-  });
-
-  try {
-    bindLabAssetPreviewClicks({
-      documentRef: documentRef as unknown as Document,
-      emit(event) {
-        if (event.type === "asset-preview-opened") {
-          emittedAssetIds.push(event.assetId);
-        }
-      },
-      resolveHref(assetId) {
-        return assetId === "asset-audio-preview" ? "/tmp/track.wav" : null;
-      },
-    });
-
-    const clickListener = documentRef.listeners.get("click");
-    assert.ok(clickListener);
-
-    clickListener?.({ target: new TestElement("asset-preview", "asset-audio-preview") } as Event);
-    await Promise.resolve();
-
-    assert.deepEqual(emittedAssetIds, ["asset-audio-preview"]);
-  } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
-    } else {
-      Object.defineProperty(globalThis, "Element", {
-        configurable: true,
-        value: originalElement,
-      });
-    }
-  }
-});
-
 test("laboratory asset menus close on menu actions and outside clicks", () => {
   const originalElement = (globalThis as Record<string, unknown>).Element;
 
@@ -415,9 +314,7 @@ test("laboratory asset menus close on menu actions and outside clicks", () => {
     ) {}
 
     closest(selector: string) {
-      if (
-        selector === "details.labx-sp-asset__menu"
-      ) {
+      if (selector === "details.labx-sp-asset__menu") {
         return this.menu;
       }
       if (selector === "[data-lab-action]" && this.action) {
@@ -437,10 +334,7 @@ test("laboratory asset menus close on menu actions and outside clicks", () => {
     const projectMenu = { open: true } as HTMLDetailsElement;
     const documentRef = {
       querySelectorAll(selector: string) {
-        assert.equal(
-          selector,
-          "details.labx-sp-asset__menu"
-        );
+        assert.equal(selector, "details.labx-sp-asset__menu");
         return [sourceMenu, projectMenu];
       },
     } as unknown as Document;
@@ -1443,10 +1337,7 @@ test("laboratory run controller updates focus layer from user workspace interact
       if (selector === ".labx-timeline" && this.surface === "timeline") {
         return this;
       }
-      if (
-        selector === "[data-lab-workspace-inspector='true']" &&
-        this.surface === "inspector"
-      ) {
+      if (selector === "[data-lab-workspace-inspector='true']" && this.surface === "inspector") {
         return this;
       }
       return null;
@@ -2436,9 +2327,7 @@ test("laboratory source panel delete action removes a confirmed asset", () => {
           eventName: event.eventName,
         };
       }),
-      [
-        { eventName: "media-action", action: "asset-remove", assetId: "asset-source-1" },
-      ]
+      [{ eventName: "media-action", action: "asset-remove", assetId: "asset-source-1" }]
     );
   } finally {
     if (originalElement === undefined) {
@@ -2523,7 +2412,7 @@ test("laboratory asset delete actions stop when confirmation is rejected", () =>
   }
 });
 
-test("laboratory source panel use-as-source action sends asset source replacement", () => {
+test("laboratory source panel media action activates the asset through the host source flow", () => {
   const originalElement = globalThis.Element;
   const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
   const documentRef = new FakeControllerDocument();
@@ -2571,16 +2460,17 @@ test("laboratory source panel use-as-source action sends asset source replacemen
     assert.ok(clickListener);
 
     clickListener?.({
-      target: new TestElement("asset-use-as-source", "asset-source-1"),
+      target: new TestElement("source-activate-asset", "asset-source-1"),
     } as Event);
 
     assert.equal(sentEvents.length, 1);
     assert.equal(sentEvents[0]?.eventName, "media-action");
-    assert.equal(sentEvents[0]?.payload["action"], "asset-use-as-source");
-    assert.equal(
-      (sentEvents[0]?.payload["payload"] as Record<string, unknown>)["assetId"],
-      "asset-source-1"
-    );
+    assert.equal(sentEvents[0]?.payload.action, "source-activate-asset");
+    assert.deepEqual(sentEvents[0]?.payload.payload, {
+      assetId: "asset-source-1",
+      featureId: "media-analysis",
+    });
+    assert.equal(store.getState().ui.activeWorkspaceAssetId, null);
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;
@@ -2593,7 +2483,7 @@ test("laboratory source panel use-as-source action sends asset source replacemen
   }
 });
 
-test("laboratory source panel report action opens the report overlay", () => {
+test("laboratory report overlay action opens the report overlay", () => {
   const originalElement = globalThis.Element;
   const documentRef = new FakeControllerDocument();
   const eventBus = createLabEventBus();
@@ -2631,7 +2521,6 @@ test("laboratory source panel report action opens the report overlay", () => {
       target: new TestElement("open-report-overlay", "asset-report-inline"),
     } as Event);
 
-    assert.equal(store.getState().ui.activeAssetPreviewId, null);
     assert.equal(store.getState().ui.workspace.reportOverlayOpen, true);
   } finally {
     if (originalElement === undefined) {
