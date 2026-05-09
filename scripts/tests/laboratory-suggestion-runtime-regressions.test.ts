@@ -121,6 +121,14 @@ test("selection suggestion selector falls back to the full source scope without 
     ) {
       return suggestion.id === "clean-audio";
     }),
+    false
+  );
+  assert.equal(
+    getWaveformTimelineModel(audioStore.getState()).selectionSuggestions?.some(function (
+      suggestion
+    ) {
+      return suggestion.id === "metadata-audit";
+    }),
     true
   );
 
@@ -183,7 +191,7 @@ test("selection suggestion selector falls back to the full source scope without 
     ) {
       return suggestion.id === "crop-region";
     }),
-    true
+    false
   );
 });
 
@@ -201,17 +209,19 @@ test("selection tab renders default full-source suggestions without mutating act
   assert.match(surface.side, /class="lab-selection-panel/);
   assert.match(surface.side, /00:00\.000/);
   assert.match(surface.side, /00:05\.000/);
-  assert.match(surface.side, /data-lab-selection-suggestion="clean-audio"/);
+  assert.match(surface.side, /data-lab-selection-suggestion="audio-inspect"/);
+  assert.match(surface.side, /data-lab-selection-suggestion="metadata-audit"/);
+  assert.doesNotMatch(surface.side, /data-lab-selection-suggestion="clean-audio"/);
 
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
-    suggestionId: "clean-audio",
+    suggestionId: "metadata-audit",
   });
 
-  assert.equal(store.getState().ui.activeSuggestionPreviewId, "clean-audio");
+  assert.equal(store.getState().ui.activeSuggestionPreviewId, "metadata-audit");
   assert.equal(
     getActiveSuggestionPreview(store.getState())?.title,
-    "Ses temizleme onizlemesi hazirlanacak"
+    "Metadata kontrolu hazirlanacak"
   );
 });
 
@@ -714,6 +724,147 @@ test("selection preview clears on range changes, intent changes, and explicit di
   assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
   assert.equal(store.getState().ui.activeExecutionIntentId, "audio-inspect");
   assert.equal(getActiveExecutionIntent(store.getState())?.id, "audio-inspect");
+});
+
+test("selection suggestion accept and queue cannot mutate source analysis while a run is active", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "video",
+      mode: "local",
+      storedPath: "/tmp/source.mp4",
+    },
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "motion",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "motion-check",
+  });
+  store.dispatch({ type: "run-started", action: "process-run" });
+  store.dispatch({
+    type: "workspace-selection-suggestion-accepted",
+    suggestionId: "motion-check",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-queued",
+    suggestionId: "motion-check",
+  });
+
+  const state = store.getState();
+  assert.deepEqual(state.ui.workspace.selectedIntents, []);
+  assert.deepEqual(state.selectedCapabilities, []);
+  assert.equal(state.ui.activeExecutionIntentId, null);
+});
+
+test("terminal analysis events clear source selections while preserving the run analysis scope", () => {
+  const store = createLabStore();
+
+  hydrateReadySource(store, {
+    kind: "audio",
+    path: "/tmp/source.wav",
+    metadata: { durationSeconds: 4 },
+  });
+  store.dispatch({
+    type: "workspace-intent-set",
+    intents: ["audio-investigation"],
+  });
+  store.dispatch({
+    type: "workbench-updated",
+    workbench: {
+      ...store.getState().workbench,
+      analysisScope: {
+        focus: "audio",
+        timeRange: {
+          startMs: 500,
+          endMs: 2500,
+        },
+        hypothesis: "voice clue",
+        intentIds: ["audio-investigation"],
+      },
+    },
+  });
+
+  let moduleToggles = store.getState().workbench["moduleToggles"] as Record<string, unknown>;
+  assert.equal(moduleToggles["signal-health"], true);
+
+  store.dispatch({ type: "run-started", action: "audio-process-run" });
+  store.dispatch({
+    type: "run-failed",
+    action: "audio-process-run",
+    detail: "Room API bridge is not connected.",
+  });
+
+  let state = store.getState();
+  moduleToggles = state.workbench["moduleToggles"] as Record<string, unknown>;
+  assert.deepEqual(state.ui.workspace.selectedIntents, []);
+  assert.deepEqual(state.selectedCapabilities, []);
+  assert.equal(moduleToggles["signal-health"], false);
+  assert.deepEqual(state.run?.analysisScope?.intentIds, ["audio-investigation"]);
+
+  store.dispatch({
+    type: "workspace-intent-set",
+    intents: ["audio-investigation"],
+  });
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-scope",
+      kind: "analysis-scope-updated",
+      severity: "info",
+      message: "Analysis scope locked",
+      detail: null,
+      timestamp: Date.now(),
+      source: "host",
+      action: "audio-process-run",
+      stage: "running",
+      scope: "run",
+      moduleId: null,
+      rawLine: null,
+      analysisScope: {
+        focus: "audio",
+        timeRange: {
+          startMs: 500,
+          endMs: 2500,
+        },
+        hypothesis: "voice clue",
+        intentIds: ["audio-investigation"],
+      },
+    },
+  });
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-completed",
+      kind: "activity",
+      severity: "success",
+      message: "Analysis completed",
+      detail: null,
+      timestamp: Date.now() + 1,
+      source: "host",
+      action: "audio-process-run",
+      stage: "completed",
+      scope: "run",
+      moduleId: null,
+      rawLine: null,
+    },
+  });
+
+  state = store.getState();
+  moduleToggles = state.workbench["moduleToggles"] as Record<string, unknown>;
+  assert.deepEqual(state.ui.workspace.selectedIntents, []);
+  assert.deepEqual(state.selectedCapabilities, []);
+  assert.equal(moduleToggles["signal-health"], false);
+  assert.deepEqual(state.run?.analysisScope?.intentIds, ["audio-investigation"]);
 });
 
 test("hydrate keeps selection previews and execution intents ephemeral", async () => {

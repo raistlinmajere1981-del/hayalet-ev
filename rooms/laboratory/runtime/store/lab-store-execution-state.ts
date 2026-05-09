@@ -1,7 +1,6 @@
 import {
   asLabRecord,
   asNonEmptyString,
-  getIntentIdsForCapabilityFamily,
 } from "../../models/lab-types.js";
 import type {
   LabActionSuggestion,
@@ -125,12 +124,9 @@ export function canStoreSelectionSuggestionPreview(state: LabStoreState, suggest
     return false;
   }
 
-  const sourceKind = getWorkspaceSelectionSuggestionSourceKind(state);
-  return getSelectionSuggestionsForContext(activeSelection, {
-    expandedTaxonomy: true,
-    inspectionMode: state.ui.inspectionMode,
-    sourceKind,
-  }).some((suggestion) => suggestion.id === normalizedSuggestionId);
+  return getAnalysisPreparationSuggestionsForState(state).some(
+    (suggestion) => suggestion.id === normalizedSuggestionId
+  );
 }
 
 function canResolveSelectionExecutionIntent(state: LabStoreState, suggestionId: string) {
@@ -164,13 +160,8 @@ export function getSelectionSuggestionById(
   if (activeSelection === null || activeSelection.endMs <= activeSelection.startMs) {
     return null;
   }
-  const sourceKind = getWorkspaceSelectionSuggestionSourceKind(state);
   return (
-    getSelectionSuggestionsForContext(activeSelection, {
-      expandedTaxonomy: true,
-      inspectionMode: state.ui.inspectionMode,
-      sourceKind,
-    }).find(function (suggestion) {
+    getAnalysisPreparationSuggestionsForState(state).find(function (suggestion) {
       return suggestion.id === normalizedSuggestionId;
     }) || null
   );
@@ -200,9 +191,6 @@ export function getAnalysisPreparationIntentIdsForSuggestion(
   if (suggestion === null || isOperationResultSuggestion(suggestion)) {
     return [];
   }
-  if (suggestion.analysisCapabilityId !== undefined) {
-    return getIntentIdsForCapabilityFamily(suggestion.analysisCapabilityId);
-  }
   switch (suggestion.actionType) {
     case "inspect-audio":
       return ["audio-investigation"];
@@ -212,11 +200,31 @@ export function getAnalysisPreparationIntentIdsForSuggestion(
       return ["visual-inspection"];
     case "focus-region":
     case "ocr-region":
+      return ["visual-inspection"];
     case "metadata-audit":
-      return ["visual-inspection", "detail-enhancement"];
+      return suggestion.analysisCapabilityId === "audio-signal"
+        ? ["audio-investigation"]
+        : ["visual-inspection"];
     case "analyze-segment":
       return ["visual-inspection", "audio-investigation", "anomaly-detection"];
     default:
       return [];
   }
+}
+
+export function isAnalysisPreparationSuggestion(suggestion: LabActionSuggestion) {
+  return getAnalysisPreparationIntentIdsForSuggestion(suggestion).length > 0;
+}
+
+function getAnalysisPreparationSuggestionsForState(state: LabStoreState) {
+  const activeSelection = getWorkspaceSelectionForSuggestion(state);
+  if (activeSelection === null || activeSelection.endMs <= activeSelection.startMs) {
+    return [];
+  }
+  const sourceKind = getWorkspaceSelectionSuggestionSourceKind(state);
+  return getSelectionSuggestionsForContext(activeSelection, {
+    expandedTaxonomy: true,
+    inspectionMode: state.ui.inspectionMode,
+    sourceKind,
+  }).filter(isAnalysisPreparationSuggestion);
 }

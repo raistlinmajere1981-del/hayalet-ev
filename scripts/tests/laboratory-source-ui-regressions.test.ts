@@ -465,7 +465,8 @@ test("laboratory v2 shell renders source intake in the setup drawer and preview 
   );
   assert.doesNotMatch(surface.main, /Source setup controls/);
   assert.match(surface.side, /data-lab-selection-panel="true"/);
-  assert.match(surface.side, /Önerilen İşlemler/);
+  assert.match(surface.side, /Önerilen Analizler/);
+  assert.doesNotMatch(surface.side, /Önerilen İşlemler/);
   assert.doesNotMatch(
     surface.side,
     /data-lab-execution-plan|data-lab-execution-simulation|data-lab-execution-payload-preview|data-lab-execution-details/
@@ -703,7 +704,7 @@ test("laboratory workspace focus layer classes map to preview timeline and inspe
   );
 });
 
-test("laboratory workspace inspector exposes operation-result controls and active operation focus", () => {
+test("laboratory workspace inspector exposes operation controls without selection-tab operation focus", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "workspace-timeline-updated",
@@ -714,24 +715,16 @@ test("laboratory workspace inspector exposes operation-result controls and activ
     type: "workspace-selection-intent-updated",
     intent: "visual",
   });
-  store.dispatch({
-    type: "workspace-selection-suggestion-preview-set",
-    suggestionId: "enhance-visual",
-  });
-  store.dispatch({
-    type: "workspace-selection-suggestion-accepted",
-    suggestionId: "enhance-visual",
-  });
 
   const surface = renderWorkspaceSurface(store.getState());
 
-  assert.match(surface.inspector ?? "", /data-active-tab="operations"/);
+  assert.match(surface.inspector ?? "", /data-active-tab="audio"/);
   assert.match(surface.inspector ?? "", /data-inspector-panel="operations"/);
   assert.match(surface.inspector ?? "", /data-operation-id="enhanced-frame"/);
   assert.match(surface.inspector ?? "", /data-operation-id="before-after-variant"/);
   assert.match(surface.inspector ?? "", /data-operation-id="band-pass-voice"/);
   assert.match(surface.inspector ?? "", /data-operation-id="stem-separation"/);
-  assert.match(
+  assert.doesNotMatch(
     surface.inspector ?? "",
     /data-operation-id="enhanced-frame"[\s\S]*data-active="true"/
   );
@@ -1076,15 +1069,15 @@ test("laboratory selection guidance splits expanded operation and analysis sugge
 
   const surface = renderWorkspaceSurface(store.getState());
 
-  assert.match(surface.side, /Önerilen İşlemler/);
   assert.match(surface.side, /Önerilen Analizler/);
-  assert.match(surface.side, /Sesi temizle/);
-  assert.match(surface.side, /Kaynaklari ayir/);
+  assert.doesNotMatch(surface.side, /Önerilen İşlemler/);
+  assert.doesNotMatch(surface.side, /Sesi temizle/);
+  assert.doesNotMatch(surface.side, /Kaynaklari ayir/);
   assert.match(surface.side, /Metadata kontrolu/);
   assert.match(surface.side, /Sahne gecislerini tara/);
 });
 
-test("laboratory operation suggestions resolve expanded preview and avoid analysis rail highlight", () => {
+test("laboratory operation suggestions stay out of the selection tab and source analysis rail", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "workspace-timeline-updated",
@@ -1107,9 +1100,10 @@ test("laboratory operation suggestions resolve expanded preview and avoid analys
   const surface = renderWorkspaceSurface(store.getState());
   const drawer = renderLabDrawer(store.getState(), surface);
 
-  assert.equal(getActiveSuggestionPreview(store.getState())?.suggestionId, "clean-audio");
-  assert.equal(getActiveExecutionIntent(store.getState())?.flowKind, "operation-result");
-  assert.match(surface.inspector ?? "", /data-active-tab="operations"/);
+  assert.equal(getActiveSuggestionPreview(store.getState()), null);
+  assert.equal(getActiveExecutionIntent(store.getState()), null);
+  assert.doesNotMatch(surface.side, /data-lab-selection-suggestion="clean-audio"/);
+  assert.doesNotMatch(surface.side, /Sesi temizle/);
   assert.doesNotMatch(drawer, /data-active="true"[\s\S]*Audio signal/);
 });
 

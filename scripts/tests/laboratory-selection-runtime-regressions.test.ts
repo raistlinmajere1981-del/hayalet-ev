@@ -688,11 +688,10 @@ test("waveform timeline renders selector-driven suggested actions alongside live
   assert.match(markup, /aria-pressed="true"/);
   assert.match(markup, /Suggested actions/);
   assert.match(markup, /Ses detaylarini incele/);
-  assert.match(markup, /Bu bolumu kes/);
   assert.match(markup, /data-lab-selection-suggestion="audio-inspect"/);
-  assert.match(markup, /data-lab-selection-suggestion="extract-clip"/);
+  assert.doesNotMatch(markup, /Bu bolumu kes/);
+  assert.doesNotMatch(markup, /data-lab-selection-suggestion="extract-clip"/);
   assert.match(markup, /data-suggestion-priority="primary"/);
-  assert.match(markup, /data-suggestion-priority="secondary"/);
   assert.match(markup, /Preview/);
   assert.match(markup, /Ses analizi yapilacak/);
   assert.match(markup, /Steps/);
@@ -970,11 +969,8 @@ test("selection suggestion binder previews expanded timeline suggestions shown i
   clickListener?.(clickEvent as unknown as Event);
 
   assert.equal(clickEvent.defaultPrevented, true);
-  assert.equal(store.getState().ui.activeSuggestionPreviewId, "clean-audio");
-  assert.equal(
-    getActiveSuggestionPreview(store.getState())?.title,
-    "Ses temizleme onizlemesi hazirlanacak"
-  );
+  assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
+  assert.equal(getActiveSuggestionPreview(store.getState()), null);
 });
 
 test("selection suggestion binder gates soft execution intent actions by the exact active preview id", () => {
@@ -1843,6 +1839,128 @@ test("selection suggestion preview dismissal stays stable with stacked document 
       });
     }
   }
+});
+
+test("selection suggestion accept starts the mapped source analysis through the event bus", () => {
+  class FakeExecutionIntentAcceptTrigger {
+    constructor(private readonly suggestionId: string | null) {}
+
+    getAttribute(name: string) {
+      return name === "data-lab-execution-intent-accept" ? this.suggestionId : null;
+    }
+  }
+
+  class FakeExecutionIntentAcceptTarget extends FakeDomElement {
+    constructor(private readonly trigger: FakeExecutionIntentAcceptTrigger | null) {
+      super();
+    }
+
+    closest(selector: string) {
+      return selector === "[data-lab-execution-intent-accept]" ? this.trigger : null;
+    }
+  }
+
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  const sentActions: string[] = [];
+
+  eventBus.subscribe(store.dispatch);
+  bindLabSelectionSuggestionClicks({
+    canPreviewSuggestion(suggestionId) {
+      return getSelectionSuggestions(store.getState()).some(function (suggestion) {
+        return suggestion.id === suggestionId;
+      });
+    },
+    documentRef: documentRef as unknown as Document,
+    emit: eventBus.emit,
+    getActivePreviewSuggestionId() {
+      return getActiveSuggestionPreviewId(store.getState());
+    },
+  });
+  createLabRunController({
+    documentRef: documentRef as unknown as Document,
+    eventBus,
+    store,
+    windowRef: {
+      roomAPI: {
+        sendEvent(_eventName: string, payload: Record<string, unknown>) {
+          if (typeof payload["action"] === "string") {
+            sentActions.push(payload["action"]);
+          }
+        },
+      },
+      addEventListener() {},
+    } as unknown as Window,
+  });
+
+  store.dispatch({
+    type: "hydrate",
+    payload: {
+      featureId: "media-analysis",
+      projectIndex: {
+        activeProjectId: "project-audio-source",
+        projects: [],
+      },
+      workbench: {},
+      source: {
+        status: "ready",
+        kind: "audio",
+        mode: "local",
+        routeLabel: "Local Copy",
+        storedPath: "/tmp/source.wav",
+        metadata: { durationSeconds: 4 },
+      },
+      sourceProbeStatus: "completed",
+      toolState: {
+        tools: {
+          ffmpeg: { installed: true },
+          pyaudioanalysis: { installed: true },
+        },
+      },
+      workspace: {},
+      reports: {
+        user: null,
+        ai: null,
+        emptyReason: null,
+      },
+      activityFeed: [],
+      lastRun: null,
+    },
+  });
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1200,
+    endMs: 2600,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+
+  const clickListener = documentRef.listeners.get("click");
+  assert.ok(clickListener);
+  clickListener?.(
+    new FakeClickEvent(
+      new FakeSelectionSuggestionTarget(
+        new FakeSelectionSuggestionTrigger("audio-inspect")
+      ) as unknown as EventTarget
+    ) as unknown as Event
+  );
+
+  const acceptEvent = new FakeClickEvent(
+    new FakeExecutionIntentAcceptTarget(
+      new FakeExecutionIntentAcceptTrigger("audio-inspect")
+    ) as unknown as EventTarget
+  );
+  clickListener?.(acceptEvent as unknown as Event);
+
+  const state = store.getState();
+  assert.equal(acceptEvent.defaultPrevented, true);
+  assert.deepEqual(state.ui.workspace.selectedIntents, ["audio-investigation"]);
+  assert.equal(state.ui.workspace.selectionTabActive, false);
+  assert.ok(sentActions.includes("audio-process-run"));
+  assert.deepEqual(state.run?.analysisScope?.intentIds, ["audio-investigation"]);
 });
 
 test("selection suggestion binder ignores invalid preview ids while keeping passive click history", () => {

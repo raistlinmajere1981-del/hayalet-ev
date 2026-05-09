@@ -12,6 +12,10 @@ export function isOperationSuggestion(suggestion: LabActionSuggestion) {
   return (
     suggestion.actionType === "extract-clip" ||
     suggestion.actionType === "enhance-visual" ||
+    suggestion.actionType === "enhance-frame" ||
+    suggestion.actionType === "crop-region" ||
+    suggestion.actionType === "clean-audio" ||
+    suggestion.actionType === "separate-stems" ||
     suggestion.actionType === "stabilize-segment"
   );
 }

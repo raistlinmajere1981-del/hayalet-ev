@@ -396,6 +396,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
     case "workspace-selection-suggestion-clicked":
       return state;
     case "workspace-selection-suggestion-accepted":
+      if (isRunMutationLocked(state)) {
+        return state;
+      }
       if (!canAcceptSelectionExecutionIntent(state, event.suggestionId)) {
         return state;
       }
@@ -409,13 +412,18 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
           nextExecutionIntentId === null
             ? null
             : getSelectionSuggestionById(state, nextExecutionIntentId);
+        const suggestionBoundToAnalysis = applyAnalysisPreparationSuggestionSelection(
+          state,
+          event.suggestionId,
+          "replace"
+        );
         if (suggestion !== null && isOperationResultSuggestion(suggestion)) {
           state.ui.workspace = {
             ...state.ui.workspace,
             controlsDrawerOpen: true,
             controlsDrawerTab: "operations",
           };
-        } else {
+        } else if (suggestionBoundToAnalysis !== true) {
           const expandedIntentIds = getAnalysisPreparationIntentIdsForSuggestion(suggestion);
           state.ui.workspace = {
             ...state.ui.workspace,
@@ -442,6 +450,10 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       }
       return state;
     case "workspace-selection-suggestion-queued":
+      if (isRunMutationLocked(state)) {
+        return state;
+      }
+      applyAnalysisPreparationSuggestionSelection(state, event.suggestionId, "append");
       if (
         state.ui.activeSuggestionPreviewId === normalizeSelectionSuggestionId(event.suggestionId)
       ) {
@@ -930,6 +942,35 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
     default:
       return state;
   }
+}
+
+function applyAnalysisPreparationSuggestionSelection(
+  state: LabStoreState,
+  suggestionId: string,
+  mode: "append" | "replace"
+) {
+  const suggestion = getSelectionSuggestionById(state, suggestionId);
+  const suggestionIntentIds = getAnalysisPreparationIntentIdsForSuggestion(suggestion);
+  if (suggestionIntentIds.length === 0) {
+    return false;
+  }
+  const nextIntents =
+    mode === "append"
+      ? normalizeWorkspaceIntentIds(state.ui.workspace.selectedIntents.concat(suggestionIntentIds))
+      : normalizeWorkspaceIntentIds(suggestionIntentIds);
+  state.ui.workspace = {
+    ...state.ui.workspace,
+    drawerCollapsed: false,
+    drawerModeOverride: "setup",
+    selectionTabActive: false,
+    selectedIntents: nextIntents,
+    analysisPrepExpandedIntentIds: normalizeLabIntentIds(
+      state.ui.workspace.analysisPrepExpandedIntentIds.concat(suggestionIntentIds)
+    ),
+  };
+  state.workbench = replaceAnalysisPreparationModuleToggles(state.workbench, nextIntents);
+  state.selectedCapabilities = deriveCapabilitiesFromIntentIds(nextIntents);
+  return true;
 }
 
 export function createLabStore() {

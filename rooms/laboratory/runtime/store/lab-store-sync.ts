@@ -43,6 +43,10 @@ import {
 } from "./lab-store-import-state.js";
 import { ensurePendingRun, shouldKeepPendingRunDuringSnapshot } from "./lab-store-run-sync.js";
 import { resetWorkspaceForSourceActivation } from "./lab-store-source-reset.js";
+import {
+  deriveCapabilitiesFromIntentIds,
+  replaceAnalysisPreparationModuleToggles,
+} from "./lab-store-workspace-state.js";
 
 function syncDraftsFromSnapshot(state: LabStoreState, snapshot: Record<string, unknown>) {
   const activeProject = asLabRecord(snapshot["activeProject"]);
@@ -475,6 +479,9 @@ function syncRunStateFromHostEvent(state: LabStoreState, event: LabEventFeedItem
     run.state = "failed";
     run.error = event.detail || run.error;
     state.ui.analysisCancelPending = false;
+    if (event.moduleId === null) {
+      clearAnalysisPreparationSelection(state);
+    }
     return;
   }
   if (event.stage === "cancelled") {
@@ -482,6 +489,9 @@ function syncRunStateFromHostEvent(state: LabStoreState, event: LabEventFeedItem
     run.state = "cancelled";
     run.endedAt = run.endedAt || Date.now();
     state.ui.analysisCancelPending = false;
+    if (event.moduleId === null) {
+      clearAnalysisPreparationSelection(state);
+    }
     return;
   }
   if (event.stage === "completed") {
@@ -489,6 +499,9 @@ function syncRunStateFromHostEvent(state: LabStoreState, event: LabEventFeedItem
     run.state = "completed";
     run.endedAt = run.endedAt || Date.now();
     state.ui.analysisCancelPending = false;
+    if (event.moduleId === null) {
+      clearAnalysisPreparationSelection(state);
+    }
     return;
   }
   if (event.stage === "queued" || event.stage === "running") {
@@ -496,6 +509,16 @@ function syncRunStateFromHostEvent(state: LabStoreState, event: LabEventFeedItem
     state.ui.workspace.userExploreToggle = false;
     state.ui.workspace.drawerModeOverride = null;
   }
+}
+
+export function clearAnalysisPreparationSelection(state: LabStoreState) {
+  state.ui.workspace = {
+    ...state.ui.workspace,
+    selectedIntents: [],
+    analysisPrepExpandedIntentIds: [],
+  };
+  state.workbench = replaceAnalysisPreparationModuleToggles(state.workbench, []);
+  state.selectedCapabilities = deriveCapabilitiesFromIntentIds([]);
 }
 
 function syncAnalysisCancelPendingFromHostEvent(state: LabStoreState, event: LabEventFeedItem) {

@@ -42,6 +42,7 @@ import {
   buildExecutionResultInterpretation,
   getCachedExecutionGoalEvaluation,
 } from "./lab-execution-result-selectors.js";
+import { isAnalysisPreparationSuggestion } from "../store/lab-store-execution-state.js";
 import type {
   ActiveExecutionRuntimeContext,
   LabExecutionResultInterpretation,
@@ -217,12 +218,14 @@ export function getWorkspaceSurfaceSuggestions(state: LabStoreState): LabActionS
     expandedTaxonomy: true,
     inspectionMode: getInspectionMode(state),
     sourceKind: getSelectionContextSourceKind(state),
-  }).map(function (suggestion) {
-    return {
-      ...suggestion,
-      flowKind: getWorkspaceSurfaceSuggestionFlowKind(suggestion),
-    };
-  });
+  })
+    .map(function (suggestion) {
+      return {
+        ...suggestion,
+        flowKind: getWorkspaceSurfaceSuggestionFlowKind(suggestion),
+      };
+    })
+    .filter(isAnalysisPreparationSuggestion);
 }
 
 function getExecutionSelectionSuggestions(state: LabStoreState): LabActionSuggestion[] {

@@ -3,7 +3,10 @@ import type { LabStoreEvent, LabStoreState } from "../../models/lab-types.js";
 import { normalizeLabPreflight } from "../../services/preflight-service.js";
 import { createIdlePreflight } from "./lab-store-defaults.js";
 import { ensurePendingRun } from "./lab-store-run-sync.js";
-import { updateTrackedProjectImportProbe } from "./lab-store-sync.js";
+import {
+  clearAnalysisPreparationSelection,
+  updateTrackedProjectImportProbe,
+} from "./lab-store-sync.js";
 
 export function reduceLabProcessEvent(state: LabStoreState, event: LabStoreEvent): boolean {
   switch (event.type) {
@@ -111,6 +114,7 @@ export function reduceLabProcessEvent(state: LabStoreState, event: LabStoreEvent
           }
         }
       }
+      clearAnalysisPreparationSelection(state);
       return true;
     case "run-failed":
       ensurePendingRun(state, event.action).state = "failed";
@@ -118,6 +122,7 @@ export function reduceLabProcessEvent(state: LabStoreState, event: LabStoreEvent
       if (state.run) {
         state.run.error = event.detail || state.run.error;
       }
+      clearAnalysisPreparationSelection(state);
       return true;
     case "module-started":
     case "module-progress":

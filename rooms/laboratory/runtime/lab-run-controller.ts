@@ -4,9 +4,11 @@ import type {
   LabFeatureId,
   LabFocusLayer,
   LabIntentId,
+  LabStoreEvent,
 } from "../models/lab-types.js";
 import { createLabWaveformTimelineVisualizer } from "../ui/lab-waveform-timeline.js";
 import {
+  getActiveExecutionIntent,
   getAnalysisActionBlockReason,
   getCurrentRun,
   getEditActionBlockReason,
@@ -46,6 +48,7 @@ import {
 } from "./controller/lab-timeline-controller-helpers.js";
 import { DEFAULT_AUDIO_FOCUS_SETTINGS } from "./lab-audio-focus-normalization.js";
 import { DEFAULT_LAB_INTERACTIVE_SETTINGS } from "./lab-workspace-defaults.js";
+import { getAnalysisPreparationIntentIdsForSuggestion } from "./store/lab-store-execution-state.js";
 
 type LabRoomApi = {
   onHostMessage?: (listener: (message: unknown) => void) => void;
@@ -85,7 +88,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   const {
     cancelTrackedOperation,
     getRoomApi,
-    handleBusEvent,
+    handleBusEvent: handleMediaActionBusEvent,
     sendMediaAction,
     startTrackedReportExport,
   } = mediaActions;
@@ -1011,6 +1014,37 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
   function getPrimaryActionState() {
     return getLabPrimaryActionState(deps.store.getState());
+  }
+
+  function handleBusEvent(event: LabStoreEvent) {
+    handleMediaActionBusEvent();
+    if (event.type === "workspace-selection-suggestion-queued") {
+      syncCurrentWorkbenchToHost();
+      return;
+    }
+    if (event.type !== "workspace-selection-suggestion-accepted") {
+      return;
+    }
+    const state = deps.store.getState();
+    const activeExecutionIntent = getActiveExecutionIntent(state);
+    if (
+      activeExecutionIntent === null ||
+      activeExecutionIntent.id !== event.suggestionId ||
+      getAnalysisPreparationIntentIdsForSuggestion(activeExecutionIntent).length === 0
+    ) {
+      syncCurrentWorkbenchToHost();
+      return;
+    }
+    const blockReason = getAnalysisActionBlockReason(state);
+    if (blockReason !== null) {
+      dispatch({
+        type: "push-event",
+        event: buildUiEvent(blockReason, "warning"),
+      });
+      syncCurrentWorkbenchToHost();
+      return;
+    }
+    startDeepAnalysis(state);
   }
 
   deps.eventBus.subscribe(handleBusEvent);

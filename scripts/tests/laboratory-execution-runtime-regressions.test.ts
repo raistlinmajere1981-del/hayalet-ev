@@ -241,9 +241,9 @@ test("store accepts execution intents only from the exact active suggestion prev
     type: "workspace-selection-suggestion-accepted",
     suggestionId: "extract-clip",
   });
-  assert.equal(store.getState().ui.activeExecutionIntentId, "extract-clip");
-  assert.equal(store.getState().ui.activeExecutionCommitment, null);
-  assert.equal(getActiveExecutionCommitment(store.getState()), null);
+  assert.equal(store.getState().ui.activeExecutionIntentId, "audio-inspect");
+  assert.equal(store.getState().ui.activeExecutionCommitment?.planId, activeCandidate.planId);
+  assert.equal(getActiveExecutionCommitment(store.getState())?.planId, activeCandidate.planId);
 
   store.dispatch({
     type: "selection-roi-updated",
@@ -6036,11 +6036,11 @@ test("execution runtime clears on upstream invalidation edges", () => {
       mutate(store) {
         store.dispatch({
           type: "workspace-selection-suggestion-preview-set",
-          suggestionId: "clean-audio",
+          suggestionId: "metadata-audit",
         });
         store.dispatch({
           type: "workspace-selection-suggestion-accepted",
-          suggestionId: "clean-audio",
+          suggestionId: "metadata-audit",
         });
       },
     },

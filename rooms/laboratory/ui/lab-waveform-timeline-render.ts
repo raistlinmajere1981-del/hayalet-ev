@@ -144,8 +144,16 @@ export function renderLabWaveformSelectionPanel(
   };
   const hasSemanticSelection =
     modelSelection !== null && modelSelection.endMs > modelSelection.startMs;
-  const selectionSuggestions = hasSemanticSelection ? (model.selectionSuggestions ?? []) : [];
-  const activeExecutionIntent = hasSemanticSelection ? (model.activeExecutionIntent ?? null) : null;
+  const selectionSuggestions = hasSemanticSelection
+    ? (model.selectionSuggestions ?? []).filter(function (suggestion) {
+        return !isOperationSuggestion(suggestion);
+      })
+    : [];
+  const rawActiveExecutionIntent = hasSemanticSelection ? (model.activeExecutionIntent ?? null) : null;
+  const activeExecutionIntent =
+    rawActiveExecutionIntent !== null && !isOperationSuggestion(rawActiveExecutionIntent)
+      ? rawActiveExecutionIntent
+      : null;
   const hasFlowTaggedSuggestions = selectionSuggestions.some(function (suggestion) {
     return suggestion.flowKind === "operation-result" || suggestion.flowKind === "analysis-report";
   });
@@ -162,7 +170,14 @@ export function renderLabWaveformSelectionPanel(
         return !isOperationSuggestion(suggestion);
       })
     : [];
-  const suggestionPreview = hasSemanticSelection ? (model.activeSuggestionPreview ?? null) : null;
+  const rawSuggestionPreview = hasSemanticSelection ? (model.activeSuggestionPreview ?? null) : null;
+  const suggestionPreview =
+    rawSuggestionPreview !== null &&
+    selectionSuggestions.some(function (suggestion) {
+      return suggestion.id === rawSuggestionPreview.suggestionId;
+    })
+      ? rawSuggestionPreview
+      : null;
   const activeInspectionSnapshot = model.activeInspectionSnapshot ?? null;
   const interpretationItems = model.interpretationItems ?? [];
   const inspectionMode = model.inspectionMode ?? "none";
