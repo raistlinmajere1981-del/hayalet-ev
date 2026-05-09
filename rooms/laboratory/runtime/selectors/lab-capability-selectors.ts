@@ -25,10 +25,7 @@ import { getProjectSource } from "./lab-project-selectors.js";
 import { getAssets, getSourceKind, getToolState } from "./lab-source-selectors.js";
 import { getTrackedOperationActionId } from "../lab-operation-action-map.js";
 import { getUserActions } from "./lab-activity-selectors.js";
-import {
-  inferLabAssetSourceKind,
-  type LabAssetSourceKind,
-} from "../../shared/lab-asset-kind.js";
+import { inferLabAssetSourceKind, type LabAssetSourceKind } from "../../shared/lab-asset-kind.js";
 
 type OperationSourceKind = LabAssetSourceKind;
 

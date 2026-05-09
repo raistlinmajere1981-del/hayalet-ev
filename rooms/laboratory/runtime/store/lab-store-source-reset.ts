@@ -1,14 +1,8 @@
 import { asLabRecord } from "../../models/lab-types.js";
 import type { LabStoreState } from "../../models/lab-types.js";
-import {
-  clearExecutionIntent,
-  clearSuggestionPreview,
-} from "./lab-store-execution-state.js";
+import { clearExecutionIntent, clearSuggestionPreview } from "./lab-store-execution-state.js";
 import { createDefaultWorkspaceUiState } from "./lab-store-defaults.js";
-import {
-  clearInspectionDepth,
-  resetInspectionMode,
-} from "./lab-store-workspace-state.js";
+import { clearInspectionDepth, resetInspectionMode } from "./lab-store-workspace-state.js";
 
 type WorkspaceSourceResetOptions = {
   activeWorkspaceAssetId?: string | null;

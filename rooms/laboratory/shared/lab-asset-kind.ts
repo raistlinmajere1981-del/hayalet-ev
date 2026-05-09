@@ -34,9 +34,7 @@ export function getLabPathExtension(path: string | null): string | null {
 
 export function getLabAssetCandidatePath(asset: LabAsset): string | null {
   return (
-    asNonEmptyString(asset.localPath) ||
-    asNonEmptyString(asset.url) ||
-    asNonEmptyString(asset.name)
+    asNonEmptyString(asset.localPath) || asNonEmptyString(asset.url) || asNonEmptyString(asset.name)
   );
 }
 

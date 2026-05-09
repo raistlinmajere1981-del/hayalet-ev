@@ -956,7 +956,7 @@ test("laboratory workspace operations block remote asset targets instead of fall
   assert.doesNotMatch(surface.inspector ?? "", /data-lab-action="timeline-export-clip"/);
 });
 
-test("laboratory processing overlay uses the active operation contract and locks source/timeline controls", () => {
+test("laboratory running work keeps the active operation contract without a fullscreen overlay", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "user-action-added",
@@ -982,10 +982,11 @@ test("laboratory processing overlay uses the active operation contract and locks
   assert.equal(overlay.cancelAction, "operation-cancel");
   assert.equal(overlay.cancelValue, "enhanced-frame");
   assert.equal(overlay.progress, 42);
-  assert.match(surface.main, /data-lab-region="processing-overlay"/);
-  assert.match(surface.main, /İyileştirilmiş frame hazırlanıyor/);
-  assert.match(surface.main, /data-indeterminate="false" style="width: 42%"/);
-  assert.match(
+  assert.doesNotMatch(surface.main, /data-lab-region="processing-overlay"/);
+  assert.doesNotMatch(surface.main, /class="labx-processing-overlay"/);
+  assert.doesNotMatch(surface.main, /İyileştirilmiş frame hazırlanıyor/);
+  assert.doesNotMatch(surface.main, /data-indeterminate="false" style="width: 42%"/);
+  assert.doesNotMatch(
     surface.main,
     /data-lab-action="operation-cancel"[\s\S]*data-lab-value="enhanced-frame"/
   );
@@ -1394,7 +1395,10 @@ test("laboratory workspace panels show snapshot drift as a non-blocking visibili
 
   assert.match(drawer, /Analysis Progress/);
   assert.match(drawer, /class="labx-drawer labx-context-panel" data-lab-region="context-panel"/);
+  assert.match(drawer, /data-lab-running-stages="true"/);
   assert.match(drawer, /data-lab-running-plan="true"/);
+  assert.match(drawer, /Analysis stages/);
+  assert.match(drawer, /0\/3 modules/);
   assert.match(drawer, /Motion Anomaly/);
   assert.match(drawer, /Frame Consistency/);
   assert.match(drawer, /data-status="running"/);
@@ -1403,6 +1407,55 @@ test("laboratory workspace panels show snapshot drift as a non-blocking visibili
   assert.match(strip, /class="labx-process-strip"/);
   assert.match(strip, /data-lab-region="process-strip"/);
   assert.doesNotMatch(drawer, /run-intent-analysis/);
+});
+
+test("laboratory running drawer keeps module progress visible without selected intent state", () => {
+  const store = createSeededState(true);
+  const eventTimestamp = Date.now();
+
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-run",
+      kind: "activity",
+      severity: "info",
+      message: "Analiz basladi",
+      detail: null,
+      timestamp: eventTimestamp,
+      source: "host",
+      action: "process-run",
+      stage: "running",
+      scope: "run",
+      moduleId: null,
+      rawLine: null,
+    },
+  });
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-module",
+      kind: "activity",
+      severity: "info",
+      message: "Runtime module running",
+      detail: "Runtime module running",
+      timestamp: eventTimestamp + 1,
+      source: "host",
+      action: "process-run",
+      stage: "running",
+      scope: "run",
+      moduleId: "visual-signal",
+      rawLine: null,
+    },
+  });
+  store.dispatch({ type: "workspace-intent-set", intents: [] });
+
+  const drawer = renderLabDrawer(store.getState(), renderWorkspaceSurface(store.getState()));
+
+  assert.match(drawer, /data-lab-running-stages="true"/);
+  assert.match(drawer, /data-lab-running-plan="true"/);
+  assert.match(drawer, /Active modules/);
+  assert.match(drawer, /Visual Signal/);
+  assert.doesNotMatch(drawer, /Analiz plani hazirlaniyor/);
 });
 
 test("laboratory transparency renderers tolerate sparse run payloads", () => {

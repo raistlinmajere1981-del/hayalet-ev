@@ -255,7 +255,9 @@ export function createLabTimelinePlaybackController(deps: LabTimelinePlaybackCon
     return { startMs, endMs };
   }
 
-  function getCurrentTimelineTimeMs(media: LabTimelineMediaLikeElement | null = getTimelineSyncMedia()) {
+  function getCurrentTimelineTimeMs(
+    media: LabTimelineMediaLikeElement | null = getTimelineSyncMedia()
+  ) {
     if (media === null || typeof media.currentTime !== "number") {
       return null;
     }

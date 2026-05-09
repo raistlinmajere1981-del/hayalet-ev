@@ -1207,6 +1207,13 @@ test("laboratory run controller routes topbar pills and cancel through v2 contra
       completedAt: null,
       progress: 42,
     };
+    store.dispatch({ type: "selection-tab-toggled", active: true });
+    clickListener?.({ target: new TestElement("topbar-pill-analyze") } as Event);
+
+    assert.equal(store.getState().ui.workspace.selectionTabActive, false);
+    assert.equal(store.getState().ui.workspace.drawerModeOverride, null);
+    assert.equal(resolveDrawerMode(store.getState()), "running");
+
     clickListener?.({ target: new TestElement("cancel-analysis") } as Event);
 
     assert.equal(sentEvents.length, 1);

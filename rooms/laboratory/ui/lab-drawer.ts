@@ -32,6 +32,7 @@ import { renderExploreMode, renderResultMode } from "./lab-drawer-result-explore
 
 type AnalysisPreparationGroup = ReturnType<typeof getAnalysisPreparationGroups>[number];
 type AvailableIntent = ReturnType<typeof getAvailableIntents>[number];
+type RunningStageStatus = "pending" | "active" | "complete" | "error" | "cancelled";
 
 // ---------------------------------------------------------------------------
 // Mode headers
@@ -346,6 +347,21 @@ function getRunningPlanGroupStatus(group: AnalysisPreparationGroup, state: LabSt
   return "ready";
 }
 
+function getRunningModuleTitle(state: LabStoreState, moduleId: string) {
+  const module = state.run?.modules[moduleId];
+  const title = module?.title?.trim() ?? "";
+  if (title !== "" && title !== moduleId) {
+    return title;
+  }
+  return moduleId
+    .split("-")
+    .filter(Boolean)
+    .map(function (part) {
+      return part.charAt(0).toUpperCase() + part.slice(1);
+    })
+    .join(" ");
+}
+
 function renderRunningPlanModule(
   module: AnalysisPreparationGroup["modules"][number],
   state: LabStoreState,
@@ -364,6 +380,32 @@ function renderRunningPlanModule(
     <div
       class="labx-analysis-module labx-analysis-module--locked"
       data-readiness="${escapeHtml(module.readiness)}"
+      data-status="${escapeHtml(status)}"
+      data-active="${active ? "true" : "false"}"
+    >
+      <span class="labx-analysis-module__status" aria-hidden="true"></span>
+      <span>
+        <strong>${escapeHtml(moduleLabel)}</strong>
+        <small>${escapeHtml(statusLabel)}${message ? ` · ${escapeHtml(message)}` : ""}</small>
+      </span>
+    </div>
+  `;
+}
+
+function renderRunningPlanModuleFromRun(moduleId: string, state: LabStoreState, copy: LabI18n) {
+  const runModule = state.run?.modules[moduleId];
+  const status = runModule?.status ?? "idle";
+  const active = status === "running" || status === "queued";
+  const statusLabel = getRunningPlanStatusLabel(status, copy);
+  const moduleLabel = getRunningModuleTitle(state, moduleId);
+  const message = runModule?.message
+    ? translateLabRuntimeText(runModule.message, copy)
+    : copy.t("mediaAnalysis.drawer.running.moduleFallbackDetail", "Awaiting module signal");
+
+  return `
+    <div
+      class="labx-analysis-module labx-analysis-module--locked"
+      data-readiness="ready"
       data-status="${escapeHtml(status)}"
       data-active="${active ? "true" : "false"}"
     >
@@ -424,6 +466,86 @@ function renderRunningPlanGroup(
   `;
 }
 
+function getRunModuleStatusCounts(state: LabStoreState) {
+  const run = state.run;
+  const moduleIds = run?.moduleOrder ?? [];
+  const completedCount = moduleIds.filter(function (moduleId) {
+    const status = run?.modules[moduleId]?.status;
+    return status === "completed" || status === "ready";
+  }).length;
+  const activeCount = moduleIds.filter(function (moduleId) {
+    const status = run?.modules[moduleId]?.status;
+    return status === "running" || status === "queued";
+  }).length;
+  const failedCount = moduleIds.filter(function (moduleId) {
+    return run?.modules[moduleId]?.status === "failed";
+  }).length;
+  const cancelledCount = moduleIds.filter(function (moduleId) {
+    return run?.modules[moduleId]?.status === "cancelled";
+  }).length;
+
+  return {
+    activeCount,
+    cancelledCount,
+    completedCount,
+    failedCount,
+    totalCount: moduleIds.length,
+  };
+}
+
+function renderRunningPlanFallback(state: LabStoreState, copy: LabI18n) {
+  const run = state.run;
+  if (run === null || run.moduleOrder.length === 0) {
+    return "";
+  }
+
+  const counts = getRunModuleStatusCounts(state);
+  const active = counts.activeCount > 0;
+  const status =
+    counts.failedCount > 0
+      ? "failed"
+      : counts.cancelledCount > 0
+        ? "cancelled"
+        : active
+          ? "running"
+          : counts.totalCount > 0 && counts.completedCount === counts.totalCount
+            ? "completed"
+            : "queued";
+
+  return `
+    <div
+      class="labx-drawer__intent-cluster labx-drawer__intent-cluster--locked"
+      data-selected="true"
+      data-expanded="true"
+      data-readiness="ready"
+      data-status="${escapeHtml(status)}"
+      data-active="${active ? "true" : "false"}"
+    >
+      <div class="labx-drawer__intent-head labx-drawer__intent-head--locked">
+        <div class="labx-drawer__intent-item labx-drawer__intent-item--static">
+          <span>
+            <strong>${escapeHtml(copy.t("mediaAnalysis.drawer.running.moduleFallbackTitle", "Active modules"))}</strong>
+            <small>${escapeHtml(copy.t("mediaAnalysis.drawer.running.moduleFallbackSubtitle", "Runtime events are keeping this plan visible."))}</small>
+          </span>
+        </div>
+      </div>
+      <div class="labx-drawer__intent-summary">
+        <span>${escapeHtml(getRunningPlanStatusLabel(status, copy))}</span>
+        <span>${escapeHtml(String(counts.completedCount))}/${escapeHtml(String(counts.totalCount))}</span>
+      </div>
+      <div class="labx-analysis-group labx-analysis-group--locked" data-selected="true" data-readiness="ready">
+        <div class="labx-analysis-group__modules">
+          ${run.moduleOrder
+            .map(function (moduleId) {
+              return renderRunningPlanModuleFromRun(moduleId, state, copy);
+            })
+            .join("")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderRunningAnalysisPlan(state: LabStoreState, copy: LabI18n) {
   const runIntentIds = state.run?.analysisScope?.intentIds ?? [];
   const selectedIntentIds = runIntentIds.length > 0 ? runIntentIds : getSelectedIntents(state);
@@ -439,6 +561,7 @@ function renderRunningAnalysisPlan(state: LabStoreState, copy: LabI18n) {
       return group ? renderRunningPlanGroup(intent, group, state, copy) : "";
     })
     .join("");
+  const bodyMarkup = groupsMarkup !== "" ? groupsMarkup : renderRunningPlanFallback(state, copy);
 
   return `
     <section
@@ -448,10 +571,148 @@ function renderRunningAnalysisPlan(state: LabStoreState, copy: LabI18n) {
     >
       <h3>${escapeHtml(copy.t("mediaAnalysis.drawer.setup.intentsTitle", "Analysis Goals"))}</h3>
       ${
-        groupsMarkup !== ""
-          ? `<div class="labx-drawer__intent-list">${groupsMarkup}</div>`
+        bodyMarkup !== ""
+          ? `<div class="labx-drawer__intent-list">${bodyMarkup}</div>`
           : `<p class="labx-drawer__ok">${escapeHtml(copy.t("mediaAnalysis.drawer.running.planResolving", "Analiz planı hazırlanıyor."))}</p>`
       }
+    </section>
+  `;
+}
+
+function getRunningStageStatusLabel(status: RunningStageStatus, copy: LabI18n) {
+  const labels: Record<RunningStageStatus, { key: string; fallback: string }> = {
+    active: {
+      key: "mediaAnalysis.drawer.running.stageStatus.active",
+      fallback: "Active",
+    },
+    cancelled: {
+      key: "mediaAnalysis.drawer.running.stageStatus.cancelled",
+      fallback: "Cancelled",
+    },
+    complete: {
+      key: "mediaAnalysis.drawer.running.stageStatus.complete",
+      fallback: "Complete",
+    },
+    error: {
+      key: "mediaAnalysis.drawer.running.stageStatus.error",
+      fallback: "Error",
+    },
+    pending: {
+      key: "mediaAnalysis.drawer.running.stageStatus.pending",
+      fallback: "Pending",
+    },
+  };
+  const label = labels[status];
+  return copy.t(label.key, label.fallback);
+}
+
+function renderRunningStageTracker(state: LabStoreState, copy: LabI18n) {
+  const run = state.run;
+  const counts = getRunModuleStatusCounts(state);
+  const runState = run?.state ?? "running";
+  const runFinished =
+    runState === "completed" ||
+    runState === "ready" ||
+    runState === "failed" ||
+    runState === "cancelled";
+  const runFailed = runState === "failed";
+  const runCancelled = runState === "cancelled";
+  const moduleStageStatus: RunningStageStatus = runFailed
+    ? "error"
+    : runCancelled
+      ? "cancelled"
+      : runFinished
+        ? "complete"
+        : "active";
+  const reportStageStatus: RunningStageStatus =
+    runState === "completed" || runState === "ready"
+      ? "complete"
+      : runFailed
+        ? "error"
+        : runCancelled
+          ? "cancelled"
+          : "pending";
+  const progressPercent =
+    counts.totalCount > 0 ? Math.round((counts.completedCount / counts.totalCount) * 100) : null;
+  const progressLabel =
+    progressPercent === null
+      ? copy.t("mediaAnalysis.drawer.running.progressResolving", "Resolving module plan")
+      : copy.t("mediaAnalysis.drawer.running.progressCount", "{done}/{total} modules", {
+          done: counts.completedCount,
+          total: counts.totalCount,
+        });
+  const stages: Array<{
+    id: string;
+    label: string;
+    detail: string;
+    status: RunningStageStatus;
+  }> = [
+    {
+      id: "scope",
+      label: copy.t("mediaAnalysis.drawer.running.stages.scope", "Scope"),
+      detail:
+        run !== null && run.analysisScope !== null
+          ? copy.t("mediaAnalysis.drawer.running.stageDetails.scopeLocked", "Locked for this run")
+          : copy.t("mediaAnalysis.drawer.running.stageDetails.scopeStarted", "Run started"),
+      status: "complete",
+    },
+    {
+      id: "preflight",
+      label: copy.t("mediaAnalysis.drawer.running.stages.preflight", "Preflight"),
+      detail:
+        counts.totalCount > 0 || runFinished
+          ? copy.t("mediaAnalysis.drawer.running.stageDetails.preflightComplete", "Checks passed")
+          : copy.t("mediaAnalysis.drawer.running.stageDetails.preflightActive", "Preparing tools"),
+      status: counts.totalCount > 0 || runFinished ? "complete" : "active",
+    },
+    {
+      id: "modules",
+      label: copy.t("mediaAnalysis.drawer.running.stages.modules", "Modules"),
+      detail: progressLabel,
+      status: moduleStageStatus,
+    },
+    {
+      id: "report",
+      label: copy.t("mediaAnalysis.drawer.running.stages.report", "Report"),
+      detail:
+        reportStageStatus === "complete"
+          ? copy.t("mediaAnalysis.drawer.running.stageDetails.reportComplete", "Report is ready")
+          : reportStageStatus === "error"
+            ? copy.t("mediaAnalysis.drawer.running.stageDetails.reportError", "Needs review")
+            : reportStageStatus === "cancelled"
+              ? copy.t("mediaAnalysis.drawer.running.stageDetails.reportCancelled", "Run stopped")
+              : copy.t(
+                  "mediaAnalysis.drawer.running.stageDetails.reportPending",
+                  "Waiting on modules"
+                ),
+      status: reportStageStatus,
+    },
+  ];
+
+  return `
+    <section class="labx-drawer__section labx-running-stages" data-lab-running-stages="true">
+      <div class="labx-running-stages__head">
+        <h3>${escapeHtml(copy.t("mediaAnalysis.drawer.running.stagesTitle", "Analysis stages"))}</h3>
+        <span>${escapeHtml(progressLabel)}</span>
+      </div>
+      <ol class="labx-running-stages__list">
+        ${stages
+          .map(function (stage) {
+            return `
+              <li data-stage="${escapeHtml(stage.id)}" data-status="${escapeHtml(stage.status)}">
+                <span class="labx-running-stages__dot" aria-hidden="true"></span>
+                <span>
+                  <strong>${escapeHtml(stage.label)}</strong>
+                  <small>${escapeHtml(stage.detail)} · ${escapeHtml(getRunningStageStatusLabel(stage.status, copy))}</small>
+                </span>
+              </li>
+            `;
+          })
+          .join("")}
+      </ol>
+      <div class="labx-running-stages__progress" data-indeterminate="${progressPercent === null && runFinished !== true ? "true" : "false"}" aria-hidden="true">
+        <span style="width:${escapeHtml(String(progressPercent ?? 100))}%"></span>
+      </div>
     </section>
   `;
 }
@@ -615,6 +876,13 @@ function renderRunningMode(state: LabStoreState, copy: LabI18n) {
   `;
 
   const blocks: LabPipelineBlock[] = [
+    {
+      id: "execution-stages",
+      render() {
+        return renderRunningStageTracker(state, copy);
+      },
+      type: "status",
+    },
     {
       id: "execution-status",
       render() {

@@ -346,6 +346,120 @@
 }
 
 /* Drawer — Running plan */
+.labx-running-stages {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.labx-running-stages__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.labx-running-stages__head h3 {
+  margin: 0;
+}
+
+.labx-running-stages__head span {
+  color: var(--labx-text-dim);
+  font-size: 0.62rem;
+  white-space: nowrap;
+}
+
+.labx-running-stages__list {
+  display: grid;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.labx-running-stages__list li {
+  display: grid;
+  grid-template-columns: 0.5rem minmax(0, 1fr);
+  align-items: start;
+  gap: 0.42rem;
+  min-height: 2rem;
+  padding: 0.36rem 0.42rem;
+  border: 1px solid rgba(134, 187, 214, 0.08);
+  border-radius: var(--labx-radius-button);
+  background: rgba(8, 24, 35, 0.24);
+}
+
+.labx-running-stages__list strong,
+.labx-running-stages__list small {
+  display: block;
+}
+
+.labx-running-stages__list strong {
+  color: var(--labx-text-primary);
+  font-size: 0.72rem;
+}
+
+.labx-running-stages__list small {
+  margin-top: 0.08rem;
+  color: var(--labx-text-dim);
+  font-size: 0.62rem;
+  line-height: 1.3;
+}
+
+.labx-running-stages__dot {
+  width: 0.42rem;
+  height: 0.42rem;
+  margin-top: 0.22rem;
+  border-radius: 50%;
+  background: rgba(134, 187, 214, 0.42);
+}
+
+.labx-running-stages__list li[data-status="active"] {
+  border-color: rgba(255, 210, 115, 0.34);
+  background: rgba(255, 210, 115, 0.08);
+}
+
+.labx-running-stages__list li[data-status="active"] .labx-running-stages__dot {
+  background: rgba(255, 210, 115, 0.95);
+  animation: labx-dot-pulse 1.6s ease-in-out infinite;
+}
+
+.labx-running-stages__list li[data-status="complete"] .labx-running-stages__dot {
+  background: var(--labx-accent);
+}
+
+.labx-running-stages__list li[data-status="error"] .labx-running-stages__dot,
+.labx-running-stages__list li[data-status="cancelled"] .labx-running-stages__dot {
+  background: var(--labx-error, #ff4d5e);
+}
+
+.labx-running-stages__progress {
+  height: 0.34rem;
+  overflow: hidden;
+  border-radius: var(--labx-radius-pill);
+  background: rgba(134, 187, 214, 0.1);
+}
+
+.labx-running-stages__progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(92, 215, 223, 0.72), rgba(255, 210, 115, 0.78));
+  transition: width 160ms ease-out;
+}
+
+.labx-running-stages__progress[data-indeterminate="true"] span {
+  animation: labx-running-stages-scan 1.35s ease-in-out infinite;
+}
+
+@keyframes labx-running-stages-scan {
+  0% {
+    transform: translateX(-72%);
+  }
+  100% {
+    transform: translateX(72%);
+  }
+}
+
 .labx-drawer__intents--running {
   opacity: 0.98;
 }

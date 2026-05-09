@@ -569,10 +569,7 @@ export class TranscriptService {
         descriptor.backend === "vosk" ? TRANSCRIPT_VOSK_MODEL_ENV : TRANSCRIPT_WHISPER_MODEL_ENV
       ]
     );
-    if (
-      currentStatus.ready === true ||
-      currentStatus.path === envModelPath
-    ) {
+    if (currentStatus.ready === true || currentStatus.path === envModelPath) {
       return currentStatus;
     }
 
@@ -1071,7 +1068,8 @@ export class TranscriptService {
       extractRoot,
       descriptor.directoryName ?? descriptor.fileName.replace(/\.zip$/i, "")
     );
-    const expectedDirectoryName = descriptor.directoryName ?? descriptor.fileName.replace(/\.zip$/i, "");
+    const expectedDirectoryName =
+      descriptor.directoryName ?? descriptor.fileName.replace(/\.zip$/i, "");
 
     await rm(extractRoot, { recursive: true, force: true });
     await mkdir(extractRoot, { recursive: true });
@@ -1130,7 +1128,10 @@ export class TranscriptService {
             entry.fileName.includes("\\") ||
             isInsideDirectory(destinationRoot, targetPath) !== true
           ) {
-            fail(zipFile, new Error(`Vosk model archive contains an unsafe path: ${entry.fileName}`));
+            fail(
+              zipFile,
+              new Error(`Vosk model archive contains an unsafe path: ${entry.fileName}`)
+            );
             return;
           }
 
@@ -1377,10 +1378,7 @@ export class TranscriptService {
     }
   }
 
-  private getCachedVoskModel(
-    modelPath: string,
-    vosk: typeof VoskKoffi
-  ): VoskKoffi.Model {
+  private getCachedVoskModel(modelPath: string, vosk: typeof VoskKoffi): VoskKoffi.Model {
     const cached = this.activeVoskModels.get(modelPath);
     if (cached !== undefined) {
       return cached.model;

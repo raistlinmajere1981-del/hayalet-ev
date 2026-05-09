@@ -174,11 +174,20 @@ test("laboratory running drawer disables cancel while cancellation is pending", 
 
   const drawer = renderLabDrawer(store.getState(), renderWorkspaceSurface(store.getState()));
 
-  assert.deepEqual(getPipelineBlockIds(drawer), ["execution-status", "cancel-analysis"]);
+  assert.deepEqual(getPipelineBlockIds(drawer), [
+    "execution-stages",
+    "execution-status",
+    "cancel-analysis",
+  ]);
+  assert.match(
+    drawer,
+    /data-block-id="execution-stages" data-block-type="status" data-block-mode="running"/
+  );
   assert.match(
     drawer,
     /data-block-id="execution-status" data-block-type="status" data-block-mode="running"/
   );
+  assert.match(drawer, /data-lab-running-stages="true"/);
   assert.match(
     drawer,
     /data-block-id="cancel-analysis" data-block-type="action" data-block-mode="running"/

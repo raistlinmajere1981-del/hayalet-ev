@@ -386,6 +386,35 @@
           "skipped": "Skipped",
           "ready": "Ready"
         },
+        "stagesTitle": "Analysis stages",
+        "stages": {
+          "scope": "Scope",
+          "preflight": "Preflight",
+          "modules": "Modules",
+          "report": "Report"
+        },
+        "stageDetails": {
+          "scopeLocked": "Locked for this run",
+          "scopeStarted": "Run started",
+          "preflightComplete": "Checks passed",
+          "preflightActive": "Preparing tools",
+          "reportComplete": "Report is ready",
+          "reportError": "Needs review",
+          "reportCancelled": "Run stopped",
+          "reportPending": "Waiting on modules"
+        },
+        "stageStatus": {
+          "active": "Active",
+          "complete": "Complete",
+          "error": "Error",
+          "cancelled": "Cancelled",
+          "pending": "Pending"
+        },
+        "progressResolving": "Resolving module plan",
+        "progressCount": "{done}/{total} modules",
+        "moduleFallbackTitle": "Active modules",
+        "moduleFallbackSubtitle": "Runtime events are keeping this plan visible.",
+        "moduleFallbackDetail": "Awaiting module signal",
         "planResolving": "Preparing the analysis plan.",
         "cancelPending": "Cancelling analysis",
         "cancel": "Cancel Analysis",
@@ -393,6 +422,8 @@
         "cancelSub": "The running analysis will stop"
       },
       "result": {
+        "eyebrow": "Result",
+        "title": "Decision Surface",
         "partialWarn": "Analysis completed, but some modules reported warnings.",
         "fresh": "Current",
         "stale": "Stale",
@@ -2044,7 +2075,8 @@
         "resetFocus": "Reset focus",
         "focusRegion": "Focus region",
         "captureRegion": "Capture region",
-        "clearRegion": "Clear region"
+        "clearRegion": "Clear region",
+        "resizeRegion": "Resize region"
       },
       "status": {
         "regionActive": "Region active",

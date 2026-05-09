@@ -386,6 +386,35 @@
           "skipped": "Atlandi",
           "ready": "Hazir"
         },
+        "stagesTitle": "Analiz asamalari",
+        "stages": {
+          "scope": "Kapsam",
+          "preflight": "On kontrol",
+          "modules": "Moduller",
+          "report": "Rapor"
+        },
+        "stageDetails": {
+          "scopeLocked": "Bu calisma icin kilitlendi",
+          "scopeStarted": "Calisma basladi",
+          "preflightComplete": "Kontroller gecti",
+          "preflightActive": "Araclar hazirlaniyor",
+          "reportComplete": "Rapor hazir",
+          "reportError": "Inceleme gerekiyor",
+          "reportCancelled": "Calisma durdu",
+          "reportPending": "Moduller bekleniyor"
+        },
+        "stageStatus": {
+          "active": "Aktif",
+          "complete": "Tamam",
+          "error": "Hata",
+          "cancelled": "Iptal",
+          "pending": "Bekliyor"
+        },
+        "progressResolving": "Modul plani cozuluyor",
+        "progressCount": "{done}/{total} modul",
+        "moduleFallbackTitle": "Aktif moduller",
+        "moduleFallbackSubtitle": "Runtime olaylari bu plani gorunur tutuyor.",
+        "moduleFallbackDetail": "Modul sinyali bekleniyor",
         "planResolving": "Analiz plani hazirlaniyor.",
         "cancelPending": "Analiz iptal ediliyor",
         "cancel": "Analizi Iptal Et",
@@ -393,6 +422,8 @@
         "cancelSub": "Calisan analiz durdurulacak"
       },
       "result": {
+        "eyebrow": "Sonuc",
+        "title": "Karar Yuzeyi",
         "partialWarn": "Analiz tamamlandi ancak bazi moduller uyari verdi.",
         "fresh": "Guncel",
         "stale": "Eski",
@@ -2044,7 +2075,8 @@
         "resetFocus": "Odagi sifirla",
         "focusRegion": "Bolgeye odaklan",
         "captureRegion": "Bolgeyi yakala",
-        "clearRegion": "Bolgeyi temizle"
+        "clearRegion": "Bolgeyi temizle",
+        "resizeRegion": "Bolgeyi yeniden boyutlandir"
       },
       "status": {
         "regionActive": "Bolge aktif",

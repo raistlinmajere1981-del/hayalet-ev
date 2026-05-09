@@ -683,7 +683,8 @@ export function syncCanonicalStateFromSnapshot(
     previousSourceSelectionKey !== nextSourceSelectionKey
   ) {
     resetWorkspaceForSourceActivation(state, {
-      sourceIntakeCollapsed: previousActiveProjectId !== nextActiveProjectId ? nextSourceReady : undefined,
+      sourceIntakeCollapsed:
+        previousActiveProjectId !== nextActiveProjectId ? nextSourceReady : undefined,
     });
   }
   if (previousActiveProjectId !== nextActiveProjectId) {

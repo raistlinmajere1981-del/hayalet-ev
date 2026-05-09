@@ -85,13 +85,12 @@ export class CaptureTranscriptRuntimePanel {
       backendHintEl.textContent = AppI18n.t("entrance.user.transcriptBackend.hint");
     }
     if (backendSelectEl) {
-      const whisperOption =
-        backendSelectEl.querySelector<HTMLOptionElement>("option[value='whisper.cpp']");
+      const whisperOption = backendSelectEl.querySelector<HTMLOptionElement>(
+        "option[value='whisper.cpp']"
+      );
       const voskOption = backendSelectEl.querySelector<HTMLOptionElement>("option[value='vosk']");
       if (whisperOption) {
-        whisperOption.textContent = AppI18n.t(
-          "entrance.user.transcriptBackend.options.whisper"
-        );
+        whisperOption.textContent = AppI18n.t("entrance.user.transcriptBackend.options.whisper");
       }
       if (voskOption) {
         voskOption.textContent = AppI18n.t("entrance.user.transcriptBackend.options.vosk");

@@ -499,7 +499,7 @@
 
 #capture-import-btn {
   flex: 0 1 auto;
-  max-width: min(16rem, 46%);
+  max-width: min(calc(var(--space-16) * 4), 46%);
   white-space: normal;
   line-height: 1.2;
 }

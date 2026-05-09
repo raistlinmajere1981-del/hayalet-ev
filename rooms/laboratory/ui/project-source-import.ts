@@ -106,16 +106,14 @@ function getYoutubeFormatOptionLabel(format: LabYoutubeImportFormat) {
   const size =
     typeof format.filesizeBytes === "number" && Number.isFinite(format.filesizeBytes)
       ? formatBytes(format.filesizeBytes)
-      : typeof format.filesizeApproxBytes === "number" && Number.isFinite(format.filesizeApproxBytes)
+      : typeof format.filesizeApproxBytes === "number" &&
+          Number.isFinite(format.filesizeApproxBytes)
         ? `~${formatBytes(format.filesizeApproxBytes)}`
         : null;
   return [format.label, size].filter(Boolean).join(" · ");
 }
 
-function getYoutubeStreamFormats(
-  formats: LabYoutubeImportFormat[],
-  target: "video" | "audio"
-) {
+function getYoutubeStreamFormats(formats: LabYoutubeImportFormat[], target: "video" | "audio") {
   return formats.filter(function (format) {
     if (target === "video") {
       return format.kind === "video" || format.kind === "muxed";

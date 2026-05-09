@@ -18,7 +18,6 @@ import {
   getInteractiveSettings,
   getMediaViewportState,
   getProjectSource,
-  getProcessingOverlayState,
   getROIRegions,
   getSourceKind,
   getSourceProbeStatus,
@@ -497,49 +496,6 @@ function renderWorkspaceInspectorDrawer(input: {
   });
 }
 
-function formatOverlayElapsed(totalSeconds: number, elapsedLabel: string): string {
-  const elapsedMin = Math.floor(totalSeconds / 60);
-  const elapsedSecRem = totalSeconds % 60;
-  return `${elapsedLabel}: ${String(elapsedMin).padStart(2, "0")}:${String(elapsedSecRem).padStart(2, "0")}`;
-}
-
-function renderProcessingOverlay(state: LabStoreState, copy: LabI18n): string {
-  const overlay = getProcessingOverlayState(state);
-  if (overlay.active !== true) {
-    return "";
-  }
-  const label = overlay.label || copy.t("mediaAnalysis.overlay.processing", "Processing...");
-  const cancelLabel = copy.t("mediaAnalysis.overlay.cancel", "Cancel");
-  const elapsedLabel = copy.t("mediaAnalysis.overlay.elapsed", "Elapsed");
-  const progress = overlay.progress ?? 0;
-  const progressWidth = overlay.indeterminate ? 40 : progress;
-  const progressBarMarkup = `<div class="labx-processing-overlay__progress-bar" data-indeterminate="${overlay.indeterminate ? "true" : "false"}" style="width: ${String(progressWidth)}%"></div>`;
-  const elapsedStr = formatOverlayElapsed(overlay.elapsedSeconds, elapsedLabel);
-  const cancelMarkup =
-    overlay.cancelAction === null
-      ? ""
-      : `
-        <button
-          class="labx-processing-overlay__cancel"
-          type="button"
-          data-lab-action="${escapeHtml(overlay.cancelAction)}"
-          data-lab-value="${escapeHtml(overlay.cancelValue)}"
-        >${escapeHtml(cancelLabel)}</button>
-      `;
-
-  return `
-    <div class="labx-processing-overlay" data-lab-region="processing-overlay" role="alert" aria-live="assertive">
-      <div class="labx-processing-overlay__card">
-        <div class="labx-processing-overlay__spinner" aria-hidden="true"></div>
-        <p class="labx-processing-overlay__label">${escapeHtml(label)}</p>
-        <div class="labx-processing-overlay__progress">${progressBarMarkup}</div>
-        <p class="labx-processing-overlay__elapsed">${escapeHtml(elapsedStr)}</p>
-        ${cancelMarkup}
-      </div>
-    </div>
-  `;
-}
-
 export function renderWorkspaceSurface(
   state: LabStoreState,
   options: WorkspaceSurfaceOptions = {}
@@ -613,7 +569,7 @@ export function renderWorkspaceSurface(
           timeline.endMs !== null &&
           timeline.endMs > timeline.startMs)),
   };
-  const durationMs = timelineModel.durationMs;
+  const durationMs = previewReady ? timelineModel.durationMs : 0;
   const inspectorPanels: WorkspaceInspectorPanel[] = [
     hasAudio && previewReady
       ? {
@@ -725,7 +681,6 @@ export function renderWorkspaceSurface(
         pinned: state.ui.workspace.inspectorPinned,
       })
     : "";
-  const processingOverlayMarkup = heavyWorkActive ? renderProcessingOverlay(state, copy) : "";
 
   const main = `
     <section class="labx-workspace-main" id="lab-workspace-main">
@@ -736,7 +691,6 @@ export function renderWorkspaceSurface(
         </div>
         ${iconRailMarkup}
       </div>
-      ${processingOverlayMarkup}
     </section>
   `;
 

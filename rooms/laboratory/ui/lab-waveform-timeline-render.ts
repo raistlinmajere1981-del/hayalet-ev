@@ -149,7 +149,9 @@ export function renderLabWaveformSelectionPanel(
         return !isOperationSuggestion(suggestion);
       })
     : [];
-  const rawActiveExecutionIntent = hasSemanticSelection ? (model.activeExecutionIntent ?? null) : null;
+  const rawActiveExecutionIntent = hasSemanticSelection
+    ? (model.activeExecutionIntent ?? null)
+    : null;
   const activeExecutionIntent =
     rawActiveExecutionIntent !== null && !isOperationSuggestion(rawActiveExecutionIntent)
       ? rawActiveExecutionIntent
@@ -170,7 +172,9 @@ export function renderLabWaveformSelectionPanel(
         return !isOperationSuggestion(suggestion);
       })
     : [];
-  const rawSuggestionPreview = hasSemanticSelection ? (model.activeSuggestionPreview ?? null) : null;
+  const rawSuggestionPreview = hasSemanticSelection
+    ? (model.activeSuggestionPreview ?? null)
+    : null;
   const suggestionPreview =
     rawSuggestionPreview !== null &&
     selectionSuggestions.some(function (suggestion) {
@@ -315,7 +319,8 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
   const transportVolume = Math.max(0, Math.min(1, model.transportVolume ?? 1));
   const playbackRate = Math.max(0.25, Math.min(2, model.audioFocus?.playbackRate ?? 1));
   const selectionLoopEnabled = hasSelection === true && model.selectionLoopEnabled === true;
-  const selectionDisabledAttr = timelineLocked || hasSelection !== true ? 'disabled aria-disabled="true"' : "";
+  const selectionDisabledAttr =
+    timelineLocked || hasSelection !== true ? 'disabled aria-disabled="true"' : "";
   const startBoundaryDisabled = timelineLocked;
   const endBoundaryDisabled = timelineLocked || model.startMs === null;
   const startBoundaryDisabledAttr = startBoundaryDisabled ? 'disabled aria-disabled="true"' : "";

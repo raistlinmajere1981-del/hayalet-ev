@@ -1,7 +1,4 @@
-import {
-  asLabRecord,
-  asNonEmptyString,
-} from "../../models/lab-types.js";
+import { asLabRecord, asNonEmptyString } from "../../models/lab-types.js";
 import type {
   LabActionSuggestion,
   LabExecutionCandidate,

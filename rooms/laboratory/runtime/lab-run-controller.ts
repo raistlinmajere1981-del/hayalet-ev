@@ -697,6 +697,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         }
         return;
       case "topbar-pill-analyze":
+        if (state.ui.workspace.selectionTabActive) {
+          dispatch({ type: "selection-tab-toggled", active: false });
+        }
+        dispatch({ type: "drawer-mode-requested", mode: isRunActive(state) ? null : "setup" });
         return;
       case "topbar-pill-results":
         if (hasReportPayload(state)) {
