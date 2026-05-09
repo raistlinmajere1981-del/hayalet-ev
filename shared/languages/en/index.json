@@ -78,8 +78,8 @@
         "crossLabel": "Cross-send",
         "sendButton": "Send",
         "captureSessionKicker": "Phone capture",
-        "captureSessionTitle": "Central Android capture session",
-        "captureSessionHint": "The live preview stays on the phone screen. Analyze only triggers capture, syncs the latest result, and stages the file.",
+        "captureSessionTitle": "Android Camera Management",
+        "captureSessionHint": "Camera control lives on the phone. Take and add images from Android companion to stage them in Analyze files.",
         "captureSessionState": "Session state",
         "captureSessionDevice": "Device",
         "captureSessionDeviceNone": "No phone selected",
@@ -87,9 +87,11 @@
         "captureSessionActions": {
           "start": "Open phone preview",
           "stop": "End phone session",
-          "capture": "Capture photo",
+          "capture": "Take photo",
           "retake": "Retake",
-          "sync": "Sync phone files"
+          "sync": "Add",
+          "clear": "Clear",
+          "close": "Close"
         },
         "captureSessionStates": {
           "idle": "Idle",
@@ -101,7 +103,7 @@
         },
         "captureSessionLatestEmpty": "No phone capture has been staged yet.",
         "captureSessionDisabled": "Android companion capture is disabled in Settings > Capture.",
-        "captureImportButton": "From Phone",
+        "captureImportButton": "Android Camera Management",
         "addFileButton": "Add File",
         "archiveOverlayEyebrow": "Archive layer",
         "archiveOverlayButton": "Archive Console",
@@ -118,10 +120,12 @@
           "preparingMessage": "Preparing the local voice transcription runtime.",
           "emptyResultMessage": "The voice transcript came back empty.",
           "insertedMessage": "The transcript was inserted into the text field.",
+          "transcribedMessage": "{{backend}} transcription time: {{durationMs}} ms.",
           "androidToggleLabel": "Android dictate",
           "androidIdleTitle": "Start dictation through the connected Android device",
           "androidPreparingMessage": "Android dictate is preparing on the phone. Keep the companion app open.",
           "androidListeningMessage": "Android recording is active on the phone. Click again when you are done.",
+          "androidTimeoutMessage": "Android transcription timed out on the phone. Try a shorter recording or use local dictate.",
           "androidUnavailableTitle": "Choose a ready phone before using Android dictate.",
           "disabledTitle": "Local Whisper dictation is unavailable.",
           "captureError": "Could not start the microphone: {{message}}",
@@ -4934,9 +4938,17 @@
       "language": {
         "label": "Application Language"
       },
+      "transcriptBackend": {
+        "label": "Local dictation engine",
+        "hint": "Choose the engine used for Analyze and local microphone dictation.",
+        "options": {
+          "whisper": "whisper.cpp",
+          "vosk": "Vosk"
+        }
+      },
       "transcriptProfile": {
         "label": "Speech Model",
-        "hint": "The active whisper.cpp language follows the application language automatically.",
+        "hint": "Choose light/full models for whisper.cpp. Vosk supports Turkish small and English light/full models.",
         "options": {
           "light": "Light",
           "full": "Full"
@@ -4971,6 +4983,10 @@
         "families": {
           "multilingual": "Multilingual",
           "english": "English-only"
+        },
+        "backends": {
+          "whisper": "whisper.cpp",
+          "vosk": "Vosk"
         }
       },
       "dialog": {
@@ -5026,10 +5042,15 @@
         "title": "Android Companion Policy",
         "subtitle": "Control whether the Android companion can provide phone-side camera capture and dictation.",
         "fallbackMode": "Legacy fallback strategy",
+        "androidDictationBackend": "Android dictation engine",
         "providers": {
           "localWhisper": "Legacy local Whisper dictation",
           "androidCompanion": "Enable Android companion capture",
           "androidSpeech": "Legacy Android speech bridge"
+        },
+        "androidDictationBackendOptions": {
+          "whisper": "whisper.cpp",
+          "vosk": "Vosk"
         },
         "commands": {
           "openCamera": "Open session phrases",
@@ -5046,7 +5067,7 @@
       },
       "transcript": {
         "title": "Speech Runtime",
-        "subtitle": "Choose the managed local whisper.cpp profile and maintain its installed model set."
+        "subtitle": "Choose the local dictation engine and maintain both whisper.cpp and Vosk models."
       },
       "android": {
         "title": "Android Companion",
@@ -5061,7 +5082,7 @@
         "expectedVersion": "Expected version",
         "connectAddress": "Wireless ADB address",
         "previewTitle": "Live preview",
-        "previewHint": "The live camera preview stays on the phone screen while Hayalet Ev receives captured assets and command events.",
+        "previewHint": "The live camera preview stays on the phone; capture and add images to Analyze files from the companion.",
         "actions": {
           "scan": "Scan devices",
           "install": "Install companion",
@@ -5731,6 +5752,8 @@
         "preparingMessage": "Preparing the local voice transcription runtime.",
         "emptyResultMessage": "The voice transcript came back empty.",
         "insertedMessage": "The transcript was inserted into the text field.",
+        "transcribedMessage": "{{backend}} transcription time: {{durationMs}} ms.",
+        "androidTimeoutMessage": "Android transcription timed out on the phone. Try a shorter recording or use local dictate.",
         "captureError": "Could not start the microphone: {{message}}",
         "transcriptionError": "Could not transcribe the audio: {{message}}"
       }

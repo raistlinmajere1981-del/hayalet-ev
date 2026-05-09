@@ -61,7 +61,10 @@ test("settings language panel wires tab, panel, and renderer bootstrap", () => {
   assert.match(initSource, /setupSettingsThemePanel\(\);/);
 
   assert.match(panelSource, /registerSettingsPanelLifecycle\("languages"/);
-  assert.match(panelSource, /state\.scope === "app" \? languageEditorT\("scope\.app"\) : languageEditorT\("scope\.rooms"\)/);
+  assert.match(
+    panelSource,
+    /state\.scope === "app" \? languageEditorT\("scope\.app"\) : languageEditorT\("scope\.rooms"\)/
+  );
   assert.match(
     panelSource,
     /if \(action === "refresh"\) \{[\s\S]*void refreshSources\(refs, state, \{\s*forceRoomRefresh: state\.scope === "room",\s*reloadData: true,\s*\}\);/
@@ -91,6 +94,7 @@ test("settings capture panel centralizes transcript runtime and android manageme
   assert.match(htmlSource, /id="capture-android-preview-note"/);
   assert.match(htmlSource, /id="capture-default-device-select"/);
   assert.match(htmlSource, /id="capture-provider-android-companion"/);
+  assert.match(htmlSource, /id="capture-android-dictation-backend-select"/);
   assert.match(htmlSource, /id="capture-android-device-list"/);
   assert.match(htmlSource, /id="capture-android-progress-shell"/);
   assert.match(htmlSource, /id="capture-android-progress-bar"/);
@@ -100,10 +104,14 @@ test("settings capture panel centralizes transcript runtime and android manageme
   assert.match(htmlSource, /id="capture-android-connect-address"/);
   assert.match(htmlSource, /id="capture-android-connect-btn"/);
   assert.match(htmlSource, /id="capture-default-lens-select"/);
+  assert.match(htmlSource, /id="app-transcript-backend-select"/);
   assert.match(htmlSource, /id="app-transcript-runtime-models"/);
 
   assert.match(controllerSource, /"capture"/);
-  assert.match(initSource, /import\s+\{\s*setupSettingsCapturePanel\s*\}\s+from\s+"\.\/capture\.js"/);
+  assert.match(
+    initSource,
+    /import\s+\{\s*setupSettingsCapturePanel\s*\}\s+from\s+"\.\/capture\.js"/
+  );
   assert.match(initSource, /setupSettingsCapturePanel\(\);/);
 
   assert.match(panelSource, /registerSettingsPanelLifecycle\("capture"/);
@@ -113,6 +121,7 @@ test("settings capture panel centralizes transcript runtime and android manageme
   assert.match(panelSource, /saveCapturePolicy/);
   assert.match(panelSource, /capture-default-device-select/);
   assert.match(panelSource, /capture-provider-android-companion/);
+  assert.match(panelSource, /capture-android-dictation-backend-select/);
   assert.match(panelSource, /capture-android-device-list/);
   assert.match(panelSource, /renderAndroidOperationState/);
   assert.match(panelSource, /startActionProgressPolling/);
@@ -128,11 +137,17 @@ test("settings capture panel centralizes transcript runtime and android manageme
   assert.equal((htmlSource.match(/id="capture-policy-feedback"/g) ?? []).length, 1);
   assert.equal((htmlSource.match(/id="capture-provider-android-speech"/g) ?? []).length, 0);
   assert.equal((htmlSource.match(/id="capture-provider-local-whisper"/g) ?? []).length, 0);
+  assert.equal(
+    (htmlSource.match(/capture\.policy\.androidDictationBackendOptions\.whisper/g) ?? []).length,
+    0
+  );
   assert.equal((htmlSource.match(/id="capture-command-open-input"/g) ?? []).length, 0);
   assert.equal((htmlSource.match(/id="capture-android-device-list"/g) ?? []).length, 1);
 
   assert.match(transcriptSource, /ensureTranscriptRuntime/);
   assert.match(transcriptSource, /listTranscriptModels/);
+  assert.match(transcriptSource, /saveTranscriptBackend/);
+  assert.match(transcriptSource, /vosk-small-tr/);
   assert.match(transcriptSource, /getSettingsSignature/);
 
   assert.doesNotMatch(userPanelSource, /ensureTranscriptRuntime/);

@@ -63,6 +63,7 @@ export function createDefaultSettings(): AppSettings {
     general: {
       appearance: { ...DEFAULT_THEME_APPEARANCE_SETTINGS },
       language: DEFAULT_APP_LANGUAGE,
+      transcriptBackend: "whisper.cpp",
       transcriptModelVariant: "full",
     },
     capture: {
@@ -72,6 +73,8 @@ export function createDefaultSettings(): AppSettings {
         photoQuality: "high",
         attachMode: "manual-sync",
         commandConfirmation: "toast",
+        androidTranscriptModelVariant: "light",
+        androidDictationBackend: "vosk",
       },
       providers: {
         androidCompanionEnabled: true,

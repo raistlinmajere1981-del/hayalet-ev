@@ -3,9 +3,18 @@ export type TranscriptTargetId =
   | "analyze-compose"
   | "assistant-opencode-native"
   | TranscriptRoomTargetId;
+export type TranscriptDictationBackend = "whisper.cpp" | "vosk";
+export type TranscriptModelArchiveFormat = "file" | "zip-directory";
 export type TranscriptModelVariant = "light" | "full";
 export type TranscriptSupportedLanguage = "tr" | "en";
-export type TranscriptManagedModelId = "tiny" | "base" | "tiny.en" | "base.en";
+export type TranscriptManagedModelId =
+  | "tiny"
+  | "base"
+  | "tiny.en"
+  | "base.en"
+  | "vosk-small-tr"
+  | "vosk-small-en"
+  | "vosk-full-en";
 
 export type TranscriptIngressSource = "pc-mic" | "android-bridge" | "synthetic-test";
 export type TranscriptIngressMetadata = Record<string, unknown>;
@@ -14,6 +23,7 @@ export type TranscriptRuntimeState = "ready" | "preparing" | "missing-runtime" |
 
 export interface TranscriptManagedModelDescriptor {
   modelId: TranscriptManagedModelId;
+  backend: TranscriptDictationBackend;
   variant: TranscriptModelVariant;
   label: string;
   family: "multilingual" | "english";
@@ -23,6 +33,8 @@ export interface TranscriptManagedModelDescriptor {
   downloadUrl: string;
   expectedSha1: string;
   expectedBytes: number | null;
+  archiveFormat: TranscriptModelArchiveFormat;
+  directoryName?: string | null;
 }
 
 export interface TranscriptManagedModelStatus extends TranscriptManagedModelDescriptor {
@@ -37,6 +49,7 @@ export interface TranscriptManagedModelStatus extends TranscriptManagedModelDesc
 export interface TranscriptRuntimeStatus {
   state: TranscriptRuntimeState;
   ready: boolean;
+  backend: TranscriptDictationBackend;
   binaryPath: string | null;
   modelPath: string | null;
   modelId: string;
@@ -61,6 +74,8 @@ export interface TranscriptTranscriptionResult {
   success: boolean;
   text?: string;
   status: TranscriptRuntimeStatus;
+  backend?: TranscriptDictationBackend;
+  transcriptionMs?: number;
   error?: string;
 }
 
@@ -80,6 +95,8 @@ export interface TranscriptFileTranscriptionResult {
   text?: string;
   transcriptPath?: string | null;
   status: TranscriptRuntimeStatus;
+  backend?: TranscriptDictationBackend;
+  transcriptionMs?: number;
   error?: string;
 }
 

@@ -28,6 +28,7 @@ export function ensureElectronApiFallback(): void {
   const fallbackTranscriptStatus: TranscriptRuntimeStatus = {
     state: "missing-runtime",
     ready: false,
+    backend: "whisper.cpp",
     binaryPath: null,
     modelPath: null,
     modelId: "base",

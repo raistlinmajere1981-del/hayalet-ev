@@ -1,8 +1,8 @@
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { spawn } from "child_process";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "http";
 import { constants as fsConstants, createReadStream } from "fs";
-import { access, mkdir, readdir, readFile, rename, stat, writeFile } from "fs/promises";
+import { access, mkdir, readdir, readFile, rename, rm, stat, writeFile } from "fs/promises";
 import { basename, extname, join } from "path";
 import { BrowserWindow } from "electron";
 import { Paths } from "./paths.ts";
@@ -37,7 +37,8 @@ import type {
   CaptureServiceStatus,
 } from "../src/types/capture.ts";
 import type {
-  TranscriptManagedModelDescriptor,
+  TranscriptManagedModelId,
+  TranscriptSupportedLanguage,
   TranscriptTargetId,
 } from "../src/types/transcript.ts";
 
@@ -52,6 +53,36 @@ const CAPTURE_SESSION_STALE_MS = 20_000;
 const CAPTURE_COMPANION_DIAGNOSTICS_MAX_LOG_ENTRIES = 400;
 const CAPTURE_COMPANION_DIAGNOSTICS_MAX_TEXT_CHARS = 220_000;
 const CAPTURE_ADB_SHUTDOWN_TIMEOUT_MS = 5_000;
+
+const CAPTURE_VOSK_MODEL_DESCRIPTORS: Record<
+  TranscriptSupportedLanguage,
+  DirectCompanionModelDescriptor
+> = {
+  tr: {
+    backend: "vosk",
+    modelId: "vosk-model-small-tr-0.3",
+    fileName: "vosk-model-small-tr-0.3.zip",
+    downloadUrl: "https://alphacephei.com/vosk/models/vosk-model-small-tr-0.3.zip",
+    expectedSha1: "1bc2391ea03d6091c39c4ff42b627c811501d41f",
+    expectedBytes: 36_855_784,
+    language: "tr",
+    variant: "light",
+    archiveFormat: "zip-directory",
+    installSource: "direct-download",
+  },
+  en: {
+    backend: "vosk",
+    modelId: "vosk-model-small-en-us-0.15",
+    fileName: "vosk-model-small-en-us-0.15.zip",
+    downloadUrl: "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip",
+    expectedSha1: "4b5523d1db7688e31e44608cf96cdad92e4603e7",
+    expectedBytes: 41_205_931,
+    language: "en",
+    variant: "light",
+    archiveFormat: "zip-directory",
+    installSource: "direct-download",
+  },
+};
 
 interface CommandResult {
   exitCode: number;
@@ -132,15 +163,46 @@ interface ResolvedCaptureSettings {
   photoQuality: "high" | "balanced";
   attachMode: "manual-sync" | "auto-stage";
   commandConfirmation: "toast" | "none";
+  androidDictationBackend: CaptureCompanionTranscriptModelProfile["backend"];
   androidCompanionEnabled: boolean;
 }
+
+type WhisperCompanionModelDescriptor = CaptureCompanionTranscriptModelProfile & {
+  downloadUrl: string;
+  installSource: "transcript-service";
+  modelId: TranscriptManagedModelId;
+};
+
+type DirectCompanionModelDescriptor = CaptureCompanionTranscriptModelProfile & {
+  downloadUrl: string;
+  installSource: "direct-download";
+};
+
+type CompanionTranscriptModelDownloadDescriptor =
+  | WhisperCompanionModelDescriptor
+  | DirectCompanionModelDescriptor;
 
 function normalizeCommandChunk(chunk: Buffer | string): string {
   return typeof chunk === "string" ? chunk : chunk.toString("utf8");
 }
 
+function normalizeAndroidDictationBackend(
+  value: unknown
+): CaptureCompanionTranscriptModelProfile["backend"] {
+  void value;
+  return "vosk";
+}
+
 function getCaptureProjectRoot(): string {
   return Paths.getProjectRoot();
+}
+
+function resolveCompanionTranscriptModelPaths(): { modelDir: string; tempDir: string } {
+  const rootDir = join(Paths.getDataDir(), "transcript", "android-models");
+  return {
+    modelDir: rootDir,
+    tempDir: join(rootDir, "tmp"),
+  };
 }
 
 function getCompanionManifestPath(): string {
@@ -309,6 +371,9 @@ function resolveCaptureSettings(settings: unknown): ResolvedCaptureSettings {
     photoQuality: defaults?.["photoQuality"] === "balanced" ? "balanced" : "high",
     attachMode: defaults?.["attachMode"] === "auto-stage" ? "auto-stage" : "manual-sync",
     commandConfirmation: defaults?.["commandConfirmation"] === "none" ? "none" : "toast",
+    androidDictationBackend: normalizeAndroidDictationBackend(
+      defaults?.["androidDictationBackend"]
+    ),
     androidCompanionEnabled: providers?.["androidCompanionEnabled"] !== false,
   };
 }
@@ -322,42 +387,88 @@ function buildCompanionCommandProfile(
     photoQuality: settings.photoQuality,
     attachMode: settings.attachMode,
     commandConfirmation: settings.commandConfirmation,
+    androidDictationBackend: settings.androidDictationBackend,
     transcriptModel,
   };
 }
 
 function resolveCompanionTranscriptModelProfile(
-  settings: unknown
+  settings: unknown,
+  captureSettings: ResolvedCaptureSettings
 ): CaptureCompanionTranscriptModelProfile {
   const appSettings = isRecord(settings) ? settings : {};
   const general = isRecord(appSettings["general"]) ? appSettings["general"] : {};
+  const capture = isRecord(appSettings["capture"]) ? appSettings["capture"] : {};
+  const defaults = isRecord(capture["defaults"]) ? capture["defaults"] : {};
   const appLanguage = normalizeAppLanguage(general["language"]);
   const language = resolveTranscriptSupportedLanguage(appLanguage);
-  const variant = normalizeTranscriptModelVariant(general["transcriptModelVariant"], "full");
+  if (captureSettings.androidDictationBackend === "vosk") {
+    const descriptor = CAPTURE_VOSK_MODEL_DESCRIPTORS[language];
+    return {
+      backend: descriptor.backend,
+      modelId: descriptor.modelId,
+      fileName: descriptor.fileName,
+      expectedSha1: descriptor.expectedSha1,
+      expectedBytes: descriptor.expectedBytes,
+      language: descriptor.language,
+      variant: descriptor.variant,
+      archiveFormat: descriptor.archiveFormat,
+    };
+  }
+
+  const variant = normalizeTranscriptModelVariant(
+    defaults["androidTranscriptModelVariant"],
+    "light"
+  );
   const descriptor = getTranscriptModelDescriptor(resolveTranscriptModelId(language, variant));
   if (descriptor === null) {
     throw new Error("Android transcript model descriptor could not be resolved.");
   }
 
   return {
+    backend: "whisper.cpp",
     modelId: descriptor.modelId,
     fileName: descriptor.fileName,
     expectedSha1: descriptor.expectedSha1,
     expectedBytes: descriptor.expectedBytes,
     language: descriptor.englishOnly === true ? "en" : language,
     variant: descriptor.variant,
+    archiveFormat: "file",
   };
 }
 
 function findTranscriptDescriptorByFileName(
   fileName: string
-): TranscriptManagedModelDescriptor | null {
+): CompanionTranscriptModelDownloadDescriptor | null {
+  const voskDescriptor =
+    Object.values(CAPTURE_VOSK_MODEL_DESCRIPTORS).find(
+      (descriptor) => descriptor.fileName === fileName
+    ) ?? null;
+  if (voskDescriptor !== null) {
+    return voskDescriptor;
+  }
+
   const candidates = ["tiny", "base", "tiny.en", "base.en"] as const;
-  return (
+  const descriptor =
     candidates
       .map((modelId) => getTranscriptModelDescriptor(modelId))
-      .find((descriptor) => descriptor?.fileName === fileName) ?? null
-  );
+      .find((candidate) => candidate?.fileName === fileName) ?? null;
+  if (descriptor === null) {
+    return null;
+  }
+
+  return {
+    backend: "whisper.cpp",
+    modelId: descriptor.modelId,
+    fileName: descriptor.fileName,
+    expectedSha1: descriptor.expectedSha1,
+    expectedBytes: descriptor.expectedBytes,
+    language: descriptor.englishOnly === true ? "en" : descriptor.locale,
+    variant: descriptor.variant,
+    archiveFormat: "file",
+    downloadUrl: descriptor.downloadUrl,
+    installSource: "transcript-service",
+  };
 }
 
 function resolveCaptureActionFromCommand(
@@ -408,6 +519,73 @@ async function fileExists(filePath: string): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+function sha1Hex(buffer: Buffer): string {
+  return createHash("sha1").update(buffer).digest("hex");
+}
+
+async function downloadFile(url: string, destinationPath: string): Promise<void> {
+  const response = await fetch(url);
+  if (!response.ok || response.body == null) {
+    throw new Error(`Download failed with status ${response.status} for ${url}`);
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  await writeFile(destinationPath, buffer);
+}
+
+function assertCompanionModelBuffer(
+  descriptor: CompanionTranscriptModelDownloadDescriptor,
+  modelBuffer: Buffer
+): void {
+  const actualSha1 = sha1Hex(modelBuffer);
+  if (actualSha1 !== descriptor.expectedSha1) {
+    throw new Error(
+      `Android transcript model checksum mismatch. Expected ${descriptor.expectedSha1}, got ${actualSha1}.`
+    );
+  }
+
+  if (descriptor.expectedBytes !== null && modelBuffer.byteLength !== descriptor.expectedBytes) {
+    throw new Error(
+      `Android transcript model size mismatch. Expected ${descriptor.expectedBytes}, got ${modelBuffer.byteLength}.`
+    );
+  }
+}
+
+async function ensureDirectCompanionModelArchive(
+  descriptor: DirectCompanionModelDescriptor
+): Promise<string> {
+  const paths = resolveCompanionTranscriptModelPaths();
+  await Promise.all([
+    mkdir(paths.modelDir, { recursive: true }),
+    mkdir(paths.tempDir, { recursive: true }),
+  ]);
+
+  const modelPath = join(paths.modelDir, descriptor.fileName);
+  if (await fileExists(modelPath)) {
+    const existingBuffer = await readFile(modelPath);
+    try {
+      assertCompanionModelBuffer(descriptor, existingBuffer);
+      return modelPath;
+    } catch {
+      await rm(modelPath, { force: true });
+    }
+  }
+
+  const tempPath = join(paths.tempDir, `${descriptor.fileName}.download`);
+  await rm(tempPath, { force: true });
+  await downloadFile(descriptor.downloadUrl, tempPath);
+
+  try {
+    const downloadedBuffer = await readFile(tempPath);
+    assertCompanionModelBuffer(descriptor, downloadedBuffer);
+    await rename(tempPath, modelPath);
+    return modelPath;
+  } catch (error) {
+    await rm(tempPath, { force: true });
+    throw error;
   }
 }
 
@@ -1619,8 +1797,7 @@ class CaptureService {
         ...this.analyzeState,
         deviceId,
         state: "pending-launch",
-        message:
-          "Companion launch requested. Open the app on the phone and keep the preview on the phone screen.",
+        message: "Companion launch requested. Use the phone to capture and add images to Analyze.",
       };
     }
     return await this.buildActionOutcome(
@@ -1708,6 +1885,78 @@ class CaptureService {
     );
   }
 
+  async cancelAnalyzeDictation(
+    options: { requestId?: string | null; target?: TranscriptTargetId | null } = {}
+  ): Promise<CaptureActionOutcome> {
+    const target = options.target ?? CAPTURE_ANALYZE_TARGET;
+    const requestId = normalizeText(options.requestId);
+    const status = await this.refreshStatus();
+    const adbPath = status.android.adbPath;
+    const deviceId = this.resolveAnalyzeCommandDeviceId(status, false);
+    if (adbPath === null || deviceId === null) {
+      return await this.buildActionOutcome(
+        "cancel-analyze-dictation",
+        false,
+        status.android.message ?? "No ready Android device is available."
+      );
+    }
+
+    this.clearPendingTargetCommands(deviceId, target);
+    const forceStopResult = await runCommand(
+      adbPath,
+      ["-s", deviceId, "shell", "am", "force-stop", CAPTURE_ANDROID_COMPANION_PACKAGE],
+      CAPTURE_ADB_TIMEOUT_MS
+    ).catch((error) => ({
+      exitCode: 1,
+      stdout: "",
+      stderr: error instanceof Error ? error.message : String(error),
+      timedOut: false,
+    }));
+    await runCommand(
+      adbPath,
+      ["-s", deviceId, "reverse", "--remove", `tcp:${status.android.artifact.bridgePort}`],
+      CAPTURE_ADB_TIMEOUT_MS
+    ).catch(() => null);
+
+    this.bridgeSessions.delete(deviceId);
+    this.bridgeState = {
+      ...this.bridgeState,
+      registeredDeviceId: null,
+      lastSeenAt: null,
+      lastError: null,
+    };
+    if (target === CAPTURE_ANALYZE_TARGET) {
+      this.resetAnalyzeSessionState("Android dictation was cancelled.");
+    }
+    if (requestId !== null) {
+      this.emitCaptureDictationStatus({
+        requestId,
+        createdAt: new Date().toISOString(),
+        source: "android-bridge",
+        target,
+        deviceId,
+        status: "failed",
+        message: "Android dictation was cancelled.",
+      });
+    }
+
+    if (forceStopResult.exitCode !== 0) {
+      return await this.buildActionOutcome(
+        "cancel-analyze-dictation",
+        false,
+        normalizeText(forceStopResult.stderr) ??
+          normalizeText(forceStopResult.stdout) ??
+          "Android dictation could not be cancelled."
+      );
+    }
+
+    return await this.buildActionOutcome(
+      "cancel-analyze-dictation",
+      true,
+      "Android dictation was cancelled."
+    );
+  }
+
   async stopAnalyzeSession(
     options: { target?: TranscriptTargetId | null; requestId?: string | null } = {}
   ): Promise<CaptureActionOutcome> {
@@ -1727,7 +1976,9 @@ class CaptureService {
     }
 
     this.clearPendingTargetCommands(deviceId, target);
-    const bridgeSession = this.getBridgeSessionForTarget(deviceId, target);
+    const bridgeSession = this.getBridgeSessionForTarget(deviceId, target, {
+      requirePreviewActive: false,
+    });
     if (bridgeSession === null) {
       if (target === CAPTURE_ANALYZE_TARGET) {
         this.resetAnalyzeSessionState("Analyze capture session is idle.");
@@ -1744,7 +1995,7 @@ class CaptureService {
       target,
       requestId,
       replaceExisting: true,
-      requireSession: true,
+      requireSession: false,
     });
   }
 
@@ -1839,14 +2090,21 @@ class CaptureService {
 
   private getBridgeSessionForTarget(
     deviceId: string | null,
-    target: TranscriptTargetId
+    target: TranscriptTargetId,
+    options: { requirePreviewActive?: boolean } = {}
   ): CompanionBridgeSessionRecord | null {
     if (deviceId === null) {
       return null;
     }
 
     const session = this.bridgeSessions.get(deviceId) ?? null;
-    return session?.target === target && session.previewActive === true ? session : null;
+    if (session?.target !== target) {
+      return null;
+    }
+
+    return options.requirePreviewActive === false || session.previewActive === true
+      ? session
+      : null;
   }
 
   private clearPendingAnalyzeCommands(deviceId: string): void {
@@ -1890,7 +2148,7 @@ class CaptureService {
       return `${String(pendingInboxCount)} phone capture(s) are waiting in the Analyze inbox.`;
     }
     if (this.analyzeState.state === "capture-requested") {
-      return "A capture command was sent to the phone. The live preview remains on the phone screen.";
+      return "A capture command was sent to the phone. Use the companion to add the image to Analyze.";
     }
     if (this.analyzeState.state === "idle") {
       return this.analyzeState.message ?? "Analyze phone capture session is idle.";
@@ -2029,6 +2287,7 @@ class CaptureService {
           state: "ready",
           registeredDeviceId: deviceId,
           lastSeenAt: session.lastSeenAt,
+          lastError: null,
         };
         if (
           this.analyzeState.deviceId === deviceId &&
@@ -2065,6 +2324,7 @@ class CaptureService {
             ...this.bridgeState,
             registeredDeviceId: deviceId,
             lastSeenAt: session.lastSeenAt,
+            lastError: null,
           };
         }
 
@@ -2266,6 +2526,7 @@ class CaptureService {
         }
 
         const fileName = normalizeText(body["fileName"]) ?? `capture-${Date.now()}.jpg`;
+        const deviceId = normalizeText(body["deviceId"]);
         if (target !== CAPTURE_ANALYZE_TARGET) {
           const storedAsset = await writeTargetCaptureAsset(target, fileName, contentBase64);
           this.emitCaptureMediaIngress({
@@ -2275,7 +2536,7 @@ class CaptureService {
             target,
             asset: storedAsset,
             metadata: {
-              deviceId: normalizeText(body["deviceId"]),
+              deviceId,
               transport: "adb-reverse",
             },
           });
@@ -2286,7 +2547,13 @@ class CaptureService {
           return;
         }
 
-        if (this.activeAnalyzeMediaRequestIds.has(requestId) !== true) {
+        const stageForAnalyze = body["stageForAnalyze"] === true;
+        const hasActiveRequest = this.activeAnalyzeMediaRequestIds.has(requestId);
+        const activeSession =
+          deviceId !== null
+            ? this.getBridgeSessionForTarget(deviceId, target, { requirePreviewActive: false })
+            : null;
+        if (hasActiveRequest !== true && (stageForAnalyze !== true || activeSession === null)) {
           this.sendJson(response, 409, {
             ok: false,
             error: "Analyze capture request is not active.",
@@ -2295,31 +2562,44 @@ class CaptureService {
         }
 
         const captureSettings = resolveCaptureSettings(await loadSettings());
+        const shouldStageForAnalyze =
+          stageForAnalyze === true || captureSettings.attachMode === "auto-stage";
         const storedAsset = await writeAnalyzeAsset(
           fileName,
           contentBase64,
-          captureSettings.attachMode === "auto-stage" ? "staged" : "inbox"
+          shouldStageForAnalyze ? "staged" : "inbox"
         );
-        this.activeAnalyzeMediaRequestIds.delete(requestId);
+        if (hasActiveRequest === true) {
+          this.activeAnalyzeMediaRequestIds.delete(requestId);
+        }
         this.analyzeState = {
           ...this.analyzeState,
           state: "result-ready",
           pendingCommand: null,
           lastCaptureAt: Date.now(),
-          latestAsset:
-            captureSettings.attachMode === "auto-stage"
-              ? storedAsset
-              : this.analyzeState.latestAsset,
-          pendingInboxCount:
-            captureSettings.attachMode === "auto-stage"
-              ? 0
-              : this.analyzeState.pendingInboxCount + 1,
-          message:
-            captureSettings.attachMode === "auto-stage"
-              ? "A new phone capture was staged for Analyze."
-              : "A new phone capture is waiting in the Analyze inbox.",
+          latestAsset: shouldStageForAnalyze ? storedAsset : this.analyzeState.latestAsset,
+          pendingInboxCount: shouldStageForAnalyze
+            ? this.analyzeState.pendingInboxCount
+            : this.analyzeState.pendingInboxCount + 1,
+          message: shouldStageForAnalyze
+            ? "A new phone capture was staged for Analyze."
+            : "A new phone capture is waiting in the Analyze inbox.",
         };
         this.lastStatus = null;
+        if (shouldStageForAnalyze) {
+          this.emitCaptureMediaIngress({
+            requestId,
+            createdAt: new Date().toISOString(),
+            source: "android-bridge",
+            target,
+            asset: storedAsset,
+            metadata: {
+              deviceId,
+              transport: "adb-reverse",
+              stageForAnalyze,
+            },
+          });
+        }
         this.sendJson(response, 200, {
           ok: true,
           storedPath: storedAsset.path,
@@ -2352,16 +2632,22 @@ class CaptureService {
       return;
     }
 
-    const model = await transcriptService.installModel(descriptor.modelId);
-    if (model.ready !== true || model.path === null) {
-      this.sendJson(response, 500, {
-        ok: false,
-        error: model.lastError ?? "Transcript model could not be prepared.",
-      });
-      return;
+    let modelPath: string;
+    if (descriptor.installSource === "transcript-service") {
+      const model = await transcriptService.installModel(descriptor.modelId);
+      if (model.ready !== true || model.path === null) {
+        this.sendJson(response, 500, {
+          ok: false,
+          error: model.lastError ?? "Transcript model could not be prepared.",
+        });
+        return;
+      }
+      modelPath = model.path;
+    } else {
+      modelPath = await ensureDirectCompanionModelArchive(descriptor);
     }
 
-    const fileStat = await stat(model.path);
+    const fileStat = await stat(modelPath);
     response.statusCode = 200;
     response.setHeader("content-type", "application/octet-stream");
     response.setHeader("content-length", String(fileStat.size));
@@ -2369,7 +2655,7 @@ class CaptureService {
     response.setHeader("x-transcript-model-sha1", descriptor.expectedSha1);
     response.setHeader("x-transcript-model-file", descriptor.fileName);
     await new Promise<void>((resolvePromise, rejectPromise) => {
-      const stream = createReadStream(model.path ?? "");
+      const stream = createReadStream(modelPath);
       stream.once("error", rejectPromise);
       response.once("error", rejectPromise);
       response.once("finish", resolvePromise);
@@ -2549,7 +2835,7 @@ class CaptureService {
       case "no-devices":
         return "Connect a phone with USB debugging or attach it with `adb connect <host>:<port>`.";
       case "ready":
-        return "The phone shows the live preview. Hayalet Ev receives only commands and uploaded captures.";
+        return "Use the phone companion to capture and add images to Analyze.";
       case "multiple-devices":
         return "Pick the active phone in Settings > Capture. Extra phones stay visible for diagnostics.";
       case "unauthorized":
@@ -2561,7 +2847,7 @@ class CaptureService {
       case "package-query-failed":
         return "Reinstall or reopen the companion app so package inspection and permissions can refresh.";
       case "error":
-        return "The phone shows the live preview. Hayalet Ev receives only commands and uploaded captures.";
+        return "Use the phone companion to capture and add images to Analyze.";
       default:
         return null;
     }
@@ -2803,7 +3089,7 @@ class CaptureService {
       );
     }
 
-    const transcriptModel = resolveCompanionTranscriptModelProfile(settings);
+    const transcriptModel = resolveCompanionTranscriptModelProfile(settings, captureSettings);
     const command: PendingBridgeCommand = {
       id: randomUUID(),
       kind,

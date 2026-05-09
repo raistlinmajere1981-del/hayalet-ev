@@ -6,7 +6,7 @@ Goals:
 
 - keep the phone camera preview on the phone screen
 - receive capture and command sessions from the desktop host
-- run Android-side whisper.cpp transcription and photo capture
+- run Android-side offline transcription and photo capture
 - send transcript events and captured media back into Hayalet Ev
 
 Source layout:
@@ -22,12 +22,12 @@ Build contract:
 - root `npm run android:install -- <deviceId>` installs or updates the companion through ADB
 - root `npm run android:open -- <deviceId>` launches the companion activity through ADB
 - successful builds publish artifacts into `dist/android-companion/`
-- debug APKs ship native whisper.cpp libraries for `armeabi-v7a` and `arm64-v8a`
+- debug APKs ship the Vosk Android runtime and bundled Turkish small model
 
 Current status:
 
 - the app owns the phone-side camera preview
 - the app polls the desktop bridge over `adb reverse`
-- the app records Analyze dictation on the phone microphone and transcribes it with whisper.cpp
+- the app records Analyze dictation on the phone microphone and transcribes it offline with Vosk
 - the app can acknowledge capture commands and upload Analyze photos
 - desktop install/update comparisons read the shared `companion-manifest.json`

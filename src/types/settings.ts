@@ -1,6 +1,6 @@
 import type { SlotId, ProviderId, AllProviderId, AssistantProviderId } from "./common.js";
 import type { AppLanguage } from "./i18n.js";
-import type { TranscriptModelVariant } from "./transcript.js";
+import type { TranscriptDictationBackend, TranscriptModelVariant } from "./transcript.js";
 export type { AppLanguage } from "./i18n.js";
 
 export const ASSISTANT_SLOT_SETTINGS_KEY = "assistantSlot";
@@ -216,6 +216,7 @@ export interface SceneSettings {
 export interface GeneralSettings {
   appearance?: ThemeAppearanceSettings;
   language?: AppLanguage;
+  transcriptBackend?: TranscriptDictationBackend;
   transcriptModelVariant?: TranscriptModelVariant;
   startMinimized?: boolean;
   closeToTray?: boolean;
@@ -226,6 +227,7 @@ export type CaptureDefaultLens = "back" | "front";
 export type CapturePhotoQuality = "balanced" | "high";
 export type CaptureAttachMode = "manual-sync" | "auto-stage";
 export type CaptureCommandConfirmation = "none" | "toast";
+export type AndroidDictationBackend = "whisper.cpp" | "vosk";
 
 export interface CaptureDefaultsSettings {
   preferredDeviceId?: string | null;
@@ -233,6 +235,8 @@ export interface CaptureDefaultsSettings {
   photoQuality?: CapturePhotoQuality;
   attachMode?: CaptureAttachMode;
   commandConfirmation?: CaptureCommandConfirmation;
+  androidTranscriptModelVariant?: TranscriptModelVariant;
+  androidDictationBackend?: AndroidDictationBackend;
 }
 
 export interface CaptureProviderSettings {

@@ -30,16 +30,19 @@ data class BridgePermissions(
 data class BridgeCommandProfile(
     val defaultLens: String? = null,
     val photoQuality: String? = null,
+    val androidDictationBackend: String = "vosk",
     val transcriptModel: BridgeTranscriptModelProfile? = null,
 )
 
 data class BridgeTranscriptModelProfile(
+    val backend: String,
     val modelId: String,
     val fileName: String,
     val expectedSha1: String,
     val expectedBytes: Long?,
     val language: String,
     val variant: String,
+    val archiveFormat: String,
 )
 
 class DesktopBridgeClient(private val manifest: CompanionManifest) {
@@ -47,6 +50,10 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
         .callTimeout(10, TimeUnit.SECONDS)
         .connectTimeout(5, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
+        .build()
+    private val modelDownloadClient = client.newBuilder()
+        .callTimeout(5, TimeUnit.MINUTES)
+        .readTimeout(5, TimeUnit.MINUTES)
         .build()
 
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
@@ -60,7 +67,8 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
         deviceId: String,
         target: String,
         permissions: BridgePermissions,
-        previewActive: Boolean
+        previewActive: Boolean,
+        reportFailureToDiagnostics: Boolean = true,
     ): List<BridgeCommand> {
         val payload = JSONObject()
             .put("deviceId", deviceId)
@@ -74,12 +82,18 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
                     .put("camera", permissions.camera)
                     .put("microphone", permissions.microphone)
             )
-        val response = postJson("/api/v1/session/register", payload)
+        val response = postJson("/api/v1/session/register", payload, reportFailureToDiagnostics)
         return parseCommands(response.optJSONArray("pendingCommands"))
     }
 
-    suspend fun pollCommands(deviceId: String): List<BridgeCommand> {
-        val response = getJson("/api/v1/session/commands?deviceId=$deviceId")
+    suspend fun pollCommands(
+        deviceId: String,
+        reportFailureToDiagnostics: Boolean = true,
+    ): List<BridgeCommand> {
+        val response = getJson(
+            "/api/v1/session/commands?deviceId=$deviceId",
+            reportFailureToDiagnostics,
+        )
         val commands = parseCommands(response.optJSONArray("commands"))
         if (commands.isNotEmpty()) {
             CompanionDiagnostics.i(
@@ -121,7 +135,8 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
         deviceId: String,
         target: String,
         requestId: String,
-        file: File
+        file: File,
+        stageForAnalyze: Boolean = false,
     ) {
         val bytes = withContext(Dispatchers.IO) { file.readBytes() }
         val payload = JSONObject()
@@ -129,6 +144,7 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
             .put("deviceId", deviceId)
             .put("target", target)
             .put("fileName", file.name)
+            .put("stageForAnalyze", stageForAnalyze)
             .put("contentBase64", android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP))
         postJson("/api/v1/media/analyze", payload)
         CompanionDiagnostics.i(
@@ -173,7 +189,7 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
             .get()
             .build()
 
-        client.newCall(request).execute().use { response ->
+        modelDownloadClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
                 val body = response.body?.string().orEmpty()
                 CompanionDiagnostics.e(
@@ -206,7 +222,10 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
         )
     }
 
-    private suspend fun getJson(path: String): JSONObject = withContext(Dispatchers.IO) {
+    private suspend fun getJson(
+        path: String,
+        reportFailureToDiagnostics: Boolean = true,
+    ): JSONObject = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("$baseUrl$path")
             .get()
@@ -216,17 +235,21 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
             client.newCall(request).execute().use { response ->
                 val body = response.body?.string().orEmpty()
                 if (!response.isSuccessful) {
-                    CompanionDiagnostics.e(
-                        "bridge",
-                        "GET $path failed with ${response.code}.",
-                        body.ifBlank { "Bridge request failed." },
-                    )
+                    if (reportFailureToDiagnostics) {
+                        CompanionDiagnostics.e(
+                            "bridge",
+                            "GET $path failed with ${response.code}.",
+                            body.ifBlank { "Bridge request failed." },
+                        )
+                    }
                     throw IllegalStateException(body.ifBlank { "Bridge request failed: ${response.code}" })
                 }
                 JSONObject(body.ifBlank { "{}" })
             }
         } catch (error: Exception) {
-            CompanionDiagnostics.e("bridge", "GET $path failed.", throwable = error)
+            if (reportFailureToDiagnostics) {
+                CompanionDiagnostics.e("bridge", "GET $path failed.", throwable = error)
+            }
             throw error
         }
     }
@@ -295,6 +318,9 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
         return BridgeCommandProfile(
             defaultLens = optString("defaultLens").ifBlank { null },
             photoQuality = optString("photoQuality").ifBlank { null },
+            androidDictationBackend = optString("androidDictationBackend").trim().ifBlank {
+                "vosk"
+            },
             transcriptModel = optJSONObject("transcriptModel")?.toBridgeTranscriptModelProfile(),
         )
     }
@@ -310,6 +336,7 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
         }
 
         return BridgeTranscriptModelProfile(
+            backend = optString("backend").trim().ifBlank { "vosk" },
             modelId = modelId,
             fileName = fileName,
             expectedSha1 = expectedSha1,
@@ -320,6 +347,7 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
             },
             language = language,
             variant = variant,
+            archiveFormat = optString("archiveFormat").trim().ifBlank { "file" },
         )
     }
 

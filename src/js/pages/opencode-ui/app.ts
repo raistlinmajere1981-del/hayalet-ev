@@ -667,12 +667,15 @@ function initChatEvents(): void {
       preparingMessage: t("chat.dictation.preparingMessage"),
       emptyResultMessage: t("chat.dictation.emptyResultMessage"),
       insertedMessage: t("chat.dictation.insertedMessage"),
+      transcribedMessage: (backend: string, durationMs: number): string =>
+        t("chat.dictation.transcribedMessage", { backend, durationMs }),
       captureError: (message: string): string => t("chat.dictation.captureError", { message }),
       transcriptionError: (message: string): string =>
         t("chat.dictation.transcriptionError", { message }),
       androidIdleTitle: t("chat.dictation.idleTitle"),
       androidPreparingMessage: t("chat.dictation.preparingMessage"),
       androidListeningMessage: t("chat.dictation.listeningMessage"),
+      androidTimeoutMessage: t("chat.dictation.androidTimeoutMessage"),
       androidError: (message: string): string =>
         t("chat.dictation.transcriptionError", { message }),
     }),

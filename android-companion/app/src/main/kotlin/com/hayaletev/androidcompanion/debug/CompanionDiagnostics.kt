@@ -59,12 +59,19 @@ object CompanionDiagnostics {
         }
 
         val normalizedValue = value?.trim().orEmpty()
-        synchronized(lock) {
-            if (normalizedValue.isEmpty()) {
-                stateEntries.remove(normalizedKey)
-            } else {
-                stateEntries[normalizedKey] = normalizedValue
+        val changed =
+            synchronized(lock) {
+                if (normalizedValue.isEmpty()) {
+                    stateEntries.remove(normalizedKey) != null
+                } else if (stateEntries[normalizedKey] != normalizedValue) {
+                    stateEntries[normalizedKey] = normalizedValue
+                    true
+                } else {
+                    false
+                }
             }
+        if (changed.not()) {
+            return
         }
         notifyListeners(snapshot())
     }
@@ -75,8 +82,12 @@ object CompanionDiagnostics {
             return
         }
 
-        synchronized(lock) {
-            stateEntries.remove(normalizedKey)
+        val changed =
+            synchronized(lock) {
+                stateEntries.remove(normalizedKey) != null
+            }
+        if (changed.not()) {
+            return
         }
         notifyListeners(snapshot())
     }

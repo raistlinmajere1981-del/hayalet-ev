@@ -1163,6 +1163,9 @@ declare global {
     captureStopAnalyzeDictation?: (
       options?: CaptureTargetActionOptions
     ) => Promise<CaptureActionOutcome>;
+    captureCancelAnalyzeDictation?: (
+      options?: CaptureTargetActionOptions
+    ) => Promise<CaptureActionOutcome>;
     captureRequestAnalyzePhoto?: (
       options?: CaptureTargetActionOptions
     ) => Promise<CaptureActionOutcome>;

@@ -291,6 +291,13 @@ export async function runCaptureAction(
           : null,
         action
       );
+    case "cancel-analyze-dictation":
+      return normalizeActionOutcome(
+        typeof api?.captureCancelAnalyzeDictation === "function"
+          ? await api.captureCancelAnalyzeDictation(options)
+          : null,
+        action
+      );
     case "capture-analyze-photo":
       return normalizeActionOutcome(
         typeof api?.captureRequestAnalyzePhoto === "function"

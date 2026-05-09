@@ -453,26 +453,64 @@
   font-size: var(--text-xs);
 }
 
-.compose-input-row {
+.compose-user-header {
   display: flex;
-  align-items: stretch;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--space-3);
-  flex: 1;
-  min-height: 0;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-1) solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--bg-elevated) 86%, transparent);
+}
+
+.compose-user-header__identity {
+  min-width: 0;
+}
+
+.compose-user-header__avatar {
+  width: var(--space-8);
+  height: var(--space-8);
+  font-size: var(--text-sm);
 }
 
 .compose-user-meta {
-  width: 100%;
   min-width: 0;
-  text-align: center;
+  text-align: left;
 }
 
-.compose-user-meta .name {
+.compose-user-meta .name,
+.compose-user-meta .identity-status {
   display: block;
   width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.compose-user-meta .identity-status.is-ready {
+  color: var(--color-success);
+}
+
+.compose-user-meta .identity-status.is-disabled {
+  color: var(--text-tertiary);
+}
+
+#capture-import-btn {
+  flex: 0 1 auto;
+  max-width: min(16rem, 46%);
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.compose-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: var(--space-3);
+  flex: 1;
+  min-height: 0;
 }
 
 .compose-area textarea {
@@ -486,6 +524,7 @@
   display: flex;
   flex: 1;
   min-width: 0;
+  min-height: 0;
 }
 
 .compose-textarea-stack textarea {
@@ -550,6 +589,10 @@
   margin-right: auto;
 }
 
+.analyze-wrapper .compose-actions {
+  padding-left: 0;
+}
+
 .analyze-wrapper .compose-row {
   height: auto;
   min-height: var(--layout-panel-compose-h);
@@ -559,7 +602,7 @@
   min-height: 0;
 }
 
-.analyze-wrapper #capture-import-btn[aria-expanded="true"] {
+.analyze-wrapper #capture-import-btn.is-active {
   border-color: var(--color-accent);
   background: var(--color-accent-soft);
   color: var(--color-accent);
@@ -645,7 +688,16 @@
   }
 
   .compose-input-row {
+    grid-template-columns: 1fr;
+  }
+
+  .compose-user-header {
+    align-items: stretch;
     flex-direction: column;
+  }
+
+  #capture-import-btn {
+    max-width: 100%;
   }
 
   .compose-textarea-stack textarea {

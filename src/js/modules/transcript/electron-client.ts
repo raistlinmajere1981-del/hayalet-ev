@@ -12,6 +12,7 @@ import type {
 const FALLBACK_STATUS: TranscriptRuntimeStatus = {
   state: "missing-runtime",
   ready: false,
+  backend: "whisper.cpp",
   binaryPath: null,
   modelPath: null,
   modelId: "base",

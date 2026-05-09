@@ -6,6 +6,7 @@ import type {
   CaptureCommandConfirmation,
   CaptureDefaultLens,
   CapturePhotoQuality,
+  AndroidDictationBackend,
   SceneAppearanceSettings,
   SlotSettings,
   RemoteUserIdentity,
@@ -26,6 +27,7 @@ import type {
   MailTransportAuthType,
   ThemeAppearanceSettings,
 } from "@shared/settings.js";
+import type { TranscriptDictationBackend } from "@shared/transcript.js";
 import {
   ASSISTANT_ACCOUNTS_SETTINGS_KEY,
   ASSISTANT_SLOT_SETTINGS_KEY,
@@ -43,7 +45,10 @@ import {
   DEFAULT_CAPTURE_COMMAND_PHRASES,
   normalizeCapturePhraseList,
 } from "../../../../shared/capture/command-catalog.js";
-import { normalizeTranscriptModelVariant } from "../../../../shared/transcript/model-catalog.js";
+import {
+  normalizeTranscriptBackend,
+  normalizeTranscriptModelVariant,
+} from "../../../../shared/transcript/model-catalog.js";
 import {
   DEFAULT_ASSISTANT_ACCOUNT_ID,
   DEFAULT_OPENCODE_UI_ACCOUNT_ID,
@@ -117,6 +122,15 @@ function normalizeCaptureCommandConfirmation(value: unknown): CaptureCommandConf
   return value === "none" ? "none" : "toast";
 }
 
+function normalizeAndroidDictationBackend(value: unknown): AndroidDictationBackend {
+  void value;
+  return "vosk";
+}
+
+function normalizeLocalTranscriptBackend(value: unknown): TranscriptDictationBackend {
+  return normalizeTranscriptBackend(value, "whisper.cpp");
+}
+
 function normalizeCaptureSettings(raw: unknown): AppSettings["capture"] | undefined {
   if (!isPlainObject(raw)) {
     return undefined;
@@ -135,6 +149,13 @@ function normalizeCaptureSettings(raw: unknown): AppSettings["capture"] | undefi
       photoQuality: normalizeCapturePhotoQuality(defaults["photoQuality"]),
       attachMode: normalizeCaptureAttachMode(defaults["attachMode"]),
       commandConfirmation: normalizeCaptureCommandConfirmation(defaults["commandConfirmation"]),
+      androidTranscriptModelVariant: normalizeTranscriptModelVariant(
+        defaults["androidTranscriptModelVariant"],
+        "light"
+      ),
+      androidDictationBackend: normalizeAndroidDictationBackend(
+        defaults["androidDictationBackend"]
+      ),
     },
     providers: {
       androidCompanionEnabled: providers["androidCompanionEnabled"] !== false,
@@ -1175,6 +1196,9 @@ export function normalizeSettings(raw: unknown): AppSettings {
   }
   const legacyTheme = (merged.general as Record<string, unknown>)["theme"];
   merged.general.language = normalizeAppLanguage(merged.general.language);
+  merged.general.transcriptBackend = normalizeLocalTranscriptBackend(
+    merged.general.transcriptBackend
+  );
   merged.general.transcriptModelVariant = normalizeTranscriptModelVariant(
     merged.general.transcriptModelVariant,
     defaults.general?.transcriptModelVariant ?? "full"

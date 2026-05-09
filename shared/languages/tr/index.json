@@ -78,8 +78,8 @@
         "crossLabel": "Çaprazla",
         "sendButton": "Gönder",
         "captureSessionKicker": "Telefon çekimi",
-        "captureSessionTitle": "Merkezi Android capture oturumu",
-        "captureSessionHint": "Canlı önizleme telefon ekranında kalır. Analyze yalnızca capture tetikler, sonucu senkronize eder ve dosyayı hazır ek olarak sahneler.",
+        "captureSessionTitle": "Android Kamera Yönetimi",
+        "captureSessionHint": "Kamera telefonda yönetilir. Resim çek ve ekle işlemleri Android companion üzerinden Analyze dosyalarına düşer.",
         "captureSessionState": "Oturum durumu",
         "captureSessionDevice": "Cihaz",
         "captureSessionDeviceNone": "Seçili telefon yok",
@@ -87,9 +87,11 @@
         "captureSessionActions": {
           "start": "Telefon önizlemesini aç",
           "stop": "Telefon oturumunu bitir",
-          "capture": "Fotoğraf çek",
+          "capture": "Resim çek",
           "retake": "Tekrar çek",
-          "sync": "Telefon dosyalarını al"
+          "sync": "Ekle",
+          "clear": "Temizle",
+          "close": "Kapat"
         },
         "captureSessionStates": {
           "idle": "Boşta",
@@ -101,7 +103,7 @@
         },
         "captureSessionLatestEmpty": "Henüz hazır edilmiş telefon çekimi yok.",
         "captureSessionDisabled": "Android companion capture, Ayarlar > Capture altında kapalı.",
-        "captureImportButton": "Telefondan al",
+        "captureImportButton": "Android Kamera Yönetimi",
         "addFileButton": "Dosya ekle",
         "archiveOverlayEyebrow": "Arşiv katmanı",
         "archiveOverlayButton": "Arşiv Konsolu",
@@ -118,10 +120,12 @@
           "preparingMessage": "Yerel ses çözümleme altyapısı hazırlanıyor.",
           "emptyResultMessage": "Sesten metin sonucu boş döndü.",
           "insertedMessage": "Transcript metin alanına eklendi.",
+          "transcribedMessage": "{{backend}} transcript süresi: {{durationMs}} ms.",
           "androidToggleLabel": "Android dictate",
           "androidIdleTitle": "Bağlı Android cihaz üzerinden dikte başlat",
           "androidPreparingMessage": "Android dictate telefon üzerinde hazırlanıyor. Companion uygulamasını açık tut.",
           "androidListeningMessage": "Android kaydı telefon üzerinde aktif. Bitirdiğinde tekrar tıkla.",
+          "androidTimeoutMessage": "Android transcript telefon üzerinde zaman aşımına uğradı. Daha kısa kayıt deneyebilir veya local dictate kullanabilirsin.",
           "androidUnavailableTitle": "Android dictate için hazır bir telefon seç.",
           "disabledTitle": "Lokal Whisper dikte kullanılamıyor.",
           "captureError": "Mikrofon başlatılamadı: {{message}}",
@@ -4934,9 +4938,17 @@
       "language": {
         "label": "Uygulama Dili"
       },
+      "transcriptBackend": {
+        "label": "Lokal dikte motoru",
+        "hint": "Analyze ve yerel mikrofon diktesinde kullanılacak motoru seç.",
+        "options": {
+          "whisper": "whisper.cpp",
+          "vosk": "Vosk"
+        }
+      },
       "transcriptProfile": {
         "label": "Ses Modeli",
-        "hint": "Aktif whisper.cpp dili uygulama diliyle otomatik senkron kalır.",
+        "hint": "whisper.cpp icin hafif/tam modeli sec; Vosk Turkce'de resmi kucuk modeli, Ingilizce'de hafif/tam modelleri kullanir.",
         "options": {
           "light": "Hafif",
           "full": "Tam"
@@ -4971,6 +4983,10 @@
         "families": {
           "multilingual": "Cok dilli",
           "english": "Yalnizca Ingilizce"
+        },
+        "backends": {
+          "whisper": "whisper.cpp",
+          "vosk": "Vosk"
         }
       },
       "dialog": {
@@ -5026,10 +5042,15 @@
         "title": "Android Companion Politikası",
         "subtitle": "Android companion'ın telefon tarafı kamera capture ve dikte sağlayıp sağlamayacağını buradan yönet.",
         "fallbackMode": "Eski fallback stratejisi",
+        "androidDictationBackend": "Android dikte motoru",
         "providers": {
           "localWhisper": "Eski lokal Whisper dikte",
           "androidCompanion": "Android companion capture etkin",
           "androidSpeech": "Eski Android ses köprüsü"
+        },
+        "androidDictationBackendOptions": {
+          "whisper": "whisper.cpp",
+          "vosk": "Vosk"
         },
         "commands": {
           "openCamera": "Oturum açma ifadeleri",
@@ -5046,7 +5067,7 @@
       },
       "transcript": {
         "title": "Ses Runtime",
-        "subtitle": "Yönetilen lokal whisper.cpp profilini seç ve kurulu model setini buradan yönet."
+        "subtitle": "Lokal dikte motorunu seç, whisper.cpp ve Vosk modellerini buradan yönet."
       },
       "android": {
         "title": "Android Companion",
@@ -5061,7 +5082,7 @@
         "expectedVersion": "Beklenen sürüm",
         "connectAddress": "Wireless ADB adresi",
         "previewTitle": "Canlı önizleme",
-        "previewHint": "Canlı kamera önizlemesi telefon ekranında kalır; Hayalet Ev yalnızca çekilen dosyaları ve komut olaylarını alır.",
+        "previewHint": "Canlı kamera önizlemesi telefonda kalır; resim çekme ve Analyze dosyalarına ekleme işlemleri companion içinden yapılır.",
         "actions": {
           "scan": "Cihazları tara",
           "install": "Companion kur",
@@ -5731,6 +5752,8 @@
         "preparingMessage": "Yerel ses çözümleme altyapısı hazırlanıyor.",
         "emptyResultMessage": "Sesten metin sonucu boş döndü.",
         "insertedMessage": "Transcript metin alanına eklendi.",
+        "transcribedMessage": "{{backend}} transcript süresi: {{durationMs}} ms.",
+        "androidTimeoutMessage": "Android transcript telefon üzerinde zaman aşımına uğradı. Daha kısa kayıt deneyebilir veya local dictate kullanabilirsin.",
         "captureError": "Mikrofon başlatılamadı: {{message}}",
         "transcriptionError": "Ses çözümlenemedi: {{message}}"
       }

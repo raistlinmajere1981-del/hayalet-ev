@@ -137,18 +137,33 @@
 
       <div class="compose-row">
         <div class="compose-area">
-          <div class="compose-input-row">
-            <div class="identity compose-user-identity">
-              <div class="avatar-circle" id="avatar-user-compose">U</div>
+          <div class="compose-user-header">
+            <div class="identity compose-user-header__identity">
+              <div class="avatar-circle compose-user-header__avatar" id="avatar-user-compose">
+                U
+              </div>
               <div class="compose-user-meta">
                 <div
                   class="name"
                   id="name-user-compose"
                   data-shell-i18n-text="app.analyze.page.userLabel"
                 ></div>
+                <div
+                  class="identity-status"
+                  id="compose-android-status"
+                  data-shell-i18n-text="app.analyze.page.captureSessionStates.idle"
+                ></div>
               </div>
             </div>
+            <button
+              class="btn btn-secondary btn-sm"
+              id="capture-import-btn"
+              type="button"
+              data-shell-i18n-text="app.analyze.page.captureImportButton"
+            ></button>
+          </div>
 
+          <div class="compose-input-row">
             <div class="compose-textarea-stack">
               <textarea
                 class="form-input large"
@@ -218,95 +233,10 @@
             </button>
             <button
               class="btn btn-secondary btn-sm"
-              id="capture-import-btn"
-              data-shell-i18n-text="app.analyze.page.captureImportButton"
-            ></button>
-            <button
-              class="btn btn-secondary btn-sm"
               id="upload-add-btn"
               data-shell-i18n-text="app.analyze.page.addFileButton"
             ></button>
           </div>
-
-          <section class="analyze-capture-shell" id="analyze-capture-shell" hidden>
-            <div class="glass-panel ds-surface-card analyze-capture-card">
-              <div class="analyze-capture-copy">
-                <span
-                  class="analyze-capture-kicker"
-                  data-shell-i18n-text="app.analyze.page.captureSessionKicker"
-                ></span>
-                <strong
-                  class="analyze-capture-title"
-                  data-shell-i18n-text="app.analyze.page.captureSessionTitle"
-                ></strong>
-                <p
-                  class="analyze-capture-note"
-                  id="analyze-capture-note"
-                  data-shell-i18n-text="app.analyze.page.captureSessionHint"
-                ></p>
-              </div>
-
-              <div class="analyze-capture-status-grid">
-                <article class="analyze-capture-stat">
-                  <span data-shell-i18n-text="app.analyze.page.captureSessionState"></span>
-                  <strong id="analyze-capture-state">--</strong>
-                </article>
-                <article class="analyze-capture-stat">
-                  <span data-shell-i18n-text="app.analyze.page.captureSessionDevice"></span>
-                  <strong id="analyze-capture-device">--</strong>
-                </article>
-                <article class="analyze-capture-stat">
-                  <span data-shell-i18n-text="app.analyze.page.captureSessionLatest"></span>
-                  <strong id="analyze-capture-latest-name">--</strong>
-                </article>
-              </div>
-
-              <div class="analyze-capture-actions">
-                <button
-                  type="button"
-                  class="btn btn-secondary btn-sm"
-                  id="capture-session-btn"
-                  data-shell-i18n-text="app.analyze.page.captureSessionActions.start"
-                ></button>
-                <button
-                  type="button"
-                  class="btn btn-secondary btn-sm"
-                  id="capture-stop-btn"
-                  data-shell-i18n-text="app.analyze.page.captureSessionActions.stop"
-                ></button>
-                <button
-                  type="button"
-                  class="btn btn-secondary btn-sm"
-                  id="capture-photo-btn"
-                  data-shell-i18n-text="app.analyze.page.captureSessionActions.capture"
-                ></button>
-                <button
-                  type="button"
-                  class="btn btn-secondary btn-sm"
-                  id="capture-retake-btn"
-                  data-shell-i18n-text="app.analyze.page.captureSessionActions.retake"
-                ></button>
-                <button
-                  type="button"
-                  class="btn btn-secondary btn-sm"
-                  id="capture-import-btn-inline"
-                  data-shell-i18n-text="app.analyze.page.captureSessionActions.sync"
-                ></button>
-              </div>
-            </div>
-
-            <div class="glass-panel ds-surface-card analyze-capture-card analyze-capture-preview">
-              <div class="analyze-capture-preview-frame">
-                <img id="analyze-capture-latest-image" alt="" hidden />
-                <div
-                  class="analyze-capture-preview-empty"
-                  id="analyze-capture-latest-empty"
-                  data-shell-i18n-text="app.analyze.page.captureSessionLatestEmpty"
-                ></div>
-              </div>
-              <p class="analyze-capture-note" id="analyze-capture-feedback"></p>
-            </div>
-          </section>
         </div>
 
         <div class="compose-files glass-panel ds-surface-card">

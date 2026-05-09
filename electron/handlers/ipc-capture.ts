@@ -70,6 +70,13 @@ export function setupCaptureHandlers(): void {
   );
 
   registerHandler(
+    "capture-cancel-analyze-dictation",
+    async (_event, options?: CaptureTargetActionOptions) => {
+      return await captureService.cancelAnalyzeDictation(options);
+    }
+  );
+
+  registerHandler(
     "capture-request-analyze-photo",
     async (_event, options?: CaptureTargetActionOptions) => {
       return await captureService.requestAnalyzeCapture("capture-photo", options);

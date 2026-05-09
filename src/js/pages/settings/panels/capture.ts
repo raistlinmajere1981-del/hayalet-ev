@@ -113,6 +113,8 @@ function describeOperationAction(action: CaptureHostAction | null): string {
       return "Android dictation";
     case "stop-analyze-dictation":
       return "Android dictation stop";
+    case "cancel-analyze-dictation":
+      return "Android dictation cancel";
     default:
       return "Android companion";
   }
@@ -323,10 +325,16 @@ function renderCaptureSpeechPolicy(root: HTMLElement): void {
   const androidCompanionInput = root.querySelector<HTMLInputElement>(
     "#capture-provider-android-companion"
   );
+  const androidDictationBackendSelect = root.querySelector<HTMLSelectElement>(
+    "#capture-android-dictation-backend-select"
+  );
   const feedbackEl = root.querySelector<HTMLElement>("#capture-policy-feedback");
 
   if (androidCompanionInput) {
     androidCompanionInput.checked = providers?.androidCompanionEnabled !== false;
+  }
+  if (androidDictationBackendSelect) {
+    androidDictationBackendSelect.value = "vosk";
   }
   if (feedbackEl) {
     feedbackEl.textContent = captureT("policy.hint");
@@ -670,6 +678,9 @@ async function saveCapturePolicy(root: HTMLElement, state: CapturePanelState): P
   const androidCompanionEnabled = root.querySelector<HTMLInputElement>(
     "#capture-provider-android-companion"
   );
+  const androidDictationBackendSelect = root.querySelector<HTMLSelectElement>(
+    "#capture-android-dictation-backend-select"
+  );
 
   await SettingsManager.patch((settings) => {
     const nextCapture = (settings["capture"] ?? {}) as Record<string, unknown>;
@@ -683,6 +694,8 @@ async function saveCapturePolicy(root: HTMLElement, state: CapturePanelState): P
     nextDefaults["attachMode"] =
       attachSelect?.value === "auto-stage" ? "auto-stage" : "manual-sync";
     nextDefaults["commandConfirmation"] = confirmationSelect?.value === "none" ? "none" : "toast";
+    void androidDictationBackendSelect;
+    nextDefaults["androidDictationBackend"] = "vosk";
 
     nextProviders["androidCompanionEnabled"] = androidCompanionEnabled?.checked !== false;
 
@@ -751,6 +764,7 @@ function bindActions(root: HTMLElement, state: CapturePanelState): void {
     root.querySelector<HTMLSelectElement>("#capture-default-attach-mode-select"),
     root.querySelector<HTMLSelectElement>("#capture-default-confirmation-select"),
     root.querySelector<HTMLInputElement>("#capture-provider-android-companion"),
+    root.querySelector<HTMLSelectElement>("#capture-android-dictation-backend-select"),
   ];
   const deviceList = root.querySelector<HTMLElement>("#capture-android-device-list");
 

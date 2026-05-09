@@ -1,21 +1,26 @@
 import { BrowserWindow } from "electron";
-import { access, mkdir, readFile, rename, rm, stat, writeFile } from "fs/promises";
-import { constants as fsConstants } from "fs";
+import { createWriteStream, constants as fsConstants } from "fs";
+import { access, copyFile, mkdir, readFile, rename, rm, stat, writeFile } from "fs/promises";
 import { spawn } from "child_process";
 import { createHash, randomUUID } from "crypto";
-import { join, delimiter, relative, resolve } from "path";
+import { createRequire } from "module";
+import { dirname, join, delimiter, relative, resolve } from "path";
+import { pipeline } from "stream/promises";
+import * as yauzl from "yauzl";
 import { Paths } from "./paths.ts";
 import { resolveConfigDir } from "./path-roots.ts";
 import { normalizeAppLanguage } from "../shared/i18n/locale.js";
 import {
   getTranscriptModelDescriptor,
   listTranscriptModelCatalog,
+  normalizeTranscriptBackend,
   normalizeTranscriptManagedModelId,
   normalizeTranscriptModelVariant,
   resolveTranscriptModelId,
   resolveTranscriptSupportedLanguage,
 } from "../shared/transcript/model-catalog.js";
 import type {
+  TranscriptDictationBackend,
   TranscriptFileTranscriptionRequest,
   TranscriptFileTranscriptionResult,
   TranscriptIngressPayload,
@@ -31,13 +36,19 @@ import type {
   TranscriptTranscriptionRequest,
   TranscriptTranscriptionResult,
 } from "../src/types/transcript.ts";
+import type * as VoskKoffi from "vosk-koffi";
 
 const TRANSCRIPT_INGRESS_CHANNEL = "transcript:ingress";
 const TRANSCRIPT_WHISPER_REPO_URL = "https://github.com/ggml-org/whisper.cpp.git";
 const TRANSCRIPT_WHISPER_TAG = "v1.8.4";
 const TRANSCRIPT_WHISPER_BIN_ENV = "HAYALET_EV_TRANSCRIPT_WHISPER_BIN";
 const TRANSCRIPT_WHISPER_MODEL_ENV = "HAYALET_EV_TRANSCRIPT_WHISPER_MODEL";
+const TRANSCRIPT_VOSK_LIB_ENV = "HAYALET_EV_TRANSCRIPT_VOSK_LIB";
+const TRANSCRIPT_VOSK_MODEL_ENV = "HAYALET_EV_TRANSCRIPT_VOSK_MODEL";
+const TRANSCRIPT_VOSK_SAMPLE_RATE = 16_000;
+const TRANSCRIPT_VOSK_MODEL_MARKER = ".hayalet-ev-vosk-model.json";
 const TRANSCRIPT_SETTINGS_PATH = join(resolveConfigDir(), "settings.json");
+const require = createRequire(import.meta.url);
 
 interface TranscriptRuntimePaths {
   rootDir: string;
@@ -57,12 +68,14 @@ interface CommandRunResult {
 interface TranscriptSettingsSnapshot {
   general?: {
     language?: unknown;
+    transcriptBackend?: unknown;
     transcriptModelVariant?: unknown;
   };
 }
 
 interface ResolvedTranscriptSelection {
   appLanguage: string;
+  backend: TranscriptDictationBackend;
   descriptor: TranscriptManagedModelDescriptor;
   language: TranscriptSupportedLanguage;
   variant: TranscriptModelVariant;
@@ -76,6 +89,14 @@ interface TranscriptModelInspection {
   path: string | null;
   ready: boolean;
   sizeBytes: number | null;
+}
+
+interface CachedVoskModel {
+  model: VoskKoffi.Model;
+}
+
+interface VoskRecognitionResult {
+  text?: unknown;
 }
 
 function normalizeCommandChunk(chunk: Buffer | string): string {
@@ -302,6 +323,7 @@ function toRuntimeStatus(
   return {
     state,
     ready: state === "ready",
+    backend: overrides.backend ?? selection.backend,
     binaryPath: overrides.binaryPath ?? null,
     modelPath: overrides.modelPath ?? null,
     modelId: overrides.modelId ?? selection.descriptor.modelId,
@@ -323,6 +345,7 @@ export class TranscriptService {
     TranscriptManagedModelId,
     Promise<TranscriptManagedModelStatus>
   >();
+  private activeVoskModels = new Map<string, CachedVoskModel>();
   private pathsCache: TranscriptRuntimePaths | null = null;
 
   private getPaths(): TranscriptRuntimePaths {
@@ -339,6 +362,10 @@ export class TranscriptService {
   ): Promise<ResolvedTranscriptSelection> {
     const settings = await readTranscriptSettingsSnapshot();
     const appLanguage = normalizeAppLanguage(settings.general?.language);
+    const configuredBackend = normalizeTranscriptBackend(
+      settings.general?.transcriptBackend,
+      "whisper.cpp"
+    );
     const requestedLanguage = normalizeTranscriptLanguage(request?.language);
     const requestedModelId = normalizeTranscriptManagedModelId(request?.modelId);
     const configuredVariant = normalizeTranscriptModelVariant(
@@ -349,7 +376,9 @@ export class TranscriptService {
     const initialLanguage = requestedLanguage ?? resolveTranscriptSupportedLanguage(appLanguage);
     const descriptor =
       (requestedModelId !== null ? getTranscriptModelDescriptor(requestedModelId) : null) ??
-      getTranscriptModelDescriptor(resolveTranscriptModelId(initialLanguage, requestedVariant));
+      getTranscriptModelDescriptor(
+        resolveTranscriptModelId(initialLanguage, requestedVariant, configuredBackend)
+      );
 
     if (descriptor === null) {
       throw new Error("Transcript model descriptor could not be resolved.");
@@ -357,6 +386,7 @@ export class TranscriptService {
 
     return {
       appLanguage,
+      backend: descriptor.backend,
       descriptor,
       language: descriptor.englishOnly === true ? "en" : initialLanguage,
       variant: descriptor.variant,
@@ -379,7 +409,11 @@ export class TranscriptService {
     };
   }
 
-  private async resolveBinaryPath(): Promise<string | null> {
+  private async resolveBinaryPath(backend: TranscriptDictationBackend): Promise<string | null> {
+    if (backend === "vosk") {
+      return await this.resolveVoskLibraryPath();
+    }
+
     const paths = this.getPaths();
     const envBinaryPath = normalizeText(process.env[TRANSCRIPT_WHISPER_BIN_ENV]);
     if (envBinaryPath !== null && (await isExecutable(envBinaryPath))) {
@@ -407,6 +441,28 @@ export class TranscriptService {
     return await resolveExecutableOnPath("whisper-cli");
   }
 
+  private async resolveVoskLibraryPath(): Promise<string | null> {
+    const envLibraryPath = normalizeText(process.env[TRANSCRIPT_VOSK_LIB_ENV]);
+    if (envLibraryPath !== null && (await fileExists(envLibraryPath))) {
+      return envLibraryPath;
+    }
+
+    try {
+      const entryPath = require.resolve("vosk-koffi");
+      const packageRoot = dirname(dirname(entryPath));
+      const libraryName =
+        process.platform === "win32"
+          ? "libvosk.dll"
+          : process.platform === "darwin"
+            ? "libvosk.dylib"
+            : "libvosk.so";
+      const libraryPath = join(packageRoot, `bin-${process.platform}-${process.arch}`, libraryName);
+      return (await fileExists(libraryPath)) ? libraryPath : null;
+    } catch {
+      return null;
+    }
+  }
+
   private async resolveModelPath(modelId: TranscriptManagedModelId): Promise<string | null> {
     const descriptor = getTranscriptModelDescriptor(modelId);
     if (descriptor === null) {
@@ -419,7 +475,7 @@ export class TranscriptService {
 
   async getStatus(): Promise<TranscriptRuntimeStatus> {
     const selection = await this.resolveSelection(undefined);
-    const binaryPath = await this.resolveBinaryPath();
+    const binaryPath = await this.resolveBinaryPath(selection.backend);
     const modelStatus = await this.getModelStatus(selection.descriptor);
     const modelPath = modelStatus.ready === true ? modelStatus.path : null;
 
@@ -444,7 +500,7 @@ export class TranscriptService {
       modelPath,
       message:
         modelStatus.lastError ??
-        `Local transcription needs whisper.cpp and the ${selection.descriptor.label} model before it can run.`,
+        `Local transcription needs ${selection.backend} and the ${selection.descriptor.label} model before it can run.`,
     });
   }
 
@@ -470,7 +526,7 @@ export class TranscriptService {
 
       try {
         await ensureRuntimeDirectories(paths);
-        const binaryPath = await this.ensureBinary();
+        const binaryPath = await this.ensureBinary(selection.backend);
         const modelPath = await this.ensureModel(selection.descriptor.modelId);
         return toRuntimeStatus(selection, "ready", {
           binaryPath,
@@ -479,7 +535,7 @@ export class TranscriptService {
         });
       } catch (error) {
         return toRuntimeStatus(selection, "error", {
-          binaryPath: await this.resolveBinaryPath(),
+          binaryPath: await this.resolveBinaryPath(selection.backend),
           modelPath: await this.resolveModelPath(selection.descriptor.modelId),
           message: error instanceof Error ? error.message : String(error),
         });
@@ -508,9 +564,14 @@ export class TranscriptService {
     }
 
     const currentStatus = await this.getModelStatus(descriptor);
+    const envModelPath = normalizeText(
+      process.env[
+        descriptor.backend === "vosk" ? TRANSCRIPT_VOSK_MODEL_ENV : TRANSCRIPT_WHISPER_MODEL_ENV
+      ]
+    );
     if (
       currentStatus.ready === true ||
-      currentStatus.path === normalizeText(process.env[TRANSCRIPT_WHISPER_MODEL_ENV])
+      currentStatus.path === envModelPath
     ) {
       return currentStatus;
     }
@@ -523,7 +584,7 @@ export class TranscriptService {
     const installPromise = (async (): Promise<TranscriptManagedModelStatus> => {
       const paths = this.getPaths();
       await ensureRuntimeDirectories(paths);
-      await this.ensureBinary();
+      await this.ensureBinary(descriptor.backend);
 
       if (
         currentStatus.installed === true &&
@@ -533,16 +594,21 @@ export class TranscriptService {
         await this.quarantineManagedModel(descriptor.fileName, currentStatus.path);
       }
 
-      const destinationPath = join(paths.modelDir, descriptor.fileName);
+      const destinationPath = this.resolveManagedModelPath(descriptor);
       const tempPath = join(paths.tempDir, `${descriptor.fileName}.download`);
 
       await rm(tempPath, { force: true });
-      await downloadFile(descriptor.downloadUrl, tempPath);
+      await this.prepareModelArchive(descriptor, tempPath);
 
       try {
         const modelBuffer = await readFile(tempPath);
-        this.assertModelBuffer(descriptor, modelBuffer, "Downloaded whisper model");
-        await rename(tempPath, destinationPath);
+        this.assertModelBuffer(descriptor, modelBuffer, `Downloaded ${descriptor.backend} model`);
+        if (descriptor.archiveFormat === "zip-directory") {
+          await this.extractZipDirectoryModel(descriptor, tempPath, destinationPath);
+          await rm(tempPath, { force: true });
+        } else {
+          await rename(tempPath, destinationPath);
+        }
       } catch (error) {
         await rm(tempPath, { force: true });
         throw error;
@@ -565,7 +631,12 @@ export class TranscriptService {
       throw new Error(`Unknown transcript model: ${String(modelId)}`);
     }
 
-    await rm(join(this.getPaths().modelDir, descriptor.fileName), { force: true });
+    const modelPath = this.resolveManagedModelPath(descriptor);
+    this.releaseCachedVoskModel(modelPath);
+    await rm(modelPath, {
+      recursive: descriptor.archiveFormat === "zip-directory",
+      force: true,
+    });
     return await this.getModelStatus(descriptor);
   }
 
@@ -601,7 +672,9 @@ export class TranscriptService {
 
     try {
       await writeFile(wavPath, Buffer.from(audioBase64, "base64"));
+      const transcriptionStartedAt = Date.now();
       const transcript = await this.runTranscription({
+        backend: status.backend,
         binaryPath: status.binaryPath,
         modelPath: status.modelPath,
         audioPath: wavPath,
@@ -609,11 +682,14 @@ export class TranscriptService {
         language: status.activeLanguage,
         cwd: paths.tempDir,
       });
+      const transcriptionMs = Date.now() - transcriptionStartedAt;
 
       return {
         success: true,
         text: transcript,
         status,
+        backend: status.backend,
+        transcriptionMs,
       };
     } catch (error) {
       return {
@@ -682,7 +758,9 @@ export class TranscriptService {
     }
 
     try {
+      const transcriptionStartedAt = Date.now();
       const transcript = await this.runTranscription({
+        backend: status.backend,
         binaryPath: status.binaryPath,
         modelPath: status.modelPath,
         audioPath: managedAudioPath,
@@ -690,12 +768,15 @@ export class TranscriptService {
         language: status.activeLanguage,
         cwd: this.getPaths().tempDir,
       });
+      const transcriptionMs = Date.now() - transcriptionStartedAt;
 
       return {
         success: true,
         text: transcript,
         transcriptPath: `${outputBasePath}.txt`,
         status,
+        backend: status.backend,
+        transcriptionMs,
       };
     } catch (error) {
       return {
@@ -742,7 +823,7 @@ export class TranscriptService {
   private async getStatusForSelection(
     selection: ResolvedTranscriptSelection
   ): Promise<TranscriptRuntimeStatus> {
-    const binaryPath = await this.resolveBinaryPath();
+    const binaryPath = await this.resolveBinaryPath(selection.backend);
     const modelStatus = await this.getModelStatus(selection.descriptor);
     const modelPath = modelStatus.ready === true ? modelStatus.path : null;
 
@@ -767,12 +848,16 @@ export class TranscriptService {
       modelPath,
       message:
         modelStatus.lastError ??
-        `Local transcription needs whisper.cpp and the ${selection.descriptor.label} model before it can run.`,
+        `Local transcription needs ${selection.backend} and the ${selection.descriptor.label} model before it can run.`,
     });
   }
 
-  private async ensureBinary(): Promise<string> {
-    const existingBinary = await this.resolveBinaryPath();
+  private async ensureBinary(backend: TranscriptDictationBackend): Promise<string> {
+    if (backend === "vosk") {
+      return await this.ensureVoskRuntime();
+    }
+
+    const existingBinary = await this.resolveBinaryPath("whisper.cpp");
     if (existingBinary !== null) {
       return existingBinary;
     }
@@ -859,7 +944,7 @@ export class TranscriptService {
         );
       }
 
-      const binaryPath = await this.resolveBinaryPath();
+      const binaryPath = await this.resolveBinaryPath("whisper.cpp");
       if (binaryPath === null) {
         throw new Error("whisper.cpp build finished but whisper-cli could not be resolved.");
       }
@@ -873,6 +958,26 @@ export class TranscriptService {
     } finally {
       this.activeBinaryEnsurePromise = null;
     }
+  }
+
+  private async ensureVoskRuntime(): Promise<string> {
+    const libraryPath = await this.resolveVoskLibraryPath();
+    if (libraryPath === null) {
+      throw new Error(
+        `Vosk runtime library is missing. Install vosk-koffi or set ${TRANSCRIPT_VOSK_LIB_ENV}.`
+      );
+    }
+
+    try {
+      await import("vosk-koffi");
+    } catch (error) {
+      throw new Error(
+        `Vosk runtime could not be loaded: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error }
+      );
+    }
+
+    return libraryPath;
   }
 
   private async ensureModel(modelId: TranscriptManagedModelId): Promise<string> {
@@ -900,6 +1005,178 @@ export class TranscriptService {
     return installedModel.path;
   }
 
+  private resolveManagedModelPath(descriptor: TranscriptManagedModelDescriptor): string {
+    if (descriptor.archiveFormat === "zip-directory") {
+      return join(
+        this.getPaths().modelDir,
+        descriptor.directoryName ?? descriptor.fileName.replace(/\.zip$/i, "")
+      );
+    }
+
+    return join(this.getPaths().modelDir, descriptor.fileName);
+  }
+
+  private async prepareModelArchive(
+    descriptor: TranscriptManagedModelDescriptor,
+    tempPath: string
+  ): Promise<void> {
+    const localArchive = await this.resolveLocalModelArchivePath(descriptor);
+    if (localArchive !== null) {
+      await copyFile(localArchive, tempPath);
+      return;
+    }
+
+    await downloadFile(descriptor.downloadUrl, tempPath);
+  }
+
+  private async resolveLocalModelArchivePath(
+    descriptor: TranscriptManagedModelDescriptor
+  ): Promise<string | null> {
+    if (descriptor.archiveFormat !== "zip-directory") {
+      return null;
+    }
+
+    const candidates = [
+      join(Paths.getDataDir(), "transcript", "android-models", descriptor.fileName),
+      join(Paths.getProjectRoot(), "data", "transcript", "android-models", descriptor.fileName),
+      join(
+        Paths.getProjectRoot(),
+        "android-companion",
+        "app",
+        "src",
+        "main",
+        "assets",
+        "transcript-models",
+        descriptor.fileName
+      ),
+    ];
+
+    const checks = await Promise.all(
+      candidates.map(async (candidate) => ({
+        candidate,
+        exists: await fileExists(candidate),
+      }))
+    );
+    return checks.find((entry) => entry.exists)?.candidate ?? null;
+  }
+
+  private async extractZipDirectoryModel(
+    descriptor: TranscriptManagedModelDescriptor,
+    archivePath: string,
+    destinationPath: string
+  ): Promise<void> {
+    const paths = this.getPaths();
+    const extractRoot = join(paths.tempDir, `${randomUUID()}-${descriptor.modelId}`);
+    const sourceDir = join(
+      extractRoot,
+      descriptor.directoryName ?? descriptor.fileName.replace(/\.zip$/i, "")
+    );
+    const expectedDirectoryName = descriptor.directoryName ?? descriptor.fileName.replace(/\.zip$/i, "");
+
+    await rm(extractRoot, { recursive: true, force: true });
+    await mkdir(extractRoot, { recursive: true });
+
+    try {
+      await this.extractZipArchive(archivePath, extractRoot);
+      if ((await fileExists(sourceDir)) !== true) {
+        throw new Error(`Vosk model archive did not contain ${expectedDirectoryName}.`);
+      }
+      await rm(destinationPath, { recursive: true, force: true });
+      await rename(sourceDir, destinationPath);
+      await writeFile(
+        join(destinationPath, TRANSCRIPT_VOSK_MODEL_MARKER),
+        `${JSON.stringify(
+          {
+            modelId: descriptor.modelId,
+            fileName: descriptor.fileName,
+            expectedSha1: descriptor.expectedSha1,
+            expectedBytes: descriptor.expectedBytes,
+            installedAt: new Date().toISOString(),
+          },
+          null,
+          2
+        )}\n`,
+        "utf8"
+      );
+    } finally {
+      await rm(extractRoot, { recursive: true, force: true });
+    }
+  }
+
+  private async extractZipArchive(archivePath: string, destinationRoot: string): Promise<void> {
+    await new Promise<void>((resolvePromise, rejectPromise) => {
+      let settled = false;
+      const normalizeRejection = (error: unknown): Error =>
+        error instanceof Error ? error : new Error(String(error));
+      const fail = (zipFile: yauzl.ZipFile | null, error: unknown): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        zipFile?.close();
+        rejectPromise(normalizeRejection(error));
+      };
+
+      yauzl.open(archivePath, { lazyEntries: true }, (openError, zipFile) => {
+        if (openError !== null) {
+          fail(null, openError);
+          return;
+        }
+
+        zipFile.on("entry", (entry: yauzl.Entry) => {
+          const targetPath = resolve(destinationRoot, entry.fileName);
+          if (
+            entry.fileName.startsWith("/") ||
+            entry.fileName.includes("\\") ||
+            isInsideDirectory(destinationRoot, targetPath) !== true
+          ) {
+            fail(zipFile, new Error(`Vosk model archive contains an unsafe path: ${entry.fileName}`));
+            return;
+          }
+
+          if (entry.fileName.endsWith("/")) {
+            mkdir(targetPath, { recursive: true })
+              .then(() => {
+                zipFile.readEntry();
+              })
+              .catch((error: unknown) => {
+                fail(zipFile, error);
+              });
+            return;
+          }
+
+          zipFile.openReadStream(entry, (streamError, readStream) => {
+            if (streamError !== null) {
+              fail(zipFile, streamError);
+              return;
+            }
+
+            mkdir(dirname(targetPath), { recursive: true })
+              .then(async () => {
+                await pipeline(readStream, createWriteStream(targetPath));
+                zipFile.readEntry();
+              })
+              .catch((error: unknown) => {
+                fail(zipFile, error);
+              });
+          });
+        });
+
+        zipFile.once("error", (error) => {
+          fail(zipFile, error);
+        });
+        zipFile.once("end", () => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          resolvePromise();
+        });
+        zipFile.readEntry();
+      });
+    });
+  }
+
   private assertModelBuffer(
     descriptor: TranscriptManagedModelDescriptor,
     modelBuffer: Buffer,
@@ -922,7 +1199,11 @@ export class TranscriptService {
   private async inspectModel(
     descriptor: TranscriptManagedModelDescriptor
   ): Promise<TranscriptModelInspection> {
-    const envModelPath = normalizeText(process.env[TRANSCRIPT_WHISPER_MODEL_ENV]);
+    const envModelPath = normalizeText(
+      process.env[
+        descriptor.backend === "vosk" ? TRANSCRIPT_VOSK_MODEL_ENV : TRANSCRIPT_WHISPER_MODEL_ENV
+      ]
+    );
     if (envModelPath !== null && (await fileExists(envModelPath))) {
       const envStats = await stat(envModelPath);
       return {
@@ -936,7 +1217,7 @@ export class TranscriptService {
       };
     }
 
-    const modelPath = join(this.getPaths().modelDir, descriptor.fileName);
+    const modelPath = this.resolveManagedModelPath(descriptor);
     if ((await fileExists(modelPath)) !== true) {
       return {
         checksumValid: false,
@@ -949,10 +1230,40 @@ export class TranscriptService {
       };
     }
 
+    if (descriptor.archiveFormat === "zip-directory") {
+      const modelStats = await stat(modelPath);
+      const markerPath = join(modelPath, TRANSCRIPT_VOSK_MODEL_MARKER);
+      try {
+        const marker = JSON.parse(await readFile(markerPath, "utf8")) as Record<string, unknown>;
+        const checksumValid =
+          marker["expectedSha1"] === descriptor.expectedSha1 &&
+          marker["expectedBytes"] === descriptor.expectedBytes;
+        return {
+          checksumValid,
+          envOverride: false,
+          installed: true,
+          lastError: checksumValid ? null : "Stored Vosk model marker did not match the catalog.",
+          path: modelPath,
+          ready: checksumValid,
+          sizeBytes: modelStats.size,
+        };
+      } catch (error) {
+        return {
+          checksumValid: false,
+          envOverride: false,
+          installed: true,
+          lastError: error instanceof Error ? error.message : String(error),
+          path: modelPath,
+          ready: false,
+          sizeBytes: modelStats.size,
+        };
+      }
+    }
+
     const modelBuffer = await readFile(modelPath);
 
     try {
-      this.assertModelBuffer(descriptor, modelBuffer, "Stored whisper model");
+      this.assertModelBuffer(descriptor, modelBuffer, `Stored ${descriptor.backend} model`);
       return {
         checksumValid: true,
         envOverride: false,
@@ -981,17 +1292,19 @@ export class TranscriptService {
       return;
     }
 
+    this.releaseCachedVoskModel(modelPath);
     await ensureRuntimeDirectories(paths);
     const quarantinePath = join(paths.tempDir, `${randomUUID()}-${fileName}.corrupt`);
 
     try {
       await rename(modelPath, quarantinePath);
     } catch {
-      await rm(modelPath, { force: true });
+      await rm(modelPath, { recursive: true, force: true });
     }
   }
 
   private async runTranscription(options: {
+    backend: TranscriptDictationBackend;
     binaryPath: string;
     modelPath: string;
     audioPath: string;
@@ -999,6 +1312,10 @@ export class TranscriptService {
     language: TranscriptSupportedLanguage;
     cwd: string;
   }): Promise<string> {
+    if (options.backend === "vosk") {
+      return await this.runVoskTranscription(options);
+    }
+
     const runResult = await runCommand(
       options.binaryPath,
       [
@@ -1030,6 +1347,111 @@ export class TranscriptService {
     }
 
     return transcript;
+  }
+
+  private async runVoskTranscription(options: {
+    modelPath: string;
+    audioPath: string;
+    outputBase: string;
+  }): Promise<string> {
+    const vosk = await import("vosk-koffi");
+    vosk.setLogLevel(-1);
+    const pcm = await this.readVoskPcm16(options.audioPath);
+    const model = this.getCachedVoskModel(options.modelPath, vosk);
+    const recognizer = new vosk.Recognizer({
+      model,
+      sampleRate: TRANSCRIPT_VOSK_SAMPLE_RATE,
+    });
+
+    try {
+      recognizer.acceptWaveform(pcm);
+      const result = recognizer.finalResult() as VoskRecognitionResult;
+      const transcript = normalizeText(result.text);
+      if (transcript === null) {
+        throw new Error("Vosk returned an empty transcript.");
+      }
+      await writeFile(`${options.outputBase}.txt`, `${transcript}\n`, "utf8");
+      return transcript;
+    } finally {
+      recognizer.free();
+    }
+  }
+
+  private getCachedVoskModel(
+    modelPath: string,
+    vosk: typeof VoskKoffi
+  ): VoskKoffi.Model {
+    const cached = this.activeVoskModels.get(modelPath);
+    if (cached !== undefined) {
+      return cached.model;
+    }
+
+    const model = new vosk.Model(modelPath);
+    this.activeVoskModels.set(modelPath, { model });
+    return model;
+  }
+
+  private releaseCachedVoskModel(modelPath: string): void {
+    const cached = this.activeVoskModels.get(modelPath);
+    if (cached === undefined) {
+      return;
+    }
+    this.activeVoskModels.delete(modelPath);
+    cached.model.free();
+  }
+
+  private async readVoskPcm16(audioPath: string): Promise<Buffer> {
+    const wavBuffer = await readFile(audioPath);
+    if (
+      wavBuffer.length < 44 ||
+      wavBuffer.toString("ascii", 0, 4) !== "RIFF" ||
+      wavBuffer.toString("ascii", 8, 12) !== "WAVE"
+    ) {
+      throw new Error("Vosk transcription requires a WAV audio file.");
+    }
+
+    let offset = 12;
+    let audioFormat: number | null = null;
+    let channelCount: number | null = null;
+    let sampleRate: number | null = null;
+    let bitsPerSample: number | null = null;
+    let dataStart: number | null = null;
+    let dataSize: number | null = null;
+
+    while (offset + 8 <= wavBuffer.length) {
+      const chunkId = wavBuffer.toString("ascii", offset, offset + 4);
+      const chunkSize = wavBuffer.readUInt32LE(offset + 4);
+      const chunkStart = offset + 8;
+      const chunkEnd = chunkStart + chunkSize;
+      if (chunkEnd > wavBuffer.length) {
+        break;
+      }
+
+      if (chunkId === "fmt ") {
+        audioFormat = wavBuffer.readUInt16LE(chunkStart);
+        channelCount = wavBuffer.readUInt16LE(chunkStart + 2);
+        sampleRate = wavBuffer.readUInt32LE(chunkStart + 4);
+        bitsPerSample = wavBuffer.readUInt16LE(chunkStart + 14);
+      } else if (chunkId === "data") {
+        dataStart = chunkStart;
+        dataSize = chunkSize;
+      }
+
+      offset = chunkEnd + (chunkSize % 2);
+    }
+
+    if (
+      audioFormat !== 1 ||
+      channelCount !== 1 ||
+      sampleRate !== TRANSCRIPT_VOSK_SAMPLE_RATE ||
+      bitsPerSample !== 16 ||
+      dataStart === null ||
+      dataSize === null
+    ) {
+      throw new Error("Vosk transcription requires 16 kHz mono PCM16 WAV audio.");
+    }
+
+    return wavBuffer.subarray(dataStart, dataStart + dataSize);
   }
 
   private ensureManagedRoomPath(roomId: string, candidatePath: string): string {

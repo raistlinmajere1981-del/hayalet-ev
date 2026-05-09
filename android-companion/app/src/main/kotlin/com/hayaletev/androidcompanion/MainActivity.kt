@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -23,18 +24,47 @@ import com.hayaletev.androidcompanion.model.CompanionManifest
 import com.hayaletev.androidcompanion.session.CompanionSessionCoordinator
 import com.hayaletev.androidcompanion.session.CompanionUiState
 import com.hayaletev.androidcompanion.transport.DesktopBridgeClient
+import com.hayaletev.androidcompanion.transcript.AndroidAudioRecorder
+import com.hayaletev.androidcompanion.transcript.AndroidVoskTranscriber
+import com.hayaletev.androidcompanion.transcript.TranscriptModelManager
+import com.hayaletev.androidcompanion.transcript.defaultAndroidVoskModelProfile
+import com.hayaletev.androidcompanion.transport.BridgeTranscriptModelProfile
+import com.google.android.material.tabs.TabLayout
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
+import java.io.File
+
+private const val MANUAL_DICTATION_TRANSCRIBE_TIMEOUT_MS = 90_000L
+private const val DIAGNOSTICS_RENDER_THROTTLE_MS = 500L
+
+private enum class CompanionTab {
+    IMAGE,
+    DICTATE,
+    LOGS,
+}
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var cameraController: CameraSessionController
     private lateinit var sessionCoordinator: CompanionSessionCoordinator
     private lateinit var manifest: CompanionManifest
+    private lateinit var manualAudioRecorder: AndroidAudioRecorder
+    private lateinit var manualModelManager: TranscriptModelManager
+    private lateinit var manualVoskTranscriber: AndroidVoskTranscriber
+    private var activeTab = CompanionTab.IMAGE
+    private var manualRecordingActive = false
+    private var desktopSessionEnabled = false
+    private var manualImageCaptureFile: File? = null
+    private var manualImageActionBusy = false
+    private var diagnosticsRenderJob: Job? = null
+    private var pendingDiagnosticsSnapshot: CompanionDiagnosticsSnapshot? = null
     private val diagnosticsListener =
         CompanionDiagnosticsListener { snapshot ->
             runOnUiThread {
                 if (isDestroyed.not()) {
-                    renderDiagnostics(snapshot)
+                    scheduleDiagnosticsRender(snapshot)
                 }
             }
         }
@@ -48,7 +78,7 @@ class MainActivity : AppCompatActivity() {
             )
             updatePermissionsUi()
             if (hasCapturePermissions()) {
-                startPreviewAndSessionLoop()
+                maybeStartPreviewAndSessionLoop()
             }
         }
 
@@ -65,6 +95,9 @@ class MainActivity : AppCompatActivity() {
 
         cameraController = CameraSessionController(this, binding.cameraPreview)
         val bridgeClient = DesktopBridgeClient(manifest)
+        manualAudioRecorder = AndroidAudioRecorder(applicationContext, lifecycleScope)
+        manualModelManager = TranscriptModelManager(applicationContext, bridgeClient)
+        manualVoskTranscriber = AndroidVoskTranscriber()
         sessionCoordinator = CompanionSessionCoordinator(
             appContext = applicationContext,
             scope = lifecycleScope,
@@ -73,9 +106,17 @@ class MainActivity : AppCompatActivity() {
             cameraController = cameraController,
             onUiState = ::renderUiState
         )
+        configureTabs()
         configureDiagnosticsPanel()
+        configureManualImagePanel()
+        configureManualDictationPanel()
 
-        binding.previewValue.text = getString(R.string.preview_on_phone)
+        binding.previewValue.text = getString(R.string.preview_waiting_desktop_command)
+        binding.imageCaptureFeedbackValue.text = getString(R.string.image_capture_feedback_waiting)
+        binding.dictationStatusValue.text = getString(R.string.dictation_status_idle)
+        binding.dictationDetailValue.text = getString(R.string.dictation_detail_waiting)
+        binding.dictationModelValue.text = getString(R.string.dictation_model_waiting)
+        binding.dictationTargetValue.text = getString(R.string.target_waiting)
         renderUiState(
             CompanionUiState(
                 connectionStatus = getString(R.string.status_waiting_desktop),
@@ -85,11 +126,11 @@ class MainActivity : AppCompatActivity() {
         )
         renderPreviewState()
 
-        ContextCompat.startForegroundService(
-            this,
-            Intent(this, CaptureForegroundService::class.java)
-        )
-
+        desktopSessionEnabled = hasDesktopSessionIntent(intent)
+        if (desktopSessionEnabled) {
+            ensureCaptureForegroundService()
+        }
+        renderManualImageControls()
         sessionCoordinator.updateLaunchContext(intent)
         requestPermissionsIfNeeded()
     }
@@ -98,10 +139,15 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         CompanionDiagnostics.i("intent", "Activity received a new launch intent.", describeIntent(intent))
+        if (hasDesktopSessionIntent(intent)) {
+            desktopSessionEnabled = true
+            ensureCaptureForegroundService()
+            renderManualImageControls()
+        }
         sessionCoordinator.updateLaunchContext(intent)
         updatePermissionsUi()
         if (hasCapturePermissions()) {
-            startPreviewAndSessionLoop()
+            maybeStartPreviewAndSessionLoop()
         }
     }
 
@@ -110,12 +156,14 @@ class MainActivity : AppCompatActivity() {
         CompanionDiagnostics.i("lifecycle", "MainActivity started.")
         updatePermissionsUi()
         if (hasCapturePermissions()) {
-            startPreviewAndSessionLoop()
+            maybeStartPreviewAndSessionLoop()
         }
     }
 
     override fun onStop() {
         CompanionDiagnostics.i("lifecycle", "MainActivity stopped.")
+        manualRecordingActive = false
+        manualAudioRecorder.cancel()
         sessionCoordinator.stop()
         super.onStop()
     }
@@ -123,6 +171,8 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         CompanionDiagnostics.i("lifecycle", "MainActivity destroyed.")
         CompanionDiagnostics.removeListener(diagnosticsListener)
+        diagnosticsRenderJob?.cancel()
+        clearManualImageCaptureFile()
         sessionCoordinator.destroy()
         super.onDestroy()
     }
@@ -130,7 +180,7 @@ class MainActivity : AppCompatActivity() {
     private fun requestPermissionsIfNeeded() {
         if (hasCapturePermissions()) {
             CompanionDiagnostics.i("permissions", "Capture permissions are already granted.")
-            startPreviewAndSessionLoop()
+            maybeStartPreviewAndSessionLoop()
             return
         }
 
@@ -147,6 +197,26 @@ class MainActivity : AppCompatActivity() {
             permissions.joinToString(", "),
         )
         permissionLauncher.launch(permissions.toTypedArray())
+    }
+
+    private fun hasDesktopSessionIntent(intent: Intent?): Boolean {
+        return intent?.hasExtra("deviceId") == true || intent?.hasExtra("target") == true
+    }
+
+    private fun maybeStartPreviewAndSessionLoop() {
+        if (desktopSessionEnabled.not()) {
+            CompanionDiagnostics.setState("Session loop", "Paused for local manual use")
+            return
+        }
+        ensureCaptureForegroundService()
+        startPreviewAndSessionLoop()
+    }
+
+    private fun ensureCaptureForegroundService() {
+        ContextCompat.startForegroundService(
+            this,
+            Intent(this, CaptureForegroundService::class.java)
+        )
     }
 
     private fun startPreviewAndSessionLoop() {
@@ -184,6 +254,13 @@ class MainActivity : AppCompatActivity() {
         binding.statusValue.text = state.connectionStatus
         binding.targetValue.text = state.target
         binding.permissionsValue.text = state.permissionsSummary
+        binding.dictationStatusValue.text =
+            state.dictationStatus ?: getString(R.string.dictation_status_idle)
+        binding.dictationDetailValue.text =
+            state.dictationDetail ?: getString(R.string.dictation_detail_waiting)
+        binding.dictationModelValue.text =
+            state.dictationModel ?: getString(R.string.dictation_model_waiting)
+        binding.dictationTargetValue.text = state.target
         CompanionDiagnostics.setState("Connection", state.connectionStatus)
         CompanionDiagnostics.setState("Target", state.target)
         CompanionDiagnostics.setState("Permissions", state.permissionsSummary)
@@ -193,6 +270,12 @@ class MainActivity : AppCompatActivity() {
     private fun renderPreviewState() {
         val previewBound = cameraController.isPreviewBound()
         binding.previewPlaceholder.isVisible = previewBound.not()
+        binding.previewValue.text =
+            if (previewBound) {
+                getString(R.string.preview_active_on_phone)
+            } else {
+                getString(R.string.preview_waiting_desktop_command)
+            }
         CompanionDiagnostics.setState(
             "Preview",
             if (previewBound) {
@@ -201,6 +284,151 @@ class MainActivity : AppCompatActivity() {
                 "Waiting for desktop command"
             },
         )
+        renderManualImageControls()
+    }
+
+    private fun configureManualImagePanel() {
+        binding.imageCaptureClearButton.setOnClickListener {
+            clearManualImageCapture()
+        }
+        binding.imageCaptureButton.setOnClickListener {
+            takeManualImageCapture()
+        }
+        binding.imageCaptureAddButton.setOnClickListener {
+            addManualImageCapture()
+        }
+        renderManualImageControls()
+    }
+
+    private fun renderManualImageControls() {
+        val hasCapture = manualImageCaptureFile != null
+        val hasPermissions = hasCapturePermissions()
+        binding.imageCaptureButton.isEnabled =
+            manualImageActionBusy.not() && hasPermissions && desktopSessionEnabled
+        binding.imageCaptureClearButton.isEnabled = manualImageActionBusy.not() && hasCapture
+        binding.imageCaptureAddButton.isEnabled =
+            manualImageActionBusy.not() && hasCapture && desktopSessionEnabled
+    }
+
+    private fun setManualImageBusy(busy: Boolean) {
+        manualImageActionBusy = busy
+        renderManualImageControls()
+    }
+
+    private fun takeManualImageCapture() {
+        if (hasCapturePermissions().not()) {
+            requestPermissionsIfNeeded()
+            binding.imageCaptureFeedbackValue.text = getString(R.string.status_permissions_required)
+            renderManualImageControls()
+            return
+        }
+        if (desktopSessionEnabled.not()) {
+            binding.imageCaptureFeedbackValue.text =
+                getString(R.string.image_capture_feedback_desktop_required)
+            renderManualImageControls()
+            return
+        }
+
+        lifecycleScope.launch {
+            setManualImageBusy(true)
+            binding.imageCaptureFeedbackValue.text = getString(R.string.image_capture_feedback_capturing)
+            runCatching {
+                val captured = sessionCoordinator.captureManualPhoto()
+                clearManualImageCaptureFile()
+                manualImageCaptureFile = captured
+                binding.imageCaptureFeedbackValue.text =
+                    getString(R.string.image_capture_feedback_ready, captured.name)
+                CompanionDiagnostics.i(
+                    "manual-image",
+                    "Manual image capture is ready.",
+                    "file=${captured.name}, bytes=${captured.length()}",
+                )
+            }.onFailure { error ->
+                renderManualImageError(error)
+            }
+            setManualImageBusy(false)
+        }
+    }
+
+    private fun addManualImageCapture() {
+        val captureFile = manualImageCaptureFile
+        if (captureFile == null) {
+            renderManualImageControls()
+            return
+        }
+        if (desktopSessionEnabled.not()) {
+            binding.imageCaptureFeedbackValue.text =
+                getString(R.string.image_capture_feedback_desktop_required)
+            renderManualImageControls()
+            return
+        }
+
+        lifecycleScope.launch {
+            setManualImageBusy(true)
+            binding.imageCaptureFeedbackValue.text = getString(R.string.image_capture_feedback_uploading)
+            runCatching {
+                sessionCoordinator.uploadManualPhoto(captureFile)
+                clearManualImageCaptureFile()
+                binding.imageCaptureFeedbackValue.text = getString(R.string.image_capture_feedback_added)
+                Toast.makeText(this@MainActivity, R.string.image_capture_feedback_added, Toast.LENGTH_SHORT)
+                    .show()
+            }.onFailure { error ->
+                renderManualImageError(error)
+            }
+            setManualImageBusy(false)
+        }
+    }
+
+    private fun clearManualImageCapture() {
+        clearManualImageCaptureFile()
+        binding.imageCaptureFeedbackValue.text = getString(R.string.image_capture_feedback_cleared)
+        renderManualImageControls()
+    }
+
+    private fun clearManualImageCaptureFile() {
+        manualImageCaptureFile?.delete()
+        manualImageCaptureFile = null
+    }
+
+    private fun renderManualImageError(error: Throwable) {
+        val message = error.message ?: error.toString()
+        binding.imageCaptureFeedbackValue.text = getString(R.string.image_capture_feedback_error, message)
+        CompanionDiagnostics.e("manual-image", "Manual image capture failed.", throwable = error)
+    }
+
+    private fun configureTabs() {
+        binding.companionTabs.addOnTabSelectedListener(
+            object : TabLayout.OnTabSelectedListener {
+                override fun onTabSelected(tab: TabLayout.Tab) {
+                    setActiveTab(
+                        when (tab.position) {
+                            1 -> CompanionTab.DICTATE
+                            2 -> CompanionTab.LOGS
+                            else -> CompanionTab.IMAGE
+                        }
+                    )
+                }
+
+                override fun onTabUnselected(tab: TabLayout.Tab) = Unit
+
+                override fun onTabReselected(tab: TabLayout.Tab) = Unit
+            }
+        )
+        setActiveTab(activeTab)
+    }
+
+    private fun setActiveTab(tab: CompanionTab) {
+        activeTab = tab
+        binding.imageTabPanel.isVisible = tab == CompanionTab.IMAGE
+        binding.dictateTabPanel.isVisible = tab == CompanionTab.DICTATE
+        binding.logsTabPanel.isVisible = tab == CompanionTab.LOGS
+        if (tab == CompanionTab.LOGS) {
+            diagnosticsRenderJob?.cancel()
+            diagnosticsRenderJob = null
+            val snapshot = pendingDiagnosticsSnapshot ?: CompanionDiagnostics.snapshot()
+            pendingDiagnosticsSnapshot = null
+            renderDiagnostics(snapshot)
+        }
     }
 
     private fun configureDiagnosticsPanel() {
@@ -214,6 +442,141 @@ class MainActivity : AppCompatActivity() {
             CompanionDiagnostics.clearLogs()
             CompanionDiagnostics.i("ui", "Diagnostics log cleared by user.")
         }
+    }
+
+    private fun configureManualDictationPanel() {
+        binding.manualDictationTranscriptValue.setText(R.string.manual_dictation_transcript_empty)
+        binding.manualDictationToggleButton.setOnClickListener {
+            if (manualRecordingActive) {
+                stopManualDictation()
+            } else {
+                startManualDictation()
+            }
+        }
+    }
+
+    private fun startManualDictation() {
+        if (hasCapturePermissions().not()) {
+            requestPermissionsIfNeeded()
+            binding.manualDictationTranscriptValue.setText(R.string.status_permissions_required)
+            return
+        }
+
+        lifecycleScope.launch {
+            runCatching {
+                if (desktopSessionEnabled) {
+                    sessionCoordinator.stop()
+                    CompanionDiagnostics.setState("Session loop", "Paused for manual dictation")
+                }
+                val file = manualAudioRecorder.start()
+                manualRecordingActive = true
+                binding.manualDictationToggleButton.text = getString(R.string.manual_dictation_stop)
+                binding.manualDictationTranscriptValue.setText(
+                    getString(R.string.manual_dictation_recording, file.name)
+                )
+                CompanionDiagnostics.i(
+                    "manual-dictation",
+                    "Manual dictation recording started.",
+                    "backend=${getManualVoskLabel()}, file=${file.name}",
+                )
+            }.onFailure { error ->
+                manualRecordingActive = false
+                renderManualDictationError(error)
+                maybeStartPreviewAndSessionLoop()
+            }
+        }
+    }
+
+    private fun stopManualDictation() {
+        lifecycleScope.launch {
+            val backendLabel = getManualVoskLabel()
+            binding.manualDictationToggleButton.isEnabled = false
+            binding.manualDictationTranscriptValue.setText(
+                getString(R.string.manual_dictation_transcribing, backendLabel)
+            )
+
+            runCatching {
+                val recording = manualAudioRecorder.stop()
+                manualRecordingActive = false
+                val profile = buildManualTranscriptModelProfile()
+                val modelStartedAt = SystemClock.elapsedRealtime()
+                val model = manualModelManager.ensureLocalModel(profile)
+                val modelMs = SystemClock.elapsedRealtime() - modelStartedAt
+                val transcriptionStartedAt = SystemClock.elapsedRealtime()
+                val transcript =
+                    withTimeout(MANUAL_DICTATION_TRANSCRIBE_TIMEOUT_MS) {
+                        manualVoskTranscriber.transcribe(
+                            modelDirectory = model,
+                            audioFile = recording.file,
+                            language = profile.language,
+                        )
+                    }
+                val transcriptionMs = SystemClock.elapsedRealtime() - transcriptionStartedAt
+                val totalMs = modelMs + transcriptionMs
+                binding.manualDictationTranscriptValue.setText(
+                    getString(
+                        R.string.manual_dictation_result,
+                        backendLabel,
+                        recording.durationMs,
+                        modelMs,
+                        transcriptionMs,
+                        totalMs,
+                        transcript,
+                    )
+                )
+                binding.manualDictationTranscriptValue.post {
+                    binding.manualDictationTranscriptValue.setSelection(0)
+                    binding.manualDictationTranscriptValue.scrollTo(0, 0)
+                }
+                CompanionDiagnostics.i(
+                    "manual-dictation",
+                    "Manual dictation transcript completed.",
+                    "backend=$backendLabel, durationMs=${recording.durationMs}, bytes=${recording.bytesWritten}, modelMs=$modelMs, transcriptionMs=$transcriptionMs",
+                )
+            }.onFailure { error ->
+                manualRecordingActive = false
+                manualAudioRecorder.cancel()
+                renderManualDictationError(error)
+            }
+
+            binding.manualDictationToggleButton.isEnabled = true
+            binding.manualDictationToggleButton.text = getString(R.string.manual_dictation_start)
+            maybeStartPreviewAndSessionLoop()
+        }
+    }
+
+    private fun getManualVoskLabel(): String {
+        return getString(R.string.manual_dictation_backend_vosk)
+    }
+
+    private fun buildManualTranscriptModelProfile(): BridgeTranscriptModelProfile {
+        return defaultAndroidVoskModelProfile()
+    }
+
+    private fun renderManualDictationError(error: Throwable) {
+        val message = error.message ?: error.toString()
+        binding.manualDictationTranscriptValue.setText(
+            getString(R.string.manual_dictation_error, message)
+        )
+        binding.manualDictationToggleButton.text = getString(R.string.manual_dictation_start)
+        binding.manualDictationToggleButton.isEnabled = true
+        CompanionDiagnostics.e("manual-dictation", "Manual dictation failed.", throwable = error)
+    }
+
+    private fun scheduleDiagnosticsRender(snapshot: CompanionDiagnosticsSnapshot) {
+        pendingDiagnosticsSnapshot = snapshot
+        if (activeTab != CompanionTab.LOGS || diagnosticsRenderJob?.isActive == true) {
+            return
+        }
+        diagnosticsRenderJob =
+            lifecycleScope.launch {
+                delay(DIAGNOSTICS_RENDER_THROTTLE_MS)
+                val nextSnapshot = pendingDiagnosticsSnapshot ?: return@launch
+                pendingDiagnosticsSnapshot = null
+                if (isDestroyed.not() && activeTab == CompanionTab.LOGS) {
+                    renderDiagnostics(nextSnapshot)
+                }
+            }
     }
 
     private fun renderDiagnostics(snapshot: CompanionDiagnosticsSnapshot) {

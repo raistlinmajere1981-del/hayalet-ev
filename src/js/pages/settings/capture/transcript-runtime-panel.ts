@@ -1,5 +1,6 @@
 import { getErrorMessage } from "@shared/index.js";
 import type {
+  TranscriptDictationBackend,
   TranscriptManagedModelId,
   TranscriptManagedModelStatus,
   TranscriptModelVariant,
@@ -70,9 +71,33 @@ export class CaptureTranscriptRuntimePanel {
 
   render(): void {
     const settings = this.settingsManager.getSnapshot();
+    const backendLabelEl = this.getElement("backend-label");
+    const backendHintEl = this.getElement("backend-hint");
+    const backendSelectEl = this.getElement("backend-select") as HTMLSelectElement | null;
     const profileLabelEl = this.getElement("profile-label");
     const profileHintEl = this.getElement("profile-hint");
     const profileSelectEl = this.getElement("profile-select") as HTMLSelectElement | null;
+
+    if (backendLabelEl) {
+      backendLabelEl.textContent = AppI18n.t("entrance.user.transcriptBackend.label");
+    }
+    if (backendHintEl) {
+      backendHintEl.textContent = AppI18n.t("entrance.user.transcriptBackend.hint");
+    }
+    if (backendSelectEl) {
+      const whisperOption =
+        backendSelectEl.querySelector<HTMLOptionElement>("option[value='whisper.cpp']");
+      const voskOption = backendSelectEl.querySelector<HTMLOptionElement>("option[value='vosk']");
+      if (whisperOption) {
+        whisperOption.textContent = AppI18n.t(
+          "entrance.user.transcriptBackend.options.whisper"
+        );
+      }
+      if (voskOption) {
+        voskOption.textContent = AppI18n.t("entrance.user.transcriptBackend.options.vosk");
+      }
+      backendSelectEl.value = settings.general?.transcriptBackend ?? "whisper.cpp";
+    }
 
     if (profileLabelEl) {
       profileLabelEl.textContent = AppI18n.t("entrance.user.transcriptProfile.label");
@@ -110,6 +135,13 @@ export class CaptureTranscriptRuntimePanel {
   }
 
   private setupListeners(): void {
+    const backendSelect = this.getElement("backend-select") as HTMLSelectElement | null;
+    if (backendSelect !== null) {
+      backendSelect.onchange = (event): void => {
+        void this.saveTranscriptBackend((event.target as HTMLSelectElement).value);
+      };
+    }
+
     const profileSelect = this.getElement("profile-select") as HTMLSelectElement | null;
     if (profileSelect !== null) {
       profileSelect.onchange = (event): void => {
@@ -155,6 +187,21 @@ export class CaptureTranscriptRuntimePanel {
         }
       });
     }
+  }
+
+  private async saveTranscriptBackend(value: string): Promise<void> {
+    const nextBackend: TranscriptDictationBackend = value === "vosk" ? "vosk" : "whisper.cpp";
+    const current = this.settingsManager.getSnapshot();
+
+    if (current.general?.transcriptBackend === nextBackend) {
+      return;
+    }
+
+    const updated = {
+      ...current,
+      general: { ...current.general, transcriptBackend: nextBackend },
+    };
+    await this.settingsManager.save(updated);
   }
 
   private async saveTranscriptModelVariant(value: string): Promise<void> {
@@ -417,11 +464,14 @@ export class CaptureTranscriptRuntimePanel {
   }
 
   private getTranscriptRuntimeModelTitle(model: TranscriptManagedModelStatus): string {
+    const backendLabel = AppI18n.t(
+      `entrance.user.transcriptRuntime.backends.${model.backend === "vosk" ? "vosk" : "whisper"}`
+    );
     const languageLabel = AppI18n.t(`entrance.user.transcriptRuntime.languages.${model.locale}`);
     const variantLabel = AppI18n.t(
       `entrance.user.transcriptProfile.options.${model.variant === "light" ? "light" : "full"}`
     );
-    return `${languageLabel} · ${variantLabel}`;
+    return `${backendLabel} · ${languageLabel} · ${variantLabel}`;
   }
 
   private getTranscriptRuntimeModelMeta(model: TranscriptManagedModelStatus): string {
@@ -437,6 +487,9 @@ export class CaptureTranscriptRuntimePanel {
       case "base":
       case "tiny.en":
       case "base.en":
+      case "vosk-small-tr":
+      case "vosk-small-en":
+      case "vosk-full-en":
         return value;
       default:
         return null;
@@ -451,6 +504,7 @@ export class CaptureTranscriptRuntimePanel {
     const settings = this.settingsManager.getSnapshot();
     return JSON.stringify({
       language: settings.general?.language ?? "tr",
+      transcriptBackend: settings.general?.transcriptBackend ?? "whisper.cpp",
       transcriptModelVariant: settings.general?.transcriptModelVariant ?? "full",
     });
   }

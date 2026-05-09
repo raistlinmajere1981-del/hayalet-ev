@@ -370,6 +370,25 @@
                                   <input id="capture-provider-android-companion" type="checkbox" />
                                 </span>
                               </label>
+                              <label
+                                class="settings-capture-profile-row"
+                                for="capture-android-dictation-backend-select"
+                              >
+                                <span
+                                  data-i18n-text="capture.policy.androidDictationBackend"
+                                ></span>
+                                <span class="settings-capture-profile-input">
+                                  <select
+                                    class="select"
+                                    id="capture-android-dictation-backend-select"
+                                  >
+                                    <option
+                                      value="vosk"
+                                      data-i18n-text="capture.policy.androidDictationBackendOptions.vosk"
+                                    ></option>
+                                  </select>
+                                </span>
+                              </label>
                             </div>
                             <p
                               class="settings-capture-note settings-capture-note--status"
@@ -395,6 +414,34 @@
                           </div>
                           <div class="entrance-panel__content settings-capture-card-body">
                             <div class="settings-capture-profile">
+                              <div class="settings-capture-profile-row">
+                                <label
+                                  class="form-label"
+                                  id="app-transcript-backend-label"
+                                  for="app-transcript-backend-select"
+                                  data-i18n-text="user.transcriptBackend.label"
+                                ></label>
+                                <div class="settings-capture-profile-input">
+                                  <select
+                                    id="app-transcript-backend-select"
+                                    class="select select-sm"
+                                  >
+                                    <option
+                                      value="whisper.cpp"
+                                      data-i18n-text="user.transcriptBackend.options.whisper"
+                                    ></option>
+                                    <option
+                                      value="vosk"
+                                      data-i18n-text="user.transcriptBackend.options.vosk"
+                                    ></option>
+                                  </select>
+                                  <p
+                                    class="settings-capture-note"
+                                    id="app-transcript-backend-hint"
+                                    data-i18n-text="user.transcriptBackend.hint"
+                                  ></p>
+                                </div>
+                              </div>
                               <div class="settings-capture-profile-row">
                                 <label
                                   class="form-label"

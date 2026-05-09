@@ -474,6 +474,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("capture-start-analyze-dictation", options),
   captureStopAnalyzeDictation: (options) =>
     ipcRenderer.invoke("capture-stop-analyze-dictation", options),
+  captureCancelAnalyzeDictation: (options) =>
+    ipcRenderer.invoke("capture-cancel-analyze-dictation", options),
   captureRequestAnalyzePhoto: (options) =>
     ipcRenderer.invoke("capture-request-analyze-photo", options),
   captureRetakeAnalyzePhoto: (options) =>

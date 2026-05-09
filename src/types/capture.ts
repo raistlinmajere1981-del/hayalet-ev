@@ -118,12 +118,14 @@ export type CaptureCompanionCommandKind =
   | "stop-dictation";
 
 export interface CaptureCompanionTranscriptModelProfile {
-  modelId: TranscriptManagedModelId;
+  backend: "whisper.cpp" | "vosk";
+  modelId: TranscriptManagedModelId | "vosk-model-small-tr-0.3" | "vosk-model-small-en-us-0.15";
   fileName: string;
   expectedSha1: string;
   expectedBytes: number | null;
   language: TranscriptSupportedLanguage;
   variant: TranscriptModelVariant;
+  archiveFormat: "file" | "zip-directory";
 }
 
 export interface CaptureCompanionCommandProfile {
@@ -131,6 +133,7 @@ export interface CaptureCompanionCommandProfile {
   photoQuality: "balanced" | "high";
   attachMode: "manual-sync" | "auto-stage";
   commandConfirmation: "none" | "toast";
+  androidDictationBackend: "whisper.cpp" | "vosk";
   transcriptModel: CaptureCompanionTranscriptModelProfile | null;
 }
 
@@ -205,7 +208,8 @@ export type CaptureHostAction =
   | "capture-analyze-photo"
   | "retake-analyze-photo"
   | "start-analyze-dictation"
-  | "stop-analyze-dictation";
+  | "stop-analyze-dictation"
+  | "cancel-analyze-dictation";
 
 export interface CaptureActionOutcome {
   action: CaptureHostAction;

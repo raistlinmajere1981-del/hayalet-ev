@@ -8,11 +8,6 @@ android {
   compileSdk = 35
   ndkVersion = "26.3.11579264"
 
-  val repoRoot = rootProject.projectDir.parentFile
-  val whisperCppDir = providers
-    .environmentVariable("HAYALET_EV_WHISPER_CPP_DIR")
-    .orElse(repoRoot.resolve("data/transcript/whisper.cpp-src").absolutePath)
-
   defaultConfig {
     applicationId = "com.hayaletev.androidcompanion"
     minSdk = 28
@@ -29,11 +24,6 @@ android {
       abiFilters += listOf("armeabi-v7a", "arm64-v8a")
     }
 
-    externalNativeBuild {
-      cmake {
-        arguments += listOf("-DWHISPER_CPP_DIR=${whisperCppDir.get()}")
-      }
-    }
   }
 
   buildTypes {
@@ -59,13 +49,6 @@ android {
     viewBinding = true
   }
 
-  externalNativeBuild {
-    cmake {
-      path = file("src/main/cpp/CMakeLists.txt")
-      version = "3.22.1"
-    }
-  }
-
   packaging {
     resources {
       excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -86,4 +69,5 @@ dependencies {
   implementation("androidx.camera:camera-lifecycle:1.4.0-beta02")
   implementation("androidx.camera:camera-view:1.4.0-beta02")
   implementation("com.squareup.okhttp3:okhttp:4.12.0")
+  implementation("com.alphacephei:vosk-android:0.3.75")
 }

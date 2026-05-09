@@ -91,6 +91,7 @@ import {
 import {
   consumeAnalyzeCaptureAssets,
   getCaptureStatus,
+  onCaptureMediaIngress,
   onCaptureDictationStatus,
   refreshCaptureStatus,
   runCaptureAction,
@@ -100,6 +101,7 @@ import type {
   CaptureActionOutcome,
   CaptureAndroidDeviceStatus,
   CaptureHostAction,
+  CaptureMediaIngressPayload,
   CaptureServiceStatus,
 } from "../../types/capture.js";
 import type { TranscriptIngressPayload, TranscriptTargetId } from "../../types/transcript.js";
@@ -114,6 +116,11 @@ interface ConversationSelectedDetail {
 interface DraftState {
   message: string;
   files: StagedFile[];
+}
+
+interface CaptureRunOptions {
+  notify?: boolean;
+  poll?: boolean;
 }
 
 type AnalyzeVoiceAction = CaptureHostAction | "import-capture";
@@ -215,6 +222,7 @@ export class AnalyzeController {
   _unsubSlotController: (() => void) | null;
   _unsubAppState: (() => void) | null;
   _unsubI18n: (() => void) | null;
+  _unsubCaptureMediaIngress: (() => void) | null;
   _boundActions: boolean;
   _us1PollTimer: number | null;
   _us1SyncInFlight: boolean;
@@ -234,10 +242,8 @@ export class AnalyzeController {
   _dictationBinding: DictationBinding | null;
   _dictationMode: DictationMode;
   _captureStatus: CaptureServiceStatus | null;
-  _capturePreviewToken: number;
   _captureStatusPollTimer: number | null;
   _lastAutoStagedCapturePath: string | null;
-  _capturePanelOpen: boolean;
   _voiceCommandsEnabled: boolean;
 
   get _analyzeSceneLayout(): SceneLayoutConfig {
@@ -267,6 +273,7 @@ export class AnalyzeController {
     this._unsubSlotController = null;
     this._unsubAppState = null;
     this._unsubI18n = null;
+    this._unsubCaptureMediaIngress = null;
     this._boundActions = false;
     this._us1PollTimer = null;
     this._us1SyncInFlight = false;
@@ -285,10 +292,8 @@ export class AnalyzeController {
     this._dictationBinding = null;
     this._dictationMode = "local";
     this._captureStatus = null;
-    this._capturePreviewToken = 0;
     this._captureStatusPollTimer = null;
     this._lastAutoStagedCapturePath = null;
-    this._capturePanelOpen = false;
     this._voiceCommandsEnabled =
       SettingsManager.getSnapshot().voiceCommands?.analyzeEnabled === true;
   }
@@ -333,6 +338,9 @@ export class AnalyzeController {
 
     this.bindActions();
     this._bindDictationUi();
+    this._unsubCaptureMediaIngress ??= onCaptureMediaIngress((payload) => {
+      this._handleCaptureMediaIngress(payload);
+    });
     TrafficManager.onUpdate(() => {
       this.updateSendButtonState();
       void this._renderAnalyzeSceneCharacters();
@@ -365,7 +373,6 @@ export class AnalyzeController {
 
     this.updateConnectionStates();
     this.refreshUploads();
-    this._renderCapturePanelState();
     this.renderCaptureSessionState();
     this._initializeAnalyzeScene();
     this._unsubSceneTheme ??= SceneThemeManager.onChange(() => {
@@ -1148,22 +1155,7 @@ export class AnalyzeController {
       void this.handleUploadClick();
     });
     document.getElementById("capture-import-btn")?.addEventListener("click", () => {
-      this.toggleCapturePanel();
-    });
-    document.getElementById("capture-import-btn-inline")?.addEventListener("click", () => {
-      void this.handleCaptureImportClick();
-    });
-    document.getElementById("capture-session-btn")?.addEventListener("click", () => {
-      void this._runCaptureAction("start-analyze-session");
-    });
-    document.getElementById("capture-stop-btn")?.addEventListener("click", () => {
-      void this._runCaptureAction("stop-analyze-session");
-    });
-    document.getElementById("capture-photo-btn")?.addEventListener("click", () => {
-      void this._runCaptureAction("capture-analyze-photo");
-    });
-    document.getElementById("capture-retake-btn")?.addEventListener("click", () => {
-      void this._runCaptureAction("retake-analyze-photo");
+      void this.openAndroidCameraManagement();
     });
     document.getElementById("compose-input")?.addEventListener("input", () => {
       this.updateSendButtonState();
@@ -1218,6 +1210,8 @@ export class AnalyzeController {
         preparingMessage: analyzeT("page.dictation.preparingMessage"),
         emptyResultMessage: analyzeT("page.dictation.emptyResultMessage"),
         insertedMessage: analyzeT("page.dictation.insertedMessage"),
+        transcribedMessage: (backend: string, durationMs: number): string =>
+          analyzeT("page.dictation.transcribedMessage", { backend, durationMs }),
         captureError: (message: string): string =>
           analyzeT("page.dictation.captureError", { message }),
         transcriptionError: (message: string): string =>
@@ -1225,6 +1219,7 @@ export class AnalyzeController {
         androidIdleTitle: analyzeT("page.dictation.androidIdleTitle"),
         androidPreparingMessage: analyzeT("page.dictation.androidPreparingMessage"),
         androidListeningMessage: analyzeT("page.dictation.androidListeningMessage"),
+        androidTimeoutMessage: analyzeT("page.dictation.androidTimeoutMessage"),
         androidError: (message: string): string =>
           analyzeT("page.dictation.androidError", { message }),
       }),
@@ -1236,8 +1231,15 @@ export class AnalyzeController {
         });
       },
       getMode: (): DictationMode => this._dictationMode,
-      requestAndroidDictation: async (request) => await this._requestAndroidDictation(request),
-      onFinalTranscript: async (payload) => await this._handleAnalyzeVoiceCommand(payload),
+      requestAndroidDictation: async (request) => {
+        return await this._requestAndroidDictation(request);
+      },
+      cancelAndroidDictation: async (request) => {
+        await this._cancelAndroidDictation(request);
+      },
+      onFinalTranscript: async (payload) => {
+        return await this._handleAnalyzeVoiceCommand(payload);
+      },
       isTargetActive: () => document.documentElement.getAttribute("data-active-page") === "analyze",
       subscribeIngress: onTranscriptIngress,
       subscribeAndroidDictationStatus: onCaptureDictationStatus,
@@ -1425,8 +1427,6 @@ export class AnalyzeController {
     requestId: string;
     targetId: TranscriptTargetId;
   }): Promise<"starting" | "ready"> {
-    this.toggleCapturePanel(true);
-
     try {
       this._captureStatus = await refreshCaptureStatus();
     } catch {
@@ -1491,6 +1491,22 @@ export class AnalyzeController {
       : "starting";
   }
 
+  async _cancelAndroidDictation(request: {
+    requestId: string;
+    targetId: TranscriptTargetId;
+  }): Promise<void> {
+    const outcome = await runCaptureAction("cancel-analyze-dictation", {
+      requestId: request.requestId,
+      target: request.targetId,
+    });
+    this._captureStatus = outcome.status;
+    this.renderCaptureSessionState();
+    this._startCaptureStatusPolling();
+    if (outcome.ok !== true) {
+      throw new Error(outcome.message);
+    }
+  }
+
   _notifyCaptureFeedback(
     kind: "success" | "info" | "error",
     title: string,
@@ -1515,8 +1531,25 @@ export class AnalyzeController {
     }
 
     const latestAsset = status?.analyze.latestAsset ?? null;
-    if (latestAsset === null || latestAsset.path === this._lastAutoStagedCapturePath) {
+    if (latestAsset === null) {
       return;
+    }
+
+    this._stageCaptureAsset(latestAsset, "analyze-capture-auto-stage");
+  }
+
+  _handleCaptureMediaIngress(payload: CaptureMediaIngressPayload): void {
+    if (payload.target !== "analyze-compose") {
+      return;
+    }
+
+    this._stageCaptureAsset(payload.asset, "analyze-capture-companion-add");
+    void this.refreshCaptureSessionState(true);
+  }
+
+  _stageCaptureAsset(latestAsset: CaptureMediaIngressPayload["asset"], dedupeKey: string): boolean {
+    if (latestAsset.path === this._lastAutoStagedCapturePath) {
+      return false;
     }
 
     const nextFiles = mergeUploadFiles(this.stagedFiles, [
@@ -1528,7 +1561,7 @@ export class AnalyzeController {
     ]);
     if (nextFiles.length === this.stagedFiles.length) {
       this._lastAutoStagedCapturePath = latestAsset.path;
-      return;
+      return false;
     }
 
     this.stagedFiles = nextFiles;
@@ -1537,8 +1570,9 @@ export class AnalyzeController {
     this._notifyCaptureFeedback(
       "success",
       analyzeT("page.captureImport.success", { count: 1 }),
-      "analyze-capture-auto-stage"
+      dedupeKey
     );
+    return true;
   }
 
   _startCaptureStatusPolling(): void {
@@ -1565,105 +1599,45 @@ export class AnalyzeController {
     }
   }
 
-  _renderCapturePanelState(): void {
-    const captureShell = document.getElementById("analyze-capture-shell");
-    const toggleButton = document.getElementById("capture-import-btn") as HTMLButtonElement | null;
-
-    if (captureShell instanceof HTMLElement) {
-      captureShell.hidden = this._capturePanelOpen !== true;
-    }
-
-    if (toggleButton) {
-      toggleButton.setAttribute("aria-expanded", this._capturePanelOpen ? "true" : "false");
-      toggleButton.classList.toggle("is-active", this._capturePanelOpen);
-    }
-  }
-
-  toggleCapturePanel(forceOpen?: boolean): void {
-    const nextOpen = typeof forceOpen === "boolean" ? forceOpen : this._capturePanelOpen !== true;
-    if (nextOpen === this._capturePanelOpen) {
-      return;
-    }
-
-    this._capturePanelOpen = nextOpen;
-    this._renderCapturePanelState();
-
-    if (nextOpen) {
-      void this.refreshCaptureSessionState(true);
-    }
+  async openAndroidCameraManagement(): Promise<void> {
+    await this._runCaptureAction("start-analyze-session");
   }
 
   renderCaptureSessionState(): void {
     const captureState = this._captureStatus?.analyze ?? null;
-    const androidStatus = this._captureStatus?.android ?? null;
     const selectedDevice = this._selectedAndroidDictationDevice(this._captureStatus);
     const stateLabel = analyzeT(`page.captureSessionStates.${captureState?.state ?? "idle"}`);
-    const latestName =
-      captureState?.latestAsset?.name ??
-      ((captureState?.pendingInboxCount ?? 0) > 0
-        ? analyzeT("page.captureSessionActions.sync")
-        : analyzeT("page.captureSessionLatestEmpty"));
-    const message =
-      captureState?.message ?? androidStatus?.pairingHint ?? analyzeT("page.captureSessionHint");
 
-    const stateEl = document.getElementById("analyze-capture-state");
-    const deviceEl = document.getElementById("analyze-capture-device");
-    const latestNameEl = document.getElementById("analyze-capture-latest-name");
-    const feedbackEl = document.getElementById("analyze-capture-feedback");
-    const sessionBtn = document.getElementById("capture-session-btn") as HTMLButtonElement | null;
-    const stopBtn = document.getElementById("capture-stop-btn") as HTMLButtonElement | null;
-    const captureBtn = document.getElementById("capture-photo-btn") as HTMLButtonElement | null;
-    const retakeBtn = document.getElementById("capture-retake-btn") as HTMLButtonElement | null;
-    const syncBtn = document.getElementById(
-      "capture-import-btn-inline"
-    ) as HTMLButtonElement | null;
+    const headerStatusEl = document.getElementById("compose-android-status");
+    const captureButton = document.getElementById("capture-import-btn") as HTMLButtonElement | null;
     const androidCompanionEnabled = this._captureProviders()?.androidCompanionEnabled !== false;
-
-    if (stateEl) {
-      stateEl.textContent = stateLabel;
-    }
-    if (deviceEl) {
-      deviceEl.textContent = selectedDevice?.label ?? analyzeT("page.captureSessionDeviceNone");
-    }
-    if (latestNameEl) {
-      latestNameEl.textContent = latestName;
-    }
-    if (feedbackEl) {
-      feedbackEl.textContent = androidCompanionEnabled
-        ? message
-        : analyzeT("page.captureSessionDisabled");
-    }
-
+    const deviceLabel = selectedDevice?.label ?? analyzeT("page.captureSessionDeviceNone");
     const hasReadyDevice = selectedDevice !== null;
-    const isSessionActive =
+    const sessionActive =
+      captureState?.state === "pending-launch" ||
       captureState?.state === "ready" ||
       captureState?.state === "capture-requested" ||
-      captureState?.state === "result-ready" ||
-      captureState?.state === "pending-launch";
-    const isSessionReady =
-      captureState?.state === "ready" || captureState?.state === "result-ready";
-    if (sessionBtn) {
-      sessionBtn.disabled =
-        androidCompanionEnabled !== true || hasReadyDevice === false || isSessionActive;
+      captureState?.state === "result-ready";
+
+    if (headerStatusEl) {
+      headerStatusEl.textContent =
+        androidCompanionEnabled === true
+          ? `${stateLabel} - ${deviceLabel}`
+          : analyzeT("page.captureSessionDisabled");
+      headerStatusEl.classList.toggle(
+        "is-ready",
+        androidCompanionEnabled === true && selectedDevice !== null
+      );
+      headerStatusEl.classList.toggle("is-disabled", androidCompanionEnabled !== true);
     }
-    if (stopBtn) {
-      stopBtn.disabled =
-        androidCompanionEnabled !== true ||
-        (isSessionActive !== true && captureState?.deviceId === null);
-    }
-    if (captureBtn) {
-      captureBtn.disabled = androidCompanionEnabled !== true || isSessionReady !== true;
-    }
-    if (retakeBtn) {
-      retakeBtn.disabled = androidCompanionEnabled !== true || isSessionReady !== true;
-    }
-    if (syncBtn) {
-      syncBtn.disabled =
-        androidCompanionEnabled !== true || (captureState?.pendingInboxCount ?? 0) === 0;
+
+    if (captureButton) {
+      captureButton.disabled = androidCompanionEnabled !== true || hasReadyDevice === false;
+      captureButton.classList.toggle("is-active", sessionActive);
+      captureButton.setAttribute("aria-pressed", sessionActive ? "true" : "false");
     }
 
     this._syncDictationAvailability();
-    void this._renderCapturePreview();
   }
 
   async refreshCaptureSessionState(forceRefresh = false): Promise<void> {
@@ -1682,61 +1656,23 @@ export class AnalyzeController {
     }
   }
 
-  async _renderCapturePreview(): Promise<void> {
-    const previewImage = document.getElementById(
-      "analyze-capture-latest-image"
-    ) as HTMLImageElement | null;
-    const previewEmpty = document.getElementById("analyze-capture-latest-empty");
-    const latestAsset = this._captureStatus?.analyze.latestAsset ?? null;
-    const previewToken = ++this._capturePreviewToken;
-
-    if (!(previewImage instanceof HTMLImageElement) || !(previewEmpty instanceof HTMLElement)) {
-      return;
-    }
-
-    if (latestAsset === null || typeof window.electronAPI?.readFile !== "function") {
-      previewImage.hidden = true;
-      previewImage.removeAttribute("src");
-      previewEmpty.hidden = false;
-      previewEmpty.textContent = analyzeT("page.captureSessionLatestEmpty");
-      return;
-    }
-
-    try {
-      const base64 = await window.electronAPI.readFile(latestAsset.path);
-      if (previewToken !== this._capturePreviewToken) {
-        return;
-      }
-
-      if (typeof base64 !== "string" || base64 === "") {
-        throw new Error("Preview file is empty.");
-      }
-
-      previewImage.src = `data:${getMimeTypeFromPath(latestAsset.path)};base64,${base64}`;
-      previewImage.hidden = false;
-      previewEmpty.hidden = true;
-    } catch {
-      if (previewToken !== this._capturePreviewToken) {
-        return;
-      }
-      previewImage.hidden = true;
-      previewImage.removeAttribute("src");
-      previewEmpty.hidden = false;
-      previewEmpty.textContent = latestAsset.name;
-    }
-  }
-
-  async _runCaptureAction(action: CaptureActionOutcome["action"]): Promise<void> {
+  async _runCaptureAction(
+    action: CaptureActionOutcome["action"],
+    options: CaptureRunOptions = {}
+  ): Promise<void> {
     try {
       const outcome = await runCaptureAction(action);
       this._captureStatus = outcome.status;
       this._applyAutoStagedCapture(outcome.status);
-      this._notifyCaptureFeedback(
-        outcome.ok ? "success" : "error",
-        outcome.message,
-        `analyze-${action}`
-      );
+      if (options.notify !== false) {
+        this._notifyCaptureFeedback(
+          outcome.ok ? "success" : "error",
+          outcome.message,
+          `analyze-${action}`
+        );
+      }
       if (
+        options.poll !== false &&
         outcome.ok === true &&
         (action === "start-analyze-session" ||
           action === "capture-analyze-photo" ||
@@ -2221,17 +2157,6 @@ export class AnalyzeController {
   }
 
   async handleCaptureImportClick(): Promise<void> {
-    const inlineButton = document.getElementById(
-      "capture-import-btn-inline"
-    ) as HTMLButtonElement | null;
-    if (inlineButton?.disabled === true) {
-      return;
-    }
-
-    if (inlineButton) {
-      inlineButton.disabled = true;
-    }
-
     try {
       const imported = await consumeAnalyzeCaptureAssets();
       if (imported.length === 0) {
@@ -2266,10 +2191,6 @@ export class AnalyzeController {
         analyzeT("page.captureImport.error", { message: getErrorMessage(error) }),
         "analyze-capture-import-error"
       );
-    } finally {
-      if (inlineButton) {
-        inlineButton.disabled = false;
-      }
     }
   }
 
