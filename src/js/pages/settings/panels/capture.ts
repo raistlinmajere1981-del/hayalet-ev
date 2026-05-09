@@ -14,18 +14,31 @@ import { notifyUser } from "../../../ui/user-notification.js";
 import { CaptureTranscriptRuntimePanel } from "../capture/transcript-runtime-panel.js";
 import { registerSettingsPanelLifecycle } from "../controller.js";
 import { applySettingsPanelStaticTranslations } from "../panel-i18n.js";
+import {
+  DEFAULT_CAPTURE_COMMAND_PHRASES,
+  normalizeCapturePhraseList,
+} from "../../../../../shared/capture/command-catalog.js";
 import type {
   CaptureActionOutcome,
   CaptureAndroidDeviceStatus,
   CaptureHostAction,
   CaptureServiceStatus,
 } from "../../../../types/capture.js";
+import type { CaptureCommandPhraseSettings } from "../../../../types/settings.js";
 
 let initialized = false;
 
 function captureT(key: string): string {
   return AppI18n.t(`entrance.capture.${key}`);
 }
+
+const CAPTURE_VOICE_COMMAND_FIELDS = [
+  { key: "openCamera", inputId: "capture-voice-command-open-camera-input" },
+  { key: "capture", inputId: "capture-voice-command-capture-input" },
+  { key: "stop", inputId: "capture-voice-command-stop-input" },
+] as const;
+
+type CaptureVoiceCommandKey = (typeof CAPTURE_VOICE_COMMAND_FIELDS)[number]["key"];
 
 type CapturePanelState = {
   loading: boolean;
@@ -338,6 +351,73 @@ function renderCaptureSpeechPolicy(root: HTMLElement): void {
   }
   if (feedbackEl) {
     feedbackEl.textContent = captureT("policy.hint");
+  }
+}
+
+function createDefaultCaptureVoiceCommandPhrases(): Required<CaptureCommandPhraseSettings> {
+  return {
+    openCamera: [...DEFAULT_CAPTURE_COMMAND_PHRASES.openCamera],
+    capture: [...DEFAULT_CAPTURE_COMMAND_PHRASES.capture],
+    stop: [...DEFAULT_CAPTURE_COMMAND_PHRASES.stop],
+  };
+}
+
+function getCaptureVoiceCommandPhrases(): Required<CaptureCommandPhraseSettings> {
+  const phrases = SettingsManager.getSnapshot().voiceCommands?.analyzePhrases;
+  return {
+    openCamera: normalizeCapturePhraseList(
+      phrases?.openCamera,
+      DEFAULT_CAPTURE_COMMAND_PHRASES.openCamera
+    ),
+    capture: normalizeCapturePhraseList(phrases?.capture, DEFAULT_CAPTURE_COMMAND_PHRASES.capture),
+    stop: normalizeCapturePhraseList(phrases?.stop, DEFAULT_CAPTURE_COMMAND_PHRASES.stop),
+  };
+}
+
+function parseCaptureVoiceCommandInput(
+  root: HTMLElement,
+  inputId: string,
+  key: CaptureVoiceCommandKey
+): string[] {
+  const textarea = root.querySelector<HTMLTextAreaElement>(`#${inputId}`);
+  const source = textarea?.value.split(/[\n,]/) ?? [];
+  return normalizeCapturePhraseList(source, DEFAULT_CAPTURE_COMMAND_PHRASES[key]);
+}
+
+function readCaptureVoiceCommandPhrases(root: HTMLElement): Required<CaptureCommandPhraseSettings> {
+  return {
+    openCamera: parseCaptureVoiceCommandInput(
+      root,
+      "capture-voice-command-open-camera-input",
+      "openCamera"
+    ),
+    capture: parseCaptureVoiceCommandInput(root, "capture-voice-command-capture-input", "capture"),
+    stop: parseCaptureVoiceCommandInput(root, "capture-voice-command-stop-input", "stop"),
+  };
+}
+
+function renderCaptureVoiceCommands(root: HTMLElement): void {
+  const voiceCommands = SettingsManager.getSnapshot().voiceCommands;
+  const enabledInput = root.querySelector<HTMLInputElement>("#capture-voice-command-enabled");
+  const feedbackEl = root.querySelector<HTMLElement>("#capture-voice-command-feedback");
+  const phrases = getCaptureVoiceCommandPhrases();
+
+  if (enabledInput) {
+    enabledInput.checked = voiceCommands?.analyzeEnabled === true;
+  }
+
+  CAPTURE_VOICE_COMMAND_FIELDS.forEach((field) => {
+    const textarea = root.querySelector<HTMLTextAreaElement>(`#${field.inputId}`);
+    if (textarea === null || document.activeElement === textarea) {
+      return;
+    }
+
+    textarea.value = phrases[field.key].join("\n");
+    textarea.placeholder = DEFAULT_CAPTURE_COMMAND_PHRASES[field.key].join(", ");
+  });
+
+  if (feedbackEl) {
+    feedbackEl.textContent = captureT("voiceCommands.hint");
   }
 }
 
@@ -716,6 +796,51 @@ async function saveCapturePolicy(root: HTMLElement, state: CapturePanelState): P
   }
 }
 
+async function saveCaptureVoiceCommands(root: HTMLElement): Promise<void> {
+  const enabledInput = root.querySelector<HTMLInputElement>("#capture-voice-command-enabled");
+  const analyzeEnabled = enabledInput?.checked === true;
+  const analyzePhrases = readCaptureVoiceCommandPhrases(root);
+
+  await SettingsManager.patch((settings) => {
+    const nextVoiceCommands = (settings["voiceCommands"] ?? {}) as Record<string, unknown>;
+    nextVoiceCommands["analyzeEnabled"] = analyzeEnabled;
+    nextVoiceCommands["analyzePhrases"] = analyzePhrases;
+    delete nextVoiceCommands["commandPhrases"];
+    settings["voiceCommands"] = nextVoiceCommands;
+  });
+
+  renderCaptureVoiceCommands(root);
+  notifyUser({
+    kind: "success",
+    title: captureT("voiceCommands.saved"),
+    dedupeKey: "settings-capture-voice-commands-saved",
+  });
+}
+
+async function resetCaptureVoiceCommandDefaults(root: HTMLElement): Promise<void> {
+  const enabledInput = root.querySelector<HTMLInputElement>("#capture-voice-command-enabled");
+  const analyzeEnabled =
+    enabledInput instanceof HTMLInputElement
+      ? enabledInput.checked
+      : SettingsManager.getSnapshot().voiceCommands?.analyzeEnabled === true;
+  const analyzePhrases = createDefaultCaptureVoiceCommandPhrases();
+
+  await SettingsManager.patch((settings) => {
+    const nextVoiceCommands = (settings["voiceCommands"] ?? {}) as Record<string, unknown>;
+    nextVoiceCommands["analyzeEnabled"] = analyzeEnabled;
+    nextVoiceCommands["analyzePhrases"] = analyzePhrases;
+    delete nextVoiceCommands["commandPhrases"];
+    settings["voiceCommands"] = nextVoiceCommands;
+  });
+
+  renderCaptureVoiceCommands(root);
+  notifyUser({
+    kind: "success",
+    title: captureT("voiceCommands.resetSaved"),
+    dedupeKey: "settings-capture-voice-commands-reset",
+  });
+}
+
 async function setPreferredDevice(
   root: HTMLElement,
   state: CapturePanelState,
@@ -751,6 +876,12 @@ function bindActions(root: HTMLElement, state: CapturePanelState): void {
   const openButton = root.querySelector<HTMLButtonElement>("#capture-android-open-btn");
   const connectButton = root.querySelector<HTMLButtonElement>("#capture-android-connect-btn");
   const connectInput = root.querySelector<HTMLInputElement>("#capture-android-connect-address");
+  const voiceCommandSaveButton = root.querySelector<HTMLButtonElement>(
+    "#capture-voice-command-save-btn"
+  );
+  const voiceCommandResetButton = root.querySelector<HTMLButtonElement>(
+    "#capture-voice-command-reset-btn"
+  );
   const confirmInstallButton = root.querySelector<HTMLButtonElement>(
     "#capture-android-progress-confirm-btn"
   );
@@ -867,6 +998,17 @@ function bindActions(root: HTMLElement, state: CapturePanelState): void {
     };
   }
 
+  if (voiceCommandSaveButton) {
+    voiceCommandSaveButton.onclick = (): void => {
+      void saveCaptureVoiceCommands(root);
+    };
+  }
+  if (voiceCommandResetButton) {
+    voiceCommandResetButton.onclick = (): void => {
+      void resetCaptureVoiceCommandDefaults(root);
+    };
+  }
+
   policyInputs.forEach((element) => {
     if (!(element instanceof HTMLSelectElement) && !(element instanceof HTMLInputElement)) {
       return;
@@ -958,6 +1100,7 @@ export function setupSettingsCapturePanel(): void {
     renderAndroidManagementState(root, state);
     renderCaptureDefaults(root, state);
     renderCaptureSpeechPolicy(root);
+    renderCaptureVoiceCommands(root);
     syncActionButtons(root, state);
   };
 

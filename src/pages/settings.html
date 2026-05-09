@@ -347,6 +347,110 @@
                             <div class="settings-capture-card-header">
                               <span
                                 class="entrance-panel__title ds-panel-title"
+                                data-i18n-text="capture.voiceCommands.title"
+                              ></span>
+                              <p
+                                class="settings-capture-card-copy"
+                                data-i18n-text="capture.voiceCommands.subtitle"
+                              ></p>
+                            </div>
+                          </div>
+                          <div class="entrance-panel__content settings-capture-card-body">
+                            <div class="settings-capture-profile">
+                              <label
+                                class="settings-capture-profile-row settings-capture-profile-row--toggle"
+                                for="capture-voice-command-enabled"
+                              >
+                                <span data-i18n-text="capture.voiceCommands.enabled"></span>
+                                <span
+                                  class="settings-capture-profile-input settings-capture-profile-input--check"
+                                >
+                                  <input id="capture-voice-command-enabled" type="checkbox" />
+                                </span>
+                              </label>
+                            </div>
+                            <div class="settings-capture-command-grid">
+                              <label
+                                class="settings-capture-profile-row settings-capture-profile-row--stacked"
+                                for="capture-voice-command-open-camera-input"
+                              >
+                                <span
+                                  data-i18n-text="capture.voiceCommands.commands.openCamera"
+                                ></span>
+                                <span
+                                  class="settings-capture-profile-input settings-capture-profile-input--full"
+                                >
+                                  <textarea
+                                    id="capture-voice-command-open-camera-input"
+                                    class="input input-sm settings-capture-command-textarea"
+                                    rows="3"
+                                    spellcheck="false"
+                                  ></textarea>
+                                </span>
+                              </label>
+                              <label
+                                class="settings-capture-profile-row settings-capture-profile-row--stacked"
+                                for="capture-voice-command-capture-input"
+                              >
+                                <span
+                                  data-i18n-text="capture.voiceCommands.commands.capture"
+                                ></span>
+                                <span
+                                  class="settings-capture-profile-input settings-capture-profile-input--full"
+                                >
+                                  <textarea
+                                    id="capture-voice-command-capture-input"
+                                    class="input input-sm settings-capture-command-textarea"
+                                    rows="3"
+                                    spellcheck="false"
+                                  ></textarea>
+                                </span>
+                              </label>
+                              <label
+                                class="settings-capture-profile-row settings-capture-profile-row--stacked"
+                                for="capture-voice-command-stop-input"
+                              >
+                                <span data-i18n-text="capture.voiceCommands.commands.stop"></span>
+                                <span
+                                  class="settings-capture-profile-input settings-capture-profile-input--full"
+                                >
+                                  <textarea
+                                    id="capture-voice-command-stop-input"
+                                    class="input input-sm settings-capture-command-textarea"
+                                    rows="3"
+                                    spellcheck="false"
+                                  ></textarea>
+                                </span>
+                              </label>
+                            </div>
+                            <div class="settings-capture-actions">
+                              <button
+                                id="capture-voice-command-save-btn"
+                                class="btn btn-secondary btn-sm"
+                                type="button"
+                                data-i18n-text="capture.voiceCommands.actions.save"
+                              ></button>
+                              <button
+                                id="capture-voice-command-reset-btn"
+                                class="btn btn-secondary btn-sm"
+                                type="button"
+                                data-i18n-text="capture.voiceCommands.actions.reset"
+                              ></button>
+                            </div>
+                            <p
+                              class="settings-capture-note settings-capture-note--status"
+                              id="capture-voice-command-feedback"
+                            ></p>
+                          </div>
+                        </div>
+
+                        <div
+                          class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
+                        >
+                          <div class="entrance-panel__header ds-surface-card__header">
+                            <div class="settings-capture-card-header">
+                              <span
+                                class="entrance-panel__title ds-panel-title"
                                 data-i18n-text="capture.policy.title"
                               ></span>
                               <p

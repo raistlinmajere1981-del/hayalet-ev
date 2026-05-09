@@ -246,10 +246,7 @@ export interface CaptureProviderSettings {
 export interface CaptureCommandPhraseSettings {
   openCamera?: string[];
   capture?: string[];
-  retake?: string[];
-  attach?: string[];
   stop?: string[];
-  cancel?: string[];
 }
 
 export interface CaptureSettings {

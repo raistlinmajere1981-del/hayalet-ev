@@ -123,7 +123,7 @@ interface CaptureRunOptions {
   poll?: boolean;
 }
 
-type AnalyzeVoiceAction = CaptureHostAction | "import-capture";
+type AnalyzeVoiceAction = CaptureHostAction;
 
 type AnalyzeParticipant = "ai1" | "ai2" | "us1";
 type AnalyzeSceneViewId = "table";
@@ -300,6 +300,7 @@ export class AnalyzeController {
 
   async init(): Promise<void> {
     await this.loadSettings();
+    this._syncVoiceCommandSettings();
     this._analyzeSceneDebugEnabled = applySceneDebugFlag();
     this._analyzeSceneSession.load(this._analyzeSceneDebugEnabled);
     this.applyAvatars();
@@ -310,6 +311,12 @@ export class AnalyzeController {
         if (changedPaths.includes("*") || changedPaths.some((path) => path.startsWith("capture"))) {
           this._syncDictationAvailability();
           this.renderCaptureSessionState();
+        }
+        if (
+          changedPaths.includes("*") ||
+          changedPaths.some((path) => path.startsWith("voiceCommands"))
+        ) {
+          this._syncVoiceCommandSettings();
         }
 
         const shouldRefreshAnalyzeHeader =
@@ -361,6 +368,7 @@ export class AnalyzeController {
       this.applyNames();
       this.updateConnectionStates();
       this._dictationBinding?.refresh();
+      this._renderVoiceCommandToggle();
       this.refreshUploads();
       this.renderCaptureSessionState();
       this._renderAnalyzeSceneHotspots();
@@ -1265,10 +1273,7 @@ export class AnalyzeController {
     return {
       openCamera: phrases?.openCamera ?? [...DEFAULT_CAPTURE_COMMAND_PHRASES.openCamera],
       capture: phrases?.capture ?? [...DEFAULT_CAPTURE_COMMAND_PHRASES.capture],
-      retake: phrases?.retake ?? [...DEFAULT_CAPTURE_COMMAND_PHRASES.retake],
-      attach: phrases?.attach ?? [...DEFAULT_CAPTURE_COMMAND_PHRASES.attach],
       stop: phrases?.stop ?? [...DEFAULT_CAPTURE_COMMAND_PHRASES.stop],
-      cancel: phrases?.cancel ?? [...DEFAULT_CAPTURE_COMMAND_PHRASES.cancel],
     };
   }
 
@@ -1277,11 +1282,14 @@ export class AnalyzeController {
     return [
       { id: "openCamera", phrases: phrases.openCamera },
       { id: "capture", phrases: phrases.capture },
-      { id: "retake", phrases: phrases.retake },
-      { id: "attach", phrases: phrases.attach },
       { id: "stop", phrases: phrases.stop },
-      { id: "cancel", phrases: phrases.cancel },
     ];
+  }
+
+  _syncVoiceCommandSettings(): void {
+    this._voiceCommandsEnabled =
+      SettingsManager.getSnapshot().voiceCommands?.analyzeEnabled === true;
+    this._renderVoiceCommandToggle();
   }
 
   _renderVoiceCommandToggle(): void {
@@ -1322,19 +1330,11 @@ export class AnalyzeController {
     const actionByCommand: Record<string, AnalyzeVoiceAction> = {
       openCamera: "start-analyze-session",
       capture: "capture-analyze-photo",
-      retake: "retake-analyze-photo",
-      attach: "import-capture",
       stop: "stop-analyze-session",
-      cancel: "stop-analyze-session",
     };
     const action = actionByCommand[match.id];
     if (action === undefined) {
       return false;
-    }
-
-    if (action === "import-capture") {
-      await this.handleCaptureImportClick();
-      return true;
     }
 
     await this._runCaptureAction(action);

@@ -5055,14 +5055,29 @@
         "commands": {
           "openCamera": "Oturum açma ifadeleri",
           "capture": "Çekim ifadeleri",
-          "retake": "Tekrar çekim ifadeleri",
-          "attach": "Ekleme ifadeleri",
           "stop": "Durdurma ifadeleri"
         },
         "hint": "Voice command ifadeleri Capture dışında yönetilir; companion yalnızca hedef ve model bilgisini alır.",
         "fallbackOptions": {
           "system": "Eski sistem tanıyıcı",
           "voskSeam": "Eski Vosk yolu"
+        }
+      },
+      "voiceCommands": {
+        "title": "Voice Commands",
+        "subtitle": "Dikte çalışırken Analyze'ın dinleyeceği komut ifadelerini yönet.",
+        "enabled": "Analyze voice command etkin",
+        "hint": "Her satıra bir ifade yaz veya ifadeleri virgülle ayır.",
+        "saved": "Analyze voice command ifadeleri kaydedildi.",
+        "resetSaved": "Analyze voice command ifadeleri varsayılana döndü.",
+        "actions": {
+          "save": "Komutları kaydet",
+          "reset": "İfadeleri sıfırla"
+        },
+        "commands": {
+          "openCamera": "Kamerayı aç",
+          "capture": "Fotoğraf çek",
+          "stop": "Oturumu durdur"
         }
       },
       "transcript": {

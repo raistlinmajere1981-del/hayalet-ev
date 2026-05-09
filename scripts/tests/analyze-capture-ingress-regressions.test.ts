@@ -8,7 +8,16 @@ test("analyze page wires central capture inbox imports into staged attachments",
   const uploadSource = readFileSync("src/js/pages/analyze/upload-handler.ts", "utf8");
   const captureClientSource = readFileSync("src/js/modules/capture/electron-client.ts", "utf8");
   const dictationUiSource = readFileSync("src/js/modules/transcript/dictation-ui.ts", "utf8");
+  const voiceCommandMatcherSource = readFileSync(
+    "src/js/modules/transcript/voice-command-matcher.ts",
+    "utf8"
+  );
   const captureServiceSource = readFileSync("electron/capture-service.ts", "utf8");
+  const commandCatalogSource = readFileSync("shared/capture/command-catalog.ts", "utf8");
+  const companionCoordinatorSource = readFileSync(
+    "android-companion/app/src/main/kotlin/com/hayaletev/androidcompanion/session/CompanionSessionCoordinator.kt",
+    "utf8"
+  );
   const settingsTypeSource = readFileSync("src/types/settings.ts", "utf8");
   const settingsDefaultsSource = readFileSync("src/types/settings-defaults.ts", "utf8");
   const settingsSchemaSource = readFileSync("src/js/modules/settings/settings-schema.ts", "utf8");
@@ -37,6 +46,20 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(pageSource, /capture-analyze-photo/);
   assert.match(pageSource, /start-analyze-session/);
   assert.match(pageSource, /stop-analyze-session/);
+  assert.match(pageSource, /_syncVoiceCommandSettings/);
+  assert.match(pageSource, /path\.startsWith\("voiceCommands"\)/);
+  assert.match(
+    pageSource,
+    /matchVoiceCommand\(payload\.text, this\._buildAnalyzeVoiceCommandSpecs\(\)\)/
+  );
+  assert.doesNotMatch(pageSource, /import-capture/);
+  assert.doesNotMatch(pageSource, /\{\s*id:\s*"retake"/);
+  assert.doesNotMatch(pageSource, /\{\s*id:\s*"attach"/);
+  assert.doesNotMatch(pageSource, /\{\s*id:\s*"cancel"/);
+  assert.match(voiceCommandMatcherSource, /\.normalize\("NFD"\)/);
+  assert.match(voiceCommandMatcherSource, /\[ıİ\]/);
+  assert.doesNotMatch(commandCatalogSource, /^\s*(retake|attach|cancel):/m);
+  assert.match(companionCoordinatorSource, /stageForAnalyze = true/);
   assert.match(pageSource, /page\.captureImport\.success/);
   assert.match(uploadSource, /export function mergeUploadFiles/);
   assert.match(captureClientSource, /captureConsumeAnalyzeAssets/);

@@ -104,6 +104,15 @@ test("settings capture panel centralizes transcript runtime and android manageme
   assert.match(htmlSource, /id="capture-android-connect-address"/);
   assert.match(htmlSource, /id="capture-android-connect-btn"/);
   assert.match(htmlSource, /id="capture-default-lens-select"/);
+  assert.match(htmlSource, /id="capture-voice-command-enabled"/);
+  assert.match(htmlSource, /id="capture-voice-command-open-camera-input"/);
+  assert.match(htmlSource, /id="capture-voice-command-capture-input"/);
+  assert.match(htmlSource, /id="capture-voice-command-stop-input"/);
+  assert.doesNotMatch(htmlSource, /id="capture-voice-command-retake-input"/);
+  assert.doesNotMatch(htmlSource, /id="capture-voice-command-attach-input"/);
+  assert.doesNotMatch(htmlSource, /id="capture-voice-command-cancel-input"/);
+  assert.match(htmlSource, /id="capture-voice-command-save-btn"/);
+  assert.match(htmlSource, /id="capture-voice-command-reset-btn"/);
   assert.match(htmlSource, /id="app-transcript-backend-select"/);
   assert.match(htmlSource, /id="app-transcript-runtime-models"/);
 
@@ -133,6 +142,11 @@ test("settings capture panel centralizes transcript runtime and android manageme
   assert.match(panelSource, /disconnectCaptureDevice/);
   assert.match(panelSource, /setPreferredDevice/);
   assert.match(panelSource, /captureT\("android\.previewHint"\)/);
+  assert.match(panelSource, /renderCaptureVoiceCommands/);
+  assert.match(panelSource, /saveCaptureVoiceCommands/);
+  assert.match(panelSource, /resetCaptureVoiceCommandDefaults/);
+  assert.match(panelSource, /DEFAULT_CAPTURE_COMMAND_PHRASES/);
+  assert.match(panelSource, /normalizeCapturePhraseList/);
   assert.equal((htmlSource.match(/id="capture-provider-fallback-select"/g) ?? []).length, 0);
   assert.equal((htmlSource.match(/id="capture-policy-feedback"/g) ?? []).length, 1);
   assert.equal((htmlSource.match(/id="capture-provider-android-speech"/g) ?? []).length, 0);
@@ -141,7 +155,9 @@ test("settings capture panel centralizes transcript runtime and android manageme
     (htmlSource.match(/capture\.policy\.androidDictationBackendOptions\.whisper/g) ?? []).length,
     0
   );
-  assert.equal((htmlSource.match(/id="capture-command-open-input"/g) ?? []).length, 0);
+  assert.equal((htmlSource.match(/id="capture-voice-command-open-camera-input"/g) ?? []).length, 1);
+  assert.equal((htmlSource.match(/id="capture-voice-command-capture-input"/g) ?? []).length, 1);
+  assert.equal((htmlSource.match(/id="capture-voice-command-stop-input"/g) ?? []).length, 1);
   assert.equal((htmlSource.match(/id="capture-android-device-list"/g) ?? []).length, 1);
 
   assert.match(transcriptSource, /ensureTranscriptRuntime/);

@@ -279,6 +279,7 @@ class CompanionSessionCoordinator(
                         command.target,
                         command.requestId ?: command.id,
                         captured,
+                        stageForAnalyze = true,
                     )
                     bridgeClient.acknowledgeCommand(
                         deviceId = launchContext.deviceId,

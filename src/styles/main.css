@@ -1268,6 +1268,19 @@ body.is-scroll-locked {
   width: 100%;
 }
 
+.settings-capture-command-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.settings-capture-command-textarea {
+  --field-textarea-min-h: var(--space-16);
+  --field-textarea-padding: var(--space-2);
+  width: 100%;
+  font-size: var(--text-xs);
+}
+
 .settings-capture-section-header {
   display: flex;
   flex-direction: column;
@@ -2045,6 +2058,10 @@ body.is-scroll-locked {
   }
 
   .settings-capture-status-grid--detail {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-capture-command-grid {
     grid-template-columns: 1fr;
   }
 

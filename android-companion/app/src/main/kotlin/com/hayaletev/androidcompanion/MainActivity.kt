@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -84,6 +85,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        configureLaunchWakeBehavior()
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -138,6 +140,7 @@ class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        configureLaunchWakeBehavior()
         CompanionDiagnostics.i("intent", "Activity received a new launch intent.", describeIntent(intent))
         if (hasDesktopSessionIntent(intent)) {
             desktopSessionEnabled = true
@@ -149,6 +152,12 @@ class MainActivity : AppCompatActivity() {
         if (hasCapturePermissions()) {
             maybeStartPreviewAndSessionLoop()
         }
+    }
+
+    private fun configureLaunchWakeBehavior() {
+        setShowWhenLocked(true)
+        setTurnScreenOn(true)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
     override fun onStart() {

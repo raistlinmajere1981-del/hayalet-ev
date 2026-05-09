@@ -114,6 +114,10 @@ test("android companion keeps Vosk dictation and preview-active session contract
   assert.match(activitySource, /hasDesktopSessionIntent\(intent\)/);
   assert.match(activitySource, /maybeStartPreviewAndSessionLoop\(\)/);
   assert.match(activitySource, /ensureCaptureForegroundService\(\)/);
+  assert.match(activitySource, /configureLaunchWakeBehavior\(\)/);
+  assert.match(activitySource, /setShowWhenLocked\(true\)/);
+  assert.match(activitySource, /setTurnScreenOn\(true\)/);
+  assert.match(activitySource, /FLAG_KEEP_SCREEN_ON/);
   assert.match(activitySource, /configureManualImagePanel\(\)/);
   assert.match(activitySource, /imageCaptureButton\.setOnClickListener/);
   assert.match(activitySource, /takeManualImageCapture\(\)/);

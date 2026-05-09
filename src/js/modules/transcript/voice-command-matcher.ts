@@ -12,6 +12,9 @@ export function normalizeVoiceCommandText(value: string): string {
   return value
     .trim()
     .toLocaleLowerCase("tr-TR")
+    .replace(/[ıİ]/g, "i")
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
     .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();

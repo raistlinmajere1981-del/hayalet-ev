@@ -85,10 +85,7 @@ export function createDefaultSettings(): AppSettings {
       analyzePhrases: {
         openCamera: [...DEFAULT_CAPTURE_COMMAND_PHRASES.openCamera],
         capture: [...DEFAULT_CAPTURE_COMMAND_PHRASES.capture],
-        retake: [...DEFAULT_CAPTURE_COMMAND_PHRASES.retake],
-        attach: [...DEFAULT_CAPTURE_COMMAND_PHRASES.attach],
         stop: [...DEFAULT_CAPTURE_COMMAND_PHRASES.stop],
-        cancel: [...DEFAULT_CAPTURE_COMMAND_PHRASES.cancel],
       },
     },
     scene: {

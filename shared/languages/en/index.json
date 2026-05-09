@@ -5055,14 +5055,29 @@
         "commands": {
           "openCamera": "Open session phrases",
           "capture": "Capture phrases",
-          "retake": "Retake phrases",
-          "attach": "Attach phrases",
           "stop": "Stop phrases"
         },
         "hint": "Voice command phrases are managed outside Capture; the companion receives only target and model metadata.",
         "fallbackOptions": {
           "system": "Legacy system recognizer",
           "voskSeam": "Legacy Vosk path"
+        }
+      },
+      "voiceCommands": {
+        "title": "Voice Commands",
+        "subtitle": "Manage the phrases Analyze listens for while dictation is running.",
+        "enabled": "Enable Analyze voice commands",
+        "hint": "Use one phrase per line or separate phrases with commas.",
+        "saved": "Analyze voice commands were saved.",
+        "resetSaved": "Analyze voice command phrases were reset.",
+        "actions": {
+          "save": "Save commands",
+          "reset": "Reset phrases"
+        },
+        "commands": {
+          "openCamera": "Open camera",
+          "capture": "Capture photo",
+          "stop": "Stop session"
         }
       },
       "transcript": {

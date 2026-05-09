@@ -1,10 +1,15 @@
 export const DEFAULT_CAPTURE_COMMAND_PHRASES = {
-  openCamera: ["kamerayi ac", "kamerayi baslat", "preview baslat", "hazirim"],
-  capture: ["cek", "capture", "foto cek", "fotograf cek"],
-  retake: ["yeniden cek", "retake", "tekrar cek"],
-  attach: ["ekle", "attach", "gonder"],
-  stop: ["durdur", "kapat", "stop", "capture durdur"],
-  cancel: ["iptal", "cancel"],
+  openCamera: ["kamerayı aç", "kamerayi ac", "kamera aç", "kamera ac", "open camera"],
+  capture: [
+    "çek",
+    "cek",
+    "fotoğraf çek",
+    "fotograf cek",
+    "resim çek",
+    "resim cek",
+    "capture",
+  ],
+  stop: ["durdur", "kapat", "oturumu durdur", "kamerayı kapat", "kamerayi kapat", "stop"],
 } as const;
 
 export type CaptureCommandPhraseKey = keyof typeof DEFAULT_CAPTURE_COMMAND_PHRASES;

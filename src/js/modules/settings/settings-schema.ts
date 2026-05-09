@@ -174,19 +174,7 @@ function normalizeCaptureCommandPhrases(raw: unknown): Required<CaptureCommandPh
       commandPhrases["capture"],
       DEFAULT_CAPTURE_COMMAND_PHRASES.capture
     ),
-    retake: normalizeCapturePhraseList(
-      commandPhrases["retake"],
-      DEFAULT_CAPTURE_COMMAND_PHRASES.retake
-    ),
-    attach: normalizeCapturePhraseList(
-      commandPhrases["attach"],
-      DEFAULT_CAPTURE_COMMAND_PHRASES.attach
-    ),
     stop: normalizeCapturePhraseList(commandPhrases["stop"], DEFAULT_CAPTURE_COMMAND_PHRASES.stop),
-    cancel: normalizeCapturePhraseList(
-      commandPhrases["cancel"],
-      DEFAULT_CAPTURE_COMMAND_PHRASES.cancel
-    ),
   };
 }
 
