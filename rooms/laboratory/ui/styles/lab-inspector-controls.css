@@ -261,6 +261,33 @@
   font-size: 0.64rem;
 }
 
+.labx-operation-card__scope {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.labx-operation-card__scope-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  min-height: 1.35rem;
+  padding: 0.12rem 0.38rem;
+  border: 1px solid rgba(78, 221, 221, 0.2);
+  border-radius: var(--labx-radius-pill);
+  background: rgba(78, 221, 221, 0.07);
+  color: var(--labx-text-soft);
+  font-size: 0.62rem;
+  line-height: 1;
+}
+
+.labx-operation-card__scope-item input {
+  width: 0.78rem;
+  height: 0.78rem;
+  margin: 0;
+  accent-color: var(--labx-accent);
+}
+
 .labx-operation-card__action-state {
   margin: 0;
   padding: 0.36rem 0.48rem;

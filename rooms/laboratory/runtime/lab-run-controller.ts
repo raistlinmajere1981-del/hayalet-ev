@@ -4,6 +4,7 @@ import type {
   LabFeatureId,
   LabFocusLayer,
   LabIntentId,
+  LabSelectionROI,
   LabStoreEvent,
 } from "../models/lab-types.js";
 import { createLabWaveformTimelineVisualizer } from "../ui/lab-waveform-timeline.js";
@@ -68,6 +69,9 @@ type LabRunControllerDeps = {
 };
 
 export function createLabRunController(deps: LabRunControllerDeps) {
+  type AnalysisScopeChoice = "selected" | "full" | "cancel";
+  type LabControllerState = ReturnType<typeof deps.store.getState>;
+
   let attached = false;
   const getWorkspaceWaveformTimelineModel = () => getWaveformTimelineModel(deps.store.getState());
   const workspaceAudioVisualizer = createLabWaveformTimelineVisualizer({
@@ -363,7 +367,172 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     };
   }
 
-  function startDeepAnalysis(state: ReturnType<typeof deps.store.getState>) {
+  function readFiniteNumber(value: unknown) {
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  }
+
+  function getSourceDimensions(state: LabControllerState) {
+    const metadata = asLabRecord(asLabRecord(state.source)["metadata"]);
+    const width = readFiniteNumber(metadata["width"]);
+    const height = readFiniteNumber(metadata["height"]);
+    return width !== null && height !== null && width > 0 && height > 0 ? { width, height } : null;
+  }
+
+  function resolveAnalysisRoiRegion(state: LabControllerState, roi: LabSelectionROI | null) {
+    const dimensions = roi === null ? null : getSourceDimensions(state);
+    if (roi === null || dimensions === null) {
+      return null;
+    }
+    const x = Math.max(0, Math.min(1, roi.x));
+    const y = Math.max(0, Math.min(1, roi.y));
+    const width = Math.max(1, Math.round(Math.max(0, Math.min(1, roi.width)) * dimensions.width));
+    const height = Math.max(
+      1,
+      Math.round(Math.max(0, Math.min(1, roi.height)) * dimensions.height)
+    );
+    return {
+      x: Math.min(Math.max(0, dimensions.width - width), Math.round(x * dimensions.width)),
+      y: Math.min(Math.max(0, dimensions.height - height), Math.round(y * dimensions.height)),
+      width,
+      height,
+    };
+  }
+
+  function getWorkspaceAnalysisSelection(state: LabControllerState) {
+    const sourceKind = asNonEmptyString(asLabRecord(state.source)["kind"]);
+    const ws = state.ui.workspace;
+    const selection = ws.activeSelection;
+    const startMs = ws.timelineStartMs ?? selection?.startMs ?? null;
+    const endMs = ws.timelineEndMs ?? selection?.endMs ?? null;
+    const hasTimeRange =
+      sourceKind !== "image" && startMs !== null && endMs !== null && endMs > startMs;
+    const roi = selection?.roi ?? null;
+    return {
+      endMs,
+      hasRoi: roi !== null,
+      hasTimeRange,
+      region: resolveAnalysisRoiRegion(state, roi),
+      roi,
+      startMs,
+    };
+  }
+
+  function parseAnalysisScopeChoice(value: string | null): AnalysisScopeChoice {
+    if (value === null) {
+      return "cancel";
+    }
+    const normalized = value.trim().toLocaleLowerCase("tr-TR");
+    if (
+      normalized === "1" ||
+      normalized === "s" ||
+      normalized === "seçili" ||
+      normalized === "secili" ||
+      normalized === "selected"
+    ) {
+      return "selected";
+    }
+    if (
+      normalized === "2" ||
+      normalized === "t" ||
+      normalized === "tamamı" ||
+      normalized === "tamami" ||
+      normalized === "full" ||
+      normalized === "all"
+    ) {
+      return "full";
+    }
+    if (
+      normalized === "3" ||
+      normalized === "i" ||
+      normalized === "iptal" ||
+      normalized === "cancel"
+    ) {
+      return "cancel";
+    }
+    return "cancel";
+  }
+
+  function requestAnalysisScopeChoice(state: LabControllerState): AnalysisScopeChoice {
+    const selection = getWorkspaceAnalysisSelection(state);
+    if (!selection.hasTimeRange && !selection.hasRoi) {
+      return "selected";
+    }
+    if (typeof deps.windowRef.prompt !== "function") {
+      return "selected";
+    }
+
+    const choice = parseAnalysisScopeChoice(
+      deps.windowRef.prompt(
+        "Seçilmiş zaman aralığı veya ROI var. Analizi hangi kapsamla başlatalım?\n1: Seçili alan\n2: Tamamı\n3: İptal",
+        "1"
+      )
+    );
+    if (choice === "cancel") {
+      dispatch({
+        type: "push-event",
+        event: buildUiEvent("Analiz başlatılmadı.", "warning"),
+      });
+    }
+    return choice;
+  }
+
+  function updateAnalysisScopeFromWorkspace(
+    state: LabControllerState,
+    choice: AnalysisScopeChoice
+  ) {
+    const selection = getWorkspaceAnalysisSelection(state);
+    const ws = state.ui.workspace;
+    updateWorkbench(function (workbench) {
+      const nextScope: Record<string, unknown> = {};
+      const hypothesis = ws.hypothesis.trim();
+      if (hypothesis !== "") {
+        nextScope["hypothesis"] = hypothesis;
+      } else {
+        delete nextScope["hypothesis"];
+      }
+
+      if (ws.selectedIntents.length > 0) {
+        nextScope["intentIds"] = Array.from(new Set(ws.selectedIntents));
+      } else {
+        delete nextScope["intentIds"];
+      }
+
+      delete nextScope["frameRange"];
+      if (choice === "selected" && selection.hasTimeRange) {
+        nextScope["timeRange"] = {
+          endMs: Math.round(selection.endMs || 0),
+          startMs: Math.round(selection.startMs || 0),
+        };
+      } else {
+        delete nextScope["timeRange"];
+      }
+
+      if (choice === "selected" && selection.region !== null) {
+        nextScope["region"] = selection.region;
+      } else {
+        delete nextScope["region"];
+      }
+
+      const hasScopeContent = [
+        "focus",
+        "hypothesis",
+        "timeRange",
+        "frameRange",
+        "region",
+        "intentIds",
+        "lifecycle",
+      ].some(function (key) {
+        return nextScope[key] !== undefined;
+      });
+
+      return {
+        ...workbench,
+        analysisScope: hasScopeContent ? nextScope : null,
+      };
+    });
+  }
+
+  function startDeepAnalysis(state: LabControllerState, scopeChoice: AnalysisScopeChoice) {
     const ws = state.ui.workspace;
     const intentCapabilities =
       ws.selectedIntents.length > 0
@@ -372,10 +541,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     const { activeFeatureId } = deriveFeatureSelectionFromCapabilities(intentCapabilities);
 
     syncCapabilities(intentCapabilities);
-    updateAnalysisScopeField("timeStartMs", ws.timelineStartMs);
-    updateAnalysisScopeField("timeEndMs", ws.timelineEndMs);
-    updateAnalysisScopeField("hypothesis", ws.hypothesis);
-    updateAnalysisScopeField("intentIds", ws.selectedIntents);
+    updateAnalysisScopeFromWorkspace(state, scopeChoice);
 
     const sourceRecord = asLabRecord(state.source);
     if (asNonEmptyString(sourceRecord["previewUrl"]) === null) {
@@ -391,6 +557,14 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         detail: "Room API bridge is not connected.",
       });
     }
+  }
+
+  function requestDeepAnalysis(state: LabControllerState) {
+    const scopeChoice = requestAnalysisScopeChoice(state);
+    if (scopeChoice === "cancel") {
+      return;
+    }
+    startDeepAnalysis(deps.store.getState(), scopeChoice);
   }
 
   function runPrimaryAction() {
@@ -412,7 +586,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       return;
     }
     if (getSourceReady(state) && getAnalysisActionBlockReason(state) === null) {
-      startDeepAnalysis(state);
+      requestDeepAnalysis(state);
       return;
     }
 
@@ -684,7 +858,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           });
           return;
         }
-        startDeepAnalysis(state);
+        requestDeepAnalysis(state);
         return;
       }
       case "cancel-analysis": {
@@ -1044,7 +1218,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       syncCurrentWorkbenchToHost();
       return;
     }
-    startDeepAnalysis(state);
+    requestDeepAnalysis(state);
   }
 
   deps.eventBus.subscribe(handleBusEvent);

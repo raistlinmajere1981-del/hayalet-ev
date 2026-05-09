@@ -247,7 +247,7 @@
       "tabs": "Kontrol sekmeleri"
     },
     "iconRail": {
-      "roi-select": "Bolge Secimi",
+      "roi-select": "ROI Kirp",
       "audio-focus": "Ses Odagi",
       "frame-export": "Kare Disa Aktarma",
       "clip-export": "Klip Disa Aktarma",
@@ -424,6 +424,11 @@
       "plannedAction": "Planlı",
       "runAction": "Çalıştır",
       "settings": "Ayarlar",
+      "scope": {
+        "selectedRange": "Seçili zaman aralığı",
+        "selectedRoi": "Seçili ROI",
+        "title": "Kapsam"
+      },
       "ready": "Hazır",
       "partial": "Kısmi",
       "blocked": "Bloke",

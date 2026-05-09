@@ -201,6 +201,8 @@ test("laboratory settings controls persist and join operation execution payloads
     const operationSettings = asRecord(clipPayload["operationSettings"]);
     assert.equal(operationSettings["format"], "webm");
     assert.equal(operationSettings["includeAudio"], false);
+    assert.equal(clipPayload["startMs"], 1000);
+    assert.equal(clipPayload["endMs"], 5000);
 
     clickListener({
       target: new FakeActionElement("operation-cancel", "clip-export"),
@@ -281,7 +283,10 @@ test("laboratory settings controls persist and join operation execution payloads
     );
     assert.equal(lockedClipSettings["format"], "mp4");
     assert.equal(lockedSoundEventSettings["threshold"], 0.15);
-    assert.match(String(store.getState().activityFeed[0]?.message || ""), /aktif analiz sırasında kilitli/);
+    assert.match(
+      String(store.getState().activityFeed[0]?.message || ""),
+      /aktif analiz sırasında kilitli/
+    );
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;
@@ -319,7 +324,16 @@ test("laboratory visual settings alter managed process filters and ROI scope", a
     clampProfileTranscriptSampleSeconds() {
       return 45;
     },
-    createProcessFinding(moduleId, kind, level, confidence, title, detail, evidenceCount, artifactIds) {
+    createProcessFinding(
+      moduleId,
+      kind,
+      level,
+      confidence,
+      title,
+      detail,
+      evidenceCount,
+      artifactIds
+    ) {
       return { moduleId, kind, level, confidence, title, detail, evidenceCount, artifactIds };
     },
     async generateProcessFramePreviewArtifact(
@@ -469,9 +483,25 @@ test("laboratory audio settings drive local analyzers and frozen process snapsho
       return structuredClone(value);
     },
     createProcessArtifact(moduleId, artifactKind, path, label, metadata) {
-      return { artifactKind, id: `${moduleId}-${artifactKind}-${filteredAudioCalls.length}`, label, metadata, moduleId, path };
+      return {
+        artifactKind,
+        id: `${moduleId}-${artifactKind}-${filteredAudioCalls.length}`,
+        label,
+        metadata,
+        moduleId,
+        path,
+      };
     },
-    createProcessFinding(moduleId, kind, level, confidence, title, detail, evidenceCount, artifactIds) {
+    createProcessFinding(
+      moduleId,
+      kind,
+      level,
+      confidence,
+      title,
+      detail,
+      evidenceCount,
+      artifactIds
+    ) {
       return { artifactIds, confidence, detail, evidenceCount, kind, level, moduleId, title };
     },
     async ensureProcessRuntimeDirectories() {},

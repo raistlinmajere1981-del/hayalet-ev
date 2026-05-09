@@ -33,6 +33,10 @@ function createActionRequestId(action: string) {
   return `${action}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function readPayloadNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
 export function createLabMediaActionController(deps: LabMediaActionControllerDeps) {
   const hubDismissTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -125,16 +129,31 @@ export function createLabMediaActionController(deps: LabMediaActionControllerDep
 
   function getOperationSettingsPayload(
     capabilityId: LabOperationCapabilityId | null,
-    state = deps.store.getState()
+    state = deps.store.getState(),
+    payload: Record<string, unknown> = {}
   ): Record<string, unknown> {
     if (capabilityId === null) {
       return {};
     }
     const operationSettings = asLabRecord(state.workbench["operationSettings"]);
-    const normalizedSettings = normalizeLabOperationSettings(
-      capabilityId,
-      operationSettings[capabilityId]
-    );
+    const normalizedSettings = {
+      ...normalizeLabOperationSettings(capabilityId, operationSettings[capabilityId]),
+    };
+    const startMs = readPayloadNumber(payload["startMs"]);
+    const endMs = readPayloadNumber(payload["endMs"]);
+    const hasTimeRange = startMs !== null && endMs !== null && endMs > startMs;
+    const normalizedRoi = asLabRecord(payload["normalizedRoi"]);
+    const hasRoi =
+      typeof normalizedRoi["x"] === "number" &&
+      typeof normalizedRoi["y"] === "number" &&
+      typeof normalizedRoi["width"] === "number" &&
+      typeof normalizedRoi["height"] === "number";
+    if (capabilityId === "clip-export" && hasRoi) {
+      normalizedSettings["applyRoiCrop"] = true;
+    }
+    if (capabilityId === "audio-extract" && hasTimeRange) {
+      normalizedSettings["timelineOnly"] = true;
+    }
     return {
       operationSettings: normalizedSettings,
       ...(capabilityId === "enhanced-frame" && normalizedSettings["applyPreviewSettings"] === true
@@ -145,12 +164,16 @@ export function createLabMediaActionController(deps: LabMediaActionControllerDep
 
   function getActiveSelectionOperationPayload(state = deps.store.getState()) {
     const selection = state.ui.workspace.activeSelection;
+    const startMs = state.ui.workspace.timelineStartMs ?? selection?.startMs ?? null;
+    const endMs = state.ui.workspace.timelineEndMs ?? selection?.endMs ?? null;
+    const hasTimeRange = startMs !== null && endMs !== null && endMs > startMs;
     const seekMs =
       state.ui.workspace.timelineStartMs !== null
         ? state.ui.workspace.timelineStartMs
         : (selection?.startMs ?? 0);
     return {
       seekMs,
+      ...(hasTimeRange ? { startMs, endMs } : {}),
       ...(selection?.roi
         ? {
             normalizedRoi: {
@@ -173,7 +196,7 @@ export function createLabMediaActionController(deps: LabMediaActionControllerDep
     const capabilityId = getOperationCapabilityIdForUiAction(uiActionId);
     return startTrackedUserAction(trackedActionId, {
       ...(payload || {}),
-      ...getOperationSettingsPayload(capabilityId),
+      ...getOperationSettingsPayload(capabilityId, deps.store.getState(), payload || {}),
     });
   }
 

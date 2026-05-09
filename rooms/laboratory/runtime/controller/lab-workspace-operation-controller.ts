@@ -71,9 +71,9 @@ export function createLabWorkspaceOperationController(deps: LabWorkspaceOperatio
     const ws = state.ui.workspace;
     if (ws.timelineStartMs !== null && ws.timelineEndMs !== null) {
       deps.startTrackedOperationForUiAction("timeline-export-clip", {
+        ...deps.getActiveSelectionOperationPayload(state),
         startMs: ws.timelineStartMs,
         endMs: ws.timelineEndMs,
-        ...deps.getCurrentRunIntentPayload(state),
       });
     }
   }
@@ -83,33 +83,29 @@ export function createLabWorkspaceOperationController(deps: LabWorkspaceOperatio
     const ws = state.ui.workspace;
     const seekMs = ws.timelineStartMs !== null ? ws.timelineStartMs : 0;
     deps.startTrackedOperationForUiAction("timeline-grab-frame", {
+      ...deps.getActiveSelectionOperationPayload(state),
       seekMs,
-      startMs: ws.timelineStartMs,
-      endMs: ws.timelineEndMs,
-      ...deps.getCurrentRunIntentPayload(state),
     });
   }
 
   function extractTimelineAudio() {
     const state = deps.store.getState();
     deps.startTrackedOperationForUiAction("timeline-extract-audio", {
-      startMs: state.ui.workspace.timelineStartMs,
-      endMs: state.ui.workspace.timelineEndMs,
-      ...deps.getCurrentRunIntentPayload(state),
+      ...deps.getActiveSelectionOperationPayload(state),
     });
   }
 
   function exportAudioCleanup() {
     deps.startTrackedOperationForUiAction(
       "workspace-audio-cleanup-export",
-      deps.getCurrentRunIntentPayload(deps.store.getState())
+      deps.getActiveSelectionOperationPayload(deps.store.getState())
     );
   }
 
   function exportBandPassVoice() {
     deps.startTrackedOperationForUiAction(
       "workspace-band-pass-voice-export",
-      deps.getCurrentRunIntentPayload(deps.store.getState())
+      deps.getActiveSelectionOperationPayload(deps.store.getState())
     );
   }
 

@@ -72,6 +72,50 @@ type AudioVariantConfig = {
 };
 
 export function createMediaAudioExportActions(deps: MediaAudioExportActionsDeps) {
+  function resolveAudioOutputScope(
+    source: LaboratoryRecord,
+    payload: LaboratoryRecord,
+    rangeEnabled: boolean
+  ) {
+    const sourceDurationMs = deps.getSourceDurationMs(source);
+    const startMs = deps.asNumber(payload["startMs"]);
+    const endMs = deps.asNumber(payload["endMs"]);
+    const normalizedStartMs = startMs === null ? null : Math.max(0, Math.round(startMs));
+    const normalizedEndMs = endMs === null ? null : Math.max(0, Math.round(endMs));
+    const hasTimeRange =
+      rangeEnabled &&
+      normalizedStartMs !== null &&
+      normalizedEndMs !== null &&
+      normalizedEndMs > normalizedStartMs;
+
+    if (hasTimeRange) {
+      return {
+        durationMs: normalizedEndMs - normalizedStartMs,
+        fileSuffix: `-${String(normalizedStartMs)}-${String(normalizedEndMs)}ms`,
+        hasTimeRange: true,
+        sourceRange: {
+          endMs: normalizedEndMs,
+          startMs: normalizedStartMs,
+        },
+        startOffsetMs: normalizedStartMs,
+      };
+    }
+
+    return {
+      durationMs: sourceDurationMs,
+      fileSuffix: "",
+      hasTimeRange: false,
+      sourceRange:
+        sourceDurationMs === null
+          ? null
+          : {
+              endMs: sourceDurationMs,
+              startMs: 0,
+            },
+      startOffsetMs: 0,
+    };
+  }
+
   async function exportAudioVariant(
     api: unknown,
     runtime: LaboratoryRecord,
@@ -128,7 +172,8 @@ export function createMediaAudioExportActions(deps: MediaAudioExportActionsDeps)
 
     try {
       const outputDir = deps.getProjectEditOutputDir(runtime, project);
-      const outputFileName = `${config.outputPrefix}-${Date.now()}.wav`;
+      const outputScope = resolveAudioOutputScope(source, payload, true);
+      const outputFileName = `${config.outputPrefix}${outputScope.fileSuffix}-${Date.now()}.wav`;
       const outputPath = `${outputDir}/${outputFileName}`;
       const audioChannels =
         config.operationId === "band-pass-voice"
@@ -164,8 +209,11 @@ export function createMediaAudioExportActions(deps: MediaAudioExportActionsDeps)
                 ? ",acompressor=threshold=-18dB:ratio=2:attack=20:release=250"
                 : ""
             }`;
-      const args = [
-        "-y",
+      const args = ["-y"];
+      if (outputScope.hasTimeRange && outputScope.sourceRange !== null) {
+        args.push("-ss", String(outputScope.sourceRange.startMs / 1000));
+      }
+      args.push(
         "-i",
         storedPath,
         "-vn",
@@ -176,9 +224,15 @@ export function createMediaAudioExportActions(deps: MediaAudioExportActionsDeps)
         "-ar",
         "48000",
         "-ac",
-        String(audioChannels),
-        outputPath,
-      ];
+        String(audioChannels)
+      );
+      if (outputScope.hasTimeRange && outputScope.sourceRange !== null) {
+        args.push(
+          "-t",
+          String((outputScope.sourceRange.endMs - outputScope.sourceRange.startMs) / 1000)
+        );
+      }
+      args.push(outputPath);
 
       const runResult = deps.toRecord(
         await deps.callRoomTools({
@@ -196,7 +250,6 @@ export function createMediaAudioExportActions(deps: MediaAudioExportActionsDeps)
       const runPayload = deps.toRecord(runResult["run"]);
       deps.assertToolRunSucceeded(runPayload, "ffmpeg audio variant failed.");
 
-      const durationMs = deps.getSourceDurationMs(source);
       const createdAsset = await deps.registerOutputAsset(runtime, project, {
         type: "audio",
         name: outputFileName,
@@ -215,16 +268,9 @@ export function createMediaAudioExportActions(deps: MediaAudioExportActionsDeps)
           requestId,
           settingsUsed: settings,
           toolId: "ffmpeg",
-          ...(durationMs === null ? {} : { durationMs }),
-          ...(durationMs === null
-            ? {}
-            : {
-                sourceRange: {
-                  endMs: durationMs,
-                  startMs: 0,
-                },
-              }),
-          startOffsetMs: 0,
+          ...(outputScope.durationMs === null ? {} : { durationMs: outputScope.durationMs }),
+          ...(outputScope.sourceRange === null ? {} : { sourceRange: outputScope.sourceRange }),
+          startOffsetMs: outputScope.startOffsetMs,
         },
       });
       deps.pushJobState(api, {
@@ -319,8 +365,6 @@ export function createMediaAudioExportActions(deps: MediaAudioExportActionsDeps)
     }
     const intentIds = deps.getPayloadIntentIds(payload);
     const settings = deps.readOperationSettings("audio-extract", payload);
-    const startMs = deps.asNumber(payload["startMs"]);
-    const endMs = deps.asNumber(payload["endMs"]);
 
     await deps.cancelJobsForProject(runtime, projectId, requestId, {
       actionIds: Array.from(MEDIA_EXPORT_ACTION_IDS),
@@ -354,16 +398,16 @@ export function createMediaAudioExportActions(deps: MediaAudioExportActionsDeps)
         readStringSetting(settings, "channels", "stereo"),
         2
       );
-      const outputFileName = `audio-track-${Date.now()}.${format}`;
+      const outputScope = resolveAudioOutputScope(
+        source,
+        payload,
+        readBooleanSetting(settings, "timelineOnly", false)
+      );
+      const outputFileName = `audio-track${outputScope.fileSuffix}-${Date.now()}.${format}`;
       const outputPath = `${outputDir}/${outputFileName}`;
       const args = ["-y"];
-      if (
-        readBooleanSetting(settings, "timelineOnly", false) &&
-        startMs !== null &&
-        endMs !== null &&
-        endMs > startMs
-      ) {
-        args.push("-ss", String(startMs / 1000));
+      if (outputScope.hasTimeRange && outputScope.sourceRange !== null) {
+        args.push("-ss", String(outputScope.sourceRange.startMs / 1000));
       }
       args.push(
         "-i",
@@ -376,13 +420,11 @@ export function createMediaAudioExportActions(deps: MediaAudioExportActionsDeps)
         "-ac",
         String(channels)
       );
-      if (
-        readBooleanSetting(settings, "timelineOnly", false) &&
-        startMs !== null &&
-        endMs !== null &&
-        endMs > startMs
-      ) {
-        args.push("-t", String((endMs - startMs) / 1000));
+      if (outputScope.hasTimeRange && outputScope.sourceRange !== null) {
+        args.push(
+          "-t",
+          String((outputScope.sourceRange.endMs - outputScope.sourceRange.startMs) / 1000)
+        );
       }
       args.push(outputPath);
 
@@ -402,13 +444,6 @@ export function createMediaAudioExportActions(deps: MediaAudioExportActionsDeps)
       const runPayload = deps.toRecord(runResult["run"]);
       deps.assertToolRunSucceeded(runPayload, "ffmpeg audio export failed.");
 
-      const sourceMetadata = deps.toRecord(source["metadata"]);
-      const sourceDurationSeconds = deps.asNumber(sourceMetadata["durationSeconds"]);
-      const durationMs =
-        sourceDurationSeconds !== null && sourceDurationSeconds > 0
-          ? Math.round(sourceDurationSeconds * 1000)
-          : null;
-
       const createdAsset = await deps.registerOutputAsset(runtime, project, {
         type: "audio",
         name: outputFileName,
@@ -427,16 +462,9 @@ export function createMediaAudioExportActions(deps: MediaAudioExportActionsDeps)
           sampleRate,
           settingsUsed: settings,
           toolId: "ffmpeg",
-          ...(durationMs === null ? {} : { durationMs }),
-          ...(durationMs === null
-            ? {}
-            : {
-                sourceRange: {
-                  endMs: durationMs,
-                  startMs: 0,
-                },
-              }),
-          startOffsetMs: 0,
+          ...(outputScope.durationMs === null ? {} : { durationMs: outputScope.durationMs }),
+          ...(outputScope.sourceRange === null ? {} : { sourceRange: outputScope.sourceRange }),
+          startOffsetMs: outputScope.startOffsetMs,
         },
       });
       deps.pushJobState(api, {

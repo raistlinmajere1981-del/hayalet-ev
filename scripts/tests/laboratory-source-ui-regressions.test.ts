@@ -733,11 +733,83 @@ test("laboratory workspace inspector exposes operation controls without selectio
   assert.match(surface.inspector ?? "", /data-panel-id="operationSettings\.enhanced-frame"/);
   assert.doesNotMatch(surface.inspector ?? "", /class="labx-settings-block__state"/);
   assert.doesNotMatch(surface.inspector ?? "", /class="labx-settings-block__action"/);
+  assert.match(surface.inspector ?? "", /data-lab-operation-scope="timeRange"/);
+  assert.doesNotMatch(surface.inspector ?? "", /data-lab-operation-scope="roi"/);
   assert.match(
     surface.inspector ?? "",
     /data-lab-field="operationSettings\.enhanced-frame\.preset"/
   );
   assert.match(surface.inspector ?? "", /data-lab-action="operation-settings-reset"/);
+});
+
+test("laboratory icon rail keeps only runnable realtime and output operations", () => {
+  const store = createSeededState(true);
+  const surface = renderWorkspaceSurface(store.getState());
+
+  assert.match(surface.main, /data-lab-region="icon-rail"/);
+  assert.match(surface.main, /data-lab-value="audio-focus"/);
+  assert.match(surface.main, /data-lab-value="roi-select"/);
+  assert.match(surface.main, /data-lab-value="clip-export"/);
+  assert.match(surface.main, /data-lab-value="enhanced-frame"/);
+  assert.doesNotMatch(surface.main, /data-lab-value="before-after"/);
+  assert.doesNotMatch(surface.main, /data-lab-value="stem-separate"/);
+  assert.doesNotMatch(surface.main, /data-lab-value="stabilize"/);
+});
+
+test("laboratory icon rail operation popovers mirror active timeline and ROI scope", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 2400,
+    endMs: 5600,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "visual",
+  });
+  store.dispatch({
+    type: "selection-roi-updated",
+    roi: {
+      height: 0.4,
+      width: 0.3,
+      x: 0.1,
+      y: 0.2,
+    },
+  });
+  store.dispatch({
+    type: "icon-rail-slot-selected",
+    slotId: "clip-export",
+  });
+
+  const surface = renderWorkspaceSurface(store.getState());
+
+  assert.match(surface.main, /data-slot="clip-export"/);
+  assert.match(surface.main, /data-lab-operation-scope="timeRange"/);
+  assert.match(surface.main, /data-lab-operation-scope="roi"/);
+  assert.match(
+    surface.main,
+    /data-lab-field="operationSettings\.clip-export\.applyRoiCrop"[\s\S]*checked/
+  );
+});
+
+test("laboratory source drawer tab remains report-analysis only", () => {
+  const store = createSeededState(true);
+  store.dispatch({ type: "drawer-mode-requested", mode: "setup" });
+  store.dispatch({ type: "selection-tab-toggled", active: false });
+  store.dispatch({ type: "analysis-prep-group-toggled", intentId: "visual-inspection" });
+
+  const drawer = renderLabDrawer(store.getState(), renderWorkspaceSurface(store.getState()));
+
+  assert.match(drawer, /data-drawer-mode="setup"/);
+  assert.match(drawer, /data-block-id="analysis-prep"/);
+  assert.match(drawer, /data-lab-action="run-deep-analysis"/);
+  assert.match(drawer, /Report outputs|Rapor/);
+  assert.doesNotMatch(drawer, /data-operation-id=/);
+  assert.doesNotMatch(drawer, /operationSettings\./);
+  assert.doesNotMatch(
+    drawer,
+    /data-lab-action="timeline-export-clip"|data-lab-action="workspace-audio-cleanup-export"|data-lab-action="workspace-enhanced-frame-export"|data-lab-action="operation-cancel"/
+  );
 });
 
 test("laboratory operation buttons reflect scoped running action state", () => {
@@ -1573,18 +1645,12 @@ test("laboratory source panel renders registry groups and workspace preview acti
   assert.match(panelHtml, /data-lab-action="workspace-content-open" data-lab-value="report-1"/);
   assert.match(panelHtml, /data-lab-action="asset-download"/);
   assert.match(panelHtml, /data-lab-action="asset-remove"/);
-  assert.match(
-    panelHtml,
-    /data-lab-action="source-activate-asset" data-lab-value="clip-local-1"/
-  );
+  assert.match(panelHtml, /data-lab-action="source-activate-asset" data-lab-value="clip-local-1"/);
   assert.match(
     panelHtml,
     /data-lab-action="source-activate-asset" data-lab-value="artifact-png-1"/
   );
-  assert.match(
-    panelHtml,
-    /data-lab-action="source-activate-asset" data-lab-value="clip-remote-1"/
-  );
+  assert.match(panelHtml, /data-lab-action="source-activate-asset" data-lab-value="clip-remote-1"/);
   assert.doesNotMatch(panelHtml, /data-lab-action="asset-use-as-source"/);
 });
 

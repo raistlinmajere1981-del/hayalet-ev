@@ -1864,6 +1864,7 @@ test("selection suggestion accept starts the mapped source analysis through the 
   const eventBus = createLabEventBus();
   const store = createLabStore();
   const sentActions: string[] = [];
+  const prompts: string[] = [];
 
   eventBus.subscribe(store.dispatch);
   bindLabSelectionSuggestionClicks({
@@ -1891,6 +1892,10 @@ test("selection suggestion accept starts the mapped source analysis through the 
         },
       },
       addEventListener() {},
+      prompt(message: string) {
+        prompts.push(message);
+        return "tamamı";
+      },
     } as unknown as Window,
   });
 
@@ -1902,7 +1907,26 @@ test("selection suggestion accept starts the mapped source analysis through the 
         activeProjectId: "project-audio-source",
         projects: [],
       },
-      workbench: {},
+      workbench: {
+        analysisScope: {
+          focus: "visual",
+          lifecycle: {
+            frozenAt: "2026-05-09T00:00:00.000Z",
+            mutable: false,
+            processId: "stale-process",
+          },
+          region: {
+            height: 90,
+            width: 120,
+            x: 10,
+            y: 20,
+          },
+          timeRange: {
+            endMs: 9999,
+            startMs: 8888,
+          },
+        },
+      },
       source: {
         status: "ready",
         kind: "audio",
@@ -1960,7 +1984,13 @@ test("selection suggestion accept starts the mapped source analysis through the 
   assert.deepEqual(state.ui.workspace.selectedIntents, ["audio-investigation"]);
   assert.equal(state.ui.workspace.selectionTabActive, false);
   assert.ok(sentActions.includes("audio-process-run"));
+  assert.equal(prompts.length, 1);
+  assert.match(prompts[0] || "", /Seçilmiş zaman aralığı veya ROI var/);
   assert.deepEqual(state.run?.analysisScope?.intentIds, ["audio-investigation"]);
+  assert.equal(state.run?.analysisScope?.timeRange, undefined);
+  assert.equal(state.run?.analysisScope?.region, undefined);
+  assert.equal(state.run?.analysisScope?.focus, undefined);
+  assert.notEqual(state.run?.analysisScope?.lifecycle?.processId, "stale-process");
 });
 
 test("selection suggestion binder ignores invalid preview ids while keeping passive click history", () => {

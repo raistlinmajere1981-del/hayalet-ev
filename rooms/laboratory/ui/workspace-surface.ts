@@ -39,6 +39,7 @@ import {
   renderCapabilityCard,
   renderWorkspaceOperationControls,
 } from "./workspace-operation-controls.js";
+import type { LabOperationScopeState } from "./workspace-operation-controls.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 import {
@@ -242,6 +243,7 @@ type IconRailContentContext = {
   hasVisualControls: boolean;
   interactiveSettings: LabInteractiveSettings;
   operationCapabilities: LabOperationCapabilityProjection[];
+  operationScope: LabOperationScopeState;
 };
 
 function renderIconRail(input: {
@@ -252,14 +254,8 @@ function renderIconRail(input: {
   pinned: boolean;
 }) {
   const { activeSlotId, content, copy, locked, pinned } = input;
-  const realtimeSlots = ICON_RAIL_SLOTS.filter(function (s) {
-    return s.group === "realtime";
-  });
-  const postProcessSlots = ICON_RAIL_SLOTS.filter(function (s) {
-    return s.group === "post-process";
-  });
 
-  function isSlotEnabled(slot: (typeof ICON_RAIL_SLOTS)[number]) {
+  function isSlotVisible(slot: (typeof ICON_RAIL_SLOTS)[number]) {
     if (slot.content === "audio-focus") {
       return content.hasAudio;
     }
@@ -270,9 +266,24 @@ function renderIconRail(input: {
       return false;
     }
     return content.operationCapabilities.some(function (capability) {
-      return capability.id === slot.capabilityId;
+      return (
+        capability.id === slot.capabilityId &&
+        capability.actionId !== null &&
+        capability.planned !== true
+      );
     });
   }
+
+  function isSlotEnabled(slot: (typeof ICON_RAIL_SLOTS)[number]) {
+    return isSlotVisible(slot);
+  }
+
+  const realtimeSlots = ICON_RAIL_SLOTS.filter(function (s) {
+    return s.group === "realtime" && isSlotVisible(s);
+  });
+  const postProcessSlots = ICON_RAIL_SLOTS.filter(function (s) {
+    return s.group === "post-process" && isSlotVisible(s);
+  });
 
   function renderSlotButton(slot: (typeof ICON_RAIL_SLOTS)[number]) {
     const enabled = isSlotEnabled(slot);
@@ -295,7 +306,7 @@ function renderIconRail(input: {
     >${svg}${slot.draft ? `<span class="labx-icon-rail__draft-badge">${escapeHtml(copy.t("mediaAnalysis.iconRail.draft", "Draft"))}</span>` : ""}</button>`;
   }
 
-  function renderGroup(slots: typeof realtimeSlots) {
+  function renderGroup(slots: (typeof ICON_RAIL_SLOTS)[number][]) {
     return slots.map(renderSlotButton).join("");
   }
 
@@ -352,7 +363,12 @@ function renderIconRailPopoverBody(
   if (!capability) {
     return "";
   }
-  return renderCapabilityCard(capability, content.activeOperationCapabilityId, copy);
+  return renderCapabilityCard(
+    capability,
+    content.activeOperationCapabilityId,
+    copy,
+    content.operationScope
+  );
 }
 
 function renderIconRailPopover(input: {
@@ -588,6 +604,15 @@ export function renderWorkspaceSurface(
   const activeOperationCapabilityId = getOperationCapabilityIdForAction(
     timeline.activeExecutionIntent?.actionType
   );
+  const operationScope: LabOperationScopeState = {
+    hasRoi: activeSelection?.roi !== undefined,
+    hasTimeRange:
+      sourceKind !== "image" &&
+      ((activeSelection !== null && activeSelection.endMs > activeSelection.startMs) ||
+        (timeline.startMs !== null &&
+          timeline.endMs !== null &&
+          timeline.endMs > timeline.startMs)),
+  };
   const durationMs = timelineModel.durationMs;
   const inspectorPanels: WorkspaceInspectorPanel[] = [
     hasAudio && previewReady
@@ -618,7 +643,8 @@ export function renderWorkspaceSurface(
           markup: renderWorkspaceOperationControls(
             operationCapabilities,
             activeOperationCapabilityId,
-            copy
+            copy,
+            operationScope
           ),
         }
       : null,
@@ -692,6 +718,7 @@ export function renderWorkspaceSurface(
           hasVisualControls,
           interactiveSettings: settings,
           operationCapabilities,
+          operationScope,
         },
         copy,
         locked: heavyWorkActive,

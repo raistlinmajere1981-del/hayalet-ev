@@ -247,7 +247,7 @@
       "tabs": "Control tabs"
     },
     "iconRail": {
-      "roi-select": "Region Select",
+      "roi-select": "Crop ROI",
       "audio-focus": "Audio Focus",
       "frame-export": "Frame Export",
       "clip-export": "Clip Export",
@@ -424,6 +424,11 @@
       "plannedAction": "Planned",
       "runAction": "Run",
       "settings": "Settings",
+      "scope": {
+        "selectedRange": "Selected time range",
+        "selectedRoi": "Selected ROI",
+        "title": "Scope"
+      },
       "ready": "Ready",
       "partial": "Partial",
       "blocked": "Blocked",
