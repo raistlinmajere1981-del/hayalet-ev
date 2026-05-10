@@ -635,6 +635,7 @@ export interface LabStoreUiState {
   editDraftDirty: boolean;
   profileDraftDirty: boolean;
   toolManagerOpen: boolean;
+  toolInstallReviewToolId: string | null;
   eventFeedExpanded: boolean;
   eventFeedCursor: number;
   artifactListExpanded: boolean;
@@ -827,6 +828,8 @@ export type LabStoreEvent =
   | { type: "profile-drafts-updated"; patch: Partial<LabProfileDrafts> }
   | { type: "profile-drafts-committed" }
   | { type: "tool-manager-toggled"; open?: boolean }
+  | { type: "tool-install-review-requested"; toolId: string }
+  | { type: "tool-install-review-dismissed" }
   | { type: "toggle-event-feed"; force?: boolean }
   | { type: "advance-event-feed" }
   | { type: "reset-event-feed" }

@@ -54,7 +54,10 @@ type SystemCommandSpec = {
 type PythonVenvPipInstallerSpec = {
   type: "python-venv-pip";
   bootstrapExecutableNames?: string[];
+  estimatedDownloadSize?: string;
+  estimatedInstalledSize?: string;
   packages: string[];
+  supportedPythonVersions?: string[];
   venvDir: string;
 };
 
@@ -101,8 +104,15 @@ type ResolvedPythonVenvPipInstaller = {
     type: "python-venv-pip";
     bootstrapExecutableNames: string[];
     packages: string[];
+    supportedPythonVersions: string[];
     venvDir: string;
   };
+};
+
+type PythonBootstrapCandidate = {
+  argsPrefix: string[];
+  commandName: string;
+  label: string;
 };
 
 type GitHubReleaseProvider = {
@@ -112,9 +122,11 @@ type GitHubReleaseProvider = {
   releaseUrl: string;
 };
 
+type ArchiveType = "tar.xz" | "tar.gz" | "zip";
+
 type ToolAssetSpec = {
   assetMatch: string;
-  archive: "none" | "tar.xz" | "zip";
+  archive: "none" | ArchiveType;
   executableName: string;
   companionExecutables?: string[];
 };
@@ -129,6 +141,24 @@ type GitHubReleasePayload = {
   name?: string;
   html_url?: string;
   assets?: GitHubReleaseAsset[];
+};
+
+const MANAGED_PYTHON_RELEASE_PROVIDER: GitHubReleaseProvider = {
+  type: "github-release",
+  owner: "astral-sh",
+  repo: "python-build-standalone",
+  releaseUrl: "https://github.com/astral-sh/python-build-standalone/releases/latest",
+};
+
+const MANAGED_PYTHON_ASSET_TARGETS: Partial<Record<PlatformKey, string>> = {
+  "linux-x64": "x86_64-unknown-linux-gnu",
+  "linux-arm64": "aarch64-unknown-linux-gnu",
+  "linux-musl-x64": "x86_64-unknown-linux-musl",
+  "linux-musl-arm64": "aarch64-unknown-linux-musl",
+  "darwin-x64": "x86_64-apple-darwin",
+  "darwin-arm64": "aarch64-apple-darwin",
+  "win32-x64": "x86_64-pc-windows-msvc",
+  "win32-arm64": "aarch64-pc-windows-msvc",
 };
 
 type ToolReleaseInfo = {
@@ -180,6 +210,24 @@ function normalizeJobId(value: unknown, fallbackPrefix: string): string {
     asNonEmptyString(value) ??
     `${fallbackPrefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   );
+}
+
+function buildProgressMetadata(options: {
+  detailLines?: string[];
+  percent?: number;
+  phaseCount?: number;
+  phaseIndex?: number;
+  phaseLabel?: string;
+  phasePercent?: number;
+}): Partial<RoomToolProgressEvent> {
+  return {
+    ...(typeof options.percent === "number" ? { percent: options.percent } : {}),
+    ...(typeof options.phaseCount === "number" ? { phaseCount: options.phaseCount } : {}),
+    ...(typeof options.phaseIndex === "number" ? { phaseIndex: options.phaseIndex } : {}),
+    ...(typeof options.phaseLabel === "string" ? { phaseLabel: options.phaseLabel } : {}),
+    ...(typeof options.phasePercent === "number" ? { phasePercent: options.phasePercent } : {}),
+    ...(Array.isArray(options.detailLines) ? { detailLines: options.detailLines } : {}),
+  };
 }
 
 function detectPlatformKey(): PlatformKey | null {
@@ -433,6 +481,237 @@ function resolveExistingPythonVenvExecutable(venvDir: string): string | null {
   );
 }
 
+function getManagedPythonVersionCandidates(supportedPythonVersions: string[]): string[] {
+  const normalizedVersions = supportedPythonVersions.filter((version) =>
+    /^\d+\.\d+$/u.test(version)
+  );
+  return normalizedVersions.length > 0 ? normalizedVersions : ["3.12"];
+}
+
+function getManagedPythonRuntimeDir(paths: RoomToolRuntimePaths, version: string): string {
+  return join(paths.storageDir, "runtime", "python", `cpython-${version}`);
+}
+
+function getManagedPythonExecutableCandidates(runtimeDir: string): string[] {
+  if (process.platform === "win32") {
+    return [join(runtimeDir, "python.exe"), join(runtimeDir, "Scripts", "python.exe")];
+  }
+
+  return [join(runtimeDir, "bin", "python3"), join(runtimeDir, "bin", "python")];
+}
+
+function resolveExistingManagedPythonExecutable(runtimeDir: string): string | null {
+  return (
+    getManagedPythonExecutableCandidates(runtimeDir).find((candidate) => existsSync(candidate)) ??
+    null
+  );
+}
+
+async function readPythonMajorMinor(
+  command: string,
+  argsPrefix: string[] = [],
+  cwd?: string
+): Promise<string | null> {
+  const result = await runCommand(
+    command,
+    [
+      ...argsPrefix,
+      "-c",
+      "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')",
+    ],
+    cwd,
+    undefined,
+    12_000
+  );
+  if (result.exitCode !== 0) {
+    return null;
+  }
+  return (
+    result.stdout
+      .split(/\r?\n/u)
+      .map((line) => line.trim())
+      .find((line) => /^\d+\.\d+$/u.test(line)) ?? null
+  );
+}
+
+async function isPythonRuntimeVersionSupported(
+  command: string,
+  argsPrefix: string[],
+  supportedPythonVersions: string[]
+): Promise<boolean> {
+  if (supportedPythonVersions.length === 0) {
+    return true;
+  }
+  const version = await readPythonMajorMinor(command, argsPrefix, dirname(command));
+  return version !== null && supportedPythonVersions.includes(version);
+}
+
+function makePythonBootstrapCandidate(
+  commandName: string,
+  argsPrefix: string[] = []
+): PythonBootstrapCandidate | null {
+  const normalizedCommandName = asNonEmptyString(commandName);
+  if (normalizedCommandName === null) {
+    return null;
+  }
+  const normalizedArgsPrefix = normalizeStringArray(argsPrefix);
+  return {
+    argsPrefix: normalizedArgsPrefix,
+    commandName: normalizedCommandName,
+    label: [normalizedCommandName, ...normalizedArgsPrefix].join(" "),
+  };
+}
+
+function dedupePythonBootstrapCandidates(
+  candidates: Array<PythonBootstrapCandidate | null>
+): PythonBootstrapCandidate[] {
+  const seen = new Set<string>();
+  return candidates.filter((candidate): candidate is PythonBootstrapCandidate => {
+    if (candidate === null) {
+      return false;
+    }
+    const key = `${candidate.commandName}\u0000${candidate.argsPrefix.join("\u0000")}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
+function buildPythonBootstrapCandidates(
+  resolvedInstaller: ResolvedPythonVenvPipInstaller
+): PythonBootstrapCandidate[] {
+  const supportedPythonVersions = resolvedInstaller.installer.supportedPythonVersions;
+  const explicitCandidates = resolvedInstaller.installer.bootstrapExecutableNames.map((entry) =>
+    makePythonBootstrapCandidate(entry)
+  );
+  const versionedCandidates = supportedPythonVersions.flatMap((version) => {
+    const candidates = [makePythonBootstrapCandidate(`python${version}`)];
+    if (process.platform === "win32") {
+      candidates.push(makePythonBootstrapCandidate("py", [`-${version}`]));
+    }
+    return candidates;
+  });
+  const genericCandidates = [
+    makePythonBootstrapCandidate(resolvedInstaller.systemCommand.executableName),
+    makePythonBootstrapCandidate("python3"),
+    makePythonBootstrapCandidate("python"),
+    makePythonBootstrapCandidate("py", process.platform === "win32" ? ["-3"] : []),
+  ];
+
+  return dedupePythonBootstrapCandidates(
+    supportedPythonVersions.length > 0
+      ? [...explicitCandidates, ...versionedCandidates]
+      : [...explicitCandidates, ...genericCandidates]
+  );
+}
+
+function formatPythonVersionList(versions: string[]): string {
+  return versions.length === 0 ? "python3 or python" : `Python ${versions.join(", ")}`;
+}
+
+function buildMissingPythonBootstrapMessage(
+  resolvedInstaller: ResolvedPythonVenvPipInstaller,
+  attemptedLabels: string[]
+): string {
+  const supportedVersions = resolvedInstaller.installer.supportedPythonVersions;
+  const requiredRuntime = formatPythonVersionList(supportedVersions);
+  const attempted = attemptedLabels.length > 0 ? ` Tried: ${attemptedLabels.join(", ")}.` : "";
+  return `${requiredRuntime} is required for ${resolvedInstaller.manifest.displayName}. A managed room Python runtime or compatible interpreter is required.${attempted}`;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function selectManagedPythonAsset(
+  assets: GitHubReleaseAsset[],
+  version: string,
+  platformKey: PlatformKey
+): GitHubReleaseAsset | null {
+  const target = MANAGED_PYTHON_ASSET_TARGETS[platformKey];
+  if (target === undefined) {
+    return null;
+  }
+
+  const escapedVersion = escapeRegExp(version);
+  const escapedTarget = escapeRegExp(target);
+  const matchers = [
+    new RegExp(
+      `^cpython-${escapedVersion}\\.\\d+\\+\\d+-${escapedTarget}-install_only_stripped\\.tar\\.gz$`,
+      "u"
+    ),
+    new RegExp(
+      `^cpython-${escapedVersion}\\.\\d+\\+\\d+-${escapedTarget}-install_only\\.tar\\.gz$`,
+      "u"
+    ),
+  ];
+
+  for (const matcher of matchers) {
+    const asset = assets.find((entry) => matcher.test(entry.name));
+    if (asset !== undefined && asNonEmptyString(asset.browser_download_url) !== null) {
+      return asset;
+    }
+  }
+
+  return null;
+}
+
+function killSpawnedProcessTree(child: SpawnedProcess): void {
+  if (process.platform === "win32" && child.pid !== undefined) {
+    const killer = spawn("taskkill.exe", ["/pid", String(child.pid), "/T", "/F"], {
+      stdio: "ignore",
+      windowsHide: true,
+    });
+    killer.once("error", () => {
+      child.kill("SIGKILL");
+    });
+    return;
+  }
+
+  if (child.pid !== undefined) {
+    try {
+      process.kill(-child.pid, "SIGKILL");
+      return;
+    } catch {
+      // Fall back to killing the direct child when a process group is unavailable.
+    }
+  }
+
+  child.kill("SIGKILL");
+}
+
+async function isPythonVenvReusable(venvPythonPath: string, venvDir: string): Promise<boolean> {
+  const siteCheckScript = [
+    "import os, sys, sysconfig",
+    "venv = os.path.normcase(os.path.realpath(sys.argv[1]))",
+    "prefix = os.path.normcase(os.path.realpath(sys.prefix))",
+    "purelib = os.path.normcase(os.path.realpath(sysconfig.get_paths().get('purelib') or ''))",
+    "inside = os.path.commonpath([venv, purelib]) == venv",
+    "raise SystemExit(0 if prefix == venv and inside and os.path.isdir(purelib) else 1)",
+  ].join("; ");
+  const siteCheck = await runCommand(
+    venvPythonPath,
+    ["-c", siteCheckScript, venvDir],
+    dirname(venvPythonPath),
+    undefined,
+    10_000
+  );
+  if (siteCheck.exitCode !== 0) {
+    return false;
+  }
+
+  const pipCheck = await runCommand(
+    venvPythonPath,
+    ["-m", "pip", "--version"],
+    dirname(venvPythonPath),
+    undefined,
+    10_000
+  );
+  return pipCheck.exitCode === 0;
+}
+
 async function fetchJson(url: string): Promise<unknown> {
   const response = await fetch(url, {
     headers: {
@@ -504,12 +783,18 @@ async function markExecutable(filePath: string): Promise<void> {
 async function extractArchive(
   archivePath: string,
   targetDir: string,
-  archiveType: "tar.xz" | "zip"
+  archiveType: ArchiveType
 ): Promise<void> {
   await ensureDir(targetDir);
 
-  if (archiveType === "tar.xz") {
-    await runCommand("tar", ["-xf", archivePath, "-C", targetDir], targetDir, undefined, 60_000);
+  if (archiveType === "tar.xz" || archiveType === "tar.gz") {
+    await runCommand(
+      "tar",
+      [archiveType === "tar.gz" ? "-xzf" : "-xf", archivePath, "-C", targetDir],
+      targetDir,
+      undefined,
+      60_000
+    );
     return;
   }
 
@@ -1637,51 +1922,339 @@ class RoomToolService {
         venvDir,
         packages,
         bootstrapExecutableNames: normalizeStringArray(installer.bootstrapExecutableNames),
+        supportedPythonVersions: normalizeStringArray(installer.supportedPythonVersions),
       },
     };
   }
 
-  private async resolvePythonBootstrapInvocation(
-    resolvedInstaller: ResolvedPythonVenvPipInstaller
+  private async downloadManagedPythonAsset(
+    event: IpcMainInvokeEvent,
+    options: {
+      asset: GitHubReleaseAsset;
+      destinationPath: string;
+      getCancelled: () => boolean;
+      jobId: string;
+      operation: "tool-install" | "tool-update";
+      requestId: string | null;
+      roomId: string;
+      setActiveAbortController: (controller: AbortController | null) => void;
+      toolId: string;
+    }
+  ): Promise<string> {
+    const controller = new AbortController();
+    let tempPath: string | null = null;
+    let fileStream: ReturnType<typeof createWriteStream> | null = null;
+    options.setActiveAbortController(controller);
+
+    try {
+      const response = await fetch(options.asset.browser_download_url, {
+        signal: controller.signal,
+        headers: {
+          "User-Agent": "hayalet-ev-room-tools",
+          Accept: "application/octet-stream, */*;q=0.1",
+        },
+      });
+      if (!response.ok || response.body === null) {
+        throw new Error(
+          `Managed Python download failed (${response.status}) for ${options.asset.name}`
+        );
+      }
+
+      await ensureDir(dirname(options.destinationPath));
+      await rm(options.destinationPath, { force: true });
+      tempPath = `${options.destinationPath}.part-${Date.now()}`;
+      fileStream = createWriteStream(tempPath);
+      const totalBytesHeader = Number(response.headers.get("content-length") ?? "0");
+      const totalBytes =
+        Number.isFinite(totalBytesHeader) && totalBytesHeader > 0 ? totalBytesHeader : 0;
+      let writtenBytes = 0;
+      const reader = response.body.getReader();
+
+      this.emitProgress(event, {
+        roomId: options.roomId,
+        operation: options.operation,
+        requestId: options.requestId,
+        jobId: options.jobId,
+        toolId: options.toolId,
+        stage: "downloading",
+        bytesReceived: 0,
+        ...(totalBytes > 0 ? { bytesTotal: totalBytes } : {}),
+        percent: 16,
+        phaseCount: 5,
+        phaseIndex: 1,
+        phaseLabel: "Managed Python indiriliyor",
+        detailLines: [options.asset.name],
+        message: `Download managed room Python: ${options.asset.name}`,
+      });
+
+      const pumpDownload = async (): Promise<void> => {
+        if (options.getCancelled()) {
+          controller.abort();
+          throw new Error("Managed Python download cancelled.");
+        }
+        const { done, value } = await reader.read();
+        if (done) {
+          return;
+        }
+        writtenBytes += value.byteLength;
+        const activeFileStream = fileStream;
+        if (activeFileStream === null) {
+          throw new Error("Managed Python download stream closed unexpectedly.");
+        }
+        if (!activeFileStream.write(Buffer.from(value))) {
+          await once(activeFileStream, "drain");
+        }
+        this.emitProgress(event, {
+          roomId: options.roomId,
+          operation: options.operation,
+          requestId: options.requestId,
+          jobId: options.jobId,
+          toolId: options.toolId,
+          stage: "downloading",
+          bytesReceived: writtenBytes,
+          ...(totalBytes > 0 ? { bytesTotal: totalBytes } : {}),
+          ...(totalBytes > 0
+            ? { percent: Math.min(32, 16 + Math.round((writtenBytes / totalBytes) * 16)) }
+            : {}),
+          phaseCount: 5,
+          phaseIndex: 1,
+          phaseLabel: "Managed Python indiriliyor",
+          detailLines: [options.asset.name],
+        });
+        await pumpDownload();
+      };
+
+      await pumpDownload();
+      await new Promise<void>((resolvePromise, rejectPromise) => {
+        fileStream?.end(() => {
+          resolvePromise();
+        });
+        fileStream?.once("error", rejectPromise);
+      });
+      fileStream = null;
+
+      await rename(tempPath, options.destinationPath);
+      tempPath = null;
+      return options.destinationPath;
+    } catch (error) {
+      fileStream?.destroy();
+      if (tempPath !== null) {
+        await rm(tempPath, { force: true });
+      }
+      throw error;
+    } finally {
+      options.setActiveAbortController(null);
+    }
+  }
+
+  private async ensureManagedPythonRuntime(
+    event: IpcMainInvokeEvent,
+    resolvedInstaller: ResolvedPythonVenvPipInstaller,
+    options: {
+      getCancelled: () => boolean;
+      jobId: string;
+      operation: "tool-install" | "tool-update";
+      paths: RoomToolRuntimePaths;
+      requestId: string | null;
+      roomId: string;
+      setActiveAbortController: (controller: AbortController | null) => void;
+      toolId: string;
+    }
   ): Promise<{ command: string; argsPrefix: string[] }> {
-    const candidateNames = Array.from(
-      new Set(
-        [
-          resolvedInstaller.systemCommand.executableName,
-          ...resolvedInstaller.installer.bootstrapExecutableNames,
-          "python3",
-          "python",
-          "py",
-        ].filter((entry) => typeof entry === "string" && entry.trim() !== "")
-      )
+    const platformKey = detectPlatformKey();
+    if (platformKey === null || MANAGED_PYTHON_ASSET_TARGETS[platformKey] === undefined) {
+      throw new Error(
+        `Managed room Python is not available for ${process.platform}-${process.arch}.`
+      );
+    }
+
+    const versionCandidates = getManagedPythonVersionCandidates(
+      resolvedInstaller.installer.supportedPythonVersions
     );
+    for (const version of versionCandidates) {
+      const runtimeDir = getManagedPythonRuntimeDir(options.paths, version);
+      const pythonPath = resolveExistingManagedPythonExecutable(runtimeDir);
+      if (
+        pythonPath !== null &&
+        (await isPythonRuntimeVersionSupported(pythonPath, [], [version])) === true
+      ) {
+        return { command: pythonPath, argsPrefix: [] };
+      }
+      if (pythonPath !== null || existsSync(runtimeDir)) {
+        await rm(runtimeDir, { recursive: true, force: true });
+      }
+    }
+
+    const release = await fetchGitHubRelease(MANAGED_PYTHON_RELEASE_PROVIDER);
+    const assets = Array.isArray(release.assets) ? release.assets : [];
+    const failures: string[] = [];
+
+    for (const version of versionCandidates) {
+      if (options.getCancelled()) {
+        throw new Error("Managed Python preparation cancelled.");
+      }
+
+      const asset = selectManagedPythonAsset(assets, version, platformKey);
+      if (asset === null) {
+        failures.push(`Python ${version}: release asset missing`);
+        continue;
+      }
+
+      const runtimeDir = getManagedPythonRuntimeDir(options.paths, version);
+      await ensureDir(dirname(runtimeDir));
+      const tempRoot = await mkdtemp(join(dirname(runtimeDir), `.python-runtime-${version}-`));
+      const archivePath = join(tempRoot, asset.name);
+      const extractDir = join(tempRoot, "extract");
+      try {
+        await this.downloadManagedPythonAsset(event, {
+          asset,
+          destinationPath: archivePath,
+          getCancelled: options.getCancelled,
+          jobId: options.jobId,
+          operation: options.operation,
+          requestId: options.requestId,
+          roomId: options.roomId,
+          setActiveAbortController: options.setActiveAbortController,
+          toolId: options.toolId,
+        });
+
+        this.emitProgress(event, {
+          roomId: options.roomId,
+          operation: options.operation,
+          requestId: options.requestId,
+          jobId: options.jobId,
+          toolId: options.toolId,
+          stage: "extracting",
+          percent: 34,
+          phaseCount: 5,
+          phaseIndex: 1,
+          phaseLabel: "Managed Python açılıyor",
+          detailLines: [asset.name, runtimeDir],
+          message: `Extract managed room Python: ${asset.name}`,
+        });
+
+        await extractArchive(archivePath, extractDir, "tar.gz");
+        const extractedRuntimeDir = join(extractDir, "python");
+        if (!existsSync(extractedRuntimeDir)) {
+          throw new Error("Managed Python archive did not contain a python directory.");
+        }
+
+        await ensureDir(dirname(runtimeDir));
+        await rm(runtimeDir, { recursive: true, force: true });
+        await rename(extractedRuntimeDir, runtimeDir);
+        const pythonPath = resolveExistingManagedPythonExecutable(runtimeDir);
+        if (pythonPath === null) {
+          throw new Error("Managed Python executable could not be resolved after extraction.");
+        }
+
+        await markExecutable(pythonPath);
+        if ((await isPythonRuntimeVersionSupported(pythonPath, [], [version])) !== true) {
+          const detectedVersion = await readPythonMajorMinor(pythonPath, [], dirname(pythonPath));
+          throw new Error(
+            `Managed Python version mismatch: expected ${version}, got ${detectedVersion ?? "unknown"}.`
+          );
+        }
+
+        this.emitProgress(event, {
+          roomId: options.roomId,
+          operation: options.operation,
+          requestId: options.requestId,
+          jobId: options.jobId,
+          toolId: options.toolId,
+          stage: "running",
+          percent: 36,
+          phaseCount: 5,
+          phaseIndex: 1,
+          phaseLabel: "Managed Python hazır",
+          detailLines: [pythonPath],
+          message: `Managed room Python ready: ${pythonPath}`,
+        });
+
+        return { command: pythonPath, argsPrefix: [] };
+      } catch (error) {
+        await rm(runtimeDir, { recursive: true, force: true });
+        const message = error instanceof Error ? error.message : String(error);
+        failures.push(`Python ${version}: ${message}`);
+      } finally {
+        await rm(tempRoot, { recursive: true, force: true });
+      }
+    }
+
+    throw new Error(`Managed room Python could not be prepared. ${failures.join(" ")}`);
+  }
+
+  private async resolvePythonBootstrapInvocation(
+    resolvedInstaller: ResolvedPythonVenvPipInstaller,
+    managedRuntimeOptions?: {
+      event: IpcMainInvokeEvent;
+      getCancelled: () => boolean;
+      jobId: string;
+      operation: "tool-install" | "tool-update";
+      paths: RoomToolRuntimePaths;
+      requestId: string | null;
+      roomId: string;
+      setActiveAbortController: (controller: AbortController | null) => void;
+      toolId: string;
+    }
+  ): Promise<{ command: string; argsPrefix: string[] }> {
+    const candidates = buildPythonBootstrapCandidates(resolvedInstaller);
+    const attemptedLabels: string[] = [];
+    let managedFailureMessage: string | null = null;
+
+    if (
+      managedRuntimeOptions !== undefined &&
+      resolvedInstaller.installer.supportedPythonVersions.length > 0
+    ) {
+      try {
+        return await this.ensureManagedPythonRuntime(
+          managedRuntimeOptions.event,
+          resolvedInstaller,
+          managedRuntimeOptions
+        );
+      } catch (error) {
+        if (managedRuntimeOptions.getCancelled()) {
+          throw error;
+        }
+        managedFailureMessage = error instanceof Error ? error.message : String(error);
+        attemptedLabels.push("managed room Python");
+      }
+    }
 
     const resolveCandidate = async (
       index: number
     ): Promise<{ command: string; argsPrefix: string[] } | null> => {
-      const candidateName = candidateNames[index];
-      if (candidateName === undefined) {
+      const candidate = candidates[index];
+      if (candidate === undefined) {
         return null;
       }
 
-      const resolvedBinaryPath = await resolveSystemCommandBinaryPath(candidateName);
+      attemptedLabels.push(candidate.label);
+      const resolvedBinaryPath = await resolveSystemCommandBinaryPath(candidate.commandName);
       if (resolvedBinaryPath === null) {
         return await resolveCandidate(index + 1);
       }
 
-      if (
-        process.platform === "win32" &&
-        (candidateName === "py" || /(?:^|[\\/])py(?:\.exe)?$/i.test(resolvedBinaryPath))
-      ) {
-        return {
-          command: resolvedBinaryPath,
-          argsPrefix: ["-3"],
-        };
+      const versionSupported = await isPythonRuntimeVersionSupported(
+        resolvedBinaryPath,
+        candidate.argsPrefix,
+        resolvedInstaller.installer.supportedPythonVersions
+      );
+      if (versionSupported !== true) {
+        const detectedVersion = await readPythonMajorMinor(
+          resolvedBinaryPath,
+          candidate.argsPrefix,
+          dirname(resolvedBinaryPath)
+        );
+        attemptedLabels[attemptedLabels.length - 1] =
+          detectedVersion === null
+            ? `${candidate.label} (unknown)`
+            : `${candidate.label} (${detectedVersion})`;
+        return await resolveCandidate(index + 1);
       }
 
       return {
         command: resolvedBinaryPath,
-        argsPrefix: [],
+        argsPrefix: candidate.argsPrefix,
       };
     };
 
@@ -1690,8 +2263,11 @@ class RoomToolService {
       return resolvedCandidate;
     }
 
+    const missingMessage = buildMissingPythonBootstrapMessage(resolvedInstaller, attemptedLabels);
     throw new Error(
-      `Python build prerequisites are missing for ${resolvedInstaller.manifest.displayName}. Install python3 or python, then retry.`
+      managedFailureMessage === null
+        ? missingMessage
+        : `${missingMessage} Managed room Python failed: ${managedFailureMessage}`
     );
   }
 
@@ -1701,11 +2277,17 @@ class RoomToolService {
       args: string[];
       command: string;
       cwd: string;
+      detailLines?: string[];
       env?: Record<string, string | undefined>;
       getCancelled: () => boolean;
       jobId: string;
       message: string;
       operation: "tool-install" | "tool-update";
+      percent?: number;
+      phaseCount?: number;
+      phaseIndex?: number;
+      phaseLabel?: string;
+      phasePercent?: number;
       requestId: string | null;
       roomId: string;
       setActiveChild: (child: SpawnedProcess | null) => void;
@@ -1721,6 +2303,7 @@ class RoomToolService {
 
       const child = spawn(options.command, options.args, {
         cwd: options.cwd,
+        detached: process.platform !== "win32",
         env: {
           ...process.env,
           ...Object.fromEntries(
@@ -1742,6 +2325,7 @@ class RoomToolService {
         toolId: options.toolId,
         stage: "running",
         message: options.message,
+        ...buildProgressMetadata(options),
       });
 
       const finish = (payload: {
@@ -1771,6 +2355,7 @@ class RoomToolService {
           stage: "stdout",
           chunk: text,
           message: options.message,
+          ...buildProgressMetadata(options),
         });
       });
 
@@ -1786,6 +2371,7 @@ class RoomToolService {
           stage: "stderr",
           chunk: text,
           message: options.message,
+          ...buildProgressMetadata(options),
         });
       });
 
@@ -1809,7 +2395,7 @@ class RoomToolService {
 
       const timer = setTimeout(() => {
         timedOut = true;
-        child.kill("SIGKILL");
+        killSpawnedProcessTree(child);
       }, options.timeoutMs);
     });
   }
@@ -1849,6 +2435,11 @@ class RoomToolService {
         toolId: options.toolId,
         stage: "running",
         message: `Download pip bootstrap: ${PYTHON_GET_PIP_URL}`,
+        percent: 24,
+        phaseCount: 5,
+        phaseIndex: 2,
+        phaseLabel: "pip bootstrap indiriliyor",
+        detailLines: [PYTHON_GET_PIP_URL],
       });
 
       const scriptSource = await fetchText(PYTHON_GET_PIP_URL);
@@ -1862,6 +2453,11 @@ class RoomToolService {
         jobId: options.jobId,
         message: `Bootstrap pip for ${options.toolId}`,
         operation: options.operation,
+        percent: 28,
+        phaseCount: 5,
+        phaseIndex: 2,
+        phaseLabel: "pip bootstrap kuruluyor",
+        detailLines: ["get-pip.py"],
         requestId: options.requestId,
         roomId: options.roomId,
         setActiveChild: options.setActiveChild,
@@ -1895,7 +2491,9 @@ class RoomToolService {
     const resolvedInstaller = this.resolvePythonVenvPipInstaller(toolManifest, request.toolId);
     const venvDir = expandRuntimePathTemplate(resolvedInstaller.installer.venvDir, paths);
     const packageListLabel = resolvedInstaller.installer.packages.join(", ");
+    const pythonInstallDetailLines = [`Paketler: ${packageListLabel}`, `Hedef runtime: ${venvDir}`];
     let activeChild: SpawnedProcess | null = null;
+    let activeAbortController: AbortController | null = null;
     const installState = {
       cancelled: false,
     };
@@ -1905,7 +2503,10 @@ class RoomToolService {
       jobId,
       cancel: () => {
         installState.cancelled = true;
-        activeChild?.kill("SIGKILL");
+        if (activeChild !== null) {
+          killSpawnedProcessTree(activeChild);
+        }
+        activeAbortController?.abort();
       },
     });
 
@@ -1917,6 +2518,11 @@ class RoomToolService {
       toolId: request.toolId,
       stage: "queued",
       message: packageListLabel,
+      percent: 2,
+      phaseCount: 5,
+      phaseIndex: 1,
+      phaseLabel: "Kurulum planı hazır",
+      detailLines: pythonInstallDetailLines,
     });
 
     try {
@@ -1924,8 +2530,56 @@ class RoomToolService {
       let venvPythonPath = resolveExistingPythonVenvExecutable(venvDir);
       let pipBootstrapped = false;
 
+      if (venvPythonPath !== null) {
+        const venvReusable = await isPythonVenvReusable(venvPythonPath, venvDir);
+        const venvVersionSupported = await isPythonRuntimeVersionSupported(
+          venvPythonPath,
+          [],
+          resolvedInstaller.installer.supportedPythonVersions
+        );
+        if (venvReusable !== true || venvVersionSupported !== true) {
+          const repairReason =
+            venvReusable !== true
+              ? `Repair room-local python runtime: ${venvDir}`
+              : `Repair room-local python runtime: ${venvDir} (${formatPythonVersionList(
+                  resolvedInstaller.installer.supportedPythonVersions
+                )})`;
+          this.emitProgress(event, {
+            roomId: request.roomId,
+            operation: request.operation,
+            requestId,
+            jobId,
+            toolId: request.toolId,
+            stage: "running",
+            message: repairReason,
+            percent: 8,
+            phaseCount: 5,
+            phaseIndex: 1,
+            phaseLabel: "Yerel Python runtime onarılıyor",
+            detailLines: [
+              venvDir,
+              formatPythonVersionList(resolvedInstaller.installer.supportedPythonVersions),
+            ],
+          });
+          await rm(venvDir, { recursive: true, force: true });
+          venvPythonPath = null;
+        }
+      }
+
       if (venvPythonPath === null) {
-        const bootstrap = await this.resolvePythonBootstrapInvocation(resolvedInstaller);
+        const bootstrap = await this.resolvePythonBootstrapInvocation(resolvedInstaller, {
+          event,
+          getCancelled: () => installState.cancelled,
+          jobId,
+          operation: request.operation,
+          paths,
+          requestId,
+          roomId: request.roomId,
+          setActiveAbortController(controller) {
+            activeAbortController = controller;
+          },
+          toolId: request.toolId,
+        });
         const createVenvResult = await this.runProgressCommand(event, {
           command: bootstrap.command,
           args: [...bootstrap.argsPrefix, "-m", "venv", venvDir],
@@ -1934,6 +2588,11 @@ class RoomToolService {
           jobId,
           message: `Create room-local python runtime: ${venvDir}`,
           operation: request.operation,
+          percent: 12,
+          phaseCount: 5,
+          phaseIndex: 1,
+          phaseLabel: "Python runtime hazırlanıyor",
+          detailLines: [venvDir],
           requestId,
           roomId: request.roomId,
           setActiveChild(child) {
@@ -1964,6 +2623,11 @@ class RoomToolService {
             jobId,
             message: `Create room-local python runtime without pip: ${venvDir}`,
             operation: request.operation,
+            percent: 14,
+            phaseCount: 5,
+            phaseIndex: 1,
+            phaseLabel: "Python runtime pip olmadan hazırlanıyor",
+            detailLines: [venvDir],
             requestId,
             roomId: request.roomId,
             setActiveChild(child) {
@@ -2016,6 +2680,11 @@ class RoomToolService {
         jobId,
         message: `Bootstrap python tooling for ${request.toolId}`,
         operation: request.operation,
+        percent: 38,
+        phaseCount: 5,
+        phaseIndex: 3,
+        phaseLabel: "Python kurulum araçları hazırlanıyor",
+        detailLines: ["pip", "setuptools", "wheel"],
         requestId,
         roomId: request.roomId,
         setActiveChild(child) {
@@ -2051,6 +2720,11 @@ class RoomToolService {
           jobId,
           message: `Bootstrap python tooling for ${request.toolId}`,
           operation: request.operation,
+          percent: 38,
+          phaseCount: 5,
+          phaseIndex: 3,
+          phaseLabel: "Python kurulum araçları hazırlanıyor",
+          detailLines: ["pip", "setuptools", "wheel"],
           requestId,
           roomId: request.roomId,
           setActiveChild(child) {
@@ -2085,6 +2759,11 @@ class RoomToolService {
         jobId,
         message: `Install python packages for ${request.toolId}: ${packageListLabel}`,
         operation: request.operation,
+        percent: 52,
+        phaseCount: 5,
+        phaseIndex: 4,
+        phaseLabel: "Python paketleri indiriliyor ve kuruluyor",
+        detailLines: pythonInstallDetailLines,
         requestId,
         roomId: request.roomId,
         setActiveChild(child) {
@@ -2103,6 +2782,21 @@ class RoomToolService {
             "Python package installation failed."
         );
       }
+
+      this.emitProgress(event, {
+        roomId: request.roomId,
+        operation: request.operation,
+        requestId,
+        jobId,
+        toolId: request.toolId,
+        stage: "running",
+        message: `Verify python package import for ${request.toolId}`,
+        percent: 92,
+        phaseCount: 5,
+        phaseIndex: 5,
+        phaseLabel: "Kurulum doğrulanıyor",
+        detailLines: resolvedInstaller.probe.args,
+      });
 
       const probeResult = await this.probeTool({
         operation: "tool-probe",
@@ -2127,6 +2821,10 @@ class RoomToolService {
         stage: "completed",
         percent: 100,
         message: venvPythonPath,
+        phaseCount: 5,
+        phaseIndex: 5,
+        phaseLabel: "Kurulum tamamlandı",
+        detailLines: [venvPythonPath],
       });
 
       return {
@@ -2145,6 +2843,7 @@ class RoomToolService {
         toolId: request.toolId,
         stage: installState.cancelled === true ? "cancelled" : "failed",
         message,
+        phaseLabel: installState.cancelled === true ? "Kurulum iptal edildi" : "Kurulum başarısız",
       });
       throw error;
     } finally {
@@ -2222,7 +2921,6 @@ class RoomToolService {
             platformKey,
             availability: "system-command",
             installable: false,
-            manualSetup: true,
             executableName: resolved.systemCommand.executableName,
             companionExecutables: resolved.systemCommand.companionExecutables ?? [],
             installerType,
@@ -2270,7 +2968,6 @@ class RoomToolService {
           platformKey,
           availability: "system-command",
           installable: false,
-          manualSetup: true,
           executableName: resolved.systemCommand.executableName,
           companionExecutables: resolved.systemCommand.companionExecutables ?? [],
           installerType,

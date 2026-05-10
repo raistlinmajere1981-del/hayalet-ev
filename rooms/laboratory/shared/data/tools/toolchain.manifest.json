@@ -154,7 +154,6 @@
         "speech-overlay"
       ],
       "readinessImpact": "Limits transcript-backed speech checks and transcript artifacts.",
-      "manualHint": "Whisper.cpp is managed from the main Settings transcript runtime panel. Laboratory only refreshes and displays the active system/runtime state.",
       "stageSupport": {
         "source": "unsupported",
         "edit": "unsupported",
@@ -180,32 +179,6 @@
           "${dataDir}/transcript/whisper.cpp-src/build/bin/main"
         ],
         "setupHint": "Open Settings > User > Speech Runtime, prepare the active runtime there, then refresh this card to re-probe the current system state."
-      },
-      "manualGuide": {
-        "linux": {
-          "installCommands": [
-            "Settings > User > Speech Runtime > Prepare active runtime"
-          ],
-          "notes": [
-            "Optional overrides such as HAYALET_EV_TRANSCRIPT_WHISPER_BIN still work, but lifecycle ownership stays in Settings."
-          ]
-        },
-        "macos": {
-          "installCommands": [
-            "Settings > User > Speech Runtime > Prepare active runtime"
-          ],
-          "notes": [
-            "Optional overrides such as HAYALET_EV_TRANSCRIPT_WHISPER_BIN still work, but lifecycle ownership stays in Settings."
-          ]
-        },
-        "windows": {
-          "installCommands": [
-            "Settings > User > Speech Runtime > Prepare active runtime"
-          ],
-          "notes": [
-            "Optional overrides such as HAYALET_EV_TRANSCRIPT_WHISPER_BIN still work, but lifecycle ownership stays in Settings."
-          ]
-        }
       }
     },
     "opensmile": {
@@ -286,30 +259,13 @@
       "systemCommand": {
         "executableName": "SMILExtract",
         "setupHint": "Use the in-app install on supported runtimes, or install openSMILE on the host system so the SMILExtract binary is available on PATH, then refresh this tool from settings."
-      },
-      "manualGuide": {
-        "linux": {
-          "notes": [
-            "If this runtime does not expose an in-app binary, install an openSMILE build for your distro and ensure SMILExtract is available on PATH."
-          ]
-        },
-        "macos": {
-          "notes": [
-            "If this runtime does not expose an in-app binary, install openSMILE from a host package or local build, then expose SMILExtract on PATH."
-          ]
-        },
-        "windows": {
-          "notes": [
-            "If this runtime does not expose an in-app binary, install the openSMILE host build and make sure SMILExtract.exe is available on PATH."
-          ]
-        }
       }
     },
     "yamnet": {
       "displayName": "YAMNet",
       "installDirName": "yamnet",
       "availability": "system-command",
-      "installStrategy": "manual",
+      "installStrategy": "automatic",
       "usedBy": [
         "Sound event tagging",
         "Ambient event summaries"
@@ -345,6 +301,13 @@
       "installer": {
         "type": "python-venv-pip",
         "venvDir": "${roomStorageDir}/runtime/yamnet-venv",
+        "estimatedDownloadSize": "800 MB - 1.6 GB",
+        "estimatedInstalledSize": "1.5 - 3 GB",
+        "supportedPythonVersions": [
+          "3.12",
+          "3.11",
+          "3.10"
+        ],
         "packages": [
           "tensorflow",
           "tensorflow_hub",
@@ -352,30 +315,13 @@
           "scipy",
           "setuptools<81"
         ]
-      },
-      "manualGuide": {
-        "linux": {
-          "installCommands": [
-            "python3 -m pip install tensorflow tensorflow_hub numpy scipy 'setuptools<81'"
-          ]
-        },
-        "macos": {
-          "installCommands": [
-            "python3 -m pip install tensorflow tensorflow_hub numpy scipy 'setuptools<81'"
-          ]
-        },
-        "windows": {
-          "installCommands": [
-            "py -m pip install tensorflow tensorflow_hub numpy scipy \"setuptools<81\""
-          ]
-        }
       }
     },
     "librosa": {
       "displayName": "librosa",
       "installDirName": "librosa",
       "availability": "system-command",
-      "installStrategy": "manual",
+      "installStrategy": "automatic",
       "usedBy": [
         "Rhythm fallback",
         "Music structure helpers"
@@ -411,35 +357,20 @@
       "installer": {
         "type": "python-venv-pip",
         "venvDir": "${roomStorageDir}/runtime/librosa-venv",
+        "estimatedDownloadSize": "80 - 250 MB",
+        "estimatedInstalledSize": "250 - 700 MB",
         "packages": [
           "librosa",
           "numpy",
           "scipy"
         ]
-      },
-      "manualGuide": {
-        "linux": {
-          "installCommands": [
-            "python3 -m pip install librosa numpy scipy"
-          ]
-        },
-        "macos": {
-          "installCommands": [
-            "python3 -m pip install librosa numpy scipy"
-          ]
-        },
-        "windows": {
-          "installCommands": [
-            "py -m pip install librosa numpy scipy"
-          ]
-        }
       }
     },
     "demucs": {
       "displayName": "Demucs",
       "installDirName": "demucs",
       "availability": "system-command",
-      "installStrategy": "manual",
+      "installStrategy": "automatic",
       "usedBy": [
         "Source separation",
         "Vocal isolation"
@@ -475,33 +406,18 @@
       "installer": {
         "type": "python-venv-pip",
         "venvDir": "${roomStorageDir}/runtime/demucs-venv",
+        "estimatedDownloadSize": "3 - 5 GB",
+        "estimatedInstalledSize": "4 - 6 GB",
         "packages": [
           "demucs"
         ]
-      },
-      "manualGuide": {
-        "linux": {
-          "installCommands": [
-            "python3 -m pip install demucs"
-          ]
-        },
-        "macos": {
-          "installCommands": [
-            "python3 -m pip install demucs"
-          ]
-        },
-        "windows": {
-          "installCommands": [
-            "py -m pip install demucs"
-          ]
-        }
       }
     },
     "essentia": {
       "displayName": "Essentia",
       "installDirName": "essentia",
       "availability": "system-command",
-      "installStrategy": "manual",
+      "installStrategy": "automatic",
       "usedBy": [
         "Tonal fallback",
         "Music descriptor extraction"
@@ -537,33 +453,23 @@
       "installer": {
         "type": "python-venv-pip",
         "venvDir": "${roomStorageDir}/runtime/essentia-venv",
+        "estimatedDownloadSize": "100 MB - 1 GB",
+        "estimatedInstalledSize": "300 MB - 2 GB",
+        "supportedPythonVersions": [
+          "3.12",
+          "3.11",
+          "3.10"
+        ],
         "packages": [
           "essentia"
         ]
-      },
-      "manualGuide": {
-        "linux": {
-          "installCommands": [
-            "python3 -m pip install essentia"
-          ]
-        },
-        "macos": {
-          "installCommands": [
-            "python3 -m pip install essentia"
-          ]
-        },
-        "windows": {
-          "installCommands": [
-            "py -m pip install essentia"
-          ]
-        }
       }
     },
     "pyaudioanalysis": {
       "displayName": "pyAudioAnalysis",
       "installDirName": "pyaudioanalysis",
       "availability": "system-command",
-      "installStrategy": "manual",
+      "installStrategy": "automatic",
       "usedBy": [
         "Speaker diarization fallback",
         "Segment classification"
@@ -594,11 +500,18 @@
           "${roomStorageDir}/runtime/pyaudioanalysis-venv/bin/python",
           "${roomStorageDir}/runtime/pyaudioanalysis-venv/Scripts/python.exe"
         ],
-        "setupHint": "Install pyAudioAnalysis plus its local runtime dependencies (numpy, scipy, scikit-learn, hmmlearn, matplotlib, eyed3, and pydub) on the host system, then refresh this tool from settings."
+        "setupHint": "Use the in-app install to prepare pyAudioAnalysis with the Laboratory-managed Python runtime, then refresh this tool from settings."
       },
       "installer": {
         "type": "python-venv-pip",
         "venvDir": "${roomStorageDir}/runtime/pyaudioanalysis-venv",
+        "estimatedDownloadSize": "250 - 900 MB",
+        "estimatedInstalledSize": "700 MB - 2 GB",
+        "supportedPythonVersions": [
+          "3.12",
+          "3.11",
+          "3.10"
+        ],
         "packages": [
           "pyAudioAnalysis",
           "numpy",
@@ -609,23 +522,6 @@
           "eyed3",
           "pydub"
         ]
-      },
-      "manualGuide": {
-        "linux": {
-          "installCommands": [
-            "python3 -m pip install pyAudioAnalysis numpy scipy scikit-learn hmmlearn matplotlib eyed3 pydub"
-          ]
-        },
-        "macos": {
-          "installCommands": [
-            "python3 -m pip install pyAudioAnalysis numpy scipy scikit-learn hmmlearn matplotlib eyed3 pydub"
-          ]
-        },
-        "windows": {
-          "installCommands": [
-            "py -m pip install pyAudioAnalysis numpy scipy scikit-learn hmmlearn matplotlib eyed3 pydub"
-          ]
-        }
       }
     }
   }

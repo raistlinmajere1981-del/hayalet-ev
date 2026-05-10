@@ -875,7 +875,6 @@
         "installed": "Kurulu",
         "updateAvailable": "Guncelleme var",
         "appInstall": "Uygulama ici kurulum hazir",
-        "manualSetup": "Elle kurulum gerekli",
         "manualReady": "Sistem araci algilandi",
         "ready": "Hazir",
         "idle": "Bos",
@@ -1780,7 +1779,6 @@
         "updateAvailable": "Güncelleme var",
         "installed": "Kurulu",
         "planned": "Planlı",
-        "manualSetup": "Manuel kurulum",
         "notReady": "Hazır değil"
       },
       "lifecycle": {
@@ -1790,7 +1788,6 @@
       },
       "strategy": {
         "settingsManaged": "Settings üzerinden yönetilir",
-        "manual": "Manuel kurulum",
         "planned": "Planlı",
         "automatic": "Uygulama içi kurulum"
       },
@@ -1800,7 +1797,6 @@
         "checkUpdates": "Güncelleme kontrolü",
         "update": "Güncelle",
         "install": "Kur",
-        "manualSetup": "Manuel kurulum",
         "bulkUpdate": "Toplu güncelle",
         "refresh": "Yenile",
         "close": "Kapat"
@@ -1809,7 +1805,11 @@
         "stageSupport": "Aşama desteği",
         "installedVersion": "Kurulu sürüm",
         "latestVersion": "Son sürüm",
-        "location": "Konum"
+        "location": "Konum",
+        "pythonRuntime": "Python runtime",
+        "requiredPython": "Gerekli Python",
+        "managedPythonRuntime": "Laboratory-managed Python",
+        "systemPythonRuntime": "Sistem Python bootstrap"
       },
       "empty": {
         "title": "Bu alan için ek araç gerekmiyor",
@@ -1839,6 +1839,11 @@
         "fallbackDetail": "İşlem ayrıntısı bekleniyor.",
         "pendingPercent": "Hazırlanıyor",
         "percent": "{percent}%",
+        "phase": "Aşama {index}/{count}: {label}",
+        "package": "Paket: {name}",
+        "packageSize": "Paket boyutu {size}",
+        "lastOutput": "Son çıktı: {line}",
+        "cancel": "İptal",
         "idle": "Aktif kurulum veya güncelleme yok.",
         "idleDetail": "Bir araç işlemi başladığında ilerleme burada görünür.",
         "actions": {
@@ -1850,11 +1855,35 @@
         "stage": {
           "queued": "Kuyrukta",
           "running": "Çalışıyor",
+          "downloading": "İndiriliyor",
+          "extracting": "Açılıyor",
+          "output": "Çıktı",
           "completed": "Tamamlandı",
           "failed": "Hata",
           "cancelled": "İptal edildi",
           "tracking": "İzleniyor"
         }
+      },
+      "installReview": {
+        "ariaLabel": "Kurulum onayı",
+        "eyebrow": "Kurulum öncesi",
+        "title": "{tool} kurulacak",
+        "body": "Bu işlem Laboratory bünyesinde yönetilen Python ile izole bir araç ortamı hazırlayıp gerekli paketleri kuracak.",
+        "download": "İndirilecek veri",
+        "disk": "Disk kullanımı",
+        "target": "Hedef",
+        "pythonRuntime": "Python runtime",
+        "requiredPython": "Gerekli Python",
+        "steps": "Yapılacak işlemler",
+        "stepRuntime": "Laboratory-managed Python hazırlanır; araç venv'i bu runtime ile oluşturulur veya onarılır.",
+        "stepTooling": "pip, setuptools ve wheel güncellenir.",
+        "stepPackages": "Python paketleri indirilip kurulur.",
+        "stepProbe": "Kurulum import probe ile doğrulanır.",
+        "packages": "Paketler",
+        "noPackages": "Paket listesi runtime tarafından çözülecek.",
+        "unknownEstimate": "Kesin değil",
+        "dismiss": "Vazgeç",
+        "confirm": "Kurulumu başlat"
       },
       "sections": {
         "relevant": {
@@ -1896,8 +1925,7 @@
           "readinessImpact": "Yerel dönüştürmeleri, türetilmiş çıktıları ve yönetilen analiz koşularının çoğunu bloke eder."
         },
         "whisper-cpp": {
-          "readinessImpact": "Transkript destekli konuşma kontrollerini ve transkript artefaktlarını sınırlar.",
-          "manualHint": "Whisper.cpp ana Settings transkript runtime panelinden yönetilir. Laboratory yalnızca aktif sistem/runtime durumunu yeniler ve gösterir."
+          "readinessImpact": "Transkript destekli konuşma kontrollerini ve transkript artefaktlarını sınırlar."
         },
         "opensmile": {
           "readinessImpact": "Host binary kurulana kadar opsiyonel ses özellik çıkarımı kullanılamaz."

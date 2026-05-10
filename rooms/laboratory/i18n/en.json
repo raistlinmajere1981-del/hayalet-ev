@@ -875,7 +875,6 @@
         "installed": "Installed",
         "updateAvailable": "Update available",
         "appInstall": "In-app install ready",
-        "manualSetup": "Manual setup needed",
         "manualReady": "System tool detected",
         "ready": "Ready",
         "idle": "Idle",
@@ -1780,7 +1779,6 @@
         "updateAvailable": "Update available",
         "installed": "Installed",
         "planned": "Planned",
-        "manualSetup": "Manual setup",
         "notReady": "Not ready"
       },
       "lifecycle": {
@@ -1790,7 +1788,6 @@
       },
       "strategy": {
         "settingsManaged": "Managed through Settings",
-        "manual": "Manual setup",
         "planned": "Planned",
         "automatic": "In-app install"
       },
@@ -1800,7 +1797,6 @@
         "checkUpdates": "Check updates",
         "update": "Update",
         "install": "Install",
-        "manualSetup": "Manual setup",
         "bulkUpdate": "Bulk update",
         "refresh": "Refresh",
         "close": "Close"
@@ -1809,7 +1805,11 @@
         "stageSupport": "Stage support",
         "installedVersion": "Installed version",
         "latestVersion": "Latest version",
-        "location": "Location"
+        "location": "Location",
+        "pythonRuntime": "Python runtime",
+        "requiredPython": "Required Python",
+        "managedPythonRuntime": "Laboratory-managed Python",
+        "systemPythonRuntime": "System Python bootstrap"
       },
       "empty": {
         "title": "No additional tool is required here",
@@ -1839,6 +1839,11 @@
         "fallbackDetail": "Waiting for operation details.",
         "pendingPercent": "Preparing",
         "percent": "{percent}%",
+        "phase": "Step {index}/{count}: {label}",
+        "package": "Package: {name}",
+        "packageSize": "Package size {size}",
+        "lastOutput": "Last output: {line}",
+        "cancel": "Cancel",
         "idle": "No active install or update.",
         "idleDetail": "Progress appears here when a tool operation starts.",
         "actions": {
@@ -1850,11 +1855,35 @@
         "stage": {
           "queued": "Queued",
           "running": "Running",
+          "downloading": "Downloading",
+          "extracting": "Extracting",
+          "output": "Output",
           "completed": "Completed",
           "failed": "Failed",
           "cancelled": "Cancelled",
           "tracking": "Tracking"
         }
+      },
+      "installReview": {
+        "ariaLabel": "Install confirmation",
+        "eyebrow": "Before install",
+        "title": "{tool} will be installed",
+        "body": "This prepares an isolated tool environment with the Laboratory-managed Python runtime and installs the required packages.",
+        "download": "Download",
+        "disk": "Disk use",
+        "target": "Target",
+        "pythonRuntime": "Python runtime",
+        "requiredPython": "Required Python",
+        "steps": "Planned operations",
+        "stepRuntime": "Prepare the Laboratory-managed Python runtime; create or repair the tool venv with it.",
+        "stepTooling": "Upgrade pip, setuptools, and wheel.",
+        "stepPackages": "Download and install Python packages.",
+        "stepProbe": "Verify the install with an import probe.",
+        "packages": "Packages",
+        "noPackages": "The runtime will resolve the package list.",
+        "unknownEstimate": "Unknown",
+        "dismiss": "Cancel",
+        "confirm": "Start install"
       },
       "sections": {
         "relevant": {
@@ -1896,8 +1925,7 @@
           "readinessImpact": "Blocks local transforms, derived outputs, and most managed analysis runs."
         },
         "whisper-cpp": {
-          "readinessImpact": "Limits transcript-backed speech checks and transcript artifacts.",
-          "manualHint": "Whisper.cpp is managed from the main Settings transcript runtime panel. Laboratory only refreshes and displays the active system/runtime state."
+          "readinessImpact": "Limits transcript-backed speech checks and transcript artifacts."
         },
         "opensmile": {
           "readinessImpact": "Optional audio feature extraction stays unavailable until the host binary is installed."

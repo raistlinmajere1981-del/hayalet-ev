@@ -6,9 +6,12 @@ type LaboratoryJobRecord = LaboratoryRecord & {
   action: string | null;
   bytesReceived: number | null;
   bytesTotal: number | null;
+  detailLines?: string[] | null;
   featureStage: string | null;
+  lastLine?: string | null;
   message: string | null;
   operation: string | null;
+  packageName?: string | null;
   percent: number | null;
   phaseCount?: number | null;
   phaseIndex?: number | null;
@@ -32,11 +35,17 @@ type LaboratoryRoomToolsEventPayload = LaboratoryRecord & {
   bytesReceived?: unknown;
   bytesTotal?: unknown;
   chunk?: unknown;
+  detailLines?: unknown;
   featureStage?: unknown;
   jobId?: unknown;
   message?: unknown;
   operation?: unknown;
+  packageName?: unknown;
   percent?: unknown;
+  phaseCount?: unknown;
+  phaseIndex?: unknown;
+  phaseLabel?: unknown;
+  phasePercent?: unknown;
   projectId?: unknown;
   requestId?: unknown;
   roomId?: unknown;
@@ -48,10 +57,13 @@ type LaboratoryRoomToolsProgressPayload = {
   action: string | null;
   bytesReceived: number | null;
   bytesTotal: number | null;
+  detailLines?: string[] | null;
   featureStage: string | null;
   jobId: string;
+  lastLine?: string | null;
   message: string | null;
   operation: string | null;
+  packageName?: string | null;
   percent: number | null;
   phaseCount?: number | null;
   phaseIndex?: number | null;
@@ -123,8 +135,163 @@ export function createLaboratoryRoomToolsProgressRuntime(
     if (!match) {
       return null;
     }
-    const value = Number(match[1]);
+    const value = Number(match[1] || "");
     return Number.isFinite(value) ? clampPercent(value) : null;
+  }
+
+  function asFiniteNumber(value: unknown): number | null {
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  }
+
+  function toDetailLines(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value
+      .map(function (entry) {
+        return asNonEmptyString(entry);
+      })
+      .filter((entry): entry is string => entry !== null)
+      .slice(-5);
+  }
+
+  function appendDetailLine(job: LaboratoryJobRecord, line: string): void {
+    const normalized = line.trim().replace(/\s+/g, " ");
+    if (normalized === "") {
+      return;
+    }
+    const currentLines = Array.isArray(job.detailLines) ? job.detailLines : [];
+    const nextLines = currentLines.filter(function (entry) {
+      return entry !== normalized;
+    });
+    nextLines.push(normalized);
+    job.detailLines = nextLines.slice(-5);
+    job.lastLine = normalized;
+  }
+
+  function parseByteSize(label: string): number | null {
+    const match = label.trim().match(/^([0-9.]+)\s*([KMGTPE]?i?B)$/i);
+    if (!match) {
+      return null;
+    }
+    const value = Number(match[1]);
+    if (Number.isFinite(value) !== true) {
+      return null;
+    }
+    const unit = (match[2] || "B").toLowerCase();
+    const factor =
+      unit === "kb"
+        ? 1_000
+        : unit === "mb"
+          ? 1_000_000
+          : unit === "gb"
+            ? 1_000_000_000
+            : unit === "tb"
+              ? 1_000_000_000_000
+              : unit === "kib"
+                ? 1024
+                : unit === "mib"
+                  ? 1024 ** 2
+                  : unit === "gib"
+                    ? 1024 ** 3
+                    : unit === "tib"
+                      ? 1024 ** 4
+                      : 1;
+    return Math.round(value * factor);
+  }
+
+  function readPipTransfer(line: string): { received: number | null; total: number | null } {
+    const progressMatch = line.match(
+      /([0-9.]+\s*[KMGTPE]?i?B)\s*\/\s*([0-9.]+\s*[KMGTPE]?i?B)/i
+    );
+    if (progressMatch) {
+      return {
+        received: parseByteSize(progressMatch[1] || ""),
+        total: parseByteSize(progressMatch[2] || ""),
+      };
+    }
+    const totalMatch = line.match(/\(([0-9.]+\s*[KMGTPE]?i?B)\)/i);
+    return {
+      received: null,
+      total: totalMatch ? parseByteSize(totalMatch[1] || "") : null,
+    };
+  }
+
+  function updatePythonLifecycleFromLine(job: LaboratoryJobRecord, line: string): void {
+    const percent = readPercent(line);
+    const transfer = readPipTransfer(line);
+    if (transfer.received !== null) {
+      job.bytesReceived = transfer.received;
+    }
+    if (transfer.total !== null) {
+      job.bytesTotal = transfer.total;
+    }
+
+    const collectingMatch = line.match(/^Collecting\s+(.+)$/i);
+    const downloadingMatch = line.match(/^Downloading\s+(.+?)(?:\s+\(|$)/i);
+    const satisfiedMatch = line.match(/^Requirement already satisfied:\s+([^ ]+)/i);
+    const installingMatch = line.match(/^Installing collected packages:\s+(.+)$/i);
+
+    if (/Create room-local python runtime/i.test(String(job.message || ""))) {
+      job.phaseIndex = 1;
+      job.phaseCount = 5;
+      job.phaseLabel = "Python runtime hazırlanıyor";
+      job.percent = Math.max(job.percent ?? 0, 12);
+    }
+    if (/Bootstrap python tooling/i.test(String(job.message || ""))) {
+      job.phaseIndex = 3;
+      job.phaseCount = 5;
+      job.phaseLabel = "Python kurulum araçları hazırlanıyor";
+      job.percent = Math.max(job.percent ?? 0, 38);
+    }
+    if (/Install python packages/i.test(String(job.message || ""))) {
+      job.phaseIndex = 4;
+      job.phaseCount = 5;
+      job.phaseLabel = "Python paketleri indiriliyor ve kuruluyor";
+      job.percent = Math.max(job.percent ?? 0, 52);
+    }
+
+    if (collectingMatch) {
+      job.packageName = collectingMatch[1]?.trim() || job.packageName || null;
+      job.phaseLabel = "Paket bağımlılıkları çözümleniyor";
+      job.percent = Math.max(job.percent ?? 0, 55);
+      return;
+    }
+    if (satisfiedMatch) {
+      job.packageName = satisfiedMatch[1]?.trim() || job.packageName || null;
+      job.phaseLabel = "Mevcut paket doğrulanıyor";
+      job.percent = Math.max(job.percent ?? 0, 58);
+      return;
+    }
+    if (downloadingMatch || /^Using cached\s+/i.test(line)) {
+      job.packageName = downloadingMatch?.[1]?.trim() || job.packageName || null;
+      job.phaseLabel = /^Using cached\s+/i.test(line)
+        ? "Paket önbellekten alınıyor"
+        : "Paket indiriliyor";
+      job.percent = Math.max(job.percent ?? 0, 62);
+      return;
+    }
+    if (percent !== null && /[KMGTPE]?i?B\/s|━|ETA/i.test(line)) {
+      job.phaseLabel = "Paket indiriliyor";
+      job.phasePercent = percent;
+      job.percent = Math.max(job.percent ?? 0, Math.min(82, 62 + Math.round(percent * 0.2)));
+      return;
+    }
+    if (/Preparing metadata|Building wheel|Installing build dependencies/i.test(line)) {
+      job.phaseLabel = "Paket hazırlanıyor";
+      job.percent = Math.max(job.percent ?? 0, 70);
+      return;
+    }
+    if (installingMatch) {
+      job.phaseLabel = "Paketler kuruluyor";
+      job.packageName = installingMatch[1]?.split(",")[0]?.trim() || job.packageName || null;
+      job.percent = Math.max(job.percent ?? 0, 84);
+      return;
+    }
+    if (/Successfully installed/i.test(line)) {
+      job.phaseLabel = "Paketler doğrulanıyor";
+      job.percent = Math.max(job.percent ?? 0, 90);
+    }
   }
 
   function resolveYoutubePhase(line: string, previousPercent: number | null) {
@@ -241,7 +408,12 @@ export function createLaboratoryRoomToolsProgressRuntime(
     }
 
     const job = runtime.jobs[jobId];
-    job.stage = asNonEmptyString(eventPayload.stage) || job.stage;
+    const eventStage = asNonEmptyString(eventPayload.stage);
+    const operation = asNonEmptyString(eventPayload.operation) || job.operation;
+    const toolLifecycleStream =
+      (operation === "tool-install" || operation === "tool-update") &&
+      (eventStage === "stdout" || eventStage === "stderr");
+    job.stage = toolLifecycleStream ? "running" : eventStage || job.stage;
     job.operation = asNonEmptyString(eventPayload.operation) || job.operation;
     if (typeof eventPayload.bytesReceived === "number") {
       job.bytesReceived = eventPayload.bytesReceived;
@@ -258,18 +430,50 @@ export function createLaboratoryRoomToolsProgressRuntime(
     ) {
       job.percent = Math.round((eventPayload.bytesReceived / eventPayload.bytesTotal) * 100);
     }
+    const phaseLabel = asNonEmptyString(eventPayload.phaseLabel);
+    if (phaseLabel !== null) {
+      job.phaseLabel = phaseLabel;
+    }
+    const phaseIndex = asFiniteNumber(eventPayload.phaseIndex);
+    if (phaseIndex !== null) {
+      job.phaseIndex = phaseIndex;
+    }
+    const phaseCount = asFiniteNumber(eventPayload.phaseCount);
+    if (phaseCount !== null) {
+      job.phaseCount = phaseCount;
+    }
+    const phasePercent = asFiniteNumber(eventPayload.phasePercent);
+    if (phasePercent !== null) {
+      job.phasePercent = phasePercent;
+    }
+    const packageName = asNonEmptyString(eventPayload.packageName);
+    if (packageName !== null) {
+      job.packageName = packageName;
+    }
+    const detailLines = toDetailLines(eventPayload.detailLines);
+    if (detailLines.length > 0) {
+      job.detailLines = detailLines;
+    }
     job.message = asNonEmptyString(eventPayload.message) || job.message;
 
     const toolRunStream =
       asNonEmptyString(eventPayload.operation) === "tool-run" &&
       (eventPayload.stage === "stdout" || eventPayload.stage === "stderr");
-    if (toolRunStream) {
+    if (toolRunStream || toolLifecycleStream) {
       const chunk = asNonEmptyString(eventPayload.chunk);
       if (chunk) {
         const line = getLatestLine(chunk) || chunk.trim();
+        appendDetailLine(job, line);
         const parsedPercent = readPercent(line);
         if (parsedPercent !== null) {
-          job.percent = parsedPercent;
+          if (toolLifecycleStream) {
+            job.phasePercent = parsedPercent;
+          } else {
+            job.percent = parsedPercent;
+          }
+        }
+        if (toolLifecycleStream) {
+          updatePythonLifecycleFromLine(job, line);
         }
         if (job.action === "source-download-youtube") {
           const youtubePhase = resolveYoutubePhase(line, job.percent);
@@ -299,14 +503,33 @@ export function createLaboratoryRoomToolsProgressRuntime(
       }
     }
 
+    if (toolLifecycleStream) {
+      const details = [
+        job.phaseLabel ? `Aşama: ${job.phaseLabel}` : null,
+        job.packageName ? `paket ${job.packageName}` : null,
+        typeof job.phasePercent === "number" ? `${Math.round(job.phasePercent)}%` : null,
+        typeof job.bytesReceived === "number" && typeof job.bytesTotal === "number"
+          ? `${Math.round(job.bytesReceived / 1_000_000)} / ${Math.round(job.bytesTotal / 1_000_000)} MB`
+          : typeof job.bytesTotal === "number"
+            ? `boyut ${Math.round(job.bytesTotal / 1_000_000)} MB`
+            : null,
+      ].filter((entry): entry is string => typeof entry === "string");
+      if (details.length > 0) {
+        job.message = details.join(" · ");
+      }
+    }
+
     return {
       requestId: job.requestId,
       jobId: jobId,
       action: job.action,
+      detailLines: job.detailLines ?? null,
       projectId: job.projectId,
       toolId: job.toolId,
       featureStage: job.featureStage || null,
+      lastLine: job.lastLine ?? null,
       operation: job.operation || null,
+      packageName: job.packageName ?? null,
       stage: toolRunStream && job.action === "source-download-youtube" ? "running" : job.stage,
       percent: job.percent,
       phaseCount: job.phaseCount ?? null,
@@ -316,7 +539,8 @@ export function createLaboratoryRoomToolsProgressRuntime(
       bytesReceived: job.bytesReceived,
       bytesTotal: job.bytesTotal,
       message: job.message,
-      suppressCanonicalEvent: toolRunStream && job.action !== "source-download-youtube",
+      suppressCanonicalEvent:
+        (toolRunStream && job.action !== "source-download-youtube") || toolLifecycleStream,
     };
   }
 

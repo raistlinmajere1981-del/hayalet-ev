@@ -203,6 +203,15 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
     case "tool-manager-toggled":
       state.ui.toolManagerOpen =
         typeof event.open === "boolean" ? event.open : !state.ui.toolManagerOpen;
+      if (state.ui.toolManagerOpen !== true) {
+        state.ui.toolInstallReviewToolId = null;
+      }
+      return state;
+    case "tool-install-review-requested":
+      state.ui.toolInstallReviewToolId = event.toolId.trim() !== "" ? event.toolId : null;
+      return state;
+    case "tool-install-review-dismissed":
+      state.ui.toolInstallReviewToolId = null;
       return state;
     case "toggle-event-feed":
       state.ui.eventFeedExpanded =

@@ -7,7 +7,10 @@ test("room tool run request supports companion executable selection", () => {
   const serviceSource = readFileSync("electron/room-tool-service.ts", "utf8");
 
   assert.match(typeSource, /export interface RoomToolRunRequest[\s\S]*executableName\?: string;/);
-  assert.match(serviceSource, /const requestedExecutableName = asNonEmptyString\(request\.executableName\);/);
+  assert.match(
+    serviceSource,
+    /const requestedExecutableName = asNonEmptyString\(request\.executableName\);/
+  );
   assert.match(serviceSource, /let allowedExecutableNames: string\[\] = \[\];/);
   assert.match(serviceSource, /does not expose companion executable/);
 });
@@ -22,7 +25,10 @@ test("room tool service stays generic and avoids laboratory-specific branching",
   assert.match(serviceSource, /private async ensureDirPath\(/);
   assert.match(serviceSource, /ensuredPath: targetPath,/);
   assert.match(serviceSource, /private async downloadToPath\(/);
-  assert.match(serviceSource, /return await this\.downloadToPath\(event, request, \{ enforceRoomManagedPath: true \}\);/);
+  assert.match(
+    serviceSource,
+    /return await this\.downloadToPath\(event, request, \{ enforceRoomManagedPath: true \}\);/
+  );
   assert.match(serviceSource, /\{ enforceRoomManagedPath: false \}/);
   assert.doesNotMatch(serviceSource, /ROOM_ID\s*=\s*"laboratory"/);
   assert.doesNotMatch(serviceSource, /yt-dlp command/i);
@@ -39,12 +45,23 @@ test("room tool service can describe planned and system-command tools without fo
     "rooms/laboratory/shared/host/project-tool-status.ts",
     "utf8"
   );
+  const roomSnapshotSource = readFileSync("rooms/laboratory/shared/host/room-snapshot.ts", "utf8");
+  const toolOverlaySource = readFileSync("rooms/laboratory/ui/tool-management-overlay.ts", "utf8");
 
-  assert.match(serviceSource, /type ToolAvailability = "installable" \| "system-command" \| "planned";/);
+  assert.match(
+    serviceSource,
+    /type ToolAvailability = "installable" \| "system-command" \| "planned";/
+  );
   assert.match(serviceSource, /type SystemCommandSpec = \{/);
   assert.match(serviceSource, /type PythonVenvPipInstallerSpec = \{/);
+  assert.match(serviceSource, /estimatedDownloadSize\?: string;/);
+  assert.match(serviceSource, /estimatedInstalledSize\?: string;/);
+  assert.match(serviceSource, /supportedPythonVersions\?: string\[\];/);
   assert.match(serviceSource, /type ToolInstallerSpec = PythonVenvPipInstallerSpec;/);
-  assert.match(serviceSource, /const PYTHON_GET_PIP_URL = "https:\/\/bootstrap\.pypa\.io\/get-pip\.py";/);
+  assert.match(
+    serviceSource,
+    /const PYTHON_GET_PIP_URL = "https:\/\/bootstrap\.pypa\.io\/get-pip\.py";/
+  );
   assert.match(serviceSource, /envVarNames\?: string\[\];/);
   assert.match(serviceSource, /candidatePaths\?: string\[\];/);
   assert.match(typeSource, /packageToolRuntimeDir: string;/);
@@ -58,45 +75,114 @@ test("room tool service can describe planned and system-command tools without fo
   assert.match(serviceSource, /expandRuntimePathTemplate\(/);
   assert.match(serviceSource, /private isToolInstallable\(toolManifest: ToolManifest\): boolean/);
   assert.match(serviceSource, /private isSystemCommandTool\(toolManifest: ToolManifest\): boolean/);
-  assert.match(serviceSource, /private getInstallerType\(toolManifest: ToolManifest\): ToolInstallerSpec\["type"\] \| null/);
+  assert.match(
+    serviceSource,
+    /private getInstallerType\(toolManifest: ToolManifest\): ToolInstallerSpec\["type"\] \| null/
+  );
   assert.match(serviceSource, /private resolvePythonVenvPipInstaller\(/);
   assert.match(serviceSource, /private async resolvePythonBootstrapInvocation\(/);
+  assert.match(serviceSource, /function buildPythonBootstrapCandidates\(/);
+  assert.match(serviceSource, /function killSpawnedProcessTree\(/);
+  assert.match(serviceSource, /MANAGED_PYTHON_RELEASE_PROVIDER/);
+  assert.match(serviceSource, /python-build-standalone/);
+  assert.match(serviceSource, /install_only_stripped/);
+  assert.match(serviceSource, /function getManagedPythonRuntimeDir\(/);
+  assert.match(serviceSource, /private async downloadManagedPythonAsset\(/);
+  assert.match(serviceSource, /private async ensureManagedPythonRuntime\(/);
+  assert.match(serviceSource, /Managed room Python ready/);
+  assert.match(serviceSource, /extractArchive\(archivePath, extractDir, "tar\.gz"\)/);
+  assert.match(
+    serviceSource,
+    /mkdtemp\(join\(dirname\(runtimeDir\), `\.python-runtime-\$\{version\}-`\)\)/
+  );
+  assert.match(
+    serviceSource,
+    /supportedPythonVersions: normalizeStringArray\(installer\.supportedPythonVersions\)/
+  );
+  assert.match(serviceSource, /isPythonRuntimeVersionSupported\(/);
   assert.match(serviceSource, /private shouldUsePythonWithoutPipFallback\(/);
   assert.match(serviceSource, /private isMissingPythonPip\(/);
   assert.match(serviceSource, /private async bootstrapPythonVenvPip\(/);
+  assert.match(serviceSource, /async function isPythonVenvReusable\(/);
+  assert.match(serviceSource, /Repair room-local python runtime: \$\{venvDir\}/);
+  assert.match(
+    serviceSource,
+    /await rm\(venvDir, \{ recursive: true, force: true \}\);\s*venvPythonPath = null;/
+  );
   assert.match(serviceSource, /private async installPythonVenvPipTool\(/);
   assert.match(serviceSource, /private shouldUseSystemCommandFallback\(/);
   assert.match(serviceSource, /private async probeSystemCommandToolStatus\(/);
   assert.match(serviceSource, /installerType,/);
-  assert.match(serviceSource, /args: \[\.\.\.bootstrap\.argsPrefix, "-m", "venv", "--without-pip", venvDir\]/);
+  assert.match(
+    serviceSource,
+    /args: \[\.\.\.bootstrap\.argsPrefix, "-m", "venv", "--without-pip", venvDir\]/
+  );
   assert.match(serviceSource, /Download pip bootstrap: \$\{PYTHON_GET_PIP_URL\}/);
+  assert.match(serviceSource, /phaseLabel: "Python paketleri indiriliyor ve kuruluyor"/);
+  assert.match(serviceSource, /detailLines: pythonInstallDetailLines/);
   assert.match(typeSource, /lastError\?: string \| null;/);
+  assert.match(typeSource, /phaseLabel\?: string \| null;/);
+  assert.match(typeSource, /detailLines\?: string\[\];/);
   assert.match(serviceSource, /lastError: data\.lastError \?\? null,/);
-  assert.match(serviceSource, /function summarizeCommandFailure\(result: \{ stderr: string; stdout: string \}\): string \| null/);
+  assert.match(
+    serviceSource,
+    /function summarizeCommandFailure\(result: \{ stderr: string; stdout: string \}\): string \| null/
+  );
   assert.match(serviceSource, /async function resolveInstallableToolInstallDir\(/);
   assert.match(
     serviceSource,
     /packageToolRuntimeDir: join\(legacyInstalledDir, "tools", "runtime", platformKey\),/
   );
-  assert.match(serviceSource, /toolRuntimeDir: join\(storageDir, "tools", "runtime", platformKey\),/);
-  assert.match(serviceSource, /const legacyInstallDir = join\(paths\.packageToolRuntimeDir, installDirName\);/);
+  assert.match(
+    serviceSource,
+    /toolRuntimeDir: join\(storageDir, "tools", "runtime", platformKey\),/
+  );
+  assert.match(
+    serviceSource,
+    /const legacyInstallDir = join\(paths\.packageToolRuntimeDir, installDirName\);/
+  );
   assert.match(serviceSource, /await rename\(legacyInstallDir, preferredInstallDir\);/);
-  assert.match(serviceSource, /lastError: probe\.exitCode === 0 \? null : summarizeCommandFailure\(probe\),/);
-  assert.match(serviceSource, /throw new Error\(\s*asNonEmptyString\(probeTool\?\.lastError\) \?\?/);
-  assert.match(projectToolStatusSource, /lastError:\s*typeof probeTool\["lastError"\] === "string"/);
+  assert.match(
+    serviceSource,
+    /lastError: probe\.exitCode === 0 \? null : summarizeCommandFailure\(probe\),/
+  );
+  assert.match(
+    serviceSource,
+    /throw new Error\(\s*asNonEmptyString\(probeTool\?\.lastError\) \?\?/
+  );
+  assert.match(
+    projectToolStatusSource,
+    /lastError:\s*typeof probeTool\["lastError"\] === "string"/
+  );
+  assert.match(roomSnapshotSource, /supportedPythonVersions/);
+  assert.match(toolOverlaySource, /managedPythonRuntime/);
+  assert.match(toolOverlaySource, /requiredPython/);
   assert.match(
     manifestSource,
     /"packages":\s*\[\s*"tensorflow",\s*"tensorflow_hub",\s*"numpy",\s*"scipy",\s*"setuptools<81"\s*\]/
   );
   assert.match(
     manifestSource,
+    /"supportedPythonVersions":\s*\[\s*"3\.12",\s*"3\.11",\s*"3\.10"\s*\]/
+  );
+  assert.match(
+    manifestSource,
+    /"pyaudioanalysis"[\s\S]*"supportedPythonVersions":\s*\[\s*"3\.12",\s*"3\.11",\s*"3\.10"\s*\]/
+  );
+  assert.match(manifestSource, /"estimatedDownloadSize":\s*"3 - 5 GB"/);
+  assert.match(
+    manifestSource,
     /"packages":\s*\[\s*"pyAudioAnalysis",\s*"numpy",\s*"scipy",\s*"scikit-learn",\s*"hmmlearn",\s*"matplotlib",\s*"eyed3",\s*"pydub"\s*\]/
   );
+  assert.doesNotMatch(manifestSource, /"audioop-lts"/);
   assert.match(
     serviceSource,
     /private resolveSystemCommandTool\(\s*manifest: ToolchainManifest,\s*toolId: string\s*\): \{/
   );
-  assert.match(serviceSource, /private getPlannedToolMessage\(toolId: string, toolManifest: ToolManifest\): string/);
+  assert.match(
+    serviceSource,
+    /private getPlannedToolMessage\(toolId: string, toolManifest: ToolManifest\): string/
+  );
 });
 
 test("room tool service resolves toolchain manifests from installed and workspace fallback layouts", () => {
@@ -126,20 +212,32 @@ test("room tool service resolves toolchain manifests from installed and workspac
     serviceSource,
     /join\(\s*Paths\.getRoomsWorkspaceDir\(\),\s*paths\.roomId,\s*"shared",\s*"data",\s*"tools",\s*"toolchain\.manifest\.json"\s*\)/
   );
-  assert.match(serviceSource, /const manifestPath = candidatePaths\.find\(\(candidate\) => existsSync\(candidate\)\);/);
   assert.match(
     serviceSource,
-    /const allowedRoots = \[paths\.storageDir, paths\.toolRuntimeDir\];/
+    /const manifestPath = candidatePaths\.find\(\(candidate\) => existsSync\(candidate\)\);/
   );
+  assert.match(serviceSource, /const allowedRoots = \[paths\.storageDir, paths\.toolRuntimeDir\];/);
 });
 
 test("room tool preload and global typings expose the generic room-tools seam", () => {
   const preloadSource = readFileSync("electron/preload.cjs", "utf8");
   const globalTypes = readFileSync("src/js/global.d.ts", "utf8");
 
-  assert.match(preloadSource, /roomToolsCall: \(request\) => ipcRenderer\.invoke\("room-tools-call", request\)/);
-  assert.match(preloadSource, /roomToolsCancel: \(request\) => ipcRenderer\.invoke\("room-tools-cancel", request\)/);
+  assert.match(
+    preloadSource,
+    /roomToolsCall: \(request\) => ipcRenderer\.invoke\("room-tools-call", request\)/
+  );
+  assert.match(
+    preloadSource,
+    /roomToolsCancel: \(request\) => ipcRenderer\.invoke\("room-tools-cancel", request\)/
+  );
   assert.match(preloadSource, /onRoomToolsProgress: \(callback\)/);
-  assert.match(globalTypes, /roomToolsCall: \(request: RoomToolCallRequest\) => Promise<RoomToolCallResult>;/);
-  assert.match(globalTypes, /roomToolsCancel: \(request: RoomToolCancelRequest\) => Promise<RoomToolCancelResult>;/);
+  assert.match(
+    globalTypes,
+    /roomToolsCall: \(request: RoomToolCallRequest\) => Promise<RoomToolCallResult>;/
+  );
+  assert.match(
+    globalTypes,
+    /roomToolsCancel: \(request: RoomToolCancelRequest\) => Promise<RoomToolCancelResult>;/
+  );
 });

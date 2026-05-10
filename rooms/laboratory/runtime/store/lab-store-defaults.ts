@@ -183,6 +183,7 @@ export function createInitialState(): LabStoreState {
       editDraftDirty: false,
       profileDraftDirty: false,
       toolManagerOpen: false,
+      toolInstallReviewToolId: null,
       eventFeedExpanded: false,
       eventFeedCursor: 0,
       artifactListExpanded: false,

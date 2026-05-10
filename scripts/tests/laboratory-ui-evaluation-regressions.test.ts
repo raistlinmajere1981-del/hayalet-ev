@@ -1705,7 +1705,9 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   );
   assert.match(toolOverlaySource, /mediaAnalysis\.toolManager\.ariaLabel/);
   assert.match(toolOverlaySource, /data-lab-action="tool-update-all"/);
-  assert.match(toolOverlaySource, /data-lab-action="tool-install"/);
+  assert.match(toolOverlaySource, /data-lab-action="tool-install-review"/);
+  assert.match(toolOverlaySource, /data-lab-action="tool-install-confirm"/);
+  assert.match(toolOverlaySource, /data-lab-action="tool-job-cancel"/);
   assert.match(toolOverlaySource, /data-lab-action="tool-check-updates"/);
   assert.doesNotMatch(drawerSource, /renderSourceIntake\(state, copy\)/);
   assert.doesNotMatch(drawerSource, /renderLabProjectAssetsPanel/);

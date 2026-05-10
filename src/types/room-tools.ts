@@ -212,6 +212,11 @@ export interface RoomToolProgressEvent {
   stage: RoomToolProgressStage;
   message?: string;
   percent?: number;
+  phaseLabel?: string | null;
+  phasePercent?: number | null;
+  phaseIndex?: number | null;
+  phaseCount?: number | null;
+  detailLines?: string[];
   bytesReceived?: number;
   bytesTotal?: number;
   chunk?: string;

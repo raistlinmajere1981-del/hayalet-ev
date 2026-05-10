@@ -720,6 +720,33 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           actionFamily: "tool-lifecycle",
         });
         return;
+      case "tool-install-review":
+        if (value.trim() !== "") {
+          dispatch({ type: "tool-install-review-requested", toolId: value });
+        }
+        return;
+      case "tool-install-dismiss":
+        dispatch({ type: "tool-install-review-dismissed" });
+        return;
+      case "tool-install-confirm":
+        if (value.trim() === "") {
+          return;
+        }
+        dispatch({ type: "tool-install-review-dismissed" });
+        sendMediaAction("tool-install", {
+          toolId: value,
+          featureStage: getToolLifecycleStage(state),
+          actionFamily: "tool-lifecycle",
+        });
+        return;
+      case "tool-job-cancel":
+        if (value.trim() !== "") {
+          sendMediaAction("job-cancel", {
+            jobId: value,
+            actionFamily: "tool-lifecycle",
+          });
+        }
+        return;
       case "tool-install":
       case "tool-update":
       case "tool-check-updates":

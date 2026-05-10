@@ -286,11 +286,13 @@ export function createLaboratoryToolMutationRuntime(deps: LaboratoryToolMutation
       });
       return result["tool"];
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const cancelled = /cancelled|canceled|iptal/i.test(message);
       updateToolBusy(
         runtime,
         toolId,
         false,
-        error instanceof Error ? error.message : String(error)
+        cancelled === true ? null : message
       );
       await persistToolState(runtime);
       if (toolId === "whisper.cpp") {
@@ -302,8 +304,8 @@ export function createLaboratoryToolMutationRuntime(deps: LaboratoryToolMutation
         action: action,
         toolId: toolId,
         featureStage: featureStage || "source",
-        stage: "failed",
-        message: error instanceof Error ? error.message : String(error),
+        stage: cancelled === true ? "cancelled" : "failed",
+        message,
       });
       throw error;
     } finally {

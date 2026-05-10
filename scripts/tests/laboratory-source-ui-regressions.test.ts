@@ -156,7 +156,6 @@ function createSeededState(ffmpegInstalled = false) {
           toolId: "ffmpeg",
           displayName: "FFmpeg",
           availability: "system-command",
-          manualHint: "FFmpeg runs local media transforms for the active workspace.",
           stageSupport: {
             source: "optional",
             process: "required",
@@ -172,6 +171,21 @@ function createSeededState(ffmpegInstalled = false) {
             source: "required",
           },
           usedBy: ["source-intake"],
+        },
+        {
+          toolId: "librosa",
+          displayName: "librosa",
+          availability: "system-command",
+          installerType: "python-venv-pip",
+          installPackages: ["librosa", "numpy", "scipy"],
+          estimatedDownloadSize: "80 - 250 MB",
+          estimatedInstalledSize: "250 - 700 MB",
+          venvDir: "${roomStorageDir}/runtime/librosa-venv",
+          readinessImpact: "Music helpers stay blocked until the Python runtime is installed.",
+          stageSupport: {
+            process: "optional",
+          },
+          usedBy: ["audio-analysis"],
         },
         {
           toolId: "whisper-cli",
@@ -193,6 +207,9 @@ function createSeededState(ffmpegInstalled = false) {
             installed: true,
             version: "2026.04.20",
             latestVersion: "2026.04.20",
+          },
+          librosa: {
+            installed: false,
           },
           "whisper-cli": {
             installed: false,
@@ -1251,8 +1268,11 @@ test("laboratory tool overlay lists room-local tool lifecycle actions inside the
         toolId: "yt-dlp",
         stage: "running",
         percent: 64,
+        phaseIndex: 2,
+        phaseCount: 5,
         phaseLabel: "Arşiv indiriliyor",
         message: "Paket indiriliyor",
+        detailLines: ["Downloading yt-dlp archive", "64% of 12 MB"],
       },
     ],
   };
@@ -1267,11 +1287,16 @@ test("laboratory tool overlay lists room-local tool lifecycle actions inside the
   assert.match(html, /yt-dlp[\s\S]*Kurulum/);
   assert.match(html, /Arşiv indiriliyor/);
   assert.match(html, /64%/);
+  assert.match(html, /Aşama 2\/5: Arşiv indiriliyor/);
+  assert.match(html, /Downloading yt-dlp archive/);
+  assert.match(html, /data-lab-action="tool-job-cancel" data-lab-value="job-yt-dlp-install"/);
   assert.match(html, /role="progressbar"/);
   assert.match(html, /yt-dlp/);
   assert.match(html, /FFmpeg/);
   assert.match(html, /data-lab-action="tool-check-updates"/);
-  assert.match(html, /data-lab-action="tool-install"/);
+  assert.match(html, /data-lab-action="tool-install-review"/);
+  assert.match(html, /data-lab-action="tool-install-review" data-lab-value="librosa"/);
+  assert.doesNotMatch(html, /Manuel kurulum|Manual setup/);
   assert.doesNotMatch(html, /Dense operator workbench|Modules|Focus/);
 
   const trCopy = createTurkishCopy();
@@ -1283,6 +1308,25 @@ test("laboratory tool overlay lists room-local tool lifecycle actions inside the
     /Uzak YouTube ve oynatma listesi tabanlı içe alma akışlarını bloke eder/
   );
   assert.doesNotMatch(translatedHtml, /YouTube capture stays enabled from the source intake frame/);
+});
+
+test("laboratory tool manager asks for install confirmation with package and size details", () => {
+  const store = createSeededState(true);
+  store.dispatch({ type: "tool-manager-toggled", open: true });
+  store.dispatch({ type: "tool-install-review-requested", toolId: "librosa" });
+
+  const html = renderToolManagementOverlay(store.getState(), createTurkishCopy());
+
+  assert.match(html, /Kurulum öncesi/);
+  assert.match(html, /librosa kurulacak/);
+  assert.match(html, /İndirilecek veri[\s\S]*80 - 250 MB/);
+  assert.match(html, /Disk kullanımı[\s\S]*250 - 700 MB/);
+  assert.match(html, /librosa/);
+  assert.match(html, /numpy/);
+  assert.match(html, /scipy/);
+  assert.match(html, /Room-local Python runtime oluşturulur veya bozuksa onarılır/);
+  assert.match(html, /data-lab-action="tool-install-confirm" data-lab-value="librosa"/);
+  assert.match(html, /data-lab-action="tool-install-dismiss"/);
 });
 
 test("laboratory workspace panels show snapshot drift as a non-blocking visibility layer", () => {
