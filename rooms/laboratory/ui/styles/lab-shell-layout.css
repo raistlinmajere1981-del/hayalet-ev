@@ -523,6 +523,109 @@
   cursor: pointer;
 }
 
+.labx-analysis-scope-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--labx-z-overlay) + 20);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.labx-analysis-scope-overlay__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(3, 8, 15, 0.74);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+}
+
+.labx-analysis-scope-confirm {
+  position: relative;
+  width: min(30rem, 100%);
+  max-height: calc(100vh - 2rem);
+  padding: 1rem;
+  box-sizing: border-box;
+  border: 1px solid rgba(92, 215, 223, 0.32);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(14, 29, 45, 0.98), rgba(7, 17, 28, 0.98)),
+    var(--labx-surface-strong);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.38);
+  overflow: auto;
+}
+
+.labx-analysis-scope-confirm__head {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.labx-analysis-scope-confirm__head span {
+  color: var(--labx-accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.labx-analysis-scope-confirm__head h3 {
+  margin: 0;
+  font-size: 1.08rem;
+  line-height: 1.25;
+}
+
+.labx-analysis-scope-confirm__head p {
+  margin: 0;
+  color: var(--labx-text-soft);
+  line-height: 1.45;
+}
+
+.labx-analysis-scope-confirm__body {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+}
+
+.labx-analysis-scope-confirm__choice {
+  display: grid;
+  gap: 0.25rem;
+  width: 100%;
+  min-height: 4.35rem;
+  padding: 0.8rem;
+  box-sizing: border-box;
+  border: 1px solid var(--labx-border-strong);
+  border-radius: 8px;
+  background: rgba(10, 24, 39, 0.82);
+  color: var(--labx-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.labx-analysis-scope-confirm__choice:hover,
+.labx-analysis-scope-confirm__choice:focus-visible {
+  border-color: rgba(92, 215, 223, 0.7);
+  background: rgba(14, 40, 58, 0.92);
+  outline: none;
+}
+
+.labx-analysis-scope-confirm__choice strong {
+  font-size: 0.92rem;
+}
+
+.labx-analysis-scope-confirm__choice span {
+  color: var(--labx-text-soft);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.labx-analysis-scope-confirm__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.85rem;
+}
+
 .labx-module-overlay {
   position: relative;
   width: min(68rem, calc(100vw - 2rem));
@@ -551,6 +654,26 @@
   font-size: 1.2rem;
 }
 
+.labx-tool-manager-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+  color: var(--labx-text-dim);
+  font-size: 0.78rem;
+}
+
+.labx-tool-manager-stats span {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.labx-tool-manager-stats strong {
+  color: var(--labx-text);
+  font-weight: 600;
+}
+
 .labx-module-overlay__summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -571,6 +694,22 @@
 
 .labx-tool-manager-main .labx-list-stack + .labx-list-stack {
   margin-top: 0.75rem;
+}
+
+.labx-tool-manager-section__header {
+  margin-bottom: 0.5rem;
+}
+
+.labx-tool-manager-section__header h3 {
+  margin: 0;
+  color: var(--labx-text);
+  font-size: 0.92rem;
+}
+
+.labx-tool-manager-section__header p {
+  margin: 0.2rem 0 0;
+  color: var(--labx-text-dim);
+  font-size: 0.78rem;
 }
 
 .labx-tool-progress-rail {

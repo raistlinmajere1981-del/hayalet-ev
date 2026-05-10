@@ -666,11 +666,20 @@ function renderRunningStageTracker(state: LabStoreState, copy: LabI18n) {
       label: copy.t("mediaAnalysis.drawer.running.stages.preflight", "Preflight"),
       detail:
         preflightAutoRunEnabled !== true
-          ? copy.t("mediaAnalysis.drawer.running.stageDetails.preflightSkipped", "Preflight is passive")
+          ? copy.t(
+              "mediaAnalysis.drawer.running.stageDetails.preflightSkipped",
+              "Preflight is passive"
+            )
           : counts.totalCount > 0 || runFinished
-          ? copy.t("mediaAnalysis.drawer.running.stageDetails.preflightComplete", "Checks passed")
-          : copy.t("mediaAnalysis.drawer.running.stageDetails.preflightActive", "Preparing tools"),
-      status: preflightAutoRunEnabled !== true || counts.totalCount > 0 || runFinished ? "complete" : "active",
+            ? copy.t("mediaAnalysis.drawer.running.stageDetails.preflightComplete", "Checks passed")
+            : copy.t(
+                "mediaAnalysis.drawer.running.stageDetails.preflightActive",
+                "Preparing tools"
+              ),
+      status:
+        preflightAutoRunEnabled !== true || counts.totalCount > 0 || runFinished
+          ? "complete"
+          : "active",
     },
     {
       id: "modules",

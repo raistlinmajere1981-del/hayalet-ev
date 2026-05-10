@@ -1887,7 +1887,7 @@
         "pythonRuntime": "Python runtime",
         "requiredPython": "Gerekli Python",
         "steps": "Yapılacak işlemler",
-        "stepRuntime": "Laboratory-managed Python hazırlanır; araç venv'i bu runtime ile oluşturulur veya onarılır.",
+        "stepRuntime": "Room-local Python runtime oluşturulur veya bozuksa onarılır.",
         "stepTooling": "pip, setuptools ve wheel güncellenir.",
         "stepPackages": "Python paketleri indirilip kurulur.",
         "stepProbe": "Kurulum import probe ile doğrulanır.",

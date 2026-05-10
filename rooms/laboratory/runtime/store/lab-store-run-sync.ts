@@ -34,7 +34,17 @@ function isProcessRunAction(action: string | null | undefined) {
 }
 
 function canCreatePendingRunFromFeedEvent(event: LabEventFeedItem) {
-  return isProcessRunAction(event.action);
+  if (!isProcessRunAction(event.action)) {
+    return false;
+  }
+  if (
+    event.moduleId !== null &&
+    event.moduleId !== undefined &&
+    (event.stage === "completed" || event.stage === "failed" || event.stage === "cancelled")
+  ) {
+    return false;
+  }
+  return true;
 }
 
 function isPendingProcessRun(run: LabRun) {
@@ -265,7 +275,12 @@ export function syncRunAugmentationsFromHostEvent(state: LabStoreState, event: L
     return;
   }
   if (event.kind === "module-artifact") {
+    const hadRun = state.run !== null;
     upsertRunPreviewArtifact(state, event, { finalArtifact: true });
+    if (hadRun !== true && event.stage === "completed" && state.run !== null) {
+      state.run.state = "completed";
+      state.run.endedAt = state.run.endedAt || Date.now();
+    }
     appendModuleTraceFromEvent(state, event);
     return;
   }

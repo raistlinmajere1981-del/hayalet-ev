@@ -34,6 +34,21 @@ test("room tool service stays generic and avoids laboratory-specific branching",
   assert.doesNotMatch(serviceSource, /yt-dlp command/i);
 });
 
+test("room tool service keeps write roots narrow while allowing packaged tool cwd", () => {
+  const serviceSource = readFileSync("electron/room-tool-service.ts", "utf8");
+
+  assert.match(
+    serviceSource,
+    /function ensureRoomManagedPath[\s\S]*const allowedRoots = \[paths\.storageDir, paths\.toolRuntimeDir\];/
+  );
+  assert.match(serviceSource, /function ensureRoomToolRunCwdPath\(/);
+  assert.match(
+    serviceSource,
+    /const allowedRoots = \[\s*paths\.storageDir,\s*paths\.toolRuntimeDir,\s*paths\.packageToolsDir,\s*getInstalledSharedToolsDir\(paths\),\s*\];/
+  );
+  assert.match(serviceSource, /ensureRoomToolRunCwdPath\(request\.roomId, cwd\);/);
+});
+
 test("room tool service can describe planned and system-command tools without forcing an installer contract", () => {
   const serviceSource = readFileSync("electron/room-tool-service.ts", "utf8");
   const typeSource = readFileSync("src/types/room-tools.ts", "utf8");

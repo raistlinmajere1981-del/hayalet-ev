@@ -288,12 +288,7 @@ export function createLaboratoryToolMutationRuntime(deps: LaboratoryToolMutation
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const cancelled = /cancelled|canceled|iptal/i.test(message);
-      updateToolBusy(
-        runtime,
-        toolId,
-        false,
-        cancelled === true ? null : message
-      );
+      updateToolBusy(runtime, toolId, false, cancelled === true ? null : message);
       await persistToolState(runtime);
       if (toolId === "whisper.cpp") {
         await refreshProfileModelState(runtime);

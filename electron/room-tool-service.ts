@@ -351,6 +351,21 @@ function ensureRoomManagedPath(roomId: string, targetPath: string): void {
   throw new Error(`Path is outside the managed room roots: ${absolutePath}`);
 }
 
+function ensureRoomToolRunCwdPath(roomId: string, targetPath: string): void {
+  const paths = resolveRuntimePaths(roomId);
+  const absolutePath = ensureAbsolutePath(targetPath);
+  const allowedRoots = [
+    paths.storageDir,
+    paths.toolRuntimeDir,
+    paths.packageToolsDir,
+    getInstalledSharedToolsDir(paths),
+  ];
+  if (allowedRoots.some((root) => isPathInside(root, absolutePath))) {
+    return;
+  }
+  throw new Error(`Tool run cwd is outside the managed room roots: ${absolutePath}`);
+}
+
 function findVersion(output: string, pattern: string): string | null {
   const regex = new RegExp(pattern);
   const match = output.trim().match(regex);
@@ -1697,7 +1712,7 @@ class RoomToolService {
     }
 
     const cwd = asNonEmptyString(request.cwd) ?? defaultCwd;
-    ensureRoomManagedPath(request.roomId, cwd);
+    ensureRoomToolRunCwdPath(request.roomId, cwd);
 
     this.emitProgress(event, {
       roomId: request.roomId,
@@ -2047,6 +2062,7 @@ class RoomToolService {
     }
   }
 
+  /* eslint-disable no-await-in-loop -- Managed Python candidates mutate shared runtime directories and must be prepared one at a time. */
   private async ensureManagedPythonRuntime(
     event: IpcMainInvokeEvent,
     resolvedInstaller: ResolvedPythonVenvPipInstaller,
@@ -2182,6 +2198,7 @@ class RoomToolService {
 
     throw new Error(`Managed room Python could not be prepared. ${failures.join(" ")}`);
   }
+  /* eslint-enable no-await-in-loop */
 
   private async resolvePythonBootstrapInvocation(
     resolvedInstaller: ResolvedPythonVenvPipInstaller,

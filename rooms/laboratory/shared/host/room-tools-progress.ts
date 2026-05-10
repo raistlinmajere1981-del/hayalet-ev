@@ -201,9 +201,7 @@ export function createLaboratoryRoomToolsProgressRuntime(
   }
 
   function readPipTransfer(line: string): { received: number | null; total: number | null } {
-    const progressMatch = line.match(
-      /([0-9.]+\s*[KMGTPE]?i?B)\s*\/\s*([0-9.]+\s*[KMGTPE]?i?B)/i
-    );
+    const progressMatch = line.match(/([0-9.]+\s*[KMGTPE]?i?B)\s*\/\s*([0-9.]+\s*[KMGTPE]?i?B)/i);
     if (progressMatch) {
       return {
         received: parseByteSize(progressMatch[1] || ""),

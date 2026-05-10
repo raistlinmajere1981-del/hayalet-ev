@@ -1,4 +1,9 @@
-import { asLabRecord, asNonEmptyString, WORKSPACE_INTENTS } from "../models/lab-types.js";
+import {
+  asLabRecord,
+  asNonEmptyString,
+  escapeHtml,
+  WORKSPACE_INTENTS,
+} from "../models/lab-types.js";
 import type {
   LabFeatureId,
   LabFocusLayer,
@@ -44,6 +49,7 @@ import { createLabWorkspaceSettingsController } from "./controller/lab-workspace
 import { createLabSourceActionController } from "./controller/lab-source-action-controller.js";
 import { createLabWorkspaceOperationController } from "./controller/lab-workspace-operation-controller.js";
 import {
+  formatTimelineTimeMs,
   isTimelineAction,
   normalizeWorkspaceControlTab,
 } from "./controller/lab-timeline-controller-helpers.js";
@@ -69,9 +75,11 @@ type LabRunControllerDeps = {
 
 export function createLabRunController(deps: LabRunControllerDeps) {
   type AnalysisScopeChoice = "selected" | "full" | "cancel";
+  type AnalysisScopeRequest = AnalysisScopeChoice | "pending";
   type LabControllerState = ReturnType<typeof deps.store.getState>;
 
   let attached = false;
+  let analysisScopeOverlay: HTMLElement | null = null;
   const getWorkspaceWaveformTimelineModel = () => getWaveformTimelineModel(deps.store.getState());
   const workspaceAudioVisualizer = createLabWaveformTimelineVisualizer({
     documentRef: deps.documentRef,
@@ -437,28 +445,103 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     return "cancel";
   }
 
-  function requestAnalysisScopeChoice(state: LabControllerState): AnalysisScopeChoice {
+  function removeAnalysisScopeOverlay() {
+    analysisScopeOverlay?.remove();
+    analysisScopeOverlay = null;
+  }
+
+  function formatAnalysisSelectionSummary(state: LabControllerState) {
+    const selection = getWorkspaceAnalysisSelection(state);
+    const details: string[] = [];
+    if (selection.hasTimeRange) {
+      details.push(
+        `${formatTimelineTimeMs(selection.startMs ?? 0)} - ${formatTimelineTimeMs(
+          selection.endMs ?? 0
+        )}`
+      );
+    }
+    if (selection.hasRoi) {
+      details.push("ROI");
+    }
+    return details.length > 0 ? details.join(" + ") : "Seçili kapsam";
+  }
+
+  function showAnalysisScopeOverlay(state: LabControllerState) {
+    const body = deps.documentRef.body;
+    if (!body || typeof body.appendChild !== "function") {
+      return false;
+    }
+    removeAnalysisScopeOverlay();
+    const overlay = deps.documentRef.createElement("div");
+    overlay.className = "labx-analysis-scope-overlay";
+    overlay.setAttribute("data-lab-analysis-scope-overlay", "true");
+    overlay.setAttribute("data-open", "true");
+    overlay.innerHTML = `
+      <button class="labx-analysis-scope-overlay__backdrop" type="button" data-lab-action="analysis-scope-cancel" aria-label="Kapsam onayini kapat"></button>
+      <section class="labx-analysis-scope-confirm" role="dialog" aria-modal="true" aria-label="Analiz kapsamı onayı">
+        <div class="labx-analysis-scope-confirm__head">
+          <span>Analiz kapsamı</span>
+          <h3>Seçili alanla mı başlayalım?</h3>
+          <p>${escapeHtml(formatAnalysisSelectionSummary(state))} için ayrı bir kapsam seçili.</p>
+        </div>
+        <div class="labx-analysis-scope-confirm__body">
+          <button class="labx-analysis-scope-confirm__choice" type="button" data-lab-action="analysis-scope-choice" data-lab-value="selected">
+            <strong>Seçili alan</strong>
+            <span>Zaman aralığı veya ROI ile sınırlı analiz başlat.</span>
+          </button>
+          <button class="labx-analysis-scope-confirm__choice" type="button" data-lab-action="analysis-scope-choice" data-lab-value="full">
+            <strong>Tamamı</strong>
+            <span>Seçimi yok sayıp tüm kaynak üzerinde çalıştır.</span>
+          </button>
+        </div>
+        <div class="labx-analysis-scope-confirm__actions">
+          <button class="labx-inline-action" type="button" data-lab-action="analysis-scope-cancel">İptal</button>
+        </div>
+      </section>
+    `;
+    body.appendChild(overlay);
+    analysisScopeOverlay = overlay;
+    overlay
+      .querySelector<HTMLElement>("[data-lab-action='analysis-scope-choice'][data-lab-value='selected']")
+      ?.focus();
+    return true;
+  }
+
+  function cancelAnalysisScopeOverlay() {
+    removeAnalysisScopeOverlay();
+    dispatch({
+      type: "push-event",
+      event: buildUiEvent("Analiz başlatılmadı.", "warning"),
+    });
+  }
+
+  function startAnalysisFromScopeOverlay(choice: AnalysisScopeChoice) {
+    removeAnalysisScopeOverlay();
+    if (choice === "cancel") {
+      cancelAnalysisScopeOverlay();
+      return;
+    }
+    const state = deps.store.getState();
+    const blockReason = getAnalysisActionBlockReason(state);
+    if (blockReason !== null) {
+      dispatch({
+        type: "push-event",
+        event: buildUiEvent(blockReason, "warning"),
+      });
+      return;
+    }
+    startDeepAnalysis(state, choice);
+  }
+
+  function requestAnalysisScopeChoice(state: LabControllerState): AnalysisScopeRequest {
     const selection = getWorkspaceAnalysisSelection(state);
     if (!selection.hasTimeRange && !selection.hasRoi) {
       return "selected";
     }
-    if (typeof deps.windowRef.prompt !== "function") {
-      return "selected";
+    if (showAnalysisScopeOverlay(state)) {
+      return "pending";
     }
-
-    const choice = parseAnalysisScopeChoice(
-      deps.windowRef.prompt(
-        "Seçilmiş zaman aralığı veya ROI var. Analizi hangi kapsamla başlatalım?\n1: Seçili alan\n2: Tamamı\n3: İptal",
-        "1"
-      )
-    );
-    if (choice === "cancel") {
-      dispatch({
-        type: "push-event",
-        event: buildUiEvent("Analiz başlatılmadı.", "warning"),
-      });
-    }
-    return choice;
+    return "selected";
   }
 
   function updateAnalysisScopeFromWorkspace(
@@ -546,7 +629,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
   function requestDeepAnalysis(state: LabControllerState) {
     const scopeChoice = requestAnalysisScopeChoice(state);
-    if (scopeChoice === "cancel") {
+    if (scopeChoice === "cancel" || scopeChoice === "pending") {
       return;
     }
     startDeepAnalysis(deps.store.getState(), scopeChoice);
@@ -606,6 +689,11 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   }
 
   function handleKeyDown(event: KeyboardEvent) {
+    if (event.key === "Escape" && analysisScopeOverlay !== null) {
+      event.preventDefault();
+      cancelAnalysisScopeOverlay();
+      return;
+    }
     if (event.ctrlKey !== true || event.key.toLowerCase() !== "b") {
       return;
     }
@@ -865,6 +953,12 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         saveActiveProjectCheckpoint();
         return;
       }
+      case "analysis-scope-choice":
+        startAnalysisFromScopeOverlay(parseAnalysisScopeChoice(value));
+        return;
+      case "analysis-scope-cancel":
+        cancelAnalysisScopeOverlay();
+        return;
       case "run-deep-analysis": {
         const blockReason = getAnalysisActionBlockReason(state);
         if (blockReason !== null) {

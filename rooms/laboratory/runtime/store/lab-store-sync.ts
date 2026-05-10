@@ -474,12 +474,19 @@ function syncRunStateFromHostEvent(state: LabStoreState, event: LabEventFeedItem
   ) {
     return;
   }
+  const isRunLevelEvent = event.moduleId == null;
+  if (
+    isRunLevelEvent !== true &&
+    (event.stage === "failed" || event.stage === "cancelled" || event.stage === "completed")
+  ) {
+    return;
+  }
   if (event.stage === "failed") {
     const run = ensurePendingRun(state, event.action);
     run.state = "failed";
     run.error = event.detail || run.error;
     state.ui.analysisCancelPending = false;
-    if (event.moduleId === null) {
+    if (isRunLevelEvent) {
       clearAnalysisPreparationSelection(state);
     }
     return;
@@ -489,7 +496,7 @@ function syncRunStateFromHostEvent(state: LabStoreState, event: LabEventFeedItem
     run.state = "cancelled";
     run.endedAt = run.endedAt || Date.now();
     state.ui.analysisCancelPending = false;
-    if (event.moduleId === null) {
+    if (isRunLevelEvent) {
       clearAnalysisPreparationSelection(state);
     }
     return;
@@ -499,7 +506,7 @@ function syncRunStateFromHostEvent(state: LabStoreState, event: LabEventFeedItem
     run.state = "completed";
     run.endedAt = run.endedAt || Date.now();
     state.ui.analysisCancelPending = false;
-    if (event.moduleId === null) {
+    if (isRunLevelEvent) {
       clearAnalysisPreparationSelection(state);
     }
     return;
@@ -525,7 +532,7 @@ function syncAnalysisCancelPendingFromHostEvent(state: LabStoreState, event: Lab
   if (event.action !== "process-cancel" && event.action !== "audio-process-cancel") {
     return;
   }
-  if (event.stage === "completed" || event.stage === "failed" || event.stage === "cancelled") {
+  if (event.stage === "failed") {
     state.ui.analysisCancelPending = false;
   }
 }

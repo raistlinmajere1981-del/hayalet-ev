@@ -848,14 +848,32 @@ function renderToolSection(
   state: LabStoreState,
   stageId: string,
   descriptors: LabToolDescriptorRecord[],
+  sectionKind: "relevant" | "other",
   copy: LabI18n = LAB_FALLBACK_I18N
 ): string {
-  if (descriptors.length === 0) {
+  if (descriptors.length === 0 && sectionKind !== "relevant") {
     return "";
   }
+  const titleKey =
+    sectionKind === "relevant"
+      ? "mediaAnalysis.toolManager.sections.relevant.title"
+      : "mediaAnalysis.toolManager.sections.other.title";
+  const titleFallback = sectionKind === "relevant" ? "İlgili araçlar" : "Diğer araçlar";
+  const hintKey =
+    sectionKind === "relevant"
+      ? "mediaAnalysis.toolManager.sections.relevant.hint"
+      : "mediaAnalysis.toolManager.sections.other.hint";
+  const hintFallback =
+    sectionKind === "relevant"
+      ? "Seçili niyet ve yetenek aileleri için gerekli araçlar önce listelenir."
+      : "Diğer modül ve kapasitelere ait araçlar burada tutulur.";
 
   return `
     <section class="labx-list-stack">
+      <div class="labx-tool-manager-section__header">
+        <h3>${escapeHtml(copy.t(titleKey, titleFallback))}</h3>
+        <p>${escapeHtml(copy.t(hintKey, hintFallback))}</p>
+      </div>
       <div class="labx-module-catalog">${descriptors
         .map(function (descriptor) {
           return renderToolCard(state, descriptor, stageId, copy);
@@ -949,7 +967,7 @@ function renderToolInstallConfirmation(
         <div class="labx-tool-install-confirm__steps">
           <span>${escapeHtml(copy.t("mediaAnalysis.toolManager.installReview.steps", "Yapılacak işlemler"))}</span>
           <ol>
-            <li>${escapeHtml(copy.t("mediaAnalysis.toolManager.installReview.stepRuntime", "Laboratory-managed Python hazırlanır; araç venv'i bu runtime ile oluşturulur veya onarılır."))}</li>
+            <li>${escapeHtml(copy.t("mediaAnalysis.toolManager.installReview.stepRuntime", "Room-local Python runtime oluşturulur veya bozuksa onarılır."))}</li>
             <li>${escapeHtml(copy.t("mediaAnalysis.toolManager.installReview.stepTooling", "pip, setuptools ve wheel güncellenir."))}</li>
             <li>${escapeHtml(copy.t("mediaAnalysis.toolManager.installReview.stepPackages", "Python paketleri indirilip kurulur."))}</li>
             <li>${escapeHtml(copy.t("mediaAnalysis.toolManager.installReview.stepProbe", "Kurulum import probe ile doğrulanır."))}</li>
@@ -1000,6 +1018,10 @@ export function renderToolManagementOverlay(
     const toolId = asNonEmptyString(descriptor.toolId);
     return toolId !== null && getToolEntry(state, toolId).installed === true;
   }).length;
+  const updateCount = roomManagedDescriptors.filter(function (descriptor) {
+    const toolId = asNonEmptyString(descriptor.toolId);
+    return toolId !== null && getToolEntry(state, toolId).updateAvailable === true;
+  }).length;
 
   return `
     <div class="labx-overlay-root" data-open="${isOpen ? "true" : "false"}">
@@ -1016,6 +1038,11 @@ export function renderToolManagementOverlay(
               <div class="labx-module-overlay__header">
                 <div>
                   <h2 class="labx-module-overlay__title">${escapeHtml(copy.t("mediaAnalysis.toolManager.title", "Araç Yönetimi"))}</h2>
+                  <div class="labx-tool-manager-stats" aria-label="${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.relevant", "İlgili araçlar"))}">
+                    <span>${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.relevant", "İlgili araçlar"))}: <strong>${escapeHtml(String(relevantTools.length))}</strong></span>
+                    <span>${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.installed", "Kurulu araç"))}: <strong>${escapeHtml(String(roomManagedInstalledCount))}</strong></span>
+                    <span>${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.updates", "Güncelleme bekleyen"))}: <strong>${escapeHtml(String(updateCount))}</strong></span>
+                  </div>
                 </div>
                 <div class="labx-inline-actions">
                   <button
@@ -1042,8 +1069,8 @@ export function renderToolManagementOverlay(
               <div class="labx-tool-manager-layout">
                 ${renderToolProgressRail(state, descriptors, copy)}
                 <div class="labx-tool-manager-main">
-                  ${renderToolSection(state, stageId, relevantTools, copy)}
-                  ${renderToolSection(state, stageId, otherTools, copy)}
+                  ${renderToolSection(state, stageId, relevantTools, "relevant", copy)}
+                  ${renderToolSection(state, stageId, otherTools, "other", copy)}
                 </div>
               </div>
               ${renderToolInstallConfirmation(state, descriptors, copy)}

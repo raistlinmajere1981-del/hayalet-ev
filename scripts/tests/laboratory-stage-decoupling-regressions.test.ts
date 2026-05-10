@@ -63,6 +63,72 @@ test("getToolLifecycleStage returns 'process' when a run is active", () => {
   assert.equal(isRunActive(state), true);
 });
 
+test("laboratory store keeps process runs active while individual modules finish", () => {
+  const store = createLabStore();
+  const timestamp = Date.now();
+
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-audio-run",
+      kind: "activity",
+      severity: "info",
+      message: "Audio analysis started",
+      detail: null,
+      timestamp,
+      source: "host",
+      action: "audio-process-run",
+      stage: "running",
+      scope: "run",
+      moduleId: null,
+      rawLine: null,
+    },
+  });
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-audio-module-complete",
+      kind: "module-progress",
+      severity: "info",
+      message: "signal-health completed",
+      detail: null,
+      timestamp: timestamp + 1,
+      source: "host",
+      action: "audio-process-run",
+      stage: "completed",
+      scope: "run",
+      moduleId: "signal-health",
+      rawLine: null,
+    },
+  });
+
+  assert.equal(store.getState().run?.state, "running");
+  assert.equal(store.getState().run?.modules["signal-health"]?.status, "completed");
+  assert.equal(isRunActive(store.getState()), true);
+  assert.equal(isRunComplete(store.getState()), false);
+
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-audio-run-complete",
+      kind: "activity",
+      severity: "success",
+      message: "Audio analysis completed",
+      detail: null,
+      timestamp: timestamp + 2,
+      source: "host",
+      action: "audio-process-run",
+      stage: "completed",
+      scope: "run",
+      moduleId: null,
+      rawLine: null,
+    },
+  });
+
+  assert.equal(isRunActive(store.getState()), false);
+  assert.equal(isRunComplete(store.getState()), true);
+});
+
 test("laboratory store keeps host-context adjustments out of pending runs", () => {
   const store = createLabStore();
   store.dispatch({
@@ -114,12 +180,32 @@ test("laboratory store keeps cancel pending until the process run reaches a term
   store.dispatch({
     type: "host-event-received",
     event: {
+      id: "evt-cancel-accepted",
+      kind: "request-result",
+      severity: "success",
+      message: "Analiz iptal istegi kabul edildi",
+      detail: null,
+      timestamp: Date.now() + 1,
+      source: "host",
+      action: "process-cancel",
+      stage: "completed",
+      scope: "run",
+      moduleId: null,
+      rawLine: null,
+    },
+  });
+
+  assert.equal(store.getState().ui.analysisCancelPending, true);
+
+  store.dispatch({
+    type: "host-event-received",
+    event: {
       id: "evt-run-cancelled",
       kind: "activity",
       severity: "warning",
       message: "Analiz iptal edildi",
       detail: null,
-      timestamp: Date.now() + 1,
+      timestamp: Date.now() + 2,
       source: "host",
       action: "process-run",
       stage: "cancelled",
@@ -590,13 +676,22 @@ test("controller startDeepAnalysis uses ready workspace analysis selection befor
   const source = readFileSync("rooms/laboratory/runtime/lab-run-controller.ts", "utf8");
 
   assert.match(source, /const selectedIntentIds = getReadySelectedAnalysisIntentIds\(state\);/);
-  assert.match(source, /const intentCapabilities = getReadySelectedAnalysisCapabilityIds\(state\);/);
-  assert.match(source, /updateAnalysisScopeFromWorkspace\(state, scopeChoice, selectedIntentIds\);/);
+  assert.match(
+    source,
+    /const intentCapabilities = getReadySelectedAnalysisCapabilityIds\(state\);/
+  );
+  assert.match(
+    source,
+    /updateAnalysisScopeFromWorkspace\(state, scopeChoice, selectedIntentIds\);/
+  );
   assert.match(
     source,
     /const \{ activeFeatureId \} = deriveFeatureSelectionFromCapabilities\(intentCapabilities\);/
   );
-  assert.match(source, /const runAction = activeFeatureId === "audio-analysis" \? "audio-process-run" : "process-run";/);
+  assert.match(
+    source,
+    /const runAction = activeFeatureId === "audio-analysis" \? "audio-process-run" : "process-run";/
+  );
   assert.match(source, /dispatch\(\{ type: "run-started", action: runAction \}\);/);
   assert.match(source, /sendMediaAction\(runAction\)/);
   assert.match(source, /preflightAutoRunEnabled !== false/);

@@ -40,6 +40,23 @@ export function getSourceReady(state: LabStoreState): boolean {
   return state.source !== null && state.sourceProbeStatus === "completed";
 }
 
+function hasAuthoritativeToolState(state: LabStoreState): boolean {
+  const toolRegistry = asLabRecord(getToolState(state)["tools"]);
+  if (Object.keys(toolRegistry).length > 0) {
+    return true;
+  }
+  return Array.isArray(asLabRecord(state.snapshot)["toolRegistry"]);
+}
+
+function isToolReady(state: LabStoreState, toolId: string) {
+  if (!hasAuthoritativeToolState(state)) {
+    return true;
+  }
+  const toolRegistry = asLabRecord(getToolState(state)["tools"]);
+  const tool = asLabRecord(toolRegistry[toolId]);
+  return tool["installed"] === true || asNonEmptyString(tool["status"]) === "installed";
+}
+
 function getAssetOperationKind(asset: LabAsset): OperationSourceKind | null {
   return inferLabAssetSourceKind(asset);
 }
@@ -349,20 +366,16 @@ export function getAvailableCapabilities(state: LabStoreState) {
   const operationTarget = getWorkspaceOperationTarget(state);
   const sourceKind = operationTarget.sourceKind;
   const sourceReady = operationTarget.sourceReady;
-  const toolState = getToolState(state);
-  const toolRegistry = asLabRecord(toolState["tools"]);
   const effectiveSelectedCapabilities = getEffectiveSelectedCapabilities(state);
 
   return CAPABILITY_FAMILIES.map(function (family) {
     const sourceCompatible =
       sourceKind !== null && family.sourceKinds.includes(sourceKind as "video" | "audio" | "image");
     const toolsReady = family.requiredTools.every(function (toolId) {
-      const tool = asLabRecord(toolRegistry[toolId]);
-      return tool["installed"] === true || asNonEmptyString(tool["status"]) === "installed";
+      return isToolReady(state, toolId);
     });
     const toolsMissing = family.requiredTools.filter(function (toolId) {
-      const tool = asLabRecord(toolRegistry[toolId]);
-      return tool["installed"] !== true && asNonEmptyString(tool["status"]) !== "installed";
+      return isToolReady(state, toolId) !== true;
     });
 
     let readiness: "ready" | "optional" | "blocked" = "ready";
@@ -397,11 +410,11 @@ export function getAvailableCapabilities(state: LabStoreState) {
 }
 
 function getMissingToolIds(state: LabStoreState, toolIds: string[]) {
-  const toolState = getToolState(state);
-  const toolRegistry = asLabRecord(toolState["tools"]);
+  if (!hasAuthoritativeToolState(state)) {
+    return [];
+  }
   return toolIds.filter(function (toolId) {
-    const tool = asLabRecord(toolRegistry[toolId]);
-    return tool["installed"] !== true && asNonEmptyString(tool["status"]) !== "installed";
+    return isToolReady(state, toolId) !== true;
   });
 }
 

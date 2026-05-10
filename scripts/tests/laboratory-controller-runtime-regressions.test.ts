@@ -1481,6 +1481,150 @@ test("laboratory run controller treats missing area selection as full-media anal
   }
 });
 
+test("laboratory run controller opens an in-room scope overlay for selected ranges", () => {
+  const originalElement = globalThis.Element;
+  const sentActions: string[] = [];
+  const prompts: string[] = [];
+  class FakeScopeOverlayElement {
+    className = "";
+    dataset: Record<string, string> = {};
+    innerHTML = "";
+    removed = false;
+    attributes: Record<string, string> = {};
+    focused = false;
+
+    setAttribute(name: string, value: string) {
+      this.attributes[name] = value;
+    }
+
+    querySelector(selector: string) {
+      return selector.includes("analysis-scope-choice")
+        ? { focus: () => (this.focused = true) }
+        : null;
+    }
+
+    remove() {
+      this.removed = true;
+    }
+  }
+
+  const documentRef = new FakeControllerDocument() as FakeControllerDocument & {
+    body: {
+      appended: FakeScopeOverlayElement[];
+      appendChild: (child: FakeScopeOverlayElement) => void;
+    };
+    createElement: (tagName: string) => FakeScopeOverlayElement;
+  };
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  class TestElement extends FakeActionElement {}
+
+  documentRef.body = {
+    appended: [],
+    appendChild(child: FakeScopeOverlayElement) {
+      this.appended.push(child);
+    },
+  };
+  documentRef.createElement = function () {
+    return new FakeScopeOverlayElement();
+  };
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent(eventName: string, payload: Record<string, unknown>) {
+            if (eventName === "media-action" && typeof payload["action"] === "string") {
+              sentActions.push(payload["action"]);
+            }
+          },
+        },
+        addEventListener() {},
+        prompt(message: string) {
+          prompts.push(message);
+          return "1";
+        },
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    store.dispatch({
+      type: "hydrate",
+      payload: {
+        featureId: "media-analysis",
+        source: {
+          kind: "video",
+          mode: "local",
+          previewUrl: "preview://video",
+          storedPath: "/tmp/lab-demo.mp4",
+        },
+        sourceProbeStatus: "completed",
+        toolState: {
+          tools: {
+            ffmpeg: { installed: true },
+          },
+        },
+        workspace: {
+          preflightAutoRunEnabled: false,
+          selectedIntents: ["visual-inspection"],
+          timelineStartMs: 1200,
+          timelineEndMs: 2600,
+        },
+        reports: {
+          user: null,
+          ai: null,
+          emptyReason: null,
+        },
+        activityFeed: [],
+        lastRun: null,
+      },
+    });
+
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
+    clickListener?.({ target: new TestElement("run-deep-analysis") } as Event);
+
+    const overlay = documentRef.body.appended[0];
+    assert.ok(overlay);
+    assert.equal(prompts.length, 0);
+    assert.equal(sentActions.includes("process-run"), false);
+    assert.equal(overlay.attributes["data-open"], "true");
+    assert.match(overlay.innerHTML, /data-lab-action="analysis-scope-choice"/);
+
+    clickListener?.({ target: new TestElement("analysis-scope-choice", "selected") } as Event);
+
+    const analysisScope = store.getState().run?.analysisScope;
+    assert.equal(overlay.removed, true);
+    assert.ok(sentActions.includes("process-run"));
+    assert.deepEqual(analysisScope?.timeRange, {
+      startMs: 1200,
+      endMs: 2600,
+    });
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
 test("laboratory run controller syncs the unified timeline playhead to the active preview media", async () => {
   const preview = new FakeMediaElement();
   preview.duration = 5;
