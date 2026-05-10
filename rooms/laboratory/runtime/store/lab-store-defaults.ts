@@ -126,6 +126,7 @@ export function createDefaultWorkspaceUiState(): LabWorkspaceUiState {
     processViewActive: false,
     reportOverlayOpen: false,
     selectionTabActive: false,
+    preflightAutoRunEnabled: true,
     userExploreToggle: false,
     drawerModeOverride: null,
     drawerCollapsed: false,

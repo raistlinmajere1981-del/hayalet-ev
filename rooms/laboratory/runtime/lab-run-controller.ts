@@ -1,6 +1,5 @@
 import { asLabRecord, asNonEmptyString, WORKSPACE_INTENTS } from "../models/lab-types.js";
 import type {
-  CapabilityFamilyId,
   LabFeatureId,
   LabFocusLayer,
   LabIntentId,
@@ -9,10 +8,11 @@ import type {
 } from "../models/lab-types.js";
 import { createLabWaveformTimelineVisualizer } from "../ui/lab-waveform-timeline.js";
 import {
-  getActiveExecutionIntent,
   getAnalysisActionBlockReason,
   getCurrentRun,
   getEditActionBlockReason,
+  getReadySelectedAnalysisCapabilityIds,
+  getReadySelectedAnalysisIntentIds,
   getSourceReady,
   getToolLifecycleStage,
   getWaveformTimelineModel,
@@ -49,7 +49,6 @@ import {
 } from "./controller/lab-timeline-controller-helpers.js";
 import { DEFAULT_AUDIO_FOCUS_SETTINGS } from "./lab-audio-focus-normalization.js";
 import { DEFAULT_LAB_INTERACTIVE_SETTINGS } from "./lab-workspace-defaults.js";
-import { getAnalysisPreparationIntentIdsForSuggestion } from "./store/lab-store-execution-state.js";
 
 type LabRoomApi = {
   onHostMessage?: (listener: (message: unknown) => void) => void;
@@ -339,20 +338,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     });
   }
 
-  function collectIntentCapabilities(selectedIntents: LabIntentId[]): CapabilityFamilyId[] {
-    const intentCapabilities: CapabilityFamilyId[] = [];
-    WORKSPACE_INTENTS.forEach(function (intent) {
-      if (selectedIntents.includes(intent.id)) {
-        intent.internalCapabilities.forEach(function (capId) {
-          if (!intentCapabilities.includes(capId)) {
-            intentCapabilities.push(capId);
-          }
-        });
-      }
-    });
-    return intentCapabilities;
-  }
-
   function parseAnalysisPreparationModuleValue(value: string) {
     const [intentId, moduleId] = value.split("::");
     const knownIntentId = WORKSPACE_INTENTS.some(function (intent) {
@@ -478,7 +463,8 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
   function updateAnalysisScopeFromWorkspace(
     state: LabControllerState,
-    choice: AnalysisScopeChoice
+    choice: AnalysisScopeChoice,
+    selectedIntentIds: LabIntentId[]
   ) {
     const selection = getWorkspaceAnalysisSelection(state);
     const ws = state.ui.workspace;
@@ -491,8 +477,8 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         delete nextScope["hypothesis"];
       }
 
-      if (ws.selectedIntents.length > 0) {
-        nextScope["intentIds"] = Array.from(new Set(ws.selectedIntents));
+      if (selectedIntentIds.length > 0) {
+        nextScope["intentIds"] = Array.from(new Set(selectedIntentIds));
       } else {
         delete nextScope["intentIds"];
       }
@@ -533,21 +519,20 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   }
 
   function startDeepAnalysis(state: LabControllerState, scopeChoice: AnalysisScopeChoice) {
-    const ws = state.ui.workspace;
-    const intentCapabilities =
-      ws.selectedIntents.length > 0
-        ? collectIntentCapabilities(ws.selectedIntents)
-        : state.selectedCapabilities.slice();
+    const selectedIntentIds = getReadySelectedAnalysisIntentIds(state);
+    const intentCapabilities = getReadySelectedAnalysisCapabilityIds(state);
     const { activeFeatureId } = deriveFeatureSelectionFromCapabilities(intentCapabilities);
 
     syncCapabilities(intentCapabilities);
-    updateAnalysisScopeFromWorkspace(state, scopeChoice);
+    updateAnalysisScopeFromWorkspace(state, scopeChoice, selectedIntentIds);
 
     const sourceRecord = asLabRecord(state.source);
     if (asNonEmptyString(sourceRecord["previewUrl"]) === null) {
       sendMediaAction("edit-preview");
     }
-    sendMediaAction("profile-run-preflight");
+    if (state.ui.workspace.preflightAutoRunEnabled !== false) {
+      sendMediaAction("profile-run-preflight");
+    }
     const runAction = activeFeatureId === "audio-analysis" ? "audio-process-run" : "process-run";
     dispatch({ type: "run-started", action: runAction });
     if (sendMediaAction(runAction) === null) {
@@ -892,6 +877,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         requestDeepAnalysis(state);
         return;
       }
+      case "preflight-auto-run-toggle":
+        dispatch({ type: "analysis-preflight-auto-run-toggled" });
+        syncCurrentWorkbenchToHost();
+        return;
       case "cancel-analysis": {
         const run = getCurrentRun(state);
         if (
@@ -1230,26 +1219,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     if (event.type !== "workspace-selection-suggestion-accepted") {
       return;
     }
-    const state = deps.store.getState();
-    const activeExecutionIntent = getActiveExecutionIntent(state);
-    if (
-      activeExecutionIntent === null ||
-      activeExecutionIntent.id !== event.suggestionId ||
-      getAnalysisPreparationIntentIdsForSuggestion(activeExecutionIntent).length === 0
-    ) {
-      syncCurrentWorkbenchToHost();
-      return;
-    }
-    const blockReason = getAnalysisActionBlockReason(state);
-    if (blockReason !== null) {
-      dispatch({
-        type: "push-event",
-        event: buildUiEvent(blockReason, "warning"),
-      });
-      syncCurrentWorkbenchToHost();
-      return;
-    }
-    requestDeepAnalysis(state);
+    syncCurrentWorkbenchToHost();
   }
 
   deps.eventBus.subscribe(handleBusEvent);

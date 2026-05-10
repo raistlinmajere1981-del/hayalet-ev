@@ -28,6 +28,7 @@ import {
   normalizeExecutionPlanId,
   normalizeSelectionSuggestionId,
 } from "./store/lab-store-execution-state.js";
+import { filterReadyAnalysisIntentIds } from "./selectors/lab-capability-selectors.js";
 import { normalizeUserActionResultAssetIds } from "./store/lab-store-host-records.js";
 import { normalizeSourceDraftPatch } from "./store/lab-store-import-state.js";
 import { reduceLabImportUiEvent } from "./store/lab-store-import-reducer.js";
@@ -421,11 +422,11 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
           nextExecutionIntentId === null
             ? null
             : getSelectionSuggestionById(state, nextExecutionIntentId);
-        const suggestionBoundToAnalysis = applyAnalysisPreparationSuggestionSelection(
-          state,
-          event.suggestionId,
-          "replace"
-        );
+        const suggestionBoundToAnalysis = applyAnalysisPreparationSuggestionSelection(state, {
+          mode: "replace",
+          selectionTabActive: false,
+          suggestionId: event.suggestionId,
+        });
         if (suggestion !== null && isOperationResultSuggestion(suggestion)) {
           state.ui.workspace = {
             ...state.ui.workspace,
@@ -462,7 +463,11 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       if (isRunMutationLocked(state)) {
         return state;
       }
-      applyAnalysisPreparationSuggestionSelection(state, event.suggestionId, "append");
+      applyAnalysisPreparationSuggestionSelection(state, {
+        mode: "append",
+        selectionTabActive: true,
+        suggestionId: event.suggestionId,
+      });
       if (
         state.ui.activeSuggestionPreviewId === normalizeSelectionSuggestionId(event.suggestionId)
       ) {
@@ -912,6 +917,15 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         selectionTabActive: event.active,
       };
       return state;
+    case "analysis-preflight-auto-run-toggled":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        preflightAutoRunEnabled:
+          typeof event.enabled === "boolean"
+            ? event.enabled
+            : state.ui.workspace.preflightAutoRunEnabled === false,
+      };
+      return state;
     case "source-panel-toggled":
       state.ui.sourcePanelCollapsed = !state.ui.sourcePanelCollapsed;
       return state;
@@ -955,23 +969,29 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
 
 function applyAnalysisPreparationSuggestionSelection(
   state: LabStoreState,
-  suggestionId: string,
-  mode: "append" | "replace"
+  options: {
+    mode: "append" | "replace";
+    selectionTabActive: boolean;
+    suggestionId: string;
+  }
 ) {
-  const suggestion = getSelectionSuggestionById(state, suggestionId);
-  const suggestionIntentIds = getAnalysisPreparationIntentIdsForSuggestion(suggestion);
+  const suggestion = getSelectionSuggestionById(state, options.suggestionId);
+  const suggestionIntentIds = filterReadyAnalysisIntentIds(
+    state,
+    getAnalysisPreparationIntentIdsForSuggestion(suggestion)
+  );
   if (suggestionIntentIds.length === 0) {
     return false;
   }
   const nextIntents =
-    mode === "append"
+    options.mode === "append"
       ? normalizeWorkspaceIntentIds(state.ui.workspace.selectedIntents.concat(suggestionIntentIds))
       : normalizeWorkspaceIntentIds(suggestionIntentIds);
   state.ui.workspace = {
     ...state.ui.workspace,
     drawerCollapsed: false,
     drawerModeOverride: "setup",
-    selectionTabActive: false,
+    selectionTabActive: options.selectionTabActive,
     selectedIntents: nextIntents,
     analysisPrepExpandedIntentIds: normalizeLabIntentIds(
       state.ui.workspace.analysisPrepExpandedIntentIds.concat(suggestionIntentIds)

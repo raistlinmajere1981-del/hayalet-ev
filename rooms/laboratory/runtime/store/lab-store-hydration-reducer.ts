@@ -174,6 +174,7 @@ function hydrateWorkspaceUi(state: LabStoreState, workspace: unknown) {
           : state.ui.workspace.controlsDrawerTab,
       processViewActive: ws.processViewActive === true,
       reportOverlayOpen: ws.reportOverlayOpen === true,
+      preflightAutoRunEnabled: ws.preflightAutoRunEnabled !== false,
       userExploreToggle: ws.userExploreToggle === true,
       drawerModeOverride:
         ws.drawerModeOverride === "setup" || ws.drawerModeOverride === "result"

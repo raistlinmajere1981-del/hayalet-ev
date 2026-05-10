@@ -286,6 +286,57 @@
 }
 
 /* Drawer — Preflight */
+.labx-drawer__empty {
+  margin: 0;
+  color: var(--labx-text-soft);
+  font-size: 0.76rem;
+}
+
+.labx-drawer__preflight-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.labx-drawer__preflight-toggle {
+  padding: 0.35rem 0.55rem;
+  font-size: 0.7rem;
+}
+
+.labx-drawer__preflight-toggle[data-enabled="true"] {
+  border-color: rgba(88, 214, 229, 0.35);
+  color: var(--labx-accent);
+}
+
+.labx-drawer__preflight-details {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.labx-drawer__preflight-details div {
+  display: grid;
+  grid-template-columns: minmax(5rem, 0.45fr) 1fr;
+  gap: 0.5rem;
+  align-items: start;
+}
+
+.labx-drawer__preflight-details dt,
+.labx-drawer__preflight-details dd {
+  margin: 0;
+  font-size: 0.72rem;
+}
+
+.labx-drawer__preflight-details dt {
+  color: var(--labx-text-soft);
+}
+
+.labx-drawer__preflight-details dd {
+  color: var(--labx-text);
+  overflow-wrap: anywhere;
+}
+
 .labx-drawer__preflight[data-severity="clear"] {
   border-color: rgba(130, 227, 177, 0.2);
 }

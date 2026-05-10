@@ -155,6 +155,57 @@ export function getAvailableIntents(state: LabStoreState) {
   });
 }
 
+export function getReadyAnalysisIntents(state: LabStoreState) {
+  return getAvailableIntents(state).filter(function (intent) {
+    return intent.readiness === "ready";
+  });
+}
+
+export function getReadyAnalysisIntentIds(state: LabStoreState): LabIntentId[] {
+  return getReadyAnalysisIntents(state).map(function (intent) {
+    return intent.id;
+  });
+}
+
+export function filterReadyAnalysisIntentIds(
+  state: LabStoreState,
+  intentIds: readonly LabIntentId[]
+): LabIntentId[] {
+  const readyIntentIds = new Set(getReadyAnalysisIntentIds(state));
+  return intentIds.filter(function (intentId, index, allIntentIds) {
+    return readyIntentIds.has(intentId) && allIntentIds.indexOf(intentId) === index;
+  });
+}
+
+export function getReadySelectedAnalysisIntentIds(state: LabStoreState): LabIntentId[] {
+  return filterReadyAnalysisIntentIds(state, state.ui.workspace.selectedIntents);
+}
+
+export function getReadySelectedAnalysisCapabilityIds(state: LabStoreState): CapabilityFamilyId[] {
+  const readyCapabilityIds = new Set(
+    getAvailableCapabilities(state)
+      .filter(function (capability) {
+        return capability.readiness === "ready";
+      })
+      .map(function (capability) {
+        return capability.id;
+      })
+  );
+  const capabilitySet = new Set<CapabilityFamilyId>();
+  const readySelectedIntentIds = getReadySelectedAnalysisIntentIds(state);
+  WORKSPACE_INTENTS.forEach(function (intent) {
+    if (!readySelectedIntentIds.includes(intent.id)) {
+      return;
+    }
+    intent.internalCapabilities.forEach(function (capId) {
+      if (readyCapabilityIds.has(capId)) {
+        capabilitySet.add(capId);
+      }
+    });
+  });
+  return Array.from(capabilitySet);
+}
+
 export function getIntentDerivedCapabilities(state: LabStoreState): CapabilityFamilyId[] {
   const selectedIntents = getSelectedIntents(state);
   const capabilitySet = new Set<CapabilityFamilyId>();
@@ -205,7 +256,7 @@ export function getCurrentPreflight(state: LabStoreState): LabPreflightResult {
     };
   }
 
-  const selectedCapabilities = getEffectiveSelectedCapabilities(state);
+  const selectedCapabilities = getReadySelectedAnalysisCapabilityIds(state);
   if (selectedCapabilities.length === 0) {
     return {
       status: "blocked",
@@ -572,6 +623,15 @@ export function getAnalysisPreparationGroups(state: LabStoreState): LabAnalysisP
       expectedOutputs: getExpectedOutputs(intent.id),
       modules,
     };
+  });
+}
+
+export function getReadyAnalysisPreparationGroups(
+  state: LabStoreState
+): LabAnalysisPreparationGroup[] {
+  const readyIntentIds = new Set(getReadyAnalysisIntentIds(state));
+  return getAnalysisPreparationGroups(state).filter(function (group) {
+    return readyIntentIds.has(group.intentId);
   });
 }
 

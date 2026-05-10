@@ -46,8 +46,8 @@ import {
 } from "./selectors/lab-source-selectors.js";
 import {
   getCurrentPreflight,
-  getEffectiveSelectedCapabilities,
   getIntentDerivedCapabilities,
+  getReadySelectedAnalysisIntentIds,
   getSelectedIntents,
   getSourceReady,
 } from "./selectors/lab-capability-selectors.js";
@@ -74,6 +74,11 @@ export {
   getCapabilityWorkflowSummary,
   getCurrentPreflight,
   getExpectedOutputs,
+  getReadyAnalysisIntents,
+  getReadyAnalysisIntentIds,
+  getReadyAnalysisPreparationGroups,
+  getReadySelectedAnalysisCapabilityIds,
+  getReadySelectedAnalysisIntentIds,
   getIntentDerivedCapabilities,
   getOperationSettings,
   getSelectedCapabilities,
@@ -702,17 +707,8 @@ export function getPreflightWarnings(state: LabStoreState): string[] {
 }
 
 export function getAnalysisActionBlockReason(state: LabStoreState): string | null {
-  if (!getSourceReady(state)) {
-    return "Önce kaynak hazırlanmalı ve probe tamamlanmalı.";
-  }
-  const selectedCapabilities = getEffectiveSelectedCapabilities(state);
-  if (selectedCapabilities.length === 0) {
+  if (getReadySelectedAnalysisIntentIds(state).length === 0) {
     return "En az bir analiz modülü seçilmelidir.";
-  }
-  const severity = getPreflightSeverity(state);
-  if (severity === "will-fail") {
-    const preflight = getCurrentPreflight(state);
-    return `Eksik dependency: ${preflight.missingDependencies.join(", ")}`;
   }
   return null;
 }
@@ -898,7 +894,7 @@ function formatMsAsTime(ms: number): string {
 }
 
 export function buildIntentPreviewSentence(state: LabStoreState): string {
-  const selectedIntents = getSelectedIntents(state);
+  const selectedIntents = getReadySelectedAnalysisIntentIds(state);
   if (selectedIntents.length === 0) return "";
   const timelineSelection = getTimelineSelection(state);
   const metadata = getSourceMetadata(state);

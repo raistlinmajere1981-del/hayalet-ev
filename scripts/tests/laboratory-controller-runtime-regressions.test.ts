@@ -1256,6 +1256,231 @@ test("laboratory run controller routes topbar pills and cancel through v2 contra
   }
 });
 
+test("laboratory run controller honors the analysis preflight auto-run toggle", () => {
+  const originalElement = globalThis.Element;
+
+  class TestElement extends FakeActionElement {}
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+
+  function runWithPreflightToggle(preflightAutoRunEnabled: boolean) {
+    const sentActions: string[] = [];
+    const prompts: string[] = [];
+    const documentRef = new FakeControllerDocument();
+    const eventBus = createLabEventBus();
+    const store = createLabStore();
+
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent(eventName: string, payload: Record<string, unknown>) {
+            if (eventName === "media-action" && typeof payload["action"] === "string") {
+              sentActions.push(payload["action"]);
+            }
+          },
+        },
+        addEventListener() {},
+        prompt(message: string) {
+          prompts.push(message);
+          return "1";
+        },
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    store.dispatch({
+      type: "hydrate",
+      payload: {
+        featureId: "media-analysis",
+        source: {
+          kind: "video",
+          mode: "local",
+          previewUrl: "preview://video",
+          storedPath: "/tmp/lab-demo.mp4",
+        },
+        sourceProbeStatus: "completed",
+        toolState: {
+          tools: {
+            ffmpeg: { installed: true },
+          },
+        },
+        workspace: {
+          preflightAutoRunEnabled,
+          selectedIntents: ["visual-inspection"],
+        },
+        reports: {
+          user: null,
+          ai: null,
+          emptyReason: null,
+        },
+        activityFeed: [],
+        lastRun: null,
+      },
+    });
+
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
+    clickListener?.({ target: new TestElement("run-deep-analysis") } as Event);
+
+    return {
+      prompts,
+      sentActions,
+    };
+  }
+
+  try {
+    const enabledRun = runWithPreflightToggle(true);
+    const enabledPreflightIndex = enabledRun.sentActions.indexOf("profile-run-preflight");
+    const enabledRunIndex = enabledRun.sentActions.indexOf("process-run");
+
+    assert.equal(enabledRun.prompts.length, 0);
+    assert.notEqual(enabledPreflightIndex, -1);
+    assert.notEqual(enabledRunIndex, -1);
+    assert.ok(enabledPreflightIndex < enabledRunIndex);
+
+    const disabledRun = runWithPreflightToggle(false);
+
+    assert.equal(disabledRun.prompts.length, 0);
+    assert.equal(disabledRun.sentActions.includes("profile-run-preflight"), false);
+    assert.ok(disabledRun.sentActions.includes("process-run"));
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
+test("laboratory run controller treats missing area selection as full-media analysis scope", () => {
+  const originalElement = globalThis.Element;
+  const sentActions: string[] = [];
+  const prompts: string[] = [];
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  class TestElement extends FakeActionElement {}
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent(eventName: string, payload: Record<string, unknown>) {
+            if (eventName === "media-action" && typeof payload["action"] === "string") {
+              sentActions.push(payload["action"]);
+            }
+          },
+        },
+        addEventListener() {},
+        prompt(message: string) {
+          prompts.push(message);
+          return "1";
+        },
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    store.dispatch({
+      type: "hydrate",
+      payload: {
+        featureId: "media-analysis",
+        workbench: {
+          analysisScope: {
+            focus: "visual",
+            lifecycle: {
+              frozenAt: "2026-05-09T00:00:00.000Z",
+              mutable: false,
+              processId: "stale-process",
+            },
+            region: {
+              height: 90,
+              width: 120,
+              x: 10,
+              y: 20,
+            },
+            timeRange: {
+              endMs: 9999,
+              startMs: 8888,
+            },
+          },
+        },
+        source: {
+          kind: "video",
+          mode: "local",
+          previewUrl: "preview://video",
+          storedPath: "/tmp/lab-demo.mp4",
+        },
+        sourceProbeStatus: "completed",
+        toolState: {
+          tools: {
+            ffmpeg: { installed: true },
+          },
+        },
+        workspace: {
+          preflightAutoRunEnabled: false,
+          selectedIntents: ["visual-inspection"],
+        },
+        reports: {
+          user: null,
+          ai: null,
+          emptyReason: null,
+        },
+        activityFeed: [],
+        lastRun: null,
+      },
+    });
+
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
+    clickListener?.({ target: new TestElement("run-deep-analysis") } as Event);
+
+    const analysisScope = store.getState().run?.analysisScope;
+
+    assert.equal(prompts.length, 0);
+    assert.ok(sentActions.includes("process-run"));
+    assert.deepEqual(analysisScope?.intentIds, ["visual-inspection"]);
+    assert.equal(analysisScope?.timeRange, undefined);
+    assert.equal(analysisScope?.region, undefined);
+    assert.equal(analysisScope?.focus, undefined);
+    assert.notEqual(analysisScope?.lifecycle?.processId, "stale-process");
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
 test("laboratory run controller syncs the unified timeline playhead to the active preview media", async () => {
   const preview = new FakeMediaElement();
   preview.duration = 5;

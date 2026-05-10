@@ -14,9 +14,13 @@ import {
   getAnalysisActionBlockReason,
   getAnalysisPreparationGroups,
   getAvailableIntents,
+  getCurrentPreflight,
   getDrawerCollapsed,
   getPreflightSeverity,
   getPreflightWarnings,
+  getReadyAnalysisIntents,
+  getReadyAnalysisPreparationGroups,
+  getReadySelectedAnalysisIntentIds,
   getSelectedIntents,
   getSourceReady,
   resolveDrawerMode,
@@ -26,12 +30,12 @@ import type { LabI18n } from "./lab-i18n.js";
 import { renderContextPanel, renderPipeline } from "./laboratory-layout.js";
 import { formatLabExpectedOutputLabel, translateLabRuntimeText } from "./lab-runtime-i18n.js";
 import { renderLabSettingsFields } from "./lab-settings-controls.js";
-import { renderModePills } from "./lab-top-bar.js";
+import { getSelectionTabActive, renderModePills } from "./lab-top-bar.js";
 import { buildLabDecisionSnapshot } from "./lab-decision-layer.js";
 import { renderExploreMode, renderResultMode } from "./lab-drawer-result-explore.js";
 
-type AnalysisPreparationGroup = ReturnType<typeof getAnalysisPreparationGroups>[number];
-type AvailableIntent = ReturnType<typeof getAvailableIntents>[number];
+type AnalysisPreparationGroup = ReturnType<typeof getReadyAnalysisPreparationGroups>[number];
+type AvailableIntent = ReturnType<typeof getReadyAnalysisIntents>[number];
 type RunningStageStatus = "pending" | "active" | "complete" | "error" | "cancelled";
 
 // ---------------------------------------------------------------------------
@@ -240,7 +244,7 @@ function renderAnalysisPreparationAccordion(
     group?.modules.some(function (module) {
       return activeCapabilityIds.includes(module.capabilityId);
     }) === true;
-  const readiness = group?.readiness ?? intent.readiness;
+  const readiness = selected ? (group?.readiness ?? intent.readiness) : intent.readiness;
   const moduleCount = group?.modules.length ?? 0;
   const enabledModuleCount =
     group?.modules.filter(function (module) {
@@ -641,6 +645,7 @@ function renderRunningStageTracker(state: LabStoreState, copy: LabI18n) {
           done: counts.completedCount,
           total: counts.totalCount,
         });
+  const preflightAutoRunEnabled = state.ui.workspace.preflightAutoRunEnabled !== false;
   const stages: Array<{
     id: string;
     label: string;
@@ -660,10 +665,12 @@ function renderRunningStageTracker(state: LabStoreState, copy: LabI18n) {
       id: "preflight",
       label: copy.t("mediaAnalysis.drawer.running.stages.preflight", "Preflight"),
       detail:
-        counts.totalCount > 0 || runFinished
+        preflightAutoRunEnabled !== true
+          ? copy.t("mediaAnalysis.drawer.running.stageDetails.preflightSkipped", "Preflight is passive")
+          : counts.totalCount > 0 || runFinished
           ? copy.t("mediaAnalysis.drawer.running.stageDetails.preflightComplete", "Checks passed")
           : copy.t("mediaAnalysis.drawer.running.stageDetails.preflightActive", "Preparing tools"),
-      status: counts.totalCount > 0 || runFinished ? "complete" : "active",
+      status: preflightAutoRunEnabled !== true || counts.totalCount > 0 || runFinished ? "complete" : "active",
     },
     {
       id: "modules",
@@ -749,36 +756,84 @@ function getActiveAnalysisCapabilityIds(state: LabStoreState): CapabilityFamilyI
   }
 }
 
+function formatPreflightRuntime(seconds: number | null, copy: LabI18n) {
+  if (seconds === null || Number.isFinite(seconds) !== true) {
+    return copy.t("mediaAnalysis.drawer.setup.preflightRuntimeUnknown", "Bilinmiyor");
+  }
+  if (seconds < 60) {
+    return copy.t("mediaAnalysis.drawer.setup.preflightRuntimeSeconds", "{seconds} sn", {
+      seconds: Math.max(1, Math.round(seconds)),
+    });
+  }
+  return copy.t("mediaAnalysis.drawer.setup.preflightRuntimeMinutes", "{minutes} dk", {
+    minutes: Math.max(1, Math.round(seconds / 60)),
+  });
+}
+
+function renderPreflightDetailRows(state: LabStoreState, copy: LabI18n) {
+  const preflight = getCurrentPreflight(state);
+  const enabledModules = preflight.enabledModules.length > 0 ? preflight.enabledModules : [];
+  const rows = [
+    {
+      label: copy.t("mediaAnalysis.drawer.setup.preflightStatus", "Durum"),
+      value: preflight.rawStatus || preflight.status,
+    },
+    {
+      label: copy.t("mediaAnalysis.drawer.setup.preflightRuntime", "Tahmini sure"),
+      value: formatPreflightRuntime(preflight.estimatedRuntime, copy),
+    },
+    {
+      label: copy.t("mediaAnalysis.drawer.setup.preflightModules", "Aktif moduller"),
+      value:
+        enabledModules.length > 0
+          ? enabledModules.join(", ")
+          : copy.t("mediaAnalysis.drawer.setup.preflightNoModules", "Yok"),
+    },
+  ];
+  return `<dl class="labx-drawer__preflight-details">${rows
+    .map(function (row) {
+      return `<div><dt>${escapeHtml(row.label)}</dt><dd>${escapeHtml(row.value)}</dd></div>`;
+    })
+    .join("")}</dl>`;
+}
+
 function renderSetupMode(state: LabStoreState, copy: LabI18n) {
   const sourceReady = getSourceReady(state);
-  const intents = getAvailableIntents(state);
-  const analysisGroups = getAnalysisPreparationGroups(state);
+  const intents = getReadyAnalysisIntents(state);
+  const analysisGroups = getReadyAnalysisPreparationGroups(state);
   const activeAnalysisCapabilityIds = getActiveAnalysisCapabilityIds(state);
-  const selectedIntents = getSelectedIntents(state);
+  const selectedIntents = getReadySelectedAnalysisIntentIds(state);
   const blockReason = getAnalysisActionBlockReason(state);
   const preflightSeverity = getPreflightSeverity(state);
   const preflightWarnings = getPreflightWarnings(state);
   const previewSentence = buildIntentPreviewSentence(state);
+  const preflightAutoRunEnabled = state.ui.workspace.preflightAutoRunEnabled !== false;
 
   const intentsMarkup = sourceReady
     ? `<section class="labx-drawer__section labx-drawer__intents">
         <h3>${escapeHtml(copy.t("mediaAnalysis.drawer.setup.intentsTitle", "Analysis Goals"))}</h3>
         <div class="labx-drawer__intent-list">
-          ${intents
-            .map(function (intent) {
-              const analysisGroup = analysisGroups.find(function (group) {
-                return group.intentId === intent.id;
-              });
-              const expanded = state.ui.workspace.analysisPrepExpandedIntentIds.includes(intent.id);
-              return renderAnalysisPreparationAccordion(
-                intent,
-                analysisGroup,
-                expanded,
-                activeAnalysisCapabilityIds,
-                copy
-              );
-            })
-            .join("")}
+          ${
+            intents.length > 0
+              ? intents
+                  .map(function (intent) {
+                    const analysisGroup = analysisGroups.find(function (group) {
+                      return group.intentId === intent.id;
+                    });
+                    const expanded = state.ui.workspace.analysisPrepExpandedIntentIds.includes(
+                      intent.id
+                    );
+                    return renderAnalysisPreparationAccordion(
+                      intent,
+                      analysisGroup,
+                      expanded,
+                      activeAnalysisCapabilityIds,
+                      copy
+                    );
+                  })
+                  .join("")
+              : `<p class="labx-drawer__empty">${escapeHtml(copy.t("mediaAnalysis.drawer.setup.noReadyAnalyses", "Mevcut araclarla yapilabilen analiz yok."))}</p>`
+          }
         </div>
       </section>`
     : "";
@@ -786,7 +841,21 @@ function renderSetupMode(state: LabStoreState, copy: LabI18n) {
   const preflightSection =
     selectedIntents.length > 0
       ? `<section class="labx-drawer__section labx-drawer__preflight" data-severity="${escapeHtml(preflightSeverity)}">
-          <h3>${escapeHtml(copy.t("mediaAnalysis.drawer.setup.preflightTitle", "Preflight"))}</h3>
+          <div class="labx-drawer__preflight-head">
+            <h3>${escapeHtml(copy.t("mediaAnalysis.drawer.setup.preflightTitle", "Preflight"))}</h3>
+            <button
+              class="labx-inline-action labx-drawer__preflight-toggle"
+              type="button"
+              data-lab-action="preflight-auto-run-toggle"
+              aria-pressed="${String(preflightAutoRunEnabled)}"
+              data-enabled="${preflightAutoRunEnabled ? "true" : "false"}"
+            >${escapeHtml(
+              preflightAutoRunEnabled
+                ? copy.t("mediaAnalysis.drawer.setup.preflightAutoOn", "Aktif")
+                : copy.t("mediaAnalysis.drawer.setup.preflightAutoOff", "Pasif")
+            )}</button>
+          </div>
+          ${renderPreflightDetailRows(state, copy)}
           ${
             preflightWarnings.length > 0
               ? `<ul class="labx-drawer__preflight-list">${preflightWarnings
@@ -985,9 +1054,9 @@ export function renderLabDrawer(
       modeContent = "";
   }
 
-  const selectionTabActive = state.ui.workspace.selectionTabActive === true;
+  const selectionTabActive = getSelectionTabActive(state);
   const selectionBody = selectionTabActive
-    ? `<div class="labx-drawer__body labx-drawer__body--selection">${surface.side || `<p class="labx-drawer__selection-empty">${escapeHtml(copy.t("mediaAnalysis.timeline.noSelection", "Zaman çizelgesinde bir alan seçin"))}</p>`}</div>`
+    ? `<div class="labx-drawer__body labx-drawer__body--selection">${surface.side}</div>`
     : "";
 
   return renderContextPanel({

@@ -3,6 +3,8 @@ import type { LabDrawerMode, LabStoreState } from "../models/lab-types.js";
 import {
   getDrawerCollapsed,
   getHypothesis,
+  getSourceProbeStatus,
+  getSourceReady,
   getWorkspaceLockState,
   resolveDrawerMode,
 } from "../runtime/lab-selectors.js";
@@ -86,32 +88,42 @@ function getPillState(
   }
 }
 
+export function getSelectionTabActive(state: LabStoreState) {
+  return (
+    state.ui.workspace.selectionTabActive === true ||
+    (state.bootReady === true &&
+      resolveDrawerMode(state) === "setup" &&
+      getSourceProbeStatus(state) === "idle" &&
+      getSourceReady(state) !== true)
+  );
+}
+
 export function renderModePills(state: LabStoreState, copy: LabI18n) {
   const drawerMode = resolveDrawerMode(state);
-  const selectionTabActive = state.ui.workspace.selectionTabActive === true;
+  const selectionTabActive = getSelectionTabActive(state);
   const pills = [
     {
       id: "selection" as const,
       icon: ICON_SELECTION,
-      label: copy.t("mediaAnalysis.topBar.selection", "Seçim"),
+      label: copy.t("mediaAnalysis.topBar.selection", "Yardım"),
       action: "topbar-pill-selection",
     },
     {
       id: "source" as const,
       icon: ICON_RAIL_SOURCE,
-      label: copy.t("mediaAnalysis.topBar.source", "Source"),
+      label: copy.t("mediaAnalysis.topBar.source", "Analiz"),
       action: "topbar-pill-source",
     },
     {
       id: "analyze" as const,
       icon: ICON_RAIL_ANALYZE,
-      label: copy.t("mediaAnalysis.topBar.analyze", "Analyze"),
+      label: copy.t("mediaAnalysis.topBar.analyze", "İşlem"),
       action: "topbar-pill-analyze",
     },
     {
       id: "results" as const,
       icon: ICON_RAIL_RESULTS,
-      label: copy.t("mediaAnalysis.topBar.results", "Results"),
+      label: copy.t("mediaAnalysis.topBar.results", "Sonuc"),
       action: "topbar-pill-results",
     },
   ];

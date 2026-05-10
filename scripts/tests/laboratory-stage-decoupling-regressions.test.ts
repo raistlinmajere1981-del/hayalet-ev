@@ -509,6 +509,7 @@ test("workspace intent hydration replaces stale capability state in selectors", 
       featureId: "media-analysis",
       source: { kind: "video", mode: "local", storedPath: "/tmp/test.mp4" },
       sourceProbeStatus: "completed",
+      toolState: { tools: { ffmpeg: { installed: true } } },
       selectedCapabilities: ["audio-signal"],
       workspace: {
         ...baseWorkspace,
@@ -564,6 +565,7 @@ test("live intents stay authoritative when manual capability state drifts", () =
     type: "source-config-patched",
     patch: { kind: "video", mode: "local", storedPath: "/tmp/test.mp4" },
   });
+  store.getState().toolState = { tools: { ffmpeg: { installed: true } } };
   store.dispatch({ type: "source-probe-completed", action: "source-pick-local" });
   store.dispatch({ type: "workspace-intent-set", intents: ["visual-inspection"] });
   store.dispatch({ type: "capability-set", capabilities: ["audio-signal"] });
@@ -584,13 +586,12 @@ test("live intents stay authoritative when manual capability state drifts", () =
   assert.deepEqual(selectedCapabilityIds, ["visual-structure", "visual-forensics"]);
 });
 
-test("controller startDeepAnalysis prefers live workspace intents before stale capability state", () => {
+test("controller startDeepAnalysis uses ready workspace analysis selection before stale capability state", () => {
   const source = readFileSync("rooms/laboratory/runtime/lab-run-controller.ts", "utf8");
 
-  assert.match(
-    source,
-    /ws\.selectedIntents\.length > 0\s*\?\s*collectIntentCapabilities\(ws\.selectedIntents\)\s*:\s*state\.selectedCapabilities\.slice\(\)/
-  );
+  assert.match(source, /const selectedIntentIds = getReadySelectedAnalysisIntentIds\(state\);/);
+  assert.match(source, /const intentCapabilities = getReadySelectedAnalysisCapabilityIds\(state\);/);
+  assert.match(source, /updateAnalysisScopeFromWorkspace\(state, scopeChoice, selectedIntentIds\);/);
   assert.match(
     source,
     /const \{ activeFeatureId \} = deriveFeatureSelectionFromCapabilities\(intentCapabilities\);/
@@ -598,6 +599,7 @@ test("controller startDeepAnalysis prefers live workspace intents before stale c
   assert.match(source, /const runAction = activeFeatureId === "audio-analysis" \? "audio-process-run" : "process-run";/);
   assert.match(source, /dispatch\(\{ type: "run-started", action: runAction \}\);/);
   assert.match(source, /sendMediaAction\(runAction\)/);
+  assert.match(source, /preflightAutoRunEnabled !== false/);
 });
 
 // ---------------------------------------------------------------------------

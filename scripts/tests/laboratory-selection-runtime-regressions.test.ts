@@ -1841,7 +1841,7 @@ test("selection suggestion preview dismissal stays stable with stacked document 
   }
 });
 
-test("selection suggestion accept starts the mapped source analysis through the event bus", () => {
+test("selection suggestion accept checks the mapped analysis without auto-running it", () => {
   class FakeExecutionIntentAcceptTrigger {
     constructor(private readonly suggestionId: string | null) {}
 
@@ -1983,14 +1983,10 @@ test("selection suggestion accept starts the mapped source analysis through the 
   assert.equal(acceptEvent.defaultPrevented, true);
   assert.deepEqual(state.ui.workspace.selectedIntents, ["audio-investigation"]);
   assert.equal(state.ui.workspace.selectionTabActive, false);
-  assert.ok(sentActions.includes("audio-process-run"));
-  assert.equal(prompts.length, 1);
-  assert.match(prompts[0] || "", /Seçilmiş zaman aralığı veya ROI var/);
-  assert.deepEqual(state.run?.analysisScope?.intentIds, ["audio-investigation"]);
-  assert.equal(state.run?.analysisScope?.timeRange, undefined);
-  assert.equal(state.run?.analysisScope?.region, undefined);
-  assert.equal(state.run?.analysisScope?.focus, undefined);
-  assert.notEqual(state.run?.analysisScope?.lifecycle?.processId, "stale-process");
+  assert.equal(sentActions.includes("audio-process-run"), false);
+  assert.equal(sentActions.includes("profile-run-preflight"), false);
+  assert.equal(prompts.length, 0);
+  assert.equal(state.run, null);
 });
 
 test("selection suggestion binder ignores invalid preview ids while keeping passive click history", () => {

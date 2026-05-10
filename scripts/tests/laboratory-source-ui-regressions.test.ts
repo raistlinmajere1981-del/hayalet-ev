@@ -95,6 +95,40 @@ function createTurkishCopy() {
   });
 }
 
+function createEmptyReadyState() {
+  const store = createLabStore();
+  store.dispatch({
+    type: "snapshot-received",
+    payload: {
+      featureId: "media-analysis",
+      ready: true,
+      activeProjectId: null,
+      projects: [],
+      activeProject: null,
+      workbench: {
+        activeModuleId: "media-analysis",
+        availableModuleIds: ["media-analysis", "audio-analysis"],
+        selectedModuleIds: ["media-analysis", "audio-analysis"],
+      },
+      sourcePresets,
+      ytDlpForm,
+      toolRegistry: [],
+      toolState: {
+        tools: {},
+      },
+      sourceProbeStatus: "idle",
+      profileModels: [],
+      reports: {
+        user: null,
+        ai: null,
+        emptyReason: "Rapor henüz üretilmedi.",
+      },
+      activityFeed: [],
+    },
+  });
+  return store;
+}
+
 function createSeededState(ffmpegInstalled = false) {
   const store = createLabStore();
   store.dispatch({
@@ -249,6 +283,22 @@ test("laboratory top bar reflects active v2 shell navigation", () => {
   assert.doesNotMatch(leftRail, /data-lab-action="topbar-pill-results"/);
   assert.match(html, /data-lab-action="toggle-tool-manager"/);
   assert.doesNotMatch(html, /Modül Yönetimi|Seçili Modüller|Yoğun operatör tezgahı/);
+});
+
+test("laboratory right drawer defaults to the help tab before source preparation", () => {
+  const store = createEmptyReadyState();
+  const copy = createTurkishCopy();
+  const state = store.getState();
+  const surface = renderWorkspaceSurface(state, { copy });
+  const drawer = renderLabDrawer(state, surface, copy);
+
+  assert.match(drawer, /aria-label="Yardım"[\s\S]*data-pill-state="active"/);
+  assert.match(drawer, /aria-label="Analiz"/);
+  assert.match(drawer, /aria-label="İşlem"/);
+  assert.match(drawer, /aria-label="Sonuc"/);
+  assert.match(drawer, /labx-drawer__body--selection/);
+  assert.doesNotMatch(drawer, /Zaman çizelgesinde bir alan seçin|labx-drawer__selection-empty/);
+  assert.doesNotMatch(drawer, /data-block-id="analysis-prep"/);
 });
 
 test("laboratory inactive right-side regions stay mounted as hidden containers", () => {
@@ -649,9 +699,9 @@ test("laboratory setup drawer previews intent outcomes before the analysis CTA",
   assert.deepEqual(getPipelineBlockIds(drawer), ["analysis-prep", "preflight", "analysis-cta"]);
   assert.match(drawer, /Bu analiz .* üzerinde/);
   assert.match(drawer, /görsel yapıyı ve forensic işaretleri inceleyerek/);
-  assert.match(drawer, /görsel ve işitsel anomali taraması yaparak/);
   assert.match(drawer, /yapısal anomaliler ve forensic kanıtlar/);
-  assert.match(drawer, /olası anormallikler ve sınıflandırılmış ses olayları/);
+  assert.doesNotMatch(drawer, /görsel ve işitsel anomali taraması yaparak/);
+  assert.doesNotMatch(drawer, /olası anormallikler ve sınıflandırılmış ses olayları/);
 });
 
 test("laboratory setup drawer owns active source selection controls under the analysis CTA", () => {
@@ -1074,7 +1124,8 @@ test("laboratory Turkish workspace controls localize operation and intent catalo
   const blockedStore = createSeededState(false);
   const blockedSurface = renderWorkspaceSurface(blockedStore.getState(), { copy: trCopy });
   const blockedDrawer = renderLabDrawer(blockedStore.getState(), blockedSurface, trCopy);
-  assert.match(blockedDrawer, /Gerekli araçlar kurulu değil/);
+  assert.match(blockedDrawer, /Mevcut araclarla yapilabilen analiz yok/);
+  assert.doesNotMatch(blockedDrawer, /Gerekli araçlar kurulu değil/);
   assert.doesNotMatch(blockedDrawer, /Required tools not installed/);
 });
 
@@ -1225,6 +1276,36 @@ test("laboratory analysis suggestion acceptance opens and highlights the prepara
   assert.match(drawer, /data-drawer-mode="setup"/);
   assert.match(drawer, /data-active="true"[\s\S]*Audio signal/);
   assert.match(drawer, /data-active="true"[\s\S]*Audio recovery/);
+});
+
+test("laboratory queued analysis suggestions stay in the help tab after checking ready analyses", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 2400,
+    endMs: 5600,
+  });
+  store.dispatch({
+    type: "workspace-selection-intent-updated",
+    intent: "audio",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-preview-set",
+    suggestionId: "audio-inspect",
+  });
+  store.dispatch({
+    type: "workspace-selection-suggestion-queued",
+    suggestionId: "audio-inspect",
+  });
+
+  const surface = renderWorkspaceSurface(store.getState());
+  const drawer = renderLabDrawer(store.getState(), surface);
+
+  assert.deepEqual(store.getState().ui.workspace.selectedIntents, ["audio-investigation"]);
+  assert.equal(store.getState().ui.workspace.selectionTabActive, true);
+  assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
+  assert.match(drawer, /data-pill-state="active"[\s\S]*Yardım/);
+  assert.match(drawer, /lab-selection-panel--drawer/);
 });
 
 test("laboratory root keeps passive selection intents outside the run controller", () => {

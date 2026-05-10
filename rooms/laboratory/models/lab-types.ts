@@ -274,6 +274,7 @@ export interface LabWorkspaceUiState {
   processViewActive: boolean;
   reportOverlayOpen: boolean;
   selectionTabActive: boolean;
+  preflightAutoRunEnabled: boolean;
   /** V3 explore toggle — user manually switches Result ↔ Explore */
   userExploreToggle: boolean;
   /** V3 top-bar requested mode, constrained by derived drawer mode rules */
@@ -911,6 +912,7 @@ export type LabStoreEvent =
   | { type: "workspace-process-view-toggled"; force?: boolean }
   | { type: "report-overlay-toggled"; open: boolean }
   | { type: "selection-tab-toggled"; active: boolean }
+  | { type: "analysis-preflight-auto-run-toggled"; enabled?: boolean }
   | { type: "source-panel-toggled" }
   | { type: "drawer-collapsed-toggled" }
   | { type: "drawer-explore-toggled" }
