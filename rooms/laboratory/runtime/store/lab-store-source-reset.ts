@@ -6,6 +6,7 @@ import { clearInspectionDepth, resetInspectionMode } from "./lab-store-workspace
 
 type WorkspaceSourceResetOptions = {
   activeWorkspaceAssetId?: string | null;
+  comparisonReferenceAssetId?: string | null;
   sourceIntakeCollapsed?: boolean | undefined;
 };
 
@@ -29,6 +30,7 @@ export function resetWorkspaceForSourceActivation(
   state.ui.workspace = {
     ...defaultWorkspace,
     bookmarks: state.ui.workspace.bookmarks,
+    comparisonReferenceAssetId: options.comparisonReferenceAssetId ?? null,
     sourceIntakeCollapsed:
       typeof options.sourceIntakeCollapsed === "boolean"
         ? options.sourceIntakeCollapsed

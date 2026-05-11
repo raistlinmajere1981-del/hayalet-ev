@@ -258,6 +258,7 @@ export interface LabWorkspaceUiState {
   timelineStartMs: number | null;
   timelineEndMs: number | null;
   activeSelection: LabSelection | null;
+  comparisonReferenceAssetId: string | null;
   roiRegions: LabROIRegion[];
   interactiveSettings: LabInteractiveSettings;
   audioFocus: LabAudioFocusSettings;
@@ -860,6 +861,7 @@ export type LabStoreEvent =
   | { type: "clear-events" }
   // V2.3 workspace events
   | { type: "workspace-timeline-updated"; startMs: number | null; endMs: number | null }
+  | { type: "workspace-comparison-reference-set"; assetId: string | null }
   | { type: "workspace-selection-intent-updated"; intent: LabSelectionIntent }
   | { type: "workspace-selection-suggestion-clicked"; suggestionId: string }
   | { type: "workspace-selection-suggestion-accepted"; suggestionId: string }

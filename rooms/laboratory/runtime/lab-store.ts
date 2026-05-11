@@ -248,8 +248,12 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       };
       resetWorkspaceForSourceActivation(state, {
         activeWorkspaceAssetId: event.assetId,
+        comparisonReferenceAssetId: state.ui.workspace.comparisonReferenceAssetId,
         sourceIntakeCollapsed: state.ui.workspace.sourceIntakeCollapsed,
       });
+      return state;
+    case "workspace-comparison-reference-set":
+      state.ui.workspace.comparisonReferenceAssetId = event.assetId;
       return state;
     case "document-overlay-opened":
       state.ui.activeDocumentOverlayAssetId = event.assetId;
@@ -334,6 +338,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       });
       if (state.ui.activeWorkspaceAssetId === event.id) {
         state.ui.activeWorkspaceAssetId = null;
+      }
+      if (state.ui.workspace.comparisonReferenceAssetId === event.id) {
+        state.ui.workspace.comparisonReferenceAssetId = null;
       }
       return state;
     case "asset-updated":

@@ -21,10 +21,14 @@ export const MEDIA_EXPORT_ACTION_IDS = [
   "export-roi-image",
   "export-frame-grab",
   "export-enhanced-frame",
+  "export-before-after-variant",
+  "export-image-comparison",
   "export-timeline-clip",
+  "export-stabilized-clip",
   "export-audio-track",
   "export-clean-audio",
   "export-band-pass-voice",
+  "export-stem-separation",
 ] as const;
 
 type MediaExportUtilityDeps = {

@@ -110,6 +110,7 @@ export function createDefaultWorkspaceUiState(): LabWorkspaceUiState {
     timelineStartMs: null,
     timelineEndMs: null,
     activeSelection: null,
+    comparisonReferenceAssetId: null,
     roiRegions: [],
     interactiveSettings: { ...DEFAULT_LAB_INTERACTIVE_SETTINGS },
     audioFocus: normalizeAudioFocusSettings(DEFAULT_AUDIO_FOCUS_SETTINGS),

@@ -520,6 +520,30 @@ export function normalizeLabOperationSettings(
         strength: pickNumber(source["strength"], Number(defaults["strength"]), 0.25, 2, 0.05),
         format: pickOption(source["format"], ["png", "jpg", "webp"], String(defaults["format"])),
       };
+    case "image-comparison":
+      return {
+        package: pickOption(
+          source["package"],
+          ["overview", "detailed"],
+          String(defaults["package"])
+        ),
+        layout: pickOption(
+          source["layout"],
+          ["side-by-side", "stacked"],
+          String(defaults["layout"])
+        ),
+        metricSize: pickNumber(source["metricSize"], Number(defaults["metricSize"]), 256, 768, 1),
+        splitMode: pickOption(
+          source["splitMode"],
+          ["primary-left-reference-right", "primary-mirror"],
+          String(defaults["splitMode"])
+        ),
+        includeRoiDetail: pickBoolean(
+          source["includeRoiDetail"],
+          Boolean(defaults["includeRoiDetail"])
+        ),
+        format: pickOption(source["format"], ["png", "jpg", "webp"], String(defaults["format"])),
+      };
     case "audio-extract":
       return {
         format: pickOption(source["format"], ["wav", "flac", "mp3"], String(defaults["format"])),

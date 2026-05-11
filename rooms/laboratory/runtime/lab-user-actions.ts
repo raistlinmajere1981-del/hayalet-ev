@@ -33,6 +33,27 @@ const TRACKED_USER_ACTION_DEFINITIONS: Record<string, LabTrackedUserActionDefini
     successMessage: "İyileştirilmiş frame hazır",
     errorMessage: "İyileştirilmiş frame hazırlanamadı",
   },
+  "export-before-after-variant": {
+    sourceAction: "export-before-after-variant",
+    type: "custom",
+    label: "Önce/sonra görüntüsü hazırlanıyor",
+    successMessage: "Önce/sonra görüntüsü hazır",
+    errorMessage: "Önce/sonra görüntüsü hazırlanamadı",
+  },
+  "export-image-comparison": {
+    sourceAction: "export-image-comparison",
+    type: "custom",
+    label: "Görsel karşılaştırma hazırlanıyor",
+    successMessage: "Görsel karşılaştırma hazır",
+    errorMessage: "Görsel karşılaştırma hazırlanamadı",
+  },
+  "export-stabilized-clip": {
+    sourceAction: "export-stabilized-clip",
+    type: "export-clip",
+    label: "Stabilize klip hazırlanıyor",
+    successMessage: "Stabilize klip hazır",
+    errorMessage: "Stabilize klip hazırlanamadı",
+  },
   "export-audio-track": {
     sourceAction: "export-audio-track",
     type: "extract-audio",
@@ -53,6 +74,13 @@ const TRACKED_USER_ACTION_DEFINITIONS: Record<string, LabTrackedUserActionDefini
     label: "Ses band-pass hazırlanıyor",
     successMessage: "Band-pass ses hazır",
     errorMessage: "Band-pass ses hazırlanamadı",
+  },
+  "export-stem-separation": {
+    sourceAction: "export-stem-separation",
+    type: "custom",
+    label: "Stem ayrımı hazırlanıyor",
+    successMessage: "Stem çıktıları hazır",
+    errorMessage: "Stem ayrımı hazırlanamadı",
   },
   "export-roi-image": {
     sourceAction: "export-roi-image",

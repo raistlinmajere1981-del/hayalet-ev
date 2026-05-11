@@ -91,7 +91,8 @@ function getCapabilityScopeUses(
     scope.hasRoi &&
     (capability.requiresRoi === true ||
       capability.id === "clip-export" ||
-      capability.id === "enhanced-frame");
+      capability.id === "enhanced-frame" ||
+      capability.id === "image-comparison");
   return { usesRoi, usesTimeRange };
 }
 

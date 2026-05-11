@@ -111,9 +111,13 @@ export function createLabMediaActionController(deps: LabMediaActionControllerDep
   function getCurrentRunIntentPayload(state = deps.store.getState()): Record<string, unknown> {
     const intentIds = toStringArray(getCurrentRun(state)?.analysisScope?.intentIds);
     const workspaceTargetAssetId = asNonEmptyString(state.ui.activeWorkspaceAssetId);
+    const comparisonReferenceAssetId = asNonEmptyString(
+      state.ui.workspace.comparisonReferenceAssetId
+    );
     return {
       ...(intentIds.length > 0 ? { intentIds } : {}),
       ...(workspaceTargetAssetId === null ? {} : { workspaceTargetAssetId }),
+      ...(comparisonReferenceAssetId === null ? {} : { comparisonReferenceAssetId }),
     };
   }
 

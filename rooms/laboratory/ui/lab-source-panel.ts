@@ -167,8 +167,15 @@ function canDownloadAsset(asset: LabAsset): boolean {
 }
 
 function renderAssetRelationMeta(state: LabStoreState, asset: LabAsset, copy: LabI18n): string {
+  const comparisonReferenceLabel =
+    state.ui.workspace.comparisonReferenceAssetId === asset.id
+      ? `<span class="labx-sp-asset__relation-text">${escapeHtml(copy.t("mediaAnalysis.assets.relation.compareReference", "Karşılaştırma referansı"))}</span>`
+      : "";
+
   if (asset.type !== "audio") {
-    return "";
+    return comparisonReferenceLabel === ""
+      ? ""
+      : `<span class="labx-sp-asset__relation">${comparisonReferenceLabel}</span>`;
   }
 
   const parentSource = getParentSourceForAsset(state, asset.id);
@@ -181,7 +188,7 @@ function renderAssetRelationMeta(state: LabStoreState, asset: LabAsset, copy: La
         ? `<button class="labx-sp-asset__relation-link" type="button" data-lab-action="focus-source-preview" data-lab-value="${escapeHtml(parentSource.id)}">${escapeHtml(copy.t("mediaAnalysis.assets.relation.source", "Kaynak"))}: ${escapeHtml(parentSource.name)}</button>`
         : `<span class="labx-sp-asset__relation-text">${escapeHtml(copy.t("mediaAnalysis.assets.relation.source", "Kaynak"))}: ${escapeHtml(parentSource.name)}</span>`;
 
-  if (relationMarkup === "" && syncLabel === null) {
+  if (relationMarkup === "" && syncLabel === null && comparisonReferenceLabel === "") {
     return "";
   }
 
@@ -189,6 +196,7 @@ function renderAssetRelationMeta(state: LabStoreState, asset: LabAsset, copy: La
     <span class="labx-sp-asset__relation">
       ${relationMarkup}
       ${syncLabel ? `<span class="labx-sp-asset__relation-text">${escapeHtml(syncLabel)}</span>` : ""}
+      ${comparisonReferenceLabel}
     </span>
   `;
 }
@@ -201,6 +209,10 @@ function renderAssetItem(
 ): string {
   const id = escapeHtml(asset.id);
   const isActive = asset.id === currentSourceId ? ' data-active="true"' : "";
+  const isComparisonReference =
+    state.ui.workspace.comparisonReferenceAssetId === asset.id
+      ? ' data-compare-reference="true"'
+      : "";
   const leaf = getLabAssetPathLeaf(asset);
   const date = formatAssetDate(asset.createdAt);
   const meta = [date, leaf].filter(Boolean).join(" · ");
@@ -219,6 +231,13 @@ function renderAssetItem(
       ? `<button class="labx-sp-menu__item" type="button"
          data-lab-action="source-activate-asset" data-lab-value="${id}">
          ${escapeHtml(copy.t("mediaAnalysis.assets.actions.useAsSource", "Kaynak olarak kullan"))}
+	       </button>`
+      : "";
+  const useAsComparisonReferenceItem =
+    getAssetMediaKind(asset) === "image"
+      ? `<button class="labx-sp-menu__item" type="button"
+         data-lab-action="workspace-comparison-reference-set" data-lab-value="${id}">
+         ${escapeHtml(copy.t("mediaAnalysis.assets.actions.useAsCompareReference", "Karşılaştırma referansı yap"))}
        </button>`
       : "";
   const downloadItem = canDownloadAsset(asset)
@@ -229,7 +248,7 @@ function renderAssetItem(
     : "";
 
   return `
-    <div class="labx-sp-asset" data-asset-id="${id}" data-asset-type="${escapeHtml(asset.type)}"${isActive}
+    <div class="labx-sp-asset" data-asset-id="${id}" data-asset-type="${escapeHtml(asset.type)}"${isActive}${isComparisonReference}
          title="${escapeHtml(buildLabAssetMetadataTitle(asset))}">
       <button class="labx-sp-asset__btn" type="button"
               data-lab-action="${escapeHtml(primary.action)}" data-lab-value="${escapeHtml(primary.value)}"
@@ -246,6 +265,7 @@ function renderAssetItem(
         <div class="labx-sp-asset__menu-list">
           ${viewReportItem}
           ${useAsSourceItem}
+          ${useAsComparisonReferenceItem}
           ${downloadItem}
           <button class="labx-sp-menu__item labx-sp-menu__item--danger" type="button"
                   data-lab-action="asset-remove" data-lab-value="${id}">

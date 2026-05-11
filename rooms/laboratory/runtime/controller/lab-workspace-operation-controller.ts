@@ -62,6 +62,22 @@ export function createLabWorkspaceOperationController(deps: LabWorkspaceOperatio
     );
   }
 
+  function exportBeforeAfterVariant() {
+    const state = deps.store.getState();
+    deps.startTrackedOperationForUiAction(
+      "workspace-before-after-export",
+      deps.getActiveSelectionOperationPayload(state)
+    );
+  }
+
+  function exportImageComparison() {
+    const state = deps.store.getState();
+    deps.startTrackedOperationForUiAction(
+      "workspace-image-comparison-export",
+      deps.getActiveSelectionOperationPayload(state)
+    );
+  }
+
   function exportTimelineClip() {
     if (deps.isWorkspaceMutationLocked("timeline")) {
       deps.pushLockedWorkspaceEvent("Zaman aralığı dışa aktarımı aktif analiz sırasında kilitli.");
@@ -71,6 +87,22 @@ export function createLabWorkspaceOperationController(deps: LabWorkspaceOperatio
     const ws = state.ui.workspace;
     if (ws.timelineStartMs !== null && ws.timelineEndMs !== null) {
       deps.startTrackedOperationForUiAction("timeline-export-clip", {
+        ...deps.getActiveSelectionOperationPayload(state),
+        startMs: ws.timelineStartMs,
+        endMs: ws.timelineEndMs,
+      });
+    }
+  }
+
+  function exportStabilizedSegment() {
+    if (deps.isWorkspaceMutationLocked("timeline")) {
+      deps.pushLockedWorkspaceEvent("Stabilizasyon aktif analiz sırasında kilitli.");
+      return;
+    }
+    const state = deps.store.getState();
+    const ws = state.ui.workspace;
+    if (ws.timelineStartMs !== null && ws.timelineEndMs !== null) {
+      deps.startTrackedOperationForUiAction("timeline-stabilize-segment", {
         ...deps.getActiveSelectionOperationPayload(state),
         startMs: ws.timelineStartMs,
         endMs: ws.timelineEndMs,
@@ -109,11 +141,22 @@ export function createLabWorkspaceOperationController(deps: LabWorkspaceOperatio
     );
   }
 
+  function exportStemSeparation() {
+    deps.startTrackedOperationForUiAction(
+      "workspace-stem-separation-export",
+      deps.getActiveSelectionOperationPayload(deps.store.getState())
+    );
+  }
+
   return {
     exportAudioCleanup,
     exportBandPassVoice,
+    exportBeforeAfterVariant,
     exportEnhancedFrame,
+    exportImageComparison,
     exportSelectionRoi,
+    exportStabilizedSegment,
+    exportStemSeparation,
     exportTimelineClip,
     exportWorkspaceRoi,
     extractTimelineAudio,

@@ -148,6 +148,11 @@ function hydrateWorkspaceUi(state: LabStoreState, workspace: unknown) {
     {
       ...state.ui.workspace,
       activeSelection: null,
+      comparisonReferenceAssetId:
+        typeof ws.comparisonReferenceAssetId === "string" &&
+        ws.comparisonReferenceAssetId.trim() !== ""
+          ? ws.comparisonReferenceAssetId
+          : null,
       roiRegions: Array.isArray(ws.roiRegions) ? ws.roiRegions : state.ui.workspace.roiRegions,
       interactiveSettings: ws.interactiveSettings
         ? { ...state.ui.workspace.interactiveSettings, ...ws.interactiveSettings }

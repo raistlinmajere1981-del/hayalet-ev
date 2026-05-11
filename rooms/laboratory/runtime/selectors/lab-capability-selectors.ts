@@ -486,6 +486,27 @@ function getOperationAudioBlockReason(sourceKind: string, metadata: Record<strin
   return Object.keys(metadata).length > 0 ? "Bu kaynakta ses akışı algılanmadı." : null;
 }
 
+function getComparisonReferenceBlockReason(state: LabStoreState): string | null {
+  const referenceAssetId = asNonEmptyString(state.ui.workspace.comparisonReferenceAssetId);
+  if (referenceAssetId === null) {
+    return "Önce karşılaştırma referansı olarak ikinci bir resim seçilmelidir.";
+  }
+  const referenceAsset =
+    state.assets.find(function (asset) {
+      return asset.id === referenceAssetId;
+    }) || null;
+  if (referenceAsset === null) {
+    return "Karşılaştırma referansı bulunamadı.";
+  }
+  if (inferLabAssetSourceKind(referenceAsset) !== "image") {
+    return "Karşılaştırma referansı resim dosyası olmalıdır.";
+  }
+  if (asNonEmptyString(referenceAsset.localPath) === null) {
+    return "Karşılaştırma referansı yerel dosya olmalıdır.";
+  }
+  return null;
+}
+
 export function getOperationSettings(
   state: LabStoreState,
   capabilityId: (typeof LAB_OPERATION_CAPABILITIES)[number]["id"]
@@ -517,6 +538,10 @@ export function getAvailableOperationCapabilities(
       capability.groupId === "audio" || capability.groupId === "stems"
         ? getOperationAudioBlockReason(sourceKind, operationTarget.metadata)
         : null;
+    const comparisonReferenceBlockReason =
+      capability.requiresComparisonReference === true
+        ? getComparisonReferenceBlockReason(state)
+        : null;
 
     let readiness: CapabilityReadiness = "ready";
     let blockReason: string | null = null;
@@ -530,6 +555,9 @@ export function getAvailableOperationCapabilities(
     } else if (audioBlockReason !== null) {
       readiness = "blocked";
       blockReason = audioBlockReason;
+    } else if (comparisonReferenceBlockReason !== null) {
+      readiness = "blocked";
+      blockReason = comparisonReferenceBlockReason;
     } else if (capability.requiresSelection === true && !hasSelection) {
       readiness = "blocked";
       blockReason = "Önce zaman aralığı seçilmelidir.";

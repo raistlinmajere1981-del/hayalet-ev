@@ -11,12 +11,13 @@
         "roi-crop",
         "enhanced-frame",
         "before-after-variant",
+        "image-comparison",
         "audio-extract",
         "audio-cleanup",
         "band-pass-voice",
         "stem-separation"
       ],
-      "outputKinds": ["clip", "frame", "image", "audio", "variant", "stem"]
+      "outputKinds": ["clip", "frame", "image", "audio", "artifact", "variant", "stem"]
     },
     "analysis-report": {
       "description": "Report-producing analysis families configured through the analysis preparation drawer.",

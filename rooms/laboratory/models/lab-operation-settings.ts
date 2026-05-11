@@ -44,6 +44,14 @@ export const LAB_OPERATION_SETTINGS_DEFAULTS: LabOperationSettingsMap = {
     strength: 1,
     format: "png",
   },
+  "image-comparison": {
+    package: "detailed",
+    layout: "side-by-side",
+    metricSize: 512,
+    splitMode: "primary-left-reference-right",
+    includeRoiDetail: true,
+    format: "png",
+  },
   "audio-extract": {
     format: "wav",
     channels: "stereo",
@@ -199,6 +207,42 @@ export const LAB_OPERATION_SETTINGS_FIELDS: Record<
       })),
     },
     { id: "strength", label: "Strength", kind: "number", min: 0.25, max: 2, step: 0.05 },
+    {
+      id: "format",
+      label: "Format",
+      kind: "select",
+      options: ["png", "jpg", "webp"].map((value) => ({ label: value.toUpperCase(), value })),
+    },
+  ],
+  "image-comparison": [
+    {
+      id: "package",
+      label: "Package",
+      kind: "select",
+      options: ["overview", "detailed"].map((value) => ({ label: value, value })),
+    },
+    {
+      id: "layout",
+      label: "Layout",
+      kind: "select",
+      options: ["side-by-side", "stacked"].map((value) => ({ label: value, value })),
+    },
+    {
+      id: "metricSize",
+      label: "Metric size",
+      kind: "select",
+      options: ["256", "512", "768"].map((value) => ({ label: `${value}px`, value })),
+    },
+    {
+      id: "splitMode",
+      label: "Split",
+      kind: "select",
+      options: ["primary-left-reference-right", "primary-mirror"].map((value) => ({
+        label: value,
+        value,
+      })),
+    },
+    { id: "includeRoiDetail", label: "ROI detail", kind: "toggle" },
     {
       id: "format",
       label: "Format",

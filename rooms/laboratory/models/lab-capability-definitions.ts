@@ -78,6 +78,7 @@ export type LabOperationCapabilityId =
   | "roi-crop"
   | "enhanced-frame"
   | "before-after-variant"
+  | "image-comparison"
   | "audio-extract"
   | "audio-cleanup"
   | "band-pass-voice"
@@ -236,6 +237,7 @@ export interface LabOperationCapabilityMeta {
   groupId: "clip" | "frame" | "audio" | "stems";
   requiresSelection?: boolean;
   requiresRoi?: boolean;
+  requiresComparisonReference?: boolean;
   planned?: boolean;
 }
 
@@ -322,10 +324,9 @@ export const LAB_OPERATION_CAPABILITIES: LabOperationCapabilityMeta[] = [
     outputKinds: ["clip", "variant"],
     providerIds: ["ffmpeg-stabilization"],
     toolIds: ["ffmpeg"],
-    actionId: null,
+    actionId: "timeline-stabilize-segment",
     groupId: "clip",
     requiresSelection: true,
-    planned: true,
   },
   {
     id: "frame-grab",
@@ -373,9 +374,21 @@ export const LAB_OPERATION_CAPABILITIES: LabOperationCapabilityMeta[] = [
     outputKinds: ["image", "variant"],
     providerIds: ["ffmpeg-visual-reveal"],
     toolIds: ["ffmpeg"],
-    actionId: null,
+    actionId: "workspace-before-after-export",
     groupId: "frame",
-    planned: true,
+  },
+  {
+    id: "image-comparison",
+    flowKind: "operation-result",
+    label: "Image Comparison Pack",
+    description: "Compare the active image with a selected reference image.",
+    sourceKinds: ["image"],
+    outputKinds: ["image", "artifact", "variant"],
+    providerIds: ["ffmpeg-visual-compare"],
+    toolIds: ["ffmpeg"],
+    actionId: "workspace-image-comparison-export",
+    groupId: "frame",
+    requiresComparisonReference: true,
   },
   {
     id: "audio-extract",
@@ -422,9 +435,8 @@ export const LAB_OPERATION_CAPABILITIES: LabOperationCapabilityMeta[] = [
     outputKinds: ["audio", "stem"],
     providerIds: ["source-separation-runner"],
     toolIds: ["demucs", "ffmpeg"],
-    actionId: null,
+    actionId: "workspace-stem-separation-export",
     groupId: "stems",
-    planned: true,
   },
 ];
 
@@ -432,14 +444,14 @@ export const CAPABILITY_FAMILIES: CapabilityFamilyMeta[] = [
   {
     id: "visual-structure",
     label: "Visual Structure",
-    sourceKinds: ["video"],
+    sourceKinds: ["video", "image"],
     primaryTool: "ffmpeg",
     requiredTools: ["ffmpeg"],
   },
   {
     id: "visual-forensics",
     label: "Visual Forensics",
-    sourceKinds: ["video"],
+    sourceKinds: ["video", "image"],
     primaryTool: "ffmpeg",
     requiredTools: ["ffmpeg"],
   },

@@ -175,8 +175,12 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   const {
     exportAudioCleanup,
     exportBandPassVoice,
+    exportBeforeAfterVariant,
     exportEnhancedFrame,
+    exportImageComparison,
     exportSelectionRoi,
+    exportStabilizedSegment,
+    exportStemSeparation,
     exportTimelineClip,
     exportWorkspaceRoi,
     extractTimelineAudio,
@@ -1033,8 +1037,20 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         exportEnhancedFrame();
         return;
       }
+      case "workspace-before-after-export": {
+        exportBeforeAfterVariant();
+        return;
+      }
+      case "workspace-image-comparison-export": {
+        exportImageComparison();
+        return;
+      }
       case "timeline-export-clip": {
         exportTimelineClip();
+        return;
+      }
+      case "timeline-stabilize-segment": {
+        exportStabilizedSegment();
         return;
       }
       case "timeline-grab-frame": {
@@ -1049,6 +1065,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         return;
       case "workspace-band-pass-voice-export":
         exportBandPassVoice();
+        return;
+      case "workspace-stem-separation-export":
+        exportStemSeparation();
         return;
       case "timeline-toggle-micro-zoom":
         dispatch({ type: "workspace-selection-micro-zoom-toggled" });
@@ -1089,6 +1108,12 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "workspace-content-open":
         dispatch({
           type: "workspace-content-opened",
+          assetId: value.trim() !== "" ? value : null,
+        });
+        return;
+      case "workspace-comparison-reference-set":
+        dispatch({
+          type: "workspace-comparison-reference-set",
           assetId: value.trim() !== "" ? value : null,
         });
         return;

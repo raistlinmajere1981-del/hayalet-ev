@@ -63,7 +63,7 @@ export function saveLabPersistedState(
 function migratePersistedState(
   persisted: Partial<LabPersistedState> & { schemaVersion?: unknown }
 ): Partial<LabPersistedState> {
-  return {
+  return sanitizeBootPersistedState({
     ...persisted,
     schemaVersion: 4,
     activityFeed: Array.isArray(persisted.activityFeed) ? persisted.activityFeed : [],
@@ -78,5 +78,115 @@ function migratePersistedState(
     analysisControlsCollapsed: persisted.analysisControlsCollapsed === true,
     editSidePanelCollapsed: persisted.editSidePanelCollapsed === true,
     rawLogCollapsed: persisted.rawLogCollapsed !== false,
+  });
+}
+
+function sanitizeWorkspaceForBoot(
+  workspace: Partial<LabPersistedState>["workspace"]
+): Partial<NonNullable<LabPersistedState["workspace"]>> | undefined {
+  if (!workspace || typeof workspace !== "object") {
+    return undefined;
+  }
+
+  const source = workspace as Record<string, unknown>;
+  const next: Partial<NonNullable<LabPersistedState["workspace"]>> = {};
+
+  if (typeof source["previewVolume"] === "number") {
+    next.previewVolume = source["previewVolume"];
+  }
+  if (
+    source["interactiveSettings"] &&
+    typeof source["interactiveSettings"] === "object" &&
+    Array.isArray(source["interactiveSettings"]) === false
+  ) {
+    next.interactiveSettings = source["interactiveSettings"] as NonNullable<
+      NonNullable<LabPersistedState["workspace"]>["interactiveSettings"]
+    >;
+  }
+  if (
+    source["audioFocus"] &&
+    typeof source["audioFocus"] === "object" &&
+    Array.isArray(source["audioFocus"]) === false
+  ) {
+    next.audioFocus = source["audioFocus"] as NonNullable<
+      NonNullable<LabPersistedState["workspace"]>["audioFocus"]
+    >;
+  }
+  if (typeof source["controlsDrawerOpen"] === "boolean") {
+    next.controlsDrawerOpen = source["controlsDrawerOpen"];
+  }
+  if (
+    source["controlsDrawerTab"] === "visual" ||
+    source["controlsDrawerTab"] === "audio" ||
+    source["controlsDrawerTab"] === "operations"
+  ) {
+    next.controlsDrawerTab = source["controlsDrawerTab"] as NonNullable<
+      NonNullable<LabPersistedState["workspace"]>["controlsDrawerTab"]
+    >;
+  }
+  if (typeof source["preflightAutoRunEnabled"] === "boolean") {
+    next.preflightAutoRunEnabled = source["preflightAutoRunEnabled"];
+  }
+  if (typeof source["drawerCollapsed"] === "boolean") {
+    next.drawerCollapsed = source["drawerCollapsed"];
+  }
+  if (typeof source["inspectorPinned"] === "boolean") {
+    next.inspectorPinned = source["inspectorPinned"];
+  }
+  if (
+    source["activeIconRailSlot"] === "roi-select" ||
+    source["activeIconRailSlot"] === "audio-focus" ||
+    source["activeIconRailSlot"] === "frame-export" ||
+    source["activeIconRailSlot"] === "denoise" ||
+    source["activeIconRailSlot"] === "stabilize" ||
+    source["activeIconRailSlot"] === "visual-adjust" ||
+    source["activeIconRailSlot"] === "clip-export" ||
+    source["activeIconRailSlot"] === "enhanced-frame" ||
+    source["activeIconRailSlot"] === "before-after" ||
+    source["activeIconRailSlot"] === "audio-extract" ||
+    source["activeIconRailSlot"] === "band-pass" ||
+    source["activeIconRailSlot"] === "stem-separate"
+  ) {
+    next.activeIconRailSlot = source["activeIconRailSlot"] as NonNullable<
+      NonNullable<LabPersistedState["workspace"]>["activeIconRailSlot"]
+    >;
+  }
+
+  return next;
+}
+
+function sanitizeBootPersistedState(
+  persisted: Partial<LabPersistedState>
+): Partial<LabPersistedState> {
+  const workspace = sanitizeWorkspaceForBoot(persisted.workspace);
+  const next: Partial<LabPersistedState> = {
+    ...persisted,
+    selectedCapabilities: [],
+    projectIndex: {
+      activeProjectId: null,
+      projects: [],
+    },
+    workbench: {},
+    source: null,
+    sourceProbeStatus: "idle",
+    editConfig: null,
+    profileConfig: null,
+    preflight: null,
+    lastRun: null,
+    reports: {
+      user: null,
+      ai: null,
+      emptyReason: "Rapor henüz üretilmedi.",
+    },
+    reportExports: [],
+    assets: [],
+    profileModels: [],
+    toolState: {},
+    activityFeed: [],
+    activePreviewArtifactId: null,
   };
+  if (workspace !== undefined) {
+    next.workspace = workspace;
+  }
+  return next;
 }

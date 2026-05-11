@@ -23,6 +23,110 @@ import {
   parseProcessOutput,
   test,
 } from "./laboratory-runtime-truth.helpers.ts";
+import { loadLabPersistedState } from "../../rooms/laboratory/runtime/lab-persistence.ts";
+
+test("laboratory persistence drops stale runtime snapshots before boot hydrate", () => {
+  const storage = new Map<string, string>();
+  const windowRef = {
+    localStorage: {
+      getItem(key: string) {
+        return storage.get(key) ?? null;
+      },
+      setItem(key: string, value: string) {
+        storage.set(key, value);
+      },
+    },
+  } as unknown as Window & typeof globalThis;
+
+  storage.set(
+    "hayalet-ev:laboratory-refactor:v4",
+    JSON.stringify({
+      schemaVersion: 4,
+      selectedCapabilities: ["visual"],
+      projectIndex: {
+        activeProjectId: "project-old",
+        projects: [{ id: "project-old", name: "Old Project" }],
+      },
+      workbench: {
+        activeModuleId: "media-analysis",
+        activePreviewArtifactId: "preview-old",
+      },
+      source: {
+        kind: "video",
+        status: "ready",
+        storedPath: "/tmp/old.mp4",
+      },
+      sourceProbeStatus: "completed",
+      editConfig: { output: "old" },
+      profileConfig: { preflight: { status: "ready" } },
+      preflight: { status: "ready" },
+      lastRun: { id: "run-old", state: "completed" },
+      reports: { user: { summary: "old" }, ai: null, emptyReason: null },
+      reportExports: [{ id: "report-old" }],
+      assets: [{ id: "asset-old", type: "source" }],
+      profileModels: [{ modelId: "model-old" }],
+      toolState: { ffmpeg: { installed: true } },
+      activityFeed: [{ id: "event-old", message: "old" }],
+      activePreviewArtifactId: "preview-old",
+      sourceDrafts: {
+        urlInput: "",
+        youtubeUrl: "https://youtube.com/watch?v=abc123",
+        youtubePreset: "custom",
+        youtubeCustom: {},
+        youtubeCaptureMode: "video+audio",
+      },
+      projectImport: {
+        activeKind: "image",
+        methods: { video: "local", audio: "local", image: "url" },
+      },
+      workspace: {
+        timelineStartMs: 1000,
+        timelineEndMs: 2000,
+        activeSelection: { id: "selection-old" },
+        selectedIntents: ["visual-inspection"],
+        roiRegions: [{ id: "roi-old" }],
+        hypothesis: "old clue",
+        previewVolume: 0.42,
+        controlsDrawerTab: "operations",
+        drawerCollapsed: true,
+        activeIconRailSlot: "stabilize",
+      },
+    })
+  );
+
+  const loaded = loadLabPersistedState(windowRef) as Record<string, unknown>;
+  assert.deepEqual(loaded["selectedCapabilities"], []);
+  assert.deepEqual(loaded["projectIndex"], { activeProjectId: null, projects: [] });
+  assert.equal(loaded["workbench"] && Object.keys(loaded["workbench"] as object).length, 0);
+  assert.equal(loaded["source"], null);
+  assert.equal(loaded["sourceProbeStatus"], "idle");
+  assert.equal(loaded["editConfig"], null);
+  assert.equal(loaded["profileConfig"], null);
+  assert.equal(loaded["preflight"], null);
+  assert.equal(loaded["lastRun"], null);
+  assert.deepEqual(loaded["reportExports"], []);
+  assert.deepEqual(loaded["assets"], []);
+  assert.deepEqual(loaded["profileModels"], []);
+  assert.deepEqual(loaded["toolState"], {});
+  assert.deepEqual(loaded["activityFeed"], []);
+  assert.equal(loaded["activePreviewArtifactId"], null);
+
+  const workspace = loaded["workspace"] as Record<string, unknown>;
+  assert.equal("timelineStartMs" in workspace, false);
+  assert.equal("activeSelection" in workspace, false);
+  assert.equal("selectedIntents" in workspace, false);
+  assert.equal("roiRegions" in workspace, false);
+  assert.equal("hypothesis" in workspace, false);
+  assert.equal(workspace["previewVolume"], 0.42);
+  assert.equal(workspace["controlsDrawerTab"], "operations");
+  assert.equal(workspace["drawerCollapsed"], true);
+  assert.equal(workspace["activeIconRailSlot"], "stabilize");
+
+  const sourceDrafts = loaded["sourceDrafts"] as Record<string, unknown>;
+  assert.equal(sourceDrafts["youtubeUrl"], "https://youtube.com/watch?v=abc123");
+  const projectImport = loaded["projectImport"] as Record<string, unknown>;
+  assert.equal(projectImport["activeKind"], "image");
+});
 
 test("laboratory store keeps checked YouTube import state UI-only and non-persistent", () => {
   const store = createLabStore();
@@ -397,15 +501,15 @@ test("laboratory store resets project import drafts and checked YouTube state on
   assert.equal(store.getState().ui.projectImport.drafts.video.youtubeUrl, "");
   assert.equal(store.getState().ui.projectImport.lastAction, null);
   assert.equal(store.getState().ui.projectImport.lastRequestId, null);
-	  assert.deepEqual(store.getState().ui.youtubeImport, {
-	    url: null,
-	    status: "idle",
-	    preview: null,
-	    formats: [],
-	    selectedVideoFormatId: null,
-	    selectedAudioFormatId: null,
-	  });
-	});
+  assert.deepEqual(store.getState().ui.youtubeImport, {
+    url: null,
+    status: "idle",
+    preview: null,
+    formats: [],
+    selectedVideoFormatId: null,
+    selectedAudioFormatId: null,
+  });
+});
 
 test("laboratory store resets project import check state when active project changes", () => {
   const store = createLabStore();
