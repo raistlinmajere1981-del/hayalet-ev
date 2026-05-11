@@ -1,6 +1,8 @@
+/* Workspace inspector. */
+
 .labx-workspace-inspector {
   position: relative;
-  z-index: 1;
+  z-index: var(--lab-z-raised);
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -8,25 +10,24 @@
   min-width: 0;
   min-height: 0;
   box-sizing: border-box;
-  border: 1px solid rgba(92, 215, 223, 0.15);
-  border-radius: var(--labx-radius-tight);
+  border: 1px solid var(--lab-border-default);
+  border-radius: var(--lab-radius-md);
   background:
-    linear-gradient(180deg, rgba(3, 8, 14, 0.98), rgba(2, 5, 10, 0.99)), rgba(2, 5, 10, 0.98);
-  box-shadow:
-    0 12px 24px rgba(0, 0, 0, 0.22),
-    0 0 0 1px rgba(255, 255, 255, 0.02);
+    linear-gradient(180deg, var(--lab-surface-1), var(--lab-surface-0)), var(--lab-surface-0);
+  box-shadow: var(--lab-shadow-md);
   opacity: 0.55;
   transition:
-    opacity 120ms ease-out,
-    filter 120ms ease-out,
-    box-shadow 120ms ease-out;
+    opacity var(--lab-duration-base) var(--lab-ease-out),
+    filter var(--lab-duration-base) var(--lab-ease-out),
+    box-shadow var(--lab-duration-base) var(--lab-ease-out);
 }
 
 .labx-workspace-inspector.labx-focus-secondary {
   opacity: 1;
+  border-color: var(--lab-border-accent);
   box-shadow:
-    0 24px 42px rgba(0, 0, 0, 0.38),
-    0 0 0 1px rgba(92, 215, 223, 0.14);
+    var(--lab-shadow-lg),
+    0 0 0 1px var(--lab-accent-soft);
 }
 
 .labx-workspace-inspector.labx-focus-passive {
@@ -37,8 +38,8 @@
   align-self: start;
   height: auto;
   width: 100%;
-  border-color: rgba(92, 215, 223, 0.24);
-  background: rgba(2, 7, 12, 0.94);
+  border-color: var(--lab-border-accent);
+  background: var(--lab-surface-1);
 }
 
 .labx-workspace-inspector[data-open="false"].labx-focus-passive {
@@ -49,29 +50,34 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.45rem;
+  gap: var(--lab-space-1_5);
   min-height: 2rem;
-  padding: 0.35rem 0.55rem;
+  padding: var(--lab-space-1_5) var(--lab-space-2_5);
   border: 0;
-  border-bottom: 1px solid rgba(92, 215, 223, 0.1);
-  background: rgba(92, 215, 223, 0.05);
-  color: rgba(241, 249, 252, 0.88);
+  border-bottom: 1px solid var(--lab-border-subtle);
+  background: var(--lab-accent-bg);
+  color: var(--lab-text-strong);
   cursor: pointer;
-  font-size: var(--labx-font-label);
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-size: var(--lab-text-xs);
+  font-weight: var(--lab-weight-semibold);
+  letter-spacing: var(--lab-tracking-eyebrow);
   text-transform: uppercase;
+  transition: background var(--lab-duration-base) var(--lab-ease-out);
+}
+
+.labx-workspace-inspector__toggle:hover {
+  background: var(--lab-accent-bg-strong);
 }
 
 .labx-workspace-inspector[data-open="false"] .labx-workspace-inspector__toggle {
   border-bottom: 0;
-  border-radius: var(--labx-radius-tight);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
+  border-radius: var(--lab-radius-md);
+  box-shadow: var(--lab-shadow-md);
 }
 
 .labx-workspace-inspector__toggle-icon {
-  color: var(--labx-accent);
-  font-size: 1.1rem;
+  color: var(--lab-accent);
+  font-size: var(--lab-text-md);
   line-height: 1;
 }
 
@@ -89,33 +95,42 @@
 .labx-workspace-inspector__tabs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.3rem;
-  padding: 0.45rem 0.5rem 0;
+  gap: var(--lab-space-1);
+  padding: var(--lab-space-2) var(--lab-space-2) 0;
 }
 
 .labx-workspace-inspector__tab {
   min-width: 0;
   min-height: 2rem;
-  padding: 0.35rem 0.48rem;
-  border: 1px solid rgba(136, 170, 204, 0.16);
-  border-radius: var(--labx-radius-button);
+  padding: var(--lab-space-1_5) var(--lab-space-2);
+  border: 1px solid var(--lab-border-default);
+  border-radius: var(--lab-radius-sm);
   background: rgba(255, 255, 255, 0.035);
-  color: var(--labx-text-soft);
+  color: var(--lab-text-soft);
   cursor: pointer;
-  font-size: 0.76rem;
-  font-weight: 600;
+  font-size: var(--lab-text-sm);
+  font-weight: var(--lab-weight-medium);
+  transition:
+    border-color var(--lab-duration-base) var(--lab-ease-out),
+    background var(--lab-duration-base) var(--lab-ease-out),
+    color var(--lab-duration-base) var(--lab-ease-out);
+}
+
+.labx-workspace-inspector__tab:hover {
+  border-color: var(--lab-border-strong);
+  color: var(--lab-text-default);
 }
 
 .labx-workspace-inspector__tab[data-selected="true"] {
-  border-color: rgba(92, 215, 223, 0.34);
-  background: rgba(92, 215, 223, 0.14);
-  color: rgba(255, 255, 255, 0.94);
+  border-color: var(--lab-border-accent);
+  background: var(--lab-accent-bg-strong);
+  color: var(--lab-text-strong);
 }
 
 .labx-workspace-inspector__panels {
   flex: 1 1 auto;
   min-height: 0;
-  padding: 0.5rem;
+  padding: var(--lab-space-2);
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -133,7 +148,7 @@
 
 .labx-workspace-inspector .labx-audio-focus,
 .labx-workspace-inspector .labx-controls-card {
-  border-radius: var(--labx-radius-tight);
+  border-radius: var(--lab-radius-md);
   box-shadow: none;
 }
 
@@ -146,7 +161,7 @@
 }
 
 .labx-workspace-inspector .labx-card__title {
-  font-size: var(--labx-font-body);
+  font-size: var(--lab-text-base);
 }
 
 .labx-workspace-inspector .labx-control-row {
@@ -192,7 +207,7 @@
   gap: 0.45rem;
   padding: 0.55rem;
   border: 1px solid rgba(105, 220, 230, 0.18);
-  border-radius: var(--labx-radius-button);
+  border-radius: var(--lab-radius-sm);
   background: rgba(4, 18, 28, 0.48);
 }
 
@@ -227,14 +242,14 @@
 
 .labx-operation-card__main h3 {
   margin: 0;
-  color: var(--labx-text-primary);
+  color: var(--lab-text-strong);
   font-size: 0.82rem;
 }
 
 .labx-operation-card__main p,
 .labx-operation-card__reason {
   margin: 0.18rem 0 0;
-  color: var(--labx-text-soft);
+  color: var(--lab-text-soft);
   font-size: 0.68rem;
   line-height: 1.35;
 }
@@ -243,8 +258,8 @@
   flex: 0 0 auto;
   padding: 0.14rem 0.36rem;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--labx-radius-pill);
-  color: var(--labx-text-soft);
+  border-radius: var(--lab-radius-pill);
+  color: var(--lab-text-soft);
   font-size: 0.62rem;
 }
 
@@ -257,7 +272,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-  color: var(--labx-text-dim);
+  color: var(--lab-text-dim);
   font-size: 0.64rem;
 }
 
@@ -274,9 +289,9 @@
   min-height: 1.35rem;
   padding: 0.12rem 0.38rem;
   border: 1px solid rgba(78, 221, 221, 0.2);
-  border-radius: var(--labx-radius-pill);
+  border-radius: var(--lab-radius-pill);
   background: rgba(78, 221, 221, 0.07);
-  color: var(--labx-text-soft);
+  color: var(--lab-text-soft);
   font-size: 0.62rem;
   line-height: 1;
 }
@@ -285,16 +300,16 @@
   width: 0.78rem;
   height: 0.78rem;
   margin: 0;
-  accent-color: var(--labx-accent);
+  accent-color: var(--lab-accent);
 }
 
 .labx-operation-card__action-state {
   margin: 0;
   padding: 0.36rem 0.48rem;
-  border-radius: var(--labx-radius-button);
+  border-radius: var(--lab-radius-sm);
   border: 1px solid rgba(78, 221, 221, 0.16);
   background: rgba(78, 221, 221, 0.06);
-  color: var(--labx-text-soft);
+  color: var(--lab-text-soft);
   font-size: 0.66rem;
   line-height: 1.35;
 }
@@ -304,7 +319,7 @@
   min-height: 1.75rem;
   padding: 0.25rem 0.62rem;
   border: 1px solid rgba(78, 221, 221, 0.34);
-  border-radius: var(--labx-radius-pill);
+  border-radius: var(--lab-radius-pill);
   background: rgba(78, 221, 221, 0.1);
   color: rgba(230, 255, 255, 0.94);
   font-size: 0.68rem;
@@ -314,7 +329,7 @@
 .labx-operation-card__action:disabled {
   border-color: rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.04);
-  color: var(--labx-text-dim);
+  color: var(--lab-text-dim);
   cursor: not-allowed;
 }
 
@@ -352,7 +367,7 @@
   gap: 0.5rem;
   min-height: 2.35rem;
   border: none;
-  border-radius: var(--labx-radius-button);
+  border-radius: var(--lab-radius-sm);
   padding: 0.34rem 0.42rem 0.34rem 0;
   background: transparent;
   box-shadow: none;
@@ -360,7 +375,7 @@
   font-size: 0.66rem;
   font-weight: 500;
   letter-spacing: 0;
-  color: var(--labx-text-soft);
+  color: var(--lab-text-soft);
   transition:
     border-color 120ms ease-out,
     background 120ms ease-out,
@@ -380,7 +395,7 @@
 .labx-settings-block__summary:focus-visible {
   background: transparent;
   box-shadow: none;
-  color: var(--labx-text);
+  color: var(--lab-text-default);
   outline: none;
 }
 
@@ -415,7 +430,7 @@
 .labx-settings-block__state {
   min-width: 0;
   overflow: hidden;
-  color: var(--labx-text-dim);
+  color: var(--lab-text-dim);
   font-size: 0.66rem;
   font-weight: 500;
   text-overflow: ellipsis;
@@ -426,7 +441,7 @@
   border: none;
   border-radius: 0.35rem;
   background: transparent;
-  color: var(--labx-text-dim);
+  color: var(--lab-text-dim);
   font-size: 0.62rem;
   line-height: 1;
   padding: 0.18rem 0.28rem;
@@ -442,7 +457,7 @@
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 0.35rem;
   background: rgba(255, 255, 255, 0.05);
-  color: var(--labx-text-soft);
+  color: var(--lab-text-soft);
   cursor: pointer;
   font-size: 0.68rem;
   line-height: 1;
@@ -470,7 +485,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--labx-text-dim);
+  color: var(--lab-text-dim);
   font-size: 0.72rem;
 }
 
@@ -488,7 +503,7 @@
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 0.35rem;
   background: rgba(4, 10, 18, 0.62);
-  color: var(--labx-text);
+  color: var(--lab-text-default);
   font: inherit;
   font-size: 0.75rem;
   padding: 0.24rem 0.36rem;
@@ -502,13 +517,13 @@
 .labx-controls-stack {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: var(--lab-space-2);
 }
 
 .labx-control-row {
   display: grid;
   grid-template-columns: 5.1rem minmax(3.5rem, 1fr) 3rem auto;
-  gap: 0.42rem;
+  gap: var(--lab-space-1_5);
   align-items: center;
 }
 
@@ -517,37 +532,43 @@
 }
 
 .labx-control-row__label {
-  color: var(--labx-text-soft);
-  font-size: 0.78rem;
+  color: var(--lab-text-soft);
+  font-size: var(--lab-text-sm);
+  font-weight: var(--lab-weight-medium);
 }
 
 .labx-control-row__value {
-  color: var(--labx-text-dim);
-  font-size: 0.74rem;
-  text-align: right;
+  color: var(--lab-text-default);
+  font-size: var(--lab-text-sm);
+  font-family: var(--lab-font-mono);
   font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 .labx-control-stepper {
   display: inline-flex;
   align-items: center;
-  gap: 0.18rem;
+  gap: var(--lab-space-0_5);
 }
 
 .labx-control-stepper__btn {
-  width: 1.25rem;
-  height: 1.25rem;
-  border: 1px solid rgba(92, 215, 223, 0.34);
-  border-radius: 0.35rem;
-  background: rgba(8, 18, 30, 0.76);
-  color: var(--labx-accent);
-  font-size: 0.65rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  border: 1px solid var(--lab-border-accent);
+  border-radius: var(--lab-radius-xs);
+  background: var(--lab-accent-bg);
+  color: var(--lab-accent);
+  font-size: var(--lab-text-xs);
   line-height: 1;
   cursor: pointer;
+  transition:
+    background var(--lab-duration-base) var(--lab-ease-out),
+    border-color var(--lab-duration-base) var(--lab-ease-out);
 }
 
-.labx-control-stepper__btn:hover {
-  background: rgba(92, 215, 223, 0.18);
+.labx-control-stepper__btn:hover:not(:disabled) {
+  background: var(--lab-accent-bg-strong);
+  border-color: rgba(var(--lab-accent-rgb), 0.5);
 }
 
 .labx-control-stepper__btn:disabled {
@@ -593,8 +614,9 @@
   width: 100%;
   height: 4px;
   border-radius: 2px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
   outline: none;
+  cursor: pointer;
 }
 
 .labx-range::-webkit-slider-thumb {
@@ -603,8 +625,9 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: var(--labx-accent);
-  border: 2px solid rgba(0, 0, 0, 0.25);
+  background: var(--lab-accent);
+  border: 2px solid var(--lab-surface-1);
+  box-shadow: 0 0 0 1px var(--lab-border-accent);
   cursor: pointer;
 }
 
@@ -612,29 +635,30 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: var(--labx-accent);
-  border: 2px solid rgba(0, 0, 0, 0.25);
+  background: var(--lab-accent);
+  border: 2px solid var(--lab-surface-1);
+  box-shadow: 0 0 0 1px var(--lab-border-accent);
   cursor: pointer;
 }
 
 .labx-controls-toggles {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: var(--lab-space-2);
 }
 
 .labx-toggle-row {
   display: flex;
-  gap: 0.65rem;
+  gap: var(--lab-space-2_5);
 }
 
 .labx-control-toggle {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: var(--lab-space-1_5);
   cursor: pointer;
-  color: var(--labx-text-soft);
-  font-size: 0.8rem;
+  color: var(--lab-text-soft);
+  font-size: var(--lab-text-sm);
 }
 
 .labx-control-toggle.is-disabled {
@@ -645,7 +669,7 @@
 .labx-control-toggle input[type="checkbox"] {
   width: 1rem;
   height: 1rem;
-  accent-color: var(--labx-accent);
+  accent-color: var(--lab-accent);
 }
 
 .labx-controls-actions {
@@ -660,8 +684,8 @@
   gap: 0.55rem;
   height: 100%;
   padding: 0.75rem 0.85rem;
-  border: 1px solid var(--labx-border);
-  border-radius: var(--labx-radius-tight);
+  border: 1px solid var(--lab-border-default);
+  border-radius: var(--lab-radius-md);
   background: rgba(6, 12, 20, 0.88);
 }
 
@@ -680,7 +704,7 @@
   flex-direction: column;
   gap: 0.35rem;
   padding-top: 0.3rem;
-  border-top: 1px solid var(--labx-border);
+  border-top: 1px solid var(--lab-border-default);
 }
 
 .labx-eq-band {
@@ -693,13 +717,13 @@
 .labx-eq-band__freq {
   min-width: 4.2rem;
   font-size: 0.7rem;
-  color: var(--labx-text-dim);
+  color: var(--lab-text-dim);
 }
 
 .labx-eq-band__gain {
   min-width: 3.5rem;
   font-size: 0.7rem;
-  color: var(--labx-accent);
+  color: var(--lab-accent);
   text-align: right;
 }
 
@@ -710,7 +734,7 @@
 .labx-audio-viz {
   width: 100%;
   height: 80px;
-  border-radius: var(--labx-radius-tight);
+  border-radius: var(--lab-radius-md);
   background: rgba(6, 12, 20, 0.6);
 }
 
@@ -733,7 +757,7 @@
   margin-top: 0.25rem;
   padding: 0.62rem 0.72rem;
   border: 1px solid rgba(92, 215, 223, 0.14);
-  border-radius: var(--labx-radius-tight);
+  border-radius: var(--lab-radius-md);
   background:
     linear-gradient(180deg, rgba(8, 15, 24, 0.96), rgba(4, 10, 18, 0.98)), rgba(5, 10, 18, 0.94);
 }
@@ -753,14 +777,14 @@
 }
 
 .labx-timeline__inspection-lens-meta {
-  color: var(--labx-text-dim);
+  color: var(--lab-text-dim);
   font-size: 0.66rem;
 }
 
 .labx-timeline__inspection-lens-window {
   min-height: 5rem;
   padding: 0.3rem;
-  border-radius: var(--labx-radius-tight);
+  border-radius: var(--lab-radius-md);
   border: 1px solid rgba(92, 215, 223, 0.12);
   background:
     linear-gradient(180deg, rgba(92, 215, 223, 0.05), rgba(106, 166, 235, 0.02)),
@@ -786,7 +810,7 @@
   border-color: rgba(130, 227, 177, 0.18);
 }
 
-/* Preview media z-index — ensure controls are clickable */
+/* Keep preview controls clickable above media. */
 .labx-workspace-preview video,
 .labx-workspace-preview audio {
   position: relative;

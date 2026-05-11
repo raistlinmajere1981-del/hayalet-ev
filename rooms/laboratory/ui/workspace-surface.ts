@@ -14,7 +14,6 @@ import {
   getAudioFocusSettings,
   getAvailableOperationCapabilities,
   getEffectivePreviewAudioFocusSettings,
-  getInspectionMode,
   getInteractiveSettings,
   getMediaViewportState,
   getProjectSource,
@@ -535,7 +534,6 @@ export function renderWorkspaceSurface(
   const effectivePreviewAudioFocus = getEffectivePreviewAudioFocusSettings(state);
   const roiRegions = getROIRegions(state);
   const activeSelection = getActiveSelection(state);
-  const inspectionMode = getInspectionMode(state);
   const timeline = getWaveformTimelineModel(state);
   const timelineModel: LabWaveformTimelineModel = {
     ...timeline,
@@ -616,7 +614,6 @@ export function renderWorkspaceSurface(
     workspaceAsset === null && sourceReady && (sourceKind === "video" || sourceKind === "image")
       ? renderWorkspaceROIOverlay(
           {
-            inspectionMode,
             legacyRegions: roiRegions,
             roiFocusActive,
             selectionRoi: activeSelection?.roi ?? null,

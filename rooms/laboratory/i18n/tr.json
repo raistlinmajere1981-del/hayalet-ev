@@ -1667,6 +1667,7 @@
         "download": "Indir",
         "ariaLabel": "Varlık aksiyonları",
         "preview": "Onizleme",
+        "useAsSource": "Kaynak olarak kullan",
         "viewReport": "Raporu Goruntule",
         "delete": "Sil"
       },
@@ -1689,6 +1690,18 @@
     },
     "assetContent": {
       "unavailable": "İçerik mevcut değil"
+    },
+    "documentOverlay": {
+      "ariaLabel": "Artefakt görüntüleyici",
+      "closeAria": "Belgeyi kapat",
+      "eyebrow": "Artefakt",
+      "actions": {
+        "download": "Indir",
+        "close": "Kapat"
+      },
+      "empty": {
+        "noFile": "Dosya yolu mevcut degil"
+      }
     },
     "leftRail": {
       "toolManagement": "Arac Yonetimi",

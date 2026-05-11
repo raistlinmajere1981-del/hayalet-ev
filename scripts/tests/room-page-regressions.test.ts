@@ -440,7 +440,15 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   );
   assert.match(
     laboratoryThemeCssSource,
-    /\.labx-module-overlay\s*\{[\s\S]*max-height: calc\(100vh - 2rem\);/
+    /\.labx-overlay-root\s*\{[\s\S]*--lab-overlay-top-offset: calc\(var\(--lab-topbar-height\) \+ var\(--lab-space-3\)\);[\s\S]*inset: var\(--lab-overlay-top-offset\) 0 0;/
+  );
+  assert.match(
+    laboratoryThemeCssSource,
+    /\.labx-module-overlay\s*\{[\s\S]*max-height: var\(--lab-overlay-max-height\);/
+  );
+  assert.match(
+    laboratoryThemeCssSource,
+    /\.labx-report-overlay\s*\{[\s\S]*max-height: var\(--lab-overlay-max-height\);/
   );
 });
 

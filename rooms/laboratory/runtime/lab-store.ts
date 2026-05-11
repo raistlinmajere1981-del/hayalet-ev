@@ -241,14 +241,31 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       state.ui.reportView = event.view;
       return state;
     case "workspace-content-opened":
+      state.ui.activeDocumentOverlayAssetId = null;
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        reportOverlayOpen: false,
+      };
       resetWorkspaceForSourceActivation(state, {
         activeWorkspaceAssetId: event.assetId,
         sourceIntakeCollapsed: state.ui.workspace.sourceIntakeCollapsed,
       });
       return state;
+    case "document-overlay-opened":
+      state.ui.activeDocumentOverlayAssetId = event.assetId;
+      state.ui.activeWorkspaceAssetId = null;
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        reportOverlayOpen: true,
+      };
+      return state;
+    case "document-overlay-cleared":
+      state.ui.activeDocumentOverlayAssetId = null;
+      return state;
     case "preview-artifact-activated":
       state.ui.activePreviewArtifactId = event.artifactId;
       state.ui.activeWorkspaceAssetId = null;
+      state.ui.activeDocumentOverlayAssetId = null;
       if (state.run) {
         state.run.previewArtifacts = syncActivePreviewArtifact(
           state.run.previewArtifacts,
@@ -906,6 +923,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       };
       return state;
     case "report-overlay-toggled":
+      if (event.open !== true) {
+        state.ui.activeDocumentOverlayAssetId = null;
+      }
       state.ui.workspace = {
         ...state.ui.workspace,
         reportOverlayOpen: event.open,

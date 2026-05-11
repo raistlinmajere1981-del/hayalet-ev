@@ -1,51 +1,18 @@
 import { escapeHtml } from "../models/lab-types.js";
-import type { LabInspectionMode, LabROIRegion, LabSelectionROI } from "../models/lab-types.js";
+import type { LabROIRegion, LabSelectionROI } from "../models/lab-types.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
 type RenderWorkspaceROIOverlayOptions = {
-  inspectionMode: LabInspectionMode;
   legacyRegions: LabROIRegion[];
   mutationLocked?: boolean;
   roiFocusActive?: boolean;
   selectionRoi?: LabSelectionROI | null;
   selectionRoiEnabled: boolean;
-  showInlineInspectionControls?: boolean;
   sourceKind: string;
 };
 
-const INSPECTION_MODE_OPTIONS = ["none", "visual", "audio", "motion"] as const;
 const SELECTION_ROI_RESIZE_HANDLES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
-
-function formatInspectionMode(mode: LabInspectionMode) {
-  return (
-    {
-      none: "None",
-      visual: "Visual",
-      audio: "Audio",
-      motion: "Motion",
-    } as const
-  )[mode];
-}
-
-function formatInspectionModeCopy(mode: LabInspectionMode, copy: LabI18n) {
-  return copy.t(`mediaAnalysis.roi.inspectionModes.${mode}`, formatInspectionMode(mode));
-}
-
-function supportsInspectionMode(mode: LabInspectionMode, sourceKind: string) {
-  switch (mode) {
-    case "none":
-      return true;
-    case "audio":
-      return sourceKind === "audio" || sourceKind === "video";
-    case "motion":
-      return sourceKind === "video";
-    case "visual":
-      return sourceKind === "image" || sourceKind === "video";
-    default:
-      return false;
-  }
-}
 
 function renderSelectionFocusMask(selectionRoi: LabSelectionROI) {
   const left = Math.max(0, Math.min(100, selectionRoi.x * 100));
@@ -161,62 +128,6 @@ function renderLegacyRegions(regions: LabROIRegion[], mutationLocked: boolean, c
     .join("");
 }
 
-function renderInlineInspectionControls(
-  inspectionMode: LabInspectionMode,
-  selectionRoi: LabSelectionROI | null,
-  sourceKind: string,
-  roiFocusActive: boolean,
-  mutationLocked: boolean,
-  copy: LabI18n
-) {
-  const mutationDisabledAttr = mutationLocked ? 'disabled aria-disabled="true"' : "";
-  return `
-    <div class="labx-roi-selection-toolbar" data-lab-selection-roi-ignore="true">
-      <div class="labx-roi-selection-toolbar__status">
-        <span>${escapeHtml(selectionRoi ? copy.t("mediaAnalysis.roi.status.regionActive", "Region active") : copy.t("mediaAnalysis.roi.status.noRegion", "No region yet"))}</span>
-        <span>${escapeHtml(copy.t("mediaAnalysis.roi.inspectionPrefix", "Inspection"))}: ${escapeHtml(formatInspectionModeCopy(inspectionMode, copy))}</span>
-      </div>
-      <div class="labx-roi-selection-toolbar__modes">
-        ${INSPECTION_MODE_OPTIONS.map(function (mode) {
-          const supported = supportsInspectionMode(mode, sourceKind);
-          const active = inspectionMode === mode;
-          return `
-            <button
-              class="labx-roi-selection-toolbar__mode${active ? " is-active" : ""}"
-              type="button"
-              ${supported ? `data-lab-selection-inspection-mode="${mode}"` : "disabled"}
-              aria-pressed="${String(active)}"
-            >${escapeHtml(formatInspectionModeCopy(mode, copy))}</button>
-          `;
-        }).join("")}
-        ${
-          selectionRoi
-            ? `
-              <button
-                class="labx-roi-selection-toolbar__action"
-                type="button"
-                ${roiFocusActive ? `data-lab-selection-roi-focus-reset="true"` : `data-lab-selection-roi-focus-toggle="true"`}
-              >${escapeHtml(roiFocusActive ? copy.t("mediaAnalysis.roi.actions.resetFocus", "Reset focus") : copy.t("mediaAnalysis.roi.actions.focusRegion", "Focus region"))}</button>
-              <button
-                class="labx-roi-selection-toolbar__action"
-                type="button"
-                data-lab-selection-roi-capture="true"
-                ${mutationDisabledAttr}
-              >${escapeHtml(copy.t("mediaAnalysis.roi.actions.captureRegion", "Capture region"))}</button>
-              <button
-                class="labx-roi-selection-toolbar__clear"
-                type="button"
-                data-lab-selection-roi-clear="true"
-                ${mutationDisabledAttr}
-              >${escapeHtml(copy.t("mediaAnalysis.roi.actions.clearRegion", "Clear region"))}</button>
-            `
-            : ""
-        }
-      </div>
-    </div>
-  `;
-}
-
 export function renderWorkspaceROIOverlay(
   options: RenderWorkspaceROIOverlayOptions,
   copy: LabI18n = LAB_FALLBACK_I18N
@@ -237,18 +148,6 @@ export function renderWorkspaceROIOverlay(
     >
       ${selectionRoi ? renderSelectionRoi(selectionRoi, roiFocusActive, mutationLocked, copy) : ""}
       ${regionElements}
-      ${
-        options.showInlineInspectionControls === true
-          ? renderInlineInspectionControls(
-              options.inspectionMode,
-              selectionRoi,
-              options.sourceKind,
-              roiFocusActive,
-              mutationLocked,
-              copy
-            )
-          : ""
-      }
     </div>
   `;
 }

@@ -1800,6 +1800,9 @@ test("laboratory source panel renders registry groups and workspace preview acti
       localPath: "/tmp/run_report.md",
       createdAt: 400,
       runId: "run-1",
+      metadata: {
+        reportView: "user",
+      },
     },
   });
   store.dispatch({
@@ -1820,14 +1823,18 @@ test("laboratory source panel renders registry groups and workspace preview acti
   assert.match(panelHtml, /Raporlar/);
   assert.match(panelHtml, /clip_01\.mp4/);
   assert.match(panelHtml, /run_report\.md/);
-  assert.match(panelHtml, /data-lab-action="workspace-content-open" data-lab-value="report-1"/);
+  assert.match(panelHtml, /data-lab-action="open-report-overlay" data-lab-value="user"/);
   assert.match(panelHtml, /data-lab-action="asset-download"/);
   assert.match(panelHtml, /data-lab-action="asset-remove"/);
-  assert.match(panelHtml, /data-lab-action="source-activate-asset" data-lab-value="clip-local-1"/);
   assert.match(
     panelHtml,
-    /data-lab-action="source-activate-asset" data-lab-value="artifact-png-1"/
+    /class="labx-sp-asset__btn"[^>]*data-lab-action="workspace-content-open" data-lab-value="clip-local-1"/
   );
+  assert.match(
+    panelHtml,
+    /class="labx-sp-asset__btn"[^>]*data-lab-action="workspace-content-open" data-lab-value="artifact-png-1"/
+  );
+  assert.match(panelHtml, /data-lab-action="source-activate-asset" data-lab-value="clip-local-1"/);
   assert.match(panelHtml, /data-lab-action="source-activate-asset" data-lab-value="clip-remote-1"/);
   assert.doesNotMatch(panelHtml, /data-lab-action="asset-use-as-source"/);
 });
@@ -1850,11 +1857,11 @@ test("laboratory source panel previews png artifacts from the primary click", ()
 
   assert.match(
     panelHtml,
-    /data-lab-action="source-activate-asset" data-lab-value="artifact-png-1"/
+    /class="labx-sp-asset__btn"[^>]*data-lab-action="workspace-content-open" data-lab-value="artifact-png-1"/
   );
-  assert.doesNotMatch(
+  assert.match(
     panelHtml,
-    /class="labx-sp-asset__btn"[^>]*data-lab-action="asset-use-as-source"[^>]*data-lab-value="artifact-png-1"/
+    /class="labx-sp-menu__item"[^>]*data-lab-action="source-activate-asset" data-lab-value="artifact-png-1"/
   );
 });
 
@@ -1927,8 +1934,40 @@ test("laboratory source panel uses png artifacts as workspace previews from the 
 
   assert.match(
     panelHtml,
-    /class="labx-sp-asset__btn"[\s\S]*data-lab-action="source-activate-asset"[\s\S]*data-lab-value="artifact-png-primary"/
+    /class="labx-sp-asset__btn"[\s\S]*data-lab-action="workspace-content-open"[\s\S]*data-lab-value="artifact-png-primary"/
   );
+});
+
+test("laboratory document artifacts open inside the shared overlay shell", () => {
+  const store = createLabStore();
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "artifact-json-1",
+      type: "artifact",
+      name: "source-metadata.json",
+      localPath: "/tmp/source-metadata.json",
+      createdAt: 500,
+      metadata: {
+        format: "json",
+      },
+    },
+  });
+  store.dispatch({
+    type: "document-overlay-opened",
+    assetId: "artifact-json-1",
+  });
+
+  const html = renderReportOverlay(store.getState());
+
+  assert.match(html, /id="lab-report-overlay-root"/);
+  assert.match(html, /data-lab-document-overlay="true"/);
+  assert.match(html, /data-lab-document-asset-id="artifact-json-1"/);
+  assert.match(html, /source-metadata\.json/);
+  assert.match(html, /class="labx-report-document-frame"/);
+  assert.match(html, /src="file:\/\/\/tmp\/source-metadata\.json"/);
+  assert.match(html, /data-lab-action="asset-download" data-lab-value="artifact-json-1"/);
+  assert.doesNotMatch(html, /class="labx-report-tabs"/);
 });
 
 test("laboratory report overlay renders snapshot summary and workspace-dirty freshness metadata", () => {

@@ -1667,6 +1667,7 @@
         "download": "Download",
         "ariaLabel": "Asset actions",
         "preview": "Preview",
+        "useAsSource": "Use as source",
         "viewReport": "View report",
         "delete": "Delete"
       },
@@ -1689,6 +1690,18 @@
     },
     "assetContent": {
       "unavailable": "Content unavailable"
+    },
+    "documentOverlay": {
+      "ariaLabel": "Artifact viewer",
+      "closeAria": "Close document",
+      "eyebrow": "Artifact",
+      "actions": {
+        "download": "Download",
+        "close": "Close"
+      },
+      "empty": {
+        "noFile": "File path unavailable"
+      }
     },
     "leftRail": {
       "toolManagement": "Tool Management",

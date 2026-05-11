@@ -22,6 +22,7 @@ export function resetWorkspaceForSourceActivation(
   state.selectedCapabilities = [];
   state.ui.activeWorkspaceAssetId = options.activeWorkspaceAssetId ?? null;
   state.ui.activePreviewArtifactId = null;
+  state.ui.activeDocumentOverlayAssetId = null;
   state.ui.liveFindingsExpanded = false;
   state.ui.analysisControlsCollapsed = true;
   state.ui.analysisCancelPending = false;

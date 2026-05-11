@@ -502,7 +502,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     body.appendChild(overlay);
     analysisScopeOverlay = overlay;
     overlay
-      .querySelector<HTMLElement>("[data-lab-action='analysis-scope-choice'][data-lab-value='selected']")
+      .querySelector<HTMLElement>(
+        "[data-lab-action='analysis-scope-choice'][data-lab-value='selected']"
+      )
       ?.focus();
     return true;
   }
@@ -1090,6 +1092,14 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           assetId: value.trim() !== "" ? value : null,
         });
         return;
+      case "open-document-overlay":
+        if (value.trim() !== "") {
+          dispatch({
+            type: "document-overlay-opened",
+            assetId: value,
+          });
+        }
+        return;
       case "focus-source-preview":
         if (value.trim() !== "") {
           focusSourcePreview();
@@ -1226,9 +1236,17 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         return;
       }
       case "toggle-report-view":
+        dispatch({ type: "document-overlay-cleared" });
         dispatch({ type: "report-overlay-toggled", open: true });
         return;
       case "open-report-overlay":
+        dispatch({ type: "document-overlay-cleared" });
+        if (value === "ai" || value === "user") {
+          dispatch({
+            type: "report-view-changed",
+            view: value,
+          });
+        }
         dispatch({ type: "report-overlay-toggled", open: true });
         return;
       case "close-report-overlay":

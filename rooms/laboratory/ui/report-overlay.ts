@@ -20,6 +20,12 @@ import {
   isRunActive,
 } from "../runtime/lab-selectors.js";
 import { renderStatusChip } from "./components/status-chip.js";
+import {
+  buildLabAssetMetadataTitle,
+  getLabAssetPath,
+  getLabAssetPathLeaf,
+  toLabAssetDisplayUrl,
+} from "./lab-asset-display.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 import { translateLabRuntimeText } from "./lab-runtime-i18n.js";
@@ -465,8 +471,71 @@ function renderAiReport(report: LabAiReport, copy: LabI18n = LAB_FALLBACK_I18N) 
   `;
 }
 
+function getActiveDocumentOverlayAsset(state: LabStoreState) {
+  const assetId = state.ui.activeDocumentOverlayAssetId;
+  if (assetId === null) {
+    return null;
+  }
+  return (
+    state.assets.find(function (asset) {
+      return asset.id === assetId;
+    }) || null
+  );
+}
+
+function renderDocumentOverlay(
+  asset: NonNullable<ReturnType<typeof getActiveDocumentOverlayAsset>>,
+  copy: LabI18n
+) {
+  const path = getLabAssetPath(asset);
+  const fileName = getLabAssetPathLeaf(asset) || asset.name;
+  const src = path === null ? null : toLabAssetDisplayUrl(path);
+  const title = buildLabAssetMetadataTitle(asset);
+  const downloadMarkup =
+    path === null
+      ? ""
+      : `<button class="labx-inline-action" type="button" data-lab-action="asset-download" data-lab-value="${escapeHtml(asset.id)}">${escapeHtml(copy.t("mediaAnalysis.documentOverlay.actions.download", "İndir"))}</button>`;
+
+  return `
+    <button
+      class="labx-overlay-backdrop"
+      type="button"
+      aria-label="${escapeHtml(copy.t("mediaAnalysis.documentOverlay.closeAria", "Belgeyi kapat"))}"
+      data-lab-action="close-report-overlay"
+    ></button>
+    <section
+      class="labx-report-overlay labx-document-overlay"
+      data-lab-document-overlay="true"
+      data-lab-document-asset-id="${escapeHtml(asset.id)}"
+      role="dialog"
+      aria-modal="true"
+      aria-label="${escapeHtml(copy.t("mediaAnalysis.documentOverlay.ariaLabel", "Artefakt görüntüleyici"))}"
+    >
+      <div class="labx-report-overlay__header">
+        <div>
+          <p class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.documentOverlay.eyebrow", "Artefakt"))}</p>
+          <h2 class="labx-report-overlay__title">${escapeHtml(asset.name)}</h2>
+          <span class="labx-report-freshness">${escapeHtml(fileName)}</span>
+        </div>
+        <div class="labx-inline-actions">
+          ${downloadMarkup}
+          <button class="labx-inline-action" type="button" data-lab-action="close-report-overlay">${escapeHtml(copy.t("mediaAnalysis.documentOverlay.actions.close", "Kapat"))}</button>
+        </div>
+      </div>
+      <div class="labx-report-document" title="${escapeHtml(title)}">
+        ${
+          src === null
+            ? `<div class="labx-process-empty">${escapeHtml(copy.t("mediaAnalysis.documentOverlay.empty.noFile", "Dosya yolu mevcut değil"))}</div>`
+            : `<iframe class="labx-report-document-frame" data-lab-document-frame="true" src="${escapeHtml(src)}" title="${escapeHtml(asset.name)}"></iframe>`
+        }
+      </div>
+    </section>
+  `;
+}
+
 export function renderReportOverlay(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
   const isOpen = getReportOverlayOpen(state);
+  const documentAsset = getActiveDocumentOverlayAsset(state);
   const reports = getCurrentReports(state);
   const run = getCurrentRun(state);
   const reportView = state.ui.reportView;
@@ -509,7 +578,9 @@ export function renderReportOverlay(state: LabStoreState, copy: LabI18n = LAB_FA
     <div class="labx-overlay-root" data-open="${isOpen ? "true" : "false"}" id="lab-report-overlay-root">
       ${
         isOpen
-          ? `
+          ? documentAsset !== null
+            ? renderDocumentOverlay(documentAsset, copy)
+            : `
             <button
               class="labx-overlay-backdrop"
               type="button"

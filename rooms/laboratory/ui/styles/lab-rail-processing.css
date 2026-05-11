@@ -1,29 +1,31 @@
+/* Right-side icon rail. */
+
 .labx-icon-rail {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: var(--labx-rail-width, 52px);
-  min-width: var(--labx-rail-width, 52px);
-  gap: 0.25rem;
-  padding: 0.5rem 0;
-  border-left: 1px solid var(--labx-border);
-  background: rgba(6, 11, 19, 0.82);
-  z-index: 2;
+  width: var(--lab-rail-width);
+  min-width: var(--lab-rail-width);
+  gap: var(--lab-space-1);
+  padding: var(--lab-space-2) 0;
+  border-left: 1px solid var(--lab-border-default);
+  background: var(--lab-surface-0);
+  z-index: var(--lab-z-raised);
 }
 
 .labx-icon-rail__group {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
+  gap: var(--lab-space-0_5);
 }
 
 .labx-icon-rail__divider {
   width: 24px;
   height: 1px;
-  margin: 0.3rem 0;
-  background: rgba(255, 255, 255, 0.08);
+  margin: var(--lab-space-1_5) 0;
+  background: var(--lab-border-subtle);
 }
 
 .labx-icon-rail__btn {
@@ -34,13 +36,13 @@
   justify-content: center;
   width: 36px;
   height: 36px;
-  border-radius: var(--labx-radius-tight);
-  color: var(--labx-text-dim);
+  border-radius: var(--lab-radius-sm);
+  color: var(--lab-text-soft);
   cursor: pointer;
   transition:
-    background 120ms ease-out,
-    color 120ms ease-out,
-    box-shadow 120ms ease-out;
+    background var(--lab-duration-base) var(--lab-ease-out),
+    color var(--lab-duration-base) var(--lab-ease-out),
+    box-shadow var(--lab-duration-base) var(--lab-ease-out);
 }
 
 .labx-icon-rail[data-locked="true"] .labx-icon-rail__btn,
@@ -51,23 +53,26 @@
   opacity: 0.38;
 }
 
-.labx-icon-rail__btn:not(:disabled):hover {
-  color: var(--labx-text-soft);
+.labx-icon-rail__btn:not(:disabled):hover,
+.labx-icon-rail__btn:focus-visible {
+  color: var(--lab-text-default);
   background: rgba(255, 255, 255, 0.06);
 }
 
 .labx-icon-rail__btn[data-active="true"] {
-  color: var(--labx-accent);
-  background: rgba(92, 215, 223, 0.1);
-  box-shadow: inset 0 0 0 1px rgba(92, 215, 223, 0.2);
+  color: var(--lab-accent);
+  background: var(--lab-accent-bg);
+  box-shadow:
+    inset 3px 0 0 var(--lab-accent),
+    inset 0 0 0 1px var(--lab-border-accent);
 }
 
 .labx-icon-rail__btn[data-draft="true"] {
-  opacity: 0.45;
+  opacity: 0.5;
 }
 
 .labx-icon-rail__btn[data-draft="true"]:not(:disabled):hover {
-  opacity: 0.65;
+  opacity: 0.75;
 }
 
 .labx-icon-rail__draft-badge {
@@ -75,39 +80,38 @@
   top: -0.2rem;
   right: -0.25rem;
   max-width: 2.5rem;
-  padding: 0.05rem 0.22rem;
-  border: 1px solid rgba(255, 210, 115, 0.22);
-  border-radius: var(--labx-radius-pill);
-  background: rgba(7, 17, 28, 0.94);
-  color: var(--labx-warning);
-  font-size: 0.48rem;
-  font-weight: 700;
+  padding: 0.05rem var(--lab-space-1);
+  border: 1px solid rgba(var(--lab-warning-rgb), 0.32);
+  border-radius: var(--lab-radius-pill);
+  background: var(--lab-surface-1);
+  color: var(--lab-warning);
+  font-size: 0.5rem;
+  font-weight: var(--lab-weight-bold);
+  font-variant-numeric: tabular-nums;
   line-height: 1.15;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Icon rail popover — floating panel */
+/* Floating icon rail popover. */
 .labx-icon-rail-popover {
   position: absolute;
-  right: calc(var(--labx-rail-width, 52px) + 4px);
-  top: 0.5rem;
+  right: calc(var(--lab-rail-width) + 4px);
+  top: var(--lab-space-2);
   width: 16rem;
   max-height: calc(100% - 1rem);
   overflow-x: hidden;
   overflow-y: auto;
-  border: 1px solid var(--labx-border-strong);
-  border-radius: var(--labx-radius-card);
+  border: 1px solid var(--lab-border-strong);
+  border-radius: var(--lab-radius-lg);
   background:
-    linear-gradient(180deg, rgba(12, 22, 36, 0.98), rgba(7, 14, 24, 0.96)), var(--labx-surface);
-  box-shadow:
-    0 12px 36px rgba(0, 0, 0, 0.42),
-    0 0 0 1px rgba(92, 215, 223, 0.08);
-  z-index: 10;
+    linear-gradient(180deg, var(--lab-surface-3), var(--lab-surface-2)), var(--lab-surface-2);
+  box-shadow: var(--lab-shadow-xl);
+  z-index: var(--lab-z-popover);
 }
 
-/* Pinned mode — push layout instead of float */
+/* Pinned mode pushes layout instead of floating. */
 .labx-icon-rail-popover[data-pinned="true"] {
   position: relative;
   right: auto;
@@ -115,15 +119,15 @@
   width: 100%;
   max-height: none;
   border: none;
-  border-top: 1px solid var(--labx-border);
+  border-top: 1px solid var(--lab-border-default);
   border-radius: 0;
   box-shadow: none;
   margin-top: auto;
 }
 
 .labx-icon-rail[data-pinned="true"] {
-  width: calc(var(--labx-rail-width, 52px) + 16rem);
-  min-width: calc(var(--labx-rail-width, 52px) + 16rem);
+  width: calc(var(--lab-rail-width, 52px) + 16rem);
+  min-width: calc(var(--lab-rail-width, 52px) + 16rem);
 }
 
 .labx-icon-rail[data-pinned="true"][data-has-active="true"] {
@@ -156,23 +160,24 @@
 }
 
 .labx-icon-rail[data-pinned="true"][data-has-active="false"] {
-  width: var(--labx-rail-width, 52px);
-  min-width: var(--labx-rail-width, 52px);
+  width: var(--lab-rail-width, 52px);
+  min-width: var(--lab-rail-width, 52px);
 }
 
 .labx-icon-rail-popover__header {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.5rem 0.6rem;
-  border-bottom: 1px solid var(--labx-border);
+  gap: var(--lab-space-1_5);
+  padding: var(--lab-space-2) var(--lab-space-2_5);
+  border-bottom: 1px solid var(--lab-border-subtle);
 }
 
 .labx-icon-rail-popover__title {
   flex: 1;
-  font-size: var(--labx-font-label);
-  font-weight: 600;
-  color: var(--labx-text-primary);
+  font-size: var(--lab-text-sm);
+  font-weight: var(--lab-weight-semibold);
+  color: var(--lab-text-strong);
+  letter-spacing: var(--lab-tracking-tight);
   text-transform: capitalize;
 }
 
@@ -182,31 +187,42 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.6rem;
-  height: 1.6rem;
-  border-radius: var(--labx-radius-button);
-  font-size: 0.82rem;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: var(--lab-radius-sm);
+  color: var(--lab-text-soft);
+  font-size: var(--lab-text-base);
   cursor: pointer;
-  transition: background 120ms ease-out;
+  transition:
+    background var(--lab-duration-base) var(--lab-ease-out),
+    color var(--lab-duration-base) var(--lab-ease-out);
 }
 
 .labx-icon-rail-popover__pin:hover,
-.labx-icon-rail-popover__close:hover {
+.labx-icon-rail-popover__close:hover,
+.labx-icon-rail-popover__pin:focus-visible,
+.labx-icon-rail-popover__close:focus-visible {
   background: rgba(255, 255, 255, 0.08);
+  color: var(--lab-text-default);
+}
+
+.labx-icon-rail-popover__pin[aria-pressed="true"] {
+  color: var(--lab-accent);
+  background: var(--lab-accent-bg);
 }
 
 .labx-icon-rail-popover__body {
-  padding: 0.5rem 0.6rem;
+  padding: var(--lab-space-2) var(--lab-space-2_5);
 }
 
 .labx-icon-rail-popover__draft {
   margin: 0;
-  font-size: var(--labx-font-meta);
-  color: var(--labx-text-dim);
+  font-size: var(--lab-text-xs);
+  color: var(--lab-text-dim);
   font-style: italic;
 }
 
-/* ===== V3 CENTER SKELETON ===== */
+/* Center skeleton. */
 
 .labx-center-skeleton {
   display: flex;
@@ -226,14 +242,14 @@
 .labx-center-skeleton__label {
   margin: 0;
   align-self: center;
-  color: var(--labx-text-soft);
+  color: var(--lab-text-soft);
   font-size: 0.78rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   animation: labx-skeleton-breathe 2.8s ease-in-out infinite;
 }
 
-/* ===== V5 PROCESSING OVERLAY ===== */
+/* Processing overlay. */
 
 @keyframes labx-overlay-spin {
   0% {
@@ -256,7 +272,7 @@
 .labx-processing-overlay {
   position: fixed;
   inset: 0;
-  z-index: var(--labx-z-overlay);
+  z-index: var(--lab-z-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -269,48 +285,48 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.2rem;
+  gap: var(--lab-space-4);
   width: min(26rem, calc(100vw - 3rem));
-  padding: 2.4rem 2rem;
-  border: 1px solid rgba(92, 215, 223, 0.18);
-  border-radius: var(--labx-radius-card);
+  padding: var(--lab-space-6) var(--lab-space-5);
+  border: 1px solid var(--lab-border-accent);
+  border-radius: var(--lab-radius-lg);
   background:
-    linear-gradient(180deg, rgba(12, 24, 38, 0.96), rgba(6, 14, 24, 0.94)), rgba(5, 12, 21, 0.94);
-  box-shadow:
-    0 24px 64px rgba(0, 0, 0, 0.52),
-    0 0 0 1px rgba(92, 215, 223, 0.06);
+    linear-gradient(180deg, var(--lab-surface-3), var(--lab-surface-1)), var(--lab-surface-1);
+  box-shadow: var(--lab-shadow-xl);
 }
 
 .labx-processing-overlay__spinner {
   width: 3rem;
   height: 3rem;
-  border: 3px solid rgba(92, 215, 223, 0.15);
-  border-top-color: var(--labx-accent);
+  border: 3px solid var(--lab-accent-bg);
+  border-top-color: var(--lab-accent);
   border-radius: 50%;
   animation: labx-overlay-spin 0.9s linear infinite;
 }
 
 .labx-processing-overlay__label {
   margin: 0;
-  font-size: var(--labx-font-heading);
-  font-weight: 600;
-  color: var(--labx-text-primary);
+  font-size: var(--lab-text-md);
+  font-weight: var(--lab-weight-semibold);
+  color: var(--lab-text-strong);
+  letter-spacing: var(--lab-tracking-tight);
+  line-height: var(--lab-leading-snug);
   text-align: center;
 }
 
 .labx-processing-overlay__progress {
   width: 100%;
   height: 4px;
-  border-radius: var(--labx-radius-pill);
-  background: rgba(255, 255, 255, 0.08);
+  border-radius: var(--lab-radius-pill);
+  background: var(--lab-border-subtle);
   overflow: hidden;
 }
 
 .labx-processing-overlay__progress-bar {
   height: 100%;
-  border-radius: var(--labx-radius-pill);
-  background: var(--labx-accent);
-  transition: width 120ms ease-out;
+  border-radius: var(--lab-radius-pill);
+  background: var(--lab-accent);
+  transition: width var(--lab-duration-base) var(--lab-ease-out);
 }
 
 .labx-processing-overlay__progress-bar[data-indeterminate="true"] {
@@ -320,9 +336,10 @@
 
 .labx-processing-overlay__elapsed {
   margin: 0;
-  font-size: var(--labx-font-meta);
-  color: var(--labx-text-dim);
-  font-family: var(--labx-mono);
+  font-size: var(--lab-text-xs);
+  font-family: var(--lab-font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--lab-text-soft);
 }
 
 .labx-processing-overlay__cancel {
@@ -330,29 +347,29 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.45rem 1.4rem;
-  border: 1px solid rgba(255, 127, 136, 0.28);
-  border-radius: var(--labx-radius-button);
-  background: rgba(255, 127, 136, 0.08);
-  color: var(--labx-error);
-  font-size: var(--labx-font-body);
-  font-weight: 500;
+  padding: var(--lab-space-1_5) var(--lab-space-5);
+  border: 1px solid rgba(var(--lab-error-rgb), 0.32);
+  border-radius: var(--lab-radius-sm);
+  background: var(--lab-error-soft);
+  color: var(--lab-error);
+  font-size: var(--lab-text-sm);
+  font-weight: var(--lab-weight-medium);
   cursor: pointer;
   transition:
-    background 120ms ease-out,
-    border-color 120ms ease-out;
+    background var(--lab-duration-base) var(--lab-ease-out),
+    border-color var(--lab-duration-base) var(--lab-ease-out);
 }
 
 .labx-processing-overlay__cancel:hover {
-  background: rgba(255, 127, 136, 0.16);
-  border-color: rgba(255, 127, 136, 0.42);
+  background: rgba(var(--lab-error-rgb), 0.16);
+  border-color: rgba(var(--lab-error-rgb), 0.42);
 }
 
 .labx-processing-overlay__cancel:active {
   background: rgba(255, 127, 136, 0.22);
 }
 
-/* ===== UI PATCH — Tool Card Improvements ===== */
+/* Tool card improvements. */
 
 .labx-module-card[data-has-error="true"] {
   border-color: rgba(255, 127, 136, 0.3);
@@ -362,10 +379,10 @@
   display: block;
   margin: 0;
   padding: 0.38rem 0.52rem;
-  border-radius: var(--labx-radius-button);
+  border-radius: var(--lab-radius-sm);
   background: rgba(255, 127, 136, 0.07);
   border: 1px solid rgba(255, 127, 136, 0.2);
-  color: var(--labx-error);
+  color: var(--lab-error);
   font-size: 0.72rem;
   line-height: 1.45;
   word-break: break-word;
@@ -381,7 +398,7 @@
   align-items: center;
   gap: 0.3rem;
   padding: 0.3rem 0;
-  color: var(--labx-text-dim);
+  color: var(--lab-text-dim);
   font-size: 0.71rem;
   cursor: pointer;
   list-style: none;
@@ -397,7 +414,7 @@
   display: inline-block;
   font-size: 0.9rem;
   line-height: 1;
-  color: var(--labx-text-dim);
+  color: var(--lab-text-dim);
   transition: transform 120ms ease-out;
 }
 
@@ -407,7 +424,7 @@
 
 .labx-module-card__meta-details summary:hover,
 .labx-module-card__meta-details summary:hover::before {
-  color: var(--labx-text-soft);
+  color: var(--lab-text-soft);
 }
 
 .labx-module-card__meta-details .labx-summary-list {
@@ -420,18 +437,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: var(--labx-mono);
+  font-family: var(--lab-font-mono);
   font-size: 0.67rem;
   max-width: 16rem;
   text-align: right;
 }
 
-/* ===== Primary inline action button ===== */
+/* Primary inline action button. */
 
 .labx-inline-action--primary {
   border-color: rgba(92, 215, 223, 0.32);
   background: rgba(92, 215, 223, 0.12);
-  color: var(--labx-accent);
+  color: var(--lab-accent);
 }
 
 .labx-inline-action--primary:not(:disabled):hover,
@@ -445,17 +462,17 @@
 .labx-inline-action--ghost {
   border-color: transparent;
   background: transparent;
-  color: var(--labx-text-dim);
+  color: var(--lab-text-dim);
 }
 
 .labx-inline-action--ghost:hover,
 .labx-inline-action--ghost:focus-visible {
   border-color: rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.06);
-  color: var(--labx-text-soft);
+  color: var(--lab-text-soft);
 }
 
-/* ===== Drawer section heading improvements ===== */
+/* Drawer section heading improvements. */
 
 .labx-drawer__section h3 {
   margin: 0 0 0.5rem;
@@ -463,11 +480,11 @@
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--labx-text-dim);
+  color: var(--lab-text-dim);
 }
 
 .labx-drawer__intent-cluster {
-  border-radius: var(--labx-radius-tight);
+  border-radius: var(--lab-radius-md);
   transition: border-color 120ms ease-out;
 }
 
@@ -475,7 +492,7 @@
   background: rgba(6, 22, 34, 0.42);
 }
 
-/* ===== Analysis module status indicator ===== */
+/* Analysis module status indicator. */
 
 .labx-analysis-module__status {
   display: inline-block;
@@ -487,21 +504,21 @@
 }
 
 .labx-analysis-module[data-status="running"] .labx-analysis-module__status {
-  background: var(--labx-accent);
+  background: var(--lab-accent);
   box-shadow: 0 0 0 2px rgba(92, 215, 223, 0.2);
   animation: labx-pulse-dot 1.2s ease-in-out infinite;
 }
 
 .labx-analysis-module[data-status="completed"] .labx-analysis-module__status {
-  background: var(--labx-success);
+  background: var(--lab-success);
 }
 
 .labx-analysis-module[data-status="failed"] .labx-analysis-module__status {
-  background: var(--labx-error);
+  background: var(--lab-error);
 }
 
 .labx-analysis-module[data-status="queued"] .labx-analysis-module__status {
-  background: var(--labx-warning);
+  background: var(--lab-warning);
   opacity: 0.7;
 }
 
@@ -515,51 +532,81 @@
   }
 }
 
-/* ===== Left rail pill — active border accent ===== */
+/* Active left-rail pill accent. */
 
 .labx-rail-segment .labx-topbar-pill[data-pill-state="active"] {
   box-shadow:
-    inset 3px 0 0 var(--labx-accent),
+    inset 3px 0 0 var(--lab-accent),
     inset 0 0 0 1px rgba(92, 215, 223, 0.18);
 }
 
-/* ===== Drawer mode nav — horizontal pills ===== */
+/* Drawer mode nav. */
 
 .labx-drawer__mode-nav {
   display: flex;
-  padding: 0.45rem 0.6rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: var(--lab-space-2) var(--lab-space-3) 0;
+  border-bottom: 1px solid var(--lab-border-subtle);
+  margin: 0;
 }
 
 .labx-drawer__mode-nav .labx-rail-segment {
   flex-direction: row;
   flex-wrap: nowrap;
-  gap: 0.2rem;
+  gap: 0;
   width: 100%;
   padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .labx-drawer__mode-nav .labx-topbar-pill {
   flex: 1;
   flex-direction: row;
   justify-content: center;
-  gap: 0.35rem;
-  padding: 0.3rem 0.45rem 0.32rem;
-  border-radius: var(--labx-radius-button);
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-  font-size: 0.72rem;
+  gap: var(--lab-space-1_5);
+  padding: var(--lab-space-1_5) var(--lab-space-2);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--lab-text-soft);
+  font-size: var(--lab-text-sm);
+  font-weight: var(--lab-weight-medium);
+  position: relative;
+  transition:
+    color var(--lab-duration-base) var(--lab-ease-out),
+    background var(--lab-duration-base) var(--lab-ease-out);
+}
+
+.labx-drawer__mode-nav .labx-topbar-pill + .labx-topbar-pill {
+  border-top: 0;
+}
+
+.labx-drawer__mode-nav .labx-topbar-pill:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--lab-text-default);
 }
 
 .labx-drawer__mode-nav .labx-topbar-pill__label {
-  font-size: 0.72rem;
-  letter-spacing: 0.02em;
+  font-size: var(--lab-text-sm);
+  letter-spacing: var(--lab-tracking-normal);
 }
 
 .labx-drawer__mode-nav .labx-topbar-pill[data-pill-state="active"] {
-  border-color: rgba(92, 215, 223, 0.3);
-  background: rgba(92, 215, 223, 0.1);
+  background: var(--lab-accent-bg);
+  color: var(--lab-accent-strong);
   box-shadow: none;
+}
+
+/* Active tab ridge links the nav to content. */
+.labx-drawer__mode-nav .labx-topbar-pill[data-pill-state="active"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--lab-accent);
+  border-radius: 2px 2px 0 0;
 }
 
 .labx-drawer__mode-nav .labx-topbar-pill__dot {
@@ -571,30 +618,32 @@
   position: static;
   width: 0.38rem;
   height: 0.38rem;
+  background: var(--lab-warning);
+  animation: labx-dot-pulse 1.6s ease-in-out infinite;
 }
 
-/* ===== Analysis group module row separator ===== */
+/* Analysis group module row separator. */
 
 .labx-analysis-group__modules .labx-analysis-module + .labx-analysis-module {
   border-top: 1px solid rgba(255, 255, 255, 0.04);
   padding-top: 0.32rem;
 }
 
-/* ===== Drawer decision header — subtitle dim ===== */
+/* Drawer decision subtitle. */
 
 .labx-decision-header__subtitle {
-  color: var(--labx-text-dim);
+  color: var(--lab-text-dim);
   font-size: 0.7rem;
 }
 
-/* ===== Drawer section outputs label ===== */
+/* Drawer section outputs label. */
 
 .labx-analysis-group__outputs {
   font-size: 0.64rem;
   opacity: 0.72;
 }
 
-/* ===== Module overlay — header split for close ===== */
+/* Module overlay header. */
 
 .labx-module-overlay__header {
   flex-wrap: wrap;
@@ -604,7 +653,7 @@
   margin-top: 0.25rem;
 }
 
-/* ===== Tool progress rail — idler message ===== */
+/* Tool progress idle message. */
 
 .labx-tool-progress-empty {
   border-style: dashed;

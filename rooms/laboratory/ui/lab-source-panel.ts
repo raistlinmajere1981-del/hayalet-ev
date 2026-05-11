@@ -23,6 +23,7 @@ import {
   buildLabAssetMetadataTitle,
   getLabAssetPath,
   getLabAssetPathLeaf,
+  getLabAssetPreviewKind,
   getLabAssetPreviewUrl,
   getLabAssetSyncLabel,
 } from "./lab-asset-display.js";
@@ -133,9 +134,27 @@ function renderAssetVisual(asset: LabAsset): string {
 // Asset item
 // ---------------------------------------------------------------------------
 
+function getReportAssetView(asset: LabAsset): "user" | "ai" {
+  const metadata = asLabRecord(asset.metadata);
+  return asNonEmptyString(metadata["reportView"]) === "ai" ? "ai" : "user";
+}
+
+function getAssetContentActionKind(asset: LabAsset) {
+  return getLabAssetPreviewKind(
+    asset,
+    getLabAssetPath(asset) || getLabAssetPathLeaf(asset) || asset.name
+  );
+}
+
 function getAssetPrimaryAction(asset: LabAsset): { action: string; value: string } {
+  if (asset.type === "report") {
+    return { action: "open-report-overlay", value: getReportAssetView(asset) };
+  }
   if (getAssetMediaKind(asset) !== null) {
-    return { action: "source-activate-asset", value: asset.id };
+    return { action: "workspace-content-open", value: asset.id };
+  }
+  if (getAssetContentActionKind(asset) === "document") {
+    return { action: "open-document-overlay", value: asset.id };
   }
   return { action: "workspace-content-open", value: asset.id };
 }
@@ -186,12 +205,20 @@ function renderAssetItem(
   const date = formatAssetDate(asset.createdAt);
   const meta = [date, leaf].filter(Boolean).join(" · ");
   const primary = getAssetPrimaryAction(asset);
+  const reportView = asset.type === "report" ? getReportAssetView(asset) : null;
 
   const viewReportItem =
     asset.type === "report"
       ? `<button class="labx-sp-menu__item" type="button"
-         data-lab-action="workspace-content-open" data-lab-value="${id}">
+         data-lab-action="open-report-overlay" data-lab-value="${escapeHtml(reportView ?? "user")}">
          ${escapeHtml(copy.t("mediaAnalysis.assets.actions.viewReport", "Raporu görüntüle"))}
+       </button>`
+      : "";
+  const useAsSourceItem =
+    getAssetMediaKind(asset) !== null
+      ? `<button class="labx-sp-menu__item" type="button"
+         data-lab-action="source-activate-asset" data-lab-value="${id}">
+         ${escapeHtml(copy.t("mediaAnalysis.assets.actions.useAsSource", "Kaynak olarak kullan"))}
        </button>`
       : "";
   const downloadItem = canDownloadAsset(asset)
@@ -218,6 +245,7 @@ function renderAssetItem(
         <summary class="labx-sp-asset__menu-trigger" aria-label="${escapeHtml(copy.t("mediaAnalysis.assets.actions.ariaLabel", "Seçenekler"))}">···</summary>
         <div class="labx-sp-asset__menu-list">
           ${viewReportItem}
+          ${useAsSourceItem}
           ${downloadItem}
           <button class="labx-sp-menu__item labx-sp-menu__item--danger" type="button"
                   data-lab-action="asset-remove" data-lab-value="${id}">

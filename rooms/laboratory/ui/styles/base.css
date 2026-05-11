@@ -1,55 +1,22 @@
-:root {
-  color-scheme: dark;
-  --labx-bg: #07111c;
-  --labx-bg-soft: #0d1726;
-  --labx-bg-main: var(--labx-bg);
-  --labx-bg-elevated: var(--labx-bg-soft);
-  --labx-surface: rgba(11, 22, 37, 0.9);
-  --labx-surface-strong: rgba(14, 27, 44, 0.96);
-  --labx-surface-highlight: rgba(17, 37, 59, 0.98);
-  --labx-border: rgba(116, 155, 193, 0.16);
-  --labx-border-strong: rgba(117, 183, 222, 0.32);
-  --labx-text: #ecf4ff;
-  --labx-text-primary: var(--labx-text);
-  --labx-text-soft: #9db3ca;
-  --labx-text-dim: #6d8197;
-  --labx-text-muted: var(--labx-text-dim);
-  --labx-accent: #5cd7df;
-  --labx-accent-soft: rgba(92, 215, 223, 0.14);
-  --labx-warning: #ffb265;
-  --labx-error: #ff7f88;
-  --labx-danger: var(--labx-error);
-  --labx-success: #82e3b1;
-  --labx-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
-  --labx-shadow-primary: 0 8px 24px rgba(0, 0, 0, 0.22);
-  --labx-shadow-secondary: 0 4px 12px rgba(0, 0, 0, 0.12);
-  --labx-radius: 12px;
-  --labx-radius-tight: 8px;
-  --labx-radius-card: 10px;
-  --labx-radius-button: 6px;
-  --labx-radius-pill: 999px;
-  --labx-font-heading: 1.05rem;
-  --labx-font-body: 0.84rem;
-  --labx-font-label: 0.74rem;
-  --labx-font-meta: 0.68rem;
-  --labx-mono: "IBM Plex Mono", "SF Mono", monospace;
-  --labx-topbar-height: 48px;
-  --labx-rail-width: 52px;
-  --labx-strip-height: 36px;
-  --labx-z-popover: 200;
-  --labx-z-overlay: 500;
-}
+/* Laboratory UI base: global reset and root layout. */
+
+@import "./lab-tokens.css";
+@import "./lab-primitives.css";
 
 html,
 body {
   margin: 0;
   min-height: 100%;
   background:
-    radial-gradient(circle at top right, rgba(92, 215, 223, 0.04), transparent 24%),
+    radial-gradient(circle at top right, rgba(var(--lab-accent-rgb), 0.04), transparent 24%),
     radial-gradient(circle at bottom left, rgba(67, 118, 176, 0.05), transparent 28%),
-    linear-gradient(180deg, #09111c 0%, #07111c 45%, #050d17 100%);
-  color: var(--labx-text);
-  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+    linear-gradient(180deg, #09111c 0%, var(--lab-surface-1) 45%, var(--lab-surface-0) 100%);
+  color: var(--lab-text-default);
+  font-family: var(--lab-font-sans);
+  font-size: var(--lab-text-base);
+  line-height: var(--lab-leading-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
@@ -65,4 +32,10 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }

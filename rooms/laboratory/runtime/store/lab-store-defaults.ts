@@ -198,6 +198,7 @@ export function createInitialState(): LabStoreState {
       activeInspectionSnapshot: null,
       activeWorkspaceAssetId: null,
       activePreviewArtifactId: null,
+      activeDocumentOverlayAssetId: null,
       inspectionMode: "none",
       roiFocusActive: false,
       liveFindingsExpanded: true,

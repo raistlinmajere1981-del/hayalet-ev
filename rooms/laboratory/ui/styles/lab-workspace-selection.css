@@ -1,10 +1,10 @@
-/* ===== V2.3 WORKSPACE SURFACE ===== */
+/* Workspace surface. */
 
 .labx-workspace-main {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
-  gap: 0.85rem;
+  gap: var(--lab-space-3);
   height: 100%;
   min-height: 0;
 }
@@ -25,11 +25,12 @@
   height: 100%;
   min-height: 0;
   min-width: 0;
-  border: 1px solid rgba(134, 187, 214, 0.16);
-  border-radius: var(--labx-radius-card);
+  border: 1px solid var(--lab-border-default);
+  border-radius: var(--lab-radius-lg);
   background:
-    linear-gradient(180deg, rgba(4, 11, 19, 0.98), rgba(5, 12, 20, 0.94)), rgba(3, 8, 14, 0.94);
-  box-shadow: none;
+    linear-gradient(180deg, var(--lab-surface-1), var(--lab-surface-0)), var(--lab-surface-0);
+  box-shadow: var(--lab-shadow-md);
+  overflow: hidden;
 }
 
 .labx-workspace-preview {
@@ -41,7 +42,8 @@
   border: 1px solid transparent;
   border-radius: 0;
   background:
-    radial-gradient(circle at top, rgba(92, 215, 223, 0.03), transparent 36%), rgba(3, 8, 14, 0.94);
+    radial-gradient(circle at top, rgba(var(--lab-accent-rgb), 0.03), transparent 36%),
+    var(--lab-surface-0);
   overflow: hidden;
   display: grid;
   place-items: center;
@@ -50,28 +52,28 @@
   filter: brightness(1);
   scale: 1;
   transition:
-    opacity 120ms ease-out,
-    filter 120ms ease-out,
-    box-shadow 120ms ease-out;
+    opacity var(--lab-duration-base) var(--lab-ease-out),
+    filter var(--lab-duration-base) var(--lab-ease-out),
+    box-shadow var(--lab-duration-base) var(--lab-ease-out);
 }
 
 .labx-focus-primary,
 .labx-focus-secondary,
 .labx-focus-passive {
   transition:
-    opacity 120ms ease-out,
-    filter 120ms ease-out,
-    box-shadow 120ms ease-out;
+    opacity var(--lab-duration-base) var(--lab-ease-out),
+    filter var(--lab-duration-base) var(--lab-ease-out),
+    box-shadow var(--lab-duration-base) var(--lab-ease-out);
 }
 
 .labx-workspace-preview.labx-focus-primary {
-  border: 1px solid var(--labx-accent);
+  border: 1px solid var(--lab-accent);
   opacity: 1;
   filter: brightness(1);
   scale: 1;
   box-shadow:
-    0 0 0 1px var(--labx-accent-soft),
-    0 0 24px rgba(0, 0, 0, 0.35);
+    0 0 0 1px var(--lab-accent-soft),
+    var(--lab-glow-accent);
 }
 
 .labx-workspace-preview.labx-focus-passive {
@@ -198,7 +200,8 @@
 }
 
 .labx-workspace-empty {
-  margin: 3rem;
+  margin: var(--lab-space-8);
+  max-width: 28rem;
 }
 
 @media (max-width: 960px) {
@@ -211,16 +214,18 @@
   }
 }
 
-/* Timeline */
+/* Timeline transport and track. */
+
 .labx-timeline {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  padding: 0.75rem 0.85rem;
+  gap: var(--lab-space-1_5);
+  padding: var(--lab-space-2) var(--lab-space-3);
   border: none;
-  border-radius: var(--labx-radius-tight);
-  background: rgba(0, 0, 0, 0.25);
-  opacity: 0.8;
+  border-top: 1px solid var(--lab-border-subtle);
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.32);
+  opacity: 1;
   user-select: none;
 }
 
@@ -267,7 +272,7 @@
 .labx-timeline__track {
   position: relative;
   height: 3.5rem;
-  border-radius: var(--labx-radius-tight);
+  border-radius: var(--lab-radius-md);
   background: linear-gradient(180deg, rgba(10, 19, 30, 0.96), rgba(7, 14, 22, 0.92));
   overflow: visible;
 }
@@ -279,7 +284,7 @@
 .labx-timeline__waveform-bed {
   position: absolute;
   inset: 0;
-  border-radius: var(--labx-radius-tight);
+  border-radius: var(--lab-radius-md);
   border: 1px solid rgba(255, 255, 255, 0.06);
   background:
     linear-gradient(180deg, rgba(92, 215, 223, 0.05), rgba(106, 166, 235, 0.02)),
@@ -305,7 +310,7 @@
   top: 0.25rem;
   bottom: 0.25rem;
   min-width: 2px;
-  border-radius: var(--labx-radius-button);
+  border-radius: var(--lab-radius-sm);
   overflow: hidden;
   background:
     linear-gradient(180deg, rgba(92, 215, 223, 0.08), rgba(122, 162, 255, 0.04)),
@@ -328,7 +333,7 @@
 .labx-timeline__rail {
   position: absolute;
   inset: 0;
-  border-radius: var(--labx-radius-tight);
+  border-radius: var(--lab-radius-md);
   cursor: crosshair;
   z-index: 2;
 }
@@ -340,7 +345,7 @@
 }
 
 .labx-timeline[data-timeline-locked="true"] .labx-timeline__handle {
-  background: var(--labx-text-dim);
+  background: var(--lab-text-dim);
   box-shadow: none;
 }
 
@@ -349,7 +354,7 @@
   position: absolute;
   top: 0.25rem;
   bottom: 0.25rem;
-  border-radius: var(--labx-radius-button);
+  border-radius: var(--lab-radius-sm);
   background: linear-gradient(
     90deg,
     rgba(var(--lab-selection-accent-rgb), 0.22),
@@ -365,7 +370,7 @@
   bottom: 0.7rem;
   min-width: 2px;
   border: 1px solid rgba(255, 178, 101, 0.44);
-  border-radius: var(--labx-radius-button);
+  border-radius: var(--lab-radius-sm);
   background: rgba(255, 178, 101, 0.12);
   box-shadow:
     0 0 0 1px rgba(255, 178, 101, 0.12),
@@ -391,7 +396,7 @@
   min-width: 13.5rem;
   max-width: min(18rem, calc(100vw - 2rem));
   padding: 0.55rem 0.65rem;
-  border-radius: var(--labx-radius-card);
+  border-radius: var(--lab-radius-lg);
   border: 1px solid rgba(var(--lab-selection-accent-rgb), 0.28);
   background:
     linear-gradient(180deg, rgba(11, 20, 31, 0.98), rgba(8, 15, 25, 0.95)), rgba(9, 17, 27, 0.94);
@@ -440,14 +445,14 @@
 }
 
 .lab-selection-panel__eyebrow {
-  color: var(--labx-text-dim);
+  color: var(--lab-text-dim);
   font-size: 0.64rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 .lab-selection-panel__range {
-  color: var(--labx-text);
+  color: var(--lab-text-default);
   font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
   line-height: 1.35;
@@ -460,7 +465,7 @@
 .lab-selection-panel__meta,
 .lab-selection-panel__intent-summary,
 .lab-selection-panel__label {
-  color: var(--labx-text-soft);
+  color: var(--lab-text-soft);
   font-size: 0.71rem;
   line-height: 1.35;
 }
@@ -479,9 +484,9 @@
 .lab-selection-panel__intent-pill {
   padding: 0.22rem 0.56rem;
   border: 1px solid rgba(var(--lab-selection-accent-rgb), 0.18);
-  border-radius: var(--labx-radius-pill);
+  border-radius: var(--lab-radius-pill);
   background: rgba(var(--lab-selection-accent-rgb), 0.06);
-  color: var(--labx-text-soft);
+  color: var(--lab-text-soft);
   font-size: 0.67rem;
   cursor: pointer;
   transition:
@@ -495,7 +500,7 @@
 .lab-selection-panel__intent-pill:focus-visible {
   border-color: rgba(var(--lab-selection-accent-rgb), 0.32);
   background: rgba(var(--lab-selection-accent-rgb), 0.12);
-  color: var(--labx-text);
+  color: var(--lab-text-default);
   transform: translateY(-1px);
 }
 
@@ -520,7 +525,7 @@
   gap: 0.55rem;
   padding: 0.45rem 0.55rem;
   border: 1px solid rgba(var(--lab-selection-accent-rgb), 0.18);
-  border-radius: var(--labx-radius-button);
+  border-radius: var(--lab-radius-sm);
   background: rgba(var(--lab-selection-accent-rgb), 0.08);
 }
 
@@ -546,9 +551,9 @@
 .lab-selection-panel__execution-intent-clear {
   padding: 0.24rem 0.55rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--labx-radius-pill);
+  border-radius: var(--lab-radius-pill);
   background: rgba(255, 255, 255, 0.03);
-  color: var(--labx-text-soft);
+  color: var(--lab-text-soft);
   font-size: 0.64rem;
   cursor: pointer;
 }
@@ -580,9 +585,9 @@
 .lab-selection-panel__region-clear {
   padding: 0.18rem 0.5rem;
   border: 1px solid rgba(var(--lab-selection-accent-rgb), 0.2);
-  border-radius: var(--labx-radius-pill);
+  border-radius: var(--lab-radius-pill);
   background: rgba(255, 255, 255, 0.03);
-  color: var(--labx-text-soft);
+  color: var(--lab-text-soft);
   font-size: 0.64rem;
   cursor: pointer;
 }
@@ -590,7 +595,7 @@
 .lab-selection-panel__region-clear:hover,
 .lab-selection-panel__region-clear:focus-visible {
   border-color: rgba(var(--lab-selection-accent-rgb), 0.34);
-  color: var(--labx-text);
+  color: var(--lab-text-default);
   background: rgba(var(--lab-selection-accent-rgb), 0.1);
 }
 
@@ -616,9 +621,9 @@
 .lab-selection-panel__inspection-pill {
   padding: 0.22rem 0.56rem;
   border: 1px solid rgba(var(--lab-selection-accent-rgb), 0.18);
-  border-radius: var(--labx-radius-pill);
+  border-radius: var(--lab-radius-pill);
   background: rgba(var(--lab-selection-accent-rgb), 0.05);
-  color: var(--labx-text-soft);
+  color: var(--lab-text-soft);
   font-size: 0.66rem;
   cursor: pointer;
 }
@@ -626,7 +631,7 @@
 .lab-selection-panel__inspection-pill:hover,
 .lab-selection-panel__inspection-pill:focus-visible {
   border-color: rgba(var(--lab-selection-accent-rgb), 0.32);
-  color: var(--labx-text);
+  color: var(--lab-text-default);
   background: rgba(var(--lab-selection-accent-rgb), 0.12);
 }
 
@@ -668,7 +673,7 @@
   min-height: 1.8rem;
   padding: 0.28rem 0.58rem;
   border: 1px solid rgba(var(--lab-selection-accent-rgb), 0.18);
-  border-radius: var(--labx-radius-button);
+  border-radius: var(--lab-radius-sm);
   background: rgba(var(--lab-selection-accent-rgb), 0.06);
   color: rgba(228, 238, 248, 0.88);
   font-size: 0.66rem;
@@ -694,7 +699,7 @@
 .lab-selection-panel__region-tool.is-secondary {
   border-color: rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.04);
-  color: var(--labx-text-soft);
+  color: var(--lab-text-soft);
 }
 
 .lab-selection-panel__tools-list {
@@ -713,7 +718,7 @@
   justify-content: center;
   width: 1rem;
   height: 1rem;
-  border-radius: var(--labx-radius-pill);
+  border-radius: var(--lab-radius-pill);
   background: rgba(var(--lab-selection-accent-rgb), 0.18);
   color: rgba(255, 255, 255, 0.92);
   font-size: 0.62rem;
@@ -749,7 +754,7 @@
   gap: 0.25rem;
   padding: 0.26rem 0.58rem;
   border: 1px solid rgba(var(--lab-selection-accent-rgb), 0.16);
-  border-radius: var(--labx-radius-pill);
+  border-radius: var(--lab-radius-pill);
   background: rgba(var(--lab-selection-accent-rgb), 0.06);
   color: rgba(228, 238, 248, 0.88);
   font-size: 0.67rem;
@@ -808,7 +813,7 @@
 }
 
 .lab-selection-panel__suggestion-description {
-  color: var(--labx-text-soft);
+  color: var(--lab-text-soft);
   font-size: 0.62rem;
   line-height: 1.2;
 }
@@ -818,7 +823,7 @@
   gap: 0.42rem;
   margin-top: 0.15rem;
   padding: 0.6rem 0.65rem;
-  border-radius: var(--labx-radius-tight);
+  border-radius: var(--lab-radius-md);
   border: 1px solid rgba(var(--lab-selection-accent-rgb), 0.18);
   background:
     linear-gradient(180deg, rgba(6, 11, 19, 0.96), rgba(3, 8, 15, 0.98)), rgba(4, 10, 18, 0.96);
@@ -887,7 +892,7 @@
   min-height: 1.85rem;
   padding: 0.32rem 0.64rem;
   border: 1px solid rgba(var(--lab-selection-accent-rgb), 0.16);
-  border-radius: var(--labx-radius-button);
+  border-radius: var(--lab-radius-sm);
   background: rgba(255, 255, 255, 0.04);
   color: rgba(226, 236, 246, 0.9);
   font-size: 0.67rem;
@@ -923,5 +928,5 @@
 }
 
 .lab-selection-preview__action--subtle {
-  color: var(--labx-text-soft);
+  color: var(--lab-text-soft);
 }

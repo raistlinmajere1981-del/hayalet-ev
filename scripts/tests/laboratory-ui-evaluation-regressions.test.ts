@@ -696,9 +696,9 @@ test("laboratory shell routes host traffic through lab-root orchestration seams"
     /runtimeRoot\.innerHTML = renderLabLayout\(state, surface, copy, \{\s*bootOverlayActive: isBootOverlayActive\(state\),\s*\}\);/
   );
   assert.match(labRootSource, /renderLabBootOverlay\(copy\)/);
-	  assert.match(labRootSource, /getLabLayoutKind\(state, \{/);
-	  assert.match(labRootSource, /currentLayoutKind !== nextLayoutKind/);
-	  assert.doesNotMatch(labRootSource, /nextLayoutKind === "import-only"/);
+  assert.match(labRootSource, /getLabLayoutKind\(state, \{/);
+  assert.match(labRootSource, /currentLayoutKind !== nextLayoutKind/);
+  assert.doesNotMatch(labRootSource, /nextLayoutKind === "import-only"/);
   assert.match(labRootSource, /function syncBootOverlay\(/);
   assert.match(labRootSource, /const BOOT_OVERLAY_SETTLE_MS = 450;/);
   assert.match(labRootSource, /const BOOT_OVERLAY_FALLBACK_READY_MS = 8000;/);
@@ -777,17 +777,20 @@ test("laboratory mounted shell keeps chrome when YouTube is selected as a source
 
     const changeListener = environment.listener("change");
     assert.ok(changeListener);
-	    changeListener({
-	      target: new MountedSelectElement("source.mode", "youtube"),
-	    } as unknown as Event);
+    changeListener({
+      target: new MountedSelectElement("source.mode", "youtube"),
+    } as unknown as Event);
 
-	    assert.match(environment.runtimeRoot.innerHTML, /data-layout-kind="laboratory"/);
-	    assert.match(environment.runtimeRoot.innerHTML, /class="labx-top-bar"/);
-	    assert.match(environment.runtimeRoot.innerHTML, /class="labx-drawer labx-context-panel"/);
-	    assert.match(environment.runtimeRoot.innerHTML, /class="labx-process-strip"/);
-	    assert.doesNotMatch(environment.runtimeRoot.innerHTML, /class="labx-import-workspace"/);
-	    assert.doesNotMatch(environment.runtimeRoot.innerHTML, /data-lab-action="exit-youtube-import-mode"/);
-	  } finally {
+    assert.match(environment.runtimeRoot.innerHTML, /data-layout-kind="laboratory"/);
+    assert.match(environment.runtimeRoot.innerHTML, /class="labx-top-bar"/);
+    assert.match(environment.runtimeRoot.innerHTML, /class="labx-drawer labx-context-panel"/);
+    assert.match(environment.runtimeRoot.innerHTML, /class="labx-process-strip"/);
+    assert.doesNotMatch(environment.runtimeRoot.innerHTML, /class="labx-import-workspace"/);
+    assert.doesNotMatch(
+      environment.runtimeRoot.innerHTML,
+      /data-lab-action="exit-youtube-import-mode"/
+    );
+  } finally {
     environment.restore();
   }
 });
@@ -1288,12 +1291,12 @@ test("laboratory observability helpers are debug gated and structured", async ()
         regionsFound: number,
         missingRegions: string[]
       ) => void;
-	      debugLabOverlay: (
-	        shell: Element | null,
-	        overlayKey: "report" | "tools",
-	        event: "invalid" | "missing",
-	        detail?: Record<string, unknown>
-	      ) => void;
+      debugLabOverlay: (
+        shell: Element | null,
+        overlayKey: "report" | "tools",
+        event: "invalid" | "missing",
+        detail?: Record<string, unknown>
+      ) => void;
       debugLabRegionLifecycle: (
         shell: Element | null,
         regionKey:
@@ -1508,12 +1511,12 @@ test("laboratory observability runtime paths log region fallback and overlay hea
     __testOnlyLabRootObservability: {
       queryRegion: (root: ParentNode, selectors: readonly string[]) => HTMLElement | null;
       shouldFallback: (regionsFound: number) => boolean;
-	      syncOverlayRoot: (
-	        documentRef: Document,
-	        root: HTMLElement,
-	        overlayKey: "report" | "tools",
-	        selector: string,
-	        render: () => string,
+      syncOverlayRoot: (
+        documentRef: Document,
+        root: HTMLElement,
+        overlayKey: "report" | "tools",
+        selector: string,
+        render: () => string,
         debugShell?: Element | null
       ) => boolean;
       syncRegion: (input: {
@@ -1656,13 +1659,13 @@ test("laboratory observability runtime paths log region fallback and overlay hea
         root,
         selectors: ['[data-lab-region="process-strip"]'],
       });
-	      observability.syncOverlayRoot(
-	        documentRef,
-	        overlayRoot,
-	        "report",
-	        "#lab-report-overlay-root",
-	        function () {
-	          return "";
+      observability.syncOverlayRoot(
+        documentRef,
+        overlayRoot,
+        "report",
+        "#lab-report-overlay-root",
+        function () {
+          return "";
         },
         quietShell
       );
@@ -1866,7 +1869,7 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   assert.doesNotMatch(workspaceSurfaceSource, /renderWorkspaceHypothesis/);
   assert.match(
     themeSource,
-    /\.labx-media-workbench\s*\{[\s\S]*gap:\s*0;[\s\S]*min-height:\s*0;[\s\S]*border:\s*1px solid rgba\(134, 187, 214, 0\.16\);[\s\S]*border-radius:\s*var\(--labx-radius-card\);/
+    /\.labx-media-workbench\s*\{[\s\S]*gap:\s*0;[\s\S]*min-height:\s*0;[\s\S]*border:\s*1px solid var\(--lab-border-default\);[\s\S]*border-radius:\s*var\(--lab-radius-lg\);/
   );
   assert.match(
     themeSource,
@@ -1874,11 +1877,11 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   );
   assert.match(
     themeSource,
-    /\.labx-focus-primary,[\s\S]*\.labx-focus-secondary,[\s\S]*\.labx-focus-passive\s*\{[\s\S]*opacity 120ms ease-out,[\s\S]*filter 120ms ease-out,[\s\S]*box-shadow 120ms ease-out;/
+    /\.labx-focus-primary,[\s\S]*\.labx-focus-secondary,[\s\S]*\.labx-focus-passive\s*\{[\s\S]*opacity var\(--lab-duration-base\) var\(--lab-ease-out\),[\s\S]*filter var\(--lab-duration-base\) var\(--lab-ease-out\),[\s\S]*box-shadow var\(--lab-duration-base\) var\(--lab-ease-out\);/
   );
   assert.match(
     themeSource,
-    /\.labx-workspace-preview\.labx-focus-primary\s*\{[\s\S]*border:\s*1px solid var\(--labx-accent\);[\s\S]*box-shadow:[\s\S]*0 0 0 1px var\(--labx-accent-soft\),[\s\S]*0 0 24px rgba\(0, 0, 0, 0\.35\);/
+    /\.labx-workspace-preview\.labx-focus-primary\s*\{[\s\S]*border:\s*1px solid var\(--lab-accent\);[\s\S]*box-shadow:[\s\S]*0 0 0 1px var\(--lab-accent-soft\),[\s\S]*var\(--lab-glow-accent\);/
   );
   assert.match(
     themeSource,
@@ -1974,7 +1977,7 @@ test("laboratory process strip owns heartbeat and expanded runtime detail render
   assert.match(processStripSource, /state\.run\?\.rawLog/);
   assert.match(
     themeSource,
-    /\.labx-shell\[data-process-view="expanded"\]\s*\{[\s\S]*grid-template-rows:\s*var\(--labx-topbar-height\) minmax\(0, 1fr\) 200px;/
+    /\.labx-shell\[data-process-view="expanded"\]\s*\{[\s\S]*grid-template-rows:\s*var\(--lab-topbar-height\) minmax\(0, 1fr\) 200px;/
   );
   assert.match(
     themeSource,
@@ -1982,7 +1985,7 @@ test("laboratory process strip owns heartbeat and expanded runtime detail render
   );
   assert.match(
     themeSource,
-    /\.labx-strip-expanded\s*\{[\s\S]*display:\s*grid;[\s\S]*background:\s*var\(--labx-bg-main\);/
+    /\.labx-strip-expanded\s*\{[\s\S]*display:\s*grid;[\s\S]*grid-template-columns:\s*minmax\(0, 35fr\) minmax\(0, 65fr\);[\s\S]*background:\s*var\(--lab-surface-1\);/
   );
   assert.match(
     themeSource,
@@ -1991,6 +1994,10 @@ test("laboratory process strip owns heartbeat and expanded runtime detail render
   assert.match(
     themeSource,
     /\.labx-strip-expanded__list li,[\s\S]*\.labx-strip-expanded__log li\s*\{[\s\S]*background:\s*rgba\(14, 28, 43, 0\.92\);/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-strip-expanded__log li\s*\{[\s\S]*font-family:\s*var\(--lab-font-mono\);[\s\S]*line-height:\s*var\(--lab-leading-snug\);[\s\S]*white-space:\s*normal;/
   );
 });
 
@@ -2002,18 +2009,22 @@ test("laboratory theme defines the multi-region shell grid and drawer layout con
     "utf8"
   );
 
-  assert.match(baseSource, /--labx-bg-main:\s*var\(--labx-bg\);/);
-  assert.match(baseSource, /--labx-bg-elevated:\s*var\(--labx-bg-soft\);/);
-  assert.match(baseSource, /--labx-text-primary:\s*var\(--labx-text\);/);
-  assert.match(baseSource, /--labx-text-muted:\s*var\(--labx-text-dim\);/);
-  assert.match(baseSource, /--labx-danger:\s*var\(--labx-error\);/);
+  const tokenSource = readFileSync("rooms/laboratory/ui/styles/lab-tokens.css", "utf8");
+
+  assert.match(baseSource, /@import "\.\/lab-tokens\.css";/);
+  assert.match(baseSource, /@import "\.\/lab-primitives\.css";/);
+  assert.match(tokenSource, /--labx-bg-main:\s*var\(--lab-surface-1\);/);
+  assert.match(tokenSource, /--labx-bg-elevated:\s*var\(--lab-surface-2\);/);
+  assert.match(tokenSource, /--labx-text-primary:\s*var\(--lab-text-strong\);/);
+  assert.match(tokenSource, /--labx-text-muted:\s*var\(--lab-text-dim\);/);
+  assert.match(tokenSource, /--labx-danger:\s*var\(--lab-error\);/);
   assert.match(
     themeSource,
-    /\.labx-shell\s*\{[\s\S]*grid-template-columns:\s*minmax\(14rem, 18rem\) minmax\(0, 1fr\) minmax\(18rem, 22rem\);[\s\S]*grid-template-rows:\s*var\(--labx-topbar-height\) minmax\(0, 1fr\) var\(--labx-strip-height\);/
+    /\.labx-shell\s*\{[\s\S]*grid-template-columns:\s*minmax\(14rem, 18rem\) minmax\(0, 1fr\) minmax\(18rem, 22rem\);[\s\S]*grid-template-rows:\s*var\(--lab-topbar-height\) minmax\(0, 1fr\) var\(--lab-strip-height\);/
   );
   assert.match(
     themeSource,
-    /\.labx-shell\s*\{[\s\S]*grid-template-areas:\s*"topbar topbar\s+topbar"\s*"panel\s+center\s+context"\s*"panel\s+strip\s+strip";/
+    /\.labx-shell\s*\{[\s\S]*grid-template-areas:\s*"topbar topbar\s+topbar"\s*"panel\s+center\s+context"\s*"panel\s+strip\s+context";/
   );
   assert.match(
     themeSource,
@@ -2033,7 +2044,7 @@ test("laboratory theme defines the multi-region shell grid and drawer layout con
   assert.match(themeSource, /\.labx-boot-overlay\s*\{[\s\S]*pointer-events:\s*auto;/);
   assert.match(
     themeSource,
-    /\.labx-boot-panel\s*\{[\s\S]*border-radius:\s*var\(--labx-radius-card\);/
+    /\.labx-boot-panel\s*\{[\s\S]*border-radius:\s*var\(--lab-radius-lg\);/
   );
   assert.match(themeSource, /@keyframes labx-skeleton-breathe/);
   assert.doesNotMatch(themeSource, /\.labx-shell\[data-ready="false"\]::after/);
@@ -2043,26 +2054,23 @@ test("laboratory theme defines the multi-region shell grid and drawer layout con
     themeSource,
     /\.labx-top-bar\s*\{\s*grid-area:\s*topbar;\s*\}[\s\S]*\.labx-source-panel\s*\{\s*grid-area:\s*panel;\s*\}[\s\S]*\.labx-center-panel\s*\{\s*grid-area:\s*center;\s*\}[\s\S]*\.labx-drawer\s*\{\s*grid-area:\s*context;\s*\}[\s\S]*\.labx-process-strip\s*\{\s*grid-area:\s*strip;\s*\}/
   );
-	  assert.doesNotMatch(themeSource, /\.labx-shell\[data-layout-kind="import-only"\]/);
+  assert.doesNotMatch(themeSource, /\.labx-shell\[data-layout-kind="import-only"\]/);
   assert.doesNotMatch(sourceImportSource, /\.labx-import-/);
   assert.doesNotMatch(sourceImportSource, /\.labx-strategy-/);
   assert.doesNotMatch(sourceImportSource, /\.labx-pw-/);
   assert.doesNotMatch(sourceImportSource, /\.labx-import-review/);
   assert.match(
     sourceImportSource,
-	    /\.labx-project-import__youtube-preview\s*\{[\s\S]*display:\s*grid;/
+    /\.labx-project-import__youtube-preview\s*\{[\s\S]*display:\s*grid;/
   );
-  assert.match(
-    sourceImportSource,
-    /\.labx-project-import__progress\s*\{[\s\S]*display:\s*grid;/
-  );
+  assert.match(sourceImportSource, /\.labx-project-import__progress\s*\{[\s\S]*display:\s*grid;/);
   assert.match(
     sourceImportSource,
     /\.labx-project-import__yt-controls\s*\{[\s\S]*display:\s*grid;/
   );
   assert.match(
     sourceImportSource,
-    /\.labx-project-import__yt-field\s*\{[\s\S]*grid-template-columns:\s*minmax\(5\.8rem, 0\.42fr\) minmax\(0, 1fr\);/
+    /\.labx-project-import__yt-field\s*\{[\s\S]*grid-template-columns:\s*minmax\(7\.5rem, 0\.42fr\) minmax\(0, 1fr\);/
   );
   assert.doesNotMatch(sourceImportSource, /\.labx-advanced-settings/);
 });
@@ -2079,8 +2087,10 @@ test("laboratory micro inspection UI exposes roi focus precedence and lens affor
     overlaySource,
     /data-lab-selection-roi="true"[\s\S]*data-lab-selection-roi-ignore="true"/
   );
-  assert.match(overlaySource, /data-lab-selection-roi-focus-toggle="true"/);
-  assert.match(overlaySource, /data-lab-selection-roi-capture="true"/);
+  assert.doesNotMatch(overlaySource, /labx-roi-selection-toolbar/);
+  assert.doesNotMatch(overlaySource, /data-lab-selection-inspection-mode=/);
+  assert.match(timelineSelectionSource, /data-lab-selection-roi-focus-toggle="true"/);
+  assert.match(timelineSelectionSource, /data-lab-selection-roi-capture="true"/);
   assert.match(surfaceSource, /data-lab-preview-inspection-stage="true"/);
   assert.match(surfaceSource, /data-lab-preview-inspection-content="true"/);
   assert.match(timelineSelectionSource, /Selection micro zoom/);
@@ -2239,8 +2249,14 @@ test("laboratory phase 4.95 renders room-local selection labels without executio
   assert.match(trMarkup, /Tip/);
   assert.match(trMarkup, /Secili aksiyon/);
   assert.match(trMarkup, /Ses incele/);
-  assert.doesNotMatch(enMarkup, /View details|Execution details|Simulation preview|Execution candidate/);
-  assert.doesNotMatch(trMarkup, /Detaylari gor|Calistirma detaylari|Simulasyon onizlemesi|Calistirma adayi/);
+  assert.doesNotMatch(
+    enMarkup,
+    /View details|Execution details|Simulation preview|Execution candidate/
+  );
+  assert.doesNotMatch(
+    trMarkup,
+    /Detaylari gor|Calistirma detaylari|Simulasyon onizlemesi|Calistirma adayi/
+  );
 });
 
 test("laboratory runtime status copy resolves through room-local i18n catalogs", () => {

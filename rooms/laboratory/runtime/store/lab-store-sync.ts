@@ -290,6 +290,7 @@ function completeTrackedProjectImport(state: LabStoreState, event: LabEventFeedI
   resetProjectImportState(state, { keepTracking: true, reviewFocus: "completed" });
   state.ui.activeWorkspaceAssetId = null;
   state.ui.activePreviewArtifactId = null;
+  state.ui.activeDocumentOverlayAssetId = null;
   state.ui.workspace = {
     ...state.ui.workspace,
     drawerModeOverride: "setup",
@@ -627,6 +628,7 @@ export function syncCanonicalStateFromSnapshot(
   };
   state.workbench = asLabRecord(snapshot["workbench"]);
   state.ui.activePreviewArtifactId = asNonEmptyString(state.workbench["activePreviewArtifactId"]);
+  state.ui.activeDocumentOverlayAssetId = null;
   state.ui.analysisControlsCollapsed = state.workbench["controlsCollapsed"] === true;
   state.ui.liveFindingsExpanded =
     asNonEmptyString(state.workbench["activeLiveFindingsStreamId"]) !== null;

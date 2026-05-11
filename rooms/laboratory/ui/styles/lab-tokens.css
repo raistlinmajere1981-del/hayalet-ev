@@ -1,0 +1,212 @@
+/* Laboratory UI design tokens.
+ *
+ * Tokens cover color, typography, spacing, radius, shadow, z-layer, motion, and layout.
+ * The --labx-* aliases remain for compatibility while older selectors migrate.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* Surface color scale. */
+  --lab-surface-0: #050b14;
+  --lab-surface-1: #07111c;
+  --lab-surface-2: #0a1626;
+  --lab-surface-3: #0e1c30;
+  --lab-surface-4: #11243a;
+  --lab-surface-5: #16314f;
+
+  /* Border scale */
+  --lab-border-subtle: rgba(116, 155, 193, 0.08);
+  --lab-border-default: rgba(116, 155, 193, 0.16);
+  --lab-border-strong: rgba(117, 183, 222, 0.32);
+  --lab-border-accent: rgba(92, 215, 223, 0.32);
+
+  /* Text scale */
+  --lab-text-strong: #f4f9fc;
+  --lab-text-default: #ecf4ff;
+  --lab-text-soft: #9db3ca;
+  --lab-text-dim: #6d8197;
+  --lab-text-mute: #4a5e75;
+  --lab-text-on-accent: #042026;
+
+  /* Accent color with RGB tuple support. */
+  --lab-accent-rgb: 92, 215, 223;
+  --lab-accent: rgb(var(--lab-accent-rgb));
+  --lab-accent-strong: #7be3ea;
+  --lab-accent-soft: rgba(var(--lab-accent-rgb), 0.14);
+  --lab-accent-bg: rgba(var(--lab-accent-rgb), 0.06);
+  --lab-accent-bg-strong: rgba(var(--lab-accent-rgb), 0.18);
+
+  /* Status colors. */
+  --lab-success-rgb: 130, 227, 177;
+  --lab-success: rgb(var(--lab-success-rgb));
+  --lab-success-soft: rgba(var(--lab-success-rgb), 0.14);
+
+  --lab-warning-rgb: 255, 178, 101;
+  --lab-warning: rgb(var(--lab-warning-rgb));
+  --lab-warning-soft: rgba(var(--lab-warning-rgb), 0.14);
+
+  --lab-error-rgb: 255, 127, 136;
+  --lab-error: rgb(var(--lab-error-rgb));
+  --lab-error-soft: rgba(var(--lab-error-rgb), 0.14);
+
+  --lab-info-rgb: 106, 166, 235;
+  --lab-info: rgb(var(--lab-info-rgb));
+  --lab-info-soft: rgba(var(--lab-info-rgb), 0.14);
+
+  /* Typography. */
+  --lab-font-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --lab-font-mono: "IBM Plex Mono", "SF Mono", "JetBrains Mono", monospace;
+
+  /* Compact type scale. */
+  --lab-text-xs: 0.66rem;
+  --lab-text-sm: 0.74rem;
+  --lab-text-base: 0.82rem;
+  --lab-text-md: 0.92rem;
+  --lab-text-lg: 1.05rem;
+  --lab-text-xl: 1.2rem;
+
+  /* Line heights */
+  --lab-leading-tight: 1.2;
+  --lab-leading-snug: 1.35;
+  --lab-leading-normal: 1.5;
+
+  /* Font weights */
+  --lab-weight-regular: 400;
+  --lab-weight-medium: 500;
+  --lab-weight-semibold: 600;
+  --lab-weight-bold: 700;
+
+  /* Letter spacing */
+  --lab-tracking-tight: -0.01em;
+  --lab-tracking-normal: 0;
+  --lab-tracking-wide: 0.04em;
+  --lab-tracking-eyebrow: 0.12em;
+
+  /* Spacing scale. */
+  --lab-space-0: 0;
+  --lab-space-px: 1px;
+  --lab-space-0_5: 0.125rem; /* 2px */
+  --lab-space-1: 0.25rem; /* 4px */
+  --lab-space-1_5: 0.375rem; /* 6px */
+  --lab-space-2: 0.5rem; /* 8px */
+  --lab-space-2_5: 0.625rem; /* 10px */
+  --lab-space-3: 0.75rem; /* 12px */
+  --lab-space-4: 1rem; /* 16px */
+  --lab-space-5: 1.25rem; /* 20px */
+  --lab-space-6: 1.5rem; /* 24px */
+  --lab-space-8: 2rem; /* 32px */
+  --lab-space-10: 2.5rem; /* 40px */
+  --lab-space-12: 3rem; /* 48px */
+
+  /* Radius scale. */
+  --lab-radius-none: 0;
+  --lab-radius-xs: 3px;
+  --lab-radius-sm: 6px; /* button */
+  --lab-radius-md: 8px; /* tight card */
+  --lab-radius-lg: 10px; /* card */
+  --lab-radius-xl: 12px; /* primary card */
+  --lab-radius-2xl: 16px;
+  --lab-radius-pill: 999px;
+
+  /* Elevation shadows. */
+  --lab-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.18);
+  --lab-shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.22);
+  --lab-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.28);
+  --lab-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.34);
+  --lab-shadow-xl: 0 16px 36px rgba(0, 0, 0, 0.42);
+  --lab-shadow-2xl: 0 24px 48px rgba(0, 0, 0, 0.5);
+
+  --lab-shadow-inset-soft: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --lab-shadow-inset-divider: inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+
+  --lab-glow-accent: 0 0 18px rgba(var(--lab-accent-rgb), 0.18);
+  --lab-glow-accent-strong: 0 0 24px rgba(var(--lab-accent-rgb), 0.32);
+
+  /* Z-layer scale. */
+  --lab-z-base: 0;
+  --lab-z-raised: 1;
+  --lab-z-dropdown: 50;
+  --lab-z-sticky: 100;
+  --lab-z-popover: 200;
+  --lab-z-modal: 400;
+  --lab-z-overlay: 500;
+  --lab-z-toast: 600;
+
+  /* Motion tokens. */
+  --lab-duration-fast: 80ms;
+  --lab-duration-base: 120ms;
+  --lab-duration-slow: 220ms;
+  --lab-duration-emphasis: 320ms;
+
+  --lab-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --lab-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --lab-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --lab-ease-emphasis: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Layout sizing. */
+  --lab-topbar-height: 48px;
+  --lab-strip-height: 36px;
+  --lab-rail-width: 52px;
+  --lab-rail-width-pinned: 18rem;
+
+  /* Legacy aliases for --labx-* compatibility. */
+  --labx-bg: var(--lab-surface-1);
+  --labx-bg-soft: var(--lab-surface-2);
+  --labx-bg-main: var(--lab-surface-1);
+  --labx-bg-elevated: var(--lab-surface-2);
+  --labx-surface: rgba(11, 22, 37, 0.9);
+  --labx-surface-strong: rgba(14, 27, 44, 0.96);
+  --labx-surface-highlight: rgba(17, 37, 59, 0.98);
+
+  --labx-border: var(--lab-border-default);
+  --labx-border-strong: var(--lab-border-strong);
+
+  --labx-text: var(--lab-text-default);
+  --labx-text-primary: var(--lab-text-strong);
+  --labx-text-soft: var(--lab-text-soft);
+  --labx-text-dim: var(--lab-text-dim);
+  --labx-text-muted: var(--lab-text-dim);
+
+  --labx-accent: var(--lab-accent);
+  --labx-accent-soft: var(--lab-accent-soft);
+
+  --labx-warning: var(--lab-warning);
+  --labx-error: var(--lab-error);
+  --labx-danger: var(--lab-error);
+  --labx-success: var(--lab-success);
+
+  --labx-shadow: var(--lab-shadow-lg);
+  --labx-shadow-primary: var(--lab-shadow-lg);
+  --labx-shadow-secondary: var(--lab-shadow-md);
+
+  --labx-radius: var(--lab-radius-xl);
+  --labx-radius-tight: var(--lab-radius-md);
+  --labx-radius-card: var(--lab-radius-lg);
+  --labx-radius-button: var(--lab-radius-sm);
+  --labx-radius-pill: var(--lab-radius-pill);
+
+  --labx-font-heading: var(--lab-text-lg);
+  --labx-font-body: var(--lab-text-base);
+  --labx-font-label: var(--lab-text-sm);
+  --labx-font-meta: var(--lab-text-xs);
+
+  --labx-mono: var(--lab-font-mono);
+
+  --labx-topbar-height: var(--lab-topbar-height);
+  --labx-rail-width: var(--lab-rail-width);
+  --labx-strip-height: var(--lab-strip-height);
+
+  --labx-z-popover: var(--lab-z-popover);
+  --labx-z-overlay: var(--lab-z-overlay);
+}
+
+/* Honor reduced-motion preferences. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --lab-duration-fast: 0ms;
+    --lab-duration-base: 0ms;
+    --lab-duration-slow: 0ms;
+    --lab-duration-emphasis: 0ms;
+  }
+}
