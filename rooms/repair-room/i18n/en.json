@@ -1,0 +1,156 @@
+{
+  "title": "Repair Room",
+  "subtitle": "An electronics repair workstation combining a live PCB workbench, AİÖ tactical feed, knowledge pack research, and operator-aware diagnostic guidance.",
+  "workbench": {
+    "title": "Repair Workbench",
+    "subtitle": "Live PCB stage with overlay annotations, AI tactical feed, measurement panel, knowledge pack viewer, and operator profile awareness.",
+    "live": "LIVE",
+    "frozen": "FROZEN",
+    "buffering": "BUFFERING",
+    "noFeed": "NO FEED"
+  },
+  "session": {
+    "rail": {
+      "eyebrow": "WORKBENCH",
+      "title": "Sessions",
+      "newSession": "+ New Session",
+      "searchPlaceholder": "Search sessions…",
+      "viewArchive": "View Archive",
+      "activeBadge": "Active",
+      "archivedBadge": "Archived"
+    },
+    "active": {
+      "eyebrow": "ACTIVE SESSION",
+      "device": "Device",
+      "boardCode": "Board Code",
+      "serialNumber": "S/N",
+      "status": "Status",
+      "riskLevel": "Risk Level",
+      "notes": "Session Notes"
+    },
+    "riskLevels": {
+      "low": "LOW",
+      "medium": "MEDIUM",
+      "high": "HIGH",
+      "critical": "CRITICAL"
+    },
+    "status": {
+      "draft": "Draft",
+      "research": "Research",
+      "ready": "Ready",
+      "inProgress": "In Progress",
+      "paused": "Paused",
+      "archived": "Archived"
+    }
+  },
+  "feed": {
+    "eyebrow": "ASSISTANT",
+    "title": "AİÖ Tactical Feed",
+    "composerPlaceholder": "Ask AİÖ…",
+    "severity": {
+      "risk": "RISK",
+      "suggestion": "SUGGESTION",
+      "action": "ACTION",
+      "info": "INFO"
+    }
+  },
+  "wizard": {
+    "eyebrow": "SESSION WIZARD",
+    "title": "New Session",
+    "steps": {
+      "deviceInfo": "Device Info",
+      "symptoms": "Symptoms",
+      "aiResearch": "AI Research",
+      "ready": "Ready"
+    }
+  },
+  "knowledgePack": {
+    "eyebrow": "KNOWLEDGE PACK",
+    "title": "AİÖ Result",
+    "tabs": {
+      "schematicPreview": "Schematic Preview",
+      "boardView": "Board View",
+      "notes": "Notes"
+    },
+    "stats": {
+      "schematics": "Schematics",
+      "boardImages": "Board Images",
+      "commonFailures": "Common Failures",
+      "repairNotes": "Repair Notes",
+      "testPoints": "Test Points"
+    },
+    "addToSession": "Add to Session"
+  },
+  "timeline": {
+    "eyebrow": "TIMELINE",
+    "title": "Visual Timeline",
+    "kinds": {
+      "snapshot": "Snapshot",
+      "aiMark": "AI Mark",
+      "measurement": "Measurement",
+      "note": "Note",
+      "risk": "Risk Flag",
+      "freezeFrame": "Freeze Frame",
+      "sessionStart": "Session Start"
+    }
+  },
+  "operator": {
+    "eyebrow": "OPERATOR PROFILE",
+    "title": "Tools & Equipment",
+    "tabs": {
+      "overview": "Profile Overview",
+      "tools": "Tools & Equipment",
+      "skills": "Skills",
+      "preferences": "Preferences"
+    },
+    "groups": {
+      "soldering": "Soldering",
+      "measurement": "Measurement",
+      "vision": "Vision",
+      "power": "Power",
+      "other": "Other"
+    },
+    "editProfile": "Edit Profile"
+  },
+  "measurement": {
+    "eyebrow": "MEASUREMENT PANEL",
+    "title": "Multimeter",
+    "tabs": {
+      "multimeter": "Multimeter",
+      "powerSupply": "Power Supply",
+      "signalGen": "Signal Gen"
+    },
+    "labels": {
+      "dcVoltage": "DC Voltage",
+      "acVoltage": "AC Voltage",
+      "resistance": "Resistance",
+      "continuity": "Continuity",
+      "diode": "Diode",
+      "capacitance": "Capacitance",
+      "frequency": "Frequency",
+      "mode": "Mode",
+      "range": "Range",
+      "hold": "Hold",
+      "recentReadings": "Recent Readings",
+      "addToTimeline": "Add to Timeline"
+    }
+  },
+  "chat": {
+    "eyebrow": "AİÖ CHAT — SESSION CONTEXT",
+    "title": "AİÖ",
+    "subtitle": "Repair Assistant",
+    "viewKnowledgePack": "View Knowledge Pack",
+    "composerPlaceholder": "Ask AİÖ something…"
+  },
+  "legend": {
+    "snapshot": "Snapshot",
+    "aiMark": "AI Mark",
+    "measurement": "Measurement",
+    "note": "Note",
+    "risk": "Risk",
+    "operational": "All systems operational",
+    "version": "Repair Room v1.0.0",
+    "roomSync": "Room Sync",
+    "storage": "Storage"
+  }
+}

@@ -46,6 +46,7 @@ import {
   renderWorkspaceSurface,
   test,
 } from "./laboratory-runtime-truth.helpers.ts";
+import { getReadyAnalysisIntents } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 
 import type { LabSelection } from "./laboratory-runtime-truth.helpers.ts";
 
@@ -822,6 +823,48 @@ test("workspace surface keeps image roi controls out of the visual preview stage
   assert.doesNotMatch(surface.main, /labx-roi-selection-toolbar/);
   assert.doesNotMatch(surface.main, /data-lab-selection-inspection-mode=/);
   assert.match(surface.side, /data-lab-selection-inspection-mode=/);
+});
+
+test("image sources keep visual inspection ready for analysis setup", () => {
+  const store = createLabStore();
+  store.dispatch({
+    type: "hydrate",
+    payload: {
+      featureId: "media-analysis",
+      projectIndex: {
+        activeProjectId: "project-image-analysis",
+        projects: [],
+      },
+      workbench: {},
+      source: {
+        status: "ready",
+        kind: "image",
+        mode: "local",
+        previewUrl: "file:///tmp/source.png",
+        routeLabel: "Local Copy",
+        storedPath: "/tmp/source.png",
+        metadata: {
+          width: 1534,
+          height: 1024,
+        },
+      },
+      sourceProbeStatus: "completed",
+      workspace: {},
+      reports: {
+        user: null,
+        ai: null,
+        emptyReason: null,
+      },
+      activityFeed: [],
+      lastRun: null,
+    },
+  });
+
+  const readyIntentIds = getReadyAnalysisIntents(store.getState()).map(function (intent) {
+    return intent.id;
+  });
+
+  assert.ok(readyIntentIds.includes("visual-inspection"));
 });
 
 test("selection intent binder emits a dedicated semantic selection event", () => {

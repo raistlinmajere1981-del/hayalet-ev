@@ -1,0 +1,63 @@
+export const REPAIR_ROOM_ID = "repair-room";
+export const REPAIR_WORKBENCH_FEATURE_ID = "repair-workbench";
+export const REPAIR_SESSION_SCHEMA_VERSION = 1;
+export const REPAIR_KNOWLEDGE_PACK_SCHEMA_VERSION = 1;
+export const REPAIR_OPERATOR_PROFILE_SCHEMA_VERSION = 1;
+export const REPAIR_LOCAL_OWNER_SCOPE_ID = "repair-room:local-owner";
+
+// NOTE: Tactical-feed cadence is intentionally calibrated to feel like a live observation stream
+// rather than a synchronous batch. Phase 1 mocks honor these timings for perceived realism.
+export const REPAIR_FEED_EVENT_MIN_DELAY_MS = 1200;
+export const REPAIR_FEED_EVENT_MAX_DELAY_MS = 3000;
+export const REPAIR_CHAT_REPLY_MIN_DELAY_MS = 800;
+export const REPAIR_CHAT_REPLY_MAX_DELAY_MS = 1400;
+export const REPAIR_MEASUREMENT_DRIFT_INTERVAL_MS = 1100;
+export const REPAIR_AMBIENT_CLOCK_INTERVAL_MS = 1000;
+
+export const REPAIR_UI_COMMANDS = {
+  uiReady: "RepairRoomUiReady",
+  activateSession: "RepairRoomActivateSession",
+  createSession: "RepairRoomCreateSession",
+  updateSession: "RepairRoomUpdateSession",
+  archiveSession: "RepairRoomArchiveSession",
+  advanceWizard: "RepairRoomAdvanceWizard",
+  attachKnowledgePack: "RepairRoomAttachKnowledgePack",
+  setActiveTool: "RepairRoomSetActiveTool",
+  toggleFreezeFrame: "RepairRoomToggleFreezeFrame",
+  toggleOverlayLayer: "RepairRoomToggleOverlayLayer",
+  addTimelineEvent: "RepairRoomAddTimelineEvent",
+  jumpToEvent: "RepairRoomJumpToEvent",
+  scrubTimeline: "RepairRoomScrubTimeline",
+  addMeasurement: "RepairRoomAddMeasurement",
+  dismissAiMark: "RepairRoomDismissAiMark",
+  sendChatTurn: "RepairRoomSendChatTurn",
+  updateOperatorProfile: "RepairRoomUpdateOperatorProfile",
+  updateLayout: "RepairRoomUpdateLayout",
+} as const;
+
+export type RepairUiCommandName = (typeof REPAIR_UI_COMMANDS)[keyof typeof REPAIR_UI_COMMANDS];
+
+export const REPAIR_PROTOCOL_KEYS = {
+  knowledgeResearch: "repair-room-knowledge-research",
+  tacticalObserver: "repair-room-tactical-observer",
+  measurementCoach: "repair-room-measurement-coach",
+  riskDetector: "repair-room-risk-detector",
+} as const;
+
+export const REPAIR_PROTOCOL_SCENARIOS = {
+  knowledgeResearch: "repair-workbench-knowledge-research",
+  tacticalObserver: "repair-workbench-tactical-observer",
+  measurementCoach: "repair-workbench-measurement-coach",
+  riskDetector: "repair-workbench-risk-detector",
+} as const;
+
+export const REPAIR_HOST_MESSAGES = {
+  state: "repair-state",
+  feedEvent: "repair-feed-event",
+  measurementReading: "repair-measurement-reading",
+  chatReply: "repair-chat-reply",
+  researchProgress: "repair-research-progress",
+} as const;
+
+export type RepairHostMessageType =
+  (typeof REPAIR_HOST_MESSAGES)[keyof typeof REPAIR_HOST_MESSAGES];

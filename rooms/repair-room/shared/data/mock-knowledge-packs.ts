@@ -1,0 +1,128 @@
+import { REPAIR_KNOWLEDGE_PACK_SCHEMA_VERSION } from "../repair-constants.js";
+import type { RepairKnowledgePack } from "../types/index.js";
+
+export const MOCK_REPAIR_KNOWLEDGE_PACKS: Record<string, RepairKnowledgePack> = {
+  "bn44-00932a": {
+    schemaVersion: REPAIR_KNOWLEDGE_PACK_SCHEMA_VERSION,
+    id: "bn44-00932a",
+    modelNumber: "BN44-00932A",
+    deviceLabel: "ATX Power Supply",
+    stats: {
+      schematics: 3,
+      boardImages: 8,
+      commonFailures: 7,
+      repairNotes: 12,
+      testPoints: 18,
+    },
+    resources: [
+      {
+        id: "schematic-bn44-00932a-rev-a",
+        label: "Schematic Rev A.pdf",
+        kind: "schematic",
+        src: "shared/assets/knowledge-pack/bn44-00932a-schematic-preview.svg",
+        source: "samsung-support-archive/bn44-00932a-rev-a",
+        pages: 12,
+        confidence: 0.92,
+      },
+      {
+        id: "board-top-side",
+        label: "Top Side - Annotated",
+        kind: "board-image",
+        src: "shared/assets/mock-pcb/atx-psu-top.svg",
+        source: "ifixit-repair-guide/bn44-00932a-#step-2",
+        pages: null,
+        confidence: 0.88,
+      },
+      {
+        id: "board-bottom-side",
+        label: "Bottom Side - Annotated",
+        kind: "board-image",
+        src: "shared/assets/knowledge-pack/bn44-00932a-board-bottom-preview.svg",
+        source: "ifixit-repair-guide/bn44-00932a-#step-4",
+        pages: null,
+        confidence: 0.86,
+      },
+      {
+        id: "thread-eevblog-no-power",
+        label: "EEVblog: BN44-00932A no power",
+        kind: "thread",
+        src: null,
+        source: "eevblog.com/forum/repair/bn44-00932a-no-power.114289",
+        pages: null,
+        confidence: 0.76,
+      },
+    ],
+    commonFailures: [
+      {
+        id: "primary-mosfet-short",
+        label: "Primary MOSFET short",
+        rationale: "Q801 (FQPF12N60C) frequently shorts after a brown-out event.",
+        affectedPart: "Q801",
+        recommendedAction:
+          "Measure primary MOSFET drain-source resistance with PSU unplugged and bulk cap discharged.",
+        confidence: 0.81,
+      },
+      {
+        id: "startup-resistor-open",
+        label: "Startup resistor open",
+        rationale: "R201 (220kΩ 1W) opens, leaving controller without bias.",
+        affectedPart: "R201",
+        recommendedAction: "Measure R201 across pins. Replace with 220kΩ 1W flameproof.",
+        confidence: 0.78,
+      },
+      {
+        id: "optocoupler-degradation",
+        label: "Optocoupler degradation",
+        rationale: "U601 (PC817) CTR drops, regulation drifts on 5V_STBY rail.",
+        affectedPart: "U601",
+        recommendedAction:
+          "If 5V_STBY measures > 5.4V or < 4.7V under load, replace U601 with matching CTR bin.",
+        confidence: 0.74,
+      },
+    ],
+    testPoints: [
+      {
+        id: "tp-vcc-pri",
+        label: "VCC_PRI",
+        rail: "Primary bias",
+        expectedValue: 12.5,
+        unit: "V",
+        tolerance: 0.5,
+        pinAt: { xPx: 420, yPx: 280 },
+      },
+      {
+        id: "tp-5v-stby",
+        label: "5V_STBY",
+        rail: "Standby rail",
+        expectedValue: 5,
+        unit: "V",
+        tolerance: 0.25,
+        pinAt: { xPx: 920, yPx: 410 },
+      },
+      {
+        id: "tp-bulk-dc",
+        label: "BULK_DC",
+        rail: "Primary bulk",
+        expectedValue: 380,
+        unit: "V",
+        tolerance: 15,
+        pinAt: { xPx: 360, yPx: 180 },
+      },
+      {
+        id: "tp-gate-q801",
+        label: "U14 GATE",
+        rail: "Primary MOSFET gate",
+        expectedValue: 0.12,
+        unit: "V",
+        tolerance: 0.1,
+        pinAt: { xPx: 520, yPx: 310 },
+      },
+    ],
+    notes: [
+      "Discharge bulk capacitor before any primary-side probing.",
+      "Use isolation transformer when working with PSU under load.",
+      "R201 replacement must be flameproof; standard 1W will char.",
+    ],
+    createdAt: "2026-05-10T07:42:00.000Z",
+  },
+};

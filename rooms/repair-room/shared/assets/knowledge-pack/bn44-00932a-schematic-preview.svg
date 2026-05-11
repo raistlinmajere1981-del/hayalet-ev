@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-label="BN44-00932A schematic preview">
+  <rect width="640" height="360" fill="#070b10"/>
+  <g stroke="#20313e" stroke-width="1">
+    <path d="M48 64h544M48 112h544M48 160h544M48 208h544M48 256h544M48 304h544"/>
+    <path d="M80 40v286M160 40v286M240 40v286M320 40v286M400 40v286M480 40v286M560 40v286"/>
+  </g>
+  <g fill="none" stroke="#56c8de" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M74 178h74l18-28 34 56 28-28h72"/>
+    <path d="M340 174h54l24-62 34 126 22-64h88"/>
+    <path d="M142 262h110l38-44h110l46 44h84"/>
+  </g>
+  <g fill="#0d141b" stroke="#e8a857" stroke-width="2">
+    <rect x="70" y="70" width="94" height="54" rx="5"/>
+    <rect x="260" y="132" width="86" height="72" rx="5"/>
+    <rect x="442" y="82" width="118" height="58" rx="5"/>
+    <rect x="430" y="230" width="94" height="54" rx="5"/>
+  </g>
+  <g font-family="IBM Plex Mono, JetBrains Mono, monospace" font-size="18" fill="#e2e8f0">
+    <text x="84" y="104">AC IN</text>
+    <text x="278" y="172">U14</text>
+    <text x="458" y="118">5V_STBY</text>
+    <text x="448" y="264">R201</text>
+  </g>
+  <g font-family="IBM Plex Mono, JetBrains Mono, monospace" font-size="13" fill="#7d8b9d">
+    <text x="32" y="334">BN44-00932A / PRIMARY BIAS + STANDBY RAIL EXCERPT</text>
+    <text x="398" y="36">confidence 92% / 12 pages</text>
+  </g>
+</svg>

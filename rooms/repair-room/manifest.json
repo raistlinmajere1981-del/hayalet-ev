@@ -1,0 +1,239 @@
+{
+  "schemaVersion": 2,
+  "id": "repair-room",
+  "name": "Repair Room",
+  "version": "0.1.0",
+  "description": "An electronics repair workstation that combines a live PCB workbench, AİÖ tactical feed, knowledge pack research, and operator-aware diagnostic guidance.",
+  "menu": {
+    "label": "Repair Room",
+    "icon": "RR",
+    "iconSrc": "shared/assets/nav-icon.svg",
+    "order": 90
+  },
+  "runtime": {
+    "uiEntry": "ui/index.html",
+    "hostEntry": "host/index.js"
+  },
+  "defaultFeatureId": "repair-workbench",
+  "workbench": {
+    "experienceId": "repair-workbench",
+    "label": "Repair Workbench",
+    "description": "Live PCB stage with overlay annotations, AI tactical feed, measurement panel, knowledge pack viewer, and operator profile awareness.",
+    "mode": "guided",
+    "primaryFeatureId": "repair-workbench",
+    "availableFeatureIds": ["repair-workbench"]
+  },
+  "i18n": {
+    "baseDir": "i18n"
+  },
+  "scene": {
+    "referenceSize": {
+      "width": 1600,
+      "height": 900
+    },
+    "roomBackgroundSrc": "shared/assets/room-background.svg",
+    "chrome": {
+      "pageShellVariant": "immersive-stage"
+    },
+    "roomsHotspot": {
+      "id": "repair-room-door",
+      "rect": {
+        "leftPx": 736,
+        "topPx": 232,
+        "widthPx": 170,
+        "heightPx": 332
+      },
+      "label": {
+        "text": "Repair Room"
+      }
+    },
+    "backHotspot": {
+      "id": "repair-room-back",
+      "rect": {
+        "leftPx": 56,
+        "topPx": 154,
+        "widthPx": 168,
+        "heightPx": 252
+      },
+      "label": {
+        "text": "Corridor"
+      }
+    }
+  },
+  "features": [
+    {
+      "id": "repair-workbench",
+      "name": "Repair Workbench",
+      "description": "A live electronics repair bench combining PCB camera, AI overlay highlights, measurement panel, knowledge pack viewer, and operator profile awareness.",
+      "icon": "RW",
+      "commandSpecs": [
+        {
+          "name": "RepairRoomUiReady",
+          "description": "Signal that the Repair Room UI is attached and ready.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomActivateSession",
+          "description": "Switch the active repair session in the workbench.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomCreateSession",
+          "description": "Create a new repair session draft from the session wizard.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomUpdateSession",
+          "description": "Patch active session fields (device info, symptoms, risk level).",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomArchiveSession",
+          "description": "Move a session into the archive group.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomAdvanceWizard",
+          "description": "Move the new-session wizard to the next or named step.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomAttachKnowledgePack",
+          "description": "Attach a generated knowledge pack to the active session.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomSetActiveTool",
+          "description": "Select the active workbench tool (annotation, measurement, freeze-frame, etc.).",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomToggleFreezeFrame",
+          "description": "Toggle the workbench live/freeze-frame state.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomToggleOverlayLayer",
+          "description": "Toggle visibility of an overlay layer (grid, AI marks, annotations, pins).",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomAddTimelineEvent",
+          "description": "Append a structured timeline event (annotation, measurement, note, AI mark, risk flag).",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomJumpToEvent",
+          "description": "Select and focus a timeline event in the workbench and feed.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomScrubTimeline",
+          "description": "Move the visual timeline playhead to a specific session time.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomAddMeasurement",
+          "description": "Record a measurement reading and attach it to the active session.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomDismissAiMark",
+          "description": "Acknowledge or dismiss an AI tactical feed event or overlay mark.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomSendChatTurn",
+          "description": "Append an operator turn to the AİÖ session chat and request a response.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomUpdateOperatorProfile",
+          "description": "Patch the operator profile (tools, skills, preferences).",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomUpdateLayout",
+          "description": "Persist panel collapse/dock/focus state for the Repair Room shell.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        }
+      ],
+      "protocolSpecs": [
+        {
+          "key": "repair-room-knowledge-research",
+          "room": "repair-room",
+          "scenario": "repair-workbench-knowledge-research",
+          "title": "[REPAIR][KNOWLEDGE][RESEARCH]",
+          "editable": true,
+          "path": "main-functions/repair-workbench/protocols/repair-room-knowledge-research.md"
+        },
+        {
+          "key": "repair-room-tactical-observer",
+          "room": "repair-room",
+          "scenario": "repair-workbench-tactical-observer",
+          "title": "[REPAIR][TACTICAL][OBSERVER]",
+          "editable": true,
+          "path": "main-functions/repair-workbench/protocols/repair-room-tactical-observer.md"
+        },
+        {
+          "key": "repair-room-measurement-coach",
+          "room": "repair-room",
+          "scenario": "repair-workbench-measurement-coach",
+          "title": "[REPAIR][MEASUREMENT][COACH]",
+          "editable": true,
+          "path": "main-functions/repair-workbench/protocols/repair-room-measurement-coach.md"
+        },
+        {
+          "key": "repair-room-risk-detector",
+          "room": "repair-room",
+          "scenario": "repair-workbench-risk-detector",
+          "title": "[REPAIR][RISK][DETECTOR]",
+          "editable": true,
+          "path": "main-functions/repair-workbench/protocols/repair-room-risk-detector.md"
+        }
+      ],
+      "scene": {
+        "hotspot": {
+          "id": "repair-room-workbench",
+          "rect": {
+            "leftPx": 930,
+            "topPx": 178,
+            "widthPx": 508,
+            "heightPx": 320
+          },
+          "label": {
+            "text": "Repair Workbench"
+          }
+        },
+        "view": {
+          "id": "repair-room-console",
+          "backgroundSrc": "main-functions/repair-workbench/assets/repair-workbench-view.svg",
+          "transparentWindow": {
+            "leftPct": 2.8,
+            "topPct": 11.4,
+            "widthPct": 94.4,
+            "heightPct": 78.8
+          }
+        }
+      }
+    }
+  ]
+}

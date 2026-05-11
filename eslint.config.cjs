@@ -248,6 +248,8 @@ module.exports = tseslint.config(
       ".vite/**",
       "protocol/**",
       "rooms/.build/**",
+      "rooms/**/shared/vendor/**",
+      "**/*.min.js",
       "scripts/**",
       "*.min.js",
       "*.tsbuildinfo",

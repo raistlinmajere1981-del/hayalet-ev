@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <rect width="1280" height="720" fill="#0a1a12" rx="8"/>
+  <rect x="40" y="40" width="1200" height="640" fill="#0d2218" stroke="#1a3a2a" stroke-width="1" rx="4"/>
+  <text x="640" y="360" text-anchor="middle" fill="#2a5a3a" font-family="monospace" font-size="14">ATX PSU — BN44-00932A — TOP SIDE</text>
+  <rect x="360" y="160" width="240" height="220" fill="none" stroke="#1a3a2a" stroke-width="0.5" stroke-dasharray="4"/>
+  <text x="480" y="280" text-anchor="middle" fill="#1a3a2a" font-family="monospace" font-size="10">PRIMARY POWER SECTION</text>
+  <circle cx="624" cy="320" r="12" fill="none" stroke="#2a5a3a" stroke-width="0.5"/>
+  <text x="624" y="324" text-anchor="middle" fill="#2a5a3a" font-family="monospace" font-size="8">C101</text>
+  <circle cx="718" cy="296" r="6" fill="none" stroke="#2a5a3a" stroke-width="0.5"/>
+  <text x="718" y="300" text-anchor="middle" fill="#2a5a3a" font-family="monospace" font-size="7">R201</text>
+  <rect x="450" y="250" width="80" height="60" fill="none" stroke="#2a5a3a" stroke-width="0.5"/>
+  <text x="490" y="284" text-anchor="middle" fill="#2a5a3a" font-family="monospace" font-size="8">U14</text>
+  <rect x="860" y="360" width="100" height="100" fill="none" stroke="#1a3a2a" stroke-width="0.5"/>
+  <text x="910" y="414" text-anchor="middle" fill="#1a3a2a" font-family="monospace" font-size="8">OUTPUT STAGE</text>
+</svg>

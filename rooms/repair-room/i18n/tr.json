@@ -1,0 +1,156 @@
+{
+  "title": "Tamir Odası",
+  "subtitle": "Canlı PCB tezgâhı, AİÖ taktik akışı, bilgi paketi araştırması ve operatör farkındalıklı tanı rehberliğini birleştiren bir elektronik onarım iş istasyonu.",
+  "workbench": {
+    "title": "Onarım Tezgâhı",
+    "subtitle": "Overlay anotasyonları, AI taktik akışı, ölçüm paneli, bilgi paketi görüntüleyici ve operatör profili farkındalığı ile canlı PCB sahnesi.",
+    "live": "CANLI",
+    "frozen": "DONUK",
+    "buffering": "TAMPONLAMA",
+    "noFeed": "AKIŞ YOK"
+  },
+  "session": {
+    "rail": {
+      "eyebrow": "TEZGÂH",
+      "title": "Oturumlar",
+      "newSession": "+ Yeni Oturum",
+      "searchPlaceholder": "Oturumlarda ara…",
+      "viewArchive": "Arşivi Aç",
+      "activeBadge": "Aktif",
+      "archivedBadge": "Arşivlendi"
+    },
+    "active": {
+      "eyebrow": "AKTİF OTURUM",
+      "device": "Cihaz",
+      "boardCode": "Kart Kodu",
+      "serialNumber": "S/N",
+      "status": "Durum",
+      "riskLevel": "Risk Seviyesi",
+      "notes": "Oturum Notları"
+    },
+    "riskLevels": {
+      "low": "DÜŞÜK",
+      "medium": "ORTA",
+      "high": "YÜKSEK",
+      "critical": "KRİTİK"
+    },
+    "status": {
+      "draft": "Taslak",
+      "research": "Araştırma",
+      "ready": "Hazır",
+      "inProgress": "Devam Ediyor",
+      "paused": "Duraklatıldı",
+      "archived": "Arşivlendi"
+    }
+  },
+  "feed": {
+    "eyebrow": "ASİSTAN",
+    "title": "AİÖ Taktik Akışı",
+    "composerPlaceholder": "AİÖ'ye sor…",
+    "severity": {
+      "risk": "RİSK",
+      "suggestion": "ÖNERİ",
+      "action": "AKSİYON",
+      "info": "BİLGİ"
+    }
+  },
+  "wizard": {
+    "eyebrow": "OTURUM SİHİRBAZI",
+    "title": "Yeni Oturum",
+    "steps": {
+      "deviceInfo": "Cihaz Bilgisi",
+      "symptoms": "Semptomlar",
+      "aiResearch": "AI Araştırma",
+      "ready": "Hazır"
+    }
+  },
+  "knowledgePack": {
+    "eyebrow": "BİLGİ PAKETİ",
+    "title": "AİÖ Sonuç",
+    "tabs": {
+      "schematicPreview": "Şema Önizleme",
+      "boardView": "Kart Görünümü",
+      "notes": "Notlar"
+    },
+    "stats": {
+      "schematics": "Şemalar",
+      "boardImages": "Kart Görselleri",
+      "commonFailures": "Yaygın Arızalar",
+      "repairNotes": "Onarım Notları",
+      "testPoints": "Test Noktaları"
+    },
+    "addToSession": "Oturuma Ekle"
+  },
+  "timeline": {
+    "eyebrow": "ZAMAN TÜNELİ",
+    "title": "Görsel Zaman Tüneli",
+    "kinds": {
+      "snapshot": "Kare",
+      "aiMark": "AI İşareti",
+      "measurement": "Ölçüm",
+      "note": "Not",
+      "risk": "Risk Bayrağı",
+      "freezeFrame": "Donuk Kare",
+      "sessionStart": "Oturum Başlangıcı"
+    }
+  },
+  "operator": {
+    "eyebrow": "OPERATÖR PROFİLİ",
+    "title": "Araçlar & Ekipmanlar",
+    "tabs": {
+      "overview": "Profil Özeti",
+      "tools": "Araçlar & Ekipmanlar",
+      "skills": "Beceriler",
+      "preferences": "Tercihler"
+    },
+    "groups": {
+      "soldering": "Lehimleme",
+      "measurement": "Ölçüm",
+      "vision": "Görüntüleme",
+      "power": "Güç",
+      "other": "Diğer"
+    },
+    "editProfile": "Profili Düzenle"
+  },
+  "measurement": {
+    "eyebrow": "ÖLÇÜM PANELİ",
+    "title": "Multimetre",
+    "tabs": {
+      "multimeter": "Multimetre",
+      "powerSupply": "Güç Kaynağı",
+      "signalGen": "Sinyal Üretici"
+    },
+    "labels": {
+      "dcVoltage": "DC Voltaj",
+      "acVoltage": "AC Voltaj",
+      "resistance": "Direnç",
+      "continuity": "Süreklilik",
+      "diode": "Diyot",
+      "capacitance": "Kapasitans",
+      "frequency": "Frekans",
+      "mode": "Mod",
+      "range": "Aralık",
+      "hold": "Tut",
+      "recentReadings": "Son Okumalar",
+      "addToTimeline": "Zaman Tüneline Ekle"
+    }
+  },
+  "chat": {
+    "eyebrow": "AİÖ SOHBET — OTURUM ÖZELİ",
+    "title": "AİÖ",
+    "subtitle": "Onarım Asistanı",
+    "viewKnowledgePack": "Bilgi Paketini Aç",
+    "composerPlaceholder": "AİÖ'ye bir şey sor…"
+  },
+  "legend": {
+    "snapshot": "Kare",
+    "aiMark": "AI İşareti",
+    "measurement": "Ölçüm",
+    "note": "Not",
+    "risk": "Risk",
+    "operational": "Tüm sistemler operasyonel",
+    "version": "Tamir Odası v1.0.0",
+    "roomSync": "Oda Eşitleme",
+    "storage": "Depolama"
+  }
+}

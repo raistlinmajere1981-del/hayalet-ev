@@ -1,0 +1,74 @@
+import { REPAIR_UI_COMMANDS } from "../repair-constants.js";
+
+type RepairRoomApi = NonNullable<typeof window.roomAPI>;
+
+function getRoomApi(): RepairRoomApi | null {
+  return window.roomAPI ?? null;
+}
+
+function sendCommand(command: string, payload: Record<string, unknown> = {}): boolean {
+  const roomApi = getRoomApi();
+  if (roomApi === null || typeof roomApi.sendCommand !== "function") {
+    return false;
+  }
+  return roomApi.sendCommand(command, payload);
+}
+
+export function createRepairUiRequestRuntime() {
+  return {
+    notifyUiReady() {
+      return sendCommand(REPAIR_UI_COMMANDS.uiReady);
+    },
+    activateSession(payload: { sessionId: string }) {
+      return sendCommand(REPAIR_UI_COMMANDS.activateSession, payload);
+    },
+    createSession(payload: Record<string, unknown> = {}) {
+      return sendCommand(REPAIR_UI_COMMANDS.createSession, payload);
+    },
+    updateSession(payload: Record<string, unknown>) {
+      return sendCommand(REPAIR_UI_COMMANDS.updateSession, payload);
+    },
+    archiveSession(payload: { sessionId: string }) {
+      return sendCommand(REPAIR_UI_COMMANDS.archiveSession, payload);
+    },
+    advanceWizard(payload: { step?: string } = {}) {
+      return sendCommand(REPAIR_UI_COMMANDS.advanceWizard, payload);
+    },
+    attachKnowledgePack(payload: { packId: string }) {
+      return sendCommand(REPAIR_UI_COMMANDS.attachKnowledgePack, payload);
+    },
+    setActiveTool(payload: { tool: string }) {
+      return sendCommand(REPAIR_UI_COMMANDS.setActiveTool, payload);
+    },
+    toggleFreezeFrame() {
+      return sendCommand(REPAIR_UI_COMMANDS.toggleFreezeFrame);
+    },
+    toggleOverlayLayer(payload: { layerId: string; visible: boolean }) {
+      return sendCommand(REPAIR_UI_COMMANDS.toggleOverlayLayer, payload);
+    },
+    addTimelineEvent(payload: Record<string, unknown>) {
+      return sendCommand(REPAIR_UI_COMMANDS.addTimelineEvent, payload);
+    },
+    jumpToEvent(payload: { eventId: string }) {
+      return sendCommand(REPAIR_UI_COMMANDS.jumpToEvent, payload);
+    },
+    scrubTimeline(payload: { positionMs: number }) {
+      return sendCommand(REPAIR_UI_COMMANDS.scrubTimeline, payload);
+    },
+    addMeasurement(payload: Record<string, unknown>) {
+      return sendCommand(REPAIR_UI_COMMANDS.addMeasurement, payload);
+    },
+    dismissAiMark(payload: { eventId: string }) {
+      return sendCommand(REPAIR_UI_COMMANDS.dismissAiMark, payload);
+    },
+    sendChatTurn(payload: { text: string }) {
+      return sendCommand(REPAIR_UI_COMMANDS.sendChatTurn, payload);
+    },
+    updateOperatorProfile(payload: Record<string, unknown>) {
+      return sendCommand(REPAIR_UI_COMMANDS.updateOperatorProfile, payload);
+    },
+    updateLayout(payload: Record<string, unknown>) {
+      return sendCommand(REPAIR_UI_COMMANDS.updateLayout, payload);
+    },
+  };
+}
