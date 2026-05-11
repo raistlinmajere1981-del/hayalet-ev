@@ -487,6 +487,7 @@
         "clip": "klip",
         "frame": "kare",
         "image": "görsel",
+        "artifact": "artefakt",
         "audio": "ses",
         "variant": "varyant",
         "stem": "stem"
@@ -515,6 +516,10 @@
         "before-after-variant": {
           "label": "Önce/Sonra Varyantı",
           "description": "İnceleme için özgün ve iyileştirilmiş karşılaştırma varlığı hazırla."
+        },
+        "image-comparison": {
+          "label": "Görsel Karşılaştırma Paketi",
+          "description": "Aktif görseli seçili referans görselle karşılaştır."
         },
         "audio-extract": {
           "label": "Sesi Çıkar",
@@ -702,6 +707,10 @@
         "layout": "Yerlesim",
         "revealPreset": "Ortaya cikar",
         "variantCount": "Varyant",
+        "package": "Paket",
+        "metricSize": "Metrik boyut",
+        "splitMode": "Bolme",
+        "includeRoiDetail": "ROI detayi",
         "comparisonLayout": "Yerlesim",
         "diffMode": "Fark",
         "channels": "Kanallar",
@@ -776,6 +785,10 @@
         "high": "Yuksek",
         "compact": "Kompakt",
         "source": "Kaynak",
+        "overview": "Ozet",
+        "detailed": "Detayli",
+        "primary-left-reference-right": "Birincil solda / referans sagda",
+        "primary-mirror": "Birincil ayna",
         "480p": "480p",
         "720p": "720p",
         "1080p": "1080p",
@@ -1668,11 +1681,13 @@
         "ariaLabel": "Varlık aksiyonları",
         "preview": "Onizleme",
         "useAsSource": "Kaynak olarak kullan",
+        "useAsCompareReference": "Karşılaştırma referansı yap",
         "viewReport": "Raporu Goruntule",
         "delete": "Sil"
       },
       "relation": {
-        "source": "Kaynak"
+        "source": "Kaynak",
+        "compareReference": "Karşılaştırma referansı"
       },
       "projects": {
         "newOption": "-- Yeni Proje --"

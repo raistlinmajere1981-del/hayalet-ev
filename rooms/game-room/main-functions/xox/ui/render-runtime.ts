@@ -4,6 +4,7 @@
   }
 ) {
   type XoxTarget = "ai1" | "ai2" | "us1";
+  type LegacyXoxCell = "X" | "O" | "";
   type BackgammonPoint = {
     point: number;
     owner: "user" | "ai" | "";
@@ -91,6 +92,8 @@
         nickname: string;
       };
       board: BackgammonPoint[];
+      legacyBoard: LegacyXoxCell[] | null;
+      availableCells: number[];
       bar: Record<"user" | "ai", number>;
       off: Record<"user" | "ai", number>;
       dice: number[];
@@ -119,6 +122,7 @@
     getBearOffLabel: () => string;
     getBarLabel: () => string;
     onLegalMove: (moveId: string) => void;
+    onCellClick: (index: number) => void;
     onCancelOutgoingInvite: () => void;
     getMatchHistory: () => XoxMatchHistoryEntry[];
     getMatchHistoryResultLabel: (entry: XoxMatchHistoryEntry) => string;
@@ -235,11 +239,8 @@
       button.disabled = disabled;
       button.dataset["selected"] = selected ? "true" : "false";
       button.dataset["tone"] = tone;
-      button.append(
-        createAvatar(slot.nickname, slot.avatar, "md"),
-        createElement("span", "xox-slot-card__info", "")
-      );
-      const info = button.lastElementChild as HTMLElement;
+      const info = createElement("span", "xox-slot-card__info", "");
+      button.append(createAvatar(slot.nickname, slot.avatar, "md"), info);
       const header = createElement("span", "xox-slot-card__header", "");
       header.append(
         createElement("span", "xox-slot-card__badge", slot.slotId.toUpperCase()),
@@ -634,12 +635,48 @@
       return pointEl;
     }
 
-    function renderBoard(points: BackgammonPoint[]) {
+    function renderLegacyCell(
+      symbol: LegacyXoxCell,
+      index: number,
+      canUserMove: boolean,
+      availableCells: number[]
+    ) {
+      const cell = createElement("button", "xox-cell", symbol);
+      cell.type = "button";
+      cell.dataset["index"] = String(index);
+      cell.dataset["symbol"] = symbol;
+      cell.dataset["empty"] = symbol === "" ? "true" : "false";
+      cell.disabled = !canUserMove || symbol !== "" || availableCells.includes(index) === false;
+      cell.addEventListener("click", function () {
+        stateRuntime.onCellClick(index);
+      });
+      return cell;
+    }
+
+    function renderLegacyBoard(
+      cells: LegacyXoxCell[],
+      canUserMove: boolean,
+      availableCells: number[]
+    ) {
+      const boardShell = createElement("div", "xox-board-shell", "");
+      const board = createElement("div", "xox-board", "");
+      cells.forEach(function (symbol, index) {
+        board.append(renderLegacyCell(symbol, index, canUserMove, availableCells));
+      });
+      boardShell.append(board);
+      return boardShell;
+    }
+
+    function renderBoard(game: XoxUiState["game"], canUserMove: boolean) {
+      if (game.legacyBoard !== null) {
+        return renderLegacyBoard(game.legacyBoard, canUserMove, game.availableCells);
+      }
       if (backgammonStageRuntime !== null) {
         const stageHost = createElement("div", "xox-backgammon-stage", "");
         stageHost.dataset["xoxBackgammonStage"] = "true";
         return stageHost;
       }
+      const points = game.board;
       const boardShell = createElement("div", "xox-board-shell xox-board-shell--tavla", "");
       const board = createElement("div", "xox-board xox-board--tavla", "");
       const top = createElement("div", "xox-board-row xox-board-row--top", "");
@@ -753,7 +790,7 @@
         awaitingAi
       );
       const boardArea = createElement("div", "xox-board-area", "");
-      const boardStageHost = renderBoard(state.game.board);
+      const boardStageHost = renderBoard(state.game, canUserMove);
       boardArea.append(boardStageHost);
       const sidecar = createElement("aside", "xox-sidecar", "");
       sidecar.append(
@@ -767,7 +804,7 @@
       surface.append(arena);
       app.append(surface);
       root.replaceChildren(app);
-      if (backgammonStageRuntime !== null) {
+      if (backgammonStageRuntime !== null && state.game.legacyBoard === null) {
         backgammonStageRuntime.renderBackgammonStage(boardStageHost, {
           canUserMove,
           game: state.game,

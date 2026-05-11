@@ -138,7 +138,10 @@ export function renderOperatorProfilePanel(
     prefs.className = "repair-profile-preferences";
     const rows: Array<[string, string]> = [
       ["Measurement", profile.preferences.measurementSystem],
-      ["Annotation", `${profile.preferences.annotationDefaultColor} / ${profile.preferences.annotationDefaultStrokeWidth}px`],
+      [
+        "Annotation",
+        `${profile.preferences.annotationDefaultColor} / ${profile.preferences.annotationDefaultStrokeWidth}px`,
+      ],
       ["Risk", profile.preferences.riskTolerance],
       ["AI", profile.preferences.aiVerbosity],
     ];

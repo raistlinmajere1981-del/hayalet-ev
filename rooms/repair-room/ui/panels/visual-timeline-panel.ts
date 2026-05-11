@@ -7,7 +7,9 @@ type TextFn = (path: string[], fallback: string) => string;
 
 function formatOffset(ms: number): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
-  const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, "0");
+  const minutes = Math.floor(totalSeconds / 60)
+    .toString()
+    .padStart(2, "0");
   const seconds = (totalSeconds % 60).toString().padStart(2, "0");
   return `+${minutes}:${seconds}`;
 }
@@ -54,9 +56,15 @@ export function renderVisualTimelinePanel(
 
   const session = state.sessions.detail;
   const sessionStartMs = session === null ? 0 : Date.parse(session.startedAt);
-  const eventDeltas = meta.events.map((event) => Math.max(0, Date.parse(event.occurredAt) - sessionStartMs));
+  const eventDeltas = meta.events.map((event) =>
+    Math.max(0, Date.parse(event.occurredAt) - sessionStartMs)
+  );
   const latestEventMs = eventDeltas.length === 0 ? 0 : Math.max(...eventDeltas);
-  const totalMs = Math.max(60000, latestEventMs + 10000, state.workbench.timeline.playheadMs + 10000);
+  const totalMs = Math.max(
+    60000,
+    latestEventMs + 10000,
+    state.workbench.timeline.playheadMs + 10000
+  );
   const zoom = state.workbench.timeline.zoom;
   const contentWidthPx = Math.max(860, Math.round((totalMs / 1000) * 12 * zoom));
 
@@ -151,7 +159,7 @@ export function renderVisualTimelinePanel(
       const thumbnailSrc = getEventThumbnailSrc(event, state);
       if (thumbnailSrc !== null) {
         const resolvedSrc = resolveRepairAssetUrl(thumbnailSrc) ?? thumbnailSrc;
-        thumb.style.backgroundImage = `linear-gradient(180deg, rgba(5, 8, 12, 0.06), rgba(5, 8, 12, 0.72)), url("${resolvedSrc.replace(/"/g, "\\\"")}")`;
+        thumb.style.backgroundImage = `linear-gradient(180deg, rgba(5, 8, 12, 0.06), rgba(5, 8, 12, 0.72)), url("${resolvedSrc.replace(/"/g, '\\"')}")`;
       }
       const thumbLabel = documentRef.createElement("span");
       thumbLabel.className = "repair-timeline__thumb-label";

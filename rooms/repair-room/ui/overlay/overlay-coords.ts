@@ -1,4 +1,8 @@
-import type { RepairImagePoint, RepairImageRect, RepairWorkbenchViewport } from "../../shared/types/index.js";
+import type {
+  RepairImagePoint,
+  RepairImageRect,
+  RepairWorkbenchViewport,
+} from "../../shared/types/index.js";
 
 export interface RepairImageFrame {
   leftPx: number;
@@ -28,7 +32,10 @@ export function getContainedImageFrame(
   const safeImageHeight = Math.max(1, imageHeightPx);
   const safeContainerWidth = Math.max(1, containerWidthPx);
   const safeContainerHeight = Math.max(1, containerHeightPx);
-  const scale = Math.min(safeContainerWidth / safeImageWidth, safeContainerHeight / safeImageHeight);
+  const scale = Math.min(
+    safeContainerWidth / safeImageWidth,
+    safeContainerHeight / safeImageHeight
+  );
   const widthPx = safeImageWidth * scale;
   const heightPx = safeImageHeight * scale;
   return {

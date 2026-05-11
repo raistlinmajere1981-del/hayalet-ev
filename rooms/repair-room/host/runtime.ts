@@ -38,10 +38,7 @@ import {
   type RepairRuntimeState,
 } from "./state/repair-runtime-state.js";
 import { createRepairRuntimeStore, type RepairRuntimeStore } from "./state/repair-runtime-store.js";
-import {
-  createRepairUiSnapshot,
-  createRepairUiSnapshotMeta,
-} from "./state/repair-selectors.js";
+import { createRepairUiSnapshot, createRepairUiSnapshotMeta } from "./state/repair-selectors.js";
 
 interface RepairRoomApi {
   log: (level: string, message: string) => void;
@@ -100,7 +97,12 @@ const PANEL_IDS: ReadonlySet<string> = new Set([
   "room-sync",
 ]);
 const INSTRUMENT_KINDS: ReadonlySet<string> = new Set(["multimeter", "power-supply", "signal-gen"]);
-const OPERATOR_PROFILE_TABS: ReadonlySet<string> = new Set(["overview", "tools", "skills", "preferences"]);
+const OPERATOR_PROFILE_TABS: ReadonlySet<string> = new Set([
+  "overview",
+  "tools",
+  "skills",
+  "preferences",
+]);
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -125,7 +127,10 @@ function buildSessionList(sessions: Record<string, RepairSession>): RepairSessio
       updatedAt: session.updatedAt,
       isArchived: session.status === "archived",
     }))
-    .sort((a, b) => Number(a.isArchived) - Number(b.isArchived) || b.updatedAt.localeCompare(a.updatedAt));
+    .sort(
+      (a, b) =>
+        Number(a.isArchived) - Number(b.isArchived) || b.updatedAt.localeCompare(a.updatedAt)
+    );
 }
 
 function getActiveSession(state: RepairRuntimeState): RepairSession | null {
@@ -201,7 +206,9 @@ function getSessionTimelineMs(session: RepairSession | null): number {
   return Math.max(0, lastEventMs);
 }
 
-function patchWizardDraftFromPayload(payload: Record<string, unknown>): Partial<RepairWizardDraft> | null {
+function patchWizardDraftFromPayload(
+  payload: Record<string, unknown>
+): Partial<RepairWizardDraft> | null {
   const draftPayload = payload["wizardDraft"];
   if (typeof draftPayload === "object" && draftPayload !== null) {
     const raw = draftPayload as Record<string, unknown>;
@@ -314,7 +321,9 @@ function createAnnotationEvent(
   const yPx = safeNumber(payload["yPx"]) ?? 320;
   const widthPx = Math.max(tool === "arrow" ? 1 : 28, safeNumber(payload["widthPx"]) ?? 112);
   const heightPx = Math.max(tool === "arrow" ? 0 : 28, safeNumber(payload["heightPx"]) ?? 84);
-  const label = safeString(payload["label"]) ?? (tool === "measurement-pin" ? "Measurement pin" : "Operator annotation");
+  const label =
+    safeString(payload["label"]) ??
+    (tool === "measurement-pin" ? "Measurement pin" : "Operator annotation");
   return {
     kind: "annotation",
     id: createEventId("evt-anno", iso),
@@ -330,7 +339,10 @@ function createAnnotationEvent(
   };
 }
 
-function createMeasurementReading(iso: string, payload: Record<string, unknown>): RepairMultimeterReading {
+function createMeasurementReading(
+  iso: string,
+  payload: Record<string, unknown>
+): RepairMultimeterReading {
   const rawDisplay = safeString(payload["rawDisplay"]) ?? "0.002";
   const value = rawDisplay === "OL" ? null : (safeNumber(payload["value"]) ?? Number(rawDisplay));
   return {
@@ -374,7 +386,10 @@ function createMeasurementEvent(
   };
 }
 
-function setActiveSessionDerivedState(store: RepairRuntimeStore, session: RepairSession | null): void {
+function setActiveSessionDerivedState(
+  store: RepairRuntimeStore,
+  session: RepairSession | null
+): void {
   const timeline = store.getState().workbench.timeline;
   const playheadMs = getSessionTimelineMs(session);
   store.dispatch({ type: "phase/set", phase: phaseForSession(session) });
@@ -393,7 +408,13 @@ function setActiveSessionDerivedState(store: RepairRuntimeStore, session: Repair
   });
   store.dispatch({
     type: "tactical-feed/set",
-    items: session === null ? [] : buildMockTacticalFeed(session.events, session.startedAt).slice(0, FEED_INITIAL_VISIBLE_COUNT),
+    items:
+      session === null
+        ? []
+        : buildMockTacticalFeed(session.events, session.startedAt).slice(
+            0,
+            FEED_INITIAL_VISIBLE_COUNT
+          ),
   });
 }
 
@@ -438,7 +459,10 @@ export default function createRepairRoomHostRuntime() {
       }
 
       function createLiveSessionIso(session: RepairSession): string {
-        const playheadMs = Math.max(getSessionTimelineMs(session) + 1000, getLiveTimelinePlayheadMs(session));
+        const playheadMs = Math.max(
+          getSessionTimelineMs(session) + 1000,
+          getLiveTimelinePlayheadMs(session)
+        );
         return new Date(Date.parse(session.startedAt) + playheadMs).toISOString();
       }
 
@@ -483,7 +507,9 @@ export default function createRepairRoomHostRuntime() {
           const timeoutId = setTimeout(() => {
             const current = store.getState();
             const currentSession = getActiveSession(current);
-            const alreadyVisible = current.tacticalFeed.some((feedItem) => feedItem.eventId === item.eventId);
+            const alreadyVisible = current.tacticalFeed.some(
+              (feedItem) => feedItem.eventId === item.eventId
+            );
             if (currentSession?.id === session.id && alreadyVisible === false) {
               store.dispatch({ type: "tactical-feed/append", item });
             }
@@ -501,10 +527,12 @@ export default function createRepairRoomHostRuntime() {
           currentWizard.researchProgress.length > 0
             ? currentWizard.researchProgress
             : MOCK_REPAIR_WIZARD_INITIAL.researchProgress;
-        const resetProgress = progressSeed.map((item): RepairKnowledgePackProgress => ({
-          ...item,
-          completed: false,
-        }));
+        const resetProgress = progressSeed.map(
+          (item): RepairKnowledgePackProgress => ({
+            ...item,
+            completed: false,
+          })
+        );
 
         store.dispatch({
           type: "wizard/set",
@@ -519,28 +547,35 @@ export default function createRepairRoomHostRuntime() {
         store.dispatch({ type: "phase/set", phase: "wizard-active" });
 
         resetProgress.forEach((progress, index) => {
-          const timeoutId = setTimeout(() => {
-            const wizard = store.getState().wizard;
-            const nextProgress = wizard.researchProgress.map((item) =>
-              item.step === progress.step ? { ...item, completed: true } : item
-            );
-            store.dispatch({
-              type: "wizard/set",
-              wizard: {
-                ...wizard,
-                researchProgress: nextProgress,
-                foundResources:
-                  index >= 1 ? MOCK_REPAIR_WIZARD_INITIAL.foundResources.slice(0, Math.min(index + 1, 4)) : [],
-                generatedKnowledgePackId:
-                  index === resetProgress.length - 1 ? "bn44-00932a" : wizard.generatedKnowledgePackId,
-                currentStep: index === resetProgress.length - 1 ? "ready" : "ai-research",
-              },
-            });
-            if (index === resetProgress.length - 1) {
-              store.dispatch({ type: "phase/set", phase: "session-active" });
-            }
-            researchTimeouts.delete(timeoutId);
-          }, 700 + index * 650);
+          const timeoutId = setTimeout(
+            () => {
+              const wizard = store.getState().wizard;
+              const nextProgress = wizard.researchProgress.map((item) =>
+                item.step === progress.step ? { ...item, completed: true } : item
+              );
+              store.dispatch({
+                type: "wizard/set",
+                wizard: {
+                  ...wizard,
+                  researchProgress: nextProgress,
+                  foundResources:
+                    index >= 1
+                      ? MOCK_REPAIR_WIZARD_INITIAL.foundResources.slice(0, Math.min(index + 1, 4))
+                      : [],
+                  generatedKnowledgePackId:
+                    index === resetProgress.length - 1
+                      ? "bn44-00932a"
+                      : wizard.generatedKnowledgePackId,
+                  currentStep: index === resetProgress.length - 1 ? "ready" : "ai-research",
+                },
+              });
+              if (index === resetProgress.length - 1) {
+                store.dispatch({ type: "phase/set", phase: "session-active" });
+              }
+              researchTimeouts.delete(timeoutId);
+            },
+            700 + index * 650
+          );
           unrefTimer(timeoutId);
           researchTimeouts.add(timeoutId);
         });
@@ -574,7 +609,9 @@ export default function createRepairRoomHostRuntime() {
             const state = store.getState();
             const session = getActiveSession(state);
             if (session?.status !== "in-progress" || state.workbench.isFrozen) return;
-            const display = MEASUREMENT_DRIFT_SEQUENCE[measurementTick % MEASUREMENT_DRIFT_SEQUENCE.length] ?? "0.000";
+            const display =
+              MEASUREMENT_DRIFT_SEQUENCE[measurementTick % MEASUREMENT_DRIFT_SEQUENCE.length] ??
+              "0.000";
             measurementTick += 1;
             const reading = createMeasurementReading(nowIso(), {
               rawDisplay: display,
@@ -684,15 +721,13 @@ export default function createRepairRoomHostRuntime() {
             if (store.getState().wizard.currentStep === "ai-research") {
               scheduleResearchStream();
             }
-            api.log(
-              "info",
-              `[${REPAIR_ROOM_ID}] ui-ready phase=${store.getState().phase}`
-            );
+            api.log("info", `[${REPAIR_ROOM_ID}] ui-ready phase=${store.getState().phase}`);
             return { success: true };
           }
           case REPAIR_UI_COMMANDS.activateSession: {
             const sessionId = safeString(flat["sessionId"]);
-            const session = sessionId === null ? null : (store.getState().sessions[sessionId] ?? null);
+            const session =
+              sessionId === null ? null : (store.getState().sessions[sessionId] ?? null);
             store.dispatch({ type: "session/activate", sessionId: session?.id ?? null });
             setActiveSessionDerivedState(store, session);
             resetLiveTimelineAnchor(session);
@@ -715,7 +750,8 @@ export default function createRepairRoomHostRuntime() {
             }
             const state = store.getState();
             const session = getActiveSession(state);
-            if (session === null) return { success: wizardPatch !== null, message: "active session is required" };
+            if (session === null)
+              return { success: wizardPatch !== null, message: "active session is required" };
             const iso = nowIso();
             const nextSession: RepairSession = {
               ...session,
@@ -760,8 +796,11 @@ export default function createRepairRoomHostRuntime() {
             const current = store.getState().wizard.currentStep;
             const currentIndex = Math.max(0, WIZARD_STEP_ORDER.indexOf(current));
             const fallbackStep =
-              WIZARD_STEP_ORDER[Math.min(currentIndex + 1, WIZARD_STEP_ORDER.length - 1)] ?? "ready";
-            const nextStep = WIZARD_STEP_ORDER.includes(requested as RepairWizardState["currentStep"])
+              WIZARD_STEP_ORDER[Math.min(currentIndex + 1, WIZARD_STEP_ORDER.length - 1)] ??
+              "ready";
+            const nextStep = WIZARD_STEP_ORDER.includes(
+              requested as RepairWizardState["currentStep"]
+            )
               ? (requested as RepairWizardState["currentStep"])
               : fallbackStep;
             if (nextStep === "ai-research") {
@@ -769,7 +808,10 @@ export default function createRepairRoomHostRuntime() {
               return { success: true };
             }
             store.dispatch({ type: "wizard/advance", step: nextStep });
-            store.dispatch({ type: "phase/set", phase: nextStep === "ready" ? "session-active" : "wizard-active" });
+            store.dispatch({
+              type: "phase/set",
+              phase: nextStep === "ready" ? "session-active" : "wizard-active",
+            });
             return { success: true };
           }
           case REPAIR_UI_COMMANDS.attachKnowledgePack: {
@@ -777,7 +819,8 @@ export default function createRepairRoomHostRuntime() {
             const state = store.getState();
             const session = getActiveSession(state);
             const pack = MOCK_REPAIR_KNOWLEDGE_PACKS[packId] ?? null;
-            if (session === null || pack === null) return { success: false, message: "session and pack are required" };
+            if (session === null || pack === null)
+              return { success: false, message: "session and pack are required" };
             const nextSession: RepairSession = {
               ...session,
               status: "in-progress",
@@ -794,10 +837,14 @@ export default function createRepairRoomHostRuntime() {
           }
           case REPAIR_UI_COMMANDS.setActiveTool: {
             const tool = flat["tool"];
-            if (!isWorkbenchTool(tool)) return { success: false, message: "valid tool is required" };
+            if (!isWorkbenchTool(tool))
+              return { success: false, message: "valid tool is required" };
             const viewport = store.getState().workbench.viewport;
             if (tool === "zoom-in" || tool === "zoom-out") {
-              const nextZoom = Math.min(4, Math.max(0.5, viewport.zoom + (tool === "zoom-in" ? 0.25 : -0.25)));
+              const nextZoom = Math.min(
+                4,
+                Math.max(0.5, viewport.zoom + (tool === "zoom-in" ? 0.25 : -0.25))
+              );
               const nextPan = clampWorkbenchPan(
                 viewport.panXPx,
                 viewport.panYPx,
@@ -814,10 +861,15 @@ export default function createRepairRoomHostRuntime() {
             }
             if (tool === "snapshot") {
               const session = getActiveSession(store.getState());
-              if (session === null) return { success: false, message: "active session is required" };
+              if (session === null)
+                return { success: false, message: "active session is required" };
               return {
                 success: appendEventToActiveSession(
-                  createSnapshotEvent(session.id, createLiveSessionIso(session), "Manual workbench snapshot captured.")
+                  createSnapshotEvent(
+                    session.id,
+                    createLiveSessionIso(session),
+                    "Manual workbench snapshot captured."
+                  )
                 ),
               };
             }
@@ -873,7 +925,11 @@ export default function createRepairRoomHostRuntime() {
             const kind = safeString(flat["kind"]);
             const event =
               kind === "snapshot"
-                ? createSnapshotEvent(session.id, iso, safeString(flat["caption"]) ?? "Snapshot captured.")
+                ? createSnapshotEvent(
+                    session.id,
+                    iso,
+                    safeString(flat["caption"]) ?? "Snapshot captured."
+                  )
                 : createAnnotationEvent(
                     session.id,
                     iso,
@@ -890,7 +946,8 @@ export default function createRepairRoomHostRuntime() {
           case REPAIR_UI_COMMANDS.scrubTimeline: {
             const session = getActiveSession(store.getState());
             const positionMs = safeNumber(flat["positionMs"]);
-            if (session === null || positionMs === null) return { success: false, message: "positionMs is required" };
+            if (session === null || positionMs === null)
+              return { success: false, message: "positionMs is required" };
             const start = Date.parse(session.startedAt);
             const target = start + positionMs;
             const closest = session.events.reduce<RepairEvent | null>((best, event) => {
@@ -951,7 +1008,8 @@ export default function createRepairRoomHostRuntime() {
           case REPAIR_UI_COMMANDS.dismissAiMark: {
             const eventId = safeString(flat["eventId"]);
             const session = getActiveSession(store.getState());
-            if (session === null || eventId === null) return { success: false, message: "eventId is required" };
+            if (session === null || eventId === null)
+              return { success: false, message: "eventId is required" };
             const nextEvents = session.events.map((event) => {
               if (event.id !== eventId) return event;
               if (event.kind === "ai-mark") return { ...event, dismissed: true };
@@ -1023,7 +1081,10 @@ export default function createRepairRoomHostRuntime() {
             }
             const operatorProfileTabId = flat["operatorProfileTabId"];
             if (isOperatorProfileTab(operatorProfileTabId)) {
-              store.dispatch({ type: "layout/set-operator-profile-tab", tabId: operatorProfileTabId });
+              store.dispatch({
+                type: "layout/set-operator-profile-tab",
+                tabId: operatorProfileTabId,
+              });
               return { success: true };
             }
             const viewportZoom = safeNumber(flat["viewportZoom"]);

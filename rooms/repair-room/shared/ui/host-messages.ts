@@ -66,7 +66,12 @@ export function normalizeRepairHostMessage(value: unknown): RepairHostMessage | 
   if (type === "repair-state") {
     const snapshot = payload["snapshot"];
     const meta = payload["meta"];
-    if (typeof snapshot === "object" && snapshot !== null && typeof meta === "object" && meta !== null) {
+    if (
+      typeof snapshot === "object" &&
+      snapshot !== null &&
+      typeof meta === "object" &&
+      meta !== null
+    ) {
       return { type, snapshot: snapshot as RepairUiState, meta: meta as RepairUiSnapshotMeta };
     }
   }

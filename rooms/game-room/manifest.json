@@ -129,6 +129,48 @@
           "description": "Reject an incoming US1 Tavla invite from the room UI.",
           "scope": "room-ui",
           "exposure": "internal"
+        },
+        {
+          "name": "GameRoomXoxStart",
+          "description": "Legacy XOX alias for starting a Tavla match.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomXoxReset",
+          "description": "Legacy XOX alias for resetting the active Tavla match.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomXoxUserMove",
+          "description": "Legacy XOX alias for applying the user's Tavla move.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomXoxAiMove",
+          "description": "Legacy XOX alias for applying an AI Tavla move.",
+          "scope": "ai-slots",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomXoxRemoteMove",
+          "description": "Legacy XOX alias for applying a remote US1 Tavla move.",
+          "scope": "us1",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomXoxAcceptInvite",
+          "description": "Legacy XOX alias for accepting an incoming US1 Tavla invite.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomXoxRejectInvite",
+          "description": "Legacy XOX alias for rejecting an incoming US1 Tavla invite.",
+          "scope": "room-ui",
+          "exposure": "internal"
         }
       ],
       "protocolSpecs": [

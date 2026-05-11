@@ -11,7 +11,13 @@ const STEP_LABELS: Record<string, string> = {
 };
 
 const STEP_ORDER = ["device-info", "symptoms", "ai-research", "ready"] as const;
-const SYMPTOM_OPTIONS = ["No Power", "Boot Loop", "HDMI Dead", "No 5V_STBY", "Overcurrent"] as const;
+const SYMPTOM_OPTIONS = [
+  "No Power",
+  "Boot Loop",
+  "HDMI Dead",
+  "No 5V_STBY",
+  "Overcurrent",
+] as const;
 
 function appendField(
   documentRef: Document,
@@ -28,7 +34,9 @@ function appendField(
   labelEl.textContent = label;
   wrapper.append(labelEl);
 
-  const input = multiline ? documentRef.createElement("textarea") : documentRef.createElement("input");
+  const input = multiline
+    ? documentRef.createElement("textarea")
+    : documentRef.createElement("input");
   input.className = "repair-wizard-field__input";
   input.value = value;
   input.dataset["repairAction"] = "wizard-field";
@@ -101,7 +109,14 @@ export function renderSessionWizardPanel(
       chipRow.append(chip);
     });
     form.append(chipRow);
-    appendField(documentRef, form, "Symptom notes", "symptomFreeText", wizard.draft.symptomFreeText, true);
+    appendField(
+      documentRef,
+      form,
+      "Symptom notes",
+      "symptomFreeText",
+      wizard.draft.symptomFreeText,
+      true
+    );
     body.append(form);
   }
 
@@ -158,7 +173,8 @@ export function renderSessionWizardPanel(
       : wizard.currentStep === "symptoms"
         ? "Start Research"
         : "Next Step";
-  nextButton.dataset["repairAction"] = wizard.currentStep === "ready" ? "create-session" : "advance-wizard";
+  nextButton.dataset["repairAction"] =
+    wizard.currentStep === "ready" ? "create-session" : "advance-wizard";
   actions.append(nextButton);
   body.append(actions);
 

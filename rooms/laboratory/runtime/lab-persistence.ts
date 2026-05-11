@@ -155,10 +155,28 @@ function sanitizeWorkspaceForBoot(
   return next;
 }
 
+function sanitizeSourceForBoot(
+  source: Partial<LabPersistedState>["source"]
+): LabPersistedState["source"] {
+  if (!source || typeof source !== "object") {
+    return null;
+  }
+  const record = source as Record<string, unknown>;
+  const previewUrl =
+    typeof record["previewUrl"] === "string" && record["previewUrl"].trim() !== ""
+      ? record["previewUrl"].trim()
+      : null;
+  if (previewUrl === null || record["status"] !== "ready") {
+    return null;
+  }
+  return source;
+}
+
 function sanitizeBootPersistedState(
   persisted: Partial<LabPersistedState>
 ): Partial<LabPersistedState> {
   const workspace = sanitizeWorkspaceForBoot(persisted.workspace);
+  const source = sanitizeSourceForBoot(persisted.source);
   const next: Partial<LabPersistedState> = {
     ...persisted,
     selectedCapabilities: [],
@@ -167,8 +185,9 @@ function sanitizeBootPersistedState(
       projects: [],
     },
     workbench: {},
-    source: null,
-    sourceProbeStatus: "idle",
+    source,
+    sourceProbeStatus:
+      source !== null && persisted.sourceProbeStatus === "completed" ? "completed" : "idle",
     editConfig: null,
     profileConfig: null,
     preflight: null,

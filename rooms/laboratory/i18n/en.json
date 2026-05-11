@@ -487,6 +487,7 @@
         "clip": "clip",
         "frame": "frame",
         "image": "image",
+        "artifact": "artifact",
         "audio": "audio",
         "variant": "variant",
         "stem": "stem"
@@ -515,6 +516,10 @@
         "before-after-variant": {
           "label": "Before/After Variant",
           "description": "Prepare an original-versus-enhanced comparison asset for review."
+        },
+        "image-comparison": {
+          "label": "Image Comparison Pack",
+          "description": "Compare the active image with a selected reference image."
         },
         "audio-extract": {
           "label": "Extract Audio",
@@ -702,6 +707,10 @@
         "layout": "Layout",
         "revealPreset": "Reveal",
         "variantCount": "Variants",
+        "package": "Package",
+        "metricSize": "Metric size",
+        "splitMode": "Split",
+        "includeRoiDetail": "ROI detail",
         "comparisonLayout": "Layout",
         "diffMode": "Difference",
         "channels": "Channels",
@@ -776,6 +785,10 @@
         "high": "High",
         "compact": "Compact",
         "source": "Source",
+        "overview": "Overview",
+        "detailed": "Detailed",
+        "primary-left-reference-right": "Primary left / reference right",
+        "primary-mirror": "Primary mirror",
         "480p": "480p",
         "720p": "720p",
         "1080p": "1080p",
@@ -1668,11 +1681,13 @@
         "ariaLabel": "Asset actions",
         "preview": "Preview",
         "useAsSource": "Use as source",
+        "useAsCompareReference": "Use as comparison reference",
         "viewReport": "View report",
         "delete": "Delete"
       },
       "relation": {
-        "source": "Source"
+        "source": "Source",
+        "compareReference": "Comparison reference"
       },
       "projects": {
         "newOption": "-- New Project --"

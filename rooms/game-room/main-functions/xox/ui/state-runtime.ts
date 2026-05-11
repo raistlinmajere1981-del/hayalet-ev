@@ -8,6 +8,7 @@
   type XoxStarter = "user" | "ai";
   type XoxInviteStarter = "user" | "opponent";
   type XoxAwaitingMove = "user" | "ai" | null;
+  type LegacyXoxCell = "X" | "O" | "";
   type BackgammonOwner = "user" | "ai" | "";
   type BackgammonPoint = {
     point: number;
@@ -66,6 +67,8 @@
   };
   type XoxGameState = {
     board: BackgammonPoint[];
+    legacyBoard: LegacyXoxCell[] | null;
+    availableCells: number[];
     boardAscii: string;
     boardHash: string;
     bar: Record<"user" | "ai", number>;
@@ -240,6 +243,34 @@
     return board;
   }
 
+  function normalizeLegacyBoard(value: unknown): LegacyXoxCell[] | null {
+    if (Array.isArray(value) === false || value.length !== 9) {
+      return null;
+    }
+    return value.map(function (entry): LegacyXoxCell {
+      return entry === "X" || entry === "O" ? entry : "";
+    });
+  }
+
+  function normalizeAvailableCells(value: unknown): number[] {
+    if (Array.isArray(value) === false) {
+      return [];
+    }
+    const cells: number[] = [];
+    value.forEach(function (entry) {
+      if (
+        typeof entry === "number" &&
+        Number.isInteger(entry) &&
+        entry >= 0 &&
+        entry <= 8 &&
+        cells.includes(entry) === false
+      ) {
+        cells.push(entry);
+      }
+    });
+    return cells;
+  }
+
   function normalizeCounters(value: unknown): Record<"user" | "ai", number> {
     const source = isRecord(value) ? value : {};
     return {
@@ -298,10 +329,31 @@
     const normalizeSlot = deps.normalizeSlot;
     const text = deps.text;
     const sendRoomCommand = deps.sendRoomCommand;
+    const legacyXoxCommandNames = {
+      acceptInvite: "GameRoomXoxAcceptInvite",
+      reset: "GameRoomXoxReset",
+      rejectInvite: "GameRoomXoxRejectInvite",
+      start: "GameRoomXoxStart",
+      userMove: "GameRoomXoxUserMove",
+    };
+    const xoxCommandNames = {
+      ...legacyXoxCommandNames,
+      acceptInvite: "GameRoomBackgammonAcceptInvite",
+      reset: "GameRoomBackgammonReset",
+      rejectInvite: "GameRoomBackgammonRejectInvite",
+      start: "GameRoomBackgammonStart",
+      userMove: "GameRoomBackgammonUserMove",
+    };
+
+    function sendXoxCommand(commandKey: keyof typeof xoxCommandNames, payload: UnknownRecord) {
+      sendRoomCommand(xoxCommandNames[commandKey], payload);
+    }
 
     function createGameState(): XoxGameState {
       return {
         board: createDefaultBoard(),
+        legacyBoard: null,
+        availableCells: [],
         boardAscii: "",
         boardHash: "",
         bar: { user: 0, ai: 0 },
@@ -414,6 +466,8 @@
       const source = isRecord(candidate) ? candidate : {};
       const next = createGameState();
       next.board = normalizeBoard(source["board"]);
+      next.legacyBoard = normalizeLegacyBoard(source["board"]);
+      next.availableCells = normalizeAvailableCells(source["availableCells"]);
       next.boardAscii = readString(source["boardAscii"], "");
       next.boardHash = readString(source["boardHash"], "");
       next.bar = normalizeCounters(source["bar"]);
@@ -562,7 +616,7 @@
     function onStart() {
       const state = getState();
       state.lastCommandMessage = "";
-      sendRoomCommand("GameRoomBackgammonStart", {
+      sendXoxCommand("start", {
         target: getSelectedTarget(),
         starter: state.preferences.starter === "ai" ? "ai" : "user",
         inviteMessage: state.preferences.inviteMessage,
@@ -571,7 +625,7 @@
 
     function onReset() {
       getState().lastCommandMessage = "";
-      sendRoomCommand("GameRoomBackgammonReset", {});
+      sendXoxCommand("reset", {});
     }
 
     function onLegalMove(moveId: string) {
@@ -584,7 +638,7 @@
         return;
       }
       getState().lastCommandMessage = "";
-      sendRoomCommand("GameRoomBackgammonUserMove", {
+      sendXoxCommand("userMove", {
         legalMoveId: moveId,
         turnToken: state.game.turnToken,
         turnIndex: state.game.turnIndex,
@@ -610,7 +664,7 @@
 
     function onCancelOutgoingInvite() {
       getState().lastCommandMessage = "";
-      sendRoomCommand("GameRoomBackgammonReset", {});
+      sendXoxCommand("reset", {});
     }
 
     function getMatchHistory(): XoxMatchHistoryEntry[] {

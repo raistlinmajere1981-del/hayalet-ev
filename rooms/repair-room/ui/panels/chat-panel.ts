@@ -65,7 +65,8 @@ export function renderChatPanel(
 
   const sendBtn = documentRef.createElement("button");
   sendBtn.className = "repair-chat-composer__send";
-  sendBtn.textContent = state.chat.pendingReplyId === null ? text(["chat", "send"], "Send") : "Queued";
+  sendBtn.textContent =
+    state.chat.pendingReplyId === null ? text(["chat", "send"], "Send") : "Queued";
   sendBtn.disabled = state.chat.pendingReplyId !== null;
   sendBtn.dataset["repairAction"] = "send-chat";
   composer.append(sendBtn);

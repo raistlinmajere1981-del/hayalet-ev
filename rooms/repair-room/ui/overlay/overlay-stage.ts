@@ -79,8 +79,20 @@ export interface RepairOverlayStageConfig {
   image: RepairPcbImageRef;
   visibleLayers: Record<RepairOverlayLayerId, boolean>;
   workbench: RepairWorkbenchState;
-  onAddAnnotation: (payload: { tool: string; xPx: number; yPx: number; widthPx?: number; heightPx?: number; label?: string }) => void;
-  onAddMeasurement: (payload: { eventId?: string; xPx: number; yPx: number; reference: string }) => void;
+  onAddAnnotation: (payload: {
+    tool: string;
+    xPx: number;
+    yPx: number;
+    widthPx?: number;
+    heightPx?: number;
+    label?: string;
+  }) => void;
+  onAddMeasurement: (payload: {
+    eventId?: string;
+    xPx: number;
+    yPx: number;
+    reference: string;
+  }) => void;
   onCursor: (point: RepairImagePoint) => void;
   onEventClick: (eventId: string) => void;
   onViewportChange: (payload: { zoom: number; panXPx: number; panYPx: number }) => void;
@@ -98,15 +110,28 @@ function getStageSize(container: HTMLElement): { width: number; height: number }
   };
 }
 
-function addGridLayer(Konva: KonvaNamespace, config: RepairOverlayStageConfig, layer: InstanceType<KonvaNamespace["Layer"]>): void {
+function addGridLayer(
+  Konva: KonvaNamespace,
+  config: RepairOverlayStageConfig,
+  layer: InstanceType<KonvaNamespace["Layer"]>
+): void {
   if (!config.visibleLayers.grid) return;
   const { width, height } = getStageSize(config.container);
   const frame = getContainedImageFrame(width, height, config.image.widthPx, config.image.heightPx);
-  const stepPx = Math.max(12, config.image.pixelsPerMm * 10 * frame.scale * config.workbench.viewport.zoom);
+  const stepPx = Math.max(
+    12,
+    config.image.pixelsPerMm * 10 * frame.scale * config.workbench.viewport.zoom
+  );
   const startX = frame.leftPx + config.workbench.viewport.panXPx;
   const startY = frame.topPx + config.workbench.viewport.panYPx;
-  const endX = frame.leftPx + frame.widthPx * config.workbench.viewport.zoom + config.workbench.viewport.panXPx;
-  const endY = frame.topPx + frame.heightPx * config.workbench.viewport.zoom + config.workbench.viewport.panYPx;
+  const endX =
+    frame.leftPx +
+    frame.widthPx * config.workbench.viewport.zoom +
+    config.workbench.viewport.panXPx;
+  const endY =
+    frame.topPx +
+    frame.heightPx * config.workbench.viewport.zoom +
+    config.workbench.viewport.panYPx;
 
   for (let x = startX; x <= endX; x += stepPx) {
     layer.add(
@@ -196,7 +221,14 @@ function addAiEvent(
     config.onEventClick(event.id);
   });
   layer.add(shape);
-  addLabel(Konva, layer, rect.xPx, Math.max(0, rect.yPx - 26), event.kind === "risk-flag" ? "RISK" : "AI SUGGESTION", color);
+  addLabel(
+    Konva,
+    layer,
+    rect.xPx,
+    Math.max(0, rect.yPx - 26),
+    event.kind === "risk-flag" ? "RISK" : "AI SUGGESTION",
+    color
+  );
 }
 
 function addAnnotationEvent(
@@ -268,7 +300,12 @@ function addMeasurementEvent(
   layer: InstanceType<KonvaNamespace["Layer"]>,
   event: RepairEvent
 ): void {
-  if (event.kind !== "measurement" || event.pinAt === null || !config.visibleLayers["measurement-pins"]) return;
+  if (
+    event.kind !== "measurement" ||
+    event.pinAt === null ||
+    !config.visibleLayers["measurement-pins"]
+  )
+    return;
   const { width, height } = getStageSize(config.container);
   const frame = getContainedImageFrame(width, height, config.image.widthPx, config.image.heightPx);
   const point = imagePointToStagePoint(event.pinAt, frame, config.workbench.viewport);
@@ -297,7 +334,11 @@ function addMeasurementEvent(
     config.onEventClick(event.id);
   });
   group.on("dragend", () => {
-    const nextPoint = stagePointToImagePoint({ xPx: group.x(), yPx: group.y() }, frame, config.workbench.viewport);
+    const nextPoint = stagePointToImagePoint(
+      { xPx: group.x(), yPx: group.y() },
+      frame,
+      config.workbench.viewport
+    );
     const clamped = clampImagePoint(nextPoint, config.image.widthPx, config.image.heightPx);
     config.onAddMeasurement({
       eventId: event.id,
@@ -342,7 +383,10 @@ function addFocusCallout(
 export async function mountRepairOverlayStage(
   config: RepairOverlayStageConfig
 ): Promise<RepairOverlayController | null> {
-  if (config.container.dataset["mounted"] === "true" || config.container.dataset["mounting"] === "true") {
+  if (
+    config.container.dataset["mounted"] === "true" ||
+    config.container.dataset["mounting"] === "true"
+  ) {
     return null;
   }
   config.container.dataset["mounting"] = "true";
@@ -378,14 +422,24 @@ export async function mountRepairOverlayStage(
     });
     addFocusCallout(Konva, config, focusLayer);
 
-    let panStart: { pointerX: number; pointerY: number; panXPx: number; panYPx: number } | null = null;
+    let panStart: { pointerX: number; pointerY: number; panXPx: number; panYPx: number } | null =
+      null;
 
     stage.on("mousemove tap", () => {
       const pointer = stage.getPointerPosition();
       if (pointer === null) return;
-      const frame = getContainedImageFrame(width, height, config.image.widthPx, config.image.heightPx);
+      const frame = getContainedImageFrame(
+        width,
+        height,
+        config.image.widthPx,
+        config.image.heightPx
+      );
       const point = clampImagePoint(
-        stagePointToImagePoint({ xPx: pointer.x, yPx: pointer.y }, frame, config.workbench.viewport),
+        stagePointToImagePoint(
+          { xPx: pointer.x, yPx: pointer.y },
+          frame,
+          config.workbench.viewport
+        ),
         config.image.widthPx,
         config.image.heightPx
       );
@@ -433,9 +487,18 @@ export async function mountRepairOverlayStage(
       if (event.target !== stage) return;
       const pointer = stage.getPointerPosition();
       if (pointer === null) return;
-      const frame = getContainedImageFrame(width, height, config.image.widthPx, config.image.heightPx);
+      const frame = getContainedImageFrame(
+        width,
+        height,
+        config.image.widthPx,
+        config.image.heightPx
+      );
       const point = clampImagePoint(
-        stagePointToImagePoint({ xPx: pointer.x, yPx: pointer.y }, frame, config.workbench.viewport),
+        stagePointToImagePoint(
+          { xPx: pointer.x, yPx: pointer.y },
+          frame,
+          config.workbench.viewport
+        ),
         config.image.widthPx,
         config.image.heightPx
       );

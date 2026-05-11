@@ -1,9 +1,4 @@
-export type RepairToolCategory =
-  | "soldering"
-  | "measurement"
-  | "vision"
-  | "power"
-  | "other";
+export type RepairToolCategory = "soldering" | "measurement" | "vision" | "power" | "other";
 
 export type RepairSkillLevel = 1 | 2 | 3 | 4 | 5;
 

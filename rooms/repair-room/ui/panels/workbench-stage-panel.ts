@@ -81,8 +81,7 @@ export function renderWorkbenchStagePanel(
   const cursor = state.workbench.cursor;
   const xLabel = cursor !== null ? cursor.xPx.toString() : "—";
   const yLabel = cursor !== null ? cursor.yPx.toString() : "—";
-  const gridLabel =
-    cursor !== null ? `${cursor.gridX}x${cursor.gridY}` : "—";
+  const gridLabel = cursor !== null ? `${cursor.gridX}x${cursor.gridY}` : "—";
   hud.innerHTML = `<span>X ${xLabel}</span><span>Y ${yLabel}</span><span>GRID ${gridLabel}</span>`;
   viewport.append(hud);
 
@@ -116,7 +115,8 @@ export function renderWorkbenchStagePanel(
   ];
   for (const layer of layerButtons) {
     const btn = documentRef.createElement("button");
-    const isVisible = state.workbench.visibleLayers[layer.id as keyof typeof state.workbench.visibleLayers];
+    const isVisible =
+      state.workbench.visibleLayers[layer.id as keyof typeof state.workbench.visibleLayers];
     btn.className = `repair-toolbar__btn${isVisible ? " repair-toolbar__btn--active" : ""}`;
     btn.textContent = layer.label;
     btn.title = `Toggle ${layer.id}`;

@@ -1,10 +1,14 @@
 const ABSOLUTE_URL_PATTERN = /^(?:[a-z][a-z\d+\-.]*:|\/)/i;
 
 function defaultBaseHref(): string {
-  return typeof globalThis.location?.href === "string" ? globalThis.location.href : "";
+  const location = (globalThis as { location?: Location }).location;
+  return location === undefined ? "" : location.href;
 }
 
-export function resolveRepairAssetUrl(src: string | null | undefined, baseHref = defaultBaseHref()): string | null {
+export function resolveRepairAssetUrl(
+  src: string | null | undefined,
+  baseHref = defaultBaseHref()
+): string | null {
   const normalized = typeof src === "string" ? src.trim() : "";
   if (normalized === "") return null;
   if (ABSOLUTE_URL_PATTERN.test(normalized)) return normalized;

@@ -32,7 +32,8 @@ export function createRepairUiSnapshot(state: RepairRuntimeState): RepairUiState
     layout: state.layout,
     ambient: {
       nowIso: state.ambientNowIso,
-      sessionDurationMs: activeSession === null ? 0 : Math.max(0, state.workbench.timeline.playheadMs),
+      sessionDurationMs:
+        activeSession === null ? 0 : Math.max(0, state.workbench.timeline.playheadMs),
     },
   };
 }

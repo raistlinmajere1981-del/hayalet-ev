@@ -13,13 +13,19 @@ export function renderRoomSyncPanel(
   body.className = "repair-panel__body repair-sync-panel";
 
   const session = state.sessions.detail;
-  const focused = meta.events.find((event) => event.id === state.workbench.focusedEventId) ?? meta.events.at(-1) ?? null;
+  const focused =
+    meta.events.find((event) => event.id === state.workbench.focusedEventId) ??
+    meta.events.at(-1) ??
+    null;
   const rows: Array<[string, string]> = [
     [text(["sync", "storage"], "Storage"), "In-memory mock"],
     [text(["sync", "registry"], "Room Sync"), "Workspace build ready"],
     [text(["sync", "events"], "Events"), `${meta.events.length} records`],
     [text(["sync", "session"], "Session"), session?.title ?? "No active session"],
-    [text(["sync", "playhead"], "Playhead"), `+${Math.round(state.workbench.timeline.playheadMs / 1000)}s`],
+    [
+      text(["sync", "playhead"], "Playhead"),
+      `+${Math.round(state.workbench.timeline.playheadMs / 1000)}s`,
+    ],
   ];
 
   rows.forEach(([label, value]) => {

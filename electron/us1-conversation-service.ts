@@ -1,5 +1,5 @@
-import { readFile } from "node:fs/promises";
-import { basename, extname } from "node:path";
+import { readFile, readdir } from "node:fs/promises";
+import { basename, extname, join } from "node:path";
 
 import type {
   Account,
@@ -639,12 +639,35 @@ function buildRoomCommandIdentityIndex(candidate: unknown): Map<string, RoomComm
   return index;
 }
 
-function inferRoomCommandIdentity(commandName: string): RoomCommandIdentity | null {
-  const normalized = commandName.trim().toLowerCase();
-  if (normalized === "") {
-    return null;
+async function buildWorkspaceRoomCommandIdentityIndex(): Promise<Map<string, RoomCommandIdentity>> {
+  const index = new Map<string, RoomCommandIdentity>();
+  let entries: Array<{ name: string; isDirectory: () => boolean }>;
+  try {
+    entries = await readdir(Paths.getRoomsWorkspaceDir(), { withFileTypes: true });
+  } catch {
+    return index;
   }
-  return null;
+
+  for (const entry of entries) {
+    if (entry.isDirectory() === false || entry.name.startsWith(".")) {
+      continue;
+    }
+    try {
+      const manifestRaw = await readFile(
+        join(Paths.getRoomsWorkspaceDir(), entry.name, "manifest.json"),
+        "utf8"
+      );
+      buildRoomCommandIdentityIndex({
+        rooms: [JSON.parse(manifestRaw) as unknown],
+      }).forEach((identity, commandName) => {
+        index.set(commandName, identity);
+      });
+    } catch {
+      // Room discovery is best-effort here; malformed workspace packages must not block mail sync.
+    }
+  }
+
+  return index;
 }
 
 function parseHeaderValue(headerLines: string[], headerName: string): string | null {
@@ -2784,15 +2807,24 @@ export class Us1ConversationService {
       return this.roomCommandIdentityIndex;
     }
 
+    const index = new Map<string, RoomCommandIdentity>();
     try {
       const registryRaw = await readFile(Paths.getRoomsRegistryPath(), "utf8");
-      this.roomCommandIdentityIndex = buildRoomCommandIdentityIndex(
-        JSON.parse(registryRaw) as unknown
+      buildRoomCommandIdentityIndex(JSON.parse(registryRaw) as unknown).forEach(
+        (identity, commandName) => {
+          index.set(commandName, identity);
+        }
       );
     } catch {
-      this.roomCommandIdentityIndex = new Map();
+      // Registry files can be absent in isolated sync tests and first-run mail flows.
     }
 
+    const workspaceIndex = await buildWorkspaceRoomCommandIdentityIndex();
+    workspaceIndex.forEach((identity, commandName) => {
+      index.set(commandName, identity);
+    });
+
+    this.roomCommandIdentityIndex = index;
     return this.roomCommandIdentityIndex;
   }
 
@@ -2816,9 +2848,7 @@ export class Us1ConversationService {
       return indexedIdentity;
     }
 
-    // NOTE: Some test/runtime contexts may not have a populated rooms registry yet.
-    // We keep this fallback narrow to Game Room command naming.
-    return inferRoomCommandIdentity(commandName);
+    return null;
   }
 
   private async buildRoomCommandRecord(

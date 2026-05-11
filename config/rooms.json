@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-05-11T18:08:47.970Z",
+  "updatedAt": "2026-05-11T18:27:20.342Z",
   "rooms": [
     {
       "id": "forge-room",
@@ -452,8 +452,8 @@
           "path": "main-functions/forge-workbench/protocols/forge-room-synthesis.md"
         }
       ],
-      "installedAt": "2026-05-11T17:59:12.751Z",
-      "updatedAt": "2026-05-11T17:59:12.751Z"
+      "installedAt": "2026-05-11T18:24:12.658Z",
+      "updatedAt": "2026-05-11T18:24:12.658Z"
     },
     {
       "id": "game-room",
@@ -1128,8 +1128,8 @@
           "path": "main-functions/fate-knots/protocols/game-room-fate-knots-us1-transport.md"
         }
       ],
-      "installedAt": "2026-05-11T17:59:13.230Z",
-      "updatedAt": "2026-05-11T17:59:13.230Z"
+      "installedAt": "2026-05-11T18:24:13.109Z",
+      "updatedAt": "2026-05-11T18:24:13.109Z"
     },
     {
       "id": "repair-room",
@@ -1509,8 +1509,8 @@
           "path": "main-functions/repair-workbench/protocols/repair-room-risk-detector.md"
         }
       ],
-      "installedAt": "2026-05-11T17:59:13.455Z",
-      "updatedAt": "2026-05-11T17:59:13.455Z"
+      "installedAt": "2026-05-11T18:27:19.752Z",
+      "updatedAt": "2026-05-11T18:27:19.752Z"
     },
     {
       "id": "laboratory",
@@ -1609,8 +1609,8 @@
         }
       },
       "i18nBaseDir": "/home/raistlin/hayalet-ev/rooms/.build/laboratory/runtime/i18n",
-      "installedAt": "2026-05-11T18:08:47.970Z",
-      "updatedAt": "2026-05-11T18:08:47.970Z"
+      "installedAt": "2026-05-11T18:27:20.342Z",
+      "updatedAt": "2026-05-11T18:27:20.342Z"
     }
   ]
 }

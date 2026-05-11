@@ -40,20 +40,114 @@ function createInitialState(): RepairUiState {
       isFrozen: false,
       frozenAt: null,
       viewport: { zoom: 1, panXPx: 0, panYPx: 0 },
-      timeline: { playheadMs: 0, zoom: 1, rangeStartMs: null, rangeEndMs: null, autoFollowLive: true },
+      timeline: {
+        playheadMs: 0,
+        zoom: 1,
+        rangeStartMs: null,
+        rangeEndMs: null,
+        autoFollowLive: true,
+      },
       cursor: null,
-      visibleLayers: { grid: true, "ai-marks": true, annotations: true, "measurement-pins": true, focus: true },
+      visibleLayers: {
+        grid: true,
+        "ai-marks": true,
+        annotations: true,
+        "measurement-pins": true,
+        focus: true,
+      },
       hoveredEventId: null,
       focusedEventId: null,
       focusMode: false,
     },
     tacticalFeed: [],
-    wizard: { currentStep: "device-info", draft: { manufacturer: "", model: "", boardCode: "", serialNumber: "", intakeNotes: "", primarySymptoms: [], symptomFreeText: "" }, researchProgress: [], foundResources: [], generatedKnowledgePackId: null },
+    wizard: {
+      currentStep: "device-info",
+      draft: {
+        manufacturer: "",
+        model: "",
+        boardCode: "",
+        serialNumber: "",
+        intakeNotes: "",
+        primarySymptoms: [],
+        symptomFreeText: "",
+      },
+      researchProgress: [],
+      foundResources: [],
+      generatedKnowledgePackId: null,
+    },
     knowledgePack: { pack: null, attachedToSessionId: null, previewTabId: "schematic-preview" },
-    operatorProfile: { profile: { schemaVersion: 1, profileId: "", displayName: "Operator", bench: { tools: [], consumables: [], safety: [] }, skills: [], preferences: { measurementSystem: "metric", annotationDefaultColor: "#56c8de", annotationDefaultStrokeWidth: 2, riskTolerance: "medium", aiVerbosity: "standard" }, updatedAt: "" }, adaptation: { hasOscilloscope: false, hasBenchPsu: false, hasThermalCamera: false, hasHotAirStation: false, hasMicroscope: false, preferMultimeterFallbacks: true }, isDirty: false },
-    measurement: { activeInstrumentKind: "multimeter", current: { instrumentId: "", kind: "multimeter", label: "—", mode: "dc-voltage", range: "—", display: "— —", value: null, unit: "", hold: false, driftAmplitude: 0 }, recent: [] },
+    operatorProfile: {
+      profile: {
+        schemaVersion: 1,
+        profileId: "",
+        displayName: "Operator",
+        bench: { tools: [], consumables: [], safety: [] },
+        skills: [],
+        preferences: {
+          measurementSystem: "metric",
+          annotationDefaultColor: "#56c8de",
+          annotationDefaultStrokeWidth: 2,
+          riskTolerance: "medium",
+          aiVerbosity: "standard",
+        },
+        updatedAt: "",
+      },
+      adaptation: {
+        hasOscilloscope: false,
+        hasBenchPsu: false,
+        hasThermalCamera: false,
+        hasHotAirStation: false,
+        hasMicroscope: false,
+        preferMultimeterFallbacks: true,
+      },
+      isDirty: false,
+    },
+    measurement: {
+      activeInstrumentKind: "multimeter",
+      current: {
+        instrumentId: "",
+        kind: "multimeter",
+        label: "—",
+        mode: "dc-voltage",
+        range: "—",
+        display: "— —",
+        value: null,
+        unit: "",
+        hold: false,
+        driftAmplitude: 0,
+      },
+      recent: [],
+    },
     chat: { turns: [], composerDraft: "", pendingReplyId: null },
-    layout: { collapsedPanels: { "session-rail": false, "workbench-stage": false, "tactical-feed": false, "session-wizard": false, "knowledge-pack": false, "visual-timeline": false, "operator-profile": false, chat: false, measurement: false, "room-sync": false }, pinnedPanels: { "session-rail": true, "workbench-stage": true, "tactical-feed": false, "session-wizard": false, "knowledge-pack": false, "visual-timeline": true, "operator-profile": false, chat: false, measurement: false, "room-sync": true }, operatorProfileTabId: "tools", focusMode: false, ambientClock: "" },
+    layout: {
+      collapsedPanels: {
+        "session-rail": false,
+        "workbench-stage": false,
+        "tactical-feed": false,
+        "session-wizard": false,
+        "knowledge-pack": false,
+        "visual-timeline": false,
+        "operator-profile": false,
+        chat: false,
+        measurement: false,
+        "room-sync": false,
+      },
+      pinnedPanels: {
+        "session-rail": true,
+        "workbench-stage": true,
+        "tactical-feed": false,
+        "session-wizard": false,
+        "knowledge-pack": false,
+        "visual-timeline": true,
+        "operator-profile": false,
+        chat: false,
+        measurement: false,
+        "room-sync": true,
+      },
+      operatorProfileTabId: "tools",
+      focusMode: false,
+      ambientClock: "",
+    },
     ambient: { nowIso: "", sessionDurationMs: 0 },
   };
 }
@@ -125,7 +219,9 @@ export function createRepairRoomUiRuntime() {
 
   function formatOffset(ms: number): string {
     const totalSeconds = Math.max(0, Math.floor(ms / 1000));
-    const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, "0");
+    const minutes = Math.floor(totalSeconds / 60)
+      .toString()
+      .padStart(2, "0");
     const seconds = (totalSeconds % 60).toString().padStart(2, "0");
     return `+${minutes}:${seconds}`;
   }
@@ -150,7 +246,10 @@ export function createRepairRoomUiRuntime() {
     }
   }
 
-  function appendMeasurementReadingRow(list: HTMLElement, reading: RepairUiState["measurement"]["recent"][number]): void {
+  function appendMeasurementReadingRow(
+    list: HTMLElement,
+    reading: RepairUiState["measurement"]["recent"][number]
+  ): void {
     const row = documentRef.createElement("div");
     row.className = "repair-reading-row";
 
@@ -185,7 +284,9 @@ export function createRepairRoomUiRuntime() {
 
     const readingsList = documentRef.querySelector<HTMLElement>(".repair-readings-list");
     if (readingsList === null) return;
-    const fingerprint = state.measurement.recent.map((reading) => `${reading.id}:${reading.rawDisplay}`).join("|");
+    const fingerprint = state.measurement.recent
+      .map((reading) => `${reading.id}:${reading.rawDisplay}`)
+      .join("|");
     if (readingsList.dataset["fingerprint"] === fingerprint) return;
     readingsList.dataset["fingerprint"] = fingerprint;
     readingsList.replaceChildren();
@@ -196,7 +297,8 @@ export function createRepairRoomUiRuntime() {
 
   function updateSyncLiveDom(): void {
     documentRef.querySelectorAll<HTMLElement>(".repair-sync-row").forEach((row) => {
-      const label = row.querySelector<HTMLElement>(".repair-sync-row__label")?.textContent?.trim().toLowerCase() ?? "";
+      const labelElement = row.querySelector<HTMLElement>(".repair-sync-row__label");
+      const label = labelElement === null ? "" : labelElement.textContent.trim().toLowerCase();
       const value = row.querySelector<HTMLElement>(".repair-sync-row__value");
       if (value !== null && label === "playhead") {
         value.textContent = `+${Math.round(state.workbench.timeline.playheadMs / 1000)}s`;
@@ -254,7 +356,10 @@ export function createRepairRoomUiRuntime() {
           requestRuntime.addTimelineEvent({ kind: "annotation", ...payload });
         },
         onAddMeasurement: (payload) => {
-          requestRuntime.addMeasurement({ rawDisplay: state.measurement.current.display, ...payload });
+          requestRuntime.addMeasurement({
+            rawDisplay: state.measurement.current.display,
+            ...payload,
+          });
         },
         onCursor: updateCursorHud,
         onEventClick: (eventId) => {
@@ -308,7 +413,11 @@ export function createRepairRoomUiRuntime() {
     const clock = documentRef.createElement("span");
     clock.className = "repair-statusbar__clock";
     clock.textContent = state.ambient.nowIso
-      ? new Date(state.ambient.nowIso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+      ? new Date(state.ambient.nowIso).toLocaleTimeString("en-GB", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        })
       : "--:--:--";
     statusBar.append(clock);
 
@@ -399,13 +508,15 @@ export function createRepairRoomUiRuntime() {
       });
     });
 
-    root.querySelectorAll<HTMLElement>("[data-repair-action='toggle-overlay-layer']").forEach((el) => {
-      el.addEventListener("click", () => {
-        const layerId = el.dataset["layerId"];
-        const visible = el.dataset["visible"] === "true";
-        if (layerId) requestRuntime.toggleOverlayLayer({ layerId, visible });
+    root
+      .querySelectorAll<HTMLElement>("[data-repair-action='toggle-overlay-layer']")
+      .forEach((el) => {
+        el.addEventListener("click", () => {
+          const layerId = el.dataset["layerId"];
+          const visible = el.dataset["visible"] === "true";
+          if (layerId) requestRuntime.toggleOverlayLayer({ layerId, visible });
+        });
       });
-    });
 
     root.querySelectorAll<HTMLElement>("[data-repair-action='jump-to-event']").forEach((el) => {
       el.addEventListener("click", () => {
@@ -414,19 +525,23 @@ export function createRepairRoomUiRuntime() {
       });
     });
 
-    root.querySelectorAll<HTMLElement>("[data-repair-action='attach-knowledge-pack']").forEach((el) => {
-      el.addEventListener("click", () => {
-        const packId = el.dataset["packId"];
-        if (packId) requestRuntime.attachKnowledgePack({ packId });
+    root
+      .querySelectorAll<HTMLElement>("[data-repair-action='attach-knowledge-pack']")
+      .forEach((el) => {
+        el.addEventListener("click", () => {
+          const packId = el.dataset["packId"];
+          if (packId) requestRuntime.attachKnowledgePack({ packId });
+        });
       });
-    });
 
-    root.querySelectorAll<HTMLElement>("[data-repair-action='knowledge-pack-tab']").forEach((el) => {
-      el.addEventListener("click", () => {
-        const previewTabId = el.dataset["tabId"];
-        if (previewTabId) requestRuntime.updateLayout({ previewTabId });
+    root
+      .querySelectorAll<HTMLElement>("[data-repair-action='knowledge-pack-tab']")
+      .forEach((el) => {
+        el.addEventListener("click", () => {
+          const previewTabId = el.dataset["tabId"];
+          if (previewTabId) requestRuntime.updateLayout({ previewTabId });
+        });
       });
-    });
 
     root.querySelectorAll<HTMLElement>("[data-repair-action='set-instrument']").forEach((el) => {
       el.addEventListener("click", () => {
@@ -435,20 +550,24 @@ export function createRepairRoomUiRuntime() {
       });
     });
 
-    root.querySelectorAll<HTMLElement>("[data-repair-action='operator-profile-tab']").forEach((el) => {
-      el.addEventListener("click", () => {
-        const operatorProfileTabId = el.dataset["tabId"];
-        if (operatorProfileTabId) requestRuntime.updateLayout({ operatorProfileTabId });
+    root
+      .querySelectorAll<HTMLElement>("[data-repair-action='operator-profile-tab']")
+      .forEach((el) => {
+        el.addEventListener("click", () => {
+          const operatorProfileTabId = el.dataset["tabId"];
+          if (operatorProfileTabId) requestRuntime.updateLayout({ operatorProfileTabId });
+        });
       });
-    });
 
-    root.querySelectorAll<HTMLElement>("[data-repair-action='toggle-panel-collapse']").forEach((el) => {
-      el.addEventListener("click", () => {
-        const panelId = el.dataset["panelId"];
-        const collapsed = el.dataset["collapsed"] === "true";
-        if (panelId) requestRuntime.updateLayout({ panelId, collapsed });
+    root
+      .querySelectorAll<HTMLElement>("[data-repair-action='toggle-panel-collapse']")
+      .forEach((el) => {
+        el.addEventListener("click", () => {
+          const panelId = el.dataset["panelId"];
+          const collapsed = el.dataset["collapsed"] === "true";
+          if (panelId) requestRuntime.updateLayout({ panelId, collapsed });
+        });
       });
-    });
 
     root.querySelectorAll<HTMLElement>("[data-repair-action='toggle-panel-pin']").forEach((el) => {
       el.addEventListener("click", () => {
@@ -468,22 +587,28 @@ export function createRepairRoomUiRuntime() {
       });
     });
 
-    root.querySelectorAll<HTMLElement>("[data-repair-action='send-feed-question']").forEach((el) => {
-      el.addEventListener("click", () => {
-        const input = root.querySelector<HTMLInputElement>("[data-repair-input='feed-composer']");
-        if (input && input.value.trim() !== "") {
-          requestRuntime.sendChatTurn({ text: input.value.trim() });
-          input.value = "";
-        }
+    root
+      .querySelectorAll<HTMLElement>("[data-repair-action='send-feed-question']")
+      .forEach((el) => {
+        el.addEventListener("click", () => {
+          const input = root.querySelector<HTMLInputElement>("[data-repair-input='feed-composer']");
+          if (input && input.value.trim() !== "") {
+            requestRuntime.sendChatTurn({ text: input.value.trim() });
+            input.value = "";
+          }
+        });
       });
-    });
 
-    root.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("[data-repair-action='wizard-field']").forEach((el) => {
-      el.addEventListener("change", () => {
-        const field = el.dataset["wizardField"];
-        if (field) requestRuntime.updateSession({ wizardField: field, value: el.value });
+    root
+      .querySelectorAll<
+        HTMLInputElement | HTMLTextAreaElement
+      >("[data-repair-action='wizard-field']")
+      .forEach((el) => {
+        el.addEventListener("change", () => {
+          const field = el.dataset["wizardField"];
+          if (field) requestRuntime.updateSession({ wizardField: field, value: el.value });
+        });
       });
-    });
 
     root.querySelectorAll<HTMLElement>("[data-repair-action='wizard-symptom']").forEach((el) => {
       el.addEventListener("click", () => {
@@ -515,17 +640,22 @@ export function createRepairRoomUiRuntime() {
       });
     });
 
-    root.querySelectorAll<HTMLInputElement>("[data-repair-action='timeline-scrub']").forEach((el) => {
-      el.addEventListener("input", () => {
-        requestRuntime.scrubTimeline({ positionMs: Number(el.value) });
+    root
+      .querySelectorAll<HTMLInputElement>("[data-repair-action='timeline-scrub']")
+      .forEach((el) => {
+        el.addEventListener("input", () => {
+          requestRuntime.scrubTimeline({ positionMs: Number(el.value) });
+        });
       });
-    });
 
     root.querySelectorAll<HTMLElement>("[data-repair-action='timeline-zoom']").forEach((el) => {
       el.addEventListener("click", () => {
         const direction = el.dataset["direction"] === "out" ? -1 : 1;
         requestRuntime.updateLayout({
-          timelineZoom: Math.min(4, Math.max(0.25, state.workbench.timeline.zoom + direction * 0.25)),
+          timelineZoom: Math.min(
+            4,
+            Math.max(0.25, state.workbench.timeline.zoom + direction * 0.25)
+          ),
         });
       });
     });
@@ -543,9 +673,10 @@ export function createRepairRoomUiRuntime() {
 
   function jumpRelativeEvent(direction: -1 | 1): void {
     if (meta.events.length === 0) return;
-    const currentIndex = state.workbench.focusedEventId === null
-      ? -1
-      : meta.events.findIndex((event) => event.id === state.workbench.focusedEventId);
+    const currentIndex =
+      state.workbench.focusedEventId === null
+        ? -1
+        : meta.events.findIndex((event) => event.id === state.workbench.focusedEventId);
     const nextIndex = Math.min(meta.events.length - 1, Math.max(0, currentIndex + direction));
     const event = meta.events[nextIndex];
     if (event !== undefined) {
@@ -561,7 +692,12 @@ export function createRepairRoomUiRuntime() {
       (edge, event) => Math.max(edge, Date.parse(event.occurredAt) - sessionStart),
       0
     );
-    return Math.max(0, eventEdge, state.ambient.sessionDurationMs, state.workbench.timeline.playheadMs);
+    return Math.max(
+      0,
+      eventEdge,
+      state.ambient.sessionDurationMs,
+      state.workbench.timeline.playheadMs
+    );
   }
 
   function scrubTimelineTo(positionMs: number): void {

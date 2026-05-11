@@ -84,7 +84,10 @@ export function renderKnowledgePackPanel(
   tabs.style.marginTop = "8px";
 
   const tabItems = [
-    { id: "schematic-preview", label: text(["knowledgePack", "tabSchematic"], "Schematic Preview") },
+    {
+      id: "schematic-preview",
+      label: text(["knowledgePack", "tabSchematic"], "Schematic Preview"),
+    },
     { id: "board-view", label: text(["knowledgePack", "tabBoard"], "Board View") },
     { id: "notes", label: text(["knowledgePack", "tabNotes"], "Notes") },
   ];
@@ -106,7 +109,12 @@ export function renderKnowledgePackPanel(
     const resources = pack.resources
       .filter((resource) => resource.kind === "schematic" || resource.kind === "datasheet")
       .slice(0, 3);
-    appendPreviewImage(documentRef, preview, resources[0]?.src ?? null, resources[0]?.label ?? "Schematic preview");
+    appendPreviewImage(
+      documentRef,
+      preview,
+      resources[0]?.src ?? null,
+      resources[0]?.label ?? "Schematic preview"
+    );
     resources.forEach((resource) => {
       const row = documentRef.createElement("div");
       row.className = "repair-pack-preview__row";
@@ -114,8 +122,15 @@ export function renderKnowledgePackPanel(
       preview.append(row);
     });
   } else if (kp.previewTabId === "board-view") {
-    const resources = pack.resources.filter((resource) => resource.kind === "board-image").slice(0, 4);
-    appendPreviewImage(documentRef, preview, resources[0]?.src ?? null, resources[0]?.label ?? "Board preview");
+    const resources = pack.resources
+      .filter((resource) => resource.kind === "board-image")
+      .slice(0, 4);
+    appendPreviewImage(
+      documentRef,
+      preview,
+      resources[0]?.src ?? null,
+      resources[0]?.label ?? "Board preview"
+    );
     resources.forEach((resource) => {
       const row = documentRef.createElement("div");
       row.className = "repair-pack-preview__row";
