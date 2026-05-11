@@ -1,32 +1,35 @@
-US1 üzerinden Game Room XOX, ayrılmış bir taşıma kontratı kullanır.
+US1 uzerinden Game Room Tavla parcali bir transport kontrati kullanir.
 
-Yaşam döngüsü olayları konuşma zarfında `roomEvent` olarak taşınır:
+Yasam dongusu olaylari konusma zarfinda `roomEvent` olarak tasinir:
 
 - `invite`
 - `accept`
 - `reject`
 - `reset`
 
-Tur hamleleri `roomCommand` olarak taşınır ve e-posta gövdesinde tek bir `++cmd` satırı olarak da yansıtılır:
+Tur aksiyonlari `roomCommand` olarak tasinir ve mail govdesinde tek bir `++cmd` satiriyla aynalanir:
 
-- `++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomXoxRemoteMove",...}})`
+- `++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomBackgammonRemoteMove",...}})`
 
 Canonical alanlar:
 
-- `matchId`: tek bir uzak XOX maçı için kararlı kimlik
-- `inviteId`: şu anda `matchId` ile aynı değeri taşıyan uyumluluk takma adı
-- `turnIndex`: uygulanan hamleden önceki sıfır tabanlı hamle indeksi
-- `boardHashBeforeMove`: hamle öncesi kompakt tahta özeti hash'i
+- `matchId`: tek uzak Tavla maci icin sabit kimlik
+- `inviteId`: su anda `matchId` ile aynalanan uyumluluk alias'i
+- `turnIndex`: hamle uygulanmadan onceki sifir tabanli hamle indeksi
+- `boardHashBeforeMove`: hamle oncesi kompakt tahta hash'i
+- `turnToken`: host tarafindan mevcut tur icin uretilen token
+- `legalMoveId`: host'un legal hamle listesinden bir id
 
-Uzak hamle kontratı:
+Uzak hamle kontrati:
 
-- Payload tam olarak bir hedef hücre içermelidir.
-- `matchId` etkin XOX maçıyla eşleşmelidir.
-- `turnIndex` yerelin beklediği tur indeksiyle eşit olmalıdır.
-- `boardHashBeforeMove` hamle öncesindeki yerel tahta özetiyle eşleşmelidir.
-- Tekrarlanan veya bayat taşıma mesajları tahtayı değiştirmeden yok sayılmalıdır.
+- Payload tam olarak bir `legalMoveId` icermelidir.
+- `matchId` aktif Tavla maci ile eslesmelidir.
+- `turnIndex` yerel beklenen tur indeksiyle ayni olmalidir.
+- `boardHashBeforeMove` hamle oncesi yerel tahta hash'iyle eslesmelidir.
+- `turnToken` aktif yerel token ile eslesmelidir.
+- Yinelenen veya stale transport mesajlari tahtayi degistirmeden yoksayilmalidir.
 
-Sıfırlama kontratı:
+Reset kontrati:
 
-- `reset`, ilgili `matchId` için bekleyen veya etkin olan mevcut maçı sonlandırır.
-- Reset yalnızca hedeflenen maç durumunu temizlemeli, başka uzak hesaplara ait ilgisiz davetleri kaldırmamalıdır.
+- `reset`, hedeflenen `matchId` icin bekleyen veya aktif maci bitirir.
+- Reset sadece hedeflenen mac state'ini temizlemeli, baska uzak hesaplara ait davetleri silmemelidir.

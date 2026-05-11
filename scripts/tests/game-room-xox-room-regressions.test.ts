@@ -43,6 +43,7 @@ const requiredFiles = [
   "rooms/game-room/main-functions/xox/host/us1-sync-runtime.ts",
   "rooms/game-room/main-functions/xox/host/us1-runtime.ts",
   "rooms/game-room/main-functions/xox/ui/state-runtime.ts",
+  "rooms/game-room/main-functions/xox/ui/backgammon-stage-runtime.ts",
   "rooms/game-room/main-functions/xox/ui/render-runtime.ts",
   "rooms/game-room/main-functions/xox/ui/module.ts",
   "rooms/game-room/main-functions/xox/styles.css",
@@ -51,6 +52,7 @@ const requiredFiles = [
   "rooms/game-room/main-functions/xox/styles/board.css",
   "rooms/game-room/main-functions/xox/styles/scene-view.css",
   "rooms/game-room/shared/assets/room-background.webp",
+  "rooms/game-room/shared/vendor/konva.min.js",
   "rooms/game-room/main-functions/xox/assets/xox-view.webp",
 ];
 
@@ -237,6 +239,9 @@ test("game-room XOX UI forwards remote identity with invite actions", () => {
   const uiStateRuntimeSource = loadWorkspaceScriptForVm(
     "rooms/game-room/main-functions/xox/ui/state-runtime.ts"
   );
+  const backgammonStageRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/xox/ui/backgammon-stage-runtime.ts"
+  );
   const uiRenderRuntimeSource = loadWorkspaceScriptForVm(
     "rooms/game-room/main-functions/xox/ui/render-runtime.ts"
   );
@@ -272,6 +277,16 @@ test("game-room XOX UI forwards remote identity with invite actions", () => {
   );
 
   assert.match(indexHtmlSource, /<script src="\.\/context-runtime\.js"><\/script>/);
+  assert.match(indexHtmlSource, /shared\/vendor\/konva\.min\.js/);
+  assert.match(indexHtmlSource, /main-functions\/xox\/ui\/backgammon-stage-runtime\.js/);
+  assert.ok(
+    indexHtmlSource.indexOf("shared/vendor/konva.min.js") <
+      indexHtmlSource.indexOf("main-functions/xox/ui/backgammon-stage-runtime.js")
+  );
+  assert.ok(
+    indexHtmlSource.indexOf("main-functions/xox/ui/backgammon-stage-runtime.js") <
+      indexHtmlSource.indexOf("main-functions/xox/ui/render-runtime.js")
+  );
   assert.match(indexHtmlSource, /<script src="\.\/game-room-ui-bootstrap\.js"><\/script>/);
   assert.match(
     indexHtmlSource,
@@ -285,6 +300,9 @@ test("game-room XOX UI forwards remote identity with invite actions", () => {
   assert.match(stylesSource, /@import "\.\/styles\/scene-view\.css"/);
   assert.match(uiModuleSource, /createXoxUiStateRuntime/);
   assert.match(uiModuleSource, /createXoxUiRenderRuntime/);
+  assert.match(backgammonStageRuntimeSource, /createXoxBackgammonStageRuntime/);
+  assert.match(backgammonStageRuntimeSource, /renderBackgammonStage/);
+  assert.match(backgammonStageRuntimeSource, /draggable/);
   assert.match(runtimeSource, /from "\.\/runtime-match\.js"/);
   assert.match(runtimeSource, /from "\.\/runtime-sync\.js"/);
   assert.match(stateSource, /from "\.\/state-core\.js"/);
@@ -301,12 +319,12 @@ test("game-room XOX UI forwards remote identity with invite actions", () => {
   assert.match(us1SyncRuntimeSource, /export function createGameRoomXoxUs1SyncRuntime/);
   assert.match(
     uiStateRuntimeSource,
-    /sendRoomCommand\("GameRoomXoxAcceptInvite",\s*\{\s*(inviteId:\s*inviteId|inviteId),\s*(remoteUserId:\s*remoteUserId|remoteUserId)\s*,?\s*\}\s*\)/
+    /sendRoomCommand\("GameRoomBackgammonAcceptInvite",\s*\{\s*(inviteId:\s*inviteId|inviteId),\s*(remoteUserId:\s*remoteUserId|remoteUserId)\s*,?\s*\}\s*\)/
   );
   assert.match(
     uiStateRuntimeSource,
-    /sendRoomCommand\("GameRoomXoxRejectInvite",\s*\{\s*(inviteId:\s*inviteId|inviteId),\s*(remoteUserId:\s*remoteUserId|remoteUserId)\s*,?\s*\}\s*\)/
+    /sendRoomCommand\("GameRoomBackgammonRejectInvite",\s*\{\s*(inviteId:\s*inviteId|inviteId),\s*(remoteUserId:\s*remoteUserId|remoteUserId)\s*,?\s*\}\s*\)/
   );
   assert.match(uiRenderRuntimeSource, /function renderBootstrap\(root\)/);
-  assert.match(runtimeSource, /GameRoomXoxStart/);
+  assert.match(runtimeSource, /GameRoomBackgammonStart/);
 });

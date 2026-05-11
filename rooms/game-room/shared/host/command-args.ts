@@ -74,6 +74,18 @@ export function readBoardHashBeforeMove(payload: unknown): string | null {
   return null;
 }
 
+export function readLegalMoveId(payload: unknown): string | null {
+  const args = readArgs(payload);
+  const value = normalizeText(args["legalMoveId"]) || normalizeText(args["moveId"]);
+  return value !== "" ? value : null;
+}
+
+export function readTurnToken(payload: unknown): string | null {
+  const args = readArgs(payload);
+  const value = normalizeText(args["turnToken"]);
+  return value !== "" ? value : null;
+}
+
 export function readTransportMessageId(payload: unknown): string | null {
   if (
     isRecord(payload) &&

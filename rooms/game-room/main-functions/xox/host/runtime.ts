@@ -1,15 +1,19 @@
 import {
   DEFAULT_STARTER,
   DEFAULT_TARGET,
+  applyLegalMove,
+  applyOutcomeForSeat,
   buildBoardStateHash,
+  buildMirroredBoardStateHash,
   createInitialState,
   createPendingInvite,
   getOpponentInfo,
-  getOutcomeForBoard,
   loadInviteInbox,
   loadPendingInvite,
   loadState,
+  mirrorLegalMoveIdForOpponent,
   normalizeInviteInbox,
+  prepareTurn,
   pushRoomState,
   refreshRoomState,
   resolveStatusText,
@@ -21,10 +25,11 @@ import {
 } from "./state.js";
 import {
   readArgs,
-  readCell,
   readInviteId,
+  readLegalMoveId,
   readInviteNote,
   readRemoteUserId,
+  readTurnToken,
 } from "../../../shared/host/command-args.js";
 import { loadContext, readLocale } from "../../../shared/host/context-state.js";
 import type {
@@ -64,13 +69,13 @@ import { syncFromContext } from "./runtime-sync.js";
 import { createGameRoomXoxUs1Runtime } from "./us1-runtime.js";
 
 const XOX_COMMAND_NAMES = {
-  acceptInvite: "GameRoomXoxAcceptInvite",
-  aiMove: "GameRoomXoxAiMove",
-  rejectInvite: "GameRoomXoxRejectInvite",
-  remoteMove: "GameRoomXoxRemoteMove",
-  reset: "GameRoomXoxReset",
-  start: "GameRoomXoxStart",
-  userMove: "GameRoomXoxUserMove",
+  acceptInvite: "GameRoomBackgammonAcceptInvite",
+  aiMove: "GameRoomBackgammonAiMove",
+  rejectInvite: "GameRoomBackgammonRejectInvite",
+  remoteMove: "GameRoomBackgammonRemoteMove",
+  reset: "GameRoomBackgammonReset",
+  start: "GameRoomBackgammonStart",
+  userMove: "GameRoomBackgammonUserMove",
 };
 
 const xoxUs1Runtime = createGameRoomXoxUs1Runtime({
@@ -98,6 +103,7 @@ const xoxUs1Runtime = createGameRoomXoxUs1Runtime({
   loadTeamTetrisState: loadTeamTetrisState,
   normalizeInviteInbox: normalizeInviteInbox,
   parseTeamTetrisStartEventNote: parseTeamTetrisStartEventNote,
+  prepareTurn: prepareTurn,
   pushRoomState: pushRoomState,
   pushTeamTetrisState: pushTeamTetrisState,
   readLocale: readLocale,
@@ -341,9 +347,8 @@ async function handleStart(api: XoxRuntimeApi, payload: unknown): Promise<XoxCom
   }
 
   state.active = true;
-  state.awaitingMoveFrom = starter === "ai" ? "ai" : "user";
   state.result = "pending";
-  state.statusKey = starter === "ai" ? "aiTurn" : "userTurn";
+  prepareTurn(state, starter === "ai" ? "ai" : "user");
   pushRoomState(api, state);
 
   if (starter === "ai") {
@@ -406,7 +411,8 @@ async function handleReset(api: XoxRuntimeApi): Promise<XoxCommandResult> {
 async function handleUserMove(api: XoxRuntimeApi, payload: unknown): Promise<XoxCommandResult> {
   const state = loadState(api);
   const locale = state.locale;
-  const cell = readCell(payload);
+  const legalMoveId = readLegalMoveId(payload);
+  const turnToken = readTurnToken(payload);
 
   if (state.active !== true) {
     return { success: false, message: commandMessage(locale, "noActiveGame") };
@@ -417,13 +423,9 @@ async function handleUserMove(api: XoxRuntimeApi, payload: unknown): Promise<Xox
   if (state.awaitingMoveFrom !== "user") {
     return { success: false, message: commandMessage(locale, "notUserTurn") };
   }
-  if (cell === null || cell < 0 || cell > 8) {
-    return { success: false, message: commandMessage(locale, "invalidCell") };
+  if (turnToken !== null && turnToken !== state.turnToken) {
+    return { success: false, message: commandMessage(locale, "staleRemoteMove") };
   }
-  if (state.board[cell] !== "") {
-    return { success: false, message: commandMessage(locale, "cellFilled") };
-  }
-
   if (state.target === "us1") {
     if (state.remoteUserId === null) {
       return { success: false, message: commandMessage(locale, "needReadyOpponent") };
@@ -431,27 +433,34 @@ async function handleUserMove(api: XoxRuntimeApi, payload: unknown): Promise<Xox
   }
 
   const outboundTurnIndex = state.turnIndex;
-  const boardHashBeforeMove = buildBoardStateHash(state.board);
+  const selectedMove =
+    legalMoveId !== null ? state.legalMoves.find((move) => move.id === legalMoveId) : undefined;
+  const boardHashBeforeMove =
+    state.target === "us1"
+      ? buildMirroredBoardStateHash(state.board, state.bar, state.off)
+      : buildBoardStateHash(state.board, state.bar, state.off);
+  const outboundTurnToken = turnToken || state.turnToken;
+  const outboundLegalMoveId =
+    state.target === "us1" && selectedMove !== undefined
+      ? mirrorLegalMoveIdForOpponent(selectedMove)
+      : legalMoveId;
 
-  state.board[cell] = state.userSymbol;
+  if (legalMoveId === null || applyLegalMove(state, "user", legalMoveId) !== true) {
+    return { success: false, message: commandMessage(locale, "invalidMove") };
+  }
+
   state.turnIndex += 1;
-  const outcome = getOutcomeForBoard(state.board, state);
+  applyOutcomeForSeat(state, "user");
 
-  if (outcome.finished === true && "winner" in outcome && "statusKey" in outcome) {
-    state.active = false;
-    state.awaitingMoveFrom = null;
-    state.result = outcome.result || "draw";
-    state.winner = (outcome.winner || "") as typeof state.winner;
-    state.statusKey = outcome.statusKey || "draw";
-  } else {
-    state.awaitingMoveFrom = "ai";
-    state.result = "pending";
-    state.statusKey = "aiTurn";
+  const finished = state.result === "user-win";
+  if (!finished) {
+    prepareTurn(state, "ai");
   }
 
   if (state.target === "us1") {
     const sendResult = await sendUs1Move(toUs1InviteApi(api), state, {
-      cell: cell,
+      legalMoveId: outboundLegalMoveId || legalMoveId,
+      turnToken: outboundTurnToken,
       turnIndex: outboundTurnIndex,
       boardHashBeforeMove: boardHashBeforeMove,
     });
@@ -460,14 +469,13 @@ async function handleUserMove(api: XoxRuntimeApi, payload: unknown): Promise<Xox
     }
     return {
       success: true,
-      message:
-        outcome.finished === true
-          ? resolveStatusText(state, loadContext(api))
-          : commandMessage(locale, "moveSent"),
+      message: finished
+        ? resolveStatusText(state, loadContext(api))
+        : commandMessage(locale, "moveSent"),
     };
   }
 
-  if (outcome.finished === true) {
+  if (finished) {
     pushRoomState(api, state);
     return {
       success: true,

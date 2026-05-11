@@ -3,7 +3,7 @@
   "id": "game-room",
   "name": "Game Room",
   "version": "2.5.0",
-  "description": "A focused board-game room for XOX duels, four-seat Team Tetris matches, and the co-op Fate Knots story-combat skeleton with live AI slots plus the connected US1 remote user.",
+  "description": "A focused board-game room for Tavla matches, four-seat Team Tetris matches, and the co-op Fate Knots story-combat skeleton with live AI slots plus the connected US1 remote user.",
   "menu": {
     "label": "Game Room",
     "icon": "🎮",
@@ -84,49 +84,49 @@
   "features": [
     {
       "id": "xox",
-      "name": "XOX",
-      "description": "Three-in-a-row matches against AI1, AI2, or the connected US1 remote user.",
-      "icon": "XO",
+      "name": "Tavla",
+      "description": "Classic Tavla matches against AI1, AI2, or the connected US1 remote user.",
+      "icon": "TV",
       "commandSpecs": [
         {
-          "name": "GameRoomXoxStart",
-          "description": "Start a new XOX match from the room UI.",
+          "name": "GameRoomBackgammonStart",
+          "description": "Start a new Tavla match from the room UI.",
           "scope": "room-ui",
           "exposure": "internal"
         },
         {
-          "name": "GameRoomXoxReset",
-          "description": "Reset the active XOX match state.",
+          "name": "GameRoomBackgammonReset",
+          "description": "Reset the active Tavla match state.",
           "scope": "room-ui",
           "exposure": "internal"
         },
         {
-          "name": "GameRoomXoxUserMove",
-          "description": "Apply the user's XOX move from the room UI.",
+          "name": "GameRoomBackgammonUserMove",
+          "description": "Apply the user's Tavla legal move from the room UI.",
           "scope": "room-ui",
           "exposure": "internal"
         },
         {
-          "name": "GameRoomXoxAiMove",
-          "description": "Apply the AI move returned by the selected opponent slot.",
+          "name": "GameRoomBackgammonAiMove",
+          "description": "Apply the AI Tavla move returned by the selected opponent slot.",
           "scope": "ai-slots",
           "exposure": "internal"
         },
         {
-          "name": "GameRoomXoxRemoteMove",
-          "description": "Apply the remote US1 move delivered over room mail transport.",
+          "name": "GameRoomBackgammonRemoteMove",
+          "description": "Apply the remote US1 Tavla move delivered over room mail transport.",
           "scope": "us1",
           "exposure": "internal"
         },
         {
-          "name": "GameRoomXoxAcceptInvite",
-          "description": "Accept an incoming US1 XOX invite from the room UI.",
+          "name": "GameRoomBackgammonAcceptInvite",
+          "description": "Accept an incoming US1 Tavla invite from the room UI.",
           "scope": "room-ui",
           "exposure": "internal"
         },
         {
-          "name": "GameRoomXoxRejectInvite",
-          "description": "Reject an incoming US1 XOX invite from the room UI.",
+          "name": "GameRoomBackgammonRejectInvite",
+          "description": "Reject an incoming US1 Tavla invite from the room UI.",
           "scope": "room-ui",
           "exposure": "internal"
         }
@@ -136,7 +136,7 @@
           "key": "game-room-xox-user-start",
           "room": "game-room",
           "scenario": "xox-user-start",
-          "title": "[START][GAME-ROOM][XOX][USER-FIRST]",
+          "title": "[START][GAME-ROOM][TAVLA][USER-FIRST]",
           "editable": true,
           "path": "main-functions/xox/protocols/game-room-xox-user-start.md"
         },
@@ -144,7 +144,7 @@
           "key": "game-room-xox-ai-start",
           "room": "game-room",
           "scenario": "xox-ai-start",
-          "title": "[START][GAME-ROOM][XOX][AI-FIRST]",
+          "title": "[START][GAME-ROOM][TAVLA][AI-FIRST]",
           "editable": true,
           "path": "main-functions/xox/protocols/game-room-xox-ai-start.md"
         },
@@ -152,7 +152,7 @@
           "key": "game-room-xox-us1-transport",
           "room": "game-room",
           "scenario": "xox-us1-transport",
-          "title": "[INFO][GAME-ROOM][XOX][US1-TRANSPORT]",
+          "title": "[INFO][GAME-ROOM][TAVLA][US1-TRANSPORT]",
           "editable": false,
           "path": "main-functions/xox/protocols/game-room-xox-us1-transport.md"
         }
@@ -167,7 +167,7 @@
             "heightPx": 258
           },
           "label": {
-            "text": "XOX"
+            "text": "Tavla"
           }
         },
         "view": {

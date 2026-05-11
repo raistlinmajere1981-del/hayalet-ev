@@ -608,7 +608,7 @@ export function createGameRoomXoxUs1SyncRuntime(deps: XoxUs1SyncRuntimeDeps) {
             )
           : null;
       if (!result || result.success !== true) {
-        api.log("warn", `US1 XOX sync failed (${reason}).`);
+        api.log("warn", `US1 Tavla sync failed (${reason}).`);
         return;
       }
 

@@ -1,7 +1,10 @@
 import type { XoxGameState } from "./state-core.js";
 import { getOpponentInfo } from "./state.js";
 import { fillTemplate, translate } from "../../../shared/host/text.js";
-import { buildRoomBridgeCommand } from "../../../shared/host/slot-bridge-command.js";
+import {
+  buildRoomBridgeCommand,
+  buildUs1RoomBridgeCommand,
+} from "../../../shared/host/slot-bridge-command.js";
 import type {
   GameRoomContextState,
   GameRoomSlotState,
@@ -13,18 +16,12 @@ function readOpponentInfo(context: GameRoomContextState, state: XoxGameState): G
 
 export function commandMessage(locale: unknown, key: string, params: Record<string, unknown> = {}) {
   const messages = {
-    started: {
-      en: "XOX match started.",
-      tr: "XOX maci baslatildi.",
-    },
+    started: { en: "Tavla match started.", tr: "Tavla maci baslatildi." },
     inviteSent: {
-      en: "XOX invite sent to the remote opponent.",
-      tr: "Uzak rakibe XOX daveti gonderildi.",
+      en: "Tavla invite sent to the remote opponent.",
+      tr: "Uzak rakibe Tavla daveti gonderildi.",
     },
-    reset: {
-      en: "XOX match reset.",
-      tr: "XOX maci sifirlandi.",
-    },
+    reset: { en: "Tavla match reset.", tr: "Tavla maci sifirlandi." },
     needReadyOpponent: {
       en: "The selected opponent is not ready.",
       tr: "Secilen rakip hazir degil.",
@@ -33,26 +30,13 @@ export function commandMessage(locale: unknown, key: string, params: Record<stri
       en: "There is already a pending remote invite. Reset first if you want to start over.",
       tr: "Bekleyen bir uzak davet zaten var. Basa donmek icin once sifirla.",
     },
-    noActiveGame: {
-      en: "There is no active XOX match.",
-      tr: "Aktif bir XOX maci yok.",
-    },
+    noActiveGame: { en: "There is no active Tavla match.", tr: "Aktif bir Tavla maci yok." },
     blockedGame: {
       en: "This match is blocked. Reset to start again.",
       tr: "Bu mac bloke oldu. Yeniden baslamak icin sifirla.",
     },
-    notUserTurn: {
-      en: "It is not the user's turn.",
-      tr: "Sira kullanicida degil.",
-    },
-    invalidCell: {
-      en: "Choose a valid board cell from 0 to 8.",
-      tr: "0 ile 8 arasinda gecerli bir tahta hucresi sec.",
-    },
-    cellFilled: {
-      en: "That cell is already filled.",
-      tr: "Bu hucre zaten dolu.",
-    },
+    notUserTurn: { en: "It is not the user's turn.", tr: "Sira kullanicida degil." },
+    invalidMove: { en: "Choose a legal Tavla move.", tr: "Legal bir Tavla hamlesi sec." },
     moveSent: {
       en: "Move applied and sent to the opponent.",
       tr: "Hamle uygulandi ve rakibe gonderildi.",
@@ -66,41 +50,28 @@ export function commandMessage(locale: unknown, key: string, params: Record<stri
       tr: "Hamle aktif mactakinden farkli bir rakipten geldi.",
     },
     inviteMismatch: {
-      en: "The invite does not match the active XOX match.",
-      tr: "Davet bilgisi aktif XOX maci ile eslesmiyor.",
+      en: "The invite does not match the active Tavla match.",
+      tr: "Davet bilgisi aktif Tavla maci ile eslesmiyor.",
     },
     aiInvalidMove: {
       en: "The opponent sent an invalid move.",
       tr: "Rakip gecersiz bir hamle gonderdi.",
     },
-    aiFilledCell: {
-      en: "The opponent tried to play into a filled cell.",
-      tr: "Rakip dolu bir hucreye oynamaya calisti.",
-    },
     dispatchFailed: {
-      en: "The board update could not be sent to the opponent.",
-      tr: "Tahta guncellemesi rakibe gonderilemedi.",
+      en: "The Tavla update could not be sent to the opponent.",
+      tr: "Tavla guncellemesi rakibe gonderilemedi.",
     },
     inviteNotFound: {
       en: "The selected invite is no longer available.",
       tr: "Secilen davet artik kullanilabilir degil.",
     },
-    inviteAcceptFailed: {
-      en: "The invite could not be accepted.",
-      tr: "Davet kabul edilemedi.",
-    },
-    inviteRejectFailed: {
-      en: "The invite could not be rejected.",
-      tr: "Davet reddedilemedi.",
-    },
+    inviteAcceptFailed: { en: "The invite could not be accepted.", tr: "Davet kabul edilemedi." },
+    inviteRejectFailed: { en: "The invite could not be rejected.", tr: "Davet reddedilemedi." },
     inviteAccepted: {
       en: "The invite was accepted and the match is ready.",
       tr: "Davet kabul edildi ve mac hazir.",
     },
-    inviteRejected: {
-      en: "The invite was rejected.",
-      tr: "Davet reddedildi.",
-    },
+    inviteRejected: { en: "The invite was rejected.", tr: "Davet reddedildi." },
     staleRemoteMove: {
       en: "A stale remote move was ignored.",
       tr: "Gec kalan uzak hamle yoksayildi.",
@@ -114,63 +85,76 @@ export function commandMessage(locale: unknown, key: string, params: Record<stri
       tr: "Yerel sifirlama uygulandi, ancak uzak tarafa bildirim gonderilemedi.",
     },
     incomingInviteToast: {
-      en: "{opponent} sent a new XOX invite.",
-      tr: "{opponent} yeni bir XOX daveti gonderdi.",
+      en: "{opponent} sent a new Tavla invite.",
+      tr: "{opponent} yeni bir Tavla daveti gonderdi.",
     },
   };
   return fillTemplate(translate(locale, messages, key), params);
 }
 
+function formatDice(state: XoxGameState): string {
+  return state.dice.length > 0 ? state.dice.join("-") : "not rolled";
+}
+
+function formatBarOff(state: XoxGameState): string {
+  return [
+    `User bar/off: ${state.bar.user}/${state.off.user}`,
+    `Opponent bar/off: ${state.bar.ai}/${state.off.ai}`,
+  ].join("\n");
+}
+
+function formatLegalMoves(state: XoxGameState): string {
+  if (state.legalMoves.length === 0) {
+    return "- none";
+  }
+  return state.legalMoves
+    .map((move) => `- ${move.id}: ${move.label} (dice ${move.diceUsed.join(", ") || "pass"})`)
+    .join("\n");
+}
+
 export function buildAiTurnMessage(state: XoxGameState, context: GameRoomContextState) {
   const opponent = readOpponentInfo(context, state);
-  const availableCells = state.board
-    .map(function (_cell: string, index: number) {
-      return state.board[index] === "" ? String(index) : "";
-    })
-    .filter(Boolean)
-    .join(", ");
-  const boardAscii = state.board
-    .reduce(function (acc: string[][], value: string, index: number) {
-      const row = Math.floor(index / 3);
-      if (!acc[row]) {
-        acc[row] = [];
-      }
-      acc[row].push(value === "" ? String(index) : value);
-      return acc;
-    }, [])
-    .map(function (row: string[]) {
-      return row.join(" | ");
-    })
-    .join("\n---------\n");
   const userName = context.user.nickname;
-  const starterLabel = state.starter === "ai" ? opponent.nickname : userName;
+  const command = buildRoomBridgeCommand("GameRoomBackgammonAiMove", {
+    legalMoveId: state.legalMoves[0]?.id || "pass",
+    turnToken: state.turnToken,
+    turnIndex: state.turnIndex,
+  });
 
   return [
-    "XOX turn update from the Game Room.",
-    "Game: XOX.",
+    "Tavla turn update from the Game Room.",
+    "Game: classic Tavla / Backgammon. No doubling cube.",
     "Your reply is parsed from only the latest assistant message.",
-    `Use exactly one command line in this format: ${buildRoomBridgeCommand("GameRoomXoxAiMove", {
-      cell: 4,
-    })}`,
+    `Use exactly one command line in this format: ${command}`,
+    "Choose one legalMoveId from the list. Do not invent moves.",
     "Do not add markdown, prose, code fences, or a second command.",
     "",
     "Match setup:",
     "- Opponent: " + userName,
-    "- Starter: " + starterLabel,
-    "- You are playing as " + state.aiSymbol + ".",
-    "- The user is playing as " + state.userSymbol + ".",
+    "- You move as Opponent from point 1 toward point 24.",
+    "- The user moves from point 24 toward point 1.",
+    "- Current opponent slot: " + opponent.nickname,
     "",
+    "Dice: " + formatDice(state),
+    "Turn token: " + state.turnToken,
     "Board:",
-    boardAscii,
+    state.board
+      .map(
+        (point) =>
+          `${point.point}:${point.owner === "user" ? "U" : point.owner === "ai" ? "O" : "-"}${point.count}`
+      )
+      .join(" "),
+    formatBarOff(state),
     "",
-    "Open cells: " + (availableCells === "" ? "none" : availableCells),
-    "Current turn: " + opponent.nickname + " (" + state.aiSymbol + ")",
-    "If the board is finished, do not send a command.",
+    "Legal moves:",
+    formatLegalMoves(state),
+    "",
+    "If the only legal move is pass, send that pass legalMoveId.",
   ].join("\n");
 }
 
 export function buildInviteId() {
-  return `xox_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  return `tavla_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export function buildUs1InviteText(
@@ -187,7 +171,7 @@ export function buildUs1InviteText(
   }
 
   parts.push(
-    "XOX invite from the Game Room.",
+    "Tavla invite from the Game Room.",
     "Opponent: " + context.user.nickname,
     "Starter: " + starterLabel,
     "Accept or reject the invite from the Game Room UI."
@@ -200,25 +184,45 @@ export function buildUs1InviteResponseText(
   type: string,
   inviteEntry: { matchId?: string; inviteId?: string }
 ) {
-  const opener = type === "accept" ? "XOX invite accepted." : "XOX invite rejected.";
+  const opener = type === "accept" ? "Tavla invite accepted." : "Tavla invite rejected.";
   return [opener, "Match ID: " + (inviteEntry.matchId || inviteEntry.inviteId)].join("\n");
 }
 
 export function buildUs1ResetText(matchId: string) {
-  return ["XOX match reset.", "Match ID: " + matchId].join("\n");
+  return ["Tavla match reset.", "Match ID: " + matchId].join("\n");
 }
 
 export function buildUs1MoveText(
   matchId: string,
   turnIndex: number,
   boardHashBeforeMove: string,
-  cell: number
+  legalMoveId: string,
+  turnToken: string
 ) {
-  return buildRoomBridgeCommand("GameRoomXoxRemoteMove", {
-    matchId: matchId,
+  return buildRoomBridgeCommand("GameRoomBackgammonRemoteMove", {
+    matchId,
     inviteId: matchId,
-    turnIndex: turnIndex,
-    boardHashBeforeMove: boardHashBeforeMove,
-    cell: cell,
+    turnIndex,
+    boardHashBeforeMove,
+    legalMoveId,
+    turnToken,
+  });
+}
+
+export function buildUs1MoveRoomCommand(payload: {
+  matchId: string;
+  turnIndex: number;
+  boardHashBeforeMove: string;
+  legalMoveId: string;
+  turnToken: string;
+}) {
+  return buildUs1RoomBridgeCommand({
+    roomId: "game-room",
+    featureId: "xox",
+    commandName: "GameRoomBackgammonRemoteMove",
+    matchId: payload.matchId,
+    turnIndex: payload.turnIndex,
+    boardHashBeforeMove: payload.boardHashBeforeMove,
+    payload,
   });
 }

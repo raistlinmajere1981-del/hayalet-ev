@@ -58,7 +58,7 @@ export function createGameRoomCommandRegistry(
     npcBanter: deps.fateKnotsCommandNames["npcBanter"] || "GameRoomFateKnotsNpcBanter",
   };
 
-  return {
+  const registry: Record<string, (payload?: unknown) => unknown> = {
     [xoxCommands.start]: function (payload?: unknown) {
       return deps.handleXoxStart(api, payload || {});
     },
@@ -138,4 +138,25 @@ export function createGameRoomCommandRegistry(
       return deps.handleFateKnotsNpcBanter(api, payload || {});
     },
   };
+
+  const xoxAliases = {
+    start: ["GameRoomXoxStart", "GameRoomBackgammonStart"],
+    reset: ["GameRoomXoxReset", "GameRoomBackgammonReset"],
+    userMove: ["GameRoomXoxUserMove", "GameRoomBackgammonUserMove"],
+    aiMove: ["GameRoomXoxAiMove", "GameRoomBackgammonAiMove"],
+    remoteMove: ["GameRoomXoxRemoteMove", "GameRoomBackgammonRemoteMove"],
+    acceptInvite: ["GameRoomXoxAcceptInvite", "GameRoomBackgammonAcceptInvite"],
+    rejectInvite: ["GameRoomXoxRejectInvite", "GameRoomBackgammonRejectInvite"],
+  };
+  Object.entries(xoxAliases).forEach(([key, names]) => {
+    const handler = registry[xoxCommands[key as keyof typeof xoxCommands]];
+    if (typeof handler !== "function") {
+      return;
+    }
+    names.forEach((name) => {
+      registry[name] = handler;
+    });
+  });
+
+  return registry;
 }

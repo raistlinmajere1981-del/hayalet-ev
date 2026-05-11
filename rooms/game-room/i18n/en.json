@@ -2,14 +2,14 @@
   "title": "Game Room",
   "subtitle": "Focused table game room for direct matches with live AI slots or the connected US1 remote user.",
   "features": {
-    "xox": "XOX",
+    "xox": "Tavla",
     "team-tetris": "Team Tetris",
     "fate-knots": "Fate Knots"
   },
   "xox": {
     "heroBadge": "Game Room",
-    "heroTitle": "XOX Match Table",
-    "heroSubtitle": "Pick AI1, AI2, or US1, choose who starts, and run a clean XOX duel with room-scoped commands.",
+    "heroTitle": "Tavla Match Table",
+    "heroSubtitle": "Pick AI1, AI2, or US1, choose who starts, and play a turn-based Tavla match with legal move commands.",
     "topbar": {
       "featureLabel": "Main Function",
       "opponentLabel": "Opponent",
@@ -30,19 +30,36 @@
       "statusLabel": "Match Status",
       "turnLabel": "Turn",
       "resultLabel": "Result",
-      "symbolsLabel": "Symbols",
-      "cellsLabel": "Open Cells",
-      "asciiLabel": "Text Board"
+      "symbolsLabel": "Checkers",
+      "cellsLabel": "Legal Points",
+      "asciiLabel": "Text Board",
+      "diceLabel": "Dice",
+      "barLabel": "Bar",
+      "offLabel": "Off",
+      "legalMovesLabel": "Legal Moves",
+      "fallbackMovesLabel": "Fallback Moves",
+      "fallbackMovesHint": "Drag checkers on the board; these buttons stay as a compact fallback.",
+      "moreMoves": "more moves",
+      "noMoves": "No legal moves for this turn.",
+      "dragHint": "Drag a checker to a highlighted point.",
+      "dragActiveHint": "Complete the staged move.",
+      "opponentThinking": "Opponent is choosing a move.",
+      "stageIdle": "Start a match to open the board.",
+      "stageFallback": "Visual board engine is loading.",
+      "passMove": "Pass",
+      "undoStage": "Undo",
+      "targetCount": "targets",
+      "noTargetCount": "no target"
     },
     "side": {
       "title": "Live Opponents",
       "protocolTitle": "Protocol Rules",
       "controlsTitle": "How It Works",
-      "commandHint": "AI reply format: ++cmd:SlotBridge({\"action\":\"room.command\",\"payload\":{\"commandName\":\"GameRoomXoxAiMove\",\"cell\":4}})",
+      "commandHint": "AI reply format: ++cmd:SlotBridge({\"action\":\"room.command\",\"payload\":{\"commandName\":\"GameRoomBackgammonAiMove\",\"legalMoveId\":\"move_id\",\"turnToken\":\"token\"}})",
       "latestMessageHint": "Only the latest assistant message is scanned for commands.",
       "help1": "1. Choose a connected AI slot and decide who opens the match.",
-      "help2": "2. When it is your turn, tap one empty board cell.",
-      "help3": "3. Every AI turn receives the current board as text plus the protocol."
+      "help2": "2. When it is your turn, choose one legal move.",
+      "help3": "3. Every AI turn receives dice, board state, token, and legal move ids."
     },
     "status": {
       "roomApiUnavailable": "Room API bridge is not connected.",

@@ -23,7 +23,8 @@ interface Us1InviteRuntimeDeps {
     matchId: string,
     turnIndex: number,
     boardHashBeforeMove: string,
-    cell: number
+    legalMoveId: string,
+    turnToken: string
   ) => string;
   buildUs1ResetText: (matchId: string) => string;
   commandMessage: (locale: unknown, key: string, params?: Record<string, unknown>) => string;
@@ -39,6 +40,7 @@ interface Us1InviteRuntimeDeps {
   loadContext: (api: Us1Api) => GameRoomContextState;
   loadInviteInbox: (api: Us1Api) => InviteEntry[];
   normalizeInviteInbox: (value: unknown) => InviteEntry[];
+  prepareTurn: (state: XoxGameState, seat: "ai" | "user") => XoxGameState;
   pushRoomState: (api: Us1Api, state: XoxGameState) => XoxGameState;
   readLocale: (api: Us1Api) => "tr" | "en";
   removePendingInvite: (api: Us1Api) => void;
@@ -62,6 +64,7 @@ export function createGameRoomXoxUs1InviteRuntime(deps: Us1InviteRuntimeDeps) {
     loadContext,
     loadInviteInbox,
     normalizeInviteInbox,
+    prepareTurn,
     pushRoomState,
     readLocale,
     removePendingInvite,
@@ -149,8 +152,6 @@ export function createGameRoomXoxUs1InviteRuntime(deps: Us1InviteRuntimeDeps) {
     const state = createInitialState(readLocale(api), "us1", starter);
     state.active = true;
     state.result = "pending";
-    state.awaitingMoveFrom = starter === "ai" ? "ai" : "user";
-    state.statusKey = starter === "ai" ? "aiTurn" : "userTurn";
     state.matchId = inviteEntry.matchId || inviteEntry.inviteId;
     state.inviteId = inviteEntry.inviteId || inviteEntry.matchId || null;
     state.turnIndex = 0;
@@ -158,6 +159,7 @@ export function createGameRoomXoxUs1InviteRuntime(deps: Us1InviteRuntimeDeps) {
     state.remoteUserId = inviteEntry.remoteUserId;
     state.opponentNickname = inviteEntry.nickname;
     state.protocolDelivered = true;
+    prepareTurn(state, starter === "ai" ? "ai" : "user");
     removePendingInvite(api);
     removeInviteFromInbox(
       api,
@@ -234,7 +236,12 @@ export function createGameRoomXoxUs1InviteRuntime(deps: Us1InviteRuntimeDeps) {
   async function sendUs1Move(
     api: Us1Api,
     state: XoxGameState,
-    moveContext: { turnIndex: number; boardHashBeforeMove: string; cell: number }
+    moveContext: {
+      turnIndex: number;
+      boardHashBeforeMove: string;
+      legalMoveId: string;
+      turnToken: string;
+    }
   ) {
     const context = loadContext(api);
     const opponent = getOpponentInfo(context, state);
@@ -253,7 +260,8 @@ export function createGameRoomXoxUs1InviteRuntime(deps: Us1InviteRuntimeDeps) {
       inviteId: matchId,
       turnIndex: moveContext.turnIndex,
       boardHashBeforeMove: moveContext.boardHashBeforeMove,
-      cell: moveContext.cell,
+      legalMoveId: moveContext.legalMoveId,
+      turnToken: moveContext.turnToken,
     };
     const sendResult = await api.dispatchUs1BridgeMessage({
       localSessionId: state.localSessionId,
@@ -262,12 +270,13 @@ export function createGameRoomXoxUs1InviteRuntime(deps: Us1InviteRuntimeDeps) {
         matchId,
         moveContext.turnIndex,
         moveContext.boardHashBeforeMove,
-        moveContext.cell
+        moveContext.legalMoveId,
+        moveContext.turnToken
       ),
       roomCommand: buildUs1RoomBridgeCommand({
         roomId: ROOM_ID,
         featureId: FEATURE_ID,
-        commandName: "GameRoomXoxRemoteMove",
+        commandName: "GameRoomBackgammonRemoteMove",
         matchId,
         turnIndex: moveContext.turnIndex,
         boardHashBeforeMove: moveContext.boardHashBeforeMove,

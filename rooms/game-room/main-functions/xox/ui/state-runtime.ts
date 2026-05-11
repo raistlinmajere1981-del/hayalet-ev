@@ -8,6 +8,25 @@
   type XoxStarter = "user" | "ai";
   type XoxInviteStarter = "user" | "opponent";
   type XoxAwaitingMove = "user" | "ai" | null;
+  type BackgammonOwner = "user" | "ai" | "";
+  type BackgammonPoint = {
+    point: number;
+    owner: BackgammonOwner;
+    count: number;
+  };
+  type BackgammonSubMove = {
+    from: { type: "bar"; seat: "user" | "ai" } | { type: "point"; point: number };
+    to: { type: "off" } | { type: "point"; point: number };
+    die: number;
+    hit: boolean;
+  };
+  type BackgammonLegalMove = {
+    id: string;
+    label: string;
+    moves: BackgammonSubMove[];
+    diceUsed: number[];
+    pass?: boolean;
+  };
   type XoxInviteEntry = {
     roomId: string;
     featureId: string;
@@ -21,20 +40,11 @@
     conversationId: string;
     sentAt: number | null;
   };
-  type XoxPendingInvite = {
+  type XoxPendingInvite = XoxInviteEntry & {
     direction: "incoming" | "outgoing";
-    roomId: string;
-    featureId: string;
-    inviteId: string;
-    remoteUserId: string;
-    nickname: string;
-    note: string;
-    starter: XoxInviteStarter;
-    localSessionId: string;
-    conversationId: string;
   };
   type XoxSlotState = {
-    slotId: string;
+    slotId: XoxTarget;
     nickname: string;
     avatar?: string | null;
     assigned?: boolean;
@@ -49,29 +59,33 @@
     opponentNickname: string;
     opponentAvatar: string | null;
     userNickname: string;
-    userSymbol: "X" | "O";
-    aiSymbol: "X" | "O";
-    result: "user-win" | "ai-win" | "draw";
+    result: "user-win" | "ai-win";
     starter: "ai" | "user";
-    board: string[];
+    scorePoints: number;
+    boardHash: string;
   };
   type XoxGameState = {
-    board: string[];
+    board: BackgammonPoint[];
     boardAscii: string;
-    availableCells: number[];
+    boardHash: string;
+    bar: Record<"user" | "ai", number>;
+    off: Record<"user" | "ai", number>;
+    dice: number[];
+    legalMoves: BackgammonLegalMove[];
     active: boolean;
     awaitingMoveFrom: XoxAwaitingMove;
     result: string;
     winner: string;
     selectedTarget: XoxTarget;
     starter: XoxStarter;
-    userSymbol: "X" | "O";
-    aiSymbol: "X" | "O";
     status: string;
     blockedReason: string;
     protocolDelivered: boolean;
     opponentReady: boolean;
     inviteId: string | null;
+    matchId: string | null;
+    turnIndex: number;
+    turnToken: string;
     localSessionId: string | null;
     remoteUserId: string | null;
     pendingInvite: XoxPendingInvite | null;
@@ -81,6 +95,7 @@
     user: {
       nickname: string;
     };
+    scorePoints: number;
   };
   type XoxUiState = {
     game: XoxGameState;
@@ -120,13 +135,14 @@
     getCurrentStatus: () => string;
     getResultLabel: () => string;
     getTurnLabel: () => string;
-    getSymbolsLabel: () => string;
-    getOpenCellsLabel: () => string;
-    getBoardCaption: () => string;
+    getDiceLabel: () => string;
+    getBearOffLabel: () => string;
+    getBarLabel: () => string;
     getStarterLabelForCurrentTarget: (value: XoxStarter) => string;
     formatInviteMeta: (invite: XoxInviteEntry) => string;
     onStart: () => void;
     onReset: () => void;
+    onLegalMove: (moveId: string) => void;
     onCellClick: (index: number) => void;
     onAcceptInvite: (inviteId: string, remoteUserId: string) => void;
     onRejectInvite: (inviteId: string, remoteUserId: string) => void;
@@ -149,6 +165,10 @@
     return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
   }
 
+  function readCounter(value: unknown): number {
+    return typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.trunc(value) : 0;
+  }
+
   function readTarget(value: unknown): XoxTarget {
     return value === "ai2" || value === "us1" ? value : "ai1";
   }
@@ -159,6 +179,107 @@
 
   function readInviteStarter(value: unknown): XoxInviteStarter {
     return value === "opponent" ? "opponent" : "user";
+  }
+
+  function createDefaultBoard(): BackgammonPoint[] {
+    const board: BackgammonPoint[] = [];
+    for (let point = 1; point <= 24; point += 1) {
+      board.push({ point, owner: "", count: 0 });
+    }
+    [
+      [24, "user", 2],
+      [13, "user", 5],
+      [8, "user", 3],
+      [6, "user", 5],
+      [1, "ai", 2],
+      [12, "ai", 5],
+      [17, "ai", 3],
+      [19, "ai", 5],
+    ].forEach(function (entry) {
+      const point = entry[0] as number;
+      board[point - 1] = {
+        point,
+        owner: entry[1] as BackgammonOwner,
+        count: entry[2] as number,
+      };
+    });
+    return board;
+  }
+
+  function normalizePoint(candidate: unknown, fallbackPoint: number): BackgammonPoint {
+    const source = isRecord(candidate) ? candidate : {};
+    const point =
+      typeof source["point"] === "number" &&
+      Number.isInteger(source["point"]) &&
+      source["point"] >= 1 &&
+      source["point"] <= 24
+        ? source["point"]
+        : fallbackPoint;
+    const owner = source["owner"] === "user" || source["owner"] === "ai" ? source["owner"] : "";
+    const count = readCounter(source["count"]);
+    return {
+      point,
+      owner: count > 0 ? owner : "",
+      count: owner === "" ? 0 : count,
+    };
+  }
+
+  function normalizeBoard(value: unknown): BackgammonPoint[] {
+    const fallback = createDefaultBoard();
+    if (Array.isArray(value) === false) {
+      return fallback;
+    }
+    const emptyOwner: BackgammonOwner = "";
+    const board: BackgammonPoint[] = fallback.map(function (point) {
+      return { point: point.point, owner: emptyOwner, count: 0 };
+    });
+    value.slice(0, 24).forEach(function (entry, index) {
+      const point = normalizePoint(entry, index + 1);
+      board[point.point - 1] = point;
+    });
+    return board;
+  }
+
+  function normalizeCounters(value: unknown): Record<"user" | "ai", number> {
+    const source = isRecord(value) ? value : {};
+    return {
+      user: readCounter(source["user"]),
+      ai: readCounter(source["ai"]),
+    };
+  }
+
+  function normalizeDice(value: unknown): number[] {
+    return Array.isArray(value)
+      ? value.filter(function (entry): entry is number {
+          return typeof entry === "number" && Number.isInteger(entry) && entry >= 1 && entry <= 6;
+        })
+      : [];
+  }
+
+  function normalizeLegalMoves(value: unknown): BackgammonLegalMove[] {
+    if (Array.isArray(value) === false) {
+      return [];
+    }
+    return value
+      .map(function (entry): BackgammonLegalMove | null {
+        if (isRecord(entry) === false) {
+          return null;
+        }
+        const id = readString(entry["id"], "");
+        if (id === "") {
+          return null;
+        }
+        return {
+          id,
+          label: readString(entry["label"], id),
+          moves: Array.isArray(entry["moves"]) ? (entry["moves"] as BackgammonSubMove[]) : [],
+          diceUsed: normalizeDice(entry["diceUsed"]),
+          pass: entry["pass"] === true,
+        };
+      })
+      .filter(function (entry): entry is BackgammonLegalMove {
+        return entry !== null;
+      });
   }
 
   type XoxUiStateRuntimeRegistry = GameRoomUiFactoriesRegistry & {
@@ -178,27 +299,29 @@
     const text = deps.text;
     const sendRoomCommand = deps.sendRoomCommand;
 
-    const EMPTY_BOARD = ["", "", "", "", "", "", "", "", ""];
-    const EMPTY_ASCII = "0 | 1 | 2\n---------\n3 | 4 | 5\n---------\n6 | 7 | 8";
-
     function createGameState(): XoxGameState {
       return {
-        board: EMPTY_BOARD.slice(),
-        boardAscii: EMPTY_ASCII,
-        availableCells: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+        board: createDefaultBoard(),
+        boardAscii: "",
+        boardHash: "",
+        bar: { user: 0, ai: 0 },
+        off: { user: 0, ai: 0 },
+        dice: [],
+        legalMoves: [],
         active: false,
         awaitingMoveFrom: null,
         result: "idle",
         winner: "",
         selectedTarget: "ai1",
         starter: "user",
-        userSymbol: "X",
-        aiSymbol: "O",
         status: "",
         blockedReason: "",
         protocolDelivered: false,
         opponentReady: false,
         inviteId: null,
+        matchId: null,
+        turnIndex: 0,
+        turnToken: "",
         localSessionId: null,
         remoteUserId: null,
         pendingInvite: null,
@@ -208,6 +331,7 @@
         user: {
           nickname: "User",
         },
+        scorePoints: 1,
       };
     }
 
@@ -216,7 +340,7 @@
       const entry = createInviteEntry();
       entry.roomId = readString(source["roomId"], roomId);
       entry.featureId = readString(source["featureId"], featureId);
-      entry.inviteId = readString(source["inviteId"], "");
+      entry.inviteId = readString(source["inviteId"], readString(source["matchId"], ""));
       entry.remoteUserId = readString(source["remoteUserId"], "");
       entry.nickname = readString(source["nickname"], readString(source["senderNickname"], "US1"));
       entry.senderEmail = readString(source["senderEmail"], "");
@@ -234,67 +358,11 @@
     }
 
     function normalizeInviteInbox(value: unknown): XoxInviteEntry[] {
-      if (!Array.isArray(value)) {
-        return [];
-      }
-      return value
-        .map(function (entry: unknown) {
-          return normalizeInviteEntry(entry);
-        })
-        .filter(function (entry: XoxInviteEntry) {
-          return entry.inviteId !== "" && entry.remoteUserId !== "";
-        });
-    }
-
-    function normalizeMatchHistoryEntry(candidate: unknown): XoxMatchHistoryEntry | null {
-      if (isRecord(candidate) === false) {
-        return null;
-      }
-      const source = candidate;
-      const id = readString(source["id"], "");
-      const result = source["result"];
-      if (id === "" || (result !== "user-win" && result !== "ai-win" && result !== "draw")) {
-        return null;
-      }
-      const finishedAt =
-        typeof source["finishedAt"] === "number" &&
-        Number.isFinite(source["finishedAt"]) &&
-        source["finishedAt"] >= 0
-          ? Math.trunc(source["finishedAt"])
-          : 0;
-      const boardSource = Array.isArray(source["board"]) ? (source["board"] as unknown[]) : [];
-      const board: string[] = [];
-      for (let index = 0; index < 9; index += 1) {
-        const raw: unknown = boardSource[index];
-        board.push(raw === "X" || raw === "O" ? raw : "");
-      }
-      return {
-        id,
-        finishedAt,
-        target: readString(source["target"], "ai1"),
-        opponentNickname: readString(source["opponentNickname"], "Rakip"),
-        opponentAvatar: readString(source["opponentAvatar"], "") || null,
-        userNickname: readString(source["userNickname"], "User"),
-        userSymbol: source["userSymbol"] === "O" ? "O" : "X",
-        aiSymbol: source["aiSymbol"] === "X" ? "X" : "O",
-        result,
-        starter: source["starter"] === "ai" ? "ai" : "user",
-        board,
-      };
-    }
-
-    function normalizeMatchHistory(value: unknown): XoxMatchHistoryEntry[] {
-      if (!Array.isArray(value)) {
-        return [];
-      }
-      const entries: XoxMatchHistoryEntry[] = [];
-      for (let index = 0; index < value.length; index += 1) {
-        const entry = normalizeMatchHistoryEntry(value[index]);
-        if (entry !== null) {
-          entries.push(entry);
-        }
-      }
-      return entries.slice(0, 20);
+      return Array.isArray(value)
+        ? value
+            .map(normalizeInviteEntry)
+            .filter((entry) => entry.inviteId !== "" && entry.remoteUserId !== "")
+        : [];
     }
 
     function normalizePendingInvite(value: unknown): XoxPendingInvite | null {
@@ -306,37 +374,52 @@
         return null;
       }
       return {
+        ...entry,
         direction: value["direction"] === "incoming" ? "incoming" : "outgoing",
-        roomId: entry.roomId,
-        featureId: entry.featureId,
-        inviteId: entry.inviteId,
-        remoteUserId: entry.remoteUserId,
-        nickname: entry.nickname,
-        note: entry.note,
-        starter: entry.starter,
-        localSessionId: entry.localSessionId,
-        conversationId: entry.conversationId,
       };
+    }
+
+    function normalizeMatchHistory(value: unknown): XoxMatchHistoryEntry[] {
+      if (Array.isArray(value) === false) {
+        return [];
+      }
+      return value
+        .map(function (entry): XoxMatchHistoryEntry | null {
+          if (isRecord(entry) === false) {
+            return null;
+          }
+          const id = readString(entry["id"], "");
+          const result = entry["result"];
+          if (id === "" || (result !== "user-win" && result !== "ai-win")) {
+            return null;
+          }
+          return {
+            id,
+            finishedAt: readCounter(entry["finishedAt"]),
+            target: readString(entry["target"], "ai1"),
+            opponentNickname: readString(entry["opponentNickname"], "Rakip"),
+            opponentAvatar: readOptionalString(entry["opponentAvatar"]),
+            userNickname: readString(entry["userNickname"], "User"),
+            result,
+            starter: entry["starter"] === "ai" ? "ai" : "user",
+            scorePoints: readCounter(entry["scorePoints"]) || 1,
+            boardHash: readString(entry["boardHash"], ""),
+          };
+        })
+        .filter((entry): entry is XoxMatchHistoryEntry => entry !== null)
+        .slice(0, 20);
     }
 
     function sanitizeGameState(candidate: unknown): XoxGameState {
       const source = isRecord(candidate) ? candidate : {};
       const next = createGameState();
-      if (Array.isArray(source["board"]) && source["board"].length === 9) {
-        next.board = source["board"].map(function (value: unknown) {
-          return value === "X" || value === "O" ? value : "";
-        });
-      }
-      if (typeof source["boardAscii"] === "string" && source["boardAscii"].trim() !== "") {
-        next.boardAscii = source["boardAscii"];
-      }
-      if (Array.isArray(source["availableCells"])) {
-        next.availableCells = source["availableCells"].filter(function (
-          value: unknown
-        ): value is number {
-          return typeof value === "number" && Number.isInteger(value);
-        });
-      }
+      next.board = normalizeBoard(source["board"]);
+      next.boardAscii = readString(source["boardAscii"], "");
+      next.boardHash = readString(source["boardHash"], "");
+      next.bar = normalizeCounters(source["bar"]);
+      next.off = normalizeCounters(source["off"]);
+      next.dice = normalizeDice(source["dice"]);
+      next.legalMoves = normalizeLegalMoves(source["legalMoves"]);
       next.active = source["active"] === true;
       next.awaitingMoveFrom =
         source["awaitingMoveFrom"] === "user" || source["awaitingMoveFrom"] === "ai"
@@ -347,19 +430,21 @@
         source["winner"] === "user" || source["winner"] === "ai" ? source["winner"] : "";
       next.selectedTarget = readTarget(source["selectedTarget"]);
       next.starter = readStarter(source["starter"]);
-      next.userSymbol = source["userSymbol"] === "O" ? "O" : "X";
-      next.aiSymbol = source["aiSymbol"] === "X" ? "X" : "O";
       next.status = readString(source["status"], "");
       next.blockedReason = readString(source["blockedReason"], "");
       next.protocolDelivered = source["protocolDelivered"] === true;
       next.opponentReady = source["opponentReady"] === true;
       next.inviteId = readOptionalString(source["inviteId"]);
+      next.matchId = readOptionalString(source["matchId"]);
+      next.turnIndex = readCounter(source["turnIndex"]);
+      next.turnToken = readString(source["turnToken"], "");
       next.localSessionId = readOptionalString(source["localSessionId"]);
       next.remoteUserId = readOptionalString(source["remoteUserId"]);
       next.pendingInvite = normalizePendingInvite(source["pendingInvite"]);
       next.inviteInbox = normalizeInviteInbox(source["inviteInbox"]);
       next.matchHistory = normalizeMatchHistory(source["matchHistory"]);
       next.opponent = normalizeSlot(source["opponent"], next.selectedTarget);
+      next.scorePoints = readCounter(source["scorePoints"]) || 1;
       if (isRecord(source["user"])) {
         next.user.nickname = readString(source["user"]["nickname"], next.user.nickname);
       }
@@ -385,9 +470,7 @@
     }
 
     function getSelectedTarget(): XoxTarget {
-      const state = getState();
-      const preferred = state.preferences.target;
-      return readTarget(preferred);
+      return readTarget(getState().preferences.target);
     }
 
     function getDisplayOpponent(): XoxSlotState {
@@ -406,18 +489,27 @@
 
     function getCurrentStatus(): string {
       const state = getState();
-      if (state.lastCommandMessage && state.lastCommandMessage.trim() !== "") {
-        return state.lastCommandMessage.trim();
-      }
-      if (state.game.status && state.game.status.trim() !== "") {
-        return state.game.status.trim();
-      }
-      return text(["xox", "status", "idle"]);
+      return (
+        readString(state.lastCommandMessage, "") ||
+        readString(state.game.status, "") ||
+        text(["xox", "status", "idle"])
+      );
     }
 
     function getResultLabel(): string {
       const state = getState();
-      return text(["xox", "results", state.game.result]);
+      if (state.game.result === "user-win") {
+        return text(["xox", "results", "user-win"]);
+      }
+      if (state.game.result === "ai-win") {
+        return text(["xox", "results", "ai-win"]);
+      }
+      if (state.game.result === "blocked") {
+        return text(["xox", "results", "blocked"]);
+      }
+      return state.game.active === true
+        ? text(["xox", "results", "pending"])
+        : text(["xox", "results", "idle"]);
     }
 
     function getTurnLabel(): string {
@@ -431,43 +523,19 @@
       return text(["xox", "turns", "idle"]);
     }
 
-    function getSymbolsLabel(): string {
-      const state = getState();
-      const opponent = getDisplayOpponent();
-      return (
-        (state.game.user.nickname || state.context.user.nickname) +
-        " " +
-        state.game.userSymbol +
-        " / " +
-        opponent.nickname +
-        " " +
-        state.game.aiSymbol
-      );
+    function getDiceLabel(): string {
+      const dice = getState().game.dice;
+      return dice.length > 0 ? dice.join(" - ") : "-";
     }
 
-    function getOpenCellsLabel(): string {
-      const state = getState();
-      return state.game.availableCells.length > 0 ? state.game.availableCells.join(", ") : "-";
+    function getBearOffLabel(): string {
+      const off = getState().game.off;
+      return "User " + off.user + " / Opponent " + off.ai;
     }
 
-    function getBoardCaption(): string {
-      const state = getState();
-      if (state.game.blockedReason && state.game.blockedReason.trim() !== "") {
-        return state.game.blockedReason.trim();
-      }
-      if (state.game.pendingInvite && state.game.pendingInvite.direction === "outgoing") {
-        return getCurrentStatus();
-      }
-      if (state.game.active !== true) {
-        return getCurrentStatus();
-      }
-      if (state.game.result !== "pending") {
-        return getCurrentStatus();
-      }
-      if (state.game.awaitingMoveFrom === "user") {
-        return text(["xox", "board", "cellsLabel"]) + ": " + getOpenCellsLabel();
-      }
-      return getCurrentStatus();
+    function getBarLabel(): string {
+      const bar = getState().game.bar;
+      return "User " + bar.user + " / Opponent " + bar.ai;
     }
 
     function getStarterLabelForCurrentTarget(value: XoxStarter): string {
@@ -482,21 +550,19 @@
     }
 
     function formatInviteMeta(invite: XoxInviteEntry): string {
-      const state = getState();
       const starterLabel =
         invite.starter === "opponent"
           ? text(["xox", "invites", "starterRemote"])
           : text(["xox", "invites", "starterUser"]);
-      if (invite.sentAt === null) {
-        return starterLabel;
-      }
-      return starterLabel + " • " + new Date(invite.sentAt).toLocaleString(state.locale);
+      return invite.sentAt === null
+        ? starterLabel
+        : starterLabel + " - " + new Date(invite.sentAt).toLocaleString(getState().locale);
     }
 
     function onStart() {
       const state = getState();
       state.lastCommandMessage = "";
-      sendRoomCommand("GameRoomXoxStart", {
+      sendRoomCommand("GameRoomBackgammonStart", {
         target: getSelectedTarget(),
         starter: state.preferences.starter === "ai" ? "ai" : "user",
         inviteMessage: state.preferences.inviteMessage,
@@ -504,12 +570,11 @@
     }
 
     function onReset() {
-      const state = getState();
-      state.lastCommandMessage = "";
-      sendRoomCommand("GameRoomXoxReset", {});
+      getState().lastCommandMessage = "";
+      sendRoomCommand("GameRoomBackgammonReset", {});
     }
 
-    function onCellClick(index: number) {
+    function onLegalMove(moveId: string) {
       const state = getState();
       if (
         state.game.active !== true ||
@@ -518,118 +583,102 @@
       ) {
         return;
       }
-      if (state.game.board[index] !== "") {
-        return;
-      }
-      state.lastCommandMessage = "";
-      sendRoomCommand("GameRoomXoxUserMove", {
-        cell: index,
+      getState().lastCommandMessage = "";
+      sendRoomCommand("GameRoomBackgammonUserMove", {
+        legalMoveId: moveId,
+        turnToken: state.game.turnToken,
+        turnIndex: state.game.turnIndex,
       });
+    }
+
+    function onCellClick(_index: number) {
+      const firstMove = getState().game.legalMoves[0];
+      if (firstMove) {
+        onLegalMove(firstMove.id);
+      }
     }
 
     function onAcceptInvite(inviteId: string, remoteUserId: string) {
-      const state = getState();
-      state.lastCommandMessage = "";
-      sendRoomCommand("GameRoomXoxAcceptInvite", {
-        inviteId: inviteId,
-        remoteUserId: remoteUserId,
-      });
+      getState().lastCommandMessage = "";
+      sendRoomCommand("GameRoomBackgammonAcceptInvite", { inviteId, remoteUserId });
     }
 
     function onRejectInvite(inviteId: string, remoteUserId: string) {
-      const state = getState();
-      state.lastCommandMessage = "";
-      sendRoomCommand("GameRoomXoxRejectInvite", {
-        inviteId: inviteId,
-        remoteUserId: remoteUserId,
-      });
+      getState().lastCommandMessage = "";
+      sendRoomCommand("GameRoomBackgammonRejectInvite", { inviteId, remoteUserId });
     }
 
     function onCancelOutgoingInvite() {
-      const state = getState();
-      state.lastCommandMessage = "";
-      sendRoomCommand("GameRoomXoxReset", {});
+      getState().lastCommandMessage = "";
+      sendRoomCommand("GameRoomBackgammonReset", {});
     }
 
     function getMatchHistory(): XoxMatchHistoryEntry[] {
-      const state = getState();
-      return Array.isArray(state.game.matchHistory) ? state.game.matchHistory : [];
+      return getState().game.matchHistory;
     }
 
     function getMatchHistoryResultLabel(entry: XoxMatchHistoryEntry): string {
-      if (entry.result === "draw") {
-        return text(["xox", "history", "draw"]);
-      }
       return entry.result === "user-win"
         ? text(["xox", "history", "win"])
         : text(["xox", "history", "loss"]);
     }
 
     function getMatchHistoryResultTone(entry: XoxMatchHistoryEntry): string {
-      if (entry.result === "draw") {
-        return "draw";
-      }
       return entry.result === "user-win" ? "win" : "loss";
     }
 
     function formatMatchHistoryDate(entry: XoxMatchHistoryEntry): string {
-      const state = getState();
       if (!entry.finishedAt || entry.finishedAt <= 0) {
         return "";
       }
       try {
-        return new Date(entry.finishedAt).toLocaleString(state.locale);
-      } catch {
-        return new Date(entry.finishedAt).toISOString();
+        return new Date(entry.finishedAt).toLocaleString(getState().locale);
+      } catch (_error) {
+        return "";
       }
-    }
-
-    function hasAuthoritativeGamePreferences() {
-      const state = getState();
-      return (
-        state.game.active === true ||
-        state.game.pendingInvite !== null ||
-        state.game.result !== "idle" ||
-        state.game.inviteId !== null ||
-        state.game.remoteUserId !== null
-      );
     }
 
     function syncPreferencesFromGame() {
       const state = getState();
-      if (hasAuthoritativeGamePreferences() !== true) {
+      if (
+        state.game.active !== true &&
+        state.game.pendingInvite === null &&
+        state.game.inviteId === null &&
+        state.game.remoteUserId === null
+      ) {
         return;
       }
-      state.preferences.target = readTarget(state.game.selectedTarget);
-      state.preferences.starter = readStarter(state.game.starter);
+      state.preferences.target = state.game.selectedTarget;
+      state.preferences.starter = state.game.starter;
     }
 
     return {
-      createGameState: createGameState,
-      sanitizeGameState: sanitizeGameState,
-      syncPreferencesFromGame: syncPreferencesFromGame,
-      getSlotOrder: getSlotOrder,
-      getSlotStatusLabel: getSlotStatusLabel,
-      getSelectedTarget: getSelectedTarget,
-      getDisplayOpponent: getDisplayOpponent,
-      getCurrentStatus: getCurrentStatus,
-      getResultLabel: getResultLabel,
-      getTurnLabel: getTurnLabel,
-      getSymbolsLabel: getSymbolsLabel,
-      getOpenCellsLabel: getOpenCellsLabel,
-      getBoardCaption: getBoardCaption,
-      getStarterLabelForCurrentTarget: getStarterLabelForCurrentTarget,
-      formatInviteMeta: formatInviteMeta,
-      onStart: onStart,
-      onReset: onReset,
-      onCellClick: onCellClick,
-      onAcceptInvite: onAcceptInvite,
-      onRejectInvite: onRejectInvite,
-      onCancelOutgoingInvite: onCancelOutgoingInvite,
-      getMatchHistory: getMatchHistory,
-      getMatchHistoryResultLabel: getMatchHistoryResultLabel,
-      getMatchHistoryResultTone: getMatchHistoryResultTone,
-      formatMatchHistoryDate: formatMatchHistoryDate,
+      createGameState,
+      sanitizeGameState,
+      syncPreferencesFromGame,
+      getSlotOrder,
+      getSlotStatusLabel,
+      getSelectedTarget,
+      getDisplayOpponent,
+      getCurrentStatus,
+      getResultLabel,
+      getTurnLabel,
+      getDiceLabel,
+      getBearOffLabel,
+      getBarLabel,
+      getStarterLabelForCurrentTarget,
+      formatInviteMeta,
+      onStart,
+      onReset,
+      onLegalMove,
+      onCellClick,
+      onAcceptInvite,
+      onRejectInvite,
+      onCancelOutgoingInvite,
+      getMatchHistory,
+      getMatchHistoryResultLabel,
+      getMatchHistoryResultTone,
+      formatMatchHistoryDate,
     };
   };
 })(typeof window !== "undefined" ? window : globalThis);

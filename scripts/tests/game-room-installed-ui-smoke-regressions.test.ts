@@ -68,7 +68,10 @@ function readElementText(element: FakeElement): string {
     .trim();
 }
 
-function findFirst(root: FakeElement, predicate: (element: FakeElement) => boolean): FakeElement | null {
+function findFirst(
+  root: FakeElement,
+  predicate: (element: FakeElement) => boolean
+): FakeElement | null {
   if (predicate(root)) {
     return root;
   }
@@ -144,6 +147,7 @@ function createInstalledUiRuntime(roomRoot: string) {
     `${roomRoot}/shared/ui/feature-contract.js`,
     `${roomRoot}/shared/ui/scroll-runtime.js`,
     `${roomRoot}/main-functions/xox/ui/state-runtime.js`,
+    `${roomRoot}/main-functions/xox/ui/backgammon-stage-runtime.js`,
     `${roomRoot}/main-functions/xox/ui/render-runtime.js`,
     `${roomRoot}/main-functions/xox/ui/module.js`,
     `${roomRoot}/main-functions/team-tetris/ui/draft-runtime.js`,
@@ -329,7 +333,12 @@ function createSelection(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function createParticipant(options: { seatId: string; nickname: string; ready?: boolean; selection?: Record<string, unknown> }) {
+function createParticipant(options: {
+  seatId: string;
+  nickname: string;
+  ready?: boolean;
+  selection?: Record<string, unknown>;
+}) {
   return {
     seatId: options.seatId,
     provider: options.seatId,
@@ -366,8 +375,22 @@ function buildHostContext(translations: Record<string, unknown>) {
       nickname: "Raistlin",
     },
     slots: {
-      ai1: { slotId: "ai1", nickname: "Atlas", assigned: true, connected: true, ready: true, state: "connected" },
-      ai2: { slotId: "ai2", nickname: "Nova", assigned: true, connected: false, ready: false, state: "assigned" },
+      ai1: {
+        slotId: "ai1",
+        nickname: "Atlas",
+        assigned: true,
+        connected: true,
+        ready: true,
+        state: "connected",
+      },
+      ai2: {
+        slotId: "ai2",
+        nickname: "Nova",
+        assigned: true,
+        connected: false,
+        ready: false,
+        state: "assigned",
+      },
       us1: {
         slotId: "us1",
         nickname: "Remote Ghost",
@@ -387,9 +410,21 @@ function createBaseState() {
     phase: "idle",
     sessionId: "fk-installed-session-1",
     participants: [
-      createParticipant({ seatId: "user", nickname: "Raistlin", selection: createSelection({ locked: false }) }),
-      createParticipant({ seatId: "ai1", nickname: "Atlas", selection: createSelection({ locked: true, autoAssigned: true }) }),
-      createParticipant({ seatId: "ai2", nickname: "Nova", selection: createSelection({ locked: true, autoAssigned: true }) }),
+      createParticipant({
+        seatId: "user",
+        nickname: "Raistlin",
+        selection: createSelection({ locked: false }),
+      }),
+      createParticipant({
+        seatId: "ai1",
+        nickname: "Atlas",
+        selection: createSelection({ locked: true, autoAssigned: true }),
+      }),
+      createParticipant({
+        seatId: "ai2",
+        nickname: "Nova",
+        selection: createSelection({ locked: true, autoAssigned: true }),
+      }),
     ],
     excludedSeats: [{ seatId: "us1", reason: "v1-remote-deferred" }],
     scenarioLog: [],
@@ -437,7 +472,10 @@ function createBaseState() {
   };
 }
 
-function emitFateKnotsState(runtime: ReturnType<typeof createInstalledUiRuntime>, state: Record<string, unknown>) {
+function emitFateKnotsState(
+  runtime: ReturnType<typeof createInstalledUiRuntime>,
+  state: Record<string, unknown>
+) {
   runtime.emitHostMessage({
     type: "fate-knots-state",
     payload: { state },
@@ -449,10 +487,9 @@ test("game-room installed UI renders Fate Knots overview landmarks with portable
 
   try {
     const runtime = createInstalledUiRuntime(installedCopy.rootDir);
-    const translations = JSON.parse(readFileSync(`${installedCopy.rootDir}/i18n/en.json`, "utf8")) as Record<
-      string,
-      unknown
-    >;
+    const translations = JSON.parse(
+      readFileSync(`${installedCopy.rootDir}/i18n/en.json`, "utf8")
+    ) as Record<string, unknown>;
     const state = createBaseState();
 
     runtime.emitHostMessage(buildHostContext(translations));
@@ -475,6 +512,7 @@ test("game-room installed UI renders Fate Knots overview landmarks with portable
       `${installedCopy.rootDir}/shared/ui/feature-contract.js`,
       `${installedCopy.rootDir}/shared/ui/scroll-runtime.js`,
       `${installedCopy.rootDir}/main-functions/xox/ui/state-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/xox/ui/backgammon-stage-runtime.js`,
       `${installedCopy.rootDir}/main-functions/xox/ui/render-runtime.js`,
       `${installedCopy.rootDir}/main-functions/xox/ui/module.js`,
       `${installedCopy.rootDir}/main-functions/team-tetris/styles.css`,
@@ -526,10 +564,9 @@ test("game-room installed UI keeps creation landmarks and renderer-only dummy se
 
   try {
     const runtime = createInstalledUiRuntime(installedCopy.rootDir);
-    const translations = JSON.parse(readFileSync(`${installedCopy.rootDir}/i18n/en.json`, "utf8")) as Record<
-      string,
-      unknown
-    >;
+    const translations = JSON.parse(
+      readFileSync(`${installedCopy.rootDir}/i18n/en.json`, "utf8")
+    ) as Record<string, unknown>;
     const state = createBaseState();
     state.phase = "character-creation";
     state.active = true;

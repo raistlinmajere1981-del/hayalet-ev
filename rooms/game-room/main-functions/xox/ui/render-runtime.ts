@@ -4,6 +4,28 @@
   }
 ) {
   type XoxTarget = "ai1" | "ai2" | "us1";
+  type BackgammonPoint = {
+    point: number;
+    owner: "user" | "ai" | "";
+    count: number;
+  };
+  type BackgammonLocation =
+    | { type: "bar"; seat: "user" | "ai" }
+    | { type: "off" }
+    | { type: "point"; point: number };
+  type BackgammonSubMove = {
+    from: BackgammonLocation;
+    to: BackgammonLocation;
+    die: number;
+    hit: boolean;
+  };
+  type BackgammonLegalMove = {
+    id: string;
+    label: string;
+    moves: BackgammonSubMove[];
+    diceUsed: number[];
+    pass?: boolean;
+  };
   type XoxInviteEntry = {
     inviteId: string;
     remoteUserId: string;
@@ -33,11 +55,9 @@
     opponentNickname: string;
     opponentAvatar: string | null;
     userNickname: string;
-    userSymbol: "X" | "O";
-    aiSymbol: "X" | "O";
-    result: "user-win" | "ai-win" | "draw";
+    result: "user-win" | "ai-win";
     starter: "ai" | "user";
-    board: string[];
+    scorePoints: number;
   };
   type XoxUiState = {
     presentation: {
@@ -70,12 +90,15 @@
       user: {
         nickname: string;
       };
-      userSymbol: string;
-      aiSymbol: string;
-      board: string[];
+      board: BackgammonPoint[];
+      bar: Record<"user" | "ai", number>;
+      off: Record<"user" | "ai", number>;
+      dice: number[];
+      legalMoves: BackgammonLegalMove[];
       result: string;
       winner?: string;
       opponent?: XoxSlotState;
+      scorePoints: number;
     };
   };
   type XoxUiStateRuntime = {
@@ -92,15 +115,25 @@
     getCurrentStatus: () => string;
     getTurnLabel: () => string;
     getResultLabel: () => string;
-    getSymbolsLabel: () => string;
-    onCellClick: (index: number) => void;
-    getBoardCaption: () => string;
-    getOpenCellsLabel: () => string;
+    getDiceLabel: () => string;
+    getBearOffLabel: () => string;
+    getBarLabel: () => string;
+    onLegalMove: (moveId: string) => void;
     onCancelOutgoingInvite: () => void;
     getMatchHistory: () => XoxMatchHistoryEntry[];
     getMatchHistoryResultLabel: (entry: XoxMatchHistoryEntry) => string;
     getMatchHistoryResultTone: (entry: XoxMatchHistoryEntry) => string;
     formatMatchHistoryDate: (entry: XoxMatchHistoryEntry) => string;
+  };
+  type XoxBackgammonStageRuntime = {
+    destroy: () => void;
+    renderBackgammonStage: (
+      host: HTMLElement,
+      options: {
+        canUserMove: boolean;
+        game: XoxUiState["game"];
+      }
+    ) => void;
   };
   type InteractiveElement = HTMLElement & {
     type?: string;
@@ -122,12 +155,12 @@
     stateRuntime: XoxUiStateRuntime;
   };
 
-  type XoxStarterChoice = {
-    value: "user" | "ai";
-    label: string;
-  };
-
   type XoxUiRenderRuntimeRegistry = GameRoomUiFactoriesRegistry & {
+    createXoxBackgammonStageRuntime?: (
+      deps: XoxUiRenderRuntimeDeps & {
+        stateRuntime: XoxUiStateRuntime;
+      }
+    ) => XoxBackgammonStageRuntime;
     createXoxUiRenderRuntime?: (deps: XoxUiRenderRuntimeDeps) => {
       renderBootstrap(root: HTMLElement): void;
       renderXox(root: HTMLElement): void;
@@ -149,6 +182,14 @@
     const isRoomApiAvailable = deps.isRoomApiAvailable;
     const getFeatureLabel = deps.getFeatureLabel;
     const stateRuntime = deps.stateRuntime;
+    const createStageRuntime = registry.createXoxBackgammonStageRuntime;
+    const backgammonStageRuntime =
+      typeof createStageRuntime === "function"
+        ? createStageRuntime({
+            ...deps,
+            stateRuntime,
+          })
+        : null;
 
     function getInitials(name: string): string {
       const trimmed = (name || "").trim();
@@ -156,12 +197,9 @@
         return "??";
       }
       const parts = trimmed.split(/\s+/);
-      if (parts.length === 1) {
-        return trimmed.slice(0, 2).toUpperCase();
-      }
-      const first = parts[0] ?? "";
-      const second = parts[1] ?? "";
-      return ((first[0] ?? "") + (second[0] ?? "")).toUpperCase();
+      return parts.length === 1
+        ? trimmed.slice(0, 2).toUpperCase()
+        : ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
     }
 
     function createAvatar(
@@ -197,10 +235,11 @@
       button.disabled = disabled;
       button.dataset["selected"] = selected ? "true" : "false";
       button.dataset["tone"] = tone;
-      button.dataset["slot"] = slot.slotId;
-
-      const avatar = createAvatar(slot.nickname, slot.avatar, "md");
-      const info = createElement("span", "xox-slot-card__info", "");
+      button.append(
+        createAvatar(slot.nickname, slot.avatar, "md"),
+        createElement("span", "xox-slot-card__info", "")
+      );
+      const info = button.lastElementChild as HTMLElement;
       const header = createElement("span", "xox-slot-card__header", "");
       header.append(
         createElement("span", "xox-slot-card__badge", slot.slotId.toUpperCase()),
@@ -212,19 +251,15 @@
         createElement("span", "xox-slot-card__status-text", status)
       );
       info.append(header, statusLine);
-      button.append(avatar, info);
       return button;
     }
 
-    function createChoiceButton(title: string, meta: string, selected: boolean, disabled: boolean) {
+    function createChoiceButton(title: string, selected: boolean, disabled: boolean) {
       const button = createElement("button", "xox-choice-button", "");
       button.type = "button";
       button.disabled = disabled;
       button.dataset["selected"] = selected ? "true" : "false";
       button.append(createElement("span", "xox-choice-button__title", title));
-      if (meta && meta.trim() !== "") {
-        button.append(createElement("span", "xox-choice-button__meta", meta));
-      }
       return button;
     }
 
@@ -249,6 +284,12 @@
       app.append(surface);
       document.title = bootstrapText("roomTitle");
       root.replaceChildren(app);
+    }
+
+    function renderEmptyState(message: string) {
+      const wrapper = createElement("div", "xox-empty-state", "");
+      wrapper.append(createElement("p", "xox-empty-state__text", message));
+      return wrapper;
     }
 
     function renderIncomingInviteCard(invite: XoxInviteEntry, canRespond: boolean) {
@@ -295,16 +336,6 @@
 
     function renderOutgoingInviteCard(invite: XoxPendingInvite, canCancel: boolean) {
       const card = createElement("article", "xox-invite-card xox-invite-card--outgoing", "");
-      const header = createElement("div", "xox-invite-card__header", "");
-      header.append(
-        createAvatar(invite.nickname, null, "sm"),
-        createElement("strong", "xox-invite-card__title", invite.nickname)
-      );
-      const statusLine = createElement("p", "xox-invite-card__meta", "");
-      statusLine.append(
-        createElement("span", "xox-invite-card__pulse", ""),
-        createElement("span", "", text(["xox", "invites", "pendingOutgoing"]))
-      );
       const actions = createElement("div", "xox-invite-card__actions", "");
       const cancelButton = createElement(
         "button",
@@ -316,8 +347,8 @@
       cancelButton.addEventListener("click", stateRuntime.onCancelOutgoingInvite);
       actions.append(cancelButton);
       card.append(
-        header,
-        statusLine,
+        createElement("strong", "xox-invite-card__title", invite.nickname),
+        createElement("p", "xox-invite-card__meta", text(["xox", "invites", "pendingOutgoing"])),
         createElement(
           "p",
           "xox-invite-card__message",
@@ -335,22 +366,16 @@
       const header = createElement("div", "xox-panel__header", "");
       header.append(createElement("p", "xox-panel__label", text(["xox", "invites", "title"])));
       const tabs = createElement("div", "xox-tab-row", "");
-      const incomingCount = state.game.inviteInbox.length;
       const outgoingCount =
         state.game.pendingInvite && state.game.pendingInvite.direction === "outgoing" ? 1 : 0;
-      const tabSpecs: { id: "incoming" | "outgoing"; label: string; count: number }[] = [
+      [
         {
           id: "incoming",
           label: text(["xox", "invites", "incomingTab"]),
-          count: incomingCount,
+          count: state.game.inviteInbox.length,
         },
-        {
-          id: "outgoing",
-          label: text(["xox", "invites", "outgoingTab"]),
-          count: outgoingCount,
-        },
-      ];
-      tabSpecs.forEach(function (tabSpec) {
+        { id: "outgoing", label: text(["xox", "invites", "outgoingTab"]), count: outgoingCount },
+      ].forEach(function (tabSpec) {
         const tabButton = createElement("button", "xox-tab", "");
         tabButton.type = "button";
         tabButton.dataset["active"] = tabSpec.id === activeTab ? "true" : "false";
@@ -359,7 +384,7 @@
           tabButton.append(createElement("span", "xox-tab__count", String(tabSpec.count)));
         }
         tabButton.addEventListener("click", function () {
-          state.preferences.invitesTab = tabSpec.id;
+          state.preferences.invitesTab = tabSpec.id as "incoming" | "outgoing";
           render();
         });
         tabs.append(tabButton);
@@ -369,31 +394,20 @@
 
       const body = createElement("div", "xox-panel__body xox-invite-list", "");
       if (activeTab === "incoming") {
-        if (incomingCount === 0) {
-          body.append(renderEmptyState(text(["xox", "invites", "empty"]), "📬"));
+        if (state.game.inviteInbox.length === 0) {
+          body.append(renderEmptyState(text(["xox", "invites", "empty"])));
         } else {
-          state.game.inviteInbox.forEach(function (invite: XoxInviteEntry) {
-            body.append(renderIncomingInviteCard(invite, canRespond));
-          });
+          state.game.inviteInbox.forEach((invite) =>
+            body.append(renderIncomingInviteCard(invite, canRespond))
+          );
         }
-      } else {
-        if (outgoingCount === 0) {
-          body.append(renderEmptyState(text(["xox", "invites", "outgoingEmpty"]), "✉️"));
-        } else if (state.game.pendingInvite && state.game.pendingInvite.direction === "outgoing") {
-          body.append(renderOutgoingInviteCard(state.game.pendingInvite, canCancel));
-        }
+      } else if (outgoingCount === 0) {
+        body.append(renderEmptyState(text(["xox", "invites", "outgoingEmpty"])));
+      } else if (state.game.pendingInvite && state.game.pendingInvite.direction === "outgoing") {
+        body.append(renderOutgoingInviteCard(state.game.pendingInvite, canCancel));
       }
       panel.append(body);
       return panel;
-    }
-
-    function renderEmptyState(message: string, glyph: string) {
-      const wrapper = createElement("div", "xox-empty-state", "");
-      wrapper.append(
-        createElement("span", "xox-empty-state__glyph", glyph),
-        createElement("p", "xox-empty-state__text", message)
-      );
-      return wrapper;
     }
 
     function renderHistoryPanel() {
@@ -402,32 +416,26 @@
       const body = createElement("div", "xox-panel__body xox-history-list", "");
       const entries = stateRuntime.getMatchHistory();
       if (entries.length === 0) {
-        body.append(renderEmptyState(text(["xox", "history", "empty"]), "🗂️"));
+        body.append(renderEmptyState(text(["xox", "history", "empty"])));
       } else {
-        entries.forEach(function (entry: XoxMatchHistoryEntry) {
+        entries.forEach(function (entry) {
           const card = createElement("article", "xox-history-card", "");
           card.dataset["tone"] = stateRuntime.getMatchHistoryResultTone(entry);
-          const avatar = createAvatar(entry.opponentNickname, entry.opponentAvatar, "sm");
           const main = createElement("div", "xox-history-card__main", "");
-          const top = createElement("div", "xox-history-card__top", "");
-          top.append(
+          main.append(
             createElement("strong", "xox-history-card__name", entry.opponentNickname),
             createElement(
               "span",
               "xox-history-card__badge",
-              stateRuntime.getMatchHistoryResultLabel(entry)
+              stateRuntime.getMatchHistoryResultLabel(entry) + " x" + String(entry.scorePoints)
+            ),
+            createElement(
+              "span",
+              "xox-history-card__meta",
+              stateRuntime.formatMatchHistoryDate(entry)
             )
           );
-          const meta = createElement("span", "xox-history-card__meta", "");
-          const metaBits: string[] = [];
-          const dateStr = stateRuntime.formatMatchHistoryDate(entry);
-          if (dateStr !== "") {
-            metaBits.push(dateStr);
-          }
-          metaBits.push(entry.target.toUpperCase());
-          meta.textContent = metaBits.join(" • ");
-          main.append(top, meta);
-          card.append(avatar, main);
+          card.append(createAvatar(entry.opponentNickname, entry.opponentAvatar, "sm"), main);
           body.append(card);
         });
       }
@@ -467,21 +475,15 @@
       const state = getState();
       const panel = createElement("section", "xox-panel xox-panel--setup", "");
       panel.append(createElement("p", "xox-panel__label", text(["xox", "topbar", "starterLabel"])));
-
       const starterRow = createElement("div", "xox-toggle-row", "");
-      const starterChoices: XoxStarterChoice[] = [
-        { value: "user", label: stateRuntime.getStarterLabelForCurrentTarget("user") },
-        { value: "ai", label: stateRuntime.getStarterLabelForCurrentTarget("ai") },
-      ];
-      starterChoices.forEach(function (entry: XoxStarterChoice) {
+      (["user", "ai"] as const).forEach(function (starter) {
         const button = createChoiceButton(
-          entry.label,
-          "",
-          state.preferences.starter === entry.value,
+          stateRuntime.getStarterLabelForCurrentTarget(starter),
+          state.preferences.starter === starter,
           disabled
         );
         button.addEventListener("click", function () {
-          state.preferences.starter = entry.value === "ai" ? "ai" : "user";
+          state.preferences.starter = starter;
           render();
         });
         starterRow.append(button);
@@ -534,17 +536,14 @@
       role: "user" | "opponent",
       name: string,
       avatar: string | null | undefined,
-      symbol: string,
       active: boolean
     ) {
       const seat = createElement("div", "xox-matchup-seat", "");
       seat.dataset["role"] = role;
-      seat.dataset["tone"] = symbol === "O" ? "o" : "x";
       seat.dataset["active"] = active ? "true" : "false";
       seat.append(
         createAvatar(name, avatar, "lg"),
-        createElement("strong", "xox-matchup-seat__name", name),
-        createElement("span", "xox-matchup-seat__symbol", symbol)
+        createElement("strong", "xox-matchup-seat__name", name)
       );
       return seat;
     }
@@ -552,17 +551,15 @@
     function renderMatchupHeader(
       userName: string,
       opponent: XoxSlotState,
-      userSymbol: string,
-      aiSymbol: string,
       awaitingUser: boolean,
       awaitingAi: boolean
     ) {
       const userAvatar = getState().context.user.avatar ?? null;
       const header = createElement("header", "xox-matchup", "");
       header.append(
-        createMatchupSeat("user", userName, userAvatar, userSymbol, awaitingUser),
+        createMatchupSeat("user", userName, userAvatar, awaitingUser),
         createElement("span", "xox-matchup__divider", text(["xox", "matchup", "vs"])),
-        createMatchupSeat("opponent", opponent.nickname, opponent.avatar, aiSymbol, awaitingAi)
+        createMatchupSeat("opponent", opponent.nickname, opponent.avatar, awaitingAi)
       );
       return header;
     }
@@ -571,7 +568,6 @@
       awaitingUser: boolean,
       awaitingAi: boolean,
       result: string,
-      winner: string,
       isActive: boolean
     ) {
       const stack = createElement("section", "xox-status-stack", "");
@@ -580,47 +576,130 @@
         createElement("span", "xox-context-card__label", text(["xox", "board", "statusLabel"])),
         createElement("p", "xox-context-card__lead", stateRuntime.getCurrentStatus())
       );
-
-      const turnLabel = awaitingUser
-        ? text(["xox", "matchup", "turnYours"])
-        : awaitingAi
-          ? text(["xox", "matchup", "turnTheirs"])
-          : text(["xox", "turns", "idle"]);
       const turnCard = createElement("section", "xox-context-card xox-context-card--turn", "");
       turnCard.dataset["awaiting"] = awaitingUser ? "user" : awaitingAi ? "ai" : "none";
       turnCard.append(
         createElement("span", "xox-context-card__label", text(["xox", "board", "turnLabel"])),
-        createElement("p", "xox-context-card__lead", turnLabel)
+        createElement("p", "xox-context-card__lead", stateRuntime.getTurnLabel())
       );
-
-      const tone =
-        result === "user-win"
-          ? "win"
-          : result === "ai-win"
-            ? "loss"
-            : result === "draw"
-              ? "draw"
-              : isActive
-                ? "active"
-                : "idle";
       const resultCard = createElement("section", "xox-context-card xox-context-card--result", "");
-      resultCard.dataset["tone"] = tone;
+      resultCard.dataset["tone"] =
+        result === "user-win" ? "win" : result === "ai-win" ? "loss" : isActive ? "active" : "idle";
       resultCard.append(
         createElement("span", "xox-context-card__label", text(["xox", "board", "resultLabel"])),
         createElement("p", "xox-context-card__lead", stateRuntime.getResultLabel())
       );
-      if (result === "user-win" || result === "ai-win") {
-        resultCard.append(
-          createElement(
-            "p",
-            "xox-context-card__meta",
-            winner === "user" ? text(["xox", "history", "win"]) : text(["xox", "history", "loss"])
-          )
-        );
-      }
-
-      stack.append(statusCard, turnCard, resultCard);
+      const diceCard = createElement("section", "xox-context-card xox-context-card--dice", "");
+      diceCard.append(
+        createElement("span", "xox-context-card__label", text(["xox", "board", "diceLabel"])),
+        createElement("p", "xox-context-card__lead", stateRuntime.getDiceLabel()),
+        createElement(
+          "p",
+          "xox-context-card__meta",
+          text(["xox", "board", "barLabel"]) + ": " + stateRuntime.getBarLabel()
+        ),
+        createElement(
+          "p",
+          "xox-context-card__meta",
+          text(["xox", "board", "offLabel"]) + ": " + stateRuntime.getBearOffLabel()
+        )
+      );
+      stack.append(statusCard, turnCard, resultCard, diceCard);
       return stack;
+    }
+
+    function createChecker(owner: "user" | "ai", index: number, total: number) {
+      const checker = createElement(
+        "span",
+        "xox-checker",
+        index === 0 && total > 5 ? String(total) : ""
+      );
+      checker.dataset["owner"] = owner;
+      return checker;
+    }
+
+    function renderPoint(point: BackgammonPoint) {
+      const pointEl = createElement("div", "xox-point", "");
+      pointEl.dataset["owner"] = point.owner || "empty";
+      pointEl.dataset["point"] = String(point.point);
+      pointEl.append(createElement("span", "xox-point__number", String(point.point)));
+      const stack = createElement("span", "xox-point__stack", "");
+      const visible = Math.min(point.count, 5);
+      for (let index = 0; index < visible; index += 1) {
+        if (point.owner === "user" || point.owner === "ai") {
+          stack.append(createChecker(point.owner, index, point.count));
+        }
+      }
+      pointEl.append(stack);
+      return pointEl;
+    }
+
+    function renderBoard(points: BackgammonPoint[]) {
+      if (backgammonStageRuntime !== null) {
+        const stageHost = createElement("div", "xox-backgammon-stage", "");
+        stageHost.dataset["xoxBackgammonStage"] = "true";
+        return stageHost;
+      }
+      const boardShell = createElement("div", "xox-board-shell xox-board-shell--tavla", "");
+      const board = createElement("div", "xox-board xox-board--tavla", "");
+      const top = createElement("div", "xox-board-row xox-board-row--top", "");
+      const bottom = createElement("div", "xox-board-row xox-board-row--bottom", "");
+      points
+        .slice(12, 24)
+        .reverse()
+        .forEach((point) => top.append(renderPoint(point)));
+      points.slice(0, 12).forEach((point) => bottom.append(renderPoint(point)));
+      const bar = createElement("div", "xox-board-bar", "");
+      bar.append(
+        createElement("span", "xox-board-bar__label", text(["xox", "board", "barLabel"])),
+        createElement("strong", "xox-board-bar__value", stateRuntime.getBarLabel())
+      );
+      board.append(top, bar, bottom);
+      boardShell.append(board);
+      return boardShell;
+    }
+
+    function renderLegalMoves(canUserMove: boolean, moves: BackgammonLegalMove[]) {
+      const panel = createElement("section", "xox-context-card xox-context-card--moves", "");
+      panel.append(
+        createElement(
+          "span",
+          "xox-context-card__label",
+          text(["xox", "board", "fallbackMovesLabel"])
+        ),
+        createElement("p", "xox-context-card__meta", text(["xox", "board", "fallbackMovesHint"]))
+      );
+      const list = createElement("div", "xox-move-list", "");
+      if (moves.length === 0) {
+        list.append(
+          createElement("p", "xox-context-card__meta", text(["xox", "board", "noMoves"]))
+        );
+      } else {
+        moves.slice(0, 4).forEach(function (move) {
+          const button = createElement("button", "xox-move-button", "");
+          button.type = "button";
+          button.disabled = !canUserMove;
+          button.append(
+            createElement("span", "xox-move-button__label", move.label),
+            createElement("span", "xox-move-button__dice", move.diceUsed.join(" - ") || "pass")
+          );
+          button.addEventListener("click", function () {
+            stateRuntime.onLegalMove(move.id);
+          });
+          list.append(button);
+        });
+        if (moves.length > 4) {
+          list.append(
+            createElement(
+              "p",
+              "xox-context-card__meta",
+              "+" + String(moves.length - 4) + " " + text(["xox", "board", "moreMoves"])
+            )
+          );
+        }
+      }
+      panel.append(list);
+      return panel;
     }
 
     function renderXox(root: HTMLElement) {
@@ -637,7 +716,7 @@
         !!state.game.pendingInvite && state.game.pendingInvite.direction === "outgoing";
       const controlsDisabled = state.game.active === true || hasPendingOutgoingInvite;
       const canStart =
-        selectedSlot["dispatchable"] === true &&
+        selectedSlot.dispatchable === true &&
         state.game.active !== true &&
         !hasPendingOutgoingInvite;
       const canReset = isRoomApiAvailable();
@@ -650,12 +729,10 @@
       const awaitingUser = state.game.active === true && state.game.awaitingMoveFrom === "user";
       const awaitingAi = state.game.active === true && state.game.awaitingMoveFrom === "ai";
       const resultKey = state.game.result || "idle";
-      const winner = state.game.winner || "";
 
       const app = createElement("main", "xox-shell", "");
       app.dataset["presentationMode"] = state.presentation.mode;
       const surface = createElement("section", "xox-surface", "");
-
       const arena = createElement("section", "xox-arena", "");
       const rail = createElement("aside", "xox-rail", "");
       rail.append(
@@ -668,54 +745,39 @@
       const stage = createElement("section", "xox-stage", "");
       stage.dataset["awaiting"] = awaitingUser ? "user" : awaitingAi ? "ai" : "none";
       stage.dataset["result"] = resultKey;
-
       const userName = state.game.user.nickname || state.context.user.nickname;
       const matchupHeader = renderMatchupHeader(
         userName,
         displayOpponent,
-        state.game.userSymbol,
-        state.game.aiSymbol,
         awaitingUser,
         awaitingAi
       );
-
-      const boardShell = createElement("div", "xox-board-shell", "");
-      const board = createElement("div", "xox-board", "");
-      state.game.board.forEach(function (symbol: string, index: number) {
-        const cell = createElement("button", "xox-cell", symbol);
-        cell.type = "button";
-        cell.dataset["index"] = String(index);
-        cell.dataset["symbol"] = symbol;
-        cell.dataset["empty"] = symbol === "" ? "true" : "false";
-        cell.disabled = !canUserMove || symbol !== "";
-        cell.addEventListener("click", function () {
-          stateRuntime.onCellClick(index);
-        });
-        board.append(cell);
-      });
-      boardShell.append(board);
-
       const boardArea = createElement("div", "xox-board-area", "");
-      boardArea.append(boardShell);
-
+      const boardStageHost = renderBoard(state.game.board);
+      boardArea.append(boardStageHost);
       const sidecar = createElement("aside", "xox-sidecar", "");
       sidecar.append(
-        renderStatusStack(awaitingUser, awaitingAi, resultKey, winner, state.game.active === true)
+        renderStatusStack(awaitingUser, awaitingAi, resultKey, state.game.active === true),
+        renderLegalMoves(canUserMove, state.game.legalMoves)
       );
-
       const stageBody = createElement("div", "xox-stage-body", "");
       stageBody.append(boardArea, sidecar);
-
       stage.append(matchupHeader, stageBody);
       arena.append(rail, stage);
       surface.append(arena);
       app.append(surface);
       root.replaceChildren(app);
+      if (backgammonStageRuntime !== null) {
+        backgammonStageRuntime.renderBackgammonStage(boardStageHost, {
+          canUserMove,
+          game: state.game,
+        });
+      }
     }
 
     return {
-      renderBootstrap: renderBootstrap,
-      renderXox: renderXox,
+      renderBootstrap,
+      renderXox,
     };
   };
 })(typeof window !== "undefined" ? window : globalThis);

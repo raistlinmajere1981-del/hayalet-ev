@@ -7,12 +7,14 @@ import type {
   GameRoomSlotState,
 } from "../../../shared/types/room-shell-contracts.js";
 import {
+  type BackgammonLegalMove,
+  type BackgammonPoint,
   type XoxGameState,
   type XoxMatchHistoryEntry,
   MATCH_HISTORY_LIMIT,
   TERMINAL_RESULTS,
   buildBoardAscii,
-  getAvailableCells,
+  buildBoardStateHash,
   normalizeMatchHistory,
   normalizeState,
   STATUS_COPY,
@@ -35,9 +37,13 @@ interface XoxStateApi {
 interface SerializedXoxState {
   roomId: string;
   featureId: string;
-  board: string[];
+  board: BackgammonPoint[];
   boardAscii: string;
-  availableCells: number[];
+  boardHash: string;
+  bar: Record<"user" | "ai", number>;
+  off: Record<"user" | "ai", number>;
+  dice: number[];
+  legalMoves: BackgammonLegalMove[];
   active: boolean;
   awaitingMoveFrom: XoxGameState["awaitingMoveFrom"];
   result: string;
@@ -46,12 +52,11 @@ interface SerializedXoxState {
   starter: XoxGameState["starter"];
   protocolDelivered: boolean;
   blockedReason: string;
-  userSymbol: XoxGameState["userSymbol"];
-  aiSymbol: XoxGameState["aiSymbol"];
   protocolPreface: string;
   matchId: string | null;
   inviteId: string | null;
   turnIndex: number;
+  turnToken: string;
   localSessionId: string | null;
   remoteUserId: string | null;
   lastRemoteTransportMessageId: string | null;
@@ -64,6 +69,7 @@ interface SerializedXoxState {
   user: {
     nickname: string;
   };
+  scorePoints: number;
   status: string;
 }
 
@@ -134,11 +140,11 @@ function buildMatchHistoryEntry(
   context: GameRoomContextState | GameRoomContextSnapshot
 ): XoxMatchHistoryEntry | null {
   const result = state.result;
-  if (result !== "user-win" && result !== "ai-win" && result !== "draw") {
+  if (result !== "user-win" && result !== "ai-win") {
     return null;
   }
   const opponent = getOpponentInfo(context, state);
-  const id = state.matchId || state.inviteId || "xox-" + state.target + "-" + String(Date.now());
+  const id = state.matchId || state.inviteId || "tavla-" + state.target + "-" + String(Date.now());
   return {
     id,
     finishedAt: Date.now(),
@@ -146,11 +152,10 @@ function buildMatchHistoryEntry(
     opponentNickname: opponent.nickname || state.opponentNickname || "Rakip",
     opponentAvatar: opponent.avatar || null,
     userNickname: context.user.nickname || "User",
-    userSymbol: state.userSymbol,
-    aiSymbol: state.aiSymbol,
     result,
     starter: state.starter,
-    board: state.board.slice(),
+    scorePoints: state.scorePoints || 1,
+    boardHash: buildBoardStateHash(state.board, state.bar, state.off),
   };
 }
 
@@ -209,9 +214,17 @@ export function serializeState(
   return {
     roomId: ROOM_ID,
     featureId: FEATURE_ID,
-    board: state.board.slice(),
+    board: state.board.map((point) => ({ ...point })),
     boardAscii: buildBoardAscii(state.board),
-    availableCells: getAvailableCells(state.board),
+    boardHash: buildBoardStateHash(state.board, state.bar, state.off),
+    bar: { ...state.bar },
+    off: { ...state.off },
+    dice: state.dice.slice(),
+    legalMoves: state.legalMoves.map((move) => ({
+      ...move,
+      moves: move.moves.map((subMove) => ({ ...subMove })),
+      diceUsed: move.diceUsed.slice(),
+    })),
     active: state.active,
     awaitingMoveFrom: state.awaitingMoveFrom,
     result: state.result,
@@ -220,12 +233,11 @@ export function serializeState(
     starter: state.starter,
     protocolDelivered: state.protocolDelivered,
     blockedReason: state.blockedReason,
-    userSymbol: state.userSymbol,
-    aiSymbol: state.aiSymbol,
     protocolPreface: state.protocolPreface,
     matchId: state.matchId,
     inviteId: state.inviteId,
     turnIndex: state.turnIndex,
+    turnToken: state.turnToken,
     localSessionId: state.localSessionId,
     remoteUserId: state.remoteUserId,
     lastRemoteTransportMessageId: state.lastRemoteTransportMessageId,
@@ -233,11 +245,12 @@ export function serializeState(
     pendingInvite: loadPendingInvite(api),
     inviteInbox: loadInviteInbox(api),
     matchHistory: loadMatchHistory(api),
-    opponent: opponent,
+    opponent,
     opponentReady: opponent.dispatchable === true,
     user: {
       nickname: context.user.nickname,
     },
+    scorePoints: state.scorePoints,
     status: resolveStatusText(state, context),
   };
 }

@@ -15,7 +15,7 @@ interface FeatureCatalogEntry {
 const FEATURE_CATALOG: FeatureCatalogEntry[] = [
   {
     id: FEATURE_ID,
-    name: "XOX",
+    name: "Tavla",
   },
   {
     id: TEAM_TETRIS_FEATURE_ID,
@@ -29,7 +29,7 @@ const FEATURE_CATALOG: FeatureCatalogEntry[] = [
 
 export function getFeatureName(featureId: string): string {
   const feature = FEATURE_CATALOG.find((entry) => entry.id === featureId);
-  return feature ? feature.name : "XOX";
+  return feature ? feature.name : "Tavla";
 }
 
 export function normalizeFeatureId(value: unknown): string {

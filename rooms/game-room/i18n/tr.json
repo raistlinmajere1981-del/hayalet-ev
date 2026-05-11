@@ -2,14 +2,14 @@
   "title": "Oyun Odasi",
   "subtitle": "Canli AI slotlari veya bagli US1 uzak kullanicisi ile dogrudan maclar icin odakli masa oyunu odasi.",
   "features": {
-    "xox": "XOX",
+    "xox": "Tavla",
     "team-tetris": "Takim Tetris",
     "fate-knots": "Fate Knots"
   },
   "xox": {
     "heroBadge": "Oyun Odasi",
-    "heroTitle": "XOX Mac Masasi",
-    "heroSubtitle": "AI1, AI2 veya US1'i sec, kimin baslayacagini belirle ve room-scoped komutlarla temiz bir XOX duellosu oyna.",
+    "heroTitle": "Tavla Mac Masasi",
+    "heroSubtitle": "AI1, AI2 veya US1'i sec, kimin baslayacagini belirle ve legal hamle komutlariyla sirali bir Tavla maci oyna.",
     "topbar": {
       "featureLabel": "Ana Fonksiyon",
       "opponentLabel": "Rakip",
@@ -30,19 +30,36 @@
       "statusLabel": "Mac Durumu",
       "turnLabel": "Sira",
       "resultLabel": "Sonuc",
-      "symbolsLabel": "Semboller",
-      "cellsLabel": "Acik Hucreler",
-      "asciiLabel": "Metin Tahtasi"
+      "symbolsLabel": "Pullar",
+      "cellsLabel": "Legal Noktalar",
+      "asciiLabel": "Metin Tahtasi",
+      "diceLabel": "Zar",
+      "barLabel": "Bar",
+      "offLabel": "Toplanan",
+      "legalMovesLabel": "Legal Hamleler",
+      "fallbackMovesLabel": "Yedek Hamleler",
+      "fallbackMovesHint": "Pullari tahtada surukle; bu dugmeler kompakt yedek akis olarak kalir.",
+      "moreMoves": "hamle daha",
+      "noMoves": "Bu tur icin legal hamle yok.",
+      "dragHint": "Bir pulu vurgulanan noktaya surukle.",
+      "dragActiveHint": "Hazirlanan hamleyi tamamla.",
+      "opponentThinking": "Rakip hamlesini seciyor.",
+      "stageIdle": "Tahtayi acmak icin mac baslat.",
+      "stageFallback": "Gorsel tahta motoru yukleniyor.",
+      "passMove": "Pas",
+      "undoStage": "Geri Al",
+      "targetCount": "hedef",
+      "noTargetCount": "hedef yok"
     },
     "side": {
       "title": "Canli Rakipler",
       "protocolTitle": "Protokol Kurallari",
       "controlsTitle": "Nasil Isler",
-      "commandHint": "AI cevap formati: ++cmd:SlotBridge({\"action\":\"room.command\",\"payload\":{\"commandName\":\"GameRoomXoxAiMove\",\"cell\":4}})",
+      "commandHint": "AI cevap formati: ++cmd:SlotBridge({\"action\":\"room.command\",\"payload\":{\"commandName\":\"GameRoomBackgammonAiMove\",\"legalMoveId\":\"move_id\",\"turnToken\":\"token\"}})",
       "latestMessageHint": "Komutlar yalnizca son assistant mesajindan yakalanir.",
       "help1": "1. Bagli bir AI slotu sec ve kimin acilis yapacagini belirle.",
-      "help2": "2. Sira sendeyken bos bir hucreye tikla.",
-      "help3": "3. Her AI turunda guncel tahta ve protokol metin olarak iletilir."
+      "help2": "2. Sira sendeyken legal hamlelerden birini sec.",
+      "help3": "3. Her AI turunda zar, tahta durumu, token ve legal hamle id'leri iletilir."
     },
     "status": {
       "roomApiUnavailable": "Room API koprusu bagli degil.",

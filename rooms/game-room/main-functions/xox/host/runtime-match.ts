@@ -1,8 +1,10 @@
 import {
+  applyLegalMove,
+  applyOutcomeForSeat,
   buildBoardStateHash,
   getOpponentInfo,
-  getOutcomeForBoard,
   loadState,
+  prepareTurn,
   pushRoomState,
   resolveStatusText,
   saveState,
@@ -10,11 +12,12 @@ import {
 import type { XoxGameState } from "./state-core.js";
 import {
   readBoardHashBeforeMove,
-  readCell,
   readInviteId,
+  readLegalMoveId,
   readRemoteUserId,
   readTransportMessageId,
   readTurnIndex,
+  readTurnToken,
 } from "../../../shared/host/command-args.js";
 import { loadContext } from "../../../shared/host/context-state.js";
 import { FEATURE_ID, ROOM_ID } from "../../../shared/host/feature-meta.js";
@@ -138,8 +141,9 @@ export async function sendAiTurnUpdate(
             context: {
               featureId: FEATURE_ID,
               starter: state.starter,
-              aiSymbol: state.aiSymbol,
-              userSymbol: state.userSymbol,
+              dice: state.dice,
+              legalMoveIds: state.legalMoves.map((move) => move.id),
+              turnToken: state.turnToken,
             },
           },
         }
@@ -173,9 +177,10 @@ export async function applyOpponentMove(
   const state = loadState(api);
   const locale = state.locale;
   const provider = readProviderValue(payload);
-  const cell = readCell(payload);
+  const legalMoveId = readLegalMoveId(payload);
   const matchId = readInviteId(payload);
   const turnIndex = readTurnIndex(payload);
+  const turnToken = readTurnToken(payload);
   const boardHashBeforeMove = readBoardHashBeforeMove(payload);
   const transportMessageId = readTransportMessageId(payload);
   const remoteUserId = readRemoteUserId(payload);
@@ -210,40 +215,29 @@ export async function applyOpponentMove(
   if (
     expectedProvider === "us1" &&
     ((turnIndex !== null && turnIndex !== state.turnIndex) ||
-      (boardHashBeforeMove !== null && boardHashBeforeMove !== buildBoardStateHash(state.board)))
+      (boardHashBeforeMove !== null &&
+        boardHashBeforeMove !== buildBoardStateHash(state.board, state.bar, state.off)) ||
+      (turnToken !== null && turnToken !== state.turnToken))
   ) {
     return { success: false, message: commandMessage(locale, "staleRemoteMove") };
   }
   if (state.awaitingMoveFrom !== "ai") {
     return { success: false, message: commandMessage(locale, "aiTurnOnly") };
   }
-  if (cell === null || cell < 0 || cell > 8) {
-    blockMatch(api, state, "blockedInvalidMove", "ai-invalid-cell");
+  if (legalMoveId === null || applyLegalMove(state, "ai", legalMoveId) !== true) {
+    blockMatch(api, state, "blockedInvalidMove", "ai-invalid-move");
     return { success: false, message: commandMessage(locale, "aiInvalidMove") };
   }
-  if (state.board[cell] !== "") {
-    blockMatch(api, state, "blockedInvalidMove", "ai-filled-cell");
-    return { success: false, message: commandMessage(locale, "aiFilledCell") };
-  }
 
-  state.board[cell] = state.aiSymbol;
   state.turnIndex += 1;
   if (expectedProvider === "us1") {
     state.lastRemoteTransportMessageId = transportMessageId;
     state.lastRemoteTurnIndex = turnIndex;
   }
-  const outcome = getOutcomeForBoard(state.board, state);
+  applyOutcomeForSeat(state, "ai");
 
-  if (outcome.finished === true && "winner" in outcome && "statusKey" in outcome) {
-    state.active = false;
-    state.awaitingMoveFrom = null;
-    state.result = outcome.result || "draw";
-    state.winner = (outcome.winner || "") as typeof state.winner;
-    state.statusKey = outcome.statusKey || "draw";
-  } else {
-    state.awaitingMoveFrom = "user";
-    state.result = "pending";
-    state.statusKey = "userTurn";
+  if (state.result === "pending") {
+    prepareTurn(state, "user");
   }
 
   pushRoomState(api, state);
