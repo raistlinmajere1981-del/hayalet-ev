@@ -116,7 +116,7 @@
     renderBackgammonStage: (host: HTMLElement, options: BackgammonStageRenderOptions) => void;
   };
   type BackgammonStageRuntimeRegistry = GameRoomUiFactoriesRegistry & {
-    createXoxBackgammonStageRuntime?: (deps: BackgammonStageRuntimeDeps) => BackgammonStageRuntime;
+    createBackgammonStageRuntime?: (deps: BackgammonStageRuntimeDeps) => BackgammonStageRuntime;
   };
   type BoardSnapshot = {
     board: BackgammonPoint[];
@@ -139,10 +139,34 @@
   const WIDTH = 980;
   const HEIGHT = 600;
   const CHECKER_RADIUS = 18;
-  const USER_COLOR = "#f5dfaa";
-  const USER_EDGE = "#9d6f2f";
-  const AI_COLOR = "#14384a";
-  const AI_EDGE = "#78d3c4";
+
+  // Canvas drawing colors — read from CSS custom properties for design token compliance
+  function cssVar(name: string): string {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+  const COLORS = {
+    userFill: cssVar("--game-bg-backgammon-user-fill"),
+    userEdge: cssVar("--game-bg-backgammon-user-edge"),
+    aiFill: cssVar("--game-bg-backgammon-ai-fill"),
+    aiEdge: cssVar("--game-bg-backgammon-ai-edge"),
+    boardBase: cssVar("--game-bg-backgammon-board-base"),
+    boardInnerDark: cssVar("--game-bg-backgammon-board-inner-dark"),
+    boardInnerMid: cssVar("--game-bg-backgammon-board-inner-mid"),
+    boardInnerLight: cssVar("--game-bg-backgammon-board-inner-light"),
+    pointEven: cssVar("--game-bg-backgammon-point-even"),
+    pointOdd: cssVar("--game-bg-backgammon-point-odd"),
+    offAiBg: cssVar("--game-bg-backgammon-off-ai"),
+    dieFace: cssVar("--game-bg-backgammon-die-face"),
+    dieStroke: cssVar("--game-bg-backgammon-die-stroke"),
+    diePip: cssVar("--game-bg-backgammon-die-pip"),
+    passLabel: cssVar("--game-bg-backgammon-pass-label"),
+    undoLabel: cssVar("--game-bg-backgammon-undo-label"),
+    hintActive: cssVar("--game-bg-backgammon-hint-active"),
+  };
+  const USER_COLOR = COLORS.userFill;
+  const USER_EDGE = COLORS.userEdge;
+  const AI_COLOR = COLORS.aiFill;
+  const AI_EDGE = COLORS.aiEdge;
 
   function isKonvaNamespace(value: unknown): value is KonvaNamespace {
     if (typeof value !== "object" || value === null) {
@@ -429,7 +453,7 @@
 
   function drawBoardBase(Konva: KonvaNamespace, layer: KonvaLayer, metrics: BoardMetrics): void {
     drawRoundedPanel(Konva, layer, metrics.board, {
-      fill: "#5d3924",
+      fill: COLORS.boardBase,
       stroke: "rgba(246,219,168,0.36)",
       shadow: true,
     });
@@ -442,7 +466,14 @@
         cornerRadius: 12,
         fillLinearGradientStartPoint: { x: 0, y: 0 },
         fillLinearGradientEndPoint: { x: metrics.board.width, y: metrics.board.height },
-        fillLinearGradientColorStops: [0, "#2c403a", 0.52, "#1e2f31", 1, "#39513f"],
+        fillLinearGradientColorStops: [
+          0,
+          COLORS.boardInnerMid,
+          0.52,
+          COLORS.boardInnerDark,
+          1,
+          COLORS.boardInnerLight,
+        ],
         stroke: "rgba(255,255,255,0.08)",
         strokeWidth: 1,
       })
@@ -472,7 +503,7 @@
     for (let point = 1; point <= 24; point += 1) {
       const rect = getPointRect(metrics, point);
       const top = point >= 13;
-      const fill = point % 2 === 0 ? "#d8b066" : "#2f9587";
+      const fill = point % 2 === 0 ? COLORS.pointEven : COLORS.pointOdd;
       const points = top
         ? [
             rect.x + 5,
@@ -634,7 +665,7 @@
           fontFamily: "IBM Plex Mono, JetBrains Mono, monospace",
           fontSize: 13,
           fontStyle: "bold",
-          fill: owner === "user" ? "#1a1207" : "#f5dfaa",
+          fill: owner === "user" ? COLORS.offAiBg : COLORS.userFill,
           listening: false,
         })
       );
@@ -770,7 +801,7 @@
           fontFamily: "IBM Plex Mono, JetBrains Mono, monospace",
           fontSize: 12,
           fontStyle: "bold",
-          fill: "#f5dfaa",
+          fill: COLORS.userFill,
         })
       );
     }
@@ -786,8 +817,8 @@
         width: 38,
         height: 38,
         cornerRadius: 8,
-        fill: "#f7ead0",
-        stroke: "#9d6f2f",
+        fill: COLORS.dieFace,
+        stroke: COLORS.dieStroke,
         strokeWidth: 1.5,
         shadowColor: "rgba(0,0,0,0.34)",
         shadowBlur: 7,
@@ -829,12 +860,12 @@
     };
     const pips = pipMap[value] ?? pipMap[1] ?? [];
     pips.forEach((pip) => {
-      group.add(new Konva.Circle({ x: pip.x, y: pip.y, radius: 3.1, fill: "#2b1b10" }));
+      group.add(new Konva.Circle({ x: pip.x, y: pip.y, radius: 3.1, fill: COLORS.diePip }));
     });
     return group;
   }
 
-  registry.createXoxBackgammonStageRuntime = function createXoxBackgammonStageRuntime(
+  registry.createBackgammonStageRuntime = function createBackgammonStageRuntime(
     deps: BackgammonStageRuntimeDeps
   ): BackgammonStageRuntime {
     let stage: KonvaStage | null = null;
@@ -927,7 +958,7 @@
       if (passMove === undefined || activeCanUserMove !== true) {
         return;
       }
-      const label = readText(deps, ["xox", "board", "passMove"], "Pass");
+      const label = readText(deps, ["backgammon", "board", "passMove"], "Pass");
       const group = new Konva.Group({ x: 392, y: 258 });
       group.add(
         new Konva.Rect({
@@ -953,7 +984,7 @@
           fontFamily: "IBM Plex Mono, JetBrains Mono, monospace",
           fontSize: 18,
           fontStyle: "bold",
-          fill: "#79d1c2",
+          fill: COLORS.passLabel,
         })
       );
       group.on("click tap", () => deps.stateRuntime.onLegalMove(passMove.id));
@@ -983,11 +1014,11 @@
           y: 9,
           width: 106,
           align: "center",
-          text: readText(deps, ["xox", "board", "undoStage"], "Undo"),
+          text: readText(deps, ["backgammon", "board", "undoStage"], "Undo"),
           fontFamily: "IBM Plex Mono, JetBrains Mono, monospace",
           fontSize: 11,
           fontStyle: "bold",
-          fill: "#f5dfaa",
+          fill: COLORS.undoLabel,
         })
       );
       group.on("click tap", () => {
@@ -1038,11 +1069,23 @@
       const hint =
         activeCanUserMove === true
           ? stagedMoves.length > 0
-            ? readText(deps, ["xox", "board", "dragActiveHint"], "Complete the staged move.")
-            : readText(deps, ["xox", "board", "dragHint"], "Drag a checker to a highlighted point.")
+            ? readText(deps, ["backgammon", "board", "dragActiveHint"], "Complete the staged move.")
+            : readText(
+                deps,
+                ["backgammon", "board", "dragHint"],
+                "Drag a checker to a highlighted point."
+              )
           : game.awaitingMoveFrom === "ai"
-            ? readText(deps, ["xox", "board", "opponentThinking"], "Opponent is choosing a move.")
-            : readText(deps, ["xox", "board", "stageIdle"], "Start a match to open the board.");
+            ? readText(
+                deps,
+                ["backgammon", "board", "opponentThinking"],
+                "Opponent is choosing a move."
+              )
+            : readText(
+                deps,
+                ["backgammon", "board", "stageIdle"],
+                "Start a match to open the board."
+              );
       layer.add(
         new Konva.Text({
           x: 56,
@@ -1051,7 +1094,7 @@
           text: hint,
           fontFamily: "Avenir Next, Segoe UI, sans-serif",
           fontSize: 14,
-          fill: activeCanUserMove === true ? "#dffbf4" : "rgba(237,243,246,0.62)",
+          fill: activeCanUserMove === true ? COLORS.hintActive : "rgba(237,243,246,0.62)",
         })
       );
       layer.add(
@@ -1062,8 +1105,8 @@
           align: "center",
           text:
             candidateCount > 0
-              ? `${candidateCount} ${readText(deps, ["xox", "board", "targetCount"], "targets")}`
-              : readText(deps, ["xox", "board", "noTargetCount"], "no target"),
+              ? `${candidateCount} ${readText(deps, ["backgammon", "board", "targetCount"], "targets")}`
+              : readText(deps, ["backgammon", "board", "noTargetCount"], "no target"),
           fontFamily: "IBM Plex Mono, JetBrains Mono, monospace",
           fontSize: 11,
           fill: "rgba(237,243,246,0.62)",
@@ -1072,17 +1115,25 @@
     }
 
     function renderFallback(host: HTMLElement, options: BackgammonStageRenderOptions): void {
-      const fallback = deps.createElement("div", "xox-backgammon-stage__fallback", "");
+      const fallback = deps.createElement("div", "backgammon-board-stage__fallback", "");
       fallback.append(
         deps.createElement(
           "p",
-          "xox-context-card__lead",
-          readText(deps, ["xox", "board", "stageFallback"], "Visual board engine is loading.")
+          "backgammon-context-card__lead",
+          readText(
+            deps,
+            ["backgammon", "board", "stageFallback"],
+            "Visual board engine is loading."
+          )
         )
       );
       const move = options.game.legalMoves[0];
       if (options.canUserMove && move !== undefined) {
-        const button = deps.createElement("button", "xox-button xox-button--primary", move.label);
+        const button = deps.createElement(
+          "button",
+          "backgammon-button backgammon-button--primary",
+          move.label
+        );
         button.addEventListener("click", () => deps.stateRuntime.onLegalMove(move.id));
         fallback.append(button);
       }

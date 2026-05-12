@@ -12,18 +12,18 @@ const room: InstalledRoomRecord = {
   manifestPath: "/workspace/rooms/.build/game-room/runtime/manifest.json",
   runtimeEntryPath: "/workspace/rooms/.build/game-room/runtime/ui/index.html",
   hostEntryPath: "/workspace/rooms/.build/game-room/runtime/host/index.js",
-  defaultFeatureId: "xox",
+  defaultFeatureId: "backgammon",
   features: [
-    { id: "xox", name: "XOX" },
+    { id: "backgammon", name: "Tavla" },
     { id: "team-tetris", name: "Team Tetris" },
     { id: "fate-knots", name: "Fate Knots" },
   ],
   protocolSpecs: [
     {
-      key: "game-room-xox-user-start",
+      key: "game-room-backgammon-user-start",
       room: "game-room",
-      scenario: "xox-user-start",
-      title: "[START][GAME-ROOM][XOX][USER-FIRST]",
+      scenario: "backgammon-user-start",
+      title: "[START][GAME-ROOM][Tavla][USER-FIRST]",
       editable: true,
     },
     {
@@ -49,18 +49,18 @@ test("RoomProtocolRegistry resolves manifest protocol metadata", async () => {
   RoomProtocolRegistry.reset();
   await RoomProtocolRegistry.syncInstalledRooms([room]);
 
-  const resolved = RoomProtocolRegistry.resolve("game-room", "xox-user-start");
+  const resolved = RoomProtocolRegistry.resolve("game-room", "backgammon-user-start");
   const teamTetrisResolved = RoomProtocolRegistry.resolve("game-room", "team-tetris-ai-opening");
   const fateKnotsResolved = RoomProtocolRegistry.resolve("game-room", "fate-knots-ai-decision");
 
-  assert.equal(resolved?.key, "game-room-xox-user-start");
-  assert.equal(resolved?.title, "[START][GAME-ROOM][XOX][USER-FIRST]");
+  assert.equal(resolved?.key, "game-room-backgammon-user-start");
+  assert.equal(resolved?.title, "[START][GAME-ROOM][Tavla][USER-FIRST]");
   assert.equal(teamTetrisResolved?.key, "game-room-team-tetris-ai-opening");
   assert.equal(fateKnotsResolved?.key, "game-room-fate-knots-ai-decision");
   assert.deepEqual(RoomProtocolRegistry.listKnownKeys(), [
+    "game-room-backgammon-user-start",
     "game-room-fate-knots-ai-decision",
     "game-room-team-tetris-ai-opening",
-    "game-room-xox-user-start",
   ]);
 });
 
@@ -68,14 +68,14 @@ test("RoomProtocolRegistry merges runtime and saved protocol bodies", async () =
   RoomProtocolRegistry.reset();
   await RoomProtocolRegistry.syncInstalledRooms([room]);
   RoomProtocolRegistry.registerRuntimeProtocols("game-room", {
-    "game-room-xox-user-start": "Prepare the XOX board for the user-first match.",
+    "game-room-backgammon-user-start": "Prepare the Tavla board for the user-first match.",
   });
 
   const merged = await RoomProtocolRegistry.mergeProtocolMap({
-    "game-room-xox-user-start": "Saved override body",
+    "game-room-backgammon-user-start": "Saved override body",
   });
 
-  assert.equal(merged["game-room-xox-user-start"], "Saved override body");
+  assert.equal(merged["game-room-backgammon-user-start"], "Saved override body");
 });
 
 test("RoomProtocolRegistry prefers locale-specific bodies and falls back to Turkish", async () => {
@@ -85,15 +85,15 @@ test("RoomProtocolRegistry prefers locale-specific bodies and falls back to Turk
       readFile: async (filePath: string): Promise<string | null> => {
         readFileCalls.push(filePath);
 
-        if (filePath.endsWith("/protocols/en/game-room-xox-user-start.md")) {
+        if (filePath.endsWith("/protocols/en/game-room-backgammon-user-start.md")) {
           return "EN localized body";
         }
 
-        if (filePath.endsWith("/protocols/tr/game-room-xox-user-start.md")) {
+        if (filePath.endsWith("/protocols/tr/game-room-backgammon-user-start.md")) {
           return "TR fallback body";
         }
 
-        if (filePath.endsWith("/protocols/game-room-xox-user-start.md")) {
+        if (filePath.endsWith("/protocols/game-room-backgammon-user-start.md")) {
           return "EN base body";
         }
 
@@ -112,15 +112,19 @@ test("RoomProtocolRegistry prefers locale-specific bodies and falls back to Turk
   const mergedEnUs = await RoomProtocolRegistry.mergeProtocolMap({}, { locale: "en-US" });
   const mergedDe = await RoomProtocolRegistry.mergeProtocolMap({}, { locale: "de" });
 
-  assert.equal(mergedTr["game-room-xox-user-start"], "TR fallback body");
-  assert.equal(mergedEn["game-room-xox-user-start"], "EN localized body");
-  assert.equal(mergedEnUs["game-room-xox-user-start"], "TR fallback body");
-  assert.equal(mergedDe["game-room-xox-user-start"], "TR fallback body");
+  assert.equal(mergedTr["game-room-backgammon-user-start"], "TR fallback body");
+  assert.equal(mergedEn["game-room-backgammon-user-start"], "EN localized body");
+  assert.equal(mergedEnUs["game-room-backgammon-user-start"], "TR fallback body");
+  assert.equal(mergedDe["game-room-backgammon-user-start"], "TR fallback body");
   assert.ok(
-    readFileCalls.some((filePath) => filePath.endsWith("/protocols/en/game-room-xox-user-start.md"))
+    readFileCalls.some((filePath) =>
+      filePath.endsWith("/protocols/en/game-room-backgammon-user-start.md")
+    )
   );
   assert.ok(
-    readFileCalls.some((filePath) => filePath.endsWith("/protocols/tr/game-room-xox-user-start.md"))
+    readFileCalls.some((filePath) =>
+      filePath.endsWith("/protocols/tr/game-room-backgammon-user-start.md")
+    )
   );
 
   delete (globalThis as { window?: unknown }).window;

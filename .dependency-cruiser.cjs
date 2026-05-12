@@ -34,6 +34,8 @@ module.exports = {
           "src/js/scene-system/theme-source-contract\.ts$", // scene theme source contract consumed as type-only API
           "src/js/scene-system/scene-theme-registry-contract\.ts$", // scene theme registry contract consumed as type-only API
           "ghost-agent/src/shared/", // shared types for ghost-agent (imported via @shared alias, not resolvable by depcruise)
+          "rooms/\\.build/", // generated workspace room runtime artifacts
+          "rooms/[^/]+/shared/vendor/", // vendored room runtime assets loaded outside the module graph
         ],
       },
       to: {},

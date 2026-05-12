@@ -26,7 +26,7 @@ import {
   TEAM_TETRIS_FEATURE_ID,
 } from "../../../shared/host/feature-meta.js";
 import { translate } from "../../../shared/host/text.js";
-import { loadState, pushRoomState } from "../../xox/host/state.js";
+import { loadState, pushRoomState } from "../../backgammon/host/state.js";
 import { loadFateKnotsState, pushFateKnotsState } from "../../fate-knots/host/state.js";
 import { loadFateKnotsContentRegistry } from "../../fate-knots/host/content-loader.js";
 

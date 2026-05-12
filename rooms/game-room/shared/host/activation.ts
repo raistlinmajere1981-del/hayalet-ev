@@ -9,8 +9,8 @@ interface GameRoomBootstrapDependencies {
   saveContext: (api: GameRoomHostApi, payload: unknown) => void;
   saveInviteInbox: (api: GameRoomHostApi, payload: unknown[]) => void;
   clearPendingInvite: (api: GameRoomHostApi) => void;
-  saveXoxState: (api: GameRoomHostApi, value: unknown) => void;
-  createInitialXoxState: (locale: string, target: string, starter: string) => unknown;
+  saveBackgammonState: (api: GameRoomHostApi, value: unknown) => void;
+  createInitialBackgammonState: (locale: string, target: string, starter: string) => unknown;
   readLocale: (api: GameRoomHostApi) => string;
   defaultTarget: string;
   defaultStarter: string;
@@ -39,9 +39,9 @@ export function bootstrapGameRoomHostState(
   deps.saveContext(api, {});
   deps.saveInviteInbox(api, []);
   deps.clearPendingInvite(api);
-  deps.saveXoxState(
+  deps.saveBackgammonState(
     api,
-    deps.createInitialXoxState(deps.readLocale(api), deps.defaultTarget, deps.defaultStarter)
+    deps.createInitialBackgammonState(deps.readLocale(api), deps.defaultTarget, deps.defaultStarter)
   );
   deps.saveTeamTetrisState(api, deps.createInitialTeamTetrisState(deps.readLocale(api)));
   deps.resetFateKnotsState(api, "idle");

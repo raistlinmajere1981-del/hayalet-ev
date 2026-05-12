@@ -44,7 +44,7 @@ End-state rule:
   `dispatchBridge(...)` already exists and some room flows use it.
 - `rooms/forge-room/host/runtime.ts`
 - `rooms/forge-room/host/forge-preflight-runtime.ts`
-- `rooms/game-room/main-functions/xox/host/runtime-match.ts`
+- `rooms/game-room/main-functions/backgammon/host/runtime-match.ts`
 - `rooms/game-room/main-functions/fate-knots/host/prompt-runtime.ts`
 - `rooms/game-room/main-functions/team-tetris/host/runtime.ts`
 
@@ -122,7 +122,7 @@ End-state rule:
   - `scripts/tests/relay-auto-stop-disconnect-regressions.test.ts`
   - `scripts/tests/ai-chat-stop-regressions.test.ts`
   - `scripts/tests/us1-conversation-service-regressions.test.ts`
-  - `scripts/tests/game-room-xox-host-regressions.test.ts`
+  - `scripts/tests/game-room-backgammon-host-regressions.test.ts`
   - `scripts/tests/game-room-team-tetris-host-regressions.test.ts`
   - `scripts/tests/game-room-fate-knots-host-regressions.test.ts`
   - `scripts/tests/forge-room-host-runtime-flow-regressions.test.ts`
@@ -131,6 +131,7 @@ End-state rule:
   - `npm run typecheck`
 
 ## Sprint 1: Freeze The End-State Contract
+
 **Goal**: Define the exact “SlotBridge only” boundary before deleting any caller paths.
 **Demo/Validation**:
 
@@ -138,6 +139,7 @@ End-state rule:
 - Every currently living bypass is mapped to a migration task and file owner.
 
 ### Task 1.1: Document the final single-authority boundary
+
 - **Location**:
   - `.rovo/slot-bridge-contract.md`
   - `src/types/commands.ts`
@@ -155,6 +157,7 @@ End-state rule:
   - Cross-check the contract against every live send path found in the current-state inventory.
 
 ### Task 1.2: Freeze the capability-gap list for bridge-first migration
+
 - **Location**:
   - `.rovo/slot-bridge-contract.md`
   - `src/js/modules/commands/slot-bridge.ts`
@@ -173,6 +176,7 @@ End-state rule:
   - Review against `analyze`, relay, game room, forge room, and `us1` transport call sites.
 
 ### Task 1.3: Freeze the deletion matrix
+
 - **Location**:
   - `src/js/modules/core-engine.ts`
   - `src/js/modules/core/send-actions.ts`
@@ -195,6 +199,7 @@ End-state rule:
   - Compare the deletion matrix against grep results for `sendProtocol`, `sendMessage`, `sendToTargets`, `sendUs1Message`, `AIAssistantSend`, `AssistantAISend`, `file.send`, and `message.sendWithAttachments`.
 
 ### Task 1.4: Freeze room migration scope from source copies only
+
 - **Location**:
   - `src/js/modules/rooms/room-host-runtime.ts`
   - `rooms/game-room/main-functions/**/*`
@@ -211,6 +216,7 @@ End-state rule:
   - Review the affected room source files and the room build flow before implementation starts.
 
 ## Sprint 2: Build The Bridge-Only Runtime Foundation
+
 **Goal**: Make `SlotBridge` ergonomic and capable enough that callers no longer need any parallel orchestration API.
 **Demo/Validation**:
 
@@ -218,6 +224,7 @@ End-state rule:
 - `message.send` and `message.sendWait` cover attachments, protocol composition, and `us1` parity without legacy fallback actions.
 
 ### Task 2.1: Introduce a typed internal bridge dispatcher
+
 - **Location**:
   - `src/js/modules/commands/slot-bridge-runtime.ts`
   - `src/js/modules/commands/slot-bridge.ts`
@@ -235,6 +242,7 @@ End-state rule:
   - Add direct unit coverage for helper normalization and failure propagation.
 
 ### Task 2.2: Make message actions fully canonical
+
 - **Location**:
   - `src/types/commands.ts`
   - `src/js/modules/commands/slot-bridge.ts`
@@ -253,6 +261,7 @@ End-state rule:
   - Expand `scripts/tests/slot-bridge-regressions.test.ts` for canonical attachment-only, protocol-plus-attachment, and `us1` parity cases.
 
 ### Task 2.3: Re-home old CoreEngine semantics behind the bridge
+
 - **Location**:
   - `src/js/modules/core-engine.ts`
   - `src/js/modules/core/send-actions.ts`
@@ -270,6 +279,7 @@ End-state rule:
   - Search for remaining external imports/usages of old `CoreEngine` send surfaces and verify they are gone or intentionally private.
 
 ### Task 2.4: Add architecture guard coverage before caller migration
+
 - **Location**:
   - `scripts/tests/slot-bridge-regressions.test.ts`
   - new regression file if needed under `scripts/tests/`
@@ -286,6 +296,7 @@ End-state rule:
   - Run the new guard suite plus targeted bridge regressions.
 
 ### Task 2.5: Add explicit wait-plus-attachment bridge coverage
+
 - **Location**:
   - `scripts/tests/slot-bridge-regressions.test.ts`
 - **Description**: Add focused coverage for the combined code paths that are easiest to miss during migration:
@@ -300,6 +311,7 @@ End-state rule:
   - Run the direct bridge regression suite after adding the new waited-attachment cases.
 
 ## Sprint 3: Migrate App Pages And Relay Orchestration
+
 **Goal**: Remove non-room live bypasses so app-visible behavior is already bridge-only before room cleanup begins.
 **Demo/Validation**:
 
@@ -308,6 +320,7 @@ End-state rule:
 - Relay runtimes forward all traffic through the bridge dispatcher.
 
 ### Task 3.1: Migrate Analyze outbound send and `us1` send
+
 - **Location**:
   - `src/js/pages/analyze.ts`
 - **Description**: Replace:
@@ -316,6 +329,7 @@ End-state rule:
   - `CoreEngine.sendProtocol(...)`
 
   with bridge-only sends. When AI targets need different text variants, issue sequential `SlotBridge` sends instead of falling back to `sendBatch`.
+
 - **Complexity**: 8/10
 - **Dependencies**: Sprint 2 complete
 - **Acceptance Criteria**:
@@ -325,6 +339,7 @@ End-state rule:
   - Add or update targeted Analyze regressions for AI send, cross-send, attachment send, and `us1` send.
 
 ### Task 3.2: Migrate relay UI and AI chat command orchestration
+
 - **Location**:
   - `src/js/app/relay-ui.ts`
   - `src/js/modules/commands/ai-chat-commands.ts`
@@ -344,6 +359,7 @@ End-state rule:
   - Update `scripts/tests/ai-chat-stop-regressions.test.ts`
 
 ### Task 3.3: Migrate relay runtimes to bridge-only forwarding
+
 - **Location**:
   - `src/js/modules/relay/ai-ai-relay.ts`
   - `src/js/modules/relay/ai-assistant-relay.ts`
@@ -354,6 +370,7 @@ End-state rule:
   - `coreEngine.sendToTargets(...)`
 
   with the internal typed bridge dispatcher. This includes protocol kickoffs, plain message forwarding, attachment forwarding, and `us1` session-bound forwarding.
+
 - **Complexity**: 9/10
 - **Dependencies**: Task 3.2
 - **Acceptance Criteria**:
@@ -363,6 +380,7 @@ End-state rule:
   - Add/update relay regressions for AI-AI, AI-assistant, and `us1`-assistant flows.
 
 ### Task 3.4: Remove app-layer direct transport bypasses
+
 - **Location**:
   - `src/js/pages/analyze.ts`
   - any other app/page module still calling direct IPC transport
@@ -375,6 +393,7 @@ End-state rule:
   - Add a regression or guard that blocks future direct app/page transport calls.
 
 ## Sprint 4: Migrate Rooms To A Single Room Bridge API
+
 **Goal**: Remove room host helper sprawl so room code also talks to the app through one bridge-shaped primitive.
 **Demo/Validation**:
 
@@ -382,6 +401,7 @@ End-state rule:
 - Game Room and Forge Room source code stop relying on legacy helper variants.
 
 ### Task 4.1: Collapse room host API to one bridge-first surface
+
 - **Location**:
   - `src/js/modules/rooms/room-host-runtime.ts`
 - **Description**: Replace room host helper sprawl with one bridge-first API. Target state:
@@ -398,15 +418,16 @@ End-state rule:
   - Compile and run targeted room-host regressions after interface replacement.
 
 ### Task 4.2: Migrate Game Room sources from helper sprawl to bridge-only
+
 - **Location**:
-  - `rooms/game-room/main-functions/xox/host/runtime.ts`
-  - `rooms/game-room/main-functions/xox/host/us1-invite-runtime.ts`
+  - `rooms/game-room/main-functions/backgammon/host/runtime.ts`
+  - `rooms/game-room/main-functions/backgammon/host/us1-invite-runtime.ts`
   - `rooms/game-room/main-functions/team-tetris/host/runtime.ts`
   - `rooms/game-room/main-functions/team-tetris/host/runtime-transport.ts`
   - `rooms/game-room/main-functions/fate-knots/host/prompt-runtime.ts`
 - **Description**: Replace all use of room host legacy helper shapes with bridge-only requests. Focus on:
   - `us1` invite/move/reset flows
-  - `us1` sync and remote-user selection flows where they affect XOX runtime continuity
+  - `us1` sync and remote-user selection flows where they affect Backgammon runtime continuity
   - AI turn dispatch
   - prompt delivery
   - waited host requests if any
@@ -417,11 +438,12 @@ End-state rule:
   - Room-to-slot traffic remains behaviorally unchanged.
 - **Validation**:
   - Run `npm run rooms:build` immediately after each migrated source batch
-  - Run `scripts/tests/game-room-xox-host-regressions.test.ts`
+  - Run `scripts/tests/game-room-backgammon-host-regressions.test.ts`
   - Run `scripts/tests/game-room-team-tetris-host-regressions.test.ts`
   - Run `scripts/tests/game-room-fate-knots-host-regressions.test.ts`
 
 ### Task 4.3: Migrate Forge Room host flows to the same bridge discipline
+
 - **Location**:
   - `rooms/forge-room/host/runtime.ts`
   - `rooms/forge-room/host/forge-preflight-runtime.ts`
@@ -436,6 +458,7 @@ End-state rule:
   - Run `scripts/tests/forge-room-host-messages-regressions.test.ts`
 
 ### Task 4.4: Rebuild room artifacts from source and verify parity
+
 - **Location**:
   - `rooms/**/*`
   - generated installed copies under `data/rooms/**/*`
@@ -450,6 +473,7 @@ End-state rule:
   - Run room regression suites again after rebuild
 
 ## Sprint 5: Remove Legacy Commands, Fallbacks, And Drift Vectors
+
 **Goal**: Complete the cutover so `SlotBridge` is not just preferred, but enforced as the only slot orchestration surface.
 **Demo/Validation**:
 
@@ -457,6 +481,7 @@ End-state rule:
 - Architectural guardrails fail fast if someone reintroduces a bypass.
 
 ### Task 5.1: Remove legacy command wrappers and action aliases
+
 - **Location**:
   - `src/js/modules/commands/ai-chat-commands.ts`
   - `src/js/modules/server-commands.ts`
@@ -472,6 +497,7 @@ End-state rule:
   - `file.send`
 
   Update help text, command catalog, and command-disable surfaces so the old names are not advertised or silently accepted.
+
 - **Complexity**: 7/10
 - **Dependencies**: Sprint 4 complete
 - **Acceptance Criteria**:
@@ -482,6 +508,7 @@ End-state rule:
   - Update `scripts/tests/server-command-panel-regressions.test.ts`
 
 ### Task 5.1a: Hard-reject retired bridge actions at runtime before final doc cleanup
+
 - **Location**:
   - `src/types/commands.ts`
   - `src/js/modules/commands/slot-bridge.ts`
@@ -495,6 +522,7 @@ End-state rule:
   - Add negative regression coverage for both retired action names.
 
 ### Task 5.2: Privatize remaining delivery leaves so only SlotBridge can call them
+
 - **Location**:
   - `src/js/modules/core/send-actions.ts`
   - `src/js/modules/core-engine.ts`
@@ -512,6 +540,7 @@ End-state rule:
   - Grep for external imports/usages of former orchestration helpers.
 
 ### Task 5.3: Add hard architectural guardrails
+
 - **Location**:
   - new regression or lint guard under `scripts/tests/`
   - optional lint config if preferred by the repo
@@ -528,6 +557,7 @@ End-state rule:
   - Run the new guard suite with the targeted bridge and room regressions.
 
 ### Task 5.4: Final smoke and rollout proof
+
 - **Location**:
   - relevant docs and smoke checklist files
 - **Description**: Run a final bridge-only smoke matrix covering:
@@ -557,7 +587,7 @@ End-state rule:
 - Re-run `us1` transport coverage after any `sessionRef` or attachment change:
   - `scripts/tests/us1-conversation-service-regressions.test.ts`
 - Re-run room regressions after room-host API simplification:
-  - `scripts/tests/game-room-xox-host-regressions.test.ts`
+  - `scripts/tests/game-room-backgammon-host-regressions.test.ts`
   - `scripts/tests/game-room-team-tetris-host-regressions.test.ts`
   - `scripts/tests/game-room-fate-knots-host-regressions.test.ts`
   - `scripts/tests/forge-room-host-runtime-flow-regressions.test.ts`

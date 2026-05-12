@@ -1,8 +1,8 @@
 import type { TeamTetrisMatch } from "../../team-tetris/host/engine-match.js";
 import type { TeamTetrisHostState } from "../../team-tetris/host/state.js";
-import type { XoxGameState } from "./state-core.js";
+import type { BackgammonGameState } from "./state-core.js";
 
-type XoxDispatchRoomCommandPayload = {
+type BackgammonDispatchRoomCommandPayload = {
   roomPayload?: unknown;
   args?: string;
   remoteUserId?: string | null;
@@ -10,26 +10,26 @@ type XoxDispatchRoomCommandPayload = {
   transportMessageId?: string | null;
 };
 
-type XoxToastPayload = {
+type BackgammonToastPayload = {
   type: "info" | "success" | "warning";
   message: string;
 };
 
-type XoxUs1MailboxResult = {
+type BackgammonUs1MailboxResult = {
   success?: boolean;
   roomInviteInbox?: unknown;
   roomEvents?: unknown;
   roomCommands?: unknown;
 };
 
-type XoxTeamTetrisStartConfig = {
+type BackgammonTeamTetrisStartConfig = {
   seed: string;
   hiddenPairs: boolean;
   revealPairsOnFinish: boolean;
   selectedPartnerSeatId: "ai1" | "ai2" | "us1" | null;
 };
 
-type XoxRoomCommand = {
+type BackgammonRoomCommand = {
   roomId: string;
   featureId: string;
   commandName: string;
@@ -42,7 +42,7 @@ type XoxRoomCommand = {
   transportMessageId: string | null;
 };
 
-type XoxRoomEvent = {
+type BackgammonRoomEvent = {
   roomId: string;
   featureId: string;
   eventType: string;
@@ -56,7 +56,7 @@ type XoxRoomEvent = {
   note: unknown;
 };
 
-type XoxPendingInvite = {
+type BackgammonPendingInvite = {
   direction: "incoming" | "outgoing";
   matchId: string;
   remoteUserId: string;
@@ -65,42 +65,42 @@ type XoxPendingInvite = {
   nickname: string;
 };
 
-type XoxInviteRuntime = {
+type BackgammonInviteRuntime = {
   applyInviteAcceptedState: (
-    api: XoxUs1SyncApi,
-    inviteEntry: XoxPendingInvite,
+    api: BackgammonUs1SyncApi,
+    inviteEntry: BackgammonPendingInvite,
     starter: "ai" | "user"
   ) => unknown;
-  readOutgoingInviteStarter: (inviteEntry: XoxPendingInvite) => "ai" | "user";
+  readOutgoingInviteStarter: (inviteEntry: BackgammonPendingInvite) => "ai" | "user";
   removeInviteFromInbox: (
-    api: XoxUs1SyncApi,
+    api: BackgammonUs1SyncApi,
     inviteId: string,
     remoteUserId: string | null
   ) => void;
-  syncFromSnapshot: (api: XoxUs1SyncApi, roomInviteInbox: unknown) => boolean;
+  syncFromSnapshot: (api: BackgammonUs1SyncApi, roomInviteInbox: unknown) => boolean;
 };
 
-export interface XoxUs1SyncApi {
+export interface BackgammonUs1SyncApi {
   getState(key: string): unknown;
   setState(key: string, value: unknown): void;
   deleteState?(key: string): void;
   dispatchBridge?(options: Record<string, unknown>): Promise<unknown>;
-  dispatchRoomCommand(commandName: string, payload: XoxDispatchRoomCommandPayload): unknown;
-  showToast(payload: XoxToastPayload): void;
+  dispatchRoomCommand(commandName: string, payload: BackgammonDispatchRoomCommandPayload): unknown;
+  showToast(payload: BackgammonToastPayload): void;
   isUs1Connected(): boolean;
   log(level: string, message: string): void;
   getLocale?(): unknown;
   notifyRoom?(event: string, payload: Record<string, unknown>): void;
 }
 
-export interface XoxUs1SyncRuntimeDeps {
+export interface BackgammonUs1SyncRuntimeDeps {
   DEFAULT_STARTER: string;
   FEATURE_ID: string;
   FATE_KNOTS_FEATURE_ID: string;
   ROOM_ID: string;
   TEAM_TETRIS_FEATURE_ID: string;
   commandMessage: (locale: unknown, key: string, params?: Record<string, unknown>) => string;
-  createInitialState: (locale: unknown, target: string, starter: string) => XoxGameState;
+  createInitialState: (locale: unknown, target: string, starter: string) => BackgammonGameState;
   createTeamTetrisMatch: (config: {
     seed: string;
     matchId?: string | null;
@@ -108,20 +108,26 @@ export interface XoxUs1SyncRuntimeDeps {
     revealPairsOnFinish: boolean;
     selectedPartnerSeatId?: "ai1" | "ai2" | "us1" | null;
   }) => TeamTetrisMatch;
-  dispatchNextTeamTetrisTurn: (api: XoxUs1SyncApi, state: TeamTetrisHostState) => Promise<unknown>;
-  loadPendingInvite: (api: XoxUs1SyncApi) => XoxPendingInvite | null;
-  loadState: (api: XoxUs1SyncApi) => XoxGameState;
-  loadTeamTetrisState: (api: XoxUs1SyncApi) => TeamTetrisHostState;
+  dispatchNextTeamTetrisTurn: (
+    api: BackgammonUs1SyncApi,
+    state: TeamTetrisHostState
+  ) => Promise<unknown>;
+  loadPendingInvite: (api: BackgammonUs1SyncApi) => BackgammonPendingInvite | null;
+  loadState: (api: BackgammonUs1SyncApi) => BackgammonGameState;
+  loadTeamTetrisState: (api: BackgammonUs1SyncApi) => TeamTetrisHostState;
   parseTeamTetrisStartEventNote: (note: unknown) => unknown;
-  pushRoomState: (api: XoxUs1SyncApi, state: XoxGameState) => XoxGameState;
-  pushTeamTetrisState: (api: XoxUs1SyncApi, state: TeamTetrisHostState) => unknown;
-  readLocale: (api: XoxUs1SyncApi) => "tr" | "en";
-  refreshRoomState: (api: XoxUs1SyncApi) => unknown;
-  removePendingInvite: (api: XoxUs1SyncApi) => void;
-  resolveStateMatchId: (state: XoxGameState) => string | null;
-  resetTeamTetrisState: (api: XoxUs1SyncApi, statusKey: string) => TeamTetrisHostState;
-  saveTeamTetrisState: (api: XoxUs1SyncApi, state: TeamTetrisHostState) => TeamTetrisHostState;
-  inviteRuntime: XoxInviteRuntime;
+  pushRoomState: (api: BackgammonUs1SyncApi, state: BackgammonGameState) => BackgammonGameState;
+  pushTeamTetrisState: (api: BackgammonUs1SyncApi, state: TeamTetrisHostState) => unknown;
+  readLocale: (api: BackgammonUs1SyncApi) => "tr" | "en";
+  refreshRoomState: (api: BackgammonUs1SyncApi) => unknown;
+  removePendingInvite: (api: BackgammonUs1SyncApi) => void;
+  resolveStateMatchId: (state: BackgammonGameState) => string | null;
+  resetTeamTetrisState: (api: BackgammonUs1SyncApi, statusKey: string) => TeamTetrisHostState;
+  saveTeamTetrisState: (
+    api: BackgammonUs1SyncApi,
+    state: TeamTetrisHostState
+  ) => TeamTetrisHostState;
+  inviteRuntime: BackgammonInviteRuntime;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -136,7 +142,7 @@ function readOptionalString(value: unknown): string | null {
   return typeof value === "string" && value !== "" ? value : null;
 }
 
-function normalizeMailboxResult(value: unknown): XoxUs1MailboxResult | null {
+function normalizeMailboxResult(value: unknown): BackgammonUs1MailboxResult | null {
   if (isRecord(value) === false) {
     return null;
   }
@@ -150,7 +156,7 @@ function normalizeMailboxResult(value: unknown): XoxUs1MailboxResult | null {
   };
 }
 
-function normalizeRoomCommand(candidate: unknown): XoxRoomCommand | null {
+function normalizeRoomCommand(candidate: unknown): BackgammonRoomCommand | null {
   if (isRecord(candidate) === false) {
     return null;
   }
@@ -169,14 +175,16 @@ function normalizeRoomCommand(candidate: unknown): XoxRoomCommand | null {
   };
 }
 
-function readRoomCommands(value: unknown): XoxRoomCommand[] {
+function readRoomCommands(value: unknown): BackgammonRoomCommand[] {
   if (Array.isArray(value) === false) {
     return [];
   }
 
   return value
     .map(normalizeRoomCommand)
-    .filter((command): command is XoxRoomCommand => command !== null && command.commandName !== "");
+    .filter(
+      (command): command is BackgammonRoomCommand => command !== null && command.commandName !== ""
+    );
 }
 
 function readCommandResultCandidates(value: unknown): Record<string, unknown>[] {
@@ -240,8 +248,8 @@ function buildRoomCommandFailureMessage(
 }
 
 function surfaceRoomCommandFailure(
-  api: XoxUs1SyncApi,
-  command: XoxRoomCommand,
+  api: BackgammonUs1SyncApi,
+  command: BackgammonRoomCommand,
   message: string
 ): void {
   const details = [
@@ -265,7 +273,7 @@ function surfaceRoomCommandFailure(
 }
 
 function shouldProcessRoomCommand(
-  command: XoxRoomCommand,
+  command: BackgammonRoomCommand,
   roomId: string,
   featureId: string,
   teamTetrisFeatureId: string,
@@ -283,7 +291,7 @@ function shouldProcessRoomCommand(
   );
 }
 
-function normalizeRoomEvent(candidate: unknown): XoxRoomEvent | null {
+function normalizeRoomEvent(candidate: unknown): BackgammonRoomEvent | null {
   if (isRecord(candidate) === false) {
     return null;
   }
@@ -303,21 +311,21 @@ function normalizeRoomEvent(candidate: unknown): XoxRoomEvent | null {
   };
 }
 
-function readRoomEvents(value: unknown): XoxRoomEvent[] {
+function readRoomEvents(value: unknown): BackgammonRoomEvent[] {
   if (Array.isArray(value) === false) {
     return [];
   }
 
   return value
     .map(normalizeRoomEvent)
-    .filter((event): event is XoxRoomEvent => event !== null && event.eventType !== "");
+    .filter((event): event is BackgammonRoomEvent => event !== null && event.eventType !== "");
 }
 
-function readEventMatchId(event: XoxRoomEvent): string | null {
+function readEventMatchId(event: BackgammonRoomEvent): string | null {
   return event.matchId || event.inviteId;
 }
 
-function readTeamTetrisStartConfig(candidate: unknown): XoxTeamTetrisStartConfig | null {
+function readTeamTetrisStartConfig(candidate: unknown): BackgammonTeamTetrisStartConfig | null {
   if (isRecord(candidate) === false) {
     return null;
   }
@@ -345,7 +353,7 @@ function readTimerHandle(value: unknown): ReturnType<typeof setInterval> | null 
   return null;
 }
 
-export function createGameRoomXoxUs1SyncRuntime(deps: XoxUs1SyncRuntimeDeps) {
+export function createGameRoomBackgammonUs1SyncRuntime(deps: BackgammonUs1SyncRuntimeDeps) {
   const {
     DEFAULT_STARTER,
     FEATURE_ID,
@@ -374,7 +382,10 @@ export function createGameRoomXoxUs1SyncRuntime(deps: XoxUs1SyncRuntimeDeps) {
     syncFromSnapshot,
   } = deps.inviteRuntime;
 
-  async function processRoomCommands(api: XoxUs1SyncApi, roomCommands: XoxRoomCommand[]) {
+  async function processRoomCommands(
+    api: BackgammonUs1SyncApi,
+    roomCommands: BackgammonRoomCommand[]
+  ) {
     await roomCommands.reduce<Promise<void>>(async (previous, command) => {
       await previous;
       if (
@@ -414,7 +425,7 @@ export function createGameRoomXoxUs1SyncRuntime(deps: XoxUs1SyncRuntimeDeps) {
     }, Promise.resolve());
   }
 
-  async function processRoomEvents(api: XoxUs1SyncApi, roomEvents: XoxRoomEvent[]) {
+  async function processRoomEvents(api: BackgammonUs1SyncApi, roomEvents: BackgammonRoomEvent[]) {
     const currentState = loadState(api);
     const pendingInvite = loadPendingInvite(api);
     const currentMatchId = deps.resolveStateMatchId(currentState);
@@ -552,10 +563,10 @@ export function createGameRoomXoxUs1SyncRuntime(deps: XoxUs1SyncRuntimeDeps) {
   }
 
   function ensureUs1SyncLoop(
-    api: XoxUs1SyncApi,
-    syncUs1MailboxFn: (api: XoxUs1SyncApi, reason: string) => Promise<void>
+    api: BackgammonUs1SyncApi,
+    syncUs1MailboxFn: (api: BackgammonUs1SyncApi, reason: string) => Promise<void>
   ) {
-    const currentTimer = readTimerHandle(api.getState("xox-us1-sync-timer"));
+    const currentTimer = readTimerHandle(api.getState("backgammon-us1-sync-timer"));
     if (currentTimer !== null) {
       return;
     }
@@ -566,26 +577,26 @@ export function createGameRoomXoxUs1SyncRuntime(deps: XoxUs1SyncRuntimeDeps) {
     if (typeof timerId.unref === "function") {
       timerId.unref();
     }
-    api.setState("xox-us1-sync-timer", timerId);
+    api.setState("backgammon-us1-sync-timer", timerId);
   }
 
-  function clearUs1SyncLoop(api: XoxUs1SyncApi) {
-    const currentTimer = readTimerHandle(api.getState("xox-us1-sync-timer"));
+  function clearUs1SyncLoop(api: BackgammonUs1SyncApi) {
+    const currentTimer = readTimerHandle(api.getState("backgammon-us1-sync-timer"));
     if (currentTimer !== null) {
       clearInterval(currentTimer);
     }
-    api.deleteState?.("xox-us1-sync-timer");
+    api.deleteState?.("backgammon-us1-sync-timer");
   }
 
-  async function syncUs1Mailbox(api: XoxUs1SyncApi, reason: string) {
+  async function syncUs1Mailbox(api: BackgammonUs1SyncApi, reason: string) {
     if (api.isUs1Connected() !== true) {
       return;
     }
-    if (api.getState("xox-us1-syncing") === true) {
+    if (api.getState("backgammon-us1-syncing") === true) {
       return;
     }
 
-    api.setState("xox-us1-syncing", true);
+    api.setState("backgammon-us1-syncing", true);
     try {
       const state = loadState(api);
       const result =
@@ -619,7 +630,7 @@ export function createGameRoomXoxUs1SyncRuntime(deps: XoxUs1SyncRuntimeDeps) {
         refreshRoomState(api);
       }
     } finally {
-      api.deleteState?.("xox-us1-syncing");
+      api.deleteState?.("backgammon-us1-syncing");
     }
   }
 

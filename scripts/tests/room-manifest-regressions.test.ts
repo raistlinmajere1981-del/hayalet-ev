@@ -25,30 +25,30 @@ test("validateRoomManifest accepts a minimal valid room manifest", () => {
       uiEntry: "ui/index.html",
       hostEntry: "host/index.js",
     },
-    defaultFeatureId: "xox",
+    defaultFeatureId: "backgammon",
     features: [
       {
-        id: "xox",
-        name: "XOX",
-        commandSpecs: [{ name: "GameRoomXoxAiMove", scope: "ai-slots" }],
+        id: "backgammon",
+        name: "Tavla",
+        commandSpecs: [{ name: "GameRoomBackgammonAiMove", scope: "ai-slots" }],
         protocolSpecs: [
           {
-            key: "game-room-xox-user-start",
+            key: "game-room-backgammon-user-start",
             room: "game-room",
-            scenario: "xox-user-start",
-            title: "[START][GAME-ROOM][XOX][USER-FIRST]",
+            scenario: "backgammon-user-start",
+            title: "[START][GAME-ROOM][Tavla][USER-FIRST]",
             editable: true,
           },
         ],
         scene: {
           hotspot: {
-            id: "game-room-xox",
+            id: "game-room-backgammon",
             rect: { leftPx: 100, topPx: 200, widthPx: 180, heightPx: 120 },
-            label: { text: "XOX" },
+            label: { text: "Tavla" },
           },
           view: {
-            id: "xox-closeup",
-            backgroundSrc: "assets/xox-view.webp",
+            id: "backgammon-closeup",
+            backgroundSrc: "assets/backgammon-view.webp",
           },
         },
       },
@@ -72,7 +72,7 @@ test("validateRoomManifest accepts a minimal valid room manifest", () => {
   assert.equal(result.manifest?.id, "game-room");
   assert.equal(result.manifest?.menu.iconSrc, "assets/nav-icon.svg");
   assert.equal(result.manifest?.runtime.uiEntry, "ui/index.html");
-  assert.equal(result.manifest?.defaultFeatureId, "xox");
+  assert.equal(result.manifest?.defaultFeatureId, "backgammon");
 });
 
 test("validateRoomManifest rejects invalid ids, commands, and unsafe paths", () => {
@@ -166,7 +166,10 @@ test("validateRoomManifest allows workbench rooms to keep scene entries only for
   assert.equal(result.valid, true);
   assert.deepEqual(result.errors, []);
   assert.equal(result.manifest?.workbench?.experienceId, "analysis-workbench");
-  assert.equal(result.manifest?.features.find((feature) => feature.id === "audio-analysis")?.scene, undefined);
+  assert.equal(
+    result.manifest?.features.find((feature) => feature.id === "audio-analysis")?.scene,
+    undefined
+  );
 });
 
 test("normalizeRoomRelativePath blocks traversal and preserves safe paths", () => {
@@ -213,12 +216,14 @@ test("protocol specs support explicit safe relative paths", () => {
     "main-functions/primary/protocols/primary-start.md"
   );
   assert.equal(
-    resolveRoomProtocolFilePath(result.manifest?.features[0]?.protocolSpecs?.[0] ?? {
-      key: "",
-      room: "",
-      scenario: "",
-      title: "",
-    }),
+    resolveRoomProtocolFilePath(
+      result.manifest?.features[0]?.protocolSpecs?.[0] ?? {
+        key: "",
+        room: "",
+        scenario: "",
+        title: "",
+      }
+    ),
     "main-functions/primary/protocols/primary-start.md"
   );
 });
@@ -230,15 +235,19 @@ test("room id and command validators match project rules", () => {
   assert.equal(isValidRoomCommandName("Game.Room"), false);
 });
 
-test("game-room manifest documents the US1 XOX transport contract", () => {
+test("game-room manifest documents the US1 Tavla transport contract", () => {
   const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8"));
   const result = validateRoomManifest(manifest);
 
   assert.equal(result.valid, true);
-  const xoxFeature = result.manifest?.features.find((feature) => feature.id === "xox");
-  assert.ok(xoxFeature);
+  const backgammonFeature = result.manifest?.features.find(
+    (feature) => feature.id === "backgammon"
+  );
+  assert.ok(backgammonFeature);
   assert.equal(
-    xoxFeature?.protocolSpecs?.some((spec) => spec.key === "game-room-xox-us1-transport"),
+    backgammonFeature?.protocolSpecs?.some(
+      (spec) => spec.key === "game-room-backgammon-us1-transport"
+    ),
     true
   );
 });
@@ -248,18 +257,26 @@ test("game-room manifest documents the Team Tetris AI and US1 contracts", () => 
   const result = validateRoomManifest(manifest);
 
   assert.equal(result.valid, true);
-  const teamTetrisFeature = result.manifest?.features.find((feature) => feature.id === "team-tetris");
+  const teamTetrisFeature = result.manifest?.features.find(
+    (feature) => feature.id === "team-tetris"
+  );
   assert.ok(teamTetrisFeature);
   assert.equal(
-    teamTetrisFeature?.protocolSpecs?.some((spec) => spec.key === "game-room-team-tetris-ai-opening"),
+    teamTetrisFeature?.protocolSpecs?.some(
+      (spec) => spec.key === "game-room-team-tetris-ai-opening"
+    ),
     true
   );
   assert.equal(
-    teamTetrisFeature?.protocolSpecs?.some((spec) => spec.key === "game-room-team-tetris-ai-followup"),
+    teamTetrisFeature?.protocolSpecs?.some(
+      (spec) => spec.key === "game-room-team-tetris-ai-followup"
+    ),
     true
   );
   assert.equal(
-    teamTetrisFeature?.protocolSpecs?.some((spec) => spec.key === "game-room-team-tetris-us1-transport"),
+    teamTetrisFeature?.protocolSpecs?.some(
+      (spec) => spec.key === "game-room-team-tetris-us1-transport"
+    ),
     true
   );
 });
@@ -272,7 +289,9 @@ test("game-room manifest documents the Fate Knots AI and US1 contracts", () => {
   const fateKnotsFeature = result.manifest?.features.find((feature) => feature.id === "fate-knots");
   assert.ok(fateKnotsFeature);
   assert.equal(
-    fateKnotsFeature?.protocolSpecs?.some((spec) => spec.key === "game-room-fate-knots-ai-decision"),
+    fateKnotsFeature?.protocolSpecs?.some(
+      (spec) => spec.key === "game-room-fate-knots-ai-decision"
+    ),
     true
   );
   assert.equal(
@@ -288,7 +307,9 @@ test("game-room manifest documents the Fate Knots AI and US1 contracts", () => {
     true
   );
   assert.equal(
-    fateKnotsFeature?.protocolSpecs?.some((spec) => spec.key === "game-room-fate-knots-us1-transport"),
+    fateKnotsFeature?.protocolSpecs?.some(
+      (spec) => spec.key === "game-room-fate-knots-us1-transport"
+    ),
     true
   );
   assert.equal(fateKnotsFeature?.scene?.hotspot?.id, "game-room-fate-knots");

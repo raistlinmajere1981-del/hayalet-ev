@@ -159,7 +159,7 @@ export function getActiveFeatureId(
 }
 
 export function loadContext(api: { getState: (key: string) => unknown }): GameRoomContextSnapshot {
-  return sanitizeContext(api.getState("xox-context"));
+  return sanitizeContext(api.getState("backgammon-context"));
 }
 
 export function saveContext(
@@ -167,6 +167,6 @@ export function saveContext(
   payload: unknown
 ): GameRoomContextSnapshot {
   const context = sanitizeContext(payload);
-  api.setState("xox-context", context);
+  api.setState("backgammon-context", context);
   return context;
 }

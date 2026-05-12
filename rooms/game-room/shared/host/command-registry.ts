@@ -1,14 +1,14 @@
 type CommandHandler = (api: unknown, payload?: unknown) => unknown;
 
 interface GameRoomCommandRegistryDependencies {
-  xoxCommandNames: Record<string, string>;
-  handleXoxStart: CommandHandler;
-  handleXoxReset: (api: unknown) => unknown;
-  handleXoxUserMove: CommandHandler;
-  handleXoxAiMove: CommandHandler;
-  handleXoxRemoteMove: CommandHandler;
-  handleXoxAcceptInvite: CommandHandler;
-  handleXoxRejectInvite: CommandHandler;
+  backgammonCommandNames: Record<string, string>;
+  handleBackgammonStart: CommandHandler;
+  handleBackgammonReset: (api: unknown) => unknown;
+  handleBackgammonUserMove: CommandHandler;
+  handleBackgammonAiMove: CommandHandler;
+  handleBackgammonRemoteMove: CommandHandler;
+  handleBackgammonAcceptInvite: CommandHandler;
+  handleBackgammonRejectInvite: CommandHandler;
   handleTeamTetrisStart: CommandHandler;
   handleTeamTetrisReset: (api: unknown) => unknown;
   handleTeamTetrisMove: CommandHandler;
@@ -29,14 +29,14 @@ export function createGameRoomCommandRegistry(
   api: unknown,
   deps: GameRoomCommandRegistryDependencies
 ): Record<string, (payload?: unknown) => unknown> {
-  const xoxCommands = {
-    start: deps.xoxCommandNames["start"] || "GameRoomXoxStart",
-    reset: deps.xoxCommandNames["reset"] || "GameRoomXoxReset",
-    userMove: deps.xoxCommandNames["userMove"] || "GameRoomXoxUserMove",
-    aiMove: deps.xoxCommandNames["aiMove"] || "GameRoomXoxAiMove",
-    remoteMove: deps.xoxCommandNames["remoteMove"] || "GameRoomXoxRemoteMove",
-    acceptInvite: deps.xoxCommandNames["acceptInvite"] || "GameRoomXoxAcceptInvite",
-    rejectInvite: deps.xoxCommandNames["rejectInvite"] || "GameRoomXoxRejectInvite",
+  const backgammonCommands = {
+    start: deps.backgammonCommandNames["start"] || "GameRoomBackgammonStart",
+    reset: deps.backgammonCommandNames["reset"] || "GameRoomBackgammonReset",
+    userMove: deps.backgammonCommandNames["userMove"] || "GameRoomBackgammonUserMove",
+    aiMove: deps.backgammonCommandNames["aiMove"] || "GameRoomBackgammonAiMove",
+    remoteMove: deps.backgammonCommandNames["remoteMove"] || "GameRoomBackgammonRemoteMove",
+    acceptInvite: deps.backgammonCommandNames["acceptInvite"] || "GameRoomBackgammonAcceptInvite",
+    rejectInvite: deps.backgammonCommandNames["rejectInvite"] || "GameRoomBackgammonRejectInvite",
   };
   const fateKnotsCommands = {
     start: deps.fateKnotsCommandNames["start"] || "GameRoomFateKnotsStart",
@@ -59,26 +59,26 @@ export function createGameRoomCommandRegistry(
   };
 
   const registry: Record<string, (payload?: unknown) => unknown> = {
-    [xoxCommands.start]: function (payload?: unknown) {
-      return deps.handleXoxStart(api, payload || {});
+    [backgammonCommands.start]: function (payload?: unknown) {
+      return deps.handleBackgammonStart(api, payload || {});
     },
-    [xoxCommands.reset]: function () {
-      return deps.handleXoxReset(api);
+    [backgammonCommands.reset]: function () {
+      return deps.handleBackgammonReset(api);
     },
-    [xoxCommands.userMove]: function (payload?: unknown) {
-      return deps.handleXoxUserMove(api, payload || {});
+    [backgammonCommands.userMove]: function (payload?: unknown) {
+      return deps.handleBackgammonUserMove(api, payload || {});
     },
-    [xoxCommands.aiMove]: function (payload?: unknown) {
-      return deps.handleXoxAiMove(api, payload || {});
+    [backgammonCommands.aiMove]: function (payload?: unknown) {
+      return deps.handleBackgammonAiMove(api, payload || {});
     },
-    [xoxCommands.remoteMove]: function (payload?: unknown) {
-      return deps.handleXoxRemoteMove(api, payload || {});
+    [backgammonCommands.remoteMove]: function (payload?: unknown) {
+      return deps.handleBackgammonRemoteMove(api, payload || {});
     },
-    [xoxCommands.acceptInvite]: function (payload?: unknown) {
-      return deps.handleXoxAcceptInvite(api, payload || {});
+    [backgammonCommands.acceptInvite]: function (payload?: unknown) {
+      return deps.handleBackgammonAcceptInvite(api, payload || {});
     },
-    [xoxCommands.rejectInvite]: function (payload?: unknown) {
-      return deps.handleXoxRejectInvite(api, payload || {});
+    [backgammonCommands.rejectInvite]: function (payload?: unknown) {
+      return deps.handleBackgammonRejectInvite(api, payload || {});
     },
     GameRoomTeamTetrisStart: function (payload?: unknown) {
       return deps.handleTeamTetrisStart(api, payload || {});
@@ -138,25 +138,6 @@ export function createGameRoomCommandRegistry(
       return deps.handleFateKnotsNpcBanter(api, payload || {});
     },
   };
-
-  const xoxAliases = {
-    start: ["GameRoomXoxStart", "GameRoomBackgammonStart"],
-    reset: ["GameRoomXoxReset", "GameRoomBackgammonReset"],
-    userMove: ["GameRoomXoxUserMove", "GameRoomBackgammonUserMove"],
-    aiMove: ["GameRoomXoxAiMove", "GameRoomBackgammonAiMove"],
-    remoteMove: ["GameRoomXoxRemoteMove", "GameRoomBackgammonRemoteMove"],
-    acceptInvite: ["GameRoomXoxAcceptInvite", "GameRoomBackgammonAcceptInvite"],
-    rejectInvite: ["GameRoomXoxRejectInvite", "GameRoomBackgammonRejectInvite"],
-  };
-  Object.entries(xoxAliases).forEach(([key, names]) => {
-    const handler = registry[xoxCommands[key as keyof typeof xoxCommands]];
-    if (typeof handler !== "function") {
-      return;
-    }
-    names.forEach((name) => {
-      registry[name] = handler;
-    });
-  });
 
   return registry;
 }

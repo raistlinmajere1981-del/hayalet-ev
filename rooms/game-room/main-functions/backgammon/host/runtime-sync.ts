@@ -23,7 +23,7 @@ type TeamTetrisSeatReadiness = {
   us1: boolean;
 };
 
-interface XoxRuntimeSyncApi extends TeamTetrisStateApi {
+interface BackgammonRuntimeSyncApi extends TeamTetrisStateApi {
   notifyRoom?(eventType: string, data: unknown): void;
 }
 
@@ -35,7 +35,7 @@ function readTeamTetrisSeatReadiness(context: GameRoomContextState): TeamTetrisS
   };
 }
 
-export function syncFromContext(api: XoxRuntimeSyncApi, payload: unknown) {
+export function syncFromContext(api: BackgammonRuntimeSyncApi, payload: unknown) {
   const previousContext = loadContext(api);
   const previousActiveFeatureId = getActiveFeatureId(previousContext);
   const context = saveContext(api, payload);

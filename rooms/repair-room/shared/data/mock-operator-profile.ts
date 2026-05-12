@@ -1,4 +1,7 @@
-import { REPAIR_OPERATOR_PROFILE_SCHEMA_VERSION } from "../repair-constants.js";
+import {
+  REPAIR_OPERATOR_PROFILE_SCHEMA_VERSION,
+  REPAIR_UI_COLORS,
+} from "../repair-constants.js";
 import type {
   RepairAiAdaptationHints,
   RepairOperatorProfile,
@@ -111,7 +114,7 @@ export const MOCK_REPAIR_OPERATOR_PROFILE: RepairOperatorProfile = {
   ],
   preferences: {
     measurementSystem: "metric",
-    annotationDefaultColor: "#56c8de",
+    annotationDefaultColor: REPAIR_UI_COLORS.cyan,
     annotationDefaultStrokeWidth: 2,
     riskTolerance: "medium",
     aiVerbosity: "standard",

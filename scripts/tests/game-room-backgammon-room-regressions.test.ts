@@ -26,37 +26,37 @@ const requiredFiles = [
   "rooms/game-room/shared/ui/feature-contract.ts",
   "rooms/game-room/shared/ui/scroll-runtime.ts",
   "rooms/game-room/shared/types/room-shell-contracts.ts",
-  "rooms/game-room/main-functions/xox/host/runtime.ts",
+  "rooms/game-room/main-functions/backgammon/host/runtime.ts",
   "rooms/game-room/shared/styles/base.css",
   "rooms/game-room/i18n/en.json",
   "rooms/game-room/i18n/tr.json",
-  "rooms/game-room/main-functions/xox/protocols/game-room-xox-user-start.md",
-  "rooms/game-room/main-functions/xox/protocols/game-room-xox-ai-start.md",
-  "rooms/game-room/main-functions/xox/host/copy.ts",
-  "rooms/game-room/main-functions/xox/host/runtime-match.ts",
-  "rooms/game-room/main-functions/xox/host/runtime-sync.ts",
-  "rooms/game-room/main-functions/xox/host/state-core.ts",
-  "rooms/game-room/main-functions/xox/host/state-invites.ts",
-  "rooms/game-room/main-functions/xox/host/state-room-runtime.ts",
-  "rooms/game-room/main-functions/xox/host/state.ts",
-  "rooms/game-room/main-functions/xox/host/us1-invite-runtime.ts",
-  "rooms/game-room/main-functions/xox/host/us1-sync-runtime.ts",
-  "rooms/game-room/main-functions/xox/host/us1-runtime.ts",
-  "rooms/game-room/main-functions/xox/ui/state-runtime.ts",
-  "rooms/game-room/main-functions/xox/ui/backgammon-stage-runtime.ts",
-  "rooms/game-room/main-functions/xox/ui/render-runtime.ts",
-  "rooms/game-room/main-functions/xox/ui/module.ts",
-  "rooms/game-room/main-functions/xox/styles.css",
-  "rooms/game-room/main-functions/xox/styles/layout.css",
-  "rooms/game-room/main-functions/xox/styles/presentation.css",
-  "rooms/game-room/main-functions/xox/styles/board.css",
-  "rooms/game-room/main-functions/xox/styles/scene-view.css",
+  "rooms/game-room/main-functions/backgammon/protocols/game-room-backgammon-user-start.md",
+  "rooms/game-room/main-functions/backgammon/protocols/game-room-backgammon-ai-start.md",
+  "rooms/game-room/main-functions/backgammon/host/copy.ts",
+  "rooms/game-room/main-functions/backgammon/host/runtime-match.ts",
+  "rooms/game-room/main-functions/backgammon/host/runtime-sync.ts",
+  "rooms/game-room/main-functions/backgammon/host/state-core.ts",
+  "rooms/game-room/main-functions/backgammon/host/state-invites.ts",
+  "rooms/game-room/main-functions/backgammon/host/state-room-runtime.ts",
+  "rooms/game-room/main-functions/backgammon/host/state.ts",
+  "rooms/game-room/main-functions/backgammon/host/us1-invite-runtime.ts",
+  "rooms/game-room/main-functions/backgammon/host/us1-sync-runtime.ts",
+  "rooms/game-room/main-functions/backgammon/host/us1-runtime.ts",
+  "rooms/game-room/main-functions/backgammon/ui/state-runtime.ts",
+  "rooms/game-room/main-functions/backgammon/ui/backgammon-stage-runtime.ts",
+  "rooms/game-room/main-functions/backgammon/ui/render-runtime.ts",
+  "rooms/game-room/main-functions/backgammon/ui/module.ts",
+  "rooms/game-room/main-functions/backgammon/styles.css",
+  "rooms/game-room/main-functions/backgammon/styles/layout.css",
+  "rooms/game-room/main-functions/backgammon/styles/presentation.css",
+  "rooms/game-room/main-functions/backgammon/styles/board.css",
+  "rooms/game-room/main-functions/backgammon/styles/scene-view.css",
   "rooms/game-room/shared/assets/room-background.webp",
   "rooms/game-room/shared/vendor/konva.min.js",
-  "rooms/game-room/main-functions/xox/assets/xox-view.webp",
+  "rooms/game-room/main-functions/backgammon/assets/backgammon-view.webp",
 ];
 
-type XoxUiStateHarness = {
+type BackgammonUiStateHarness = {
   state: {
     game: Record<string, unknown>;
     context: {
@@ -80,10 +80,12 @@ type XoxUiStateHarness = {
   };
 };
 
-function createXoxUiStateHarness(): XoxUiStateHarness {
+function createBackgammonUiStateHarness(): BackgammonUiStateHarness {
   const windowObject: {
     GameRoomUiFactories?: {
-      createXoxUiStateRuntime?: (deps: Record<string, unknown>) => XoxUiStateHarness["runtime"];
+      createBackgammonUiStateRuntime?: (
+        deps: Record<string, unknown>
+      ) => BackgammonUiStateHarness["runtime"];
     };
   } = {};
   const context = {
@@ -92,7 +94,7 @@ function createXoxUiStateHarness(): XoxUiStateHarness {
   };
   vm.createContext(context);
   vm.runInNewContext(
-    loadWorkspaceScriptForVm("rooms/game-room/main-functions/xox/ui/state-runtime.ts"),
+    loadWorkspaceScriptForVm("rooms/game-room/main-functions/backgammon/ui/state-runtime.ts"),
     context
   );
 
@@ -127,16 +129,16 @@ function createXoxUiStateHarness(): XoxUiStateHarness {
     locale: "tr",
   };
 
-  const runtimeFactory = windowObject.GameRoomUiFactories?.createXoxUiStateRuntime;
+  const runtimeFactory = windowObject.GameRoomUiFactories?.createBackgammonUiStateRuntime;
   assert.equal(typeof runtimeFactory, "function");
   const runtime = runtimeFactory({
     getState: () => state,
     roomId: "game-room",
-    featureId: "xox",
+    featureId: "backgammon",
     createSlot,
     createInviteEntry: () => ({
       roomId: "game-room",
-      featureId: "xox",
+      featureId: "backgammon",
       inviteId: "",
       remoteUserId: "",
       nickname: "US1",
@@ -156,22 +158,22 @@ function createXoxUiStateHarness(): XoxUiStateHarness {
   return { state, runtime };
 }
 
-test("game-room workspace keeps the required XOX package files", () => {
+test("game-room workspace keeps the required Tavla package files", () => {
   requiredFiles.forEach((filePath) => {
     assert.equal(existsSync(filePath), true, filePath);
   });
 });
 
-test("game-room manifest validates with the XOX-first room contract", () => {
+test("game-room manifest validates with the Tavla-first room contract", () => {
   const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8"));
   const validation = validateRoomManifest(manifest);
 
   assert.equal(validation.valid, true);
   assert.equal(validation.manifest?.id, "game-room");
-  assert.equal(validation.manifest?.defaultFeatureId, "xox");
+  assert.equal(validation.manifest?.defaultFeatureId, "backgammon");
   assert.deepEqual(
     validation.manifest?.features.map((feature) => feature.id),
-    ["xox", "team-tetris", "fate-knots"]
+    ["backgammon", "team-tetris", "fate-knots"]
   );
   assert.equal(validation.manifest?.runtime.uiEntry, "ui/index.html");
   assert.equal(validation.manifest?.runtime.hostEntry, "host/index.js");
@@ -180,8 +182,8 @@ test("game-room manifest validates with the XOX-first room contract", () => {
   assert.equal(validation.manifest?.scene?.chrome?.pageShellVariant, "immersive-stage");
 });
 
-test("game-room XOX UI keeps the local idle target selection during snapshot sync", () => {
-  const { state, runtime } = createXoxUiStateHarness();
+test("game-room Tavla UI keeps the local idle target selection during snapshot sync", () => {
+  const { state, runtime } = createBackgammonUiStateHarness();
   state.preferences.target = "us1";
   state.preferences.starter = "ai";
   Object.assign(state.game, {
@@ -200,8 +202,8 @@ test("game-room XOX UI keeps the local idle target selection during snapshot syn
   assert.equal(state.preferences.starter, "ai");
 });
 
-test("game-room XOX UI syncs the host target once the match state becomes authoritative", () => {
-  const { state, runtime } = createXoxUiStateHarness();
+test("game-room Tavla UI syncs the host target once the match state becomes authoritative", () => {
+  const { state, runtime } = createBackgammonUiStateHarness();
   state.preferences.target = "ai1";
   state.preferences.starter = "user";
   Object.assign(state.game, {
@@ -220,8 +222,8 @@ test("game-room XOX UI syncs the host target once the match state becomes author
   assert.equal(state.preferences.starter, "ai");
 });
 
-test("game-room XOX UI prioritizes command-result messages over stale game status text", () => {
-  const { state, runtime } = createXoxUiStateHarness();
+test("game-room Tavla UI prioritizes command-result messages over stale game status text", () => {
+  const { state, runtime } = createBackgammonUiStateHarness();
   Object.assign(state.game, {
     active: true,
     result: "pending",
@@ -232,75 +234,77 @@ test("game-room XOX UI prioritizes command-result messages over stale game statu
   assert.equal(runtime.getCurrentStatus(), "A duplicate remote move was ignored.");
 });
 
-test("game-room XOX UI forwards remote identity with invite actions", () => {
+test("game-room Tavla UI forwards remote identity with invite actions", () => {
   const uiModuleSource = loadWorkspaceScriptForVm(
-    "rooms/game-room/main-functions/xox/ui/module.ts"
+    "rooms/game-room/main-functions/backgammon/ui/module.ts"
   );
   const uiStateRuntimeSource = loadWorkspaceScriptForVm(
-    "rooms/game-room/main-functions/xox/ui/state-runtime.ts"
+    "rooms/game-room/main-functions/backgammon/ui/state-runtime.ts"
   );
   const backgammonStageRuntimeSource = loadWorkspaceScriptForVm(
-    "rooms/game-room/main-functions/xox/ui/backgammon-stage-runtime.ts"
+    "rooms/game-room/main-functions/backgammon/ui/backgammon-stage-runtime.ts"
   );
   const uiRenderRuntimeSource = loadWorkspaceScriptForVm(
-    "rooms/game-room/main-functions/xox/ui/render-runtime.ts"
+    "rooms/game-room/main-functions/backgammon/ui/render-runtime.ts"
   );
   const indexHtmlSource = readFileSync("rooms/game-room/ui/index.html", "utf8");
   const runtimeSource = loadWorkspaceScriptForVm(
-    "rooms/game-room/main-functions/xox/host/runtime.ts"
+    "rooms/game-room/main-functions/backgammon/host/runtime.ts"
   );
-  const stylesSource = readFileSync("rooms/game-room/main-functions/xox/styles.css", "utf8");
-  const stateSource = loadWorkspaceScriptForVm("rooms/game-room/main-functions/xox/host/state.ts");
+  const stylesSource = readFileSync("rooms/game-room/main-functions/backgammon/styles.css", "utf8");
+  const stateSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/backgammon/host/state.ts"
+  );
   const stateCoreSource = loadWorkspaceScriptForVm(
-    "rooms/game-room/main-functions/xox/host/state-core.ts"
+    "rooms/game-room/main-functions/backgammon/host/state-core.ts"
   );
   const stateInvitesSource = loadWorkspaceScriptForVm(
-    "rooms/game-room/main-functions/xox/host/state-invites.ts"
+    "rooms/game-room/main-functions/backgammon/host/state-invites.ts"
   );
   const stateRoomRuntimeSource = loadWorkspaceScriptForVm(
-    "rooms/game-room/main-functions/xox/host/state-room-runtime.ts"
+    "rooms/game-room/main-functions/backgammon/host/state-room-runtime.ts"
   );
   const runtimeMatchSource = loadWorkspaceScriptForVm(
-    "rooms/game-room/main-functions/xox/host/runtime-match.ts"
+    "rooms/game-room/main-functions/backgammon/host/runtime-match.ts"
   );
   const runtimeSyncSource = loadWorkspaceScriptForVm(
-    "rooms/game-room/main-functions/xox/host/runtime-sync.ts"
+    "rooms/game-room/main-functions/backgammon/host/runtime-sync.ts"
   );
   const us1RuntimeSource = loadWorkspaceScriptForVm(
-    "rooms/game-room/main-functions/xox/host/us1-runtime.ts"
+    "rooms/game-room/main-functions/backgammon/host/us1-runtime.ts"
   );
   const us1InviteRuntimeSource = loadWorkspaceScriptForVm(
-    "rooms/game-room/main-functions/xox/host/us1-invite-runtime.ts"
+    "rooms/game-room/main-functions/backgammon/host/us1-invite-runtime.ts"
   );
   const us1SyncRuntimeSource = loadWorkspaceScriptForVm(
-    "rooms/game-room/main-functions/xox/host/us1-sync-runtime.ts"
+    "rooms/game-room/main-functions/backgammon/host/us1-sync-runtime.ts"
   );
 
   assert.match(indexHtmlSource, /<script src="\.\/context-runtime\.js"><\/script>/);
   assert.match(indexHtmlSource, /shared\/vendor\/konva\.min\.js/);
-  assert.match(indexHtmlSource, /main-functions\/xox\/ui\/backgammon-stage-runtime\.js/);
+  assert.match(indexHtmlSource, /main-functions\/backgammon\/ui\/backgammon-stage-runtime\.js/);
   assert.ok(
     indexHtmlSource.indexOf("shared/vendor/konva.min.js") <
-      indexHtmlSource.indexOf("main-functions/xox/ui/backgammon-stage-runtime.js")
+      indexHtmlSource.indexOf("main-functions/backgammon/ui/backgammon-stage-runtime.js")
   );
   assert.ok(
-    indexHtmlSource.indexOf("main-functions/xox/ui/backgammon-stage-runtime.js") <
-      indexHtmlSource.indexOf("main-functions/xox/ui/render-runtime.js")
+    indexHtmlSource.indexOf("main-functions/backgammon/ui/backgammon-stage-runtime.js") <
+      indexHtmlSource.indexOf("main-functions/backgammon/ui/render-runtime.js")
   );
   assert.match(indexHtmlSource, /<script src="\.\/game-room-ui-bootstrap\.js"><\/script>/);
   assert.match(
     indexHtmlSource,
     /<script src="\.\/game-room-ui-state-message-runtime\.js"><\/script>/
   );
-  assert.match(indexHtmlSource, /main-functions\/xox\/ui\/state-runtime\.js/);
-  assert.match(indexHtmlSource, /main-functions\/xox\/ui\/render-runtime\.js/);
+  assert.match(indexHtmlSource, /main-functions\/backgammon\/ui\/state-runtime\.js/);
+  assert.match(indexHtmlSource, /main-functions\/backgammon\/ui\/render-runtime\.js/);
   assert.match(stylesSource, /@import "\.\/styles\/layout\.css"/);
   assert.match(stylesSource, /@import "\.\/styles\/presentation\.css"/);
   assert.match(stylesSource, /@import "\.\/styles\/board\.css"/);
   assert.match(stylesSource, /@import "\.\/styles\/scene-view\.css"/);
-  assert.match(uiModuleSource, /createXoxUiStateRuntime/);
-  assert.match(uiModuleSource, /createXoxUiRenderRuntime/);
-  assert.match(backgammonStageRuntimeSource, /createXoxBackgammonStageRuntime/);
+  assert.match(uiModuleSource, /createBackgammonUiStateRuntime/);
+  assert.match(uiModuleSource, /createBackgammonUiRenderRuntime/);
+  assert.match(backgammonStageRuntimeSource, /createBackgammonStageRuntime/);
   assert.match(backgammonStageRuntimeSource, /renderBackgammonStage/);
   assert.match(backgammonStageRuntimeSource, /draggable/);
   assert.match(runtimeSource, /from "\.\/runtime-match\.js"/);
@@ -315,8 +319,8 @@ test("game-room XOX UI forwards remote identity with invite actions", () => {
   assert.match(stateCoreSource, /export function createInitialState/);
   assert.match(stateInvitesSource, /export function normalizeInviteEntry/);
   assert.match(stateRoomRuntimeSource, /export function pushRoomState/);
-  assert.match(us1InviteRuntimeSource, /export function createGameRoomXoxUs1InviteRuntime/);
-  assert.match(us1SyncRuntimeSource, /export function createGameRoomXoxUs1SyncRuntime/);
+  assert.match(us1InviteRuntimeSource, /export function createGameRoomBackgammonUs1InviteRuntime/);
+  assert.match(us1SyncRuntimeSource, /export function createGameRoomBackgammonUs1SyncRuntime/);
   assert.match(
     uiStateRuntimeSource,
     /sendRoomCommand\("GameRoomBackgammonAcceptInvite",\s*\{\s*(inviteId:\s*inviteId|inviteId),\s*(remoteUserId:\s*remoteUserId|remoteUserId)\s*,?\s*\}\s*\)/

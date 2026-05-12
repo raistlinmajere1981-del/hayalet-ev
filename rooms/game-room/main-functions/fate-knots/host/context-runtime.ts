@@ -43,7 +43,7 @@ export function syncFromContext(
     state.transport.remoteUserId = context.slots.us1.remoteUserId;
   }
   updateContentSummary(state, contentRegistry);
-  api.setState("xox-context", context);
+  api.setState("backgammon-context", context);
   api.setState(FATE_KNOTS_CONTENT_STATE_KEY, contentRegistry);
   api.setState("fate-knots-game", state);
 }

@@ -184,11 +184,11 @@ test("game-room Fate Knots shell wiring is present in UI and host entrypoints", 
   const teamTetrisRuntimeSyncSource = loadWorkspaceScriptForVm(
     "rooms/game-room/main-functions/team-tetris/host/runtime-sync.ts"
   );
-  const xoxRuntimeSource = loadWorkspaceScriptForVm(
-    "rooms/game-room/main-functions/xox/host/runtime.ts"
+  const backgammonRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/backgammon/host/runtime.ts"
   );
-  const xoxRuntimeSyncSource = loadWorkspaceScriptForVm(
-    "rooms/game-room/main-functions/xox/host/runtime-sync.ts"
+  const backgammonRuntimeSyncSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/backgammon/host/runtime-sync.ts"
   );
   const fateKnotsUiModuleSource = loadWorkspaceScriptForVm(
     "rooms/game-room/main-functions/fate-knots/ui/module.ts"
@@ -443,8 +443,8 @@ test("game-room Fate Knots shell wiring is present in UI and host entrypoints", 
   assert.match(hostRuntimeSource, /handleFateKnotsDmPacket/);
   assert.match(teamTetrisRuntimeSyncSource, /FATE_KNOTS_FEATURE_ID/);
   assert.match(teamTetrisRuntimeSyncSource, /pushFateKnotsState/);
-  assert.match(xoxRuntimeSource, /\.\/runtime-sync\.js/);
-  assert.match(xoxRuntimeSyncSource, /fateKnotsSyncFromContext/);
+  assert.match(backgammonRuntimeSource, /\.\/runtime-sync\.js/);
+  assert.match(backgammonRuntimeSyncSource, /fateKnotsSyncFromContext/);
   assert.match(fateKnotsContentLoaderSource, /\.\/content-loader-shared\.js/);
   assert.match(fateKnotsContentLoaderSource, /\.\/content-loader-selections\.js/);
   assert.match(fateKnotsContentLoaderSource, /\.\/content-loader-world\.js/);

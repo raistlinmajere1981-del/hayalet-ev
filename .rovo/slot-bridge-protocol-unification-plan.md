@@ -52,7 +52,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - `src/js/modules/protocol-message-composer.ts`
   - `src/js/modules/core-engine.ts`
 - Room hosts still split protocol send and message send in the Game Room features:
-  - `rooms/game-room/main-functions/xox/host/runtime-match.ts`
+  - `rooms/game-room/main-functions/backgammon/host/runtime-match.ts`
   - `rooms/game-room/main-functions/team-tetris/host/runtime.ts`
   - `rooms/game-room/main-functions/fate-knots/host/prompt-runtime.ts`
 - App-owned callers still invoke `CoreEngine.sendProtocol(...)` from:
@@ -115,6 +115,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - `npm run typecheck`
 
 ## Sprint 1: Freeze The Unified Send Contract
+
 **Goal**: Define the final command contract before code moves so the migration stays aggressive without rework.
 **Demo/Validation**:
 
@@ -123,6 +124,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
 - The removal list for legacy send APIs is explicit.
 
 ### Task 1.1: Define the canonical send envelope extensions
+
 - **Location**:
   - `docs/slot-bridge-contract.md`
   - `src/types/commands.ts`
@@ -141,6 +143,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - Review the resulting contract against every current `sendProtocol(...)` and `sendMessage(...)` caller.
 
 ### Task 1.2: Freeze the protocol composition payload model
+
 - **Location**:
   - `docs/slot-bridge-contract.md`
   - New resolver module under `src/js/modules/`
@@ -159,9 +162,10 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - The contract does not require a second public action family.
   - Merge behavior is deterministic and documented.
 - **Validation**:
-  - Map `xox`, `team-tetris`, `fate-knots`, `analyze`, and `server/takecontrol` cases onto the new payload shape.
+  - Map `backgammon`, `team-tetris`, `fate-knots`, `analyze`, and `server/takecontrol` cases onto the new payload shape.
 
 ### Task 1.5: Freeze `us1` parity rules for the unified send model
+
 - **Location**:
   - `docs/slot-bridge-contract.md`
   - `src/types/commands.ts`
@@ -183,6 +187,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - Review the contract against the current `us1` conversation service and room-host mail helpers.
 
 ### Task 1.3: Decide the adapter and deletion matrix
+
 - **Location**:
   - `docs/slot-bridge-contract.md`
   - `src/js/modules/core-engine.ts`
@@ -206,6 +211,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - Review all `sendProtocol(` and room-host send helper call sites against the migration list.
 
 ### Task 1.4: Freeze the room communication boundary
+
 - **Location**:
   - `src/js/modules/rooms/room-host-runtime.ts`
   - `rooms/game-room/main-functions/**/*`
@@ -220,6 +226,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - Confirm the helper can cover the existing Game Room message and protocol cases.
 
 ## Sprint 2: Build The Unified SlotBridge Send Runtime
+
 **Goal**: Make `message.send` and `message.sendWait` powerful enough that legacy protocol delivery becomes a thin adapter.
 **Demo/Validation**:
 
@@ -228,6 +235,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
 - `message.sendWait` still returns archived reply text and attachments.
 
 ### Task 2.1: Extend SlotBridge types and normalization
+
 - **Location**:
   - `src/types/commands.ts`
   - `src/js/modules/commands/slot-bridge.ts`
@@ -246,6 +254,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - Expand `scripts/tests/slot-bridge-regressions.test.ts` with contract-level cases.
 
 ### Task 2.2: Replace the protocol send helper with a pure resolver/composer boundary
+
 - **Location**:
   - New module such as `src/js/modules/protocol-resolution.ts`
   - `src/js/modules/protocol-handler.ts`
@@ -266,6 +275,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - Update or replace `protocol-message-composer` and `protocol-handler` regressions with the new resolver behavior.
 
 ### Task 2.3: Rework `runMessageAction` into the canonical outbound dispatcher
+
 - **Location**:
   - `src/js/modules/commands/slot-bridge.ts`
   - `src/js/modules/core/send-actions.ts`
@@ -284,6 +294,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - Add regressions for protocol-only, protocol-plus-text, and attachment-plus-protocol sends.
 
 ### Task 2.4: Add short-lived compatibility adapters
+
 - **Location**:
   - `src/js/modules/core-engine.ts`
   - `src/js/modules/core/send-actions.ts`
@@ -302,6 +313,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - Trace adapter calls in targeted tests or logs during migration.
 
 ### Task 2.5: Add unified-send provider adapters for `us1`
+
 - **Location**:
   - `src/js/modules/commands/slot-bridge.ts`
   - `src/js/modules/rooms/room-host-runtime.ts`
@@ -318,6 +330,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - Add targeted `us1` bridge tests or transport-adapter tests before caller migration.
 
 ## Sprint 3: Migrate App-Owned Callers And Relay Flows
+
 **Goal**: Move app-level callers off the parallel protocol API before touching rooms aggressively.
 **Demo/Validation**:
 
@@ -325,6 +338,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
 - Relay/session side effects still behave correctly after protocol send removal.
 
 ### Task 3.1: Migrate app command and page callers
+
 - **Location**:
   - `src/js/modules/commands/ai-chat-commands.ts`
   - `src/js/app/relay-ui.ts`
@@ -341,6 +355,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - Targeted checks for analyze start/stop and server take-control flows.
 
 ### Task 3.2: Make relay lifecycle behavior explicit
+
 - **Location**:
   - `src/js/modules/core/runtime-actions.ts`
   - `src/js/modules/relay/ai-assistant-relay.ts`
@@ -357,6 +372,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - Rework and run relay-specific regressions, especially disconnect auto-stop scenarios.
 
 ### Task 3.3: Align help, examples, and action descriptions
+
 - **Location**:
   - `docs/slot-bridge-contract.md`
   - `src/js/modules/commands/command-descriptions.ts`
@@ -373,6 +389,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - Update help/copy regressions if they exist and manually review the server command panel behavior.
 
 ## Sprint 4: Migrate Room Host APIs And Room Implementations
+
 **Goal**: Make rooms speak to the app through one SlotBridge-shaped path and remove split protocol/message dispatch.
 **Demo/Validation**:
 
@@ -380,13 +397,14 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
 - Room host code no longer keeps separate app-bound protocol and message helpers.
 
 ### Task 4.1: Replace room host send APIs with one bridge helper
+
 - **Location**:
   - `src/js/modules/rooms/room-host-runtime.ts`
 - **Description**: Introduce the single room-facing SlotBridge helper and deprecate the app-bound direct send methods:
   - `sendProtocol`
   - `sendMessage`
   - `sendToTargets`
-  The replacement should accept structured SlotBridge envelopes or a thin typed helper around them.
+    The replacement should accept structured SlotBridge envelopes or a thin typed helper around them.
 - **Complexity**: 7/10
 - **Dependencies**: Sprint 3 complete
 - **Acceptance Criteria**:
@@ -397,21 +415,23 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - Verify host runtime still loads and room command dispatch continues to work.
 
 ### Task 4.2: Migrate Game Room feature sources to single-send flows
+
 - **Location**:
-  - `rooms/game-room/main-functions/xox/host/runtime-match.ts`
+  - `rooms/game-room/main-functions/backgammon/host/runtime-match.ts`
   - `rooms/game-room/main-functions/team-tetris/host/runtime.ts`
   - `rooms/game-room/main-functions/fate-knots/host/prompt-runtime.ts`
 - **Description**: Replace `sendProtocolSafe(...)` plus `sendMessageSafe(...)` pairs with one SlotBridge-based send helper. The first-turn and prompt flows should send protocol content and game/prompt text as a single outbound message.
 - **Complexity**: 8/10
 - **Dependencies**: Task 4.1
 - **Acceptance Criteria**:
-  - XOX user-start and AI-start both send one first message containing protocol plus board state.
+  - Backgammon user-start and AI-start both send one first message containing protocol plus board state.
   - Team Tetris prompt dispatch uses one send path.
   - Fate Knots protocol-plus-prompt flows are single-send and no longer split.
 - **Validation**:
   - Add or update feature-level targeted tests and smoke steps for each room flow.
 
 ### Task 4.3: Regenerate room artifacts and keep parity
+
 - **Location**:
   - `data/rooms/game-room/main-functions/**/*`
   - `data/room-storage/game-room/build/workspace/**/*`
@@ -427,6 +447,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - Run `npm run rooms:build` and the relevant installed/workspace room smoke regressions.
 
 ## Sprint 5: Remove The Parallel Protocol Delivery System
+
 **Goal**: Delete the old protocol send path once all callers have moved.
 **Demo/Validation**:
 
@@ -434,6 +455,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
 - Protocol storage/editor behavior still works through the new resolver/composer boundary.
 
 ### Task 5.1: Remove old protocol send entry points
+
 - **Location**:
   - `src/js/modules/core/send-actions.ts`
   - `src/js/modules/core-engine.ts`
@@ -449,6 +471,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - Search for remaining `sendProtocol(` call sites and verify they are intentional or removed.
 
 ### Task 5.2: Collapse extra send actions into the canonical pair
+
 - **Location**:
   - `src/types/commands.ts`
   - `src/js/modules/commands/slot-bridge.ts`
@@ -465,6 +488,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - Update SlotBridge action regressions and command catalog checks.
 
 ### Task 5.3: Prune room and adapter leftovers
+
 - **Location**:
   - `src/js/modules/rooms/room-host-runtime.ts`
   - `rooms/game-room/main-functions/**/*`
@@ -480,6 +504,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - Search for deprecated helper names and confirm zero remaining uses.
 
 ## Sprint 6: Verification, Smoke Coverage, And Rollback Guard
+
 **Goal**: Prove the aggressive cleanup did not break room flows, relay flows, or archive-backed reply behavior.
 **Demo/Validation**:
 
@@ -488,6 +513,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
 - Rollback points are clear if a late regression appears.
 
 ### Task 6.1: Update and run targeted regressions
+
 - **Location**:
   - `scripts/tests/slot-bridge-regressions.test.ts`
   - `scripts/tests/protocol-message-composer-regressions.test.ts`
@@ -508,12 +534,13 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - Run the targeted node test files plus `npm run rooms:test:core`.
 
 ### Task 6.2: Run cross-feature smoke scenarios
+
 - **Location**:
   - `docs/slot-bridge-smoke-checklist.md`
   - live app session
 - **Description**: Expand the smoke checklist and execute at least these scenarios:
-  - XOX user starts
-  - XOX AI starts
+  - Backgammon user starts
+  - Backgammon AI starts
   - Team Tetris prompt dispatch
   - Fate Knots prompt dispatch
   - Analyze start and stop
@@ -531,6 +558,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - Record smoke outcomes in the checklist doc or a follow-up status note.
 
 ### Task 6.3: Finish with strict workspace verification
+
 - **Location**:
   - repo root scripts
 - **Description**: Run the broad validation passes needed for an aggressive cleanup branch and compare against the old behavior.
@@ -546,6 +574,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - `npm run rooms:test:core`
 
 ### Task 6.4: Enforce source-of-truth discipline for room artifacts
+
 - **Location**:
   - `rooms/**/*`
   - generated outputs under `data/rooms/` and `data/room-storage/`
@@ -566,7 +595,7 @@ This plan removes the parallel protocol send pipeline, but it does **not** remov
   - resolver/composer tests for room/app protocol text assembly
   - SlotBridge send tests for delivery, attachments, wait mode, and multi-target behavior
 - Re-run room build and room core regressions after Game Room migration because source and built artifacts both matter here.
-- Preserve a smoke matrix for the user-visible turn-based flows, especially XOX first-turn behavior in both starter modes.
+- Preserve a smoke matrix for the user-visible turn-based flows, especially Backgammon first-turn behavior in both starter modes.
 - Keep relay auto-stop tests close to the runtime lifecycle changes because those behaviors were previously hidden in the protocol send helper.
 
 ## Potential Risks & Gotchas

@@ -1,4 +1,4 @@
-import type { XoxGameState } from "./state-core.js";
+import type { BackgammonGameState } from "./state-core.js";
 import { getOpponentInfo } from "./state.js";
 import { fillTemplate, translate } from "../../../shared/host/text.js";
 import {
@@ -10,7 +10,10 @@ import type {
   GameRoomSlotState,
 } from "../../../shared/types/room-shell-contracts.js";
 
-function readOpponentInfo(context: GameRoomContextState, state: XoxGameState): GameRoomSlotState {
+function readOpponentInfo(
+  context: GameRoomContextState,
+  state: BackgammonGameState
+): GameRoomSlotState {
   return getOpponentInfo(context, state);
 }
 
@@ -92,18 +95,18 @@ export function commandMessage(locale: unknown, key: string, params: Record<stri
   return fillTemplate(translate(locale, messages, key), params);
 }
 
-function formatDice(state: XoxGameState): string {
+function formatDice(state: BackgammonGameState): string {
   return state.dice.length > 0 ? state.dice.join("-") : "not rolled";
 }
 
-function formatBarOff(state: XoxGameState): string {
+function formatBarOff(state: BackgammonGameState): string {
   return [
     `User bar/off: ${state.bar.user}/${state.off.user}`,
     `Opponent bar/off: ${state.bar.ai}/${state.off.ai}`,
   ].join("\n");
 }
 
-function formatLegalMoves(state: XoxGameState): string {
+function formatLegalMoves(state: BackgammonGameState): string {
   if (state.legalMoves.length === 0) {
     return "- none";
   }
@@ -112,7 +115,7 @@ function formatLegalMoves(state: XoxGameState): string {
     .join("\n");
 }
 
-export function buildAiTurnMessage(state: XoxGameState, context: GameRoomContextState) {
+export function buildAiTurnMessage(state: BackgammonGameState, context: GameRoomContextState) {
   const opponent = readOpponentInfo(context, state);
   const userName = context.user.nickname;
   const command = buildRoomBridgeCommand("GameRoomBackgammonAiMove", {
@@ -158,7 +161,7 @@ export function buildInviteId() {
 }
 
 export function buildUs1InviteText(
-  state: XoxGameState,
+  state: BackgammonGameState,
   context: GameRoomContextState,
   note: string
 ) {
@@ -218,7 +221,7 @@ export function buildUs1MoveRoomCommand(payload: {
 }) {
   return buildUs1RoomBridgeCommand({
     roomId: "game-room",
-    featureId: "xox",
+    featureId: "backgammon",
     commandName: "GameRoomBackgammonRemoteMove",
     matchId: payload.matchId,
     turnIndex: payload.turnIndex,

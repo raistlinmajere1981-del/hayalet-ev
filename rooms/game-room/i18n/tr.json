@@ -2,11 +2,11 @@
   "title": "Oyun Odasi",
   "subtitle": "Canli AI slotlari veya bagli US1 uzak kullanicisi ile dogrudan maclar icin odakli masa oyunu odasi.",
   "features": {
-    "xox": "Tavla",
+    "backgammon": "Tavla",
     "team-tetris": "Takim Tetris",
     "fate-knots": "Fate Knots"
   },
-  "xox": {
+  "backgammon": {
     "heroBadge": "Oyun Odasi",
     "heroTitle": "Tavla Mac Masasi",
     "heroSubtitle": "AI1, AI2 veya US1'i sec, kimin baslayacagini belirle ve legal hamle komutlariyla sirali bir Tavla maci oyna.",
@@ -30,9 +30,6 @@
       "statusLabel": "Mac Durumu",
       "turnLabel": "Sira",
       "resultLabel": "Sonuc",
-      "symbolsLabel": "Pullar",
-      "cellsLabel": "Legal Noktalar",
-      "asciiLabel": "Metin Tahtasi",
       "diceLabel": "Zar",
       "barLabel": "Bar",
       "offLabel": "Toplanan",

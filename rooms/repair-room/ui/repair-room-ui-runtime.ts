@@ -1,6 +1,6 @@
 import type { RepairUiState, RepairUiSnapshotMeta } from "../shared/ui/state.js";
 import { normalizeRepairHostMessage } from "../shared/ui/host-messages.js";
-import { REPAIR_ROOM_ID } from "../shared/repair-constants.js";
+import { REPAIR_ROOM_ID, REPAIR_UI_COLORS } from "../shared/repair-constants.js";
 import { createRepairUiRequestRuntime } from "../shared/ui/request-runtime.js";
 
 import { renderSessionRailPanel } from "./panels/session-rail-panel.js";
@@ -85,7 +85,7 @@ function createInitialState(): RepairUiState {
         skills: [],
         preferences: {
           measurementSystem: "metric",
-          annotationDefaultColor: "#56c8de",
+          annotationDefaultColor: REPAIR_UI_COLORS.cyan,
           annotationDefaultStrokeWidth: 2,
           riskTolerance: "medium",
           aiVerbosity: "standard",

@@ -1,15 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-const { slotBridgeHandler, slotBridgeRuntime } = await import(
-  "../../src/js/modules/commands/slot-bridge.ts"
-);
+const { slotBridgeHandler, slotBridgeRuntime } =
+  await import("../../src/js/modules/commands/slot-bridge.ts");
 const { RoomCommandRegistry } = await import("../../src/js/modules/rooms/room-command-registry.ts");
 const { SlotController } = await import("../../src/js/modules/slot-controller.ts");
 const { AppState } = await import("../../src/js/modules/app-state.ts");
-const { AssistantProviderRegistry } = await import(
-  "../../src/js/pages/assistant/provider-registry.ts"
-);
+const { AssistantProviderRegistry } =
+  await import("../../src/js/pages/assistant/provider-registry.ts");
 const { SettingsManager } = await import("../../src/js/modules/settings-manager.ts");
 const { TrafficManager } = await import("../../src/js/modules/traffic-manager.ts");
 
@@ -95,8 +93,12 @@ type SlotBridgeHarness = {
   coreEngine: {
     ensureReady: () => Promise<void>;
     setActiveTargets: (targets?: string[]) => void;
-    sendBatchInternal: (payload?: SendBatchPayload) => Promise<{ success: boolean; message?: string }>;
-    sendMessageInternal: (payload: SendMessagePayload | null) => Promise<{ success: boolean; message?: string }>;
+    sendBatchInternal: (
+      payload?: SendBatchPayload
+    ) => Promise<{ success: boolean; message?: string }>;
+    sendMessageInternal: (
+      payload: SendMessagePayload | null
+    ) => Promise<{ success: boolean; message?: string }>;
     setConnection: (
       provider: string,
       connected: boolean,
@@ -855,7 +857,9 @@ test(
       });
 
       assert.equal(okResult.success, true);
-      assert.deepEqual(batchAttachments, [{ name: "archive-image.png", path: "/tmp/archive-image.png" }]);
+      assert.deepEqual(batchAttachments, [
+        { name: "archive-image.png", path: "/tmp/archive-image.png" },
+      ]);
 
       const blockedResult = await slotBridgeHandler({
         action: "message.send",
@@ -934,7 +938,7 @@ test(
             fetchedCount: 2,
             processedCount: 1,
             roomEvents: [{ eventType: "invite" }],
-            roomCommands: [{ commandName: "GameRoomXoxRemoteMove" }],
+            roomCommands: [{ commandName: "GameRoomBackgammonRemoteMove" }],
             roomInviteInbox: [{ inviteId: "invite-1" }],
           };
         },
@@ -965,7 +969,7 @@ test(
       assert.equal(data["fetchedCount"], 2);
       assert.equal(data["processedCount"], 1);
       assert.deepEqual(data["roomEvents"], [{ eventType: "invite" }]);
-      assert.deepEqual(data["roomCommands"], [{ commandName: "GameRoomXoxRemoteMove" }]);
+      assert.deepEqual(data["roomCommands"], [{ commandName: "GameRoomBackgammonRemoteMove" }]);
       assert.deepEqual(data["roomInviteInbox"], [{ inviteId: "invite-1" }]);
     } finally {
       harness.restore();
@@ -1023,9 +1027,11 @@ test(
       assert.equal(cachedResult.success, true);
       assert.equal(syncCalls, 1);
       assert.equal(
-        ((cachedResult.data as Record<string, unknown>)["messages"] as Array<Record<string, unknown>>)[0]?.[
-          "text"
-        ],
+        (
+          (cachedResult.data as Record<string, unknown>)["messages"] as Array<
+            Record<string, unknown>
+          >
+        )[0]?.["text"],
         "mail reply"
       );
     } finally {
@@ -1117,7 +1123,8 @@ test(
   async () => {
     const harness = createHarness();
     const refreshCalls: Array<Record<string, unknown>> = [];
-    const selectionCalls: Array<{ conversationId: string; provider?: string; silent?: boolean }> = [];
+    const selectionCalls: Array<{ conversationId: string; provider?: string; silent?: boolean }> =
+      [];
 
     try {
       harness.appState.hasUs1Identity = () => true;
@@ -1185,11 +1192,11 @@ test(
       const result = await slotBridgeHandler({
         action: "room.command",
         fromSlot: "us1",
-        args: '{"matchId":"xox_1","turnIndex":0,"boardHashBeforeMove":".........","cell":1}',
+        args: '{"matchId":"backgammon_1","turnIndex":0,"boardHashBeforeMove":".........","cell":1}',
         payload: {
-          commandName: "GameRoomXoxRemoteMove",
+          commandName: "GameRoomBackgammonRemoteMove",
           roomId: "game-room",
-          matchId: "xox_1",
+          matchId: "backgammon_1",
           turnIndex: 0,
           boardHashBeforeMove: ".........",
           cell: 1,
@@ -1198,17 +1205,17 @@ test(
 
       assert.equal(result.success, true);
       assert.equal(runCalls.length, 1);
-      assert.equal(runCalls[0]?.commandName, "GameRoomXoxRemoteMove");
+      assert.equal(runCalls[0]?.commandName, "GameRoomBackgammonRemoteMove");
       assert.deepEqual(runCalls[0]?.payload.roomPayload, {
         roomId: "game-room",
-        matchId: "xox_1",
+        matchId: "backgammon_1",
         turnIndex: 0,
         boardHashBeforeMove: ".........",
         cell: 1,
       });
       assert.equal(
         runCalls[0]?.payload.args,
-        '{"matchId":"xox_1","turnIndex":0,"boardHashBeforeMove":".........","cell":1}'
+        '{"matchId":"backgammon_1","turnIndex":0,"boardHashBeforeMove":".........","cell":1}'
       );
       assert.deepEqual(result.data, { success: true, handled: true });
     } finally {
@@ -1240,9 +1247,9 @@ test(
         localSessionId: "us1-session-1",
         transportMessageId: "<remote-move@example.test>",
         payload: {
-          commandName: "GameRoomXoxRemoteMove",
+          commandName: "GameRoomBackgammonRemoteMove",
           roomId: "game-room",
-          matchId: "xox_1",
+          matchId: "backgammon_1",
           turnIndex: 0,
           boardHashBeforeMove: ".........",
           cell: 1,
@@ -1251,13 +1258,13 @@ test(
 
       assert.equal(result.success, true);
       assert.equal(runCalls.length, 1);
-      assert.equal(runCalls[0]?.commandName, "GameRoomXoxRemoteMove");
+      assert.equal(runCalls[0]?.commandName, "GameRoomBackgammonRemoteMove");
       assert.equal(runCalls[0]?.payload.remoteUserId, "raistlin.majere.1981@gmail.com");
       assert.equal(runCalls[0]?.payload.localSessionId, "us1-session-1");
       assert.equal(runCalls[0]?.payload.transportMessageId, "<remote-move@example.test>");
       assert.deepEqual(runCalls[0]?.payload.roomPayload, {
         roomId: "game-room",
-        matchId: "xox_1",
+        matchId: "backgammon_1",
         turnIndex: 0,
         boardHashBeforeMove: ".........",
         cell: 1,

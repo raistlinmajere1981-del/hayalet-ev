@@ -14,7 +14,7 @@
     "uiEntry": "ui/index.html",
     "hostEntry": "host/index.js"
   },
-  "defaultFeatureId": "xox",
+  "defaultFeatureId": "backgammon",
   "i18n": {
     "baseDir": "i18n"
   },
@@ -83,7 +83,7 @@
   },
   "features": [
     {
-      "id": "xox",
+      "id": "backgammon",
       "name": "Tavla",
       "description": "Classic Tavla matches against AI1, AI2, or the connected US1 remote user.",
       "icon": "TV",
@@ -129,79 +129,37 @@
           "description": "Reject an incoming US1 Tavla invite from the room UI.",
           "scope": "room-ui",
           "exposure": "internal"
-        },
-        {
-          "name": "GameRoomXoxStart",
-          "description": "Legacy XOX alias for starting a Tavla match.",
-          "scope": "room-ui",
-          "exposure": "internal"
-        },
-        {
-          "name": "GameRoomXoxReset",
-          "description": "Legacy XOX alias for resetting the active Tavla match.",
-          "scope": "room-ui",
-          "exposure": "internal"
-        },
-        {
-          "name": "GameRoomXoxUserMove",
-          "description": "Legacy XOX alias for applying the user's Tavla move.",
-          "scope": "room-ui",
-          "exposure": "internal"
-        },
-        {
-          "name": "GameRoomXoxAiMove",
-          "description": "Legacy XOX alias for applying an AI Tavla move.",
-          "scope": "ai-slots",
-          "exposure": "internal"
-        },
-        {
-          "name": "GameRoomXoxRemoteMove",
-          "description": "Legacy XOX alias for applying a remote US1 Tavla move.",
-          "scope": "us1",
-          "exposure": "internal"
-        },
-        {
-          "name": "GameRoomXoxAcceptInvite",
-          "description": "Legacy XOX alias for accepting an incoming US1 Tavla invite.",
-          "scope": "room-ui",
-          "exposure": "internal"
-        },
-        {
-          "name": "GameRoomXoxRejectInvite",
-          "description": "Legacy XOX alias for rejecting an incoming US1 Tavla invite.",
-          "scope": "room-ui",
-          "exposure": "internal"
         }
       ],
       "protocolSpecs": [
         {
-          "key": "game-room-xox-user-start",
+          "key": "game-room-backgammon-user-start",
           "room": "game-room",
-          "scenario": "xox-user-start",
+          "scenario": "backgammon-user-start",
           "title": "[START][GAME-ROOM][TAVLA][USER-FIRST]",
           "editable": true,
-          "path": "main-functions/xox/protocols/game-room-xox-user-start.md"
+          "path": "main-functions/backgammon/protocols/game-room-backgammon-user-start.md"
         },
         {
-          "key": "game-room-xox-ai-start",
+          "key": "game-room-backgammon-ai-start",
           "room": "game-room",
-          "scenario": "xox-ai-start",
+          "scenario": "backgammon-ai-start",
           "title": "[START][GAME-ROOM][TAVLA][AI-FIRST]",
           "editable": true,
-          "path": "main-functions/xox/protocols/game-room-xox-ai-start.md"
+          "path": "main-functions/backgammon/protocols/game-room-backgammon-ai-start.md"
         },
         {
-          "key": "game-room-xox-us1-transport",
+          "key": "game-room-backgammon-us1-transport",
           "room": "game-room",
-          "scenario": "xox-us1-transport",
+          "scenario": "backgammon-us1-transport",
           "title": "[INFO][GAME-ROOM][TAVLA][US1-TRANSPORT]",
           "editable": false,
-          "path": "main-functions/xox/protocols/game-room-xox-us1-transport.md"
+          "path": "main-functions/backgammon/protocols/game-room-backgammon-us1-transport.md"
         }
       ],
       "scene": {
         "hotspot": {
-          "id": "game-room-xox",
+          "id": "game-room-backgammon",
           "rect": {
             "leftPx": 188,
             "topPx": 362,
@@ -213,8 +171,8 @@
           }
         },
         "view": {
-          "id": "xox-closeup",
-          "backgroundSrc": "main-functions/xox/assets/xox-view.webp",
+          "id": "backgammon-closeup",
+          "backgroundSrc": "main-functions/backgammon/assets/backgammon-view.webp",
           "transparentWindow": {
             "leftPct": 28.28,
             "topPct": 18.8,

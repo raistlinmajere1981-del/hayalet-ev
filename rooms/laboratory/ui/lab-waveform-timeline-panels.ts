@@ -101,7 +101,7 @@ export function renderInterpretationPanel(
                 <div class="lab-interpretation-panel__message">${escapeHtml(item.message)}</div>
                 ${
                   item.recommendation
-                    ? `<div class="lab-interpretation-panel__recommendation">&#8594; ${escapeHtml(item.recommendation)}</div>`
+                    ? `<div class="lab-interpretation-panel__recommendation">&rarr; ${escapeHtml(item.recommendation)}</div>`
                     : ""
                 }
               </div>

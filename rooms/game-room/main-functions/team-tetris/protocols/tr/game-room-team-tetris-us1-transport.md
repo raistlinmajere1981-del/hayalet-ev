@@ -11,7 +11,7 @@ Taşıma kontratı:
 
 Yaşam döngüsü kuralları:
 
-- Team Tetris, XOX davet kutusunu veya davet kabul/red akışını yeniden kullanmaz.
+- Team Tetris, Tavla davet kutusunu veya davet kabul/red akışını yeniden kullanmaz.
 - Başlangıca yalnızca `ai1`, `ai2` ve `us1` hazır olduğunda izin verilir.
 - `us1` maç ortasında koparsa maç reset gelene kadar blocked durumuna girer.
 - Team Tetris özelliğinden çıkmak etkin Team Tetris maçını sıfırlar.

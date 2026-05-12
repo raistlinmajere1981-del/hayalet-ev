@@ -5,6 +5,7 @@ import type {
   RepairPcbImageRef,
   RepairWorkbenchState,
 } from "../../shared/types/index.js";
+import { REPAIR_UI_COLORS } from "../../shared/repair-constants.js";
 import type Konva from "konva";
 import {
   clampImagePoint,
@@ -205,7 +206,10 @@ function addAiEvent(
   const { width, height } = getStageSize(config.container);
   const frame = getContainedImageFrame(width, height, config.image.widthPx, config.image.heightPx);
   const rect = imageRectToStageRect(event.region, frame, config.workbench.viewport);
-  const color = event.kind === "risk-flag" || event.severity === "risk" ? "#d97a7a" : "#e8a857";
+  const color =
+    event.kind === "risk-flag" || event.severity === "risk"
+      ? REPAIR_UI_COLORS.risk
+      : REPAIR_UI_COLORS.amber;
   const shape = new Konva.Rect({
     x: rect.xPx,
     y: rect.yPx,
@@ -315,7 +319,7 @@ function addMeasurementEvent(
       x: 0,
       y: 0,
       radius: 7,
-      fill: "#56c8de",
+      fill: REPAIR_UI_COLORS.cyan,
       stroke: "rgba(0, 0, 0, 0.72)",
       strokeWidth: 2,
     })
@@ -325,7 +329,7 @@ function addMeasurementEvent(
       x: 12,
       y: -9,
       text: `${event.reference ?? event.channel} — ${event.rawDisplay} ${event.unit}`,
-      fill: "#56c8de",
+      fill: REPAIR_UI_COLORS.cyan,
       fontFamily: "IBM Plex Mono, JetBrains Mono, monospace",
       fontSize: 10,
     })
@@ -376,7 +380,7 @@ function addFocusCallout(
     Math.min(width - 190, rect.xPx + rect.widthPx + 12),
     Math.max(12, rect.yPx),
     "AI SUGGESTION: Focus here",
-    "#e8a857"
+    REPAIR_UI_COLORS.amber
   );
 }
 

@@ -81,13 +81,13 @@
   ): GameRoomUiContextRuntimeLike {
     const runtimeDeps = isRecord(deps) ? (deps as ContextRuntimeDeps) : {};
     const ROOM_ID = readString(runtimeDeps["roomId"], "game-room");
-    const FEATURE_ID = readString(runtimeDeps["featureId"], "xox");
+    const FEATURE_ID = readString(runtimeDeps["featureId"], "backgammon");
     const bootstrapCopy = isRecord(runtimeDeps["bootstrapCopy"])
       ? (runtimeDeps["bootstrapCopy"] as BootstrapCopy)
       : {};
     const defaultFeatureRecord: FeatureRecord = {
       id: FEATURE_ID,
-      name: "XOX",
+      name: "Tavla",
       description: "",
     };
     const featureRecords: FeatureRecord[] = Array.isArray(runtimeDeps["featureRecords"])
@@ -97,7 +97,7 @@
       : [defaultFeatureRecord];
     const fallbackFeatureRecord = featureRecords[0] || {
       id: FEATURE_ID,
-      name: "XOX",
+      name: "Tavla",
       description: "",
     };
     const featureCatalog = new Map<string, FeatureRecord>(

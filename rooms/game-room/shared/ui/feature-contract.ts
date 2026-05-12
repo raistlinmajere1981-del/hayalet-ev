@@ -4,14 +4,14 @@
   const registry: GameRoomUiFeatureContractLike =
     global.GameRoomUiFeatureContract || (global.GameRoomUiFeatureContract = {});
 
-  const FEATURE_ID = "xox";
+  const FEATURE_ID = "backgammon";
   const TEAM_TETRIS_FEATURE_ID = "team-tetris";
   const FATE_KNOTS_FEATURE_ID = "fate-knots";
 
   const FEATURE_RECORDS: GameRoomFeatureRecord[] = [
     {
       id: FEATURE_ID,
-      name: "XOX",
+      name: "Tavla",
       description: "",
     },
     {

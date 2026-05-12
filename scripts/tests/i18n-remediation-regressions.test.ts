@@ -128,14 +128,14 @@ test("room runtime locale bridge refreshes game-room UI and host copy", () => {
   const gameRoomUiRuntimeSource = loadWorkspaceScriptForVm(
     "rooms/game-room/ui/game-room-ui-runtime.ts"
   );
-  const gameRoomXoxUiModuleSource = loadWorkspaceScriptForVm(
-    "rooms/game-room/main-functions/xox/ui/module.ts"
+  const gameRoomBackgammonUiModuleSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/backgammon/ui/module.ts"
   );
-  const gameRoomXoxUiStateRuntimeSource = loadWorkspaceScriptForVm(
-    "rooms/game-room/main-functions/xox/ui/state-runtime.ts"
+  const gameRoomBackgammonUiStateRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/backgammon/ui/state-runtime.ts"
   );
-  const gameRoomXoxUiRenderRuntimeSource = loadWorkspaceScriptForVm(
-    "rooms/game-room/main-functions/xox/ui/render-runtime.ts"
+  const gameRoomBackgammonUiRenderRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/backgammon/ui/render-runtime.ts"
   );
   const gameRoomTeamTetrisUiStateRuntimeSource = loadWorkspaceScriptForVm(
     "rooms/game-room/main-functions/team-tetris/ui/state-runtime.ts"
@@ -169,13 +169,13 @@ test("room runtime locale bridge refreshes game-room UI and host copy", () => {
     gameRoomUiRuntimeSource,
     /state\.translations = (message\.translations|translations)/
   );
-  assert.match(gameRoomUiRuntimeSource, /(messageType|message\.type) === "xox-state"/);
+  assert.match(gameRoomUiRuntimeSource, /(messageType|message\.type) === "backgammon-state"/);
   assert.match(gameRoomUiRuntimeSource, /(messageType|message\.type) === "team-tetris-state"/);
-  assert.match(gameRoomUiRuntimeSource, /xoxUi\.renderBootstrap\(root\)/);
-  assert.match(gameRoomXoxUiModuleSource, /createXoxUiStateRuntime/);
-  assert.match(gameRoomXoxUiModuleSource, /createXoxUiRenderRuntime/);
-  assert.match(gameRoomXoxUiRenderRuntimeSource, /function renderBootstrap\(root\)/);
-  assert.match(gameRoomXoxUiStateRuntimeSource, /GameRoomXoxStart/);
+  assert.match(gameRoomUiRuntimeSource, /backgammonUi\.renderBootstrap\(root\)/);
+  assert.match(gameRoomBackgammonUiModuleSource, /createBackgammonUiStateRuntime/);
+  assert.match(gameRoomBackgammonUiModuleSource, /createBackgammonUiRenderRuntime/);
+  assert.match(gameRoomBackgammonUiRenderRuntimeSource, /function renderBootstrap\(root\)/);
+  assert.match(gameRoomBackgammonUiStateRuntimeSource, /GameRoomBackgammonStart/);
   assert.match(gameRoomTeamTetrisUiStateRuntimeSource, /GameRoomTeamTetrisStart/);
   assert.match(gameRoomTeamTetrisUiSource, /createTeamTetrisUiStateRuntime/);
   assert.match(gameRoomTeamTetrisUiSource, /createTeamTetrisUiModuleCardRuntime/);
@@ -188,7 +188,7 @@ test("room runtime locale bridge refreshes game-room UI and host copy", () => {
   assert.match(gameRoomHostEntrySource, /createGameRoomHostRuntime\(\)/);
   assert.match(gameRoomHostActivationSource, /onRoomEvent\(payload\)/);
   assert.match(gameRoomHostActivationSource, /\.type === "host-context"/);
-  assert.match(gameRoomHostRuntimeSource, /xoxCommandNames: XOX_COMMAND_NAMES/);
+  assert.match(gameRoomHostRuntimeSource, /backgammonCommandNames: BACKGAMMON_COMMAND_NAMES/);
   assert.match(gameRoomHostRuntimeSource, /handleTeamTetrisMove/);
 });
 
@@ -311,9 +311,9 @@ function createGameRoomUiRuntime(initialLanguage = "en-US"): {
     "rooms/game-room/ui/context-runtime.ts",
     "rooms/game-room/shared/ui/feature-contract.ts",
     "rooms/game-room/shared/ui/scroll-runtime.ts",
-    "rooms/game-room/main-functions/xox/ui/state-runtime.ts",
-    "rooms/game-room/main-functions/xox/ui/render-runtime.ts",
-    "rooms/game-room/main-functions/xox/ui/module.ts",
+    "rooms/game-room/main-functions/backgammon/ui/state-runtime.ts",
+    "rooms/game-room/main-functions/backgammon/ui/render-runtime.ts",
+    "rooms/game-room/main-functions/backgammon/ui/module.ts",
     "rooms/game-room/main-functions/team-tetris/ui/draft-runtime.ts",
     "rooms/game-room/main-functions/team-tetris/ui/state-shape-runtime.ts",
     "rooms/game-room/main-functions/team-tetris/ui/state-view-runtime.ts",
@@ -362,7 +362,7 @@ test("game-room UI smoke test reflects runtime locale updates", () => {
 
   assert.equal(runtime.readyPayload?.["stage"], "ui-ready");
   assert.equal(runtime.readyPayload?.["room"], "game-room");
-  assert.equal(runtime.readyPayload?.["feature"], "xox");
+  assert.equal(runtime.readyPayload?.["feature"], "backgammon");
   assert.equal(
     findFirst(root, (element) => element.tagName === "h1")?.textContent,
     "Loading Game Room"
@@ -400,19 +400,25 @@ test("game-room UI smoke test reflects runtime locale updates", () => {
     },
   });
   runtime.emitHostMessage({
-    type: "xox-state",
+    type: "backgammon-state",
     payload: {
       state: {
-        board: ["X", "", "O", "", "X", "", "", "", ""],
-        boardAscii: "X | 1 | O\n---------\n3 | X | 5\n---------\n6 | 7 | 8",
-        availableCells: [1, 3, 5, 6, 7, 8],
+        board: [
+          { point: 24, owner: "user", count: 2 },
+          { point: 13, owner: "user", count: 5 },
+          { point: 8, owner: "user", count: 3 },
+          { point: 6, owner: "user", count: 5 },
+          { point: 1, owner: "ai", count: 2 },
+          { point: 12, owner: "ai", count: 5 },
+          { point: 17, owner: "ai", count: 3 },
+          { point: 19, owner: "ai", count: 5 },
+        ],
+        boardAscii: "24:U2 19:A5 17:A3 13:U5\n01:A2 06:U5 08:U3 12:A5",
         active: true,
         awaitingMoveFrom: "ai",
         result: "pending",
         selectedTarget: "ai1",
         starter: "user",
-        userSymbol: "X",
-        aiSymbol: "O",
         status: "AI cevabi bekleniyor.",
         blockedReason: "",
         protocolDelivered: true,
@@ -434,11 +440,11 @@ test("game-room UI smoke test reflects runtime locale updates", () => {
 
   assert.equal(runtime.document.documentElement.lang, "tr");
   assert.equal(
-    findFirst(root, (element) => element.textContent === "XOX Mac Masasi"),
+    findFirst(root, (element) => element.textContent === "Tavla Mac Masasi"),
     null
   );
-  assert.equal(runtime.document.title, "Oyun Odasi - XOX");
-  assert.equal(findAll(root, (element) => element.dataset.index !== undefined).length, 9);
+  assert.equal(runtime.document.title, "Oyun Odasi - Tavla");
+  assert.equal(findAll(root, (element) => element.className === "backgammon-point").length, 24);
   assert.ok(findAll(root, (element) => element.textContent === "Atlas").length > 0);
   assert.ok(findAll(root, (element) => element.textContent === "Devam Ediyor").length > 0);
   assert.ok(findAll(root, (element) => element.textContent === "AI cevabi bekleniyor.").length > 0);
@@ -456,12 +462,12 @@ test("game-room UI smoke test renders the Team Tetris bootstrap from active feat
     room: {
       id: "game-room",
       name: "Oyun Odasi",
-      defaultFeatureId: "xox",
+      defaultFeatureId: "backgammon",
     },
     features: [
       {
-        id: "xox",
-        name: "XOX",
+        id: "backgammon",
+        name: "Tavla",
       },
       {
         id: "team-tetris",

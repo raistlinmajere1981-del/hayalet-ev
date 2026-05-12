@@ -1,3 +1,4 @@
+import { REPAIR_UI_COLORS } from "../repair-constants.js";
 import type { RepairEvent } from "../types/index.js";
 
 /**
@@ -74,7 +75,7 @@ export const MOCK_REPAIR_EVENTS: Record<string, RepairEvent[]> = {
       region: { xPx: 458, yPx: 258, widthPx: 116, heightPx: 96 },
       point: null,
       label: "U14 inspection area",
-      color: "#e8a857",
+      color: REPAIR_UI_COLORS.amber,
     },
     {
       kind: "ai-mark",
@@ -157,7 +158,7 @@ export const MOCK_REPAIR_EVENTS: Record<string, RepairEvent[]> = {
       region: null,
       point: { xPx: 718, yPx: 296 },
       label: "R201 open circuit — replace 220kΩ 1W flameproof.",
-      color: "#56c8de",
+      color: REPAIR_UI_COLORS.cyan,
     },
     {
       kind: "measurement",

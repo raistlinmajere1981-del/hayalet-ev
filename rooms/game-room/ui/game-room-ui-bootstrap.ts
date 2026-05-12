@@ -40,7 +40,7 @@
 
     const featureContract = readFeatureContract(global.GameRoomUiFeatureContract);
     const roomId = readString(featureContract.ROOM_ID, "game-room");
-    const featureId = readString(featureContract.FEATURE_ID, "xox");
+    const featureId = readString(featureContract.FEATURE_ID, "backgammon");
     const teamTetrisFeatureId = readString(featureContract.TEAM_TETRIS_FEATURE_ID, "team-tetris");
     const fateKnotsFeatureId = readString(featureContract.FATE_KNOTS_FEATURE_ID, "fate-knots");
     const bootstrapCopy: GameRoomBootstrapCopy =
@@ -68,7 +68,7 @@
       typeof featureContract.getFeatureRecords === "function"
         ? featureContract.getFeatureRecords()
         : [
-            { id: featureId, name: "XOX", description: "" },
+            { id: featureId, name: "Tavla", description: "" },
             { id: teamTetrisFeatureId, name: "Team Tetris", description: "" },
             { id: fateKnotsFeatureId, name: "Fate Knots", description: "" },
           ];
@@ -154,7 +154,7 @@
 
     function statusText(key: string): string {
       return (
-        contextRuntime.readPath(getState().translations, ["xox", "status", key]) ||
+        contextRuntime.readPath(getState().translations, ["backgammon", "status", key]) ||
         bootstrapText(key === "roomApiUnavailable" ? "roomApiUnavailable" : "commandSendFailed")
       );
     }
@@ -213,12 +213,12 @@
     }
 
     const factories = global.GameRoomUiFactories || {};
-    const createXoxUiModule = factories.createXoxUiModule;
+    const createBackgammonUiModule = factories.createBackgammonUiModule;
     const createTeamTetrisUiModule = factories.createTeamTetrisUiModule;
     const createFateKnotsUiModule = factories.createFateKnotsUiModule;
 
-    if (typeof createXoxUiModule !== "function") {
-      throw new Error("XOX UI module is unavailable.");
+    if (typeof createBackgammonUiModule !== "function") {
+      throw new Error("Tavla UI module is unavailable.");
     }
     if (typeof createTeamTetrisUiModule !== "function") {
       throw new Error("Team Tetris UI module is unavailable.");
@@ -227,7 +227,7 @@
       throw new Error("Fate Knots UI module is unavailable.");
     }
 
-    const xoxUi = createXoxUiModule({
+    const backgammonUi = createBackgammonUiModule({
       getState: getState,
       roomId: roomId,
       featureId: featureId,
@@ -268,7 +268,7 @@
       locale: contextRuntime.resolveLocale(documentLocale || navigatorRef.language),
       translations: null,
       context: contextRuntime.createContext(),
-      game: xoxUi.createGameState(),
+      game: backgammonUi.createGameState(),
       teamTetris: teamTetrisUi.createTeamTetrisState(),
       teamTetrisDraft: teamTetrisUi.createTeamTetrisDraft(),
       fateKnots: fateKnotsUi.createFateKnotsState(),
@@ -295,7 +295,7 @@
       scrollRuntime: scrollRuntime,
       stateRef: stateRef,
       getState: getState,
-      xoxUi: xoxUi,
+      backgammonUi: backgammonUi,
       teamTetrisUi: teamTetrisUi,
       fateKnotsUi: fateKnotsUi,
       bootstrapText: bootstrapText,

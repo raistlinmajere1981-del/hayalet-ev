@@ -1834,7 +1834,7 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   assert.match(themeSource, /\.labx-pipeline-block\s*\{\s*display:\s*block;/);
   assert.match(
     themeSource,
-    /\.labx-shell\[data-lab-debug-regions="true"\] \.labx-pipeline-block\s*\{[\s\S]*outline:\s*1px dashed rgba\(0, 255, 200, 0\.2\);/
+    /\.labx-shell\[data-lab-debug-regions="true"\] \.labx-pipeline-block\s*\{[\s\S]*outline:\s*var\(--lab-shell-px-1\) dashed var\(--lab-shell-color-11\);/
   );
   const debugPanelRule =
     themeSource.match(
@@ -1869,11 +1869,11 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   assert.doesNotMatch(workspaceSurfaceSource, /renderWorkspaceHypothesis/);
   assert.match(
     themeSource,
-    /\.labx-media-workbench\s*\{[\s\S]*gap:\s*0;[\s\S]*min-height:\s*0;[\s\S]*border:\s*1px solid var\(--lab-border-default\);[\s\S]*border-radius:\s*var\(--lab-radius-lg\);/
+    /\.labx-media-workbench\s*\{[\s\S]*gap:\s*0;[\s\S]*min-height:\s*0;[\s\S]*border:\s*var\(--lab-workspace-px-1\) solid var\(--lab-border-default\);[\s\S]*border-radius:\s*var\(--lab-radius-lg\);/
   );
   assert.match(
     themeSource,
-    /\.labx-workspace-preview\s*\{[\s\S]*min-height:\s*0;[\s\S]*height:\s*100%;[\s\S]*border:\s*1px solid transparent;[\s\S]*border-radius:\s*0;[\s\S]*box-shadow:\s*none;/
+    /\.labx-workspace-preview\s*\{[\s\S]*min-height:\s*0;[\s\S]*height:\s*100%;[\s\S]*border:\s*var\(--lab-workspace-px-1\) solid transparent;[\s\S]*border-radius:\s*0;[\s\S]*box-shadow:\s*none;/
   );
   assert.match(
     themeSource,
@@ -1881,7 +1881,7 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   );
   assert.match(
     themeSource,
-    /\.labx-workspace-preview\.labx-focus-primary\s*\{[\s\S]*border:\s*1px solid var\(--lab-accent\);[\s\S]*box-shadow:[\s\S]*0 0 0 1px var\(--lab-accent-soft\),[\s\S]*var\(--lab-glow-accent\);/
+    /\.labx-workspace-preview\.labx-focus-primary\s*\{[\s\S]*border:\s*var\(--lab-workspace-px-1\) solid var\(--lab-accent\);[\s\S]*box-shadow:[\s\S]*0 0 0 var\(--lab-workspace-px-1\) var\(--lab-accent-soft\),[\s\S]*var\(--lab-glow-accent\);/
   );
   assert.match(
     themeSource,
@@ -1927,9 +1927,12 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   );
   assert.match(
     themeSource,
-    /\.labx-media-workbench\s*>\s*\.labx-timeline\s*\{[\s\S]*padding:\s*0 0 0\.45rem;[\s\S]*border-width:\s*0;[\s\S]*border-radius:\s*0;[\s\S]*box-shadow:\s*none;/
+    /\.labx-media-workbench\s*>\s*\.labx-timeline\s*\{[\s\S]*padding:\s*0 0 var\(--lab-workspace-rem-0-45\);[\s\S]*border-width:\s*0;[\s\S]*border-radius:\s*0;[\s\S]*box-shadow:\s*none;/
   );
-  assert.match(themeSource, /\.labx-timeline__track\s*\{[\s\S]*height:\s*3\.5rem;/);
+  assert.match(
+    themeSource,
+    /\.labx-timeline__track\s*\{[\s\S]*height:\s*var\(--lab-workspace-rem-3-5\);/
+  );
   assert.match(themeSource, /\.labx-timeline__controls\s*\{[\s\S]*display:\s*grid;/);
   assert.match(themeSource, /\.labx-timeline__controls-row\s*\{[\s\S]*flex-wrap:\s*nowrap;/);
   assert.match(themeSource, /\.labx-timeline__transport\s*\{/);
@@ -1939,7 +1942,7 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   assert.match(themeSource, /\.labx-timeline__selection-group\s*\{/);
   assert.match(
     themeSource,
-    /\.labx-timeline__pin-popover\s*\{[\s\S]*bottom:\s*calc\(100% \+ 0\.35rem\);/
+    /\.labx-timeline__pin-popover\s*\{[\s\S]*bottom:\s*calc\(100% \+ var\(--lab-timeline-roi-rem-0-35\)\);/
   );
   assert.match(themeSource, /\.labx-timeline__pin-remove\s*\{/);
   assert.doesNotMatch(themeSource, /\.labx-timeline__range-info\s*\{/);
@@ -1977,7 +1980,7 @@ test("laboratory process strip owns heartbeat and expanded runtime detail render
   assert.match(processStripSource, /state\.run\?\.rawLog/);
   assert.match(
     themeSource,
-    /\.labx-shell\[data-process-view="expanded"\]\s*\{[\s\S]*grid-template-rows:\s*var\(--lab-topbar-height\) minmax\(0, 1fr\) 200px;/
+    /\.labx-shell\[data-process-view="expanded"\]\s*\{[\s\S]*grid-template-rows:\s*var\(--lab-topbar-height\)\s+minmax\(\s*0,\s*1fr\s*\)\s+var\(--lab-shell-px-200\);/
   );
   assert.match(
     themeSource,
@@ -1989,11 +1992,11 @@ test("laboratory process strip owns heartbeat and expanded runtime detail render
   );
   assert.match(
     themeSource,
-    /\.labx-strip-expanded section\s*\{[\s\S]*background:\s*rgba\(4, 11, 19, 0\.88\);/
+    /\.labx-strip-expanded section\s*\{[\s\S]*background:\s*var\(--lab-status-shell-color-06\);/
   );
   assert.match(
     themeSource,
-    /\.labx-strip-expanded__list li,[\s\S]*\.labx-strip-expanded__log li\s*\{[\s\S]*background:\s*rgba\(14, 28, 43, 0\.92\);/
+    /\.labx-strip-expanded__list li,[\s\S]*\.labx-strip-expanded__log li\s*\{[\s\S]*background:\s*var\(--lab-status-shell-color-08\);/
   );
   assert.match(
     themeSource,
@@ -2020,7 +2023,7 @@ test("laboratory theme defines the multi-region shell grid and drawer layout con
   assert.match(tokenSource, /--labx-danger:\s*var\(--lab-error\);/);
   assert.match(
     themeSource,
-    /\.labx-shell\s*\{[\s\S]*grid-template-columns:\s*minmax\(14rem, 18rem\) minmax\(0, 1fr\) minmax\(18rem, 22rem\);[\s\S]*grid-template-rows:\s*var\(--lab-topbar-height\) minmax\(0, 1fr\) var\(--lab-strip-height\);/
+    /\.labx-shell\s*\{[\s\S]*grid-template-columns:\s*minmax\(var\(--lab-shell-rem-14\), var\(--lab-shell-rem-18\)\)\s+minmax\(\s*0,\s*1fr\s*\)\s+minmax\(var\(--lab-shell-rem-18\), var\(--lab-shell-rem-22\)\);[\s\S]*grid-template-rows:\s*var\(--lab-topbar-height\)\s+minmax\(\s*0,\s*1fr\s*\)\s+var\(--lab-strip-height\);/
   );
   assert.match(
     themeSource,
@@ -2028,15 +2031,15 @@ test("laboratory theme defines the multi-region shell grid and drawer layout con
   );
   assert.match(
     themeSource,
-    /\.labx-shell\[data-source-panel-collapsed="true"\]\s*\{[\s\S]*grid-template-columns:\s*0 minmax\(0, 1fr\) minmax\(18rem, 22rem\);/
+    /\.labx-shell\[data-source-panel-collapsed="true"\]\s*\{[\s\S]*grid-template-columns:\s*0\s+minmax\(\s*0,\s*1fr\s*\)\s+minmax\(var\(--lab-shell-rem-18\), var\(--lab-shell-rem-22\)\);/
   );
   assert.match(
     themeSource,
-    /\.labx-shell\[data-drawer-collapsed="true"\]\s*\{[\s\S]*grid-template-columns:\s*minmax\(14rem, 18rem\) minmax\(0, 1fr\) 0;/
+    /\.labx-shell\[data-drawer-collapsed="true"\]\s*\{[\s\S]*grid-template-columns:\s*minmax\(var\(--lab-shell-rem-14\), var\(--lab-shell-rem-18\)\)\s+minmax\(\s*0,\s*1fr\s*\)\s+0;/
   );
   assert.match(
     themeSource,
-    /\.labx-shell\[data-source-panel-collapsed="true"\]\[data-drawer-collapsed="true"\]\s*\{[\s\S]*grid-template-columns:\s*0 minmax\(0, 1fr\) 0;/
+    /\.labx-shell\[data-source-panel-collapsed="true"\]\[data-drawer-collapsed="true"\]\s*\{[\s\S]*grid-template-columns:\s*0\s+minmax\(\s*0,\s*1fr\s*\)\s+0;/
   );
   assert.doesNotMatch(themeSource, /\.labx-drawer--collapsed/);
   assert.doesNotMatch(themeSource, /\.labx-drawer__expand-btn/);
@@ -2070,7 +2073,7 @@ test("laboratory theme defines the multi-region shell grid and drawer layout con
   );
   assert.match(
     sourceImportSource,
-    /\.labx-project-import__yt-field\s*\{[\s\S]*grid-template-columns:\s*minmax\(7\.5rem, 0\.42fr\) minmax\(0, 1fr\);/
+    /\.labx-project-import__yt-field\s*\{[\s\S]*grid-template-columns:\s*minmax\(var\(--lab-source-import-rem-7-5\), 0\.42fr\) minmax\(0, 1fr\);/
   );
   assert.doesNotMatch(sourceImportSource, /\.labx-advanced-settings/);
 });

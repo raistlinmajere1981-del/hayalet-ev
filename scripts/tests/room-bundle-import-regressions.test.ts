@@ -583,11 +583,11 @@ test("RoomPackageManager install and export keep Team Tetris assets and protocol
             uiEntry: "ui/index.html",
             hostEntry: "host/index.js",
           },
-          defaultFeatureId: "xox",
+          defaultFeatureId: "backgammon",
           features: [
             {
-              id: "xox",
-              name: "XOX",
+              id: "backgammon",
+              name: "Tavla",
             },
             {
               id: "team-tetris",

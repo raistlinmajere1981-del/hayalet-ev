@@ -114,13 +114,13 @@ test("getDisabledCommandsForSlot reads us1 disabled commands", () => {
         ai1: { disabledCommands: [] },
         ai2: { disabledCommands: [] },
       },
-      us1Slot: { selectedRemoteUserId: null, disabledCommands: ["GameRoomXoxRemoteMove"] },
+      us1Slot: { selectedRemoteUserId: null, disabledCommands: ["GameRoomBackgammonRemoteMove"] },
       assistantSlot: { disabledCommands: [] },
     } as never,
     "us1"
   );
 
-  assert.deepEqual(disabled, ["GameRoomXoxRemoteMove"]);
+  assert.deepEqual(disabled, ["GameRoomBackgammonRemoteMove"]);
 });
 
 test("buildSettingsWithDisabledCommands stores disabled commands under us1 slot", () => {
@@ -134,18 +134,29 @@ test("buildSettingsWithDisabledCommands stores disabled commands under us1 slot"
       assistantSlot: { disabledCommands: [] },
     } as never,
     "us1",
-    ["GameRoomXoxRemoteMove"]
+    ["GameRoomBackgammonRemoteMove"]
   );
 
-  assert.deepEqual(next.us1Slot?.disabledCommands, ["GameRoomXoxRemoteMove"]);
+  assert.deepEqual(next.us1Slot?.disabledCommands, ["GameRoomBackgammonRemoteMove"]);
 });
 
 test("splitCommandCatalogBySource separates system and room commands", () => {
   const grouped = splitCommandCatalogBySource([
     { name: "SlotBridge", category: "us1", isCustom: false, supportsTestMode: true },
-    { name: "GameRoomXoxRemoteMove", category: "us1", isCustom: true, supportsTestMode: false },
+    {
+      name: "GameRoomBackgammonRemoteMove",
+      category: "us1",
+      isCustom: true,
+      supportsTestMode: false,
+    },
   ]);
 
-  assert.deepEqual(grouped.systemCommands.map((item) => item.name), ["SlotBridge"]);
-  assert.deepEqual(grouped.roomCommands.map((item) => item.name), ["GameRoomXoxRemoteMove"]);
+  assert.deepEqual(
+    grouped.systemCommands.map((item) => item.name),
+    ["SlotBridge"]
+  );
+  assert.deepEqual(
+    grouped.roomCommands.map((item) => item.name),
+    ["GameRoomBackgammonRemoteMove"]
+  );
 });

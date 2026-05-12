@@ -1,4 +1,4 @@
-import type { XoxGameState } from "./state-core.js";
+import type { BackgammonGameState } from "./state-core.js";
 import type { InviteEntry } from "./state-invites.js";
 import type { GameRoomContextState } from "../../../shared/types/room-shell-contracts.js";
 import { buildUs1RoomBridgeCommand } from "../../../shared/host/slot-bridge-command.js";
@@ -18,7 +18,11 @@ interface Us1InviteRuntimeDeps {
   FEATURE_ID: string;
   ROOM_ID: string;
   buildInviteId: () => string;
-  buildUs1InviteText: (state: XoxGameState, context: GameRoomContextState, note: string) => string;
+  buildUs1InviteText: (
+    state: BackgammonGameState,
+    context: GameRoomContextState,
+    note: string
+  ) => string;
   buildUs1MoveText: (
     matchId: string,
     turnIndex: number,
@@ -28,28 +32,28 @@ interface Us1InviteRuntimeDeps {
   ) => string;
   buildUs1ResetText: (matchId: string) => string;
   commandMessage: (locale: unknown, key: string, params?: Record<string, unknown>) => string;
-  createInitialState: (locale: unknown, target: string, starter: string) => XoxGameState;
+  createInitialState: (locale: unknown, target: string, starter: string) => BackgammonGameState;
   createPendingInvite: (
     direction: string,
     inviteEntry: Record<string, unknown>
   ) => Record<string, unknown>;
   getOpponentInfo: (
     context: GameRoomContextState,
-    state: XoxGameState
+    state: BackgammonGameState
   ) => { remoteUserId?: string | null; nickname: string; ready?: boolean; dispatchable?: boolean };
   loadContext: (api: Us1Api) => GameRoomContextState;
   loadInviteInbox: (api: Us1Api) => InviteEntry[];
   normalizeInviteInbox: (value: unknown) => InviteEntry[];
-  prepareTurn: (state: XoxGameState, seat: "ai" | "user") => XoxGameState;
-  pushRoomState: (api: Us1Api, state: XoxGameState) => XoxGameState;
+  prepareTurn: (state: BackgammonGameState, seat: "ai" | "user") => BackgammonGameState;
+  pushRoomState: (api: Us1Api, state: BackgammonGameState) => BackgammonGameState;
   readLocale: (api: Us1Api) => "tr" | "en";
   removePendingInvite: (api: Us1Api) => void;
-  resolveStateMatchId: (state: XoxGameState) => string | null;
+  resolveStateMatchId: (state: BackgammonGameState) => string | null;
   saveInviteInbox: (api: Us1Api, inbox: InviteEntry[]) => void;
   savePendingInvite: (api: Us1Api, pending: Record<string, unknown>) => void;
 }
 
-export function createGameRoomXoxUs1InviteRuntime(deps: Us1InviteRuntimeDeps) {
+export function createGameRoomBackgammonUs1InviteRuntime(deps: Us1InviteRuntimeDeps) {
   const {
     FEATURE_ID,
     ROOM_ID,
@@ -179,7 +183,7 @@ export function createGameRoomXoxUs1InviteRuntime(deps: Us1InviteRuntimeDeps) {
 
   async function sendUs1Invite(
     api: Us1Api,
-    state: XoxGameState,
+    state: BackgammonGameState,
     inviteNote: string,
     syncUs1Mailbox: (api: Us1Api, reason: string) => Promise<void>
   ) {
@@ -235,7 +239,7 @@ export function createGameRoomXoxUs1InviteRuntime(deps: Us1InviteRuntimeDeps) {
 
   async function sendUs1Move(
     api: Us1Api,
-    state: XoxGameState,
+    state: BackgammonGameState,
     moveContext: {
       turnIndex: number;
       boardHashBeforeMove: string;

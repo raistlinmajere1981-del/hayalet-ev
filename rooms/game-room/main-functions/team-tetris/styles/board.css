@@ -3,43 +3,43 @@
   min-width: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.58rem;
+  gap: var(--game-rem-0-58);
 }
 
 .tt-board-card {
   min-height: 0;
-  padding: 0.66rem 0.7rem;
+  padding: var(--game-rem-0-66) var(--game-rem-0-7);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  gap: 0.55rem;
+  gap: var(--game-rem-0-55);
   overflow: hidden;
 }
 
 .tt-board-card[data-tone="private"] {
-  border-color: rgb(121 209 194 / 0.24);
+  border-color: var(--game-accent-24);
 }
 
 .tt-board-card[data-tone="public"] {
-  border-color: rgb(223 184 102 / 0.18);
+  border-color: var(--game-gold-18);
 }
 
 .tt-board-card__header {
   display: flex;
   justify-content: space-between;
-  gap: 0.55rem;
+  gap: var(--game-rem-0-55);
   align-items: start;
 }
 
 .tt-board-card__title {
   margin: 0;
-  font-size: 0.92rem;
+  font-size: var(--game-rem-0-92);
   font-weight: 700;
 }
 
 .tt-board-card__meta {
   margin: 0;
-  color: var(--muted);
-  font-size: 0.72rem;
+  color: var(--shell-muted);
+  font-size: var(--game-rem-0-72);
   text-align: right;
 }
 
@@ -51,15 +51,16 @@
 }
 
 .tt-board {
-  --tt-cell-size: clamp(0.68rem, 0.92vw, 1.18rem);
+  --tt-cell-size: clamp(var(--game-rem-0-68), 0.92vw, var(--game-rem-1-18));
   display: grid;
-  gap: 0.16rem;
+  gap: var(--game-rem-0-16);
   width: fit-content;
   max-width: 100%;
-  padding: 0.34rem;
-  border-radius: 0.9rem;
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.04), rgb(255 255 255 / 0.01));
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.03);
+  padding: var(--game-rem-0-34);
+  border-radius: var(--game-rem-0-9);
+  background: linear-gradient(180deg, var(--game-white-04), var(--game-white-01));
+  box-shadow: inset var(--game-px-0) var(--game-px-0) var(--game-px-0) var(--game-px-1)
+    var(--game-white-03);
   margin-inline: auto;
 }
 
@@ -69,183 +70,183 @@
   width: var(--tt-cell-size);
   min-height: var(--tt-cell-size);
   aspect-ratio: 1 / 1;
-  border-radius: 0.28rem;
-  border: 1px solid rgb(255 255 255 / 0.05);
-  background: rgb(255 255 255 / 0.02);
+  border-radius: var(--game-rem-0-28);
+  border: var(--game-px-1) solid var(--game-white-05);
+  background: var(--game-white-02);
 }
 
 .tt-board__cell[data-filled="true"] {
-  border-color: rgb(255 255 255 / 0.06);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.04);
+  border-color: var(--game-white-06);
+  box-shadow: inset var(--game-px-0) var(--game-px-0) var(--game-px-0) var(--game-px-1)
+    var(--game-white-04);
 }
 
 .tt-board[data-interactive="true"] .tt-board__cell {
   cursor: pointer;
   transition:
-    transform 140ms ease,
-    border-color 140ms ease,
-    box-shadow 140ms ease;
+    transform var(--game-ms-140) ease,
+    border-color var(--game-ms-140) ease,
+    box-shadow var(--game-ms-140) ease;
 }
 
 .tt-board[data-interactive="true"] .tt-board__cell:hover {
-  transform: translateY(-1px);
-  border-color: rgb(121 209 194 / 0.36);
-  box-shadow: 0 10px 18px rgb(0 0 0 / 0.16);
+  transform: translateY(var(--game-px-neg-1));
+  border-color: var(--game-accent-36);
+  box-shadow: var(--game-px-0) var(--game-px-10) var(--game-px-18) var(--game-black-16);
 }
 
 .tt-board__cell[data-path="trace-valid"] {
-  border-color: rgb(121 209 194 / 0.22);
+  border-color: var(--game-accent-22);
   background:
-    linear-gradient(
-      180deg,
-      transparent 0 10%,
-      rgb(121 209 194 / 0.92) 10% 90%,
-      transparent 90% 100%
-    ),
-    rgb(255 255 255 / 0.025);
-  box-shadow: inset 0 0 0 1px rgb(121 209 194 / 0.12);
+    linear-gradient(180deg, transparent 0 10%, var(--game-accent-92) 10% 90%, transparent 90% 100%),
+    var(--game-white-025);
+  box-shadow: inset var(--game-px-0) var(--game-px-0) var(--game-px-0) var(--game-px-1)
+    var(--game-accent-12);
 }
 
 .tt-board__cell[data-path="trace-blocked"] {
-  border-color: rgb(255 176 120 / 0.18);
+  border-color: var(--game-orange-255-2);
   background:
     linear-gradient(
       180deg,
       transparent 0 12%,
-      rgb(255 176 120 / 0.62) 12% 88%,
+      var(--game-orange-255-4) 12% 88%,
       transparent 88% 100%
     ),
-    rgb(255 255 255 / 0.02);
-  box-shadow: inset 0 0 0 1px rgb(255 176 120 / 0.08);
+    var(--game-white-02);
+  box-shadow: inset var(--game-px-0) var(--game-px-0) var(--game-px-0) var(--game-px-1)
+    var(--game-orange-255-1);
 }
 
 .tt-board__cell[data-pathTurn="trace-valid-turn"] {
-  border-color: rgb(121 209 194 / 0.3);
-  background: rgb(121 209 194 / 0.9);
+  border-color: var(--game-accent-3);
+  background: var(--game-accent-9);
   box-shadow:
-    inset 0 0 0 1px rgb(255 255 255 / 0.12),
-    0 0 0 1px rgb(0 0 0 / 0.06);
+    inset var(--game-px-0) var(--game-px-0) var(--game-px-0) var(--game-px-1) var(--game-white-12),
+    var(--game-px-0) var(--game-px-0) var(--game-px-0) var(--game-px-1) var(--game-black-06);
 }
 
 .tt-board__cell[data-pathTurn="trace-blocked-turn"] {
-  border-color: rgb(255 176 120 / 0.24);
-  background: rgb(255 176 120 / 0.7);
+  border-color: var(--game-orange-255-3);
+  background: var(--game-orange-255-5);
   opacity: 0.72;
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+  box-shadow: inset var(--game-px-0) var(--game-px-0) var(--game-px-0) var(--game-px-1)
+    var(--game-white-08);
 }
 
 .tt-board__cell[data-overlay="draft-valid"] {
   border-style: solid;
-  border-color: rgb(255 255 255 / 0.16);
+  border-color: var(--game-white-16);
   box-shadow:
-    inset 0 0 0 1px rgb(255 255 255 / 0.08),
-    0 0 0 1px rgb(0 0 0 / 0.08);
+    inset var(--game-px-0) var(--game-px-0) var(--game-px-0) var(--game-px-1) var(--game-white-08),
+    var(--game-px-0) var(--game-px-0) var(--game-px-0) var(--game-px-1) var(--game-black-08);
 }
 
 .tt-board__cell[data-overlay="draft-blocked"] {
   border-style: dashed;
-  border-color: rgb(255 255 255 / 0.14);
+  border-color: var(--game-white-14);
   opacity: 0.46;
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.04);
+  box-shadow: inset var(--game-px-0) var(--game-px-0) var(--game-px-0) var(--game-px-1)
+    var(--game-white-04);
 }
 
 .tt-board__cell[data-overlayPiece="I"][data-overlay^="draft"] {
-  background: rgb(101 216 255 / 0.88);
+  background: var(--game-blue-glow-3);
 }
 
 .tt-board__cell[data-overlayPiece="O"][data-overlay^="draft"] {
-  background: rgb(245 214 92 / 0.88);
+  background: var(--game-amber-glow-3);
 }
 
 .tt-board__cell[data-overlayPiece="T"][data-overlay^="draft"] {
-  background: rgb(203 133 255 / 0.88);
+  background: var(--game-purple-glow-3);
 }
 
 .tt-board__cell[data-overlayPiece="S"][data-overlay^="draft"] {
-  background: rgb(121 217 109 / 0.88);
+  background: var(--game-teal-glow-3);
 }
 
 .tt-board__cell[data-overlayPiece="Z"][data-overlay^="draft"] {
-  background: rgb(255 143 138 / 0.88);
+  background: var(--game-red-glow-3);
 }
 
 .tt-board__cell[data-overlayPiece="J"][data-overlay^="draft"] {
-  background: rgb(127 166 255 / 0.88);
+  background: var(--game-blue-127-5);
 }
 
 .tt-board__cell[data-overlayPiece="L"][data-overlay^="draft"] {
-  background: rgb(255 180 106 / 0.88);
+  background: var(--game-orange-glow-3);
 }
 
 .tt-board__cell[data-piece="I"][data-filled="true"],
 .tt-piece-mini__cell[data-piece="I"][data-filled="true"] {
-  background: #65d8ff;
+  background: var(--game-tetris-I);
 }
 
 .tt-board__cell[data-piece="O"][data-filled="true"],
 .tt-piece-mini__cell[data-piece="O"][data-filled="true"] {
-  background: #f5d65c;
+  background: var(--game-tetris-O);
 }
 
 .tt-board__cell[data-piece="T"][data-filled="true"],
 .tt-piece-mini__cell[data-piece="T"][data-filled="true"] {
-  background: #cb85ff;
+  background: var(--game-tetris-T);
 }
 
 .tt-board__cell[data-piece="S"][data-filled="true"],
 .tt-piece-mini__cell[data-piece="S"][data-filled="true"] {
-  background: #79d96d;
+  background: var(--game-tetris-S);
 }
 
 .tt-board__cell[data-piece="Z"][data-filled="true"],
 .tt-piece-mini__cell[data-piece="Z"][data-filled="true"] {
-  background: #ff8f8a;
+  background: var(--game-tetris-Z);
 }
 
 .tt-board__cell[data-piece="J"][data-filled="true"],
 .tt-piece-mini__cell[data-piece="J"][data-filled="true"] {
-  background: #7fa6ff;
+  background: var(--game-tetris-J);
 }
 
 .tt-board__cell[data-piece="L"][data-filled="true"],
 .tt-piece-mini__cell[data-piece="L"][data-filled="true"] {
-  background: #ffb46a;
+  background: var(--game-tetris-L);
 }
 
 .tt-context-card {
   min-height: 0;
-  padding: 0.58rem 0.62rem;
-  border-radius: 0.96rem;
-  border: 1px solid rgb(255 255 255 / 0.06);
-  background: rgb(255 255 255 / 0.025);
+  padding: var(--game-rem-0-58) var(--game-rem-0-62);
+  border-radius: var(--game-rem-0-96);
+  border: var(--game-px-1) solid var(--game-white-06);
+  background: var(--game-white-025);
   display: grid;
-  gap: 0.38rem;
+  gap: var(--game-rem-0-38);
 }
 
 .tt-context-card--status {
   background:
-    linear-gradient(140deg, rgb(9 43 56 / 0.56), rgb(255 255 255 / 0.03)), rgb(255 255 255 / 0.025);
-  border-color: rgb(121 209 194 / 0.18);
+    linear-gradient(140deg, var(--game-bg-teal-dark-2), var(--game-white-03)), var(--game-white-025);
+  border-color: var(--game-accent-18);
 }
 
 .tt-context-card--controls {
-  gap: 0.48rem;
+  gap: var(--game-rem-0-48);
 }
 
 .tt-context-card--piece {
-  gap: 0.48rem;
+  gap: var(--game-rem-0-48);
 }
 
 .tt-context-card__label {
-  font-size: 0.62rem;
-  letter-spacing: 0.14em;
+  font-size: var(--game-rem-0-62);
+  letter-spacing: var(--game-em-0-14);
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--shell-muted);
 }
 
 .tt-context-card__lead {
   margin: 0;
-  font-size: 0.94rem;
+  font-size: var(--game-rem-0-94);
   line-height: 1.38;
   font-weight: 700;
 }
@@ -253,102 +254,102 @@
 .tt-context-card__meta,
 .tt-context-card__empty {
   margin: 0;
-  color: var(--muted);
+  color: var(--shell-muted);
   line-height: 1.4;
-  font-size: 0.75rem;
+  font-size: var(--game-rem-0-75);
 }
 
 .tt-context-card__hint {
   margin: 0;
-  color: var(--muted);
+  color: var(--shell-muted);
   line-height: 1.45;
-  font-size: 0.72rem;
+  font-size: var(--game-rem-0-72);
 }
 
 .tt-piece-showcase {
-  padding: 0.58rem 0.62rem;
-  border-radius: 0.88rem;
-  border: 1px solid rgb(255 255 255 / 0.06);
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.02));
+  padding: var(--game-rem-0-58) var(--game-rem-0-62);
+  border-radius: var(--game-rem-0-88);
+  border: var(--game-px-1) solid var(--game-white-06);
+  background: linear-gradient(180deg, var(--game-white-05), var(--game-white-02));
   display: grid;
-  gap: 0.52rem;
+  gap: var(--game-rem-0-52);
   justify-items: start;
 }
 
 .tt-piece-meta-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.38rem;
+  gap: var(--game-rem-0-38);
   align-items: center;
 }
 
 .tt-piece-badge {
   display: inline-flex;
   align-items: center;
-  min-height: 1.55rem;
-  padding: 0.18rem 0.48rem;
-  border-radius: 999px;
-  border: 1px solid rgb(255 255 255 / 0.08);
-  background: rgb(255 255 255 / 0.04);
-  color: rgb(245 248 250 / 0.92);
-  font-size: 0.68rem;
+  min-height: var(--game-rem-1-55);
+  padding: var(--game-rem-0-18) var(--game-rem-0-48);
+  border-radius: var(--game-px-999);
+  border: var(--game-px-1) solid var(--game-white-08);
+  background: var(--game-white-04);
+  color: var(--game-bg-ghost-1);
+  font-size: var(--game-rem-0-68);
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--game-em-0-05);
   text-transform: uppercase;
 }
 
 .tt-piece-badge[data-tone="rotation"] {
-  color: rgb(214 230 255 / 0.96);
-  border-color: rgb(127 166 255 / 0.24);
-  background: rgb(127 166 255 / 0.12);
+  color: var(--game-bg-blue-light-1);
+  border-color: var(--game-blue-127-3);
+  background: var(--game-blue-127-1);
 }
 
 .tt-piece-badge[data-piece="I"] {
-  color: #dff8ff;
-  border-color: rgb(101 216 255 / 0.28);
-  background: rgb(101 216 255 / 0.14);
+  color: var(--game-blue-1);
+  border-color: var(--game-tetris-I);
+  background: var(--game-blue-glow-1);
 }
 
 .tt-piece-badge[data-piece="O"] {
-  color: #fff6c3;
-  border-color: rgb(245 214 92 / 0.28);
-  background: rgb(245 214 92 / 0.14);
+  color: var(--game-amber-1);
+  border-color: var(--game-tetris-O);
+  background: var(--game-amber-glow-1);
 }
 
 .tt-piece-badge[data-piece="T"] {
-  color: #f0dcff;
-  border-color: rgb(203 133 255 / 0.28);
-  background: rgb(203 133 255 / 0.14);
+  color: var(--game-purple-1);
+  border-color: var(--game-tetris-T);
+  background: var(--game-purple-glow-1);
 }
 
 .tt-piece-badge[data-piece="S"] {
-  color: #dcffd6;
-  border-color: rgb(121 217 109 / 0.28);
-  background: rgb(121 217 109 / 0.14);
+  color: var(--game-tetris-S);
+  border-color: var(--game-tetris-S);
+  background: var(--game-teal-glow-1);
 }
 
 .tt-piece-badge[data-piece="Z"] {
-  color: #ffe0de;
-  border-color: rgb(255 143 138 / 0.28);
-  background: rgb(255 143 138 / 0.14);
+  color: var(--game-red-5);
+  border-color: var(--game-tetris-Z);
+  background: var(--game-red-glow-1);
 }
 
 .tt-piece-badge[data-piece="J"] {
-  color: #dde6ff;
-  border-color: rgb(127 166 255 / 0.28);
-  background: rgb(127 166 255 / 0.14);
+  color: var(--game-bg-blue-light-1);
+  border-color: var(--game-blue-127-3);
+  background: var(--game-blue-127-1);
 }
 
 .tt-piece-badge[data-piece="L"] {
-  color: #ffead4;
-  border-color: rgb(255 180 106 / 0.28);
-  background: rgb(255 180 106 / 0.14);
+  color: var(--game-orange-glow-3);
+  border-color: var(--game-tetris-L);
+  background: var(--game-orange-glow-1);
 }
 
 .tt-piece-mini {
-  --tt-mini-cell-size: 0.68rem;
+  --tt-mini-cell-size: var(--game-rem-0-68);
   display: inline-grid;
-  gap: 0.14rem;
+  gap: var(--game-rem-0-14);
   grid-auto-rows: var(--tt-mini-cell-size);
   justify-content: start;
   align-content: start;
@@ -359,44 +360,44 @@
   min-width: var(--tt-mini-cell-size);
   min-height: var(--tt-mini-cell-size);
   aspect-ratio: 1 / 1;
-  border-radius: 0.18rem;
-  background: rgb(255 255 255 / 0.05);
+  border-radius: var(--game-rem-0-18);
+  background: var(--game-white-05);
 }
 
 .tt-piece-mini__cell[data-filled="true"] {
   box-shadow:
-    inset 0 0 0 1px rgb(255 255 255 / 0.08),
-    0 0 16px rgb(255 255 255 / 0.03);
+    inset var(--game-px-0) var(--game-px-0) var(--game-px-0) var(--game-px-1) var(--game-white-08),
+    var(--game-px-0) var(--game-px-0) var(--game-rem-1-6) var(--game-white-03);
 }
 
 .tt-context-card[data-variant="current-piece"] .tt-piece-showcase {
-  border-color: rgb(121 209 194 / 0.2);
+  border-color: var(--game-accent-2);
   background:
-    radial-gradient(circle at top left, rgb(15 181 158 / 0.18), transparent 52%),
-    linear-gradient(145deg, rgb(6 26 37 / 0.84), rgb(255 255 255 / 0.03));
+    radial-gradient(circle at top left, var(--game-gradient-10), transparent 52%),
+    linear-gradient(145deg, var(--game-bg-deep-5), var(--game-white-03));
 }
 
 .tt-context-card[data-variant="current-piece"] .tt-piece-mini {
-  --tt-mini-cell-size: 0.82rem;
-  gap: 0.16rem;
+  --tt-mini-cell-size: var(--game-rem-0-82);
+  gap: var(--game-rem-0-16);
 }
 
 .tt-context-card[data-variant="partner"] .tt-piece-mini {
-  --tt-mini-cell-size: 0.62rem;
+  --tt-mini-cell-size: var(--game-rem-0-62);
 }
 
 .tt-rotation-row {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.42rem;
+  gap: var(--game-rem-0-42);
 }
 
 .tt-rotation {
-  min-height: 2.2rem;
-  padding: 0.42rem;
-  border-radius: 0.88rem;
-  border: 1px solid rgb(255 255 255 / 0.08);
-  background: rgb(255 255 255 / 0.03);
+  min-height: var(--game-rem-2-2);
+  padding: var(--game-rem-0-42);
+  border-radius: var(--game-rem-0-88);
+  border: var(--game-px-1) solid var(--game-white-08);
+  background: var(--game-white-03);
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -404,10 +405,9 @@
 }
 
 .tt-rotation[data-selected="true"] {
-  border-color: rgb(121 209 194 / 0.38);
+  border-color: var(--game-accent-38);
   background:
-    linear-gradient(135deg, rgb(15 181 158 / 0.16), rgb(255 255 255 / 0.04)),
-    rgb(255 255 255 / 0.04);
+    linear-gradient(135deg, var(--game-gradient-10), var(--game-white-04)), var(--game-white-04);
 }
 
 .tt-actions--compact {
@@ -415,12 +415,12 @@
 }
 
 .tt-context-card[data-variant="snapshot"] .tt-board {
-  --tt-cell-size: clamp(0.28rem, 0.42vw, 0.42rem);
-  gap: 0.08rem;
-  padding: 0.22rem;
-  border-radius: 0.7rem;
+  --tt-cell-size: clamp(var(--game-rem-0-28), var(--game-rem-0-42), var(--game-rem-0-42));
+  gap: var(--game-rem-0-08);
+  padding: var(--game-rem-0-22);
+  border-radius: var(--game-rem-0-7);
 }
 
 .tt-context-card[data-variant="snapshot"] .tt-board__cell {
-  border-radius: 0.1rem;
+  border-radius: var(--game-rem-0-1);
 }

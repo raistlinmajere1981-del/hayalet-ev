@@ -1,6 +1,6 @@
 export const ROOM_ID = "game-room";
-export const PAGE_ID = "room:game-room:xox";
-export const FEATURE_ID = "xox";
+export const PAGE_ID = "room:game-room:backgammon";
+export const FEATURE_ID = "backgammon";
 export const TEAM_TETRIS_FEATURE_ID = "team-tetris";
 export const TEAM_TETRIS_PAGE_ID = "room:game-room:team-tetris";
 export const FATE_KNOTS_FEATURE_ID = "fate-knots";

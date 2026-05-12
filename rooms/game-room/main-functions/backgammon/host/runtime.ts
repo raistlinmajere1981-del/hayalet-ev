@@ -64,11 +64,11 @@ import {
   resolveStateMatchId,
   sendAiTurnUpdate,
 } from "./runtime-match.js";
-import type { XoxRuntimeMatchApi } from "./runtime-match.js";
+import type { BackgammonRuntimeMatchApi } from "./runtime-match.js";
 import { syncFromContext } from "./runtime-sync.js";
-import { createGameRoomXoxUs1Runtime } from "./us1-runtime.js";
+import { createGameRoomBackgammonUs1Runtime } from "./us1-runtime.js";
 
-const XOX_COMMAND_NAMES = {
+const BACKGAMMON_COMMAND_NAMES = {
   acceptInvite: "GameRoomBackgammonAcceptInvite",
   aiMove: "GameRoomBackgammonAiMove",
   rejectInvite: "GameRoomBackgammonRejectInvite",
@@ -78,7 +78,7 @@ const XOX_COMMAND_NAMES = {
   userMove: "GameRoomBackgammonUserMove",
 };
 
-const xoxUs1Runtime = createGameRoomXoxUs1Runtime({
+const backgammonUs1Runtime = createGameRoomBackgammonUs1Runtime({
   DEFAULT_STARTER: DEFAULT_STARTER,
   FEATURE_ID: FEATURE_ID,
   FATE_KNOTS_FEATURE_ID: FATE_KNOTS_FEATURE_ID,
@@ -91,7 +91,7 @@ const xoxUs1Runtime = createGameRoomXoxUs1Runtime({
   commandMessage: commandMessage,
   createInitialState: createInitialState,
   createPendingInvite: createPendingInvite as unknown as Parameters<
-    typeof createGameRoomXoxUs1Runtime
+    typeof createGameRoomBackgammonUs1Runtime
   >[0]["createPendingInvite"],
   createTeamTetrisMatch: createTeamTetrisMatch,
   dispatchNextTeamTetrisTurn: dispatchNextTeamTetrisTurn,
@@ -129,19 +129,19 @@ const {
   sendUs1Move,
   sendUs1Reset,
   syncUs1Mailbox,
-} = xoxUs1Runtime;
+} = backgammonUs1Runtime;
 
-type XoxCommandResult = { success: boolean; message: string };
-type XoxTarget = ReturnType<typeof sanitizeTarget>;
-type XoxResetContext = {
+type BackgammonCommandResult = { success: boolean; message: string };
+type BackgammonTarget = ReturnType<typeof sanitizeTarget>;
+type BackgammonResetContext = {
   matchId: string;
   localSessionId: string | null;
   remoteUserId?: string | null;
 };
-type XoxUs1Runtime = ReturnType<typeof createGameRoomXoxUs1Runtime>;
-type XoxUs1Api = Parameters<XoxUs1Runtime["sendUs1Invite"]>[0];
-type XoxUs1InviteApi = Parameters<XoxUs1Runtime["sendUs1Move"]>[0];
-type XoxInviteEntry = NonNullable<ReturnType<XoxUs1Runtime["findInviteById"]>>;
+type BackgammonUs1Runtime = ReturnType<typeof createGameRoomBackgammonUs1Runtime>;
+type BackgammonUs1Api = Parameters<BackgammonUs1Runtime["sendUs1Invite"]>[0];
+type BackgammonUs1InviteApi = Parameters<BackgammonUs1Runtime["sendUs1Move"]>[0];
+type BackgammonInviteEntry = NonNullable<ReturnType<BackgammonUs1Runtime["findInviteById"]>>;
 type CommandDispatchResult = { success?: boolean } | null | undefined;
 type Us1MessageSendResult =
   | {
@@ -153,7 +153,7 @@ type Us1MessageSendResult =
   | null
   | undefined;
 
-interface XoxRuntimeApi extends XoxUs1Api, XoxRuntimeMatchApi {}
+interface BackgammonRuntimeApi extends BackgammonUs1Api, BackgammonRuntimeMatchApi {}
 
 function isSuccessfulDispatch(result: CommandDispatchResult): result is { success: true } {
   return !!result && result.success === true;
@@ -170,7 +170,7 @@ function readNonEmptyString(value: unknown): string | null {
 }
 
 async function dispatchUs1BridgeMessage(
-  api: XoxRuntimeApi,
+  api: BackgammonRuntimeApi,
   msg: Record<string, unknown>
 ): Promise<Us1MessageSendResult> {
   if (typeof api.dispatchBridge !== "function") {
@@ -235,8 +235,8 @@ async function dispatchUs1BridgeMessage(
   };
 }
 
-function toUs1InviteApi(api: XoxRuntimeApi): XoxUs1InviteApi {
-  const inviteApi: XoxUs1InviteApi = {
+function toUs1InviteApi(api: BackgammonRuntimeApi): BackgammonUs1InviteApi {
+  const inviteApi: BackgammonUs1InviteApi = {
     getState(key: string) {
       return api.getState(key);
     },
@@ -300,7 +300,7 @@ function createUs1OpponentFallback(
 
 function readOpponentSlot(
   context: GameRoomContextState,
-  target: XoxTarget,
+  target: BackgammonTarget,
   remoteUserId: string | null,
   opponentNickname: string
 ): GameRoomSlotState {
@@ -316,7 +316,10 @@ function readOpponentSlot(
   return context.slots[target];
 }
 
-async function handleStart(api: XoxRuntimeApi, payload: unknown): Promise<XoxCommandResult> {
+async function handleStart(
+  api: BackgammonRuntimeApi,
+  payload: unknown
+): Promise<BackgammonCommandResult> {
   const locale = readLocale(api);
   const args = readArgs(payload);
   const target = sanitizeTarget(typeof args["target"] === "string" ? args["target"] : "");
@@ -361,7 +364,7 @@ async function handleStart(api: XoxRuntimeApi, payload: unknown): Promise<XoxCom
   return { success: true, message: commandMessage(locale, "started") };
 }
 
-async function handleReset(api: XoxRuntimeApi): Promise<XoxCommandResult> {
+async function handleReset(api: BackgammonRuntimeApi): Promise<BackgammonCommandResult> {
   const locale = readLocale(api);
   const currentState = loadState(api);
   const pendingInvite = loadPendingInvite(api);
@@ -372,7 +375,7 @@ async function handleReset(api: XoxRuntimeApi): Promise<XoxCommandResult> {
       : currentState.target === "us1"
         ? currentState.remoteUserId
         : null;
-  const resetContext: XoxResetContext | null =
+  const resetContext: BackgammonResetContext | null =
     pendingInvite !== null && pendingInvite.direction === "outgoing" && pendingInvite.matchId
       ? {
           matchId: pendingInvite.matchId,
@@ -408,7 +411,10 @@ async function handleReset(api: XoxRuntimeApi): Promise<XoxCommandResult> {
   };
 }
 
-async function handleUserMove(api: XoxRuntimeApi, payload: unknown): Promise<XoxCommandResult> {
+async function handleUserMove(
+  api: BackgammonRuntimeApi,
+  payload: unknown
+): Promise<BackgammonCommandResult> {
   const state = loadState(api);
   const locale = state.locale;
   const legalMoveId = readLegalMoveId(payload);
@@ -493,19 +499,28 @@ async function handleUserMove(api: XoxRuntimeApi, payload: unknown): Promise<Xox
   return { success: true, message: commandMessage(locale, "moveSent") };
 }
 
-async function handleAiMove(api: XoxRuntimeApi, payload: unknown): Promise<XoxCommandResult> {
+async function handleAiMove(
+  api: BackgammonRuntimeApi,
+  payload: unknown
+): Promise<BackgammonCommandResult> {
   const state = loadState(api);
   return await applyOpponentMove(api, payload, state.target, false);
 }
 
-async function handleRemoteMove(api: XoxRuntimeApi, payload: unknown): Promise<XoxCommandResult> {
+async function handleRemoteMove(
+  api: BackgammonRuntimeApi,
+  payload: unknown
+): Promise<BackgammonCommandResult> {
   return await applyOpponentMove(api, payload, "us1", true);
 }
 
-async function handleAcceptInvite(api: XoxRuntimeApi, payload: unknown): Promise<XoxCommandResult> {
+async function handleAcceptInvite(
+  api: BackgammonRuntimeApi,
+  payload: unknown
+): Promise<BackgammonCommandResult> {
   const matchId = readInviteId(payload);
   const remoteUserId = readRemoteUserId(payload);
-  const inviteEntry: XoxInviteEntry | null =
+  const inviteEntry: BackgammonInviteEntry | null =
     matchId !== null ? findInviteById(api, matchId, remoteUserId || "") : null;
   if (inviteEntry === null) {
     return { success: false, message: commandMessage(readLocale(api), "inviteNotFound") };
@@ -543,10 +558,13 @@ async function handleAcceptInvite(api: XoxRuntimeApi, payload: unknown): Promise
   return { success: true, message: commandMessage(readLocale(api), "inviteAccepted") };
 }
 
-async function handleRejectInvite(api: XoxRuntimeApi, payload: unknown): Promise<XoxCommandResult> {
+async function handleRejectInvite(
+  api: BackgammonRuntimeApi,
+  payload: unknown
+): Promise<BackgammonCommandResult> {
   const matchId = readInviteId(payload);
   const remoteUserId = readRemoteUserId(payload);
-  const inviteEntry: XoxInviteEntry | null =
+  const inviteEntry: BackgammonInviteEntry | null =
     matchId !== null ? findInviteById(api, matchId, remoteUserId || "") : null;
   if (inviteEntry === null) {
     return { success: false, message: commandMessage(readLocale(api), "inviteNotFound") };
@@ -578,7 +596,7 @@ async function handleRejectInvite(api: XoxRuntimeApi, payload: unknown): Promise
 }
 
 export {
-  XOX_COMMAND_NAMES,
+  BACKGAMMON_COMMAND_NAMES,
   handleAcceptInvite,
   handleAiMove,
   handleRejectInvite,

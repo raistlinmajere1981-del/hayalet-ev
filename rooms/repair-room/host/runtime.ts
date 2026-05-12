@@ -9,6 +9,7 @@ import {
   REPAIR_MEASUREMENT_DRIFT_INTERVAL_MS,
   REPAIR_ROOM_ID,
   REPAIR_SESSION_SCHEMA_VERSION,
+  REPAIR_UI_COLORS,
   REPAIR_UI_COMMANDS,
 } from "../shared/repair-constants.js";
 import {
@@ -109,9 +110,7 @@ function nowIso(): string {
 }
 
 function unrefTimer(timer: ReturnType<typeof setInterval> | ReturnType<typeof setTimeout>): void {
-  if (typeof timer === "object" && timer !== null && typeof timer.unref === "function") {
-    timer.unref();
-  }
+  timer.unref();
 }
 
 function buildSessionList(sessions: Record<string, RepairSession>): RepairSessionListItem[] {
@@ -335,7 +334,7 @@ function createAnnotationEvent(
     region: tool === "measurement-pin" ? null : { xPx, yPx, widthPx, heightPx },
     point: tool === "measurement-pin" ? { xPx, yPx } : null,
     label,
-    color: safeString(payload["color"]) ?? "#56c8de",
+    color: safeString(payload["color"]) ?? REPAIR_UI_COLORS.cyan,
   };
 }
 

@@ -335,8 +335,8 @@ function prepareCanvas(canvasElement: HTMLCanvasElement, windowRef: VisualizerWi
 
 function readVisualizerColors(canvasElement: HTMLCanvasElement, windowRef: VisualizerWindow) {
   const styles = windowRef.getComputedStyle(canvasElement);
-  const accent = styles.getPropertyValue("--labx-accent").trim() || "#5cd7df";
-  const accentAlt = styles.getPropertyValue("--labx-accent-alt").trim() || "#6aa6eb";
+  const accent = styles.getPropertyValue("--labx-accent").trim() || "rgb(92, 215, 223)";
+  const accentAlt = styles.getPropertyValue("--labx-accent-alt").trim() || "rgb(106, 166, 235)";
   const border = styles.getPropertyValue("--labx-border").trim() || "rgba(255, 255, 255, 0.12)";
   const textDim = styles.getPropertyValue("--labx-text-dim").trim() || "rgba(208, 220, 235, 0.42)";
   return {

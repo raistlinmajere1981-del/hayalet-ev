@@ -11,7 +11,7 @@ Transport contract:
 
 Lifecycle rules:
 
-- Team Tetris does not reuse the XOX invite inbox or invite accept/reject flow
+- Team Tetris does not reuse the Tavla invite inbox or invite accept/reject flow
 - Start is allowed only when `ai1`, `ai2`, and `us1` are ready
 - If `us1` disconnects mid-match, the match enters a blocked state until reset
 - Switching away from the Team Tetris feature resets the active Team Tetris match

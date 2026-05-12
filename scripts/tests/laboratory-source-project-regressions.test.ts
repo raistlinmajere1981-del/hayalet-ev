@@ -287,7 +287,7 @@ test("laboratory source panel renders localized asset groups and context actions
   assert.match(html, /class="labx-sp-asset__thumb" data-kind="video"/);
   assert.match(html, /class="labx-sp-asset__thumb" data-kind="image"/);
   assert.match(html, /class="labx-sp-asset__badge labx-sp-asset__badge--audio"/);
-  assert.match(html, /&#119070;/);
+  assert.match(html, /&sung;/);
   assert.match(html, /data-extension="md">MD<\/span>/);
   assert.match(html, /data-extension="json">JSON<\/span>/);
   assert.doesNotMatch(html, />SRC<\/span>/);

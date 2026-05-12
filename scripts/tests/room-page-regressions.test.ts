@@ -107,12 +107,12 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   const roomsShellCssSource = readFileSync("src/styles/rooms/shell.css", "utf8");
   const mainCssSource = readFileSync("src/styles/main.css", "utf8");
   const gameRoomUiCssSource = readFileSync("rooms/game-room/ui/style.css", "utf8");
-  const gameRoomXoxCssSource = readFileSync(
-    "rooms/game-room/main-functions/xox/styles.css",
+  const gameRoomBackgammonCssSource = readFileSync(
+    "rooms/game-room/main-functions/backgammon/styles.css",
     "utf8"
   );
-  const gameRoomXoxSceneViewCssSource = readFileSync(
-    "rooms/game-room/main-functions/xox/styles/scene-view.css",
+  const gameRoomBackgammonSceneViewCssSource = readFileSync(
+    "rooms/game-room/main-functions/backgammon/styles/scene-view.css",
     "utf8"
   );
   const laboratoryUiCssSource = readFileSync("rooms/laboratory/ui/style.css", "utf8");
@@ -416,15 +416,15 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
     /\.room-runtime-mount \{\s*flex: 1;[\s\S]*min-height: 0;[\s\S]*height: 100%;/
   );
   assert.match(gameRoomUiCssSource, /@import "\.\.\/shared\/styles\/base\.css";/);
-  assert.match(gameRoomUiCssSource, /@import "\.\.\/main-functions\/xox\/styles\.css";/);
+  assert.match(gameRoomUiCssSource, /@import "\.\.\/main-functions\/backgammon\/styles\.css";/);
   assert.match(gameRoomUiCssSource, /@import "\.\.\/main-functions\/fate-knots\/styles\.css";/);
-  assert.match(gameRoomXoxCssSource, /@import "\.\/styles\/layout\.css";/);
-  assert.match(gameRoomXoxCssSource, /@import "\.\/styles\/presentation\.css";/);
-  assert.match(gameRoomXoxCssSource, /@import "\.\/styles\/board\.css";/);
-  assert.match(gameRoomXoxCssSource, /@import "\.\/styles\/scene-view\.css";/);
+  assert.match(gameRoomBackgammonCssSource, /@import "\.\/styles\/layout\.css";/);
+  assert.match(gameRoomBackgammonCssSource, /@import "\.\/styles\/presentation\.css";/);
+  assert.match(gameRoomBackgammonCssSource, /@import "\.\/styles\/board\.css";/);
+  assert.match(gameRoomBackgammonCssSource, /@import "\.\/styles\/scene-view\.css";/);
   assert.match(
-    gameRoomXoxSceneViewCssSource,
-    /body\[data-presentation-mode="scene-view"\] \.xox-shell \{\s*min-height: 100%;[\s\S]*padding: 0;/
+    gameRoomBackgammonSceneViewCssSource,
+    /body\[data-presentation-mode="scene-view"\] \.backgammon-shell \{\s*min-height: 100%;[\s\S]*padding: 0;/
   );
   assert.match(laboratoryUiCssSource, /@import "\.\/lab-theme\.css";/);
   assert.doesNotMatch(laboratoryUiCssSource, /shared\/styles\/shell\.css/);
@@ -432,7 +432,7 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   assert.match(laboratoryThemeCssSource, /\.labx-shell\s*\{[\s\S]*min-height:\s*100vh;/);
   assert.match(
     laboratoryThemeCssSource,
-    /\.labx-source-intake__frame\s*\{[\s\S]*border: 1px solid/
+    /\.labx-source-intake__frame\s*\{[\s\S]*border: var\(--lab-shell-source-intake-px-1\) solid/
   );
   assert.match(
     laboratoryThemeCssSource,

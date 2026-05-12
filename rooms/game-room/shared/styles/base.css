@@ -1,25 +1,4 @@
-:root {
-  color-scheme: dark;
-  --shell-bg:
-    radial-gradient(circle at top left, rgb(19 166 144 / 0.16), transparent 32%),
-    radial-gradient(circle at bottom right, rgb(235 154 58 / 0.14), transparent 28%),
-    linear-gradient(180deg, rgb(6 15 26 / 0.98), rgb(4 10 18 / 1));
-  --surface-bg: linear-gradient(145deg, rgb(12 25 40 / 0.96), rgb(7 16 28 / 0.98));
-  --panel-bg: rgb(11 23 39 / 0.74);
-  --panel-border: rgb(132 196 181 / 0.18);
-  --line: rgb(223 184 102 / 0.18);
-  --ink: #edf3f6;
-  --muted: #96a9b4;
-  --accent: #79d1c2;
-  --accent-strong: #0fb59e;
-  --accent-soft: rgb(121 209 194 / 0.16);
-  --x: #ff8f5a;
-  --o: #72d7cb;
-  --shadow: 0 28px 80px rgb(0 0 0 / 0.42);
-  --room-runtime-ui-scale-factor: 1;
-  background: transparent;
-  font-family: "Avenir Next", "Segoe UI", "Trebuchet MS", sans-serif;
-}
+/* Structural rules only — tokens are defined in ui/tokens.css */
 
 * {
   box-sizing: border-box;
@@ -34,7 +13,7 @@ body {
 body {
   margin: 0;
   min-height: 100%;
-  color: var(--ink);
+  color: var(--shell-ink);
   background: transparent;
   overflow: hidden;
 }
@@ -53,5 +32,5 @@ button {
   min-height: 100%;
   height: 100%;
   overflow: hidden;
-  zoom: var(--room-runtime-ui-scale-factor, 1);
+  zoom: var(--shell-runtime-ui-scale-factor, 1);
 }

@@ -9,8 +9,8 @@ import type {
 import {
   type BackgammonLegalMove,
   type BackgammonPoint,
-  type XoxGameState,
-  type XoxMatchHistoryEntry,
+  type BackgammonGameState,
+  type BackgammonMatchHistoryEntry,
   MATCH_HISTORY_LIMIT,
   TERMINAL_RESULTS,
   buildBoardAscii,
@@ -26,7 +26,7 @@ import {
   normalizePendingInvite,
 } from "./state-invites.js";
 
-interface XoxStateApi {
+interface BackgammonStateApi {
   getState: (key: string) => unknown;
   setState: (key: string, value: unknown) => void;
   deleteState?: (key: string) => void;
@@ -34,7 +34,7 @@ interface XoxStateApi {
   getLocale?: () => unknown;
 }
 
-interface SerializedXoxState {
+interface SerializedBackgammonState {
   roomId: string;
   featureId: string;
   board: BackgammonPoint[];
@@ -45,11 +45,11 @@ interface SerializedXoxState {
   dice: number[];
   legalMoves: BackgammonLegalMove[];
   active: boolean;
-  awaitingMoveFrom: XoxGameState["awaitingMoveFrom"];
+  awaitingMoveFrom: BackgammonGameState["awaitingMoveFrom"];
   result: string;
-  winner: XoxGameState["winner"];
+  winner: BackgammonGameState["winner"];
   selectedTarget: string;
-  starter: XoxGameState["starter"];
+  starter: BackgammonGameState["starter"];
   protocolDelivered: boolean;
   blockedReason: string;
   protocolPreface: string;
@@ -63,7 +63,7 @@ interface SerializedXoxState {
   lastRemoteTurnIndex: number | null;
   pendingInvite: PendingInvite | null;
   inviteInbox: InviteEntry[];
-  matchHistory: XoxMatchHistoryEntry[];
+  matchHistory: BackgammonMatchHistoryEntry[];
   opponent: GameRoomSlotState;
   opponentReady: boolean;
   user: {
@@ -73,72 +73,78 @@ interface SerializedXoxState {
   status: string;
 }
 
-export function loadState(api: XoxStateApi): XoxGameState {
-  return normalizeState(api.getState("xox-game"), readLocale(api));
+export function loadState(api: BackgammonStateApi): BackgammonGameState {
+  return normalizeState(api.getState("backgammon-game"), readLocale(api));
 }
 
-export function saveState(api: XoxStateApi, state: XoxGameState): XoxGameState {
+export function saveState(
+  api: BackgammonStateApi,
+  state: BackgammonGameState
+): BackgammonGameState {
   const normalized = normalizeState(state, readLocale(api));
   normalized.locale = readLocale(api);
   api.setState("locale", normalized.locale);
-  api.setState("xox-game", normalized);
+  api.setState("backgammon-game", normalized);
   return normalized;
 }
 
-export function loadInviteInbox(api: XoxStateApi): InviteEntry[] {
-  return normalizeInviteInbox(api.getState("xox-invite-inbox"));
+export function loadInviteInbox(api: BackgammonStateApi): InviteEntry[] {
+  return normalizeInviteInbox(api.getState("backgammon-invite-inbox"));
 }
 
-export function saveInviteInbox(api: XoxStateApi, inviteInbox: unknown): InviteEntry[] {
+export function saveInviteInbox(api: BackgammonStateApi, inviteInbox: unknown): InviteEntry[] {
   const normalized = normalizeInviteInbox(inviteInbox);
-  api.setState("xox-invite-inbox", normalized);
+  api.setState("backgammon-invite-inbox", normalized);
   return normalized;
 }
 
-export function loadPendingInvite(api: XoxStateApi): PendingInvite | null {
-  return normalizePendingInvite(api.getState("xox-pending-invite"));
+export function loadPendingInvite(api: BackgammonStateApi): PendingInvite | null {
+  return normalizePendingInvite(api.getState("backgammon-pending-invite"));
 }
 
-export function savePendingInvite(api: XoxStateApi, pendingInvite: unknown): PendingInvite | null {
+export function savePendingInvite(
+  api: BackgammonStateApi,
+  pendingInvite: unknown
+): PendingInvite | null {
   const normalized = normalizePendingInvite(pendingInvite);
   if (normalized === null) {
-    api.deleteState?.("xox-pending-invite");
+    api.deleteState?.("backgammon-pending-invite");
     return null;
   }
-  api.setState("xox-pending-invite", normalized);
+  api.setState("backgammon-pending-invite", normalized);
   return normalized;
 }
 
-export function clearPendingInvite(api: XoxStateApi): void {
-  api.deleteState?.("xox-pending-invite");
+export function clearPendingInvite(api: BackgammonStateApi): void {
+  api.deleteState?.("backgammon-pending-invite");
 }
 
-export function loadMatchHistory(api: XoxStateApi): XoxMatchHistoryEntry[] {
-  return normalizeMatchHistory(api.getState("xox-match-history"));
+export function loadMatchHistory(api: BackgammonStateApi): BackgammonMatchHistoryEntry[] {
+  return normalizeMatchHistory(api.getState("backgammon-match-history"));
 }
 
 export function saveMatchHistory(
-  api: XoxStateApi,
-  entries: XoxMatchHistoryEntry[]
-): XoxMatchHistoryEntry[] {
+  api: BackgammonStateApi,
+  entries: BackgammonMatchHistoryEntry[]
+): BackgammonMatchHistoryEntry[] {
   const normalized = normalizeMatchHistory(entries);
-  api.setState("xox-match-history", normalized);
+  api.setState("backgammon-match-history", normalized);
   return normalized;
 }
 
 export function appendMatchHistory(
-  api: XoxStateApi,
-  entry: XoxMatchHistoryEntry
-): XoxMatchHistoryEntry[] {
+  api: BackgammonStateApi,
+  entry: BackgammonMatchHistoryEntry
+): BackgammonMatchHistoryEntry[] {
   const existing = loadMatchHistory(api);
   const next = [entry, ...existing].slice(0, MATCH_HISTORY_LIMIT);
   return saveMatchHistory(api, next);
 }
 
 function buildMatchHistoryEntry(
-  state: XoxGameState,
+  state: BackgammonGameState,
   context: GameRoomContextState | GameRoomContextSnapshot
-): XoxMatchHistoryEntry | null {
+): BackgammonMatchHistoryEntry | null {
   const result = state.result;
   if (result !== "user-win" && result !== "ai-win") {
     return null;
@@ -159,7 +165,7 @@ function buildMatchHistoryEntry(
   };
 }
 
-export function createUs1OpponentFallback(state: XoxGameState): GameRoomSlotState {
+export function createUs1OpponentFallback(state: BackgammonGameState): GameRoomSlotState {
   return {
     slotId: "us1",
     label: "US1",
@@ -179,7 +185,7 @@ export function createUs1OpponentFallback(state: XoxGameState): GameRoomSlotStat
 
 export function getOpponentInfo(
   context: GameRoomContextState | GameRoomContextSnapshot,
-  state: XoxGameState
+  state: BackgammonGameState
 ): GameRoomSlotState {
   if (state.target === "us1") {
     const us1Slot = context.slots.us1;
@@ -196,7 +202,7 @@ export function getOpponentInfo(
 }
 
 export function resolveStatusText(
-  state: XoxGameState,
+  state: BackgammonGameState,
   context: GameRoomContextState | GameRoomContextSnapshot
 ): string {
   const opponent = getOpponentInfo(context, state);
@@ -206,10 +212,10 @@ export function resolveStatusText(
 }
 
 export function serializeState(
-  api: XoxStateApi,
-  state: XoxGameState,
+  api: BackgammonStateApi,
+  state: BackgammonGameState,
   context: GameRoomContextState | GameRoomContextSnapshot
-): SerializedXoxState {
+): SerializedBackgammonState {
   const opponent = getOpponentInfo(context, state);
   return {
     roomId: ROOM_ID,
@@ -255,7 +261,10 @@ export function serializeState(
   };
 }
 
-export function pushRoomState(api: XoxStateApi, state: XoxGameState): XoxGameState {
+export function pushRoomState(
+  api: BackgammonStateApi,
+  state: BackgammonGameState
+): BackgammonGameState {
   const context = loadContext(api);
   const previousState = loadState(api);
   const savedState = saveState(api, state);
@@ -265,12 +274,12 @@ export function pushRoomState(api: XoxStateApi, state: XoxGameState): XoxGameSta
       appendMatchHistory(api, entry);
     }
   }
-  api.notifyRoom?.("xox-state", {
+  api.notifyRoom?.("backgammon-state", {
     state: serializeState(api, savedState, context),
   });
   return savedState;
 }
 
-export function refreshRoomState(api: XoxStateApi): XoxGameState {
+export function refreshRoomState(api: BackgammonStateApi): BackgammonGameState {
   return pushRoomState(api, loadState(api));
 }

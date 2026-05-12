@@ -54,6 +54,7 @@ Suggested second-session prompt:
 `Read /home/raistlin/hayalet-ev/rooms-lint-cleanup-plan.md and implement only the Laboratory track tasks assigned by the coordinator. Do not edit game-room files. After each task, rerun targeted rooms lint for your owned files and report remaining warning counts by rule.`
 
 ## Sprint 0: Baseline And Ownership
+
 **Goal**: Lock a reproducible baseline and prepare the work for parallel execution without overlap.
 **Demo/Validation**:
 
@@ -62,6 +63,7 @@ Suggested second-session prompt:
 - Owners for `game-room` and `laboratory` are explicitly assigned.
 
 ### Task S0-T1: Capture The Rooms Baseline
+
 - **Location**: `/tmp/rooms-eslint.json`, `/home/raistlin/hayalet-ev/rooms-lint-cleanup-plan.md`
 - **Description**: Run the rooms-only lint snapshot, record total warnings, top rules, top files, and top directory clusters. This is the baseline used to prove progress after each wave.
 - **depends_on**: []
@@ -73,6 +75,7 @@ Suggested second-session prompt:
   - `npm run rooms:lint -- --format json --output-file /tmp/rooms-eslint.json`
 
 ### Task S0-T2: Assign Parallel Ownership And Validation Scope
+
 - **Location**: `/home/raistlin/hayalet-ev/rooms-lint-cleanup-plan.md`
 - **Description**: Decide the initial parallel split: coordinator, `game-room` worker, `laboratory` worker. Define which lint commands each worker is allowed to run and which directories each worker may edit.
 - **depends_on**: [S0-T1]
@@ -84,6 +87,7 @@ Suggested second-session prompt:
   - Review the ownership map before implementation starts.
 
 ## Sprint 1: Foundation Contracts
+
 **Goal**: Remove the broadest `any` entry points so later feature sweeps become mechanical instead of improvisational.
 **Demo/Validation**:
 
@@ -91,6 +95,7 @@ Suggested second-session prompt:
 - Warning count drops in both rooms before feature-specific work starts.
 
 ### Task S1-T1: Type Laboratory Composition Boundaries
+
 - **Location**: `rooms/laboratory/host/*.ts`, `rooms/laboratory/ui/*.ts`, `rooms/laboratory/shared/host/*.ts`, `rooms/laboratory/shared/ui/*.ts`
 - **Description**: Replace large `deps: any` aggregates with named dependency types and typed helper return values in the laboratory composition layer. Prioritize files like `feature-runtimes.ts`, `project-runtimes.ts`, `feature-adapters.ts`, `ui/core-public-api.ts`, and shared runtime/accessor builders.
 - **depends_on**: [S0-T2]
@@ -102,17 +107,19 @@ Suggested second-session prompt:
   - `npx eslint "rooms/laboratory/host/**/*.{ts,js}" "rooms/laboratory/ui/**/*.{ts,js}" "rooms/laboratory/shared/**/*.{ts,js}"`
 
 ### Task S1-T2: Type Game-Room Registry Boundaries
+
 - **Location**: `rooms/game-room/ui/**/*.ts`, `rooms/game-room/main-functions/**/ui/*.ts`
 - **Description**: Introduce typed factory registry and shared state helper contracts for the game-room UI runtimes. Prioritize IIFE-style files that read from `global.GameRoomUiFactories` and files that shuttle participant/selection/combat state through untyped helpers.
 - **depends_on**: [S0-T2]
 - **Acceptance Criteria**:
   - Global registry access flows through typed interfaces instead of raw `global: any`.
   - Common runtime helpers no longer force downstream `no-unsafe-member-access` cascades.
-  - `fate-knots`, `team-tetris`, and `xox` can build on the same shared contracts.
+  - `fate-knots`, `team-tetris`, and `backgammon` can build on the same shared contracts.
 - **Validation**:
   - `npx eslint "rooms/game-room/ui/**/*.{ts,js}" "rooms/game-room/main-functions/**/*.{ts,js}"`
 
 ## Sprint 2: Game-Room Feature Sweeps
+
 **Goal**: Clear `game-room` warnings by feature cluster once the registry boundary is typed.
 **Demo/Validation**:
 
@@ -120,6 +127,7 @@ Suggested second-session prompt:
 - Each feature cluster can be linted and reviewed independently.
 
 ### Task S2-T1: Clean Fate-Knots State And Chrome Runtimes
+
 - **Location**: `rooms/game-room/main-functions/fate-knots/ui/*.ts`
 - **Description**: Type the state defaults, sanitizers, participant bundles, chrome runtime, stage runtime, and support helpers. Focus on replacing `candidate: any`, `deps: any`, and repeated `toRecord`-style unsafe access with explicit shapes and local narrowing helpers.
 - **depends_on**: [S1-T2]
@@ -130,18 +138,20 @@ Suggested second-session prompt:
 - **Validation**:
   - `npx eslint "rooms/game-room/main-functions/fate-knots/**/*.{ts,js}"`
 
-### Task S2-T2: Clean Team-Tetris And XOX Runtimes
-- **Location**: `rooms/game-room/main-functions/team-tetris/**/*.ts`, `rooms/game-room/main-functions/xox/**/*.ts`
+### Task S2-T2: Clean Team-Tetris And Backgammon Runtimes
+
+- **Location**: `rooms/game-room/main-functions/team-tetris/**/*.ts`, `rooms/game-room/main-functions/backgammon/**/*.ts`
 - **Description**: Reuse the typed registry and shared state contracts from Sprint 1 to remove `any` leakage in the remaining game-room features. Keep this as a separate task so `fate-knots` can land first.
 - **depends_on**: [S1-T2]
 - **Acceptance Criteria**:
-  - `team-tetris` and `xox` stop depending on raw registry lookups and ad-hoc `any` payloads.
+  - `team-tetris` and `backgammon` stop depending on raw registry lookups and ad-hoc `any` payloads.
   - No new shared helper divergence is introduced between features.
   - The remaining `game-room` warnings are either eliminated or isolated to known exceptions.
 - **Validation**:
-  - `npx eslint "rooms/game-room/main-functions/team-tetris/**/*.{ts,js}" "rooms/game-room/main-functions/xox/**/*.{ts,js}"`
+  - `npx eslint "rooms/game-room/main-functions/team-tetris/**/*.{ts,js}" "rooms/game-room/main-functions/backgammon/**/*.{ts,js}"`
 
 ## Sprint 3: Laboratory Feature Sweeps
+
 **Goal**: Clean the laboratory room in waves that respect its heavier shared dependency graph.
 **Demo/Validation**:
 
@@ -149,6 +159,7 @@ Suggested second-session prompt:
 - Each feature cluster can be owned and validated independently after the shared pass.
 
 ### Task S3-T1: Clean Media-Analysis Host And Projection Layers
+
 - **Location**: `rooms/laboratory/main-functions/media-analysis/**/*.{ts,js}`, `rooms/laboratory/host/feature-runtimes.ts`, `rooms/laboratory/host/project-runtimes.ts`
 - **Description**: Remove `any`-driven flow from media profile projection, feature runtime composition, and related host adapters. Focus on projection records, profile target resolution, and typed runtime return shapes because these fan out into many downstream warnings.
 - **depends_on**: [S1-T1]
@@ -160,6 +171,7 @@ Suggested second-session prompt:
   - `npx eslint "rooms/laboratory/main-functions/media-analysis/**/*.{ts,js}" "rooms/laboratory/host/feature-runtimes.ts" "rooms/laboratory/host/project-runtimes.ts"`
 
 ### Task S3-T2: Clean Subtitle-Analysis Runtime Surface
+
 - **Location**: `rooms/laboratory/main-functions/subtitle-analysis/**/*.{ts,js}`
 - **Description**: Type the subtitle-analysis feature boundary after the shared laboratory contracts are stable. Reuse the same pattern as media-analysis: explicit dependency contracts, typed records, and narrow helper returns.
 - **depends_on**: [S1-T1]
@@ -171,6 +183,7 @@ Suggested second-session prompt:
   - `npx eslint "rooms/laboratory/main-functions/subtitle-analysis/**/*.{ts,js}"`
 
 ### Task S3-T3: Clean Audio-Analysis Runtime Surface
+
 - **Location**: `rooms/laboratory/main-functions/audio-analysis/**/*.{ts,js}`
 - **Description**: Apply the shared laboratory typing approach to audio-analysis, especially module catalogs, provider state access, and analysis result composition paths.
 - **depends_on**: [S1-T1]
@@ -182,6 +195,7 @@ Suggested second-session prompt:
   - `npx eslint "rooms/laboratory/main-functions/audio-analysis/**/*.{ts,js}"`
 
 ## Sprint 4: Convergence And Regression Guard
+
 **Goal**: Recombine both room tracks, verify the full `rooms/` surface, and prevent backsliding.
 **Demo/Validation**:
 
@@ -189,6 +203,7 @@ Suggested second-session prompt:
 - Remaining warnings, if any, are intentionally documented and triaged.
 
 ### Task S4-T1: Run Full Rooms Verification
+
 - **Location**: `rooms/**/*.{js,ts}`
 - **Description**: Rerun the full rooms-only lint and compare against the Sprint 0 baseline. Produce a short delta summary by room, rule, and top residual files.
 - **depends_on**: [S2-T1, S2-T2, S3-T1, S3-T2, S3-T3]
@@ -200,6 +215,7 @@ Suggested second-session prompt:
   - `npm run rooms:lint -- --format json --output-file /tmp/rooms-eslint-final.json`
 
 ### Task S4-T2: Add A Rooms-Only Regression Guard
+
 - **Location**: `package.json`, CI or local workflow docs if needed
 - **Description**: Once the warning count reaches the agreed threshold, add a rooms-only enforcement step such as `--max-warnings 0` or a dedicated `rooms:lint:strict` script so new warnings cannot silently return.
 - **depends_on**: [S4-T1]

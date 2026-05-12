@@ -14,9 +14,7 @@ import {
   Us1ConversationService,
 } from "./us1-conversation-service.helpers.ts";
 
-import type {
-  SendMailRequest,
-} from "./us1-conversation-service.helpers.ts";
+import type { SendMailRequest } from "./us1-conversation-service.helpers.ts";
 
 test("US1 conversation service includes room event and room command metadata in outbound mail", async () => {
   const accountId = `us1_mail_${Date.now().toString(36)}_room_meta`;
@@ -35,10 +33,10 @@ test("US1 conversation service includes room event and room command metadata in 
 
   try {
     const inviteResult = await service.sendMessage({
-      text: "XOX invite from Game Room",
+      text: "Tavla invite from Game Room",
       roomEvent: {
         roomId: "game-room",
-        featureId: "xox",
+        featureId: "backgammon",
         inviteId: "invite-1",
         matchId: "invite-1",
         eventType: "invite",
@@ -48,13 +46,12 @@ test("US1 conversation service includes room event and room command metadata in 
     });
     const commandResult = await service.sendMessage({
       localSessionId: inviteResult.localSessionId,
-      text:
-        '++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomXoxRemoteMove","matchId":"invite-1","inviteId":"invite-1","turnIndex":0,"boardHashBeforeMove":".........","cell":4}})',
+      text: '++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomBackgammonRemoteMove","matchId":"invite-1","inviteId":"invite-1","turnIndex":0,"boardHashBeforeMove":".........","cell":4}})',
       roomCommand: {
         roomId: "game-room",
-        featureId: "xox",
+        featureId: "backgammon",
         action: "room.command",
-        commandName: "GameRoomXoxRemoteMove",
+        commandName: "GameRoomBackgammonRemoteMove",
         roomPayload: {
           matchId: "invite-1",
           inviteId: "invite-1",
@@ -74,12 +71,16 @@ test("US1 conversation service includes room event and room command metadata in 
     assert.equal(commandResult.success, true);
     assert.equal(transportStub.sentMessages.length, 2);
 
-    const inviteEnvelope = extractConversationEnvelope(transportStub.sentMessages[0] as SendMailRequest);
-    const commandEnvelope = extractConversationEnvelope(transportStub.sentMessages[1] as SendMailRequest);
+    const inviteEnvelope = extractConversationEnvelope(
+      transportStub.sentMessages[0] as SendMailRequest
+    );
+    const commandEnvelope = extractConversationEnvelope(
+      transportStub.sentMessages[1] as SendMailRequest
+    );
 
     assert.deepEqual(inviteEnvelope["roomEvent"], {
       roomId: "game-room",
-      featureId: "xox",
+      featureId: "backgammon",
       inviteId: "invite-1",
       matchId: "invite-1",
       eventType: "invite",
@@ -88,9 +89,9 @@ test("US1 conversation service includes room event and room command metadata in 
     });
     assert.deepEqual(commandEnvelope["roomCommand"], {
       roomId: "game-room",
-      featureId: "xox",
+      featureId: "backgammon",
       action: "room.command",
-      commandName: "GameRoomXoxRemoteMove",
+      commandName: "GameRoomBackgammonRemoteMove",
       roomPayload: {
         matchId: "invite-1",
         inviteId: "invite-1",
@@ -141,11 +142,11 @@ test("US1 conversation sync projects room events, commands, and invite inbox ent
           localMessageId: "local-room-sync-invite",
           localSessionId: "room-sync-session",
           nickname: "Remote Player",
-          text: "Incoming XOX invite",
-          subject: "XOX invite",
+          text: "Incoming Tavla invite",
+          subject: "Tavla invite",
           roomEvent: {
             roomId: "game-room",
-            featureId: "xox",
+            featureId: "backgammon",
             inviteId: "invite-sync-1",
             matchId: "invite-sync-1",
             eventType: "invite",
@@ -160,14 +161,13 @@ test("US1 conversation sync projects room events, commands, and invite inbox ent
           localMessageId: "local-room-sync-command",
           localSessionId: "room-sync-session",
           nickname: "Remote Player",
-          text:
-            '++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomXoxRemoteMove","matchId":"invite-sync-1","inviteId":"invite-sync-1","turnIndex":0,"boardHashBeforeMove":".........","cell":4}})',
-          subject: "XOX move",
+          text: '++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomBackgammonRemoteMove","matchId":"invite-sync-1","inviteId":"invite-sync-1","turnIndex":0,"boardHashBeforeMove":".........","cell":4}})',
+          subject: "Tavla move",
           roomCommand: {
             roomId: "game-room",
-            featureId: "xox",
+            featureId: "backgammon",
             action: "room.command",
-            commandName: "GameRoomXoxRemoteMove",
+            commandName: "GameRoomBackgammonRemoteMove",
             roomPayload: {
               matchId: "invite-sync-1",
               inviteId: "invite-sync-1",
@@ -195,7 +195,7 @@ test("US1 conversation sync projects room events, commands, and invite inbox ent
     assert.equal(result.roomEvents?.[0]?.inviteId, "invite-sync-1");
     assert.equal(result.roomEvents?.[0]?.matchId, "invite-sync-1");
     assert.equal(result.roomEvents?.[0]?.senderNickname, "Remote Player");
-    assert.equal(result.roomCommands?.[0]?.commandName, "GameRoomXoxRemoteMove");
+    assert.equal(result.roomCommands?.[0]?.commandName, "GameRoomBackgammonRemoteMove");
     assert.equal(result.roomCommands?.[0]?.action, "room.command");
     assert.deepEqual(result.roomCommands?.[0]?.roomPayload, {
       matchId: "invite-sync-1",
@@ -249,9 +249,8 @@ test("US1 conversation sync falls back to inline SlotBridge room.command text", 
           localMessageId: "local-inline-room-command",
           localSessionId: "room-inline-session",
           nickname: "Remote Player",
-          text:
-            '++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomXoxRemoteMove","matchId":"invite-inline-1","inviteId":"invite-inline-1","turnIndex":0,"boardHashBeforeMove":".........","cell":4}})',
-          subject: "XOX move inline",
+          text: '++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomBackgammonRemoteMove","matchId":"invite-inline-1","inviteId":"invite-inline-1","turnIndex":0,"boardHashBeforeMove":".........","cell":4}})',
+          subject: "Tavla move inline",
         }),
       ],
     });
@@ -262,8 +261,8 @@ test("US1 conversation sync falls back to inline SlotBridge room.command text", 
     assert.equal(result.projectedCount, 1);
     assert.equal(result.roomCommands?.length, 1);
     assert.equal(result.roomCommands?.[0]?.roomId, "game-room");
-    assert.equal(result.roomCommands?.[0]?.featureId, "xox");
-    assert.equal(result.roomCommands?.[0]?.commandName, "GameRoomXoxRemoteMove");
+    assert.equal(result.roomCommands?.[0]?.featureId, "backgammon");
+    assert.equal(result.roomCommands?.[0]?.commandName, "GameRoomBackgammonRemoteMove");
     assert.equal(result.roomCommands?.[0]?.action, "room.command");
     assert.deepEqual(result.roomCommands?.[0]?.roomPayload, {
       matchId: "invite-inline-1",
@@ -316,9 +315,8 @@ test("US1 conversation sync does not infer unknown inline room.command identitie
           localMessageId: "local-inline-room-command-unknown",
           localSessionId: "room-inline-session-unknown",
           nickname: "Remote Player",
-          text:
-            '++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomSecretRemoteMove","matchId":"invite-inline-unknown-1","inviteId":"invite-inline-unknown-1","turnIndex":0,"boardHashBeforeMove":".........","cell":4}})',
-          subject: "XOX move inline unknown",
+          text: '++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomSecretRemoteMove","matchId":"invite-inline-unknown-1","inviteId":"invite-inline-unknown-1","turnIndex":0,"boardHashBeforeMove":".........","cell":4}})',
+          subject: "Tavla move inline unknown",
         }),
       ],
     });
@@ -365,9 +363,8 @@ test("US1 conversation sync preserves pending room commands until a consumer dra
           localMessageId: "local-pending-room-command",
           localSessionId: "room-pending-session",
           nickname: "Remote Player",
-          text:
-            '++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomXoxRemoteMove","matchId":"invite-pending-1","inviteId":"invite-pending-1","turnIndex":0,"boardHashBeforeMove":".........","cell":0}})',
-          subject: "XOX move pending",
+          text: '++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomBackgammonRemoteMove","matchId":"invite-pending-1","inviteId":"invite-pending-1","turnIndex":0,"boardHashBeforeMove":".........","cell":0}})',
+          subject: "Tavla move pending",
         }),
       ],
     });
@@ -392,7 +389,7 @@ test("US1 conversation sync preserves pending room commands until a consumer dra
     assert.equal(repeatedPreviewResult.duplicateCount, 0);
     assert.equal(consumeResult.success, true);
     assert.equal(consumeResult.roomCommands?.length, 1);
-    assert.equal(consumeResult.roomCommands?.[0]?.commandName, "GameRoomXoxRemoteMove");
+    assert.equal(consumeResult.roomCommands?.[0]?.commandName, "GameRoomBackgammonRemoteMove");
     assert.equal(drainedResult.success, true);
     assert.equal(drainedResult.roomCommands?.length, 0);
   } finally {
@@ -430,8 +427,7 @@ test("US1 conversation service preserves Team Tetris start events and turnToken 
     });
     const commandResult = await service.sendMessage({
       localSessionId: startResult.localSessionId,
-      text:
-        '++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomTeamTetrisRemoteMove","schemaVersion":1,"matchId":"tt-match-1","turnIndex":2,"turnToken":"tt_token","pieceId":"T","rotation":1,"rowShifts":[0,1,0]}})',
+      text: '++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomTeamTetrisRemoteMove","schemaVersion":1,"matchId":"tt-match-1","turnIndex":2,"turnToken":"tt_token","pieceId":"T","rotation":1,"rowShifts":[0,1,0]}})',
       roomCommand: {
         roomId: "game-room",
         featureId: "team-tetris",
@@ -458,8 +454,12 @@ test("US1 conversation service preserves Team Tetris start events and turnToken 
     assert.equal(startResult.success, true);
     assert.equal(commandResult.success, true);
 
-    const startEnvelope = extractConversationEnvelope(transportStub.sentMessages[0] as SendMailRequest);
-    const commandEnvelope = extractConversationEnvelope(transportStub.sentMessages[1] as SendMailRequest);
+    const startEnvelope = extractConversationEnvelope(
+      transportStub.sentMessages[0] as SendMailRequest
+    );
+    const commandEnvelope = extractConversationEnvelope(
+      transportStub.sentMessages[1] as SendMailRequest
+    );
 
     assert.deepEqual(startEnvelope["roomEvent"], {
       roomId: "game-room",
@@ -546,7 +546,7 @@ test("US1 conversation sync keeps invite inbox entries from all registered remot
           text: "Alpha invite",
           roomEvent: {
             roomId: "game-room",
-            featureId: "xox",
+            featureId: "backgammon",
             inviteId: "invite-alpha",
             matchId: "invite-alpha",
             eventType: "invite",
@@ -575,7 +575,7 @@ test("US1 conversation sync keeps invite inbox entries from all registered remot
           text: "Beta invite",
           roomEvent: {
             roomId: "game-room",
-            featureId: "xox",
+            featureId: "backgammon",
             inviteId: "invite-beta",
             matchId: "invite-beta",
             eventType: "invite",
@@ -591,10 +591,10 @@ test("US1 conversation sync keeps invite inbox entries from all registered remot
     assert.equal(result.success, true);
     assert.equal(result.fetchedCount, 2);
     assert.equal(result.roomInviteInbox?.length, 2);
-    assert.deepEqual(
-      result.roomInviteInbox?.map((entry) => entry.remoteUserId).sort(),
-      ["alpha@example.com", "beta@example.com"]
-    );
+    assert.deepEqual(result.roomInviteInbox?.map((entry) => entry.remoteUserId).sort(), [
+      "alpha@example.com",
+      "beta@example.com",
+    ]);
     assert.equal(result.remoteUserId, "alpha@example.com");
   } finally {
     cleanupAccount(accountIdA);
@@ -635,10 +635,10 @@ test("US1 conversation service projects reset lifecycle events and clears invite
           localMessageId: "local-reset-invite",
           localSessionId: "reset-sync-session",
           nickname: "Remote Player",
-          text: "Incoming XOX invite",
+          text: "Incoming Tavla invite",
           roomEvent: {
             roomId: "game-room",
-            featureId: "xox",
+            featureId: "backgammon",
             inviteId: "invite-reset-sync",
             matchId: "invite-reset-sync",
             eventType: "invite",
@@ -652,10 +652,10 @@ test("US1 conversation service projects reset lifecycle events and clears invite
           localMessageId: "local-reset-event",
           localSessionId: "reset-sync-session",
           nickname: "Remote Player",
-          text: "XOX match reset.",
+          text: "Tavla match reset.",
           roomEvent: {
             roomId: "game-room",
-            featureId: "xox",
+            featureId: "backgammon",
             inviteId: "invite-reset-sync",
             matchId: "invite-reset-sync",
             eventType: "reset",

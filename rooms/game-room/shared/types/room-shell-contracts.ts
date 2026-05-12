@@ -94,7 +94,7 @@ export function createGameRoomContextState(): GameRoomContextState {
   const featureRecords = getDefaultFeatureRecords();
   const activeFeature = featureRecords[0] || {
     id: FEATURE_ID,
-    name: "XOX",
+    name: "Tavla",
     description: "",
   };
 

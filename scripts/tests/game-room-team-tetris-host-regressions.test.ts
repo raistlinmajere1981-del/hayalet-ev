@@ -253,7 +253,7 @@ test.afterEach(async () => {
 
 function buildHostContext(
   options: {
-    activeFeatureId?: "xox" | "team-tetris";
+    activeFeatureId?: "backgammon" | "team-tetris";
     us1Ready?: boolean;
   } = {}
 ) {
@@ -292,12 +292,12 @@ function buildHostContext(
     locale: "en",
     room: {
       id: "game-room",
-      defaultFeatureId: "xox",
+      defaultFeatureId: "backgammon",
     },
     features: [
       {
-        id: "xox",
-        name: "XOX",
+        id: "backgammon",
+        name: "Tavla",
       },
       {
         id: "team-tetris",
@@ -306,7 +306,7 @@ function buildHostContext(
     ],
     activeFeature: {
       id: options.activeFeatureId ?? "team-tetris",
-      name: options.activeFeatureId === "xox" ? "XOX" : "Team Tetris",
+      name: options.activeFeatureId === "backgammon" ? "Tavla" : "Team Tetris",
     },
     user,
     slots,
@@ -379,7 +379,9 @@ test("game-room host resets Team Tetris state when the active feature switches a
   assert.equal(runtime.state.get("team-tetris-game")?.statusKey, "ready");
   assert.ok(runtime.state.get("team-tetris-game")?.match);
 
-  await runtime.emitHostContext(buildHostContext({ activeFeatureId: "xox", us1Ready: true }));
+  await runtime.emitHostContext(
+    buildHostContext({ activeFeatureId: "backgammon", us1Ready: true })
+  );
 
   assert.equal(runtime.state.get("team-tetris-game")?.hiddenPairs, true);
   assert.equal(runtime.state.get("team-tetris-game")?.statusKey, "activeFeatureReset");
@@ -521,7 +523,10 @@ test("game-room host lets a mirrored US1 room-ui turn submit through room transp
   });
 
   assert.equal(result?.success, true);
-  assert.equal(runtime.us1MessageCalls.at(-1)?.roomCommand?.commandName, "GameRoomTeamTetrisRemoteMove");
+  assert.equal(
+    runtime.us1MessageCalls.at(-1)?.roomCommand?.commandName,
+    "GameRoomTeamTetrisRemoteMove"
+  );
   assert.equal(runtime.state.get("team-tetris-game")?.match?.turnIndex, 1);
 });
 
@@ -553,7 +558,10 @@ test("game-room host lets a mirrored US1 copy apply relayed Team Tetris remote m
 
   assert.equal(result?.success, true);
   assert.equal(runtime.state.get("team-tetris-game")?.match?.turnIndex, 1);
-  assert.equal(runtime.state.get("team-tetris-game")?.lastRemoteTransportMessageId, "mirrored-relay-1");
+  assert.equal(
+    runtime.state.get("team-tetris-game")?.lastRemoteTransportMessageId,
+    "mirrored-relay-1"
+  );
 });
 
 test("game-room host ignores mirrored US1-caught Team Tetris AI commands without mutating the match", async () => {

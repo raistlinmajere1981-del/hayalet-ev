@@ -25,11 +25,11 @@
 
 .labx-project-import__youtube-preview {
   display: grid;
-  grid-template-columns: 5.5rem minmax(0, 1fr);
+  grid-template-columns: var(--lab-source-import-rem-5-5) minmax(0, 1fr);
   gap: var(--lab-space-3);
   align-items: center;
   padding: var(--lab-space-2);
-  border: 1px solid var(--lab-border-default);
+  border: var(--lab-source-import-px-1) solid var(--lab-border-default);
   border-radius: var(--lab-radius-md);
   background: var(--lab-surface-2);
 }
@@ -39,7 +39,7 @@
   width: 100%;
   aspect-ratio: 16 / 9;
   border-radius: var(--lab-radius-sm);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--lab-source-import-color-01);
   object-fit: cover;
 }
 
@@ -85,9 +85,9 @@
   min-width: 0;
   margin: 0;
   padding: var(--lab-space-2_5) var(--lab-space-3);
-  border: 1px solid var(--lab-border-default);
+  border: var(--lab-source-import-px-1) solid var(--lab-border-default);
   border-radius: var(--lab-radius-md);
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--lab-source-import-color-02);
 }
 
 .labx-project-import__yt-section legend {
@@ -108,7 +108,7 @@
 .labx-project-import__yt-field {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(7.5rem, 0.42fr) minmax(0, 1fr);
+  grid-template-columns: minmax(var(--lab-source-import-rem-7-5), 0.42fr) minmax(0, 1fr);
   align-items: center;
   gap: var(--lab-space-2);
   color: var(--lab-text-soft);
@@ -143,9 +143,9 @@
 .labx-project-import__yt-field input {
   min-width: 0;
   width: 100%;
-  min-height: 1.85rem;
+  min-height: var(--lab-source-import-rem-1-85);
   box-sizing: border-box;
-  border: 1px solid var(--lab-border-default);
+  border: var(--lab-source-import-px-1) solid var(--lab-border-default);
   border-radius: var(--lab-radius-sm);
   background: var(--lab-surface-1);
   color: var(--lab-text-default);
@@ -167,7 +167,7 @@
 .labx-project-import__yt-field input:focus {
   outline: none;
   border-color: var(--lab-accent);
-  box-shadow: 0 0 0 3px var(--lab-accent-soft);
+  box-shadow: 0 0 0 var(--lab-source-import-px-3) var(--lab-accent-soft);
 }
 
 /* Details and metadata. */
@@ -235,9 +235,9 @@
 }
 
 .labx-project-import__stages span {
-  border: 1px solid var(--lab-border-default);
+  border: var(--lab-source-import-px-1) solid var(--lab-border-default);
   border-radius: var(--lab-radius-pill);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--lab-source-import-color-03);
   color: var(--lab-text-dim);
   font-size: var(--lab-text-xs);
   font-weight: var(--lab-weight-medium);
@@ -256,12 +256,12 @@
 }
 
 .labx-project-import__stages span[data-state="done"] {
-  border-color: rgba(var(--lab-success-rgb), 0.45);
+  border-color: var(--lab-source-import-color-04);
   background: var(--lab-success-soft);
   color: var(--lab-success);
 }
 
-@media (max-width: 860px) {
+@media (--lab-bp-max-860) {
   .labx-project-import__yt-grid,
   .labx-project-import__youtube-preview {
     grid-template-columns: 1fr;

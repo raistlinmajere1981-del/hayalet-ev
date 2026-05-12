@@ -28,13 +28,13 @@ function renderFineTuneButtons(prefix: string, msValue: number, locked = false) 
   const disabledAttr = locked ? 'disabled aria-disabled="true"' : "";
   return `
     <div class="labx-timeline__finetune">
-      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:-1000" title="-1s" ${disabledAttr}>&#9664;&#9664;</button>
-      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:-100" title="-100ms" ${disabledAttr}>&#9664;</button>
-      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:-10" title="-10ms" ${disabledAttr}>&#8249;</button>
+      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:-1000" title="-1s" ${disabledAttr}>&blacktriangleleft;&blacktriangleleft;</button>
+      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:-100" title="-100ms" ${disabledAttr}>&blacktriangleleft;</button>
+      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:-10" title="-10ms" ${disabledAttr}>&lsaquo;</button>
       <span class="labx-timeline__finetune-value">${formatTimePrecise(msValue)}</span>
-      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:+10" title="+10ms" ${disabledAttr}>&#8250;</button>
-      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:+100" title="+100ms" ${disabledAttr}>&#9654;</button>
-      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:+1000" title="+1s" ${disabledAttr}>&#9654;&#9654;</button>
+      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:+10" title="+10ms" ${disabledAttr}>&rsaquo;</button>
+      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:+100" title="+100ms" ${disabledAttr}>&blacktriangleright;</button>
+      <button class="labx-timeline__finetune-btn" type="button" data-lab-action="timeline-finetune" data-lab-value="${prefix}:+1000" title="+1s" ${disabledAttr}>&blacktriangleright;&blacktriangleright;</button>
     </div>
   `;
 }
@@ -222,7 +222,7 @@ export function renderLabWaveformSelectionPanel(
     >
       <div class="lab-selection-panel__eyebrow">${escapeHtml(copy.t("mediaAnalysis.timeline.selection", "Selection"))}</div>
       <div class="lab-selection-panel__range">
-        ${formatTimePrecise(startMs)} &#8594; ${formatTimePrecise(endMs)}
+        ${formatTimePrecise(startMs)} &rarr; ${formatTimePrecise(endMs)}
         <span class="lab-selection-panel__duration">(${formatDuration(selectionDurationMs)})</span>
       </div>
       <div class="lab-selection-panel__meta">${escapeHtml(copy.t("mediaAnalysis.timeline.type", "Type"))}: ${escapeHtml(formatSelectionType(activeSelection.type, copy))}</div>

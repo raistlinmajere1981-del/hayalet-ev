@@ -40,7 +40,7 @@ const requiredFiles = [
   "rooms/game-room/main-functions/team-tetris/styles/board.css",
   "rooms/game-room/main-functions/team-tetris/styles/presentation.css",
   "rooms/game-room/ui/context-runtime.ts",
-  "rooms/game-room/main-functions/xox/host/runtime.ts",
+  "rooms/game-room/main-functions/backgammon/host/runtime.ts",
   "rooms/game-room/main-functions/team-tetris/assets/team-tetris-view.webp",
 ];
 
@@ -149,11 +149,11 @@ test("game-room Team Tetris UI and host sources expose the new feature shell", (
   const hostActivationSource = loadWorkspaceScriptForVm(
     "rooms/game-room/shared/host/activation.ts"
   );
-  const xoxRuntimeSource = loadWorkspaceScriptForVm(
-    "rooms/game-room/main-functions/xox/host/runtime.ts"
+  const backgammonRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/backgammon/host/runtime.ts"
   );
-  const xoxRuntimeSyncSource = loadWorkspaceScriptForVm(
-    "rooms/game-room/main-functions/xox/host/runtime-sync.ts"
+  const backgammonRuntimeSyncSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/backgammon/host/runtime-sync.ts"
   );
 
   assert.match(indexHtmlSource, /<script src="\.\/context-runtime\.js"><\/script>/);
@@ -226,6 +226,6 @@ test("game-room Team Tetris UI and host sources expose the new feature shell", (
   );
   assert.match(hostEntrySource, /createGameRoomHostRuntime\(\)/);
   assert.match(hostActivationSource, /pushActiveFeatureState\(api\)/);
-  assert.match(xoxRuntimeSource, /from "\.\/runtime-sync\.js"/);
-  assert.match(xoxRuntimeSyncSource, /resetTeamTetrisState\(api, "activeFeatureReset"\)/);
+  assert.match(backgammonRuntimeSource, /from "\.\/runtime-sync\.js"/);
+  assert.match(backgammonRuntimeSyncSource, /resetTeamTetrisState\(api, "activeFeatureReset"\)/);
 });

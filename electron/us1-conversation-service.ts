@@ -648,22 +648,30 @@ async function buildWorkspaceRoomCommandIdentityIndex(): Promise<Map<string, Roo
     return index;
   }
 
-  for (const entry of entries) {
-    if (entry.isDirectory() === false || entry.name.startsWith(".")) {
-      continue;
-    }
-    try {
-      const manifestRaw = await readFile(
-        join(Paths.getRoomsWorkspaceDir(), entry.name, "manifest.json"),
-        "utf8"
-      );
-      buildRoomCommandIdentityIndex({
-        rooms: [JSON.parse(manifestRaw) as unknown],
-      }).forEach((identity, commandName) => {
-        index.set(commandName, identity);
-      });
-    } catch {
-      // Room discovery is best-effort here; malformed workspace packages must not block mail sync.
+  const workspaceIdentityEntries = await Promise.all(
+    entries
+      .filter((entry) => entry.isDirectory() && entry.name.startsWith(".") === false)
+      .map(async (entry): Promise<Array<[string, RoomCommandIdentity]>> => {
+        try {
+          const manifestRaw = await readFile(
+            join(Paths.getRoomsWorkspaceDir(), entry.name, "manifest.json"),
+            "utf8"
+          );
+          return Array.from(
+            buildRoomCommandIdentityIndex({
+              rooms: [JSON.parse(manifestRaw) as unknown],
+            }).entries()
+          );
+        } catch {
+          // Room discovery is best-effort here; malformed workspace packages must not block mail sync.
+          return [];
+        }
+      })
+  );
+
+  for (const roomEntries of workspaceIdentityEntries) {
+    for (const [commandName, identity] of roomEntries) {
+      index.set(commandName, identity);
     }
   }
 

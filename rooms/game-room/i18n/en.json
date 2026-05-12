@@ -2,11 +2,11 @@
   "title": "Game Room",
   "subtitle": "Focused table game room for direct matches with live AI slots or the connected US1 remote user.",
   "features": {
-    "xox": "Tavla",
+    "backgammon": "Tavla",
     "team-tetris": "Team Tetris",
     "fate-knots": "Fate Knots"
   },
-  "xox": {
+  "backgammon": {
     "heroBadge": "Game Room",
     "heroTitle": "Tavla Match Table",
     "heroSubtitle": "Pick AI1, AI2, or US1, choose who starts, and play a turn-based Tavla match with legal move commands.",
@@ -30,9 +30,6 @@
       "statusLabel": "Match Status",
       "turnLabel": "Turn",
       "resultLabel": "Result",
-      "symbolsLabel": "Checkers",
-      "cellsLabel": "Legal Points",
-      "asciiLabel": "Text Board",
       "diceLabel": "Dice",
       "barLabel": "Bar",
       "offLabel": "Off",

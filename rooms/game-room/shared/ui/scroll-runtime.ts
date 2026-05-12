@@ -8,8 +8,8 @@
   };
 
   const FEATURE_SCROLL_SELECTORS = {
-    xoxRail: ".xox-rail",
-    xoxStage: ".xox-stage",
+    backgammonRail: ".backgammon-rail",
+    backgammonStage: ".backgammon-stage",
     teamTetrisRail: ".tt-rail",
     teamTetrisStage: ".tt-stage",
     fateKnotsSurface: ".fk-surface__inner",

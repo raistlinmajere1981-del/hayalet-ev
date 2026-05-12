@@ -11,7 +11,9 @@ async function importRoomHostModule(targetPath: string) {
   const moduleUrl = await buildRoomHostModuleDataUrl(absolutePath, async (filePath) => {
     return await readFile(filePath, "utf8");
   });
-  return await import(`${moduleUrl}#installed-runtime-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  return await import(
+    `${moduleUrl}#installed-runtime-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  );
 }
 
 type InstalledHostRuntime = ReturnType<typeof createInstalledHostRuntime>;
@@ -184,10 +186,10 @@ function buildHostContext() {
     locale: "en",
     room: {
       id: "game-room",
-      defaultFeatureId: "xox",
+      defaultFeatureId: "backgammon",
     },
     features: [
-      { id: "xox", name: "XOX" },
+      { id: "backgammon", name: "Tavla" },
       { id: "team-tetris", name: "Team Tetris" },
       { id: "fate-knots", name: "Fate Knots" },
     ],
@@ -224,7 +226,8 @@ test.afterEach(async () => {
 });
 
 test("game-room installed host can start Fate Knots and reach the first scenario prompt", async () => {
-  const installedGameRoomHostModule = (await loadInstalledGameRoomHostModule()) as InstalledGameRoomHostModule;
+  const installedGameRoomHostModule =
+    (await loadInstalledGameRoomHostModule()) as InstalledGameRoomHostModule;
   const runtime = createInstalledHostRuntime(installedGameRoomHostModule);
 
   await runtime.emitHostContext(buildHostContext());

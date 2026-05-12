@@ -19,8 +19,8 @@ const room: InstalledRoomRecord = {
   manifestPath: "/workspace/rooms/.build/game-room/runtime/manifest.json",
   runtimeEntryPath: "/workspace/rooms/.build/game-room/runtime/ui/index.html",
   hostEntryPath: "/workspace/rooms/.build/game-room/runtime/host/index.js",
-  defaultFeatureId: "xox",
-  features: [{ id: "xox", name: "XOX" }],
+  defaultFeatureId: "backgammon",
+  features: [{ id: "backgammon", name: "Tavla" }],
   installedAt: "2026-03-08T00:00:00.000Z",
   updatedAt: "2026-03-08T00:00:00.000Z",
 };

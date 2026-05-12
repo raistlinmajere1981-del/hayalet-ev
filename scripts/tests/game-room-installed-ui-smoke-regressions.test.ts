@@ -140,16 +140,42 @@ function createInstalledUiRuntime(roomRoot: string) {
     document,
     navigator: { language: "en-US" },
     console,
+    getComputedStyle(element: FakeElement) {
+      return {
+        getPropertyValue(name: string) {
+          const cssVars: Record<string, string> = {
+            "--game-bg-backgammon-user-fill": "#3d6b4e",
+            "--game-bg-backgammon-user-edge": "#2a4f3a",
+            "--game-bg-backgammon-ai-fill": "#6b3d3d",
+            "--game-bg-backgammon-ai-edge": "#4f2a2a",
+            "--game-bg-backgammon-board-base": "#3a2415",
+            "--game-bg-backgammon-board-inner-dark": "#2c1a0e",
+            "--game-bg-backgammon-board-inner-mid": "#4a3220",
+            "--game-bg-backgammon-board-inner-light": "#5c4230",
+            "--game-bg-backgammon-point-even": "#c4a265",
+            "--game-bg-backgammon-point-odd": "#8b6b42",
+            "--game-bg-backgammon-off-ai": "#08141c",
+            "--game-bg-backgammon-die-face": "#f5dfaa",
+            "--game-bg-backgammon-die-stroke": "#c49a6c",
+            "--game-bg-backgammon-die-pip": "#3a2415",
+            "--game-bg-backgammon-pass-label": "#79d3c4",
+            "--game-bg-backgammon-undo-label": "#f5dfaa",
+            "--game-bg-backgammon-hint-active": "#79d3c4",
+          };
+          return cssVars[name] ?? "";
+        },
+      };
+    },
   };
 
   [
     `${roomRoot}/ui/context-runtime.js`,
     `${roomRoot}/shared/ui/feature-contract.js`,
     `${roomRoot}/shared/ui/scroll-runtime.js`,
-    `${roomRoot}/main-functions/xox/ui/state-runtime.js`,
-    `${roomRoot}/main-functions/xox/ui/backgammon-stage-runtime.js`,
-    `${roomRoot}/main-functions/xox/ui/render-runtime.js`,
-    `${roomRoot}/main-functions/xox/ui/module.js`,
+    `${roomRoot}/main-functions/backgammon/ui/state-runtime.js`,
+    `${roomRoot}/main-functions/backgammon/ui/backgammon-stage-runtime.js`,
+    `${roomRoot}/main-functions/backgammon/ui/render-runtime.js`,
+    `${roomRoot}/main-functions/backgammon/ui/module.js`,
     `${roomRoot}/main-functions/team-tetris/ui/draft-runtime.js`,
     `${roomRoot}/main-functions/team-tetris/ui/state-shape-runtime.js`,
     `${roomRoot}/main-functions/team-tetris/ui/state-view-runtime.js`,
@@ -363,7 +389,7 @@ function buildHostContext(translations: Record<string, unknown>) {
       name: "Game Room",
     },
     features: [
-      { id: "xox", name: "XOX" },
+      { id: "backgammon", name: "Tavla" },
       { id: "team-tetris", name: "Team Tetris" },
       { id: "fate-knots", name: "Fate Knots" },
     ],
@@ -511,10 +537,10 @@ test("game-room installed UI renders Fate Knots overview landmarks with portable
       `${installedCopy.rootDir}/ui/game-room-ui-runtime.js`,
       `${installedCopy.rootDir}/shared/ui/feature-contract.js`,
       `${installedCopy.rootDir}/shared/ui/scroll-runtime.js`,
-      `${installedCopy.rootDir}/main-functions/xox/ui/state-runtime.js`,
-      `${installedCopy.rootDir}/main-functions/xox/ui/backgammon-stage-runtime.js`,
-      `${installedCopy.rootDir}/main-functions/xox/ui/render-runtime.js`,
-      `${installedCopy.rootDir}/main-functions/xox/ui/module.js`,
+      `${installedCopy.rootDir}/main-functions/backgammon/ui/state-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/backgammon/ui/backgammon-stage-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/backgammon/ui/render-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/backgammon/ui/module.js`,
       `${installedCopy.rootDir}/main-functions/team-tetris/styles.css`,
       `${installedCopy.rootDir}/main-functions/team-tetris/styles/layout.css`,
       `${installedCopy.rootDir}/main-functions/team-tetris/styles/board.css`,

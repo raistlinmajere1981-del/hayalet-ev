@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-05-11T18:27:20.342Z",
+  "updatedAt": "2026-05-12T15:30:45.214Z",
   "rooms": [
     {
       "id": "forge-room",
@@ -452,8 +452,8 @@
           "path": "main-functions/forge-workbench/protocols/forge-room-synthesis.md"
         }
       ],
-      "installedAt": "2026-05-11T18:24:12.658Z",
-      "updatedAt": "2026-05-11T18:24:12.658Z"
+      "installedAt": "2026-05-12T15:30:44.057Z",
+      "updatedAt": "2026-05-12T15:30:44.057Z"
     },
     {
       "id": "game-room",
@@ -467,10 +467,10 @@
       "manifestPath": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime/manifest.json",
       "runtimeEntryPath": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime/ui/index.html",
       "hostEntryPath": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime/host/index.js",
-      "defaultFeatureId": "xox",
+      "defaultFeatureId": "backgammon",
       "features": [
         {
-          "id": "xox",
+          "id": "backgammon",
           "name": "Tavla",
           "description": "Classic Tavla matches against AI1, AI2, or the connected US1 remote user.",
           "icon": "TV",
@@ -520,33 +520,33 @@
           ],
           "protocolSpecs": [
             {
-              "key": "game-room-xox-user-start",
+              "key": "game-room-backgammon-user-start",
               "room": "game-room",
-              "scenario": "xox-user-start",
+              "scenario": "backgammon-user-start",
               "title": "[START][GAME-ROOM][TAVLA][USER-FIRST]",
               "editable": true,
-              "path": "main-functions/xox/protocols/game-room-xox-user-start.md"
+              "path": "main-functions/backgammon/protocols/game-room-backgammon-user-start.md"
             },
             {
-              "key": "game-room-xox-ai-start",
+              "key": "game-room-backgammon-ai-start",
               "room": "game-room",
-              "scenario": "xox-ai-start",
+              "scenario": "backgammon-ai-start",
               "title": "[START][GAME-ROOM][TAVLA][AI-FIRST]",
               "editable": true,
-              "path": "main-functions/xox/protocols/game-room-xox-ai-start.md"
+              "path": "main-functions/backgammon/protocols/game-room-backgammon-ai-start.md"
             },
             {
-              "key": "game-room-xox-us1-transport",
+              "key": "game-room-backgammon-us1-transport",
               "room": "game-room",
-              "scenario": "xox-us1-transport",
+              "scenario": "backgammon-us1-transport",
               "title": "[INFO][GAME-ROOM][TAVLA][US1-TRANSPORT]",
               "editable": false,
-              "path": "main-functions/xox/protocols/game-room-xox-us1-transport.md"
+              "path": "main-functions/backgammon/protocols/game-room-backgammon-us1-transport.md"
             }
           ],
           "scene": {
             "hotspot": {
-              "id": "game-room-xox",
+              "id": "game-room-backgammon",
               "rect": {
                 "leftPx": 188,
                 "topPx": 362,
@@ -558,8 +558,8 @@
               }
             },
             "view": {
-              "id": "xox-closeup",
-              "backgroundPath": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime/main-functions/xox/assets/xox-view.webp",
+              "id": "backgammon-closeup",
+              "backgroundPath": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime/main-functions/backgammon/assets/backgammon-view.webp",
               "transparentWindow": {
                 "leftPct": 28.28,
                 "topPct": 18.8,
@@ -1040,28 +1040,28 @@
       ],
       "protocolSpecs": [
         {
-          "key": "game-room-xox-user-start",
+          "key": "game-room-backgammon-user-start",
           "room": "game-room",
-          "scenario": "xox-user-start",
+          "scenario": "backgammon-user-start",
           "title": "[START][GAME-ROOM][TAVLA][USER-FIRST]",
           "editable": true,
-          "path": "main-functions/xox/protocols/game-room-xox-user-start.md"
+          "path": "main-functions/backgammon/protocols/game-room-backgammon-user-start.md"
         },
         {
-          "key": "game-room-xox-ai-start",
+          "key": "game-room-backgammon-ai-start",
           "room": "game-room",
-          "scenario": "xox-ai-start",
+          "scenario": "backgammon-ai-start",
           "title": "[START][GAME-ROOM][TAVLA][AI-FIRST]",
           "editable": true,
-          "path": "main-functions/xox/protocols/game-room-xox-ai-start.md"
+          "path": "main-functions/backgammon/protocols/game-room-backgammon-ai-start.md"
         },
         {
-          "key": "game-room-xox-us1-transport",
+          "key": "game-room-backgammon-us1-transport",
           "room": "game-room",
-          "scenario": "xox-us1-transport",
+          "scenario": "backgammon-us1-transport",
           "title": "[INFO][GAME-ROOM][TAVLA][US1-TRANSPORT]",
           "editable": false,
-          "path": "main-functions/xox/protocols/game-room-xox-us1-transport.md"
+          "path": "main-functions/backgammon/protocols/game-room-backgammon-us1-transport.md"
         },
         {
           "key": "game-room-team-tetris-ai-opening",
@@ -1128,8 +1128,8 @@
           "path": "main-functions/fate-knots/protocols/game-room-fate-knots-us1-transport.md"
         }
       ],
-      "installedAt": "2026-05-11T18:24:13.109Z",
-      "updatedAt": "2026-05-11T18:24:13.109Z"
+      "installedAt": "2026-05-12T15:30:44.461Z",
+      "updatedAt": "2026-05-12T15:30:44.461Z"
     },
     {
       "id": "repair-room",
@@ -1509,8 +1509,8 @@
           "path": "main-functions/repair-workbench/protocols/repair-room-risk-detector.md"
         }
       ],
-      "installedAt": "2026-05-11T18:27:19.752Z",
-      "updatedAt": "2026-05-11T18:27:19.752Z"
+      "installedAt": "2026-05-12T15:30:44.629Z",
+      "updatedAt": "2026-05-12T15:30:44.629Z"
     },
     {
       "id": "laboratory",
@@ -1609,8 +1609,8 @@
         }
       },
       "i18nBaseDir": "/home/raistlin/hayalet-ev/rooms/.build/laboratory/runtime/i18n",
-      "installedAt": "2026-05-11T18:27:20.342Z",
-      "updatedAt": "2026-05-11T18:27:20.342Z"
+      "installedAt": "2026-05-12T15:30:45.214Z",
+      "updatedAt": "2026-05-12T15:30:45.214Z"
     }
   ]
 }

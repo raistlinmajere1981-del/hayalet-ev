@@ -122,7 +122,7 @@ function renderAssetVisual(asset: LabAsset): string {
   }
 
   if (mediaKind === "audio") {
-    return `<span class="labx-sp-asset__badge labx-sp-asset__badge--audio" data-type="${escapeHtml(asset.type)}" data-kind="audio" aria-hidden="true">&#119070;</span>`;
+    return `<span class="labx-sp-asset__badge labx-sp-asset__badge--audio" data-type="${escapeHtml(asset.type)}" data-kind="audio" aria-hidden="true">&sung;</span>`;
   }
 
   const extension = getAssetExtension(asset);

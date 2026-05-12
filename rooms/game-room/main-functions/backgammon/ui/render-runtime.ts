@@ -3,8 +3,7 @@
     GameRoomUiFactories?: GameRoomUiFactoriesRegistry;
   }
 ) {
-  type XoxTarget = "ai1" | "ai2" | "us1";
-  type LegacyXoxCell = "X" | "O" | "";
+  type BackgammonTarget = "ai1" | "ai2" | "us1";
   type BackgammonPoint = {
     point: number;
     owner: "user" | "ai" | "";
@@ -27,7 +26,7 @@
     diceUsed: number[];
     pass?: boolean;
   };
-  type XoxInviteEntry = {
+  type BackgammonInviteEntry = {
     inviteId: string;
     remoteUserId: string;
     nickname: string;
@@ -35,13 +34,13 @@
     starter: "user" | "opponent";
     sentAt: number | null;
   };
-  type XoxPendingInvite = {
+  type BackgammonPendingInvite = {
     direction: "incoming" | "outgoing";
     nickname: string;
     note: string;
   };
-  type XoxSlotState = {
-    slotId: XoxTarget;
+  type BackgammonSlotState = {
+    slotId: BackgammonTarget;
     dispatchable?: boolean;
     nickname: string;
     avatar?: string | null;
@@ -49,7 +48,7 @@
     connected?: boolean;
     ready?: boolean;
   };
-  type XoxMatchHistoryEntry = {
+  type BackgammonMatchHistoryEntry = {
     id: string;
     finishedAt: number;
     target: string;
@@ -60,7 +59,7 @@
     starter: "ai" | "user";
     scorePoints: number;
   };
-  type XoxUiState = {
+  type BackgammonUiState = {
     presentation: {
       mode: string;
     };
@@ -79,12 +78,12 @@
         nickname: string;
         avatar?: string | null;
       };
-      slots: Record<string, XoxSlotState>;
+      slots: Record<string, BackgammonSlotState>;
     };
     game: {
-      pendingInvite: XoxPendingInvite | null;
-      inviteInbox: XoxInviteEntry[];
-      matchHistory?: XoxMatchHistoryEntry[];
+      pendingInvite: BackgammonPendingInvite | null;
+      inviteInbox: BackgammonInviteEntry[];
+      matchHistory?: BackgammonMatchHistoryEntry[];
       active: boolean;
       blockedReason: string;
       awaitingMoveFrom: "user" | "ai" | null;
@@ -92,26 +91,24 @@
         nickname: string;
       };
       board: BackgammonPoint[];
-      legacyBoard: LegacyXoxCell[] | null;
-      availableCells: number[];
       bar: Record<"user" | "ai", number>;
       off: Record<"user" | "ai", number>;
       dice: number[];
       legalMoves: BackgammonLegalMove[];
       result: string;
       winner?: string;
-      opponent?: XoxSlotState;
+      opponent?: BackgammonSlotState;
       scorePoints: number;
     };
   };
-  type XoxUiStateRuntime = {
+  type BackgammonUiStateRuntime = {
     onAcceptInvite: (inviteId: string, remoteUserId: string) => void;
     onRejectInvite: (inviteId: string, remoteUserId: string) => void;
-    formatInviteMeta: (invite: XoxInviteEntry) => string;
-    getSelectedTarget: () => XoxTarget;
-    getDisplayOpponent: () => XoxSlotState;
-    getSlotOrder: () => XoxSlotState[];
-    getSlotStatusLabel: (slot: XoxSlotState) => string;
+    formatInviteMeta: (invite: BackgammonInviteEntry) => string;
+    getSelectedTarget: () => BackgammonTarget;
+    getDisplayOpponent: () => BackgammonSlotState;
+    getSlotOrder: () => BackgammonSlotState[];
+    getSlotStatusLabel: (slot: BackgammonSlotState) => string;
     getStarterLabelForCurrentTarget: (value: "user" | "ai") => string;
     onStart: () => void;
     onReset: () => void;
@@ -122,20 +119,19 @@
     getBearOffLabel: () => string;
     getBarLabel: () => string;
     onLegalMove: (moveId: string) => void;
-    onCellClick: (index: number) => void;
     onCancelOutgoingInvite: () => void;
-    getMatchHistory: () => XoxMatchHistoryEntry[];
-    getMatchHistoryResultLabel: (entry: XoxMatchHistoryEntry) => string;
-    getMatchHistoryResultTone: (entry: XoxMatchHistoryEntry) => string;
-    formatMatchHistoryDate: (entry: XoxMatchHistoryEntry) => string;
+    getMatchHistory: () => BackgammonMatchHistoryEntry[];
+    getMatchHistoryResultLabel: (entry: BackgammonMatchHistoryEntry) => string;
+    getMatchHistoryResultTone: (entry: BackgammonMatchHistoryEntry) => string;
+    formatMatchHistoryDate: (entry: BackgammonMatchHistoryEntry) => string;
   };
-  type XoxBackgammonStageRuntime = {
+  type BackgammonStageRuntime = {
     destroy: () => void;
     renderBackgammonStage: (
       host: HTMLElement,
       options: {
         canUserMove: boolean;
-        game: XoxUiState["game"];
+        game: BackgammonUiState["game"];
       }
     ) => void;
   };
@@ -143,8 +139,8 @@
     type?: string;
     disabled?: boolean;
   };
-  type XoxUiRenderRuntimeDeps = {
-    getState: () => XoxUiState;
+  type BackgammonUiRenderRuntimeDeps = {
+    getState: () => BackgammonUiState;
     featureId: string;
     bootstrapText: (key: string) => string;
     text: (path: string[]) => string;
@@ -156,26 +152,27 @@
     render: () => void;
     isRoomApiAvailable: () => boolean;
     getFeatureLabel: (featureId: string) => string;
-    stateRuntime: XoxUiStateRuntime;
+    stateRuntime: BackgammonUiStateRuntime;
   };
 
-  type XoxUiRenderRuntimeRegistry = GameRoomUiFactoriesRegistry & {
-    createXoxBackgammonStageRuntime?: (
-      deps: XoxUiRenderRuntimeDeps & {
-        stateRuntime: XoxUiStateRuntime;
+  type BackgammonUiRenderRuntimeRegistry = GameRoomUiFactoriesRegistry & {
+    createBackgammonStageRuntime?: (
+      deps: BackgammonUiRenderRuntimeDeps & {
+        stateRuntime: BackgammonUiStateRuntime;
       }
-    ) => XoxBackgammonStageRuntime;
-    createXoxUiRenderRuntime?: (deps: XoxUiRenderRuntimeDeps) => {
+    ) => BackgammonStageRuntime;
+    createBackgammonUiRenderRuntime?: (deps: BackgammonUiRenderRuntimeDeps) => {
       renderBootstrap(root: HTMLElement): void;
-      renderXox(root: HTMLElement): void;
+      renderBackgammon(root: HTMLElement): void;
     };
   };
 
   const registry = (global.GameRoomUiFactories ||
-    (global.GameRoomUiFactories = {} as GameRoomUiFactoriesRegistry)) as XoxUiRenderRuntimeRegistry;
+    (global.GameRoomUiFactories =
+      {} as GameRoomUiFactoriesRegistry)) as BackgammonUiRenderRuntimeRegistry;
 
-  registry.createXoxUiRenderRuntime = function createXoxUiRenderRuntime(
-    deps: XoxUiRenderRuntimeDeps
+  registry.createBackgammonUiRenderRuntime = function createBackgammonUiRenderRuntime(
+    deps: BackgammonUiRenderRuntimeDeps
   ) {
     const getState = deps.getState;
     const featureId = deps.featureId;
@@ -186,7 +183,7 @@
     const isRoomApiAvailable = deps.isRoomApiAvailable;
     const getFeatureLabel = deps.getFeatureLabel;
     const stateRuntime = deps.stateRuntime;
-    const createStageRuntime = registry.createXoxBackgammonStageRuntime;
+    const createStageRuntime = registry.createBackgammonStageRuntime;
     const backgammonStageRuntime =
       typeof createStageRuntime === "function"
         ? createStageRuntime({
@@ -211,7 +208,7 @@
       avatar: string | null | undefined,
       size: "sm" | "md" | "lg"
     ) {
-      const wrapper = createElement("span", "xox-avatar xox-avatar--" + size, "");
+      const wrapper = createElement("span", "backgammon-avatar backgammon-avatar--" + size, "");
       if (avatar && avatar.trim() !== "") {
         const img = document.createElement("img");
         img.src = avatar;
@@ -219,12 +216,12 @@
         img.loading = "lazy";
         wrapper.append(img);
       } else {
-        wrapper.append(createElement("span", "xox-avatar__initials", getInitials(name)));
+        wrapper.append(createElement("span", "backgammon-avatar__initials", getInitials(name)));
       }
       return wrapper;
     }
 
-    function createSlotCard(slot: XoxSlotState, selected: boolean, disabled: boolean) {
+    function createSlotCard(slot: BackgammonSlotState, selected: boolean, disabled: boolean) {
       const status = stateRuntime.getSlotStatusLabel(slot);
       const tone =
         slot.ready === true
@@ -234,48 +231,52 @@
             : slot.assigned === true
               ? "assigned"
               : "empty";
-      const button = createElement("button", "xox-slot-card", "");
+      const button = createElement("button", "backgammon-slot-card", "");
       button.type = "button";
       button.disabled = disabled;
       button.dataset["selected"] = selected ? "true" : "false";
       button.dataset["tone"] = tone;
-      const info = createElement("span", "xox-slot-card__info", "");
+      const info = createElement("span", "backgammon-slot-card__info", "");
       button.append(createAvatar(slot.nickname, slot.avatar, "md"), info);
-      const header = createElement("span", "xox-slot-card__header", "");
+      const header = createElement("span", "backgammon-slot-card__header", "");
       header.append(
-        createElement("span", "xox-slot-card__badge", slot.slotId.toUpperCase()),
-        createElement("strong", "xox-slot-card__name", slot.nickname)
+        createElement("span", "backgammon-slot-card__badge", slot.slotId.toUpperCase()),
+        createElement("strong", "backgammon-slot-card__name", slot.nickname)
       );
-      const statusLine = createElement("span", "xox-slot-card__status", "");
+      const statusLine = createElement("span", "backgammon-slot-card__status", "");
       statusLine.append(
-        createElement("span", "xox-slot-card__dot", ""),
-        createElement("span", "xox-slot-card__status-text", status)
+        createElement("span", "backgammon-slot-card__dot", ""),
+        createElement("span", "backgammon-slot-card__status-text", status)
       );
       info.append(header, statusLine);
       return button;
     }
 
     function createChoiceButton(title: string, selected: boolean, disabled: boolean) {
-      const button = createElement("button", "xox-choice-button", "");
+      const button = createElement("button", "backgammon-choice-button", "");
       button.type = "button";
       button.disabled = disabled;
       button.dataset["selected"] = selected ? "true" : "false";
-      button.append(createElement("span", "xox-choice-button__title", title));
+      button.append(createElement("span", "backgammon-choice-button__title", title));
       return button;
     }
 
     function renderBootstrap(root: HTMLElement) {
       const state = getState();
-      const app = createElement("main", "xox-shell xox-shell--bootstrap", "");
+      const app = createElement("main", "backgammon-shell backgammon-shell--bootstrap", "");
       app.dataset["presentationMode"] = state.presentation.mode;
-      const surface = createElement("section", "xox-surface xox-surface--bootstrap", "");
-      const brand = createElement("div", "xox-brand", "");
+      const surface = createElement(
+        "section",
+        "backgammon-surface backgammon-surface--bootstrap",
+        ""
+      );
+      const brand = createElement("div", "backgammon-brand", "");
       brand.append(
-        createElement("div", "xox-brand__eyebrow", bootstrapText("roomTitle")),
-        createElement("h1", "xox-brand__title", bootstrapText("loadingTitle")),
+        createElement("div", "backgammon-brand__eyebrow", bootstrapText("roomTitle")),
+        createElement("h1", "backgammon-brand__title", bootstrapText("loadingTitle")),
         createElement(
           "p",
-          "xox-brand__subtitle",
+          "backgammon-brand__subtitle",
           state.lastCommandMessage && state.lastCommandMessage.trim() !== ""
             ? state.lastCommandMessage.trim()
             : bootstrapText("loadingBody")
@@ -288,23 +289,27 @@
     }
 
     function renderEmptyState(message: string) {
-      const wrapper = createElement("div", "xox-empty-state", "");
-      wrapper.append(createElement("p", "xox-empty-state__text", message));
+      const wrapper = createElement("div", "backgammon-empty-state", "");
+      wrapper.append(createElement("p", "backgammon-empty-state__text", message));
       return wrapper;
     }
 
-    function renderIncomingInviteCard(invite: XoxInviteEntry, canRespond: boolean) {
-      const card = createElement("article", "xox-invite-card xox-invite-card--incoming", "");
-      const header = createElement("div", "xox-invite-card__header", "");
+    function renderIncomingInviteCard(invite: BackgammonInviteEntry, canRespond: boolean) {
+      const card = createElement(
+        "article",
+        "backgammon-invite-card backgammon-invite-card--incoming",
+        ""
+      );
+      const header = createElement("div", "backgammon-invite-card__header", "");
       header.append(
         createAvatar(invite.nickname, null, "sm"),
-        createElement("strong", "xox-invite-card__title", invite.nickname)
+        createElement("strong", "backgammon-invite-card__title", invite.nickname)
       );
-      const actions = createElement("div", "xox-invite-card__actions", "");
+      const actions = createElement("div", "backgammon-invite-card__actions", "");
       const acceptButton = createElement(
         "button",
-        "xox-button xox-button--primary xox-button--compact",
-        text(["xox", "invites", "accept"])
+        "backgammon-button backgammon-button--primary backgammon-button--compact",
+        text(["backgammon", "invites", "accept"])
       );
       acceptButton.type = "button";
       acceptButton.disabled = !canRespond;
@@ -313,8 +318,8 @@
       });
       const rejectButton = createElement(
         "button",
-        "xox-button xox-button--ghost xox-button--compact",
-        text(["xox", "invites", "reject"])
+        "backgammon-button backgammon-button--ghost backgammon-button--compact",
+        text(["backgammon", "invites", "reject"])
       );
       rejectButton.type = "button";
       rejectButton.disabled = !canRespond;
@@ -324,36 +329,44 @@
       actions.append(acceptButton, rejectButton);
       card.append(
         header,
-        createElement("p", "xox-invite-card__meta", stateRuntime.formatInviteMeta(invite)),
+        createElement("p", "backgammon-invite-card__meta", stateRuntime.formatInviteMeta(invite)),
         createElement(
           "p",
-          "xox-invite-card__message",
-          invite.note || text(["xox", "invites", "messageFallback"])
+          "backgammon-invite-card__message",
+          invite.note || text(["backgammon", "invites", "messageFallback"])
         ),
         actions
       );
       return card;
     }
 
-    function renderOutgoingInviteCard(invite: XoxPendingInvite, canCancel: boolean) {
-      const card = createElement("article", "xox-invite-card xox-invite-card--outgoing", "");
-      const actions = createElement("div", "xox-invite-card__actions", "");
+    function renderOutgoingInviteCard(invite: BackgammonPendingInvite, canCancel: boolean) {
+      const card = createElement(
+        "article",
+        "backgammon-invite-card backgammon-invite-card--outgoing",
+        ""
+      );
+      const actions = createElement("div", "backgammon-invite-card__actions", "");
       const cancelButton = createElement(
         "button",
-        "xox-button xox-button--ghost xox-button--compact",
-        text(["xox", "invites", "cancel"])
+        "backgammon-button backgammon-button--ghost backgammon-button--compact",
+        text(["backgammon", "invites", "cancel"])
       );
       cancelButton.type = "button";
       cancelButton.disabled = !canCancel;
       cancelButton.addEventListener("click", stateRuntime.onCancelOutgoingInvite);
       actions.append(cancelButton);
       card.append(
-        createElement("strong", "xox-invite-card__title", invite.nickname),
-        createElement("p", "xox-invite-card__meta", text(["xox", "invites", "pendingOutgoing"])),
+        createElement("strong", "backgammon-invite-card__title", invite.nickname),
         createElement(
           "p",
-          "xox-invite-card__message",
-          invite.note || text(["xox", "invites", "messageFallback"])
+          "backgammon-invite-card__meta",
+          text(["backgammon", "invites", "pendingOutgoing"])
+        ),
+        createElement(
+          "p",
+          "backgammon-invite-card__message",
+          invite.note || text(["backgammon", "invites", "messageFallback"])
         ),
         actions
       );
@@ -362,27 +375,33 @@
 
     function renderInvitesPanel(canRespond: boolean, canCancel: boolean) {
       const state = getState();
-      const panel = createElement("section", "xox-panel xox-panel--invites", "");
+      const panel = createElement("section", "backgammon-panel backgammon-panel--invites", "");
       const activeTab = state.preferences.invitesTab === "outgoing" ? "outgoing" : "incoming";
-      const header = createElement("div", "xox-panel__header", "");
-      header.append(createElement("p", "xox-panel__label", text(["xox", "invites", "title"])));
-      const tabs = createElement("div", "xox-tab-row", "");
+      const header = createElement("div", "backgammon-panel__header", "");
+      header.append(
+        createElement("p", "backgammon-panel__label", text(["backgammon", "invites", "title"]))
+      );
+      const tabs = createElement("div", "backgammon-tab-row", "");
       const outgoingCount =
         state.game.pendingInvite && state.game.pendingInvite.direction === "outgoing" ? 1 : 0;
       [
         {
           id: "incoming",
-          label: text(["xox", "invites", "incomingTab"]),
+          label: text(["backgammon", "invites", "incomingTab"]),
           count: state.game.inviteInbox.length,
         },
-        { id: "outgoing", label: text(["xox", "invites", "outgoingTab"]), count: outgoingCount },
+        {
+          id: "outgoing",
+          label: text(["backgammon", "invites", "outgoingTab"]),
+          count: outgoingCount,
+        },
       ].forEach(function (tabSpec) {
-        const tabButton = createElement("button", "xox-tab", "");
+        const tabButton = createElement("button", "backgammon-tab", "");
         tabButton.type = "button";
         tabButton.dataset["active"] = tabSpec.id === activeTab ? "true" : "false";
-        tabButton.append(createElement("span", "xox-tab__label", tabSpec.label));
+        tabButton.append(createElement("span", "backgammon-tab__label", tabSpec.label));
         if (tabSpec.count > 0) {
-          tabButton.append(createElement("span", "xox-tab__count", String(tabSpec.count)));
+          tabButton.append(createElement("span", "backgammon-tab__count", String(tabSpec.count)));
         }
         tabButton.addEventListener("click", function () {
           state.preferences.invitesTab = tabSpec.id as "incoming" | "outgoing";
@@ -393,17 +412,17 @@
       header.append(tabs);
       panel.append(header);
 
-      const body = createElement("div", "xox-panel__body xox-invite-list", "");
+      const body = createElement("div", "backgammon-panel__body backgammon-invite-list", "");
       if (activeTab === "incoming") {
         if (state.game.inviteInbox.length === 0) {
-          body.append(renderEmptyState(text(["xox", "invites", "empty"])));
+          body.append(renderEmptyState(text(["backgammon", "invites", "empty"])));
         } else {
           state.game.inviteInbox.forEach((invite) =>
             body.append(renderIncomingInviteCard(invite, canRespond))
           );
         }
       } else if (outgoingCount === 0) {
-        body.append(renderEmptyState(text(["xox", "invites", "outgoingEmpty"])));
+        body.append(renderEmptyState(text(["backgammon", "invites", "outgoingEmpty"])));
       } else if (state.game.pendingInvite && state.game.pendingInvite.direction === "outgoing") {
         body.append(renderOutgoingInviteCard(state.game.pendingInvite, canCancel));
       }
@@ -412,27 +431,29 @@
     }
 
     function renderHistoryPanel() {
-      const panel = createElement("section", "xox-panel xox-panel--history", "");
-      panel.append(createElement("p", "xox-panel__label", text(["xox", "history", "title"])));
-      const body = createElement("div", "xox-panel__body xox-history-list", "");
+      const panel = createElement("section", "backgammon-panel backgammon-panel--history", "");
+      panel.append(
+        createElement("p", "backgammon-panel__label", text(["backgammon", "history", "title"]))
+      );
+      const body = createElement("div", "backgammon-panel__body backgammon-history-list", "");
       const entries = stateRuntime.getMatchHistory();
       if (entries.length === 0) {
-        body.append(renderEmptyState(text(["xox", "history", "empty"])));
+        body.append(renderEmptyState(text(["backgammon", "history", "empty"])));
       } else {
         entries.forEach(function (entry) {
-          const card = createElement("article", "xox-history-card", "");
+          const card = createElement("article", "backgammon-history-card", "");
           card.dataset["tone"] = stateRuntime.getMatchHistoryResultTone(entry);
-          const main = createElement("div", "xox-history-card__main", "");
+          const main = createElement("div", "backgammon-history-card__main", "");
           main.append(
-            createElement("strong", "xox-history-card__name", entry.opponentNickname),
+            createElement("strong", "backgammon-history-card__name", entry.opponentNickname),
             createElement(
               "span",
-              "xox-history-card__badge",
+              "backgammon-history-card__badge",
               stateRuntime.getMatchHistoryResultLabel(entry) + " x" + String(entry.scorePoints)
             ),
             createElement(
               "span",
-              "xox-history-card__meta",
+              "backgammon-history-card__meta",
               stateRuntime.formatMatchHistoryDate(entry)
             )
           );
@@ -444,14 +465,18 @@
       return panel;
     }
 
-    function renderSlotsPanel(selectedTarget: XoxTarget, disabled: boolean) {
+    function renderSlotsPanel(selectedTarget: BackgammonTarget, disabled: boolean) {
       const state = getState();
-      const panel = createElement("section", "xox-panel xox-panel--slots", "");
+      const panel = createElement("section", "backgammon-panel backgammon-panel--slots", "");
       panel.append(
-        createElement("p", "xox-panel__label", text(["xox", "topbar", "opponentLabel"]))
+        createElement(
+          "p",
+          "backgammon-panel__label",
+          text(["backgammon", "topbar", "opponentLabel"])
+        )
       );
-      const list = createElement("div", "xox-slot-list", "");
-      stateRuntime.getSlotOrder().forEach(function (slot: XoxSlotState) {
+      const list = createElement("div", "backgammon-slot-list", "");
+      stateRuntime.getSlotOrder().forEach(function (slot: BackgammonSlotState) {
         const slotDisabled = disabled || slot.assigned !== true;
         const card = createSlotCard(slot, slot.slotId === selectedTarget, slotDisabled);
         card.addEventListener("click", function () {
@@ -468,15 +493,21 @@
     }
 
     function renderSetupPanel(
-      selectedTarget: XoxTarget,
+      selectedTarget: BackgammonTarget,
       canStart: boolean,
       canReset: boolean,
       disabled: boolean
     ) {
       const state = getState();
-      const panel = createElement("section", "xox-panel xox-panel--setup", "");
-      panel.append(createElement("p", "xox-panel__label", text(["xox", "topbar", "starterLabel"])));
-      const starterRow = createElement("div", "xox-toggle-row", "");
+      const panel = createElement("section", "backgammon-panel backgammon-panel--setup", "");
+      panel.append(
+        createElement(
+          "p",
+          "backgammon-panel__label",
+          text(["backgammon", "topbar", "starterLabel"])
+        )
+      );
+      const starterRow = createElement("div", "backgammon-toggle-row", "");
       (["user", "ai"] as const).forEach(function (starter) {
         const button = createChoiceButton(
           stateRuntime.getStarterLabelForCurrentTarget(starter),
@@ -492,14 +523,18 @@
       panel.append(starterRow);
 
       if (selectedTarget === "us1") {
-        const inviteFieldLabel = createElement("label", "xox-field", "");
+        const inviteFieldLabel = createElement("label", "backgammon-field", "");
         inviteFieldLabel.append(
-          createElement("span", "xox-field__label", text(["xox", "topbar", "inviteMessageLabel"]))
+          createElement(
+            "span",
+            "backgammon-field__label",
+            text(["backgammon", "topbar", "inviteMessageLabel"])
+          )
         );
         const inviteField = document.createElement("textarea");
-        inviteField.className = "xox-textarea";
+        inviteField.className = "backgammon-textarea";
         inviteField.rows = 2;
-        inviteField.placeholder = text(["xox", "topbar", "inviteMessagePlaceholder"]);
+        inviteField.placeholder = text(["backgammon", "topbar", "inviteMessagePlaceholder"]);
         inviteField.value = state.preferences.inviteMessage;
         inviteField.disabled = disabled;
         inviteField.addEventListener("input", function () {
@@ -509,21 +544,21 @@
         panel.append(inviteFieldLabel);
       }
 
-      const actionGroup = createElement("div", "xox-actions", "");
+      const actionGroup = createElement("div", "backgammon-actions", "");
       const startButton = createElement(
         "button",
-        "xox-button xox-button--primary",
+        "backgammon-button backgammon-button--primary",
         selectedTarget === "us1"
-          ? text(["xox", "topbar", "sendInvite"])
-          : text(["xox", "topbar", "start"])
+          ? text(["backgammon", "topbar", "sendInvite"])
+          : text(["backgammon", "topbar", "start"])
       );
       startButton.type = "button";
       startButton.disabled = !canStart;
       startButton.addEventListener("click", stateRuntime.onStart);
       const resetButton = createElement(
         "button",
-        "xox-button xox-button--ghost",
-        text(["xox", "topbar", "reset"])
+        "backgammon-button backgammon-button--ghost",
+        text(["backgammon", "topbar", "reset"])
       );
       resetButton.type = "button";
       resetButton.disabled = !canReset;
@@ -539,27 +574,27 @@
       avatar: string | null | undefined,
       active: boolean
     ) {
-      const seat = createElement("div", "xox-matchup-seat", "");
+      const seat = createElement("div", "backgammon-matchup-seat", "");
       seat.dataset["role"] = role;
       seat.dataset["active"] = active ? "true" : "false";
       seat.append(
         createAvatar(name, avatar, "lg"),
-        createElement("strong", "xox-matchup-seat__name", name)
+        createElement("strong", "backgammon-matchup-seat__name", name)
       );
       return seat;
     }
 
     function renderMatchupHeader(
       userName: string,
-      opponent: XoxSlotState,
+      opponent: BackgammonSlotState,
       awaitingUser: boolean,
       awaitingAi: boolean
     ) {
       const userAvatar = getState().context.user.avatar ?? null;
-      const header = createElement("header", "xox-matchup", "");
+      const header = createElement("header", "backgammon-matchup", "");
       header.append(
         createMatchupSeat("user", userName, userAvatar, awaitingUser),
-        createElement("span", "xox-matchup__divider", text(["xox", "matchup", "vs"])),
+        createElement("span", "backgammon-matchup__divider", text(["backgammon", "matchup", "vs"])),
         createMatchupSeat("opponent", opponent.nickname, opponent.avatar, awaitingAi)
       );
       return header;
@@ -571,38 +606,70 @@
       result: string,
       isActive: boolean
     ) {
-      const stack = createElement("section", "xox-status-stack", "");
-      const statusCard = createElement("section", "xox-context-card xox-context-card--status", "");
-      statusCard.append(
-        createElement("span", "xox-context-card__label", text(["xox", "board", "statusLabel"])),
-        createElement("p", "xox-context-card__lead", stateRuntime.getCurrentStatus())
+      const stack = createElement("section", "backgammon-status-stack", "");
+      const statusCard = createElement(
+        "section",
+        "backgammon-context-card backgammon-context-card--status",
+        ""
       );
-      const turnCard = createElement("section", "xox-context-card xox-context-card--turn", "");
+      statusCard.append(
+        createElement(
+          "span",
+          "backgammon-context-card__label",
+          text(["backgammon", "board", "statusLabel"])
+        ),
+        createElement("p", "backgammon-context-card__lead", stateRuntime.getCurrentStatus())
+      );
+      const turnCard = createElement(
+        "section",
+        "backgammon-context-card backgammon-context-card--turn",
+        ""
+      );
       turnCard.dataset["awaiting"] = awaitingUser ? "user" : awaitingAi ? "ai" : "none";
       turnCard.append(
-        createElement("span", "xox-context-card__label", text(["xox", "board", "turnLabel"])),
-        createElement("p", "xox-context-card__lead", stateRuntime.getTurnLabel())
+        createElement(
+          "span",
+          "backgammon-context-card__label",
+          text(["backgammon", "board", "turnLabel"])
+        ),
+        createElement("p", "backgammon-context-card__lead", stateRuntime.getTurnLabel())
       );
-      const resultCard = createElement("section", "xox-context-card xox-context-card--result", "");
+      const resultCard = createElement(
+        "section",
+        "backgammon-context-card backgammon-context-card--result",
+        ""
+      );
       resultCard.dataset["tone"] =
         result === "user-win" ? "win" : result === "ai-win" ? "loss" : isActive ? "active" : "idle";
       resultCard.append(
-        createElement("span", "xox-context-card__label", text(["xox", "board", "resultLabel"])),
-        createElement("p", "xox-context-card__lead", stateRuntime.getResultLabel())
+        createElement(
+          "span",
+          "backgammon-context-card__label",
+          text(["backgammon", "board", "resultLabel"])
+        ),
+        createElement("p", "backgammon-context-card__lead", stateRuntime.getResultLabel())
       );
-      const diceCard = createElement("section", "xox-context-card xox-context-card--dice", "");
+      const diceCard = createElement(
+        "section",
+        "backgammon-context-card backgammon-context-card--dice",
+        ""
+      );
       diceCard.append(
-        createElement("span", "xox-context-card__label", text(["xox", "board", "diceLabel"])),
-        createElement("p", "xox-context-card__lead", stateRuntime.getDiceLabel()),
+        createElement(
+          "span",
+          "backgammon-context-card__label",
+          text(["backgammon", "board", "diceLabel"])
+        ),
+        createElement("p", "backgammon-context-card__lead", stateRuntime.getDiceLabel()),
         createElement(
           "p",
-          "xox-context-card__meta",
-          text(["xox", "board", "barLabel"]) + ": " + stateRuntime.getBarLabel()
+          "backgammon-context-card__meta",
+          text(["backgammon", "board", "barLabel"]) + ": " + stateRuntime.getBarLabel()
         ),
         createElement(
           "p",
-          "xox-context-card__meta",
-          text(["xox", "board", "offLabel"]) + ": " + stateRuntime.getBearOffLabel()
+          "backgammon-context-card__meta",
+          text(["backgammon", "board", "offLabel"]) + ": " + stateRuntime.getBearOffLabel()
         )
       );
       stack.append(statusCard, turnCard, resultCard, diceCard);
@@ -612,7 +679,7 @@
     function createChecker(owner: "user" | "ai", index: number, total: number) {
       const checker = createElement(
         "span",
-        "xox-checker",
+        "backgammon-checker",
         index === 0 && total > 5 ? String(total) : ""
       );
       checker.dataset["owner"] = owner;
@@ -620,11 +687,11 @@
     }
 
     function renderPoint(point: BackgammonPoint) {
-      const pointEl = createElement("div", "xox-point", "");
+      const pointEl = createElement("div", "backgammon-point", "");
       pointEl.dataset["owner"] = point.owner || "empty";
       pointEl.dataset["point"] = String(point.point);
-      pointEl.append(createElement("span", "xox-point__number", String(point.point)));
-      const stack = createElement("span", "xox-point__stack", "");
+      pointEl.append(createElement("span", "backgammon-point__number", String(point.point)));
+      const stack = createElement("span", "backgammon-point__stack", "");
       const visible = Math.min(point.count, 5);
       for (let index = 0; index < visible; index += 1) {
         if (point.owner === "user" || point.owner === "ai") {
@@ -635,61 +702,34 @@
       return pointEl;
     }
 
-    function renderLegacyCell(
-      symbol: LegacyXoxCell,
-      index: number,
-      canUserMove: boolean,
-      availableCells: number[]
-    ) {
-      const cell = createElement("button", "xox-cell", symbol);
-      cell.type = "button";
-      cell.dataset["index"] = String(index);
-      cell.dataset["symbol"] = symbol;
-      cell.dataset["empty"] = symbol === "" ? "true" : "false";
-      cell.disabled = !canUserMove || symbol !== "" || availableCells.includes(index) === false;
-      cell.addEventListener("click", function () {
-        stateRuntime.onCellClick(index);
-      });
-      return cell;
-    }
-
-    function renderLegacyBoard(
-      cells: LegacyXoxCell[],
-      canUserMove: boolean,
-      availableCells: number[]
-    ) {
-      const boardShell = createElement("div", "xox-board-shell", "");
-      const board = createElement("div", "xox-board", "");
-      cells.forEach(function (symbol, index) {
-        board.append(renderLegacyCell(symbol, index, canUserMove, availableCells));
-      });
-      boardShell.append(board);
-      return boardShell;
-    }
-
-    function renderBoard(game: XoxUiState["game"], canUserMove: boolean) {
-      if (game.legacyBoard !== null) {
-        return renderLegacyBoard(game.legacyBoard, canUserMove, game.availableCells);
-      }
+    function renderBoard(game: BackgammonUiState["game"]) {
       if (backgammonStageRuntime !== null) {
-        const stageHost = createElement("div", "xox-backgammon-stage", "");
-        stageHost.dataset["xoxBackgammonStage"] = "true";
+        const stageHost = createElement("div", "backgammon-board-stage", "");
+        stageHost.dataset["backgammonStage"] = "true";
         return stageHost;
       }
       const points = game.board;
-      const boardShell = createElement("div", "xox-board-shell xox-board-shell--tavla", "");
-      const board = createElement("div", "xox-board xox-board--tavla", "");
-      const top = createElement("div", "xox-board-row xox-board-row--top", "");
-      const bottom = createElement("div", "xox-board-row xox-board-row--bottom", "");
+      const boardShell = createElement(
+        "div",
+        "backgammon-board-shell backgammon-board-shell--tavla",
+        ""
+      );
+      const board = createElement("div", "backgammon-board backgammon-board--tavla", "");
+      const top = createElement("div", "backgammon-board-row backgammon-board-row--top", "");
+      const bottom = createElement("div", "backgammon-board-row backgammon-board-row--bottom", "");
       points
         .slice(12, 24)
         .reverse()
         .forEach((point) => top.append(renderPoint(point)));
       points.slice(0, 12).forEach((point) => bottom.append(renderPoint(point)));
-      const bar = createElement("div", "xox-board-bar", "");
+      const bar = createElement("div", "backgammon-board-bar", "");
       bar.append(
-        createElement("span", "xox-board-bar__label", text(["xox", "board", "barLabel"])),
-        createElement("strong", "xox-board-bar__value", stateRuntime.getBarLabel())
+        createElement(
+          "span",
+          "backgammon-board-bar__label",
+          text(["backgammon", "board", "barLabel"])
+        ),
+        createElement("strong", "backgammon-board-bar__value", stateRuntime.getBarLabel())
       );
       board.append(top, bar, bottom);
       boardShell.append(board);
@@ -697,28 +737,44 @@
     }
 
     function renderLegalMoves(canUserMove: boolean, moves: BackgammonLegalMove[]) {
-      const panel = createElement("section", "xox-context-card xox-context-card--moves", "");
+      const panel = createElement(
+        "section",
+        "backgammon-context-card backgammon-context-card--moves",
+        ""
+      );
       panel.append(
         createElement(
           "span",
-          "xox-context-card__label",
-          text(["xox", "board", "fallbackMovesLabel"])
+          "backgammon-context-card__label",
+          text(["backgammon", "board", "fallbackMovesLabel"])
         ),
-        createElement("p", "xox-context-card__meta", text(["xox", "board", "fallbackMovesHint"]))
+        createElement(
+          "p",
+          "backgammon-context-card__meta",
+          text(["backgammon", "board", "fallbackMovesHint"])
+        )
       );
-      const list = createElement("div", "xox-move-list", "");
+      const list = createElement("div", "backgammon-move-list", "");
       if (moves.length === 0) {
         list.append(
-          createElement("p", "xox-context-card__meta", text(["xox", "board", "noMoves"]))
+          createElement(
+            "p",
+            "backgammon-context-card__meta",
+            text(["backgammon", "board", "noMoves"])
+          )
         );
       } else {
         moves.slice(0, 4).forEach(function (move) {
-          const button = createElement("button", "xox-move-button", "");
+          const button = createElement("button", "backgammon-move-button", "");
           button.type = "button";
           button.disabled = !canUserMove;
           button.append(
-            createElement("span", "xox-move-button__label", move.label),
-            createElement("span", "xox-move-button__dice", move.diceUsed.join(" - ") || "pass")
+            createElement("span", "backgammon-move-button__label", move.label),
+            createElement(
+              "span",
+              "backgammon-move-button__dice",
+              move.diceUsed.join(" - ") || "pass"
+            )
           );
           button.addEventListener("click", function () {
             stateRuntime.onLegalMove(move.id);
@@ -729,8 +785,8 @@
           list.append(
             createElement(
               "p",
-              "xox-context-card__meta",
-              "+" + String(moves.length - 4) + " " + text(["xox", "board", "moreMoves"])
+              "backgammon-context-card__meta",
+              "+" + String(moves.length - 4) + " " + text(["backgammon", "board", "moreMoves"])
             )
           );
         }
@@ -739,7 +795,7 @@
       return panel;
     }
 
-    function renderXox(root: HTMLElement) {
+    function renderBackgammon(root: HTMLElement) {
       const state = getState();
       document.title = state.context.room.name + " - " + getFeatureLabel(featureId);
 
@@ -767,11 +823,11 @@
       const awaitingAi = state.game.active === true && state.game.awaitingMoveFrom === "ai";
       const resultKey = state.game.result || "idle";
 
-      const app = createElement("main", "xox-shell", "");
+      const app = createElement("main", "backgammon-shell", "");
       app.dataset["presentationMode"] = state.presentation.mode;
-      const surface = createElement("section", "xox-surface", "");
-      const arena = createElement("section", "xox-arena", "");
-      const rail = createElement("aside", "xox-rail", "");
+      const surface = createElement("section", "backgammon-surface", "");
+      const arena = createElement("section", "backgammon-arena", "");
+      const rail = createElement("aside", "backgammon-rail", "");
       rail.append(
         renderSlotsPanel(selectedTarget, controlsDisabled),
         renderSetupPanel(selectedTarget, canStart, canReset, controlsDisabled),
@@ -779,7 +835,7 @@
         renderHistoryPanel()
       );
 
-      const stage = createElement("section", "xox-stage", "");
+      const stage = createElement("section", "backgammon-stage", "");
       stage.dataset["awaiting"] = awaitingUser ? "user" : awaitingAi ? "ai" : "none";
       stage.dataset["result"] = resultKey;
       const userName = state.game.user.nickname || state.context.user.nickname;
@@ -789,22 +845,22 @@
         awaitingUser,
         awaitingAi
       );
-      const boardArea = createElement("div", "xox-board-area", "");
-      const boardStageHost = renderBoard(state.game, canUserMove);
+      const boardArea = createElement("div", "backgammon-board-area", "");
+      const boardStageHost = renderBoard(state.game);
       boardArea.append(boardStageHost);
-      const sidecar = createElement("aside", "xox-sidecar", "");
+      const sidecar = createElement("aside", "backgammon-sidecar", "");
       sidecar.append(
         renderStatusStack(awaitingUser, awaitingAi, resultKey, state.game.active === true),
         renderLegalMoves(canUserMove, state.game.legalMoves)
       );
-      const stageBody = createElement("div", "xox-stage-body", "");
+      const stageBody = createElement("div", "backgammon-stage-body", "");
       stageBody.append(boardArea, sidecar);
       stage.append(matchupHeader, stageBody);
       arena.append(rail, stage);
       surface.append(arena);
       app.append(surface);
       root.replaceChildren(app);
-      if (backgammonStageRuntime !== null && state.game.legacyBoard === null) {
+      if (backgammonStageRuntime !== null) {
         backgammonStageRuntime.renderBackgammonStage(boardStageHost, {
           canUserMove,
           game: state.game,
@@ -814,7 +870,7 @@
 
     return {
       renderBootstrap,
-      renderXox,
+      renderBackgammon,
     };
   };
 })(typeof window !== "undefined" ? window : globalThis);

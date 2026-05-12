@@ -9,7 +9,7 @@ import {
   resolveStatusText,
   saveState,
 } from "./state.js";
-import type { XoxGameState } from "./state-core.js";
+import type { BackgammonGameState } from "./state-core.js";
 import {
   readBoardHashBeforeMove,
   readInviteId,
@@ -27,19 +27,19 @@ import type {
   GameRoomSlotState,
 } from "../../../shared/types/room-shell-contracts.js";
 
-export type XoxCommandResult = {
+export type BackgammonCommandResult = {
   success: boolean;
   message: string;
 };
 
-type XoxDispatchResult =
+type BackgammonDispatchResult =
   | {
       success?: boolean;
     }
   | null
   | undefined;
 
-export interface XoxRuntimeMatchApi {
+export interface BackgammonRuntimeMatchApi {
   getState(key: string): unknown;
   setState(key: string, value: unknown): void;
   deleteState?(key: string): void;
@@ -56,12 +56,15 @@ function readProviderValue(payload: unknown): string {
   return typeof source.provider === "string" ? source.provider : "";
 }
 
-function readOpponentInfo(context: GameRoomContextState, state: XoxGameState): GameRoomSlotState {
+function readOpponentInfo(
+  context: GameRoomContextState,
+  state: BackgammonGameState
+): GameRoomSlotState {
   return getOpponentInfo(context, state);
 }
 
 async function sendBridgeMessageSafe(
-  api: XoxRuntimeMatchApi,
+  api: BackgammonRuntimeMatchApi,
   options: {
     provider: string;
     page: string;
@@ -73,7 +76,7 @@ async function sendBridgeMessageSafe(
       context: Record<string, unknown>;
     };
   }
-): Promise<XoxDispatchResult> {
+): Promise<BackgammonDispatchResult> {
   if (typeof api.dispatchBridge !== "function") {
     return null;
   }
@@ -91,20 +94,20 @@ async function sendBridgeMessageSafe(
     : null;
 }
 
-export function resolveStateMatchId(state: XoxGameState): string | null {
+export function resolveStateMatchId(state: BackgammonGameState): string | null {
   return state.matchId || state.inviteId || null;
 }
 
-export function isBlocked(state: XoxGameState): boolean {
+export function isBlocked(state: BackgammonGameState): boolean {
   return state.result === "blocked" || state.blockedReason !== "";
 }
 
 export function blockMatch(
-  api: XoxRuntimeMatchApi,
-  state: XoxGameState,
+  api: BackgammonRuntimeMatchApi,
+  state: BackgammonGameState,
   statusKey: string,
   blockedReason: string
-): XoxGameState {
+): BackgammonGameState {
   state.active = true;
   state.awaitingMoveFrom = null;
   state.result = "blocked";
@@ -115,10 +118,10 @@ export function blockMatch(
 }
 
 export async function sendAiTurnUpdate(
-  api: XoxRuntimeMatchApi,
-  state: XoxGameState,
+  api: BackgammonRuntimeMatchApi,
+  state: BackgammonGameState,
   includeProtocol: boolean
-): Promise<XoxCommandResult | XoxDispatchResult> {
+): Promise<BackgammonCommandResult | BackgammonDispatchResult> {
   const context = loadContext(api) as GameRoomContextState;
   const opponent = readOpponentInfo(context, state);
 
@@ -136,7 +139,7 @@ export async function sendAiTurnUpdate(
       ? {
           protocol: {
             room: ROOM_ID,
-            scenario: state.starter === "ai" ? "xox-ai-start" : "xox-user-start",
+            scenario: state.starter === "ai" ? "backgammon-ai-start" : "backgammon-user-start",
             preface: state.protocolPreface || null,
             context: {
               featureId: FEATURE_ID,
@@ -169,11 +172,11 @@ export async function sendAiTurnUpdate(
 }
 
 export async function applyOpponentMove(
-  api: XoxRuntimeMatchApi,
+  api: BackgammonRuntimeMatchApi,
   payload: unknown,
   expectedProvider: string,
   requireInviteMatch: boolean
-): Promise<XoxCommandResult> {
+): Promise<BackgammonCommandResult> {
   const state = loadState(api);
   const locale = state.locale;
   const provider = readProviderValue(payload);

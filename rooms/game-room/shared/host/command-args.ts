@@ -16,26 +16,6 @@ export function readArgs(payload: unknown): RoomArgsRecord {
   return {};
 }
 
-export function readCell(payload: unknown): number | null {
-  if (
-    isRecord(payload) &&
-    typeof payload["roomArgs"] === "number" &&
-    Number.isInteger(payload["roomArgs"])
-  ) {
-    return payload["roomArgs"];
-  }
-
-  const args = readArgs(payload);
-  if (typeof args["cell"] === "number" && Number.isInteger(args["cell"])) {
-    return args["cell"];
-  }
-  if (typeof args["cell"] === "string" && args["cell"].trim() !== "") {
-    const parsed = Number.parseInt(args["cell"], 10);
-    return Number.isInteger(parsed) ? parsed : null;
-  }
-  return null;
-}
-
 export function readInviteId(payload: unknown): string | null {
   const args = readArgs(payload);
   if (typeof args["matchId"] === "string" && args["matchId"].trim() !== "") {

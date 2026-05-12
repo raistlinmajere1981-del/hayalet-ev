@@ -43,7 +43,7 @@
     const contextRuntime = bootstrapRuntime.contextRuntime;
     const scrollRuntime = bootstrapRuntime.scrollRuntime;
     const getState = bootstrapRuntime.getState;
-    const xoxUi = bootstrapRuntime.xoxUi;
+    const backgammonUi = bootstrapRuntime.backgammonUi;
     const teamTetrisUi = bootstrapRuntime.teamTetrisUi;
     const fateKnotsUi = bootstrapRuntime.fateKnotsUi;
     const bootstrapText = bootstrapRuntime.bootstrapText;
@@ -53,7 +53,7 @@
     const getFeatureLabel = bootstrapRuntime.getFeatureLabel;
     const stateMessageRuntime = createStateMessageRuntime({
       stateRef: bootstrapRuntime.stateRef,
-      xoxUi: xoxUi,
+      backgammonUi: backgammonUi,
       teamTetrisUi: teamTetrisUi,
       fateKnotsUi: fateKnotsUi,
       render: render,
@@ -78,7 +78,7 @@
 
       try {
         if (!state.translations) {
-          xoxUi.renderBootstrap(root);
+          backgammonUi.renderBootstrap(root);
           return;
         }
 
@@ -94,7 +94,7 @@
           return;
         }
 
-        xoxUi.renderXox(root);
+        backgammonUi.renderBackgammon(root);
       } finally {
         scrollRuntime.restore(root, scrollState);
       }
@@ -132,8 +132,8 @@
         return;
       }
 
-      if (messageType === "xox-state") {
-        stateMessageRuntime.handleXoxState(messageRecord);
+      if (messageType === "backgammon-state") {
+        stateMessageRuntime.handleBackgammonState(messageRecord);
         return;
       }
 

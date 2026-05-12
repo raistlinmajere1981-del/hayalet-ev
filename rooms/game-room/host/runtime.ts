@@ -10,7 +10,7 @@ import {
   saveInviteInbox,
   saveState,
   clearPendingInvite,
-} from "../main-functions/xox/host/state.js";
+} from "../main-functions/backgammon/host/state.js";
 import {
   getActiveFeatureId,
   loadContext,
@@ -25,19 +25,19 @@ import {
   pushActiveFeatureState,
 } from "../main-functions/team-tetris/host/runtime.js";
 import {
-  clearUs1SyncLoop as xoxClearUs1SyncLoop,
-  ensureUs1SyncLoop as xoxEnsureUs1SyncLoop,
-  XOX_COMMAND_NAMES,
-  handleAcceptInvite as xoxHandleAcceptInvite,
-  handleAiMove as xoxHandleAiMove,
-  handleRejectInvite as xoxHandleRejectInvite,
-  handleRemoteMove as xoxHandleRemoteMove,
-  handleReset as xoxHandleReset,
-  handleStart as xoxHandleStart,
-  handleUserMove as xoxHandleUserMove,
-  syncFromContext as xoxSyncFromContext,
-  syncUs1Mailbox as xoxSyncUs1Mailbox,
-} from "../main-functions/xox/host/runtime.js";
+  clearUs1SyncLoop as backgammonClearUs1SyncLoop,
+  ensureUs1SyncLoop as backgammonEnsureUs1SyncLoop,
+  BACKGAMMON_COMMAND_NAMES,
+  handleAcceptInvite as backgammonHandleAcceptInvite,
+  handleAiMove as backgammonHandleAiMove,
+  handleRejectInvite as backgammonHandleRejectInvite,
+  handleRemoteMove as backgammonHandleRemoteMove,
+  handleReset as backgammonHandleReset,
+  handleStart as backgammonHandleStart,
+  handleUserMove as backgammonHandleUserMove,
+  syncFromContext as backgammonSyncFromContext,
+  syncUs1Mailbox as backgammonSyncUs1Mailbox,
+} from "../main-functions/backgammon/host/runtime.js";
 import {
   dispatchPendingWork as dispatchPendingFateKnotsWork,
   handleCharacterSelect as fateKnotsHandleCharacterSelect,
@@ -77,7 +77,7 @@ export default function createGameRoomHostRuntime() {
         return (handlerApi: unknown) => handler(handlerApi as GameRoomHostApi);
       }
 
-      function saveXoxStateCompat(handlerApi: GameRoomHostApi, value: unknown): void {
+      function saveBackgammonStateCompat(handlerApi: GameRoomHostApi, value: unknown): void {
         void saveState(handlerApi, value as Parameters<typeof saveState>[1]);
       }
 
@@ -98,7 +98,9 @@ export default function createGameRoomHostRuntime() {
       }
 
       function ensureUs1SyncLoopCompat(handlerApi: GameRoomHostApi): void {
-        xoxEnsureUs1SyncLoop(handlerApi as unknown as Parameters<typeof xoxEnsureUs1SyncLoop>[0]);
+        backgammonEnsureUs1SyncLoop(
+          handlerApi as unknown as Parameters<typeof backgammonEnsureUs1SyncLoop>[0]
+        );
       }
 
       function getActiveFeatureIdCompat(context: unknown): string {
@@ -114,24 +116,24 @@ export default function createGameRoomHostRuntime() {
       }
 
       function syncUs1MailboxCompat(handlerApi: GameRoomHostApi, reason: string): Promise<unknown> {
-        return xoxSyncUs1Mailbox(
-          handlerApi as unknown as Parameters<typeof xoxSyncUs1Mailbox>[0],
+        return backgammonSyncUs1Mailbox(
+          handlerApi as unknown as Parameters<typeof backgammonSyncUs1Mailbox>[0],
           reason
         );
       }
 
       function syncFromContextCompat(handlerApi: GameRoomHostApi, payload: unknown): void {
-        xoxSyncFromContext(handlerApi, payload);
+        backgammonSyncFromContext(handlerApi, payload);
       }
 
       function clearUs1SyncLoopCompat(handlerApi: GameRoomHostApi): void {
-        xoxClearUs1SyncLoop(handlerApi as Parameters<typeof xoxClearUs1SyncLoop>[0]);
+        backgammonClearUs1SyncLoop(handlerApi as Parameters<typeof backgammonClearUs1SyncLoop>[0]);
       }
 
       bootstrapGameRoomHostState(api, {
         clearPendingInvite: clearPendingInviteCompat,
         createInitialTeamTetrisState: createInitialTeamTetrisState,
-        createInitialXoxState: createInitialState,
+        createInitialBackgammonState: createInitialState,
         defaultStarter: DEFAULT_STARTER,
         defaultTarget: DEFAULT_TARGET,
         ensureUs1SyncLoop: ensureUs1SyncLoopCompat,
@@ -140,7 +142,7 @@ export default function createGameRoomHostRuntime() {
         saveContext: saveContext,
         saveInviteInbox: saveInviteInboxCompat,
         saveTeamTetrisState: saveTeamTetrisStateCompat,
-        saveXoxState: saveXoxStateCompat,
+        saveBackgammonState: saveBackgammonStateCompat,
       });
 
       return {
@@ -159,20 +161,28 @@ export default function createGameRoomHostRuntime() {
           handleTeamTetrisMove: asCommandHandler(handleTeamTetrisMove),
           handleTeamTetrisReset: asNoPayloadHandler(handleTeamTetrisReset),
           handleTeamTetrisStart: asCommandHandler(handleTeamTetrisStart),
-          handleXoxAcceptInvite: asCommandHandler(
-            xoxHandleAcceptInvite as unknown as BridgeCommandHandler
+          handleBackgammonAcceptInvite: asCommandHandler(
+            backgammonHandleAcceptInvite as unknown as BridgeCommandHandler
           ),
-          handleXoxAiMove: asCommandHandler(xoxHandleAiMove as unknown as BridgeCommandHandler),
-          handleXoxRejectInvite: asCommandHandler(
-            xoxHandleRejectInvite as unknown as BridgeCommandHandler
+          handleBackgammonAiMove: asCommandHandler(
+            backgammonHandleAiMove as unknown as BridgeCommandHandler
           ),
-          handleXoxRemoteMove: asCommandHandler(
-            xoxHandleRemoteMove as unknown as BridgeCommandHandler
+          handleBackgammonRejectInvite: asCommandHandler(
+            backgammonHandleRejectInvite as unknown as BridgeCommandHandler
           ),
-          handleXoxReset: asNoPayloadHandler(xoxHandleReset as unknown as BridgeNoPayloadHandler),
-          handleXoxStart: asCommandHandler(xoxHandleStart as unknown as BridgeCommandHandler),
-          handleXoxUserMove: asCommandHandler(xoxHandleUserMove as unknown as BridgeCommandHandler),
-          xoxCommandNames: XOX_COMMAND_NAMES,
+          handleBackgammonRemoteMove: asCommandHandler(
+            backgammonHandleRemoteMove as unknown as BridgeCommandHandler
+          ),
+          handleBackgammonReset: asNoPayloadHandler(
+            backgammonHandleReset as unknown as BridgeNoPayloadHandler
+          ),
+          handleBackgammonStart: asCommandHandler(
+            backgammonHandleStart as unknown as BridgeCommandHandler
+          ),
+          handleBackgammonUserMove: asCommandHandler(
+            backgammonHandleUserMove as unknown as BridgeCommandHandler
+          ),
+          backgammonCommandNames: BACKGAMMON_COMMAND_NAMES,
         }),
         ...createGameRoomHostLifecycle(api, {
           clearUs1SyncLoop: clearUs1SyncLoopCompat,

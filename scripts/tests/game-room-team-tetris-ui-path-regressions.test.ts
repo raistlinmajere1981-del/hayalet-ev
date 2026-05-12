@@ -220,7 +220,7 @@ function buildHostContext(translations: Record<string, unknown>) {
       name: "Game Room",
     },
     features: [
-      { id: "xox", name: "XOX" },
+      { id: "backgammon", name: "Tavla" },
       { id: "team-tetris", name: "Team Tetris" },
       { id: "fate-knots", name: "Fate Knots" },
     ],
@@ -272,11 +272,15 @@ function buildTeamTetrisState(
 ) {
   const localSeatId = options.localSeatId ?? "user";
   const hiddenPairs = options.hiddenPairs !== false;
-  const seed = options.seed ?? (localSeatId === "us1" ? findSeedForSeat(engine, "us1") : findSeedForUserTurn(engine));
+  const seed =
+    options.seed ??
+    (localSeatId === "us1" ? findSeedForSeat(engine, "us1") : findSeedForUserTurn(engine));
   const match = engine.createMatch({
     seed,
     hiddenPairs,
-    ...(options.selectedPartnerSeatId ? { selectedPartnerSeatId: options.selectedPartnerSeatId } : {}),
+    ...(options.selectedPartnerSeatId
+      ? { selectedPartnerSeatId: options.selectedPartnerSeatId }
+      : {}),
   });
   const currentTurn = match.currentTurn as Record<string, unknown>;
   const actingTeam = match.teams[String(currentTurn.teamId)] as Record<string, unknown>;
@@ -347,11 +351,17 @@ function buildTeamTetrisStateAfterVisiblePartnerMove(engine: TeamTetrisEngine) {
     hiddenPairs: false,
     selectedPartnerSeatId: "us1",
   });
-  const firstApplied = engine.applyMove(openingMatch, buildValidMoveForCurrentTurn(engine, openingMatch));
+  const firstApplied = engine.applyMove(
+    openingMatch,
+    buildValidMoveForCurrentTurn(engine, openingMatch)
+  );
   assert.equal(firstApplied.success, true);
 
   const secondMatch = firstApplied.match as Record<string, unknown>;
-  const secondApplied = engine.applyMove(secondMatch, buildValidMoveForCurrentTurn(engine, secondMatch));
+  const secondApplied = engine.applyMove(
+    secondMatch,
+    buildValidMoveForCurrentTurn(engine, secondMatch)
+  );
   assert.equal(secondApplied.success, true);
 
   const match = secondApplied.match as Record<string, unknown>;
@@ -441,9 +451,9 @@ function createUiRuntime() {
     "rooms/game-room/ui/context-runtime.ts",
     "rooms/game-room/shared/ui/feature-contract.ts",
     "rooms/game-room/shared/ui/scroll-runtime.ts",
-    "rooms/game-room/main-functions/xox/ui/state-runtime.ts",
-    "rooms/game-room/main-functions/xox/ui/render-runtime.ts",
-    "rooms/game-room/main-functions/xox/ui/module.ts",
+    "rooms/game-room/main-functions/backgammon/ui/state-runtime.ts",
+    "rooms/game-room/main-functions/backgammon/ui/render-runtime.ts",
+    "rooms/game-room/main-functions/backgammon/ui/module.ts",
     "rooms/game-room/main-functions/team-tetris/ui/draft-runtime.ts",
     "rooms/game-room/main-functions/team-tetris/ui/state-shape-runtime.ts",
     "rooms/game-room/main-functions/team-tetris/ui/state-view-runtime.ts",
@@ -854,7 +864,9 @@ test("Team Tetris UI treats mirrored US1 seat views as the local playable board"
       (element.textContent || "").includes("Acting Seat: You")
     )
   );
-  assert.ok(findFirst(runtime.document.body, (element) => element.textContent === "Partner: Raistlin"));
+  assert.ok(
+    findFirst(runtime.document.body, (element) => element.textContent === "Partner: Raistlin")
+  );
 
   const interactiveBoard = findFirst(
     runtime.document.body,

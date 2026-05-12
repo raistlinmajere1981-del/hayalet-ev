@@ -7,7 +7,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const PROJECT_ROOT = join(__dirname, "..");
 const SRC_ROOT = join(PROJECT_ROOT, "src");
-const BASELINE_PATH = join(PROJECT_ROOT, "scripts", "baselines", "design-system-audit-baseline.json");
+const ROOMS_ROOT = join(PROJECT_ROOT, "rooms");
+const BASELINE_PATH = join(
+  PROJECT_ROOT,
+  "scripts",
+  "baselines",
+  "design-system-audit-baseline.json"
+);
 const SHARED_SCENE_SCALE_PATH = join(
   PROJECT_ROOT,
   "src",
@@ -39,6 +45,7 @@ const issues = [];
 function parseArgs(argv) {
   const options = {
     format: "text",
+    scope: "src",
     updateBaseline: false,
     useBaseline: true,
   };
@@ -54,18 +61,36 @@ function parseArgs(argv) {
     }
     if (arg === "--no-baseline") {
       options.useBaseline = false;
+      continue;
+    }
+    if (arg.startsWith("--scope=")) {
+      const scope = arg.slice("--scope=".length);
+      if (!["all", "rooms", "src"].includes(scope)) {
+        throw new Error(`Unknown design audit scope: ${scope}`);
+      }
+      options.scope = scope;
     }
   }
 
   return options;
 }
 
+function isIgnoredDirectory(dirPath) {
+  const projectPath = toProjectPath(dirPath);
+  return (
+    projectPath === "rooms/.build" ||
+    projectPath.startsWith("rooms/.build/") ||
+    projectPath.endsWith("/shared/vendor") ||
+    projectPath.includes("/shared/vendor/")
+  );
+}
+
 function walkFiles(dirPath, acc = []) {
   const entries = readdirSync(dirPath, { withFileTypes: true });
   for (const entry of entries) {
-    if (IGNORED_DIRS.has(entry.name)) continue;
     const fullPath = join(dirPath, entry.name);
     if (entry.isDirectory()) {
+      if (IGNORED_DIRS.has(entry.name) || isIgnoredDirectory(fullPath)) continue;
       walkFiles(fullPath, acc);
       continue;
     }
@@ -77,12 +102,28 @@ function walkFiles(dirPath, acc = []) {
   return acc;
 }
 
+function resolveScanRoots(scope) {
+  if (scope === "all") {
+    return [SRC_ROOT, ROOMS_ROOT];
+  }
+
+  if (scope === "rooms") {
+    return [ROOMS_ROOT];
+  }
+
+  return [SRC_ROOT];
+}
+
 function toProjectPath(filePath) {
   return relative(PROJECT_ROOT, filePath).replaceAll("\\", "/");
 }
 
 function isTokenFile(projectPath) {
-  return projectPath.startsWith("src/styles/design-system/tokens/");
+  return (
+    projectPath.startsWith("src/styles/design-system/tokens/") ||
+    /^rooms\/[^/]+\/ui\/tokens\.css$/.test(projectPath) ||
+    /^rooms\/[^/]+\/ui\/styles\/[^/]*tokens\.css$/.test(projectPath)
+  );
 }
 
 function isThemeFile(projectPath) {
@@ -90,11 +131,16 @@ function isThemeFile(projectPath) {
 }
 
 function isInfrastructureStyleFile(projectPath) {
-  return projectPath.startsWith("src/styles/scene-system/") || projectPath.startsWith("src/styles/scene-editor/");
+  return (
+    projectPath.startsWith("src/styles/scene-system/") ||
+    projectPath.startsWith("src/styles/scene-editor/")
+  );
 }
 
 function isTokenOrThemeFile(projectPath) {
-  return isTokenFile(projectPath) || isThemeFile(projectPath) || isInfrastructureStyleFile(projectPath);
+  return (
+    isTokenFile(projectPath) || isThemeFile(projectPath) || isInfrastructureStyleFile(projectPath)
+  );
 }
 
 function pushIssue(filePath, line, rule, detail) {
@@ -172,6 +218,11 @@ function isGlobalCssOverrideSelector(selector) {
 }
 
 function isIntentionalScopedDuplicateVar(varName, selector) {
+  // Scene-view overrides for component-scoped custom properties — check BEFORE global selector filter
+  if (selector !== null && selector.includes('data-presentation-mode="scene-view"]') && varName.startsWith("--tt-")) {
+    return true;
+  }
+
   if (isGlobalCssOverrideSelector(selector)) {
     return false;
   }
@@ -512,7 +563,9 @@ function emitTextFailure(header, diffs, sortedIssues) {
 
 function main() {
   const options = parseArgs(process.argv.slice(2));
-  const files = walkFiles(SRC_ROOT);
+  const files = resolveScanRoots(options.scope).flatMap((rootPath) =>
+    existsSync(rootPath) ? walkFiles(rootPath) : []
+  );
   const cssFiles = files.filter((filePath) => extname(filePath).toLowerCase() === ".css");
   const htmlFiles = files.filter((filePath) => extname(filePath).toLowerCase() === ".html");
   const scriptFiles = files.filter((filePath) => {
@@ -625,7 +678,11 @@ function main() {
         return;
       }
 
-      emitTextFailure("Design system audit baseline drift detected.", { added, removed }, sortedIssues);
+      emitTextFailure(
+        "Design system audit baseline drift detected.",
+        { added, removed },
+        sortedIssues
+      );
       process.exitCode = 1;
       return;
     }

@@ -49,7 +49,7 @@ test("catch manager ignores malformed single-plus commands", () => {
       {
         index: 0,
         role: "assistant",
-        text: '+cmd:GameRoomXoxAiMove({"cell":4})',
+        text: '+cmd:GameRoomBackgammonAiMove({"cell":4})',
       },
     ],
   });
@@ -65,8 +65,7 @@ test("catch manager keeps structured Team Tetris AI commands from the latest ass
       {
         index: 0,
         role: "assistant",
-        text:
-          '++cmd:GameRoomTeamTetrisAiMove({"schemaVersion":1,"matchId":"tt_1","turnIndex":2,"turnToken":"tt_token","pieceId":"T","rotation":1,"rowShifts":[0,1,0]})',
+        text: '++cmd:GameRoomTeamTetrisAiMove({"schemaVersion":1,"matchId":"tt_1","turnIndex":2,"turnToken":"tt_token","pieceId":"T","rotation":1,"rowShifts":[0,1,0]})',
       },
     ],
   });
@@ -84,8 +83,7 @@ test("catch manager keeps balanced SlotBridge JSON when payload contains closing
       {
         index: 0,
         role: "assistant",
-        text:
-          '++cmd:SlotBridge({"action":"message.send","toSlot":"ai2","payload":{"text":"https://example.com/path_(demo)"}})',
+        text: '++cmd:SlotBridge({"action":"message.send","toSlot":"ai2","payload":{"text":"https://example.com/path_(demo)"}})',
       },
     ],
   });

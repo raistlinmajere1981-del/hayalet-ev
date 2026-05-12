@@ -4,11 +4,10 @@
   }
 ) {
   type UnknownRecord = Record<string, unknown>;
-  type XoxTarget = "ai1" | "ai2" | "us1";
-  type XoxStarter = "user" | "ai";
-  type XoxInviteStarter = "user" | "opponent";
-  type XoxAwaitingMove = "user" | "ai" | null;
-  type LegacyXoxCell = "X" | "O" | "";
+  type BackgammonTarget = "ai1" | "ai2" | "us1";
+  type BackgammonStarter = "user" | "ai";
+  type BackgammonInviteStarter = "user" | "opponent";
+  type BackgammonAwaitingMove = "user" | "ai" | null;
   type BackgammonOwner = "user" | "ai" | "";
   type BackgammonPoint = {
     point: number;
@@ -28,7 +27,7 @@
     diceUsed: number[];
     pass?: boolean;
   };
-  type XoxInviteEntry = {
+  type BackgammonInviteEntry = {
     roomId: string;
     featureId: string;
     inviteId: string;
@@ -36,16 +35,16 @@
     nickname: string;
     senderEmail: string;
     note: string;
-    starter: XoxInviteStarter;
+    starter: BackgammonInviteStarter;
     localSessionId: string;
     conversationId: string;
     sentAt: number | null;
   };
-  type XoxPendingInvite = XoxInviteEntry & {
+  type BackgammonPendingInvite = BackgammonInviteEntry & {
     direction: "incoming" | "outgoing";
   };
-  type XoxSlotState = {
-    slotId: XoxTarget;
+  type BackgammonSlotState = {
+    slotId: BackgammonTarget;
     nickname: string;
     avatar?: string | null;
     assigned?: boolean;
@@ -53,7 +52,7 @@
     ready?: boolean;
     dispatchable?: boolean;
   };
-  type XoxMatchHistoryEntry = {
+  type BackgammonMatchHistoryEntry = {
     id: string;
     finishedAt: number;
     target: string;
@@ -65,10 +64,8 @@
     scorePoints: number;
     boardHash: string;
   };
-  type XoxGameState = {
+  type BackgammonGameState = {
     board: BackgammonPoint[];
-    legacyBoard: LegacyXoxCell[] | null;
-    availableCells: number[];
     boardAscii: string;
     boardHash: string;
     bar: Record<"user" | "ai", number>;
@@ -76,11 +73,11 @@
     dice: number[];
     legalMoves: BackgammonLegalMove[];
     active: boolean;
-    awaitingMoveFrom: XoxAwaitingMove;
+    awaitingMoveFrom: BackgammonAwaitingMove;
     result: string;
     winner: string;
-    selectedTarget: XoxTarget;
-    starter: XoxStarter;
+    selectedTarget: BackgammonTarget;
+    starter: BackgammonStarter;
     status: string;
     blockedReason: string;
     protocolDelivered: boolean;
@@ -91,69 +88,68 @@
     turnToken: string;
     localSessionId: string | null;
     remoteUserId: string | null;
-    pendingInvite: XoxPendingInvite | null;
-    inviteInbox: XoxInviteEntry[];
-    matchHistory: XoxMatchHistoryEntry[];
-    opponent: XoxSlotState;
+    pendingInvite: BackgammonPendingInvite | null;
+    inviteInbox: BackgammonInviteEntry[];
+    matchHistory: BackgammonMatchHistoryEntry[];
+    opponent: BackgammonSlotState;
     user: {
       nickname: string;
     };
     scorePoints: number;
   };
-  type XoxUiState = {
-    game: XoxGameState;
+  type BackgammonUiState = {
+    game: BackgammonGameState;
     context: {
-      slots: Record<XoxTarget, XoxSlotState>;
+      slots: Record<BackgammonTarget, BackgammonSlotState>;
       user: {
         nickname: string;
       };
     };
     preferences: {
-      target: XoxTarget;
-      starter: XoxStarter;
+      target: BackgammonTarget;
+      starter: BackgammonStarter;
       inviteMessage: string;
     };
     lastCommandMessage: string;
     locale: string;
   };
-  type XoxUiStateRuntimeDeps = {
-    getState: () => XoxUiState;
+  type BackgammonUiStateRuntimeDeps = {
+    getState: () => BackgammonUiState;
     roomId: string;
     featureId: string;
-    createSlot: (slotId: string) => XoxSlotState;
-    createInviteEntry: () => XoxInviteEntry;
-    normalizeSlot: (candidate: unknown, slotId: string) => XoxSlotState;
+    createSlot: (slotId: string) => BackgammonSlotState;
+    createInviteEntry: () => BackgammonInviteEntry;
+    normalizeSlot: (candidate: unknown, slotId: string) => BackgammonSlotState;
     text: (path: string[]) => string;
     sendRoomCommand: (command: string, payload: UnknownRecord) => void;
   };
 
-  type XoxUiStateRuntime = {
-    createGameState: () => XoxGameState;
-    sanitizeGameState: (candidate: unknown) => XoxGameState;
+  type BackgammonUiStateRuntime = {
+    createGameState: () => BackgammonGameState;
+    sanitizeGameState: (candidate: unknown) => BackgammonGameState;
     syncPreferencesFromGame: () => void;
-    getSlotOrder: () => XoxSlotState[];
-    getSlotStatusLabel: (slot: XoxSlotState) => string;
-    getSelectedTarget: () => XoxTarget;
-    getDisplayOpponent: () => XoxSlotState;
+    getSlotOrder: () => BackgammonSlotState[];
+    getSlotStatusLabel: (slot: BackgammonSlotState) => string;
+    getSelectedTarget: () => BackgammonTarget;
+    getDisplayOpponent: () => BackgammonSlotState;
     getCurrentStatus: () => string;
     getResultLabel: () => string;
     getTurnLabel: () => string;
     getDiceLabel: () => string;
     getBearOffLabel: () => string;
     getBarLabel: () => string;
-    getStarterLabelForCurrentTarget: (value: XoxStarter) => string;
-    formatInviteMeta: (invite: XoxInviteEntry) => string;
+    getStarterLabelForCurrentTarget: (value: BackgammonStarter) => string;
+    formatInviteMeta: (invite: BackgammonInviteEntry) => string;
     onStart: () => void;
     onReset: () => void;
     onLegalMove: (moveId: string) => void;
-    onCellClick: (index: number) => void;
     onAcceptInvite: (inviteId: string, remoteUserId: string) => void;
     onRejectInvite: (inviteId: string, remoteUserId: string) => void;
     onCancelOutgoingInvite: () => void;
-    getMatchHistory: () => XoxMatchHistoryEntry[];
-    getMatchHistoryResultLabel: (entry: XoxMatchHistoryEntry) => string;
-    getMatchHistoryResultTone: (entry: XoxMatchHistoryEntry) => string;
-    formatMatchHistoryDate: (entry: XoxMatchHistoryEntry) => string;
+    getMatchHistory: () => BackgammonMatchHistoryEntry[];
+    getMatchHistoryResultLabel: (entry: BackgammonMatchHistoryEntry) => string;
+    getMatchHistoryResultTone: (entry: BackgammonMatchHistoryEntry) => string;
+    formatMatchHistoryDate: (entry: BackgammonMatchHistoryEntry) => string;
   };
 
   function isRecord(value: unknown): value is UnknownRecord {
@@ -172,15 +168,15 @@
     return typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.trunc(value) : 0;
   }
 
-  function readTarget(value: unknown): XoxTarget {
+  function readTarget(value: unknown): BackgammonTarget {
     return value === "ai2" || value === "us1" ? value : "ai1";
   }
 
-  function readStarter(value: unknown): XoxStarter {
+  function readStarter(value: unknown): BackgammonStarter {
     return value === "ai" ? "ai" : "user";
   }
 
-  function readInviteStarter(value: unknown): XoxInviteStarter {
+  function readInviteStarter(value: unknown): BackgammonInviteStarter {
     return value === "opponent" ? "opponent" : "user";
   }
 
@@ -243,34 +239,6 @@
     return board;
   }
 
-  function normalizeLegacyBoard(value: unknown): LegacyXoxCell[] | null {
-    if (Array.isArray(value) === false || value.length !== 9) {
-      return null;
-    }
-    return value.map(function (entry): LegacyXoxCell {
-      return entry === "X" || entry === "O" ? entry : "";
-    });
-  }
-
-  function normalizeAvailableCells(value: unknown): number[] {
-    if (Array.isArray(value) === false) {
-      return [];
-    }
-    const cells: number[] = [];
-    value.forEach(function (entry) {
-      if (
-        typeof entry === "number" &&
-        Number.isInteger(entry) &&
-        entry >= 0 &&
-        entry <= 8 &&
-        cells.includes(entry) === false
-      ) {
-        cells.push(entry);
-      }
-    });
-    return cells;
-  }
-
   function normalizeCounters(value: unknown): Record<"user" | "ai", number> {
     const source = isRecord(value) ? value : {};
     return {
@@ -313,14 +281,19 @@
       });
   }
 
-  type XoxUiStateRuntimeRegistry = GameRoomUiFactoriesRegistry & {
-    createXoxUiStateRuntime?: (deps: XoxUiStateRuntimeDeps) => XoxUiStateRuntime;
+  type BackgammonUiStateRuntimeRegistry = GameRoomUiFactoriesRegistry & {
+    createBackgammonUiStateRuntime?: (
+      deps: BackgammonUiStateRuntimeDeps
+    ) => BackgammonUiStateRuntime;
   };
 
   const registry = (global.GameRoomUiFactories ||
-    (global.GameRoomUiFactories = {} as GameRoomUiFactoriesRegistry)) as XoxUiStateRuntimeRegistry;
+    (global.GameRoomUiFactories =
+      {} as GameRoomUiFactoriesRegistry)) as BackgammonUiStateRuntimeRegistry;
 
-  registry.createXoxUiStateRuntime = function createXoxUiStateRuntime(deps: XoxUiStateRuntimeDeps) {
+  registry.createBackgammonUiStateRuntime = function createBackgammonUiStateRuntime(
+    deps: BackgammonUiStateRuntimeDeps
+  ) {
     const getState = deps.getState;
     const roomId = deps.roomId;
     const featureId = deps.featureId;
@@ -329,15 +302,7 @@
     const normalizeSlot = deps.normalizeSlot;
     const text = deps.text;
     const sendRoomCommand = deps.sendRoomCommand;
-    const legacyXoxCommandNames = {
-      acceptInvite: "GameRoomXoxAcceptInvite",
-      reset: "GameRoomXoxReset",
-      rejectInvite: "GameRoomXoxRejectInvite",
-      start: "GameRoomXoxStart",
-      userMove: "GameRoomXoxUserMove",
-    };
-    const xoxCommandNames = {
-      ...legacyXoxCommandNames,
+    const backgammonCommandNames = {
       acceptInvite: "GameRoomBackgammonAcceptInvite",
       reset: "GameRoomBackgammonReset",
       rejectInvite: "GameRoomBackgammonRejectInvite",
@@ -345,15 +310,16 @@
       userMove: "GameRoomBackgammonUserMove",
     };
 
-    function sendXoxCommand(commandKey: keyof typeof xoxCommandNames, payload: UnknownRecord) {
-      sendRoomCommand(xoxCommandNames[commandKey], payload);
+    function sendBackgammonCommand(
+      commandKey: keyof typeof backgammonCommandNames,
+      payload: UnknownRecord
+    ) {
+      sendRoomCommand(backgammonCommandNames[commandKey], payload);
     }
 
-    function createGameState(): XoxGameState {
+    function createGameState(): BackgammonGameState {
       return {
         board: createDefaultBoard(),
-        legacyBoard: null,
-        availableCells: [],
         boardAscii: "",
         boardHash: "",
         bar: { user: 0, ai: 0 },
@@ -387,7 +353,7 @@
       };
     }
 
-    function normalizeInviteEntry(candidate: unknown): XoxInviteEntry {
+    function normalizeInviteEntry(candidate: unknown): BackgammonInviteEntry {
       const source = isRecord(candidate) ? candidate : {};
       const entry = createInviteEntry();
       entry.roomId = readString(source["roomId"], roomId);
@@ -409,7 +375,7 @@
       return entry;
     }
 
-    function normalizeInviteInbox(value: unknown): XoxInviteEntry[] {
+    function normalizeInviteInbox(value: unknown): BackgammonInviteEntry[] {
       return Array.isArray(value)
         ? value
             .map(normalizeInviteEntry)
@@ -417,7 +383,7 @@
         : [];
     }
 
-    function normalizePendingInvite(value: unknown): XoxPendingInvite | null {
+    function normalizePendingInvite(value: unknown): BackgammonPendingInvite | null {
       if (isRecord(value) === false) {
         return null;
       }
@@ -431,12 +397,12 @@
       };
     }
 
-    function normalizeMatchHistory(value: unknown): XoxMatchHistoryEntry[] {
+    function normalizeMatchHistory(value: unknown): BackgammonMatchHistoryEntry[] {
       if (Array.isArray(value) === false) {
         return [];
       }
       return value
-        .map(function (entry): XoxMatchHistoryEntry | null {
+        .map(function (entry): BackgammonMatchHistoryEntry | null {
           if (isRecord(entry) === false) {
             return null;
           }
@@ -458,16 +424,14 @@
             boardHash: readString(entry["boardHash"], ""),
           };
         })
-        .filter((entry): entry is XoxMatchHistoryEntry => entry !== null)
+        .filter((entry): entry is BackgammonMatchHistoryEntry => entry !== null)
         .slice(0, 20);
     }
 
-    function sanitizeGameState(candidate: unknown): XoxGameState {
+    function sanitizeGameState(candidate: unknown): BackgammonGameState {
       const source = isRecord(candidate) ? candidate : {};
       const next = createGameState();
       next.board = normalizeBoard(source["board"]);
-      next.legacyBoard = normalizeLegacyBoard(source["board"]);
-      next.availableCells = normalizeAvailableCells(source["availableCells"]);
       next.boardAscii = readString(source["boardAscii"], "");
       next.boardHash = readString(source["boardHash"], "");
       next.bar = normalizeCounters(source["bar"]);
@@ -505,29 +469,29 @@
       return next;
     }
 
-    function getSlotOrder(): XoxSlotState[] {
+    function getSlotOrder(): BackgammonSlotState[] {
       const state = getState();
       return [state.context.slots.ai1, state.context.slots.ai2, state.context.slots.us1];
     }
 
-    function getSlotStatusLabel(slot: XoxSlotState): string {
+    function getSlotStatusLabel(slot: BackgammonSlotState): string {
       if (slot.ready === true) {
-        return text(["xox", "slotState", "ready"]);
+        return text(["backgammon", "slotState", "ready"]);
       }
       if (slot.assigned === true && slot.connected !== true) {
-        return text(["xox", "slotState", "disconnected"]);
+        return text(["backgammon", "slotState", "disconnected"]);
       }
       if (slot.assigned === true) {
-        return text(["xox", "slotState", "assigned"]);
+        return text(["backgammon", "slotState", "assigned"]);
       }
-      return text(["xox", "slotState", "empty"]);
+      return text(["backgammon", "slotState", "empty"]);
     }
 
-    function getSelectedTarget(): XoxTarget {
+    function getSelectedTarget(): BackgammonTarget {
       return readTarget(getState().preferences.target);
     }
 
-    function getDisplayOpponent(): XoxSlotState {
+    function getDisplayOpponent(): BackgammonSlotState {
       const state = getState();
       if (state.game.active === true) {
         return state.game.opponent;
@@ -546,24 +510,24 @@
       return (
         readString(state.lastCommandMessage, "") ||
         readString(state.game.status, "") ||
-        text(["xox", "status", "idle"])
+        text(["backgammon", "status", "idle"])
       );
     }
 
     function getResultLabel(): string {
       const state = getState();
       if (state.game.result === "user-win") {
-        return text(["xox", "results", "user-win"]);
+        return text(["backgammon", "results", "user-win"]);
       }
       if (state.game.result === "ai-win") {
-        return text(["xox", "results", "ai-win"]);
+        return text(["backgammon", "results", "ai-win"]);
       }
       if (state.game.result === "blocked") {
-        return text(["xox", "results", "blocked"]);
+        return text(["backgammon", "results", "blocked"]);
       }
       return state.game.active === true
-        ? text(["xox", "results", "pending"])
-        : text(["xox", "results", "idle"]);
+        ? text(["backgammon", "results", "pending"])
+        : text(["backgammon", "results", "idle"]);
     }
 
     function getTurnLabel(): string {
@@ -574,7 +538,7 @@
       if (state.game.awaitingMoveFrom === "ai") {
         return state.game.opponent.nickname;
       }
-      return text(["xox", "turns", "idle"]);
+      return text(["backgammon", "turns", "idle"]);
     }
 
     function getDiceLabel(): string {
@@ -592,22 +556,22 @@
       return "User " + bar.user + " / Opponent " + bar.ai;
     }
 
-    function getStarterLabelForCurrentTarget(value: XoxStarter): string {
+    function getStarterLabelForCurrentTarget(value: BackgammonStarter): string {
       if (getSelectedTarget() === "us1") {
         return value === "ai"
-          ? text(["xox", "topbar", "starterRemote"])
-          : text(["xox", "topbar", "starterUser"]);
+          ? text(["backgammon", "topbar", "starterRemote"])
+          : text(["backgammon", "topbar", "starterUser"]);
       }
       return value === "ai"
-        ? text(["xox", "topbar", "starterAi"])
-        : text(["xox", "topbar", "starterUser"]);
+        ? text(["backgammon", "topbar", "starterAi"])
+        : text(["backgammon", "topbar", "starterUser"]);
     }
 
-    function formatInviteMeta(invite: XoxInviteEntry): string {
+    function formatInviteMeta(invite: BackgammonInviteEntry): string {
       const starterLabel =
         invite.starter === "opponent"
-          ? text(["xox", "invites", "starterRemote"])
-          : text(["xox", "invites", "starterUser"]);
+          ? text(["backgammon", "invites", "starterRemote"])
+          : text(["backgammon", "invites", "starterUser"]);
       return invite.sentAt === null
         ? starterLabel
         : starterLabel + " - " + new Date(invite.sentAt).toLocaleString(getState().locale);
@@ -616,7 +580,7 @@
     function onStart() {
       const state = getState();
       state.lastCommandMessage = "";
-      sendXoxCommand("start", {
+      sendBackgammonCommand("start", {
         target: getSelectedTarget(),
         starter: state.preferences.starter === "ai" ? "ai" : "user",
         inviteMessage: state.preferences.inviteMessage,
@@ -625,7 +589,7 @@
 
     function onReset() {
       getState().lastCommandMessage = "";
-      sendXoxCommand("reset", {});
+      sendBackgammonCommand("reset", {});
     }
 
     function onLegalMove(moveId: string) {
@@ -638,18 +602,11 @@
         return;
       }
       getState().lastCommandMessage = "";
-      sendXoxCommand("userMove", {
+      sendBackgammonCommand("userMove", {
         legalMoveId: moveId,
         turnToken: state.game.turnToken,
         turnIndex: state.game.turnIndex,
       });
-    }
-
-    function onCellClick(_index: number) {
-      const firstMove = getState().game.legalMoves[0];
-      if (firstMove) {
-        onLegalMove(firstMove.id);
-      }
     }
 
     function onAcceptInvite(inviteId: string, remoteUserId: string) {
@@ -664,24 +621,24 @@
 
     function onCancelOutgoingInvite() {
       getState().lastCommandMessage = "";
-      sendXoxCommand("reset", {});
+      sendBackgammonCommand("reset", {});
     }
 
-    function getMatchHistory(): XoxMatchHistoryEntry[] {
+    function getMatchHistory(): BackgammonMatchHistoryEntry[] {
       return getState().game.matchHistory;
     }
 
-    function getMatchHistoryResultLabel(entry: XoxMatchHistoryEntry): string {
+    function getMatchHistoryResultLabel(entry: BackgammonMatchHistoryEntry): string {
       return entry.result === "user-win"
-        ? text(["xox", "history", "win"])
-        : text(["xox", "history", "loss"]);
+        ? text(["backgammon", "history", "win"])
+        : text(["backgammon", "history", "loss"]);
     }
 
-    function getMatchHistoryResultTone(entry: XoxMatchHistoryEntry): string {
+    function getMatchHistoryResultTone(entry: BackgammonMatchHistoryEntry): string {
       return entry.result === "user-win" ? "win" : "loss";
     }
 
-    function formatMatchHistoryDate(entry: XoxMatchHistoryEntry): string {
+    function formatMatchHistoryDate(entry: BackgammonMatchHistoryEntry): string {
       if (!entry.finishedAt || entry.finishedAt <= 0) {
         return "";
       }
@@ -725,7 +682,6 @@
       onStart,
       onReset,
       onLegalMove,
-      onCellClick,
       onAcceptInvite,
       onRejectInvite,
       onCancelOutgoingInvite,

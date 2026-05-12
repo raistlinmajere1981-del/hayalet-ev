@@ -14,6 +14,12 @@ export const REPAIR_CHAT_REPLY_MAX_DELAY_MS = 1400;
 export const REPAIR_MEASUREMENT_DRIFT_INTERVAL_MS = 1100;
 export const REPAIR_AMBIENT_CLOCK_INTERVAL_MS = 1000;
 
+export const REPAIR_UI_COLORS = {
+  amber: "rgb(232, 168, 87)",
+  cyan: "rgb(86, 200, 222)",
+  risk: "rgb(217, 122, 122)",
+} as const;
+
 export const REPAIR_UI_COMMANDS = {
   uiReady: "RepairRoomUiReady",
   activateSession: "RepairRoomActivateSession",

@@ -211,9 +211,9 @@ function createRoomHostRuntime() {
       await flushHostTasks();
     },
     latestGameState(): GameState {
-      const latest = notifications.filter((entry) => entry.type === "xox-state").at(-1)?.payload
-        ?.state as GameState | undefined;
-      assert.ok(latest, "expected latest xox-state notification");
+      const latest = notifications.filter((entry) => entry.type === "backgammon-state").at(-1)
+        ?.payload?.state as GameState | undefined;
+      assert.ok(latest, "expected latest backgammon-state notification");
       return latest;
     },
     latestCommandResult() {
@@ -410,7 +410,7 @@ test("game-room Tavla delays protocol until the first AI turn when the user star
   assert.equal(userMoveResult.success, true);
   assert.equal(runtime.protocolCalls.length, 1);
   assert.equal(runtime.messageCalls.length, 1);
-  assert.equal(runtime.protocolCalls[0]?.scenario, "xox-user-start");
+  assert.equal(runtime.protocolCalls[0]?.scenario, "backgammon-user-start");
   assert.match(String(runtime.messageCalls[0]?.text ?? ""), /GameRoomBackgammonAiMove/);
   assert.match(String(runtime.messageCalls[0]?.text ?? ""), /Legal moves:/);
   assert.equal(runtime.latestGameState().selectedTarget, "ai1");
@@ -425,7 +425,7 @@ test("game-room Tavla sends protocol immediately when the AI starts", async () =
   assert.equal(startResult.success, true);
   assert.equal(runtime.protocolCalls.length, 1);
   assert.equal(runtime.messageCalls.length, 1);
-  assert.equal(runtime.protocolCalls[0]?.scenario, "xox-ai-start");
+  assert.equal(runtime.protocolCalls[0]?.scenario, "backgammon-ai-start");
   assert.equal(runtime.latestGameState().selectedTarget, "ai2");
   assert.equal(runtime.latestGameState().awaitingMoveFrom, "ai");
 
@@ -520,7 +520,7 @@ test("game-room Tavla sends mirrored US1 legal move metadata after accept", asyn
     roomEvents: [
       {
         roomId: "game-room",
-        featureId: "xox",
+        featureId: "backgammon",
         inviteId: pendingInvite.inviteId,
         matchId: pendingInvite.matchId,
         eventType: "accept",
@@ -566,7 +566,7 @@ test("game-room Tavla applies generated US1 remote moves and rejects duplicate o
   const runtime = createRoomHostRuntime();
   const inviteEntry = {
     roomId: "game-room",
-    featureId: "xox",
+    featureId: "backgammon",
     inviteId: "invite-replay",
     matchId: "invite-replay",
     remoteUserId: "challenger@example.com",
@@ -575,9 +575,9 @@ test("game-room Tavla applies generated US1 remote moves and rejects duplicate o
     localSessionId: "challenger-session-replay",
     conversationId: "challenger-conversation-replay",
   };
-  runtime.api.setState("xox-invite-inbox", [inviteEntry]);
+  runtime.api.setState("backgammon-invite-inbox", [inviteEntry]);
   runtime.api.setState(
-    "xox-context",
+    "backgammon-context",
     buildReadyHostContext("us1", {
       us1RemoteUserId: "challenger@example.com",
       us1Nickname: "Challenger",
@@ -674,14 +674,14 @@ test("game-room Tavla blocks the match when the selected opponent disappears mid
   assert.match(String(runtime.latestGameState().status ?? ""), /Reset to begin again/);
 });
 
-test("game-room legacy XOX command aliases still route to the Tavla handlers", async () => {
+test("game-room Backgammon command names route to the Tavla handlers", async () => {
   const runtime = createRoomHostRuntime();
   const startResult = await startMatch(runtime, {
     target: "ai1",
     starter: "user",
-    commandName: "GameRoomXoxStart",
+    commandName: "GameRoomBackgammonStart",
   });
-  const userMoveResult = await applyUserLegalMove(runtime, "GameRoomXoxUserMove");
+  const userMoveResult = await applyUserLegalMove(runtime, "GameRoomBackgammonUserMove");
 
   assert.equal(startResult.success, true);
   assert.equal(userMoveResult.success, true);

@@ -4,10 +4,9 @@
   display: grid;
   gap: var(--lab-space-3);
   padding: var(--lab-space-4);
-  border: 1px solid var(--lab-border-default);
+  border: var(--lab-shell-source-intake-px-1) solid var(--lab-border-default);
   border-radius: var(--lab-radius-xl);
-  background:
-    linear-gradient(180deg, var(--lab-surface-3), var(--lab-surface-2)), var(--lab-surface-1);
+  background: var(--lab-shell-source-intake-gradient-01), var(--lab-surface-1);
   box-shadow: var(--lab-shadow-md);
 }
 
@@ -60,11 +59,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 1.6rem;
+  min-height: var(--lab-shell-source-intake-rem-1-6);
   padding: 0 var(--lab-space-2);
   border-radius: var(--lab-radius-pill);
-  border: 1px solid var(--lab-border-default);
-  background: rgba(255, 255, 255, 0.04);
+  border: var(--lab-shell-source-intake-px-1) solid var(--lab-border-default);
+  background: var(--lab-shell-source-intake-color-01);
   color: var(--lab-text-soft);
   font-size: var(--lab-text-xs);
   font-weight: var(--lab-weight-medium);
@@ -73,19 +72,19 @@
 }
 
 .labx-source-intake__status[data-tone="success"] {
-  border-color: rgba(var(--lab-success-rgb), 0.32);
+  border-color: var(--lab-shell-source-intake-color-02);
   background: var(--lab-success-soft);
   color: var(--lab-success);
 }
 
 .labx-source-intake__status[data-tone="warning"] {
-  border-color: rgba(var(--lab-warning-rgb), 0.32);
+  border-color: var(--lab-shell-source-intake-color-03);
   background: var(--lab-warning-soft);
   color: var(--lab-warning);
 }
 
 .labx-source-intake__status[data-tone="error"] {
-  border-color: rgba(var(--lab-error-rgb), 0.32);
+  border-color: var(--lab-shell-source-intake-color-04);
   background: var(--lab-error-soft);
   color: var(--lab-error);
 }
@@ -100,8 +99,8 @@
   gap: var(--lab-space-1_5);
   padding: var(--lab-space-2);
   border-radius: var(--lab-radius-md);
-  border: 1px solid var(--lab-border-subtle);
-  background: rgba(255, 255, 255, 0.015);
+  border: var(--lab-shell-source-intake-px-1) solid var(--lab-border-subtle);
+  background: var(--lab-shell-source-intake-color-05);
 }
 
 .labx-source-intake__top {
@@ -117,7 +116,7 @@
 
 .labx-source-intake__action-button {
   width: 100%;
-  min-height: 2.25rem;
+  min-height: var(--lab-shell-source-intake-rem-2-25);
 }
 
 .labx-source-intake__mode-grid {
@@ -126,25 +125,37 @@
   gap: var(--lab-space-2);
 }
 
-@media (max-width: 1180px) {
+@media (--lab-bp-max-1180) {
   .labx-shell {
-    grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr) minmax(16rem, 20rem);
+    grid-template-columns:
+      minmax(var(--lab-shell-source-intake-rem-12), var(--lab-shell-source-intake-rem-15))
+      minmax(0, 1fr) minmax(
+        var(--lab-shell-source-intake-rem-16),
+        var(--lab-shell-source-intake-rem-20)
+      );
   }
   .labx-shell[data-source-panel-collapsed="true"] {
-    grid-template-columns: 0 minmax(0, 1fr) minmax(16rem, 20rem);
+    grid-template-columns: 0 minmax(0, 1fr) minmax(
+        var(--lab-shell-source-intake-rem-16),
+        var(--lab-shell-source-intake-rem-20)
+      );
   }
   .labx-shell[data-drawer-collapsed="true"] {
-    grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr) 0;
+    grid-template-columns:
+      minmax(var(--lab-shell-source-intake-rem-12), var(--lab-shell-source-intake-rem-15))
+      minmax(0, 1fr) 0;
   }
   .labx-shell[data-source-panel-collapsed="true"][data-drawer-collapsed="true"] {
     grid-template-columns: 0 minmax(0, 1fr) 0;
   }
 }
 
-@media (max-width: 860px) {
+@media (--lab-bp-max-860) {
   .labx-shell {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 48px minmax(0, 1fr) auto auto 36px;
+    grid-template-rows: var(--lab-shell-source-intake-px-48) minmax(0, 1fr) auto auto var(
+        --lab-shell-source-intake-px-36
+      );
     grid-template-areas:
       "topbar"
       "center"
@@ -156,7 +167,9 @@
   }
 
   .labx-shell[data-drawer-collapsed="true"] {
-    grid-template-rows: 48px minmax(0, 1fr) 36px;
+    grid-template-rows: var(--lab-shell-source-intake-px-48) minmax(0, 1fr) var(
+        --lab-shell-source-intake-px-36
+      );
     grid-template-areas:
       "topbar"
       "center"
@@ -164,11 +177,15 @@
   }
 
   .labx-shell[data-process-view="expanded"] {
-    grid-template-rows: 48px minmax(0, 1fr) auto 200px;
+    grid-template-rows: var(--lab-shell-source-intake-px-48) minmax(0, 1fr) auto var(
+        --lab-shell-source-intake-px-200
+      );
   }
 
   .labx-shell[data-drawer-collapsed="true"][data-process-view="expanded"] {
-    grid-template-rows: 48px minmax(0, 1fr) 200px;
+    grid-template-rows: var(--lab-shell-source-intake-px-48) minmax(0, 1fr) var(
+        --lab-shell-source-intake-px-200
+      );
   }
 
   .labx-drawer,

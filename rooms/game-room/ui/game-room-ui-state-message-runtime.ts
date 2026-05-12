@@ -2,8 +2,8 @@
 
 (function (global: GameRoomUiGlobal) {
   type UnknownRecord = GameRoomUnknownRecord;
-  type XoxStateMessageModule = Required<
-    Pick<GameRoomXoxUiModule, "sanitizeGameState" | "syncPreferencesFromGame">
+  type BackgammonStateMessageModule = Required<
+    Pick<GameRoomBackgammonUiModule, "sanitizeGameState" | "syncPreferencesFromGame">
   >;
   type TeamTetrisStateMessageModule = Required<
     Pick<
@@ -20,7 +20,7 @@
     stateRef: {
       current: GameRoomUiState | null;
     };
-    xoxUi: XoxStateMessageModule;
+    backgammonUi: BackgammonStateMessageModule;
     teamTetrisUi: TeamTetrisStateMessageModule;
     fateKnotsUi: FateKnotsStateMessageModule;
     render: () => void;
@@ -51,7 +51,7 @@
     }
 
     const stateRef = runtimeOptions.stateRef;
-    const xoxUi = runtimeOptions.xoxUi;
+    const backgammonUi = runtimeOptions.backgammonUi;
     const teamTetrisUi = runtimeOptions.teamTetrisUi;
     const fateKnotsUi = runtimeOptions.fateKnotsUi;
     const render = runtimeOptions.render;
@@ -65,14 +65,14 @@
       return readRecord(source?.["payload"]) || {};
     }
 
-    function handleXoxState(message: unknown): void {
+    function handleBackgammonState(message: unknown): void {
       const state = getState();
       if (state === null) {
         return;
       }
       const payload = readPayload(message);
-      state.game = xoxUi.sanitizeGameState(payload["state"]);
-      xoxUi.syncPreferencesFromGame();
+      state.game = backgammonUi.sanitizeGameState(payload["state"]);
+      backgammonUi.syncPreferencesFromGame();
       state.lastCommandMessage = "";
       render();
     }
@@ -115,7 +115,7 @@
     }
 
     return {
-      handleXoxState: handleXoxState,
+      handleBackgammonState: handleBackgammonState,
       handleTeamTetrisState: handleTeamTetrisState,
       handleFateKnotsState: handleFateKnotsState,
       handleCommandResult: handleCommandResult,

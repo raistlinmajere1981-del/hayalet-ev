@@ -176,31 +176,31 @@
 
       if (draft.stage === "positioning") {
         const moveLeftBtn = createButton(
-          "xox-button xox-button--ghost tt-prep-btn",
+          "backgammon-button backgammon-button--ghost tt-prep-btn",
           text(["teamTetris", "stage", "moveLeft"])
         );
         moveLeftBtn.addEventListener("click", onTeamTetrisMoveLeft);
 
         const rotateCcwBtn = createButton(
-          "xox-button xox-button--ghost tt-prep-btn",
+          "backgammon-button backgammon-button--ghost tt-prep-btn",
           text(["teamTetris", "stage", "rotateCcw"])
         );
         rotateCcwBtn.addEventListener("click", onTeamTetrisRotateCcw);
 
         const rotateCwBtn = createButton(
-          "xox-button xox-button--ghost tt-prep-btn",
+          "backgammon-button backgammon-button--ghost tt-prep-btn",
           text(["teamTetris", "stage", "rotateCw"])
         );
         rotateCwBtn.addEventListener("click", onTeamTetrisRotate);
 
         const moveRightBtn = createButton(
-          "xox-button xox-button--ghost tt-prep-btn",
+          "backgammon-button backgammon-button--ghost tt-prep-btn",
           text(["teamTetris", "stage", "moveRight"])
         );
         moveRightBtn.addEventListener("click", onTeamTetrisMoveRight);
 
         const confirmBtn = createButton(
-          "xox-button xox-button--primary tt-prep-btn--confirm",
+          "backgammon-button backgammon-button--primary tt-prep-btn--confirm",
           text(["teamTetris", "stage", "confirmPosition"])
         );
         confirmBtn.addEventListener("click", onTeamTetrisConfirmPosition);
@@ -209,7 +209,7 @@
         prepArea.append(stageLabel, pieceCard, controlsRow, confirmBtn);
       } else {
         const backBtn = createButton(
-          "xox-button xox-button--ghost tt-prep-btn",
+          "backgammon-button backgammon-button--ghost tt-prep-btn",
           text(["teamTetris", "stage", "backToPosition"])
         );
         backBtn.addEventListener("click", onTeamTetrisBackToPosition);
@@ -260,7 +260,7 @@
         }
 
         const submitBtn = createButton(
-          "xox-button xox-button--primary tt-prep-btn--confirm",
+          "backgammon-button backgammon-button--primary tt-prep-btn--confirm",
           text(["teamTetris", "controls", "submitMove"])
         );
         const canSubmitFromStage =
@@ -435,14 +435,14 @@
 
       const actions = createElement("div", "tt-actions", "");
       const startButton = createButton(
-        "xox-button xox-button--primary",
+        "backgammon-button backgammon-button--primary",
         text(["teamTetris", "controls", "start"])
       );
       startButton.disabled = !canStart;
       startButton.addEventListener("click", onTeamTetrisStart);
 
       const resetButton = createButton(
-        "xox-button xox-button--ghost",
+        "backgammon-button backgammon-button--ghost",
         text(["teamTetris", "controls", "reset"])
       );
       resetButton.addEventListener("click", onTeamTetrisReset);
@@ -508,7 +508,7 @@
       const prepArea = renderPrepArea(pendingTurn, draft);
 
       const clearButton = createButton(
-        "xox-button xox-button--ghost",
+        "backgammon-button backgammon-button--ghost",
         text(["teamTetris", "controls", "clearPath"])
       );
       clearButton.disabled = pendingTurn === null;

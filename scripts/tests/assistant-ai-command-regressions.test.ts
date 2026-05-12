@@ -19,17 +19,17 @@ const room: InstalledRoomRecord = {
   manifestPath: "/workspace/rooms/.build/game-room/runtime/manifest.json",
   runtimeEntryPath: "/workspace/rooms/.build/game-room/runtime/ui/index.html",
   hostEntryPath: "/workspace/rooms/.build/game-room/runtime/host/index.js",
-  defaultFeatureId: "xox",
-  features: [{ id: "xox", name: "XOX" }],
+  defaultFeatureId: "backgammon",
+  features: [{ id: "backgammon", name: "Tavla" }],
   commandSpecs: [
     {
-      name: "GameRoomXoxAiMove",
+      name: "GameRoomBackgammonAiMove",
       description: "Apply AI move from slot response",
       scope: "ai-slots",
       exposure: "internal",
     },
     {
-      name: "GameRoomXoxRemoteMove",
+      name: "GameRoomBackgammonRemoteMove",
       description: "Apply remote move from US1 response",
       scope: "us1",
       exposure: "internal",
@@ -165,11 +165,11 @@ test("server command catalog includes internal room commands for slot panels", (
   const us1Catalog = categoryApi.getCatalog?.("us1") ?? [];
 
   assert.equal(
-    aiCatalog.some((item) => item.name === "GameRoomXoxAiMove"),
+    aiCatalog.some((item) => item.name === "GameRoomBackgammonAiMove"),
     true
   );
   assert.equal(
-    us1Catalog.some((item) => item.name === "GameRoomXoxRemoteMove"),
+    us1Catalog.some((item) => item.name === "GameRoomBackgammonRemoteMove"),
     true
   );
 });
@@ -235,7 +235,7 @@ test("server commands block disabled room commands routed through SlotBridge", a
     SettingsManager.getSnapshot = () =>
       ({
         slots: {
-          ai1: { disabledCommands: ["GameRoomXoxAiMove"] },
+          ai1: { disabledCommands: ["GameRoomBackgammonAiMove"] },
           ai2: { disabledCommands: [] },
         },
         assistantSlot: { disabledCommands: [] },
@@ -243,7 +243,7 @@ test("server commands block disabled room commands routed through SlotBridge", a
 
     const disabled = (await serverCommands.run("SlotBridge", {
       provider: "ai1",
-      args: '{"action":"room.command","payload":{"commandName":"GameRoomXoxAiMove","cell":4}}',
+      args: '{"action":"room.command","payload":{"commandName":"GameRoomBackgammonAiMove","cell":4}}',
     })) as { success?: boolean; message?: string };
 
     assert.equal(disabled.success, false);
@@ -265,13 +265,13 @@ test("server commands block disabled us1 room commands routed through SlotBridge
           ai1: { disabledCommands: [] },
           ai2: { disabledCommands: [] },
         },
-        us1Slot: { selectedRemoteUserId: null, disabledCommands: ["GameRoomXoxRemoteMove"] },
+        us1Slot: { selectedRemoteUserId: null, disabledCommands: ["GameRoomBackgammonRemoteMove"] },
         assistantSlot: { disabledCommands: [] },
       }) as never;
 
     const disabled = (await serverCommands.run("SlotBridge", {
       provider: "us1",
-      args: '{"action":"room.command","payload":{"commandName":"GameRoomXoxRemoteMove","cell":4}}',
+      args: '{"action":"room.command","payload":{"commandName":"GameRoomBackgammonRemoteMove","cell":4}}',
     })) as { success?: boolean; message?: string };
 
     assert.equal(disabled.success, false);

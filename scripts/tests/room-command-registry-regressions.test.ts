@@ -12,25 +12,25 @@ const room: InstalledRoomRecord = {
   manifestPath: "/workspace/rooms/.build/game-room/runtime/manifest.json",
   runtimeEntryPath: "/workspace/rooms/.build/game-room/runtime/ui/index.html",
   hostEntryPath: "/workspace/rooms/.build/game-room/runtime/host/index.js",
-  defaultFeatureId: "xox",
+  defaultFeatureId: "backgammon",
   features: [
-    { id: "xox", name: "XOX" },
+    { id: "backgammon", name: "Tavla" },
     { id: "team-tetris", name: "Team Tetris" },
     { id: "fate-knots", name: "Fate Knots" },
   ],
   commandSpecs: [
     {
-      name: "GameRoomXoxUserMove",
+      name: "GameRoomBackgammonUserMove",
       description: "Apply the user move from room UI",
       scope: "room-ui",
     },
     {
-      name: "GameRoomXoxAiMove",
+      name: "GameRoomBackgammonAiMove",
       description: "Apply AI move from slot response",
       scope: "ai-slots",
     },
     {
-      name: "GameRoomXoxRemoteMove",
+      name: "GameRoomBackgammonRemoteMove",
       description: "Apply remote user move from US1",
       scope: "us1",
     },
@@ -109,21 +109,21 @@ test("RoomCommandRegistry syncs manifest command metadata into catalog", () => {
   RoomCommandRegistry.reset();
   RoomCommandRegistry.syncInstalledRooms([room]);
 
-  assert.equal(RoomCommandRegistry.has("GameRoomXoxUserMove"), true);
-  assert.equal(RoomCommandRegistry.getMetadata("GameRoomXoxUserMove")?.roomId, "game-room");
+  assert.equal(RoomCommandRegistry.has("GameRoomBackgammonUserMove"), true);
+  assert.equal(RoomCommandRegistry.getMetadata("GameRoomBackgammonUserMove")?.roomId, "game-room");
   assert.deepEqual(RoomCommandRegistry.listCommands("ai1-ai2"), [
+    "GameRoomBackgammonAiMove",
+    "GameRoomBackgammonUserMove",
     "GameRoomFateKnotsAiChoice",
     "GameRoomFateKnotsStart",
     "GameRoomInternalBridgeOnly",
     "GameRoomTeamTetrisAiMove",
     "GameRoomTeamTetrisStart",
-    "GameRoomXoxAiMove",
-    "GameRoomXoxUserMove",
   ]);
   assert.deepEqual(RoomCommandRegistry.listCommands("us1"), [
+    "GameRoomBackgammonRemoteMove",
     "GameRoomFateKnotsRemoteChoice",
     "GameRoomTeamTetrisRemoteMove",
-    "GameRoomXoxRemoteMove",
   ]);
 });
 
@@ -155,11 +155,11 @@ test("RoomCommandRegistry runs room-ui commands with structured payloads", async
 
   RoomCommandRegistry.registerHandler(
     "game-room",
-    "GameRoomXoxUserMove",
+    "GameRoomBackgammonUserMove",
     async (payload) => payload.roomArgs
   );
 
-  const result = await RoomCommandRegistry.run("GameRoomXoxUserMove", {
+  const result = await RoomCommandRegistry.run("GameRoomBackgammonUserMove", {
     provider: "room-ui",
     roomPayload: { cell: 4, symbol: "X" },
   });
@@ -210,8 +210,8 @@ test("RoomCommandRegistry matches room-local transcript voice commands", () => {
   RoomCommandRegistry.syncInstalledRooms([room]);
 
   RoomCommandRegistry.registerVoiceCommands("game-room", {
-    GameRoomXoxUserMove: ["mark center", "mark center", " "],
-    GameRoomXoxAiMove: ["ai move"],
+    GameRoomBackgammonUserMove: ["mark center", "mark center", " "],
+    GameRoomBackgammonAiMove: ["ai move"],
     MissingRoomCommand: ["missing"],
   });
 
@@ -219,7 +219,7 @@ test("RoomCommandRegistry matches room-local transcript voice commands", () => {
   RoomCommandRegistry.setVoiceCommandsEnabled("game-room", true);
 
   assert.deepEqual(RoomCommandRegistry.matchVoiceCommand("game-room", "mark center"), {
-    commandName: "GameRoomXoxUserMove",
+    commandName: "GameRoomBackgammonUserMove",
     matchedPhrase: "mark center",
   });
   assert.equal(RoomCommandRegistry.matchVoiceCommand("game-room", "please mark center now"), null);
@@ -233,7 +233,7 @@ test("RoomCommandRegistry parses AI args and enforces scope rules", async () => 
 
   RoomCommandRegistry.registerHandler(
     "game-room",
-    "GameRoomXoxAiMove",
+    "GameRoomBackgammonAiMove",
     async (payload) => payload.roomArgs
   );
   RoomCommandRegistry.registerHandler(
@@ -243,20 +243,20 @@ test("RoomCommandRegistry parses AI args and enforces scope rules", async () => 
   );
   RoomCommandRegistry.registerHandler(
     "game-room",
-    "GameRoomXoxUserMove",
+    "GameRoomBackgammonUserMove",
     async (payload) => payload.roomArgs
   );
   RoomCommandRegistry.registerHandler(
     "game-room",
-    "GameRoomXoxRemoteMove",
+    "GameRoomBackgammonRemoteMove",
     async (payload) => payload.roomArgs
   );
 
-  const allowed = await RoomCommandRegistry.run("GameRoomXoxAiMove", {
+  const allowed = await RoomCommandRegistry.run("GameRoomBackgammonAiMove", {
     provider: "ai1",
     args: '{"cell":8,"symbol":"O"}',
   });
-  const blocked = (await RoomCommandRegistry.run("GameRoomXoxUserMove", {
+  const blocked = (await RoomCommandRegistry.run("GameRoomBackgammonUserMove", {
     provider: "ai1",
     args: '{"cell":2}',
   })) as { success?: boolean; message?: string };
@@ -264,11 +264,11 @@ test("RoomCommandRegistry parses AI args and enforces scope rules", async () => 
     provider: "ai1",
     args: '{"sessionId":"fk-1","stepId":"gate-arrival","choiceId":"follow-lantern"}',
   });
-  const us1Allowed = await RoomCommandRegistry.run("GameRoomXoxRemoteMove", {
+  const us1Allowed = await RoomCommandRegistry.run("GameRoomBackgammonRemoteMove", {
     provider: "us1",
     args: '{"inviteId":"invite-1","cell":4}',
   });
-  const us1Blocked = (await RoomCommandRegistry.run("GameRoomXoxUserMove", {
+  const us1Blocked = (await RoomCommandRegistry.run("GameRoomBackgammonUserMove", {
     provider: "us1",
     args: '{"cell":2}',
   })) as { success?: boolean; message?: string };

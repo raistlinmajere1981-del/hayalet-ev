@@ -318,10 +318,10 @@ interface GameRoomUiFeatureContractLike {
   getFeatureRecords?(): GameRoomFeatureRecord[];
 }
 
-interface GameRoomXoxUiModule {
+interface GameRoomBackgammonUiModule {
   createGameState(): unknown;
   renderBootstrap(root: HTMLElement): void;
-  renderXox(root: HTMLElement): void;
+  renderBackgammon(root: HTMLElement): void;
   sanitizeGameState?(candidate: unknown): unknown;
   syncPreferencesFromGame?(): void;
 }
@@ -336,7 +336,7 @@ interface GameRoomTeamTetrisUiModule {
   syncTeamTetrisDraftFromState(): void;
 }
 
-interface GameRoomXoxUiModuleDeps extends GameRoomUnknownRecord {
+interface GameRoomBackgammonUiModuleDeps extends GameRoomUnknownRecord {
   getState: GameRoomUiGetState;
   roomId: string;
   featureId: string;
@@ -1226,7 +1226,7 @@ interface GameRoomUiBootstrapRuntime {
     current: GameRoomUiState | null;
   };
   getState: GameRoomUiGetState;
-  xoxUi: GameRoomXoxUiModule;
+  backgammonUi: GameRoomBackgammonUiModule;
   teamTetrisUi: GameRoomTeamTetrisUiModule;
   fateKnotsUi: GameRoomFateKnotsUiModule;
   bootstrapText(key: string): string;
@@ -1237,7 +1237,7 @@ interface GameRoomUiBootstrapRuntime {
 }
 
 interface GameRoomUiStateMessageRuntime {
-  handleXoxState(message: unknown): void;
+  handleBackgammonState(message: unknown): void;
   handleTeamTetrisState(message: unknown): void;
   handleFateKnotsState(message: unknown): void;
   handleCommandResult(message: unknown): void;
@@ -1267,7 +1267,7 @@ interface GameRoomUiStateMessageRuntimeRegistry {
     stateRef: {
       current: GameRoomUiState | null;
     };
-    xoxUi: GameRoomXoxUiModule;
+    backgammonUi: GameRoomBackgammonUiModule;
     teamTetrisUi: GameRoomTeamTetrisUiModule;
     fateKnotsUi: GameRoomFateKnotsUiModule;
     render: () => void;
@@ -1287,7 +1287,7 @@ interface GameRoomUiScrollRuntimeRegistry {
 }
 
 interface GameRoomUiFactoriesRegistry {
-  createXoxUiModule?: (deps: GameRoomXoxUiModuleDeps) => GameRoomXoxUiModule;
+  createBackgammonUiModule?: (deps: GameRoomBackgammonUiModuleDeps) => GameRoomBackgammonUiModule;
   createTeamTetrisUiStateShapeRuntime?: () => GameRoomTeamTetrisUiStateShapeRuntime;
   createTeamTetrisUiStateViewRuntime?: (
     deps: GameRoomTeamTetrisUiStateViewRuntimeDeps

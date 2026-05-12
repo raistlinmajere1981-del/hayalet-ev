@@ -144,7 +144,7 @@ test.afterEach(async () => {
 
 function buildHostContext(
   options: {
-    activeFeatureId?: "xox" | "team-tetris" | "fate-knots";
+    activeFeatureId?: "backgammon" | "team-tetris" | "fate-knots";
     ai1Ready?: boolean;
     ai2Ready?: boolean;
     us1Ready?: boolean;
@@ -152,7 +152,7 @@ function buildHostContext(
 ) {
   const activeFeatureId = options.activeFeatureId ?? "fate-knots";
   const featureNames = {
-    xox: "XOX",
+    backgammon: "Tavla",
     "team-tetris": "Team Tetris",
     "fate-knots": "Fate Knots",
   } as const;
@@ -192,12 +192,12 @@ function buildHostContext(
     locale: "en",
     room: {
       id: "game-room",
-      defaultFeatureId: "xox",
+      defaultFeatureId: "backgammon",
     },
     features: [
       {
-        id: "xox",
-        name: "XOX",
+        id: "backgammon",
+        name: "Tavla",
       },
       {
         id: "team-tetris",
@@ -226,7 +226,9 @@ function buildHostContext(
 }
 
 async function startRunIntoScenario(runtime: HostRuntime) {
-  await runtime.emitHostContext(buildHostContext({ ai1Ready: true, ai2Ready: false, us1Ready: false }));
+  await runtime.emitHostContext(
+    buildHostContext({ ai1Ready: true, ai2Ready: false, us1Ready: false })
+  );
   const startResult = await runtime.exported.commands.GameRoomFateKnotsStart({
     provider: "room-ui",
     roomArgs: {},
@@ -275,9 +277,11 @@ async function advanceRunToCombat(runtime: HostRuntime) {
   state = runtime.latestFateKnotsState();
   assert.equal(state?.phase, "scenario");
   const encounterChoice =
-    (state?.currentStep?.choices as Array<Record<string, unknown>> | undefined)?.find(function (choice) {
-      return typeof choice?.encounterId === "string" && choice.encounterId !== "";
-    }) || (state?.currentStep?.choices?.[0] as Record<string, unknown> | undefined);
+    (state?.currentStep?.choices as Array<Record<string, unknown>> | undefined)?.find(
+      function (choice) {
+        return typeof choice?.encounterId === "string" && choice.encounterId !== "";
+      }
+    ) || (state?.currentStep?.choices?.[0] as Record<string, unknown> | undefined);
   const secondStepId = String(state?.currentStep?.id ?? "");
   const secondChoiceId = String(encounterChoice?.id ?? "");
 
@@ -298,7 +302,9 @@ async function advanceRunToCombat(runtime: HostRuntime) {
 test("game-room host emits Fate Knots bootstrap state from active feature context", async () => {
   const runtime = createRoomHostRuntime();
 
-  await runtime.emitHostContext(buildHostContext({ ai1Ready: true, ai2Ready: false, us1Ready: false }));
+  await runtime.emitHostContext(
+    buildHostContext({ ai1Ready: true, ai2Ready: false, us1Ready: false })
+  );
 
   const state = runtime.latestFateKnotsState();
   assert.ok(state);
@@ -311,7 +317,9 @@ test("game-room host emits Fate Knots bootstrap state from active feature contex
 test("game-room host blocks Fate Knots start until at least one AI companion is ready", async () => {
   const runtime = createRoomHostRuntime();
 
-  await runtime.emitHostContext(buildHostContext({ ai1Ready: false, ai2Ready: false, us1Ready: false }));
+  await runtime.emitHostContext(
+    buildHostContext({ ai1Ready: false, ai2Ready: false, us1Ready: false })
+  );
   const result = await runtime.exported.commands.GameRoomFateKnotsStart({
     provider: "room-ui",
     roomArgs: {},
@@ -324,7 +332,9 @@ test("game-room host blocks Fate Knots start until at least one AI companion is 
 test("game-room host starts Fate Knots with the V2 roster and dispatches the first AI and US1 decision prompts", async () => {
   const runtime = createRoomHostRuntime();
 
-  await runtime.emitHostContext(buildHostContext({ ai1Ready: true, ai2Ready: false, us1Ready: true }));
+  await runtime.emitHostContext(
+    buildHostContext({ ai1Ready: true, ai2Ready: false, us1Ready: true })
+  );
   const startResult = await runtime.exported.commands.GameRoomFateKnotsStart({
     provider: "room-ui",
     roomArgs: {},
@@ -370,7 +380,9 @@ test("game-room host starts Fate Knots with the V2 roster and dispatches the fir
 test("game-room host resets Fate Knots state when the active feature switches away", async () => {
   const runtime = createRoomHostRuntime();
 
-  await runtime.emitHostContext(buildHostContext({ ai1Ready: true, ai2Ready: false, us1Ready: false }));
+  await runtime.emitHostContext(
+    buildHostContext({ ai1Ready: true, ai2Ready: false, us1Ready: false })
+  );
   const startResult = await runtime.exported.commands.GameRoomFateKnotsStart({
     provider: "room-ui",
     roomArgs: {},
@@ -379,7 +391,9 @@ test("game-room host resets Fate Knots state when the active feature switches aw
   assert.equal(startResult?.success, true);
   assert.equal(runtime.state.get("fate-knots-game")?.active, true);
 
-  await runtime.emitHostContext(buildHostContext({ activeFeatureId: "xox", ai1Ready: true }));
+  await runtime.emitHostContext(
+    buildHostContext({ activeFeatureId: "backgammon", ai1Ready: true })
+  );
 
   assert.equal(runtime.state.get("fate-knots-game")?.active, false);
   assert.equal(runtime.state.get("fate-knots-game")?.statusKey, "activeFeatureReset");
@@ -436,7 +450,9 @@ test("game-room host enters decision-timeout desync and sync re-dispatches the p
   storedState.waiting.pendingSeatIds = ["ai1"];
   runtime.state.set("fate-knots-game", storedState);
 
-  await runtime.emitHostContext(buildHostContext({ ai1Ready: true, ai2Ready: false, us1Ready: false }));
+  await runtime.emitHostContext(
+    buildHostContext({ ai1Ready: true, ai2Ready: false, us1Ready: false })
+  );
 
   let nextState = runtime.latestFateKnotsState();
   assert.equal(nextState?.waiting?.mode, "desync");
@@ -546,7 +562,9 @@ test("game-room host stores run history after a combat victory finalizes the sli
   }
 
   assert.equal(currentState?.phase, "result");
-  const history = runtime.state.get("fate-knots-history") as Array<Record<string, unknown>> | undefined;
+  const history = runtime.state.get("fate-knots-history") as
+    | Array<Record<string, unknown>>
+    | undefined;
   assert.equal(Array.isArray(history), true);
   assert.equal(history?.[0]?.sessionId, currentState?.sessionId);
 });

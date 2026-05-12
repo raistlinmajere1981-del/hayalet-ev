@@ -42,7 +42,7 @@ export interface BackgammonLegalMove {
   pass?: boolean;
 }
 
-export interface XoxMatchHistoryEntry {
+export interface BackgammonMatchHistoryEntry {
   id: string;
   finishedAt: number;
   target: string;
@@ -55,7 +55,7 @@ export interface XoxMatchHistoryEntry {
   boardHash: string;
 }
 
-export interface XoxGameState {
+export interface BackgammonGameState {
   locale: "tr" | "en";
   target: "ai1" | "ai2" | "us1";
   starter: "ai" | "user";
@@ -71,8 +71,6 @@ export interface XoxGameState {
   statusKey: string;
   protocolDelivered: boolean;
   blockedReason: string;
-  userSymbol: "X" | "O";
-  aiSymbol: "X" | "O";
   protocolPreface: string;
   matchId: string | null;
   inviteId: string | null;
@@ -96,7 +94,6 @@ export const TERMINAL_RESULTS = new Set(["user-win", "ai-win", "blocked"]);
 export const DEFAULT_TARGET = "ai1";
 export const DEFAULT_STARTER = "user";
 export const US1_SYNC_INTERVAL_MS = 5000;
-export const WIN_LINES: number[][] = [];
 
 export const STATUS_COPY = {
   idle: {
@@ -242,12 +239,6 @@ export function sanitizeTarget(value: string): "ai1" | "ai2" | "us1" {
 
 export function sanitizeStarter(value: string): "ai" | "user" {
   return value === "ai" ? "ai" : DEFAULT_STARTER;
-}
-
-export function getSymbols(starter: string): { userSymbol: "X" | "O"; aiSymbol: "X" | "O" } {
-  return sanitizeStarter(starter) === "ai"
-    ? { userSymbol: "O", aiSymbol: "X" }
-    : { userSymbol: "X", aiSymbol: "O" };
 }
 
 export function cloneBoard(board: unknown): BackgammonPoint[] {
@@ -415,12 +406,6 @@ export function buildBoardAscii(board: BackgammonPoint[]): string {
 function formatPointAscii(point: BackgammonPoint): string {
   const owner = point.owner === "user" ? "U" : point.owner === "ai" ? "A" : "-";
   return `${String(point.point).padStart(2, "0")}:${owner}${point.count}`;
-}
-
-export function getAvailableCells(board: BackgammonPoint[]): number[] {
-  return normalizeBoard(board)
-    .filter((point) => point.owner === "" || point.count < 2)
-    .map((point) => point.point);
 }
 
 export function rollDice(): number[] {
@@ -759,7 +744,7 @@ export function getLegalMovesForTurn(
   return legalMoves;
 }
 
-export function createTurnToken(state: XoxGameState, seat: BackgammonSeat): string {
+export function createTurnToken(state: BackgammonGameState, seat: BackgammonSeat): string {
   void seat;
   return hashText(
     [state.turnIndex, state.matchId || state.inviteId || state.target, state.dice.join("-")].join(
@@ -768,7 +753,7 @@ export function createTurnToken(state: XoxGameState, seat: BackgammonSeat): stri
   );
 }
 
-export function prepareTurn(state: XoxGameState, seat: BackgammonSeat): XoxGameState {
+export function prepareTurn(state: BackgammonGameState, seat: BackgammonSeat): BackgammonGameState {
   state.awaitingMoveFrom = seat;
   state.result = "pending";
   state.statusKey = seat === "user" ? "userTurn" : "aiTurn";
@@ -782,7 +767,7 @@ export function prepareTurn(state: XoxGameState, seat: BackgammonSeat): XoxGameS
 }
 
 export function applyLegalMove(
-  state: XoxGameState,
+  state: BackgammonGameState,
   seat: BackgammonSeat,
   legalMoveId: string
 ): boolean {
@@ -799,7 +784,7 @@ export function applyLegalMove(
   return true;
 }
 
-function computeScorePoints(state: XoxGameState, winner: BackgammonSeat): number {
+function computeScorePoints(state: BackgammonGameState, winner: BackgammonSeat): number {
   const loser = opponentOf(winner);
   if (state.off[loser] > 0) {
     return 1;
@@ -814,7 +799,10 @@ function computeScorePoints(state: XoxGameState, winner: BackgammonSeat): number
   return 2;
 }
 
-export function applyOutcomeForSeat(state: XoxGameState, seat: BackgammonSeat): XoxGameState {
+export function applyOutcomeForSeat(
+  state: BackgammonGameState,
+  seat: BackgammonSeat
+): BackgammonGameState {
   if (state.off[seat] >= CHECKERS_PER_SEAT) {
     state.active = false;
     state.awaitingMoveFrom = null;
@@ -829,7 +817,7 @@ export function applyOutcomeForSeat(state: XoxGameState, seat: BackgammonSeat): 
   return state;
 }
 
-export function getOutcomeForBoard(_board: BackgammonPoint[], state: XoxGameState) {
+export function getOutcomeForBoard(_board: BackgammonPoint[], state: BackgammonGameState) {
   if (state.off.user >= CHECKERS_PER_SEAT) {
     return {
       finished: true,
@@ -849,11 +837,14 @@ export function getOutcomeForBoard(_board: BackgammonPoint[], state: XoxGameStat
   return { finished: false };
 }
 
-export function createInitialState(locale: unknown, target: string, starter: string): XoxGameState {
+export function createInitialState(
+  locale: unknown,
+  target: string,
+  starter: string
+): BackgammonGameState {
   const normalizedLocale = normalizeLocale(locale);
   const normalizedTarget = sanitizeTarget(target);
   const normalizedStarter = sanitizeStarter(starter);
-  const symbols = getSymbols(normalizedStarter);
 
   return {
     locale: normalizedLocale,
@@ -871,8 +862,6 @@ export function createInitialState(locale: unknown, target: string, starter: str
     statusKey: "idle",
     protocolDelivered: false,
     blockedReason: "",
-    userSymbol: symbols.userSymbol,
-    aiSymbol: symbols.aiSymbol,
     protocolPreface: "",
     matchId: null,
     inviteId: null,
@@ -887,7 +876,7 @@ export function createInitialState(locale: unknown, target: string, starter: str
   };
 }
 
-export function normalizeState(candidate: unknown, localeFallback: unknown): XoxGameState {
+export function normalizeState(candidate: unknown, localeFallback: unknown): BackgammonGameState {
   const source = isRecord(candidate) ? candidate : {};
   const state = createInitialState(
     source["locale"] || localeFallback,
@@ -958,7 +947,7 @@ export function normalizeState(candidate: unknown, localeFallback: unknown): Xox
   return state;
 }
 
-export function normalizeMatchHistoryEntry(candidate: unknown): XoxMatchHistoryEntry | null {
+export function normalizeMatchHistoryEntry(candidate: unknown): BackgammonMatchHistoryEntry | null {
   if (isRecord(candidate) === false) {
     return null;
   }
@@ -992,11 +981,11 @@ export function normalizeMatchHistoryEntry(candidate: unknown): XoxMatchHistoryE
   };
 }
 
-export function normalizeMatchHistory(value: unknown): XoxMatchHistoryEntry[] {
+export function normalizeMatchHistory(value: unknown): BackgammonMatchHistoryEntry[] {
   if (Array.isArray(value) === false) {
     return [];
   }
-  const entries: XoxMatchHistoryEntry[] = [];
+  const entries: BackgammonMatchHistoryEntry[] = [];
   for (let index = 0; index < value.length; index += 1) {
     const entry = normalizeMatchHistoryEntry(value[index]);
     if (entry !== null) {
