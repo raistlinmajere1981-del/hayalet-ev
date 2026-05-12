@@ -439,12 +439,13 @@ Memory akışı tamamen MCP üzerinden yürür.
 
 ## 🔗 Detaylı Dokümantasyon
 
-| Dosya                        | İçerik                      |
-| ---------------------------- | --------------------------- |
-| `.rovo/00-ONBOARDING.md`     | Kurallar, onay protokolü    |
-| `.rovo/01-CORE-PROTOCOL.md`  | ROVO Persona + Ultrathink   |
-| `.rovo/02-MCP-ESSENTIALS.md` | Temel tool kullanım rehberi |
-| `.rovo/03-ARCHITECTURE.md`   | Proje mimarisi              |
+| Dosya                         | İçerik                      |
+| ----------------------------- | --------------------------- |
+| `.rovo/00-ONBOARDING.md`      | Kurallar, onay protokolü    |
+| `.rovo/01-CORE-PROTOCOL.md`   | ROVO Persona + Ultrathink   |
+| `.rovo/02-MCP-ESSENTIALS.md`  | Temel tool kullanım rehberi |
+| `.rovo/03-ARCHITECTURE.md`    | Proje mimarisi              |
+| `.rovo/04-ASSISTANT-INTEL.md` | Assistant Intel komutları   |
 
 ### Assistant Intel ve Kalan Metadata
 

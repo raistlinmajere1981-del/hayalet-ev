@@ -44,7 +44,7 @@ export function bootstrapGameRoomHostState(
     deps.createInitialBackgammonState(deps.readLocale(api), deps.defaultTarget, deps.defaultStarter)
   );
   deps.saveTeamTetrisState(api, deps.createInitialTeamTetrisState(deps.readLocale(api)));
-  deps.resetFateKnotsState(api, "idle");
+  deps.resetFateKnotsState(api, "blank-slate");
   deps.ensureUs1SyncLoop(api);
 }
 

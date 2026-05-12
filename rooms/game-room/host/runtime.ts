@@ -40,15 +40,7 @@ import {
 } from "../main-functions/backgammon/host/runtime.js";
 import {
   dispatchPendingWork as dispatchPendingFateKnotsWork,
-  handleCharacterSelect as fateKnotsHandleCharacterSelect,
-  handleChoice as fateKnotsHandleChoice,
-  handleCombatAction as fateKnotsHandleCombatAction,
-  handleDmPacket as fateKnotsHandleDmPacket,
-  handleEnd as fateKnotsHandleEnd,
-  handleNpcBanter as fateKnotsHandleNpcBanter,
-  handleReady as fateKnotsHandleReady,
   handleReset as fateKnotsHandleReset,
-  handleSync as fateKnotsHandleSync,
   handleStart as fateKnotsHandleStart,
 } from "../main-functions/fate-knots/host/runtime.js";
 import { resetFateKnotsState } from "../main-functions/fate-knots/host/state.js";
@@ -148,16 +140,8 @@ export default function createGameRoomHostRuntime() {
       return {
         commands: createGameRoomCommandRegistry(api, {
           fateKnotsCommandNames: FATE_KNOTS_COMMAND_NAMES,
-          handleFateKnotsCharacterSelect: asCommandHandler(fateKnotsHandleCharacterSelect),
-          handleFateKnotsChoice: asCommandHandler(fateKnotsHandleChoice),
-          handleFateKnotsCombatAction: asCommandHandler(fateKnotsHandleCombatAction),
-          handleFateKnotsDmPacket: asCommandHandler(fateKnotsHandleDmPacket),
-          handleFateKnotsEnd: asNoPayloadHandler(fateKnotsHandleEnd),
-          handleFateKnotsNpcBanter: asCommandHandler(fateKnotsHandleNpcBanter),
-          handleFateKnotsReady: asNoPayloadHandler(fateKnotsHandleReady),
           handleFateKnotsReset: asNoPayloadHandler(fateKnotsHandleReset),
           handleFateKnotsStart: asCommandHandler(fateKnotsHandleStart),
-          handleFateKnotsSync: asCommandHandler(fateKnotsHandleSync),
           handleTeamTetrisMove: asCommandHandler(handleTeamTetrisMove),
           handleTeamTetrisReset: asNoPayloadHandler(handleTeamTetrisReset),
           handleTeamTetrisStart: asCommandHandler(handleTeamTetrisStart),

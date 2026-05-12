@@ -15,14 +15,6 @@ interface GameRoomCommandRegistryDependencies {
   fateKnotsCommandNames: Record<string, string>;
   handleFateKnotsStart: CommandHandler;
   handleFateKnotsReset: (api: unknown) => unknown;
-  handleFateKnotsReady: (api: unknown) => unknown;
-  handleFateKnotsCharacterSelect: CommandHandler;
-  handleFateKnotsChoice: CommandHandler;
-  handleFateKnotsCombatAction: CommandHandler;
-  handleFateKnotsSync: CommandHandler;
-  handleFateKnotsEnd: (api: unknown) => unknown;
-  handleFateKnotsDmPacket: CommandHandler;
-  handleFateKnotsNpcBanter: CommandHandler;
 }
 
 export function createGameRoomCommandRegistry(
@@ -41,21 +33,6 @@ export function createGameRoomCommandRegistry(
   const fateKnotsCommands = {
     start: deps.fateKnotsCommandNames["start"] || "GameRoomFateKnotsStart",
     reset: deps.fateKnotsCommandNames["reset"] || "GameRoomFateKnotsReset",
-    ready: deps.fateKnotsCommandNames["ready"] || "GameRoomFateKnotsReady",
-    characterSelect:
-      deps.fateKnotsCommandNames["characterSelect"] || "GameRoomFateKnotsCharacterSelect",
-    choice: deps.fateKnotsCommandNames["choice"] || "GameRoomFateKnotsChoice",
-    combatAction: deps.fateKnotsCommandNames["combatAction"] || "GameRoomFateKnotsCombatAction",
-    sync: deps.fateKnotsCommandNames["sync"] || "GameRoomFateKnotsSync",
-    end: deps.fateKnotsCommandNames["end"] || "GameRoomFateKnotsEnd",
-    aiChoice: deps.fateKnotsCommandNames["aiChoice"] || "GameRoomFateKnotsAiChoice",
-    aiCombatAction:
-      deps.fateKnotsCommandNames["aiCombatAction"] || "GameRoomFateKnotsAiCombatAction",
-    remoteChoice: deps.fateKnotsCommandNames["remoteChoice"] || "GameRoomFateKnotsRemoteChoice",
-    remoteCombatAction:
-      deps.fateKnotsCommandNames["remoteCombatAction"] || "GameRoomFateKnotsRemoteCombatAction",
-    dmPacket: deps.fateKnotsCommandNames["dmPacket"] || "GameRoomFateKnotsDmPacket",
-    npcBanter: deps.fateKnotsCommandNames["npcBanter"] || "GameRoomFateKnotsNpcBanter",
   };
 
   const registry: Record<string, (payload?: unknown) => unknown> = {
@@ -100,42 +77,6 @@ export function createGameRoomCommandRegistry(
     },
     [fateKnotsCommands.reset]: function () {
       return deps.handleFateKnotsReset(api);
-    },
-    [fateKnotsCommands.ready]: function () {
-      return deps.handleFateKnotsReady(api);
-    },
-    [fateKnotsCommands.characterSelect]: function (payload?: unknown) {
-      return deps.handleFateKnotsCharacterSelect(api, payload || {});
-    },
-    [fateKnotsCommands.choice]: function (payload?: unknown) {
-      return deps.handleFateKnotsChoice(api, payload || {});
-    },
-    [fateKnotsCommands.combatAction]: function (payload?: unknown) {
-      return deps.handleFateKnotsCombatAction(api, payload || {});
-    },
-    [fateKnotsCommands.sync]: function (payload?: unknown) {
-      return deps.handleFateKnotsSync(api, payload || {});
-    },
-    [fateKnotsCommands.end]: function () {
-      return deps.handleFateKnotsEnd(api);
-    },
-    [fateKnotsCommands.aiChoice]: function (payload?: unknown) {
-      return deps.handleFateKnotsChoice(api, payload || {});
-    },
-    [fateKnotsCommands.aiCombatAction]: function (payload?: unknown) {
-      return deps.handleFateKnotsCombatAction(api, payload || {});
-    },
-    [fateKnotsCommands.remoteChoice]: function (payload?: unknown) {
-      return deps.handleFateKnotsChoice(api, payload || {});
-    },
-    [fateKnotsCommands.remoteCombatAction]: function (payload?: unknown) {
-      return deps.handleFateKnotsCombatAction(api, payload || {});
-    },
-    [fateKnotsCommands.dmPacket]: function (payload?: unknown) {
-      return deps.handleFateKnotsDmPacket(api, payload || {});
-    },
-    [fateKnotsCommands.npcBanter]: function (payload?: unknown) {
-      return deps.handleFateKnotsNpcBanter(api, payload || {});
     },
   };
 

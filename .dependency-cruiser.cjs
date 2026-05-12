@@ -36,6 +36,16 @@ module.exports = {
           "ghost-agent/src/shared/", // shared types for ghost-agent (imported via @shared alias, not resolvable by depcruise)
           "rooms/\\.build/", // generated workspace room runtime artifacts
           "rooms/[^/]+/shared/vendor/", // vendored room runtime assets loaded outside the module graph
+          "rooms/game-room/ui/(context-runtime|game-room-ui-(bootstrap|runtime|state-message-runtime))\\.ts$", // classic scripts loaded by rooms/game-room/ui/index.html
+          "rooms/game-room/shared/ui/(feature-contract|scroll-runtime)\\.ts$", // classic scripts loaded by rooms/game-room/ui/index.html
+          "rooms/game-room/main-functions/backgammon/ui/(backgammon-stage-runtime|module|render-runtime|state-runtime)\\.ts$", // classic scripts loaded by rooms/game-room/ui/index.html
+          "rooms/game-room/main-functions/team-tetris/ui/(draft-runtime|module|module-card-runtime|module-shell-runtime|state-runtime|state-shape-runtime|state-view-runtime)\\.ts$", // classic scripts loaded by rooms/game-room/ui/index.html
+          "rooms/game-room/main-functions/fate-knots/ui/module\\.ts$", // classic script loaded by rooms/game-room/ui/index.html
+          "rooms/repair-room/shared/ui/state\\.ts$", // room UI snapshot contract consumed through import type
+          "rooms/repair-room/host/state/repair-runtime-actions\\.ts$", // host action contract consumed through import type
+          "rooms/forge-room/host/state/forge-runtime-actions\\.ts$", // host action contract consumed through import type
+          "rooms/laboratory/ui/lab-waveform-timeline-types\\.ts$", // timeline model contract consumed through import type
+          "rooms/laboratory/runtime/lab-decision-priority\\.ts$", // regression-covered decision ordering helper
         ],
       },
       to: {},

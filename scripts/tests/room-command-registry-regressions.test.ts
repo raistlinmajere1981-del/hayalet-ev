@@ -55,14 +55,9 @@ const room: InstalledRoomRecord = {
       scope: "room-ui",
     },
     {
-      name: "GameRoomFateKnotsAiChoice",
-      description: "Apply Fate Knots AI decision vote",
-      scope: "ai-slots",
-    },
-    {
-      name: "GameRoomFateKnotsRemoteChoice",
-      description: "Apply Fate Knots remote decision vote",
-      scope: "us1",
+      name: "GameRoomFateKnotsReset",
+      description: "Reset the Fate Knots placeholder",
+      scope: "room-ui",
     },
     {
       name: "GameRoomInternalBridgeOnly",
@@ -114,7 +109,7 @@ test("RoomCommandRegistry syncs manifest command metadata into catalog", () => {
   assert.deepEqual(RoomCommandRegistry.listCommands("ai1-ai2"), [
     "GameRoomBackgammonAiMove",
     "GameRoomBackgammonUserMove",
-    "GameRoomFateKnotsAiChoice",
+    "GameRoomFateKnotsReset",
     "GameRoomFateKnotsStart",
     "GameRoomInternalBridgeOnly",
     "GameRoomTeamTetrisAiMove",
@@ -122,7 +117,6 @@ test("RoomCommandRegistry syncs manifest command metadata into catalog", () => {
   ]);
   assert.deepEqual(RoomCommandRegistry.listCommands("us1"), [
     "GameRoomBackgammonRemoteMove",
-    "GameRoomFateKnotsRemoteChoice",
     "GameRoomTeamTetrisRemoteMove",
   ]);
 });
@@ -238,11 +232,6 @@ test("RoomCommandRegistry parses AI args and enforces scope rules", async () => 
   );
   RoomCommandRegistry.registerHandler(
     "game-room",
-    "GameRoomFateKnotsAiChoice",
-    async (payload) => payload.roomArgs
-  );
-  RoomCommandRegistry.registerHandler(
-    "game-room",
     "GameRoomBackgammonUserMove",
     async (payload) => payload.roomArgs
   );
@@ -260,10 +249,6 @@ test("RoomCommandRegistry parses AI args and enforces scope rules", async () => 
     provider: "ai1",
     args: '{"cell":2}',
   })) as { success?: boolean; message?: string };
-  const fateKnotsAllowed = await RoomCommandRegistry.run("GameRoomFateKnotsAiChoice", {
-    provider: "ai1",
-    args: '{"sessionId":"fk-1","stepId":"gate-arrival","choiceId":"follow-lantern"}',
-  });
   const us1Allowed = await RoomCommandRegistry.run("GameRoomBackgammonRemoteMove", {
     provider: "us1",
     args: '{"inviteId":"invite-1","cell":4}',
@@ -276,11 +261,6 @@ test("RoomCommandRegistry parses AI args and enforces scope rules", async () => 
   assert.deepEqual(allowed, { cell: 8, symbol: "O" });
   assert.equal(blocked.success, false);
   assert.match(blocked.message ?? "", /scope|kapsam/i);
-  assert.deepEqual(fateKnotsAllowed, {
-    sessionId: "fk-1",
-    stepId: "gate-arrival",
-    choiceId: "follow-lantern",
-  });
   assert.deepEqual(us1Allowed, { inviteId: "invite-1", cell: 4 });
   assert.equal(us1Blocked.success, false);
   assert.match(us1Blocked.message ?? "", /scope|kapsam/i);

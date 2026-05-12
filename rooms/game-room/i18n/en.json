@@ -231,109 +231,17 @@
     }
   },
   "fateKnots": {
-    "heroBadge": "Ritual Table",
+    "heroBadge": "Blank Slate",
     "heroTitle": "Fate Knots",
-    "heroSubtitle": "Gather the seats, lock the opening build, and step into the first omen together.",
+    "heroSubtitle": "The previous Fate Knots slice has been cleared so the next system and UI can start fresh.",
     "controls": {
-      "start": "Start Run",
-      "reset": "Reset Run",
-      "ready": "Lock Build",
-      "sync": "Sync",
-      "end": "End Run"
-    },
-    "creation": {
-      "title": "Character Creation",
-      "subtitle": "Pick the local build, then lock it so the shared slice can begin.",
-      "avatarLabel": "Avatar",
-      "classLabel": "Class",
-      "backgroundLabel": "Background",
-      "locked": "Build locked",
-      "incomplete": "Pick an avatar, class, and background.",
-      "summaryTitle": "Build Summary"
-    },
-    "memory": {
-      "profileTitle": "Remembered Build",
-      "historyTitle": "Recent Knots",
-      "emptyHistory": "No completed runs yet.",
-      "saveSlotTitle": "Save Scaffold",
-      "saveSlotIdle": "Full resume stays deferred for now."
-    },
-    "narration": {
-      "title": "DM Thread",
-      "empty": "Ambient narration will appear here when a packet arrives."
-    },
-    "roster": {
-      "title": "Participants",
-      "locked": "Locked",
-      "unlock": "Selecting",
-      "excluded": "This seat is outside the active roster.",
-      "missing": "Seat unavailable",
-      "remoteUserLabel": "US1: {id}"
+      "start": "Activate Shell",
+      "reset": "Reset Shell"
     },
     "status": {
-      "label": "Run Status",
-      "idle": "Prepare a Fate Knots run.",
-      "pendingSeats": "Pending",
-      "deadline": "Deadline",
-      "compatibility": "Compatibility",
-      "waiting": "Waiting"
-    },
-    "coverage": {
-      "title": "Visible Asset Coverage"
-    },
-    "map": {
-      "title": "Route Map"
-    },
-    "scenario": {
-      "missing": "Scenario step is not available.",
-      "mapLabel": "Map",
-      "choicesLabel": "Common Decision",
-      "speaker": "Speaker",
-      "conflict": "Votes conflicted. Sync to re-request the AI seats.",
-      "pending": "Awaiting",
-      "logLabel": "Story Log"
-    },
-    "combat": {
-      "missing": "Combat state is not available.",
-      "enemyLabel": "Encounter",
-      "actionsLabel": "Combat Actions",
-      "waitingHint": "Waiting for the next seat to act.",
-      "roundLabel": "Round",
-      "turnLabel": "Turn",
-      "partyTitle": "Field Party"
-    },
-    "result": {
-      "label": "Result",
-      "titleFallback": "Run Complete",
-      "logLabel": "Run Log"
-    },
-    "turns": {
-      "idle": "Idle"
-    },
-    "overview": {
-      "partyTitle": "Gathered Seats"
-    },
-    "phase": {
-      "overview": "Gathering",
-      "characterCreation": "Preparation",
-      "scenario": "Omen",
-      "combat": "Clash",
-      "result": "Aftermath"
-    },
-    "seats": {
-      "user": "You",
-      "ai1": "AI1",
-      "ai2": "AI2",
-      "us1": "US1"
-    },
-    "seatState": {
-      "active": "Active",
-      "locked": "Locked",
-      "ready": "Ready",
-      "selecting": "Selecting",
-      "deferred": "Distant",
-      "reserved": "Called",
-      "standby": "In Waiting"
+      "label": "Design Status",
+      "idle": "No legacy run is loaded.",
+      "ready": "Ready for the next Fate Knots system."
     }
   }
 }

@@ -28,7 +28,6 @@ import {
 import { translate } from "../../../shared/host/text.js";
 import { loadState, pushRoomState } from "../../backgammon/host/state.js";
 import { loadFateKnotsState, pushFateKnotsState } from "../../fate-knots/host/state.js";
-import { loadFateKnotsContentRegistry } from "../../fate-knots/host/content-loader.js";
 
 type TeamTetrisRequiredSeatId = Exclude<TeamTetrisSeatId, "user">;
 type TeamTetrisSeatReadiness = Record<TeamTetrisRequiredSeatId, boolean>;
@@ -254,11 +253,7 @@ function pushActiveFeatureState(api: TeamTetrisRuntimeSyncApi): unknown {
     return pushTeamTetrisState(api, loadTeamTetrisState(api));
   }
   if (getActiveFeatureId(context) === FATE_KNOTS_FEATURE_ID) {
-    return pushFateKnotsState(
-      api,
-      loadFateKnotsState(api),
-      loadFateKnotsContentRegistry() as unknown as Parameters<typeof pushFateKnotsState>[2]
-    );
+    return pushFateKnotsState(api, loadFateKnotsState(api));
   }
   return pushRoomState(api, loadState(api));
 }

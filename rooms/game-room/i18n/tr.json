@@ -231,109 +231,17 @@
     }
   },
   "fateKnots": {
-    "heroBadge": "Rituel Masasi",
+    "heroBadge": "Temiz Zemin",
     "heroTitle": "Fate Knots",
-    "heroSubtitle": "Koltuklari topla, acilis build'ini kilitle ve ilk ugura birlikte adim at.",
+    "heroSubtitle": "Eski Fate Knots dilimi temizlendi; yeni sistem ve UI buradan sifirdan baslayabilir.",
     "controls": {
-      "start": "Kosuyu Baslat",
-      "reset": "Kosuyu Sifirla",
-      "ready": "Build'i Kilitle",
-      "sync": "Senkronize Et",
-      "end": "Kosuyu Bitir"
-    },
-    "creation": {
-      "title": "Karakter Kurulumu",
-      "subtitle": "Yerel karakteri sec, sonra ortak dilim baslasin diye build'i kilitle.",
-      "avatarLabel": "Avatar",
-      "classLabel": "Sinif",
-      "backgroundLabel": "Gecmis",
-      "locked": "Build kilitlendi",
-      "incomplete": "Bir avatar, sinif ve gecmis sec.",
-      "summaryTitle": "Build Ozeti"
-    },
-    "memory": {
-      "profileTitle": "Hatirlanan Build",
-      "historyTitle": "Son Dugumler",
-      "emptyHistory": "Henuz tamamlanan kosu yok.",
-      "saveSlotTitle": "Save Iskeleti",
-      "saveSlotIdle": "Tam devam ettirme simdilik ertelendi."
-    },
-    "narration": {
-      "title": "DM Hatti",
-      "empty": "Bir paket geldiginnde ortam anlatimi burada gorunur."
-    },
-    "roster": {
-      "title": "Katilimcilar",
-      "locked": "Kilitli",
-      "unlock": "Seciliyor",
-      "excluded": "Bu koltuk aktif roster disinda.",
-      "missing": "Koltuk kullanilamaz",
-      "remoteUserLabel": "US1: {id}"
+      "start": "Shell'i Ac",
+      "reset": "Shell'i Sifirla"
     },
     "status": {
-      "label": "Kosu Durumu",
-      "idle": "Bir Fate Knots kosusu hazirla.",
-      "pendingSeats": "Bekleyen",
-      "deadline": "Son Saat",
-      "compatibility": "Uyumluluk",
-      "waiting": "Bekleniyor"
-    },
-    "coverage": {
-      "title": "Gorunen Asset Kapsami"
-    },
-    "map": {
-      "title": "Rota Haritasi"
-    },
-    "scenario": {
-      "missing": "Senaryo adimi kullanilabilir degil.",
-      "mapLabel": "Harita",
-      "choicesLabel": "Ortak Karar",
-      "speaker": "Konusan",
-      "conflict": "Oylar caristi. AI koltuklarini yeniden istemek icin senkronize et.",
-      "pending": "Beklenen",
-      "logLabel": "Hikaye Logu"
-    },
-    "combat": {
-      "missing": "Savas durumu kullanilabilir degil.",
-      "enemyLabel": "Karsilasma",
-      "actionsLabel": "Savas Aksiyonlari",
-      "waitingHint": "Siradaki koltugun hamlesi bekleniyor.",
-      "roundLabel": "Tur",
-      "turnLabel": "Sira",
-      "partyTitle": "Saha Ekibi"
-    },
-    "result": {
-      "label": "Sonuc",
-      "titleFallback": "Kosu Tamamlandi",
-      "logLabel": "Kosu Logu"
-    },
-    "turns": {
-      "idle": "Bos"
-    },
-    "overview": {
-      "partyTitle": "Hazir Koltuklar"
-    },
-    "phase": {
-      "overview": "Toplanma",
-      "characterCreation": "Hazirlik",
-      "scenario": "Ugur",
-      "combat": "Catisma",
-      "result": "Artci Iz"
-    },
-    "seats": {
-      "user": "Sen",
-      "ai1": "AI1",
-      "ai2": "AI2",
-      "us1": "US1"
-    },
-    "seatState": {
-      "active": "Aktif",
-      "locked": "Kilitli",
-      "ready": "Hazir",
-      "selecting": "Seciyor",
-      "deferred": "Uzakta",
-      "reserved": "Cagrildi",
-      "standby": "Bekleyiste"
+      "label": "Tasarim Durumu",
+      "idle": "Eski kosu yuklu degil.",
+      "ready": "Siradaki Fate Knots sistemi icin hazir."
     }
   }
 }

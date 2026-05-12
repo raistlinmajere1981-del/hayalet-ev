@@ -33,13 +33,6 @@ const room: InstalledRoomRecord = {
       title: "[TURN][GAME-ROOM][TEAM-TETRIS][AI][OPENING]",
       editable: true,
     },
-    {
-      key: "game-room-fate-knots-ai-decision",
-      room: "game-room",
-      scenario: "fate-knots-ai-decision",
-      title: "[TURN][GAME-ROOM][FATE-KNOTS][AI][DECISION]",
-      editable: true,
-    },
   ],
   installedAt: "2026-03-08T00:00:00.000Z",
   updatedAt: "2026-03-08T00:00:00.000Z",
@@ -51,15 +44,12 @@ test("RoomProtocolRegistry resolves manifest protocol metadata", async () => {
 
   const resolved = RoomProtocolRegistry.resolve("game-room", "backgammon-user-start");
   const teamTetrisResolved = RoomProtocolRegistry.resolve("game-room", "team-tetris-ai-opening");
-  const fateKnotsResolved = RoomProtocolRegistry.resolve("game-room", "fate-knots-ai-decision");
 
   assert.equal(resolved?.key, "game-room-backgammon-user-start");
   assert.equal(resolved?.title, "[START][GAME-ROOM][Tavla][USER-FIRST]");
   assert.equal(teamTetrisResolved?.key, "game-room-team-tetris-ai-opening");
-  assert.equal(fateKnotsResolved?.key, "game-room-fate-knots-ai-decision");
   assert.deepEqual(RoomProtocolRegistry.listKnownKeys(), [
     "game-room-backgammon-user-start",
-    "game-room-fate-knots-ai-decision",
     "game-room-team-tetris-ai-opening",
   ]);
 });

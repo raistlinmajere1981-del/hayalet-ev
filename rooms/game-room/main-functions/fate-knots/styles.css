@@ -1,4 +1,77 @@
-@import "./styles/shell.css";
-@import "./styles/layout.css";
-@import "./styles/components.css";
-@import "./styles/presentation.css";
+.fk-shell {
+  min-height: 100vh;
+  display: grid;
+  align-content: center;
+  gap: var(--game-px-18);
+  padding: clamp(var(--game-px-24), 5vw, calc(var(--game-px-28) * 2));
+  color: var(--game-text-1);
+  background:
+    var(--game-gradient-24),
+    url("./assets/fate-knots-view.webp") center / cover;
+}
+
+.fk-panel {
+  width: min(var(--game-px-760), 100%);
+  padding: var(--game-px-18);
+  border: var(--game-px-1) solid var(--game-accent-28);
+  border-radius: var(--game-px-8);
+  background: var(--game-bg-deep-2);
+  box-shadow: 0 var(--game-px-14) calc(var(--game-px-22) * 2) var(--game-black-28);
+}
+
+.fk-panel--primary {
+  padding: clamp(var(--game-px-22), 4vw, calc(var(--game-px-18) + var(--game-px-16)));
+}
+
+.fk-eyebrow,
+.fk-copy,
+.fk-title,
+.fk-section-title {
+  margin: 0;
+}
+
+.fk-eyebrow {
+  color: var(--game-teal-5);
+  font-size: var(--game-rem-0-78);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.fk-title {
+  margin-top: var(--game-px-8);
+  font-size: clamp(var(--game-rem-2), var(--game-rem-3-6), var(--game-rem-4));
+  line-height: 1;
+}
+
+.fk-section-title {
+  font-size: var(--game-rem-1);
+}
+
+.fk-copy {
+  margin-top: var(--game-px-10);
+  max-width: 62ch;
+  color: var(--game-ink-light-2);
+  line-height: 1.55;
+}
+
+.fk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--game-px-10);
+}
+
+.fk-button {
+  min-height: var(--game-px-42);
+  padding: 0 var(--game-px-16);
+  border: var(--game-px-1) solid var(--game-accent-34);
+  border-radius: var(--game-px-8);
+  color: var(--game-text-1);
+  background: var(--game-bg-deep-2);
+  font: inherit;
+  font-weight: 700;
+}
+
+.fk-button--primary {
+  color: var(--game-bg-dark-2);
+  background: var(--game-teal-5);
+}

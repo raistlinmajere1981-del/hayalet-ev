@@ -281,36 +281,17 @@ test("game-room manifest documents the Team Tetris AI and US1 contracts", () => 
   );
 });
 
-test("game-room manifest documents the Fate Knots AI and US1 contracts", () => {
+test("game-room manifest keeps Fate Knots as a blank scene placeholder", () => {
   const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8"));
   const result = validateRoomManifest(manifest);
 
   assert.equal(result.valid, true);
   const fateKnotsFeature = result.manifest?.features.find((feature) => feature.id === "fate-knots");
   assert.ok(fateKnotsFeature);
-  assert.equal(
-    fateKnotsFeature?.protocolSpecs?.some(
-      (spec) => spec.key === "game-room-fate-knots-ai-decision"
-    ),
-    true
-  );
-  assert.equal(
-    fateKnotsFeature?.protocolSpecs?.some((spec) => spec.key === "game-room-fate-knots-ai-combat"),
-    true
-  );
-  assert.equal(
-    fateKnotsFeature?.protocolSpecs?.some((spec) => spec.key === "game-room-fate-knots-ai-dm"),
-    true
-  );
-  assert.equal(
-    fateKnotsFeature?.protocolSpecs?.some((spec) => spec.key === "game-room-fate-knots-ai-npc"),
-    true
-  );
-  assert.equal(
-    fateKnotsFeature?.protocolSpecs?.some(
-      (spec) => spec.key === "game-room-fate-knots-us1-transport"
-    ),
-    true
+  assert.deepEqual(fateKnotsFeature?.protocolSpecs, []);
+  assert.deepEqual(
+    fateKnotsFeature?.commandSpecs?.map((spec) => spec.name),
+    ["GameRoomFateKnotsStart", "GameRoomFateKnotsReset"]
   );
   assert.equal(fateKnotsFeature?.scene?.hotspot?.id, "game-room-fate-knots");
   assert.equal(fateKnotsFeature?.scene?.view?.id, "fate-knots-closeup");

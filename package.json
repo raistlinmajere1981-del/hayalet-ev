@@ -84,7 +84,7 @@
     "format": "prettier --write \"src/**/*.{js,ts,css,html,json,md}\" \"electron/**/*.{ts,cjs}\" \"ghost-agent/**/*.{ts,css,html,cjs}\" \"rooms/**/*.{js,ts,css,html,json,md}\"",
     "format:check": "prettier --check \"src/**/*.{js,ts,css,html,json,md}\" \"electron/**/*.{ts,cjs}\" \"ghost-agent/**/*.{ts,css,html,cjs}\" \"rooms/**/*.{js,ts,css,html,json,md}\"",
     "check": "npm run lint && npm run check-types && npm run rooms:test:core",
-    "check:all": "npm run lint && npm run check-types && npm run test:all && npm run format:check && npm run design:audit && npm run deps:check && npm run rooms:build && npm run build:all",
+    "check:all": "npm run lint && npm run check-types && npm run test:all && npm run format:check && npm run design:audit && npm run design:audit:rooms && npm run deps:check && npm run rooms:build && npm run build:all",
     "deps:check": "depcruise src electron ghost-agent rooms --config .dependency-cruiser.cjs",
     "typecheck": "tsc --noEmit -p src/tsconfig.json && tsc --noEmit -p electron/tsconfig.electron.json && tsc --noEmit -p mcp-server/tsconfig.mcp.json && tsc --noEmit -p ghost-agent/tsconfig.json && tsc --noEmit -p ghost-agent/tsconfig.electron.json && tsc --noEmit -p rooms/tsconfig.rooms.json",
     "pre-commit": "node scripts/pre-commit.js",
@@ -105,10 +105,6 @@
     "update:deps": "npx npm-check-updates -u --reject electron,electron-builder && npm install",
     "update:full": "npx npm-check-updates -u --reject electron && npm install",
     "update:interactive": "npx npm-check-updates -i --format group",
-    "assets:process": "node scripts/process-item-assets.mjs",
-    "assets:process:opencv": "node scripts/process-item-assets.mjs --opencv --require-opencv",
-    "opencv:install": "node scripts/install-opencv.mjs",
-    "opencv:reinstall": "node scripts/install-opencv.mjs --force",
     "rooms:bundle": "TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx scripts/rooms/build-room-bundle.mjs",
     "rooms:build": "TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx scripts/rooms/build-workspace-rooms.ts",
     "rooms:paths": "TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx scripts/rooms/report-room-paths.ts",
@@ -133,10 +129,6 @@
     "ai:stats": "tsc --noEmit -p src/tsconfig.json 2>&1 | tail -1",
     "type:watch": "tsc --noEmit --watch -p src/tsconfig.json",
     "type:watch:electron": "tsc --noEmit --watch -p electron/tsconfig.electron.json"
-  },
-  "opencv4nodejs": {
-    "disableAutoBuild": "1",
-    "buildRoot": "tmp/opencv-build"
   },
   "keywords": [
     "electron",
