@@ -170,8 +170,38 @@
           "exposure": "internal"
         },
         {
+          "name": "RepairRoomUpdateViewport",
+          "description": "Update workbench viewport zoom and pan without changing panel layout.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomUpdateTimeline",
+          "description": "Update visual timeline zoom and range controls.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomUpdatePanelLayout",
+          "description": "Persist a single panel collapse or pin state change.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomUpdatePanelTab",
+          "description": "Switch a Repair Room panel tab or instrument tab.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomUpdateFocus",
+          "description": "Toggle Repair Room focus mode independently from other layout state.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
           "name": "RepairRoomUpdateLayout",
-          "description": "Persist panel collapse/dock/focus state for the Repair Room shell.",
+          "description": "Compatibility adapter for legacy Repair Room layout updates.",
           "scope": "room-ui",
           "exposure": "internal"
         }

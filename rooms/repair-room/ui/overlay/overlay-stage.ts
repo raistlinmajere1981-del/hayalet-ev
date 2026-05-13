@@ -100,6 +100,8 @@ export interface RepairOverlayStageConfig {
 }
 
 export interface RepairOverlayController {
+  update: (config: RepairOverlayStageConfig) => void;
+  resize: () => void;
   destroy: () => void;
 }
 
@@ -397,155 +399,251 @@ export async function mountRepairOverlayStage(
 
   try {
     const Konva = await loadKonvaNamespace(config.container.ownerDocument);
-    const { width, height } = getStageSize(config.container);
-    const stage = new Konva.Stage({
-      container: config.container as HTMLDivElement,
-      width,
-      height,
-    });
-    const gridLayer = new Konva.Layer();
-    const aiLayer = new Konva.Layer();
-    const annotationLayer = new Konva.Layer();
-    const measurementLayer = new Konva.Layer();
-    const focusLayer = new Konva.Layer();
-
-    delete config.container.dataset["mounting"];
-    config.container.dataset["mounted"] = "true";
-
-    stage.add(gridLayer);
-    stage.add(aiLayer);
-    stage.add(annotationLayer);
-    stage.add(measurementLayer);
-    stage.add(focusLayer);
-
-    addGridLayer(Konva, config, gridLayer);
-    config.events.forEach((event) => {
-      addAiEvent(Konva, config, aiLayer, event);
-      addAnnotationEvent(Konva, config, annotationLayer, event);
-      addMeasurementEvent(Konva, config, measurementLayer, event);
-    });
-    addFocusCallout(Konva, config, focusLayer);
-
+    type RepairLayer = InstanceType<KonvaNamespace["Layer"]>;
+    type RepairStage = InstanceType<KonvaNamespace["Stage"]>;
+    let currentConfig = config;
+    let stage: RepairStage | null = null;
+    let layers: {
+      grid: RepairLayer;
+      ai: RepairLayer;
+      annotation: RepairLayer;
+      measurement: RepairLayer;
+      focus: RepairLayer;
+    } | null = null;
     let panStart: { pointerX: number; pointerY: number; panXPx: number; panYPx: number } | null =
       null;
+    let disposed = false;
 
-    stage.on("mousemove tap", () => {
-      const pointer = stage.getPointerPosition();
-      if (pointer === null) return;
-      const frame = getContainedImageFrame(
-        width,
-        height,
-        config.image.widthPx,
-        config.image.heightPx
-      );
-      const point = clampImagePoint(
-        stagePointToImagePoint(
-          { xPx: pointer.x, yPx: pointer.y },
-          frame,
-          config.workbench.viewport
-        ),
-        config.image.widthPx,
-        config.image.heightPx
-      );
-      config.onCursor({ xPx: Math.round(point.xPx), yPx: Math.round(point.yPx) });
-    });
+    function getRenderableSize(): { width: number; height: number } | null {
+      const rect = currentConfig.container.getBoundingClientRect();
+      const width = Math.round(rect.width || currentConfig.container.clientWidth || 0);
+      const height = Math.round(rect.height || currentConfig.container.clientHeight || 0);
+      if (width <= 0 || height <= 0) return null;
+      return { width, height };
+    }
 
-    stage.on("wheel", (event) => {
-      event.evt.preventDefault();
-      const delta = event.evt.deltaY > 0 ? -0.12 : 0.12;
-      config.onViewportChange({
-        zoom: Math.min(4, Math.max(0.5, config.workbench.viewport.zoom + delta)),
-        panXPx: config.workbench.viewport.panXPx,
-        panYPx: config.workbench.viewport.panYPx,
+    function getActiveStageSize(): { width: number; height: number } {
+      if (stage !== null) {
+        return { width: stage.width(), height: stage.height() };
+      }
+      return getStageSize(currentConfig.container);
+    }
+
+    function renderOverlay(): void {
+      if (stage === null || layers === null || disposed) return;
+      const activeStage = stage;
+      const activeLayers = layers;
+      activeLayers.grid.destroyChildren();
+      activeLayers.ai.destroyChildren();
+      activeLayers.annotation.destroyChildren();
+      activeLayers.measurement.destroyChildren();
+      activeLayers.focus.destroyChildren();
+
+      addGridLayer(Konva, currentConfig, activeLayers.grid);
+      currentConfig.events.forEach((event) => {
+        addAiEvent(Konva, currentConfig, activeLayers.ai, event);
+        addAnnotationEvent(Konva, currentConfig, activeLayers.annotation, event);
+        addMeasurementEvent(Konva, currentConfig, activeLayers.measurement, event);
       });
-    });
+      addFocusCallout(Konva, currentConfig, activeLayers.focus);
 
-    stage.on("mousedown touchstart", () => {
-      if (config.workbench.activeTool !== "pan") return;
-      const pointer = stage.getPointerPosition();
-      if (pointer === null) return;
-      panStart = {
-        pointerX: pointer.x,
-        pointerY: pointer.y,
-        panXPx: config.workbench.viewport.panXPx,
-        panYPx: config.workbench.viewport.panYPx,
+      activeLayers.grid.batchDraw();
+      activeLayers.ai.batchDraw();
+      activeLayers.annotation.batchDraw();
+      activeLayers.measurement.batchDraw();
+      activeLayers.focus.batchDraw();
+      activeStage.batchDraw();
+    }
+
+    function bindStageEvents(activeStage: RepairStage): void {
+      activeStage.on("mousemove tap", () => {
+        const pointer = activeStage.getPointerPosition();
+        if (pointer === null) return;
+        const { width, height } = getActiveStageSize();
+        const frame = getContainedImageFrame(
+          width,
+          height,
+          currentConfig.image.widthPx,
+          currentConfig.image.heightPx
+        );
+        const point = clampImagePoint(
+          stagePointToImagePoint(
+            { xPx: pointer.x, yPx: pointer.y },
+            frame,
+            currentConfig.workbench.viewport
+          ),
+          currentConfig.image.widthPx,
+          currentConfig.image.heightPx
+        );
+        currentConfig.onCursor({ xPx: Math.round(point.xPx), yPx: Math.round(point.yPx) });
+      });
+
+      activeStage.on("wheel", (event) => {
+        event.evt.preventDefault();
+        const delta = event.evt.deltaY > 0 ? -0.12 : 0.12;
+        currentConfig.onViewportChange({
+          zoom: Math.min(4, Math.max(0.5, currentConfig.workbench.viewport.zoom + delta)),
+          panXPx: currentConfig.workbench.viewport.panXPx,
+          panYPx: currentConfig.workbench.viewport.panYPx,
+        });
+      });
+
+      activeStage.on("mousedown touchstart", () => {
+        if (currentConfig.workbench.activeTool !== "pan") return;
+        const pointer = activeStage.getPointerPosition();
+        if (pointer === null) return;
+        panStart = {
+          pointerX: pointer.x,
+          pointerY: pointer.y,
+          panXPx: currentConfig.workbench.viewport.panXPx,
+          panYPx: currentConfig.workbench.viewport.panYPx,
+        };
+      });
+
+      activeStage.on("mouseup touchend", () => {
+        panStart = null;
+      });
+
+      activeStage.on("dragmove mousemove touchmove", () => {
+        if (panStart === null) return;
+        const pointer = activeStage.getPointerPosition();
+        if (pointer === null) return;
+        currentConfig.onViewportChange({
+          zoom: currentConfig.workbench.viewport.zoom,
+          panXPx: panStart.panXPx + pointer.x - panStart.pointerX,
+          panYPx: panStart.panYPx + pointer.y - panStart.pointerY,
+        });
+      });
+
+      activeStage.on("click tap", (event) => {
+        if (event.target !== activeStage) return;
+        const pointer = activeStage.getPointerPosition();
+        if (pointer === null) return;
+        const { width, height } = getActiveStageSize();
+        const frame = getContainedImageFrame(
+          width,
+          height,
+          currentConfig.image.widthPx,
+          currentConfig.image.heightPx
+        );
+        const point = clampImagePoint(
+          stagePointToImagePoint(
+            { xPx: pointer.x, yPx: pointer.y },
+            frame,
+            currentConfig.workbench.viewport
+          ),
+          currentConfig.image.widthPx,
+          currentConfig.image.heightPx
+        );
+        const xPx = Math.round(point.xPx);
+        const yPx = Math.round(point.yPx);
+        if (currentConfig.workbench.activeTool === "measurement-pin") {
+          currentConfig.onAddMeasurement({ xPx, yPx, reference: `TP@${xPx},${yPx}` });
+          return;
+        }
+        if (currentConfig.workbench.activeTool === "ruler") {
+          const widthPx = Math.round(currentConfig.image.pixelsPerMm * 10);
+          currentConfig.onAddAnnotation({
+            tool: "arrow",
+            xPx,
+            yPx,
+            widthPx,
+            heightPx: 0,
+            label: "Ruler 10.0 mm",
+          });
+          return;
+        }
+        if (isRepairOverlayDrawTool(currentConfig.workbench.activeTool)) {
+          currentConfig.onAddAnnotation({
+            tool: currentConfig.workbench.activeTool,
+            xPx,
+            yPx,
+            widthPx: 120,
+            heightPx: 80,
+          });
+        }
+      });
+    }
+
+    function ensureStage(): boolean {
+      if (stage !== null) return true;
+      const size = getRenderableSize();
+      if (size === null) {
+        currentConfig.container.dataset["mountDeferred"] = "true";
+        delete currentConfig.container.dataset["mounting"];
+        return false;
+      }
+
+      stage = new Konva.Stage({
+        container: currentConfig.container as HTMLDivElement,
+        width: size.width,
+        height: size.height,
+      });
+      layers = {
+        grid: new Konva.Layer(),
+        ai: new Konva.Layer(),
+        annotation: new Konva.Layer(),
+        measurement: new Konva.Layer(),
+        focus: new Konva.Layer(),
       };
-    });
+      layers.grid.listening(false);
+      layers.focus.listening(false);
 
-    stage.on("mouseup touchend", () => {
-      panStart = null;
-    });
+      stage.add(layers.grid);
+      stage.add(layers.ai);
+      stage.add(layers.annotation);
+      stage.add(layers.measurement);
+      stage.add(layers.focus);
+      bindStageEvents(stage);
 
-    stage.on("dragmove mousemove touchmove", () => {
-      if (panStart === null) return;
-      const pointer = stage.getPointerPosition();
-      if (pointer === null) return;
-      config.onViewportChange({
-        zoom: config.workbench.viewport.zoom,
-        panXPx: panStart.panXPx + pointer.x - panStart.pointerX,
-        panYPx: panStart.panYPx + pointer.y - panStart.pointerY,
-      });
-    });
+      delete currentConfig.container.dataset["mounting"];
+      delete currentConfig.container.dataset["mountDeferred"];
+      currentConfig.container.dataset["mounted"] = "true";
+      return true;
+    }
 
-    stage.on("click tap", (event) => {
-      if (event.target !== stage) return;
-      const pointer = stage.getPointerPosition();
-      if (pointer === null) return;
-      const frame = getContainedImageFrame(
-        width,
-        height,
-        config.image.widthPx,
-        config.image.heightPx
-      );
-      const point = clampImagePoint(
-        stagePointToImagePoint(
-          { xPx: pointer.x, yPx: pointer.y },
-          frame,
-          config.workbench.viewport
-        ),
-        config.image.widthPx,
-        config.image.heightPx
-      );
-      const xPx = Math.round(point.xPx);
-      const yPx = Math.round(point.yPx);
-      if (config.workbench.activeTool === "measurement-pin") {
-        config.onAddMeasurement({ xPx, yPx, reference: `TP@${xPx},${yPx}` });
+    function resize(): void {
+      if (disposed) return;
+      if (ensureStage() === false || stage === null) return;
+      const size = getRenderableSize();
+      if (size === null) {
+        currentConfig.container.dataset["mountDeferred"] = "true";
         return;
       }
-      if (config.workbench.activeTool === "ruler") {
-        const widthPx = Math.round(config.image.pixelsPerMm * 10);
-        config.onAddAnnotation({
-          tool: "arrow",
-          xPx,
-          yPx,
-          widthPx,
-          heightPx: 0,
-          label: "Ruler 10.0 mm",
-        });
-        return;
+      if (stage.width() !== size.width || stage.height() !== size.height) {
+        stage.size(size);
       }
-      if (isRepairOverlayDrawTool(config.workbench.activeTool)) {
-        config.onAddAnnotation({
-          tool: config.workbench.activeTool,
-          xPx,
-          yPx,
-          widthPx: 120,
-          heightPx: 80,
-        });
-      }
-    });
+      renderOverlay();
+    }
 
-    stage.batchDraw();
+    const resizeObserver =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(() => {
+            resize();
+          });
+    resizeObserver?.observe(currentConfig.container);
+    resize();
+
     return {
+      update: (nextConfig) => {
+        currentConfig = nextConfig;
+        resize();
+      },
+      resize,
       destroy: () => {
-        stage.destroy();
-        delete config.container.dataset["mounted"];
-        delete config.container.dataset["mounting"];
+        disposed = true;
+        resizeObserver?.disconnect();
+        stage?.destroy();
+        delete currentConfig.container.dataset["mounted"];
+        delete currentConfig.container.dataset["mounting"];
+        delete currentConfig.container.dataset["mountDeferred"];
       },
     };
   } catch (error) {
     delete config.container.dataset["mounted"];
     delete config.container.dataset["mounting"];
+    delete config.container.dataset["mountDeferred"];
     throw error;
   }
 }

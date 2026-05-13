@@ -38,6 +38,11 @@ export const REPAIR_UI_COMMANDS = {
   dismissAiMark: "RepairRoomDismissAiMark",
   sendChatTurn: "RepairRoomSendChatTurn",
   updateOperatorProfile: "RepairRoomUpdateOperatorProfile",
+  updateViewport: "RepairRoomUpdateViewport",
+  updateTimeline: "RepairRoomUpdateTimeline",
+  updatePanelLayout: "RepairRoomUpdatePanelLayout",
+  updatePanelTab: "RepairRoomUpdatePanelTab",
+  updateFocus: "RepairRoomUpdateFocus",
   updateLayout: "RepairRoomUpdateLayout",
 } as const;
 

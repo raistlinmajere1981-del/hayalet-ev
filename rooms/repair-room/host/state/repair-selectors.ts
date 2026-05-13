@@ -1,4 +1,6 @@
-import { isRepairAiEvent, type RepairSession } from "../../shared/types/index.js";
+import { repairEventToTacticalFeedItem } from "../../shared/data/index.js";
+import type { RepairSession } from "../../shared/types/index.js";
+import type { RepairTacticalFeedItem } from "../../shared/ui/state.js";
 import type { RepairUiSnapshotMeta, RepairUiState } from "../../shared/ui/state.js";
 import type { RepairRuntimeState } from "./repair-runtime-state.js";
 
@@ -7,6 +9,16 @@ export function selectActiveSession(state: RepairRuntimeState): RepairSession | 
     return null;
   }
   return state.sessions[state.activeSessionId] ?? null;
+}
+
+function selectTacticalFeedProjection(state: RepairRuntimeState): RepairTacticalFeedItem[] {
+  const activeSession = selectActiveSession(state);
+  if (activeSession === null) return [];
+  const visibleEventIds = new Set(state.tacticalFeed.map((item) => item.eventId));
+  return activeSession.events
+    .filter((event) => visibleEventIds.has(event.id))
+    .map((event) => repairEventToTacticalFeedItem(event, activeSession.startedAt))
+    .filter((item): item is RepairTacticalFeedItem => item !== null);
 }
 
 export function createRepairUiSnapshot(state: RepairRuntimeState): RepairUiState {
@@ -19,7 +31,7 @@ export function createRepairUiSnapshot(state: RepairRuntimeState): RepairUiState
       detail: activeSession,
     },
     workbench: state.workbench,
-    tacticalFeed: state.tacticalFeed,
+    tacticalFeed: selectTacticalFeedProjection(state),
     wizard: state.wizard,
     knowledgePack: state.knowledgePack,
     operatorProfile: {
@@ -40,13 +52,9 @@ export function createRepairUiSnapshot(state: RepairRuntimeState): RepairUiState
 
 export function createRepairUiSnapshotMeta(state: RepairRuntimeState): RepairUiSnapshotMeta {
   const activeSession = selectActiveSession(state);
-  const visibleFeedEventIds = new Set(state.tacticalFeed.map((item) => item.eventId));
   return {
     schemaVersion: 1,
     generatedAt: state.ambientNowIso,
-    events:
-      activeSession?.events.filter((event) =>
-        isRepairAiEvent(event) ? visibleFeedEventIds.has(event.id) : true
-      ) ?? [],
+    events: activeSession?.events ?? [],
   };
 }

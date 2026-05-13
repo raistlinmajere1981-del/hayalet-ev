@@ -125,6 +125,11 @@
     getMatchHistoryResultTone: (entry: BackgammonMatchHistoryEntry) => string;
     formatMatchHistoryDate: (entry: BackgammonMatchHistoryEntry) => string;
   };
+  type BackgammonStagePlayer = {
+    name: string;
+    avatar?: string | null;
+    active: boolean;
+  };
   type BackgammonStageRuntime = {
     destroy: () => void;
     renderBackgammonStage: (
@@ -132,6 +137,10 @@
       options: {
         canUserMove: boolean;
         game: BackgammonUiState["game"];
+        players: {
+          user: BackgammonStagePlayer;
+          opponent: BackgammonStagePlayer;
+        };
       }
     ) => void;
   };
@@ -568,113 +577,7 @@
       return panel;
     }
 
-    function createMatchupSeat(
-      role: "user" | "opponent",
-      name: string,
-      avatar: string | null | undefined,
-      active: boolean
-    ) {
-      const seat = createElement("div", "backgammon-matchup-seat", "");
-      seat.dataset["role"] = role;
-      seat.dataset["active"] = active ? "true" : "false";
-      seat.append(
-        createAvatar(name, avatar, "lg"),
-        createElement("strong", "backgammon-matchup-seat__name", name)
-      );
-      return seat;
-    }
 
-    function renderMatchupHeader(
-      userName: string,
-      opponent: BackgammonSlotState,
-      awaitingUser: boolean,
-      awaitingAi: boolean
-    ) {
-      const userAvatar = getState().context.user.avatar ?? null;
-      const header = createElement("header", "backgammon-matchup", "");
-      header.append(
-        createMatchupSeat("user", userName, userAvatar, awaitingUser),
-        createElement("span", "backgammon-matchup__divider", text(["backgammon", "matchup", "vs"])),
-        createMatchupSeat("opponent", opponent.nickname, opponent.avatar, awaitingAi)
-      );
-      return header;
-    }
-
-    function renderStatusStack(
-      awaitingUser: boolean,
-      awaitingAi: boolean,
-      result: string,
-      isActive: boolean
-    ) {
-      const stack = createElement("section", "backgammon-status-stack", "");
-      const statusCard = createElement(
-        "section",
-        "backgammon-context-card backgammon-context-card--status",
-        ""
-      );
-      statusCard.append(
-        createElement(
-          "span",
-          "backgammon-context-card__label",
-          text(["backgammon", "board", "statusLabel"])
-        ),
-        createElement("p", "backgammon-context-card__lead", stateRuntime.getCurrentStatus())
-      );
-      const turnCard = createElement(
-        "section",
-        "backgammon-context-card backgammon-context-card--turn",
-        ""
-      );
-      turnCard.dataset["awaiting"] = awaitingUser ? "user" : awaitingAi ? "ai" : "none";
-      turnCard.append(
-        createElement(
-          "span",
-          "backgammon-context-card__label",
-          text(["backgammon", "board", "turnLabel"])
-        ),
-        createElement("p", "backgammon-context-card__lead", stateRuntime.getTurnLabel())
-      );
-      const resultCard = createElement(
-        "section",
-        "backgammon-context-card backgammon-context-card--result",
-        ""
-      );
-      resultCard.dataset["tone"] =
-        result === "user-win" ? "win" : result === "ai-win" ? "loss" : isActive ? "active" : "idle";
-      resultCard.append(
-        createElement(
-          "span",
-          "backgammon-context-card__label",
-          text(["backgammon", "board", "resultLabel"])
-        ),
-        createElement("p", "backgammon-context-card__lead", stateRuntime.getResultLabel())
-      );
-      const diceCard = createElement(
-        "section",
-        "backgammon-context-card backgammon-context-card--dice",
-        ""
-      );
-      diceCard.append(
-        createElement(
-          "span",
-          "backgammon-context-card__label",
-          text(["backgammon", "board", "diceLabel"])
-        ),
-        createElement("p", "backgammon-context-card__lead", stateRuntime.getDiceLabel()),
-        createElement(
-          "p",
-          "backgammon-context-card__meta",
-          text(["backgammon", "board", "barLabel"]) + ": " + stateRuntime.getBarLabel()
-        ),
-        createElement(
-          "p",
-          "backgammon-context-card__meta",
-          text(["backgammon", "board", "offLabel"]) + ": " + stateRuntime.getBearOffLabel()
-        )
-      );
-      stack.append(statusCard, turnCard, resultCard, diceCard);
-      return stack;
-    }
 
     function createChecker(owner: "user" | "ai", index: number, total: number) {
       const checker = createElement(
@@ -736,64 +639,7 @@
       return boardShell;
     }
 
-    function renderLegalMoves(canUserMove: boolean, moves: BackgammonLegalMove[]) {
-      const panel = createElement(
-        "section",
-        "backgammon-context-card backgammon-context-card--moves",
-        ""
-      );
-      panel.append(
-        createElement(
-          "span",
-          "backgammon-context-card__label",
-          text(["backgammon", "board", "fallbackMovesLabel"])
-        ),
-        createElement(
-          "p",
-          "backgammon-context-card__meta",
-          text(["backgammon", "board", "fallbackMovesHint"])
-        )
-      );
-      const list = createElement("div", "backgammon-move-list", "");
-      if (moves.length === 0) {
-        list.append(
-          createElement(
-            "p",
-            "backgammon-context-card__meta",
-            text(["backgammon", "board", "noMoves"])
-          )
-        );
-      } else {
-        moves.slice(0, 4).forEach(function (move) {
-          const button = createElement("button", "backgammon-move-button", "");
-          button.type = "button";
-          button.disabled = !canUserMove;
-          button.append(
-            createElement("span", "backgammon-move-button__label", move.label),
-            createElement(
-              "span",
-              "backgammon-move-button__dice",
-              move.diceUsed.join(" - ") || "pass"
-            )
-          );
-          button.addEventListener("click", function () {
-            stateRuntime.onLegalMove(move.id);
-          });
-          list.append(button);
-        });
-        if (moves.length > 4) {
-          list.append(
-            createElement(
-              "p",
-              "backgammon-context-card__meta",
-              "+" + String(moves.length - 4) + " " + text(["backgammon", "board", "moreMoves"])
-            )
-          );
-        }
-      }
-      panel.append(list);
-      return panel;
-    }
+
 
     function renderBackgammon(root: HTMLElement) {
       const state = getState();
@@ -839,23 +685,13 @@
       stage.dataset["awaiting"] = awaitingUser ? "user" : awaitingAi ? "ai" : "none";
       stage.dataset["result"] = resultKey;
       const userName = state.game.user.nickname || state.context.user.nickname;
-      const matchupHeader = renderMatchupHeader(
-        userName,
-        displayOpponent,
-        awaitingUser,
-        awaitingAi
-      );
+      const userAvatar = state.context.user.avatar ?? null;
+
       const boardArea = createElement("div", "backgammon-board-area", "");
+
       const boardStageHost = renderBoard(state.game);
       boardArea.append(boardStageHost);
-      const sidecar = createElement("aside", "backgammon-sidecar", "");
-      sidecar.append(
-        renderStatusStack(awaitingUser, awaitingAi, resultKey, state.game.active === true),
-        renderLegalMoves(canUserMove, state.game.legalMoves)
-      );
-      const stageBody = createElement("div", "backgammon-stage-body", "");
-      stageBody.append(boardArea, sidecar);
-      stage.append(matchupHeader, stageBody);
+      stage.append(boardArea);
       arena.append(rail, stage);
       surface.append(arena);
       app.append(surface);
@@ -864,6 +700,18 @@
         backgammonStageRuntime.renderBackgammonStage(boardStageHost, {
           canUserMove,
           game: state.game,
+          players: {
+            user: {
+              name: userName,
+              avatar: userAvatar,
+              active: awaitingUser,
+            },
+            opponent: {
+              name: displayOpponent.nickname,
+              avatar: displayOpponent.avatar ?? null,
+              active: awaitingAi,
+            },
+          },
         });
       }
     }

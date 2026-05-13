@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-05-12T18:46:52.644Z",
+  "updatedAt": "2026-05-13T00:15:29.696Z",
   "rooms": [
     {
       "id": "forge-room",
@@ -452,8 +452,8 @@
           "path": "main-functions/forge-workbench/protocols/forge-room-synthesis.md"
         }
       ],
-      "installedAt": "2026-05-12T18:46:51.467Z",
-      "updatedAt": "2026-05-12T18:46:51.467Z"
+      "installedAt": "2026-05-13T00:05:58.459Z",
+      "updatedAt": "2026-05-13T00:05:58.459Z"
     },
     {
       "id": "game-room",
@@ -902,8 +902,8 @@
           "path": "main-functions/team-tetris/protocols/game-room-team-tetris-us1-transport.md"
         }
       ],
-      "installedAt": "2026-05-12T18:46:51.748Z",
-      "updatedAt": "2026-05-12T18:46:51.748Z"
+      "installedAt": "2026-05-13T00:05:58.875Z",
+      "updatedAt": "2026-05-13T00:05:58.875Z"
     },
     {
       "id": "repair-room",
@@ -1028,8 +1028,38 @@
               "exposure": "internal"
             },
             {
+              "name": "RepairRoomUpdateViewport",
+              "description": "Update workbench viewport zoom and pan without changing panel layout.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomUpdateTimeline",
+              "description": "Update visual timeline zoom and range controls.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomUpdatePanelLayout",
+              "description": "Persist a single panel collapse or pin state change.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomUpdatePanelTab",
+              "description": "Switch a Repair Room panel tab or instrument tab.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomUpdateFocus",
+              "description": "Toggle Repair Room focus mode independently from other layout state.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
               "name": "RepairRoomUpdateLayout",
-              "description": "Persist panel collapse/dock/focus state for the Repair Room shell.",
+              "description": "Compatibility adapter for legacy Repair Room layout updates.",
               "scope": "room-ui",
               "exposure": "internal"
             }
@@ -1243,8 +1273,38 @@
           "exposure": "internal"
         },
         {
+          "name": "RepairRoomUpdateViewport",
+          "description": "Update workbench viewport zoom and pan without changing panel layout.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomUpdateTimeline",
+          "description": "Update visual timeline zoom and range controls.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomUpdatePanelLayout",
+          "description": "Persist a single panel collapse or pin state change.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomUpdatePanelTab",
+          "description": "Switch a Repair Room panel tab or instrument tab.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomUpdateFocus",
+          "description": "Toggle Repair Room focus mode independently from other layout state.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
           "name": "RepairRoomUpdateLayout",
-          "description": "Persist panel collapse/dock/focus state for the Repair Room shell.",
+          "description": "Compatibility adapter for legacy Repair Room layout updates.",
           "scope": "room-ui",
           "exposure": "internal"
         }
@@ -1283,8 +1343,8 @@
           "path": "main-functions/repair-workbench/protocols/repair-room-risk-detector.md"
         }
       ],
-      "installedAt": "2026-05-12T18:46:51.982Z",
-      "updatedAt": "2026-05-12T18:46:51.982Z"
+      "installedAt": "2026-05-13T00:11:33.637Z",
+      "updatedAt": "2026-05-13T00:11:33.637Z"
     },
     {
       "id": "laboratory",
@@ -1383,8 +1443,8 @@
         }
       },
       "i18nBaseDir": "/home/raistlin/hayalet-ev/rooms/.build/laboratory/runtime/i18n",
-      "installedAt": "2026-05-12T18:46:52.644Z",
-      "updatedAt": "2026-05-12T18:46:52.644Z"
+      "installedAt": "2026-05-13T00:15:29.696Z",
+      "updatedAt": "2026-05-13T00:15:29.696Z"
     }
   ]
 }

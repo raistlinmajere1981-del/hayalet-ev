@@ -40,7 +40,10 @@ test("repair-room keeps Konva pinned and isolated to the overlay module", () => 
   assert.equal(packageJson.dependencies?.["konva"], "10.3.0");
 
   const overlayStagePath = join(process.cwd(), "rooms/repair-room/ui/overlay/overlay-stage.ts");
-  const workbenchPanelPath = join(process.cwd(), "rooms/repair-room/ui/panels/workbench-stage-panel.ts");
+  const workbenchPanelPath = join(
+    process.cwd(),
+    "rooms/repair-room/ui/panels/workbench-stage-panel.ts"
+  );
   const vendorPath = join(process.cwd(), "rooms/repair-room/shared/vendor/konva.min.js");
   assert.equal(existsSync(overlayStagePath), true);
   assert.equal(existsSync(vendorPath), true);
@@ -52,17 +55,24 @@ test("repair-room keeps Konva pinned and isolated to the overlay module", () => 
 });
 
 test("repair-room resolves runtime assets from the UI entry directory", () => {
-  const baseHref = "file:///home/raistlin/hayalet-ev/rooms/.build/repair-room/runtime/ui/index.html";
+  const baseHref =
+    "file:///home/raistlin/hayalet-ev/rooms/.build/repair-room/runtime/ui/index.html";
 
   assert.equal(
     resolveRepairAssetUrl("shared/assets/mock-pcb/atx-psu-top.svg", baseHref),
     "file:///home/raistlin/hayalet-ev/rooms/.build/repair-room/runtime/shared/assets/mock-pcb/atx-psu-top.svg"
   );
   assert.equal(
-    resolveRepairAssetUrl("main-functions/repair-workbench/assets/repair-workbench-view.svg", baseHref),
+    resolveRepairAssetUrl(
+      "main-functions/repair-workbench/assets/repair-workbench-view.svg",
+      baseHref
+    ),
     "file:///home/raistlin/hayalet-ev/rooms/.build/repair-room/runtime/main-functions/repair-workbench/assets/repair-workbench-view.svg"
   );
-  assert.equal(resolveRepairAssetUrl("https://example.test/pcb.svg", baseHref), "https://example.test/pcb.svg");
+  assert.equal(
+    resolveRepairAssetUrl("https://example.test/pcb.svg", baseHref),
+    "https://example.test/pcb.svg"
+  );
 });
 
 test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync controls", () => {
@@ -75,14 +85,46 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   const feedPanel = readFileSync(join(uiRoot, "panels/tactical-feed-panel.ts"), "utf8");
   const overlayStage = readFileSync(join(uiRoot, "overlay/overlay-stage.ts"), "utf8");
   const style = readFileSync(join(uiRoot, "style.css"), "utf8");
-  const mockEvents = readFileSync(join(process.cwd(), "rooms/repair-room/shared/data/mock-events.ts"), "utf8");
-  const mockKnowledge = readFileSync(join(process.cwd(), "rooms/repair-room/shared/data/mock-knowledge-packs.ts"), "utf8");
+  const mockEvents = readFileSync(
+    join(process.cwd(), "rooms/repair-room/shared/data/mock-events.ts"),
+    "utf8"
+  );
+  const mockKnowledge = readFileSync(
+    join(process.cwd(), "rooms/repair-room/shared/data/mock-knowledge-packs.ts"),
+    "utf8"
+  );
 
   assert.match(runtime, /renderRoomSyncPanel/);
   assert.match(runtime, /timeline-scrub/);
   assert.match(runtime, /applyLiveSnapshotUpdates/);
   assert.match(runtime, /timelineShape/);
+  assert.match(runtime, /ensurePersistentShell/);
+  assert.match(runtime, /createPanelLifecycle/);
+  assert.match(runtime, /updateWorkbenchPanelDom/);
+  assert.match(runtime, /updateTacticalFeedPanelDom/);
+  assert.match(runtime, /updateVisualTimelinePanelDom/);
+  assert.match(runtime, /updateMeasurementPanelDom/);
+  assert.match(runtime, /updateRoomSyncPanelDom/);
+  assert.match(runtime, /syncTimelineChips/);
+  assert.match(runtime, /syncTacticalFeedEntry/);
+  assert.match(runtime, /panelId === "visual-timeline"/);
+  assert.match(runtime, /panelId === "tactical-feed"/);
+  assert.match(runtime, /panelId === "measurement"/);
+  assert.match(runtime, /panelId === "room-sync"/);
+  assert.match(runtime, /setClassNameIfChanged/);
+  assert.match(runtime, /overlayMountVersion/);
+  assert.match(runtime, /currentConfig === null/);
+  assert.match(runtime, /currentConfig\.container !== overlayConfig\.container/);
+  assert.match(runtime, /requestRuntime\.updateViewport/);
+  assert.match(runtime, /requestRuntime\.updateTimeline/);
+  assert.match(runtime, /requestRuntime\.updatePanelLayout/);
+  assert.match(runtime, /requestRuntime\.updatePanelTab/);
+  assert.match(runtime, /requestRuntime\.updateFocus/);
+  assert.doesNotMatch(runtime, /requestRuntime\.updateLayout/);
+  assert.doesNotMatch(runtime, /destroyOverlays/);
   assert.doesNotMatch(runtime, /timeline: state\\.workbench\\.timeline/);
+  assert.doesNotMatch(runtime, /measurement: state\\.measurement,/);
+  assert.doesNotMatch(runtime, /playheadMs: state\\.workbench\\.timeline\\.playheadMs/);
   assert.doesNotMatch(runtime, /measurement: state\\.measurement\\.current\\.display/);
   assert.match(runtime, /case "Home"/);
   assert.match(runtime, /case "End"/);
@@ -97,6 +139,10 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   assert.match(knowledgePanel, /resolveRepairAssetUrl/);
   assert.match(operatorPanel, /repair-tool-detail/);
   assert.match(overlayStage, /Ruler 10\.0 mm/);
+  assert.match(overlayStage, /update: \(config: RepairOverlayStageConfig\) => void/);
+  assert.match(overlayStage, /resize: \(\) => void/);
+  assert.match(overlayStage, /ResizeObserver/);
+  assert.match(overlayStage, /listening\(false\)/);
   assert.match(mockEvents, /thumbnailSrc: "shared\/assets\/mock-pcb\/atx-psu-top\.svg"/);
   assert.match(mockKnowledge, /bn44-00932a-schematic-preview\.svg/);
   assert.match(wizardPanel, /repair-wizard-field__input/);
@@ -107,11 +153,15 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
 });
 
 test("repair-room manifest command specs stay aligned with UI constants", () => {
-  const manifest = JSON.parse(readFileSync(join(process.cwd(), "rooms/repair-room/manifest.json"), "utf8")) as {
+  const manifest = JSON.parse(
+    readFileSync(join(process.cwd(), "rooms/repair-room/manifest.json"), "utf8")
+  ) as {
     features?: Array<{ commandSpecs?: Array<{ name?: string }> }>;
   };
   const commandNames = new Set(
-    manifest.features?.flatMap((feature) => feature.commandSpecs?.map((spec) => spec.name ?? "") ?? []) ?? []
+    manifest.features?.flatMap(
+      (feature) => feature.commandSpecs?.map((spec) => spec.name ?? "") ?? []
+    ) ?? []
   );
 
   Object.values(REPAIR_UI_COMMANDS).forEach((commandName) => {

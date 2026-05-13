@@ -67,6 +67,21 @@ export function createRepairUiRequestRuntime() {
     updateOperatorProfile(payload: Record<string, unknown>) {
       return sendCommand(REPAIR_UI_COMMANDS.updateOperatorProfile, payload);
     },
+    updateViewport(payload: Record<string, unknown>) {
+      return sendCommand(REPAIR_UI_COMMANDS.updateViewport, payload);
+    },
+    updateTimeline(payload: Record<string, unknown>) {
+      return sendCommand(REPAIR_UI_COMMANDS.updateTimeline, payload);
+    },
+    updatePanelLayout(payload: Record<string, unknown>) {
+      return sendCommand(REPAIR_UI_COMMANDS.updatePanelLayout, payload);
+    },
+    updatePanelTab(payload: Record<string, unknown>) {
+      return sendCommand(REPAIR_UI_COMMANDS.updatePanelTab, payload);
+    },
+    updateFocus(payload: Record<string, unknown>) {
+      return sendCommand(REPAIR_UI_COMMANDS.updateFocus, payload);
+    },
     updateLayout(payload: Record<string, unknown>) {
       return sendCommand(REPAIR_UI_COMMANDS.updateLayout, payload);
     },

@@ -41,8 +41,21 @@
     turnToken: string;
     boardHash?: string;
   };
+  type BackgammonStagePlayer = {
+    name: string;
+    avatar?: string | null;
+    active: boolean;
+  };
   type StagePoint = { x: number; y: number };
   type RectLike = { x: number; y: number; width: number; height: number };
+  type StageLayout = {
+    width: number;
+    height: number;
+    scale: number;
+    offsetX: number;
+    offsetY: number;
+    signature: string;
+  };
   type KonvaEvent = { target?: KonvaNode; evt?: Event };
   type KonvaNode = {
     add?: (...nodes: KonvaNode[]) => void;
@@ -50,6 +63,10 @@
     destroy?: () => void;
     destroyChildren?: () => void;
     getPointerPosition?: () => StagePoint | null;
+    height?: {
+      (): number;
+      (value: number): void;
+    };
     moveToTop?: () => void;
     off?: (eventName?: string) => void;
     on?: (eventName: string, handler: (event: KonvaEvent) => void) => void;
@@ -59,6 +76,10 @@
     };
     to?: (config: Record<string, unknown>) => void;
     x?: {
+      (): number;
+      (value: number): void;
+    };
+    width?: {
       (): number;
       (value: number): void;
     };
@@ -73,7 +94,15 @@
     destroy: () => void;
     destroyChildren: () => void;
     getPointerPosition: () => StagePoint | null;
+    height: {
+      (): number;
+      (value: number): void;
+    };
     on: (eventName: string, handler: (event: KonvaEvent) => void) => void;
+    width: {
+      (): number;
+      (value: number): void;
+    };
   };
   type KonvaLayer = KonvaNode & {
     add: (...nodes: KonvaNode[]) => void;
@@ -110,6 +139,10 @@
   type BackgammonStageRenderOptions = {
     canUserMove: boolean;
     game: BackgammonGameState;
+    players: {
+      user: BackgammonStagePlayer;
+      opponent: BackgammonStagePlayer;
+    };
   };
   type BackgammonStageRuntime = {
     destroy: () => void;
@@ -139,6 +172,14 @@
   const WIDTH = 980;
   const HEIGHT = 600;
   const CHECKER_RADIUS = 18;
+  const DEFAULT_STAGE_LAYOUT: StageLayout = {
+    width: WIDTH,
+    height: HEIGHT,
+    scale: 1,
+    offsetX: 0,
+    offsetY: 0,
+    signature: `${WIDTH}x${HEIGHT}:1:0:0`,
+  };
 
   // Canvas drawing colors — read from CSS custom properties for design token compliance
   function cssVar(name: string): string {
@@ -161,7 +202,6 @@
     diePip: cssVar("--game-bg-backgammon-die-pip"),
     passLabel: cssVar("--game-bg-backgammon-pass-label"),
     undoLabel: cssVar("--game-bg-backgammon-undo-label"),
-    hintActive: cssVar("--game-bg-backgammon-hint-active"),
   };
   const USER_COLOR = COLORS.userFill;
   const USER_EDGE = COLORS.userEdge;
@@ -204,7 +244,11 @@
   function normalizeBoard(board: BackgammonPoint[]): BackgammonPoint[] {
     const points: BackgammonPoint[] = [];
     for (let point = 1; point <= 24; point += 1) {
-      const candidate = board.find((entry) => entry.point === point);
+      const indexed = board[point - 1];
+      const candidate =
+        indexed && indexed.point === point
+          ? indexed
+          : board.find((entry) => entry.point === point);
       points.push(candidate ? clonePoint(candidate) : { point, owner: "", count: 0 });
     }
     return points;
@@ -381,6 +425,71 @@
     };
   }
 
+  function getInitials(name: string): string {
+    const trimmed = name.trim();
+    if (trimmed === "") {
+      return "??";
+    }
+    const parts = trimmed.split(/\s+/);
+    return parts.length === 1
+      ? trimmed.slice(0, 2).toUpperCase()
+      : ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
+  }
+
+  function truncateLabel(value: string, maxLength: number): string {
+    const trimmed = value.trim();
+    if (trimmed.length <= maxLength) {
+      return trimmed;
+    }
+    return trimmed.slice(0, Math.max(0, maxLength - 1)) + "...";
+  }
+
+  function buildStageLayout(host: HTMLElement): StageLayout {
+    const rect = host.getBoundingClientRect();
+    const rawWidth = rect.width || host.clientWidth || WIDTH;
+    const rawHeight = rect.height || host.clientHeight || HEIGHT;
+    const width = Math.max(1, Math.round(rawWidth));
+    const height = Math.max(1, Math.round(rawHeight));
+    const scale = Math.min(width / WIDTH, height / HEIGHT) || 1;
+    const drawWidth = WIDTH * scale;
+    const drawHeight = HEIGHT * scale;
+    const offsetX = Math.max(0, (width - drawWidth) / 2);
+    const offsetY = Math.max(0, (height - drawHeight) / 2);
+    return {
+      width,
+      height,
+      scale,
+      offsetX,
+      offsetY,
+      signature: [width, height, scale.toFixed(5), offsetX.toFixed(2), offsetY.toFixed(2)].join(
+        "|"
+      ),
+    };
+  }
+
+  function syncStageSize(stage: KonvaStage, host: HTMLElement): StageLayout {
+    const layout = buildStageLayout(host);
+    stage.width(layout.width);
+    stage.height(layout.height);
+    return layout;
+  }
+
+  function createScaledLayer(Konva: KonvaNamespace, layout: StageLayout): KonvaLayer {
+    return new Konva.Layer({
+      x: layout.offsetX,
+      y: layout.offsetY,
+      scaleX: layout.scale,
+      scaleY: layout.scale,
+    });
+  }
+
+  function toLogicalPoint(layout: StageLayout, point: StagePoint): StagePoint {
+    return {
+      x: (point.x - layout.offsetX) / layout.scale,
+      y: (point.y - layout.offsetY) / layout.scale,
+    };
+  }
+
   function rectContains(rect: RectLike, point: StagePoint): boolean {
     return (
       point.x >= rect.x &&
@@ -452,11 +561,13 @@
   }
 
   function drawBoardBase(Konva: KonvaNamespace, layer: KonvaLayer, metrics: BoardMetrics): void {
+    // Outer board frame — dark wood
     drawRoundedPanel(Konva, layer, metrics.board, {
       fill: COLORS.boardBase,
       stroke: "rgba(246,219,168,0.36)",
       shadow: true,
     });
+    // Inner felt — layered gradient for depth
     layer.add(
       new Konva.Rect({
         x: metrics.board.x + 10,
@@ -478,17 +589,88 @@
         strokeWidth: 1,
       })
     );
+    // Wood grain overlay — horizontal subtle lines
+    for (let grainY = metrics.board.y + 18; grainY < metrics.board.y + metrics.board.height - 18; grainY += 37) {
+      layer.add(
+        new Konva.Line({
+          points: [
+            metrics.board.x + 16,
+            grainY + Math.sin(grainY * 0.07) * 3,
+            metrics.board.x + metrics.board.width - 16,
+            grainY + Math.cos(grainY * 0.05) * 2,
+          ],
+          stroke: "rgba(246,219,168,0.06)",
+          strokeWidth: 1,
+          listening: false,
+        })
+      );
+    }
+    // Vignette overlay — darkened edges for depth
+    layer.add(
+      new Konva.Rect({
+        x: metrics.board.x + 10,
+        y: metrics.board.y + 10,
+        width: metrics.board.width - 20,
+        height: metrics.board.height - 20,
+        cornerRadius: 12,
+        fillRadialGradientStartPoint: {
+          x: (metrics.board.width - 20) / 2,
+          y: (metrics.board.height - 20) / 2,
+        },
+        fillRadialGradientStartRadius: 0,
+        fillRadialGradientEndPoint: {
+          x: (metrics.board.width - 20) / 2,
+          y: (metrics.board.height - 20) / 2,
+        },
+        fillRadialGradientEndRadius: metrics.board.width * 0.6,
+        fillRadialGradientColorStops: [
+          0,
+          "rgba(0,0,0,0)",
+          0.7,
+          "rgba(0,0,0,0)",
+          1,
+          "rgba(0,0,0,0.22)",
+        ],
+        listening: false,
+      })
+    );
+    // Bar — leather-textured divider
     layer.add(
       new Konva.Rect({
         x: metrics.bar.x,
         y: metrics.bar.y,
         width: metrics.bar.width,
         height: metrics.bar.height,
-        fill: "rgba(52, 31, 21, 0.72)",
+        fillLinearGradientStartPoint: { x: 0, y: 0 },
+        fillLinearGradientEndPoint: { x: metrics.bar.width, y: 0 },
+        fillLinearGradientColorStops: [
+          0,
+          "rgba(62, 38, 24, 0.82)",
+          0.5,
+          "rgba(52, 31, 21, 0.72)",
+          1,
+          "rgba(62, 38, 24, 0.82)",
+        ],
         stroke: "rgba(246,219,168,0.22)",
         strokeWidth: 1,
       })
     );
+    // Bar center line
+    layer.add(
+      new Konva.Line({
+        points: [
+          metrics.bar.x + metrics.bar.width / 2,
+          metrics.bar.y + 12,
+          metrics.bar.x + metrics.bar.width / 2,
+          metrics.bar.y + metrics.bar.height - 12,
+        ],
+        stroke: "rgba(246,219,168,0.1)",
+        strokeWidth: 1,
+        dash: [6, 8],
+        listening: false,
+      })
+    );
+    // Off areas
     drawRoundedPanel(Konva, layer, metrics.offAi, {
       fill: "rgba(8,20,28,0.62)",
       stroke: "rgba(120,211,196,0.22)",
@@ -504,7 +686,8 @@
       const rect = getPointRect(metrics, point);
       const top = point >= 13;
       const fill = point % 2 === 0 ? COLORS.pointEven : COLORS.pointOdd;
-      const points = top
+      const darkFill = point % 2 === 0 ? "rgba(168,136,72,0.85)" : "rgba(32,118,106,0.85)";
+      const triPoints = top
         ? [
             rect.x + 5,
             rect.y + 4,
@@ -521,9 +704,10 @@
             rect.x + rect.width / 2,
             rect.y + 16,
           ];
+      // Triangle fill
       layer.add(
         new Konva.Line({
-          points,
+          points: triPoints,
           closed: true,
           fill,
           opacity: 0.72,
@@ -532,6 +716,29 @@
           shadowOffsetY: top ? 2 : -2,
         })
       );
+      // Triangle edge stroke for definition
+      layer.add(
+        new Konva.Line({
+          points: triPoints,
+          closed: true,
+          stroke: darkFill,
+          strokeWidth: 1.2,
+          listening: false,
+        })
+      );
+      // Inner highlight line along center
+      const centerX = rect.x + rect.width / 2;
+      const tipY = top ? rect.y + rect.height - 16 : rect.y + 16;
+      const baseY = top ? rect.y + 8 : rect.y + rect.height - 8;
+      layer.add(
+        new Konva.Line({
+          points: [centerX, baseY, centerX, tipY],
+          stroke: "rgba(255,255,255,0.08)",
+          strokeWidth: 1,
+          listening: false,
+        })
+      );
+      // Point number
       layer.add(
         new Konva.Text({
           x: rect.x,
@@ -629,28 +836,55 @@
       draggable,
       cursor: draggable ? "grab" : "default",
     });
-    const fill = owner === "user" ? USER_COLOR : AI_COLOR;
-    const stroke = owner === "user" ? USER_EDGE : AI_EDGE;
+    const isUser = owner === "user";
+    // Radial gradient colors for 3D dome effect
+    const highlightColor = isUser ? "#fff4d9" : "#2a7070";
+    const baseColor = isUser ? USER_COLOR : AI_COLOR;
+    const shadowColor = isUser ? "#8a5a1e" : "#0a1e28";
+    const edgeColor = isUser ? USER_EDGE : AI_EDGE;
+    // Base circle with radial gradient (3D dome)
     group.add(
       new Konva.Circle({
         x: 0,
         y: 0,
         radius: CHECKER_RADIUS,
-        fill,
-        stroke,
-        strokeWidth: 2,
-        shadowColor: "rgba(0,0,0,0.38)",
-        shadowBlur: 8,
-        shadowOffsetY: 4,
+        fillRadialGradientStartPoint: { x: -4, y: -6 },
+        fillRadialGradientStartRadius: 0,
+        fillRadialGradientEndPoint: { x: 0, y: 2 },
+        fillRadialGradientEndRadius: CHECKER_RADIUS + 2,
+        fillRadialGradientColorStops: [
+          0,
+          highlightColor,
+          0.45,
+          baseColor,
+          1,
+          shadowColor,
+        ],
+        stroke: edgeColor,
+        strokeWidth: 1.5,
+        shadowColor: "rgba(0,0,0,0.48)",
+        shadowBlur: 10,
+        shadowOffsetY: 5,
       })
     );
+    // Outer decorative ring
     group.add(
       new Konva.Circle({
         x: 0,
-        y: -3,
-        radius: CHECKER_RADIUS - 6,
-        stroke: owner === "user" ? "rgba(255,255,255,0.48)" : "rgba(120,211,196,0.28)",
+        y: -1,
+        radius: CHECKER_RADIUS - 4,
+        stroke: isUser ? "rgba(255,255,255,0.38)" : "rgba(120,211,196,0.22)",
         strokeWidth: 1,
+        listening: false,
+      })
+    );
+    // Center decorative pip
+    group.add(
+      new Konva.Circle({
+        x: 0,
+        y: -2,
+        radius: 3.5,
+        fill: isUser ? "rgba(255,255,255,0.22)" : "rgba(120,211,196,0.15)",
         listening: false,
       })
     );
@@ -665,7 +899,7 @@
           fontFamily: "IBM Plex Mono, JetBrains Mono, monospace",
           fontSize: 13,
           fontStyle: "bold",
-          fill: owner === "user" ? COLORS.offAiBg : COLORS.userFill,
+          fill: isUser ? COLORS.offAiBg : COLORS.userFill,
           listening: false,
         })
       );
@@ -808,8 +1042,105 @@
     layer.add(group);
   }
 
+  function drawPlayerChips(
+    Konva: KonvaNamespace,
+    layer: KonvaLayer,
+    metrics: BoardMetrics,
+    players: BackgammonStageRenderOptions["players"]
+  ): void {
+    drawPlayerChip(Konva, layer, {
+      player: players.opponent,
+      owner: "ai",
+      x: metrics.offAi.x,
+      y: metrics.offAi.y - 38,
+      width: metrics.offAi.width,
+    });
+    drawPlayerChip(Konva, layer, {
+      player: players.user,
+      owner: "user",
+      x: metrics.offUser.x,
+      y: metrics.offUser.y + metrics.offUser.height + 8,
+      width: metrics.offUser.width,
+    });
+  }
+
+  function drawPlayerChip(
+    Konva: KonvaNamespace,
+    layer: KonvaLayer,
+    options: {
+      player: BackgammonStagePlayer;
+      owner: BackgammonSeat;
+      x: number;
+      y: number;
+      width: number;
+    }
+  ): void {
+    const height = 30;
+    const group = new Konva.Group({ x: options.x, y: options.y });
+    const isUser = options.owner === "user";
+    const border = options.player.active
+      ? isUser
+        ? "rgba(245,223,170,0.68)"
+        : "rgba(121,211,196,0.62)"
+      : "rgba(246,219,168,0.2)";
+    group.add(
+      new Konva.Rect({
+        x: 0,
+        y: 0,
+        width: options.width,
+        height,
+        cornerRadius: 15,
+        fill: options.player.active ? "rgba(5,14,21,0.74)" : "rgba(5,14,21,0.54)",
+        stroke: border,
+        strokeWidth: options.player.active ? 1.6 : 1,
+        shadowColor: "rgba(0,0,0,0.26)",
+        shadowBlur: options.player.active ? 10 : 0,
+        shadowOffsetY: 4,
+      })
+    );
+    group.add(
+      new Konva.Circle({
+        x: 17,
+        y: height / 2,
+        radius: 10,
+        fill: isUser ? USER_COLOR : AI_COLOR,
+        stroke: isUser ? USER_EDGE : AI_EDGE,
+        strokeWidth: 1,
+      })
+    );
+    group.add(
+      new Konva.Text({
+        x: 7,
+        y: 10,
+        width: 20,
+        align: "center",
+        text: getInitials(options.player.name),
+        fontFamily: "IBM Plex Mono, JetBrains Mono, monospace",
+        fontSize: 8.5,
+        fontStyle: "bold",
+        fill: isUser ? COLORS.offAiBg : COLORS.userFill,
+        listening: false,
+      })
+    );
+    group.add(
+      new Konva.Text({
+        x: 34,
+        y: 8,
+        width: options.width - 42,
+        text: truncateLabel(options.player.name || "Player", 13),
+        fontFamily: "Avenir Next, Segoe UI, sans-serif",
+        fontSize: 12,
+        fontStyle: "bold",
+        fill: "rgba(237,243,246,0.86)",
+        listening: false,
+      })
+    );
+    layer.add(group);
+  }
+
   function createDie(Konva: KonvaNamespace, value: number, x: number, y: number): KonvaGroup {
     const group = new Konva.Group({ x: x + 19, y: y + 19, offsetX: 19, offsetY: 19 });
+    // Die face with radial gradient for volume
     group.add(
       new Konva.Rect({
         x: 0,
@@ -817,12 +1148,34 @@
         width: 38,
         height: 38,
         cornerRadius: 8,
-        fill: COLORS.dieFace,
+        fillLinearGradientStartPoint: { x: 0, y: 0 },
+        fillLinearGradientEndPoint: { x: 38, y: 38 },
+        fillLinearGradientColorStops: [
+          0,
+          "#fcf4e0",
+          0.4,
+          COLORS.dieFace,
+          1,
+          "#d9c9a4",
+        ],
         stroke: COLORS.dieStroke,
         strokeWidth: 1.5,
-        shadowColor: "rgba(0,0,0,0.34)",
-        shadowBlur: 7,
-        shadowOffsetY: 3,
+        shadowColor: "rgba(0,0,0,0.42)",
+        shadowBlur: 9,
+        shadowOffsetY: 4,
+      })
+    );
+    // Subtle inner border for bevel
+    group.add(
+      new Konva.Rect({
+        x: 2,
+        y: 2,
+        width: 34,
+        height: 34,
+        cornerRadius: 6,
+        stroke: "rgba(255,255,255,0.25)",
+        strokeWidth: 0.5,
+        listening: false,
       })
     );
     const pipMap: Record<number, StagePoint[]> = {
@@ -860,6 +1213,15 @@
     };
     const pips = pipMap[value] ?? pipMap[1] ?? [];
     pips.forEach((pip) => {
+      // Pip inset shadow ring
+      group.add(new Konva.Circle({
+        x: pip.x,
+        y: pip.y + 0.5,
+        radius: 3.6,
+        fill: "rgba(0,0,0,0.08)",
+        listening: false,
+      }));
+      // Pip
       group.add(new Konva.Circle({ x: pip.x, y: pip.y, radius: 3.1, fill: COLORS.diePip }));
     });
     return group;
@@ -874,13 +1236,38 @@
     let stagedMoves: BackgammonSubMove[] = [];
     let activeGame: BackgammonGameState | null = null;
     let activeCanUserMove = false;
+    let activePlayers: BackgammonStageRenderOptions["players"] = {
+      user: { name: "Player", avatar: null, active: false },
+      opponent: { name: "Opponent", avatar: null, active: false },
+    };
+    let activeLayout = DEFAULT_STAGE_LAYOUT;
+    let lastLayoutSignature = DEFAULT_STAGE_LAYOUT.signature;
+    let cachedMetrics: BoardMetrics | null = null;
+    let boardLayerRef: KonvaLayer | null = null;
+    let highlightLayerRef: KonvaLayer | null = null;
+    let checkerLayerRef: KonvaLayer | null = null;
+    let uiLayerRef: KonvaLayer | null = null;
+    let boardDrawn = false;
+    let resizeObserver: ResizeObserver | null = null;
 
     function destroy(): void {
+      if (resizeObserver !== null) {
+        resizeObserver.disconnect();
+        resizeObserver = null;
+      }
       if (stage !== null) {
         stage.destroy();
         stage = null;
       }
       mountedHost = null;
+      boardLayerRef = null;
+      highlightLayerRef = null;
+      checkerLayerRef = null;
+      uiLayerRef = null;
+      boardDrawn = false;
+      cachedMetrics = null;
+      activeLayout = DEFAULT_STAGE_LAYOUT;
+      lastLayoutSignature = DEFAULT_STAGE_LAYOUT.signature;
     }
 
     function turnSignature(game: BackgammonGameState): string {
@@ -903,6 +1290,20 @@
       return changed;
     }
 
+    function observeHostResize(Konva: KonvaNamespace, host: HTMLElement): void {
+      if (resizeObserver !== null || typeof ResizeObserver !== "function") {
+        return;
+      }
+      resizeObserver = new ResizeObserver(() => {
+        if (mountedHost !== host || stage === null) {
+          return;
+        }
+        boardDrawn = false;
+        drawScene(Konva, false);
+      });
+      resizeObserver.observe(host);
+    }
+
     function attachDragHandlers(
       Konva: KonvaNamespace,
       group: KonvaGroup,
@@ -912,9 +1313,12 @@
     ): void {
       group.on("dragstart", () => {
         group.moveToTop();
+        group.to({ scaleX: 1.15, scaleY: 1.15, duration: 0.1 });
       });
       group.on("dragend", () => {
-        const pointer = stage?.getPointerPosition() ?? group.position();
+        group.to({ scaleX: 1, scaleY: 1, duration: 0.1 });
+        const rawPointer = stage?.getPointerPosition() ?? null;
+        const pointer = rawPointer === null ? group.position() : toLogicalPoint(activeLayout, rawPointer);
         const target = findDropTarget(metrics, pointer);
         const game = activeGame;
         if (target === null || game === null) {
@@ -1032,20 +1436,50 @@
       if (stage === null || activeGame === null) {
         return;
       }
-      stage.destroyChildren();
-      const metrics = buildMetrics();
-      const boardLayer = new Konva.Layer();
-      const highlightLayer = new Konva.Layer();
-      const checkerLayer = new Konva.Layer();
-      const uiLayer = new Konva.Layer();
-      stage.add(boardLayer, highlightLayer, checkerLayer, uiLayer);
+      const metrics = cachedMetrics || (cachedMetrics = buildMetrics());
+      const layout = mountedHost !== null ? syncStageSize(stage, mountedHost) : DEFAULT_STAGE_LAYOUT;
+      activeLayout = layout;
+      if (layout.signature !== lastLayoutSignature) {
+        lastLayoutSignature = layout.signature;
+        boardDrawn = false;
+        if (boardLayerRef !== null) {
+          boardLayerRef.destroy?.();
+          boardLayerRef = null;
+        }
+      }
+
+      if (!boardDrawn || boardLayerRef === null) {
+        if (boardLayerRef !== null) {
+          boardLayerRef.destroy?.();
+        }
+        boardLayerRef = createScaledLayer(Konva, layout);
+        drawBoardBase(Konva, boardLayerRef, metrics);
+        drawPoints(Konva, boardLayerRef, metrics);
+        stage.add(boardLayerRef);
+        boardDrawn = true;
+      }
+
+      if (highlightLayerRef !== null) {
+        highlightLayerRef.destroy?.();
+      }
+      if (checkerLayerRef !== null) {
+        checkerLayerRef.destroy?.();
+      }
+      if (uiLayerRef !== null) {
+        uiLayerRef.destroy?.();
+      }
+      const highlightLayer = createScaledLayer(Konva, layout);
+      const checkerLayer = createScaledLayer(Konva, layout);
+      const uiLayer = createScaledLayer(Konva, layout);
+      highlightLayerRef = highlightLayer;
+      checkerLayerRef = checkerLayer;
+      uiLayerRef = uiLayer;
+      stage.add(highlightLayer, checkerLayer, uiLayer);
 
       const snapshot = applyPreview(activeGame, stagedMoves);
       const candidates =
         activeCanUserMove === true ? getNextSubMoves(activeGame.legalMoves, stagedMoves) : [];
 
-      drawBoardBase(Konva, boardLayer, metrics);
-      drawPoints(Konva, boardLayer, metrics);
       candidates.forEach((candidate) => {
         drawTargetHighlight(Konva, highlightLayer, metrics, candidate.from, "source");
         drawTargetHighlight(Konva, highlightLayer, metrics, candidate.to, "target");
@@ -1054,64 +1488,10 @@
         attachDragHandlers(Konva, group, source, () => drawScene(Konva, false), metrics)
       );
       drawDice(Konva, uiLayer, metrics, activeGame.dice, animateDice);
-      drawStatusText(Konva, uiLayer, activeGame, candidates.length);
+      drawPlayerChips(Konva, uiLayer, metrics, activePlayers);
       drawUndoAction(Konva, uiLayer, () => drawScene(Konva, false));
       drawPassAction(Konva, uiLayer, activeGame);
       stage.batchDraw();
-    }
-
-    function drawStatusText(
-      Konva: KonvaNamespace,
-      layer: KonvaLayer,
-      game: BackgammonGameState,
-      candidateCount: number
-    ): void {
-      const hint =
-        activeCanUserMove === true
-          ? stagedMoves.length > 0
-            ? readText(deps, ["backgammon", "board", "dragActiveHint"], "Complete the staged move.")
-            : readText(
-                deps,
-                ["backgammon", "board", "dragHint"],
-                "Drag a checker to a highlighted point."
-              )
-          : game.awaitingMoveFrom === "ai"
-            ? readText(
-                deps,
-                ["backgammon", "board", "opponentThinking"],
-                "Opponent is choosing a move."
-              )
-            : readText(
-                deps,
-                ["backgammon", "board", "stageIdle"],
-                "Start a match to open the board."
-              );
-      layer.add(
-        new Konva.Text({
-          x: 56,
-          y: 552,
-          width: 680,
-          text: hint,
-          fontFamily: "Avenir Next, Segoe UI, sans-serif",
-          fontSize: 14,
-          fill: activeCanUserMove === true ? COLORS.hintActive : "rgba(237,243,246,0.62)",
-        })
-      );
-      layer.add(
-        new Konva.Text({
-          x: 810,
-          y: 520,
-          width: 124,
-          align: "center",
-          text:
-            candidateCount > 0
-              ? `${candidateCount} ${readText(deps, ["backgammon", "board", "targetCount"], "targets")}`
-              : readText(deps, ["backgammon", "board", "noTargetCount"], "no target"),
-          fontFamily: "IBM Plex Mono, JetBrains Mono, monospace",
-          fontSize: 11,
-          fill: "rgba(237,243,246,0.62)",
-        })
-      );
     }
 
     function renderFallback(host: HTMLElement, options: BackgammonStageRenderOptions): void {
@@ -1119,7 +1499,7 @@
       fallback.append(
         deps.createElement(
           "p",
-          "backgammon-context-card__lead",
+          "backgammon-board-stage__fallback-text",
           readText(
             deps,
             ["backgammon", "board", "stageFallback"],
@@ -1143,6 +1523,7 @@
     function renderBackgammonStage(host: HTMLElement, options: BackgammonStageRenderOptions): void {
       activeGame = options.game;
       activeCanUserMove = options.canUserMove;
+      activePlayers = options.players;
       const diceChanged = resetStagedMovesIfNeeded(options.game);
       const Konva = global.Konva;
       if (!isKonvaNamespace(Konva)) {
@@ -1157,12 +1538,17 @@
 
       if (stage === null) {
         host.replaceChildren();
+        activeLayout = buildStageLayout(host);
+        lastLayoutSignature = activeLayout.signature;
         stage = new Konva.Stage({
           container: host as HTMLDivElement,
-          width: WIDTH,
-          height: HEIGHT,
+          width: activeLayout.width,
+          height: activeLayout.height,
         });
         mountedHost = host;
+        observeHostResize(Konva, host);
+      } else {
+        observeHostResize(Konva, host);
       }
 
       drawScene(Konva, diceChanged);

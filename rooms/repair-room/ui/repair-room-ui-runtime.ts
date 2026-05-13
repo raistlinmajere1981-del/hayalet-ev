@@ -1,3 +1,4 @@
+import type { RepairEvent, RepairPanelId } from "../shared/types/index.js";
 import type { RepairUiState, RepairUiSnapshotMeta } from "../shared/ui/state.js";
 import { normalizeRepairHostMessage } from "../shared/ui/host-messages.js";
 import { REPAIR_ROOM_ID, REPAIR_UI_COLORS } from "../shared/repair-constants.js";
@@ -29,6 +30,27 @@ interface RepairUiContext {
   roomId: string;
   locale: string;
   translations: Record<string, unknown>;
+}
+
+type RepairPanelRenderer = () => HTMLElement;
+type RepairMutableStyleProperty = "left" | "width" | "transform" | "transformOrigin";
+
+interface RepairPanelLifecycle {
+  panelId: RepairPanelId;
+  signature: string;
+  mount: (parent: HTMLElement) => HTMLElement;
+  update: (element: HTMLElement) => HTMLElement;
+  dispose: (element: HTMLElement) => void;
+}
+
+interface RepairPersistentShell {
+  root: HTMLElement;
+  clock: HTMLElement;
+  workspace: HTMLElement;
+  rightStack: HTMLElement;
+  dock: HTMLElement;
+  panelElements: Map<RepairPanelId, HTMLElement>;
+  panelSignatures: Map<RepairPanelId, string>;
 }
 
 function createInitialState(): RepairUiState {
@@ -160,10 +182,14 @@ export function createRepairRoomUiRuntime() {
   const windowRef = window as unknown as RepairUiWindow;
   const documentRef = document;
 
-  let lastSignature = "";
+  let shell: RepairPersistentShell | null = null;
   let clockInterval: ReturnType<typeof setInterval> | null = null;
-  let renderGeneration = 0;
-  let overlayControllers: RepairOverlayController[] = [];
+  let overlayController: RepairOverlayController | null = null;
+  let overlayControllerHost: HTMLElement | null = null;
+  let overlayMounting = false;
+  let overlayMountVersion = 0;
+  let latestOverlayConfig: Parameters<typeof mountRepairOverlayStage>[0] | null = null;
+  let lastOverlaySignature = "";
 
   // -- i18n helper
   function text(path: string[], fallback: string): string {
@@ -178,43 +204,127 @@ export function createRepairRoomUiRuntime() {
     return typeof node === "string" ? node : fallback;
   }
 
-  // -- Signature for render dedup
-  function buildSignature(): string {
+  function setClassNameIfChanged(element: HTMLElement, className: string): void {
+    if (element.className !== className) element.className = className;
+  }
+
+  function setTextIfChanged(element: HTMLElement, textContent: string): void {
+    if (element.textContent !== textContent) element.textContent = textContent;
+  }
+
+  function setDatasetIfChanged(element: HTMLElement, key: string, value: string): void {
+    if (element.dataset[key] !== value) element.dataset[key] = value;
+  }
+
+  function setStyleIfChanged(
+    element: HTMLElement,
+    property: RepairMutableStyleProperty,
+    value: string
+  ): void {
+    if (element.style[property] !== value) {
+      element.style[property] = value;
+    }
+  }
+
+  // -- Selector-level signatures for targeted panel updates
+  function buildPanelSignature(panelId: RepairPanelId): string {
     const timelineShape = state.workbench.timeline;
     const timelineLiveWindow = timelineShape.autoFollowLive
       ? Math.floor((timelineShape.playheadMs + 10000) / 10000)
       : 0;
-    return JSON.stringify({
-      p: state.phase,
-      aid: state.sessions.activeId,
-      sl: state.sessions.list.length,
-      tool: state.workbench.activeTool,
-      frozen: state.workbench.isFrozen,
-      zoom: state.workbench.viewport.zoom,
-      panX: state.workbench.viewport.panXPx,
-      panY: state.workbench.viewport.panYPx,
-      timelineShape: {
-        zoom: timelineShape.zoom,
-        rangeStartMs: timelineShape.rangeStartMs,
-        rangeEndMs: timelineShape.rangeEndMs,
-        autoFollowLive: timelineShape.autoFollowLive,
-        liveWindow: timelineLiveWindow,
-      },
-      layers: state.workbench.visibleLayers,
-      focusedEventId: state.workbench.focusedEventId,
-      feed: state.tacticalFeed.length,
-      wiz: state.wizard.currentStep,
-      kp: state.knowledgePack.pack?.id ?? null,
-      kpTab: state.knowledgePack.previewTabId,
-      chatLen: state.chat.turns.length,
-      chatPending: state.chat.pendingReplyId,
-      instrument: state.measurement.activeInstrumentKind,
-      focus: state.layout.focusMode,
-      operatorProfileTabId: state.layout.operatorProfileTabId,
-      collapsed: state.layout.collapsedPanels,
-      pinned: state.layout.pinnedPanels,
-      evtCount: meta.events.length,
-    });
+    const layoutShape = {
+      collapsed: state.layout.collapsedPanels[panelId],
+      pinned: state.layout.pinnedPanels[panelId],
+    };
+    switch (panelId) {
+      case "session-rail":
+        return JSON.stringify({
+          aid: state.sessions.activeId,
+          list: state.sessions.list,
+          layoutShape,
+        });
+      case "workbench-stage":
+        return JSON.stringify({
+          sessionImage: state.sessions.detail?.pcbImage?.src ?? null,
+          sessionImageLabel: state.sessions.detail?.pcbImage?.label ?? null,
+          tool: state.workbench.activeTool,
+          frozen: state.workbench.isFrozen,
+          frozenAt: state.workbench.frozenAt,
+          viewport: state.workbench.viewport,
+          layers: state.workbench.visibleLayers,
+          cursor: state.workbench.cursor,
+          layoutShape,
+        });
+      case "tactical-feed":
+        return JSON.stringify({
+          feed: state.tacticalFeed.map((item) => [
+            item.eventId,
+            item.occurredAt,
+            item.relativeLabel,
+            item.severity,
+            item.badge,
+            item.body,
+          ]),
+          focusedEventId: state.workbench.focusedEventId,
+          layoutShape,
+        });
+      case "session-wizard":
+        return JSON.stringify({ wizard: state.wizard, layoutShape });
+      case "knowledge-pack":
+        return JSON.stringify({ knowledgePack: state.knowledgePack, layoutShape });
+      case "visual-timeline":
+        return JSON.stringify({
+          phase: state.phase,
+          focusedEventId: state.workbench.focusedEventId,
+          timelineShape: {
+            zoom: timelineShape.zoom,
+            rangeStartMs: timelineShape.rangeStartMs,
+            rangeEndMs: timelineShape.rangeEndMs,
+            autoFollowLive: timelineShape.autoFollowLive,
+            liveWindow: timelineLiveWindow,
+          },
+          events: meta.events.map((event) => [event.id, event.kind, event.occurredAt]),
+          imageSrc: state.sessions.detail?.pcbImage?.src ?? null,
+          layoutShape,
+        });
+      case "operator-profile":
+        return JSON.stringify({
+          profile: state.operatorProfile,
+          operatorProfileTabId: state.layout.operatorProfileTabId,
+          layoutShape,
+        });
+      case "chat":
+        return JSON.stringify({ chat: state.chat, layoutShape });
+      case "measurement":
+        return JSON.stringify({
+          measurementShape: {
+            activeInstrumentKind: state.measurement.activeInstrumentKind,
+            instrumentId: state.measurement.current.instrumentId,
+            kind: state.measurement.current.kind,
+            label: state.measurement.current.label,
+            mode: state.measurement.current.mode,
+            range: state.measurement.current.range,
+            hold: state.measurement.current.hold,
+          },
+          layoutShape,
+        });
+      case "room-sync":
+        return JSON.stringify({
+          phase: state.phase,
+          activeId: state.sessions.activeId,
+          focusedEventId: state.workbench.focusedEventId,
+          timelineShape: {
+            liveWindow: timelineLiveWindow,
+          },
+          events: meta.events.length,
+          latestEventId: meta.events.at(-1)?.id ?? null,
+          layoutShape,
+        });
+      default: {
+        const exhaustivePanelId: never = panelId;
+        return JSON.stringify({ panelId: exhaustivePanelId, layoutShape });
+      }
+    }
   }
 
   function formatOffset(ms: number): string {
@@ -226,6 +336,64 @@ export function createRepairRoomUiRuntime() {
     return `+${minutes}:${seconds}`;
   }
 
+  function getTimelineModel(): {
+    contentWidthPx: number;
+    eventDeltas: number[];
+    latestEventMs: number;
+    totalMs: number;
+    zoom: number;
+  } {
+    const session = state.sessions.detail;
+    const sessionStartMs = session === null ? 0 : Date.parse(session.startedAt);
+    const eventDeltas = meta.events.map((event) =>
+      Math.max(0, Date.parse(event.occurredAt) - sessionStartMs)
+    );
+    const latestEventMs = eventDeltas.length === 0 ? 0 : Math.max(...eventDeltas);
+    const totalMs = Math.max(
+      60000,
+      latestEventMs + 10000,
+      state.workbench.timeline.playheadMs + 10000
+    );
+    const zoom = state.workbench.timeline.zoom;
+    return {
+      contentWidthPx: Math.max(860, Math.round((totalMs / 1000) * 12 * zoom)),
+      eventDeltas,
+      latestEventMs,
+      totalMs,
+      zoom,
+    };
+  }
+
+  function getEventLabel(event: RepairEvent): string {
+    switch (event.kind) {
+      case "ai-mark":
+        return event.severity.toUpperCase();
+      case "measurement":
+        return event.reference ?? event.channel;
+      case "risk-flag":
+        return "RISK";
+      case "snapshot":
+        return "SNAP";
+      case "annotation":
+        return event.tool.toUpperCase();
+      case "freeze-frame":
+        return "FREEZE";
+      case "note":
+        return event.author.toUpperCase();
+      case "session-start":
+        return "START";
+      default:
+        return "EVENT";
+    }
+  }
+
+  function getEventThumbnailSrc(event: RepairEvent): string | null {
+    if (event.kind === "snapshot" && event.thumbnailSrc !== null) {
+      return event.thumbnailSrc;
+    }
+    return state.sessions.detail?.pcbImage?.src ?? null;
+  }
+
   function updateTimelineLiveDom(): void {
     const timeline = documentRef.querySelector<HTMLElement>(".repair-timeline");
     if (timeline === null) return;
@@ -234,15 +402,16 @@ export function createRepairRoomUiRuntime() {
     const clampedPlayheadMs = Math.min(totalMs, playheadMs);
     const readout = timeline.querySelector<HTMLElement>(".repair-timeline__readout");
     if (readout !== null) {
-      readout.textContent = `${formatOffset(playheadMs)} / ${formatOffset(totalMs)}`;
+      setTextIfChanged(readout, `${formatOffset(playheadMs)} / ${formatOffset(totalMs)}`);
     }
     const scrub = timeline.querySelector<HTMLInputElement>(".repair-timeline__scrub");
     if (scrub !== null && documentRef.activeElement !== scrub) {
-      scrub.value = String(clampedPlayheadMs);
+      const nextValue = String(clampedPlayheadMs);
+      if (scrub.value !== nextValue) scrub.value = nextValue;
     }
     const playhead = timeline.querySelector<HTMLElement>(".repair-timeline__playhead");
     if (playhead !== null) {
-      playhead.style.left = `${(clampedPlayheadMs / totalMs) * 100}%`;
+      setStyleIfChanged(playhead, "left", `${(clampedPlayheadMs / totalMs) * 100}%`);
     }
   }
 
@@ -271,18 +440,18 @@ export function createRepairRoomUiRuntime() {
     list.append(row);
   }
 
-  function updateMeasurementLiveDom(): void {
+  function updateMeasurementLiveDom(root: Document | HTMLElement = documentRef): void {
     const current = state.measurement.current;
-    const value = documentRef.querySelector<HTMLElement>(".repair-measurement-display__value");
-    if (value !== null) value.textContent = current.display;
-    const unit = documentRef.querySelector<HTMLElement>(".repair-measurement-display__unit");
-    if (unit !== null) unit.textContent = current.unit;
-    const label = documentRef.querySelector<HTMLElement>(".repair-measurement-display__label");
-    if (label !== null) label.textContent = current.label;
-    const mode = documentRef.querySelector<HTMLElement>(".repair-measurement-display__mode");
-    if (mode !== null) mode.textContent = `${current.mode.replace(/-/g, " ")} / ${current.range}`;
+    const value = root.querySelector<HTMLElement>(".repair-measurement-display__value");
+    if (value !== null) setTextIfChanged(value, current.display);
+    const unit = root.querySelector<HTMLElement>(".repair-measurement-display__unit");
+    if (unit !== null) setTextIfChanged(unit, current.unit);
+    const label = root.querySelector<HTMLElement>(".repair-measurement-display__label");
+    if (label !== null) setTextIfChanged(label, current.label);
+    const mode = root.querySelector<HTMLElement>(".repair-measurement-display__mode");
+    if (mode !== null) setTextIfChanged(mode, `${current.mode.replace(/-/g, " ")} / ${current.range}`);
 
-    const readingsList = documentRef.querySelector<HTMLElement>(".repair-readings-list");
+    const readingsList = root.querySelector<HTMLElement>(".repair-readings-list");
     if (readingsList === null) return;
     const fingerprint = state.measurement.recent
       .map((reading) => `${reading.id}:${reading.rawDisplay}`)
@@ -295,13 +464,47 @@ export function createRepairRoomUiRuntime() {
     });
   }
 
-  function updateSyncLiveDom(): void {
-    documentRef.querySelectorAll<HTMLElement>(".repair-sync-row").forEach((row) => {
+  function getSyncFocusedEvent(): RepairEvent | null {
+    return (
+      meta.events.find((event) => event.id === state.workbench.focusedEventId) ??
+      meta.events.at(-1) ??
+      null
+    );
+  }
+
+  function getSyncFocusedDetail(event: RepairEvent | null): string {
+    if (event === null) return "Awaiting workbench event.";
+    switch (event.kind) {
+      case "measurement":
+        return `${event.reference ?? event.channel} ${event.rawDisplay} ${event.unit}`;
+      case "ai-mark":
+        return event.rationale;
+      case "risk-flag":
+        return event.message;
+      case "snapshot":
+        return event.caption;
+      case "annotation":
+        return event.label;
+      case "freeze-frame":
+        return event.reason;
+      case "note":
+        return event.text;
+      case "session-start":
+        return event.title;
+      default: {
+        const exhaustiveEvent: never = event;
+        return exhaustiveEvent;
+      }
+    }
+  }
+
+  function updateSyncLiveDom(root: Document | HTMLElement = documentRef): void {
+    root.querySelectorAll<HTMLElement>(".repair-sync-row").forEach((row) => {
       const labelElement = row.querySelector<HTMLElement>(".repair-sync-row__label");
       const label = labelElement === null ? "" : labelElement.textContent.trim().toLowerCase();
       const value = row.querySelector<HTMLElement>(".repair-sync-row__value");
       if (value !== null && label === "playhead") {
-        value.textContent = `+${Math.round(state.workbench.timeline.playheadMs / 1000)}s`;
+        setTextIfChanged(value, `+${Math.round(state.workbench.timeline.playheadMs / 1000)}s`);
       }
     });
   }
@@ -318,146 +521,719 @@ export function createRepairRoomUiRuntime() {
     state.workbench.cursor = { xPx: point.xPx, yPx: point.yPx, gridX, gridY };
     const hud = documentRef.querySelector<HTMLElement>(".repair-coord-hud");
     if (hud !== null) {
-      hud.replaceChildren();
-      const labels = [`X ${point.xPx}`, `Y ${point.yPx}`, `GRID ${gridX}x${gridY}`];
-      labels.forEach((labelText) => {
-        const item = documentRef.createElement("span");
-        item.textContent = labelText;
-        hud.append(item);
-      });
+      syncCoordHudLabels(hud, [`X ${point.xPx}`, `Y ${point.yPx}`, `GRID ${gridX}x${gridY}`]);
     }
   }
 
-  function destroyOverlays(): void {
-    overlayControllers.forEach((controller) => {
-      controller.destroy();
-    });
-    overlayControllers = [];
+  function destroyOverlay(): void {
+    overlayMountVersion += 1;
+    overlayController?.destroy();
+    overlayController = null;
+    overlayControllerHost = null;
+    overlayMounting = false;
+    latestOverlayConfig = null;
+    lastOverlaySignature = "";
   }
 
-  async function mountOverlays(root: HTMLElement, generation: number): Promise<void> {
+  function buildOverlaySignature(config: Parameters<typeof mountRepairOverlayStage>[0]): string {
+    return JSON.stringify({
+      events: config.events.map((event) => [
+        event.id,
+        event.kind,
+        event.occurredAt,
+        event.kind === "measurement" ? event.pinAt : null,
+        event.kind === "annotation" ? [event.region, event.point, event.label, event.color] : null,
+        event.kind === "ai-mark" || event.kind === "risk-flag" ? event.region : null,
+      ]),
+      focusedEventId: config.focusedEventId,
+      image: [config.image.src, config.image.widthPx, config.image.heightPx],
+      visibleLayers: config.visibleLayers,
+      workbench: {
+        activeTool: config.workbench.activeTool,
+        viewport: config.workbench.viewport,
+      },
+    });
+  }
+
+  function buildOverlayConfig(
+    root: HTMLElement
+  ): Parameters<typeof mountRepairOverlayStage>[0] | null {
     const overlayHost = root.querySelector<HTMLElement>("[data-repair-overlay-stage='workbench']");
     const session = state.sessions.detail;
-    if (overlayHost === null || session === null || session.pcbImage === null) return;
+    if (overlayHost === null || session === null || session.pcbImage === null) return null;
     const image = {
       ...session.pcbImage,
       src: resolveRepairAssetUrl(session.pcbImage.src) ?? session.pcbImage.src,
     };
-    let controller: RepairOverlayController | null;
-    try {
-      controller = await mountRepairOverlayStage({
-        container: overlayHost,
-        events: meta.events,
-        focusedEventId: state.workbench.focusedEventId,
-        image,
-        visibleLayers: state.workbench.visibleLayers,
-        workbench: state.workbench,
-        onAddAnnotation: (payload) => {
-          requestRuntime.addTimelineEvent({ kind: "annotation", ...payload });
-        },
-        onAddMeasurement: (payload) => {
-          requestRuntime.addMeasurement({
-            rawDisplay: state.measurement.current.display,
-            ...payload,
-          });
-        },
-        onCursor: updateCursorHud,
-        onEventClick: (eventId) => {
-          requestRuntime.jumpToEvent({ eventId });
-        },
-        onViewportChange: (payload) => {
-          requestRuntime.updateLayout({
-            viewportZoom: payload.zoom,
-            panXPx: payload.panXPx,
-            panYPx: payload.panYPx,
-          });
-        },
-      });
-    } catch (error) {
-      overlayHost.dataset["overlayError"] = "true";
-      console.error("[repair-room] overlay mount failed", error);
-      return;
-    }
-    if (controller === null) return;
-    if (generation !== renderGeneration) {
-      controller.destroy();
-      return;
-    }
-    overlayControllers.push(controller);
+    return {
+      container: overlayHost,
+      events: meta.events,
+      focusedEventId: state.workbench.focusedEventId,
+      image,
+      visibleLayers: state.workbench.visibleLayers,
+      workbench: state.workbench,
+      onAddAnnotation: (payload) => {
+        requestRuntime.addTimelineEvent({ kind: "annotation", ...payload });
+      },
+      onAddMeasurement: (payload) => {
+        requestRuntime.addMeasurement({
+          rawDisplay: state.measurement.current.display,
+          ...payload,
+        });
+      },
+      onCursor: updateCursorHud,
+      onEventClick: (eventId) => {
+        requestRuntime.jumpToEvent({ eventId });
+      },
+      onViewportChange: (payload) => {
+        requestRuntime.updateViewport({
+          viewportZoom: payload.zoom,
+          panXPx: payload.panXPx,
+          panYPx: payload.panYPx,
+        });
+      },
+    };
   }
 
-  // -- Render
-  function render(): void {
-    const sig = buildSignature();
-    if (sig === lastSignature) return;
-    lastSignature = sig;
-    renderGeneration += 1;
-    destroyOverlays();
-    const generation = renderGeneration;
+  async function syncOverlay(root: HTMLElement): Promise<void> {
+    const overlayConfig = buildOverlayConfig(root);
+    latestOverlayConfig = overlayConfig;
+    if (overlayConfig === null) {
+      destroyOverlay();
+      return;
+    }
+    const overlaySignature = buildOverlaySignature(overlayConfig);
+    if (overlayController !== null && overlayControllerHost === overlayConfig.container) {
+      if (overlaySignature === lastOverlaySignature) return;
+      lastOverlaySignature = overlaySignature;
+      overlayController.update(overlayConfig);
+      return;
+    }
+    if (overlayController !== null && overlayControllerHost !== overlayConfig.container) {
+      destroyOverlay();
+    }
+    if (overlayMounting) return;
+    overlayMounting = true;
+    const mountVersion = ++overlayMountVersion;
+    let needsRemount = false;
+    try {
+      const controller = await mountRepairOverlayStage(overlayConfig);
+      if (controller === null) return;
+      const currentConfig = latestOverlayConfig;
+      if (
+        mountVersion !== overlayMountVersion ||
+        currentConfig === null ||
+        currentConfig.container !== overlayConfig.container
+      ) {
+        controller.destroy();
+        needsRemount = currentConfig !== null;
+        return;
+      }
+      overlayController = controller;
+      overlayControllerHost = overlayConfig.container;
+      lastOverlaySignature = buildOverlaySignature(currentConfig);
+      controller.update(currentConfig);
+    } catch (error) {
+      overlayConfig.container.dataset["overlayError"] = "true";
+      console.error("[repair-room] overlay mount failed", error);
+      return;
+    } finally {
+      overlayMounting = false;
+      if (needsRemount) {
+        void syncOverlay(root);
+      }
+    }
+  }
 
-    const mount = documentRef.getElementById("app");
-    if (mount === null) return;
+  function updatePanelChrome(panel: HTMLElement, panelId: RepairPanelId): void {
+    const collapsed = state.layout.collapsedPanels[panelId];
+    const pinned = state.layout.pinnedPanels[panelId];
+    panel.classList.toggle("repair-panel--collapsed", collapsed);
+    panel.classList.toggle("repair-panel--pinned", pinned);
 
-    const shell = documentRef.createElement("div");
-    shell.className = `repair-shell${state.layout.focusMode ? " repair-shell--focus-mode" : ""}`;
+    const pin = panel.querySelector<HTMLElement>("[data-repair-action='toggle-panel-pin']");
+    if (pin !== null) {
+      pin.classList.toggle("repair-panel__icon-btn--active", pinned);
+      const nextTitle = pinned ? "Unpin panel" : "Pin panel";
+      if (pin.title !== nextTitle) pin.title = nextTitle;
+      setDatasetIfChanged(pin, "pinned", String(!pinned));
+    }
 
-    // Status bar
-    const statusBar = documentRef.createElement("div");
-    statusBar.className = "repair-statusbar";
+    const collapse = panel.querySelector<HTMLElement>(
+      "[data-repair-action='toggle-panel-collapse']"
+    );
+    if (collapse !== null) {
+      const nextTitle = collapsed ? "Expand panel" : "Collapse panel";
+      const nextText = collapsed ? "EXP" : "COL";
+      if (collapse.title !== nextTitle) collapse.title = nextTitle;
+      setTextIfChanged(collapse, nextText);
+      setDatasetIfChanged(collapse, "collapsed", String(!collapsed));
+    }
+  }
 
-    const label = documentRef.createElement("span");
-    label.className = "repair-statusbar__label";
-    label.textContent = "Repair Room v0.1.0";
-    statusBar.append(label);
+  function syncCoordHudLabels(hud: HTMLElement, labels: string[]): void {
+    labels.forEach((labelText, index) => {
+      const item = hud.children.item(index);
+      const labelElement =
+        item instanceof HTMLElement ? item : documentRef.createElement("span");
+      if (item === null) {
+        hud.append(labelElement);
+      }
+      setTextIfChanged(labelElement, labelText);
+    });
 
-    const clock = documentRef.createElement("span");
-    clock.className = "repair-statusbar__clock";
-    clock.textContent = state.ambient.nowIso
-      ? new Date(state.ambient.nowIso).toLocaleTimeString("en-GB", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        })
-      : "--:--:--";
-    statusBar.append(clock);
+    while (hud.children.length > labels.length) {
+      hud.children.item(hud.children.length - 1)?.remove();
+    }
+  }
 
-    shell.append(statusBar);
+  function updateWorkbenchPanelDom(panel: HTMLElement): void {
+    updatePanelChrome(panel, "workbench-stage");
 
-    // Workspace grid
-    const workspace = documentRef.createElement("div");
-    workspace.className = "repair-workspace";
+    const dot = panel.querySelector<HTMLElement>(".repair-panel__status-dot");
+    if (dot !== null) {
+      setClassNameIfChanged(
+        dot,
+        `repair-panel__status-dot repair-panel__status-dot--${
+          state.workbench.isFrozen ? "amber" : "live"
+        }`
+      );
+    }
 
-    // 1. Session Rail
-    workspace.append(renderSessionRailPanel(documentRef, state, text));
+    const liveChip = panel.querySelector<HTMLElement>(".repair-live-chip");
+    if (liveChip !== null) {
+      if (state.workbench.isFrozen) {
+        setClassNameIfChanged(liveChip, "repair-live-chip repair-live-chip--frozen");
+        const frozenTime = state.workbench.frozenAt
+          ? new Date(state.workbench.frozenAt).toLocaleTimeString("en-GB", {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            })
+          : "--:--:--";
+        setTextIfChanged(liveChip, `FROZEN — ${frozenTime}`);
+      } else {
+        setClassNameIfChanged(liveChip, "repair-live-chip");
+        setTextIfChanged(liveChip, "LIVE");
+      }
+    }
 
-    // 2. Workbench Stage
-    workspace.append(renderWorkbenchStagePanel(documentRef, state, text));
+    const zoomInfo = panel.querySelector<HTMLElement>(".repair-workbench-header__info");
+    if (zoomInfo !== null) {
+      setTextIfChanged(zoomInfo, `${state.workbench.viewport.zoom.toFixed(1)}x`);
+    }
 
-    // 3. Tactical Feed
-    workspace.append(renderTacticalFeedPanel(documentRef, state, text));
+    const viewport = panel.querySelector<HTMLElement>(".repair-viewport");
+    if (viewport !== null) {
+      viewport.classList.toggle("repair-viewport--frozen", state.workbench.isFrozen);
+      const overlayHost = viewport.querySelector<HTMLElement>(
+        "[data-repair-overlay-stage='workbench']"
+      );
+      const existingImage = viewport.querySelector<HTMLImageElement>(".repair-viewport__image");
+      const existingPlaceholder = viewport.querySelector<HTMLElement>(".repair-empty-state");
+      const session = state.sessions.detail;
+      if (session !== null && session.pcbImage !== null) {
+        const resolvedSrc = resolveRepairAssetUrl(session.pcbImage.src) ?? session.pcbImage.src;
+        const image = existingImage ?? documentRef.createElement("img");
+        setClassNameIfChanged(image, "repair-viewport__image");
+        if (image.getAttribute("src") !== resolvedSrc) image.src = resolvedSrc;
+        if (image.alt !== session.pcbImage.label) image.alt = session.pcbImage.label;
+        if (image.draggable) image.draggable = false;
+        setStyleIfChanged(
+          image,
+          "transform",
+          `translate(${state.workbench.viewport.panXPx}px, ${state.workbench.viewport.panYPx}px) scale(${state.workbench.viewport.zoom})`
+        );
+        setStyleIfChanged(image, "transformOrigin", "top left");
+        existingPlaceholder?.remove();
+        if (existingImage === null) {
+          viewport.insertBefore(image, overlayHost ?? viewport.firstChild);
+        }
+      } else {
+        existingImage?.remove();
+        if (existingPlaceholder === null) {
+          const placeholder = documentRef.createElement("div");
+          placeholder.className = "repair-empty-state";
+          placeholder.textContent = text(["workbench", "noImage"], "No PCB image loaded");
+          viewport.insertBefore(placeholder, overlayHost ?? viewport.firstChild);
+        }
+      }
+    }
 
-    // 4. Wizard + Knowledge Pack stack
-    const rightStack = documentRef.createElement("div");
-    rightStack.className = "repair-panel--wizard-pack-stack";
-    rightStack.append(renderSessionWizardPanel(documentRef, state, text));
-    rightStack.append(renderKnowledgePackPanel(documentRef, state, text));
-    workspace.append(rightStack);
+    const cursor = state.workbench.cursor;
+    if (cursor !== null) {
+      updateCursorHud(cursor);
+    } else {
+      const hud = panel.querySelector<HTMLElement>(".repair-coord-hud");
+      if (hud !== null) {
+        syncCoordHudLabels(hud, ["X —", "Y —", "GRID —"]);
+      }
+    }
 
-    // 5. Visual Timeline
-    workspace.append(renderVisualTimelinePanel(documentRef, state, meta, text));
+    panel.querySelectorAll<HTMLElement>("[data-repair-action='set-tool']").forEach((button) => {
+      button.classList.toggle(
+        "repair-toolbar__btn--active",
+        button.dataset["tool"] === state.workbench.activeTool
+      );
+    });
 
-    // 6. Bottom Dock
-    const dock = documentRef.createElement("div");
-    dock.className = "repair-bottom-dock";
-    dock.append(renderOperatorProfilePanel(documentRef, state, text));
-    dock.append(renderChatPanel(documentRef, state, text));
-    dock.append(renderMeasurementPanel(documentRef, state, text));
-    dock.append(renderRoomSyncPanel(documentRef, state, meta, text));
+    panel
+      .querySelectorAll<HTMLElement>("[data-repair-action='toggle-overlay-layer']")
+      .forEach((button) => {
+        const layerId = button.dataset["layerId"];
+        const visible =
+          layerId !== undefined &&
+          state.workbench.visibleLayers[layerId as keyof typeof state.workbench.visibleLayers];
+        button.classList.toggle("repair-toolbar__btn--active", visible === true);
+        setDatasetIfChanged(button, "visible", String(visible !== true));
+      });
+  }
 
-    workspace.append(dock);
-    shell.append(workspace);
+  function createTacticalFeedEntry(): HTMLElement {
+    const entry = documentRef.createElement("div");
+    entry.dataset["repairAction"] = "jump-to-event";
 
-    // Legend bar
+    const header = documentRef.createElement("div");
+    header.className = "repair-feed-entry__header";
+
+    const badge = documentRef.createElement("span");
+    badge.className = "repair-feed-entry__badge";
+    header.append(badge);
+
+    const time = documentRef.createElement("span");
+    time.className = "repair-feed-entry__time";
+    header.append(time);
+
+    const bodyText = documentRef.createElement("div");
+    bodyText.className = "repair-feed-entry__body";
+
+    entry.append(header, bodyText);
+    return entry;
+  }
+
+  function syncTacticalFeedEntry(
+    entry: HTMLElement,
+    item: RepairUiState["tacticalFeed"][number]
+  ): void {
+    setClassNameIfChanged(
+      entry,
+      `repair-feed-entry repair-feed-entry--${item.severity}${
+        state.workbench.focusedEventId === item.eventId ? " repair-feed-entry--active" : ""
+      }`
+    );
+    setDatasetIfChanged(entry, "repairAction", "jump-to-event");
+    setDatasetIfChanged(entry, "eventId", item.eventId);
+
+    let header = entry.querySelector<HTMLElement>(".repair-feed-entry__header");
+    if (header === null) {
+      header = documentRef.createElement("div");
+      header.className = "repair-feed-entry__header";
+      entry.prepend(header);
+    }
+
+    let badge = header.querySelector<HTMLElement>(".repair-feed-entry__badge");
+    if (badge === null) {
+      badge = documentRef.createElement("span");
+      header.prepend(badge);
+    }
+    setClassNameIfChanged(
+      badge,
+      `repair-feed-entry__badge repair-feed-entry__badge--${item.severity}`
+    );
+    setTextIfChanged(badge, item.badge);
+
+    let time = header.querySelector<HTMLElement>(".repair-feed-entry__time");
+    if (time === null) {
+      time = documentRef.createElement("span");
+      time.className = "repair-feed-entry__time";
+      header.append(time);
+    }
+    setTextIfChanged(time, item.relativeLabel);
+
+    let bodyText = entry.querySelector<HTMLElement>(".repair-feed-entry__body");
+    if (bodyText === null) {
+      bodyText = documentRef.createElement("div");
+      bodyText.className = "repair-feed-entry__body";
+      entry.append(bodyText);
+    }
+    setTextIfChanged(bodyText, item.body);
+  }
+
+  function updateTacticalFeedPanelDom(panel: HTMLElement): void {
+    updatePanelChrome(panel, "tactical-feed");
+
+    const hasRisk = state.tacticalFeed.some((item) => item.severity === "risk");
+    const dot = panel.querySelector<HTMLElement>(".repair-panel__status-dot");
+    if (dot !== null) {
+      setClassNameIfChanged(
+        dot,
+        `repair-panel__status-dot repair-panel__status-dot--${hasRisk ? "risk" : "live"}`
+      );
+    }
+
+    const list = panel.querySelector<HTMLElement>(".repair-feed-list");
+    if (list === null) return;
+
+    const previousScrollTop = list.scrollTop;
+    const activeEventIds = new Set(state.tacticalFeed.map((item) => item.eventId));
+    for (const item of state.tacticalFeed) {
+      const existing =
+        Array.from(list.querySelectorAll<HTMLElement>(".repair-feed-entry")).find(
+          (candidate) => candidate.dataset["eventId"] === item.eventId
+        ) ?? null;
+      const entry = existing ?? createTacticalFeedEntry();
+      syncTacticalFeedEntry(entry, item);
+      list.append(entry);
+    }
+
+    list.querySelectorAll<HTMLElement>(".repair-feed-entry").forEach((entry) => {
+      const eventId = entry.dataset["eventId"];
+      if (eventId === undefined || !activeEventIds.has(eventId)) {
+        entry.remove();
+      }
+    });
+    list.scrollTop = previousScrollTop;
+  }
+
+  function updateMeasurementPanelDom(panel: HTMLElement): void {
+    updatePanelChrome(panel, "measurement");
+
+    const dot = panel.querySelector<HTMLElement>(".repair-panel__status-dot");
+    if (dot !== null) {
+      setClassNameIfChanged(
+        dot,
+        `repair-panel__status-dot repair-panel__status-dot--${
+          state.measurement.current.hold ? "amber" : "live"
+        }`
+      );
+    }
+
+    panel.querySelectorAll<HTMLElement>("[data-repair-action='set-instrument']").forEach((tab) => {
+      tab.classList.toggle(
+        "repair-tab--active",
+        tab.dataset["instrumentKind"] === state.measurement.activeInstrumentKind
+      );
+    });
+
+    updateMeasurementLiveDom(panel);
+  }
+
+  function updateRoomSyncPanelDom(panel: HTMLElement): void {
+    updatePanelChrome(panel, "room-sync");
+
+    const dot = panel.querySelector<HTMLElement>(".repair-panel__status-dot");
+    if (dot !== null) {
+      setClassNameIfChanged(
+        dot,
+        `repair-panel__status-dot repair-panel__status-dot--${
+          state.phase === "session-active" ? "live" : "idle"
+        }`
+      );
+    }
+
+    const session = state.sessions.detail;
+    const rows: Array<[string, string]> = [
+      [text(["sync", "storage"], "Storage"), "In-memory mock"],
+      [text(["sync", "registry"], "Room Sync"), "Workspace build ready"],
+      [text(["sync", "events"], "Events"), `${meta.events.length} records`],
+      [text(["sync", "session"], "Session"), session?.title ?? "No active session"],
+      [
+        text(["sync", "playhead"], "Playhead"),
+        `+${Math.round(state.workbench.timeline.playheadMs / 1000)}s`,
+      ],
+    ];
+
+    const rowElements = Array.from(panel.querySelectorAll<HTMLElement>(".repair-sync-row"));
+    rows.forEach(([label, value], index) => {
+      const row = rowElements[index];
+      if (row === undefined) return;
+      const labelEl = row.querySelector<HTMLElement>(".repair-sync-row__label");
+      if (labelEl !== null) setTextIfChanged(labelEl, label);
+      const valueEl = row.querySelector<HTMLElement>(".repair-sync-row__value");
+      if (valueEl !== null) setTextIfChanged(valueEl, value);
+    });
+
+    const focused = getSyncFocusedEvent();
+    const title = panel.querySelector<HTMLElement>(".repair-sync-focus__title");
+    if (title !== null) setTextIfChanged(title, focused === null ? "Live edge" : focused.kind.toUpperCase());
+    const detail = panel.querySelector<HTMLElement>(".repair-sync-focus__detail");
+    if (detail !== null) setTextIfChanged(detail, getSyncFocusedDetail(focused));
+  }
+
+  function syncTimelineTicks(track: HTMLElement, totalMs: number): void {
+    const tickCount = Math.max(6, Math.ceil(totalMs / 10000));
+    const activeTickKeys = new Set<string>();
+    for (let i = 0; i <= tickCount; i += 1) {
+      const tickMs = Math.min(totalMs, i * 10000);
+      const key = String(tickMs);
+      activeTickKeys.add(key);
+      let tick = track.querySelector<HTMLElement>(`.repair-timeline__tick[data-tick-ms="${key}"]`);
+      if (tick === null) {
+        tick = documentRef.createElement("div");
+        tick.className = "repair-timeline__tick";
+        tick.dataset["tickMs"] = key;
+        const label = documentRef.createElement("span");
+        tick.append(label);
+      }
+      tick.style.left = `${(tickMs / totalMs) * 100}%`;
+      const label = tick.querySelector<HTMLElement>("span");
+      if (label !== null) {
+        label.textContent = formatOffset(tickMs);
+      }
+      track.append(tick);
+    }
+
+    track.querySelectorAll<HTMLElement>(".repair-timeline__tick").forEach((tick) => {
+      const key = tick.dataset["tickMs"];
+      if (key === undefined || !activeTickKeys.has(key)) {
+        tick.remove();
+      }
+    });
+  }
+
+  function syncTimelineRange(track: HTMLElement, totalMs: number): void {
+    const rangeStart = state.workbench.timeline.rangeStartMs;
+    const rangeEnd = state.workbench.timeline.rangeEndMs;
+    let range = track.querySelector<HTMLElement>(".repair-timeline__range");
+    if (rangeStart === null || rangeEnd === null) {
+      range?.remove();
+      return;
+    }
+    if (range === null) {
+      range = documentRef.createElement("div");
+      range.className = "repair-timeline__range";
+    }
+    range.style.left = `${(Math.min(rangeStart, rangeEnd) / totalMs) * 100}%`;
+    range.style.width = `${(Math.abs(rangeEnd - rangeStart) / totalMs) * 100}%`;
+    track.append(range);
+  }
+
+  function syncTimelineChip(
+    track: HTMLElement,
+    event: RepairEvent,
+    deltaMs: number,
+    totalMs: number,
+    zoom: number
+  ): HTMLElement {
+    let chip =
+      Array.from(track.querySelectorAll<HTMLElement>(".repair-timeline__chip")).find(
+        (candidate) => candidate.dataset["eventId"] === event.id
+      ) ?? null;
+    if (chip === null) {
+      chip = documentRef.createElement("button");
+      chip.dataset["repairAction"] = "jump-to-event";
+      chip.dataset["eventId"] = event.id;
+    }
+    chip.className = `repair-timeline__chip repair-timeline__chip--${event.kind}${
+      state.workbench.focusedEventId === event.id ? " repair-timeline__chip--active" : ""
+    }`;
+    chip.setAttribute("type", "button");
+    chip.title = `${event.kind} — ${event.occurredAt}`;
+    chip.style.left = `${(deltaMs / totalMs) * 100}%`;
+
+    if (zoom < 0.6) {
+      chip.replaceChildren();
+      return chip;
+    }
+
+    let thumb = chip.querySelector<HTMLElement>(".repair-timeline__thumb");
+    if (thumb === null) {
+      thumb = documentRef.createElement("span");
+      thumb.className = "repair-timeline__thumb";
+      chip.replaceChildren(thumb);
+    }
+
+    const thumbnailSrc = getEventThumbnailSrc(event);
+    if (thumbnailSrc !== null) {
+      const resolvedSrc = resolveRepairAssetUrl(thumbnailSrc) ?? thumbnailSrc;
+      thumb.style.backgroundImage = `linear-gradient(180deg, rgba(5, 8, 12, 0.06), rgba(5, 8, 12, 0.72)), url("${resolvedSrc.replace(/"/g, '\\"')}")`;
+    } else {
+      thumb.style.removeProperty("background-image");
+    }
+
+    let thumbLabel = thumb.querySelector<HTMLElement>(".repair-timeline__thumb-label");
+    if (thumbLabel === null) {
+      thumbLabel = documentRef.createElement("span");
+      thumbLabel.className = "repair-timeline__thumb-label";
+      thumb.append(thumbLabel);
+    }
+    thumbLabel.textContent = getEventLabel(event);
+    return chip;
+  }
+
+  function syncTimelineChips(
+    track: HTMLElement,
+    eventDeltas: number[],
+    totalMs: number,
+    zoom: number
+  ): void {
+    const activeEventIds = new Set(meta.events.map((event) => event.id));
+    meta.events.forEach((event, index) => {
+      track.append(syncTimelineChip(track, event, eventDeltas[index] ?? 0, totalMs, zoom));
+    });
+
+    track.querySelectorAll<HTMLElement>(".repair-timeline__chip").forEach((chip) => {
+      const eventId = chip.dataset["eventId"];
+      if (eventId === undefined || !activeEventIds.has(eventId)) {
+        chip.remove();
+      }
+    });
+  }
+
+  function syncTimelinePlayhead(track: HTMLElement, totalMs: number): void {
+    let playhead = track.querySelector<HTMLElement>(".repair-timeline__playhead");
+    if (playhead === null) {
+      playhead = documentRef.createElement("div");
+      playhead.className = "repair-timeline__playhead";
+    }
+    playhead.style.left = `${
+      (Math.min(totalMs, state.workbench.timeline.playheadMs) / totalMs) * 100
+    }%`;
+    track.append(playhead);
+  }
+
+  function syncTimelineLiveEdge(track: HTMLElement, totalMs: number, latestEventMs: number): void {
+    let liveEdge = track.querySelector<HTMLElement>(".repair-timeline__live-edge");
+    if (state.phase !== "session-active") {
+      liveEdge?.remove();
+      return;
+    }
+    if (liveEdge === null) {
+      liveEdge = documentRef.createElement("div");
+      liveEdge.className = "repair-timeline__live-edge";
+    }
+    liveEdge.style.left = `${(latestEventMs / totalMs) * 100}%`;
+    track.append(liveEdge);
+  }
+
+  function updateVisualTimelinePanelDom(panel: HTMLElement): void {
+    updatePanelChrome(panel, "visual-timeline");
+    const dot = panel.querySelector<HTMLElement>(".repair-panel__status-dot");
+    if (dot !== null) {
+      setClassNameIfChanged(
+        dot,
+        `repair-panel__status-dot repair-panel__status-dot--${
+          state.phase === "session-active" ? "live" : "idle"
+        }`
+      );
+    }
+
+    const timeline = panel.querySelector<HTMLElement>(".repair-timeline");
+    const track = panel.querySelector<HTMLElement>(".repair-timeline__track");
+    const scrub = panel.querySelector<HTMLInputElement>(".repair-timeline__scrub");
+    if (timeline === null || track === null || scrub === null) return;
+
+    const previousScrollLeft =
+      panel.querySelector<HTMLElement>(".repair-timeline__scroller")?.scrollLeft ?? 0;
+    const model = getTimelineModel();
+    setDatasetIfChanged(timeline, "totalMs", String(model.totalMs));
+    setStyleIfChanged(track, "width", `${model.contentWidthPx}px`);
+    const scrubMax = String(model.totalMs);
+    if (scrub.max !== scrubMax) scrub.max = scrubMax;
+    const scrubValue = String(Math.min(model.totalMs, Math.max(0, state.workbench.timeline.playheadMs)));
+    if (scrub.value !== scrubValue) scrub.value = scrubValue;
+
+    syncTimelineTicks(track, model.totalMs);
+    syncTimelineRange(track, model.totalMs);
+    syncTimelineChips(track, model.eventDeltas, model.totalMs, model.zoom);
+    syncTimelinePlayhead(track, model.totalMs);
+    syncTimelineLiveEdge(track, model.totalMs, model.latestEventMs);
+    applyLiveSnapshotUpdates();
+
+    const scroller = panel.querySelector<HTMLElement>(".repair-timeline__scroller");
+    if (scroller !== null) {
+      scroller.scrollLeft = previousScrollLeft;
+    }
+  }
+
+  function replacePanelElement(current: HTMLElement, next: HTMLElement): HTMLElement {
+    const bodyScrollTop = current.querySelector<HTMLElement>(".repair-panel__body")?.scrollTop ?? 0;
+    const timelineScrollLeft =
+      current.querySelector<HTMLElement>(".repair-timeline__scroller")?.scrollLeft ?? 0;
+    const feedScrollTop = current.querySelector<HTMLElement>(".repair-feed-list")?.scrollTop ?? 0;
+    current.replaceWith(next);
+    const nextBody = next.querySelector<HTMLElement>(".repair-panel__body");
+    if (nextBody !== null) nextBody.scrollTop = bodyScrollTop;
+    const nextTimeline = next.querySelector<HTMLElement>(".repair-timeline__scroller");
+    if (nextTimeline !== null) nextTimeline.scrollLeft = timelineScrollLeft;
+    const nextFeed = next.querySelector<HTMLElement>(".repair-feed-list");
+    if (nextFeed !== null) nextFeed.scrollTop = feedScrollTop;
+    return next;
+  }
+
+  function createPanelLifecycle(
+    panelId: RepairPanelId,
+    renderer: RepairPanelRenderer
+  ): RepairPanelLifecycle {
+    return {
+      panelId,
+      signature: buildPanelSignature(panelId),
+      mount: (parent) => {
+        const element = renderer();
+        parent.append(element);
+        return element;
+      },
+      update: (element) => {
+        if (panelId === "workbench-stage") {
+          updateWorkbenchPanelDom(element);
+          return element;
+        }
+        if (panelId === "visual-timeline") {
+          updateVisualTimelinePanelDom(element);
+          return element;
+        }
+        if (panelId === "tactical-feed") {
+          updateTacticalFeedPanelDom(element);
+          return element;
+        }
+        if (panelId === "measurement") {
+          updateMeasurementPanelDom(element);
+          return element;
+        }
+        if (panelId === "room-sync") {
+          updateRoomSyncPanelDom(element);
+          return element;
+        }
+        return replacePanelElement(element, renderer());
+      },
+      dispose: (element) => {
+        element.remove();
+      },
+    };
+  }
+
+  function syncPanel(
+    persistentShell: RepairPersistentShell,
+    parent: HTMLElement,
+    lifecycle: RepairPanelLifecycle
+  ): void {
+    const current = persistentShell.panelElements.get(lifecycle.panelId);
+    if (current === undefined) {
+      const mounted = lifecycle.mount(parent);
+      persistentShell.panelElements.set(lifecycle.panelId, mounted);
+      persistentShell.panelSignatures.set(lifecycle.panelId, lifecycle.signature);
+      return;
+    }
+
+    const previousSignature = persistentShell.panelSignatures.get(lifecycle.panelId);
+    if (previousSignature === lifecycle.signature) {
+      if (
+        lifecycle.panelId === "workbench-stage" ||
+        lifecycle.panelId === "tactical-feed" ||
+        lifecycle.panelId === "measurement" ||
+        lifecycle.panelId === "room-sync"
+      ) {
+        lifecycle.update(current);
+      }
+      return;
+    }
+
+    const updated = lifecycle.update(current);
+    persistentShell.panelElements.set(lifecycle.panelId, updated);
+    persistentShell.panelSignatures.set(lifecycle.panelId, lifecycle.signature);
+  }
+
+  function createLegendBar(): HTMLElement {
     const legendBar = documentRef.createElement("div");
     legendBar.className = "repair-legendbar";
 
@@ -485,189 +1261,287 @@ export function createRepairRoomUiRuntime() {
       legendBar.append(item);
     }
 
-    shell.append(legendBar);
+    return legendBar;
+  }
 
-    mount.replaceChildren(shell);
-    bindActions(shell);
-    void mountOverlays(shell, generation);
+  function ensurePersistentShell(mount: HTMLElement): RepairPersistentShell {
+    if (shell !== null && mount.contains(shell.root)) return shell;
+
+    const root = documentRef.createElement("div");
+    root.className = "repair-shell";
+
+    const statusBar = documentRef.createElement("div");
+    statusBar.className = "repair-statusbar";
+
+    const label = documentRef.createElement("span");
+    label.className = "repair-statusbar__label";
+    label.textContent = "Repair Room v0.1.0";
+    statusBar.append(label);
+
+    const clock = documentRef.createElement("span");
+    clock.className = "repair-statusbar__clock";
+    clock.textContent = "--:--:--";
+    statusBar.append(clock);
+    root.append(statusBar);
+
+    const workspace = documentRef.createElement("div");
+    workspace.className = "repair-workspace";
+    const rightStack = documentRef.createElement("div");
+    rightStack.className = "repair-panel--wizard-pack-stack";
+    const dock = documentRef.createElement("div");
+    dock.className = "repair-bottom-dock";
+    root.append(workspace, createLegendBar());
+
+    shell = {
+      root,
+      clock,
+      workspace,
+      rightStack,
+      dock,
+      panelElements: new Map(),
+      panelSignatures: new Map(),
+    };
+    mount.replaceChildren(root);
+    bindActions(root);
+    return shell;
+  }
+
+  // -- Render
+  function render(): void {
+    const mount = documentRef.getElementById("app");
+    if (mount === null) return;
+    const persistentShell = ensurePersistentShell(mount);
+    setClassNameIfChanged(persistentShell.root, `repair-shell${
+      state.layout.focusMode ? " repair-shell--focus-mode" : ""
+    }`);
+    setTextIfChanged(
+      persistentShell.clock,
+      state.ambient.nowIso
+        ? new Date(state.ambient.nowIso).toLocaleTimeString("en-GB", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          })
+        : "--:--:--"
+    );
+
+    syncPanel(
+      persistentShell,
+      persistentShell.workspace,
+      createPanelLifecycle("session-rail", () => renderSessionRailPanel(documentRef, state, text))
+    );
+    syncPanel(
+      persistentShell,
+      persistentShell.workspace,
+      createPanelLifecycle("workbench-stage", () =>
+        renderWorkbenchStagePanel(documentRef, state, text)
+      )
+    );
+    syncPanel(
+      persistentShell,
+      persistentShell.workspace,
+      createPanelLifecycle("tactical-feed", () => renderTacticalFeedPanel(documentRef, state, text))
+    );
+
+    if (!persistentShell.workspace.contains(persistentShell.rightStack)) {
+      persistentShell.workspace.append(persistentShell.rightStack);
+    }
+    syncPanel(
+      persistentShell,
+      persistentShell.rightStack,
+      createPanelLifecycle("session-wizard", () =>
+        renderSessionWizardPanel(documentRef, state, text)
+      )
+    );
+    syncPanel(
+      persistentShell,
+      persistentShell.rightStack,
+      createPanelLifecycle("knowledge-pack", () =>
+        renderKnowledgePackPanel(documentRef, state, text)
+      )
+    );
+
+    syncPanel(
+      persistentShell,
+      persistentShell.workspace,
+      createPanelLifecycle("visual-timeline", () =>
+        renderVisualTimelinePanel(documentRef, state, meta, text)
+      )
+    );
+
+    if (!persistentShell.workspace.contains(persistentShell.dock)) {
+      persistentShell.workspace.append(persistentShell.dock);
+    }
+    syncPanel(
+      persistentShell,
+      persistentShell.dock,
+      createPanelLifecycle("operator-profile", () =>
+        renderOperatorProfilePanel(documentRef, state, text)
+      )
+    );
+    syncPanel(
+      persistentShell,
+      persistentShell.dock,
+      createPanelLifecycle("chat", () => renderChatPanel(documentRef, state, text))
+    );
+    syncPanel(
+      persistentShell,
+      persistentShell.dock,
+      createPanelLifecycle("measurement", () => renderMeasurementPanel(documentRef, state, text))
+    );
+    syncPanel(
+      persistentShell,
+      persistentShell.dock,
+      createPanelLifecycle("room-sync", () => renderRoomSyncPanel(documentRef, state, meta, text))
+    );
+
+    applyLiveSnapshotUpdates();
+    void syncOverlay(persistentShell.root);
   }
 
   // -- Action binding
   function bindActions(root: HTMLElement): void {
-    root.querySelectorAll<HTMLElement>("[data-repair-action='activate-session']").forEach((el) => {
-      el.addEventListener("click", () => {
-        const sessionId = el.dataset["sessionId"];
-        if (sessionId) requestRuntime.activateSession({ sessionId });
-      });
-    });
+    if (root.dataset["actionsBound"] === "true") return;
+    root.dataset["actionsBound"] = "true";
 
-    root.querySelectorAll<HTMLElement>("[data-repair-action='set-tool']").forEach((el) => {
-      el.addEventListener("click", () => {
-        const tool = el.dataset["tool"];
-        if (tool) requestRuntime.setActiveTool({ tool });
-      });
-    });
+    function findActionElement(target: EventTarget | null): HTMLElement | null {
+      return target instanceof Element ? target.closest<HTMLElement>("[data-repair-action]") : null;
+    }
 
-    root
-      .querySelectorAll<HTMLElement>("[data-repair-action='toggle-overlay-layer']")
-      .forEach((el) => {
-        el.addEventListener("click", () => {
+    root.addEventListener("click", (event) => {
+      const el = findActionElement(event.target);
+      if (el === null) return;
+      const action = el.dataset["repairAction"];
+      if (action === undefined) return;
+      switch (action) {
+        case "activate-session": {
+          const sessionId = el.dataset["sessionId"];
+          if (sessionId) requestRuntime.activateSession({ sessionId });
+          break;
+        }
+        case "set-tool": {
+          const tool = el.dataset["tool"];
+          if (tool) requestRuntime.setActiveTool({ tool });
+          break;
+        }
+        case "toggle-overlay-layer": {
           const layerId = el.dataset["layerId"];
           const visible = el.dataset["visible"] === "true";
           if (layerId) requestRuntime.toggleOverlayLayer({ layerId, visible });
-        });
-      });
-
-    root.querySelectorAll<HTMLElement>("[data-repair-action='jump-to-event']").forEach((el) => {
-      el.addEventListener("click", () => {
-        const eventId = el.dataset["eventId"];
-        if (eventId) requestRuntime.jumpToEvent({ eventId });
-      });
-    });
-
-    root
-      .querySelectorAll<HTMLElement>("[data-repair-action='attach-knowledge-pack']")
-      .forEach((el) => {
-        el.addEventListener("click", () => {
+          break;
+        }
+        case "jump-to-event": {
+          const eventId = el.dataset["eventId"];
+          if (eventId) requestRuntime.jumpToEvent({ eventId });
+          break;
+        }
+        case "attach-knowledge-pack": {
           const packId = el.dataset["packId"];
           if (packId) requestRuntime.attachKnowledgePack({ packId });
-        });
-      });
-
-    root
-      .querySelectorAll<HTMLElement>("[data-repair-action='knowledge-pack-tab']")
-      .forEach((el) => {
-        el.addEventListener("click", () => {
+          break;
+        }
+        case "knowledge-pack-tab": {
           const previewTabId = el.dataset["tabId"];
-          if (previewTabId) requestRuntime.updateLayout({ previewTabId });
-        });
-      });
-
-    root.querySelectorAll<HTMLElement>("[data-repair-action='set-instrument']").forEach((el) => {
-      el.addEventListener("click", () => {
-        const instrumentKind = el.dataset["instrumentKind"];
-        if (instrumentKind) requestRuntime.updateLayout({ instrumentKind });
-      });
-    });
-
-    root
-      .querySelectorAll<HTMLElement>("[data-repair-action='operator-profile-tab']")
-      .forEach((el) => {
-        el.addEventListener("click", () => {
+          if (previewTabId) requestRuntime.updatePanelTab({ previewTabId });
+          break;
+        }
+        case "set-instrument": {
+          const instrumentKind = el.dataset["instrumentKind"];
+          if (instrumentKind) requestRuntime.updatePanelTab({ instrumentKind });
+          break;
+        }
+        case "operator-profile-tab": {
           const operatorProfileTabId = el.dataset["tabId"];
-          if (operatorProfileTabId) requestRuntime.updateLayout({ operatorProfileTabId });
-        });
-      });
-
-    root
-      .querySelectorAll<HTMLElement>("[data-repair-action='toggle-panel-collapse']")
-      .forEach((el) => {
-        el.addEventListener("click", () => {
+          if (operatorProfileTabId) requestRuntime.updatePanelTab({ operatorProfileTabId });
+          break;
+        }
+        case "toggle-panel-collapse": {
           const panelId = el.dataset["panelId"];
           const collapsed = el.dataset["collapsed"] === "true";
-          if (panelId) requestRuntime.updateLayout({ panelId, collapsed });
-        });
-      });
-
-    root.querySelectorAll<HTMLElement>("[data-repair-action='toggle-panel-pin']").forEach((el) => {
-      el.addEventListener("click", () => {
-        const panelId = el.dataset["panelId"];
-        const pinned = el.dataset["pinned"] === "true";
-        if (panelId) requestRuntime.updateLayout({ panelId, pinned });
-      });
-    });
-
-    root.querySelectorAll<HTMLElement>("[data-repair-action='send-chat']").forEach((el) => {
-      el.addEventListener("click", () => {
-        const input = root.querySelector<HTMLInputElement>("[data-repair-input='chat-composer']");
-        if (input && input.value.trim() !== "") {
-          requestRuntime.sendChatTurn({ text: input.value.trim() });
-          input.value = "";
+          if (panelId) requestRuntime.updatePanelLayout({ panelId, collapsed });
+          break;
         }
-      });
-    });
-
-    root
-      .querySelectorAll<HTMLElement>("[data-repair-action='send-feed-question']")
-      .forEach((el) => {
-        el.addEventListener("click", () => {
+        case "toggle-panel-pin": {
+          const panelId = el.dataset["panelId"];
+          const pinned = el.dataset["pinned"] === "true";
+          if (panelId) requestRuntime.updatePanelLayout({ panelId, pinned });
+          break;
+        }
+        case "send-chat": {
+          const input = root.querySelector<HTMLInputElement>("[data-repair-input='chat-composer']");
+          if (input && input.value.trim() !== "") {
+            requestRuntime.sendChatTurn({ text: input.value.trim() });
+            input.value = "";
+          }
+          break;
+        }
+        case "send-feed-question": {
           const input = root.querySelector<HTMLInputElement>("[data-repair-input='feed-composer']");
           if (input && input.value.trim() !== "") {
             requestRuntime.sendChatTurn({ text: input.value.trim() });
             input.value = "";
           }
-        });
-      });
-
-    root
-      .querySelectorAll<
-        HTMLInputElement | HTMLTextAreaElement
-      >("[data-repair-action='wizard-field']")
-      .forEach((el) => {
-        el.addEventListener("change", () => {
-          const field = el.dataset["wizardField"];
-          if (field) requestRuntime.updateSession({ wizardField: field, value: el.value });
-        });
-      });
-
-    root.querySelectorAll<HTMLElement>("[data-repair-action='wizard-symptom']").forEach((el) => {
-      el.addEventListener("click", () => {
-        const symptom = el.dataset["symptom"];
-        if (!symptom) return;
-        const current = new Set(state.wizard.draft.primarySymptoms);
-        if (current.has(symptom)) {
-          current.delete(symptom);
-        } else {
-          current.add(symptom);
+          break;
         }
-        requestRuntime.updateSession({
-          wizardField: "primarySymptoms",
-          value: Array.from(current),
-        });
-      });
+        case "wizard-symptom": {
+          const symptom = el.dataset["symptom"];
+          if (!symptom) return;
+          const current = new Set(state.wizard.draft.primarySymptoms);
+          if (current.has(symptom)) {
+            current.delete(symptom);
+          } else {
+            current.add(symptom);
+          }
+          requestRuntime.updateSession({
+            wizardField: "primarySymptoms",
+            value: Array.from(current),
+          });
+          break;
+        }
+        case "advance-wizard": {
+          const step = el.dataset["step"];
+          requestRuntime.advanceWizard(step ? { step } : undefined);
+          break;
+        }
+        case "create-session":
+          requestRuntime.createSession();
+          break;
+        case "timeline-zoom": {
+          const direction = el.dataset["direction"] === "out" ? -1 : 1;
+          requestRuntime.updateTimeline({
+            timelineZoom: Math.min(
+              4,
+              Math.max(0.25, state.workbench.timeline.zoom + direction * 0.25)
+            ),
+          });
+          break;
+        }
+        case "timeline-range": {
+          const playhead = state.workbench.timeline.playheadMs;
+          requestRuntime.updateTimeline({
+            timelineRangeStartMs: Math.max(0, playhead - 15000),
+            timelineRangeEndMs: playhead + 15000,
+          });
+          break;
+        }
+      }
     });
 
-    root.querySelectorAll<HTMLElement>("[data-repair-action='advance-wizard']").forEach((el) => {
-      el.addEventListener("click", () => {
-        const step = el.dataset["step"];
-        requestRuntime.advanceWizard(step ? { step } : undefined);
-      });
+    root.addEventListener("input", (event) => {
+      const el = findActionElement(event.target);
+      if (!(el instanceof HTMLInputElement)) return;
+      if (el.dataset["repairAction"] === "timeline-scrub") {
+        requestRuntime.scrubTimeline({ positionMs: Number(el.value) });
+      }
     });
 
-    root.querySelectorAll<HTMLElement>("[data-repair-action='create-session']").forEach((el) => {
-      el.addEventListener("click", () => {
-        requestRuntime.createSession();
-      });
-    });
-
-    root
-      .querySelectorAll<HTMLInputElement>("[data-repair-action='timeline-scrub']")
-      .forEach((el) => {
-        el.addEventListener("input", () => {
-          requestRuntime.scrubTimeline({ positionMs: Number(el.value) });
-        });
-      });
-
-    root.querySelectorAll<HTMLElement>("[data-repair-action='timeline-zoom']").forEach((el) => {
-      el.addEventListener("click", () => {
-        const direction = el.dataset["direction"] === "out" ? -1 : 1;
-        requestRuntime.updateLayout({
-          timelineZoom: Math.min(
-            4,
-            Math.max(0.25, state.workbench.timeline.zoom + direction * 0.25)
-          ),
-        });
-      });
-    });
-
-    root.querySelectorAll<HTMLElement>("[data-repair-action='timeline-range']").forEach((el) => {
-      el.addEventListener("click", () => {
-        const playhead = state.workbench.timeline.playheadMs;
-        requestRuntime.updateLayout({
-          timelineRangeStartMs: Math.max(0, playhead - 15000),
-          timelineRangeEndMs: playhead + 15000,
-        });
-      });
+    root.addEventListener("change", (event) => {
+      const el = findActionElement(event.target);
+      if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
+      if (el.dataset["repairAction"] === "wizard-field") {
+        const field = el.dataset["wizardField"];
+        if (field) requestRuntime.updateSession({ wizardField: field, value: el.value });
+      }
     });
   }
 
@@ -711,7 +1585,7 @@ export function createRepairRoomUiRuntime() {
     switch (e.key) {
       case "f":
       case "F":
-        requestRuntime.updateLayout({ focusMode: !state.layout.focusMode });
+        requestRuntime.updateFocus({ focusMode: !state.layout.focusMode });
         break;
       case " ":
         e.preventDefault();
@@ -719,7 +1593,7 @@ export function createRepairRoomUiRuntime() {
         break;
       case "Escape":
         if (state.layout.focusMode) {
-          requestRuntime.updateLayout({ focusMode: false });
+          requestRuntime.updateFocus({ focusMode: false });
         }
         break;
       case "[":
@@ -779,6 +1653,16 @@ export function createRepairRoomUiRuntime() {
         break;
       }
       case "repair-feed-event": {
+        if (meta.events.some((event) => event.id === msg.event.id) === false) {
+          meta.events = [...meta.events, msg.event];
+        }
+        const session = state.sessions.detail;
+        if (
+          session !== null &&
+          session.events.some((event) => event.id === msg.event.id) === false
+        ) {
+          session.events = [...session.events, msg.event];
+        }
         state.tacticalFeed.push({
           eventId: msg.event.id,
           occurredAt: msg.event.occurredAt,
@@ -840,11 +1724,14 @@ export function createRepairRoomUiRuntime() {
       state.ambient.nowIso = new Date().toISOString();
       const clock = documentRef.querySelector<HTMLElement>(".repair-statusbar__clock");
       if (clock !== null) {
-        clock.textContent = new Date(state.ambient.nowIso).toLocaleTimeString("en-GB", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        });
+        setTextIfChanged(
+          clock,
+          new Date(state.ambient.nowIso).toLocaleTimeString("en-GB", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          })
+        );
       }
     }, 1000);
   }

@@ -34,7 +34,10 @@ test("repair-room host exports room-page lifecycle hooks and command registry", 
   assert.equal(normalized.snapshot.sessions.list.length, 4);
   assert.ok(normalized.snapshot.sessions.detail?.pcbImage);
   assert.equal(normalized.snapshot.tacticalFeed.length, 3);
-  assert.equal(normalized.meta.events.some((event) => event.id === "evt-psu-ai-3"), false);
+  assert.equal(
+    normalized.meta.events.some((event) => event.id === "evt-psu-ai-3"),
+    true
+  );
 
   const toggleFreeze = runtime.commands[REPAIR_UI_COMMANDS.toggleFreezeFrame];
   assert.equal(typeof toggleFreeze, "function");
@@ -57,10 +60,12 @@ test("repair-room runtime handles the advertised interactive Phase 1 commands", 
   assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.uiReady).success, true);
   assert.equal(runtime.getStateSnapshot().state.tacticalFeed.length, 3);
   assert.equal(runtime.getStateSnapshot().state.sessionList[0]?.serialNumber, "R21Z14CSN100123");
-  const firstStatePayload = notifications.find((entry) => entry.type === "repair-state")?.payload as
-    | { meta?: { events?: Array<{ id: string }> } }
-    | undefined;
-  assert.equal(firstStatePayload?.meta?.events?.some((event) => event.id === "evt-psu-ai-3"), false);
+  const firstStatePayload = notifications.find((entry) => entry.type === "repair-state")
+    ?.payload as { meta?: { events?: Array<{ id: string }> } } | undefined;
+  assert.equal(
+    firstStatePayload?.meta?.events?.some((event) => event.id === "evt-psu-ai-3"),
+    true
+  );
 
   assert.equal(
     runtime.handleCommand(REPAIR_UI_COMMANDS.toggleOverlayLayer, {
@@ -71,7 +76,10 @@ test("repair-room runtime handles the advertised interactive Phase 1 commands", 
   );
   assert.equal(runtime.getStateSnapshot().state.workbench.visibleLayers.grid, false);
 
-  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.setActiveTool, { tool: "zoom-in" }).success, true);
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.setActiveTool, { tool: "zoom-in" }).success,
+    true
+  );
   assert.equal(runtime.getStateSnapshot().state.workbench.viewport.zoom, 1.25);
 
   assert.equal(
@@ -87,7 +95,10 @@ test("repair-room runtime handles the advertised interactive Phase 1 commands", 
   assert.equal(measurementState.current.display, "0.002");
   assert.equal(measurementState.recent[0]?.reference, "U14 VCC");
 
-  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.sendChatTurn, { text: "Check standby rail" }).success, true);
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.sendChatTurn, { text: "Check standby rail" }).success,
+    true
+  );
   const chatState = runtime.getStateSnapshot().state.chat;
   assert.equal(chatState.turns.at(-1)?.role, "operator");
   assert.equal(chatState.pendingReplyId, chatState.turns.at(-1)?.id);
@@ -104,11 +115,14 @@ test("repair-room runtime turns timeline jumps and layout controls into state", 
   const firstEvent = runtime.getStateSnapshot().state.sessions["psu-2025-0510"]?.events[0];
   assert.ok(firstEvent);
 
-  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.jumpToEvent, { eventId: firstEvent.id }).success, true);
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.jumpToEvent, { eventId: firstEvent.id }).success,
+    true
+  );
   assert.equal(runtime.getStateSnapshot().state.workbench.focusedEventId, firstEvent.id);
 
   assert.equal(
-    runtime.handleCommand(REPAIR_UI_COMMANDS.updateLayout, {
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updatePanelLayout, {
       panelId: "tactical-feed",
       collapsed: true,
     }).success,
@@ -117,7 +131,7 @@ test("repair-room runtime turns timeline jumps and layout controls into state", 
   assert.equal(runtime.getStateSnapshot().state.layout.collapsedPanels["tactical-feed"], true);
 
   assert.equal(
-    runtime.handleCommand(REPAIR_UI_COMMANDS.updateLayout, {
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updatePanelTab, {
       previewTabId: "board-view",
     }).success,
     true
@@ -125,12 +139,87 @@ test("repair-room runtime turns timeline jumps and layout controls into state", 
   assert.equal(runtime.getStateSnapshot().state.knowledgePack.previewTabId, "board-view");
 
   assert.equal(
-    runtime.handleCommand(REPAIR_UI_COMMANDS.updateLayout, {
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updatePanelTab, {
       operatorProfileTabId: "preferences",
     }).success,
     true
   );
   assert.equal(runtime.getStateSnapshot().state.layout.operatorProfileTabId, "preferences");
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updateFocus, {
+      focusMode: true,
+    }).success,
+    true
+  );
+  assert.equal(runtime.getStateSnapshot().state.layout.focusMode, true);
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updateLayout, {
+      panelId: "tactical-feed",
+      collapsed: false,
+    }).success,
+    true
+  );
+  assert.equal(runtime.getStateSnapshot().state.layout.collapsedPanels["tactical-feed"], false);
+});
+
+test("repair-room runtime keeps event log canonical while feed remains a visibility projection", () => {
+  const notifications: Array<{ type: string; payload?: Record<string, unknown> }> = [];
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: (type, payload) => {
+      notifications.push({ type, payload });
+    },
+  });
+
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.uiReady).success, true);
+  const payload = notifications.find((entry) => entry.type === "repair-state")?.payload as
+    | {
+        snapshot?: { tacticalFeed?: Array<{ eventId: string }> };
+        meta?: { events?: Array<{ id: string }> };
+      }
+    | undefined;
+
+  const feedIds = new Set(payload?.snapshot?.tacticalFeed?.map((item) => item.eventId) ?? []);
+  assert.equal(feedIds.has("evt-psu-ai-3"), false);
+  assert.equal(
+    payload?.meta?.events?.some((event) => event.id === "evt-psu-ai-3"),
+    true
+  );
+});
+
+test("repair-room runtime publishes one coherent state snapshot per logical action", () => {
+  const notifications: Array<{ type: string; payload?: Record<string, unknown> }> = [];
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: (type, payload) => {
+      notifications.push({ type, payload });
+    },
+  });
+
+  notifications.length = 0;
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.toggleFreezeFrame).success, true);
+  assert.equal(notifications.filter((entry) => entry.type === "repair-state").length, 1);
+
+  notifications.length = 0;
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.addMeasurement, {
+      xPx: 712,
+      yPx: 304,
+      rawDisplay: "0.003",
+      reference: "U14 VCC",
+    }).success,
+    true
+  );
+  assert.equal(notifications.filter((entry) => entry.type === "repair-state").length, 1);
+
+  notifications.length = 0;
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.sendChatTurn, { text: "Next rail?" }).success,
+    true
+  );
+  assert.equal(notifications.filter((entry) => entry.type === "repair-state").length, 1);
 });
 
 test("repair-room runtime keeps P1 wizard, viewport, timeline, and pin edits stateful", () => {
@@ -155,16 +244,22 @@ test("repair-room runtime keeps P1 wizard, viewport, timeline, and pin edits sta
     }).success,
     true
   );
-  assert.deepEqual(runtime.getStateSnapshot().state.wizard.draft.primarySymptoms, ["No Power", "No 5V_STBY"]);
+  assert.deepEqual(runtime.getStateSnapshot().state.wizard.draft.primarySymptoms, [
+    "No Power",
+    "No 5V_STBY",
+  ]);
 
-  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.advanceWizard, { step: "ai-research" }).success, true);
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.advanceWizard, { step: "ai-research" }).success,
+    true
+  );
   const researchState = runtime.getStateSnapshot().state.wizard;
   assert.equal(researchState.currentStep, "ai-research");
   assert.equal(researchState.foundResources.length, 0);
   assert.ok(researchState.researchProgress.every((item) => item.completed === false));
 
   assert.equal(
-    runtime.handleCommand(REPAIR_UI_COMMANDS.updateLayout, {
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updateViewport, {
       viewportZoom: 1.75,
       panXPx: 36,
       panYPx: -18,
@@ -177,7 +272,7 @@ test("repair-room runtime keeps P1 wizard, viewport, timeline, and pin edits sta
     panYPx: -18,
   });
   assert.equal(
-    runtime.handleCommand(REPAIR_UI_COMMANDS.updateLayout, {
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updateViewport, {
       panXPx: 999999,
       panYPx: -999999,
     }).success,
@@ -186,12 +281,15 @@ test("repair-room runtime keeps P1 wizard, viewport, timeline, and pin edits sta
   assert.ok(runtime.getStateSnapshot().state.workbench.viewport.panXPx < 999999);
   assert.ok(runtime.getStateSnapshot().state.workbench.viewport.panYPx > -999999);
 
-  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.scrubTimeline, { positionMs: 42000 }).success, true);
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.scrubTimeline, { positionMs: 42000 }).success,
+    true
+  );
   assert.equal(runtime.getStateSnapshot().state.workbench.timeline.playheadMs, 42000);
   assert.equal(runtime.getStateSnapshot().state.workbench.timeline.autoFollowLive, false);
 
   assert.equal(
-    runtime.handleCommand(REPAIR_UI_COMMANDS.updateLayout, {
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updateTimeline, {
       timelineZoom: 1.5,
       timelineRangeStartMs: 27000,
       timelineRangeEndMs: 57000,
@@ -211,7 +309,10 @@ test("repair-room runtime keeps P1 wizard, viewport, timeline, and pin edits sta
     }
   );
 
-  const session = runtime.getStateSnapshot().state.sessions[runtime.getStateSnapshot().state.activeSessionId ?? ""];
+  const session =
+    runtime.getStateSnapshot().state.sessions[
+      runtime.getStateSnapshot().state.activeSessionId ?? ""
+    ];
   const measurement = session?.events.find((event) => event.kind === "measurement");
   assert.ok(measurement);
   const eventCount = session.events.length;
@@ -248,7 +349,9 @@ test("repair-room opens the existing active session without replaying research s
 
   assert.equal(runtime.getStateSnapshot().state.wizard.currentStep, "ready");
   assert.equal(runtime.getStateSnapshot().state.wizard.generatedKnowledgePackId, "bn44-00932a");
-  assert.ok(runtime.getStateSnapshot().state.wizard.researchProgress.every((item) => item.completed));
+  assert.ok(
+    runtime.getStateSnapshot().state.wizard.researchProgress.every((item) => item.completed)
+  );
 
   assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.uiReady).success, true);
   t.mock.timers.tick(4000);

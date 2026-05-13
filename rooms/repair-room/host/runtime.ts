@@ -110,7 +110,9 @@ function nowIso(): string {
 }
 
 function unrefTimer(timer: ReturnType<typeof setInterval> | ReturnType<typeof setTimeout>): void {
-  timer.unref();
+  if (typeof timer === "object" && typeof timer.unref === "function") {
+    timer.unref();
+  }
 }
 
 function buildSessionList(sessions: Record<string, RepairSession>): RepairSessionListItem[] {
@@ -179,8 +181,15 @@ function isOperatorProfileTab(value: unknown): value is RepairOperatorProfileTab
   return typeof value === "string" && OPERATOR_PROFILE_TABS.has(value);
 }
 
-function createEventId(prefix: string, iso: string): string {
-  return `${prefix}-${iso.replace(/[^0-9]/g, "").slice(0, 14)}`;
+let runtimeIdFallbackCounter = 0;
+
+function createEventId(prefix: string, _iso: string): string {
+  const randomUuid = globalThis.crypto?.randomUUID?.();
+  if (typeof randomUuid === "string" && randomUuid.length > 0) {
+    return `${prefix}-${randomUuid}`;
+  }
+  runtimeIdFallbackCounter += 1;
+  return `${prefix}-${runtimeIdFallbackCounter.toString(36).padStart(6, "0")}`;
 }
 
 function phaseForSession(session: RepairSession | null): RepairRuntimeState["phase"] {
@@ -253,7 +262,7 @@ function patchWizardDraftFromPayload(
 
 function createDraftSession(state: RepairRuntimeState, iso: string): RepairSession {
   const draft = state.wizard.draft;
-  const id = `repair-draft-${iso.replace(/[^0-9]/g, "").slice(4, 14)}`;
+  const id = createEventId("repair-draft", iso);
   const boardCode = draft.boardCode.trim() || "BOARD-PENDING";
   return {
     schemaVersion: REPAIR_SESSION_SCHEMA_VERSION,
@@ -391,30 +400,32 @@ function setActiveSessionDerivedState(
 ): void {
   const timeline = store.getState().workbench.timeline;
   const playheadMs = getSessionTimelineMs(session);
-  store.dispatch({ type: "phase/set", phase: phaseForSession(session) });
-  store.dispatch({
-    type: "workbench/set-timeline",
-    playheadMs,
-    zoom: timeline.zoom,
-    rangeStartMs: null,
-    rangeEndMs: null,
-    autoFollowLive: session?.status === "in-progress",
-  });
-  store.dispatch({
-    type: "knowledge-pack/set",
-    pack: session?.knowledgePack ?? null,
-    attachedToSessionId: session?.knowledgePack === null ? null : (session?.id ?? null),
-  });
-  store.dispatch({
-    type: "tactical-feed/set",
-    items:
-      session === null
-        ? []
-        : buildMockTacticalFeed(session.events, session.startedAt).slice(
-            0,
-            FEED_INITIAL_VISIBLE_COUNT
-          ),
-  });
+  store.dispatchMany([
+    { type: "phase/set", phase: phaseForSession(session) },
+    {
+      type: "workbench/set-timeline",
+      playheadMs,
+      zoom: timeline.zoom,
+      rangeStartMs: null,
+      rangeEndMs: null,
+      autoFollowLive: session?.status === "in-progress",
+    },
+    {
+      type: "knowledge-pack/set",
+      pack: session?.knowledgePack ?? null,
+      attachedToSessionId: session?.knowledgePack === null ? null : (session?.id ?? null),
+    },
+    {
+      type: "tactical-feed/set",
+      items:
+        session === null
+          ? []
+          : buildMockTacticalFeed(session.events, session.startedAt).slice(
+              0,
+              FEED_INITIAL_VISIBLE_COUNT
+            ),
+    },
+  ]);
 }
 
 /**
@@ -533,17 +544,19 @@ export default function createRepairRoomHostRuntime() {
           })
         );
 
-        store.dispatch({
-          type: "wizard/set",
-          wizard: {
-            ...currentWizard,
-            currentStep: "ai-research",
-            researchProgress: resetProgress,
-            foundResources: [],
-            generatedKnowledgePackId: null,
+        store.dispatchMany([
+          {
+            type: "wizard/set",
+            wizard: {
+              ...currentWizard,
+              currentStep: "ai-research",
+              researchProgress: resetProgress,
+              foundResources: [],
+              generatedKnowledgePackId: null,
+            },
           },
-        });
-        store.dispatch({ type: "phase/set", phase: "wizard-active" });
+          { type: "phase/set", phase: "wizard-active" },
+        ]);
 
         resetProgress.forEach((progress, index) => {
           const timeoutId = setTimeout(
@@ -552,25 +565,27 @@ export default function createRepairRoomHostRuntime() {
               const nextProgress = wizard.researchProgress.map((item) =>
                 item.step === progress.step ? { ...item, completed: true } : item
               );
-              store.dispatch({
-                type: "wizard/set",
-                wizard: {
-                  ...wizard,
-                  researchProgress: nextProgress,
-                  foundResources:
-                    index >= 1
-                      ? MOCK_REPAIR_WIZARD_INITIAL.foundResources.slice(0, Math.min(index + 1, 4))
-                      : [],
-                  generatedKnowledgePackId:
-                    index === resetProgress.length - 1
-                      ? "bn44-00932a"
-                      : wizard.generatedKnowledgePackId,
-                  currentStep: index === resetProgress.length - 1 ? "ready" : "ai-research",
-                },
+              store.batch(() => {
+                store.dispatch({
+                  type: "wizard/set",
+                  wizard: {
+                    ...wizard,
+                    researchProgress: nextProgress,
+                    foundResources:
+                      index >= 1
+                        ? MOCK_REPAIR_WIZARD_INITIAL.foundResources.slice(0, Math.min(index + 1, 4))
+                        : [],
+                    generatedKnowledgePackId:
+                      index === resetProgress.length - 1
+                        ? "bn44-00932a"
+                        : wizard.generatedKnowledgePackId,
+                    currentStep: index === resetProgress.length - 1 ? "ready" : "ai-research",
+                  },
+                });
+                if (index === resetProgress.length - 1) {
+                  store.dispatch({ type: "phase/set", phase: "session-active" });
+                }
               });
-              if (index === resetProgress.length - 1) {
-                store.dispatch({ type: "phase/set", phase: "session-active" });
-              }
               researchTimeouts.delete(timeoutId);
             },
             700 + index * 650
@@ -585,20 +600,22 @@ export default function createRepairRoomHostRuntime() {
           clockInterval = setInterval(() => {
             const nowMs = Date.now();
             const iso = new Date(nowMs).toISOString();
-            store.dispatch({ type: "ambient/tick", nowIso: iso });
-            const state = store.getState();
-            const session = getActiveSession(state);
-            const timeline = state.workbench.timeline;
-            if (session?.status === "in-progress" && timeline.autoFollowLive) {
-              store.dispatch({
-                type: "workbench/set-timeline",
-                playheadMs: getLiveTimelinePlayheadMs(session, nowMs),
-                zoom: timeline.zoom,
-                rangeStartMs: timeline.rangeStartMs,
-                rangeEndMs: timeline.rangeEndMs,
-                autoFollowLive: true,
-              });
-            }
+            store.batch(() => {
+              store.dispatch({ type: "ambient/tick", nowIso: iso });
+              const state = store.getState();
+              const session = getActiveSession(state);
+              const timeline = state.workbench.timeline;
+              if (session?.status === "in-progress" && timeline.autoFollowLive) {
+                store.dispatch({
+                  type: "workbench/set-timeline",
+                  playheadMs: getLiveTimelinePlayheadMs(session, nowMs),
+                  zoom: timeline.zoom,
+                  rangeStartMs: timeline.rangeStartMs,
+                  rangeEndMs: timeline.rangeEndMs,
+                  autoFollowLive: true,
+                });
+              }
+            });
           }, REPAIR_AMBIENT_CLOCK_INTERVAL_MS);
           unrefTimer(clockInterval);
         }
@@ -619,13 +636,15 @@ export default function createRepairRoomHostRuntime() {
               unit: state.measurement.current.unit || "V",
               reference: "Live drift sample",
             });
-            store.dispatch({ type: "measurement/append-reading", reading });
-            store.dispatch({
-              type: "measurement/set-display",
-              display,
-              value: display === "OL" ? null : Number(display),
-              hold: false,
-            });
+            store.dispatchMany([
+              { type: "measurement/append-reading", reading },
+              {
+                type: "measurement/set-display",
+                display,
+                value: display === "OL" ? null : Number(display),
+                hold: false,
+              },
+            ]);
           }, REPAIR_MEASUREMENT_DRIFT_INTERVAL_MS);
           unrefTimer(measurementInterval);
         }
@@ -643,24 +662,25 @@ export default function createRepairRoomHostRuntime() {
           events: [...session.events, event],
           updatedAt: event.occurredAt,
         };
-        store.dispatch({ type: "session/upsert", session: nextSession });
-        resetLiveTimelineAnchor(nextSession);
-
         const feedItem = repairEventToTacticalFeedItem(event, session.startedAt);
-        if (feedItem !== null) {
-          store.dispatch({ type: "tactical-feed/append", item: feedItem });
-        }
         const timeline = store.getState().workbench.timeline;
-        if (timeline.autoFollowLive) {
-          store.dispatch({
-            type: "workbench/set-timeline",
-            playheadMs: getSessionTimelineMs(nextSession),
-            zoom: timeline.zoom,
-            rangeStartMs: timeline.rangeStartMs,
-            rangeEndMs: timeline.rangeEndMs,
-            autoFollowLive: true,
-          });
-        }
+        store.batch(() => {
+          store.dispatch({ type: "session/upsert", session: nextSession });
+          if (feedItem !== null) {
+            store.dispatch({ type: "tactical-feed/append", item: feedItem });
+          }
+          if (timeline.autoFollowLive) {
+            store.dispatch({
+              type: "workbench/set-timeline",
+              playheadMs: getSessionTimelineMs(nextSession),
+              zoom: timeline.zoom,
+              rangeStartMs: timeline.rangeStartMs,
+              rangeEndMs: timeline.rangeEndMs,
+              autoFollowLive: true,
+            });
+          }
+        });
+        resetLiveTimelineAnchor(nextSession);
         return true;
       }
 
@@ -669,8 +689,10 @@ export default function createRepairRoomHostRuntime() {
           ...store.getState().sessions,
           [session.id]: session,
         };
-        store.dispatch({ type: "session/upsert", session });
-        store.dispatch({ type: "session-list/set", list: buildSessionList(nextSessions) });
+        store.dispatchMany([
+          { type: "session/upsert", session },
+          { type: "session-list/set", list: buildSessionList(nextSessions) },
+        ]);
       }
 
       function scheduleChatReply(operatorTurn: RepairChatTurn): void {
@@ -693,8 +715,10 @@ export default function createRepairRoomHostRuntime() {
             occurredAt: nowIso(),
             contextRefs: session === null ? [] : [session.id, session.deviceInfo.boardCode],
           };
-          store.dispatch({ type: "chat/append-turn", turn: reply });
-          store.dispatch({ type: "chat/set-pending", turnId: null });
+          store.dispatchMany([
+            { type: "chat/append-turn", turn: reply },
+            { type: "chat/set-pending", turnId: null },
+          ]);
         }, delay);
         unrefTimer(timeoutId);
       }
@@ -702,6 +726,143 @@ export default function createRepairRoomHostRuntime() {
       store.subscribe(() => {
         pushState();
       });
+
+      function applyViewportUpdate(flat: Record<string, unknown>): {
+        success: boolean;
+        message?: string;
+      } {
+        const viewportZoom = safeNumber(flat["viewportZoom"] ?? flat["zoom"]);
+        const panXPx = safeNumber(flat["panXPx"]);
+        const panYPx = safeNumber(flat["panYPx"]);
+        if (viewportZoom === null && panXPx === null && panYPx === null) {
+          return { success: false, message: "viewport payload is empty" };
+        }
+        const viewport = store.getState().workbench.viewport;
+        const nextZoom = Math.min(4, Math.max(0.5, viewportZoom ?? viewport.zoom));
+        const nextPan = clampWorkbenchPan(
+          panXPx ?? viewport.panXPx,
+          panYPx ?? viewport.panYPx,
+          nextZoom,
+          getActiveSession(store.getState())
+        );
+        store.dispatch({
+          type: "workbench/set-viewport",
+          zoom: nextZoom,
+          panXPx: nextPan.panXPx,
+          panYPx: nextPan.panYPx,
+        });
+        return { success: true };
+      }
+
+      function applyTimelineUpdate(flat: Record<string, unknown>): {
+        success: boolean;
+        message?: string;
+      } {
+        const timelineZoom = safeNumber(flat["timelineZoom"] ?? flat["zoom"]);
+        const timelineRangeStartMs = safeNumber(
+          flat["timelineRangeStartMs"] ?? flat["rangeStartMs"]
+        );
+        const timelineRangeEndMs = safeNumber(flat["timelineRangeEndMs"] ?? flat["rangeEndMs"]);
+        const clearTimelineRange = flat["clearTimelineRange"] === true;
+        if (
+          timelineZoom === null &&
+          timelineRangeStartMs === null &&
+          timelineRangeEndMs === null &&
+          clearTimelineRange === false
+        ) {
+          return { success: false, message: "timeline payload is empty" };
+        }
+        const timeline = store.getState().workbench.timeline;
+        const rangeStartMs = clearTimelineRange
+          ? null
+          : (timelineRangeStartMs ?? timeline.rangeStartMs);
+        const rangeEndMs = clearTimelineRange ? null : (timelineRangeEndMs ?? timeline.rangeEndMs);
+        store.dispatch({
+          type: "workbench/set-timeline",
+          playheadMs: timeline.playheadMs,
+          zoom: Math.min(4, Math.max(0.25, timelineZoom ?? timeline.zoom)),
+          rangeStartMs,
+          rangeEndMs,
+          autoFollowLive: timeline.autoFollowLive,
+        });
+        return { success: true };
+      }
+
+      function applyPanelLayoutUpdate(flat: Record<string, unknown>): {
+        success: boolean;
+        message?: string;
+      } {
+        const panelId = flat["panelId"];
+        const collapsed = flat["collapsed"];
+        if (isPanelId(panelId) && typeof collapsed === "boolean") {
+          store.dispatch({ type: "layout/collapse-panel", panelId, collapsed });
+          return { success: true };
+        }
+        const pinned = flat["pinned"];
+        if (isPanelId(panelId) && typeof pinned === "boolean") {
+          store.dispatch({ type: "layout/pin-panel", panelId, pinned });
+          return { success: true };
+        }
+        return { success: false, message: "panel layout payload is empty" };
+      }
+
+      function applyPanelTabUpdate(flat: Record<string, unknown>): {
+        success: boolean;
+        message?: string;
+      } {
+        const previewTabId = safeString(flat["previewTabId"]);
+        if (
+          previewTabId === "schematic-preview" ||
+          previewTabId === "board-view" ||
+          previewTabId === "notes"
+        ) {
+          store.dispatch({ type: "knowledge-pack/set-preview-tab", tabId: previewTabId });
+          return { success: true };
+        }
+        const instrumentKind = flat["instrumentKind"];
+        if (isInstrumentKind(instrumentKind)) {
+          store.dispatch({ type: "measurement/set-instrument", instrumentKind });
+          return { success: true };
+        }
+        const operatorProfileTabId = flat["operatorProfileTabId"];
+        if (isOperatorProfileTab(operatorProfileTabId)) {
+          store.dispatch({
+            type: "layout/set-operator-profile-tab",
+            tabId: operatorProfileTabId,
+          });
+          return { success: true };
+        }
+        return { success: false, message: "panel tab payload is empty" };
+      }
+
+      function applyFocusUpdate(flat: Record<string, unknown>): {
+        success: boolean;
+        message?: string;
+      } {
+        const focusMode = flat["focusMode"];
+        if (typeof focusMode !== "boolean") {
+          return { success: false, message: "focusMode is required" };
+        }
+        store.dispatch({ type: "layout/set-focus-mode", focusMode });
+        return { success: true };
+      }
+
+      function applyLayoutCompatibilityUpdate(flat: Record<string, unknown>): {
+        success: boolean;
+        message?: string;
+      } {
+        const panelResult = applyPanelLayoutUpdate(flat);
+        if (panelResult.success) return panelResult;
+        const focusResult = applyFocusUpdate(flat);
+        if (focusResult.success) return focusResult;
+        const tabResult = applyPanelTabUpdate(flat);
+        if (tabResult.success) return tabResult;
+        const viewportResult = applyViewportUpdate(flat);
+        if (viewportResult.success) return viewportResult;
+        const timelineResult = applyTimelineUpdate(flat);
+        if (timelineResult.success) return timelineResult;
+        return { success: false, message: "layout payload is empty" };
+      }
 
       function handleCommand(
         command: string,
@@ -727,8 +888,10 @@ export default function createRepairRoomHostRuntime() {
             const sessionId = safeString(flat["sessionId"]);
             const session =
               sessionId === null ? null : (store.getState().sessions[sessionId] ?? null);
-            store.dispatch({ type: "session/activate", sessionId: session?.id ?? null });
-            setActiveSessionDerivedState(store, session);
+            store.batch(() => {
+              store.dispatch({ type: "session/activate", sessionId: session?.id ?? null });
+              setActiveSessionDerivedState(store, session);
+            });
             resetLiveTimelineAnchor(session);
             scheduleFeedStream();
             return { success: true };
@@ -736,21 +899,24 @@ export default function createRepairRoomHostRuntime() {
           case REPAIR_UI_COMMANDS.createSession: {
             const iso = nowIso();
             const session = createDraftSession(store.getState(), iso);
-            setSessionAndList(session);
-            store.dispatch({ type: "session/activate", sessionId: session.id });
-            setActiveSessionDerivedState(store, session);
+            store.batch(() => {
+              setSessionAndList(session);
+              store.dispatch({ type: "session/activate", sessionId: session.id });
+              setActiveSessionDerivedState(store, session);
+            });
             resetLiveTimelineAnchor(session);
             return { success: true };
           }
           case REPAIR_UI_COMMANDS.updateSession: {
             const wizardPatch = patchWizardDraftFromPayload(flat);
-            if (wizardPatch !== null) {
-              store.dispatch({ type: "wizard/patch-draft", patch: wizardPatch });
-            }
             const state = store.getState();
             const session = getActiveSession(state);
-            if (session === null)
+            if (session === null) {
+              if (wizardPatch !== null) {
+                store.dispatch({ type: "wizard/patch-draft", patch: wizardPatch });
+              }
               return { success: wizardPatch !== null, message: "active session is required" };
+            }
             const iso = nowIso();
             const nextSession: RepairSession = {
               ...session,
@@ -767,7 +933,12 @@ export default function createRepairRoomHostRuntime() {
               },
               updatedAt: iso,
             };
-            setSessionAndList(nextSession);
+            store.batch(() => {
+              if (wizardPatch !== null) {
+                store.dispatch({ type: "wizard/patch-draft", patch: wizardPatch });
+              }
+              setSessionAndList(nextSession);
+            });
             return { success: true };
           }
           case REPAIR_UI_COMMANDS.archiveSession: {
@@ -782,10 +953,15 @@ export default function createRepairRoomHostRuntime() {
               archivedAt: iso,
               updatedAt: iso,
             };
-            setSessionAndList(nextSession);
-            if (store.getState().activeSessionId === sessionId) {
-              store.dispatch({ type: "session/activate", sessionId: null });
-              setActiveSessionDerivedState(store, null);
+            const wasActive = store.getState().activeSessionId === sessionId;
+            store.batch(() => {
+              setSessionAndList(nextSession);
+              if (wasActive) {
+                store.dispatch({ type: "session/activate", sessionId: null });
+                setActiveSessionDerivedState(store, null);
+              }
+            });
+            if (wasActive) {
               resetLiveTimelineAnchor(null);
             }
             return { success: true };
@@ -806,11 +982,13 @@ export default function createRepairRoomHostRuntime() {
               scheduleResearchStream();
               return { success: true };
             }
-            store.dispatch({ type: "wizard/advance", step: nextStep });
-            store.dispatch({
-              type: "phase/set",
-              phase: nextStep === "ready" ? "session-active" : "wizard-active",
-            });
+            store.dispatchMany([
+              { type: "wizard/advance", step: nextStep },
+              {
+                type: "phase/set",
+                phase: nextStep === "ready" ? "session-active" : "wizard-active",
+              },
+            ]);
             return { success: true };
           }
           case REPAIR_UI_COMMANDS.attachKnowledgePack: {
@@ -827,9 +1005,15 @@ export default function createRepairRoomHostRuntime() {
               knowledgePack: pack,
               updatedAt: nowIso(),
             };
-            setSessionAndList(nextSession);
-            store.dispatch({ type: "knowledge-pack/set", pack, attachedToSessionId: session.id });
-            store.dispatch({ type: "phase/set", phase: "session-active" });
+            store.batch(() => {
+              setSessionAndList(nextSession);
+              store.dispatch({
+                type: "knowledge-pack/set",
+                pack,
+                attachedToSessionId: session.id,
+              });
+              store.dispatch({ type: "phase/set", phase: "session-active" });
+            });
             resetLiveTimelineAnchor(nextSession);
             scheduleFeedStream();
             return { success: true };
@@ -883,24 +1067,27 @@ export default function createRepairRoomHostRuntime() {
             const session = getActiveSession(state);
             const next = state.workbench.isFrozen === false;
             const iso = session === null ? nowIso() : createLiveSessionIso(session);
-            store.dispatch({
-              type: "workbench/set-frozen",
-              isFrozen: next,
-              frozenAt: next ? iso : null,
-            });
-            if (next && session !== null) {
-              appendEventToActiveSession({
-                kind: "freeze-frame",
-                id: createEventId("evt-freeze", iso),
-                sessionId: session.id,
-                occurredAt: iso,
-                source: "operator",
-                linkedEventIds: [],
-                durationMs: 0,
-                reason: "Operator froze the live workbench frame.",
+            let success = true;
+            store.batch(() => {
+              store.dispatch({
+                type: "workbench/set-frozen",
+                isFrozen: next,
+                frozenAt: next ? iso : null,
               });
-            }
-            return { success: true };
+              if (next && session !== null) {
+                success = appendEventToActiveSession({
+                  kind: "freeze-frame",
+                  id: createEventId("evt-freeze", iso),
+                  sessionId: session.id,
+                  occurredAt: iso,
+                  source: "operator",
+                  linkedEventIds: [],
+                  durationMs: 0,
+                  reason: "Operator froze the live workbench frame.",
+                });
+              }
+            });
+            return { success };
           }
           case REPAIR_UI_COMMANDS.toggleOverlayLayer: {
             const layerId = safeString(flat["layerId"]);
@@ -956,16 +1143,18 @@ export default function createRepairRoomHostRuntime() {
                 ? event
                 : best;
             }, null);
-            store.dispatch({ type: "workbench/set-focus-event", eventId: closest?.id ?? null });
             const timeline = store.getState().workbench.timeline;
-            store.dispatch({
-              type: "workbench/set-timeline",
-              playheadMs: Math.max(0, positionMs),
-              zoom: timeline.zoom,
-              rangeStartMs: timeline.rangeStartMs,
-              rangeEndMs: timeline.rangeEndMs,
-              autoFollowLive: false,
-            });
+            store.dispatchMany([
+              { type: "workbench/set-focus-event", eventId: closest?.id ?? null },
+              {
+                type: "workbench/set-timeline",
+                playheadMs: Math.max(0, positionMs),
+                zoom: timeline.zoom,
+                rangeStartMs: timeline.rangeStartMs,
+                rangeEndMs: timeline.rangeEndMs,
+                autoFollowLive: false,
+              },
+            ]);
             return { success: true };
           }
           case REPAIR_UI_COMMANDS.addMeasurement: {
@@ -989,20 +1178,26 @@ export default function createRepairRoomHostRuntime() {
                     : event
                 ),
               };
-              setSessionAndList(nextSession);
-              store.dispatch({ type: "workbench/set-focus-event", eventId: existingEventId });
+              store.batch(() => {
+                setSessionAndList(nextSession);
+                store.dispatch({ type: "workbench/set-focus-event", eventId: existingEventId });
+              });
               return { success: true };
             }
             const reading = createMeasurementReading(iso, flat);
             const event = createMeasurementEvent(session.id, iso, reading, flat);
-            store.dispatch({ type: "measurement/append-reading", reading });
-            store.dispatch({
-              type: "measurement/set-display",
-              display: reading.rawDisplay,
-              value: reading.value,
-              hold: false,
+            let success = true;
+            store.batch(() => {
+              store.dispatch({ type: "measurement/append-reading", reading });
+              store.dispatch({
+                type: "measurement/set-display",
+                display: reading.rawDisplay,
+                value: reading.value,
+                hold: false,
+              });
+              success = appendEventToActiveSession(event);
             });
-            return { success: appendEventToActiveSession(event) };
+            return { success };
           }
           case REPAIR_UI_COMMANDS.dismissAiMark: {
             const eventId = safeString(flat["eventId"]);
@@ -1029,8 +1224,10 @@ export default function createRepairRoomHostRuntime() {
               occurredAt: nowIso(),
               contextRefs: activeSessionId === null ? [] : [activeSessionId],
             };
-            store.dispatch({ type: "chat/append-turn", turn });
-            store.dispatch({ type: "chat/set-pending", turnId: turn.id });
+            store.dispatchMany([
+              { type: "chat/append-turn", turn },
+              { type: "chat/set-pending", turnId: turn.id },
+            ]);
             scheduleChatReply(turn);
             return { success: true };
           }
@@ -1047,94 +1244,18 @@ export default function createRepairRoomHostRuntime() {
             });
             return { success: true };
           }
-          case REPAIR_UI_COMMANDS.updateLayout: {
-            const panelId = flat["panelId"];
-            const collapsed = flat["collapsed"];
-            if (isPanelId(panelId) && typeof collapsed === "boolean") {
-              store.dispatch({ type: "layout/collapse-panel", panelId, collapsed });
-              return { success: true };
-            }
-            const pinned = flat["pinned"];
-            if (isPanelId(panelId) && typeof pinned === "boolean") {
-              store.dispatch({ type: "layout/pin-panel", panelId, pinned });
-              return { success: true };
-            }
-            const focusMode = flat["focusMode"];
-            if (typeof focusMode === "boolean") {
-              store.dispatch({ type: "layout/set-focus-mode", focusMode });
-              return { success: true };
-            }
-            const previewTabId = safeString(flat["previewTabId"]);
-            if (
-              previewTabId === "schematic-preview" ||
-              previewTabId === "board-view" ||
-              previewTabId === "notes"
-            ) {
-              store.dispatch({ type: "knowledge-pack/set-preview-tab", tabId: previewTabId });
-              return { success: true };
-            }
-            const instrumentKind = flat["instrumentKind"];
-            if (isInstrumentKind(instrumentKind)) {
-              store.dispatch({ type: "measurement/set-instrument", instrumentKind });
-              return { success: true };
-            }
-            const operatorProfileTabId = flat["operatorProfileTabId"];
-            if (isOperatorProfileTab(operatorProfileTabId)) {
-              store.dispatch({
-                type: "layout/set-operator-profile-tab",
-                tabId: operatorProfileTabId,
-              });
-              return { success: true };
-            }
-            const viewportZoom = safeNumber(flat["viewportZoom"]);
-            const panXPx = safeNumber(flat["panXPx"]);
-            const panYPx = safeNumber(flat["panYPx"]);
-            if (viewportZoom !== null || panXPx !== null || panYPx !== null) {
-              const viewport = store.getState().workbench.viewport;
-              const nextZoom = Math.min(4, Math.max(0.5, viewportZoom ?? viewport.zoom));
-              const nextPan = clampWorkbenchPan(
-                panXPx ?? viewport.panXPx,
-                panYPx ?? viewport.panYPx,
-                nextZoom,
-                getActiveSession(store.getState())
-              );
-              store.dispatch({
-                type: "workbench/set-viewport",
-                zoom: nextZoom,
-                panXPx: nextPan.panXPx,
-                panYPx: nextPan.panYPx,
-              });
-              return { success: true };
-            }
-            const timelineZoom = safeNumber(flat["timelineZoom"]);
-            const timelineRangeStartMs = safeNumber(flat["timelineRangeStartMs"]);
-            const timelineRangeEndMs = safeNumber(flat["timelineRangeEndMs"]);
-            const clearTimelineRange = flat["clearTimelineRange"] === true;
-            if (
-              timelineZoom !== null ||
-              timelineRangeStartMs !== null ||
-              timelineRangeEndMs !== null ||
-              clearTimelineRange
-            ) {
-              const timeline = store.getState().workbench.timeline;
-              const rangeStartMs = clearTimelineRange
-                ? null
-                : (timelineRangeStartMs ?? timeline.rangeStartMs);
-              const rangeEndMs = clearTimelineRange
-                ? null
-                : (timelineRangeEndMs ?? timeline.rangeEndMs);
-              store.dispatch({
-                type: "workbench/set-timeline",
-                playheadMs: timeline.playheadMs,
-                zoom: Math.min(4, Math.max(0.25, timelineZoom ?? timeline.zoom)),
-                rangeStartMs,
-                rangeEndMs,
-                autoFollowLive: timeline.autoFollowLive,
-              });
-              return { success: true };
-            }
-            return { success: false, message: "layout payload is empty" };
-          }
+          case REPAIR_UI_COMMANDS.updateViewport:
+            return applyViewportUpdate(flat);
+          case REPAIR_UI_COMMANDS.updateTimeline:
+            return applyTimelineUpdate(flat);
+          case REPAIR_UI_COMMANDS.updatePanelLayout:
+            return applyPanelLayoutUpdate(flat);
+          case REPAIR_UI_COMMANDS.updatePanelTab:
+            return applyPanelTabUpdate(flat);
+          case REPAIR_UI_COMMANDS.updateFocus:
+            return applyFocusUpdate(flat);
+          case REPAIR_UI_COMMANDS.updateLayout:
+            return applyLayoutCompatibilityUpdate(flat);
           default:
             api.log(
               "warn",
