@@ -202,6 +202,12 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
         case "export-image-comparison":
           await mediaActionRuntime.exportImageComparison(api, runtime, requestId, actionPayload);
           break;
+        case "capture-comparison-moment":
+          await mediaActionRuntime.captureComparisonMoment(api, runtime, requestId, actionPayload);
+          break;
+        case "save-comparison-finding":
+          await mediaActionRuntime.saveComparisonFinding(api, runtime, requestId, actionPayload);
+          break;
         case "export-timeline-clip":
           await mediaActionRuntime.exportTimelineClip(api, runtime, requestId, actionPayload);
           break;

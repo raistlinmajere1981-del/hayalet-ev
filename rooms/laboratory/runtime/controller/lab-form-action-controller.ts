@@ -148,6 +148,39 @@ export function createLabFormActionController(deps: LabFormActionControllerDeps)
     }
     if (workspaceField.startsWith("audioFocus.")) {
       deps.patchAudioFocusSetting(workspaceField.replace("audioFocus.", ""), rawValue);
+      return;
+    }
+    if (workspaceField === "comparison.viewMode") {
+      const value = String(rawValue);
+      if (
+        value === "side-by-side" ||
+        value === "stacked" ||
+        value === "split" ||
+        value === "difference" ||
+        value === "roi-detail"
+      ) {
+        deps.dispatch({
+          type: "workspace-comparison-updated",
+          patch: { comparisonViewMode: value },
+        });
+      }
+      return;
+    }
+    if (workspaceField === "comparison.splitPercent") {
+      const value = typeof rawValue === "number" ? rawValue : Number(rawValue);
+      deps.dispatch({
+        type: "workspace-comparison-updated",
+        patch: {
+          comparisonSplitPercent: Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 50,
+        },
+      });
+      return;
+    }
+    if (workspaceField === "comparison.findingNote") {
+      deps.dispatch({
+        type: "workspace-comparison-updated",
+        patch: { comparisonFindingNote: String(rawValue || "").slice(0, 1000) },
+      });
     }
   }
 

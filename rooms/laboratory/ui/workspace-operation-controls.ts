@@ -9,6 +9,14 @@ export type LabOperationScopeState = {
   hasTimeRange: boolean;
 };
 
+export type LabOperationComparisonState = {
+  findingNote: string;
+  primaryLabel: string | null;
+  referenceLabel: string | null;
+  splitPercent: number;
+  viewMode: string;
+};
+
 const GROUP_LABEL_FALLBACKS: Record<LabOperationCapabilityProjection["groupId"], string> = {
   audio: "Audio Outputs",
   clip: "Clip Outputs",
@@ -74,6 +82,50 @@ function renderOperationButton(capability: LabOperationCapabilityProjection, cop
       ${running ? 'aria-busy="true"' : ""}
       ${ready && capability.actionStatus !== "error" ? "" : `title="${escapeHtml(title)}"`}
     >${escapeHtml(label)}</button>
+  `;
+}
+
+function renderImageComparisonCaptureControls(
+  comparison: LabOperationComparisonState | null,
+  copy: LabI18n
+) {
+  if (comparison === null) {
+    return "";
+  }
+  const referenceReady = comparison.referenceLabel !== null;
+  const disabled = referenceReady ? "" : " disabled";
+  const disabledTitle = referenceReady
+    ? ""
+    : ` title="${escapeHtml(copy.t("mediaAnalysis.operations.comparison.referenceRequired", "Önce ikinci bir resim referansı seçilmelidir."))}"`;
+  const viewModeOptions = ["side-by-side", "stacked", "split", "difference", "roi-detail"]
+    .map(function (value) {
+      return `<option value="${escapeHtml(value)}" ${comparison.viewMode === value ? "selected" : ""}>${escapeHtml(copy.t(`mediaAnalysis.operations.comparison.viewModes.${value}`, value))}</option>`;
+    })
+    .join("");
+
+  return `
+    <div class="labx-operation-card__comparison" data-reference-ready="${referenceReady ? "true" : "false"}">
+      <div class="labx-operation-card__comparison-pair">
+        <span><strong>A</strong> ${escapeHtml(comparison.primaryLabel || copy.t("mediaAnalysis.operations.comparison.activeImageMissing", "Aktif resim yok"))}</span>
+        <span><strong>B</strong> ${escapeHtml(comparison.referenceLabel || copy.t("mediaAnalysis.operations.comparison.referenceMissing", "Referans seçilmedi"))}</span>
+      </div>
+      <label class="labx-operation-card__comparison-field">
+        <span>${escapeHtml(copy.t("mediaAnalysis.operations.comparison.viewMode", "Görünüm"))}</span>
+        <select data-lab-field="workspace.comparison.viewMode">${viewModeOptions}</select>
+      </label>
+      <label class="labx-operation-card__comparison-field">
+        <span>${escapeHtml(copy.t("mediaAnalysis.operations.comparison.split", "Split"))}</span>
+        <input type="number" min="5" max="95" step="1" value="${escapeHtml(String(Math.round(comparison.splitPercent)))}" data-lab-field="workspace.comparison.splitPercent" />
+      </label>
+      <label class="labx-operation-card__comparison-note">
+        <span>${escapeHtml(copy.t("mediaAnalysis.operations.comparison.note", "Bulgu notu"))}</span>
+        <textarea rows="3" maxlength="1000" data-lab-field="workspace.comparison.findingNote">${escapeHtml(comparison.findingNote)}</textarea>
+      </label>
+      <div class="labx-operation-card__comparison-actions">
+        <button class="labx-operation-card__action" type="button" data-lab-action="workspace-comparison-moment-capture"${disabled}${disabledTitle}>${escapeHtml(copy.t("mediaAnalysis.operations.comparison.captureMoment", "Anı Yakala"))}</button>
+        <button class="labx-operation-card__action" type="button" data-lab-action="workspace-comparison-finding-save"${disabled}${disabledTitle}>${escapeHtml(copy.t("mediaAnalysis.operations.comparison.saveFinding", "Bulgu Kaydet"))}</button>
+      </div>
+    </div>
   `;
 }
 
@@ -154,7 +206,8 @@ export function renderCapabilityCard(
   capability: LabOperationCapabilityProjection,
   activeCapabilityId: LabOperationCapabilityProjection["id"] | null,
   copy: LabI18n,
-  scope: LabOperationScopeState = { hasRoi: false, hasTimeRange: false }
+  scope: LabOperationScopeState = { hasRoi: false, hasTimeRange: false },
+  comparison: LabOperationComparisonState | null = null
 ) {
   const readinessLabel =
     capability.readiness === "ready"
@@ -214,6 +267,11 @@ export function renderCapabilityCard(
         translate: copy.t,
         variant: "inline",
       })}
+      ${
+        capability.id === "image-comparison"
+          ? renderImageComparisonCaptureControls(comparison, copy)
+          : ""
+      }
       ${renderOperationButton(capability, copy)}
     </article>
   `;
@@ -223,7 +281,8 @@ export function renderWorkspaceOperationControls(
   capabilities: LabOperationCapabilityProjection[],
   activeCapabilityId: LabOperationCapabilityProjection["id"] | null = null,
   copy: LabI18n = LAB_FALLBACK_I18N,
-  scope: LabOperationScopeState = { hasRoi: false, hasTimeRange: false }
+  scope: LabOperationScopeState = { hasRoi: false, hasTimeRange: false },
+  comparison: LabOperationComparisonState | null = null
 ) {
   if (capabilities.length === 0) {
     return "";
@@ -250,7 +309,13 @@ export function renderWorkspaceOperationControls(
                 <div class="labx-operation-group__list">
                   ${groupCapabilities
                     .map(function (capability) {
-                      return renderCapabilityCard(capability, activeCapabilityId, copy, scope);
+                      return renderCapabilityCard(
+                        capability,
+                        activeCapabilityId,
+                        copy,
+                        scope,
+                        comparison
+                      );
                     })
                     .join("")}
                 </div>

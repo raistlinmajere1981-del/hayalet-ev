@@ -47,6 +47,20 @@ const TRACKED_USER_ACTION_DEFINITIONS: Record<string, LabTrackedUserActionDefini
     successMessage: "Görsel karşılaştırma hazır",
     errorMessage: "Görsel karşılaştırma hazırlanamadı",
   },
+  "capture-comparison-moment": {
+    sourceAction: "capture-comparison-moment",
+    type: "custom",
+    label: "Karşılaştırma anı yakalanıyor",
+    successMessage: "Karşılaştırma anı kaydedildi",
+    errorMessage: "Karşılaştırma anı kaydedilemedi",
+  },
+  "save-comparison-finding": {
+    sourceAction: "save-comparison-finding",
+    type: "custom",
+    label: "Karşılaştırma bulgusu kaydediliyor",
+    successMessage: "Karşılaştırma bulgusu kaydedildi",
+    errorMessage: "Karşılaştırma bulgusu kaydedilemedi",
+  },
   "export-stabilized-clip": {
     sourceAction: "export-stabilized-clip",
     type: "export-clip",

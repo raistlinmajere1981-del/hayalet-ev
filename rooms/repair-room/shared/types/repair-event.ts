@@ -2,13 +2,17 @@ export type RepairEventSource = "operator" | "ai" | "instrument" | "system";
 
 export type RepairAiSeverity = "info" | "suggestion" | "action" | "risk";
 
-export type RepairAnnotationTool =
-  | "rect"
-  | "circle"
-  | "freehand"
-  | "arrow"
-  | "text"
-  | "measurement-pin";
+export type RepairAiMarkLifecycleState =
+  | "detected"
+  | "acknowledged"
+  | "investigating"
+  | "resolved"
+  | "dismissed"
+  | "expired";
+
+export type RepairAnnotationTool = "rect" | "freehand" | "arrow" | "text" | "measurement-link";
+
+export type RepairWorkbenchDrawTool = RepairAnnotationTool | "circle" | "measurement-pin";
 
 export interface RepairImageRect {
   xPx: number;
@@ -20,6 +24,15 @@ export interface RepairImageRect {
 export interface RepairImagePoint {
   xPx: number;
   yPx: number;
+}
+
+export interface RepairAnnotationMeta {
+  author: "operator" | "ai";
+  tool: RepairAnnotationTool;
+  label?: string;
+  color?: string;
+  linkedMeasurementIds?: string[];
+  linkedEventIds?: string[];
 }
 
 export interface RepairEventBase {
@@ -43,6 +56,12 @@ export interface RepairAiMarkEvent extends RepairEventBase {
   rationale: string;
   protocolKey: string | null;
   dismissed: boolean;
+  lifecycleState?: RepairAiMarkLifecycleState;
+  linkedMeasurementIds?: string[];
+  linkedAnnotationIds?: string[];
+  linkedNoteIds?: string[];
+  linkedReplayEventIds?: string[];
+  expiresAt?: string | null;
 }
 
 export interface RepairMeasurementEvent extends RepairEventBase {
@@ -56,15 +75,26 @@ export interface RepairMeasurementEvent extends RepairEventBase {
   unit: string;
   pinAt: RepairImagePoint | null;
   reference: string | null;
+  group?: {
+    rail?: string;
+    component?: string;
+    powerDomain?: string;
+    investigationGroup?: string;
+  };
+  previousEventId?: string | null;
+  linkedAnnotationIds?: string[];
+  linkedAiMarkIds?: string[];
 }
 
 export interface RepairAnnotationEvent extends RepairEventBase {
   kind: "annotation";
-  tool: RepairAnnotationTool;
+  tool: RepairWorkbenchDrawTool;
   region: RepairImageRect | null;
   point: RepairImagePoint | null;
   label: string;
   color: string;
+  meta?: RepairAnnotationMeta;
+  selected?: boolean;
 }
 
 export interface RepairNoteEvent extends RepairEventBase {
@@ -85,6 +115,15 @@ export interface RepairRiskFlagEvent extends RepairEventBase {
   message: string;
   region: RepairImageRect | null;
   acknowledged: boolean;
+  linkedMeasurementIds?: string[];
+  linkedAnnotationIds?: string[];
+}
+
+export interface RepairAiMarkLifecycleEvent extends RepairEventBase {
+  kind: "ai-mark-lifecycle";
+  targetEventId: string;
+  state: RepairAiMarkLifecycleState;
+  reason: string;
 }
 
 export interface RepairSessionStartEvent extends RepairEventBase {
@@ -100,6 +139,7 @@ export type RepairEvent =
   | RepairNoteEvent
   | RepairFreezeFrameEvent
   | RepairRiskFlagEvent
+  | RepairAiMarkLifecycleEvent
   | RepairSessionStartEvent;
 
 export type RepairEventKind = RepairEvent["kind"];

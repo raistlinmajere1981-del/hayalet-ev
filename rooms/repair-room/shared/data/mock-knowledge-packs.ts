@@ -23,6 +23,15 @@ export const MOCK_REPAIR_KNOWLEDGE_PACKS: Record<string, RepairKnowledgePack> = 
         source: "samsung-support-archive/bn44-00932a-rev-a",
         pages: 12,
         confidence: 0.92,
+        spatialRefs: [
+          {
+            kind: "rail",
+            label: "Primary bias rail region",
+            rail: "Primary bias",
+            region: { xPx: 400, yPx: 240, widthPx: 220, heightPx: 160 },
+            linkedSnapshotId: "evt-psu-snap-1",
+          },
+        ],
       },
       {
         id: "board-top-side",
@@ -32,6 +41,14 @@ export const MOCK_REPAIR_KNOWLEDGE_PACKS: Record<string, RepairKnowledgePack> = 
         source: "ifixit-repair-guide/bn44-00932a-#step-2",
         pages: null,
         confidence: 0.88,
+        spatialRefs: [
+          {
+            kind: "region",
+            label: "Annotated primary side",
+            region: { xPx: 340, yPx: 160, widthPx: 310, heightPx: 250 },
+            linkedSnapshotId: "evt-psu-snap-1",
+          },
+        ],
       },
       {
         id: "board-bottom-side",
@@ -61,6 +78,13 @@ export const MOCK_REPAIR_KNOWLEDGE_PACKS: Record<string, RepairKnowledgePack> = 
         recommendedAction:
           "Measure primary MOSFET drain-source resistance with PSU unplugged and bulk cap discharged.",
         confidence: 0.81,
+        spatialRef: {
+          kind: "region",
+          label: "Primary MOSFET risk zone",
+          componentId: "Q801",
+          region: { xPx: 360, yPx: 180, widthPx: 260, heightPx: 200 },
+          linkedSnapshotId: "evt-psu-snap-1",
+        },
       },
       {
         id: "startup-resistor-open",
@@ -69,6 +93,14 @@ export const MOCK_REPAIR_KNOWLEDGE_PACKS: Record<string, RepairKnowledgePack> = 
         affectedPart: "R201",
         recommendedAction: "Measure R201 across pins. Replace with 220kΩ 1W flameproof.",
         confidence: 0.78,
+        spatialRef: {
+          kind: "component",
+          label: "R201 startup resistor",
+          componentId: "R201",
+          point: { xPx: 718, yPx: 296 },
+          region: { xPx: 682, yPx: 268, widthPx: 72, heightPx: 56 },
+          linkedSnapshotId: "evt-psu-snap-1",
+        },
       },
       {
         id: "optocoupler-degradation",
@@ -78,6 +110,13 @@ export const MOCK_REPAIR_KNOWLEDGE_PACKS: Record<string, RepairKnowledgePack> = 
         recommendedAction:
           "If 5V_STBY measures > 5.4V or < 4.7V under load, replace U601 with matching CTR bin.",
         confidence: 0.74,
+        spatialRef: {
+          kind: "rail",
+          label: "5V_STBY regulation region",
+          rail: "Standby rail",
+          region: { xPx: 860, yPx: 360, widthPx: 160, heightPx: 110 },
+          linkedSnapshotId: "evt-psu-snap-2",
+        },
       },
     ],
     testPoints: [
@@ -89,6 +128,13 @@ export const MOCK_REPAIR_KNOWLEDGE_PACKS: Record<string, RepairKnowledgePack> = 
         unit: "V",
         tolerance: 0.5,
         pinAt: { xPx: 420, yPx: 280 },
+        spatialRef: {
+          kind: "board-coordinate",
+          label: "VCC_PRI test point",
+          point: { xPx: 420, yPx: 280 },
+          rail: "Primary bias",
+          linkedSnapshotId: "evt-psu-snap-1",
+        },
       },
       {
         id: "tp-5v-stby",
@@ -98,6 +144,13 @@ export const MOCK_REPAIR_KNOWLEDGE_PACKS: Record<string, RepairKnowledgePack> = 
         unit: "V",
         tolerance: 0.25,
         pinAt: { xPx: 920, yPx: 410 },
+        spatialRef: {
+          kind: "board-coordinate",
+          label: "5V_STBY test point",
+          point: { xPx: 920, yPx: 410 },
+          rail: "Standby rail",
+          linkedSnapshotId: "evt-psu-snap-2",
+        },
       },
       {
         id: "tp-bulk-dc",
@@ -107,6 +160,13 @@ export const MOCK_REPAIR_KNOWLEDGE_PACKS: Record<string, RepairKnowledgePack> = 
         unit: "V",
         tolerance: 15,
         pinAt: { xPx: 360, yPx: 180 },
+        spatialRef: {
+          kind: "board-coordinate",
+          label: "BULK_DC test point",
+          point: { xPx: 360, yPx: 180 },
+          rail: "Primary bulk",
+          linkedSnapshotId: "evt-psu-snap-1",
+        },
       },
       {
         id: "tp-gate-q801",
@@ -116,6 +176,13 @@ export const MOCK_REPAIR_KNOWLEDGE_PACKS: Record<string, RepairKnowledgePack> = 
         unit: "V",
         tolerance: 0.1,
         pinAt: { xPx: 520, yPx: 310 },
+        spatialRef: {
+          kind: "board-coordinate",
+          label: "U14 GATE test point",
+          point: { xPx: 520, yPx: 310 },
+          rail: "Primary MOSFET gate",
+          linkedSnapshotId: "evt-psu-snap-1",
+        },
       },
     ],
     notes: [

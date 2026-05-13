@@ -79,4 +79,6 @@ export const MOCK_REPAIR_MEASUREMENT_STATE: RepairMeasurementState = {
   activeInstrumentKind: "multimeter",
   current: MOCK_CURRENT_SNAPSHOT,
   recent: MOCK_RECENT_READINGS,
+  evidence: [],
+  comparisonEventId: null,
 };

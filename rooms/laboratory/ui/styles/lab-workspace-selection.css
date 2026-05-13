@@ -203,6 +203,87 @@
   max-width: var(--lab-workspace-rem-28);
 }
 
+.labx-workspace-comparison {
+  display: grid;
+  gap: var(--lab-space-2);
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--lab-space-2);
+  box-sizing: border-box;
+}
+
+.labx-workspace-comparison[data-mode="paired"] {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.labx-workspace-comparison[data-mode="stacked"] {
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.labx-workspace-comparison__pane {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: var(--lab-space-1);
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  border: var(--lab-workspace-px-1) solid var(--lab-border-subtle);
+  background: var(--lab-surface-0);
+}
+
+.labx-workspace-comparison__pane figcaption,
+.labx-workspace-comparison__labels {
+  padding: var(--lab-space-1) var(--lab-space-2);
+  color: var(--lab-text-soft);
+  font-size: var(--lab-workspace-rem-0-64);
+}
+
+.labx-workspace-comparison__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  object-fit: contain;
+}
+
+.labx-workspace-comparison__split {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: var(--lab-workspace-px-1) solid var(--lab-border-subtle);
+  background: var(--lab-surface-0);
+}
+
+.labx-workspace-comparison__split .labx-workspace-comparison__image {
+  position: absolute;
+  inset: 0;
+}
+
+.labx-workspace-comparison__image--primary {
+  clip-path: inset(0 calc(100% - var(--lab-comparison-split, 50%)) 0 0);
+}
+
+.labx-workspace-comparison__divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--lab-comparison-split, 50%);
+  width: var(--lab-workspace-px-1);
+  background: var(--lab-accent);
+  box-shadow: 0 0 0 var(--lab-workspace-px-1) var(--lab-accent-soft);
+}
+
+.labx-workspace-comparison__labels {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--lab-space-2);
+}
+
 @media (--lab-bp-max-960) {
   .labx-media-workbench {
     min-height: 0;
@@ -210,6 +291,11 @@
 
   .labx-workspace-preview {
     min-height: 0;
+  }
+
+  .labx-workspace-comparison[data-mode="paired"] {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 

@@ -1,9 +1,91 @@
+import type { RepairEvent } from "../../shared/types/index.js";
 import type { RepairUiState } from "../../shared/ui/state.js";
 import { REPAIR_OVERLAY_TOOLS } from "../overlay/overlay-tools.js";
 import { resolveRepairAssetUrl } from "../repair-asset-url.js";
 import { createRepairPanel } from "./panel-shell.js";
 
 type TextFn = (path: string[], fallback: string) => string;
+
+function getFocusedForensicEvent(state: RepairUiState): RepairEvent | null {
+  const focusedId = state.workbench.selection.inspectorEventId ?? state.workbench.focusedEventId;
+  if (focusedId === null) return null;
+  return state.sessions.detail?.events.find((event) => event.id === focusedId) ?? null;
+}
+
+function getForensicEventDetail(event: RepairEvent): string {
+  switch (event.kind) {
+    case "annotation":
+      return event.meta?.label ?? event.label;
+    case "measurement":
+      return `${event.reference ?? event.channel} ${event.rawDisplay}${event.unit}`;
+    case "ai-mark":
+      return event.rationale;
+    case "risk-flag":
+      return event.message;
+    case "snapshot":
+      return event.caption;
+    case "freeze-frame":
+      return event.reason;
+    case "note":
+      return event.text;
+    case "session-start":
+      return event.title;
+    case "ai-mark-lifecycle":
+      return event.reason;
+    default: {
+      const exhaustiveEvent: never = event;
+      return exhaustiveEvent;
+    }
+  }
+}
+
+function getForensicEventMeta(event: RepairEvent): string {
+  const time = new Date(event.occurredAt).toLocaleTimeString("en-GB");
+  if (event.kind === "annotation") {
+    return `${time} • ${(event.meta?.author ?? event.source).toUpperCase()} • ${(
+      event.meta?.tool ?? event.tool
+    ).toUpperCase()}`;
+  }
+  if (event.kind === "ai-mark") {
+    return `${time} • AI • ${(event.lifecycleState ?? "detected").toUpperCase()}`;
+  }
+  if (event.kind === "measurement") {
+    const group =
+      event.group?.rail ?? event.group?.component ?? event.group?.powerDomain ?? "ungrouped";
+    return `${time} • ${group.toUpperCase()}`;
+  }
+  return `${time} • ${event.linkedEventIds.length} linked events`;
+}
+
+function getForensicLinkedText(state: RepairUiState, event: RepairEvent): string {
+  const brief = (eventId: string): string => {
+    const linked = state.sessions.detail?.events.find((candidate) => candidate.id === eventId);
+    if (linked === undefined) return eventId;
+    return `${linked.kind.toUpperCase()} ${new Date(linked.occurredAt).toLocaleTimeString("en-GB")}`;
+  };
+  const measurementIds =
+    event.kind === "annotation"
+      ? (event.meta?.linkedMeasurementIds ?? [])
+      : event.kind === "ai-mark" || event.kind === "risk-flag"
+        ? (event.linkedMeasurementIds ?? [])
+        : event.kind === "measurement"
+          ? (event.linkedAnnotationIds ?? [])
+          : [];
+  const aiIds =
+    event.kind === "annotation"
+      ? (event.meta?.linkedEventIds ?? []).filter((eventId) => {
+          const linked = state.sessions.detail?.events.find((candidate) => candidate.id === eventId);
+          return linked?.kind === "ai-mark" || linked?.kind === "risk-flag";
+        })
+      : event.kind === "measurement"
+        ? (event.linkedAiMarkIds ?? [])
+        : event.linkedEventIds;
+  const parts = [
+    measurementIds.length > 0 ? `MEASURE ${measurementIds.map(brief).join(", ")}` : null,
+    aiIds.length > 0 ? `AI ${aiIds.map(brief).join(", ")}` : null,
+  ].filter((part): part is string => part !== null);
+  return parts.length > 0 ? parts.join(" • ") : "No linked forensic records";
+}
 
 export function renderWorkbenchStagePanel(
   documentRef: Document,
@@ -85,6 +167,39 @@ export function renderWorkbenchStagePanel(
   hud.innerHTML = `<span>X ${xLabel}</span><span>Y ${yLabel}</span><span>GRID ${gridLabel}</span>`;
   viewport.append(hud);
 
+  const inspectorEvent = getFocusedForensicEvent(state);
+  if (inspectorEvent !== null) {
+    const inspector = documentRef.createElement("div");
+    inspector.className = "repair-annotation-inspector";
+    inspector.dataset["eventId"] = inspectorEvent.id;
+
+    const title = documentRef.createElement("div");
+    title.className = "repair-annotation-inspector__title";
+    title.textContent = inspectorEvent.kind.toUpperCase();
+    inspector.append(title);
+
+    const detail = documentRef.createElement("div");
+    detail.className = "repair-annotation-inspector__detail";
+    detail.textContent = getForensicEventDetail(inspectorEvent);
+    inspector.append(detail);
+
+    const meta = documentRef.createElement("div");
+    meta.className = "repair-annotation-inspector__meta";
+    meta.textContent = getForensicEventMeta(inspectorEvent);
+    inspector.append(meta);
+
+    const links = documentRef.createElement("div");
+    links.className = "repair-annotation-inspector__links";
+    links.textContent = getForensicLinkedText(state, inspectorEvent);
+    inspector.append(links);
+
+    const selection = documentRef.createElement("div");
+    selection.className = "repair-annotation-inspector__selection";
+    selection.textContent = `${state.workbench.selection.selectedEventIds.length} selected`;
+    inspector.append(selection);
+    viewport.append(inspector);
+  }
+
   body.append(viewport);
 
   // -- Toolbar
@@ -110,8 +225,12 @@ export function renderWorkbenchStagePanel(
   const layerButtons: Array<{ id: string; label: string }> = [
     { id: "grid", label: "GRD" },
     { id: "ai-marks", label: "AI" },
-    { id: "annotations", label: "ANN" },
-    { id: "measurement-pins", label: "PIN" },
+    { id: "operator-annotations", label: "OPR" },
+    { id: "ai-annotations", label: "AIN" },
+    { id: "measurements", label: "MEA" },
+    { id: "risks", label: "RSK" },
+    { id: "notes", label: "NTE" },
+    { id: "knowledge", label: "KNO" },
   ];
   for (const layer of layerButtons) {
     const btn = documentRef.createElement("button");

@@ -176,8 +176,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     exportAudioCleanup,
     exportBandPassVoice,
     exportBeforeAfterVariant,
+    captureComparisonMoment,
     exportEnhancedFrame,
     exportImageComparison,
+    saveComparisonFinding,
     exportSelectionRoi,
     exportStabilizedSegment,
     exportStemSeparation,
@@ -1043,6 +1045,14 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       }
       case "workspace-image-comparison-export": {
         exportImageComparison();
+        return;
+      }
+      case "workspace-comparison-moment-capture": {
+        captureComparisonMoment();
+        return;
+      }
+      case "workspace-comparison-finding-save": {
+        saveComparisonFinding();
         return;
       }
       case "timeline-export-clip": {

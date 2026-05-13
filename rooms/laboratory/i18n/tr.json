@@ -537,6 +537,25 @@
           "label": "Kaynakları Ayır",
           "description": "Konuşma, ortam veya müzik incelemesi için ayrılmış stemler oluştur."
         }
+      },
+      "comparison": {
+        "activeImageFallback": "Aktif resim",
+        "activeImageMissing": "Aktif resim yok",
+        "captureMoment": "Anı Yakala",
+        "note": "Bulgu notu",
+        "referenceFallback": "Referans",
+        "referenceMissing": "Referans seçilmedi",
+        "referenceRequired": "Önce ikinci bir resim referansı seçilmelidir.",
+        "saveFinding": "Bulgu Kaydet",
+        "split": "Split",
+        "viewMode": "Görünüm",
+        "viewModes": {
+          "side-by-side": "Yan yana",
+          "stacked": "Üst üste",
+          "split": "Split",
+          "difference": "Fark",
+          "roi-detail": "Detay bölgesi"
+        }
       }
     },
     "rightContext": {
@@ -1687,6 +1706,7 @@
       },
       "relation": {
         "source": "Kaynak",
+        "activeSource": "Aktif kaynak",
         "compareReference": "Karşılaştırma referansı"
       },
       "projects": {

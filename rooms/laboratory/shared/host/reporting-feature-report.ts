@@ -141,6 +141,95 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
     };
   }
 
+  function getProjectAssets(project: LaboratoryRecord) {
+    return Array.isArray(project["assets"])
+      ? (project["assets"] as unknown[]).map(function (entry) {
+          return deps.toRecord(entry);
+        })
+      : [];
+  }
+
+  function getAssetFileName(asset: LaboratoryRecord) {
+    return (
+      asNonEmptyString(asset["name"]) ||
+      asNonEmptyString(asset["fileName"]) ||
+      asNonEmptyString(asset["id"]) ||
+      "asset"
+    );
+  }
+
+  function getComparisonFindingEvidence(project: LaboratoryRecord) {
+    const assets = getProjectAssets(project);
+    const assetById = new Map<string, LaboratoryRecord>();
+    assets.forEach(function (asset) {
+      const id = asNonEmptyString(asset["id"]);
+      if (id !== null) {
+        assetById.set(id, asset);
+      }
+    });
+
+    const findings: LaboratoryRecord[] = [];
+    const artifacts: LaboratoryRecord[] = [];
+    assets.forEach(function (asset) {
+      const metadata = deps.toRecord(asset["metadata"]);
+      if (asNonEmptyString(metadata["artifactKind"]) !== "comparison-finding-manifest") {
+        return;
+      }
+      const findingId =
+        asNonEmptyString(metadata["findingId"]) ||
+        `comparison-finding-${asNonEmptyString(asset["id"]) || String(findings.length + 1)}`;
+      const snapshotAssetId = asNonEmptyString(metadata["snapshotAssetId"]);
+      const snapshotAsset = snapshotAssetId === null ? null : assetById.get(snapshotAssetId) || null;
+      const note = asNonEmptyString(metadata["note"]);
+      const title = note
+        ? note.split(/\r?\n/)[0]?.slice(0, 80) || "Karşılaştırma bulgusu"
+        : "Karşılaştırma bulgusu";
+      const artifactIds = [snapshotAssetId, asNonEmptyString(asset["id"])].filter(
+        (entry): entry is string => entry !== null
+      );
+      findings.push(
+        normalizeProcessFinding({
+          artifactIds,
+          code: "comparison-finding",
+          confidence: "medium",
+          detail: note || "Kullanıcı tarafından kaydedilmiş resim karşılaştırma bulgusu.",
+          evidenceCount: artifactIds.length,
+          id: findingId,
+          kind: "derived",
+          level: "medium",
+          moduleId: "image-comparison",
+          severity: "info",
+          sourceModule: "image-comparison",
+          title,
+        })
+      );
+      if (snapshotAsset !== null) {
+        artifacts.push({
+          createdAt: new Date(Number(snapshotAsset["createdAt"]) || Date.now()).toISOString(),
+          fileName: getAssetFileName(snapshotAsset),
+          id: snapshotAssetId,
+          kind: "comparison-finding-snapshot",
+          moduleId: "image-comparison",
+          path: asNonEmptyString(snapshotAsset["localPath"]),
+          previewUrl: asNonEmptyString(snapshotAsset["url"]) || asNonEmptyString(snapshotAsset["localPath"]),
+          status: "ready",
+        });
+      }
+      artifacts.push({
+        createdAt: new Date(Number(asset["createdAt"]) || Date.now()).toISOString(),
+        fileName: getAssetFileName(asset),
+        id: asNonEmptyString(asset["id"]) || `${findingId}-manifest`,
+        kind: "comparison-finding-manifest",
+        moduleId: "image-comparison",
+        path: asNonEmptyString(asset["localPath"]),
+        previewUrl: null,
+        status: "ready",
+      });
+    });
+
+    return { artifacts, findings };
+  }
+
   function getProcessBackedEmptyReason(processRecord: LaboratoryRecord, fallback: string) {
     const status = asNonEmptyString(processRecord["status"]) || "idle";
     const explicitReason = asNonEmptyString(processRecord["emptyReason"]);
@@ -182,7 +271,46 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
       ) as unknown as LaboratoryComposedFeatureReportRecord;
     }
     const processRecord = getFeatureProcessRecord(project, featureId);
+    const comparisonEvidence =
+      featureId === mediaFeatureId
+        ? getComparisonFindingEvidence(project)
+        : { artifacts: [], findings: [] };
     if (processRecord.status !== "ready" && processRecord.status !== "stale") {
+      if (comparisonEvidence.findings.length > 0) {
+        const generatedAt = new Date().toISOString();
+        const comparisonProcessRecord = {
+          ...processRecord,
+          artifacts: comparisonEvidence.artifacts,
+          completedAt: generatedAt,
+          emptyReason: null,
+          findings: comparisonEvidence.findings,
+          modules: [],
+          runId:
+            asNonEmptyString(processRecord["runId"]) ||
+            `comparison-findings-${asNonEmptyString(project["id"]) || "project"}`,
+          startedAt: generatedAt,
+          status: "ready",
+          warnings: [],
+        };
+        return normalizeFeatureReportRecord(
+          attachDualReports(featureId, comparisonProcessRecord, {
+            featureId,
+            status: "ready",
+            sourceRunId: comparisonProcessRecord.runId,
+            generatedAt,
+            summaryCards: [
+              { id: `${featureId}-findings`, label: "Findings", value: String(comparisonEvidence.findings.length) },
+              { id: `${featureId}-artifacts`, label: "Artifacts", value: String(comparisonEvidence.artifacts.length) },
+            ],
+            findings: comparisonEvidence.findings,
+            caveats: ["Report includes manually saved comparison findings."],
+            warnings: [],
+            error: null,
+            emptyReason: null,
+          }),
+          featureId
+        ) as unknown as LaboratoryComposedFeatureReportRecord;
+      }
       return normalizeFeatureReportRecord(
         {
           ...createEmptyFeatureReportRecord(featureId),
@@ -197,7 +325,23 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
       ) as unknown as LaboratoryComposedFeatureReportRecord;
     }
 
-    const findings = (Array.isArray(processRecord["findings"]) ? processRecord["findings"] : [])
+    const processArtifacts = Array.isArray(processRecord["artifacts"])
+      ? (processRecord["artifacts"] as unknown[]).map(function (entry) {
+          return deps.toRecord(entry);
+        })
+      : [];
+    const artifacts = processArtifacts.concat(comparisonEvidence.artifacts);
+    const reportProcessRecord = {
+      ...processRecord,
+      artifacts,
+      findings: (Array.isArray(processRecord["findings"]) ? processRecord["findings"] : []).concat(
+        comparisonEvidence.findings
+      ),
+    };
+    const findings = (Array.isArray(reportProcessRecord["findings"])
+      ? reportProcessRecord["findings"]
+      : []
+    )
       .map(normalizeProcessFinding)
       .sort(function (left, right) {
         return getFindingSeverityRank(right.level) - getFindingSeverityRank(left.level);
@@ -217,7 +361,7 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
     )["exports"];
 
     return normalizeFeatureReportRecord(
-      attachDualReports(featureId, processRecord, {
+      attachDualReports(featureId, reportProcessRecord, {
         featureId: featureId,
         status: "ready",
         sourceRunId: processRecord["runId"],
@@ -246,7 +390,7 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
             id: `${featureId}-artifacts`,
             labelKey: "mediaAnalysis.profile.summary.artifacts",
             value: String(
-              (Array.isArray(processRecord["artifacts"]) ? processRecord["artifacts"] : []).length
+              artifacts.length
             ),
           },
           {
@@ -262,8 +406,7 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
         error: null,
         emptyReason:
           findings.length === 0 &&
-          Array.isArray(processRecord["artifacts"]) &&
-          processRecord["artifacts"].length === 0
+          artifacts.length === 0
             ? getProcessBackedEmptyReason(
                 processRecord,
                 "Çalışma tamamlandı ancak raporlayacak belirgin bulgu oluşmadı."

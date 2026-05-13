@@ -20,6 +20,7 @@ import {
   repairEventToTacticalFeedItem,
 } from "../shared/data/index.js";
 import type {
+  RepairAiMarkLifecycleState,
   RepairAnnotationTool,
   RepairChatTurn,
   RepairEvent,
@@ -32,8 +33,10 @@ import type {
   RepairSessionListItem,
   RepairWizardDraft,
   RepairWizardState,
+  RepairWorkbenchDrawTool,
   RepairWorkbenchTool,
 } from "../shared/types/index.js";
+import { createReplayRuntimeController } from "./repair-replay-runtime.js";
 import {
   createInitialRepairRuntimeState,
   type RepairRuntimeState,
@@ -84,6 +87,15 @@ const ANNOTATION_TOOLS: ReadonlySet<string> = new Set([
   "arrow",
   "text",
   "measurement-pin",
+  "measurement-link",
+]);
+const AI_MARK_LIFECYCLE_STATES: ReadonlySet<string> = new Set([
+  "detected",
+  "acknowledged",
+  "investigating",
+  "resolved",
+  "dismissed",
+  "expired",
 ]);
 const PANEL_IDS: ReadonlySet<string> = new Set([
   "session-rail",
@@ -142,6 +154,11 @@ function safeString(value: unknown): string | null {
   return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
 }
 
+function safeStringArray(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
+  return value.map((item) => safeString(item)).filter((item): item is string => item !== null);
+}
+
 function safeNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
@@ -165,8 +182,12 @@ function isWorkbenchTool(value: unknown): value is RepairWorkbenchTool {
   return typeof value === "string" && REPAIR_TOOLS.has(value);
 }
 
-function isAnnotationTool(value: unknown): value is RepairAnnotationTool {
+function isAnnotationTool(value: unknown): value is RepairWorkbenchDrawTool {
   return typeof value === "string" && ANNOTATION_TOOLS.has(value);
+}
+
+function isAiMarkLifecycleState(value: unknown): value is RepairAiMarkLifecycleState {
+  return typeof value === "string" && AI_MARK_LIFECYCLE_STATES.has(value);
 }
 
 function isPanelId(value: unknown): value is RepairPanelId {
@@ -181,15 +202,14 @@ function isOperatorProfileTab(value: unknown): value is RepairOperatorProfileTab
   return typeof value === "string" && OPERATOR_PROFILE_TABS.has(value);
 }
 
-let runtimeIdFallbackCounter = 0;
-
 function createEventId(prefix: string, _iso: string): string {
-  const randomUuid = globalThis.crypto?.randomUUID?.();
-  if (typeof randomUuid === "string" && randomUuid.length > 0) {
-    return `${prefix}-${randomUuid}`;
-  }
-  runtimeIdFallbackCounter += 1;
-  return `${prefix}-${runtimeIdFallbackCounter.toString(36).padStart(6, "0")}`;
+  return `${prefix}-${globalThis.crypto.randomUUID()}`;
+}
+
+function getAnnotationMetaTool(tool: RepairWorkbenchDrawTool): RepairAnnotationTool {
+  if (tool === "measurement-pin") return "measurement-link";
+  if (tool === "circle") return "rect";
+  return tool;
 }
 
 function phaseForSession(session: RepairSession | null): RepairRuntimeState["phase"] {
@@ -322,7 +342,7 @@ function createSnapshotEvent(sessionId: string, iso: string, caption: string): R
 function createAnnotationEvent(
   sessionId: string,
   iso: string,
-  tool: RepairAnnotationTool,
+  tool: RepairWorkbenchDrawTool,
   payload: Record<string, unknown>
 ): RepairEvent {
   const xPx = safeNumber(payload["xPx"]) ?? 520;
@@ -344,6 +364,16 @@ function createAnnotationEvent(
     point: tool === "measurement-pin" ? { xPx, yPx } : null,
     label,
     color: safeString(payload["color"]) ?? REPAIR_UI_COLORS.cyan,
+    meta: {
+      author: "operator",
+      tool: getAnnotationMetaTool(tool),
+      label,
+      color: safeString(payload["color"]) ?? REPAIR_UI_COLORS.cyan,
+      linkedMeasurementIds:
+        typeof payload["linkedMeasurementId"] === "string" ? [payload["linkedMeasurementId"]] : [],
+      linkedEventIds:
+        typeof payload["linkedEventId"] === "string" ? [payload["linkedEventId"]] : [],
+    },
   };
 }
 
@@ -451,6 +481,9 @@ export default function createRepairRoomHostRuntime() {
       let liveTimelineSessionId = store.getState().activeSessionId;
       let liveTimelineAnchorAtMs = Date.now();
       let liveTimelineBaseMs = getSessionTimelineMs(getActiveSession(store.getState()));
+      const replayController = createReplayRuntimeController(store, () =>
+        getActiveSession(store.getState())
+      );
 
       function resetLiveTimelineAnchor(session: RepairSession | null): void {
         liveTimelineSessionId = session?.id ?? null;
@@ -613,6 +646,9 @@ export default function createRepairRoomHostRuntime() {
                   rangeStartMs: timeline.rangeStartMs,
                   rangeEndMs: timeline.rangeEndMs,
                   autoFollowLive: true,
+                  replayMode: "live",
+                  isPlaying: true,
+                  liveEdgeMs: getSessionTimelineMs(session),
                 });
               }
             });
@@ -677,6 +713,9 @@ export default function createRepairRoomHostRuntime() {
               rangeStartMs: timeline.rangeStartMs,
               rangeEndMs: timeline.rangeEndMs,
               autoFollowLive: true,
+              replayMode: "live",
+              isPlaying: true,
+              liveEdgeMs: getSessionTimelineMs(nextSession),
             });
           }
         });
@@ -758,6 +797,24 @@ export default function createRepairRoomHostRuntime() {
         success: boolean;
         message?: string;
       } {
+        const replayAction = safeString(flat["replayAction"]);
+        if (replayAction === "play") {
+          replayController.play();
+          return { success: true };
+        }
+        if (replayAction === "pause") {
+          replayController.pause();
+          return { success: true };
+        }
+        if (replayAction === "live") {
+          replayController.followLive();
+          return { success: true };
+        }
+        const replaySpeed = safeNumber(flat["replaySpeed"]);
+        if (replaySpeed !== null) {
+          replayController.setSpeed(replaySpeed);
+          return { success: true };
+        }
         const timelineZoom = safeNumber(flat["timelineZoom"] ?? flat["zoom"]);
         const timelineRangeStartMs = safeNumber(
           flat["timelineRangeStartMs"] ?? flat["rangeStartMs"]
@@ -832,6 +889,14 @@ export default function createRepairRoomHostRuntime() {
           });
           return { success: true };
         }
+        const spatialRefId = safeString(flat["spatialRefId"]);
+        if (spatialRefId !== null) {
+          store.dispatchMany([
+            { type: "knowledge-pack/set-spatial-focus", spatialRefId },
+            { type: "knowledge-pack/set-preview-tab", tabId: "board-view" },
+          ]);
+          return { success: true };
+        }
         return { success: false, message: "panel tab payload is empty" };
       }
 
@@ -839,12 +904,87 @@ export default function createRepairRoomHostRuntime() {
         success: boolean;
         message?: string;
       } {
-        const focusMode = flat["focusMode"];
-        if (typeof focusMode !== "boolean") {
-          return { success: false, message: "focusMode is required" };
+        let handled = false;
+
+        if ("hoveredEventId" in flat) {
+          store.dispatch({
+            type: "workbench/set-selection",
+            selection: { hoveredEventId: safeString(flat["hoveredEventId"]) },
+          });
+          handled = true;
         }
-        store.dispatch({ type: "layout/set-focus-mode", focusMode });
-        return { success: true };
+
+        if (flat["clearSelection"] === true || flat["deselect"] === true) {
+          store.dispatch({
+            type: "workbench/set-selection",
+            focusedEventId: null,
+            selection: {
+              hoveredEventId: null,
+              selectedEventIds: [],
+              inspectorEventId: null,
+              focusJumpEventId: null,
+            },
+          });
+          return { success: true };
+        }
+
+        const selectedEventIds = safeStringArray(flat["selectedEventIds"]);
+        if (selectedEventIds !== null) {
+          const inspectorEventId =
+            safeString(flat["inspectorEventId"]) ?? selectedEventIds.at(-1) ?? null;
+          store.dispatch({
+            type: "workbench/set-selection",
+            focusedEventId: inspectorEventId,
+            selection: {
+              selectedEventIds,
+              inspectorEventId,
+              focusJumpEventId: safeString(flat["focusJumpEventId"]) ?? inspectorEventId,
+            },
+          });
+          return { success: true };
+        }
+
+        const eventId = safeString(flat["eventId"]);
+        if (eventId !== null) {
+          const selectionMode = safeString(flat["selectionMode"]);
+          const currentSelection = store.getState().workbench.selection.selectedEventIds;
+          const additive = selectionMode === "add" || selectionMode === "toggle";
+          if (flat["jumpToEvent"] === true && additive === false) {
+            replayController.jump(eventId);
+            return { success: true };
+          }
+
+          const nextSelection =
+            selectionMode === "add"
+              ? Array.from(new Set([...currentSelection, eventId]))
+              : selectionMode === "toggle"
+                ? currentSelection.includes(eventId)
+                  ? currentSelection.filter((selectedId) => selectedId !== eventId)
+                  : [...currentSelection, eventId]
+                : [eventId];
+          const inspectorEventId = nextSelection.includes(eventId)
+            ? eventId
+            : (nextSelection.at(-1) ?? null);
+          store.dispatch({
+            type: "workbench/set-selection",
+            focusedEventId: inspectorEventId,
+            selection: {
+              selectedEventIds: nextSelection,
+              inspectorEventId,
+              focusJumpEventId: flat["focusJump"] === false ? null : (inspectorEventId ?? eventId),
+            },
+          });
+          return { success: true };
+        }
+
+        const focusMode = flat["focusMode"];
+        if (typeof focusMode === "boolean") {
+          store.dispatch({ type: "layout/set-focus-mode", focusMode });
+          return { success: true };
+        }
+        return handled
+          ? { success: true }
+          : { success: false, message: "focus payload is empty" };
       }
 
       function applyLayoutCompatibilityUpdate(flat: Record<string, unknown>): {
@@ -1074,6 +1214,16 @@ export default function createRepairRoomHostRuntime() {
                 isFrozen: next,
                 frozenAt: next ? iso : null,
               });
+              store.dispatch({
+                type: "workbench/set-timeline",
+                playheadMs: state.workbench.timeline.playheadMs,
+                zoom: state.workbench.timeline.zoom,
+                rangeStartMs: state.workbench.timeline.rangeStartMs,
+                rangeEndMs: state.workbench.timeline.rangeEndMs,
+                autoFollowLive: next === false && state.workbench.timeline.autoFollowLive,
+                replayMode: next ? "freeze" : state.workbench.timeline.replayMode,
+                isPlaying: next === false && state.workbench.timeline.isPlaying,
+              });
               if (next && session !== null) {
                 success = appendEventToActiveSession({
                   kind: "freeze-frame",
@@ -1126,7 +1276,7 @@ export default function createRepairRoomHostRuntime() {
           }
           case REPAIR_UI_COMMANDS.jumpToEvent: {
             const eventId = safeString(flat["eventId"]);
-            store.dispatch({ type: "workbench/set-focus-event", eventId });
+            replayController.jump(eventId);
             return { success: true };
           }
           case REPAIR_UI_COMMANDS.scrubTimeline: {
@@ -1143,18 +1293,10 @@ export default function createRepairRoomHostRuntime() {
                 ? event
                 : best;
             }, null);
-            const timeline = store.getState().workbench.timeline;
             store.dispatchMany([
               { type: "workbench/set-focus-event", eventId: closest?.id ?? null },
-              {
-                type: "workbench/set-timeline",
-                playheadMs: Math.max(0, positionMs),
-                zoom: timeline.zoom,
-                rangeStartMs: timeline.rangeStartMs,
-                rangeEndMs: timeline.rangeEndMs,
-                autoFollowLive: false,
-              },
             ]);
+            replayController.scrub(positionMs);
             return { success: true };
           }
           case REPAIR_UI_COMMANDS.addMeasurement: {
@@ -1204,14 +1346,28 @@ export default function createRepairRoomHostRuntime() {
             const session = getActiveSession(store.getState());
             if (session === null || eventId === null)
               return { success: false, message: "eventId is required" };
-            const nextEvents = session.events.map((event) => {
-              if (event.id !== eventId) return event;
-              if (event.kind === "ai-mark") return { ...event, dismissed: true };
-              if (event.kind === "risk-flag") return { ...event, acknowledged: true };
-              return event;
-            });
-            setSessionAndList({ ...session, events: nextEvents, updatedAt: nowIso() });
-            return { success: true };
+            const target = session.events.find((event) => event.id === eventId);
+            if (target?.kind !== "ai-mark") {
+              return { success: false, message: "ai mark target is required" };
+            }
+            const iso = createLiveSessionIso(session);
+            const lifecycleState = isAiMarkLifecycleState(flat["state"])
+              ? flat["state"]
+              : "dismissed";
+            const lifecycleEvent: RepairEvent = {
+              kind: "ai-mark-lifecycle",
+              id: createEventId("evt-ai-life", iso),
+              sessionId: session.id,
+              occurredAt: iso,
+              source: "operator",
+              linkedEventIds: [target.id],
+              targetEventId: target.id,
+              state: lifecycleState,
+              reason:
+                safeString(flat["reason"]) ??
+                `Operator moved AI mark to ${lifecycleState}.`,
+            };
+            return { success: appendEventToActiveSession(lifecycleEvent) };
           }
           case REPAIR_UI_COMMANDS.sendChatTurn: {
             const text = safeString(flat["text"]);

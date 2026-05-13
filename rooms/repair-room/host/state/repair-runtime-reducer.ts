@@ -73,6 +73,10 @@ export function reduceRepairRuntimeState(
             rangeStartMs: action.rangeStartMs,
             rangeEndMs: action.rangeEndMs,
             autoFollowLive: action.autoFollowLive,
+            replayMode: action.replayMode ?? state.workbench.timeline.replayMode,
+            replaySpeed: action.replaySpeed ?? state.workbench.timeline.replaySpeed,
+            isPlaying: action.isPlaying ?? state.workbench.timeline.isPlaying,
+            liveEdgeMs: action.liveEdgeMs ?? state.workbench.timeline.liveEdgeMs,
           },
         },
       };
@@ -90,7 +94,35 @@ export function reduceRepairRuntimeState(
     case "workbench/set-focus-event":
       return {
         ...state,
-        workbench: { ...state.workbench, focusedEventId: action.eventId },
+        workbench: {
+          ...state.workbench,
+          focusedEventId: action.eventId,
+          selection: {
+            ...state.workbench.selection,
+            selectedEventIds: action.eventId === null ? [] : [action.eventId],
+            inspectorEventId: action.eventId,
+            focusJumpEventId: action.eventId,
+          },
+        },
+      };
+    case "workbench/set-selection":
+      return {
+        ...state,
+        workbench: {
+          ...state.workbench,
+          focusedEventId:
+            "focusedEventId" in action
+              ? (action.focusedEventId ?? null)
+              : state.workbench.focusedEventId,
+          hoveredEventId:
+            "hoveredEventId" in action.selection
+              ? (action.selection.hoveredEventId ?? null)
+              : state.workbench.hoveredEventId,
+          selection: {
+            ...state.workbench.selection,
+            ...action.selection,
+          },
+        },
       };
     case "workbench/set-focus-mode":
       return {
@@ -144,12 +176,18 @@ export function reduceRepairRuntimeState(
           pack: action.pack,
           attachedToSessionId: action.attachedToSessionId,
           previewTabId: state.knowledgePack.previewTabId,
+          focusedSpatialRefId: state.knowledgePack.focusedSpatialRefId,
         },
       };
     case "knowledge-pack/set-preview-tab":
       return {
         ...state,
         knowledgePack: { ...state.knowledgePack, previewTabId: action.tabId },
+      };
+    case "knowledge-pack/set-spatial-focus":
+      return {
+        ...state,
+        knowledgePack: { ...state.knowledgePack, focusedSpatialRefId: action.spatialRefId },
       };
     case "operator-profile/set":
       return { ...state, operatorProfile: action.profile };

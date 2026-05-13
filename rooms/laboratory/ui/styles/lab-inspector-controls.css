@@ -345,6 +345,58 @@
   background: var(--lab-inspector-color-25);
 }
 
+.labx-operation-card__comparison {
+  display: grid;
+  gap: var(--lab-inspector-rem-0-45);
+  padding: var(--lab-inspector-rem-0-48);
+  border: var(--lab-inspector-px-1) solid var(--lab-inspector-color-14);
+  border-radius: var(--lab-radius-sm);
+  background: var(--lab-inspector-color-15);
+}
+
+.labx-operation-card__comparison-pair,
+.labx-operation-card__comparison-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lab-inspector-rem-0-38);
+}
+
+.labx-operation-card__comparison-pair span {
+  min-width: 0;
+  color: var(--lab-text-soft);
+  font-size: var(--lab-inspector-rem-0-64);
+}
+
+.labx-operation-card__comparison-field,
+.labx-operation-card__comparison-note {
+  display: grid;
+  gap: var(--lab-inspector-rem-0-22);
+  color: var(--lab-text-soft);
+  font-size: var(--lab-inspector-rem-0-64);
+}
+
+.labx-operation-card__comparison-field select,
+.labx-operation-card__comparison-field input,
+.labx-operation-card__comparison-note textarea {
+  width: 100%;
+  min-width: 0;
+  border: var(--lab-inspector-px-1) solid var(--lab-border-subtle);
+  border-radius: var(--lab-radius-sm);
+  background: var(--lab-surface-0);
+  color: var(--lab-text-strong);
+  font: inherit;
+}
+
+.labx-operation-card__comparison-field select,
+.labx-operation-card__comparison-field input {
+  min-height: var(--lab-inspector-rem-1-6);
+}
+
+.labx-operation-card__comparison-note textarea {
+  min-height: var(--lab-inspector-rem-4);
+  resize: vertical;
+}
+
 .labx-settings-block {
   width: 100%;
   border-top: var(--lab-inspector-px-1) solid var(--lab-inspector-color-26);

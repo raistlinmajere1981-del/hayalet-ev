@@ -2,10 +2,13 @@ import type {
   RepairAiAdaptationHints,
   RepairChatState,
   RepairEvent,
+  RepairImageRect,
   RepairKnowledgePack,
+  RepairMeasurementEvidenceState,
   RepairLayoutState,
   RepairMeasurementState,
   RepairOperatorProfile,
+  RepairOperationalMode,
   RepairSession,
   RepairSessionListItem,
   RepairWizardState,
@@ -32,6 +35,26 @@ export interface RepairKnowledgePackPanelState {
   pack: RepairKnowledgePack | null;
   attachedToSessionId: string | null;
   previewTabId: "schematic-preview" | "board-view" | "notes";
+  focusedSpatialRefId: string | null;
+}
+
+export interface RepairReplayProjection {
+  playheadMs: number;
+  replayMode: RepairWorkbenchState["timeline"]["replayMode"];
+  visibleEvents: RepairEvent[];
+  overlayEvents: RepairEvent[];
+  tacticalFeed: RepairTacticalFeedItem[];
+  measurementEvidence: RepairMeasurementEvidenceState[];
+  aiMarkEventIds: string[];
+  activeSnapshotEventId: string | null;
+  activeFreezeFrameEventId: string | null;
+  focusSuggestionEventId: string | null;
+  knowledgeRegions: Array<{
+    id: string;
+    label: string;
+    region: RepairImageRect;
+  }>;
+  operationalMode: RepairOperationalMode;
 }
 
 export interface RepairUiState {
@@ -63,4 +86,5 @@ export interface RepairUiSnapshotMeta {
   schemaVersion: number;
   generatedAt: string;
   events: RepairEvent[];
+  replay: RepairReplayProjection;
 }

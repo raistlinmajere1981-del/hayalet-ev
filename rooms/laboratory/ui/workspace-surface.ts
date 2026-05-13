@@ -1,6 +1,7 @@
 import { asLabRecord, asNonEmptyString, escapeHtml, ICON_RAIL_SLOTS } from "../models/lab-types.js";
 import type {
   LabWorkspaceSurface,
+  LabAsset,
   LabStoreState,
   LabAudioFocusSettings,
   LabInteractiveSettings,
@@ -37,7 +38,10 @@ import {
   renderCapabilityCard,
   renderWorkspaceOperationControls,
 } from "./workspace-operation-controls.js";
-import type { LabOperationScopeState } from "./workspace-operation-controls.js";
+import type {
+  LabOperationComparisonState,
+  LabOperationScopeState,
+} from "./workspace-operation-controls.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 import {
@@ -127,6 +131,58 @@ function getActiveWorkspaceAsset(state: LabStoreState) {
       return asset.id === assetId;
     }) || null
   );
+}
+
+function getComparisonReferenceAsset(state: LabStoreState): LabAsset | null {
+  const assetId = asNonEmptyString(state.ui.workspace.comparisonReferenceAssetId);
+  if (assetId === null) {
+    return null;
+  }
+  return (
+    state.assets.find(function (asset) {
+      return asset.id === assetId;
+    }) || null
+  );
+}
+
+function renderComparisonPreview(input: {
+  copy: LabI18n;
+  mode: string;
+  primaryLabel: string;
+  primaryUrl: string;
+  referenceLabel: string;
+  referenceUrl: string;
+  splitPercent: number;
+}) {
+  const split = Math.max(5, Math.min(95, Math.round(input.splitPercent)));
+  const mode = input.mode === "stacked" ? "stacked" : input.mode === "split" ? "split" : "paired";
+  if (mode === "split") {
+    return `
+      <div class="labx-workspace-comparison" data-mode="split" style="--lab-comparison-split:${String(split)}%">
+        <div class="labx-workspace-comparison__split">
+          <img class="labx-workspace-comparison__image" src="${escapeHtml(input.referenceUrl)}" alt="${escapeHtml(input.referenceLabel)}" />
+          <img class="labx-workspace-comparison__image labx-workspace-comparison__image--primary" src="${escapeHtml(input.primaryUrl)}" alt="${escapeHtml(input.primaryLabel)}" />
+          <span class="labx-workspace-comparison__divider" aria-hidden="true"></span>
+        </div>
+        <div class="labx-workspace-comparison__labels">
+          <span>A ${escapeHtml(input.primaryLabel)}</span>
+          <span>B ${escapeHtml(input.referenceLabel)}</span>
+        </div>
+      </div>
+    `;
+  }
+  return `
+    <div class="labx-workspace-comparison" data-mode="${escapeHtml(mode)}">
+      <figure class="labx-workspace-comparison__pane" data-side="primary">
+        <img class="labx-workspace-comparison__image" src="${escapeHtml(input.primaryUrl)}" alt="${escapeHtml(input.primaryLabel)}" />
+        <figcaption>A ${escapeHtml(input.primaryLabel)}</figcaption>
+      </figure>
+      <figure class="labx-workspace-comparison__pane" data-side="reference">
+        <img class="labx-workspace-comparison__image" src="${escapeHtml(input.referenceUrl)}" alt="${escapeHtml(input.referenceLabel)}" />
+        <figcaption>B ${escapeHtml(input.referenceLabel)}</figcaption>
+      </figure>
+    </div>
+  `;
 }
 
 function getWorkspaceAssetContentKind(
@@ -236,6 +292,7 @@ type IconRailContentContext = {
   activeOperationCapabilityId: LabOperationCapabilityId | null;
   audioFocus: LabAudioFocusSettings;
   audioPreviewTarget: "audio" | "video";
+  comparison: LabOperationComparisonState | null;
   effectivePreviewAudioFocus: LabAudioFocusSettings;
   hasAudio: boolean;
   hasVisualControls: boolean;
@@ -365,7 +422,8 @@ function renderIconRailPopoverBody(
     capability,
     content.activeOperationCapabilityId,
     copy,
-    content.operationScope
+    content.operationScope,
+    content.comparison
   );
 }
 
@@ -518,6 +576,7 @@ export function renderWorkspaceSurface(
   const sourceKind = getSourceKind(state);
   const sourceMode = getEffectiveSourceMode(state, sourceKind);
   const workspaceAsset = getActiveWorkspaceAsset(state);
+  const comparisonReferenceAsset = getComparisonReferenceAsset(state);
   const workspaceAssetPreviewKind =
     workspaceAsset === null ? null : getWorkspaceAssetContentKind(workspaceAsset);
   const activePreviewKind = workspaceAssetPreviewKind ?? sourceKind;
@@ -567,6 +626,31 @@ export function renderWorkspaceSurface(
           timeline.endMs !== null &&
           timeline.endMs > timeline.startMs)),
   };
+  const comparisonReferencePreviewUrl =
+    comparisonReferenceAsset === null ? null : getLabAssetPreviewUrl(comparisonReferenceAsset);
+  const primaryComparisonPreviewUrl =
+    activeMediaKind !== "image"
+      ? null
+      : workspaceAsset !== null
+        ? getLabAssetPreviewUrl(workspaceAsset)
+        : previewUrl;
+  const primaryComparisonLabel =
+    workspaceAsset?.name ||
+    asNonEmptyString(source["name"]) ||
+    asNonEmptyString(source["title"]) ||
+    copy.t("mediaAnalysis.operations.comparison.activeImageFallback", "Aktif resim");
+  const comparisonState: LabOperationComparisonState = {
+    findingNote: state.ui.workspace.comparisonFindingNote,
+    primaryLabel: activeMediaKind === "image" ? primaryComparisonLabel : null,
+    referenceLabel: comparisonReferenceAsset?.name || null,
+    splitPercent: state.ui.workspace.comparisonSplitPercent,
+    viewMode: state.ui.workspace.comparisonViewMode,
+  };
+  const comparisonPreviewActive =
+    previewReady &&
+    activeMediaKind === "image" &&
+    primaryComparisonPreviewUrl !== null &&
+    comparisonReferencePreviewUrl !== null;
   const durationMs = previewReady ? timelineModel.durationMs : 0;
   const inspectorPanels: WorkspaceInspectorPanel[] = [
     hasAudio && previewReady
@@ -598,7 +682,8 @@ export function renderWorkspaceSurface(
             operationCapabilities,
             activeOperationCapabilityId,
             copy,
-            operationScope
+            operationScope,
+            comparisonState
           ),
         }
       : null,
@@ -637,7 +722,19 @@ export function renderWorkspaceSurface(
             copy
           );
   const previewMarkup =
-    workspaceAsset === null && sourceReady && (sourceKind === "video" || sourceKind === "image")
+    comparisonPreviewActive
+      ? renderComparisonPreview({
+          copy,
+          mode: state.ui.workspace.comparisonViewMode,
+          primaryLabel: primaryComparisonLabel,
+          primaryUrl: primaryComparisonPreviewUrl ?? "",
+          referenceLabel:
+            comparisonReferenceAsset?.name ||
+            copy.t("mediaAnalysis.operations.comparison.referenceFallback", "Referans"),
+          referenceUrl: comparisonReferencePreviewUrl ?? "",
+          splitPercent: state.ui.workspace.comparisonSplitPercent,
+        })
+      : workspaceAsset === null && sourceReady && (sourceKind === "video" || sourceKind === "image")
       ? `
         <div
           class="labx-workspace-preview__single-stage"
@@ -666,6 +763,7 @@ export function renderWorkspaceSurface(
           activeOperationCapabilityId,
           audioFocus,
           audioPreviewTarget: activeMediaKind === "video" ? "video" : "audio",
+          comparison: comparisonState,
           effectivePreviewAudioFocus,
           hasAudio,
           hasVisualControls,
@@ -682,9 +780,9 @@ export function renderWorkspaceSurface(
   const main = `
     <section class="labx-workspace-main" id="lab-workspace-main">
       <div class="labx-workspace-stage" data-lab-workspace-stage="true">
-        <div class="labx-media-workbench" data-lab-region="main-stage-inner" data-lab-media-workbench="true" data-preview-mode="single">
+        <div class="labx-media-workbench" data-lab-region="main-stage-inner" data-lab-media-workbench="true" data-preview-mode="${comparisonPreviewActive ? "comparison" : "single"}">
           ${renderPreviewArea({ content: previewMarkup, focusClassName: previewFocusClassName })}
-          ${renderTimelineArea(durationMs > 0 ? renderLabWaveformTimeline(timelineModel) : "")}
+          ${renderTimelineArea(durationMs > 0 && !comparisonPreviewActive ? renderLabWaveformTimeline(timelineModel) : "")}
         </div>
         ${iconRailMarkup}
       </div>

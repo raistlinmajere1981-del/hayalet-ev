@@ -430,8 +430,9 @@ test("game-room UI smoke test reflects runtime locale updates", () => {
   assert.equal(runtime.document.title, "Oyun Odasi - Tavla");
   assert.equal(findAll(root, (element) => element.className === "backgammon-point").length, 24);
   assert.ok(findAll(root, (element) => element.textContent === "Atlas").length > 0);
-  assert.ok(findAll(root, (element) => element.textContent === "Devam Ediyor").length > 0);
-  assert.ok(findAll(root, (element) => element.textContent === "AI cevabi bekleniyor.").length > 0);
+  assert.ok(findAll(root, (element) => element.textContent === "Rakip").length > 0);
+  assert.ok(findAll(root, (element) => element.textContent === "Hazir").length > 0);
+  assert.ok(findAll(root, (element) => element.textContent === "Maci Sifirla").length > 0);
 });
 
 test("game-room UI smoke test renders the Team Tetris bootstrap from active feature context", () => {

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import createRepairRoomHostRuntime from "../../rooms/repair-room/host/runtime.ts";
+import { createRepairReplayProjection } from "../../rooms/repair-room/host/state/repair-replay-projection.ts";
 import { REPAIR_UI_COMMANDS } from "../../rooms/repair-room/shared/repair-constants.ts";
 import { normalizeRepairHostMessage } from "../../rooms/repair-room/shared/ui/host-messages.ts";
 
@@ -335,6 +336,363 @@ test("repair-room runtime keeps P1 wizard, viewport, timeline, and pin edits sta
     assert.deepEqual(updatedMeasurement.pinAt, { xPx: 111, yPx: 222 });
   }
   assert.equal(runtime.getStateSnapshot().state.workbench.focusedEventId, measurement.id);
+});
+
+test("repair-room Phase 2 projection restores replay state from the canonical event log", () => {
+  const notifications: Array<{ type: string; payload?: Record<string, unknown> }> = [];
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: (type, payload) => {
+      notifications.push({ type, payload });
+    },
+  });
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.scrubTimeline, { positionMs: 16 * 60 * 1000 }).success,
+    true
+  );
+
+  const payload = notifications.at(-1)?.payload as
+    | {
+        meta?: {
+          replay?: {
+            visibleEvents?: Array<{ id: string }>;
+            overlayEvents?: Array<{ id: string }>;
+            measurementEvidence?: Array<{ reference: string; history: string[] }>;
+          };
+        };
+        snapshot?: {
+          measurement?: { evidence?: Array<{ reference: string }> };
+          workbench?: { measurementEvidence?: Array<{ reference: string }> };
+        };
+      }
+    | undefined;
+
+  assert.ok(payload?.meta?.replay);
+  assert.equal(
+    payload.meta.replay.visibleEvents?.some((event) => event.id === "evt-psu-meas-1"),
+    true
+  );
+  assert.equal(
+    payload.meta.replay.overlayEvents?.some((event) => event.id === "evt-psu-anno-1"),
+    true
+  );
+  assert.equal(
+    payload.meta.replay.measurementEvidence?.some((entry) => entry.reference.includes("C101")),
+    true
+  );
+  assert.equal(
+    payload.snapshot?.measurement?.evidence?.some((entry) => entry.reference.includes("C101")),
+    true
+  );
+  assert.equal(
+    payload.snapshot?.workbench?.measurementEvidence?.some((entry) =>
+      entry.reference.includes("C101")
+    ),
+    true
+  );
+});
+
+test("repair-room replay projection holds forensic overlay state during freeze frames", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+  const state = runtime.getStateSnapshot().state;
+  const session = state.sessions["psu-2025-0510"];
+  assert.ok(session);
+
+  const frozenSession = {
+    ...session,
+    events: [
+      ...session.events,
+      {
+        kind: "measurement" as const,
+        id: "evt-freeze-inner-meas",
+        sessionId: session.id,
+        occurredAt: "2026-05-10T10:31:30.000Z",
+        source: "instrument" as const,
+        linkedEventIds: ["evt-psu-freeze-1"],
+        instrumentId: "multimeter-fnirsi-dmt99",
+        channel: "COM/VΩ",
+        mode: "DCV",
+        range: "20 V",
+        value: 4.81,
+        rawDisplay: "4.81",
+        unit: "V",
+        pinAt: { xPx: 900, yPx: 400 },
+        reference: "Freeze-window reading",
+      },
+    ],
+  };
+
+  const projection = createRepairReplayProjection(
+    {
+      ...state,
+      workbench: {
+        ...state.workbench,
+        timeline: {
+          ...state.workbench.timeline,
+          playheadMs: 13 * 60 * 1000 + 30 * 1000,
+          autoFollowLive: false,
+        },
+      },
+    },
+    frozenSession
+  );
+
+  assert.equal(
+    projection.visibleEvents.some((event) => event.id === "evt-freeze-inner-meas"),
+    true
+  );
+  assert.equal(
+    projection.overlayEvents.some((event) => event.id === "evt-freeze-inner-meas"),
+    false
+  );
+  assert.equal(projection.activeFreezeFrameEventId, "evt-psu-freeze-1");
+});
+
+test("repair-room AI mark expiry is evaluated against replay playhead", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+  const state = runtime.getStateSnapshot().state;
+  const session = state.sessions["psu-2025-0510"];
+  assert.ok(session);
+
+  const expiringSession = {
+    ...session,
+    events: [
+      ...session.events,
+      {
+        kind: "ai-mark" as const,
+        id: "evt-expiring-ai",
+        sessionId: session.id,
+        occurredAt: "2026-05-10T10:30:32.000Z",
+        source: "ai" as const,
+        linkedEventIds: [],
+        severity: "suggestion" as const,
+        region: { xPx: 100, yPx: 100, widthPx: 40, heightPx: 40 },
+        rationale: "Short-lived replay mark.",
+        protocolKey: "repair-room-tactical-observer",
+        dismissed: false,
+        lifecycleState: "detected" as const,
+        expiresAt: "2026-05-10T10:30:40.000Z",
+      },
+    ],
+  };
+
+  const projection = createRepairReplayProjection(
+    {
+      ...state,
+      workbench: {
+        ...state.workbench,
+        timeline: {
+          ...state.workbench.timeline,
+          playheadMs: 13 * 60 * 1000,
+          autoFollowLive: false,
+        },
+      },
+    },
+    expiringSession
+  );
+
+  assert.equal(
+    projection.visibleEvents.some((event) => event.id === "evt-expiring-ai"),
+    true
+  );
+  assert.equal(projection.aiMarkEventIds.includes("evt-expiring-ai"), false);
+});
+
+test("repair-room timeline chips seek to exact event state and replay controls stay deterministic", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+  const session = runtime.getStateSnapshot().state.sessions["psu-2025-0510"];
+  assert.ok(session);
+  const target = session.events.find((event) => event.id === "evt-psu-meas-4");
+  assert.ok(target);
+  const expectedOffset = Date.parse(target.occurredAt) - Date.parse(session.startedAt);
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.jumpToEvent, { eventId: target.id }).success,
+    true
+  );
+  assert.equal(runtime.getStateSnapshot().state.workbench.focusedEventId, target.id);
+  assert.equal(runtime.getStateSnapshot().state.workbench.timeline.playheadMs, expectedOffset);
+  assert.equal(runtime.getStateSnapshot().state.workbench.timeline.autoFollowLive, false);
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updateTimeline, { replayAction: "play" }).success,
+    true
+  );
+  assert.equal(runtime.getStateSnapshot().state.workbench.timeline.isPlaying, true);
+  assert.equal(runtime.getStateSnapshot().state.workbench.timeline.replayMode, "replay");
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updateTimeline, { replaySpeed: 2 }).success,
+    true
+  );
+  assert.equal(runtime.getStateSnapshot().state.workbench.timeline.replaySpeed, 2);
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updateTimeline, { replayAction: "live" }).success,
+    true
+  );
+  assert.equal(runtime.getStateSnapshot().state.workbench.timeline.autoFollowLive, true);
+  assert.equal(runtime.getStateSnapshot().state.workbench.timeline.replayMode, "live");
+});
+
+test("repair-room annotations and knowledge pack spatial focus are forensic records", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.addTimelineEvent, {
+      kind: "annotation",
+      tool: "rect",
+      xPx: 500,
+      yPx: 260,
+      label: "Confirmed cracked startup resistor",
+      linkedMeasurementId: "evt-psu-meas-2",
+      linkedEventId: "evt-psu-ai-2",
+    }).success,
+    true
+  );
+
+  const session = runtime.getStateSnapshot().state.sessions["psu-2025-0510"];
+  const annotation = session?.events.at(-1);
+  assert.equal(annotation?.kind, "annotation");
+  if (annotation?.kind === "annotation") {
+    assert.equal(annotation.meta?.author, "operator");
+    assert.equal(annotation.meta?.tool, "rect");
+    assert.deepEqual(annotation.meta?.linkedMeasurementIds, ["evt-psu-meas-2"]);
+    assert.deepEqual(annotation.meta?.linkedEventIds, ["evt-psu-ai-2"]);
+  }
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updatePanelTab, {
+      spatialRefId: "startup-resistor-open",
+    }).success,
+    true
+  );
+  assert.equal(
+    runtime.getStateSnapshot().state.knowledgePack.focusedSpatialRefId,
+    "startup-resistor-open"
+  );
+  assert.equal(runtime.getStateSnapshot().state.knowledgePack.previewTabId, "board-view");
+});
+
+test("repair-room overlay selection supports hover, multi-select, deselect, and focus jump", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+  const session = runtime.getStateSnapshot().state.sessions["psu-2025-0510"];
+  assert.ok(session);
+  const first = session.events.find((event) => event.kind === "annotation");
+  const second = session.events.find((event) => event.kind === "measurement");
+  assert.ok(first);
+  assert.ok(second);
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updateFocus, { hoveredEventId: first.id }).success,
+    true
+  );
+  assert.equal(runtime.getStateSnapshot().state.workbench.selection.hoveredEventId, first.id);
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updateFocus, {
+      eventId: first.id,
+      selectionMode: "replace",
+      focusJump: true,
+      jumpToEvent: true,
+    }).success,
+    true
+  );
+  assert.deepEqual(runtime.getStateSnapshot().state.workbench.selection.selectedEventIds, [
+    first.id,
+  ]);
+  assert.equal(runtime.getStateSnapshot().state.workbench.focusedEventId, first.id);
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updateFocus, {
+      eventId: second.id,
+      selectionMode: "toggle",
+      focusJump: false,
+    }).success,
+    true
+  );
+  assert.deepEqual(runtime.getStateSnapshot().state.workbench.selection.selectedEventIds, [
+    first.id,
+    second.id,
+  ]);
+  assert.equal(runtime.getStateSnapshot().state.workbench.selection.inspectorEventId, second.id);
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updateFocus, { clearSelection: true }).success,
+    true
+  );
+  assert.deepEqual(runtime.getStateSnapshot().state.workbench.selection.selectedEventIds, []);
+  assert.equal(runtime.getStateSnapshot().state.workbench.focusedEventId, null);
+  assert.equal(runtime.getStateSnapshot().state.workbench.selection.hoveredEventId, null);
+});
+
+test("repair-room AI mark lifecycle changes append canonical replay events", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+  const session = runtime.getStateSnapshot().state.sessions["psu-2025-0510"];
+  assert.ok(session);
+  const target = session.events.find((event) => event.id === "evt-psu-ai-2");
+  assert.ok(target);
+  assert.equal(target.kind, "ai-mark");
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.dismissAiMark, {
+      eventId: target.id,
+      state: "dismissed",
+      reason: "Operator dismissed duplicate observation.",
+    }).success,
+    true
+  );
+
+  const nextSession = runtime.getStateSnapshot().state.sessions["psu-2025-0510"];
+  const lifecycle = nextSession?.events.at(-1);
+  assert.equal(lifecycle?.kind, "ai-mark-lifecycle");
+  if (lifecycle?.kind === "ai-mark-lifecycle") {
+    assert.equal(lifecycle.targetEventId, target.id);
+    assert.equal(lifecycle.state, "dismissed");
+    assert.equal(lifecycle.linkedEventIds.includes(target.id), true);
+  }
+  const baseTarget = nextSession?.events.find((event) => event.id === target.id);
+  assert.equal(baseTarget?.kind, "ai-mark");
+  if (baseTarget?.kind === "ai-mark") {
+    assert.equal(baseTarget.dismissed, false);
+  }
+
+  const liveProjection = createRepairReplayProjection(
+    runtime.getStateSnapshot().state,
+    nextSession ?? null
+  );
+  assert.equal(liveProjection.aiMarkEventIds.includes(target.id), false);
+  assert.equal(liveProjection.overlayEvents.some((event) => event.id === target.id), false);
+
+  const targetOffset = Date.parse(target.occurredAt) - Date.parse(session.startedAt);
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.scrubTimeline, { positionMs: targetOffset }).success,
+    true
+  );
+  const restoredProjection = createRepairReplayProjection(
+    runtime.getStateSnapshot().state,
+    runtime.getStateSnapshot().state.sessions["psu-2025-0510"] ?? null
+  );
+  assert.equal(restoredProjection.aiMarkEventIds.includes(target.id), true);
 });
 
 test("repair-room opens the existing active session without replaying research setup", (t) => {

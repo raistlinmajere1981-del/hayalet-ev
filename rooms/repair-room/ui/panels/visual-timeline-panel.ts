@@ -32,6 +32,8 @@ function getEventLabel(event: RepairEvent): string {
       return event.author.toUpperCase();
     case "session-start":
       return "START";
+    case "ai-mark-lifecycle":
+      return "AI STATE";
     default:
       return "EVENT";
   }
@@ -79,6 +81,31 @@ export function renderVisualTimelinePanel(
   playheadLabel.className = "repair-timeline__readout";
   playheadLabel.textContent = `${formatOffset(state.workbench.timeline.playheadMs)} / ${formatOffset(totalMs)}`;
   controls.append(playheadLabel);
+
+  const play = documentRef.createElement("button");
+  play.className = "repair-timeline__control-btn";
+  play.type = "button";
+  play.textContent = state.workbench.timeline.isPlaying ? "PAU" : "PLY";
+  play.dataset["repairAction"] = state.workbench.timeline.isPlaying
+    ? "timeline-pause"
+    : "timeline-play";
+  controls.append(play);
+
+  const live = documentRef.createElement("button");
+  live.className = `repair-timeline__control-btn${
+    state.workbench.timeline.autoFollowLive ? " repair-timeline__control-btn--active" : ""
+  }`;
+  live.type = "button";
+  live.textContent = "LIVE";
+  live.dataset["repairAction"] = "timeline-live";
+  controls.append(live);
+
+  const speed = documentRef.createElement("button");
+  speed.className = "repair-timeline__control-btn";
+  speed.type = "button";
+  speed.textContent = `${state.workbench.timeline.replaySpeed.toFixed(1)}X`;
+  speed.dataset["repairAction"] = "timeline-speed";
+  controls.append(speed);
 
   const zoomOut = documentRef.createElement("button");
   zoomOut.className = "repair-timeline__control-btn";

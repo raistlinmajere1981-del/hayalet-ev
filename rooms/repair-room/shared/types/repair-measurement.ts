@@ -21,6 +21,24 @@ export interface RepairMultimeterReading {
   reference: string | null;
 }
 
+export interface RepairMeasurementGroup {
+  rail: string | null;
+  component: string | null;
+  powerDomain: string | null;
+  investigationGroup: string | null;
+}
+
+export interface RepairMeasurementEvidence {
+  eventId: string;
+  reference: string;
+  pinAt: { xPx: number; yPx: number } | null;
+  group: RepairMeasurementGroup;
+  history: RepairMultimeterReading[];
+  previousReadingId: string | null;
+  linkedAnnotationIds: string[];
+  linkedAiMarkIds: string[];
+}
+
 export interface RepairMeasurementSnapshot {
   instrumentId: string;
   kind: RepairInstrumentKind;
@@ -38,4 +56,6 @@ export interface RepairMeasurementState {
   activeInstrumentKind: RepairInstrumentKind;
   current: RepairMeasurementSnapshot;
   recent: RepairMultimeterReading[];
+  evidence: RepairMeasurementEvidence[];
+  comparisonEventId: string | null;
 }

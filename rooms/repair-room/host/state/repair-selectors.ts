@@ -2,6 +2,10 @@ import { repairEventToTacticalFeedItem } from "../../shared/data/index.js";
 import type { RepairSession } from "../../shared/types/index.js";
 import type { RepairTacticalFeedItem } from "../../shared/ui/state.js";
 import type { RepairUiSnapshotMeta, RepairUiState } from "../../shared/ui/state.js";
+import {
+  createRepairReplayProjection,
+  projectRepairMeasurementState,
+} from "./repair-replay-projection.js";
 import type { RepairRuntimeState } from "./repair-runtime-state.js";
 
 export function selectActiveSession(state: RepairRuntimeState): RepairSession | null {
@@ -14,6 +18,9 @@ export function selectActiveSession(state: RepairRuntimeState): RepairSession | 
 function selectTacticalFeedProjection(state: RepairRuntimeState): RepairTacticalFeedItem[] {
   const activeSession = selectActiveSession(state);
   if (activeSession === null) return [];
+  if (state.workbench.timeline.autoFollowLive === false) {
+    return createRepairReplayProjection(state, activeSession).tacticalFeed;
+  }
   const visibleEventIds = new Set(state.tacticalFeed.map((item) => item.eventId));
   return activeSession.events
     .filter((event) => visibleEventIds.has(event.id))
@@ -23,6 +30,9 @@ function selectTacticalFeedProjection(state: RepairRuntimeState): RepairTactical
 
 export function createRepairUiSnapshot(state: RepairRuntimeState): RepairUiState {
   const activeSession = selectActiveSession(state);
+  const replay = createRepairReplayProjection(state, activeSession);
+  const measurement = projectRepairMeasurementState(state.measurement, replay.visibleEvents);
+  const replayLocked = replay.replayMode !== "live" && state.workbench.timeline.isPlaying;
   return {
     phase: state.phase,
     sessions: {
@@ -30,7 +40,20 @@ export function createRepairUiSnapshot(state: RepairRuntimeState): RepairUiState
       list: state.sessionList,
       detail: activeSession,
     },
-    workbench: state.workbench,
+    workbench: {
+      ...state.workbench,
+      contextualCursor: replayLocked
+        ? "replay-scrub-lock"
+        : state.workbench.activeTool === "pan"
+          ? "pan"
+          : state.workbench.activeTool === "measurement-pin"
+            ? "measurement"
+            : state.workbench.activeTool === "select"
+              ? "inspect"
+              : "annotate",
+      operationalMode: replay.operationalMode,
+      measurementEvidence: replay.measurementEvidence,
+    },
     tacticalFeed: selectTacticalFeedProjection(state),
     wizard: state.wizard,
     knowledgePack: state.knowledgePack,
@@ -39,7 +62,7 @@ export function createRepairUiSnapshot(state: RepairRuntimeState): RepairUiState
       adaptation: state.operatorAdaptation,
       isDirty: false,
     },
-    measurement: state.measurement,
+    measurement,
     chat: state.chat,
     layout: state.layout,
     ambient: {
@@ -52,9 +75,11 @@ export function createRepairUiSnapshot(state: RepairRuntimeState): RepairUiState
 
 export function createRepairUiSnapshotMeta(state: RepairRuntimeState): RepairUiSnapshotMeta {
   const activeSession = selectActiveSession(state);
+  const replay = createRepairReplayProjection(state, activeSession);
   return {
     schemaVersion: 1,
     generatedAt: state.ambientNowIso,
     events: activeSession?.events ?? [],
+    replay,
   };
 }

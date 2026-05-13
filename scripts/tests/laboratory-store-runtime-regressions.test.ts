@@ -128,6 +128,26 @@ test("laboratory persistence drops stale runtime snapshots before boot hydrate",
   assert.equal(projectImport["activeKind"], "image");
 });
 
+test("laboratory store tracks comparison capture controls without changing the reference", () => {
+  const store = createLabStore();
+
+  store.dispatch({ type: "workspace-comparison-reference-set", assetId: "asset-b" });
+  store.dispatch({
+    type: "workspace-comparison-updated",
+    patch: {
+      comparisonFindingNote: "Sol göz çevresi farkı",
+      comparisonSplitPercent: 132,
+      comparisonViewMode: "split",
+    },
+  });
+
+  const workspace = store.getState().ui.workspace;
+  assert.equal(workspace.comparisonReferenceAssetId, "asset-b");
+  assert.equal(workspace.comparisonFindingNote, "Sol göz çevresi farkı");
+  assert.equal(workspace.comparisonSplitPercent, 100);
+  assert.equal(workspace.comparisonViewMode, "split");
+});
+
 test("laboratory store keeps checked YouTube import state UI-only and non-persistent", () => {
   const store = createLabStore();
   assert.equal(store.getState().ui.labMode, "normal");

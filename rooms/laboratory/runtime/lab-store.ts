@@ -255,6 +255,16 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
     case "workspace-comparison-reference-set":
       state.ui.workspace.comparisonReferenceAssetId = event.assetId;
       return state;
+    case "workspace-comparison-updated":
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        ...event.patch,
+        comparisonSplitPercent:
+          typeof event.patch.comparisonSplitPercent === "number"
+            ? Math.max(0, Math.min(100, event.patch.comparisonSplitPercent))
+            : state.ui.workspace.comparisonSplitPercent,
+      };
+      return state;
     case "document-overlay-opened":
       state.ui.activeDocumentOverlayAssetId = event.assetId;
       state.ui.activeWorkspaceAssetId = null;

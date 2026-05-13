@@ -147,6 +147,33 @@ export function renderKnowledgePackPanel(
   }
   body.append(preview);
 
+  const spatialList = documentRef.createElement("div");
+  spatialList.className = "repair-knowledge-spatial-list";
+  pack.commonFailures.slice(0, 3).forEach((failure) => {
+    if (failure.spatialRef === null || failure.spatialRef === undefined) return;
+    const card = documentRef.createElement("button");
+    card.className = `repair-knowledge-spatial${
+      kp.focusedSpatialRefId === failure.id ? " repair-knowledge-spatial--active" : ""
+    }`;
+    card.type = "button";
+    card.dataset["repairAction"] = "knowledge-spatial-focus";
+    card.dataset["spatialRefId"] = failure.id;
+    card.textContent = failure.label;
+    spatialList.append(card);
+  });
+  pack.testPoints.slice(0, 4).forEach((point) => {
+    const card = documentRef.createElement("button");
+    card.className = `repair-knowledge-spatial${
+      kp.focusedSpatialRefId === point.id ? " repair-knowledge-spatial--active" : ""
+    }`;
+    card.type = "button";
+    card.dataset["repairAction"] = "knowledge-spatial-focus";
+    card.dataset["spatialRefId"] = point.id;
+    card.textContent = `${point.label} • ${point.expectedValue}${point.unit}`;
+    spatialList.append(card);
+  });
+  body.append(spatialList);
+
   // -- CTA
   if (kp.attachedToSessionId === null) {
     const cta = documentRef.createElement("button");

@@ -58,7 +58,7 @@ export function createRepairUiRequestRuntime() {
     addMeasurement(payload: Record<string, unknown>) {
       return sendCommand(REPAIR_UI_COMMANDS.addMeasurement, payload);
     },
-    dismissAiMark(payload: { eventId: string }) {
+    dismissAiMark(payload: { eventId: string; state?: string; reason?: string }) {
       return sendCommand(REPAIR_UI_COMMANDS.dismissAiMark, payload);
     },
     sendChatTurn(payload: { text: string }) {

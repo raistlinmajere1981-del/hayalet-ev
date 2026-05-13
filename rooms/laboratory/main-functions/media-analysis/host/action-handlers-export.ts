@@ -205,10 +205,16 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     layout: string;
     mode: "side-by-side" | "difference" | "split" | "roi-detail";
     size: number;
+    splitPercent?: number | null;
     splitMode?: string;
   }) {
     const size = Math.max(256, Math.round(options.size));
-    const halfSize = Math.max(2, Math.floor(size / 2));
+    const splitPercent =
+      typeof options.splitPercent === "number" && Number.isFinite(options.splitPercent)
+        ? Math.max(5, Math.min(95, options.splitPercent))
+        : 50;
+    const leftSize = Math.max(2, Math.min(size - 2, Math.round(size * (splitPercent / 100))));
+    const rightSize = Math.max(2, size - leftSize);
     if (options.mode === "difference") {
       return [
         buildSquarePadFilter("[0:v]", "[p0]", size),
@@ -221,16 +227,16 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         return [
           buildSquarePadFilter("[0:v]", "[p0]", size),
           "[p0]split[leftsrc][rightsrc]",
-          `[leftsrc]crop=${String(halfSize)}:${String(size)}:0:0[left]`,
-          `[rightsrc]crop=${String(halfSize)}:${String(size)}:0:0,hflip[right]`,
+          `[leftsrc]crop=${String(leftSize)}:${String(size)}:0:0[left]`,
+          `[rightsrc]crop=${String(rightSize)}:${String(size)}:${String(leftSize)}:0,hflip[right]`,
           "[left][right]hstack=inputs=2[out]",
         ].join(";");
       }
       return [
         buildSquarePadFilter("[0:v]", "[p0]", size),
         buildSquarePadFilter("[1:v]", "[p1]", size),
-        `[p0]crop=${String(halfSize)}:${String(size)}:0:0[left]`,
-        `[p1]crop=${String(halfSize)}:${String(size)}:${String(halfSize)}:0[right]`,
+        `[p0]crop=${String(leftSize)}:${String(size)}:0:0[left]`,
+        `[p1]crop=${String(rightSize)}:${String(size)}:${String(leftSize)}:0[right]`,
         "[left][right]hstack=inputs=2[out]",
       ].join(";");
     }
@@ -1287,6 +1293,365 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     }
   }
 
+  function resolveComparisonRenderMode(payload: LaboratoryRecord, layout: string) {
+    const viewMode = asNonEmptyString(payload["comparisonViewMode"]) || layout;
+    if (viewMode === "difference" || viewMode === "split" || viewMode === "roi-detail") {
+      return viewMode;
+    }
+    return "side-by-side";
+  }
+
+  function resolveComparisonLayout(payload: LaboratoryRecord, settings: LaboratoryRecord) {
+    const viewMode = asNonEmptyString(payload["comparisonViewMode"]);
+    if (viewMode === "stacked") {
+      return "stacked";
+    }
+    if (viewMode === "side-by-side") {
+      return "side-by-side";
+    }
+    return readStringSetting(settings, "layout", "side-by-side");
+  }
+
+  function getComparisonPrimaryAssetId(source: LaboratoryRecord, payload: LaboratoryRecord) {
+    return (
+      asNonEmptyString(payload["workspaceTargetAssetId"]) ||
+      asNonEmptyString(source["sourceAssetId"]) ||
+      asNonEmptyString(source["assetId"])
+    );
+  }
+
+  function buildComparisonCaptureContext(input: {
+    payload: LaboratoryRecord;
+    primaryAssetId: string | null;
+    referenceAssetId: string;
+    settings: LaboratoryRecord;
+  }) {
+    return {
+      captureMode: asNonEmptyString(input.payload["captureKind"]) || "moment",
+      comparisonViewMode:
+        asNonEmptyString(input.payload["comparisonViewMode"]) ||
+        readStringSetting(input.settings, "layout", "side-by-side"),
+      layout: resolveComparisonLayout(input.payload, input.settings),
+      primaryAssetId: input.primaryAssetId,
+      referenceAssetId: input.referenceAssetId,
+      splitPercent:
+        asNumber(input.payload["comparisonSplitPercent"]) ??
+        readNumberSetting(input.settings, "splitPercent", 50),
+      normalizedRoi: toRecord(input.payload["normalizedRoi"]),
+      settingsUsed: input.settings,
+    };
+  }
+
+  async function renderComparisonCaptureAsset(
+    runtime: LaboratoryRecord,
+    project: LaboratoryRecord,
+    requestId: string,
+    jobId: string,
+    payload: LaboratoryRecord,
+    options: {
+      action: string;
+      artifactKind: string;
+      filePrefix: string;
+      findingId?: string | null;
+      timestamp: number;
+    }
+  ) {
+    const source = getOperationSourceRecord(project, payload);
+    const primaryPath = asNonEmptyString(source["storedPath"]);
+    if (primaryPath === null) {
+      throw new Error("No source file available for comparison capture.");
+    }
+    if ((asNonEmptyString(source["kind"]) || "video") !== "image") {
+      throw new Error("Comparison capture is only available for image sources.");
+    }
+
+    const reference = readComparisonReference(project, payload);
+    const settings = readOperationSettings("image-comparison", payload);
+    const outputDir = getProjectEditOutputDir(runtime, project);
+    await ensureOutputDirectory(runtime, requestId, outputDir);
+
+    const format = getImageExtension(readStringSetting(settings, "format", "png"));
+    const layout = resolveComparisonLayout(payload, settings);
+    const mode = resolveComparisonRenderMode(payload, layout);
+    const splitMode = readStringSetting(settings, "splitMode", "primary-left-reference-right");
+    const splitPercent = asNumber(payload["comparisonSplitPercent"]) ?? 50;
+    const includeRoiDetail = readBooleanSetting(settings, "includeRoiDetail", true);
+    const detailRoiFilter = includeRoiDetail ? buildNormalizedCropFilter(payload) : null;
+    const outputFileName = `${options.filePrefix}-${options.timestamp}.${format}`;
+    const outputPath = `${outputDir}/${outputFileName}`;
+    const primaryAssetId = getComparisonPrimaryAssetId(source, payload);
+    const intentIds = getPayloadIntentIds(payload);
+    const captureContext = buildComparisonCaptureContext({
+      payload,
+      primaryAssetId,
+      referenceAssetId: reference.asset.id,
+      settings,
+    });
+
+    await runTool(
+      runtime,
+      requestId,
+      jobId,
+      "ffmpeg",
+      outputDir,
+      [
+        "-y",
+        "-i",
+        primaryPath,
+        "-i",
+        reference.localPath,
+        "-filter_complex",
+        buildImagePairFilterComplex({
+          detailRoiFilter,
+          layout,
+          mode,
+          size: 720,
+          splitMode,
+          splitPercent,
+        }),
+        "-map",
+        "[out]",
+        "-frames:v",
+        "1",
+        ...(() => {
+          const args: string[] = [];
+          appendImageQualityArgs(args, format, 92);
+          return args;
+        })(),
+        outputPath,
+      ],
+      90 * 1000,
+      "ffmpeg comparison capture failed."
+    );
+
+    return registerOutputAsset(runtime, project, {
+      type: "image",
+      name: outputFileName,
+      localPath: outputPath,
+      ...getOperationSourceAssetLink(project, payload),
+      ...(intentIds === undefined ? {} : { intentIds }),
+      metadata: {
+        action: options.action,
+        artifactKind: options.artifactKind,
+        captureContext,
+        comparisonViewMode: captureContext.comparisonViewMode,
+        evidenceRole: "derived",
+        fileName: outputFileName,
+        findingId: options.findingId || null,
+        flowKind: "operation-result",
+        operationId: "image-comparison",
+        primaryAssetId,
+        referenceAssetId: reference.asset.id,
+        requestId,
+        settingsUsed: settings,
+        toolId: "ffmpeg",
+      },
+    });
+  }
+
+  async function captureComparisonMoment(
+    api: unknown,
+    runtime: LaboratoryRecord,
+    requestId: string,
+    payload: LaboratoryRecord
+  ) {
+    const project = getActiveProject(runtime);
+    if (project === null) {
+      throw new Error("No active project for comparison capture.");
+    }
+    const projectId = getProjectId(project);
+    const jobId = `capture-comparison-moment-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    registerJob(runtime, {
+      action: "capture-comparison-moment",
+      featureStage: "edit",
+      jobId,
+      projectId,
+      requestId,
+      toolId: "ffmpeg",
+    });
+    pushJobState(api, {
+      action: "capture-comparison-moment",
+      featureStage: "edit",
+      jobId,
+      projectId,
+      requestId,
+      stage: "queued",
+      toolId: "ffmpeg",
+    });
+    try {
+      const timestamp = Date.now();
+      const asset = await renderComparisonCaptureAsset(
+        runtime,
+        project,
+        requestId,
+        jobId,
+        payload,
+        {
+          action: "capture-comparison-moment",
+          artifactKind: "comparison-moment-snapshot",
+          filePrefix: "comparison-moment",
+          timestamp,
+        }
+      );
+      pushJobState(api, {
+        action: "capture-comparison-moment",
+        jobId,
+        percent: 100,
+        projectId,
+        requestId,
+        resultAssetIds: [asset.id],
+        stage: "completed",
+        toolId: "ffmpeg",
+      });
+      return { outputFileName: asset.name, outputPath: asNonEmptyString(asset.localPath) };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      pushJobState(api, {
+        action: "capture-comparison-moment",
+        jobId,
+        message: errorMessage,
+        projectId,
+        requestId,
+        stage: "failed",
+        toolId: "ffmpeg",
+      });
+      throw error;
+    } finally {
+      clearJob(runtime, jobId);
+    }
+  }
+
+  async function saveComparisonFinding(
+    api: unknown,
+    runtime: LaboratoryRecord,
+    requestId: string,
+    payload: LaboratoryRecord
+  ) {
+    const project = getActiveProject(runtime);
+    if (project === null) {
+      throw new Error("No active project for comparison finding.");
+    }
+    const projectId = getProjectId(project);
+    const jobId = `save-comparison-finding-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    registerJob(runtime, {
+      action: "save-comparison-finding",
+      featureStage: "edit",
+      jobId,
+      projectId,
+      requestId,
+      toolId: "ffmpeg",
+    });
+    pushJobState(api, {
+      action: "save-comparison-finding",
+      featureStage: "edit",
+      jobId,
+      projectId,
+      requestId,
+      stage: "queued",
+      toolId: "ffmpeg",
+    });
+    try {
+      const timestamp = Date.now();
+      const findingId = `comparison-finding-${timestamp}-${Math.random().toString(36).slice(2, 8)}`;
+      const snapshotAsset = await renderComparisonCaptureAsset(
+        runtime,
+        project,
+        requestId,
+        jobId,
+        payload,
+        {
+          action: "save-comparison-finding",
+          artifactKind: "comparison-finding-snapshot",
+          filePrefix: "comparison-finding-snapshot",
+          findingId,
+          timestamp,
+        }
+      );
+      const outputDir = getProjectEditOutputDir(runtime, project);
+      await ensureOutputDirectory(runtime, requestId, outputDir);
+      const source = getOperationSourceRecord(project, payload);
+      const reference = readComparisonReference(project, payload);
+      const settings = readOperationSettings("image-comparison", payload);
+      const primaryAssetId = getComparisonPrimaryAssetId(source, payload);
+      const note = asNonEmptyString(payload["findingNote"]) || "";
+      const manifestFileName = `comparison-finding-${timestamp}.json`;
+      const manifestPath = `${outputDir}/${manifestFileName}`;
+      const captureContext = buildComparisonCaptureContext({
+        payload,
+        primaryAssetId,
+        referenceAssetId: reference.asset.id,
+        settings,
+      });
+      const manifestPayload = {
+        artifactKind: "comparison-finding-manifest",
+        captureContext,
+        createdAt: new Date(timestamp).toISOString(),
+        findingId,
+        note,
+        operationId: "image-comparison",
+        primaryAssetId,
+        referenceAssetId: reference.asset.id,
+        requestId,
+        snapshotAssetId: snapshotAsset.id,
+      };
+      await writeLaboratoryTextFile(manifestPath, `${JSON.stringify(manifestPayload, null, 2)}\n`);
+      const intentIds = getPayloadIntentIds(payload);
+      const manifestAsset = await registerOutputAsset(runtime, project, {
+        type: "artifact",
+        name: manifestFileName,
+        localPath: manifestPath,
+        ...getOperationSourceAssetLink(project, payload),
+        ...(intentIds === undefined ? {} : { intentIds }),
+        metadata: {
+          action: "save-comparison-finding",
+          artifactKind: "comparison-finding-manifest",
+          captureContext,
+          comparisonViewMode: captureContext.comparisonViewMode,
+          evidenceRole: "derived",
+          fileName: manifestFileName,
+          findingId,
+          flowKind: "operation-result",
+          note,
+          operationId: "image-comparison",
+          primaryAssetId,
+          referenceAssetId: reference.asset.id,
+          requestId,
+          settingsUsed: settings,
+          snapshotAssetId: snapshotAsset.id,
+          toolId: "ffmpeg",
+        },
+      });
+      pushJobState(api, {
+        action: "save-comparison-finding",
+        jobId,
+        percent: 100,
+        projectId,
+        requestId,
+        resultAssetIds: [snapshotAsset.id, manifestAsset.id],
+        stage: "completed",
+        toolId: "ffmpeg",
+      });
+      return {
+        outputFileNames: [snapshotAsset.name, manifestAsset.name],
+        outputPaths: [snapshotAsset.localPath, manifestAsset.localPath],
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      pushJobState(api, {
+        action: "save-comparison-finding",
+        jobId,
+        message: errorMessage,
+        projectId,
+        requestId,
+        stage: "failed",
+        toolId: "ffmpeg",
+      });
+      throw error;
+    } finally {
+      clearJob(runtime, jobId);
+    }
+  }
+
   async function exportTimelineClip(
     api: unknown,
     runtime: LaboratoryRecord,
@@ -1948,6 +2313,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
   );
 
   return {
+    captureComparisonMoment,
     exportAudioTrack,
     exportBandPassVoice,
     exportBeforeAfterVariant,
@@ -1956,6 +2322,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     exportImageComparison,
     exportROIImage,
     exportFrameGrab,
+    saveComparisonFinding,
     exportStabilizedClip,
     exportStemSeparation,
     exportTimelineClip,

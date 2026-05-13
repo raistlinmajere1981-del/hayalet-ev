@@ -235,6 +235,12 @@ export interface LabInteractiveSettings {
 
 export type AudioVisualizationMode = "none" | "waveform" | "spectrum";
 export type LabWorkspaceControlTab = "audio" | "visual" | "operations";
+export type LabComparisonViewMode =
+  | "side-by-side"
+  | "stacked"
+  | "split"
+  | "difference"
+  | "roi-detail";
 
 export interface LabParametricEQBand {
   frequency: number;
@@ -259,6 +265,9 @@ export interface LabWorkspaceUiState {
   timelineEndMs: number | null;
   activeSelection: LabSelection | null;
   comparisonReferenceAssetId: string | null;
+  comparisonViewMode: LabComparisonViewMode;
+  comparisonSplitPercent: number;
+  comparisonFindingNote: string;
   roiRegions: LabROIRegion[];
   interactiveSettings: LabInteractiveSettings;
   audioFocus: LabAudioFocusSettings;
@@ -862,6 +871,15 @@ export type LabStoreEvent =
   // V2.3 workspace events
   | { type: "workspace-timeline-updated"; startMs: number | null; endMs: number | null }
   | { type: "workspace-comparison-reference-set"; assetId: string | null }
+  | {
+      type: "workspace-comparison-updated";
+      patch: Partial<
+        Pick<
+          LabWorkspaceUiState,
+          "comparisonViewMode" | "comparisonSplitPercent" | "comparisonFindingNote"
+        >
+      >;
+    }
   | { type: "workspace-selection-intent-updated"; intent: LabSelectionIntent }
   | { type: "workspace-selection-suggestion-clicked"; suggestionId: string }
   | { type: "workspace-selection-suggestion-accepted"; suggestionId: string }

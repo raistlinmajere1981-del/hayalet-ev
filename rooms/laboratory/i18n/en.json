@@ -537,6 +537,25 @@
           "label": "Separate Sources",
           "description": "Create isolated stems for speech, ambience, or music review."
         }
+      },
+      "comparison": {
+        "activeImageFallback": "Active image",
+        "activeImageMissing": "No active image",
+        "captureMoment": "Capture Moment",
+        "note": "Finding note",
+        "referenceFallback": "Reference",
+        "referenceMissing": "No reference selected",
+        "referenceRequired": "Select a second image reference first.",
+        "saveFinding": "Save Finding",
+        "split": "Split",
+        "viewMode": "View",
+        "viewModes": {
+          "side-by-side": "Side by side",
+          "stacked": "Stacked",
+          "split": "Split",
+          "difference": "Difference",
+          "roi-detail": "Detail region"
+        }
       }
     },
     "rightContext": {
@@ -1687,6 +1706,7 @@
       },
       "relation": {
         "source": "Source",
+        "activeSource": "Active source",
         "compareReference": "Comparison reference"
       },
       "projects": {

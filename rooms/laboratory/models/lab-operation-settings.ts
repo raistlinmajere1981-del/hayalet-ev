@@ -48,6 +48,7 @@ export const LAB_OPERATION_SETTINGS_DEFAULTS: LabOperationSettingsMap = {
     package: "detailed",
     layout: "side-by-side",
     metricSize: 512,
+    splitPercent: 50,
     splitMode: "primary-left-reference-right",
     includeRoiDetail: true,
     format: "png",
@@ -242,6 +243,7 @@ export const LAB_OPERATION_SETTINGS_FIELDS: Record<
         value,
       })),
     },
+    { id: "splitPercent", label: "Split %", kind: "number", min: 5, max: 95, step: 1 },
     { id: "includeRoiDetail", label: "ROI detail", kind: "toggle" },
     {
       id: "format",

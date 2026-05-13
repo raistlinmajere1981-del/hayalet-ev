@@ -1,4 +1,5 @@
 import type {
+  RepairAiMarkLifecycleEvent,
   RepairAiMarkEvent,
   RepairEvent,
   RepairNoteEvent,
@@ -78,6 +79,17 @@ export function repairEventToTacticalFeedItem(
         severity: "info",
         badge: "INFO",
         body: note.text,
+      };
+    }
+    case "ai-mark-lifecycle": {
+      const lifecycle = event as RepairAiMarkLifecycleEvent;
+      return {
+        eventId: lifecycle.id,
+        occurredAt: lifecycle.occurredAt,
+        relativeLabel: relative,
+        severity: "info",
+        badge: "AI STATE",
+        body: lifecycle.reason,
       };
     }
     default:

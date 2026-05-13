@@ -1,6 +1,7 @@
 import type {
   RepairEvent,
   RepairImagePoint,
+  RepairImageRect,
   RepairOverlayLayerId,
   RepairPcbImageRef,
   RepairWorkbenchState,
@@ -10,7 +11,6 @@ import type Konva from "konva";
 import {
   clampImagePoint,
   getContainedImageFrame,
-  imagePointToStagePoint,
   imageRectToStageRect,
   stagePointToImagePoint,
 } from "./overlay-coords.js";
@@ -18,6 +18,14 @@ import { isRepairOverlayDrawTool } from "./overlay-tools.js";
 
 type KonvaNamespace = typeof Konva;
 type KonvaGlobal = typeof globalThis & { Konva?: unknown };
+type RepairKonvaContainer =
+  | InstanceType<KonvaNamespace["Layer"]>
+  | InstanceType<KonvaNamespace["Group"]>;
+
+export interface RepairOverlayEventInteraction {
+  additive: boolean;
+  focusJump: boolean;
+}
 
 let konvaLoadPromise: Promise<KonvaNamespace> | null = null;
 
@@ -78,6 +86,7 @@ export interface RepairOverlayStageConfig {
   events: RepairEvent[];
   focusedEventId: string | null;
   image: RepairPcbImageRef;
+  knowledgeRegions: Array<{ id: string; label: string; region: RepairImageRect }>;
   visibleLayers: Record<RepairOverlayLayerId, boolean>;
   workbench: RepairWorkbenchState;
   onAddAnnotation: (payload: {
@@ -95,7 +104,9 @@ export interface RepairOverlayStageConfig {
     reference: string;
   }) => void;
   onCursor: (point: RepairImagePoint) => void;
-  onEventClick: (eventId: string) => void;
+  onEventClick: (eventId: string, interaction: RepairOverlayEventInteraction) => void;
+  onEventHover: (eventId: string | null) => void;
+  onSelectionClear: () => void;
   onViewportChange: (payload: { zoom: number; panXPx: number; panYPx: number }) => void;
 }
 
@@ -116,7 +127,7 @@ function getStageSize(container: HTMLElement): { width: number; height: number }
 function addGridLayer(
   Konva: KonvaNamespace,
   config: RepairOverlayStageConfig,
-  layer: InstanceType<KonvaNamespace["Layer"]>
+  layer: RepairKonvaContainer
 ): void {
   if (!config.visibleLayers.grid) return;
   const { width, height } = getStageSize(config.container);
@@ -169,7 +180,7 @@ function addGridLayer(
 
 function addLabel(
   Konva: KonvaNamespace,
-  layer: InstanceType<KonvaNamespace["Layer"]>,
+  layer: RepairKonvaContainer,
   x: number,
   y: number,
   text: string,
@@ -197,36 +208,110 @@ function addLabel(
   layer.add(label);
 }
 
+function hasEventModifier(
+  event: unknown,
+  key: "shiftKey" | "ctrlKey" | "metaKey" | "altKey"
+): boolean {
+  const candidate = event as Partial<Record<typeof key, unknown>> | null;
+  return typeof candidate?.[key] === "boolean" ? Boolean(candidate[key]) : false;
+}
+
+function getInteractionFromKonvaEvent(event: { evt?: unknown }): RepairOverlayEventInteraction {
+  const nativeEvent = event.evt;
+  return {
+    additive:
+      hasEventModifier(nativeEvent, "shiftKey") ||
+      hasEventModifier(nativeEvent, "ctrlKey") ||
+      hasEventModifier(nativeEvent, "metaKey"),
+    focusJump: hasEventModifier(nativeEvent, "altKey") === false,
+  };
+}
+
+function getEventInteractionState(
+  config: RepairOverlayStageConfig,
+  eventId: string
+): { hovered: boolean; selected: boolean; focused: boolean } {
+  return {
+    hovered:
+      config.workbench.selection.hoveredEventId === eventId ||
+      config.workbench.hoveredEventId === eventId,
+    selected: config.workbench.selection.selectedEventIds.includes(eventId),
+    focused: config.focusedEventId === eventId,
+  };
+}
+
+function addRectSelectionAssist(
+  Konva: KonvaNamespace,
+  layer: RepairKonvaContainer,
+  rect: RepairImageRect,
+  color: string,
+  selected: boolean,
+  hovered: boolean
+): void {
+  if (!selected && !hovered) return;
+  layer.add(
+    new Konva.Rect({
+      x: rect.xPx - 4,
+      y: rect.yPx - 4,
+      width: rect.widthPx + 8,
+      height: rect.heightPx + 8,
+      stroke: color,
+      strokeWidth: selected ? 1.5 : 1,
+      dash: selected ? [4, 3] : [2, 4],
+      opacity: selected ? 0.88 : 0.54,
+      cornerRadius: 6,
+      listening: false,
+    })
+  );
+}
+
 function addAiEvent(
   Konva: KonvaNamespace,
   config: RepairOverlayStageConfig,
-  layer: InstanceType<KonvaNamespace["Layer"]>,
+  layer: RepairKonvaContainer,
   event: RepairEvent
 ): void {
   if ((event.kind !== "ai-mark" && event.kind !== "risk-flag") || event.region === null) return;
   if (!config.visibleLayers["ai-marks"]) return;
-  const { width, height } = getStageSize(config.container);
-  const frame = getContainedImageFrame(width, height, config.image.widthPx, config.image.heightPx);
-  const rect = imageRectToStageRect(event.region, frame, config.workbench.viewport);
+  if (event.kind === "risk-flag" && !config.visibleLayers.risks) return;
+  const rect = event.region;
   const color =
     event.kind === "risk-flag" || event.severity === "risk"
       ? REPAIR_UI_COLORS.risk
       : REPAIR_UI_COLORS.amber;
+  const interaction = getEventInteractionState(config, event.id);
   const shape = new Konva.Rect({
     x: rect.xPx,
     y: rect.yPx,
     width: rect.widthPx,
     height: rect.heightPx,
     stroke: color,
-    strokeWidth: config.focusedEventId === event.id ? 3 : 2,
+    strokeWidth: interaction.selected || interaction.focused ? 3 : interaction.hovered ? 2.5 : 2,
     dash: [8, 5],
-    fill: event.kind === "risk-flag" ? "rgba(217, 122, 122, 0.10)" : "rgba(232, 168, 87, 0.10)",
+    fill:
+      event.kind === "risk-flag"
+        ? interaction.hovered
+          ? "rgba(217, 122, 122, 0.16)"
+          : "rgba(217, 122, 122, 0.10)"
+        : interaction.hovered
+          ? "rgba(232, 168, 87, 0.16)"
+          : "rgba(232, 168, 87, 0.10)",
     cornerRadius: 5,
+    shadowColor: color,
+    shadowBlur: interaction.selected || interaction.hovered ? 12 : 0,
+    shadowOpacity: interaction.selected ? 0.28 : 0.16,
   });
-  shape.on("click tap", () => {
-    config.onEventClick(event.id);
+  shape.on("click tap", (konvaEvent) => {
+    config.onEventClick(event.id, getInteractionFromKonvaEvent(konvaEvent));
+  });
+  shape.on("mouseenter", () => {
+    config.onEventHover(event.id);
+  });
+  shape.on("mouseleave", () => {
+    config.onEventHover(null);
   });
   layer.add(shape);
+  addRectSelectionAssist(Konva, layer, rect, color, interaction.selected, interaction.hovered);
   addLabel(
     Konva,
     layer,
@@ -240,28 +325,40 @@ function addAiEvent(
 function addAnnotationEvent(
   Konva: KonvaNamespace,
   config: RepairOverlayStageConfig,
-  layer: InstanceType<KonvaNamespace["Layer"]>,
+  layer: RepairKonvaContainer,
   event: RepairEvent
 ): void {
   if (event.kind !== "annotation" || !config.visibleLayers.annotations) return;
-  const { width, height } = getStageSize(config.container);
-  const frame = getContainedImageFrame(width, height, config.image.widthPx, config.image.heightPx);
+  const author = event.meta?.author ?? event.source;
+  if (author === "operator" && !config.visibleLayers["operator-annotations"]) return;
+  if (author === "ai" && !config.visibleLayers["ai-annotations"]) return;
   const color = event.color;
+  const interaction = getEventInteractionState(config, event.id);
   if (event.region !== null) {
-    const rect = imageRectToStageRect(event.region, frame, config.workbench.viewport);
+    const rect = event.region;
     if (event.tool === "arrow") {
       const shape = new Konva.Arrow({
         points: [rect.xPx, rect.yPx, rect.xPx + rect.widthPx, rect.yPx + rect.heightPx],
         pointerLength: 10,
         pointerWidth: 8,
         stroke: color,
-        strokeWidth: 2,
+        strokeWidth: interaction.selected || interaction.focused ? 3 : interaction.hovered ? 2.5 : 2,
         fill: color,
+        shadowColor: color,
+        shadowBlur: interaction.selected || interaction.hovered ? 10 : 0,
+        shadowOpacity: interaction.selected ? 0.24 : 0.16,
       });
-      shape.on("click tap", () => {
-        config.onEventClick(event.id);
+      shape.on("click tap", (konvaEvent) => {
+        config.onEventClick(event.id, getInteractionFromKonvaEvent(konvaEvent));
+      });
+      shape.on("mouseenter", () => {
+        config.onEventHover(event.id);
+      });
+      shape.on("mouseleave", () => {
+        config.onEventHover(null);
       });
       layer.add(shape);
+      addRectSelectionAssist(Konva, layer, rect, color, interaction.selected, interaction.hovered);
       addLabel(Konva, layer, rect.xPx, rect.yPx + 8, event.label, color);
       return;
     }
@@ -271,29 +368,48 @@ function addAnnotationEvent(
       width: rect.widthPx,
       height: rect.heightPx,
       stroke: color,
-      strokeWidth: 2,
+      strokeWidth: interaction.selected || interaction.focused ? 3 : interaction.hovered ? 2.5 : 2,
       dash: event.tool === "freehand" ? [3, 3] : [],
       cornerRadius: 4,
+      shadowColor: color,
+      shadowBlur: interaction.selected || interaction.hovered ? 9 : 0,
+      shadowOpacity: interaction.selected ? 0.22 : 0.14,
     });
-    shape.on("click tap", () => {
-      config.onEventClick(event.id);
+    shape.on("click tap", (konvaEvent) => {
+      config.onEventClick(event.id, getInteractionFromKonvaEvent(konvaEvent));
+    });
+    shape.on("mouseenter", () => {
+      config.onEventHover(event.id);
+    });
+    shape.on("mouseleave", () => {
+      config.onEventHover(null);
     });
     layer.add(shape);
+    addRectSelectionAssist(Konva, layer, rect, color, interaction.selected, interaction.hovered);
     addLabel(Konva, layer, rect.xPx, rect.yPx + rect.heightPx + 5, event.label, color);
     return;
   }
   if (event.point !== null) {
-    const point = imagePointToStagePoint(event.point, frame, config.workbench.viewport);
+    const point = event.point;
     const marker = new Konva.Circle({
       x: point.xPx,
       y: point.yPx,
-      radius: 6,
+      radius: interaction.selected || interaction.hovered ? 8 : 6,
       fill: color,
       stroke: "rgba(0, 0, 0, 0.72)",
       strokeWidth: 2,
+      shadowColor: color,
+      shadowBlur: interaction.selected || interaction.hovered ? 10 : 0,
+      shadowOpacity: interaction.selected ? 0.24 : 0.14,
     });
-    marker.on("click tap", () => {
-      config.onEventClick(event.id);
+    marker.on("click tap", (konvaEvent) => {
+      config.onEventClick(event.id, getInteractionFromKonvaEvent(konvaEvent));
+    });
+    marker.on("mouseenter", () => {
+      config.onEventHover(event.id);
+    });
+    marker.on("mouseleave", () => {
+      config.onEventHover(null);
     });
     layer.add(marker);
     addLabel(Konva, layer, point.xPx + 8, point.yPx - 12, event.label, color);
@@ -303,27 +419,34 @@ function addAnnotationEvent(
 function addMeasurementEvent(
   Konva: KonvaNamespace,
   config: RepairOverlayStageConfig,
-  layer: InstanceType<KonvaNamespace["Layer"]>,
+  layer: RepairKonvaContainer,
   event: RepairEvent
 ): void {
   if (
     event.kind !== "measurement" ||
     event.pinAt === null ||
-    !config.visibleLayers["measurement-pins"]
+    !config.visibleLayers["measurement-pins"] ||
+    !config.visibleLayers.measurements
   )
     return;
-  const { width, height } = getStageSize(config.container);
-  const frame = getContainedImageFrame(width, height, config.image.widthPx, config.image.heightPx);
-  const point = imagePointToStagePoint(event.pinAt, frame, config.workbench.viewport);
-  const group = new Konva.Group({ x: point.xPx, y: point.yPx, draggable: true });
+  const point = event.pinAt;
+  const interaction = getEventInteractionState(config, event.id);
+  const group = new Konva.Group({
+    x: point.xPx,
+    y: point.yPx,
+    draggable: config.workbench.contextualCursor !== "replay-scrub-lock",
+  });
   group.add(
     new Konva.Circle({
       x: 0,
       y: 0,
-      radius: 7,
+      radius: interaction.selected || interaction.hovered ? 9 : 7,
       fill: REPAIR_UI_COLORS.cyan,
       stroke: "rgba(0, 0, 0, 0.72)",
       strokeWidth: 2,
+      shadowColor: REPAIR_UI_COLORS.cyan,
+      shadowBlur: interaction.selected || interaction.hovered ? 10 : 0,
+      shadowOpacity: interaction.selected ? 0.24 : 0.14,
     })
   );
   group.add(
@@ -336,16 +459,21 @@ function addMeasurementEvent(
       fontSize: 10,
     })
   );
-  group.on("click tap", () => {
-    config.onEventClick(event.id);
+  group.on("click tap", (konvaEvent) => {
+    config.onEventClick(event.id, getInteractionFromKonvaEvent(konvaEvent));
+  });
+  group.on("mouseenter", () => {
+    config.onEventHover(event.id);
+  });
+  group.on("mouseleave", () => {
+    config.onEventHover(null);
   });
   group.on("dragend", () => {
-    const nextPoint = stagePointToImagePoint(
+    const clamped = clampImagePoint(
       { xPx: group.x(), yPx: group.y() },
-      frame,
-      config.workbench.viewport
+      config.image.widthPx,
+      config.image.heightPx
     );
-    const clamped = clampImagePoint(nextPoint, config.image.widthPx, config.image.heightPx);
     config.onAddMeasurement({
       eventId: event.id,
       xPx: Math.round(clamped.xPx),
@@ -356,10 +484,37 @@ function addMeasurementEvent(
   layer.add(group);
 }
 
+function addKnowledgeRegions(
+  Konva: KonvaNamespace,
+  config: RepairOverlayStageConfig,
+  layer: RepairKonvaContainer
+): void {
+  if (!config.visibleLayers.knowledge) return;
+  const { width, height } = getStageSize(config.container);
+  const frame = getContainedImageFrame(width, height, config.image.widthPx, config.image.heightPx);
+  config.knowledgeRegions.forEach((entry) => {
+    const rect = imageRectToStageRect(entry.region, frame, config.workbench.viewport);
+    const shape = new Konva.Rect({
+      x: rect.xPx,
+      y: rect.yPx,
+      width: rect.widthPx,
+      height: rect.heightPx,
+      stroke: "rgba(111, 191, 154, 0.72)",
+      strokeWidth: 1,
+      dash: [4, 6],
+      fill: "rgba(111, 191, 154, 0.08)",
+      cornerRadius: 5,
+      listening: false,
+    });
+    layer.add(shape);
+    addLabel(Konva, layer, rect.xPx, Math.max(0, rect.yPx - 20), entry.label, "rgb(111, 191, 154)");
+  });
+}
+
 function addFocusCallout(
   Konva: KonvaNamespace,
   config: RepairOverlayStageConfig,
-  layer: InstanceType<KonvaNamespace["Layer"]>
+  layer: RepairKonvaContainer
 ): void {
   if (!config.visibleLayers.focus || config.focusedEventId === null) return;
   const focused = config.events.find((event) => event.id === config.focusedEventId);
@@ -410,6 +565,14 @@ export async function mountRepairOverlayStage(
       measurement: RepairLayer;
       focus: RepairLayer;
     } | null = null;
+    const entityGroups = new Map<
+      string,
+      {
+        group: InstanceType<KonvaNamespace["Group"]>;
+        fingerprint: string;
+        layerKey: "ai" | "annotation" | "measurement";
+      }
+    >();
     let panStart: { pointerX: number; pointerY: number; panXPx: number; panYPx: number } | null =
       null;
     let disposed = false;
@@ -429,22 +592,112 @@ export async function mountRepairOverlayStage(
       return getStageSize(currentConfig.container);
     }
 
+    function clearContainer(container: RepairKonvaContainer): void {
+      container.getChildren().forEach((child) => {
+        child.destroy();
+      });
+    }
+
+    function getEventEntityFingerprint(
+      layerKey: "ai" | "annotation" | "measurement",
+      event: RepairEvent
+    ): string {
+      return JSON.stringify({
+        layerKey,
+        event,
+        focusedEventId: currentConfig.focusedEventId,
+        selection: currentConfig.workbench.selection,
+        contextualCursor: currentConfig.workbench.contextualCursor,
+        visibleLayers: currentConfig.visibleLayers,
+      });
+    }
+
+    function syncEntityLayerTransforms(): void {
+      if (layers === null || stage === null) return;
+      const { width, height } = getActiveStageSize();
+      const frame = getContainedImageFrame(
+        width,
+        height,
+        currentConfig.image.widthPx,
+        currentConfig.image.heightPx
+      );
+      const scale = frame.scale * currentConfig.workbench.viewport.zoom;
+      const transform = {
+        x: frame.leftPx + currentConfig.workbench.viewport.panXPx,
+        y: frame.topPx + currentConfig.workbench.viewport.panYPx,
+      };
+      [layers.ai, layers.annotation, layers.measurement].forEach((layer) => {
+        layer.position(transform);
+        layer.scale({ x: scale, y: scale });
+      });
+    }
+
+    function syncEventEntity(
+      layerKey: "ai" | "annotation" | "measurement",
+      layer: RepairLayer,
+      event: RepairEvent,
+      draw: (group: InstanceType<KonvaNamespace["Group"]>) => void
+    ): void {
+      const key = `${layerKey}:${event.id}`;
+      const fingerprint = getEventEntityFingerprint(layerKey, event);
+      let record = entityGroups.get(key) ?? null;
+      if (record !== null && record.layerKey !== layerKey) {
+        record.group.destroy();
+        entityGroups.delete(key);
+        record = null;
+      }
+      if (record === null) {
+        const group = new Konva.Group({ listening: true });
+        layer.add(group);
+        record = { group, fingerprint: "", layerKey };
+        entityGroups.set(key, record);
+      }
+      if (record.fingerprint === fingerprint) return;
+      clearContainer(record.group);
+      draw(record.group);
+      record.fingerprint = fingerprint;
+    }
+
+    function pruneEventEntities(activeKeys: Set<string>): void {
+      entityGroups.forEach((record, key) => {
+        if (activeKeys.has(key)) return;
+        record.group.destroy();
+        entityGroups.delete(key);
+      });
+    }
+
     function renderOverlay(): void {
       if (stage === null || layers === null || disposed) return;
       const activeStage = stage;
       const activeLayers = layers;
-      activeLayers.grid.destroyChildren();
-      activeLayers.ai.destroyChildren();
-      activeLayers.annotation.destroyChildren();
-      activeLayers.measurement.destroyChildren();
-      activeLayers.focus.destroyChildren();
+      const activeEntityKeys = new Set<string>();
+      clearContainer(activeLayers.grid);
+      clearContainer(activeLayers.focus);
+      syncEntityLayerTransforms();
 
       addGridLayer(Konva, currentConfig, activeLayers.grid);
+      addKnowledgeRegions(Konva, currentConfig, activeLayers.focus);
       currentConfig.events.forEach((event) => {
-        addAiEvent(Konva, currentConfig, activeLayers.ai, event);
-        addAnnotationEvent(Konva, currentConfig, activeLayers.annotation, event);
-        addMeasurementEvent(Konva, currentConfig, activeLayers.measurement, event);
+        if (event.kind === "ai-mark" || event.kind === "risk-flag") {
+          activeEntityKeys.add(`ai:${event.id}`);
+          syncEventEntity("ai", activeLayers.ai, event, (group) => {
+            addAiEvent(Konva, currentConfig, group, event);
+          });
+        }
+        if (event.kind === "annotation") {
+          activeEntityKeys.add(`annotation:${event.id}`);
+          syncEventEntity("annotation", activeLayers.annotation, event, (group) => {
+            addAnnotationEvent(Konva, currentConfig, group, event);
+          });
+        }
+        if (event.kind === "measurement") {
+          activeEntityKeys.add(`measurement:${event.id}`);
+          syncEventEntity("measurement", activeLayers.measurement, event, (group) => {
+            addMeasurementEvent(Konva, currentConfig, group, event);
+          });
+        }
       });
+      pruneEventEntities(activeEntityKeys);
       addFocusCallout(Konva, currentConfig, activeLayers.focus);
 
       activeLayers.grid.batchDraw();
@@ -453,6 +706,25 @@ export async function mountRepairOverlayStage(
       activeLayers.measurement.batchDraw();
       activeLayers.focus.batchDraw();
       activeStage.batchDraw();
+    }
+
+    function syncStageCursor(): void {
+      if (stage === null) return;
+      const cursor =
+        currentConfig.workbench.contextualCursor === "pan"
+          ? "grab"
+          : currentConfig.workbench.contextualCursor === "measurement"
+            ? "crosshair"
+            : currentConfig.workbench.contextualCursor === "annotate"
+              ? "cell"
+              : currentConfig.workbench.contextualCursor === "replay-scrub-lock"
+                ? "not-allowed"
+                : "default";
+      stage.container().style.cursor = cursor;
+    }
+
+    function isReplayInteractionLocked(): boolean {
+      return currentConfig.workbench.contextualCursor === "replay-scrub-lock";
     }
 
     function bindStageEvents(activeStage: RepairStage): void {
@@ -480,6 +752,7 @@ export async function mountRepairOverlayStage(
 
       activeStage.on("wheel", (event) => {
         event.evt.preventDefault();
+        if (isReplayInteractionLocked()) return;
         const delta = event.evt.deltaY > 0 ? -0.12 : 0.12;
         currentConfig.onViewportChange({
           zoom: Math.min(4, Math.max(0.5, currentConfig.workbench.viewport.zoom + delta)),
@@ -489,6 +762,7 @@ export async function mountRepairOverlayStage(
       });
 
       activeStage.on("mousedown touchstart", () => {
+        if (isReplayInteractionLocked()) return;
         if (currentConfig.workbench.activeTool !== "pan") return;
         const pointer = activeStage.getPointerPosition();
         if (pointer === null) return;
@@ -505,6 +779,7 @@ export async function mountRepairOverlayStage(
       });
 
       activeStage.on("dragmove mousemove touchmove", () => {
+        if (isReplayInteractionLocked()) return;
         if (panStart === null) return;
         const pointer = activeStage.getPointerPosition();
         if (pointer === null) return;
@@ -517,6 +792,7 @@ export async function mountRepairOverlayStage(
 
       activeStage.on("click tap", (event) => {
         if (event.target !== activeStage) return;
+        if (isReplayInteractionLocked()) return;
         const pointer = activeStage.getPointerPosition();
         if (pointer === null) return;
         const { width, height } = getActiveStageSize();
@@ -539,6 +815,10 @@ export async function mountRepairOverlayStage(
         const yPx = Math.round(point.yPx);
         if (currentConfig.workbench.activeTool === "measurement-pin") {
           currentConfig.onAddMeasurement({ xPx, yPx, reference: `TP@${xPx},${yPx}` });
+          return;
+        }
+        if (currentConfig.workbench.activeTool === "select") {
+          currentConfig.onSelectionClear();
           return;
         }
         if (currentConfig.workbench.activeTool === "ruler") {
@@ -613,6 +893,7 @@ export async function mountRepairOverlayStage(
       if (stage.width() !== size.width || stage.height() !== size.height) {
         stage.size(size);
       }
+      syncStageCursor();
       renderOverlay();
     }
 

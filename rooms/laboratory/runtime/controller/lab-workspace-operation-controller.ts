@@ -1,3 +1,7 @@
+import {
+  asLabRecord,
+  normalizeLabOperationSettings,
+} from "../../models/lab-types.js";
 import type { createLabStore } from "../lab-store.js";
 import { buildUiEvent } from "./lab-controller-helpers.js";
 
@@ -78,6 +82,37 @@ export function createLabWorkspaceOperationController(deps: LabWorkspaceOperatio
     );
   }
 
+  function getComparisonCapturePayload(captureKind: "moment" | "finding") {
+    const state = deps.store.getState();
+    const operationSettings = asLabRecord(asLabRecord(state.workbench)["operationSettings"]);
+    const imageComparisonSettings = normalizeLabOperationSettings(
+      "image-comparison",
+      operationSettings["image-comparison"]
+    );
+    return {
+      ...deps.getActiveSelectionOperationPayload(state),
+      captureKind,
+      comparisonViewMode: state.ui.workspace.comparisonViewMode,
+      comparisonSplitPercent: state.ui.workspace.comparisonSplitPercent,
+      findingNote: state.ui.workspace.comparisonFindingNote,
+      operationSettings: imageComparisonSettings,
+    };
+  }
+
+  function captureComparisonMoment() {
+    deps.startTrackedOperationForUiAction(
+      "workspace-comparison-moment-capture",
+      getComparisonCapturePayload("moment")
+    );
+  }
+
+  function saveComparisonFinding() {
+    deps.startTrackedOperationForUiAction(
+      "workspace-comparison-finding-save",
+      getComparisonCapturePayload("finding")
+    );
+  }
+
   function exportTimelineClip() {
     if (deps.isWorkspaceMutationLocked("timeline")) {
       deps.pushLockedWorkspaceEvent("Zaman aralığı dışa aktarımı aktif analiz sırasında kilitli.");
@@ -153,7 +188,9 @@ export function createLabWorkspaceOperationController(deps: LabWorkspaceOperatio
     exportBandPassVoice,
     exportBeforeAfterVariant,
     exportEnhancedFrame,
+    captureComparisonMoment,
     exportImageComparison,
+    saveComparisonFinding,
     exportSelectionRoi,
     exportStabilizedSegment,
     exportStemSeparation,

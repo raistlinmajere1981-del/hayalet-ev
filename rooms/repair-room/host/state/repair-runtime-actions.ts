@@ -7,7 +7,9 @@ import type {
   RepairOperatorProfile,
   RepairOperatorProfileTabId,
   RepairOverlayLayerId,
+  RepairOverlaySelectionState,
   RepairPanelId,
+  RepairReplayMode,
   RepairSession,
   RepairSessionListItem,
   RepairWizardState,
@@ -59,6 +61,10 @@ export type RepairRuntimeAction =
       rangeStartMs: number | null;
       rangeEndMs: number | null;
       autoFollowLive: boolean;
+      replayMode?: RepairReplayMode;
+      replaySpeed?: number;
+      isPlaying?: boolean;
+      liveEdgeMs?: number;
     }
   | {
       type: "workbench/toggle-layer";
@@ -68,6 +74,11 @@ export type RepairRuntimeAction =
   | {
       type: "workbench/set-focus-event";
       eventId: string | null;
+    }
+  | {
+      type: "workbench/set-selection";
+      selection: Partial<RepairOverlaySelectionState>;
+      focusedEventId?: string | null;
     }
   | {
       type: "workbench/set-focus-mode";
@@ -106,6 +117,10 @@ export type RepairRuntimeAction =
   | {
       type: "knowledge-pack/set-preview-tab";
       tabId: "schematic-preview" | "board-view" | "notes";
+    }
+  | {
+      type: "knowledge-pack/set-spatial-focus";
+      spatialRefId: string | null;
     }
   | {
       type: "measurement/set-instrument";

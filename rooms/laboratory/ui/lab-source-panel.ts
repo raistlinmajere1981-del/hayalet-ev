@@ -166,16 +166,26 @@ function canDownloadAsset(asset: LabAsset): boolean {
   return false;
 }
 
-function renderAssetRelationMeta(state: LabStoreState, asset: LabAsset, copy: LabI18n): string {
+function renderAssetRelationMeta(
+  state: LabStoreState,
+  asset: LabAsset,
+  currentSourceId: string | null,
+  copy: LabI18n
+): string {
+  const activeSourceLabel =
+    currentSourceId === asset.id
+      ? `<span class="labx-sp-asset__relation-text">${escapeHtml(copy.t("mediaAnalysis.assets.relation.activeSource", "Aktif kaynak"))}</span>`
+      : "";
   const comparisonReferenceLabel =
     state.ui.workspace.comparisonReferenceAssetId === asset.id
       ? `<span class="labx-sp-asset__relation-text">${escapeHtml(copy.t("mediaAnalysis.assets.relation.compareReference", "Karşılaştırma referansı"))}</span>`
       : "";
 
   if (asset.type !== "audio") {
-    return comparisonReferenceLabel === ""
+    const relation = `${activeSourceLabel}${comparisonReferenceLabel}`;
+    return relation === ""
       ? ""
-      : `<span class="labx-sp-asset__relation">${comparisonReferenceLabel}</span>`;
+      : `<span class="labx-sp-asset__relation">${relation}</span>`;
   }
 
   const parentSource = getParentSourceForAsset(state, asset.id);
@@ -188,12 +198,18 @@ function renderAssetRelationMeta(state: LabStoreState, asset: LabAsset, copy: La
         ? `<button class="labx-sp-asset__relation-link" type="button" data-lab-action="focus-source-preview" data-lab-value="${escapeHtml(parentSource.id)}">${escapeHtml(copy.t("mediaAnalysis.assets.relation.source", "Kaynak"))}: ${escapeHtml(parentSource.name)}</button>`
         : `<span class="labx-sp-asset__relation-text">${escapeHtml(copy.t("mediaAnalysis.assets.relation.source", "Kaynak"))}: ${escapeHtml(parentSource.name)}</span>`;
 
-  if (relationMarkup === "" && syncLabel === null && comparisonReferenceLabel === "") {
+  if (
+    relationMarkup === "" &&
+    syncLabel === null &&
+    activeSourceLabel === "" &&
+    comparisonReferenceLabel === ""
+  ) {
     return "";
   }
 
   return `
     <span class="labx-sp-asset__relation">
+      ${activeSourceLabel}
       ${relationMarkup}
       ${syncLabel ? `<span class="labx-sp-asset__relation-text">${escapeHtml(syncLabel)}</span>` : ""}
       ${comparisonReferenceLabel}
@@ -259,7 +275,7 @@ function renderAssetItem(
           ${meta ? `<span class="labx-sp-asset__meta">${escapeHtml(meta)}</span>` : ""}
         </span>
       </button>
-      ${renderAssetRelationMeta(state, asset, copy)}
+      ${renderAssetRelationMeta(state, asset, currentSourceId, copy)}
       <details class="labx-sp-asset__menu">
         <summary class="labx-sp-asset__menu-trigger" aria-label="${escapeHtml(copy.t("mediaAnalysis.assets.actions.ariaLabel", "Seçenekler"))}">···</summary>
         <div class="labx-sp-asset__menu-list">

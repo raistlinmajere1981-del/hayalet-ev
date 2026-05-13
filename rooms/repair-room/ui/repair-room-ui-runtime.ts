@@ -35,6 +35,13 @@ interface RepairUiContext {
 type RepairPanelRenderer = () => HTMLElement;
 type RepairMutableStyleProperty = "left" | "width" | "transform" | "transformOrigin";
 
+const AI_LIFECYCLE_ACTIONS = [
+  ["acknowledged", "ACK"],
+  ["investigating", "INV"],
+  ["resolved", "RES"],
+  ["dismissed", "DIS"],
+] as const;
+
 interface RepairPanelLifecycle {
   panelId: RepairPanelId;
   signature: string;
@@ -68,6 +75,10 @@ function createInitialState(): RepairUiState {
         rangeStartMs: null,
         rangeEndMs: null,
         autoFollowLive: true,
+        replayMode: "live",
+        replaySpeed: 1,
+        isPlaying: true,
+        liveEdgeMs: 0,
       },
       cursor: null,
       visibleLayers: {
@@ -76,9 +87,25 @@ function createInitialState(): RepairUiState {
         annotations: true,
         "measurement-pins": true,
         focus: true,
+        "operator-annotations": true,
+        "ai-annotations": true,
+        measurements: true,
+        risks: true,
+        notes: true,
+        knowledge: true,
       },
       hoveredEventId: null,
       focusedEventId: null,
+      selection: {
+        hoveredEventId: null,
+        selectedEventIds: [],
+        inspectorEventId: null,
+        focusJumpEventId: null,
+      },
+      contextualCursor: "inspect",
+      operationalMode: "live",
+      aiMarks: [],
+      measurementEvidence: [],
       focusMode: false,
     },
     tacticalFeed: [],
@@ -97,7 +124,12 @@ function createInitialState(): RepairUiState {
       foundResources: [],
       generatedKnowledgePackId: null,
     },
-    knowledgePack: { pack: null, attachedToSessionId: null, previewTabId: "schematic-preview" },
+    knowledgePack: {
+      pack: null,
+      attachedToSessionId: null,
+      previewTabId: "schematic-preview",
+      focusedSpatialRefId: null,
+    },
     operatorProfile: {
       profile: {
         schemaVersion: 1,
@@ -139,6 +171,8 @@ function createInitialState(): RepairUiState {
         driftAmplitude: 0,
       },
       recent: [],
+      evidence: [],
+      comparisonEventId: null,
     },
     chat: { turns: [], composerDraft: "", pendingReplyId: null },
     layout: {
@@ -176,7 +210,25 @@ function createInitialState(): RepairUiState {
 
 export function createRepairRoomUiRuntime() {
   const state: RepairUiState = createInitialState();
-  const meta: RepairUiSnapshotMeta = { schemaVersion: 1, generatedAt: "", events: [] };
+  const meta: RepairUiSnapshotMeta = {
+    schemaVersion: 1,
+    generatedAt: "",
+    events: [],
+    replay: {
+      playheadMs: 0,
+      replayMode: "live",
+      visibleEvents: [],
+      overlayEvents: [],
+      tacticalFeed: [],
+      measurementEvidence: [],
+      aiMarkEventIds: [],
+      activeSnapshotEventId: null,
+      activeFreezeFrameEventId: null,
+      focusSuggestionEventId: null,
+      knowledgeRegions: [],
+      operationalMode: "live",
+    },
+  };
   const context: RepairUiContext = { roomId: REPAIR_ROOM_ID, locale: "en", translations: {} };
   const requestRuntime = createRepairUiRequestRuntime();
   const windowRef = window as unknown as RepairUiWindow;
@@ -281,6 +333,9 @@ export function createRepairRoomUiRuntime() {
             rangeStartMs: timelineShape.rangeStartMs,
             rangeEndMs: timelineShape.rangeEndMs,
             autoFollowLive: timelineShape.autoFollowLive,
+            isPlaying: timelineShape.isPlaying,
+            replayMode: timelineShape.replayMode,
+            replaySpeed: timelineShape.replaySpeed,
             liveWindow: timelineLiveWindow,
           },
           events: meta.events.map((event) => [event.id, event.kind, event.occurredAt]),
@@ -382,6 +437,8 @@ export function createRepairRoomUiRuntime() {
         return event.author.toUpperCase();
       case "session-start":
         return "START";
+      case "ai-mark-lifecycle":
+        return "AI STATE";
       default:
         return "EVENT";
     }
@@ -449,7 +506,8 @@ export function createRepairRoomUiRuntime() {
     const label = root.querySelector<HTMLElement>(".repair-measurement-display__label");
     if (label !== null) setTextIfChanged(label, current.label);
     const mode = root.querySelector<HTMLElement>(".repair-measurement-display__mode");
-    if (mode !== null) setTextIfChanged(mode, `${current.mode.replace(/-/g, " ")} / ${current.range}`);
+    if (mode !== null)
+      setTextIfChanged(mode, `${current.mode.replace(/-/g, " ")} / ${current.range}`);
 
     const readingsList = root.querySelector<HTMLElement>(".repair-readings-list");
     if (readingsList === null) return;
@@ -461,6 +519,49 @@ export function createRepairRoomUiRuntime() {
     readingsList.replaceChildren();
     state.measurement.recent.forEach((reading) => {
       appendMeasurementReadingRow(readingsList, reading);
+    });
+  }
+
+  function updateMeasurementEvidenceDom(root: Document | HTMLElement = documentRef): void {
+    const list = root.querySelector<HTMLElement>(".repair-measurement-evidence-list");
+    if (list === null) return;
+    const fingerprint = state.workbench.measurementEvidence
+      .map((entry) => `${entry.eventId}:${entry.currentDisplay}:${entry.history.join(">")}`)
+      .join("|");
+    if (list.dataset["fingerprint"] === fingerprint) return;
+    list.dataset["fingerprint"] = fingerprint;
+    list.replaceChildren();
+    state.workbench.measurementEvidence.slice(0, 4).forEach((entry) => {
+      const card = documentRef.createElement("button");
+      card.className = "repair-measurement-evidence";
+      card.type = "button";
+      card.dataset["repairAction"] = "jump-to-event";
+      card.dataset["eventId"] = entry.eventId;
+
+      const label = documentRef.createElement("span");
+      label.className = "repair-measurement-evidence__label";
+      label.textContent = entry.reference;
+      card.append(label);
+
+      const value = documentRef.createElement("span");
+      value.className = "repair-measurement-evidence__value";
+      value.textContent =
+        entry.previousDisplay === null
+          ? entry.currentDisplay
+          : `${entry.previousDisplay} → ${entry.currentDisplay}`;
+      card.append(value);
+
+      const spark = documentRef.createElement("span");
+      spark.className = "repair-measurement-evidence__spark";
+      entry.history.slice(-6).forEach((reading, index) => {
+        const bar = documentRef.createElement("i");
+        bar.style.height = `${Math.max(3, Math.min(16, 4 + index * 2))}px`;
+        bar.title = reading;
+        spark.append(bar);
+      });
+      card.append(spark);
+
+      list.append(card);
     });
   }
 
@@ -491,11 +592,64 @@ export function createRepairRoomUiRuntime() {
         return event.text;
       case "session-start":
         return event.title;
+      case "ai-mark-lifecycle":
+        return event.reason;
       default: {
         const exhaustiveEvent: never = event;
         return exhaustiveEvent;
       }
     }
+  }
+
+  function getEventBrief(eventId: string): string {
+    const event = meta.events.find((candidate) => candidate.id === eventId);
+    if (event === undefined) return eventId;
+    return `${event.kind.toUpperCase()} ${new Date(event.occurredAt).toLocaleTimeString("en-GB")}`;
+  }
+
+  function getLinkedInspectorText(event: RepairEvent): string {
+    const linkedMeasurements =
+      event.kind === "annotation"
+        ? (event.meta?.linkedMeasurementIds ?? [])
+        : event.kind === "ai-mark" || event.kind === "risk-flag"
+          ? (event.linkedMeasurementIds ?? [])
+          : event.kind === "measurement"
+            ? (event.linkedAnnotationIds ?? [])
+            : [];
+    const linkedAiMarks =
+      event.kind === "annotation"
+        ? (event.meta?.linkedEventIds ?? []).filter((eventId) => {
+            const linked = meta.events.find((candidate) => candidate.id === eventId);
+            return linked?.kind === "ai-mark" || linked?.kind === "risk-flag";
+          })
+        : event.kind === "measurement"
+          ? (event.linkedAiMarkIds ?? [])
+          : event.linkedEventIds;
+    const parts = [
+      linkedMeasurements.length > 0
+        ? `MEASURE ${linkedMeasurements.map(getEventBrief).join(", ")}`
+        : null,
+      linkedAiMarks.length > 0 ? `AI ${linkedAiMarks.map(getEventBrief).join(", ")}` : null,
+    ].filter((part): part is string => part !== null);
+    return parts.length > 0 ? parts.join(" • ") : "No linked forensic records";
+  }
+
+  function getInspectorMetaText(event: RepairEvent): string {
+    const base = new Date(event.occurredAt).toLocaleTimeString("en-GB");
+    if (event.kind === "annotation") {
+      const author = event.meta?.author ?? event.source;
+      const tool = event.meta?.tool ?? event.tool;
+      return `${base} • ${author.toUpperCase()} • ${tool.toUpperCase()}`;
+    }
+    if (event.kind === "ai-mark") {
+      return `${base} • AI • ${(event.lifecycleState ?? "detected").toUpperCase()}`;
+    }
+    if (event.kind === "measurement") {
+      const group =
+        event.group?.rail ?? event.group?.component ?? event.group?.powerDomain ?? "ungrouped";
+      return `${base} • ${group.toUpperCase()}`;
+    }
+    return `${base} • ${event.linkedEventIds.length} linked events`;
   }
 
   function updateSyncLiveDom(root: Document | HTMLElement = documentRef): void {
@@ -507,6 +661,73 @@ export function createRepairRoomUiRuntime() {
         setTextIfChanged(value, `+${Math.round(state.workbench.timeline.playheadMs / 1000)}s`);
       }
     });
+  }
+
+  function syncWorkbenchInspector(viewport: HTMLElement): void {
+    const inspectorEventId =
+      state.workbench.selection.inspectorEventId ?? state.workbench.focusedEventId;
+    const focused =
+      inspectorEventId === null
+        ? null
+        : (meta.events.find((event) => event.id === inspectorEventId) ?? null);
+    let inspector = viewport.querySelector<HTMLElement>(".repair-annotation-inspector");
+    if (focused === null) {
+      inspector?.remove();
+      return;
+    }
+    if (inspector === null) {
+      inspector = documentRef.createElement("div");
+      inspector.className = "repair-annotation-inspector";
+      viewport.append(inspector);
+    }
+    setDatasetIfChanged(inspector, "eventId", focused.id);
+
+    let title = inspector.querySelector<HTMLElement>(".repair-annotation-inspector__title");
+    if (title === null) {
+      title = documentRef.createElement("div");
+      title.className = "repair-annotation-inspector__title";
+      inspector.append(title);
+    }
+    setTextIfChanged(title, focused.kind.toUpperCase());
+
+    let detail = inspector.querySelector<HTMLElement>(".repair-annotation-inspector__detail");
+    if (detail === null) {
+      detail = documentRef.createElement("div");
+      detail.className = "repair-annotation-inspector__detail";
+      inspector.append(detail);
+    }
+    setTextIfChanged(detail, getSyncFocusedDetail(focused));
+
+    let metaLine = inspector.querySelector<HTMLElement>(".repair-annotation-inspector__meta");
+    if (metaLine === null) {
+      metaLine = documentRef.createElement("div");
+      metaLine.className = "repair-annotation-inspector__meta";
+      inspector.append(metaLine);
+    }
+    setTextIfChanged(metaLine, getInspectorMetaText(focused));
+
+    let links = inspector.querySelector<HTMLElement>(".repair-annotation-inspector__links");
+    if (links === null) {
+      links = documentRef.createElement("div");
+      links.className = "repair-annotation-inspector__links";
+      inspector.append(links);
+    }
+    setTextIfChanged(links, getLinkedInspectorText(focused));
+
+    let selection = inspector.querySelector<HTMLElement>(".repair-annotation-inspector__selection");
+    if (selection === null) {
+      selection = documentRef.createElement("div");
+      selection.className = "repair-annotation-inspector__selection";
+      inspector.append(selection);
+    }
+    setTextIfChanged(
+      selection,
+      `${state.workbench.selection.selectedEventIds.length} selected • hover ${
+        state.workbench.selection.hoveredEventId === null
+          ? "none"
+          : getEventBrief(state.workbench.selection.hoveredEventId)
+      }`
+    );
   }
 
   function applyLiveSnapshotUpdates(): void {
@@ -548,9 +769,13 @@ export function createRepairRoomUiRuntime() {
       focusedEventId: config.focusedEventId,
       image: [config.image.src, config.image.widthPx, config.image.heightPx],
       visibleLayers: config.visibleLayers,
+      knowledgeRegions: config.knowledgeRegions,
       workbench: {
         activeTool: config.workbench.activeTool,
         viewport: config.workbench.viewport,
+        contextualCursor: config.workbench.contextualCursor,
+        hoveredEventId: config.workbench.selection.hoveredEventId,
+        selectedEventIds: config.workbench.selection.selectedEventIds,
       },
     });
   }
@@ -567,9 +792,10 @@ export function createRepairRoomUiRuntime() {
     };
     return {
       container: overlayHost,
-      events: meta.events,
-      focusedEventId: state.workbench.focusedEventId,
+      events: meta.replay.overlayEvents,
+      focusedEventId: state.workbench.focusedEventId ?? meta.replay.focusSuggestionEventId,
       image,
+      knowledgeRegions: meta.replay.knowledgeRegions,
       visibleLayers: state.workbench.visibleLayers,
       workbench: state.workbench,
       onAddAnnotation: (payload) => {
@@ -582,8 +808,37 @@ export function createRepairRoomUiRuntime() {
         });
       },
       onCursor: updateCursorHud,
-      onEventClick: (eventId) => {
-        requestRuntime.jumpToEvent({ eventId });
+      onEventClick: (eventId, interaction) => {
+        const nextSelectedEventIds = interaction.additive
+          ? state.workbench.selection.selectedEventIds.includes(eventId)
+            ? state.workbench.selection.selectedEventIds.filter(
+                (selectedId) => selectedId !== eventId
+              )
+            : [...state.workbench.selection.selectedEventIds, eventId]
+          : [eventId];
+        const nextInspectorEventId = nextSelectedEventIds.includes(eventId)
+          ? eventId
+          : (nextSelectedEventIds.at(-1) ?? null);
+        state.workbench.selection.selectedEventIds = nextSelectedEventIds;
+        state.workbench.selection.inspectorEventId = nextInspectorEventId;
+        state.workbench.focusedEventId = nextInspectorEventId;
+        requestRuntime.updateFocus({
+          eventId,
+          selectionMode: interaction.additive ? "toggle" : "replace",
+          focusJump: interaction.focusJump,
+          jumpToEvent: interaction.focusJump && interaction.additive === false,
+        });
+      },
+      onEventHover: (eventId) => {
+        state.workbench.selection.hoveredEventId = eventId;
+        requestRuntime.updateFocus({ hoveredEventId: eventId });
+      },
+      onSelectionClear: () => {
+        state.workbench.focusedEventId = null;
+        state.workbench.selection.selectedEventIds = [];
+        state.workbench.selection.inspectorEventId = null;
+        state.workbench.selection.focusJumpEventId = null;
+        requestRuntime.updateFocus({ clearSelection: true });
       },
       onViewportChange: (payload) => {
         requestRuntime.updateViewport({
@@ -674,8 +929,7 @@ export function createRepairRoomUiRuntime() {
   function syncCoordHudLabels(hud: HTMLElement, labels: string[]): void {
     labels.forEach((labelText, index) => {
       const item = hud.children.item(index);
-      const labelElement =
-        item instanceof HTMLElement ? item : documentRef.createElement("span");
+      const labelElement = item instanceof HTMLElement ? item : documentRef.createElement("span");
       if (item === null) {
         hud.append(labelElement);
       }
@@ -726,6 +980,8 @@ export function createRepairRoomUiRuntime() {
     const viewport = panel.querySelector<HTMLElement>(".repair-viewport");
     if (viewport !== null) {
       viewport.classList.toggle("repair-viewport--frozen", state.workbench.isFrozen);
+      setDatasetIfChanged(viewport, "cursor", state.workbench.contextualCursor);
+      setDatasetIfChanged(viewport, "mode", state.workbench.operationalMode);
       const overlayHost = viewport.querySelector<HTMLElement>(
         "[data-repair-overlay-stage='workbench']"
       );
@@ -758,6 +1014,7 @@ export function createRepairRoomUiRuntime() {
           viewport.insertBefore(placeholder, overlayHost ?? viewport.firstChild);
         }
       }
+      syncWorkbenchInspector(viewport);
     }
 
     const cursor = state.workbench.cursor;
@@ -916,6 +1173,7 @@ export function createRepairRoomUiRuntime() {
     });
 
     updateMeasurementLiveDom(panel);
+    updateMeasurementEvidenceDom(panel);
   }
 
   function updateRoomSyncPanelDom(panel: HTMLElement): void {
@@ -955,9 +1213,45 @@ export function createRepairRoomUiRuntime() {
 
     const focused = getSyncFocusedEvent();
     const title = panel.querySelector<HTMLElement>(".repair-sync-focus__title");
-    if (title !== null) setTextIfChanged(title, focused === null ? "Live edge" : focused.kind.toUpperCase());
+    if (title !== null)
+      setTextIfChanged(title, focused === null ? "Live edge" : focused.kind.toUpperCase());
     const detail = panel.querySelector<HTMLElement>(".repair-sync-focus__detail");
     if (detail !== null) setTextIfChanged(detail, getSyncFocusedDetail(focused));
+    const focusCard = panel.querySelector<HTMLElement>(".repair-sync-focus");
+    if (focusCard !== null) {
+      let actions = focusCard.querySelector<HTMLElement>(".repair-sync-focus__actions");
+      if (focused?.kind !== "ai-mark") {
+        actions?.remove();
+        return;
+      }
+      if (actions === null) {
+        actions = documentRef.createElement("div");
+        actions.className = "repair-sync-focus__actions";
+        focusCard.append(actions);
+      }
+      const activeKeys = new Set<string>();
+      AI_LIFECYCLE_ACTIONS.forEach(([stateId, label]) => {
+        activeKeys.add(stateId);
+        let button = actions.querySelector<HTMLButtonElement>(
+          `.repair-sync-focus__action[data-ai-state="${stateId}"]`
+        );
+        if (button === null) {
+          button = documentRef.createElement("button");
+          button.type = "button";
+          button.className = "repair-sync-focus__action";
+          button.dataset["repairAction"] = "ai-mark-state";
+          button.dataset["aiState"] = stateId;
+          actions.append(button);
+        }
+        setTextIfChanged(button, label);
+        setDatasetIfChanged(button, "eventId", focused.id);
+        button.title = `Move AI mark to ${stateId}`;
+      });
+      actions.querySelectorAll<HTMLElement>(".repair-sync-focus__action").forEach((button) => {
+        const stateId = button.dataset["aiState"];
+        if (stateId === undefined || !activeKeys.has(stateId)) button.remove();
+      });
+    }
   }
 
   function syncTimelineTicks(track: HTMLElement, totalMs: number): void {
@@ -1130,7 +1424,9 @@ export function createRepairRoomUiRuntime() {
     setStyleIfChanged(track, "width", `${model.contentWidthPx}px`);
     const scrubMax = String(model.totalMs);
     if (scrub.max !== scrubMax) scrub.max = scrubMax;
-    const scrubValue = String(Math.min(model.totalMs, Math.max(0, state.workbench.timeline.playheadMs)));
+    const scrubValue = String(
+      Math.min(model.totalMs, Math.max(0, state.workbench.timeline.playheadMs))
+    );
     if (scrub.value !== scrubValue) scrub.value = scrubValue;
 
     syncTimelineTicks(track, model.totalMs);
@@ -1139,6 +1435,24 @@ export function createRepairRoomUiRuntime() {
     syncTimelinePlayhead(track, model.totalMs);
     syncTimelineLiveEdge(track, model.totalMs, model.latestEventMs);
     applyLiveSnapshotUpdates();
+
+    const playButton = panel.querySelector<HTMLElement>(
+      "[data-repair-action='timeline-play'], [data-repair-action='timeline-pause']"
+    );
+    if (playButton !== null) {
+      const nextAction = state.workbench.timeline.isPlaying ? "timeline-pause" : "timeline-play";
+      setDatasetIfChanged(playButton, "repairAction", nextAction);
+      setTextIfChanged(playButton, state.workbench.timeline.isPlaying ? "PAU" : "PLY");
+    }
+    const liveButton = panel.querySelector<HTMLElement>("[data-repair-action='timeline-live']");
+    liveButton?.classList.toggle(
+      "repair-timeline__control-btn--active",
+      state.workbench.timeline.autoFollowLive
+    );
+    const speedButton = panel.querySelector<HTMLElement>("[data-repair-action='timeline-speed']");
+    if (speedButton !== null) {
+      setTextIfChanged(speedButton, `${state.workbench.timeline.replaySpeed.toFixed(1)}X`);
+    }
 
     const scroller = panel.querySelector<HTMLElement>(".repair-timeline__scroller");
     if (scroller !== null) {
@@ -1311,9 +1625,10 @@ export function createRepairRoomUiRuntime() {
     const mount = documentRef.getElementById("app");
     if (mount === null) return;
     const persistentShell = ensurePersistentShell(mount);
-    setClassNameIfChanged(persistentShell.root, `repair-shell${
-      state.layout.focusMode ? " repair-shell--focus-mode" : ""
-    }`);
+    setClassNameIfChanged(
+      persistentShell.root,
+      `repair-shell${state.layout.focusMode ? " repair-shell--focus-mode" : ""}`
+    );
     setTextIfChanged(
       persistentShell.clock,
       state.ambient.nowIso
@@ -1445,6 +1760,23 @@ export function createRepairRoomUiRuntime() {
           if (previewTabId) requestRuntime.updatePanelTab({ previewTabId });
           break;
         }
+        case "knowledge-spatial-focus": {
+          const spatialRefId = el.dataset["spatialRefId"];
+          if (spatialRefId) requestRuntime.updatePanelTab({ spatialRefId });
+          break;
+        }
+        case "ai-mark-state": {
+          const eventId = el.dataset["eventId"];
+          const aiState = el.dataset["aiState"];
+          if (eventId && aiState) {
+            requestRuntime.dismissAiMark({
+              eventId,
+              state: aiState,
+              reason: `Operator marked AI observation ${aiState}.`,
+            });
+          }
+          break;
+        }
         case "set-instrument": {
           const instrumentKind = el.dataset["instrumentKind"];
           if (instrumentKind) requestRuntime.updatePanelTab({ instrumentKind });
@@ -1522,6 +1854,23 @@ export function createRepairRoomUiRuntime() {
             timelineRangeStartMs: Math.max(0, playhead - 15000),
             timelineRangeEndMs: playhead + 15000,
           });
+          break;
+        }
+        case "timeline-play":
+          requestRuntime.updateTimeline({ replayAction: "play" });
+          break;
+        case "timeline-pause":
+          requestRuntime.updateTimeline({ replayAction: "pause" });
+          break;
+        case "timeline-live":
+          requestRuntime.updateTimeline({ replayAction: "live" });
+          break;
+        case "timeline-speed": {
+          const nextSpeed =
+            state.workbench.timeline.replaySpeed >= 4
+              ? 0.5
+              : state.workbench.timeline.replaySpeed * 2;
+          requestRuntime.updateTimeline({ replaySpeed: nextSpeed });
           break;
         }
       }
@@ -1648,6 +1997,7 @@ export function createRepairRoomUiRuntime() {
         meta.schemaVersion = msg.meta.schemaVersion;
         meta.generatedAt = msg.meta.generatedAt;
         meta.events = msg.meta.events;
+        meta.replay = msg.meta.replay;
         render();
         applyLiveSnapshotUpdates();
         break;

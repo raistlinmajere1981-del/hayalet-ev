@@ -83,8 +83,13 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   const operatorPanel = readFileSync(join(uiRoot, "panels/operator-profile-panel.ts"), "utf8");
   const wizardPanel = readFileSync(join(uiRoot, "panels/session-wizard-panel.ts"), "utf8");
   const feedPanel = readFileSync(join(uiRoot, "panels/tactical-feed-panel.ts"), "utf8");
+  const roomSyncPanel = readFileSync(join(uiRoot, "panels/room-sync-panel.ts"), "utf8");
   const overlayStage = readFileSync(join(uiRoot, "overlay/overlay-stage.ts"), "utf8");
   const style = readFileSync(join(uiRoot, "style.css"), "utf8");
+  const replayProjection = readFileSync(
+    join(process.cwd(), "rooms/repair-room/host/state/repair-replay-projection.ts"),
+    "utf8"
+  );
   const mockEvents = readFileSync(
     join(process.cwd(), "rooms/repair-room/shared/data/mock-events.ts"),
     "utf8"
@@ -120,6 +125,9 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   assert.match(runtime, /requestRuntime\.updatePanelLayout/);
   assert.match(runtime, /requestRuntime\.updatePanelTab/);
   assert.match(runtime, /requestRuntime\.updateFocus/);
+  assert.match(runtime, /meta\.replay\.overlayEvents/);
+  assert.match(runtime, /timeline-play/);
+  assert.match(runtime, /knowledge-spatial-focus/);
   assert.doesNotMatch(runtime, /requestRuntime\.updateLayout/);
   assert.doesNotMatch(runtime, /destroyOverlays/);
   assert.doesNotMatch(runtime, /timeline: state\\.workbench\\.timeline/);
@@ -139,12 +147,33 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   assert.match(knowledgePanel, /resolveRepairAssetUrl/);
   assert.match(operatorPanel, /repair-tool-detail/);
   assert.match(overlayStage, /Ruler 10\.0 mm/);
+  assert.match(overlayStage, /knowledgeRegions/);
+  assert.match(overlayStage, /contextualCursor/);
+  assert.match(overlayStage, /entityGroups/);
+  assert.match(overlayStage, /syncEventEntity/);
+  assert.match(overlayStage, /syncEntityLayerTransforms/);
+  assert.match(overlayStage, /isReplayInteractionLocked/);
+  assert.match(overlayStage, /RepairOverlayEventInteraction/);
+  assert.match(overlayStage, /getInteractionFromKonvaEvent/);
+  assert.match(overlayStage, /onSelectionClear/);
+  assert.match(overlayStage, /addRectSelectionAssist/);
+  assert.match(runtime, /clearSelection/);
+  assert.match(runtime, /selectionMode/);
+  assert.match(runtime, /ai-mark-state/);
+  assert.match(runtime, /repair-annotation-inspector__links/);
+  assert.match(roomSyncPanel, /repair-sync-focus__actions/);
+  assert.match(roomSyncPanel, /ai-mark-state/);
+  assert.match(replayProjection, /visibleAiMarkIds/);
+  assert.doesNotMatch(overlayStage, /viewport: currentConfig\.workbench\.viewport/);
+  assert.doesNotMatch(overlayStage, /destroyChildren/);
   assert.match(overlayStage, /update: \(config: RepairOverlayStageConfig\) => void/);
   assert.match(overlayStage, /resize: \(\) => void/);
   assert.match(overlayStage, /ResizeObserver/);
   assert.match(overlayStage, /listening\(false\)/);
   assert.match(mockEvents, /thumbnailSrc: "shared\/assets\/mock-pcb\/atx-psu-top\.svg"/);
   assert.match(mockKnowledge, /bn44-00932a-schematic-preview\.svg/);
+  assert.match(mockKnowledge, /spatialRef/);
+  assert.match(mockEvents, /lifecycleState/);
   assert.match(wizardPanel, /repair-wizard-field__input/);
   assert.match(wizardPanel, /wizard-symptom/);
   assert.match(feedPanel, /repair-feed-composer__input/);

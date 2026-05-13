@@ -533,6 +533,13 @@ export function normalizeLabOperationSettings(
           String(defaults["layout"])
         ),
         metricSize: pickNumber(source["metricSize"], Number(defaults["metricSize"]), 256, 768, 1),
+        splitPercent: pickNumber(
+          source["splitPercent"],
+          Number(defaults["splitPercent"]),
+          5,
+          95,
+          1
+        ),
         splitMode: pickOption(
           source["splitMode"],
           ["primary-left-reference-right", "primary-mirror"],

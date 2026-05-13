@@ -8,6 +8,7 @@ import {
 } from "../../models/lab-types.js";
 import type {
   LabAudioFocusSettings,
+  LabComparisonViewMode,
   LabInteractiveSettings,
   LabOperationCapabilityId,
 } from "../../models/lab-types.js";
@@ -47,6 +48,15 @@ export function createLabWorkspaceSettingsController(deps: LabWorkspaceSettingsC
     if (field.startsWith("workspace.audioFocus.")) {
       const audioKey = field.replace("workspace.audioFocus.", "");
       return (state.ui.workspace.audioFocus as unknown as Record<string, unknown>)[audioKey];
+    }
+    if (field === "workspace.comparison.viewMode") {
+      return state.ui.workspace.comparisonViewMode;
+    }
+    if (field === "workspace.comparison.splitPercent") {
+      return state.ui.workspace.comparisonSplitPercent;
+    }
+    if (field === "workspace.comparison.findingNote") {
+      return state.ui.workspace.comparisonFindingNote;
     }
     return undefined;
   }
@@ -97,6 +107,41 @@ export function createLabWorkspaceSettingsController(deps: LabWorkspaceSettingsC
     }
     if (field.startsWith("workspace.audioFocus.")) {
       patchAudioFocusSetting(field.replace("workspace.audioFocus.", ""), rawValue);
+      return;
+    }
+    if (field === "workspace.comparison.viewMode") {
+      const value = String(rawValue);
+      if (
+        value === "side-by-side" ||
+        value === "stacked" ||
+        value === "split" ||
+        value === "difference" ||
+        value === "roi-detail"
+      ) {
+        deps.dispatch({
+          type: "workspace-comparison-updated",
+          patch: { comparisonViewMode: value as LabComparisonViewMode },
+        });
+      }
+      return;
+    }
+    if (field === "workspace.comparison.splitPercent") {
+      const parsed = typeof rawValue === "number" ? rawValue : parseFloat(String(rawValue));
+      deps.dispatch({
+        type: "workspace-comparison-updated",
+        patch: {
+          comparisonSplitPercent: Number.isFinite(parsed)
+            ? Math.max(0, Math.min(100, parsed))
+            : 50,
+        },
+      });
+      return;
+    }
+    if (field === "workspace.comparison.findingNote") {
+      deps.dispatch({
+        type: "workspace-comparison-updated",
+        patch: { comparisonFindingNote: String(rawValue || "").slice(0, 1000) },
+      });
     }
   }
 

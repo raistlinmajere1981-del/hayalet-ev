@@ -6,6 +6,8 @@ const LAB_OPERATION_UI_ACTION_TO_TRACKED_ACTION = {
   "workspace-audio-cleanup-export": "export-clean-audio",
   "workspace-band-pass-voice-export": "export-band-pass-voice",
   "workspace-before-after-export": "export-before-after-variant",
+  "workspace-comparison-finding-save": "save-comparison-finding",
+  "workspace-comparison-moment-capture": "capture-comparison-moment",
   "workspace-enhanced-frame-export": "export-enhanced-frame",
   "workspace-image-comparison-export": "export-image-comparison",
   "workspace-selection-roi-export": "export-roi-image",

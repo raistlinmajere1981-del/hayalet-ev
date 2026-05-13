@@ -900,6 +900,12 @@ textarea.repair-wizard-field__input {
   color: var(--repair-cyan);
 }
 
+.repair-timeline__control-btn--active {
+  border-color: var(--repair-cyan);
+  background: var(--repair-cyan-soft);
+  color: var(--repair-cyan);
+}
+
 .repair-timeline__scrub {
   width: calc(100% - var(--repair-sp-6));
   height: var(--repair-px-18);
@@ -1250,6 +1256,23 @@ button.repair-skill-chip:hover,
   line-height: 1.4;
 }
 
+.repair-sync-focus__actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--repair-px-4);
+  margin-top: var(--repair-sp-2);
+}
+
+.repair-sync-focus__action {
+  min-height: var(--repair-px-26);
+  border: var(--repair-px-1) solid var(--repair-border-strong);
+  border-radius: var(--repair-radius-inner);
+  background: rgba(5, 8, 12, 0.46);
+  color: var(--repair-cyan);
+  font: 700 var(--repair-px-10) var(--repair-mono);
+  cursor: pointer;
+}
+
 /* ── Chat Panel ──────────────────────────────────────────────────── */
 .repair-chat-turns {
   display: flex;
@@ -1410,6 +1433,147 @@ button.repair-skill-chip:hover,
   font-family: var(--repair-mono);
   color: var(--repair-text-dim);
   width: var(--repair-px-24);
+}
+
+/* ── Phase 2 Forensic Interaction Layer ─────────────────────────── */
+.repair-viewport[data-mode="replay"] {
+  box-shadow: inset 0 0 0 var(--repair-px-1) var(--repair-amber-border);
+}
+
+.repair-viewport[data-mode="freeze"] {
+  box-shadow: inset 0 0 0 var(--repair-px-1) var(--repair-risk);
+}
+
+.repair-viewport[data-mode="investigation"] {
+  box-shadow:
+    inset 0 0 0 var(--repair-px-1) var(--repair-border-strong),
+    inset 0 0 var(--repair-px-44) rgba(0, 0, 0, 0.36);
+}
+
+.repair-viewport[data-cursor="pan"] {
+  cursor: grab;
+}
+
+.repair-viewport[data-cursor="measurement"],
+.repair-viewport[data-cursor="annotate"] {
+  cursor: crosshair;
+}
+
+.repair-viewport[data-cursor="replay-scrub-lock"] {
+  cursor: not-allowed;
+}
+
+.repair-annotation-inspector {
+  position: absolute;
+  right: var(--repair-sp-3);
+  top: var(--repair-sp-3);
+  width: min(280px, calc(100% - var(--repair-sp-6)));
+  padding: var(--repair-sp-3);
+  border: var(--repair-px-1) solid var(--repair-border-strong);
+  border-radius: var(--repair-radius-inner);
+  background: rgba(5, 8, 12, 0.88);
+  backdrop-filter: blur(var(--repair-px-8));
+  pointer-events: none;
+}
+
+.repair-annotation-inspector__title {
+  font-family: var(--repair-mono);
+  font-size: var(--repair-px-10);
+  color: var(--repair-cyan);
+  text-transform: uppercase;
+}
+
+.repair-annotation-inspector__detail {
+  margin-top: var(--repair-px-6);
+  color: var(--repair-text);
+  font-size: var(--repair-px-12);
+}
+
+.repair-annotation-inspector__meta {
+  margin-top: var(--repair-px-8);
+  font-family: var(--repair-mono);
+  font-size: var(--repair-px-10);
+  color: var(--repair-text-dim);
+}
+
+.repair-annotation-inspector__links,
+.repair-annotation-inspector__selection {
+  margin-top: var(--repair-px-6);
+  font-family: var(--repair-mono);
+  font-size: var(--repair-px-10);
+  line-height: 1.35;
+  color: var(--repair-text-muted);
+}
+
+.repair-annotation-inspector__selection {
+  color: var(--repair-cyan);
+}
+
+.repair-section-label {
+  padding: var(--repair-sp-2) 0 var(--repair-sp-1);
+  font-family: var(--repair-mono);
+  font-size: var(--repair-px-10);
+  text-transform: uppercase;
+  letter-spacing: var(--repair-em-0-08);
+  color: var(--repair-text-dim);
+}
+
+.repair-measurement-evidence-list,
+.repair-knowledge-spatial-list {
+  display: grid;
+  gap: var(--repair-px-6);
+}
+
+.repair-measurement-evidence,
+.repair-knowledge-spatial {
+  display: grid;
+  gap: var(--repair-px-4);
+  width: 100%;
+  padding: var(--repair-sp-2);
+  border: var(--repair-px-1) solid var(--repair-border-muted);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-surface-control);
+  color: var(--repair-text-muted);
+  text-align: left;
+  cursor: pointer;
+}
+
+.repair-measurement-evidence:hover,
+.repair-knowledge-spatial:hover,
+.repair-knowledge-spatial--active {
+  border-color: var(--repair-border-strong);
+  color: var(--repair-text);
+  background: var(--repair-cyan-wash);
+}
+
+.repair-measurement-evidence__label,
+.repair-measurement-evidence__value {
+  font-family: var(--repair-mono);
+  font-size: var(--repair-px-10);
+}
+
+.repair-measurement-evidence__value {
+  color: var(--repair-cyan);
+  font-variant-numeric: tabular-nums;
+}
+
+.repair-measurement-evidence__spark {
+  display: flex;
+  align-items: end;
+  gap: var(--repair-px-2);
+  height: var(--repair-px-18);
+}
+
+.repair-measurement-evidence__spark i {
+  display: block;
+  width: var(--repair-px-3);
+  border-radius: var(--repair-px-2) var(--repair-px-2) 0 0;
+  background: var(--repair-cyan-half);
+}
+
+.repair-knowledge-spatial {
+  font-family: var(--repair-mono);
+  font-size: var(--repair-px-10);
 }
 
 /* ── Legend Bar ───────────────────────────────────────────────────── */

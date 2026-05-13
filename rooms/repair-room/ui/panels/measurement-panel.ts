@@ -12,6 +12,7 @@ export function renderMeasurementPanel(
   body.className = "repair-panel__body";
 
   const meas = state.measurement;
+  const evidence = state.workbench.measurementEvidence;
 
   // -- Tabs
   const tabs = documentRef.createElement("div");
@@ -96,6 +97,49 @@ export function renderMeasurementPanel(
   }
 
   body.append(readingsList);
+
+  if (evidence.length > 0) {
+    const evidenceHeader = documentRef.createElement("div");
+    evidenceHeader.className = "repair-section-label";
+    evidenceHeader.textContent = text(["measurement", "evidence"], "Spatial Evidence");
+    body.append(evidenceHeader);
+
+    const evidenceList = documentRef.createElement("div");
+    evidenceList.className = "repair-measurement-evidence-list";
+    evidence.slice(0, 4).forEach((entry) => {
+      const card = documentRef.createElement("button");
+      card.className = "repair-measurement-evidence";
+      card.type = "button";
+      card.dataset["repairAction"] = "jump-to-event";
+      card.dataset["eventId"] = entry.eventId;
+
+      const label = documentRef.createElement("span");
+      label.className = "repair-measurement-evidence__label";
+      label.textContent = entry.reference;
+      card.append(label);
+
+      const value = documentRef.createElement("span");
+      value.className = "repair-measurement-evidence__value";
+      value.textContent =
+        entry.previousDisplay === null
+          ? entry.currentDisplay
+          : `${entry.previousDisplay} → ${entry.currentDisplay}`;
+      card.append(value);
+
+      const spark = documentRef.createElement("span");
+      spark.className = "repair-measurement-evidence__spark";
+      entry.history.slice(-6).forEach((reading, index) => {
+        const bar = documentRef.createElement("i");
+        bar.style.height = `${Math.max(3, Math.min(16, 4 + index * 2))}px`;
+        bar.title = reading;
+        spark.append(bar);
+      });
+      card.append(spark);
+
+      evidenceList.append(card);
+    });
+    body.append(evidenceList);
+  }
 
   return createRepairPanel(documentRef, {
     panelId: "measurement",

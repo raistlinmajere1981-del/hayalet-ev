@@ -3,6 +3,13 @@ import { createRepairPanel } from "./panel-shell.js";
 
 type TextFn = (path: string[], fallback: string) => string;
 
+const AI_LIFECYCLE_ACTIONS = [
+  ["acknowledged", "ACK"],
+  ["investigating", "INV"],
+  ["resolved", "RES"],
+  ["dismissed", "DIS"],
+] as const;
+
 export function renderRoomSyncPanel(
   documentRef: Document,
   state: RepairUiState,
@@ -71,8 +78,27 @@ export function renderRoomSyncPanel(
                   ? focused.reason
                   : focused.kind === "note"
                     ? focused.text
-                    : focused.title;
+                    : focused.kind === "ai-mark-lifecycle"
+                      ? focused.reason
+                      : focused.title;
   focusCard.append(detail);
+
+  if (focused?.kind === "ai-mark") {
+    const actions = documentRef.createElement("div");
+    actions.className = "repair-sync-focus__actions";
+    AI_LIFECYCLE_ACTIONS.forEach(([stateId, label]) => {
+      const button = documentRef.createElement("button");
+      button.type = "button";
+      button.className = "repair-sync-focus__action";
+      button.textContent = label;
+      button.title = `Move AI mark to ${stateId}`;
+      button.dataset["repairAction"] = "ai-mark-state";
+      button.dataset["eventId"] = focused.id;
+      button.dataset["aiState"] = stateId;
+      actions.append(button);
+    });
+    focusCard.append(actions);
+  }
   body.append(focusCard);
 
   return createRepairPanel(documentRef, {

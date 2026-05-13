@@ -1,3 +1,17 @@
+import type { RepairImagePoint, RepairImageRect } from "./repair-event.js";
+
+export type RepairKnowledgeSpatialRefKind = "board-coordinate" | "region" | "component" | "rail";
+
+export interface RepairKnowledgeSpatialRef {
+  kind: RepairKnowledgeSpatialRefKind;
+  label: string;
+  point?: RepairImagePoint | null;
+  region?: RepairImageRect | null;
+  componentId?: string | null;
+  rail?: string | null;
+  linkedSnapshotId?: string | null;
+}
+
 export interface RepairKnowledgePackResource {
   id: string;
   label: string;
@@ -6,6 +20,7 @@ export interface RepairKnowledgePackResource {
   source: string;
   pages: number | null;
   confidence: number;
+  spatialRefs?: RepairKnowledgeSpatialRef[];
 }
 
 export interface RepairCommonFailure {
@@ -15,6 +30,7 @@ export interface RepairCommonFailure {
   affectedPart: string | null;
   recommendedAction: string;
   confidence: number;
+  spatialRef?: RepairKnowledgeSpatialRef | null;
 }
 
 export interface RepairTestPoint {
@@ -25,6 +41,7 @@ export interface RepairTestPoint {
   unit: string;
   tolerance: number | null;
   pinAt: { xPx: number; yPx: number } | null;
+  spatialRef?: RepairKnowledgeSpatialRef | null;
 }
 
 export interface RepairKnowledgePackStats {
