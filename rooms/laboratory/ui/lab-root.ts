@@ -153,6 +153,9 @@ export function startLaboratoryLabRoot() {
     getActiveSelection() {
       return store.getState().ui.workspace.activeSelection;
     },
+    getComparisonRoi(side) {
+      return store.getState().ui.workspace.comparisonRois[side];
+    },
     getSourceKind() {
       const sourceKind = asNonEmptyString(asLabRecord(store.getState().source)["kind"]);
       return sourceKind || "video";

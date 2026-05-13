@@ -151,7 +151,7 @@ function getAssetPrimaryAction(asset: LabAsset): { action: string; value: string
     return { action: "open-report-overlay", value: getReportAssetView(asset) };
   }
   if (getAssetMediaKind(asset) !== null) {
-    return { action: "workspace-content-open", value: asset.id };
+    return { action: "source-activate-asset", value: asset.id };
   }
   if (getAssetContentActionKind(asset) === "document") {
     return { action: "open-document-overlay", value: asset.id };
@@ -183,9 +183,7 @@ function renderAssetRelationMeta(
 
   if (asset.type !== "audio") {
     const relation = `${activeSourceLabel}${comparisonReferenceLabel}`;
-    return relation === ""
-      ? ""
-      : `<span class="labx-sp-asset__relation">${relation}</span>`;
+    return relation === "" ? "" : `<span class="labx-sp-asset__relation">${relation}</span>`;
   }
 
   const parentSource = getParentSourceForAsset(state, asset.id);

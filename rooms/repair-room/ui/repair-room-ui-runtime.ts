@@ -1,4 +1,9 @@
-import type { RepairEvent, RepairPanelId } from "../shared/types/index.js";
+import type {
+  RepairEvent,
+  RepairImageRect,
+  RepairPanelId,
+  RepairWorkbenchViewport,
+} from "../shared/types/index.js";
 import type { RepairUiState, RepairUiSnapshotMeta } from "../shared/ui/state.js";
 import { normalizeRepairHostMessage } from "../shared/ui/host-messages.js";
 import { REPAIR_ROOM_ID, REPAIR_UI_COLORS } from "../shared/repair-constants.js";
@@ -15,6 +20,8 @@ import { renderChatPanel } from "./panels/chat-panel.js";
 import { renderMeasurementPanel } from "./panels/measurement-panel.js";
 import { renderRoomSyncPanel } from "./panels/room-sync-panel.js";
 import { mountRepairOverlayStage, type RepairOverlayController } from "./overlay/overlay-stage.js";
+import { getContainedImageFrame } from "./overlay/overlay-coords.js";
+import { getRepairFocusFrame } from "./overlay/overlay-geometry.js";
 import { resolveRepairAssetUrl } from "./repair-asset-url.js";
 
 interface RepairUiWindow {
@@ -34,6 +41,10 @@ interface RepairUiContext {
 
 type RepairPanelRenderer = () => HTMLElement;
 type RepairMutableStyleProperty = "left" | "width" | "transform" | "transformOrigin";
+
+interface RepairSpatialFocusTween {
+  cancel: () => void;
+}
 
 const AI_LIFECYCLE_ACTIONS = [
   ["acknowledged", "ACK"],
@@ -58,6 +69,69 @@ interface RepairPersistentShell {
   dock: HTMLElement;
   panelElements: Map<RepairPanelId, HTMLElement>;
   panelSignatures: Map<RepairPanelId, string>;
+}
+
+function easeOutPower2(progress: number): number {
+  const remaining = 1 - progress;
+  return 1 - remaining * remaining;
+}
+
+function interpolateWorkbenchViewport(
+  from: RepairWorkbenchViewport,
+  to: RepairWorkbenchViewport,
+  progress: number
+): RepairWorkbenchViewport {
+  return {
+    zoom: from.zoom + (to.zoom - from.zoom) * progress,
+    panXPx: from.panXPx + (to.panXPx - from.panXPx) * progress,
+    panYPx: from.panYPx + (to.panYPx - from.panYPx) * progress,
+  };
+}
+
+function createSpatialFocusTween({
+  durationMs,
+  from,
+  onComplete,
+  onUpdate,
+  to,
+}: {
+  durationMs: number;
+  from: RepairWorkbenchViewport;
+  onComplete: () => void;
+  onUpdate: (viewport: RepairWorkbenchViewport) => void;
+  to: RepairWorkbenchViewport;
+}): RepairSpatialFocusTween {
+  let frameId: number | null = null;
+  let startedAt: number | null = null;
+  let cancelled = false;
+
+  function tick(now: number): void {
+    if (cancelled) return;
+    startedAt ??= now;
+    const elapsedMs = now - startedAt;
+    const progress = Math.min(1, elapsedMs / durationMs);
+    onUpdate(interpolateWorkbenchViewport(from, to, easeOutPower2(progress)));
+
+    if (progress < 1) {
+      frameId = window.requestAnimationFrame(tick);
+      return;
+    }
+
+    frameId = null;
+    onComplete();
+  }
+
+  frameId = window.requestAnimationFrame(tick);
+
+  return {
+    cancel() {
+      cancelled = true;
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+        frameId = null;
+      }
+    },
+  };
 }
 
 function createInitialState(): RepairUiState {
@@ -98,15 +172,20 @@ function createInitialState(): RepairUiState {
       focusedEventId: null,
       selection: {
         hoveredEventId: null,
+        hoveredEntityRef: null,
         selectedEventIds: [],
+        selectedEntityRefs: [],
         inspectorEventId: null,
+        inspectorEntityRef: null,
         focusJumpEventId: null,
+        focusJumpEntityRef: null,
       },
       contextualCursor: "inspect",
       operationalMode: "live",
       aiMarks: [],
       measurementEvidence: [],
       focusMode: false,
+      investigationModeEnabled: false,
     },
     tacticalFeed: [],
     wizard: {
@@ -226,6 +305,11 @@ export function createRepairRoomUiRuntime() {
       activeFreezeFrameEventId: null,
       focusSuggestionEventId: null,
       knowledgeRegions: [],
+      investigationRegions: [],
+      temporarySpatialRegions: [],
+      measurementRelationships: [],
+      timelineDensity: [],
+      activeSpatialFocus: null,
       operationalMode: "live",
     },
   };
@@ -242,6 +326,9 @@ export function createRepairRoomUiRuntime() {
   let overlayMountVersion = 0;
   let latestOverlayConfig: Parameters<typeof mountRepairOverlayStage>[0] | null = null;
   let lastOverlaySignature = "";
+  let spatialFocusTween: RepairSpatialFocusTween | null = null;
+  let spatialFocusTweenToken = 0;
+  let lastSpatialFocusKey: string | null = null;
 
   // -- i18n helper
   function text(path: string[], fallback: string): string {
@@ -439,6 +526,10 @@ export function createRepairRoomUiRuntime() {
         return "START";
       case "ai-mark-lifecycle":
         return "AI STATE";
+      case "investigation-region-created":
+        return "REGION";
+      case "investigation-region-updated":
+        return "REGION";
       default:
         return "EVENT";
     }
@@ -594,6 +685,10 @@ export function createRepairRoomUiRuntime() {
         return event.title;
       case "ai-mark-lifecycle":
         return event.reason;
+      case "investigation-region-created":
+        return event.label;
+      case "investigation-region-updated":
+        return event.label ?? event.regionId;
       default: {
         const exhaustiveEvent: never = event;
         return exhaustiveEvent;
@@ -648,6 +743,12 @@ export function createRepairRoomUiRuntime() {
       const group =
         event.group?.rail ?? event.group?.component ?? event.group?.powerDomain ?? "ungrouped";
       return `${base} • ${group.toUpperCase()}`;
+    }
+    if (event.kind === "investigation-region-created") {
+      return `${base} • ${event.status.toUpperCase()} • ${event.regionId}`;
+    }
+    if (event.kind === "investigation-region-updated") {
+      return `${base} • ${(event.status ?? "updated").toUpperCase()} • ${event.regionId}`;
     }
     return `${base} • ${event.linkedEventIds.length} linked events`;
   }
@@ -756,6 +857,111 @@ export function createRepairRoomUiRuntime() {
     lastOverlaySignature = "";
   }
 
+  function cancelSpatialFocusTween(): void {
+    spatialFocusTweenToken += 1;
+    spatialFocusTween?.cancel();
+    spatialFocusTween = null;
+  }
+
+  function getSpatialFocusKey(): string | null {
+    const focus = meta.replay.activeSpatialFocus;
+    if (focus === null || focus.region === null) return null;
+    return JSON.stringify({ ref: focus.ref, region: focus.region });
+  }
+
+  function clampUiViewportPan(
+    viewport: RepairWorkbenchViewport,
+    imageWidthPx: number,
+    imageHeightPx: number
+  ): RepairWorkbenchViewport {
+    const maxX = Math.max(0, imageWidthPx * Math.max(0, viewport.zoom - 1));
+    const maxY = Math.max(0, imageHeightPx * Math.max(0, viewport.zoom - 1));
+    return {
+      zoom: viewport.zoom,
+      panXPx: Math.max(-maxX, Math.min(maxX, viewport.panXPx)),
+      panYPx: Math.max(-maxY, Math.min(maxY, viewport.panYPx)),
+    };
+  }
+
+  function getSpatialFocusViewportTarget(
+    viewport: HTMLElement,
+    region: RepairImageRect
+  ): RepairWorkbenchViewport | null {
+    const session = state.sessions.detail;
+    const image = session?.pcbImage ?? null;
+    if (image === null) return null;
+    const bounds = viewport.getBoundingClientRect();
+    const width = Math.max(1, bounds.width || viewport.clientWidth || 1);
+    const height = Math.max(1, bounds.height || viewport.clientHeight || 1);
+    const frame = getContainedImageFrame(width, height, image.widthPx, image.heightPx);
+    const focusFrame = getRepairFocusFrame(region, image.widthPx, image.heightPx, 54);
+    const zoomForWidth = (width * 0.62) / Math.max(1, focusFrame.widthPx * frame.scale);
+    const zoomForHeight = (height * 0.62) / Math.max(1, focusFrame.heightPx * frame.scale);
+    const zoom = Math.min(3.2, Math.max(1.05, Math.min(zoomForWidth, zoomForHeight)));
+    const center = {
+      xPx: focusFrame.xPx + focusFrame.widthPx / 2,
+      yPx: focusFrame.yPx + focusFrame.heightPx / 2,
+    };
+    return clampUiViewportPan(
+      {
+        zoom,
+        panXPx: width / 2 - frame.leftPx - center.xPx * frame.scale * zoom,
+        panYPx: height / 2 - frame.topPx - center.yPx * frame.scale * zoom,
+      },
+      image.widthPx,
+      image.heightPx
+    );
+  }
+
+  function applyLocalWorkbenchViewport(viewport: RepairWorkbenchViewport): void {
+    state.workbench.viewport = viewport;
+    const workbenchPanel = shell?.panelElements.get("workbench-stage") ?? null;
+    if (workbenchPanel !== null) {
+      updateWorkbenchPanelDom(workbenchPanel);
+    }
+    if (shell !== null) {
+      void syncOverlay(shell.root);
+    }
+  }
+
+  function syncSpatialFocusTween(): void {
+    const focusKey = getSpatialFocusKey();
+    if (focusKey === null) {
+      lastSpatialFocusKey = null;
+      cancelSpatialFocusTween();
+      return;
+    }
+    if (focusKey === lastSpatialFocusKey) return;
+    const viewport = documentRef.querySelector<HTMLElement>(".repair-viewport");
+    const focusRegion = meta.replay.activeSpatialFocus?.region ?? null;
+    if (viewport === null || focusRegion === null) return;
+    const target = getSpatialFocusViewportTarget(viewport, focusRegion);
+    if (target === null) return;
+
+    cancelSpatialFocusTween();
+    lastSpatialFocusKey = focusKey;
+    const token = spatialFocusTweenToken;
+    spatialFocusTween = createSpatialFocusTween({
+      durationMs: 420,
+      from: state.workbench.viewport,
+      to: target,
+      onUpdate: (viewport) => {
+        if (token !== spatialFocusTweenToken) return;
+        applyLocalWorkbenchViewport(viewport);
+      },
+      onComplete: () => {
+        if (token !== spatialFocusTweenToken) return;
+        spatialFocusTween = null;
+        applyLocalWorkbenchViewport(target);
+        requestRuntime.updateViewport({
+          viewportZoom: target.zoom,
+          panXPx: target.panXPx,
+          panYPx: target.panYPx,
+        });
+      },
+    });
+  }
+
   function buildOverlaySignature(config: Parameters<typeof mountRepairOverlayStage>[0]): string {
     return JSON.stringify({
       events: config.events.map((event) => [
@@ -769,13 +975,20 @@ export function createRepairRoomUiRuntime() {
       focusedEventId: config.focusedEventId,
       image: [config.image.src, config.image.widthPx, config.image.heightPx],
       visibleLayers: config.visibleLayers,
+      activeSpatialFocus: config.activeSpatialFocus,
+      investigationRegions: config.investigationRegions,
       knowledgeRegions: config.knowledgeRegions,
+      measurementRelationships: config.measurementRelationships,
+      temporarySpatialRegions: config.temporarySpatialRegions,
       workbench: {
         activeTool: config.workbench.activeTool,
         viewport: config.workbench.viewport,
         contextualCursor: config.workbench.contextualCursor,
         hoveredEventId: config.workbench.selection.hoveredEventId,
+        hoveredEntityRef: config.workbench.selection.hoveredEntityRef,
         selectedEventIds: config.workbench.selection.selectedEventIds,
+        selectedEntityRefs: config.workbench.selection.selectedEntityRefs,
+        investigationModeEnabled: config.workbench.investigationModeEnabled,
       },
     });
   }
@@ -792,10 +1005,14 @@ export function createRepairRoomUiRuntime() {
     };
     return {
       container: overlayHost,
+      activeSpatialFocus: meta.replay.activeSpatialFocus,
       events: meta.replay.overlayEvents,
       focusedEventId: state.workbench.focusedEventId ?? meta.replay.focusSuggestionEventId,
       image,
+      investigationRegions: meta.replay.investigationRegions,
       knowledgeRegions: meta.replay.knowledgeRegions,
+      measurementRelationships: meta.replay.measurementRelationships,
+      temporarySpatialRegions: meta.replay.temporarySpatialRegions,
       visibleLayers: state.workbench.visibleLayers,
       workbench: state.workbench,
       onAddAnnotation: (payload) => {
@@ -808,6 +1025,25 @@ export function createRepairRoomUiRuntime() {
         });
       },
       onCursor: updateCursorHud,
+      onEntityClick: (ref, interaction) => {
+        cancelSpatialFocusTween();
+        requestRuntime.selectOverlayEntities({
+          refs: [ref],
+          mode: interaction.additive ? "toggle" : "replace",
+          inspectorRef: ref,
+          focusJump: interaction.focusJump,
+        });
+        if (interaction.focusJump && interaction.additive === false) {
+          requestRuntime.focusOverlayEntity({ ref, focusJump: true });
+        }
+      },
+      onEntityFocus: (ref) => {
+        cancelSpatialFocusTween();
+        requestRuntime.focusOverlayEntity({ ref, focusJump: true });
+      },
+      onEntityHover: (ref) => {
+        requestRuntime.updateFocus({ hoveredEntityRef: ref });
+      },
       onEventClick: (eventId, interaction) => {
         const nextSelectedEventIds = interaction.additive
           ? state.workbench.selection.selectedEventIds.includes(eventId)
@@ -820,7 +1056,13 @@ export function createRepairRoomUiRuntime() {
           ? eventId
           : (nextSelectedEventIds.at(-1) ?? null);
         state.workbench.selection.selectedEventIds = nextSelectedEventIds;
+        state.workbench.selection.selectedEntityRefs = nextSelectedEventIds.map((id) => ({
+          kind: "event",
+          id,
+        }));
         state.workbench.selection.inspectorEventId = nextInspectorEventId;
+        state.workbench.selection.inspectorEntityRef =
+          nextInspectorEventId === null ? null : { kind: "event", id: nextInspectorEventId };
         state.workbench.focusedEventId = nextInspectorEventId;
         requestRuntime.updateFocus({
           eventId,
@@ -831,16 +1073,38 @@ export function createRepairRoomUiRuntime() {
       },
       onEventHover: (eventId) => {
         state.workbench.selection.hoveredEventId = eventId;
+        state.workbench.selection.hoveredEntityRef =
+          eventId === null ? null : { kind: "event", id: eventId };
         requestRuntime.updateFocus({ hoveredEventId: eventId });
       },
       onSelectionClear: () => {
+        cancelSpatialFocusTween();
         state.workbench.focusedEventId = null;
         state.workbench.selection.selectedEventIds = [];
+        state.workbench.selection.selectedEntityRefs = [];
         state.workbench.selection.inspectorEventId = null;
+        state.workbench.selection.inspectorEntityRef = null;
         state.workbench.selection.focusJumpEventId = null;
+        state.workbench.selection.focusJumpEntityRef = null;
         requestRuntime.updateFocus({ clearSelection: true });
       },
+      onMarqueeSelect: (refs, additive) => {
+        requestRuntime.selectOverlayEntities({
+          refs,
+          mode: additive ? "toggle" : "replace",
+          inspectorRef: refs.at(-1) ?? null,
+          focusJump: false,
+        });
+      },
+      onNudgeSelection: (delta, hardSnap) => {
+        cancelSpatialFocusTween();
+        requestRuntime.updateFocus({
+          nudgeDelta: delta,
+          hardSnap,
+        });
+      },
       onViewportChange: (payload) => {
+        cancelSpatialFocusTween();
         requestRuntime.updateViewport({
           viewportZoom: payload.zoom,
           panXPx: payload.panXPx,
@@ -1043,6 +1307,14 @@ export function createRepairRoomUiRuntime() {
           state.workbench.visibleLayers[layerId as keyof typeof state.workbench.visibleLayers];
         button.classList.toggle("repair-toolbar__btn--active", visible === true);
         setDatasetIfChanged(button, "visible", String(visible !== true));
+      });
+    panel
+      .querySelectorAll<HTMLElement>("[data-repair-action='toggle-investigation-mode']")
+      .forEach((button) => {
+        button.classList.toggle(
+          "repair-toolbar__btn--active",
+          state.workbench.investigationModeEnabled
+        );
       });
   }
 
@@ -1324,6 +1596,12 @@ export function createRepairRoomUiRuntime() {
     chip.setAttribute("type", "button");
     chip.title = `${event.kind} — ${event.occurredAt}`;
     chip.style.left = `${(deltaMs / totalMs) * 100}%`;
+    const density =
+      meta.replay.timelineDensity.find(
+        (bucket) => deltaMs >= bucket.bucketStartMs && deltaMs < bucket.bucketEndMs
+      )?.density ?? 0;
+    chip.style.setProperty("--repair-chip-density", density.toFixed(2));
+    chip.dataset["spatialDensity"] = density.toFixed(2);
 
     if (zoom < 0.6) {
       chip.replaceChildren();
@@ -1728,6 +2006,23 @@ export function createRepairRoomUiRuntime() {
       if (el === null) return;
       const action = el.dataset["repairAction"];
       if (action === undefined) return;
+      if (
+        [
+          "activate-session",
+          "set-tool",
+          "jump-to-event",
+          "knowledge-spatial-focus",
+          "knowledge-spatial-promote",
+          "timeline-zoom",
+          "timeline-range",
+          "timeline-play",
+          "timeline-pause",
+          "timeline-live",
+          "timeline-speed",
+        ].includes(action)
+      ) {
+        cancelSpatialFocusTween();
+      }
       switch (action) {
         case "activate-session": {
           const sessionId = el.dataset["sessionId"];
@@ -1745,6 +2040,11 @@ export function createRepairRoomUiRuntime() {
           if (layerId) requestRuntime.toggleOverlayLayer({ layerId, visible });
           break;
         }
+        case "toggle-investigation-mode":
+          requestRuntime.toggleInvestigationMode({
+            enabled: !state.workbench.investigationModeEnabled,
+          });
+          break;
         case "jump-to-event": {
           const eventId = el.dataset["eventId"];
           if (eventId) requestRuntime.jumpToEvent({ eventId });
@@ -1762,7 +2062,12 @@ export function createRepairRoomUiRuntime() {
         }
         case "knowledge-spatial-focus": {
           const spatialRefId = el.dataset["spatialRefId"];
-          if (spatialRefId) requestRuntime.updatePanelTab({ spatialRefId });
+          if (spatialRefId) requestRuntime.focusKnowledgeSpatialRef({ spatialRefId });
+          break;
+        }
+        case "knowledge-spatial-promote": {
+          const spatialRefId = el.dataset["spatialRefId"];
+          if (spatialRefId) requestRuntime.promoteKnowledgeRegion({ spatialRefId });
           break;
         }
         case "ai-mark-state": {
@@ -1863,7 +2168,7 @@ export function createRepairRoomUiRuntime() {
           requestRuntime.updateTimeline({ replayAction: "pause" });
           break;
         case "timeline-live":
-          requestRuntime.updateTimeline({ replayAction: "live" });
+          requestRuntime.focusLiveEdge();
           break;
         case "timeline-speed": {
           const nextSpeed =
@@ -1880,6 +2185,7 @@ export function createRepairRoomUiRuntime() {
       const el = findActionElement(event.target);
       if (!(el instanceof HTMLInputElement)) return;
       if (el.dataset["repairAction"] === "timeline-scrub") {
+        cancelSpatialFocusTween();
         requestRuntime.scrubTimeline({ positionMs: Number(el.value) });
       }
     });
@@ -1903,38 +2209,87 @@ export function createRepairRoomUiRuntime() {
     const nextIndex = Math.min(meta.events.length - 1, Math.max(0, currentIndex + direction));
     const event = meta.events[nextIndex];
     if (event !== undefined) {
+      cancelSpatialFocusTween();
       requestRuntime.jumpToEvent({ eventId: event.id });
     }
   }
 
-  function getTimelineLiveEdgeMs(): number {
-    const session = state.sessions.detail;
-    if (session === null) return 0;
-    const sessionStart = Date.parse(session.startedAt);
-    const eventEdge = meta.events.reduce(
-      (edge, event) => Math.max(edge, Date.parse(event.occurredAt) - sessionStart),
-      0
-    );
-    return Math.max(
-      0,
-      eventEdge,
-      state.ambient.sessionDurationMs,
-      state.workbench.timeline.playheadMs
-    );
+  function getKeyboardOverlayRefs() {
+    return [
+      ...meta.replay.overlayEvents.map((event) => ({ kind: "event" as const, id: event.id })),
+      ...meta.replay.investigationRegions.map((region) => ({
+        kind: "investigation-region" as const,
+        id: region.regionId,
+      })),
+      ...meta.replay.temporarySpatialRegions.map((region) => ({
+        kind: "temporary-spatial-region" as const,
+        id: region.id,
+      })),
+      ...meta.replay.knowledgeRegions.map((region) => ({
+        kind: "knowledge-region" as const,
+        id: region.id,
+      })),
+      ...meta.replay.measurementRelationships.map((relationship) => ({
+        kind: "measurement-relationship" as const,
+        id: relationship.id,
+      })),
+    ];
+  }
+
+  function cycleOverlayEntity(direction: -1 | 1): void {
+    const refs = getKeyboardOverlayRefs();
+    if (refs.length === 0) return;
+    const current =
+      state.workbench.selection.inspectorEntityRef ??
+      state.workbench.selection.selectedEntityRefs.at(-1) ??
+      null;
+    const currentIndex =
+      current === null
+        ? -1
+        : refs.findIndex((ref) => ref.kind === current.kind && ref.id === current.id);
+    const next = refs[(currentIndex + direction + refs.length) % refs.length];
+    if (next !== undefined) {
+      cancelSpatialFocusTween();
+      requestRuntime.selectOverlayEntities({ refs: [next], mode: "replace", inspectorRef: next });
+    }
   }
 
   function scrubTimelineTo(positionMs: number): void {
+    cancelSpatialFocusTween();
     requestRuntime.scrubTimeline({ positionMs: Math.max(0, Math.round(positionMs)) });
   }
 
   // -- Keyboard shortcuts
   function handleKeydown(e: KeyboardEvent): void {
+    if (e.defaultPrevented) return;
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
     switch (e.key) {
+      case "Tab":
+        e.preventDefault();
+        cycleOverlayEntity(e.shiftKey ? -1 : 1);
+        break;
+      case "Enter": {
+        const ref =
+          state.workbench.selection.inspectorEntityRef ??
+          state.workbench.selection.selectedEntityRefs.at(-1) ??
+          null;
+        if (ref !== null) {
+          e.preventDefault();
+          cancelSpatialFocusTween();
+          requestRuntime.focusOverlayEntity({ ref, focusJump: true });
+        }
+        break;
+      }
       case "f":
       case "F":
         requestRuntime.updateFocus({ focusMode: !state.layout.focusMode });
+        break;
+      case "i":
+      case "I":
+        requestRuntime.toggleInvestigationMode({
+          enabled: !state.workbench.investigationModeEnabled,
+        });
         break;
       case " ":
         e.preventDefault();
@@ -1955,7 +2310,8 @@ export function createRepairRoomUiRuntime() {
         scrubTimelineTo(0);
         break;
       case "End":
-        scrubTimelineTo(getTimelineLiveEdgeMs());
+        cancelSpatialFocusTween();
+        requestRuntime.focusLiveEdge();
         break;
       case ",":
         scrubTimelineTo(state.workbench.timeline.playheadMs - 1000);
@@ -1963,6 +2319,23 @@ export function createRepairRoomUiRuntime() {
       case ".":
         scrubTimelineTo(state.workbench.timeline.playheadMs + 1000);
         break;
+      case "ArrowLeft":
+      case "ArrowRight":
+      case "ArrowUp":
+      case "ArrowDown": {
+        const step = e.shiftKey ? 8 : 1;
+        const delta =
+          e.key === "ArrowLeft"
+            ? { xPx: -step, yPx: 0 }
+            : e.key === "ArrowRight"
+              ? { xPx: step, yPx: 0 }
+              : e.key === "ArrowUp"
+                ? { xPx: 0, yPx: -step }
+                : { xPx: 0, yPx: step };
+        cancelSpatialFocusTween();
+        requestRuntime.updateFocus({ nudgeDelta: delta, hardSnap: e.shiftKey });
+        break;
+      }
       case "r":
       case "R":
         requestRuntime.setActiveTool({ tool: "snapshot" });
@@ -1999,6 +2372,7 @@ export function createRepairRoomUiRuntime() {
         meta.events = msg.meta.events;
         meta.replay = msg.meta.replay;
         render();
+        syncSpatialFocusTween();
         applyLiveSnapshotUpdates();
         break;
       }

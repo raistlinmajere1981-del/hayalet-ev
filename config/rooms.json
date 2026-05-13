@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-05-13T10:07:46.960Z",
+  "updatedAt": "2026-05-13T20:45:38.008Z",
   "rooms": [
     {
       "id": "forge-room",
@@ -452,8 +452,8 @@
           "path": "main-functions/forge-workbench/protocols/forge-room-synthesis.md"
         }
       ],
-      "installedAt": "2026-05-13T09:55:08.655Z",
-      "updatedAt": "2026-05-13T09:55:08.655Z"
+      "installedAt": "2026-05-13T20:14:22.790Z",
+      "updatedAt": "2026-05-13T20:14:22.790Z"
     },
     {
       "id": "game-room",
@@ -902,8 +902,8 @@
           "path": "main-functions/team-tetris/protocols/game-room-team-tetris-us1-transport.md"
         }
       ],
-      "installedAt": "2026-05-13T09:55:08.880Z",
-      "updatedAt": "2026-05-13T09:55:08.880Z"
+      "installedAt": "2026-05-13T20:45:37.143Z",
+      "updatedAt": "2026-05-13T20:45:37.143Z"
     },
     {
       "id": "repair-room",
@@ -1060,6 +1060,48 @@
             {
               "name": "RepairRoomUpdateLayout",
               "description": "Compatibility adapter for legacy Repair Room layout updates.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomToggleInvestigationMode",
+              "description": "Toggle the projection-driven spatial investigation overlay mode.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomSelectOverlayEntities",
+              "description": "Select command-addressable overlay entities by semantic refs.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomFocusOverlayEntity",
+              "description": "Focus a command-addressable overlay entity and reveal its spatial context.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomFocusInvestigationRegion",
+              "description": "Focus an event-backed investigation region by stable region id.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomFocusKnowledgeSpatialRef",
+              "description": "Focus a knowledge-pack spatial reference and expose temporary overlay context.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomPromoteKnowledgeRegion",
+              "description": "Promote a knowledge-pack spatial reference into a canonical investigation region event.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomFocusLiveEdge",
+              "description": "Return overlay focus and replay state to the live edge.",
               "scope": "room-ui",
               "exposure": "internal"
             }
@@ -1307,6 +1349,48 @@
           "description": "Compatibility adapter for legacy Repair Room layout updates.",
           "scope": "room-ui",
           "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomToggleInvestigationMode",
+          "description": "Toggle the projection-driven spatial investigation overlay mode.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomSelectOverlayEntities",
+          "description": "Select command-addressable overlay entities by semantic refs.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomFocusOverlayEntity",
+          "description": "Focus a command-addressable overlay entity and reveal its spatial context.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomFocusInvestigationRegion",
+          "description": "Focus an event-backed investigation region by stable region id.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomFocusKnowledgeSpatialRef",
+          "description": "Focus a knowledge-pack spatial reference and expose temporary overlay context.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomPromoteKnowledgeRegion",
+          "description": "Promote a knowledge-pack spatial reference into a canonical investigation region event.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomFocusLiveEdge",
+          "description": "Return overlay focus and replay state to the live edge.",
+          "scope": "room-ui",
+          "exposure": "internal"
         }
       ],
       "protocolSpecs": [
@@ -1343,8 +1427,8 @@
           "path": "main-functions/repair-workbench/protocols/repair-room-risk-detector.md"
         }
       ],
-      "installedAt": "2026-05-13T09:55:09.071Z",
-      "updatedAt": "2026-05-13T09:55:09.071Z"
+      "installedAt": "2026-05-13T20:45:37.345Z",
+      "updatedAt": "2026-05-13T20:45:37.345Z"
     },
     {
       "id": "laboratory",
@@ -1443,8 +1527,8 @@
         }
       },
       "i18nBaseDir": "/home/raistlin/hayalet-ev/rooms/.build/laboratory/runtime/i18n",
-      "installedAt": "2026-05-13T10:07:46.960Z",
-      "updatedAt": "2026-05-13T10:07:46.960Z"
+      "installedAt": "2026-05-13T20:45:38.008Z",
+      "updatedAt": "2026-05-13T20:45:38.008Z"
     }
   ]
 }

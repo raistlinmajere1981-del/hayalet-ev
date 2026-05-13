@@ -244,10 +244,27 @@ export function getPrimaryActionLabel(state: LabStoreState) {
 
 // V2.3 workspace selectors
 
+export function isLabWorkspaceSurfaceReady(state: LabStoreState) {
+  if (state.bootReady) {
+    return true;
+  }
+  if (state.snapshot === null) {
+    return false;
+  }
+  return (
+    state.projectIndex.activeProjectId !== null ||
+    state.projectIndex.projects.length > 0 ||
+    state.source !== null ||
+    state.run !== null ||
+    state.reports.user !== null ||
+    state.reports.ai !== null
+  );
+}
+
 export function getWorkspaceMode(
   state: LabStoreState
 ): import("../models/lab-types.js").WorkspaceMode {
-  if (!state.bootReady && state.source === null) {
+  if (!isLabWorkspaceSurfaceReady(state)) {
     return "loading";
   }
   const run = getCurrentRun(state);

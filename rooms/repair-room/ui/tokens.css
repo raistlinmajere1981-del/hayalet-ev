@@ -43,11 +43,15 @@
   --repair-input-bg: rgba(0, 0, 0, 0.22);
   --repair-chat-bg: rgba(0, 0, 0, 0.3);
   --repair-scrim-strong: rgba(0, 0, 0, 0.7);
+  --repair-scrim-inset: rgba(0, 0, 0, 0.36);
   --repair-timeline-bg: rgba(0, 0, 0, 0.12);
   --repair-thumb-ring: rgba(255, 255, 255, 0.82);
   --repair-thumb-bg: rgba(5, 8, 12, 0.86);
+  --repair-action-bg: rgba(5, 8, 12, 0.46);
+  --repair-popover-bg: rgba(5, 8, 12, 0.88);
   --repair-text-shadow-strong: rgba(0, 0, 0, 0.92);
   --repair-text-glow: rgba(226, 232, 240, 0.36);
+  --repair-chip-density: 0;
 
   --repair-display: "Inter", "Segoe UI Variable Text", system-ui, sans-serif;
   --repair-body: "Inter", "Segoe UI Variable Text", system-ui, sans-serif;
@@ -80,6 +84,7 @@
   --repair-px-20: 20px;
   --repair-px-22: 22px;
   --repair-px-24: 24px;
+  --repair-px-26: 26px;
   --repair-px-28: 28px;
   --repair-px-32: 32px;
   --repair-px-34: 34px;
@@ -94,6 +99,7 @@
   --repair-px-180: 180px;
   --repair-px-220: 220px;
   --repair-px-260: 260px;
+  --repair-px-280: 280px;
   --repair-px-320: 320px;
   --repair-px-360: 360px;
 

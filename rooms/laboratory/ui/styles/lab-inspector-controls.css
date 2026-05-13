@@ -367,6 +367,48 @@
   font-size: var(--lab-inspector-rem-0-64);
 }
 
+.labx-operation-card__comparison-rois {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--lab-inspector-rem-0-38);
+}
+
+.labx-operation-card__comparison-roi {
+  display: grid;
+  gap: var(--lab-inspector-rem-0-14);
+  min-width: 0;
+  padding: var(--lab-inspector-rem-0-36);
+  border: var(--lab-inspector-px-1) solid var(--lab-border-subtle);
+  border-radius: var(--lab-radius-sm);
+  background: var(--lab-surface-0);
+}
+
+.labx-operation-card__comparison-roi[data-selected="true"] {
+  border-color: var(--lab-border-accent);
+  background: var(--lab-accent-bg);
+}
+
+.labx-operation-card__comparison-roi[data-active="true"] {
+  box-shadow: 0 0 0 var(--lab-inspector-px-1) var(--lab-accent-soft);
+}
+
+.labx-operation-card__comparison-roi-label {
+  color: var(--lab-text-soft);
+  font-size: var(--lab-inspector-rem-0-58);
+  font-weight: var(--lab-weight-semibold);
+  letter-spacing: var(--lab-tracking-wide);
+  text-transform: uppercase;
+}
+
+.labx-operation-card__comparison-roi strong {
+  min-width: 0;
+  color: var(--lab-text-strong);
+  font-family: var(--lab-font-mono);
+  font-size: var(--lab-inspector-rem-0-62);
+  font-weight: var(--lab-weight-medium);
+  overflow-wrap: anywhere;
+}
+
 .labx-operation-card__comparison-field,
 .labx-operation-card__comparison-note {
   display: grid;

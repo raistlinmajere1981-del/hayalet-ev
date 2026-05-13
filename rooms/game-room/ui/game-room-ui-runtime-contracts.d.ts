@@ -612,6 +612,7 @@ interface GameRoomUiStateMessageRuntimeRegistry {
     teamTetrisUi: GameRoomTeamTetrisUiModule;
     fateKnotsUi: GameRoomFateKnotsUiModule;
     render: () => void;
+    scheduleRender?: () => void;
   }) => GameRoomUiStateMessageRuntime;
 }
 

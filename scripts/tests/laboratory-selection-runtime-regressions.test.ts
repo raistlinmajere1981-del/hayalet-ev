@@ -1274,6 +1274,117 @@ test("selection roi binder enforces minimum drag size and emits passive roi + in
   assert.equal(store.getState().ui.workspace.activeSelection?.roi, undefined);
 });
 
+test("selection roi binder tags comparison side roi updates from the active image pane", () => {
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  eventBus.subscribe(store.dispatch);
+  bindLabSelectionRoiInteractions({
+    documentRef: documentRef as unknown as Document,
+    emit: eventBus.emit,
+    getActiveSelection() {
+      return store.getState().ui.workspace.activeSelection;
+    },
+    getComparisonRoi(side) {
+      return store.getState().ui.workspace.comparisonRois[side];
+    },
+    getSourceKind() {
+      return "image";
+    },
+  });
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "image",
+      mode: "local",
+      storedPath: "/tmp/comparison-primary.png",
+    },
+  });
+
+  const mouseDownListener = documentRef.listeners.get("mousedown");
+  const mouseMoveListener = documentRef.listeners.get("mousemove");
+  const mouseUpListener = documentRef.listeners.get("mouseup");
+  assert.ok(mouseDownListener);
+  assert.ok(mouseMoveListener);
+  assert.ok(mouseUpListener);
+
+  const primaryStage = new FakeRoiStage(
+    {
+      "data-lab-comparison-roi-side": "primary",
+      "data-lab-selection-roi-controls-reserve": "0",
+    },
+    {
+      left: 0,
+      top: 0,
+      width: 200,
+      height: 100,
+      bottom: 100,
+    }
+  );
+  mouseDownListener?.({
+    button: 0,
+    clientX: 20,
+    clientY: 10,
+    preventDefault() {},
+    target: new FakeRoiDrawTarget(primaryStage) as unknown as EventTarget,
+  } as Event);
+  mouseMoveListener?.({
+    clientX: 100,
+    clientY: 60,
+    preventDefault() {},
+  } as Event);
+  mouseUpListener?.({} as Event);
+
+  assert.equal(store.getState().ui.workspace.comparisonRois.activeSide, "primary");
+  assert.deepEqual(store.getState().ui.workspace.comparisonRois.primary, {
+    x: 0.1,
+    y: 0.1,
+    width: 0.4,
+    height: 0.5,
+  });
+
+  const referenceStage = new FakeRoiStage(
+    {
+      "data-lab-comparison-roi-side": "reference",
+      "data-lab-selection-roi-controls-reserve": "0",
+    },
+    {
+      left: 0,
+      top: 0,
+      width: 200,
+      height: 100,
+      bottom: 100,
+    }
+  );
+  mouseDownListener?.({
+    button: 0,
+    clientX: 30,
+    clientY: 20,
+    preventDefault() {},
+    target: new FakeRoiDrawTarget(referenceStage) as unknown as EventTarget,
+  } as Event);
+  mouseMoveListener?.({
+    clientX: 120,
+    clientY: 70,
+    preventDefault() {},
+  } as Event);
+  mouseUpListener?.({} as Event);
+
+  assert.equal(store.getState().ui.workspace.comparisonRois.activeSide, "reference");
+  assert.deepEqual(store.getState().ui.workspace.comparisonRois.reference, {
+    x: 0.15,
+    y: 0.2,
+    width: 0.45,
+    height: 0.5,
+  });
+  assert.deepEqual(store.getState().ui.workspace.activeSelection?.roi, {
+    x: 0.15,
+    y: 0.2,
+    width: 0.45,
+    height: 0.5,
+  });
+});
+
 test("selection roi redraw binder ignores the existing roi so double-click focus wins precedence", () => {
   class FakeExistingSelectionRoiTarget extends FakeDomElement {
     closest(selector: string) {

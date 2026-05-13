@@ -1,5 +1,10 @@
 import { escapeHtml } from "../models/lab-types.js";
-import type { LabOperationCapabilityProjection, LabSettingsRecord } from "../models/lab-types.js";
+import type {
+  LabComparisonSide,
+  LabOperationCapabilityProjection,
+  LabSelectionROI,
+  LabSettingsRecord,
+} from "../models/lab-types.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 import { renderLabSettingsFields } from "./lab-settings-controls.js";
@@ -10,9 +15,12 @@ export type LabOperationScopeState = {
 };
 
 export type LabOperationComparisonState = {
+  activeSide: LabComparisonSide;
   findingNote: string;
   primaryLabel: string | null;
+  primaryRoi: LabSelectionROI | null;
   referenceLabel: string | null;
+  referenceRoi: LabSelectionROI | null;
   splitPercent: number;
   viewMode: string;
 };
@@ -85,6 +93,62 @@ function renderOperationButton(capability: LabOperationCapabilityProjection, cop
   `;
 }
 
+function formatComparisonRoi(roi: LabSelectionROI | null, copy: LabI18n) {
+  if (roi === null) {
+    return copy.t("mediaAnalysis.operations.comparison.roiMissing", "Henüz seçilmedi");
+  }
+  return copy.t(
+    "mediaAnalysis.operations.comparison.roiSummary",
+    "x:{x}% y:{y}% w:{width}% h:{height}%",
+    {
+      height: String(Math.round(roi.height * 100)),
+      width: String(Math.round(roi.width * 100)),
+      x: String(Math.round(roi.x * 100)),
+      y: String(Math.round(roi.y * 100)),
+    }
+  );
+}
+
+function renderComparisonRoiStatus(comparison: LabOperationComparisonState, copy: LabI18n) {
+  const rows: Array<{
+    label: string;
+    roi: LabSelectionROI | null;
+    side: LabComparisonSide;
+  }> = [
+    {
+      label: copy.t("mediaAnalysis.operations.comparison.primaryRoi", "A bölgesi"),
+      roi: comparison.primaryRoi,
+      side: "primary",
+    },
+    {
+      label: copy.t("mediaAnalysis.operations.comparison.referenceRoi", "B bölgesi"),
+      roi: comparison.referenceRoi,
+      side: "reference",
+    },
+  ];
+
+  return `
+    <div class="labx-operation-card__comparison-rois" aria-label="${escapeHtml(copy.t("mediaAnalysis.operations.comparison.roiStatus", "Karşılaştırma bölgeleri"))}">
+      ${rows
+        .map(function (row) {
+          const selected = row.roi !== null;
+          return `
+            <div
+              class="labx-operation-card__comparison-roi"
+              data-lab-comparison-roi-status="${row.side}"
+              data-active="${comparison.activeSide === row.side ? "true" : "false"}"
+              data-selected="${selected ? "true" : "false"}"
+            >
+              <span class="labx-operation-card__comparison-roi-label">${escapeHtml(row.label)}</span>
+              <strong>${escapeHtml(formatComparisonRoi(row.roi, copy))}</strong>
+            </div>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
 function renderImageComparisonCaptureControls(
   comparison: LabOperationComparisonState | null,
   copy: LabI18n
@@ -109,6 +173,7 @@ function renderImageComparisonCaptureControls(
         <span><strong>A</strong> ${escapeHtml(comparison.primaryLabel || copy.t("mediaAnalysis.operations.comparison.activeImageMissing", "Aktif resim yok"))}</span>
         <span><strong>B</strong> ${escapeHtml(comparison.referenceLabel || copy.t("mediaAnalysis.operations.comparison.referenceMissing", "Referans seçilmedi"))}</span>
       </div>
+      ${renderComparisonRoiStatus(comparison, copy)}
       <label class="labx-operation-card__comparison-field">
         <span>${escapeHtml(copy.t("mediaAnalysis.operations.comparison.viewMode", "Görünüm"))}</span>
         <select data-lab-field="workspace.comparison.viewMode">${viewModeOptions}</select>

@@ -130,9 +130,7 @@ export function createLabWorkspaceSettingsController(deps: LabWorkspaceSettingsC
       deps.dispatch({
         type: "workspace-comparison-updated",
         patch: {
-          comparisonSplitPercent: Number.isFinite(parsed)
-            ? Math.max(0, Math.min(100, parsed))
-            : 50,
+          comparisonSplitPercent: Number.isFinite(parsed) ? Math.max(0, Math.min(100, parsed)) : 50,
         },
       });
       return;

@@ -59,7 +59,7 @@ export function renderPreviewArea(input: { content: string; focusClassName: stri
   const focusClassName =
     input.focusClassName.trim() !== "" ? ` ${escapeHtml(input.focusClassName.trim())}` : "";
   return `
-    <div class="labx-workspace-preview labx-preview-area${focusClassName}" id="lab-workspace-preview" data-lab-region="preview-area" data-preview-mode="single">
+    <div class="labx-workspace-preview labx-preview-area${focusClassName}" id="lab-workspace-preview" data-lab-region="preview-area">
       ${input.content}
     </div>
   `;

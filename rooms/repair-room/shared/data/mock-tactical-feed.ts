@@ -2,6 +2,8 @@ import type {
   RepairAiMarkLifecycleEvent,
   RepairAiMarkEvent,
   RepairEvent,
+  RepairInvestigationRegionCreatedEvent,
+  RepairInvestigationRegionUpdatedEvent,
   RepairNoteEvent,
   RepairRiskFlagEvent,
   RepairSnapshotEvent,
@@ -90,6 +92,28 @@ export function repairEventToTacticalFeedItem(
         severity: "info",
         badge: "AI STATE",
         body: lifecycle.reason,
+      };
+    }
+    case "investigation-region-created": {
+      const region = event as RepairInvestigationRegionCreatedEvent;
+      return {
+        eventId: region.id,
+        occurredAt: region.occurredAt,
+        relativeLabel: relative,
+        severity: "action",
+        badge: "REGION",
+        body: `Investigation region created: ${region.label}`,
+      };
+    }
+    case "investigation-region-updated": {
+      const region = event as RepairInvestigationRegionUpdatedEvent;
+      return {
+        eventId: region.id,
+        occurredAt: region.occurredAt,
+        relativeLabel: relative,
+        severity: region.status === "resolved" ? "info" : "action",
+        badge: "REGION",
+        body: `Investigation region updated: ${region.label ?? region.regionId}`,
       };
     }
     default:

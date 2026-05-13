@@ -200,6 +200,12 @@
     dieFace: cssVar("--game-bg-backgammon-die-face"),
     dieStroke: cssVar("--game-bg-backgammon-die-stroke"),
     diePip: cssVar("--game-bg-backgammon-die-pip"),
+    checkerUserHighlight: cssVar("--game-bg-backgammon-checker-user-highlight"),
+    checkerAiHighlight: cssVar("--game-bg-backgammon-checker-ai-highlight"),
+    checkerUserShadow: cssVar("--game-bg-backgammon-checker-user-shadow"),
+    checkerAiShadow: cssVar("--game-bg-backgammon-checker-ai-shadow"),
+    dieHighlight: cssVar("--game-bg-backgammon-die-highlight"),
+    dieShadow: cssVar("--game-bg-backgammon-die-shadow"),
     passLabel: cssVar("--game-bg-backgammon-pass-label"),
     undoLabel: cssVar("--game-bg-backgammon-undo-label"),
   };
@@ -246,9 +252,7 @@
     for (let point = 1; point <= 24; point += 1) {
       const indexed = board[point - 1];
       const candidate =
-        indexed && indexed.point === point
-          ? indexed
-          : board.find((entry) => entry.point === point);
+        indexed && indexed.point === point ? indexed : board.find((entry) => entry.point === point);
       points.push(candidate ? clonePoint(candidate) : { point, owner: "", count: 0 });
     }
     return points;
@@ -590,7 +594,11 @@
       })
     );
     // Wood grain overlay — horizontal subtle lines
-    for (let grainY = metrics.board.y + 18; grainY < metrics.board.y + metrics.board.height - 18; grainY += 37) {
+    for (
+      let grainY = metrics.board.y + 18;
+      grainY < metrics.board.y + metrics.board.height - 18;
+      grainY += 37
+    ) {
       layer.add(
         new Konva.Line({
           points: [
@@ -838,9 +846,9 @@
     });
     const isUser = owner === "user";
     // Radial gradient colors for 3D dome effect
-    const highlightColor = isUser ? "#fff4d9" : "#2a7070";
+    const highlightColor = isUser ? COLORS.checkerUserHighlight : COLORS.checkerAiHighlight;
     const baseColor = isUser ? USER_COLOR : AI_COLOR;
-    const shadowColor = isUser ? "#8a5a1e" : "#0a1e28";
+    const shadowColor = isUser ? COLORS.checkerUserShadow : COLORS.checkerAiShadow;
     const edgeColor = isUser ? USER_EDGE : AI_EDGE;
     // Base circle with radial gradient (3D dome)
     group.add(
@@ -852,14 +860,7 @@
         fillRadialGradientStartRadius: 0,
         fillRadialGradientEndPoint: { x: 0, y: 2 },
         fillRadialGradientEndRadius: CHECKER_RADIUS + 2,
-        fillRadialGradientColorStops: [
-          0,
-          highlightColor,
-          0.45,
-          baseColor,
-          1,
-          shadowColor,
-        ],
+        fillRadialGradientColorStops: [0, highlightColor, 0.45, baseColor, 1, shadowColor],
         stroke: edgeColor,
         strokeWidth: 1.5,
         shadowColor: "rgba(0,0,0,0.48)",
@@ -1152,11 +1153,11 @@
         fillLinearGradientEndPoint: { x: 38, y: 38 },
         fillLinearGradientColorStops: [
           0,
-          "#fcf4e0",
+          COLORS.dieHighlight,
           0.4,
           COLORS.dieFace,
           1,
-          "#d9c9a4",
+          COLORS.dieShadow,
         ],
         stroke: COLORS.dieStroke,
         strokeWidth: 1.5,
@@ -1214,13 +1215,15 @@
     const pips = pipMap[value] ?? pipMap[1] ?? [];
     pips.forEach((pip) => {
       // Pip inset shadow ring
-      group.add(new Konva.Circle({
-        x: pip.x,
-        y: pip.y + 0.5,
-        radius: 3.6,
-        fill: "rgba(0,0,0,0.08)",
-        listening: false,
-      }));
+      group.add(
+        new Konva.Circle({
+          x: pip.x,
+          y: pip.y + 0.5,
+          radius: 3.6,
+          fill: "rgba(0,0,0,0.08)",
+          listening: false,
+        })
+      );
       // Pip
       group.add(new Konva.Circle({ x: pip.x, y: pip.y, radius: 3.1, fill: COLORS.diePip }));
     });
@@ -1318,7 +1321,8 @@
       group.on("dragend", () => {
         group.to({ scaleX: 1, scaleY: 1, duration: 0.1 });
         const rawPointer = stage?.getPointerPosition() ?? null;
-        const pointer = rawPointer === null ? group.position() : toLogicalPoint(activeLayout, rawPointer);
+        const pointer =
+          rawPointer === null ? group.position() : toLogicalPoint(activeLayout, rawPointer);
         const target = findDropTarget(metrics, pointer);
         const game = activeGame;
         if (target === null || game === null) {
@@ -1437,7 +1441,8 @@
         return;
       }
       const metrics = cachedMetrics || (cachedMetrics = buildMetrics());
-      const layout = mountedHost !== null ? syncStageSize(stage, mountedHost) : DEFAULT_STAGE_LAYOUT;
+      const layout =
+        mountedHost !== null ? syncStageSize(stage, mountedHost) : DEFAULT_STAGE_LAYOUT;
       activeLayout = layout;
       if (layout.signature !== lastLayoutSignature) {
         lastLayoutSignature = layout.signature;

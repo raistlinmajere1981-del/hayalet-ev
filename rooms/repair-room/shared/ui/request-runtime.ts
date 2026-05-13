@@ -1,4 +1,5 @@
 import { REPAIR_UI_COMMANDS } from "../repair-constants.js";
+import type { RepairImageRect, RepairOverlayEntityRef } from "../types/index.js";
 
 type RepairRoomApi = NonNullable<typeof window.roomAPI>;
 
@@ -84,6 +85,36 @@ export function createRepairUiRequestRuntime() {
     },
     updateLayout(payload: Record<string, unknown>) {
       return sendCommand(REPAIR_UI_COMMANDS.updateLayout, payload);
+    },
+    toggleInvestigationMode(payload: { enabled?: boolean } = {}) {
+      return sendCommand(REPAIR_UI_COMMANDS.toggleInvestigationMode, payload);
+    },
+    selectOverlayEntities(payload: {
+      refs: RepairOverlayEntityRef[];
+      mode?: "replace" | "add" | "toggle";
+      inspectorRef?: RepairOverlayEntityRef | null;
+      focusJump?: boolean;
+    }) {
+      return sendCommand(REPAIR_UI_COMMANDS.selectOverlayEntities, payload);
+    },
+    focusOverlayEntity(payload: { ref: RepairOverlayEntityRef; focusJump?: boolean }) {
+      return sendCommand(REPAIR_UI_COMMANDS.focusOverlayEntity, payload);
+    },
+    focusInvestigationRegion(payload: { regionId: string }) {
+      return sendCommand(REPAIR_UI_COMMANDS.focusInvestigationRegion, payload);
+    },
+    focusKnowledgeSpatialRef(payload: { spatialRefId: string }) {
+      return sendCommand(REPAIR_UI_COMMANDS.focusKnowledgeSpatialRef, payload);
+    },
+    promoteKnowledgeRegion(payload: {
+      spatialRefId: string;
+      label?: string;
+      region?: RepairImageRect;
+    }) {
+      return sendCommand(REPAIR_UI_COMMANDS.promoteKnowledgeRegion, payload);
+    },
+    focusLiveEdge() {
+      return sendCommand(REPAIR_UI_COMMANDS.focusLiveEdge);
     },
   };
 }

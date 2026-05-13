@@ -6,6 +6,7 @@ import {
   getSourceProbeStatus,
   getSourceReady,
   getWorkspaceLockState,
+  isLabWorkspaceSurfaceReady,
   resolveDrawerMode,
 } from "../runtime/lab-selectors.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
@@ -91,7 +92,7 @@ function getPillState(
 export function getSelectionTabActive(state: LabStoreState) {
   return (
     state.ui.workspace.selectionTabActive === true ||
-    (state.bootReady === true &&
+    (isLabWorkspaceSurfaceReady(state) === true &&
       resolveDrawerMode(state) === "setup" &&
       getSourceProbeStatus(state) === "idle" &&
       getSourceReady(state) !== true)

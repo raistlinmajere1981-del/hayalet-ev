@@ -587,6 +587,353 @@ test("repair-room annotations and knowledge pack spatial focus are forensic reco
   assert.equal(runtime.getStateSnapshot().state.knowledgePack.previewTabId, "board-view");
 });
 
+test("repair-room Phase 2.8 folds investigation regions from canonical replay events", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+  const state = runtime.getStateSnapshot().state;
+  const session = state.sessions["psu-2025-0510"];
+  assert.ok(session);
+
+  const regionSession = {
+    ...session,
+    events: [
+      ...session.events,
+      {
+        kind: "investigation-region-created" as const,
+        id: "evt-region-create-1",
+        sessionId: session.id,
+        occurredAt: "2026-05-10T10:43:00.000Z",
+        source: "operator" as const,
+        linkedEventIds: ["evt-psu-meas-4"],
+        regionId: "region-u14-chain",
+        label: "U14 gate-driver chain",
+        region: { xPx: 440, yPx: 245, widthPx: 140, heightPx: 110 },
+        status: "active" as const,
+        color: "rgb(86, 200, 222)",
+        sourceRef: { kind: "event" as const, id: "evt-psu-ai-2" },
+        measurementEventIds: ["evt-psu-meas-3", "evt-psu-meas-4"],
+        annotationEventIds: ["evt-psu-anno-1"],
+        aiMarkEventIds: ["evt-psu-ai-2"],
+      },
+      {
+        kind: "investigation-region-updated" as const,
+        id: "evt-region-update-1",
+        sessionId: session.id,
+        occurredAt: "2026-05-10T10:44:00.000Z",
+        source: "operator" as const,
+        linkedEventIds: ["evt-psu-meas-4"],
+        regionId: "region-u14-chain",
+        label: "U14 chain resolved",
+        status: "resolved" as const,
+      },
+    ],
+  };
+
+  const projection = createRepairReplayProjection(
+    {
+      ...state,
+      workbench: {
+        ...state.workbench,
+        timeline: {
+          ...state.workbench.timeline,
+          playheadMs: 30 * 60 * 1000,
+          autoFollowLive: false,
+        },
+      },
+    },
+    regionSession
+  );
+
+  assert.equal(projection.investigationRegions.length, 1);
+  assert.equal(projection.investigationRegions[0]?.regionId, "region-u14-chain");
+  assert.equal(projection.investigationRegions[0]?.createdEventId, "evt-region-create-1");
+  assert.equal(projection.investigationRegions[0]?.updatedEventId, "evt-region-update-1");
+  assert.equal(projection.investigationRegions[0]?.status, "resolved");
+  assert.deepEqual(projection.investigationRegions[0]?.linkage.measurementEventIds, [
+    "evt-psu-meas-3",
+    "evt-psu-meas-4",
+  ]);
+});
+
+test("repair-room Phase 2.8 keeps investigation mode explicit and entity refs commandable", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.toggleInvestigationMode, { enabled: true }).success,
+    true
+  );
+  assert.equal(runtime.getStateSnapshot().state.workbench.investigationModeEnabled, true);
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.selectOverlayEntities, {
+      refs: [
+        { kind: "event", id: "evt-psu-meas-3" },
+        { kind: "knowledge-region", id: "startup-resistor-open" },
+      ],
+      mode: "replace",
+    }).success,
+    true
+  );
+  assert.deepEqual(runtime.getStateSnapshot().state.workbench.selection.selectedEventIds, [
+    "evt-psu-meas-3",
+  ]);
+  assert.deepEqual(runtime.getStateSnapshot().state.workbench.selection.selectedEntityRefs, [
+    { kind: "event", id: "evt-psu-meas-3" },
+    { kind: "knowledge-region", id: "startup-resistor-open" },
+  ]);
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.focusOverlayEntity, {
+      ref: { kind: "live-edge", id: "live-edge" },
+    }).success,
+    true
+  );
+  assert.equal(
+    runtime.getStateSnapshot().state.workbench.selection.inspectorEntityRef?.kind,
+    "live-edge"
+  );
+});
+
+test("repair-room Phase 2.8 focuses investigation regions, relationships, and live edge explicitly", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.promoteKnowledgeRegion, {
+      spatialRefId: "startup-resistor-open",
+    }).success,
+    true
+  );
+  let state = runtime.getStateSnapshot().state;
+  let session = state.sessions[state.activeSessionId ?? ""];
+  assert.ok(session);
+  const regionEvent = session.events.find(
+    (event) =>
+      event.kind === "investigation-region-created" &&
+      event.knowledgeSpatialRefId === "startup-resistor-open"
+  );
+  assert.ok(regionEvent);
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.focusInvestigationRegion, {
+      regionId: regionEvent.regionId,
+    }).success,
+    true
+  );
+  state = runtime.getStateSnapshot().state;
+  session = state.sessions[state.activeSessionId ?? ""];
+  assert.ok(session);
+  let projection = createRepairReplayProjection(state, session);
+  assert.equal(state.workbench.investigationModeEnabled, true);
+  assert.deepEqual(state.workbench.selection.inspectorEntityRef, {
+    kind: "investigation-region",
+    id: regionEvent.regionId,
+  });
+  assert.deepEqual(projection.activeSpatialFocus?.ref, {
+    kind: "investigation-region",
+    id: regionEvent.regionId,
+  });
+  assert.deepEqual(
+    [...new Set(projection.measurementRelationships.map((relationship) => relationship.kind))].sort(),
+    [
+      "investigation-group",
+      "linked-ai-mark",
+      "linked-annotation",
+      "previous-event",
+      "rail",
+    ]
+  );
+
+  const relationship = projection.measurementRelationships[0];
+  assert.ok(relationship);
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.focusOverlayEntity, {
+      ref: { kind: "measurement-relationship", id: relationship.id },
+    }).success,
+    true
+  );
+  state = runtime.getStateSnapshot().state;
+  session = state.sessions[state.activeSessionId ?? ""];
+  assert.ok(session);
+  projection = createRepairReplayProjection(state, session);
+  assert.deepEqual(projection.activeSpatialFocus?.ref, {
+    kind: "measurement-relationship",
+    id: relationship.id,
+  });
+  assert.ok(projection.activeSpatialFocus.region);
+  assert.deepEqual(
+    projection.activeSpatialFocus.relatedMeasurementIds,
+    relationship.eventIds.filter((eventId) => {
+      const linked = session.events.find((event) => event.id === eventId);
+      return linked?.kind === "measurement";
+    })
+  );
+
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.focusLiveEdge).success, true);
+  state = runtime.getStateSnapshot().state;
+  session = state.sessions[state.activeSessionId ?? ""];
+  assert.ok(session);
+  projection = createRepairReplayProjection(state, session);
+  assert.equal(state.workbench.timeline.replayMode, "live");
+  assert.equal(state.workbench.timeline.autoFollowLive, true);
+  assert.deepEqual(state.workbench.selection.inspectorEntityRef, {
+    kind: "live-edge",
+    id: "live-edge",
+  });
+  assert.deepEqual(projection.activeSpatialFocus?.ref, {
+    kind: "live-edge",
+    id: "live-edge",
+  });
+});
+
+test("repair-room Phase 2.8 separates temporary knowledge focus from promoted regions", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.focusKnowledgeSpatialRef, {
+      spatialRefId: "startup-resistor-open",
+    }).success,
+    true
+  );
+  let state = runtime.getStateSnapshot().state;
+  let session = state.sessions[state.activeSessionId ?? ""];
+  assert.ok(session);
+  let projection = createRepairReplayProjection(state, session);
+  assert.equal(
+    session.events.some((event) => event.kind === "investigation-region-created"),
+    false
+  );
+  assert.equal(
+    projection.temporarySpatialRegions[0]?.knowledgeSpatialRefId,
+    "startup-resistor-open"
+  );
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.promoteKnowledgeRegion, {
+      spatialRefId: "startup-resistor-open",
+    }).success,
+    true
+  );
+  state = runtime.getStateSnapshot().state;
+  session = state.sessions[state.activeSessionId ?? ""];
+  assert.ok(session);
+  projection = createRepairReplayProjection(state, session);
+  assert.equal(
+    session.events.some(
+      (event) =>
+        event.kind === "investigation-region-created" &&
+        event.knowledgeSpatialRefId === "startup-resistor-open"
+    ),
+    true
+  );
+  const promotedRegionEvent = session.events.find(
+    (event) =>
+      event.kind === "investigation-region-created" &&
+      event.knowledgeSpatialRefId === "startup-resistor-open"
+  );
+  assert.equal(promotedRegionEvent?.kind, "investigation-region-created");
+  if (promotedRegionEvent?.kind === "investigation-region-created") {
+    assert.deepEqual(promotedRegionEvent.measurementEventIds, ["evt-psu-meas-2"]);
+    assert.deepEqual(promotedRegionEvent.annotationEventIds, ["evt-psu-anno-2"]);
+    assert.deepEqual(promotedRegionEvent.aiMarkEventIds, ["evt-psu-ai-1"]);
+    assert.equal(promotedRegionEvent.linkedEventIds.includes("evt-psu-anno-2"), true);
+  }
+  assert.equal(projection.investigationRegions[0]?.knowledgeSpatialRefId, "startup-resistor-open");
+});
+
+test("repair-room Phase 2.8 keyboard nudging moves event-backed and canonical region refs", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+  let state = runtime.getStateSnapshot().state;
+  let session = state.sessions["psu-2025-0510"];
+  assert.ok(session);
+  const measurement = session.events.find((event) => event.kind === "measurement");
+  assert.ok(measurement);
+  assert.ok(measurement.pinAt);
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.selectOverlayEntities, {
+      refs: [{ kind: "event", id: measurement.id }],
+      mode: "replace",
+    }).success,
+    true
+  );
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updateFocus, {
+      nudgeDelta: { xPx: 6, yPx: -3 },
+    }).success,
+    true
+  );
+  session = runtime.getStateSnapshot().state.sessions["psu-2025-0510"];
+  const nudgedMeasurement = session?.events.find((event) => event.id === measurement.id);
+  assert.equal(nudgedMeasurement?.kind, "measurement");
+  if (nudgedMeasurement?.kind === "measurement") {
+    assert.deepEqual(nudgedMeasurement.pinAt, {
+      xPx: measurement.pinAt.xPx + 6,
+      yPx: measurement.pinAt.yPx - 3,
+    });
+  }
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.promoteKnowledgeRegion, {
+      spatialRefId: "startup-resistor-open",
+    }).success,
+    true
+  );
+  state = runtime.getStateSnapshot().state;
+  session = state.sessions[state.activeSessionId ?? ""];
+  assert.ok(session);
+  let projection = createRepairReplayProjection(state, session);
+  const region = projection.investigationRegions[0];
+  assert.ok(region);
+  const beforeRegion = region.region;
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.selectOverlayEntities, {
+      refs: [{ kind: "investigation-region", id: region.regionId }],
+      mode: "replace",
+    }).success,
+    true
+  );
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updateFocus, {
+      nudgeDelta: { xPx: 10, yPx: 5 },
+    }).success,
+    true
+  );
+  state = runtime.getStateSnapshot().state;
+  session = state.sessions[state.activeSessionId ?? ""];
+  assert.ok(session);
+  const updateEvent = session.events.at(-1);
+  assert.equal(updateEvent?.kind, "investigation-region-updated");
+  if (updateEvent?.kind === "investigation-region-updated") {
+    assert.equal(updateEvent.regionId, region.regionId);
+    assert.deepEqual(updateEvent.region, {
+      ...beforeRegion,
+      xPx: beforeRegion.xPx + 10,
+      yPx: beforeRegion.yPx + 5,
+    });
+  }
+  projection = createRepairReplayProjection(state, session);
+  assert.deepEqual(projection.investigationRegions[0]?.region, {
+    ...beforeRegion,
+    xPx: beforeRegion.xPx + 10,
+    yPx: beforeRegion.yPx + 5,
+  });
+});
+
 test("repair-room overlay selection supports hover, multi-select, deselect, and focus jump", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
@@ -681,7 +1028,10 @@ test("repair-room AI mark lifecycle changes append canonical replay events", () 
     nextSession ?? null
   );
   assert.equal(liveProjection.aiMarkEventIds.includes(target.id), false);
-  assert.equal(liveProjection.overlayEvents.some((event) => event.id === target.id), false);
+  assert.equal(
+    liveProjection.overlayEvents.some((event) => event.id === target.id),
+    false
+  );
 
   const targetOffset = Date.parse(target.occurredAt) - Date.parse(session.startedAt);
   assert.equal(

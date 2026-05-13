@@ -129,6 +129,51 @@ function createEmptyReadyState() {
   return store;
 }
 
+function createDraftBootstrapState() {
+  const store = createLabStore();
+  store.dispatch({
+    type: "snapshot-received",
+    payload: {
+      featureId: "media-analysis",
+      ready: false,
+      bootstrap: {
+        status: "running",
+        currentStepId: "refresh-tools",
+      },
+      activeProjectId: "draft-1",
+      projects: [{ id: "draft-1", name: "Lab Session Draft", hasSource: false }],
+      activeProject: {
+        id: "draft-1",
+        name: "Lab Session Draft",
+        source: {
+          status: "idle",
+          kind: "video",
+          mode: "local",
+        },
+        edit: {},
+        profile: {},
+        process: { records: {} },
+        report: { records: {} },
+        assets: [],
+      },
+      workbench: {
+        activeModuleId: "media-analysis",
+        availableModuleIds: ["media-analysis", "audio-analysis"],
+        selectedModuleIds: ["media-analysis", "audio-analysis"],
+      },
+      sourcePresets,
+      ytDlpForm,
+      toolRegistry: [],
+      toolState: {
+        tools: {},
+      },
+      sourceProbeStatus: "idle",
+      profileModels: [],
+    },
+  });
+  return store;
+}
+
 function createSeededState(ffmpegInstalled = false) {
   const store = createLabStore();
   store.dispatch({
@@ -299,6 +344,21 @@ test("laboratory right drawer defaults to the help tab before source preparation
   assert.match(drawer, /labx-drawer__body--selection/);
   assert.doesNotMatch(drawer, /Zaman çizelgesinde bir alan seçin|labx-drawer__selection-empty/);
   assert.doesNotMatch(drawer, /data-block-id="analysis-prep"/);
+});
+
+test("laboratory draft project renders empty workspace before full bootstrap readiness", () => {
+  const store = createDraftBootstrapState();
+  const copy = createTurkishCopy();
+  const state = store.getState();
+  const surface = renderWorkspaceSurface(state, { copy });
+  const drawer = renderLabDrawer(state, surface, copy);
+
+  assert.equal(state.bootReady, false);
+  assert.doesNotMatch(surface.main, /data-lab-center-skeleton="true"/);
+  assert.match(surface.main, /data-media-viewport-state="empty"/);
+  assert.match(surface.main, /Proje kaynagi henuz hazir degil/);
+  assert.doesNotMatch(drawer, /labx-drawer-skeleton/);
+  assert.match(drawer, /aria-label="Yardım"[\s\S]*data-pill-state="active"/);
 });
 
 test("laboratory inactive right-side regions stay mounted as hidden containers", () => {
@@ -944,6 +1004,86 @@ test("laboratory workspace operations follow the selected asset media kind", () 
   assert.match(surface.inspector ?? "", /data-operation-id="band-pass-voice"/);
   assert.doesNotMatch(surface.inspector ?? "", /data-operation-id="enhanced-frame"/);
   assert.doesNotMatch(surface.inspector ?? "", /data-operation-id="frame-grab"/);
+});
+
+test("laboratory image comparison workspace keeps image pair on the inspection workbench", () => {
+  const store = createSeededState(true);
+  const state = store.getState();
+  state.source = {
+    ...state.source,
+    status: "ready",
+    kind: "image",
+    mode: "local",
+    previewUrl: "file:///tmp/primary-image.png",
+    storedFileName: "primary-image.png",
+    storedPath: "/tmp/primary-image.png",
+    routeLabel: "Local Copy",
+    metadata: {
+      height: 480,
+      width: 640,
+    },
+  };
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-reference-image",
+      type: "image",
+      name: "reference-image.png",
+      localPath: "/tmp/reference-image.png",
+      createdAt: 400,
+      metadata: { kind: "image" },
+    },
+  });
+  store.dispatch({
+    type: "workspace-comparison-reference-set",
+    assetId: "asset-reference-image",
+  });
+  store.dispatch({
+    type: "workspace-comparison-updated",
+    patch: { comparisonViewMode: "side-by-side" },
+  });
+  store.dispatch({
+    type: "selection-roi-updated",
+    comparisonSide: "primary",
+    roi: { x: 0.1, y: 0.2, width: 0.3, height: 0.4 },
+  });
+  store.dispatch({
+    type: "selection-roi-updated",
+    comparisonSide: "reference",
+    roi: { x: 0.2, y: 0.1, width: 0.25, height: 0.35 },
+  });
+
+  const surface = renderWorkspaceSurface(store.getState());
+
+  assert.match(surface.main, /data-lab-workspace-comparison-stage="true"/);
+  assert.match(surface.main, /data-lab-selection-roi-stage="true"/);
+  assert.match(surface.main, /data-lab-selection-roi-controls-reserve="0"/);
+  assert.match(surface.main, /data-lab-selection-roi-overlay="true"/);
+  assert.match(surface.main, /id="lab-roi-overlay-primary"/);
+  assert.match(surface.main, /id="lab-roi-overlay-reference"/);
+  assert.match(surface.main, /data-lab-comparison-roi-side="primary"/);
+  assert.match(surface.main, /data-lab-comparison-roi-side="reference"/);
+  assert.match(surface.main, /data-lab-preview-inspection-stage="true"/);
+  assert.match(surface.main, /data-lab-preview-inspection-topology="comparison-paired"/);
+  assert.match(
+    surface.main,
+    /data-lab-preserve-media="workspace-comparison-primary" src="file:\/\/\/tmp\/primary-image\.png"/
+  );
+  assert.match(
+    surface.main,
+    /data-lab-preserve-media="workspace-comparison-reference" src="file:\/\/\/tmp\/reference-image\.png"/
+  );
+  assert.doesNotMatch(surface.main, /data-preview-mode=/);
+  assert.match(
+    surface.inspector ?? "",
+    /data-readiness="ready"[\s\S]*data-operation-id="image-comparison"/
+  );
+  assert.match(surface.inspector ?? "", /data-lab-comparison-roi-status="primary"/);
+  assert.match(surface.inspector ?? "", /data-lab-comparison-roi-status="reference"/);
+  assert.match(
+    surface.inspector ?? "",
+    /data-lab-comparison-roi-status="reference"[\s\S]*data-active="true"[\s\S]*data-selected="true"/
+  );
 });
 
 test("laboratory workspace asset preview resets timeline controls to the selected file", () => {
@@ -1764,7 +1904,7 @@ test("laboratory process strip renders multi-output action summaries with overfl
   assert.match(stripHtml, /report-user\.md, report-ai\.json/);
 });
 
-test("laboratory source panel renders registry groups and workspace preview actions", () => {
+test("laboratory source panel renders registry groups and source activation actions", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "asset-added",
@@ -1828,18 +1968,18 @@ test("laboratory source panel renders registry groups and workspace preview acti
   assert.match(panelHtml, /data-lab-action="asset-remove"/);
   assert.match(
     panelHtml,
-    /class="labx-sp-asset__btn"[^>]*data-lab-action="workspace-content-open" data-lab-value="clip-local-1"/
+    /class="labx-sp-asset__btn"[^>]*data-lab-action="source-activate-asset" data-lab-value="clip-local-1"/
   );
   assert.match(
     panelHtml,
-    /class="labx-sp-asset__btn"[^>]*data-lab-action="workspace-content-open" data-lab-value="artifact-png-1"/
+    /class="labx-sp-asset__btn"[^>]*data-lab-action="source-activate-asset" data-lab-value="artifact-png-1"/
   );
   assert.match(panelHtml, /data-lab-action="source-activate-asset" data-lab-value="clip-local-1"/);
   assert.match(panelHtml, /data-lab-action="source-activate-asset" data-lab-value="clip-remote-1"/);
   assert.doesNotMatch(panelHtml, /data-lab-action="asset-use-as-source"/);
 });
 
-test("laboratory source panel previews png artifacts from the primary click", () => {
+test("laboratory source panel activates png artifacts from the primary click", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "asset-added",
@@ -1857,7 +1997,7 @@ test("laboratory source panel previews png artifacts from the primary click", ()
 
   assert.match(
     panelHtml,
-    /class="labx-sp-asset__btn"[^>]*data-lab-action="workspace-content-open" data-lab-value="artifact-png-1"/
+    /class="labx-sp-asset__btn"[^>]*data-lab-action="source-activate-asset" data-lab-value="artifact-png-1"/
   );
   assert.match(
     panelHtml,
@@ -1916,7 +2056,7 @@ test("laboratory source panel opens the selected workspace asset group", () => {
   assert.doesNotMatch(panelHtml, /<details class="labx-sp-group" open data-group-type="source">/);
 });
 
-test("laboratory source panel uses png artifacts as workspace previews from the primary click path", () => {
+test("laboratory source panel activates png artifacts from the primary click path", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "asset-added",
@@ -1934,7 +2074,7 @@ test("laboratory source panel uses png artifacts as workspace previews from the 
 
   assert.match(
     panelHtml,
-    /class="labx-sp-asset__btn"[\s\S]*data-lab-action="workspace-content-open"[\s\S]*data-lab-value="artifact-png-primary"/
+    /class="labx-sp-asset__btn"[\s\S]*data-lab-action="source-activate-asset"[\s\S]*data-lab-value="artifact-png-primary"/
   );
 });
 

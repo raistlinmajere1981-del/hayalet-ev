@@ -179,7 +179,8 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
         asNonEmptyString(metadata["findingId"]) ||
         `comparison-finding-${asNonEmptyString(asset["id"]) || String(findings.length + 1)}`;
       const snapshotAssetId = asNonEmptyString(metadata["snapshotAssetId"]);
-      const snapshotAsset = snapshotAssetId === null ? null : assetById.get(snapshotAssetId) || null;
+      const snapshotAsset =
+        snapshotAssetId === null ? null : assetById.get(snapshotAssetId) || null;
       const note = asNonEmptyString(metadata["note"]);
       const title = note
         ? note.split(/\r?\n/)[0]?.slice(0, 80) || "Karşılaştırma bulgusu"
@@ -211,7 +212,8 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
           kind: "comparison-finding-snapshot",
           moduleId: "image-comparison",
           path: asNonEmptyString(snapshotAsset["localPath"]),
-          previewUrl: asNonEmptyString(snapshotAsset["url"]) || asNonEmptyString(snapshotAsset["localPath"]),
+          previewUrl:
+            asNonEmptyString(snapshotAsset["url"]) || asNonEmptyString(snapshotAsset["localPath"]),
           status: "ready",
         });
       }
@@ -299,8 +301,16 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
             sourceRunId: comparisonProcessRecord.runId,
             generatedAt,
             summaryCards: [
-              { id: `${featureId}-findings`, label: "Findings", value: String(comparisonEvidence.findings.length) },
-              { id: `${featureId}-artifacts`, label: "Artifacts", value: String(comparisonEvidence.artifacts.length) },
+              {
+                id: `${featureId}-findings`,
+                label: "Findings",
+                value: String(comparisonEvidence.findings.length),
+              },
+              {
+                id: `${featureId}-artifacts`,
+                label: "Artifacts",
+                value: String(comparisonEvidence.artifacts.length),
+              },
             ],
             findings: comparisonEvidence.findings,
             caveats: ["Report includes manually saved comparison findings."],
@@ -338,9 +348,8 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
         comparisonEvidence.findings
       ),
     };
-    const findings = (Array.isArray(reportProcessRecord["findings"])
-      ? reportProcessRecord["findings"]
-      : []
+    const findings = (
+      Array.isArray(reportProcessRecord["findings"]) ? reportProcessRecord["findings"] : []
     )
       .map(normalizeProcessFinding)
       .sort(function (left, right) {
@@ -389,9 +398,7 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
           {
             id: `${featureId}-artifacts`,
             labelKey: "mediaAnalysis.profile.summary.artifacts",
-            value: String(
-              artifacts.length
-            ),
+            value: String(artifacts.length),
           },
           {
             id: `${featureId}-risk`,
@@ -405,8 +412,7 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
         ...(Array.isArray(currentReportExports) ? { exports: currentReportExports } : {}),
         error: null,
         emptyReason:
-          findings.length === 0 &&
-          artifacts.length === 0
+          findings.length === 0 && artifacts.length === 0
             ? getProcessBackedEmptyReason(
                 processRecord,
                 "Çalışma tamamlandı ancak raporlayacak belirgin bulgu oluşmadı."

@@ -3,12 +3,14 @@ import type {
   RepairChatState,
   RepairEvent,
   RepairImageRect,
+  RepairInvestigationRegion,
   RepairKnowledgePack,
   RepairMeasurementEvidenceState,
   RepairLayoutState,
   RepairMeasurementState,
   RepairOperatorProfile,
   RepairOperationalMode,
+  RepairOverlayEntityRef,
   RepairSession,
   RepairSessionListItem,
   RepairWizardState,
@@ -38,6 +40,65 @@ export interface RepairKnowledgePackPanelState {
   focusedSpatialRefId: string | null;
 }
 
+export interface RepairKnowledgeRegionProjection {
+  id: string;
+  label: string;
+  region: RepairImageRect;
+  source: "common-failure" | "test-point" | "resource";
+  linkedEventIds: string[];
+  relatedMeasurementIds: string[];
+  relatedAiMarkIds: string[];
+}
+
+export interface RepairTemporarySpatialRegion {
+  id: string;
+  label: string;
+  region: RepairImageRect;
+  source: "knowledge-spatial-ref" | "focus-preview";
+  sourceRef: RepairOverlayEntityRef;
+  knowledgeSpatialRefId: string | null;
+  linkedEventIds: string[];
+  relatedMeasurementIds: string[];
+  relatedAiMarkIds: string[];
+}
+
+export type RepairMeasurementRelationshipKind =
+  | "rail"
+  | "previous-event"
+  | "investigation-group"
+  | "linked-annotation"
+  | "linked-ai-mark";
+
+export interface RepairMeasurementRelationship {
+  id: string;
+  kind: RepairMeasurementRelationshipKind;
+  from: RepairOverlayEntityRef;
+  to: RepairOverlayEntityRef;
+  label: string;
+  strength: number;
+  eventIds: string[];
+}
+
+export interface RepairTimelineDensityBucket {
+  bucketStartMs: number;
+  bucketEndMs: number;
+  eventCount: number;
+  spatialEventCount: number;
+  measurementCount: number;
+  aiMarkCount: number;
+  regionCount: number;
+  density: number;
+}
+
+export interface RepairSpatialFocusState {
+  ref: RepairOverlayEntityRef;
+  label: string;
+  region: RepairImageRect | null;
+  linkedEventIds: string[];
+  relatedMeasurementIds: string[];
+  relatedAiMarkIds: string[];
+}
+
 export interface RepairReplayProjection {
   playheadMs: number;
   replayMode: RepairWorkbenchState["timeline"]["replayMode"];
@@ -49,11 +110,12 @@ export interface RepairReplayProjection {
   activeSnapshotEventId: string | null;
   activeFreezeFrameEventId: string | null;
   focusSuggestionEventId: string | null;
-  knowledgeRegions: Array<{
-    id: string;
-    label: string;
-    region: RepairImageRect;
-  }>;
+  knowledgeRegions: RepairKnowledgeRegionProjection[];
+  investigationRegions: RepairInvestigationRegion[];
+  temporarySpatialRegions: RepairTemporarySpatialRegion[];
+  measurementRelationships: RepairMeasurementRelationship[];
+  timelineDensity: RepairTimelineDensityBucket[];
+  activeSpatialFocus: RepairSpatialFocusState | null;
   operationalMode: RepairOperationalMode;
 }
 

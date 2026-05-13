@@ -23,6 +23,7 @@ import {
   getReadySelectedAnalysisIntentIds,
   getSelectedIntents,
   getSourceReady,
+  isLabWorkspaceSurfaceReady,
   resolveDrawerMode,
 } from "../runtime/lab-selectors.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
@@ -1024,7 +1025,7 @@ export function renderLabDrawer(
 
   const modeNav = `<nav class="labx-drawer__mode-nav" aria-label="${escapeHtml(copy.t("mediaAnalysis.topBar.navLabel", "Mode indicators"))}">${renderModePills(state, copy)}</nav>`;
 
-  if (!state.bootReady) {
+  if (!isLabWorkspaceSurfaceReady(state)) {
     return renderContextPanel({
       content: `
         ${modeNav}

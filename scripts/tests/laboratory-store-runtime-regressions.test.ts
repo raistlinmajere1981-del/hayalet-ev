@@ -146,6 +146,8 @@ test("laboratory store tracks comparison capture controls without changing the r
   assert.equal(workspace.comparisonFindingNote, "Sol göz çevresi farkı");
   assert.equal(workspace.comparisonSplitPercent, 100);
   assert.equal(workspace.comparisonViewMode, "split");
+  assert.equal(workspace.comparisonRois.activeSide, "reference");
+  assert.equal(workspace.comparisonRois.reference, null);
 });
 
 test("laboratory store keeps checked YouTube import state UI-only and non-persistent", () => {

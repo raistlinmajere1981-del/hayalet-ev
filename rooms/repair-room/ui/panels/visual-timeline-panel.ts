@@ -34,6 +34,10 @@ function getEventLabel(event: RepairEvent): string {
       return "START";
     case "ai-mark-lifecycle":
       return "AI STATE";
+    case "investigation-region-created":
+      return "REGION";
+    case "investigation-region-updated":
+      return "REGION";
     default:
       return "EVENT";
   }
@@ -177,6 +181,12 @@ export function renderVisualTimelinePanel(
     chip.type = "button";
     chip.title = `${event.kind} — ${event.occurredAt}`;
     chip.style.left = `${(delta / totalMs) * 100}%`;
+    const density =
+      meta.replay.timelineDensity.find(
+        (bucket) => delta >= bucket.bucketStartMs && delta < bucket.bucketEndMs
+      )?.density ?? 0;
+    chip.style.setProperty("--repair-chip-density", density.toFixed(2));
+    chip.dataset["spatialDensity"] = density.toFixed(2);
     chip.dataset["repairAction"] = "jump-to-event";
     chip.dataset["eventId"] = event.id;
 

@@ -42,6 +42,15 @@
     const onTeamTetrisBoardColumnSelect = deps.onTeamTetrisBoardColumnSelect;
     const onTeamTetrisBendRowSelect = deps.onTeamTetrisBendRowSelect;
 
+    function setElementAttribute(element: HTMLElement, name: string, value: string): void {
+      const target = element as HTMLElement & {
+        setAttribute?: (attrName: string, attrValue: string) => void;
+      };
+      if (typeof target.setAttribute === "function") {
+        target.setAttribute(name, value);
+      }
+    }
+
     function createTeamTetrisMiniPiece(pieceId: string, rotation: number): HTMLElement {
       const cells = getTeamTetrisRotationCells(pieceId, rotation);
       const bounds = getTeamTetrisPieceBounds(pieceId, rotation);
@@ -139,18 +148,36 @@
           if (boardMode === "positioning") {
             const interactiveCell = cell as HTMLButtonElement;
             interactiveCell.type = "button";
+            setElementAttribute(
+              interactiveCell,
+              "aria-label",
+              "Choose Team Tetris column " + String(columnIndex + 1)
+            );
             interactiveCell.addEventListener("click", function () {
               onTeamTetrisBoardColumnSelect(columnIndex);
             });
           } else if (boardMode === "route-row-picker") {
             const interactiveCell = cell as HTMLButtonElement;
             interactiveCell.type = "button";
+            setElementAttribute(
+              interactiveCell,
+              "aria-label",
+              "Choose Team Tetris bend row " + String(rowIndex + 1)
+            );
             interactiveCell.addEventListener("click", function () {
               onTeamTetrisBendRowSelect(rowIndex);
             });
           } else if (config.interactive === true) {
             const interactiveCell = cell as HTMLButtonElement;
             interactiveCell.type = "button";
+            setElementAttribute(
+              interactiveCell,
+              "aria-label",
+              "Set Team Tetris path at column " +
+                String(columnIndex + 1) +
+                ", row " +
+                String(rowIndex + 1)
+            );
             interactiveCell.addEventListener("mousedown", function () {
               startTeamTetrisDrag(columnIndex, rowIndex);
             });

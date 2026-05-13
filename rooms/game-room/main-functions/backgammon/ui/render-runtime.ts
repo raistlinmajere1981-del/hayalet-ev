@@ -577,8 +577,6 @@
       return panel;
     }
 
-
-
     function createChecker(owner: "user" | "ai", index: number, total: number) {
       const checker = createElement(
         "span",
@@ -638,8 +636,6 @@
       boardShell.append(board);
       return boardShell;
     }
-
-
 
     function renderBackgammon(root: HTMLElement) {
       const state = getState();

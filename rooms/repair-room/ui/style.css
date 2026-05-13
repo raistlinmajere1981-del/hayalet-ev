@@ -971,6 +971,8 @@ textarea.repair-wizard-field__input {
   transition:
     box-shadow var(--repair-dur-hover) var(--repair-ease),
     transform var(--repair-dur-hover) var(--repair-ease);
+  box-shadow: 0 0 calc(var(--repair-px-16) * var(--repair-chip-density, 0))
+    var(--repair-cyan-glow-soft);
 }
 
 .repair-timeline__chip:hover {
@@ -1014,6 +1016,13 @@ textarea.repair-wizard-field__input {
   background: var(--repair-amber);
   width: var(--repair-px-8);
   height: var(--repair-px-8);
+}
+.repair-timeline__chip--investigation-region-created,
+.repair-timeline__chip--investigation-region-updated {
+  background: var(--repair-cyan);
+  width: var(--repair-px-18);
+  height: var(--repair-px-8);
+  border-radius: var(--repair-px-3);
 }
 
 .repair-timeline__thumb {
@@ -1267,7 +1276,7 @@ button.repair-skill-chip:hover,
   min-height: var(--repair-px-26);
   border: var(--repair-px-1) solid var(--repair-border-strong);
   border-radius: var(--repair-radius-inner);
-  background: rgba(5, 8, 12, 0.46);
+  background: var(--repair-action-bg);
   color: var(--repair-cyan);
   font: 700 var(--repair-px-10) var(--repair-mono);
   cursor: pointer;
@@ -1447,7 +1456,7 @@ button.repair-skill-chip:hover,
 .repair-viewport[data-mode="investigation"] {
   box-shadow:
     inset 0 0 0 var(--repair-px-1) var(--repair-border-strong),
-    inset 0 0 var(--repair-px-44) rgba(0, 0, 0, 0.36);
+    inset 0 0 var(--repair-px-44) var(--repair-scrim-inset);
 }
 
 .repair-viewport[data-cursor="pan"] {
@@ -1467,11 +1476,11 @@ button.repair-skill-chip:hover,
   position: absolute;
   right: var(--repair-sp-3);
   top: var(--repair-sp-3);
-  width: min(280px, calc(100% - var(--repair-sp-6)));
+  width: min(var(--repair-px-280), calc(100% - var(--repair-sp-6)));
   padding: var(--repair-sp-3);
   border: var(--repair-px-1) solid var(--repair-border-strong);
   border-radius: var(--repair-radius-inner);
-  background: rgba(5, 8, 12, 0.88);
+  background: var(--repair-popover-bg);
   backdrop-filter: blur(var(--repair-px-8));
   pointer-events: none;
 }
@@ -1574,6 +1583,12 @@ button.repair-skill-chip:hover,
 .repair-knowledge-spatial {
   font-family: var(--repair-mono);
   font-size: var(--repair-px-10);
+}
+
+.repair-knowledge-spatial--promote {
+  border-color: var(--repair-amber-border);
+  color: var(--repair-amber);
+  background: var(--repair-amber-wash);
 }
 
 /* ── Legend Bar ───────────────────────────────────────────────────── */

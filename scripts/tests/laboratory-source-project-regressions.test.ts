@@ -369,7 +369,7 @@ test("laboratory source panel hides download for assets without a file target", 
   assert.doesNotMatch(html, /data-lab-action="asset-download"/);
 });
 
-test("laboratory source panel renders video source assets as preview rows with source activation menus", () => {
+test("laboratory source panel renders video source assets as source activation rows", () => {
   const html = renderLabSourcePanel(
     createSourceProjectState(true, {
       assets: [
@@ -388,8 +388,8 @@ test("laboratory source panel renders video source assets as preview rows with s
 
   assert.match(html, /data-asset-type="source"/);
   assert.match(html, /CGI Analizi -1\.mp4/);
-  assert.match(html, /data-lab-action="workspace-content-open"/);
   assert.match(html, /data-lab-action="source-activate-asset"/);
+  assert.doesNotMatch(html, /data-lab-action="workspace-content-open"/);
   assert.doesNotMatch(html, /data-lab-action="asset-use-as-source"/);
   assert.match(html, /class="labx-sp-asset__thumb" data-kind="video"/);
   assert.doesNotMatch(html, /class="labx-pw-card__thumb-img/);
@@ -477,4 +477,28 @@ test("laboratory source management css keeps active import styles without retire
   assert.doesNotMatch(sourceImportCss, /\.labx-advanced-settings/);
   assert.doesNotMatch(themeSource, /\.labx-top-bar__project-btn\s*\{/);
   assert.match(themeSource, /\.labx-timeline__highlight\s*\{/);
+  assert.match(
+    themeSource,
+    /\.labx-drawer__mode-nav \.labx-topbar-pill\s*\{[\s\S]*border:\s*var\(--lab-rail-processing-px-1\) solid var\(--lab-border-subtle\);[\s\S]*background:\s*var\(--lab-surface-2\);/
+  );
+  assert.match(
+    themeSource,
+    /\.lab-selection-panel--drawer \.lab-selection-panel__suggestion,[\s\S]*border-color:\s*var\(--lab-border-default\);[\s\S]*background:\s*var\(--lab-surface-3\);/
+  );
+  assert.match(
+    themeSource,
+    /\.lab-selection-panel--drawer \.lab-selection-panel__intent-pill\.is-active,[\s\S]*background:\s*var\(--lab-accent-bg-strong\);/
+  );
+  assert.match(
+    themeSource,
+    /\.lab-interpretation-panel\s*\{[\s\S]*border:\s*var\(--lab-workspace-px-1\) solid var\(--lab-border-default\);[\s\S]*background:[\s\S]*var\(--lab-surface-2\);/
+  );
+  assert.match(
+    themeSource,
+    /\.lab-interpretation-panel__item\s*\{[\s\S]*grid-template-columns:\s*var\(--lab-workspace-rem-1-8\) minmax\(0, 1fr\);[\s\S]*border-left-color:\s*var\(--lab-border-accent\);/
+  );
+  assert.match(
+    themeSource,
+    /\.lab-interpretation-panel__recommendation\s*\{[\s\S]*background:\s*var\(--lab-surface-1\);[\s\S]*color:\s*var\(--lab-text-default\);/
+  );
 });

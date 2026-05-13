@@ -51,12 +51,14 @@
     const applyLocale = bootstrapRuntime.applyLocale;
     const getActiveFeatureId = bootstrapRuntime.getActiveFeatureId;
     const getFeatureLabel = bootstrapRuntime.getFeatureLabel;
+    let renderQueued = false;
     const stateMessageRuntime = createStateMessageRuntime({
       stateRef: bootstrapRuntime.stateRef,
       backgammonUi: backgammonUi,
       teamTetrisUi: teamTetrisUi,
       fateKnotsUi: fateKnotsUi,
       render: render,
+      scheduleRender: scheduleRender,
     });
 
     function isRenderableRoot(value: unknown): value is HTMLElement {
@@ -97,6 +99,49 @@
         backgammonUi.renderBackgammon(root);
       } finally {
         scrollRuntime.restore(root, scrollState);
+      }
+    }
+
+    function scheduleRender(): void {
+      if (renderQueued) {
+        return;
+      }
+      renderQueued = true;
+
+      const schedulerHost = globalThis as typeof globalThis & {
+        queueMicrotask?: (callback: () => void) => void;
+        requestAnimationFrame?: (callback: FrameRequestCallback) => unknown;
+        setTimeout?: (callback: () => void, delay: number) => unknown;
+      };
+      const runRender: FrameRequestCallback = function () {
+        try {
+          render();
+        } finally {
+          renderQueued = false;
+        }
+      };
+
+      try {
+        if (typeof schedulerHost.requestAnimationFrame === "function") {
+          schedulerHost.requestAnimationFrame(runRender);
+          return;
+        }
+        if (typeof schedulerHost.setTimeout === "function") {
+          schedulerHost.setTimeout(function () {
+            runRender(Date.now());
+          }, 0);
+          return;
+        }
+        if (typeof schedulerHost.queueMicrotask === "function") {
+          schedulerHost.queueMicrotask(function () {
+            runRender(Date.now());
+          });
+          return;
+        }
+        runRender(Date.now());
+      } catch (error) {
+        renderQueued = false;
+        throw error;
       }
     }
 

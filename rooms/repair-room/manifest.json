@@ -204,6 +204,48 @@
           "description": "Compatibility adapter for legacy Repair Room layout updates.",
           "scope": "room-ui",
           "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomToggleInvestigationMode",
+          "description": "Toggle the projection-driven spatial investigation overlay mode.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomSelectOverlayEntities",
+          "description": "Select command-addressable overlay entities by semantic refs.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomFocusOverlayEntity",
+          "description": "Focus a command-addressable overlay entity and reveal its spatial context.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomFocusInvestigationRegion",
+          "description": "Focus an event-backed investigation region by stable region id.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomFocusKnowledgeSpatialRef",
+          "description": "Focus a knowledge-pack spatial reference and expose temporary overlay context.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomPromoteKnowledgeRegion",
+          "description": "Promote a knowledge-pack spatial reference into a canonical investigation region event.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomFocusLiveEdge",
+          "description": "Return overlay focus and replay state to the live edge.",
+          "scope": "room-ui",
+          "exposure": "internal"
         }
       ],
       "protocolSpecs": [

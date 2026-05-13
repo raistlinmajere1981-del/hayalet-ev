@@ -3,6 +3,14 @@ import type { RepairRuntimeState } from "./repair-runtime-state.js";
 
 const RECENT_READINGS_LIMIT = 32;
 
+function eventIdsToEntityRefs(eventIds: string[]): Array<{ kind: "event"; id: string }> {
+  return eventIds.map((id) => ({ kind: "event", id }));
+}
+
+function entityRefsToEventIds(refs: Array<{ kind: string; id: string }>): string[] {
+  return refs.filter((ref) => ref.kind === "event").map((ref) => ref.id);
+}
+
 export function reduceRepairRuntimeState(
   state: RepairRuntimeState,
   action: RepairRuntimeAction
@@ -100,12 +108,55 @@ export function reduceRepairRuntimeState(
           selection: {
             ...state.workbench.selection,
             selectedEventIds: action.eventId === null ? [] : [action.eventId],
+            selectedEntityRefs:
+              action.eventId === null ? [] : [{ kind: "event", id: action.eventId }],
             inspectorEventId: action.eventId,
+            inspectorEntityRef:
+              action.eventId === null ? null : { kind: "event", id: action.eventId },
             focusJumpEventId: action.eventId,
+            focusJumpEntityRef:
+              action.eventId === null ? null : { kind: "event", id: action.eventId },
           },
         },
       };
-    case "workbench/set-selection":
+    case "workbench/set-selection": {
+      const selectedEntityRefs =
+        "selectedEntityRefs" in action.selection
+          ? (action.selection.selectedEntityRefs ?? [])
+          : "selectedEventIds" in action.selection
+            ? eventIdsToEntityRefs(action.selection.selectedEventIds ?? [])
+            : state.workbench.selection.selectedEntityRefs;
+      const selectedEventIds =
+        "selectedEventIds" in action.selection
+          ? (action.selection.selectedEventIds ?? [])
+          : "selectedEntityRefs" in action.selection
+            ? entityRefsToEventIds(action.selection.selectedEntityRefs ?? [])
+            : state.workbench.selection.selectedEventIds;
+      const inspectorEntityRef =
+        "inspectorEntityRef" in action.selection
+          ? (action.selection.inspectorEntityRef ?? null)
+          : "inspectorEventId" in action.selection
+            ? action.selection.inspectorEventId === null
+              ? null
+              : { kind: "event" as const, id: action.selection.inspectorEventId }
+            : state.workbench.selection.inspectorEntityRef;
+      const focusJumpEntityRef =
+        "focusJumpEntityRef" in action.selection
+          ? (action.selection.focusJumpEntityRef ?? null)
+          : "focusJumpEventId" in action.selection
+            ? action.selection.focusJumpEventId === null
+              ? null
+              : { kind: "event" as const, id: action.selection.focusJumpEventId }
+            : state.workbench.selection.focusJumpEntityRef;
+      const hoveredEntityRef =
+        "hoveredEntityRef" in action.selection
+          ? (action.selection.hoveredEntityRef ?? null)
+          : "hoveredEventId" in action.selection
+            ? action.selection.hoveredEventId === null
+              ? null
+              : { kind: "event" as const, id: action.selection.hoveredEventId }
+            : state.workbench.selection.hoveredEntityRef;
+
       return {
         ...state,
         workbench: {
@@ -121,13 +172,39 @@ export function reduceRepairRuntimeState(
           selection: {
             ...state.workbench.selection,
             ...action.selection,
+            hoveredEntityRef,
+            selectedEventIds,
+            selectedEntityRefs,
+            inspectorEntityRef,
+            focusJumpEntityRef,
           },
         },
       };
+    }
     case "workbench/set-focus-mode":
       return {
         ...state,
         workbench: { ...state.workbench, focusMode: action.focusMode },
+      };
+    case "workbench/set-investigation-mode":
+      return {
+        ...state,
+        workbench: { ...state.workbench, investigationModeEnabled: action.enabled },
+      };
+    case "workbench/focus-entity":
+      return {
+        ...state,
+        workbench: {
+          ...state.workbench,
+          focusedEventId: action.eventId ?? null,
+          selection: {
+            ...state.workbench.selection,
+            inspectorEventId: action.eventId ?? null,
+            inspectorEntityRef: action.ref,
+            focusJumpEventId: action.eventId ?? null,
+            focusJumpEntityRef: action.ref,
+          },
+        },
       };
     case "events/append": {
       const target = state.sessions[action.sessionId];

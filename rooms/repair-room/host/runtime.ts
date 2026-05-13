@@ -24,10 +24,17 @@ import type {
   RepairAnnotationTool,
   RepairChatTurn,
   RepairEvent,
+  RepairImagePoint,
+  RepairImageRect,
+  RepairInvestigationRegionCreatedEvent,
+  RepairInvestigationRegionUpdatedEvent,
+  RepairInvestigationRegionStatus,
   RepairInstrumentKind,
+  RepairKnowledgeSpatialRef,
   RepairKnowledgePackProgress,
   RepairMultimeterReading,
   RepairOperatorProfileTabId,
+  RepairOverlayEntityRef,
   RepairPanelId,
   RepairSession,
   RepairSessionListItem,
@@ -97,6 +104,21 @@ const AI_MARK_LIFECYCLE_STATES: ReadonlySet<string> = new Set([
   "dismissed",
   "expired",
 ]);
+const INVESTIGATION_REGION_STATUSES: ReadonlySet<string> = new Set([
+  "draft",
+  "active",
+  "watching",
+  "resolved",
+  "dismissed",
+]);
+const OVERLAY_ENTITY_KINDS: ReadonlySet<string> = new Set([
+  "event",
+  "investigation-region",
+  "temporary-spatial-region",
+  "knowledge-region",
+  "measurement-relationship",
+  "live-edge",
+]);
 const PANEL_IDS: ReadonlySet<string> = new Set([
   "session-rail",
   "workbench-stage",
@@ -159,8 +181,57 @@ function safeStringArray(value: unknown): string[] | null {
   return value.map((item) => safeString(item)).filter((item): item is string => item !== null);
 }
 
+function uniqueStringList(values: string[]): string[] {
+  return Array.from(new Set(values));
+}
+
 function safeNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function safeImagePoint(value: unknown): RepairImagePoint | null {
+  if (typeof value !== "object" || value === null) return null;
+  const record = value as Record<string, unknown>;
+  const xPx = safeNumber(record["xPx"]);
+  const yPx = safeNumber(record["yPx"]);
+  if (xPx === null || yPx === null) return null;
+  return { xPx, yPx };
+}
+
+function safeImageRect(value: unknown): RepairImageRect | null {
+  if (typeof value !== "object" || value === null) return null;
+  const record = value as Record<string, unknown>;
+  const xPx = safeNumber(record["xPx"]);
+  const yPx = safeNumber(record["yPx"]);
+  const widthPx = safeNumber(record["widthPx"]);
+  const heightPx = safeNumber(record["heightPx"]);
+  if (xPx === null || yPx === null || widthPx === null || heightPx === null) return null;
+  return {
+    xPx,
+    yPx,
+    widthPx: Math.max(1, widthPx),
+    heightPx: Math.max(1, heightPx),
+  };
+}
+
+function safeOverlayEntityRef(value: unknown): RepairOverlayEntityRef | null {
+  if (typeof value !== "object" || value === null) return null;
+  const record = value as Record<string, unknown>;
+  const kind = safeString(record["kind"]);
+  const id = safeString(record["id"]);
+  if (kind === null || id === null || !OVERLAY_ENTITY_KINDS.has(kind)) return null;
+  return { kind: kind as RepairOverlayEntityRef["kind"], id };
+}
+
+function safeOverlayEntityRefs(value: unknown): RepairOverlayEntityRef[] | null {
+  if (!Array.isArray(value)) return null;
+  return value
+    .map(safeOverlayEntityRef)
+    .filter((ref): ref is RepairOverlayEntityRef => ref !== null);
+}
+
+function isInvestigationRegionStatus(value: unknown): value is RepairInvestigationRegionStatus {
+  return typeof value === "string" && INVESTIGATION_REGION_STATUSES.has(value);
 }
 
 function clampWorkbenchPan(
@@ -422,6 +493,255 @@ function createMeasurementEvent(
     },
     reference: reading.reference,
   };
+}
+
+function getRegionFromKnowledgeSpatialRef(
+  spatialRef: RepairKnowledgeSpatialRef
+): RepairImageRect | null {
+  if (spatialRef.region !== null && spatialRef.region !== undefined) return spatialRef.region;
+  if (spatialRef.point !== null && spatialRef.point !== undefined) {
+    return {
+      xPx: Math.max(0, spatialRef.point.xPx - 24),
+      yPx: Math.max(0, spatialRef.point.yPx - 24),
+      widthPx: 48,
+      heightPx: 48,
+    };
+  }
+  return null;
+}
+
+function findKnowledgeSpatialRegion(
+  session: RepairSession,
+  spatialRefId: string
+): { id: string; label: string; region: RepairImageRect; linkedEventIds: string[] } | null {
+  const pack = session.knowledgePack;
+  if (pack === null) return null;
+
+  for (const failure of pack.commonFailures) {
+    if (
+      failure.id !== spatialRefId ||
+      failure.spatialRef === null ||
+      failure.spatialRef === undefined
+    ) {
+      continue;
+    }
+    const region = getRegionFromKnowledgeSpatialRef(failure.spatialRef);
+    if (region !== null) {
+      return {
+        id: failure.id,
+        label: failure.label,
+        region,
+        linkedEventIds:
+          failure.spatialRef.linkedSnapshotId === null ||
+          failure.spatialRef.linkedSnapshotId === undefined
+            ? []
+            : [failure.spatialRef.linkedSnapshotId],
+      };
+    }
+  }
+
+  for (const point of pack.testPoints) {
+    if (point.id !== spatialRefId) continue;
+    const region =
+      point.spatialRef === null || point.spatialRef === undefined
+        ? point.pinAt === null
+          ? null
+          : {
+              xPx: Math.max(0, point.pinAt.xPx - 24),
+              yPx: Math.max(0, point.pinAt.yPx - 24),
+              widthPx: 48,
+              heightPx: 48,
+            }
+        : getRegionFromKnowledgeSpatialRef(point.spatialRef);
+    if (region !== null) {
+      return {
+        id: point.id,
+        label: point.label,
+        region,
+        linkedEventIds:
+          point.spatialRef?.linkedSnapshotId === null ||
+          point.spatialRef?.linkedSnapshotId === undefined
+            ? []
+            : [point.spatialRef.linkedSnapshotId],
+      };
+    }
+  }
+
+  for (const resource of pack.resources) {
+    const spatialRefs = resource.spatialRefs ?? [];
+    for (let index = 0; index < spatialRefs.length; index += 1) {
+      const spatialRef = spatialRefs[index];
+      const id = `${resource.id}:spatial-${index}`;
+      if (spatialRef === undefined || id !== spatialRefId) continue;
+      const region = getRegionFromKnowledgeSpatialRef(spatialRef);
+      if (region !== null) {
+        return {
+          id,
+          label: spatialRef.label,
+          region,
+          linkedEventIds:
+            spatialRef.linkedSnapshotId === null || spatialRef.linkedSnapshotId === undefined
+              ? []
+              : [spatialRef.linkedSnapshotId],
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+function collectKnowledgePromotionLinkage(
+  state: RepairRuntimeState,
+  session: RepairSession,
+  spatialRefId: string,
+  fallbackLinkedEventIds: string[]
+): {
+  linkedEventIds: string[];
+  measurementEventIds: string[];
+  annotationEventIds: string[];
+  aiMarkEventIds: string[];
+} {
+  const projectedKnowledge = createRepairUiSnapshotMeta(state).replay.knowledgeRegions.find(
+    (entry) => entry.id === spatialRefId
+  );
+  const measurementEventIds = uniqueStringList(projectedKnowledge?.relatedMeasurementIds ?? []);
+  const aiMarkEventIds = uniqueStringList(projectedKnowledge?.relatedAiMarkIds ?? []);
+  const linkedEventIds = uniqueStringList([
+    ...fallbackLinkedEventIds,
+    ...(projectedKnowledge?.linkedEventIds ?? []),
+    ...measurementEventIds,
+    ...aiMarkEventIds,
+  ]);
+  const relatedEventIds = new Set([...linkedEventIds, ...measurementEventIds, ...aiMarkEventIds]);
+  const annotationEventIds = new Set<string>();
+
+  session.events.forEach((event) => {
+    if (event.kind === "measurement" && measurementEventIds.includes(event.id)) {
+      event.linkedAnnotationIds?.forEach((id) => annotationEventIds.add(id));
+      return;
+    }
+
+    if (
+      (event.kind === "ai-mark" || event.kind === "risk-flag") &&
+      aiMarkEventIds.includes(event.id)
+    ) {
+      event.linkedAnnotationIds?.forEach((id) => annotationEventIds.add(id));
+      return;
+    }
+
+    if (event.kind !== "annotation") return;
+    const metaLinkedMeasurementIds = event.meta?.linkedMeasurementIds ?? [];
+    const metaLinkedEventIds = event.meta?.linkedEventIds ?? [];
+    if (
+      event.linkedEventIds.some((id) => relatedEventIds.has(id)) ||
+      metaLinkedMeasurementIds.some((id) => measurementEventIds.includes(id)) ||
+      metaLinkedEventIds.some((id) => relatedEventIds.has(id))
+    ) {
+      annotationEventIds.add(event.id);
+    }
+  });
+
+  const normalizedAnnotationEventIds = uniqueStringList(
+    [...annotationEventIds].filter((id) =>
+      session.events.some((event) => event.id === id && event.kind === "annotation")
+    )
+  );
+
+  return {
+    linkedEventIds: uniqueStringList([...linkedEventIds, ...normalizedAnnotationEventIds]),
+    measurementEventIds,
+    annotationEventIds: normalizedAnnotationEventIds,
+    aiMarkEventIds,
+  };
+}
+
+function getEventIdFromOverlayRef(ref: RepairOverlayEntityRef | null): string | null {
+  return ref?.kind === "event" ? ref.id : null;
+}
+
+function createInvestigationRegionCreatedEvent(
+  session: RepairSession,
+  iso: string,
+  payload: {
+    label: string;
+    region: RepairImageRect;
+    status: RepairInvestigationRegionStatus;
+    color: string;
+    sourceRef: RepairOverlayEntityRef | null;
+    knowledgeSpatialRefId: string | null;
+    promotedFromTemporaryRegionId: string | null;
+    linkedEventIds: string[];
+    measurementEventIds: string[];
+    annotationEventIds: string[];
+    aiMarkEventIds: string[];
+  }
+): RepairInvestigationRegionCreatedEvent {
+  return {
+    kind: "investigation-region-created",
+    id: createEventId("evt-region", iso),
+    sessionId: session.id,
+    occurredAt: iso,
+    source: "operator",
+    linkedEventIds: payload.linkedEventIds,
+    regionId: createEventId("region", iso),
+    label: payload.label,
+    region: payload.region,
+    status: payload.status,
+    color: payload.color,
+    sourceRef: payload.sourceRef,
+    knowledgeSpatialRefId: payload.knowledgeSpatialRefId,
+    promotedFromTemporaryRegionId: payload.promotedFromTemporaryRegionId,
+    measurementEventIds: payload.measurementEventIds,
+    annotationEventIds: payload.annotationEventIds,
+    aiMarkEventIds: payload.aiMarkEventIds,
+  };
+}
+
+function createInvestigationRegionUpdatedEvent(
+  session: RepairSession,
+  iso: string,
+  payload: {
+    regionId: string;
+    label?: string;
+    region?: RepairImageRect;
+    status?: RepairInvestigationRegionStatus;
+    color?: string;
+    sourceRef?: RepairOverlayEntityRef | null;
+    knowledgeSpatialRefId?: string | null;
+    promotedFromTemporaryRegionId?: string | null;
+    linkedEventIds: string[];
+    measurementEventIds?: string[];
+    annotationEventIds?: string[];
+    aiMarkEventIds?: string[];
+  }
+): RepairInvestigationRegionUpdatedEvent {
+  const event: RepairInvestigationRegionUpdatedEvent = {
+    kind: "investigation-region-updated",
+    id: createEventId("evt-region-update", iso),
+    sessionId: session.id,
+    occurredAt: iso,
+    source: "operator",
+    linkedEventIds: payload.linkedEventIds,
+    regionId: payload.regionId,
+  };
+  if (payload.label !== undefined) event.label = payload.label;
+  if (payload.region !== undefined) event.region = payload.region;
+  if (payload.status !== undefined) event.status = payload.status;
+  if (payload.color !== undefined) event.color = payload.color;
+  if (payload.sourceRef !== undefined) event.sourceRef = payload.sourceRef;
+  if (payload.knowledgeSpatialRefId !== undefined) {
+    event.knowledgeSpatialRefId = payload.knowledgeSpatialRefId;
+  }
+  if (payload.promotedFromTemporaryRegionId !== undefined) {
+    event.promotedFromTemporaryRegionId = payload.promotedFromTemporaryRegionId;
+  }
+  if (payload.measurementEventIds !== undefined)
+    event.measurementEventIds = payload.measurementEventIds;
+  if (payload.annotationEventIds !== undefined)
+    event.annotationEventIds = payload.annotationEventIds;
+  if (payload.aiMarkEventIds !== undefined) event.aiMarkEventIds = payload.aiMarkEventIds;
+  return event;
 }
 
 function setActiveSessionDerivedState(
@@ -900,16 +1220,281 @@ export default function createRepairRoomHostRuntime() {
         return { success: false, message: "panel tab payload is empty" };
       }
 
+      function refsEqual(left: RepairOverlayEntityRef, right: RepairOverlayEntityRef): boolean {
+        return left.kind === right.kind && left.id === right.id;
+      }
+
+      function dedupeOverlayRefs(refs: RepairOverlayEntityRef[]): RepairOverlayEntityRef[] {
+        const seen = new Set<string>();
+        const next: RepairOverlayEntityRef[] = [];
+        refs.forEach((ref) => {
+          const key = `${ref.kind}:${ref.id}`;
+          if (seen.has(key)) return;
+          seen.add(key);
+          next.push(ref);
+        });
+        return next;
+      }
+
+      function applyOverlayEntitySelection(params: {
+        refs: RepairOverlayEntityRef[];
+        mode: string | null;
+        inspectorRef: RepairOverlayEntityRef | null;
+        focusJump: boolean;
+      }): void {
+        const current = store.getState().workbench.selection.selectedEntityRefs;
+        const nextRefs =
+          params.mode === "add"
+            ? dedupeOverlayRefs([...current, ...params.refs])
+            : params.mode === "toggle"
+              ? params.refs.reduce<RepairOverlayEntityRef[]>((selection, ref) => {
+                  return selection.some((candidate) => refsEqual(candidate, ref))
+                    ? selection.filter((candidate) => !refsEqual(candidate, ref))
+                    : [...selection, ref];
+                }, current)
+              : dedupeOverlayRefs(params.refs);
+        const inspectorRef = params.inspectorRef ?? params.refs.at(-1) ?? nextRefs.at(-1) ?? null;
+        const selectedEventIds = nextRefs
+          .filter((ref) => ref.kind === "event")
+          .map((ref) => ref.id);
+        const inspectorEventId = getEventIdFromOverlayRef(inspectorRef);
+        store.dispatch({
+          type: "workbench/set-selection",
+          focusedEventId: inspectorEventId,
+          selection: {
+            selectedEntityRefs: nextRefs,
+            selectedEventIds,
+            inspectorEntityRef: inspectorRef,
+            inspectorEventId,
+            focusJumpEntityRef: params.focusJump ? inspectorRef : null,
+            focusJumpEventId: params.focusJump ? inspectorEventId : null,
+          },
+        });
+      }
+
+      function clampSessionPoint(
+        session: RepairSession,
+        point: RepairImagePoint
+      ): RepairImagePoint {
+        const image = session.pcbImage;
+        return {
+          xPx: Math.max(0, Math.min(image?.widthPx ?? 1600, point.xPx)),
+          yPx: Math.max(0, Math.min(image?.heightPx ?? 900, point.yPx)),
+        };
+      }
+
+      function moveSessionRect(
+        session: RepairSession,
+        rect: RepairImageRect,
+        delta: RepairImagePoint
+      ): RepairImageRect {
+        const image = session.pcbImage;
+        const maxX = Math.max(0, (image?.widthPx ?? 1600) - rect.widthPx);
+        const maxY = Math.max(0, (image?.heightPx ?? 900) - rect.heightPx);
+        return {
+          ...rect,
+          xPx: Math.max(0, Math.min(maxX, rect.xPx + delta.xPx)),
+          yPx: Math.max(0, Math.min(maxY, rect.yPx + delta.yPx)),
+        };
+      }
+
+      function getEventNudgeCenter(event: RepairEvent): RepairImagePoint | null {
+        if (event.kind === "measurement" && event.pinAt !== null) return event.pinAt;
+        if (event.kind === "annotation") {
+          if (event.point !== null) return event.point;
+          if (event.region !== null) {
+            return {
+              xPx: event.region.xPx + event.region.widthPx / 2,
+              yPx: event.region.yPx + event.region.heightPx / 2,
+            };
+          }
+        }
+        if ((event.kind === "ai-mark" || event.kind === "risk-flag") && event.region !== null) {
+          return {
+            xPx: event.region.xPx + event.region.widthPx / 2,
+            yPx: event.region.yPx + event.region.heightPx / 2,
+          };
+        }
+        return null;
+      }
+
+      function getNudgeTargetDelta(params: {
+        center: RepairImagePoint;
+        requestedDelta: RepairImagePoint;
+        hardSnap: boolean;
+        selectedKeys: Set<string>;
+        snapTargets: Array<{ key: string; point: RepairImagePoint }>;
+      }): RepairImagePoint {
+        if (!params.hardSnap) return params.requestedDelta;
+        const moved = {
+          xPx: params.center.xPx + params.requestedDelta.xPx,
+          yPx: params.center.yPx + params.requestedDelta.yPx,
+        };
+        const snap = params.snapTargets.reduce<{
+          point: RepairImagePoint;
+          distancePx: number;
+        } | null>((best, target) => {
+          if (params.selectedKeys.has(target.key)) return best;
+          const distancePx = Math.hypot(moved.xPx - target.point.xPx, moved.yPx - target.point.yPx);
+          if (distancePx > 14 || (best !== null && best.distancePx <= distancePx)) return best;
+          return { point: target.point, distancePx };
+        }, null);
+        if (snap === null) return params.requestedDelta;
+        return {
+          xPx: params.requestedDelta.xPx + snap.point.xPx - moved.xPx,
+          yPx: params.requestedDelta.yPx + snap.point.yPx - moved.yPx,
+        };
+      }
+
+      function nudgeOverlaySelection(
+        requestedDelta: RepairImagePoint,
+        hardSnap: boolean
+      ): { success: boolean; message?: string } {
+        const state = store.getState();
+        const session = getActiveSession(state);
+        if (session === null) return { success: false, message: "active session is required" };
+        const selectedRefs = state.workbench.selection.selectedEntityRefs;
+        if (selectedRefs.length === 0) return { success: true };
+
+        const selectedKeys = new Set(selectedRefs.map((ref) => `${ref.kind}:${ref.id}`));
+        const replay = createRepairUiSnapshotMeta(state).replay;
+        const snapTargets: Array<{ key: string; point: RepairImagePoint }> = [];
+        session.events.forEach((event) => {
+          const center = getEventNudgeCenter(event);
+          if (center !== null) snapTargets.push({ key: `event:${event.id}`, point: center });
+        });
+        replay.investigationRegions.forEach((region) => {
+          snapTargets.push({
+            key: `investigation-region:${region.regionId}`,
+            point: {
+              xPx: region.region.xPx + region.region.widthPx / 2,
+              yPx: region.region.yPx + region.region.heightPx / 2,
+            },
+          });
+        });
+        replay.knowledgeRegions.forEach((region) => {
+          snapTargets.push({
+            key: `knowledge-region:${region.id}`,
+            point: {
+              xPx: region.region.xPx + region.region.widthPx / 2,
+              yPx: region.region.yPx + region.region.heightPx / 2,
+            },
+          });
+        });
+
+        const updatedEvents = session.events.map((event) => {
+          const ref: RepairOverlayEntityRef = { kind: "event", id: event.id };
+          if (!selectedKeys.has(`${ref.kind}:${ref.id}`)) return event;
+          const center = getEventNudgeCenter(event);
+          if (center === null) return event;
+          const delta = getNudgeTargetDelta({
+            center,
+            requestedDelta,
+            hardSnap,
+            selectedKeys,
+            snapTargets,
+          });
+          if (event.kind === "measurement" && event.pinAt !== null) {
+            return {
+              ...event,
+              pinAt: clampSessionPoint(session, {
+                xPx: event.pinAt.xPx + delta.xPx,
+                yPx: event.pinAt.yPx + delta.yPx,
+              }),
+            };
+          }
+          if (event.kind === "annotation") {
+            return {
+              ...event,
+              region: event.region === null ? null : moveSessionRect(session, event.region, delta),
+              point:
+                event.point === null
+                  ? null
+                  : clampSessionPoint(session, {
+                      xPx: event.point.xPx + delta.xPx,
+                      yPx: event.point.yPx + delta.yPx,
+                    }),
+            };
+          }
+          return event;
+        });
+
+        const iso = createLiveSessionIso(session);
+        const regionUpdates = selectedRefs.flatMap((ref) => {
+          if (ref.kind !== "investigation-region") return [];
+          const region = replay.investigationRegions.find(
+            (candidate) => candidate.regionId === ref.id
+          );
+          if (region === undefined) return [];
+          const center = {
+            xPx: region.region.xPx + region.region.widthPx / 2,
+            yPx: region.region.yPx + region.region.heightPx / 2,
+          };
+          const delta = getNudgeTargetDelta({
+            center,
+            requestedDelta,
+            hardSnap,
+            selectedKeys,
+            snapTargets,
+          });
+          return [
+            createInvestigationRegionUpdatedEvent(session, iso, {
+              regionId: region.regionId,
+              region: moveSessionRect(session, region.region, delta),
+              linkedEventIds: region.linkage.eventIds,
+              measurementEventIds: region.linkage.measurementEventIds,
+              annotationEventIds: region.linkage.annotationEventIds,
+              aiMarkEventIds: region.linkage.aiMarkEventIds,
+            }),
+          ];
+        });
+
+        const eventsChanged = updatedEvents.some((event, index) => event !== session.events[index]);
+        if (!eventsChanged && regionUpdates.length === 0) return { success: true };
+        const nextSession: RepairSession = {
+          ...session,
+          events: [...updatedEvents, ...regionUpdates],
+          updatedAt: iso,
+        };
+        store.batch(() => {
+          setSessionAndList(nextSession);
+          regionUpdates.forEach((event) => {
+            const feedItem = repairEventToTacticalFeedItem(event, session.startedAt);
+            if (feedItem !== null) {
+              store.dispatch({ type: "tactical-feed/append", item: feedItem });
+            }
+          });
+        });
+        return { success: true };
+      }
+
       function applyFocusUpdate(flat: Record<string, unknown>): {
         success: boolean;
         message?: string;
       } {
         let handled = false;
 
-        if ("hoveredEventId" in flat) {
+        if ("hoveredEntityRef" in flat) {
+          const hoveredEntityRef = safeOverlayEntityRef(flat["hoveredEntityRef"]);
           store.dispatch({
             type: "workbench/set-selection",
-            selection: { hoveredEventId: safeString(flat["hoveredEventId"]) },
+            selection: {
+              hoveredEntityRef,
+              hoveredEventId: getEventIdFromOverlayRef(hoveredEntityRef),
+            },
+          });
+          handled = true;
+        }
+
+        if ("hoveredEventId" in flat) {
+          const hoveredEventId = safeString(flat["hoveredEventId"]);
+          store.dispatch({
+            type: "workbench/set-selection",
+            selection: {
+              hoveredEventId,
+              hoveredEntityRef:
+                hoveredEventId === null ? null : { kind: "event", id: hoveredEventId },
+            },
           });
           handled = true;
         }
@@ -920,10 +1505,27 @@ export default function createRepairRoomHostRuntime() {
             focusedEventId: null,
             selection: {
               hoveredEventId: null,
+              hoveredEntityRef: null,
               selectedEventIds: [],
+              selectedEntityRefs: [],
               inspectorEventId: null,
+              inspectorEntityRef: null,
               focusJumpEventId: null,
+              focusJumpEntityRef: null,
             },
+          });
+          return { success: true };
+        }
+
+        const selectedEntityRefs = safeOverlayEntityRefs(
+          flat["selectedEntityRefs"] ?? flat["refs"]
+        );
+        if (selectedEntityRefs !== null) {
+          applyOverlayEntitySelection({
+            refs: selectedEntityRefs,
+            mode: safeString(flat["selectionMode"] ?? flat["mode"]),
+            inspectorRef: safeOverlayEntityRef(flat["inspectorEntityRef"] ?? flat["inspectorRef"]),
+            focusJump: flat["focusJump"] !== false,
           });
           return { success: true };
         }
@@ -937,9 +1539,25 @@ export default function createRepairRoomHostRuntime() {
             focusedEventId: inspectorEventId,
             selection: {
               selectedEventIds,
+              selectedEntityRefs: selectedEventIds.map((id) => ({ kind: "event", id })),
               inspectorEventId,
+              inspectorEntityRef:
+                inspectorEventId === null ? null : { kind: "event", id: inspectorEventId },
               focusJumpEventId: safeString(flat["focusJumpEventId"]) ?? inspectorEventId,
+              focusJumpEntityRef:
+                inspectorEventId === null ? null : { kind: "event", id: inspectorEventId },
             },
+          });
+          return { success: true };
+        }
+
+        const ref = safeOverlayEntityRef(flat["ref"] ?? flat["entityRef"]);
+        if (ref !== null) {
+          applyOverlayEntitySelection({
+            refs: [ref],
+            mode: safeString(flat["selectionMode"]),
+            inspectorRef: ref,
+            focusJump: flat["focusJump"] !== false,
           });
           return { success: true };
         }
@@ -970,8 +1588,15 @@ export default function createRepairRoomHostRuntime() {
             focusedEventId: inspectorEventId,
             selection: {
               selectedEventIds: nextSelection,
+              selectedEntityRefs: nextSelection.map((id) => ({ kind: "event", id })),
               inspectorEventId,
+              inspectorEntityRef:
+                inspectorEventId === null ? null : { kind: "event", id: inspectorEventId },
               focusJumpEventId: flat["focusJump"] === false ? null : (inspectorEventId ?? eventId),
+              focusJumpEntityRef:
+                flat["focusJump"] === false || inspectorEventId === null
+                  ? null
+                  : { kind: "event", id: inspectorEventId },
             },
           });
           return { success: true };
@@ -979,12 +1604,22 @@ export default function createRepairRoomHostRuntime() {
 
         const focusMode = flat["focusMode"];
         if (typeof focusMode === "boolean") {
-          store.dispatch({ type: "layout/set-focus-mode", focusMode });
+          store.dispatchMany([
+            { type: "layout/set-focus-mode", focusMode },
+            { type: "workbench/set-focus-mode", focusMode },
+          ]);
           return { success: true };
         }
-        return handled
-          ? { success: true }
-          : { success: false, message: "focus payload is empty" };
+        const investigationMode = flat["investigationModeEnabled"] ?? flat["investigationMode"];
+        if (typeof investigationMode === "boolean") {
+          store.dispatch({ type: "workbench/set-investigation-mode", enabled: investigationMode });
+          return { success: true };
+        }
+        const nudgeDelta = safeImagePoint(flat["nudgeDelta"]);
+        if (nudgeDelta !== null) {
+          return nudgeOverlaySelection(nudgeDelta, flat["hardSnap"] === true);
+        }
+        return handled ? { success: true } : { success: false, message: "focus payload is empty" };
       }
 
       function applyLayoutCompatibilityUpdate(flat: Record<string, unknown>): {
@@ -1363,9 +1998,7 @@ export default function createRepairRoomHostRuntime() {
               linkedEventIds: [target.id],
               targetEventId: target.id,
               state: lifecycleState,
-              reason:
-                safeString(flat["reason"]) ??
-                `Operator moved AI mark to ${lifecycleState}.`,
+              reason: safeString(flat["reason"]) ?? `Operator moved AI mark to ${lifecycleState}.`,
             };
             return { success: appendEventToActiveSession(lifecycleEvent) };
           }
@@ -1412,6 +2045,170 @@ export default function createRepairRoomHostRuntime() {
             return applyFocusUpdate(flat);
           case REPAIR_UI_COMMANDS.updateLayout:
             return applyLayoutCompatibilityUpdate(flat);
+          case REPAIR_UI_COMMANDS.toggleInvestigationMode: {
+            const enabled =
+              typeof flat["enabled"] === "boolean"
+                ? flat["enabled"]
+                : !store.getState().workbench.investigationModeEnabled;
+            store.dispatch({ type: "workbench/set-investigation-mode", enabled });
+            return { success: true };
+          }
+          case REPAIR_UI_COMMANDS.selectOverlayEntities: {
+            const refs = safeOverlayEntityRefs(flat["refs"] ?? flat["selectedEntityRefs"]);
+            if (refs === null) return { success: false, message: "refs are required" };
+            applyOverlayEntitySelection({
+              refs,
+              mode: safeString(flat["mode"] ?? flat["selectionMode"]),
+              inspectorRef: safeOverlayEntityRef(
+                flat["inspectorRef"] ?? flat["inspectorEntityRef"]
+              ),
+              focusJump: flat["focusJump"] !== false,
+            });
+            return { success: true };
+          }
+          case REPAIR_UI_COMMANDS.focusOverlayEntity: {
+            const ref = safeOverlayEntityRef(flat["ref"] ?? flat["entityRef"]);
+            if (ref === null) return { success: false, message: "ref is required" };
+            if (ref.kind === "event" && flat["focusJump"] !== false) {
+              replayController.jump(ref.id);
+            }
+            if (ref.kind === "live-edge") {
+              replayController.followLive();
+            }
+            applyOverlayEntitySelection({
+              refs: ref.kind === "live-edge" ? [] : [ref],
+              mode: "replace",
+              inspectorRef: ref,
+              focusJump: flat["focusJump"] !== false,
+            });
+            if (ref.kind !== "event") {
+              store.dispatch({ type: "workbench/focus-entity", ref, eventId: null });
+            }
+            return { success: true };
+          }
+          case REPAIR_UI_COMMANDS.focusInvestigationRegion: {
+            const regionId = safeString(flat["regionId"]);
+            if (regionId === null) return { success: false, message: "regionId is required" };
+            const ref: RepairOverlayEntityRef = { kind: "investigation-region", id: regionId };
+            store.dispatchMany([
+              { type: "workbench/set-investigation-mode", enabled: true },
+              { type: "workbench/focus-entity", ref, eventId: null },
+              {
+                type: "workbench/set-selection",
+                focusedEventId: null,
+                selection: {
+                  selectedEventIds: [],
+                  selectedEntityRefs: [ref],
+                  inspectorEventId: null,
+                  inspectorEntityRef: ref,
+                  focusJumpEventId: null,
+                  focusJumpEntityRef: ref,
+                },
+              },
+            ]);
+            return { success: true };
+          }
+          case REPAIR_UI_COMMANDS.focusKnowledgeSpatialRef: {
+            const spatialRefId = safeString(flat["spatialRefId"]);
+            if (spatialRefId === null)
+              return { success: false, message: "spatialRefId is required" };
+            const ref: RepairOverlayEntityRef = { kind: "knowledge-region", id: spatialRefId };
+            store.dispatchMany([
+              { type: "knowledge-pack/set-spatial-focus", spatialRefId },
+              { type: "knowledge-pack/set-preview-tab", tabId: "board-view" },
+              { type: "workbench/set-investigation-mode", enabled: true },
+              { type: "workbench/focus-entity", ref, eventId: null },
+              {
+                type: "workbench/set-selection",
+                focusedEventId: null,
+                selection: {
+                  selectedEventIds: [],
+                  selectedEntityRefs: [ref],
+                  inspectorEventId: null,
+                  inspectorEntityRef: ref,
+                  focusJumpEventId: null,
+                  focusJumpEntityRef: ref,
+                },
+              },
+            ]);
+            return { success: true };
+          }
+          case REPAIR_UI_COMMANDS.promoteKnowledgeRegion: {
+            const session = getActiveSession(store.getState());
+            const spatialRefId = safeString(flat["spatialRefId"]);
+            if (session === null || spatialRefId === null) {
+              return { success: false, message: "active session and spatialRefId are required" };
+            }
+            const knowledgeRegion = findKnowledgeSpatialRegion(session, spatialRefId);
+            if (knowledgeRegion === null) {
+              return { success: false, message: "knowledge spatial ref was not found" };
+            }
+            const linkage = collectKnowledgePromotionLinkage(
+              store.getState(),
+              session,
+              spatialRefId,
+              knowledgeRegion.linkedEventIds
+            );
+            const iso = createLiveSessionIso(session);
+            const event = createInvestigationRegionCreatedEvent(session, iso, {
+              label: safeString(flat["label"]) ?? knowledgeRegion.label,
+              region: safeImageRect(flat["region"]) ?? knowledgeRegion.region,
+              status: isInvestigationRegionStatus(flat["status"]) ? flat["status"] : "active",
+              color: safeString(flat["color"]) ?? REPAIR_UI_COLORS.cyan,
+              sourceRef: { kind: "knowledge-region", id: spatialRefId },
+              knowledgeSpatialRefId: spatialRefId,
+              promotedFromTemporaryRegionId: `tmp-knowledge-${spatialRefId}`,
+              linkedEventIds: linkage.linkedEventIds,
+              measurementEventIds: linkage.measurementEventIds,
+              annotationEventIds: linkage.annotationEventIds,
+              aiMarkEventIds: linkage.aiMarkEventIds,
+            });
+            let success = false;
+            store.batch(() => {
+              success = appendEventToActiveSession(event);
+              if (success) {
+                store.dispatchMany([
+                  { type: "workbench/set-investigation-mode", enabled: true },
+                  { type: "knowledge-pack/set-spatial-focus", spatialRefId },
+                  {
+                    type: "workbench/set-selection",
+                    focusedEventId: null,
+                    selection: {
+                      selectedEventIds: [],
+                      selectedEntityRefs: [{ kind: "investigation-region", id: event.regionId }],
+                      inspectorEventId: null,
+                      inspectorEntityRef: { kind: "investigation-region", id: event.regionId },
+                      focusJumpEventId: null,
+                      focusJumpEntityRef: { kind: "investigation-region", id: event.regionId },
+                    },
+                  },
+                ]);
+              }
+            });
+            return { success };
+          }
+          case REPAIR_UI_COMMANDS.focusLiveEdge: {
+            replayController.followLive();
+            const ref: RepairOverlayEntityRef = { kind: "live-edge", id: "live-edge" };
+            store.dispatchMany([
+              { type: "workbench/focus-entity", ref, eventId: null },
+              {
+                type: "workbench/set-selection",
+                focusedEventId: null,
+                selection: {
+                  hoveredEventId: null,
+                  hoveredEntityRef: null,
+                  selectedEventIds: [],
+                  selectedEntityRefs: [],
+                  inspectorEventId: null,
+                  inspectorEntityRef: ref,
+                  focusJumpEventId: null,
+                  focusJumpEntityRef: ref,
+                },
+              },
+            ]);
+            return { success: true };
+          }
           default:
             api.log(
               "warn",

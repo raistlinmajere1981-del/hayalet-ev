@@ -33,6 +33,11 @@
   overflow: hidden;
 }
 
+.tt-shell[data-tt-view="match"] .tt-arena {
+  grid-template-columns: minmax(var(--game-rem-14), var(--game-rem-15-5)) minmax(0, 1fr);
+  gap: var(--game-rem-0-5);
+}
+
 .tt-rail,
 .tt-stage {
   min-width: 0;
@@ -45,6 +50,12 @@
   gap: var(--game-rem-0-58);
   align-content: start;
   overflow: hidden;
+}
+
+.tt-shell[data-tt-view="match"] .tt-rail {
+  gap: var(--game-rem-0-45);
+  overflow: auto;
+  scrollbar-gutter: stable;
 }
 
 .tt-panel,
@@ -62,8 +73,17 @@
   gap: var(--game-rem-0-48);
 }
 
+.tt-shell[data-tt-view="match"] .tt-panel {
+  padding: var(--game-rem-0-58);
+  gap: var(--game-rem-0-34);
+}
+
 .tt-panel--intro {
   padding-block: var(--game-rem-0-76);
+}
+
+.tt-shell[data-tt-view="match"] .tt-panel--intro {
+  padding-block: var(--game-rem-0-58);
 }
 
 .tt-panel--overview {
@@ -86,12 +106,22 @@
   line-height: var(--game-rem-0-96);
 }
 
+.tt-shell[data-tt-view="match"] .tt-panel__title {
+  font-size: clamp(var(--game-rem-1-22), 1.45vw, var(--game-rem-1-5));
+}
+
 .tt-panel__body,
 .tt-panel__hint {
   margin: 0;
   color: var(--shell-muted);
   line-height: 1.4;
   font-size: var(--game-rem-0-82);
+}
+
+.tt-shell[data-tt-view="match"] .tt-panel__body,
+.tt-shell[data-tt-view="match"] .tt-panel__hint {
+  font-size: var(--game-rem-0-72);
+  line-height: 1.32;
 }
 
 .tt-overview-grid {
@@ -180,6 +210,19 @@
     box-shadow var(--game-ms-140) ease;
 }
 
+.tt-toggle:focus-visible,
+.tt-prep-btn:focus-visible,
+.tt-prep-btn--confirm:focus-visible,
+.tt-route-btn:focus-visible,
+.tt-bend-row-btn:focus-visible,
+.tt-actions .backgammon-button:focus-visible,
+.tt-support-stack > .backgammon-button:focus-visible {
+  outline: var(--game-px-2) solid var(--game-accent-92);
+  outline-offset: var(--game-px-2);
+  box-shadow: var(--game-px-0) var(--game-px-0) var(--game-px-0) var(--game-px-3)
+    var(--game-accent-18);
+}
+
 .tt-toggle[data-selected="true"] {
   border-color: var(--game-accent-42);
   background:
@@ -202,6 +245,54 @@
     linear-gradient(180deg, var(--game-white-04), transparent 32%), var(--game-bg-dark-overlay-4);
 }
 
+.tt-shell[data-tt-view="match"] .tt-stage {
+  padding: var(--game-rem-0-52);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--game-rem-0-46);
+}
+
+.tt-match-topbar {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.85fr) minmax(0, 0.9fr) minmax(0, 1.05fr);
+  gap: var(--game-rem-0-46);
+  align-items: center;
+  padding: var(--game-rem-0-42) var(--game-rem-0-58);
+  border-radius: var(--game-rem-0-96);
+  border: var(--game-px-1) solid var(--game-accent-2);
+  background:
+    linear-gradient(135deg, var(--game-bg-teal-dark-2), var(--game-white-03)), var(--game-white-025);
+  box-shadow: inset var(--game-px-0) var(--game-px-0) var(--game-px-0) var(--game-px-1)
+    var(--game-white-04);
+}
+
+.tt-match-topbar > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tt-match-topbar__status {
+  font-size: var(--game-rem-0-86);
+  line-height: 1.2;
+}
+
+.tt-match-topbar__turn,
+.tt-match-topbar__roster,
+.tt-match-topbar__ready {
+  color: var(--shell-muted);
+  font-size: var(--game-rem-0-72);
+  line-height: 1.25;
+}
+
+.tt-match-topbar__ready {
+  justify-self: end;
+  max-width: 100%;
+  padding: var(--game-rem-0-18) var(--game-rem-0-42);
+  border-radius: var(--game-px-999);
+  border: var(--game-px-1) solid var(--game-white-08);
+  background: var(--game-white-03);
+}
+
 .tt-stage-main {
   min-height: 0;
   min-width: 0;
@@ -211,6 +302,11 @@
   overflow: hidden;
 }
 
+.tt-shell[data-tt-view="match"] .tt-stage-main {
+  grid-template-columns: minmax(0, 1fr) minmax(var(--game-rem-14), var(--game-rem-15-5));
+  gap: var(--game-rem-0-5);
+}
+
 .tt-support-stack {
   min-height: 0;
   min-width: 0;
@@ -218,6 +314,47 @@
   grid-template-rows: auto auto auto;
   gap: var(--game-rem-0-52);
   align-content: start;
+}
+
+.tt-shell[data-tt-view="match"] .tt-support-stack {
+  gap: var(--game-rem-0-38);
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.tt-shell[data-tt-view="match"] .tt-context-card,
+.tt-shell[data-tt-view="match"] .tt-prep-area {
+  padding: var(--game-rem-0-46) var(--game-rem-0-5);
+  gap: var(--game-rem-0-32);
+}
+
+.tt-shell[data-tt-view="match"] .tt-context-card--status {
+  background: linear-gradient(140deg, var(--game-bg-teal-dark-2), var(--game-white-025));
+}
+
+.tt-shell[data-tt-view="match"] .tt-context-card--status .tt-context-card__lead {
+  font-size: var(--game-rem-0-78);
+  line-height: 1.28;
+}
+
+.tt-shell[data-tt-view="match"] .tt-context-card__meta,
+.tt-shell[data-tt-view="match"] .tt-context-card__hint,
+.tt-shell[data-tt-view="match"] .tt-context-card__empty {
+  font-size: var(--game-rem-0-68);
+  line-height: 1.3;
+}
+
+.tt-shell[data-tt-view="match"] .tt-prep-area__controls {
+  gap: var(--game-rem-0-3);
+}
+
+.tt-shell[data-tt-view="match"] .tt-prep-btn {
+  min-height: var(--game-rem-2-35);
+}
+
+.tt-shell[data-tt-view="match"] .tt-prep-btn--confirm,
+.tt-shell[data-tt-view="match"] .tt-support-stack > .backgammon-button {
+  min-height: var(--game-rem-2-4);
 }
 
 .tt-support-pair {
@@ -435,5 +572,22 @@
   }
   50% {
     opacity: 0.42;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tt-toggle,
+  .tt-prep-btn,
+  .tt-route-btn,
+  .tt-bend-row-btn {
+    transition: none;
+  }
+
+  .tt-toggle:hover {
+    transform: none;
+  }
+
+  .tt-turn-indicator[data-active="true"] .tt-turn-indicator__dot {
+    animation: none;
   }
 }

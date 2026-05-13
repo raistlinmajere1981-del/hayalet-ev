@@ -49,6 +49,15 @@
       return button;
     }
 
+    function setElementAttribute(element: HTMLElement, name: string, value: string): void {
+      const target = element as HTMLElement & {
+        setAttribute?: (attrName: string, attrValue: string) => void;
+      };
+      if (typeof target.setAttribute === "function") {
+        target.setAttribute(name, value);
+      }
+    }
+
     function readSelectedPartnerSeatId(state: GameRoomUiState): string | null {
       const selectedPartnerSeatId = state.preferences.teamTetrisSelectedPartnerSeatId;
       return selectedPartnerSeatId === "ai1" ||
@@ -319,9 +328,12 @@
         state.teamTetris.canStart === true &&
         canConfigureMatch &&
         (hiddenPairs === true || selectedPartnerSeatId !== null);
+      // active+pending avoids stale match ids shifting setup into the live board layout.
+      const isMatchView = state.teamTetris.active === true && state.teamTetris.result === "pending";
 
       const app = createElement("main", "tt-shell", "");
       app.dataset["presentationMode"] = state.presentation.mode;
+      app.dataset["ttView"] = isMatchView ? "match" : "setup";
       const surface = createElement("section", "tt-surface", "");
       const arena = createElement("section", "tt-arena", "");
       const rail = createElement("aside", "tt-rail", "");
@@ -506,6 +518,26 @@
       );
 
       const prepArea = renderPrepArea(pendingTurn, draft);
+      let matchTopbar: HTMLElement | null = null;
+      if (isMatchView) {
+        matchTopbar = createElement("section", "tt-match-topbar", "");
+        setElementAttribute(matchTopbar, "aria-label", text(["teamTetris", "heroBadge"]));
+        setElementAttribute(matchTopbar, "aria-live", "polite");
+        matchTopbar.append(
+          createElement("strong", "tt-match-topbar__status", getTeamTetrisStatusText()),
+          createElement(
+            "span",
+            "tt-match-topbar__turn",
+            text(["teamTetris", "metrics", "turnLabel"]) + ": " + getTeamTetrisTurnLabel()
+          ),
+          createElement(
+            "span",
+            "tt-match-topbar__roster",
+            text(["teamTetris", "roster", "partnerLabel"]) + ": " + getTeamTetrisPartnerRoleLabel()
+          ),
+          createElement("span", "tt-match-topbar__ready", getTeamTetrisDraftStatusText())
+        );
+      }
 
       const clearButton = createButton(
         "backgammon-button backgammon-button--ghost",
@@ -543,6 +575,9 @@
       );
 
       stageMain.append(boardGrid, supportStack);
+      if (matchTopbar) {
+        stage.append(matchTopbar);
+      }
       stage.append(stageMain);
       arena.append(rail, stage);
       surface.append(arena);

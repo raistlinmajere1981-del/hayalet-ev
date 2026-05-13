@@ -150,6 +150,14 @@ export interface LabSelectionROI {
   height: number;
 }
 
+export type LabComparisonSide = "primary" | "reference";
+
+export interface LabComparisonRoiState {
+  activeSide: LabComparisonSide;
+  primary: LabSelectionROI | null;
+  reference: LabSelectionROI | null;
+}
+
 export interface LabSelection {
   id: string;
   startMs: number;
@@ -268,6 +276,7 @@ export interface LabWorkspaceUiState {
   comparisonViewMode: LabComparisonViewMode;
   comparisonSplitPercent: number;
   comparisonFindingNote: string;
+  comparisonRois: LabComparisonRoiState;
   roiRegions: LabROIRegion[];
   interactiveSettings: LabInteractiveSettings;
   audioFocus: LabAudioFocusSettings;
@@ -906,8 +915,8 @@ export type LabStoreEvent =
   | { type: "workspace-selection-suggestion-preview-cleared" }
   | { type: "selection-roi-focus-set"; active: boolean }
   | { type: "selection-roi-focus-cleared" }
-  | { type: "selection-roi-updated"; roi: LabSelectionROI }
-  | { type: "selection-roi-cleared" }
+  | { type: "selection-roi-updated"; roi: LabSelectionROI; comparisonSide?: LabComparisonSide }
+  | { type: "selection-roi-cleared"; comparisonSide?: LabComparisonSide }
   | { type: "selection-roi-snapshot-set"; snapshot: LabInspectionSnapshot }
   | { type: "selection-roi-snapshot-cleared" }
   | { type: "selection-inspection-mode-updated"; mode: LabInspectionMode }

@@ -6,6 +6,12 @@
   gap: var(--game-rem-0-58);
 }
 
+.tt-shell[data-tt-view="match"] .tt-board-grid {
+  align-items: stretch;
+  gap: var(--game-rem-0-5);
+  grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr);
+}
+
 .tt-board-card {
   min-height: 0;
   padding: var(--game-rem-0-66) var(--game-rem-0-7);
@@ -13,6 +19,11 @@
   grid-template-rows: auto minmax(0, 1fr);
   gap: var(--game-rem-0-55);
   overflow: hidden;
+}
+
+.tt-shell[data-tt-view="match"] .tt-board-card {
+  padding: var(--game-rem-0-52) var(--game-rem-0-58);
+  gap: var(--game-rem-0-42);
 }
 
 .tt-board-card[data-tone="private"] {
@@ -50,6 +61,10 @@
   justify-items: center;
 }
 
+.tt-shell[data-tt-view="match"] .tt-board-card__board {
+  overflow: hidden;
+}
+
 .tt-board {
   --tt-cell-size: clamp(var(--game-rem-0-68), 0.92vw, var(--game-rem-1-18));
   display: grid;
@@ -62,6 +77,13 @@
   box-shadow: inset var(--game-px-0) var(--game-px-0) var(--game-px-0) var(--game-px-1)
     var(--game-white-03);
   margin-inline: auto;
+}
+
+.tt-shell[data-tt-view="match"] .tt-board {
+  --tt-cell-size: clamp(var(--game-rem-0-78), min(1.25vw, 1.85vh), var(--game-rem-1-35));
+  gap: clamp(var(--game-rem-0-1), 0.18vw, var(--game-rem-0-18));
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .tt-board__cell {
@@ -93,6 +115,14 @@
   transform: translateY(var(--game-px-neg-1));
   border-color: var(--game-accent-36);
   box-shadow: var(--game-px-0) var(--game-px-10) var(--game-px-18) var(--game-black-16);
+}
+
+.tt-board[data-interactive="true"] .tt-board__cell:focus-visible {
+  outline: var(--game-px-2) solid var(--game-accent-92);
+  outline-offset: var(--game-px-2);
+  border-color: var(--game-accent-92);
+  box-shadow: var(--game-px-0) var(--game-px-0) var(--game-px-0) var(--game-px-3)
+    var(--game-accent-18);
 }
 
 .tt-board__cell[data-path="trace-valid"] {
@@ -423,4 +453,14 @@
 
 .tt-context-card[data-variant="snapshot"] .tt-board__cell {
   border-radius: var(--game-rem-0-1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tt-board[data-interactive="true"] .tt-board__cell {
+    transition: none;
+  }
+
+  .tt-board[data-interactive="true"] .tt-board__cell:hover {
+    transform: none;
+  }
 }

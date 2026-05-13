@@ -65,6 +65,10 @@ import {
 } from "./store/lab-store-run-sync.js";
 import { resetWorkspaceForSourceActivation } from "./store/lab-store-source-reset.js";
 
+function normalizeComparisonSide(value: unknown) {
+  return value === "primary" || value === "reference" ? value : null;
+}
+
 function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState {
   if (reduceLabImportUiEvent(state, event)) {
     return state;
@@ -254,6 +258,11 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     case "workspace-comparison-reference-set":
       state.ui.workspace.comparisonReferenceAssetId = event.assetId;
+      state.ui.workspace.comparisonRois = {
+        ...state.ui.workspace.comparisonRois,
+        activeSide: event.assetId === null ? "primary" : "reference",
+        reference: null,
+      };
       return state;
     case "workspace-comparison-updated":
       state.ui.workspace = {
@@ -351,6 +360,11 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       }
       if (state.ui.workspace.comparisonReferenceAssetId === event.id) {
         state.ui.workspace.comparisonReferenceAssetId = null;
+        state.ui.workspace.comparisonRois = {
+          ...state.ui.workspace.comparisonRois,
+          activeSide: "primary",
+          reference: null,
+        };
       }
       return state;
     case "asset-updated":
@@ -619,6 +633,14 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       clearExecutionIntent(state);
       clearSuggestionPreview(state);
       clearInspectionSnapshot(state);
+      const comparisonSide = normalizeComparisonSide(event.comparisonSide);
+      if (comparisonSide !== null) {
+        state.ui.workspace.comparisonRois = {
+          ...state.ui.workspace.comparisonRois,
+          activeSide: comparisonSide,
+          [comparisonSide]: normalizedRoi,
+        };
+      }
       const activeSelection = state.ui.workspace.activeSelection;
       const sourceKind = getWorkspaceSelectionSuggestionSourceKind(state);
       if (activeSelection === null || activeSelection.endMs <= activeSelection.startMs) {
@@ -643,6 +665,14 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
     case "selection-roi-cleared": {
       if (isRunMutationLocked(state)) {
         return state;
+      }
+      const comparisonSide = normalizeComparisonSide(event.comparisonSide);
+      if (comparisonSide !== null) {
+        state.ui.workspace.comparisonRois = {
+          ...state.ui.workspace.comparisonRois,
+          activeSide: comparisonSide,
+          [comparisonSide]: null,
+        };
       }
       const activeSelection = state.ui.workspace.activeSelection;
       if (activeSelection === null) {

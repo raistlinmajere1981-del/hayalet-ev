@@ -11,6 +11,17 @@
   .tt-support-pair {
     grid-column: 1 / -1;
   }
+
+  .tt-shell[data-tt-view="match"] .tt-stage-main {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 0.75fr);
+    overflow: auto;
+  }
+
+  .tt-shell[data-tt-view="match"] .tt-support-stack {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto auto;
+  }
 }
 
 @media (--game-bp-max-1180) {
@@ -20,6 +31,18 @@
 
   .tt-board-grid {
     grid-template-columns: 1fr;
+  }
+
+  .tt-shell[data-tt-view="match"] .tt-stage {
+    order: 1;
+  }
+
+  .tt-shell[data-tt-view="match"] .tt-rail {
+    order: 2;
+  }
+
+  .tt-shell[data-tt-view="match"] .tt-board-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -48,6 +71,21 @@
 
   .tt-bend-row-picker {
     grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .tt-shell[data-tt-view="match"] .tt-match-topbar,
+  .tt-shell[data-tt-view="match"] .tt-board-grid,
+  .tt-shell[data-tt-view="match"] .tt-support-stack,
+  .tt-shell[data-tt-view="match"] .tt-support-pair {
+    grid-template-columns: 1fr;
+  }
+
+  .tt-shell[data-tt-view="match"] .tt-stage-main {
+    grid-template-rows: auto auto;
+  }
+
+  .tt-shell[data-tt-view="match"] .tt-match-topbar__ready {
+    justify-self: start;
   }
 }
 
@@ -85,6 +123,18 @@
 
   .tt-lobby-slot__name {
     max-width: var(--game-rem-4);
+  }
+
+  .tt-shell[data-tt-view="match"] .tt-stage {
+    padding: var(--game-rem-0-42);
+  }
+
+  .tt-shell[data-tt-view="match"] .tt-match-topbar {
+    padding: var(--game-rem-0-38) var(--game-rem-0-42);
+  }
+
+  .tt-shell[data-tt-view="match"] .tt-board-card {
+    padding: var(--game-rem-0-42);
   }
 }
 
@@ -156,8 +206,21 @@ body[data-presentation-mode="scene-view"] .tt-stage-main {
   gap: var(--game-rem-0-45);
 }
 
+body[data-presentation-mode="scene-view"] .tt-shell[data-tt-view="match"] .tt-stage-main {
+  grid-template-columns: minmax(0, 1fr) minmax(var(--game-rem-13-5), var(--game-rem-14));
+}
+
+body[data-presentation-mode="scene-view"] .tt-shell[data-tt-view="match"] .tt-match-topbar {
+  padding: var(--game-rem-0-32) var(--game-rem-0-46);
+  gap: var(--game-rem-0-34);
+}
+
 body[data-presentation-mode="scene-view"] .tt-board {
   --tt-cell-size: clamp(var(--game-rem-0-56), 0.8vw, var(--game-rem-0-92));
+}
+
+body[data-presentation-mode="scene-view"] .tt-shell[data-tt-view="match"] .tt-board {
+  --tt-cell-size: clamp(var(--game-rem-0-56), min(0.82vw, 1.45vh), var(--game-rem-0-92));
 }
 
 body[data-presentation-mode="scene-view"] .tt-context-card[data-variant="snapshot"] .tt-board {

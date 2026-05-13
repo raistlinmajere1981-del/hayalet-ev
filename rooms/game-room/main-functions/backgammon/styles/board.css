@@ -68,12 +68,12 @@
 
 .backgammon-invite-card--incoming {
   border-color: var(--game-bronze-12);
-  background: rgba(62,42,24,0.35);
+  background: var(--game-bg-backgammon-invite-incoming);
 }
 
 .backgammon-invite-card--outgoing {
   border-color: var(--game-bronze-17);
-  background: rgba(70,48,28,0.35);
+  background: var(--game-bg-backgammon-invite-outgoing);
 }
 
 .backgammon-invite-card__header {

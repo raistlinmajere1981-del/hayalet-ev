@@ -114,6 +114,11 @@ export function createDefaultWorkspaceUiState(): LabWorkspaceUiState {
     comparisonViewMode: "side-by-side",
     comparisonSplitPercent: 50,
     comparisonFindingNote: "",
+    comparisonRois: {
+      activeSide: "primary",
+      primary: null,
+      reference: null,
+    },
     roiRegions: [],
     interactiveSettings: { ...DEFAULT_LAB_INTERACTIVE_SETTINGS },
     audioFocus: normalizeAudioFocusSettings(DEFAULT_AUDIO_FOCUS_SETTINGS),

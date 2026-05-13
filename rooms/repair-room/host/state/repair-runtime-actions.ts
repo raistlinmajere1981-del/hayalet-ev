@@ -5,6 +5,7 @@ import type {
   RepairKnowledgePack,
   RepairMultimeterReading,
   RepairOperatorProfile,
+  RepairOverlayEntityRef,
   RepairOperatorProfileTabId,
   RepairOverlayLayerId,
   RepairOverlaySelectionState,
@@ -83,6 +84,15 @@ export type RepairRuntimeAction =
   | {
       type: "workbench/set-focus-mode";
       focusMode: boolean;
+    }
+  | {
+      type: "workbench/set-investigation-mode";
+      enabled: boolean;
+    }
+  | {
+      type: "workbench/focus-entity";
+      ref: RepairOverlayEntityRef | null;
+      eventId?: string | null;
     }
   | {
       type: "events/append";

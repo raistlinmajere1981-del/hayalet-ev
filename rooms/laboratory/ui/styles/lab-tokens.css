@@ -706,6 +706,7 @@
   --lab-inspector-rem-0-15: 0.15rem;
   --lab-inspector-rem-0-16: 0.16rem;
   --lab-inspector-rem-0-18: 0.18rem;
+  --lab-inspector-rem-0-22: 0.22rem;
   --lab-inspector-rem-0-24: 0.24rem;
   --lab-inspector-rem-0-25: 0.25rem;
   --lab-inspector-rem-0-28: 0.28rem;
@@ -721,6 +722,7 @@
   --lab-inspector-rem-0-48: 0.48rem;
   --lab-inspector-rem-0-5: 0.5rem;
   --lab-inspector-rem-0-55: 0.55rem;
+  --lab-inspector-rem-0-58: 0.58rem;
   --lab-inspector-rem-0-6: 0.6rem;
   --lab-inspector-rem-0-62: 0.62rem;
   --lab-inspector-rem-0-64: 0.64rem;
@@ -737,6 +739,7 @@
   --lab-inspector-rem-1: 1rem;
   --lab-inspector-rem-1-35: 1.35rem;
   --lab-inspector-rem-1-4: 1.4rem;
+  --lab-inspector-rem-1-6: 1.6rem;
   --lab-inspector-rem-1-75: 1.75rem;
   --lab-inspector-rem-2: 2rem;
   --lab-inspector-rem-2-35: 2.35rem;
@@ -744,6 +747,7 @@
   --lab-inspector-rem-3: 3rem;
   --lab-inspector-rem-3-5: 3.5rem;
   --lab-inspector-rem-3-8: 3.8rem;
+  --lab-inspector-rem-4: 4rem;
   --lab-inspector-rem-4-2: 4.2rem;
   --lab-inspector-rem-4-35: 4.35rem;
   --lab-inspector-rem-4-7: 4.7rem;
@@ -998,6 +1002,7 @@
   --lab-workspace-rem-0-15: 0.15rem;
   --lab-workspace-rem-0-16: 0.16rem;
   --lab-workspace-rem-0-18: 0.18rem;
+  --lab-workspace-rem-0-2: 0.2rem;
   --lab-workspace-rem-0-22: 0.22rem;
   --lab-workspace-rem-0-24: 0.24rem;
   --lab-workspace-rem-0-25: 0.25rem;
@@ -1037,6 +1042,7 @@
   --lab-workspace-rem-42: 42rem;
   --lab-workspace-rem-5-6: 5.6rem;
   --lab-workspace-rem-neg-0-55: -0.55rem;
+  --lab-comparison-split: 50%;
 }
 
 /* Honor reduced-motion preferences. */

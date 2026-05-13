@@ -9,6 +9,8 @@ import type {
   LabWorkspaceControlTab,
   LabOperationCapabilityId,
   LabIconRailSlotId,
+  LabComparisonRoiState,
+  LabComparisonSide,
 } from "../models/lab-types.js";
 import {
   getActiveSelection,
@@ -24,6 +26,7 @@ import {
   getSourceRetryBlockReason,
   getWaveformTimelineModel,
   getWorkspaceLockState,
+  isLabWorkspaceSurfaceReady,
   isAnyHeavyWorkActive,
   isLoadedSourceMatchingMode,
 } from "../runtime/lab-selectors.js";
@@ -146,41 +149,101 @@ function getComparisonReferenceAsset(state: LabStoreState): LabAsset | null {
 }
 
 function renderComparisonPreview(input: {
+  activeSide: LabComparisonSide;
+  comparisonRois: LabComparisonRoiState;
   copy: LabI18n;
   mode: string;
+  mutationLocked: boolean;
   primaryLabel: string;
   primaryUrl: string;
   referenceLabel: string;
   referenceUrl: string;
+  roiFocusActive: boolean;
   splitPercent: number;
 }) {
   const split = Math.max(5, Math.min(95, Math.round(input.splitPercent)));
   const mode = input.mode === "stacked" ? "stacked" : input.mode === "split" ? "split" : "paired";
-  if (mode === "split") {
+  function renderComparisonOverlay(side: LabComparisonSide) {
+    return renderWorkspaceROIOverlay(
+      {
+        legacyRegions: [],
+        mutationLocked: input.mutationLocked,
+        overlayId: `lab-roi-overlay-${side}`,
+        roiFocusActive: input.roiFocusActive === true && input.activeSide === side,
+        selectionRoi: input.comparisonRois[side],
+        selectionRoiEnabled: true,
+        sourceKind: "image",
+      },
+      input.copy
+    );
+  }
+
+  function renderMediaStage(
+    side: LabComparisonSide,
+    label: string,
+    url: string,
+    imageClassName = "labx-workspace-comparison__image"
+  ) {
     return `
+      <div
+        class="labx-workspace-comparison__media-stage"
+        data-lab-selection-roi-stage="true"
+        data-lab-selection-roi-controls-reserve="0"
+        data-lab-comparison-roi-side="${side}"
+      >
+        <img class="${imageClassName}" data-lab-preserve-media="workspace-comparison-${side}" src="${escapeHtml(url)}" alt="${escapeHtml(label)}" />
+        ${renderComparisonOverlay(side)}
+      </div>
+    `;
+  }
+
+  const comparisonMarkup =
+    mode === "split"
+      ? `
       <div class="labx-workspace-comparison" data-mode="split" style="--lab-comparison-split:${String(split)}%">
-        <div class="labx-workspace-comparison__split">
-          <img class="labx-workspace-comparison__image" src="${escapeHtml(input.referenceUrl)}" alt="${escapeHtml(input.referenceLabel)}" />
-          <img class="labx-workspace-comparison__image labx-workspace-comparison__image--primary" src="${escapeHtml(input.primaryUrl)}" alt="${escapeHtml(input.primaryLabel)}" />
+        <div
+          class="labx-workspace-comparison__split"
+          data-lab-selection-roi-stage="true"
+          data-lab-selection-roi-controls-reserve="0"
+          data-lab-comparison-roi-side="${input.activeSide}"
+        >
+          <img class="labx-workspace-comparison__image" data-lab-preserve-media="workspace-comparison-reference" src="${escapeHtml(input.referenceUrl)}" alt="${escapeHtml(input.referenceLabel)}" />
+          <img class="labx-workspace-comparison__image labx-workspace-comparison__image--primary" data-lab-preserve-media="workspace-comparison-primary" src="${escapeHtml(input.primaryUrl)}" alt="${escapeHtml(input.primaryLabel)}" />
           <span class="labx-workspace-comparison__divider" aria-hidden="true"></span>
+          ${renderComparisonOverlay(input.activeSide)}
         </div>
         <div class="labx-workspace-comparison__labels">
           <span>A ${escapeHtml(input.primaryLabel)}</span>
           <span>B ${escapeHtml(input.referenceLabel)}</span>
         </div>
       </div>
-    `;
-  }
-  return `
+    `
+      : `
     <div class="labx-workspace-comparison" data-mode="${escapeHtml(mode)}">
       <figure class="labx-workspace-comparison__pane" data-side="primary">
-        <img class="labx-workspace-comparison__image" src="${escapeHtml(input.primaryUrl)}" alt="${escapeHtml(input.primaryLabel)}" />
+        ${renderMediaStage("primary", input.primaryLabel, input.primaryUrl)}
         <figcaption>A ${escapeHtml(input.primaryLabel)}</figcaption>
       </figure>
       <figure class="labx-workspace-comparison__pane" data-side="reference">
-        <img class="labx-workspace-comparison__image" src="${escapeHtml(input.referenceUrl)}" alt="${escapeHtml(input.referenceLabel)}" />
+        ${renderMediaStage("reference", input.referenceLabel, input.referenceUrl)}
         <figcaption>B ${escapeHtml(input.referenceLabel)}</figcaption>
       </figure>
+    </div>
+  `;
+
+  return `
+    <div
+      class="labx-workspace-preview__single-stage labx-workspace-preview__single-stage--comparison"
+      data-lab-workspace-comparison-stage="true"
+      data-lab-preview-inspection-stage="true"
+      data-lab-preview-inspection-topology="comparison-${escapeHtml(mode)}"
+      data-lab-roi-focus-active="${input.roiFocusActive ? "true" : "false"}"
+    >
+      <div class="labx-workspace-preview__inspection-viewport" data-lab-preview-inspection-viewport="true">
+        <div class="labx-workspace-preview__inspection-content" data-lab-preview-inspection-content="true">
+          ${comparisonMarkup}
+        </div>
+      </div>
     </div>
   `;
 }
@@ -558,7 +621,7 @@ export function renderWorkspaceSurface(
   options: WorkspaceSurfaceOptions = {}
 ): LabWorkspaceSurface {
   const copy = options.copy ?? LAB_FALLBACK_I18N;
-  if (!state.bootReady) {
+  if (!isLabWorkspaceSurfaceReady(state)) {
     return {
       inspector: renderWorkspaceInspectorDrawer({
         activeTab: state.ui.workspace.controlsDrawerTab,
@@ -640,9 +703,12 @@ export function renderWorkspaceSurface(
     asNonEmptyString(source["title"]) ||
     copy.t("mediaAnalysis.operations.comparison.activeImageFallback", "Aktif resim");
   const comparisonState: LabOperationComparisonState = {
+    activeSide: state.ui.workspace.comparisonRois.activeSide,
     findingNote: state.ui.workspace.comparisonFindingNote,
     primaryLabel: activeMediaKind === "image" ? primaryComparisonLabel : null,
+    primaryRoi: state.ui.workspace.comparisonRois.primary,
     referenceLabel: comparisonReferenceAsset?.name || null,
+    referenceRoi: state.ui.workspace.comparisonRois.reference,
     splitPercent: state.ui.workspace.comparisonSplitPercent,
     viewMode: state.ui.workspace.comparisonViewMode,
   };
@@ -721,20 +787,23 @@ export function renderWorkspaceSurface(
             getSourceRetryBlockReason(state),
             copy
           );
-  const previewMarkup =
-    comparisonPreviewActive
-      ? renderComparisonPreview({
-          copy,
-          mode: state.ui.workspace.comparisonViewMode,
-          primaryLabel: primaryComparisonLabel,
-          primaryUrl: primaryComparisonPreviewUrl ?? "",
-          referenceLabel:
-            comparisonReferenceAsset?.name ||
-            copy.t("mediaAnalysis.operations.comparison.referenceFallback", "Referans"),
-          referenceUrl: comparisonReferencePreviewUrl ?? "",
-          splitPercent: state.ui.workspace.comparisonSplitPercent,
-        })
-      : workspaceAsset === null && sourceReady && (sourceKind === "video" || sourceKind === "image")
+  const previewMarkup = comparisonPreviewActive
+    ? renderComparisonPreview({
+        activeSide: state.ui.workspace.comparisonRois.activeSide,
+        comparisonRois: state.ui.workspace.comparisonRois,
+        copy,
+        mode: state.ui.workspace.comparisonViewMode,
+        mutationLocked: lockState.roi,
+        primaryLabel: primaryComparisonLabel,
+        primaryUrl: primaryComparisonPreviewUrl,
+        referenceLabel:
+          comparisonReferenceAsset?.name ||
+          copy.t("mediaAnalysis.operations.comparison.referenceFallback", "Referans"),
+        referenceUrl: comparisonReferencePreviewUrl,
+        roiFocusActive,
+        splitPercent: state.ui.workspace.comparisonSplitPercent,
+      })
+    : workspaceAsset === null && sourceReady && (sourceKind === "video" || sourceKind === "image")
       ? `
         <div
           class="labx-workspace-preview__single-stage"
@@ -780,7 +849,7 @@ export function renderWorkspaceSurface(
   const main = `
     <section class="labx-workspace-main" id="lab-workspace-main">
       <div class="labx-workspace-stage" data-lab-workspace-stage="true">
-        <div class="labx-media-workbench" data-lab-region="main-stage-inner" data-lab-media-workbench="true" data-preview-mode="${comparisonPreviewActive ? "comparison" : "single"}">
+        <div class="labx-media-workbench" data-lab-region="main-stage-inner" data-lab-media-workbench="true">
           ${renderPreviewArea({ content: previewMarkup, focusClassName: previewFocusClassName })}
           ${renderTimelineArea(durationMs > 0 && !comparisonPreviewActive ? renderLabWaveformTimeline(timelineModel) : "")}
         </div>

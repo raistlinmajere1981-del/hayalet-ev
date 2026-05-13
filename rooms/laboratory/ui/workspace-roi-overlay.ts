@@ -6,6 +6,7 @@ import type { LabI18n } from "./lab-i18n.js";
 type RenderWorkspaceROIOverlayOptions = {
   legacyRegions: LabROIRegion[];
   mutationLocked?: boolean;
+  overlayId?: string;
   roiFocusActive?: boolean;
   selectionRoi?: LabSelectionROI | null;
   selectionRoiEnabled: boolean;
@@ -136,11 +137,12 @@ export function renderWorkspaceROIOverlay(
   const roiFocusActive = options.roiFocusActive === true;
   const mutationLocked = options.mutationLocked === true;
   const regionElements = renderLegacyRegions(options.legacyRegions, mutationLocked, copy);
+  const overlayId = options.overlayId || "lab-roi-overlay";
 
   return `
     <div
       class="labx-roi-overlay"
-      id="lab-roi-overlay"
+      id="${escapeHtml(overlayId)}"
       data-lab-selection-roi-overlay="true"
       data-lab-roi-focus-active="${roiFocusActive ? "true" : "false"}"
       data-lab-roi-mutation-locked="${mutationLocked ? "true" : "false"}"

@@ -24,12 +24,17 @@
     teamTetrisUi: TeamTetrisStateMessageModule;
     fateKnotsUi: FateKnotsStateMessageModule;
     render: () => void;
+    scheduleRender?: () => void;
   };
 
   function readRecord(value: unknown): UnknownRecord | null {
     return value && typeof value === "object" && Array.isArray(value) === false
       ? (value as UnknownRecord)
       : null;
+  }
+
+  function readString(value: unknown): string | null {
+    return typeof value === "string" ? value : null;
   }
 
   function readRuntimeOptions(value: unknown): StateMessageRuntimeOptions | null {
@@ -55,6 +60,8 @@
     const teamTetrisUi = runtimeOptions.teamTetrisUi;
     const fateKnotsUi = runtimeOptions.fateKnotsUi;
     const render = runtimeOptions.render;
+    const scheduleRender =
+      typeof runtimeOptions.scheduleRender === "function" ? runtimeOptions.scheduleRender : render;
 
     function getState(): GameRoomUiState | null {
       return stateRef.current;
@@ -74,7 +81,7 @@
       state.game = backgammonUi.sanitizeGameState(payload["state"]);
       backgammonUi.syncPreferencesFromGame();
       state.lastCommandMessage = "";
-      render();
+      scheduleRender();
     }
 
     function handleTeamTetrisState(message: unknown): void {
@@ -110,6 +117,11 @@
       const result = readRecord(source?.["result"]) || {};
       if (typeof result["message"] === "string" && result["message"].trim() !== "") {
         state.lastCommandMessage = result["message"].trim();
+      }
+      const command = readString(source?.["command"]);
+      if (command?.startsWith("GameRoomBackgammon") === true) {
+        scheduleRender();
+        return;
       }
       render();
     }

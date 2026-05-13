@@ -80,7 +80,11 @@ export function renderRoomSyncPanel(
                     ? focused.text
                     : focused.kind === "ai-mark-lifecycle"
                       ? focused.reason
-                      : focused.title;
+                      : focused.kind === "investigation-region-created"
+                        ? focused.label
+                        : focused.kind === "investigation-region-updated"
+                          ? (focused.label ?? focused.regionId)
+                          : focused.title;
   focusCard.append(detail);
 
   if (focused?.kind === "ai-mark") {

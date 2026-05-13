@@ -1790,7 +1790,7 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   assert.match(workspaceSurfaceSource, /renderPreviewArea\(/);
   assert.match(
     workspaceSurfaceSource,
-    /renderTimelineArea\(durationMs > 0 \? renderLabWaveformTimeline\(timelineModel\) : ""\)/
+    /renderTimelineArea\(durationMs > 0 && !comparisonPreviewActive \? renderLabWaveformTimeline\(timelineModel\) : ""\)/
   );
   assert.match(workspaceSurfaceSource, /renderInspectorPanel\(/);
   assert.match(
@@ -1807,6 +1807,19 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   assert.match(workspaceSurfaceSource, /data-lab-action="workspace-controls-drawer-toggle"/);
   assert.match(workspaceSurfaceSource, /data-lab-action="workspace-controls-tab-select"/);
   assert.match(workspaceSurfaceSource, /data-lab-media-workbench="true"/);
+  assert.doesNotMatch(laboratoryLayoutSource, /data-preview-mode/);
+  assert.doesNotMatch(workspaceSurfaceSource, /data-preview-mode/);
+  assert.match(workspaceSurfaceSource, /data-lab-workspace-comparison-stage="true"/);
+  assert.match(
+    workspaceSurfaceSource,
+    /data-lab-workspace-comparison-stage="true"[\s\S]*data-lab-selection-roi-stage="true"/
+  );
+  assert.match(workspaceSurfaceSource, /renderMediaStage\("primary"/);
+  assert.match(workspaceSurfaceSource, /renderMediaStage\("reference"/);
+  assert.match(workspaceSurfaceSource, /renderComparisonOverlay\(side\)/);
+  assert.match(workspaceSurfaceSource, /data-lab-comparison-roi-side="\$\{side\}"/);
+  assert.match(workspaceSurfaceSource, /data-lab-preserve-media="workspace-comparison-primary"/);
+  assert.match(workspaceSurfaceSource, /data-lab-preserve-media="workspace-comparison-reference"/);
   assert.match(
     workspaceSourceIntakeSource,
     /const controls = options\.controls === true \? "controls" : "";/
@@ -1856,7 +1869,7 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   assert.doesNotMatch(workspaceSurfaceSource, /renderWorkspaceBookmarks|workspace-bookmarks/);
   assert.match(
     workspaceSurfaceSource,
-    /class="labx-workspace-stage"[\s\S]*class="labx-media-workbench"[\s\S]*renderPreviewArea\(\{ content: previewMarkup, focusClassName: previewFocusClassName \}\)[\s\S]*renderTimelineArea\(durationMs > 0 \? renderLabWaveformTimeline\(timelineModel\) : ""\)/
+    /class="labx-workspace-stage"[\s\S]*class="labx-media-workbench"[\s\S]*renderPreviewArea\(\{ content: previewMarkup, focusClassName: previewFocusClassName \}\)[\s\S]*renderTimelineArea\(durationMs > 0 && !comparisonPreviewActive \? renderLabWaveformTimeline\(timelineModel\) : ""\)/
   );
   assert.doesNotMatch(
     workspaceSurfaceSource,

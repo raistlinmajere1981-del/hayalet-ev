@@ -32,6 +32,10 @@ function getForensicEventDetail(event: RepairEvent): string {
       return event.title;
     case "ai-mark-lifecycle":
       return event.reason;
+    case "investigation-region-created":
+      return event.label;
+    case "investigation-region-updated":
+      return event.label ?? event.regionId;
     default: {
       const exhaustiveEvent: never = event;
       return exhaustiveEvent;
@@ -54,6 +58,12 @@ function getForensicEventMeta(event: RepairEvent): string {
       event.group?.rail ?? event.group?.component ?? event.group?.powerDomain ?? "ungrouped";
     return `${time} • ${group.toUpperCase()}`;
   }
+  if (event.kind === "investigation-region-created") {
+    return `${time} • ${event.status.toUpperCase()} • ${event.regionId}`;
+  }
+  if (event.kind === "investigation-region-updated") {
+    return `${time} • ${(event.status ?? "updated").toUpperCase()} • ${event.regionId}`;
+  }
   return `${time} • ${event.linkedEventIds.length} linked events`;
 }
 
@@ -74,7 +84,9 @@ function getForensicLinkedText(state: RepairUiState, event: RepairEvent): string
   const aiIds =
     event.kind === "annotation"
       ? (event.meta?.linkedEventIds ?? []).filter((eventId) => {
-          const linked = state.sessions.detail?.events.find((candidate) => candidate.id === eventId);
+          const linked = state.sessions.detail?.events.find(
+            (candidate) => candidate.id === eventId
+          );
           return linked?.kind === "ai-mark" || linked?.kind === "risk-flag";
         })
       : event.kind === "measurement"
@@ -244,6 +256,15 @@ export function renderWorkbenchStagePanel(
     btn.dataset["visible"] = String(!isVisible);
     toolbar.append(btn);
   }
+
+  const investigation = documentRef.createElement("button");
+  investigation.className = `repair-toolbar__btn${
+    state.workbench.investigationModeEnabled ? " repair-toolbar__btn--active" : ""
+  }`;
+  investigation.textContent = "INV";
+  investigation.title = "Toggle investigation mode";
+  investigation.dataset["repairAction"] = "toggle-investigation-mode";
+  toolbar.append(investigation);
 
   body.append(toolbar);
 

@@ -172,6 +172,15 @@ export function renderKnowledgePackPanel(
     card.textContent = `${point.label} • ${point.expectedValue}${point.unit}`;
     spatialList.append(card);
   });
+  if (kp.focusedSpatialRefId !== null) {
+    const promote = documentRef.createElement("button");
+    promote.className = "repair-knowledge-spatial repair-knowledge-spatial--promote";
+    promote.type = "button";
+    promote.dataset["repairAction"] = "knowledge-spatial-promote";
+    promote.dataset["spatialRefId"] = kp.focusedSpatialRefId;
+    promote.textContent = "Promote focused region";
+    spatialList.append(promote);
+  }
   body.append(spatialList);
 
   // -- CTA

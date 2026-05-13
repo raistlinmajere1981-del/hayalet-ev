@@ -1,4 +1,5 @@
 import type {
+  LabComparisonSide,
   LabInspectionMode,
   LabSelection,
   LabSelectionROI,
@@ -28,6 +29,7 @@ type SelectionRoiBinderDeps = {
   documentRef: Pick<Document, "addEventListener" | "removeEventListener">;
   emit: (event: LabStoreEvent) => void;
   getActiveSelection: () => LabSelection | null;
+  getComparisonRoi?: (side: LabComparisonSide) => LabSelectionROI | null;
   getSourceKind: () => string;
   isMutationLocked?: () => boolean;
 };
@@ -93,6 +95,11 @@ function isSelectionRoiResizeHandle(value: string | null): value is SelectionRoi
   return SELECTION_ROI_RESIZE_HANDLES.some(function (handle) {
     return handle === value;
   });
+}
+
+function getComparisonSideFromStage(stage: StageElement): LabComparisonSide | null {
+  const side = stage.getAttribute("data-lab-comparison-roi-side");
+  return side === "primary" || side === "reference" ? side : null;
 }
 
 function createSelectionRoiResult(roi: LabSelectionROI, rect: RectLike) {
@@ -232,8 +239,11 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
         return;
       }
       event.preventDefault();
+      const stage = getClosestTarget(target, "[data-lab-selection-roi-stage='true']");
+      const comparisonSide = stage === null ? null : getComparisonSideFromStage(stage);
       deps.emit({
         type: "selection-roi-cleared",
+        ...(comparisonSide === null ? {} : { comparisonSide }),
       });
       return;
     }
@@ -267,7 +277,11 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
       const handle = resizeTrigger.getAttribute("data-lab-selection-roi-resize");
       const stage = getClosestTarget(target, "[data-lab-selection-roi-stage='true']");
       const activeSelection = deps.getActiveSelection();
-      const initialRoi = activeSelection?.roi ?? null;
+      const comparisonSide = stage === null ? null : getComparisonSideFromStage(stage);
+      const initialRoi =
+        comparisonSide === null
+          ? (activeSelection?.roi ?? null)
+          : (deps.getComparisonRoi?.(comparisonSide) ?? activeSelection?.roi ?? null);
       if (
         !isSelectionRoiResizeHandle(handle) ||
         !stage ||
@@ -343,9 +357,11 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
 
     dragState.lastSignature = nextSelectionRoi.signature;
     event.preventDefault();
+    const comparisonSide = getComparisonSideFromStage(dragState.stage);
     deps.emit({
       type: "selection-roi-updated",
       roi: nextSelectionRoi.roi,
+      ...(comparisonSide === null ? {} : { comparisonSide }),
     });
   }
 

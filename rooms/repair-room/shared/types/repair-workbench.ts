@@ -1,6 +1,7 @@
 import type {
   RepairAiMarkLifecycleState,
   RepairImagePoint,
+  RepairOverlayEntityRef,
   RepairWorkbenchDrawTool,
 } from "./repair-event.js";
 
@@ -66,9 +67,13 @@ export interface RepairTimelineState {
 
 export interface RepairOverlaySelectionState {
   hoveredEventId: string | null;
+  hoveredEntityRef: RepairOverlayEntityRef | null;
   selectedEventIds: string[];
+  selectedEntityRefs: RepairOverlayEntityRef[];
   inspectorEventId: string | null;
+  inspectorEntityRef: RepairOverlayEntityRef | null;
   focusJumpEventId: string | null;
+  focusJumpEntityRef: RepairOverlayEntityRef | null;
 }
 
 export interface RepairAiMarkRuntimeState {
@@ -104,4 +109,5 @@ export interface RepairWorkbenchState {
   aiMarks: RepairAiMarkRuntimeState[];
   measurementEvidence: RepairMeasurementEvidenceState[];
   focusMode: boolean;
+  investigationModeEnabled: boolean;
 }

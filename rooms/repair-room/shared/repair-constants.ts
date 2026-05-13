@@ -44,6 +44,13 @@ export const REPAIR_UI_COMMANDS = {
   updatePanelTab: "RepairRoomUpdatePanelTab",
   updateFocus: "RepairRoomUpdateFocus",
   updateLayout: "RepairRoomUpdateLayout",
+  toggleInvestigationMode: "RepairRoomToggleInvestigationMode",
+  selectOverlayEntities: "RepairRoomSelectOverlayEntities",
+  focusOverlayEntity: "RepairRoomFocusOverlayEntity",
+  focusInvestigationRegion: "RepairRoomFocusInvestigationRegion",
+  focusKnowledgeSpatialRef: "RepairRoomFocusKnowledgeSpatialRef",
+  promoteKnowledgeRegion: "RepairRoomPromoteKnowledgeRegion",
+  focusLiveEdge: "RepairRoomFocusLiveEdge",
 } as const;
 
 export type RepairUiCommandName = (typeof REPAIR_UI_COMMANDS)[keyof typeof REPAIR_UI_COMMANDS];

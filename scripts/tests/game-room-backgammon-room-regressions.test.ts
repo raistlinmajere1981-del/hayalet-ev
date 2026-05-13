@@ -80,6 +80,51 @@ type BackgammonUiStateHarness = {
   };
 };
 
+type ScheduledFrameCallback = (timestamp: number) => void;
+type ScheduledTimerCallback = () => void;
+type GameRoomUiCoalescingHarness = {
+  flushFrame: () => void;
+  flushTimer: () => void;
+  getFrameCount: () => number;
+  getRenderAttempts: () => number;
+  getTimerCount: () => number;
+  runtime: {
+    handleHostMessage(message: unknown): void;
+  };
+  setRenderFailure(enabled: boolean): void;
+  state: {
+    game: Record<string, unknown>;
+    lastCommandMessage: string;
+  };
+};
+
+class MinimalFakeElement {
+  children: MinimalFakeElement[] = [];
+  id = "";
+
+  append(...children: MinimalFakeElement[]): void {
+    this.children.push(...children);
+  }
+
+  replaceChildren(...children: MinimalFakeElement[]): void {
+    this.children = [];
+    this.append(...children);
+  }
+}
+
+class MinimalFakeDocument {
+  title = "";
+  readonly app = new MinimalFakeElement();
+
+  constructor() {
+    this.app.id = "app";
+  }
+
+  getElementById(id: string): MinimalFakeElement | null {
+    return id === "app" ? this.app : null;
+  }
+}
+
 function createBackgammonUiStateHarness(): BackgammonUiStateHarness {
   const windowObject: {
     GameRoomUiFactories?: {
@@ -158,6 +203,137 @@ function createBackgammonUiStateHarness(): BackgammonUiStateHarness {
   return { state, runtime };
 }
 
+function createGameRoomUiCoalescingHarness(
+  scheduler: "raf" | "timeout" = "raf"
+): GameRoomUiCoalescingHarness {
+  const document = new MinimalFakeDocument();
+  const frames: ScheduledFrameCallback[] = [];
+  const timers: ScheduledTimerCallback[] = [];
+  let renderAttempts = 0;
+  let failRender = false;
+  const state = {
+    translations: {},
+    context: {
+      room: {
+        name: "Game Room",
+      },
+    },
+    preferences: {
+      target: "ai1",
+    },
+    game: {} as Record<string, unknown>,
+    teamTetris: {},
+    fateKnots: {},
+    lastCommandMessage: "",
+  };
+  const stateRef = { current: state };
+  const windowObject: Record<string, unknown> = {};
+  const context: Record<string, unknown> = {
+    Date,
+    document,
+    navigator: { language: "en-US" },
+    window: windowObject,
+  };
+  context["globalThis"] = context;
+  if (scheduler === "raf") {
+    context["requestAnimationFrame"] = (callback: ScheduledFrameCallback) => {
+      frames.push(callback);
+      return frames.length;
+    };
+  } else {
+    context["setTimeout"] = (callback: ScheduledTimerCallback) => {
+      timers.push(callback);
+      return timers.length;
+    };
+  }
+
+  windowObject["GameRoomUiBootstrapRuntime"] = {
+    createGameRoomUiBootstrapRuntime() {
+      return {
+        roomId: "game-room",
+        featureId: "backgammon",
+        teamTetrisFeatureId: "team-tetris",
+        fateKnotsFeatureId: "fate-knots",
+        contextRuntime: {
+          normalizeContext: () => state.context,
+        },
+        scrollRuntime: {
+          capture: () => ({}),
+          restore: () => undefined,
+        },
+        stateRef,
+        getState: () => state,
+        backgammonUi: {
+          sanitizeGameState: (candidate: unknown) =>
+            candidate && typeof candidate === "object" && Array.isArray(candidate) === false
+              ? (candidate as Record<string, unknown>)
+              : {},
+          syncPreferencesFromGame: () => undefined,
+          renderBootstrap: () => undefined,
+          renderBackgammon: () => {
+            renderAttempts += 1;
+            if (failRender) {
+              throw new Error("render failed");
+            }
+          },
+        },
+        teamTetrisUi: {
+          getTestBridge: () => ({}),
+          sanitizeTeamTetrisState: () => ({}),
+          syncTeamTetrisPreferencesFromState: () => undefined,
+          syncTeamTetrisDraftFromState: () => undefined,
+          renderTeamTetris: () => undefined,
+        },
+        fateKnotsUi: {
+          sanitizeFateKnotsState: () => ({}),
+          renderFateKnots: () => undefined,
+        },
+        bootstrapText: (key: string) => key,
+        applyPresentationMode: () => undefined,
+        applyLocale: () => undefined,
+        getActiveFeatureId: () => "backgammon",
+        getFeatureLabel: () => "Tavla",
+      };
+    },
+  };
+
+  vm.createContext(context);
+  vm.runInNewContext(
+    loadWorkspaceScriptForVm("rooms/game-room/ui/game-room-ui-state-message-runtime.ts"),
+    context
+  );
+  vm.runInNewContext(
+    loadWorkspaceScriptForVm("rooms/game-room/ui/game-room-ui-runtime.ts"),
+    context
+  );
+
+  const runtimeRegistry = windowObject["GameRoomUiRuntime"] as Record<string, unknown> | undefined;
+  const createRuntime = runtimeRegistry?.["createGameRoomUiRuntime"];
+  assert.equal(typeof createRuntime, "function");
+  const runtime = createRuntime() as GameRoomUiCoalescingHarness["runtime"];
+
+  return {
+    flushFrame(): void {
+      const callback = frames.shift();
+      assert.equal(typeof callback, "function");
+      callback(16);
+    },
+    flushTimer(): void {
+      const callback = timers.shift();
+      assert.equal(typeof callback, "function");
+      callback();
+    },
+    getFrameCount: () => frames.length,
+    getRenderAttempts: () => renderAttempts,
+    getTimerCount: () => timers.length,
+    runtime,
+    setRenderFailure(enabled: boolean): void {
+      failRender = enabled;
+    },
+    state,
+  };
+}
+
 test("game-room workspace keeps the required Tavla package files", () => {
   requiredFiles.forEach((filePath) => {
     assert.equal(existsSync(filePath), true, filePath);
@@ -232,6 +408,145 @@ test("game-room Tavla UI prioritizes command-result messages over stale game sta
   state.lastCommandMessage = "A duplicate remote move was ignored.";
 
   assert.equal(runtime.getCurrentStatus(), "A duplicate remote move was ignored.");
+});
+
+test("game-room Tavla UI coalesces Tavla state and command-result renders per frame", () => {
+  const harness = createGameRoomUiCoalescingHarness("raf");
+
+  harness.runtime.handleHostMessage({
+    type: "backgammon-state",
+    payload: {
+      state: {
+        active: true,
+      },
+    },
+  });
+  harness.runtime.handleHostMessage({
+    type: "command-result",
+    command: "GameRoomBackgammonStart",
+    result: {
+      success: true,
+      message: "Match started.",
+    },
+  });
+
+  assert.equal(harness.getFrameCount(), 1);
+  assert.equal(harness.getRenderAttempts(), 0);
+  assert.equal(harness.state.lastCommandMessage, "Match started.");
+
+  harness.flushFrame();
+
+  assert.equal(harness.getFrameCount(), 0);
+  assert.equal(harness.getRenderAttempts(), 1);
+  assert.equal(harness.state.lastCommandMessage, "Match started.");
+
+  harness.runtime.handleHostMessage({
+    type: "backgammon-state",
+    payload: {
+      state: {
+        active: false,
+      },
+    },
+  });
+  assert.equal(harness.getFrameCount(), 1);
+  harness.flushFrame();
+  assert.equal(harness.getRenderAttempts(), 2);
+  assert.equal(harness.state.lastCommandMessage, "");
+});
+
+test("game-room Tavla UI keeps current final-state semantics when Tavla command-result is stale", () => {
+  const harness = createGameRoomUiCoalescingHarness("raf");
+
+  harness.runtime.handleHostMessage({
+    type: "command-result",
+    command: "GameRoomBackgammonUserMove",
+    result: {
+      success: false,
+      message: "Stale move.",
+    },
+  });
+  harness.runtime.handleHostMessage({
+    type: "backgammon-state",
+    payload: {
+      state: {
+        active: true,
+      },
+    },
+  });
+
+  assert.equal(harness.getFrameCount(), 1);
+  harness.flushFrame();
+  assert.equal(harness.getRenderAttempts(), 1);
+  assert.equal(harness.state.lastCommandMessage, "");
+});
+
+test("game-room command-result render scheduling stays scoped to Tavla commands", () => {
+  const harness = createGameRoomUiCoalescingHarness("raf");
+
+  harness.runtime.handleHostMessage({
+    type: "command-result",
+    command: "GameRoomTeamTetrisStart",
+    result: {
+      success: false,
+      message: "Team Tetris setup is incomplete.",
+    },
+  });
+
+  assert.equal(harness.getFrameCount(), 0);
+  assert.equal(harness.getRenderAttempts(), 1);
+  assert.equal(harness.state.lastCommandMessage, "Team Tetris setup is incomplete.");
+});
+
+test("game-room Tavla render scheduler supports timer fallback and clears failures", () => {
+  const harness = createGameRoomUiCoalescingHarness("timeout");
+
+  harness.runtime.handleHostMessage({
+    type: "backgammon-state",
+    payload: {
+      state: {
+        active: true,
+      },
+    },
+  });
+  harness.runtime.handleHostMessage({
+    type: "command-result",
+    command: "GameRoomBackgammonReset",
+    result: {
+      success: true,
+      message: "Reset.",
+    },
+  });
+
+  assert.equal(harness.getTimerCount(), 1);
+  assert.equal(harness.getRenderAttempts(), 0);
+  harness.flushTimer();
+  assert.equal(harness.getRenderAttempts(), 1);
+
+  harness.setRenderFailure(true);
+  harness.runtime.handleHostMessage({
+    type: "backgammon-state",
+    payload: {
+      state: {
+        active: false,
+      },
+    },
+  });
+  assert.equal(harness.getTimerCount(), 1);
+  assert.throws(() => harness.flushTimer(), /render failed/);
+  assert.equal(harness.getRenderAttempts(), 2);
+
+  harness.setRenderFailure(false);
+  harness.runtime.handleHostMessage({
+    type: "backgammon-state",
+    payload: {
+      state: {
+        active: true,
+      },
+    },
+  });
+  assert.equal(harness.getTimerCount(), 1);
+  harness.flushTimer();
+  assert.equal(harness.getRenderAttempts(), 3);
 });
 
 test("game-room Tavla UI forwards remote identity with invite actions", () => {

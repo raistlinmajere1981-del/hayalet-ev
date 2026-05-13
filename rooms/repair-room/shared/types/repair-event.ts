@@ -26,6 +26,50 @@ export interface RepairImagePoint {
   yPx: number;
 }
 
+export type RepairOverlayEntityKind =
+  | "event"
+  | "investigation-region"
+  | "temporary-spatial-region"
+  | "knowledge-region"
+  | "measurement-relationship"
+  | "live-edge";
+
+export interface RepairOverlayEntityRef {
+  kind: RepairOverlayEntityKind;
+  id: string;
+}
+
+export type RepairInvestigationRegionStatus =
+  | "draft"
+  | "active"
+  | "watching"
+  | "resolved"
+  | "dismissed";
+
+export interface RepairInvestigationRegionLinkage {
+  eventIds: string[];
+  measurementEventIds: string[];
+  annotationEventIds: string[];
+  aiMarkEventIds: string[];
+}
+
+export interface RepairInvestigationRegion {
+  regionId: string;
+  label: string;
+  region: RepairImageRect;
+  status: RepairInvestigationRegionStatus;
+  color: string;
+  createdAt: string;
+  updatedAt: string;
+  createdEventId: string;
+  updatedEventId: string | null;
+  source: RepairEventSource;
+  sourceRef: RepairOverlayEntityRef | null;
+  knowledgeSpatialRefId: string | null;
+  promotedFromTemporaryRegionId: string | null;
+  linkage: RepairInvestigationRegionLinkage;
+}
+
 export interface RepairAnnotationMeta {
   author: "operator" | "ai";
   tool: RepairAnnotationTool;
@@ -126,6 +170,36 @@ export interface RepairAiMarkLifecycleEvent extends RepairEventBase {
   reason: string;
 }
 
+export interface RepairInvestigationRegionCreatedEvent extends RepairEventBase {
+  kind: "investigation-region-created";
+  regionId: string;
+  label: string;
+  region: RepairImageRect;
+  status: RepairInvestigationRegionStatus;
+  color: string;
+  sourceRef: RepairOverlayEntityRef | null;
+  knowledgeSpatialRefId?: string | null;
+  promotedFromTemporaryRegionId?: string | null;
+  measurementEventIds?: string[];
+  annotationEventIds?: string[];
+  aiMarkEventIds?: string[];
+}
+
+export interface RepairInvestigationRegionUpdatedEvent extends RepairEventBase {
+  kind: "investigation-region-updated";
+  regionId: string;
+  label?: string;
+  region?: RepairImageRect;
+  status?: RepairInvestigationRegionStatus;
+  color?: string;
+  sourceRef?: RepairOverlayEntityRef | null;
+  knowledgeSpatialRefId?: string | null;
+  promotedFromTemporaryRegionId?: string | null;
+  measurementEventIds?: string[];
+  annotationEventIds?: string[];
+  aiMarkEventIds?: string[];
+}
+
 export interface RepairSessionStartEvent extends RepairEventBase {
   kind: "session-start";
   title: string;
@@ -140,6 +214,8 @@ export type RepairEvent =
   | RepairFreezeFrameEvent
   | RepairRiskFlagEvent
   | RepairAiMarkLifecycleEvent
+  | RepairInvestigationRegionCreatedEvent
+  | RepairInvestigationRegionUpdatedEvent
   | RepairSessionStartEvent;
 
 export type RepairEventKind = RepairEvent["kind"];
