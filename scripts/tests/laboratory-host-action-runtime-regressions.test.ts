@@ -4,7 +4,6 @@ import { existsSync, readFileSync } from "node:fs";
 import { createRoomBuiltArtifact, createRoomInstalledCopy } from "./helpers/room-installed-copy.ts";
 import { createLaboratoryHostActivation } from "../../rooms/laboratory/shared/host/activation.ts";
 import { createMediaExportActionRuntime } from "../../rooms/laboratory/main-functions/media-analysis/host/action-handlers-export.ts";
-import { createMediaSourceActionRuntime } from "../../rooms/laboratory/main-functions/media-analysis/host/action-handlers-source.ts";
 import { createMediaLocalSourceIntakeRuntime } from "../../rooms/laboratory/main-functions/media-analysis/host/source-intake-local.ts";
 import { createLaboratoryJobStateRuntime } from "../../rooms/laboratory/shared/host/job-state.ts";
 import { createLaboratoryProcessRuntime } from "../../rooms/laboratory/shared/host/process-runtime.ts";
@@ -39,195 +38,6 @@ test("laboratory host utility helpers preserve file, timestamp, and clamp golden
   assert.equal(toLaboratoryFfmpegTimestamp("bad", "2.000"), "2.000");
   assert.equal(hostUtils.clampNumber("3.5", 0, 2, 1), 2);
   assert.equal(hostUtils.clampNumber("bad", 0, 2, 1), 1);
-});
-
-test("laboratory source asset activation imports local assets and clears persistent workbench", async () => {
-  let activeProject: Record<string, unknown> = {
-    id: "project-1",
-    source: {},
-    workbench: {
-      activeModuleId: "media-analysis",
-      selectedModuleIds: ["media-analysis"],
-      activeLiveFindingsStreamId: "media-analysis",
-      activePreviewArtifactId: "preview-1",
-      analysisScope: { intentIds: ["visual-inspection"] },
-      analysisSettings: { modules: { "sound-events": { threshold: 0.7 } } },
-      controlsCollapsed: false,
-      moduleToggles: { "sound-events": true },
-      operationSettings: { "clip-export": { format: "webm" } },
-    },
-    assets: [
-      {
-        id: "clip-avi-1",
-        type: "artifact",
-        name: "camera-archive.avi",
-        localPath: "/tmp/camera-archive.avi",
-        createdAt: 0,
-      },
-    ],
-  };
-  const refreshCalls: string[] = [];
-
-  const runtime = createMediaSourceActionRuntime({
-    asNonEmptyString(value) {
-      return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
-    },
-    getActiveProject() {
-      return activeProject;
-    },
-    getDefaultMode() {
-      return "local";
-    },
-    getDefaultSourceType() {
-      return "video";
-    },
-    async handleLocalPick() {
-      throw new Error("local picker should not be used for asset activation");
-    },
-    async handleUrlDownload() {
-      throw new Error("url download should not be used for local assets");
-    },
-    async handleYoutubeDownload() {
-      throw new Error("youtube download should not be used for local assets");
-    },
-    async handleYoutubeProbe() {
-      throw new Error("youtube probe should not be used for asset activation");
-    },
-    async patchActiveProject(_runtime, patcher) {
-      activeProject = patcher(activeProject);
-      return activeProject;
-    },
-    async patchActiveProjectDrafts() {},
-    async refreshActiveProjectMetadata(_runtime, requestId) {
-      refreshCalls.push(requestId);
-    },
-    resetEditForCurrentSource() {},
-    resetProfileForCurrentSource() {},
-  });
-
-  await runtime.activateAssetSource({}, {}, "req-local-asset", { assetId: "clip-avi-1" });
-
-  const source = activeProject["source"] as Record<string, unknown>;
-  const workbench = activeProject["workbench"] as Record<string, unknown>;
-  assert.equal(source["kind"], "video");
-  assert.equal(source["mode"], "local");
-  assert.equal(source["status"], "ready");
-  assert.equal(source["storedPath"], "/tmp/camera-archive.avi");
-  assert.equal(source["sourceAssetId"], "clip-avi-1");
-  assert.deepEqual(refreshCalls, ["req-local-asset"]);
-  assert.equal(workbench["activeLiveFindingsStreamId"], null);
-  assert.equal(workbench["activePreviewArtifactId"], null);
-  assert.equal(workbench["analysisScope"], null);
-  assert.equal(
-    (
-      (
-        (workbench["analysisSettings"] as Record<string, unknown>)["modules"] as Record<
-          string,
-          Record<string, unknown>
-        >
-      )["sound-events"] as Record<string, unknown>
-    )["threshold"],
-    0.15
-  );
-  assert.equal(workbench["controlsCollapsed"], true);
-  assert.deepEqual(workbench["moduleToggles"], {});
-  assert.equal(
-    ((workbench["operationSettings"] as Record<string, Record<string, unknown>>)["clip-export"])[
-      "format"
-    ],
-    "mp4"
-  );
-});
-
-test("laboratory source asset activation routes remote and youtube assets through import handlers", async () => {
-  let activeProject: Record<string, unknown> = {
-    id: "project-1",
-    source: {},
-    workbench: {
-      activeModuleId: "media-analysis",
-      selectedModuleIds: ["media-analysis"],
-      analysisScope: { intentIds: ["audio-investigation"] },
-      moduleToggles: { "audio-analysis": true },
-      operationSettings: { "audio-cleanup": { strength: "high" } },
-    },
-    assets: [
-      {
-        id: "remote-audio-1",
-        type: "artifact",
-        name: "voice-note.mp3",
-        url: "https://example.test/voice-note.mp3",
-        createdAt: 0,
-      },
-      {
-        id: "youtube-clip-1",
-        type: "clip",
-        name: "youtube-clip",
-        url: "https://youtu.be/example123",
-        createdAt: 0,
-      },
-    ],
-  };
-  const routedActions: string[] = [];
-  const draftPatches: Array<Record<string, unknown>> = [];
-
-  const runtime = createMediaSourceActionRuntime({
-    asNonEmptyString(value) {
-      return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
-    },
-    getActiveProject() {
-      return activeProject;
-    },
-    getDefaultMode() {
-      return "url";
-    },
-    getDefaultSourceType() {
-      return "video";
-    },
-    async handleLocalPick() {
-      throw new Error("local picker should not be used for remote assets");
-    },
-    async handleUrlDownload() {
-      routedActions.push("url");
-      return { routed: "url" };
-    },
-    async handleYoutubeDownload() {
-      routedActions.push("youtube");
-      return { routed: "youtube" };
-    },
-    async handleYoutubeProbe() {
-      throw new Error("youtube probe should not be used for asset activation");
-    },
-    async patchActiveProject(_runtime, patcher) {
-      activeProject = patcher(activeProject);
-      return activeProject;
-    },
-    async patchActiveProjectDrafts(_runtime, fields) {
-      draftPatches.push(fields as Record<string, unknown>);
-    },
-    async refreshActiveProjectMetadata() {},
-    resetEditForCurrentSource() {},
-    resetProfileForCurrentSource() {},
-  });
-
-  await runtime.activateAssetSource({}, {}, "req-remote-audio", { assetId: "remote-audio-1" });
-  await runtime.activateAssetSource({}, {}, "req-youtube-clip", { assetId: "youtube-clip-1" });
-
-  assert.deepEqual(routedActions, ["url", "youtube"]);
-  assert.equal(draftPatches[0]?.["kind"], "audio");
-  assert.equal(draftPatches[0]?.["mode"], "url");
-  assert.equal(draftPatches[0]?.["urlInput"], "https://example.test/voice-note.mp3");
-  assert.equal(draftPatches[1]?.["kind"], "video");
-  assert.equal(draftPatches[1]?.["mode"], "youtube");
-  assert.equal(draftPatches[1]?.["youtubeUrl"], "https://youtu.be/example123");
-  const workbench = activeProject["workbench"] as Record<string, unknown>;
-  assert.equal(workbench["analysisScope"], null);
-  assert.deepEqual(workbench["moduleToggles"], {});
-  assert.equal(
-    ((workbench["operationSettings"] as Record<string, Record<string, unknown>>)["audio-cleanup"])[
-      "denoise"
-    ],
-    "medium"
-  );
 });
 
 test("laboratory host activation unwraps host-context room-event payloads before saving context", () => {
@@ -1900,6 +1710,207 @@ test("laboratory ROI exports normalize crop pixels and preserve operation lineag
     ),
     /not available as a local operation target/
   );
+});
+
+test("laboratory comparison finding saves independent primary and reference ROI context", async () => {
+  const primaryRoi = { x: 0.1, y: 0.2, width: 0.3, height: 0.4 };
+  const referenceRoi = { x: 0.2, y: 0.1, width: 0.25, height: 0.35 };
+  let activeProject: Record<string, unknown> = {
+    id: "project-comparison-roi",
+    source: {
+      kind: "image",
+      storedPath: "/tmp/current-source.png",
+      metadata: {
+        kind: "image",
+      },
+    },
+    process: {
+      records: {
+        "media-analysis": {
+          runId: "run-comparison-roi",
+        },
+      },
+    },
+    workbench: {},
+    assets: [
+      {
+        id: "asset-primary",
+        type: "image",
+        name: "primary.png",
+        localPath: "/tmp/primary.png",
+        createdAt: 10,
+        metadata: { kind: "image" },
+      },
+      {
+        id: "asset-reference",
+        type: "image",
+        name: "reference.png",
+        localPath: "/tmp/reference.png",
+        createdAt: 11,
+        metadata: { kind: "image" },
+      },
+    ],
+  };
+  const toolRuns: Array<Record<string, unknown>> = [];
+  const writes: Array<{ data: string; path: string }> = [];
+  const jobState = createLaboratoryJobStateRuntime({
+    roomId: "laboratory",
+    cancelRoomTool: async function () {},
+  });
+  const exportRuntime = createMediaExportActionRuntime({
+    asNonEmptyString(value: unknown) {
+      return typeof value === "string" && value.trim() !== "" ? value : null;
+    },
+    asNumber(value: unknown) {
+      return typeof value === "number" && Number.isFinite(value) ? value : null;
+    },
+    async callRoomTools(payload) {
+      toolRuns.push({ ...payload });
+      return {
+        run: {
+          exitCode: 0,
+        },
+      };
+    },
+    getActiveProject() {
+      return activeProject;
+    },
+    getProjectEditOutputDir() {
+      return "/tmp";
+    },
+    async patchActiveProject(_runtime, patcher) {
+      const nextProject = patcher(activeProject);
+      activeProject = {
+        ...nextProject,
+        assets: syncSourceLabAssetForProject(nextProject, nextProject["assets"]),
+      };
+    },
+    pushJobState() {},
+    registerJob: jobState.registerJob,
+    clearJob: jobState.clearJob,
+    cancelJobsForProject: jobState.cancelJobsForProject,
+    toRecord(value: unknown) {
+      return value !== null && typeof value === "object" && Array.isArray(value) === false
+        ? (value as Record<string, unknown>)
+        : {};
+    },
+  });
+  const originalWindowDescriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      electronAPI: {
+        async fmWriteFileAtomic(payload: { data: string; path: string }) {
+          writes.push(payload);
+          return { path: payload.path, success: true };
+        },
+        async openPath() {
+          return { success: true };
+        },
+        async readDirectoryFiles() {
+          return [];
+        },
+        async readFile() {
+          return null;
+        },
+        async roomToolsCall() {
+          return { success: true };
+        },
+        async roomToolsCancel() {
+          return { success: true };
+        },
+      },
+    },
+  });
+
+  try {
+    await exportRuntime.saveComparisonFinding(
+      {},
+      {
+        roomId: "laboratory",
+        jobs: {},
+      },
+      "req-comparison-roi",
+      {
+        captureKind: "finding",
+        comparisonReferenceAssetId: "asset-reference",
+        comparisonRoiActiveSide: "reference",
+        comparisonRois: {
+          activeSide: "reference",
+          primary: primaryRoi,
+          reference: referenceRoi,
+        },
+        comparisonViewMode: "roi-detail",
+        findingNote: "Reference glow shifted",
+        normalizedRoi: referenceRoi,
+        operationSettings: {
+          format: "png",
+          includeRoiDetail: true,
+          layout: "side-by-side",
+        },
+        primaryNormalizedRoi: primaryRoi,
+        referenceNormalizedRoi: referenceRoi,
+        workspaceTargetAssetId: "asset-primary",
+      }
+    );
+  } finally {
+    if (originalWindowDescriptor) {
+      Object.defineProperty(globalThis, "window", originalWindowDescriptor);
+    } else {
+      delete (globalThis as Record<string, unknown>)["window"];
+    }
+  }
+
+  const renderRun = toolRuns.find(function (run) {
+    return run["operation"] === "tool-run";
+  });
+  const args = (renderRun?.["args"] || []) as string[];
+  const filterGraph = args[args.indexOf("-filter_complex") + 1] || "";
+  assert.match(filterGraph, /\[0:v\]crop=iw\*0\.3:ih\*0\.4:iw\*0\.1:ih\*0\.2\[r0src\]/);
+  assert.match(
+    filterGraph,
+    /\[1:v\]crop=iw\*0\.25:ih\*0\.35:iw\*0\.2:ih\*0\.1\[r1src\]/
+  );
+
+  const outputAsset = (activeProject.assets as Array<Record<string, unknown>>).find(function (
+    asset
+  ) {
+    return (
+      asset["type"] === "image" &&
+      (asset["metadata"] as Record<string, unknown> | undefined)?.["requestId"] ===
+        "req-comparison-roi"
+    );
+  });
+  const metadata = (outputAsset?.["metadata"] || {}) as Record<string, unknown>;
+  const captureContext = (metadata["captureContext"] || {}) as Record<string, unknown>;
+  assert.equal(outputAsset?.["derivedFromAssetId"], "asset-primary");
+  assert.equal(captureContext["comparisonRoiActiveSide"], "reference");
+  assert.deepEqual(captureContext["primaryNormalizedRoi"], primaryRoi);
+  assert.deepEqual(captureContext["referenceNormalizedRoi"], referenceRoi);
+  assert.deepEqual(captureContext["comparisonRois"], {
+    activeSide: "reference",
+    primary: primaryRoi,
+    reference: referenceRoi,
+  });
+  assert.equal(writes.length, 1);
+  const manifestPayload = JSON.parse(writes[0]?.data || "{}") as Record<string, unknown>;
+  assert.deepEqual(manifestPayload["comparisonRois"], {
+    activeSide: "reference",
+    primary: primaryRoi,
+    reference: referenceRoi,
+  });
+  assert.equal(
+    manifestPayload["roiSummary"],
+    "Primary ROI x=10%, y=20%, w=30%, h=40%; Reference ROI x=20%, y=10%, w=25%, h=35%; active=reference"
+  );
+  const manifestAsset = (activeProject.assets as Array<Record<string, unknown>>).find(function (
+    asset
+  ) {
+    return asset["type"] === "artifact";
+  });
+  const manifestMetadata = (manifestAsset?.["metadata"] || {}) as Record<string, unknown>;
+  assert.equal(manifestMetadata["roiSummary"], manifestPayload["roiSummary"]);
+  assert.deepEqual(manifestMetadata["comparisonRois"], manifestPayload["comparisonRois"]);
 });
 
 test("laboratory frame export settings drive burst and preview filter arguments", async () => {

@@ -14,8 +14,7 @@ import {
 } from "@shared/index.js";
 import type { AppSettings } from "@shared/settings.js";
 import { AppState } from "../app-state.js";
-import { resolveComposedProtocolMessage } from "../protocol-message-composer.js";
-import { ProtocolHandler } from "../protocol-handler.js";
+import { ConversationListManager } from "../conversation-list-manager.js";
 import { RoomCommandRegistry } from "../rooms/room-command-registry.js";
 import { SlotController, SlotState } from "../slot-controller.js";
 import { SettingsManager } from "../settings-manager.js";
@@ -686,7 +685,12 @@ async function resolveProtocolActionText(envelope: SlotBridgeEnvelope): Promise<
     return "";
   }
 
-  const descriptor = ProtocolHandler.resolveDescriptor({
+  const [{ ProtocolHandler: protocolHandler }, { resolveComposedProtocolMessage }] =
+    await Promise.all([
+      import("../protocol-handler.js"),
+      import("../protocol-message-composer.js"),
+    ]);
+  const descriptor = protocolHandler.resolveDescriptor({
     context: protocol.context ?? {},
     fallbackTitle: protocol.fallbackTitle ?? "",
     ...(protocol.room !== undefined ? { room: protocol.room } : {}),
@@ -905,8 +909,8 @@ async function sleep(ms: number): Promise<void> {
 
 export const slotBridgeRuntime = {
   getConversationListManager: async (): Promise<SlotBridgeConversationListManagerRef> => {
-    const module = await import("../conversation-list-manager.js");
-    return module.ConversationListManager;
+    await Promise.resolve();
+    return ConversationListManager;
   },
   getCoreEngine: async (): Promise<SlotBridgeCoreEngineRef> => {
     const coreEngine = await Promise.resolve(getSlotBridgeCoreEngine());

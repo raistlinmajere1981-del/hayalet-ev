@@ -9,6 +9,7 @@ import type {
   RepairWorkbenchState,
 } from "../../shared/types/index.js";
 import type {
+  RepairGuidanceProjection,
   RepairKnowledgeRegionProjection,
   RepairMeasurementRelationship,
   RepairSpatialFocusState,
@@ -101,6 +102,7 @@ export interface RepairOverlayStageConfig {
   activeSpatialFocus: RepairSpatialFocusState | null;
   events: RepairEvent[];
   focusedEventId: string | null;
+  guidance: RepairGuidanceProjection;
   image: RepairPcbImageRef;
   investigationRegions: RepairInvestigationRegion[];
   knowledgeRegions: RepairKnowledgeRegionProjection[];
@@ -288,6 +290,28 @@ function getEntityInteractionState(
   };
 }
 
+function isRefListed(refs: RepairOverlayEntityRef[], ref: RepairOverlayEntityRef): boolean {
+  return refs.some((candidate) => repairOverlayRefsEqual(candidate, ref));
+}
+
+function getOverlayEntityOpacity(
+  config: RepairOverlayStageConfig,
+  ref: RepairOverlayEntityRef
+): number {
+  const interaction =
+    ref.kind === "event"
+      ? getEventInteractionState(config, ref.id)
+      : getEntityInteractionState(config, ref);
+  if (interaction.focused || interaction.selected || interaction.hovered) return 1;
+  if (isRefListed(config.guidance.overlaySaturation.activeAttentionRefs, ref)) return 1;
+  if (config.guidance.operationalProfile === "advanced") return 1;
+  if (isRefListed(config.guidance.overlaySaturation.fadedSecondaryRefs, ref)) return 0.26;
+  if (config.activeSpatialFocus !== null || config.guidance.overlaySaturation.clutterScore > 0.66) {
+    return 0.52;
+  }
+  return 0.86;
+}
+
 function addRectSelectionAssist(
   Konva: KonvaNamespace,
   layer: RepairKonvaContainer,
@@ -366,7 +390,11 @@ function addAiEvent(
     layer,
     rect.xPx,
     Math.max(0, rect.yPx - 26),
-    event.kind === "risk-flag" ? "RISK" : "AI SUGGESTION",
+    event.kind === "risk-flag"
+      ? "RISK"
+      : config.guidance.overlaySaturation.labelMode === "simplified"
+        ? "AI"
+        : "AI SUGGESTION",
     color
   );
 }
@@ -533,7 +561,10 @@ function addMeasurementEvent(
     new Konva.Text({
       x: 12,
       y: -9,
-      text: `${event.reference ?? event.channel} — ${event.rawDisplay} ${event.unit}`,
+      text:
+        config.guidance.overlaySaturation.labelMode === "simplified"
+          ? `${event.rawDisplay} ${event.unit}`
+          : `${event.reference ?? event.channel} — ${event.rawDisplay} ${event.unit}`,
       fill: REPAIR_UI_COLORS.cyan,
       fontFamily: "IBM Plex Mono, JetBrains Mono, monospace",
       fontSize: 10,
@@ -619,7 +650,11 @@ function addInvestigationRegion(
     layer,
     rect.xPx,
     Math.max(0, rect.yPx - 24),
-    isTemporary ? region.label : `${region.status.toUpperCase()} ${region.label}`,
+    config.guidance.overlaySaturation.labelMode === "simplified"
+      ? region.label
+      : isTemporary
+        ? region.label
+        : `${region.status.toUpperCase()} ${region.label}`,
     color
   );
 }
@@ -899,6 +934,7 @@ export async function mountRepairOverlayStage(
         interaction: getEventInteractionState(currentConfig, event.id),
         contextualCursor: currentConfig.workbench.contextualCursor,
         visibleLayers: currentConfig.visibleLayers,
+        guidance: currentConfig.guidance.overlaySaturation,
       });
     }
 
@@ -951,6 +987,7 @@ export async function mountRepairOverlayStage(
       if (record.fingerprint === fingerprint) return;
       clearContainer(record.group);
       draw(record.group);
+      record.group.opacity(getOverlayEntityOpacity(currentConfig, { kind: "event", id: event.id }));
       record.fingerprint = fingerprint;
     }
 
@@ -1103,8 +1140,10 @@ export async function mountRepairOverlayStage(
         JSON.stringify({
           rect,
           label: currentConfig.activeSpatialFocus?.label ?? "",
+          profile: currentConfig.guidance.operationalProfile,
         }),
         (group) => {
+          const calmFocus = currentConfig.guidance.operationalProfile === "novice";
           group.add(
             new activeKonva.Rect({
               x: rect.xPx,
@@ -1116,8 +1155,8 @@ export async function mountRepairOverlayStage(
               dash: [12, 8],
               cornerRadius: 6,
               shadowColor: REPAIR_UI_COLORS.cyan,
-              shadowBlur: 18,
-              shadowOpacity: 0.18,
+              shadowBlur: calmFocus ? 6 : 18,
+              shadowOpacity: calmFocus ? 0.1 : 0.18,
               listening: false,
             })
           );
@@ -1239,9 +1278,13 @@ export async function mountRepairOverlayStage(
               region,
               view: currentConfig.workbench.viewport,
               image: currentConfig.image,
+              guidance: currentConfig.guidance.overlaySaturation,
             }),
             (group) => {
               addKnowledgeRegion(Konva, currentConfig, group, region);
+              group.opacity(
+                getOverlayEntityOpacity(currentConfig, { kind: "knowledge-region", id: region.id })
+              );
             }
           );
         });
@@ -1257,9 +1300,16 @@ export async function mountRepairOverlayStage(
             relationship,
             interaction: getMeasurementRelationshipInteractionState(currentConfig, relationship),
             investigationModeEnabled: currentConfig.workbench.investigationModeEnabled,
+            guidance: currentConfig.guidance.overlaySaturation,
           }),
           (group) => {
             addMeasurementRelationship(Konva, currentConfig, group, relationship);
+            group.opacity(
+              getOverlayEntityOpacity(currentConfig, {
+                kind: "measurement-relationship",
+                id: relationship.id,
+              })
+            );
           }
         );
       });
@@ -1276,9 +1326,16 @@ export async function mountRepairOverlayStage(
               kind: "investigation-region",
               id: region.regionId,
             }),
+            guidance: currentConfig.guidance.overlaySaturation,
           }),
           (group) => {
             addInvestigationRegion(Konva, currentConfig, group, region);
+            group.opacity(
+              getOverlayEntityOpacity(currentConfig, {
+                kind: "investigation-region",
+                id: region.regionId,
+              })
+            );
           }
         );
       });
@@ -1295,9 +1352,16 @@ export async function mountRepairOverlayStage(
               kind: "temporary-spatial-region",
               id: region.id,
             }),
+            guidance: currentConfig.guidance.overlaySaturation,
           }),
           (group) => {
             addInvestigationRegion(Konva, currentConfig, group, region);
+            group.opacity(
+              getOverlayEntityOpacity(currentConfig, {
+                kind: "temporary-spatial-region",
+                id: region.id,
+              })
+            );
           }
         );
       });

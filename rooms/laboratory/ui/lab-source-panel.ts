@@ -150,9 +150,6 @@ function getAssetPrimaryAction(asset: LabAsset): { action: string; value: string
   if (asset.type === "report") {
     return { action: "open-report-overlay", value: getReportAssetView(asset) };
   }
-  if (getAssetMediaKind(asset) !== null) {
-    return { action: "source-activate-asset", value: asset.id };
-  }
   if (getAssetContentActionKind(asset) === "document") {
     return { action: "open-document-overlay", value: asset.id };
   }
@@ -240,13 +237,6 @@ function renderAssetItem(
          ${escapeHtml(copy.t("mediaAnalysis.assets.actions.viewReport", "Raporu görüntüle"))}
        </button>`
       : "";
-  const useAsSourceItem =
-    getAssetMediaKind(asset) !== null
-      ? `<button class="labx-sp-menu__item" type="button"
-         data-lab-action="source-activate-asset" data-lab-value="${id}">
-         ${escapeHtml(copy.t("mediaAnalysis.assets.actions.useAsSource", "Kaynak olarak kullan"))}
-	       </button>`
-      : "";
   const useAsComparisonReferenceItem =
     getAssetMediaKind(asset) === "image"
       ? `<button class="labx-sp-menu__item" type="button"
@@ -278,7 +268,6 @@ function renderAssetItem(
         <summary class="labx-sp-asset__menu-trigger" aria-label="${escapeHtml(copy.t("mediaAnalysis.assets.actions.ariaLabel", "Seçenekler"))}">···</summary>
         <div class="labx-sp-asset__menu-list">
           ${viewReportItem}
-          ${useAsSourceItem}
           ${useAsComparisonReferenceItem}
           ${downloadItem}
           <button class="labx-sp-menu__item labx-sp-menu__item--danger" type="button"

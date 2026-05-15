@@ -46,6 +46,13 @@ import {
   normalizeCapturePhraseList,
 } from "../../../../shared/capture/command-catalog.js";
 import {
+  DEFAULT_AMBIENT_ACTIVE_WINDOW_MS,
+  DEFAULT_AMBIENT_SILENCE_TIMEOUT_MS,
+  DEFAULT_AMBIENT_WAKE_PHRASES,
+  normalizeAmbientDurationMs,
+  normalizeAmbientWakePhrases,
+} from "../../../../shared/capture/ambient-defaults.js";
+import {
   normalizeTranscriptBackend,
   normalizeTranscriptModelVariant,
 } from "../../../../shared/transcript/model-catalog.js";
@@ -196,6 +203,28 @@ function normalizeVoiceCommandSettings(
         ? voiceCommands["analyzeEnabled"]
         : false,
     analyzePhrases: normalizeCaptureCommandPhrases(rawPhrases),
+    ambient: {
+      wakePhrases: normalizeAmbientWakePhrases(
+        isPlainObject(voiceCommands["ambient"])
+          ? voiceCommands["ambient"]["wakePhrases"]
+          : undefined,
+        DEFAULT_AMBIENT_WAKE_PHRASES
+      ),
+      activeWindowMs: normalizeAmbientDurationMs(
+        isPlainObject(voiceCommands["ambient"])
+          ? voiceCommands["ambient"]["activeWindowMs"]
+          : undefined,
+        DEFAULT_AMBIENT_ACTIVE_WINDOW_MS,
+        { min: 1_000, max: 30_000 }
+      ),
+      silenceTimeoutMs: normalizeAmbientDurationMs(
+        isPlainObject(voiceCommands["ambient"])
+          ? voiceCommands["ambient"]["silenceTimeoutMs"]
+          : undefined,
+        DEFAULT_AMBIENT_SILENCE_TIMEOUT_MS,
+        { min: 300, max: 10_000 }
+      ),
+    },
   };
 }
 

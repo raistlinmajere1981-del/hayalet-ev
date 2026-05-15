@@ -18,6 +18,13 @@ import {
   DEFAULT_CAPTURE_COMMAND_PHRASES,
   normalizeCapturePhraseList,
 } from "../../../../../shared/capture/command-catalog.js";
+import {
+  DEFAULT_AMBIENT_ACTIVE_WINDOW_MS,
+  DEFAULT_AMBIENT_SILENCE_TIMEOUT_MS,
+  DEFAULT_AMBIENT_WAKE_PHRASES,
+  normalizeAmbientDurationMs,
+  normalizeAmbientWakePhrases,
+} from "../../../../../shared/capture/ambient-defaults.js";
 import type {
   CaptureActionOutcome,
   CaptureAndroidDeviceStatus,
@@ -118,6 +125,10 @@ function describeOperationAction(action: CaptureHostAction | null): string {
       return "Analyze capture";
     case "stop-analyze-session":
       return "Capture stop";
+    case "start-analyze-preview":
+      return "Analyze preview";
+    case "stop-analyze-preview":
+      return "Analyze preview stop";
     case "capture-analyze-photo":
       return "Phone capture";
     case "retake-analyze-photo":
@@ -128,6 +139,10 @@ function describeOperationAction(action: CaptureHostAction | null): string {
       return "Android dictation stop";
     case "cancel-analyze-dictation":
       return "Android dictation cancel";
+    case "start-ambient-listener":
+      return "Ambient listener";
+    case "stop-ambient-listener":
+      return "Ambient listener stop";
     default:
       return "Android companion";
   }
@@ -396,11 +411,61 @@ function readCaptureVoiceCommandPhrases(root: HTMLElement): Required<CaptureComm
   };
 }
 
+function getAmbientVoiceCommandSettings(): {
+  wakePhrases: string[];
+  activeWindowMs: number;
+  silenceTimeoutMs: number;
+} {
+  const ambient = SettingsManager.getSnapshot().voiceCommands?.ambient;
+  return {
+    wakePhrases: normalizeAmbientWakePhrases(ambient?.wakePhrases, DEFAULT_AMBIENT_WAKE_PHRASES),
+    activeWindowMs: normalizeAmbientDurationMs(
+      ambient?.activeWindowMs,
+      DEFAULT_AMBIENT_ACTIVE_WINDOW_MS,
+      { min: 1_000, max: 30_000 }
+    ),
+    silenceTimeoutMs: normalizeAmbientDurationMs(
+      ambient?.silenceTimeoutMs,
+      DEFAULT_AMBIENT_SILENCE_TIMEOUT_MS,
+      { min: 300, max: 10_000 }
+    ),
+  };
+}
+
+function readAmbientVoiceCommandSettings(root: HTMLElement): {
+  wakePhrases: string[];
+  activeWindowMs: number;
+  silenceTimeoutMs: number;
+} {
+  const wakeInput = root.querySelector<HTMLTextAreaElement>("#capture-ambient-wake-input");
+  const activeWindowInput = root.querySelector<HTMLInputElement>(
+    "#capture-ambient-active-window-input"
+  );
+  const silenceInput = root.querySelector<HTMLInputElement>("#capture-ambient-silence-input");
+  return {
+    wakePhrases: normalizeAmbientWakePhrases(
+      wakeInput?.value.split(/[\n,]/),
+      DEFAULT_AMBIENT_WAKE_PHRASES
+    ),
+    activeWindowMs: normalizeAmbientDurationMs(
+      activeWindowInput?.value,
+      DEFAULT_AMBIENT_ACTIVE_WINDOW_MS,
+      { min: 1_000, max: 30_000 }
+    ),
+    silenceTimeoutMs: normalizeAmbientDurationMs(
+      silenceInput?.value,
+      DEFAULT_AMBIENT_SILENCE_TIMEOUT_MS,
+      { min: 300, max: 10_000 }
+    ),
+  };
+}
+
 function renderCaptureVoiceCommands(root: HTMLElement): void {
   const voiceCommands = SettingsManager.getSnapshot().voiceCommands;
   const enabledInput = root.querySelector<HTMLInputElement>("#capture-voice-command-enabled");
   const feedbackEl = root.querySelector<HTMLElement>("#capture-voice-command-feedback");
   const phrases = getCaptureVoiceCommandPhrases();
+  const ambient = getAmbientVoiceCommandSettings();
 
   if (enabledInput) {
     enabledInput.checked = voiceCommands?.analyzeEnabled === true;
@@ -415,6 +480,22 @@ function renderCaptureVoiceCommands(root: HTMLElement): void {
     textarea.value = phrases[field.key].join("\n");
     textarea.placeholder = DEFAULT_CAPTURE_COMMAND_PHRASES[field.key].join(", ");
   });
+
+  const ambientWakeInput = root.querySelector<HTMLTextAreaElement>("#capture-ambient-wake-input");
+  const activeWindowInput = root.querySelector<HTMLInputElement>(
+    "#capture-ambient-active-window-input"
+  );
+  const silenceInput = root.querySelector<HTMLInputElement>("#capture-ambient-silence-input");
+  if (ambientWakeInput && document.activeElement !== ambientWakeInput) {
+    ambientWakeInput.value = ambient.wakePhrases.join("\n");
+    ambientWakeInput.placeholder = DEFAULT_AMBIENT_WAKE_PHRASES.join(", ");
+  }
+  if (activeWindowInput && document.activeElement !== activeWindowInput) {
+    activeWindowInput.value = String(ambient.activeWindowMs);
+  }
+  if (silenceInput && document.activeElement !== silenceInput) {
+    silenceInput.value = String(ambient.silenceTimeoutMs);
+  }
 
   if (feedbackEl) {
     feedbackEl.textContent = captureT("voiceCommands.hint");
@@ -800,11 +881,13 @@ async function saveCaptureVoiceCommands(root: HTMLElement): Promise<void> {
   const enabledInput = root.querySelector<HTMLInputElement>("#capture-voice-command-enabled");
   const analyzeEnabled = enabledInput?.checked === true;
   const analyzePhrases = readCaptureVoiceCommandPhrases(root);
+  const ambient = readAmbientVoiceCommandSettings(root);
 
   await SettingsManager.patch((settings) => {
     const nextVoiceCommands = (settings["voiceCommands"] ?? {}) as Record<string, unknown>;
     nextVoiceCommands["analyzeEnabled"] = analyzeEnabled;
     nextVoiceCommands["analyzePhrases"] = analyzePhrases;
+    nextVoiceCommands["ambient"] = ambient;
     delete nextVoiceCommands["commandPhrases"];
     settings["voiceCommands"] = nextVoiceCommands;
   });
@@ -824,11 +907,17 @@ async function resetCaptureVoiceCommandDefaults(root: HTMLElement): Promise<void
       ? enabledInput.checked
       : SettingsManager.getSnapshot().voiceCommands?.analyzeEnabled === true;
   const analyzePhrases = createDefaultCaptureVoiceCommandPhrases();
+  const ambient = {
+    wakePhrases: [...DEFAULT_AMBIENT_WAKE_PHRASES],
+    activeWindowMs: DEFAULT_AMBIENT_ACTIVE_WINDOW_MS,
+    silenceTimeoutMs: DEFAULT_AMBIENT_SILENCE_TIMEOUT_MS,
+  };
 
   await SettingsManager.patch((settings) => {
     const nextVoiceCommands = (settings["voiceCommands"] ?? {}) as Record<string, unknown>;
     nextVoiceCommands["analyzeEnabled"] = analyzeEnabled;
     nextVoiceCommands["analyzePhrases"] = analyzePhrases;
+    nextVoiceCommands["ambient"] = ambient;
     delete nextVoiceCommands["commandPhrases"];
     settings["voiceCommands"] = nextVoiceCommands;
   });

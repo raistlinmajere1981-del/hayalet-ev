@@ -84,14 +84,18 @@ import {
   type DictationBinding,
   type DictationMode,
 } from "../modules/transcript/dictation-ui.js";
+import { insertTranscriptIntoTextarea } from "../modules/transcript/textarea-insertion.js";
 import {
   matchVoiceCommand,
+  normalizeVoiceCommandText,
   type VoiceCommandSpec,
 } from "../modules/transcript/voice-command-matcher.js";
 import {
   consumeAnalyzeCaptureAssets,
   getCaptureStatus,
+  onCaptureAmbientStatus,
   onCaptureMediaIngress,
+  onCapturePreviewFrame,
   onCaptureDictationStatus,
   refreshCaptureStatus,
   runCaptureAction,
@@ -99,13 +103,22 @@ import {
 import { onTranscriptIngress } from "../modules/transcript/electron-client.js";
 import type {
   CaptureActionOutcome,
+  CaptureAmbientStatusPayload,
   CaptureAndroidDeviceStatus,
   CaptureHostAction,
   CaptureMediaIngressPayload,
+  CapturePreviewFramePayload,
   CaptureServiceStatus,
 } from "../../types/capture.js";
 import type { TranscriptIngressPayload, TranscriptTargetId } from "../../types/transcript.js";
 import type { CaptureCommandPhraseSettings } from "../../types/settings.js";
+import {
+  DEFAULT_AMBIENT_ACTIVE_WINDOW_MS,
+  DEFAULT_AMBIENT_SILENCE_TIMEOUT_MS,
+  DEFAULT_AMBIENT_WAKE_PHRASES,
+  normalizeAmbientDurationMs,
+  normalizeAmbientWakePhrases,
+} from "../../../shared/capture/ambient-defaults.js";
 import { DEFAULT_CAPTURE_COMMAND_PHRASES } from "../../../shared/capture/command-catalog.js";
 interface ConversationSelectedDetail {
   provider?: "ai0" | "ai1" | "ai2" | "us1";
@@ -124,12 +137,118 @@ interface CaptureRunOptions {
 }
 
 type AnalyzeVoiceAction = CaptureHostAction;
+type AnalyzeH264PreviewPayload = Extract<CapturePreviewFramePayload, { mimeType: "video/avc" }>;
+
+interface AnalyzeVideoFrameLike {
+  readonly displayWidth: number;
+  readonly displayHeight: number;
+  close(): void;
+}
+
+interface AnalyzeVideoDecoderLike {
+  readonly state: string;
+  close(): void;
+  configure(config: Record<string, unknown>): void;
+  decode(chunk: unknown): void;
+}
+
+interface AnalyzeVideoDecoderConstructor {
+  new (init: {
+    output: (frame: AnalyzeVideoFrameLike) => void;
+    error: (error: unknown) => void;
+  }): AnalyzeVideoDecoderLike;
+}
+
+interface AnalyzeEncodedVideoChunkConstructor {
+  new (init: { type: "key" | "delta"; timestamp: number; data: BufferSource }): unknown;
+}
+
+interface AnalyzeWebCodecsConstructors {
+  VideoDecoder: AnalyzeVideoDecoderConstructor;
+  EncodedVideoChunk: AnalyzeEncodedVideoChunkConstructor;
+}
 
 type AnalyzeParticipant = "ai1" | "ai2" | "us1";
 type AnalyzeSceneViewId = "table";
+type AnalyzeAmbientStatus = CaptureAmbientStatusPayload["status"] | "idle";
+type AnalyzeAmbientFeedbackKind = "success" | "error" | "warning" | "info";
+type AnalyzeAmbientFeedbackTone =
+  | "started"
+  | "wake"
+  | "capturing"
+  | "transcribing"
+  | "success"
+  | "stopped"
+  | "failed";
+
+interface AnalyzeAmbientDictationIntent {
+  explicit: boolean;
+  text: string;
+}
+
+const ANALYZE_AMBIENT_DICTATION_PREFIXES = ["mesaj yaz", "mesaj", "yaz", "dikte"] as const;
+const ANALYZE_AMBIENT_CANCEL_PHRASES = ["iptal", "iptal et", "vazgeç", "vazgec"] as const;
 
 function analyzeT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.analyze.${key}`, params);
+}
+
+function getAnalyzeWebCodecsConstructors(): AnalyzeWebCodecsConstructors | null {
+  const runtime = window as unknown as Partial<AnalyzeWebCodecsConstructors>;
+  if (
+    typeof runtime.VideoDecoder !== "function" ||
+    typeof runtime.EncodedVideoChunk !== "function"
+  ) {
+    return null;
+  }
+
+  return {
+    VideoDecoder: runtime.VideoDecoder,
+    EncodedVideoChunk: runtime.EncodedVideoChunk,
+  };
+}
+
+function normalizeAnalyzePreviewChunkBytes(
+  chunk: AnalyzeH264PreviewPayload["chunk"]
+): Uint8Array | null {
+  if (chunk instanceof Uint8Array) {
+    return chunk;
+  }
+
+  if (ArrayBuffer.isView(chunk)) {
+    return new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+  }
+
+  if (chunk instanceof ArrayBuffer) {
+    return new Uint8Array(chunk);
+  }
+
+  if (Array.isArray(chunk)) {
+    return new Uint8Array(chunk);
+  }
+
+  return null;
+}
+
+function concatAnalyzePreviewBytes(prefix: Uint8Array, chunk: Uint8Array): Uint8Array {
+  const output = new Uint8Array(prefix.byteLength + chunk.byteLength);
+  output.set(prefix, 0);
+  output.set(chunk, prefix.byteLength);
+  return output;
+}
+
+function copyAnalyzePreviewBytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const output = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(output).set(bytes);
+  return output;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function assertNeverAnalyzeValue(value: never): never {
+  throw new Error(`Unexpected Analyze value: ${String(value)}`);
 }
 
 function isConversationSelectedDetail(value: unknown): value is ConversationSelectedDetail {
@@ -223,6 +342,9 @@ export class AnalyzeController {
   _unsubAppState: (() => void) | null;
   _unsubI18n: (() => void) | null;
   _unsubCaptureMediaIngress: (() => void) | null;
+  _unsubCapturePreviewFrame: (() => void) | null;
+  _unsubCaptureAmbientStatus: (() => void) | null;
+  _unsubAmbientTranscriptIngress: (() => void) | null;
   _boundActions: boolean;
   _us1PollTimer: number | null;
   _us1SyncInFlight: boolean;
@@ -244,7 +366,20 @@ export class AnalyzeController {
   _captureStatus: CaptureServiceStatus | null;
   _captureStatusPollTimer: number | null;
   _lastAutoStagedCapturePath: string | null;
+  _cameraPanelOpen: boolean;
+  _cameraPreviewRequestId: string | null;
+  _cameraPanelStatusMessage: string | null;
+  _cameraPanelHasFrame: boolean;
+  _cameraVideoDecoder: AnalyzeVideoDecoderLike | null;
+  _cameraVideoDecoderConfigKey: string | null;
+  _cameraVideoConfigBytes: Uint8Array | null;
   _voiceCommandsEnabled: boolean;
+  _ambientEnabled: boolean;
+  _ambientRequestId: string | null;
+  _ambientStatus: AnalyzeAmbientStatus;
+  _ambientStatusMessage: string | null;
+  _ambientStatusMessageKind: AnalyzeAmbientFeedbackKind | null;
+  _ambientToneLastPlayedAt: Partial<Record<AnalyzeAmbientFeedbackTone, number>>;
 
   get _analyzeSceneLayout(): SceneLayoutConfig {
     return this._analyzeSceneSession.getSceneLayout();
@@ -274,6 +409,9 @@ export class AnalyzeController {
     this._unsubAppState = null;
     this._unsubI18n = null;
     this._unsubCaptureMediaIngress = null;
+    this._unsubCapturePreviewFrame = null;
+    this._unsubCaptureAmbientStatus = null;
+    this._unsubAmbientTranscriptIngress = null;
     this._boundActions = false;
     this._us1PollTimer = null;
     this._us1SyncInFlight = false;
@@ -294,8 +432,21 @@ export class AnalyzeController {
     this._captureStatus = null;
     this._captureStatusPollTimer = null;
     this._lastAutoStagedCapturePath = null;
+    this._cameraPanelOpen = false;
+    this._cameraPreviewRequestId = null;
+    this._cameraPanelStatusMessage = null;
+    this._cameraPanelHasFrame = false;
+    this._cameraVideoDecoder = null;
+    this._cameraVideoDecoderConfigKey = null;
+    this._cameraVideoConfigBytes = null;
     this._voiceCommandsEnabled =
       SettingsManager.getSnapshot().voiceCommands?.analyzeEnabled === true;
+    this._ambientEnabled = false;
+    this._ambientRequestId = null;
+    this._ambientStatus = "idle";
+    this._ambientStatusMessage = null;
+    this._ambientStatusMessageKind = null;
+    this._ambientToneLastPlayedAt = {};
   }
 
   async init(): Promise<void> {
@@ -311,12 +462,14 @@ export class AnalyzeController {
         if (changedPaths.includes("*") || changedPaths.some((path) => path.startsWith("capture"))) {
           this._syncDictationAvailability();
           this.renderCaptureSessionState();
+          this._renderAmbientToggle();
         }
         if (
           changedPaths.includes("*") ||
           changedPaths.some((path) => path.startsWith("voiceCommands"))
         ) {
           this._syncVoiceCommandSettings();
+          this._renderAmbientToggle();
         }
 
         const shouldRefreshAnalyzeHeader =
@@ -348,6 +501,15 @@ export class AnalyzeController {
     this._unsubCaptureMediaIngress ??= onCaptureMediaIngress((payload) => {
       this._handleCaptureMediaIngress(payload);
     });
+    this._unsubCapturePreviewFrame ??= onCapturePreviewFrame((payload) => {
+      this._handleCapturePreviewFrame(payload);
+    });
+    this._unsubCaptureAmbientStatus ??= onCaptureAmbientStatus((payload) => {
+      this._handleAmbientStatus(payload);
+    });
+    this._unsubAmbientTranscriptIngress ??= onTranscriptIngress((payload) => {
+      void this._handleAmbientTranscriptIngress(payload);
+    });
     TrafficManager.onUpdate(() => {
       this.updateSendButtonState();
       void this._renderAnalyzeSceneCharacters();
@@ -369,6 +531,7 @@ export class AnalyzeController {
       this.updateConnectionStates();
       this._dictationBinding?.refresh();
       this._renderVoiceCommandToggle();
+      this._renderAmbientToggle();
       this.refreshUploads();
       this.renderCaptureSessionState();
       this._renderAnalyzeSceneHotspots();
@@ -382,6 +545,7 @@ export class AnalyzeController {
     this.updateConnectionStates();
     this.refreshUploads();
     this.renderCaptureSessionState();
+    this._renderAmbientToggle();
     this._initializeAnalyzeScene();
     this._unsubSceneTheme ??= SceneThemeManager.onChange(() => {
       this._analyzeSceneSession.reloadFromActiveTheme(this._analyzeSceneDebugEnabled);
@@ -1163,7 +1327,7 @@ export class AnalyzeController {
       void this.handleUploadClick();
     });
     document.getElementById("capture-import-btn")?.addEventListener("click", () => {
-      void this.openAndroidCameraManagement();
+      void this.toggleAndroidCameraPanel();
     });
     document.getElementById("compose-input")?.addEventListener("input", () => {
       this.updateSendButtonState();
@@ -1181,6 +1345,9 @@ export class AnalyzeController {
       });
     document.getElementById("compose-voice-command-btn")?.addEventListener("click", () => {
       void this._toggleVoiceCommands();
+    });
+    document.getElementById("compose-ambient-btn")?.addEventListener("click", () => {
+      void this._toggleAmbientListener();
     });
 
     // NOTE: Allow Ctrl+Enter sends while still preventing duplicate dispatches.
@@ -1268,6 +1435,33 @@ export class AnalyzeController {
     return SettingsManager.getSnapshot().capture?.providers ?? {};
   }
 
+  _ambientWakePhrases(): string[] {
+    return normalizeAmbientWakePhrases(
+      SettingsManager.getSnapshot().voiceCommands?.ambient?.wakePhrases,
+      DEFAULT_AMBIENT_WAKE_PHRASES
+    );
+  }
+
+  _ambientActiveWindowMs(): number {
+    return normalizeAmbientDurationMs(
+      SettingsManager.getSnapshot().voiceCommands?.ambient?.activeWindowMs,
+      DEFAULT_AMBIENT_ACTIVE_WINDOW_MS,
+      { min: 1_000, max: 30_000 }
+    );
+  }
+
+  _ambientSilenceTimeoutMs(): number {
+    return normalizeAmbientDurationMs(
+      SettingsManager.getSnapshot().voiceCommands?.ambient?.silenceTimeoutMs,
+      DEFAULT_AMBIENT_SILENCE_TIMEOUT_MS,
+      { min: 300, max: 10_000 }
+    );
+  }
+
+  _primaryAmbientWakePhrase(): string {
+    return this._ambientWakePhrases()[0] ?? "Hey Hayalet";
+  }
+
   _voiceCommandPhrases(): Required<CaptureCommandPhraseSettings> {
     const phrases = SettingsManager.getSnapshot().voiceCommands?.analyzePhrases;
     return {
@@ -1317,8 +1511,504 @@ export class AnalyzeController {
     });
   }
 
-  async _handleAnalyzeVoiceCommand(payload: TranscriptIngressPayload): Promise<boolean> {
-    if (this._voiceCommandsEnabled !== true || payload.isFinal !== true) {
+  _renderAmbientToggle(): void {
+    const button = document.getElementById("compose-ambient-btn") as HTMLButtonElement | null;
+    if (button === null) {
+      return;
+    }
+
+    const androidAvailable = this._isAndroidDictationAvailable();
+    button.disabled = androidAvailable !== true && this._ambientEnabled !== true;
+    button.classList.toggle("is-active", this._ambientEnabled);
+    button.setAttribute("aria-pressed", this._ambientEnabled ? "true" : "false");
+    button.textContent = this._ambientEnabled
+      ? analyzeT("page.dictation.ambientActive")
+      : analyzeT("page.dictation.ambientInactive");
+    button.title =
+      androidAvailable === true
+        ? this._ambientEnabled
+          ? analyzeT("page.dictation.ambientStopTitle")
+          : analyzeT("page.dictation.ambientStartTitle")
+        : analyzeT("page.dictation.androidUnavailableTitle");
+    this._renderAmbientFeedback(androidAvailable);
+  }
+
+  _renderAmbientFeedback(androidAvailable = this._isAndroidDictationAvailable()): void {
+    const status = document.getElementById("compose-ambient-status");
+    if (status === null) {
+      return;
+    }
+
+    const feedback = this._resolveAmbientFeedback(androidAvailable);
+    status.hidden = false;
+    status.textContent = feedback.message;
+    status.dataset["state"] = this._ambientStatus;
+    status.classList.toggle("is-active", this._ambientEnabled);
+    status.classList.toggle("is-info", feedback.kind === "info");
+    status.classList.toggle("is-success", feedback.kind === "success");
+    status.classList.toggle("is-warning", feedback.kind === "warning");
+    status.classList.toggle("is-error", feedback.kind === "error");
+  }
+
+  _resolveAmbientFeedback(androidAvailable: boolean): {
+    kind: AnalyzeAmbientFeedbackKind;
+    message: string;
+  } {
+    if (this._ambientStatusMessage !== null) {
+      return {
+        kind: this._ambientStatusMessageKind ?? this._ambientStatusKind(this._ambientStatus),
+        message: this._ambientStatusMessage,
+      };
+    }
+
+    if (androidAvailable !== true && this._ambientEnabled !== true) {
+      return { kind: "warning", message: analyzeT("page.dictation.ambientUnavailableMessage") };
+    }
+
+    return {
+      kind: this._ambientStatusKind(this._ambientStatus),
+      message: this._defaultAmbientStatusMessage(this._ambientStatus),
+    };
+  }
+
+  _ambientStatusKind(status: AnalyzeAmbientStatus): AnalyzeAmbientFeedbackKind {
+    switch (status) {
+      case "failed":
+        return "error";
+      case "done":
+        return "success";
+      case "stopped":
+      case "idle":
+        return "warning";
+      case "started":
+      case "wake-detected":
+      case "capturing":
+      case "transcribing":
+        return "info";
+      default:
+        return assertNeverAnalyzeValue(status);
+    }
+  }
+
+  _defaultAmbientStatusMessage(status: AnalyzeAmbientStatus, detail?: string): string {
+    switch (status) {
+      case "idle":
+        return analyzeT("page.dictation.ambientIdleMessage");
+      case "started":
+        return analyzeT("page.dictation.ambientWaitingMessage", {
+          wakePhrase: this._primaryAmbientWakePhrase(),
+        });
+      case "wake-detected":
+        return analyzeT("page.dictation.ambientWakeDetectedMessage");
+      case "capturing":
+        return analyzeT("page.dictation.ambientCapturingMessage");
+      case "transcribing":
+        return analyzeT("page.dictation.ambientTranscribingMessage");
+      case "done":
+        return analyzeT("page.dictation.ambientDoneMessage", {
+          wakePhrase: this._primaryAmbientWakePhrase(),
+        });
+      case "stopped":
+        return analyzeT("page.dictation.ambientStoppedMessage");
+      case "failed":
+        return analyzeT("page.dictation.ambientFailedMessage", {
+          message: detail ?? analyzeT("page.dictation.ambientUnknownError"),
+        });
+      default:
+        return assertNeverAnalyzeValue(status);
+    }
+  }
+
+  _ambientToneForStatus(status: AnalyzeAmbientStatus): AnalyzeAmbientFeedbackTone | null {
+    switch (status) {
+      case "started":
+        return "started";
+      case "wake-detected":
+        return "wake";
+      case "capturing":
+        return "capturing";
+      case "transcribing":
+        return "transcribing";
+      case "done":
+        return "success";
+      case "stopped":
+      case "idle":
+        return "stopped";
+      case "failed":
+        return "failed";
+      default:
+        return assertNeverAnalyzeValue(status);
+    }
+  }
+
+  _announceAmbientFeedback(
+    status: AnalyzeAmbientStatus,
+    options: {
+      dedupeKey?: string;
+      detail?: string;
+      kind?: AnalyzeAmbientFeedbackKind;
+      message?: string;
+      showToast?: boolean;
+      tone?: AnalyzeAmbientFeedbackTone | null;
+    } = {}
+  ): void {
+    const message = options.message ?? this._defaultAmbientStatusMessage(status, options.detail);
+    const kind = options.kind ?? this._ambientStatusKind(status);
+    this._ambientStatus = status;
+    this._ambientStatusMessage = message;
+    this._ambientStatusMessageKind = kind;
+    this._renderAmbientToggle();
+
+    const tone = options.tone === undefined ? this._ambientToneForStatus(status) : options.tone;
+    if (tone !== null) {
+      this._playAmbientFeedbackTone(tone);
+    }
+
+    if (options.showToast !== false) {
+      notifyUser({
+        kind,
+        title: message,
+        dedupeKey: options.dedupeKey ?? "analyze-ambient-feedback",
+      });
+    }
+  }
+
+  _playAmbientFeedbackTone(tone: AnalyzeAmbientFeedbackTone): void {
+    const now = Date.now();
+    const lastPlayedAt = this._ambientToneLastPlayedAt[tone] ?? 0;
+    if (now - lastPlayedAt < 800) {
+      return;
+    }
+    this._ambientToneLastPlayedAt[tone] = now;
+
+    try {
+      const audioContextConstructor = window.AudioContext;
+      if (typeof audioContextConstructor !== "function") {
+        return;
+      }
+      const context = new audioContextConstructor();
+      const sequences: Record<AnalyzeAmbientFeedbackTone, Array<[number, number, number]>> = {
+        started: [
+          [520, 80, 0],
+          [680, 90, 95],
+        ],
+        wake: [[880, 110, 0]],
+        capturing: [[640, 70, 0]],
+        transcribing: [[740, 70, 0]],
+        success: [
+          [660, 70, 0],
+          [880, 90, 90],
+        ],
+        stopped: [
+          [520, 70, 0],
+          [390, 90, 85],
+        ],
+        failed: [
+          [220, 110, 0],
+          [180, 120, 140],
+        ],
+      };
+      let totalMs = 0;
+      const startAt = context.currentTime + 0.01;
+      for (const [frequency, durationMs, delayMs] of sequences[tone]) {
+        totalMs = Math.max(totalMs, delayMs + durationMs);
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        const beginsAt = startAt + delayMs / 1_000;
+        const endsAt = beginsAt + durationMs / 1_000;
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(frequency, beginsAt);
+        gain.gain.setValueAtTime(0.0001, beginsAt);
+        gain.gain.exponentialRampToValueAtTime(0.055, beginsAt + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, endsAt);
+        oscillator.connect(gain).connect(context.destination);
+        oscillator.start(beginsAt);
+        oscillator.stop(endsAt + 0.02);
+      }
+      window.setTimeout(() => {
+        void context.close().catch(() => {});
+      }, totalMs + 120);
+    } catch {
+      // Audio feedback is best-effort and must never block capture control.
+    }
+  }
+
+  async _toggleAmbientListener(): Promise<void> {
+    if (this._ambientEnabled) {
+      await this._stopAmbientListener();
+      return;
+    }
+
+    await this._startAmbientListener();
+  }
+
+  async _startAmbientListener(): Promise<void> {
+    const requestId = crypto.randomUUID();
+    this._ambientRequestId = requestId;
+    this._ambientEnabled = true;
+    this._ambientStatus = "started";
+    this._ambientStatusMessage = null;
+    this._ambientStatusMessageKind = null;
+    this._renderAmbientToggle();
+
+    const outcome = await runCaptureAction("start-ambient-listener", {
+      target: "analyze-compose",
+      requestId,
+      wakePhrases: this._ambientWakePhrases(),
+      activeWindowMs: this._ambientActiveWindowMs(),
+      silenceTimeoutMs: this._ambientSilenceTimeoutMs(),
+    }).catch((error) => {
+      const message = getErrorMessage(error);
+      return {
+        action: "start-ambient-listener" as const,
+        ok: false,
+        message,
+        status: this._captureStatus ?? ({} as CaptureServiceStatus),
+      };
+    });
+    this._captureStatus = outcome.status;
+    this.renderCaptureSessionState();
+    if (outcome.ok !== true) {
+      this._ambientEnabled = false;
+      this._ambientRequestId = null;
+      this._announceAmbientFeedback("failed", {
+        detail: outcome.message,
+        dedupeKey: "analyze-ambient-start-error",
+        kind: "error",
+      });
+      return;
+    }
+    this._announceAmbientFeedback("started", {
+      dedupeKey: "analyze-ambient-listening",
+      kind: "info",
+      message: analyzeT("page.dictation.ambientListeningMessage", {
+        wakePhrase: this._primaryAmbientWakePhrase(),
+      }),
+    });
+  }
+
+  async _stopAmbientListener(): Promise<void> {
+    const requestId = this._ambientRequestId;
+    this._ambientEnabled = false;
+    this._ambientStatus = "stopped";
+    this._ambientStatusMessage = null;
+    this._ambientStatusMessageKind = null;
+    this._renderAmbientToggle();
+    if (requestId === null) {
+      this._announceAmbientFeedback("stopped", {
+        dedupeKey: "analyze-ambient-stopped",
+        kind: "info",
+      });
+      return;
+    }
+
+    const outcome = await runCaptureAction("stop-ambient-listener", {
+      target: "analyze-compose",
+      requestId,
+    }).catch((error) => {
+      const message = getErrorMessage(error);
+      return {
+        action: "stop-ambient-listener" as const,
+        ok: false,
+        message,
+        status: this._captureStatus ?? ({} as CaptureServiceStatus),
+      };
+    });
+    this._captureStatus = outcome.status;
+    this._ambientRequestId = null;
+    this.renderCaptureSessionState();
+    if (outcome.ok !== true) {
+      this._announceAmbientFeedback("failed", {
+        detail: outcome.message,
+        dedupeKey: "analyze-ambient-stop-error",
+        kind: "error",
+      });
+      return;
+    }
+    this._announceAmbientFeedback("stopped", {
+      dedupeKey: "analyze-ambient-stopped",
+      kind: "info",
+    });
+  }
+
+  _handleAmbientStatus(payload: CaptureAmbientStatusPayload): void {
+    if (payload.target !== "analyze-compose" || payload.requestId !== this._ambientRequestId) {
+      return;
+    }
+
+    if (payload.status === "failed" || payload.status === "stopped") {
+      this._ambientEnabled = false;
+      this._ambientRequestId = null;
+    }
+    this._announceAmbientFeedback(payload.status, {
+      dedupeKey: `analyze-ambient-${payload.status}`,
+      detail: payload.message,
+      kind: payload.status === "failed" ? "error" : this._ambientStatusKind(payload.status),
+    });
+  }
+
+  async _handleAmbientTranscriptIngress(payload: TranscriptIngressPayload): Promise<void> {
+    if (
+      this._ambientRequestId === null ||
+      this._ambientEnabled !== true ||
+      payload.source !== "android-bridge" ||
+      payload.target !== "analyze-compose" ||
+      payload.requestId !== this._ambientRequestId ||
+      payload.isFinal !== true
+    ) {
+      return;
+    }
+
+    const text = this._stripAmbientWakePhrase(payload.text);
+    if (text === "") {
+      this._announceAmbientFeedback("done", {
+        dedupeKey: "analyze-ambient-empty",
+        kind: "warning",
+        message: analyzeT("page.dictation.ambientEmptyCommandMessage"),
+        tone: "failed",
+      });
+      return;
+    }
+
+    if (this._isAmbientCancelIntent(text)) {
+      this._announceAmbientFeedback("done", {
+        dedupeKey: "analyze-ambient-cancel",
+        kind: "info",
+        message: analyzeT("page.dictation.ambientCancelMessage", {
+          wakePhrase: this._primaryAmbientWakePhrase(),
+        }),
+        tone: "stopped",
+      });
+      return;
+    }
+
+    const dictationIntent = this._parseAmbientDictationIntent(text);
+    if (dictationIntent.explicit) {
+      this._insertAmbientDictationText(dictationIntent.text);
+      return;
+    }
+
+    const consumed = await this._handleAnalyzeVoiceCommand(
+      {
+        ...payload,
+        text,
+      },
+      { ambientFeedback: true, requireEnabled: false }
+    );
+    if (consumed === true) {
+      return;
+    }
+
+    this._insertAmbientDictationText(dictationIntent.text);
+  }
+
+  _insertAmbientDictationText(text: string): void {
+    if (text.trim() === "") {
+      this._announceAmbientFeedback("done", {
+        dedupeKey: "analyze-ambient-empty",
+        kind: "warning",
+        message: analyzeT("page.dictation.ambientEmptyCommandMessage"),
+        tone: "failed",
+      });
+      return;
+    }
+
+    const textarea = document.getElementById("compose-input") as HTMLTextAreaElement | null;
+    if (textarea === null) {
+      return;
+    }
+    insertTranscriptIntoTextarea(textarea, text.trim());
+    this.updateSendButtonState();
+    this._announceAmbientFeedback("done", {
+      dedupeKey: "analyze-ambient-inserted",
+      kind: "success",
+      message: analyzeT("page.dictation.ambientDictationInsertedMessage"),
+      tone: "success",
+    });
+  }
+
+  _stripAmbientWakePhrase(text: string): string {
+    const directText = text.trim();
+    for (const phrase of this._ambientWakePhrases()) {
+      const directPattern = new RegExp(`^\\s*${escapeRegExp(phrase)}[\\s,.:;!?-]*`, "i");
+      const stripped = directText.replace(directPattern, "").trim();
+      if (stripped !== directText) {
+        return stripped;
+      }
+    }
+
+    const normalizedText = normalizeVoiceCommandText(directText);
+    for (const phrase of this._ambientWakePhrases()) {
+      const normalizedPhrase = normalizeVoiceCommandText(phrase);
+      if (
+        normalizedPhrase !== "" &&
+        (normalizedText === normalizedPhrase || normalizedText.startsWith(`${normalizedPhrase} `))
+      ) {
+        return directText.split(/\s+/).slice(normalizedPhrase.split(/\s+/).length).join(" ").trim();
+      }
+    }
+
+    return directText;
+  }
+
+  _parseAmbientDictationIntent(text: string): AnalyzeAmbientDictationIntent {
+    const directText = text.trim();
+    for (const prefix of ANALYZE_AMBIENT_DICTATION_PREFIXES) {
+      const directPattern = new RegExp(`^\\s*${escapeRegExp(prefix)}[\\s,.:;!?-]*`, "i");
+      const stripped = directText.replace(directPattern, "").trim();
+      if (stripped !== directText) {
+        return { explicit: true, text: stripped };
+      }
+    }
+
+    const normalizedText = normalizeVoiceCommandText(directText);
+    for (const prefix of ANALYZE_AMBIENT_DICTATION_PREFIXES) {
+      const normalizedPrefix = normalizeVoiceCommandText(prefix);
+      if (
+        normalizedPrefix !== "" &&
+        (normalizedText === normalizedPrefix || normalizedText.startsWith(`${normalizedPrefix} `))
+      ) {
+        return {
+          explicit: true,
+          text: directText
+            .split(/\s+/)
+            .slice(normalizedPrefix.split(/\s+/).length)
+            .join(" ")
+            .replace(/^[\s,.:;!?-]+/, "")
+            .trim(),
+        };
+      }
+    }
+
+    return { explicit: false, text: directText };
+  }
+
+  _isAmbientCancelIntent(text: string): boolean {
+    const normalizedText = normalizeVoiceCommandText(text);
+    return ANALYZE_AMBIENT_CANCEL_PHRASES.some(
+      (phrase) => normalizedText === normalizeVoiceCommandText(phrase)
+    );
+  }
+
+  _ambientVoiceCommandLabel(commandId: string): string {
+    switch (commandId) {
+      case "openCamera":
+        return analyzeT("page.dictation.ambientCommandOpenCamera");
+      case "capture":
+        return analyzeT("page.dictation.ambientCommandCapture");
+      case "stop":
+        return analyzeT("page.dictation.ambientCommandStop");
+      default:
+        return commandId;
+    }
+  }
+
+  async _handleAnalyzeVoiceCommand(
+    payload: TranscriptIngressPayload,
+    options: { ambientFeedback?: boolean; requireEnabled?: boolean } = {}
+  ): Promise<boolean> {
+    const requireEnabled = options.requireEnabled !== false;
+    if ((requireEnabled && this._voiceCommandsEnabled !== true) || payload.isFinal !== true) {
       return false;
     }
 
@@ -1337,7 +2027,21 @@ export class AnalyzeController {
       return false;
     }
 
+    if (options.ambientFeedback === true) {
+      this._announceAmbientFeedback("done", {
+        dedupeKey: "analyze-ambient-command",
+        kind: "success",
+        message: analyzeT("page.dictation.ambientCommandDetectedMessage", {
+          command: this._ambientVoiceCommandLabel(match.id),
+        }),
+        tone: "success",
+      });
+    }
+
     await this._runCaptureAction(action);
+    if (action === "stop-analyze-session" && this._cameraPanelOpen === true) {
+      void this._setAndroidCameraPanelOpen(false, { notify: false });
+    }
     return true;
   }
 
@@ -1599,8 +2303,324 @@ export class AnalyzeController {
     }
   }
 
+  async toggleAndroidCameraPanel(): Promise<void> {
+    await this._setAndroidCameraPanelOpen(this._cameraPanelOpen !== true);
+  }
+
   async openAndroidCameraManagement(): Promise<void> {
-    await this._runCaptureAction("start-analyze-session");
+    await this.toggleAndroidCameraPanel();
+  }
+
+  async _setAndroidCameraPanelOpen(
+    open: boolean,
+    options: { notify?: boolean } = {}
+  ): Promise<void> {
+    if (open === true) {
+      this._resetCameraVideoDecoder();
+      this._cameraPanelOpen = true;
+      this._cameraPanelHasFrame = false;
+      this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.opening");
+      this._cameraPreviewRequestId = `analyze-preview-${Date.now().toString(36)}-${Math.random()
+        .toString(36)
+        .slice(2)}`;
+      this._renderAndroidCameraPanel();
+
+      try {
+        const outcome = await runCaptureAction("start-analyze-preview", {
+          target: "analyze-compose",
+          requestId: this._cameraPreviewRequestId,
+        });
+        this._captureStatus = outcome.status;
+        this._applyAutoStagedCapture(outcome.status);
+        if (outcome.ok !== true) {
+          throw new Error(outcome.message);
+        }
+        this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.waiting");
+        this._renderAndroidCameraPanel();
+        this._startCaptureStatusPolling();
+      } catch (error) {
+        const message = getErrorMessage(error);
+        this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.error", { message });
+        this._cameraPreviewRequestId = null;
+        this._cameraPanelOpen = false;
+        this._cameraPanelHasFrame = false;
+        this._renderAndroidCameraPanel();
+        if (options.notify !== false) {
+          this._notifyCaptureFeedback(
+            "error",
+            analyzeT("page.cameraPanel.error", { message }),
+            "analyze-camera-preview-error"
+          );
+        }
+      } finally {
+        this.renderCaptureSessionState();
+      }
+      return;
+    }
+
+    const requestId = this._cameraPreviewRequestId;
+    this._cameraPanelOpen = false;
+    this._cameraPreviewRequestId = null;
+    this._cameraPanelHasFrame = false;
+    this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.stopped");
+    this._resetCameraVideoDecoder();
+    this._renderAndroidCameraPanel();
+
+    if (requestId === null) {
+      this.renderCaptureSessionState();
+      return;
+    }
+
+    try {
+      const outcome = await runCaptureAction("stop-analyze-preview", {
+        target: "analyze-compose",
+        requestId,
+      });
+      this._captureStatus = outcome.status;
+      if (outcome.ok !== true && options.notify !== false) {
+        this._notifyCaptureFeedback("error", outcome.message, "analyze-camera-preview-stop-error");
+      }
+    } catch (error) {
+      if (options.notify !== false) {
+        this._notifyCaptureFeedback(
+          "error",
+          analyzeT("page.cameraPanel.error", { message: getErrorMessage(error) }),
+          "analyze-camera-preview-stop-exception"
+        );
+      }
+    } finally {
+      this.renderCaptureSessionState();
+    }
+  }
+
+  _handleCapturePreviewFrame(payload: CapturePreviewFramePayload): void {
+    if (
+      this._cameraPanelOpen !== true ||
+      payload.target !== "analyze-compose" ||
+      payload.requestId !== this._cameraPreviewRequestId
+    ) {
+      return;
+    }
+
+    if (payload.mimeType === "video/avc") {
+      this._handleH264PreviewChunk(payload);
+      return;
+    }
+
+    this._resetCameraVideoDecoder();
+    const image = document.getElementById("android-camera-feed") as HTMLImageElement | null;
+    const canvas = document.getElementById("android-camera-feed-video") as HTMLCanvasElement | null;
+    if (canvas !== null) {
+      canvas.hidden = true;
+    }
+    if (image !== null) {
+      image.hidden = false;
+      image.src = `data:${payload.mimeType};base64,${payload.contentBase64}`;
+    }
+
+    this._cameraPanelHasFrame = true;
+    this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.live");
+    this._renderAndroidCameraPanel();
+  }
+
+  _handleH264PreviewChunk(payload: AnalyzeH264PreviewPayload): void {
+    const bytes = normalizeAnalyzePreviewChunkBytes(payload.chunk);
+    if (bytes === null || bytes.byteLength === 0) {
+      return;
+    }
+
+    const image = document.getElementById("android-camera-feed") as HTMLImageElement | null;
+    const canvas = document.getElementById("android-camera-feed-video") as HTMLCanvasElement | null;
+    if (image !== null) {
+      image.removeAttribute("src");
+      image.hidden = true;
+    }
+    if (canvas !== null) {
+      canvas.hidden = false;
+    }
+
+    if (payload.isConfig === true) {
+      this._cameraVideoConfigBytes = bytes;
+      return;
+    }
+
+    if (payload.isKeyFrame !== true && this._cameraVideoDecoder === null) {
+      return;
+    }
+
+    if (this._ensureCameraVideoDecoder(payload) !== true) {
+      this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.error", {
+        message: "WebCodecs H.264 decoder is unavailable.",
+      });
+      this._renderAndroidCameraPanel();
+      return;
+    }
+
+    const constructors = getAnalyzeWebCodecsConstructors();
+    const decoder = this._cameraVideoDecoder;
+    if (constructors === null || decoder === null || decoder.state === "closed") {
+      return;
+    }
+
+    const data =
+      payload.isKeyFrame === true && this._cameraVideoConfigBytes !== null
+        ? concatAnalyzePreviewBytes(this._cameraVideoConfigBytes, bytes)
+        : bytes;
+    const timestampMs = payload.timestampMs ?? performance.now();
+    try {
+      decoder.decode(
+        new constructors.EncodedVideoChunk({
+          type: payload.isKeyFrame === true ? "key" : "delta",
+          timestamp: Math.max(0, Math.round(timestampMs * 1_000)),
+          data: copyAnalyzePreviewBytesToArrayBuffer(data),
+        })
+      );
+    } catch (error) {
+      this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.error", {
+        message: getErrorMessage(error),
+      });
+      this._resetCameraVideoDecoder();
+      this._renderAndroidCameraPanel();
+    }
+  }
+
+  _ensureCameraVideoDecoder(payload: AnalyzeH264PreviewPayload): boolean {
+    const constructors = getAnalyzeWebCodecsConstructors();
+    if (constructors === null) {
+      return false;
+    }
+
+    const configKey = `${payload.codec}:${payload.width ?? 0}x${payload.height ?? 0}`;
+    if (
+      this._cameraVideoDecoder !== null &&
+      this._cameraVideoDecoderConfigKey === configKey &&
+      this._cameraVideoDecoder.state !== "closed"
+    ) {
+      return true;
+    }
+
+    const configBytes = this._cameraVideoConfigBytes;
+    this._resetCameraVideoDecoder();
+    this._cameraVideoConfigBytes = configBytes;
+    const decoder = new constructors.VideoDecoder({
+      output: (frame): void => {
+        try {
+          const canvas = document.getElementById(
+            "android-camera-feed-video"
+          ) as HTMLCanvasElement | null;
+          const image = document.getElementById("android-camera-feed") as HTMLImageElement | null;
+          const context = canvas?.getContext("2d") ?? null;
+          if (canvas === null || context === null) {
+            return;
+          }
+
+          const displayWidth =
+            Number.isFinite(frame.displayWidth) && frame.displayWidth > 0
+              ? frame.displayWidth
+              : null;
+          const displayHeight =
+            Number.isFinite(frame.displayHeight) && frame.displayHeight > 0
+              ? frame.displayHeight
+              : null;
+          const width = Math.max(1, Math.round(displayWidth ?? payload.width ?? 1));
+          const height = Math.max(1, Math.round(displayHeight ?? payload.height ?? 1));
+          if (canvas.width !== width) {
+            canvas.width = width;
+          }
+          if (canvas.height !== height) {
+            canvas.height = height;
+          }
+          context.drawImage(frame as unknown as CanvasImageSource, 0, 0, width, height);
+          canvas.hidden = false;
+          if (image !== null) {
+            image.removeAttribute("src");
+            image.hidden = true;
+          }
+          this._cameraPanelHasFrame = true;
+          this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.live");
+          this._renderAndroidCameraPanel();
+        } finally {
+          frame.close();
+        }
+      },
+      error: (error): void => {
+        this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.error", {
+          message: getErrorMessage(error),
+        });
+        this._resetCameraVideoDecoder();
+        this._renderAndroidCameraPanel();
+      },
+    });
+
+    try {
+      const config: Record<string, unknown> = {
+        codec: payload.codec,
+        optimizeForLatency: true,
+        avc: { format: "annexb" },
+      };
+      if (payload.width !== null) {
+        config["codedWidth"] = payload.width;
+      }
+      if (payload.height !== null) {
+        config["codedHeight"] = payload.height;
+      }
+      decoder.configure(config);
+    } catch (error) {
+      try {
+        decoder.close();
+      } catch (_) {}
+      this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.error", {
+        message: getErrorMessage(error),
+      });
+      return false;
+    }
+
+    this._cameraVideoDecoder = decoder;
+    this._cameraVideoDecoderConfigKey = configKey;
+    return true;
+  }
+
+  _resetCameraVideoDecoder(): void {
+    const decoder = this._cameraVideoDecoder;
+    this._cameraVideoDecoder = null;
+    this._cameraVideoDecoderConfigKey = null;
+    this._cameraVideoConfigBytes = null;
+    if (decoder === null || decoder.state === "closed") {
+      return;
+    }
+
+    try {
+      decoder.close();
+    } catch (_) {}
+  }
+
+  _renderAndroidCameraPanel(): void {
+    const panel = document.getElementById("android-camera-panel");
+    const row = panel?.closest(".compose-row");
+    const image = document.getElementById("android-camera-feed") as HTMLImageElement | null;
+    const canvas = document.getElementById("android-camera-feed-video") as HTMLCanvasElement | null;
+    const status = document.getElementById("android-camera-status");
+    if (row instanceof HTMLElement) {
+      row.classList.toggle("is-camera-panel-open", this._cameraPanelOpen);
+    }
+    if (panel !== null) {
+      panel.hidden = this._cameraPanelOpen !== true;
+      panel.classList.toggle("has-frame", this._cameraPanelHasFrame);
+    }
+    if (image !== null && this._cameraPanelOpen !== true) {
+      image.removeAttribute("src");
+      image.hidden = false;
+    }
+    if (canvas !== null && this._cameraPanelOpen !== true) {
+      canvas.hidden = true;
+      const context = canvas.getContext("2d");
+      context?.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    if (status !== null) {
+      status.textContent =
+        this._cameraPanelStatusMessage ??
+        analyzeT(this._cameraPanelOpen ? "page.cameraPanel.waiting" : "page.cameraPanel.closed");
+    }
   }
 
   renderCaptureSessionState(): void {
@@ -1632,12 +2652,17 @@ export class AnalyzeController {
     }
 
     if (captureButton) {
-      captureButton.disabled = androidCompanionEnabled !== true || hasReadyDevice === false;
-      captureButton.classList.toggle("is-active", sessionActive);
-      captureButton.setAttribute("aria-pressed", sessionActive ? "true" : "false");
+      captureButton.disabled =
+        androidCompanionEnabled !== true ||
+        (hasReadyDevice === false && this._cameraPanelOpen !== true);
+      captureButton.classList.toggle("is-active", sessionActive || this._cameraPanelOpen);
+      captureButton.setAttribute("aria-pressed", this._cameraPanelOpen ? "true" : "false");
+      captureButton.setAttribute("aria-expanded", this._cameraPanelOpen ? "true" : "false");
     }
 
     this._syncDictationAvailability();
+    this._renderAmbientToggle();
+    this._renderAndroidCameraPanel();
   }
 
   async refreshCaptureSessionState(forceRefresh = false): Promise<void> {
@@ -2482,6 +3507,9 @@ export class AnalyzeController {
     this._analyzeSceneSelection = null;
     this._stopUs1Polling();
     this._stopCaptureStatusPolling();
+    if (this._cameraPanelOpen === true) {
+      void this._setAndroidCameraPanelOpen(false, { notify: false });
+    }
 
     try {
       this._persistDraft();

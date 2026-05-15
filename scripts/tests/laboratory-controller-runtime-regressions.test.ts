@@ -246,6 +246,233 @@ test("laboratory run controller threads frozen run intent ids into tracked expor
   }
 });
 
+test("laboratory run controller sends comparison ROI payloads with image comparison actions", () => {
+  const originalElement = globalThis.Element;
+  const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  class TestElement extends FakeActionElement {}
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent(eventName: string, payload: Record<string, unknown>) {
+            sentEvents.push({ eventName, payload });
+          },
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    store.dispatch({
+      type: "source-config-patched",
+      patch: {
+        kind: "image",
+        mode: "local",
+        storedPath: "/tmp/primary.png",
+      },
+    });
+    store.dispatch({ type: "workspace-content-opened", assetId: "asset-primary" });
+    store.dispatch({ type: "workspace-comparison-reference-set", assetId: "asset-reference" });
+    store.dispatch({
+      type: "workspace-comparison-updated",
+      patch: {
+        comparisonFindingNote: "Reference glow shifted",
+        comparisonSplitPercent: 42,
+        comparisonViewMode: "roi-detail",
+      },
+    });
+    store.dispatch({
+      type: "selection-roi-updated",
+      comparisonSide: "primary",
+      roi: { x: 0.1, y: 0.2, width: 0.3, height: 0.4 },
+    });
+    store.dispatch({
+      type: "selection-roi-updated",
+      comparisonSide: "reference",
+      roi: { x: 0.2, y: 0.1, width: 0.25, height: 0.35 },
+    });
+
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
+    clickListener?.({ target: new TestElement("workspace-comparison-moment-capture") } as Event);
+
+    assert.equal(sentEvents.length, 1);
+    assert.equal(sentEvents[0]?.eventName, "media-action");
+    assert.equal(sentEvents[0]?.payload["action"], "capture-comparison-moment");
+    const payload = sentEvents[0]?.payload["payload"] as Record<string, unknown>;
+    assert.equal(payload["workspaceTargetAssetId"], "asset-primary");
+    assert.equal(payload["comparisonReferenceAssetId"], "asset-reference");
+    assert.equal(payload["comparisonRoiActiveSide"], "reference");
+    assert.equal(payload["comparisonViewMode"], "roi-detail");
+    assert.equal(payload["comparisonSplitPercent"], 42);
+    assert.equal(payload["findingNote"], "Reference glow shifted");
+    assert.deepEqual(payload["normalizedRoi"], { x: 0.2, y: 0.1, width: 0.25, height: 0.35 });
+    assert.deepEqual(payload["primaryNormalizedRoi"], { x: 0.1, y: 0.2, width: 0.3, height: 0.4 });
+    assert.deepEqual(payload["referenceNormalizedRoi"], {
+      x: 0.2,
+      y: 0.1,
+      width: 0.25,
+      height: 0.35,
+    });
+    assert.deepEqual(payload["comparisonRois"], {
+      activeSide: "reference",
+      primary: { x: 0.1, y: 0.2, width: 0.3, height: 0.4 },
+      reference: { x: 0.2, y: 0.1, width: 0.25, height: 0.35 },
+    });
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
+test("laboratory run controller restores comparison finding focus from inspector actions", () => {
+  const originalElement = globalThis.Element;
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  class TestElement extends FakeActionElement {}
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        addEventListener() {},
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    store.dispatch({
+      type: "source-config-patched",
+      patch: {
+        kind: "image",
+        mode: "local",
+        storedPath: "/tmp/source.png",
+      },
+    });
+    store.dispatch({
+      type: "asset-added",
+      asset: {
+        id: "asset-primary",
+        type: "image",
+        name: "primary.png",
+        localPath: "/tmp/primary.png",
+        createdAt: 10,
+        metadata: { kind: "image" },
+      },
+    });
+    store.dispatch({
+      type: "asset-added",
+      asset: {
+        id: "asset-reference",
+        type: "image",
+        name: "reference.png",
+        localPath: "/tmp/reference.png",
+        createdAt: 11,
+        metadata: { kind: "image" },
+      },
+    });
+    store.dispatch({
+      type: "asset-added",
+      asset: {
+        id: "asset-manifest",
+        type: "artifact",
+        name: "comparison-finding.json",
+        localPath: "/tmp/comparison-finding.json",
+        createdAt: 12,
+        metadata: {
+          artifactKind: "comparison-finding-manifest",
+          captureContext: {
+            comparisonRois: {
+              activeSide: "reference",
+              primary: { x: 0.1, y: 0.2, width: 0.3, height: 0.4 },
+              reference: { x: 0.2, y: 0.1, width: 0.25, height: 0.35 },
+            },
+            comparisonViewMode: "roi-detail",
+            primaryAssetId: "asset-primary",
+            referenceAssetId: "asset-reference",
+            splitPercent: 44,
+          },
+          findingId: "finding-restore",
+          primaryAssetId: "asset-primary",
+          referenceAssetId: "asset-reference",
+        },
+      },
+    });
+
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
+    clickListener?.({
+      target: new TestElement("workspace-comparison-finding-focus", "finding-restore"),
+    } as Event);
+
+    const workspace = store.getState().ui.workspace;
+    assert.equal(store.getState().ui.activeWorkspaceAssetId, "asset-primary");
+    assert.equal(workspace.comparisonReferenceAssetId, "asset-reference");
+    assert.equal(workspace.comparisonViewMode, "roi-detail");
+    assert.equal(workspace.comparisonSplitPercent, 44);
+    assert.equal(workspace.activeIconRailSlot, "image-comparison");
+    assert.equal(workspace.controlsDrawerTab, "audio");
+    assert.equal(workspace.comparisonRois.activeSide, "reference");
+    assert.deepEqual(workspace.comparisonRois.primary, { x: 0.1, y: 0.2, width: 0.3, height: 0.4 });
+    assert.deepEqual(workspace.comparisonRois.reference, {
+      x: 0.2,
+      y: 0.1,
+      width: 0.25,
+      height: 0.35,
+    });
+    assert.deepEqual(workspace.activeSelection?.roi, {
+      x: 0.2,
+      y: 0.1,
+      width: 0.25,
+      height: 0.35,
+    });
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
 test("laboratory run controller toggles selection micro zoom from the timeline action", () => {
   const originalElement = globalThis.Element;
   const documentRef = new FakeControllerDocument();
@@ -2788,7 +3015,7 @@ test("laboratory asset delete actions stop when confirmation is rejected", () =>
   }
 });
 
-test("laboratory source panel media action activates the asset through the host source flow", () => {
+test("laboratory source panel media click opens workspace content without host source activation", () => {
   const originalElement = globalThis.Element;
   const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
   const documentRef = new FakeControllerDocument();
@@ -2836,17 +3063,11 @@ test("laboratory source panel media action activates the asset through the host 
     assert.ok(clickListener);
 
     clickListener?.({
-      target: new TestElement("source-activate-asset", "asset-source-1"),
+      target: new TestElement("workspace-content-open", "asset-source-1"),
     } as Event);
 
-    assert.equal(sentEvents.length, 1);
-    assert.equal(sentEvents[0]?.eventName, "media-action");
-    assert.equal(sentEvents[0]?.payload.action, "source-activate-asset");
-    assert.deepEqual(sentEvents[0]?.payload.payload, {
-      assetId: "asset-source-1",
-      featureId: "media-analysis",
-    });
-    assert.equal(store.getState().ui.activeWorkspaceAssetId, null);
+    assert.equal(sentEvents.length, 0);
+    assert.equal(store.getState().ui.activeWorkspaceAssetId, "asset-source-1");
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;

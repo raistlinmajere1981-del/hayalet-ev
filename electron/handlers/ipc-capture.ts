@@ -1,6 +1,9 @@
 import { registerHandler } from "./ipc-helpers.ts";
 import { captureService } from "../capture-service.ts";
-import type { CaptureTargetActionOptions } from "../../src/types/capture.ts";
+import type {
+  CaptureAmbientListenerOptions,
+  CaptureTargetActionOptions,
+} from "../../src/types/capture.ts";
 
 export function setupCaptureHandlers(): void {
   registerHandler("capture-status", async () => {
@@ -56,6 +59,20 @@ export function setupCaptureHandlers(): void {
   );
 
   registerHandler(
+    "capture-start-analyze-preview",
+    async (_event, options?: CaptureTargetActionOptions) => {
+      return await captureService.startAnalyzePreviewStream(options);
+    }
+  );
+
+  registerHandler(
+    "capture-stop-analyze-preview",
+    async (_event, options?: CaptureTargetActionOptions) => {
+      return await captureService.stopAnalyzePreviewStream(options);
+    }
+  );
+
+  registerHandler(
     "capture-start-analyze-dictation",
     async (_event, options?: CaptureTargetActionOptions) => {
       return await captureService.requestAnalyzeDictation("start", options);
@@ -73,6 +90,20 @@ export function setupCaptureHandlers(): void {
     "capture-cancel-analyze-dictation",
     async (_event, options?: CaptureTargetActionOptions) => {
       return await captureService.cancelAnalyzeDictation(options);
+    }
+  );
+
+  registerHandler(
+    "capture-start-ambient-listener",
+    async (_event, options?: CaptureAmbientListenerOptions) => {
+      return await captureService.startAmbientListener(options);
+    }
+  );
+
+  registerHandler(
+    "capture-stop-ambient-listener",
+    async (_event, options?: CaptureAmbientListenerOptions) => {
+      return await captureService.stopAmbientListener(options);
     }
   );
 

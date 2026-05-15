@@ -210,6 +210,40 @@ body {
   border-radius: var(--repair-px-2);
 }
 
+.repair-panel--dominant > .repair-panel__header {
+  border-bottom-color: var(--repair-border-strong);
+}
+
+.repair-panel--subdued:not(:hover):not(:focus-within) {
+  opacity: 0.58;
+}
+
+.repair-panel--corridor-passive:not(:hover):not(:focus-within) {
+  opacity: 0.42;
+}
+
+.repair-panel--hidden-policy {
+  display: none;
+}
+
+.repair-panel--compact-policy .repair-panel__body {
+  opacity: 0.82;
+}
+
+.repair-shell--profile-novice .repair-panel__icon-btn,
+.repair-shell--profile-novice .repair-toolbar__btn:not(.repair-toolbar__btn--active),
+.repair-shell--profile-novice
+  .repair-timeline__control-btn:not(.repair-timeline__control-btn--active) {
+  opacity: 0.48;
+}
+
+.repair-shell--profile-novice .repair-panel:hover .repair-panel__icon-btn,
+.repair-shell--profile-novice .repair-panel:focus-within .repair-panel__icon-btn,
+.repair-shell--profile-novice .repair-toolbar:hover .repair-toolbar__btn,
+.repair-shell--profile-novice .repair-timeline__controls:hover .repair-timeline__control-btn {
+  opacity: 1;
+}
+
 /* Active panel header glow */
 .repair-panel--active > .repair-panel__header {
   box-shadow:
@@ -402,6 +436,88 @@ body {
   color: var(--repair-text-dim);
 }
 
+.repair-profile-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--repair-px-2);
+}
+
+.repair-profile-toggle__btn {
+  height: var(--repair-px-24);
+  min-width: var(--repair-px-34);
+  border: var(--repair-px-1) solid var(--repair-border);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-surface-control);
+  color: var(--repair-text-dim);
+  font: 700 var(--repair-px-9) var(--repair-mono);
+  cursor: pointer;
+}
+
+.repair-profile-toggle__btn--active,
+.repair-profile-toggle__btn:hover {
+  border-color: var(--repair-border-strong);
+  color: var(--repair-cyan);
+}
+
+.repair-guidance-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--repair-px-2);
+}
+
+.repair-guidance-control {
+  height: var(--repair-px-24);
+  min-width: var(--repair-px-38);
+  border: var(--repair-px-1) solid var(--repair-border);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-surface-control);
+  color: var(--repair-text-dim);
+  font: 700 var(--repair-px-9) var(--repair-mono);
+  cursor: pointer;
+}
+
+.repair-guidance-control--active,
+.repair-guidance-control:hover {
+  border-color: var(--repair-border-strong);
+  color: var(--repair-cyan);
+}
+
+.repair-guidance-strip {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1.2fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--repair-sp-2);
+  min-height: var(--repair-px-36);
+  padding: var(--repair-sp-1) var(--repair-sp-3);
+  border-bottom: var(--repair-px-1) solid var(--repair-border-muted);
+  background: var(--repair-surface-whisper);
+}
+
+.repair-guidance-strip__phase,
+.repair-guidance-strip__meta {
+  font: 700 var(--repair-px-10) var(--repair-mono);
+  color: var(--repair-text-dim);
+  text-transform: uppercase;
+}
+
+.repair-guidance-strip__phase {
+  color: var(--repair-cyan);
+}
+
+.repair-guidance-strip__action,
+.repair-guidance-strip__recovery {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--repair-text-muted);
+  font-size: var(--repair-px-12);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repair-guidance-strip__action {
+  color: var(--repair-text);
+}
+
 .repair-viewport {
   flex: 1;
   position: relative;
@@ -503,6 +619,28 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--repair-sp-1);
+}
+
+.repair-feed-calmline {
+  margin-bottom: var(--repair-sp-2);
+  padding: var(--repair-sp-2);
+  border: var(--repair-px-1) solid var(--repair-border-muted);
+  border-radius: var(--repair-radius-sm);
+  color: var(--repair-text-dim);
+  font-size: var(--repair-px-11);
+}
+
+.repair-panel--tactical-feed[data-feed-density="minimal"]
+  .repair-feed-list
+  .repair-feed-entry:nth-child(n + 3),
+.repair-panel--tactical-feed[data-feed-density="compact"]
+  .repair-feed-list
+  .repair-feed-entry:nth-child(n + 4) {
+  display: none;
+}
+
+.repair-panel--tactical-feed[data-feed-density="minimal"] .repair-feed-composer {
+  display: none;
 }
 
 .repair-feed-entry {
@@ -1074,6 +1212,100 @@ textarea.repair-wizard-field__input {
   background: var(--repair-cyan);
   animation: repair-live-pulse 1.6s ease-in-out infinite;
   pointer-events: none;
+}
+
+.repair-shell--profile-novice .repair-live-chip,
+.repair-shell--profile-novice .repair-timeline__live-edge {
+  animation: none;
+}
+
+.repair-shell--profile-novice .repair-timeline__chip {
+  box-shadow: none;
+}
+
+@media (--repair-bp-max-980) {
+  .repair-workspace {
+    grid-template-columns: minmax(var(--repair-px-180), 0.78fr) minmax(0, 1.6fr);
+    grid-template-rows: minmax(0, 1fr) auto auto auto;
+  }
+
+  .repair-panel--session-rail {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .repair-panel--workbench-stage {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .repair-panel--tactical-feed {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    max-height: var(--repair-px-180);
+  }
+
+  .repair-panel--wizard-pack-stack,
+  .repair-bottom-dock,
+  .repair-panel--visual-timeline {
+    grid-column: 1 / -1;
+  }
+
+  .repair-panel--visual-timeline {
+    grid-row: 3;
+  }
+
+  .repair-bottom-dock {
+    grid-row: 4;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: var(--repair-px-300);
+  }
+}
+
+@media (--repair-bp-max-680) {
+  .repair-statusbar {
+    height: auto;
+    min-height: var(--repair-px-32);
+    flex-wrap: wrap;
+    row-gap: var(--repair-sp-1);
+  }
+
+  .repair-workspace {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(var(--repair-px-360), 1fr) repeat(4, auto);
+  }
+
+  .repair-panel--session-rail,
+  .repair-panel--tactical-feed,
+  .repair-panel--wizard-pack-stack,
+  .repair-panel--visual-timeline,
+  .repair-bottom-dock {
+    grid-column: 1;
+  }
+
+  .repair-panel--session-rail {
+    grid-row: 2;
+  }
+
+  .repair-panel--workbench-stage {
+    grid-column: 1;
+    grid-row: 1;
+    min-height: var(--repair-px-360);
+  }
+
+  .repair-panel--tactical-feed {
+    grid-row: 3;
+  }
+
+  .repair-panel--visual-timeline {
+    grid-row: 4;
+  }
+
+  .repair-bottom-dock {
+    grid-row: 5;
+    grid-template-columns: 1fr;
+    max-height: none;
+  }
 }
 
 /* ── Operator Profile ────────────────────────────────────────────── */

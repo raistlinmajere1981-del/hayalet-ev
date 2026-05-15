@@ -94,6 +94,7 @@ export type LabIconRailSlotId =
   | "visual-adjust"
   | "clip-export"
   | "enhanced-frame"
+  | "image-comparison"
   | "before-after"
   | "audio-extract"
   | "band-pass"
@@ -144,6 +145,13 @@ export const ICON_RAIL_SLOTS: readonly LabIconRailSlot[] = [
     id: "enhanced-frame",
     group: "post-process",
     capabilityId: "enhanced-frame",
+    content: "operation",
+    draft: false,
+  },
+  {
+    id: "image-comparison",
+    group: "post-process",
+    capabilityId: "image-comparison",
     content: "operation",
     draft: false,
   },

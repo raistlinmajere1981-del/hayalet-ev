@@ -10,6 +10,13 @@ import { loadSettings } from "./settings-manager.ts";
 import { transcriptService } from "./transcript-service.ts";
 import { normalizeAppLanguage } from "../shared/i18n/locale.js";
 import {
+  DEFAULT_AMBIENT_ACTIVE_WINDOW_MS,
+  DEFAULT_AMBIENT_SILENCE_TIMEOUT_MS,
+  DEFAULT_AMBIENT_WAKE_PHRASES,
+  normalizeAmbientDurationMs,
+  normalizeAmbientWakePhrases,
+} from "../shared/capture/ambient-defaults.js";
+import {
   getTranscriptModelDescriptor,
   normalizeTranscriptModelVariant,
   resolveTranscriptModelId,
@@ -18,6 +25,8 @@ import {
 import { inspectCompanionArtifactCache } from "../scripts/lib/android-companion-artifact.mjs";
 import type {
   CaptureActionOutcome,
+  CaptureAmbientListenerOptions,
+  CaptureAmbientStatusPayload,
   CaptureAndroidArtifactStatus,
   CaptureAndroidCompanionState,
   CaptureAndroidDeviceConnectionState,
@@ -29,11 +38,13 @@ import type {
   CaptureAnalyzeSessionState,
   CaptureCompanionCommandEnvelope,
   CaptureCompanionCommandKind,
+  CaptureCompanionAmbientProfile,
   CaptureCompanionCommandProfile,
   CaptureCompanionTranscriptModelProfile,
   CaptureDictationStatusPayload,
   CaptureImportedAsset,
   CaptureMediaIngressPayload,
+  CapturePreviewFramePayload,
   CaptureServiceStatus,
 } from "../src/types/capture.ts";
 import type {
@@ -48,7 +59,9 @@ const CAPTURE_ANDROID_MAIN_ACTIVITY = "com.hayaletev.androidcompanion/.MainActiv
 const CAPTURE_BRIDGE_PORT = 48_561;
 const CAPTURE_ANALYZE_TARGET = "analyze-compose" satisfies TranscriptTargetId;
 const CAPTURE_MEDIA_INGRESS_CHANNEL = "capture:media-ingress";
+const CAPTURE_PREVIEW_FRAME_CHANNEL = "capture:preview-frame";
 const CAPTURE_DICTATION_STATUS_CHANNEL = "capture:dictation-status";
+const CAPTURE_AMBIENT_STATUS_CHANNEL = "capture:ambient-status";
 const CAPTURE_SESSION_STALE_MS = 20_000;
 const CAPTURE_COMPANION_DIAGNOSTICS_MAX_LOG_ENTRIES = 400;
 const CAPTURE_COMPANION_DIAGNOSTICS_MAX_TEXT_CHARS = 220_000;
@@ -165,6 +178,9 @@ interface ResolvedCaptureSettings {
   commandConfirmation: "toast" | "none";
   androidDictationBackend: CaptureCompanionTranscriptModelProfile["backend"];
   androidCompanionEnabled: boolean;
+  ambientWakePhrases: string[];
+  ambientActiveWindowMs: number;
+  ambientSilenceTimeoutMs: number;
 }
 
 type WhisperCompanionModelDescriptor = CaptureCompanionTranscriptModelProfile & {
@@ -261,6 +277,14 @@ function normalizeText(value: unknown): string | null {
   return normalized === "" ? null : normalized;
 }
 
+function normalizeHeaderText(value: string | string[] | undefined): string | null {
+  if (Array.isArray(value)) {
+    return normalizeText(value[0]);
+  }
+
+  return normalizeText(value);
+}
+
 function normalizeTranscriptTarget(value: unknown): TranscriptTargetId | null {
   const normalized = normalizeText(value);
   if (normalized === null) {
@@ -277,6 +301,26 @@ function normalizeTranscriptTarget(value: unknown): TranscriptTargetId | null {
   }
 
   return null;
+}
+
+function normalizeAmbientStatusState(value: unknown): CaptureAmbientStatusPayload["status"] | null {
+  const normalized = normalizeText(value);
+  if (normalized === null) {
+    return null;
+  }
+
+  switch (normalized) {
+    case "started":
+    case "wake-detected":
+    case "capturing":
+    case "transcribing":
+    case "done":
+    case "stopped":
+    case "failed":
+      return normalized;
+    default:
+      return null;
+  }
 }
 
 function normalizeModelLabel(value: string | null): string | null {
@@ -364,6 +408,10 @@ function resolveCaptureSettings(settings: unknown): ResolvedCaptureSettings {
   const capture = isRecord(settings) && isRecord(settings["capture"]) ? settings["capture"] : null;
   const defaults = capture && isRecord(capture["defaults"]) ? capture["defaults"] : null;
   const providers = capture && isRecord(capture["providers"]) ? capture["providers"] : null;
+  const voiceCommands =
+    isRecord(settings) && isRecord(settings["voiceCommands"]) ? settings["voiceCommands"] : null;
+  const ambient =
+    voiceCommands && isRecord(voiceCommands["ambient"]) ? voiceCommands["ambient"] : null;
 
   return {
     preferredDeviceId: normalizeText(defaults?.["preferredDeviceId"]),
@@ -375,6 +423,39 @@ function resolveCaptureSettings(settings: unknown): ResolvedCaptureSettings {
       defaults?.["androidDictationBackend"]
     ),
     androidCompanionEnabled: providers?.["androidCompanionEnabled"] !== false,
+    ambientWakePhrases: normalizeAmbientWakePhrases(
+      ambient?.["wakePhrases"],
+      DEFAULT_AMBIENT_WAKE_PHRASES
+    ),
+    ambientActiveWindowMs: normalizeAmbientDurationMs(
+      ambient?.["activeWindowMs"],
+      DEFAULT_AMBIENT_ACTIVE_WINDOW_MS,
+      { min: 1_000, max: 30_000 }
+    ),
+    ambientSilenceTimeoutMs: normalizeAmbientDurationMs(
+      ambient?.["silenceTimeoutMs"],
+      DEFAULT_AMBIENT_SILENCE_TIMEOUT_MS,
+      { min: 300, max: 10_000 }
+    ),
+  };
+}
+
+function resolveAmbientCommandProfile(
+  settings: ResolvedCaptureSettings,
+  options: CaptureAmbientListenerOptions | undefined
+): CaptureCompanionAmbientProfile {
+  return {
+    wakePhrases: normalizeAmbientWakePhrases(options?.wakePhrases, settings.ambientWakePhrases),
+    activeWindowMs: normalizeAmbientDurationMs(
+      options?.activeWindowMs,
+      settings.ambientActiveWindowMs,
+      { min: 1_000, max: 30_000 }
+    ),
+    silenceTimeoutMs: normalizeAmbientDurationMs(
+      options?.silenceTimeoutMs,
+      settings.ambientSilenceTimeoutMs,
+      { min: 300, max: 10_000 }
+    ),
   };
 }
 
@@ -487,6 +568,14 @@ function resolveCaptureActionFromCommand(
       return "start-analyze-dictation";
     case "stop-dictation":
       return "stop-analyze-dictation";
+    case "start-preview-stream":
+      return "start-analyze-preview";
+    case "stop-preview-stream":
+      return "stop-analyze-preview";
+    case "start-ambient-listener":
+      return "start-ambient-listener";
+    case "stop-ambient-listener":
+      return "stop-ambient-listener";
     default:
       throw new Error(`Unsupported capture companion command: ${String(kind)}`);
   }
@@ -1824,6 +1913,54 @@ class CaptureService {
     });
   }
 
+  async startAnalyzePreviewStream(
+    options: { target?: TranscriptTargetId | null; requestId?: string | null } = {}
+  ): Promise<CaptureActionOutcome> {
+    const target = options.target ?? CAPTURE_ANALYZE_TARGET;
+    const requestId = normalizeText(options.requestId) ?? randomUUID();
+    const launchOutcome = await this.launchCompanion({ target });
+    if (launchOutcome.ok !== true) {
+      return launchOutcome;
+    }
+
+    return await this.enqueueAnalyzeCommand(
+      "start-preview-stream",
+      "Android live camera preview was started.",
+      {
+        target,
+        requestId,
+        replaceExistingKinds: ["start-preview-stream", "stop-preview-stream"],
+      }
+    );
+  }
+
+  async stopAnalyzePreviewStream(
+    options: { target?: TranscriptTargetId | null; requestId?: string | null } = {}
+  ): Promise<CaptureActionOutcome> {
+    const target = options.target ?? CAPTURE_ANALYZE_TARGET;
+    const requestId = normalizeText(options.requestId) ?? randomUUID();
+    const status = await this.refreshStatus();
+    const deviceId = this.resolveAnalyzeCommandDeviceId(status, false);
+    if (deviceId === null) {
+      return await this.buildPassiveActionOutcome(
+        "stop-analyze-preview",
+        true,
+        "Android live camera preview is already stopped."
+      );
+    }
+
+    return await this.enqueueAnalyzeCommand(
+      "stop-preview-stream",
+      "Android live camera preview was stopped.",
+      {
+        target,
+        requestId,
+        deviceId,
+        replaceExistingKinds: ["stop-preview-stream"],
+      }
+    );
+  }
+
   async requestAnalyzeDictation(
     action: "start" | "stop",
     options: { requestId?: string | null; target?: TranscriptTargetId | null } = {}
@@ -1954,6 +2091,71 @@ class CaptureService {
       "cancel-analyze-dictation",
       true,
       "Android dictation was cancelled."
+    );
+  }
+
+  async startAmbientListener(
+    options: CaptureAmbientListenerOptions = {}
+  ): Promise<CaptureActionOutcome> {
+    const target = options.target ?? CAPTURE_ANALYZE_TARGET;
+    const requestId = normalizeText(options.requestId);
+    if (requestId === null) {
+      return await this.buildActionOutcome(
+        "start-ambient-listener",
+        false,
+        "Ambient listener requestId is required."
+      );
+    }
+
+    const launchOutcome = await this.launchCompanion({ target });
+    if (launchOutcome.ok !== true) {
+      return launchOutcome;
+    }
+
+    return await this.enqueueAnalyzeCommand(
+      "start-ambient-listener",
+      "Android ambient listener was started.",
+      {
+        target,
+        requestId,
+        replaceExistingKinds: ["start-ambient-listener", "stop-ambient-listener"],
+        ambient: options,
+      }
+    );
+  }
+
+  async stopAmbientListener(
+    options: Pick<CaptureAmbientListenerOptions, "requestId" | "target"> = {}
+  ): Promise<CaptureActionOutcome> {
+    const target = options.target ?? CAPTURE_ANALYZE_TARGET;
+    const requestId = normalizeText(options.requestId);
+    if (requestId === null) {
+      return await this.buildActionOutcome(
+        "stop-ambient-listener",
+        false,
+        "Ambient listener requestId is required."
+      );
+    }
+
+    const status = await this.refreshStatus();
+    const deviceId = this.resolveAnalyzeCommandDeviceId(status, false);
+    if (deviceId === null) {
+      return await this.buildActionOutcome(
+        "stop-ambient-listener",
+        false,
+        status.android.message ?? "No ready Android device is available."
+      );
+    }
+
+    return await this.enqueueAnalyzeCommand(
+      "stop-ambient-listener",
+      "Android ambient listener was stopped.",
+      {
+        target,
+        requestId,
+        deviceId,
+        replaceExistingKinds: ["stop-ambient-listener"],
+      }
     );
   }
 
@@ -2364,11 +2566,15 @@ class CaptureService {
             ? "The phone is capturing a photo."
             : commandKind === "close-camera"
               ? "The phone capture session is idle."
-              : commandKind === "start-dictation"
-                ? "Android dictation is recording on the phone."
-                : commandKind === "stop-dictation"
-                  ? "Android dictation is transcribing on the phone."
-                  : "The phone acknowledged the latest command.";
+              : commandKind === "start-preview-stream"
+                ? "The phone live preview is active."
+                : commandKind === "stop-preview-stream"
+                  ? "The phone live preview is stopped."
+                  : commandKind === "start-dictation"
+                    ? "Android dictation is recording on the phone."
+                    : commandKind === "stop-dictation"
+                      ? "Android dictation is transcribing on the phone."
+                      : "The phone acknowledged the latest command.";
         const message = normalizeText(body["message"]) ?? fallbackMessage;
         if (
           requestId !== null &&
@@ -2390,6 +2596,30 @@ class CaptureService {
                     ? "started"
                     : "transcribing",
             message,
+          });
+        }
+        if (
+          requestId !== null &&
+          target !== null &&
+          (commandKind === "start-ambient-listener" || commandKind === "stop-ambient-listener")
+        ) {
+          this.emitCaptureAmbientStatus({
+            requestId,
+            createdAt: new Date().toISOString(),
+            source: "android-bridge",
+            target,
+            deviceId,
+            status:
+              statusText === "failed"
+                ? "failed"
+                : commandKind === "stop-ambient-listener" || statusText === "done"
+                  ? "stopped"
+                  : "started",
+            message,
+            metadata: {
+              acknowledgedCommandId: commandId,
+              commandKind,
+            },
           });
         }
         if (
@@ -2427,13 +2657,17 @@ class CaptureService {
                     : "capture-requested"
                   : commandKind === "close-camera"
                     ? "idle"
-                    : commandKind === "start-dictation" || commandKind === "stop-dictation"
-                      ? this.analyzeState.state === "idle"
-                        ? "pending-launch"
-                        : this.analyzeState.state
-                      : previewActive === true
-                        ? "ready"
-                        : "pending-launch",
+                    : commandKind === "start-preview-stream"
+                      ? "ready"
+                      : commandKind === "stop-preview-stream"
+                        ? this.analyzeState.state
+                        : commandKind === "start-dictation" || commandKind === "stop-dictation"
+                          ? this.analyzeState.state === "idle"
+                            ? "pending-launch"
+                            : this.analyzeState.state
+                          : previewActive === true
+                            ? "ready"
+                            : "pending-launch",
             pendingCommand:
               statusText === "failed" || statusText === "done"
                 ? null
@@ -2504,6 +2738,104 @@ class CaptureService {
           },
         });
         this.sendJson(response, ingress.success === true ? 200 : 400, ingress);
+        return;
+      }
+
+      if (method === "POST" && requestUrl.pathname === "/api/v1/ambient/status") {
+        const body = await this.readJsonBody(request);
+        const requestId = normalizeText(body["requestId"]);
+        const target = normalizeTranscriptTarget(body["target"]);
+        const status = normalizeAmbientStatusState(body["status"]);
+        if (requestId === null || target === null || status === null) {
+          this.sendJson(response, 400, {
+            ok: false,
+            error: "requestId, target, and status are required.",
+          });
+          return;
+        }
+
+        this.emitCaptureAmbientStatus({
+          requestId,
+          createdAt: new Date().toISOString(),
+          source: "android-bridge",
+          target,
+          deviceId: normalizeText(body["deviceId"]),
+          status,
+          message: normalizeText(body["message"]) ?? `Ambient listener status: ${status}`,
+          transcript: normalizeText(body["transcript"]),
+          metadata: this.normalizeMetadata(body["metadata"]),
+        });
+        this.sendJson(response, 200, { ok: true });
+        return;
+      }
+
+      if (method === "POST" && requestUrl.pathname === "/api/v1/preview/analyze") {
+        const body = await this.readJsonBody(request);
+        const requestId = normalizeText(body["requestId"]);
+        const target = normalizeTranscriptTarget(body["target"]);
+        const contentBase64 = normalizeText(body["contentBase64"]);
+        if (requestId === null || target === null || contentBase64 === null) {
+          this.sendJson(response, 400, {
+            ok: false,
+            error: "requestId, target, and contentBase64 are required.",
+          });
+          return;
+        }
+
+        const width = Number(body["width"]);
+        const height = Number(body["height"]);
+        const timestampMs = Number(body["timestampMs"]);
+        this.emitCapturePreviewFrame({
+          requestId,
+          createdAt: new Date().toISOString(),
+          source: "android-bridge",
+          target,
+          deviceId: normalizeText(body["deviceId"]),
+          mimeType: "image/jpeg",
+          contentBase64,
+          width: Number.isFinite(width) && width > 0 ? width : null,
+          height: Number.isFinite(height) && height > 0 ? height : null,
+          timestampMs: Number.isFinite(timestampMs) && timestampMs > 0 ? timestampMs : null,
+        });
+        this.sendJson(response, 200, { ok: true });
+        return;
+      }
+
+      if (method === "POST" && requestUrl.pathname === "/api/v1/preview/analyze/h264") {
+        const requestId = normalizeHeaderText(request.headers["x-hev-request-id"]);
+        const target = normalizeTranscriptTarget(
+          normalizeHeaderText(request.headers["x-hev-target"])
+        );
+        const chunk = await this.readBinaryBody(request);
+        if (requestId === null || target === null || chunk.length === 0) {
+          this.sendJson(response, 400, {
+            ok: false,
+            error: "request id, target, and H.264 content are required.",
+          });
+          return;
+        }
+
+        const width = Number(normalizeHeaderText(request.headers["x-hev-width"]));
+        const height = Number(normalizeHeaderText(request.headers["x-hev-height"]));
+        const timestampMs = Number(normalizeHeaderText(request.headers["x-hev-timestamp-ms"]));
+        const sequenceNumber = Number(normalizeHeaderText(request.headers["x-hev-sequence"]));
+        this.emitCapturePreviewFrame({
+          requestId,
+          createdAt: new Date().toISOString(),
+          source: "android-bridge",
+          target,
+          deviceId: normalizeHeaderText(request.headers["x-hev-device-id"]),
+          mimeType: "video/avc",
+          codec: normalizeHeaderText(request.headers["x-hev-codec"]) ?? "avc1.42E01E",
+          chunk,
+          width: Number.isFinite(width) && width > 0 ? width : null,
+          height: Number.isFinite(height) && height > 0 ? height : null,
+          timestampMs: Number.isFinite(timestampMs) && timestampMs > 0 ? timestampMs : null,
+          isKeyFrame: normalizeHeaderText(request.headers["x-hev-key-frame"]) === "1",
+          isConfig: normalizeHeaderText(request.headers["x-hev-config"]) === "1",
+          sequenceNumber: Number.isFinite(sequenceNumber) ? sequenceNumber : null,
+        });
+        this.sendJson(response, 200, { ok: true });
         return;
       }
 
@@ -2679,12 +3011,32 @@ class CaptureService {
     }
   }
 
+  private emitCapturePreviewFrame(payload: CapturePreviewFramePayload): void {
+    for (const window of BrowserWindow.getAllWindows()) {
+      try {
+        window.webContents.send(CAPTURE_PREVIEW_FRAME_CHANNEL, payload);
+      } catch {
+        // NOTE: Preview frames are best-effort and should not block Android bridge uploads.
+      }
+    }
+  }
+
   private emitCaptureDictationStatus(payload: CaptureDictationStatusPayload): void {
     for (const window of BrowserWindow.getAllWindows()) {
       try {
         window.webContents.send(CAPTURE_DICTATION_STATUS_CHANNEL, payload);
       } catch {
         // NOTE: Dictation status fan-out is best-effort for detached renderer windows.
+      }
+    }
+  }
+
+  private emitCaptureAmbientStatus(payload: CaptureAmbientStatusPayload): void {
+    for (const window of BrowserWindow.getAllWindows()) {
+      try {
+        window.webContents.send(CAPTURE_AMBIENT_STATUS_CHANNEL, payload);
+      } catch {
+        // NOTE: Ambient status fan-out is best-effort for detached renderer windows.
       }
     }
   }
@@ -2701,6 +3053,15 @@ class CaptureService {
     }
 
     return JSON.parse(Buffer.concat(chunks).toString("utf8")) as Record<string, unknown>;
+  }
+
+  private async readBinaryBody(request: IncomingMessage): Promise<Buffer> {
+    const chunks: Buffer[] = [];
+    for await (const chunk of request as AsyncIterable<Buffer | string>) {
+      chunks.push(typeof chunk === "string" ? Buffer.from(chunk, "binary") : chunk);
+    }
+
+    return Buffer.concat(chunks);
   }
 
   private normalizePermissions(value: unknown): CaptureAndroidPermissionStatus {
@@ -3054,6 +3415,7 @@ class CaptureService {
       replaceExisting?: boolean;
       replaceExistingKinds?: CaptureCompanionCommandKind[];
       requireSession?: boolean;
+      ambient?: CaptureAmbientListenerOptions;
     }
   ): Promise<CaptureActionOutcome> {
     const status = await this.refreshStatus();
@@ -3097,6 +3459,10 @@ class CaptureService {
       requestId: normalizeText(options?.requestId),
       createdAt: Date.now(),
       profile: buildCompanionCommandProfile(captureSettings, transcriptModel),
+      ambient:
+        kind === "start-ambient-listener"
+          ? resolveAmbientCommandProfile(captureSettings, options?.ambient)
+          : null,
     };
     if (target === CAPTURE_ANALYZE_TARGET && isMediaCaptureCommand(kind)) {
       this.activeAnalyzeMediaRequestIds.add(getCommandRequestId(command));
@@ -3127,13 +3493,25 @@ class CaptureService {
         state:
           kind === "open-camera"
             ? "pending-launch"
-            : kind === "close-camera"
-              ? "idle"
-              : kind === "start-dictation" || kind === "stop-dictation"
-                ? this.analyzeState.state
-                : "capture-requested",
+            : kind === "start-preview-stream"
+              ? "pending-launch"
+              : kind === "close-camera"
+                ? "idle"
+                : kind === "start-dictation" ||
+                    kind === "stop-dictation" ||
+                    kind === "stop-preview-stream" ||
+                    kind === "start-ambient-listener" ||
+                    kind === "stop-ambient-listener"
+                  ? this.analyzeState.state
+                  : "capture-requested",
         deviceId,
-        pendingCommand: kind === "close-camera" || kind === "stop-dictation" ? null : kind,
+        pendingCommand:
+          kind === "close-camera" ||
+          kind === "stop-dictation" ||
+          kind === "stop-preview-stream" ||
+          kind === "stop-ambient-listener"
+            ? null
+            : kind,
         message: successMessage,
       };
     }

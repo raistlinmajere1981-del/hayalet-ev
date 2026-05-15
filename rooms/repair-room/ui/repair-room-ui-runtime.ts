@@ -4,7 +4,12 @@ import type {
   RepairPanelId,
   RepairWorkbenchViewport,
 } from "../shared/types/index.js";
-import type { RepairUiState, RepairUiSnapshotMeta } from "../shared/ui/state.js";
+import type {
+  RepairGuidanceProjection,
+  RepairUiState,
+  RepairUiSnapshotMeta,
+} from "../shared/ui/state.js";
+import { createRepairDefaultGuidanceProjection } from "../shared/ui/state.js";
 import { normalizeRepairHostMessage } from "../shared/ui/host-messages.js";
 import { REPAIR_ROOM_ID, REPAIR_UI_COLORS } from "../shared/repair-constants.js";
 import { createRepairUiRequestRuntime } from "../shared/ui/request-runtime.js";
@@ -88,6 +93,24 @@ function interpolateWorkbenchViewport(
   };
 }
 
+function getRepairOverlayRefKey(ref: { kind: string; id: string }): string {
+  return `${ref.kind}:${ref.id}`;
+}
+
+function getGuidanceSurfaceForPanel(
+  panelId: RepairPanelId
+): RepairGuidanceProjection["panelVisibility"]["primarySurface"] {
+  if (panelId === "workbench-stage") return "workbench";
+  if (panelId === "tactical-feed") return "tactical-feed";
+  if (panelId === "session-wizard") return "session-wizard";
+  if (panelId === "knowledge-pack") return "knowledge-pack";
+  if (panelId === "visual-timeline") return "visual-timeline";
+  if (panelId === "measurement") return "measurement";
+  if (panelId === "chat") return "chat";
+  if (panelId === "room-sync") return "room-sync";
+  return "none";
+}
+
 function createSpatialFocusTween({
   durationMs,
   from,
@@ -135,6 +158,7 @@ function createSpatialFocusTween({
 }
 
 function createInitialState(): RepairUiState {
+  const guidance = createRepairDefaultGuidanceProjection();
   return {
     phase: "initializing",
     sessions: { activeId: null, list: [], detail: null },
@@ -279,10 +303,21 @@ function createInitialState(): RepairUiState {
         measurement: false,
         "room-sync": true,
       },
+      operationalProfile: "novice",
+      voiceGuidance: {
+        ambientListeningState: "idle",
+        spokenGuidanceMode: "brief",
+        handsBusyMode: false,
+      },
+      attentionBudget: {
+        windowMs: 180000,
+        maxAiInterruptions: 2,
+      },
       operatorProfileTabId: "tools",
       focusMode: false,
       ambientClock: "",
     },
+    guidance,
     ambient: { nowIso: "", sessionDurationMs: 0 },
   };
 }
@@ -311,6 +346,7 @@ export function createRepairRoomUiRuntime() {
       timelineDensity: [],
       activeSpatialFocus: null,
       operationalMode: "live",
+      guidance: createRepairDefaultGuidanceProjection(),
     },
   };
   const context: RepairUiContext = { roomId: REPAIR_ROOM_ID, locale: "en", translations: {} };
@@ -374,6 +410,19 @@ export function createRepairRoomUiRuntime() {
     const layoutShape = {
       collapsed: state.layout.collapsedPanels[panelId],
       pinned: state.layout.pinnedPanels[panelId],
+      visibility: state.guidance.panelVisibility.panels[panelId],
+      primarySurface: state.guidance.panelVisibility.primarySurface,
+      operationalProfile: state.guidance.operationalProfile,
+    };
+    const guidanceShape = {
+      phase: state.guidance.investigationPhase,
+      nextBestAction: state.guidance.nextBestAction.text,
+      recovery: state.guidance.recovery,
+      aiInterruption: state.guidance.aiInterruption,
+      focusCorridor: state.guidance.focusCorridor,
+      rhythm: state.guidance.rhythm,
+      voice: state.guidance.voice,
+      feedDensity: state.guidance.panelVisibility.tacticalFeedDensity,
     };
     switch (panelId) {
       case "session-rail":
@@ -392,6 +441,7 @@ export function createRepairRoomUiRuntime() {
           viewport: state.workbench.viewport,
           layers: state.workbench.visibleLayers,
           cursor: state.workbench.cursor,
+          guidanceShape,
           layoutShape,
         });
       case "tactical-feed":
@@ -405,12 +455,13 @@ export function createRepairRoomUiRuntime() {
             item.body,
           ]),
           focusedEventId: state.workbench.focusedEventId,
+          guidanceShape,
           layoutShape,
         });
       case "session-wizard":
-        return JSON.stringify({ wizard: state.wizard, layoutShape });
+        return JSON.stringify({ wizard: state.wizard, guidanceShape, layoutShape });
       case "knowledge-pack":
-        return JSON.stringify({ knowledgePack: state.knowledgePack, layoutShape });
+        return JSON.stringify({ knowledgePack: state.knowledgePack, guidanceShape, layoutShape });
       case "visual-timeline":
         return JSON.stringify({
           phase: state.phase,
@@ -427,6 +478,7 @@ export function createRepairRoomUiRuntime() {
           },
           events: meta.events.map((event) => [event.id, event.kind, event.occurredAt]),
           imageSrc: state.sessions.detail?.pcbImage?.src ?? null,
+          guidanceShape,
           layoutShape,
         });
       case "operator-profile":
@@ -436,7 +488,7 @@ export function createRepairRoomUiRuntime() {
           layoutShape,
         });
       case "chat":
-        return JSON.stringify({ chat: state.chat, layoutShape });
+        return JSON.stringify({ chat: state.chat, guidanceShape, layoutShape });
       case "measurement":
         return JSON.stringify({
           measurementShape: {
@@ -448,6 +500,7 @@ export function createRepairRoomUiRuntime() {
             range: state.measurement.current.range,
             hold: state.measurement.current.hold,
           },
+          guidanceShape,
           layoutShape,
         });
       case "room-sync":
@@ -460,6 +513,7 @@ export function createRepairRoomUiRuntime() {
           },
           events: meta.events.length,
           latestEventId: meta.events.at(-1)?.id ?? null,
+          guidanceShape,
           layoutShape,
         });
       default: {
@@ -980,6 +1034,7 @@ export function createRepairRoomUiRuntime() {
       knowledgeRegions: config.knowledgeRegions,
       measurementRelationships: config.measurementRelationships,
       temporarySpatialRegions: config.temporarySpatialRegions,
+      guidance: config.guidance,
       workbench: {
         activeTool: config.workbench.activeTool,
         viewport: config.workbench.viewport,
@@ -1003,16 +1058,49 @@ export function createRepairRoomUiRuntime() {
       ...session.pcbImage,
       src: resolveRepairAssetUrl(session.pcbImage.src) ?? session.pcbImage.src,
     };
+    const visibleOverlayEventIds = new Set(state.guidance.overlaySaturation.visibleEventIds);
+    const visibleRelationshipIds = new Set(state.guidance.overlaySaturation.visibleRelationshipIds);
+    const visibleRegionKeys = new Set(
+      state.guidance.overlaySaturation.visibleRegionRefs.map(getRepairOverlayRefKey)
+    );
+    const shouldFilterRegions =
+      state.guidance.operationalProfile !== "advanced" && visibleRegionKeys.size > 0;
+    const overlayEvents =
+      state.guidance.operationalProfile === "advanced" || visibleOverlayEventIds.size === 0
+        ? meta.replay.overlayEvents
+        : meta.replay.overlayEvents.filter((event) => visibleOverlayEventIds.has(event.id));
+    const measurementRelationships =
+      state.guidance.operationalProfile === "advanced" || visibleRelationshipIds.size === 0
+        ? meta.replay.measurementRelationships
+        : meta.replay.measurementRelationships.filter((relationship) =>
+            visibleRelationshipIds.has(relationship.id)
+          );
+    const investigationRegions = shouldFilterRegions
+      ? meta.replay.investigationRegions.filter((region) =>
+          visibleRegionKeys.has(`investigation-region:${region.regionId}`)
+        )
+      : meta.replay.investigationRegions;
+    const knowledgeRegions = shouldFilterRegions
+      ? meta.replay.knowledgeRegions.filter((region) =>
+          visibleRegionKeys.has(`knowledge-region:${region.id}`)
+        )
+      : meta.replay.knowledgeRegions;
+    const temporarySpatialRegions = shouldFilterRegions
+      ? meta.replay.temporarySpatialRegions.filter((region) =>
+          visibleRegionKeys.has(`temporary-spatial-region:${region.id}`)
+        )
+      : meta.replay.temporarySpatialRegions;
     return {
       container: overlayHost,
       activeSpatialFocus: meta.replay.activeSpatialFocus,
-      events: meta.replay.overlayEvents,
+      events: overlayEvents,
       focusedEventId: state.workbench.focusedEventId ?? meta.replay.focusSuggestionEventId,
       image,
-      investigationRegions: meta.replay.investigationRegions,
-      knowledgeRegions: meta.replay.knowledgeRegions,
-      measurementRelationships: meta.replay.measurementRelationships,
-      temporarySpatialRegions: meta.replay.temporarySpatialRegions,
+      investigationRegions,
+      knowledgeRegions,
+      measurementRelationships,
+      temporarySpatialRegions,
+      guidance: state.guidance,
       visibleLayers: state.workbench.visibleLayers,
       workbench: state.workbench,
       onAddAnnotation: (payload) => {
@@ -1045,25 +1133,6 @@ export function createRepairRoomUiRuntime() {
         requestRuntime.updateFocus({ hoveredEntityRef: ref });
       },
       onEventClick: (eventId, interaction) => {
-        const nextSelectedEventIds = interaction.additive
-          ? state.workbench.selection.selectedEventIds.includes(eventId)
-            ? state.workbench.selection.selectedEventIds.filter(
-                (selectedId) => selectedId !== eventId
-              )
-            : [...state.workbench.selection.selectedEventIds, eventId]
-          : [eventId];
-        const nextInspectorEventId = nextSelectedEventIds.includes(eventId)
-          ? eventId
-          : (nextSelectedEventIds.at(-1) ?? null);
-        state.workbench.selection.selectedEventIds = nextSelectedEventIds;
-        state.workbench.selection.selectedEntityRefs = nextSelectedEventIds.map((id) => ({
-          kind: "event",
-          id,
-        }));
-        state.workbench.selection.inspectorEventId = nextInspectorEventId;
-        state.workbench.selection.inspectorEntityRef =
-          nextInspectorEventId === null ? null : { kind: "event", id: nextInspectorEventId };
-        state.workbench.focusedEventId = nextInspectorEventId;
         requestRuntime.updateFocus({
           eventId,
           selectionMode: interaction.additive ? "toggle" : "replace",
@@ -1072,20 +1141,10 @@ export function createRepairRoomUiRuntime() {
         });
       },
       onEventHover: (eventId) => {
-        state.workbench.selection.hoveredEventId = eventId;
-        state.workbench.selection.hoveredEntityRef =
-          eventId === null ? null : { kind: "event", id: eventId };
         requestRuntime.updateFocus({ hoveredEventId: eventId });
       },
       onSelectionClear: () => {
         cancelSpatialFocusTween();
-        state.workbench.focusedEventId = null;
-        state.workbench.selection.selectedEventIds = [];
-        state.workbench.selection.selectedEntityRefs = [];
-        state.workbench.selection.inspectorEventId = null;
-        state.workbench.selection.inspectorEntityRef = null;
-        state.workbench.selection.focusJumpEventId = null;
-        state.workbench.selection.focusJumpEntityRef = null;
         requestRuntime.updateFocus({ clearSelection: true });
       },
       onMarqueeSelect: (refs, additive) => {
@@ -1164,7 +1223,37 @@ export function createRepairRoomUiRuntime() {
     }
   }
 
+  function applyPanelGuidanceChrome(panel: HTMLElement, panelId: RepairPanelId): void {
+    const visibility = state.guidance.panelVisibility.panels[panelId];
+    const guidanceSurface = getGuidanceSurfaceForPanel(panelId);
+    const corridorPassive =
+      state.guidance.focusCorridor.active &&
+      guidanceSurface !== "none" &&
+      !state.guidance.focusCorridor.allowedSurfaces.includes(guidanceSurface);
+    setDatasetIfChanged(panel, "visibility", visibility);
+    setDatasetIfChanged(panel, "primarySurface", state.guidance.panelVisibility.primarySurface);
+    setDatasetIfChanged(panel, "operationalProfile", state.guidance.operationalProfile);
+    setDatasetIfChanged(panel, "corridor", corridorPassive ? "passive" : "allowed");
+    if (panelId === "tactical-feed") {
+      setDatasetIfChanged(panel, "feedDensity", state.guidance.panelVisibility.tacticalFeedDensity);
+    }
+    panel.classList.toggle(
+      "repair-panel--dominant",
+      panelId === state.guidance.panelVisibility.primarySurface
+    );
+    panel.classList.toggle(
+      "repair-panel--subdued",
+      state.guidance.panelVisibility.subduedPanelIds.includes(panelId)
+    );
+    panel.classList.toggle("repair-panel--hidden-policy", visibility === "hidden");
+    panel.classList.toggle("repair-panel--compact-policy", visibility === "compact");
+    panel.classList.toggle("repair-panel--contextual-policy", visibility === "contextual");
+    panel.classList.toggle("repair-panel--expanded-policy", visibility === "expanded");
+    panel.classList.toggle("repair-panel--corridor-passive", corridorPassive);
+  }
+
   function updatePanelChrome(panel: HTMLElement, panelId: RepairPanelId): void {
+    applyPanelGuidanceChrome(panel, panelId);
     const collapsed = state.layout.collapsedPanels[panelId];
     const pinned = state.layout.pinnedPanels[panelId];
     panel.classList.toggle("repair-panel--collapsed", collapsed);
@@ -1802,6 +1891,7 @@ export function createRepairRoomUiRuntime() {
     const current = persistentShell.panelElements.get(lifecycle.panelId);
     if (current === undefined) {
       const mounted = lifecycle.mount(parent);
+      applyPanelGuidanceChrome(mounted, lifecycle.panelId);
       persistentShell.panelElements.set(lifecycle.panelId, mounted);
       persistentShell.panelSignatures.set(lifecycle.panelId, lifecycle.signature);
       return;
@@ -1817,10 +1907,12 @@ export function createRepairRoomUiRuntime() {
       ) {
         lifecycle.update(current);
       }
+      applyPanelGuidanceChrome(current, lifecycle.panelId);
       return;
     }
 
     const updated = lifecycle.update(current);
+    applyPanelGuidanceChrome(updated, lifecycle.panelId);
     persistentShell.panelElements.set(lifecycle.panelId, updated);
     persistentShell.panelSignatures.set(lifecycle.panelId, lifecycle.signature);
   }
@@ -1903,9 +1995,18 @@ export function createRepairRoomUiRuntime() {
     const mount = documentRef.getElementById("app");
     if (mount === null) return;
     const persistentShell = ensurePersistentShell(mount);
+    const primarySurfaceClass = state.guidance.panelVisibility.primarySurface.replace(
+      /[^a-z-]/g,
+      "-"
+    );
+    const rhythmPhaseClass = state.guidance.rhythm.progressLabel.replace(/[^a-z0-9]+/g, "-");
     setClassNameIfChanged(
       persistentShell.root,
-      `repair-shell${state.layout.focusMode ? " repair-shell--focus-mode" : ""}`
+      `repair-shell repair-shell--profile-${state.guidance.operationalProfile} repair-shell--calm-${primarySurfaceClass}${
+        state.guidance.focusCorridor.active ? " repair-shell--corridor-active" : ""
+      } repair-shell--rhythm-${rhythmPhaseClass}${
+        state.layout.focusMode ? " repair-shell--focus-mode" : ""
+      }`
     );
     setTextIfChanged(
       persistentShell.clock,
@@ -2032,6 +2133,41 @@ export function createRepairRoomUiRuntime() {
         case "set-tool": {
           const tool = el.dataset["tool"];
           if (tool) requestRuntime.setActiveTool({ tool });
+          break;
+        }
+        case "set-operational-profile": {
+          const profile = el.dataset["profile"];
+          if (profile === "novice" || profile === "advanced") {
+            requestRuntime.setOperationalProfile({ profile });
+          }
+          break;
+        }
+        case "set-voice-guidance": {
+          const ambientListeningState = el.dataset["ambientListeningState"];
+          const spokenGuidanceMode = el.dataset["spokenGuidanceMode"];
+          const handsBusyMode = el.dataset["handsBusyMode"];
+          requestRuntime.setVoiceGuidance({
+            ...(ambientListeningState === "idle" ||
+            ambientListeningState === "listening" ||
+            ambientListeningState === "muted"
+              ? { ambientListeningState }
+              : {}),
+            ...(spokenGuidanceMode === "silent" ||
+            spokenGuidanceMode === "brief" ||
+            spokenGuidanceMode === "step-by-step"
+              ? { spokenGuidanceMode }
+              : {}),
+            ...(handsBusyMode === undefined ? {} : { handsBusyMode: handsBusyMode === "true" }),
+          });
+          break;
+        }
+        case "set-attention-budget": {
+          const maxAiInterruptions = Number(el.dataset["maxAiInterruptions"]);
+          const windowMs = Number(el.dataset["windowMs"]);
+          requestRuntime.setAttentionBudget({
+            ...(Number.isFinite(maxAiInterruptions) ? { maxAiInterruptions } : {}),
+            ...(Number.isFinite(windowMs) ? { windowMs } : {}),
+          });
           break;
         }
         case "toggle-overlay-layer": {

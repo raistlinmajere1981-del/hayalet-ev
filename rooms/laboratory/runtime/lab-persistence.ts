@@ -142,6 +142,7 @@ function sanitizeWorkspaceForBoot(
     source["activeIconRailSlot"] === "visual-adjust" ||
     source["activeIconRailSlot"] === "clip-export" ||
     source["activeIconRailSlot"] === "enhanced-frame" ||
+    source["activeIconRailSlot"] === "image-comparison" ||
     source["activeIconRailSlot"] === "before-after" ||
     source["activeIconRailSlot"] === "audio-extract" ||
     source["activeIconRailSlot"] === "band-pass" ||

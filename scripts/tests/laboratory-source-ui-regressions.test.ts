@@ -878,6 +878,7 @@ test("laboratory icon rail keeps only runnable realtime and output operations", 
   assert.match(surface.main, /data-lab-value="roi-select"/);
   assert.match(surface.main, /data-lab-value="clip-export"/);
   assert.match(surface.main, /data-lab-value="enhanced-frame"/);
+  assert.doesNotMatch(surface.main, /data-lab-value="image-comparison"/);
   assert.doesNotMatch(surface.main, /data-lab-value="before-after"/);
   assert.doesNotMatch(surface.main, /data-lab-value="stem-separate"/);
   assert.doesNotMatch(surface.main, /data-lab-value="stabilize"/);
@@ -937,6 +938,20 @@ test("laboratory source drawer tab remains report-analysis only", () => {
     drawer,
     /data-lab-action="timeline-export-clip"|data-lab-action="workspace-audio-cleanup-export"|data-lab-action="workspace-enhanced-frame-export"|data-lab-action="operation-cancel"/
   );
+});
+
+test("laboratory drawer keeps media operation controls out of report-analysis tabs", () => {
+  const store = createSeededState(true);
+  const sourceDrawer = renderLabDrawer(store.getState(), renderWorkspaceSurface(store.getState()));
+  assert.doesNotMatch(sourceDrawer, /data-lab-drawer-workspace-controls="true"/);
+
+  store.dispatch({ type: "workspace-controls-tab-selected", tab: "operations" });
+  const operationDrawer = renderLabDrawer(store.getState(), renderWorkspaceSurface(store.getState()));
+
+  assert.doesNotMatch(operationDrawer, /data-lab-drawer-workspace-controls="true"/);
+  assert.doesNotMatch(operationDrawer, /data-lab-workspace-inspector="true"/);
+  assert.doesNotMatch(operationDrawer, /data-operation-id=/);
+  assert.match(operationDrawer, /data-lab-action="run-deep-analysis"/);
 });
 
 test("laboratory operation buttons reflect scoped running action state", () => {
@@ -1035,6 +1050,46 @@ test("laboratory image comparison workspace keeps image pair on the inspection w
     },
   });
   store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-comparison-snapshot",
+      type: "image",
+      name: "comparison-finding-snapshot.png",
+      localPath: "/tmp/comparison-finding-snapshot.png",
+      createdAt: 410,
+      metadata: {
+        artifactKind: "comparison-finding-snapshot",
+        findingId: "finding-1",
+      },
+    },
+  });
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-comparison-manifest",
+      type: "artifact",
+      name: "comparison-finding.json",
+      localPath: "/tmp/comparison-finding.json",
+      createdAt: 411,
+      metadata: {
+        artifactKind: "comparison-finding-manifest",
+        captureContext: {
+          comparisonRois: {
+            activeSide: "reference",
+            primary: { x: 0.1, y: 0.2, width: 0.3, height: 0.4 },
+            reference: { x: 0.2, y: 0.1, width: 0.25, height: 0.35 },
+          },
+        },
+        findingId: "finding-1",
+        note: "Sol göz çevresinde belirgin fark",
+        primaryAssetId: "asset-primary-image",
+        referenceAssetId: "asset-reference-image",
+        roiSummary: "Primary ROI x=10%, y=20%, w=30%, h=40%; Reference ROI x=20%, y=10%, w=25%, h=35%; active=reference",
+        snapshotAssetId: "asset-comparison-snapshot",
+      },
+    },
+  });
+  store.dispatch({
     type: "workspace-comparison-reference-set",
     assetId: "asset-reference-image",
   });
@@ -1073,6 +1128,7 @@ test("laboratory image comparison workspace keeps image pair on the inspection w
     surface.main,
     /data-lab-preserve-media="workspace-comparison-reference" src="file:\/\/\/tmp\/reference-image\.png"/
   );
+  assert.match(surface.main, /data-lab-value="image-comparison"/);
   assert.doesNotMatch(surface.main, /data-preview-mode=/);
   assert.match(
     surface.inspector ?? "",
@@ -1084,6 +1140,11 @@ test("laboratory image comparison workspace keeps image pair on the inspection w
     surface.inspector ?? "",
     /data-lab-comparison-roi-status="reference"[\s\S]*data-active="true"[\s\S]*data-selected="true"/
   );
+  assert.match(surface.inspector ?? "", /data-lab-comparison-finding-list="true"/);
+  assert.match(surface.inspector ?? "", /data-lab-action="workspace-comparison-finding-focus"/);
+  assert.match(surface.inspector ?? "", /data-lab-value="finding-1"/);
+  assert.match(surface.inspector ?? "", /Sol göz çevresinde belirgin fark/);
+  assert.match(surface.inspector ?? "", /Primary ROI x=10%, y=20%, w=30%, h=40%/);
 });
 
 test("laboratory workspace asset preview resets timeline controls to the selected file", () => {
@@ -1904,7 +1965,7 @@ test("laboratory process strip renders multi-output action summaries with overfl
   assert.match(stripHtml, /report-user\.md, report-ai\.json/);
 });
 
-test("laboratory source panel renders registry groups and source activation actions", () => {
+test("laboratory source panel renders registry groups and workspace open actions", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "asset-added",
@@ -1968,18 +2029,19 @@ test("laboratory source panel renders registry groups and source activation acti
   assert.match(panelHtml, /data-lab-action="asset-remove"/);
   assert.match(
     panelHtml,
-    /class="labx-sp-asset__btn"[^>]*data-lab-action="source-activate-asset" data-lab-value="clip-local-1"/
+    /class="labx-sp-asset__btn"[^>]*data-lab-action="workspace-content-open" data-lab-value="clip-local-1"/
   );
   assert.match(
     panelHtml,
-    /class="labx-sp-asset__btn"[^>]*data-lab-action="source-activate-asset" data-lab-value="artifact-png-1"/
+    /class="labx-sp-asset__btn"[^>]*data-lab-action="workspace-content-open" data-lab-value="artifact-png-1"/
   );
-  assert.match(panelHtml, /data-lab-action="source-activate-asset" data-lab-value="clip-local-1"/);
-  assert.match(panelHtml, /data-lab-action="source-activate-asset" data-lab-value="clip-remote-1"/);
+  assert.match(panelHtml, /data-lab-action="workspace-content-open" data-lab-value="clip-local-1"/);
+  assert.match(panelHtml, /data-lab-action="workspace-content-open" data-lab-value="clip-remote-1"/);
+  assert.doesNotMatch(panelHtml, /data-lab-action="source-activate-asset"/);
   assert.doesNotMatch(panelHtml, /data-lab-action="asset-use-as-source"/);
 });
 
-test("laboratory source panel activates png artifacts from the primary click", () => {
+test("laboratory source panel opens png artifacts from the primary click", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "asset-added",
@@ -1997,12 +2059,9 @@ test("laboratory source panel activates png artifacts from the primary click", (
 
   assert.match(
     panelHtml,
-    /class="labx-sp-asset__btn"[^>]*data-lab-action="source-activate-asset" data-lab-value="artifact-png-1"/
+    /class="labx-sp-asset__btn"[^>]*data-lab-action="workspace-content-open" data-lab-value="artifact-png-1"/
   );
-  assert.match(
-    panelHtml,
-    /class="labx-sp-menu__item"[^>]*data-lab-action="source-activate-asset" data-lab-value="artifact-png-1"/
-  );
+  assert.doesNotMatch(panelHtml, /data-lab-action="source-activate-asset"/);
 });
 
 test("laboratory source panel keeps asset order stable when active source timestamps change", () => {
@@ -2056,7 +2115,7 @@ test("laboratory source panel opens the selected workspace asset group", () => {
   assert.doesNotMatch(panelHtml, /<details class="labx-sp-group" open data-group-type="source">/);
 });
 
-test("laboratory source panel activates png artifacts from the primary click path", () => {
+test("laboratory source panel opens png artifacts from the primary click path", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "asset-added",
@@ -2074,7 +2133,7 @@ test("laboratory source panel activates png artifacts from the primary click pat
 
   assert.match(
     panelHtml,
-    /class="labx-sp-asset__btn"[\s\S]*data-lab-action="source-activate-asset"[\s\S]*data-lab-value="artifact-png-primary"/
+    /class="labx-sp-asset__btn"[\s\S]*data-lab-action="workspace-content-open"[\s\S]*data-lab-value="artifact-png-primary"/
   );
 });
 

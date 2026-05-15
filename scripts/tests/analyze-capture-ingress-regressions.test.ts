@@ -25,6 +25,10 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(htmlSource, /id="capture-import-btn"/);
   assert.match(htmlSource, /class="compose-user-header"/);
   assert.match(htmlSource, /id="compose-android-status"/);
+  assert.match(htmlSource, /id="compose-ambient-btn"/);
+  assert.match(htmlSource, /id="compose-ambient-status"/);
+  assert.match(htmlSource, /id="android-camera-panel"/);
+  assert.match(htmlSource, /id="android-camera-feed"/);
   assert.doesNotMatch(htmlSource, /compose-user-identity/);
   assert.doesNotMatch(htmlSource, /id="analyze-capture-shell"/);
   assert.doesNotMatch(htmlSource, /id="capture-clear-btn"/);
@@ -37,21 +41,41 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(pageSource, /handleCaptureImportClick/);
   assert.match(pageSource, /renderCaptureSessionState/);
   assert.match(pageSource, /onCaptureMediaIngress/);
+  assert.match(pageSource, /onCapturePreviewFrame/);
   assert.match(pageSource, /_handleCaptureMediaIngress/);
+  assert.match(pageSource, /_handleCapturePreviewFrame/);
+  assert.match(pageSource, /toggleAndroidCameraPanel/);
   assert.match(pageSource, /_stageCaptureAsset/);
   assert.match(pageSource, /openAndroidCameraManagement/);
   assert.doesNotMatch(pageSource, /_openCapturePanel/);
   assert.doesNotMatch(pageSource, /_closeCapturePanel/);
   assert.doesNotMatch(pageSource, /clearCapturePreview/);
   assert.match(pageSource, /capture-analyze-photo/);
+  assert.match(pageSource, /start-analyze-preview/);
+  assert.match(pageSource, /stop-analyze-preview/);
   assert.match(pageSource, /start-analyze-session/);
   assert.match(pageSource, /stop-analyze-session/);
   assert.match(pageSource, /_syncVoiceCommandSettings/);
   assert.match(pageSource, /path\.startsWith\("voiceCommands"\)/);
+  assert.match(pageSource, /onCaptureAmbientStatus/);
+  assert.match(pageSource, /_handleAmbientTranscriptIngress/);
+  assert.match(pageSource, /_stripAmbientWakePhrase/);
+  assert.match(pageSource, /_parseAmbientDictationIntent/);
+  assert.match(pageSource, /_announceAmbientFeedback/);
+  assert.match(pageSource, /_playAmbientFeedbackTone/);
+  assert.match(pageSource, /ANALYZE_AMBIENT_DICTATION_PREFIXES/);
+  assert.match(pageSource, /start-ambient-listener/);
+  assert.match(pageSource, /stop-ambient-listener/);
   assert.match(
     pageSource,
     /matchVoiceCommand\(payload\.text, this\._buildAnalyzeVoiceCommandSpecs\(\)\)/
   );
+  assert.match(pageSource, /payload\.target !== "analyze-compose"/);
+  assert.match(pageSource, /payload\.requestId !== this\._ambientRequestId/);
+  assert.match(pageSource, /requireEnabled: false/);
+  assert.match(pageSource, /ambientFeedback: true/);
+  assert.match(pageSource, /ambientCommandDetectedMessage/);
+  assert.match(pageSource, /ambientDictationInsertedMessage/);
   assert.doesNotMatch(pageSource, /import-capture/);
   assert.doesNotMatch(pageSource, /\{\s*id:\s*"retake"/);
   assert.doesNotMatch(pageSource, /\{\s*id:\s*"attach"/);
@@ -65,11 +89,21 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(captureClientSource, /captureConsumeAnalyzeAssets/);
   assert.match(captureClientSource, /captureStartAnalyzeSession/);
   assert.match(captureClientSource, /captureStopAnalyzeSession/);
+  assert.match(captureClientSource, /captureStartAnalyzePreview/);
+  assert.match(captureClientSource, /captureStopAnalyzePreview/);
+  assert.match(captureClientSource, /captureStartAmbientListener/);
+  assert.match(captureClientSource, /captureStopAmbientListener/);
+  assert.match(captureClientSource, /onCapturePreviewFrame/);
+  assert.match(captureClientSource, /onCaptureAmbientStatus/);
   assert.match(captureClientSource, /captureRequestAnalyzePhoto/);
   assert.match(captureServiceSource, /consumeAnalyzeInboxAssets/);
   assert.match(captureServiceSource, /api\/v1\/media\/analyze/);
+  assert.match(captureServiceSource, /api\/v1\/preview\/analyze/);
   assert.match(captureServiceSource, /api\/v1\/transcript\/ingress/);
+  assert.match(captureServiceSource, /api\/v1\/ambient\/status/);
   assert.match(captureServiceSource, /CAPTURE_MEDIA_INGRESS_CHANNEL = "capture:media-ingress"/);
+  assert.match(captureServiceSource, /CAPTURE_PREVIEW_FRAME_CHANNEL = "capture:preview-frame"/);
+  assert.match(captureServiceSource, /CAPTURE_AMBIENT_STATUS_CHANNEL = "capture:ambient-status"/);
   assert.match(captureServiceSource, /normalizeTranscriptTarget/);
   assert.match(captureServiceSource, /requestId and target are required/);
   assert.match(
@@ -95,6 +129,11 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(captureServiceSource, /close-camera/);
   assert.match(captureServiceSource, /start-dictation/);
   assert.match(captureServiceSource, /stop-dictation/);
+  assert.match(captureServiceSource, /start-preview-stream/);
+  assert.match(captureServiceSource, /stop-preview-stream/);
+  assert.match(captureServiceSource, /start-ambient-listener/);
+  assert.match(captureServiceSource, /stop-ambient-listener/);
+  assert.match(captureServiceSource, /resolveAmbientCommandProfile/);
   assert.match(captureServiceSource, /cancelAnalyzeDictation/);
   assert.match(captureServiceSource, /am", "force-stop", CAPTURE_ANDROID_COMPANION_PACKAGE/);
   assert.match(captureClientSource, /captureCancelAnalyzeDictation/);
@@ -104,8 +143,10 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(settingsTypeSource, /transcriptBackend\?: TranscriptDictationBackend/);
   assert.match(settingsTypeSource, /androidTranscriptModelVariant\?: TranscriptModelVariant/);
   assert.match(settingsTypeSource, /androidDictationBackend\?: AndroidDictationBackend/);
+  assert.match(settingsTypeSource, /ambient\?: VoiceCommandAmbientSettings/);
   assert.match(settingsDefaultsSource, /androidTranscriptModelVariant: "light"/);
   assert.match(settingsDefaultsSource, /androidDictationBackend: "vosk"/);
+  assert.match(settingsDefaultsSource, /DEFAULT_AMBIENT_WAKE_PHRASES/);
   assert.match(settingsSchemaSource, /androidTranscriptModelVariant:[\s\S]*"light"/);
   assert.match(
     settingsSchemaSource,
@@ -114,6 +155,8 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(captureServiceSource, /defaults\["androidTranscriptModelVariant"\][\s\S]*"light"/);
   assert.match(captureServiceSource, /defaults\?\.\["androidDictationBackend"\]/);
   assert.match(captureServiceSource, /androidDictationBackend: settings\.androidDictationBackend/);
+  assert.match(settingsSchemaSource, /normalizeAmbientWakePhrases/);
+  assert.match(settingsSchemaSource, /DEFAULT_AMBIENT_ACTIVE_WINDOW_MS/);
   assert.match(captureServiceSource, /return "vosk";/);
   assert.match(captureServiceSource, /vosk-model-small-tr-0\.3\.zip/);
   assert.match(captureServiceSource, /ensureDirectCompanionModelArchive/);

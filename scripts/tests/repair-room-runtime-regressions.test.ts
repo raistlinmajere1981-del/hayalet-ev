@@ -1,9 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import createRepairRoomHostRuntime from "../../rooms/repair-room/host/runtime.ts";
-import { createRepairReplayProjection } from "../../rooms/repair-room/host/state/repair-replay-projection.ts";
+import {
+  createEmptyRepairReplayProjection,
+  createRepairReplayProjection,
+} from "../../rooms/repair-room/host/state/repair-replay-projection.ts";
 import { REPAIR_UI_COMMANDS } from "../../rooms/repair-room/shared/repair-constants.ts";
 import { normalizeRepairHostMessage } from "../../rooms/repair-room/shared/ui/host-messages.ts";
+import { createRepairDefaultGuidanceProjection } from "../../rooms/repair-room/shared/ui/state.ts";
 
 test("repair-room host exports room-page lifecycle hooks and command registry", () => {
   const notifications: Array<{ type: string; payload?: Record<string, unknown> }> = [];
@@ -34,7 +38,25 @@ test("repair-room host exports room-page lifecycle hooks and command registry", 
   assert.equal(normalized.snapshot.sessions.activeId, "psu-2025-0510");
   assert.equal(normalized.snapshot.sessions.list.length, 4);
   assert.ok(normalized.snapshot.sessions.detail?.pcbImage);
-  assert.equal(normalized.snapshot.tacticalFeed.length, 3);
+  assert.equal(normalized.snapshot.tacticalFeed.length, 2);
+  assert.equal(normalized.snapshot.guidance.operationalProfile, "novice");
+  assert.equal(normalized.snapshot.guidance.panelVisibility.primarySurface, "measurement");
+  assert.equal(normalized.snapshot.guidance.panelVisibility.tacticalFeedDensity, "minimal");
+  assert.equal(normalized.snapshot.guidance.panelVisibility.panels.measurement, "expanded");
+  assert.equal(normalized.snapshot.guidance.panelVisibility.panels["session-wizard"], "hidden");
+  assert.equal(normalized.snapshot.guidance.overlaySaturation.maxVisibleRelationships, 4);
+  assert.equal(normalized.snapshot.guidance.overlaySaturation.maxVisibleRegions, 5);
+  assert.equal(normalized.snapshot.guidance.overlaySaturation.labelMode, "simplified");
+  assert.equal(normalized.snapshot.guidance.rhythm.lifecycle.length, 6);
+  assert.equal(
+    normalized.snapshot.guidance.rhythm.lifecycle.includes(
+      normalized.snapshot.guidance.investigationPhase
+    ),
+    true
+  );
+  assert.equal(normalized.snapshot.guidance.focusCorridor.active, false);
+  assert.equal(normalized.snapshot.guidance.aiInterruption.attentionBudget.maxAiInterruptions, 2);
+  assert.equal(normalized.snapshot.guidance.voice.spokenGuidanceMode, "brief");
   assert.equal(
     normalized.meta.events.some((event) => event.id === "evt-psu-ai-3"),
     true
@@ -105,6 +127,150 @@ test("repair-room runtime handles the advertised interactive Phase 1 commands", 
   assert.equal(chatState.pendingReplyId, chatState.turns.at(-1)?.id);
 
   assert.ok(notifications.some((entry) => entry.type === "repair-state"));
+});
+
+test("repair-room Phase 3 arbitrates one calm guidance surface per profile", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+
+  let state = runtime.getStateSnapshot().state;
+  let session = state.sessions[state.activeSessionId ?? ""];
+  assert.ok(session);
+  let projection = createRepairReplayProjection(state, session);
+  assert.equal(projection.guidance.operationalProfile, "novice");
+  assert.equal(projection.guidance.panelVisibility.primarySurface, "measurement");
+  assert.equal(projection.guidance.panelVisibility.panels.measurement, "expanded");
+  assert.equal(projection.guidance.panelVisibility.panels["tactical-feed"], "compact");
+  assert.equal(projection.guidance.panelVisibility.panels["session-wizard"], "hidden");
+  assert.equal(projection.guidance.panelVisibility.tacticalFeedDensity, "minimal");
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.setOperationalProfile, { profile: "advanced" })
+      .success,
+    true
+  );
+  state = runtime.getStateSnapshot().state;
+  session = state.sessions[state.activeSessionId ?? ""];
+  assert.ok(session);
+  projection = createRepairReplayProjection(state, session);
+  assert.equal(projection.guidance.operationalProfile, "advanced");
+  assert.equal(projection.guidance.overlaySaturation.maxVisibleRelationships, 12);
+  assert.equal(projection.guidance.overlaySaturation.labelMode, "full");
+  assert.equal(projection.guidance.panelVisibility.panels.chat, "compact");
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.advanceWizard, { step: "device-info" }).success,
+    true
+  );
+  state = runtime.getStateSnapshot().state;
+  session = state.sessions[state.activeSessionId ?? ""];
+  assert.ok(session);
+  projection = createRepairReplayProjection(state, session);
+  assert.equal(projection.guidance.panelVisibility.primarySurface, "session-wizard");
+  assert.equal(projection.guidance.panelVisibility.panels["session-wizard"], "expanded");
+  assert.equal(projection.guidance.panelVisibility.panels["tactical-feed"], "compact");
+
+  runtime.dispose();
+});
+
+test("repair-room Phase 3 projects confidence, recovery, saturation, and voice hooks", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.setVoiceGuidance, {
+      ambientListeningState: "listening",
+      spokenGuidanceMode: "brief",
+      handsBusyMode: true,
+    }).success,
+    true
+  );
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.focusKnowledgeSpatialRef, {
+      spatialRefId: "startup-resistor-open",
+    }).success,
+    true
+  );
+  const state = runtime.getStateSnapshot().state;
+  const session = state.sessions[state.activeSessionId ?? ""];
+  assert.ok(session);
+  const projection = createRepairReplayProjection(state, session);
+
+  assert.equal(projection.guidance.aiInterruption.confidence, "high");
+  assert.equal(projection.guidance.aiInterruption.urgency, "high");
+  assert.equal(projection.guidance.aiInterruption.evidenceDepth, "strong");
+  assert.equal(projection.guidance.recovery.currentFocus, "Startup resistor open");
+  assert.match(projection.guidance.recovery.whyThisRegionMatters, /measurement evidence/);
+  assert.ok(projection.guidance.overlaySaturation.clutterScore > 0);
+  assert.ok(
+    projection.guidance.overlaySaturation.visibleRelationshipIds.length <=
+      projection.guidance.overlaySaturation.maxVisibleRelationships
+  );
+  assert.deepEqual(projection.guidance.voice.voiceFocusTarget, {
+    kind: "knowledge-region",
+    id: "startup-resistor-open",
+  });
+  assert.equal(projection.guidance.voice.ambientListeningState, "listening");
+  assert.equal(projection.guidance.voice.handsBusyMode, true);
+  assert.equal(projection.guidance.voice.spokenGuidanceMode, "step-by-step");
+  assert.equal(projection.guidance.focusCorridor.active, true);
+  assert.equal(projection.guidance.focusCorridor.targetRef?.kind, "knowledge-region");
+  assert.equal(
+    projection.guidance.overlaySaturation.visibleRegionRefs.length <=
+      projection.guidance.overlaySaturation.maxVisibleRegions,
+    true
+  );
+  assert.equal(
+    projection.guidance.overlaySaturation.visibleEventIds.length <=
+      projection.guidance.overlaySaturation.maxSimultaneousHighlights,
+    true
+  );
+  assert.equal(
+    projection.guidance.overlaySaturation.activeAttentionRefs.length <=
+      projection.guidance.overlaySaturation.maxSimultaneousHighlights,
+    true
+  );
+  assert.equal(projection.guidance.rhythm.lifecycle[projection.guidance.rhythm.currentIndex], "verify");
+
+  runtime.dispose();
+});
+
+test("repair-room Phase 3 keeps calm defaults and applies AI attention budget", () => {
+  const defaultGuidance = createRepairDefaultGuidanceProjection();
+  const emptyGuidance = createEmptyRepairReplayProjection().guidance;
+  assert.deepEqual(emptyGuidance, defaultGuidance);
+
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.setAttentionBudget, {
+      windowMs: 240000,
+      maxAiInterruptions: 1,
+    }).success,
+    true
+  );
+  const state = runtime.getStateSnapshot().state;
+  const session = state.sessions[state.activeSessionId ?? ""];
+  assert.ok(session);
+  const projection = createRepairReplayProjection(state, session);
+
+  assert.equal(projection.guidance.aiInterruption.attentionBudget.windowMs, 240000);
+  assert.equal(projection.guidance.aiInterruption.attentionBudget.maxAiInterruptions, 1);
+  assert.equal(
+    projection.guidance.aiInterruption.attentionBudget.usedAiInterruptions <=
+      projection.guidance.aiInterruption.attentionBudget.maxAiInterruptions,
+    true
+  );
+  assert.ok(projection.guidance.aiInterruption.attentionBudget.usedAiInterruptions >= 1);
+  assert.ok(projection.guidance.aiInterruption.attentionBudget.collapsedByBudgetCount >= 1);
+
+  runtime.dispose();
 });
 
 test("repair-room runtime turns timeline jumps and layout controls into state", () => {
@@ -783,14 +949,9 @@ test("repair-room Phase 2.8 focuses investigation regions, relationships, and li
   projection = createRepairReplayProjection(state, session);
   assert.equal(state.workbench.timeline.replayMode, "live");
   assert.equal(state.workbench.timeline.autoFollowLive, true);
-  assert.deepEqual(state.workbench.selection.inspectorEntityRef, {
-    kind: "live-edge",
-    id: "live-edge",
-  });
-  assert.deepEqual(projection.activeSpatialFocus?.ref, {
-    kind: "live-edge",
-    id: "live-edge",
-  });
+  assert.equal(state.workbench.selection.inspectorEntityRef, null);
+  assert.equal(projection.activeSpatialFocus, null);
+  assert.equal(projection.guidance.focusCorridor.active, false);
 });
 
 test("repair-room Phase 2.8 separates temporary knowledge focus from promoted regions", () => {

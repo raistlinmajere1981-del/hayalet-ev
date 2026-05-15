@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-05-13T20:45:38.008Z",
+  "updatedAt": "2026-05-15T12:18:37.086Z",
   "rooms": [
     {
       "id": "forge-room",
@@ -452,8 +452,8 @@
           "path": "main-functions/forge-workbench/protocols/forge-room-synthesis.md"
         }
       ],
-      "installedAt": "2026-05-13T20:14:22.790Z",
-      "updatedAt": "2026-05-13T20:14:22.790Z"
+      "installedAt": "2026-05-15T12:18:35.995Z",
+      "updatedAt": "2026-05-15T12:18:35.995Z"
     },
     {
       "id": "game-room",
@@ -902,8 +902,8 @@
           "path": "main-functions/team-tetris/protocols/game-room-team-tetris-us1-transport.md"
         }
       ],
-      "installedAt": "2026-05-13T20:45:37.143Z",
-      "updatedAt": "2026-05-13T20:45:37.143Z"
+      "installedAt": "2026-05-15T12:18:36.208Z",
+      "updatedAt": "2026-05-15T12:18:36.208Z"
     },
     {
       "id": "repair-room",
@@ -1060,6 +1060,24 @@
             {
               "name": "RepairRoomUpdateLayout",
               "description": "Compatibility adapter for legacy Repair Room layout updates.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomSetOperationalProfile",
+              "description": "Switch Repair Room between novice and advanced operational density profiles.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomSetVoiceGuidance",
+              "description": "Update ambient listening and hands-busy spoken guidance preferences.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomSetAttentionBudget",
+              "description": "Update AI interruption budget limits for calm guidance.",
               "scope": "room-ui",
               "exposure": "internal"
             },
@@ -1351,6 +1369,24 @@
           "exposure": "internal"
         },
         {
+          "name": "RepairRoomSetOperationalProfile",
+          "description": "Switch Repair Room between novice and advanced operational density profiles.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomSetVoiceGuidance",
+          "description": "Update ambient listening and hands-busy spoken guidance preferences.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomSetAttentionBudget",
+          "description": "Update AI interruption budget limits for calm guidance.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
           "name": "RepairRoomToggleInvestigationMode",
           "description": "Toggle the projection-driven spatial investigation overlay mode.",
           "scope": "room-ui",
@@ -1427,8 +1463,8 @@
           "path": "main-functions/repair-workbench/protocols/repair-room-risk-detector.md"
         }
       ],
-      "installedAt": "2026-05-13T20:45:37.345Z",
-      "updatedAt": "2026-05-13T20:45:37.345Z"
+      "installedAt": "2026-05-15T12:18:36.434Z",
+      "updatedAt": "2026-05-15T12:18:36.434Z"
     },
     {
       "id": "laboratory",
@@ -1527,8 +1563,8 @@
         }
       },
       "i18nBaseDir": "/home/raistlin/hayalet-ev/rooms/.build/laboratory/runtime/i18n",
-      "installedAt": "2026-05-13T20:45:38.008Z",
-      "updatedAt": "2026-05-13T20:45:38.008Z"
+      "installedAt": "2026-05-15T12:18:37.086Z",
+      "updatedAt": "2026-05-15T12:18:37.086Z"
     }
   ]
 }

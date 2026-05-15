@@ -12,12 +12,20 @@ test("android companion keeps Vosk dictation and preview-active session contract
     "android-companion/app/src/main/kotlin/com/hayaletev/androidcompanion/transport/DesktopBridgeClient.kt",
     "utf8"
   );
+  const cameraControllerSource = readFileSync(
+    "android-companion/app/src/main/kotlin/com/hayaletev/androidcompanion/capture/CameraSessionController.kt",
+    "utf8"
+  );
   const recorderSource = readFileSync(
     "android-companion/app/src/main/kotlin/com/hayaletev/androidcompanion/transcript/AndroidAudioRecorder.kt",
     "utf8"
   );
   const voskTranscriberSource = readFileSync(
     "android-companion/app/src/main/kotlin/com/hayaletev/androidcompanion/transcript/AndroidVoskTranscriber.kt",
+    "utf8"
+  );
+  const ambientListenerSource = readFileSync(
+    "android-companion/app/src/main/kotlin/com/hayaletev/androidcompanion/transcript/AndroidAmbientVoskListener.kt",
     "utf8"
   );
   const voskProfileSource = readFileSync(
@@ -33,6 +41,14 @@ test("android companion keeps Vosk dictation and preview-active session contract
     "android-companion/app/src/main/kotlin/com/hayaletev/androidcompanion/MainActivity.kt",
     "utf8"
   );
+  const activityLayoutSource = readFileSync(
+    "android-companion/app/src/main/res/layout/activity_main.xml",
+    "utf8"
+  );
+  const stringsSource = readFileSync(
+    "android-companion/app/src/main/res/values/strings.xml",
+    "utf8"
+  );
   const captureServiceSource = readFileSync("electron/capture-service.ts", "utf8");
 
   assert.match(sessionSource, /previewActive = cameraController\.isPreviewBound\(\)/);
@@ -40,6 +56,17 @@ test("android companion keeps Vosk dictation and preview-active session contract
   assert.match(sessionSource, /applyCommandProfile\(command\.profile\)/);
   assert.match(sessionSource, /"start-dictation"/);
   assert.match(sessionSource, /"stop-dictation"/);
+  assert.match(sessionSource, /"start-preview-stream"/);
+  assert.match(sessionSource, /"stop-preview-stream"/);
+  assert.match(sessionSource, /setPreviewStreamingEnabled\(true\)/);
+  assert.match(sessionSource, /submitPreviewFrameIfActive/);
+  assert.match(sessionSource, /"start-ambient-listener"/);
+  assert.match(sessionSource, /"stop-ambient-listener"/);
+  assert.match(sessionSource, /AndroidAmbientVoskListener/);
+  assert.match(sessionSource, /submitAmbientStatus/);
+  assert.match(sessionSource, /publishAmbientStatus/);
+  assert.match(sessionSource, /ToneGenerator/);
+  assert.match(sessionSource, /buildAmbientTranscriptMetadata/);
   assert.match(sessionSource, /requestId = command\.requestId \?: command\.id/);
   assert.match(sessionSource, /target = command\.target/);
   assert.match(sessionSource, /"speechBackend"/);
@@ -71,6 +98,11 @@ test("android companion keeps Vosk dictation and preview-active session contract
   assert.match(transportSource, /put\("requestId", command\.requestId \?: command\.id\)/);
   assert.match(transportSource, /optJSONObject\("profile"\)/);
   assert.match(transportSource, /androidDictationBackend/);
+  assert.match(transportSource, /BridgeAmbientOptions/);
+  assert.match(transportSource, /optJSONObject\("ambient"\)/);
+  assert.match(transportSource, /\/api\/v1\/ambient\/status/);
+  assert.match(transportSource, /\/api\/v1\/preview\/analyze/);
+  assert.match(transportSource, /submitAnalyzePreviewFrame/);
   assert.match(transportSource, /archiveFormat/);
   assert.match(transportSource, /downloadTranscriptModel/);
   assert.match(transportSource, /modelDownloadClient/);
@@ -84,11 +116,25 @@ test("android companion keeps Vosk dictation and preview-active session contract
   assert.match(transportSource, /stageForAnalyze: Boolean = false/);
   assert.match(transportSource, /put\("stageForAnalyze", stageForAnalyze\)/);
 
+  assert.match(cameraControllerSource, /ImageAnalysis\.Builder\(\)/);
+  assert.match(cameraControllerSource, /STRATEGY_KEEP_ONLY_LATEST/);
+  assert.match(cameraControllerSource, /CameraPreviewFrame/);
+  assert.match(cameraControllerSource, /compressToJpeg/);
+  assert.match(cameraControllerSource, /LIVE_PREVIEW_FRAME_INTERVAL_MS/);
+
   assert.match(recorderSource, /MediaRecorder\.AudioSource\.MIC/);
   assert.match(recorderSource, /android-dictation-/);
   assert.match(voskTranscriberSource, /org\.vosk\.Model/);
   assert.match(voskTranscriberSource, /Recognizer\(model, ANDROID_VOSK_SAMPLE_RATE\)/);
   assert.match(voskTranscriberSource, /recognizer\.acceptWaveForm/);
+  assert.match(ambientListenerSource, /class AndroidAmbientVoskListener/);
+  assert.match(ambientListenerSource, /wake-detected/);
+  assert.match(ambientListenerSource, /capturing/);
+  assert.match(ambientListenerSource, /transcribing/);
+  assert.match(ambientListenerSource, /Recognizer\(model, AMBIENT_VOSK_SAMPLE_RATE\)/);
+  assert.match(ambientListenerSource, /stripWakePhrase/);
+  assert.match(ambientListenerSource, /ignoredWakeSuffix/);
+  assert.doesNotMatch(ambientListenerSource, /leadingPhrase/);
   assert.match(voskProfileSource, /defaultAndroidVoskModelProfile/);
   assert.match(voskProfileSource, /requireAndroidVoskModelProfile/);
   assert.match(voskProfileSource, /vosk-model-small-tr-0\.3\.zip/);
@@ -129,9 +175,23 @@ test("android companion keeps Vosk dictation and preview-active session contract
   assert.doesNotMatch(activitySource, /AndroidWhisperTranscriber/);
   assert.doesNotMatch(activitySource, /ManualDictationBackend/);
   assert.match(activitySource, /defaultAndroidVoskModelProfile/);
+  assert.match(
+    activityLayoutSource,
+    /android:id="@\+id\/subtitleText"[\s\S]*android:visibility="gone"/
+  );
+  assert.match(
+    activityLayoutSource,
+    /android:id="@\+id\/statusPanel"[\s\S]*android:visibility="gone"/
+  );
+  assert.match(stringsSource, /name="dictation_status_ambient_ready"/);
+  assert.match(stringsSource, /name="dictation_detail_ambient_capturing"/);
 
   assert.match(captureServiceSource, /const previewActive =/);
   assert.match(captureServiceSource, /\/api\/v1\/transcript\/model/);
+  assert.match(captureServiceSource, /\/api\/v1\/ambient\/status/);
+  assert.match(captureServiceSource, /\/api\/v1\/preview\/analyze/);
+  assert.match(captureServiceSource, /CAPTURE_PREVIEW_FRAME_CHANNEL/);
+  assert.match(captureServiceSource, /CAPTURE_AMBIENT_STATUS_CHANNEL/);
   assert.match(captureServiceSource, /CAPTURE_VOSK_MODEL_DESCRIPTORS/);
   assert.match(captureServiceSource, /return "vosk";/);
   assert.doesNotMatch(captureServiceSource, /commandKind === "open-camera"\s*\?\s*"ready"/);

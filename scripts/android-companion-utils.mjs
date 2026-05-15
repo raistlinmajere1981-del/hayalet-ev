@@ -20,8 +20,8 @@ import { inspectCompanionArtifactCache } from "./lib/android-companion-artifact.
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 
-const ANDROID_COMPILE_SDK = "35";
-const ANDROID_BUILD_TOOLS = "35.0.0";
+const ANDROID_COMPILE_SDK = "36";
+const ANDROID_BUILD_TOOLS = "36.0.0";
 const ANDROID_CMAKE_VERSION = "3.22.1";
 const ANDROID_NDK_VERSION = "26.3.11579264";
 const ANDROID_CMDLINE_TOOLS_REPOSITORY_URL =
@@ -589,7 +589,15 @@ async function installManagedAndroidSdk(javaRuntime, emitProgress) {
   const latestToolsDir = join(managedAndroidSdkRoot, "cmdline-tools", "latest");
   await mkdir(join(managedAndroidSdkRoot, "cmdline-tools"), { recursive: true });
   await rm(latestToolsDir, { recursive: true, force: true });
-  await rename(extractedTools, latestToolsDir);
+  try {
+    await rename(extractedTools, latestToolsDir);
+  } catch (error) {
+    if (error?.code !== "EXDEV") {
+      throw error;
+    }
+    await cp(extractedTools, latestToolsDir, { recursive: true });
+    await rm(extractedTools, { recursive: true, force: true });
+  }
   await rm(extractDir, { recursive: true, force: true });
 
   const sdkManagerPath = getManagedSdkManagerPath();

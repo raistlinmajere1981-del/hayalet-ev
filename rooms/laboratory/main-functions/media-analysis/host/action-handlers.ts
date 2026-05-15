@@ -8,7 +8,6 @@ type LaboratoryRecord = Record<string, unknown>;
 
 type MediaSourceActionRuntimeDeps = {
   asNonEmptyString: (value: unknown) => string | null;
-  getActiveProject: (runtime: LaboratoryRecord) => LaboratoryRecord;
   getDefaultMode: (sourcePresets: unknown, sourceKind: unknown) => string;
   getDefaultSourceType: (sourcePresets: unknown) => string;
   handleLocalPick: (
@@ -38,7 +37,6 @@ type MediaSourceActionRuntimeDeps = {
     patcher: (project: LaboratoryRecord) => LaboratoryRecord
   ) => Promise<unknown>;
   patchActiveProjectDrafts: (runtime: LaboratoryRecord, fields: unknown) => Promise<unknown>;
-  refreshActiveProjectMetadata: (runtime: LaboratoryRecord, requestId: string) => Promise<unknown>;
   resetEditForCurrentSource: (runtime: LaboratoryRecord, project: LaboratoryRecord) => void;
   resetProfileForCurrentSource: (
     runtime: LaboratoryRecord,
@@ -67,7 +65,6 @@ type MediaActionRuntime = ReturnType<typeof createMediaSourceActionRuntime> &
 export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaActionRuntime {
   const mediaSourceActionRuntime = createMediaSourceActionRuntime({
     asNonEmptyString: deps.asNonEmptyString,
-    getActiveProject: deps.getActiveProject,
     getDefaultMode: deps.getDefaultMode,
     getDefaultSourceType: deps.getDefaultSourceType,
     handleLocalPick: deps.handleLocalPick,
@@ -76,7 +73,6 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     handleYoutubeProbe: deps.handleYoutubeProbe,
     patchActiveProject: deps.patchActiveProject,
     patchActiveProjectDrafts: deps.patchActiveProjectDrafts,
-    refreshActiveProjectMetadata: deps.refreshActiveProjectMetadata,
     resetEditForCurrentSource: deps.resetEditForCurrentSource,
     resetProfileForCurrentSource: deps.resetProfileForCurrentSource,
   });

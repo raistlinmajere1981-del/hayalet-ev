@@ -2,15 +2,21 @@ package com.hayaletev.androidcompanion.session
 
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.SystemClock
 import com.hayaletev.androidcompanion.R
 import com.hayaletev.androidcompanion.capture.CameraSessionConfig
 import com.hayaletev.androidcompanion.capture.CameraSessionController
+import com.hayaletev.androidcompanion.capture.CameraPreviewFrame
 import com.hayaletev.androidcompanion.capture.CaptureLens
 import com.hayaletev.androidcompanion.capture.CapturePhotoQuality
 import com.hayaletev.androidcompanion.debug.CompanionDiagnostics
 import com.hayaletev.androidcompanion.model.CompanionManifest
 import com.hayaletev.androidcompanion.transcript.AndroidAudioRecorder
+import com.hayaletev.androidcompanion.transcript.AndroidAmbientListenerConfig
+import com.hayaletev.androidcompanion.transcript.AndroidAmbientTranscript
+import com.hayaletev.androidcompanion.transcript.AndroidAmbientVoskListener
 import com.hayaletev.androidcompanion.transcript.AndroidRecordingResult
 import com.hayaletev.androidcompanion.transcript.AndroidVoskTranscriber
 import com.hayaletev.androidcompanion.transcript.TranscriptModelManager
@@ -26,6 +32,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
 
@@ -64,10 +71,22 @@ class CompanionSessionCoordinator(
     private var lastUiState: CompanionUiState? = null
     private var bridgeConnected = false
     private val audioRecorder = AndroidAudioRecorder(appContext, scope)
+    private val ambientListener = AndroidAmbientVoskListener(appContext, scope)
     private val modelManager = TranscriptModelManager(appContext, bridgeClient)
     private val voskTranscriber = AndroidVoskTranscriber()
+    private var ambientTone: ToneGenerator? =
+        runCatching { ToneGenerator(AudioManager.STREAM_MUSIC, 70) }.getOrNull()
     private var dictationStatus = appContext.getString(R.string.dictation_status_idle)
     private var dictationDetail = appContext.getString(R.string.dictation_detail_waiting)
+    private var ambientWakePhraseSummary = "Hey Hayalet"
+    @Volatile private var previewStreamRequestId: String? = null
+    @Volatile private var previewFrameUploadInFlight = false
+
+    init {
+        cameraController.setPreviewFrameSink { frame ->
+            submitPreviewFrameIfActive(frame)
+        }
+    }
 
     fun updateLaunchContext(intent: Intent?) {
         val deviceId = intent?.getStringExtra("deviceId")?.trim().orEmpty()
@@ -213,13 +232,18 @@ class CompanionSessionCoordinator(
             appContext.getString(R.string.dictation_status_idle),
             appContext.getString(R.string.dictation_detail_waiting),
         )
+        ambientListener.stop()
         audioRecorder.cancel()
+        previewStreamRequestId = null
+        cameraController.setPreviewStreamingEnabled(false)
         cameraController.stopSession()
     }
 
     fun destroy() {
         CompanionDiagnostics.i("session", "Destroying session coordinator.")
         stop()
+        ambientTone?.release()
+        ambientTone = null
     }
 
     suspend fun captureManualPhoto(): File {
@@ -247,6 +271,55 @@ class CompanionSessionCoordinator(
             "Manual phone capture uploaded to Analyze.",
             "target=${launchContext.target}, file=${file.name}",
         )
+    }
+
+    private fun submitPreviewFrameIfActive(frame: CameraPreviewFrame) {
+        val requestId = previewStreamRequestId ?: return
+        if (previewFrameUploadInFlight) {
+            return
+        }
+
+        previewFrameUploadInFlight = true
+        scope.launch(Dispatchers.IO) {
+            try {
+                runCatching {
+                    if (frame.mimeType == "video/avc" && frame.codec != null) {
+                        bridgeClient.submitAnalyzePreviewChunk(
+                            requestId = requestId,
+                            deviceId = launchContext.deviceId,
+                            target = launchContext.target,
+                            content = frame.bytes,
+                            codec = frame.codec,
+                            width = frame.width,
+                            height = frame.height,
+                            timestampMs = frame.timestampMs,
+                            isKeyFrame = frame.isKeyFrame,
+                            isConfig = frame.isConfig,
+                            sequenceNumber = frame.sequenceNumber,
+                        )
+                    } else {
+                        bridgeClient.submitAnalyzePreviewFrame(
+                            requestId = requestId,
+                            deviceId = launchContext.deviceId,
+                            target = launchContext.target,
+                            content = frame.bytes,
+                            mimeType = frame.mimeType,
+                            width = frame.width,
+                            height = frame.height,
+                            timestampMs = frame.timestampMs,
+                        )
+                    }
+                }.onFailure { error ->
+                    CompanionDiagnostics.d(
+                        "camera",
+                        "Live preview frame upload skipped.",
+                        summarizeError(error),
+                    )
+                }
+            } finally {
+                previewFrameUploadInFlight = false
+            }
+        }
     }
 
     private suspend fun handleCommand(command: BridgeCommand) {
@@ -302,7 +375,10 @@ class CompanionSessionCoordinator(
                 }
 
                 "close-camera" -> {
+                    ambientListener.stop()
                     audioRecorder.cancel()
+                    previewStreamRequestId = null
+                    cameraController.setPreviewStreamingEnabled(false)
                     updateDictationUi(
                         appContext.getString(R.string.dictation_status_idle),
                         appContext.getString(R.string.dictation_detail_waiting),
@@ -317,7 +393,33 @@ class CompanionSessionCoordinator(
                     )
                 }
 
+                "start-preview-stream" -> {
+                    cameraController.ensurePreview(launchContext.cameraConfig)
+                    previewStreamRequestId = command.requestId ?: command.id
+                    cameraController.setPreviewStreamingEnabled(true)
+                    bridgeClient.acknowledgeCommand(
+                        deviceId = launchContext.deviceId,
+                        command = command,
+                        status = "accepted",
+                        message = "Android live preview stream started.",
+                        previewActive = cameraController.isPreviewBound(),
+                    )
+                }
+
+                "stop-preview-stream" -> {
+                    previewStreamRequestId = null
+                    cameraController.setPreviewStreamingEnabled(false)
+                    bridgeClient.acknowledgeCommand(
+                        deviceId = launchContext.deviceId,
+                        command = command,
+                        status = "done",
+                        message = "Android live preview stream stopped.",
+                        previewActive = cameraController.isPreviewBound(),
+                    )
+                }
+
                 "start-dictation" -> {
+                    ambientListener.stop()
                     val file = audioRecorder.start()
                     updateDictationUi(
                         appContext.getString(R.string.dictation_status_recording),
@@ -401,6 +503,83 @@ class CompanionSessionCoordinator(
                         previewActive = cameraController.isPreviewBound(),
                     )
                 }
+
+                "start-ambient-listener" -> {
+                    audioRecorder.cancel()
+                    val modelProfile = requireAndroidVoskModelProfile(launchContext.transcriptModel)
+                    val model = modelManager.ensureModel(modelProfile)
+                    val ambientOptions = command.ambient
+                    val requestId = command.requestId ?: command.id
+                    ambientWakePhraseSummary =
+                        ambientOptions?.wakePhrases?.joinToString(", ") ?: "Hey Hayalet"
+                    ambientListener.start(
+                        config =
+                            AndroidAmbientListenerConfig(
+                                requestId = requestId,
+                                target = command.target,
+                                wakePhrases = ambientOptions?.wakePhrases ?: listOf("Hey Hayalet"),
+                                activeWindowMs = ambientOptions?.activeWindowMs ?: 6_000L,
+                                silenceTimeoutMs = ambientOptions?.silenceTimeoutMs ?: 1_200L,
+                                modelProfile = modelProfile,
+                                modelDirectory = model,
+                            ),
+                        onStatus = { status, message, transcript, metadata ->
+                            publishAmbientStatus(
+                                requestId = requestId,
+                                target = command.target,
+                                status = status,
+                                message = message,
+                                transcript = transcript,
+                                metadata = metadata,
+                            )
+                        },
+                        onTranscript = { transcript ->
+                            bridgeClient.submitTranscript(
+                                requestId = requestId,
+                                deviceId = launchContext.deviceId,
+                                target = command.target,
+                                text = transcript.text,
+                                isFinal = true,
+                                metadata = buildAmbientTranscriptMetadata(transcript, modelProfile),
+                            )
+                        },
+                    )
+                    updateDictationUi(
+                        appContext.getString(R.string.dictation_status_ambient),
+                        appContext.getString(
+                            R.string.dictation_detail_ambient,
+                            ambientWakePhraseSummary,
+                        ),
+                    )
+                    publishUiState(
+                        connectionStatus = appContext.getString(R.string.status_connected_desktop),
+                        permissionsSummary = appContext.getString(R.string.permissions_ready),
+                    )
+                    bridgeClient.acknowledgeCommand(
+                        deviceId = launchContext.deviceId,
+                        command = command,
+                        status = "accepted",
+                        message = "Android ambient listener started.",
+                        previewActive = cameraController.isPreviewBound(),
+                    )
+                }
+
+                "stop-ambient-listener" -> {
+                    ambientListener.stop()
+                    publishAmbientStatus(
+                        requestId = command.requestId ?: command.id,
+                        target = command.target,
+                        status = "stopped",
+                        message = "Android ambient listener stopped.",
+                    )
+                    bridgeClient.acknowledgeCommand(
+                        deviceId = launchContext.deviceId,
+                        command = command,
+                        status = "done",
+                        message = "Android ambient listener stopped.",
+                        previewActive = cameraController.isPreviewBound(),
+                    )
+                }
             }
         }.onFailure { error ->
             CompanionDiagnostics.e(
@@ -413,7 +592,25 @@ class CompanionSessionCoordinator(
             if (command.kind == "start-dictation") {
                 audioRecorder.cancel()
             }
-            if (command.kind == "start-dictation" || command.kind == "stop-dictation") {
+            if (command.kind == "start-ambient-listener") {
+                ambientListener.stop()
+            }
+            if (command.kind == "start-preview-stream" || command.kind == "stop-preview-stream") {
+                previewStreamRequestId = null
+                cameraController.setPreviewStreamingEnabled(false)
+            }
+            if (
+                command.kind == "start-dictation" ||
+                command.kind == "stop-dictation" ||
+                command.kind == "start-ambient-listener" ||
+                command.kind == "stop-ambient-listener"
+            ) {
+                if (
+                    command.kind == "start-ambient-listener" ||
+                    command.kind == "stop-ambient-listener"
+                ) {
+                    playAmbientStatusTone("failed")
+                }
                 updateDictationUi(
                     appContext.getString(R.string.dictation_status_error),
                     errorSummary,
@@ -475,6 +672,88 @@ class CompanionSessionCoordinator(
         CompanionDiagnostics.setState("Dictation detail", detail)
     }
 
+    private suspend fun publishAmbientStatus(
+        requestId: String,
+        target: String,
+        status: String,
+        message: String,
+        transcript: String? = null,
+        metadata: JSONObject? = null,
+    ) {
+        withContext(Dispatchers.Main.immediate) {
+            updateDictationUi(
+                resolveAmbientUiStatus(status),
+                resolveAmbientUiDetail(status, message, transcript),
+            )
+            playAmbientStatusTone(status)
+            publishUiState(
+                connectionStatus = appContext.getString(R.string.status_connected_desktop),
+                permissionsSummary = appContext.getString(R.string.permissions_ready),
+            )
+        }
+        bridgeClient.submitAmbientStatus(
+            requestId = requestId,
+            deviceId = launchContext.deviceId,
+            target = target,
+            status = status,
+            message = message,
+            transcript = transcript,
+            metadata = metadata,
+        )
+    }
+
+    private fun resolveAmbientUiStatus(status: String): String {
+        return when (status) {
+            "started" -> appContext.getString(R.string.dictation_status_ambient)
+            "wake-detected" -> appContext.getString(R.string.dictation_status_ambient_ready)
+            "capturing" -> appContext.getString(R.string.dictation_status_ambient_capturing)
+            "transcribing" -> appContext.getString(R.string.dictation_status_transcribing)
+            "done" -> appContext.getString(R.string.dictation_status_done)
+            "stopped" -> appContext.getString(R.string.dictation_status_idle)
+            "failed" -> appContext.getString(R.string.dictation_status_error)
+            else -> appContext.getString(R.string.dictation_status_ambient)
+        }
+    }
+
+    private fun resolveAmbientUiDetail(status: String, message: String, transcript: String?): String {
+        return when (status) {
+            "started" -> appContext.getString(R.string.dictation_detail_ambient, ambientWakePhraseSummary)
+            "wake-detected" -> appContext.getString(R.string.dictation_detail_ambient_ready)
+            "capturing" -> appContext.getString(R.string.dictation_detail_ambient_capturing)
+            "transcribing" ->
+                appContext.getString(
+                    R.string.dictation_detail_ambient_transcribing,
+                    transcript?.replace(Regex("\\s+"), " ")?.take(120).orEmpty(),
+                )
+
+            "done" ->
+                transcript?.replace(Regex("\\s+"), " ")?.take(120)?.takeIf { it.isNotBlank() }
+                    ?.let { appContext.getString(R.string.dictation_detail_done, it) }
+                    ?: appContext.getString(R.string.dictation_detail_ambient_waiting)
+
+            "stopped" -> appContext.getString(R.string.dictation_detail_waiting)
+            "failed" -> message
+            else -> message
+        }
+    }
+
+    private fun playAmbientStatusTone(status: String) {
+        val toneType =
+            when (status) {
+                "failed" -> ToneGenerator.TONE_PROP_NACK
+                "done", "transcribing" -> ToneGenerator.TONE_PROP_ACK
+                "stopped" -> ToneGenerator.TONE_PROP_BEEP
+                else -> ToneGenerator.TONE_PROP_BEEP
+            }
+        val durationMs =
+            when (status) {
+                "wake-detected" -> 140
+                "failed" -> 220
+                else -> 110
+            }
+        runCatching { ambientTone?.startTone(toneType, durationMs) }
+    }
+
     private fun buildTranscriptMetadata(
         recording: AndroidRecordingResult,
         modelProfile: BridgeTranscriptModelProfile,
@@ -487,6 +766,25 @@ class CompanionSessionCoordinator(
             .put("durationMs", recording.durationMs)
             .put("sampleRate", recording.sampleRate)
             .put("bytesWritten", recording.bytesWritten)
+            .put("modelId", modelProfile.modelId)
+            .put("modelFile", modelProfile.fileName)
+            .put("language", modelProfile.language)
+            .put("archiveFormat", modelProfile.archiveFormat)
+    }
+
+    private fun buildAmbientTranscriptMetadata(
+        transcript: AndroidAmbientTranscript,
+        modelProfile: BridgeTranscriptModelProfile,
+    ): JSONObject {
+        return JSONObject()
+            .put("speechBackend", "${modelProfile.backend}-android-ambient")
+            .put("recordedOn", "android-device")
+            .put("microphone", "android-default-mic")
+            .put("ambient", true)
+            .put("wakePhrase", transcript.wakePhrase)
+            .put("activeWindowMs", transcript.activeWindowMs)
+            .put("silenceTimeoutMs", transcript.silenceTimeoutMs)
+            .put("capturedMs", transcript.capturedMs)
             .put("modelId", modelProfile.modelId)
             .put("modelFile", modelProfile.fileName)
             .put("language", modelProfile.language)

@@ -47,9 +47,12 @@ import type {
 } from "../types/transcript.js";
 import type {
   CaptureActionOutcome,
+  CaptureAmbientListenerOptions,
+  CaptureAmbientStatusPayload,
   CaptureDictationStatusPayload,
   CaptureImportedAsset,
   CaptureMediaIngressPayload,
+  CapturePreviewFramePayload,
   CaptureServiceStatus,
   CaptureTargetActionOptions,
 } from "../types/capture.js";
@@ -1157,6 +1160,12 @@ declare global {
     captureStopAnalyzeSession?: (
       options?: CaptureTargetActionOptions
     ) => Promise<CaptureActionOutcome>;
+    captureStartAnalyzePreview?: (
+      options?: CaptureTargetActionOptions
+    ) => Promise<CaptureActionOutcome>;
+    captureStopAnalyzePreview?: (
+      options?: CaptureTargetActionOptions
+    ) => Promise<CaptureActionOutcome>;
     captureStartAnalyzeDictation?: (
       options?: CaptureTargetActionOptions
     ) => Promise<CaptureActionOutcome>;
@@ -1166,6 +1175,12 @@ declare global {
     captureCancelAnalyzeDictation?: (
       options?: CaptureTargetActionOptions
     ) => Promise<CaptureActionOutcome>;
+    captureStartAmbientListener?: (
+      options?: CaptureAmbientListenerOptions
+    ) => Promise<CaptureActionOutcome>;
+    captureStopAmbientListener?: (
+      options?: CaptureAmbientListenerOptions
+    ) => Promise<CaptureActionOutcome>;
     captureRequestAnalyzePhoto?: (
       options?: CaptureTargetActionOptions
     ) => Promise<CaptureActionOutcome>;
@@ -1174,10 +1189,14 @@ declare global {
     ) => Promise<CaptureActionOutcome>;
     captureOnMediaIngress?: (callback: (payload: CaptureMediaIngressPayload) => void) => void;
     captureOffMediaIngress?: (callback: (payload: CaptureMediaIngressPayload) => void) => void;
+    captureOnPreviewFrame?: (callback: (payload: CapturePreviewFramePayload) => void) => void;
+    captureOffPreviewFrame?: (callback: (payload: CapturePreviewFramePayload) => void) => void;
     captureOnDictationStatus?: (callback: (payload: CaptureDictationStatusPayload) => void) => void;
     captureOffDictationStatus?: (
       callback: (payload: CaptureDictationStatusPayload) => void
     ) => void;
+    captureOnAmbientStatus?: (callback: (payload: CaptureAmbientStatusPayload) => void) => void;
+    captureOffAmbientStatus?: (callback: (payload: CaptureAmbientStatusPayload) => void) => void;
     transcriptStatus: () => Promise<TranscriptRuntimeStatus>;
     transcriptEnsureRuntime: () => Promise<TranscriptRuntimeStatus>;
     transcriptListModels?: () => Promise<TranscriptManagedModelStatus[]>;

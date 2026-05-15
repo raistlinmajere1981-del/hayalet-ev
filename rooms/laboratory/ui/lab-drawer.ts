@@ -1072,7 +1072,11 @@ export function renderLabDrawer(
   return renderContextPanel({
     content: `
       ${modeNav}
-      ${selectionTabActive ? selectionBody : `${decisionHeader}${renderDrawerHeader(mode, copy)}<div class="labx-drawer__body">${modeContent}</div>`}
+      ${
+        selectionTabActive
+          ? selectionBody
+          : `${decisionHeader}${renderDrawerHeader(mode, copy)}<div class="labx-drawer__body">${modeContent}</div>`
+      }
     `,
     drawerMode: mode,
   });

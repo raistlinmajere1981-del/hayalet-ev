@@ -1,5 +1,6 @@
 import type {
   RepairAiAdaptationHints,
+  RepairAmbientListeningState,
   RepairChatState,
   RepairEvent,
   RepairImageRect,
@@ -8,11 +9,14 @@ import type {
   RepairMeasurementEvidenceState,
   RepairLayoutState,
   RepairMeasurementState,
+  RepairOperationalProfile,
   RepairOperatorProfile,
   RepairOperationalMode,
   RepairOverlayEntityRef,
+  RepairPanelId,
   RepairSession,
   RepairSessionListItem,
+  RepairSpokenGuidanceMode,
   RepairWizardState,
   RepairWorkbenchState,
 } from "../types/index.js";
@@ -99,6 +103,275 @@ export interface RepairSpatialFocusState {
   relatedAiMarkIds: string[];
 }
 
+export type RepairInvestigationPhase =
+  | "observe"
+  | "inspect"
+  | "measure"
+  | "compare"
+  | "verify"
+  | "conclude";
+
+export type RepairGuidanceSurface =
+  | "workbench"
+  | "tactical-feed"
+  | "session-wizard"
+  | "knowledge-pack"
+  | "measurement"
+  | "visual-timeline"
+  | "chat"
+  | "room-sync"
+  | "none";
+
+export type RepairPanelVisibilityMode = "hidden" | "compact" | "contextual" | "expanded";
+
+export type RepairTacticalFeedDensity = "minimal" | "compact" | "expanded";
+
+export type RepairAiConfidence = "low" | "medium" | "high";
+
+export type RepairAiUrgency = "low" | "medium" | "high";
+
+export type RepairEvidenceDepth = "thin" | "supported" | "strong";
+
+export interface RepairSuggestedActionProjection {
+  text: string;
+  confidence: RepairAiConfidence;
+  urgency: RepairAiUrgency;
+  evidenceDepth: RepairEvidenceDepth;
+  source: "measurement" | "ai" | "knowledge" | "operator" | "system";
+}
+
+export interface RepairSuspiciousRegionProjection {
+  ref: RepairOverlayEntityRef;
+  label: string;
+  confidence: RepairAiConfidence;
+  urgency: RepairAiUrgency;
+}
+
+export interface RepairPanelVisibilityProjection {
+  primarySurface: RepairGuidanceSurface;
+  panels: Record<RepairPanelId, RepairPanelVisibilityMode>;
+  tacticalFeedDensity: RepairTacticalFeedDensity;
+  subduedPanelIds: RepairPanelId[];
+  dimSecondaryControls: boolean;
+}
+
+export interface RepairAttentionBudgetProjection {
+  windowMs: number;
+  maxAiInterruptions: number;
+  usedAiInterruptions: number;
+  remainingAiInterruptions: number;
+  collapsedByBudgetCount: number;
+}
+
+export interface RepairAiInterruptionProjection {
+  confidence: RepairAiConfidence;
+  urgency: RepairAiUrgency;
+  evidenceDepth: RepairEvidenceDepth;
+  shouldSpeak: boolean;
+  silenceReason: string | null;
+  duplicateInsightsMerged: number;
+  suppressedObservationCount: number;
+  toneLine: string;
+  attentionBudget: RepairAttentionBudgetProjection;
+}
+
+export interface RepairConfusionRecoveryProjection {
+  currentFocus: string;
+  lastVerifiedStep: string;
+  pendingAction: string;
+  whyThisRegionMatters: string;
+}
+
+export interface RepairOverlaySaturationProjection {
+  maxVisibleRelationships: number;
+  maxVisibleRegions: number;
+  maxSimultaneousHighlights: number;
+  maxActiveAiMarks: number;
+  clutterScore: number;
+  visibleEventIds: string[];
+  visibleRelationshipIds: string[];
+  visibleRegionRefs: RepairOverlayEntityRef[];
+  activeAttentionRefs: RepairOverlayEntityRef[];
+  fadedSecondaryRefs: RepairOverlayEntityRef[];
+  labelMode: "simplified" | "full";
+}
+
+export interface RepairFocusCorridorProjection {
+  active: boolean;
+  targetRef: RepairOverlayEntityRef | null;
+  allowedSurfaces: RepairGuidanceSurface[];
+  activeRegionLabel: string;
+  entryReason: string;
+  exitHint: string;
+  dimmedRefCount: number;
+}
+
+export interface RepairOperationalRhythmProjection {
+  lifecycle: RepairInvestigationPhase[];
+  currentIndex: number;
+  previousPhase: RepairInvestigationPhase | null;
+  nextPhase: RepairInvestigationPhase | null;
+  progressLabel: string;
+  steady: boolean;
+}
+
+export interface RepairVoiceGuidanceProjection {
+  ambientListeningState: RepairAmbientListeningState;
+  voiceFocusTarget: RepairOverlayEntityRef | null;
+  spokenGuidanceMode: RepairSpokenGuidanceMode;
+  handsBusyMode: boolean;
+  spokenLine: string | null;
+}
+
+export interface RepairGuidanceProjection {
+  operationalProfile: RepairOperationalProfile;
+  investigationPhase: RepairInvestigationPhase;
+  nextBestAction: RepairSuggestedActionProjection;
+  unresolvedCriticalItems: number;
+  pendingMeasurements: string[];
+  suspiciousRegions: RepairSuspiciousRegionProjection[];
+  panelVisibility: RepairPanelVisibilityProjection;
+  aiInterruption: RepairAiInterruptionProjection;
+  recovery: RepairConfusionRecoveryProjection;
+  overlaySaturation: RepairOverlaySaturationProjection;
+  focusCorridor: RepairFocusCorridorProjection;
+  rhythm: RepairOperationalRhythmProjection;
+  voice: RepairVoiceGuidanceProjection;
+}
+
+export const REPAIR_INVESTIGATION_LIFECYCLE: RepairInvestigationPhase[] = [
+  "observe",
+  "inspect",
+  "measure",
+  "compare",
+  "verify",
+  "conclude",
+];
+
+const REPAIR_GUIDANCE_PANEL_IDS: RepairPanelId[] = [
+  "session-rail",
+  "workbench-stage",
+  "tactical-feed",
+  "session-wizard",
+  "knowledge-pack",
+  "visual-timeline",
+  "operator-profile",
+  "chat",
+  "measurement",
+  "room-sync",
+];
+
+function createRepairGuidancePanelMap(
+  mode: RepairPanelVisibilityMode
+): Record<RepairPanelId, RepairPanelVisibilityMode> {
+  return {
+    "session-rail": mode,
+    "workbench-stage": mode,
+    "tactical-feed": mode,
+    "session-wizard": mode,
+    "knowledge-pack": mode,
+    "visual-timeline": mode,
+    "operator-profile": mode,
+    chat: mode,
+    measurement: mode,
+    "room-sync": mode,
+  };
+}
+
+export function createRepairDefaultGuidanceProjection(
+  operationalProfile: RepairOperationalProfile = "novice"
+): RepairGuidanceProjection {
+  const panels = createRepairGuidancePanelMap("compact");
+  panels["workbench-stage"] = "expanded";
+  panels["session-wizard"] = "contextual";
+  panels["knowledge-pack"] = "hidden";
+  panels.chat = operationalProfile === "advanced" ? "compact" : "hidden";
+  panels["room-sync"] = operationalProfile === "advanced" ? "compact" : "hidden";
+
+  const lifecycle = [...REPAIR_INVESTIGATION_LIFECYCLE];
+  return {
+    operationalProfile,
+    investigationPhase: "observe",
+    nextBestAction: {
+      text: "Open a repair session.",
+      confidence: "medium",
+      urgency: "low",
+      evidenceDepth: "thin",
+      source: "system",
+    },
+    unresolvedCriticalItems: 0,
+    pendingMeasurements: [],
+    suspiciousRegions: [],
+    panelVisibility: {
+      primarySurface: "workbench",
+      panels,
+      tacticalFeedDensity: "minimal",
+      subduedPanelIds: REPAIR_GUIDANCE_PANEL_IDS.filter((panelId) => panelId !== "workbench-stage"),
+      dimSecondaryControls: operationalProfile === "novice",
+    },
+    aiInterruption: {
+      confidence: "medium",
+      urgency: "low",
+      evidenceDepth: "thin",
+      shouldSpeak: false,
+      silenceReason: "No high-value change needs interruption.",
+      duplicateInsightsMerged: 0,
+      suppressedObservationCount: 0,
+      toneLine: "The bench is ready.",
+      attentionBudget: {
+        windowMs: 180000,
+        maxAiInterruptions: 2,
+        usedAiInterruptions: 0,
+        remainingAiInterruptions: 2,
+        collapsedByBudgetCount: 0,
+      },
+    },
+    recovery: {
+      currentFocus: "Live workbench",
+      lastVerifiedStep: "No verified step yet",
+      pendingAction: "Open a repair session.",
+      whyThisRegionMatters: "No region is selected.",
+    },
+    overlaySaturation: {
+      maxVisibleRelationships: operationalProfile === "advanced" ? 12 : 4,
+      maxVisibleRegions: operationalProfile === "advanced" ? 12 : 5,
+      maxSimultaneousHighlights: operationalProfile === "advanced" ? 10 : 5,
+      maxActiveAiMarks: operationalProfile === "advanced" ? 6 : 2,
+      clutterScore: 0,
+      visibleEventIds: [],
+      visibleRelationshipIds: [],
+      visibleRegionRefs: [],
+      activeAttentionRefs: [],
+      fadedSecondaryRefs: [],
+      labelMode: operationalProfile === "advanced" ? "full" : "simplified",
+    },
+    focusCorridor: {
+      active: false,
+      targetRef: null,
+      allowedSurfaces: ["workbench"],
+      activeRegionLabel: "Live workbench",
+      entryReason: "No focused investigation region.",
+      exitHint: "Select a region to narrow the repair context.",
+      dimmedRefCount: 0,
+    },
+    rhythm: {
+      lifecycle,
+      currentIndex: 0,
+      previousPhase: null,
+      nextPhase: "inspect",
+      progressLabel: "observe 1/6",
+      steady: true,
+    },
+    voice: {
+      ambientListeningState: "idle",
+      voiceFocusTarget: null,
+      spokenGuidanceMode: "silent",
+      handsBusyMode: false,
+      spokenLine: null,
+    },
+  };
+}
+
 export interface RepairReplayProjection {
   playheadMs: number;
   replayMode: RepairWorkbenchState["timeline"]["replayMode"];
@@ -117,6 +390,7 @@ export interface RepairReplayProjection {
   timelineDensity: RepairTimelineDensityBucket[];
   activeSpatialFocus: RepairSpatialFocusState | null;
   operationalMode: RepairOperationalMode;
+  guidance: RepairGuidanceProjection;
 }
 
 export interface RepairUiState {
@@ -138,6 +412,7 @@ export interface RepairUiState {
   measurement: RepairMeasurementState;
   chat: RepairChatState;
   layout: RepairLayoutState;
+  guidance: RepairGuidanceProjection;
   ambient: {
     nowIso: string;
     sessionDurationMs: number;

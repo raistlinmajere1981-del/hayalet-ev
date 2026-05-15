@@ -1,9 +1,11 @@
 import type {
+  RepairAttentionBudgetState,
   RepairChatTurn,
   RepairEvent,
   RepairInstrumentKind,
   RepairKnowledgePack,
   RepairMultimeterReading,
+  RepairOperationalProfile,
   RepairOperatorProfile,
   RepairOverlayEntityRef,
   RepairOperatorProfileTabId,
@@ -13,6 +15,7 @@ import type {
   RepairReplayMode,
   RepairSession,
   RepairSessionListItem,
+  RepairVoiceGuidanceState,
   RepairWizardState,
   RepairWizardDraft,
   RepairWorkbenchTool,
@@ -179,6 +182,18 @@ export type RepairRuntimeAction =
   | {
       type: "layout/set-operator-profile-tab";
       tabId: RepairOperatorProfileTabId;
+    }
+  | {
+      type: "layout/set-operational-profile";
+      profile: RepairOperationalProfile;
+    }
+  | {
+      type: "layout/set-voice-guidance";
+      voiceGuidance: Partial<RepairVoiceGuidanceState>;
+    }
+  | {
+      type: "layout/set-attention-budget";
+      attentionBudget: Partial<RepairAttentionBudgetState>;
     }
   | {
       type: "ambient/tick";

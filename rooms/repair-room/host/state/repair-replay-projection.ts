@@ -1,4 +1,8 @@
 import { repairEventToTacticalFeedItem } from "../../shared/data/index.js";
+import {
+  REPAIR_INVESTIGATION_LIFECYCLE,
+  createRepairDefaultGuidanceProjection,
+} from "../../shared/ui/state.js";
 import type {
   RepairAiMarkEvent,
   RepairAiMarkLifecycleState,
@@ -14,13 +18,22 @@ import type {
   RepairMeasurementGroup,
   RepairMeasurementState,
   RepairMultimeterReading,
+  RepairOperationalProfile,
   RepairOperationalMode,
   RepairOverlayEntityRef,
+  RepairPanelId,
   RepairSession,
 } from "../../shared/types/index.js";
 import type {
+  RepairAiConfidence,
+  RepairAiUrgency,
+  RepairEvidenceDepth,
+  RepairGuidanceProjection,
+  RepairGuidanceSurface,
+  RepairInvestigationPhase,
   RepairKnowledgeRegionProjection,
   RepairMeasurementRelationship,
+  RepairPanelVisibilityMode,
   RepairReplayProjection,
   RepairSpatialFocusState,
   RepairTacticalFeedItem,
@@ -922,7 +935,762 @@ function getOperationalMode(
   return state.workbench.timeline.autoFollowLive ? "live" : "replay";
 }
 
+const GUIDANCE_PANEL_IDS: RepairPanelId[] = [
+  "session-rail",
+  "workbench-stage",
+  "tactical-feed",
+  "session-wizard",
+  "knowledge-pack",
+  "visual-timeline",
+  "operator-profile",
+  "chat",
+  "measurement",
+  "room-sync",
+];
+
+function buildPanelVisibilityMap(
+  defaultMode: RepairPanelVisibilityMode
+): Record<RepairPanelId, RepairPanelVisibilityMode> {
+  return GUIDANCE_PANEL_IDS.reduce<Record<RepairPanelId, RepairPanelVisibilityMode>>(
+    (panels, panelId) => {
+      panels[panelId] = defaultMode;
+      return panels;
+    },
+    {} as Record<RepairPanelId, RepairPanelVisibilityMode>
+  );
+}
+
+function getLatestEvent(events: RepairEvent[]): RepairEvent | null {
+  return events.at(-1) ?? null;
+}
+
+function getEvidenceDepth(score: number): RepairEvidenceDepth {
+  if (score >= 4) return "strong";
+  if (score >= 2) return "supported";
+  return "thin";
+}
+
+function getConfidence(depth: RepairEvidenceDepth, hasRisk: boolean): RepairAiConfidence {
+  if (hasRisk || depth === "strong") return "high";
+  if (depth === "supported") return "medium";
+  return "low";
+}
+
+function getUrgency(events: RepairEvent[], pendingMeasurements: string[]): RepairAiUrgency {
+  if (
+    events.some(
+      (event) =>
+        (event.kind === "ai-mark" && event.severity === "risk") ||
+        (event.kind === "risk-flag" && event.acknowledged === false)
+    )
+  ) {
+    return "high";
+  }
+  if (
+    pendingMeasurements.length > 0 ||
+    events.some((event) => event.kind === "ai-mark" && event.severity === "action")
+  ) {
+    return "medium";
+  }
+  return "low";
+}
+
+function getPendingMeasurements(params: {
+  activeSpatialFocus: RepairSpatialFocusState | null;
+  events: RepairEvent[];
+  measurementEvidence: RepairMeasurementEvidenceState[];
+}): string[] {
+  const measurements = params.events.filter(
+    (event): event is RepairMeasurementEvent => event.kind === "measurement"
+  );
+  const latestMeasurement = measurements.at(-1) ?? null;
+  if (measurements.length === 0) return ["Primary rail"];
+  if (
+    params.activeSpatialFocus !== null &&
+    params.activeSpatialFocus.relatedMeasurementIds.length === 0
+  ) {
+    return ["Focused region"];
+  }
+  if (latestMeasurement?.rawDisplay === "OL") return ["Continuity confirmation"];
+  if (latestMeasurement?.value === 0) return ["Primary rail confirmation"];
+  if (params.measurementEvidence.some((entry) => entry.history.length === 1)) {
+    return ["Comparison reading"];
+  }
+  return [];
+}
+
+function getInvestigationPhase(params: {
+  activeSpatialFocus: RepairSpatialFocusState | null;
+  events: RepairEvent[];
+  measurementRelationships: RepairMeasurementRelationship[];
+  pendingMeasurements: string[];
+  state: RepairRuntimeState;
+}): RepairInvestigationPhase {
+  if (params.state.phase === "wizard-active" || params.state.phase === "idle") return "observe";
+  const latest = getLatestEvent(params.events);
+  if (
+    latest?.kind === "investigation-region-updated" &&
+    latest.status === "resolved" &&
+    params.pendingMeasurements.length === 0
+  ) {
+    return "conclude";
+  }
+  if (latest?.kind === "measurement") return "verify";
+  if (params.pendingMeasurements.length > 0) return "measure";
+  if (params.measurementRelationships.length > 0) return "compare";
+  if (params.activeSpatialFocus !== null || params.state.workbench.investigationModeEnabled) {
+    return "inspect";
+  }
+  return "observe";
+}
+
+function getFocusLabel(activeSpatialFocus: RepairSpatialFocusState | null): string {
+  return activeSpatialFocus?.label ?? "Live workbench";
+}
+
+function buildNextBestAction(params: {
+  activeSpatialFocus: RepairSpatialFocusState | null;
+  confidence: RepairAiConfidence;
+  depth: RepairEvidenceDepth;
+  pendingMeasurements: string[];
+  phase: RepairInvestigationPhase;
+  state: RepairRuntimeState;
+  urgency: RepairAiUrgency;
+}): RepairGuidanceProjection["nextBestAction"] {
+  if (params.state.phase === "idle") {
+    return {
+      text: "Open a repair session.",
+      confidence: "medium",
+      urgency: "low",
+      evidenceDepth: "thin",
+      source: "system",
+    };
+  }
+  if (params.state.phase === "wizard-active") {
+    return {
+      text: "Add the symptoms, then start research.",
+      confidence: "medium",
+      urgency: "low",
+      evidenceDepth: "thin",
+      source: "operator",
+    };
+  }
+  const pending = params.pendingMeasurements[0] ?? null;
+  if (pending !== null) {
+    return {
+      text: pending.toLowerCase().includes("confirmation")
+        ? `${pending} is waiting.`
+        : `${pending} measurement is suggested.`,
+      confidence: params.confidence,
+      urgency: params.urgency,
+      evidenceDepth: params.depth,
+      source: "measurement",
+    };
+  }
+  if (params.phase === "verify") {
+    return {
+      text: "Measurement verification is waiting.",
+      confidence: params.confidence,
+      urgency: params.urgency,
+      evidenceDepth: params.depth,
+      source: "measurement",
+    };
+  }
+  if (params.activeSpatialFocus !== null) {
+    return {
+      text:
+        params.confidence === "high"
+          ? "Focused behavior matches a failure pattern."
+          : "This region may match an earlier pattern.",
+      confidence: params.confidence,
+      urgency: params.urgency,
+      evidenceDepth: params.depth,
+      source: "ai",
+    };
+  }
+  return {
+    text: "Observe the board and keep the next check narrow.",
+    confidence: params.confidence,
+    urgency: params.urgency,
+    evidenceDepth: params.depth,
+    source: "system",
+  };
+}
+
+function countDuplicateFeedItems(items: RepairTacticalFeedItem[]): number {
+  const seen = new Set<string>();
+  let duplicates = 0;
+  items.forEach((item) => {
+    const key = item.body.toLowerCase().replace(/\s+/g, " ").slice(0, 72);
+    if (seen.has(key)) {
+      duplicates += 1;
+      return;
+    }
+    seen.add(key);
+  });
+  return duplicates;
+}
+
+function isAiBudgetInterruptionEvent(
+  event: RepairEvent,
+  evidenceDepth: RepairEvidenceDepth
+): boolean {
+  if (event.kind === "risk-flag") return event.acknowledged === false;
+  if (event.kind !== "ai-mark") return false;
+  if (event.severity === "risk") return true;
+  return event.severity === "action" && evidenceDepth !== "thin";
+}
+
+function buildAttentionBudget(params: {
+  duplicateInsightsMerged: number;
+  evidenceDepth: RepairEvidenceDepth;
+  events: RepairEvent[];
+  state: RepairRuntimeState;
+  suppressedObservationCount: number;
+}): RepairGuidanceProjection["aiInterruption"]["attentionBudget"] {
+  const windowMs = Math.max(30000, params.state.layout.attentionBudget.windowMs);
+  const maxAiInterruptions = Math.max(1, params.state.layout.attentionBudget.maxAiInterruptions);
+  const ambientMs = Date.parse(params.state.ambientNowIso);
+  const eventTimes = params.events
+    .map((event) => Date.parse(event.occurredAt))
+    .filter(Number.isFinite);
+  const latestMs =
+    eventTimes.length > 0 ? Math.max(...eventTimes) : Number.isFinite(ambientMs) ? ambientMs : 0;
+  const windowStartMs = latestMs - windowMs;
+  const budgetRelevantInterruptions = params.events.filter((event) => {
+    if (!isAiBudgetInterruptionEvent(event, params.evidenceDepth)) return false;
+    const eventMs = Date.parse(event.occurredAt);
+    return Number.isFinite(eventMs) && eventMs >= windowStartMs;
+  }).length;
+  const usedAiInterruptions = Math.min(maxAiInterruptions, budgetRelevantInterruptions);
+  const overBudgetCount = Math.max(0, budgetRelevantInterruptions - maxAiInterruptions);
+  return {
+    windowMs,
+    maxAiInterruptions,
+    usedAiInterruptions,
+    remainingAiInterruptions: Math.max(0, maxAiInterruptions - usedAiInterruptions),
+    collapsedByBudgetCount:
+      overBudgetCount +
+      params.duplicateInsightsMerged +
+      Math.floor(params.suppressedObservationCount / 2),
+  };
+}
+
+function getPrimaryGuidanceSurface(params: {
+  phase: RepairInvestigationPhase;
+  state: RepairRuntimeState;
+  unresolvedCriticalItems: number;
+  activeSpatialFocus: RepairSpatialFocusState | null;
+}): RepairGuidanceSurface {
+  if (params.state.phase === "wizard-active") return "session-wizard";
+  if (params.phase === "measure" || params.phase === "verify") return "measurement";
+  if (params.unresolvedCriticalItems > 0 && params.activeSpatialFocus === null) {
+    return "tactical-feed";
+  }
+  return "workbench";
+}
+
+function buildOperationalRhythm(params: {
+  phase: RepairInvestigationPhase;
+  pendingMeasurements: string[];
+  unresolvedCriticalItems: number;
+}): RepairGuidanceProjection["rhythm"] {
+  const lifecycle = [...REPAIR_INVESTIGATION_LIFECYCLE];
+  const currentIndex = Math.max(0, lifecycle.indexOf(params.phase));
+  return {
+    lifecycle,
+    currentIndex,
+    previousPhase: lifecycle[currentIndex - 1] ?? null,
+    nextPhase: lifecycle[currentIndex + 1] ?? null,
+    progressLabel: `${params.phase} ${currentIndex + 1}/${lifecycle.length}`,
+    steady: params.unresolvedCriticalItems <= 1 && params.pendingMeasurements.length <= 1,
+  };
+}
+
+function buildPanelVisibility(params: {
+  operationalProfile: RepairOperationalProfile;
+  phase: RepairInvestigationPhase;
+  primarySurface: RepairGuidanceSurface;
+  hasKnowledgePack: boolean;
+  replayMode: RepairReplayProjection["replayMode"];
+  isPlaying: boolean;
+  unresolvedCriticalItems: number;
+  focusCorridorActive: boolean;
+}): RepairGuidanceProjection["panelVisibility"] {
+  const panels = buildPanelVisibilityMap("compact");
+  panels["workbench-stage"] = "expanded";
+  panels["session-rail"] = params.operationalProfile === "advanced" ? "contextual" : "compact";
+  panels["visual-timeline"] =
+    params.replayMode !== "live" || params.operationalProfile === "advanced"
+      ? "contextual"
+      : "compact";
+  panels["operator-profile"] = params.operationalProfile === "advanced" ? "contextual" : "compact";
+  panels["chat"] = params.operationalProfile === "advanced" ? "compact" : "hidden";
+  panels["room-sync"] = params.operationalProfile === "advanced" ? "compact" : "hidden";
+  panels["knowledge-pack"] = params.hasKnowledgePack ? "compact" : "hidden";
+  panels["session-wizard"] = "hidden";
+  panels["tactical-feed"] = params.unresolvedCriticalItems > 0 ? "contextual" : "compact";
+  panels.measurement =
+    params.phase === "measure" || params.phase === "verify" ? "contextual" : "compact";
+
+  if (params.focusCorridorActive && params.operationalProfile === "novice") {
+    panels["visual-timeline"] = "compact";
+    panels["operator-profile"] = "compact";
+    panels.chat = "hidden";
+    panels["room-sync"] = "hidden";
+  }
+
+  if (params.primarySurface === "session-wizard") {
+    panels["session-wizard"] = "expanded";
+    panels["tactical-feed"] = "compact";
+  } else if (params.primarySurface === "tactical-feed") {
+    panels["tactical-feed"] = "expanded";
+    panels["session-wizard"] = "hidden";
+  } else if (params.primarySurface === "measurement") {
+    panels.measurement = "expanded";
+    panels["tactical-feed"] = "compact";
+    panels["session-wizard"] = "hidden";
+  }
+
+  if (params.primarySurface === "workbench" && params.hasKnowledgePack) {
+    panels["knowledge-pack"] = params.operationalProfile === "advanced" ? "contextual" : "compact";
+  }
+
+  const tacticalFeedDensity: RepairGuidanceProjection["panelVisibility"]["tacticalFeedDensity"] =
+    params.primarySurface === "tactical-feed"
+      ? "expanded"
+      : params.primarySurface === "measurement" || params.primarySurface === "session-wizard"
+        ? "minimal"
+        : params.replayMode !== "live" && params.isPlaying === false
+          ? "compact"
+          : params.unresolvedCriticalItems > 0
+            ? "compact"
+            : "minimal";
+  const subduedPanelIds = GUIDANCE_PANEL_IDS.filter((panelId) => {
+    if (panelId === "workbench-stage") return false;
+    if (params.primarySurface === "none") return true;
+    return panelId !== params.primarySurface;
+  });
+
+  return {
+    primarySurface: params.primarySurface,
+    panels,
+    tacticalFeedDensity,
+    subduedPanelIds,
+    dimSecondaryControls: params.operationalProfile === "novice",
+  };
+}
+
+function refKey(ref: RepairOverlayEntityRef): string {
+  return `${ref.kind}:${ref.id}`;
+}
+
+function getOverlayRefForEvent(event: RepairEvent): RepairOverlayEntityRef {
+  return { kind: "event", id: event.id };
+}
+
+function buildOverlaySaturation(params: {
+  activeSpatialFocus: RepairSpatialFocusState | null;
+  events: RepairEvent[];
+  focusSuggestionEventId: string | null;
+  investigationRegions: RepairInvestigationRegion[];
+  knowledgeRegions: RepairKnowledgeRegionProjection[];
+  measurementRelationships: RepairMeasurementRelationship[];
+  operationalProfile: RepairOperationalProfile;
+  temporarySpatialRegions: RepairTemporarySpatialRegion[];
+}): RepairGuidanceProjection["overlaySaturation"] {
+  const maxVisibleRelationships = params.operationalProfile === "advanced" ? 12 : 4;
+  const maxVisibleRegions = params.operationalProfile === "advanced" ? 12 : 5;
+  const maxSimultaneousHighlights = params.operationalProfile === "advanced" ? 10 : 5;
+  const maxActiveAiMarks = params.operationalProfile === "advanced" ? 6 : 2;
+  const activeRefs: RepairOverlayEntityRef[] = [];
+  if (params.activeSpatialFocus !== null) {
+    activeRefs.push(params.activeSpatialFocus.ref);
+    params.activeSpatialFocus.linkedEventIds.forEach((id) => activeRefs.push(eventEntityRef(id)));
+    params.activeSpatialFocus.relatedMeasurementIds.forEach((id) =>
+      activeRefs.push(eventEntityRef(id))
+    );
+    params.activeSpatialFocus.relatedAiMarkIds.forEach((id) => activeRefs.push(eventEntityRef(id)));
+  }
+  if (params.focusSuggestionEventId !== null)
+    activeRefs.push(eventEntityRef(params.focusSuggestionEventId));
+
+  const activeAttentionRefs = uniqueRefs(activeRefs).slice(0, maxSimultaneousHighlights);
+  const activeKeys = new Set(activeAttentionRefs.map(refKey));
+  const scoredEvents = params.events
+    .map((event) => {
+      const ref = getOverlayRefForEvent(event);
+      const active = activeKeys.has(refKey(ref));
+      const score =
+        (active ? 100 : 0) +
+        (event.kind === "risk-flag" ? 30 : 0) +
+        (event.kind === "ai-mark" && event.severity === "risk" ? 28 : 0) +
+        (event.kind === "ai-mark" && event.severity === "action" ? 22 : 0) +
+        (event.kind === "measurement" ? 18 : 0) +
+        (event.kind === "annotation" ? 12 : 0);
+      return { event, score };
+    })
+    .sort((left, right) => right.score - left.score);
+  const aiEventIds = scoredEvents
+    .filter(({ event }) => event.kind === "ai-mark" || event.kind === "risk-flag")
+    .slice(0, maxActiveAiMarks)
+    .map(({ event }) => event.id);
+  const visibleEventIds = uniqueStrings([
+    ...activeAttentionRefs.filter((ref) => ref.kind === "event").map((ref) => ref.id),
+    ...aiEventIds,
+    ...scoredEvents.map(({ event }) => event.id),
+  ]).slice(0, maxSimultaneousHighlights);
+  const relationshipScores = params.measurementRelationships
+    .map((relationship) => ({
+      relationship,
+      score:
+        (activeKeys.has(refKey(relationship.from)) ? 50 : 0) +
+        (activeKeys.has(refKey(relationship.to)) ? 50 : 0) +
+        relationship.strength * 20,
+    }))
+    .sort((left, right) => right.score - left.score);
+  const visibleRelationshipIds = relationshipScores
+    .slice(0, maxVisibleRelationships)
+    .map(({ relationship }) => relationship.id);
+  const regionScores = [
+    ...params.investigationRegions.map((region) => {
+      const ref = regionEntityRef(region.regionId);
+      return {
+        ref,
+        score:
+          (activeKeys.has(refKey(ref)) ? 100 : 0) +
+          (region.status === "active" ? 35 : region.status === "watching" ? 20 : 0) +
+          region.linkage.aiMarkEventIds.length * 12 +
+          region.linkage.measurementEventIds.length * 10,
+      };
+    }),
+    ...params.knowledgeRegions.map((region) => {
+      const ref: RepairOverlayEntityRef = { kind: "knowledge-region", id: region.id };
+      return {
+        ref,
+        score:
+          (activeKeys.has(refKey(ref)) ? 100 : 0) +
+          region.relatedAiMarkIds.length * 12 +
+          region.relatedMeasurementIds.length * 10 +
+          region.linkedEventIds.length * 6,
+      };
+    }),
+    ...params.temporarySpatialRegions.map((region) => {
+      const ref: RepairOverlayEntityRef = { kind: "temporary-spatial-region", id: region.id };
+      return {
+        ref,
+        score:
+          (activeKeys.has(refKey(ref)) ? 100 : 0) +
+          region.relatedAiMarkIds.length * 12 +
+          region.relatedMeasurementIds.length * 10 +
+          region.linkedEventIds.length * 6,
+      };
+    }),
+  ].sort((left, right) => right.score - left.score);
+  const visibleRegionRefs = uniqueRefs([
+    ...activeAttentionRefs.filter(
+      (ref) =>
+        ref.kind === "investigation-region" ||
+        ref.kind === "knowledge-region" ||
+        ref.kind === "temporary-spatial-region"
+    ),
+    ...regionScores.map(({ ref }) => ref),
+  ]).slice(0, maxVisibleRegions);
+  const visibleKeys = new Set([
+    ...visibleEventIds.map((id) => refKey(eventEntityRef(id))),
+    ...visibleRelationshipIds.map((id) => refKey({ kind: "measurement-relationship", id })),
+    ...visibleRegionRefs.map(refKey),
+    ...activeAttentionRefs.map(refKey),
+  ]);
+  const allRefs: RepairOverlayEntityRef[] = [
+    ...params.events.map(getOverlayRefForEvent),
+    ...params.investigationRegions.map((region) => regionEntityRef(region.regionId)),
+    ...params.knowledgeRegions.map((region) => ({
+      kind: "knowledge-region" as const,
+      id: region.id,
+    })),
+    ...params.temporarySpatialRegions.map((region) => ({
+      kind: "temporary-spatial-region" as const,
+      id: region.id,
+    })),
+    ...params.measurementRelationships.map((relationship) => ({
+      kind: "measurement-relationship" as const,
+      id: relationship.id,
+    })),
+  ];
+  const clutterSignal =
+    params.events.length +
+    params.investigationRegions.length * 1.4 +
+    params.knowledgeRegions.length * 1.1 +
+    params.temporarySpatialRegions.length * 1.1 +
+    params.measurementRelationships.length * 1.6;
+  return {
+    maxVisibleRelationships,
+    maxVisibleRegions,
+    maxSimultaneousHighlights,
+    maxActiveAiMarks,
+    clutterScore: Math.min(1, clutterSignal / (params.operationalProfile === "advanced" ? 28 : 14)),
+    visibleEventIds,
+    visibleRelationshipIds,
+    visibleRegionRefs,
+    activeAttentionRefs,
+    fadedSecondaryRefs: uniqueRefs(allRefs.filter((ref) => !visibleKeys.has(refKey(ref)))),
+    labelMode:
+      params.operationalProfile === "advanced" || clutterSignal < 8 ? "full" : "simplified",
+  };
+}
+
+function buildFocusCorridor(params: {
+  activeSpatialFocus: RepairSpatialFocusState | null;
+  overlaySaturation: RepairGuidanceProjection["overlaySaturation"];
+  primarySurface: RepairGuidanceSurface;
+}): RepairGuidanceProjection["focusCorridor"] {
+  if (params.activeSpatialFocus === null) {
+    return {
+      active: false,
+      targetRef: null,
+      allowedSurfaces: ["workbench"],
+      activeRegionLabel: "Live workbench",
+      entryReason: "No focused investigation region.",
+      exitHint: "Select a region to narrow the repair context.",
+      dimmedRefCount: params.overlaySaturation.fadedSecondaryRefs.length,
+    };
+  }
+  const allowedSurfaces = uniqueStrings([
+    "workbench",
+    "measurement",
+    "knowledge-pack",
+    params.primarySurface,
+  ]).filter((surface): surface is RepairGuidanceSurface => surface !== "none");
+  return {
+    active: true,
+    targetRef: params.activeSpatialFocus.ref,
+    allowedSurfaces,
+    activeRegionLabel: params.activeSpatialFocus.label,
+    entryReason: "Current repair context is narrowed to the focused region.",
+    exitHint: "Clear focus to return to the full board.",
+    dimmedRefCount: params.overlaySaturation.fadedSecondaryRefs.length,
+  };
+}
+
+function uniqueRefs(refs: RepairOverlayEntityRef[]): RepairOverlayEntityRef[] {
+  const seen = new Set<string>();
+  const unique: RepairOverlayEntityRef[] = [];
+  refs.forEach((ref) => {
+    const key = refKey(ref);
+    if (seen.has(key)) return;
+    seen.add(key);
+    unique.push(ref);
+  });
+  return unique;
+}
+
+function buildRepairGuidanceProjection(params: {
+  activeSpatialFocus: RepairSpatialFocusState | null;
+  focusSuggestionEventId: string | null;
+  investigationRegions: RepairInvestigationRegion[];
+  knowledgeRegions: RepairKnowledgeRegionProjection[];
+  measurementEvidence: RepairMeasurementEvidenceState[];
+  measurementRelationships: RepairMeasurementRelationship[];
+  overlayEvents: RepairEvent[];
+  preliminaryFeed: RepairTacticalFeedItem[];
+  session: RepairSession;
+  state: RepairRuntimeState;
+  temporarySpatialRegions: RepairTemporarySpatialRegion[];
+  visibleEvents: RepairEvent[];
+}): RepairGuidanceProjection {
+  const operationalProfile = params.state.layout.operationalProfile;
+  const pendingMeasurements = getPendingMeasurements({
+    activeSpatialFocus: params.activeSpatialFocus,
+    events: params.visibleEvents,
+    measurementEvidence: params.measurementEvidence,
+  });
+  const unresolvedCriticalItems = params.visibleEvents.filter((event) => {
+    if (event.kind === "risk-flag") return event.acknowledged === false;
+    return event.kind === "ai-mark" && (event.severity === "risk" || event.severity === "action");
+  }).length;
+  const evidenceScore =
+    (params.activeSpatialFocus?.linkedEventIds.length ?? 0) +
+    (params.activeSpatialFocus?.relatedMeasurementIds.length ?? 0) +
+    (params.activeSpatialFocus?.relatedAiMarkIds.length ?? 0) +
+    Math.min(2, params.measurementEvidence.length);
+  const evidenceDepth = getEvidenceDepth(evidenceScore);
+  const confidence = getConfidence(evidenceDepth, unresolvedCriticalItems > 0);
+  const urgency = getUrgency(params.visibleEvents, pendingMeasurements);
+  const investigationPhase = getInvestigationPhase({
+    activeSpatialFocus: params.activeSpatialFocus,
+    events: params.visibleEvents,
+    measurementRelationships: params.measurementRelationships,
+    pendingMeasurements,
+    state: params.state,
+  });
+  const nextBestAction = buildNextBestAction({
+    activeSpatialFocus: params.activeSpatialFocus,
+    confidence,
+    depth: evidenceDepth,
+    pendingMeasurements,
+    phase: investigationPhase,
+    state: params.state,
+    urgency,
+  });
+  const primarySurface = getPrimaryGuidanceSurface({
+    phase: investigationPhase,
+    state: params.state,
+    unresolvedCriticalItems,
+    activeSpatialFocus: params.activeSpatialFocus,
+  });
+  const duplicateInsightsMerged = countDuplicateFeedItems(params.preliminaryFeed);
+  const suppressedObservationCount = params.preliminaryFeed.filter(
+    (item) => item.severity === "info" || (item.severity === "suggestion" && confidence === "low")
+  ).length;
+  const attentionBudget = buildAttentionBudget({
+    duplicateInsightsMerged,
+    evidenceDepth,
+    events: params.visibleEvents,
+    state: params.state,
+    suppressedObservationCount,
+  });
+  const budgetAllowsSpeech =
+    attentionBudget.remainingAiInterruptions > 0 ||
+    (urgency === "high" && evidenceDepth === "strong");
+  const shouldSpeak =
+    budgetAllowsSpeech &&
+    (urgency === "high" ||
+      (urgency === "medium" && evidenceDepth !== "thin" && duplicateInsightsMerged === 0));
+  const toneLine =
+    confidence === "high"
+      ? "Primary rail behavior matches the failure pattern."
+      : confidence === "medium"
+        ? "This region has enough evidence to inspect calmly."
+        : "This region may match an earlier pattern.";
+  const overlaySaturation = buildOverlaySaturation({
+    activeSpatialFocus: params.activeSpatialFocus,
+    events: params.overlayEvents,
+    focusSuggestionEventId: params.focusSuggestionEventId,
+    investigationRegions: params.investigationRegions,
+    knowledgeRegions: params.knowledgeRegions,
+    measurementRelationships: params.measurementRelationships,
+    operationalProfile,
+    temporarySpatialRegions: params.temporarySpatialRegions,
+  });
+  const focusCorridor = buildFocusCorridor({
+    activeSpatialFocus: params.activeSpatialFocus,
+    overlaySaturation,
+    primarySurface,
+  });
+  const rhythm = buildOperationalRhythm({
+    phase: investigationPhase,
+    pendingMeasurements,
+    unresolvedCriticalItems,
+  });
+  const voiceSettings = params.state.layout.voiceGuidance;
+  const voiceAllowed = shouldSpeak && voiceSettings.ambientListeningState !== "muted";
+  const spokenGuidanceMode =
+    voiceAllowed === false
+      ? "silent"
+      : voiceSettings.handsBusyMode
+        ? "step-by-step"
+        : voiceSettings.spokenGuidanceMode === "silent"
+          ? "brief"
+          : voiceSettings.spokenGuidanceMode;
+
+  return {
+    operationalProfile,
+    investigationPhase,
+    nextBestAction,
+    unresolvedCriticalItems,
+    pendingMeasurements,
+    suspiciousRegions: params.investigationRegions.slice(0, 3).map((region) => ({
+      ref: regionEntityRef(region.regionId),
+      label: region.label,
+      confidence,
+      urgency,
+    })),
+    panelVisibility: buildPanelVisibility({
+      operationalProfile,
+      phase: investigationPhase,
+      primarySurface,
+      hasKnowledgePack: params.session.knowledgePack !== null,
+      replayMode: params.state.workbench.timeline.replayMode,
+      isPlaying: params.state.workbench.timeline.isPlaying,
+      unresolvedCriticalItems,
+      focusCorridorActive: focusCorridor.active,
+    }),
+    aiInterruption: {
+      confidence,
+      urgency,
+      evidenceDepth,
+      shouldSpeak,
+      silenceReason: shouldSpeak ? null : "Silence is preserving the current work focus.",
+      duplicateInsightsMerged,
+      suppressedObservationCount,
+      toneLine,
+      attentionBudget,
+    },
+    recovery: {
+      currentFocus: getFocusLabel(params.activeSpatialFocus),
+      lastVerifiedStep:
+        params.measurementEvidence.at(-1)?.reference ??
+        params.visibleEvents
+          .filter((event): event is RepairMeasurementEvent => event.kind === "measurement")
+          .at(-1)?.reference ??
+        "No verified step yet",
+      pendingAction: nextBestAction.text,
+      whyThisRegionMatters:
+        params.activeSpatialFocus === null
+          ? "No region is selected."
+          : params.activeSpatialFocus.relatedAiMarkIds.length > 0
+            ? "Linked to an AI observation and measurement evidence."
+            : "This is the current inspection area.",
+    },
+    overlaySaturation,
+    focusCorridor,
+    rhythm,
+    voice: {
+      ambientListeningState: voiceSettings.ambientListeningState,
+      voiceFocusTarget: params.activeSpatialFocus?.ref ?? null,
+      spokenGuidanceMode,
+      handsBusyMode: voiceSettings.handsBusyMode,
+      spokenLine: voiceAllowed ? nextBestAction.text : null,
+    },
+  };
+}
+
+export function projectRepairTacticalFeedItems(
+  items: RepairTacticalFeedItem[],
+  guidance: RepairGuidanceProjection
+): RepairTacticalFeedItem[] {
+  if (guidance.operationalProfile === "advanced") return items;
+  const maxItems =
+    guidance.panelVisibility.tacticalFeedDensity === "expanded"
+      ? 5
+      : guidance.panelVisibility.tacticalFeedDensity === "compact"
+        ? 3
+        : 2;
+  const activeEventIds = new Set(
+    guidance.overlaySaturation.activeAttentionRefs
+      .filter((ref) => ref.kind === "event")
+      .map((ref) => ref.id)
+  );
+  const seenBodies = new Set<string>();
+  const prioritized = items.filter((item) => {
+    const key = item.body.toLowerCase().replace(/\s+/g, " ").slice(0, 72);
+    if (seenBodies.has(key)) return false;
+    seenBodies.add(key);
+    if (activeEventIds.has(item.eventId)) return true;
+    if (item.severity === "risk" || item.severity === "action") return true;
+    if (guidance.panelVisibility.tacticalFeedDensity === "expanded")
+      return item.severity !== "info";
+    return false;
+  });
+  const fallback = items.filter(
+    (item) => !prioritized.some((entry) => entry.eventId === item.eventId)
+  );
+  return [...prioritized, ...fallback].slice(0, maxItems);
+}
+
 export function createEmptyRepairReplayProjection(): RepairReplayProjection {
+  const guidance = createRepairDefaultGuidanceProjection();
   return {
     playheadMs: 0,
     replayMode: "live",
@@ -941,6 +1709,7 @@ export function createEmptyRepairReplayProjection(): RepairReplayProjection {
     timelineDensity: [],
     activeSpatialFocus: null,
     operationalMode: "live",
+    guidance,
   };
 }
 
@@ -996,18 +1765,34 @@ export function createRepairReplayProjection(
     temporarySpatialRegions,
     measurementRelationships,
   });
+  const overlayEvents = forensicEvents.filter((event) => {
+    if (event.kind === "ai-mark") return visibleAiMarkIds.has(event.id);
+    return (
+      event.kind === "risk-flag" || event.kind === "annotation" || event.kind === "measurement"
+    );
+  });
+  const preliminaryFeed = buildTacticalFeed(session, visibleEvents);
+  const guidance = buildRepairGuidanceProjection({
+    activeSpatialFocus,
+    focusSuggestionEventId: focusSuggestion?.id ?? null,
+    investigationRegions,
+    knowledgeRegions,
+    measurementEvidence,
+    measurementRelationships,
+    overlayEvents,
+    preliminaryFeed,
+    session,
+    state,
+    temporarySpatialRegions,
+    visibleEvents,
+  });
 
   return {
     playheadMs,
     replayMode: state.workbench.timeline.replayMode,
     visibleEvents,
-    overlayEvents: forensicEvents.filter((event) => {
-      if (event.kind === "ai-mark") return visibleAiMarkIds.has(event.id);
-      return (
-        event.kind === "risk-flag" || event.kind === "annotation" || event.kind === "measurement"
-      );
-    }),
-    tacticalFeed: buildTacticalFeed(session, visibleEvents),
+    overlayEvents,
+    tacticalFeed: projectRepairTacticalFeedItems(preliminaryFeed, guidance),
     measurementEvidence,
     aiMarkEventIds: visibleAiMarks.map((event) => event.id),
     activeSnapshotEventId: activeSnapshot?.id ?? null,
@@ -1020,6 +1805,7 @@ export function createRepairReplayProjection(
     timelineDensity: buildTimelineDensity(session, forensicEvents, investigationRegions),
     activeSpatialFocus,
     operationalMode: getOperationalMode(state, activeFreeze?.id ?? null),
+    guidance,
   };
 }
 

@@ -21,6 +21,7 @@ import {
 } from "../shared/data/index.js";
 import type {
   RepairAiMarkLifecycleState,
+  RepairAmbientListeningState,
   RepairAnnotationTool,
   RepairChatTurn,
   RepairEvent,
@@ -33,11 +34,14 @@ import type {
   RepairKnowledgeSpatialRef,
   RepairKnowledgePackProgress,
   RepairMultimeterReading,
+  RepairOperationalProfile,
   RepairOperatorProfileTabId,
   RepairOverlayEntityRef,
   RepairPanelId,
   RepairSession,
   RepairSessionListItem,
+  RepairSpokenGuidanceMode,
+  RepairVoiceGuidanceState,
   RepairWizardDraft,
   RepairWizardState,
   RepairWorkbenchDrawTool,
@@ -138,6 +142,9 @@ const OPERATOR_PROFILE_TABS: ReadonlySet<string> = new Set([
   "skills",
   "preferences",
 ]);
+const OPERATIONAL_PROFILES: ReadonlySet<string> = new Set(["novice", "advanced"]);
+const AMBIENT_LISTENING_STATES: ReadonlySet<string> = new Set(["idle", "listening", "muted"]);
+const SPOKEN_GUIDANCE_MODES: ReadonlySet<string> = new Set(["silent", "brief", "step-by-step"]);
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -271,6 +278,18 @@ function isInstrumentKind(value: unknown): value is RepairInstrumentKind {
 
 function isOperatorProfileTab(value: unknown): value is RepairOperatorProfileTabId {
   return typeof value === "string" && OPERATOR_PROFILE_TABS.has(value);
+}
+
+function isOperationalProfile(value: unknown): value is RepairOperationalProfile {
+  return typeof value === "string" && OPERATIONAL_PROFILES.has(value);
+}
+
+function isAmbientListeningState(value: unknown): value is RepairAmbientListeningState {
+  return typeof value === "string" && AMBIENT_LISTENING_STATES.has(value);
+}
+
+function isSpokenGuidanceMode(value: unknown): value is RepairSpokenGuidanceMode {
+  return typeof value === "string" && SPOKEN_GUIDANCE_MODES.has(value);
 }
 
 function createEventId(prefix: string, _iso: string): string {
@@ -2045,6 +2064,63 @@ export default function createRepairRoomHostRuntime() {
             return applyFocusUpdate(flat);
           case REPAIR_UI_COMMANDS.updateLayout:
             return applyLayoutCompatibilityUpdate(flat);
+          case REPAIR_UI_COMMANDS.setOperationalProfile: {
+            const profile = flat["profile"] ?? flat["operationalProfile"];
+            if (!isOperationalProfile(profile)) {
+              return { success: false, message: "valid operational profile is required" };
+            }
+            store.dispatch({ type: "layout/set-operational-profile", profile });
+            return { success: true };
+          }
+          case REPAIR_UI_COMMANDS.setVoiceGuidance: {
+            const ambientListeningState = flat["ambientListeningState"];
+            const spokenGuidanceMode = flat["spokenGuidanceMode"];
+            const handsBusyMode = flat["handsBusyMode"];
+            if (
+              ambientListeningState !== undefined &&
+              !isAmbientListeningState(ambientListeningState)
+            ) {
+              return { success: false, message: "valid ambient listening state is required" };
+            }
+            if (spokenGuidanceMode !== undefined && !isSpokenGuidanceMode(spokenGuidanceMode)) {
+              return { success: false, message: "valid spoken guidance mode is required" };
+            }
+            if (handsBusyMode !== undefined && typeof handsBusyMode !== "boolean") {
+              return { success: false, message: "handsBusyMode must be boolean" };
+            }
+            const voiceGuidance: Partial<RepairVoiceGuidanceState> = {};
+            if (isAmbientListeningState(ambientListeningState)) {
+              voiceGuidance.ambientListeningState = ambientListeningState;
+            }
+            if (isSpokenGuidanceMode(spokenGuidanceMode)) {
+              voiceGuidance.spokenGuidanceMode = spokenGuidanceMode;
+            }
+            if (typeof handsBusyMode === "boolean") {
+              voiceGuidance.handsBusyMode = handsBusyMode;
+            }
+            store.dispatch({
+              type: "layout/set-voice-guidance",
+              voiceGuidance,
+            });
+            return { success: true };
+          }
+          case REPAIR_UI_COMMANDS.setAttentionBudget: {
+            const windowMs = safeNumber(flat["windowMs"]);
+            const maxAiInterruptions = safeNumber(flat["maxAiInterruptions"]);
+            if (windowMs === null && maxAiInterruptions === null) {
+              return { success: false, message: "attention budget update is required" };
+            }
+            store.dispatch({
+              type: "layout/set-attention-budget",
+              attentionBudget: {
+                ...(windowMs === null ? {} : { windowMs: Math.max(30000, Math.round(windowMs)) }),
+                ...(maxAiInterruptions === null
+                  ? {}
+                  : { maxAiInterruptions: Math.max(1, Math.round(maxAiInterruptions)) }),
+              },
+            });
+            return { success: true };
+          }
           case REPAIR_UI_COMMANDS.toggleInvestigationMode: {
             const enabled =
               typeof flat["enabled"] === "boolean"
@@ -2189,9 +2265,9 @@ export default function createRepairRoomHostRuntime() {
           }
           case REPAIR_UI_COMMANDS.focusLiveEdge: {
             replayController.followLive();
-            const ref: RepairOverlayEntityRef = { kind: "live-edge", id: "live-edge" };
             store.dispatchMany([
-              { type: "workbench/focus-entity", ref, eventId: null },
+              { type: "workbench/focus-entity", ref: null, eventId: null },
+              { type: "knowledge-pack/set-spatial-focus", spatialRefId: null },
               {
                 type: "workbench/set-selection",
                 focusedEventId: null,
@@ -2201,9 +2277,9 @@ export default function createRepairRoomHostRuntime() {
                   selectedEventIds: [],
                   selectedEntityRefs: [],
                   inspectorEventId: null,
-                  inspectorEntityRef: ref,
+                  inspectorEntityRef: null,
                   focusJumpEventId: null,
-                  focusJumpEntityRef: ref,
+                  focusJumpEntityRef: null,
                 },
               },
             ]);

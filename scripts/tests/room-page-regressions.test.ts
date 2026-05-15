@@ -105,6 +105,8 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   const roomsCssSource = readFileSync("src/styles/rooms.css", "utf8");
   const roomsPageCssSource = readFileSync("src/styles/rooms/page.css", "utf8");
   const roomsShellCssSource = readFileSync("src/styles/rooms/shell.css", "utf8");
+  const trLanguageSource = readFileSync("shared/languages/tr/index.json", "utf8");
+  const enLanguageSource = readFileSync("shared/languages/en/index.json", "utf8");
   const mainCssSource = readFileSync("src/styles/main.css", "utf8");
   const gameRoomUiCssSource = readFileSync("rooms/game-room/ui/style.css", "utf8");
   const gameRoomBackgammonCssSource = readFileSync(
@@ -129,6 +131,20 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   assert.match(source, /void this\.runtimeContextRuntime\.sync\("slot-state"\)/);
   assert.match(source, /ThemeManager\.onChange\(\(\) => \{/);
   assert.match(source, /SceneUiScaleManager\.onChange\(\(\) => \{/);
+  assert.match(source, /private runtimeClosed = false;/);
+  assert.match(source, /closeRoom: \(\) => \{\s*this\.closeRoomRuntime\(\);\s*\}/);
+  assert.match(source, /private closeRoomRuntime\(\): void/);
+  assert.match(source, /this\.runtimeClosed = true;/);
+  assert.match(source, /this\.lastRuntimeEvent = roomPageT\("status\.closed"\);/);
+  assert.match(source, /void RoomHostRuntime\.disposeRoom\(this\.room\.id\);/);
+  assert.match(source, /getRoomPageRuntimeMount\(this\.getPage\(\)\)\?\.replaceChildren\(\);/);
+  assert.match(source, /getRoomPageSceneRuntimeSlot\(this\.getPage\(\)\)\?\.replaceChildren\(\);/);
+  assert.match(source, /navigateToScenePage\("rooms"\);/);
+  assert.doesNotMatch(source, /onHide\(\): void/);
+  assert.match(
+    source,
+    /return this\.runtimeClosed === false && page\.classList\.contains\("is-hidden"\) === false;/
+  );
   assert.match(source, /\.\/room-page\/runtime-context-runtime\.js/);
   assert.match(source, /this\.runtimeContextRuntime\.sync\("locale-change"\)/);
   assert.match(source, /this\.runtimeContextRuntime\.sync\("theme-appearance"\)/);
@@ -209,9 +225,16 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   assert.match(source, /\.\/room-page\/runtime-events\.js/);
   assert.match(source, /this\.sceneFeatureId = null;/);
   assert.match(shellLayoutSource, /export function ensureRoomPageShell\(/);
+  assert.match(shellLayoutSource, /closeLabel: string;/);
+  assert.match(shellLayoutSource, /onCloseRoom: \(\) => void;/);
+  assert.match(shellLayoutSource, /data-room-action="close-runtime"/);
+  assert.match(shellLayoutSource, /options\.onCloseRoom\(\);/);
+  assert.match(shellLayoutSource, /function syncRoomCloseButtonLabel/);
   assert.match(shellLayoutSource, /export function renderRoomFeatureButtons\(/);
   assert.match(pageShellRuntimeSource, /\.\/shell-layout\.js/);
   assert.match(pageShellRuntimeSource, /\.\/runtime-events\.js/);
+  assert.match(pageShellRuntimeSource, /closeLabel: string;/);
+  assert.match(pageShellRuntimeSource, /onCloseRoom: \(\) => void;/);
   assert.match(pageShellRuntimeSource, /export function shouldShowRoomPageFeatureStripForRoom\(/);
   assert.match(
     pageShellRuntimeSource,
@@ -290,6 +313,10 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   assert.match(sceneWindowControlsSource, /export function syncRoomPageSceneWindowControls\(/);
   assert.match(sceneWindowControlsSource, /export function getRoomSceneStandardBackHost\(/);
   assert.match(sceneWindowControlsSource, /export function ensureRoomSceneStandardBackHost\(/);
+  assert.match(pageSceneRuntimeSource, /closeRoom: \(\) => void;/);
+  assert.match(pageSceneRuntimeSource, /deps\.closeRoom\(\);/);
+  assert.match(pageViewRuntimeSource, /onCloseRoom: \(\) => void;/);
+  assert.match(pageViewRuntimeSource, /closeLabel: roomPageT\("page\.closeRoom"\)/);
   assert.match(runtimeHostSource, /export async function resolveRoomPreloadUrl\(/);
   assert.match(runtimeHostSource, /export function ensureRoomRuntimeWebview\(/);
   assert.match(runtimeHostSource, /export function syncRoomRuntimeWebviewSource\(/);
@@ -397,6 +424,12 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
     roomsShellCssSource,
     /\.room-page-shell \{\s*position: relative;[\s\S]*flex: 1 1 auto;[\s\S]*height: 100%;/
   );
+  assert.match(roomsShellCssSource, /\.room-close-button \{/);
+  assert.match(roomsShellCssSource, /\.room-close-button:hover \{/);
+  assert.match(trLanguageSource, /"closeRoom": "Odayı kapat"/);
+  assert.match(trLanguageSource, /"closed": "Oda runtime kapatıldı\."/);
+  assert.match(enLanguageSource, /"closeRoom": "Close room"/);
+  assert.match(enLanguageSource, /"closed": "Room runtime closed\."/);
   assert.match(
     roomsShellCssSource,
     /\.room-shell-stage--immersive \{\s*display: flex;[\s\S]*flex: 1 1 auto;[\s\S]*padding: 0;/

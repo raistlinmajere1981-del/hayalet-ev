@@ -7,6 +7,7 @@ import {
 import type {
   LabFeatureId,
   LabFocusLayer,
+  LabComparisonViewMode,
   LabIntentId,
   LabSelectionROI,
   LabStoreEvent,
@@ -89,6 +90,127 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
   function dispatch(event: Parameters<ReturnType<typeof createLabStore>["dispatch"]>[0]) {
     deps.eventBus.emit(event);
+  }
+
+  function readSelectionRoi(value: unknown): LabSelectionROI | null {
+    const roi = asLabRecord(value);
+    const x = typeof roi["x"] === "number" && Number.isFinite(roi["x"]) ? roi["x"] : null;
+    const y = typeof roi["y"] === "number" && Number.isFinite(roi["y"]) ? roi["y"] : null;
+    const width =
+      typeof roi["width"] === "number" && Number.isFinite(roi["width"]) ? roi["width"] : null;
+    const height =
+      typeof roi["height"] === "number" && Number.isFinite(roi["height"]) ? roi["height"] : null;
+    if (x === null || y === null || width === null || height === null) {
+      return null;
+    }
+    return { height, width, x, y };
+  }
+
+  function normalizeComparisonViewMode(value: unknown): LabComparisonViewMode | null {
+    switch (asNonEmptyString(value)) {
+      case "side-by-side":
+      case "stacked":
+      case "split":
+      case "difference":
+      case "roi-detail":
+        return asNonEmptyString(value) as LabComparisonViewMode;
+      default:
+        return null;
+    }
+  }
+
+  function getComparisonFindingMetadata(state: LabControllerState, findingKey: string) {
+    const key = findingKey.trim();
+    if (key === "") {
+      return null;
+    }
+    const manifestAsset =
+      state.assets.find(function (asset) {
+        const metadata = asLabRecord(asset.metadata);
+        return (
+          asNonEmptyString(metadata["artifactKind"]) === "comparison-finding-manifest" &&
+          (asset.id === key || asNonEmptyString(metadata["findingId"]) === key)
+        );
+      }) || null;
+    if (manifestAsset === null) {
+      return null;
+    }
+    return asLabRecord(manifestAsset.metadata);
+  }
+
+  function focusComparisonFinding(findingKey: string, state: LabControllerState) {
+    const metadata = getComparisonFindingMetadata(state, findingKey);
+    if (metadata === null) {
+      dispatch({
+        type: "push-event",
+        event: buildUiEvent("Karşılaştırma bulgusu bulunamadı.", "warning"),
+      });
+      return;
+    }
+    const captureContext = asLabRecord(metadata["captureContext"]);
+    const comparisonRois =
+      Object.keys(asLabRecord(metadata["comparisonRois"])).length > 0
+        ? asLabRecord(metadata["comparisonRois"])
+        : asLabRecord(captureContext["comparisonRois"]);
+    const primaryAssetId =
+      asNonEmptyString(metadata["primaryAssetId"]) ||
+      asNonEmptyString(captureContext["primaryAssetId"]) ||
+      asNonEmptyString(metadata["snapshotAssetId"]);
+    const referenceAssetId =
+      asNonEmptyString(metadata["referenceAssetId"]) ||
+      asNonEmptyString(captureContext["referenceAssetId"]);
+    const viewMode = normalizeComparisonViewMode(
+      metadata["comparisonViewMode"] || captureContext["comparisonViewMode"]
+    );
+    const splitPercent =
+      typeof captureContext["splitPercent"] === "number" &&
+      Number.isFinite(captureContext["splitPercent"])
+        ? Math.max(5, Math.min(95, Math.round(captureContext["splitPercent"])))
+        : null;
+    const primaryRoi =
+      readSelectionRoi(comparisonRois["primary"]) ||
+      readSelectionRoi(captureContext["primaryNormalizedRoi"]);
+    const referenceRoi =
+      readSelectionRoi(comparisonRois["reference"]) ||
+      readSelectionRoi(captureContext["referenceNormalizedRoi"]);
+    const activeSide =
+      asNonEmptyString(comparisonRois["activeSide"]) === "primary" ? "primary" : "reference";
+
+    if (primaryAssetId !== null) {
+      dispatch({ type: "workspace-content-opened", assetId: primaryAssetId });
+    }
+    dispatch({ type: "workspace-comparison-reference-set", assetId: referenceAssetId });
+    if (viewMode !== null || splitPercent !== null) {
+      dispatch({
+        type: "workspace-comparison-updated",
+        patch: {
+          ...(viewMode === null ? {} : { comparisonViewMode: viewMode }),
+          ...(splitPercent === null ? {} : { comparisonSplitPercent: splitPercent }),
+        },
+      });
+    }
+    const roiUpdates =
+      activeSide === "primary"
+        ? [
+            { comparisonSide: "reference" as const, roi: referenceRoi },
+            { comparisonSide: "primary" as const, roi: primaryRoi },
+          ]
+        : [
+            { comparisonSide: "primary" as const, roi: primaryRoi },
+            { comparisonSide: "reference" as const, roi: referenceRoi },
+          ];
+    roiUpdates.forEach(function (entry) {
+      if (entry.roi !== null) {
+        dispatch({
+          type: "selection-roi-updated",
+          comparisonSide: entry.comparisonSide,
+          roi: entry.roi,
+        });
+      }
+    });
+    if (state.ui.workspace.activeIconRailSlot !== "image-comparison") {
+      dispatch({ type: "icon-rail-slot-selected", slotId: "image-comparison" });
+    }
   }
 
   const mediaActions = createLabMediaActionController({
@@ -781,7 +903,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         if (state.ui.workspace.selectionTabActive) {
           dispatch({ type: "selection-tab-toggled", active: false });
         }
-        dispatch({ type: "drawer-mode-requested", mode: isRunActive(state) ? null : "setup" });
+        if (isRunActive(state)) {
+          dispatch({ type: "drawer-mode-requested", mode: null });
+        }
         return;
       case "topbar-pill-results":
         if (hasReportPayload(state)) {
@@ -1055,6 +1179,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         saveComparisonFinding();
         return;
       }
+      case "workspace-comparison-finding-focus": {
+        focusComparisonFinding(value, state);
+        return;
+      }
       case "timeline-export-clip": {
         exportTimelineClip();
         return;
@@ -1105,15 +1233,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           return;
         }
         shiftTimelinePlayhead(value);
-        return;
-      case "source-activate-asset":
-        if (value.trim() !== "") {
-          if (isRunActive(state)) {
-            pushLockedWorkspaceEvent("Kaynak ayarları aktif analiz sırasında kilitli.");
-            return;
-          }
-          sendMediaAction("source-activate-asset", { assetId: value });
-        }
         return;
       case "workspace-content-open":
         dispatch({

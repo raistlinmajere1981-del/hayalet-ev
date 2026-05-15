@@ -11,6 +11,14 @@ export function renderTacticalFeedPanel(
   const body = documentRef.createElement("div");
   body.className = "repair-panel__body";
 
+  const calmLine = documentRef.createElement("div");
+  calmLine.className = "repair-feed-calmline";
+  calmLine.textContent =
+    state.guidance.aiInterruption.shouldSpeak === false
+      ? `Quiet unless a meaningful change appears. ${state.guidance.aiInterruption.attentionBudget.remainingAiInterruptions} AI interruptions left.`
+      : state.guidance.aiInterruption.toneLine;
+  body.append(calmLine);
+
   const list = documentRef.createElement("div");
   list.className = "repair-feed-list";
 

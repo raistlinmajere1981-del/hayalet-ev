@@ -56,8 +56,6 @@ function getActionLabel(action: string | null) {
       return "YouTube kaynağı hazırlanıyor";
     case "source-pick-local":
       return "Yerel kaynak içeri alınıyor";
-    case "source-activate-asset":
-      return "Proje dosyası kaynak yapılıyor";
     case "project-import-check-url":
       return "URL kontrol ediliyor";
     case "edit-preview":
@@ -123,7 +121,6 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
   function isSourceActivationAction(action: unknown) {
     const actionId = asNonEmptyString(action);
     return (
-      actionId === "source-activate-asset" ||
       actionId === "source-download-url" ||
       actionId === "source-download-youtube" ||
       actionId === "source-pick-local" ||

@@ -130,6 +130,7 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   const timelinePanel = readFileSync(join(uiRoot, "panels/visual-timeline-panel.ts"), "utf8");
   const knowledgePanel = readFileSync(join(uiRoot, "panels/knowledge-pack-panel.ts"), "utf8");
   const operatorPanel = readFileSync(join(uiRoot, "panels/operator-profile-panel.ts"), "utf8");
+  const workbenchPanel = readFileSync(join(uiRoot, "panels/workbench-stage-panel.ts"), "utf8");
   const wizardPanel = readFileSync(join(uiRoot, "panels/session-wizard-panel.ts"), "utf8");
   const feedPanel = readFileSync(join(uiRoot, "panels/tactical-feed-panel.ts"), "utf8");
   const roomSyncPanel = readFileSync(join(uiRoot, "panels/room-sync-panel.ts"), "utf8");
@@ -250,6 +251,10 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   assert.match(mockEvents, /lifecycleState/);
   assert.match(wizardPanel, /repair-wizard-field__input/);
   assert.match(wizardPanel, /wizard-symptom/);
+  assert.match(workbenchPanel, /set-voice-guidance/);
+  assert.match(workbenchPanel, /set-attention-budget/);
+  assert.match(runtime, /setVoiceGuidance/);
+  assert.match(runtime, /setAttentionBudget/);
   assert.match(feedPanel, /repair-feed-composer__input/);
   assert.match(style, /\.repair-sync-panel/);
   assert.match(style, /\.repair-pack-preview/);

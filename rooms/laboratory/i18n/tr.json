@@ -253,6 +253,7 @@
       "frame-export": "Kare Disa Aktarma",
       "clip-export": "Klip Disa Aktarma",
       "enhanced-frame": "Iyilestirilmis Kare",
+      "image-comparison": "Resim Karsilastir",
       "before-after": "Once / Sonra",
       "audio-extract": "Ses Cikar",
       "band-pass": "Bant Gecis Sesi",
@@ -542,6 +543,7 @@
         "activeImageFallback": "Aktif resim",
         "activeImageMissing": "Aktif resim yok",
         "captureMoment": "Anı Yakala",
+        "findingNoRoi": "ROI bağlamı yok",
         "note": "Bulgu notu",
         "referenceFallback": "Referans",
         "referenceMissing": "Referans seçilmedi",
@@ -552,6 +554,7 @@
         "roiStatus": "Karşılaştırma bölgeleri",
         "roiSummary": "x:{x}% y:{y}% w:{width}% h:{height}%",
         "saveFinding": "Bulgu Kaydet",
+        "savedFindings": "Kayıtlı bulgular",
         "split": "Split",
         "viewMode": "Görünüm",
         "viewModes": {
@@ -952,7 +955,6 @@
       "source-set-mode": "Kaynak rotasi guncellendi.",
       "source-update-draft": "Kaynak taslagi kaydedildi.",
       "source-pick-local": "Yerel kaynak proje icine kopyalandi.",
-      "source-activate-asset": "Proje dosyasi kaynak olarak acildi.",
       "source-download-url": "Dogrudan URL kaynagi proje icine indirildi.",
       "source-download-youtube": "YouTube kaynagi proje icine alindi.",
       "tool-install": "Arac kurulumu tamamlandi.",
@@ -1705,7 +1707,6 @@
         "download": "Indir",
         "ariaLabel": "Varlık aksiyonları",
         "preview": "Onizleme",
-        "useAsSource": "Kaynak olarak kullan",
         "useAsCompareReference": "Karşılaştırma referansı yap",
         "viewReport": "Raporu Goruntule",
         "delete": "Sil"
@@ -2271,7 +2272,6 @@
       "actions": {
         "generic": "İşlem",
         "named": "{action}",
-        "sourceActivateAsset": "Proje dosyası kaynak yapılıyor",
         "sourceDownloadUrl": "URL kaynağı indiriliyor",
         "sourceDownloadYoutube": "YouTube kaynağı hazırlanıyor",
         "sourcePickLocal": "Yerel kaynak içeri alınıyor",

@@ -295,7 +295,8 @@ test("laboratory source panel renders localized asset groups and context actions
   assert.match(html, /report\.md/);
   assert.match(html, /artifact\.json/);
   assert.doesNotMatch(html, /secili/);
-  assert.match(html, /data-lab-action="source-activate-asset"/);
+  assert.match(html, /data-lab-action="workspace-content-open"/);
+  assert.doesNotMatch(html, /data-lab-action="source-activate-asset"/);
   assert.match(html, /data-lab-action="open-document-overlay" data-lab-value="asset-artifact-1"/);
   assert.match(html, /data-lab-action="open-report-overlay" data-lab-value="user"/);
   assert.doesNotMatch(html, /data-lab-action="asset-use-as-source"/);
@@ -369,7 +370,7 @@ test("laboratory source panel hides download for assets without a file target", 
   assert.doesNotMatch(html, /data-lab-action="asset-download"/);
 });
 
-test("laboratory source panel renders video source assets as source activation rows", () => {
+test("laboratory source panel renders video source assets as workspace content rows", () => {
   const html = renderLabSourcePanel(
     createSourceProjectState(true, {
       assets: [
@@ -388,8 +389,8 @@ test("laboratory source panel renders video source assets as source activation r
 
   assert.match(html, /data-asset-type="source"/);
   assert.match(html, /CGI Analizi -1\.mp4/);
-  assert.match(html, /data-lab-action="source-activate-asset"/);
-  assert.doesNotMatch(html, /data-lab-action="workspace-content-open"/);
+  assert.match(html, /data-lab-action="workspace-content-open"/);
+  assert.doesNotMatch(html, /data-lab-action="source-activate-asset"/);
   assert.doesNotMatch(html, /data-lab-action="asset-use-as-source"/);
   assert.match(html, /class="labx-sp-asset__thumb" data-kind="video"/);
   assert.doesNotMatch(html, /class="labx-pw-card__thumb-img/);

@@ -28,6 +28,7 @@ interface RoomPageSceneRuntimeDeps {
   isSceneFeatureOpen: () => boolean;
   renderSceneRoomCharacters: (page: HTMLElement) => Promise<void>;
   setActiveFeature: (featureId: string, reason: string) => void;
+  closeRoom: () => void;
   closeSceneFeatureView: () => void;
   refreshEditor: () => void;
   refreshSceneCharacters: () => void;
@@ -59,6 +60,9 @@ export function createRoomPageSceneRuntime(deps: RoomPageSceneRuntimeDeps): Room
       immersive: deps.usesImmersivePageShell(),
       onActivateSceneFeature: (featureId) => {
         deps.setActiveFeature(featureId, "scene-hotspot");
+      },
+      onCloseRoom: () => {
+        deps.closeRoom();
       },
       onCloseFeatureView: () => {
         deps.closeSceneFeatureView();

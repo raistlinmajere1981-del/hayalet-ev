@@ -28,7 +28,8 @@
             android:layout_marginTop="8dp"
             android:text="@string/companion_subtitle"
             android:textColor="#B8C0CC"
-            android:textSize="14sp" />
+            android:textSize="14sp"
+            android:visibility="gone" />
 
         <LinearLayout
             android:id="@+id/statusPanel"
@@ -37,7 +38,8 @@
             android:layout_marginTop="20dp"
             android:background="#161B24"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:padding="16dp"
+            android:visibility="gone">
 
             <TextView
                 android:id="@+id/statusLabel"

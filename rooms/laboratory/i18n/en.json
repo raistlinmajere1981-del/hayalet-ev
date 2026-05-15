@@ -253,6 +253,7 @@
       "frame-export": "Frame Export",
       "clip-export": "Clip Export",
       "enhanced-frame": "Enhanced Frame",
+      "image-comparison": "Image Compare",
       "before-after": "Before / After",
       "audio-extract": "Extract Audio",
       "band-pass": "Band-pass Voice",
@@ -542,6 +543,7 @@
         "activeImageFallback": "Active image",
         "activeImageMissing": "No active image",
         "captureMoment": "Capture Moment",
+        "findingNoRoi": "No ROI context",
         "note": "Finding note",
         "referenceFallback": "Reference",
         "referenceMissing": "No reference selected",
@@ -552,6 +554,7 @@
         "roiStatus": "Comparison regions",
         "roiSummary": "x:{x}% y:{y}% w:{width}% h:{height}%",
         "saveFinding": "Save Finding",
+        "savedFindings": "Saved findings",
         "split": "Split",
         "viewMode": "View",
         "viewModes": {
@@ -952,7 +955,6 @@
       "source-set-mode": "Source route updated.",
       "source-update-draft": "Source draft saved.",
       "source-pick-local": "Local source copied into the project.",
-      "source-activate-asset": "Project file opened as the source.",
       "source-download-url": "Direct URL source downloaded into the project.",
       "source-download-youtube": "YouTube source captured into the project.",
       "tool-install": "Tool installation completed.",
@@ -1705,7 +1707,6 @@
         "download": "Download",
         "ariaLabel": "Asset actions",
         "preview": "Preview",
-        "useAsSource": "Use as source",
         "useAsCompareReference": "Use as comparison reference",
         "viewReport": "View report",
         "delete": "Delete"
@@ -2271,7 +2272,6 @@
       "actions": {
         "generic": "Action",
         "named": "{action}",
-        "sourceActivateAsset": "Opening project file as source",
         "sourceDownloadUrl": "Downloading URL source",
         "sourceDownloadYoutube": "Preparing YouTube source",
         "sourcePickLocal": "Importing local source",

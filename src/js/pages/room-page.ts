@@ -16,6 +16,7 @@ import {
 import type { SceneEditorAssetTargetDescriptor } from "../scene-editor/scene-theme-asset-state.js";
 import { type SceneAlphaWindowBounds } from "../scene/alpha-window.js";
 import type { SceneLayoutConfig } from "../scene/layout/index.js";
+import { navigateToScenePage } from "../scene/navigation.js";
 import type { SceneClickableThemeDefinition } from "../scene/schema.js";
 import { SceneUiScaleManager } from "../scene-system/index.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
@@ -57,6 +58,7 @@ export class RoomPageController implements PageController {
   private readonly sceneDebugSession: SceneDebugRuntimeSession;
   private runtimeState: RoomRuntimeState = "idle";
   private lastRuntimeEvent = roomPageT("status.handshakeWaiting");
+  private runtimeClosed = false;
   private preloadUrlPromise: Promise<string> | null = null;
   private unsubscribeI18n: (() => void) | null = null;
   private readonly slotSubscriptions: Array<() => void> = [];
@@ -148,6 +150,9 @@ export class RoomPageController implements PageController {
       },
       closeSceneFeatureView: () => {
         this.closeSceneFeatureView();
+      },
+      closeRoom: () => {
+        this.closeRoomRuntime();
       },
       detectSceneAssetTransparentWindow: async (targetId) => {
         await this.detectSceneAssetTransparentWindow(targetId);
@@ -246,6 +251,7 @@ export class RoomPageController implements PageController {
   }
 
   onShow(): void {
+    this.runtimeClosed = false;
     this.render();
     this.editor?.refresh();
     void this.runtimeHostRuntime.ensure();
@@ -311,7 +317,18 @@ export class RoomPageController implements PageController {
   }
 
   private shouldEnsureRuntimeHost(page: HTMLElement): boolean {
-    return page.classList.contains("is-hidden") === false;
+    return this.runtimeClosed === false && page.classList.contains("is-hidden") === false;
+  }
+
+  private closeRoomRuntime(): void {
+    this.runtimeClosed = true;
+    this.runtimeState = "idle";
+    this.lastRuntimeEvent = roomPageT("status.closed");
+    void RoomHostRuntime.disposeRoom(this.room.id);
+
+    getRoomPageRuntimeMount(this.getPage())?.replaceChildren();
+    getRoomPageSceneRuntimeSlot(this.getPage())?.replaceChildren();
+    navigateToScenePage("rooms");
   }
 
   private bindRoomContextSubscriptions(): void {

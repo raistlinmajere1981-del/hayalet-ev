@@ -427,10 +427,6 @@ const RUNTIME_TEXT_PATTERNS: RuntimeTextPattern[] = [
 ];
 
 const ACTION_LABELS: Record<string, RuntimeCopyDescriptor> = {
-  "source-activate-asset": {
-    key: "mediaAnalysis.runtime.actions.sourceActivateAsset",
-    fallback: "Opening project file as source",
-  },
   "source-download-url": {
     key: "mediaAnalysis.runtime.actions.sourceDownloadUrl",
     fallback: "Downloading URL source",

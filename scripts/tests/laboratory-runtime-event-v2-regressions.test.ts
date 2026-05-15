@@ -221,7 +221,7 @@ test("laboratory runtime events clear stale workbench context for source activat
     },
   };
 
-  runtimeEvents.pushMediaState(api, {}, "req-source-asset", "source-activate-asset");
+  runtimeEvents.pushMediaState(api, {}, "req-source-pick", "source-pick-local");
 
   const workbench = toRecord(workbenchSources[0]);
   assert.equal(workbench["activeModuleId"], "media-analysis");

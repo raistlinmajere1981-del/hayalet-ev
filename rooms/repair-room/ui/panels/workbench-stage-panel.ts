@@ -99,6 +99,18 @@ function getForensicLinkedText(state: RepairUiState, event: RepairEvent): string
   return parts.length > 0 ? parts.join(" • ") : "No linked forensic records";
 }
 
+function getGuidanceMetaText(state: RepairUiState): string {
+  const unresolved = state.guidance.unresolvedCriticalItems;
+  const pending = state.guidance.pendingMeasurements.length;
+  const parts = [
+    state.guidance.rhythm.progressLabel.toUpperCase(),
+    unresolved > 0 ? `${unresolved} critical` : "calm",
+    pending > 0 ? `${pending} pending` : "no pending measurement",
+    state.guidance.focusCorridor.active ? "focus corridor" : "full board",
+  ];
+  return parts.join(" / ");
+}
+
 export function renderWorkbenchStagePanel(
   documentRef: Document,
   state: RepairUiState,
@@ -140,7 +152,95 @@ export function renderWorkbenchStagePanel(
   headerLeft.append(info);
 
   liveHeader.append(headerLeft);
+  const profileToggle = documentRef.createElement("div");
+  profileToggle.className = "repair-profile-toggle";
+  (["novice", "advanced"] as const).forEach((profile) => {
+    const button = documentRef.createElement("button");
+    button.type = "button";
+    button.className = `repair-profile-toggle__btn${
+      state.guidance.operationalProfile === profile ? " repair-profile-toggle__btn--active" : ""
+    }`;
+    button.textContent = profile === "novice" ? "NOV" : "ADV";
+    button.title =
+      profile === "novice" ? "Novice operational profile" : "Advanced operational profile";
+    button.dataset["repairAction"] = "set-operational-profile";
+    button.dataset["profile"] = profile;
+    profileToggle.append(button);
+  });
+  liveHeader.append(profileToggle);
+
+  const guidanceControls = documentRef.createElement("div");
+  guidanceControls.className = "repair-guidance-controls";
+
+  const voiceButton = documentRef.createElement("button");
+  voiceButton.type = "button";
+  const voiceListening = state.layout.voiceGuidance.ambientListeningState === "listening";
+  voiceButton.className = `repair-guidance-control${voiceListening ? " repair-guidance-control--active" : ""}`;
+  voiceButton.textContent = voiceListening ? "MIC" : "MUTE";
+  voiceButton.title = voiceListening ? "Mute spoken guidance" : "Enable brief spoken guidance";
+  voiceButton.dataset["repairAction"] = "set-voice-guidance";
+  voiceButton.dataset["ambientListeningState"] = voiceListening ? "muted" : "listening";
+  voiceButton.dataset["spokenGuidanceMode"] = state.layout.voiceGuidance.spokenGuidanceMode;
+  guidanceControls.append(voiceButton);
+
+  const handsButton = documentRef.createElement("button");
+  handsButton.type = "button";
+  handsButton.className = `repair-guidance-control${
+    state.layout.voiceGuidance.handsBusyMode ? " repair-guidance-control--active" : ""
+  }`;
+  handsButton.textContent = "HAND";
+  handsButton.title = state.layout.voiceGuidance.handsBusyMode
+    ? "Disable hands-busy guidance"
+    : "Enable hands-busy guidance";
+  handsButton.dataset["repairAction"] = "set-voice-guidance";
+  handsButton.dataset["handsBusyMode"] = state.layout.voiceGuidance.handsBusyMode
+    ? "false"
+    : "true";
+  handsButton.dataset["ambientListeningState"] = state.layout.voiceGuidance.ambientListeningState;
+  handsButton.dataset["spokenGuidanceMode"] = state.layout.voiceGuidance.spokenGuidanceMode;
+  guidanceControls.append(handsButton);
+
+  const budgetButton = documentRef.createElement("button");
+  budgetButton.type = "button";
+  const currentMax = state.guidance.aiInterruption.attentionBudget.maxAiInterruptions;
+  const nextMax = currentMax >= 3 ? 1 : currentMax + 1;
+  budgetButton.className = "repair-guidance-control";
+  budgetButton.textContent = `AI ${state.guidance.aiInterruption.attentionBudget.remainingAiInterruptions}/${currentMax}`;
+  budgetButton.title = "Cycle AI interruption budget";
+  budgetButton.dataset["repairAction"] = "set-attention-budget";
+  budgetButton.dataset["maxAiInterruptions"] = String(nextMax);
+  budgetButton.dataset["windowMs"] = String(state.guidance.aiInterruption.attentionBudget.windowMs);
+  guidanceControls.append(budgetButton);
+
+  liveHeader.append(guidanceControls);
   body.append(liveHeader);
+
+  const guidance = documentRef.createElement("div");
+  guidance.className = "repair-guidance-strip";
+  guidance.dataset["confidence"] = state.guidance.nextBestAction.confidence;
+  guidance.dataset["urgency"] = state.guidance.nextBestAction.urgency;
+
+  const phase = documentRef.createElement("span");
+  phase.className = "repair-guidance-strip__phase";
+  phase.textContent = state.guidance.investigationPhase;
+  guidance.append(phase);
+
+  const action = documentRef.createElement("span");
+  action.className = "repair-guidance-strip__action";
+  action.textContent = state.guidance.nextBestAction.text;
+  guidance.append(action);
+
+  const recovery = documentRef.createElement("span");
+  recovery.className = "repair-guidance-strip__recovery";
+  recovery.textContent = `${state.guidance.recovery.currentFocus} • ${state.guidance.recovery.pendingAction}`;
+  guidance.append(recovery);
+
+  const meta = documentRef.createElement("span");
+  meta.className = "repair-guidance-strip__meta";
+  meta.textContent = getGuidanceMetaText(state);
+  guidance.append(meta);
+
+  body.append(guidance);
 
   // -- Viewport
   const viewport = documentRef.createElement("div");

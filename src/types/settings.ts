@@ -249,6 +249,12 @@ export interface CaptureCommandPhraseSettings {
   stop?: string[];
 }
 
+export interface VoiceCommandAmbientSettings {
+  wakePhrases?: string[];
+  activeWindowMs?: number;
+  silenceTimeoutMs?: number;
+}
+
 export interface CaptureSettings {
   defaults?: CaptureDefaultsSettings;
   providers?: CaptureProviderSettings;
@@ -258,6 +264,7 @@ export interface VoiceCommandSettings {
   analyzeEnabled?: boolean;
   commandPhrases?: CaptureCommandPhraseSettings;
   analyzePhrases?: CaptureCommandPhraseSettings;
+  ambient?: VoiceCommandAmbientSettings;
 }
 
 export interface UploadSettings {

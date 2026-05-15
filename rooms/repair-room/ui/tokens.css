@@ -1,3 +1,6 @@
+@custom-media --repair-bp-max-980 (max-width: 980px);
+@custom-media --repair-bp-max-680 (max-width: 680px);
+
 :root {
   color-scheme: dark;
 
@@ -100,6 +103,7 @@
   --repair-px-220: 220px;
   --repair-px-260: 260px;
   --repair-px-280: 280px;
+  --repair-px-300: 300px;
   --repair-px-320: 320px;
   --repair-px-360: 360px;
 

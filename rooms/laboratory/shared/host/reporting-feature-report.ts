@@ -158,6 +158,102 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
     );
   }
 
+  function readNormalizedRoi(value: unknown) {
+    const roi = deps.toRecord(value);
+    const x = typeof roi["x"] === "number" ? roi["x"] : null;
+    const y = typeof roi["y"] === "number" ? roi["y"] : null;
+    const width = typeof roi["width"] === "number" ? roi["width"] : null;
+    const height = typeof roi["height"] === "number" ? roi["height"] : null;
+    if (x === null || y === null || width === null || height === null) {
+      return null;
+    }
+    return { height, width, x, y };
+  }
+
+  function readComparisonRois(metadata: LaboratoryRecord) {
+    const captureContext = deps.toRecord(metadata["captureContext"]);
+    const comparisonRois =
+      Object.keys(deps.toRecord(metadata["comparisonRois"])).length > 0
+        ? deps.toRecord(metadata["comparisonRois"])
+        : deps.toRecord(captureContext["comparisonRois"]);
+    const primary =
+      readNormalizedRoi(comparisonRois["primary"]) ||
+      readNormalizedRoi(metadata["primaryNormalizedRoi"]) ||
+      readNormalizedRoi(captureContext["primaryNormalizedRoi"]);
+    const reference =
+      readNormalizedRoi(comparisonRois["reference"]) ||
+      readNormalizedRoi(metadata["referenceNormalizedRoi"]) ||
+      readNormalizedRoi(captureContext["referenceNormalizedRoi"]);
+    if (primary === null && reference === null) {
+      return null;
+    }
+    return {
+      activeSide:
+        asNonEmptyString(comparisonRois["activeSide"]) ||
+        asNonEmptyString(metadata["comparisonRoiActiveSide"]) ||
+        asNonEmptyString(captureContext["comparisonRoiActiveSide"]) ||
+        "primary",
+      primary,
+      reference,
+    };
+  }
+
+  function formatRoiPercent(value: number) {
+    return `${String(Math.round(value * 100))}%`;
+  }
+
+  function formatRoiSummaryPart(label: string, roi: ReturnType<typeof readNormalizedRoi>) {
+    if (roi === null) {
+      return null;
+    }
+    return `${label} ROI x=${formatRoiPercent(roi.x)}, y=${formatRoiPercent(roi.y)}, w=${formatRoiPercent(roi.width)}, h=${formatRoiPercent(roi.height)}`;
+  }
+
+  function buildComparisonRoiSummary(metadata: LaboratoryRecord) {
+    const explicitSummary = asNonEmptyString(metadata["roiSummary"]);
+    if (explicitSummary !== null) {
+      return explicitSummary;
+    }
+    const comparisonRois = readComparisonRois(metadata);
+    if (comparisonRois === null) {
+      return null;
+    }
+    const parts = [
+      formatRoiSummaryPart("Primary", comparisonRois.primary),
+      formatRoiSummaryPart("Reference", comparisonRois.reference),
+    ].filter((entry): entry is string => entry !== null);
+    if (parts.length === 0) {
+      return null;
+    }
+    return `${parts.join("; ")}; active=${comparisonRois.activeSide}`;
+  }
+
+  function getComparisonContextMetadata(metadata: LaboratoryRecord) {
+    const captureContext = deps.toRecord(metadata["captureContext"]);
+    const comparisonRois = readComparisonRois(metadata);
+    const roiSummary = buildComparisonRoiSummary(metadata);
+    const context: LaboratoryRecord = {};
+    if (Object.keys(captureContext).length > 0) {
+      context["captureContext"] = captureContext;
+    }
+    if (comparisonRois !== null) {
+      context["comparisonRois"] = comparisonRois;
+      context["comparisonRoiActiveSide"] = comparisonRois.activeSide;
+    }
+    if (roiSummary !== null) {
+      context["roiSummary"] = roiSummary;
+    }
+    return context;
+  }
+
+  function buildComparisonFindingDetail(note: string | null, roiSummary: string | null) {
+    const baseDetail = note || "Kullanici tarafindan kaydedilmis resim karsilastirma bulgusu.";
+    if (roiSummary === null) {
+      return baseDetail;
+    }
+    return `${baseDetail}\nROI baglami: ${roiSummary}`;
+  }
+
   function getComparisonFindingEvidence(project: LaboratoryRecord) {
     const assets = getProjectAssets(project);
     const assetById = new Map<string, LaboratoryRecord>();
@@ -182,6 +278,8 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
       const snapshotAsset =
         snapshotAssetId === null ? null : assetById.get(snapshotAssetId) || null;
       const note = asNonEmptyString(metadata["note"]);
+      const comparisonContextMetadata = getComparisonContextMetadata(metadata);
+      const roiSummary = asNonEmptyString(comparisonContextMetadata["roiSummary"]);
       const title = note
         ? note.split(/\r?\n/)[0]?.slice(0, 80) || "Karşılaştırma bulgusu"
         : "Karşılaştırma bulgusu";
@@ -193,7 +291,7 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
           artifactIds,
           code: "comparison-finding",
           confidence: "medium",
-          detail: note || "Kullanıcı tarafından kaydedilmiş resim karşılaştırma bulgusu.",
+          detail: buildComparisonFindingDetail(note, roiSummary),
           evidenceCount: artifactIds.length,
           id: findingId,
           kind: "derived",
@@ -215,6 +313,9 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
           previewUrl:
             asNonEmptyString(snapshotAsset["url"]) || asNonEmptyString(snapshotAsset["localPath"]),
           status: "ready",
+          ...(Object.keys(comparisonContextMetadata).length === 0
+            ? {}
+            : { metadata: comparisonContextMetadata }),
         });
       }
       artifacts.push({
@@ -226,6 +327,9 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
         path: asNonEmptyString(asset["localPath"]),
         previewUrl: null,
         status: "ready",
+        ...(Object.keys(comparisonContextMetadata).length === 0
+          ? {}
+          : { metadata: comparisonContextMetadata }),
       });
     });
 

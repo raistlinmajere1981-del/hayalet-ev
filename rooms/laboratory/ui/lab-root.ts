@@ -499,7 +499,7 @@ export function startLaboratoryLabRoot() {
         key: "inspectorPanel",
         preserveScroll: true,
         render() {
-          return "";
+          return surface.inspector ?? "";
         },
       },
       {

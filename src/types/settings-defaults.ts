@@ -5,6 +5,11 @@ import {
   type AppSettings,
 } from "./settings.js";
 import { DEFAULT_APP_LANGUAGE } from "./i18n.js";
+import {
+  DEFAULT_AMBIENT_ACTIVE_WINDOW_MS,
+  DEFAULT_AMBIENT_SILENCE_TIMEOUT_MS,
+  DEFAULT_AMBIENT_WAKE_PHRASES,
+} from "../../shared/capture/ambient-defaults.js";
 import { DEFAULT_CAPTURE_COMMAND_PHRASES } from "../../shared/capture/command-catalog.js";
 
 export const DEFAULT_ASSISTANT_ACCOUNT_ID = "opencode_opencode_at_opencode_com";
@@ -86,6 +91,11 @@ export function createDefaultSettings(): AppSettings {
         openCamera: [...DEFAULT_CAPTURE_COMMAND_PHRASES.openCamera],
         capture: [...DEFAULT_CAPTURE_COMMAND_PHRASES.capture],
         stop: [...DEFAULT_CAPTURE_COMMAND_PHRASES.stop],
+      },
+      ambient: {
+        wakePhrases: [...DEFAULT_AMBIENT_WAKE_PHRASES],
+        activeWindowMs: DEFAULT_AMBIENT_ACTIVE_WINDOW_MS,
+        silenceTimeoutMs: DEFAULT_AMBIENT_SILENCE_TIMEOUT_MS,
       },
     },
     scene: {

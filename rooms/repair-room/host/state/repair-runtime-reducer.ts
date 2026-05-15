@@ -343,6 +343,33 @@ export function reduceRepairRuntimeState(
         ...state,
         layout: { ...state.layout, operatorProfileTabId: action.tabId },
       };
+    case "layout/set-operational-profile":
+      return {
+        ...state,
+        layout: { ...state.layout, operationalProfile: action.profile },
+      };
+    case "layout/set-voice-guidance":
+      return {
+        ...state,
+        layout: {
+          ...state.layout,
+          voiceGuidance: {
+            ...state.layout.voiceGuidance,
+            ...action.voiceGuidance,
+          },
+        },
+      };
+    case "layout/set-attention-budget":
+      return {
+        ...state,
+        layout: {
+          ...state.layout,
+          attentionBudget: {
+            ...state.layout.attentionBudget,
+            ...action.attentionBudget,
+          },
+        },
+      };
     case "ambient/tick":
       return {
         ...state,

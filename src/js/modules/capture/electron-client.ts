@@ -1,11 +1,14 @@
 import type {
   CaptureActionOutcome,
+  CaptureAmbientListenerOptions,
+  CaptureAmbientStatusPayload,
   CaptureAndroidDeviceStatus,
   CaptureAndroidStatus,
   CaptureDictationStatusPayload,
   CaptureHostAction,
   CaptureImportedAsset,
   CaptureMediaIngressPayload,
+  CapturePreviewFramePayload,
   CaptureServiceStatus,
   CaptureTargetActionOptions,
   CaptureTranscriptStatusSnapshot,
@@ -245,7 +248,7 @@ export async function consumeAnalyzeCaptureAssets(): Promise<CaptureImportedAsse
 
 export async function runCaptureAction(
   action: CaptureHostAction,
-  options: CaptureTargetActionOptions = {}
+  options: CaptureTargetActionOptions | CaptureAmbientListenerOptions = {}
 ): Promise<CaptureActionOutcome> {
   const api = getElectronApi();
   switch (action) {
@@ -277,6 +280,20 @@ export async function runCaptureAction(
           : null,
         action
       );
+    case "start-analyze-preview":
+      return normalizeActionOutcome(
+        typeof api?.captureStartAnalyzePreview === "function"
+          ? await api.captureStartAnalyzePreview(options)
+          : null,
+        action
+      );
+    case "stop-analyze-preview":
+      return normalizeActionOutcome(
+        typeof api?.captureStopAnalyzePreview === "function"
+          ? await api.captureStopAnalyzePreview(options)
+          : null,
+        action
+      );
     case "start-analyze-dictation":
       return normalizeActionOutcome(
         typeof api?.captureStartAnalyzeDictation === "function"
@@ -295,6 +312,20 @@ export async function runCaptureAction(
       return normalizeActionOutcome(
         typeof api?.captureCancelAnalyzeDictation === "function"
           ? await api.captureCancelAnalyzeDictation(options)
+          : null,
+        action
+      );
+    case "start-ambient-listener":
+      return normalizeActionOutcome(
+        typeof api?.captureStartAmbientListener === "function"
+          ? await api.captureStartAmbientListener(options)
+          : null,
+        action
+      );
+    case "stop-ambient-listener":
+      return normalizeActionOutcome(
+        typeof api?.captureStopAmbientListener === "function"
+          ? await api.captureStopAmbientListener(options)
           : null,
         action
       );
@@ -379,6 +410,25 @@ export function onCaptureMediaIngress(
   };
 }
 
+export function onCapturePreviewFrame(
+  callback: (payload: CapturePreviewFramePayload) => void
+): () => void {
+  const api = getElectronApi();
+  if (api == null) {
+    return () => {};
+  }
+
+  const { captureOnPreviewFrame, captureOffPreviewFrame } = api;
+  if (typeof captureOnPreviewFrame !== "function" || typeof captureOffPreviewFrame !== "function") {
+    return () => {};
+  }
+
+  captureOnPreviewFrame(callback);
+  return () => {
+    captureOffPreviewFrame(callback);
+  };
+}
+
 export function onCaptureDictationStatus(
   callback: (payload: CaptureDictationStatusPayload) => void
 ): () => void {
@@ -398,5 +448,27 @@ export function onCaptureDictationStatus(
   captureOnDictationStatus(callback);
   return () => {
     captureOffDictationStatus(callback);
+  };
+}
+
+export function onCaptureAmbientStatus(
+  callback: (payload: CaptureAmbientStatusPayload) => void
+): () => void {
+  const api = getElectronApi();
+  if (api == null) {
+    return () => {};
+  }
+
+  const { captureOnAmbientStatus, captureOffAmbientStatus } = api;
+  if (
+    typeof captureOnAmbientStatus !== "function" ||
+    typeof captureOffAmbientStatus !== "function"
+  ) {
+    return () => {};
+  }
+
+  captureOnAmbientStatus(callback);
+  return () => {
+    captureOffAmbientStatus(callback);
   };
 }

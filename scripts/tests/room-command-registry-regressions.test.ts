@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import type { InstalledRoomRecord } from "../../src/types/rooms.ts";
 import { RoomCommandRegistry } from "../../src/js/modules/rooms/room-command-registry.ts";
 
@@ -219,6 +220,16 @@ test("RoomCommandRegistry matches room-local transcript voice commands", () => {
   assert.equal(RoomCommandRegistry.matchVoiceCommand("game-room", "please mark center now"), null);
   assert.equal(RoomCommandRegistry.matchVoiceCommand("game-room", "ai move"), null);
   assert.equal(RoomCommandRegistry.matchVoiceCommand("forge-room", "mark center"), null);
+});
+
+test("Room host capture API exposes target-based ambient listener controls", () => {
+  const hostRuntimeSource = readFileSync("src/js/modules/rooms/room-host-runtime.ts", "utf8");
+
+  assert.match(hostRuntimeSource, /startAmbientListener/);
+  assert.match(hostRuntimeSource, /stopAmbientListener/);
+  assert.match(hostRuntimeSource, /runCaptureAction\("start-ambient-listener"/);
+  assert.match(hostRuntimeSource, /runCaptureAction\("stop-ambient-listener"/);
+  assert.match(hostRuntimeSource, /target: transcriptTarget/);
 });
 
 test("RoomCommandRegistry parses AI args and enforces scope rules", async () => {

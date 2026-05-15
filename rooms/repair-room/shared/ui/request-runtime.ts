@@ -1,5 +1,10 @@
 import { REPAIR_UI_COMMANDS } from "../repair-constants.js";
-import type { RepairImageRect, RepairOverlayEntityRef } from "../types/index.js";
+import type {
+  RepairAmbientListeningState,
+  RepairImageRect,
+  RepairOverlayEntityRef,
+  RepairSpokenGuidanceMode,
+} from "../types/index.js";
 
 type RepairRoomApi = NonNullable<typeof window.roomAPI>;
 
@@ -85,6 +90,19 @@ export function createRepairUiRequestRuntime() {
     },
     updateLayout(payload: Record<string, unknown>) {
       return sendCommand(REPAIR_UI_COMMANDS.updateLayout, payload);
+    },
+    setOperationalProfile(payload: { profile: "novice" | "advanced" }) {
+      return sendCommand(REPAIR_UI_COMMANDS.setOperationalProfile, payload);
+    },
+    setVoiceGuidance(payload: {
+      ambientListeningState?: RepairAmbientListeningState;
+      spokenGuidanceMode?: RepairSpokenGuidanceMode;
+      handsBusyMode?: boolean;
+    }) {
+      return sendCommand(REPAIR_UI_COMMANDS.setVoiceGuidance, payload);
+    },
+    setAttentionBudget(payload: { windowMs?: number; maxAiInterruptions?: number }) {
+      return sendCommand(REPAIR_UI_COMMANDS.setAttentionBudget, payload);
     },
     toggleInvestigationMode(payload: { enabled?: boolean } = {}) {
       return sendCommand(REPAIR_UI_COMMANDS.toggleInvestigationMode, payload);

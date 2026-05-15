@@ -4,6 +4,7 @@ import type { RepairTacticalFeedItem } from "../../shared/ui/state.js";
 import type { RepairUiSnapshotMeta, RepairUiState } from "../../shared/ui/state.js";
 import {
   createRepairReplayProjection,
+  projectRepairTacticalFeedItems,
   projectRepairMeasurementState,
 } from "./repair-replay-projection.js";
 import type { RepairRuntimeState } from "./repair-runtime-state.js";
@@ -15,17 +16,21 @@ export function selectActiveSession(state: RepairRuntimeState): RepairSession | 
   return state.sessions[state.activeSessionId] ?? null;
 }
 
-function selectTacticalFeedProjection(state: RepairRuntimeState): RepairTacticalFeedItem[] {
+function selectTacticalFeedProjection(
+  state: RepairRuntimeState,
+  replay: ReturnType<typeof createRepairReplayProjection>
+): RepairTacticalFeedItem[] {
   const activeSession = selectActiveSession(state);
   if (activeSession === null) return [];
   if (state.workbench.timeline.autoFollowLive === false) {
-    return createRepairReplayProjection(state, activeSession).tacticalFeed;
+    return replay.tacticalFeed;
   }
   const visibleEventIds = new Set(state.tacticalFeed.map((item) => item.eventId));
-  return activeSession.events
+  const feed = activeSession.events
     .filter((event) => visibleEventIds.has(event.id))
     .map((event) => repairEventToTacticalFeedItem(event, activeSession.startedAt))
     .filter((item): item is RepairTacticalFeedItem => item !== null);
+  return projectRepairTacticalFeedItems(feed, replay.guidance);
 }
 
 export function createRepairUiSnapshot(state: RepairRuntimeState): RepairUiState {
@@ -54,7 +59,7 @@ export function createRepairUiSnapshot(state: RepairRuntimeState): RepairUiState
       operationalMode: replay.operationalMode,
       measurementEvidence: replay.measurementEvidence,
     },
-    tacticalFeed: selectTacticalFeedProjection(state),
+    tacticalFeed: selectTacticalFeedProjection(state, replay),
     wizard: state.wizard,
     knowledgePack: state.knowledgePack,
     operatorProfile: {
@@ -65,6 +70,7 @@ export function createRepairUiSnapshot(state: RepairRuntimeState): RepairUiState
     measurement,
     chat: state.chat,
     layout: state.layout,
+    guidance: replay.guidance,
     ambient: {
       nowIso: state.ambientNowIso,
       sessionDurationMs:

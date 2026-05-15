@@ -122,6 +122,16 @@ test("laboratory report composition includes saved image comparison findings", (
         metadata: {
           artifactKind: "comparison-finding-manifest",
           comparisonReferenceAssetId: "asset-b",
+          captureContext: {
+            comparisonRoiActiveSide: "reference",
+            comparisonRois: {
+              activeSide: "reference",
+              primary: { x: 0.1, y: 0.2, width: 0.3, height: 0.4 },
+              reference: { x: 0.2, y: 0.1, width: 0.25, height: 0.35 },
+            },
+            primaryNormalizedRoi: { x: 0.1, y: 0.2, width: 0.3, height: 0.4 },
+            referenceNormalizedRoi: { x: 0.2, y: 0.1, width: 0.25, height: 0.35 },
+          },
           findingId: "finding-1",
           note: "Sol göz çevresinde belirgin fark",
           snapshotAssetId: "snapshot-1",
@@ -142,6 +152,20 @@ test("laboratory report composition includes saved image comparison findings", (
   assert.equal(report["status"], "ready");
   assert.equal(findings.length, 1);
   assert.equal(toRecord(findings[0])["id"], "finding-1");
+  assert.match(
+    String(toRecord(findings[0])["detail"] || ""),
+    /ROI baglami: Primary ROI x=10%, y=20%, w=30%, h=40%; Reference ROI x=20%, y=10%, w=25%, h=35%; active=reference/
+  );
   assert.equal(artifacts.length, 2);
+  assert.deepEqual(toRecord(toRecord(artifacts[0])["metadata"])["comparisonRois"], {
+    activeSide: "reference",
+    primary: { x: 0.1, y: 0.2, width: 0.3, height: 0.4 },
+    reference: { x: 0.2, y: 0.1, width: 0.25, height: 0.35 },
+  });
+  assert.match(
+    String(toRecord(toRecord(artifacts[1])["metadata"])["roiSummary"] || ""),
+    /Primary ROI x=10%/
+  );
   assert.equal(topFindings[0]?.["title"], "Sol göz çevresinde belirgin fark");
+  assert.match(String(topFindings[0]?.["detail"] || ""), /ROI baglami:/);
 });

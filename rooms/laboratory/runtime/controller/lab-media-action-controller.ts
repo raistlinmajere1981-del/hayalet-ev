@@ -5,7 +5,12 @@ import {
   LAB_OPERATION_CAPABILITIES,
   normalizeLabOperationSettings,
 } from "../../models/lab-types.js";
-import type { LabOperationCapabilityId, LabUserActionEvent } from "../../models/lab-types.js";
+import type {
+  LabComparisonRoiState,
+  LabOperationCapabilityId,
+  LabSelectionROI,
+  LabUserActionEvent,
+} from "../../models/lab-types.js";
 import { getTrackedOperationActionId } from "../lab-operation-action-map.js";
 import { getActionOutputs, getCurrentRun, getUserActions } from "../lab-selectors.js";
 import type { createLabStore } from "../lab-store.js";
@@ -35,6 +40,38 @@ function createActionRequestId(action: string) {
 
 function readPayloadNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function serializeSelectionRoi(roi: LabSelectionROI | null | undefined) {
+  if (roi === null || roi === undefined) {
+    return null;
+  }
+  return {
+    height: roi.height,
+    width: roi.width,
+    x: roi.x,
+    y: roi.y,
+  };
+}
+
+function getComparisonRoisOperationPayload(
+  comparisonRois: LabComparisonRoiState
+): Record<string, unknown> {
+  const primary = serializeSelectionRoi(comparisonRois.primary);
+  const reference = serializeSelectionRoi(comparisonRois.reference);
+  if (primary === null && reference === null) {
+    return {};
+  }
+  return {
+    comparisonRoiActiveSide: comparisonRois.activeSide,
+    comparisonRois: {
+      activeSide: comparisonRois.activeSide,
+      primary,
+      reference,
+    },
+    ...(primary === null ? {} : { primaryNormalizedRoi: primary }),
+    ...(reference === null ? {} : { referenceNormalizedRoi: reference }),
+  };
 }
 
 export function createLabMediaActionController(deps: LabMediaActionControllerDeps) {
@@ -188,6 +225,7 @@ export function createLabMediaActionController(deps: LabMediaActionControllerDep
             },
           }
         : {}),
+      ...getComparisonRoisOperationPayload(state.ui.workspace.comparisonRois),
       ...getCurrentRunIntentPayload(state),
     };
   }

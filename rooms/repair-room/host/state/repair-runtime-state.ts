@@ -166,6 +166,16 @@ export function createInitialRepairRuntimeState(nowIso: string): RepairRuntimeSt
     layout: {
       collapsedPanels: createCollapsedPanelMap(),
       pinnedPanels: createPinnedPanelMap(),
+      operationalProfile: "novice",
+      voiceGuidance: {
+        ambientListeningState: "idle",
+        spokenGuidanceMode: "brief",
+        handsBusyMode: false,
+      },
+      attentionBudget: {
+        windowMs: 180000,
+        maxAiInterruptions: 2,
+      },
       operatorProfileTabId: "tools",
       focusMode: false,
       ambientClock: nowIso,

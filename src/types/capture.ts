@@ -99,6 +99,35 @@ export interface CaptureMediaIngressPayload {
   metadata: Record<string, unknown> | null;
 }
 
+interface CapturePreviewPayloadBase {
+  requestId: string;
+  createdAt: string;
+  source: "android-bridge";
+  target: TranscriptTargetId;
+  deviceId: string | null;
+  width: number | null;
+  height: number | null;
+  timestampMs: number | null;
+}
+
+export interface CapturePreviewJpegFramePayload extends CapturePreviewPayloadBase {
+  mimeType: "image/jpeg";
+  contentBase64: string;
+}
+
+export interface CapturePreviewH264ChunkPayload extends CapturePreviewPayloadBase {
+  mimeType: "video/avc";
+  codec: string;
+  chunk: Uint8Array | ArrayBuffer | number[];
+  isKeyFrame: boolean;
+  isConfig: boolean;
+  sequenceNumber: number | null;
+}
+
+export type CapturePreviewFramePayload =
+  | CapturePreviewJpegFramePayload
+  | CapturePreviewH264ChunkPayload;
+
 export interface CaptureDictationStatusPayload {
   requestId: string;
   createdAt: string;
@@ -109,13 +138,44 @@ export interface CaptureDictationStatusPayload {
   message: string;
 }
 
+export type CaptureAmbientStatusState =
+  | "started"
+  | "wake-detected"
+  | "capturing"
+  | "transcribing"
+  | "done"
+  | "stopped"
+  | "failed";
+
+export interface CaptureAmbientStatusPayload {
+  requestId: string;
+  createdAt: string;
+  source: "android-bridge";
+  target: TranscriptTargetId;
+  deviceId: string | null;
+  status: CaptureAmbientStatusState;
+  message: string;
+  transcript?: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
 export type CaptureCompanionCommandKind =
   | "open-camera"
   | "capture-photo"
   | "retake-photo"
   | "close-camera"
   | "start-dictation"
-  | "stop-dictation";
+  | "stop-dictation"
+  | "start-preview-stream"
+  | "stop-preview-stream"
+  | "start-ambient-listener"
+  | "stop-ambient-listener";
+
+export interface CaptureCompanionAmbientProfile {
+  wakePhrases: string[];
+  activeWindowMs: number;
+  silenceTimeoutMs: number;
+}
 
 export interface CaptureCompanionTranscriptModelProfile {
   backend: "whisper.cpp" | "vosk";
@@ -144,12 +204,19 @@ export interface CaptureCompanionCommandEnvelope {
   requestId?: string | null;
   createdAt: number;
   profile: CaptureCompanionCommandProfile | null;
+  ambient?: CaptureCompanionAmbientProfile | null;
 }
 
 export interface CaptureTargetActionOptions {
   target?: TranscriptTargetId | null;
   requestId?: string | null;
   deviceId?: string | null;
+}
+
+export interface CaptureAmbientListenerOptions extends CaptureTargetActionOptions {
+  wakePhrases?: string[] | null;
+  activeWindowMs?: number | null;
+  silenceTimeoutMs?: number | null;
 }
 
 export type CaptureAnalyzeSessionState =
@@ -209,7 +276,11 @@ export type CaptureHostAction =
   | "retake-analyze-photo"
   | "start-analyze-dictation"
   | "stop-analyze-dictation"
-  | "cancel-analyze-dictation";
+  | "cancel-analyze-dictation"
+  | "start-analyze-preview"
+  | "stop-analyze-preview"
+  | "start-ambient-listener"
+  | "stop-ambient-listener";
 
 export interface CaptureActionOutcome {
   action: CaptureHostAction;

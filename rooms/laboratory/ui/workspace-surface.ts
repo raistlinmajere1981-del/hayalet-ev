@@ -76,6 +76,16 @@ type WorkspaceInspectorPanel = {
   markup: string;
 };
 
+type ComparisonFindingListItem = {
+  findingId: string;
+  manifestAssetId: string;
+  note: string | null;
+  roiSummary: string | null;
+  snapshotAssetId: string | null;
+  snapshotLabel: string | null;
+  title: string;
+};
+
 type LabFocusTarget = "preview" | "timeline" | "inspector";
 
 function getLabFocusClassName(state: LabStoreState, target: LabFocusTarget) {
@@ -146,6 +156,89 @@ function getComparisonReferenceAsset(state: LabStoreState): LabAsset | null {
       return asset.id === assetId;
     }) || null
   );
+}
+
+function buildAssetLookup(assets: LabAsset[]) {
+  const lookup = new Map<string, LabAsset>();
+  assets.forEach(function (asset) {
+    lookup.set(asset.id, asset);
+  });
+  return lookup;
+}
+
+function readComparisonRoiSummary(metadata: Record<string, unknown>) {
+  const directSummary = asNonEmptyString(metadata["roiSummary"]);
+  if (directSummary !== null) {
+    return directSummary;
+  }
+  const captureContext = asLabRecord(metadata["captureContext"]);
+  return asNonEmptyString(captureContext["roiSummary"]);
+}
+
+function getComparisonFindingListItems(state: LabStoreState): ComparisonFindingListItem[] {
+  const assetById = buildAssetLookup(state.assets);
+  return state.assets
+    .map(function (asset) {
+      const metadata = asLabRecord(asset.metadata);
+      if (asNonEmptyString(metadata["artifactKind"]) !== "comparison-finding-manifest") {
+        return null;
+      }
+      const findingId = asNonEmptyString(metadata["findingId"]) || asset.id;
+      const note = asNonEmptyString(metadata["note"]);
+      const snapshotAssetId = asNonEmptyString(metadata["snapshotAssetId"]);
+      const snapshotAsset =
+        snapshotAssetId === null ? null : assetById.get(snapshotAssetId) || null;
+      return {
+        findingId,
+        manifestAssetId: asset.id,
+        note,
+        roiSummary: readComparisonRoiSummary(metadata),
+        snapshotAssetId,
+        snapshotLabel: snapshotAsset?.name || snapshotAssetId,
+        title: note ? note.split(/\r?\n/)[0]?.slice(0, 72) || note : asset.name,
+      } satisfies ComparisonFindingListItem;
+    })
+    .filter((entry): entry is ComparisonFindingListItem => entry !== null)
+    .slice(-5)
+    .reverse();
+}
+
+function renderComparisonFindingMiniList(items: ComparisonFindingListItem[], copy: LabI18n) {
+  if (items.length === 0) {
+    return "";
+  }
+  return `
+    <section class="labx-comparison-findings" data-lab-comparison-finding-list="true">
+      <div class="labx-comparison-findings__header">
+        <span>${escapeHtml(copy.t("mediaAnalysis.operations.comparison.savedFindings", "Kayıtlı bulgular"))}</span>
+        <strong>${escapeHtml(String(items.length))}</strong>
+      </div>
+      <div class="labx-comparison-findings__list">
+        ${items
+          .map(function (item) {
+            const detail =
+              item.roiSummary ||
+              item.snapshotLabel ||
+              copy.t("mediaAnalysis.operations.comparison.findingNoRoi", "ROI bağlamı yok");
+            return `
+              <button
+                class="labx-comparison-finding"
+                type="button"
+                data-lab-action="workspace-comparison-finding-focus"
+                data-lab-value="${escapeHtml(item.findingId)}"
+                data-lab-comparison-finding-id="${escapeHtml(item.findingId)}"
+                data-lab-comparison-manifest-id="${escapeHtml(item.manifestAssetId)}"
+                ${item.snapshotAssetId === null ? "" : `data-lab-comparison-snapshot-id="${escapeHtml(item.snapshotAssetId)}"`}
+              >
+                <span class="labx-comparison-finding__title">${escapeHtml(item.title)}</span>
+                <span class="labx-comparison-finding__meta">${escapeHtml(detail)}</span>
+              </button>
+            `;
+          })
+          .join("")}
+      </div>
+    </section>
+  `;
 }
 
 function renderComparisonPreview(input: {
@@ -342,6 +435,7 @@ const ICON_RAIL_SVGS: Record<LabIconRailSlotId, string> = {
   "frame-export": `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>`,
   "clip-export": `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></svg>`,
   "enhanced-frame": `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z"/></svg>`,
+  "image-comparison": `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="7" height="14" rx="1.5"/><rect x="14" y="5" width="7" height="14" rx="1.5"/><path d="M10 12h4"/><path d="m12 10 2 2-2 2"/></svg>`,
   "before-after": `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg>`,
   "audio-extract": `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z"/><path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>`,
   "band-pass": `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>`,
@@ -356,6 +450,7 @@ type IconRailContentContext = {
   audioFocus: LabAudioFocusSettings;
   audioPreviewTarget: "audio" | "video";
   comparison: LabOperationComparisonState | null;
+  comparisonPairActive: boolean;
   effectivePreviewAudioFocus: LabAudioFocusSettings;
   hasAudio: boolean;
   hasVisualControls: boolean;
@@ -381,6 +476,9 @@ function renderIconRail(input: {
       return content.hasVisualControls;
     }
     if (slot.capabilityId === null) {
+      return false;
+    }
+    if (slot.capabilityId === "image-comparison" && content.comparisonPairActive !== true) {
       return false;
     }
     return content.operationCapabilities.some(function (capability) {
@@ -677,6 +775,7 @@ export function renderWorkspaceSurface(
   const hasVisualControls =
     previewReady && (activeMediaKind === "video" || activeMediaKind === "image");
   const operationCapabilities = previewReady ? getAvailableOperationCapabilities(state) : [];
+  const comparisonFindingItems = getComparisonFindingListItems(state);
   const activeOperationCapabilityId = getOperationCapabilityIdForAction(
     timeline.activeExecutionIntent?.actionType
   );
@@ -744,13 +843,16 @@ export function renderWorkspaceSurface(
       ? {
           id: "operations",
           label: copy.t("mediaAnalysis.operations.tab", "Operations"),
-          markup: renderWorkspaceOperationControls(
-            operationCapabilities,
-            activeOperationCapabilityId,
-            copy,
-            operationScope,
-            comparisonState
-          ),
+          markup: [
+            renderComparisonFindingMiniList(comparisonFindingItems, copy),
+            renderWorkspaceOperationControls(
+              operationCapabilities,
+              activeOperationCapabilityId,
+              copy,
+              operationScope,
+              comparisonState
+            ),
+          ].join(""),
         }
       : null,
   ].filter((panel): panel is WorkspaceInspectorPanel => panel !== null);
@@ -833,6 +935,7 @@ export function renderWorkspaceSurface(
           audioFocus,
           audioPreviewTarget: activeMediaKind === "video" ? "video" : "audio",
           comparison: comparisonState,
+          comparisonPairActive: comparisonPreviewActive,
           effectivePreviewAudioFocus,
           hasAudio,
           hasVisualControls,

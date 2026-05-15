@@ -76,6 +76,10 @@ interface RoomHostApi {
       requestId?: string
     ) => Promise<{ requestId: string; outcome: CaptureActionOutcome }>;
     stopDictation: (requestId: string) => Promise<CaptureActionOutcome>;
+    startAmbientListener: (
+      requestId?: string
+    ) => Promise<{ requestId: string; outcome: CaptureActionOutcome }>;
+    stopAmbientListener: (requestId: string) => Promise<CaptureActionOutcome>;
   };
   registerProtocols: (protocols: Record<string, string>) => void;
   notifyRoom: (type: string, payload?: Record<string, unknown>) => void;
@@ -727,6 +731,21 @@ class RoomHostRuntimeClass {
         },
         stopDictation: async (requestId): Promise<CaptureActionOutcome> =>
           await runCaptureAction("stop-analyze-dictation", { target: transcriptTarget, requestId }),
+        startAmbientListener: async (
+          requestId = crypto.randomUUID()
+        ): Promise<{ requestId: string; outcome: CaptureActionOutcome }> => {
+          registration.activeTranscriptRequestIds.add(requestId);
+          const outcome = await runCaptureAction("start-ambient-listener", {
+            target: transcriptTarget,
+            requestId,
+          });
+          if (outcome.ok !== true) {
+            registration.activeTranscriptRequestIds.delete(requestId);
+          }
+          return { requestId, outcome };
+        },
+        stopAmbientListener: async (requestId): Promise<CaptureActionOutcome> =>
+          await runCaptureAction("stop-ambient-listener", { target: transcriptTarget, requestId }),
       },
       registerProtocols: (protocols): void => {
         RoomProtocolRegistry.registerRuntimeProtocols(registration.room.id, protocols);

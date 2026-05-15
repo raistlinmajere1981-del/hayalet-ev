@@ -695,6 +695,7 @@ test("laboratory shell routes host traffic through lab-root orchestration seams"
     labRootSource,
     /runtimeRoot\.innerHTML = renderLabLayout\(state, surface, copy, \{\s*bootOverlayActive: isBootOverlayActive\(state\),\s*\}\);/
   );
+  assert.match(labLayoutSource, /inspectorPanel: ""/);
   assert.match(labRootSource, /renderLabBootOverlay\(copy\)/);
   assert.match(labRootSource, /getLabLayoutKind\(state, \{/);
   assert.match(labRootSource, /currentLayoutKind !== nextLayoutKind/);
@@ -939,7 +940,6 @@ test("laboratory YouTube source panel renders checked stream controls without im
       },
     } as never,
   });
-
   const state = store.getState();
   const panelMarkup = renderLabSourcePanel(state);
   const shellMarkup = renderLabLayout(state, {
@@ -1041,6 +1041,10 @@ test("laboratory shell preserves workspace preview nodes while diffing live pane
   assert.match(
     labRootSource,
     /key: "topBar"[\s\S]*key: "leftRail"[\s\S]*key: "mainStage"[\s\S]*key: "contextPanel"[\s\S]*key: "inspectorPanel"[\s\S]*key: "processStrip"/
+  );
+  assert.match(
+    labRootSource,
+    /key: "inspectorPanel"[\s\S]*render\(\) \{[\s\S]*return surface\.inspector \?\? "";[\s\S]*\}/
   );
   assert.match(labRootSource, /shouldFallback\(regionsFound\)/);
   assert.doesNotMatch(labRootSource, /shouldFallback\(regionsFound\) \|\| !overlayRoot/);
@@ -1806,6 +1810,8 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   assert.match(laboratoryLayoutSource, /data-lab-workspace-inspector="true"/);
   assert.match(workspaceSurfaceSource, /data-lab-action="workspace-controls-drawer-toggle"/);
   assert.match(workspaceSurfaceSource, /data-lab-action="workspace-controls-tab-select"/);
+  assert.doesNotMatch(drawerSource, /renderDrawerWorkspaceControls/);
+  assert.doesNotMatch(drawerSource, /data-lab-drawer-workspace-controls="true"/);
   assert.match(workspaceSurfaceSource, /data-lab-media-workbench="true"/);
   assert.doesNotMatch(laboratoryLayoutSource, /data-preview-mode/);
   assert.doesNotMatch(workspaceSurfaceSource, /data-preview-mode/);

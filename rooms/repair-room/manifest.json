@@ -206,6 +206,24 @@
           "exposure": "internal"
         },
         {
+          "name": "RepairRoomSetOperationalProfile",
+          "description": "Switch Repair Room between novice and advanced operational density profiles.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomSetVoiceGuidance",
+          "description": "Update ambient listening and hands-busy spoken guidance preferences.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomSetAttentionBudget",
+          "description": "Update AI interruption budget limits for calm guidance.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
           "name": "RepairRoomToggleInvestigationMode",
           "description": "Toggle the projection-driven spatial investigation overlay mode.",
           "scope": "room-ui",

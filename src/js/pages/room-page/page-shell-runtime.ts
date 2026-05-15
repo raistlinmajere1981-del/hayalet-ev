@@ -7,7 +7,9 @@ import {
 import { type RoomRuntimeState, updateRoomRuntimeStatus } from "./runtime-events.js";
 
 interface EnsureRoomPageFeatureShellParams {
+  closeLabel: string;
   immersive: boolean;
+  onCloseRoom: () => void;
   onSelectFeature: (featureId: string) => void;
   page: HTMLElement;
   room: InstalledRoomRecord;
@@ -38,13 +40,17 @@ export function shouldShowRoomPageFeatureStripForRoom(
 }
 
 export function ensureRoomPageFeatureShell({
+  closeLabel,
   immersive,
+  onCloseRoom,
   onSelectFeature,
   page,
   room,
 }: EnsureRoomPageFeatureShellParams): void {
   ensureRoomPageShell(page, {
+    closeLabel,
     immersive,
+    onCloseRoom,
     onSelectFeature,
     showFeatureStrip: shouldShowRoomPageFeatureStripForRoom(immersive, room),
   });

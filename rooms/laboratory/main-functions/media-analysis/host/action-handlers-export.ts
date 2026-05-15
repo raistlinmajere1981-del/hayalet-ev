@@ -21,6 +21,21 @@ import {
 import type { LaboratoryRecord } from "./action-handlers-export-utils.js";
 import { createMediaAudioExportActions } from "./action-handlers-export-audio.js";
 
+type LaboratoryComparisonSide = "primary" | "reference";
+
+type LaboratoryNormalizedRoiPayload = {
+  height: number;
+  width: number;
+  x: number;
+  y: number;
+};
+
+type LaboratoryComparisonRoisPayload = {
+  activeSide: LaboratoryComparisonSide;
+  primary: LaboratoryNormalizedRoiPayload | null;
+  reference: LaboratoryNormalizedRoiPayload | null;
+};
+
 type LaboratoryExportActionRuntimeDeps = {
   asNonEmptyString: (value: unknown) => string | null;
   asNumber: (value: unknown) => number | null;
@@ -184,12 +199,8 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     return Number(value.toFixed(4)).toString();
   }
 
-  function buildSquarePadFilter(inputLabel: string, outputLabel: string, size: number): string {
-    return `${inputLabel}scale=${String(size)}:${String(size)}:force_original_aspect_ratio=decrease,pad=${String(size)}:${String(size)}:(ow-iw)/2:(oh-ih)/2,setsar=1${outputLabel}`;
-  }
-
-  function buildNormalizedCropFilter(payload: LaboratoryRecord): string | null {
-    const normalizedRoi = toRecord(payload["normalizedRoi"]);
+  function readNormalizedRoiPayload(value: unknown): LaboratoryNormalizedRoiPayload | null {
+    const normalizedRoi = toRecord(value);
     const x = asNumber(normalizedRoi["x"]);
     const y = asNumber(normalizedRoi["y"]);
     const width = asNumber(normalizedRoi["width"]);
@@ -197,13 +208,102 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     if (x === null || y === null || width === null || height === null) {
       return null;
     }
-    return `crop=iw*${fixedFilterNumber(width)}:ih*${fixedFilterNumber(height)}:iw*${fixedFilterNumber(x)}:ih*${fixedFilterNumber(y)}`;
+    return { height, width, x, y };
+  }
+
+  function normalizeComparisonSide(value: unknown): LaboratoryComparisonSide {
+    return asNonEmptyString(value) === "reference" ? "reference" : "primary";
+  }
+
+  function readComparisonRoisPayload(payload: LaboratoryRecord): LaboratoryComparisonRoisPayload {
+    const comparisonRois = toRecord(payload["comparisonRois"]);
+    const activeSide = normalizeComparisonSide(
+      comparisonRois["activeSide"] || payload["comparisonRoiActiveSide"]
+    );
+    return {
+      activeSide,
+      primary:
+        readNormalizedRoiPayload(comparisonRois["primary"]) ||
+        readNormalizedRoiPayload(payload["primaryNormalizedRoi"]),
+      reference:
+        readNormalizedRoiPayload(comparisonRois["reference"]) ||
+        readNormalizedRoiPayload(payload["referenceNormalizedRoi"]),
+    };
+  }
+
+  function buildComparisonRoisContext(payload: LaboratoryRecord) {
+    const comparisonRois = readComparisonRoisPayload(payload);
+    if (comparisonRois.primary === null && comparisonRois.reference === null) {
+      return null;
+    }
+    return comparisonRois;
+  }
+
+  function formatRoiPercent(value: number) {
+    return `${String(Math.round(value * 100))}%`;
+  }
+
+  function formatComparisonRoiSide(
+    label: string,
+    roi: LaboratoryNormalizedRoiPayload | null
+  ): string | null {
+    if (roi === null) {
+      return null;
+    }
+    return `${label} ROI x=${formatRoiPercent(roi.x)}, y=${formatRoiPercent(roi.y)}, w=${formatRoiPercent(roi.width)}, h=${formatRoiPercent(roi.height)}`;
+  }
+
+  function buildComparisonRoiSummary(comparisonRois: LaboratoryComparisonRoisPayload | null) {
+    if (comparisonRois === null) {
+      return null;
+    }
+    const entries = [
+      formatComparisonRoiSide("Primary", comparisonRois.primary),
+      formatComparisonRoiSide("Reference", comparisonRois.reference),
+    ].filter((entry): entry is string => entry !== null);
+    if (entries.length === 0) {
+      return null;
+    }
+    return `${entries.join("; ")}; active=${comparisonRois.activeSide}`;
+  }
+
+  function buildNormalizedCropFilterFromRoi(
+    normalizedRoi: LaboratoryNormalizedRoiPayload | null
+  ): string | null {
+    if (normalizedRoi === null) {
+      return null;
+    }
+    return `crop=iw*${fixedFilterNumber(normalizedRoi.width)}:ih*${fixedFilterNumber(normalizedRoi.height)}:iw*${fixedFilterNumber(normalizedRoi.x)}:ih*${fixedFilterNumber(normalizedRoi.y)}`;
+  }
+
+  function buildSquarePadFilter(inputLabel: string, outputLabel: string, size: number): string {
+    return `${inputLabel}scale=${String(size)}:${String(size)}:force_original_aspect_ratio=decrease,pad=${String(size)}:${String(size)}:(ow-iw)/2:(oh-ih)/2,setsar=1${outputLabel}`;
+  }
+
+  function buildNormalizedCropFilter(payload: LaboratoryRecord): string | null {
+    return buildNormalizedCropFilterFromRoi(readNormalizedRoiPayload(payload["normalizedRoi"]));
+  }
+
+  function buildComparisonDetailRoiFilters(payload: LaboratoryRecord) {
+    const comparisonRois = readComparisonRoisPayload(payload);
+    const shared = buildNormalizedCropFilter(payload);
+    return {
+      primary: buildNormalizedCropFilterFromRoi(comparisonRois.primary) || shared,
+      reference: buildNormalizedCropFilterFromRoi(comparisonRois.reference) || shared,
+      shared,
+    };
+  }
+
+  function readDetailRoiFilter(value: string | null | undefined) {
+    return typeof value === "string" && value.trim() !== "" ? value : null;
   }
 
   function buildImagePairFilterComplex(options: {
     detailRoiFilter?: string | null;
     layout: string;
     mode: "side-by-side" | "difference" | "split" | "roi-detail";
+    primaryDetailRoiFilter?: string | null;
+    referenceDetailRoiFilter?: string | null;
     size: number;
     splitPercent?: number | null;
     splitMode?: string;
@@ -240,15 +340,16 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         "[left][right]hstack=inputs=2[out]",
       ].join(";");
     }
-    if (
-      options.mode === "roi-detail" &&
-      typeof options.detailRoiFilter === "string" &&
-      options.detailRoiFilter.trim() !== ""
-    ) {
-      const roiFilter = options.detailRoiFilter;
+    const sharedRoiFilter = readDetailRoiFilter(options.detailRoiFilter);
+    const explicitPrimaryRoiFilter = readDetailRoiFilter(options.primaryDetailRoiFilter);
+    const explicitReferenceRoiFilter = readDetailRoiFilter(options.referenceDetailRoiFilter);
+    const primaryRoiFilter =
+      explicitPrimaryRoiFilter || sharedRoiFilter || explicitReferenceRoiFilter;
+    const referenceRoiFilter = explicitReferenceRoiFilter || sharedRoiFilter || primaryRoiFilter;
+    if (options.mode === "roi-detail" && primaryRoiFilter !== null && referenceRoiFilter !== null) {
       return [
-        `[0:v]${roiFilter}[r0src]`,
-        `[1:v]${roiFilter}[r1src]`,
+        `[0:v]${primaryRoiFilter}[r0src]`,
+        `[1:v]${referenceRoiFilter}[r1src]`,
         buildSquarePadFilter("[r0src]", "[p0]", size),
         buildSquarePadFilter("[r1src]", "[p1]", size),
         options.layout === "stacked"
@@ -1070,7 +1171,10 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
       const metricSize = Math.round(readNumberSetting(settings, "metricSize", 512));
       const splitMode = readStringSetting(settings, "splitMode", "primary-left-reference-right");
       const includeRoiDetail = readBooleanSetting(settings, "includeRoiDetail", true);
-      const detailRoiFilter = includeRoiDetail ? buildNormalizedCropFilter(payload) : null;
+      const detailRoiFilters = includeRoiDetail
+        ? buildComparisonDetailRoiFilters(payload)
+        : { primary: null, reference: null, shared: null };
+      const comparisonRois = buildComparisonRoisContext(payload);
       const timestamp = Date.now();
       const createdAssets: LabAsset[] = [];
 
@@ -1118,6 +1222,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
             referenceAssetId: reference.asset.id,
             requestId,
             settingsUsed: settings,
+            ...(comparisonRois === null ? {} : { comparisonRois }),
             toolId: "ffmpeg",
           },
         });
@@ -1151,13 +1256,15 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
             splitMode,
           })
         );
-        if (detailRoiFilter !== null) {
+        if (detailRoiFilters.primary !== null || detailRoiFilters.reference !== null) {
           await renderComparisonImage(
             "roi-detail",
             buildImagePairFilterComplex({
-              detailRoiFilter,
+              detailRoiFilter: detailRoiFilters.shared,
               layout,
               mode: "roi-detail",
+              primaryDetailRoiFilter: detailRoiFilters.primary,
+              referenceDetailRoiFilter: detailRoiFilters.reference,
               size: 720,
             })
           );
@@ -1225,6 +1332,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         referenceAssetId: reference.asset.id,
         referencePath: reference.localPath,
         settingsUsed: settings,
+        ...(comparisonRois === null ? {} : { comparisonRois }),
         metrics: {
           ssimAll,
           psnrAverage,
@@ -1246,6 +1354,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
           operationId: "image-comparison",
           referenceAssetId: reference.asset.id,
           requestId,
+          ...(comparisonRois === null ? {} : { comparisonRois }),
           toolId: "ffmpeg",
         },
       });
@@ -1326,6 +1435,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     referenceAssetId: string;
     settings: LaboratoryRecord;
   }) {
+    const comparisonRois = buildComparisonRoisContext(input.payload);
     return {
       captureMode: asNonEmptyString(input.payload["captureKind"]) || "moment",
       comparisonViewMode:
@@ -1338,6 +1448,14 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         asNumber(input.payload["comparisonSplitPercent"]) ??
         readNumberSetting(input.settings, "splitPercent", 50),
       normalizedRoi: toRecord(input.payload["normalizedRoi"]),
+      ...(comparisonRois === null
+        ? {}
+        : {
+            comparisonRoiActiveSide: comparisonRois.activeSide,
+            comparisonRois,
+            primaryNormalizedRoi: comparisonRois.primary,
+            referenceNormalizedRoi: comparisonRois.reference,
+          }),
       settingsUsed: input.settings,
     };
   }
@@ -1376,7 +1494,9 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     const splitMode = readStringSetting(settings, "splitMode", "primary-left-reference-right");
     const splitPercent = asNumber(payload["comparisonSplitPercent"]) ?? 50;
     const includeRoiDetail = readBooleanSetting(settings, "includeRoiDetail", true);
-    const detailRoiFilter = includeRoiDetail ? buildNormalizedCropFilter(payload) : null;
+    const detailRoiFilters = includeRoiDetail
+      ? buildComparisonDetailRoiFilters(payload)
+      : { primary: null, reference: null, shared: null };
     const outputFileName = `${options.filePrefix}-${options.timestamp}.${format}`;
     const outputPath = `${outputDir}/${outputFileName}`;
     const primaryAssetId = getComparisonPrimaryAssetId(source, payload);
@@ -1402,9 +1522,11 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         reference.localPath,
         "-filter_complex",
         buildImagePairFilterComplex({
-          detailRoiFilter,
+          detailRoiFilter: detailRoiFilters.shared,
           layout,
           mode,
+          primaryDetailRoiFilter: detailRoiFilters.primary,
+          referenceDetailRoiFilter: detailRoiFilters.reference,
           size: 720,
           splitMode,
           splitPercent,
@@ -1582,9 +1704,17 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         referenceAssetId: reference.asset.id,
         settings,
       });
+      const comparisonRois = buildComparisonRoisContext(payload);
+      const roiSummary = buildComparisonRoiSummary(comparisonRois);
       const manifestPayload = {
         artifactKind: "comparison-finding-manifest",
         captureContext,
+        ...(comparisonRois === null
+          ? {}
+          : {
+              comparisonRoiActiveSide: comparisonRois.activeSide,
+              comparisonRois,
+            }),
         createdAt: new Date(timestamp).toISOString(),
         findingId,
         note,
@@ -1592,6 +1722,7 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         primaryAssetId,
         referenceAssetId: reference.asset.id,
         requestId,
+        ...(roiSummary === null ? {} : { roiSummary }),
         snapshotAssetId: snapshotAsset.id,
       };
       await writeLaboratoryTextFile(manifestPath, `${JSON.stringify(manifestPayload, null, 2)}\n`);
@@ -1616,6 +1747,13 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
           primaryAssetId,
           referenceAssetId: reference.asset.id,
           requestId,
+          ...(comparisonRois === null
+            ? {}
+            : {
+                comparisonRoiActiveSide: comparisonRois.activeSide,
+                comparisonRois,
+              }),
+          ...(roiSummary === null ? {} : { roiSummary }),
           settingsUsed: settings,
           snapshotAssetId: snapshotAsset.id,
           toolId: "ffmpeg",
