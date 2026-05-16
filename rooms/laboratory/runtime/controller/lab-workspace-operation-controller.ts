@@ -6,7 +6,13 @@ type LabStoreState = ReturnType<ReturnType<typeof createLabStore>["getState"]>;
 
 type LabWorkspaceOperationControllerDeps = {
   dispatch: ReturnType<typeof createLabStore>["dispatch"];
-  getActiveSelectionOperationPayload: (state?: LabStoreState) => Record<string, unknown>;
+  getActiveSelectionOperationPayload: (
+    state?: LabStoreState,
+    options?: {
+      comparisonRoiTarget?: "active-side" | "primary" | "reference";
+      comparisonTarget?: "active-side" | "primary" | "reference";
+    }
+  ) => Record<string, unknown>;
   getCurrentRunIntentPayload: (state?: LabStoreState) => Record<string, unknown>;
   isWorkspaceMutationLocked: (
     area: "source" | "timeline" | "roi" | "intents" | "hypothesis"
@@ -75,7 +81,7 @@ export function createLabWorkspaceOperationController(deps: LabWorkspaceOperatio
     const state = deps.store.getState();
     deps.startTrackedOperationForUiAction(
       "workspace-image-comparison-export",
-      deps.getActiveSelectionOperationPayload(state)
+      deps.getActiveSelectionOperationPayload(state, { comparisonTarget: "primary" })
     );
   }
 
@@ -87,7 +93,7 @@ export function createLabWorkspaceOperationController(deps: LabWorkspaceOperatio
       operationSettings["image-comparison"]
     );
     return {
-      ...deps.getActiveSelectionOperationPayload(state),
+      ...deps.getActiveSelectionOperationPayload(state, { comparisonTarget: "primary" }),
       captureKind,
       comparisonViewMode: state.ui.workspace.comparisonViewMode,
       comparisonSplitPercent: state.ui.workspace.comparisonSplitPercent,

@@ -54,6 +54,7 @@ import {
 } from "./laboratory-layout.js";
 import type { LabWaveformTimelineModel } from "./lab-waveform-timeline-types.js";
 import {
+  buildPreviewFilterState,
   getEffectiveSourceMode,
   renderPreviewMedia,
   renderViewportStatePanel,
@@ -251,11 +252,19 @@ function renderComparisonPreview(input: {
   primaryUrl: string;
   referenceLabel: string;
   referenceUrl: string;
+  settings: LabInteractiveSettings;
   roiFocusActive: boolean;
   splitPercent: number;
 }) {
   const split = Math.max(5, Math.min(95, Math.round(input.splitPercent)));
   const mode = input.mode === "stacked" ? "stacked" : input.mode === "split" ? "split" : "paired";
+  const { svgFilter, filterCss } = buildPreviewFilterState(input.settings);
+  function getActiveFlag(side: LabComparisonSide) {
+    return input.activeSide === side ? "true" : "false";
+  }
+  function getActiveImageStyle(side: LabComparisonSide) {
+    return input.activeSide === side && filterCss !== "" ? ` style="${filterCss}"` : "";
+  }
   function renderComparisonOverlay(side: LabComparisonSide) {
     return renderWorkspaceROIOverlay(
       {
@@ -283,8 +292,9 @@ function renderComparisonPreview(input: {
         data-lab-selection-roi-stage="true"
         data-lab-selection-roi-controls-reserve="0"
         data-lab-comparison-roi-side="${side}"
+        data-active="${getActiveFlag(side)}"
       >
-        <img class="${imageClassName}" data-lab-preserve-media="workspace-comparison-${side}" src="${escapeHtml(url)}" alt="${escapeHtml(label)}" />
+        <img class="${imageClassName}" data-lab-preserve-media="workspace-comparison-${side}" src="${escapeHtml(url)}" alt="${escapeHtml(label)}"${getActiveImageStyle(side)} />
         ${renderComparisonOverlay(side)}
       </div>
     `;
@@ -299,9 +309,10 @@ function renderComparisonPreview(input: {
           data-lab-selection-roi-stage="true"
           data-lab-selection-roi-controls-reserve="0"
           data-lab-comparison-roi-side="${input.activeSide}"
+          data-active-side="${input.activeSide}"
         >
-          <img class="labx-workspace-comparison__image" data-lab-preserve-media="workspace-comparison-reference" src="${escapeHtml(input.referenceUrl)}" alt="${escapeHtml(input.referenceLabel)}" />
-          <img class="labx-workspace-comparison__image labx-workspace-comparison__image--primary" data-lab-preserve-media="workspace-comparison-primary" src="${escapeHtml(input.primaryUrl)}" alt="${escapeHtml(input.primaryLabel)}" />
+          <img class="labx-workspace-comparison__image" data-lab-preserve-media="workspace-comparison-reference" src="${escapeHtml(input.referenceUrl)}" alt="${escapeHtml(input.referenceLabel)}"${getActiveImageStyle("reference")} />
+          <img class="labx-workspace-comparison__image labx-workspace-comparison__image--primary" data-lab-preserve-media="workspace-comparison-primary" src="${escapeHtml(input.primaryUrl)}" alt="${escapeHtml(input.primaryLabel)}"${getActiveImageStyle("primary")} />
           <span class="labx-workspace-comparison__divider" aria-hidden="true"></span>
           ${renderComparisonOverlay(input.activeSide)}
         </div>
@@ -313,11 +324,11 @@ function renderComparisonPreview(input: {
     `
       : `
     <div class="labx-workspace-comparison" data-mode="${escapeHtml(mode)}">
-      <figure class="labx-workspace-comparison__pane" data-side="primary">
+      <figure class="labx-workspace-comparison__pane" data-side="primary" data-active="${getActiveFlag("primary")}">
         ${renderMediaStage("primary", input.primaryLabel, input.primaryUrl)}
         <figcaption>A ${escapeHtml(input.primaryLabel)}</figcaption>
       </figure>
-      <figure class="labx-workspace-comparison__pane" data-side="reference">
+      <figure class="labx-workspace-comparison__pane" data-side="reference" data-active="${getActiveFlag("reference")}">
         ${renderMediaStage("reference", input.referenceLabel, input.referenceUrl)}
         <figcaption>B ${escapeHtml(input.referenceLabel)}</figcaption>
       </figure>
@@ -334,6 +345,7 @@ function renderComparisonPreview(input: {
     >
       <div class="labx-workspace-preview__inspection-viewport" data-lab-preview-inspection-viewport="true">
         <div class="labx-workspace-preview__inspection-content" data-lab-preview-inspection-content="true">
+          ${svgFilter}
           ${comparisonMarkup}
         </div>
       </div>
@@ -902,6 +914,7 @@ export function renderWorkspaceSurface(
           comparisonReferenceAsset?.name ||
           copy.t("mediaAnalysis.operations.comparison.referenceFallback", "Referans"),
         referenceUrl: comparisonReferencePreviewUrl,
+        settings,
         roiFocusActive,
         splitPercent: state.ui.workspace.comparisonSplitPercent,
       })

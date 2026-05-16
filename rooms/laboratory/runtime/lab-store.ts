@@ -263,7 +263,30 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         activeSide: event.assetId === null ? "primary" : "reference",
         reference: null,
       };
+      if (getWorkspaceSelectionSuggestionSourceKind(state) === "image") {
+        const primaryRoi = state.ui.workspace.comparisonRois.primary;
+        state.ui.workspace.activeSelection =
+          event.assetId === null && primaryRoi !== null
+            ? createImageInspectionSelection(primaryRoi)
+            : null;
+      }
       return state;
+    case "workspace-comparison-side-activated": {
+      const comparisonSide = normalizeComparisonSide(event.side);
+      if (comparisonSide === null) {
+        return state;
+      }
+      state.ui.workspace.comparisonRois = {
+        ...state.ui.workspace.comparisonRois,
+        activeSide: comparisonSide,
+      };
+      if (getWorkspaceSelectionSuggestionSourceKind(state) === "image") {
+        const sideRoi = state.ui.workspace.comparisonRois[comparisonSide];
+        state.ui.workspace.activeSelection =
+          sideRoi === null ? null : createImageInspectionSelection(sideRoi);
+      }
+      return state;
+    }
     case "workspace-comparison-updated":
       state.ui.workspace = {
         ...state.ui.workspace,

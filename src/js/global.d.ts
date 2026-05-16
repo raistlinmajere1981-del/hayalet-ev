@@ -52,7 +52,6 @@ import type {
   CaptureDictationStatusPayload,
   CaptureImportedAsset,
   CaptureMediaIngressPayload,
-  CapturePreviewFramePayload,
   CaptureServiceStatus,
   CaptureTargetActionOptions,
 } from "../types/capture.js";
@@ -1189,8 +1188,6 @@ declare global {
     ) => Promise<CaptureActionOutcome>;
     captureOnMediaIngress?: (callback: (payload: CaptureMediaIngressPayload) => void) => void;
     captureOffMediaIngress?: (callback: (payload: CaptureMediaIngressPayload) => void) => void;
-    captureOnPreviewFrame?: (callback: (payload: CapturePreviewFramePayload) => void) => void;
-    captureOffPreviewFrame?: (callback: (payload: CapturePreviewFramePayload) => void) => void;
     captureOnDictationStatus?: (callback: (payload: CaptureDictationStatusPayload) => void) => void;
     captureOffDictationStatus?: (
       callback: (payload: CaptureDictationStatusPayload) => void

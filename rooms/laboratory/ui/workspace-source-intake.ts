@@ -122,7 +122,7 @@ function buildSvgChannelFilter(settings: LabInteractiveSettings) {
   `;
 }
 
-function buildPreviewFilterState(settings: LabInteractiveSettings) {
+export function buildPreviewFilterState(settings: LabInteractiveSettings) {
   const filterParts: string[] = [];
   if (settings.brightness !== 100) {
     filterParts.push(`brightness(${String(settings.brightness / 100)})`);

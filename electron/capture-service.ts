@@ -35,6 +35,7 @@ import type {
   CaptureAndroidPermissionState,
   CaptureAndroidPermissionStatus,
   CaptureAndroidStatus,
+  CaptureAnalyzePreviewVideoStatus,
   CaptureAnalyzeSessionState,
   CaptureCompanionCommandEnvelope,
   CaptureCompanionCommandKind,
@@ -44,7 +45,6 @@ import type {
   CaptureDictationStatusPayload,
   CaptureImportedAsset,
   CaptureMediaIngressPayload,
-  CapturePreviewFramePayload,
   CaptureServiceStatus,
 } from "../src/types/capture.ts";
 import type {
@@ -59,13 +59,21 @@ const CAPTURE_ANDROID_MAIN_ACTIVITY = "com.hayaletev.androidcompanion/.MainActiv
 const CAPTURE_BRIDGE_PORT = 48_561;
 const CAPTURE_ANALYZE_TARGET = "analyze-compose" satisfies TranscriptTargetId;
 const CAPTURE_MEDIA_INGRESS_CHANNEL = "capture:media-ingress";
-const CAPTURE_PREVIEW_FRAME_CHANNEL = "capture:preview-frame";
 const CAPTURE_DICTATION_STATUS_CHANNEL = "capture:dictation-status";
 const CAPTURE_AMBIENT_STATUS_CHANNEL = "capture:ambient-status";
 const CAPTURE_SESSION_STALE_MS = 20_000;
 const CAPTURE_COMPANION_DIAGNOSTICS_MAX_LOG_ENTRIES = 400;
 const CAPTURE_COMPANION_DIAGNOSTICS_MAX_TEXT_CHARS = 220_000;
 const CAPTURE_ADB_SHUTDOWN_TIMEOUT_MS = 5_000;
+const CAPTURE_SCRCPY_CAMERA_SIZE = "640x480";
+const CAPTURE_SCRCPY_CAMERA_FPS = 30;
+const CAPTURE_SCRCPY_STARTUP_GRACE_MS = 1_200;
+const CAPTURE_SCRCPY_STOP_TIMEOUT_MS = 2_500;
+const CAPTURE_SCRCPY_LOG_LIMIT = 24;
+const CAPTURE_SCRCPY_V4L2_DEFAULT_DEVICE = "/dev/video42";
+const CAPTURE_SCRCPY_V4L2_LABEL = "Hayalet Ev Camera Feed";
+const CAPTURE_SCRCPY_V4L2_BUFFER_MS = 0;
+const CAPTURE_SCRCPY_V4L2_ENV_DEVICE = "HAYALET_SCRCPY_V4L2_DEVICE";
 
 const CAPTURE_VOSK_MODEL_DESCRIPTORS: Record<
   TranscriptSupportedLanguage,
@@ -136,6 +144,16 @@ interface CompanionBridgeSessionRecord {
 
 type PendingBridgeCommand = CaptureCompanionCommandEnvelope;
 let adbServerTouchedByCaptureService = false;
+
+interface ScrcpyCameraFeedSession {
+  process: ReturnType<typeof spawn>;
+  deviceId: string;
+  requestId: string;
+  previewVideo: CaptureAnalyzePreviewVideoStatus;
+  startedAt: number;
+  stopping: boolean;
+  logs: string[];
+}
 
 interface CaptureIngressPaths {
   rootDir: string;
@@ -275,14 +293,6 @@ function normalizeText(value: unknown): string | null {
 
   const normalized = value.trim();
   return normalized === "" ? null : normalized;
-}
-
-function normalizeHeaderText(value: string | string[] | undefined): string | null {
-  if (Array.isArray(value)) {
-    return normalizeText(value[0]);
-  }
-
-  return normalizeText(value);
 }
 
 function normalizeTranscriptTarget(value: unknown): TranscriptTargetId | null {
@@ -568,10 +578,6 @@ function resolveCaptureActionFromCommand(
       return "start-analyze-dictation";
     case "stop-dictation":
       return "stop-analyze-dictation";
-    case "start-preview-stream":
-      return "start-analyze-preview";
-    case "stop-preview-stream":
-      return "stop-analyze-preview";
     case "start-ambient-listener":
       return "start-ambient-listener";
     case "stop-ambient-listener":
@@ -609,6 +615,101 @@ async function fileExists(filePath: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+async function hasReadWriteAccess(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath, fsConstants.R_OK | fsConstants.W_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function parseV4l2DeviceForLabel(output: string, label: string): string | null {
+  const lines = output.split(/\r?\n/);
+  const normalizedLabel = label.toLowerCase();
+  for (let index = 0; index < lines.length; index += 1) {
+    if (lines[index]?.toLowerCase().includes(normalizedLabel) !== true) {
+      continue;
+    }
+
+    for (let deviceIndex = index + 1; deviceIndex < lines.length; deviceIndex += 1) {
+      const line = lines[deviceIndex] ?? "";
+      if (line.trim() === "") {
+        break;
+      }
+
+      const match = line.match(/\/dev\/video\d+/);
+      if (match !== null) {
+        return match[0];
+      }
+    }
+  }
+
+  return null;
+}
+
+function buildScrcpyV4l2SetupHint(): string {
+  return `sudo modprobe v4l2loopback video_nr=42 card_label="${CAPTURE_SCRCPY_V4L2_LABEL}" exclusive_caps=1`;
+}
+
+async function resolveScrcpyV4l2Sink(): Promise<
+  { ok: true; previewVideo: CaptureAnalyzePreviewVideoStatus } | { ok: false; message: string }
+> {
+  if (process.platform !== "linux") {
+    return {
+      ok: false,
+      message: "Embedded Scrcpy camera feed requires Linux v4l2loopback.",
+    };
+  }
+
+  const configuredDevice = normalizeText(process.env[CAPTURE_SCRCPY_V4L2_ENV_DEVICE]);
+  const candidates: string[] = [];
+  if (configuredDevice !== null) {
+    candidates.push(configuredDevice);
+  }
+
+  const v4l2CtlPath = await resolveExecutableOnPath("v4l2-ctl");
+  if (v4l2CtlPath !== null) {
+    const result = await runCommand(v4l2CtlPath, ["--list-devices"], 5_000).catch(() => null);
+    const listedDevice =
+      result !== null && result.exitCode === 0
+        ? parseV4l2DeviceForLabel(result.stdout, CAPTURE_SCRCPY_V4L2_LABEL)
+        : null;
+    if (listedDevice !== null) {
+      candidates.push(listedDevice);
+    }
+  }
+  candidates.push(CAPTURE_SCRCPY_V4L2_DEFAULT_DEVICE);
+
+  const accessibleCandidates = await Promise.all(
+    [...new Set(candidates)].map(async (candidate) => ({
+      candidate,
+      accessible: await hasReadWriteAccess(candidate),
+    }))
+  );
+  const selectedCandidate =
+    accessibleCandidates.find((candidate) => candidate.accessible === true)?.candidate ?? null;
+  if (selectedCandidate !== null) {
+    return {
+      ok: true,
+      previewVideo: {
+        source: "v4l2",
+        devicePath: selectedCandidate,
+        label: CAPTURE_SCRCPY_V4L2_LABEL,
+        width: 640,
+        height: 480,
+        fps: CAPTURE_SCRCPY_CAMERA_FPS,
+      },
+    };
+  }
+
+  const expectedDevice = configuredDevice ?? CAPTURE_SCRCPY_V4L2_DEFAULT_DEVICE;
+  return {
+    ok: false,
+    message: `Scrcpy v4l2 camera device is not ready at ${expectedDevice}. Run: ${buildScrcpyV4l2SetupHint()}`,
+  };
 }
 
 function sha1Hex(buffer: Buffer): string {
@@ -942,7 +1043,8 @@ function createDefaultAnalyzeState(): CaptureServiceStatus["analyze"] {
     state: "idle",
     target: CAPTURE_ANALYZE_TARGET,
     deviceId: null,
-    previewMode: "phone-screen",
+    previewMode: "scrcpy-camera",
+    previewVideo: null,
     pendingCommand: null,
     pendingInboxCount: 0,
     lastCaptureAt: null,
@@ -1550,6 +1652,7 @@ class CaptureService {
   private readonly bridgeSessions = new Map<string, CompanionBridgeSessionRecord>();
   private readonly pendingCommands = new Map<string, PendingBridgeCommand[]>();
   private readonly activeAnalyzeMediaRequestIds = new Set<string>();
+  private scrcpyCameraFeed: ScrcpyCameraFeedSession | null = null;
   private analyzeState = createDefaultAnalyzeState();
   private operationState = createDefaultOperationState();
 
@@ -1558,6 +1661,7 @@ class CaptureService {
   }
 
   async shutdown(): Promise<void> {
+    await this.stopScrcpyCameraFeed();
     await this.closeBridgeServer();
     this.bridgeSessions.clear();
     this.pendingCommands.clear();
@@ -1613,6 +1717,7 @@ class CaptureService {
     this.analyzeState = {
       ...this.analyzeState,
       deviceId: android.selectedDeviceId,
+      previewVideo: this.scrcpyCameraFeed?.previewVideo ?? null,
       pendingInboxCount: ingress.pendingInboxCount,
       latestAsset: ingress.latestStagedAsset ?? this.analyzeState.latestAsset,
       message: this.resolveAnalyzeMessage(activeSession, ingress.pendingInboxCount),
@@ -1914,51 +2019,294 @@ class CaptureService {
   }
 
   async startAnalyzePreviewStream(
-    options: { target?: TranscriptTargetId | null; requestId?: string | null } = {}
+    options: {
+      target?: TranscriptTargetId | null;
+      requestId?: string | null;
+      deviceId?: string | null;
+    } = {}
   ): Promise<CaptureActionOutcome> {
     const target = options.target ?? CAPTURE_ANALYZE_TARGET;
-    const requestId = normalizeText(options.requestId) ?? randomUUID();
-    const launchOutcome = await this.launchCompanion({ target });
-    if (launchOutcome.ok !== true) {
-      return launchOutcome;
+    if (target !== CAPTURE_ANALYZE_TARGET) {
+      return await this.buildActionOutcome(
+        "start-analyze-preview",
+        false,
+        "Scrcpy camera feed is only available for Analyze."
+      );
     }
 
-    return await this.enqueueAnalyzeCommand(
-      "start-preview-stream",
-      "Android live camera preview was started.",
-      {
-        target,
-        requestId,
-        replaceExistingKinds: ["start-preview-stream", "stop-preview-stream"],
-      }
-    );
+    const requestId = normalizeText(options.requestId) ?? randomUUID();
+    const settings = await loadSettings();
+    const captureSettings = resolveCaptureSettings(settings);
+    if (captureSettings.androidCompanionEnabled !== true) {
+      return await this.buildActionOutcome(
+        "start-analyze-preview",
+        false,
+        "Android capture is disabled in Settings > Capture."
+      );
+    }
+
+    const status = await this.refreshStatus();
+    const deviceId = options.deviceId ?? status.android.selectedDeviceId;
+    if (deviceId === null) {
+      return await this.buildActionOutcome(
+        "start-analyze-preview",
+        false,
+        status.android.message ?? "No ready Android device is available."
+      );
+    }
+
+    const scrcpyPath = await resolveExecutableOnPath("scrcpy");
+    if (scrcpyPath === null) {
+      return await this.buildActionOutcome(
+        "start-analyze-preview",
+        false,
+        "scrcpy is not available on PATH."
+      );
+    }
+
+    const activeFeed = this.scrcpyCameraFeed;
+    if (activeFeed !== null && activeFeed.deviceId === deviceId) {
+      this.analyzeState = {
+        ...this.analyzeState,
+        state: "ready",
+        deviceId,
+        previewVideo: activeFeed.previewVideo,
+        pendingCommand: null,
+        message: "Scrcpy camera feed is already active.",
+      };
+      return await this.buildActionOutcome(
+        "start-analyze-preview",
+        true,
+        "Scrcpy camera feed is already active."
+      );
+    }
+
+    const launchOutcome = await this.launchCompanion({ target });
+    if (launchOutcome.ok !== true) {
+      return await this.buildActionOutcome("start-analyze-preview", false, launchOutcome.message);
+    }
+
+    const started = await this.startScrcpyCameraFeed({
+      scrcpyPath,
+      deviceId,
+      requestId,
+      cameraFacing: captureSettings.defaultLens,
+    });
+    if (started.ok !== true) {
+      return await this.buildActionOutcome("start-analyze-preview", false, started.message);
+    }
+
+    this.analyzeState = {
+      ...this.analyzeState,
+      state: "ready",
+      target,
+      deviceId,
+      previewVideo: started.previewVideo,
+      pendingCommand: null,
+      message: started.message,
+    };
+    this.lastStatus = null;
+    return await this.buildActionOutcome("start-analyze-preview", true, started.message);
   }
 
   async stopAnalyzePreviewStream(
     options: { target?: TranscriptTargetId | null; requestId?: string | null } = {}
   ): Promise<CaptureActionOutcome> {
-    const target = options.target ?? CAPTURE_ANALYZE_TARGET;
-    const requestId = normalizeText(options.requestId) ?? randomUUID();
-    const status = await this.refreshStatus();
-    const deviceId = this.resolveAnalyzeCommandDeviceId(status, false);
-    if (deviceId === null) {
+    void options;
+    const stopped = await this.stopScrcpyCameraFeed();
+    this.analyzeState = {
+      ...this.analyzeState,
+      state: "idle",
+      previewVideo: null,
+      pendingCommand: null,
+      message: stopped
+        ? "Scrcpy camera feed was stopped."
+        : "Scrcpy camera feed is already stopped.",
+    };
+    this.lastStatus = null;
+    if (stopped !== true) {
       return await this.buildPassiveActionOutcome(
         "stop-analyze-preview",
         true,
-        "Android live camera preview is already stopped."
+        "Scrcpy camera feed is already stopped."
       );
     }
 
-    return await this.enqueueAnalyzeCommand(
-      "stop-preview-stream",
-      "Android live camera preview was stopped.",
-      {
-        target,
-        requestId,
-        deviceId,
-        replaceExistingKinds: ["stop-preview-stream"],
-      }
+    return await this.buildActionOutcome(
+      "stop-analyze-preview",
+      true,
+      "Scrcpy camera feed was stopped."
     );
+  }
+
+  private async startScrcpyCameraFeed(options: {
+    scrcpyPath: string;
+    deviceId: string;
+    requestId: string;
+    cameraFacing: "back" | "front";
+  }): Promise<
+    | { ok: true; message: string; previewVideo: CaptureAnalyzePreviewVideoStatus }
+    | { ok: false; message: string }
+  > {
+    await this.stopScrcpyCameraFeed();
+    const sink = await resolveScrcpyV4l2Sink();
+    if (sink.ok !== true) {
+      return sink;
+    }
+
+    const args = [
+      "--serial",
+      options.deviceId,
+      "--video-source=camera",
+      `--camera-facing=${options.cameraFacing}`,
+      `--camera-size=${CAPTURE_SCRCPY_CAMERA_SIZE}`,
+      `--camera-fps=${String(CAPTURE_SCRCPY_CAMERA_FPS)}`,
+      "--no-audio",
+      "--no-window",
+      `--v4l2-sink=${sink.previewVideo.devicePath}`,
+      `--v4l2-buffer=${String(CAPTURE_SCRCPY_V4L2_BUFFER_MS)}`,
+    ];
+    const child = spawn(options.scrcpyPath, args, {
+      stdio: ["ignore", "pipe", "pipe"],
+      env: process.env,
+      cwd: getCaptureProjectRoot(),
+    });
+    const session: ScrcpyCameraFeedSession = {
+      process: child,
+      deviceId: options.deviceId,
+      requestId: options.requestId,
+      previewVideo: sink.previewVideo,
+      startedAt: Date.now(),
+      stopping: false,
+      logs: [],
+    };
+    this.scrcpyCameraFeed = session;
+    const appendOutput = (chunk: Buffer | string): void => {
+      const lines = normalizeCommandChunk(chunk)
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line !== "");
+      session.logs.push(...lines);
+      if (session.logs.length > CAPTURE_SCRCPY_LOG_LIMIT) {
+        session.logs.splice(0, session.logs.length - CAPTURE_SCRCPY_LOG_LIMIT);
+      }
+    };
+    child.stdout.on("data", appendOutput);
+    child.stderr.on("data", appendOutput);
+    child.once("close", (exitCode, signal) => {
+      if (this.scrcpyCameraFeed !== session) {
+        return;
+      }
+
+      this.scrcpyCameraFeed = null;
+      this.analyzeState = {
+        ...this.analyzeState,
+        state: "idle",
+        previewVideo: null,
+        pendingCommand: null,
+        message:
+          session.stopping === true
+            ? "Scrcpy camera feed was stopped."
+            : `Scrcpy camera feed exited (${exitCode ?? signal ?? "unknown"}).`,
+      };
+      this.lastStatus = null;
+      if (session.stopping !== true) {
+        this.setOperationState({
+          state: "error",
+          action: "start-analyze-preview",
+          message: this.summarizeScrcpyCameraFailure(session),
+          progress: null,
+          details: session.logs,
+        });
+      }
+    });
+
+    return await new Promise((resolve) => {
+      let settled = false;
+      const settle = (
+        result:
+          | { ok: true; message: string; previewVideo: CaptureAnalyzePreviewVideoStatus }
+          | { ok: false; message: string }
+      ): void => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        resolve(result);
+      };
+      const startupTimer = globalThis.setTimeout(() => {
+        settle({
+          ok: true,
+          message: "Scrcpy camera feed was started in the Analyze panel.",
+          previewVideo: sink.previewVideo,
+        });
+      }, CAPTURE_SCRCPY_STARTUP_GRACE_MS);
+      child.once("error", (error) => {
+        globalThis.clearTimeout(startupTimer);
+        if (this.scrcpyCameraFeed === session) {
+          this.scrcpyCameraFeed = null;
+        }
+        settle({
+          ok: false,
+          message: error.message,
+        });
+      });
+      child.once("close", () => {
+        globalThis.clearTimeout(startupTimer);
+        if (settled) {
+          return;
+        }
+
+        if (this.scrcpyCameraFeed === session) {
+          this.scrcpyCameraFeed = null;
+        }
+        settle({
+          ok: false,
+          message: this.summarizeScrcpyCameraFailure(session),
+        });
+      });
+    });
+  }
+
+  private async stopScrcpyCameraFeed(): Promise<boolean> {
+    const session = this.scrcpyCameraFeed;
+    if (session === null) {
+      return false;
+    }
+
+    session.stopping = true;
+    const child = session.process;
+    if (child.exitCode !== null || child.signalCode !== null) {
+      this.scrcpyCameraFeed = null;
+      return true;
+    }
+
+    await new Promise<void>((resolve) => {
+      const timeoutId = globalThis.setTimeout(() => {
+        child.kill("SIGKILL");
+        resolve();
+      }, CAPTURE_SCRCPY_STOP_TIMEOUT_MS);
+      child.once("close", () => {
+        globalThis.clearTimeout(timeoutId);
+        resolve();
+      });
+      child.kill("SIGTERM");
+    });
+    if (this.scrcpyCameraFeed === session) {
+      this.scrcpyCameraFeed = null;
+    }
+    return true;
+  }
+
+  private summarizeScrcpyCameraFailure(session: ScrcpyCameraFeedSession): string {
+    const latestErrorLog =
+      [...session.logs]
+        .reverse()
+        .find((entry) => /\b(error|cannot|failed|denied|busy)\b/i.test(entry)) ?? null;
+    const latestLog =
+      latestErrorLog ?? [...session.logs].reverse().find((entry) => normalizeText(entry) !== null);
+    return latestLog ?? "scrcpy camera feed failed.";
   }
 
   async requestAnalyzeDictation(
@@ -2164,6 +2512,9 @@ class CaptureService {
   ): Promise<CaptureActionOutcome> {
     const target = options.target ?? CAPTURE_ANALYZE_TARGET;
     const requestId = normalizeText(options.requestId);
+    if (target === CAPTURE_ANALYZE_TARGET) {
+      await this.stopScrcpyCameraFeed();
+    }
     const status = await this.refreshStatus();
     const deviceId = this.resolveAnalyzeCommandDeviceId(status, false);
     if (deviceId === null) {
@@ -2208,15 +2559,18 @@ class CaptureService {
     const target = options.target ?? CAPTURE_ANALYZE_TARGET;
     const requestId = normalizeText(options.requestId);
     const status = await this.refreshStatus();
+    const commandDeviceId = this.resolveAnalyzeCommandDeviceId(status, false);
+    const hasAnalyzeCaptureSession =
+      target !== CAPTURE_ANALYZE_TARGET || this.getAnalyzeBridgeSession(commandDeviceId) !== null;
     const readyState =
       target !== CAPTURE_ANALYZE_TARGET ||
-      this.analyzeState.state === "ready" ||
-      this.analyzeState.state === "result-ready";
+      (hasAnalyzeCaptureSession === true &&
+        (this.analyzeState.state === "ready" || this.analyzeState.state === "result-ready"));
     if (readyState !== true) {
       return await this.buildActionOutcome(
         kind === "capture-photo" ? "capture-analyze-photo" : "retake-analyze-photo",
         false,
-        "Wait for the phone preview to become ready before sending capture commands."
+        "Open the Android companion capture session before taking a still photo."
       );
     }
 
@@ -2226,7 +2580,10 @@ class CaptureService {
       {
         target,
         requestId,
-        deviceId: this.resolveAnalyzeCommandDeviceId(status, target === CAPTURE_ANALYZE_TARGET),
+        deviceId:
+          target === CAPTURE_ANALYZE_TARGET
+            ? commandDeviceId
+            : this.resolveAnalyzeCommandDeviceId(status, false),
         requireSession: target === CAPTURE_ANALYZE_TARGET,
       }
     );
@@ -2346,6 +2703,9 @@ class CaptureService {
     activeSession: CompanionBridgeSessionRecord | null,
     pendingInboxCount: number
   ): string {
+    if (this.scrcpyCameraFeed !== null) {
+      return "Scrcpy camera feed is active in the Analyze panel.";
+    }
     if (pendingInboxCount > 0) {
       return `${String(pendingInboxCount)} phone capture(s) are waiting in the Analyze inbox.`;
     }
@@ -2369,6 +2729,9 @@ class CaptureService {
     activeSession: CompanionBridgeSessionRecord | null,
     pendingInboxCount: number
   ): CaptureAnalyzeSessionState {
+    if (this.scrcpyCameraFeed !== null) {
+      return "ready";
+    }
     if (pendingInboxCount > 0) {
       return "result-ready";
     }
@@ -2566,15 +2929,11 @@ class CaptureService {
             ? "The phone is capturing a photo."
             : commandKind === "close-camera"
               ? "The phone capture session is idle."
-              : commandKind === "start-preview-stream"
-                ? "The phone live preview is active."
-                : commandKind === "stop-preview-stream"
-                  ? "The phone live preview is stopped."
-                  : commandKind === "start-dictation"
-                    ? "Android dictation is recording on the phone."
-                    : commandKind === "stop-dictation"
-                      ? "Android dictation is transcribing on the phone."
-                      : "The phone acknowledged the latest command.";
+              : commandKind === "start-dictation"
+                ? "Android dictation is recording on the phone."
+                : commandKind === "stop-dictation"
+                  ? "Android dictation is transcribing on the phone."
+                  : "The phone acknowledged the latest command.";
         const message = normalizeText(body["message"]) ?? fallbackMessage;
         if (
           requestId !== null &&
@@ -2657,17 +3016,13 @@ class CaptureService {
                     : "capture-requested"
                   : commandKind === "close-camera"
                     ? "idle"
-                    : commandKind === "start-preview-stream"
-                      ? "ready"
-                      : commandKind === "stop-preview-stream"
-                        ? this.analyzeState.state
-                        : commandKind === "start-dictation" || commandKind === "stop-dictation"
-                          ? this.analyzeState.state === "idle"
-                            ? "pending-launch"
-                            : this.analyzeState.state
-                          : previewActive === true
-                            ? "ready"
-                            : "pending-launch",
+                    : commandKind === "start-dictation" || commandKind === "stop-dictation"
+                      ? this.analyzeState.state === "idle"
+                        ? "pending-launch"
+                        : this.analyzeState.state
+                      : previewActive === true
+                        ? "ready"
+                        : "pending-launch",
             pendingCommand:
               statusText === "failed" || statusText === "done"
                 ? null
@@ -2764,76 +3119,6 @@ class CaptureService {
           message: normalizeText(body["message"]) ?? `Ambient listener status: ${status}`,
           transcript: normalizeText(body["transcript"]),
           metadata: this.normalizeMetadata(body["metadata"]),
-        });
-        this.sendJson(response, 200, { ok: true });
-        return;
-      }
-
-      if (method === "POST" && requestUrl.pathname === "/api/v1/preview/analyze") {
-        const body = await this.readJsonBody(request);
-        const requestId = normalizeText(body["requestId"]);
-        const target = normalizeTranscriptTarget(body["target"]);
-        const contentBase64 = normalizeText(body["contentBase64"]);
-        if (requestId === null || target === null || contentBase64 === null) {
-          this.sendJson(response, 400, {
-            ok: false,
-            error: "requestId, target, and contentBase64 are required.",
-          });
-          return;
-        }
-
-        const width = Number(body["width"]);
-        const height = Number(body["height"]);
-        const timestampMs = Number(body["timestampMs"]);
-        this.emitCapturePreviewFrame({
-          requestId,
-          createdAt: new Date().toISOString(),
-          source: "android-bridge",
-          target,
-          deviceId: normalizeText(body["deviceId"]),
-          mimeType: "image/jpeg",
-          contentBase64,
-          width: Number.isFinite(width) && width > 0 ? width : null,
-          height: Number.isFinite(height) && height > 0 ? height : null,
-          timestampMs: Number.isFinite(timestampMs) && timestampMs > 0 ? timestampMs : null,
-        });
-        this.sendJson(response, 200, { ok: true });
-        return;
-      }
-
-      if (method === "POST" && requestUrl.pathname === "/api/v1/preview/analyze/h264") {
-        const requestId = normalizeHeaderText(request.headers["x-hev-request-id"]);
-        const target = normalizeTranscriptTarget(
-          normalizeHeaderText(request.headers["x-hev-target"])
-        );
-        const chunk = await this.readBinaryBody(request);
-        if (requestId === null || target === null || chunk.length === 0) {
-          this.sendJson(response, 400, {
-            ok: false,
-            error: "request id, target, and H.264 content are required.",
-          });
-          return;
-        }
-
-        const width = Number(normalizeHeaderText(request.headers["x-hev-width"]));
-        const height = Number(normalizeHeaderText(request.headers["x-hev-height"]));
-        const timestampMs = Number(normalizeHeaderText(request.headers["x-hev-timestamp-ms"]));
-        const sequenceNumber = Number(normalizeHeaderText(request.headers["x-hev-sequence"]));
-        this.emitCapturePreviewFrame({
-          requestId,
-          createdAt: new Date().toISOString(),
-          source: "android-bridge",
-          target,
-          deviceId: normalizeHeaderText(request.headers["x-hev-device-id"]),
-          mimeType: "video/avc",
-          codec: normalizeHeaderText(request.headers["x-hev-codec"]) ?? "avc1.42E01E",
-          chunk,
-          width: Number.isFinite(width) && width > 0 ? width : null,
-          height: Number.isFinite(height) && height > 0 ? height : null,
-          timestampMs: Number.isFinite(timestampMs) && timestampMs > 0 ? timestampMs : null,
-          isKeyFrame: normalizeHeaderText(request.headers["x-hev-key-frame"]) === "1",
-          isConfig: normalizeHeaderText(request.headers["x-hev-config"]) === "1",
-          sequenceNumber: Number.isFinite(sequenceNumber) ? sequenceNumber : null,
         });
         this.sendJson(response, 200, { ok: true });
         return;
@@ -3011,16 +3296,6 @@ class CaptureService {
     }
   }
 
-  private emitCapturePreviewFrame(payload: CapturePreviewFramePayload): void {
-    for (const window of BrowserWindow.getAllWindows()) {
-      try {
-        window.webContents.send(CAPTURE_PREVIEW_FRAME_CHANNEL, payload);
-      } catch {
-        // NOTE: Preview frames are best-effort and should not block Android bridge uploads.
-      }
-    }
-  }
-
   private emitCaptureDictationStatus(payload: CaptureDictationStatusPayload): void {
     for (const window of BrowserWindow.getAllWindows()) {
       try {
@@ -3053,15 +3328,6 @@ class CaptureService {
     }
 
     return JSON.parse(Buffer.concat(chunks).toString("utf8")) as Record<string, unknown>;
-  }
-
-  private async readBinaryBody(request: IncomingMessage): Promise<Buffer> {
-    const chunks: Buffer[] = [];
-    for await (const chunk of request as AsyncIterable<Buffer | string>) {
-      chunks.push(typeof chunk === "string" ? Buffer.from(chunk, "binary") : chunk);
-    }
-
-    return Buffer.concat(chunks);
   }
 
   private normalizePermissions(value: unknown): CaptureAndroidPermissionStatus {
@@ -3099,7 +3365,7 @@ class CaptureService {
         adbPath: null,
         selectedDeviceId: null,
         companionPackage: artifact.applicationId,
-        previewMode: "phone-screen",
+        previewMode: "scrcpy-camera",
         reverseState: "not-configured",
         pairingHint: "Install Android platform-tools so Hayalet Ev can manage the companion app.",
         message: buildHostMessage("missing-adb"),
@@ -3119,7 +3385,7 @@ class CaptureService {
         adbPath,
         selectedDeviceId: null,
         companionPackage: artifact.applicationId,
-        previewMode: "phone-screen",
+        previewMode: "scrcpy-camera",
         reverseState: "error",
         pairingHint: null,
         message:
@@ -3178,7 +3444,7 @@ class CaptureService {
       adbPath,
       selectedDeviceId: selectedDevice?.deviceId ?? null,
       companionPackage: artifact.applicationId,
-      previewMode: "phone-screen",
+      previewMode: "scrcpy-camera",
       reverseState,
       pairingHint: this.buildPairingHint(hostState, artifact.bridgePort),
       message: buildHostMessage(hostState),
@@ -3196,7 +3462,7 @@ class CaptureService {
       case "no-devices":
         return "Connect a phone with USB debugging or attach it with `adb connect <host>:<port>`.";
       case "ready":
-        return "Use the phone companion to capture and add images to Analyze.";
+        return "Use Scrcpy Camera for live feed, or the phone companion for still captures.";
       case "multiple-devices":
         return "Pick the active phone in Settings > Capture. Extra phones stay visible for diagnostics.";
       case "unauthorized":
@@ -3208,7 +3474,7 @@ class CaptureService {
       case "package-query-failed":
         return "Reinstall or reopen the companion app so package inspection and permissions can refresh.";
       case "error":
-        return "Use the phone companion to capture and add images to Analyze.";
+        return "Use Scrcpy Camera for live feed, or the phone companion for still captures.";
       default:
         return null;
     }
@@ -3493,23 +3759,17 @@ class CaptureService {
         state:
           kind === "open-camera"
             ? "pending-launch"
-            : kind === "start-preview-stream"
-              ? "pending-launch"
-              : kind === "close-camera"
-                ? "idle"
-                : kind === "start-dictation" ||
-                    kind === "stop-dictation" ||
-                    kind === "stop-preview-stream" ||
-                    kind === "start-ambient-listener" ||
-                    kind === "stop-ambient-listener"
-                  ? this.analyzeState.state
-                  : "capture-requested",
+            : kind === "close-camera"
+              ? "idle"
+              : kind === "start-dictation" ||
+                  kind === "stop-dictation" ||
+                  kind === "start-ambient-listener" ||
+                  kind === "stop-ambient-listener"
+                ? this.analyzeState.state
+                : "capture-requested",
         deviceId,
         pendingCommand:
-          kind === "close-camera" ||
-          kind === "stop-dictation" ||
-          kind === "stop-preview-stream" ||
-          kind === "stop-ambient-listener"
+          kind === "close-camera" || kind === "stop-dictation" || kind === "stop-ambient-listener"
             ? null
             : kind,
         message: successMessage,

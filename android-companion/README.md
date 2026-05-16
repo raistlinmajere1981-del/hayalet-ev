@@ -22,12 +22,13 @@ Build contract:
 - root `npm run android:install -- <deviceId>` installs or updates the companion through ADB
 - root `npm run android:open -- <deviceId>` launches the companion activity through ADB
 - successful builds publish artifacts into `dist/android-companion/`
-- debug APKs ship the Vosk Android runtime and bundled Turkish small model
+- debug APKs ship the Vosk Android runtime, openWakeWord, and bundled wake/transcript models
 
 Current status:
 
 - the app owns the phone-side camera preview
 - the app polls the desktop bridge over `adb reverse`
+- ambient mode detects wake locally with openWakeWord, then transcribes the command window with Vosk
 - the app records Analyze dictation on the phone microphone and transcribes it offline with Vosk
 - the app can acknowledge capture commands and upload Analyze photos
 - desktop install/update comparisons read the shared `companion-manifest.json`

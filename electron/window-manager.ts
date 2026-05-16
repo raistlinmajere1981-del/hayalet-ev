@@ -167,6 +167,18 @@ function applyPreferredLanguageHeader(targetSession: Electron.Session): void {
   });
 }
 
+function allowLocalVideoCapture(targetSession: Electron.Session): void {
+  targetSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
+    if (permission !== "media") {
+      callback(false);
+      return;
+    }
+
+    const mediaTypes = (details as { mediaTypes?: string[] }).mediaTypes ?? [];
+    callback(mediaTypes.some((mediaType) => mediaType === "audio" || mediaType === "video"));
+  });
+}
+
 function restoreWindowedBounds(win: BrowserWindow): void {
   if (SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE) {
     win.setResizable(true);
@@ -407,6 +419,8 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
       navigationTheme: "dark",
     } as ExtendedWebPreferences,
   });
+
+  allowLocalVideoCapture(session.defaultSession);
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     const cspDev = [

@@ -1363,6 +1363,18 @@ test("selection roi binder tags comparison side roi updates from the active imag
     preventDefault() {},
     target: new FakeRoiDrawTarget(referenceStage) as unknown as EventTarget,
   } as Event);
+  mouseUpListener?.({} as Event);
+
+  assert.equal(store.getState().ui.workspace.comparisonRois.activeSide, "reference");
+  assert.equal(store.getState().ui.workspace.activeSelection, null);
+
+  mouseDownListener?.({
+    button: 0,
+    clientX: 30,
+    clientY: 20,
+    preventDefault() {},
+    target: new FakeRoiDrawTarget(referenceStage) as unknown as EventTarget,
+  } as Event);
   mouseMoveListener?.({
     clientX: 120,
     clientY: 70,

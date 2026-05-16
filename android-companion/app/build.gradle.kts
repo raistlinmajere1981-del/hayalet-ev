@@ -65,4 +65,5 @@ dependencies {
   implementation("androidx.camera:camera-view:1.6.1")
   implementation("com.squareup.okhttp3:okhttp:5.3.2")
   implementation("com.alphacephei:vosk-android:0.3.75")
+  implementation("xyz.rementia:openwakeword:0.1.5")
 }

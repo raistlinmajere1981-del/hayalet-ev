@@ -103,12 +103,12 @@
         },
         "captureSessionLatestEmpty": "Henüz hazır edilmiş telefon çekimi yok.",
         "captureSessionDisabled": "Android companion capture, Ayarlar > Capture altında kapalı.",
-        "captureImportButton": "Android Kamera Yönetimi",
+        "captureImportButton": "Scrcpy Kamera",
         "cameraPanel": {
-          "closed": "Canlı kamera paneli kapalı.",
-          "opening": "Android kamera paneli açılıyor.",
-          "waiting": "Canlı kamera bekleniyor.",
-          "live": "Canlı kamera açık.",
+          "closed": "Scrcpy kamera kapalı.",
+          "opening": "Scrcpy kamera açılıyor.",
+          "waiting": "Scrcpy kamera feed'i hazırlanıyor.",
+          "live": "Scrcpy kamera feed'i panelde açık.",
           "stopped": "Canlı kamera kapatıldı.",
           "error": "Canlı kamera hatası: {{message}}"
         },
@@ -5212,7 +5212,7 @@
             "none": "Build metadata yok"
           },
           "preview": {
-            "phone-screen": "Önizleme telefonda"
+            "scrcpy-camera": "Scrcpy kamera feed"
           }
         },
         "deviceHints": {

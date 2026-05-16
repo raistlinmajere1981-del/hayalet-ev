@@ -69,7 +69,7 @@ export interface CaptureAndroidStatus {
   adbPath: string | null;
   selectedDeviceId: string | null;
   companionPackage: string;
-  previewMode: "phone-screen";
+  previewMode: "scrcpy-camera";
   reverseState: "not-configured" | "ready" | "conflict" | "error";
   pairingHint: string | null;
   message: string | null;
@@ -98,35 +98,6 @@ export interface CaptureMediaIngressPayload {
   asset: CaptureImportedAsset;
   metadata: Record<string, unknown> | null;
 }
-
-interface CapturePreviewPayloadBase {
-  requestId: string;
-  createdAt: string;
-  source: "android-bridge";
-  target: TranscriptTargetId;
-  deviceId: string | null;
-  width: number | null;
-  height: number | null;
-  timestampMs: number | null;
-}
-
-export interface CapturePreviewJpegFramePayload extends CapturePreviewPayloadBase {
-  mimeType: "image/jpeg";
-  contentBase64: string;
-}
-
-export interface CapturePreviewH264ChunkPayload extends CapturePreviewPayloadBase {
-  mimeType: "video/avc";
-  codec: string;
-  chunk: Uint8Array | ArrayBuffer | number[];
-  isKeyFrame: boolean;
-  isConfig: boolean;
-  sequenceNumber: number | null;
-}
-
-export type CapturePreviewFramePayload =
-  | CapturePreviewJpegFramePayload
-  | CapturePreviewH264ChunkPayload;
 
 export interface CaptureDictationStatusPayload {
   requestId: string;
@@ -166,8 +137,6 @@ export type CaptureCompanionCommandKind =
   | "close-camera"
   | "start-dictation"
   | "stop-dictation"
-  | "start-preview-stream"
-  | "stop-preview-stream"
   | "start-ambient-listener"
   | "stop-ambient-listener";
 
@@ -227,11 +196,21 @@ export type CaptureAnalyzeSessionState =
   | "result-ready"
   | "error";
 
+export interface CaptureAnalyzePreviewVideoStatus {
+  source: "v4l2";
+  devicePath: string;
+  label: string;
+  width: number;
+  height: number;
+  fps: number;
+}
+
 export interface CaptureAnalyzeSessionStatus {
   state: CaptureAnalyzeSessionState;
   target: "analyze-compose";
   deviceId: string | null;
-  previewMode: "phone-screen";
+  previewMode: "scrcpy-camera";
+  previewVideo: CaptureAnalyzePreviewVideoStatus | null;
   pendingCommand: CaptureCompanionCommandKind | null;
   pendingInboxCount: number;
   lastCaptureAt: number | null;

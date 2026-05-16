@@ -638,7 +638,7 @@ function renderAndroidManagementState(root: HTMLElement, state: CapturePanelStat
   setText(
     root,
     "#capture-android-preview-status",
-    captureT(`android.states.preview.${androidStatus?.previewMode ?? "phone-screen"}`)
+    captureT(`android.states.preview.${androidStatus?.previewMode ?? "scrcpy-camera"}`)
   );
   setText(root, "#capture-android-preview-note", captureT("android.previewHint"));
   setText(

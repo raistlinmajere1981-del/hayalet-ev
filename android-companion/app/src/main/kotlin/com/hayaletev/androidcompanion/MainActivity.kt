@@ -43,6 +43,7 @@ private const val DIAGNOSTICS_RENDER_THROTTLE_MS = 500L
 private enum class CompanionTab {
     IMAGE,
     DICTATE,
+    AMBIENT,
     LOGS,
 }
 
@@ -119,6 +120,11 @@ class MainActivity : AppCompatActivity() {
         binding.dictationDetailValue.text = getString(R.string.dictation_detail_waiting)
         binding.dictationModelValue.text = getString(R.string.dictation_model_waiting)
         binding.dictationTargetValue.text = getString(R.string.target_waiting)
+        binding.ambientMicrophoneValue.text = getString(R.string.ambient_microphone_missing)
+        binding.ambientStatusValue.text = getString(R.string.ambient_status_idle)
+        binding.ambientDetailValue.text = getString(R.string.ambient_detail_waiting)
+        binding.ambientWakePhraseValue.text = getString(R.string.ambient_wake_phrase_waiting)
+        binding.ambientHistoryValue.text = getString(R.string.ambient_history_empty)
         renderUiState(
             CompanionUiState(
                 connectionStatus = getString(R.string.status_waiting_desktop),
@@ -256,6 +262,7 @@ class MainActivity : AppCompatActivity() {
             }
         binding.permissionsValue.text = permissionsText
         CompanionDiagnostics.setState("Permissions", permissionsText)
+        renderAmbientMicrophonePermissionState()
         renderPreviewState()
     }
 
@@ -270,10 +277,36 @@ class MainActivity : AppCompatActivity() {
         binding.dictationModelValue.text =
             state.dictationModel ?: getString(R.string.dictation_model_waiting)
         binding.dictationTargetValue.text = state.target
+        binding.ambientMicrophoneValue.text =
+            if (hasCapturePermissions()) {
+                state.ambientMicrophoneStatus ?: getString(R.string.ambient_microphone_ready)
+            } else {
+                getString(R.string.ambient_microphone_missing)
+            }
+        binding.ambientStatusValue.text =
+            state.ambientListeningStatus ?: getString(R.string.ambient_status_idle)
+        binding.ambientDetailValue.text =
+            state.ambientDetail ?: getString(R.string.ambient_detail_waiting)
+        binding.ambientWakePhraseValue.text =
+            state.ambientWakePhrase ?: getString(R.string.ambient_wake_phrase_waiting)
+        binding.ambientHistoryValue.text =
+            state.ambientHistory?.takeIf { it.isNotBlank() }
+                ?: getString(R.string.ambient_history_empty)
         CompanionDiagnostics.setState("Connection", state.connectionStatus)
         CompanionDiagnostics.setState("Target", state.target)
         CompanionDiagnostics.setState("Permissions", state.permissionsSummary)
         renderPreviewState()
+    }
+
+    private fun renderAmbientMicrophonePermissionState() {
+        if (hasCapturePermissions().not()) {
+            binding.ambientMicrophoneValue.text = getString(R.string.ambient_microphone_missing)
+            return
+        }
+
+        if (binding.ambientMicrophoneValue.text == getString(R.string.ambient_microphone_missing)) {
+            binding.ambientMicrophoneValue.text = getString(R.string.ambient_microphone_ready)
+        }
     }
 
     private fun renderPreviewState() {
@@ -412,7 +445,8 @@ class MainActivity : AppCompatActivity() {
                     setActiveTab(
                         when (tab.position) {
                             1 -> CompanionTab.DICTATE
-                            2 -> CompanionTab.LOGS
+                            2 -> CompanionTab.AMBIENT
+                            3 -> CompanionTab.LOGS
                             else -> CompanionTab.IMAGE
                         }
                     )
@@ -430,6 +464,7 @@ class MainActivity : AppCompatActivity() {
         activeTab = tab
         binding.imageTabPanel.isVisible = tab == CompanionTab.IMAGE
         binding.dictateTabPanel.isVisible = tab == CompanionTab.DICTATE
+        binding.ambientTabPanel.isVisible = tab == CompanionTab.AMBIENT
         binding.logsTabPanel.isVisible = tab == CompanionTab.LOGS
         if (tab == CompanionTab.LOGS) {
             diagnosticsRenderJob?.cancel()

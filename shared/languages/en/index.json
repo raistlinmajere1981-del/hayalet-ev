@@ -103,12 +103,12 @@
         },
         "captureSessionLatestEmpty": "No phone capture has been staged yet.",
         "captureSessionDisabled": "Android companion capture is disabled in Settings > Capture.",
-        "captureImportButton": "Android Camera Management",
+        "captureImportButton": "Scrcpy Camera",
         "cameraPanel": {
-          "closed": "Live camera panel is closed.",
-          "opening": "Opening Android camera panel.",
-          "waiting": "Waiting for live camera.",
-          "live": "Live camera is active.",
+          "closed": "Scrcpy camera is closed.",
+          "opening": "Opening Scrcpy camera.",
+          "waiting": "Preparing the Scrcpy camera feed.",
+          "live": "Scrcpy camera feed is active in the panel.",
           "stopped": "Live camera stopped.",
           "error": "Live camera error: {{message}}"
         },
@@ -5212,7 +5212,7 @@
             "none": "Build metadata missing"
           },
           "preview": {
-            "phone-screen": "Preview on phone"
+            "scrcpy-camera": "Scrcpy camera feed"
           }
         },
         "deviceHints": {

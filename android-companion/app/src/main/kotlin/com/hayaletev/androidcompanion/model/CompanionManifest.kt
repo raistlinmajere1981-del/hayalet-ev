@@ -31,7 +31,7 @@ data class CompanionManifest(
                 versionCode = json.optInt("versionCode", 2),
                 bridgePort = json.optInt("bridgePort", 48561),
                 commandPollIntervalMs = json.optInt("commandPollIntervalMs", 1500),
-                previewMode = json.optString("previewMode", "phone-screen")
+                previewMode = json.optString("previewMode", "scrcpy-camera")
             )
         }
     }

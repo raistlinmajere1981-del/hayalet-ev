@@ -3,7 +3,7 @@ import test from "node:test";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 
-test("android companion keeps Vosk dictation and preview-active session contract wired", () => {
+test("android companion keeps openWake ambient, Vosk dictation, and scrcpy camera contract wired", () => {
   const sessionSource = readFileSync(
     "android-companion/app/src/main/kotlin/com/hayaletev/androidcompanion/session/CompanionSessionCoordinator.kt",
     "utf8"
@@ -25,7 +25,7 @@ test("android companion keeps Vosk dictation and preview-active session contract
     "utf8"
   );
   const ambientListenerSource = readFileSync(
-    "android-companion/app/src/main/kotlin/com/hayaletev/androidcompanion/transcript/AndroidAmbientVoskListener.kt",
+    "android-companion/app/src/main/kotlin/com/hayaletev/androidcompanion/transcript/AndroidAmbientOpenWakeListener.kt",
     "utf8"
   );
   const voskProfileSource = readFileSync(
@@ -56,13 +56,13 @@ test("android companion keeps Vosk dictation and preview-active session contract
   assert.match(sessionSource, /applyCommandProfile\(command\.profile\)/);
   assert.match(sessionSource, /"start-dictation"/);
   assert.match(sessionSource, /"stop-dictation"/);
-  assert.match(sessionSource, /"start-preview-stream"/);
-  assert.match(sessionSource, /"stop-preview-stream"/);
-  assert.match(sessionSource, /setPreviewStreamingEnabled\(true\)/);
-  assert.match(sessionSource, /submitPreviewFrameIfActive/);
+  assert.doesNotMatch(sessionSource, /"start-preview-stream"/);
+  assert.doesNotMatch(sessionSource, /"stop-preview-stream"/);
+  assert.doesNotMatch(sessionSource, /setPreviewStreamingEnabled/);
+  assert.doesNotMatch(sessionSource, /submitPreviewFrameIfActive/);
   assert.match(sessionSource, /"start-ambient-listener"/);
   assert.match(sessionSource, /"stop-ambient-listener"/);
-  assert.match(sessionSource, /AndroidAmbientVoskListener/);
+  assert.match(sessionSource, /AndroidAmbientOpenWakeListener/);
   assert.match(sessionSource, /submitAmbientStatus/);
   assert.match(sessionSource, /publishAmbientStatus/);
   assert.match(sessionSource, /ToneGenerator/);
@@ -86,6 +86,14 @@ test("android companion keeps Vosk dictation and preview-active session contract
     /if \(command\.kind == "start-dictation"\) \{[\s\S]*audioRecorder\.cancel\(\)/
   );
   assert.match(sessionSource, /val dictationStatus: String\? = null/);
+  assert.match(sessionSource, /val ambientMicrophoneStatus: String\? = null/);
+  assert.match(sessionSource, /val ambientListeningStatus: String\? = null/);
+  assert.match(sessionSource, /ambientHistoryEntries\.joinToString\("\\n"\)/);
+  assert.match(sessionSource, /updateAmbientUi\(\s*"preparing"/);
+  assert.match(sessionSource, /updateAmbientUi\(status, message, transcript\)/);
+  assert.match(sessionSource, /resolveAmbientMicrophoneStatus/);
+  assert.match(sessionSource, /resolveAmbientMonitorStatus/);
+  assert.match(sessionSource, /appendAmbientHistory/);
   assert.match(sessionSource, /R\.string\.dictation_status_recording/);
   assert.match(sessionSource, /R\.string\.dictation_status_transcribing/);
   assert.match(sessionSource, /R\.string\.dictation_status_done/);
@@ -101,8 +109,9 @@ test("android companion keeps Vosk dictation and preview-active session contract
   assert.match(transportSource, /BridgeAmbientOptions/);
   assert.match(transportSource, /optJSONObject\("ambient"\)/);
   assert.match(transportSource, /\/api\/v1\/ambient\/status/);
-  assert.match(transportSource, /\/api\/v1\/preview\/analyze/);
-  assert.match(transportSource, /submitAnalyzePreviewFrame/);
+  assert.doesNotMatch(transportSource, /\/api\/v1\/preview\/analyze/);
+  assert.doesNotMatch(transportSource, /submitAnalyzePreviewFrame/);
+  assert.doesNotMatch(transportSource, /submitAnalyzePreviewChunk/);
   assert.match(transportSource, /archiveFormat/);
   assert.match(transportSource, /downloadTranscriptModel/);
   assert.match(transportSource, /modelDownloadClient/);
@@ -116,24 +125,28 @@ test("android companion keeps Vosk dictation and preview-active session contract
   assert.match(transportSource, /stageForAnalyze: Boolean = false/);
   assert.match(transportSource, /put\("stageForAnalyze", stageForAnalyze\)/);
 
-  assert.match(cameraControllerSource, /ImageAnalysis\.Builder\(\)/);
-  assert.match(cameraControllerSource, /STRATEGY_KEEP_ONLY_LATEST/);
-  assert.match(cameraControllerSource, /CameraPreviewFrame/);
-  assert.match(cameraControllerSource, /compressToJpeg/);
-  assert.match(cameraControllerSource, /LIVE_PREVIEW_FRAME_INTERVAL_MS/);
+  assert.doesNotMatch(cameraControllerSource, /ImageAnalysis\.Builder\(\)/);
+  assert.doesNotMatch(cameraControllerSource, /STRATEGY_KEEP_ONLY_LATEST/);
+  assert.doesNotMatch(cameraControllerSource, /CameraPreviewFrame/);
+  assert.doesNotMatch(cameraControllerSource, /compressToJpeg/);
+  assert.doesNotMatch(cameraControllerSource, /LIVE_PREVIEW_FRAME_INTERVAL_MS/);
 
   assert.match(recorderSource, /MediaRecorder\.AudioSource\.MIC/);
   assert.match(recorderSource, /android-dictation-/);
   assert.match(voskTranscriberSource, /org\.vosk\.Model/);
   assert.match(voskTranscriberSource, /Recognizer\(model, ANDROID_VOSK_SAMPLE_RATE\)/);
   assert.match(voskTranscriberSource, /recognizer\.acceptWaveForm/);
-  assert.match(ambientListenerSource, /class AndroidAmbientVoskListener/);
+  assert.match(ambientListenerSource, /class AndroidAmbientOpenWakeListener/);
+  assert.match(ambientListenerSource, /WakeWordEngine/);
+  assert.match(ambientListenerSource, /openWakeWord/);
+  assert.match(ambientListenerSource, /hey_jarvis_v0\.1\.onnx/);
   assert.match(ambientListenerSource, /wake-detected/);
   assert.match(ambientListenerSource, /capturing/);
   assert.match(ambientListenerSource, /transcribing/);
-  assert.match(ambientListenerSource, /Recognizer\(model, AMBIENT_VOSK_SAMPLE_RATE\)/);
-  assert.match(ambientListenerSource, /stripWakePhrase/);
-  assert.match(ambientListenerSource, /ignoredWakeSuffix/);
+  assert.match(ambientListenerSource, /Recognizer\(commandModel, AMBIENT_VOSK_SAMPLE_RATE\)/);
+  assert.match(ambientListenerSource, /captureAmbientCommand/);
+  assert.doesNotMatch(ambientListenerSource, /stripWakePhrase/);
+  assert.doesNotMatch(ambientListenerSource, /ignoredWakeSuffix/);
   assert.doesNotMatch(ambientListenerSource, /leadingPhrase/);
   assert.match(voskProfileSource, /defaultAndroidVoskModelProfile/);
   assert.match(voskProfileSource, /requireAndroidVoskModelProfile/);
@@ -147,6 +160,7 @@ test("android companion keeps Vosk dictation and preview-active session contract
   assert.match(modelManagerSource, /Vosk model archive contains an unsafe path/);
   assert.match(gradleSource, /abiFilters \+= listOf\("armeabi-v7a", "arm64-v8a"\)/);
   assert.match(gradleSource, /com\.alphacephei:vosk-android:0\.3\.75/);
+  assert.match(gradleSource, /xyz\.rementia:openwakeword:0\.1\.5/);
   assert.doesNotMatch(gradleSource, /WHISPER_CPP_DIR/);
   assert.doesNotMatch(gradleSource, /externalNativeBuild/);
   assert.match(activitySource, /manualDictationToggleButton/);
@@ -166,6 +180,10 @@ test("android companion keeps Vosk dictation and preview-active session contract
   assert.match(activitySource, /FLAG_KEEP_SCREEN_ON/);
   assert.match(activitySource, /configureManualImagePanel\(\)/);
   assert.match(activitySource, /imageCaptureButton\.setOnClickListener/);
+  assert.match(activitySource, /CompanionTab\.AMBIENT/);
+  assert.match(activitySource, /ambientMicrophoneValue/);
+  assert.match(activitySource, /ambientStatusValue/);
+  assert.match(activitySource, /ambientHistoryValue/);
   assert.match(activitySource, /takeManualImageCapture\(\)/);
   assert.match(activitySource, /addManualImageCapture\(\)/);
   assert.match(activitySource, /sessionCoordinator\.captureManualPhoto\(\)/);
@@ -185,13 +203,22 @@ test("android companion keeps Vosk dictation and preview-active session contract
   );
   assert.match(stringsSource, /name="dictation_status_ambient_ready"/);
   assert.match(stringsSource, /name="dictation_detail_ambient_capturing"/);
+  assert.match(stringsSource, /name="tab_ambient"/);
+  assert.match(stringsSource, /name="ambient_status_waiting"/);
+  assert.match(stringsSource, /name="ambient_event_wake_detected"/);
+  assert.match(stringsSource, /name="ambient_history_empty"/);
 
   assert.match(captureServiceSource, /const previewActive =/);
   assert.match(captureServiceSource, /\/api\/v1\/transcript\/model/);
   assert.match(captureServiceSource, /\/api\/v1\/ambient\/status/);
-  assert.match(captureServiceSource, /\/api\/v1\/preview\/analyze/);
-  assert.match(captureServiceSource, /CAPTURE_PREVIEW_FRAME_CHANNEL/);
+  assert.doesNotMatch(captureServiceSource, /\/api\/v1\/preview\/analyze/);
+  assert.doesNotMatch(captureServiceSource, /CAPTURE_PREVIEW_FRAME_CHANNEL/);
   assert.match(captureServiceSource, /CAPTURE_AMBIENT_STATUS_CHANNEL/);
+  assert.match(captureServiceSource, /CAPTURE_SCRCPY_V4L2_LABEL/);
+  assert.match(captureServiceSource, /--video-source=camera/);
+  assert.match(captureServiceSource, /--no-window/);
+  assert.match(captureServiceSource, /--v4l2-sink/);
+  assert.doesNotMatch(captureServiceSource, /--stay-awake/);
   assert.match(captureServiceSource, /CAPTURE_VOSK_MODEL_DESCRIPTORS/);
   assert.match(captureServiceSource, /return "vosk";/);
   assert.doesNotMatch(captureServiceSource, /commandKind === "open-camera"\s*\?\s*"ready"/);
@@ -199,9 +226,30 @@ test("android companion keeps Vosk dictation and preview-active session contract
   const bundledVoskModel = readFileSync(
     "android-companion/app/src/main/assets/transcript-models/vosk-model-small-tr-0.3.zip"
   );
+  const openWakeMelModel = readFileSync(
+    "android-companion/app/src/main/assets/melspectrogram.onnx"
+  );
+  const openWakeEmbeddingModel = readFileSync(
+    "android-companion/app/src/main/assets/embedding_model.onnx"
+  );
+  const openWakeJarvisModel = readFileSync(
+    "android-companion/app/src/main/assets/hey_jarvis_v0.1.onnx"
+  );
   assert.equal(
     createHash("sha1").update(bundledVoskModel).digest("hex"),
     "1bc2391ea03d6091c39c4ff42b627c811501d41f"
+  );
+  assert.equal(
+    createHash("sha1").update(openWakeMelModel).digest("hex"),
+    "fa67c8a1c60c01a85fa65d79f666eb17b12e996d"
+  );
+  assert.equal(
+    createHash("sha1").update(openWakeEmbeddingModel).digest("hex"),
+    "7d6c08da684647b875a06cccd2cf9bf8bf90cb2a"
+  );
+  assert.equal(
+    createHash("sha1").update(openWakeJarvisModel).digest("hex"),
+    "1cca40997c29b7851b7a71ab84a228df92505375"
   );
   assert.equal(
     existsSync(

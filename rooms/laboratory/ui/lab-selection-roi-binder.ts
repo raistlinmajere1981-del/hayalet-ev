@@ -102,6 +102,20 @@ function getComparisonSideFromStage(stage: StageElement): LabComparisonSide | nu
   return side === "primary" || side === "reference" ? side : null;
 }
 
+function activateComparisonSide(deps: SelectionRoiBinderDeps, stage: StageElement | null) {
+  if (stage === null) {
+    return;
+  }
+  const comparisonSide = getComparisonSideFromStage(stage);
+  if (comparisonSide === null) {
+    return;
+  }
+  deps.emit({
+    type: "workspace-comparison-side-activated",
+    side: comparisonSide,
+  });
+}
+
 function createSelectionRoiResult(roi: LabSelectionROI, rect: RectLike) {
   const x = clampUnit(roi.x);
   const y = clampUnit(roi.y);
@@ -276,6 +290,7 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
       }
       const handle = resizeTrigger.getAttribute("data-lab-selection-roi-resize");
       const stage = getClosestTarget(target, "[data-lab-selection-roi-stage='true']");
+      activateComparisonSide(deps, stage);
       const activeSelection = deps.getActiveSelection();
       const comparisonSide = stage === null ? null : getComparisonSideFromStage(stage);
       const initialRoi =
@@ -315,6 +330,7 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
     if (isMutationLocked()) {
       return;
     }
+    activateComparisonSide(deps, stage);
 
     const sourceKind = deps.getSourceKind();
     if (!canDrawSelectionRoi(deps.getActiveSelection(), sourceKind)) {

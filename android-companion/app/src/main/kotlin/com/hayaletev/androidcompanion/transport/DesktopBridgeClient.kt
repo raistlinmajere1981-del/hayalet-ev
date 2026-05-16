@@ -64,7 +64,6 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
         .build()
 
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
-    private val h264MediaType = "video/avc".toMediaType()
     private val baseUrl = "http://127.0.0.1:${manifest.bridgePort}"
 
     init {
@@ -216,64 +215,6 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
         )
     }
 
-    suspend fun submitAnalyzePreviewFrame(
-        requestId: String,
-        deviceId: String,
-        target: String,
-        content: ByteArray,
-        mimeType: String,
-        width: Int,
-        height: Int,
-        timestampMs: Long,
-    ) {
-        val payload = JSONObject()
-            .put("requestId", requestId)
-            .put("deviceId", deviceId)
-            .put("target", target)
-            .put("mimeType", mimeType)
-            .put("width", width)
-            .put("height", height)
-            .put("timestampMs", timestampMs)
-            .put("contentBase64", android.util.Base64.encodeToString(content, android.util.Base64.NO_WRAP))
-        postJson(
-            "/api/v1/preview/analyze",
-            payload,
-            reportFailureToDiagnostics = false,
-        )
-    }
-
-    suspend fun submitAnalyzePreviewChunk(
-        requestId: String,
-        deviceId: String,
-        target: String,
-        content: ByteArray,
-        codec: String,
-        width: Int,
-        height: Int,
-        timestampMs: Long,
-        isKeyFrame: Boolean,
-        isConfig: Boolean,
-        sequenceNumber: Long,
-    ) {
-        postBinary(
-            path = "/api/v1/preview/analyze/h264",
-            content = content,
-            headers = mapOf(
-                "x-hev-request-id" to requestId,
-                "x-hev-device-id" to deviceId,
-                "x-hev-target" to target,
-                "x-hev-codec" to codec,
-                "x-hev-width" to width.toString(),
-                "x-hev-height" to height.toString(),
-                "x-hev-timestamp-ms" to timestampMs.toString(),
-                "x-hev-key-frame" to if (isKeyFrame) "1" else "0",
-                "x-hev-config" to if (isConfig) "1" else "0",
-                "x-hev-sequence" to sequenceNumber.toString(),
-            ),
-            reportFailureToDiagnostics = false,
-        )
-    }
-
     suspend fun downloadTranscriptModel(
         fileName: String,
         destination: File,
@@ -382,43 +323,6 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
         }
     }
 
-    private suspend fun postBinary(
-        path: String,
-        content: ByteArray,
-        headers: Map<String, String>,
-        reportFailureToDiagnostics: Boolean = true,
-    ): JSONObject = withContext(Dispatchers.IO) {
-        val builder = Request.Builder()
-            .url("$baseUrl$path")
-            .post(content.toRequestBody(h264MediaType))
-        headers.forEach { (key, value) ->
-            builder.header(key, value)
-        }
-        val request = builder.build()
-
-        try {
-            client.newCall(request).execute().use { response ->
-                val body = response.body?.string().orEmpty()
-                if (!response.isSuccessful) {
-                    if (reportFailureToDiagnostics) {
-                        CompanionDiagnostics.e(
-                            "bridge",
-                            "POST $path failed with ${response.code}.",
-                            body.ifBlank { "Bridge binary request failed." },
-                        )
-                    }
-                    throw IllegalStateException(body.ifBlank { "Bridge binary request failed: ${response.code}" })
-                }
-                JSONObject(body.ifBlank { "{}" })
-            }
-        } catch (error: Exception) {
-            if (reportFailureToDiagnostics) {
-                CompanionDiagnostics.e("bridge", "POST $path failed.", throwable = error)
-            }
-            throw error
-        }
-    }
-
     private fun parseCommands(array: JSONArray?): List<BridgeCommand> {
         if (array == null) {
             return emptyList()
@@ -495,7 +399,7 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
                     }
                 }
             }
-        }.ifEmpty { listOf("Hey Hayalet") }
+        }.ifEmpty { listOf("Hey Jarvis") }
 
         return BridgeAmbientOptions(
             wakePhrases = wakePhrases,

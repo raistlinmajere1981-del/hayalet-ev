@@ -28,7 +28,7 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(htmlSource, /id="compose-ambient-btn"/);
   assert.match(htmlSource, /id="compose-ambient-status"/);
   assert.match(htmlSource, /id="android-camera-panel"/);
-  assert.match(htmlSource, /id="android-camera-feed"/);
+  assert.match(htmlSource, /<video[\s\S]*id="android-camera-feed"/);
   assert.doesNotMatch(htmlSource, /compose-user-identity/);
   assert.doesNotMatch(htmlSource, /id="analyze-capture-shell"/);
   assert.doesNotMatch(htmlSource, /id="capture-clear-btn"/);
@@ -41,10 +41,10 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(pageSource, /handleCaptureImportClick/);
   assert.match(pageSource, /renderCaptureSessionState/);
   assert.match(pageSource, /onCaptureMediaIngress/);
-  assert.match(pageSource, /onCapturePreviewFrame/);
   assert.match(pageSource, /_handleCaptureMediaIngress/);
-  assert.match(pageSource, /_handleCapturePreviewFrame/);
   assert.match(pageSource, /toggleAndroidCameraPanel/);
+  assert.match(pageSource, /_attachAndroidCameraFeed/);
+  assert.match(pageSource, /getUserMedia/);
   assert.match(pageSource, /_stageCaptureAsset/);
   assert.match(pageSource, /openAndroidCameraManagement/);
   assert.doesNotMatch(pageSource, /_openCapturePanel/);
@@ -93,17 +93,31 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(captureClientSource, /captureStopAnalyzePreview/);
   assert.match(captureClientSource, /captureStartAmbientListener/);
   assert.match(captureClientSource, /captureStopAmbientListener/);
-  assert.match(captureClientSource, /onCapturePreviewFrame/);
+  assert.doesNotMatch(captureClientSource, /onCapturePreviewFrame/);
   assert.match(captureClientSource, /onCaptureAmbientStatus/);
   assert.match(captureClientSource, /captureRequestAnalyzePhoto/);
   assert.match(captureServiceSource, /consumeAnalyzeInboxAssets/);
   assert.match(captureServiceSource, /api\/v1\/media\/analyze/);
-  assert.match(captureServiceSource, /api\/v1\/preview\/analyze/);
+  assert.doesNotMatch(captureServiceSource, /api\/v1\/preview\/analyze/);
   assert.match(captureServiceSource, /api\/v1\/transcript\/ingress/);
   assert.match(captureServiceSource, /api\/v1\/ambient\/status/);
   assert.match(captureServiceSource, /CAPTURE_MEDIA_INGRESS_CHANNEL = "capture:media-ingress"/);
-  assert.match(captureServiceSource, /CAPTURE_PREVIEW_FRAME_CHANNEL = "capture:preview-frame"/);
+  assert.doesNotMatch(captureServiceSource, /CAPTURE_PREVIEW_FRAME_CHANNEL/);
   assert.match(captureServiceSource, /CAPTURE_AMBIENT_STATUS_CHANNEL = "capture:ambient-status"/);
+  assert.match(captureServiceSource, /CAPTURE_SCRCPY_V4L2_LABEL/);
+  assert.match(captureServiceSource, /HAYALET_SCRCPY_V4L2_DEVICE/);
+  assert.match(captureServiceSource, /--video-source=camera/);
+  assert.match(captureServiceSource, /--camera-size/);
+  assert.match(captureServiceSource, /--no-window/);
+  assert.match(captureServiceSource, /--v4l2-sink/);
+  assert.match(captureServiceSource, /--v4l2-buffer/);
+  assert.match(captureServiceSource, /previewVideo/);
+  assert.doesNotMatch(captureServiceSource, /--stay-awake/);
+  assert.match(captureServiceSource, /stopScrcpyCameraFeed/);
+  assert.match(
+    captureServiceSource,
+    /async startAnalyzePreviewStream[\s\S]*const launchOutcome = await this\.launchCompanion\(\{ target \}\);[\s\S]*if \(launchOutcome\.ok !== true\)[\s\S]*"start-analyze-preview"[\s\S]*launchOutcome\.message[\s\S]*this\.startScrcpyCameraFeed/
+  );
   assert.match(captureServiceSource, /normalizeTranscriptTarget/);
   assert.match(captureServiceSource, /requestId and target are required/);
   assert.match(
@@ -129,8 +143,8 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(captureServiceSource, /close-camera/);
   assert.match(captureServiceSource, /start-dictation/);
   assert.match(captureServiceSource, /stop-dictation/);
-  assert.match(captureServiceSource, /start-preview-stream/);
-  assert.match(captureServiceSource, /stop-preview-stream/);
+  assert.doesNotMatch(captureServiceSource, /start-preview-stream/);
+  assert.doesNotMatch(captureServiceSource, /stop-preview-stream/);
   assert.match(captureServiceSource, /start-ambient-listener/);
   assert.match(captureServiceSource, /stop-ambient-listener/);
   assert.match(captureServiceSource, /resolveAmbientCommandProfile/);

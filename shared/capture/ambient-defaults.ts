@@ -1,4 +1,4 @@
-export const DEFAULT_AMBIENT_WAKE_PHRASES = ["Hey Hayalet"] as const;
+export const DEFAULT_AMBIENT_WAKE_PHRASES = ["Hey Jarvis"] as const;
 export const DEFAULT_AMBIENT_ACTIVE_WINDOW_MS = 6_000;
 export const DEFAULT_AMBIENT_SILENCE_TIMEOUT_MS = 1_200;
 

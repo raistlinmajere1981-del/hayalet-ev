@@ -336,6 +336,22 @@ test("laboratory run controller sends comparison ROI payloads with image compari
       primary: { x: 0.1, y: 0.2, width: 0.3, height: 0.4 },
       reference: { x: 0.2, y: 0.1, width: 0.25, height: 0.35 },
     });
+
+    clickListener?.({ target: new TestElement("workspace-selection-roi-export") } as Event);
+
+    assert.equal(sentEvents.length, 2);
+    assert.equal(sentEvents[1]?.eventName, "media-action");
+    assert.equal(sentEvents[1]?.payload["action"], "export-roi-image");
+    const roiPayload = sentEvents[1]?.payload["payload"] as Record<string, unknown>;
+    assert.equal(roiPayload["workspaceTargetAssetId"], "asset-reference");
+    assert.equal(roiPayload["comparisonReferenceAssetId"], "asset-reference");
+    assert.equal(roiPayload["comparisonRoiActiveSide"], "reference");
+    assert.deepEqual(roiPayload["normalizedRoi"], {
+      x: 0.2,
+      y: 0.1,
+      width: 0.25,
+      height: 0.35,
+    });
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;

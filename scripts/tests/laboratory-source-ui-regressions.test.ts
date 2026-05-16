@@ -1107,6 +1107,7 @@ test("laboratory image comparison workspace keeps image pair on the inspection w
     comparisonSide: "reference",
     roi: { x: 0.2, y: 0.1, width: 0.25, height: 0.35 },
   });
+  store.dispatch({ type: "workspace-interactive-updated", patch: { brightness: 112 } });
 
   const surface = renderWorkspaceSurface(store.getState());
 
@@ -1118,6 +1119,9 @@ test("laboratory image comparison workspace keeps image pair on the inspection w
   assert.match(surface.main, /id="lab-roi-overlay-reference"/);
   assert.match(surface.main, /data-lab-comparison-roi-side="primary"/);
   assert.match(surface.main, /data-lab-comparison-roi-side="reference"/);
+  assert.match(surface.main, /data-side="primary" data-active="false"/);
+  assert.match(surface.main, /data-side="reference" data-active="true"/);
+  assert.match(surface.main, /data-lab-comparison-roi-side="reference"[\s\S]*data-active="true"/);
   assert.match(surface.main, /data-lab-preview-inspection-stage="true"/);
   assert.match(surface.main, /data-lab-preview-inspection-topology="comparison-paired"/);
   assert.match(
@@ -1127,6 +1131,14 @@ test("laboratory image comparison workspace keeps image pair on the inspection w
   assert.match(
     surface.main,
     /data-lab-preserve-media="workspace-comparison-reference" src="file:\/\/\/tmp\/reference-image\.png"/
+  );
+  assert.doesNotMatch(
+    surface.main,
+    /data-lab-preserve-media="workspace-comparison-primary"[^>]*style=/
+  );
+  assert.match(
+    surface.main,
+    /data-lab-preserve-media="workspace-comparison-reference"[^>]*style="filter: brightness\(1\.12\);"/
   );
   assert.match(surface.main, /data-lab-value="image-comparison"/);
   assert.doesNotMatch(surface.main, /data-preview-mode=/);

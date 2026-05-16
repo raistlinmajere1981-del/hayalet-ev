@@ -8,7 +8,6 @@ import type {
   CaptureHostAction,
   CaptureImportedAsset,
   CaptureMediaIngressPayload,
-  CapturePreviewFramePayload,
   CaptureServiceStatus,
   CaptureTargetActionOptions,
   CaptureTranscriptStatusSnapshot,
@@ -26,7 +25,7 @@ const FALLBACK_CAPTURE_STATUS: CaptureServiceStatus = {
     adbPath: null,
     selectedDeviceId: null,
     companionPackage: "com.hayaletev.androidcompanion",
-    previewMode: "phone-screen",
+    previewMode: "scrcpy-camera",
     reverseState: "not-configured",
     pairingHint: "Electron capture bridge is unavailable.",
     message: "Electron capture bridge is unavailable.",
@@ -54,7 +53,8 @@ const FALLBACK_CAPTURE_STATUS: CaptureServiceStatus = {
     state: "idle",
     target: "analyze-compose",
     deviceId: null,
-    previewMode: "phone-screen",
+    previewMode: "scrcpy-camera",
+    previewVideo: null,
     pendingCommand: null,
     pendingInboxCount: 0,
     lastCaptureAt: null,
@@ -407,25 +407,6 @@ export function onCaptureMediaIngress(
   captureOnMediaIngress(callback);
   return () => {
     captureOffMediaIngress(callback);
-  };
-}
-
-export function onCapturePreviewFrame(
-  callback: (payload: CapturePreviewFramePayload) => void
-): () => void {
-  const api = getElectronApi();
-  if (api == null) {
-    return () => {};
-  }
-
-  const { captureOnPreviewFrame, captureOffPreviewFrame } = api;
-  if (typeof captureOnPreviewFrame !== "function" || typeof captureOffPreviewFrame !== "function") {
-    return () => {};
-  }
-
-  captureOnPreviewFrame(callback);
-  return () => {
-    captureOffPreviewFrame(callback);
   };
 }
 

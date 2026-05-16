@@ -120,6 +120,11 @@
             <com.google.android.material.tabs.TabItem
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:text="@string/tab_ambient" />
+
+            <com.google.android.material.tabs.TabItem
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:text="@string/tab_logs" />
         </com.google.android.material.tabs.TabLayout>
 
@@ -393,6 +398,128 @@
                 android:textColor="#F5F7FA"
                 android:textColorHint="#8FA0B5"
                 android:textSize="14sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/ambientTabPanel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="#161B24"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/ambientTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/ambient_title"
+                android:textColor="#F5F7FA"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/ambientSubtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/ambient_subtitle"
+                android:textColor="#B8C0CC"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/ambientMicrophoneLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="@string/ambient_microphone_label"
+                android:textColor="#8FA0B5"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/ambientMicrophoneValue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="#F5F7FA"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/ambientStatusLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/ambient_status_label"
+                android:textColor="#8FA0B5"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/ambientStatusValue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="#F5F7FA"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/ambientDetailLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/ambient_detail_label"
+                android:textColor="#8FA0B5"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/ambientDetailValue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="#F5F7FA"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/ambientWakePhraseLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/ambient_wake_phrase_label"
+                android:textColor="#8FA0B5"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/ambientWakePhraseValue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="#F5F7FA"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/ambientHistoryLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/ambient_history_label"
+                android:textColor="#8FA0B5"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/ambientHistoryValue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="#10141C"
+                android:fontFamily="monospace"
+                android:minHeight="140dp"
+                android:padding="12dp"
+                android:text="@string/ambient_history_empty"
+                android:textColor="#F5F7FA"
+                android:textIsSelectable="true"
+                android:textSize="12sp" />
         </LinearLayout>
 
         <LinearLayout

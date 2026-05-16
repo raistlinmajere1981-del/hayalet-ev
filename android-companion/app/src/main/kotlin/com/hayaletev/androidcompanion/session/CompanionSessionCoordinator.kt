@@ -8,15 +8,14 @@ import android.os.SystemClock
 import com.hayaletev.androidcompanion.R
 import com.hayaletev.androidcompanion.capture.CameraSessionConfig
 import com.hayaletev.androidcompanion.capture.CameraSessionController
-import com.hayaletev.androidcompanion.capture.CameraPreviewFrame
 import com.hayaletev.androidcompanion.capture.CaptureLens
 import com.hayaletev.androidcompanion.capture.CapturePhotoQuality
 import com.hayaletev.androidcompanion.debug.CompanionDiagnostics
 import com.hayaletev.androidcompanion.model.CompanionManifest
 import com.hayaletev.androidcompanion.transcript.AndroidAudioRecorder
 import com.hayaletev.androidcompanion.transcript.AndroidAmbientListenerConfig
+import com.hayaletev.androidcompanion.transcript.AndroidAmbientOpenWakeListener
 import com.hayaletev.androidcompanion.transcript.AndroidAmbientTranscript
-import com.hayaletev.androidcompanion.transcript.AndroidAmbientVoskListener
 import com.hayaletev.androidcompanion.transcript.AndroidRecordingResult
 import com.hayaletev.androidcompanion.transcript.AndroidVoskTranscriber
 import com.hayaletev.androidcompanion.transcript.TranscriptModelManager
@@ -35,9 +34,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private const val BRIDGE_OFFLINE_RETRY_MS = 5_000L
 private const val DIAGNOSTICS_SYNC_INTERVAL_MS = 15_000L
+private const val AMBIENT_HISTORY_LIMIT = 12
 
 data class CompanionUiState(
     val connectionStatus: String,
@@ -46,6 +49,11 @@ data class CompanionUiState(
     val dictationStatus: String? = null,
     val dictationDetail: String? = null,
     val dictationModel: String? = null,
+    val ambientMicrophoneStatus: String? = null,
+    val ambientListeningStatus: String? = null,
+    val ambientDetail: String? = null,
+    val ambientWakePhrase: String? = null,
+    val ambientHistory: String? = null,
 )
 
 data class CompanionLaunchContext(
@@ -71,22 +79,19 @@ class CompanionSessionCoordinator(
     private var lastUiState: CompanionUiState? = null
     private var bridgeConnected = false
     private val audioRecorder = AndroidAudioRecorder(appContext, scope)
-    private val ambientListener = AndroidAmbientVoskListener(appContext, scope)
+    private val ambientListener = AndroidAmbientOpenWakeListener(appContext, scope)
     private val modelManager = TranscriptModelManager(appContext, bridgeClient)
     private val voskTranscriber = AndroidVoskTranscriber()
     private var ambientTone: ToneGenerator? =
         runCatching { ToneGenerator(AudioManager.STREAM_MUSIC, 70) }.getOrNull()
     private var dictationStatus = appContext.getString(R.string.dictation_status_idle)
     private var dictationDetail = appContext.getString(R.string.dictation_detail_waiting)
-    private var ambientWakePhraseSummary = "Hey Hayalet"
-    @Volatile private var previewStreamRequestId: String? = null
-    @Volatile private var previewFrameUploadInFlight = false
-
-    init {
-        cameraController.setPreviewFrameSink { frame ->
-            submitPreviewFrameIfActive(frame)
-        }
-    }
+    private var ambientMicrophoneStatus = appContext.getString(R.string.ambient_microphone_idle)
+    private var ambientListeningStatus = appContext.getString(R.string.ambient_status_idle)
+    private var ambientDetail = appContext.getString(R.string.ambient_detail_waiting)
+    private var ambientWakePhraseSummary = "Hey Jarvis"
+    private val ambientHistoryEntries = mutableListOf<String>()
+    private val ambientHistoryClock = SimpleDateFormat("HH:mm:ss", Locale.US)
 
     fun updateLaunchContext(intent: Intent?) {
         val deviceId = intent?.getStringExtra("deviceId")?.trim().orEmpty()
@@ -233,9 +238,8 @@ class CompanionSessionCoordinator(
             appContext.getString(R.string.dictation_detail_waiting),
         )
         ambientListener.stop()
+        updateAmbientUi("stopped", appContext.getString(R.string.ambient_event_stopped), null)
         audioRecorder.cancel()
-        previewStreamRequestId = null
-        cameraController.setPreviewStreamingEnabled(false)
         cameraController.stopSession()
     }
 
@@ -271,55 +275,6 @@ class CompanionSessionCoordinator(
             "Manual phone capture uploaded to Analyze.",
             "target=${launchContext.target}, file=${file.name}",
         )
-    }
-
-    private fun submitPreviewFrameIfActive(frame: CameraPreviewFrame) {
-        val requestId = previewStreamRequestId ?: return
-        if (previewFrameUploadInFlight) {
-            return
-        }
-
-        previewFrameUploadInFlight = true
-        scope.launch(Dispatchers.IO) {
-            try {
-                runCatching {
-                    if (frame.mimeType == "video/avc" && frame.codec != null) {
-                        bridgeClient.submitAnalyzePreviewChunk(
-                            requestId = requestId,
-                            deviceId = launchContext.deviceId,
-                            target = launchContext.target,
-                            content = frame.bytes,
-                            codec = frame.codec,
-                            width = frame.width,
-                            height = frame.height,
-                            timestampMs = frame.timestampMs,
-                            isKeyFrame = frame.isKeyFrame,
-                            isConfig = frame.isConfig,
-                            sequenceNumber = frame.sequenceNumber,
-                        )
-                    } else {
-                        bridgeClient.submitAnalyzePreviewFrame(
-                            requestId = requestId,
-                            deviceId = launchContext.deviceId,
-                            target = launchContext.target,
-                            content = frame.bytes,
-                            mimeType = frame.mimeType,
-                            width = frame.width,
-                            height = frame.height,
-                            timestampMs = frame.timestampMs,
-                        )
-                    }
-                }.onFailure { error ->
-                    CompanionDiagnostics.d(
-                        "camera",
-                        "Live preview frame upload skipped.",
-                        summarizeError(error),
-                    )
-                }
-            } finally {
-                previewFrameUploadInFlight = false
-            }
-        }
     }
 
     private suspend fun handleCommand(command: BridgeCommand) {
@@ -376,9 +331,8 @@ class CompanionSessionCoordinator(
 
                 "close-camera" -> {
                     ambientListener.stop()
+                    updateAmbientUi("stopped", appContext.getString(R.string.ambient_event_stopped), null)
                     audioRecorder.cancel()
-                    previewStreamRequestId = null
-                    cameraController.setPreviewStreamingEnabled(false)
                     updateDictationUi(
                         appContext.getString(R.string.dictation_status_idle),
                         appContext.getString(R.string.dictation_detail_waiting),
@@ -389,31 +343,6 @@ class CompanionSessionCoordinator(
                         command = command,
                         status = "done",
                         message = "Phone capture session closed.",
-                        previewActive = cameraController.isPreviewBound(),
-                    )
-                }
-
-                "start-preview-stream" -> {
-                    cameraController.ensurePreview(launchContext.cameraConfig)
-                    previewStreamRequestId = command.requestId ?: command.id
-                    cameraController.setPreviewStreamingEnabled(true)
-                    bridgeClient.acknowledgeCommand(
-                        deviceId = launchContext.deviceId,
-                        command = command,
-                        status = "accepted",
-                        message = "Android live preview stream started.",
-                        previewActive = cameraController.isPreviewBound(),
-                    )
-                }
-
-                "stop-preview-stream" -> {
-                    previewStreamRequestId = null
-                    cameraController.setPreviewStreamingEnabled(false)
-                    bridgeClient.acknowledgeCommand(
-                        deviceId = launchContext.deviceId,
-                        command = command,
-                        status = "done",
-                        message = "Android live preview stream stopped.",
                         previewActive = cameraController.isPreviewBound(),
                     )
                 }
@@ -506,18 +435,27 @@ class CompanionSessionCoordinator(
 
                 "start-ambient-listener" -> {
                     audioRecorder.cancel()
+                    updateAmbientUi(
+                        "preparing",
+                        appContext.getString(R.string.ambient_event_preparing),
+                        null,
+                    )
+                    publishUiState(
+                        connectionStatus = appContext.getString(R.string.status_connected_desktop),
+                        permissionsSummary = appContext.getString(R.string.permissions_ready),
+                    )
                     val modelProfile = requireAndroidVoskModelProfile(launchContext.transcriptModel)
                     val model = modelManager.ensureModel(modelProfile)
                     val ambientOptions = command.ambient
                     val requestId = command.requestId ?: command.id
                     ambientWakePhraseSummary =
-                        ambientOptions?.wakePhrases?.joinToString(", ") ?: "Hey Hayalet"
+                        ambientOptions?.wakePhrases?.joinToString(", ") ?: "Hey Jarvis"
                     ambientListener.start(
                         config =
                             AndroidAmbientListenerConfig(
                                 requestId = requestId,
                                 target = command.target,
-                                wakePhrases = ambientOptions?.wakePhrases ?: listOf("Hey Hayalet"),
+                                wakePhrases = ambientOptions?.wakePhrases ?: listOf("Hey Jarvis"),
                                 activeWindowMs = ambientOptions?.activeWindowMs ?: 6_000L,
                                 silenceTimeoutMs = ambientOptions?.silenceTimeoutMs ?: 1_200L,
                                 modelProfile = modelProfile,
@@ -595,10 +533,6 @@ class CompanionSessionCoordinator(
             if (command.kind == "start-ambient-listener") {
                 ambientListener.stop()
             }
-            if (command.kind == "start-preview-stream" || command.kind == "stop-preview-stream") {
-                previewStreamRequestId = null
-                cameraController.setPreviewStreamingEnabled(false)
-            }
             if (
                 command.kind == "start-dictation" ||
                 command.kind == "stop-dictation" ||
@@ -609,6 +543,7 @@ class CompanionSessionCoordinator(
                     command.kind == "start-ambient-listener" ||
                     command.kind == "stop-ambient-listener"
                 ) {
+                    updateAmbientUi("failed", errorSummary, null)
                     playAmbientStatusTone("failed")
                 }
                 updateDictationUi(
@@ -649,6 +584,11 @@ class CompanionSessionCoordinator(
             dictationModel =
                 launchContext.transcriptModel?.let { "${it.backend} / ${it.modelId}" }
                     ?: appContext.getString(R.string.dictation_model_waiting),
+            ambientMicrophoneStatus = ambientMicrophoneStatus,
+            ambientListeningStatus = ambientListeningStatus,
+            ambientDetail = ambientDetail,
+            ambientWakePhrase = ambientWakePhraseSummary,
+            ambientHistory = ambientHistoryEntries.joinToString("\n"),
         )
     }
 
@@ -672,6 +612,15 @@ class CompanionSessionCoordinator(
         CompanionDiagnostics.setState("Dictation detail", detail)
     }
 
+    private fun updateAmbientUi(status: String, message: String, transcript: String?) {
+        ambientMicrophoneStatus = resolveAmbientMicrophoneStatus(status)
+        ambientListeningStatus = resolveAmbientMonitorStatus(status)
+        ambientDetail = resolveAmbientMonitorDetail(status, message, transcript)
+        appendAmbientHistory(resolveAmbientHistoryEntry(status, message, transcript))
+        CompanionDiagnostics.setState("Ambient", ambientListeningStatus)
+        CompanionDiagnostics.setState("Ambient detail", ambientDetail)
+    }
+
     private suspend fun publishAmbientStatus(
         requestId: String,
         target: String,
@@ -685,6 +634,7 @@ class CompanionSessionCoordinator(
                 resolveAmbientUiStatus(status),
                 resolveAmbientUiDetail(status, message, transcript),
             )
+            updateAmbientUi(status, message, transcript)
             playAmbientStatusTone(status)
             publishUiState(
                 connectionStatus = appContext.getString(R.string.status_connected_desktop),
@@ -700,6 +650,77 @@ class CompanionSessionCoordinator(
             transcript = transcript,
             metadata = metadata,
         )
+    }
+
+    private fun resolveAmbientMicrophoneStatus(status: String): String {
+        return when (status) {
+            "started", "done" -> appContext.getString(R.string.ambient_microphone_wake)
+            "wake-detected", "capturing" -> appContext.getString(R.string.ambient_microphone_command)
+            "transcribing" -> appContext.getString(R.string.ambient_microphone_transcribing)
+            "preparing" -> appContext.getString(R.string.ambient_microphone_ready)
+            "stopped", "failed" -> appContext.getString(R.string.ambient_microphone_idle)
+            else -> appContext.getString(R.string.ambient_microphone_ready)
+        }
+    }
+
+    private fun resolveAmbientMonitorStatus(status: String): String {
+        return when (status) {
+            "preparing" -> appContext.getString(R.string.ambient_status_preparing)
+            "started" -> appContext.getString(R.string.ambient_status_waiting)
+            "wake-detected" -> appContext.getString(R.string.ambient_status_wake_detected)
+            "capturing" -> appContext.getString(R.string.ambient_status_command)
+            "transcribing" -> appContext.getString(R.string.ambient_status_transcribing)
+            "done" -> appContext.getString(R.string.ambient_status_done)
+            "stopped" -> appContext.getString(R.string.ambient_status_idle)
+            "failed" -> appContext.getString(R.string.ambient_status_error)
+            else -> appContext.getString(R.string.ambient_status_waiting)
+        }
+    }
+
+    private fun resolveAmbientMonitorDetail(status: String, message: String, transcript: String?): String {
+        if (status == "preparing") {
+            return appContext.getString(R.string.ambient_event_preparing)
+        }
+
+        return resolveAmbientUiDetail(status, message, transcript)
+    }
+
+    private fun resolveAmbientHistoryEntry(status: String, message: String, transcript: String?): String {
+        val compactTranscript = transcript?.replace(Regex("\\s+"), " ")?.trim().orEmpty()
+        return when (status) {
+            "preparing" -> appContext.getString(R.string.ambient_event_preparing)
+            "started" -> appContext.getString(R.string.ambient_event_started, ambientWakePhraseSummary)
+            "wake-detected" -> appContext.getString(R.string.ambient_event_wake_detected)
+            "capturing" -> appContext.getString(R.string.ambient_event_capturing)
+            "transcribing" ->
+                appContext.getString(
+                    R.string.ambient_event_transcribing,
+                    compactTranscript.ifBlank { message },
+                )
+
+            "done" ->
+                if (compactTranscript.isBlank()) {
+                    appContext.getString(R.string.ambient_event_empty_done)
+                } else {
+                    appContext.getString(R.string.ambient_event_done, compactTranscript)
+                }
+
+            "stopped" -> appContext.getString(R.string.ambient_event_stopped)
+            "failed" -> appContext.getString(R.string.ambient_event_failed, message)
+            else -> message
+        }
+    }
+
+    private fun appendAmbientHistory(entry: String) {
+        val normalizedEntry = entry.trim()
+        if (normalizedEntry.isEmpty()) {
+            return
+        }
+
+        ambientHistoryEntries.add(0, "[${ambientHistoryClock.format(Date())}] $normalizedEntry")
+        while (ambientHistoryEntries.size > AMBIENT_HISTORY_LIMIT) {
+            ambientHistoryEntries.removeAt(ambientHistoryEntries.lastIndex)
+        }
     }
 
     private fun resolveAmbientUiStatus(status: String): String {
@@ -777,10 +798,11 @@ class CompanionSessionCoordinator(
         modelProfile: BridgeTranscriptModelProfile,
     ): JSONObject {
         return JSONObject()
-            .put("speechBackend", "${modelProfile.backend}-android-ambient")
+            .put("speechBackend", "${modelProfile.backend}-android-ambient-command")
             .put("recordedOn", "android-device")
             .put("microphone", "android-default-mic")
             .put("ambient", true)
+            .put("wakeEngine", "openWakeWord")
             .put("wakePhrase", transcript.wakePhrase)
             .put("activeWindowMs", transcript.activeWindowMs)
             .put("silenceTimeoutMs", transcript.silenceTimeoutMs)

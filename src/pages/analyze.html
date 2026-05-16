@@ -258,8 +258,14 @@
           hidden
         >
           <div class="compose-camera-panel__viewport">
-            <img id="android-camera-feed" alt="" />
-            <canvas id="android-camera-feed-video" hidden></canvas>
+            <video
+              class="compose-camera-panel__video"
+              id="android-camera-feed"
+              autoplay
+              muted
+              playsinline
+              hidden
+            ></video>
             <div
               class="compose-camera-panel__placeholder"
               id="android-camera-placeholder"

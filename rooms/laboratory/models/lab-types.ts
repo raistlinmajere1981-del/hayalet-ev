@@ -880,6 +880,7 @@ export type LabStoreEvent =
   // V2.3 workspace events
   | { type: "workspace-timeline-updated"; startMs: number | null; endMs: number | null }
   | { type: "workspace-comparison-reference-set"; assetId: string | null }
+  | { type: "workspace-comparison-side-activated"; side: LabComparisonSide }
   | {
       type: "workspace-comparison-updated";
       patch: Partial<

@@ -95,7 +95,6 @@ import {
   getCaptureStatus,
   onCaptureAmbientStatus,
   onCaptureMediaIngress,
-  onCapturePreviewFrame,
   onCaptureDictationStatus,
   refreshCaptureStatus,
   runCaptureAction,
@@ -104,10 +103,10 @@ import { onTranscriptIngress } from "../modules/transcript/electron-client.js";
 import type {
   CaptureActionOutcome,
   CaptureAmbientStatusPayload,
+  CaptureAnalyzePreviewVideoStatus,
   CaptureAndroidDeviceStatus,
   CaptureHostAction,
   CaptureMediaIngressPayload,
-  CapturePreviewFramePayload,
   CaptureServiceStatus,
 } from "../../types/capture.js";
 import type { TranscriptIngressPayload, TranscriptTargetId } from "../../types/transcript.js";
@@ -137,36 +136,6 @@ interface CaptureRunOptions {
 }
 
 type AnalyzeVoiceAction = CaptureHostAction;
-type AnalyzeH264PreviewPayload = Extract<CapturePreviewFramePayload, { mimeType: "video/avc" }>;
-
-interface AnalyzeVideoFrameLike {
-  readonly displayWidth: number;
-  readonly displayHeight: number;
-  close(): void;
-}
-
-interface AnalyzeVideoDecoderLike {
-  readonly state: string;
-  close(): void;
-  configure(config: Record<string, unknown>): void;
-  decode(chunk: unknown): void;
-}
-
-interface AnalyzeVideoDecoderConstructor {
-  new (init: {
-    output: (frame: AnalyzeVideoFrameLike) => void;
-    error: (error: unknown) => void;
-  }): AnalyzeVideoDecoderLike;
-}
-
-interface AnalyzeEncodedVideoChunkConstructor {
-  new (init: { type: "key" | "delta"; timestamp: number; data: BufferSource }): unknown;
-}
-
-interface AnalyzeWebCodecsConstructors {
-  VideoDecoder: AnalyzeVideoDecoderConstructor;
-  EncodedVideoChunk: AnalyzeEncodedVideoChunkConstructor;
-}
 
 type AnalyzeParticipant = "ai1" | "ai2" | "us1";
 type AnalyzeSceneViewId = "table";
@@ -191,56 +160,6 @@ const ANALYZE_AMBIENT_CANCEL_PHRASES = ["iptal", "iptal et", "vazgeç", "vazgec"
 
 function analyzeT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.analyze.${key}`, params);
-}
-
-function getAnalyzeWebCodecsConstructors(): AnalyzeWebCodecsConstructors | null {
-  const runtime = window as unknown as Partial<AnalyzeWebCodecsConstructors>;
-  if (
-    typeof runtime.VideoDecoder !== "function" ||
-    typeof runtime.EncodedVideoChunk !== "function"
-  ) {
-    return null;
-  }
-
-  return {
-    VideoDecoder: runtime.VideoDecoder,
-    EncodedVideoChunk: runtime.EncodedVideoChunk,
-  };
-}
-
-function normalizeAnalyzePreviewChunkBytes(
-  chunk: AnalyzeH264PreviewPayload["chunk"]
-): Uint8Array | null {
-  if (chunk instanceof Uint8Array) {
-    return chunk;
-  }
-
-  if (ArrayBuffer.isView(chunk)) {
-    return new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
-  }
-
-  if (chunk instanceof ArrayBuffer) {
-    return new Uint8Array(chunk);
-  }
-
-  if (Array.isArray(chunk)) {
-    return new Uint8Array(chunk);
-  }
-
-  return null;
-}
-
-function concatAnalyzePreviewBytes(prefix: Uint8Array, chunk: Uint8Array): Uint8Array {
-  const output = new Uint8Array(prefix.byteLength + chunk.byteLength);
-  output.set(prefix, 0);
-  output.set(chunk, prefix.byteLength);
-  return output;
-}
-
-function copyAnalyzePreviewBytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-  const output = new ArrayBuffer(bytes.byteLength);
-  new Uint8Array(output).set(bytes);
-  return output;
 }
 
 function escapeRegExp(value: string): string {
@@ -342,7 +261,6 @@ export class AnalyzeController {
   _unsubAppState: (() => void) | null;
   _unsubI18n: (() => void) | null;
   _unsubCaptureMediaIngress: (() => void) | null;
-  _unsubCapturePreviewFrame: (() => void) | null;
   _unsubCaptureAmbientStatus: (() => void) | null;
   _unsubAmbientTranscriptIngress: (() => void) | null;
   _boundActions: boolean;
@@ -368,11 +286,9 @@ export class AnalyzeController {
   _lastAutoStagedCapturePath: string | null;
   _cameraPanelOpen: boolean;
   _cameraPreviewRequestId: string | null;
+  _cameraPreviewStream: MediaStream | null;
   _cameraPanelStatusMessage: string | null;
   _cameraPanelHasFrame: boolean;
-  _cameraVideoDecoder: AnalyzeVideoDecoderLike | null;
-  _cameraVideoDecoderConfigKey: string | null;
-  _cameraVideoConfigBytes: Uint8Array | null;
   _voiceCommandsEnabled: boolean;
   _ambientEnabled: boolean;
   _ambientRequestId: string | null;
@@ -409,7 +325,6 @@ export class AnalyzeController {
     this._unsubAppState = null;
     this._unsubI18n = null;
     this._unsubCaptureMediaIngress = null;
-    this._unsubCapturePreviewFrame = null;
     this._unsubCaptureAmbientStatus = null;
     this._unsubAmbientTranscriptIngress = null;
     this._boundActions = false;
@@ -434,11 +349,9 @@ export class AnalyzeController {
     this._lastAutoStagedCapturePath = null;
     this._cameraPanelOpen = false;
     this._cameraPreviewRequestId = null;
+    this._cameraPreviewStream = null;
     this._cameraPanelStatusMessage = null;
     this._cameraPanelHasFrame = false;
-    this._cameraVideoDecoder = null;
-    this._cameraVideoDecoderConfigKey = null;
-    this._cameraVideoConfigBytes = null;
     this._voiceCommandsEnabled =
       SettingsManager.getSnapshot().voiceCommands?.analyzeEnabled === true;
     this._ambientEnabled = false;
@@ -500,9 +413,6 @@ export class AnalyzeController {
     this._bindDictationUi();
     this._unsubCaptureMediaIngress ??= onCaptureMediaIngress((payload) => {
       this._handleCaptureMediaIngress(payload);
-    });
-    this._unsubCapturePreviewFrame ??= onCapturePreviewFrame((payload) => {
-      this._handleCapturePreviewFrame(payload);
     });
     this._unsubCaptureAmbientStatus ??= onCaptureAmbientStatus((payload) => {
       this._handleAmbientStatus(payload);
@@ -1459,7 +1369,7 @@ export class AnalyzeController {
   }
 
   _primaryAmbientWakePhrase(): string {
-    return this._ambientWakePhrases()[0] ?? "Hey Hayalet";
+    return this._ambientWakePhrases()[0] ?? "Hey Jarvis";
   }
 
   _voiceCommandPhrases(): Required<CaptureCommandPhraseSettings> {
@@ -2316,7 +2226,6 @@ export class AnalyzeController {
     options: { notify?: boolean } = {}
   ): Promise<void> {
     if (open === true) {
-      this._resetCameraVideoDecoder();
       this._cameraPanelOpen = true;
       this._cameraPanelHasFrame = false;
       this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.opening");
@@ -2337,14 +2246,24 @@ export class AnalyzeController {
         }
         this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.waiting");
         this._renderAndroidCameraPanel();
+        await this._attachAndroidCameraFeed(outcome.status.analyze.previewVideo);
+        this._cameraPanelHasFrame = true;
+        this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.live");
+        this._renderAndroidCameraPanel();
         this._startCaptureStatusPolling();
       } catch (error) {
         const message = getErrorMessage(error);
+        const failedRequestId = this._cameraPreviewRequestId;
+        this._stopAndroidCameraFeed();
         this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.error", { message });
         this._cameraPreviewRequestId = null;
         this._cameraPanelOpen = false;
         this._cameraPanelHasFrame = false;
         this._renderAndroidCameraPanel();
+        await runCaptureAction("stop-analyze-preview", {
+          target: "analyze-compose",
+          requestId: failedRequestId,
+        }).catch(() => null);
         if (options.notify !== false) {
           this._notifyCaptureFeedback(
             "error",
@@ -2363,7 +2282,7 @@ export class AnalyzeController {
     this._cameraPreviewRequestId = null;
     this._cameraPanelHasFrame = false;
     this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.stopped");
-    this._resetCameraVideoDecoder();
+    this._stopAndroidCameraFeed();
     this._renderAndroidCameraPanel();
 
     if (requestId === null) {
@@ -2393,212 +2312,107 @@ export class AnalyzeController {
     }
   }
 
-  _handleCapturePreviewFrame(payload: CapturePreviewFramePayload): void {
-    if (
-      this._cameraPanelOpen !== true ||
-      payload.target !== "analyze-compose" ||
-      payload.requestId !== this._cameraPreviewRequestId
-    ) {
-      return;
-    }
-
-    if (payload.mimeType === "video/avc") {
-      this._handleH264PreviewChunk(payload);
-      return;
-    }
-
-    this._resetCameraVideoDecoder();
-    const image = document.getElementById("android-camera-feed") as HTMLImageElement | null;
-    const canvas = document.getElementById("android-camera-feed-video") as HTMLCanvasElement | null;
-    if (canvas !== null) {
-      canvas.hidden = true;
-    }
-    if (image !== null) {
-      image.hidden = false;
-      image.src = `data:${payload.mimeType};base64,${payload.contentBase64}`;
-    }
-
-    this._cameraPanelHasFrame = true;
-    this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.live");
-    this._renderAndroidCameraPanel();
+  _findAndroidCameraMediaDevice(
+    devices: MediaDeviceInfo[],
+    previewVideo: CaptureAnalyzePreviewVideoStatus
+  ): MediaDeviceInfo | null {
+    const expectedLabel = previewVideo.label.toLowerCase();
+    return (
+      devices.find(
+        (device) =>
+          device.kind === "videoinput" && device.label.toLowerCase().includes(expectedLabel)
+      ) ?? null
+    );
   }
 
-  _handleH264PreviewChunk(payload: AnalyzeH264PreviewPayload): void {
-    const bytes = normalizeAnalyzePreviewChunkBytes(payload.chunk);
-    if (bytes === null || bytes.byteLength === 0) {
-      return;
+  async _resolveAndroidCameraMediaDevice(
+    previewVideo: CaptureAnalyzePreviewVideoStatus
+  ): Promise<MediaDeviceInfo> {
+    const mediaDevices = navigator.mediaDevices as Partial<MediaDevices> | undefined;
+    if (mediaDevices?.getUserMedia === undefined || mediaDevices.enumerateDevices === undefined) {
+      throw new Error("Local camera capture is not available in this browser context.");
     }
 
-    const image = document.getElementById("android-camera-feed") as HTMLImageElement | null;
-    const canvas = document.getElementById("android-camera-feed-video") as HTMLCanvasElement | null;
-    if (image !== null) {
-      image.removeAttribute("src");
-      image.hidden = true;
-    }
-    if (canvas !== null) {
-      canvas.hidden = false;
-    }
+    const enumerateDevices = mediaDevices.enumerateDevices.bind(mediaDevices);
+    const findDevice = async (): Promise<MediaDeviceInfo | null> =>
+      this._findAndroidCameraMediaDevice(await enumerateDevices(), previewVideo);
 
-    if (payload.isConfig === true) {
-      this._cameraVideoConfigBytes = bytes;
-      return;
+    const existingDevice = await findDevice();
+    if (existingDevice !== null) {
+      return existingDevice;
     }
 
-    if (payload.isKeyFrame !== true && this._cameraVideoDecoder === null) {
-      return;
-    }
-
-    if (this._ensureCameraVideoDecoder(payload) !== true) {
-      this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.error", {
-        message: "WebCodecs H.264 decoder is unavailable.",
-      });
-      this._renderAndroidCameraPanel();
-      return;
-    }
-
-    const constructors = getAnalyzeWebCodecsConstructors();
-    const decoder = this._cameraVideoDecoder;
-    if (constructors === null || decoder === null || decoder.state === "closed") {
-      return;
-    }
-
-    const data =
-      payload.isKeyFrame === true && this._cameraVideoConfigBytes !== null
-        ? concatAnalyzePreviewBytes(this._cameraVideoConfigBytes, bytes)
-        : bytes;
-    const timestampMs = payload.timestampMs ?? performance.now();
-    try {
-      decoder.decode(
-        new constructors.EncodedVideoChunk({
-          type: payload.isKeyFrame === true ? "key" : "delta",
-          timestamp: Math.max(0, Math.round(timestampMs * 1_000)),
-          data: copyAnalyzePreviewBytesToArrayBuffer(data),
-        })
-      );
-    } catch (error) {
-      this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.error", {
-        message: getErrorMessage(error),
-      });
-      this._resetCameraVideoDecoder();
-      this._renderAndroidCameraPanel();
-    }
-  }
-
-  _ensureCameraVideoDecoder(payload: AnalyzeH264PreviewPayload): boolean {
-    const constructors = getAnalyzeWebCodecsConstructors();
-    if (constructors === null) {
-      return false;
-    }
-
-    const configKey = `${payload.codec}:${payload.width ?? 0}x${payload.height ?? 0}`;
-    if (
-      this._cameraVideoDecoder !== null &&
-      this._cameraVideoDecoderConfigKey === configKey &&
-      this._cameraVideoDecoder.state !== "closed"
-    ) {
-      return true;
-    }
-
-    const configBytes = this._cameraVideoConfigBytes;
-    this._resetCameraVideoDecoder();
-    this._cameraVideoConfigBytes = configBytes;
-    const decoder = new constructors.VideoDecoder({
-      output: (frame): void => {
-        try {
-          const canvas = document.getElementById(
-            "android-camera-feed-video"
-          ) as HTMLCanvasElement | null;
-          const image = document.getElementById("android-camera-feed") as HTMLImageElement | null;
-          const context = canvas?.getContext("2d") ?? null;
-          if (canvas === null || context === null) {
-            return;
-          }
-
-          const displayWidth =
-            Number.isFinite(frame.displayWidth) && frame.displayWidth > 0
-              ? frame.displayWidth
-              : null;
-          const displayHeight =
-            Number.isFinite(frame.displayHeight) && frame.displayHeight > 0
-              ? frame.displayHeight
-              : null;
-          const width = Math.max(1, Math.round(displayWidth ?? payload.width ?? 1));
-          const height = Math.max(1, Math.round(displayHeight ?? payload.height ?? 1));
-          if (canvas.width !== width) {
-            canvas.width = width;
-          }
-          if (canvas.height !== height) {
-            canvas.height = height;
-          }
-          context.drawImage(frame as unknown as CanvasImageSource, 0, 0, width, height);
-          canvas.hidden = false;
-          if (image !== null) {
-            image.removeAttribute("src");
-            image.hidden = true;
-          }
-          this._cameraPanelHasFrame = true;
-          this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.live");
-          this._renderAndroidCameraPanel();
-        } finally {
-          frame.close();
-        }
-      },
-      error: (error): void => {
-        this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.error", {
-          message: getErrorMessage(error),
-        });
-        this._resetCameraVideoDecoder();
-        this._renderAndroidCameraPanel();
-      },
+    const permissionStream = await mediaDevices.getUserMedia({
+      audio: false,
+      video: true,
+    });
+    permissionStream.getTracks().forEach((track) => {
+      track.stop();
     });
 
-    try {
-      const config: Record<string, unknown> = {
-        codec: payload.codec,
-        optimizeForLatency: true,
-        avc: { format: "annexb" },
-      };
-      if (payload.width !== null) {
-        config["codedWidth"] = payload.width;
-      }
-      if (payload.height !== null) {
-        config["codedHeight"] = payload.height;
-      }
-      decoder.configure(config);
-    } catch (error) {
-      try {
-        decoder.close();
-      } catch (_) {}
-      this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.error", {
-        message: getErrorMessage(error),
-      });
-      return false;
+    const permittedDevice = await findDevice();
+    if (permittedDevice !== null) {
+      return permittedDevice;
     }
 
-    this._cameraVideoDecoder = decoder;
-    this._cameraVideoDecoderConfigKey = configKey;
-    return true;
+    throw new Error(`Local camera device not found: ${previewVideo.label}`);
   }
 
-  _resetCameraVideoDecoder(): void {
-    const decoder = this._cameraVideoDecoder;
-    this._cameraVideoDecoder = null;
-    this._cameraVideoDecoderConfigKey = null;
-    this._cameraVideoConfigBytes = null;
-    if (decoder === null || decoder.state === "closed") {
-      return;
+  async _attachAndroidCameraFeed(
+    previewVideo: CaptureAnalyzePreviewVideoStatus | null
+  ): Promise<void> {
+    if (previewVideo === null) {
+      throw new Error("Scrcpy video device was not reported.");
     }
 
-    try {
-      decoder.close();
-    } catch (_) {}
+    const video = document.getElementById("android-camera-feed") as HTMLVideoElement | null;
+    if (video === null) {
+      throw new Error("Analyze camera video surface is missing.");
+    }
+
+    const mediaDevices = navigator.mediaDevices as Partial<MediaDevices> | undefined;
+    if (mediaDevices?.getUserMedia === undefined) {
+      throw new Error("Local camera capture is not available in this browser context.");
+    }
+
+    this._stopAndroidCameraFeed();
+    const mediaDevice = await this._resolveAndroidCameraMediaDevice(previewVideo);
+    const stream = await mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        deviceId: { exact: mediaDevice.deviceId },
+        width: { ideal: previewVideo.width },
+        height: { ideal: previewVideo.height },
+        frameRate: { ideal: previewVideo.fps },
+      },
+    });
+    this._cameraPreviewStream = stream;
+    video.srcObject = stream;
+    video.hidden = false;
+    await video.play();
+  }
+
+  _stopAndroidCameraFeed(): void {
+    if (this._cameraPreviewStream !== null) {
+      this._cameraPreviewStream.getTracks().forEach((track) => {
+        track.stop();
+      });
+      this._cameraPreviewStream = null;
+    }
+
+    const video = document.getElementById("android-camera-feed") as HTMLVideoElement | null;
+    if (video !== null) {
+      video.pause();
+      video.srcObject = null;
+      video.hidden = true;
+    }
   }
 
   _renderAndroidCameraPanel(): void {
     const panel = document.getElementById("android-camera-panel");
     const row = panel?.closest(".compose-row");
-    const image = document.getElementById("android-camera-feed") as HTMLImageElement | null;
-    const canvas = document.getElementById("android-camera-feed-video") as HTMLCanvasElement | null;
+    const placeholder = document.getElementById("android-camera-placeholder");
+    const video = document.getElementById("android-camera-feed") as HTMLVideoElement | null;
     const status = document.getElementById("android-camera-status");
     if (row instanceof HTMLElement) {
       row.classList.toggle("is-camera-panel-open", this._cameraPanelOpen);
@@ -2607,19 +2421,19 @@ export class AnalyzeController {
       panel.hidden = this._cameraPanelOpen !== true;
       panel.classList.toggle("has-frame", this._cameraPanelHasFrame);
     }
-    if (image !== null && this._cameraPanelOpen !== true) {
-      image.removeAttribute("src");
-      image.hidden = false;
+    const message =
+      this._cameraPanelStatusMessage ??
+      analyzeT(this._cameraPanelOpen ? "page.cameraPanel.waiting" : "page.cameraPanel.closed");
+    const hasVisibleFeed = this._cameraPanelHasFrame === true && this._cameraPreviewStream !== null;
+    if (video !== null) {
+      video.hidden = hasVisibleFeed !== true;
     }
-    if (canvas !== null && this._cameraPanelOpen !== true) {
-      canvas.hidden = true;
-      const context = canvas.getContext("2d");
-      context?.clearRect(0, 0, canvas.width, canvas.height);
+    if (placeholder !== null) {
+      placeholder.textContent = message;
+      placeholder.hidden = hasVisibleFeed;
     }
     if (status !== null) {
-      status.textContent =
-        this._cameraPanelStatusMessage ??
-        analyzeT(this._cameraPanelOpen ? "page.cameraPanel.waiting" : "page.cameraPanel.closed");
+      status.textContent = message;
     }
   }
 

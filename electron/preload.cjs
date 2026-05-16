@@ -6,7 +6,6 @@ const PROVIDER_SCENARIO_PROGRESS_CHANNEL = "provider-scenario:progress";
 const ROOM_TOOLS_PROGRESS_CHANNEL = "room-tools:progress";
 const TRANSCRIPT_INGRESS_CHANNEL = "transcript:ingress";
 const CAPTURE_MEDIA_INGRESS_CHANNEL = "capture:media-ingress";
-const CAPTURE_PREVIEW_FRAME_CHANNEL = "capture:preview-frame";
 const CAPTURE_DICTATION_STATUS_CHANNEL = "capture:dictation-status";
 const CAPTURE_AMBIENT_STATUS_CHANNEL = "capture:ambient-status";
 const SETTINGS_BROADCAST_NAME = "app-settings";
@@ -15,7 +14,6 @@ const providerScenarioProgressHandlers = new Map();
 const roomToolsProgressHandlers = new Map();
 const transcriptIngressHandlers = new Map();
 const captureMediaIngressHandlers = new Map();
-const capturePreviewFrameHandlers = new Map();
 const captureDictationStatusHandlers = new Map();
 const captureAmbientStatusHandlers = new Map();
 let __app_preload_locale = "tr";
@@ -505,20 +503,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     if (!handler) return;
     ipcRenderer.removeListener(CAPTURE_MEDIA_INGRESS_CHANNEL, handler);
     captureMediaIngressHandlers.delete(callback);
-  },
-  captureOnPreviewFrame: (callback) => {
-    if (typeof callback !== "function" || capturePreviewFrameHandlers.has(callback)) {
-      return;
-    }
-    const handler = (_event, payload) => callback(payload);
-    capturePreviewFrameHandlers.set(callback, handler);
-    ipcRenderer.on(CAPTURE_PREVIEW_FRAME_CHANNEL, handler);
-  },
-  captureOffPreviewFrame: (callback) => {
-    const handler = capturePreviewFrameHandlers.get(callback);
-    if (!handler) return;
-    ipcRenderer.removeListener(CAPTURE_PREVIEW_FRAME_CHANNEL, handler);
-    capturePreviewFrameHandlers.delete(callback);
   },
   captureOnDictationStatus: (callback) => {
     if (typeof callback !== "function" || captureDictationStatusHandlers.has(callback)) {

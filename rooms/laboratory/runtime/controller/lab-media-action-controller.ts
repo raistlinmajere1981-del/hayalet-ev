@@ -7,8 +7,10 @@ import {
 } from "../../models/lab-types.js";
 import type {
   LabComparisonRoiState,
+  LabComparisonSide,
   LabOperationCapabilityId,
   LabSelectionROI,
+  LabStoreState,
   LabUserActionEvent,
 } from "../../models/lab-types.js";
 import { getTrackedOperationActionId } from "../lab-operation-action-map.js";
@@ -73,6 +75,11 @@ function getComparisonRoisOperationPayload(
     ...(reference === null ? {} : { referenceNormalizedRoi: reference }),
   };
 }
+
+type ActiveSelectionOperationPayloadOptions = {
+  comparisonRoiTarget?: "active-side" | LabComparisonSide;
+  comparisonTarget?: "active-side" | LabComparisonSide;
+};
 
 export function createLabMediaActionController(deps: LabMediaActionControllerDeps) {
   const hubDismissTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -203,11 +210,50 @@ export function createLabMediaActionController(deps: LabMediaActionControllerDep
     };
   }
 
-  function getActiveSelectionOperationPayload(state = deps.store.getState()) {
+  function getComparisonOptionSide(
+    state: LabStoreState,
+    option: "active-side" | LabComparisonSide | undefined
+  ): LabComparisonSide {
+    return option === "primary" || option === "reference"
+      ? option
+      : state.ui.workspace.comparisonRois.activeSide;
+  }
+
+  function getComparisonSideTargetPayload(input: {
+    roiSide: LabComparisonSide;
+    sourceSide: LabComparisonSide;
+    state: LabStoreState;
+  }): Record<string, unknown> {
+    const comparisonReferenceAssetId = asNonEmptyString(
+      input.state.ui.workspace.comparisonReferenceAssetId
+    );
+    if (comparisonReferenceAssetId === null) {
+      return {};
+    }
+    const targetAssetId =
+      input.sourceSide === "reference"
+        ? comparisonReferenceAssetId
+        : asNonEmptyString(input.state.ui.activeWorkspaceAssetId);
+    const roi = serializeSelectionRoi(input.state.ui.workspace.comparisonRois[input.roiSide]);
+    return {
+      ...(targetAssetId === null ? {} : { workspaceTargetAssetId: targetAssetId }),
+      ...(roi === null ? {} : { normalizedRoi: roi }),
+    };
+  }
+
+  function getActiveSelectionOperationPayload(
+    state = deps.store.getState(),
+    options: ActiveSelectionOperationPayloadOptions = {}
+  ) {
     const selection = state.ui.workspace.activeSelection;
     const startMs = state.ui.workspace.timelineStartMs ?? selection?.startMs ?? null;
     const endMs = state.ui.workspace.timelineEndMs ?? selection?.endMs ?? null;
     const hasTimeRange = startMs !== null && endMs !== null && endMs > startMs;
+    const comparisonTargetPayload = getComparisonSideTargetPayload({
+      roiSide: getComparisonOptionSide(state, options.comparisonRoiTarget),
+      sourceSide: getComparisonOptionSide(state, options.comparisonTarget),
+      state,
+    });
     const seekMs =
       state.ui.workspace.timelineStartMs !== null
         ? state.ui.workspace.timelineStartMs
@@ -227,6 +273,7 @@ export function createLabMediaActionController(deps: LabMediaActionControllerDep
         : {}),
       ...getComparisonRoisOperationPayload(state.ui.workspace.comparisonRois),
       ...getCurrentRunIntentPayload(state),
+      ...comparisonTargetPayload,
     };
   }
 

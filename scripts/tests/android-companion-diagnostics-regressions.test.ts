@@ -45,10 +45,16 @@ test("android companion diagnostics panel stays wired across ui and runtime flow
   assert.match(layoutSource, /id="@\+id\/companionTabs"/);
   assert.match(layoutSource, /id="@\+id\/imageTabPanel"/);
   assert.match(layoutSource, /id="@\+id\/dictateTabPanel"/);
+  assert.match(layoutSource, /id="@\+id\/ambientTabPanel"/);
   assert.match(layoutSource, /id="@\+id\/logsTabPanel"/);
   assert.match(layoutSource, /id="@\+id\/dictationStatusValue"/);
   assert.match(layoutSource, /id="@\+id\/dictationDetailValue"/);
   assert.match(layoutSource, /id="@\+id\/dictationModelValue"/);
+  assert.match(layoutSource, /id="@\+id\/ambientMicrophoneValue"/);
+  assert.match(layoutSource, /id="@\+id\/ambientStatusValue"/);
+  assert.match(layoutSource, /id="@\+id\/ambientDetailValue"/);
+  assert.match(layoutSource, /id="@\+id\/ambientWakePhraseValue"/);
+  assert.match(layoutSource, /id="@\+id\/ambientHistoryValue"/);
   assert.match(layoutSource, /id="@\+id\/imageCaptureActions"/);
   assert.match(layoutSource, /id="@\+id\/imageCaptureClearButton"/);
   assert.match(layoutSource, /id="@\+id\/imageCaptureButton"/);
@@ -67,9 +73,14 @@ test("android companion diagnostics panel stays wired across ui and runtime flow
 
   assert.match(stringsSource, /name="tab_image"/);
   assert.match(stringsSource, /name="tab_dictate"/);
+  assert.match(stringsSource, /name="tab_ambient"/);
   assert.match(stringsSource, /name="tab_logs"/);
   assert.match(stringsSource, /name="dictation_status_recording"/);
   assert.match(stringsSource, /name="dictation_status_transcribing"/);
+  assert.match(stringsSource, /name="ambient_microphone_wake"/);
+  assert.match(stringsSource, /name="ambient_status_waiting"/);
+  assert.match(stringsSource, /name="ambient_event_done"/);
+  assert.match(stringsSource, /name="ambient_history_empty"/);
   assert.match(stringsSource, /name="manual_dictation_title"/);
   assert.match(stringsSource, /name="manual_dictation_backend_vosk"/);
   assert.doesNotMatch(stringsSource, /manual_dictation_backend_whisper/);
@@ -101,6 +112,9 @@ test("android companion diagnostics panel stays wired across ui and runtime flow
   assert.match(activitySource, /configureManualImagePanel\(\)/);
   assert.match(activitySource, /renderManualImageControls\(\)/);
   assert.match(activitySource, /clearManualImageCaptureFile\(\)/);
+  assert.match(activitySource, /CompanionTab\.AMBIENT/);
+  assert.match(activitySource, /ambientTabPanel\.isVisible = tab == CompanionTab\.AMBIENT/);
+  assert.match(activitySource, /renderAmbientMicrophonePermissionState\(\)/);
   assert.match(activitySource, /configureManualDictationPanel\(\)/);
   assert.match(activitySource, /startManualDictation\(\)/);
   assert.match(activitySource, /stopManualDictation\(\)/);
@@ -121,6 +135,11 @@ test("android companion diagnostics panel stays wired across ui and runtime flow
   assert.match(sessionSource, /CompanionDiagnostics\.e\(\s*"command"/);
   assert.match(sessionSource, /dictationStatus = appContext\.getString/);
   assert.match(sessionSource, /updateDictationUi\(/);
+  assert.match(sessionSource, /val ambientMicrophoneStatus: String\? = null/);
+  assert.match(sessionSource, /ambientHistoryEntries/);
+  assert.match(sessionSource, /updateAmbientUi\(/);
+  assert.match(sessionSource, /resolveAmbientMonitorStatus/);
+  assert.match(sessionSource, /resolveAmbientHistoryEntry/);
   assert.match(sessionSource, /syncDiagnosticsSnapshot\(\)/);
   assert.match(sessionSource, /syncDiagnosticsSnapshotIfDue\(\)/);
   assert.match(sessionSource, /BRIDGE_OFFLINE_RETRY_MS/);
