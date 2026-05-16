@@ -153,7 +153,7 @@ function getAssetPrimaryAction(asset: LabAsset): { action: string; value: string
   if (getAssetContentActionKind(asset) === "document") {
     return { action: "open-document-overlay", value: asset.id };
   }
-  return { action: "workspace-content-open", value: asset.id };
+  return { action: "workspace-asset-select", value: asset.id };
 }
 
 function canDownloadAsset(asset: LabAsset): boolean {
@@ -163,23 +163,14 @@ function canDownloadAsset(asset: LabAsset): boolean {
   return false;
 }
 
-function renderAssetRelationMeta(
-  state: LabStoreState,
-  asset: LabAsset,
-  currentSourceId: string | null,
-  copy: LabI18n
-): string {
-  const activeSourceLabel =
-    currentSourceId === asset.id
-      ? `<span class="labx-sp-asset__relation-text">${escapeHtml(copy.t("mediaAnalysis.assets.relation.activeSource", "Aktif kaynak"))}</span>`
-      : "";
+function renderAssetRelationMeta(state: LabStoreState, asset: LabAsset, copy: LabI18n): string {
   const comparisonReferenceLabel =
     state.ui.workspace.comparisonReferenceAssetId === asset.id
       ? `<span class="labx-sp-asset__relation-text">${escapeHtml(copy.t("mediaAnalysis.assets.relation.compareReference", "Karşılaştırma referansı"))}</span>`
       : "";
 
   if (asset.type !== "audio") {
-    const relation = `${activeSourceLabel}${comparisonReferenceLabel}`;
+    const relation = comparisonReferenceLabel;
     return relation === "" ? "" : `<span class="labx-sp-asset__relation">${relation}</span>`;
   }
 
@@ -193,18 +184,12 @@ function renderAssetRelationMeta(
         ? `<button class="labx-sp-asset__relation-link" type="button" data-lab-action="focus-source-preview" data-lab-value="${escapeHtml(parentSource.id)}">${escapeHtml(copy.t("mediaAnalysis.assets.relation.source", "Kaynak"))}: ${escapeHtml(parentSource.name)}</button>`
         : `<span class="labx-sp-asset__relation-text">${escapeHtml(copy.t("mediaAnalysis.assets.relation.source", "Kaynak"))}: ${escapeHtml(parentSource.name)}</span>`;
 
-  if (
-    relationMarkup === "" &&
-    syncLabel === null &&
-    activeSourceLabel === "" &&
-    comparisonReferenceLabel === ""
-  ) {
+  if (relationMarkup === "" && syncLabel === null && comparisonReferenceLabel === "") {
     return "";
   }
 
   return `
     <span class="labx-sp-asset__relation">
-      ${activeSourceLabel}
       ${relationMarkup}
       ${syncLabel ? `<span class="labx-sp-asset__relation-text">${escapeHtml(syncLabel)}</span>` : ""}
       ${comparisonReferenceLabel}
@@ -215,11 +200,11 @@ function renderAssetRelationMeta(
 function renderAssetItem(
   state: LabStoreState,
   asset: LabAsset,
-  currentSourceId: string | null,
+  activeMediaAssetIds: string[],
   copy: LabI18n
 ): string {
   const id = escapeHtml(asset.id);
-  const isActive = asset.id === currentSourceId ? ' data-active="true"' : "";
+  const isActive = activeMediaAssetIds.includes(asset.id) ? ' data-active="true"' : "";
   const isComparisonReference =
     state.ui.workspace.comparisonReferenceAssetId === asset.id
       ? ' data-compare-reference="true"'
@@ -263,7 +248,7 @@ function renderAssetItem(
           ${meta ? `<span class="labx-sp-asset__meta">${escapeHtml(meta)}</span>` : ""}
         </span>
       </button>
-      ${renderAssetRelationMeta(state, asset, currentSourceId, copy)}
+      ${renderAssetRelationMeta(state, asset, copy)}
       <details class="labx-sp-asset__menu">
         <summary class="labx-sp-asset__menu-trigger" aria-label="${escapeHtml(copy.t("mediaAnalysis.assets.actions.ariaLabel", "Seçenekler"))}">···</summary>
         <div class="labx-sp-asset__menu-list">
@@ -288,7 +273,7 @@ function renderAssetGroup(
   group: AssetGroup,
   state: LabStoreState,
   assets: LabAsset[],
-  currentSourceId: string | null,
+  activeMediaAssetIds: string[],
   isOpen: boolean,
   copy: LabI18n
 ): string {
@@ -306,7 +291,7 @@ function renderAssetGroup(
       <div class="labx-sp-group__items">
         ${groupAssets
           .map(function (a) {
-            return renderAssetItem(state, a, currentSourceId, copy);
+            return renderAssetItem(state, a, activeMediaAssetIds, copy);
           })
           .join("")}
       </div>
@@ -428,13 +413,17 @@ export function renderLabSourcePanel(
   const source = getProjectSource(state);
   const currentAsset = getCurrentSourceAsset(state);
   const sourceMetadata = asLabRecord(source["metadata"]);
+  const selectedWorkspaceAssetId = asNonEmptyString(state.ui.activeWorkspaceAssetId);
   const currentSourceId =
-    state.ui.activeWorkspaceAssetId ??
     currentAsset?.id ??
     asNonEmptyString(sourceMetadata["originAssetId"]) ??
     asNonEmptyString(sourceMetadata["derivedFromAssetId"]) ??
     asNonEmptyString(source["assetId"]);
   const assets = getAssets(state);
+  const activeMediaAssetIds = [
+    selectedWorkspaceAssetId ?? currentSourceId,
+    asNonEmptyString(state.ui.workspace.comparisonReferenceAssetId),
+  ].filter((assetId): assetId is string => assetId !== null);
 
   const localAction = buildProjectImportLocalHostAction(state);
   const localDisabled = localAction.disabledReason !== null ? " disabled" : "";
@@ -444,23 +433,30 @@ export function renderLabSourcePanel(
       return g.types.includes(a.type);
     });
   });
-  const activeAsset =
-    currentSourceId === null
-      ? null
-      : assets.find(function (asset) {
-          return asset.id === currentSourceId;
-        }) || null;
-  const activeGroupWithAsset =
-    activeAsset === null
-      ? null
-      : ASSET_GROUPS.find(function (group) {
-          return group.types.includes(activeAsset.type);
-        }) || null;
-  const openGroupId = activeGroupWithAsset?.id ?? firstGroupWithAssets?.id ?? null;
+  const activeGroupIds = new Set(
+    activeMediaAssetIds
+      .map(function (assetId) {
+        const asset =
+          assets.find(function (candidate) {
+            return candidate.id === assetId;
+          }) || null;
+        if (asset === null) {
+          return null;
+        }
+        return (
+          ASSET_GROUPS.find(function (group) {
+            return group.types.includes(asset.type);
+          })?.id ?? null
+        );
+      })
+      .filter((groupId): groupId is string => groupId !== null)
+  );
+  const fallbackOpenGroupId = firstGroupWithAssets?.id ?? null;
 
   const assetGroupsMarkup = ASSET_GROUPS.map(function (group) {
-    const isOpen = openGroupId === group.id;
-    return renderAssetGroup(group, state, assets, currentSourceId, isOpen, copy);
+    const isOpen =
+      activeGroupIds.size > 0 ? activeGroupIds.has(group.id) : fallbackOpenGroupId === group.id;
+    return renderAssetGroup(group, state, assets, activeMediaAssetIds, isOpen, copy);
   }).join("");
 
   const emptyMarkup =

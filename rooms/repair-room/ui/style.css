@@ -58,6 +58,31 @@ body {
   gap: var(--repair-sp-2);
 }
 
+.repair-statusbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--repair-sp-3);
+}
+
+.repair-statusbar__close {
+  display: grid;
+  place-items: center;
+  width: var(--repair-px-24);
+  height: var(--repair-px-24);
+  border: var(--repair-px-1) solid var(--repair-border);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-surface-control);
+  color: var(--repair-text-dim);
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+}
+
+.repair-statusbar__close:hover {
+  border-color: var(--repair-border-strong);
+  color: var(--repair-cyan);
+}
+
 .repair-statusbar__clock {
   font-variant-numeric: tabular-nums;
   color: var(--repair-text-dim);

@@ -14,15 +14,12 @@ export function shouldShowRoomFeatureStrip(
 export function ensureRoomPageShell(
   page: HTMLElement,
   options: {
-    closeLabel: string;
     immersive: boolean;
-    onCloseRoom: () => void;
     showFeatureStrip: boolean;
     onSelectFeature: (featureId: string) => void;
   }
 ): void {
   if (page.dataset["roomShellReady"] === "true") {
-    syncRoomCloseButtonLabel(page, options.closeLabel);
     return;
   }
 
@@ -51,19 +48,6 @@ export function ensureRoomPageShell(
 
   page.innerHTML = `
     <div class="room-page-shell${options.immersive ? " room-page-shell--immersive" : ""}" data-room-role="page-shell">
-      <button
-        class="icon-btn room-close-button"
-        type="button"
-        data-room-action="close-runtime"
-        title="${escapeHtml(options.closeLabel)}"
-        aria-label="${escapeHtml(options.closeLabel)}"
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-          <path
-            d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"
-          />
-        </svg>
-      </button>
       <div class="room-scene-root scene-shell__surface" data-room-role="scene-root" hidden>
         <div class="room-scene-room scene-shell__room-layer" data-room-role="scene-room">
           <img class="room-scene-room__background scene-shell__cover-image" data-room-role="scene-room-background" alt="" />
@@ -96,23 +80,7 @@ export function ensureRoomPageShell(
       }
     });
 
-  page
-    .querySelector<HTMLElement>("[data-room-action='close-runtime']")
-    ?.addEventListener("click", () => {
-      options.onCloseRoom();
-    });
-
   page.dataset["roomShellReady"] = "true";
-}
-
-function syncRoomCloseButtonLabel(page: HTMLElement, closeLabel: string): void {
-  const closeButton = page.querySelector<HTMLElement>("[data-room-action='close-runtime']");
-  if (closeButton === null) {
-    return;
-  }
-
-  closeButton.setAttribute("title", closeLabel);
-  closeButton.setAttribute("aria-label", closeLabel);
 }
 
 export function renderRoomFeatureButtons(options: {

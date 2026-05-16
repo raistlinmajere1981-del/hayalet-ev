@@ -193,6 +193,7 @@ declare global {
       ready: (payload?: Record<string, unknown>) => boolean;
       sendCommand: (command: string, payload?: Record<string, unknown>) => boolean;
       sendEvent: (type: string, payload?: Record<string, unknown>) => boolean;
+      close?: () => boolean;
       onHostMessage: (callback: (payload: unknown) => void) => () => void;
       offHostMessage: (callback: (payload: unknown) => void) => void;
     };

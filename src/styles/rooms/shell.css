@@ -9,23 +9,6 @@
   overflow: hidden;
 }
 
-.room-close-button {
-  position: absolute;
-  top: var(--rooms-space-0-75);
-  left: var(--rooms-space-0-75);
-  z-index: 19;
-  border: var(--border-1) solid color-mix(in srgb, var(--border-default) 72%, transparent);
-  background: color-mix(in srgb, var(--bg-surface) 82%, transparent);
-  color: var(--text-primary);
-  box-shadow: var(--surface-shadow);
-  backdrop-filter: var(--glass-blur);
-}
-
-.room-close-button:hover {
-  border-color: color-mix(in srgb, var(--color-error) 42%, var(--border-strong));
-  color: var(--color-error);
-}
-
 .room-page-shell--immersive,
 .room-page-shell--immersive .room-shell--immersive {
   min-height: 0;

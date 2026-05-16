@@ -144,6 +144,24 @@ test("laboratory shared asset kind helper keeps source and content routing consi
     "audio"
   );
   assert.equal(
+    inferLabAssetSourceKind({
+      ...baseAsset,
+      type: "audio",
+      name: "captured-voice.webm",
+      localPath: "/tmp/captured-voice.webm",
+    }),
+    "audio"
+  );
+  assert.equal(
+    inferLabAssetSourceKind({
+      ...baseAsset,
+      type: "source",
+      name: "imported-image.png",
+      localPath: "/tmp/imported-image.png",
+    }),
+    "image"
+  );
+  assert.equal(
     inferLabAssetContentKind({
       ...baseAsset,
       name: "analysis-report.md",
@@ -295,7 +313,8 @@ test("laboratory source panel renders localized asset groups and context actions
   assert.match(html, /report\.md/);
   assert.match(html, /artifact\.json/);
   assert.doesNotMatch(html, /secili/);
-  assert.match(html, /data-lab-action="workspace-content-open"/);
+  assert.match(html, /data-lab-action="workspace-asset-select"/);
+  assert.doesNotMatch(html, /data-lab-action="workspace-content-open"/);
   assert.doesNotMatch(html, /data-lab-action="source-activate-asset"/);
   assert.match(html, /data-lab-action="open-document-overlay" data-lab-value="asset-artifact-1"/);
   assert.match(html, /data-lab-action="open-report-overlay" data-lab-value="user"/);
@@ -366,7 +385,7 @@ test("laboratory source panel hides download for assets without a file target", 
   );
 
   assert.match(html, /virtual artifact/);
-  assert.match(html, /data-lab-action="workspace-content-open"/);
+  assert.match(html, /data-lab-action="workspace-asset-select"/);
   assert.doesNotMatch(html, /data-lab-action="asset-download"/);
 });
 
@@ -389,7 +408,7 @@ test("laboratory source panel renders video source assets as workspace content r
 
   assert.match(html, /data-asset-type="source"/);
   assert.match(html, /CGI Analizi -1\.mp4/);
-  assert.match(html, /data-lab-action="workspace-content-open"/);
+  assert.match(html, /data-lab-action="workspace-asset-select"/);
   assert.doesNotMatch(html, /data-lab-action="source-activate-asset"/);
   assert.doesNotMatch(html, /data-lab-action="asset-use-as-source"/);
   assert.match(html, /class="labx-sp-asset__thumb" data-kind="video"/);

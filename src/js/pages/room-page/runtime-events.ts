@@ -21,6 +21,7 @@ interface UpdateRoomRuntimeStatusParams {
 }
 
 interface BindRoomRuntimeEventsParams {
+  closeRoom: () => void;
   getPage: () => HTMLElement | null;
   pendingHostMessages: WeakMap<RoomWebviewElement, RoomHostMessage[]>;
   roomId: string;
@@ -59,6 +60,7 @@ export function updateRoomRuntimeStatus({
 }
 
 export function bindRoomRuntimeEvents({
+  closeRoom,
   getPage,
   pendingHostMessages,
   roomId,
@@ -115,6 +117,11 @@ export function bindRoomRuntimeEvents({
 
   webview.addEventListener("ipc-message", (event) => {
     const ipcEvent = event as RoomIpcMessageEvent;
+    if (ipcEvent.channel === "room-close") {
+      closeRoom();
+      return;
+    }
+
     if (ipcEvent.channel === "room-ready") {
       const payload = ipcEvent.args?.[0];
       setRuntimeState("ready", describeRuntimePayload(payload, translate("status.runtimeReady")));

@@ -1260,9 +1260,21 @@ export function createForgeRoomUiRuntime() {
       text(["workbench", "goalPanel", "operatorProfile", "topbarAction"], "Operator Profile")
     );
     operatorButton.dataset["forgeAction"] = "toggle-profile-editor";
+    const closeButton = createElement(
+      "button",
+      "forge-button forge-button--secondary forge-statusbar__subaction forge-statusbar__close",
+      "×"
+    );
+    closeButton.title = text(["workbench", "statusBar", "closeRoom"], "Return home");
+    closeButton.setAttribute(
+      "aria-label",
+      text(["workbench", "statusBar", "closeRoom"], "Return home")
+    );
+    closeButton.dataset["forgeAction"] = "room-close";
     operatorActions.append(
       createElement("span", "forge-statusbar__microcopy", state.context.userNickname),
-      operatorButton
+      operatorButton,
+      closeButton
     );
     identity.append(operatorActions);
 
@@ -1622,6 +1634,12 @@ export function createForgeRoomUiRuntime() {
         viewState.guidedSurface = guidedSurface;
         bumpLocalUiVersion();
         render();
+      });
+    });
+
+    root.querySelectorAll<HTMLElement>("[data-forge-action='room-close']").forEach((element) => {
+      element.addEventListener("click", () => {
+        windowRef.roomAPI?.close?.();
       });
     });
 

@@ -946,7 +946,10 @@ test("laboratory drawer keeps media operation controls out of report-analysis ta
   assert.doesNotMatch(sourceDrawer, /data-lab-drawer-workspace-controls="true"/);
 
   store.dispatch({ type: "workspace-controls-tab-selected", tab: "operations" });
-  const operationDrawer = renderLabDrawer(store.getState(), renderWorkspaceSurface(store.getState()));
+  const operationDrawer = renderLabDrawer(
+    store.getState(),
+    renderWorkspaceSurface(store.getState())
+  );
 
   assert.doesNotMatch(operationDrawer, /data-lab-drawer-workspace-controls="true"/);
   assert.doesNotMatch(operationDrawer, /data-lab-workspace-inspector="true"/);
@@ -1007,7 +1010,7 @@ test("laboratory workspace operations follow the selected asset media kind", () 
     },
   });
   store.dispatch({
-    type: "workspace-content-opened",
+    type: "workspace-asset-selected",
     assetId: "asset-audio-target",
   });
 
@@ -1019,6 +1022,39 @@ test("laboratory workspace operations follow the selected asset media kind", () 
   assert.match(surface.inspector ?? "", /data-operation-id="band-pass-voice"/);
   assert.doesNotMatch(surface.inspector ?? "", /data-operation-id="enhanced-frame"/);
   assert.doesNotMatch(surface.inspector ?? "", /data-operation-id="frame-grab"/);
+});
+
+test("laboratory selected image assets stay on the processable inspection stage", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-enhanced-frame",
+      type: "image",
+      name: "enhanced-frame.png",
+      localPath: "/tmp/enhanced-frame.png",
+      createdAt: 300,
+      metadata: {
+        kind: "image",
+      },
+    },
+  });
+  store.dispatch({
+    type: "workspace-asset-selected",
+    assetId: "asset-enhanced-frame",
+  });
+
+  const surface = renderWorkspaceSurface(store.getState());
+
+  assert.match(surface.main, /data-lab-preview-inspection-stage="true"/);
+  assert.match(surface.main, /data-lab-selection-roi-stage="true"/);
+  assert.match(surface.main, /data-lab-preview-inspection-topology="single-image"/);
+  assert.match(surface.main, /data-lab-workspace-asset-id="asset-enhanced-frame"/);
+  assert.match(surface.main, /data-lab-workspace-asset-kind="image"/);
+  assert.match(surface.main, /data-lab-preserve-media="workspace-preview"/);
+  assert.doesNotMatch(surface.main, /class="labx-workspace-content"/);
+  assert.doesNotMatch(surface.main, /data-preview-mode=/);
+  assert.match(surface.inspector ?? "", /data-operation-id="enhanced-frame"/);
 });
 
 test("laboratory image comparison workspace keeps image pair on the inspection workbench", () => {
@@ -1084,7 +1120,8 @@ test("laboratory image comparison workspace keeps image pair on the inspection w
         note: "Sol göz çevresinde belirgin fark",
         primaryAssetId: "asset-primary-image",
         referenceAssetId: "asset-reference-image",
-        roiSummary: "Primary ROI x=10%, y=20%, w=30%, h=40%; Reference ROI x=20%, y=10%, w=25%, h=35%; active=reference",
+        roiSummary:
+          "Primary ROI x=10%, y=20%, w=30%, h=40%; Reference ROI x=20%, y=10%, w=25%, h=35%; active=reference",
         snapshotAssetId: "asset-comparison-snapshot",
       },
     },
@@ -1182,7 +1219,7 @@ test("laboratory workspace asset preview resets timeline controls to the selecte
   });
 
   store.dispatch({
-    type: "workspace-content-opened",
+    type: "workspace-asset-selected",
     assetId: "asset-audio-target",
   });
 
@@ -1221,7 +1258,7 @@ test("laboratory workspace operations block remote asset targets instead of fall
     },
   });
   store.dispatch({
-    type: "workspace-content-opened",
+    type: "workspace-asset-selected",
     assetId: "asset-remote-clip",
   });
 
@@ -2041,14 +2078,18 @@ test("laboratory source panel renders registry groups and workspace open actions
   assert.match(panelHtml, /data-lab-action="asset-remove"/);
   assert.match(
     panelHtml,
-    /class="labx-sp-asset__btn"[^>]*data-lab-action="workspace-content-open" data-lab-value="clip-local-1"/
+    /class="labx-sp-asset__btn"[^>]*data-lab-action="workspace-asset-select" data-lab-value="clip-local-1"/
   );
   assert.match(
     panelHtml,
-    /class="labx-sp-asset__btn"[^>]*data-lab-action="workspace-content-open" data-lab-value="artifact-png-1"/
+    /class="labx-sp-asset__btn"[^>]*data-lab-action="workspace-asset-select" data-lab-value="artifact-png-1"/
   );
-  assert.match(panelHtml, /data-lab-action="workspace-content-open" data-lab-value="clip-local-1"/);
-  assert.match(panelHtml, /data-lab-action="workspace-content-open" data-lab-value="clip-remote-1"/);
+  assert.match(panelHtml, /data-lab-action="workspace-asset-select" data-lab-value="clip-local-1"/);
+  assert.match(
+    panelHtml,
+    /data-lab-action="workspace-asset-select" data-lab-value="clip-remote-1"/
+  );
+  assert.doesNotMatch(panelHtml, /data-lab-action="workspace-content-open"/);
   assert.doesNotMatch(panelHtml, /data-lab-action="source-activate-asset"/);
   assert.doesNotMatch(panelHtml, /data-lab-action="asset-use-as-source"/);
 });
@@ -2071,7 +2112,7 @@ test("laboratory source panel opens png artifacts from the primary click", () =>
 
   assert.match(
     panelHtml,
-    /class="labx-sp-asset__btn"[^>]*data-lab-action="workspace-content-open" data-lab-value="artifact-png-1"/
+    /class="labx-sp-asset__btn"[^>]*data-lab-action="workspace-asset-select" data-lab-value="artifact-png-1"/
   );
   assert.doesNotMatch(panelHtml, /data-lab-action="source-activate-asset"/);
 });
@@ -2117,7 +2158,7 @@ test("laboratory source panel opens the selected workspace asset group", () => {
     },
   });
   store.dispatch({
-    type: "workspace-content-opened",
+    type: "workspace-asset-selected",
     assetId: "asset-selected-audio",
   });
 
@@ -2125,6 +2166,273 @@ test("laboratory source panel opens the selected workspace asset group", () => {
 
   assert.match(panelHtml, /<details class="labx-sp-group" open data-group-type="audio">/);
   assert.doesNotMatch(panelHtml, /<details class="labx-sp-group" open data-group-type="source">/);
+});
+
+test("laboratory source panel marks only the workbench media as active", () => {
+  const store = createSeededState(true);
+  const state = store.getState();
+  state.source = {
+    ...state.source,
+    metadata: {
+      ...((state.source?.metadata as Record<string, unknown> | undefined) ?? {}),
+      originAssetId: "asset-active-source",
+    },
+  };
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-active-source",
+      type: "source",
+      name: "active-source.png",
+      localPath: "/tmp/active-source.png",
+      createdAt: 100,
+      metadata: {
+        kind: "image",
+      },
+    },
+  });
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-enhanced-frame",
+      type: "image",
+      name: "enhanced-frame.png",
+      localPath: "/tmp/enhanced-frame.png",
+      createdAt: 300,
+      metadata: {
+        kind: "image",
+      },
+    },
+  });
+  store.dispatch({
+    type: "workspace-asset-selected",
+    assetId: "asset-enhanced-frame",
+  });
+
+  const panelHtml = renderLabSourcePanel(store.getState());
+
+  assert.doesNotMatch(panelHtml, /data-asset-id="asset-active-source"[^>]*data-active="true"/);
+  assert.match(panelHtml, /data-asset-id="asset-enhanced-frame"[^>]*data-active="true"/);
+  assert.doesNotMatch(panelHtml, /data-workspace-selected=/);
+  assert.doesNotMatch(panelHtml, /Aktif kaynak/);
+});
+
+test("laboratory source panel marks only comparison pair assets as active", () => {
+  const store = createSeededState(true);
+  const state = store.getState();
+  state.source = {
+    ...state.source,
+    metadata: {
+      ...((state.source?.metadata as Record<string, unknown> | undefined) ?? {}),
+      originAssetId: "asset-active-source",
+    },
+  };
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-active-source",
+      type: "source",
+      name: "active-source.png",
+      localPath: "/tmp/active-source.png",
+      createdAt: 100,
+      metadata: {
+        kind: "image",
+      },
+    },
+  });
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-reference-frame",
+      type: "image",
+      name: "reference-frame.png",
+      localPath: "/tmp/reference-frame.png",
+      createdAt: 300,
+      metadata: {
+        kind: "image",
+      },
+    },
+  });
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-passive-frame",
+      type: "image",
+      name: "passive-frame.png",
+      localPath: "/tmp/passive-frame.png",
+      createdAt: 400,
+      metadata: {
+        kind: "image",
+      },
+    },
+  });
+  store.dispatch({
+    type: "workspace-comparison-reference-set",
+    assetId: "asset-reference-frame",
+  });
+
+  const panelHtml = renderLabSourcePanel(store.getState());
+
+  assert.match(panelHtml, /data-asset-id="asset-active-source"[^>]*data-active="true"/);
+  assert.match(panelHtml, /data-asset-id="asset-reference-frame"[^>]*data-active="true"/);
+  assert.doesNotMatch(panelHtml, /data-asset-id="asset-passive-frame"[^>]*data-active="true"/);
+  assert.doesNotMatch(panelHtml, /data-workspace-selected=/);
+  assert.doesNotMatch(panelHtml, /Aktif kaynak/);
+});
+
+test("laboratory comparison pair clicks only switch the active comparison side", () => {
+  const store = createSeededState(true);
+  const state = store.getState();
+  state.source = {
+    ...state.source,
+    status: "ready",
+    kind: "image",
+    mode: "local",
+    previewUrl: "file:///tmp/active-source.png",
+    storedFileName: "active-source.png",
+    storedPath: "/tmp/active-source.png",
+    metadata: {
+      originAssetId: "asset-active-source",
+      width: 640,
+      height: 480,
+    },
+  };
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-active-source",
+      type: "source",
+      name: "active-source.png",
+      localPath: "/tmp/active-source.png",
+      createdAt: 100,
+      metadata: {
+        kind: "image",
+      },
+    },
+  });
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-reference-frame",
+      type: "image",
+      name: "reference-frame.png",
+      localPath: "/tmp/reference-frame.png",
+      createdAt: 300,
+      metadata: {
+        kind: "image",
+      },
+    },
+  });
+  store.dispatch({
+    type: "workspace-comparison-reference-set",
+    assetId: "asset-reference-frame",
+  });
+
+  store.dispatch({
+    type: "workspace-asset-selected",
+    assetId: "asset-active-source",
+  });
+  let current = store.getState();
+  let surface = renderWorkspaceSurface(current);
+  assert.equal(current.ui.activeWorkspaceAssetId, null);
+  assert.equal(current.ui.workspace.comparisonReferenceAssetId, "asset-reference-frame");
+  assert.equal(current.ui.workspace.comparisonRois.activeSide, "primary");
+  assert.match(surface.main, /data-lab-workspace-comparison-stage="true"/);
+  assert.match(surface.main, /data-side="primary" data-active="true"/);
+  assert.match(surface.main, /data-side="reference" data-active="false"/);
+
+  store.dispatch({
+    type: "workspace-asset-selected",
+    assetId: "asset-reference-frame",
+  });
+  current = store.getState();
+  surface = renderWorkspaceSurface(current);
+  assert.equal(current.ui.activeWorkspaceAssetId, null);
+  assert.equal(current.ui.workspace.comparisonReferenceAssetId, "asset-reference-frame");
+  assert.equal(current.ui.workspace.comparisonRois.activeSide, "reference");
+  assert.match(surface.main, /data-lab-workspace-comparison-stage="true"/);
+  assert.match(surface.main, /data-side="primary" data-active="false"/);
+  assert.match(surface.main, /data-side="reference" data-active="true"/);
+});
+
+test("laboratory selecting media outside the comparison pair returns to single view", () => {
+  const store = createSeededState(true);
+  const state = store.getState();
+  state.source = {
+    ...state.source,
+    status: "ready",
+    kind: "image",
+    mode: "local",
+    previewUrl: "file:///tmp/active-source.png",
+    storedFileName: "active-source.png",
+    storedPath: "/tmp/active-source.png",
+    metadata: {
+      originAssetId: "asset-active-source",
+      width: 640,
+      height: 480,
+    },
+  };
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-active-source",
+      type: "source",
+      name: "active-source.png",
+      localPath: "/tmp/active-source.png",
+      createdAt: 100,
+      metadata: {
+        kind: "image",
+      },
+    },
+  });
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-reference-frame",
+      type: "image",
+      name: "reference-frame.png",
+      localPath: "/tmp/reference-frame.png",
+      createdAt: 300,
+      metadata: {
+        kind: "image",
+      },
+    },
+  });
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-third-frame",
+      type: "image",
+      name: "third-frame.png",
+      localPath: "/tmp/third-frame.png",
+      createdAt: 400,
+      metadata: {
+        kind: "image",
+      },
+    },
+  });
+  store.dispatch({
+    type: "workspace-comparison-reference-set",
+    assetId: "asset-reference-frame",
+  });
+  store.dispatch({
+    type: "workspace-asset-selected",
+    assetId: "asset-third-frame",
+  });
+
+  const current = store.getState();
+  const surface = renderWorkspaceSurface(current);
+  const panelHtml = renderLabSourcePanel(current);
+
+  assert.equal(current.ui.activeWorkspaceAssetId, "asset-third-frame");
+  assert.equal(current.ui.workspace.comparisonReferenceAssetId, null);
+  assert.equal(current.ui.workspace.comparisonRois.activeSide, "primary");
+  assert.match(surface.main, /data-lab-preview-inspection-stage="true"/);
+  assert.match(surface.main, /data-lab-workspace-asset-id="asset-third-frame"/);
+  assert.doesNotMatch(surface.main, /data-lab-workspace-comparison-stage="true"/);
+  assert.match(panelHtml, /data-asset-id="asset-third-frame"[^>]*data-active="true"/);
+  assert.doesNotMatch(panelHtml, /data-asset-id="asset-active-source"[^>]*data-active="true"/);
+  assert.doesNotMatch(panelHtml, /data-asset-id="asset-reference-frame"[^>]*data-active="true"/);
 });
 
 test("laboratory source panel opens png artifacts from the primary click path", () => {
@@ -2145,7 +2453,7 @@ test("laboratory source panel opens png artifacts from the primary click path", 
 
   assert.match(
     panelHtml,
-    /class="labx-sp-asset__btn"[\s\S]*data-lab-action="workspace-content-open"[\s\S]*data-lab-value="artifact-png-primary"/
+    /class="labx-sp-asset__btn"[\s\S]*data-lab-action="workspace-asset-select"[\s\S]*data-lab-value="artifact-png-primary"/
   );
 });
 

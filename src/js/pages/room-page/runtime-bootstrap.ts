@@ -7,6 +7,7 @@ import { sendRoomRuntimeMessage, type RoomWebviewElement } from "./runtime-messa
 import { createRoomRuntimeEventBinder, type RoomRuntimeState } from "./runtime-events.js";
 
 interface EnsureRoomPageRuntimeHostParams {
+  closeRoom: () => void;
   getPage: () => HTMLElement | null;
   getRoomPreloadUrl: () => Promise<string>;
   getRoom: () => InstalledRoomRecord;
@@ -21,6 +22,7 @@ interface EnsureRoomPageRuntimeHostParams {
 }
 
 export async function ensureRoomPageRuntimeHost({
+  closeRoom,
   getPage,
   getRoomPreloadUrl,
   getRoom,
@@ -46,6 +48,7 @@ export async function ensureRoomPageRuntimeHost({
   }
 
   const bindRuntimeEvents = createRoomRuntimeEventBinder({
+    closeRoom,
     getPage,
     pendingHostMessages,
     roomId: room.id,

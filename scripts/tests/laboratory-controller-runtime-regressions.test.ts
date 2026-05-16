@@ -288,7 +288,7 @@ test("laboratory run controller sends comparison ROI payloads with image compari
         storedPath: "/tmp/primary.png",
       },
     });
-    store.dispatch({ type: "workspace-content-opened", assetId: "asset-primary" });
+    store.dispatch({ type: "workspace-asset-selected", assetId: "asset-primary" });
     store.dispatch({ type: "workspace-comparison-reference-set", assetId: "asset-reference" });
     store.dispatch({
       type: "workspace-comparison-updated",
@@ -3079,7 +3079,7 @@ test("laboratory source panel media click opens workspace content without host s
     assert.ok(clickListener);
 
     clickListener?.({
-      target: new TestElement("workspace-content-open", "asset-source-1"),
+      target: new TestElement("workspace-asset-select", "asset-source-1"),
     } as Event);
 
     assert.equal(sentEvents.length, 0);

@@ -31,6 +31,7 @@ import { resolveRepairAssetUrl } from "./repair-asset-url.js";
 
 interface RepairUiWindow {
   roomAPI?: {
+    close?: () => boolean;
     ready: (payload?: Record<string, unknown>) => boolean;
     sendCommand: (command: string, payload?: Record<string, unknown>) => boolean;
     onHostMessage: (callback: (payload: unknown) => void) => () => void;
@@ -1962,10 +1963,22 @@ export function createRepairRoomUiRuntime() {
     label.textContent = "Repair Room v0.1.0";
     statusBar.append(label);
 
+    const statusActions = documentRef.createElement("div");
+    statusActions.className = "repair-statusbar__actions";
+
+    const closeButton = documentRef.createElement("button");
+    closeButton.className = "repair-statusbar__close";
+    closeButton.type = "button";
+    closeButton.dataset["repairAction"] = "room-close";
+    closeButton.title = "Return to home";
+    closeButton.setAttribute("aria-label", "Return to home");
+    closeButton.textContent = "×";
+
     const clock = documentRef.createElement("span");
     clock.className = "repair-statusbar__clock";
     clock.textContent = "--:--:--";
-    statusBar.append(clock);
+    statusActions.append(closeButton, clock);
+    statusBar.append(statusActions);
     root.append(statusBar);
 
     const workspace = documentRef.createElement("div");
@@ -2125,6 +2138,9 @@ export function createRepairRoomUiRuntime() {
         cancelSpatialFocusTween();
       }
       switch (action) {
+        case "room-close":
+          windowRef.roomAPI?.close?.();
+          break;
         case "activate-session": {
           const sessionId = el.dataset["sessionId"];
           if (sessionId) requestRuntime.activateSession({ sessionId });

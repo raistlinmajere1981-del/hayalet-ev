@@ -592,9 +592,11 @@ interface GameRoomUiRuntimeHandle {
 }
 
 interface GameRoomRoomApi {
+  close?(): boolean;
   onHostMessage?(handler: (message: unknown) => void): void;
   ready?(payload: GameRoomUnknownRecord): void;
   sendCommand?(command: string, payload: GameRoomUnknownRecord): boolean;
+  sendEvent?(type: string, payload?: GameRoomUnknownRecord): boolean;
 }
 
 interface GameRoomUiBootstrapRuntimeRegistry {

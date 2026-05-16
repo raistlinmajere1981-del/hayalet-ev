@@ -62,16 +62,22 @@ export function inferLabAssetSourceKind(asset: LabAsset): LabAssetSourceKind | n
   if (metadataKind === "video" || metadataKind === "audio" || metadataKind === "image") {
     return metadataKind;
   }
-  if (asset.type === "source" || asset.type === "clip") {
-    return "video";
-  }
   if (asset.type === "audio") {
     return "audio";
   }
   if (asset.type === "frame" || asset.type === "image") {
     return "image";
   }
-  return getLabSourceKindForExtension(getLabPathExtension(getLabAssetCandidatePath(asset)));
+  const extensionKind = getLabSourceKindForExtension(
+    getLabPathExtension(getLabAssetCandidatePath(asset))
+  );
+  if (extensionKind !== null) {
+    return extensionKind;
+  }
+  if (asset.type === "source" || asset.type === "clip") {
+    return "video";
+  }
+  return null;
 }
 
 export function inferLabAssetContentKind(

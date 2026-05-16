@@ -58,6 +58,7 @@ import { DEFAULT_AUDIO_FOCUS_SETTINGS } from "./lab-audio-focus-normalization.js
 import { DEFAULT_LAB_INTERACTIVE_SETTINGS } from "./lab-workspace-defaults.js";
 
 type LabRoomApi = {
+  close?: () => boolean;
   onHostMessage?: (listener: (message: unknown) => void) => void;
   ready?: (payload: { feature: string; room: string; stage: string }) => void;
   sendEvent?: (eventName: string, payload: Record<string, unknown>) => void;
@@ -177,7 +178,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       asNonEmptyString(comparisonRois["activeSide"]) === "primary" ? "primary" : "reference";
 
     if (primaryAssetId !== null) {
-      dispatch({ type: "workspace-content-opened", assetId: primaryAssetId });
+      dispatch({ type: "workspace-asset-selected", assetId: primaryAssetId });
     }
     dispatch({ type: "workspace-comparison-reference-set", assetId: referenceAssetId });
     if (viewMode !== null || splitPercent !== null) {
@@ -858,6 +859,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       return;
     }
     switch (action) {
+      case "room-close":
+        deps.windowRef.roomAPI?.close?.();
+        return;
       case "primary-action":
         runPrimaryAction();
         return;
@@ -1233,6 +1237,12 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           return;
         }
         shiftTimelinePlayhead(value);
+        return;
+      case "workspace-asset-select":
+        dispatch({
+          type: "workspace-asset-selected",
+          assetId: value.trim() !== "" ? value : null,
+        });
         return;
       case "workspace-content-open":
         dispatch({

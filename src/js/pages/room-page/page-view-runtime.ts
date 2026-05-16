@@ -26,7 +26,6 @@ interface SyncRoomPageViewParams {
   activeFeatureId: string | null;
   immersive: boolean;
   onActivateSceneFeature: (featureId: string) => void;
-  onCloseRoom: () => void;
   onCloseFeatureView: () => void;
   onSelectFeature: (featureId: string) => void;
   page: HTMLElement;
@@ -44,7 +43,6 @@ export function syncRoomPageView({
   activeFeatureId,
   immersive,
   onActivateSceneFeature,
-  onCloseRoom,
   onCloseFeatureView,
   onSelectFeature,
   page,
@@ -58,9 +56,7 @@ export function syncRoomPageView({
   sceneEnabled,
 }: SyncRoomPageViewParams): void {
   ensureRoomPageFeatureShell({
-    closeLabel: roomPageT("page.closeRoom"),
     immersive,
-    onCloseRoom,
     onSelectFeature,
     page,
     room,

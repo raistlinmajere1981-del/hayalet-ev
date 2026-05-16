@@ -88,6 +88,7 @@ type ComparisonFindingListItem = {
 };
 
 type LabFocusTarget = "preview" | "timeline" | "inspector";
+type ProcessableWorkspaceMediaKind = "image" | "video";
 
 function getLabFocusClassName(state: LabStoreState, target: LabFocusTarget) {
   if (state.ui.labFocusLayer === target) {
@@ -393,6 +394,57 @@ function renderInlineReportPreview(
       <pre class="labx-workspace-document__content">${escapeHtml(JSON.stringify(report, null, 2))}</pre>
     </article>
   `;
+}
+
+function getProcessableWorkspaceMediaKind(
+  previewKind: ReturnType<typeof getWorkspaceAssetContentKind> | null,
+  previewUrl: string | null
+): ProcessableWorkspaceMediaKind | null {
+  if (previewUrl === null) {
+    return null;
+  }
+  return previewKind === "image" || previewKind === "video" ? previewKind : null;
+}
+
+function renderSingleInspectionStage(input: {
+  mediaMarkup: string;
+  roiFocusActive: boolean;
+  roiOverlayMarkup: string;
+  sourceKind: ProcessableWorkspaceMediaKind;
+  workspaceAsset?: NonNullable<ReturnType<typeof getActiveWorkspaceAsset>> | null;
+  workspaceAssetKind?: string | null;
+}) {
+  const workspaceAsset = input.workspaceAsset ?? null;
+  const assetAttrs =
+    workspaceAsset === null
+      ? ""
+      : ` data-lab-workspace-asset-id="${escapeHtml(workspaceAsset.id)}" data-lab-workspace-asset-kind="${escapeHtml(input.workspaceAssetKind ?? input.sourceKind)}" title="${escapeHtml(buildLabAssetMetadataTitle(workspaceAsset))}"`;
+  return `
+    <div
+      class="labx-workspace-preview__single-stage"
+      data-lab-selection-roi-stage="true"
+      data-lab-selection-roi-controls-reserve="0"
+      data-lab-preview-inspection-stage="true"
+      data-lab-preview-inspection-topology="single-${escapeHtml(input.sourceKind)}"
+      data-lab-roi-focus-active="${input.roiFocusActive ? "true" : "false"}"${assetAttrs}
+    >
+      <div class="labx-workspace-preview__inspection-viewport" data-lab-preview-inspection-viewport="true">
+        <div class="labx-workspace-preview__inspection-content" data-lab-preview-inspection-content="true">
+          ${input.mediaMarkup}
+          ${input.roiOverlayMarkup}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderWorkspaceAssetProcessableMedia(
+  previewKind: ProcessableWorkspaceMediaKind,
+  previewUrl: string,
+  settings: LabInteractiveSettings,
+  copy: LabI18n
+) {
+  return renderPreviewMedia(previewKind, previewUrl, settings, copy);
 }
 
 function renderWorkspaceAssetContent(
@@ -761,6 +813,12 @@ export function renderWorkspaceSurface(
   const viewportState = getMediaViewportState(state);
   const lockState = getWorkspaceLockState(state);
   const previewUrl = asNonEmptyString(source["previewUrl"]);
+  const workspaceAssetPreviewUrl =
+    workspaceAsset === null ? null : getLabAssetPreviewUrl(workspaceAsset);
+  const processableWorkspaceMediaKind = getProcessableWorkspaceMediaKind(
+    workspaceAssetPreviewKind,
+    workspaceAssetPreviewUrl
+  );
   const settings = getInteractiveSettings(state);
   const audioFocus = getAudioFocusSettings(state);
   const effectivePreviewAudioFocus = getEffectivePreviewAudioFocusSettings(state);
@@ -794,7 +852,7 @@ export function renderWorkspaceSurface(
   const operationScope: LabOperationScopeState = {
     hasRoi: activeSelection?.roi !== undefined,
     hasTimeRange:
-      sourceKind !== "image" &&
+      activeMediaKind !== "image" &&
       ((activeSelection !== null && activeSelection.endMs > activeSelection.startMs) ||
         (timeline.startMs !== null &&
           timeline.endMs !== null &&
@@ -806,7 +864,7 @@ export function renderWorkspaceSurface(
     activeMediaKind !== "image"
       ? null
       : workspaceAsset !== null
-        ? getLabAssetPreviewUrl(workspaceAsset)
+        ? workspaceAssetPreviewUrl
         : previewUrl;
   const primaryComparisonLabel =
     workspaceAsset?.name ||
@@ -875,25 +933,37 @@ export function renderWorkspaceSurface(
     open: state.ui.workspace.controlsDrawerOpen,
     panels: inspectorPanels,
   });
+  const singleInspectionKind =
+    processableWorkspaceMediaKind ??
+    (workspaceAsset === null && sourceReady && (sourceKind === "video" || sourceKind === "image")
+      ? sourceKind
+      : null);
   const roiOverlayMarkup =
-    workspaceAsset === null && sourceReady && (sourceKind === "video" || sourceKind === "image")
+    singleInspectionKind !== null
       ? renderWorkspaceROIOverlay(
           {
             legacyRegions: roiRegions,
             roiFocusActive,
             selectionRoi: activeSelection?.roi ?? null,
             selectionRoiEnabled:
-              sourceKind === "image" ||
+              singleInspectionKind === "image" ||
               (activeSelection !== null && activeSelection.endMs > activeSelection.startMs),
             mutationLocked: lockState.roi,
-            sourceKind,
+            sourceKind: singleInspectionKind,
           },
           copy
         )
       : "";
   const previewMediaMarkup =
     workspaceAsset !== null
-      ? renderWorkspaceAssetContent(state, workspaceAsset, sourceKind, settings, copy)
+      ? processableWorkspaceMediaKind !== null && workspaceAssetPreviewUrl !== null
+        ? renderWorkspaceAssetProcessableMedia(
+            processableWorkspaceMediaKind,
+            workspaceAssetPreviewUrl,
+            settings,
+            copy
+          )
+        : renderWorkspaceAssetContent(state, workspaceAsset, sourceKind, settings, copy)
       : viewportState === "active"
         ? renderPreviewMedia(sourceKind, sourceReady ? previewUrl : null, settings, copy)
         : renderViewportStatePanel(
@@ -918,24 +988,15 @@ export function renderWorkspaceSurface(
         roiFocusActive,
         splitPercent: state.ui.workspace.comparisonSplitPercent,
       })
-    : workspaceAsset === null && sourceReady && (sourceKind === "video" || sourceKind === "image")
-      ? `
-        <div
-          class="labx-workspace-preview__single-stage"
-          data-lab-selection-roi-stage="true"
-          data-lab-selection-roi-controls-reserve="0"
-          data-lab-preview-inspection-stage="true"
-          data-lab-preview-inspection-topology="single-${escapeHtml(sourceKind)}"
-          data-lab-roi-focus-active="${roiFocusActive ? "true" : "false"}"
-        >
-          <div class="labx-workspace-preview__inspection-viewport" data-lab-preview-inspection-viewport="true">
-            <div class="labx-workspace-preview__inspection-content" data-lab-preview-inspection-content="true">
-              ${previewMediaMarkup}
-              ${roiOverlayMarkup}
-            </div>
-          </div>
-        </div>
-      `
+    : singleInspectionKind !== null
+      ? renderSingleInspectionStage({
+          mediaMarkup: previewMediaMarkup,
+          roiFocusActive,
+          roiOverlayMarkup,
+          sourceKind: singleInspectionKind,
+          workspaceAsset,
+          workspaceAssetKind: workspaceAssetPreviewKind,
+        })
       : previewMediaMarkup;
   const selectionPanelMarkup = renderLabWaveformSelectionPanel(timelineModel);
   const previewFocusClassName = getLabFocusClassName(state, "preview");

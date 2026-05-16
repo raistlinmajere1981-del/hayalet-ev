@@ -69,6 +69,32 @@ function normalizeComparisonSide(value: unknown) {
   return value === "primary" || value === "reference" ? value : null;
 }
 
+function getWorkspacePrimaryAssetId(state: LabStoreState): string | null {
+  const activeWorkspaceAssetId = asNonEmptyString(state.ui.activeWorkspaceAssetId);
+  if (activeWorkspaceAssetId !== null) {
+    return activeWorkspaceAssetId;
+  }
+  const source = asLabRecord(state.source);
+  const sourceMetadata = asLabRecord(source["metadata"]);
+  return (
+    asNonEmptyString(sourceMetadata["originAssetId"]) ??
+    asNonEmptyString(sourceMetadata["derivedFromAssetId"]) ??
+    asNonEmptyString(source["assetId"])
+  );
+}
+
+function activateWorkspaceComparisonSide(state: LabStoreState, side: "primary" | "reference") {
+  state.ui.workspace.comparisonRois = {
+    ...state.ui.workspace.comparisonRois,
+    activeSide: side,
+  };
+  if (getWorkspaceSelectionSuggestionSourceKind(state) === "image") {
+    const sideRoi = state.ui.workspace.comparisonRois[side];
+    state.ui.workspace.activeSelection =
+      sideRoi === null ? null : createImageInspectionSelection(sideRoi);
+  }
+}
+
 function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState {
   if (reduceLabImportUiEvent(state, event)) {
     return state;
@@ -244,18 +270,35 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
     case "report-view-changed":
       state.ui.reportView = event.view;
       return state;
-    case "workspace-content-opened":
+    case "workspace-asset-selected":
+    case "workspace-content-opened": {
+      const selectedAssetId = asNonEmptyString(event.assetId);
+      const comparisonReferenceAssetId = asNonEmptyString(
+        state.ui.workspace.comparisonReferenceAssetId
+      );
+      if (comparisonReferenceAssetId !== null && selectedAssetId !== null) {
+        const primaryAssetId = getWorkspacePrimaryAssetId(state);
+        if (selectedAssetId === comparisonReferenceAssetId) {
+          activateWorkspaceComparisonSide(state, "reference");
+          return state;
+        }
+        if (primaryAssetId !== null && selectedAssetId === primaryAssetId) {
+          activateWorkspaceComparisonSide(state, "primary");
+          return state;
+        }
+      }
       state.ui.activeDocumentOverlayAssetId = null;
       state.ui.workspace = {
         ...state.ui.workspace,
         reportOverlayOpen: false,
       };
       resetWorkspaceForSourceActivation(state, {
-        activeWorkspaceAssetId: event.assetId,
-        comparisonReferenceAssetId: state.ui.workspace.comparisonReferenceAssetId,
+        activeWorkspaceAssetId: selectedAssetId,
+        comparisonReferenceAssetId: null,
         sourceIntakeCollapsed: state.ui.workspace.sourceIntakeCollapsed,
       });
       return state;
+    }
     case "workspace-comparison-reference-set":
       state.ui.workspace.comparisonReferenceAssetId = event.assetId;
       state.ui.workspace.comparisonRois = {
@@ -276,15 +319,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       if (comparisonSide === null) {
         return state;
       }
-      state.ui.workspace.comparisonRois = {
-        ...state.ui.workspace.comparisonRois,
-        activeSide: comparisonSide,
-      };
-      if (getWorkspaceSelectionSuggestionSourceKind(state) === "image") {
-        const sideRoi = state.ui.workspace.comparisonRois[comparisonSide];
-        state.ui.workspace.activeSelection =
-          sideRoi === null ? null : createImageInspectionSelection(sideRoi);
-      }
+      activateWorkspaceComparisonSide(state, comparisonSide);
       return state;
     }
     case "workspace-comparison-updated":

@@ -115,6 +115,9 @@ export class RoomPageController implements PageController {
       pendingHostMessages: this.pendingHostMessages,
     });
     this.runtimeHostRuntime = createRoomPageRuntimeHostRuntime({
+      closeRoom: () => {
+        this.closeRoomRuntime();
+      },
       getPage: () => this.getPage(),
       getRoomPreloadUrl: this.getRoomPreloadUrl.bind(this),
       getRoom: () => this.room,
@@ -150,9 +153,6 @@ export class RoomPageController implements PageController {
       },
       closeSceneFeatureView: () => {
         this.closeSceneFeatureView();
-      },
-      closeRoom: () => {
-        this.closeRoomRuntime();
       },
       detectSceneAssetTransparentWindow: async (targetId) => {
         await this.detectSceneAssetTransparentWindow(targetId);
@@ -328,7 +328,7 @@ export class RoomPageController implements PageController {
 
     getRoomPageRuntimeMount(this.getPage())?.replaceChildren();
     getRoomPageSceneRuntimeSlot(this.getPage())?.replaceChildren();
-    navigateToScenePage("rooms");
+    navigateToScenePage("entrance");
   }
 
   private bindRoomContextSubscriptions(): void {

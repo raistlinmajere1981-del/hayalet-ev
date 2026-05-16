@@ -119,6 +119,7 @@ contextBridge.exposeInMainWorld("roomAPI", {
       payload,
     });
   },
+  close: () => emitToHost("room-close", { stage: "ui-request" }),
   onHostMessage: (callback) => addHostMessageHandler(callback),
   offHostMessage: (callback) => {
     if (typeof callback !== "function") {

@@ -857,6 +857,7 @@ export type LabStoreEvent =
   | { type: "toggle-artifacts"; force?: boolean }
   | { type: "show-more-artifacts" }
   | { type: "report-view-changed"; view: "user" | "ai" }
+  | { type: "workspace-asset-selected"; assetId: string | null }
   | { type: "workspace-content-opened"; assetId: string | null }
   | { type: "document-overlay-opened"; assetId: string }
   | { type: "document-overlay-cleared" }

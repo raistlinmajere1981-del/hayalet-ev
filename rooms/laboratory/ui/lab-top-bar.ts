@@ -13,6 +13,7 @@ import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
 const ICON_SETTINGS = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68 1.65 1.65 0 0 0 10 3.17V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
+const ICON_CLOSE = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`;
 const ICON_PANEL_LEFT = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>`;
 const ICON_PANEL_RIGHT = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>`;
 const ICON_RAIL_SOURCE = `<svg class="labx-topbar-pill__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><polyline points="14 2 14 8 20 8"/></svg>`;
@@ -185,6 +186,7 @@ export function renderLabTopBar(state: LabStoreState, copy: LabI18n = LAB_FALLBA
   const sourcePanelLabel = sourcePanelCollapsed
     ? copy.t("mediaAnalysis.topBar.sourcePanelExpand", "Show sources")
     : copy.t("mediaAnalysis.topBar.sourcePanelCollapse", "Hide sources");
+  const closeLabel = copy.t("mediaAnalysis.topBar.closeRoom", "Ana sayfaya dön");
 
   return `
     <header class="labx-top-bar" data-lab-region="topbar" data-drawer-mode="${escapeHtml(drawerMode)}">
@@ -207,6 +209,15 @@ export function renderLabTopBar(state: LabStoreState, copy: LabI18n = LAB_FALLBA
         ${renderSourceMetaStrip(state)}
       </div>
       <div class="labx-top-bar__right">
+        <button
+          class="labx-top-bar__tool-btn labx-top-bar__room-close"
+          type="button"
+          data-lab-action="room-close"
+          title="${escapeHtml(closeLabel)}"
+          aria-label="${escapeHtml(closeLabel)}"
+        >
+          ${ICON_CLOSE}
+        </button>
         <button
           class="labx-top-bar__tool-btn"
           type="button"

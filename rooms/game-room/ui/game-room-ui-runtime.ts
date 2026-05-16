@@ -69,6 +69,29 @@
       );
     }
 
+    function getRoomCloseLabel(): string {
+      const state = getState();
+      return state.locale === "tr" ? "Ana sayfaya dön" : "Return home";
+    }
+
+    function syncRoomCloseControl(root: HTMLElement): void {
+      const label = getRoomCloseLabel();
+      const button = document.createElement("button");
+      button.className = "game-room-close-button";
+      button.type = "button";
+      button.title = label;
+      button.setAttribute("aria-label", label);
+      button.innerHTML =
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+      button.addEventListener("click", function () {
+        const roomApi = global.roomAPI;
+        if (roomApi && typeof roomApi.close === "function") {
+          roomApi.close();
+        }
+      });
+      root.append(button);
+    }
+
     function render(): void {
       const state = getState();
       const root = document.getElementById("app");
@@ -81,6 +104,7 @@
       try {
         if (!state.translations) {
           backgammonUi.renderBootstrap(root);
+          syncRoomCloseControl(root);
           return;
         }
 
@@ -88,15 +112,18 @@
 
         if (getActiveFeatureId() === teamTetrisFeatureId) {
           teamTetrisUi.renderTeamTetris(root);
+          syncRoomCloseControl(root);
           return;
         }
 
         if (getActiveFeatureId() === fateKnotsFeatureId) {
           fateKnotsUi.renderFateKnots(root);
+          syncRoomCloseControl(root);
           return;
         }
 
         backgammonUi.renderBackgammon(root);
+        syncRoomCloseControl(root);
       } finally {
         scrollRuntime.restore(root, scrollState);
       }

@@ -5,6 +5,7 @@ import { type RoomWebviewElement } from "./runtime-messaging.js";
 import { type RoomRuntimeState } from "./runtime-events.js";
 
 interface CreateRoomPageRuntimeHostRuntimeParams {
+  closeRoom: () => void;
   getPage: () => HTMLElement | null;
   getRoomPreloadUrl: () => Promise<string>;
   getRoom: () => InstalledRoomRecord;
@@ -30,6 +31,7 @@ export function createRoomPageRuntimeHostRuntime(
     }
 
     await ensureRoomPageRuntimeHost({
+      closeRoom: deps.closeRoom,
       getPage: deps.getPage,
       getRoomPreloadUrl: deps.getRoomPreloadUrl,
       getRoom: deps.getRoom,
