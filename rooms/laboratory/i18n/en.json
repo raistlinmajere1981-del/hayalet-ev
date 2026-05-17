@@ -1122,9 +1122,6 @@
           "download": {
             "title": "Output Policy"
           },
-          "captions": {
-            "title": "Subtitles"
-          },
           "network": {
             "title": "Network"
           }
@@ -1134,17 +1131,11 @@
           "recodeVideo": "Recode Video",
           "audioFormat": "Extract Audio",
           "audioQuality": "Conversion quality",
-          "writeSubtitles": "Write subtitles",
-          "writeAutoSubtitles": "Write auto subtitles",
-          "subtitlesLang": "Subtitle languages",
-          "playlistItems": "Playlist items",
           "limitRate": "Rate limit",
           "retries": "Retries",
           "captureMode": "Capture Mode"
         },
         "placeholders": {
-          "subtitlesLang": "en.*,tr.* or all",
-          "playlistItems": "1,3,5-8",
           "limitRate": "2M or 500K"
         },
         "options": {
@@ -1243,7 +1234,6 @@
       "subtitle": "Dummy queue for staged capture before analysis starts.",
       "presetLabel": "Presets",
       "qualityLabel": "Detailed Settings",
-      "captions": "Burn captions",
       "separateAudio": "Separate audio stem",
       "progressLabel": "Queue Progress",
       "button": "Start Download",
@@ -1988,7 +1978,7 @@
       },
       "toolDetails": {
         "yt-dlp": {
-          "readinessImpact": "Blocks remote YouTube and playlist-based intake flows."
+          "readinessImpact": "Blocks remote YouTube video intake flows."
         },
         "ffmpeg": {
           "readinessImpact": "Blocks local transforms, derived outputs, and most managed analysis runs."

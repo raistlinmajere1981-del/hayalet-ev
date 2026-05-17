@@ -126,9 +126,6 @@ export function startLaboratoryLabRoot() {
   const eventBus = createLabEventBus();
   const store = createLabStore();
   eventBus.subscribe(store.dispatch);
-  if (typeof windowRef.addEventListener === "function") {
-    windowRef.addEventListener("beforeunload", stopProcessStripHeartbeat);
-  }
   const previewInspectionController = createLabPreviewInspectionController({
     documentRef,
     emit: eventBus.emit,
@@ -202,6 +199,8 @@ export function startLaboratoryLabRoot() {
   let bootOverlayIdleTimer: ReturnType<typeof setTimeout> | null = null;
   let bootOverlayIdleCallback: number | null = null;
   let processStripHeartbeatInterval: ReturnType<typeof setInterval> | null = null;
+  let pendingStoreSideEffectState: LabStoreState | null = null;
+  let storeSideEffectsFrame: number | null = null;
   const bootOverlayStartedAt = Date.now();
 
   function clearBootOverlaySettleTimer() {
@@ -373,6 +372,53 @@ export function startLaboratoryLabRoot() {
       clearInterval(processStripHeartbeatInterval);
       processStripHeartbeatInterval = null;
     }
+  }
+
+  function runStoreSideEffects() {
+    const state = pendingStoreSideEffectState;
+    pendingStoreSideEffectState = null;
+    storeSideEffectsFrame = null;
+    if (state === null) {
+      return;
+    }
+    saveLabPersistedState(window, readPersistableState(state));
+    render();
+    previewInspectionController.sync();
+    scheduleBootOverlayUnlock(state);
+  }
+
+  function scheduleStoreSideEffects(state: LabStoreState) {
+    pendingStoreSideEffectState = state;
+    if (storeSideEffectsFrame !== null) {
+      return;
+    }
+    if (typeof windowRef.requestAnimationFrame !== "function") {
+      runStoreSideEffects();
+      return;
+    }
+    storeSideEffectsFrame = windowRef.requestAnimationFrame(function () {
+      storeSideEffectsFrame = null;
+      runStoreSideEffects();
+    });
+  }
+
+  function flushStoreSideEffects() {
+    if (storeSideEffectsFrame !== null) {
+      if (typeof windowRef.cancelAnimationFrame === "function") {
+        windowRef.cancelAnimationFrame(storeSideEffectsFrame);
+      }
+      storeSideEffectsFrame = null;
+    }
+    runStoreSideEffects();
+  }
+
+  function handleBeforeUnload() {
+    flushStoreSideEffects();
+    stopProcessStripHeartbeat();
+  }
+
+  if (typeof windowRef.addEventListener === "function") {
+    windowRef.addEventListener("beforeunload", handleBeforeUnload);
   }
 
   function syncProcessStripHeartbeat(state: LabStoreState) {
@@ -573,10 +619,7 @@ export function startLaboratoryLabRoot() {
   }
 
   store.subscribe(function (state) {
-    saveLabPersistedState(window, readPersistableState(state));
-    render();
-    previewInspectionController.sync();
-    scheduleBootOverlayUnlock(state);
+    scheduleStoreSideEffects(state);
   });
 
   const persisted = loadLabPersistedState(window);

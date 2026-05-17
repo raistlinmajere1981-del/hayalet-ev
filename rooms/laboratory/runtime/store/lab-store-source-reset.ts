@@ -27,6 +27,7 @@ export function resetWorkspaceForSourceActivation(
   state.ui.liveFindingsExpanded = false;
   state.ui.analysisControlsCollapsed = true;
   state.ui.analysisCancelPending = false;
+  state.ui.analysisCancelRequestId = null;
   state.ui.workspace = {
     ...defaultWorkspace,
     bookmarks: state.ui.workspace.bookmarks,

@@ -91,8 +91,9 @@ export function reduceLabProcessEvent(state: LabStoreState, event: LabStoreEvent
       };
       return true;
     case "run-started":
-      ensurePendingRun(state, event.action).state = "running";
+      ensurePendingRun(state, event.action, event).state = "running";
       state.ui.analysisCancelPending = false;
+      state.ui.analysisCancelRequestId = null;
       state.ui.workspace = {
         ...state.ui.workspace,
         userExploreToggle: false,
@@ -100,6 +101,7 @@ export function reduceLabProcessEvent(state: LabStoreState, event: LabStoreEvent
       return true;
     case "run-cancelled":
       state.ui.analysisCancelPending = false;
+      state.ui.analysisCancelRequestId = null;
       if (state.run) {
         state.run.state = "cancelled";
         state.run.endedAt = state.run.endedAt || Date.now();
@@ -119,6 +121,7 @@ export function reduceLabProcessEvent(state: LabStoreState, event: LabStoreEvent
     case "run-failed":
       ensurePendingRun(state, event.action).state = "failed";
       state.ui.analysisCancelPending = false;
+      state.ui.analysisCancelRequestId = null;
       if (state.run) {
         state.run.error = event.detail || state.run.error;
       }

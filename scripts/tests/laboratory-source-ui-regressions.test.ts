@@ -1733,10 +1733,7 @@ test("laboratory tool overlay lists room-local tool lifecycle actions inside the
   const translatedHtml = renderToolManagementOverlay(store.getState(), trCopy);
   assert.match(translatedHtml, /İşlem takibi/);
   assert.match(translatedHtml, /Seçili niyet ve yetenek aileleri/);
-  assert.match(
-    translatedHtml,
-    /Uzak YouTube ve oynatma listesi tabanlı içe alma akışlarını bloke eder/
-  );
+  assert.match(translatedHtml, /Uzak YouTube video içe alma akışlarını bloke eder/);
   assert.doesNotMatch(translatedHtml, /YouTube capture stays enabled from the source intake frame/);
 });
 

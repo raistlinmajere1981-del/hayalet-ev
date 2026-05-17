@@ -14,7 +14,7 @@
         "source-routing",
         "youtube-import"
       ],
-      "readinessImpact": "Blocks remote YouTube and playlist-based intake flows.",
+      "readinessImpact": "Blocks remote YouTube video intake flows.",
       "stageSupport": {
         "source": "required",
         "edit": "unsupported",

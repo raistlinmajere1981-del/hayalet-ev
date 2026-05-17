@@ -33,6 +33,88 @@ function isProcessRunAction(action: string | null | undefined) {
   return action === "process-run" || action === "audio-process-run";
 }
 
+function isProcessCancelAction(action: string | null | undefined) {
+  return action === "process-cancel" || action === "audio-process-cancel";
+}
+
+export type LabRunCorrelationSource = {
+  requestId?: string | null;
+  jobId?: string | null;
+  projectId?: string | null;
+};
+
+function isRunActiveForCorrelation(run: LabRun) {
+  return run.state === "running" || run.state === "queued";
+}
+
+function isRunStartEvent(event: LabEventFeedItem) {
+  return (
+    isProcessRunAction(event.action) && (event.stage === "queued" || event.stage === "running")
+  );
+}
+
+export function hasConflictingRunCorrelation(run: LabRun | null, source: LabRunCorrelationSource) {
+  if (run === null) {
+    return false;
+  }
+  const activeRequestId = asNonEmptyString(run.requestId);
+  const requestId = asNonEmptyString(source.requestId);
+  if (activeRequestId !== null && requestId !== null && activeRequestId !== requestId) {
+    return true;
+  }
+  const activeJobId = asNonEmptyString(run.jobId);
+  const jobId = asNonEmptyString(source.jobId);
+  if (activeJobId !== null && jobId !== null && activeJobId !== jobId) {
+    return true;
+  }
+  const activeProjectId = asNonEmptyString(run.projectId);
+  const projectId = asNonEmptyString(source.projectId);
+  return activeProjectId !== null && projectId !== null && activeProjectId !== projectId;
+}
+
+export function syncRunCorrelation(run: LabRun, source: LabRunCorrelationSource) {
+  const requestId = asNonEmptyString(source.requestId);
+  if (asNonEmptyString(run.requestId) === null && requestId !== null) {
+    run.requestId = requestId;
+  }
+  const jobId = asNonEmptyString(source.jobId);
+  if (asNonEmptyString(run.jobId) === null && jobId !== null) {
+    run.jobId = jobId;
+  }
+  const projectId = asNonEmptyString(source.projectId);
+  if (asNonEmptyString(run.projectId) === null && projectId !== null) {
+    run.projectId = projectId;
+  }
+}
+
+export function prepareRunForHostEvent(state: LabStoreState, event: LabEventFeedItem) {
+  const hasRunCorrelation =
+    asNonEmptyString(event.requestId) !== null ||
+    asNonEmptyString(event.jobId) !== null ||
+    asNonEmptyString(event.projectId) !== null;
+  if (!isProcessRunAction(event.action) && event.scope !== "run") {
+    return true;
+  }
+  if (!isProcessRunAction(event.action) && hasRunCorrelation !== true) {
+    return true;
+  }
+  if (isProcessCancelAction(event.action)) {
+    return true;
+  }
+  if (state.run === null) {
+    return true;
+  }
+  if (hasConflictingRunCorrelation(state.run, event) !== true) {
+    syncRunCorrelation(state.run, event);
+    return true;
+  }
+  if (isRunActiveForCorrelation(state.run) !== true && isRunStartEvent(event)) {
+    state.run = null;
+    return true;
+  }
+  return false;
+}
+
 function canCreatePendingRunFromFeedEvent(event: LabEventFeedItem) {
   if (!isProcessRunAction(event.action)) {
     return false;
@@ -70,6 +152,10 @@ export function shouldKeepPendingRunDuringSnapshot(state: LabStoreState, nextRun
     return false;
   }
 
+  if (hasConflictingRunCorrelation(state.run, nextRun)) {
+    return true;
+  }
+
   if (state.ui.analysisCancelPending === true && nextRun.state === "cancelled") {
     return false;
   }
@@ -82,7 +168,7 @@ function pushRunEvent(
   event: LabEventFeedItem,
   options: { raw?: boolean } = {}
 ) {
-  const run = state.run || ensurePendingRun(state, event.action || "runtime");
+  const run = state.run || ensurePendingRun(state, event.action || "runtime", event);
   const target = options.raw === true ? run.rawLog : run.events;
   target.unshift({
     ...event,
@@ -94,7 +180,7 @@ function pushRunEvent(
 }
 
 function upsertRunLiveFinding(state: LabStoreState, event: LabEventFeedItem) {
-  const run = state.run || ensurePendingRun(state, event.action || "runtime");
+  const run = state.run || ensurePendingRun(state, event.action || "runtime", event);
   const nextFinding = toLiveFindingProjection({
     ...asLabRecord(event.finding || {}),
     ...(event.moduleId ? { moduleId: event.moduleId } : {}),
@@ -126,7 +212,7 @@ function upsertRunPreviewArtifact(
   event: LabEventFeedItem,
   options: { finalArtifact?: boolean } = {}
 ) {
-  const run = state.run || ensurePendingRun(state, event.action || "runtime");
+  const run = state.run || ensurePendingRun(state, event.action || "runtime", event);
   const nextArtifact = toPreviewArtifactProjection(event.artifact || event);
   if (!nextArtifact) {
     return;
@@ -194,7 +280,7 @@ export function syncActivePreviewArtifact(
 }
 
 function appendModuleTraceFromEvent(state: LabStoreState, event: LabEventFeedItem) {
-  const run = state.run || ensurePendingRun(state, event.action || "runtime");
+  const run = state.run || ensurePendingRun(state, event.action || "runtime", event);
   const nextTrace =
     toModuleTraceEntry(event.moduleTrace) ||
     (function () {
@@ -225,7 +311,7 @@ function appendModuleTraceFromEvent(state: LabStoreState, event: LabEventFeedIte
 }
 
 function appendComparisonVariantFromEvent(state: LabStoreState, event: LabEventFeedItem) {
-  const run = state.run || ensurePendingRun(state, event.action || "runtime");
+  const run = state.run || ensurePendingRun(state, event.action || "runtime", event);
   const nextVariants = (Array.isArray(event.comparisonVariants) ? event.comparisonVariants : [])
     .map(toComparisonVariant)
     .filter((entry): entry is LabComparisonVariant => entry !== null);
@@ -256,8 +342,11 @@ function appendComparisonVariantFromEvent(state: LabStoreState, event: LabEventF
 }
 
 export function syncRunAugmentationsFromHostEvent(state: LabStoreState, event: LabEventFeedItem) {
+  if (event.scope === "run" && prepareRunForHostEvent(state, event) !== true) {
+    return;
+  }
   if (event.kind === "analysis-scope-updated") {
-    const run = state.run || ensurePendingRun(state, event.action || "runtime");
+    const run = state.run || ensurePendingRun(state, event.action || "runtime", event);
     run.analysisScope = normalizeAnalysisScope(event.analysisScope) || run.analysisScope;
     run.hypothesisSummary =
       asNonEmptyString(asLabRecord(run.analysisScope || {})["hypothesis"]) || run.hypothesisSummary;
@@ -287,7 +376,7 @@ export function syncRunAugmentationsFromHostEvent(state: LabStoreState, event: L
   if (event.kind === "module-progress" || event.kind === "module-warning") {
     appendModuleTraceFromEvent(state, event);
     if (event.kind === "module-warning" && event.detail) {
-      const run = state.run || ensurePendingRun(state, event.action || "runtime");
+      const run = state.run || ensurePendingRun(state, event.action || "runtime", event);
       run.warnings = Array.from(new Set(run.warnings.concat(event.detail)));
     }
     return;
@@ -299,6 +388,9 @@ export function syncRunAugmentationsFromHostEvent(state: LabStoreState, event: L
 
 export function routeFeedEvent(state: LabStoreState, event: LabEventFeedItem) {
   if (event.scope === "run") {
+    if (prepareRunForHostEvent(state, event) !== true) {
+      return;
+    }
     if (state.run === null && canCreatePendingRunFromFeedEvent(event) !== true) {
       pushActivityEvent(state, event);
       return;
@@ -314,7 +406,7 @@ function syncRunModuleFromFeedEvent(state: LabStoreState, event: LabEventFeedIte
   if (event.scope !== "run" || event.moduleId === null) {
     return;
   }
-  const run = state.run || ensurePendingRun(state, event.action || "runtime");
+  const run = state.run || ensurePendingRun(state, event.action || "runtime", event);
   const explicitLifecycleStage =
     event.stage === "queued" ||
     event.stage === "running" ||
@@ -369,6 +461,9 @@ export function sanitizeHydratedRun(run: LabPersistedState["lastRun"] | undefine
   }
 
   const nextRun = structuredClone(run);
+  nextRun.requestId = asNonEmptyString(nextRun.requestId);
+  nextRun.jobId = asNonEmptyString(nextRun.jobId);
+  nextRun.projectId = asNonEmptyString(nextRun.projectId);
   const scopeFrozenAt =
     typeof nextRun.startedAt === "number"
       ? new Date(nextRun.startedAt).toISOString()
@@ -440,15 +535,33 @@ export function sanitizeHydratedRun(run: LabPersistedState["lastRun"] | undefine
   return nextRun;
 }
 
-export function ensurePendingRun(state: LabStoreState, action: string) {
+export function ensurePendingRun(
+  state: LabStoreState,
+  action: string,
+  correlation: LabRunCorrelationSource = {}
+) {
   if (state.run) {
-    return state.run;
+    if (
+      hasConflictingRunCorrelation(state.run, correlation) &&
+      isRunActiveForCorrelation(state.run) !== true
+    ) {
+      state.run = null;
+    } else {
+      syncRunCorrelation(state.run, correlation);
+      return state.run;
+    }
   }
 
+  const requestId = asNonEmptyString(correlation.requestId);
+  const runIdSuffix = requestId || String(Date.now());
+
   const nextRun: LabRun = {
-    id: `pending-${action}-${Date.now()}`,
+    id: `pending-${action}-${runIdSuffix}`,
     state: "running",
     startedAt: Date.now(),
+    requestId,
+    jobId: asNonEmptyString(correlation.jobId),
+    projectId: asNonEmptyString(correlation.projectId),
     modules: {},
     moduleOrder: [],
     events: [],

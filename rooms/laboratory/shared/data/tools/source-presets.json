@@ -58,10 +58,6 @@
         "recodeVideo": "none",
         "audioFormat": "none",
         "audioQuality": "5",
-        "writeSubtitles": false,
-        "writeAutoSubtitles": false,
-        "subtitlesLang": "",
-        "playlistItems": "",
         "limitRate": "",
         "retries": 10
       }
@@ -74,10 +70,6 @@
         "recodeVideo": "none",
         "audioFormat": "none",
         "audioQuality": "5",
-        "writeSubtitles": false,
-        "writeAutoSubtitles": false,
-        "subtitlesLang": "",
-        "playlistItems": "",
         "limitRate": "",
         "retries": 10
       }
@@ -90,10 +82,6 @@
         "recodeVideo": "none",
         "audioFormat": "none",
         "audioQuality": "0",
-        "writeSubtitles": false,
-        "writeAutoSubtitles": false,
-        "subtitlesLang": "",
-        "playlistItems": "",
         "limitRate": "",
         "retries": 10
       }
@@ -106,10 +94,6 @@
         "recodeVideo": "none",
         "audioFormat": "none",
         "audioQuality": "5",
-        "writeSubtitles": false,
-        "writeAutoSubtitles": false,
-        "subtitlesLang": "",
-        "playlistItems": "",
         "limitRate": "",
         "retries": 10
       }

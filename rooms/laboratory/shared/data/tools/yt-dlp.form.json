@@ -65,36 +65,8 @@
       ]
     },
     {
-      "id": "captions",
-      "fields": [
-        {
-          "id": "writeSubtitles",
-          "type": "toggle",
-          "labelKey": "mediaAnalysis.source.youtubeForm.fields.writeSubtitles"
-        },
-        {
-          "id": "writeAutoSubtitles",
-          "type": "toggle",
-          "labelKey": "mediaAnalysis.source.youtubeForm.fields.writeAutoSubtitles"
-        },
-        {
-          "id": "subtitlesLang",
-          "type": "text",
-          "labelKey": "mediaAnalysis.source.youtubeForm.fields.subtitlesLang",
-          "placeholderKey": "mediaAnalysis.source.youtubeForm.placeholders.subtitlesLang",
-          "span": "full"
-        }
-      ]
-    },
-    {
       "id": "network",
       "fields": [
-        {
-          "id": "playlistItems",
-          "type": "text",
-          "labelKey": "mediaAnalysis.source.youtubeForm.fields.playlistItems",
-          "placeholderKey": "mediaAnalysis.source.youtubeForm.placeholders.playlistItems"
-        },
         {
           "id": "limitRate",
           "type": "text",

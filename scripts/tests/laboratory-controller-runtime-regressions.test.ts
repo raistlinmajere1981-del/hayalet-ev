@@ -1688,6 +1688,7 @@ test("laboratory run controller sends project import draft fields without mutati
 test("laboratory run controller routes topbar pills and cancel through v2 contracts", () => {
   const originalElement = globalThis.Element;
   const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
+  const cancelStateDuringSend: Array<{ pending: boolean; requestId: string | null }> = [];
   const documentRef = new FakeControllerDocument();
   const eventBus = createLabEventBus();
   const store = createLabStore();
@@ -1711,6 +1712,12 @@ test("laboratory run controller routes topbar pills and cancel through v2 contra
       windowRef: {
         roomAPI: {
           sendEvent(eventName: string, payload: Record<string, unknown>) {
+            if (eventName === "media-action" && payload["action"] === "process-cancel") {
+              cancelStateDuringSend.push({
+                pending: store.getState().ui.analysisCancelPending,
+                requestId: store.getState().ui.analysisCancelRequestId,
+              });
+            }
             sentEvents.push({ eventName, payload });
           },
         },
@@ -1801,7 +1808,15 @@ test("laboratory run controller routes topbar pills and cancel through v2 contra
     clickListener?.({ target: new TestElement("cancel-analysis") } as Event);
 
     assert.equal(sentEvents.length, 1);
+    const sentCancelRequestId = sentEvents[0]?.payload["requestId"];
+    assert.deepEqual(cancelStateDuringSend, [
+      {
+        pending: true,
+        requestId: typeof sentCancelRequestId === "string" ? sentCancelRequestId : null,
+      },
+    ]);
     assert.equal(store.getState().ui.analysisCancelPending, true);
+    assert.equal(store.getState().ui.analysisCancelRequestId, sentCancelRequestId);
     assert.equal(sentEvents[0]?.eventName, "media-action");
     assert.equal(sentEvents[0]?.payload["action"], "process-cancel");
     assert.equal(
@@ -1828,6 +1843,7 @@ test("laboratory run controller routes topbar pills and cancel through v2 contra
       },
     });
     assert.equal(store.getState().ui.analysisCancelPending, false);
+    assert.equal(store.getState().ui.analysisCancelRequestId, null);
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;
@@ -1852,6 +1868,9 @@ test("laboratory run controller honors the analysis preflight auto-run toggle", 
 
   function runWithPreflightToggle(preflightAutoRunEnabled: boolean) {
     const sentActions: string[] = [];
+    const processRunPayloadRequestIds: Array<string | null> = [];
+    const processRunRequestIdsDuringSend: Array<string | null> = [];
+    const processRunStatesDuringSend: Array<string | null> = [];
     const prompts: string[] = [];
     const documentRef = new FakeControllerDocument();
     const eventBus = createLabEventBus();
@@ -1870,6 +1889,13 @@ test("laboratory run controller honors the analysis preflight auto-run toggle", 
           sendEvent(eventName: string, payload: Record<string, unknown>) {
             if (eventName === "media-action" && typeof payload["action"] === "string") {
               sentActions.push(payload["action"]);
+              if (payload["action"] === "process-run") {
+                processRunPayloadRequestIds.push(
+                  typeof payload["requestId"] === "string" ? payload["requestId"] : null
+                );
+                processRunRequestIdsDuringSend.push(store.getState().run?.requestId || null);
+                processRunStatesDuringSend.push(store.getState().run?.state || null);
+              }
             }
           },
         },
@@ -1917,6 +1943,9 @@ test("laboratory run controller honors the analysis preflight auto-run toggle", 
     clickListener?.({ target: new TestElement("run-deep-analysis") } as Event);
 
     return {
+      processRunPayloadRequestIds,
+      processRunRequestIdsDuringSend,
+      processRunStatesDuringSend,
       prompts,
       sentActions,
     };
@@ -1931,12 +1960,22 @@ test("laboratory run controller honors the analysis preflight auto-run toggle", 
     assert.notEqual(enabledPreflightIndex, -1);
     assert.notEqual(enabledRunIndex, -1);
     assert.ok(enabledPreflightIndex < enabledRunIndex);
+    assert.deepEqual(enabledRun.processRunStatesDuringSend, ["running"]);
+    assert.deepEqual(
+      enabledRun.processRunRequestIdsDuringSend,
+      enabledRun.processRunPayloadRequestIds
+    );
 
     const disabledRun = runWithPreflightToggle(false);
 
     assert.equal(disabledRun.prompts.length, 0);
     assert.equal(disabledRun.sentActions.includes("profile-run-preflight"), false);
     assert.ok(disabledRun.sentActions.includes("process-run"));
+    assert.deepEqual(disabledRun.processRunStatesDuringSend, ["running"]);
+    assert.deepEqual(
+      disabledRun.processRunRequestIdsDuringSend,
+      disabledRun.processRunPayloadRequestIds
+    );
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;

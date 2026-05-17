@@ -46,6 +46,10 @@ function isCustomProcessEventKind(kind: string | null) {
   );
 }
 
+function isTerminalProcessStage(stage: string | null) {
+  return stage === "completed" || stage === "failed" || stage === "cancelled";
+}
+
 function getActionLabel(action: string | null) {
   switch (action) {
     case null:
@@ -162,7 +166,9 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
       lastEmittedAt: 0,
       suppressedCount: 0,
     };
+    const terminalStage = isTerminalProcessStage(asNonEmptyString(payload["stage"]));
     if (
+      terminalStage !== true &&
       currentEntry.lastEmittedAt > 0 &&
       nextTimestamp - currentEntry.lastEmittedAt < throttleWindowMs
     ) {

@@ -394,11 +394,14 @@ class MountedSelectElement extends ElementStub {
   }
 }
 
-function createMountedLaboratoryTransitionEnvironment() {
+function createMountedLaboratoryTransitionEnvironment(options: { animationFrame?: boolean } = {}) {
   const runtimeRoot = new MountedRootElement();
   const listeners = new Map<string, (event: Event) => void>();
   let readyPayload: Record<string, unknown> | null = null;
   let timerId = 1;
+  let animationFrameId = 1;
+  let storageWriteCount = 0;
+  const queuedAnimationFrames: Array<{ callback: (timestamp: number) => void; id: number }> = [];
   const storage = new Map<string, string>();
   storage.set(
     "hayalet-ev:laboratory-refactor:v4",
@@ -496,40 +499,70 @@ function createMountedLaboratoryTransitionEnvironment() {
       },
     },
   });
-  Object.defineProperty(globalThis, "window", {
-    configurable: true,
-    value: {
-      addEventListener() {},
-      clearTimeout() {},
-      localStorage: {
-        getItem(key: string) {
-          return storage.get(key) ?? null;
-        },
-        setItem(key: string, value: string) {
-          storage.set(key, value);
-        },
+  const windowStub: Record<string, unknown> = {
+    addEventListener() {},
+    clearTimeout() {},
+    localStorage: {
+      getItem(key: string) {
+        return storage.get(key) ?? null;
       },
-      removeEventListener() {},
-      roomAPI: {
-        onHostMessage() {},
-        ready(payload: Record<string, unknown>) {
-          readyPayload = payload;
-        },
-        sendEvent() {},
-      },
-      setTimeout() {
-        const id = timerId;
-        timerId += 1;
-        return id;
+      setItem(key: string, value: string) {
+        storageWriteCount += 1;
+        storage.set(key, value);
       },
     },
+    removeEventListener() {},
+    roomAPI: {
+      onHostMessage() {},
+      ready(payload: Record<string, unknown>) {
+        readyPayload = payload;
+      },
+      sendEvent() {},
+    },
+    setTimeout() {
+      const id = timerId;
+      timerId += 1;
+      return id;
+    },
+  };
+  if (options.animationFrame === true) {
+    windowStub["cancelAnimationFrame"] = function (id: number) {
+      const frameIndex = queuedAnimationFrames.findIndex(function (frame) {
+        return frame.id === id;
+      });
+      if (frameIndex >= 0) {
+        queuedAnimationFrames.splice(frameIndex, 1);
+      }
+    };
+    windowStub["requestAnimationFrame"] = function (callback: (timestamp: number) => void) {
+      const id = animationFrameId;
+      animationFrameId += 1;
+      queuedAnimationFrames.push({ callback, id });
+      return id;
+    };
+  }
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: windowStub,
   });
 
   return {
+    animationFrameCount() {
+      return queuedAnimationFrames.length;
+    },
+    flushAnimationFrames() {
+      const pendingFrames = queuedAnimationFrames.splice(0);
+      pendingFrames.forEach(function (frame) {
+        frame.callback(Date.now());
+      });
+    },
     listener(type: string) {
       return listeners.get(type);
     },
     readyPayload: () => readyPayload,
+    resetStorageWriteCount() {
+      storageWriteCount = 0;
+    },
     restore() {
       Object.entries(descriptors).forEach(([key, descriptor]) => {
         if (descriptor) {
@@ -538,6 +571,9 @@ function createMountedLaboratoryTransitionEnvironment() {
           Reflect.deleteProperty(globalThis, key);
         }
       });
+    },
+    storageWriteCount() {
+      return storageWriteCount;
     },
     runtimeRoot,
   };
@@ -709,6 +745,17 @@ test("laboratory shell routes host traffic through lab-root orchestration seams"
   assert.match(labRootSource, /function hasRoomReadyBridge\(\)/);
   assert.match(labRootSource, /function requestBootOverlayInteractiveUnlock\(\)/);
   assert.match(labRootSource, /requestIdleCallback/);
+  assert.match(labRootSource, /function scheduleStoreSideEffects\(state: LabStoreState\)/);
+  assert.match(
+    labRootSource,
+    /requestAnimationFrame\(function \(\) \{\s*storeSideEffectsFrame = null;\s*runStoreSideEffects\(\);/
+  );
+  assert.match(labRootSource, /function flushStoreSideEffects\(\)/);
+  assert.match(labRootSource, /windowRef\.addEventListener\("beforeunload", handleBeforeUnload\);/);
+  assert.match(
+    labRootSource,
+    /store\.subscribe\(function \(state\) \{\s*scheduleStoreSideEffects\(state\);/
+  );
   assert.match(labRootSource, /const bootstrapStatus = getBootOverlayBootstrapStatus\(state\);/);
   assert.match(labRootSource, /bootstrapStatus === "ready" \|\| bootstrapStatus === "error"/);
   assert.match(labRootSource, /!hasRoomReadyBridge\(\)/);
@@ -791,6 +838,40 @@ test("laboratory mounted shell keeps chrome when YouTube is selected as a source
       environment.runtimeRoot.innerHTML,
       /data-lab-action="exit-youtube-import-mode"/
     );
+  } finally {
+    environment.restore();
+  }
+});
+
+test("laboratory mounted shell coalesces store side effects into one animation frame", async () => {
+  const environment = createMountedLaboratoryTransitionEnvironment({ animationFrame: true });
+
+  try {
+    await import(
+      `${pathToFileURL(resolve("rooms/laboratory/ui/lab-root.ts")).href}?rafCoalescing=${Date.now()}`
+    );
+
+    environment.flushAnimationFrames();
+    environment.resetStorageWriteCount();
+    environment.runtimeRoot.mountedQueriesEnabled = true;
+
+    const clickListener = environment.listener("click");
+    assert.ok(clickListener);
+
+    clickListener({
+      target: new MountedActionElement("analysis-prep-group-toggle", "audio-investigation"),
+    } as unknown as Event);
+    clickListener({
+      target: new MountedActionElement("analysis-prep-group-toggle", "audio-investigation"),
+    } as unknown as Event);
+
+    assert.equal(environment.animationFrameCount(), 1);
+    assert.equal(environment.storageWriteCount(), 0);
+
+    environment.flushAnimationFrames();
+
+    assert.equal(environment.animationFrameCount(), 0);
+    assert.equal(environment.storageWriteCount(), 1);
   } finally {
     environment.restore();
   }
@@ -961,7 +1042,15 @@ test("laboratory YouTube source panel renders checked stream controls without im
   assert.match(panelMarkup, /<option value="137" selected>Video 1080p<\/option>/);
   assert.match(panelMarkup, /<option value="140" selected>Audio m4a<\/option>/);
   assert.match(panelMarkup, /data-lab-field="project-import\.youtubeCustom\.mergeOutputFormat"/);
-  assert.match(panelMarkup, /data-lab-field="project-import\.youtubeCustom\.writeSubtitles"/);
+  assert.doesNotMatch(
+    panelMarkup,
+    /data-lab-field="project-import\.youtubeCustom\.writeSubtitles"/
+  );
+  assert.doesNotMatch(
+    panelMarkup,
+    /data-lab-field="project-import\.youtubeCustom\.writeAutoSubtitles"/
+  );
+  assert.doesNotMatch(panelMarkup, /data-lab-field="project-import\.youtubeCustom\.subtitlesLang"/);
   assert.match(panelMarkup, /data-lab-field="project-import\.youtubeCustom\.retries"/);
   assert.doesNotMatch(panelMarkup, /data-lab-action="youtube-import-set-strategy"/);
   assert.doesNotMatch(panelMarkup, /data-lab-field="youtube-import\.custom/);

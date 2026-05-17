@@ -1122,9 +1122,6 @@
           "download": {
             "title": "Cikti Politikasi"
           },
-          "captions": {
-            "title": "Altyazilar"
-          },
           "network": {
             "title": "Ag"
           }
@@ -1134,17 +1131,11 @@
           "recodeVideo": "Videoyu Recode Et",
           "audioFormat": "Sesi Ayir",
           "audioQuality": "Donusturme kalitesi",
-          "writeSubtitles": "Altyazi yaz",
-          "writeAutoSubtitles": "Otomatik altyazi yaz",
-          "subtitlesLang": "Altyazi dilleri",
-          "playlistItems": "Playlist ogeleri",
           "limitRate": "Hiz limiti",
           "retries": "Tekrar deneme",
           "captureMode": "Yakala Modu"
         },
         "placeholders": {
-          "subtitlesLang": "en.*,tr.* veya all",
-          "playlistItems": "1,3,5-8",
           "limitRate": "2M veya 500K"
         },
         "options": {
@@ -1243,7 +1234,6 @@
       "subtitle": "Analiz baslamadan once asamali yakalama icin dummy kuyruk.",
       "presetLabel": "Ön ayarlar",
       "qualityLabel": "Detayli Ayarlar",
-      "captions": "Altyazi yak",
       "separateAudio": "Ayri ses stem'i",
       "progressLabel": "Kuyruk Ilerlemesi",
       "button": "Download Baslat",
@@ -1988,7 +1978,7 @@
       },
       "toolDetails": {
         "yt-dlp": {
-          "readinessImpact": "Uzak YouTube ve oynatma listesi tabanlı içe alma akışlarını bloke eder."
+          "readinessImpact": "Uzak YouTube video içe alma akışlarını bloke eder."
         },
         "ffmpeg": {
           "readinessImpact": "Yerel dönüştürmeleri, türetilmiş çıktıları ve yönetilen analiz koşularının çoğunu bloke eder."

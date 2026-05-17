@@ -544,6 +544,9 @@ export interface LabRun {
   state: LabModuleStatus;
   startedAt: number;
   endedAt?: number;
+  requestId?: string | null;
+  jobId?: string | null;
+  projectId?: string | null;
   modules: Record<string, LabModuleState>;
   moduleOrder: string[];
   events: LabEventFeedItem[];
@@ -681,6 +684,7 @@ export interface LabStoreUiState {
   liveFindingsExpanded: boolean;
   analysisControlsCollapsed: boolean;
   analysisCancelPending: boolean;
+  analysisCancelRequestId: string | null;
   /** Workspace side panel collapsed state (Edit stage) */
   editSidePanelCollapsed: boolean;
   /** Raw log section collapsed in Process stage */
@@ -831,7 +835,14 @@ export type LabStoreEvent =
   | { type: "preflight-started"; action: string; detail?: string | null }
   | { type: "preflight-completed"; action: string; detail?: string | null }
   | { type: "preflight-failed"; action: string; detail?: string | null }
-  | { type: "run-started"; action: string; detail?: string | null }
+  | {
+      type: "run-started";
+      action: string;
+      detail?: string | null;
+      requestId?: string | null;
+      jobId?: string | null;
+      projectId?: string | null;
+    }
   | { type: "run-cancelled"; action: string; detail?: string | null }
   | { type: "run-failed"; action: string; detail?: string | null }
   | { type: "module-started"; action: string; moduleId: string; detail?: string | null }
@@ -875,7 +886,7 @@ export type LabStoreEvent =
   | { type: "preview-artifact-activated"; artifactId: string | null }
   | { type: "live-findings-expanded"; force?: boolean }
   | { type: "analysis-controls-collapsed"; force?: boolean }
-  | { type: "analysis-cancel-requested" }
+  | { type: "analysis-cancel-requested"; requestId?: string | null }
   | { type: "capability-select"; capabilityId: CapabilityFamilyId }
   | { type: "capability-deselect"; capabilityId: CapabilityFamilyId }
   | { type: "capability-set"; capabilities: CapabilityFamilyId[] }

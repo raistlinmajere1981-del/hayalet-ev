@@ -470,6 +470,7 @@ export function createLabMediaActionController(deps: LabMediaActionControllerDep
 
   return {
     cancelTrackedOperation,
+    createActionRequestId,
     getActiveSelectionOperationPayload,
     getCurrentRunIntentPayload,
     getRoomApi,

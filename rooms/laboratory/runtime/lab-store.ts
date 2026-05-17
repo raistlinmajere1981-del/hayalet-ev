@@ -434,6 +434,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
     case "analysis-cancel-requested":
       if (isRunMutationLocked(state)) {
         state.ui.analysisCancelPending = true;
+        state.ui.analysisCancelRequestId = asNonEmptyString(event.requestId);
       }
       return state;
     case "capability-select": {

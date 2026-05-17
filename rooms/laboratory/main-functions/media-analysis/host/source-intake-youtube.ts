@@ -54,6 +54,8 @@ type LaboratoryYoutubeFormatRecord = LaboratoryRecord & {
   label: string;
 };
 
+const SINGLE_YOUTUBE_VIDEO_URL_ERROR = "Only a single YouTube video URL is supported.";
+
 type LaboratoryMediaYoutubeSourceIntakeDeps = {
   asNonEmptyString: (value: unknown) => string | null;
   callRoomTools: (payload: LaboratoryRecord) => Promise<unknown>;
@@ -216,6 +218,51 @@ export function createMediaYoutubeSourceIntakeRuntime(
     return toRecord(JSON.parse(stdout.slice(startIndex, endIndex + 1)));
   }
 
+  function isSingleYoutubeVideoUrl(value: string) {
+    try {
+      const parsedUrl = new URL(value);
+      const host = parsedUrl.hostname.toLowerCase().replace(/^www\./, "");
+      const pathParts = parsedUrl.pathname.split("/").filter(Boolean);
+      if (parsedUrl.searchParams.has("list")) {
+        return false;
+      }
+      if (host === "youtu.be") {
+        return pathParts.length === 1 && pathParts[0] !== "";
+      }
+      if (host !== "youtube.com" && host !== "m.youtube.com" && host !== "youtube-nocookie.com") {
+        return false;
+      }
+      if (parsedUrl.pathname === "/watch") {
+        return asNonEmptyString(parsedUrl.searchParams.get("v")) !== null;
+      }
+      const route = pathParts[0] || "";
+      return (
+        (route === "shorts" || route === "embed" || route === "live") &&
+        pathParts.length === 2 &&
+        pathParts[1] !== ""
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  function assertSingleYoutubeVideoUrl(url: string) {
+    if (isSingleYoutubeVideoUrl(url) !== true) {
+      throw new Error(SINGLE_YOUTUBE_VIDEO_URL_ERROR);
+    }
+  }
+
+  function assertSingleYoutubeVideoMetadata(metadata: LaboratoryRecord) {
+    const metadataType = asNonEmptyString(metadata["_type"]);
+    if (
+      metadataType === "playlist" ||
+      metadataType === "multi_video" ||
+      Array.isArray(metadata["entries"])
+    ) {
+      throw new Error(SINGLE_YOUTUBE_VIDEO_URL_ERROR);
+    }
+  }
+
   function getBestThumbnail(metadata: LaboratoryRecord) {
     const directThumbnail = asNonEmptyString(metadata["thumbnail"]);
     if (directThumbnail !== null) {
@@ -329,6 +376,7 @@ export function createMediaYoutubeSourceIntakeRuntime(
     if (ytDlpState.installed !== true) {
       throw new Error("yt-dlp is not installed.");
     }
+    assertSingleYoutubeVideoUrl(url);
     const sourceDir = getProjectSourceDir(runtime, project);
     const runResult = await callRoomTools({
       args: ["--dump-single-json", "--skip-download", "--no-playlist", url],
@@ -342,6 +390,7 @@ export function createMediaYoutubeSourceIntakeRuntime(
     });
     const runPayload = toRecord(toRecord(runResult)["run"]);
     const metadata = parseYtDlpJson(runPayload["stdout"]);
+    assertSingleYoutubeVideoMetadata(metadata);
     const formats = normalizeYoutubeFormats(metadata);
     const defaults = chooseDefaultYoutubeFormats(formats);
     return {
@@ -436,26 +485,7 @@ export function createMediaYoutubeSourceIntakeRuntime(
       }
     }
 
-    if (values["writeSubtitles"] === true) {
-      args.push("--write-subs");
-    }
-    if (values["writeAutoSubtitles"] === true) {
-      args.push("--write-auto-subs");
-    }
-
-    const subtitlesLang = asNonEmptyString(values["subtitlesLang"]);
-    if (subtitlesLang) {
-      args.push("--sub-langs", subtitlesLang);
-    } else if (values["writeSubtitles"] === true || values["writeAutoSubtitles"] === true) {
-      args.push("--sub-langs", "all");
-    }
-
-    const playlistItems = asNonEmptyString(values["playlistItems"]);
-    if (playlistItems) {
-      args.push("--playlist-items", playlistItems);
-    } else {
-      args.push("--no-playlist");
-    }
+    args.push("--no-playlist");
 
     const limitRate = asNonEmptyString(values["limitRate"]);
     if (limitRate) {
@@ -479,6 +509,7 @@ export function createMediaYoutubeSourceIntakeRuntime(
     }
 
     if (youtubeUrl !== null) {
+      assertSingleYoutubeVideoUrl(youtubeUrl);
       args.push(youtubeUrl);
     }
     return args;
@@ -506,6 +537,7 @@ export function createMediaYoutubeSourceIntakeRuntime(
     if (youtubeUrl === null) {
       throw new Error("YouTube URL is empty.");
     }
+    assertSingleYoutubeVideoUrl(youtubeUrl);
     const captureMode = asNonEmptyString(drafts.youtubeCaptureMode) || "video+audio";
     const draftKind = asNonEmptyString(drafts["kind"]);
     const derivedSourceKind =

@@ -223,6 +223,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   });
   const {
     cancelTrackedOperation,
+    createActionRequestId,
     getRoomApi,
     handleBusEvent: handleMediaActionBusEvent,
     sendMediaAction,
@@ -914,14 +915,34 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     }
     const runAction = activeFeatureId === "audio-analysis" ? "audio-process-run" : "process-run";
     const runPayload = getProcessRunWorkspacePayload(deps.store.getState());
-    dispatch({ type: "run-started", action: runAction });
-    if (sendMediaAction(runAction, runPayload) === null) {
+    const runRequestId = createActionRequestId(runAction);
+    dispatch({
+      type: "run-started",
+      action: runAction,
+      projectId: deps.store.getState().projectIndex.activeProjectId,
+      requestId: runRequestId,
+    });
+    const sentRunRequestId = sendMediaAction(runAction, runPayload, { requestId: runRequestId });
+    if (sentRunRequestId === null) {
       dispatch({
         type: "run-failed",
         action: runAction,
         detail: "Room API bridge is not connected.",
       });
     }
+  }
+
+  function requestAnalysisCancel(state: LabControllerState) {
+    const cancelAction =
+      state.featureId === "audio-analysis" ? "audio-process-cancel" : "process-cancel";
+    const roomApi = getRoomApi();
+    if (!roomApi || typeof roomApi.sendEvent !== "function") {
+      sendMediaAction(cancelAction);
+      return;
+    }
+    const cancelRequestId = createActionRequestId(cancelAction);
+    dispatch({ type: "analysis-cancel-requested", requestId: cancelRequestId });
+    sendMediaAction(cancelAction, {}, { requestId: cancelRequestId });
   }
 
   function requestDeepAnalysis(state: LabControllerState) {
@@ -944,10 +965,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       if (state.ui.analysisCancelPending === true) {
         return;
       }
-      dispatch({ type: "analysis-cancel-requested" });
-      sendMediaAction(
-        state.featureId === "audio-analysis" ? "audio-process-cancel" : "process-cancel"
-      );
+      requestAnalysisCancel(state);
       return;
     }
     if (getSourceReady(state) && getAnalysisActionBlockReason(state) === null) {
@@ -1284,10 +1302,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           (run.state === "running" || run.state === "queued") &&
           state.ui.analysisCancelPending !== true
         ) {
-          dispatch({ type: "analysis-cancel-requested" });
-          sendMediaAction(
-            state.featureId === "audio-analysis" ? "audio-process-cancel" : "process-cancel"
-          );
+          requestAnalysisCancel(state);
         }
         return;
       }

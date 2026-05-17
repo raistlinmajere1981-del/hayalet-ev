@@ -641,6 +641,7 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     processRecord["status"] = "running";
     processRecord["requestId"] = requestId;
     processRecord["jobId"] = jobId;
+    processRecord["projectId"] = projectId;
     processRecord["runId"] = `${featureId}-run-${Date.now()}`;
     processRecord["startedAt"] = new Date().toISOString();
     processRecord["events"] = [];

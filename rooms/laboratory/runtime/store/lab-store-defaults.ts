@@ -217,6 +217,7 @@ export function createInitialState(): LabStoreState {
       liveFindingsExpanded: true,
       analysisControlsCollapsed: true,
       analysisCancelPending: false,
+      analysisCancelRequestId: null,
       editSidePanelCollapsed: false,
       rawLogCollapsed: true,
       workspace: createDefaultWorkspaceUiState(),

@@ -75,6 +75,63 @@ test("laboratory runtime events throttle high-frequency custom module updates", 
   assert.match(String(notifications[1]?.payload["detail"] || ""), /updates batched/);
 });
 
+test("laboratory runtime events emit terminal custom module updates inside throttle windows", () => {
+  const notifications: Array<{ type: string; payload: Record<string, unknown> }> = [];
+  const runtimeEvents = createLaboratoryRuntimeEvents({
+    asNonEmptyString,
+    defaultFeatureId: "media-analysis",
+    getFeatureIdFromContext() {
+      return "media-analysis";
+    },
+    loadContext() {
+      return {
+        featureId: "media-analysis",
+      };
+    },
+    roomSnapshotRuntime: {
+      buildMediaSnapshot() {
+        return {};
+      },
+    },
+  });
+
+  const api = {
+    notifyRoom(type: string, payload: Record<string, unknown>) {
+      notifications.push({ type, payload });
+    },
+  };
+
+  runtimeEvents.pushJobState(api, {
+    kind: "module-progress",
+    moduleId: "visual-signal",
+    message: "visual-signal module started",
+    stage: "running",
+    throttleWindow: "visual-signal-module-batch",
+    timestamp: 1000,
+  });
+  runtimeEvents.pushJobState(api, {
+    kind: "module-progress",
+    moduleId: "visual-signal",
+    message: "visual-signal module update",
+    stage: "running",
+    throttleWindow: "visual-signal-module-batch",
+    timestamp: 1100,
+  });
+  runtimeEvents.pushJobState(api, {
+    kind: "module-progress",
+    moduleId: "visual-signal",
+    message: "visual-signal module completed",
+    stage: "completed",
+    throttleWindow: "visual-signal-module-batch",
+    timestamp: 1200,
+  });
+
+  assert.equal(notifications.length, 2);
+  assert.equal(notifications[1]?.payload["stage"], "completed");
+  assert.equal(notifications[1]?.payload["batchedCount"], 2);
+  assert.match(String(notifications[1]?.payload["detail"] || ""), /updates batched/);
+});
+
 test("laboratory runtime events preserve correlation metadata for export jobs and request results", () => {
   const notifications: Array<{ type: string; payload: Record<string, unknown> }> = [];
   const runtimeEvents = createLaboratoryRuntimeEvents({

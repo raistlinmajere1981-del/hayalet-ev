@@ -16,6 +16,25 @@ import {
   isRunComplete,
   getToolRelevanceFilter,
 } from "../../rooms/laboratory/runtime/lab-selectors.ts";
+import type { LabEventFeedItem } from "../../rooms/laboratory/models/lab-types.ts";
+
+function createProcessRunEvent(overrides: Partial<LabEventFeedItem> = {}): LabEventFeedItem {
+  return {
+    id: "evt-process-run",
+    kind: "activity",
+    severity: "info",
+    message: "Process event",
+    detail: null,
+    timestamp: Date.now(),
+    source: "host",
+    action: "process-run",
+    stage: "running",
+    scope: "run",
+    moduleId: null,
+    rawLine: null,
+    ...overrides,
+  };
+}
 
 test("getToolLifecycleStage returns 'source' when no source is loaded", () => {
   const store = createLabStore();
@@ -218,11 +237,153 @@ test("laboratory store keeps cancel pending until the process run reaches a term
   assert.equal(store.getState().ui.analysisCancelPending, false);
 });
 
+test("laboratory store ignores stale correlated run events from an older process", () => {
+  const store = createLabStore();
+  store.dispatch({
+    type: "run-started",
+    action: "process-run",
+    jobId: "job-new",
+    projectId: "project-1",
+    requestId: "req-new",
+  });
+
+  store.dispatch({
+    type: "host-event-received",
+    event: createProcessRunEvent({
+      id: "evt-old-terminal",
+      jobId: "job-old",
+      projectId: "project-1",
+      requestId: "req-old",
+      severity: "success",
+      stage: "completed",
+    }),
+  });
+  store.dispatch({
+    type: "host-event-received",
+    event: createProcessRunEvent({
+      id: "evt-old-module",
+      jobId: "job-old",
+      kind: "module-progress",
+      moduleId: "stale-module",
+      projectId: "project-1",
+      requestId: "req-old",
+    }),
+  });
+  store.dispatch({
+    type: "host-event-received",
+    event: createProcessRunEvent({
+      id: "evt-old-finding",
+      finding: {
+        id: "finding-old",
+        title: "Old finding",
+      },
+      jobId: "job-old",
+      kind: "live-finding",
+      moduleId: "stale-module",
+      projectId: "project-1",
+      requestId: "req-old",
+    }),
+  });
+  store.dispatch({
+    type: "host-event-received",
+    event: createProcessRunEvent({
+      id: "evt-old-custom-warning",
+      action: "module-custom",
+      detail: "stale warning",
+      jobId: "job-old",
+      kind: "module-warning",
+      moduleId: "stale-module",
+      projectId: "project-1",
+      requestId: "req-old",
+    }),
+  });
+
+  const state = store.getState();
+  assert.equal(state.run?.state, "running");
+  assert.equal(state.run?.requestId, "req-new");
+  assert.equal(state.run?.jobId, "job-new");
+  assert.equal(state.run?.modules["stale-module"], undefined);
+  assert.equal(state.run?.liveFindings.length, 0);
+  assert.deepEqual(state.run?.warnings, []);
+  assert.equal(
+    state.run?.events.some(function (entry) {
+      return (
+        entry.id === "evt-old-terminal" ||
+        entry.id === "evt-old-module" ||
+        entry.id === "evt-old-custom-warning"
+      );
+    }),
+    false
+  );
+});
+
+test("laboratory store clears cancel pending only for matching correlated run terminal events", () => {
+  const store = createLabStore();
+  store.dispatch({
+    type: "run-started",
+    action: "process-run",
+    projectId: "project-1",
+    requestId: "req-new",
+  });
+  store.dispatch({ type: "analysis-cancel-requested" });
+
+  store.dispatch({
+    type: "host-event-received",
+    event: createProcessRunEvent({
+      id: "evt-old-run-cancelled",
+      projectId: "project-1",
+      requestId: "req-old",
+      severity: "warning",
+      stage: "cancelled",
+    }),
+  });
+
+  assert.equal(store.getState().run?.state, "running");
+  assert.equal(store.getState().ui.analysisCancelPending, true);
+
+  store.dispatch({
+    type: "host-event-received",
+    event: createProcessRunEvent({
+      id: "evt-new-run-cancelled",
+      projectId: "project-1",
+      requestId: "req-new",
+      severity: "warning",
+      stage: "cancelled",
+    }),
+  });
+
+  assert.equal(store.getState().run?.state, "cancelled");
+  assert.equal(store.getState().ui.analysisCancelPending, false);
+});
+
 test("laboratory store clears cancel pending when the cancel request fails", () => {
   const store = createLabStore();
   store.dispatch({ type: "run-started", action: "process-run" });
-  store.dispatch({ type: "analysis-cancel-requested" });
+  store.dispatch({ type: "analysis-cancel-requested", requestId: "cancel-new" });
   assert.equal(store.getState().ui.analysisCancelPending, true);
+  assert.equal(store.getState().ui.analysisCancelRequestId, "cancel-new");
+
+  store.dispatch({
+    type: "host-event-received",
+    event: {
+      id: "evt-stale-cancel-failed",
+      kind: "request-result",
+      severity: "error",
+      message: "Analiz iptal edilemedi",
+      detail: "cancel failed",
+      timestamp: Date.now(),
+      source: "host",
+      action: "process-cancel",
+      requestId: "cancel-old",
+      stage: "failed",
+      scope: "run",
+      moduleId: null,
+      rawLine: null,
+    },
+  });
+
+  assert.equal(store.getState().ui.analysisCancelPending, true);
+  assert.equal(store.getState().ui.analysisCancelRequestId, "cancel-new");
 
   store.dispatch({
     type: "host-event-received",
@@ -232,9 +393,10 @@ test("laboratory store clears cancel pending when the cancel request fails", () 
       severity: "error",
       message: "Analiz iptal edilemedi",
       detail: "cancel failed",
-      timestamp: Date.now(),
+      timestamp: Date.now() + 1,
       source: "host",
       action: "process-cancel",
+      requestId: "cancel-new",
       stage: "failed",
       scope: "run",
       moduleId: null,
@@ -243,6 +405,7 @@ test("laboratory store clears cancel pending when the cancel request fails", () 
   });
 
   assert.equal(store.getState().ui.analysisCancelPending, false);
+  assert.equal(store.getState().ui.analysisCancelRequestId, null);
 });
 
 test("laboratory store keeps optimistic running state through stale terminal snapshots", () => {
@@ -318,6 +481,107 @@ test("laboratory store accepts cancelled snapshots after a cancel request", () =
   });
 
   assert.equal(store.getState().run?.id, "cancelled-run");
+  assert.equal(store.getState().run?.state, "cancelled");
+  assert.equal(store.getState().ui.analysisCancelPending, false);
+});
+
+test("laboratory store keeps cancel-pending runs through stale correlated snapshots", () => {
+  const store = createLabStore();
+  store.dispatch({
+    type: "snapshot-received",
+    payload: {
+      ready: true,
+      featureId: "media-analysis",
+      activeProjectId: "project-snapshot-cancel",
+      projects: [],
+      workbench: {},
+      activeProject: {
+        id: "project-snapshot-cancel",
+        source: { kind: "video", status: "ready", storedPath: "/tmp/test.mp4" },
+        edit: {},
+        profile: {},
+        process: { records: {} },
+        report: { records: {} },
+        assets: [],
+      },
+    },
+  });
+  store.dispatch({
+    type: "run-started",
+    action: "process-run",
+    projectId: "project-snapshot-cancel",
+    requestId: "req-new",
+  });
+  const pendingRunId = store.getState().run?.id;
+  store.dispatch({ type: "analysis-cancel-requested" });
+
+  store.dispatch({
+    type: "snapshot-received",
+    payload: {
+      ready: true,
+      featureId: "media-analysis",
+      activeProjectId: "project-snapshot-cancel",
+      projects: [],
+      workbench: {},
+      activeProject: {
+        id: "project-snapshot-cancel",
+        source: { kind: "video", status: "ready", storedPath: "/tmp/test.mp4" },
+        edit: {},
+        profile: {},
+        process: {
+          records: {
+            "media-analysis": {
+              runId: "old-cancelled-run",
+              status: "cancelled",
+              requestId: "req-old",
+              projectId: "project-snapshot-cancel",
+              startedAt: "2026-04-30T23:00:00.000Z",
+              completedAt: "2026-04-30T23:00:01.000Z",
+            },
+          },
+        },
+        report: { records: {} },
+        assets: [],
+      },
+    },
+  });
+
+  assert.equal(store.getState().run?.id, pendingRunId);
+  assert.equal(store.getState().run?.state, "running");
+  assert.equal(store.getState().ui.analysisCancelPending, true);
+
+  store.dispatch({
+    type: "snapshot-received",
+    payload: {
+      ready: true,
+      featureId: "media-analysis",
+      activeProjectId: "project-snapshot-cancel",
+      projects: [],
+      workbench: {},
+      activeProject: {
+        id: "project-snapshot-cancel",
+        source: { kind: "video", status: "ready", storedPath: "/tmp/test.mp4" },
+        edit: {},
+        profile: {},
+        process: {
+          records: {
+            "media-analysis": {
+              runId: "new-cancelled-run",
+              status: "cancelled",
+              requestId: "req-new",
+              projectId: "project-snapshot-cancel",
+              startedAt: "2026-04-30T23:00:00.000Z",
+              completedAt: "2026-04-30T23:00:01.000Z",
+            },
+          },
+        },
+        report: { records: {} },
+        assets: [],
+      },
+    },
+  });
+
+  assert.equal(store.getState().run?.id, "new-cancelled-run");
   assert.equal(store.getState().run?.state, "cancelled");
   assert.equal(store.getState().ui.analysisCancelPending, false);
 });
@@ -692,9 +956,14 @@ test("controller startDeepAnalysis uses ready workspace analysis selection befor
     source,
     /const runAction = activeFeatureId === "audio-analysis" \? "audio-process-run" : "process-run";/
   );
-  assert.match(source, /dispatch\(\{ type: "run-started", action: runAction \}\);/);
+  assert.match(source, /const runRequestId = createActionRequestId\(runAction\);/);
+  assert.match(source, /type: "run-started",\s*action: runAction,/);
+  assert.match(source, /requestId: runRequestId,/);
+  assert.match(
+    source,
+    /const sentRunRequestId = sendMediaAction\(runAction, runPayload, \{ requestId: runRequestId \}\);/
+  );
   assert.match(source, /const runPayload = getProcessRunWorkspacePayload/);
-  assert.match(source, /sendMediaAction\(runAction, runPayload\)/);
   assert.match(source, /preflightAutoRunEnabled !== false/);
 });
 
