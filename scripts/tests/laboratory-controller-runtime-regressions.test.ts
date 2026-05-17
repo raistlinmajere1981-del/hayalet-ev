@@ -339,19 +339,318 @@ test("laboratory run controller sends comparison ROI payloads with image compari
 
     clickListener?.({ target: new TestElement("workspace-selection-roi-export") } as Event);
 
-    assert.equal(sentEvents.length, 2);
+    assert.equal(sentEvents.length, 3);
     assert.equal(sentEvents[1]?.eventName, "media-action");
     assert.equal(sentEvents[1]?.payload["action"], "export-roi-image");
-    const roiPayload = sentEvents[1]?.payload["payload"] as Record<string, unknown>;
-    assert.equal(roiPayload["workspaceTargetAssetId"], "asset-reference");
-    assert.equal(roiPayload["comparisonReferenceAssetId"], "asset-reference");
-    assert.equal(roiPayload["comparisonRoiActiveSide"], "reference");
-    assert.deepEqual(roiPayload["normalizedRoi"], {
+    const primaryRoiPayload = sentEvents[1]?.payload["payload"] as Record<string, unknown>;
+    assert.equal(primaryRoiPayload["workspaceTargetAssetId"], "asset-primary");
+    assert.equal(primaryRoiPayload["comparisonReferenceAssetId"], "asset-reference");
+    assert.equal(primaryRoiPayload["comparisonRoiActiveSide"], "reference");
+    assert.equal(primaryRoiPayload["workspaceResultTargetSide"], "primary");
+    assert.equal(primaryRoiPayload["allowParallelWorkspaceOperation"], true);
+    assert.deepEqual(primaryRoiPayload["normalizedRoi"], {
+      x: 0.1,
+      y: 0.2,
+      width: 0.3,
+      height: 0.4,
+    });
+    assert.equal(sentEvents[2]?.eventName, "media-action");
+    assert.equal(sentEvents[2]?.payload["action"], "export-roi-image");
+    const referenceRoiPayload = sentEvents[2]?.payload["payload"] as Record<string, unknown>;
+    assert.equal(referenceRoiPayload["workspaceTargetAssetId"], "asset-reference");
+    assert.equal(referenceRoiPayload["comparisonReferenceAssetId"], "asset-reference");
+    assert.equal(referenceRoiPayload["comparisonRoiActiveSide"], "reference");
+    assert.equal(referenceRoiPayload["workspaceResultTargetSide"], "reference");
+    assert.equal(referenceRoiPayload["allowParallelWorkspaceOperation"], true);
+    assert.deepEqual(referenceRoiPayload["normalizedRoi"], {
       x: 0.2,
       y: 0.1,
       width: 0.25,
       height: 0.35,
     });
+
+    const primaryRequestId = sentEvents[1]?.payload["requestId"] as string;
+    const referenceRequestId = sentEvents[2]?.payload["requestId"] as string;
+    eventBus.emit({
+      type: "host-event-received",
+      event: {
+        id: "evt-primary-roi-crop",
+        kind: "job",
+        severity: "success",
+        message: "Primary ROI crop completed",
+        detail: null,
+        action: "export-roi-image",
+        stage: "completed",
+        timestamp: Date.now(),
+        source: "host",
+        scope: "global",
+        moduleId: null,
+        rawLine: null,
+        requestId: primaryRequestId,
+        resultAssetIds: ["asset-primary-crop"],
+      } as never,
+    });
+    assert.equal(store.getState().ui.activeWorkspaceAssetId, "asset-primary");
+    eventBus.emit({
+      type: "asset-added",
+      asset: {
+        id: "asset-primary-crop",
+        type: "image",
+        name: "primary-crop.png",
+        localPath: "/tmp/primary-crop.png",
+        createdAt: 200,
+      },
+    });
+    assert.equal(store.getState().ui.activeWorkspaceAssetId, "asset-primary-crop");
+    assert.equal(store.getState().ui.workspace.comparisonReferenceAssetId, "asset-reference");
+
+    eventBus.emit({
+      type: "asset-added",
+      asset: {
+        id: "asset-reference-crop",
+        type: "image",
+        name: "reference-crop.png",
+        localPath: "/tmp/reference-crop.png",
+        createdAt: 201,
+      },
+    });
+    eventBus.emit({
+      type: "host-event-received",
+      event: {
+        id: "evt-reference-roi-crop",
+        kind: "job",
+        severity: "success",
+        message: "Reference ROI crop completed",
+        detail: null,
+        action: "export-roi-image",
+        stage: "completed",
+        timestamp: Date.now(),
+        source: "host",
+        scope: "global",
+        moduleId: null,
+        rawLine: null,
+        requestId: referenceRequestId,
+        resultAssetIds: ["asset-reference-crop"],
+      } as never,
+    });
+    assert.equal(store.getState().ui.activeWorkspaceAssetId, "asset-primary-crop");
+    assert.equal(store.getState().ui.workspace.comparisonReferenceAssetId, "asset-reference-crop");
+    assert.equal(store.getState().ui.workspace.comparisonRois.primary, null);
+    assert.equal(store.getState().ui.workspace.comparisonRois.reference, null);
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
+test("laboratory run controller replaces workspace media from enhanced frame outputs", () => {
+  const originalElement = globalThis.Element;
+
+  class TestElement extends FakeActionElement {}
+
+  function createScenario() {
+    const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
+    const documentRef = new FakeControllerDocument();
+    const eventBus = createLabEventBus();
+    const store = createLabStore();
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent(eventName: string, payload: Record<string, unknown>) {
+            sentEvents.push({ eventName, payload });
+          },
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+    controller.attach();
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
+    return {
+      click(action: string) {
+        clickListener?.({ target: new TestElement(action) } as Event);
+      },
+      eventBus,
+      sentEvents,
+      store,
+    };
+  }
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+
+  try {
+    const single = createScenario();
+    single.store.dispatch({
+      type: "source-config-patched",
+      patch: {
+        kind: "image",
+        mode: "local",
+        storedPath: "/tmp/single.png",
+      },
+    });
+    single.store.dispatch({ type: "workspace-asset-selected", assetId: "asset-single" });
+
+    single.click("workspace-enhanced-frame-export");
+
+    assert.equal(single.sentEvents.length, 1);
+    assert.equal(single.sentEvents[0]?.payload["action"], "export-enhanced-frame");
+    const singlePayload = single.sentEvents[0]?.payload["payload"] as Record<string, unknown>;
+    assert.equal(singlePayload["workspaceTargetAssetId"], "asset-single");
+    assert.equal(singlePayload["workspaceResultMode"], "replace-workspace-media");
+    assert.equal(singlePayload["workspaceResultTargetSide"], "single");
+
+    const singleRequestId = single.sentEvents[0]?.payload["requestId"] as string;
+    single.eventBus.emit({
+      type: "host-event-received",
+      event: {
+        id: "evt-single-enhanced-frame",
+        kind: "job",
+        severity: "success",
+        message: "Enhanced frame completed",
+        detail: null,
+        action: "export-enhanced-frame",
+        stage: "completed",
+        timestamp: Date.now(),
+        source: "host",
+        scope: "global",
+        moduleId: null,
+        rawLine: null,
+        requestId: singleRequestId,
+        resultAssetIds: ["asset-single-enhanced"],
+      } as never,
+    });
+    single.eventBus.emit({
+      type: "asset-added",
+      asset: {
+        id: "asset-single-enhanced",
+        type: "image",
+        name: "single-enhanced.png",
+        localPath: "/tmp/single-enhanced.png",
+        createdAt: 300,
+      },
+    });
+    assert.equal(single.store.getState().ui.activeWorkspaceAssetId, "asset-single-enhanced");
+    assert.equal(single.store.getState().ui.workspace.comparisonReferenceAssetId, null);
+
+    const comparison = createScenario();
+    comparison.store.dispatch({
+      type: "source-config-patched",
+      patch: {
+        kind: "image",
+        mode: "local",
+        storedPath: "/tmp/primary.png",
+      },
+    });
+    comparison.store.dispatch({ type: "workspace-asset-selected", assetId: "asset-primary" });
+    comparison.store.dispatch({
+      type: "workspace-comparison-reference-set",
+      assetId: "asset-reference",
+    });
+    comparison.store.dispatch({
+      type: "selection-roi-updated",
+      comparisonSide: "primary",
+      roi: { x: 0.1, y: 0.2, width: 0.3, height: 0.4 },
+    });
+
+    comparison.click("workspace-enhanced-frame-export");
+
+    assert.equal(comparison.sentEvents.length, 2);
+    const primaryPayload = comparison.sentEvents[0]?.payload["payload"] as Record<string, unknown>;
+    const referencePayload = comparison.sentEvents[1]?.payload["payload"] as Record<
+      string,
+      unknown
+    >;
+    assert.equal(primaryPayload["workspaceTargetAssetId"], "asset-primary");
+    assert.equal(primaryPayload["workspaceResultMode"], "replace-workspace-media");
+    assert.equal(primaryPayload["workspaceResultTargetSide"], "primary");
+    assert.equal(primaryPayload["allowParallelWorkspaceOperation"], true);
+    assert.deepEqual(primaryPayload["normalizedRoi"], { x: 0.1, y: 0.2, width: 0.3, height: 0.4 });
+    assert.equal(referencePayload["workspaceTargetAssetId"], "asset-reference");
+    assert.equal(referencePayload["workspaceResultMode"], "replace-workspace-media");
+    assert.equal(referencePayload["workspaceResultTargetSide"], "reference");
+    assert.equal(referencePayload["allowParallelWorkspaceOperation"], true);
+    assert.equal(referencePayload["normalizedRoi"], null);
+
+    const primaryRequestId = comparison.sentEvents[0]?.payload["requestId"] as string;
+    const referenceRequestId = comparison.sentEvents[1]?.payload["requestId"] as string;
+    comparison.eventBus.emit({
+      type: "host-event-received",
+      event: {
+        id: "evt-primary-enhanced-frame",
+        kind: "job",
+        severity: "success",
+        message: "Primary enhanced frame completed",
+        detail: null,
+        action: "export-enhanced-frame",
+        stage: "completed",
+        timestamp: Date.now(),
+        source: "host",
+        scope: "global",
+        moduleId: null,
+        rawLine: null,
+        requestId: primaryRequestId,
+        resultAssetIds: ["asset-primary-enhanced"],
+      } as never,
+    });
+    comparison.eventBus.emit({
+      type: "asset-added",
+      asset: {
+        id: "asset-primary-enhanced",
+        type: "image",
+        name: "primary-enhanced.png",
+        localPath: "/tmp/primary-enhanced.png",
+        createdAt: 301,
+      },
+    });
+    comparison.eventBus.emit({
+      type: "asset-added",
+      asset: {
+        id: "asset-reference-enhanced",
+        type: "image",
+        name: "reference-enhanced.png",
+        localPath: "/tmp/reference-enhanced.png",
+        createdAt: 302,
+      },
+    });
+    comparison.eventBus.emit({
+      type: "host-event-received",
+      event: {
+        id: "evt-reference-enhanced-frame",
+        kind: "job",
+        severity: "success",
+        message: "Reference enhanced frame completed",
+        detail: null,
+        action: "export-enhanced-frame",
+        stage: "completed",
+        timestamp: Date.now(),
+        source: "host",
+        scope: "global",
+        moduleId: null,
+        rawLine: null,
+        requestId: referenceRequestId,
+        resultAssetIds: ["asset-reference-enhanced"],
+      } as never,
+    });
+    assert.equal(comparison.store.getState().ui.activeWorkspaceAssetId, "asset-primary-enhanced");
+    assert.equal(
+      comparison.store.getState().ui.workspace.comparisonReferenceAssetId,
+      "asset-reference-enhanced"
+    );
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;
@@ -872,6 +1171,48 @@ test("laboratory run controller applies fine adjustment controls for audio and v
       }),
     } as Event);
     assert.equal(store.getState().ui.workspace.interactiveSettings.brightness, 101);
+
+    store.dispatch({
+      type: "workspace-comparison-reference-set",
+      assetId: "asset-reference",
+    });
+    clickListener?.({
+      target: settingButton("workspace.interactive.brightness", {
+        labDelta: "1",
+        labMin: "0",
+        labMax: "200",
+        labStep: "1",
+        labResetValue: "100",
+      }),
+    } as Event);
+    assert.equal(store.getState().ui.workspace.interactiveSettings.brightness, 101);
+    assert.equal(
+      store.getState().ui.workspace.comparisonInteractiveSettings.primary.brightness,
+      101
+    );
+    assert.equal(
+      store.getState().ui.workspace.comparisonInteractiveSettings.reference.brightness,
+      102
+    );
+
+    store.dispatch({ type: "workspace-comparison-side-activated", side: "primary" });
+    clickListener?.({
+      target: settingButton("workspace.interactive.brightness", {
+        labMin: "0",
+        labMax: "200",
+        labReset: "true",
+        labStep: "1",
+        labResetValue: "100",
+      }),
+    } as Event);
+    assert.equal(
+      store.getState().ui.workspace.comparisonInteractiveSettings.primary.brightness,
+      100
+    );
+    assert.equal(
+      store.getState().ui.workspace.comparisonInteractiveSettings.reference.brightness,
+      102
+    );
 
     clickListener?.({
       target: settingButton("workspace.audioFocus.gain", {
@@ -1712,6 +2053,168 @@ test("laboratory run controller treats missing area selection as full-media anal
     assert.equal(analysisScope?.region, undefined);
     assert.equal(analysisScope?.focus, undefined);
     assert.notEqual(analysisScope?.lifecycle?.processId, "stale-process");
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
+test("laboratory run controller carries active image comparison pair into analysis scope", () => {
+  const originalElement = globalThis.Element;
+  const sentActions: string[] = [];
+  const processRunPayloads: Array<Record<string, unknown>> = [];
+  class TestElement extends FakeActionElement {}
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent(eventName: string, payload: Record<string, unknown>) {
+            if (eventName === "media-action" && typeof payload["action"] === "string") {
+              sentActions.push(payload["action"]);
+              if (payload["action"] === "process-run") {
+                processRunPayloads.push(
+                  typeof payload["payload"] === "object" &&
+                    payload["payload"] !== null &&
+                    Array.isArray(payload["payload"]) === false
+                    ? (payload["payload"] as Record<string, unknown>)
+                    : {}
+                );
+              }
+            }
+          },
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    store.dispatch({
+      type: "hydrate",
+      payload: {
+        featureId: "media-analysis",
+        source: {
+          kind: "image",
+          mode: "local",
+          previewUrl: "preview://primary",
+          storedFileName: "primary.png",
+          storedPath: "/tmp/primary.png",
+        },
+        sourceProbeStatus: "completed",
+        toolState: {
+          tools: {
+            ffmpeg: { installed: true },
+          },
+        },
+        workspace: {
+          comparisonSplitPercent: 38,
+          comparisonViewMode: "difference",
+          preflightAutoRunEnabled: false,
+          selectedIntents: ["visual-inspection"],
+        },
+        reports: {
+          user: null,
+          ai: null,
+          emptyReason: null,
+        },
+        activityFeed: [],
+        lastRun: null,
+      },
+    });
+    eventBus.emit({
+      type: "asset-added",
+      asset: {
+        id: "asset-primary",
+        type: "image",
+        name: "A primary.png",
+        localPath: "/tmp/primary.png",
+        createdAt: 1,
+        metadata: { height: 500, sourceKind: "image", width: 1000 },
+      },
+    });
+    eventBus.emit({
+      type: "asset-added",
+      asset: {
+        id: "asset-reference",
+        type: "image",
+        name: "B reference.png",
+        localPath: "/tmp/reference.png",
+        createdAt: 2,
+        metadata: { height: 600, sourceKind: "image", width: 800 },
+      },
+    });
+    store.dispatch({ type: "workspace-asset-selected", assetId: "asset-primary" });
+    store.dispatch({ type: "workspace-comparison-reference-set", assetId: "asset-reference" });
+    store.dispatch({ type: "workspace-intent-set", intents: ["visual-inspection"] });
+    store.dispatch({ type: "analysis-preflight-auto-run-toggled", force: false });
+    store.dispatch({
+      type: "workspace-comparison-updated",
+      patch: {
+        comparisonSplitPercent: 38,
+        comparisonViewMode: "difference",
+      },
+    });
+    store.dispatch({
+      type: "selection-roi-updated",
+      comparisonSide: "primary",
+      roi: { x: 0.1, y: 0.2, width: 0.3, height: 0.4 },
+    });
+    store.dispatch({
+      type: "selection-roi-updated",
+      comparisonSide: "reference",
+      roi: { x: 0.2, y: 0.1, width: 0.25, height: 0.35 },
+    });
+
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
+    clickListener?.({ target: new TestElement("run-deep-analysis") } as Event);
+    if (!sentActions.includes("process-run")) {
+      clickListener?.({ target: new TestElement("analysis-scope-choice", "selected") } as Event);
+    }
+
+    const comparison = store.getState().run?.analysisScope?.comparison;
+    assert.ok(sentActions.includes("process-run"));
+    assert.equal(comparison?.primary.assetId, "asset-primary");
+    assert.equal(comparison?.primary.localPath, "/tmp/primary.png");
+    assert.equal(comparison?.reference.assetId, "asset-reference");
+    assert.equal(comparison?.reference.localPath, "/tmp/reference.png");
+    assert.equal(comparison?.activeSide, "reference");
+    assert.equal(comparison?.viewMode, "difference");
+    assert.equal(comparison?.splitPercent, 38);
+    assert.equal(processRunPayloads.at(-1)?.["workspaceTargetAssetId"], "asset-primary");
+    assert.equal(processRunPayloads.at(-1)?.["comparisonReferenceAssetId"], "asset-reference");
+    assert.deepEqual(
+      (processRunPayloads.at(-1)?.["analysisScope"] as { comparison?: unknown } | undefined)
+        ?.comparison,
+      comparison
+    );
+    assert.deepEqual(comparison?.rois?.primary, { x: 100, y: 100, width: 300, height: 200 });
+    assert.deepEqual(comparison?.rois?.reference, {
+      x: 160,
+      y: 60,
+      width: 200,
+      height: 210,
+    });
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;

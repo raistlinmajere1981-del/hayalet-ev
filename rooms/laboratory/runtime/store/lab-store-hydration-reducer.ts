@@ -10,6 +10,10 @@ import type {
 import { normalizeStoreAssets } from "./lab-store-assets.js";
 import { normalizeAudioFocusPatch } from "../lab-audio-focus-normalization.js";
 import {
+  createLabComparisonInteractiveSettings,
+  normalizeLabInteractiveSettings,
+} from "../lab-workspace-defaults.js";
+import {
   normalizeWorkspaceTimelineRange,
   syncWorkspaceSelectionWithRange,
 } from "../lab-workspace-selection.js";
@@ -144,6 +148,24 @@ function hydrateWorkspaceUi(state: LabStoreState, workspace: unknown) {
       : state.ui.workspace.timelineStartMs,
     typeof ws.timelineEndMs === "number" ? ws.timelineEndMs : state.ui.workspace.timelineEndMs
   );
+  const interactiveSettings = ws.interactiveSettings
+    ? normalizeLabInteractiveSettings(
+        ws.interactiveSettings,
+        state.ui.workspace.interactiveSettings
+      )
+    : state.ui.workspace.interactiveSettings;
+  const comparisonInteractiveSettings = ws.comparisonInteractiveSettings
+    ? {
+        primary: normalizeLabInteractiveSettings(
+          ws.comparisonInteractiveSettings.primary,
+          interactiveSettings
+        ),
+        reference: normalizeLabInteractiveSettings(
+          ws.comparisonInteractiveSettings.reference,
+          interactiveSettings
+        ),
+      }
+    : createLabComparisonInteractiveSettings(interactiveSettings);
   state.ui.workspace = syncWorkspaceSelectionWithRange(
     {
       ...state.ui.workspace,
@@ -154,9 +176,8 @@ function hydrateWorkspaceUi(state: LabStoreState, workspace: unknown) {
           ? ws.comparisonReferenceAssetId
           : null,
       roiRegions: Array.isArray(ws.roiRegions) ? ws.roiRegions : state.ui.workspace.roiRegions,
-      interactiveSettings: ws.interactiveSettings
-        ? { ...state.ui.workspace.interactiveSettings, ...ws.interactiveSettings }
-        : state.ui.workspace.interactiveSettings,
+      interactiveSettings,
+      comparisonInteractiveSettings,
       audioFocus: normalizeAudioFocusPatch(state.ui.workspace.audioFocus, ws.audioFocus),
       previewVolume:
         typeof ws.previewVolume === "number"

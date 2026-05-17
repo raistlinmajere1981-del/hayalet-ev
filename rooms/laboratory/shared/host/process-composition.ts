@@ -29,6 +29,7 @@ type LaboratoryHostProcessCompositionDeps = LaboratoryProcessRuntimeDeps &
     getPreferredFeatureSourceKind: UnknownFn;
     getStageSupport: UnknownFn;
     getToolManifest: UnknownFn;
+    generateProcessImageComparisonArtifact: UnknownFn;
     getVisualAnalysisCapabilityState: UnknownFn;
     getVisualAnalysisModulesForRuntime: UnknownFn;
     getVisualAnalysisProviderState: UnknownFn;
@@ -261,6 +262,7 @@ export function createLaboratoryHostProcessCompositionRuntime(
     ensureProcessJobSlotAvailable: deps.ensureProcessJobSlotAvailable,
     ensureProjectDirectories: deps.ensureProjectDirectories,
     generateProcessFramePreviewArtifact: deps["generateProcessFramePreviewArtifact"],
+    generateProcessImageComparisonArtifact: deps["generateProcessImageComparisonArtifact"],
     generateProcessMetadataArtifact: deps["generateProcessMetadataArtifact"],
     generateProcessVisualTransformArtifact: deps["generateProcessVisualTransformArtifact"],
     generateProcessSpectrogram: laboratoryAudioProcessDelegatesRuntime.generateProcessSpectrogram,

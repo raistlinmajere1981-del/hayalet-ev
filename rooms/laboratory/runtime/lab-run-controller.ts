@@ -5,6 +5,8 @@ import {
   WORKSPACE_INTENTS,
 } from "../models/lab-types.js";
 import type {
+  LabAsset,
+  LabComparisonSide,
   LabFeatureId,
   LabFocusLayer,
   LabComparisonViewMode,
@@ -55,7 +57,7 @@ import {
   normalizeWorkspaceControlTab,
 } from "./controller/lab-timeline-controller-helpers.js";
 import { DEFAULT_AUDIO_FOCUS_SETTINGS } from "./lab-audio-focus-normalization.js";
-import { DEFAULT_LAB_INTERACTIVE_SETTINGS } from "./lab-workspace-defaults.js";
+import { inferLabAssetSourceKind } from "../shared/lab-asset-kind.js";
 
 type LabRoomApi = {
   close?: () => boolean;
@@ -372,6 +374,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     patchInteractiveSetting,
     patchOperationSetting,
     readControlValue,
+    resetInteractiveSettings,
     resetAnalysisModuleSettings,
     resetOperationSettings,
   } = workspaceSettings;
@@ -675,6 +678,145 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     return "selected";
   }
 
+  function getPathLeaf(path: string | null) {
+    if (path === null) {
+      return null;
+    }
+    return path.split(/[\\/]/).pop() || path;
+  }
+
+  function getAnalysisComparisonAsset(state: LabControllerState, assetId: string | null) {
+    return assetId === null
+      ? null
+      : state.assets.find(function (asset) {
+          return asset.id === assetId;
+        }) || null;
+  }
+
+  function buildAssetComparisonTarget(asset: LabAsset, side: LabComparisonSide) {
+    const localPath = asNonEmptyString(asset.localPath);
+    const url = asNonEmptyString(asset.url);
+    const sourceKind = inferLabAssetSourceKind(asset);
+    const fileName = getPathLeaf(localPath) || getPathLeaf(url) || asset.name;
+    return {
+      side,
+      assetId: asset.id,
+      name: asset.name,
+      label: asset.name,
+      ...(fileName ? { fileName } : {}),
+      ...(localPath === null ? {} : { localPath, path: localPath }),
+      ...(url === null ? {} : { url }),
+      ...(asNonEmptyString(asset.sourceId) === null ? {} : { sourceId: asset.sourceId }),
+      ...(sourceKind === null ? {} : { sourceKind }),
+      type: asset.type,
+      ...(asset.metadata && Object.keys(asset.metadata).length > 0
+        ? { metadata: asset.metadata }
+        : {}),
+    };
+  }
+
+  function buildSourceComparisonTarget(state: LabControllerState, side: LabComparisonSide) {
+    const sourceRecord = asLabRecord(state.source);
+    const localPath = asNonEmptyString(sourceRecord["storedPath"]);
+    const url =
+      asNonEmptyString(sourceRecord["previewUrl"]) || asNonEmptyString(sourceRecord["url"]);
+    const fileName =
+      asNonEmptyString(sourceRecord["storedFileName"]) ||
+      getPathLeaf(localPath) ||
+      getPathLeaf(url) ||
+      asNonEmptyString(sourceRecord["name"]);
+    const sourceKind = asNonEmptyString(sourceRecord["kind"]);
+    return {
+      side,
+      ...(asNonEmptyString(sourceRecord["id"]) === null
+        ? {}
+        : { sourceId: asNonEmptyString(sourceRecord["id"]) }),
+      ...(fileName === null ? {} : { fileName, name: fileName, label: fileName }),
+      ...(localPath === null ? {} : { localPath, path: localPath }),
+      ...(url === null ? {} : { url }),
+      ...(sourceKind === "video" || sourceKind === "audio" || sourceKind === "image"
+        ? { sourceKind }
+        : {}),
+      type: "source",
+      ...(Object.keys(asLabRecord(sourceRecord["metadata"])).length > 0
+        ? { metadata: asLabRecord(sourceRecord["metadata"]) }
+        : {}),
+    };
+  }
+
+  function getComparisonTargetSourceKind(target: Record<string, unknown>) {
+    const sourceKind = asNonEmptyString(target["sourceKind"]);
+    return sourceKind === "video" || sourceKind === "audio" || sourceKind === "image"
+      ? sourceKind
+      : null;
+  }
+
+  function getComparisonTargetDimensions(target: Record<string, unknown>) {
+    const metadata = asLabRecord(target["metadata"]);
+    const width = readFiniteNumber(metadata["width"]);
+    const height = readFiniteNumber(metadata["height"]);
+    return width !== null && height !== null && width > 0 && height > 0 ? { width, height } : null;
+  }
+
+  function resolveComparisonRoiRegion(
+    roi: LabSelectionROI | null,
+    target: Record<string, unknown>
+  ) {
+    const dimensions = roi === null ? null : getComparisonTargetDimensions(target);
+    if (roi === null || dimensions === null) {
+      return null;
+    }
+    const x = Math.max(0, Math.min(1, roi.x));
+    const y = Math.max(0, Math.min(1, roi.y));
+    const width = Math.max(1, Math.round(Math.max(0, Math.min(1, roi.width)) * dimensions.width));
+    const height = Math.max(
+      1,
+      Math.round(Math.max(0, Math.min(1, roi.height)) * dimensions.height)
+    );
+    return {
+      x: Math.min(Math.max(0, dimensions.width - width), Math.round(x * dimensions.width)),
+      y: Math.min(Math.max(0, dimensions.height - height), Math.round(y * dimensions.height)),
+      width,
+      height,
+    };
+  }
+
+  function getAnalysisComparisonScopeFromWorkspace(state: LabControllerState) {
+    const referenceAssetId = asNonEmptyString(state.ui.workspace.comparisonReferenceAssetId);
+    const referenceAsset = getAnalysisComparisonAsset(state, referenceAssetId);
+    if (referenceAsset === null) {
+      return null;
+    }
+    const primaryAssetId = asNonEmptyString(state.ui.activeWorkspaceAssetId);
+    const primaryAsset = getAnalysisComparisonAsset(state, primaryAssetId);
+    const primary =
+      primaryAsset === null
+        ? buildSourceComparisonTarget(state, "primary")
+        : buildAssetComparisonTarget(primaryAsset, "primary");
+    const reference = buildAssetComparisonTarget(referenceAsset, "reference");
+    if (
+      getComparisonTargetSourceKind(primary) !== "image" ||
+      getComparisonTargetSourceKind(reference) !== "image"
+    ) {
+      return null;
+    }
+    const comparisonRois = state.ui.workspace.comparisonRois;
+    const primaryRoiRegion = resolveComparisonRoiRegion(comparisonRois.primary, primary);
+    const referenceRoiRegion = resolveComparisonRoiRegion(comparisonRois.reference, reference);
+    return {
+      activeSide: comparisonRois.activeSide,
+      primary,
+      reference,
+      rois: {
+        activeSide: comparisonRois.activeSide,
+        primary: primaryRoiRegion,
+        reference: referenceRoiRegion,
+      },
+      splitPercent: state.ui.workspace.comparisonSplitPercent,
+      viewMode: state.ui.workspace.comparisonViewMode,
+    };
+  }
+
   function updateAnalysisScopeFromWorkspace(
     state: LabControllerState,
     choice: AnalysisScopeChoice,
@@ -713,6 +855,13 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         delete nextScope["region"];
       }
 
+      const comparisonScope = getAnalysisComparisonScopeFromWorkspace(state);
+      if (comparisonScope !== null) {
+        nextScope["comparison"] = comparisonScope;
+      } else {
+        delete nextScope["comparison"];
+      }
+
       const hasScopeContent = [
         "focus",
         "hypothesis",
@@ -720,6 +869,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         "frameRange",
         "region",
         "intentIds",
+        "comparison",
         "lifecycle",
       ].some(function (key) {
         return nextScope[key] !== undefined;
@@ -730,6 +880,21 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         analysisScope: hasScopeContent ? nextScope : null,
       };
     });
+  }
+
+  function getProcessRunWorkspacePayload(state: LabControllerState) {
+    const workbench = getWorkbench(state);
+    const workspaceTargetAssetId = asNonEmptyString(state.ui.activeWorkspaceAssetId);
+    const comparisonReferenceAssetId = asNonEmptyString(
+      state.ui.workspace.comparisonReferenceAssetId
+    );
+    return {
+      ...(workbench["analysisScope"] === undefined
+        ? {}
+        : { analysisScope: workbench["analysisScope"] }),
+      ...(workspaceTargetAssetId === null ? {} : { workspaceTargetAssetId }),
+      ...(comparisonReferenceAssetId === null ? {} : { comparisonReferenceAssetId }),
+    };
   }
 
   function startDeepAnalysis(state: LabControllerState, scopeChoice: AnalysisScopeChoice) {
@@ -748,8 +913,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       sendMediaAction("profile-run-preflight");
     }
     const runAction = activeFeatureId === "audio-analysis" ? "audio-process-run" : "process-run";
+    const runPayload = getProcessRunWorkspacePayload(deps.store.getState());
     dispatch({ type: "run-started", action: runAction });
-    if (sendMediaAction(runAction) === null) {
+    if (sendMediaAction(runAction, runPayload) === null) {
       dispatch({
         type: "run-failed",
         action: runAction,
@@ -1318,10 +1484,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         sendMediaAction("edit-preview");
         return;
       case "workspace-reset-controls":
-        dispatch({
-          type: "workspace-interactive-updated",
-          patch: { ...DEFAULT_LAB_INTERACTIVE_SETTINGS },
-        });
+        resetInteractiveSettings();
         return;
       case "workspace-reset-audio-focus":
         dispatch({

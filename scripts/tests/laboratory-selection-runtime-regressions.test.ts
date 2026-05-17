@@ -404,7 +404,7 @@ test("selection suggestions and waveform model deepen when semantic roi inspecti
   assert.match(openMarkup, /lab-audio-viz-inspection/);
 });
 
-test("lab root preserves interpretation panel details state across embedded and standalone rerenders", async () => {
+test("lab root preserves protected details state while syncing source drawer details", async () => {
   class FakeElement {
     attributes = new Map<string, string>();
     childNodes: unknown[] = [];
@@ -528,8 +528,40 @@ test("lab root preserves interpretation panel details state across embedded and 
       standaloneNext as unknown as Element
     );
 
+    const openSourceDrawer = new FakeDetailsElement({
+      class: "labx-sp-group",
+      "data-group-type": "source",
+      open: "",
+    });
+    const closedSourceDrawer = new FakeDetailsElement({
+      class: "labx-sp-group",
+      "data-group-type": "source",
+    });
+
+    labRootModule.__testOnlyLabRootDomSync.syncElement(
+      openSourceDrawer as unknown as Element,
+      closedSourceDrawer as unknown as Element
+    );
+
+    const closedFrameDrawer = new FakeDetailsElement({
+      class: "labx-sp-group",
+      "data-group-type": "frame",
+    });
+    const openFrameDrawer = new FakeDetailsElement({
+      class: "labx-sp-group",
+      "data-group-type": "frame",
+      open: "",
+    });
+
+    labRootModule.__testOnlyLabRootDomSync.syncElement(
+      closedFrameDrawer as unknown as Element,
+      openFrameDrawer as unknown as Element
+    );
+
     assert.equal(embeddedCurrent.open, false);
     assert.equal(standaloneCurrent.open, true);
+    assert.equal(openSourceDrawer.open, false);
+    assert.equal(closedFrameDrawer.open, true);
   } finally {
     Object.entries(descriptors).forEach(([key, descriptor]) => {
       if (descriptor) {

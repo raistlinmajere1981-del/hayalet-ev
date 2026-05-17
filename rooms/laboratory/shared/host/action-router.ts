@@ -75,6 +75,29 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
     return toRecord(value);
   }
 
+  function getProcessWorkbenchSource(
+    api: LaboratoryRoomApi,
+    actionPayload: LaboratoryActionPayload
+  ) {
+    const contextWorkbench = toRecord(toRecord(loadContext(api))["workbench"]);
+    const payloadWorkbench = toRecord(actionPayload["workbench"]);
+    const analysisScope =
+      actionPayload["analysisScope"] === undefined
+        ? payloadWorkbench["analysisScope"]
+        : actionPayload["analysisScope"];
+    const workspaceTargetAssetId = asNonEmptyString(actionPayload["workspaceTargetAssetId"]);
+    const comparisonReferenceAssetId = asNonEmptyString(
+      actionPayload["comparisonReferenceAssetId"]
+    );
+    return {
+      ...contextWorkbench,
+      ...payloadWorkbench,
+      ...(analysisScope === undefined ? {} : { analysisScope }),
+      ...(workspaceTargetAssetId === null ? {} : { workspaceTargetAssetId }),
+      ...(comparisonReferenceAssetId === null ? {} : { comparisonReferenceAssetId }),
+    };
+  }
+
   async function dispatch(
     api: LaboratoryRoomApi,
     runtime: LaboratoryRuntimeRecord,
@@ -247,7 +270,13 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
           break;
         case "process-run":
         case "audio-process-run":
-          result = await mediaActionRuntime.runProcess(api, runtime, requestId, featureId);
+          result = await mediaActionRuntime.runProcess(
+            api,
+            runtime,
+            requestId,
+            featureId,
+            getProcessWorkbenchSource(api, actionPayload)
+          );
           break;
         case "process-cancel":
         case "audio-process-cancel":

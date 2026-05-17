@@ -597,6 +597,58 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
     });
   }
 
+  async function generateProcessImageComparisonArtifact(
+    runtime: { paths: { projectsDir: string } },
+    project: LaboratoryRecord,
+    requestId: string | null,
+    jobId: string | null,
+    primaryTarget: LaboratoryRecord,
+    referenceTarget: LaboratoryRecord,
+    artifactBase: string,
+    outputDir: string,
+    comparisonKind: "side-by-side" | "difference",
+    label: string,
+    metadata: LaboratoryRecord = {}
+  ) {
+    const outputPath = `${outputDir}/${artifactBase}-${comparisonKind}.png`;
+    const filterGraph =
+      comparisonKind === "difference"
+        ? "[0:v]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1[a];[1:v]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1[b];[a][b]blend=all_mode=difference,eq=contrast=1.5:brightness=0.02[out]"
+        : "[0:v]scale=640:720:force_original_aspect_ratio=decrease,pad=640:720:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1[left];[1:v]scale=640:720:force_original_aspect_ratio=decrease,pad=640:720:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1[right];[left][right]hstack=inputs=2[out]";
+    await runProfileTool(runtime, {
+      requestId,
+      jobId,
+      toolId: "ffmpeg",
+      cwd: getProjectProfileDir(runtime, project as { slug: string }),
+      args: [
+        "-y",
+        "-i",
+        primaryTarget["path"] as string,
+        "-i",
+        referenceTarget["path"] as string,
+        "-filter_complex",
+        filterGraph,
+        "-map",
+        "[out]",
+        "-frames:v",
+        "1",
+        outputPath,
+      ],
+      timeoutMs: 90_000,
+    });
+    return createProcessArtifact(
+      "image-comparison",
+      comparisonKind === "difference" ? "comparison-difference" : "comparison-side-by-side",
+      outputPath,
+      label,
+      {
+        ...metadata,
+        comparisonKind,
+        filterGraph,
+      }
+    );
+  }
+
   function getFindingSeverityRank(level: unknown) {
     const nextLevel = asNonEmptyString(level) || "low";
     return nextLevel === "high" ? 3 : nextLevel === "medium" ? 2 : 1;
@@ -621,6 +673,7 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
     createProfileSignal,
     formatIdentifierLabel,
     generateProcessFramePreviewArtifact,
+    generateProcessImageComparisonArtifact,
     generateProcessMetadataArtifact,
     generateProcessVisualTransformArtifact,
     generateProfileFrameStrip,

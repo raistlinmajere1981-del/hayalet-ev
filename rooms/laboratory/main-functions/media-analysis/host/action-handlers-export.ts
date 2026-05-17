@@ -419,9 +419,11 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     const seekMs = asNumber(payload["seekMs"]);
     const settings = readOperationSettings("roi-crop", payload);
 
-    await cancelJobsForProject(runtime, projectId, requestId, {
-      actionIds: Array.from(MEDIA_EXPORT_ACTION_IDS),
-    });
+    if (payload["allowParallelWorkspaceOperation"] !== true) {
+      await cancelJobsForProject(runtime, projectId, requestId, {
+        actionIds: Array.from(MEDIA_EXPORT_ACTION_IDS),
+      });
+    }
 
     const jobId = `export-roi-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     registerJob(runtime, {
@@ -529,6 +531,22 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
           regionId,
           requestId,
           settingsUsed: settings,
+          ...(asNonEmptyString(payload["workspaceResultMode"]) === null
+            ? {}
+            : { workspaceResultMode: asNonEmptyString(payload["workspaceResultMode"]) }),
+          ...(asNonEmptyString(payload["workspaceResultTargetSide"]) === null
+            ? {}
+            : {
+                workspaceResultTargetSide: asNonEmptyString(payload["workspaceResultTargetSide"]),
+              }),
+          ...(asNonEmptyString(payload["workspaceOperationBatchId"]) === null
+            ? {}
+            : {
+                workspaceOperationBatchId: asNonEmptyString(payload["workspaceOperationBatchId"]),
+              }),
+          ...(asNumber(payload["workspaceOperationBatchSize"]) === null
+            ? {}
+            : { workspaceOperationBatchSize: asNumber(payload["workspaceOperationBatchSize"]) }),
           ...(seekMs === null
             ? {}
             : {
@@ -800,9 +818,11 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
       throw new Error("Source dimensions are required for normalized enhanced frame export.");
     }
 
-    await cancelJobsForProject(runtime, projectId, requestId, {
-      actionIds: Array.from(MEDIA_EXPORT_ACTION_IDS),
-    });
+    if (payload["allowParallelWorkspaceOperation"] !== true) {
+      await cancelJobsForProject(runtime, projectId, requestId, {
+        actionIds: Array.from(MEDIA_EXPORT_ACTION_IDS),
+      });
+    }
 
     const jobId = `export-enhanced-frame-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     registerJob(runtime, {
@@ -827,7 +847,10 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     try {
       const outputDir = getProjectEditOutputDir(runtime, project);
       const format = getImageExtension(readStringSetting(settings, "format", "png"));
-      const outputFileName = `enhanced-frame-${String(Math.round(seekMs))}ms-${Date.now()}.${format}`;
+      const outputSide = asNonEmptyString(payload["workspaceResultTargetSide"]);
+      const outputFileName = `enhanced-frame${
+        outputSide === null ? "" : `-${outputSide}`
+      }-${String(Math.round(seekMs))}ms-${Date.now()}.${format}`;
       const outputPath = `${outputDir}/${outputFileName}`;
       const filters = [
         ...(normalizedCrop === null
@@ -884,6 +907,22 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
           requestId,
           seekMs,
           settingsUsed: settings,
+          ...(asNonEmptyString(payload["workspaceResultMode"]) === null
+            ? {}
+            : { workspaceResultMode: asNonEmptyString(payload["workspaceResultMode"]) }),
+          ...(asNonEmptyString(payload["workspaceResultTargetSide"]) === null
+            ? {}
+            : {
+                workspaceResultTargetSide: asNonEmptyString(payload["workspaceResultTargetSide"]),
+              }),
+          ...(asNonEmptyString(payload["workspaceOperationBatchId"]) === null
+            ? {}
+            : {
+                workspaceOperationBatchId: asNonEmptyString(payload["workspaceOperationBatchId"]),
+              }),
+          ...(asNumber(payload["workspaceOperationBatchSize"]) === null
+            ? {}
+            : { workspaceOperationBatchSize: asNumber(payload["workspaceOperationBatchSize"]) }),
           sourceRange: {
             endMs: seekMs,
             startMs: seekMs,

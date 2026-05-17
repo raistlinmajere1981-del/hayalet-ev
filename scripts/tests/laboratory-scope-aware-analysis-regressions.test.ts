@@ -1,9 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import {
-  createLaboratoryWorkbenchState,
-} from "../../rooms/laboratory/shared/host/runtime-primitives.ts";
+import { createLaboratoryWorkbenchState } from "../../rooms/laboratory/shared/host/runtime-primitives.ts";
 import { createLaboratoryProcessReportStateRuntime } from "../../rooms/laboratory/shared/host/process-report-state.ts";
 import {
   freezeAnalysisScope,
@@ -51,10 +49,60 @@ test("analysis scope normalization keeps ordered ranges, intent ids, and freeze 
   assert.equal(normalized?.focus, "visual");
   assert.deepEqual(normalized?.intentIds, ["visual-inspection"]);
 
-  const frozen = freezeAnalysisScope(normalized, "media-analysis-run-1", "2026-04-20T10:00:00.000Z");
+  const frozen = freezeAnalysisScope(
+    normalized,
+    "media-analysis-run-1",
+    "2026-04-20T10:00:00.000Z"
+  );
   assert.equal(frozen?.lifecycle?.mutable, false);
   assert.equal(frozen?.lifecycle?.processId, "media-analysis-run-1");
   assert.equal(frozen?.lifecycle?.frozenAt, "2026-04-20T10:00:00.000Z");
+});
+
+test("analysis scope normalization preserves image comparison pairs and rois", () => {
+  const normalized = normalizeAnalysisScope({
+    comparison: {
+      activeSide: "reference",
+      primary: {
+        assetId: "asset-a",
+        label: "A source.png",
+        localPath: "/tmp/a.png",
+        sourceKind: "image",
+      },
+      reference: {
+        assetId: "asset-b",
+        label: "B reference.png",
+        localPath: "/tmp/b.png",
+        sourceKind: "image",
+      },
+      rois: {
+        activeSide: "reference",
+        primary: { x: 10.4, y: 20.2, width: 100.8, height: 80.1 },
+        reference: { x: 8, y: 12, width: 90, height: 70 },
+      },
+      splitPercent: 41.5,
+      viewMode: "difference",
+    },
+  });
+
+  assert.equal(normalized?.comparison?.primary.assetId, "asset-a");
+  assert.equal(normalized?.comparison?.primary.localPath, "/tmp/a.png");
+  assert.equal(normalized?.comparison?.reference.assetId, "asset-b");
+  assert.equal(normalized?.comparison?.activeSide, "reference");
+  assert.equal(normalized?.comparison?.splitPercent, 41.5);
+  assert.deepEqual(normalized?.comparison?.rois?.primary, {
+    x: 10,
+    y: 20,
+    width: 101,
+    height: 80,
+  });
+  const frozen = freezeAnalysisScope(
+    normalized,
+    "media-analysis-run-ab",
+    "2026-05-17T09:00:00.000Z"
+  );
+  assert.equal(frozen?.comparison?.reference.localPath, "/tmp/b.png");
+  assert.equal(frozen?.lifecycle?.mutable, false);
 });
 
 test("laboratory workbench preserves scope and density controls without dropping the guided shell", () => {
@@ -96,8 +144,10 @@ test("laboratory workbench preserves scope and density controls without dropping
   assert.equal(workbench.controlsCollapsed, true);
   assert.equal(toRecord(toRecord(workbench.operationSettings)["clip-export"])["format"], "webm");
   assert.equal(
-    toRecord(toRecord(toRecord(workbench.analysisSettings)["modules"])["sound-events"])["threshold"],
-    0.42,
+    toRecord(toRecord(toRecord(workbench.analysisSettings)["modules"])["sound-events"])[
+      "threshold"
+    ],
+    0.42
   );
 });
 
@@ -130,9 +180,11 @@ test("process normalization freezes scope snapshots after process start and carr
         detail: asNonEmptyString(source["detail"]) || "",
         evidenceCount: Math.max(0, Math.round(asNumber(source["evidenceCount"]) || 0)),
         artifactIds: Array.isArray(source["artifactIds"])
-          ? source["artifactIds"].map(function (entry) {
-              return asNonEmptyString(entry);
-            }).filter(Boolean)
+          ? source["artifactIds"]
+              .map(function (entry) {
+                return asNonEmptyString(entry);
+              })
+              .filter(Boolean)
           : [],
       };
     },
@@ -211,10 +263,7 @@ test("process normalization freezes scope snapshots after process start and carr
       toRecord(toRecord(mediaRecord["analysisScope"])["lifecycle"])["mutable"],
     false
   );
-  assert.equal(
-    toRecord(toRecord(mediaRecord["analysisScope"])["timeRange"])["startMs"],
-    1200
-  );
+  assert.equal(toRecord(toRecord(mediaRecord["analysisScope"])["timeRange"])["startMs"], 1200);
   assert.equal(
     Array.isArray(mediaRecord["liveFindings"]) && (mediaRecord["liveFindings"] as unknown[]).length,
     1

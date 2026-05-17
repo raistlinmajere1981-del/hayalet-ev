@@ -16,6 +16,7 @@ import {
   getActiveSelection,
   getAudioFocusSettings,
   getAvailableOperationCapabilities,
+  getComparisonInteractiveSettings,
   getEffectivePreviewAudioFocusSettings,
   getInteractiveSettings,
   getMediaViewportState,
@@ -253,18 +254,26 @@ function renderComparisonPreview(input: {
   primaryUrl: string;
   referenceLabel: string;
   referenceUrl: string;
-  settings: LabInteractiveSettings;
+  settings: Record<LabComparisonSide, LabInteractiveSettings>;
   roiFocusActive: boolean;
   splitPercent: number;
 }) {
   const split = Math.max(5, Math.min(95, Math.round(input.splitPercent)));
   const mode = input.mode === "stacked" ? "stacked" : input.mode === "split" ? "split" : "paired";
-  const { svgFilter, filterCss } = buildPreviewFilterState(input.settings);
+  const filterStateBySide: Record<LabComparisonSide, ReturnType<typeof buildPreviewFilterState>> = {
+    primary: buildPreviewFilterState(input.settings.primary, {
+      filterId: "labx-ch-isolate-primary",
+    }),
+    reference: buildPreviewFilterState(input.settings.reference, {
+      filterId: "labx-ch-isolate-reference",
+    }),
+  };
   function getActiveFlag(side: LabComparisonSide) {
     return input.activeSide === side ? "true" : "false";
   }
-  function getActiveImageStyle(side: LabComparisonSide) {
-    return input.activeSide === side && filterCss !== "" ? ` style="${filterCss}"` : "";
+  function getImageStyle(side: LabComparisonSide) {
+    const filterCss = filterStateBySide[side].filterCss;
+    return filterCss !== "" ? ` style="${filterCss}"` : "";
   }
   function renderComparisonOverlay(side: LabComparisonSide) {
     return renderWorkspaceROIOverlay(
@@ -295,8 +304,10 @@ function renderComparisonPreview(input: {
         data-lab-comparison-roi-side="${side}"
         data-active="${getActiveFlag(side)}"
       >
-        <img class="${imageClassName}" data-lab-preserve-media="workspace-comparison-${side}" src="${escapeHtml(url)}" alt="${escapeHtml(label)}"${getActiveImageStyle(side)} />
-        ${renderComparisonOverlay(side)}
+        <span class="labx-workspace-comparison__media-frame" data-lab-selection-roi-frame="true">
+          <img class="${imageClassName}" data-lab-preserve-media="workspace-comparison-${side}" src="${escapeHtml(url)}" alt="${escapeHtml(label)}"${getImageStyle(side)} />
+          ${renderComparisonOverlay(side)}
+        </span>
       </div>
     `;
   }
@@ -312,8 +323,8 @@ function renderComparisonPreview(input: {
           data-lab-comparison-roi-side="${input.activeSide}"
           data-active-side="${input.activeSide}"
         >
-          <img class="labx-workspace-comparison__image" data-lab-preserve-media="workspace-comparison-reference" src="${escapeHtml(input.referenceUrl)}" alt="${escapeHtml(input.referenceLabel)}"${getActiveImageStyle("reference")} />
-          <img class="labx-workspace-comparison__image labx-workspace-comparison__image--primary" data-lab-preserve-media="workspace-comparison-primary" src="${escapeHtml(input.primaryUrl)}" alt="${escapeHtml(input.primaryLabel)}"${getActiveImageStyle("primary")} />
+          <img class="labx-workspace-comparison__image" data-lab-preserve-media="workspace-comparison-reference" src="${escapeHtml(input.referenceUrl)}" alt="${escapeHtml(input.referenceLabel)}"${getImageStyle("reference")} />
+          <img class="labx-workspace-comparison__image labx-workspace-comparison__image--primary" data-lab-preserve-media="workspace-comparison-primary" src="${escapeHtml(input.primaryUrl)}" alt="${escapeHtml(input.primaryLabel)}"${getImageStyle("primary")} />
           <span class="labx-workspace-comparison__divider" aria-hidden="true"></span>
           ${renderComparisonOverlay(input.activeSide)}
         </div>
@@ -346,7 +357,8 @@ function renderComparisonPreview(input: {
     >
       <div class="labx-workspace-preview__inspection-viewport" data-lab-preview-inspection-viewport="true">
         <div class="labx-workspace-preview__inspection-content" data-lab-preview-inspection-content="true">
-          ${svgFilter}
+          ${filterStateBySide.primary.svgFilter}
+          ${filterStateBySide.reference.svgFilter}
           ${comparisonMarkup}
         </div>
       </div>
@@ -820,6 +832,7 @@ export function renderWorkspaceSurface(
     workspaceAssetPreviewUrl
   );
   const settings = getInteractiveSettings(state);
+  const comparisonSettings = getComparisonInteractiveSettings(state);
   const audioFocus = getAudioFocusSettings(state);
   const effectivePreviewAudioFocus = getEffectivePreviewAudioFocusSettings(state);
   const roiRegions = getROIRegions(state);
@@ -984,7 +997,7 @@ export function renderWorkspaceSurface(
           comparisonReferenceAsset?.name ||
           copy.t("mediaAnalysis.operations.comparison.referenceFallback", "Referans"),
         referenceUrl: comparisonReferencePreviewUrl,
-        settings,
+        settings: comparisonSettings,
         roiFocusActive,
         splitPercent: state.ui.workspace.comparisonSplitPercent,
       })

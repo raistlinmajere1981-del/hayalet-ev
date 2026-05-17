@@ -38,22 +38,22 @@ button {
 
 .game-room-close-button {
   position: absolute;
-  top: var(--game-px-12, 12px);
-  right: var(--game-px-12, 12px);
+  top: var(--game-px-12);
+  right: var(--game-px-12);
   z-index: 30;
   display: grid;
   place-items: center;
-  width: var(--game-px-34, 34px);
-  height: var(--game-px-34, 34px);
-  border: var(--game-px-1, 1px) solid var(--game-white-14, rgb(255 255 255 / 0.14));
-  border-radius: var(--game-px-999, 999px);
-  background: var(--game-black-46, rgb(0 0 0 / 0.46));
-  color: var(--game-text-1, #edf3f6);
-  box-shadow: var(--shell-shadow, 0 18px 40px rgb(0 0 0 / 0.38));
+  width: var(--game-px-34);
+  height: var(--game-px-34);
+  border: var(--game-px-1) solid var(--game-white-14);
+  border-radius: var(--game-px-999);
+  background: var(--game-black-46);
+  color: var(--game-text-1);
+  box-shadow: var(--shell-shadow);
   cursor: pointer;
 }
 
 .game-room-close-button:hover {
-  border-color: var(--game-orange-1, #ff8f5a);
-  color: var(--game-orange-1, #ff8f5a);
+  border-color: var(--game-orange-1);
+  color: var(--game-orange-1);
 }

@@ -464,10 +464,15 @@ function getLatestOperationUserAction(
   if (trackedAction === null) {
     return null;
   }
+  const matchingActions = getUserActions(state).filter(function (entry) {
+    return entry.sourceAction === trackedAction;
+  });
   return (
-    getUserActions(state).find(function (entry) {
-      return entry.sourceAction === trackedAction;
-    }) || null
+    matchingActions.find(function (entry) {
+      return entry.status === "running";
+    }) ||
+    matchingActions[0] ||
+    null
   );
 }
 

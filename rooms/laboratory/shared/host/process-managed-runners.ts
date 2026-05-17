@@ -53,6 +53,19 @@ type LaboratoryManagedProcessRunnersDeps = {
     label?: string,
     filterGraph?: string | null
   ) => Promise<unknown>;
+  generateProcessImageComparisonArtifact: (
+    runtime: LaboratoryRecord,
+    project: LaboratoryRecord,
+    requestId: string,
+    jobId: string,
+    primaryTarget: LaboratoryRecord,
+    referenceTarget: LaboratoryRecord,
+    artifactBase: string,
+    outputDir: string,
+    comparisonKind: "side-by-side" | "difference",
+    label: string,
+    metadata?: LaboratoryRecord
+  ) => Promise<unknown>;
   generateProcessSpectrogram: (
     runtime: LaboratoryRecord,
     project: LaboratoryRecord,
@@ -147,6 +160,7 @@ export function createLaboratoryManagedProcessRunnersRuntime(
     clampProfileTranscriptSampleSeconds: deps.clampProfileTranscriptSampleSeconds,
     createProcessFinding: deps.createProcessFinding,
     generateProcessFramePreviewArtifact: deps.generateProcessFramePreviewArtifact,
+    generateProcessImageComparisonArtifact: deps.generateProcessImageComparisonArtifact,
     generateProcessMetadataArtifact: deps.generateProcessMetadataArtifact,
     generateProcessSpectrogram: deps.generateProcessSpectrogram,
     generateProcessVisualTransformArtifact: deps.generateProcessVisualTransformArtifact,

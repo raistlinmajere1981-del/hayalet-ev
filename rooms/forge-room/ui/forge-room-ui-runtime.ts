@@ -156,6 +156,18 @@ export function createForgeRoomUiRuntime() {
     return element;
   }
 
+  function setAriaLabel(element: HTMLElement, label: string): void {
+    const target = element as HTMLElement & {
+      ariaLabel?: string;
+      setAttribute?: (name: string, value: string) => void;
+    };
+    if (typeof target.setAttribute === "function") {
+      target.setAttribute("aria-label", label);
+      return;
+    }
+    target.ariaLabel = label;
+  }
+
   function toRecord(value: unknown): Record<string, unknown> {
     return value !== null && typeof value === "object" && Array.isArray(value) === false
       ? (value as Record<string, unknown>)
@@ -1265,11 +1277,9 @@ export function createForgeRoomUiRuntime() {
       "forge-button forge-button--secondary forge-statusbar__subaction forge-statusbar__close",
       "×"
     );
-    closeButton.title = text(["workbench", "statusBar", "closeRoom"], "Return home");
-    closeButton.setAttribute(
-      "aria-label",
-      text(["workbench", "statusBar", "closeRoom"], "Return home")
-    );
+    const closeLabel = text(["workbench", "statusBar", "closeRoom"], "Return home");
+    closeButton.title = closeLabel;
+    setAriaLabel(closeButton, closeLabel);
     closeButton.dataset["forgeAction"] = "room-close";
     operatorActions.append(
       createElement("span", "forge-statusbar__microcopy", state.context.userNickname),

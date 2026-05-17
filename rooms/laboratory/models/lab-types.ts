@@ -241,6 +241,11 @@ export interface LabInteractiveSettings {
   invert: boolean;
 }
 
+export interface LabComparisonInteractiveSettings {
+  primary: LabInteractiveSettings;
+  reference: LabInteractiveSettings;
+}
+
 export type AudioVisualizationMode = "none" | "waveform" | "spectrum";
 export type LabWorkspaceControlTab = "audio" | "visual" | "operations";
 export type LabComparisonViewMode =
@@ -279,6 +284,7 @@ export interface LabWorkspaceUiState {
   comparisonRois: LabComparisonRoiState;
   roiRegions: LabROIRegion[];
   interactiveSettings: LabInteractiveSettings;
+  comparisonInteractiveSettings: LabComparisonInteractiveSettings;
   audioFocus: LabAudioFocusSettings;
   previewVolume: number;
   hypothesis: string;
@@ -858,6 +864,11 @@ export type LabStoreEvent =
   | { type: "show-more-artifacts" }
   | { type: "report-view-changed"; view: "user" | "ai" }
   | { type: "workspace-asset-selected"; assetId: string | null }
+  | {
+      type: "workspace-operation-output-applied";
+      assetId: string;
+      comparisonSide?: LabComparisonSide | "single" | null;
+    }
   | { type: "workspace-content-opened"; assetId: string | null }
   | { type: "document-overlay-opened"; assetId: string }
   | { type: "document-overlay-cleared" }
@@ -927,7 +938,11 @@ export type LabStoreEvent =
   | { type: "workspace-roi-removed"; regionId: string }
   | { type: "workspace-roi-toggled"; regionId: string }
   | { type: "workspace-preview-volume-updated"; volume: number }
-  | { type: "workspace-interactive-updated"; patch: Partial<LabInteractiveSettings> }
+  | {
+      type: "workspace-interactive-updated";
+      comparisonSide?: LabComparisonSide | null;
+      patch: Partial<LabInteractiveSettings>;
+    }
   | { type: "workspace-hypothesis-updated"; text: string }
   | { type: "workspace-bookmark-added"; bookmark: LabBookmark }
   | { type: "workspace-image-analysis-requested" }

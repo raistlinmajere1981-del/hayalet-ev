@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
+import { createMediaUrlSourceIntakeRuntime } from "../../rooms/laboratory/main-functions/media-analysis/host/source-intake-url.ts";
 import { createMediaYoutubeSourceIntakeRuntime } from "../../rooms/laboratory/main-functions/media-analysis/host/source-intake-youtube.ts";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import { resolveDrawerMode } from "../../rooms/laboratory/runtime/lab-selectors.ts";
@@ -236,6 +237,96 @@ function createTrackedProjectImportStore(
   });
   return store;
 }
+
+test("laboratory URL intake downloads image sources into the frame asset category", async () => {
+  let activeProject: Record<string, unknown> = {
+    id: "project-url-image",
+    source: {
+      kind: "image",
+      drafts: {
+        kind: "image",
+        urlInput: "https://example.test/evidence.png",
+      },
+    },
+    workbench: {},
+    assets: [],
+  };
+  const toolCalls: Array<Record<string, unknown>> = [];
+
+  const runtime = createMediaUrlSourceIntakeRuntime({
+    asNonEmptyString,
+    async callRoomTools(payload) {
+      toolCalls.push(payload);
+      return {
+        download: {
+          contentType: "image/png",
+          fileName: "evidence.png",
+          path: "/tmp/lab-project/source/evidence.png",
+        },
+      };
+    },
+    cancelJobsForProject: async function () {
+      return null;
+    },
+    clearJob: function () {
+      return undefined;
+    },
+    deriveFilename() {
+      return "evidence.png";
+    },
+    getActiveProject() {
+      return activeProject;
+    },
+    getProjectSourceDir() {
+      return "/tmp/lab-project/source";
+    },
+    normalizeMimeType() {
+      return "image/png";
+    },
+    async patchActiveProject(_runtime, updater) {
+      activeProject = updater(activeProject);
+    },
+    pushJobState: function () {
+      return undefined;
+    },
+    registerJob: function () {
+      return undefined;
+    },
+    resetEditForCurrentSource: function () {
+      return undefined;
+    },
+    resetProfileForCurrentSource: function () {
+      return undefined;
+    },
+    async resolvePreparedSource(_runtime, _project, options) {
+      return {
+        metadata: {
+          height: 720,
+          width: 1280,
+        },
+        metadataError: null,
+        mimeType: options["mimeType"] as string,
+        storedFileName: options["storedFileName"] as string,
+        storedPath: options["storedPath"] as string,
+      };
+    },
+    roomId: "laboratory",
+    toRecord,
+  });
+
+  await runtime.handleUrlDownload({}, {}, "req-url-image");
+
+  assert.equal(toolCalls[0]?.["operation"], "download-file");
+  const assets = Array.isArray(activeProject["assets"])
+    ? (activeProject["assets"] as Array<Record<string, unknown>>)
+    : [];
+  const imageAsset = assets.find(function (asset) {
+    return asset["type"] === "image";
+  });
+  assert.equal(imageAsset?.["localPath"], "/tmp/lab-project/source/evidence.png");
+  assert.equal(imageAsset?.["url"], "https://example.test/evidence.png");
+  assert.equal(toRecord(imageAsset?.["metadata"])["flowKind"], "remote-url-import");
+});
 
 for (const action of [
   "source-pick-local",

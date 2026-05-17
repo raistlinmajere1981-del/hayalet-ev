@@ -42,6 +42,7 @@
       "requiredAction": "Gerekli adım",
       "startGoal": "Bu çalışmayı başlatmak için hedefi tanımla.",
       "stage": "Durum {label}",
+      "closeRoom": "Ana sayfaya dön",
       "stats": {
         "queue": "KUYRUK {count}",
         "answers": "YANIT {count}",

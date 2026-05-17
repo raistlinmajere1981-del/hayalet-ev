@@ -150,15 +150,22 @@ test("process runtime consumes queued process instances after the active run com
 
   assert.match(source, /queuedProcessInstance/);
   assert.match(source, /pendingFollowUp/);
-  assert.match(source, /workbench,\n        }/);
+  assert.match(source, /pendingFollowUp\.workbench = \{/);
+  assert.match(source, /await runSingleFeatureProcess\([\s\S]*pendingFollowUp\.workbench/);
   assert.match(source, /await runSingleFeatureProcess\(/);
 });
 
-test("process actions resolve workbench from live project context", () => {
+test("process actions merge live project context with process payload targets", () => {
   const actionRouterSource = readFileSync("rooms/laboratory/shared/host/action-router.ts", "utf8");
   const processRuntimeSource = readFileSync("rooms/laboratory/shared/host/process-runtime.ts", "utf8");
 
-  assert.doesNotMatch(actionRouterSource, /actionPayload\["workbench"\]/);
+  assert.match(actionRouterSource, /function getProcessWorkbenchSource/);
+  assert.match(actionRouterSource, /loadContext\(api\)\)\["workbench"\]/);
+  assert.match(actionRouterSource, /actionPayload\["workbench"\]/);
+  assert.match(actionRouterSource, /actionPayload\["analysisScope"\]/);
+  assert.match(actionRouterSource, /workspaceTargetAssetId/);
+  assert.match(actionRouterSource, /comparisonReferenceAssetId/);
+  assert.match(actionRouterSource, /getProcessWorkbenchSource\(api, actionPayload\)/);
   assert.match(processRuntimeSource, /shouldPersistProcessWorkbench/);
   assert.match(processRuntimeSource, /return true;/);
 });

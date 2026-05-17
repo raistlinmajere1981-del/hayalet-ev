@@ -693,7 +693,8 @@ test("controller startDeepAnalysis uses ready workspace analysis selection befor
     /const runAction = activeFeatureId === "audio-analysis" \? "audio-process-run" : "process-run";/
   );
   assert.match(source, /dispatch\(\{ type: "run-started", action: runAction \}\);/);
-  assert.match(source, /sendMediaAction\(runAction\)/);
+  assert.match(source, /const runPayload = getProcessRunWorkspacePayload/);
+  assert.match(source, /sendMediaAction\(runAction, runPayload\)/);
   assert.match(source, /preflightAutoRunEnabled !== false/);
 });
 

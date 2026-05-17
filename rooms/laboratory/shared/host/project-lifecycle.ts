@@ -174,6 +174,8 @@ export function createLaboratoryProjectLifecycleRuntime(
     updateProjectTimestamps,
   } = deps;
 
+  const projectPatchQueues = new WeakMap<LaboratoryProjectLifecycleRuntime, Promise<unknown>>();
+
   const { loadRuntimeConfigs } = createLaboratoryProjectConfigLoader({
     readJsonFile: deps.readJsonFile,
   });
@@ -524,31 +526,53 @@ export function createLaboratoryProjectLifecycleRuntime(
     );
   }
 
+  async function queueProjectPatch<T>(
+    runtime: LaboratoryProjectLifecycleRuntime,
+    patcher: () => Promise<T>
+  ): Promise<T> {
+    const previousPatch = projectPatchQueues.get(runtime) || Promise.resolve();
+    const nextPatch = previousPatch
+      .catch(function () {
+        return undefined;
+      })
+      .then(patcher);
+    projectPatchQueues.set(runtime, nextPatch);
+    try {
+      return await nextPatch;
+    } finally {
+      if (projectPatchQueues.get(runtime) === nextPatch) {
+        projectPatchQueues.delete(runtime);
+      }
+    }
+  }
+
   async function patchActiveProject(
     runtime: LaboratoryProjectLifecycleRuntime,
     updater: (project: LaboratoryProjectRecord) => LaboratoryProjectRecord
   ) {
-    const activeProject = getActiveProject(runtime);
-    if (activeProject === null) {
-      throw new Error("Active project is missing.");
-    }
+    return queueProjectPatch(runtime, async function () {
+      const activeProject = getActiveProject(runtime);
+      if (activeProject === null) {
+        throw new Error("Active project is missing.");
+      }
 
-    const projectStorageRuntime = requireProjectStorageRuntime(runtime);
-    const nextProject = deps.normalizeProject(
-      updater(clone(activeProject)),
-      runtime.sourcePresets,
-      runtime.editPresets,
-      runtime.profilePresets,
-      runtime.profileModels,
-      runtime.profileCapabilities,
-      projectStorageRuntime
-    );
-    syncProjectFeatureProjections(runtime, nextProject);
-    updateProjectTimestamps(nextProject);
-    await saveProject(projectStorageRuntime, nextProject);
-    updateProjectInMemory(runtime, nextProject);
-    runtime.activeProjectId = String(nextProject.id || "");
-    return nextProject;
+      const projectStorageRuntime = requireProjectStorageRuntime(runtime);
+      const nextProject = deps.normalizeProject(
+        updater(clone(activeProject)),
+        runtime.sourcePresets,
+        runtime.editPresets,
+        runtime.profilePresets,
+        runtime.profileModels,
+        runtime.profileCapabilities,
+        projectStorageRuntime
+      );
+      syncProjectFeatureProjections(runtime, nextProject);
+      updateProjectTimestamps(nextProject);
+      await saveProject(projectStorageRuntime, nextProject);
+      updateProjectInMemory(runtime, nextProject);
+      runtime.activeProjectId = String(nextProject.id || "");
+      return nextProject;
+    });
   }
 
   async function patchActiveProjectDrafts(

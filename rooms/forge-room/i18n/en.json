@@ -42,6 +42,7 @@
       "requiredAction": "Required action",
       "startGoal": "Define the goal to start this run.",
       "stage": "State {label}",
+      "closeRoom": "Return home",
       "stats": {
         "queue": "QUEUE {count}",
         "answers": "ANS {count}",

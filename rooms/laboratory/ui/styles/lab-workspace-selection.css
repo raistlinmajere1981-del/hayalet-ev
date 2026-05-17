@@ -262,6 +262,23 @@
   outline-color: color-mix(in srgb, var(--lab-accent) 76%, transparent);
 }
 
+.labx-workspace-comparison__media-frame {
+  position: relative;
+  display: inline-grid;
+  max-width: 100%;
+  max-height: 100%;
+  min-width: 0;
+  min-height: 0;
+  place-items: center;
+}
+
+.labx-workspace-comparison__media-frame > .labx-workspace-comparison__image {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+}
+
 .labx-workspace-comparison__pane figcaption,
 .labx-workspace-comparison__labels {
   padding: var(--lab-space-1) var(--lab-space-2);

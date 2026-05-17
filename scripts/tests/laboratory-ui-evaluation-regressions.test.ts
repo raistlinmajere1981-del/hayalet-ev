@@ -1823,7 +1823,8 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   assert.match(workspaceSurfaceSource, /renderMediaStage\("primary"/);
   assert.match(workspaceSurfaceSource, /renderMediaStage\("reference"/);
   assert.match(workspaceSurfaceSource, /renderComparisonOverlay\(side\)/);
-  assert.match(workspaceSurfaceSource, /buildPreviewFilterState\(input\.settings\)/);
+  assert.match(workspaceSurfaceSource, /buildPreviewFilterState\(input\.settings\.primary/);
+  assert.match(workspaceSurfaceSource, /buildPreviewFilterState\(input\.settings\.reference/);
   assert.match(workspaceSurfaceSource, /data-lab-comparison-roi-side="\$\{side\}"/);
   assert.match(workspaceSurfaceSource, /data-active="\$\{getActiveFlag\(side\)\}"/);
   assert.match(workspaceSurfaceSource, /data-active-side="\$\{input\.activeSide\}"/);

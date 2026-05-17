@@ -23,6 +23,7 @@ type StageElement = {
   closest: (selector: string) => StageElement | null;
   getAttribute: (name: string) => string | null;
   getBoundingClientRect: () => RectLike;
+  querySelector?: (selector: string) => StageElement | null;
 };
 
 type SelectionRoiBinderDeps = {
@@ -102,6 +103,14 @@ function getComparisonSideFromStage(stage: StageElement): LabComparisonSide | nu
   return side === "primary" || side === "reference" ? side : null;
 }
 
+function getSelectionRoiRect(stage: StageElement) {
+  const mediaFrame =
+    typeof stage.querySelector === "function"
+      ? stage.querySelector("[data-lab-selection-roi-frame='true']")
+      : null;
+  return mediaFrame?.getBoundingClientRect() || stage.getBoundingClientRect();
+}
+
 function activateComparisonSide(deps: SelectionRoiBinderDeps, stage: StageElement | null) {
   if (stage === null) {
     return;
@@ -144,7 +153,7 @@ function createSelectionRoiFromDrag(
   dragState: DrawDragState,
   event: MouseLikeEvent
 ) {
-  const rect = stage.getBoundingClientRect();
+  const rect = getSelectionRoiRect(stage);
   const currentPoint = clampPointToRect(event, rect);
   const left = Math.min(dragState.startX, currentPoint.x);
   const top = Math.min(dragState.startY, currentPoint.y);
@@ -176,7 +185,7 @@ function createSelectionRoiFromResize(
   dragState: ResizeDragState,
   event: MouseLikeEvent
 ) {
-  const rect = stage.getBoundingClientRect();
+  const rect = getSelectionRoiRect(stage);
   if (rect.width <= 0 || rect.height <= 0) {
     return null;
   }
@@ -305,7 +314,7 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
       ) {
         return;
       }
-      const startPoint = clampPointToRect(event, stage.getBoundingClientRect());
+      const startPoint = clampPointToRect(event, getSelectionRoiRect(stage));
       event.preventDefault();
       dragState = {
         handle,
@@ -337,7 +346,7 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
       return;
     }
 
-    const rect = stage.getBoundingClientRect();
+    const rect = getSelectionRoiRect(stage);
     const reserveBottom = getReserveBottom(stage);
     const startPoint = clampPointToRect(event, rect);
     if (startPoint.y > rect.bottom - reserveBottom) {

@@ -1,5 +1,6 @@
 import {
   asLabRecord,
+  asNonEmptyString,
   LAB_ANALYSIS_MODULE_SETTINGS_DEFAULTS,
   LAB_OPERATION_CAPABILITIES,
   LAB_OPERATION_SETTINGS_DEFAULTS,
@@ -8,12 +9,14 @@ import {
 } from "../../models/lab-types.js";
 import type {
   LabAudioFocusSettings,
+  LabComparisonSide,
   LabComparisonViewMode,
   LabInteractiveSettings,
   LabOperationCapabilityId,
 } from "../../models/lab-types.js";
-import { isRunActive } from "../lab-selectors.js";
+import { getInteractiveSettingsForComparisonSide, isRunActive } from "../lab-selectors.js";
 import type { createLabStore } from "../lab-store.js";
+import { DEFAULT_LAB_INTERACTIVE_SETTINGS } from "../lab-workspace-defaults.js";
 import { clampAdjustedValue, parseFiniteNumber } from "./lab-timeline-controller-helpers.js";
 
 type LabWorkspaceSettingsControllerDeps = {
@@ -26,11 +29,18 @@ type LabWorkspaceSettingsControllerDeps = {
 };
 
 export function createLabWorkspaceSettingsController(deps: LabWorkspaceSettingsControllerDeps) {
+  function getActiveComparisonSettingsSide(): LabComparisonSide | undefined {
+    const state = deps.store.getState();
+    return asNonEmptyString(state.ui.workspace.comparisonReferenceAssetId) === null
+      ? undefined
+      : state.ui.workspace.comparisonRois.activeSide;
+  }
+
   function readWorkspaceSetting(field: string): unknown {
     const state = deps.store.getState();
     if (field.startsWith("workspace.interactive.")) {
       const settingKey = field.replace("workspace.interactive.", "");
-      return (state.ui.workspace.interactiveSettings as unknown as Record<string, unknown>)[
+      return (getInteractiveSettingsForComparisonSide(state) as unknown as Record<string, unknown>)[
         settingKey
       ];
     }
@@ -62,9 +72,20 @@ export function createLabWorkspaceSettingsController(deps: LabWorkspaceSettingsC
   }
 
   function patchInteractiveSetting(settingKey: string, rawValue: unknown) {
+    const comparisonSide = getActiveComparisonSettingsSide();
     deps.dispatch({
       type: "workspace-interactive-updated",
+      ...(comparisonSide === undefined ? {} : { comparisonSide }),
       patch: { [settingKey]: rawValue } as Partial<LabInteractiveSettings>,
+    });
+  }
+
+  function resetInteractiveSettings() {
+    const comparisonSide = getActiveComparisonSettingsSide();
+    deps.dispatch({
+      type: "workspace-interactive-updated",
+      ...(comparisonSide === undefined ? {} : { comparisonSide }),
+      patch: { ...DEFAULT_LAB_INTERACTIVE_SETTINGS },
     });
   }
 
@@ -310,6 +331,7 @@ export function createLabWorkspaceSettingsController(deps: LabWorkspaceSettingsC
     patchInteractiveSetting,
     patchOperationSetting,
     readControlValue,
+    resetInteractiveSettings,
     resetAnalysisModuleSettings,
     resetOperationSettings,
   };

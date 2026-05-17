@@ -14,7 +14,12 @@ import type {
   LabUserActionEvent,
 } from "../../models/lab-types.js";
 import { getTrackedOperationActionId } from "../lab-operation-action-map.js";
-import { getActionOutputs, getCurrentRun, getUserActions } from "../lab-selectors.js";
+import {
+  getActionOutputs,
+  getCurrentRun,
+  getInteractiveSettingsForComparisonSide,
+  getUserActions,
+} from "../lab-selectors.js";
 import type { createLabStore } from "../lab-store.js";
 import {
   LAB_USER_ACTION_HUB_SUCCESS_WINDOW_MS,
@@ -81,8 +86,16 @@ type ActiveSelectionOperationPayloadOptions = {
   comparisonTarget?: "active-side" | LabComparisonSide;
 };
 
+type WorkspaceResultTargetSide = LabComparisonSide | "single";
+
 export function createLabMediaActionController(deps: LabMediaActionControllerDeps) {
   const hubDismissTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  const pendingWorkspaceResultTargets = new Map<
+    string,
+    {
+      side: WorkspaceResultTargetSide;
+    }
+  >();
 
   function getRoomApi() {
     return deps.windowRef.roomAPI;
@@ -145,6 +158,16 @@ export function createLabMediaActionController(deps: LabMediaActionControllerDep
     return sentRequestId;
   }
 
+  function getWorkspaceResultTargetSide(
+    payload: Record<string, unknown>
+  ): WorkspaceResultTargetSide | null {
+    if (payload["workspaceResultMode"] !== "replace-workspace-media") {
+      return null;
+    }
+    const side = asNonEmptyString(payload["workspaceResultTargetSide"]);
+    return side === "primary" || side === "reference" || side === "single" ? side : "single";
+  }
+
   function startTrackedReportExport() {
     const state = deps.store.getState();
     return startTrackedUserAction(
@@ -202,10 +225,15 @@ export function createLabMediaActionController(deps: LabMediaActionControllerDep
     if (capabilityId === "audio-extract" && hasTimeRange) {
       normalizedSettings["timelineOnly"] = true;
     }
+    const resultTargetSide = getWorkspaceResultTargetSide(payload);
+    const previewSettingsSide =
+      resultTargetSide === "primary" || resultTargetSide === "reference"
+        ? resultTargetSide
+        : undefined;
     return {
       operationSettings: normalizedSettings,
       ...(capabilityId === "enhanced-frame" && normalizedSettings["applyPreviewSettings"] === true
-        ? { previewSettings: state.ui.workspace.interactiveSettings }
+        ? { previewSettings: getInteractiveSettingsForComparisonSide(state, previewSettingsSide) }
         : {}),
     };
   }
@@ -220,6 +248,7 @@ export function createLabMediaActionController(deps: LabMediaActionControllerDep
   }
 
   function getComparisonSideTargetPayload(input: {
+    includeNullRoi?: boolean;
     roiSide: LabComparisonSide;
     sourceSide: LabComparisonSide;
     state: LabStoreState;
@@ -237,7 +266,11 @@ export function createLabMediaActionController(deps: LabMediaActionControllerDep
     const roi = serializeSelectionRoi(input.state.ui.workspace.comparisonRois[input.roiSide]);
     return {
       ...(targetAssetId === null ? {} : { workspaceTargetAssetId: targetAssetId }),
-      ...(roi === null ? {} : { normalizedRoi: roi }),
+      ...(roi === null
+        ? input.includeNullRoi === true
+          ? { normalizedRoi: null }
+          : {}
+        : { normalizedRoi: roi }),
     };
   }
 
@@ -250,6 +283,8 @@ export function createLabMediaActionController(deps: LabMediaActionControllerDep
     const endMs = state.ui.workspace.timelineEndMs ?? selection?.endMs ?? null;
     const hasTimeRange = startMs !== null && endMs !== null && endMs > startMs;
     const comparisonTargetPayload = getComparisonSideTargetPayload({
+      includeNullRoi:
+        options.comparisonRoiTarget === "primary" || options.comparisonRoiTarget === "reference",
       roiSide: getComparisonOptionSide(state, options.comparisonRoiTarget),
       sourceSide: getComparisonOptionSide(state, options.comparisonTarget),
       state,
@@ -283,10 +318,16 @@ export function createLabMediaActionController(deps: LabMediaActionControllerDep
       return null;
     }
     const capabilityId = getOperationCapabilityIdForUiAction(uiActionId);
-    return startTrackedUserAction(trackedActionId, {
+    const operationPayload = {
       ...(payload || {}),
       ...getOperationSettingsPayload(capabilityId, deps.store.getState(), payload || {}),
-    });
+    };
+    const requestId = startTrackedUserAction(trackedActionId, operationPayload);
+    const resultTargetSide = getWorkspaceResultTargetSide(operationPayload);
+    if (requestId !== null && resultTargetSide !== null) {
+      pendingWorkspaceResultTargets.set(requestId, { side: resultTargetSide });
+    }
+    return requestId;
   }
 
   function isOperationCapabilityId(value: string): value is LabOperationCapabilityId {
@@ -387,7 +428,43 @@ export function createLabMediaActionController(deps: LabMediaActionControllerDep
     });
   }
 
+  function syncWorkspaceResultTargets() {
+    if (pendingWorkspaceResultTargets.size === 0) {
+      return;
+    }
+    const state = deps.store.getState();
+    Array.from(pendingWorkspaceResultTargets.entries()).forEach(function ([requestId, target]) {
+      const action =
+        getUserActions(state).find(function (entry) {
+          return entry.requestId === requestId;
+        }) || null;
+      if (
+        action === null ||
+        action.status !== "success" ||
+        Array.isArray(action.resultAssetIds) !== true
+      ) {
+        return;
+      }
+      const outputAssetId =
+        action.resultAssetIds.find(function (assetId) {
+          return state.assets.some(function (asset) {
+            return asset.id === assetId;
+          });
+        }) || null;
+      if (outputAssetId === null) {
+        return;
+      }
+      pendingWorkspaceResultTargets.delete(requestId);
+      deps.dispatch({
+        type: "workspace-operation-output-applied",
+        assetId: outputAssetId,
+        comparisonSide: target.side,
+      });
+    });
+  }
+
   function handleBusEvent() {
+    syncWorkspaceResultTargets();
     syncUserActionHubTimers();
   }
 

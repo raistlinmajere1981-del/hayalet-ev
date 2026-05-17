@@ -1,4 +1,5 @@
 import { resetLaboratoryWorkbenchForSourceActivation } from "../../../shared/host/runtime-primitives.js";
+import { createLabOutputAsset, upsertLabAsset } from "../../../shared/host/lab-assets.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 
@@ -134,6 +135,16 @@ export function createMediaUrlSourceIntakeRuntime(deps: MediaUrlSourceIntakeRunt
     project["source"] = nextSource;
   }
 
+  function getDownloadedSourceAssetType(sourceKind: string) {
+    if (sourceKind === "image") {
+      return "image" as const;
+    }
+    if (sourceKind === "audio") {
+      return "audio" as const;
+    }
+    return "clip" as const;
+  }
+
   async function handleUrlDownload(
     api: unknown,
     runtime: LaboratoryMediaUrlRuntime,
@@ -215,6 +226,24 @@ export function createMediaUrlSourceIntakeRuntime(deps: MediaUrlSourceIntakeRunt
           nextSource["metadata"] = preparedSource.metadata;
           nextSource["metadataError"] = preparedSource.metadataError;
         });
+        nextProject["assets"] = upsertLabAsset(
+          nextProject["assets"],
+          createLabOutputAsset(nextProject, {
+            type: getDownloadedSourceAssetType(sourceKind),
+            name: preparedSource.storedFileName,
+            localPath: preparedSource.storedPath,
+            url: urlValue,
+            metadata: {
+              ...toRecord(preparedSource.metadata),
+              evidenceRole: "source",
+              flowKind: "remote-url-import",
+              kind: sourceKind,
+              mimeType: preparedSource.mimeType,
+              remoteSourceUrl: urlValue,
+              sourceKind,
+            },
+          })
+        );
         resetEditForCurrentSource(runtime, nextProject);
         resetProfileForCurrentSource(
           runtime,

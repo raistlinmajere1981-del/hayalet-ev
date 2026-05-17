@@ -52,6 +52,7 @@ export function createManagedMediaVisualHelpers(deps: ManagedMediaVisualHelpersD
 
   function getScopeReference(processRecord: LaboratoryManagedMediaProcessRecord): LaboratoryRecord {
     const scope = toRecord(processRecord.analysisScope);
+    const comparison = toReferenceRecord(scope["comparison"]);
     return {
       ...(Object.keys(toReferenceRecord(scope["timeRange"])).length > 0
         ? { timeRange: toReferenceRecord(scope["timeRange"]) }
@@ -62,6 +63,7 @@ export function createManagedMediaVisualHelpers(deps: ManagedMediaVisualHelpersD
       ...(Object.keys(toReferenceRecord(scope["region"])).length > 0
         ? { region: toReferenceRecord(scope["region"]) }
         : {}),
+      ...(Object.keys(comparison).length > 0 ? { comparison } : {}),
     };
   }
 
@@ -173,8 +175,27 @@ export function createManagedMediaVisualHelpers(deps: ManagedMediaVisualHelpersD
     return Number.isFinite(value) ? value : null;
   }
 
-  function getScopeCropFilter(processRecord: LaboratoryManagedMediaProcessRecord): string | null {
-    const region = toReferenceRecord(toRecord(processRecord.analysisScope)["region"]);
+  function getScopeCropRegion(
+    processRecord: LaboratoryManagedMediaProcessRecord,
+    side?: "primary" | "reference"
+  ): LaboratoryRecord {
+    const scope = toRecord(processRecord.analysisScope);
+    if (side === "primary" || side === "reference") {
+      const comparisonRegion = toReferenceRecord(
+        toReferenceRecord(toReferenceRecord(scope["comparison"])["rois"])[side]
+      );
+      if (Object.keys(comparisonRegion).length > 0) {
+        return comparisonRegion;
+      }
+    }
+    return toReferenceRecord(scope["region"]);
+  }
+
+  function getScopeCropFilter(
+    processRecord: LaboratoryManagedMediaProcessRecord,
+    side?: "primary" | "reference"
+  ): string | null {
+    const region = getScopeCropRegion(processRecord, side);
     const x = readFiniteRecordNumber(region, "x");
     const y = readFiniteRecordNumber(region, "y");
     const width = readFiniteRecordNumber(region, "width");
@@ -197,12 +218,13 @@ export function createManagedMediaVisualHelpers(deps: ManagedMediaVisualHelpersD
   function applyRoiScopeFilter(
     processRecord: LaboratoryManagedMediaProcessRecord,
     settings: LaboratoryRecord,
-    filterGraph: string
+    filterGraph: string,
+    side?: "primary" | "reference"
   ) {
     if (readBooleanSetting(settings, "roiOnly", false) !== true) {
       return filterGraph;
     }
-    const scopeCropFilter = getScopeCropFilter(processRecord);
+    const scopeCropFilter = getScopeCropFilter(processRecord, side);
     return scopeCropFilter === null ? filterGraph : `${scopeCropFilter},${filterGraph}`;
   }
 

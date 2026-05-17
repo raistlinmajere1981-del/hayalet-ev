@@ -19,6 +19,38 @@ export interface AnalysisRegion {
   height: number;
 }
 
+export type AnalysisComparisonSide = "primary" | "reference";
+
+export interface AnalysisComparisonTarget {
+  side: AnalysisComparisonSide;
+  assetId?: string;
+  fileName?: string;
+  label?: string;
+  localPath?: string;
+  metadata?: AnalysisScopeRecord;
+  name?: string;
+  path?: string;
+  sourceId?: string;
+  sourceKind?: "video" | "audio" | "image";
+  type?: string;
+  url?: string;
+}
+
+export interface AnalysisComparisonRois {
+  activeSide?: AnalysisComparisonSide;
+  primary?: AnalysisRegion | null;
+  reference?: AnalysisRegion | null;
+}
+
+export interface AnalysisComparisonScope {
+  activeSide?: AnalysisComparisonSide;
+  primary: AnalysisComparisonTarget;
+  reference: AnalysisComparisonTarget;
+  rois?: AnalysisComparisonRois;
+  splitPercent?: number;
+  viewMode?: string;
+}
+
 export interface AnalysisReference {
   timeRange?: AnalysisTimeRange;
   frameRange?: AnalysisFrameRange;
@@ -32,6 +64,7 @@ export interface AnalysisScopeLifecycle {
 }
 
 export interface AnalysisScope extends AnalysisReference {
+  comparison?: AnalysisComparisonScope;
   focus?: AnalysisFocus;
   hypothesis?: string;
   intentIds?: string[];
@@ -85,19 +118,30 @@ function normalizeStartEndRange(
   return { start, end };
 }
 
-export function normalizeAnalysisReference(rawValue: unknown): AnalysisReference | null {
-  const source = toRecord(rawValue);
-  const timeRange = normalizeStartEndRange(source["timeRange"], "startMs", "endMs");
-  const frameRange = normalizeStartEndRange(source["frameRange"], "startFrame", "endFrame");
-  const regionSource = toRecord(source["region"]);
+function normalizeAnalysisRegion(rawValue: unknown): AnalysisRegion | null {
+  const regionSource = toRecord(rawValue);
   const regionX = asFiniteNumber(regionSource["x"]);
   const regionY = asFiniteNumber(regionSource["y"]);
   const regionWidth = asFiniteNumber(regionSource["width"]);
   const regionHeight = asFiniteNumber(regionSource["height"]);
-  const hasRegion =
-    regionX !== null && regionY !== null && regionWidth !== null && regionHeight !== null;
+  if (regionX === null || regionY === null || regionWidth === null || regionHeight === null) {
+    return null;
+  }
+  return {
+    x: Math.max(0, Math.round(regionX || 0)),
+    y: Math.max(0, Math.round(regionY || 0)),
+    width: Math.max(1, Math.round(regionWidth || 0)),
+    height: Math.max(1, Math.round(regionHeight || 0)),
+  };
+}
 
-  if (timeRange === null && frameRange === null && hasRegion !== true) {
+export function normalizeAnalysisReference(rawValue: unknown): AnalysisReference | null {
+  const source = toRecord(rawValue);
+  const timeRange = normalizeStartEndRange(source["timeRange"], "startMs", "endMs");
+  const frameRange = normalizeStartEndRange(source["frameRange"], "startFrame", "endFrame");
+  const region = normalizeAnalysisRegion(source["region"]);
+
+  if (timeRange === null && frameRange === null && region === null) {
     return null;
   }
 
@@ -118,22 +162,103 @@ export function normalizeAnalysisReference(rawValue: unknown): AnalysisReference
           },
         }
       : {}),
-    ...(hasRegion
-      ? {
-          region: {
-            x: Math.max(0, Math.round(regionX || 0)),
-            y: Math.max(0, Math.round(regionY || 0)),
-            width: Math.max(1, Math.round(regionWidth || 0)),
-            height: Math.max(1, Math.round(regionHeight || 0)),
-          },
-        }
+    ...(region ? { region } : {}),
+  };
+}
+
+function normalizeComparisonSide(value: unknown): AnalysisComparisonSide | null {
+  return value === "primary" || value === "reference" ? value : null;
+}
+
+function normalizeComparisonTarget(
+  rawValue: unknown,
+  fallbackSide: AnalysisComparisonSide
+): AnalysisComparisonTarget | null {
+  const source = toRecord(rawValue);
+  const side = normalizeComparisonSide(source["side"]) || fallbackSide;
+  const assetId = asNonEmptyString(source["assetId"]);
+  const fileName = asNonEmptyString(source["fileName"]);
+  const label = asNonEmptyString(source["label"]);
+  const localPath = asNonEmptyString(source["localPath"]);
+  const metadata = toRecord(source["metadata"]);
+  const name = asNonEmptyString(source["name"]);
+  const path = asNonEmptyString(source["path"]);
+  const sourceId = asNonEmptyString(source["sourceId"]);
+  const sourceKind = asNonEmptyString(source["sourceKind"]);
+  const type = asNonEmptyString(source["type"]);
+  const url = asNonEmptyString(source["url"]);
+  const target: AnalysisComparisonTarget = {
+    side,
+    ...(assetId ? { assetId } : {}),
+    ...(fileName ? { fileName } : {}),
+    ...(label ? { label } : {}),
+    ...(localPath ? { localPath } : {}),
+    ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
+    ...(name ? { name } : {}),
+    ...(path ? { path } : {}),
+    ...(sourceId ? { sourceId } : {}),
+    ...(sourceKind === "video" || sourceKind === "audio" || sourceKind === "image"
+      ? { sourceKind }
       : {}),
+    ...(type ? { type } : {}),
+    ...(url ? { url } : {}),
+  };
+  if (
+    target.assetId === undefined &&
+    target.fileName === undefined &&
+    target.label === undefined &&
+    target.localPath === undefined &&
+    target.name === undefined &&
+    target.path === undefined &&
+    target.url === undefined
+  ) {
+    return null;
+  }
+  return target;
+}
+
+function normalizeComparisonRois(rawValue: unknown): AnalysisComparisonRois | null {
+  const source = toRecord(rawValue);
+  const activeSide = normalizeComparisonSide(source["activeSide"]);
+  const primary = normalizeAnalysisRegion(source["primary"]);
+  const reference = normalizeAnalysisRegion(source["reference"]);
+  if (activeSide === null && primary === null && reference === null) {
+    return null;
+  }
+  return {
+    ...(activeSide ? { activeSide } : {}),
+    ...(primary === null ? {} : { primary }),
+    ...(reference === null ? {} : { reference }),
+  };
+}
+
+export function normalizeAnalysisComparisonScope(
+  rawValue: unknown
+): AnalysisComparisonScope | null {
+  const source = toRecord(rawValue);
+  const primary = normalizeComparisonTarget(source["primary"], "primary");
+  const reference = normalizeComparisonTarget(source["reference"], "reference");
+  if (primary === null || reference === null) {
+    return null;
+  }
+  const activeSide = normalizeComparisonSide(source["activeSide"]);
+  const rois = normalizeComparisonRois(source["rois"]);
+  const splitPercent = asFiniteNumber(source["splitPercent"]);
+  const viewMode = asNonEmptyString(source["viewMode"]);
+  return {
+    ...(activeSide ? { activeSide } : {}),
+    primary,
+    reference,
+    ...(rois ? { rois } : {}),
+    ...(splitPercent === null ? {} : { splitPercent: Math.max(0, Math.min(100, splitPercent)) }),
+    ...(viewMode ? { viewMode } : {}),
   };
 }
 
 export function normalizeAnalysisScope(rawValue: unknown): AnalysisScope | null {
   const source = toRecord(rawValue);
   const reference = normalizeAnalysisReference(source);
+  const comparison = normalizeAnalysisComparisonScope(source["comparison"]);
   const focus = asNonEmptyString(source["focus"]);
   const hypothesis = asNonEmptyString(source["hypothesis"]);
   const intentIds = asStringArray(source["intentIds"]);
@@ -143,6 +268,7 @@ export function normalizeAnalysisScope(rawValue: unknown): AnalysisScope | null 
     hypothesis !== null ||
     focus !== null ||
     intentIds.length > 0 ||
+    comparison !== null ||
     reference !== null
       ? {
           mutable: lifecycleSource["mutable"] !== false,
@@ -153,6 +279,7 @@ export function normalizeAnalysisScope(rawValue: unknown): AnalysisScope | null 
 
   if (
     reference === null &&
+    comparison === null &&
     hypothesis === null &&
     focus === null &&
     intentIds.length === 0 &&
@@ -163,6 +290,7 @@ export function normalizeAnalysisScope(rawValue: unknown): AnalysisScope | null 
 
   return {
     ...(reference || {}),
+    ...(comparison ? { comparison } : {}),
     ...(focus && (focus === "visual" || focus === "audio" || focus === "cross-modal")
       ? { focus }
       : {}),

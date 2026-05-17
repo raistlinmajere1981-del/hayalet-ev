@@ -1144,7 +1144,11 @@ test("laboratory image comparison workspace keeps image pair on the inspection w
     comparisonSide: "reference",
     roi: { x: 0.2, y: 0.1, width: 0.25, height: 0.35 },
   });
-  store.dispatch({ type: "workspace-interactive-updated", patch: { brightness: 112 } });
+  store.dispatch({
+    type: "workspace-interactive-updated",
+    comparisonSide: "reference",
+    patch: { brightness: 112 },
+  });
 
   const surface = renderWorkspaceSurface(store.getState());
 
@@ -1194,6 +1198,70 @@ test("laboratory image comparison workspace keeps image pair on the inspection w
   assert.match(surface.inspector ?? "", /data-lab-value="finding-1"/);
   assert.match(surface.inspector ?? "", /Sol göz çevresinde belirgin fark/);
   assert.match(surface.inspector ?? "", /Primary ROI x=10%, y=20%, w=30%, h=40%/);
+});
+
+test("laboratory image comparison visual controls follow the active image settings", () => {
+  const store = createSeededState(true);
+  const state = store.getState();
+  state.source = {
+    ...state.source,
+    status: "ready",
+    kind: "image",
+    mode: "local",
+    previewUrl: "file:///tmp/primary-image.png",
+    storedFileName: "primary-image.png",
+    storedPath: "/tmp/primary-image.png",
+    routeLabel: "Local Copy",
+  };
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-reference-image",
+      type: "image",
+      name: "reference-image.png",
+      localPath: "/tmp/reference-image.png",
+      createdAt: 400,
+      metadata: { kind: "image" },
+    },
+  });
+  store.dispatch({
+    type: "workspace-comparison-reference-set",
+    assetId: "asset-reference-image",
+  });
+  store.dispatch({
+    type: "workspace-interactive-updated",
+    comparisonSide: "primary",
+    patch: { brightness: 132 },
+  });
+  store.dispatch({
+    type: "workspace-interactive-updated",
+    comparisonSide: "reference",
+    patch: { brightness: 84 },
+  });
+
+  store.dispatch({ type: "workspace-comparison-side-activated", side: "primary" });
+  let surface = renderWorkspaceSurface(store.getState());
+
+  assert.match(
+    surface.inspector ?? "",
+    /value="132"[\s\S]*data-lab-field="workspace\.interactive\.brightness"/
+  );
+  assert.match(
+    surface.main,
+    /data-lab-preserve-media="workspace-comparison-primary"[^>]*style="filter: brightness\(1\.32\);"/
+  );
+
+  store.dispatch({ type: "workspace-comparison-side-activated", side: "reference" });
+  surface = renderWorkspaceSurface(store.getState());
+
+  assert.match(
+    surface.inspector ?? "",
+    /value="84"[\s\S]*data-lab-field="workspace\.interactive\.brightness"/
+  );
+  assert.match(
+    surface.main,
+    /data-lab-preserve-media="workspace-comparison-reference"[^>]*style="filter: brightness\(0\.84\);"/
+  );
 });
 
 test("laboratory workspace asset preview resets timeline controls to the selected file", () => {
@@ -1342,6 +1410,37 @@ test("laboratory operation error buttons keep retry label short and expose messa
   assert.match(html, />Retry<\/button>/);
   assert.match(html, /title="ffmpeg returned a very long diagnostic about an unsupported filter"/);
   assert.match(html, /class="labx-operation-card__action-state"/);
+});
+
+test("laboratory operation success state returns controls to the normal run action", () => {
+  const html = renderWorkspaceOperationControls([
+    {
+      actionId: "workspace-selection-roi-export",
+      actionStatus: "success",
+      activeActionLabel: "Bölge görüntüsü alınıyor",
+      activeActionMessage: "Bölge görüntüsü hazır",
+      activeJobId: null,
+      activeRequestId: "request-roi-crop",
+      blockReason: null,
+      description: "Crop the selected ROI.",
+      flowKind: "operation-result",
+      groupId: "frame",
+      id: "roi-crop",
+      label: "ROI Crop",
+      outputKinds: ["image"],
+      providerIds: ["ffmpeg-visual-reveal"],
+      readiness: "ready",
+      settings: {},
+      settingsFields: [],
+      sourceKinds: ["video", "image"],
+      toolIds: ["ffmpeg"],
+    },
+  ]);
+
+  assert.match(html, /data-action-status="idle"/);
+  assert.match(html, />Run<\/button>/);
+  assert.doesNotMatch(html, /Bölge görüntüsü hazır/);
+  assert.doesNotMatch(html, /class="labx-operation-card__action-state"/);
 });
 
 test("laboratory Turkish workspace controls localize operation and intent catalog labels", () => {

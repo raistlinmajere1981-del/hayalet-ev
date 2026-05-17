@@ -1,6 +1,10 @@
 import { asLabRecord, asNonEmptyString } from "../../models/lab-types.js";
-import type { LabAsset, LabStoreState } from "../../models/lab-types.js";
+import type { LabAsset, LabComparisonSide, LabStoreState } from "../../models/lab-types.js";
 import { normalizeAudioFocusSettings } from "../lab-audio-focus-normalization.js";
+import {
+  createLabComparisonInteractiveSettings,
+  normalizeLabInteractiveSettings,
+} from "../lab-workspace-defaults.js";
 import { getWorkspaceSourceSelectionResetKey } from "../lab-workspace-selection.js";
 import { getCurrentSourceAsset, getLinkedAudioAssets } from "./lab-source-selectors.js";
 
@@ -14,8 +18,33 @@ export function getActiveROIRegions(state: LabStoreState) {
   });
 }
 
+export function getComparisonInteractiveSettings(state: LabStoreState) {
+  const baseSettings = normalizeLabInteractiveSettings(state.ui.workspace.interactiveSettings);
+  const comparisonSettings =
+    state.ui.workspace.comparisonInteractiveSettings ??
+    createLabComparisonInteractiveSettings(baseSettings);
+  return {
+    primary: normalizeLabInteractiveSettings(comparisonSettings.primary, baseSettings),
+    reference: normalizeLabInteractiveSettings(comparisonSettings.reference, baseSettings),
+  };
+}
+
+export function getInteractiveSettingsForComparisonSide(
+  state: LabStoreState,
+  side?: LabComparisonSide | null
+) {
+  const comparisonReferenceAssetId = asNonEmptyString(
+    state.ui.workspace.comparisonReferenceAssetId
+  );
+  if (comparisonReferenceAssetId === null) {
+    return normalizeLabInteractiveSettings(state.ui.workspace.interactiveSettings);
+  }
+  const targetSide = side ?? state.ui.workspace.comparisonRois.activeSide;
+  return getComparisonInteractiveSettings(state)[targetSide];
+}
+
 export function getInteractiveSettings(state: LabStoreState) {
-  return state.ui.workspace.interactiveSettings;
+  return getInteractiveSettingsForComparisonSide(state);
 }
 
 export function getAudioFocusSettings(state: LabStoreState) {

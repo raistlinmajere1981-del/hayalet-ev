@@ -198,6 +198,7 @@
   --game-black-36: rgb(0 0 0 / 0.36);
   --game-black-38: rgb(0 0 0 / 0.38);
   --game-black-42: rgb(0 0 0 / 0.42);
+  --game-black-46: rgb(0 0 0 / 0.46);
 
   /* === RGBA Variants: Teal/Accent (121 209 194) === */
   --game-accent-08: rgb(121 209 194 / 0.08);
@@ -511,6 +512,7 @@
   --game-px-28: 28px;
   --game-px-30: 30px;
   --game-px-32: 32px;
+  --game-px-34: 34px;
   --game-px-36: 36px;
   --game-px-42: 42px;
   --game-px-70: 70px;

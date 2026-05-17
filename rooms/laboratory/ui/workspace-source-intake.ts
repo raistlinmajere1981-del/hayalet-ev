@@ -103,7 +103,7 @@ function renderSourceActionPanel(
   `;
 }
 
-function buildSvgChannelFilter(settings: LabInteractiveSettings) {
+function buildSvgChannelFilter(settings: LabInteractiveSettings, filterId = "labx-ch-isolate") {
   const r = settings.channelR ? 1 : 0;
   const g = settings.channelG ? 1 : 0;
   const b = settings.channelB ? 1 : 0;
@@ -114,7 +114,7 @@ function buildSvgChannelFilter(settings: LabInteractiveSettings) {
   return `
     <svg class="labx-channel-filter" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <filter id="labx-ch-isolate">
+        <filter id="${escapeHtml(filterId)}">
           <feColorMatrix type="matrix" values="${String(r)} 0 0 0 0  0 ${String(g)} 0 0 0  0 0 ${String(b)} 0 0  0 0 0 1 0"/>
         </filter>
       </defs>
@@ -122,7 +122,11 @@ function buildSvgChannelFilter(settings: LabInteractiveSettings) {
   `;
 }
 
-export function buildPreviewFilterState(settings: LabInteractiveSettings) {
+export function buildPreviewFilterState(
+  settings: LabInteractiveSettings,
+  options: { filterId?: string } = {}
+) {
+  const filterId = options.filterId || "labx-ch-isolate";
   const filterParts: string[] = [];
   if (settings.brightness !== 100) {
     filterParts.push(`brightness(${String(settings.brightness / 100)})`);
@@ -152,12 +156,12 @@ export function buildPreviewFilterState(settings: LabInteractiveSettings) {
     filterParts.push("invert(1)");
   }
   if (!settings.channelR || !settings.channelG || !settings.channelB) {
-    filterParts.push("url(#labx-ch-isolate)");
+    filterParts.push(`url(#${filterId})`);
   }
   if (settings.edgeHighlight) {
     filterParts.push("contrast(1.8)");
   }
-  const svgFilter = buildSvgChannelFilter(settings);
+  const svgFilter = buildSvgChannelFilter(settings, filterId);
   const filterCss = filterParts.length > 0 ? `filter: ${filterParts.join(" ")};` : "";
   return {
     svgFilter,

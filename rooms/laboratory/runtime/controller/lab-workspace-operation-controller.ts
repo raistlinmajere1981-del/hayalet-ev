@@ -1,4 +1,5 @@
 import { asLabRecord, normalizeLabOperationSettings } from "../../models/lab-types.js";
+import type { LabComparisonSide } from "../../models/lab-types.js";
 import type { createLabStore } from "../lab-store.js";
 import { buildUiEvent } from "./lab-controller-helpers.js";
 
@@ -26,6 +27,46 @@ type LabWorkspaceOperationControllerDeps = {
 };
 
 export function createLabWorkspaceOperationController(deps: LabWorkspaceOperationControllerDeps) {
+  function getComparisonReplacementTargets(state: LabStoreState, requireRoi: boolean) {
+    if (state.ui.workspace.comparisonReferenceAssetId === null) {
+      return [];
+    }
+    return (["primary", "reference"] as const).filter(function (side) {
+      return requireRoi !== true || state.ui.workspace.comparisonRois[side] !== null;
+    });
+  }
+
+  function startComparisonReplacementOperations(input: {
+    batchPrefix: string;
+    regionPrefix?: string;
+    state: LabStoreState;
+    targets: LabComparisonSide[];
+    uiActionId: string;
+  }) {
+    const batchId =
+      input.targets.length > 1
+        ? `${input.batchPrefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+        : null;
+    input.targets.forEach(function (side) {
+      deps.startTrackedOperationForUiAction(input.uiActionId, {
+        ...(input.regionPrefix === undefined ? {} : { regionId: `${input.regionPrefix}-${side}` }),
+        ...deps.getActiveSelectionOperationPayload(input.state, {
+          comparisonRoiTarget: side,
+          comparisonTarget: side,
+        }),
+        allowParallelWorkspaceOperation: input.targets.length > 1,
+        ...(batchId === null
+          ? {}
+          : {
+              workspaceOperationBatchId: batchId,
+              workspaceOperationBatchSize: input.targets.length,
+            }),
+        workspaceResultMode: "replace-workspace-media",
+        workspaceResultTargetSide: side,
+      });
+    });
+  }
+
   function exportWorkspaceRoi(regionId: string) {
     const state = deps.store.getState();
     const roiRegion =
@@ -47,6 +88,19 @@ export function createLabWorkspaceOperationController(deps: LabWorkspaceOperatio
 
   function exportSelectionRoi() {
     const state = deps.store.getState();
+    const comparisonTargets = getComparisonReplacementTargets(state, true);
+
+    if (comparisonTargets.length > 0) {
+      startComparisonReplacementOperations({
+        batchPrefix: "roi-crop",
+        regionPrefix: "selection",
+        state,
+        targets: comparisonTargets,
+        uiActionId: "workspace-selection-roi-export",
+      });
+      return;
+    }
+
     const selection = state.ui.workspace.activeSelection;
     if (selection?.roi === undefined) {
       deps.dispatch({
@@ -58,15 +112,28 @@ export function createLabWorkspaceOperationController(deps: LabWorkspaceOperatio
     deps.startTrackedOperationForUiAction("workspace-selection-roi-export", {
       regionId: "selection",
       ...deps.getActiveSelectionOperationPayload(state),
+      workspaceResultMode: "replace-workspace-media",
+      workspaceResultTargetSide: "single",
     });
   }
 
   function exportEnhancedFrame() {
     const state = deps.store.getState();
-    deps.startTrackedOperationForUiAction(
-      "workspace-enhanced-frame-export",
-      deps.getActiveSelectionOperationPayload(state)
-    );
+    const comparisonTargets = getComparisonReplacementTargets(state, false);
+    if (comparisonTargets.length > 0) {
+      startComparisonReplacementOperations({
+        batchPrefix: "enhanced-frame",
+        state,
+        targets: comparisonTargets,
+        uiActionId: "workspace-enhanced-frame-export",
+      });
+      return;
+    }
+    deps.startTrackedOperationForUiAction("workspace-enhanced-frame-export", {
+      ...deps.getActiveSelectionOperationPayload(state),
+      workspaceResultMode: "replace-workspace-media",
+      workspaceResultTargetSide: "single",
+    });
   }
 
   function exportBeforeAfterVariant() {

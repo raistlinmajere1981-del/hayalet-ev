@@ -10,7 +10,10 @@ import {
   DEFAULT_AUDIO_FOCUS_SETTINGS,
   normalizeAudioFocusSettings,
 } from "../lab-audio-focus-normalization.js";
-import { DEFAULT_LAB_INTERACTIVE_SETTINGS } from "../lab-workspace-defaults.js";
+import {
+  DEFAULT_LAB_INTERACTIVE_SETTINGS,
+  createLabComparisonInteractiveSettings,
+} from "../lab-workspace-defaults.js";
 
 export function createDefaultSourceDrafts(): LabSourceDrafts {
   return {
@@ -121,6 +124,7 @@ export function createDefaultWorkspaceUiState(): LabWorkspaceUiState {
     },
     roiRegions: [],
     interactiveSettings: { ...DEFAULT_LAB_INTERACTIVE_SETTINGS },
+    comparisonInteractiveSettings: createLabComparisonInteractiveSettings(),
     audioFocus: normalizeAudioFocusSettings(DEFAULT_AUDIO_FOCUS_SETTINGS),
     previewVolume: 1.0,
     hypothesis: "",

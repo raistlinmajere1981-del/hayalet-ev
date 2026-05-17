@@ -67,11 +67,14 @@ function syncFormState(currentElement: Element, nextElement: Element) {
   }
 }
 
-function syncAttributes(currentElement: Element, nextElement: Element) {
-  const isDetails = currentElement.tagName === "DETAILS";
+function syncAttributes(
+  currentElement: Element,
+  nextElement: Element,
+  preserveDetailsOpen = false
+) {
   const currentAttributeNames = currentElement.getAttributeNames();
   currentAttributeNames.forEach(function (attributeName) {
-    if (isDetails && attributeName === "open") {
+    if (preserveDetailsOpen && attributeName === "open") {
       return;
     }
     if (nextElement.hasAttribute(attributeName) !== true) {
@@ -80,7 +83,7 @@ function syncAttributes(currentElement: Element, nextElement: Element) {
   });
 
   nextElement.getAttributeNames().forEach(function (attributeName) {
-    if (isDetails && attributeName === "open") {
+    if (preserveDetailsOpen && attributeName === "open") {
       return;
     }
     const nextValue = nextElement.getAttribute(attributeName);
@@ -183,7 +186,7 @@ function readPreservedDetailsState(currentElement: Element, nextElement: Element
 
 function syncElement(currentElement: Element, nextElement: Element) {
   const preservedDetailsState = readPreservedDetailsState(currentElement, nextElement);
-  syncAttributes(currentElement, nextElement);
+  syncAttributes(currentElement, nextElement, preservedDetailsState !== null);
   if (
     preservedDetailsState !== null &&
     typeof HTMLDetailsElement !== "undefined" &&

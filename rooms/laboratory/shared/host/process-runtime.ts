@@ -3,6 +3,8 @@ import { extractFindings } from "../../services/finding-engine.js";
 import { freezeAnalysisScope } from "../types/analysis-scope.js";
 import { normalizeLabAnalysisSettingsMap } from "../../models/lab-types.js";
 import { createLaboratoryProcessOutputHelpers } from "./process-output-assets.js";
+import { createLabOutputAsset, findLabAssetById, upsertLabAsset } from "./lab-assets.js";
+import { getLabPathExtension, inferLabSourceKindFromUrl } from "../lab-asset-kind.js";
 
 interface LaboratoryProcessDeps {
   appendProcessEvent: (
@@ -20,6 +22,7 @@ interface LaboratoryProcessDeps {
     project: Record<string, unknown>,
     target: Record<string, unknown>
   ) => unknown[];
+  callRoomTools?: (payload: Record<string, unknown>) => Promise<unknown>;
   cancelProcessJobsForProject: (
     api: Record<string, unknown>,
     runtime: Record<string, unknown>,
@@ -52,6 +55,10 @@ interface LaboratoryProcessDeps {
     runtime: Record<string, unknown>,
     project: Record<string, unknown>,
     featureId: string
+  ) => string;
+  getProjectSourceDir?: (
+    runtime: Record<string, unknown>,
+    project: Record<string, unknown>
   ) => string;
   getFeatureProcessJobAction: (featureId: string) => string;
   getFeatureProcessRecord: (
@@ -120,6 +127,7 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     asNonEmptyString,
     buildAudioAnalysisModules,
     buildMediaProcessModules,
+    callRoomTools,
     cancelProcessJobsForProject,
     clearJob,
     clone,
@@ -130,6 +138,7 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     ensureProjectDirectories,
     getActiveProject,
     getFeatureProcessDir,
+    getProjectSourceDir,
     getFeatureProcessJobAction,
     getFeatureProcessRecord,
     patchActiveProject,
@@ -152,6 +161,269 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     return true;
   }
 
+  function isRemoteProcessUrl(value: string | null) {
+    if (value === null) {
+      return false;
+    }
+    try {
+      const parsedUrl = new URL(value);
+      return parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }
+
+  function getPathLeaf(path: string | null) {
+    if (path === null) {
+      return null;
+    }
+    return path.split(/[\\/]/).pop() || path;
+  }
+
+  function getRemoteDownloadFileName(urlValue: string, fallbackKind: string) {
+    let leaf: string | null;
+    try {
+      const parsedUrl = new URL(urlValue);
+      leaf = decodeURIComponent(parsedUrl.pathname.split("/").pop() || "");
+    } catch {
+      leaf = getPathLeaf(urlValue);
+    }
+    const cleanLeaf = asNonEmptyString(
+      (leaf || "").replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "")
+    );
+    const fallbackExtension =
+      fallbackKind === "image" ? "png" : fallbackKind === "audio" ? "mp3" : "mp4";
+    const fileName = cleanLeaf || `remote-${fallbackKind}.${fallbackExtension}`;
+    return getLabPathExtension(fileName) === null ? `${fileName}.${fallbackExtension}` : fileName;
+  }
+
+  function getRemoteAssetType(sourceKind: string) {
+    if (sourceKind === "image") {
+      return "image" as const;
+    }
+    if (sourceKind === "audio") {
+      return "audio" as const;
+    }
+    return "clip" as const;
+  }
+
+  function getProcessTargetRecordSourceKind(target: Record<string, unknown>) {
+    const metadata = toRecord(target["metadata"]);
+    const directKind =
+      asNonEmptyString(target["sourceKind"]) ||
+      asNonEmptyString(metadata["sourceKind"]) ||
+      asNonEmptyString(metadata["kind"]);
+    if (directKind === "image" || directKind === "audio" || directKind === "video") {
+      return directKind;
+    }
+    const targetType = asNonEmptyString(target["type"]);
+    if (targetType === "image" || targetType === "frame") {
+      return "image";
+    }
+    if (targetType === "audio") {
+      return "audio";
+    }
+    const targetUrl =
+      asNonEmptyString(target["url"]) ||
+      asNonEmptyString(target["localPath"]) ||
+      asNonEmptyString(target["path"]);
+    return targetUrl === null ? "video" : inferLabSourceKindFromUrl(targetUrl);
+  }
+
+  function toDownloadedFileRecord(value: unknown) {
+    return toRecord(toRecord(value)["download"]);
+  }
+
+  async function materializeRemoteAnalysisTargets(
+    api: Record<string, unknown>,
+    runtime: Record<string, unknown>,
+    project: Record<string, unknown>,
+    requestId: string,
+    jobId: string,
+    action: string,
+    workbench: Record<string, unknown>
+  ) {
+    if (typeof callRoomTools !== "function" || typeof getProjectSourceDir !== "function") {
+      return { project, workbench };
+    }
+
+    const downloadTool = callRoomTools;
+    const resolveProjectSourceDir = getProjectSourceDir;
+    let nextProject = project;
+    let nextWorkbench = { ...workbench };
+    const downloadedByUrl = new Map<string, Record<string, unknown>>();
+    const projectId = getProjectId(project);
+    const roomId = asNonEmptyString(deps["roomId"]) || "laboratory";
+
+    async function downloadRemoteTarget(
+      target: Record<string, unknown>,
+      fallbackName: string
+    ): Promise<Record<string, unknown> | null> {
+      const existingLocalPath =
+        asNonEmptyString(target["localPath"]) || asNonEmptyString(target["path"]);
+      if (existingLocalPath !== null) {
+        return target;
+      }
+      const urlValue = asNonEmptyString(target["url"]);
+      if (isRemoteProcessUrl(urlValue) !== true || urlValue === null) {
+        return null;
+      }
+      const cached = downloadedByUrl.get(urlValue);
+      if (cached !== undefined) {
+        return cached;
+      }
+
+      const sourceKind = getProcessTargetRecordSourceKind(target);
+      const fileName =
+        asNonEmptyString(target["fileName"]) ||
+        asNonEmptyString(target["name"]) ||
+        getRemoteDownloadFileName(urlValue, sourceKind);
+      pushJobState(api, {
+        requestId,
+        jobId,
+        action,
+        projectId,
+        featureStage: "process",
+        stage: "downloading",
+        message: "Remote analysis target is being downloaded.",
+      });
+      const downloadResult = await downloadTool({
+        operation: "download-file",
+        roomId,
+        requestId,
+        jobId,
+        url: urlValue,
+        destinationPath: `${resolveProjectSourceDir(runtime, nextProject)}/${fileName}`,
+        overwrite: false,
+      });
+      const downloaded = toDownloadedFileRecord(downloadResult);
+      const localPath = asNonEmptyString(downloaded["path"]);
+      if (localPath === null) {
+        throw new Error("Remote analysis target download did not return a local path.");
+      }
+      const downloadedFileName =
+        asNonEmptyString(downloaded["fileName"]) || getPathLeaf(localPath) || fileName;
+      const sourceAssetId = asNonEmptyString(target["assetId"]);
+      const sourceAsset =
+        sourceAssetId === null ? null : findLabAssetById(nextProject, sourceAssetId);
+      const sourceAssetRecord =
+        sourceAsset === null ? {} : (sourceAsset as unknown as Record<string, unknown>);
+      const outputType = getRemoteAssetType(sourceKind);
+      const materializedMetadata = {
+        ...toRecord(sourceAssetRecord["metadata"]),
+        ...toRecord(target["metadata"]),
+        evidenceRole: "source",
+        flowKind: "remote-url-import",
+        kind: sourceKind,
+        remoteSourceUrl: urlValue,
+        sourceKind,
+      };
+      const materializedAsset =
+        sourceAsset !== null && asNonEmptyString(sourceAssetRecord["type"]) === outputType
+          ? {
+              ...sourceAsset,
+              localPath,
+              metadata: materializedMetadata,
+              name: downloadedFileName || sourceAsset.name || fallbackName,
+              url: urlValue,
+            }
+          : createLabOutputAsset(nextProject, {
+              type: outputType,
+              name: downloadedFileName || fallbackName,
+              localPath,
+              url: urlValue,
+              derivedFromAssetId: sourceAssetId,
+              metadata: materializedMetadata,
+            });
+      nextProject = {
+        ...nextProject,
+        assets: upsertLabAsset(nextProject["assets"], materializedAsset),
+      };
+      const materializedTarget = {
+        ...target,
+        assetId: materializedAsset.id,
+        fileName: downloadedFileName,
+        label: asNonEmptyString(target["label"]) || materializedAsset.name,
+        localPath,
+        name: materializedAsset.name,
+        path: localPath,
+        sourceKind,
+        type: materializedAsset.type,
+      };
+      downloadedByUrl.set(urlValue, materializedTarget);
+      return materializedTarget;
+    }
+
+    async function materializeWorkbenchAssetId(key: string) {
+      const assetId = asNonEmptyString(nextWorkbench[key]);
+      const asset = assetId === null ? null : findLabAssetById(nextProject, assetId);
+      if (asset === null || asNonEmptyString(asset.localPath) !== null) {
+        return;
+      }
+      const materializedTarget = await downloadRemoteTarget(
+        {
+          assetId: asset.id,
+          label: asset.name,
+          metadata: asset.metadata,
+          name: asset.name,
+          type: asset.type,
+          url: asset.url,
+        },
+        asset.name
+      );
+      if (materializedTarget !== null) {
+        nextWorkbench[key] = materializedTarget["assetId"];
+      }
+    }
+
+    await materializeWorkbenchAssetId("workspaceTargetAssetId");
+    await materializeWorkbenchAssetId("comparisonReferenceAssetId");
+
+    const analysisScope = toRecord(nextWorkbench["analysisScope"]);
+    const comparison = toRecord(analysisScope["comparison"]);
+    if (Object.keys(comparison).length > 0) {
+      const primary = await downloadRemoteTarget(toRecord(comparison["primary"]), "Primary image");
+      const reference = await downloadRemoteTarget(
+        toRecord(comparison["reference"]),
+        "Reference image"
+      );
+      if (primary !== null || reference !== null) {
+        nextWorkbench = {
+          ...nextWorkbench,
+          analysisScope: {
+            ...analysisScope,
+            comparison: {
+              ...comparison,
+              ...(primary === null ? {} : { primary }),
+              ...(reference === null ? {} : { reference }),
+            },
+          },
+        };
+        if (primary !== null) {
+          nextWorkbench["workspaceTargetAssetId"] = primary["assetId"];
+        }
+        if (reference !== null) {
+          nextWorkbench["comparisonReferenceAssetId"] = reference["assetId"];
+        }
+      }
+    }
+
+    if (nextProject !== project) {
+      await patchActiveProject(runtime, function (currentProject: Record<string, unknown>) {
+        if (currentProject["id"] !== project["id"]) {
+          return currentProject;
+        }
+        return {
+          ...currentProject,
+          assets: nextProject["assets"],
+          workbench: nextWorkbench,
+        };
+      });
+    }
+
+    return { project: nextProject, workbench: nextWorkbench };
+  }
+
   const managedProcessRunnersDeps = {
     asNonEmptyString: deps["asNonEmptyString"],
     buildProcessSpeechAvailability: deps["buildProcessSpeechAvailability"],
@@ -160,6 +432,7 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     createProcessArtifact: deps["createProcessArtifact"],
     createProcessFinding: deps["createProcessFinding"],
     generateProcessFramePreviewArtifact: deps["generateProcessFramePreviewArtifact"],
+    generateProcessImageComparisonArtifact: deps["generateProcessImageComparisonArtifact"],
     generateProcessMetadataArtifact: deps["generateProcessMetadataArtifact"],
     generateProcessSpectrogram: deps["generateProcessSpectrogram"],
     generateProcessVisualTransformArtifact: deps["generateProcessVisualTransformArtifact"],
@@ -651,9 +924,21 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
       stage: "queued",
     });
 
+    const materialized = await materializeRemoteAnalysisTargets(
+      api,
+      runtime,
+      project,
+      requestId,
+      jobId,
+      action,
+      workbench
+    );
+    const processProject = materialized.project;
+    const processWorkbench = materialized.workbench;
+
     await patchActiveProject(runtime, function (nextProject: Record<string, unknown>) {
       if (persistProcessWorkbench) {
-        nextProject["workbench"] = workbench;
+        nextProject["workbench"] = processWorkbench;
       }
       setFeatureProcessRecord(nextProject, featureId, {
         ...createEmptyProcessRun(featureId),
@@ -673,8 +958,8 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
         api,
         runtime,
         {
-          ...clone(project),
-          workbench,
+          ...clone(processProject),
+          workbench: processWorkbench,
         },
         requestId,
         jobId,
@@ -697,7 +982,7 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
         });
         if (Object.keys(queuedProcessInstance).length > 0) {
           pendingFollowUp.workbench = {
-            ...workbench,
+            ...processWorkbench,
             analysisScope: toRecord(queuedProcessInstance["analysisScope"]),
             moduleToggles: toRecord(queuedProcessInstance["moduleToggles"]),
           };

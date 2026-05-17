@@ -74,21 +74,74 @@
       return state.locale === "tr" ? "Ana sayfaya dön" : "Return home";
     }
 
-    function syncRoomCloseControl(root: HTMLElement): void {
-      const label = getRoomCloseLabel();
+    function createRoomCloseButton(): HTMLElement | null {
+      const runtimeCreateElement = (contextRuntime as { createElement?: GameRoomCreateElement })
+        .createElement;
+      if (typeof runtimeCreateElement === "function") {
+        return runtimeCreateElement("button", "game-room-close-button");
+      }
+      if (typeof document.createElement !== "function") {
+        return null;
+      }
       const button = document.createElement("button");
       button.className = "game-room-close-button";
-      button.type = "button";
+      return button;
+    }
+
+    function setRoomCloseButtonLabel(button: HTMLElement, label: string): void {
+      const target = button as HTMLElement & {
+        ariaLabel?: string;
+        setAttribute?: (name: string, value: string) => void;
+      };
       button.title = label;
-      button.setAttribute("aria-label", label);
+      if (typeof target.setAttribute === "function") {
+        target.setAttribute("aria-label", label);
+        return;
+      }
+      target.ariaLabel = label;
+    }
+
+    function findExistingRoomCloseButton(root: HTMLElement): HTMLElement | null {
+      const children = (root as unknown as { children?: ArrayLike<Element> }).children;
+      if (children === undefined) {
+        return null;
+      }
+      for (let index = 0; index < children.length; index += 1) {
+        const child = children[index];
+        if (
+          child !== undefined &&
+          typeof child.className === "string" &&
+          child.className.split(/\s+/).includes("game-room-close-button")
+        ) {
+          return child as HTMLElement;
+        }
+      }
+      return null;
+    }
+
+    function syncRoomCloseControl(root: HTMLElement): void {
+      const label = getRoomCloseLabel();
+      const existingButton = findExistingRoomCloseButton(root);
+      if (existingButton !== null) {
+        setRoomCloseButtonLabel(existingButton, label);
+        return;
+      }
+      const button = createRoomCloseButton();
+      if (button === null) {
+        return;
+      }
+      (button as HTMLButtonElement).type = "button";
+      setRoomCloseButtonLabel(button, label);
       button.innerHTML =
         '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
-      button.addEventListener("click", function () {
-        const roomApi = global.roomAPI;
-        if (roomApi && typeof roomApi.close === "function") {
-          roomApi.close();
-        }
-      });
+      if (typeof button.addEventListener === "function") {
+        button.addEventListener("click", function () {
+          const roomApi = global.roomAPI;
+          if (roomApi && typeof roomApi.close === "function") {
+            roomApi.close();
+          }
+        });
+      }
       root.append(button);
     }
 

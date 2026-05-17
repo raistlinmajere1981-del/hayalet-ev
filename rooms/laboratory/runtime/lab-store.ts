@@ -64,6 +64,10 @@ import {
   syncRunAugmentationsFromHostEvent,
 } from "./store/lab-store-run-sync.js";
 import { resetWorkspaceForSourceActivation } from "./store/lab-store-source-reset.js";
+import {
+  createLabComparisonInteractiveSettings,
+  normalizeLabInteractiveSettings,
+} from "./lab-workspace-defaults.js";
 
 function normalizeComparisonSide(value: unknown) {
   return value === "primary" || value === "reference" ? value : null;
@@ -270,6 +274,47 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
     case "report-view-changed":
       state.ui.reportView = event.view;
       return state;
+    case "workspace-operation-output-applied": {
+      const outputAssetId = asNonEmptyString(event.assetId);
+      if (outputAssetId === null) {
+        return state;
+      }
+      const comparisonSide = normalizeComparisonSide(event.comparisonSide);
+      state.ui.activeDocumentOverlayAssetId = null;
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        reportOverlayOpen: false,
+      };
+      if (comparisonSide === "primary") {
+        state.ui.activeWorkspaceAssetId = outputAssetId;
+        state.ui.workspace.comparisonRois = {
+          ...state.ui.workspace.comparisonRois,
+          activeSide: "primary",
+          primary: null,
+        };
+        state.ui.workspace.activeSelection = null;
+        return state;
+      }
+      if (
+        comparisonSide === "reference" &&
+        asNonEmptyString(state.ui.workspace.comparisonReferenceAssetId) !== null
+      ) {
+        state.ui.workspace.comparisonReferenceAssetId = outputAssetId;
+        state.ui.workspace.comparisonRois = {
+          ...state.ui.workspace.comparisonRois,
+          activeSide: "reference",
+          reference: null,
+        };
+        state.ui.workspace.activeSelection = null;
+        return state;
+      }
+      resetWorkspaceForSourceActivation(state, {
+        activeWorkspaceAssetId: outputAssetId,
+        comparisonReferenceAssetId: null,
+        sourceIntakeCollapsed: state.ui.workspace.sourceIntakeCollapsed,
+      });
+      return state;
+    }
     case "workspace-asset-selected":
     case "workspace-content-opened": {
       const selectedAssetId = asNonEmptyString(event.assetId);
@@ -300,10 +345,22 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     }
     case "workspace-comparison-reference-set":
-      state.ui.workspace.comparisonReferenceAssetId = event.assetId;
+      {
+        const previousReferenceAssetId = asNonEmptyString(
+          state.ui.workspace.comparisonReferenceAssetId
+        );
+        const nextReferenceAssetId = asNonEmptyString(event.assetId);
+        state.ui.workspace.comparisonReferenceAssetId = nextReferenceAssetId;
+        if (previousReferenceAssetId === null && nextReferenceAssetId !== null) {
+          state.ui.workspace.comparisonInteractiveSettings = createLabComparisonInteractiveSettings(
+            state.ui.workspace.interactiveSettings
+          );
+        }
+      }
       state.ui.workspace.comparisonRois = {
         ...state.ui.workspace.comparisonRois,
-        activeSide: event.assetId === null ? "primary" : "reference",
+        activeSide:
+          state.ui.workspace.comparisonReferenceAssetId === null ? "primary" : "reference",
         reference: null,
       };
       if (getWorkspaceSelectionSuggestionSourceKind(state) === "image") {
@@ -843,13 +900,36 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       };
       return state;
     case "workspace-interactive-updated":
-      state.ui.workspace = {
-        ...state.ui.workspace,
-        interactiveSettings: {
-          ...state.ui.workspace.interactiveSettings,
-          ...event.patch,
-        },
-      };
+      {
+        const comparisonSide = normalizeComparisonSide(event.comparisonSide);
+        if (comparisonSide !== null) {
+          const currentSettings = state.ui.workspace.comparisonInteractiveSettings[comparisonSide];
+          state.ui.workspace = {
+            ...state.ui.workspace,
+            comparisonInteractiveSettings: {
+              ...state.ui.workspace.comparisonInteractiveSettings,
+              [comparisonSide]: normalizeLabInteractiveSettings(
+                {
+                  ...currentSettings,
+                  ...event.patch,
+                },
+                currentSettings
+              ),
+            },
+          };
+          return state;
+        }
+        state.ui.workspace = {
+          ...state.ui.workspace,
+          interactiveSettings: normalizeLabInteractiveSettings(
+            {
+              ...state.ui.workspace.interactiveSettings,
+              ...event.patch,
+            },
+            state.ui.workspace.interactiveSettings
+          ),
+        };
+      }
       return state;
     case "workspace-hypothesis-updated":
       if (isRunMutationLocked(state)) {

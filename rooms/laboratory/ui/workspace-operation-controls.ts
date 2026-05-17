@@ -58,22 +58,21 @@ function formatOutputKinds(capability: LabOperationCapabilityProjection, copy: L
 }
 
 function renderOperationButton(capability: LabOperationCapabilityProjection, copy: LabI18n) {
-  const running = capability.actionStatus === "running";
+  const actionStatus = capability.actionStatus === "success" ? "idle" : capability.actionStatus;
+  const running = actionStatus === "running";
   const ready = capability.readiness === "ready" && capability.actionId !== null && !running;
   const actionable = ready || running;
   const actionId = running ? "operation-cancel" : capability.actionId || "";
   const reason = capability.blockReason || copy.t("mediaAnalysis.operations.notReady", "Not ready");
   const label = running
     ? copy.t("mediaAnalysis.operations.cancelAction", "Cancel")
-    : capability.actionStatus === "success"
-      ? capability.activeActionMessage || copy.t("mediaAnalysis.operations.successAction", "Ready")
-      : capability.actionStatus === "error"
-        ? copy.t("mediaAnalysis.operations.errorAction", "Retry")
-        : capability.planned === true
-          ? copy.t("mediaAnalysis.operations.plannedAction", "Planned")
-          : copy.t("mediaAnalysis.operations.runAction", "Run");
+    : actionStatus === "error"
+      ? copy.t("mediaAnalysis.operations.errorAction", "Retry")
+      : capability.planned === true
+        ? copy.t("mediaAnalysis.operations.plannedAction", "Planned")
+        : copy.t("mediaAnalysis.operations.runAction", "Run");
   const title =
-    capability.actionStatus === "error"
+    actionStatus === "error"
       ? capability.activeActionMessage || reason
       : running
         ? copy.t("mediaAnalysis.operations.cancelTitle", "Cancel this operation")
@@ -85,10 +84,10 @@ function renderOperationButton(capability: LabOperationCapabilityProjection, cop
       type="button"
       ${actionable ? `data-lab-action="${escapeHtml(actionId)}"` : "disabled"}
       ${running ? `data-lab-value="${escapeHtml(capability.id)}"` : ""}
-      data-action-status="${escapeHtml(capability.actionStatus)}"
+      data-action-status="${escapeHtml(actionStatus)}"
       data-lab-operation-capability="${escapeHtml(capability.id)}"
       ${running ? 'aria-busy="true"' : ""}
-      ${ready && capability.actionStatus !== "error" ? "" : `title="${escapeHtml(title)}"`}
+      ${ready && actionStatus !== "error" ? "" : `title="${escapeHtml(title)}"`}
     >${escapeHtml(label)}</button>
   `;
 }
@@ -274,6 +273,7 @@ export function renderCapabilityCard(
   scope: LabOperationScopeState = { hasRoi: false, hasTimeRange: false },
   comparison: LabOperationComparisonState | null = null
 ) {
+  const actionStatus = capability.actionStatus === "success" ? "idle" : capability.actionStatus;
   const readinessLabel =
     capability.readiness === "ready"
       ? copy.t("mediaAnalysis.operations.ready", "Ready")
@@ -284,13 +284,16 @@ export function renderCapabilityCard(
   const outputLabel = formatOutputKinds(capability, copy);
   const settings = getScopedOperationSettings(capability, scope);
   const actionStateMessage =
-    capability.activeActionMessage ||
-    (capability.actionStatus === "running" ? capability.activeActionLabel : null);
+    actionStatus === "error"
+      ? capability.activeActionMessage
+      : actionStatus === "running"
+        ? capability.activeActionLabel
+        : null;
   return `
     <article
       class="labx-operation-card"
       data-readiness="${escapeHtml(capability.readiness)}"
-      data-action-status="${escapeHtml(capability.actionStatus)}"
+      data-action-status="${escapeHtml(actionStatus)}"
       data-operation-id="${escapeHtml(capability.id)}"
       data-active="${activeCapabilityId === capability.id ? "true" : "false"}"
     >
@@ -315,7 +318,7 @@ export function renderCapabilityCard(
           : ""
       }
       ${
-        capability.actionStatus !== "idle" && actionStateMessage
+        actionStatus !== "idle" && actionStateMessage
           ? `<p class="labx-operation-card__action-state">${escapeHtml(actionStateMessage)}</p>`
           : ""
       }

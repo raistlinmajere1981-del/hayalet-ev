@@ -1273,6 +1273,70 @@ test("laboratory action output selector resolves linked assets and ignores stale
   assert.deepEqual(getActionOutputs(store.getState(), "user-action-missing"), []);
 });
 
+test("laboratory operation outputs replace the targeted workspace media", () => {
+  const store = createLabStore();
+
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-primary",
+      type: "image",
+      name: "primary.png",
+      localPath: "/tmp/primary.png",
+      createdAt: 100,
+    },
+  });
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-reference",
+      type: "image",
+      name: "reference.png",
+      localPath: "/tmp/reference.png",
+      createdAt: 101,
+    },
+  });
+  store.dispatch({ type: "workspace-asset-selected", assetId: "asset-primary" });
+  store.dispatch({ type: "workspace-comparison-reference-set", assetId: "asset-reference" });
+  store.dispatch({
+    type: "selection-roi-updated",
+    comparisonSide: "primary",
+    roi: { x: 0.1, y: 0.1, width: 0.3, height: 0.3 },
+  });
+  store.dispatch({
+    type: "selection-roi-updated",
+    comparisonSide: "reference",
+    roi: { x: 0.2, y: 0.2, width: 0.4, height: 0.4 },
+  });
+  store.dispatch({
+    type: "workspace-operation-output-applied",
+    assetId: "asset-primary-crop",
+    comparisonSide: "primary",
+  });
+  store.dispatch({
+    type: "workspace-operation-output-applied",
+    assetId: "asset-reference-crop",
+    comparisonSide: "reference",
+  });
+
+  assert.equal(store.getState().ui.activeWorkspaceAssetId, "asset-primary-crop");
+  assert.equal(
+    store.getState().ui.workspace.comparisonReferenceAssetId,
+    "asset-reference-crop"
+  );
+  assert.equal(store.getState().ui.workspace.comparisonRois.primary, null);
+  assert.equal(store.getState().ui.workspace.comparisonRois.reference, null);
+
+  store.dispatch({
+    type: "workspace-operation-output-applied",
+    assetId: "asset-single-crop",
+    comparisonSide: "single",
+  });
+
+  assert.equal(store.getState().ui.activeWorkspaceAssetId, "asset-single-crop");
+  assert.equal(store.getState().ui.workspace.comparisonReferenceAssetId, null);
+});
+
 test("laboratory store no longer carries retired source project ui state", () => {
   const store = createLabStore();
   const uiState = store.getState().ui as Record<string, unknown>;

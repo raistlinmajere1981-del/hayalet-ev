@@ -155,6 +155,7 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
       foundation.audioAnalysisUtility.buildEmotionHeuristicFromProsody,
     buildProfileModelSummary: projectRuntimes.mediaProfileModel.buildProfileModelSummary,
     buildSourceTargetSignature: projectRuntimes.snapshot.buildSourceTargetSignature,
+    callRoomTools: io.callRoomTools,
     clampProfileTranscriptSampleSeconds:
       projectRuntimes.mediaProfileState.clampProfileTranscriptSampleSeconds,
     cancelProcessJobsForProject: projectRuntimes.jobRuntime.cancelProcessJobsForProject,
@@ -174,6 +175,7 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     formatIdentifierLabel: projectRuntimes.analysisArtifact.formatIdentifierLabel,
     getActiveProject,
     getFeatureProcessDir: deps.getFeatureProcessDir,
+    getProjectSourceDir,
     getFeatureProcessRecord: projectRuntimes.stateComposition.getFeatureProcessRecord,
     getFeatureReportDir: deps.getFeatureReportDir,
     getFeatureReportRecord: projectRuntimes.stateComposition.getFeatureReportRecord,
@@ -185,6 +187,8 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
       projectRuntimes.analysisArtifact.generateProcessMetadataArtifact,
     generateProcessFramePreviewArtifact:
       projectRuntimes.analysisArtifact.generateProcessFramePreviewArtifact,
+    generateProcessImageComparisonArtifact:
+      projectRuntimes.analysisArtifact.generateProcessImageComparisonArtifact,
     generateProcessVisualTransformArtifact:
       projectRuntimes.analysisArtifact.generateProcessVisualTransformArtifact,
     listDirectory: io.listDirectory,
@@ -213,6 +217,7 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     runOpenSmileProsodyExtraction: foundation.audioAnalysisUtility.runOpenSmileProsodyExtraction,
     runProfileTool: projectRuntimes.analysisArtifact.runProfileTool,
     runVideoStructureProbe: foundation.audioAnalysisUtility.runVideoStructureProbe,
+    roomId: deps.roomId,
     sanitizeFileSegment: mediaAnalysis.sanitizeFileSegment,
     getVisualAnalysisCapabilityState(runtime: unknown, sourceKind: string | null) {
       return mediaAnalysis.visualAnalysisRuntime.buildVisualAnalysisCapabilityState(

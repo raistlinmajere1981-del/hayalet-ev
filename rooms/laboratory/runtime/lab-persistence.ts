@@ -104,6 +104,15 @@ function sanitizeWorkspaceForBoot(
     >;
   }
   if (
+    source["comparisonInteractiveSettings"] &&
+    typeof source["comparisonInteractiveSettings"] === "object" &&
+    Array.isArray(source["comparisonInteractiveSettings"]) === false
+  ) {
+    next.comparisonInteractiveSettings = source["comparisonInteractiveSettings"] as NonNullable<
+      NonNullable<LabPersistedState["workspace"]>["comparisonInteractiveSettings"]
+    >;
+  }
+  if (
     source["audioFocus"] &&
     typeof source["audioFocus"] === "object" &&
     Array.isArray(source["audioFocus"]) === false

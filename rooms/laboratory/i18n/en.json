@@ -227,7 +227,8 @@
       "navLabel": "Mode indicators",
       "toolMgmt": "Tool Management",
       "drawerExpand": "Open panel",
-      "drawerCollapse": "Close panel"
+      "drawerCollapse": "Close panel",
+      "closeRoom": "Return home"
     },
     "sourcePanel": {
       "title": "Sources",
@@ -1656,6 +1657,7 @@
         "cleanup": "Frame Cleanup",
         "motion": "Motion Analysis",
         "visualSignal": "Visual Signal Amplification",
+        "imageComparison": "Image Comparison",
         "audio": "Audio Sweep",
         "report": "Report Synthesis"
       }

@@ -1,4 +1,10 @@
 import { createLaboratoryWorkbenchState } from "./runtime-primitives.js";
+import { findLabAssetById } from "./lab-assets.js";
+import {
+  getLabPathExtension,
+  getLabSourceKindForExtension,
+  inferLabAssetSourceKind,
+} from "../lab-asset-kind.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 
@@ -134,6 +140,102 @@ export function createLaboratoryProcessTargetingRuntime(
       .filter((entry): entry is string => entry !== null);
   }
 
+  function normalizeSourceKind(value: unknown): "video" | "audio" | "image" | null {
+    const sourceKind = asNonEmptyString(value);
+    return sourceKind === "video" || sourceKind === "audio" || sourceKind === "image"
+      ? sourceKind
+      : null;
+  }
+
+  function getPathLeaf(path: string | null) {
+    if (path === null) {
+      return null;
+    }
+    return path.split(/[\\/]/).pop() || path;
+  }
+
+  function getTargetPath(target: LaboratoryRecord): string | null {
+    return (
+      asNonEmptyString(target["localPath"]) ||
+      asNonEmptyString(target["path"]) ||
+      asNonEmptyString(target["url"]) ||
+      asNonEmptyString(target["fileName"]) ||
+      asNonEmptyString(target["name"])
+    );
+  }
+
+  function getRecordTargetSourceKind(target: LaboratoryRecord): "video" | "audio" | "image" | null {
+    const metadata = toRecord(target["metadata"]);
+    const metadataKind =
+      normalizeSourceKind(metadata["kind"]) || normalizeSourceKind(metadata["sourceKind"]);
+    if (metadataKind !== null) {
+      return metadataKind;
+    }
+    const directKind = normalizeSourceKind(target["sourceKind"]);
+    if (directKind !== null) {
+      return directKind;
+    }
+    const type = asNonEmptyString(target["type"]);
+    if (type === "audio") {
+      return "audio";
+    }
+    if (type === "frame" || type === "image") {
+      return "image";
+    }
+    return getLabSourceKindForExtension(getLabPathExtension(getTargetPath(target)));
+  }
+
+  function getProjectSourceKind(project: LaboratoryProjectRecord): "video" | "audio" | "image" {
+    return normalizeSourceKind(toSourceRecord(project.source).kind) || "video";
+  }
+
+  function getEffectiveSourceKind(
+    project: LaboratoryProjectRecord,
+    target: LaboratoryProcessTargetRecord
+  ): "video" | "audio" | "image" {
+    return (
+      getRecordTargetSourceKind(toProcessTargetRecord(target)) || getProjectSourceKind(project)
+    );
+  }
+
+  function buildWorkspaceAssetProcessTarget(
+    project: LaboratoryProjectRecord,
+    assetId: unknown,
+    fallbackTarget: LaboratoryProcessTargetRecord
+  ): LaboratoryProcessTargetRecord | null {
+    const asset = findLabAssetById(project, assetId);
+    if (asset === null) {
+      return null;
+    }
+    const localPath = asNonEmptyString(asset.localPath);
+    if (localPath === null) {
+      return null;
+    }
+    const sourceKind = inferLabAssetSourceKind(asset);
+    const metadata = toRecord(asset.metadata);
+    return {
+      ...fallbackTarget,
+      fileName: getPathLeaf(localPath) || asset.name,
+      label: asset.name,
+      metadata: {
+        ...toRecord(fallbackTarget["metadata"]),
+        ...metadata,
+        workspaceTargetAssetId: asset.id,
+      },
+      mimeType:
+        asNonEmptyString(metadata["mimeType"]) || asNonEmptyString(fallbackTarget["mimeType"]),
+      mode: "workspace-asset",
+      outputId: asset.id,
+      path: localPath,
+      requestedMode:
+        asNonEmptyString(fallbackTarget["requestedMode"]) ||
+        asNonEmptyString(fallbackTarget["mode"]) ||
+        "workspace-asset",
+      signature: `asset:${asset.id}:${localPath}`,
+      sourceKind: sourceKind || getRecordTargetSourceKind(metadata),
+    };
+  }
+
   function resolveProcessWorkbench(
     project: LaboratoryProjectRecord,
     featureId: string | null,
@@ -188,7 +290,15 @@ export function createLaboratoryProcessTargetingRuntime(
       return resolveAudioFeatureTarget(project);
     }
 
-    return resolveProfileTarget(project);
+    const fallbackTarget = resolveProfileTarget(project);
+    const workbench = toWorkbenchRecord(project.workbench);
+    return (
+      buildWorkspaceAssetProcessTarget(
+        project,
+        workbench["workspaceTargetAssetId"],
+        fallbackTarget
+      ) || fallbackTarget
+    );
   }
 
   function createQueuedProcessModule(
@@ -217,7 +327,7 @@ export function createLaboratoryProcessTargetingRuntime(
   ) {
     const readiness = toReadinessRecord(toProfileRecord(project.profile).readiness);
     const enabledLaneIds = toStringArray(readiness.enabledLaneIds);
-    const sourceKind = asNonEmptyString(toSourceRecord(project.source).kind) || "video";
+    const sourceKind = getEffectiveSourceKind(project, target);
     const edit = toEditRecord(project.edit);
     const targetRecord = toProcessTargetRecord(target);
     const visualCatalogModules = getVisualAnalysisModulesForRuntime(runtime, sourceKind);
@@ -232,6 +342,13 @@ export function createLaboratoryProcessTargetingRuntime(
     );
     const structureModuleIds = toStringArray(visualPartitions["structure"]);
     const revealModuleIds = toStringArray(visualPartitions["reveal"]);
+    const analysisScope = toRecord(toWorkbenchRecord(project.workbench)["analysisScope"]);
+    const comparisonScope = toRecord(analysisScope["comparison"]);
+    const comparisonPrimary = toRecord(comparisonScope["primary"]);
+    const comparisonReference = toRecord(comparisonScope["reference"]);
+    const hasImageComparisonPair =
+      getRecordTargetSourceKind(comparisonPrimary) === "image" &&
+      getRecordTargetSourceKind(comparisonReference) === "image";
     const visualProviderState = toRecord(getVisualAnalysisProviderState(runtime));
     const visualProvidersReady =
       Object.keys(visualProviderState).length === 0
@@ -292,6 +409,27 @@ export function createLaboratoryProcessTargetingRuntime(
         },
       })
     );
+    if (hasImageComparisonPair) {
+      modules.push(
+        normalizeProcessModule({
+          ...createQueuedProcessModule(
+            "image-comparison",
+            "mediaAnalysis.process.steps.imageComparison",
+            "Image Comparison",
+            ""
+          ),
+          status: visualProvidersReady ? "queued" : "skipped",
+          summary: visualProvidersReady
+            ? "The selected A/B image pair will generate side-by-side and difference-map evidence."
+            : "Image comparison is unavailable until the required FFmpeg provider is ready.",
+          metadata: {
+            logicalLayer: "visual-comparison",
+            transportLayer: "media-analysis",
+            capabilityState: visualCapabilityState,
+          },
+        })
+      );
+    }
     modules.push(
       normalizeProcessModule({
         ...createQueuedProcessModule(

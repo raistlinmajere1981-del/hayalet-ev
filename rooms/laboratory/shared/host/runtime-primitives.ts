@@ -94,6 +94,8 @@ export function createLaboratoryWorkbenchState(overrides: unknown = {}) {
     operationSettings: normalizeLabOperationSettingsMap(source["operationSettings"]),
     analysisSettings: normalizeLabAnalysisSettingsMap(source["analysisSettings"]),
     moduleToggles: toLaboratoryRecord(source["moduleToggles"]),
+    workspaceTargetAssetId: readNonEmptyString(source["workspaceTargetAssetId"]),
+    comparisonReferenceAssetId: readNonEmptyString(source["comparisonReferenceAssetId"]),
     activePreviewArtifactId: readNonEmptyString(source["activePreviewArtifactId"]),
     activeLiveFindingsStreamId: readNonEmptyString(source["activeLiveFindingsStreamId"]),
     controlsCollapsed: source["controlsCollapsed"] !== false,

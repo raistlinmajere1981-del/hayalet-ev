@@ -134,7 +134,8 @@ export function applyAnalysisScopeField(
     nextScope["timeRange"] === undefined &&
     nextScope["frameRange"] === undefined &&
     nextScope["region"] === undefined &&
-    nextScope["intentIds"] === undefined
+    nextScope["intentIds"] === undefined &&
+    nextScope["comparison"] === undefined
   ) {
     return {
       ...workbench,

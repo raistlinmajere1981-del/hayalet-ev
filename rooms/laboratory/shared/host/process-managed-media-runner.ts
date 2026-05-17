@@ -1,5 +1,6 @@
 import { readBooleanSetting, readStringSetting } from "./settings-readers.js";
 import { createManagedMediaVisualHelpers } from "./process-managed-media-visual-helpers.js";
+import { getLabPathExtension, getLabSourceKindForExtension } from "../lab-asset-kind.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 
@@ -104,6 +105,19 @@ type LaboratoryManagedMediaRunnerDeps = {
     label?: string,
     filterGraph?: string | null
   ) => Promise<unknown>;
+  generateProcessImageComparisonArtifact: (
+    runtime: LaboratoryManagedMediaRuntime,
+    project: LaboratoryManagedMediaProjectRecord,
+    requestId: string,
+    jobId: string,
+    primaryTarget: LaboratoryManagedMediaTargetRecord,
+    referenceTarget: LaboratoryManagedMediaTargetRecord,
+    artifactBase: string,
+    outputDir: string,
+    comparisonKind: "side-by-side" | "difference",
+    label: string,
+    metadata?: LaboratoryRecord
+  ) => Promise<unknown>;
   generateProcessMetadataArtifact: (
     runtime: LaboratoryManagedMediaRuntime,
     project: LaboratoryManagedMediaProjectRecord,
@@ -184,6 +198,7 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
     clampProfileTranscriptSampleSeconds,
     createProcessFinding,
     generateProcessFramePreviewArtifact,
+    generateProcessImageComparisonArtifact,
     generateProcessMetadataArtifact,
     generateProcessSpectrogram,
     generateProcessVisualTransformArtifact,
@@ -256,6 +271,135 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
     return asNonEmptyString(toRecord(project.source)["kind"]) || "video";
   }
 
+  function normalizeSourceKind(value: unknown): "video" | "audio" | "image" | null {
+    const sourceKind = asNonEmptyString(value);
+    return sourceKind === "video" || sourceKind === "audio" || sourceKind === "image"
+      ? sourceKind
+      : null;
+  }
+
+  function getPathLeaf(path: string | null) {
+    if (path === null) {
+      return null;
+    }
+    return path.split(/[\\/]/).pop() || path;
+  }
+
+  function getComparisonTargetPath(target: LaboratoryRecord): string | null {
+    return asNonEmptyString(target["localPath"]) || asNonEmptyString(target["path"]);
+  }
+
+  function getTargetCandidatePath(target: LaboratoryRecord): string | null {
+    return (
+      getComparisonTargetPath(target) ||
+      asNonEmptyString(target["url"]) ||
+      asNonEmptyString(target["fileName"]) ||
+      asNonEmptyString(target["name"])
+    );
+  }
+
+  function getProcessTargetSourceKind(
+    target: LaboratoryRecord
+  ): "video" | "audio" | "image" | null {
+    const metadata = toRecord(target["metadata"]);
+    const metadataKind =
+      normalizeSourceKind(metadata["kind"]) || normalizeSourceKind(metadata["sourceKind"]);
+    if (metadataKind !== null) {
+      return metadataKind;
+    }
+    const directKind = normalizeSourceKind(target["sourceKind"]);
+    if (directKind !== null) {
+      return directKind;
+    }
+    const type = asNonEmptyString(target["type"]);
+    if (type === "audio") {
+      return "audio";
+    }
+    if (type === "frame" || type === "image") {
+      return "image";
+    }
+    return getLabSourceKindForExtension(getLabPathExtension(getTargetCandidatePath(target)));
+  }
+
+  function buildComparisonProcessTarget(
+    scopeTarget: LaboratoryRecord,
+    fallbackTarget: LaboratoryManagedMediaTargetRecord,
+    fallbackLabel: string
+  ): LaboratoryManagedMediaTargetRecord | null {
+    const path = getComparisonTargetPath(scopeTarget) || asNonEmptyString(fallbackTarget.path);
+    if (path === null) {
+      return null;
+    }
+    const label =
+      asNonEmptyString(scopeTarget["label"]) ||
+      asNonEmptyString(scopeTarget["name"]) ||
+      asNonEmptyString(scopeTarget["fileName"]) ||
+      asNonEmptyString(fallbackTarget["label"]) ||
+      fallbackLabel;
+    const fileName =
+      asNonEmptyString(scopeTarget["fileName"]) ||
+      getPathLeaf(path) ||
+      asNonEmptyString(fallbackTarget["fileName"]);
+    return {
+      ...fallbackTarget,
+      fileName,
+      label,
+      metadata: {
+        ...toRecord(fallbackTarget.metadata),
+        ...toRecord(scopeTarget["metadata"]),
+        comparisonTarget: scopeTarget,
+      },
+      mimeType:
+        asNonEmptyString(scopeTarget["mimeType"]) || asNonEmptyString(fallbackTarget["mimeType"]),
+      mode: asNonEmptyString(scopeTarget["mode"]) || asNonEmptyString(fallbackTarget["mode"]),
+      outputId:
+        asNonEmptyString(scopeTarget["assetId"]) || asNonEmptyString(fallbackTarget["outputId"]),
+      path,
+      requestedMode:
+        asNonEmptyString(scopeTarget["requestedMode"]) ||
+        asNonEmptyString(fallbackTarget["requestedMode"]),
+      signature:
+        asNonEmptyString(scopeTarget["signature"]) ||
+        asNonEmptyString(fallbackTarget["signature"]) ||
+        path,
+      sourceKind:
+        getProcessTargetSourceKind(scopeTarget) ||
+        getProcessTargetSourceKind(fallbackTarget) ||
+        "image",
+    };
+  }
+
+  function resolveImageComparisonPair(
+    processRecord: LaboratoryManagedMediaProcessRecord,
+    target: LaboratoryManagedMediaTargetRecord
+  ) {
+    const comparison = toRecord(toRecord(processRecord.analysisScope)["comparison"]);
+    const primaryScope = toRecord(comparison["primary"]);
+    const referenceScope = toRecord(comparison["reference"]);
+    if (
+      getProcessTargetSourceKind(primaryScope) !== "image" ||
+      getProcessTargetSourceKind(referenceScope) !== "image"
+    ) {
+      return null;
+    }
+    const primaryTarget = buildComparisonProcessTarget(primaryScope, target, "A Primary Image");
+    const referenceTarget = buildComparisonProcessTarget(referenceScope, {}, "B Reference Image");
+    if (primaryTarget === null || referenceTarget === null) {
+      return null;
+    }
+    const primaryId =
+      asNonEmptyString(primaryScope["assetId"]) || asNonEmptyString(primaryTarget.path);
+    const referenceId =
+      asNonEmptyString(referenceScope["assetId"]) || asNonEmptyString(referenceTarget.path);
+    return {
+      activeSide: asNonEmptyString(comparison["activeSide"]),
+      comparison,
+      pairId: `${primaryId || "primary"}::${referenceId || "reference"}`,
+      primaryTarget,
+      referenceTarget,
+    };
+  }
+
   function getModuleStatus(
     processRecord: LaboratoryManagedMediaProcessRecord,
     moduleId: string
@@ -308,12 +452,46 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
     const findings: LaboratoryProcessFindingRecord[] = [];
     const artifacts: LaboratoryProcessArtifactRecord[] = [];
     const warnings: string[] = [];
+    const comparisonPair = resolveImageComparisonPair(processRecord, target);
+    const primaryTarget = comparisonPair?.primaryTarget || target;
+    const sourceKind =
+      comparisonPair === null
+        ? getProcessTargetSourceKind(primaryTarget) || getSourceKind(project)
+        : "image";
+
+    if (comparisonPair !== null) {
+      processRecord["targetSummary"] = {
+        ...toRecord(processRecord["targetSummary"]),
+        requestedMode: comparisonPair.primaryTarget["requestedMode"],
+        mode: comparisonPair.primaryTarget["mode"],
+        outputId: comparisonPair.primaryTarget["outputId"],
+        signature: comparisonPair.primaryTarget["signature"],
+        label: comparisonPair.primaryTarget["label"],
+        fileName: comparisonPair.primaryTarget["fileName"],
+        mimeType: comparisonPair.primaryTarget["mimeType"],
+        path: comparisonPair.primaryTarget["path"],
+      };
+      processRecord["comparisonTargetSummary"] = {
+        activeSide: comparisonPair.activeSide,
+        pairId: comparisonPair.pairId,
+        primary: {
+          label: comparisonPair.primaryTarget["label"],
+          fileName: comparisonPair.primaryTarget["fileName"],
+          path: comparisonPair.primaryTarget["path"],
+        },
+        reference: {
+          label: comparisonPair.referenceTarget["label"],
+          fileName: comparisonPair.referenceTarget["fileName"],
+          path: comparisonPair.referenceTarget["path"],
+        },
+      };
+    }
 
     const metadataArtifact = normalizeOptionalArtifact(
       await generateProcessMetadataArtifact(
         runtime,
         project,
-        target,
+        primaryTarget,
         artifactBase,
         outputDir,
         "intake"
@@ -322,12 +500,35 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
     if (metadataArtifact !== null) {
       artifacts.push(metadataArtifact);
     }
+    const referenceMetadataArtifact =
+      comparisonPair === null
+        ? null
+        : normalizeOptionalArtifact(
+            await generateProcessMetadataArtifact(
+              runtime,
+              project,
+              comparisonPair.referenceTarget,
+              `${artifactBase}-reference`,
+              outputDir,
+              "intake"
+            )
+          );
+    if (referenceMetadataArtifact !== null) {
+      artifacts.push(referenceMetadataArtifact);
+    }
 
     updateProcessModule(processRecord, "intake", {
       status: "ready",
       completedAt: new Date().toISOString(),
-      summary: "The active target was pinned and its metadata snapshot was saved.",
-      artifactIds: metadataArtifact ? [String(metadataArtifact.id || "")] : [],
+      summary:
+        comparisonPair === null
+          ? "The active target was pinned and its metadata snapshot was saved."
+          : "The A/B image targets were pinned and their metadata snapshots were saved.",
+      artifactIds: [metadataArtifact, referenceMetadataArtifact]
+        .filter((entry): entry is LaboratoryProcessArtifactRecord => entry !== null)
+        .map(function (entry) {
+          return String(entry.id || "");
+        }),
     });
     if (metadataArtifact) {
       emitRuntimeUpdate?.({
@@ -359,7 +560,6 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
     });
 
     if (getModuleStatus(processRecord, "motion") === "queued") {
-      const sourceKind = getSourceKind(project);
       const enabledVisualModuleIds = resolveEnabledVisualAnalysisModuleIds(
         runtime,
         project,
@@ -384,7 +584,12 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
         getAnalysisModuleSettings(processRecord, structureModuleIds[0] || "frame-consistency");
       const previewScopeFilter =
         readBooleanSetting(previewStructureSettings, "roiOnly", false) === true
-          ? getScopeCropFilter(processRecord)
+          ? getScopeCropFilter(processRecord, comparisonPair === null ? undefined : "primary")
+          : null;
+      const referencePreviewScopeFilter =
+        comparisonPair !== null &&
+        readBooleanSetting(previewStructureSettings, "roiOnly", false) === true
+          ? getScopeCropFilter(processRecord, "reference")
           : null;
 
       updateProcessModule(processRecord, "motion", {
@@ -413,30 +618,60 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
           project,
           requestId,
           jobId,
-          target,
+          primaryTarget,
           `${artifactBase}-motion`,
           outputDir,
           "motion",
           getSamplingWindowSeconds(previewStructureSettings),
           getSamplingTileCount(previewStructureSettings),
-          sourceKind === "image" ? "Visual Reference Frame" : "Structure Frame Preview",
+          sourceKind === "image"
+            ? comparisonPair === null
+              ? "Visual Reference Frame"
+              : "A Visual Reference Frame"
+            : "Structure Frame Preview",
           previewScopeFilter
         )
       );
       if (framePreview !== null) {
         artifacts.push(framePreview);
       }
+      const referenceFramePreview =
+        comparisonPair === null
+          ? null
+          : normalizeOptionalArtifact(
+              await generateProcessFramePreviewArtifact(
+                runtime,
+                project,
+                requestId,
+                jobId,
+                comparisonPair.referenceTarget,
+                `${artifactBase}-reference-motion`,
+                outputDir,
+                "motion",
+                getSamplingWindowSeconds(previewStructureSettings),
+                getSamplingTileCount(previewStructureSettings),
+                "B Visual Reference Frame",
+                referencePreviewScopeFilter
+              )
+            );
+      if (referenceFramePreview !== null) {
+        artifacts.push(referenceFramePreview);
+      }
 
       const videoProbe =
         sourceKind === "video"
           ? toVideoProbeRecord(
-              await runVideoStructureProbe(runtime, project, requestId, jobId, target)
+              await runVideoStructureProbe(runtime, project, requestId, jobId, primaryTarget)
             )
           : toVideoProbeRecord({});
       const freezeCount = getProbeCount(videoProbe.freeze);
       const blackCount = getProbeCount(videoProbe.black);
       const structureArtifactIds =
         framePreview && typeof framePreview.id === "string" ? [framePreview.id] : [];
+      const referenceStructureArtifactIds =
+        referenceFramePreview && typeof referenceFramePreview.id === "string"
+          ? [referenceFramePreview.id]
+          : [];
       structureModuleIds.forEach(function (visualModuleId) {
         const moduleSettings = getAnalysisModuleSettings(processRecord, visualModuleId);
         const descriptor = buildVisualFindingDetail(
@@ -462,14 +697,51 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
             ),
             settingsUsed: {
               ...moduleSettings,
+              sourceSide: comparisonPair === null ? "single" : "primary",
               roiOnly: readBooleanSetting(moduleSettings, "roiOnly", false),
               sampleWindowSeconds: getSamplingWindowSeconds(moduleSettings),
               tileCount: getSamplingTileCount(moduleSettings),
             },
-            title: descriptor.title,
+            title: comparisonPair === null ? descriptor.title : `A: ${descriptor.title}`,
           })
         );
       });
+      if (comparisonPair !== null) {
+        structureModuleIds.forEach(function (visualModuleId) {
+          const moduleSettings = getAnalysisModuleSettings(processRecord, visualModuleId);
+          const descriptor = buildVisualFindingDetail(
+            visualModuleId,
+            freezeCount,
+            blackCount,
+            sourceKind
+          );
+          findings.push(
+            createMediaFinding(processRecord, "motion", visualModuleId, {
+              artifactIds: referenceStructureArtifactIds,
+              detail: `B reference image: ${descriptor.detail} Sampling used ${readStringSetting(
+                moduleSettings,
+                "samplingDensity",
+                "balanced"
+              )} density with a ${String(getSamplingTileCount(moduleSettings))}-tile preview.`,
+              evidenceCount:
+                descriptor.level === "medium" ? Math.max(1, freezeCount + blackCount) : 1,
+              level: getSensitivityAdjustedLevel(
+                descriptor.level,
+                moduleSettings,
+                freezeCount + blackCount
+              ),
+              settingsUsed: {
+                ...moduleSettings,
+                sourceSide: "reference",
+                roiOnly: readBooleanSetting(moduleSettings, "roiOnly", false),
+                sampleWindowSeconds: getSamplingWindowSeconds(moduleSettings),
+                tileCount: getSamplingTileCount(moduleSettings),
+              },
+              title: `B: ${descriptor.title}`,
+            })
+          );
+        });
+      }
       const motionFindings = findings.filter(function (entry) {
         return asNonEmptyString(entry.moduleId) === "motion";
       });
@@ -559,7 +831,6 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
     }
 
     if (getModuleStatus(processRecord, "visual-signal") === "queued") {
-      const sourceKind = getSourceKind(project);
       const enabledVisualModuleIds = resolveEnabledVisualAnalysisModuleIds(
         runtime,
         project,
@@ -593,6 +864,7 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
       });
 
       const revealArtifacts: LaboratoryProcessArtifactRecord[] = [];
+      const referenceRevealArtifacts: LaboratoryProcessArtifactRecord[] = [];
       await revealModuleIds.reduce<Promise<void>>(async (previous, visualModuleId) => {
         await previous;
         if (!visualModuleId) {
@@ -603,7 +875,8 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
         const filterGraph = applyRoiScopeFilter(
           processRecord,
           moduleSettings,
-          filterConfig.filterGraph
+          filterConfig.filterGraph,
+          comparisonPair === null ? undefined : "primary"
         );
         const transformArtifact = normalizeOptionalArtifact(
           await generateProcessVisualTransformArtifact(
@@ -611,14 +884,16 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
             project,
             requestId,
             jobId,
-            target,
+            primaryTarget,
             `${artifactBase}-${visualModuleId}`,
             outputDir,
             "visual-signal",
             filterGraph,
-            filterConfig.label,
+            comparisonPair === null ? filterConfig.label : `A ${filterConfig.label}`,
             {
+              comparisonPairId: comparisonPair?.pairId || null,
               scopeReference: getScopeReference(processRecord),
+              sourceSide: comparisonPair === null ? "single" : "primary",
               sourceModule: visualModuleId,
               sourceKind,
               settingsUsed: moduleSettings,
@@ -630,12 +905,56 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
           artifacts.push(transformArtifact);
         }
       }, Promise.resolve());
+      if (comparisonPair !== null) {
+        await revealModuleIds.reduce<Promise<void>>(async (previous, visualModuleId) => {
+          await previous;
+          if (!visualModuleId) {
+            return;
+          }
+          const moduleSettings = getAnalysisModuleSettings(processRecord, visualModuleId);
+          const filterConfig = getRevealFilterConfig(visualModuleId, moduleSettings);
+          const filterGraph = applyRoiScopeFilter(
+            processRecord,
+            moduleSettings,
+            filterConfig.filterGraph,
+            "reference"
+          );
+          const transformArtifact = normalizeOptionalArtifact(
+            await generateProcessVisualTransformArtifact(
+              runtime,
+              project,
+              requestId,
+              jobId,
+              comparisonPair.referenceTarget,
+              `${artifactBase}-reference-${visualModuleId}`,
+              outputDir,
+              "visual-signal",
+              filterGraph,
+              `B ${filterConfig.label}`,
+              {
+                comparisonPairId: comparisonPair.pairId,
+                scopeReference: getScopeReference(processRecord),
+                sourceSide: "reference",
+                sourceModule: visualModuleId,
+                sourceKind,
+                settingsUsed: moduleSettings,
+              }
+            )
+          );
+          if (transformArtifact !== null) {
+            referenceRevealArtifacts.push(transformArtifact);
+            artifacts.push(transformArtifact);
+          }
+        }, Promise.resolve());
+      }
 
       const comparisonVariants: LaboratoryRecord[] = [];
       revealModuleIds.forEach(function (visualModuleId, index) {
         const moduleSettings = getAnalysisModuleSettings(processRecord, visualModuleId);
         const filterConfig = getRevealFilterConfig(visualModuleId, moduleSettings);
         const transformArtifact = revealArtifacts[index] || revealArtifacts[0] || null;
+        const referenceTransformArtifact =
+          referenceRevealArtifacts[index] || referenceRevealArtifacts[0] || null;
         const artifactIds =
           transformArtifact && typeof transformArtifact.id === "string"
             ? [transformArtifact.id]
@@ -645,34 +964,82 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
           moduleId: "visual-signal",
           sourceModule: visualModuleId,
           label: filterConfig.label,
+          sourceSide: comparisonPair === null ? "single" : "primary",
           settingsUsed: moduleSettings,
           artifactId: transformArtifact ? asNonEmptyString(transformArtifact.id) : null,
           artifactPath: transformArtifact ? asNonEmptyString(transformArtifact.path) : null,
           active: index === 0,
         };
         comparisonVariants.push(comparisonVariant);
+        if (comparisonPair !== null) {
+          comparisonVariants.push({
+            id: `visual-variant-reference-${visualModuleId}`,
+            moduleId: "visual-signal",
+            sourceModule: visualModuleId,
+            label: `B ${filterConfig.label}`,
+            sourceSide: "reference",
+            settingsUsed: moduleSettings,
+            artifactId: referenceTransformArtifact
+              ? asNonEmptyString(referenceTransformArtifact.id)
+              : null,
+            artifactPath: referenceTransformArtifact
+              ? asNonEmptyString(referenceTransformArtifact.path)
+              : null,
+            active: false,
+          });
+        }
         findings.push(
           createMediaFinding(processRecord, "visual-signal", visualModuleId, {
             artifactIds,
-            detail: `${filterConfig.label} generated a reveal-oriented preview variant for the selected scope.`,
-            title: `${filterConfig.label} variant generated`,
+            detail:
+              comparisonPair === null
+                ? `${filterConfig.label} generated a reveal-oriented preview variant for the selected scope.`
+                : `A image: ${filterConfig.label} generated a reveal-oriented preview variant for the selected comparison scope.`,
+            settingsUsed: {
+              ...moduleSettings,
+              sourceSide: comparisonPair === null ? "single" : "primary",
+            },
+            title:
+              comparisonPair === null
+                ? `${filterConfig.label} variant generated`
+                : `A: ${filterConfig.label} variant generated`,
           })
         );
+        if (comparisonPair !== null) {
+          const referenceArtifactIds =
+            referenceTransformArtifact && typeof referenceTransformArtifact.id === "string"
+              ? [referenceTransformArtifact.id]
+              : [];
+          findings.push(
+            createMediaFinding(processRecord, "visual-signal", visualModuleId, {
+              artifactIds: referenceArtifactIds,
+              detail: `B reference image: ${filterConfig.label} generated a reveal-oriented preview variant for the selected comparison scope.`,
+              settingsUsed: {
+                ...moduleSettings,
+                sourceSide: "reference",
+              },
+              title: `B: ${filterConfig.label} variant generated`,
+            })
+          );
+        }
       });
 
-      if (comparisonVariants.length > 0) {
+      const visualComparisonVariants = comparisonVariants.filter(function (entry) {
+        return asNonEmptyString(entry["moduleId"]) === "visual-signal";
+      });
+      if (visualComparisonVariants.length > 0) {
         emitRuntimeUpdate?.({
           kind: "module-artifact",
           moduleId: "visual-signal",
           message: "visual signal comparison variants ready",
           detail:
-            comparisonVariants.length > 1
-              ? `${comparisonVariants.length} reveal variants were batched for the current scope.`
-              : asNonEmptyString(comparisonVariants[0]?.["label"]) ||
+            visualComparisonVariants.length > 1
+              ? `${visualComparisonVariants.length} reveal variants were batched for the current scope.`
+              : asNonEmptyString(visualComparisonVariants[0]?.["label"]) ||
                 "Visual comparison variant ready",
           artifact: revealArtifacts[0] || undefined,
-          comparisonVariant: comparisonVariants[0] || undefined,
-          comparisonVariants,
+          comparisonVariant: visualComparisonVariants[0] || undefined,
+          comparisonVariants: visualComparisonVariants,
           throttleWindow: "visual-signal-module-batch",
         });
       }
@@ -772,6 +1139,115 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
               : "Visual signal amplification checks finished for the active target.",
         },
         throttleWindow: "visual-signal-module-batch",
+      });
+    }
+
+    if (
+      comparisonPair !== null &&
+      getModuleStatus(processRecord, "image-comparison") === "queued"
+    ) {
+      updateProcessModule(processRecord, "image-comparison", {
+        status: "running",
+        startedAt: new Date().toISOString(),
+      });
+      const sideBySideArtifact = normalizeOptionalArtifact(
+        await generateProcessImageComparisonArtifact(
+          runtime,
+          project,
+          requestId,
+          jobId,
+          comparisonPair.primaryTarget,
+          comparisonPair.referenceTarget,
+          `${artifactBase}-ab`,
+          outputDir,
+          "side-by-side",
+          "A/B Side-by-side Comparison",
+          {
+            comparisonPairId: comparisonPair.pairId,
+            scopeReference: getScopeReference(processRecord),
+            sourceSide: "comparison",
+          }
+        )
+      );
+      const differenceArtifact = normalizeOptionalArtifact(
+        await generateProcessImageComparisonArtifact(
+          runtime,
+          project,
+          requestId,
+          jobId,
+          comparisonPair.primaryTarget,
+          comparisonPair.referenceTarget,
+          `${artifactBase}-ab`,
+          outputDir,
+          "difference",
+          "A/B Difference Map",
+          {
+            comparisonPairId: comparisonPair.pairId,
+            scopeReference: getScopeReference(processRecord),
+            sourceSide: "comparison",
+          }
+        )
+      );
+      const imageComparisonArtifacts = [sideBySideArtifact, differenceArtifact].filter(
+        (entry): entry is LaboratoryProcessArtifactRecord => entry !== null
+      );
+      const imageComparisonVariants: LaboratoryRecord[] = [];
+      imageComparisonArtifacts.forEach(function (artifact) {
+        artifacts.push(artifact);
+        imageComparisonVariants.push({
+          id: `image-comparison-${asNonEmptyString(artifact["kind"]) || "artifact"}`,
+          moduleId: "image-comparison",
+          sourceModule: "image-comparison",
+          label: asNonEmptyString(artifact.label) || "A/B Comparison",
+          sourceSide: "comparison",
+          artifactId: asNonEmptyString(artifact.id),
+          artifactPath: asNonEmptyString(artifact.path),
+          active: false,
+        });
+      });
+      const comparisonArtifactIds = imageComparisonArtifacts
+        .map(function (artifact) {
+          return asNonEmptyString(artifact.id);
+        })
+        .filter((entry): entry is string => entry !== null);
+      findings.push(
+        createMediaFinding(processRecord, "image-comparison", "image-comparison", {
+          artifactIds: comparisonArtifactIds,
+          confidence: "medium",
+          detail:
+            "A/B comparison artifacts were generated so the report can distinguish per-image findings from pairwise visual deltas.",
+          evidenceCount: Math.max(1, comparisonArtifactIds.length),
+          level: "low",
+          settingsUsed: {
+            sourceSide: "comparison",
+            viewMode: asNonEmptyString(comparisonPair.comparison["viewMode"]),
+          },
+          title: "A/B comparison layer generated",
+        })
+      );
+      updateProcessModule(processRecord, "image-comparison", {
+        status: "ready",
+        completedAt: new Date().toISOString(),
+        summary: "A/B side-by-side and difference-map artifacts were generated.",
+        artifactIds: collectArtifactIdsForModule(artifacts, "image-comparison"),
+      });
+      emitRuntimeUpdate?.({
+        kind: "module-artifact",
+        moduleId: "image-comparison",
+        message: "image comparison artifacts ready",
+        detail: "A/B side-by-side and difference-map artifacts were generated.",
+        artifact: sideBySideArtifact || differenceArtifact || undefined,
+        comparisonVariants: imageComparisonVariants,
+        moduleTrace: {
+          id: `image-comparison-${Date.now()}`,
+          moduleId: "image-comparison",
+          stage: "process",
+          status: "ready",
+          timestamp: new Date().toISOString(),
+          message: "image comparison artifacts ready",
+          detail: "A/B side-by-side and difference-map artifacts were generated.",
+        },
+        throttleWindow: "image-comparison-module-batch",
       });
     }
 

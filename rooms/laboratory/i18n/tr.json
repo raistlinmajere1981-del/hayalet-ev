@@ -227,7 +227,8 @@
       "navLabel": "Mod gostergeleri",
       "toolMgmt": "Arac Yonetimi",
       "drawerExpand": "Paneli ac",
-      "drawerCollapse": "Paneli kapat"
+      "drawerCollapse": "Paneli kapat",
+      "closeRoom": "Ana sayfaya dön"
     },
     "sourcePanel": {
       "title": "Kaynaklar",
@@ -1656,6 +1657,7 @@
         "cleanup": "Frame Temizligi",
         "motion": "Hareket Analizi",
         "visualSignal": "Gorsel Sinyal Guclendirme",
+        "imageComparison": "Gorsel Karsilastirma",
         "audio": "Ses Taramasi",
         "report": "Rapor Sentezi"
       }

@@ -7,6 +7,7 @@ import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import { createAudioAnalysisLocalProcessRunners } from "../../rooms/laboratory/main-functions/audio-analysis/host/process-local-runners.ts";
 import { createLaboratoryManagedAudioRunnerRuntime } from "../../rooms/laboratory/shared/host/process-managed-audio-runner.ts";
 import { createLaboratoryManagedMediaRunnerRuntime } from "../../rooms/laboratory/shared/host/process-managed-media-runner.ts";
+import { createLaboratoryProcessTargetingRuntime } from "../../rooms/laboratory/shared/host/process-targeting.ts";
 
 class FakeSettingsDocument {
   private listenerSets = new Map<string, Set<(event: Event) => void>>();
@@ -358,6 +359,9 @@ test("laboratory visual settings alter managed process filters and ROI scope", a
         path: "/tmp/motion-preview.png",
       };
     },
+    async generateProcessImageComparisonArtifact() {
+      return null;
+    },
     async generateProcessMetadataArtifact() {
       return null;
     },
@@ -466,6 +470,306 @@ test("laboratory visual settings alter managed process filters and ROI scope", a
   });
   assert.match(String(gammaCall?.["filterGraph"] || ""), /eq=gamma=2.5/);
   assert.match(String(edgeCall?.["filterGraph"] || ""), /^crop=100:80:10:20,/);
+});
+
+test("laboratory managed media runner emits A/B image comparison analysis layers", async () => {
+  const transformCalls: Array<Record<string, unknown>> = [];
+  const comparisonCalls: Array<Record<string, unknown>> = [];
+  const runtime = createLaboratoryManagedMediaRunnerRuntime({
+    asNonEmptyString(value) {
+      return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+    },
+    buildProcessSpeechAvailability() {
+      return {};
+    },
+    clampProfileTranscriptSampleSeconds() {
+      return 30;
+    },
+    createProcessFinding(
+      moduleId,
+      kind,
+      level,
+      confidence,
+      title,
+      detail,
+      evidenceCount,
+      artifactIds
+    ) {
+      return { moduleId, kind, level, confidence, title, detail, evidenceCount, artifactIds };
+    },
+    async generateProcessFramePreviewArtifact() {
+      return null;
+    },
+    async generateProcessImageComparisonArtifact(
+      _runtime,
+      _project,
+      _requestId,
+      _jobId,
+      primaryTarget,
+      referenceTarget,
+      _artifactBase,
+      _outputDir,
+      comparisonKind,
+      label,
+      metadata
+    ) {
+      comparisonCalls.push({
+        comparisonKind,
+        label,
+        metadata,
+        primaryPath: asRecord(primaryTarget)["path"],
+        referencePath: asRecord(referenceTarget)["path"],
+      });
+      return {
+        id: `comparison-${comparisonKind}`,
+        kind: `comparison-${comparisonKind}`,
+        label,
+        moduleId: "image-comparison",
+        path: `/tmp/comparison-${comparisonKind}.png`,
+      };
+    },
+    async generateProcessMetadataArtifact() {
+      return null;
+    },
+    async generateProcessSpectrogram() {
+      return null;
+    },
+    async generateProcessVisualTransformArtifact(
+      _runtime,
+      _project,
+      _requestId,
+      _jobId,
+      target,
+      _artifactBase,
+      _outputDir,
+      moduleId,
+      filterGraph,
+      label,
+      metadata
+    ) {
+      transformCalls.push({
+        filterGraph,
+        label,
+        metadata,
+        moduleId,
+        targetPath: asRecord(target)["path"],
+      });
+      return {
+        id: `${String(asRecord(metadata)["sourceSide"])}-${String(
+          asRecord(metadata)["sourceModule"]
+        )}-artifact`,
+        label,
+        moduleId,
+        path: `/tmp/${String(asRecord(metadata)["sourceSide"])}.png`,
+      };
+    },
+    async maybeRunWhisperProfileSample() {
+      return null;
+    },
+    normalizeProcessArtifact(value) {
+      return asRecord(value);
+    },
+    normalizeProcessFinding(value) {
+      return asRecord(value);
+    },
+    partitionVisualAnalysisModuleIds() {
+      return {
+        reveal: ["gamma-scan"],
+        structure: [],
+      };
+    },
+    resolveEnabledVisualAnalysisModuleIds() {
+      return ["gamma-scan"];
+    },
+    async runAudioStructureProbe() {
+      return {};
+    },
+    async runVideoStructureProbe() {
+      return {};
+    },
+    toRecord: asRecord,
+    updateProcessModule,
+  });
+
+  const processRecord: Record<string, unknown> = {
+    analysisScope: {
+      comparison: {
+        activeSide: "reference",
+        primary: {
+          assetId: "asset-a",
+          label: "A image",
+          localPath: "/tmp/a.png",
+          sourceKind: "image",
+        },
+        reference: {
+          assetId: "asset-b",
+          label: "B image",
+          localPath: "/tmp/b.png",
+          sourceKind: "image",
+        },
+        rois: {
+          activeSide: "reference",
+          primary: { x: 10, y: 20, width: 100, height: 80 },
+          reference: { x: 5, y: 6, width: 70, height: 60 },
+        },
+        viewMode: "difference",
+      },
+    },
+    analysisSettings: {
+      modules: {
+        "gamma-scan": {
+          gammaMax: 2,
+          gammaMin: 0.5,
+          revealStrength: 1,
+          roiOnly: true,
+        },
+      },
+    },
+    modules: [
+      { id: "visual-signal", status: "queued" },
+      { id: "image-comparison", status: "queued" },
+    ],
+  };
+
+  const result = await runtime.runMediaManagedProcess(
+    {},
+    { source: { kind: "video" } },
+    "req-ab",
+    "job-ab",
+    { path: "/tmp/fallback-a.png", label: "Fallback A" },
+    "artifact",
+    "/tmp",
+    processRecord
+  );
+
+  assert.equal(transformCalls.length, 2);
+  assert.equal(transformCalls[0]?.["targetPath"], "/tmp/a.png");
+  assert.equal(transformCalls[1]?.["targetPath"], "/tmp/b.png");
+  assert.match(String(transformCalls[0]?.["filterGraph"] || ""), /^crop=100:80:10:20,/);
+  assert.match(String(transformCalls[1]?.["filterGraph"] || ""), /^crop=70:60:5:6,/);
+  assert.deepEqual(
+    comparisonCalls.map(function (entry) {
+      return entry["comparisonKind"];
+    }),
+    ["side-by-side", "difference"]
+  );
+  assert.equal(comparisonCalls[0]?.["primaryPath"], "/tmp/a.png");
+  assert.equal(comparisonCalls[0]?.["referencePath"], "/tmp/b.png");
+  assert.ok(
+    result.artifacts.some(function (artifact) {
+      return artifact.moduleId === "image-comparison";
+    })
+  );
+  assert.ok(
+    result.findings.some(function (finding) {
+      return finding.moduleId === "image-comparison";
+    })
+  );
+});
+
+test("laboratory process targeting uses selected image assets for single and comparison analysis", () => {
+  const runtime = createLaboratoryProcessTargetingRuntime({
+    audioFeatureId: "audio-analysis",
+    asNonEmptyString(value) {
+      return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+    },
+    buildProfileModelSummary() {
+      return [];
+    },
+    getVisualAnalysisCapabilityState() {
+      return {};
+    },
+    getVisualAnalysisModulesForRuntime() {
+      return [];
+    },
+    getVisualAnalysisProviderState() {
+      return {
+        ffmpeg: {
+          ready: true,
+        },
+      };
+    },
+    normalizeProcessModule(value) {
+      return asRecord(value);
+    },
+    partitionVisualAnalysisModuleIds() {
+      return {
+        reveal: [],
+        structure: [],
+      };
+    },
+    resolveAudioFeatureTarget() {
+      return {};
+    },
+    resolveEnabledVisualAnalysisModuleIds() {
+      return [];
+    },
+    resolveProfileTarget() {
+      return {
+        label: "Video source",
+        path: "/tmp/source.mp4",
+        sourceKind: "video",
+      };
+    },
+    toRecord: asRecord,
+  });
+
+  const project: Record<string, unknown> = {
+    source: {
+      kind: "video",
+    },
+    workbench: {
+      workspaceTargetAssetId: "asset-frame",
+      analysisScope: {
+        comparison: {
+          primary: {
+            assetId: "asset-frame",
+            localPath: "/tmp/frame-a.png",
+            sourceKind: "image",
+          },
+          reference: {
+            assetId: "asset-reference",
+            localPath: "/tmp/frame-b.png",
+            sourceKind: "image",
+          },
+        },
+      },
+    },
+    assets: [
+      {
+        id: "asset-frame",
+        type: "image",
+        name: "frame-a.png",
+        localPath: "/tmp/frame-a.png",
+        createdAt: 1,
+        metadata: {
+          kind: "image",
+        },
+      },
+      {
+        id: "asset-reference",
+        type: "image",
+        name: "frame-b.png",
+        localPath: "/tmp/frame-b.png",
+        createdAt: 2,
+        metadata: {
+          kind: "image",
+        },
+      },
+    ],
+  };
+
+  const target = runtime.resolveProcessTarget(project, "media-analysis");
+  assert.equal(target["path"], "/tmp/frame-a.png");
+  assert.equal(target["sourceKind"], "image");
+
+  const modules = runtime.buildMediaProcessModules({}, project, target);
+  assert.equal(
+    modules.some(function (entry) {
+      return entry["id"] === "image-comparison" && entry["status"] === "queued";
+    }),
+    true
+  );
 });
 
 test("laboratory audio settings drive local analyzers and frozen process snapshots", async () => {
