@@ -338,6 +338,10 @@ export function createLabFormActionController(deps: LabFormActionControllerDeps)
         deps.updateAnalysisScopeField(field.replace("scope.", ""), targetValue);
         return;
       case "project.id":
+        if (deps.isWorkspaceMutationLocked("source")) {
+          deps.pushLockedWorkspaceEvent("Kaynak ayarları aktif analiz sırasında kilitli.");
+          return;
+        }
         deps.selectProjectByValue(String(targetValue || ""));
         return;
       case "project-import.urlInput":

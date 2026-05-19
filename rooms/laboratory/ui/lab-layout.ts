@@ -11,6 +11,7 @@ import { renderLaboratoryLayout } from "./laboratory-layout.js";
 import {
   getDrawerCollapsed,
   getWorkspaceMode,
+  isRunActive,
   resolveDrawerMode,
 } from "../runtime/lab-selectors.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
@@ -71,6 +72,7 @@ export function renderLabLayout(
   const layoutKind = getLabLayoutKind(state, { bootOverlayActive });
 
   const sourcePanelCollapsed = state.ui.sourcePanelCollapsed === true;
+  const processViewActive = state.ui.workspace.processViewActive === true || isRunActive(state);
 
   return `
     ${renderLaboratoryLayout({
@@ -80,7 +82,7 @@ export function renderLabLayout(
       leftRail: renderLabSourcePanel(state, copy),
       mainStage: renderLabCenterPanel(surface),
       processStrip: renderLabProcessStrip(state, copy),
-      shellAttributes: `data-layout-kind="${layoutKind}" data-ready="${bootOverlayActive ? "false" : "true"}" data-workspace-mode="${getWorkspaceMode(state)}" data-lab-mode="${state.ui.labMode}" data-drawer-mode="${drawerMode}" data-drawer-collapsed="${drawerCollapsed ? "true" : "false"}" data-source-panel-collapsed="${sourcePanelCollapsed ? "true" : "false"}" data-process-view="${state.ui.workspace.processViewActive ? "expanded" : "compact"}"`,
+      shellAttributes: `data-layout-kind="${layoutKind}" data-ready="${bootOverlayActive ? "false" : "true"}" data-workspace-mode="${getWorkspaceMode(state)}" data-lab-mode="${state.ui.labMode}" data-drawer-mode="${drawerMode}" data-drawer-collapsed="${drawerCollapsed ? "true" : "false"}" data-source-panel-collapsed="${sourcePanelCollapsed ? "true" : "false"}" data-process-view="${processViewActive ? "expanded" : "compact"}"`,
       topBar: renderLabTopBar(state, copy),
     })}
     ${renderToolManagementOverlay(state, copy)}

@@ -177,8 +177,8 @@ function renderRawLogRows(state: LabStoreState, copy: LabI18n) {
   </ul>`;
 }
 
-function renderExpandedStrip(state: LabStoreState, copy: LabI18n) {
-  if (state.ui.workspace.processViewActive !== true) {
+function renderExpandedStrip(state: LabStoreState, copy: LabI18n, forcedOpen: boolean) {
+  if (forcedOpen !== true && state.ui.workspace.processViewActive !== true) {
     return "";
   }
 
@@ -390,11 +390,12 @@ export function renderLabProcessStrip(state: LabStoreState, copy: LabI18n = LAB_
   const retryMarkup = runFailed
     ? `<button class="labx-strip-retry" type="button" data-lab-action="run-deep-analysis">${escapeHtml(copy.t("mediaAnalysis.strip.retry", "Tekrar Dene"))}</button>`
     : "";
-  const processViewActive = state.ui.workspace.processViewActive === true;
+  const processViewForced = runActive;
+  const processViewActive = processViewForced || state.ui.workspace.processViewActive === true;
   const toggleLabel = processViewActive
     ? copy.t("mediaAnalysis.strip.hideDetails", "Detayları Gizle")
     : copy.t("mediaAnalysis.strip.showDetails", "Detayları Göster");
-  const toggleMarkup = `<button class="labx-strip-detail-toggle" type="button" data-lab-action="workspace-process-view-toggled" aria-expanded="${processViewActive ? "true" : "false"}">${escapeHtml(toggleLabel)}</button>`;
+  const toggleMarkup = `<button class="labx-strip-detail-toggle" type="button" data-lab-action="workspace-process-view-toggled" aria-expanded="${processViewActive ? "true" : "false"}"${processViewForced ? ' disabled aria-disabled="true"' : ""}>${escapeHtml(toggleLabel)}</button>`;
 
   return `
     <footer
@@ -402,6 +403,7 @@ export function renderLabProcessStrip(state: LabStoreState, copy: LabI18n = LAB_
       data-lab-region="process-strip"
       data-strip-state="${escapeHtml(stripState)}"
       data-process-view="${processViewActive ? "expanded" : "compact"}"
+      data-process-view-forced="${processViewForced ? "true" : "false"}"
       aria-label="${escapeHtml(copy.t("mediaAnalysis.strip.ariaLabel", "Process state"))}"
     >
       <div class="labx-strip-main">
@@ -418,7 +420,7 @@ export function renderLabProcessStrip(state: LabStoreState, copy: LabI18n = LAB_
           ${toggleMarkup}
         </div>
       </div>
-      ${renderExpandedStrip(state, copy)}
+      ${renderExpandedStrip(state, copy, processViewForced)}
     </footer>
   `;
 }

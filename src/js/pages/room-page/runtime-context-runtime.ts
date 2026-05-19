@@ -1,4 +1,5 @@
 import type { InstalledRoomFeatureRecord, InstalledRoomRecord } from "@shared/index.js";
+import { RoomHostRuntime } from "../../modules/rooms/room-host-runtime.js";
 import { buildRoomRuntimeContextPayload, type RoomHostMessage } from "./runtime-context.js";
 import { sendRoomHostContext, syncRoomRuntimeContext } from "./runtime-sync.js";
 import type { RoomWebviewElement } from "./runtime-messaging.js";
@@ -34,11 +35,13 @@ export function createRoomPageRuntimeContextRuntime(
   }
 
   function sendHostContext(webview: RoomWebviewElement, reason: string): void {
+    const payload = buildPayload(reason);
     sendRoomHostContext({
-      payload: buildPayload(reason),
+      payload,
       pendingHostMessages: deps.pendingHostMessages,
       webview,
     });
+    void RoomHostRuntime.handleRuntimeMessage(deps.getRoom().id, "room-event", payload);
   }
 
   async function sync(reason: string): Promise<void> {

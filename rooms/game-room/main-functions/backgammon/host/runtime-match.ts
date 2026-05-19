@@ -6,11 +6,13 @@ import {
   loadState,
   prepareTurn,
   pushRoomState,
+  resolveLegalMoveIdForMoveSteps,
   resolveStatusText,
   saveState,
 } from "./state.js";
 import type { BackgammonGameState } from "./state-core.js";
 import {
+  readArgs,
   readBoardHashBeforeMove,
   readInviteId,
   readLegalMoveId,
@@ -83,6 +85,7 @@ async function sendBridgeMessageSafe(
   const result = await api.dispatchBridge({
     action: "message.send",
     toSlot: options.provider,
+    connectPolicy: "ensure",
     payload: {
       text: options.text,
       page: options.page,
@@ -100,6 +103,10 @@ export function resolveStateMatchId(state: BackgammonGameState): string | null {
 
 export function isBlocked(state: BackgammonGameState): boolean {
   return state.result === "blocked" || state.blockedReason !== "";
+}
+
+function canDispatchToOpponent(state: BackgammonGameState, opponent: GameRoomSlotState): boolean {
+  return state.target === "us1" ? opponent.dispatchable === true : opponent.assigned === true;
 }
 
 export function blockMatch(
@@ -125,7 +132,7 @@ export async function sendAiTurnUpdate(
   const context = loadContext(api) as GameRoomContextState;
   const opponent = readOpponentInfo(context, state);
 
-  if (opponent.dispatchable !== true) {
+  if (canDispatchToOpponent(state, opponent) !== true) {
     blockMatch(api, state, "blockedOpponent", "opponent-unavailable");
     return { success: false, message: commandMessage(state.locale, "needReadyOpponent") };
   }
@@ -144,9 +151,10 @@ export async function sendAiTurnUpdate(
             context: {
               featureId: FEATURE_ID,
               starter: state.starter,
-              dice: state.dice,
-              legalMoveIds: state.legalMoves.map((move) => move.id),
-              turnToken: state.turnToken,
+              dice: state.dice.slice(),
+              board: state.board.map((point) => ({ ...point })),
+              bar: { ...state.bar },
+              off: { ...state.off },
             },
           },
         }
@@ -180,7 +188,10 @@ export async function applyOpponentMove(
   const state = loadState(api);
   const locale = state.locale;
   const provider = readProviderValue(payload);
-  const legalMoveId = readLegalMoveId(payload);
+  const args = readArgs(payload);
+  const legalMoveId =
+    readLegalMoveId(payload) ??
+    resolveLegalMoveIdForMoveSteps(state.legalMoves, args["moves"] ?? args["move"]);
   const matchId = readInviteId(payload);
   const turnIndex = readTurnIndex(payload);
   const turnToken = readTurnToken(payload);

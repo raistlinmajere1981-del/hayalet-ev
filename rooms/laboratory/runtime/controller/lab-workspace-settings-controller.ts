@@ -29,6 +29,14 @@ type LabWorkspaceSettingsControllerDeps = {
 };
 
 export function createLabWorkspaceSettingsController(deps: LabWorkspaceSettingsControllerDeps) {
+  function guardRunActiveWorkspaceSettings() {
+    if (isRunActive(deps.store.getState()) !== true) {
+      return false;
+    }
+    deps.pushLockedWorkspaceEvent("Çalışma alanı ayarları aktif analiz sırasında kilitli.");
+    return true;
+  }
+
   function getActiveComparisonSettingsSide(): LabComparisonSide | undefined {
     const state = deps.store.getState();
     return asNonEmptyString(state.ui.workspace.comparisonReferenceAssetId) === null
@@ -72,6 +80,9 @@ export function createLabWorkspaceSettingsController(deps: LabWorkspaceSettingsC
   }
 
   function patchInteractiveSetting(settingKey: string, rawValue: unknown) {
+    if (guardRunActiveWorkspaceSettings()) {
+      return;
+    }
     const comparisonSide = getActiveComparisonSettingsSide();
     deps.dispatch({
       type: "workspace-interactive-updated",
@@ -81,6 +92,9 @@ export function createLabWorkspaceSettingsController(deps: LabWorkspaceSettingsC
   }
 
   function resetInteractiveSettings() {
+    if (guardRunActiveWorkspaceSettings()) {
+      return;
+    }
     const comparisonSide = getActiveComparisonSettingsSide();
     deps.dispatch({
       type: "workspace-interactive-updated",
@@ -90,6 +104,9 @@ export function createLabWorkspaceSettingsController(deps: LabWorkspaceSettingsC
   }
 
   function patchAudioFocusSetting(audioKey: string, rawValue: unknown) {
+    if (guardRunActiveWorkspaceSettings()) {
+      return;
+    }
     if (audioKey.startsWith("eqBands.")) {
       const eqState = deps.store.getState();
       const currentBands = eqState.ui.workspace.audioFocus.eqBands.map(function (band) {
@@ -122,6 +139,9 @@ export function createLabWorkspaceSettingsController(deps: LabWorkspaceSettingsC
   }
 
   function patchWorkspaceSetting(field: string, rawValue: unknown) {
+    if (guardRunActiveWorkspaceSettings()) {
+      return;
+    }
     if (field.startsWith("workspace.interactive.")) {
       patchInteractiveSetting(field.replace("workspace.interactive.", ""), rawValue);
       return;

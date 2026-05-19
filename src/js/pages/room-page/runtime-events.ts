@@ -34,6 +34,12 @@ interface BindRoomRuntimeEventsParams {
 }
 
 type BindRoomRuntimeEventBinderParams = Omit<BindRoomRuntimeEventsParams, "webview">;
+type RoomRuntimeBoundWebview = RoomWebviewElement & {
+  __roomRuntimeBinding?: {
+    dispose: () => void;
+    roomId: string;
+  };
+};
 
 export function updateRoomRuntimeStatus({
   lastRuntimeEvent,
@@ -71,9 +77,11 @@ export function bindRoomRuntimeEvents({
   updateRuntimeStatus,
   webview,
 }: BindRoomRuntimeEventsParams): void {
-  if (webview.dataset["roomRuntimeBound"] === "true") {
+  const boundWebview = webview as RoomRuntimeBoundWebview;
+  if (boundWebview.__roomRuntimeBinding?.roomId === roomId) {
     return;
   }
+  boundWebview.__roomRuntimeBinding?.dispose();
 
   webview.dataset["roomRuntimeBound"] = "true";
 
@@ -84,26 +92,26 @@ export function bindRoomRuntimeEvents({
     }
   };
 
-  webview.addEventListener("did-start-loading", () => {
+  const handleStartLoading = (): void => {
     markRoomRuntimeReady(webview, false);
     setRuntimeState(
       "loading",
       webview.getAttribute("src") ?? toRoomRuntimeFileUrl(runtimeEntryPath)
     );
     syncStatus();
-  });
+  };
 
-  webview.addEventListener("dom-ready", () => {
+  const handleDomReady = (): void => {
     markRoomRuntimeReady(webview, true);
     flushPendingRoomHostMessages(pendingHostMessages, webview);
-  });
+  };
 
-  webview.addEventListener("did-stop-loading", () => {
+  const handleStopLoading = (): void => {
     setRuntimeState("ready", webview.getAttribute("src") ?? toRoomRuntimeFileUrl(runtimeEntryPath));
     syncStatus();
-  });
+  };
 
-  webview.addEventListener("did-fail-load", (event) => {
+  const handleFailLoad = (event: Event): void => {
     const loadEvent = event as RoomLoadErrorEvent;
     if (loadEvent.errorCode === -3) {
       return;
@@ -113,9 +121,9 @@ export function bindRoomRuntimeEvents({
       loadEvent.errorDescription ?? `Runtime load error (${String(loadEvent.errorCode ?? 0)})`
     );
     syncStatus();
-  });
+  };
 
-  webview.addEventListener("ipc-message", (event) => {
+  const handleIpcMessage = (event: Event): void => {
     const ipcEvent = event as RoomIpcMessageEvent;
     if (ipcEvent.channel === "room-close") {
       closeRoom();
@@ -143,7 +151,26 @@ export function bindRoomRuntimeEvents({
       syncStatus();
       void RoomHostRuntime.handleRuntimeMessage(roomId, "room-event", payload);
     }
-  });
+  };
+
+  webview.addEventListener("did-start-loading", handleStartLoading);
+  webview.addEventListener("dom-ready", handleDomReady);
+  webview.addEventListener("did-stop-loading", handleStopLoading);
+  webview.addEventListener("did-fail-load", handleFailLoad);
+  webview.addEventListener("ipc-message", handleIpcMessage);
+
+  boundWebview.__roomRuntimeBinding = {
+    roomId,
+    dispose: (): void => {
+      webview.removeEventListener("did-start-loading", handleStartLoading);
+      webview.removeEventListener("dom-ready", handleDomReady);
+      webview.removeEventListener("did-stop-loading", handleStopLoading);
+      webview.removeEventListener("did-fail-load", handleFailLoad);
+      webview.removeEventListener("ipc-message", handleIpcMessage);
+      delete boundWebview.__roomRuntimeBinding;
+      delete webview.dataset["roomRuntimeBound"];
+    },
+  };
 }
 
 export function createRoomRuntimeEventBinder(

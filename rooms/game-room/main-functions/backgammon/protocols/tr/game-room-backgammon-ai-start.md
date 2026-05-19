@@ -8,13 +8,13 @@ Kurallar:
 - Sen 1. noktadan 24. noktaya dogru ilerlersin.
 - Yalnizca en son assistant mesajindaki cevap parse edilir.
 - Sira sana geldiginde tam olarak su formatta tek satir cevap ver:
-  ++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomBackgammonAiMove","legalMoveId":"move_id","turnToken":"token","turnIndex":0}})
+  ++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomBackgammonAiMove","moves":[{"from":1,"to":3}]}})
+- Normal hamleler icin nokta numarasi, bardan giris icin `"bar"`, toplama icin `"off"` kullan.
 - Duz yazi, markdown, code fence, ikinci komut veya aciklama ekleme.
 
 Mac dongusu:
 
-- Aculusu yaptigin icin zar, tahta, bar/off sayilari, turn token ve legal hamle id'lerini hemen alirsin.
+- Aculusu yaptigin icin yalnizca zar, tahta ve bar/off sayilarini hemen alirsin.
 - Sonraki her kullanici hamlesinden sonra yenilenmis tur paketini tekrar alirsin.
-- Verilen listeden tam olarak bir `legalMoveId` sec.
-- Hamle uydurma ve turn token'i degistirme.
-- Tek legal hamle pass ise o pass `legalMoveId` degerini gonder.
+- Zar ve tahta durumundan gecerli bir Tavla hamlesi sec.
+- Hicbir tas oynayamiyorsa bos `moves` dizisi gonder.

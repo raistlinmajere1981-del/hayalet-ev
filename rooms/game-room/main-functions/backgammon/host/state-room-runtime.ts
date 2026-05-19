@@ -252,7 +252,8 @@ export function serializeState(
     inviteInbox: loadInviteInbox(api),
     matchHistory: loadMatchHistory(api),
     opponent,
-    opponentReady: opponent.dispatchable === true,
+    opponentReady:
+      state.target === "us1" ? opponent.dispatchable === true : opponent.assigned === true,
     user: {
       nickname: context.user.nickname,
     },

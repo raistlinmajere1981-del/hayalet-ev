@@ -20,6 +20,7 @@ export {
   normalizeState,
   mirrorLegalMoveIdForOpponent,
   prepareTurn,
+  resolveLegalMoveIdForMoveSteps,
   rollDice,
   sanitizeStarter,
   sanitizeTarget,

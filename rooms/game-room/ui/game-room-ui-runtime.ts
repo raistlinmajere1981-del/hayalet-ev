@@ -52,6 +52,8 @@
     const getActiveFeatureId = bootstrapRuntime.getActiveFeatureId;
     const getFeatureLabel = bootstrapRuntime.getFeatureLabel;
     let renderQueued = false;
+    let renderInProgress = false;
+    let renderRequestedAfterCurrent = false;
     const stateMessageRuntime = createStateMessageRuntime({
       stateRef: bootstrapRuntime.stateRef,
       backgammonUi: backgammonUi,
@@ -183,27 +185,59 @@
     }
 
     function scheduleRender(): void {
+      if (renderInProgress) {
+        renderRequestedAfterCurrent = true;
+        return;
+      }
       if (renderQueued) {
         return;
       }
       renderQueued = true;
 
       const schedulerHost = globalThis as typeof globalThis & {
+        clearTimeout?: (handle: unknown) => void;
         queueMicrotask?: (callback: () => void) => void;
         requestAnimationFrame?: (callback: FrameRequestCallback) => unknown;
         setTimeout?: (callback: () => void, delay: number) => unknown;
       };
+      let fallbackTimer: unknown = null;
+      let renderCompleted = false;
+      const clearFallbackTimer = function (): void {
+        if (fallbackTimer === null) {
+          return;
+        }
+        if (typeof schedulerHost.clearTimeout === "function") {
+          schedulerHost.clearTimeout(fallbackTimer);
+        }
+        fallbackTimer = null;
+      };
       const runRender: FrameRequestCallback = function () {
+        if (renderCompleted) {
+          return;
+        }
+        renderCompleted = true;
+        clearFallbackTimer();
+        renderQueued = false;
+        renderInProgress = true;
         try {
           render();
         } finally {
-          renderQueued = false;
+          renderInProgress = false;
+          if (renderRequestedAfterCurrent) {
+            renderRequestedAfterCurrent = false;
+            scheduleRender();
+          }
         }
       };
 
       try {
         if (typeof schedulerHost.requestAnimationFrame === "function") {
           schedulerHost.requestAnimationFrame(runRender);
+          if (typeof schedulerHost.setTimeout === "function") {
+            fallbackTimer = schedulerHost.setTimeout(function () {
+              runRender(Date.now());
+            }, 50);
+          }
           return;
         }
         if (typeof schedulerHost.setTimeout === "function") {
@@ -221,6 +255,7 @@
         runRender(Date.now());
       } catch (error) {
         renderQueued = false;
+        renderInProgress = false;
         throw error;
       }
     }

@@ -6,6 +6,7 @@ import {
   getCurrentSourceAsset,
   getParentSourceForAsset,
   getProjectSource,
+  isRunActive,
 } from "../runtime/lab-selectors.js";
 import {
   buildProjectImportHostAction,
@@ -163,7 +164,12 @@ function canDownloadAsset(asset: LabAsset): boolean {
   return false;
 }
 
-function renderAssetRelationMeta(state: LabStoreState, asset: LabAsset, copy: LabI18n): string {
+function renderAssetRelationMeta(
+  state: LabStoreState,
+  asset: LabAsset,
+  copy: LabI18n,
+  locked: boolean
+): string {
   const comparisonReferenceLabel =
     state.ui.workspace.comparisonReferenceAssetId === asset.id
       ? `<span class="labx-sp-asset__relation-text">${escapeHtml(copy.t("mediaAnalysis.assets.relation.compareReference", "Karşılaştırma referansı"))}</span>`
@@ -181,7 +187,7 @@ function renderAssetRelationMeta(state: LabStoreState, asset: LabAsset, copy: La
     parentSource === null
       ? ""
       : currentSourceAsset !== null && currentSourceAsset.id === parentSource.id
-        ? `<button class="labx-sp-asset__relation-link" type="button" data-lab-action="focus-source-preview" data-lab-value="${escapeHtml(parentSource.id)}">${escapeHtml(copy.t("mediaAnalysis.assets.relation.source", "Kaynak"))}: ${escapeHtml(parentSource.name)}</button>`
+        ? `<button class="labx-sp-asset__relation-link" type="button" data-lab-action="focus-source-preview" data-lab-value="${escapeHtml(parentSource.id)}"${locked ? ' disabled aria-disabled="true"' : ""}>${escapeHtml(copy.t("mediaAnalysis.assets.relation.source", "Kaynak"))}: ${escapeHtml(parentSource.name)}</button>`
         : `<span class="labx-sp-asset__relation-text">${escapeHtml(copy.t("mediaAnalysis.assets.relation.source", "Kaynak"))}: ${escapeHtml(parentSource.name)}</span>`;
 
   if (relationMarkup === "" && syncLabel === null && comparisonReferenceLabel === "") {
@@ -201,7 +207,8 @@ function renderAssetItem(
   state: LabStoreState,
   asset: LabAsset,
   activeMediaAssetIds: string[],
-  copy: LabI18n
+  copy: LabI18n,
+  locked: boolean
 ): string {
   const id = escapeHtml(asset.id);
   const isActive = activeMediaAssetIds.includes(asset.id) ? ' data-active="true"' : "";
@@ -214,24 +221,26 @@ function renderAssetItem(
   const meta = [date, leaf].filter(Boolean).join(" · ");
   const primary = getAssetPrimaryAction(asset);
   const reportView = asset.type === "report" ? getReportAssetView(asset) : null;
+  const disabledAttr = locked ? ' disabled aria-disabled="true"' : "";
+  const inertAttr = locked ? ' inert aria-disabled="true"' : "";
 
   const viewReportItem =
     asset.type === "report"
       ? `<button class="labx-sp-menu__item" type="button"
-         data-lab-action="open-report-overlay" data-lab-value="${escapeHtml(reportView ?? "user")}">
+         data-lab-action="open-report-overlay" data-lab-value="${escapeHtml(reportView ?? "user")}"${disabledAttr}>
          ${escapeHtml(copy.t("mediaAnalysis.assets.actions.viewReport", "Raporu görüntüle"))}
        </button>`
       : "";
   const useAsComparisonReferenceItem =
     getAssetMediaKind(asset) === "image"
       ? `<button class="labx-sp-menu__item" type="button"
-         data-lab-action="workspace-comparison-reference-set" data-lab-value="${id}">
+         data-lab-action="workspace-comparison-reference-set" data-lab-value="${id}"${disabledAttr}>
          ${escapeHtml(copy.t("mediaAnalysis.assets.actions.useAsCompareReference", "Karşılaştırma referansı yap"))}
        </button>`
       : "";
   const downloadItem = canDownloadAsset(asset)
     ? `<button class="labx-sp-menu__item" type="button"
-         data-lab-action="asset-download" data-lab-value="${id}">
+         data-lab-action="asset-download" data-lab-value="${id}"${disabledAttr}>
          ${escapeHtml(copy.t("mediaAnalysis.assets.actions.download", "İndir"))}
        </button>`
     : "";
@@ -240,23 +249,23 @@ function renderAssetItem(
     <div class="labx-sp-asset" data-asset-id="${id}" data-asset-type="${escapeHtml(asset.type)}"${isActive}${isComparisonReference}
          title="${escapeHtml(buildLabAssetMetadataTitle(asset))}">
       <button class="labx-sp-asset__btn" type="button"
-              data-lab-action="${escapeHtml(primary.action)}" data-lab-value="${escapeHtml(primary.value)}"
-              aria-label="${escapeHtml(asset.name)}">
+               data-lab-action="${escapeHtml(primary.action)}" data-lab-value="${escapeHtml(primary.value)}"
+               aria-label="${escapeHtml(asset.name)}"${disabledAttr}>
         ${renderAssetVisual(asset)}
         <span class="labx-sp-asset__info">
           <strong class="labx-sp-asset__name">${escapeHtml(asset.name)}</strong>
           ${meta ? `<span class="labx-sp-asset__meta">${escapeHtml(meta)}</span>` : ""}
         </span>
       </button>
-      ${renderAssetRelationMeta(state, asset, copy)}
-      <details class="labx-sp-asset__menu">
+      ${renderAssetRelationMeta(state, asset, copy, locked)}
+      <details class="labx-sp-asset__menu"${inertAttr}>
         <summary class="labx-sp-asset__menu-trigger" aria-label="${escapeHtml(copy.t("mediaAnalysis.assets.actions.ariaLabel", "Seçenekler"))}">···</summary>
         <div class="labx-sp-asset__menu-list">
           ${viewReportItem}
           ${useAsComparisonReferenceItem}
           ${downloadItem}
           <button class="labx-sp-menu__item labx-sp-menu__item--danger" type="button"
-                  data-lab-action="asset-remove" data-lab-value="${id}">
+                  data-lab-action="asset-remove" data-lab-value="${id}"${disabledAttr}>
             ${escapeHtml(copy.t("mediaAnalysis.assets.actions.delete", "Sil"))}
           </button>
         </div>
@@ -275,7 +284,8 @@ function renderAssetGroup(
   assets: LabAsset[],
   activeMediaAssetIds: string[],
   isOpen: boolean,
-  copy: LabI18n
+  copy: LabI18n,
+  locked: boolean
 ): string {
   const groupAssets = assets.filter(function (a) {
     return group.types.includes(a.type);
@@ -291,7 +301,7 @@ function renderAssetGroup(
       <div class="labx-sp-group__items">
         ${groupAssets
           .map(function (a) {
-            return renderAssetItem(state, a, activeMediaAssetIds, copy);
+            return renderAssetItem(state, a, activeMediaAssetIds, copy, locked);
           })
           .join("")}
       </div>
@@ -303,7 +313,7 @@ function renderAssetGroup(
 // URL import overlay (inline)
 // ---------------------------------------------------------------------------
 
-function renderUrlOverlay(state: LabStoreState, copy: LabI18n): string {
+function renderUrlOverlay(state: LabStoreState, copy: LabI18n, locked: boolean): string {
   const checkAction = buildProjectImportUrlCheckAction(state);
   const addAction = buildProjectImportHostAction(state);
   const check = state.ui.projectImport.urlCheck;
@@ -315,7 +325,7 @@ function renderUrlOverlay(state: LabStoreState, copy: LabI18n): string {
     : checking
       ? copy.t("mediaAnalysis.projectImport.url.checking", "Kontrol ediliyor")
       : checkAction.disabledReason;
-  const primaryDisabledAttr = primaryDisabledReason !== null ? " disabled" : "";
+  const primaryDisabledAttr = primaryDisabledReason !== null || locked ? " disabled" : "";
   const primaryLabel = ready
     ? copy.t("mediaAnalysis.projectImport.url.add", "Projeye Ekle")
     : checking
@@ -328,18 +338,18 @@ function renderUrlOverlay(state: LabStoreState, copy: LabI18n): string {
       <div class="labx-sp-url__inner">
         <label class="labx-sp-url__label">
           <span>${escapeHtml(copy.t("mediaAnalysis.source.fields.urlInput", "URL"))}</span>
-          <input class="labx-sp-url__input" type="url"
-                 data-lab-field="project-import.urlInput"
-                 value="${escapeHtml(getProjectImportUrlInput(state))}"
-                 placeholder="https://..." />
+           <input class="labx-sp-url__input" type="url"
+                  data-lab-field="project-import.urlInput"
+                  value="${escapeHtml(getProjectImportUrlInput(state))}"
+                  placeholder="https://..."${locked ? " disabled" : ""} />
         </label>
         <div class="labx-sp-url__actions">
           <button class="labx-sp-url__btn labx-sp-url__btn--primary" type="button"
                   data-lab-action="${escapeHtml(primaryAction)}"${primaryDisabledAttr}>
             ${escapeHtml(primaryLabel)}
-          </button>
-          <button class="labx-sp-url__btn" type="button"
-                  data-lab-action="project-import-clear"${clearDisabled ? " disabled" : ""}>
+           </button>
+           <button class="labx-sp-url__btn" type="button"
+                   data-lab-action="project-import-clear"${clearDisabled || locked ? " disabled" : ""}>
             ${escapeHtml(copy.t("mediaAnalysis.projectImport.clear", "Temizle"))}
           </button>
         </div>
@@ -355,7 +365,7 @@ function renderUrlOverlay(state: LabStoreState, copy: LabI18n): string {
 // Project selector
 // ---------------------------------------------------------------------------
 
-function renderProjectSelector(state: LabStoreState, copy: LabI18n): string {
+function renderProjectSelector(state: LabStoreState, copy: LabI18n, locked: boolean): string {
   const activeId = state.projectIndex.activeProjectId;
   const projects = state.projectIndex.projects.filter(function (p) {
     return p["hasSource"] !== false || String(p["id"] ?? "") === activeId;
@@ -376,19 +386,20 @@ function renderProjectSelector(state: LabStoreState, copy: LabI18n): string {
       ? `<option value="">${escapeHtml(copy.t("mediaAnalysis.assets.projects.newOption", "-- Yeni Proje --"))}</option>`
       : "";
 
-  const deleteDisabled = activeId === null ? " disabled" : "";
+  const controlDisabled = locked ? " disabled" : "";
+  const deleteDisabled = activeId === null || locked ? " disabled" : "";
 
   return `
     <div class="labx-sp-header__project-row">
       <select class="labx-sp-header__project-select labx-select labx-select--compact"
-              data-lab-field="project.id" title="${escapeHtml(copy.t("mediaAnalysis.sourcePanel.project.managementTitle", "Proje"))}">
+              data-lab-field="project.id" title="${escapeHtml(copy.t("mediaAnalysis.sourcePanel.project.managementTitle", "Proje"))}"${controlDisabled}>
         ${noProjectOpt}
         ${options.join("")}
       </select>
       <button class="labx-sp-header__new-btn" type="button"
-              data-lab-action="project-create"
-              title="${escapeHtml(copy.t("mediaAnalysis.sourcePanel.project.newProject", "Yeni Proje"))}"
-              aria-label="${escapeHtml(copy.t("mediaAnalysis.sourcePanel.project.newProject", "Yeni Proje"))}">+</button>
+               data-lab-action="project-create"
+               title="${escapeHtml(copy.t("mediaAnalysis.sourcePanel.project.newProject", "Yeni Proje"))}"
+               aria-label="${escapeHtml(copy.t("mediaAnalysis.sourcePanel.project.newProject", "Yeni Proje"))}"${controlDisabled}>+</button>
       <button class="labx-sp-header__del-btn" type="button"
               data-lab-action="project-delete"${deleteDisabled}
               title="${escapeHtml(copy.t("mediaAnalysis.sourcePanel.project.deleteProject", "Projeyi Sil"))}"
@@ -420,13 +431,14 @@ export function renderLabSourcePanel(
     asNonEmptyString(sourceMetadata["derivedFromAssetId"]) ??
     asNonEmptyString(source["assetId"]);
   const assets = getAssets(state);
+  const locked = isRunActive(state);
   const activeMediaAssetIds = [
     selectedWorkspaceAssetId ?? currentSourceId,
     asNonEmptyString(state.ui.workspace.comparisonReferenceAssetId),
   ].filter((assetId): assetId is string => assetId !== null);
 
   const localAction = buildProjectImportLocalHostAction(state);
-  const localDisabled = localAction.disabledReason !== null ? " disabled" : "";
+  const localDisabled = localAction.disabledReason !== null || locked ? " disabled" : "";
 
   const firstGroupWithAssets = ASSET_GROUPS.find(function (g) {
     return assets.some(function (a) {
@@ -456,7 +468,7 @@ export function renderLabSourcePanel(
   const assetGroupsMarkup = ASSET_GROUPS.map(function (group) {
     const isOpen =
       activeGroupIds.size > 0 ? activeGroupIds.has(group.id) : fallbackOpenGroupId === group.id;
-    return renderAssetGroup(group, state, assets, activeMediaAssetIds, isOpen, copy);
+    return renderAssetGroup(group, state, assets, activeMediaAssetIds, isOpen, copy, locked);
   }).join("");
 
   const emptyMarkup =
@@ -465,12 +477,12 @@ export function renderLabSourcePanel(
       : "";
 
   return `
-    <aside class="labx-source-panel" data-lab-region="source-panel" data-collapsed="false">
+    <aside class="labx-source-panel" data-lab-region="source-panel" data-collapsed="false" data-analysis-locked="${locked ? "true" : "false"}" aria-disabled="${locked ? "true" : "false"}">
       <div class="labx-sp-header">
         <div class="labx-sp-header__title-row">
           <strong class="labx-sp-header__title">${escapeHtml(copy.t("mediaAnalysis.sourcePanel.title", "Kaynaklar"))}</strong>
         </div>
-        ${renderProjectSelector(state, copy)}
+        ${renderProjectSelector(state, copy, locked)}
       </div>
 
       <div class="labx-sp-add-bar">
@@ -482,7 +494,7 @@ export function renderLabSourcePanel(
       </div>
 
       <div class="labx-sp-url-section">
-        ${renderUrlOverlay(state, copy)}
+        ${renderUrlOverlay(state, copy, locked)}
       </div>
 
       <div class="labx-sp-assets">

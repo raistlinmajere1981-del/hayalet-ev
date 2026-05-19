@@ -316,6 +316,25 @@ function readOpponentSlot(
   return context.slots[target];
 }
 
+function canStartAgainstOpponent(target: BackgammonTarget, opponent: GameRoomSlotState): boolean {
+  return target === "us1" ? opponent.dispatchable === true : opponent.assigned === true;
+}
+
+async function ensureAiOpponentConnection(
+  api: BackgammonRuntimeApi,
+  target: BackgammonTarget
+): Promise<void> {
+  if (target === "us1" || typeof api.dispatchBridge !== "function") {
+    return;
+  }
+  try {
+    await api.dispatchBridge({
+      action: "connection.ensure",
+      toSlot: target,
+    });
+  } catch {}
+}
+
 async function handleStart(
   api: BackgammonRuntimeApi,
   payload: unknown
@@ -332,7 +351,7 @@ async function handleStart(
     return { success: false, message: commandMessage(locale, "pendingInviteExists") };
   }
 
-  if (opponent.dispatchable !== true) {
+  if (canStartAgainstOpponent(target, opponent) !== true) {
     return { success: false, message: commandMessage(locale, "needReadyOpponent") };
   }
 
@@ -359,6 +378,8 @@ async function handleStart(
     if (isSuccessfulDispatch(sendResult) === false) {
       return { success: false, message: commandMessage(locale, "dispatchFailed") };
     }
+  } else {
+    await ensureAiOpponentConnection(api, target);
   }
 
   return { success: true, message: commandMessage(locale, "started") };

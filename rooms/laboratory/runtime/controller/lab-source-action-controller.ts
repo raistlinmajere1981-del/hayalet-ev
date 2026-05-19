@@ -38,6 +38,19 @@ type LabSourceActionControllerDeps = {
 type LabStoreState = ReturnType<ReturnType<typeof createLabStore>["getState"]>;
 
 export function createLabSourceActionController(deps: LabSourceActionControllerDeps) {
+  function isSourceManagementLocked() {
+    const state = deps.store.getState();
+    return getWorkspaceLockState(state).source === true || isRunActive(state);
+  }
+
+  function guardSourceManagementLocked() {
+    if (isSourceManagementLocked() !== true) {
+      return false;
+    }
+    deps.pushLockedWorkspaceEvent("Kaynak ayarları aktif analiz sırasında kilitli.");
+    return true;
+  }
+
   function persistSourceDraftField(field: string, value: unknown) {
     const state = deps.store.getState();
     if (getWorkspaceLockState(state).source === true) {
@@ -58,6 +71,9 @@ export function createLabSourceActionController(deps: LabSourceActionControllerD
   }
 
   function startCleanProjectSession() {
+    if (guardSourceManagementLocked()) {
+      return;
+    }
     const state = deps.store.getState();
     const resetSourceState = buildEmptySourceState(state);
     deps.dispatch({ type: "project-import-reset" });
@@ -76,6 +92,9 @@ export function createLabSourceActionController(deps: LabSourceActionControllerD
   }
 
   function selectProjectByValue(projectValue: string) {
+    if (guardSourceManagementLocked()) {
+      return;
+    }
     if (projectValue === "new") {
       startCleanProjectSession();
       return;
@@ -89,6 +108,9 @@ export function createLabSourceActionController(deps: LabSourceActionControllerD
   }
 
   function runSourcePrimaryAction() {
+    if (guardSourceManagementLocked()) {
+      return;
+    }
     const state = deps.store.getState();
     const sourceDrafts = state.ui.sourceDrafts;
     const mode = getSourceMode(state);
@@ -172,6 +194,9 @@ export function createLabSourceActionController(deps: LabSourceActionControllerD
   }
 
   function clearProjectImportDraft() {
+    if (guardSourceManagementLocked()) {
+      return;
+    }
     const state = deps.store.getState();
     if (hasProjectImportDraftValue(state) !== true) {
       return;
@@ -208,6 +233,9 @@ export function createLabSourceActionController(deps: LabSourceActionControllerD
   }
 
   function deleteActiveProject() {
+    if (guardSourceManagementLocked()) {
+      return;
+    }
     const state = deps.store.getState();
     const activeProjectId = state.projectIndex.activeProjectId;
     if (!activeProjectId) {
@@ -248,6 +276,9 @@ export function createLabSourceActionController(deps: LabSourceActionControllerD
   }
 
   function runSourceRetryAction() {
+    if (guardSourceManagementLocked()) {
+      return;
+    }
     const state = deps.store.getState();
     const blockReason = getSourceRetryBlockReason(state);
     if (blockReason !== null) {
@@ -275,12 +306,15 @@ export function createLabSourceActionController(deps: LabSourceActionControllerD
     const state = deps.store.getState();
     switch (action) {
       case "load-source":
-        if (isRunActive(state)) {
+        if (guardSourceManagementLocked()) {
           return true;
         }
         runSourcePrimaryAction();
         return true;
       case "project-import-kind": {
+        if (guardSourceManagementLocked()) {
+          return true;
+        }
         const kind = normalizeProjectImportKindValue(value);
         if (kind !== null && state.ui.projectImport.activeKind !== kind) {
           deps.dispatch({ type: "project-import-kind-changed", kind });
@@ -288,6 +322,9 @@ export function createLabSourceActionController(deps: LabSourceActionControllerD
         return true;
       }
       case "project-import-method": {
+        if (guardSourceManagementLocked()) {
+          return true;
+        }
         const activeKind = deps.store.getState().ui.projectImport.activeKind;
         const method = normalizeProjectImportMethodValue(value, activeKind);
         if (method !== null && state.ui.projectImport.methods[activeKind] !== method) {
@@ -309,12 +346,18 @@ export function createLabSourceActionController(deps: LabSourceActionControllerD
         runProjectImportAdd();
         return true;
       case "project-import-youtube-video-format":
+        if (guardSourceManagementLocked()) {
+          return true;
+        }
         deps.dispatch({
           type: "youtube-import-format-selected",
           videoFormatId: value.trim() === "" ? null : value,
         });
         return true;
       case "project-import-youtube-audio-format":
+        if (guardSourceManagementLocked()) {
+          return true;
+        }
         deps.dispatch({
           type: "youtube-import-format-selected",
           audioFormatId: value.trim() === "" ? null : value,
@@ -324,9 +367,15 @@ export function createLabSourceActionController(deps: LabSourceActionControllerD
         runSourceRetryAction();
         return true;
       case "youtube-import-clear":
+        if (guardSourceManagementLocked()) {
+          return true;
+        }
         deps.dispatch({ type: "youtube-import-clear" });
         return true;
       case "source-youtube-preset":
+        if (guardSourceManagementLocked()) {
+          return true;
+        }
         if (value.trim() !== "" && state.ui.sourceDrafts.youtubePreset !== value) {
           persistSourceDraftField("source.youtubePreset", value);
         }

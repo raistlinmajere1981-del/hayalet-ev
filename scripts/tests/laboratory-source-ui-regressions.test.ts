@@ -16,6 +16,7 @@ import { renderLabProcessStrip } from "../../rooms/laboratory/ui/lab-process-str
 import { renderLabSourcePanel } from "../../rooms/laboratory/ui/lab-source-panel.ts";
 import { renderLabLeftRail, renderLabTopBar } from "../../rooms/laboratory/ui/lab-top-bar.ts";
 import { createLabI18n } from "../../rooms/laboratory/ui/lab-i18n.ts";
+import { renderLabLayout } from "../../rooms/laboratory/ui/lab-layout.ts";
 import { renderPipeline } from "../../rooms/laboratory/ui/laboratory-layout.ts";
 import { renderReportOverlay } from "../../rooms/laboratory/ui/report-overlay.ts";
 import { renderToolManagementOverlay } from "../../rooms/laboratory/ui/tool-management-overlay.ts";
@@ -1381,6 +1382,36 @@ test("laboratory running work keeps the active operation contract without a full
   assert.match(surface.main, /class="labx-icon-rail"[^>]*data-locked="true"/);
 });
 
+test("laboratory active analysis locks source and workspace controls while showing process details", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "run-started",
+    action: "process-run",
+  });
+
+  const state = store.getState();
+  const surface = renderWorkspaceSurface(state);
+  const sourcePanel = renderLabSourcePanel(state);
+  const strip = renderLabProcessStrip(state);
+  const layout = renderLabLayout(state, surface);
+
+  assert.match(sourcePanel, /class="labx-source-panel"[^>]*data-analysis-locked="true"/);
+  assert.match(sourcePanel, /data-lab-field="project\.id"[^>]*disabled/);
+  assert.match(sourcePanel, /data-lab-action="project-create"[^>]*disabled/);
+  assert.match(sourcePanel, /data-lab-action="project-import-local-add"[^>]*disabled/);
+  assert.match(sourcePanel, /data-lab-field="project-import\.urlInput"[^>]*disabled/);
+  assert.match(surface.main, /class="labx-workspace-main"[^>]*data-analysis-locked="true"/);
+  assert.match(
+    surface.main,
+    /class="labx-media-workbench"[^>]*data-analysis-locked="true"[^>]*inert/
+  );
+  assert.match(strip, /data-process-view="expanded"/);
+  assert.match(strip, /data-process-view-forced="true"/);
+  assert.match(strip, /data-lab-process-expanded="true"/);
+  assert.match(strip, /data-lab-action="workspace-process-view-toggled"[^>]*disabled/);
+  assert.match(layout, /data-process-view="expanded"/);
+});
+
 test("laboratory operation error buttons keep retry label short and expose message in title", () => {
   const html = renderWorkspaceOperationControls([
     {
@@ -1870,9 +1901,11 @@ test("laboratory workspace panels show snapshot drift as a non-blocking visibili
   assert.match(drawer, /data-lab-running-plan="true"/);
   assert.match(drawer, /Analysis stages/);
   assert.match(drawer, /0\/3 modules/);
-  assert.match(drawer, /Motion Anomaly/);
-  assert.match(drawer, /Frame Consistency/);
+  assert.match(drawer, /Visual inspection/);
   assert.match(drawer, /data-status="running"/);
+  assert.doesNotMatch(drawer, /Motion Anomaly/);
+  assert.doesNotMatch(drawer, /Frame Consistency/);
+  assert.doesNotMatch(drawer, /labx-analysis-module--locked/);
   assert.doesNotMatch(drawer, /Pipeline/);
   assert.doesNotMatch(drawer, /Audio investigation/);
   assert.match(strip, /class="labx-process-strip"/);
@@ -1880,7 +1913,7 @@ test("laboratory workspace panels show snapshot drift as a non-blocking visibili
   assert.doesNotMatch(drawer, /run-intent-analysis/);
 });
 
-test("laboratory running drawer keeps module progress visible without selected intent state", () => {
+test("laboratory running drawer keeps module summary visible without selected intent state", () => {
   const store = createSeededState(true);
   const eventTimestamp = Date.now();
 
@@ -1925,7 +1958,8 @@ test("laboratory running drawer keeps module progress visible without selected i
   assert.match(drawer, /data-lab-running-stages="true"/);
   assert.match(drawer, /data-lab-running-plan="true"/);
   assert.match(drawer, /Active modules/);
-  assert.match(drawer, /Visual Signal/);
+  assert.doesNotMatch(drawer, /Visual Signal/);
+  assert.doesNotMatch(drawer, /labx-analysis-module--locked/);
   assert.doesNotMatch(drawer, /Analiz plani hazirlaniyor/);
 });
 

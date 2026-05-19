@@ -223,6 +223,7 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   assert.match(source, /\.\/room-page\/runtime-host-runtime\.js/);
   assert.match(source, /\.\/room-page\/runtime-subscriptions\.js/);
   assert.match(runtimeContextRuntimeSource, /\.\/runtime-sync\.js/);
+  assert.match(runtimeContextRuntimeSource, /RoomHostRuntime/);
   assert.match(source, /\.\/room-page\/runtime-events\.js/);
   assert.match(source, /this\.sceneFeatureId = null;/);
   assert.match(shellLayoutSource, /export function ensureRoomPageShell\(/);
@@ -334,7 +335,12 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
     runtimeContextRuntimeSource,
     /function buildPayload\(reason: string\): RoomHostMessage/
   );
+  assert.match(runtimeContextRuntimeSource, /const payload = buildPayload\(reason\);/);
   assert.match(runtimeContextRuntimeSource, /sendRoomHostContext\(\{/);
+  assert.match(
+    runtimeContextRuntimeSource,
+    /RoomHostRuntime\.handleRuntimeMessage\(deps\.getRoom\(\)\.id, "room-event", payload\)/
+  );
   assert.match(runtimeContextRuntimeSource, /syncRoomRuntimeContext\(\{/);
   assert.match(runtimeBootstrapSource, /export async function ensureRoomPageRuntimeHost\(/);
   assert.match(runtimeBootstrapSource, /const room = getRoom\(\);/);
@@ -367,6 +373,16 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   assert.match(runtimeEventsSource, /export function bindRoomRuntimeEvents\(/);
   assert.match(runtimeEventsSource, /export function createRoomRuntimeEventBinder\(/);
   assert.match(runtimeEventsSource, /webview\.addEventListener\("did-start-loading"/);
+  assert.match(runtimeEventsSource, /__roomRuntimeBinding/);
+  assert.match(runtimeEventsSource, /webview\.removeEventListener\("ipc-message", handleIpcMessage\)/);
+  assert.doesNotMatch(
+    runtimeEventsSource,
+    /if \(webview\.dataset\["roomRuntimeBound"\] === "true"\) \{\s*return;\s*\}/
+  );
+  assert.match(
+    runtimeHostSource,
+    /bindRuntimeEvents\(webview\);\s*if \(webview\.parentElement !== mount\)/
+  );
   assert.match(runtimeEventsSource, /closeRoom: \(\) => void;/);
   assert.match(runtimeEventsSource, /ipcEvent\.channel === "room-close"/);
   assert.match(runtimeEventsSource, /closeRoom\(\);/);

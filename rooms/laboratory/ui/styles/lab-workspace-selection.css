@@ -32,6 +32,17 @@
   overflow: hidden;
 }
 
+.labx-media-workbench[data-analysis-locked="true"] {
+  filter: saturate(0.88) brightness(0.84);
+}
+
+.labx-workspace-main[data-analysis-locked="true"] button,
+.labx-workspace-main[data-analysis-locked="true"] input,
+.labx-workspace-main[data-analysis-locked="true"] select,
+.labx-workspace-main[data-analysis-locked="true"] textarea {
+  cursor: not-allowed;
+}
+
 .labx-workspace-preview {
   position: relative;
   min-width: 0;

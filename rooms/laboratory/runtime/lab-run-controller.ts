@@ -328,6 +328,52 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     );
   }
 
+  const analysisLockedWorkspaceActions = new Set([
+    "workspace-toggle-source-intake",
+    "workspace-controls-drawer-toggle",
+    "workspace-controls-tab-select",
+    "workspace-roi-toggle",
+    "workspace-roi-remove",
+    "workspace-comparison-moment-capture",
+    "workspace-comparison-finding-save",
+    "workspace-comparison-finding-focus",
+    "timeline-toggle-micro-zoom",
+    "timeline-toggle-selection-loop",
+    "timeline-play-selection",
+    "timeline-toggle-playback",
+    "timeline-shift-playhead",
+    "workspace-asset-select",
+    "workspace-content-open",
+    "workspace-comparison-reference-set",
+    "focus-source-preview",
+    "asset-download",
+    "asset-remove",
+    "workspace-setting-adjust",
+    "operation-settings-reset",
+    "workspace-image-analysis",
+    "workspace-reset-controls",
+    "workspace-reset-audio-focus",
+    "timeline-add-bookmark",
+    "timeline-remove-bookmark",
+    "timeline-seek",
+    "timeline-set-selection-boundary",
+    "timeline-finetune",
+    "timeline-clear",
+    "inspector-pin-toggle",
+    "icon-rail-slot-select",
+  ]);
+
+  function guardActiveAnalysisWorkspaceAction(action: string) {
+    if (
+      !analysisLockedWorkspaceActions.has(action) ||
+      isRunActive(deps.store.getState()) !== true
+    ) {
+      return false;
+    }
+    pushLockedWorkspaceEvent("Çalışma alanı aktif analiz sırasında kilitli.");
+    return true;
+  }
+
   function sendHostContext(payload: Record<string, unknown>) {
     const roomApi = getRoomApi();
     if (!roomApi || typeof roomApi.sendEvent !== "function") {
@@ -1042,6 +1088,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     if (handleSourceClickAction(action, value)) {
       return;
     }
+    if (guardActiveAnalysisWorkspaceAction(action)) {
+      return;
+    }
     switch (action) {
       case "room-close":
         deps.windowRef.roomAPI?.close?.();
@@ -1480,6 +1529,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         }
         return;
       case "workspace-process-view-toggled":
+        if (isRunActive(state)) {
+          return;
+        }
         dispatch({ type: "workspace-process-view-toggled" });
         return;
       case "workspace-setting-adjust":

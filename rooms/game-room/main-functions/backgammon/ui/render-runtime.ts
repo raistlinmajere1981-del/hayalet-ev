@@ -148,6 +148,14 @@
     type?: string;
     disabled?: boolean;
   };
+  type BackgammonRailModel = {
+    selectedTarget: BackgammonTarget;
+    controlsDisabled: boolean;
+    canStart: boolean;
+    canReset: boolean;
+    canRespondToInvites: boolean;
+    canCancelOutgoing: boolean;
+  };
   type BackgammonUiRenderRuntimeDeps = {
     getState: () => BackgammonUiState;
     featureId: string;
@@ -200,6 +208,7 @@
             stateRuntime,
           })
         : null;
+    let cachedBoardStageHost: InteractiveElement | null = null;
 
     function getInitials(name: string): string {
       const trimmed = (name || "").trim();
@@ -413,8 +422,12 @@
           tabButton.append(createElement("span", "backgammon-tab__count", String(tabSpec.count)));
         }
         tabButton.addEventListener("click", function () {
-          state.preferences.invitesTab = tabSpec.id as "incoming" | "outgoing";
-          render();
+          const nextTab = tabSpec.id as "incoming" | "outgoing";
+          if ((state.preferences.invitesTab ?? "incoming") === nextTab) {
+            return;
+          }
+          state.preferences.invitesTab = nextTab;
+          refreshRailOnly();
         });
         tabs.append(tabButton);
       });
@@ -492,8 +505,11 @@
           if (slotDisabled) {
             return;
           }
+          if (state.preferences.target === slot.slotId) {
+            return;
+          }
           state.preferences.target = slot.slotId;
-          render();
+          refreshRailOnly();
         });
         list.append(card);
       });
@@ -524,8 +540,11 @@
           disabled
         );
         button.addEventListener("click", function () {
+          if (state.preferences.starter === starter) {
+            return;
+          }
           state.preferences.starter = starter;
-          render();
+          refreshRailOnly();
         });
         starterRow.append(button);
       });
@@ -605,9 +624,11 @@
 
     function renderBoard(game: BackgammonUiState["game"]) {
       if (backgammonStageRuntime !== null) {
-        const stageHost = createElement("div", "backgammon-board-stage", "");
-        stageHost.dataset["backgammonStage"] = "true";
-        return stageHost;
+        if (cachedBoardStageHost === null) {
+          cachedBoardStageHost = createElement("div", "backgammon-board-stage", "");
+          cachedBoardStageHost.dataset["backgammonStage"] = "true";
+        }
+        return cachedBoardStageHost;
       }
       const points = game.board;
       const boardShell = createElement(
@@ -637,30 +658,72 @@
       return boardShell;
     }
 
+    function getRailModel(): BackgammonRailModel | null {
+      const state = getState();
+      const selectedTarget = stateRuntime.getSelectedTarget();
+      const selectedSlot = state.context.slots[selectedTarget] ?? state.context.slots["ai1"];
+      if (!selectedSlot) {
+        return null;
+      }
+      const hasPendingOutgoingInvite =
+        !!state.game.pendingInvite && state.game.pendingInvite.direction === "outgoing";
+      const controlsDisabled = state.game.active === true || hasPendingOutgoingInvite;
+      const canStartWithSelectedSlot =
+        selectedTarget === "us1"
+          ? selectedSlot.dispatchable === true
+          : selectedSlot.assigned === true;
+      const canStart =
+        canStartWithSelectedSlot && state.game.active !== true && !hasPendingOutgoingInvite;
+      const canReset = isRoomApiAvailable();
+      const canRespondToInvites = state.game.active !== true && !hasPendingOutgoingInvite;
+      const canCancelOutgoing = hasPendingOutgoingInvite && canReset;
+      return {
+        selectedTarget,
+        controlsDisabled,
+        canStart,
+        canReset,
+        canRespondToInvites,
+        canCancelOutgoing,
+      };
+    }
+
+    function renderRailPanels(model: BackgammonRailModel): InteractiveElement[] {
+      return [
+        renderSlotsPanel(model.selectedTarget, model.controlsDisabled),
+        renderSetupPanel(
+          model.selectedTarget,
+          model.canStart,
+          model.canReset,
+          model.controlsDisabled
+        ),
+        renderInvitesPanel(model.canRespondToInvites, model.canCancelOutgoing),
+        renderHistoryPanel(),
+      ];
+    }
+
+    function refreshRailOnly(): void {
+      const rail = document.querySelector(".backgammon-rail");
+      const railModel = getRailModel();
+      if (!rail || railModel === null) {
+        render();
+        return;
+      }
+      rail.replaceChildren(...renderRailPanels(railModel));
+    }
+
     function renderBackgammon(root: HTMLElement) {
       const state = getState();
       document.title = state.context.room.name + " - " + getFeatureLabel(featureId);
 
-      const selectedTarget = stateRuntime.getSelectedTarget();
-      const selectedSlot = state.context.slots[selectedTarget] ?? state.context.slots["ai1"];
-      if (!selectedSlot) {
+      const railModel = getRailModel();
+      if (railModel === null) {
         return;
       }
       const displayOpponent = stateRuntime.getDisplayOpponent();
-      const hasPendingOutgoingInvite =
-        !!state.game.pendingInvite && state.game.pendingInvite.direction === "outgoing";
-      const controlsDisabled = state.game.active === true || hasPendingOutgoingInvite;
-      const canStart =
-        selectedSlot.dispatchable === true &&
-        state.game.active !== true &&
-        !hasPendingOutgoingInvite;
-      const canReset = isRoomApiAvailable();
       const canUserMove =
         state.game.active === true &&
         state.game.awaitingMoveFrom === "user" &&
         !state.game.blockedReason;
-      const canRespondToInvites = state.game.active !== true && !hasPendingOutgoingInvite;
-      const canCancelOutgoing = hasPendingOutgoingInvite && canReset;
       const awaitingUser = state.game.active === true && state.game.awaitingMoveFrom === "user";
       const awaitingAi = state.game.active === true && state.game.awaitingMoveFrom === "ai";
       const resultKey = state.game.result || "idle";
@@ -670,12 +733,7 @@
       const surface = createElement("section", "backgammon-surface", "");
       const arena = createElement("section", "backgammon-arena", "");
       const rail = createElement("aside", "backgammon-rail", "");
-      rail.append(
-        renderSlotsPanel(selectedTarget, controlsDisabled),
-        renderSetupPanel(selectedTarget, canStart, canReset, controlsDisabled),
-        renderInvitesPanel(canRespondToInvites, canCancelOutgoing),
-        renderHistoryPanel()
-      );
+      rail.append(...renderRailPanels(railModel));
 
       const stage = createElement("section", "backgammon-stage", "");
       stage.dataset["awaiting"] = awaitingUser ? "user" : awaitingAi ? "ai" : "none";

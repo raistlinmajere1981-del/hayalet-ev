@@ -13,6 +13,25 @@
   display: none;
 }
 
+.labx-source-panel[data-analysis-locked="true"] .labx-sp-header__project-row,
+.labx-source-panel[data-analysis-locked="true"] .labx-sp-add-bar,
+.labx-source-panel[data-analysis-locked="true"] .labx-sp-url-section,
+.labx-source-panel[data-analysis-locked="true"] .labx-sp-assets {
+  opacity: 0.58;
+}
+
+.labx-source-panel[data-analysis-locked="true"] button,
+.labx-source-panel[data-analysis-locked="true"] input,
+.labx-source-panel[data-analysis-locked="true"] select,
+.labx-source-panel[data-analysis-locked="true"] summary {
+  cursor: not-allowed;
+}
+
+.labx-source-panel[data-analysis-locked="true"] .labx-sp-group__title,
+.labx-source-panel[data-analysis-locked="true"] .labx-sp-asset__menu-trigger {
+  pointer-events: none;
+}
+
 /* Header and project selector. */
 
 .labx-sp-header {

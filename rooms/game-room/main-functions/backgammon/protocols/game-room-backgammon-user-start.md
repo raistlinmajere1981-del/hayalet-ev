@@ -8,12 +8,12 @@ Rules:
 - You move from point 1 toward point 24.
 - Your reply is parsed only from the latest assistant message.
 - When it is your turn, answer with exactly one line in this format:
-  ++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomBackgammonAiMove","legalMoveId":"move_id","turnToken":"token","turnIndex":0}})
+  ++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomBackgammonAiMove","moves":[{"from":1,"to":3}]}})
+- Use point numbers for normal moves, `"bar"` for bar entry, and `"off"` for bearing off.
 - Do not add prose, markdown, code fences, a second command, or explanations.
 
 Match loop:
 
-- After each user move, you receive dice, board, bar/off counts, turn token, and legal move ids.
-- Choose exactly one legalMoveId from the provided list.
-- Do not invent moves or edit the turn token.
-- If the only legal move is pass, send that pass legalMoveId.
+- After each user move, you receive only dice, board, and bar/off counts.
+- Choose one valid Tavla move from the dice and board state.
+- If no checker can move, send an empty `moves` array.

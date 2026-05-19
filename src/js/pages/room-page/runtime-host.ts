@@ -61,8 +61,9 @@ export function ensureRoomRuntimeWebview({
     if (preloadUrl !== "") {
       webview.setAttribute("preload", preloadUrl);
     }
-    bindRuntimeEvents(webview);
   }
+
+  bindRuntimeEvents(webview);
 
   if (webview.parentElement !== mount) {
     mount.replaceChildren(webview);

@@ -35,6 +35,13 @@ function readTeamTetrisSeatReadiness(context: GameRoomContextState): TeamTetrisS
   };
 }
 
+function isBackgammonOpponentAvailable(
+  state: ReturnType<typeof loadState>,
+  opponent: ReturnType<typeof getOpponentInfo>
+): boolean {
+  return state.target === "us1" ? opponent.dispatchable === true : opponent.assigned === true;
+}
+
 export function syncFromContext(api: BackgammonRuntimeSyncApi, payload: unknown) {
   const previousContext = loadContext(api);
   const previousActiveFeatureId = getActiveFeatureId(previousContext);
@@ -59,7 +66,7 @@ export function syncFromContext(api: BackgammonRuntimeSyncApi, payload: unknown)
   if (state.active === true && isBlocked(state) !== true) {
     const opponent = getOpponentInfo(context, state);
     const readyForActiveMatch =
-      opponent.dispatchable === true &&
+      isBackgammonOpponentAvailable(state, opponent) &&
       (state.target !== "us1" ||
         state.remoteUserId === null ||
         opponent.remoteUserId === state.remoteUserId);

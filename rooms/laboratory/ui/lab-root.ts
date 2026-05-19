@@ -350,7 +350,8 @@ export function startLaboratoryLabRoot() {
     shell.dataset["drawerMode"] = resolveDrawerMode(state);
     shell.dataset["drawerCollapsed"] = getDrawerCollapsed(state) ? "true" : "false";
     shell.dataset["sourcePanelCollapsed"] = state.ui.sourcePanelCollapsed ? "true" : "false";
-    shell.dataset["processView"] = state.ui.workspace.processViewActive ? "expanded" : "compact";
+    shell.dataset["processView"] =
+      state.ui.workspace.processViewActive || isRunActive(state) ? "expanded" : "compact";
   }
 
   function syncBootOverlay(shell: HTMLElement, state: LabStoreState, copy: LabI18n) {

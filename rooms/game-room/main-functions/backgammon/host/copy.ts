@@ -106,22 +106,11 @@ function formatBarOff(state: BackgammonGameState): string {
   ].join("\n");
 }
 
-function formatLegalMoves(state: BackgammonGameState): string {
-  if (state.legalMoves.length === 0) {
-    return "- none";
-  }
-  return state.legalMoves
-    .map((move) => `- ${move.id}: ${move.label} (dice ${move.diceUsed.join(", ") || "pass"})`)
-    .join("\n");
-}
-
 export function buildAiTurnMessage(state: BackgammonGameState, context: GameRoomContextState) {
   const opponent = readOpponentInfo(context, state);
   const userName = context.user.nickname;
   const command = buildRoomBridgeCommand("GameRoomBackgammonAiMove", {
-    legalMoveId: state.legalMoves[0]?.id || "pass",
-    turnToken: state.turnToken,
-    turnIndex: state.turnIndex,
+    moves: [{ from: 1, to: 3 }],
   });
 
   return [
@@ -129,7 +118,8 @@ export function buildAiTurnMessage(state: BackgammonGameState, context: GameRoom
     "Game: classic Tavla / Backgammon. No doubling cube.",
     "Your reply is parsed from only the latest assistant message.",
     `Use exactly one command line in this format: ${command}`,
-    "Choose one legalMoveId from the list. Do not invent moves.",
+    "Send your chosen move as ordered moves.",
+    'Use point numbers, "bar" for bar entry, and "off" for bearing off.',
     "Do not add markdown, prose, code fences, or a second command.",
     "",
     "Match setup:",
@@ -139,7 +129,6 @@ export function buildAiTurnMessage(state: BackgammonGameState, context: GameRoom
     "- Current opponent slot: " + opponent.nickname,
     "",
     "Dice: " + formatDice(state),
-    "Turn token: " + state.turnToken,
     "Board:",
     state.board
       .map(
@@ -149,10 +138,7 @@ export function buildAiTurnMessage(state: BackgammonGameState, context: GameRoom
       .join(" "),
     formatBarOff(state),
     "",
-    "Legal moves:",
-    formatLegalMoves(state),
-    "",
-    "If the only legal move is pass, send that pass legalMoveId.",
+    'If no checker can move, send an empty moves array: {"moves":[]}.',
   ].join("\n");
 }
 

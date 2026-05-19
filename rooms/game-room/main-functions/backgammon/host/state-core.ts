@@ -42,6 +42,11 @@ export interface BackgammonLegalMove {
   pass?: boolean;
 }
 
+interface BackgammonMoveStep {
+  from: BackgammonMoveOrigin;
+  to: BackgammonMoveDestination;
+}
+
 export interface BackgammonMatchHistoryEntry {
   id: string;
   finishedAt: number;
@@ -323,6 +328,51 @@ function normalizeSubMove(candidate: unknown): BackgammonSubMove | null {
     die,
     hit: candidate["hit"] === true,
   };
+}
+
+function normalizeMoveStepPoint(value: unknown): number | null {
+  if (typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= BOARD_POINTS) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number.parseInt(value.trim(), 10);
+    return Number.isInteger(parsed) && parsed >= 1 && parsed <= BOARD_POINTS ? parsed : null;
+  }
+  return null;
+}
+
+function normalizeCommandOrigin(value: unknown): BackgammonMoveOrigin | null {
+  if (value === "bar") {
+    return { type: "bar", seat: "ai" };
+  }
+  const point = normalizeMoveStepPoint(value);
+  if (point !== null) {
+    return { type: "point", point };
+  }
+  return normalizeOrigin(value);
+}
+
+function normalizeCommandDestination(value: unknown): BackgammonMoveDestination | null {
+  if (value === "off") {
+    return { type: "off" };
+  }
+  const point = normalizeMoveStepPoint(value);
+  if (point !== null) {
+    return { type: "point", point };
+  }
+  return normalizeDestination(value);
+}
+
+function normalizeMoveStep(candidate: unknown): BackgammonMoveStep | null {
+  if (isRecord(candidate) === false) {
+    return null;
+  }
+  const from = normalizeCommandOrigin(candidate["from"]);
+  const to = normalizeCommandDestination(candidate["to"]);
+  if (from === null || to === null) {
+    return null;
+  }
+  return { from, to };
 }
 
 function normalizeOrigin(value: unknown): BackgammonMoveOrigin | null {
@@ -611,6 +661,16 @@ function moveSignature(move: BackgammonSubMove[]): string {
     .join(",");
 }
 
+function moveStepSignature(move: BackgammonMoveStep[] | BackgammonSubMove[]): string {
+  return move
+    .map((subMove) => {
+      const from = subMove.from.type === "bar" ? "bar" : `${subMove.from.point}`;
+      const to = subMove.to.type === "off" ? "off" : `${subMove.to.point}`;
+      return `${from}/${to}`;
+    })
+    .join(",");
+}
+
 function mirrorPoint(point: number): number {
   return 25 - point;
 }
@@ -742,6 +802,29 @@ export function getLegalMovesForTurn(
   }
 
   return legalMoves;
+}
+
+export function resolveLegalMoveIdForMoveSteps(
+  legalMoves: BackgammonLegalMove[],
+  value: unknown
+): string | null {
+  if (typeof value === "string" && value.trim().toLowerCase() === "pass") {
+    return legalMoves.find((move) => move.pass === true || move.id === "pass")?.id ?? null;
+  }
+  if (Array.isArray(value) === false) {
+    return null;
+  }
+  if (value.length === 0) {
+    return legalMoves.find((move) => move.pass === true || move.id === "pass")?.id ?? null;
+  }
+  const moveSteps = value
+    .map(normalizeMoveStep)
+    .filter((move): move is BackgammonMoveStep => move !== null);
+  if (moveSteps.length !== value.length) {
+    return null;
+  }
+  const signature = moveStepSignature(moveSteps);
+  return legalMoves.find((move) => moveStepSignature(move.moves) === signature)?.id ?? null;
 }
 
 export function createTurnToken(state: BackgammonGameState, seat: BackgammonSeat): string {

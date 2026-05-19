@@ -352,77 +352,6 @@ function getRunningPlanGroupStatus(group: AnalysisPreparationGroup, state: LabSt
   return "ready";
 }
 
-function getRunningModuleTitle(state: LabStoreState, moduleId: string) {
-  const module = state.run?.modules[moduleId];
-  const title = module?.title?.trim() ?? "";
-  if (title !== "" && title !== moduleId) {
-    return title;
-  }
-  return moduleId
-    .split("-")
-    .filter(Boolean)
-    .map(function (part) {
-      return part.charAt(0).toUpperCase() + part.slice(1);
-    })
-    .join(" ");
-}
-
-function renderRunningPlanModule(
-  module: AnalysisPreparationGroup["modules"][number],
-  state: LabStoreState,
-  copy: LabI18n
-) {
-  const runModule = state.run?.modules[module.moduleId];
-  const status = runModule?.status ?? "idle";
-  const active = status === "running" || status === "queued";
-  const statusLabel = getRunningPlanStatusLabel(status, copy);
-  const moduleLabel = getAnalysisModuleLabel(module, copy);
-  const message = runModule?.message
-    ? translateLabRuntimeText(runModule.message, copy)
-    : getReportSectionLabel(module, copy);
-
-  return `
-    <div
-      class="labx-analysis-module labx-analysis-module--locked"
-      data-readiness="${escapeHtml(module.readiness)}"
-      data-status="${escapeHtml(status)}"
-      data-active="${active ? "true" : "false"}"
-    >
-      <span class="labx-analysis-module__status" aria-hidden="true"></span>
-      <span>
-        <strong>${escapeHtml(moduleLabel)}</strong>
-        <small>${escapeHtml(statusLabel)}${message ? ` · ${escapeHtml(message)}` : ""}</small>
-      </span>
-    </div>
-  `;
-}
-
-function renderRunningPlanModuleFromRun(moduleId: string, state: LabStoreState, copy: LabI18n) {
-  const runModule = state.run?.modules[moduleId];
-  const status = runModule?.status ?? "idle";
-  const active = status === "running" || status === "queued";
-  const statusLabel = getRunningPlanStatusLabel(status, copy);
-  const moduleLabel = getRunningModuleTitle(state, moduleId);
-  const message = runModule?.message
-    ? translateLabRuntimeText(runModule.message, copy)
-    : copy.t("mediaAnalysis.drawer.running.moduleFallbackDetail", "Awaiting module signal");
-
-  return `
-    <div
-      class="labx-analysis-module labx-analysis-module--locked"
-      data-readiness="ready"
-      data-status="${escapeHtml(status)}"
-      data-active="${active ? "true" : "false"}"
-    >
-      <span class="labx-analysis-module__status" aria-hidden="true"></span>
-      <span>
-        <strong>${escapeHtml(moduleLabel)}</strong>
-        <small>${escapeHtml(statusLabel)}${message ? ` · ${escapeHtml(message)}` : ""}</small>
-      </span>
-    </div>
-  `;
-}
-
 function renderRunningPlanGroup(
   intent: AvailableIntent,
   group: AnalysisPreparationGroup,
@@ -441,7 +370,7 @@ function renderRunningPlanGroup(
     <div
       class="labx-drawer__intent-cluster labx-drawer__intent-cluster--locked"
       data-selected="true"
-      data-expanded="true"
+      data-expanded="false"
       data-readiness="${escapeHtml(group.readiness)}"
       data-status="${escapeHtml(status)}"
       data-active="${active ? "true" : "false"}"
@@ -457,15 +386,6 @@ function renderRunningPlanGroup(
       <div class="labx-drawer__intent-summary">
         <span>${escapeHtml(statusLabel)}</span>
         <span>${escapeHtml(String(enabledModules.length))}/${escapeHtml(String(group.modules.length))}</span>
-      </div>
-      <div class="labx-analysis-group labx-analysis-group--locked" data-selected="true" data-readiness="${escapeHtml(group.readiness)}">
-        <div class="labx-analysis-group__modules">
-          ${enabledModules
-            .map(function (module) {
-              return renderRunningPlanModule(module, state, copy);
-            })
-            .join("")}
-        </div>
       </div>
     </div>
   `;
@@ -521,7 +441,7 @@ function renderRunningPlanFallback(state: LabStoreState, copy: LabI18n) {
     <div
       class="labx-drawer__intent-cluster labx-drawer__intent-cluster--locked"
       data-selected="true"
-      data-expanded="true"
+      data-expanded="false"
       data-readiness="ready"
       data-status="${escapeHtml(status)}"
       data-active="${active ? "true" : "false"}"
@@ -537,15 +457,6 @@ function renderRunningPlanFallback(state: LabStoreState, copy: LabI18n) {
       <div class="labx-drawer__intent-summary">
         <span>${escapeHtml(getRunningPlanStatusLabel(status, copy))}</span>
         <span>${escapeHtml(String(counts.completedCount))}/${escapeHtml(String(counts.totalCount))}</span>
-      </div>
-      <div class="labx-analysis-group labx-analysis-group--locked" data-selected="true" data-readiness="ready">
-        <div class="labx-analysis-group__modules">
-          ${run.moduleOrder
-            .map(function (moduleId) {
-              return renderRunningPlanModuleFromRun(moduleId, state, copy);
-            })
-            .join("")}
-        </div>
       </div>
     </div>
   `;

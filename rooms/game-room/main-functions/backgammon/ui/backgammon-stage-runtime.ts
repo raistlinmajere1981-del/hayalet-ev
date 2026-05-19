@@ -60,6 +60,7 @@
   type KonvaNode = {
     add?: (...nodes: KonvaNode[]) => void;
     batchDraw?: () => void;
+    draw?: () => void;
     destroy?: () => void;
     destroyChildren?: () => void;
     getPointerPosition?: () => StagePoint | null;
@@ -91,6 +92,7 @@
   type KonvaStage = KonvaNode & {
     add: (...nodes: KonvaNode[]) => void;
     batchDraw: () => void;
+    draw?: () => void;
     destroy: () => void;
     destroyChildren: () => void;
     getPointerPosition: () => StagePoint | null;
@@ -487,36 +489,18 @@
     });
   }
 
-  function toLogicalPoint(layout: StageLayout, point: StagePoint): StagePoint {
-    return {
-      x: (point.x - layout.offsetX) / layout.scale,
-      y: (point.y - layout.offsetY) / layout.scale,
-    };
-  }
-
-  function rectContains(rect: RectLike, point: StagePoint): boolean {
-    return (
-      point.x >= rect.x &&
-      point.x <= rect.x + rect.width &&
-      point.y >= rect.y &&
-      point.y <= rect.y + rect.height
-    );
-  }
-
   function getPointRect(metrics: BoardMetrics, point: number): RectLike {
     return metrics.pointRects[point] ?? metrics.board;
   }
 
-  function findDropTarget(metrics: BoardMetrics, point: StagePoint): BackgammonLocation | null {
-    if (rectContains(metrics.offUser, point)) {
-      return { type: "off" };
+  function getLocationRect(metrics: BoardMetrics, location: BackgammonLocation): RectLike {
+    if (location.type === "point") {
+      return getPointRect(metrics, location.point);
     }
-    for (let index = 1; index <= 24; index += 1) {
-      if (rectContains(getPointRect(metrics, index), point)) {
-        return { type: "point", point: index };
-      }
+    if (location.type === "off") {
+      return metrics.offUser;
     }
-    return null;
+    return metrics.bar;
   }
 
   function getCheckerPosition(
@@ -539,6 +523,20 @@
 
   function sourceIsAvailable(source: BackgammonLocation, candidates: BackgammonSubMove[]): boolean {
     return candidates.some((candidate) => sameLocation(candidate.from, source));
+  }
+
+  function uniqueLocations(locations: BackgammonLocation[]): BackgammonLocation[] {
+    const seen = new Set<string>();
+    const unique: BackgammonLocation[] = [];
+    locations.forEach((location) => {
+      const key = locationKey(location);
+      if (seen.has(key)) {
+        return;
+      }
+      seen.add(key);
+      unique.push(location);
+    });
+    return unique;
   }
 
   function drawRoundedPanel(
@@ -770,12 +768,7 @@
     location: BackgammonLocation,
     tone: "source" | "target"
   ): void {
-    const rect =
-      location.type === "point"
-        ? getPointRect(metrics, location.point)
-        : location.type === "off"
-          ? metrics.offUser
-          : metrics.bar;
+    const rect = getLocationRect(metrics, location);
     const color = tone === "source" ? "rgba(245,223,170,0.42)" : "rgba(121,211,196,0.54)";
     layer.add(
       new Konva.Rect({
@@ -799,7 +792,7 @@
     snapshot: BoardSnapshot,
     metrics: BoardMetrics,
     candidates: BackgammonSubMove[],
-    attachDragHandlers: (group: KonvaGroup, source: BackgammonLocation) => void
+    attachSelectionHandlers: (group: KonvaGroup, source: BackgammonLocation) => void
   ): void {
     snapshot.board.forEach((point) => {
       if (point.owner !== "user" && point.owner !== "ai") {
@@ -810,24 +803,24 @@
       const visible = Math.min(point.count, 5);
       for (let index = 0; index < visible; index += 1) {
         const source: BackgammonLocation = { type: "point", point: point.point };
-        const draggable =
+        const selectable =
           point.owner === "user" && index === visible - 1 && sourceIsAvailable(source, candidates);
         const position = getCheckerPosition(rect, row, index, point.count);
         const checker = createChecker(
           Konva,
           point.owner,
           position,
-          draggable,
+          selectable,
           index === visible - 1 ? point.count : 0
         );
-        if (draggable) {
-          attachDragHandlers(checker, source);
+        if (selectable) {
+          attachSelectionHandlers(checker, source);
         }
         layer.add(checker);
       }
     });
 
-    drawBarCheckers(Konva, layer, snapshot, metrics, candidates, attachDragHandlers);
+    drawBarCheckers(Konva, layer, snapshot, metrics, candidates, attachSelectionHandlers);
     drawOffCheckers(Konva, layer, snapshot, metrics);
   }
 
@@ -835,14 +828,14 @@
     Konva: KonvaNamespace,
     owner: BackgammonSeat,
     position: StagePoint,
-    draggable: boolean,
+    selectable: boolean,
     total: number
   ): KonvaGroup {
     const group = new Konva.Group({
       x: position.x,
       y: position.y,
-      draggable,
-      cursor: draggable ? "grab" : "default",
+      draggable: false,
+      cursor: selectable ? "pointer" : "default",
     });
     const isUser = owner === "user";
     // Radial gradient colors for 3D dome effect
@@ -914,22 +907,22 @@
     snapshot: BoardSnapshot,
     metrics: BoardMetrics,
     candidates: BackgammonSubMove[],
-    attachDragHandlers: (group: KonvaGroup, source: BackgammonLocation) => void
+    attachSelectionHandlers: (group: KonvaGroup, source: BackgammonLocation) => void
   ): void {
     const barSource: BackgammonLocation = { type: "bar", seat: "user" };
     const userVisible = Math.min(snapshot.bar.user, 4);
     for (let index = 0; index < userVisible; index += 1) {
       const y = metrics.bar.y + metrics.bar.height - CHECKER_RADIUS - 12 - index * 30;
-      const draggable = index === userVisible - 1 && sourceIsAvailable(barSource, candidates);
+      const selectable = index === userVisible - 1 && sourceIsAvailable(barSource, candidates);
       const checker = createChecker(
         Konva,
         "user",
         { x: metrics.bar.x + metrics.bar.width / 2, y },
-        draggable,
+        selectable,
         index === userVisible - 1 ? snapshot.bar.user : 0
       );
-      if (draggable) {
-        attachDragHandlers(checker, barSource);
+      if (selectable) {
+        attachSelectionHandlers(checker, barSource);
       }
       layer.add(checker);
     }
@@ -1020,10 +1013,14 @@
     }
     values.forEach((value, index) => {
       const die = createDie(Konva, value, 14 + index * 48, 8);
-      if (animate) {
-        die.to({ rotation: 360, duration: 0.42, easing: "EaseOut" });
-      }
       group.add(die);
+      if (animate) {
+        try {
+          die.to({ rotation: 360, duration: 0.42, easing: "EaseOut" });
+        } catch (_error) {
+          // Keep the die visible when Konva animations are unavailable in the webview.
+        }
+      }
     });
     if (dice.length > 2) {
       group.add(
@@ -1237,6 +1234,7 @@
     let mountedHost: HTMLElement | null = null;
     let lastTurnSignature = "";
     let stagedMoves: BackgammonSubMove[] = [];
+    let selectedSource: BackgammonLocation | null = null;
     let activeGame: BackgammonGameState | null = null;
     let activeCanUserMove = false;
     let activePlayers: BackgammonStageRenderOptions["players"] = {
@@ -1271,6 +1269,7 @@
       cachedMetrics = null;
       activeLayout = DEFAULT_STAGE_LAYOUT;
       lastLayoutSignature = DEFAULT_STAGE_LAYOUT.signature;
+      selectedSource = null;
     }
 
     function turnSignature(game: BackgammonGameState): string {
@@ -1288,6 +1287,7 @@
       const changed = signature !== lastTurnSignature;
       if (changed) {
         stagedMoves = [];
+        selectedSource = null;
         lastTurnSignature = signature;
       }
       return changed;
@@ -1307,44 +1307,23 @@
       resizeObserver.observe(host);
     }
 
-    function attachDragHandlers(
-      Konva: KonvaNamespace,
+    function flushStageDraw(stageInstance: KonvaStage): void {
+      if (typeof stageInstance.draw === "function") {
+        stageInstance.draw();
+        return;
+      }
+      stageInstance.batchDraw();
+    }
+
+    function attachSelectionHandlers(
       group: KonvaGroup,
       source: BackgammonLocation,
-      drawScene: (animateDice: boolean) => void,
-      metrics: BoardMetrics
+      redraw: () => void
     ): void {
-      group.on("dragstart", () => {
-        group.moveToTop();
-        group.to({ scaleX: 1.15, scaleY: 1.15, duration: 0.1 });
-      });
-      group.on("dragend", () => {
-        group.to({ scaleX: 1, scaleY: 1, duration: 0.1 });
-        const rawPointer = stage?.getPointerPosition() ?? null;
-        const pointer =
-          rawPointer === null ? group.position() : toLogicalPoint(activeLayout, rawPointer);
-        const target = findDropTarget(metrics, pointer);
-        const game = activeGame;
-        if (target === null || game === null) {
-          drawScene(false);
-          return;
-        }
-        const next = getNextSubMoves(game.legalMoves, stagedMoves).find(
-          (candidate) => sameLocation(candidate.from, source) && sameLocation(candidate.to, target)
-        );
-        if (next === undefined) {
-          drawScene(false);
-          return;
-        }
-        stagedMoves.push(next);
-        const completedMove = findCompletedMove(game.legalMoves, stagedMoves);
-        if (completedMove !== null) {
-          const completedMoveId = completedMove.id;
-          stagedMoves = [];
-          deps.stateRuntime.onLegalMove(completedMoveId);
-          return;
-        }
-        drawScene(false);
+      group.on("click tap", () => {
+        selectedSource =
+          selectedSource !== null && sameLocation(selectedSource, source) ? null : source;
+        redraw();
       });
       group.on("mouseover", () => {
         const target = group as KonvaNode;
@@ -1354,7 +1333,58 @@
         const target = group as KonvaNode;
         target.to?.({ scaleX: 1, scaleY: 1, duration: 0.12 });
       });
-      void Konva;
+    }
+
+    function selectTarget(target: BackgammonLocation, redraw: () => void): void {
+      const game = activeGame;
+      const source = selectedSource;
+      if (game === null || source === null) {
+        selectedSource = null;
+        redraw();
+        return;
+      }
+      const next = getNextSubMoves(game.legalMoves, stagedMoves).find(
+        (candidate) => sameLocation(candidate.from, source) && sameLocation(candidate.to, target)
+      );
+      if (next === undefined) {
+        selectedSource = null;
+        redraw();
+        return;
+      }
+      stagedMoves.push(next);
+      selectedSource = null;
+      const completedMove = findCompletedMove(game.legalMoves, stagedMoves);
+      if (completedMove !== null) {
+        const completedMoveId = completedMove.id;
+        stagedMoves = [];
+        deps.stateRuntime.onLegalMove(completedMoveId);
+        return;
+      }
+      redraw();
+    }
+
+    function drawTargetClickArea(
+      Konva: KonvaNamespace,
+      layer: KonvaLayer,
+      metrics: BoardMetrics,
+      target: BackgammonLocation,
+      onSelect: (target: BackgammonLocation) => void
+    ): void {
+      const rect = getLocationRect(metrics, target);
+      const group = new Konva.Group({ cursor: "pointer" });
+      group.add(
+        new Konva.Rect({
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height,
+          fill: "rgba(121,211,196,0.01)",
+          stroke: "rgba(121,211,196,0)",
+          strokeWidth: 1,
+        })
+      );
+      group.on("click tap", () => onSelect(target));
+      layer.add(group);
     }
 
     function drawPassAction(
@@ -1395,7 +1425,10 @@
           fill: COLORS.passLabel,
         })
       );
-      group.on("click tap", () => deps.stateRuntime.onLegalMove(passMove.id));
+      group.on("click tap", () => {
+        selectedSource = null;
+        deps.stateRuntime.onLegalMove(passMove.id);
+      });
       layer.add(group);
     }
 
@@ -1431,6 +1464,7 @@
       );
       group.on("click tap", () => {
         stagedMoves = [];
+        selectedSource = null;
         redraw();
       });
       layer.add(group);
@@ -1484,19 +1518,45 @@
       const snapshot = applyPreview(activeGame, stagedMoves);
       const candidates =
         activeCanUserMove === true ? getNextSubMoves(activeGame.legalMoves, stagedMoves) : [];
+      if (selectedSource !== null && !sourceIsAvailable(selectedSource, candidates)) {
+        selectedSource = null;
+      }
+      const selectedSourceForTargets = selectedSource;
+      const selectedTargets =
+        selectedSourceForTargets === null
+          ? []
+          : uniqueLocations(
+              candidates
+                .filter((candidate) => sameLocation(candidate.from, selectedSourceForTargets))
+                .map((candidate) => candidate.to)
+            );
 
-      candidates.forEach((candidate) => {
-        drawTargetHighlight(Konva, highlightLayer, metrics, candidate.from, "source");
-        drawTargetHighlight(Konva, highlightLayer, metrics, candidate.to, "target");
+      const highlightedSources =
+        selectedSourceForTargets === null
+          ? uniqueLocations(candidates.map((candidate) => candidate.from))
+          : [];
+      highlightedSources.forEach((source) => {
+        drawTargetHighlight(Konva, highlightLayer, metrics, source, "source");
       });
+      if (selectedSourceForTargets !== null) {
+        drawTargetHighlight(Konva, highlightLayer, metrics, selectedSourceForTargets, "source");
+        selectedTargets.forEach((target) => {
+          drawTargetHighlight(Konva, highlightLayer, metrics, target, "target");
+        });
+      }
       drawCheckers(Konva, checkerLayer, snapshot, metrics, candidates, (group, source) =>
-        attachDragHandlers(Konva, group, source, () => drawScene(Konva, false), metrics)
+        attachSelectionHandlers(group, source, () => drawScene(Konva, false))
       );
+      selectedTargets.forEach((target) => {
+        drawTargetClickArea(Konva, uiLayer, metrics, target, (selectedTarget) =>
+          selectTarget(selectedTarget, () => drawScene(Konva, false))
+        );
+      });
       drawDice(Konva, uiLayer, metrics, activeGame.dice, animateDice);
       drawPlayerChips(Konva, uiLayer, metrics, activePlayers);
       drawUndoAction(Konva, uiLayer, () => drawScene(Konva, false));
       drawPassAction(Konva, uiLayer, activeGame);
-      stage.batchDraw();
+      flushStageDraw(stage);
     }
 
     function renderFallback(host: HTMLElement, options: BackgammonStageRenderOptions): void {

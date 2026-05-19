@@ -29,6 +29,7 @@ import {
   getWorkspaceLockState,
   isLabWorkspaceSurfaceReady,
   isAnyHeavyWorkActive,
+  isRunActive,
   isLoadedSourceMatchingMode,
 } from "../runtime/lab-selectors.js";
 import {
@@ -1013,6 +1014,7 @@ export function renderWorkspaceSurface(
       : previewMediaMarkup;
   const selectionPanelMarkup = renderLabWaveformSelectionPanel(timelineModel);
   const previewFocusClassName = getLabFocusClassName(state, "preview");
+  const runActive = isRunActive(state);
   const heavyWorkActive = isAnyHeavyWorkActive(state);
   const iconRailMarkup = previewReady
     ? renderIconRail({
@@ -1037,9 +1039,9 @@ export function renderWorkspaceSurface(
     : "";
 
   const main = `
-    <section class="labx-workspace-main" id="lab-workspace-main">
+    <section class="labx-workspace-main" id="lab-workspace-main" data-analysis-locked="${runActive ? "true" : "false"}" aria-disabled="${runActive ? "true" : "false"}">
       <div class="labx-workspace-stage" data-lab-workspace-stage="true">
-        <div class="labx-media-workbench" data-lab-region="main-stage-inner" data-lab-media-workbench="true">
+        <div class="labx-media-workbench" data-lab-region="main-stage-inner" data-lab-media-workbench="true" data-analysis-locked="${runActive ? "true" : "false"}"${runActive ? " inert" : ""}>
           ${renderPreviewArea({ content: previewMarkup, focusClassName: previewFocusClassName })}
           ${renderTimelineArea(durationMs > 0 && !comparisonPreviewActive ? renderLabWaveformTimeline(timelineModel) : "")}
         </div>

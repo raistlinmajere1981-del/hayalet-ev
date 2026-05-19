@@ -11,6 +11,7 @@ type LegalMove = {
   id: string;
   label?: string;
   diceUsed?: number[];
+  moves?: unknown[];
 };
 
 const activeRuntimes: HostRuntime[] = [];
@@ -335,6 +336,18 @@ function firstLegalMove(state: GameState): LegalMove {
   return move;
 }
 
+function moveStepsForCommand(move: LegalMove): unknown[] {
+  assert.ok(Array.isArray(move.moves), "expected legal move steps");
+  return move.moves.map((step) => {
+    assert.ok(step !== null && typeof step === "object" && Array.isArray(step) === false);
+    const source = step as Record<string, unknown>;
+    return {
+      from: source.from,
+      to: source.to,
+    };
+  });
+}
+
 async function applyUserLegalMove(
   runtime: HostRuntime,
   commandName = "GameRoomBackgammonUserMove"
@@ -346,6 +359,21 @@ async function applyUserLegalMove(
       legalMoveId: move.id,
       turnToken: state.turnToken,
       turnIndex: state.turnIndex,
+    },
+  });
+}
+
+async function applyAiMoveSteps(
+  runtime: HostRuntime,
+  provider: "ai1" | "ai2" = "ai1",
+  commandName = "GameRoomBackgammonAiMove"
+) {
+  const state = runtime.latestGameState();
+  const move = firstLegalMove(state);
+  return await runCommand(runtime, commandName, {
+    provider,
+    roomArgs: {
+      moves: moveStepsForCommand(move),
     },
   });
 }
@@ -411,8 +439,13 @@ test("game-room Tavla delays protocol until the first AI turn when the user star
   assert.equal(runtime.protocolCalls.length, 1);
   assert.equal(runtime.messageCalls.length, 1);
   assert.equal(runtime.protocolCalls[0]?.scenario, "backgammon-user-start");
+  const protocolContext = runtime.protocolCalls[0]?.context as Record<string, unknown>;
   assert.match(String(runtime.messageCalls[0]?.text ?? ""), /GameRoomBackgammonAiMove/);
-  assert.match(String(runtime.messageCalls[0]?.text ?? ""), /Legal moves:/);
+  assert.doesNotMatch(String(runtime.messageCalls[0]?.text ?? ""), /Legal moves:/);
+  assert.doesNotMatch(String(runtime.messageCalls[0]?.text ?? ""), /legalMoveId/);
+  assert.equal("legalMoveIds" in protocolContext, false);
+  assert.equal("turnToken" in protocolContext, false);
+  assert.ok(Array.isArray(protocolContext.board));
   assert.equal(runtime.latestGameState().selectedTarget, "ai1");
   assert.equal(runtime.latestGameState().awaitingMoveFrom, "ai");
   assert.equal(runtime.latestGameState().protocolDelivered, true);
@@ -428,12 +461,42 @@ test("game-room Tavla sends protocol immediately when the AI starts", async () =
   assert.equal(runtime.protocolCalls[0]?.scenario, "backgammon-ai-start");
   assert.equal(runtime.latestGameState().selectedTarget, "ai2");
   assert.equal(runtime.latestGameState().awaitingMoveFrom, "ai");
+  assert.doesNotMatch(String(runtime.messageCalls[0]?.text ?? ""), /legalMoveId/);
 
-  const aiMoveResult = await applyAiLegalMove(runtime, "ai2");
+  const aiMoveResult = await applyAiMoveSteps(runtime, "ai2");
 
   assert.equal(aiMoveResult.success, true);
   assert.equal(runtime.latestGameState().awaitingMoveFrom, "user");
   assert.equal(runtime.latestGameState().turnIndex, 1);
+});
+
+test("game-room Tavla starts against an assigned disconnected AI slot", async () => {
+  const runtime = createRoomHostRuntime();
+  const context = buildReadyHostContext("ai1");
+  for (const slot of [context.slots.ai1, context.presence.slots.ai1]) {
+    slot.connected = false;
+    slot.ready = false;
+    slot.state = "assigned";
+  }
+  await runtime.emitHostContext(context);
+  await runtime.markReady();
+
+  const startResult = await runCommand(runtime, "GameRoomBackgammonStart", {
+    roomArgs: {
+      target: "ai1",
+      starter: "user",
+    },
+  });
+
+  assert.equal(startResult.success, true);
+  assert.equal(runtime.latestGameState().active, true);
+  assert.equal(runtime.latestGameState().opponentReady, true);
+  assert.ok(
+    runtime.dispatchCalls.some(
+      (call) => call.action === "connection.ensure" && call.toSlot === "ai1"
+    )
+  );
+  assert.equal(runtime.messageCalls.length, 0);
 });
 
 test("game-room Tavla rejects stale tokens and invalid user legal move ids", async () => {
@@ -644,6 +707,51 @@ test("game-room Tavla blocks the match when the selected opponent disappears mid
       ai1: {
         slotId: "ai1",
         nickname: "Alpha",
+        assigned: false,
+        connected: false,
+        ready: false,
+        state: "empty",
+      },
+      ai2: {
+        slotId: "ai2",
+        nickname: "Beta",
+        assigned: true,
+        connected: true,
+        ready: true,
+        state: "connected",
+      },
+      us1: {
+        slotId: "us1",
+        nickname: "Remote Ghost",
+        assigned: true,
+        connected: true,
+        ready: true,
+        state: "connected",
+        remoteUserId: "remote@example.com",
+      },
+    },
+  });
+
+  assert.equal(runtime.latestGameState().result, "blocked");
+  assert.equal(runtime.latestGameState().blockedReason, "opponent-unavailable");
+  assert.match(String(runtime.latestGameState().status ?? ""), /Reset to begin again/);
+});
+
+test("game-room Tavla keeps an assigned AI match alive through disconnect state", async () => {
+  const runtime = createRoomHostRuntime();
+  await startMatch(runtime, { target: "ai1", starter: "user" });
+  await applyUserLegalMove(runtime);
+
+  await runtime.emitHostContext({
+    type: "host-context",
+    locale: "en",
+    user: {
+      nickname: "Raistlin",
+    },
+    slots: {
+      ai1: {
+        slotId: "ai1",
+        nickname: "Alpha",
         assigned: true,
         connected: false,
         ready: false,
@@ -669,9 +777,9 @@ test("game-room Tavla blocks the match when the selected opponent disappears mid
     },
   });
 
-  assert.equal(runtime.latestGameState().result, "blocked");
-  assert.equal(runtime.latestGameState().blockedReason, "opponent-unavailable");
-  assert.match(String(runtime.latestGameState().status ?? ""), /Reset to begin again/);
+  assert.equal(runtime.latestGameState().result, "pending");
+  assert.equal(runtime.latestGameState().blockedReason, "");
+  assert.equal(runtime.latestGameState().awaitingMoveFrom, "ai");
 });
 
 test("game-room Backgammon command names route to the Tavla handlers", async () => {
