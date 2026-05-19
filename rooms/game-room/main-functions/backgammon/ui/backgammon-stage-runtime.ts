@@ -534,8 +534,12 @@
 
   function syncStageSize(stage: KonvaStage, host: HTMLElement): StageLayout {
     const layout = buildStageLayout(host);
-    stage.width(layout.width);
-    stage.height(layout.height);
+    if (stage.width() !== layout.width) {
+      stage.width(layout.width);
+    }
+    if (stage.height() !== layout.height) {
+      stage.height(layout.height);
+    }
     return layout;
   }
 
@@ -615,8 +619,8 @@
         stroke: options.stroke ?? "rgba(255,255,255,0.12)",
         strokeWidth: 1,
         shadowColor: options.shadow === true ? "rgba(0,0,0,0.42)" : "transparent",
-        shadowBlur: options.shadow === true ? 24 : 0,
-        shadowOffsetY: options.shadow === true ? 10 : 0,
+        shadowBlur: options.shadow === true ? 14 : 0,
+        shadowOffsetY: options.shadow === true ? 6 : 0,
       })
     );
   }
@@ -654,7 +658,7 @@
     for (
       let grainY = metrics.board.y + 18;
       grainY < metrics.board.y + metrics.board.height - 18;
-      grainY += 37
+      grainY += 74
     ) {
       layer.add(
         new Konva.Line({
@@ -670,35 +674,6 @@
         })
       );
     }
-    // Vignette overlay — darkened edges for depth
-    layer.add(
-      new Konva.Rect({
-        x: metrics.board.x + 10,
-        y: metrics.board.y + 10,
-        width: metrics.board.width - 20,
-        height: metrics.board.height - 20,
-        cornerRadius: 12,
-        fillRadialGradientStartPoint: {
-          x: (metrics.board.width - 20) / 2,
-          y: (metrics.board.height - 20) / 2,
-        },
-        fillRadialGradientStartRadius: 0,
-        fillRadialGradientEndPoint: {
-          x: (metrics.board.width - 20) / 2,
-          y: (metrics.board.height - 20) / 2,
-        },
-        fillRadialGradientEndRadius: metrics.board.width * 0.6,
-        fillRadialGradientColorStops: [
-          0,
-          "rgba(0,0,0,0)",
-          0.7,
-          "rgba(0,0,0,0)",
-          1,
-          "rgba(0,0,0,0.22)",
-        ],
-        listening: false,
-      })
-    );
     // Bar — leather-textured divider
     layer.add(
       new Konva.Rect({
@@ -706,16 +681,7 @@
         y: metrics.bar.y,
         width: metrics.bar.width,
         height: metrics.bar.height,
-        fillLinearGradientStartPoint: { x: 0, y: 0 },
-        fillLinearGradientEndPoint: { x: metrics.bar.width, y: 0 },
-        fillLinearGradientColorStops: [
-          0,
-          "rgba(62, 38, 24, 0.82)",
-          0.5,
-          "rgba(52, 31, 21, 0.72)",
-          1,
-          "rgba(62, 38, 24, 0.82)",
-        ],
+        fill: "rgba(57,35,23,0.78)",
         stroke: "rgba(246,219,168,0.22)",
         strokeWidth: 1,
       })
@@ -769,41 +735,17 @@
             rect.x + rect.width / 2,
             rect.y + 16,
           ];
-      // Triangle fill
       layer.add(
         new Konva.Line({
           points: triPoints,
           closed: true,
           fill,
-          opacity: 0.72,
-          shadowColor: "rgba(0,0,0,0.28)",
-          shadowBlur: 8,
-          shadowOffsetY: top ? 2 : -2,
-        })
-      );
-      // Triangle edge stroke for definition
-      layer.add(
-        new Konva.Line({
-          points: triPoints,
-          closed: true,
+          opacity: 0.76,
           stroke: darkFill,
-          strokeWidth: 1.2,
-          listening: false,
-        })
-      );
-      // Inner highlight line along center
-      const centerX = rect.x + rect.width / 2;
-      const tipY = top ? rect.y + rect.height - 16 : rect.y + 16;
-      const baseY = top ? rect.y + 8 : rect.y + rect.height - 8;
-      layer.add(
-        new Konva.Line({
-          points: [centerX, baseY, centerX, tipY],
-          stroke: "rgba(255,255,255,0.08)",
           strokeWidth: 1,
           listening: false,
         })
       );
-      // Point number
       layer.add(
         new Konva.Text({
           x: rect.x,
@@ -897,48 +839,19 @@
       cursor: selectable ? "pointer" : "default",
     });
     const isUser = owner === "user";
-    // Radial gradient colors for 3D dome effect
-    const highlightColor = isUser ? COLORS.checkerUserHighlight : COLORS.checkerAiHighlight;
     const baseColor = isUser ? USER_COLOR : AI_COLOR;
-    const shadowColor = isUser ? COLORS.checkerUserShadow : COLORS.checkerAiShadow;
     const edgeColor = isUser ? USER_EDGE : AI_EDGE;
-    // Base circle with radial gradient (3D dome)
     group.add(
       new Konva.Circle({
         x: 0,
         y: 0,
         radius: CHECKER_RADIUS,
-        fillRadialGradientStartPoint: { x: -4, y: -6 },
-        fillRadialGradientStartRadius: 0,
-        fillRadialGradientEndPoint: { x: 0, y: 2 },
-        fillRadialGradientEndRadius: CHECKER_RADIUS + 2,
-        fillRadialGradientColorStops: [0, highlightColor, 0.45, baseColor, 1, shadowColor],
+        fill: baseColor,
         stroke: edgeColor,
         strokeWidth: 1.5,
-        shadowColor: "rgba(0,0,0,0.48)",
-        shadowBlur: 10,
-        shadowOffsetY: 5,
-      })
-    );
-    // Outer decorative ring
-    group.add(
-      new Konva.Circle({
-        x: 0,
-        y: -1,
-        radius: CHECKER_RADIUS - 4,
-        stroke: isUser ? "rgba(255,255,255,0.38)" : "rgba(120,211,196,0.22)",
-        strokeWidth: 1,
-        listening: false,
-      })
-    );
-    // Center decorative pip
-    group.add(
-      new Konva.Circle({
-        x: 0,
-        y: -2,
-        radius: 3.5,
-        fill: isUser ? "rgba(255,255,255,0.22)" : "rgba(120,211,196,0.15)",
-        listening: false,
+        shadowColor: "rgba(0,0,0,0.34)",
+        shadowBlur: 5,
+        shadowOffsetY: 3,
       })
     );
     if (total > 5) {
@@ -1205,34 +1118,12 @@
         width: 38,
         height: 38,
         cornerRadius: 8,
-        fillLinearGradientStartPoint: { x: 0, y: 0 },
-        fillLinearGradientEndPoint: { x: 38, y: 38 },
-        fillLinearGradientColorStops: [
-          0,
-          COLORS.dieHighlight,
-          0.4,
-          COLORS.dieFace,
-          1,
-          COLORS.dieShadow,
-        ],
+        fill: COLORS.dieFace,
         stroke: COLORS.dieStroke,
-        strokeWidth: 1.5,
-        shadowColor: "rgba(0,0,0,0.42)",
-        shadowBlur: 9,
-        shadowOffsetY: 4,
-      })
-    );
-    // Subtle inner border for bevel
-    group.add(
-      new Konva.Rect({
-        x: 2,
-        y: 2,
-        width: 34,
-        height: 34,
-        cornerRadius: 6,
-        stroke: "rgba(255,255,255,0.25)",
-        strokeWidth: 0.5,
-        listening: false,
+        strokeWidth: 1.2,
+        shadowColor: "rgba(0,0,0,0.28)",
+        shadowBlur: 5,
+        shadowOffsetY: 2,
       })
     );
     const pipMap: Record<number, StagePoint[]> = {
@@ -1270,18 +1161,15 @@
     };
     const pips = pipMap[value] ?? pipMap[1] ?? [];
     pips.forEach((pip) => {
-      // Pip inset shadow ring
       group.add(
         new Konva.Circle({
           x: pip.x,
-          y: pip.y + 0.5,
-          radius: 3.6,
-          fill: "rgba(0,0,0,0.08)",
+          y: pip.y,
+          radius: 3.1,
+          fill: COLORS.diePip,
           listening: false,
         })
       );
-      // Pip
-      group.add(new Konva.Circle({ x: pip.x, y: pip.y, radius: 3.1, fill: COLORS.diePip }));
     });
     return group;
   }
@@ -1312,12 +1200,14 @@
     let lastHighlightSignature = "";
     let lastUiSignature = "";
     let resizeObserver: ResizeObserver | null = null;
+    let resizeFramePending = false;
 
     function destroy(): void {
       if (resizeObserver !== null) {
         resizeObserver.disconnect();
         resizeObserver = null;
       }
+      resizeFramePending = false;
       if (stage !== null) {
         stage.destroy();
         stage = null;
@@ -1362,6 +1252,37 @@
       return changed;
     }
 
+    function scheduleResizeRedraw(Konva: KonvaNamespace, host: HTMLElement): void {
+      if (resizeFramePending) {
+        return;
+      }
+      resizeFramePending = true;
+      const schedulerHost = globalThis as typeof globalThis & {
+        requestAnimationFrame?: (callback: FrameRequestCallback) => unknown;
+        setTimeout?: (callback: () => void, delay: number) => unknown;
+      };
+      const flush = function (): void {
+        resizeFramePending = false;
+        if (mountedHost !== host || stage === null) {
+          return;
+        }
+        const nextLayout = buildStageLayout(host);
+        if (nextLayout.signature === activeLayout.signature) {
+          return;
+        }
+        drawScene(Konva, false);
+      };
+      if (typeof schedulerHost.requestAnimationFrame === "function") {
+        schedulerHost.requestAnimationFrame(flush);
+        return;
+      }
+      if (typeof schedulerHost.setTimeout === "function") {
+        schedulerHost.setTimeout(flush, 0);
+        return;
+      }
+      flush();
+    }
+
     function observeHostResize(Konva: KonvaNamespace, host: HTMLElement): void {
       if (resizeObserver !== null || typeof ResizeObserver !== "function") {
         return;
@@ -1370,8 +1291,7 @@
         if (mountedHost !== host || stage === null) {
           return;
         }
-        boardDrawn = false;
-        drawScene(Konva, false);
+        scheduleResizeRedraw(Konva, host);
       });
       resizeObserver.observe(host);
     }
@@ -1410,26 +1330,22 @@
         uiLayerRef = createScaledLayer(Konva, layout);
         stage.add(uiLayerRef);
       }
-      if (
-        boardLayerRef === null ||
-        highlightLayerRef === null ||
-        checkerLayerRef === null ||
-        uiLayerRef === null
-      ) {
-        return null;
-      }
-      syncLayerLayout(boardLayerRef, layout);
-      syncLayerLayout(highlightLayerRef, layout);
-      syncLayerLayout(checkerLayerRef, layout);
-      syncLayerLayout(uiLayerRef, layout);
-      highlightLayerRef.moveToTop?.();
-      checkerLayerRef.moveToTop?.();
-      uiLayerRef.moveToTop?.();
+      const boardLayer = boardLayerRef;
+      const highlightLayer = highlightLayerRef;
+      const checkerLayer = checkerLayerRef;
+      const uiLayer = uiLayerRef;
+      syncLayerLayout(boardLayer, layout);
+      syncLayerLayout(highlightLayer, layout);
+      syncLayerLayout(checkerLayer, layout);
+      syncLayerLayout(uiLayer, layout);
+      highlightLayer.moveToTop?.();
+      checkerLayer.moveToTop?.();
+      uiLayer.moveToTop?.();
       return {
-        board: boardLayerRef,
-        highlight: highlightLayerRef,
-        checker: checkerLayerRef,
-        ui: uiLayerRef,
+        board: boardLayer,
+        highlight: highlightLayer,
+        checker: checkerLayer,
+        ui: uiLayer,
       };
     }
 
@@ -1557,14 +1473,6 @@
         selectedSource =
           selectedSource !== null && sameLocation(selectedSource, source) ? null : source;
         redraw();
-      });
-      group.on("mouseover", () => {
-        const target = group as KonvaNode;
-        target.to?.({ scaleX: 1.06, scaleY: 1.06, duration: 0.12 });
-      });
-      group.on("mouseout", () => {
-        const target = group as KonvaNode;
-        target.to?.({ scaleX: 1, scaleY: 1, duration: 0.12 });
       });
     }
 
@@ -1717,7 +1625,6 @@
       activeLayout = layout;
       if (layout.signature !== lastLayoutSignature) {
         lastLayoutSignature = layout.signature;
-        boardDrawn = false;
       }
       const layers = ensureStageLayers(Konva, layout);
       if (layers === null) {

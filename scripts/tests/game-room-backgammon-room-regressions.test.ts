@@ -367,9 +367,32 @@ class FakeKonvaLayer extends FakeKonvaNode {
 
 class FakeKonvaGroup extends FakeKonvaNode {}
 
+class FakeResizeObserver {
+  static instances: FakeResizeObserver[] = [];
+  private readonly callback: () => void;
+
+  constructor(callback: () => void) {
+    this.callback = callback;
+    FakeResizeObserver.instances.push(this);
+  }
+
+  disconnect(): void {
+    return undefined;
+  }
+
+  observe(): void {
+    return undefined;
+  }
+
+  trigger(): void {
+    this.callback();
+  }
+}
+
 function resetFakeKonva(): void {
   FakeKonvaStage.instances = [];
   FakeKonvaLayer.instances = [];
+  FakeResizeObserver.instances = [];
 }
 
 function findClickableKonvaNodes(node: FakeKonvaNode): FakeKonvaNode[] {
@@ -852,6 +875,16 @@ test("game-room Tavla render keeps the board stage host stable across rail reren
 
   assert.equal(stageHosts.length, 2);
   assert.equal(stageHosts[0], stageHosts[1]);
+  assert.equal(document.app.replaceChildrenCount, rootReplaceCountAfterInitialRender);
+
+  Object.assign(state.game, {
+    active: true,
+    awaitingMoveFrom: "user",
+  });
+  renderRuntime.renderBackgammon(document.app);
+
+  assert.equal(document.app.replaceChildrenCount, rootReplaceCountAfterInitialRender);
+  assert.equal(document.app.querySelector(".backgammon-stage")?.dataset["awaiting"], "user");
 });
 
 test("game-room Tavla Konva stage reuses layers for selection-only redraws", () => {
@@ -964,6 +997,8 @@ test("game-room Tavla Konva stage reuses layers for selection-only redraws", () 
   const uiClearsAfterInitialRender = uiLayer.destroyChildrenCount;
   const sourceChecker = findClickableKonvaNodes(checkerLayer)[0];
   assert.ok(sourceChecker);
+  assert.equal(sourceChecker.handlers["mouseover"], undefined);
+  assert.equal(sourceChecker.handlers["mouseout"], undefined);
 
   sourceChecker.trigger("click tap");
 
@@ -986,6 +1021,119 @@ test("game-room Tavla Konva stage reuses layers for selection-only redraws", () 
 
   assert.equal(selectedMoveIds.length, 0);
   assert.ok(checkerLayer.destroyChildrenCount > checkerClearsAfterInitialRender);
+  assert.equal(FakeKonvaLayer.instances.length, 4);
+});
+
+test("game-room Tavla Konva stage coalesces resize redraws and skips unchanged sizes", () => {
+  resetFakeKonva();
+  const frames: Array<() => void> = [];
+  const windowObject: Record<string, unknown> = {
+    GameRoomUiFactories: {},
+    Konva: {
+      Stage: FakeKonvaStage,
+      Layer: FakeKonvaLayer,
+      Group: FakeKonvaGroup,
+      Rect: FakeKonvaNode,
+      Line: FakeKonvaNode,
+      Circle: FakeKonvaNode,
+      Text: FakeKonvaNode,
+    },
+  };
+  const context = {
+    ResizeObserver: FakeResizeObserver,
+    document: { documentElement: {} },
+    getComputedStyle: () => ({
+      getPropertyValue: () => "",
+    }),
+    requestAnimationFrame: (callback: ScheduledFrameCallback) => {
+      frames.push(() => callback(16));
+      return frames.length;
+    },
+    globalThis: {
+      requestAnimationFrame: (callback: ScheduledFrameCallback) => {
+        frames.push(() => callback(16));
+        return frames.length;
+      },
+    },
+    window: windowObject,
+  };
+  vm.createContext(context);
+  vm.runInNewContext(
+    loadWorkspaceScriptForVm(
+      "rooms/game-room/main-functions/backgammon/ui/backgammon-stage-runtime.ts"
+    ),
+    context
+  );
+
+  const registry = windowObject["GameRoomUiFactories"] as Record<string, unknown>;
+  const createStageRuntime = registry["createBackgammonStageRuntime"];
+  assert.equal(typeof createStageRuntime, "function");
+  const game = {
+    active: true,
+    awaitingMoveFrom: "user",
+    blockedReason: "",
+    board: Array.from({ length: 24 }, (_value, index) => ({
+      point: index + 1,
+      owner: index === 0 ? "user" : "",
+      count: index === 0 ? 1 : 0,
+    })),
+    bar: { user: 0, ai: 0 },
+    off: { user: 0, ai: 0 },
+    dice: [1, 1],
+    legalMoves: [],
+    turnIndex: 1,
+    turnToken: "turn-1",
+    boardHash: "board-1",
+  };
+  const stageRuntime = (
+    createStageRuntime as (deps: Record<string, unknown>) => {
+      renderBackgammonStage(host: FakeStageHost, options: Record<string, unknown>): void;
+    }
+  )({
+    createElement: (tagName: string, className = "", textContent = "") =>
+      new MinimalFakeElement(tagName, className, textContent),
+    getState: () => ({ game }),
+    stateRuntime: {
+      onLegalMove: () => undefined,
+    },
+    text: (path: string[]) => path.at(-1) ?? "",
+  });
+  const host = new FakeStageHost();
+
+  stageRuntime.renderBackgammonStage(host, {
+    canUserMove: true,
+    game,
+    players: {
+      user: { name: "User", avatar: null, active: true },
+      opponent: { name: "AI", avatar: null, active: false },
+    },
+  });
+
+  const observer = FakeResizeObserver.instances[0];
+  const stage = FakeKonvaStage.instances[0];
+  const boardLayer = FakeKonvaLayer.instances[0];
+  assert.ok(observer);
+  assert.ok(stage);
+  assert.ok(boardLayer);
+  const drawCountAfterInitialRender = stage.drawCount;
+  const boardClearsAfterInitialRender = boardLayer.destroyChildrenCount;
+
+  observer.trigger();
+  observer.trigger();
+  assert.equal(frames.length, 1);
+  frames.shift()?.();
+
+  assert.equal(stage.drawCount, drawCountAfterInitialRender);
+  assert.equal(boardLayer.destroyChildrenCount, boardClearsAfterInitialRender);
+
+  host.clientWidth = 900;
+  observer.trigger();
+  observer.trigger();
+  assert.equal(frames.length, 1);
+  frames.shift()?.();
+
+  assert.equal(stage.drawCount, drawCountAfterInitialRender + 1);
+  assert.equal(boardLayer.destroyChildrenCount, boardClearsAfterInitialRender);
   assert.equal(FakeKonvaLayer.instances.length, 4);
 });
 

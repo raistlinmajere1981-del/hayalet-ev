@@ -156,6 +156,13 @@
     canRespondToInvites: boolean;
     canCancelOutgoing: boolean;
   };
+  type BackgammonShellCache = {
+    root: HTMLElement;
+    app: InteractiveElement;
+    rail: InteractiveElement;
+    stage: InteractiveElement;
+    boardStageHost: InteractiveElement;
+  };
   type BackgammonUiRenderRuntimeDeps = {
     getState: () => BackgammonUiState;
     featureId: string;
@@ -209,6 +216,7 @@
           })
         : null;
     let cachedBoardStageHost: InteractiveElement | null = null;
+    let cachedBackgammonShell: BackgammonShellCache | null = null;
 
     function getInitials(name: string): string {
       const trimmed = (name || "").trim();
@@ -303,6 +311,7 @@
       surface.append(brand);
       app.append(surface);
       document.title = bootstrapText("roomTitle");
+      cachedBackgammonShell = null;
       root.replaceChildren(app);
     }
 
@@ -702,13 +711,71 @@
     }
 
     function refreshRailOnly(): void {
-      const rail = document.querySelector(".backgammon-rail");
+      const rail = cachedBackgammonShell?.rail ?? document.querySelector(".backgammon-rail");
       const railModel = getRailModel();
       if (!rail || railModel === null) {
         render();
         return;
       }
       rail.replaceChildren(...renderRailPanels(railModel));
+    }
+
+    function createBackgammonShell(
+      root: HTMLElement,
+      railModel: BackgammonRailModel,
+      awaiting: string,
+      result: string,
+      presentationMode: string
+    ): BackgammonShellCache {
+      const app = createElement("main", "backgammon-shell", "");
+      app.dataset["presentationMode"] = presentationMode;
+      const surface = createElement("section", "backgammon-surface", "");
+      const arena = createElement("section", "backgammon-arena", "");
+      const rail = createElement("aside", "backgammon-rail", "");
+      rail.append(...renderRailPanels(railModel));
+
+      const stage = createElement("section", "backgammon-stage", "");
+      stage.dataset["awaiting"] = awaiting;
+      stage.dataset["result"] = result;
+      const boardArea = createElement("div", "backgammon-board-area", "");
+      const boardStageHost = renderBoard(getState().game);
+      boardArea.append(boardStageHost);
+      stage.append(boardArea);
+      arena.append(rail, stage);
+      surface.append(arena);
+      app.append(surface);
+      root.replaceChildren(app);
+      return {
+        root,
+        app,
+        rail,
+        stage,
+        boardStageHost,
+      };
+    }
+
+    function syncBackgammonShell(
+      root: HTMLElement,
+      railModel: BackgammonRailModel,
+      awaiting: string,
+      result: string,
+      presentationMode: string
+    ): BackgammonShellCache {
+      if (cachedBackgammonShell === null || cachedBackgammonShell.root !== root) {
+        cachedBackgammonShell = createBackgammonShell(
+          root,
+          railModel,
+          awaiting,
+          result,
+          presentationMode
+        );
+        return cachedBackgammonShell;
+      }
+      cachedBackgammonShell.app.dataset["presentationMode"] = presentationMode;
+      cachedBackgammonShell.stage.dataset["awaiting"] = awaiting;
+      cachedBackgammonShell.stage.dataset["result"] = result;
+      cachedBackgammonShell.rail.replaceChildren(...renderRailPanels(railModel));
+      return cachedBackgammonShell;
     }
 
     function renderBackgammon(root: HTMLElement) {
@@ -727,31 +794,19 @@
       const awaitingUser = state.game.active === true && state.game.awaitingMoveFrom === "user";
       const awaitingAi = state.game.active === true && state.game.awaitingMoveFrom === "ai";
       const resultKey = state.game.result || "idle";
-
-      const app = createElement("main", "backgammon-shell", "");
-      app.dataset["presentationMode"] = state.presentation.mode;
-      const surface = createElement("section", "backgammon-surface", "");
-      const arena = createElement("section", "backgammon-arena", "");
-      const rail = createElement("aside", "backgammon-rail", "");
-      rail.append(...renderRailPanels(railModel));
-
-      const stage = createElement("section", "backgammon-stage", "");
-      stage.dataset["awaiting"] = awaitingUser ? "user" : awaitingAi ? "ai" : "none";
-      stage.dataset["result"] = resultKey;
+      const awaitingKey = awaitingUser ? "user" : awaitingAi ? "ai" : "none";
       const userName = state.game.user.nickname || state.context.user.nickname;
       const userAvatar = state.context.user.avatar ?? null;
 
-      const boardArea = createElement("div", "backgammon-board-area", "");
-
-      const boardStageHost = renderBoard(state.game);
-      boardArea.append(boardStageHost);
-      stage.append(boardArea);
-      arena.append(rail, stage);
-      surface.append(arena);
-      app.append(surface);
-      root.replaceChildren(app);
       if (backgammonStageRuntime !== null) {
-        backgammonStageRuntime.renderBackgammonStage(boardStageHost, {
+        const shell = syncBackgammonShell(
+          root,
+          railModel,
+          awaitingKey,
+          resultKey,
+          state.presentation.mode
+        );
+        backgammonStageRuntime.renderBackgammonStage(shell.boardStageHost, {
           canUserMove,
           game: state.game,
           players: {
@@ -767,7 +822,28 @@
             },
           },
         });
+        return;
       }
+
+      cachedBackgammonShell = null;
+      const app = createElement("main", "backgammon-shell", "");
+      app.dataset["presentationMode"] = state.presentation.mode;
+      const surface = createElement("section", "backgammon-surface", "");
+      const arena = createElement("section", "backgammon-arena", "");
+      const rail = createElement("aside", "backgammon-rail", "");
+      rail.append(...renderRailPanels(railModel));
+
+      const stage = createElement("section", "backgammon-stage", "");
+      stage.dataset["awaiting"] = awaitingKey;
+      stage.dataset["result"] = resultKey;
+      const boardArea = createElement("div", "backgammon-board-area", "");
+      const boardStageHost = renderBoard(state.game);
+      boardArea.append(boardStageHost);
+      stage.append(boardArea);
+      arena.append(rail, stage);
+      surface.append(arena);
+      app.append(surface);
+      root.replaceChildren(app);
     }
 
     return {
