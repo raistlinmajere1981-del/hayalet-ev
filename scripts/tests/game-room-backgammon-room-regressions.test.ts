@@ -216,6 +216,170 @@ class MinimalFakeDocument {
   }
 }
 
+type FakeStagePoint = { x: number; y: number };
+
+class FakeStageHost {
+  children: unknown[] = [];
+  clientHeight = 600;
+  clientWidth = 980;
+
+  getBoundingClientRect(): { width: number; height: number } {
+    return { width: this.clientWidth, height: this.clientHeight };
+  }
+
+  replaceChildren(...children: unknown[]): void {
+    this.children = children;
+  }
+}
+
+class FakeKonvaNode {
+  children: FakeKonvaNode[] = [];
+  destroyed = false;
+  destroyChildrenCount = 0;
+  drawCount = 0;
+  batchDrawCount = 0;
+  tweenCount = 0;
+  readonly handlers: Record<string, Array<(event: unknown) => void>> = {};
+  private parent: FakeKonvaNode | null = null;
+  private positionValue: FakeStagePoint;
+  private scaleValue: FakeStagePoint;
+  private widthValue: number;
+  private heightValue: number;
+
+  constructor(config: Record<string, unknown> = {}) {
+    this.positionValue = {
+      x: typeof config["x"] === "number" ? config["x"] : 0,
+      y: typeof config["y"] === "number" ? config["y"] : 0,
+    };
+    this.scaleValue = {
+      x: typeof config["scaleX"] === "number" ? config["scaleX"] : 1,
+      y: typeof config["scaleY"] === "number" ? config["scaleY"] : 1,
+    };
+    this.widthValue = typeof config["width"] === "number" ? config["width"] : 0;
+    this.heightValue = typeof config["height"] === "number" ? config["height"] : 0;
+  }
+
+  add(...nodes: FakeKonvaNode[]): void {
+    nodes.forEach((node) => {
+      node.parent = this;
+      this.children.push(node);
+    });
+  }
+
+  batchDraw(): void {
+    this.batchDrawCount += 1;
+  }
+
+  destroy(): void {
+    this.destroyed = true;
+  }
+
+  destroyChildren(): void {
+    this.destroyChildrenCount += 1;
+    this.children = [];
+  }
+
+  draw(): void {
+    this.drawCount += 1;
+  }
+
+  height(): number;
+  height(value: number): void;
+  height(value?: number): number | void {
+    if (value === undefined) {
+      return this.heightValue;
+    }
+    this.heightValue = value;
+  }
+
+  moveToTop(): void {
+    if (this.parent === null) {
+      return;
+    }
+    const siblings = this.parent.children;
+    const index = siblings.indexOf(this);
+    if (index < 0) {
+      return;
+    }
+    siblings.splice(index, 1);
+    siblings.push(this);
+  }
+
+  on(eventName: string, handler: (event: unknown) => void): void {
+    const handlers = this.handlers[eventName] ?? [];
+    handlers.push(handler);
+    this.handlers[eventName] = handlers;
+  }
+
+  position(): FakeStagePoint;
+  position(value: FakeStagePoint): void;
+  position(value?: FakeStagePoint): FakeStagePoint | void {
+    if (value === undefined) {
+      return this.positionValue;
+    }
+    this.positionValue = value;
+  }
+
+  scale(): FakeStagePoint;
+  scale(value: FakeStagePoint): void;
+  scale(value?: FakeStagePoint): FakeStagePoint | void {
+    if (value === undefined) {
+      return this.scaleValue;
+    }
+    this.scaleValue = value;
+  }
+
+  to(): void {
+    this.tweenCount += 1;
+  }
+
+  trigger(eventName: string): void {
+    (this.handlers[eventName] ?? []).forEach((handler) => handler({ target: this }));
+  }
+
+  width(): number;
+  width(value: number): void;
+  width(value?: number): number | void {
+    if (value === undefined) {
+      return this.widthValue;
+    }
+    this.widthValue = value;
+  }
+}
+
+class FakeKonvaStage extends FakeKonvaNode {
+  static instances: FakeKonvaStage[] = [];
+
+  constructor(config: { container: FakeStageHost; height: number; width: number }) {
+    super(config);
+    FakeKonvaStage.instances.push(this);
+  }
+}
+
+class FakeKonvaLayer extends FakeKonvaNode {
+  static instances: FakeKonvaLayer[] = [];
+
+  constructor(config: Record<string, unknown> = {}) {
+    super(config);
+    FakeKonvaLayer.instances.push(this);
+  }
+}
+
+class FakeKonvaGroup extends FakeKonvaNode {}
+
+function resetFakeKonva(): void {
+  FakeKonvaStage.instances = [];
+  FakeKonvaLayer.instances = [];
+}
+
+function findClickableKonvaNodes(node: FakeKonvaNode): FakeKonvaNode[] {
+  const matches = node.handlers["click tap"] && node.handlers["click tap"].length > 0 ? [node] : [];
+  node.children.forEach((child) => {
+    matches.push(...findClickableKonvaNodes(child));
+  });
+  return matches;
+}
+
 function createBackgammonUiStateHarness(): BackgammonUiStateHarness {
   const windowObject: {
     GameRoomUiFactories?: {
@@ -631,7 +795,11 @@ test("game-room Tavla render keeps the board stage host stable across rail reren
       formatInviteMeta: () => "",
       getSelectedTarget: () => state.preferences.target,
       getDisplayOpponent: () => state.context.slots.ai2,
-      getSlotOrder: () => [state.context.slots.ai1, state.context.slots.ai2, state.context.slots.us1],
+      getSlotOrder: () => [
+        state.context.slots.ai1,
+        state.context.slots.ai2,
+        state.context.slots.us1,
+      ],
       getSlotStatusLabel: () => "Ready",
       getStarterLabelForCurrentTarget: (starter: string) => starter,
       onStart: () => undefined,
@@ -684,6 +852,141 @@ test("game-room Tavla render keeps the board stage host stable across rail reren
 
   assert.equal(stageHosts.length, 2);
   assert.equal(stageHosts[0], stageHosts[1]);
+});
+
+test("game-room Tavla Konva stage reuses layers for selection-only redraws", () => {
+  resetFakeKonva();
+  const windowObject: Record<string, unknown> = {
+    GameRoomUiFactories: {},
+    Konva: {
+      Stage: FakeKonvaStage,
+      Layer: FakeKonvaLayer,
+      Group: FakeKonvaGroup,
+      Rect: FakeKonvaNode,
+      Line: FakeKonvaNode,
+      Circle: FakeKonvaNode,
+      Text: FakeKonvaNode,
+    },
+  };
+  const context = {
+    document: { documentElement: {} },
+    getComputedStyle: () => ({
+      getPropertyValue: () => "",
+    }),
+    globalThis: windowObject,
+    window: windowObject,
+  };
+  vm.createContext(context);
+  vm.runInNewContext(
+    loadWorkspaceScriptForVm(
+      "rooms/game-room/main-functions/backgammon/ui/backgammon-stage-runtime.ts"
+    ),
+    context
+  );
+
+  const registry = windowObject["GameRoomUiFactories"] as Record<string, unknown>;
+  const createStageRuntime = registry["createBackgammonStageRuntime"];
+  assert.equal(typeof createStageRuntime, "function");
+  const legalMoves = [
+    {
+      id: "move-1",
+      label: "1-2-3",
+      diceUsed: [1, 1],
+      moves: [
+        {
+          from: { type: "point", point: 1 },
+          to: { type: "point", point: 2 },
+          die: 1,
+          hit: false,
+        },
+        {
+          from: { type: "point", point: 2 },
+          to: { type: "point", point: 3 },
+          die: 1,
+          hit: false,
+        },
+      ],
+    },
+  ];
+  const board = Array.from({ length: 24 }, (_value, index) => ({
+    point: index + 1,
+    owner: index === 0 ? "user" : "",
+    count: index === 0 ? 1 : 0,
+  }));
+  const game = {
+    active: true,
+    awaitingMoveFrom: "user",
+    blockedReason: "",
+    board,
+    bar: { user: 0, ai: 0 },
+    off: { user: 0, ai: 0 },
+    dice: [1, 1],
+    legalMoves,
+    turnIndex: 1,
+    turnToken: "turn-1",
+    boardHash: "board-1",
+  };
+  const selectedMoveIds: string[] = [];
+  const stageRuntime = (
+    createStageRuntime as (deps: Record<string, unknown>) => {
+      renderBackgammonStage(host: FakeStageHost, options: Record<string, unknown>): void;
+    }
+  )({
+    createElement: (tagName: string, className = "", textContent = "") =>
+      new MinimalFakeElement(tagName, className, textContent),
+    getState: () => ({ game }),
+    stateRuntime: {
+      onLegalMove: (moveId: string) => {
+        selectedMoveIds.push(moveId);
+      },
+    },
+    text: (path: string[]) => path.at(-1) ?? "",
+  });
+  const host = new FakeStageHost();
+
+  stageRuntime.renderBackgammonStage(host, {
+    canUserMove: true,
+    game,
+    players: {
+      user: { name: "User", avatar: null, active: true },
+      opponent: { name: "AI", avatar: null, active: false },
+    },
+  });
+
+  assert.equal(FakeKonvaLayer.instances.length, 4);
+  const [boardLayer, highlightLayer, checkerLayer, uiLayer] = FakeKonvaLayer.instances;
+  assert.ok(boardLayer);
+  assert.ok(highlightLayer);
+  assert.ok(checkerLayer);
+  assert.ok(uiLayer);
+  const checkerClearsAfterInitialRender = checkerLayer.destroyChildrenCount;
+  const highlightClearsAfterInitialRender = highlightLayer.destroyChildrenCount;
+  const uiClearsAfterInitialRender = uiLayer.destroyChildrenCount;
+  const sourceChecker = findClickableKonvaNodes(checkerLayer)[0];
+  assert.ok(sourceChecker);
+
+  sourceChecker.trigger("click tap");
+
+  assert.equal(FakeKonvaLayer.instances.length, 4);
+  assert.equal(FakeKonvaLayer.instances[0], boardLayer);
+  assert.equal(FakeKonvaLayer.instances[1], highlightLayer);
+  assert.equal(FakeKonvaLayer.instances[2], checkerLayer);
+  assert.equal(FakeKonvaLayer.instances[3], uiLayer);
+  assert.equal(boardLayer.destroyed, false);
+  assert.equal(highlightLayer.destroyed, false);
+  assert.equal(checkerLayer.destroyed, false);
+  assert.equal(uiLayer.destroyed, false);
+  assert.equal(checkerLayer.destroyChildrenCount, checkerClearsAfterInitialRender);
+  assert.ok(highlightLayer.destroyChildrenCount > highlightClearsAfterInitialRender);
+  assert.ok(uiLayer.destroyChildrenCount > uiClearsAfterInitialRender);
+
+  const targetArea = findClickableKonvaNodes(uiLayer)[0];
+  assert.ok(targetArea);
+  targetArea.trigger("click tap");
+
+  assert.equal(selectedMoveIds.length, 0);
+  assert.ok(checkerLayer.destroyChildrenCount > checkerClearsAfterInitialRender);
+  assert.equal(FakeKonvaLayer.instances.length, 4);
 });
 
 test("game-room Tavla UI coalesces Tavla state and command-result renders per frame", () => {

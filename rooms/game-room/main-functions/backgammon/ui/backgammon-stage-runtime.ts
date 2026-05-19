@@ -75,6 +75,10 @@
       (): StagePoint;
       (value: StagePoint): void;
     };
+    scale?: {
+      (): StagePoint;
+      (value: StagePoint): void;
+    };
     to?: (config: Record<string, unknown>) => void;
     x?: {
       (): number;
@@ -165,6 +169,21 @@
     offUser: RectLike;
     dice: RectLike;
     pointRects: Record<number, RectLike>;
+  };
+  type StageRedrawMode = "full" | "preview" | "selection";
+  type StageRenderModel = {
+    metrics: BoardMetrics;
+    snapshot: BoardSnapshot;
+    candidates: BackgammonSubMove[];
+    highlightedSources: BackgammonLocation[];
+    selectedSourceForTargets: BackgammonLocation | null;
+    selectedTargets: BackgammonLocation[];
+  };
+  type StageLayerSet = {
+    board: KonvaLayer;
+    highlight: KonvaLayer;
+    checker: KonvaLayer;
+    ui: KonvaLayer;
   };
 
   const registry = (global.GameRoomUiFactories ||
@@ -338,6 +357,46 @@
       return `bar:${location.seat}`;
     }
     return "off";
+  }
+
+  function locationsSignature(locations: BackgammonLocation[]): string {
+    return locations.map(locationKey).join(",");
+  }
+
+  function subMoveSignature(subMove: BackgammonSubMove): string {
+    return [
+      locationKey(subMove.from),
+      locationKey(subMove.to),
+      subMove.die,
+      subMove.hit ? "hit" : "move",
+    ].join(">");
+  }
+
+  function subMovesSignature(moves: BackgammonSubMove[]): string {
+    return moves.map(subMoveSignature).join(",");
+  }
+
+  function snapshotSignature(snapshot: BoardSnapshot): string {
+    return [
+      snapshot.board.map((point) => `${point.point}:${point.owner}:${point.count}`).join(","),
+      `bar:${snapshot.bar.user}:${snapshot.bar.ai}`,
+      `off:${snapshot.off.user}:${snapshot.off.ai}`,
+    ].join("|");
+  }
+
+  function candidatesSignature(candidates: BackgammonSubMove[]): string {
+    return candidates.map(subMoveSignature).join(",");
+  }
+
+  function playersSignature(players: BackgammonStageRenderOptions["players"]): string {
+    return [
+      players.user.name,
+      players.user.avatar ?? "",
+      players.user.active ? "1" : "0",
+      players.opponent.name,
+      players.opponent.avatar ?? "",
+      players.opponent.active ? "1" : "0",
+    ].join("|");
   }
 
   function decrementLocation(snapshot: BoardSnapshot, location: BackgammonLocation): void {
@@ -1249,6 +1308,9 @@
     let checkerLayerRef: KonvaLayer | null = null;
     let uiLayerRef: KonvaLayer | null = null;
     let boardDrawn = false;
+    let lastCheckerSignature = "";
+    let lastHighlightSignature = "";
+    let lastUiSignature = "";
     let resizeObserver: ResizeObserver | null = null;
 
     function destroy(): void {
@@ -1266,10 +1328,17 @@
       checkerLayerRef = null;
       uiLayerRef = null;
       boardDrawn = false;
+      resetLayerSignatures();
       cachedMetrics = null;
       activeLayout = DEFAULT_STAGE_LAYOUT;
       lastLayoutSignature = DEFAULT_STAGE_LAYOUT.signature;
       selectedSource = null;
+    }
+
+    function resetLayerSignatures(): void {
+      lastCheckerSignature = "";
+      lastHighlightSignature = "";
+      lastUiSignature = "";
     }
 
     function turnSignature(game: BackgammonGameState): string {
@@ -1313,6 +1382,170 @@
         return;
       }
       stageInstance.batchDraw();
+    }
+
+    function syncLayerLayout(layer: KonvaLayer, layout: StageLayout): void {
+      layer.position?.({ x: layout.offsetX, y: layout.offsetY });
+      layer.scale?.({ x: layout.scale, y: layout.scale });
+    }
+
+    function ensureStageLayers(Konva: KonvaNamespace, layout: StageLayout): StageLayerSet | null {
+      if (stage === null) {
+        return null;
+      }
+      if (boardLayerRef === null) {
+        boardLayerRef = createScaledLayer(Konva, layout);
+        stage.add(boardLayerRef);
+        boardDrawn = false;
+      }
+      if (highlightLayerRef === null) {
+        highlightLayerRef = createScaledLayer(Konva, layout);
+        stage.add(highlightLayerRef);
+      }
+      if (checkerLayerRef === null) {
+        checkerLayerRef = createScaledLayer(Konva, layout);
+        stage.add(checkerLayerRef);
+      }
+      if (uiLayerRef === null) {
+        uiLayerRef = createScaledLayer(Konva, layout);
+        stage.add(uiLayerRef);
+      }
+      if (
+        boardLayerRef === null ||
+        highlightLayerRef === null ||
+        checkerLayerRef === null ||
+        uiLayerRef === null
+      ) {
+        return null;
+      }
+      syncLayerLayout(boardLayerRef, layout);
+      syncLayerLayout(highlightLayerRef, layout);
+      syncLayerLayout(checkerLayerRef, layout);
+      syncLayerLayout(uiLayerRef, layout);
+      highlightLayerRef.moveToTop?.();
+      checkerLayerRef.moveToTop?.();
+      uiLayerRef.moveToTop?.();
+      return {
+        board: boardLayerRef,
+        highlight: highlightLayerRef,
+        checker: checkerLayerRef,
+        ui: uiLayerRef,
+      };
+    }
+
+    function buildRenderModel(metrics: BoardMetrics): StageRenderModel | null {
+      if (activeGame === null) {
+        return null;
+      }
+      const snapshot = applyPreview(activeGame, stagedMoves);
+      const candidates =
+        activeCanUserMove === true ? getNextSubMoves(activeGame.legalMoves, stagedMoves) : [];
+      if (selectedSource !== null && !sourceIsAvailable(selectedSource, candidates)) {
+        selectedSource = null;
+      }
+      const selectedSourceForTargets = selectedSource;
+      const selectedTargets =
+        selectedSourceForTargets === null
+          ? []
+          : uniqueLocations(
+              candidates
+                .filter((candidate) => sameLocation(candidate.from, selectedSourceForTargets))
+                .map((candidate) => candidate.to)
+            );
+      const highlightedSources =
+        selectedSourceForTargets === null
+          ? uniqueLocations(candidates.map((candidate) => candidate.from))
+          : [];
+      return {
+        metrics,
+        snapshot,
+        candidates,
+        highlightedSources,
+        selectedSourceForTargets,
+        selectedTargets,
+      };
+    }
+
+    function getCheckerLayerSignature(model: StageRenderModel): string {
+      return [snapshotSignature(model.snapshot), candidatesSignature(model.candidates)].join("|");
+    }
+
+    function getHighlightLayerSignature(model: StageRenderModel): string {
+      return [
+        locationsSignature(model.highlightedSources),
+        model.selectedSourceForTargets === null ? "" : locationKey(model.selectedSourceForTargets),
+        locationsSignature(model.selectedTargets),
+      ].join("|");
+    }
+
+    function getUiLayerSignature(model: StageRenderModel): string {
+      const passMove = activeGame?.legalMoves.find((move) => move.pass === true);
+      return [
+        activeGame?.dice.join("-") ?? "",
+        activeGame?.awaitingMoveFrom ?? "none",
+        activeGame?.blockedReason ?? "",
+        activeCanUserMove ? "1" : "0",
+        passMove?.id ?? "",
+        locationsSignature(model.selectedTargets),
+        subMovesSignature(stagedMoves),
+        playersSignature(activePlayers),
+      ].join("|");
+    }
+
+    function redrawBoard(Konva: KonvaNamespace, layer: KonvaLayer, metrics: BoardMetrics): void {
+      layer.destroyChildren();
+      drawBoardBase(Konva, layer, metrics);
+      drawPoints(Konva, layer, metrics);
+      boardDrawn = true;
+    }
+
+    function redrawHighlights(
+      Konva: KonvaNamespace,
+      layer: KonvaLayer,
+      model: StageRenderModel
+    ): void {
+      layer.destroyChildren();
+      model.highlightedSources.forEach((source) => {
+        drawTargetHighlight(Konva, layer, model.metrics, source, "source");
+      });
+      if (model.selectedSourceForTargets !== null) {
+        drawTargetHighlight(Konva, layer, model.metrics, model.selectedSourceForTargets, "source");
+        model.selectedTargets.forEach((target) => {
+          drawTargetHighlight(Konva, layer, model.metrics, target, "target");
+        });
+      }
+    }
+
+    function redrawCheckers(
+      Konva: KonvaNamespace,
+      layer: KonvaLayer,
+      model: StageRenderModel
+    ): void {
+      layer.destroyChildren();
+      drawCheckers(Konva, layer, model.snapshot, model.metrics, model.candidates, (group, source) =>
+        attachSelectionHandlers(group, source, () => drawScene(Konva, false, "selection"))
+      );
+    }
+
+    function redrawInteractiveUi(
+      Konva: KonvaNamespace,
+      layer: KonvaLayer,
+      model: StageRenderModel,
+      animateDice: boolean
+    ): void {
+      if (activeGame === null) {
+        return;
+      }
+      layer.destroyChildren();
+      model.selectedTargets.forEach((target) => {
+        drawTargetClickArea(Konva, layer, model.metrics, target, (selectedTarget) =>
+          selectTarget(selectedTarget, () => drawScene(Konva, false, "preview"))
+        );
+      });
+      drawDice(Konva, layer, model.metrics, activeGame.dice, animateDice);
+      drawPlayerChips(Konva, layer, model.metrics, activePlayers);
+      drawUndoAction(Konva, layer, () => drawScene(Konva, false, "preview"));
+      drawPassAction(Konva, layer, activeGame);
     }
 
     function attachSelectionHandlers(
@@ -1470,7 +1703,11 @@
       layer.add(group);
     }
 
-    function drawScene(Konva: KonvaNamespace, animateDice: boolean): void {
+    function drawScene(
+      Konva: KonvaNamespace,
+      animateDice: boolean,
+      mode: StageRedrawMode = "full"
+    ): void {
       if (stage === null || activeGame === null) {
         return;
       }
@@ -1481,81 +1718,35 @@
       if (layout.signature !== lastLayoutSignature) {
         lastLayoutSignature = layout.signature;
         boardDrawn = false;
-        if (boardLayerRef !== null) {
-          boardLayerRef.destroy?.();
-          boardLayerRef = null;
-        }
+      }
+      const layers = ensureStageLayers(Konva, layout);
+      if (layers === null) {
+        return;
       }
 
-      if (!boardDrawn || boardLayerRef === null) {
-        if (boardLayerRef !== null) {
-          boardLayerRef.destroy?.();
-        }
-        boardLayerRef = createScaledLayer(Konva, layout);
-        drawBoardBase(Konva, boardLayerRef, metrics);
-        drawPoints(Konva, boardLayerRef, metrics);
-        stage.add(boardLayerRef);
-        boardDrawn = true;
+      if (!boardDrawn) {
+        redrawBoard(Konva, layers.board, metrics);
       }
 
-      if (highlightLayerRef !== null) {
-        highlightLayerRef.destroy?.();
+      const model = buildRenderModel(metrics);
+      if (model === null) {
+        return;
       }
-      if (checkerLayerRef !== null) {
-        checkerLayerRef.destroy?.();
+      const checkerSignature = getCheckerLayerSignature(model);
+      if (mode !== "selection" && checkerSignature !== lastCheckerSignature) {
+        redrawCheckers(Konva, layers.checker, model);
+        lastCheckerSignature = checkerSignature;
       }
-      if (uiLayerRef !== null) {
-        uiLayerRef.destroy?.();
+      const highlightSignature = getHighlightLayerSignature(model);
+      if (highlightSignature !== lastHighlightSignature) {
+        redrawHighlights(Konva, layers.highlight, model);
+        lastHighlightSignature = highlightSignature;
       }
-      const highlightLayer = createScaledLayer(Konva, layout);
-      const checkerLayer = createScaledLayer(Konva, layout);
-      const uiLayer = createScaledLayer(Konva, layout);
-      highlightLayerRef = highlightLayer;
-      checkerLayerRef = checkerLayer;
-      uiLayerRef = uiLayer;
-      stage.add(highlightLayer, checkerLayer, uiLayer);
-
-      const snapshot = applyPreview(activeGame, stagedMoves);
-      const candidates =
-        activeCanUserMove === true ? getNextSubMoves(activeGame.legalMoves, stagedMoves) : [];
-      if (selectedSource !== null && !sourceIsAvailable(selectedSource, candidates)) {
-        selectedSource = null;
+      const uiSignature = getUiLayerSignature(model);
+      if (animateDice || uiSignature !== lastUiSignature) {
+        redrawInteractiveUi(Konva, layers.ui, model, animateDice);
+        lastUiSignature = uiSignature;
       }
-      const selectedSourceForTargets = selectedSource;
-      const selectedTargets =
-        selectedSourceForTargets === null
-          ? []
-          : uniqueLocations(
-              candidates
-                .filter((candidate) => sameLocation(candidate.from, selectedSourceForTargets))
-                .map((candidate) => candidate.to)
-            );
-
-      const highlightedSources =
-        selectedSourceForTargets === null
-          ? uniqueLocations(candidates.map((candidate) => candidate.from))
-          : [];
-      highlightedSources.forEach((source) => {
-        drawTargetHighlight(Konva, highlightLayer, metrics, source, "source");
-      });
-      if (selectedSourceForTargets !== null) {
-        drawTargetHighlight(Konva, highlightLayer, metrics, selectedSourceForTargets, "source");
-        selectedTargets.forEach((target) => {
-          drawTargetHighlight(Konva, highlightLayer, metrics, target, "target");
-        });
-      }
-      drawCheckers(Konva, checkerLayer, snapshot, metrics, candidates, (group, source) =>
-        attachSelectionHandlers(group, source, () => drawScene(Konva, false))
-      );
-      selectedTargets.forEach((target) => {
-        drawTargetClickArea(Konva, uiLayer, metrics, target, (selectedTarget) =>
-          selectTarget(selectedTarget, () => drawScene(Konva, false))
-        );
-      });
-      drawDice(Konva, uiLayer, metrics, activeGame.dice, animateDice);
-      drawPlayerChips(Konva, uiLayer, metrics, activePlayers);
-      drawUndoAction(Konva, uiLayer, () => drawScene(Konva, false));
-      drawPassAction(Konva, uiLayer, activeGame);
       flushStageDraw(stage);
     }
 
