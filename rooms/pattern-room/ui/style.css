@@ -794,6 +794,11 @@ p {
   cursor: pointer;
 }
 
+.pattern-room-action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .pattern-room-list-item {
   min-height: 156px;
   padding: 18px;
@@ -1045,6 +1050,11 @@ p {
     linear-gradient(180deg, rgba(143, 248, 238, 0.08), transparent), rgba(10, 14, 15, 0.62);
 }
 
+.pattern-room-role-slot.connected {
+  border-color: rgba(242, 199, 110, 0.48);
+  background: linear-gradient(180deg, rgba(242, 199, 110, 0.1), transparent), rgba(10, 14, 15, 0.7);
+}
+
 .pattern-room-role-id {
   color: #8ff8ee;
 }
@@ -1065,22 +1075,54 @@ p {
   font-weight: 700;
 }
 
+.pattern-room-role-connection {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 8px;
+  padding: 4px 8px;
+  border: 1px solid rgba(237, 242, 244, 0.16);
+  border-radius: 999px;
+  color: #edf2f4;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
 .pattern-room-role-slot p {
   margin-top: 10px;
   color: #b8c0c6;
 }
 
-.pattern-room-debate-references {
+.pattern-room-debate-references,
+.pattern-room-debate-turns {
   display: grid;
   gap: 10px;
   margin-top: 22px;
 }
 
-.pattern-room-reference-item {
+.pattern-room-reference-item,
+.pattern-room-debate-turn,
+.pattern-room-debate-verdict {
   padding: 14px;
   border: 1px solid rgba(242, 199, 110, 0.24);
   border-radius: 8px;
   background: rgba(10, 14, 15, 0.62);
+}
+
+.pattern-room-debate-turn {
+  border-color: rgba(143, 248, 238, 0.22);
+}
+
+.pattern-room-debate-verdict {
+  margin-top: 18px;
+  border-color: rgba(239, 111, 108, 0.28);
+}
+
+.pattern-room-debate-actions {
+  margin-top: 18px;
+}
+
+.pattern-room-empty-state {
+  color: #b8c0c6;
 }
 
 .pattern-room-report {

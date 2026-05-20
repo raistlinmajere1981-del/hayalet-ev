@@ -437,16 +437,28 @@ export function adaptTenthManViewModel(
     tenthManSession: {
       id: domain.debateSession.id,
       label: "Masaya bağlı 10. Adam cihazı",
-      status: "dummy",
+      status:
+        overlay?.debatePhase === "completed"
+          ? "completed"
+          : overlay?.debatePhase !== undefined && overlay.debatePhase !== "idle"
+            ? "active"
+            : "dummy",
       prompt: domain.debateSession.prompt,
       roles: domain.debateSession.roles.map((role) => {
         return {
           id: `role-${role.slotId.toLocaleLowerCase("en-US")}-${role.role}`,
           label: adaptRoleLabel(role),
           note: ROLE_NOTES[role.role],
+          connected: overlay?.debateRolesConnected[role.slotId] ?? role.connected,
         };
       }),
       references,
+      phase: overlay?.debatePhase ?? "idle",
+      turns:
+        overlay?.debateLocalTurns.map((turn) => {
+          return { ...turn };
+        }) ?? [],
+      verdict: overlay?.debateLocalVerdict ?? null,
     },
   };
 }

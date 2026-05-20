@@ -168,6 +168,15 @@ test("pattern-room phase 4B adapter silently skips stale overlay ids", () => {
     pinnedSourceIds: ["missing-source"],
     sourcePinnedLayerById: { "missing-source": "evidence" },
     debateReferenceIds: ["missing-node", "missing-source"],
+    debatePhase: "idle",
+    debateLocalTurns: [],
+    debateRolesConnected: {
+      AI0: false,
+      AI1: false,
+      AI2: false,
+      US1: false,
+    },
+    debateLocalVerdict: null,
     localNotes: [
       {
         id: "local-note-missing",
@@ -196,6 +205,54 @@ test("pattern-room phase 4B adapter silently skips stale overlay ids", () => {
       return section.label === "Yerel Notlar";
     })
   );
+});
+
+test("pattern-room phase 5B local debate state machine stays overlay-only", () => {
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+
+  localState.prepareDebate();
+  assert.equal(localState.getOverlay().debatePhase, "idle");
+
+  localState.addToDebate("node-navigation-source");
+  localState.prepareDebate();
+  assert.equal(localState.getOverlay().debatePhase, "preparation");
+
+  localState.assignDebateRoles();
+  assert.equal(localState.getOverlay().debatePhase, "role_assignment");
+  assert.equal(
+    Object.values(localState.getOverlay().debateRolesConnected).every((connected) => connected),
+    true
+  );
+
+  localState.startDebate();
+  localState.advanceDebatePhase();
+  localState.advanceDebatePhase();
+  localState.advanceDebatePhase();
+  localState.advanceDebatePhase();
+  assert.equal(localState.getOverlay().debatePhase, "judge_mapping");
+  assert.deepEqual(
+    localState.getOverlay().debateLocalTurns.map((turn) => turn.actorId),
+    ["AI0", "AI2", "AI1", "AI2", "US1"]
+  );
+
+  localState.completeDebate();
+  localState.reflectDebateToReport();
+  localState.reflectDebateToReport();
+
+  const viewModels = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK, localState.getOverlay());
+  const localNotesSection = viewModels.reportSummary.sections.find((section) => {
+    return section.id === "report-local-notes";
+  });
+
+  assert.equal(viewModels.tenthManSession.status, "completed");
+  assert.equal(viewModels.tenthManSession.phase, "completed");
+  assert.equal(viewModels.tenthManSession.turns?.length, 5);
+  assert.match(viewModels.tenthManSession.verdict ?? "", /Gerçek AI, provider veya relay/);
+  assert.ok(localNotesSection);
+  assert.equal(localNotesSection.bullets.length, 1);
+  assert.match(localNotesSection.bullets[0] ?? "", /10\. Adam local oturum özeti/);
+  assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
 });
 
 test("pattern-room phase 3B adapter maps every source type label", () => {

@@ -191,3 +191,77 @@ test("pattern-room installed UI supports phase 4B local interactions without hos
     await installedCopy.cleanup();
   }
 });
+
+test("pattern-room installed UI runs phase 5B local tenth-man debate flow", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?debate=${Date.now()}`
+    );
+
+    openFocusedView(environment.app, "tenth-man");
+    const disabledPrepare = environment.app.querySelector("[data-pattern-prepare-debate='true']");
+    assert.ok(disabledPrepare);
+    assert.equal(disabledPrepare.disabled, true);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "archive");
+    const addArchiveSourceToDebate = environment.app.querySelector(
+      "[data-pattern-add-source-debate='source-shadow-comparison']"
+    );
+    assert.ok(addArchiveSourceToDebate);
+    fireEvent(addArchiveSourceToDebate, "click");
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "tenth-man");
+    assertTextIncludes(readTreeText(environment.app), ["Golge karsilastirma gorseli"]);
+
+    const prepare = environment.app.querySelector("[data-pattern-prepare-debate='true']");
+    assert.ok(prepare);
+    assert.equal(prepare.disabled, false);
+    fireEvent(prepare, "click");
+    assertTextIncludes(readTreeText(environment.app), ["Hazırlık", "Rolleri Ata"]);
+
+    const assign = environment.app.querySelector("[data-pattern-assign-debate-roles='true']");
+    assert.ok(assign);
+    fireEvent(assign, "click");
+    assertTextIncludes(readTreeText(environment.app), ["Rol atama", "dummy bağlı"]);
+
+    const start = environment.app.querySelector("[data-pattern-start-debate='true']");
+    assert.ok(start);
+    fireEvent(start, "click");
+    assertTextIncludes(readTreeText(environment.app), ["AI0 araştırmacı açılışı"]);
+
+    for (let index = 0; index < 4; index += 1) {
+      const advance = environment.app.querySelector("[data-pattern-advance-debate='true']");
+      assert.ok(advance);
+      fireEvent(advance, "click");
+    }
+
+    assertTextIncludes(readTreeText(environment.app), ["US1 hakem değerlendirmesi"]);
+
+    const complete = environment.app.querySelector("[data-pattern-complete-debate='true']");
+    assert.ok(complete);
+    fireEvent(complete, "click");
+    assertTextIncludes(readTreeText(environment.app), ["Local 10. Adam oturumu tamamlandı"]);
+
+    const reflect = environment.app.querySelector("[data-pattern-reflect-debate='true']");
+    assert.ok(reflect);
+    fireEvent(reflect, "click");
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "report");
+    assertTextIncludes(readTreeText(environment.app), [
+      "Yerel Notlar",
+      "10. Adam local oturum özeti",
+    ]);
+
+    assert.deepEqual(environment.sentCommands, []);
+    assert.deepEqual(environment.sentEvents, []);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});

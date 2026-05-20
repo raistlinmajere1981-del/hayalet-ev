@@ -1,0 +1,447 @@
+import type { PatternViewId } from "../types/pattern-room.js";
+import {
+  PATTERN_ROOM_SNAPSHOT_VERSION,
+  type PatternRoomSessionSnapshot,
+} from "../types/pattern-room-snapshot.js";
+import { PATTERN_LAYERS, type PatternLayer } from "../types/pattern-room-domain.js";
+import type {
+  DebateLocalPhase,
+  DebateLocalTurn,
+  LocalNote,
+  PatternRoomLocalDomainReference,
+  PatternRoomLocalGuards,
+  PatternRoomLocalOverlay,
+  PatternRoomLocalState,
+} from "./pattern-room-local-state.js";
+
+type SnapshotRecord = Record<string, unknown>;
+
+export type PatternRoomSnapshotRestoreResult = {
+  overlay: PatternRoomLocalOverlay;
+  activeView: PatternViewId;
+  guards: PatternRoomLocalGuards;
+};
+
+const PATTERN_VIEW_IDS = ["overview", "board", "desk", "archive", "tenth-man", "report"] as const;
+
+const DEBATE_LOCAL_PHASES = [
+  "idle",
+  "preparation",
+  "role_assignment",
+  "opening",
+  "counter_argument",
+  "evidence_review",
+  "weak_point",
+  "judge_mapping",
+  "completed",
+] as const;
+
+const PATTERN_ACTOR_IDS = ["AI0", "AI1", "AI2", "US1", "system"] as const;
+
+const DEBATE_ROLE_IDS = ["researcher", "advocate", "tenth-man", "arbiter"] as const;
+
+const DEBATE_STANCES = ["support", "oppose", "neutral", "question"] as const;
+
+const TURN_PHASES_WITH_LOCAL_TURNS = new Set<DebateLocalPhase>([
+  "opening",
+  "counter_argument",
+  "evidence_review",
+  "weak_point",
+  "judge_mapping",
+  "completed",
+]);
+
+const CONNECTED_ROLE_PHASES = new Set<DebateLocalPhase>([
+  "role_assignment",
+  "opening",
+  "counter_argument",
+  "evidence_review",
+  "weak_point",
+  "judge_mapping",
+  "completed",
+]);
+
+const ROLE_CONNECTION_IDS = ["AI0", "AI1", "AI2", "US1"] as const;
+
+function createSnapshotId(topicId: string, createdAt: string): string {
+  return `pattern-room-snapshot-${topicId}-${createdAt.replace(/[^0-9]/g, "")}`;
+}
+
+function cloneNotes(notes: readonly LocalNote[]): LocalNote[] {
+  return notes.map((note) => {
+    return { ...note };
+  });
+}
+
+function isPatternLayer(value: unknown): value is PatternLayer {
+  return PATTERN_LAYERS.includes(value as PatternLayer);
+}
+
+function isRecord(value: unknown): value is SnapshotRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function isPatternViewId(value: unknown): value is PatternViewId {
+  return typeof value === "string" && PATTERN_VIEW_IDS.some((viewId) => viewId === value);
+}
+
+function isDebateLocalPhase(value: unknown): value is DebateLocalPhase {
+  return typeof value === "string" && DEBATE_LOCAL_PHASES.some((phase) => phase === value);
+}
+
+function isPatternActorId(value: unknown): value is DebateLocalTurn["actorId"] {
+  return typeof value === "string" && PATTERN_ACTOR_IDS.some((actorId) => actorId === value);
+}
+
+function isDebateRole(value: unknown): value is DebateLocalTurn["role"] {
+  return typeof value === "string" && DEBATE_ROLE_IDS.some((role) => role === value);
+}
+
+function isDebateStance(value: unknown): value is DebateLocalTurn["stance"] {
+  return typeof value === "string" && DEBATE_STANCES.some((stance) => stance === value);
+}
+
+function parseLayerRecord(value: unknown): Record<string, PatternLayer> | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const layerById: Record<string, PatternLayer> = {};
+  Object.entries(value).forEach(([sourceId, layer]) => {
+    if (isPatternLayer(layer)) {
+      layerById[sourceId] = layer;
+    }
+  });
+  return layerById;
+}
+
+function parseRoleConnections(value: unknown): Record<string, boolean> | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const roleConnections: Record<string, boolean> = {};
+  Object.entries(value).forEach(([roleId, connected]) => {
+    if (typeof connected === "boolean") {
+      roleConnections[roleId] = connected;
+    }
+  });
+  return roleConnections;
+}
+
+function parseLocalNotes(value: unknown): LocalNote[] | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const notes: LocalNote[] = [];
+  for (const note of value) {
+    if (
+      !isRecord(note) ||
+      typeof note["id"] !== "string" ||
+      typeof note["text"] !== "string" ||
+      typeof note["createdAt"] !== "string"
+    ) {
+      return null;
+    }
+
+    notes.push({
+      id: note["id"],
+      text: note["text"],
+      createdAt: note["createdAt"],
+    });
+  }
+  return notes;
+}
+
+function parseDebateTurns(value: unknown): DebateLocalTurn[] | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const turns: DebateLocalTurn[] = [];
+  for (const turn of value) {
+    if (
+      !isRecord(turn) ||
+      typeof turn["id"] !== "string" ||
+      !isPatternActorId(turn["actorId"]) ||
+      !isDebateRole(turn["role"]) ||
+      typeof turn["content"] !== "string" ||
+      !isDebateStance(turn["stance"]) ||
+      !isDebateLocalPhase(turn["phaseKey"]) ||
+      typeof turn["turnIndex"] !== "number" ||
+      !Number.isInteger(turn["turnIndex"])
+    ) {
+      return null;
+    }
+
+    const referencedIds = turn["referencedIds"];
+    if (referencedIds !== undefined && !isStringArray(referencedIds)) {
+      return null;
+    }
+
+    turns.push({
+      id: turn["id"],
+      actorId: turn["actorId"],
+      role: turn["role"],
+      content: turn["content"],
+      stance: turn["stance"],
+      phaseKey: turn["phaseKey"],
+      turnIndex: turn["turnIndex"],
+      ...(referencedIds === undefined ? {} : { referencedIds }),
+    });
+  }
+  return turns;
+}
+
+function parseOverlay(value: unknown): PatternRoomLocalOverlay | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const sourcePinnedLayerById = parseLayerRecord(value["sourcePinnedLayerById"]);
+  const debateLocalTurns = parseDebateTurns(value["debateLocalTurns"]);
+  const debateRolesConnected = parseRoleConnections(value["debateRolesConnected"]);
+  const localNotes = parseLocalNotes(value["localNotes"]);
+
+  if (
+    !isStringArray(value["deskNodeIds"]) ||
+    !isStringArray(value["pinnedSourceIds"]) ||
+    sourcePinnedLayerById === null ||
+    !isStringArray(value["debateReferenceIds"]) ||
+    !isDebateLocalPhase(value["debatePhase"]) ||
+    debateLocalTurns === null ||
+    debateRolesConnected === null ||
+    (value["debateLocalVerdict"] !== null && typeof value["debateLocalVerdict"] !== "string") ||
+    localNotes === null
+  ) {
+    return null;
+  }
+
+  return {
+    deskNodeIds: value["deskNodeIds"],
+    pinnedSourceIds: value["pinnedSourceIds"],
+    sourcePinnedLayerById,
+    debateReferenceIds: value["debateReferenceIds"],
+    debatePhase: value["debatePhase"],
+    debateLocalTurns,
+    debateRolesConnected,
+    debateLocalVerdict: value["debateLocalVerdict"],
+    localNotes,
+  };
+}
+
+function parseGuards(value: unknown): PatternRoomLocalGuards | null {
+  if (
+    !isRecord(value) ||
+    typeof value["debateReportReflected"] !== "boolean" ||
+    typeof value["noteIndex"] !== "number" ||
+    !Number.isFinite(value["noteIndex"])
+  ) {
+    return null;
+  }
+
+  return {
+    debateReportReflected: value["debateReportReflected"],
+    noteIndex: value["noteIndex"],
+  };
+}
+
+function parseSnapshot(value: unknown): PatternRoomSessionSnapshot | null {
+  if (
+    !isRecord(value) ||
+    typeof value["snapshotId"] !== "string" ||
+    value["roomId"] !== "pattern-room" ||
+    typeof value["topicId"] !== "string" ||
+    value["schemaVersion"] !== PATTERN_ROOM_SNAPSHOT_VERSION ||
+    typeof value["createdAt"] !== "string" ||
+    typeof value["updatedAt"] !== "string" ||
+    !isPatternViewId(value["activeView"])
+  ) {
+    return null;
+  }
+
+  const overlay = parseOverlay(value["overlay"]);
+  const guards = parseGuards(value["guards"]);
+  if (overlay === null || guards === null) {
+    return null;
+  }
+
+  return {
+    snapshotId: value["snapshotId"],
+    roomId: "pattern-room",
+    topicId: value["topicId"],
+    schemaVersion: PATTERN_ROOM_SNAPSHOT_VERSION,
+    createdAt: value["createdAt"],
+    updatedAt: value["updatedAt"],
+    overlay,
+    activeView: value["activeView"],
+    guards,
+  };
+}
+
+function filterUniqueIds(
+  ids: readonly string[],
+  canRestoreId: (candidateId: string) => boolean
+): string[] {
+  const seenIds = new Set<string>();
+  const restoredIds: string[] = [];
+
+  ids.forEach((candidateId) => {
+    if (seenIds.has(candidateId) || !canRestoreId(candidateId)) {
+      return;
+    }
+    seenIds.add(candidateId);
+    restoredIds.push(candidateId);
+  });
+
+  return restoredIds;
+}
+
+function cloneTurnWithFilteredReferences(
+  turn: DebateLocalTurn,
+  canRestoreEntityId: (candidateId: string) => boolean
+): DebateLocalTurn {
+  if (turn.referencedIds === undefined) {
+    return { ...turn };
+  }
+
+  return {
+    ...turn,
+    referencedIds: filterUniqueIds(turn.referencedIds, canRestoreEntityId),
+  };
+}
+
+function healDebatePhase(
+  phase: DebateLocalPhase,
+  turns: readonly DebateLocalTurn[],
+  referenceIds: readonly string[]
+): DebateLocalPhase {
+  if (turns.length === 0 && TURN_PHASES_WITH_LOCAL_TURNS.has(phase)) {
+    return referenceIds.length > 0 ? "preparation" : "idle";
+  }
+
+  return phase;
+}
+
+function healRoleConnections(
+  phase: DebateLocalPhase,
+  _roleConnections: Readonly<Record<string, boolean>>
+): Record<string, boolean> {
+  const shouldBeConnected = CONNECTED_ROLE_PHASES.has(phase);
+  const healedConnections: Record<string, boolean> = {};
+
+  ROLE_CONNECTION_IDS.forEach((roleId) => {
+    healedConnections[roleId] = shouldBeConnected;
+  });
+
+  return healedConnections;
+}
+
+function healGuards(
+  guards: PatternRoomLocalGuards,
+  overlay: PatternRoomLocalOverlay
+): PatternRoomLocalGuards {
+  const guardNoteIndex = Number.isFinite(guards.noteIndex) ? guards.noteIndex : 0;
+  return {
+    debateReportReflected: guards.debateReportReflected,
+    noteIndex: Math.max(0, guardNoteIndex, overlay.localNotes.length),
+  };
+}
+
+function restoreOverlaySnapshot(
+  snapshotOverlay: PatternRoomLocalOverlay,
+  domainMock: PatternRoomLocalDomainReference
+): PatternRoomLocalOverlay {
+  const nodeIds = new Set(
+    domainMock.nodes.map((node) => {
+      return node.id;
+    })
+  );
+  const sourceIds = new Set(
+    domainMock.sources.map((source) => {
+      return source.id;
+    })
+  );
+  const hasNode = (candidateId: string): boolean => nodeIds.has(candidateId);
+  const hasSource = (candidateId: string): boolean => sourceIds.has(candidateId);
+  const hasEntity = (candidateId: string): boolean =>
+    hasNode(candidateId) || hasSource(candidateId);
+  const pinnedSourceIds = filterUniqueIds(snapshotOverlay.pinnedSourceIds, hasSource);
+  const sourcePinnedLayerById: Record<string, PatternLayer> = {};
+
+  pinnedSourceIds.forEach((sourceId) => {
+    const layer = snapshotOverlay.sourcePinnedLayerById[sourceId];
+    if (isPatternLayer(layer)) {
+      sourcePinnedLayerById[sourceId] = layer;
+    }
+  });
+
+  const debateReferenceIds = filterUniqueIds(snapshotOverlay.debateReferenceIds, hasEntity);
+  const debateLocalTurns = snapshotOverlay.debateLocalTurns.map((turn) => {
+    return cloneTurnWithFilteredReferences(turn, hasEntity);
+  });
+  const debatePhase = healDebatePhase(
+    snapshotOverlay.debatePhase,
+    debateLocalTurns,
+    debateReferenceIds
+  );
+
+  return {
+    deskNodeIds: filterUniqueIds(snapshotOverlay.deskNodeIds, hasNode),
+    pinnedSourceIds,
+    sourcePinnedLayerById,
+    debateReferenceIds,
+    debatePhase,
+    debateLocalTurns,
+    debateRolesConnected: healRoleConnections(debatePhase, snapshotOverlay.debateRolesConnected),
+    debateLocalVerdict: debateLocalTurns.length > 0 ? snapshotOverlay.debateLocalVerdict : null,
+    localNotes: cloneNotes(snapshotOverlay.localNotes),
+  };
+}
+
+export function createSnapshot(
+  localState: PatternRoomLocalState,
+  activeView: PatternViewId
+): PatternRoomSessionSnapshot {
+  const createdAt = new Date().toISOString();
+  const topicId = localState.getTopicId();
+
+  return {
+    snapshotId: createSnapshotId(topicId, createdAt),
+    roomId: "pattern-room",
+    topicId,
+    schemaVersion: PATTERN_ROOM_SNAPSHOT_VERSION,
+    createdAt,
+    updatedAt: createdAt,
+    overlay: localState.getOverlay(),
+    activeView,
+    guards: localState.getGuards(),
+  };
+}
+
+export function restoreFromSnapshot(
+  snapshot: unknown,
+  domainMock: PatternRoomLocalDomainReference
+): PatternRoomSnapshotRestoreResult | null {
+  const parsedSnapshot = parseSnapshot(snapshot);
+  if (parsedSnapshot === null) {
+    return null;
+  }
+
+  if (parsedSnapshot.topicId !== domainMock.topic.id) {
+    return null;
+  }
+
+  const overlay = restoreOverlaySnapshot(parsedSnapshot.overlay, domainMock);
+
+  return {
+    overlay,
+    activeView: parsedSnapshot.activeView,
+    guards: healGuards(parsedSnapshot.guards, overlay),
+  };
+}

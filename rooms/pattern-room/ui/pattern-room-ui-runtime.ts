@@ -1,11 +1,13 @@
 import { adaptDomainToViewModels } from "../shared/adapters/pattern-room-view-adapters.js";
 import { PATTERN_ROOM_DOMAIN_MOCK } from "../shared/data/pattern-room-domain.mock.js";
 import { createLocalState } from "../shared/state/pattern-room-local-state.js";
+import { createSnapshot, restoreFromSnapshot } from "../shared/state/pattern-room-snapshot.js";
 import type {
   PatternPanelActions,
   PatternRoomMockData,
   PatternViewId,
 } from "../shared/types/pattern-room.js";
+import type { PatternRoomSessionSnapshot } from "../shared/types/pattern-room-snapshot.js";
 import { createArchivePanel } from "./panels/pattern-archive-panel.js";
 import { createBoardPanel } from "./panels/pattern-board-panel.js";
 import { createDeskPanel } from "./panels/pattern-desk-panel.js";
@@ -17,6 +19,8 @@ type FocusedPatternViewId = Exclude<PatternViewId, "overview">;
 
 export type PatternRoomUiRuntime = {
   start: () => void;
+  createSnapshot: () => PatternRoomSessionSnapshot;
+  restoreSnapshot: (snapshot: unknown) => boolean;
 };
 
 function resolveRoot(): HTMLElement {
@@ -62,6 +66,24 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     },
     addLocalNote(text: string): void {
       localState.addLocalNote(text);
+    },
+    prepareDebate(): void {
+      localState.prepareDebate();
+    },
+    assignDebateRoles(): void {
+      localState.assignDebateRoles();
+    },
+    startDebate(): void {
+      localState.startDebate();
+    },
+    advanceDebatePhase(): void {
+      localState.advanceDebatePhase();
+    },
+    completeDebate(): void {
+      localState.completeDebate();
+    },
+    reflectDebateToReport(): void {
+      localState.reflectDebateToReport();
     },
   };
 
@@ -109,6 +131,19 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     start(): void {
       render();
       announceReady();
+    },
+    createSnapshot(): PatternRoomSessionSnapshot {
+      return createSnapshot(localState, activeView);
+    },
+    restoreSnapshot(snapshot: unknown): boolean {
+      const restoredState = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_MOCK);
+      if (restoredState === null) {
+        return false;
+      }
+
+      activeView = restoredState.activeView;
+      localState.restoreOverlay(restoredState.overlay, restoredState.guards);
+      return true;
     },
   };
 }

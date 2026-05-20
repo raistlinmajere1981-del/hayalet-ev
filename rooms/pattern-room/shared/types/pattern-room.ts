@@ -1,3 +1,5 @@
+import type { DebateLocalPhase, DebateLocalTurn } from "../state/pattern-room-local-state.js";
+
 export type PatternViewId = "overview" | "board" | "desk" | "archive" | "tenth-man" | "report";
 
 export type PatternBoardCategoryTone = "evidence" | "analysis" | "commentary" | "uncertainty";
@@ -47,6 +49,7 @@ export type PatternDummyRole = {
   id: string;
   label: string;
   note: string;
+  connected?: boolean;
 };
 
 export type PatternDebateReference = {
@@ -67,10 +70,13 @@ export type PatternReportSection = {
 export type PatternTenthManSession = {
   id: string;
   label: string;
-  status: "dummy";
+  status: "dummy" | "active" | "completed";
   prompt: string;
   roles: PatternDummyRole[];
   references: PatternDebateReference[];
+  phase?: DebateLocalPhase;
+  turns?: DebateLocalTurn[];
+  verdict?: string | null;
 };
 
 export type PatternReportSummary = {
@@ -100,4 +106,10 @@ export type PatternPanelActions = {
   pinSourceToBoard: (sourceId: string, layer: PatternBoardLayerId) => void;
   addSourceToDebate: (sourceId: string) => void;
   addLocalNote: (text: string) => void;
+  prepareDebate: () => void;
+  assignDebateRoles: () => void;
+  startDebate: () => void;
+  advanceDebatePhase: () => void;
+  completeDebate: () => void;
+  reflectDebateToReport: () => void;
 };
