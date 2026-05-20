@@ -114,13 +114,15 @@ export function createLaboratoryProcessDelegatesRuntime(deps: Record<string, unk
     api: Record<string, unknown>,
     runtime: Record<string, unknown>,
     requestId: string,
-    featureId: string
+    featureId: string,
+    options?: Record<string, unknown>
   ) {
     return (processCoordinationRuntime["exportFeatureReport"] as UnknownFn)(
       api,
       runtime,
       requestId,
-      featureId
+      featureId,
+      options
     );
   }
 

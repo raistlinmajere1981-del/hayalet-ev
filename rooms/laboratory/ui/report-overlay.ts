@@ -222,6 +222,96 @@ function renderUserReportFindings(
     .join("");
 }
 
+function renderCorrelationClusters(
+  clusters:
+    | LabUserReport["topCorrelationClusters"]
+    | LabAiReport["correlationClusters"]
+    | undefined,
+  copy: LabI18n = LAB_FALLBACK_I18N
+) {
+  if (!Array.isArray(clusters) || clusters.length === 0) {
+    return "";
+  }
+  return `
+    <div class="labx-report-section">
+      <h3 class="labx-report-section__title">${escapeHtml(copy.t("mediaAnalysis.reportOverlay.correlation.title", "Correlation"))}</h3>
+      ${clusters
+        .map(function (cluster) {
+          return `
+            <div class="labx-report-finding">
+              <div class="labx-report-finding__title">
+                <strong>${escapeHtml(cluster.title)}</strong>
+                ${renderConfidenceBadge(cluster.confidence, copy)}
+                <span class="labx-report-evidence-tag">${escapeHtml(String(cluster.score))}</span>
+              </div>
+              <div class="labx-report-finding__detail">${escapeHtml(cluster.detail)}</div>
+              <div class="labx-report-finding__evidence">
+                ${cluster.signalTypes
+                  .map(function (signalType) {
+                    return `<span class="labx-report-evidence-tag">${escapeHtml(signalType)}</span>`;
+                  })
+                  .join("")}
+              </div>
+            </div>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function renderNarrativeCues(
+  cues: LabUserReport["narrativeCues"] | LabAiReport["narrativeCues"] | undefined,
+  copy: LabI18n = LAB_FALLBACK_I18N
+) {
+  if (!Array.isArray(cues) || cues.length === 0) {
+    return "";
+  }
+  return `
+    <div class="labx-report-section">
+      <h3 class="labx-report-section__title">${escapeHtml(copy.t("mediaAnalysis.reportOverlay.narrative.title", "Narrative Cues"))}</h3>
+      <div class="labx-report-manifest">
+        ${cues
+          .map(function (cue) {
+            const tags = [cue.confidence, cue.temporalBasis]
+              .filter((entry): entry is string => typeof entry === "string" && entry.trim() !== "")
+              .map(function (entry) {
+                return `<span class="labx-report-evidence-tag">${escapeHtml(entry)}</span>`;
+              })
+              .join("");
+            return `
+              <div class="labx-report-manifest__entry">
+                <span>${escapeHtml(cue.source)}</span>
+                <strong>${escapeHtml(cue.phrase)}</strong>
+                ${tags}
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderForensicNotes(
+  notes: LabUserReport["forensicNotes"] | LabAiReport["forensicNotes"] | undefined,
+  copy: LabI18n = LAB_FALLBACK_I18N
+) {
+  if (!Array.isArray(notes) || notes.length === 0) {
+    return "";
+  }
+  return `
+    <div class="labx-report-section">
+      <h3 class="labx-report-section__title">${escapeHtml(copy.t("mediaAnalysis.reportOverlay.forensics.title", "Forensic Notes"))}</h3>
+      ${notes
+        .map(function (note) {
+          return `<div class="labx-report-warning"><strong>${escapeHtml(note.label)}</strong>: ${escapeHtml(note.detail)}</div>`;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
 function renderSuspiciousFrames(report: LabUserReport, copy: LabI18n = LAB_FALLBACK_I18N) {
   if (!Array.isArray(report.suspiciousFrames) || report.suspiciousFrames.length === 0) {
     return "";
@@ -296,6 +386,9 @@ function renderUserReport(report: LabUserReport, copy: LabI18n = LAB_FALLBACK_I1
       ${renderUserReportFindings(report.topFindings, copy)}
     </div>
 
+    ${renderCorrelationClusters(report.topCorrelationClusters, copy)}
+    ${renderNarrativeCues(report.narrativeCues, copy)}
+    ${renderForensicNotes(report.forensicNotes, copy)}
     ${renderSuspiciousFrames(report, copy)}
     ${renderHypothesisResult(report, copy)}
     ${renderModuleSummary(report, copy)}
@@ -418,6 +511,11 @@ function renderAiReport(report: LabAiReport, copy: LabI18n = LAB_FALLBACK_I18N) 
   const moduleTrace = Array.isArray(report.moduleTrace) ? report.moduleTrace : [];
   const findings = Array.isArray(report.findings) ? report.findings : [];
   const artifacts = Array.isArray(report.artifacts) ? report.artifacts : [];
+  const correlationClusters = Array.isArray(report.correlationClusters)
+    ? report.correlationClusters
+    : [];
+  const narrativeCues = Array.isArray(report.narrativeCues) ? report.narrativeCues : [];
+  const forensicNotes = Array.isArray(report.forensicNotes) ? report.forensicNotes : [];
 
   const warningsHtml =
     warnings.length > 0
@@ -454,6 +552,10 @@ function renderAiReport(report: LabAiReport, copy: LabI18n = LAB_FALLBACK_I18N) 
       <h3 class="labx-report-section__title">${escapeHtml(copy.t("mediaAnalysis.reportOverlay.ai.moduleTimeline", "Modül Zaman Çizelgesi"))}</h3>
       ${renderModuleTraceTimeline(moduleTrace, copy)}
     </div>
+
+    ${renderCorrelationClusters(correlationClusters, copy)}
+    ${renderNarrativeCues(narrativeCues, copy)}
+    ${renderForensicNotes(forensicNotes, copy)}
 
     <div class="labx-report-section">
       <h3 class="labx-report-section__title">${escapeHtml(copy.t("mediaAnalysis.reportOverlay.ai.technicalFindings", "Bulgular (Teknik)"))}</h3>

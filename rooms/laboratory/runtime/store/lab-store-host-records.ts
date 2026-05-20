@@ -134,6 +134,7 @@ function toFindingProjection(value: unknown): LabFindingProjection | null {
     sourceModule: asNonEmptyString(record["sourceModule"]) || asNonEmptyString(record["moduleId"]),
     reference: normalizeAnalysisReference(record["reference"] ?? record),
     hypothesis: asNonEmptyString(record["hypothesis"]),
+    metadata: asLabRecord(record["metadata"]),
   };
 }
 

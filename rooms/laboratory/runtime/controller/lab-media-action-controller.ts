@@ -35,6 +35,13 @@ type LabMediaActionWindow = {
   roomAPI?: LabRoomApi;
 };
 
+type LabReportExportFormat = "json" | "pdf";
+
+type LabReportExportOptions = {
+  format?: LabReportExportFormat;
+  targetDirectory?: string | null;
+};
+
 type LabMediaActionControllerDeps = {
   dispatch: ReturnType<typeof createLabStore>["dispatch"];
   store: ReturnType<typeof createLabStore>;
@@ -168,10 +175,16 @@ export function createLabMediaActionController(deps: LabMediaActionControllerDep
     return side === "primary" || side === "reference" || side === "single" ? side : "single";
   }
 
-  function startTrackedReportExport() {
+  function startTrackedReportExport(options: LabReportExportOptions = {}) {
     const state = deps.store.getState();
+    const targetDirectory = asNonEmptyString(options.targetDirectory);
+    const payload: Record<string, unknown> = {
+      ...(options.format === "json" || options.format === "pdf" ? { format: options.format } : {}),
+      ...(targetDirectory === null ? {} : { targetDirectory }),
+    };
     return startTrackedUserAction(
-      state.featureId === "audio-analysis" ? "audio-report-export" : "report-export"
+      state.featureId === "audio-analysis" ? "audio-report-export" : "report-export",
+      payload
     );
   }
 

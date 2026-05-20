@@ -7,6 +7,9 @@ import { PATTERN_LAYERS, type PatternLayer } from "../types/pattern-room-domain.
 import type {
   DebateLocalPhase,
   DebateLocalTurn,
+  LocalAuthoredEvidence,
+  LocalAuthoredNode,
+  LocalAuthoredSource,
   LocalNote,
   PatternRoomLocalDomainReference,
   PatternRoomLocalGuards,
@@ -41,6 +44,8 @@ const PATTERN_ACTOR_IDS = ["AI0", "AI1", "AI2", "US1", "system"] as const;
 const DEBATE_ROLE_IDS = ["researcher", "advocate", "tenth-man", "arbiter"] as const;
 
 const DEBATE_STANCES = ["support", "oppose", "neutral", "question"] as const;
+
+const LOCAL_AUTHORED_NODE_TYPES = ["claim", "inspiration", "uncertainty"] as const;
 
 const TURN_PHASES_WITH_LOCAL_TURNS = new Set<DebateLocalPhase>([
   "opening",
@@ -85,6 +90,10 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
+function hasLocalIdFormat(value: unknown, prefix: string): value is string {
+  return typeof value === "string" && new RegExp(`^${prefix}-\\d{3,}$`).test(value);
+}
+
 function isPatternViewId(value: unknown): value is PatternViewId {
   return typeof value === "string" && PATTERN_VIEW_IDS.some((viewId) => viewId === value);
 }
@@ -103,6 +112,12 @@ function isDebateRole(value: unknown): value is DebateLocalTurn["role"] {
 
 function isDebateStance(value: unknown): value is DebateLocalTurn["stance"] {
   return typeof value === "string" && DEBATE_STANCES.some((stance) => stance === value);
+}
+
+function isLocalAuthoredNodeType(value: unknown): value is LocalAuthoredNode["nodeType"] {
+  return (
+    typeof value === "string" && LOCAL_AUTHORED_NODE_TYPES.some((nodeType) => nodeType === value)
+  );
 }
 
 function parseLayerRecord(value: unknown): Record<string, PatternLayer> | null {
@@ -158,6 +173,102 @@ function parseLocalNotes(value: unknown): LocalNote[] | null {
   return notes;
 }
 
+function parseLocalAuthoredNodes(value: unknown): LocalAuthoredNode[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const nodes: LocalAuthoredNode[] = [];
+  for (const node of value) {
+    if (
+      !isRecord(node) ||
+      !hasLocalIdFormat(node["id"], "local-node") ||
+      !isLocalAuthoredNodeType(node["nodeType"]) ||
+      typeof node["label"] !== "string" ||
+      typeof node["content"] !== "string" ||
+      typeof node["createdAt"] !== "string" ||
+      node["label"].trim() === "" ||
+      node["content"].trim() === ""
+    ) {
+      continue;
+    }
+
+    nodes.push({
+      id: node["id"],
+      nodeType: node["nodeType"],
+      label: node["label"],
+      content: node["content"],
+      createdAt: node["createdAt"],
+    });
+  }
+  return nodes;
+}
+
+function parseLocalAuthoredSources(value: unknown): LocalAuthoredSource[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const sources: LocalAuthoredSource[] = [];
+  for (const source of value) {
+    if (
+      !isRecord(source) ||
+      !hasLocalIdFormat(source["id"], "local-source") ||
+      typeof source["label"] !== "string" ||
+      typeof source["origin"] !== "string" ||
+      typeof source["note"] !== "string" ||
+      typeof source["createdAt"] !== "string" ||
+      source["label"].trim() === "" ||
+      source["origin"].trim() === ""
+    ) {
+      continue;
+    }
+
+    sources.push({
+      id: source["id"],
+      label: source["label"],
+      origin: source["origin"],
+      note: source["note"],
+      createdAt: source["createdAt"],
+    });
+  }
+  return sources;
+}
+
+function parseLocalAuthoredEvidence(value: unknown): LocalAuthoredEvidence[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const evidenceItems: LocalAuthoredEvidence[] = [];
+  for (const evidence of value) {
+    const interpretation = isRecord(evidence) ? evidence["interpretation"] : undefined;
+    if (
+      !isRecord(evidence) ||
+      !hasLocalIdFormat(evidence["id"], "local-evidence") ||
+      typeof evidence["label"] !== "string" ||
+      typeof evidence["excerpt"] !== "string" ||
+      (interpretation !== null && typeof interpretation !== "string") ||
+      !isPatternLayer(evidence["layer"]) ||
+      typeof evidence["createdAt"] !== "string" ||
+      evidence["label"].trim() === "" ||
+      evidence["excerpt"].trim() === ""
+    ) {
+      continue;
+    }
+
+    evidenceItems.push({
+      id: evidence["id"],
+      label: evidence["label"],
+      excerpt: evidence["excerpt"],
+      interpretation,
+      layer: evidence["layer"],
+      createdAt: evidence["createdAt"],
+    });
+  }
+  return evidenceItems;
+}
+
 function parseDebateTurns(value: unknown): DebateLocalTurn[] | null {
   if (!Array.isArray(value)) {
     return null;
@@ -207,6 +318,9 @@ function parseOverlay(value: unknown): PatternRoomLocalOverlay | null {
   const debateLocalTurns = parseDebateTurns(value["debateLocalTurns"]);
   const debateRolesConnected = parseRoleConnections(value["debateRolesConnected"]);
   const localNotes = parseLocalNotes(value["localNotes"]);
+  const localAuthoredNodes = parseLocalAuthoredNodes(value["localAuthoredNodes"]);
+  const localAuthoredSources = parseLocalAuthoredSources(value["localAuthoredSources"]);
+  const localAuthoredEvidence = parseLocalAuthoredEvidence(value["localAuthoredEvidence"]);
 
   if (
     !isStringArray(value["deskNodeIds"]) ||
@@ -232,6 +346,9 @@ function parseOverlay(value: unknown): PatternRoomLocalOverlay | null {
     debateRolesConnected,
     debateLocalVerdict: value["debateLocalVerdict"],
     localNotes,
+    localAuthoredNodes,
+    localAuthoredSources,
+    localAuthoredEvidence,
   };
 }
 
@@ -302,6 +419,21 @@ function filterUniqueIds(
   return restoredIds;
 }
 
+function filterUniqueRecordsById<T extends { id: string }>(records: readonly T[]): T[] {
+  const seenIds = new Set<string>();
+  const restoredRecords: T[] = [];
+
+  records.forEach((record) => {
+    if (seenIds.has(record.id)) {
+      return;
+    }
+    seenIds.add(record.id);
+    restoredRecords.push({ ...record });
+  });
+
+  return restoredRecords;
+}
+
 function cloneTurnWithFilteredReferences(
   turn: DebateLocalTurn,
   canRestoreEntityId: (candidateId: string) => boolean
@@ -369,8 +501,30 @@ function restoreOverlaySnapshot(
   );
   const hasNode = (candidateId: string): boolean => nodeIds.has(candidateId);
   const hasSource = (candidateId: string): boolean => sourceIds.has(candidateId);
+  const localAuthoredNodes = filterUniqueRecordsById(snapshotOverlay.localAuthoredNodes);
+  const localAuthoredSources = filterUniqueRecordsById(snapshotOverlay.localAuthoredSources);
+  const localAuthoredEvidence = filterUniqueRecordsById(snapshotOverlay.localAuthoredEvidence);
+  const localNodeIds = new Set(
+    localAuthoredNodes.map((node) => {
+      return node.id;
+    })
+  );
+  const localSourceIds = new Set(
+    localAuthoredSources.map((source) => {
+      return source.id;
+    })
+  );
+  const localEvidenceIds = new Set(
+    localAuthoredEvidence.map((evidence) => {
+      return evidence.id;
+    })
+  );
   const hasEntity = (candidateId: string): boolean =>
-    hasNode(candidateId) || hasSource(candidateId);
+    hasNode(candidateId) ||
+    hasSource(candidateId) ||
+    localNodeIds.has(candidateId) ||
+    localSourceIds.has(candidateId) ||
+    localEvidenceIds.has(candidateId);
   const pinnedSourceIds = filterUniqueIds(snapshotOverlay.pinnedSourceIds, hasSource);
   const sourcePinnedLayerById: Record<string, PatternLayer> = {};
 
@@ -401,6 +555,9 @@ function restoreOverlaySnapshot(
     debateRolesConnected: healRoleConnections(debatePhase, snapshotOverlay.debateRolesConnected),
     debateLocalVerdict: debateLocalTurns.length > 0 ? snapshotOverlay.debateLocalVerdict : null,
     localNotes: cloneNotes(snapshotOverlay.localNotes),
+    localAuthoredNodes,
+    localAuthoredSources,
+    localAuthoredEvidence,
   };
 }
 

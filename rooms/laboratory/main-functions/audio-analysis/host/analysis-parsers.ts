@@ -1,6 +1,15 @@
+type DetectionLogSegment = {
+  startSeconds: number | null;
+  endSeconds: number | null;
+  durationSeconds: number;
+};
+
 type DetectionLogSummary = {
   count: number;
   totalDurationSeconds: number;
+  averageDurationSeconds: number | null;
+  maxDurationSeconds: number | null;
+  segments: DetectionLogSegment[];
 };
 
 type VolumeDetectSummary = {
@@ -81,17 +90,84 @@ function buildEmptySpectralStatsSummary(): SpectralStatsSummary {
   };
 }
 
-function parseDetectionLogSummary(rawText: string, pattern: RegExp): DetectionLogSummary {
-  const matches = Array.from(rawText.matchAll(pattern));
-  const totalDurationSeconds = matches.reduce<number>(function (total, match) {
-    const durationText = match[1] ?? "";
-    const durationValue = asFiniteNumber(durationText);
-    return total + (durationValue ?? 0);
+function readDetectionField(line: string, fieldName: string): number | null {
+  const escapedFieldName = fieldName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = line.match(new RegExp(`${escapedFieldName}:\\s*([0-9.]+)`, "i"));
+  return match ? asFiniteNumber(match[1]) : null;
+}
+
+function parseDetectionLogSegments(rawText: string, prefix: string): DetectionLogSegment[] {
+  const segments: DetectionLogSegment[] = [];
+  let pendingStartSeconds: number | null = null;
+
+  rawText.split(/\r?\n/).forEach(function (line) {
+    if (line.includes(`${prefix}_`) === false) {
+      return;
+    }
+
+    const startSeconds = readDetectionField(line, `${prefix}_start`);
+    const endSeconds = readDetectionField(line, `${prefix}_end`);
+    const durationSeconds = readDetectionField(line, `${prefix}_duration`);
+    if (startSeconds !== null) {
+      pendingStartSeconds = startSeconds;
+    }
+    if (durationSeconds === null && endSeconds === null) {
+      return;
+    }
+    if (durationSeconds === null && endSeconds !== null && pendingStartSeconds === null) {
+      return;
+    }
+
+    const resolvedStartSeconds =
+      pendingStartSeconds !== null
+        ? pendingStartSeconds
+        : endSeconds !== null && durationSeconds !== null
+          ? Math.max(0, endSeconds - durationSeconds)
+          : null;
+    const resolvedEndSeconds =
+      endSeconds !== null
+        ? endSeconds
+        : resolvedStartSeconds !== null && durationSeconds !== null
+          ? resolvedStartSeconds + durationSeconds
+          : null;
+    const resolvedDurationSeconds =
+      durationSeconds !== null
+        ? durationSeconds
+        : resolvedStartSeconds !== null && resolvedEndSeconds !== null
+          ? Math.max(0, resolvedEndSeconds - resolvedStartSeconds)
+          : 0;
+
+    segments.push({
+      startSeconds: resolvedStartSeconds,
+      endSeconds: resolvedEndSeconds,
+      durationSeconds: resolvedDurationSeconds,
+    });
+    if (endSeconds !== null || durationSeconds !== null) {
+      pendingStartSeconds = null;
+    }
+  });
+
+  return segments;
+}
+
+function parseDetectionLogSummary(rawText: string, prefix: string): DetectionLogSummary {
+  const segments = parseDetectionLogSegments(rawText, prefix);
+  const totalDurationSeconds = segments.reduce<number>(function (total, segment) {
+    return total + segment.durationSeconds;
   }, 0);
+  const maxDurationSeconds = segments.reduce<number | null>(function (maxValue, segment) {
+    if (maxValue === null) {
+      return segment.durationSeconds;
+    }
+    return Math.max(maxValue, segment.durationSeconds);
+  }, null);
 
   return {
-    count: matches.length,
+    count: segments.length,
     totalDurationSeconds,
+    averageDurationSeconds: segments.length > 0 ? totalDurationSeconds / segments.length : null,
+    maxDurationSeconds,
+    segments,
   };
 }
 
@@ -165,15 +241,15 @@ function toPartialProsodySummary(value: unknown): Partial<ProsodySummary> {
 
 export function createAudioAnalysisParserRuntime() {
   function parseBlackDetectLog(stderrValue: unknown): DetectionLogSummary {
-    return parseDetectionLogSummary(toText(stderrValue), /black_duration:([0-9.]+)/g);
+    return parseDetectionLogSummary(toText(stderrValue), "black");
   }
 
   function parseFreezeDetectLog(stderrValue: unknown): DetectionLogSummary {
-    return parseDetectionLogSummary(toText(stderrValue), /freeze_duration:([0-9.]+)/g);
+    return parseDetectionLogSummary(toText(stderrValue), "freeze");
   }
 
   function parseSilenceDetectLog(stderrValue: unknown): DetectionLogSummary {
-    return parseDetectionLogSummary(toText(stderrValue), /silence_duration:\s*([0-9.]+)/g);
+    return parseDetectionLogSummary(toText(stderrValue), "silence");
   }
 
   function parseVolumeDetectLog(stderrValue: unknown): VolumeDetectSummary {

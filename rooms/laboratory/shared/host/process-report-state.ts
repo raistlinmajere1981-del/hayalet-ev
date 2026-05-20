@@ -159,6 +159,7 @@ export function createLaboratoryProcessReportStateRuntime(deps: Record<string, u
       sourceModule: asNonEmptyString(source.sourceModule) || asNonEmptyString(source.moduleId),
       reference: normalizeAnalysisReference(source.reference ?? rawValue),
       hypothesis: asNonEmptyString(source.hypothesis),
+      metadata: toRecord(source.metadata),
     };
   }
 

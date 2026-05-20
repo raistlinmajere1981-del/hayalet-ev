@@ -114,6 +114,152 @@ test("pattern-room phase 6B round-trips snapshot state excluding metadata", () =
   assertRestoredSnapshotStateMatches(roundTripSnapshot, snapshot);
 });
 
+test("pattern-room phase 7B round-trips local authored overlay entries", () => {
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+
+  localState.addAuthoredClaim("Snapshot iddia", "Snapshot içinde kalacak local iddia.");
+  localState.addAuthoredSource("Snapshot kaynak", "Local defter", "Snapshot source note.");
+  localState.addAuthoredEvidence("Snapshot kanıt", "Snapshot excerpt", "Snapshot interpretation");
+  localState.addToDebate("local-node-001");
+  localState.addToDebate("local-source-001");
+  localState.addToDebate("local-evidence-001");
+
+  const snapshot = createSnapshot(localState, "board");
+  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_MOCK);
+  assert.ok(restored);
+
+  assert.deepEqual(
+    restored.overlay.localAuthoredNodes.map((node) => node.id),
+    ["local-node-001"]
+  );
+  assert.deepEqual(
+    restored.overlay.localAuthoredSources.map((source) => source.id),
+    ["local-source-001"]
+  );
+  assert.deepEqual(
+    restored.overlay.localAuthoredEvidence.map((evidence) => evidence.id),
+    ["local-evidence-001"]
+  );
+  assert.deepEqual(restored.overlay.debateReferenceIds, [
+    "local-node-001",
+    "local-source-001",
+    "local-evidence-001",
+  ]);
+
+  const roundTripState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  roundTripState.restoreOverlay(restored.overlay, restored.guards);
+  const roundTripSnapshot = createSnapshot(roundTripState, restored.activeView);
+  assertRestoredSnapshotStateMatches(roundTripSnapshot, snapshot);
+});
+
+test("pattern-room phase 7B restores legacy snapshots with missing authored fields", () => {
+  const snapshot = createSnapshot(createSnapshotReadyLocalState(), "archive");
+  const overlay = { ...snapshot.overlay } as Record<string, unknown>;
+  delete overlay["localAuthoredNodes"];
+  delete overlay["localAuthoredSources"];
+  delete overlay["localAuthoredEvidence"];
+
+  const restored = restoreFromSnapshot({ ...snapshot, overlay }, PATTERN_ROOM_DOMAIN_MOCK);
+  assert.ok(restored);
+  assert.deepEqual(restored.overlay.localAuthoredNodes, []);
+  assert.deepEqual(restored.overlay.localAuthoredSources, []);
+  assert.deepEqual(restored.overlay.localAuthoredEvidence, []);
+});
+
+test("pattern-room phase 7B silently skips invalid restored authored entries", () => {
+  const snapshot = createSnapshot(createSnapshotReadyLocalState(), "board");
+  const pollutedSnapshot = {
+    ...snapshot,
+    overlay: {
+      ...snapshot.overlay,
+      localAuthoredNodes: [
+        {
+          id: "local-node-001",
+          nodeType: "claim",
+          label: "Valid local claim",
+          content: "Valid local content",
+          createdAt: "2026-05-20T12:00:00.000Z",
+        },
+        {
+          id: "node-bad",
+          nodeType: "claim",
+          label: "Invalid id",
+          content: "Should be skipped",
+          createdAt: "2026-05-20T12:00:00.000Z",
+        },
+        {
+          id: "local-node-002",
+          nodeType: "claim",
+          label: " ",
+          content: "Empty label should be skipped",
+          createdAt: "2026-05-20T12:00:00.000Z",
+        },
+      ],
+      localAuthoredSources: [
+        {
+          id: "local-source-001",
+          label: "Valid local source",
+          origin: "Local notebook",
+          note: "",
+          createdAt: "2026-05-20T12:00:00.000Z",
+        },
+        {
+          id: "local-source-x",
+          label: "Invalid local source",
+          origin: "Local notebook",
+          note: "",
+          createdAt: "2026-05-20T12:00:00.000Z",
+        },
+      ],
+      localAuthoredEvidence: [
+        {
+          id: "local-evidence-001",
+          label: "Valid local evidence",
+          excerpt: "Valid excerpt",
+          interpretation: null,
+          layer: "evidence",
+          createdAt: "2026-05-20T12:00:00.000Z",
+        },
+        {
+          id: "local-evidence-002",
+          label: "Invalid local evidence",
+          excerpt: "",
+          interpretation: null,
+          layer: "evidence",
+          createdAt: "2026-05-20T12:00:00.000Z",
+        },
+      ],
+      debateReferenceIds: [
+        "local-node-001",
+        "local-source-001",
+        "local-evidence-001",
+        "local-node-002",
+        "local-evidence-002",
+      ],
+    },
+  };
+
+  const restored = restoreFromSnapshot(pollutedSnapshot, PATTERN_ROOM_DOMAIN_MOCK);
+  assert.ok(restored);
+  assert.deepEqual(
+    restored.overlay.localAuthoredNodes.map((node) => node.id),
+    ["local-node-001"]
+  );
+  assert.deepEqual(
+    restored.overlay.localAuthoredSources.map((source) => source.id),
+    ["local-source-001"]
+  );
+  assert.deepEqual(
+    restored.overlay.localAuthoredEvidence.map((evidence) => evidence.id),
+    ["local-evidence-001"]
+  );
+  assert.deepEqual(restored.overlay.debateReferenceIds, [
+    "local-node-001",
+    "local-source-001",
+    "local-evidence-001",
+  ]);
+});
+
 test("pattern-room phase 6B rejects incompatible snapshot schema or topic", () => {
   const snapshot = createSnapshot(createSnapshotReadyLocalState(), "archive");
   const wrongSchemaSnapshot = {
@@ -251,15 +397,29 @@ test("pattern-room phase 6B snapshot layer stays free of storage, IPC, and host 
     "rooms/pattern-room/shared/types/pattern-room-snapshot.ts",
     "rooms/pattern-room/shared/state/pattern-room-snapshot.ts",
     "rooms/pattern-room/shared/state/pattern-room-local-state.ts",
+    "rooms/pattern-room/shared/adapters/pattern-room-view-adapters.ts",
     "rooms/pattern-room/ui/pattern-room-ui-runtime.ts",
+    "rooms/pattern-room/ui/panels/pattern-board-panel.ts",
+    "rooms/pattern-room/ui/panels/pattern-archive-panel.ts",
+  ];
+  const forbiddenRuntimeApis = [
+    "localStorage",
+    "sessionStorage",
+    "IndexedDB",
+    "indexedDB",
+    "ipcRenderer",
+    "ipcMain",
+    "fetch(",
+    "XMLHttpRequest",
+    "WebSocket",
+    "better-sqlite3",
   ];
 
   for (const sourcePath of sourcePaths) {
     const source = await readFile(resolve(sourcePath), "utf8");
-    assert.equal(source.includes("localStorage"), false, sourcePath);
-    assert.equal(source.includes("sessionStorage"), false, sourcePath);
-    assert.equal(source.includes("IndexedDB"), false, sourcePath);
-    assert.equal(source.includes("indexedDB"), false, sourcePath);
+    forbiddenRuntimeApis.forEach((runtimeApi) => {
+      assert.equal(source.includes(runtimeApi), false, `${sourcePath} includes ${runtimeApi}`);
+    });
   }
 
   const activation = createPatternRoomHostRuntime().activate({});

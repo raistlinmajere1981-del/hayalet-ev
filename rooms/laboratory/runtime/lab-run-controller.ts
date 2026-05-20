@@ -66,9 +66,19 @@ type LabRoomApi = {
   sendEvent?: (eventName: string, payload: Record<string, unknown>) => void;
 };
 
+type ControllerElectronApi = {
+  showOpenDialog?: (options: Record<string, unknown>) => Promise<{
+    canceled: boolean;
+    filePaths: string[];
+  }>;
+};
+
 type ControllerWindow = Window & {
+  electronAPI?: ControllerElectronApi;
   roomAPI?: LabRoomApi;
 };
+
+type ReportOverlayExportFormat = "json" | "pdf";
 
 type LabRunControllerDeps = {
   documentRef: Document;
@@ -999,6 +1009,35 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     startDeepAnalysis(deps.store.getState(), scopeChoice);
   }
 
+  async function requestReportExportToDirectory(format: ReportOverlayExportFormat) {
+    const showOpenDialog = deps.windowRef.electronAPI?.showOpenDialog;
+    if (typeof showOpenDialog !== "function") {
+      dispatch({
+        type: "push-event",
+        event: buildUiEvent("Report export folder picker is unavailable.", "error"),
+      });
+      return;
+    }
+
+    try {
+      const selection = await showOpenDialog({
+        buttonLabel: format === "json" ? "JSON Disa Aktar" : "PDF Disa Aktar",
+        properties: ["openDirectory", "createDirectory"],
+        title: format === "json" ? "JSON rapor klasoru sec" : "PDF rapor klasoru sec",
+      });
+      const targetDirectory = asNonEmptyString(selection.filePaths[0]);
+      if (selection.canceled === true || targetDirectory === null) {
+        return;
+      }
+      startTrackedReportExport({ format, targetDirectory });
+    } catch (error) {
+      dispatch({
+        type: "push-event",
+        event: buildUiEvent(error instanceof Error ? error.message : String(error), "error"),
+      });
+    }
+  }
+
   function runPrimaryAction() {
     const state = deps.store.getState();
 
@@ -1653,10 +1692,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         });
         return;
       case "report-export-json":
-        startTrackedReportExport();
+        void requestReportExportToDirectory("json");
         return;
       case "report-export-pdf":
-        startTrackedReportExport();
+        void requestReportExportToDirectory("pdf");
         return;
       case "source-panel-toggle":
         dispatch({ type: "source-panel-toggled" });

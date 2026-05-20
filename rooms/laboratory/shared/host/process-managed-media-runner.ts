@@ -41,6 +41,7 @@ type LaboratoryProcessArtifactRecord = LaboratoryRecord & {
 
 type LaboratoryProcessFindingRecord = LaboratoryRecord & {
   detail?: unknown;
+  metadata?: unknown;
   moduleId?: unknown;
   title?: unknown;
 };
@@ -50,7 +51,11 @@ type LaboratorySpeechAvailabilityRecord = LaboratoryRecord & {
 };
 
 type LaboratoryProbeBucketRecord = LaboratoryRecord & {
+  averageDurationSeconds?: unknown;
   count?: unknown;
+  maxDurationSeconds?: unknown;
+  segments?: unknown;
+  totalDurationSeconds?: unknown;
 };
 
 type LaboratoryVideoProbeRecord = LaboratoryRecord & {
@@ -60,10 +65,12 @@ type LaboratoryVideoProbeRecord = LaboratoryRecord & {
 
 type LaboratoryAudioProbeRecord = LaboratoryRecord & {
   silence?: unknown;
+  volume?: unknown;
 };
 
 type LaboratoryTranscriptResultRecord = LaboratoryRecord & {
   artifact?: unknown;
+  text?: unknown;
 };
 
 type LaboratoryManagedMediaRunnerResult = {
@@ -417,6 +424,154 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
     return typeof bucket.count === "number" && Number.isFinite(bucket.count) ? bucket.count : 0;
   }
 
+  function toFiniteNumber(value: unknown): number | null {
+    const numericValue = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(numericValue) ? numericValue : null;
+  }
+
+  function normalizeProbeSegment(value: unknown): LaboratoryRecord | null {
+    const segment = toRecord(value);
+    const startSeconds = toFiniteNumber(segment["startSeconds"]);
+    const endSeconds = toFiniteNumber(segment["endSeconds"]);
+    const durationSeconds = toFiniteNumber(segment["durationSeconds"]);
+    if (startSeconds === null && endSeconds === null && durationSeconds === null) {
+      return null;
+    }
+    return {
+      startSeconds,
+      endSeconds,
+      durationSeconds: durationSeconds || 0,
+    };
+  }
+
+  function summarizeProbeBucket(value: unknown): LaboratoryRecord {
+    const bucket = toProbeBucketRecord(value);
+    const segments = toUnknownArray(bucket.segments)
+      .map(normalizeProbeSegment)
+      .filter((entry): entry is LaboratoryRecord => entry !== null);
+    return {
+      averageDurationSeconds: toFiniteNumber(bucket.averageDurationSeconds),
+      count: getProbeCount(bucket),
+      maxDurationSeconds: toFiniteNumber(bucket.maxDurationSeconds),
+      segments: segments.slice(0, 12),
+      totalDurationSeconds: toFiniteNumber(bucket.totalDurationSeconds) || 0,
+    };
+  }
+
+  function formatSeconds(value: unknown): string | null {
+    const numericValue = toFiniteNumber(value);
+    return numericValue === null ? null : `${numericValue.toFixed(2)}s`;
+  }
+
+  function formatProbeSummary(label: string, summary: LaboratoryRecord): string | null {
+    const count = toFiniteNumber(summary["count"]) || 0;
+    if (count <= 0) {
+      return null;
+    }
+    const total = formatSeconds(summary["totalDurationSeconds"]) || "0.00s";
+    const max = formatSeconds(summary["maxDurationSeconds"]);
+    return `${label}: ${String(count)} interval(s), ${total} total${max ? `, ${max} max` : ""}.`;
+  }
+
+  function getFirstProbeWindow(summary: LaboratoryRecord): LaboratoryRecord {
+    const firstSegment = toRecord(toUnknownArray(summary["segments"])[0]);
+    return {
+      startSeconds: toFiniteNumber(firstSegment["startSeconds"]),
+      endSeconds: toFiniteNumber(firstSegment["endSeconds"]),
+      durationSeconds: toFiniteNumber(firstSegment["durationSeconds"]),
+    };
+  }
+
+  function getVisualSignalType(visualModuleId: string): string {
+    if (visualModuleId === "frame-consistency") {
+      return "freeze";
+    }
+    if (visualModuleId === "temporal-noise-pattern" || visualModuleId === "lighting-consistency") {
+      return "luminance-collapse";
+    }
+    return "motion-discontinuity";
+  }
+
+  function buildFindingMetadata(
+    signalType: string,
+    label: string,
+    probeSummary: LaboratoryRecord,
+    window: LaboratoryRecord
+  ): LaboratoryRecord {
+    return {
+      correlation: {
+        label,
+        signalType,
+        window,
+      },
+      forensicChecklist: [
+        "Frame duration, duplicate ratio, GOP boundary, and encoder-artifact checks are not yet measured directly.",
+      ],
+      probeSummary,
+      temporalSegments: toUnknownArray(window["segments"]),
+    };
+  }
+
+  function withFindingMetadata(
+    finding: LaboratoryProcessFindingRecord,
+    metadata: LaboratoryRecord
+  ): LaboratoryProcessFindingRecord {
+    return {
+      ...finding,
+      metadata: {
+        ...toRecord(finding.metadata),
+        ...metadata,
+      },
+    };
+  }
+
+  function normalizeNarrativeText(text: string): string {
+    return text
+      .toLocaleLowerCase("tr-TR")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/ı/g, "i")
+      .replace(/ç/g, "c")
+      .replace(/ğ/g, "g")
+      .replace(/ö/g, "o")
+      .replace(/ş/g, "s")
+      .replace(/ü/g, "u");
+  }
+
+  function findNarrativeTriggers(text: string): string[] {
+    const normalized = normalizeNarrativeText(text);
+    const triggers = [
+      "kaybol",
+      "belir",
+      "gorun",
+      "dondu",
+      "karardi",
+      "ses",
+      "ciglik",
+      "simdi",
+      "tam o anda",
+      "bagir",
+      "nefes",
+      "panik",
+      "kork",
+      "tepki",
+      "vanish",
+      "disappear",
+      "appear",
+      "freeze",
+      "dark",
+      "scream",
+      "now",
+    ];
+    return Array.from(
+      new Set(
+        triggers.map(normalizeNarrativeText).filter(function (trigger) {
+          return normalized.includes(trigger);
+        })
+      )
+    );
+  }
+
   function normalizeOptionalArtifact(value: unknown): LaboratoryProcessArtifactRecord | null {
     if (value === null || value === undefined) {
       return null;
@@ -666,6 +821,47 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
           : toVideoProbeRecord({});
       const freezeCount = getProbeCount(videoProbe.freeze);
       const blackCount = getProbeCount(videoProbe.black);
+      const freezeSummary = summarizeProbeBucket(videoProbe.freeze);
+      const blackSummary = summarizeProbeBucket(videoProbe.black);
+      const structureProbeSummary = {
+        black: blackSummary,
+        freeze: freezeSummary,
+      };
+      const probeDetail = [
+        formatProbeSummary("freeze", freezeSummary),
+        formatProbeSummary("black", blackSummary),
+      ]
+        .filter((entry): entry is string => entry !== null)
+        .join(" ");
+      function getStructureProbeSummary(visualModuleId: string) {
+        return visualModuleId === "frame-consistency"
+          ? freezeSummary
+          : visualModuleId === "temporal-noise-pattern" || visualModuleId === "lighting-consistency"
+            ? blackSummary
+            : freezeCount > 0
+              ? freezeSummary
+              : blackSummary;
+      }
+      function buildStructureFindingMetadata(visualModuleId: string) {
+        const primarySummary = getStructureProbeSummary(visualModuleId);
+        const primaryCount = toFiniteNumber(primarySummary["count"]) || 0;
+        if (primaryCount <= 0) {
+          return {
+            probeSummary: structureProbeSummary,
+          };
+        }
+        const window = getFirstProbeWindow(primarySummary);
+        const segments = toUnknownArray(primarySummary["segments"]);
+        return {
+          ...buildFindingMetadata(
+            getVisualSignalType(visualModuleId),
+            visualModuleId,
+            structureProbeSummary,
+            window
+          ),
+          temporalSegments: segments,
+        };
+      }
       const structureArtifactIds =
         framePreview && typeof framePreview.id === "string" ? [framePreview.id] : [];
       const referenceStructureArtifactIds =
@@ -681,44 +877,10 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
           sourceKind
         );
         findings.push(
-          createMediaFinding(processRecord, "motion", visualModuleId, {
-            artifactIds: structureArtifactIds,
-            detail: `${descriptor.detail} Sampling used ${readStringSetting(
-              moduleSettings,
-              "samplingDensity",
-              "balanced"
-            )} density with a ${String(getSamplingTileCount(moduleSettings))}-tile preview.`,
-            evidenceCount:
-              descriptor.level === "medium" ? Math.max(1, freezeCount + blackCount) : 1,
-            level: getSensitivityAdjustedLevel(
-              descriptor.level,
-              moduleSettings,
-              freezeCount + blackCount
-            ),
-            settingsUsed: {
-              ...moduleSettings,
-              sourceSide: comparisonPair === null ? "single" : "primary",
-              roiOnly: readBooleanSetting(moduleSettings, "roiOnly", false),
-              sampleWindowSeconds: getSamplingWindowSeconds(moduleSettings),
-              tileCount: getSamplingTileCount(moduleSettings),
-            },
-            title: comparisonPair === null ? descriptor.title : `A: ${descriptor.title}`,
-          })
-        );
-      });
-      if (comparisonPair !== null) {
-        structureModuleIds.forEach(function (visualModuleId) {
-          const moduleSettings = getAnalysisModuleSettings(processRecord, visualModuleId);
-          const descriptor = buildVisualFindingDetail(
-            visualModuleId,
-            freezeCount,
-            blackCount,
-            sourceKind
-          );
-          findings.push(
+          withFindingMetadata(
             createMediaFinding(processRecord, "motion", visualModuleId, {
-              artifactIds: referenceStructureArtifactIds,
-              detail: `B reference image: ${descriptor.detail} Sampling used ${readStringSetting(
+              artifactIds: structureArtifactIds,
+              detail: `${descriptor.detail} ${probeDetail} Sampling used ${readStringSetting(
                 moduleSettings,
                 "samplingDensity",
                 "balanced"
@@ -732,13 +894,53 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
               ),
               settingsUsed: {
                 ...moduleSettings,
-                sourceSide: "reference",
+                sourceSide: comparisonPair === null ? "single" : "primary",
                 roiOnly: readBooleanSetting(moduleSettings, "roiOnly", false),
                 sampleWindowSeconds: getSamplingWindowSeconds(moduleSettings),
                 tileCount: getSamplingTileCount(moduleSettings),
               },
-              title: `B: ${descriptor.title}`,
-            })
+              title: comparisonPair === null ? descriptor.title : `A: ${descriptor.title}`,
+            }),
+            buildStructureFindingMetadata(visualModuleId)
+          )
+        );
+      });
+      if (comparisonPair !== null) {
+        structureModuleIds.forEach(function (visualModuleId) {
+          const moduleSettings = getAnalysisModuleSettings(processRecord, visualModuleId);
+          const descriptor = buildVisualFindingDetail(
+            visualModuleId,
+            freezeCount,
+            blackCount,
+            sourceKind
+          );
+          findings.push(
+            withFindingMetadata(
+              createMediaFinding(processRecord, "motion", visualModuleId, {
+                artifactIds: referenceStructureArtifactIds,
+                detail: `B reference image: ${descriptor.detail} ${probeDetail} Sampling used ${readStringSetting(
+                  moduleSettings,
+                  "samplingDensity",
+                  "balanced"
+                )} density with a ${String(getSamplingTileCount(moduleSettings))}-tile preview.`,
+                evidenceCount:
+                  descriptor.level === "medium" ? Math.max(1, freezeCount + blackCount) : 1,
+                level: getSensitivityAdjustedLevel(
+                  descriptor.level,
+                  moduleSettings,
+                  freezeCount + blackCount
+                ),
+                settingsUsed: {
+                  ...moduleSettings,
+                  sourceSide: "reference",
+                  roiOnly: readBooleanSetting(moduleSettings, "roiOnly", false),
+                  sampleWindowSeconds: getSamplingWindowSeconds(moduleSettings),
+                  tileCount: getSamplingTileCount(moduleSettings),
+                },
+                title: `B: ${descriptor.title}`,
+              }),
+              buildStructureFindingMetadata(visualModuleId)
+            )
           );
         });
       }
@@ -1291,18 +1493,36 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
         artifacts.push(spectrogram);
       }
 
+      const silenceSummary = summarizeProbeBucket(audioProbe.silence);
       const silenceCount = getProbeCount(audioProbe.silence);
+      const silenceDetail = formatProbeSummary("silence", silenceSummary);
       if (silenceCount > 0) {
         findings.push(
-          createProcessFinding(
-            "audio",
-            "measured",
-            silenceCount > 3 ? "medium" : "low",
-            "medium",
-            "Silence pockets detected",
-            `Silence detection found ${silenceCount} pocket(s) during the managed run.`,
-            silenceCount,
-            spectrogram ? [String(spectrogram.id || "")] : []
+          withFindingMetadata(
+            createProcessFinding(
+              "audio",
+              "measured",
+              silenceCount > 3 ? "medium" : "low",
+              "medium",
+              "Silence pockets detected",
+              `Silence detection found ${silenceCount} pocket(s) during the managed run.${
+                silenceDetail ? ` ${silenceDetail}` : ""
+              }`,
+              silenceCount,
+              spectrogram ? [String(spectrogram.id || "")] : []
+            ),
+            {
+              correlation: {
+                label: "audio silence pocket",
+                signalType: "audio-discontinuity",
+                window: getFirstProbeWindow(silenceSummary),
+              },
+              probeSummary: {
+                silence: silenceSummary,
+                volume: toRecord(audioProbe.volume),
+              },
+              temporalSegments: toUnknownArray(silenceSummary["segments"]),
+            }
           )
         );
       }
@@ -1343,16 +1563,51 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
           );
 
           if (transcriptResult !== null && transcriptResult !== undefined) {
+            const transcriptText = asNonEmptyString(
+              toTranscriptResultRecord(transcriptResult).text
+            );
+            const narrativeTriggers = transcriptText ? findNarrativeTriggers(transcriptText) : [];
             const transcriptArtifact = normalizeOptionalArtifact(
               toTranscriptResultRecord(transcriptResult).artifact
             );
-            if (transcriptArtifact !== null) {
-              artifacts.push(
-                toProcessArtifactRecord(
-                  normalizeProcessArtifact({
-                    ...transcriptArtifact,
-                    moduleId: "audio",
-                  })
+            const normalizedTranscriptArtifact =
+              transcriptArtifact === null
+                ? null
+                : toProcessArtifactRecord(
+                    normalizeProcessArtifact({
+                      ...transcriptArtifact,
+                      metadata: {
+                        ...toRecord(transcriptArtifact["metadata"]),
+                        narrativeTriggerPhrases: narrativeTriggers,
+                        narrativeTemporalBasis: "text-only",
+                      },
+                      moduleId: "audio",
+                    })
+                  );
+            if (normalizedTranscriptArtifact !== null) {
+              artifacts.push(normalizedTranscriptArtifact);
+            }
+            if (narrativeTriggers.length > 0) {
+              findings.push(
+                withFindingMetadata(
+                  createProcessFinding(
+                    "audio",
+                    "heuristic",
+                    "medium",
+                    "low",
+                    "Narrative trigger phrase detected",
+                    `Transcript sampling surfaced ${String(
+                      narrativeTriggers.length
+                    )} trigger phrase(s) that should narrow the visual/audio review window.`,
+                    narrativeTriggers.length,
+                    normalizedTranscriptArtifact === null
+                      ? []
+                      : [String(normalizedTranscriptArtifact.id || "")]
+                  ),
+                  {
+                    narrativeCues: narrativeTriggers,
+                    narrativeTemporalBasis: "text-only",
+                  }
                 )
               );
             }

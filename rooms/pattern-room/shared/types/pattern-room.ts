@@ -17,7 +17,7 @@ export type PatternBoardPin = {
   sourceId: string | null;
   sourceLabel: string;
   origin: string | null;
-  kind: "node" | "source" | "placeholder";
+  kind: "node" | "source" | "evidence" | "placeholder";
   isLocal: boolean;
 };
 
@@ -41,8 +41,9 @@ export type PatternSource = {
   label: string;
   sourceTypeLabel: string;
   origin: string;
-  status: "mocked";
+  status: "mocked" | "local";
   note: string;
+  isLocal?: boolean;
 };
 
 export type PatternDummyRole = {
@@ -56,7 +57,7 @@ export type PatternDebateReference = {
   id: string;
   label: string;
   note: string;
-  kind: "node" | "source";
+  kind: "node" | "source" | "evidence";
 };
 
 export type PatternReportSection = {
@@ -106,6 +107,16 @@ export type PatternPanelActions = {
   pinSourceToBoard: (sourceId: string, layer: PatternBoardLayerId) => void;
   addSourceToDebate: (sourceId: string) => void;
   addLocalNote: (text: string) => void;
+  addAuthoredClaim: (label: string, content: string) => void;
+  addAuthoredInspiration: (label: string, content: string) => void;
+  addAuthoredUncertainty: (label: string, content: string) => void;
+  addAuthoredSource: (label: string, origin: string, note: string) => void;
+  addAuthoredEvidence: (
+    label: string,
+    excerpt: string,
+    interpretation?: string,
+    layer?: PatternBoardLayerId
+  ) => void;
   prepareDebate: () => void;
   assignDebateRoles: () => void;
   startDebate: () => void;

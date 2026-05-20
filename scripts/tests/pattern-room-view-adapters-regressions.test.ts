@@ -184,6 +184,9 @@ test("pattern-room phase 4B adapter silently skips stale overlay ids", () => {
         createdAt: "2026-05-20T12:00:00.000Z",
       },
     ],
+    localAuthoredNodes: [],
+    localAuthoredSources: [],
+    localAuthoredEvidence: [],
   };
 
   const viewModels = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK, overlay);
@@ -252,6 +255,87 @@ test("pattern-room phase 5B local debate state machine stays overlay-only", () =
   assert.ok(localNotesSection);
   assert.equal(localNotesSection.bullets.length, 1);
   assert.match(localNotesSection.bullets[0] ?? "", /10\. Adam local oturum özeti/);
+  assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+});
+
+test("pattern-room phase 7B local authoring appears in board, archive, desk, report, and debate views", () => {
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+
+  localState.addAuthoredClaim("Yerel iddia", "Kullanıcının local iddia notu.");
+  localState.addAuthoredInspiration("Yerel ilham", "Analiz katmanına düşen fikir.");
+  localState.addAuthoredUncertainty("Yerel belirsizlik", "Belirsizlik katmanında izlenecek soru.");
+  localState.addAuthoredEvidence("Yerel kanıt", "Local alıntı", "Local yorum");
+  localState.addAuthoredSource("Yerel kaynak", "Kullanıcı not defteri", "Sadece overlay kaynağı.");
+
+  localState.addToDebate("local-node-001");
+  localState.addToDebate("local-source-001");
+  localState.addToDebate("local-evidence-001");
+  localState.addToDebate("local-node-999");
+
+  const viewModels = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK, localState.getOverlay());
+  const interpretationCategory = viewModels.boardCategories.find((category) => {
+    return category.id === "board-interpretation";
+  });
+  const analysisCategory = viewModels.boardCategories.find((category) => {
+    return category.id === "board-analysis";
+  });
+  const uncertaintyCategory = viewModels.boardCategories.find((category) => {
+    return category.id === "board-uncertainty";
+  });
+  const evidenceCategory = viewModels.boardCategories.find((category) => {
+    return category.id === "board-evidence";
+  });
+  const localSource = viewModels.sources.find((source) => {
+    return source.id === "local-source-001";
+  });
+  const localEvidenceSection = viewModels.reportSummary.sections.find((section) => {
+    return section.label === "Yerel Kanıt Notları";
+  });
+
+  assert.ok(interpretationCategory);
+  assert.ok(
+    interpretationCategory.pins.some((pin) => {
+      return pin.id === "local-node-001" && pin.isLocal && pin.layer === "interpretation";
+    })
+  );
+  assert.ok(analysisCategory);
+  assert.ok(
+    analysisCategory.pins.some((pin) => {
+      return pin.id === "local-node-002" && pin.isLocal && pin.layer === "analysis";
+    })
+  );
+  assert.ok(uncertaintyCategory);
+  assert.ok(
+    uncertaintyCategory.pins.some((pin) => {
+      return pin.id === "local-node-003" && pin.isLocal && pin.layer === "uncertainty";
+    })
+  );
+  assert.ok(evidenceCategory);
+  assert.ok(
+    evidenceCategory.pins.some((pin) => {
+      return pin.id === "local-evidence-001" && pin.kind === "evidence" && pin.isLocal;
+    })
+  );
+  assert.ok(localSource);
+  assert.equal(localSource.sourceTypeLabel, "Yerel Kaynak");
+  assert.equal(localSource.isLocal, true);
+  assert.ok(
+    viewModels.claims.some((claim) => {
+      return claim.id === "claim-local-node-001" && claim.label === "Yerel iddia";
+    })
+  );
+  assert.ok(localEvidenceSection);
+  assert.deepEqual(localEvidenceSection.bullets, ["Yerel kanıt: Local alıntı Yorum: Local yorum"]);
+  assert.deepEqual(localState.getOverlay().debateReferenceIds, [
+    "local-node-001",
+    "local-source-001",
+    "local-evidence-001",
+  ]);
+  assert.deepEqual(
+    viewModels.tenthManSession.references.map((reference) => reference.kind),
+    ["node", "source", "evidence"]
+  );
   assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
 });
 

@@ -67,6 +67,21 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     addLocalNote(text: string): void {
       localState.addLocalNote(text);
     },
+    addAuthoredClaim(label: string, content: string): void {
+      localState.addAuthoredClaim(label, content);
+    },
+    addAuthoredInspiration(label: string, content: string): void {
+      localState.addAuthoredInspiration(label, content);
+    },
+    addAuthoredUncertainty(label: string, content: string): void {
+      localState.addAuthoredUncertainty(label, content);
+    },
+    addAuthoredSource(label: string, origin: string, note: string): void {
+      localState.addAuthoredSource(label, origin, note);
+    },
+    addAuthoredEvidence(label: string, excerpt: string, interpretation, layer): void {
+      localState.addAuthoredEvidence(label, excerpt, interpretation, layer);
+    },
     prepareDebate(): void {
       localState.prepareDebate();
     },

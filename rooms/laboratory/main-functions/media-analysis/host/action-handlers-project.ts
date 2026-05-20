@@ -48,7 +48,8 @@ type ProjectDeps = {
     api: MediaProjectActionApi,
     runtime: MediaProjectRuntimeRecord,
     requestId: string,
-    featureId: string | null
+    featureId: string | null,
+    actionPayload?: Record<string, unknown>
   ) => Promise<unknown>;
   handleToolMutation: (
     api: MediaProjectActionApi,
@@ -222,9 +223,10 @@ export function createMediaProjectActionRuntime(deps: ProjectDeps) {
     api: MediaProjectActionApi,
     runtime: MediaProjectRuntimeRecord,
     requestId: string,
-    featureId: string | null
+    featureId: string | null,
+    actionPayload: Record<string, unknown> = {}
   ) {
-    return exportFeatureReport(api, runtime, requestId, featureId);
+    return exportFeatureReport(api, runtime, requestId, featureId, actionPayload);
   }
 
   async function removeAsset(

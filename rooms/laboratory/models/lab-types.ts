@@ -483,6 +483,7 @@ export interface LabFindingProjection {
   sourceModule?: string | null;
   reference?: AnalysisReference | null;
   hypothesis?: string | null;
+  metadata?: LabRecord;
 }
 
 export interface LabArtifactProjection {
@@ -613,6 +614,41 @@ export interface LabUserReportModuleSummary {
   status: string;
 }
 
+export interface LabCorrelationCluster {
+  id: string;
+  title: string;
+  detail: string;
+  score: number;
+  level: string;
+  confidence: string;
+  startSeconds: number | null;
+  endSeconds: number | null;
+  signalCount: number;
+  signalTypes: string[];
+  findingIds: string[];
+}
+
+export interface LabNarrativeCue {
+  id: string;
+  phrase: string;
+  source: string;
+  detail: string;
+  confidence?: string;
+  endSeconds?: number | null;
+  startSeconds?: number | null;
+  temporalBasis?: "timestamp" | "narrow-scope" | "scope" | "text-only";
+}
+
+export interface LabForensicNote {
+  id: string;
+  label: string;
+  detail: string;
+  moduleId: string | null;
+  followUpChecks?: string[];
+  measuredFields?: string[];
+  scope?: "local" | "global";
+}
+
 export interface LabUserReport {
   summary: string;
   confidence: string;
@@ -621,6 +657,10 @@ export interface LabUserReport {
   hypothesisResult: string | null;
   elapsedSeconds: number;
   moduleSummary: LabUserReportModuleSummary[];
+  correlationSummary?: string | null;
+  topCorrelationClusters?: LabCorrelationCluster[];
+  narrativeCues?: LabNarrativeCue[];
+  forensicNotes?: LabForensicNote[];
 }
 
 export interface LabAiReport {
@@ -633,6 +673,9 @@ export interface LabAiReport {
   moduleTrace: LabModuleTraceEntry[];
   analysisScope: AnalysisScope | null;
   comparisonVariants: LabComparisonVariant[];
+  correlationClusters?: LabCorrelationCluster[];
+  narrativeCues?: LabNarrativeCue[];
+  forensicNotes?: LabForensicNote[];
 }
 
 export interface LabReportSet {

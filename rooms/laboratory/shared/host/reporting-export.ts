@@ -18,6 +18,13 @@ type LaboratoryReportExportProject = LaboratoryRecord & {
   slug: string;
 };
 
+type LaboratoryReportExportFormat = "json" | "pdf";
+
+type LaboratoryReportExportOptions = LaboratoryRecord & {
+  format?: unknown;
+  targetDirectory?: unknown;
+};
+
 type LaboratoryReportExportRuntimeDeps = {
   buildReportMarkdown: (
     runtime: unknown,
@@ -60,6 +67,125 @@ type LaboratoryReportExportRuntimeDeps = {
   writeTextFile: (filePath: string, value: string) => Promise<unknown>;
 };
 
+function asNonEmptyString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() !== "" ? value : null;
+}
+
+function normalizeExportFormat(value: unknown): LaboratoryReportExportFormat | null {
+  return value === "json" || value === "pdf" ? value : null;
+}
+
+function getTargetDirectory(options: LaboratoryReportExportOptions): string | null {
+  return (
+    asNonEmptyString(options["targetDirectory"]) ||
+    asNonEmptyString(options["outputDirectory"]) ||
+    asNonEmptyString(options["directory"])
+  );
+}
+
+function joinDirectoryPath(directoryPath: string, fileName: string): string {
+  return `${directoryPath.replace(/[\\/]+$/, "")}/${fileName}`;
+}
+
+function normalizePdfText(value: string): string {
+  const normalized = value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+  let output = "";
+  for (let index = 0; index < normalized.length; index += 1) {
+    const character = normalized[index] || "";
+    const code = character.charCodeAt(0);
+    output += code >= 32 && code <= 126 ? character : "?";
+  }
+  return output;
+}
+
+function escapePdfText(value: string): string {
+  return normalizePdfText(value).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+}
+
+function normalizeMarkdownLine(line: string): string {
+  return line
+    .replace(/^#{1,6}\s+/, "")
+    .replace(/^\s*[-*]\s+/, "- ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function wrapPdfLine(line: string, maxLength: number): string[] {
+  if (line.length <= maxLength) {
+    return [line];
+  }
+  const wrapped: string[] = [];
+  let remaining = line;
+  while (remaining.length > maxLength) {
+    const breakIndex = remaining.lastIndexOf(" ", maxLength);
+    const nextIndex = breakIndex > 20 ? breakIndex : maxLength;
+    wrapped.push(remaining.slice(0, nextIndex).trimEnd());
+    remaining = remaining.slice(nextIndex).trimStart();
+  }
+  if (remaining.trim() !== "") {
+    wrapped.push(remaining);
+  }
+  return wrapped;
+}
+
+function buildPdfLines(markdown: string): string[] {
+  return markdown.split(/\r?\n/).flatMap(function (line) {
+    const normalized = normalizeMarkdownLine(line);
+    return normalized === "" ? [""] : wrapPdfLine(normalized, 92);
+  });
+}
+
+function buildPdfPageContent(lines: string[]): string {
+  const escapedLines = lines.map(function (line) {
+    return `(${escapePdfText(line)}) Tj`;
+  });
+  return `BT\n/F1 10 Tf\n50 800 Td\n14 TL\n${escapedLines.join("\nT*\n")}\nET`;
+}
+
+function buildPdfReport(markdown: string): string {
+  const lines = buildPdfLines(markdown);
+  const pageSize = 54;
+  const pages = lines.length > 0 ? lines : ["Report"];
+  const pageChunks: string[][] = [];
+  for (let index = 0; index < pages.length; index += pageSize) {
+    pageChunks.push(pages.slice(index, index + pageSize));
+  }
+
+  const objects: string[] = [];
+  objects[1] = "<< /Type /Catalog /Pages 2 0 R >>";
+  objects[3] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";
+  const kids: string[] = [];
+  pageChunks.forEach(function (chunk, index) {
+    const pageObjectId = 4 + index * 2;
+    const contentObjectId = pageObjectId + 1;
+    const content = buildPdfPageContent(chunk);
+    kids.push(`${pageObjectId} 0 R`);
+    objects[pageObjectId] =
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentObjectId} 0 R >>`;
+    objects[contentObjectId] =
+      `<< /Length ${String(content.length)} >>\nstream\n${content}\nendstream`;
+  });
+  objects[2] = `<< /Type /Pages /Count ${String(pageChunks.length)} /Kids [${kids.join(" ")}] >>`;
+
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  for (let objectId = 1; objectId < objects.length; objectId += 1) {
+    const objectBody = objects[objectId];
+    if (objectBody === undefined) {
+      continue;
+    }
+    offsets[objectId] = pdf.length;
+    pdf += `${objectId} 0 obj\n${objectBody}\nendobj\n`;
+  }
+  const xrefOffset = pdf.length;
+  pdf += `xref\n0 ${String(objects.length)}\n0000000000 65535 f \n`;
+  for (let objectId = 1; objectId < objects.length; objectId += 1) {
+    pdf += `${String(offsets[objectId] || 0).padStart(10, "0")} 00000 n \n`;
+  }
+  pdf += `trailer\n<< /Size ${String(objects.length)} /Root 1 0 R >>\nstartxref\n${String(xrefOffset)}\n%%EOF\n`;
+  return pdf;
+}
+
 export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExportRuntimeDeps) {
   const {
     getActiveProject,
@@ -84,7 +210,8 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
     api: unknown,
     runtime: unknown,
     requestId: string,
-    featureId: string
+    featureId: string,
+    options: LaboratoryReportExportOptions = {}
   ): Promise<void> {
     const project = getActiveProject(runtime);
     if (project === null) {
@@ -120,6 +247,66 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
       let createdResultAssetIds: string[] = [];
       const stamp = new Date().toISOString().replace(/[:.]/g, "-");
       const baseName = `${sanitizeFileSegment(project.slug, "project")}-${featureId}-${stamp}`;
+      const requestedFormat =
+        normalizeExportFormat(options["format"]) || normalizeExportFormat(options["exportFormat"]);
+      const targetDirectory = getTargetDirectory(options);
+      if (requestedFormat !== null && targetDirectory === null) {
+        throw new Error("Report export folder is required.");
+      }
+      if (requestedFormat !== null && targetDirectory !== null) {
+        const fileName =
+          requestedFormat === "json" ? `${baseName}-ai.json` : `${baseName}-user.pdf`;
+        const outputPath = joinDirectoryPath(targetDirectory, fileName);
+        const outputContent =
+          requestedFormat === "json"
+            ? JSON.stringify(reportRecord.aiReport || reportRecord, null, 2)
+            : buildPdfReport(buildReportMarkdown(runtime, project, featureId, reportRecord));
+        await writeTextFile(outputPath, outputContent);
+        const exportEntry = normalizeReportExport({
+          format: requestedFormat,
+          path: outputPath,
+          fileName: fileName,
+          status: "ready",
+        });
+        await patchActiveProject(runtime, function (nextProject) {
+          const nextReportRecord = composeFeatureReport(runtime, nextProject, featureId);
+          const currentReportRecord = getFeatureReportRecord(nextProject, featureId);
+          const currentExports = Array.isArray(currentReportRecord.exports)
+            ? currentReportRecord.exports
+            : [];
+          nextReportRecord.exports = [exportEntry]
+            .concat(currentExports)
+            .reduce<LaboratoryReportExportEntry[]>(function (accumulator, entry) {
+              const candidate = normalizeReportExport(entry);
+              const candidatePath =
+                typeof candidate["path"] === "string" ? String(candidate["path"]) : "";
+              if (
+                candidatePath !== "" &&
+                accumulator.some(function (existingEntry) {
+                  return String(existingEntry["path"] || "") === candidatePath;
+                })
+              ) {
+                return accumulator;
+              }
+              accumulator.push(candidate);
+              return accumulator;
+            }, [])
+            .slice(0, 8);
+          setFeatureReportRecord(nextProject, featureId, nextReportRecord);
+          return nextProject;
+        });
+        pushJobState(api, {
+          requestId: requestId,
+          jobId: jobId,
+          action: action,
+          projectId: project.id,
+          featureStage: "report",
+          outputPath,
+          stage: "completed",
+        });
+        return;
+      }
+
       const fileName = `${baseName}-user.md`;
       const outputPath = `${getFeatureReportDir(runtime, project, featureId)}/${fileName}`;
       const aiFileName = `${baseName}-ai.json`;

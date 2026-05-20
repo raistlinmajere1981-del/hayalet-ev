@@ -23,7 +23,12 @@ import type {
   PatternRoomMockData,
   PatternSource,
 } from "../types/pattern-room.js";
-import type { PatternRoomLocalOverlay } from "../state/pattern-room-local-state.js";
+import type {
+  LocalAuthoredEvidence,
+  LocalAuthoredNode,
+  LocalAuthoredSource,
+  PatternRoomLocalOverlay,
+} from "../state/pattern-room-local-state.js";
 
 export type PatternRoomDomainViewSource = {
   topic: Topic;
@@ -103,6 +108,12 @@ const ROLE_NOTES: Record<DebateRole["role"], string> = {
   advocate: "Ana açıklamayı savunan temsili slot.",
   "tenth-man": "Karşı argümanları yükselten temsili slot.",
   arbiter: "Gerçek bağlantısı olmayan görsel hakem etiketi.",
+};
+
+const LOCAL_AUTHORED_NODE_LAYERS: Record<LocalAuthoredNode["nodeType"], PatternLayer> = {
+  claim: "interpretation",
+  inspiration: "analysis",
+  uncertainty: "uncertainty",
 };
 
 const REPORT_SECTION_DEFINITIONS: Array<{
@@ -207,6 +218,43 @@ function adaptBoardSourcePin(source: SourceItem, layer: PatternLayer): PatternBo
   };
 }
 
+function adaptLocalAuthoredNodePin(node: LocalAuthoredNode): PatternBoardPin {
+  const layer = LOCAL_AUTHORED_NODE_LAYERS[node.nodeType];
+  return {
+    id: node.id,
+    label: node.label,
+    layer,
+    layerLabel: LAYER_LABELS[layer],
+    tone: LAYER_TONES[layer],
+    confidenceLabel: "Yerel",
+    content: node.content,
+    sourceId: null,
+    sourceLabel: "Local overlay",
+    origin: null,
+    kind: "node",
+    isLocal: true,
+  };
+}
+
+function adaptLocalAuthoredEvidencePin(evidence: LocalAuthoredEvidence): PatternBoardPin {
+  const interpretation =
+    evidence.interpretation === null ? "" : ` Yorum: ${evidence.interpretation}`;
+  return {
+    id: evidence.id,
+    label: evidence.label,
+    layer: "evidence",
+    layerLabel: LAYER_LABELS.evidence,
+    tone: LAYER_TONES.evidence,
+    confidenceLabel: "Yerel",
+    content: `${evidence.excerpt}${interpretation}`,
+    sourceId: null,
+    sourceLabel: "Yerel kanıt notu",
+    origin: LAYER_LABELS[evidence.layer],
+    kind: "evidence",
+    isLocal: true,
+  };
+}
+
 function createLayerPlaceholderPin(layer: PatternLayer): PatternBoardPin {
   return {
     id: `board-placeholder-${layer}`,
@@ -235,12 +283,33 @@ function adaptClaimNode(node: PatternNode): PatternClaim {
   };
 }
 
+function adaptLocalAuthoredClaimNode(node: LocalAuthoredNode): PatternClaim {
+  return {
+    id: `claim-${node.id}`,
+    label: node.label,
+    summary: node.content,
+    stance: "primary",
+  };
+}
+
 function adaptSourceNote(source: SourceItem): string {
   const reliabilityLabel = RELIABILITY_LABELS[source.reliability];
   if (source.sourceType === "personal_note") {
     return `Masa çıktısı geçici kartı; kaynak türü ${SOURCE_TYPE_LABELS[source.sourceType]} ve güvenilirlik ${reliabilityLabel}.`;
   }
   return `${reliabilityLabel}; kaynak origin: ${source.origin}.`;
+}
+
+function adaptLocalAuthoredSource(source: LocalAuthoredSource): PatternSource {
+  return {
+    id: source.id,
+    label: source.label,
+    sourceTypeLabel: "Yerel Kaynak",
+    origin: source.origin,
+    status: "local",
+    note: source.note === "" ? "Local overlay içinde eklenen kaynak." : source.note,
+    isLocal: true,
+  };
 }
 
 function adaptRoleLabel(role: DebateRole): string {
@@ -299,6 +368,7 @@ export function adaptBoardViewModel(
 ): PatternBoardViewModel {
   const sourceById = indexSourcesById(domain.sources);
   const pinnedSourcePinsByLayer = new Map<PatternLayer, PatternBoardPin[]>();
+  const localPinsByLayer = new Map<PatternLayer, PatternBoardPin[]>();
 
   if (overlay !== undefined) {
     for (const sourceId of overlay.pinnedSourceIds) {
@@ -311,6 +381,20 @@ export function adaptBoardViewModel(
       pins.push(adaptBoardSourcePin(source, layer));
       pinnedSourcePinsByLayer.set(layer, pins);
     }
+
+    for (const localNode of overlay.localAuthoredNodes) {
+      const pin = adaptLocalAuthoredNodePin(localNode);
+      const pins = localPinsByLayer.get(pin.layer) ?? [];
+      pins.push(pin);
+      localPinsByLayer.set(pin.layer, pins);
+    }
+
+    for (const localEvidence of overlay.localAuthoredEvidence) {
+      const pin = adaptLocalAuthoredEvidencePin(localEvidence);
+      const pins = localPinsByLayer.get(pin.layer) ?? [];
+      pins.push(pin);
+      localPinsByLayer.set(pin.layer, pins);
+    }
   }
 
   const boardCategories: PatternBoardCategory[] = PATTERN_LAYERS.map((layer) => {
@@ -321,7 +405,8 @@ export function adaptBoardViewModel(
         return adaptBoardNodePin(node, source);
       });
     const pinnedSourcePins = pinnedSourcePinsByLayer.get(layer) ?? [];
-    const pins = [...nodePins, ...pinnedSourcePins];
+    const localPins = localPinsByLayer.get(layer) ?? [];
+    const pins = [...nodePins, ...pinnedSourcePins, ...localPins];
 
     return {
       id: `board-${layer}`,
@@ -336,7 +421,8 @@ export function adaptBoardViewModel(
 }
 
 export function adaptArchiveViewModel(
-  domain: PatternRoomDomainViewSource
+  domain: PatternRoomDomainViewSource,
+  overlay?: PatternRoomLocalOverlay
 ): PatternArchiveViewModel {
   const sources: PatternSource[] = domain.sources.map((source) => {
     return {
@@ -346,10 +432,13 @@ export function adaptArchiveViewModel(
       origin: source.origin,
       status: "mocked",
       note: adaptSourceNote(source),
+      isLocal: false,
     };
   });
 
-  return { sources };
+  const localSources = overlay?.localAuthoredSources.map(adaptLocalAuthoredSource) ?? [];
+
+  return { sources: [...sources, ...localSources] };
 }
 
 export function adaptDeskViewModel(
@@ -396,8 +485,14 @@ export function adaptDeskViewModel(
         };
       })
       .filter((claim): claim is PatternClaim => claim !== null) ?? [];
+  const authoredClaims =
+    overlay?.localAuthoredNodes
+      .filter((node) => {
+        return node.nodeType === "claim";
+      })
+      .map(adaptLocalAuthoredClaimNode) ?? [];
 
-  return { claims: [...claims, ...localClaims] };
+  return { claims: [...claims, ...localClaims, ...authoredClaims] };
 }
 
 export function adaptTenthManViewModel(
@@ -426,6 +521,40 @@ export function adaptTenthManViewModel(
             label: source.label,
             note: `Yerel kaynak referansı: ${source.origin}`,
             kind: "source" as const,
+          };
+        }
+
+        const localNode = overlay.localAuthoredNodes.find((node) => node.id === referenceId);
+        if (localNode !== undefined) {
+          return {
+            id: `debate-reference-local-node-${localNode.id}`,
+            label: localNode.label,
+            note: `Yerel öğe referansı: ${localNode.content}`,
+            kind: "node" as const,
+          };
+        }
+
+        const localSource = overlay.localAuthoredSources.find(
+          (source) => source.id === referenceId
+        );
+        if (localSource !== undefined) {
+          return {
+            id: `debate-reference-local-source-${localSource.id}`,
+            label: localSource.label,
+            note: `Yerel kaynak referansı: ${localSource.origin}`,
+            kind: "source" as const,
+          };
+        }
+
+        const localEvidence = overlay.localAuthoredEvidence.find((evidence) => {
+          return evidence.id === referenceId;
+        });
+        if (localEvidence !== undefined) {
+          return {
+            id: `debate-reference-local-evidence-${localEvidence.id}`,
+            label: localEvidence.label,
+            note: `Yerel kanıt notu: ${localEvidence.excerpt}`,
+            kind: "evidence" as const,
           };
         }
 
@@ -500,6 +629,20 @@ export function adaptReportViewModel(
     });
   }
 
+  if (overlay !== undefined && overlay.localAuthoredEvidence.length > 0) {
+    sections.push({
+      id: "report-local-evidence-notes",
+      label: "Yerel Kanıt Notları",
+      tone: "evidence",
+      note: "Local overlay içinde eklenen kanıt notları rapor terminalinde ayrı tutulur.",
+      bullets: overlay.localAuthoredEvidence.map((evidence) => {
+        return evidence.interpretation === null
+          ? `${evidence.label}: ${evidence.excerpt}`
+          : `${evidence.label}: ${evidence.excerpt} Yorum: ${evidence.interpretation}`;
+      }),
+    });
+  }
+
   return {
     reportSummary: {
       id: `report-summary-${domain.topic.id}`,
@@ -517,7 +660,7 @@ export function adaptDomainToViewModels(
   return {
     ...adaptOverviewViewModel(domain),
     ...adaptBoardViewModel(domain, overlay),
-    ...adaptArchiveViewModel(domain),
+    ...adaptArchiveViewModel(domain, overlay),
     ...adaptDeskViewModel(domain, overlay),
     ...adaptTenthManViewModel(domain, overlay),
     ...adaptReportViewModel(domain, overlay),

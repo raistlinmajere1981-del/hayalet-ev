@@ -15,6 +15,31 @@ export type LocalNote = {
   createdAt: string;
 };
 
+export type LocalAuthoredNode = {
+  id: string;
+  nodeType: "claim" | "inspiration" | "uncertainty";
+  label: string;
+  content: string;
+  createdAt: string;
+};
+
+export type LocalAuthoredSource = {
+  id: string;
+  label: string;
+  origin: string;
+  note: string;
+  createdAt: string;
+};
+
+export type LocalAuthoredEvidence = {
+  id: string;
+  label: string;
+  excerpt: string;
+  interpretation: string | null;
+  layer: PatternLayer;
+  createdAt: string;
+};
+
 export type DebateLocalPhase =
   | "idle"
   | "preparation"
@@ -47,6 +72,9 @@ export type PatternRoomLocalOverlay = {
   debateRolesConnected: Readonly<Record<string, boolean>>;
   debateLocalVerdict: string | null;
   localNotes: readonly LocalNote[];
+  localAuthoredNodes: readonly LocalAuthoredNode[];
+  localAuthoredSources: readonly LocalAuthoredSource[];
+  localAuthoredEvidence: readonly LocalAuthoredEvidence[];
 };
 
 export type PatternRoomLocalGuards = {
@@ -66,6 +94,16 @@ export type PatternRoomLocalState = {
   pinSource: (sourceId: string, layer: PatternLayer) => void;
   addToDebate: (entityId: string) => void;
   addLocalNote: (text: string) => void;
+  addAuthoredClaim: (label: string, content: string) => void;
+  addAuthoredInspiration: (label: string, content: string) => void;
+  addAuthoredUncertainty: (label: string, content: string) => void;
+  addAuthoredSource: (label: string, origin: string, note: string) => void;
+  addAuthoredEvidence: (
+    label: string,
+    excerpt: string,
+    interpretation?: string,
+    layer?: PatternLayer
+  ) => void;
   prepareDebate: () => void;
   assignDebateRoles: () => void;
   startDebate: () => void;
@@ -101,12 +139,50 @@ function cloneNotes(notes: readonly LocalNote[]): LocalNote[] {
   });
 }
 
+function cloneAuthoredNodes(nodes: readonly LocalAuthoredNode[]): LocalAuthoredNode[] {
+  return nodes.map((node) => {
+    return { ...node };
+  });
+}
+
+function cloneAuthoredSources(sources: readonly LocalAuthoredSource[]): LocalAuthoredSource[] {
+  return sources.map((source) => {
+    return { ...source };
+  });
+}
+
+function cloneAuthoredEvidence(
+  evidenceItems: readonly LocalAuthoredEvidence[]
+): LocalAuthoredEvidence[] {
+  return evidenceItems.map((evidence) => {
+    return { ...evidence };
+  });
+}
+
 function cloneTurns(turns: readonly DebateLocalTurn[]): DebateLocalTurn[] {
   return turns.map((turn) => {
     return turn.referencedIds === undefined
       ? { ...turn }
       : { ...turn, referencedIds: [...turn.referencedIds] };
   });
+}
+
+function createLocalId(prefix: string, index: number): string {
+  return `${prefix}-${String(index).padStart(3, "0")}`;
+}
+
+function getLocalIdIndex(id: string, prefix: string): number {
+  const match = new RegExp(`^${prefix}-(\\d{3,})$`).exec(id);
+  if (match === null) {
+    return 0;
+  }
+  return Number.parseInt(match[1] ?? "0", 10);
+}
+
+function getMaxLocalIdIndex(values: readonly { id: string }[], prefix: string): number {
+  return values.reduce((maxIndex, value) => {
+    return Math.max(maxIndex, getLocalIdIndex(value.id, prefix));
+  }, 0);
 }
 
 export function createLocalState(
@@ -120,11 +196,17 @@ export function createLocalState(
   const debateLocalTurns: DebateLocalTurn[] = [];
   const debateRolesConnected: Record<string, boolean> = {};
   const localNotes: LocalNote[] = [];
+  const localAuthoredNodes: LocalAuthoredNode[] = [];
+  const localAuthoredSources: LocalAuthoredSource[] = [];
+  const localAuthoredEvidence: LocalAuthoredEvidence[] = [];
   const listeners = new Set<() => void>();
   let debatePhase: DebateLocalPhase = "idle";
   let debateLocalVerdict: string | null = null;
   let debateReportReflected = false;
   let noteIndex = 0;
+  let authoredNodeIndex = 0;
+  let authoredSourceIndex = 0;
+  let authoredEvidenceIndex = 0;
 
   ROLE_CONNECTION_IDS.forEach((roleId) => {
     debateRolesConnected[roleId] = false;
@@ -136,6 +218,28 @@ export function createLocalState(
 
   function hasSource(sourceId: string): boolean {
     return domainRef.sources.some((source) => source.id === sourceId);
+  }
+
+  function hasLocalAuthoredNode(nodeId: string): boolean {
+    return localAuthoredNodes.some((node) => node.id === nodeId);
+  }
+
+  function hasLocalAuthoredSource(sourceId: string): boolean {
+    return localAuthoredSources.some((source) => source.id === sourceId);
+  }
+
+  function hasLocalAuthoredEvidence(evidenceId: string): boolean {
+    return localAuthoredEvidence.some((evidence) => evidence.id === evidenceId);
+  }
+
+  function hasDebateReference(entityId: string): boolean {
+    return (
+      hasNode(entityId) ||
+      hasSource(entityId) ||
+      hasLocalAuthoredNode(entityId) ||
+      hasLocalAuthoredSource(entityId) ||
+      hasLocalAuthoredEvidence(entityId)
+    );
   }
 
   function notify(): void {
@@ -153,6 +257,72 @@ export function createLocalState(
     localNotes.push({
       id: `local-note-${String(noteIndex).padStart(3, "0")}`,
       text: trimmedText,
+      createdAt: new Date().toISOString(),
+    });
+    return true;
+  }
+
+  function addAuthoredNodeRecord(
+    nodeType: LocalAuthoredNode["nodeType"],
+    label: string,
+    content: string
+  ): boolean {
+    const trimmedLabel = label.trim();
+    const trimmedContent = content.trim();
+    if (trimmedLabel === "" || trimmedContent === "") {
+      return false;
+    }
+
+    authoredNodeIndex += 1;
+    localAuthoredNodes.push({
+      id: createLocalId("local-node", authoredNodeIndex),
+      nodeType,
+      label: trimmedLabel,
+      content: trimmedContent,
+      createdAt: new Date().toISOString(),
+    });
+    return true;
+  }
+
+  function addAuthoredSourceRecord(label: string, origin: string, note: string): boolean {
+    const trimmedLabel = label.trim();
+    const trimmedOrigin = origin.trim();
+    const trimmedNote = note.trim();
+    if (trimmedLabel === "" || trimmedOrigin === "") {
+      return false;
+    }
+
+    authoredSourceIndex += 1;
+    localAuthoredSources.push({
+      id: createLocalId("local-source", authoredSourceIndex),
+      label: trimmedLabel,
+      origin: trimmedOrigin,
+      note: trimmedNote,
+      createdAt: new Date().toISOString(),
+    });
+    return true;
+  }
+
+  function addAuthoredEvidenceRecord(
+    label: string,
+    excerpt: string,
+    interpretation?: string,
+    layer?: PatternLayer
+  ): boolean {
+    const trimmedLabel = label.trim();
+    const trimmedExcerpt = excerpt.trim();
+    const trimmedInterpretation = interpretation?.trim() ?? "";
+    if (trimmedLabel === "" || trimmedExcerpt === "") {
+      return false;
+    }
+
+    authoredEvidenceIndex += 1;
+    localAuthoredEvidence.push({
+      id: createLocalId("local-evidence", authoredEvidenceIndex),
+      label: trimmedLabel,
+      excerpt: trimmedExcerpt,
+      interpretation: trimmedInterpretation === "" ? null : trimmedInterpretation,
+      layer: layer ?? "evidence",
       createdAt: new Date().toISOString(),
     });
     return true;
@@ -207,7 +377,7 @@ export function createLocalState(
       }
     },
     addToDebate(entityId: string): void {
-      if (!hasNode(entityId) && !hasSource(entityId)) {
+      if (!hasDebateReference(entityId)) {
         return;
       }
       if (appendUnique(debateReferenceIds, entityId)) {
@@ -216,6 +386,36 @@ export function createLocalState(
     },
     addLocalNote(text: string): void {
       if (addLocalNoteRecord(text)) {
+        notify();
+      }
+    },
+    addAuthoredClaim(label: string, content: string): void {
+      if (addAuthoredNodeRecord("claim", label, content)) {
+        notify();
+      }
+    },
+    addAuthoredInspiration(label: string, content: string): void {
+      if (addAuthoredNodeRecord("inspiration", label, content)) {
+        notify();
+      }
+    },
+    addAuthoredUncertainty(label: string, content: string): void {
+      if (addAuthoredNodeRecord("uncertainty", label, content)) {
+        notify();
+      }
+    },
+    addAuthoredSource(label: string, origin: string, note: string): void {
+      if (addAuthoredSourceRecord(label, origin, note)) {
+        notify();
+      }
+    },
+    addAuthoredEvidence(
+      label: string,
+      excerpt: string,
+      interpretation?: string,
+      layer?: PatternLayer
+    ): void {
+      if (addAuthoredEvidenceRecord(label, excerpt, interpretation, layer)) {
         notify();
       }
     },
@@ -284,6 +484,9 @@ export function createLocalState(
         debateRolesConnected: { ...debateRolesConnected },
         debateLocalVerdict,
         localNotes: cloneNotes(localNotes),
+        localAuthoredNodes: cloneAuthoredNodes(localAuthoredNodes),
+        localAuthoredSources: cloneAuthoredSources(localAuthoredSources),
+        localAuthoredEvidence: cloneAuthoredEvidence(localAuthoredEvidence),
       };
     },
     getGuards(): PatternRoomLocalGuards {
@@ -311,10 +514,28 @@ export function createLocalState(
       });
 
       localNotes.splice(0, localNotes.length, ...cloneNotes(overlay.localNotes));
+      localAuthoredNodes.splice(
+        0,
+        localAuthoredNodes.length,
+        ...cloneAuthoredNodes(overlay.localAuthoredNodes)
+      );
+      localAuthoredSources.splice(
+        0,
+        localAuthoredSources.length,
+        ...cloneAuthoredSources(overlay.localAuthoredSources)
+      );
+      localAuthoredEvidence.splice(
+        0,
+        localAuthoredEvidence.length,
+        ...cloneAuthoredEvidence(overlay.localAuthoredEvidence)
+      );
       debatePhase = overlay.debatePhase;
       debateLocalVerdict = overlay.debateLocalVerdict;
       debateReportReflected = guards.debateReportReflected;
       noteIndex = Math.max(guards.noteIndex, localNotes.length);
+      authoredNodeIndex = getMaxLocalIdIndex(localAuthoredNodes, "local-node");
+      authoredSourceIndex = getMaxLocalIdIndex(localAuthoredSources, "local-source");
+      authoredEvidenceIndex = getMaxLocalIdIndex(localAuthoredEvidence, "local-evidence");
       notify();
     },
     subscribe(listener: () => void): () => void {

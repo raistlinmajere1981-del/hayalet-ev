@@ -103,6 +103,10 @@ export function createLaboratoryReportMarkdownRuntime(deps: LaboratoryReportMark
     return toRecord(value);
   }
 
+  function toInsightRecord(value: unknown): LaboratoryRecord {
+    return toRecord(value);
+  }
+
   function toString(value: unknown, fallback = ""): string {
     if (typeof value === "string") {
       return value;
@@ -216,6 +220,52 @@ export function createLaboratoryReportMarkdownRuntime(deps: LaboratoryReportMark
         if (warnings.length > 0) {
           lines.push(`  Warnings: ${warnings.join(" | ")}`);
         }
+      });
+    }
+
+    const correlationClusters = Array.isArray(userReport["topCorrelationClusters"])
+      ? (userReport["topCorrelationClusters"] as unknown[]).map(toInsightRecord)
+      : [];
+    if (correlationClusters.length > 0) {
+      lines.push("", "## Correlation");
+      correlationClusters.forEach(function (cluster) {
+        lines.push(
+          `- ${formatValue(cluster["title"])}: score ${formatValue(cluster["score"])} (${formatValue(
+            cluster["level"]
+          )})`
+        );
+        if (asNonEmptyString(cluster["detail"]) !== null) {
+          lines.push(`  ${asNonEmptyString(cluster["detail"])}`);
+        }
+      });
+    }
+
+    const narrativeCues = Array.isArray(userReport["narrativeCues"])
+      ? (userReport["narrativeCues"] as unknown[]).map(toInsightRecord)
+      : [];
+    if (narrativeCues.length > 0) {
+      lines.push("", "## Narrative Cues");
+      narrativeCues.forEach(function (cue) {
+        const qualifiers = [cue["confidence"], cue["temporalBasis"]]
+          .map(formatValue)
+          .filter(function (entry) {
+            return entry !== "-";
+          });
+        lines.push(
+          `- ${formatValue(cue["phrase"])}${
+            qualifiers.length > 0 ? ` (${qualifiers.join(", ")})` : ""
+          }: ${formatValue(cue["detail"])}`
+        );
+      });
+    }
+
+    const forensicNotes = Array.isArray(userReport["forensicNotes"])
+      ? (userReport["forensicNotes"] as unknown[]).map(toInsightRecord)
+      : [];
+    if (forensicNotes.length > 0) {
+      lines.push("", "## Forensic Notes");
+      forensicNotes.forEach(function (note) {
+        lines.push(`- ${formatValue(note["label"])}: ${formatValue(note["detail"])}`);
       });
     }
 

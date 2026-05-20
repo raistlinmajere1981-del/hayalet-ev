@@ -1,6 +1,57 @@
 import type { PatternPanelActions, PatternRoomMockData } from "../../shared/types/pattern-room.js";
 import { createActionButton, createElement, createPanelShell } from "./pattern-panel-utils.js";
 
+function createTextInput(name: string, placeholder: string): HTMLInputElement {
+  const input = createElement("input", "pattern-room-inline-input");
+  input.name = name;
+  input.placeholder = placeholder;
+  return input;
+}
+
+function createTextArea(name: string, placeholder: string): HTMLTextAreaElement {
+  const textarea = createElement("textarea", "pattern-room-inline-input");
+  textarea.name = name;
+  textarea.placeholder = placeholder;
+  return textarea;
+}
+
+function createSubmitButton(label: string): HTMLButtonElement {
+  const button = createElement("button", "pattern-room-action-button", label);
+  button.type = "submit";
+  return button;
+}
+
+function createSourceAuthoringForm(actions: PatternPanelActions): HTMLElement {
+  const form = createElement("form", "pattern-room-inline-form");
+  form.dataset["patternAuthorSourceForm"] = "true";
+
+  const label = createTextInput("label", "Başlık");
+  label.dataset["patternAuthorSourceLabel"] = "true";
+  const origin = createTextInput("origin", "Köken");
+  origin.dataset["patternAuthorSourceOrigin"] = "true";
+  const note = createTextArea("note", "Not");
+  note.dataset["patternAuthorSourceNote"] = "true";
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (label.value.trim() === "" || origin.value.trim() === "") {
+      return;
+    }
+
+    actions.addAuthoredSource(label.value, origin.value, note.value);
+    form.reset();
+  });
+
+  form.append(
+    createElement("h2", undefined, "Kaynak Ekle"),
+    label,
+    origin,
+    note,
+    createSubmitButton("Ekle")
+  );
+  return form;
+}
+
 function sourceTypeClass(sourceTypeLabel: string): string {
   if (sourceTypeLabel === "Kitap / Metin") {
     return "text-source";
@@ -32,16 +83,19 @@ export function createArchivePanel(
       source.sourceTypeLabel
     );
     const actionsRow = createElement("div", "pattern-room-action-row");
-    const pinButton = createActionButton("Panoya İliştir", () => {
-      actions.pinSourceToBoard(source.id, "evidence");
-    });
-    pinButton.dataset["patternPinSource"] = source.id;
+    if (source.isLocal !== true) {
+      const pinButton = createActionButton("Panoya İliştir", () => {
+        actions.pinSourceToBoard(source.id, "evidence");
+      });
+      pinButton.dataset["patternPinSource"] = source.id;
+      actionsRow.append(pinButton);
+    }
 
     const debateButton = createActionButton("10. Adam’a Ekle", () => {
       actions.addSourceToDebate(source.id);
     });
     debateButton.dataset["patternAddSourceDebate"] = source.id;
-    actionsRow.append(pinButton, debateButton);
+    actionsRow.append(debateButton);
 
     card.append(
       drawer,
@@ -54,6 +108,6 @@ export function createArchivePanel(
     list.append(card);
   });
 
-  shell.append(list);
+  shell.append(createSourceAuthoringForm(actions), list);
   return shell;
 }

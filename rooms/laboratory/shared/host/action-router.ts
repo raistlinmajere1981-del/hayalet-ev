@@ -287,7 +287,7 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
           break;
         case "report-export":
         case "audio-report-export":
-          await mediaActionRuntime.exportReport(api, runtime, requestId, featureId);
+          await mediaActionRuntime.exportReport(api, runtime, requestId, featureId, actionPayload);
           break;
         case "tool-install":
         case "tool-update":
