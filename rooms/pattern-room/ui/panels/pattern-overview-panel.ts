@@ -72,11 +72,11 @@ export function createOverviewPanel(
     button.dataset["patternHotspot"] = hotspot.id;
     button.ariaLabel = hotspot.label;
     const textWrap = createElement("span", "pattern-room-hotspot-copy");
-    textWrap.append(createElement("strong", undefined, hotspot.label), createElement("span", undefined, hotspot.meta));
-    button.append(
-      createElement("span", `pattern-room-object-icon ${hotspot.iconClass}`),
-      textWrap
+    textWrap.append(
+      createElement("strong", undefined, hotspot.label),
+      createElement("span", undefined, hotspot.meta)
     );
+    button.append(createElement("span", `pattern-room-object-icon ${hotspot.iconClass}`), textWrap);
     button.addEventListener("click", () => {
       onOpenView(hotspot.id);
     });

@@ -46,6 +46,7 @@ module.exports = {
           "rooms/forge-room/host/state/forge-runtime-actions\\.ts$", // host action contract consumed through import type
           "rooms/laboratory/ui/lab-waveform-timeline-types\\.ts$", // timeline model contract consumed through import type
           "rooms/laboratory/runtime/lab-decision-priority\\.ts$", // regression-covered decision ordering helper
+          "rooms/pattern-room/shared/types/pattern-room\\.ts$", // room UI model contract consumed through import type
         ],
       },
       to: {},

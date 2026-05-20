@@ -1776,6 +1776,15 @@
         "noFindings": "No findings mapped to this intent.",
         "counts": "{modules} modules · {findings} findings · {artifacts} artifacts"
       },
+      "correlation": {
+        "title": "Correlation"
+      },
+      "narrative": {
+        "title": "Narrative Cues"
+      },
+      "forensics": {
+        "title": "Forensic Notes"
+      },
       "empty": {
         "noFindings": "No findings",
         "noTimeline": "No timeline",

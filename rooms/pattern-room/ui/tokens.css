@@ -1,0 +1,319 @@
+@custom-media --pattern-bp-max-820 (max-width: 820px);
+
+:root {
+  color-scheme: dark;
+
+  --pattern-surface: #0e1011;
+  --pattern-surface-strong: #0d1011;
+  --pattern-surface-floor: #11100e;
+  --pattern-surface-wall-mid: #111416;
+  --pattern-surface-wall-warm: #171614;
+  --pattern-surface-board-deep: #161413;
+  --pattern-surface-depth-alpha-96: rgba(11, 13, 14, 0.96);
+  --pattern-surface-warm-alpha-72: rgba(26, 22, 18, 0.72);
+  --pattern-surface-panel-alpha-82: rgba(18, 22, 25, 0.82);
+  --pattern-surface-panel-alpha-84: rgba(18, 22, 25, 0.84);
+  --pattern-surface-panel-alpha-86: rgba(18, 22, 25, 0.86);
+  --pattern-surface-control-alpha-74: rgba(12, 15, 17, 0.74);
+  --pattern-surface-detail-alpha-86: rgba(12, 16, 18, 0.86);
+  --pattern-surface-hotspot-alpha-88: rgba(13, 16, 17, 0.88);
+  --pattern-surface-device-alpha-86: rgba(14, 16, 17, 0.86);
+  --pattern-surface-wall-alpha-62: rgba(20, 24, 24, 0.62);
+  --pattern-surface-board-alpha-92: rgba(18, 21, 20, 0.92);
+  --pattern-surface-board-warm-alpha-90: rgba(54, 39, 27, 0.9);
+  --pattern-surface-board-cork-alpha-84: rgba(37, 32, 25, 0.84);
+  --pattern-surface-cork-alpha-32: rgba(88, 59, 35, 0.32);
+  --pattern-surface-holo-alpha-64: rgba(11, 31, 33, 0.64);
+  --pattern-surface-holo-alpha-72: rgba(11, 31, 33, 0.72);
+  --pattern-surface-cabinet-alpha-88: rgba(32, 38, 34, 0.88);
+  --pattern-surface-archive-alpha-86: rgba(24, 28, 27, 0.86);
+  --pattern-surface-lightbox-alpha-84: rgba(28, 25, 20, 0.84);
+  --pattern-surface-inset-alpha-62: rgba(10, 14, 15, 0.62);
+  --pattern-surface-inset-alpha-70: rgba(10, 14, 15, 0.7);
+  --pattern-surface-inset-alpha-78: rgba(10, 14, 15, 0.78);
+
+  --pattern-text: #edf2f4;
+  --pattern-text-muted: #b8c0c6;
+  --pattern-text-subtle: #94a1aa;
+  --pattern-text-warm: #f8f1d8;
+  --pattern-text-alpha-08: rgba(237, 242, 244, 0.08);
+  --pattern-text-alpha-12: rgba(237, 242, 244, 0.12);
+  --pattern-text-alpha-14: rgba(237, 242, 244, 0.14);
+  --pattern-text-alpha-16: rgba(237, 242, 244, 0.16);
+  --pattern-text-alpha-18: rgba(237, 242, 244, 0.18);
+
+  --pattern-accent-cyan: #8ff8ee;
+  --pattern-accent-cyan-alpha-08: rgba(143, 248, 238, 0.08);
+  --pattern-accent-cyan-alpha-10: rgba(143, 248, 238, 0.1);
+  --pattern-accent-cyan-alpha-11: rgba(143, 248, 238, 0.11);
+  --pattern-accent-cyan-alpha-12: rgba(143, 248, 238, 0.12);
+  --pattern-accent-cyan-alpha-16: rgba(143, 248, 238, 0.16);
+  --pattern-accent-cyan-alpha-22: rgba(143, 248, 238, 0.22);
+  --pattern-accent-cyan-alpha-24: rgba(143, 248, 238, 0.24);
+  --pattern-accent-cyan-alpha-26: rgba(143, 248, 238, 0.26);
+  --pattern-accent-cyan-alpha-28: rgba(143, 248, 238, 0.28);
+  --pattern-accent-cyan-alpha-35: rgba(143, 248, 238, 0.35);
+  --pattern-accent-cyan-alpha-38: rgba(143, 248, 238, 0.38);
+  --pattern-accent-cyan-alpha-42: rgba(143, 248, 238, 0.42);
+  --pattern-accent-cyan-alpha-48: rgba(143, 248, 238, 0.48);
+  --pattern-accent-cyan-alpha-72: rgba(143, 248, 238, 0.72);
+  --pattern-accent-cyan-alpha-78: rgba(143, 248, 238, 0.78);
+  --pattern-accent-cyan-deep-alpha-05: rgba(25, 216, 205, 0.05);
+  --pattern-accent-cyan-deep-alpha-08: rgba(25, 216, 205, 0.08);
+  --pattern-accent-cyan-deep-alpha-10: rgba(25, 216, 205, 0.1);
+  --pattern-accent-cyan-deep-alpha-13: rgba(25, 216, 205, 0.13);
+  --pattern-accent-cyan-deep-alpha-16: rgba(25, 216, 205, 0.16);
+  --pattern-accent-cyan-deep-alpha-18: rgba(25, 216, 205, 0.18);
+
+  --pattern-accent-amber: #f2c76e;
+  --pattern-accent-amber-alpha-06: rgba(242, 199, 110, 0.06);
+  --pattern-accent-amber-alpha-08: rgba(242, 199, 110, 0.08);
+  --pattern-accent-amber-alpha-09: rgba(242, 199, 110, 0.09);
+  --pattern-accent-amber-alpha-10: rgba(242, 199, 110, 0.1);
+  --pattern-accent-amber-alpha-18: rgba(242, 199, 110, 0.18);
+  --pattern-accent-amber-alpha-22: rgba(242, 199, 110, 0.22);
+  --pattern-accent-amber-alpha-24: rgba(242, 199, 110, 0.24);
+  --pattern-accent-amber-alpha-34: rgba(242, 199, 110, 0.34);
+  --pattern-accent-amber-alpha-36: rgba(242, 199, 110, 0.36);
+  --pattern-accent-amber-alpha-38: rgba(242, 199, 110, 0.38);
+  --pattern-accent-amber-alpha-46: rgba(242, 199, 110, 0.46);
+  --pattern-accent-amber-alpha-48: rgba(242, 199, 110, 0.48);
+  --pattern-accent-amber-alpha-50: rgba(242, 199, 110, 0.5);
+  --pattern-accent-amber-alpha-58: rgba(242, 199, 110, 0.58);
+
+  --pattern-success: #9ad877;
+  --pattern-success-alpha-05: rgba(154, 216, 119, 0.05);
+  --pattern-success-alpha-46: rgba(154, 216, 119, 0.46);
+  --pattern-success-alpha-48: rgba(154, 216, 119, 0.48);
+  --pattern-danger: #ef6f6c;
+  --pattern-danger-text: #ffaaa7;
+  --pattern-danger-alpha-10: rgba(239, 111, 108, 0.1);
+  --pattern-danger-alpha-16: rgba(239, 111, 108, 0.16);
+  --pattern-danger-alpha-28: rgba(239, 111, 108, 0.28);
+  --pattern-danger-alpha-38: rgba(239, 111, 108, 0.38);
+  --pattern-danger-alpha-50: rgba(239, 111, 108, 0.5);
+  --pattern-danger-alpha-52: rgba(239, 111, 108, 0.52);
+
+  --pattern-border: var(--pattern-text-alpha-14);
+  --pattern-border-strong: var(--pattern-accent-cyan-alpha-28);
+  --pattern-border-wall-alpha-36: rgba(86, 96, 92, 0.36);
+  --pattern-border-cabinet-alpha-50: rgba(94, 104, 94, 0.5);
+  --pattern-glow-cyan-focus: 0 0 0 3px var(--pattern-accent-cyan-alpha-12);
+  --pattern-glow-cyan-action: 0 0 0 3px var(--pattern-accent-cyan-alpha-10);
+
+  --pattern-white-alpha-04: rgba(255, 255, 255, 0.04);
+  --pattern-white-alpha-05: rgba(255, 255, 255, 0.05);
+  --pattern-white-alpha-06: rgba(255, 255, 255, 0.06);
+  --pattern-white-alpha-07: rgba(255, 255, 255, 0.07);
+  --pattern-white-alpha-08: rgba(255, 255, 255, 0.08);
+  --pattern-black-alpha-24: rgba(0, 0, 0, 0.24);
+  --pattern-black-alpha-26: rgba(0, 0, 0, 0.26);
+  --pattern-black-alpha-28: rgba(0, 0, 0, 0.28);
+  --pattern-black-alpha-32: rgba(0, 0, 0, 0.32);
+
+  --pattern-gradient-body-depth: linear-gradient(
+    180deg,
+    rgba(26, 22, 18, 0.72),
+    rgba(11, 13, 14, 0.96)
+  );
+  --pattern-gradient-body-accent: linear-gradient(
+    90deg,
+    rgba(242, 199, 110, 0.06),
+    rgba(25, 216, 205, 0.05)
+  );
+  --pattern-gradient-grid-white: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 1px,
+    transparent 1px
+  );
+  --pattern-gradient-office-depth: linear-gradient(180deg, #171614 0%, #111416 48%, #0d1011 100%);
+  --pattern-gradient-floor-glow: linear-gradient(
+    90deg,
+    rgba(242, 199, 110, 0.1),
+    transparent 28%,
+    rgba(25, 216, 205, 0.1)
+  );
+  --pattern-gradient-wall-sheen: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.04),
+    transparent 32%
+  );
+  --pattern-gradient-board-cork: linear-gradient(135deg, rgba(88, 59, 35, 0.32), transparent);
+  --pattern-gradient-holo-grid: repeating-linear-gradient(
+    90deg,
+    rgba(143, 248, 238, 0.1) 0 1px,
+    transparent 1px 30px
+  );
+  --pattern-gradient-holo-surface: linear-gradient(
+    180deg,
+    rgba(25, 216, 205, 0.16),
+    rgba(154, 216, 119, 0.05)
+  );
+  --pattern-gradient-cabinet-centerline: linear-gradient(
+    90deg,
+    transparent 48%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 52%
+  );
+  --pattern-gradient-cabinet-drawers: repeating-linear-gradient(
+    180deg,
+    rgba(242, 199, 110, 0.08) 0 56px,
+    transparent 56px 62px
+  );
+  --pattern-gradient-hotspot-sheen: linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent);
+  --pattern-gradient-board-scene-depth: linear-gradient(
+    180deg,
+    rgba(54, 39, 27, 0.9),
+    rgba(18, 21, 20, 0.92)
+  );
+  --pattern-gradient-cyan-card-sheen: linear-gradient(
+    135deg,
+    rgba(143, 248, 238, 0.1),
+    transparent 42%
+  );
+  --pattern-gradient-currentcolor-card-sheen: linear-gradient(
+    135deg,
+    color-mix(in srgb, currentColor 14%, transparent),
+    transparent
+  );
+  --pattern-gradient-desk-grid: repeating-linear-gradient(
+    90deg,
+    rgba(143, 248, 238, 0.11) 0 1px,
+    transparent 1px 34px
+  );
+  --pattern-gradient-desk-surface: linear-gradient(
+    180deg,
+    rgba(25, 216, 205, 0.18),
+    rgba(154, 216, 119, 0.05)
+  );
+  --pattern-gradient-lightbox-surface: linear-gradient(
+    180deg,
+    rgba(242, 199, 110, 0.1),
+    rgba(18, 22, 25, 0.82)
+  );
+  --pattern-gradient-lightbox-grid: linear-gradient(
+    90deg,
+    rgba(242, 199, 110, 0.08) 1px,
+    transparent 1px
+  );
+  --pattern-gradient-archive-sheen: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.06),
+    transparent 32%
+  );
+  --pattern-gradient-danger-card-sheen: linear-gradient(
+    135deg,
+    rgba(239, 111, 108, 0.1),
+    transparent 42%
+  );
+  --pattern-gradient-cyan-slot-sheen: linear-gradient(
+    180deg,
+    rgba(143, 248, 238, 0.08),
+    transparent
+  );
+  --pattern-gradient-amber-slot-sheen: linear-gradient(
+    180deg,
+    rgba(242, 199, 110, 0.1),
+    transparent
+  );
+  --pattern-gradient-report-sheen: linear-gradient(
+    180deg,
+    rgba(242, 199, 110, 0.09),
+    transparent 34%
+  );
+
+  --pattern-px-neg-1: -1px;
+  --pattern-px-1: 1px;
+  --pattern-px-2: 2px;
+  --pattern-px-3: 3px;
+  --pattern-px-4: 4px;
+  --pattern-px-5: 5px;
+  --pattern-px-6: 6px;
+  --pattern-px-7: 7px;
+  --pattern-px-8: 8px;
+  --pattern-px-9: 9px;
+  --pattern-px-10: 10px;
+  --pattern-px-11: 11px;
+  --pattern-px-12: 12px;
+  --pattern-px-14: 14px;
+  --pattern-px-16: 16px;
+  --pattern-px-17: 17px;
+  --pattern-px-18: 18px;
+  --pattern-px-20: 20px;
+  --pattern-px-21: 21px;
+  --pattern-px-22: 22px;
+  --pattern-px-24: 24px;
+  --pattern-px-26: 26px;
+  --pattern-px-28: 28px;
+  --pattern-px-30: 30px;
+  --pattern-px-32: 32px;
+  --pattern-px-34: 34px;
+  --pattern-px-38: 38px;
+  --pattern-px-40: 40px;
+  --pattern-px-42: 42px;
+  --pattern-px-44: 44px;
+  --pattern-px-48: 48px;
+  --pattern-px-50: 50px;
+  --pattern-px-54: 54px;
+  --pattern-px-56: 56px;
+  --pattern-px-58: 58px;
+  --pattern-px-62: 62px;
+  --pattern-px-64: 64px;
+  --pattern-px-68: 68px;
+  --pattern-px-70: 70px;
+  --pattern-px-72: 72px;
+  --pattern-px-74: 74px;
+  --pattern-px-76: 76px;
+  --pattern-px-84: 84px;
+  --pattern-px-86: 86px;
+  --pattern-px-88: 88px;
+  --pattern-px-96: 96px;
+  --pattern-px-104: 104px;
+  --pattern-px-110: 110px;
+  --pattern-px-112: 112px;
+  --pattern-px-118: 118px;
+  --pattern-px-120: 120px;
+  --pattern-px-122: 122px;
+  --pattern-px-132: 132px;
+  --pattern-px-136: 136px;
+  --pattern-px-150: 150px;
+  --pattern-px-156: 156px;
+  --pattern-px-164: 164px;
+  --pattern-px-168: 168px;
+  --pattern-px-174: 174px;
+  --pattern-px-176: 176px;
+  --pattern-px-178: 178px;
+  --pattern-px-182: 182px;
+  --pattern-px-184: 184px;
+  --pattern-px-188: 188px;
+  --pattern-px-210: 210px;
+  --pattern-px-218: 218px;
+  --pattern-px-238: 238px;
+  --pattern-px-260: 260px;
+  --pattern-px-292: 292px;
+  --pattern-px-320: 320px;
+  --pattern-px-330: 330px;
+  --pattern-px-360: 360px;
+  --pattern-px-388: 388px;
+  --pattern-px-472: 472px;
+  --pattern-px-560: 560px;
+  --pattern-px-570: 570px;
+  --pattern-px-640: 640px;
+  --pattern-px-720: 720px;
+  --pattern-px-820: 820px;
+  --pattern-px-920: 920px;
+  --pattern-px-999: 999px;
+  --pattern-px-1180: 1180px;
+  --pattern-rem-0-72: 0.72rem;
+  --pattern-rem-0-74: 0.74rem;
+  --pattern-rem-0-76: 0.76rem;
+  --pattern-rem-0-78: 0.78rem;
+  --pattern-rem-0-82: 0.82rem;
+  --pattern-rem-0-88: 0.88rem;
+  --pattern-rem-1: 1rem;
+  --pattern-rem-1-2: 1.2rem;
+  --pattern-rem-1-35: 1.35rem;
+  --pattern-rem-1-5: 1.5rem;
+  --pattern-rem-2-35: 2.35rem;
+  --pattern-rem-3-8: 3.8rem;
+}

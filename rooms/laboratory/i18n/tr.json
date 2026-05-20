@@ -1776,6 +1776,15 @@
         "noFindings": "Bu niyet için eşleşmiş bulgu yok.",
         "counts": "{modules} modul · {findings} bulgu · {artifacts} artefakt"
       },
+      "correlation": {
+        "title": "Korelasyon"
+      },
+      "narrative": {
+        "title": "Anlatı İpuçları"
+      },
+      "forensics": {
+        "title": "Forensic Notlar"
+      },
       "empty": {
         "noFindings": "Bulgu yok",
         "noTimeline": "Zaman çizelgesi yok",
