@@ -3,6 +3,7 @@ import type {
   DebateRole,
   DebateTurn,
   PatternActorId,
+  PatternEdgeType,
   PatternLayer,
   PatternNode,
   SourceItem,
@@ -37,6 +38,15 @@ export type LocalAuthoredEvidence = {
   excerpt: string;
   interpretation: string | null;
   layer: PatternLayer;
+  createdAt: string;
+};
+
+export type LocalAuthoredEdge = {
+  id: string;
+  edgeType: PatternEdgeType;
+  sourceId: string;
+  targetId: string;
+  note: string | null;
   createdAt: string;
 };
 
@@ -75,6 +85,7 @@ export type PatternRoomLocalOverlay = {
   localAuthoredNodes: readonly LocalAuthoredNode[];
   localAuthoredSources: readonly LocalAuthoredSource[];
   localAuthoredEvidence: readonly LocalAuthoredEvidence[];
+  localAuthoredEdges: readonly LocalAuthoredEdge[];
 };
 
 export type PatternRoomLocalGuards = {
@@ -104,6 +115,14 @@ export type PatternRoomLocalState = {
     interpretation?: string,
     layer?: PatternLayer
   ) => void;
+  addAuthoredEdge: (
+    edgeType: PatternEdgeType,
+    sourceId: string,
+    targetId: string,
+    note?: string
+  ) => void;
+  resolveEntityExists: (id: string) => boolean;
+  resolveEntityLabel: (id: string) => string | null;
   prepareDebate: () => void;
   assignDebateRoles: () => void;
   startDebate: () => void;
@@ -117,6 +136,16 @@ export type PatternRoomLocalState = {
 };
 
 const ROLE_CONNECTION_IDS = ["AI0", "AI1", "AI2", "US1"] as const;
+
+const PATTERN_EDGE_TYPES: readonly PatternEdgeType[] = [
+  "supports",
+  "contradicts",
+  "references",
+  "derived_from",
+  "inspired_by",
+  "questions",
+  "needs_review",
+];
 
 const NEXT_DEBATE_TURN_PHASE: Partial<Record<DebateLocalPhase, DebateLocalPhase>> = {
   opening: "counter_argument",
@@ -159,6 +188,12 @@ function cloneAuthoredEvidence(
   });
 }
 
+function cloneAuthoredEdges(edges: readonly LocalAuthoredEdge[]): LocalAuthoredEdge[] {
+  return edges.map((edge) => {
+    return { ...edge };
+  });
+}
+
 function cloneTurns(turns: readonly DebateLocalTurn[]): DebateLocalTurn[] {
   return turns.map((turn) => {
     return turn.referencedIds === undefined
@@ -185,6 +220,10 @@ function getMaxLocalIdIndex(values: readonly { id: string }[], prefix: string): 
   }, 0);
 }
 
+function isPatternEdgeType(value: string): value is PatternEdgeType {
+  return PATTERN_EDGE_TYPES.includes(value as PatternEdgeType);
+}
+
 export function createLocalState(
   domainMock: PatternRoomLocalDomainReference
 ): PatternRoomLocalState {
@@ -199,6 +238,7 @@ export function createLocalState(
   const localAuthoredNodes: LocalAuthoredNode[] = [];
   const localAuthoredSources: LocalAuthoredSource[] = [];
   const localAuthoredEvidence: LocalAuthoredEvidence[] = [];
+  const localAuthoredEdges: LocalAuthoredEdge[] = [];
   const listeners = new Set<() => void>();
   let debatePhase: DebateLocalPhase = "idle";
   let debateLocalVerdict: string | null = null;
@@ -207,6 +247,7 @@ export function createLocalState(
   let authoredNodeIndex = 0;
   let authoredSourceIndex = 0;
   let authoredEvidenceIndex = 0;
+  let authoredEdgeIndex = 0;
 
   ROLE_CONNECTION_IDS.forEach((roleId) => {
     debateRolesConnected[roleId] = false;
@@ -232,14 +273,43 @@ export function createLocalState(
     return localAuthoredEvidence.some((evidence) => evidence.id === evidenceId);
   }
 
-  function hasDebateReference(entityId: string): boolean {
+  function resolveEntityExists(id: string): boolean {
     return (
-      hasNode(entityId) ||
-      hasSource(entityId) ||
-      hasLocalAuthoredNode(entityId) ||
-      hasLocalAuthoredSource(entityId) ||
-      hasLocalAuthoredEvidence(entityId)
+      hasNode(id) ||
+      hasSource(id) ||
+      hasLocalAuthoredNode(id) ||
+      hasLocalAuthoredSource(id) ||
+      hasLocalAuthoredEvidence(id)
     );
+  }
+
+  function resolveEntityLabel(id: string): string | null {
+    const domainNode = domainRef.nodes.find((node) => node.id === id);
+    if (domainNode !== undefined) {
+      return domainNode.label;
+    }
+
+    const domainSource = domainRef.sources.find((source) => source.id === id);
+    if (domainSource !== undefined) {
+      return domainSource.label;
+    }
+
+    const localNode = localAuthoredNodes.find((node) => node.id === id);
+    if (localNode !== undefined) {
+      return localNode.label;
+    }
+
+    const localSource = localAuthoredSources.find((source) => source.id === id);
+    if (localSource !== undefined) {
+      return localSource.label;
+    }
+
+    const localEvidence = localAuthoredEvidence.find((evidence) => evidence.id === id);
+    return localEvidence?.label ?? null;
+  }
+
+  function hasDebateReference(entityId: string): boolean {
+    return resolveEntityExists(entityId);
   }
 
   function notify(): void {
@@ -323,6 +393,38 @@ export function createLocalState(
       excerpt: trimmedExcerpt,
       interpretation: trimmedInterpretation === "" ? null : trimmedInterpretation,
       layer: layer ?? "evidence",
+      createdAt: new Date().toISOString(),
+    });
+    return true;
+  }
+
+  function addAuthoredEdgeRecord(
+    edgeType: PatternEdgeType,
+    sourceId: string,
+    targetId: string,
+    note?: string
+  ): boolean {
+    const trimmedSourceId = sourceId.trim();
+    const trimmedTargetId = targetId.trim();
+    const trimmedNote = note?.trim() ?? "";
+    if (
+      trimmedSourceId === "" ||
+      trimmedTargetId === "" ||
+      trimmedSourceId === trimmedTargetId ||
+      !isPatternEdgeType(edgeType) ||
+      !resolveEntityExists(trimmedSourceId) ||
+      !resolveEntityExists(trimmedTargetId)
+    ) {
+      return false;
+    }
+
+    authoredEdgeIndex += 1;
+    localAuthoredEdges.push({
+      id: createLocalId("local-edge", authoredEdgeIndex),
+      edgeType,
+      sourceId: trimmedSourceId,
+      targetId: trimmedTargetId,
+      note: trimmedNote === "" ? null : trimmedNote,
       createdAt: new Date().toISOString(),
     });
     return true;
@@ -419,6 +521,22 @@ export function createLocalState(
         notify();
       }
     },
+    addAuthoredEdge(
+      edgeType: PatternEdgeType,
+      sourceId: string,
+      targetId: string,
+      note?: string
+    ): void {
+      if (addAuthoredEdgeRecord(edgeType, sourceId, targetId, note)) {
+        notify();
+      }
+    },
+    resolveEntityExists(id: string): boolean {
+      return resolveEntityExists(id);
+    },
+    resolveEntityLabel(id: string): string | null {
+      return resolveEntityLabel(id);
+    },
     prepareDebate(): void {
       if (debateReferenceIds.length === 0) {
         return;
@@ -487,6 +605,7 @@ export function createLocalState(
         localAuthoredNodes: cloneAuthoredNodes(localAuthoredNodes),
         localAuthoredSources: cloneAuthoredSources(localAuthoredSources),
         localAuthoredEvidence: cloneAuthoredEvidence(localAuthoredEvidence),
+        localAuthoredEdges: cloneAuthoredEdges(localAuthoredEdges),
       };
     },
     getGuards(): PatternRoomLocalGuards {
@@ -529,6 +648,11 @@ export function createLocalState(
         localAuthoredEvidence.length,
         ...cloneAuthoredEvidence(overlay.localAuthoredEvidence)
       );
+      localAuthoredEdges.splice(
+        0,
+        localAuthoredEdges.length,
+        ...cloneAuthoredEdges(overlay.localAuthoredEdges)
+      );
       debatePhase = overlay.debatePhase;
       debateLocalVerdict = overlay.debateLocalVerdict;
       debateReportReflected = guards.debateReportReflected;
@@ -536,6 +660,7 @@ export function createLocalState(
       authoredNodeIndex = getMaxLocalIdIndex(localAuthoredNodes, "local-node");
       authoredSourceIndex = getMaxLocalIdIndex(localAuthoredSources, "local-source");
       authoredEvidenceIndex = getMaxLocalIdIndex(localAuthoredEvidence, "local-evidence");
+      authoredEdgeIndex = getMaxLocalIdIndex(localAuthoredEdges, "local-edge");
       notify();
     },
     subscribe(listener: () => void): () => void {

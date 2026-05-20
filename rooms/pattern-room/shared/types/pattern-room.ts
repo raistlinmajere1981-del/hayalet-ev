@@ -1,4 +1,5 @@
 import type { DebateLocalPhase, DebateLocalTurn } from "../state/pattern-room-local-state.js";
+import type { PatternEdgeType } from "./pattern-room-domain.js";
 
 export type PatternViewId = "overview" | "board" | "desk" | "archive" | "tenth-man" | "report";
 
@@ -68,6 +69,13 @@ export type PatternReportSection = {
   bullets: string[];
 };
 
+export type PatternConnectionOption = {
+  id: string;
+  label: string;
+  kind: "node" | "source" | "evidence";
+  isLocal: boolean;
+};
+
 export type PatternTenthManSession = {
   id: string;
   label: string;
@@ -93,6 +101,7 @@ export type PatternRoomMockData = {
   roomSummary: string;
   subject: string;
   boardCategories: PatternBoardCategory[];
+  connectionOptions: PatternConnectionOption[];
   claims: PatternClaim[];
   sources: PatternSource[];
   tenthManSession: PatternTenthManSession;
@@ -116,6 +125,12 @@ export type PatternPanelActions = {
     excerpt: string,
     interpretation?: string,
     layer?: PatternBoardLayerId
+  ) => void;
+  addAuthoredEdge: (
+    edgeType: PatternEdgeType,
+    sourceId: string,
+    targetId: string,
+    note?: string
   ) => void;
   prepareDebate: () => void;
   assignDebateRoles: () => void;

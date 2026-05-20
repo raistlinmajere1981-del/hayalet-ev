@@ -1,11 +1,26 @@
 import type {
   PatternBoardPin,
+  PatternConnectionOption,
   PatternPanelActions,
   PatternRoomMockData,
 } from "../../shared/types/pattern-room.js";
 import { createActionButton, createElement, createPanelShell } from "./pattern-panel-utils.js";
 
 type AuthoredBoardNodeType = "claim" | "inspiration" | "uncertainty";
+type AuthoredConnectionEdgeType = Parameters<PatternPanelActions["addAuthoredEdge"]>[0];
+
+const CONNECTION_EDGE_TYPE_OPTIONS: Array<{
+  value: AuthoredConnectionEdgeType;
+  label: string;
+}> = [
+  { value: "supports", label: "destekliyor" },
+  { value: "contradicts", label: "çelişiyor" },
+  { value: "references", label: "referans veriyor" },
+  { value: "derived_from", label: "türetildi" },
+  { value: "inspired_by", label: "ilham aldı" },
+  { value: "questions", label: "sorguluyor" },
+  { value: "needs_review", label: "inceleme gerekiyor" },
+];
 
 function createTextInput(name: string, placeholder: string): HTMLInputElement {
   const input = createElement("input", "pattern-room-inline-input");
@@ -33,7 +48,109 @@ function createNodeTypeOption(value: AuthoredBoardNodeType, label: string): HTML
   return option;
 }
 
-function createBoardAuthoringPanel(actions: PatternPanelActions): HTMLElement {
+function createConnectionEntityOption(optionValue: PatternConnectionOption): HTMLOptionElement {
+  const kindLabel =
+    optionValue.kind === "evidence" ? "Kanıt" : optionValue.kind === "source" ? "Kaynak" : "Öğe";
+  const scopeLabel = optionValue.isLocal ? "Yerel" : "Domain";
+  const option = createElement(
+    "option",
+    undefined,
+    `${scopeLabel} ${kindLabel}: ${optionValue.label}`
+  );
+  option.value = optionValue.id;
+  return option;
+}
+
+function createEdgeTypeOption(value: AuthoredConnectionEdgeType, label: string): HTMLOptionElement {
+  const option = createElement("option", undefined, label);
+  option.value = value;
+  return option;
+}
+
+function resetConnectionFormDefaults(
+  sourceSelect: HTMLSelectElement,
+  edgeTypeSelect: HTMLSelectElement,
+  targetSelect: HTMLSelectElement,
+  connectionOptions: readonly PatternConnectionOption[]
+): void {
+  sourceSelect.value = connectionOptions[0]?.id ?? "";
+  edgeTypeSelect.value = "supports";
+  targetSelect.value = connectionOptions[1]?.id ?? connectionOptions[0]?.id ?? "";
+}
+
+function createConnectionAuthoringForm(
+  actions: PatternPanelActions,
+  connectionOptions: readonly PatternConnectionOption[]
+): HTMLElement {
+  const connectionForm = createElement("form", "pattern-room-inline-form");
+  connectionForm.dataset["patternAuthorEdgeForm"] = "true";
+
+  const sourceSelect = createElement("select", "pattern-room-inline-input");
+  sourceSelect.name = "sourceId";
+  sourceSelect.dataset["patternAuthorEdgeSource"] = "true";
+  sourceSelect.append(...connectionOptions.map(createConnectionEntityOption));
+
+  const edgeTypeSelect = createElement("select", "pattern-room-inline-input");
+  edgeTypeSelect.name = "edgeType";
+  edgeTypeSelect.dataset["patternAuthorEdgeType"] = "true";
+  edgeTypeSelect.append(
+    ...CONNECTION_EDGE_TYPE_OPTIONS.map((option) => {
+      return createEdgeTypeOption(option.value, option.label);
+    })
+  );
+
+  const targetSelect = createElement("select", "pattern-room-inline-input");
+  targetSelect.name = "targetId";
+  targetSelect.dataset["patternAuthorEdgeTarget"] = "true";
+  targetSelect.append(...connectionOptions.map(createConnectionEntityOption));
+
+  const note = createTextInput("note", "Not (opsiyonel)");
+  note.dataset["patternAuthorEdgeNote"] = "true";
+
+  const submit = createSubmitButton("Bağla");
+  const hasEnoughOptions = connectionOptions.length >= 2;
+  sourceSelect.disabled = !hasEnoughOptions;
+  edgeTypeSelect.disabled = !hasEnoughOptions;
+  targetSelect.disabled = !hasEnoughOptions;
+  note.disabled = !hasEnoughOptions;
+  submit.disabled = !hasEnoughOptions;
+  resetConnectionFormDefaults(sourceSelect, edgeTypeSelect, targetSelect, connectionOptions);
+
+  connectionForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (
+      sourceSelect.value === "" ||
+      targetSelect.value === "" ||
+      sourceSelect.value === targetSelect.value
+    ) {
+      return;
+    }
+
+    actions.addAuthoredEdge(
+      edgeTypeSelect.value as AuthoredConnectionEdgeType,
+      sourceSelect.value,
+      targetSelect.value,
+      note.value
+    );
+    connectionForm.reset();
+    resetConnectionFormDefaults(sourceSelect, edgeTypeSelect, targetSelect, connectionOptions);
+  });
+
+  connectionForm.append(
+    createElement("h2", undefined, "Bağlantı Kur"),
+    sourceSelect,
+    edgeTypeSelect,
+    targetSelect,
+    note,
+    submit
+  );
+  return connectionForm;
+}
+
+function createBoardAuthoringPanel(
+  actions: PatternPanelActions,
+  connectionOptions: readonly PatternConnectionOption[]
+): HTMLElement {
   const authoring = createElement("section", "pattern-room-inline-authoring");
   const nodeForm = createElement("form", "pattern-room-inline-form");
   nodeForm.dataset["patternAuthorNodeForm"] = "true";
@@ -110,7 +227,11 @@ function createBoardAuthoringPanel(actions: PatternPanelActions): HTMLElement {
     createSubmitButton("Ekle")
   );
 
-  authoring.append(nodeForm, evidenceForm);
+  authoring.append(
+    nodeForm,
+    evidenceForm,
+    createConnectionAuthoringForm(actions, connectionOptions)
+  );
   return authoring;
 }
 
@@ -263,6 +384,6 @@ export function createBoardPanel(
   markSelectedPin(selectedPinId);
   renderSelectedPinDetail(detail, data, actions, selectedPinId);
   boardScene.append(grid, detail);
-  shell.append(createBoardAuthoringPanel(actions), boardScene);
+  shell.append(createBoardAuthoringPanel(actions, data.connectionOptions), boardScene);
   return shell;
 }

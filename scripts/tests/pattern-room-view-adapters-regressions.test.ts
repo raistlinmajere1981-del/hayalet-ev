@@ -187,6 +187,7 @@ test("pattern-room phase 4B adapter silently skips stale overlay ids", () => {
     localAuthoredNodes: [],
     localAuthoredSources: [],
     localAuthoredEvidence: [],
+    localAuthoredEdges: [],
   };
 
   const viewModels = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK, overlay);
@@ -337,6 +338,61 @@ test("pattern-room phase 7B local authoring appears in board, archive, desk, rep
     ["node", "source", "evidence"]
   );
   assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+});
+
+test("pattern-room phase 8B local authored connections appear only in the report", () => {
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+
+  localState.addAuthoredEdge("supports", "node-navigation-source", "source-shadow-comparison");
+  localState.addAuthoredEdge("supports", "node-navigation-source", "node-navigation-source");
+
+  const viewModels = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK, localState.getOverlay());
+  const flattenedBoardPins = viewModels.boardCategories.flatMap((category) => {
+    return category.pins;
+  });
+  const connectionsSection = viewModels.reportSummary.sections.find((section) => {
+    return section.id === "report-local-connections";
+  });
+
+  assert.equal(
+    flattenedBoardPins.some((pin) => pin.id === "local-edge-001"),
+    false
+  );
+  assert.ok(connectionsSection);
+  assert.equal(connectionsSection.label, "Yerel Bağlantılar");
+  assert.equal(connectionsSection.tone, "analysis");
+  assert.equal(connectionsSection.note, "Local overlay içinde kurulan öğe arası bağlantılar.");
+  assert.deepEqual(connectionsSection.bullets, [
+    "Seyir defteri kaynagi → destekliyor → Golge karsilastirma gorseli",
+  ]);
+  assert.equal(localState.getOverlay().localAuthoredEdges.length, 1);
+  assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+});
+
+test("pattern-room phase 8B board adapter exposes connection options without edge pins", () => {
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+
+  localState.addAuthoredClaim("Yerel bağlantı iddiası", "Yerel node seçeneği.");
+  localState.addAuthoredSource("Yerel bağlantı kaynağı", "Yerel arşiv", "");
+  localState.addAuthoredEvidence("Yerel bağlantı kanıtı", "Yerel alıntı", "");
+  localState.addAuthoredEdge("questions", "local-node-001", "local-evidence-001");
+
+  const boardViewModel = adaptBoardViewModel(PATTERN_ROOM_DOMAIN_MOCK, localState.getOverlay());
+  const connectionOptionIds = boardViewModel.connectionOptions.map((option) => option.id);
+  const flattenedBoardPins = boardViewModel.boardCategories.flatMap((category) => {
+    return category.pins;
+  });
+
+  assert.ok(connectionOptionIds.includes("node-navigation-source"));
+  assert.ok(connectionOptionIds.includes("source-shadow-comparison"));
+  assert.ok(connectionOptionIds.includes("local-node-001"));
+  assert.ok(connectionOptionIds.includes("local-source-001"));
+  assert.ok(connectionOptionIds.includes("local-evidence-001"));
+  assert.equal(
+    flattenedBoardPins.some((pin) => pin.id === "local-edge-001"),
+    false
+  );
 });
 
 test("pattern-room phase 3B adapter maps every source type label", () => {

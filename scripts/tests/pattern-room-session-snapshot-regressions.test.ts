@@ -120,6 +120,12 @@ test("pattern-room phase 7B round-trips local authored overlay entries", () => {
   localState.addAuthoredClaim("Snapshot iddia", "Snapshot içinde kalacak local iddia.");
   localState.addAuthoredSource("Snapshot kaynak", "Local defter", "Snapshot source note.");
   localState.addAuthoredEvidence("Snapshot kanıt", "Snapshot excerpt", "Snapshot interpretation");
+  localState.addAuthoredEdge(
+    "supports",
+    "local-node-001",
+    "local-source-001",
+    "Snapshot connection note."
+  );
   localState.addToDebate("local-node-001");
   localState.addToDebate("local-source-001");
   localState.addToDebate("local-evidence-001");
@@ -140,6 +146,18 @@ test("pattern-room phase 7B round-trips local authored overlay entries", () => {
     restored.overlay.localAuthoredEvidence.map((evidence) => evidence.id),
     ["local-evidence-001"]
   );
+  assert.deepEqual(
+    restored.overlay.localAuthoredEdges.map((edge) => edge.id),
+    ["local-edge-001"]
+  );
+  assert.deepEqual(restored.overlay.localAuthoredEdges[0], {
+    id: "local-edge-001",
+    edgeType: "supports",
+    sourceId: "local-node-001",
+    targetId: "local-source-001",
+    note: "Snapshot connection note.",
+    createdAt: restored.overlay.localAuthoredEdges[0]?.createdAt,
+  });
   assert.deepEqual(restored.overlay.debateReferenceIds, [
     "local-node-001",
     "local-source-001",
@@ -152,18 +170,73 @@ test("pattern-room phase 7B round-trips local authored overlay entries", () => {
   assertRestoredSnapshotStateMatches(roundTripSnapshot, snapshot);
 });
 
+test("pattern-room phase 8B local edge authoring validates endpoints and stays overlay-only", () => {
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  let notificationCount = 0;
+  const unsubscribe = localState.subscribe(() => {
+    notificationCount += 1;
+  });
+
+  localState.addAuthoredClaim("Local claim", "Local claim content.");
+  localState.addAuthoredSource("Local source", "Local notebook", "");
+  localState.addAuthoredEvidence("Local evidence", "Local excerpt", "");
+
+  assert.equal(localState.resolveEntityExists("node-navigation-source"), true);
+  assert.equal(localState.resolveEntityExists("source-shadow-comparison"), true);
+  assert.equal(localState.resolveEntityExists("local-node-001"), true);
+  assert.equal(localState.resolveEntityExists("local-source-001"), true);
+  assert.equal(localState.resolveEntityExists("local-evidence-001"), true);
+  assert.equal(localState.resolveEntityLabel("local-evidence-001"), "Local evidence");
+
+  const notificationsBeforeEdge = notificationCount;
+  localState.addAuthoredEdge(
+    "supports",
+    "local-node-001",
+    "local-evidence-001",
+    "  Local edge note.  "
+  );
+  assert.equal(notificationCount, notificationsBeforeEdge + 1);
+  assert.deepEqual(localState.getOverlay().localAuthoredEdges, [
+    {
+      id: "local-edge-001",
+      edgeType: "supports",
+      sourceId: "local-node-001",
+      targetId: "local-evidence-001",
+      note: "Local edge note.",
+      createdAt: localState.getOverlay().localAuthoredEdges[0]?.createdAt,
+    },
+  ]);
+
+  localState.addAuthoredEdge("supports", "local-node-001", "local-node-001");
+  localState.addAuthoredEdge("supports", "", "local-evidence-001");
+  localState.addAuthoredEdge("supports", "missing-node", "local-evidence-001");
+  localState.addAuthoredEdge(
+    "not-an-edge" as Parameters<typeof localState.addAuthoredEdge>[0],
+    "local-node-001",
+    "local-evidence-001"
+  );
+  unsubscribe();
+
+  assert.equal(localState.getOverlay().localAuthoredEdges.length, 1);
+  assert.equal(notificationCount, notificationsBeforeEdge + 1);
+  assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+});
+
 test("pattern-room phase 7B restores legacy snapshots with missing authored fields", () => {
   const snapshot = createSnapshot(createSnapshotReadyLocalState(), "archive");
   const overlay = { ...snapshot.overlay } as Record<string, unknown>;
   delete overlay["localAuthoredNodes"];
   delete overlay["localAuthoredSources"];
   delete overlay["localAuthoredEvidence"];
+  delete overlay["localAuthoredEdges"];
 
   const restored = restoreFromSnapshot({ ...snapshot, overlay }, PATTERN_ROOM_DOMAIN_MOCK);
   assert.ok(restored);
   assert.deepEqual(restored.overlay.localAuthoredNodes, []);
   assert.deepEqual(restored.overlay.localAuthoredSources, []);
   assert.deepEqual(restored.overlay.localAuthoredEvidence, []);
+  assert.deepEqual(restored.overlay.localAuthoredEdges, []);
 });
 
 test("pattern-room phase 7B silently skips invalid restored authored entries", () => {
@@ -229,6 +302,48 @@ test("pattern-room phase 7B silently skips invalid restored authored entries", (
           createdAt: "2026-05-20T12:00:00.000Z",
         },
       ],
+      localAuthoredEdges: [
+        {
+          id: "local-edge-001",
+          edgeType: "supports",
+          sourceId: "local-node-001",
+          targetId: "local-source-001",
+          note: null,
+          createdAt: "2026-05-20T12:00:00.000Z",
+        },
+        {
+          id: "edge-002",
+          edgeType: "supports",
+          sourceId: "local-node-001",
+          targetId: "local-source-001",
+          note: null,
+          createdAt: "2026-05-20T12:00:00.000Z",
+        },
+        {
+          id: "local-edge-003",
+          edgeType: "not-valid",
+          sourceId: "local-node-001",
+          targetId: "local-source-001",
+          note: null,
+          createdAt: "2026-05-20T12:00:00.000Z",
+        },
+        {
+          id: "local-edge-004",
+          edgeType: "supports",
+          sourceId: "local-node-001",
+          targetId: "local-node-001",
+          note: null,
+          createdAt: "2026-05-20T12:00:00.000Z",
+        },
+        {
+          id: "local-edge-005",
+          edgeType: "supports",
+          sourceId: "local-node-001",
+          targetId: "missing-target",
+          note: null,
+          createdAt: "2026-05-20T12:00:00.000Z",
+        },
+      ],
       debateReferenceIds: [
         "local-node-001",
         "local-source-001",
@@ -252,6 +367,10 @@ test("pattern-room phase 7B silently skips invalid restored authored entries", (
   assert.deepEqual(
     restored.overlay.localAuthoredEvidence.map((evidence) => evidence.id),
     ["local-evidence-001"]
+  );
+  assert.deepEqual(
+    restored.overlay.localAuthoredEdges.map((edge) => edge.id),
+    ["local-edge-001"]
   );
   assert.deepEqual(restored.overlay.debateReferenceIds, [
     "local-node-001",

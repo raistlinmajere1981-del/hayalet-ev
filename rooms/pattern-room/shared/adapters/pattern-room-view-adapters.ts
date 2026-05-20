@@ -4,6 +4,7 @@ import {
   type DebateSession,
   type EvidenceItem,
   type PatternEdge,
+  type PatternEdgeType,
   type PatternLayer,
   type PatternNode,
   type PatternReliability,
@@ -18,12 +19,14 @@ import type {
   PatternBoardCategoryTone,
   PatternBoardPin,
   PatternClaim,
+  PatternConnectionOption,
   PatternDebateReference,
   PatternReportSection,
   PatternRoomMockData,
   PatternSource,
 } from "../types/pattern-room.js";
 import type {
+  LocalAuthoredEdge,
   LocalAuthoredEvidence,
   LocalAuthoredNode,
   LocalAuthoredSource,
@@ -45,7 +48,10 @@ export type PatternOverviewViewModel = Pick<
   "roomTitle" | "roomLabel" | "roomSummary" | "subject"
 >;
 
-export type PatternBoardViewModel = Pick<PatternRoomMockData, "boardCategories">;
+export type PatternBoardViewModel = Pick<
+  PatternRoomMockData,
+  "boardCategories" | "connectionOptions"
+>;
 
 export type PatternArchiveViewModel = Pick<PatternRoomMockData, "sources">;
 
@@ -114,6 +120,16 @@ const LOCAL_AUTHORED_NODE_LAYERS: Record<LocalAuthoredNode["nodeType"], PatternL
   claim: "interpretation",
   inspiration: "analysis",
   uncertainty: "uncertainty",
+};
+
+const EDGE_TYPE_LABELS: Record<PatternEdgeType, string> = {
+  supports: "destekliyor",
+  contradicts: "çelişiyor",
+  references: "referans veriyor",
+  derived_from: "türetildi",
+  inspired_by: "ilham aldı",
+  questions: "sorguluyor",
+  needs_review: "inceleme gerekiyor",
 };
 
 const REPORT_SECTION_DEFINITIONS: Array<{
@@ -312,6 +328,66 @@ function adaptLocalAuthoredSource(source: LocalAuthoredSource): PatternSource {
   };
 }
 
+function adaptNodeConnectionOption(node: PatternNode): PatternConnectionOption {
+  return {
+    id: node.id,
+    label: node.label,
+    kind: "node",
+    isLocal: false,
+  };
+}
+
+function adaptSourceConnectionOption(source: SourceItem): PatternConnectionOption {
+  return {
+    id: source.id,
+    label: source.label,
+    kind: "source",
+    isLocal: false,
+  };
+}
+
+function adaptLocalNodeConnectionOption(node: LocalAuthoredNode): PatternConnectionOption {
+  return {
+    id: node.id,
+    label: node.label,
+    kind: "node",
+    isLocal: true,
+  };
+}
+
+function adaptLocalSourceConnectionOption(source: LocalAuthoredSource): PatternConnectionOption {
+  return {
+    id: source.id,
+    label: source.label,
+    kind: "source",
+    isLocal: true,
+  };
+}
+
+function adaptLocalEvidenceConnectionOption(
+  evidence: LocalAuthoredEvidence
+): PatternConnectionOption {
+  return {
+    id: evidence.id,
+    label: evidence.label,
+    kind: "evidence",
+    isLocal: true,
+  };
+}
+
+function adaptConnectionOptions(
+  domain: PatternRoomDomainViewSource,
+  overlay?: PatternRoomLocalOverlay
+): PatternConnectionOption[] {
+  return [
+    ...domain.nodes.map(adaptNodeConnectionOption),
+    ...domain.sources.map(adaptSourceConnectionOption),
+    ...(overlay?.localAuthoredNodes.map(adaptLocalNodeConnectionOption) ?? []),
+    ...(overlay?.localAuthoredSources.map(adaptLocalSourceConnectionOption) ?? []),
+    ...(overlay?.localAuthoredEvidence.map(adaptLocalEvidenceConnectionOption) ?? []),
+  ];
+}
+
 function adaptRoleLabel(role: DebateRole): string {
   if (role.slotId === "AI0" && role.role === "researcher") {
     return "AI0 — Araştırmacı";
@@ -417,7 +493,7 @@ export function adaptBoardViewModel(
     };
   });
 
-  return { boardCategories };
+  return { boardCategories, connectionOptions: adaptConnectionOptions(domain, overlay) };
 }
 
 export function adaptArchiveViewModel(
@@ -592,6 +668,49 @@ export function adaptTenthManViewModel(
   };
 }
 
+function resolveConnectionEntityLabel(
+  domain: PatternRoomDomainViewSource,
+  overlay: PatternRoomLocalOverlay,
+  entityId: string
+): string | null {
+  const domainNode = domain.nodes.find((node) => node.id === entityId);
+  if (domainNode !== undefined) {
+    return domainNode.label;
+  }
+
+  const domainSource = domain.sources.find((source) => source.id === entityId);
+  if (domainSource !== undefined) {
+    return domainSource.label;
+  }
+
+  const localNode = overlay.localAuthoredNodes.find((node) => node.id === entityId);
+  if (localNode !== undefined) {
+    return localNode.label;
+  }
+
+  const localSource = overlay.localAuthoredSources.find((source) => source.id === entityId);
+  if (localSource !== undefined) {
+    return localSource.label;
+  }
+
+  const localEvidence = overlay.localAuthoredEvidence.find((evidence) => evidence.id === entityId);
+  return localEvidence?.label ?? null;
+}
+
+function adaptLocalConnectionBullet(
+  domain: PatternRoomDomainViewSource,
+  overlay: PatternRoomLocalOverlay,
+  edge: LocalAuthoredEdge
+): string | null {
+  const sourceLabel = resolveConnectionEntityLabel(domain, overlay, edge.sourceId);
+  const targetLabel = resolveConnectionEntityLabel(domain, overlay, edge.targetId);
+  if (sourceLabel === null || targetLabel === null) {
+    return null;
+  }
+
+  return `${sourceLabel} → ${EDGE_TYPE_LABELS[edge.edgeType]} → ${targetLabel}`;
+}
+
 export function adaptReportViewModel(
   domain: PatternRoomDomainViewSource,
   overlay?: PatternRoomLocalOverlay
@@ -641,6 +760,24 @@ export function adaptReportViewModel(
           : `${evidence.label}: ${evidence.excerpt} Yorum: ${evidence.interpretation}`;
       }),
     });
+  }
+
+  if (overlay !== undefined && overlay.localAuthoredEdges.length > 0) {
+    const bullets = overlay.localAuthoredEdges
+      .map((edge) => {
+        return adaptLocalConnectionBullet(domain, overlay, edge);
+      })
+      .filter((bullet): bullet is string => bullet !== null);
+
+    if (bullets.length > 0) {
+      sections.push({
+        id: "report-local-connections",
+        label: "Yerel Bağlantılar",
+        tone: "analysis",
+        note: "Local overlay içinde kurulan öğe arası bağlantılar.",
+        bullets,
+      });
+    }
   }
 
   return {

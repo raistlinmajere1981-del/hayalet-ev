@@ -3,10 +3,15 @@ import {
   PATTERN_ROOM_SNAPSHOT_VERSION,
   type PatternRoomSessionSnapshot,
 } from "../types/pattern-room-snapshot.js";
-import { PATTERN_LAYERS, type PatternLayer } from "../types/pattern-room-domain.js";
+import {
+  PATTERN_LAYERS,
+  type PatternEdgeType,
+  type PatternLayer,
+} from "../types/pattern-room-domain.js";
 import type {
   DebateLocalPhase,
   DebateLocalTurn,
+  LocalAuthoredEdge,
   LocalAuthoredEvidence,
   LocalAuthoredNode,
   LocalAuthoredSource,
@@ -46,6 +51,16 @@ const DEBATE_ROLE_IDS = ["researcher", "advocate", "tenth-man", "arbiter"] as co
 const DEBATE_STANCES = ["support", "oppose", "neutral", "question"] as const;
 
 const LOCAL_AUTHORED_NODE_TYPES = ["claim", "inspiration", "uncertainty"] as const;
+
+const PATTERN_EDGE_TYPES: readonly PatternEdgeType[] = [
+  "supports",
+  "contradicts",
+  "references",
+  "derived_from",
+  "inspired_by",
+  "questions",
+  "needs_review",
+];
 
 const TURN_PHASES_WITH_LOCAL_TURNS = new Set<DebateLocalPhase>([
   "opening",
@@ -118,6 +133,10 @@ function isLocalAuthoredNodeType(value: unknown): value is LocalAuthoredNode["no
   return (
     typeof value === "string" && LOCAL_AUTHORED_NODE_TYPES.some((nodeType) => nodeType === value)
   );
+}
+
+function isPatternEdgeType(value: unknown): value is PatternEdgeType {
+  return typeof value === "string" && PATTERN_EDGE_TYPES.some((edgeType) => edgeType === value);
 }
 
 function parseLayerRecord(value: unknown): Record<string, PatternLayer> | null {
@@ -269,6 +288,41 @@ function parseLocalAuthoredEvidence(value: unknown): LocalAuthoredEvidence[] {
   return evidenceItems;
 }
 
+function parseLocalAuthoredEdges(value: unknown): LocalAuthoredEdge[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const edges: LocalAuthoredEdge[] = [];
+  for (const edge of value) {
+    const note = isRecord(edge) ? edge["note"] : undefined;
+    if (
+      !isRecord(edge) ||
+      !hasLocalIdFormat(edge["id"], "local-edge") ||
+      !isPatternEdgeType(edge["edgeType"]) ||
+      typeof edge["sourceId"] !== "string" ||
+      typeof edge["targetId"] !== "string" ||
+      (note !== null && typeof note !== "string") ||
+      typeof edge["createdAt"] !== "string" ||
+      edge["sourceId"].trim() === "" ||
+      edge["targetId"].trim() === "" ||
+      edge["sourceId"] === edge["targetId"]
+    ) {
+      continue;
+    }
+
+    edges.push({
+      id: edge["id"],
+      edgeType: edge["edgeType"],
+      sourceId: edge["sourceId"],
+      targetId: edge["targetId"],
+      note,
+      createdAt: edge["createdAt"],
+    });
+  }
+  return edges;
+}
+
 function parseDebateTurns(value: unknown): DebateLocalTurn[] | null {
   if (!Array.isArray(value)) {
     return null;
@@ -321,6 +375,7 @@ function parseOverlay(value: unknown): PatternRoomLocalOverlay | null {
   const localAuthoredNodes = parseLocalAuthoredNodes(value["localAuthoredNodes"]);
   const localAuthoredSources = parseLocalAuthoredSources(value["localAuthoredSources"]);
   const localAuthoredEvidence = parseLocalAuthoredEvidence(value["localAuthoredEvidence"]);
+  const localAuthoredEdges = parseLocalAuthoredEdges(value["localAuthoredEdges"]);
 
   if (
     !isStringArray(value["deskNodeIds"]) ||
@@ -349,6 +404,7 @@ function parseOverlay(value: unknown): PatternRoomLocalOverlay | null {
     localAuthoredNodes,
     localAuthoredSources,
     localAuthoredEvidence,
+    localAuthoredEdges,
   };
 }
 
@@ -525,6 +581,13 @@ function restoreOverlaySnapshot(
     localNodeIds.has(candidateId) ||
     localSourceIds.has(candidateId) ||
     localEvidenceIds.has(candidateId);
+  const localAuthoredEdges = filterUniqueRecordsById(snapshotOverlay.localAuthoredEdges).filter(
+    (edge) => {
+      return (
+        edge.sourceId !== edge.targetId && hasEntity(edge.sourceId) && hasEntity(edge.targetId)
+      );
+    }
+  );
   const pinnedSourceIds = filterUniqueIds(snapshotOverlay.pinnedSourceIds, hasSource);
   const sourcePinnedLayerById: Record<string, PatternLayer> = {};
 
@@ -558,6 +621,7 @@ function restoreOverlaySnapshot(
     localAuthoredNodes,
     localAuthoredSources,
     localAuthoredEvidence,
+    localAuthoredEdges,
   };
 }
 

@@ -342,6 +342,68 @@ test("pattern-room installed UI phase 7C board evidence form reaches board and r
   }
 });
 
+test("pattern-room installed UI phase 8B board connection form reaches report only", async () => {
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?author-edge=${Date.now()}`
+    );
+
+    openFocusedView(environment.app, "board");
+
+    const initialPinCount = environment.app.querySelectorAll("[data-pattern-board-pin]").length;
+    const edgeForm = environment.app.querySelector("[data-pattern-author-edge-form='true']");
+    const sourceSelect = environment.app.querySelector("[data-pattern-author-edge-source='true']");
+    const edgeTypeSelect = environment.app.querySelector("[data-pattern-author-edge-type='true']");
+    const targetSelect = environment.app.querySelector("[data-pattern-author-edge-target='true']");
+    const noteInput = environment.app.querySelector("[data-pattern-author-edge-note='true']");
+    assert.ok(edgeForm);
+    assert.ok(sourceSelect);
+    assert.ok(edgeTypeSelect);
+    assert.ok(targetSelect);
+    assert.ok(noteInput);
+
+    installFormReset(edgeForm);
+    sourceSelect.value = "node-navigation-source";
+    edgeTypeSelect.value = "supports";
+    targetSelect.value = "node-navigation-source";
+    submitForm(edgeForm);
+    assert.equal(
+      environment.app.querySelectorAll("[data-pattern-board-pin]").length,
+      initialPinCount
+    );
+
+    sourceSelect.value = "node-navigation-source";
+    edgeTypeSelect.value = "supports";
+    targetSelect.value = "source-shadow-comparison";
+    noteInput.value = "DOM smoke connection note.";
+    submitForm(edgeForm);
+    assert.equal(
+      environment.app.querySelectorAll("[data-pattern-board-pin]").length,
+      initialPinCount
+    );
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "report");
+    assertTextIncludes(readTreeText(environment.app), [
+      "Yerel Bağlantılar",
+      "Seyir defteri kaynagi",
+      "destekliyor",
+      "Golge karsilastirma gorseli",
+    ]);
+
+    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+    assert.deepEqual(environment.sentCommands, []);
+    assert.deepEqual(environment.sentEvents, []);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
 test("pattern-room installed UI phase 7C archive source authoring form submits local sources", async () => {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
   const environment = createMinimalForgeUiEnvironment();

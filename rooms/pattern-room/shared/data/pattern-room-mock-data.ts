@@ -152,6 +152,32 @@ export const PATTERN_ROOM_MOCK_DATA: PatternRoomMockData = {
       ],
     },
   ],
+  connectionOptions: [
+    {
+      id: "mock-pin-horizon",
+      label: "Ufuk kaybolma etkisi",
+      kind: "node",
+      isLocal: false,
+    },
+    {
+      id: "mock-pin-shadow",
+      label: "Gölge açısı farkı",
+      kind: "node",
+      isLocal: false,
+    },
+    {
+      id: "source-navigation-log",
+      label: "Seyir defteri",
+      kind: "source",
+      isLocal: false,
+    },
+    {
+      id: "source-shadow-comparison",
+      label: "Gölge karşılaştırması",
+      kind: "source",
+      isLocal: false,
+    },
+  ],
   claims: [
     {
       id: "claim-observed-horizon",

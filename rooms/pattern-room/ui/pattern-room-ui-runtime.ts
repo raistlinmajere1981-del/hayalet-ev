@@ -82,6 +82,9 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     addAuthoredEvidence(label: string, excerpt: string, interpretation, layer): void {
       localState.addAuthoredEvidence(label, excerpt, interpretation, layer);
     },
+    addAuthoredEdge(edgeType, sourceId: string, targetId: string, note?: string): void {
+      localState.addAuthoredEdge(edgeType, sourceId, targetId, note);
+    },
     prepareDebate(): void {
       localState.prepareDebate();
     },
