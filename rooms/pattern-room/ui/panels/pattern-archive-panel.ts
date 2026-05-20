@@ -1,5 +1,5 @@
-import type { PatternRoomMockData } from "../../shared/types/pattern-room.js";
-import { createElement, createPanelShell } from "./pattern-panel-utils.js";
+import type { PatternPanelActions, PatternRoomMockData } from "../../shared/types/pattern-room.js";
+import { createActionButton, createElement, createPanelShell } from "./pattern-panel-utils.js";
 
 function sourceTypeClass(sourceTypeLabel: string): string {
   if (sourceTypeLabel === "Kitap / Metin") {
@@ -14,7 +14,11 @@ function sourceTypeClass(sourceTypeLabel: string): string {
   return "uncertain-source";
 }
 
-export function createArchivePanel(data: PatternRoomMockData, onBack: () => void): HTMLElement {
+export function createArchivePanel(
+  data: PatternRoomMockData,
+  actions: PatternPanelActions,
+  onBack: () => void
+): HTMLElement {
   const shell = createPanelShell("archive", "Arşiv", onBack);
   const list = createElement("div", "pattern-room-archive-list");
 
@@ -27,12 +31,25 @@ export function createArchivePanel(data: PatternRoomMockData, onBack: () => void
       `pattern-room-source-tag ${toneClass}`,
       source.sourceTypeLabel
     );
+    const actionsRow = createElement("div", "pattern-room-action-row");
+    const pinButton = createActionButton("Panoya İliştir", () => {
+      actions.pinSourceToBoard(source.id, "evidence");
+    });
+    pinButton.dataset["patternPinSource"] = source.id;
+
+    const debateButton = createActionButton("10. Adam’a Ekle", () => {
+      actions.addSourceToDebate(source.id);
+    });
+    debateButton.dataset["patternAddSourceDebate"] = source.id;
+    actionsRow.append(pinButton, debateButton);
+
     card.append(
       drawer,
       tag,
       createElement("h3", undefined, source.label),
       createElement("p", undefined, source.note),
-      createElement("small", undefined, source.status)
+      createElement("small", undefined, source.status),
+      actionsRow
     );
     list.append(card);
   });

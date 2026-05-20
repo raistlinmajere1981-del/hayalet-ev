@@ -13,7 +13,11 @@ export function createElement<K extends keyof HTMLElementTagNameMap>(
   return element;
 }
 
-export function appendText(parent: HTMLElement, tagName: keyof HTMLElementTagNameMap, text: string): void {
+export function appendText(
+  parent: HTMLElement,
+  tagName: keyof HTMLElementTagNameMap,
+  text: string
+): void {
   parent.append(createElement(tagName, undefined, text));
 }
 
@@ -22,6 +26,13 @@ export function createBackButton(onBack: () => void): HTMLButtonElement {
   button.type = "button";
   button.dataset["patternBack"] = "true";
   button.addEventListener("click", onBack);
+  return button;
+}
+
+export function createActionButton(label: string, onClick: () => void): HTMLButtonElement {
+  const button = createElement("button", "pattern-room-action-button", label);
+  button.type = "button";
+  button.addEventListener("click", onClick);
   return button;
 }
 
@@ -45,7 +56,12 @@ export function createMetric(label: string, value: string): HTMLElement {
   return metric;
 }
 
-export function createListItem(title: string, detail: string, tone: string, eyebrow?: string): HTMLElement {
+export function createListItem(
+  title: string,
+  detail: string,
+  tone: string,
+  eyebrow?: string
+): HTMLElement {
   const item = createElement("article", `pattern-room-list-item ${tone}`);
   if (eyebrow !== undefined) {
     item.append(createElement("span", "pattern-room-list-eyebrow", eyebrow));

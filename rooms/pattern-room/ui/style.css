@@ -592,6 +592,48 @@ p {
   z-index: 1;
 }
 
+.pattern-room-board-detail {
+  position: relative;
+  z-index: 1;
+  margin-top: 16px;
+  padding: 18px;
+  border: 1px solid rgba(143, 248, 238, 0.22);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(143, 248, 238, 0.1), transparent 42%), rgba(12, 16, 18, 0.86);
+}
+
+.pattern-room-detail-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.pattern-room-detail-metric {
+  padding: 10px;
+  border: 1px solid rgba(237, 242, 244, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.pattern-room-detail-metric span,
+.pattern-room-detail-metric strong {
+  display: block;
+}
+
+.pattern-room-detail-metric span {
+  color: #94a1aa;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.pattern-room-detail-metric strong {
+  margin-top: 4px;
+  color: #f8f1d8;
+}
+
 .pattern-room-board-lane,
 .pattern-room-archive-card,
 .pattern-room-report-card,
@@ -683,6 +725,7 @@ p {
 .pattern-room-board-node {
   position: relative;
   min-height: 48px;
+  width: 100%;
   padding: 11px 12px 11px 30px;
   border: 1px solid color-mix(in srgb, currentColor 48%, transparent);
   border-left-width: 4px;
@@ -691,6 +734,8 @@ p {
     linear-gradient(135deg, color-mix(in srgb, currentColor 14%, transparent), transparent),
     rgba(255, 255, 255, 0.07);
   color: #edf2f4;
+  cursor: pointer;
+  text-align: left;
 }
 
 .pattern-room-board-node::before {
@@ -718,6 +763,35 @@ p {
 
 .pattern-room-board-node.uncertainty {
   color: #ef6f6c;
+}
+
+.pattern-room-board-node:hover,
+.pattern-room-board-node:focus-visible,
+.pattern-room-board-node.selected,
+.pattern-room-action-button:hover,
+.pattern-room-action-button:focus-visible {
+  border-color: rgba(143, 248, 238, 0.72);
+  box-shadow: 0 0 0 3px rgba(143, 248, 238, 0.1);
+  outline: none;
+}
+
+.pattern-room-action-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.pattern-room-action-button {
+  min-height: 38px;
+  padding: 8px 11px;
+  border: 1px solid rgba(237, 242, 244, 0.16);
+  border-radius: 8px;
+  background: rgba(12, 15, 17, 0.74);
+  color: #edf2f4;
+  cursor: pointer;
 }
 
 .pattern-room-list-item {
@@ -996,9 +1070,44 @@ p {
   color: #b8c0c6;
 }
 
+.pattern-room-debate-references {
+  display: grid;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.pattern-room-reference-item {
+  padding: 14px;
+  border: 1px solid rgba(242, 199, 110, 0.24);
+  border-radius: 8px;
+  background: rgba(10, 14, 15, 0.62);
+}
+
 .pattern-room-report {
   background:
     linear-gradient(180deg, rgba(242, 199, 110, 0.09), transparent 34%), rgba(18, 22, 25, 0.82);
+}
+
+.pattern-room-local-note-form {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.pattern-room-local-note-input {
+  min-height: 86px;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid rgba(237, 242, 244, 0.16);
+  border-radius: 8px;
+  background: rgba(10, 14, 15, 0.78);
+  color: #edf2f4;
+  font: inherit;
+}
+
+.pattern-room-local-note-input:focus {
+  border-color: rgba(143, 248, 238, 0.72);
+  outline: none;
 }
 
 .pattern-room-report-card {
@@ -1038,6 +1147,7 @@ p {
 
   .pattern-room-metrics,
   .pattern-room-board-grid,
+  .pattern-room-detail-metrics,
   .pattern-room-claim-objects,
   .pattern-room-archive-list,
   .pattern-room-report-list,

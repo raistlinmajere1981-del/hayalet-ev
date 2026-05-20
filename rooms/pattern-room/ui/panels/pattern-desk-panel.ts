@@ -1,7 +1,11 @@
-import type { PatternRoomMockData } from "../../shared/types/pattern-room.js";
+import type { PatternPanelActions, PatternRoomMockData } from "../../shared/types/pattern-room.js";
 import { createElement, createPanelShell } from "./pattern-panel-utils.js";
 
-export function createDeskPanel(data: PatternRoomMockData, onBack: () => void): HTMLElement {
+export function createDeskPanel(
+  data: PatternRoomMockData,
+  _actions: PatternPanelActions,
+  onBack: () => void
+): HTMLElement {
   const shell = createPanelShell("desk", "Araştırma Masası", onBack);
   const layout = createElement("div", "pattern-room-desk-layout");
 

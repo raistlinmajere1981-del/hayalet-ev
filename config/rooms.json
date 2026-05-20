@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-05-20T10:23:50.612Z",
+  "updatedAt": "2026-05-20T11:49:36.779Z",
   "rooms": [
     {
       "id": "pattern-room",
@@ -92,8 +92,8 @@
         }
       },
       "i18nBaseDir": "/home/raistlin/hayalet-ev/rooms/.build/pattern-room/runtime/i18n",
-      "installedAt": "2026-05-20T10:19:13.495Z",
-      "updatedAt": "2026-05-20T10:19:13.495Z"
+      "installedAt": "2026-05-20T11:49:35.475Z",
+      "updatedAt": "2026-05-20T11:49:35.475Z"
     },
     {
       "id": "repair-room",
@@ -653,8 +653,8 @@
           "path": "main-functions/repair-workbench/protocols/repair-room-risk-detector.md"
         }
       ],
-      "installedAt": "2026-05-20T10:19:13.699Z",
-      "updatedAt": "2026-05-20T10:19:13.699Z"
+      "installedAt": "2026-05-20T11:49:35.696Z",
+      "updatedAt": "2026-05-20T11:49:35.696Z"
     },
     {
       "id": "forge-room",
@@ -1106,8 +1106,8 @@
           "path": "main-functions/forge-workbench/protocols/forge-room-synthesis.md"
         }
       ],
-      "installedAt": "2026-05-20T10:19:13.938Z",
-      "updatedAt": "2026-05-20T10:19:13.938Z"
+      "installedAt": "2026-05-20T11:49:35.927Z",
+      "updatedAt": "2026-05-20T11:49:35.927Z"
     },
     {
       "id": "game-room",
@@ -1556,8 +1556,8 @@
           "path": "main-functions/team-tetris/protocols/game-room-team-tetris-us1-transport.md"
         }
       ],
-      "installedAt": "2026-05-20T10:19:14.235Z",
-      "updatedAt": "2026-05-20T10:19:14.235Z"
+      "installedAt": "2026-05-20T11:49:36.159Z",
+      "updatedAt": "2026-05-20T11:49:36.159Z"
     },
     {
       "id": "laboratory",
@@ -1656,8 +1656,8 @@
         }
       },
       "i18nBaseDir": "/home/raistlin/hayalet-ev/rooms/.build/laboratory/runtime/i18n",
-      "installedAt": "2026-05-20T10:23:50.612Z",
-      "updatedAt": "2026-05-20T10:23:50.612Z"
+      "installedAt": "2026-05-20T11:49:36.779Z",
+      "updatedAt": "2026-05-20T11:49:36.779Z"
     }
   ]
 }

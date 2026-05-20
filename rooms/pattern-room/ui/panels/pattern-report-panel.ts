@@ -1,7 +1,11 @@
-import type { PatternRoomMockData } from "../../shared/types/pattern-room.js";
-import { createElement, createPanelShell } from "./pattern-panel-utils.js";
+import type { PatternPanelActions, PatternRoomMockData } from "../../shared/types/pattern-room.js";
+import { createActionButton, createElement, createPanelShell } from "./pattern-panel-utils.js";
 
-export function createReportPanel(data: PatternRoomMockData, onBack: () => void): HTMLElement {
+export function createReportPanel(
+  data: PatternRoomMockData,
+  actions: PatternPanelActions,
+  onBack: () => void
+): HTMLElement {
   const shell = createPanelShell("report", "Rapor", onBack);
   const report = createElement("article", "pattern-room-report");
   report.append(
@@ -13,6 +17,25 @@ export function createReportPanel(data: PatternRoomMockData, onBack: () => void)
       `${data.reportSummary.status} rapor; yalnızca yerel izleri özetler.`
     )
   );
+
+  const noteForm = createElement("form", "pattern-room-local-note-form");
+  noteForm.dataset["patternLocalNoteForm"] = "true";
+  const noteInput = createElement("textarea", "pattern-room-local-note-input");
+  noteInput.dataset["patternLocalNoteInput"] = "true";
+  noteInput.placeholder = "Yerel not";
+  const submitNote = (): void => {
+    actions.addLocalNote(noteInput.value);
+    noteInput.value = "";
+  };
+  noteForm.addEventListener("submit", (event) => {
+    if (typeof event.preventDefault === "function") {
+      event.preventDefault();
+    }
+    submitNote();
+  });
+  const noteButton = createActionButton("Yerel Not Bırak", submitNote);
+  noteButton.dataset["patternAddLocalNote"] = "true";
+  noteForm.append(createElement("span", "pattern-room-kicker", "Yerel not"), noteInput, noteButton);
 
   const list = createElement("div", "pattern-room-report-list");
   data.reportSummary.sections.forEach((section) => {
@@ -29,7 +52,7 @@ export function createReportPanel(data: PatternRoomMockData, onBack: () => void)
     );
     list.append(item);
   });
-  report.append(list);
+  report.append(noteForm, list);
   shell.append(report);
   return shell;
 }

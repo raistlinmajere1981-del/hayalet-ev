@@ -1,12 +1,23 @@
-export type PatternViewId =
-  | "overview"
-  | "board"
-  | "desk"
-  | "archive"
-  | "tenth-man"
-  | "report";
+export type PatternViewId = "overview" | "board" | "desk" | "archive" | "tenth-man" | "report";
 
 export type PatternBoardCategoryTone = "evidence" | "analysis" | "commentary" | "uncertainty";
+
+export type PatternBoardLayerId = "evidence" | "analysis" | "interpretation" | "uncertainty";
+
+export type PatternBoardPin = {
+  id: string;
+  label: string;
+  layer: PatternBoardLayerId;
+  layerLabel: string;
+  tone: PatternBoardCategoryTone;
+  confidenceLabel: string;
+  content: string;
+  sourceId: string | null;
+  sourceLabel: string;
+  origin: string | null;
+  kind: "node" | "source" | "placeholder";
+  isLocal: boolean;
+};
 
 export type PatternClaim = {
   id: string;
@@ -20,7 +31,7 @@ export type PatternBoardCategory = {
   label: string;
   tone: PatternBoardCategoryTone;
   summary: string;
-  pins: string[];
+  pins: PatternBoardPin[];
 };
 
 export type PatternSource = {
@@ -38,6 +49,13 @@ export type PatternDummyRole = {
   note: string;
 };
 
+export type PatternDebateReference = {
+  id: string;
+  label: string;
+  note: string;
+  kind: "node" | "source";
+};
+
 export type PatternReportSection = {
   id: string;
   label: string;
@@ -52,6 +70,7 @@ export type PatternTenthManSession = {
   status: "dummy";
   prompt: string;
   roles: PatternDummyRole[];
+  references: PatternDebateReference[];
 };
 
 export type PatternReportSummary = {
@@ -71,4 +90,14 @@ export type PatternRoomMockData = {
   sources: PatternSource[];
   tenthManSession: PatternTenthManSession;
   reportSummary: PatternReportSummary;
+};
+
+export type PatternPanelActions = {
+  getSelectedNodeId: () => string | null;
+  selectNode: (nodeId: string) => void;
+  sendNodeToDesk: (nodeId: string) => void;
+  addNodeToDebate: (nodeId: string) => void;
+  pinSourceToBoard: (sourceId: string, layer: PatternBoardLayerId) => void;
+  addSourceToDebate: (sourceId: string) => void;
+  addLocalNote: (text: string) => void;
 };

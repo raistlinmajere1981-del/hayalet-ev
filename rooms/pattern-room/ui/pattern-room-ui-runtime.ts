@@ -1,5 +1,11 @@
-import { PATTERN_ROOM_MOCK_DATA } from "../shared/data/pattern-room-mock-data.js";
-import type { PatternViewId } from "../shared/types/pattern-room.js";
+import { adaptDomainToViewModels } from "../shared/adapters/pattern-room-view-adapters.js";
+import { PATTERN_ROOM_DOMAIN_MOCK } from "../shared/data/pattern-room-domain.mock.js";
+import { createLocalState } from "../shared/state/pattern-room-local-state.js";
+import type {
+  PatternPanelActions,
+  PatternRoomMockData,
+  PatternViewId,
+} from "../shared/types/pattern-room.js";
 import { createArchivePanel } from "./panels/pattern-archive-panel.js";
 import { createBoardPanel } from "./panels/pattern-board-panel.js";
 import { createDeskPanel } from "./panels/pattern-desk-panel.js";
@@ -27,7 +33,42 @@ function resolveRoot(): HTMLElement {
 
 export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
   const root = resolveRoot();
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   let activeView: PatternViewId = "overview";
+  let selectedNodeId: string | null = null;
+  let viewModels: PatternRoomMockData = adaptDomainToViewModels(
+    PATTERN_ROOM_DOMAIN_MOCK,
+    localState.getOverlay()
+  );
+
+  const actions: PatternPanelActions = {
+    getSelectedNodeId(): string | null {
+      return selectedNodeId;
+    },
+    selectNode(nodeId: string): void {
+      selectedNodeId = nodeId;
+    },
+    sendNodeToDesk(nodeId: string): void {
+      localState.sendToDesk(nodeId);
+    },
+    addNodeToDebate(nodeId: string): void {
+      localState.addToDebate(nodeId);
+    },
+    pinSourceToBoard(sourceId: string, layer): void {
+      localState.pinSource(sourceId, layer);
+    },
+    addSourceToDebate(sourceId: string): void {
+      localState.addToDebate(sourceId);
+    },
+    addLocalNote(text: string): void {
+      localState.addLocalNote(text);
+    },
+  };
+
+  localState.subscribe(() => {
+    viewModels = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK, localState.getOverlay());
+    render();
+  });
 
   function setActiveView(viewId: PatternViewId): void {
     activeView = viewId;
@@ -39,11 +80,11 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
       setActiveView("overview");
     };
     const panelFactories: Record<FocusedPatternViewId, () => HTMLElement> = {
-      archive: () => createArchivePanel(PATTERN_ROOM_MOCK_DATA, onBack),
-      board: () => createBoardPanel(PATTERN_ROOM_MOCK_DATA, onBack),
-      desk: () => createDeskPanel(PATTERN_ROOM_MOCK_DATA, onBack),
-      report: () => createReportPanel(PATTERN_ROOM_MOCK_DATA, onBack),
-      "tenth-man": () => createTenthManPanel(PATTERN_ROOM_MOCK_DATA, onBack),
+      archive: () => createArchivePanel(viewModels, actions, onBack),
+      board: () => createBoardPanel(viewModels, actions, onBack),
+      desk: () => createDeskPanel(viewModels, actions, onBack),
+      report: () => createReportPanel(viewModels, actions, onBack),
+      "tenth-man": () => createTenthManPanel(viewModels, actions, onBack),
     };
     return panelFactories[viewId]();
   }
@@ -51,7 +92,7 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
   function render(): void {
     const content =
       activeView === "overview"
-        ? createOverviewPanel(PATTERN_ROOM_MOCK_DATA, setActiveView)
+        ? createOverviewPanel(viewModels, setActiveView)
         : renderFocusedView(activeView);
     root.replaceChildren(content);
   }
