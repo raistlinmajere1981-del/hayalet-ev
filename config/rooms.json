@@ -1,7 +1,100 @@
 {
   "version": 2,
-  "updatedAt": "2026-05-19T16:07:28.241Z",
+  "updatedAt": "2026-05-20T10:23:50.612Z",
   "rooms": [
+    {
+      "id": "pattern-room",
+      "name": "Pattern Room",
+      "version": "0.1.0",
+      "description": "A dummy near-future investigation office for arranging claims, sources, contradictions, dissent, and report notes around a visible research pattern.",
+      "icon": "PR",
+      "iconPath": "/home/raistlin/hayalet-ev/rooms/.build/pattern-room/runtime/shared/assets/nav-icon.svg",
+      "sourceDir": "/home/raistlin/hayalet-ev/rooms/pattern-room",
+      "installedDir": "/home/raistlin/hayalet-ev/rooms/.build/pattern-room/runtime",
+      "manifestPath": "/home/raistlin/hayalet-ev/rooms/.build/pattern-room/runtime/manifest.json",
+      "runtimeEntryPath": "/home/raistlin/hayalet-ev/rooms/.build/pattern-room/runtime/ui/index.html",
+      "hostEntryPath": "/home/raistlin/hayalet-ev/rooms/.build/pattern-room/runtime/host/index.js",
+      "defaultFeatureId": "pattern-workbench",
+      "features": [
+        {
+          "id": "pattern-workbench",
+          "name": "Pattern Workbench",
+          "description": "A phase-one dummy surface with local-only overview, board, desk, archive, tenth-man, and report views.",
+          "icon": "PW",
+          "scene": {
+            "hotspot": {
+              "id": "pattern-room-workbench",
+              "rect": {
+                "leftPx": 274,
+                "topPx": 316,
+                "widthPx": 1052,
+                "heightPx": 408
+              },
+              "label": {
+                "text": "Pattern Workbench"
+              }
+            },
+            "view": {
+              "id": "pattern-workbench-closeup",
+              "backgroundPath": "/home/raistlin/hayalet-ev/rooms/.build/pattern-room/runtime/shared/assets/workbench-view.svg",
+              "transparentWindow": {
+                "leftPct": 13,
+                "topPct": 9,
+                "widthPct": 74,
+                "heightPct": 75
+              }
+            }
+          }
+        }
+      ],
+      "workbench": {
+        "experienceId": "pattern-workbench",
+        "label": "Pattern Workbench",
+        "description": "A local dummy workbench for visual research patterns, source cards, dissent prompts, and report summaries.",
+        "mode": "guided",
+        "primaryFeatureId": "pattern-workbench",
+        "availableFeatureIds": [
+          "pattern-workbench"
+        ]
+      },
+      "scene": {
+        "referenceSize": {
+          "width": 1600,
+          "height": 900
+        },
+        "roomBackgroundPath": "/home/raistlin/hayalet-ev/rooms/.build/pattern-room/runtime/shared/assets/room-background.svg",
+        "roomsHotspot": {
+          "id": "pattern-room-door",
+          "rect": {
+            "leftPx": 728,
+            "topPx": 224,
+            "widthPx": 184,
+            "heightPx": 342
+          },
+          "label": {
+            "text": "Pattern Room"
+          }
+        },
+        "backHotspot": {
+          "id": "pattern-room-back",
+          "rect": {
+            "leftPx": 54,
+            "topPx": 150,
+            "widthPx": 166,
+            "heightPx": 256
+          },
+          "label": {
+            "text": "Corridor"
+          }
+        },
+        "chrome": {
+          "pageShellVariant": "immersive-stage"
+        }
+      },
+      "i18nBaseDir": "/home/raistlin/hayalet-ev/rooms/.build/pattern-room/runtime/i18n",
+      "installedAt": "2026-05-20T10:19:13.495Z",
+      "updatedAt": "2026-05-20T10:19:13.495Z"
+    },
     {
       "id": "repair-room",
       "name": "Repair Room",
@@ -560,8 +653,8 @@
           "path": "main-functions/repair-workbench/protocols/repair-room-risk-detector.md"
         }
       ],
-      "installedAt": "2026-05-19T16:05:11.176Z",
-      "updatedAt": "2026-05-19T16:05:11.176Z"
+      "installedAt": "2026-05-20T10:19:13.699Z",
+      "updatedAt": "2026-05-20T10:19:13.699Z"
     },
     {
       "id": "forge-room",
@@ -1013,8 +1106,8 @@
           "path": "main-functions/forge-workbench/protocols/forge-room-synthesis.md"
         }
       ],
-      "installedAt": "2026-05-19T16:05:11.371Z",
-      "updatedAt": "2026-05-19T16:05:11.371Z"
+      "installedAt": "2026-05-20T10:19:13.938Z",
+      "updatedAt": "2026-05-20T10:19:13.938Z"
     },
     {
       "id": "game-room",
@@ -1463,8 +1556,8 @@
           "path": "main-functions/team-tetris/protocols/game-room-team-tetris-us1-transport.md"
         }
       ],
-      "installedAt": "2026-05-19T16:05:11.645Z",
-      "updatedAt": "2026-05-19T16:05:11.645Z"
+      "installedAt": "2026-05-20T10:19:14.235Z",
+      "updatedAt": "2026-05-20T10:19:14.235Z"
     },
     {
       "id": "laboratory",
@@ -1563,8 +1656,8 @@
         }
       },
       "i18nBaseDir": "/home/raistlin/hayalet-ev/rooms/.build/laboratory/runtime/i18n",
-      "installedAt": "2026-05-19T16:07:28.241Z",
-      "updatedAt": "2026-05-19T16:07:28.241Z"
+      "installedAt": "2026-05-20T10:23:50.612Z",
+      "updatedAt": "2026-05-20T10:23:50.612Z"
     }
   ]
 }
