@@ -245,7 +245,7 @@ function adaptLocalAuthoredNodePin(node: LocalAuthoredNode): PatternBoardPin {
     confidenceLabel: "Yerel",
     content: node.content,
     sourceId: null,
-    sourceLabel: "Local overlay",
+    sourceLabel: "Yerel kayıt",
     origin: null,
     kind: "node",
     isLocal: true,
@@ -323,7 +323,7 @@ function adaptLocalAuthoredSource(source: LocalAuthoredSource): PatternSource {
     sourceTypeLabel: "Yerel Kaynak",
     origin: source.origin,
     status: "local",
-    note: source.note === "" ? "Local overlay içinde eklenen kaynak." : source.note,
+    note: source.note === "" ? "Oda içinde eklenen yerel kaynak." : source.note,
     isLocal: true,
   };
 }
@@ -753,7 +753,7 @@ export function adaptReportViewModel(
       id: "report-local-evidence-notes",
       label: "Yerel Kanıt Notları",
       tone: "evidence",
-      note: "Local overlay içinde eklenen kanıt notları rapor terminalinde ayrı tutulur.",
+      note: "Oda içinde eklenen kanıt notları raporda ayrı tutulur.",
       bullets: overlay.localAuthoredEvidence.map((evidence) => {
         return evidence.interpretation === null
           ? `${evidence.label}: ${evidence.excerpt}`
@@ -774,7 +774,7 @@ export function adaptReportViewModel(
         id: "report-local-connections",
         label: "Yerel Bağlantılar",
         tone: "analysis",
-        note: "Local overlay içinde kurulan öğe arası bağlantılar.",
+        note: "Oda içinde kurulan öğeler arası bağlantılar.",
         bullets,
       });
     }

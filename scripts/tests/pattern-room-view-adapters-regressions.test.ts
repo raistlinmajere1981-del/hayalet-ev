@@ -362,7 +362,7 @@ test("pattern-room phase 8B local authored connections appear only in the report
   assert.ok(connectionsSection);
   assert.equal(connectionsSection.label, "Yerel Bağlantılar");
   assert.equal(connectionsSection.tone, "analysis");
-  assert.equal(connectionsSection.note, "Local overlay içinde kurulan öğe arası bağlantılar.");
+  assert.equal(connectionsSection.note, "Oda içinde kurulan öğeler arası bağlantılar.");
   assert.deepEqual(connectionsSection.bullets, [
     "Seyir defteri kaynagi → destekliyor → Golge karsilastirma gorseli",
   ]);

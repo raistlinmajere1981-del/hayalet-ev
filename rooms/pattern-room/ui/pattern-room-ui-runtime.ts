@@ -20,6 +20,7 @@ import { createDeskPanel } from "./panels/pattern-desk-panel.js";
 import { createOverviewPanel } from "./panels/pattern-overview-panel.js";
 import { createReportPanel } from "./panels/pattern-report-panel.js";
 import { createTenthManPanel } from "./panels/pattern-tenth-man-panel.js";
+import { importSampleSourcePackage } from "./pattern-source-import-demo.js";
 
 type FocusedPatternViewId = Exclude<PatternViewId, "overview">;
 type HostMessageUnsubscribe = () => void;
@@ -68,6 +69,7 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
   let isRestoring = false;
   let dirty = false;
   let pendingSaveTimer: number | null = null;
+  let sourceImportDemoStatus: ReturnType<typeof importSampleSourcePackage> | null = null;
 
   const actions: PatternPanelActions = {
     getSelectedNodeId(): string | null {
@@ -108,6 +110,11 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     },
     addAuthoredEdge(edgeType, sourceId: string, targetId: string, note?: string): void {
       localState.addAuthoredEdge(edgeType, sourceId, targetId, note);
+    },
+    importSampleSourcePackage(packageId?: string) {
+      sourceImportDemoStatus = importSampleSourcePackage(localState, packageId);
+      render();
+      return sourceImportDemoStatus;
     },
     prepareDebate(): void {
       localState.prepareDebate();
@@ -214,7 +221,7 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
       setActiveView("overview");
     };
     const panelFactories: Record<FocusedPatternViewId, () => HTMLElement> = {
-      archive: () => createArchivePanel(viewModels, actions, onBack),
+      archive: () => createArchivePanel(viewModels, actions, onBack, sourceImportDemoStatus),
       board: () => createBoardPanel(viewModels, actions, onBack),
       desk: () => createDeskPanel(viewModels, actions, onBack),
       report: () => createReportPanel(viewModels, actions, onBack),

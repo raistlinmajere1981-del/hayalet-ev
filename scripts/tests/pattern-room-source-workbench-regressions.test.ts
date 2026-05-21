@@ -585,7 +585,6 @@ test("pattern-room source workbench stays disconnected from overlay, snapshot, U
   const protectedFiles = [
     "rooms/pattern-room/shared/state/pattern-room-snapshot.ts",
     "rooms/pattern-room/shared/types/pattern-room-snapshot.ts",
-    "rooms/pattern-room/ui/pattern-room-ui-runtime.ts",
     "rooms/pattern-room/host/runtime.ts",
   ];
 
@@ -594,6 +593,14 @@ test("pattern-room source workbench stays disconnected from overlay, snapshot, U
     assert.equal(source.includes("source-workbench"), false, filePath);
     assert.equal(source.includes("SourcePackage"), false, filePath);
   }
+
+  const uiRuntimeSource = await readFile(
+    resolve("rooms/pattern-room/ui/pattern-room-ui-runtime.ts"),
+    "utf8"
+  );
+  assert.equal(uiRuntimeSource.includes("source-workbench"), false);
+  assert.equal(uiRuntimeSource.includes("importSourcePackage("), false);
+  assert.match(uiRuntimeSource, /pattern-source-import-demo/);
 
   const localStateSource = await readFile(
     resolve("rooms/pattern-room/shared/state/pattern-room-local-state.ts"),
@@ -607,6 +614,33 @@ test("pattern-room source workbench stays disconnected from overlay, snapshot, U
   assert.equal(localStateWithoutTypeImports.includes("source-workbench"), false);
   assert.equal(localStateSource.includes("parseSourcePackage"), false);
   assert.equal(localStateSource.includes("importSourcePackage"), false);
+
+  const sourceImportDemoSource = await readFile(
+    resolve("rooms/pattern-room/ui/pattern-source-import-demo.ts"),
+    "utf8"
+  );
+  assert.match(sourceImportDemoSource, /SAMPLE_SOURCE_PACKAGES/);
+  assert.match(sourceImportDemoSource, /importSourcePackage/);
+
+  const prohibitedDemoActionPatterns = [
+    /from\s+["']node:fs/,
+    /from\s+["']fs/,
+    /readFile\s*\(/,
+    /writeFile\s*\(/,
+    /ipcRenderer/,
+    /roomAPI/,
+    /registerCommand/,
+    /notifyRoom/,
+    /fetch\s*\(/,
+    /yt-dlp/,
+    /provider/i,
+    /relay/i,
+    /laboratory\//,
+  ];
+
+  for (const pattern of prohibitedDemoActionPatterns) {
+    assert.equal(pattern.test(sourceImportDemoSource), false, String(pattern));
+  }
 
   const sourceWorkbenchFiles = await walkTypeScriptFiles(
     resolve("rooms/pattern-room/shared/source-workbench")

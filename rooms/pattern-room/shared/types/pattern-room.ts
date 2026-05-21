@@ -108,6 +108,19 @@ export type PatternRoomMockData = {
   reportSummary: PatternReportSummary;
 };
 
+export type PatternSampleSourceImportStatus = {
+  packageId: string;
+  message: string;
+  duplicate: boolean;
+  sourcesAdded: number;
+  evidenceAdded: number;
+  nodesAdded: number;
+  edgesAdded: number;
+  notesAdded: number;
+  duplicatesSkipped: number;
+  warningCount: number;
+};
+
 export type PatternPanelActions = {
   getSelectedNodeId: () => string | null;
   selectNode: (nodeId: string) => void;
@@ -132,6 +145,7 @@ export type PatternPanelActions = {
     targetId: string,
     note?: string
   ) => void;
+  importSampleSourcePackage: (packageId?: string) => PatternSampleSourceImportStatus;
   prepareDebate: () => void;
   assignDebateRoles: () => void;
   startDebate: () => void;

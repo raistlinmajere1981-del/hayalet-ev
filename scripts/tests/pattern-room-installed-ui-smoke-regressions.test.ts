@@ -843,6 +843,89 @@ test("pattern-room installed UI phase 7C archive source authoring form submits l
   }
 });
 
+test("pattern-room installed UI phase 11D imports a mock SourcePackage from the archive demo", async () => {
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?source-import-demo=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      payload: { snapshot: null },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+    openFocusedView(environment.app, "archive");
+
+    const importButton = environment.app.querySelector(
+      "[data-pattern-import-sample-source-package='true']"
+    );
+    assert.ok(importButton);
+    fireEvent(importButton, "click");
+
+    assert.ok(environment.app.querySelector("[data-pattern-archive-source='local-source-001']"));
+    assertTextIncludes(readTreeText(environment.app), [
+      "Kaynak Atölyesi Demo",
+      "Örnek Kaynak Paketini İçe Aktar",
+      "Bu örnek, ileride eklenecek kaynak hazırlama akışının yerel bir denemesidir. Dış dosya veya internet bağlantısı kullanmaz.",
+      "Kaynak paketi odaya eklendi: 1 kaynak, 1 kanıt, 1 düğüm.",
+      "Saha Defteri Alıntısı",
+      "Yerel Kaynak",
+    ]);
+    assert.equal(environment.pendingTimerCount(), 1);
+
+    environment.runPendingTimers(2000);
+    assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_SAVE_COMMAND]);
+    const savedSnapshot = readLatestSavePayload(environment)[
+      "snapshot"
+    ] as PatternRoomSessionSnapshot;
+    assert.equal(savedSnapshot.overlay.localAuthoredSources.length, 1);
+    assert.equal(savedSnapshot.overlay.localAuthoredEvidence.length, 1);
+    assert.equal(savedSnapshot.overlay.localAuthoredNodes.length, 1);
+    assert.equal(savedSnapshot.overlay.localAuthoredEdges.length, 1);
+    assert.equal(savedSnapshot.overlay.localNotes.length, 1);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "board");
+    assertTextIncludes(readTreeText(environment.app), ["Gölge yönü notu", "Tekrarlayan gölge izi"]);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "report");
+    assertTextIncludes(readTreeText(environment.app), [
+      "Yerel Notlar",
+      "Kaynak Atölyesi tarafından örnek bir saha notu paketi hazırlandı.",
+      "Yerel Kanıt Notları",
+      "Gölge yönü notu",
+      "Yerel Bağlantılar",
+      "Tekrarlayan gölge izi",
+      "türetildi",
+    ]);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "archive");
+    const duplicateImportButton = environment.app.querySelector(
+      "[data-pattern-import-sample-source-package='true']"
+    );
+    assert.ok(duplicateImportButton);
+    fireEvent(duplicateImportButton, "click");
+
+    assertTextIncludes(readTreeText(environment.app), [
+      "Bu kaynak paketi zaten odada kayıtlı görünüyor.",
+    ]);
+    assert.equal(
+      environment.app.querySelectorAll("[data-pattern-archive-source='local-source-001']").length,
+      1
+    );
+
+    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
 test("pattern-room installed UI runs phase 5B local tenth-man debate flow", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");

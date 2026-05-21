@@ -1,4 +1,8 @@
-import type { PatternPanelActions, PatternRoomMockData } from "../../shared/types/pattern-room.js";
+import type {
+  PatternPanelActions,
+  PatternRoomMockData,
+  PatternSampleSourceImportStatus,
+} from "../../shared/types/pattern-room.js";
 import { createActionButton, createElement, createPanelShell } from "./pattern-panel-utils.js";
 
 function createTextInput(name: string, placeholder: string): HTMLInputElement {
@@ -66,10 +70,41 @@ function sourceTypeClass(sourceTypeLabel: string): string {
   return "uncertain-source";
 }
 
+function createSourceWorkbenchDemo(
+  actions: PatternPanelActions,
+  status: PatternSampleSourceImportStatus | null
+): HTMLElement {
+  const demo = createElement("section", "pattern-room-source-workbench-demo");
+  demo.dataset["patternSourceWorkbenchDemo"] = "true";
+  const importButton = createActionButton("Örnek Kaynak Paketini İçe Aktar", () => {
+    actions.importSampleSourcePackage();
+  });
+  importButton.dataset["patternImportSampleSourcePackage"] = "true";
+  const statusLine = createElement(
+    "p",
+    "pattern-room-source-workbench-status",
+    status?.message ?? "Henüz örnek kaynak paketi içe aktarılmadı."
+  );
+  statusLine.dataset["patternSourceImportStatus"] = "true";
+
+  demo.append(
+    createElement("h3", undefined, "Kaynak Atölyesi Demo"),
+    createElement(
+      "p",
+      "pattern-room-inline-note",
+      "Bu örnek, ileride eklenecek kaynak hazırlama akışının yerel bir denemesidir. Dış dosya veya internet bağlantısı kullanmaz."
+    ),
+    importButton,
+    statusLine
+  );
+  return demo;
+}
+
 export function createArchivePanel(
   data: PatternRoomMockData,
   actions: PatternPanelActions,
-  onBack: () => void
+  onBack: () => void,
+  sourceImportStatus: PatternSampleSourceImportStatus | null = null
 ): HTMLElement {
   const shell = createPanelShell("archive", "Arşiv", onBack);
   const list = createElement("div", "pattern-room-archive-list");
@@ -78,6 +113,7 @@ export function createArchivePanel(
     const toneClass =
       source.isLocal === true ? "local-source" : sourceTypeClass(source.sourceTypeLabel);
     const card = createElement("article", `pattern-room-archive-card ${toneClass}`);
+    card.dataset["patternArchiveSource"] = source.id;
     const drawer = createElement("span", "pattern-room-archive-drawer", source.origin);
     const tag = createElement(
       "span",
@@ -110,6 +146,10 @@ export function createArchivePanel(
     list.append(card);
   });
 
-  shell.append(createSourceAuthoringForm(actions), list);
+  shell.append(
+    createSourceWorkbenchDemo(actions, sourceImportStatus),
+    createSourceAuthoringForm(actions),
+    list
+  );
   return shell;
 }

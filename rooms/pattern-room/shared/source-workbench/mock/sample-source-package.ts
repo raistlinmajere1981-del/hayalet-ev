@@ -3,28 +3,28 @@ import type { SourcePackage } from "../types/source-package.js";
 export const SAMPLE_USER_TEXT_SOURCE_PACKAGE: SourcePackage = {
   sourcePackageId: "sample-user-text",
   sourceKind: "user_text",
-  title: "Field Notebook Excerpt",
+  title: "Saha Defteri Alıntısı",
   origin: "manual:user-notebook",
   language: "en",
   createdAt: "2026-05-21T10:00:00.000Z",
   sourceItems: [
     {
       sourceItemId: "sample-user-text-item-1",
-      label: "Notebook page",
+      label: "Saha defteri sayfası",
       origin: "manual:user-notebook/page-1",
       metadata: {},
     },
   ],
-  cleanedText: "A short local note about repeating shadows and navigation cues.",
+  cleanedText: "Tekrarlayan gölge izleri ve yön ipuçları üzerine kısa bir yerel not.",
   segments: [],
   quotes: [
     {
       quoteId: "sample-user-text-quote-1",
       sourceItemId: "sample-user-text-item-1",
       segmentId: null,
-      label: "Shadow cue",
-      excerpt: "The same shadow cue appears whenever the path turns north.",
-      context: "User-entered field observation.",
+      label: "Gölge yönü notu",
+      excerpt: "Yol kuzeye döndüğünde aynı gölge işareti yeniden beliriyor.",
+      context: "Kullanıcı tarafından girilmiş saha gözlemi.",
       page: "1",
       timecode: null,
       speaker: null,
@@ -35,8 +35,8 @@ export const SAMPLE_USER_TEXT_SOURCE_PACKAGE: SourcePackage = {
   motifs: [
     {
       motifId: "sample-user-text-motif-1",
-      label: "Repeating shadow cue",
-      content: "Shadow cues repeat around directional choices.",
+      label: "Tekrarlayan gölge izi",
+      content: "Yön değişimlerinde benzer gölge işaretleri tekrar ediyor.",
       relatedQuoteIds: ["sample-user-text-quote-1"],
       metadata: {},
     },
@@ -45,7 +45,7 @@ export const SAMPLE_USER_TEXT_SOURCE_PACKAGE: SourcePackage = {
   numericPatterns: [],
   references: [],
   metadata: {
-    summary: "Manual note package prepared as a Source Workbench draft sample.",
+    summary: "Kaynak Atölyesi tarafından örnek bir saha notu paketi hazırlandı.",
   },
 };
 
