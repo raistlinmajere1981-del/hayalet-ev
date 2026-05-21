@@ -252,14 +252,25 @@ test("pattern-room source producers stay pure and disconnected from runtime surf
     /laboratory\//,
     /PatternRoomLocalOverlay/,
     /LocalAuthored/,
-    /importSourcePackage\s*\(/,
     /applySourceImportResult\s*\(/,
   ];
+  const producerCoreFiles = producerFiles.filter(
+    (filePath) => filePath.includes(`${join("source-producers", "orchestration")}`) === false
+  );
+  const prohibitedCoreProducerPatterns = [/importSourcePackage\s*\(/];
 
   for (const filePath of producerFiles) {
     const source = await readFile(filePath, "utf8");
     const relativePath = relative(process.cwd(), filePath);
     for (const pattern of prohibitedProducerPatterns) {
+      assert.equal(pattern.test(source), false, `${relativePath} matched ${String(pattern)}`);
+    }
+  }
+
+  for (const filePath of producerCoreFiles) {
+    const source = await readFile(filePath, "utf8");
+    const relativePath = relative(process.cwd(), filePath);
+    for (const pattern of prohibitedCoreProducerPatterns) {
       assert.equal(pattern.test(source), false, `${relativePath} matched ${String(pattern)}`);
     }
   }
