@@ -8,6 +8,10 @@ export type SourceObservationType = "pattern" | "correlation" | "frequency" | "a
 export type SourcePackageItem = {
   sourceItemId: string;
   label: string;
+  content?: string | null;
+  order?: number | null;
+  timecodeStart?: string | null;
+  timecodeEnd?: string | null;
   origin: string | null;
   metadata: Record<string, unknown>;
 };
@@ -271,6 +275,10 @@ function parseSourcePackageItems(value: unknown): SourcePackageItem[] {
       {
         sourceItemId,
         label,
+        content: readOptionalString(entry["content"]),
+        order: readOptionalNumber(entry["order"]),
+        timecodeStart: readOptionalString(entry["timecodeStart"]),
+        timecodeEnd: readOptionalString(entry["timecodeEnd"]),
         origin: readOptionalString(entry["origin"]),
         metadata: readMetadata(entry["metadata"]),
       },
