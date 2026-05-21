@@ -109,6 +109,20 @@ function hasLocalIdFormat(value: unknown, prefix: string): value is string {
   return typeof value === "string" && new RegExp(`^${prefix}-\\d{3,}$`).test(value);
 }
 
+function getLocalIdIndex(id: string, prefix: string): number {
+  const match = new RegExp(`^${prefix}-(\\d{3,})$`).exec(id);
+  if (match === null) {
+    return 0;
+  }
+  return Number.parseInt(match[1] ?? "0", 10);
+}
+
+function getMaxLocalIdIndex(values: readonly { id: string }[], prefix: string): number {
+  return values.reduce((maxIndex, value) => {
+    return Math.max(maxIndex, getLocalIdIndex(value.id, prefix));
+  }, 0);
+}
+
 function isPatternViewId(value: unknown): value is PatternViewId {
   return typeof value === "string" && PATTERN_VIEW_IDS.some((viewId) => viewId === value);
 }
@@ -537,7 +551,7 @@ function healGuards(
   const guardNoteIndex = Number.isFinite(guards.noteIndex) ? guards.noteIndex : 0;
   return {
     debateReportReflected: guards.debateReportReflected,
-    noteIndex: Math.max(0, guardNoteIndex, overlay.localNotes.length),
+    noteIndex: Math.max(0, guardNoteIndex, getMaxLocalIdIndex(overlay.localNotes, "local-note")),
   };
 }
 

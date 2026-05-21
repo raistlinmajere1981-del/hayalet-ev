@@ -9,6 +9,10 @@ import type {
   SourceItem,
   Topic,
 } from "../types/pattern-room-domain.js";
+import type {
+  SourceImportEvidenceDraft,
+  SourceImportResult,
+} from "../source-workbench/types/source-package.js";
 
 export type LocalNote = {
   id: string;
@@ -48,6 +52,17 @@ export type LocalAuthoredEdge = {
   targetId: string;
   note: string | null;
   createdAt: string;
+};
+
+export type SourceImportApplySummary = {
+  sourcesAdded: number;
+  evidenceAdded: number;
+  nodesAdded: number;
+  edgesAdded: number;
+  notesAdded: number;
+  edgesDropped: number;
+  duplicatesSkipped: number;
+  warnings: readonly string[];
 };
 
 export type DebateLocalPhase =
@@ -121,6 +136,7 @@ export type PatternRoomLocalState = {
     targetId: string,
     note?: string
   ) => void;
+  applySourceImportResult: (result: SourceImportResult) => SourceImportApplySummary;
   resolveEntityExists: (id: string) => boolean;
   resolveEntityLabel: (id: string) => string | null;
   prepareDebate: () => void;
@@ -224,6 +240,46 @@ function isPatternEdgeType(value: string): value is PatternEdgeType {
   return PATTERN_EDGE_TYPES.includes(value as PatternEdgeType);
 }
 
+function createDuplicateKey(...parts: readonly string[]): string {
+  return parts
+    .map((part) => {
+      return part.trim().toLocaleLowerCase();
+    })
+    .join("\n");
+}
+
+function readOptionalImportText(value: string | null): string | null {
+  const trimmedValue = value?.trim() ?? "";
+  return trimmedValue === "" ? null : trimmedValue;
+}
+
+function createEvidenceInterpretation(draft: SourceImportEvidenceDraft): string | null {
+  const interpretation = readOptionalImportText(draft.interpretation);
+  const contextParts = [
+    readOptionalImportText(draft.timecode) === null
+      ? null
+      : `Zaman: ${readOptionalImportText(draft.timecode)}`,
+    readOptionalImportText(draft.page) === null
+      ? null
+      : `Sayfa: ${readOptionalImportText(draft.page)}`,
+    readOptionalImportText(draft.speaker) === null
+      ? null
+      : `Konuşmacı: ${readOptionalImportText(draft.speaker)}`,
+    readOptionalImportText(draft.context) === null
+      ? null
+      : `Bağlam: ${readOptionalImportText(draft.context)}`,
+  ].flatMap((part) => {
+    return part === null ? [] : [part];
+  });
+
+  if (contextParts.length === 0) {
+    return interpretation;
+  }
+
+  const contextSummary = `Kaynak bağlamı: ${contextParts.join(" · ")}`;
+  return interpretation === null ? contextSummary : `${interpretation}\n\n${contextSummary}`;
+}
+
 export function createLocalState(
   domainMock: PatternRoomLocalDomainReference
 ): PatternRoomLocalState {
@@ -318,92 +374,104 @@ export function createLocalState(
     });
   }
 
-  function addLocalNoteRecord(text: string): boolean {
+  function addLocalNoteRecord(text: string, createdAt = new Date().toISOString()): string | null {
     const trimmedText = text.trim();
     if (trimmedText === "") {
-      return false;
+      return null;
     }
     noteIndex += 1;
+    const id = createLocalId("local-note", noteIndex);
     localNotes.push({
-      id: `local-note-${String(noteIndex).padStart(3, "0")}`,
+      id,
       text: trimmedText,
-      createdAt: new Date().toISOString(),
+      createdAt,
     });
-    return true;
+    return id;
   }
 
   function addAuthoredNodeRecord(
     nodeType: LocalAuthoredNode["nodeType"],
     label: string,
-    content: string
-  ): boolean {
+    content: string,
+    createdAt = new Date().toISOString()
+  ): string | null {
     const trimmedLabel = label.trim();
     const trimmedContent = content.trim();
     if (trimmedLabel === "" || trimmedContent === "") {
-      return false;
+      return null;
     }
 
     authoredNodeIndex += 1;
+    const id = createLocalId("local-node", authoredNodeIndex);
     localAuthoredNodes.push({
-      id: createLocalId("local-node", authoredNodeIndex),
+      id,
       nodeType,
       label: trimmedLabel,
       content: trimmedContent,
-      createdAt: new Date().toISOString(),
+      createdAt,
     });
-    return true;
+    return id;
   }
 
-  function addAuthoredSourceRecord(label: string, origin: string, note: string): boolean {
+  function addAuthoredSourceRecord(
+    label: string,
+    origin: string,
+    note: string,
+    createdAt = new Date().toISOString()
+  ): string | null {
     const trimmedLabel = label.trim();
     const trimmedOrigin = origin.trim();
     const trimmedNote = note.trim();
     if (trimmedLabel === "" || trimmedOrigin === "") {
-      return false;
+      return null;
     }
 
     authoredSourceIndex += 1;
+    const id = createLocalId("local-source", authoredSourceIndex);
     localAuthoredSources.push({
-      id: createLocalId("local-source", authoredSourceIndex),
+      id,
       label: trimmedLabel,
       origin: trimmedOrigin,
       note: trimmedNote,
-      createdAt: new Date().toISOString(),
+      createdAt,
     });
-    return true;
+    return id;
   }
 
   function addAuthoredEvidenceRecord(
     label: string,
     excerpt: string,
     interpretation?: string,
-    layer?: PatternLayer
-  ): boolean {
+    layer?: PatternLayer,
+    createdAt = new Date().toISOString()
+  ): string | null {
     const trimmedLabel = label.trim();
     const trimmedExcerpt = excerpt.trim();
     const trimmedInterpretation = interpretation?.trim() ?? "";
     if (trimmedLabel === "" || trimmedExcerpt === "") {
-      return false;
+      return null;
     }
 
     authoredEvidenceIndex += 1;
+    const id = createLocalId("local-evidence", authoredEvidenceIndex);
     localAuthoredEvidence.push({
-      id: createLocalId("local-evidence", authoredEvidenceIndex),
+      id,
       label: trimmedLabel,
       excerpt: trimmedExcerpt,
       interpretation: trimmedInterpretation === "" ? null : trimmedInterpretation,
       layer: layer ?? "evidence",
-      createdAt: new Date().toISOString(),
+      createdAt,
     });
-    return true;
+    return id;
   }
 
   function addAuthoredEdgeRecord(
     edgeType: PatternEdgeType,
     sourceId: string,
     targetId: string,
-    note?: string
-  ): boolean {
+    note?: string,
+    createdAt = new Date().toISOString()
+  ): string | null {
     const trimmedSourceId = sourceId.trim();
     const trimmedTargetId = targetId.trim();
     const trimmedNote = note?.trim() ?? "";
@@ -415,19 +483,20 @@ export function createLocalState(
       !resolveEntityExists(trimmedSourceId) ||
       !resolveEntityExists(trimmedTargetId)
     ) {
-      return false;
+      return null;
     }
 
     authoredEdgeIndex += 1;
+    const id = createLocalId("local-edge", authoredEdgeIndex);
     localAuthoredEdges.push({
-      id: createLocalId("local-edge", authoredEdgeIndex),
+      id,
       edgeType,
       sourceId: trimmedSourceId,
       targetId: trimmedTargetId,
       note: trimmedNote === "" ? null : trimmedNote,
-      createdAt: new Date().toISOString(),
+      createdAt,
     });
-    return true;
+    return id;
   }
 
   function appendDebateTurn(phaseKey: DebateLocalPhase): void {
@@ -453,6 +522,159 @@ export function createLocalState(
       })
       .join(" ");
     return `10. Adam local oturum özeti: ${debateLocalVerdict ?? createDebateVerdict()} ${turnSummary}`;
+  }
+
+  function applySourceImportResult(result: SourceImportResult): SourceImportApplySummary {
+    const importedAt = new Date().toISOString();
+    const draftIdToLocalId = new Map<string, string>();
+    const summary = {
+      sourcesAdded: 0,
+      evidenceAdded: 0,
+      nodesAdded: 0,
+      edgesAdded: 0,
+      notesAdded: 0,
+      edgesDropped: 0,
+      duplicatesSkipped: 0,
+      warnings: result.warnings.map((warning) => {
+        return warning.message;
+      }),
+    };
+    const sourceKeys = new Set(
+      localAuthoredSources.map((source) => {
+        return createDuplicateKey(source.label, source.origin);
+      })
+    );
+    const evidenceKeys = new Set(
+      localAuthoredEvidence.map((evidence) => {
+        return createDuplicateKey(evidence.excerpt);
+      })
+    );
+    const nodeKeys = new Set(
+      localAuthoredNodes.map((node) => {
+        return createDuplicateKey(node.label, node.content);
+      })
+    );
+
+    result.sources.forEach((source) => {
+      const sourceKey = createDuplicateKey(source.label, source.origin);
+      if (sourceKeys.has(sourceKey)) {
+        summary.duplicatesSkipped += 1;
+        summary.warnings.push(`Duplicate source draft skipped: ${source.draftId}`);
+        return;
+      }
+
+      const localId = addAuthoredSourceRecord(source.label, source.origin, source.note, importedAt);
+      if (localId === null) {
+        summary.warnings.push(`Source draft skipped because it was incomplete: ${source.draftId}`);
+        return;
+      }
+
+      sourceKeys.add(sourceKey);
+      draftIdToLocalId.set(source.draftId, localId);
+      summary.sourcesAdded += 1;
+    });
+
+    result.evidence.forEach((evidence) => {
+      const evidenceKey = createDuplicateKey(evidence.excerpt);
+      if (evidenceKeys.has(evidenceKey)) {
+        summary.duplicatesSkipped += 1;
+        summary.warnings.push(`Duplicate evidence draft skipped: ${evidence.draftId}`);
+        return;
+      }
+
+      const localId = addAuthoredEvidenceRecord(
+        evidence.label,
+        evidence.excerpt,
+        createEvidenceInterpretation(evidence) ?? undefined,
+        "evidence",
+        importedAt
+      );
+      if (localId === null) {
+        summary.warnings.push(
+          `Evidence draft skipped because it was incomplete: ${evidence.draftId}`
+        );
+        return;
+      }
+
+      evidenceKeys.add(evidenceKey);
+      draftIdToLocalId.set(evidence.draftId, localId);
+      summary.evidenceAdded += 1;
+    });
+
+    result.nodes.forEach((node) => {
+      const nodeKey = createDuplicateKey(node.label, node.content);
+      if (nodeKeys.has(nodeKey)) {
+        summary.duplicatesSkipped += 1;
+        summary.warnings.push(`Duplicate node draft skipped: ${node.draftId}`);
+        return;
+      }
+
+      const localId = addAuthoredNodeRecord(node.nodeType, node.label, node.content, importedAt);
+      if (localId === null) {
+        summary.warnings.push(`Node draft skipped because it was incomplete: ${node.draftId}`);
+        return;
+      }
+
+      nodeKeys.add(nodeKey);
+      draftIdToLocalId.set(node.draftId, localId);
+      summary.nodesAdded += 1;
+    });
+
+    result.notes.forEach((note) => {
+      const localId = addLocalNoteRecord(note.text, importedAt);
+      if (localId === null) {
+        summary.warnings.push(`Note draft skipped because it was empty: ${note.draftId}`);
+        return;
+      }
+
+      draftIdToLocalId.set(note.draftId, localId);
+      summary.notesAdded += 1;
+    });
+
+    result.edges.forEach((edge) => {
+      const sourceId = draftIdToLocalId.get(edge.sourceDraftId);
+      const targetId = draftIdToLocalId.get(edge.targetDraftId);
+      if (sourceId === undefined || targetId === undefined) {
+        summary.edgesDropped += 1;
+        summary.warnings.push(
+          `Edge draft dropped because a draft endpoint was not imported: ${edge.draftId}`
+        );
+        return;
+      }
+
+      const localId = addAuthoredEdgeRecord(
+        edge.edgeType,
+        sourceId,
+        targetId,
+        edge.note ?? undefined,
+        importedAt
+      );
+      if (localId === null) {
+        summary.edgesDropped += 1;
+        summary.warnings.push(
+          `Edge draft dropped because the mapped endpoints were not valid local entities: ${edge.draftId}`
+        );
+        return;
+      }
+
+      draftIdToLocalId.set(edge.draftId, localId);
+      summary.edgesAdded += 1;
+    });
+
+    if (
+      summary.sourcesAdded > 0 ||
+      summary.evidenceAdded > 0 ||
+      summary.nodesAdded > 0 ||
+      summary.edgesAdded > 0 ||
+      summary.notesAdded > 0
+    ) {
+      notify();
+    }
+
+    return {
+      ...summary,
+      warnings: [...summary.warnings],
+    };
   }
 
   return {
@@ -530,6 +752,9 @@ export function createLocalState(
       if (addAuthoredEdgeRecord(edgeType, sourceId, targetId, note)) {
         notify();
       }
+    },
+    applySourceImportResult(result: SourceImportResult): SourceImportApplySummary {
+      return applySourceImportResult(result);
     },
     resolveEntityExists(id: string): boolean {
       return resolveEntityExists(id);
@@ -656,7 +881,7 @@ export function createLocalState(
       debatePhase = overlay.debatePhase;
       debateLocalVerdict = overlay.debateLocalVerdict;
       debateReportReflected = guards.debateReportReflected;
-      noteIndex = Math.max(guards.noteIndex, localNotes.length);
+      noteIndex = Math.max(guards.noteIndex, getMaxLocalIdIndex(localNotes, "local-note"));
       authoredNodeIndex = getMaxLocalIdIndex(localAuthoredNodes, "local-node");
       authoredSourceIndex = getMaxLocalIdIndex(localAuthoredSources, "local-source");
       authoredEvidenceIndex = getMaxLocalIdIndex(localAuthoredEvidence, "local-evidence");
