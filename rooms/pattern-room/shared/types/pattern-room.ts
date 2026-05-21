@@ -121,6 +121,27 @@ export type PatternSampleSourceImportStatus = {
   warningCount: number;
 };
 
+export type PatternUserTextSourceImportInput = {
+  title: string;
+  text: string;
+  language?: string;
+};
+
+export type PatternUserTextSourceImportStatus = {
+  packageIds: readonly string[];
+  message: string;
+  success: boolean;
+  duplicate: boolean;
+  sourcesAdded: number;
+  evidenceAdded: number;
+  nodesAdded: number;
+  edgesAdded: number;
+  notesAdded: number;
+  duplicatesSkipped: number;
+  warningCount: number;
+  errorCount: number;
+};
+
 export type PatternPanelActions = {
   getSelectedNodeId: () => string | null;
   selectNode: (nodeId: string) => void;
@@ -145,6 +166,9 @@ export type PatternPanelActions = {
     targetId: string,
     note?: string
   ) => void;
+  importUserTextSource: (
+    input: PatternUserTextSourceImportInput
+  ) => PatternUserTextSourceImportStatus;
   importSampleSourcePackage: (packageId?: string) => PatternSampleSourceImportStatus;
   prepareDebate: () => void;
   assignDebateRoles: () => void;

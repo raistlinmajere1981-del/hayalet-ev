@@ -11,8 +11,16 @@ import {
 import type {
   PatternPanelActions,
   PatternRoomMockData,
+  PatternUserTextSourceImportInput,
+  PatternUserTextSourceImportStatus,
   PatternViewId,
 } from "../shared/types/pattern-room.js";
+import {
+  createUserTextProducer,
+  produceAndImportSource,
+  type PastedTextInput,
+  type SourceProducerOrchestrationResult,
+} from "../shared/source-producers/index.js";
 import type { PatternRoomSessionSnapshot } from "../shared/types/pattern-room-snapshot.js";
 import { createArchivePanel } from "./panels/pattern-archive-panel.js";
 import { createBoardPanel } from "./panels/pattern-board-panel.js";
@@ -70,6 +78,105 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
   let dirty = false;
   let pendingSaveTimer: number | null = null;
   let sourceImportDemoStatus: ReturnType<typeof importSampleSourcePackage> | null = null;
+  let userTextSourceImportStatus: PatternUserTextSourceImportStatus | null = null;
+  const importedUserTextPackageIds = new Set<string>();
+
+  function createEmptyUserTextStatus(message: string): PatternUserTextSourceImportStatus {
+    return {
+      packageIds: [],
+      message,
+      success: false,
+      duplicate: false,
+      sourcesAdded: 0,
+      evidenceAdded: 0,
+      nodesAdded: 0,
+      edgesAdded: 0,
+      notesAdded: 0,
+      duplicatesSkipped: 0,
+      warningCount: 0,
+      errorCount: 0,
+    };
+  }
+
+  function createUserTextProducerInput(input: PatternUserTextSourceImportInput): PastedTextInput {
+    const producerInput: PastedTextInput = {
+      inputKind: "pasted_text",
+      text: input.text.trim(),
+      language: input.language?.trim() || "tr",
+    };
+    const title = input.title.trim();
+    if (title !== "") {
+      producerInput.title = title;
+    }
+    return producerInput;
+  }
+
+  function summarizeUserTextImportResult(
+    result: SourceProducerOrchestrationResult
+  ): PatternUserTextSourceImportStatus {
+    let sourcesAdded = 0;
+    let evidenceAdded = 0;
+    let nodesAdded = 0;
+    let edgesAdded = 0;
+    let notesAdded = 0;
+    let duplicatesSkipped = 0;
+    let applyWarningCount = 0;
+
+    result.importResults.forEach((packageResult) => {
+      const summary = localState.applySourceImportResult(packageResult.importResult);
+      sourcesAdded += summary.sourcesAdded;
+      evidenceAdded += summary.evidenceAdded;
+      nodesAdded += summary.nodesAdded;
+      edgesAdded += summary.edgesAdded;
+      notesAdded += summary.notesAdded;
+      duplicatesSkipped +=
+        summary.duplicatesSkipped + packageResult.importResult.stats.duplicatesSkipped;
+      applyWarningCount += summary.warnings.length;
+
+      if (
+        summary.sourcesAdded > 0 ||
+        summary.evidenceAdded > 0 ||
+        summary.nodesAdded > 0 ||
+        summary.edgesAdded > 0 ||
+        summary.notesAdded > 0
+      ) {
+        importedUserTextPackageIds.add(packageResult.packageId);
+      }
+    });
+
+    const packageIds = result.packagesProduced.map((sourcePackage) => {
+      return sourcePackage.sourcePackageId;
+    });
+    const importedCount = sourcesAdded + evidenceAdded + nodesAdded + edgesAdded + notesAdded;
+    const duplicate = importedCount === 0 && duplicatesSkipped > 0;
+    const errorCount = result.errors.length;
+    const warningCount = result.warnings.length + applyWarningCount;
+    const message =
+      errorCount > 0
+        ? "Metin kaynak paketine dönüştürülemedi."
+        : duplicate
+          ? "Bu metin zaten odada kayıtlı görünüyor."
+          : importedCount > 0
+            ? `Metin kaynak olarak odaya eklendi: ${String(sourcesAdded)} kaynak, ${String(
+                evidenceAdded
+              )} kanıt, ${String(nodesAdded)} düğüm.`
+            : "Metinden içe aktarılacak kaynak bulunamadı.";
+
+    return {
+      packageIds,
+      message,
+      success: importedCount > 0,
+      duplicate,
+      sourcesAdded,
+      evidenceAdded,
+      nodesAdded,
+      edgesAdded,
+      notesAdded,
+      duplicatesSkipped,
+      warningCount,
+      errorCount,
+    };
+  }
 
   const actions: PatternPanelActions = {
     getSelectedNodeId(): string | null {
@@ -110,6 +217,22 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     },
     addAuthoredEdge(edgeType, sourceId: string, targetId: string, note?: string): void {
       localState.addAuthoredEdge(edgeType, sourceId, targetId, note);
+    },
+    importUserTextSource(input: PatternUserTextSourceImportInput) {
+      if (input.text.trim() === "") {
+        userTextSourceImportStatus = createEmptyUserTextStatus("Metin boş olamaz.");
+        return userTextSourceImportStatus;
+      }
+
+      const producer = createUserTextProducer();
+      const result = produceAndImportSource(producer, createUserTextProducerInput(input), {
+        importOptions: {
+          existingPackageIds: [...importedUserTextPackageIds],
+        },
+      });
+      userTextSourceImportStatus = summarizeUserTextImportResult(result);
+      render();
+      return userTextSourceImportStatus;
     },
     importSampleSourcePackage(packageId?: string) {
       sourceImportDemoStatus = importSampleSourcePackage(localState, packageId);
@@ -221,7 +344,14 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
       setActiveView("overview");
     };
     const panelFactories: Record<FocusedPatternViewId, () => HTMLElement> = {
-      archive: () => createArchivePanel(viewModels, actions, onBack, sourceImportDemoStatus),
+      archive: () =>
+        createArchivePanel(
+          viewModels,
+          actions,
+          onBack,
+          userTextSourceImportStatus,
+          sourceImportDemoStatus
+        ),
       board: () => createBoardPanel(viewModels, actions, onBack),
       desk: () => createDeskPanel(viewModels, actions, onBack),
       report: () => createReportPanel(viewModels, actions, onBack),

@@ -84,6 +84,22 @@ function submitLocalNote(
   fireEvent(noteForm, "submit");
 }
 
+function submitUserTextSource(
+  app: ReturnType<typeof createMinimalForgeUiEnvironment>["app"],
+  titleText: string,
+  sourceText: string
+): void {
+  const form = app.querySelector("[data-pattern-user-text-source-form='true']");
+  const titleInput = app.querySelector("[data-pattern-user-text-source-title='true']");
+  const textInput = app.querySelector("[data-pattern-user-text-source-text='true']");
+  assert.ok(form);
+  assert.ok(titleInput);
+  assert.ok(textInput);
+  titleInput.value = titleText;
+  textInput.value = sourceText;
+  submitForm(form);
+}
+
 function createHostLoadedSnapshot(
   activeView: PatternFocusedViewId | "overview",
   noteText: string
@@ -843,6 +859,134 @@ test("pattern-room installed UI phase 7C archive source authoring form submits l
   }
 });
 
+test("pattern-room installed UI phase 12D imports pasted user text through the source producer", async () => {
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?user-text-source=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      payload: { snapshot: null },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+    openFocusedView(environment.app, "archive");
+    submitUserTextSource(
+      environment.app,
+      "Faz 12D kullanıcı metni",
+      "Kullanıcının yapıştırdığı metin kaynak producer hattından gelir."
+    );
+
+    assert.ok(environment.app.querySelector("[data-pattern-archive-source='local-source-001']"));
+    assertTextIncludes(readTreeText(environment.app), [
+      "Kaynak Atölyesi",
+      "Bu ilk sürüm metni kaynak olarak ekler; alıntı ve örüntü çıkarımı daha sonra eklenecek.",
+      "Metin kaynak olarak odaya eklendi: 1 kaynak, 0 kanıt, 0 düğüm.",
+      "Faz 12D kullanıcı metni",
+      "Yerel Kaynak",
+      "Kullanıcının yapıştırdığı metin kaynak producer hattından gelir.",
+    ]);
+    assert.equal(environment.pendingTimerCount(), 1);
+
+    environment.runPendingTimers(2000);
+    assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_SAVE_COMMAND]);
+    const savedSnapshot = readLatestSavePayload(environment)[
+      "snapshot"
+    ] as PatternRoomSessionSnapshot;
+    assert.equal(savedSnapshot.overlay.localAuthoredSources.length, 1);
+    assert.equal(savedSnapshot.overlay.localAuthoredSources[0]?.label, "Faz 12D kullanıcı metni");
+    assert.equal(savedSnapshot.overlay.localAuthoredSources[0]?.origin, "Kullanıcı metni");
+    assert.equal(
+      savedSnapshot.overlay.localAuthoredSources[0]?.note,
+      "Kullanıcının yapıştırdığı metin kaynak producer hattından gelir."
+    );
+    assert.deepEqual(savedSnapshot.overlay.localAuthoredEvidence, []);
+    assert.deepEqual(savedSnapshot.overlay.localAuthoredNodes, []);
+    assert.deepEqual(savedSnapshot.overlay.pinnedSourceIds, []);
+    assert.deepEqual(savedSnapshot.overlay.sourcePinnedLayerById, {});
+
+    submitUserTextSource(
+      environment.app,
+      "Faz 12D kullanıcı metni",
+      "Kullanıcının yapıştırdığı metin kaynak producer hattından gelir."
+    );
+    assertTextIncludes(readTreeText(environment.app), ["Bu metin zaten odada kayıtlı görünüyor."]);
+    assert.equal(
+      environment.app.querySelectorAll("[data-pattern-archive-source='local-source-001']").length,
+      1
+    );
+    assert.equal(environment.pendingTimerCount(), 0);
+    assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_SAVE_COMMAND]);
+
+    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+test("pattern-room installed UI phase 12D derives a source title from untitled user text", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?user-text-title=${Date.now()}`
+    );
+
+    openFocusedView(environment.app, "archive");
+    submitUserTextSource(
+      environment.app,
+      "",
+      "Başlıksız metnin ilk satırı başlık olur.\nİkinci satır kaynak notunda kalır."
+    );
+
+    assertTextIncludes(readTreeText(environment.app), [
+      "Başlıksız metnin ilk satırı başlık olur.",
+      "Metin kaynak olarak odaya eklendi: 1 kaynak, 0 kanıt, 0 düğüm.",
+    ]);
+    assert.ok(environment.app.querySelector("[data-pattern-archive-source='local-source-001']"));
+    assert.deepEqual(environment.sentCommands, []);
+    assert.deepEqual(environment.sentEvents, []);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+test("pattern-room installed UI phase 12D rejects blank pasted user text", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?user-text-empty=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      payload: { snapshot: null },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+    openFocusedView(environment.app, "archive");
+    submitUserTextSource(environment.app, "Boş kaynak", " \n\t ");
+
+    assertTextIncludes(readTreeText(environment.app), ["Metin boş olamaz."]);
+    assert.equal(
+      environment.app.querySelector("[data-pattern-archive-source='local-source-001']"),
+      null
+    );
+    assert.equal(environment.pendingTimerCount(), 0);
+    assert.deepEqual(environment.sentCommands, []);
+    assert.deepEqual(environment.sentEvents, []);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
 test("pattern-room installed UI phase 11D imports a mock SourcePackage from the archive demo", async () => {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
   const environment = createMinimalForgeUiEnvironment();
@@ -867,9 +1011,9 @@ test("pattern-room installed UI phase 11D imports a mock SourcePackage from the 
 
     assert.ok(environment.app.querySelector("[data-pattern-archive-source='local-source-001']"));
     assertTextIncludes(readTreeText(environment.app), [
-      "Kaynak Atölyesi Demo",
+      "Kaynak Atölyesi",
       "Örnek Kaynak Paketini İçe Aktar",
-      "Bu örnek, ileride eklenecek kaynak hazırlama akışının yerel bir denemesidir. Dış dosya veya internet bağlantısı kullanmaz.",
+      "Bu ilk sürüm metni kaynak olarak ekler; alıntı ve örüntü çıkarımı daha sonra eklenecek.",
       "Kaynak paketi odaya eklendi: 1 kaynak, 1 kanıt, 1 düğüm.",
       "Saha Defteri Alıntısı",
       "Yerel Kaynak",

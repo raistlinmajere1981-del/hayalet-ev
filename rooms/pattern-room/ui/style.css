@@ -1037,6 +1037,20 @@ p {
   font-size: var(--pattern-rem-0-82);
 }
 
+.pattern-room-source-workbench-form {
+  padding: 0;
+  border-top: 0;
+}
+
+.pattern-room-source-workbench-example {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pattern-px-10);
+  align-items: center;
+  padding-top: var(--pattern-px-10);
+  border-top: var(--pattern-px-1) solid var(--pattern-text-alpha-12);
+}
+
 .pattern-room-inline-authoring,
 .pattern-room-inline-form {
   display: grid;

@@ -275,8 +275,15 @@ test("pattern-room source producers stay pure and disconnected from runtime surf
     }
   }
 
+  const uiRuntimeSource = await readFile(
+    resolve("rooms/pattern-room/ui/pattern-room-ui-runtime.ts"),
+    "utf8"
+  );
+  assert.match(uiRuntimeSource, /createUserTextProducer/);
+  assert.match(uiRuntimeSource, /produceAndImportSource/);
+  assert.match(uiRuntimeSource, /applySourceImportResult/);
+
   const protectedFiles = [
-    "rooms/pattern-room/ui/pattern-room-ui-runtime.ts",
     "rooms/pattern-room/ui/pattern-source-import-demo.ts",
     "rooms/pattern-room/host/runtime.ts",
     "rooms/pattern-room/shared/state/pattern-room-local-state.ts",

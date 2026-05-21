@@ -13,6 +13,10 @@ import {
   PATTERN_ROOM_SNAPSHOT_VERSION,
   type PatternRoomSessionSnapshot,
 } from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
+import {
+  createUserTextProducer,
+  produceAndImportSource,
+} from "../../rooms/pattern-room/shared/source-producers/index.ts";
 import type { SourceImportResult } from "../../rooms/pattern-room/shared/source-workbench/index.ts";
 
 function createSourceImportResult(
@@ -159,6 +163,49 @@ test("pattern-room phase 11C applies SourceImportResult drafts to local overlay"
       id: "local-note-001",
       text: "Imported summary note.",
       createdAt: overlay.localNotes[0]?.createdAt,
+    },
+  ]);
+});
+
+test("pattern-room phase 12D applies user text producer import results through local state", () => {
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  let notificationCount = 0;
+  const unsubscribe = localState.subscribe(() => {
+    notificationCount += 1;
+  });
+
+  const producer = createUserTextProducer({ now: () => "2026-05-21T10:00:00.000Z" });
+  const orchestrationResult = produceAndImportSource(producer, {
+    inputKind: "pasted_text",
+    text: "Kullanıcı metni source producer hattından gelir.",
+    title: "Üretici kaynak notu",
+    language: "tr",
+  });
+  const importResult = orchestrationResult.importResults[0]?.importResult;
+  assert.ok(importResult);
+
+  const summary = localState.applySourceImportResult(importResult);
+  unsubscribe();
+
+  assert.equal(orchestrationResult.importResults[0]?.sourceKind, "user_text");
+  assert.deepEqual(summary, {
+    sourcesAdded: 1,
+    evidenceAdded: 0,
+    nodesAdded: 0,
+    edgesAdded: 0,
+    notesAdded: 0,
+    edgesDropped: 0,
+    duplicatesSkipped: 0,
+    warnings: [],
+  });
+  assert.equal(notificationCount, 1);
+  assert.deepEqual(localState.getOverlay().localAuthoredSources, [
+    {
+      id: "local-source-001",
+      label: "Üretici kaynak notu",
+      origin: "Kullanıcı metni",
+      note: "Kullanıcı metni source producer hattından gelir.",
+      createdAt: localState.getOverlay().localAuthoredSources[0]?.createdAt,
     },
   ]);
 });

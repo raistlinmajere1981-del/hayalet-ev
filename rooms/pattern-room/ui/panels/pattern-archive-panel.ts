@@ -2,6 +2,7 @@ import type {
   PatternPanelActions,
   PatternRoomMockData,
   PatternSampleSourceImportStatus,
+  PatternUserTextSourceImportStatus,
 } from "../../shared/types/pattern-room.js";
 import { createActionButton, createElement, createPanelShell } from "./pattern-panel-utils.js";
 
@@ -72,10 +73,47 @@ function sourceTypeClass(sourceTypeLabel: string): string {
 
 function createSourceWorkbenchDemo(
   actions: PatternPanelActions,
+  userTextStatus: PatternUserTextSourceImportStatus | null,
   status: PatternSampleSourceImportStatus | null
 ): HTMLElement {
   const demo = createElement("section", "pattern-room-source-workbench-demo");
   demo.dataset["patternSourceWorkbenchDemo"] = "true";
+  const title = createTextInput("title", "Başlık");
+  title.dataset["patternUserTextSourceTitle"] = "true";
+  const text = createTextArea("text", "Metni buraya yapıştır");
+  text.dataset["patternUserTextSourceText"] = "true";
+  const form = createElement("form", "pattern-room-inline-form pattern-room-source-workbench-form");
+  form.dataset["patternUserTextSourceForm"] = "true";
+  const userTextStatusLine = createElement(
+    "p",
+    "pattern-room-source-workbench-status",
+    userTextStatus?.message ?? "Henüz kullanıcı metni kaynak olarak eklenmedi."
+  );
+  userTextStatusLine.dataset["patternUserTextSourceStatus"] = "true";
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (text.value.trim() === "") {
+      userTextStatusLine.textContent = "Metin boş olamaz.";
+      return;
+    }
+
+    const result = actions.importUserTextSource({
+      title: title.value,
+      text: text.value,
+      language: "tr",
+    });
+    userTextStatusLine.textContent = result.message;
+    if (result.success && !result.duplicate && typeof form.reset === "function") {
+      form.reset();
+    }
+  });
+
+  const submitButton = createSubmitButton("Metni Odaya Aktar");
+  submitButton.dataset["patternImportUserTextSource"] = "true";
+  form.append(title, text, submitButton);
+
+  const sampleWrap = createElement("div", "pattern-room-source-workbench-example");
   const importButton = createActionButton("Örnek Kaynak Paketini İçe Aktar", () => {
     actions.importSampleSourcePackage();
   });
@@ -86,16 +124,18 @@ function createSourceWorkbenchDemo(
     status?.message ?? "Henüz örnek kaynak paketi içe aktarılmadı."
   );
   statusLine.dataset["patternSourceImportStatus"] = "true";
+  sampleWrap.append(importButton, statusLine);
 
   demo.append(
-    createElement("h3", undefined, "Kaynak Atölyesi Demo"),
+    createElement("h3", undefined, "Kaynak Atölyesi"),
     createElement(
       "p",
       "pattern-room-inline-note",
-      "Bu örnek, ileride eklenecek kaynak hazırlama akışının yerel bir denemesidir. Dış dosya veya internet bağlantısı kullanmaz."
+      "Bu ilk sürüm metni kaynak olarak ekler; alıntı ve örüntü çıkarımı daha sonra eklenecek."
     ),
-    importButton,
-    statusLine
+    form,
+    userTextStatusLine,
+    sampleWrap
   );
   return demo;
 }
@@ -104,6 +144,7 @@ export function createArchivePanel(
   data: PatternRoomMockData,
   actions: PatternPanelActions,
   onBack: () => void,
+  userTextSourceImportStatus: PatternUserTextSourceImportStatus | null = null,
   sourceImportStatus: PatternSampleSourceImportStatus | null = null
 ): HTMLElement {
   const shell = createPanelShell("archive", "Arşiv", onBack);
@@ -147,7 +188,7 @@ export function createArchivePanel(
   });
 
   shell.append(
-    createSourceWorkbenchDemo(actions, sourceImportStatus),
+    createSourceWorkbenchDemo(actions, userTextSourceImportStatus, sourceImportStatus),
     createSourceAuthoringForm(actions),
     list
   );

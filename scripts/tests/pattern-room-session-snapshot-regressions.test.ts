@@ -18,6 +18,10 @@ import {
   PATTERN_ROOM_LOAD_COMMAND,
   PATTERN_ROOM_SAVE_COMMAND,
 } from "../../rooms/pattern-room/shared/types/pattern-room-persistence.ts";
+import {
+  createUserTextProducer,
+  produceAndImportSource,
+} from "../../rooms/pattern-room/shared/source-producers/index.ts";
 
 function createSnapshotReadyLocalState(): ReturnType<typeof createLocalState> {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
@@ -166,6 +170,39 @@ test("pattern-room phase 7B round-trips local authored overlay entries", () => {
     "local-node-001",
     "local-source-001",
     "local-evidence-001",
+  ]);
+
+  const roundTripState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  roundTripState.restoreOverlay(restored.overlay, restored.guards);
+  const roundTripSnapshot = createSnapshot(roundTripState, restored.activeView);
+  assertRestoredSnapshotStateMatches(roundTripSnapshot, snapshot);
+});
+
+test("pattern-room phase 12D round-trips user text producer sources", () => {
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const producer = createUserTextProducer({ now: () => "2026-05-21T10:00:00.000Z" });
+  const orchestrationResult = produceAndImportSource(producer, {
+    inputKind: "pasted_text",
+    text: "Başlıksız kullanıcı metni snapshot içinde kalmalı.",
+    language: "tr",
+  });
+  const importResult = orchestrationResult.importResults[0]?.importResult;
+  assert.ok(importResult);
+  localState.applySourceImportResult(importResult);
+
+  const snapshot = createSnapshot(localState, "archive");
+  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_MOCK);
+  assert.ok(restored);
+
+  assert.equal(snapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
+  assert.deepEqual(restored.overlay.localAuthoredSources, [
+    {
+      id: "local-source-001",
+      label: "Başlıksız kullanıcı metni snapshot içinde kalmalı.",
+      origin: "Kullanıcı metni",
+      note: "Başlıksız kullanıcı metni snapshot içinde kalmalı.",
+      createdAt: restored.overlay.localAuthoredSources[0]?.createdAt,
+    },
   ]);
 
   const roundTripState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
