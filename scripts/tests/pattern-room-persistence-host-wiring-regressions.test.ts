@@ -536,18 +536,23 @@ test("pattern-room host dispose waits for the pending save queue", async () => {
   assert.equal(saved, true);
 });
 
-test("pattern-room UI runtime consumes only host load events in Faz 10C-2", async () => {
+test("pattern-room UI runtime wires internal autosave without public persistence UI", async () => {
   const source = await readFile(
     resolve("rooms/pattern-room/ui/pattern-room-ui-runtime.ts"),
     "utf8"
   );
 
   const expectedUiRuntimeWiring = [
+    "AUTOSAVE_DEBOUNCE_MS = 2000",
     "PATTERN_ROOM_LOADED_EVENT",
+    "PATTERN_ROOM_SAVE_COMMAND",
     "PATTERN_ROOM_SAVED_EVENT",
     "PATTERN_ROOM_SAVE_FAILED_EVENT",
+    "beforeunload",
     "onHostMessage",
+    "sendCommand",
     "restoreSnapshot(payload",
+    "flush",
   ];
 
   for (const expected of expectedUiRuntimeWiring) {
@@ -555,19 +560,14 @@ test("pattern-room UI runtime consumes only host load events in Faz 10C-2", asyn
   }
 
   const forbiddenUiRuntimeWiring = [
-    "PATTERN_ROOM_SAVE_COMMAND",
     "PATTERN_ROOM_LOAD_COMMAND",
-    '"pattern:save"',
     '"pattern:load"',
-    "beforeunload",
     "visibilitychange",
     "pagehide",
-    "sendCommand",
     "sendEvent",
     "setInterval",
-    "setTimeout",
-    "autosave",
-    "autoSave",
+    "manualSave",
+    "manualLoad",
     "saveStatus",
     "sessionPicker",
   ];

@@ -6,14 +6,7 @@ import { pathToFileURL } from "node:url";
 
 import { createRoomInstalledCopy } from "./helpers/room-installed-copy.ts";
 
-export {
-  assert,
-  createRoomInstalledCopy,
-  pathToFileURL,
-  readFileSync,
-  resolve,
-  test,
-};
+export { assert, createRoomInstalledCopy, pathToFileURL, readFileSync, resolve, test };
 
 export class FakeElement {
   readonly tagName: string;
@@ -232,6 +225,8 @@ export function loadTranslations(locale: "en" | "tr"): Record<string, unknown> {
   ) as Record<string, unknown>;
 }
 
+type FakeWindowListener = (event?: Record<string, unknown>) => void;
+
 export function createMinimalForgeUiEnvironment() {
   const document = new FakeDocument();
   const app = document.createElement("div");
@@ -240,8 +235,11 @@ export function createMinimalForgeUiEnvironment() {
 
   const sentCommands: string[] = [];
   const sentEvents: Array<{ command: string; payload: Record<string, unknown> }> = [];
+  const windowEventListeners = new Map<string, FakeWindowListener[]>();
+  const pendingTimers = new Map<number, { delay: number; handler: () => void }>();
   let hostMessageHandler: ((message: Record<string, unknown>) => void) | null = null;
   let readyPayload: Record<string, unknown> | null = null;
+  let nextTimerId = 0;
 
   const descriptors = {
     document: Object.getOwnPropertyDescriptor(globalThis, "document"),
@@ -261,22 +259,51 @@ export function createMinimalForgeUiEnvironment() {
     value: document,
   });
 
+  function addWindowEventListener(type: string, handler: FakeWindowListener): void {
+    const handlers = windowEventListeners.get(type) ?? [];
+    handlers.push(handler);
+    windowEventListeners.set(type, handlers);
+  }
+
+  function removeWindowEventListener(type: string, handler: FakeWindowListener): void {
+    const handlers = windowEventListeners.get(type) ?? [];
+    windowEventListeners.set(
+      type,
+      handlers.filter((candidate) => candidate !== handler)
+    );
+  }
+
   Object.defineProperty(globalThis, "window", {
     configurable: true,
     value: {
+      addEventListener: addWindowEventListener,
+      clearTimeout(timerId: number): void {
+        pendingTimers.delete(timerId);
+      },
       document,
+      removeEventListener: removeWindowEventListener,
       roomAPI: {
         onHostMessage(handler: (message: Record<string, unknown>) => void) {
           hostMessageHandler = handler;
+          return () => {
+            if (hostMessageHandler === handler) {
+              hostMessageHandler = null;
+            }
+          };
         },
         ready(payload: Record<string, unknown>) {
           readyPayload = payload;
         },
         sendCommand(command: string, payload: Record<string, unknown> = {}) {
           sentCommands.push(command);
-           sentEvents.push({ command, payload });
+          sentEvents.push({ command, payload });
           return true;
         },
+      },
+      setTimeout(handler: () => void, delay = 0): number {
+        nextTimerId += 1;
+        pendingTimers.set(nextTimerId, { delay, handler });
+        return nextTimerId;
       },
     },
   });
@@ -285,6 +312,21 @@ export function createMinimalForgeUiEnvironment() {
     app,
     emitHostMessage(message: Record<string, unknown>) {
       hostMessageHandler?.(message);
+    },
+    hasHostMessageHandler() {
+      return hostMessageHandler !== null;
+    },
+    emitWindowEvent(type: string) {
+      const handlers = windowEventListeners.get(type) ?? [];
+      handlers.forEach((handler) => {
+        handler({});
+      });
+    },
+    windowListenerCount(type: string) {
+      return windowEventListeners.get(type)?.length ?? 0;
+    },
+    pendingTimerCount() {
+      return pendingTimers.size;
     },
     readyPayload() {
       return readyPayload;
@@ -296,6 +338,19 @@ export function createMinimalForgeUiEnvironment() {
         } else {
           Reflect.deleteProperty(globalThis, key);
         }
+      });
+    },
+    runPendingTimers(elapsedMs = Number.POSITIVE_INFINITY) {
+      const timers = Array.from(pendingTimers.entries())
+        .filter(([, timer]) => timer.delay <= elapsedMs)
+        .sort(([leftId], [rightId]) => leftId - rightId);
+
+      timers.forEach(([timerId, timer]) => {
+        if (pendingTimers.get(timerId) !== timer) {
+          return;
+        }
+        pendingTimers.delete(timerId);
+        timer.handler();
       });
     },
     sentEvents,

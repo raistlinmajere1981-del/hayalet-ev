@@ -13,12 +13,20 @@ import { createLocalState } from "../../rooms/pattern-room/shared/state/pattern-
 import { createSnapshot } from "../../rooms/pattern-room/shared/state/pattern-room-snapshot.ts";
 import {
   PATTERN_ROOM_LOADED_EVENT,
+  PATTERN_ROOM_SAVE_COMMAND,
   PATTERN_ROOM_SAVE_FAILED_EVENT,
 } from "../../rooms/pattern-room/shared/types/pattern-room-persistence.ts";
 import type { PatternRoomSessionSnapshot } from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
 
 const PATTERN_FOCUSED_VIEWS = ["board", "desk", "archive", "tenth-man", "report"] as const;
 type PatternFocusedViewId = (typeof PATTERN_FOCUSED_VIEWS)[number];
+type PatternRoomUiEnvironment = ReturnType<typeof createMinimalForgeUiEnvironment>;
+type PatternRoomUiRuntimeModule = {
+  createPatternRoomUiRuntime: () => {
+    dispose: () => void;
+    start: () => void;
+  };
+};
 
 function assertTextIncludes(text: string, expectedValues: string[]): void {
   expectedValues.forEach((expectedValue) => {
@@ -64,6 +72,18 @@ function submitForm(form: {
   assert.equal(defaultPrevented, true);
 }
 
+function submitLocalNote(
+  app: ReturnType<typeof createMinimalForgeUiEnvironment>["app"],
+  noteText: string
+): void {
+  const noteInput = app.querySelector("[data-pattern-local-note-input='true']");
+  const noteForm = app.querySelector("[data-pattern-local-note-form='true']");
+  assert.ok(noteInput);
+  assert.ok(noteForm);
+  noteInput.value = noteText;
+  fireEvent(noteForm, "submit");
+}
+
 function createHostLoadedSnapshot(
   activeView: PatternFocusedViewId | "overview",
   noteText: string
@@ -71,6 +91,27 @@ function createHostLoadedSnapshot(
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   localState.addLocalNote(noteText);
   return createSnapshot(localState, activeView);
+}
+
+function readLatestSavePayload(environment: PatternRoomUiEnvironment): Record<string, unknown> {
+  const event = environment.sentEvents[environment.sentEvents.length - 1];
+  assert.ok(event);
+  assert.equal(event.command, PATTERN_ROOM_SAVE_COMMAND);
+  return event.payload;
+}
+
+function assertSavePayloadIncludesNote(
+  payload: Record<string, unknown>,
+  noteText: string
+): PatternRoomSessionSnapshot {
+  const snapshot = payload["snapshot"] as PatternRoomSessionSnapshot;
+  assert.ok(snapshot);
+  assert.equal(snapshot.roomId, "pattern-room");
+  assert.equal(
+    snapshot.overlay.localNotes.some((note) => note.text === noteText),
+    true
+  );
+  return snapshot;
 }
 
 test("pattern-room installed UI renders overview hotspots and returns from focused views", async () => {
@@ -171,6 +212,7 @@ test("pattern-room installed UI restores a loaded host snapshot", async () => {
       "Yerel Notlar",
       "Restored host snapshot note",
     ]);
+    environment.runPendingTimers(2000);
     assert.deepEqual(environment.sentCommands, []);
     assert.deepEqual(environment.sentEvents, []);
   } finally {
@@ -196,6 +238,7 @@ test("pattern-room installed UI keeps the default state for a null loaded snapsh
     assert.ok(environment.app.querySelector("[data-pattern-view='overview']"));
     assert.match(readTreeText(environment.app), /Pattern Room/);
     assert.doesNotMatch(readTreeText(environment.app), /Restored host snapshot note/);
+    environment.runPendingTimers(2000);
     assert.deepEqual(environment.sentCommands, []);
     assert.deepEqual(environment.sentEvents, []);
   } finally {
@@ -236,6 +279,212 @@ test("pattern-room installed UI rejects an invalid loaded snapshot without break
   }
 });
 
+test("pattern-room installed UI does not autosave local mutations before host load completes", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?autosave-gate=${Date.now()}`
+    );
+
+    openFocusedView(environment.app, "report");
+    submitLocalNote(environment.app, "Mutation before loaded event");
+    environment.runPendingTimers(2000);
+
+    assert.equal(environment.pendingTimerCount(), 0);
+    assert.deepEqual(environment.sentCommands, []);
+    assert.deepEqual(environment.sentEvents, []);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+test("pattern-room installed UI debounces autosave after a null host load", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?autosave-null=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      payload: { snapshot: null },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+    openFocusedView(environment.app, "report");
+    submitLocalNote(environment.app, "Autosaved after null load");
+
+    assert.equal(environment.pendingTimerCount(), 1);
+    environment.runPendingTimers(1999);
+    assert.deepEqual(environment.sentCommands, []);
+
+    environment.runPendingTimers(2000);
+    assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_SAVE_COMMAND]);
+    const payload = readLatestSavePayload(environment);
+    assert.equal(payload["flush"], undefined);
+    assertSavePayloadIncludesNote(payload, "Autosaved after null load");
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+test("pattern-room installed UI autosaves only user mutations after restoring a snapshot", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+  const snapshot = createHostLoadedSnapshot("report", "Restored snapshot suppresses autosave");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?autosave-restore=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      payload: { snapshot },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+    environment.runPendingTimers(2000);
+    assert.deepEqual(environment.sentCommands, []);
+
+    submitLocalNote(environment.app, "Mutation after restored snapshot");
+    environment.runPendingTimers(2000);
+
+    assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_SAVE_COMMAND]);
+    const payload = readLatestSavePayload(environment);
+    const savedSnapshot = assertSavePayloadIncludesNote(
+      payload,
+      "Mutation after restored snapshot"
+    );
+    assert.equal(savedSnapshot.activeView, "report");
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+test("pattern-room installed UI coalesces fast autosave mutations into one save", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?autosave-coalesce=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      payload: { snapshot: null },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+    openFocusedView(environment.app, "report");
+
+    for (let index = 0; index < 5; index += 1) {
+      submitLocalNote(environment.app, `Fast autosave note ${index + 1}`);
+    }
+
+    assert.equal(environment.pendingTimerCount(), 1);
+    environment.runPendingTimers(2000);
+
+    assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_SAVE_COMMAND]);
+    const payload = readLatestSavePayload(environment);
+    const savedSnapshot = assertSavePayloadIncludesNote(payload, "Fast autosave note 5");
+    assert.equal(savedSnapshot.overlay.localNotes.length, 5);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+test("pattern-room installed UI flushes a pending autosave before unload", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?autosave-flush=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      payload: { snapshot: null },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+    openFocusedView(environment.app, "report");
+    submitLocalNote(environment.app, "Flush before unload note");
+
+    assert.equal(environment.pendingTimerCount(), 1);
+    environment.emitWindowEvent("beforeunload");
+
+    assert.equal(environment.pendingTimerCount(), 0);
+    assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_SAVE_COMMAND]);
+    const payload = readLatestSavePayload(environment);
+    assert.equal(payload["flush"], true);
+    assertSavePayloadIncludesNote(payload, "Flush before unload note");
+
+    environment.runPendingTimers(2000);
+    assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_SAVE_COMMAND]);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+test("pattern-room installed UI dispose flushes pending autosave and disconnects listeners", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+  const originalWarn = console.warn;
+  const warnings: string[] = [];
+
+  try {
+    const runtimeModule = (await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/pattern-room-ui-runtime.js")).href}?autosave-dispose=${Date.now()}`
+    )) as PatternRoomUiRuntimeModule;
+    const runtime = runtimeModule.createPatternRoomUiRuntime();
+
+    runtime.start();
+    assert.equal(environment.hasHostMessageHandler(), true);
+    assert.equal(environment.windowListenerCount("beforeunload"), 1);
+
+    environment.emitHostMessage({
+      payload: { snapshot: null },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+    openFocusedView(environment.app, "report");
+    submitLocalNote(environment.app, "Dispose flush note");
+
+    assert.equal(environment.pendingTimerCount(), 1);
+    runtime.dispose();
+
+    assert.equal(environment.pendingTimerCount(), 0);
+    assert.equal(environment.hasHostMessageHandler(), false);
+    assert.equal(environment.windowListenerCount("beforeunload"), 0);
+    assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_SAVE_COMMAND]);
+    const payload = readLatestSavePayload(environment);
+    assert.equal(payload["flush"], true);
+    assertSavePayloadIncludesNote(payload, "Dispose flush note");
+
+    console.warn = (...args: unknown[]): void => {
+      warnings.push(args.map(String).join(" "));
+    };
+    environment.emitHostMessage({
+      payload: {
+        error: "Pattern Room disposed listener should not receive this.",
+        success: false,
+      },
+      type: PATTERN_ROOM_SAVE_FAILED_EVENT,
+    });
+    environment.emitWindowEvent("beforeunload");
+
+    assert.deepEqual(warnings, []);
+    assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_SAVE_COMMAND]);
+  } finally {
+    console.warn = originalWarn;
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
 test("pattern-room installed UI handles save-failed host events without status UI", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
@@ -251,6 +500,10 @@ test("pattern-room installed UI handles save-failed host events without status U
       warnings.push(args.map(String).join(" "));
     };
 
+    environment.emitHostMessage({
+      payload: { snapshot: null },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
     environment.emitHostMessage({
       payload: {
         error: "Pattern Room test save failed.",

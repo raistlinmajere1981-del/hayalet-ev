@@ -4,6 +4,7 @@ import { createLocalState } from "../shared/state/pattern-room-local-state.js";
 import { createSnapshot, restoreFromSnapshot } from "../shared/state/pattern-room-snapshot.js";
 import {
   PATTERN_ROOM_LOADED_EVENT,
+  PATTERN_ROOM_SAVE_COMMAND,
   PATTERN_ROOM_SAVED_EVENT,
   PATTERN_ROOM_SAVE_FAILED_EVENT,
 } from "../shared/types/pattern-room-persistence.js";
@@ -21,15 +22,22 @@ import { createReportPanel } from "./panels/pattern-report-panel.js";
 import { createTenthManPanel } from "./panels/pattern-tenth-man-panel.js";
 
 type FocusedPatternViewId = Exclude<PatternViewId, "overview">;
+type HostMessageUnsubscribe = () => void;
+const AUTOSAVE_DEBOUNCE_MS = 2000;
 
 export type PatternRoomUiRuntime = {
   start: () => void;
+  dispose: () => void;
   createSnapshot: () => PatternRoomSessionSnapshot;
   restoreSnapshot: (snapshot: unknown) => boolean;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isHostMessageUnsubscribe(value: unknown): value is HostMessageUnsubscribe {
+  return typeof value === "function";
 }
 
 function resolveRoot(): HTMLElement {
@@ -54,6 +62,12 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     localState.getOverlay()
   );
   let hostMessagesConnected = false;
+  let removeHostMessageListener: HostMessageUnsubscribe | null = null;
+  let beforeUnloadConnected = false;
+  let persistenceReady = false;
+  let isRestoring = false;
+  let dirty = false;
+  let pendingSaveTimer: number | null = null;
 
   const actions: PatternPanelActions = {
     getSelectedNodeId(): string | null {
@@ -118,7 +132,77 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
   localState.subscribe(() => {
     viewModels = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK, localState.getOverlay());
     render();
+    scheduleAutosave();
   });
+
+  function createCurrentSnapshot(): PatternRoomSessionSnapshot {
+    return createSnapshot(localState, activeView);
+  }
+
+  function clearPendingAutosave(): void {
+    if (pendingSaveTimer === null) {
+      return;
+    }
+
+    window.clearTimeout(pendingSaveTimer);
+    pendingSaveTimer = null;
+  }
+
+  function sendPersistenceSave(flush = false): void {
+    const sendCommand = window.roomAPI?.sendCommand;
+    if (typeof sendCommand !== "function") {
+      return;
+    }
+
+    const payload: Record<string, unknown> = {
+      snapshot: createCurrentSnapshot(),
+    };
+    if (flush) {
+      payload["flush"] = true;
+    }
+
+    try {
+      if (sendCommand(PATTERN_ROOM_SAVE_COMMAND, payload)) {
+        dirty = false;
+      }
+    } catch (error) {
+      console.warn("Pattern Room save command failed.", error);
+    }
+  }
+
+  function scheduleAutosave(): void {
+    if (!persistenceReady || isRestoring) {
+      return;
+    }
+
+    dirty = true;
+    clearPendingAutosave();
+    pendingSaveTimer = window.setTimeout(() => {
+      pendingSaveTimer = null;
+      if (dirty) {
+        sendPersistenceSave();
+      }
+    }, AUTOSAVE_DEBOUNCE_MS);
+  }
+
+  function markPersistenceReady(): void {
+    persistenceReady = true;
+    dirty = false;
+    clearPendingAutosave();
+  }
+
+  function flushPendingSave(): void {
+    clearPendingAutosave();
+    if (!persistenceReady || isRestoring || !dirty) {
+      return;
+    }
+
+    sendPersistenceSave(true);
+  }
+
+  function handleBeforeUnload(): void {
+    flushPendingSave();
+  }
 
   function setActiveView(viewId: PatternViewId): void {
     activeView = viewId;
@@ -153,13 +237,19 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
       return false;
     }
 
-    activeView = restoredState.activeView;
-    localState.restoreOverlay(restoredState.overlay, restoredState.guards);
-    return true;
+    isRestoring = true;
+    try {
+      activeView = restoredState.activeView;
+      localState.restoreOverlay(restoredState.overlay, restoredState.guards);
+      return true;
+    } finally {
+      isRestoring = false;
+    }
   }
 
   function handleLoadedPayload(payload: unknown): void {
-    if (!isRecord(payload) || payload["snapshot"] === null) {
+    if (!isRecord(payload) || payload["snapshot"] === null || payload["snapshot"] === undefined) {
+      markPersistenceReady();
       return;
     }
 
@@ -167,6 +257,8 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
       restoreSnapshot(payload["snapshot"]);
     } catch (error) {
       console.warn("Pattern Room snapshot restore failed.", error);
+    } finally {
+      markPersistenceReady();
     }
   }
 
@@ -175,6 +267,7 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
       isRecord(payload) && typeof payload["error"] === "string"
         ? payload["error"]
         : "Pattern Room save failed.";
+    dirty = true;
     console.warn(message);
   }
 
@@ -203,7 +296,38 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     }
 
     hostMessagesConnected = true;
-    window.roomAPI.onHostMessage(handleHostMessage);
+    const maybeRemoveListener = window.roomAPI.onHostMessage(handleHostMessage) as unknown;
+    removeHostMessageListener = isHostMessageUnsubscribe(maybeRemoveListener)
+      ? maybeRemoveListener
+      : null;
+  }
+
+  function disconnectHostMessages(): void {
+    if (!hostMessagesConnected) {
+      return;
+    }
+
+    removeHostMessageListener?.();
+    removeHostMessageListener = null;
+    hostMessagesConnected = false;
+  }
+
+  function connectBeforeUnload(): void {
+    if (beforeUnloadConnected || typeof window.addEventListener !== "function") {
+      return;
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    beforeUnloadConnected = true;
+  }
+
+  function disconnectBeforeUnload(): void {
+    if (!beforeUnloadConnected || typeof window.removeEventListener !== "function") {
+      return;
+    }
+
+    window.removeEventListener("beforeunload", handleBeforeUnload);
+    beforeUnloadConnected = false;
   }
 
   function announceReady(): void {
@@ -217,11 +341,18 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
   return {
     start(): void {
       connectHostMessages();
+      connectBeforeUnload();
       render();
       announceReady();
     },
+    dispose(): void {
+      flushPendingSave();
+      disconnectHostMessages();
+      disconnectBeforeUnload();
+      clearPendingAutosave();
+    },
     createSnapshot(): PatternRoomSessionSnapshot {
-      return createSnapshot(localState, activeView);
+      return createCurrentSnapshot();
     },
     restoreSnapshot,
   };
