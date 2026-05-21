@@ -47,6 +47,7 @@ module.exports = {
           "rooms/laboratory/ui/lab-waveform-timeline-types\\.ts$", // timeline model contract consumed through import type
           "rooms/laboratory/runtime/lab-decision-priority\\.ts$", // regression-covered decision ordering helper
           "rooms/pattern-room/shared/types/pattern-room\\.ts$", // room UI model contract consumed through import type
+          "rooms/pattern-room/shared/types/pattern-room-storage\\.ts$", // type-only Pattern Room storage contract consumed through import type
         ],
       },
       to: {},

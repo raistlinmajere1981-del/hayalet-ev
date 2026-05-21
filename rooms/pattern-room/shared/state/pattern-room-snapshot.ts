@@ -424,7 +424,7 @@ function parseGuards(value: unknown): PatternRoomLocalGuards | null {
   };
 }
 
-function parseSnapshot(value: unknown): PatternRoomSessionSnapshot | null {
+export function parsePatternRoomSessionSnapshot(value: unknown): PatternRoomSessionSnapshot | null {
   if (
     !isRecord(value) ||
     typeof value["snapshotId"] !== "string" ||
@@ -649,7 +649,7 @@ export function restoreFromSnapshot(
   snapshot: unknown,
   domainMock: PatternRoomLocalDomainReference
 ): PatternRoomSnapshotRestoreResult | null {
-  const parsedSnapshot = parseSnapshot(snapshot);
+  const parsedSnapshot = parsePatternRoomSessionSnapshot(snapshot);
   if (parsedSnapshot === null) {
     return null;
   }
