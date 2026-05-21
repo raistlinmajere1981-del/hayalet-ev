@@ -7,7 +7,7 @@ import { createLaboratoryHostUtils } from "../shared/host/host-utils.js";
 import { createLaboratoryHostIoRuntime } from "../shared/host/io-runtime.js";
 import { createLaboratoryRuntimeBootstrap } from "../shared/host/runtime-bootstrap.js";
 import { createLaboratoryPresetRuntime } from "../shared/host/preset-runtime.js";
-import { createAudioAnalysisUtilityRuntime } from "../main-functions/audio-analysis/host/analysis-utils.js";
+import { createAudioAnalysisUtilityRuntime } from "../features/audio-analysis/host/analysis-utils.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 type LaboratoryPresetRuntimeDeps = Parameters<typeof createLaboratoryPresetRuntime>[0];

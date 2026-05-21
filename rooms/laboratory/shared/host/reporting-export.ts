@@ -25,6 +25,19 @@ type LaboratoryReportExportOptions = LaboratoryRecord & {
   targetDirectory?: unknown;
 };
 
+type LaboratoryOpenDialogResult = {
+  canceled?: unknown;
+  filePaths?: unknown;
+};
+
+type LaboratoryReportExportElectronApi = {
+  showOpenDialog?: (options: LaboratoryRecord) => Promise<LaboratoryOpenDialogResult>;
+};
+
+type LaboratoryReportExportResult = {
+  cancelled?: true;
+};
+
 type LaboratoryReportExportRuntimeDeps = {
   buildReportMarkdown: (
     runtime: unknown,
@@ -45,6 +58,7 @@ type LaboratoryReportExportRuntimeDeps = {
   ) => Promise<unknown>;
   ensureReportJobSlotAvailable: (runtime: unknown, projectId: string, action: string) => void;
   getActiveProject: (runtime: unknown) => LaboratoryReportExportProject | null;
+  getElectronApi?: () => LaboratoryReportExportElectronApi | null;
   getFeatureReportDir: (runtime: unknown, project: LaboratoryRecord, featureId: string) => string;
   getFeatureReportExportAction: (featureId: string) => string;
   getFeatureReportRecord: (
@@ -81,6 +95,11 @@ function getTargetDirectory(options: LaboratoryReportExportOptions): string | nu
     asNonEmptyString(options["outputDirectory"]) ||
     asNonEmptyString(options["directory"])
   );
+}
+
+function getDialogFilePath(selection: LaboratoryOpenDialogResult): string | null {
+  const filePaths = Array.isArray(selection.filePaths) ? selection.filePaths : [];
+  return asNonEmptyString(filePaths[0]);
 }
 
 function joinDirectoryPath(directoryPath: string, fileName: string): string {
@@ -204,7 +223,34 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
     getFeatureReportRecord,
     composeFeatureReport,
     buildReportMarkdown,
+    getElectronApi,
   } = deps;
+
+  async function resolveSelectedExportDirectory(
+    format: LaboratoryReportExportFormat,
+    options: LaboratoryReportExportOptions
+  ): Promise<{ cancelled: true } | { cancelled: false; targetDirectory: string }> {
+    const targetDirectory = getTargetDirectory(options);
+    if (targetDirectory !== null) {
+      return { cancelled: false, targetDirectory };
+    }
+
+    const electronApi = typeof getElectronApi === "function" ? getElectronApi() : null;
+    if (electronApi === null || typeof electronApi.showOpenDialog !== "function") {
+      throw new Error("Report export folder picker is unavailable.");
+    }
+
+    const selection = await electronApi.showOpenDialog({
+      buttonLabel: format === "json" ? "JSON Disa Aktar" : "PDF Disa Aktar",
+      properties: ["openDirectory", "createDirectory"],
+      title: format === "json" ? "JSON rapor klasoru sec" : "PDF rapor klasoru sec",
+    });
+    const selectedDirectory = getDialogFilePath(selection);
+    if (selection.canceled === true || selectedDirectory === null) {
+      return { cancelled: true };
+    }
+    return { cancelled: false, targetDirectory: selectedDirectory };
+  }
 
   async function exportFeatureReport(
     api: unknown,
@@ -212,7 +258,7 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
     requestId: string,
     featureId: string,
     options: LaboratoryReportExportOptions = {}
-  ): Promise<void> {
+  ): Promise<LaboratoryReportExportResult> {
     const project = getActiveProject(runtime);
     if (project === null) {
       throw new Error("Active project is missing.");
@@ -225,6 +271,16 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
     }
 
     const action = getFeatureReportExportAction(featureId);
+    const requestedFormat =
+      normalizeExportFormat(options["format"]) || normalizeExportFormat(options["exportFormat"]);
+    const selectedDirectory =
+      requestedFormat === null
+        ? null
+        : await resolveSelectedExportDirectory(requestedFormat, options);
+    if (selectedDirectory?.cancelled === true) {
+      return { cancelled: true };
+    }
+
     ensureReportJobSlotAvailable(runtime, project.id, action);
     const jobId = `room-report-${featureId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     registerJob(runtime, {
@@ -247,13 +303,8 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
       let createdResultAssetIds: string[] = [];
       const stamp = new Date().toISOString().replace(/[:.]/g, "-");
       const baseName = `${sanitizeFileSegment(project.slug, "project")}-${featureId}-${stamp}`;
-      const requestedFormat =
-        normalizeExportFormat(options["format"]) || normalizeExportFormat(options["exportFormat"]);
-      const targetDirectory = getTargetDirectory(options);
-      if (requestedFormat !== null && targetDirectory === null) {
-        throw new Error("Report export folder is required.");
-      }
-      if (requestedFormat !== null && targetDirectory !== null) {
+      if (requestedFormat !== null && selectedDirectory !== null) {
+        const targetDirectory = selectedDirectory.targetDirectory;
         const fileName =
           requestedFormat === "json" ? `${baseName}-ai.json` : `${baseName}-user.pdf`;
         const outputPath = joinDirectoryPath(targetDirectory, fileName);
@@ -304,7 +355,7 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
           outputPath,
           stage: "completed",
         });
-        return;
+        return {};
       }
 
       const fileName = `${baseName}-user.md`;
@@ -401,6 +452,7 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
         ...(createdResultAssetIds.length > 0 ? { resultAssetIds: createdResultAssetIds } : {}),
         stage: "completed",
       });
+      return {};
     } catch (error) {
       await patchActiveProject(runtime, function (nextProject) {
         setFeatureReportRecord(nextProject, featureId, {

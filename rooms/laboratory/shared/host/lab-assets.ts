@@ -1,4 +1,4 @@
-import type { LabAsset, LabAssetType, LabRecord } from "../../models/lab-types.js";
+import type { LabAsset, LabAssetType, LabRecord } from "../../domain/lab-types.js";
 
 const LAB_ASSET_TYPES: LabAssetType[] = [
   "source",

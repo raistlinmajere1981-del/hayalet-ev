@@ -196,7 +196,6 @@ export function createLaboratoryProjectLifecycleRuntime(
     createDefaultProfileModelEntry: deps.createDefaultProfileModelEntry,
     createDefaultToolEntry: deps.createDefaultToolEntry,
     createDefaultToolState: deps.createDefaultToolState,
-    getProfileModelStatePath: deps.getProfileModelStatePath,
     getProjectEditManifestPath: deps.getProjectEditManifestPath,
     getProjectMetaPath: deps.getProjectMetaPath,
     getProjectProcessManifestPath: deps.getProjectProcessManifestPath,
@@ -257,11 +256,11 @@ export function createLaboratoryProjectLifecycleRuntime(
     "resolve-paths",
     "load-config",
     "load-tool-state",
-    "load-profile-model-state",
+    "load-transcript-runtime-state",
     "load-projects",
     "ensure-project",
     "refresh-tools",
-    "refresh-profile-models",
+    "refresh-transcript-runtime",
   ] as const;
   type LaboratoryBootstrapStepId = (typeof bootstrapStepIds)[number];
 
@@ -467,8 +466,8 @@ export function createLaboratoryProjectLifecycleRuntime(
           api,
           runtime,
           "running",
-          "load-profile-model-state",
-          "load-profile-model-state"
+          "load-transcript-runtime-state",
+          "load-transcript-runtime-state"
         );
         await loadProfileModelState(requireProjectStorageRuntime(runtime));
 
@@ -487,8 +486,8 @@ export function createLaboratoryProjectLifecycleRuntime(
           api,
           runtime,
           "running",
-          "refresh-profile-models",
-          "refresh-profile-models"
+          "refresh-transcript-runtime",
+          "refresh-transcript-runtime"
         );
         await refreshProfileModelState(runtime);
 

@@ -1,4 +1,4 @@
-import type { LabStoreEvent } from "../models/lab-types.js";
+import type { LabStoreEvent } from "../domain/lab-types.js";
 import { bindLabDocumentEvents, isClosestCapableTarget } from "./lab-dom-events.js";
 
 type SelectionSuggestionBinderDeps = {

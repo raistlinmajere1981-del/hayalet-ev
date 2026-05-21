@@ -25,7 +25,7 @@ Current warning concentration:
   - `npx eslint "rooms/laboratory/**/*.{js,ts}"`
   - `npx eslint "rooms/game-room/**/*.{js,ts}"`
   - `npx eslint "rooms/game-room/main-functions/fate-knots/**/*.{js,ts}"`
-  - `npx eslint "rooms/laboratory/shared/**/*.{js,ts}" "rooms/laboratory/main-functions/media-analysis/**/*.{js,ts}"`
+  - `npx eslint "rooms/laboratory/shared/**/*.{js,ts}" "rooms/laboratory/features/media-analysis/**/*.{js,ts}"`
 - Worktree hygiene: only one worker edits a room subtree at a time unless the write sets are explicitly disjoint.
 - Keep changes atomic: one cluster, one validation pass, one commit.
 
@@ -160,7 +160,7 @@ Suggested second-session prompt:
 
 ### Task S3-T1: Clean Media-Analysis Host And Projection Layers
 
-- **Location**: `rooms/laboratory/main-functions/media-analysis/**/*.{ts,js}`, `rooms/laboratory/host/feature-runtimes.ts`, `rooms/laboratory/host/project-runtimes.ts`
+- **Location**: `rooms/laboratory/features/media-analysis/**/*.{ts,js}`, `rooms/laboratory/host/feature-runtimes.ts`, `rooms/laboratory/host/project-runtimes.ts`
 - **Description**: Remove `any`-driven flow from media profile projection, feature runtime composition, and related host adapters. Focus on projection records, profile target resolution, and typed runtime return shapes because these fan out into many downstream warnings.
 - **depends_on**: [S1-T1]
 - **Acceptance Criteria**:
@@ -168,23 +168,22 @@ Suggested second-session prompt:
   - High-noise files such as `profile-projection.ts` and composition runtimes show major warning reduction.
   - Shared types introduced here are reusable by other laboratory features.
 - **Validation**:
-  - `npx eslint "rooms/laboratory/main-functions/media-analysis/**/*.{ts,js}" "rooms/laboratory/host/feature-runtimes.ts" "rooms/laboratory/host/project-runtimes.ts"`
+  - `npx eslint "rooms/laboratory/features/media-analysis/**/*.{ts,js}" "rooms/laboratory/host/feature-runtimes.ts" "rooms/laboratory/host/project-runtimes.ts"`
 
-### Task S3-T2: Clean Subtitle-Analysis Runtime Surface
+### Task S3-T2: Confirm Retired Subtitle-Analysis Surface
 
-- **Location**: `rooms/laboratory/main-functions/subtitle-analysis/**/*.{ts,js}`
-- **Description**: Type the subtitle-analysis feature boundary after the shared laboratory contracts are stable. Reuse the same pattern as media-analysis: explicit dependency contracts, typed records, and narrow helper returns.
+- **Location**: current Laboratory source tree
+- **Description**: Confirm subtitle-analysis has not reappeared as a source feature before spending lint effort on it. If the feature returns later, it should use the current `rooms/laboratory/features/<feature-id>` layout.
 - **depends_on**: [S1-T1]
 - **Acceptance Criteria**:
-  - Subtitle-analysis feature modules no longer depend on broad `any` payloads.
-  - Job/process/report accessors use typed shapes instead of repeated unsafe casting.
-  - Warning counts fall without reintroducing duplicate helper types.
+  - No stale subtitle-analysis path is used as an active lint target.
+  - Any future subtitle-analysis work follows the current feature layout.
 - **Validation**:
-  - `npx eslint "rooms/laboratory/main-functions/subtitle-analysis/**/*.{ts,js}"`
+  - `rg -n "rooms/laboratory/.*/subtitle-analysis" .rovo rooms scripts`
 
 ### Task S3-T3: Clean Audio-Analysis Runtime Surface
 
-- **Location**: `rooms/laboratory/main-functions/audio-analysis/**/*.{ts,js}`
+- **Location**: `rooms/laboratory/features/audio-analysis/**/*.{ts,js}`
 - **Description**: Apply the shared laboratory typing approach to audio-analysis, especially module catalogs, provider state access, and analysis result composition paths.
 - **depends_on**: [S1-T1]
 - **Acceptance Criteria**:
@@ -192,7 +191,7 @@ Suggested second-session prompt:
   - Remaining warnings are isolated to explicitly documented edge adapters, not core flows.
   - The room-level lint count moves close to zero or to a small, explainable tail.
 - **Validation**:
-  - `npx eslint "rooms/laboratory/main-functions/audio-analysis/**/*.{ts,js}"`
+  - `npx eslint "rooms/laboratory/features/audio-analysis/**/*.{ts,js}"`
 
 ## Sprint 4: Convergence And Regression Guard
 

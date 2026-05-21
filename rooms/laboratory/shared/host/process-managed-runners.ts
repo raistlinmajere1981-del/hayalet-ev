@@ -103,7 +103,7 @@ type LaboratoryManagedProcessRunnersDeps = {
     moduleId: string
   ) => string;
   getAudioAnalysisModuleRunner: LaboratoryManagedAudioRunnerDeps["getAudioAnalysisModuleRunner"];
-  maybeRunWhisperProfileSample: (
+  maybeRunTranscriptProfileSample: (
     runtime: LaboratoryRecord,
     project: LaboratoryRecord,
     requestId: string,
@@ -118,14 +118,16 @@ type LaboratoryManagedProcessRunnersDeps = {
     project: LaboratoryRecord,
     requestId: string,
     jobId: string,
-    target: LaboratoryRecord
+    target: LaboratoryRecord,
+    options?: LaboratoryRecord
   ) => Promise<unknown>;
   runVideoStructureProbe: (
     runtime: LaboratoryRecord,
     project: LaboratoryRecord,
     requestId: string,
     jobId: string,
-    target: LaboratoryRecord
+    target: LaboratoryRecord,
+    options?: LaboratoryRecord
   ) => Promise<unknown>;
   sanitizeFileSegment: (value: string, fallbackValue: string) => string;
   toRecord: (value: unknown) => LaboratoryRecord;
@@ -164,7 +166,7 @@ export function createLaboratoryManagedProcessRunnersRuntime(
     generateProcessMetadataArtifact: deps.generateProcessMetadataArtifact,
     generateProcessSpectrogram: deps.generateProcessSpectrogram,
     generateProcessVisualTransformArtifact: deps.generateProcessVisualTransformArtifact,
-    maybeRunWhisperProfileSample: deps.maybeRunWhisperProfileSample,
+    maybeRunTranscriptProfileSample: deps.maybeRunTranscriptProfileSample,
     normalizeProcessArtifact: deps.normalizeProcessArtifact,
     normalizeProcessFinding: deps.normalizeProcessFinding,
     partitionVisualAnalysisModuleIds: deps.partitionVisualAnalysisModuleIds,

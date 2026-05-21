@@ -3,7 +3,7 @@ import type {
   LabInspectionMode,
   LabInterpretationItem,
   LabSelection,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 
 type InterpretationContext = {
   activeSelection: LabSelection | null;

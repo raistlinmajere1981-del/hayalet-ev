@@ -195,6 +195,17 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
     });
   }
 
+  function formatTimeoutMs(timeoutMs: number) {
+    if (timeoutMs >= 60_000) {
+      return `${Math.round(timeoutMs / 60_000)}m`;
+    }
+    return `${Math.round(timeoutMs / 1000)}s`;
+  }
+
+  function trimToolOutput(value: string) {
+    return value.length <= 1200 ? value : value.slice(-1200);
+  }
+
   async function runProfileTool(_runtime: unknown, options: RunProfileToolOptions) {
     const runResult = await callRoomTools({
       operation: "tool-run",
@@ -209,7 +220,15 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
     });
     const runPayload = toRecord(runResult["run"]);
     const exitCode = typeof runPayload["exitCode"] === "number" ? runPayload["exitCode"] : 0;
-    if (runPayload["cancelled"] === true || exitCode !== 0) {
+    if (runPayload["cancelled"] === true) {
+      const stderr = asNonEmptyString(runPayload["stderr"]);
+      throw new Error(
+        `${options.toolId} job was cancelled or timed out after ${formatTimeoutMs(options.timeoutMs)}.${
+          stderr ? ` Last output:\n${trimToolOutput(stderr)}` : ""
+        }`
+      );
+    }
+    if (exitCode !== 0) {
       throw new Error(asNonEmptyString(runPayload["stderr"]) || `${options.toolId} job failed.`);
     }
     return runPayload;
@@ -334,7 +353,7 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
     return createProfileArtifact("spectrogram", outputPath, "Spectrogram", {});
   }
 
-  async function maybeRunWhisperProfileSample(
+  async function maybeRunTranscriptProfileSample(
     runtime: { paths: { projectsDir: string } },
     project: LaboratoryRecord,
     requestId: string | null,
@@ -680,7 +699,7 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
     generateProfileMetadataArtifact,
     generateProfileSpectrogram,
     getFindingSeverityRank,
-    maybeRunWhisperProfileSample,
+    maybeRunTranscriptProfileSample,
     runProfileTool,
   };
 }

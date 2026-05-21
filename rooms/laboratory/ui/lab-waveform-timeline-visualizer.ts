@@ -2,7 +2,7 @@ import type {
   LabArtifactProjection,
   LabAudioFocusSettings,
   LabPreviewArtifactProjection,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 import { createAudioVisualizer } from "../runtime/lab-audio-visualizer.js";
 import type {
   LabWaveformTimelineModel,

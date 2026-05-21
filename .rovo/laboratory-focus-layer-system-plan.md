@@ -9,7 +9,7 @@ Introduce a small UI-only focus layer state for the Laboratory workspace so the 
 ## Research Summary
 - Laboratory source of truth is `rooms/laboratory`; generated `data/rooms/laboratory` must not be edited directly.
 - UI rendering is centered in `rooms/laboratory/ui/workspace-surface.ts`, with the main surface composed as preview, timeline, and inspector inside the existing `.labx-media-workbench` / `.labx-workspace-stage` structure.
-- UI state and event contracts live in `rooms/laboratory/models/lab-types.ts`; reducer defaults and event handling live in `rooms/laboratory/runtime/lab-store.ts`.
+- UI state and event contracts live in `rooms/laboratory/domain/lab-types.ts`; reducer defaults and event handling live in `rooms/laboratory/runtime/lab-store.ts`.
 - Browser interaction wiring lives in `rooms/laboratory/runtime/lab-run-controller.ts`.
 - Workspace styling is primarily in `rooms/laboratory/ui/lab-theme.css`.
 - Existing tests already cover store, controller, workspace render output, and CSS source contracts under `scripts/tests/laboratory-*.test.ts`.
@@ -41,7 +41,7 @@ Introduce a small UI-only focus layer state for the Laboratory workspace so the 
 - No layout wrappers are introduced.
 
 ### Task 1.1: Add Focus Layer Types
-- **Location**: `rooms/laboratory/models/lab-types.ts`
+- **Location**: `rooms/laboratory/domain/lab-types.ts`
 - **Description**: Add `LabFocusLayer = "preview" | "timeline" | "inspector"` and add `labFocusLayer: LabFocusLayer` to `LabStoreUiState`.
 - **Complexity**: 2/10
 - **Dependencies**: None
@@ -52,7 +52,7 @@ Introduce a small UI-only focus layer state for the Laboratory workspace so the 
   - `npm run rooms:typecheck`
 
 ### Task 1.2: Add Store Default And Event
-- **Location**: `rooms/laboratory/models/lab-types.ts`, `rooms/laboratory/runtime/lab-store.ts`
+- **Location**: `rooms/laboratory/domain/lab-types.ts`, `rooms/laboratory/runtime/lab-store.ts`
 - **Description**: Add `lab-focus-layer-changed` event, default `ui.labFocusLayer` to `preview`, and no-op duplicate changes. Even though the event is typed, add a reducer-side runtime guard so malformed events from untyped tests/devtools cannot write invalid focus values.
 - **Complexity**: 3/10
 - **Dependencies**: Task 1.1

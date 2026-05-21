@@ -25,7 +25,7 @@ const TOOL_ADAPTERS: Record<string, string> = {
   "object-analysis": "onnx-runtime",
   "ocr-analysis": "tesseract",
   "signal-inspection": "pyAudioAnalysis",
-  "speech-transcription": "whisper.cpp",
+  "speech-transcription": "transcript-runtime",
   "visual-operation": "ffmpeg",
 };
 

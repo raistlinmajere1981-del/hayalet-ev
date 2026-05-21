@@ -1,4 +1,4 @@
-import type { LabInteractiveSettings } from "../models/lab-types.js";
+import type { LabInteractiveSettings } from "../domain/lab-types.js";
 
 export const DEFAULT_LAB_INTERACTIVE_SETTINGS: LabInteractiveSettings = {
   brightness: 100,

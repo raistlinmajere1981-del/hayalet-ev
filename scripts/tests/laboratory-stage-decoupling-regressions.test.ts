@@ -16,7 +16,7 @@ import {
   isRunComplete,
   getToolRelevanceFilter,
 } from "../../rooms/laboratory/runtime/lab-selectors.ts";
-import type { LabEventFeedItem } from "../../rooms/laboratory/models/lab-types.ts";
+import type { LabEventFeedItem } from "../../rooms/laboratory/domain/lab-types.ts";
 
 function createProcessRunEvent(overrides: Partial<LabEventFeedItem> = {}): LabEventFeedItem {
   return {
@@ -842,8 +842,8 @@ test("switching intents changes tool relevance without stage change", () => {
   const state = store.getState();
   const relevance = getToolRelevanceFilter(state);
   // detail-enhancement → transcription, source-separation
-  // transcription requires whisper.cpp; source-separation requires demucs + ffmpeg
-  assert.equal(relevance.requiredToolIds.includes("whisper.cpp"), true);
+  // transcription requires transcript-runtime; source-separation requires demucs + ffmpeg
+  assert.equal(relevance.requiredToolIds.includes("transcript-runtime"), true);
   assert.equal(relevance.requiredToolIds.includes("demucs"), true);
   assert.equal(relevance.requiredToolIds.includes("ffmpeg"), true);
   assert.equal(getToolLifecycleStage(state), "edit");

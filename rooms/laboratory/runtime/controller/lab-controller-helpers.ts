@@ -1,5 +1,5 @@
-import { asLabRecord, createLabEventId } from "../../models/lab-types.js";
-import type { LabFeatureId } from "../../models/lab-types.js";
+import { asLabRecord, createLabEventId } from "../../domain/lab-types.js";
+import type { LabFeatureId } from "../../domain/lab-types.js";
 
 export function toStringValue(value: unknown): string {
   return typeof value === "string" ? value : "";

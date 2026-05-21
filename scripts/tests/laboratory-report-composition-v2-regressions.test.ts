@@ -1,12 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import type { LabRun } from "../../rooms/laboratory/models/lab-types.ts";
-import { createAudioAnalysisParserRuntime } from "../../rooms/laboratory/main-functions/audio-analysis/host/analysis-parsers.ts";
+import type { LabRun } from "../../rooms/laboratory/domain/lab-types.ts";
+import { createAudioAnalysisParserRuntime } from "../../rooms/laboratory/features/audio-analysis/host/analysis-parsers.ts";
 import { buildAiReport, buildUserReport } from "../../rooms/laboratory/services/report-builder.ts";
 import { createLaboratoryReportExportRuntime } from "../../rooms/laboratory/shared/host/reporting-export.ts";
 
-function createReportExportHarness() {
+function createReportExportHarness(options: {
+  getElectronApi?: () => {
+    showOpenDialog?: (dialogOptions: Record<string, unknown>) => Promise<{
+      canceled?: boolean;
+      filePaths?: string[];
+    }>;
+  } | null;
+} = {}) {
   const writes: Array<{ path: string; value: string }> = [];
   let persistedExports: Array<Record<string, unknown>> = [];
   const project = {
@@ -51,6 +58,7 @@ function createReportExportHarness() {
     getActiveProject() {
       return project as unknown as { id: string; slug: string };
     },
+    getElectronApi: options.getElectronApi,
     getFeatureReportDir() {
       return "/tmp/reports";
     },
@@ -180,6 +188,55 @@ test("laboratory report JSON overlay export writes one selected-folder JSON file
   assert.deepEqual(JSON.parse(harness.writes[0]?.value || "{}"), { version: 2 });
   assert.equal(harness.persistedExports.length, 1);
   assert.equal(harness.persistedExports[0]?.["format"], "json");
+});
+
+test("laboratory report JSON overlay export opens a host folder picker", async () => {
+  const dialogOptions: Array<Record<string, unknown>> = [];
+  const harness = createReportExportHarness({
+    getElectronApi() {
+      return {
+        async showOpenDialog(options) {
+          dialogOptions.push(options);
+          return { canceled: false, filePaths: ["/picked/reports"] };
+        },
+      };
+    },
+  });
+
+  await harness.runtime.exportFeatureReport({}, {}, "req-json-picker", "media-analysis", {
+    format: "json",
+  });
+
+  assert.equal(dialogOptions.length, 1);
+  assert.deepEqual(dialogOptions[0]?.["properties"], ["openDirectory", "createDirectory"]);
+  assert.match(harness.writes[0]?.path || "", /^\/picked\/reports\/lab-project-media-analysis-/);
+  assert.match(harness.writes[0]?.path || "", /-ai\.json$/);
+});
+
+test("laboratory report overlay export cancels cleanly when folder picking is cancelled", async () => {
+  const harness = createReportExportHarness({
+    getElectronApi() {
+      return {
+        async showOpenDialog() {
+          return { canceled: true, filePaths: [] };
+        },
+      };
+    },
+  });
+
+  const result = await harness.runtime.exportFeatureReport(
+    {},
+    {},
+    "req-json-cancel",
+    "media-analysis",
+    {
+      format: "json",
+    }
+  );
+
+  assert.deepEqual(result, { cancelled: true });
+  assert.equal(harness.writes.length, 0);
+  assert.equal(harness.persistedExports.length, 0);
 });
 
 test("laboratory report PDF overlay export writes one selected-folder PDF file", async () => {

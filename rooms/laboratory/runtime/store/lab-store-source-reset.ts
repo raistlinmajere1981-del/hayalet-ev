@@ -1,5 +1,5 @@
-import { asLabRecord } from "../../models/lab-types.js";
-import type { LabStoreState } from "../../models/lab-types.js";
+import { asLabRecord } from "../../domain/lab-types.js";
+import type { LabStoreState } from "../../domain/lab-types.js";
 import { clearExecutionIntent, clearSuggestionPreview } from "./lab-store-execution-state.js";
 import { createDefaultWorkspaceUiState } from "./lab-store-defaults.js";
 import { clearInspectionDepth, resetInspectionMode } from "./lab-store-workspace-state.js";

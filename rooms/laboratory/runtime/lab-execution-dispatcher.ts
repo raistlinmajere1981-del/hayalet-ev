@@ -4,7 +4,7 @@ import type {
   LabExecutionResult,
   LabExecutionSelectionSnapshot,
   LabStoreEvent,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 import {
   getLabSelectionDurationMs,
   getLabSelectionRoiArea as getRoiArea,

@@ -22,6 +22,17 @@ const PHASE_LABELS: Record<DebateLocalPhase, string> = {
   completed: "Tamamlandı",
 };
 
+const DEBATE_PHASE_STEPS: readonly DebateLocalPhase[] = [
+  "preparation",
+  "role_assignment",
+  "opening",
+  "counter_argument",
+  "evidence_review",
+  "weak_point",
+  "judge_mapping",
+  "completed",
+];
+
 const TURN_ROLE_LABELS: Record<DebateLocalTurn["role"], string> = {
   researcher: "Araştırmacı",
   advocate: "Savunucu",
@@ -39,6 +50,17 @@ function createDebateActionButton(
   button.dataset[datasetKey] = "true";
   button.disabled = disabled;
   return button;
+}
+
+function createPhaseStepIndicator(phase: DebateLocalPhase): HTMLElement {
+  const phaseStep = DEBATE_PHASE_STEPS.indexOf(phase);
+  const currentStep = phaseStep === -1 ? 0 : phaseStep + 1;
+
+  return createElement(
+    "span",
+    "pattern-room-phase-step",
+    `${currentStep} / ${DEBATE_PHASE_STEPS.length}`
+  );
 }
 
 function appendReferences(device: HTMLElement, session: PatternTenthManSession): void {
@@ -202,12 +224,23 @@ export function createTenthManPanel(
   const session = data.tenthManSession;
   const phase = session.phase ?? "idle";
   const device = createElement("div", "pattern-room-device pattern-room-slot-device");
-  device.append(
+  const statusRow = createElement("div", "pattern-room-device-status-row");
+  statusRow.append(
     createElement(
       "span",
       "pattern-room-device-status",
       `${session.status} / ${PHASE_LABELS[phase]}`
     ),
+    createElement(
+      "span",
+      "pattern-room-device-status pattern-room-device-status-secondary",
+      "Yerel Simülasyon"
+    ),
+    createPhaseStepIndicator(phase)
+  );
+
+  device.append(
+    statusRow,
     createElement("h2", undefined, session.label),
     createElement("p", undefined, session.prompt)
   );

@@ -145,10 +145,10 @@ async function migrateWorkspaceDistBundles(workspaceRoot, storageRoot, dryRun, s
 function collectLaboratoryLegacyMappings(schema) {
   const files = schema?.files ?? {};
   const legacy = files.legacy ?? {};
-  const mainFunctions = files.mainFunctions ?? {};
+  const features = files.features ?? files.mainFunctions ?? {};
 
   const mappings = [];
-  const mediaFiles = mainFunctions["media-analysis"] ?? {};
+  const mediaFiles = features["media-analysis"] ?? {};
 
   if (legacy.editDir && mediaFiles.editDir) {
     mappings.push({ legacyRelative: legacy.editDir, targetRelative: mediaFiles.editDir });
@@ -206,7 +206,7 @@ export async function migrateRoomLayouts(options = {}) {
   const storageRoot = resolve(options.storageRoot ?? join(projectRoot, "data", "room-storage"));
   const laboratorySchemaPath = resolve(
     options.laboratorySchemaPath ??
-      join(projectRoot, "rooms", "laboratory", "shared", "data", "tools", "project-schema.json")
+      join(projectRoot, "rooms", "laboratory", "tools", "project-schema.json")
   );
   const dryRun = options.dryRun === true;
 

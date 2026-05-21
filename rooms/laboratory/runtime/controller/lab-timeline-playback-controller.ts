@@ -1,5 +1,5 @@
-import { asLabRecord, asNonEmptyString, asNumber } from "../../models/lab-types.js";
-import type { LabFocusLayer } from "../../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, asNumber } from "../../domain/lab-types.js";
+import type { LabFocusLayer } from "../../domain/lab-types.js";
 import { createLabI18n } from "../../ui/lab-i18n.js";
 import { getPreviewVolume, getWorkspaceLockState } from "../lab-selectors.js";
 import type { createLabStore } from "../lab-store.js";

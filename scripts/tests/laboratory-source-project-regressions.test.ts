@@ -12,10 +12,10 @@ import { renderLabSourcePanel } from "../../rooms/laboratory/ui/lab-source-panel
 import { readCssWithImports } from "./helpers/css-imports.ts";
 
 const sourcePresets = JSON.parse(
-  readFileSync("rooms/laboratory/shared/data/tools/source-presets.json", "utf8")
+  readFileSync("rooms/laboratory/tools/source-presets.json", "utf8")
 );
 const ytDlpForm = JSON.parse(
-  readFileSync("rooms/laboratory/shared/data/tools/yt-dlp.form.json", "utf8")
+  readFileSync("rooms/laboratory/tools/yt-dlp.form.json", "utf8")
 );
 
 function readLabThemeSource() {

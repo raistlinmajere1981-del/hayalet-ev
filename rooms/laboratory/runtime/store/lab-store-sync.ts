@@ -3,7 +3,7 @@ import {
   asNonEmptyString,
   clampPercent,
   normalizeLabFeatureId,
-} from "../../models/lab-types.js";
+} from "../../domain/lab-types.js";
 import type {
   LabEventFeedItem,
   LabProjectImportMethod,
@@ -11,7 +11,7 @@ import type {
   LabSourceDrafts,
   LabStoreState,
   LabUserActionEvent,
-} from "../../models/lab-types.js";
+} from "../../domain/lab-types.js";
 import { normalizeLabPreflight } from "../../services/preflight-service.js";
 import { getWorkspaceSourceSelectionResetKey } from "../lab-workspace-selection.js";
 import {

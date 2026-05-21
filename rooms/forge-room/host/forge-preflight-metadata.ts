@@ -98,7 +98,7 @@ const FORGE_CAPABILITY_DESCRIPTORS: ForgeCapabilityDescriptor[] = [
       "The Laboratory room can analyze visual inputs and derived artifacts, but those image-heavy lanes stay outside the core Forge planning loop unless the goal explicitly needs them.",
     tags: ["camera", "image", "archive"],
     relevantModules: [
-      "rooms/laboratory/main-functions/media-analysis/host/profile-preflight.ts",
+      "rooms/laboratory/features/media-analysis/host/profile-preflight.ts",
       "rooms/laboratory/services/preflight-service.ts",
     ],
     roomIds: ["laboratory"],

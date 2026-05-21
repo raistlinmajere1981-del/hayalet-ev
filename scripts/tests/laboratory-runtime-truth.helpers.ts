@@ -9,7 +9,7 @@ import type {
   LabExecutionPayloadPreview,
   LabExecutionResult,
   LabSelection,
-} from "../../rooms/laboratory/models/lab-types.ts";
+} from "../../rooms/laboratory/domain/lab-types.ts";
 import {
   DEFAULT_AUDIO_FOCUS_SETTINGS,
   normalizeAudioFocusSettings,

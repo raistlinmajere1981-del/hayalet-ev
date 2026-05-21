@@ -1,5 +1,5 @@
-import { createLabEventId } from "../models/lab-types.js";
-import type { LabEventFeedItem, LabEventScope } from "../models/lab-types.js";
+import { createLabEventId } from "../domain/lab-types.js";
+import type { LabEventFeedItem, LabEventScope } from "../domain/lab-types.js";
 
 type ParseProcessOutputContext = {
   action?: string | null;

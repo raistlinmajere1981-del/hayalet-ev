@@ -185,11 +185,11 @@ function buildDynamicKeepList(): string[] {
   keepList.add("rooms/laboratory/ui/index.html");
   keepList.add("rooms/laboratory/ui/style.css");
   keepList.add("rooms/laboratory/i18n/**");
-  keepList.add("rooms/laboratory/shared/data/tools/**");
-  keepList.add("rooms/laboratory/shared/data/tools/**/*.py");
-  keepList.add("rooms/laboratory/shared/data/tools/**/*.conf");
-  keepList.add("rooms/laboratory/shared/data/tools/**/*.inc");
-  keepList.add("rooms/laboratory/main-functions/**/assets/**");
+  keepList.add("rooms/laboratory/tools/**");
+  keepList.add("rooms/laboratory/tools/**/*.py");
+  keepList.add("rooms/laboratory/tools/**/*.conf");
+  keepList.add("rooms/laboratory/tools/**/*.inc");
+  keepList.add("rooms/laboratory/features/**/assets/**");
 
   if (existsSync(manifestPath)) {
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as Record<string, unknown>;

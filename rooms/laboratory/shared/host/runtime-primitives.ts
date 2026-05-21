@@ -8,7 +8,7 @@ import { normalizeAnalysisScope, serializeAnalysisScope } from "../types/analysi
 import {
   normalizeLabAnalysisSettingsMap,
   normalizeLabOperationSettingsMap,
-} from "../../models/lab-types.js";
+} from "../../domain/lab-types.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 

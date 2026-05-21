@@ -1,11 +1,11 @@
-import { asLabRecord, asNonEmptyString, asNumber, createLabEventId } from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, asNumber, createLabEventId } from "../domain/lab-types.js";
 import type {
   LabSelection,
   LabSelectionIntent,
   LabSelectionROI,
   LabSelectionType,
   LabWorkspaceUiState,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 
 const DEFAULT_IMAGE_SELECTION_ROI: LabSelectionROI = {
   x: 0,
@@ -182,7 +182,7 @@ export function syncWorkspaceSelectionWithRange(
   };
 }
 
-export function createDefaultWorkspaceSelectionForSource(options: {
+function createDefaultWorkspaceSelectionForSource(options: {
   durationMs: number;
   sourceKind: string;
 }): LabSelection | null {
@@ -228,17 +228,6 @@ export function resolveEffectiveWorkspaceSelection(
     return activeSelection;
   }
   return createDefaultWorkspaceSelectionForSource(options);
-}
-
-export function clearWorkspaceSelection(workspace: LabWorkspaceUiState): LabWorkspaceUiState {
-  return {
-    ...workspace,
-    timelineStartMs: null,
-    timelineEndMs: null,
-    activeSelection: null,
-    selectionLoopEnabled: false,
-    selectionMicroZoomOpen: false,
-  };
 }
 
 export function getWorkspaceSourceSelectionResetKey(source: Record<string, unknown> | null) {

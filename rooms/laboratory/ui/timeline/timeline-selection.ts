@@ -1,11 +1,11 @@
-import { escapeHtml } from "../../models/lab-types.js";
+import { escapeHtml } from "../../domain/lab-types.js";
 import type {
   LabActionSuggestion,
   LabInspectionMode,
   LabInspectionSnapshot,
   LabSelection,
   LabSuggestionPreview,
-} from "../../models/lab-types.js";
+} from "../../domain/lab-types.js";
 import type { LabI18n } from "../lab-i18n.js";
 import type { LabWaveformTimelineModel } from "../lab-waveform-timeline-types.js";
 

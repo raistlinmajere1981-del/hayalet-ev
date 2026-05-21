@@ -1,5 +1,5 @@
-import { asLabRecord } from "../models/lab-types.js";
-import type { LabEventFeedItem, LabStoreEvent } from "../models/lab-types.js";
+import { asLabRecord } from "../domain/lab-types.js";
+import type { LabEventFeedItem, LabStoreEvent } from "../domain/lab-types.js";
 
 type LabBridgeDeps = {
   emit: (event: LabStoreEvent) => void;

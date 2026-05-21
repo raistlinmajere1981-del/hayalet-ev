@@ -5,7 +5,7 @@ import type {
   LabDecisionState,
   LabDrawerMode,
   LabStoreState,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 import {
   getActiveSelection,
   getMediaViewportState,

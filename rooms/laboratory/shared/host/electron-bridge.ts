@@ -17,6 +17,11 @@ type LaboratoryOpenPathResult = {
   success?: boolean;
 };
 
+type LaboratoryOpenDialogResult = {
+  canceled?: boolean;
+  filePaths?: string[];
+};
+
 type LaboratoryDirectoryEntry = {
   isDirectory: boolean;
   name: string;
@@ -66,6 +71,7 @@ type LaboratoryElectronApi = {
   roomToolsCancel: (
     request: LaboratoryRoomToolCancelRequest
   ) => Promise<LaboratoryRoomToolCancelResult>;
+  showOpenDialog?: (options: LaboratoryMaybeApiRecord) => Promise<LaboratoryOpenDialogResult>;
 };
 
 function toApiRecord(value: unknown): LaboratoryMaybeApiRecord | null {

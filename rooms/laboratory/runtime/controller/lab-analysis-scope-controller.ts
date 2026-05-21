@@ -1,4 +1,4 @@
-import { asLabRecord } from "../../models/lab-types.js";
+import { asLabRecord } from "../../domain/lab-types.js";
 import { toDraftScope } from "./lab-controller-helpers.js";
 
 function readNumeric(value: unknown) {

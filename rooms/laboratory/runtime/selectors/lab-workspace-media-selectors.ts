@@ -1,5 +1,5 @@
-import { asLabRecord, asNonEmptyString } from "../../models/lab-types.js";
-import type { LabAsset, LabComparisonSide, LabStoreState } from "../../models/lab-types.js";
+import { asLabRecord, asNonEmptyString } from "../../domain/lab-types.js";
+import type { LabAsset, LabComparisonSide, LabStoreState } from "../../domain/lab-types.js";
 import { normalizeAudioFocusSettings } from "../lab-audio-focus-normalization.js";
 import {
   createLabComparisonInteractiveSettings,

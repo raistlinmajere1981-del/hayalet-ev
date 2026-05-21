@@ -1,4 +1,4 @@
-import { createLaboratoryAudioAnalysisHostRuntime } from "../../main-functions/audio-analysis/host/runtime.js";
+import { createLaboratoryAudioAnalysisHostRuntime } from "../../features/audio-analysis/host/runtime.js";
 import { createLaboratoryAudioAnalysisProjectionRuntime } from "./audio-analysis-projection.js";
 import { createLaboratoryProcessCoordinationRuntime } from "./process-coordination.js";
 import { createLaboratoryProcessDelegatesRuntime } from "./process-delegates.js";
@@ -165,7 +165,7 @@ export function createLaboratoryHostProcessCompositionRuntime(
     getStageSupport: deps.getStageSupport,
     getToolManifest: deps.getToolManifest,
     listDirectory: deps.listDirectory,
-    maybeRunWhisperProfileSample: deps["maybeRunWhisperProfileSample"],
+    maybeRunTranscriptProfileSample: deps["maybeRunTranscriptProfileSample"],
     normalizeAudioAnalysisModuleResult: deps.normalizeAudioAnalysisModuleResult,
     normalizeAudioAnalysisState: deps.normalizeAudioAnalysisState,
     normalizeEditOutput: deps.normalizeEditOutput,
@@ -207,6 +207,7 @@ export function createLaboratoryHostProcessCompositionRuntime(
     formatIdentifierLabel: deps.formatIdentifierLabel,
     getActiveProject: deps.getActiveProject,
     getAudioAnalysisModulesForRuntime,
+    ...(typeof deps.getElectronApi === "function" ? { getElectronApi: deps.getElectronApi } : {}),
     getFeatureProcessRecord: deps.getFeatureProcessRecord,
     getFeatureReportDir: deps.getFeatureReportDir,
     getFeatureReportExportAction,
@@ -274,7 +275,7 @@ export function createLaboratoryHostProcessCompositionRuntime(
     getFeatureProcessDir: deps.getFeatureProcessDir,
     getFeatureProcessJobAction,
     getFeatureProcessRecord: deps.getFeatureProcessRecord,
-    maybeRunWhisperProfileSample: deps["maybeRunWhisperProfileSample"],
+    maybeRunTranscriptProfileSample: deps["maybeRunTranscriptProfileSample"],
     normalizeProcessArtifact: deps["normalizeProcessArtifact"],
     normalizeProcessFinding: deps.normalizeProcessFinding,
     patchActiveProject: deps.patchActiveProject,

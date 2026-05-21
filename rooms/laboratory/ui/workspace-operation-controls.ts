@@ -1,10 +1,10 @@
-import { escapeHtml } from "../models/lab-types.js";
+import { escapeHtml } from "../domain/lab-types.js";
 import type {
   LabComparisonSide,
   LabOperationCapabilityProjection,
   LabSelectionROI,
   LabSettingsRecord,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 import { renderLabSettingsFields } from "./lab-settings-controls.js";

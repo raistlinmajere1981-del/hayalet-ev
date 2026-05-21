@@ -1,10 +1,10 @@
-import { asLabRecord, asNonEmptyString, escapeHtml, formatBytes } from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, escapeHtml, formatBytes } from "../domain/lab-types.js";
 import type {
   LabEventFeedItem,
   LabProjectImportKind,
   LabStoreState,
   LabYoutubeImportFormat,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 import {
   buildProjectImportHostAction,
   getLatestProjectImportEvent,

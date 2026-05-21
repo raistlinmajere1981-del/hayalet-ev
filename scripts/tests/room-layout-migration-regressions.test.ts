@@ -15,8 +15,6 @@ test("migrateRoomLayouts moves workspace dist bundles and laboratory legacy proj
     tempRoot,
     "rooms",
     "laboratory",
-    "shared",
-    "data",
     "tools",
     "project-schema.json"
   );
@@ -25,8 +23,8 @@ test("migrateRoomLayouts moves workspace dist bundles and laboratory legacy proj
   const projectDir = join(storageRoot, "laboratory", "projects", "lab-session");
   const legacyEditDir = join(projectDir, "derived", "edit");
   const legacyProfileDir = join(projectDir, "derived", "profile");
-  const nextEditDir = join(projectDir, "main-functions", "media-analysis", "edit");
-  const nextProfileDir = join(projectDir, "main-functions", "media-analysis", "profile");
+  const nextEditDir = join(projectDir, "artifacts", "media-analysis", "edit");
+  const nextProfileDir = join(projectDir, "artifacts", "media-analysis", "profile");
 
   try {
     await mkdir(join(workspaceRoot, "game-room", "dist"), { recursive: true });
@@ -38,12 +36,12 @@ test("migrateRoomLayouts moves workspace dist bundles and laboratory legacy proj
       JSON.stringify(
         {
           files: {
-            processDir: "main-functions/media-analysis/process",
-            reportDir: "main-functions/media-analysis/report",
-            mainFunctions: {
+            processDir: "artifacts/media-analysis/process",
+            reportDir: "reports/media-analysis",
+            features: {
               "media-analysis": {
-                editDir: "main-functions/media-analysis/edit",
-                profileDir: "main-functions/media-analysis/profile",
+                editDir: "artifacts/media-analysis/edit",
+                profileDir: "artifacts/media-analysis/profile",
               },
             },
             legacy: {

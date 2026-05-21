@@ -1,4 +1,4 @@
-import type { createMediaActionRuntime } from "../../main-functions/media-analysis/host/action-handlers.js";
+import type { createMediaActionRuntime } from "../../features/media-analysis/host/action-handlers.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 type LaboratoryMediaActionRuntime = ReturnType<typeof createMediaActionRuntime>;
@@ -257,7 +257,7 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
           await mediaActionRuntime.setProfileModel(runtime, actionPayload);
           break;
         case "profile-run-preflight":
-          await mediaActionRuntime.runProfile(api, runtime, requestId);
+          await mediaActionRuntime.runProfile(api, runtime, requestId, actionPayload);
           break;
         case "profile-cancel-preflight":
           await mediaActionRuntime.cancelProfile(api, runtime, requestId);
@@ -287,7 +287,13 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
           break;
         case "report-export":
         case "audio-report-export":
-          await mediaActionRuntime.exportReport(api, runtime, requestId, featureId, actionPayload);
+          result = await mediaActionRuntime.exportReport(
+            api,
+            runtime,
+            requestId,
+            featureId,
+            actionPayload
+          );
           break;
         case "tool-install":
         case "tool-update":

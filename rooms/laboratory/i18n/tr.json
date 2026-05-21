@@ -911,7 +911,7 @@
       "tools": {
         "yt-dlp": "yt-dlp",
         "ffmpeg": "FFmpeg",
-        "whisper.cpp": "Whisper.cpp",
+        "transcript-runtime": "Speech Runtime",
         "opensmile": "openSMILE",
         "yamnet": "YAMNet",
         "librosa": "librosa",
@@ -1850,7 +1850,7 @@
         "notReady": "Hazır değil"
       },
       "lifecycle": {
-        "settingsManaged": "Whisper.cpp yasam dongusu ana Settings tarafindan yonetilir. Laboratory yalnizca mevcut runtime probe ve aktif dil/model hazirligini yansitir.",
+        "settingsManaged": "Speech Runtime yasam dongusu ana Settings tarafindan yonetilir. Laboratory yalnizca mevcut runtime probe ve aktif dil/model hazirligini yansitir.",
         "lastError": "Son hata: {error}",
         "default": "Araç durumu room-local registry üzerinden izlenir."
       },
@@ -1892,7 +1892,7 @@
       "ariaLabel": "Araç Yönetimi",
       "eyebrow": "Çalışma Tezgahı",
       "title": "Araç Yönetimi",
-      "subtitle": "yt-dlp ve FFmpeg gibi oda araçlarını burada yönet; Whisper.cpp ise yalnızca merkezi Settings runtime durumuyla birlikte yansıtılır.",
+      "subtitle": "yt-dlp ve FFmpeg gibi oda araçlarını burada yönet; Speech Runtime ise yalnızca merkezi Settings runtime durumuyla birlikte yansıtılır.",
       "stats": {
         "relevant": "İlgili araçlar",
         "installed": "Kurulu araç",
@@ -1992,7 +1992,7 @@
         "ffmpeg": {
           "readinessImpact": "Yerel dönüştürmeleri, türetilmiş çıktıları ve yönetilen analiz koşularının çoğunu bloke eder."
         },
-        "whisper-cpp": {
+        "transcript-runtime": {
           "readinessImpact": "Transkript destekli konuşma kontrollerini ve transkript artefaktlarını sınırlar."
         },
         "opensmile": {
@@ -2659,7 +2659,7 @@
         },
         "transcription": {
           "title": "Transkript",
-          "summary": "Opsiyonel transkript yakalama, Settings sahipli merkezi Whisper.cpp runtime'ini ve aktif modeli yeniden kullanir."
+          "summary": "Opsiyonel transkript yakalama, Settings sahipli merkezi Speech Runtime'ini ve aktif modeli yeniden kullanir."
         },
         "transcript-support": {
           "title": "Transkript desteği",
@@ -2708,8 +2708,8 @@
         "title": "FFmpeg faz laboratuvari",
         "summary": "Stereo faz izolasyonu ve yan kanal kurtarma deneyleri icin ortak oda-yerel FFmpeg saglayicisi."
       },
-      "whisper-transcript": {
-        "title": "Whisper transkript yuruyucusu",
+      "speech-runtime-transcript": {
+        "title": "Speech Runtime transkript yuruyucusu",
         "summary": "Transkript odakli gecisler icin merkezi runtime projeksiyonu."
       },
       "speaker-timeline": {

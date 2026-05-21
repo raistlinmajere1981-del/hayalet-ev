@@ -1,4 +1,4 @@
-import { escapeHtml } from "../../models/lab-types.js";
+import { escapeHtml } from "../../domain/lab-types.js";
 
 type StatusTone = "idle" | "running" | "ready" | "warning" | "error" | "success" | "neutral";
 

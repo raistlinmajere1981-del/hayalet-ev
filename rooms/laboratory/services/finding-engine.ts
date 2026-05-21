@@ -1,5 +1,5 @@
-import { createLabEventId } from "../models/lab-types.js";
-import type { LabEventFeedItem, LabFindingProjection } from "../models/lab-types.js";
+import { createLabEventId } from "../domain/lab-types.js";
+import type { LabEventFeedItem, LabFindingProjection } from "../domain/lab-types.js";
 
 function createDerivedFinding(
   moduleId: string,

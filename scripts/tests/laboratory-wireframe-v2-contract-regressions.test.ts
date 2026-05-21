@@ -16,7 +16,7 @@ import { renderLabDrawer } from "../../rooms/laboratory/ui/lab-drawer.ts";
 import { createLabI18n } from "../../rooms/laboratory/ui/lab-i18n.ts";
 import { renderLabProcessStrip } from "../../rooms/laboratory/ui/lab-process-strip.ts";
 import { renderWorkspaceSurface } from "../../rooms/laboratory/ui/workspace-surface.ts";
-import type { LabRun } from "../../rooms/laboratory/models/lab-types.ts";
+import type { LabRun } from "../../rooms/laboratory/domain/lab-types.ts";
 import { FakeActionElement, FakeControllerDocument } from "./laboratory-runtime-truth.helpers.ts";
 
 const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));

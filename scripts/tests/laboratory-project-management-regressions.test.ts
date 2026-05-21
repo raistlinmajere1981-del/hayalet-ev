@@ -121,7 +121,7 @@ test("laboratory controller starts clean projects and keeps naming/delete safegu
     "utf8"
   );
   const hostSource = readFileSync(
-    "rooms/laboratory/main-functions/media-analysis/host/action-handlers-project.ts",
+    "rooms/laboratory/features/media-analysis/host/action-handlers-project.ts",
     "utf8"
   );
   const lifecycleSource = readFileSync("rooms/laboratory/shared/host/project-lifecycle.ts", "utf8");

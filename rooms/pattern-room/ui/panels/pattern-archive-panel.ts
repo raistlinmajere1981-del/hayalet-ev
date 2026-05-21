@@ -21,6 +21,13 @@ function createSubmitButton(label: string): HTMLButtonElement {
   return button;
 }
 
+function createAuthoringDisclosure(label: string, form: HTMLFormElement): HTMLElement {
+  const disclosure = createElement("details", "pattern-room-inline-disclosure");
+  disclosure.dataset["patternAuthoringDisclosure"] = label;
+  disclosure.append(createElement("summary", "pattern-room-inline-summary", label), form);
+  return disclosure;
+}
+
 function createSourceAuthoringForm(actions: PatternPanelActions): HTMLElement {
   const form = createElement("form", "pattern-room-inline-form");
   form.dataset["patternAuthorSourceForm"] = "true";
@@ -42,14 +49,8 @@ function createSourceAuthoringForm(actions: PatternPanelActions): HTMLElement {
     form.reset();
   });
 
-  form.append(
-    createElement("h2", undefined, "Kaynak Ekle"),
-    label,
-    origin,
-    note,
-    createSubmitButton("Ekle")
-  );
-  return form;
+  form.append(label, origin, note, createSubmitButton("Ekle"));
+  return createAuthoringDisclosure("Kaynak Ekle", form);
 }
 
 function sourceTypeClass(sourceTypeLabel: string): string {
@@ -74,7 +75,8 @@ export function createArchivePanel(
   const list = createElement("div", "pattern-room-archive-list");
 
   data.sources.forEach((source) => {
-    const toneClass = sourceTypeClass(source.sourceTypeLabel);
+    const toneClass =
+      source.isLocal === true ? "local-source" : sourceTypeClass(source.sourceTypeLabel);
     const card = createElement("article", `pattern-room-archive-card ${toneClass}`);
     const drawer = createElement("span", "pattern-room-archive-drawer", source.origin);
     const tag = createElement(

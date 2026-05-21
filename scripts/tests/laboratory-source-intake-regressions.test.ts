@@ -2,18 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { createMediaUrlSourceIntakeRuntime } from "../../rooms/laboratory/main-functions/media-analysis/host/source-intake-url.ts";
-import { createMediaYoutubeSourceIntakeRuntime } from "../../rooms/laboratory/main-functions/media-analysis/host/source-intake-youtube.ts";
+import { createMediaUrlSourceIntakeRuntime } from "../../rooms/laboratory/features/media-analysis/host/source-intake-url.ts";
+import { createMediaYoutubeSourceIntakeRuntime } from "../../rooms/laboratory/features/media-analysis/host/source-intake-youtube.ts";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import { resolveDrawerMode } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 import { renderLabSourcePanel } from "../../rooms/laboratory/ui/lab-source-panel.ts";
 import { renderWorkspaceSurface } from "../../rooms/laboratory/ui/workspace-surface.ts";
 
 const sourcePresets = JSON.parse(
-  readFileSync("rooms/laboratory/shared/data/tools/source-presets.json", "utf8")
+  readFileSync("rooms/laboratory/tools/source-presets.json", "utf8")
 );
 const ytDlpForm = JSON.parse(
-  readFileSync("rooms/laboratory/shared/data/tools/yt-dlp.form.json", "utf8")
+  readFileSync("rooms/laboratory/tools/yt-dlp.form.json", "utf8")
 );
 
 function toRecord(value: unknown): Record<string, unknown> {
@@ -373,7 +373,7 @@ test("laboratory URL intake downloads image sources into the frame asset categor
         download: {
           contentType: "image/png",
           fileName: "evidence.png",
-          path: "/tmp/lab-project/source/evidence.png",
+          path: "/tmp/lab-project/sources/evidence.png",
         },
       };
     },
@@ -390,7 +390,7 @@ test("laboratory URL intake downloads image sources into the frame asset categor
       return activeProject;
     },
     getProjectSourceDir() {
-      return "/tmp/lab-project/source";
+      return "/tmp/lab-project/sources";
     },
     normalizeMimeType() {
       return "image/png";
@@ -435,7 +435,7 @@ test("laboratory URL intake downloads image sources into the frame asset categor
   const imageAsset = assets.find(function (asset) {
     return asset["type"] === "image";
   });
-  assert.equal(imageAsset?.["localPath"], "/tmp/lab-project/source/evidence.png");
+  assert.equal(imageAsset?.["localPath"], "/tmp/lab-project/sources/evidence.png");
   assert.equal(imageAsset?.["url"], "https://example.test/evidence.png");
   assert.equal(toRecord(imageAsset?.["metadata"])["flowKind"], "remote-url-import");
 });

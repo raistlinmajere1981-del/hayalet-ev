@@ -1,5 +1,5 @@
-import { asLabRecord, asNonEmptyString } from "../models/lab-types.js";
-import type { LabStoreState } from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString } from "../domain/lab-types.js";
+import type { LabStoreState } from "../domain/lab-types.js";
 
 function toStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) {

@@ -1,6 +1,4 @@
 import {
-  getProfileModelStatePath,
-  getProfileModelsDir,
   getProjectDir,
   getProjectEditManifestPath,
   getProjectMetaPath,
@@ -16,9 +14,9 @@ import { createLaboratoryJobRuntime } from "../shared/host/job-runtime.js";
 import { createLaboratorySnapshotCompositionRuntime } from "../shared/host/snapshot-composition.js";
 import { createLaboratoryHostStateCompositionRuntime } from "../shared/host/state-composition.js";
 import { createLaboratoryJobStateRuntime } from "../shared/host/job-state.js";
-import { createMediaProfileModelRuntime } from "../main-functions/media-analysis/host/profile-models.js";
-import { createMediaProfileProjectionRuntime } from "../main-functions/media-analysis/host/profile-projection.js";
-import { createMediaProfileStateRuntime } from "../main-functions/media-analysis/host/profile-state.js";
+import { createMediaProfileModelRuntime } from "../features/media-analysis/host/profile-models.js";
+import { createMediaProfileProjectionRuntime } from "../features/media-analysis/host/profile-projection.js";
+import { createMediaProfileStateRuntime } from "../features/media-analysis/host/profile-state.js";
 import type { createLaboratoryHostFoundation } from "./foundation-runtimes.js";
 
 type LaboratoryRecord = Record<string, unknown>;
@@ -197,7 +195,6 @@ export function createLaboratoryHostProjectRuntimes(deps: LaboratoryHostProjectR
       return requireStateComposition().laboratoryProjectRecordsRuntime.getActiveProject(...args);
     },
     getFeatureIdFromContext: bootstrap.getFeatureIdFromContext,
-    getProfileModelStatePath,
     getProjectDir,
     getProjectEditManifestPath,
     getProjectMetaPath,
@@ -260,7 +257,6 @@ export function createLaboratoryHostProjectRuntimes(deps: LaboratoryHostProjectR
     },
     getProfileModelDescriptor: profileModelState.readProfileModelDescriptor,
     getProfileModelDescriptorMap: profileModelState.readProfileModelDescriptorMap,
-    getProfileModelsDir,
     getStageSupport: bootstrap.getStageSupport,
     getToolManifest: bootstrap.getToolManifest,
     listDirectory: io.listDirectory,

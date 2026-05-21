@@ -1,4 +1,4 @@
-import type { LabAudioFocusSettings } from "../models/lab-types.js";
+import type { LabAudioFocusSettings } from "../domain/lab-types.js";
 import {
   DEFAULT_AUDIO_FOCUS_SETTINGS,
   createAudioFocusSignature,

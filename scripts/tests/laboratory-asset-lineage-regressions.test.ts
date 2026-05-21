@@ -69,7 +69,7 @@ test("laboratory source asset projection lifts lineage from source metadata", ()
     createdAt: "2026-04-23T18:30:00.000Z",
     source: {
       kind: "video",
-      storedPath: "/tmp/project/source/clip_01.mp4",
+      storedPath: "/tmp/project/sources/clip_01.mp4",
       storedFileName: "clip_01.mp4",
       mode: "local",
       metadata: {

@@ -6,10 +6,10 @@ import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import { renderLabSourcePanel } from "../../rooms/laboratory/ui/lab-source-panel.ts";
 
 const sourcePresets = JSON.parse(
-  readFileSync("rooms/laboratory/shared/data/tools/source-presets.json", "utf8")
+  readFileSync("rooms/laboratory/tools/source-presets.json", "utf8")
 );
 const ytDlpForm = JSON.parse(
-  readFileSync("rooms/laboratory/shared/data/tools/yt-dlp.form.json", "utf8")
+  readFileSync("rooms/laboratory/tools/yt-dlp.form.json", "utf8")
 );
 
 function createLineageState(

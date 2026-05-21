@@ -1,4 +1,4 @@
-import { asLabRecord, asNonEmptyString, WORKSPACE_INTENTS } from "../../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, WORKSPACE_INTENTS } from "../../domain/lab-types.js";
 import type {
   LabArtifactProjection,
   LabAsset,
@@ -10,7 +10,7 @@ import type {
   LabRun,
   LabRunSnapshotSummary,
   LabStoreState,
-} from "../../models/lab-types.js";
+} from "../../domain/lab-types.js";
 import {
   getCurrentFeatureId,
   getProjectEdit,

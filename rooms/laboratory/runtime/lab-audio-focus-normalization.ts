@@ -1,4 +1,4 @@
-import type { LabAudioFocusSettings } from "../models/lab-types.js";
+import type { LabAudioFocusSettings } from "../domain/lab-types.js";
 
 type AudioFocusEqBand = LabAudioFocusSettings["eqBands"][number];
 

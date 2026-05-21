@@ -1,4 +1,4 @@
-import type { LabExecutionPayloadPreview, LabExecutionPlan } from "../models/lab-types.js";
+import type { LabExecutionPayloadPreview, LabExecutionPlan } from "../domain/lab-types.js";
 import { resolveLabI18n, type LabI18nLocale } from "./lab-i18n.js";
 
 export type LabExecutionDescriptorParamShapeType =

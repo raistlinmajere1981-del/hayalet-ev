@@ -1,5 +1,5 @@
-import { escapeHtml } from "../models/lab-types.js";
-import type { LabROIRegion, LabSelectionROI } from "../models/lab-types.js";
+import { escapeHtml } from "../domain/lab-types.js";
+import type { LabROIRegion, LabSelectionROI } from "../domain/lab-types.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 

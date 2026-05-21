@@ -1,6 +1,6 @@
 import { createLaboratoryWorkbenchState } from "./runtime-primitives.js";
 import { normalizeLabAssets, syncSourceLabAssetForProject } from "./lab-assets.js";
-import type { LabAsset } from "../../models/lab-types.js";
+import type { LabAsset } from "../../domain/lab-types.js";
 
 type LaboratoryProjectRecordValue = Record<string, unknown> & {
   activeProjectId?: unknown;

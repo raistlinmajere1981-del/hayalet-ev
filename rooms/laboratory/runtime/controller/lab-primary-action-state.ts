@@ -1,4 +1,4 @@
-import type { LabStoreState } from "../../models/lab-types.js";
+import type { LabStoreState } from "../../domain/lab-types.js";
 import {
   getAnalysisActionBlockReason,
   getEditActionBlockReason,

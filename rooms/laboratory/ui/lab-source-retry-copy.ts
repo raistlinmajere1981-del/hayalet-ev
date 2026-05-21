@@ -1,4 +1,4 @@
-import type { LabSourceRetryBlockReason } from "../models/lab-types.js";
+import type { LabSourceRetryBlockReason } from "../domain/lab-types.js";
 import type { LabI18n } from "./lab-i18n.js";
 
 const SOURCE_RETRY_BLOCK_COPY: Record<

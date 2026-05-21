@@ -1,4 +1,4 @@
-import { asLabRecord, asNonEmptyString } from "../../models/lab-types.js";
+import { asLabRecord, asNonEmptyString } from "../../domain/lab-types.js";
 import type {
   LabArtifactProjection,
   LabComparisonVariant,
@@ -9,7 +9,7 @@ import type {
   LabPreviewArtifactProjection,
   LabRun,
   LabStoreState,
-} from "../../models/lab-types.js";
+} from "../../domain/lab-types.js";
 import { freezeAnalysisScope, normalizeAnalysisScope } from "../../shared/types/analysis-scope.js";
 import {
   toComparisonVariant,
@@ -53,7 +53,7 @@ function isRunStartEvent(event: LabEventFeedItem) {
   );
 }
 
-export function hasConflictingRunCorrelation(run: LabRun | null, source: LabRunCorrelationSource) {
+function hasConflictingRunCorrelation(run: LabRun | null, source: LabRunCorrelationSource) {
   if (run === null) {
     return false;
   }
@@ -72,7 +72,7 @@ export function hasConflictingRunCorrelation(run: LabRun | null, source: LabRunC
   return activeProjectId !== null && projectId !== null && activeProjectId !== projectId;
 }
 
-export function syncRunCorrelation(run: LabRun, source: LabRunCorrelationSource) {
+function syncRunCorrelation(run: LabRun, source: LabRunCorrelationSource) {
   const requestId = asNonEmptyString(source.requestId);
   if (asNonEmptyString(run.requestId) === null && requestId !== null) {
     run.requestId = requestId;

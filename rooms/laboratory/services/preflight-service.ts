@@ -1,5 +1,5 @@
-import { asLabRecord, asNonEmptyString, asStringArray } from "../models/lab-types.js";
-import type { LabPreflightResult, LabProfileConfig } from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, asStringArray } from "../domain/lab-types.js";
+import type { LabPreflightResult, LabProfileConfig } from "../domain/lab-types.js";
 
 export function runPreflight(
   profileConfig: LabProfileConfig | Record<string, unknown> | null,

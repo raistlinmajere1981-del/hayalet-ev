@@ -8,15 +8,15 @@ Do not edit `data/rooms/laboratory` as a peer source tree. Installed/runtime cop
 
 - `host/` wires the room host runtime together.
 - `shared/host/` owns reusable host primitives, project paths, IO, process orchestration, reporting, and utility helpers.
-- `main-functions/*/host/` owns feature-specific source intake, edit/profile/process behavior, and tool adapters.
+- `features/*/host/` owns feature-specific source intake, edit/profile/process behavior, and tool adapters.
 - `runtime/` owns browser-side state, selectors, event coordination, execution planning, and media/timeline controllers.
 - `ui/` owns renderers, binders, overlays, and room-local CSS entry points.
-- `shared/data/tools/` contains path-loaded room tool metadata and payloads. Treat JSON, Python, conf, and inc files here as dynamic runtime inputs, not dead code candidates.
+- `tools/` contains path-loaded room tool metadata and payloads. Treat JSON, Python, conf, and inc files here as dynamic runtime inputs, not dead code candidates.
 
 ## Cleanup Rules
 
 - Prove reachability before deleting files. Use `npm run laboratory:cleanup:inventory` and focused `rg` checks before removal.
-- Keep path-loaded roots in the cleanup keep-list: manifest asset paths, `i18n.baseDir`, `ui/index.html`, `ui/style.css`, `shared/data/tools/**`, and feature asset folders.
+- Keep path-loaded roots in the cleanup keep-list: manifest asset paths, `i18n.baseDir`, `ui/index.html`, `ui/style.css`, `tools/**`, and feature asset folders.
 - Remove generated or installed output only through the room build/sync lifecycle.
 - Prefer compatibility wrapper exports for first-pass god-file splits. Rewrite import paths only after the new domain module has passed targeted tests.
 - Transcript/runtime ownership stays outside Laboratory.

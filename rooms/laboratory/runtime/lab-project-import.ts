@@ -1,4 +1,4 @@
-import { asLabRecord } from "../models/lab-types.js";
+import { asLabRecord } from "../domain/lab-types.js";
 import type {
   LabEventFeedItem,
   LabProjectImportKind,
@@ -6,7 +6,7 @@ import type {
   LabSourceDrafts,
   LabStoreState,
   LabYoutubeImportFormat,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 import { getSourceTypePreset, getYoutubePresetDefaults } from "./lab-source-presets.js";
 
 export type LabProjectImportHostAction = {

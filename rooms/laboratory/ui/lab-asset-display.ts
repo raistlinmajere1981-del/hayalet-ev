@@ -1,5 +1,5 @@
-import { asLabRecord, asNonEmptyString, asNumber } from "../models/lab-types.js";
-import type { LabAsset } from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, asNumber } from "../domain/lab-types.js";
+import type { LabAsset } from "../domain/lab-types.js";
 import { inferLabAssetContentKind } from "../shared/lab-asset-kind.js";
 import type { LabI18n } from "./lab-i18n.js";
 

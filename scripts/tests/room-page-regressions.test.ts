@@ -523,7 +523,7 @@ test("installed laboratory manifest keeps one workbench scene entry for room-pag
   assert.equal(mediaFeature?.scene?.view?.id, "media-analysis-console");
   assert.equal(
     mediaFeature?.scene?.view?.backgroundSrc,
-    "main-functions/media-analysis/assets/media-analysis-view.webp"
+    "features/media-analysis/assets/media-analysis-view.webp"
   );
   assert.equal(audioFeature?.scene, undefined);
 });

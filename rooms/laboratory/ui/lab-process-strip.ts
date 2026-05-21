@@ -1,5 +1,5 @@
-import { escapeHtml } from "../models/lab-types.js";
-import type { LabStoreState } from "../models/lab-types.js";
+import { escapeHtml } from "../domain/lab-types.js";
+import type { LabStoreState } from "../domain/lab-types.js";
 import {
   getExecutionJourneyStep,
   getLaboratoryProcessSummary,

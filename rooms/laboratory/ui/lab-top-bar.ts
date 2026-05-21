@@ -1,5 +1,5 @@
-import { asLabRecord, asNonEmptyString, escapeHtml } from "../models/lab-types.js";
-import type { LabDrawerMode, LabStoreState } from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, escapeHtml } from "../domain/lab-types.js";
+import type { LabDrawerMode, LabStoreState } from "../domain/lab-types.js";
 import {
   getDrawerCollapsed,
   getHypothesis,

@@ -1,6 +1,6 @@
 import { createLaboratoryWorkbenchState } from "./runtime-primitives.js";
 import { serializeLabAssetForSnapshot } from "./lab-assets.js";
-import type { LabAsset } from "../../models/lab-types.js";
+import type { LabAsset } from "../../domain/lab-types.js";
 
 interface SnapshotRecord extends Record<string, unknown> {
   id?: unknown;

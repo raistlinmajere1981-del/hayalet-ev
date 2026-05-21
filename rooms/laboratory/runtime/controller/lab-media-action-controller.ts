@@ -4,7 +4,7 @@ import {
   createLabEventId,
   LAB_OPERATION_CAPABILITIES,
   normalizeLabOperationSettings,
-} from "../../models/lab-types.js";
+} from "../../domain/lab-types.js";
 import type {
   LabComparisonRoiState,
   LabComparisonSide,
@@ -12,7 +12,7 @@ import type {
   LabSelectionROI,
   LabStoreState,
   LabUserActionEvent,
-} from "../../models/lab-types.js";
+} from "../../domain/lab-types.js";
 import { getTrackedOperationActionId } from "../lab-operation-action-map.js";
 import {
   getActionOutputs,

@@ -1,4 +1,4 @@
-import { asLabRecord, asNonEmptyString } from "../../models/lab-types.js";
+import { asLabRecord, asNonEmptyString } from "../../domain/lab-types.js";
 import type {
   CapabilityFamilyId,
   CapabilityReadiness,
@@ -10,7 +10,7 @@ import type {
   LabPreflightResult,
   LabStoreState,
   LabUserActionEvent,
-} from "../../models/lab-types.js";
+} from "../../domain/lab-types.js";
 import {
   CAPABILITY_FAMILIES,
   LAB_ANALYSIS_MODULE_SETTINGS_FIELDS,
@@ -20,7 +20,7 @@ import {
   getModuleIdsForCapabilityFamily,
   normalizeLabAnalysisModuleSettings,
   normalizeLabOperationSettings,
-} from "../../models/lab-types.js";
+} from "../../domain/lab-types.js";
 import { getProjectSource } from "./lab-project-selectors.js";
 import { getAssets, getSourceKind, getToolState } from "./lab-source-selectors.js";
 import { getTrackedOperationActionId } from "../lab-operation-action-map.js";
@@ -49,6 +49,11 @@ function hasAuthoritativeToolState(state: LabStoreState): boolean {
 }
 
 function isToolReady(state: LabStoreState, toolId: string) {
+  if (toolId === "transcript-runtime") {
+    return state.profileModels.some(function (model) {
+      return model["ready"] === true;
+    });
+  }
   if (!hasAuthoritativeToolState(state)) {
     return true;
   }
@@ -236,7 +241,7 @@ export function getIntentDerivedCapabilities(state: LabStoreState): CapabilityFa
   return Array.from(capabilitySet);
 }
 
-export function getEffectiveSelectedCapabilities(state: LabStoreState) {
+function getEffectiveSelectedCapabilities(state: LabStoreState) {
   const intentDerivedCapabilities = getIntentDerivedCapabilities(state);
   if (intentDerivedCapabilities.length > 0) {
     return intentDerivedCapabilities;

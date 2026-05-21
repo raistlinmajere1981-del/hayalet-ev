@@ -53,7 +53,7 @@ test("room tool service can describe planned and system-command tools without fo
   const serviceSource = readFileSync("electron/room-tool-service.ts", "utf8");
   const typeSource = readFileSync("src/types/room-tools.ts", "utf8");
   const manifestSource = readFileSync(
-    "rooms/laboratory/shared/data/tools/toolchain.manifest.json",
+    "rooms/laboratory/tools/toolchain.manifest.json",
     "utf8"
   );
   const projectToolStatusSource = readFileSync(
@@ -221,7 +221,15 @@ test("room tool service resolves toolchain manifests from installed and workspac
   );
   assert.match(
     serviceSource,
+    /join\(\s*paths\.storageDir,\s*"build",\s*"workspace",\s*"tools",\s*"toolchain\.manifest\.json"\s*\)/
+  );
+  assert.match(
+    serviceSource,
     /join\(\s*paths\.storageDir,\s*"build",\s*"workspace",\s*"shared",\s*"data",\s*"tools",\s*"toolchain\.manifest\.json"\s*\)/
+  );
+  assert.match(
+    serviceSource,
+    /join\(getWorkspaceToolsDir\(paths\), "toolchain\.manifest\.json"\)/
   );
   assert.match(
     serviceSource,

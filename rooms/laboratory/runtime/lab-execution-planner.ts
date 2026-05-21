@@ -3,7 +3,7 @@ import type {
   LabExecutionPlan,
   LabInspectionMode,
   LabSelection,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 import {
   clampLabConfidence,
   getLabSelectionDurationMs,

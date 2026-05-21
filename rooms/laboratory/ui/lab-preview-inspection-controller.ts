@@ -1,10 +1,10 @@
-import { asNonEmptyString, createLabEventId } from "../models/lab-types.js";
+import { asNonEmptyString, createLabEventId } from "../domain/lab-types.js";
 import type {
   LabInspectionSnapshot,
   LabSelection,
   LabSelectionROI,
   LabStoreEvent,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 
 const MIN_SELECTION_ROI_SIZE_PX = 8;
 const FALLBACK_FRAME_DURATION_SECONDS = 1 / 30;

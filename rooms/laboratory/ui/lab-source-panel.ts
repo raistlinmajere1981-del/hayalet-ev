@@ -1,5 +1,5 @@
-import { asLabRecord, asNonEmptyString, escapeHtml } from "../models/lab-types.js";
-import type { LabAsset, LabAssetType, LabStoreState } from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, escapeHtml } from "../domain/lab-types.js";
+import type { LabAsset, LabAssetType, LabStoreState } from "../domain/lab-types.js";
 import { getLabPathExtension, inferLabAssetSourceKind } from "../shared/lab-asset-kind.js";
 import {
   getAssets,

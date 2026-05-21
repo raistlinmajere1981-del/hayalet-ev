@@ -285,6 +285,10 @@ function getInstalledSharedToolsDir(paths: RoomToolRuntimePaths): string {
   return join(paths.installedDir, "shared", "data", "tools");
 }
 
+function getWorkspaceToolsDir(paths: RoomToolRuntimePaths): string {
+  return join(Paths.getRoomsWorkspaceDir(), paths.roomId, "tools");
+}
+
 function getToolchainManifestCandidates(paths: RoomToolRuntimePaths): string[] {
   return Array.from(
     new Set([
@@ -298,6 +302,7 @@ function getToolchainManifestCandidates(paths: RoomToolRuntimePaths): string[] {
         "tools",
         "toolchain.manifest.json"
       ),
+      join(paths.storageDir, "build", "workspace", "tools", "toolchain.manifest.json"),
       join(
         paths.storageDir,
         "build",
@@ -307,6 +312,7 @@ function getToolchainManifestCandidates(paths: RoomToolRuntimePaths): string[] {
         "tools",
         "toolchain.manifest.json"
       ),
+      join(getWorkspaceToolsDir(paths), "toolchain.manifest.json"),
       join(
         Paths.getRoomsWorkspaceDir(),
         paths.roomId,

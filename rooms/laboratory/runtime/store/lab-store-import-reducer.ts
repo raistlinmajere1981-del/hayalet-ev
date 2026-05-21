@@ -1,5 +1,5 @@
-import { asNonEmptyString } from "../../models/lab-types.js";
-import type { LabStoreEvent, LabStoreState } from "../../models/lab-types.js";
+import { asNonEmptyString } from "../../domain/lab-types.js";
+import type { LabStoreEvent, LabStoreState } from "../../domain/lab-types.js";
 import {
   cloneSourceDrafts,
   createDefaultSourceDrafts,

@@ -97,8 +97,8 @@ export function createLaboratoryToolMutationRuntime(deps: LaboratoryToolMutation
   }
 
   function assertRoomManagedTool(toolId: string): void {
-    if (toolId === "whisper.cpp") {
-      throw new Error("Whisper.cpp lifecycle moved to Settings > User > Speech Runtime.");
+    if (toolId === "transcript-runtime") {
+      throw new Error("Speech Runtime lifecycle moved to Settings > User > Speech Runtime.");
     }
   }
 
@@ -273,7 +273,7 @@ export function createLaboratoryToolMutationRuntime(deps: LaboratoryToolMutation
       };
 
       await persistToolState(runtime);
-      if (toolId === "whisper.cpp") {
+      if (toolId === "transcript-runtime") {
         await refreshProfileModelState(runtime);
       }
       pushJobState(api, {
@@ -290,7 +290,7 @@ export function createLaboratoryToolMutationRuntime(deps: LaboratoryToolMutation
       const cancelled = /cancelled|canceled|iptal/i.test(message);
       updateToolBusy(runtime, toolId, false, cancelled === true ? null : message);
       await persistToolState(runtime);
-      if (toolId === "whisper.cpp") {
+      if (toolId === "transcript-runtime") {
         await refreshProfileModelState(runtime);
       }
       pushJobState(api, {
@@ -323,7 +323,7 @@ export function createLaboratoryToolMutationRuntime(deps: LaboratoryToolMutation
     }
 
     const installedToolIds = getRuntimeToolIds(runtime).filter(function (toolId) {
-      return toolId !== "whisper.cpp" && getToolEntry(runtime, toolId).installed === true;
+      return toolId !== "transcript-runtime" && getToolEntry(runtime, toolId).installed === true;
     });
     const failedToolIds: string[] = [];
 

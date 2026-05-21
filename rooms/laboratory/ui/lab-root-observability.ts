@@ -1,4 +1,4 @@
-import type { LabDecisionSnapshot } from "../models/lab-types.js";
+import type { LabDecisionSnapshot } from "../domain/lab-types.js";
 import { createRenderedElement, updateRenderedElement } from "./lab-dom-sync.js";
 
 export const LAB_REGION_SELECTORS = {

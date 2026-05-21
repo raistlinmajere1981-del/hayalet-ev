@@ -36,7 +36,7 @@ const ENTRY_FILES = new Set([
   "rooms/laboratory/ui/lab-waveform-timeline-render.ts",
 ]);
 const IGNORE_EXPORT_FILES = new Set([
-  "rooms/laboratory/models/lab-types.ts",
+  "rooms/laboratory/domain/lab-types.ts",
   "rooms/laboratory/shared/types/lab-process-events.ts",
 ]);
 const IGNORE_EXPORT_PATH_PATTERNS = [

@@ -1,5 +1,5 @@
-import { asLabRecord, asNonEmptyString, normalizeLabFeatureId } from "../models/lab-types.js";
-import type { LabStoreEvent, LabStoreState } from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, normalizeLabFeatureId } from "../domain/lab-types.js";
+import type { LabStoreEvent, LabStoreState } from "../domain/lab-types.js";
 import { normalizeStoreAsset, upsertStoreAsset } from "./store/lab-store-assets.js";
 import { getActiveExecutionCandidate, getExecutionDispatchCandidate } from "./lab-selectors.js";
 import { normalizeAudioFocusPatch } from "./lab-audio-focus-normalization.js";

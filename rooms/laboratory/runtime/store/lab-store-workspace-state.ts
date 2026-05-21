@@ -5,7 +5,7 @@ import {
   createLabEventId,
   getModuleIdsForCapabilityFamily,
   WORKSPACE_INTENTS,
-} from "../../models/lab-types.js";
+} from "../../domain/lab-types.js";
 import type {
   CapabilityFamilyId,
   LabBookmark,
@@ -16,7 +16,7 @@ import type {
   LabRecord,
   LabSelection,
   LabStoreState,
-} from "../../models/lab-types.js";
+} from "../../domain/lab-types.js";
 import { getWorkspaceSourceSelectionResetKey } from "../lab-workspace-selection.js";
 
 export function scopeWorkspaceBookmark(state: LabStoreState, bookmark: LabBookmark): LabBookmark {

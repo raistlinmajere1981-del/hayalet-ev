@@ -4,8 +4,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { createRoomBuiltArtifact, createRoomInstalledCopy } from "./helpers/room-installed-copy.ts";
 import { createLaboratoryHostActivation } from "../../rooms/laboratory/shared/host/activation.ts";
 import { createLaboratoryProjectLifecycleRuntime } from "../../rooms/laboratory/shared/host/project-lifecycle.ts";
-import { createMediaExportActionRuntime } from "../../rooms/laboratory/main-functions/media-analysis/host/action-handlers-export.ts";
-import { createMediaLocalSourceIntakeRuntime } from "../../rooms/laboratory/main-functions/media-analysis/host/source-intake-local.ts";
+import { createMediaExportActionRuntime } from "../../rooms/laboratory/features/media-analysis/host/action-handlers-export.ts";
+import { createAudioAnalysisProbeRuntime } from "../../rooms/laboratory/features/audio-analysis/host/analysis-probes.ts";
+import { createMediaLocalSourceIntakeRuntime } from "../../rooms/laboratory/features/media-analysis/host/source-intake-local.ts";
 import { createLaboratoryJobStateRuntime } from "../../rooms/laboratory/shared/host/job-state.ts";
 import { createLaboratoryProcessRuntime } from "../../rooms/laboratory/shared/host/process-runtime.ts";
 import { syncSourceLabAssetForProject } from "../../rooms/laboratory/shared/host/lab-assets.ts";
@@ -39,6 +40,90 @@ test("laboratory host utility helpers preserve file, timestamp, and clamp golden
   assert.equal(toLaboratoryFfmpegTimestamp("bad", "2.000"), "2.000");
   assert.equal(hostUtils.clampNumber("3.5", 0, 2, 1), 2);
   assert.equal(hostUtils.clampNumber("bad", 0, 2, 1), 1);
+});
+
+test("laboratory structure probes honor analysis time range and scale full-media timeout", async () => {
+  const toolRuns: Array<Record<string, unknown>> = [];
+  const probeRuntime = createAudioAnalysisProbeRuntime({
+    asNonEmptyString(value: unknown) {
+      return typeof value === "string" && value.trim() !== "" ? value : null;
+    },
+    asNumber(value: unknown) {
+      return typeof value === "number" && Number.isFinite(value) ? value : null;
+    },
+    buildProsodySummaryFromCsv() {
+      return {};
+    },
+    parseBlackDetectLog() {
+      return { count: 0, segments: [] };
+    },
+    parseFreezeDetectLog() {
+      return {
+        count: 1,
+        maxDurationSeconds: 1,
+        segments: [{ durationSeconds: 1, endSeconds: 1, startSeconds: 0 }],
+        totalDurationSeconds: 1,
+      };
+    },
+    parseSilenceDetectLog() {
+      return { count: 0, segments: [] };
+    },
+    parseVolumeDetectLog() {
+      return {};
+    },
+    readTextFile: async function () {
+      return null;
+    },
+    runProfileTool: async function (_runtime, options) {
+      toolRuns.push(options);
+      return { stderr: "probe output" };
+    },
+    toRecord(value: unknown) {
+      return value !== null && typeof value === "object" && Array.isArray(value) === false
+        ? (value as Record<string, unknown>)
+        : {};
+    },
+  });
+  const runtime = { paths: { projectsDir: "/tmp/laboratory-projects" } };
+  const project = { slug: "scope-probe" };
+  const target = {
+    metadata: { durationSeconds: 967.85415 },
+    path: "/tmp/source.mp4",
+  };
+
+  const scopedProbe = await probeRuntime.runVideoStructureProbe(
+    runtime,
+    project,
+    "req-scoped",
+    "job-scoped",
+    target,
+    {
+      analysisScope: {
+        timeRange: {
+          endMs: 93_000,
+          startMs: 89_000,
+        },
+      },
+    }
+  );
+  const scopedArgs = (toolRuns[0]?.["args"] || []) as string[];
+  const scopedFreeze = scopedProbe.freeze as Record<string, unknown>;
+  const scopedSegments = scopedFreeze["segments"] as Array<Record<string, unknown>>;
+  assert.deepEqual(scopedArgs.slice(0, 6), ["-hide_banner", "-ss", "89", "-t", "4", "-i"]);
+  assert.equal(toolRuns[0]?.["timeoutMs"], 120_000);
+  assert.equal(scopedSegments[0]?.["startSeconds"], 89);
+  assert.equal(scopedSegments[0]?.["endSeconds"], 90);
+
+  await probeRuntime.runVideoStructureProbe(runtime, project, "req-full", "job-full", target);
+  const fullArgs = (toolRuns[1]?.["args"] || []) as string[];
+  assert.equal(fullArgs.includes("-ss"), false);
+  assert.ok(Number(toolRuns[1]?.["timeoutMs"]) > 120_000);
+
+  await probeRuntime.runVideoStructureProbe(runtime, project, "req-sample", "job-sample", target, {
+    fallbackWindowSeconds: 45,
+  });
+  const sampleArgs = (toolRuns[2]?.["args"] || []) as string[];
+  assert.deepEqual(sampleArgs.slice(0, 6), ["-hide_banner", "-ss", "0", "-t", "45", "-i"]);
 });
 
 test("laboratory host activation unwraps host-context room-event payloads before saving context", () => {
@@ -372,7 +457,7 @@ test("laboratory process runtime keeps cancelled runs cancelled after the active
         return runnerOutput;
       };
     },
-    async maybeRunWhisperProfileSample() {
+    async maybeRunTranscriptProfileSample() {
       return null;
     },
     normalizeProcessArtifact(rawValue) {
@@ -674,7 +759,7 @@ test("laboratory process runtime registers generated artifacts as project assets
         return { findings: [], artifacts: [], warnings: [] };
       };
     },
-    async maybeRunWhisperProfileSample() {
+    async maybeRunTranscriptProfileSample() {
       return null;
     },
     normalizeProcessArtifact(rawValue) {
@@ -847,7 +932,7 @@ test("laboratory process runtime materializes remote workspace image targets bef
       return {
         download: {
           fileName,
-          path: `/tmp/project-remote-process/source/${fileName}`,
+          path: `/tmp/project-remote-process/sources/${fileName}`,
         },
       };
     },
@@ -883,7 +968,7 @@ test("laboratory process runtime materializes remote workspace image targets bef
       return toRecord(toRecord(toRecord(project["process"])["records"])[featureId]);
     },
     getProjectSourceDir() {
-      return "/tmp/project-remote-process/source";
+      return "/tmp/project-remote-process/sources";
     },
     async patchActiveProject(_runtime, patcher) {
       activeProject = patcher(activeProject);
@@ -984,7 +1069,7 @@ test("laboratory process runtime materializes remote workspace image targets bef
         return { findings: [], artifacts: [], warnings: [] };
       };
     },
-    async maybeRunWhisperProfileSample() {
+    async maybeRunTranscriptProfileSample() {
       return null;
     },
     normalizeProcessArtifact(rawValue) {
@@ -1025,7 +1110,7 @@ test("laboratory process runtime materializes remote workspace image targets bef
     }),
     ["https://example.test/a.png", "https://example.test/b.png"]
   );
-  assert.equal(resolvedTargetPath, "/tmp/project-remote-process/source/a.png");
+  assert.equal(resolvedTargetPath, "/tmp/project-remote-process/sources/a.png");
   const assets = activeProject["assets"] as Array<Record<string, unknown>>;
   assert.equal(
     assets.some(function (asset) {
@@ -1038,12 +1123,12 @@ test("laboratory process runtime materializes remote workspace image targets bef
       assetId: "asset-remote-a",
       fileName: "a.png",
       label: "a.png",
-      localPath: "/tmp/project-remote-process/source/a.png",
+      localPath: "/tmp/project-remote-process/sources/a.png",
       metadata: {
         sourceKind: "image",
       },
       name: "a.png",
-      path: "/tmp/project-remote-process/source/a.png",
+      path: "/tmp/project-remote-process/sources/a.png",
       sourceKind: "image",
       type: "image",
       url: "https://example.test/a.png",
@@ -1052,12 +1137,12 @@ test("laboratory process runtime materializes remote workspace image targets bef
       assetId: "asset-remote-b",
       fileName: "b.png",
       label: "b.png",
-      localPath: "/tmp/project-remote-process/source/b.png",
+      localPath: "/tmp/project-remote-process/sources/b.png",
       metadata: {
         sourceKind: "image",
       },
       name: "b.png",
-      path: "/tmp/project-remote-process/source/b.png",
+      path: "/tmp/project-remote-process/sources/b.png",
       sourceKind: "image",
       type: "image",
       url: "https://example.test/b.png",
@@ -1143,7 +1228,7 @@ test("laboratory host action composition is extracted into a shared host boundar
   assert.match(workspaceActionCompositionSource, /from "\.\/tool-mutations\.js"/);
   assert.match(
     workspaceActionCompositionSource,
-    /from "\.\.\/\.\.\/main-functions\/media-analysis\/host\/action-handlers\.js"/
+    /from "\.\.\/\.\.\/features\/media-analysis\/host\/action-handlers\.js"/
   );
   assert.match(
     workspaceActionRouterSource,
@@ -1158,7 +1243,7 @@ test("laboratory host action composition is extracted into a shared host boundar
     /deleteProject:\s*projectRuntimes\.lifecycle\.deleteProject,/
   );
   assert.match(workspaceFeatureAdaptersSource, /from "\.\.\/shared\/host\/action-composition\.js"/);
-  assert.doesNotMatch(workspaceFeatureAdaptersSource, /main-functions\/[^"]+\/host\/runtime\.js/);
+  assert.doesNotMatch(workspaceFeatureAdaptersSource, /features\/[^"]+\/host\/runtime\.js/);
   assert.match(workspaceHostFeatureSource, /from "\.\/feature-adapters\.js"/);
   assert.doesNotMatch(
     workspaceHostRuntimeSource,
@@ -2444,7 +2529,7 @@ test("laboratory source intake no longer exposes asset source promotion", () => 
       return null;
     },
     getProjectSourceDir() {
-      return "/tmp/project/source";
+      return "/tmp/project/sources";
     },
     getSourceConfig() {
       return {};
@@ -2502,7 +2587,7 @@ test("laboratory local source picker uses requested import kind filters", async 
       };
     },
     getProjectSourceDir() {
-      return "/tmp/project/source";
+      return "/tmp/project/sources";
     },
     getSourceConfig(_sourcePresets, sourceKind) {
       requestedKinds.push(sourceKind);
@@ -2568,7 +2653,7 @@ test("laboratory local source picker validates auto-detected image sources as im
         async copyFileTo() {
           return {
             success: true,
-            path: "/tmp/project/source/frame.png",
+            path: "/tmp/project/sources/frame.png",
             name: "frame.png",
           };
         },
@@ -2581,7 +2666,7 @@ test("laboratory local source picker validates auto-detected image sources as im
       };
     },
     getProjectSourceDir() {
-      return "/tmp/project/source";
+      return "/tmp/project/sources";
     },
     getSourceConfig(_sourcePresets, sourceKind) {
       if (sourceKind === "image") {
@@ -2796,9 +2881,6 @@ test("laboratory project lifecycle serializes concurrent active project asset pa
     },
     getFeatureIdFromContext() {
       return "media-analysis";
-    },
-    getProfileModelStatePath() {
-      return "/tmp/laboratory/profile-models.json";
     },
     getProjectDir() {
       return "/tmp/laboratory/project-parallel";

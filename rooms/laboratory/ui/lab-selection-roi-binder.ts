@@ -4,7 +4,7 @@ import type {
   LabSelection,
   LabSelectionROI,
   LabStoreEvent,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 import { bindLabDocumentEvents, isClosestCapableTarget } from "./lab-dom-events.js";
 
 const MIN_SELECTION_ROI_SIZE_PX = 8;

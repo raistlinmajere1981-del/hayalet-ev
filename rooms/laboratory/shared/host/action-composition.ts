@@ -1,4 +1,4 @@
-import { createMediaActionRuntime } from "../../main-functions/media-analysis/host/action-handlers.js";
+import { createMediaActionRuntime } from "../../features/media-analysis/host/action-handlers.js";
 import { createLaboratoryHostActionRuntime } from "./action-runtime.js";
 import { createLaboratoryToolMutationRuntime } from "./tool-mutations.js";
 

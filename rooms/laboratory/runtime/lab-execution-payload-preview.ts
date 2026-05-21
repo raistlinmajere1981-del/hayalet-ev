@@ -5,7 +5,7 @@ import type {
   LabExecutionSimulation,
   LabInspectionMode,
   LabSelection,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 import {
   getLabRoiArea as getRoiArea,
   getLabSelectionDurationMs as getSelectionDurationMs,

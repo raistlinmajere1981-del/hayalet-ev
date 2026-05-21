@@ -156,7 +156,7 @@ type LaboratoryManagedMediaRunnerDeps = {
     label: string,
     metadata?: LaboratoryRecord
   ) => Promise<unknown>;
-  maybeRunWhisperProfileSample: (
+  maybeRunTranscriptProfileSample: (
     runtime: LaboratoryManagedMediaRuntime,
     project: LaboratoryManagedMediaProjectRecord,
     requestId: string,
@@ -181,14 +181,16 @@ type LaboratoryManagedMediaRunnerDeps = {
     project: LaboratoryManagedMediaProjectRecord,
     requestId: string,
     jobId: string,
-    target: LaboratoryManagedMediaTargetRecord
+    target: LaboratoryManagedMediaTargetRecord,
+    options?: LaboratoryRecord
   ) => Promise<unknown>;
   runVideoStructureProbe: (
     runtime: LaboratoryManagedMediaRuntime,
     project: LaboratoryManagedMediaProjectRecord,
     requestId: string,
     jobId: string,
-    target: LaboratoryManagedMediaTargetRecord
+    target: LaboratoryManagedMediaTargetRecord,
+    options?: LaboratoryRecord
   ) => Promise<unknown>;
   toRecord: (value: unknown) => LaboratoryRecord;
   updateProcessModule: (
@@ -209,7 +211,7 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
     generateProcessMetadataArtifact,
     generateProcessSpectrogram,
     generateProcessVisualTransformArtifact,
-    maybeRunWhisperProfileSample,
+    maybeRunTranscriptProfileSample,
     normalizeProcessArtifact,
     normalizeProcessFinding,
     partitionVisualAnalysisModuleIds,
@@ -816,7 +818,9 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
       const videoProbe =
         sourceKind === "video"
           ? toVideoProbeRecord(
-              await runVideoStructureProbe(runtime, project, requestId, jobId, primaryTarget)
+              await runVideoStructureProbe(runtime, project, requestId, jobId, primaryTarget, {
+                analysisScope: processRecord["analysisScope"],
+              })
             )
           : toVideoProbeRecord({});
       const freezeCount = getProbeCount(videoProbe.freeze);
@@ -1475,7 +1479,9 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
       });
 
       const audioProbe = toAudioProbeRecord(
-        await runAudioStructureProbe(runtime, project, requestId, jobId, target)
+        await runAudioStructureProbe(runtime, project, requestId, jobId, target, {
+          analysisScope: processRecord["analysisScope"],
+        })
       );
       const spectrogram = normalizeOptionalArtifact(
         await generateProcessSpectrogram(
@@ -1549,7 +1555,7 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
       const speech = toSpeechAvailabilityRecord(buildProcessSpeechAvailability(runtime, project));
       if (speech.ready === true) {
         try {
-          const transcriptResult = await maybeRunWhisperProfileSample(
+          const transcriptResult = await maybeRunTranscriptProfileSample(
             runtime,
             project,
             requestId,

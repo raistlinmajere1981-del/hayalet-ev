@@ -1,4 +1,4 @@
-import type { LabWorkspaceControlTab } from "../../models/lab-types.js";
+import type { LabWorkspaceControlTab } from "../../domain/lab-types.js";
 import { pad2 } from "./lab-controller-helpers.js";
 
 const FALLBACK_TIMELINE_FRAME_DURATION_SECONDS = 1 / 30;

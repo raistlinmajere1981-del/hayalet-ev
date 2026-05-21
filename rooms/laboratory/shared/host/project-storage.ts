@@ -40,6 +40,7 @@ type LaboratoryProfileModelState = {
   activeModelId: string | null;
   activeVariant: string | null;
   models: Record<string, LaboratoryProfileModelEntry>;
+  runtimeStatus?: unknown;
   schemaVersion: number;
   updatedAt: string | number | null;
 };
@@ -66,7 +67,6 @@ type LaboratoryProjectStorageRuntimeDeps = {
   createDefaultProfileModelEntry: (modelId: string) => LaboratoryProfileModelEntry;
   createDefaultToolEntry: (toolId: string) => LaboratoryToolEntry;
   createDefaultToolState: (toolIds: unknown) => LaboratoryToolState;
-  getProfileModelStatePath: (runtime: LaboratoryProjectStorageRuntime) => string;
   getProjectEditManifestPath: (
     runtime: LaboratoryProjectStorageRuntime,
     project: LaboratoryProjectRecord
@@ -117,7 +117,6 @@ export function createLaboratoryProjectStorageRuntime(deps: LaboratoryProjectSto
     createDefaultProfileModelEntry,
     createDefaultToolEntry,
     createDefaultToolState,
-    getProfileModelStatePath,
     getProjectEditManifestPath,
     getProjectMetaPath,
     getProjectProcessManifestPath,
@@ -218,7 +217,6 @@ export function createLaboratoryProjectStorageRuntime(deps: LaboratoryProjectSto
 
   async function persistProfileModelState(runtime: LaboratoryProjectStorageRuntime) {
     runtime.profileModelState.updatedAt = new Date().toISOString();
-    await writeJsonFile(getProfileModelStatePath(runtime), runtime.profileModelState);
   }
 
   async function loadToolState(runtime: LaboratoryProjectStorageRuntime) {
@@ -243,23 +241,19 @@ export function createLaboratoryProjectStorageRuntime(deps: LaboratoryProjectSto
   }
 
   async function loadProfileModelState(runtime: LaboratoryProjectStorageRuntime) {
-    const stored = await readJsonFile(getProfileModelStatePath(runtime));
-    const storedRecord = toRecord(stored);
-    const models = toRecord(storedRecord["models"]);
     const catalogModels = toRecord(toProfileModelCatalog(runtime.profileModels).models);
     const nextState: LaboratoryProfileModelState = {
-      activeLanguage: asNonEmptyString(storedRecord["activeLanguage"]),
-      activeModelId: asNonEmptyString(storedRecord["activeModelId"]),
-      activeVariant: asNonEmptyString(storedRecord["activeVariant"]),
+      activeLanguage: null,
+      activeModelId: null,
+      activeVariant: null,
       schemaVersion: 1,
-      updatedAt: asNonEmptyString(storedRecord["updatedAt"]),
+      updatedAt: null,
       models: {},
     };
 
     Object.keys(catalogModels).forEach(function (modelId) {
       nextState.models[modelId] = {
         ...createDefaultProfileModelEntry(modelId),
-        ...toRecord(models[modelId]),
         modelId,
       };
     });

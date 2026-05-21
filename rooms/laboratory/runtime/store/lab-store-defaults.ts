@@ -1,11 +1,11 @@
-import { asLabRecord } from "../../models/lab-types.js";
+import { asLabRecord } from "../../domain/lab-types.js";
 import type {
   LabPreflightResult,
   LabProjectImportUiState,
   LabSourceDrafts,
   LabStoreState,
   LabWorkspaceUiState,
-} from "../../models/lab-types.js";
+} from "../../domain/lab-types.js";
 import {
   DEFAULT_AUDIO_FOCUS_SETTINGS,
   normalizeAudioFocusSettings,

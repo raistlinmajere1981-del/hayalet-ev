@@ -9,7 +9,7 @@ import {
   LAB_OPERATION_SETTINGS_FIELDS,
   WORKSPACE_INTENTS,
   getModuleIdsForCapabilityFamily,
-} from "../../rooms/laboratory/models/lab-types.ts";
+} from "../../rooms/laboratory/domain/lab-types.ts";
 import { labI18nEn } from "../../rooms/laboratory/runtime/lab-i18n-en.ts";
 import { labI18nTr } from "../../rooms/laboratory/runtime/lab-i18n-tr.ts";
 

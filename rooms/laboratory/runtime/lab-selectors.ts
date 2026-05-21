@@ -1,4 +1,4 @@
-import { asLabRecord, asNonEmptyString } from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString } from "../domain/lab-types.js";
 import type {
   LabGlobalProcessSummary,
   LabIntentDirtyMap,
@@ -15,8 +15,8 @@ import type {
   ReportFreshness,
   LabDrawerMode,
   LabIntentId,
-} from "../models/lab-types.js";
-import { CAPABILITY_FAMILIES, WORKSPACE_INTENTS } from "../models/lab-types.js";
+} from "../domain/lab-types.js";
+import { CAPABILITY_FAMILIES, WORKSPACE_INTENTS } from "../domain/lab-types.js";
 import {
   getCurrentFeatureReportRecord,
   getProjectSource,
@@ -265,7 +265,7 @@ export function isLabWorkspaceSurfaceReady(state: LabStoreState) {
 
 export function getWorkspaceMode(
   state: LabStoreState
-): import("../models/lab-types.js").WorkspaceMode {
+): import("../domain/lab-types.js").WorkspaceMode {
   if (!isLabWorkspaceSurfaceReady(state)) {
     return "loading";
   }

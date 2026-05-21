@@ -96,6 +96,7 @@
 
   --pattern-border: var(--pattern-text-alpha-14);
   --pattern-border-strong: var(--pattern-accent-cyan-alpha-28);
+  --pattern-border-currentcolor-alpha-48: color-mix(in srgb, currentColor 48%, transparent);
   --pattern-border-wall-alpha-36: rgba(86, 96, 92, 0.36);
   --pattern-border-cabinet-alpha-50: rgba(94, 104, 94, 0.5);
   --pattern-glow-cyan-focus: 0 0 0 3px var(--pattern-accent-cyan-alpha-12);

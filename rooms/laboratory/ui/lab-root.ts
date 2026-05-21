@@ -1,5 +1,5 @@
-import { asLabRecord, asNonEmptyString } from "../models/lab-types.js";
-import type { LabStoreState, LabWorkspaceSurface } from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString } from "../domain/lab-types.js";
+import type { LabStoreState, LabWorkspaceSurface } from "../domain/lab-types.js";
 import { createLabEventBus } from "../runtime/lab-event-bus.js";
 import { createLabHostBridge } from "../runtime/lab-host-bridge.js";
 import { loadLabPersistedState, saveLabPersistedState } from "../runtime/lab-persistence.js";

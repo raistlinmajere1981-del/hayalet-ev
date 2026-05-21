@@ -1,7 +1,7 @@
 import { createLaboratoryAudioReportRuntime } from "./reporting-audio.js";
 import { createLaboratoryReportMarkdownRuntime } from "./reporting-markdown.js";
 import { buildAiReport, buildUserReport } from "../../services/report-builder.js";
-import type { LabRun } from "../../models/lab-types.js";
+import type { LabRun } from "../../domain/lab-types.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 

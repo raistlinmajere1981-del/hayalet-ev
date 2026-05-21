@@ -8,7 +8,7 @@ This matrix keeps the audio-analysis rollout aligned with the shared room-tool c
 | ffmpeg-signal-recovery | signal-recovery, band-pass-exploration, spectrogram-guided-recovery, hidden-pattern-extraction | ffmpeg | shared room tool |
 | ffmpeg-frequency-recovery | frequency-shift-reversal | ffmpeg | shared room tool |
 | ffmpeg-phase-lab | phase-recovery-experiment | ffmpeg | shared room tool |
-| whisper-transcript | transcription | whisper.cpp | shared room tool and model |
+| speech-runtime-transcript | transcription | transcript-runtime | central Speech Runtime |
 | speaker-timeline | speaker-diarization | pyAudioAnalysis, ffmpeg, python3 | shared room tool manual |
 | prosody-open-smile | prosody | openSMILE | shared room tool |
 | emotion-heuristic | emotion | openSMILE | shared room tool |

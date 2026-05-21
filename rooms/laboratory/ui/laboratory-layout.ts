@@ -1,5 +1,5 @@
-import { escapeHtml } from "../models/lab-types.js";
-import type { LabDrawerMode, LabPipelineBlock } from "../models/lab-types.js";
+import { escapeHtml } from "../domain/lab-types.js";
+import type { LabDrawerMode, LabPipelineBlock } from "../domain/lab-types.js";
 
 function getPipelineDebugShell() {
   if (typeof globalThis.document === "undefined") {

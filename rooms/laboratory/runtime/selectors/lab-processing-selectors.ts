@@ -2,8 +2,8 @@ import type {
   LabProcessingOverlayState,
   LabStoreState,
   LabUserActionEvent,
-} from "../../models/lab-types.js";
-import { LAB_OPERATION_CAPABILITIES } from "../../models/lab-types.js";
+} from "../../domain/lab-types.js";
+import { LAB_OPERATION_CAPABILITIES } from "../../domain/lab-types.js";
 import { getTrackedOperationActionId } from "../lab-operation-action-map.js";
 import { getUserActions } from "./lab-activity-selectors.js";
 import { getCurrentRun } from "./lab-source-selectors.js";

@@ -1,4 +1,4 @@
-import { escapeHtml, formatDateTime, getIntentLabel } from "../models/lab-types.js";
+import { escapeHtml, formatDateTime, getIntentLabel } from "../domain/lab-types.js";
 import type {
   LabAiReport,
   LabArtifactProjection,
@@ -7,7 +7,7 @@ import type {
   LabRecord,
   LabStoreState,
   LabUserReport,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 import { buildIntentReportGroups } from "../services/report-builder.js";
 import {
   getCurrentReports,

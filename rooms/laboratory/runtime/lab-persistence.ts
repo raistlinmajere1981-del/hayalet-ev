@@ -1,4 +1,4 @@
-import type { LabPersistedState } from "../models/lab-types.js";
+import type { LabPersistedState } from "../domain/lab-types.js";
 
 const LAB_PERSISTENCE_KEY = "hayalet-ev:laboratory-refactor:v4";
 const LAB_LEGACY_PERSISTENCE_KEYS = [

@@ -1,5 +1,5 @@
-import { asLabRecord, asNonEmptyString, asNumber, asStringArray } from "../../models/lab-types.js";
-import type { LabAsset, LabAssetType } from "../../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, asNumber, asStringArray } from "../../domain/lab-types.js";
+import type { LabAsset, LabAssetType } from "../../domain/lab-types.js";
 
 const LAB_ASSET_TYPES: LabAssetType[] = [
   "source",

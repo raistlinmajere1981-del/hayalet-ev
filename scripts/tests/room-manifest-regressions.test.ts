@@ -140,7 +140,7 @@ test("validateRoomManifest allows workbench rooms to keep scene entries only for
           },
           view: {
             id: "media-analysis-console",
-            backgroundSrc: "assets/media-analysis-view.webp",
+            backgroundSrc: "features/media-analysis/assets/media-analysis-view.webp",
           },
         },
       },

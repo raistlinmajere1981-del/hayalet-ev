@@ -6,14 +6,14 @@ import {
   LAB_OPERATION_SETTINGS_DEFAULTS,
   normalizeLabAnalysisModuleSettings,
   normalizeLabOperationSettings,
-} from "../../models/lab-types.js";
+} from "../../domain/lab-types.js";
 import type {
   LabAudioFocusSettings,
   LabComparisonSide,
   LabComparisonViewMode,
   LabInteractiveSettings,
   LabOperationCapabilityId,
-} from "../../models/lab-types.js";
+} from "../../domain/lab-types.js";
 import { getInteractiveSettingsForComparisonSide, isRunActive } from "../lab-selectors.js";
 import type { createLabStore } from "../lab-store.js";
 import { DEFAULT_LAB_INTERACTIVE_SETTINGS } from "../lab-workspace-defaults.js";

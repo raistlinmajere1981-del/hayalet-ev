@@ -1,4 +1,4 @@
-import { asLabRecord, asNonEmptyString, asNumber } from "../../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, asNumber } from "../../domain/lab-types.js";
 import type {
   LabProjectImportKind,
   LabProjectImportMethod,
@@ -6,7 +6,7 @@ import type {
   LabSourceDrafts,
   LabStoreState,
   LabYoutubeImportFormat,
-} from "../../models/lab-types.js";
+} from "../../domain/lab-types.js";
 import { cloneSourceDrafts, createDefaultProjectImportState } from "./lab-store-defaults.js";
 
 export function chooseDefaultYoutubeFormats(formats: LabYoutubeImportFormat[]) {

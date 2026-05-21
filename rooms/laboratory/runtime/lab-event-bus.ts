@@ -1,4 +1,4 @@
-import type { LabStoreEvent } from "../models/lab-types.js";
+import type { LabStoreEvent } from "../domain/lab-types.js";
 
 export function createLabEventBus() {
   const listeners = new Set<(event: LabStoreEvent) => void>();

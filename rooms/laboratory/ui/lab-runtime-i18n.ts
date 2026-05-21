@@ -2,7 +2,7 @@ import type {
   LabEventFeedItem,
   LabExpectedOutput,
   LabUserActionEvent,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 

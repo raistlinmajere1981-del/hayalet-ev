@@ -1,5 +1,5 @@
-import { escapeHtml } from "../models/lab-types.js";
-import type { LabActionSuggestion, LabInterpretationItem } from "../models/lab-types.js";
+import { escapeHtml } from "../domain/lab-types.js";
+import type { LabActionSuggestion, LabInterpretationItem } from "../domain/lab-types.js";
 import type { LabI18n } from "./lab-i18n.js";
 
 export function isOperationSuggestion(suggestion: LabActionSuggestion) {

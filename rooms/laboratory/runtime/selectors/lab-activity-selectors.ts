@@ -1,5 +1,5 @@
-import { asLabRecord } from "../../models/lab-types.js";
-import type { LabAsset, LabStoreState, LabUserActionEvent } from "../../models/lab-types.js";
+import { asLabRecord } from "../../domain/lab-types.js";
+import type { LabAsset, LabStoreState, LabUserActionEvent } from "../../domain/lab-types.js";
 import { normalizeAnalysisScope } from "../../shared/types/analysis-scope.js";
 import { LAB_USER_ACTION_HISTORY_LIMIT } from "../lab-user-actions.js";
 import { getAssetById, getCurrentRun } from "./lab-source-selectors.js";

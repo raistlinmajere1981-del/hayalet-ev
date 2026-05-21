@@ -84,7 +84,13 @@ test("pattern-room installed UI renders overview hotspots and returns from focus
       const focusedText = readTreeText(environment.app);
 
       if (viewId === "board") {
-        assertTextIncludes(focusedText, ["Kanıt", "Analiz", "Yorum", "Belirsizlik"]);
+        assertTextIncludes(focusedText, [
+          "Kanıt",
+          "Analiz",
+          "Yorum",
+          "Belirsizlik",
+          "Bağlantılar Rapor panelinde Yerel Bağlantılar bölümünde listelenir.",
+        ]);
       }
 
       if (viewId === "archive") {
@@ -102,14 +108,16 @@ test("pattern-room installed UI renders overview hotspots and returns from focus
           "AI1 — Savunucu",
           "AI2 — 10. Adam / Karşıt",
           "US1 — Hakem / Uzak kullanıcı",
+          "Yerel Simülasyon",
+          "0 / 8",
         ]);
       }
 
       if (viewId === "report") {
         assertTextIncludes(focusedText, [
-          "Kanıtlar",
-          "Analizler",
-          "Belirsizlikler",
+          "Kanıt İzleri",
+          "Analiz İzleri",
+          "Belirsizlik İzleri",
           "Sonraki araştırma notları",
         ]);
       }
@@ -470,18 +478,22 @@ test("pattern-room installed UI runs phase 5B local tenth-man debate flow", asyn
 
     returnToOverview(environment.app);
     openFocusedView(environment.app, "tenth-man");
-    assertTextIncludes(readTreeText(environment.app), ["Golge karsilastirma gorseli"]);
+    assertTextIncludes(readTreeText(environment.app), [
+      "Golge karsilastirma gorseli",
+      "Yerel Simülasyon",
+      "0 / 8",
+    ]);
 
     const prepare = environment.app.querySelector("[data-pattern-prepare-debate='true']");
     assert.ok(prepare);
     assert.equal(prepare.disabled, false);
     fireEvent(prepare, "click");
-    assertTextIncludes(readTreeText(environment.app), ["Hazırlık", "Rolleri Ata"]);
+    assertTextIncludes(readTreeText(environment.app), ["Hazırlık", "Rolleri Ata", "1 / 8"]);
 
     const assign = environment.app.querySelector("[data-pattern-assign-debate-roles='true']");
     assert.ok(assign);
     fireEvent(assign, "click");
-    assertTextIncludes(readTreeText(environment.app), ["Rol atama", "dummy bağlı"]);
+    assertTextIncludes(readTreeText(environment.app), ["Rol atama", "dummy bağlı", "2 / 8"]);
 
     const start = environment.app.querySelector("[data-pattern-start-debate='true']");
     assert.ok(start);
@@ -499,7 +511,10 @@ test("pattern-room installed UI runs phase 5B local tenth-man debate flow", asyn
     const complete = environment.app.querySelector("[data-pattern-complete-debate='true']");
     assert.ok(complete);
     fireEvent(complete, "click");
-    assertTextIncludes(readTreeText(environment.app), ["Local 10. Adam oturumu tamamlandı"]);
+    assertTextIncludes(readTreeText(environment.app), [
+      "Local 10. Adam oturumu tamamlandı",
+      "8 / 8",
+    ]);
 
     const reflect = environment.app.querySelector("[data-pattern-reflect-debate='true']");
     assert.ok(reflect);

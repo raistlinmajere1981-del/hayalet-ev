@@ -1,4 +1,4 @@
-import { asLabRecord, asNonEmptyString, escapeHtml, ICON_RAIL_SLOTS } from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, escapeHtml, ICON_RAIL_SLOTS } from "../domain/lab-types.js";
 import type {
   LabWorkspaceSurface,
   LabAsset,
@@ -11,7 +11,7 @@ import type {
   LabIconRailSlotId,
   LabComparisonRoiState,
   LabComparisonSide,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 import {
   getActiveSelection,
   getAudioFocusSettings,

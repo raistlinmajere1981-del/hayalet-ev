@@ -911,7 +911,7 @@
       "tools": {
         "yt-dlp": "yt-dlp",
         "ffmpeg": "FFmpeg",
-        "whisper.cpp": "Whisper.cpp",
+        "transcript-runtime": "Speech Runtime",
         "opensmile": "openSMILE",
         "yamnet": "YAMNet",
         "librosa": "librosa",
@@ -1850,7 +1850,7 @@
         "notReady": "Not ready"
       },
       "lifecycle": {
-        "settingsManaged": "Whisper.cpp lifecycle is managed in main Settings. Laboratory only reflects the current runtime probe and active language/model readiness.",
+        "settingsManaged": "Speech Runtime lifecycle is managed in main Settings. Laboratory only reflects the current runtime probe and active language/model readiness.",
         "lastError": "Last error: {error}",
         "default": "Tool status is tracked through the room-local registry."
       },
@@ -1892,7 +1892,7 @@
       "ariaLabel": "Tool Management",
       "eyebrow": "Workbench",
       "title": "Tool Management",
-      "subtitle": "Manage room tools such as yt-dlp and FFmpeg here; Whisper.cpp is only reflected through the central Settings runtime state.",
+      "subtitle": "Manage room tools such as yt-dlp and FFmpeg here; Speech Runtime is only reflected through the central Settings runtime state.",
       "stats": {
         "relevant": "Relevant tools",
         "installed": "Installed tools",
@@ -1992,7 +1992,7 @@
         "ffmpeg": {
           "readinessImpact": "Blocks local transforms, derived outputs, and most managed analysis runs."
         },
-        "whisper-cpp": {
+        "transcript-runtime": {
           "readinessImpact": "Limits transcript-backed speech checks and transcript artifacts."
         },
         "opensmile": {
@@ -2659,7 +2659,7 @@
         },
         "transcription": {
           "title": "Transcript",
-          "summary": "Optional transcript capture reuses the central Settings-owned Whisper.cpp runtime and active model."
+          "summary": "Optional transcript capture reuses the central Settings-owned Speech Runtime and active model."
         },
         "transcript-support": {
           "title": "Transcript support",
@@ -2708,8 +2708,8 @@
         "title": "FFmpeg phase lab",
         "summary": "Shared room-local FFmpeg provider for stereo phase-isolation and side-channel recovery experiments."
       },
-      "whisper-transcript": {
-        "title": "Whisper transcript runner",
+      "speech-runtime-transcript": {
+        "title": "Speech Runtime transcript runner",
         "summary": "Shared central transcript runtime projection for transcript-aware passes."
       },
       "speaker-timeline": {

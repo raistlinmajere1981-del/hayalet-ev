@@ -1,4 +1,4 @@
-import { asLabRecord, normalizeLabFeatureId } from "../../models/lab-types.js";
+import { asLabRecord, normalizeLabFeatureId } from "../../domain/lab-types.js";
 import type {
   CapabilityFamilyId,
   LabEventFeedItem,
@@ -6,7 +6,7 @@ import type {
   LabStoreEvent,
   LabStoreState,
   LabWorkspaceUiState,
-} from "../../models/lab-types.js";
+} from "../../domain/lab-types.js";
 import { normalizeStoreAssets } from "./lab-store-assets.js";
 import { normalizeAudioFocusPatch } from "../lab-audio-focus-normalization.js";
 import {

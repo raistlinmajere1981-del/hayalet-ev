@@ -1,4 +1,4 @@
-import { asLabRecord, asNonEmptyString } from "../../models/lab-types.js";
+import { asLabRecord, asNonEmptyString } from "../../domain/lab-types.js";
 import type {
   LabActionSuggestion,
   LabExecutionCandidate,
@@ -6,7 +6,7 @@ import type {
   LabIntentId,
   LabSelection,
   LabStoreState,
-} from "../../models/lab-types.js";
+} from "../../domain/lab-types.js";
 import { getSelectionSuggestionsForContext } from "../lab-selection-suggestion-logic.js";
 import { resolveEffectiveWorkspaceSelection } from "../lab-workspace-selection.js";
 import { createIdleExecutionRuntime } from "./lab-store-defaults.js";

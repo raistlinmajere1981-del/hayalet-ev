@@ -9,7 +9,7 @@ import type {
   LabExecutionSimulation,
   LabExecutionStaging,
   LabSelection,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 
 type LabExecutionStagingInput = {
   activeSelection: LabSelection;

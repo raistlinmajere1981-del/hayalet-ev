@@ -11,7 +11,7 @@ import type {
   LabInspectionMode,
   LabSelection,
   LabSelectionROI,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 import {
   buildAdaptiveDecisionSignal,
   buildCounterfactualProjection,

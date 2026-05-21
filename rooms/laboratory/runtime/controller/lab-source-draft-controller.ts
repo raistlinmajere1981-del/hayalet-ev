@@ -1,5 +1,5 @@
-import { asLabRecord, asNonEmptyString } from "../../models/lab-types.js";
-import type { LabSourceDrafts, LabStoreState } from "../../models/lab-types.js";
+import { asLabRecord, asNonEmptyString } from "../../domain/lab-types.js";
+import type { LabSourceDrafts, LabStoreState } from "../../domain/lab-types.js";
 import {
   getDefaultSourceKind,
   getDefaultSourceMode,

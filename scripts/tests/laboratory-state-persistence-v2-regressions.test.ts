@@ -7,7 +7,7 @@ import { createLaboratoryProcessReportStateRuntime } from "../../rooms/laborator
 import {
   createLaboratoryWorkbenchState,
 } from "../../rooms/laboratory/shared/host/runtime-primitives.ts";
-import { asNonEmptyString, asNumber } from "../../rooms/laboratory/models/lab-types.ts";
+import { asNonEmptyString, asNumber } from "../../rooms/laboratory/domain/lab-types.ts";
 
 function toRecord(value: unknown) {
   return value !== null && typeof value === "object" && Array.isArray(value) === false

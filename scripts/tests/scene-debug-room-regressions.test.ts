@@ -232,7 +232,7 @@ test("installed laboratory manifest exposes one workbench hotspot while legacy f
     assert.equal(mediaFeature?.scene?.view?.id, "media-analysis-console");
     assert.equal(
       mediaFeature?.scene?.view?.backgroundSrc,
-      "main-functions/media-analysis/assets/media-analysis-view.webp"
+      "features/media-analysis/assets/media-analysis-view.webp"
     );
     assert.equal(audioFeature?.scene, undefined);
   } finally {

@@ -1,5 +1,5 @@
-import { asLabRecord } from "../models/lab-types.js";
-import type { LabRecord } from "../models/lab-types.js";
+import { asLabRecord } from "../domain/lab-types.js";
+import type { LabRecord } from "../domain/lab-types.js";
 
 export type LabI18n = {
   locale: string;

@@ -1,4 +1,4 @@
-import { asLabRecord, asNonEmptyString } from "../../models/lab-types.js";
+import { asLabRecord, asNonEmptyString } from "../../domain/lab-types.js";
 import type {
   LabActionSuggestion,
   LabActiveExecutionResult,
@@ -21,7 +21,7 @@ import type {
   LabSelectionIntent,
   LabStoreState,
   LabSuggestionPreview,
-} from "../../models/lab-types.js";
+} from "../../domain/lab-types.js";
 import { buildExecutionAlternativesFromResolved } from "../lab-execution-alternatives.js";
 import { buildExecutionPayloadPreviewFromResolved } from "../lab-execution-payload-preview.js";
 import { buildExecutionCandidateFromResolved } from "../lab-execution-candidate.js";

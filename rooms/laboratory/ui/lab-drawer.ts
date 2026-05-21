@@ -1,4 +1,4 @@
-import { escapeHtml } from "../models/lab-types.js";
+import { escapeHtml } from "../domain/lab-types.js";
 import type {
   CapabilityFamilyId,
   LabDecisionIntent,
@@ -7,7 +7,7 @@ import type {
   LabPipelineBlock,
   LabStoreState,
   LabWorkspaceSurface,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 import {
   buildIntentPreviewSentence,
   getActiveExecutionIntent,

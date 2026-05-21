@@ -7,7 +7,7 @@
   "menu": {
     "label": "Laboratory",
     "icon": "LB",
-    "iconSrc": "shared/assets/nav-icon.svg",
+    "iconSrc": "assets/nav-icon.svg",
     "order": 90
   },
   "runtime": {
@@ -31,7 +31,7 @@
       "width": 1600,
       "height": 900
     },
-    "roomBackgroundSrc": "shared/assets/room-background.webp",
+    "roomBackgroundSrc": "assets/room-background.webp",
     "chrome": {
       "pageShellVariant": "immersive-stage"
     },
@@ -81,7 +81,7 @@
         },
         "view": {
           "id": "media-analysis-console",
-          "backgroundSrc": "main-functions/media-analysis/assets/media-analysis-view.webp",
+          "backgroundSrc": "features/media-analysis/assets/media-analysis-view.webp",
           "transparentWindow": {
             "leftPct": 2.4,
             "topPct": 10.8,

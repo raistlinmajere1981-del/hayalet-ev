@@ -1,5 +1,5 @@
-import { asLabRecord, asNonEmptyString } from "../models/lab-types.js";
-import type { LabAsset } from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString } from "../domain/lab-types.js";
+import type { LabAsset } from "../domain/lab-types.js";
 
 export type LabAssetSourceKind = "video" | "audio" | "image";
 export type LabAssetContentKind = LabAssetSourceKind | "document" | "unsupported";
@@ -32,7 +32,7 @@ export function getLabPathExtension(path: string | null): string | null {
   return leaf.slice(dotIndex + 1).toLowerCase();
 }
 
-export function getLabAssetCandidatePath(asset: LabAsset): string | null {
+function getLabAssetCandidatePath(asset: LabAsset): string | null {
   return (
     asNonEmptyString(asset.localPath) || asNonEmptyString(asset.url) || asNonEmptyString(asset.name)
   );

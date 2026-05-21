@@ -3,7 +3,7 @@ import type {
   LabInspectionMode,
   LabSelection,
   LabSuggestionPreview,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 
 type SelectionSuggestionContext = {
   expandedTaxonomy?: boolean;

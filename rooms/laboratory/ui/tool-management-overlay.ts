@@ -1,5 +1,5 @@
-import { asLabRecord, asNonEmptyString, escapeHtml } from "../models/lab-types.js";
-import type { LabRecord, LabStoreState } from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, escapeHtml } from "../domain/lab-types.js";
+import type { LabRecord, LabStoreState } from "../domain/lab-types.js";
 import { renderStatusChip } from "./components/status-chip.js";
 import { getToolLifecycleStage, getToolRelevanceFilter } from "../runtime/lab-selectors.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
@@ -64,7 +64,7 @@ const STAGE_LABELS: Record<string, string> = {
 };
 
 function isSettingsManagedTool(toolId: string | null): boolean {
-  return toolId === "whisper.cpp";
+  return toolId === "transcript-runtime";
 }
 
 function toToolDescriptorRecord(value: unknown): LabToolDescriptorRecord {
@@ -640,7 +640,7 @@ function getLifecycleHint(
   if (isSettingsManagedTool(toolId)) {
     return copy.t(
       "mediaAnalysis.toolManager.lifecycle.settingsManaged",
-      "Whisper.cpp lifecycle is managed in main Settings. Laboratory only reflects the current runtime probe and active language/model readiness."
+      "Speech Runtime lifecycle is managed in main Settings. Laboratory only reflects the current runtime probe and active language/model readiness."
     );
   }
   if (typeof entry.lastError === "string" && entry.lastError.trim() !== "") {

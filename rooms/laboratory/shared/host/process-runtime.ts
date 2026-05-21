@@ -1,7 +1,7 @@
 import { createLaboratoryManagedProcessRunnersRuntime } from "./process-managed-runners.js";
 import { extractFindings } from "../../services/finding-engine.js";
 import { freezeAnalysisScope } from "../types/analysis-scope.js";
-import { normalizeLabAnalysisSettingsMap } from "../../models/lab-types.js";
+import { normalizeLabAnalysisSettingsMap } from "../../domain/lab-types.js";
 import { createLaboratoryProcessOutputHelpers } from "./process-output-assets.js";
 import { createLabOutputAsset, findLabAssetById, upsertLabAsset } from "./lab-assets.js";
 import { getLabPathExtension, inferLabSourceKindFromUrl } from "../lab-asset-kind.js";
@@ -438,7 +438,7 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     generateProcessVisualTransformArtifact: deps["generateProcessVisualTransformArtifact"],
     getAudioAnalysisModuleProcessDir: deps["getAudioAnalysisModuleProcessDir"],
     getAudioAnalysisModuleRunner: deps["getAudioAnalysisModuleRunner"],
-    maybeRunWhisperProfileSample: deps["maybeRunWhisperProfileSample"],
+    maybeRunTranscriptProfileSample: deps["maybeRunTranscriptProfileSample"],
     normalizeProcessArtifact: deps["normalizeProcessArtifact"],
     normalizeProcessFinding: deps["normalizeProcessFinding"],
     partitionVisualAnalysisModuleIds: deps["partitionVisualAnalysisModuleIds"],

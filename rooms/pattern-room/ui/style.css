@@ -721,7 +721,7 @@ p {
   min-height: var(--pattern-px-48);
   width: 100%;
   padding: var(--pattern-px-11) var(--pattern-px-12) var(--pattern-px-11) var(--pattern-px-30);
-  border: var(--pattern-px-1) solid color-mix(in srgb, currentColor 48%, transparent);
+  border: var(--pattern-px-1) solid var(--pattern-border-currentcolor-alpha-48);
   border-left-width: var(--pattern-px-4);
   border-radius: var(--pattern-px-7);
   background: var(--pattern-gradient-currentcolor-card-sheen), var(--pattern-white-alpha-07);
@@ -1004,9 +1004,97 @@ p {
   color: var(--pattern-danger);
 }
 
+.pattern-room-archive-card.local-source {
+  border-color: var(--pattern-accent-cyan-alpha-48);
+}
+
+.pattern-room-source-tag.local-source {
+  border-color: var(--pattern-accent-cyan-alpha-48);
+  background: var(--pattern-accent-cyan-alpha-12);
+  color: var(--pattern-accent-cyan);
+}
+
+.pattern-room-inline-authoring,
+.pattern-room-inline-form {
+  display: grid;
+}
+
+.pattern-room-inline-authoring {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--pattern-px-10);
+  margin-top: var(--pattern-px-12);
+}
+
+.pattern-room-inline-disclosure {
+  overflow: hidden;
+  border: var(--pattern-px-1) solid var(--pattern-text-alpha-14);
+  border-radius: var(--pattern-px-8);
+  background: var(--pattern-gradient-cyan-card-sheen), var(--pattern-surface-inset-alpha-62);
+  box-shadow: inset 0 0 0 var(--pattern-px-1) var(--pattern-white-alpha-04);
+}
+
+.pattern-room-panel > .pattern-room-inline-disclosure {
+  margin-bottom: var(--pattern-px-16);
+}
+
+.pattern-room-inline-summary {
+  min-height: var(--pattern-px-38);
+  padding: var(--pattern-px-10) var(--pattern-px-12);
+  color: var(--pattern-text-warm);
+  cursor: pointer;
+  font-size: var(--pattern-rem-0-88);
+  font-weight: 800;
+}
+
+.pattern-room-inline-summary:focus-visible {
+  box-shadow: var(--pattern-glow-cyan-focus);
+  outline: none;
+}
+
+.pattern-room-inline-form {
+  gap: var(--pattern-px-10);
+  padding: var(--pattern-px-12);
+  border-top: var(--pattern-px-1) solid var(--pattern-text-alpha-12);
+}
+
+.pattern-room-inline-note {
+  margin-bottom: 0;
+  color: var(--pattern-text-subtle);
+  font-size: var(--pattern-rem-0-82);
+}
+
+.pattern-room-inline-input {
+  width: 100%;
+  min-height: var(--pattern-px-38);
+  resize: vertical;
+  padding: var(--pattern-px-10) var(--pattern-px-12);
+  border: var(--pattern-px-1) solid var(--pattern-text-alpha-16);
+  border-radius: var(--pattern-px-8);
+  background: var(--pattern-surface-inset-alpha-78);
+  color: var(--pattern-text);
+  font: inherit;
+}
+
+select.pattern-room-inline-input {
+  cursor: pointer;
+}
+
+textarea.pattern-room-inline-input {
+  min-height: var(--pattern-px-86);
+}
+
+.pattern-room-inline-input::placeholder {
+  color: var(--pattern-text-subtle);
+}
+
+.pattern-room-inline-input:focus {
+  border-color: var(--pattern-accent-cyan-alpha-72);
+  box-shadow: var(--pattern-glow-cyan-focus);
+  outline: none;
+}
+
 .pattern-room-device-status {
   display: inline-flex;
-  margin-bottom: var(--pattern-px-12);
   padding: var(--pattern-px-5) var(--pattern-px-9);
   border-radius: var(--pattern-px-999);
   background: var(--pattern-danger-alpha-16);
@@ -1014,6 +1102,29 @@ p {
   font-size: var(--pattern-rem-0-78);
   font-weight: 700;
   text-transform: uppercase;
+}
+
+.pattern-room-device-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pattern-px-8);
+  align-items: center;
+  margin-bottom: var(--pattern-px-12);
+}
+
+.pattern-room-device-status-secondary,
+.pattern-room-phase-step {
+  border: var(--pattern-px-1) solid var(--pattern-accent-cyan-alpha-24);
+  background: var(--pattern-accent-cyan-deep-alpha-08);
+  color: var(--pattern-accent-cyan);
+}
+
+.pattern-room-phase-step {
+  display: inline-flex;
+  padding: var(--pattern-px-5) var(--pattern-px-9);
+  border-radius: var(--pattern-px-999);
+  font-size: var(--pattern-rem-0-78);
+  font-weight: 800;
 }
 
 .pattern-room-device-slots {
@@ -1176,6 +1287,7 @@ p {
   .pattern-room-board-grid,
   .pattern-room-detail-metrics,
   .pattern-room-claim-objects,
+  .pattern-room-inline-authoring,
   .pattern-room-archive-list,
   .pattern-room-report-list,
   .pattern-room-device-slots {

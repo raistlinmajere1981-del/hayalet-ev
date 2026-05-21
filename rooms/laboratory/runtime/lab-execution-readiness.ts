@@ -5,7 +5,7 @@ import type {
   LabExecutionSimulation,
   LabInspectionMode,
   LabSelection,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 import {
   clampLabConfidence as clampConfidence,
   getLabSelectionDurationMs as getSelectionDurationMs,

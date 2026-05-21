@@ -5,7 +5,7 @@ import {
   getCapabilityFamilyIdsForIntentId,
   getIntentIdsForModuleId,
   getIntentLabel,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 import type {
   LabAiReport,
   LabArtifactProjection,
@@ -22,7 +22,7 @@ import type {
   LabROIRegion,
   LabRun,
   LabUserReport,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 import type { AnalysisScope } from "../shared/types/analysis-scope.js";
 
 export interface LabIntentReportGroup {

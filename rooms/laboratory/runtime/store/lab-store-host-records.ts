@@ -7,7 +7,7 @@ import {
   createLabEventId,
   normalizeFindingKind,
   toTimestamp,
-} from "../../models/lab-types.js";
+} from "../../domain/lab-types.js";
 import type {
   LabAiReport,
   LabArtifactProjection,
@@ -21,7 +21,7 @@ import type {
   LabPreviewArtifactProjection,
   LabRun,
   LabUserReport,
-} from "../../models/lab-types.js";
+} from "../../domain/lab-types.js";
 import {
   normalizeAnalysisReference,
   normalizeAnalysisScope,

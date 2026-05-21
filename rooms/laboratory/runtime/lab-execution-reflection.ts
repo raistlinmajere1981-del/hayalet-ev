@@ -6,7 +6,7 @@ import type {
   LabExecutionSimulation,
   LabInspectionMode,
   LabSelection,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 import { formatLabI18n, resolveLabI18n, type LabI18nKey, type LabI18nLocale } from "./lab-i18n.js";
 
 type LabExecutionReflectionInput = {

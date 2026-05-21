@@ -23,22 +23,22 @@ export function getProjectSourceDir(
   runtime: { paths: { projectsDir: string } },
   project: { slug: string }
 ): string {
-  return `${getProjectDir(runtime, project)}/source`;
+  return `${getProjectDir(runtime, project)}/sources`;
 }
 
-export function getProjectMainFunctionsDir(
+export function getProjectArtifactsDir(
   runtime: { paths: { projectsDir: string } },
   project: { slug: string }
 ): string {
-  return `${getProjectDir(runtime, project)}/main-functions`;
+  return `${getProjectDir(runtime, project)}/artifacts`;
 }
 
-export function getProjectFeatureDir(
+export function getProjectFeatureArtifactDir(
   runtime: { paths: { projectsDir: string } },
   project: { slug: string },
   featureId: string
 ): string {
-  return `${getProjectMainFunctionsDir(runtime, project)}/${asNonEmptyString(featureId) || MEDIA_FEATURE_ID}`;
+  return `${getProjectArtifactsDir(runtime, project)}/${asNonEmptyString(featureId) || MEDIA_FEATURE_ID}`;
 }
 
 export function getProjectFeatureStageDir(
@@ -47,14 +47,7 @@ export function getProjectFeatureStageDir(
   featureId: string,
   stageId: string
 ): string {
-  return `${getProjectFeatureDir(runtime, project, featureId)}/${stageId}`;
-}
-
-export function getProjectDerivedDir(
-  runtime: { paths: { projectsDir: string } },
-  project: { slug: string }
-): string {
-  return `${getProjectDir(runtime, project)}/derived`;
+  return `${getProjectFeatureArtifactDir(runtime, project, featureId)}/${stageId}`;
 }
 
 export function getProjectEditDir(
@@ -141,7 +134,7 @@ export function getProjectFeatureReportDir(
   project: { slug: string },
   featureId: string
 ): string {
-  return getProjectFeatureStageDir(runtime, project, featureId, "report");
+  return `${getProjectDir(runtime, project)}/reports/${asNonEmptyString(featureId) || MEDIA_FEATURE_ID}`;
 }
 
 export function getProjectReportDir(
@@ -173,8 +166,8 @@ export function getProjectDirectoryList(
   return [
     getProjectDir(runtime, project),
     getProjectSourceDir(runtime, project),
-    getProjectMainFunctionsDir(runtime, project),
-    getProjectFeatureDir(runtime, project, MEDIA_FEATURE_ID),
+    getProjectArtifactsDir(runtime, project),
+    getProjectFeatureArtifactDir(runtime, project, MEDIA_FEATURE_ID),
     getProjectEditDir(runtime, project),
     getProjectEditPreviewDir(runtime, project),
     getProjectEditOutputDir(runtime, project),
@@ -182,7 +175,7 @@ export function getProjectDirectoryList(
     getProjectProfilePreflightDir(runtime, project),
     getProjectProcessDir(runtime, project),
     getProjectReportDir(runtime, project),
-    getProjectFeatureDir(runtime, project, AUDIO_FEATURE_ID),
+    getProjectFeatureArtifactDir(runtime, project, AUDIO_FEATURE_ID),
     getAudioAnalysisProcessRootDir(runtime, project),
     getProjectFeatureReportDir(runtime, project, AUDIO_FEATURE_ID),
   ];
@@ -194,13 +187,13 @@ export function getProjectDirectoryFallbackMarkerList(
 ): string[] {
   return [
     getProjectSourceDir(runtime, project),
-    getProjectMainFunctionsDir(runtime, project),
-    getProjectFeatureDir(runtime, project, MEDIA_FEATURE_ID),
+    getProjectArtifactsDir(runtime, project),
+    getProjectFeatureArtifactDir(runtime, project, MEDIA_FEATURE_ID),
     getProjectEditPreviewDir(runtime, project),
     getProjectEditOutputDir(runtime, project),
     getProjectProfilePreflightDir(runtime, project),
     getProjectProcessDir(runtime, project),
-    getProjectFeatureDir(runtime, project, AUDIO_FEATURE_ID),
+    getProjectFeatureArtifactDir(runtime, project, AUDIO_FEATURE_ID),
     getAudioAnalysisProcessRootDir(runtime, project),
     getProjectReportDir(runtime, project),
     getProjectFeatureReportDir(runtime, project, AUDIO_FEATURE_ID),
@@ -262,14 +255,6 @@ export function getAudioAnalysisMusicScriptPath(runtime: {
 }): string | null {
   const musicDir = getAudioAnalysisMusicDir(runtime);
   return musicDir !== null ? `${musicDir}/librosa_music_analysis.py` : null;
-}
-
-export function getProfileModelsDir(runtime: { paths: { storageDir: string } }): string {
-  return `${runtime.paths.storageDir}/models/whisper`;
-}
-
-export function getProfileModelStatePath(runtime: { paths: { storageDir: string } }): string {
-  return `${runtime.paths.storageDir}/profile-model-state.json`;
 }
 
 export function getAudioAnalysisProcessRootDir(

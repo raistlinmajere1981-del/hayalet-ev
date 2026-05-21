@@ -141,21 +141,21 @@ const REPORT_SECTION_DEFINITIONS: Array<{
 }> = [
   {
     id: "report-evidence",
-    label: "Kanıtlar",
+    label: "Kanıt İzleri",
     tone: "evidence",
     note: "Kaynak ve kanıt izleri kesin hüküm üretmeden listelenir.",
     fallbackBullet: "Bu mock görünümde kanıt izi henüz boş bırakılmıştır.",
   },
   {
     id: "report-analysis",
-    label: "Analizler",
+    label: "Analiz İzleri",
     tone: "analysis",
     note: "Analiz izleri yalnızca pano durumunu özetler.",
     fallbackBullet: "Bu mock görünümde analiz izi henüz boş bırakılmıştır.",
   },
   {
     id: "report-uncertainties",
-    label: "Belirsizlikler",
+    label: "Belirsizlik İzleri",
     tone: "uncertainty",
     note: "Eksik bağlam ve temkin gerektiren izler ayrı tutulur.",
     fallbackBullet: "Bu mock görünümde belirsizlik izi henüz boş bırakılmıştır.",

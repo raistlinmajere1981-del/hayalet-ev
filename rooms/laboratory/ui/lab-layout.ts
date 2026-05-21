@@ -1,5 +1,5 @@
-import { escapeHtml } from "../models/lab-types.js";
-import type { LabStoreState, LabWorkspaceSurface } from "../models/lab-types.js";
+import { escapeHtml } from "../domain/lab-types.js";
+import type { LabStoreState, LabWorkspaceSurface } from "../domain/lab-types.js";
 import { renderLabCenterPanel } from "./lab-center-panel.js";
 import { renderLabDrawer } from "./lab-drawer.js";
 import { renderLabProcessStrip } from "./lab-process-strip.js";

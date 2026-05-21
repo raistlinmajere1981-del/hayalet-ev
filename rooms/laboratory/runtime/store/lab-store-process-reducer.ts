@@ -1,5 +1,5 @@
-import { asLabRecord } from "../../models/lab-types.js";
-import type { LabStoreEvent, LabStoreState } from "../../models/lab-types.js";
+import { asLabRecord } from "../../domain/lab-types.js";
+import type { LabStoreEvent, LabStoreState } from "../../domain/lab-types.js";
 import { normalizeLabPreflight } from "../../services/preflight-service.js";
 import { createIdlePreflight } from "./lab-store-defaults.js";
 import { ensurePendingRun } from "./lab-store-run-sync.js";

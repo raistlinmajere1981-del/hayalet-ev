@@ -42,6 +42,13 @@ function createSubmitButton(label: string): HTMLButtonElement {
   return button;
 }
 
+function createAuthoringDisclosure(label: string, form: HTMLFormElement): HTMLElement {
+  const disclosure = createElement("details", "pattern-room-inline-disclosure");
+  disclosure.dataset["patternAuthoringDisclosure"] = label;
+  disclosure.append(createElement("summary", "pattern-room-inline-summary", label), form);
+  return disclosure;
+}
+
 function createNodeTypeOption(value: AuthoredBoardNodeType, label: string): HTMLOptionElement {
   const option = createElement("option", undefined, label);
   option.value = value;
@@ -81,7 +88,7 @@ function resetConnectionFormDefaults(
 function createConnectionAuthoringForm(
   actions: PatternPanelActions,
   connectionOptions: readonly PatternConnectionOption[]
-): HTMLElement {
+): HTMLFormElement {
   const connectionForm = createElement("form", "pattern-room-inline-form");
   connectionForm.dataset["patternAuthorEdgeForm"] = "true";
 
@@ -137,7 +144,11 @@ function createConnectionAuthoringForm(
   });
 
   connectionForm.append(
-    createElement("h2", undefined, "Bağlantı Kur"),
+    createElement(
+      "p",
+      "pattern-room-inline-note",
+      "Bağlantılar Rapor panelinde Yerel Bağlantılar bölümünde listelenir."
+    ),
     sourceSelect,
     edgeTypeSelect,
     targetSelect,
@@ -192,13 +203,7 @@ function createBoardAuthoringPanel(
     nodeType.value = "claim";
   });
 
-  nodeForm.append(
-    createElement("h2", undefined, "Yeni Öğe Ekle"),
-    nodeType,
-    nodeLabel,
-    nodeContent,
-    createSubmitButton("Ekle")
-  );
+  nodeForm.append(nodeType, nodeLabel, nodeContent, createSubmitButton("Ekle"));
 
   const evidenceForm = createElement("form", "pattern-room-inline-form");
   evidenceForm.dataset["patternAuthorEvidenceForm"] = "true";
@@ -219,18 +224,15 @@ function createBoardAuthoringPanel(
     evidenceForm.reset();
   });
 
-  evidenceForm.append(
-    createElement("h2", undefined, "Kanıt Notu Ekle"),
-    evidenceLabel,
-    excerpt,
-    interpretation,
-    createSubmitButton("Ekle")
-  );
+  evidenceForm.append(evidenceLabel, excerpt, interpretation, createSubmitButton("Ekle"));
 
   authoring.append(
-    nodeForm,
-    evidenceForm,
-    createConnectionAuthoringForm(actions, connectionOptions)
+    createAuthoringDisclosure("Yeni Öğe Ekle", nodeForm),
+    createAuthoringDisclosure("Kanıt Notu Ekle", evidenceForm),
+    createAuthoringDisclosure(
+      "Bağlantı Kur",
+      createConnectionAuthoringForm(actions, connectionOptions)
+    )
   );
   return authoring;
 }

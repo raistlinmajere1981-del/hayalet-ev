@@ -1,4 +1,4 @@
-import { asNonEmptyString } from "../../models/lab-types.js";
+import { asNonEmptyString } from "../../domain/lab-types.js";
 import { getDefaultSourceMode } from "../lab-source-presets.js";
 import { getActiveEditOutput } from "../lab-selectors.js";
 import type { getWorkspaceLockState } from "../lab-selectors.js";

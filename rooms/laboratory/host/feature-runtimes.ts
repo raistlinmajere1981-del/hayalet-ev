@@ -9,7 +9,7 @@ import { createLaboratoryRoomToolsProgressRuntime } from "../shared/host/room-to
 import { createLaboratoryRuntimeStorage } from "../shared/host/runtime-storage.js";
 import { createLaboratorySourceCompositionRuntime } from "../shared/host/source-composition.js";
 import { createLaboratoryHostProcessCompositionRuntime } from "../shared/host/process-composition.js";
-import { createLaboratoryMediaAnalysisHostRuntime } from "../main-functions/media-analysis/host/runtime.js";
+import { createLaboratoryMediaAnalysisHostRuntime } from "../features/media-analysis/host/runtime.js";
 import { createLaboratoryFeatureAdapters } from "./feature-adapters.js";
 import type { createLaboratoryHostFoundation } from "./foundation-runtimes.js";
 import type { createLaboratoryHostProjectRuntimes } from "./project-runtimes.js";
@@ -125,7 +125,8 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     getProjectEditOutputDir,
     getProjectEditPreviewDir,
     getResizePresetMap: preset.getResizePresetMap,
-    maybeRunWhisperProfileSample: projectRuntimes.analysisArtifact.maybeRunWhisperProfileSample,
+    maybeRunTranscriptProfileSample:
+      projectRuntimes.analysisArtifact.maybeRunTranscriptProfileSample,
     markCloseoutAsStale: deps.markCloseoutAsStale,
     markProfileAsStale: projectRuntimes.mediaProfileState.markProfileAsStale,
     mergeObjects: preset.mergeObjects,
@@ -174,6 +175,7 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     findEditOutputById: projectRuntimes.snapshot.findEditOutputById,
     formatIdentifierLabel: projectRuntimes.analysisArtifact.formatIdentifierLabel,
     getActiveProject,
+    getElectronApi: io.getElectronApi,
     getFeatureProcessDir: deps.getFeatureProcessDir,
     getProjectSourceDir,
     getFeatureProcessRecord: projectRuntimes.stateComposition.getFeatureProcessRecord,
@@ -193,7 +195,8 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
       projectRuntimes.analysisArtifact.generateProcessVisualTransformArtifact,
     listDirectory: io.listDirectory,
     markFeatureReportStale: deps.markFeatureReportStale,
-    maybeRunWhisperProfileSample: projectRuntimes.analysisArtifact.maybeRunWhisperProfileSample,
+    maybeRunTranscriptProfileSample:
+      projectRuntimes.analysisArtifact.maybeRunTranscriptProfileSample,
     mediaFeatureId: deps.mediaFeatureId,
     normalizeAudioAnalysisModuleResult: deps.normalizeAudioAnalysisModuleResult,
     normalizeAudioAnalysisState: deps.normalizeAudioAnalysisState,

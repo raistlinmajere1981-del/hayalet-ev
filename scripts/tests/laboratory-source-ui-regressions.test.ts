@@ -27,10 +27,10 @@ import {
 } from "../../rooms/laboratory/ui/workspace-surface.ts";
 
 const sourcePresets = JSON.parse(
-  readFileSync("rooms/laboratory/shared/data/tools/source-presets.json", "utf8")
+  readFileSync("rooms/laboratory/tools/source-presets.json", "utf8")
 );
 const ytDlpForm = JSON.parse(
-  readFileSync("rooms/laboratory/shared/data/tools/yt-dlp.form.json", "utf8")
+  readFileSync("rooms/laboratory/tools/yt-dlp.form.json", "utf8")
 );
 
 function getPipelineBlockIds(markup: string): string[] {
@@ -268,8 +268,8 @@ function createSeededState(ffmpegInstalled = false) {
           usedBy: ["audio-analysis"],
         },
         {
-          toolId: "whisper-cli",
-          displayName: "Whisper CLI",
+          toolId: "transcript-runtime",
+          displayName: "Speech Runtime",
           availability: "installable",
           readinessImpact: "Optional transcription helpers stay available for room-local runs.",
           stageSupport: {
@@ -291,7 +291,7 @@ function createSeededState(ffmpegInstalled = false) {
           librosa: {
             installed: false,
           },
-          "whisper-cli": {
+          "transcript-runtime": {
             installed: false,
           },
         },

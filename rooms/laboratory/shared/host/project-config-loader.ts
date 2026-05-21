@@ -35,7 +35,7 @@ export function createLaboratoryProjectConfigLoader(deps: LaboratoryProjectConfi
     api: LaboratoryRoomApi,
     runtime: LaboratoryProjectConfigRuntime
   ): Promise<void> {
-    const baseDir = `${api.room.installedDir}/shared/data/tools`;
+    const baseDir = `${api.room.installedDir}/tools`;
     const [
       sourcePresets,
       projectSchema,
@@ -45,7 +45,6 @@ export function createLaboratoryProjectConfigLoader(deps: LaboratoryProjectConfi
       editCapabilities,
       profilePresets,
       profileCapabilities,
-      profileModels,
       visualAnalysisCatalog,
       visualAnalysisCapabilities,
       visualAnalysisProviders,
@@ -62,7 +61,6 @@ export function createLaboratoryProjectConfigLoader(deps: LaboratoryProjectConfi
       readJsonFile(`${baseDir}/edit-capabilities.json`),
       readJsonFile(`${baseDir}/profile-presets.json`),
       readJsonFile(`${baseDir}/profile-capabilities.json`),
-      readJsonFile(`${baseDir}/profile-models.json`),
       readJsonFile(`${baseDir}/visual-analysis-catalog.json`),
       readJsonFile(`${baseDir}/visual-analysis-capabilities.json`),
       readJsonFile(`${baseDir}/visual-analysis-providers.json`),
@@ -81,7 +79,7 @@ export function createLaboratoryProjectConfigLoader(deps: LaboratoryProjectConfi
     runtime.editCapabilities = editCapabilities || {};
     runtime.profilePresets = profilePresets || {};
     runtime.profileCapabilities = profileCapabilities || {};
-    runtime.profileModels = profileModels || {};
+    runtime.profileModels = {};
     runtime.visualAnalysisCatalog = visualAnalysisCatalog || {};
     runtime.visualAnalysisCapabilities = visualAnalysisCapabilities || {};
     runtime.visualAnalysisProviders = visualAnalysisProviders || {};

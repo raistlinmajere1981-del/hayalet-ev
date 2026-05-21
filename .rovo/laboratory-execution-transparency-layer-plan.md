@@ -28,7 +28,7 @@ The scope is intentionally limited to visibility and null-safety:
 ## Prerequisites
 - Treat `rooms/laboratory/**` as the only source of truth; do not hand-edit `data/rooms/laboratory/**`.
 - Keep the change UI-only: no new state shape, no run lifecycle change, and no host/runtime contract change beyond preserving frozen `intentIds` inside the existing `analysisScope` snapshot.
-- Reuse existing intent/capability/module metadata from `rooms/laboratory/models/lab-types.ts`.
+- Reuse existing intent/capability/module metadata from `rooms/laboratory/domain/lab-types.ts`.
 - Reuse current run projection seams where possible; if transport-module metadata is needed for accurate mapping, preserve it from existing run data instead of inventing new UI state.
 - Guard every targeted `.slice(` call against sparse snapshot, report, and run payloads.
 - Validate with room-local typecheck plus targeted laboratory regressions.
@@ -80,7 +80,7 @@ The scope is intentionally limited to visibility and null-safety:
   - Targeted laboratory UI and selector tests pass
 
 ### Task 1.4: Preserve or reconstruct capability-relevant run metadata
-- **Location**: `rooms/laboratory/runtime/lab-store.ts`, `rooms/laboratory/models/lab-types.ts`, `rooms/laboratory/shared/host/process-report-state.ts`
+- **Location**: `rooms/laboratory/runtime/lab-store.ts`, `rooms/laboratory/domain/lab-types.ts`, `rooms/laboratory/shared/host/process-report-state.ts`
 - **Description**: Before building the execution map, make sure the UI layer still has enough run-module information to map transport modules back to capability families. Prefer preserving existing host-side metadata from normalized process modules; where the live event path cannot provide it, add a transport-module fallback map without changing backend contracts.
 - **Complexity**: 5
 - **Dependencies**: Task 1.1
@@ -98,7 +98,7 @@ The scope is intentionally limited to visibility and null-safety:
 - When no intent is selected, the preview clearly asks the user to select one.
 
 ### Task 2.1: Add `renderIntentPreview(intentIds)` with static intent descriptions
-- **Location**: `rooms/laboratory/ui/workspace-surface.ts`, `rooms/laboratory/models/lab-types.ts`
+- **Location**: `rooms/laboratory/ui/workspace-surface.ts`, `rooms/laboratory/domain/lab-types.ts`
 - **Description**: Create a pure render helper that maps intent ids to the requested UX copy using a shared intent metadata seam rather than a second disconnected catalog:
   - `visual-inspection` -> `Görsel yapı ve anomaliler analiz edilir`
   - `audio-investigation` -> `Ses sinyali ve anomaliler analiz edilir`
@@ -158,7 +158,7 @@ The scope is intentionally limited to visibility and null-safety:
   - Add a regression for `sourceReady === true` with no run
 
 ### Task 3.2: Implement `renderIntentExecutionMap(state)`
-- **Location**: `rooms/laboratory/ui/workspace-process-panel.ts`, `rooms/laboratory/models/lab-types.ts`
+- **Location**: `rooms/laboratory/ui/workspace-process-panel.ts`, `rooms/laboratory/domain/lab-types.ts`
 - **Description**: Build a new visual-only section that renders per selected intent:
   - intent label
   - resolved capabilities

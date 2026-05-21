@@ -6,7 +6,7 @@ import type {
   LabExecutionResult,
   LabExecutionSelectionSnapshot,
   LabExecutionStaging,
-} from "../../models/lab-types.js";
+} from "../../domain/lab-types.js";
 
 export type LabExecutionResultInterpretation = {
   coverageLevel: "low" | "medium" | "high";

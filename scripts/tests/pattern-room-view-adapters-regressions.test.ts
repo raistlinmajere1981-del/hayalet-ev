@@ -38,9 +38,9 @@ const EXPECTED_SOURCE_TYPE_LABELS: Record<PatternSourceType, string> = {
 };
 
 const TRACE_TYPES_BY_REPORT_SECTION = {
-  Kanıtlar: ["source-added", "evidence-added"],
-  Analizler: ["edge-added", "confidence-changed", "layer-promoted"],
-  Belirsizlikler: ["node-removed", "edge-removed"],
+  "Kanıt İzleri": ["source-added", "evidence-added"],
+  "Analiz İzleri": ["edge-added", "confidence-changed", "layer-promoted"],
+  "Belirsizlik İzleri": ["node-removed", "edge-removed"],
   "Sonraki araştırma notları": [
     "node-added",
     "debate-started",
@@ -435,7 +435,7 @@ test("pattern-room phase 3B report adapter creates cautious report sections", ()
 
   assert.deepEqual(
     reportSummary.sections.map((section) => section.label),
-    ["Kanıtlar", "Analizler", "Belirsizlikler", "Sonraki araştırma notları"]
+    ["Kanıt İzleri", "Analiz İzleri", "Belirsizlik İzleri", "Sonraki araştırma notları"]
   );
   assert.equal(
     reportSummary.sections.every((section) => section.bullets.length > 0),

@@ -1,4 +1,4 @@
-import { asLabRecord, asNonEmptyString } from "../../models/lab-types.js";
+import { asLabRecord, asNonEmptyString } from "../../domain/lab-types.js";
 import type { createLabStore } from "../lab-store.js";
 import { buildUiEvent } from "./lab-controller-helpers.js";
 

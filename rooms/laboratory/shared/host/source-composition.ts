@@ -1,6 +1,6 @@
-import { createMediaSourceFileRuntime } from "../../main-functions/media-analysis/host/source-file-utils.js";
-import { createMediaSourceIntakeRuntime } from "../../main-functions/media-analysis/host/source-intake.js";
-import { createMediaSourceMetadataRuntime } from "../../main-functions/media-analysis/host/source-metadata.js";
+import { createMediaSourceFileRuntime } from "../../features/media-analysis/host/source-file-utils.js";
+import { createMediaSourceIntakeRuntime } from "../../features/media-analysis/host/source-intake.js";
+import { createMediaSourceMetadataRuntime } from "../../features/media-analysis/host/source-metadata.js";
 import { createLaboratorySourceDelegatesRuntime } from "./source-delegates.js";
 
 type MediaSourceFileRuntimeDeps = Parameters<typeof createMediaSourceFileRuntime>[0];

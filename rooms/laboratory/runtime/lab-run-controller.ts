@@ -3,7 +3,7 @@ import {
   asNonEmptyString,
   escapeHtml,
   WORKSPACE_INTENTS,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 import type {
   LabAsset,
   LabComparisonSide,
@@ -13,7 +13,7 @@ import type {
   LabIntentId,
   LabSelectionROI,
   LabStoreEvent,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 import { createLabWaveformTimelineVisualizer } from "../ui/lab-waveform-timeline.js";
 import {
   getAnalysisActionBlockReason,
@@ -66,15 +66,7 @@ type LabRoomApi = {
   sendEvent?: (eventName: string, payload: Record<string, unknown>) => void;
 };
 
-type ControllerElectronApi = {
-  showOpenDialog?: (options: Record<string, unknown>) => Promise<{
-    canceled: boolean;
-    filePaths: string[];
-  }>;
-};
-
 type ControllerWindow = Window & {
-  electronAPI?: ControllerElectronApi;
   roomAPI?: LabRoomApi;
 };
 
@@ -519,7 +511,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       deriveFeatureSelectionFromCapabilities(normalizedCapabilities);
     dispatch({
       type: "capability-set",
-      capabilities: normalizedCapabilities as import("../models/lab-types.js").CapabilityFamilyId[],
+      capabilities: normalizedCapabilities as import("../domain/lab-types.js").CapabilityFamilyId[],
     });
     dispatch({
       type: "feature-changed",
@@ -966,11 +958,11 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     if (asNonEmptyString(sourceRecord["previewUrl"]) === null) {
       sendMediaAction("edit-preview");
     }
+    const runPayload = getProcessRunWorkspacePayload(deps.store.getState());
     if (state.ui.workspace.preflightAutoRunEnabled !== false) {
-      sendMediaAction("profile-run-preflight");
+      sendMediaAction("profile-run-preflight", runPayload);
     }
     const runAction = activeFeatureId === "audio-analysis" ? "audio-process-run" : "process-run";
-    const runPayload = getProcessRunWorkspacePayload(deps.store.getState());
     const runRequestId = createActionRequestId(runAction);
     dispatch({
       type: "run-started",
@@ -1009,33 +1001,8 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     startDeepAnalysis(deps.store.getState(), scopeChoice);
   }
 
-  async function requestReportExportToDirectory(format: ReportOverlayExportFormat) {
-    const showOpenDialog = deps.windowRef.electronAPI?.showOpenDialog;
-    if (typeof showOpenDialog !== "function") {
-      dispatch({
-        type: "push-event",
-        event: buildUiEvent("Report export folder picker is unavailable.", "error"),
-      });
-      return;
-    }
-
-    try {
-      const selection = await showOpenDialog({
-        buttonLabel: format === "json" ? "JSON Disa Aktar" : "PDF Disa Aktar",
-        properties: ["openDirectory", "createDirectory"],
-        title: format === "json" ? "JSON rapor klasoru sec" : "PDF rapor klasoru sec",
-      });
-      const targetDirectory = asNonEmptyString(selection.filePaths[0]);
-      if (selection.canceled === true || targetDirectory === null) {
-        return;
-      }
-      startTrackedReportExport({ format, targetDirectory });
-    } catch (error) {
-      dispatch({
-        type: "push-event",
-        event: buildUiEvent(error instanceof Error ? error.message : String(error), "error"),
-      });
-    }
+  function requestReportExport(format: ReportOverlayExportFormat) {
+    startTrackedReportExport({ format });
   }
 
   function runPrimaryAction() {
@@ -1251,7 +1218,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           deps.store
             .getState()
             .selectedCapabilities.concat(
-              value as import("../models/lab-types.js").CapabilityFamilyId
+              value as import("../domain/lab-types.js").CapabilityFamilyId
             )
         );
         return;
@@ -1265,11 +1232,11 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "capability-toggle": {
         const caps = deps.store.getState().selectedCapabilities;
         syncCapabilities(
-          caps.includes(value as import("../models/lab-types.js").CapabilityFamilyId)
+          caps.includes(value as import("../domain/lab-types.js").CapabilityFamilyId)
             ? caps.filter(function (entry) {
                 return entry !== value;
               })
-            : caps.concat(value as import("../models/lab-types.js").CapabilityFamilyId)
+            : caps.concat(value as import("../domain/lab-types.js").CapabilityFamilyId)
         );
         return;
       }
@@ -1554,7 +1521,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         if (value.trim() !== "") {
           dispatch({
             type: "workspace-intent-toggled",
-            intentId: value as import("../models/lab-types.js").LabIntentId,
+            intentId: value as import("../domain/lab-types.js").LabIntentId,
           });
           syncCurrentWorkbenchToHost();
         }
@@ -1563,7 +1530,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         if (value.trim() !== "") {
           dispatch({
             type: "analysis-prep-group-toggled",
-            intentId: value as import("../models/lab-types.js").LabIntentId,
+            intentId: value as import("../domain/lab-types.js").LabIntentId,
           });
         }
         return;
@@ -1692,10 +1659,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         });
         return;
       case "report-export-json":
-        void requestReportExportToDirectory("json");
+        requestReportExport("json");
         return;
       case "report-export-pdf":
-        void requestReportExportToDirectory("pdf");
+        requestReportExport("pdf");
         return;
       case "source-panel-toggle":
         dispatch({ type: "source-panel-toggled" });
@@ -1708,7 +1675,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           type: "icon-rail-slot-selected",
           slotId:
             value.trim() !== ""
-              ? (value as import("../models/lab-types.js").LabIconRailSlotId)
+              ? (value as import("../domain/lab-types.js").LabIconRailSlotId)
               : null,
         });
         return;

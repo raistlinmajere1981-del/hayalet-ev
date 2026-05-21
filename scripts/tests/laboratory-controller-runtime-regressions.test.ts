@@ -136,6 +136,82 @@ test("laboratory run controller waits for linked assets before dismissing succes
   }
 });
 
+test("laboratory report overlay export buttons send host export actions without webview electron api", () => {
+  const originalElement = globalThis.Element;
+  const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+
+  class TestElement extends FakeActionElement {}
+
+  Object.defineProperty(globalThis, "Element", {
+    configurable: true,
+    value: TestElement,
+  });
+
+  try {
+    eventBus.subscribe(function (event) {
+      store.dispatch(event);
+    });
+
+    const controller = createLabRunController({
+      documentRef: documentRef as unknown as Document,
+      eventBus,
+      store,
+      windowRef: {
+        roomAPI: {
+          sendEvent(eventName: string, payload: Record<string, unknown>) {
+            sentEvents.push({ eventName, payload });
+          },
+        },
+        addEventListener() {},
+      } as unknown as Window,
+    });
+    controller.attach();
+
+    const clickListener = documentRef.listeners.get("click");
+    assert.ok(clickListener);
+
+    clickListener?.({ target: new TestElement("report-export-json") } as Event);
+    clickListener?.({ target: new TestElement("report-export-pdf") } as Event);
+
+    const mediaActions = sentEvents.filter(function (entry) {
+      return entry.eventName === "media-action";
+    });
+    assert.equal(mediaActions.length, 2);
+    assert.deepEqual(
+      mediaActions.map(function (entry) {
+        return entry.payload["action"];
+      }),
+      ["report-export", "report-export"]
+    );
+    assert.deepEqual(
+      mediaActions.map(function (entry) {
+        const payload = entry.payload["payload"] as Record<string, unknown>;
+        return {
+          featureId: payload["featureId"],
+          format: payload["format"],
+          hasTargetDirectory: Object.prototype.hasOwnProperty.call(payload, "targetDirectory"),
+        };
+      }),
+      [
+        { featureId: "media-analysis", format: "json", hasTargetDirectory: false },
+        { featureId: "media-analysis", format: "pdf", hasTargetDirectory: false },
+      ]
+    );
+  } finally {
+    if (originalElement === undefined) {
+      delete (globalThis as Record<string, unknown>).Element;
+    } else {
+      Object.defineProperty(globalThis, "Element", {
+        configurable: true,
+        value: originalElement,
+      });
+    }
+  }
+});
+
 test("laboratory run controller threads frozen run intent ids into tracked export actions", () => {
   const originalElement = globalThis.Element;
   const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
@@ -1868,6 +1944,7 @@ test("laboratory run controller honors the analysis preflight auto-run toggle", 
 
   function runWithPreflightToggle(preflightAutoRunEnabled: boolean) {
     const sentActions: string[] = [];
+    const preflightPayloads: Array<Record<string, unknown>> = [];
     const processRunPayloadRequestIds: Array<string | null> = [];
     const processRunRequestIdsDuringSend: Array<string | null> = [];
     const processRunStatesDuringSend: Array<string | null> = [];
@@ -1889,6 +1966,15 @@ test("laboratory run controller honors the analysis preflight auto-run toggle", 
           sendEvent(eventName: string, payload: Record<string, unknown>) {
             if (eventName === "media-action" && typeof payload["action"] === "string") {
               sentActions.push(payload["action"]);
+              const actionPayload =
+                typeof payload["payload"] === "object" &&
+                payload["payload"] !== null &&
+                Array.isArray(payload["payload"]) === false
+                  ? (payload["payload"] as Record<string, unknown>)
+                  : {};
+              if (payload["action"] === "profile-run-preflight") {
+                preflightPayloads.push(actionPayload);
+              }
               if (payload["action"] === "process-run") {
                 processRunPayloadRequestIds.push(
                   typeof payload["requestId"] === "string" ? payload["requestId"] : null
@@ -1943,6 +2029,7 @@ test("laboratory run controller honors the analysis preflight auto-run toggle", 
     clickListener?.({ target: new TestElement("run-deep-analysis") } as Event);
 
     return {
+      preflightPayloads,
       processRunPayloadRequestIds,
       processRunRequestIdsDuringSend,
       processRunStatesDuringSend,
@@ -1960,6 +2047,11 @@ test("laboratory run controller honors the analysis preflight auto-run toggle", 
     assert.notEqual(enabledPreflightIndex, -1);
     assert.notEqual(enabledRunIndex, -1);
     assert.ok(enabledPreflightIndex < enabledRunIndex);
+    assert.deepEqual(
+      (enabledRun.preflightPayloads[0]?.["analysisScope"] as { intentIds?: string[] } | undefined)
+        ?.intentIds,
+      ["visual-inspection"]
+    );
     assert.deepEqual(enabledRun.processRunStatesDuringSend, ["running"]);
     assert.deepEqual(
       enabledRun.processRunRequestIdsDuringSend,

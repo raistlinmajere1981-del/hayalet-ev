@@ -1,4 +1,4 @@
-import type { LabUserActionEvent } from "../models/lab-types.js";
+import type { LabUserActionEvent } from "../domain/lab-types.js";
 
 export const LAB_USER_ACTION_HISTORY_LIMIT = 24;
 export const LAB_USER_ACTION_HUB_SUCCESS_WINDOW_MS = 2600;

@@ -1,9 +1,9 @@
-import { asNonEmptyString, escapeHtml } from "../models/lab-types.js";
+import { asNonEmptyString, escapeHtml } from "../domain/lab-types.js";
 import type {
   LabInteractiveSettings,
   LabSourceRetryBlockReason,
   LabStoreState,
-} from "../models/lab-types.js";
+} from "../domain/lab-types.js";
 import {
   getProjectSource,
   getSourceKind,

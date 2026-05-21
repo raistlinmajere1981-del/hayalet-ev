@@ -263,7 +263,7 @@
 - Managed and local process views still surface transcript progress and readiness without swapping runners yet.
 
 ### Task 4.1: Project Central Runtime State into Laboratory Model and Tool Surfaces
-- **Location**: `rooms/laboratory/main-functions/media-analysis/host/profile-models.ts`, `rooms/laboratory/main-functions/media-analysis/host/profile-state.ts`, `rooms/laboratory/shared/host/tool-mutations.ts`, `rooms/laboratory/shared/host/room-tools-progress.ts`
+- **Location**: `rooms/laboratory/features/media-analysis/host/profile-models.ts`, `rooms/laboratory/features/media-analysis/host/profile-state.ts`, `rooms/laboratory/shared/host/tool-mutations.ts`, `rooms/laboratory/shared/host/room-tools-progress.ts`
 - **Description**: Add a projection layer that maps the central registry and runtime status into Laboratory’s current `toolState`, `profileModelState`, readiness warnings, progress events, and persisted model selection semantics.
 - **Complexity**: 8
 - **Dependencies**: Task 2.6
@@ -276,14 +276,14 @@
   - Manual install/remove/progress UI smoke test
 
 ### Task 4.2: Add a Laboratory Execution Adapter Before Runner Swap
-- **Location**: `rooms/laboratory/shared/host/analysis-artifact-runtime.ts`, `rooms/laboratory/main-functions/audio-analysis/host/process-local-runners.ts`, `rooms/laboratory/shared/host/process-managed-media-runner.ts`, `rooms/laboratory/host/project-runtimes.ts`
+- **Location**: `rooms/laboratory/shared/host/analysis-artifact-runtime.ts`, `rooms/laboratory/features/audio-analysis/host/process-local-runners.ts`, `rooms/laboratory/shared/host/process-managed-media-runner.ts`, `rooms/laboratory/host/project-runtimes.ts`
 - **Description**: Introduce an adapter layer that can call the central transcription capability while preserving Laboratory artifact paths, job/progress wiring, and managed-runner semantics.
 - **Complexity**: 8
 - **Dependencies**: Task 4.1
 - **Acceptance Criteria**:
   - Laboratory local and managed runners can call through the adapter without changing user-facing behavior.
   - Transcript artifacts still land in Laboratory-owned output paths.
-  - No direct `whisper.cpp` shell-out is removed until the adapter path is proven stable.
+  - Room-local transcript shell-out stays behind the central adapter path.
 - **Validation**:
   - Manual Laboratory managed-run smoke test
   - Manual transcript artifact generation smoke test
@@ -322,12 +322,12 @@
   - `npm run typecheck`
 
 ### Task 5.3: Swap Laboratory Execution Callsites to the Central Capability
-- **Location**: `rooms/laboratory/shared/host/analysis-artifact-runtime.ts`, `rooms/laboratory/main-functions/audio-analysis/host/process-local-runners.ts`, `rooms/laboratory/shared/host/process-managed-media-runner.ts`, `rooms/laboratory/host/project-runtimes.ts`
+- **Location**: `rooms/laboratory/shared/host/analysis-artifact-runtime.ts`, `rooms/laboratory/features/audio-analysis/host/process-local-runners.ts`, `rooms/laboratory/shared/host/process-managed-media-runner.ts`, `rooms/laboratory/host/project-runtimes.ts`
 - **Description**: Replace the remaining direct Laboratory execution paths with the central capability only after the projection and adapter layers are stable.
 - **Complexity**: 8
 - **Dependencies**: Task 4.2, Task 5.2
 - **Acceptance Criteria**:
-  - Laboratory transcript sampling no longer shells out directly to `whisper.cpp`.
+  - Laboratory transcript sampling uses the central Speech Runtime adapter.
   - Transcript artifacts still land in Laboratory output paths.
   - Runtime errors and progress come from the shared capability instead of duplicate room-local logic.
 - **Validation**:
@@ -339,7 +339,7 @@
 **Demo/Validation**:
 - The full smoke matrix passes across app shell, assistant surfaces, and Laboratory.
 - Documentation clearly tells future room work how to consume the shared capability.
-- Old direct `whisper.cpp` ownership paths are either removed or marked deprecated.
+- Old direct room-local speech ownership paths are either removed or marked deprecated.
 
 ### Task 6.1: Add Focused Tests for Model Policy and Fan-Out Rules
 - **Location**: test locations matching the repo’s current transcript and room test conventions

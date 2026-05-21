@@ -593,7 +593,7 @@ test("laboratory store treats reused local assets as ready sources during snapsh
           mode: "local",
           previewUrl: "file:///tmp/asset-reuse.png",
           storedFileName: "asset-reuse.png",
-          storedPath: "/tmp/project/source/asset-reuse.png",
+          storedPath: "/tmp/project/sources/asset-reuse.png",
           routeLabel: "Asset reuse",
           metadata: {
             width: 1920,

@@ -24,7 +24,7 @@ import {
 import { createRoomBuiltArtifact } from "./helpers/room-installed-copy.ts";
 import { readCssWithImports } from "./helpers/css-imports.ts";
 import { importLabRootModuleWithDomStub } from "./laboratory-runtime-truth.helpers.ts";
-import type { LabDecisionSnapshot, LabRun } from "../../rooms/laboratory/models/lab-types.ts";
+import type { LabDecisionSnapshot, LabRun } from "../../rooms/laboratory/domain/lab-types.ts";
 
 function readLabThemeSource() {
   return readCssWithImports("rooms/laboratory/ui/lab-theme.css");
@@ -931,10 +931,10 @@ test("laboratory mounted fallback logs missing region diagnostics before preserv
 
 test("laboratory YouTube source panel renders checked stream controls without import-only shell", () => {
   const sourcePresets = JSON.parse(
-    readFileSync("rooms/laboratory/shared/data/tools/source-presets.json", "utf8")
+    readFileSync("rooms/laboratory/tools/source-presets.json", "utf8")
   );
   const ytDlpForm = JSON.parse(
-    readFileSync("rooms/laboratory/shared/data/tools/yt-dlp.form.json", "utf8")
+    readFileSync("rooms/laboratory/tools/yt-dlp.form.json", "utf8")
   );
   const store = createLabStore();
   store.dispatch({
@@ -1828,7 +1828,7 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
 });
 
 test("laboratory center workbench attaches media viewport and timeline as one surface", () => {
-  const labTypesSource = readFileSync("rooms/laboratory/models/lab-types.ts", "utf8");
+  const labTypesSource = readFileSync("rooms/laboratory/domain/lab-types.ts", "utf8");
   const workspaceSurfaceSource = readFileSync("rooms/laboratory/ui/workspace-surface.ts", "utf8");
   const workspaceSourceIntakeSource = readFileSync(
     "rooms/laboratory/ui/workspace-source-intake.ts",

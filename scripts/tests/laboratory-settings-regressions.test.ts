@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { createLabEventBus } from "../../rooms/laboratory/runtime/lab-event-bus.ts";
 import { createLabRunController } from "../../rooms/laboratory/runtime/lab-run-controller.ts";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
-import { createAudioAnalysisLocalProcessRunners } from "../../rooms/laboratory/main-functions/audio-analysis/host/process-local-runners.ts";
+import { createAudioAnalysisLocalProcessRunners } from "../../rooms/laboratory/features/audio-analysis/host/process-local-runners.ts";
 import { createLaboratoryManagedAudioRunnerRuntime } from "../../rooms/laboratory/shared/host/process-managed-audio-runner.ts";
 import { createLaboratoryManagedMediaRunnerRuntime } from "../../rooms/laboratory/shared/host/process-managed-media-runner.ts";
 import { createLaboratoryProcessTargetingRuntime } from "../../rooms/laboratory/shared/host/process-targeting.ts";
@@ -389,7 +389,7 @@ test("laboratory visual settings alter managed process filters and ROI scope", a
         path: "/tmp/visual-transform.png",
       };
     },
-    async maybeRunWhisperProfileSample() {
+    async maybeRunTranscriptProfileSample() {
       return null;
     },
     normalizeProcessArtifact(value) {
@@ -563,7 +563,7 @@ test("laboratory managed media runner emits A/B image comparison analysis layers
         path: `/tmp/${String(asRecord(metadata)["sourceSide"])}.png`,
       };
     },
-    async maybeRunWhisperProfileSample() {
+    async maybeRunTranscriptProfileSample() {
       return null;
     },
     normalizeProcessArtifact(value) {
@@ -839,7 +839,7 @@ test("laboratory audio settings drive local analyzers and frozen process snapsho
     async generateSpectralDescriptorArtifact() {
       return { id: "descriptor", moduleId: "spectral-artifacts", path: "/tmp/descriptor.json" };
     },
-    async maybeRunWhisperProfileSample() {
+    async maybeRunTranscriptProfileSample() {
       return {};
     },
     normalizeProcessArtifact(value) {

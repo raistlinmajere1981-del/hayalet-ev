@@ -1,5 +1,5 @@
-import { escapeHtml } from "../models/lab-types.js";
-import type { LabSettingsFieldMeta, LabSettingsRecord } from "../models/lab-types.js";
+import { escapeHtml } from "../domain/lab-types.js";
+import type { LabSettingsFieldMeta, LabSettingsRecord } from "../domain/lab-types.js";
 
 type LabSettingsTranslate = (
   key: string,

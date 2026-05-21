@@ -1,5 +1,5 @@
-import { asLabRecord, asNonEmptyString, createLabFeatureMeta } from "../../models/lab-types.js";
-import type { LabFeatureId, LabRecord, LabStoreState } from "../../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, createLabFeatureMeta } from "../../domain/lab-types.js";
+import type { LabFeatureId, LabRecord, LabStoreState } from "../../domain/lab-types.js";
 
 export function getSnapshot(state: LabStoreState): LabRecord {
   return state.snapshot || {};
