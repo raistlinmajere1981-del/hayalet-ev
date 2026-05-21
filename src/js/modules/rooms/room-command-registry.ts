@@ -154,6 +154,7 @@ class RoomCommandRegistryClass {
     handler: RoomCommandHandler,
     options: {
       description?: string;
+      exposure?: RoomCommandExposure;
       scope?: RoomCommandScope;
     } = {}
   ): void {
@@ -176,7 +177,7 @@ class RoomCommandRegistryClass {
       ),
       scope,
       category: scopeToCategory(scope),
-      exposure: existing?.metadata.exposure ?? "public",
+      exposure: normalizeExposure(options.exposure ?? existing?.metadata.exposure),
     };
 
     this.entries.set(roomKey, {

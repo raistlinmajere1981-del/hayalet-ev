@@ -353,9 +353,9 @@ function renderUrlOverlay(state: LabStoreState, copy: LabI18n, locked: boolean):
             ${escapeHtml(copy.t("mediaAnalysis.projectImport.clear", "Temizle"))}
           </button>
         </div>
+        ${renderProjectImportProgress(state, copy)}
         ${renderYoutubeCheckResult(state, copy)}
         ${renderDirectUrlCheckResult(state, copy)}
-        ${renderProjectImportProgress(state, copy)}
       </div>
     </div>
   `;

@@ -1002,7 +1002,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   }
 
   function requestReportExport(format: ReportOverlayExportFormat) {
-    startTrackedReportExport({ format });
+    startTrackedReportExport({ format, reportView: deps.store.getState().ui.reportView });
   }
 
   function runPrimaryAction() {

@@ -1,4 +1,4 @@
-import type { InstalledRoomRecord, RoomCommandScope } from "@shared/index.js";
+import type { InstalledRoomRecord, RoomCommandExposure, RoomCommandScope } from "@shared/index.js";
 import { getErrorMessage } from "@shared/index.js";
 import type { RemoteUserIdentity } from "@shared/settings.js";
 import type {
@@ -60,7 +60,7 @@ interface RoomHostApi {
   registerCommand: (
     commandName: string,
     handler: RoomCommandHandler,
-    options?: { description?: string; scope?: RoomCommandScope }
+    options?: { description?: string; exposure?: RoomCommandExposure; scope?: RoomCommandScope }
   ) => void;
   registerVoiceCommands: (
     commands: Record<string, readonly string[]>,

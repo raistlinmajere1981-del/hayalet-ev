@@ -14,6 +14,10 @@ import {
   PATTERN_ROOM_SNAPSHOT_VERSION,
   type PatternRoomSessionSnapshot,
 } from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
+import {
+  PATTERN_ROOM_LOAD_COMMAND,
+  PATTERN_ROOM_SAVE_COMMAND,
+} from "../../rooms/pattern-room/shared/types/pattern-room-persistence.ts";
 
 function createSnapshotReadyLocalState(): ReturnType<typeof createLocalState> {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
@@ -511,7 +515,7 @@ test("pattern-room phase 6B self-heals advanced debate phase with no turns", () 
   assert.equal(restored.guards.noteIndex, restored.overlay.localNotes.length);
 });
 
-test("pattern-room phase 6B snapshot layer stays free of storage, IPC, and host commands", async () => {
+test("pattern-room phase 6B snapshot and UI layer stay free of storage and IPC wiring", async () => {
   const sourcePaths = [
     "rooms/pattern-room/shared/types/pattern-room-snapshot.ts",
     "rooms/pattern-room/shared/state/pattern-room-snapshot.ts",
@@ -542,5 +546,8 @@ test("pattern-room phase 6B snapshot layer stays free of storage, IPC, and host 
   }
 
   const activation = createPatternRoomHostRuntime().activate({});
-  assert.deepEqual(activation.commands, {});
+  assert.deepEqual(Object.keys(activation.commands).sort(), [
+    PATTERN_ROOM_LOAD_COMMAND,
+    PATTERN_ROOM_SAVE_COMMAND,
+  ]);
 });

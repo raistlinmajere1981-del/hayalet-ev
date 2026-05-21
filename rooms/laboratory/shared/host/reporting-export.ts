@@ -19,9 +19,11 @@ type LaboratoryReportExportProject = LaboratoryRecord & {
 };
 
 type LaboratoryReportExportFormat = "json" | "pdf";
+type LaboratoryReportExportView = "user" | "ai";
 
 type LaboratoryReportExportOptions = LaboratoryRecord & {
   format?: unknown;
+  reportView?: unknown;
   targetDirectory?: unknown;
 };
 
@@ -89,12 +91,38 @@ function normalizeExportFormat(value: unknown): LaboratoryReportExportFormat | n
   return value === "json" || value === "pdf" ? value : null;
 }
 
+function normalizeReportView(value: unknown): LaboratoryReportExportView | null {
+  return value === "user" || value === "ai" ? value : null;
+}
+
 function getTargetDirectory(options: LaboratoryReportExportOptions): string | null {
   return (
     asNonEmptyString(options["targetDirectory"]) ||
     asNonEmptyString(options["outputDirectory"]) ||
     asNonEmptyString(options["directory"])
   );
+}
+
+function getRequestedReportView(
+  options: LaboratoryReportExportOptions,
+  format: LaboratoryReportExportFormat
+): LaboratoryReportExportView {
+  return (
+    normalizeReportView(options["reportView"]) ||
+    normalizeReportView(options["view"]) ||
+    normalizeReportView(options["reportSource"]) ||
+    (format === "json" ? "ai" : "user")
+  );
+}
+
+function getSelectedReportRecord(
+  reportRecord: LaboratoryFeatureReportRecord,
+  reportView: LaboratoryReportExportView
+): LaboratoryRecord {
+  const selectedReport = reportView === "ai" ? reportRecord.aiReport : reportRecord.userReport;
+  return selectedReport !== null && typeof selectedReport === "object"
+    ? selectedReport
+    : reportRecord;
 }
 
 function getDialogFilePath(selection: LaboratoryOpenDialogResult): string | null {
@@ -205,6 +233,24 @@ function buildPdfReport(markdown: string): string {
   return pdf;
 }
 
+function buildAiReportMarkdown(
+  project: LaboratoryRecord,
+  featureId: string,
+  reportRecord: LaboratoryFeatureReportRecord
+): string {
+  const aiReport = getSelectedReportRecord(reportRecord, "ai");
+  return [
+    `# ${featureId} Technical Report`,
+    "",
+    `Project: ${asNonEmptyString(project["name"]) || asNonEmptyString(project["slug"]) || "--"}`,
+    `Generated: ${asNonEmptyString(reportRecord["generatedAt"]) || new Date().toISOString()}`,
+    "",
+    "## Technical Payload",
+    "",
+    JSON.stringify(aiReport, null, 2),
+  ].join("\n");
+}
+
 export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExportRuntimeDeps) {
   const {
     getActiveProject,
@@ -273,6 +319,8 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
     const action = getFeatureReportExportAction(featureId);
     const requestedFormat =
       normalizeExportFormat(options["format"]) || normalizeExportFormat(options["exportFormat"]);
+    const requestedReportView =
+      requestedFormat === null ? null : getRequestedReportView(options, requestedFormat);
     const selectedDirectory =
       requestedFormat === null
         ? null
@@ -303,20 +351,28 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
       let createdResultAssetIds: string[] = [];
       const stamp = new Date().toISOString().replace(/[:.]/g, "-");
       const baseName = `${sanitizeFileSegment(project.slug, "project")}-${featureId}-${stamp}`;
-      if (requestedFormat !== null && selectedDirectory !== null) {
+      if (
+        requestedFormat !== null &&
+        requestedReportView !== null &&
+        selectedDirectory !== null
+      ) {
         const targetDirectory = selectedDirectory.targetDirectory;
-        const fileName =
-          requestedFormat === "json" ? `${baseName}-ai.json` : `${baseName}-user.pdf`;
+        const fileName = `${baseName}-${requestedReportView}.${requestedFormat}`;
         const outputPath = joinDirectoryPath(targetDirectory, fileName);
         const outputContent =
           requestedFormat === "json"
-            ? JSON.stringify(reportRecord.aiReport || reportRecord, null, 2)
-            : buildPdfReport(buildReportMarkdown(runtime, project, featureId, reportRecord));
+            ? JSON.stringify(getSelectedReportRecord(reportRecord, requestedReportView), null, 2)
+            : buildPdfReport(
+                requestedReportView === "ai"
+                  ? buildAiReportMarkdown(project, featureId, reportRecord)
+                  : buildReportMarkdown(runtime, project, featureId, reportRecord)
+              );
         await writeTextFile(outputPath, outputContent);
         const exportEntry = normalizeReportExport({
           format: requestedFormat,
           path: outputPath,
           fileName: fileName,
+          reportView: requestedReportView,
           status: "ready",
         });
         await patchActiveProject(runtime, function (nextProject) {

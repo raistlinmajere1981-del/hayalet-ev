@@ -36,9 +36,11 @@ type LabMediaActionWindow = {
 };
 
 type LabReportExportFormat = "json" | "pdf";
+type LabReportExportView = "user" | "ai";
 
 type LabReportExportOptions = {
   format?: LabReportExportFormat;
+  reportView?: LabReportExportView;
   targetDirectory?: string | null;
 };
 
@@ -178,8 +180,15 @@ export function createLabMediaActionController(deps: LabMediaActionControllerDep
   function startTrackedReportExport(options: LabReportExportOptions = {}) {
     const state = deps.store.getState();
     const targetDirectory = asNonEmptyString(options.targetDirectory);
+    const reportView =
+      options.reportView === "ai" || options.reportView === "user"
+        ? options.reportView
+        : options.format === "json" || options.format === "pdf"
+          ? state.ui.reportView
+          : null;
     const payload: Record<string, unknown> = {
       ...(options.format === "json" || options.format === "pdf" ? { format: options.format } : {}),
+      ...(reportView === null ? {} : { reportView }),
       ...(targetDirectory === null ? {} : { targetDirectory }),
     };
     return startTrackedUserAction(

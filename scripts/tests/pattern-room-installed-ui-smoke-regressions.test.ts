@@ -9,6 +9,13 @@ import {
   test,
 } from "./forge-room-ui-smoke.helpers.ts";
 import { PATTERN_ROOM_DOMAIN_MOCK } from "../../rooms/pattern-room/shared/data/pattern-room-domain.mock.ts";
+import { createLocalState } from "../../rooms/pattern-room/shared/state/pattern-room-local-state.ts";
+import { createSnapshot } from "../../rooms/pattern-room/shared/state/pattern-room-snapshot.ts";
+import {
+  PATTERN_ROOM_LOADED_EVENT,
+  PATTERN_ROOM_SAVE_FAILED_EVENT,
+} from "../../rooms/pattern-room/shared/types/pattern-room-persistence.ts";
+import type { PatternRoomSessionSnapshot } from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
 
 const PATTERN_FOCUSED_VIEWS = ["board", "desk", "archive", "tenth-man", "report"] as const;
 type PatternFocusedViewId = (typeof PATTERN_FOCUSED_VIEWS)[number];
@@ -55,6 +62,15 @@ function submitForm(form: {
   });
 
   assert.equal(defaultPrevented, true);
+}
+
+function createHostLoadedSnapshot(
+  activeView: PatternFocusedViewId | "overview",
+  noteText: string
+): PatternRoomSessionSnapshot {
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  localState.addLocalNote(noteText);
+  return createSnapshot(localState, activeView);
 }
 
 test("pattern-room installed UI renders overview hotspots and returns from focused views", async () => {
@@ -130,6 +146,126 @@ test("pattern-room installed UI renders overview hotspots and returns from focus
 
     assert.deepEqual(environment.sentCommands, []);
   } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+test("pattern-room installed UI restores a loaded host snapshot", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+  const snapshot = createHostLoadedSnapshot("report", "Restored host snapshot note");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?loaded=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      payload: { snapshot },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+
+    assert.ok(environment.app.querySelector("[data-pattern-view='report']"));
+    assertTextIncludes(readTreeText(environment.app), [
+      "Yerel Notlar",
+      "Restored host snapshot note",
+    ]);
+    assert.deepEqual(environment.sentCommands, []);
+    assert.deepEqual(environment.sentEvents, []);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+test("pattern-room installed UI keeps the default state for a null loaded snapshot", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?loaded-null=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      payload: { snapshot: null },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+
+    assert.ok(environment.app.querySelector("[data-pattern-view='overview']"));
+    assert.match(readTreeText(environment.app), /Pattern Room/);
+    assert.doesNotMatch(readTreeText(environment.app), /Restored host snapshot note/);
+    assert.deepEqual(environment.sentCommands, []);
+    assert.deepEqual(environment.sentEvents, []);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+test("pattern-room installed UI rejects an invalid loaded snapshot without breaking state", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?loaded-invalid=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      payload: {
+        snapshot: {
+          activeView: "report",
+          roomId: "pattern-room",
+          schemaVersion: -1,
+          topicId: PATTERN_ROOM_DOMAIN_MOCK.topic.id,
+        },
+      },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+
+    assert.ok(environment.app.querySelector("[data-pattern-view='overview']"));
+    assert.match(readTreeText(environment.app), /Pattern Room/);
+    assert.doesNotMatch(readTreeText(environment.app), /Yerel Notlar/);
+    assert.deepEqual(environment.sentCommands, []);
+    assert.deepEqual(environment.sentEvents, []);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+test("pattern-room installed UI handles save-failed host events without status UI", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+  const originalWarn = console.warn;
+  const warnings: string[] = [];
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?save-failed=${Date.now()}`
+    );
+
+    console.warn = (...args: unknown[]): void => {
+      warnings.push(args.map(String).join(" "));
+    };
+
+    environment.emitHostMessage({
+      payload: {
+        error: "Pattern Room test save failed.",
+        success: false,
+      },
+      type: PATTERN_ROOM_SAVE_FAILED_EVENT,
+    });
+
+    assert.ok(environment.app.querySelector("[data-pattern-view='overview']"));
+    assert.deepEqual(warnings, ["Pattern Room test save failed."]);
+    assert.doesNotMatch(readTreeText(environment.app), /save failed/i);
+    assert.deepEqual(environment.sentCommands, []);
+    assert.deepEqual(environment.sentEvents, []);
+  } finally {
+    console.warn = originalWarn;
     environment.restore();
     await installedCopy.cleanup();
   }

@@ -174,6 +174,7 @@ test("laboratory report overlay export buttons send host export actions without 
     assert.ok(clickListener);
 
     clickListener?.({ target: new TestElement("report-export-json") } as Event);
+    store.dispatch({ type: "report-view-changed", view: "ai" });
     clickListener?.({ target: new TestElement("report-export-pdf") } as Event);
 
     const mediaActions = sentEvents.filter(function (entry) {
@@ -193,11 +194,22 @@ test("laboratory report overlay export buttons send host export actions without 
           featureId: payload["featureId"],
           format: payload["format"],
           hasTargetDirectory: Object.prototype.hasOwnProperty.call(payload, "targetDirectory"),
+          reportView: payload["reportView"],
         };
       }),
       [
-        { featureId: "media-analysis", format: "json", hasTargetDirectory: false },
-        { featureId: "media-analysis", format: "pdf", hasTargetDirectory: false },
+        {
+          featureId: "media-analysis",
+          format: "json",
+          hasTargetDirectory: false,
+          reportView: "user",
+        },
+        {
+          featureId: "media-analysis",
+          format: "pdf",
+          hasTargetDirectory: false,
+          reportView: "ai",
+        },
       ]
     );
   } finally {

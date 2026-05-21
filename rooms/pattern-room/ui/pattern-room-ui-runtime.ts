@@ -2,6 +2,11 @@ import { adaptDomainToViewModels } from "../shared/adapters/pattern-room-view-ad
 import { PATTERN_ROOM_DOMAIN_MOCK } from "../shared/data/pattern-room-domain.mock.js";
 import { createLocalState } from "../shared/state/pattern-room-local-state.js";
 import { createSnapshot, restoreFromSnapshot } from "../shared/state/pattern-room-snapshot.js";
+import {
+  PATTERN_ROOM_LOADED_EVENT,
+  PATTERN_ROOM_SAVED_EVENT,
+  PATTERN_ROOM_SAVE_FAILED_EVENT,
+} from "../shared/types/pattern-room-persistence.js";
 import type {
   PatternPanelActions,
   PatternRoomMockData,
@@ -22,6 +27,10 @@ export type PatternRoomUiRuntime = {
   createSnapshot: () => PatternRoomSessionSnapshot;
   restoreSnapshot: (snapshot: unknown) => boolean;
 };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 function resolveRoot(): HTMLElement {
   const existingRoot = document.getElementById("app");
@@ -44,6 +53,7 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     PATTERN_ROOM_DOMAIN_MOCK,
     localState.getOverlay()
   );
+  let hostMessagesConnected = false;
 
   const actions: PatternPanelActions = {
     getSelectedNodeId(): string | null {
@@ -137,6 +147,65 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     root.replaceChildren(content);
   }
 
+  function restoreSnapshot(snapshot: unknown): boolean {
+    const restoredState = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_MOCK);
+    if (restoredState === null) {
+      return false;
+    }
+
+    activeView = restoredState.activeView;
+    localState.restoreOverlay(restoredState.overlay, restoredState.guards);
+    return true;
+  }
+
+  function handleLoadedPayload(payload: unknown): void {
+    if (!isRecord(payload) || payload["snapshot"] === null) {
+      return;
+    }
+
+    try {
+      restoreSnapshot(payload["snapshot"]);
+    } catch (error) {
+      console.warn("Pattern Room snapshot restore failed.", error);
+    }
+  }
+
+  function handleSaveFailedPayload(payload: unknown): void {
+    const message =
+      isRecord(payload) && typeof payload["error"] === "string"
+        ? payload["error"]
+        : "Pattern Room save failed.";
+    console.warn(message);
+  }
+
+  function handleHostMessage(message: unknown): void {
+    if (!isRecord(message)) {
+      return;
+    }
+
+    if (message["type"] === PATTERN_ROOM_LOADED_EVENT) {
+      handleLoadedPayload(message["payload"]);
+      return;
+    }
+
+    if (message["type"] === PATTERN_ROOM_SAVED_EVENT) {
+      return;
+    }
+
+    if (message["type"] === PATTERN_ROOM_SAVE_FAILED_EVENT) {
+      handleSaveFailedPayload(message["payload"]);
+    }
+  }
+
+  function connectHostMessages(): void {
+    if (hostMessagesConnected || typeof window.roomAPI?.onHostMessage !== "function") {
+      return;
+    }
+
+    hostMessagesConnected = true;
+    window.roomAPI.onHostMessage(handleHostMessage);
+  }
+
   function announceReady(): void {
     window.roomAPI?.ready?.({
       roomId: "pattern-room",
@@ -147,21 +216,13 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
 
   return {
     start(): void {
+      connectHostMessages();
       render();
       announceReady();
     },
     createSnapshot(): PatternRoomSessionSnapshot {
       return createSnapshot(localState, activeView);
     },
-    restoreSnapshot(snapshot: unknown): boolean {
-      const restoredState = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_MOCK);
-      if (restoredState === null) {
-        return false;
-      }
-
-      activeView = restoredState.activeView;
-      localState.restoreOverlay(restoredState.overlay, restoredState.guards);
-      return true;
-    },
+    restoreSnapshot,
   };
 }

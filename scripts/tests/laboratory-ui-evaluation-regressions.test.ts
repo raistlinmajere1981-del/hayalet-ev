@@ -1036,6 +1036,12 @@ test("laboratory YouTube source panel renders checked stream controls without im
   assert.doesNotMatch(shellMarkup, /class="labx-import-workspace"/);
   assert.match(panelMarkup, /class="labx-project-import__youtube-result"/);
   assert.match(panelMarkup, /Sample Video Title/);
+  const actionsIndex = panelMarkup.indexOf('class="labx-sp-url__actions"');
+  const progressIndex = panelMarkup.indexOf('class="labx-project-import__progress"');
+  const youtubeResultIndex = panelMarkup.indexOf('class="labx-project-import__youtube-result"');
+  assert.ok(actionsIndex >= 0);
+  assert.ok(progressIndex > actionsIndex);
+  assert.ok(youtubeResultIndex > progressIndex);
   assert.match(panelMarkup, /data-lab-field="project-import\.youtubeCaptureMode"/);
   assert.match(panelMarkup, /data-lab-field="project-import\.youtubeVideoFormat"/);
   assert.match(panelMarkup, /data-lab-field="project-import\.youtubeAudioFormat"/);

@@ -6,6 +6,10 @@ import { join, relative, resolve } from "node:path";
 import createPatternRoomHostRuntime from "../../rooms/pattern-room/host/runtime.ts";
 import { PATTERN_ROOM_DOMAIN_MOCK } from "../../rooms/pattern-room/shared/data/pattern-room-domain.mock.ts";
 import {
+  PATTERN_ROOM_LOAD_COMMAND,
+  PATTERN_ROOM_SAVE_COMMAND,
+} from "../../rooms/pattern-room/shared/types/pattern-room-persistence.ts";
+import {
   DEBATE_SESSION_STATUSES,
   PATTERN_LAYERS,
   PATTERN_RELIABILITY_LEVELS,
@@ -183,15 +187,33 @@ test("pattern-room phase 3B panels do not import domain types or domain mock dat
   }
 });
 
-test("pattern-room phase 3B host runtime stays command-free and domain-mock-free", async () => {
+test("pattern-room host runtime keeps domain mock usage scoped to ready-load persistence", async () => {
   const activation = createPatternRoomHostRuntime().activate({});
-  assert.deepEqual(activation.commands, {});
+  assert.deepEqual(Object.keys(activation.commands).sort(), [
+    PATTERN_ROOM_LOAD_COMMAND,
+    PATTERN_ROOM_SAVE_COMMAND,
+  ]);
 
   const hostFilePaths = await listTypeScriptFiles(resolve("rooms/pattern-room/host"));
+  const domainMockConsumers: string[] = [];
 
   for (const filePath of hostFilePaths) {
     const source = await readFile(filePath, "utf8");
-    assert.equal(source.includes("pattern-room-domain.mock"), false, filePath);
-    assert.equal(source.includes("PATTERN_ROOM_DOMAIN_MOCK"), false, filePath);
+    if (
+      source.includes("pattern-room-domain.mock") ||
+      source.includes("PATTERN_ROOM_DOMAIN_MOCK")
+    ) {
+      domainMockConsumers.push(relative(process.cwd(), filePath));
+    }
   }
+
+  assert.deepEqual(domainMockConsumers, ["rooms/pattern-room/host/runtime.ts"]);
+});
+
+test("pattern-room host runtime stays free of Node-only storage imports", async () => {
+  const source = await readFile(resolve("rooms/pattern-room/host/runtime.ts"), "utf8");
+
+  assert.equal(source.includes("pattern-room-json-store"), false);
+  assert.equal(source.includes("node:fs"), false);
+  assert.equal(source.includes("node:path"), false);
 });

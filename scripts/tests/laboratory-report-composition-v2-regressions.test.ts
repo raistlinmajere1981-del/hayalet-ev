@@ -36,6 +36,7 @@ function createReportExportHarness(options: {
       return {
         status: "ready",
         aiReport: { version: 2 },
+        userReport: { summary: "User report", audience: "user" },
         artifacts: [
           {
             kind: "legacy-ai-payload",
@@ -79,6 +80,7 @@ function createReportExportHarness(options: {
         format: String(source["format"] || "md"),
         path: source["path"] || null,
         fileName: source["fileName"] || null,
+        reportView: source["reportView"] || null,
         createdAt: "2026-04-20T10:00:00.000Z",
         status: String(source["status"] || "ready"),
       };
@@ -253,6 +255,40 @@ test("laboratory report PDF overlay export writes one selected-folder PDF file",
   assert.equal(harness.writes[0]?.value.startsWith("%PDF-1.4"), true);
   assert.equal(harness.persistedExports.length, 1);
   assert.equal(harness.persistedExports[0]?.["format"], "pdf");
+});
+
+test("laboratory report JSON overlay export writes the selected user report", async () => {
+  const harness = createReportExportHarness();
+
+  await harness.runtime.exportFeatureReport({}, {}, "req-user-json", "media-analysis", {
+    format: "json",
+    reportView: "user",
+    targetDirectory: "/selected/reports",
+  });
+
+  assert.equal(harness.writes.length, 1);
+  assert.match(harness.writes[0]?.path || "", /-user\.json$/);
+  assert.deepEqual(JSON.parse(harness.writes[0]?.value || "{}"), {
+    audience: "user",
+    summary: "User report",
+  });
+  assert.equal(harness.persistedExports[0]?.["reportView"], "user");
+});
+
+test("laboratory report PDF overlay export writes the selected technical report", async () => {
+  const harness = createReportExportHarness();
+
+  await harness.runtime.exportFeatureReport({}, {}, "req-ai-pdf", "media-analysis", {
+    format: "pdf",
+    reportView: "ai",
+    targetDirectory: "/selected/reports",
+  });
+
+  assert.equal(harness.writes.length, 1);
+  assert.match(harness.writes[0]?.path || "", /-ai\.pdf$/);
+  assert.equal(harness.writes[0]?.value.startsWith("%PDF-1.4"), true);
+  assert.match(harness.writes[0]?.value || "", /Technical Payload/);
+  assert.equal(harness.persistedExports[0]?.["reportView"], "ai");
 });
 
 test("laboratory reports surface temporal correlation, narrative cues, and forensic notes", () => {
