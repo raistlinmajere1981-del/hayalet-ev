@@ -23,6 +23,15 @@ type ManagedMediaFindingOptions = {
   title: string;
 };
 
+type ManagedMediaVisualSignalSummary = {
+  backgroundMotionEnergy?: number | null;
+  compressionRiskLevel?: string | null;
+  duplicateFrameCount?: number;
+  freezeAttribution?: string | null;
+  opticalFlowClass?: string | null;
+  subjectMotionEnergy?: number | null;
+};
+
 type ManagedMediaVisualHelpersDeps = {
   asNonEmptyString: (value: unknown) => string | null;
   createProcessFinding: (
@@ -103,26 +112,74 @@ export function createManagedMediaVisualHelpers(deps: ManagedMediaVisualHelpersD
     moduleId: string,
     freezeCount: number,
     blackCount: number,
-    sourceKind: string
+    sourceKind: string,
+    signalSummary: ManagedMediaVisualSignalSummary = {}
   ): { detail: string; level: string; title: string } {
+    const duplicateFrameCount =
+      typeof signalSummary.duplicateFrameCount === "number" &&
+      Number.isFinite(signalSummary.duplicateFrameCount)
+        ? signalSummary.duplicateFrameCount
+        : 0;
+    const compressionRiskLevel = signalSummary.compressionRiskLevel || "low";
+    const freezeAttribution = signalSummary.freezeAttribution || null;
+    const opticalFlowClass = signalSummary.opticalFlowClass || null;
+    const subjectMotionEnergy =
+      typeof signalSummary.subjectMotionEnergy === "number" &&
+      Number.isFinite(signalSummary.subjectMotionEnergy)
+        ? signalSummary.subjectMotionEnergy
+        : null;
+    const backgroundMotionEnergy =
+      typeof signalSummary.backgroundMotionEnergy === "number" &&
+      Number.isFinite(signalSummary.backgroundMotionEnergy)
+        ? signalSummary.backgroundMotionEnergy
+        : null;
+    const flowDetail =
+      opticalFlowClass === null
+        ? "motion split pending"
+        : `motion split ${opticalFlowClass}${
+            subjectMotionEnergy === null || backgroundMotionEnergy === null
+              ? ""
+              : `, subject ${subjectMotionEnergy.toFixed(4)} vs background ${backgroundMotionEnergy.toFixed(4)}`
+          }`;
     if (moduleId === "frame-consistency") {
       return freezeCount > 0
         ? {
             title: "Frame consistency anomaly detected",
-            detail: `The active ${sourceKind} target contains ${freezeCount} freeze interval(s) inside the sampled window.`,
+            detail: `The active ${sourceKind} target contains ${freezeCount} freeze interval(s) inside the sampled window; attribution ${freezeAttribution || "pending"}; ${flowDetail}.`,
             level: freezeCount > 2 ? "medium" : "low",
           }
-        : {
-            title: "Frame consistency sweep completed",
-            detail: "The managed run captured a frame consistency baseline for the selected scope.",
-            level: "low",
-          };
+        : duplicateFrameCount > 0
+          ? {
+              title: "Duplicate frame cadence detected",
+              detail: `The active ${sourceKind} target repeats ${duplicateFrameCount} decoded frame(s) below the freeze-duration threshold.`,
+              level: duplicateFrameCount > 12 ? "medium" : "low",
+            }
+          : {
+              title: "Frame consistency sweep completed",
+              detail:
+                "The managed run captured a frame consistency baseline for the selected scope.",
+              level: "low",
+            };
     }
     if (moduleId === "motion-anomaly") {
+      if (opticalFlowClass === "localized_subject_motion") {
+        return {
+          title: "Localized motion track detected",
+          detail: `Motion analysis separated subject/ROI movement from a quieter background sample; compression risk ${compressionRiskLevel}.`,
+          level: "medium",
+        };
+      }
+      if (opticalFlowClass === "background_or_camera_motion") {
+        return {
+          title: "Background motion track detected",
+          detail: `Motion analysis found stronger background/camera movement than subject/ROI movement; compression risk ${compressionRiskLevel}.`,
+          level: "medium",
+        };
+      }
       return freezeCount + blackCount > 0
         ? {
             title: "Motion anomaly cluster detected",
-            detail: `Motion analysis observed ${freezeCount + blackCount} structural transition(s) across the sampled window.`,
+            detail: `Motion analysis observed ${freezeCount + blackCount} structural transition(s) across the sampled window; compression risk ${compressionRiskLevel}; ${flowDetail}.`,
             level: freezeCount + blackCount > 2 ? "medium" : "low",
           }
         : {

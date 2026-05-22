@@ -211,6 +211,38 @@ test("pattern-room phase 12D round-trips user text producer sources", () => {
   assertRestoredSnapshotStateMatches(roundTripSnapshot, snapshot);
 });
 
+test("pattern-room phase 12F-B round-trips optional import batch ids without schema bump", () => {
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const producer = createUserTextProducer({ now: () => "2026-05-21T10:00:00.000Z" });
+  const orchestrationResult = produceAndImportSource(producer, {
+    inputKind: "pasted_text",
+    text: "Batch tracked kullanıcı metni snapshot içinde kalmalı.",
+    title: "Batch tracked source",
+    language: "tr",
+  });
+  const importResult = orchestrationResult.importResults[0]?.importResult;
+  assert.ok(importResult);
+  localState.applySourceImportResult(importResult, {
+    importBatchId: "source-package-snapshot-001",
+  });
+
+  const snapshot = createSnapshot(localState, "archive");
+  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_MOCK);
+  assert.ok(restored);
+
+  assert.equal(snapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
+  assert.equal(PATTERN_ROOM_SNAPSHOT_VERSION, 1);
+  assert.deepEqual(
+    restored.overlay.localAuthoredSources.map((source) => source.importBatchId),
+    ["source-package-snapshot-001"]
+  );
+
+  const roundTripState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  roundTripState.restoreOverlay(restored.overlay, restored.guards);
+  const roundTripSnapshot = createSnapshot(roundTripState, restored.activeView);
+  assertRestoredSnapshotStateMatches(roundTripSnapshot, snapshot);
+});
+
 test("pattern-room phase 8B local edge authoring validates endpoints and stays overlay-only", () => {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);

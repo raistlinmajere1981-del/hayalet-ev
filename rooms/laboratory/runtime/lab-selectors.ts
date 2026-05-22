@@ -64,6 +64,7 @@ import {
   getSelectionContextSourceKind,
   getWorkspaceSurfaceSuggestions,
 } from "./selectors/lab-execution-flow-selectors.js";
+import { isFullSourceWorkspaceSelection } from "./lab-workspace-selection.js";
 
 export {
   getActualOutputs,
@@ -425,7 +426,11 @@ export function getLaboratoryRightPanelContext(state: LabStoreState): LabRightPa
 
 export function getTimelineSelection(state: LabStoreState) {
   const activeSelection = getActiveSelection(state);
-  if (activeSelection !== null && activeSelection.endMs > activeSelection.startMs) {
+  if (
+    activeSelection !== null &&
+    activeSelection.endMs > activeSelection.startMs &&
+    !isFullSourceWorkspaceSelection(activeSelection)
+  ) {
     return {
       startMs: activeSelection.startMs,
       endMs: activeSelection.endMs,

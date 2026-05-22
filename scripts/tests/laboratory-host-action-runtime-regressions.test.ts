@@ -90,6 +90,19 @@ test("laboratory structure probes honor analysis time range and scale full-media
     metadata: { durationSeconds: 967.85415 },
     path: "/tmp/source.mp4",
   };
+  function readStructureProbeRun(requestId: string) {
+    const run = toolRuns.find(function (entry) {
+      if (entry["requestId"] !== requestId) {
+        return false;
+      }
+      const args = Array.isArray(entry["args"]) ? (entry["args"] as unknown[]) : [];
+      return args.some(function (arg) {
+        return typeof arg === "string" && arg.includes("blackdetect");
+      });
+    });
+    assert.ok(run, `Expected structure probe run for ${requestId}.`);
+    return run;
+  }
 
   const scopedProbe = await probeRuntime.runVideoStructureProbe(
     runtime,
@@ -106,23 +119,26 @@ test("laboratory structure probes honor analysis time range and scale full-media
       },
     }
   );
-  const scopedArgs = (toolRuns[0]?.["args"] || []) as string[];
+  const scopedRun = readStructureProbeRun("req-scoped");
+  const scopedArgs = (scopedRun["args"] || []) as string[];
   const scopedFreeze = scopedProbe.freeze as Record<string, unknown>;
   const scopedSegments = scopedFreeze["segments"] as Array<Record<string, unknown>>;
   assert.deepEqual(scopedArgs.slice(0, 6), ["-hide_banner", "-ss", "89", "-t", "4", "-i"]);
-  assert.equal(toolRuns[0]?.["timeoutMs"], 120_000);
+  assert.equal(scopedRun["timeoutMs"], 120_000);
   assert.equal(scopedSegments[0]?.["startSeconds"], 89);
   assert.equal(scopedSegments[0]?.["endSeconds"], 90);
 
   await probeRuntime.runVideoStructureProbe(runtime, project, "req-full", "job-full", target);
-  const fullArgs = (toolRuns[1]?.["args"] || []) as string[];
+  const fullRun = readStructureProbeRun("req-full");
+  const fullArgs = (fullRun["args"] || []) as string[];
   assert.equal(fullArgs.includes("-ss"), false);
-  assert.ok(Number(toolRuns[1]?.["timeoutMs"]) > 120_000);
+  assert.ok(Number(fullRun["timeoutMs"]) > 120_000);
 
   await probeRuntime.runVideoStructureProbe(runtime, project, "req-sample", "job-sample", target, {
     fallbackWindowSeconds: 45,
   });
-  const sampleArgs = (toolRuns[2]?.["args"] || []) as string[];
+  const sampleRun = readStructureProbeRun("req-sample");
+  const sampleArgs = (sampleRun["args"] || []) as string[];
   assert.deepEqual(sampleArgs.slice(0, 6), ["-hide_banner", "-ss", "0", "-t", "45", "-i"]);
 });
 

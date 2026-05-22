@@ -212,6 +212,12 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     addAuthoredSource(label: string, origin: string, note: string): void {
       localState.addAuthoredSource(label, origin, note);
     },
+    removeLocalSource(sourceId: string): void {
+      localState.removeLocalSource(sourceId);
+    },
+    resetLocalSession(): void {
+      localState.resetOverlayToEmpty();
+    },
     addAuthoredEvidence(label: string, excerpt: string, interpretation, layer): void {
       localState.addAuthoredEvidence(label, excerpt, interpretation, layer);
     },

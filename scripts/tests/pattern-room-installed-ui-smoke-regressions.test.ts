@@ -10,13 +10,19 @@ import {
 } from "./forge-room-ui-smoke.helpers.ts";
 import { PATTERN_ROOM_DOMAIN_MOCK } from "../../rooms/pattern-room/shared/data/pattern-room-domain.mock.ts";
 import { createLocalState } from "../../rooms/pattern-room/shared/state/pattern-room-local-state.ts";
-import { createSnapshot } from "../../rooms/pattern-room/shared/state/pattern-room-snapshot.ts";
+import {
+  createSnapshot,
+  restoreFromSnapshot,
+} from "../../rooms/pattern-room/shared/state/pattern-room-snapshot.ts";
 import {
   PATTERN_ROOM_LOADED_EVENT,
   PATTERN_ROOM_SAVE_COMMAND,
   PATTERN_ROOM_SAVE_FAILED_EVENT,
 } from "../../rooms/pattern-room/shared/types/pattern-room-persistence.ts";
-import type { PatternRoomSessionSnapshot } from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
+import {
+  PATTERN_ROOM_SNAPSHOT_VERSION,
+  type PatternRoomSessionSnapshot,
+} from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
 
 const PATTERN_FOCUSED_VIEWS = ["board", "desk", "archive", "tenth-man", "report"] as const;
 type PatternFocusedViewId = (typeof PATTERN_FOCUSED_VIEWS)[number];
@@ -98,6 +104,10 @@ function submitUserTextSource(
   titleInput.value = titleText;
   textInput.value = sourceText;
   submitForm(form);
+}
+
+function setWindowConfirm(handler: (message: string) => boolean): void {
+  (globalThis.window as unknown as { confirm: (message: string) => boolean }).confirm = handler;
 }
 
 function createHostLoadedSnapshot(
@@ -987,6 +997,58 @@ test("pattern-room installed UI phase 12D rejects blank pasted user text", async
   }
 });
 
+test("pattern-room installed UI phase 12G-A cancels local source removal safely", async () => {
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+  const confirmMessages: string[] = [];
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?remove-cancel=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      payload: { snapshot: null },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+    openFocusedView(environment.app, "archive");
+    submitUserTextSource(
+      environment.app,
+      "Kendi Metin Testi",
+      "Kaldırma iptali için kullanıcı metni."
+    );
+    environment.runPendingTimers(2000);
+
+    const removeLocalSource = environment.app.querySelector(
+      "[data-pattern-remove-local-source='local-source-001']"
+    );
+    assert.ok(removeLocalSource);
+    assert.equal(
+      environment.app.querySelector(
+        "[data-pattern-remove-local-source='source-shadow-comparison']"
+      ),
+      null
+    );
+    assertTextIncludes(readTreeText(environment.app), ["Kendi Metin Testi", "Kaynağı kaldır"]);
+
+    setWindowConfirm((message) => {
+      confirmMessages.push(message);
+      return false;
+    });
+    fireEvent(removeLocalSource, "click");
+
+    assert.deepEqual(confirmMessages, ["Bu yerel kaynak odadan kaldırılacak. Devam edilsin mi?"]);
+    assert.ok(environment.app.querySelector("[data-pattern-archive-source='local-source-001']"));
+    assert.equal(environment.pendingTimerCount(), 0);
+    assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_SAVE_COMMAND]);
+    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
 test("pattern-room installed UI phase 11D imports a mock SourcePackage from the archive demo", async () => {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
   const environment = createMinimalForgeUiEnvironment();
@@ -1010,6 +1072,9 @@ test("pattern-room installed UI phase 11D imports a mock SourcePackage from the 
     fireEvent(importButton, "click");
 
     assert.ok(environment.app.querySelector("[data-pattern-archive-source='local-source-001']"));
+    assert.ok(
+      environment.app.querySelector("[data-pattern-remove-local-source='local-source-001']")
+    );
     assertTextIncludes(readTreeText(environment.app), [
       "Kaynak Atölyesi",
       "Örnek Kaynak Paketini İçe Aktar",
@@ -1063,6 +1128,274 @@ test("pattern-room installed UI phase 11D imports a mock SourcePackage from the 
       1
     );
 
+    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+test("pattern-room installed UI phase 12G-A removes confirmed local sources and cascades source-linked report links", async () => {
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+  const confirmMessages: string[] = [];
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?remove-accept=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      payload: { snapshot: null },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+    openFocusedView(environment.app, "archive");
+    submitUserTextSource(
+      environment.app,
+      "Kaynak Bağlantı Testi",
+      "Silindiğinde bağlı yerel bağlantısı da kalkacak kaynak."
+    );
+    environment.runPendingTimers(2000);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "board");
+    const edgeForm = environment.app.querySelector("[data-pattern-author-edge-form='true']");
+    const sourceSelect = environment.app.querySelector("[data-pattern-author-edge-source='true']");
+    const edgeTypeSelect = environment.app.querySelector("[data-pattern-author-edge-type='true']");
+    const targetSelect = environment.app.querySelector("[data-pattern-author-edge-target='true']");
+    const noteInput = environment.app.querySelector("[data-pattern-author-edge-note='true']");
+    assert.ok(edgeForm);
+    assert.ok(sourceSelect);
+    assert.ok(edgeTypeSelect);
+    assert.ok(targetSelect);
+    assert.ok(noteInput);
+    installFormReset(edgeForm);
+    sourceSelect.value = "local-source-001";
+    edgeTypeSelect.value = "references";
+    targetSelect.value = "node-navigation-source";
+    noteInput.value = "Source-linked deletion smoke.";
+    submitForm(edgeForm);
+    environment.runPendingTimers(2000);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "report");
+    assertTextIncludes(readTreeText(environment.app), [
+      "Yerel Bağlantılar",
+      "Kaynak Bağlantı Testi",
+      "referans veriyor",
+      "Seyir defteri kaynagi",
+    ]);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "archive");
+    const removeLocalSource = environment.app.querySelector(
+      "[data-pattern-remove-local-source='local-source-001']"
+    );
+    assert.ok(removeLocalSource);
+    setWindowConfirm((message) => {
+      confirmMessages.push(message);
+      return true;
+    });
+    fireEvent(removeLocalSource, "click");
+
+    assert.deepEqual(confirmMessages, ["Bu yerel kaynak odadan kaldırılacak. Devam edilsin mi?"]);
+    assert.equal(
+      environment.app.querySelector("[data-pattern-archive-source='local-source-001']"),
+      null
+    );
+    assert.equal(environment.pendingTimerCount(), 1);
+    environment.runPendingTimers(2000);
+    assert.deepEqual(environment.sentCommands, [
+      PATTERN_ROOM_SAVE_COMMAND,
+      PATTERN_ROOM_SAVE_COMMAND,
+      PATTERN_ROOM_SAVE_COMMAND,
+    ]);
+
+    const savedSnapshot = readLatestSavePayload(environment)[
+      "snapshot"
+    ] as PatternRoomSessionSnapshot;
+    assert.equal(savedSnapshot.overlay.localAuthoredSources.length, 0);
+    assert.equal(savedSnapshot.overlay.localAuthoredEdges.length, 0);
+    assert.deepEqual(savedSnapshot.overlay.pinnedSourceIds, []);
+    assert.deepEqual(savedSnapshot.overlay.sourcePinnedLayerById, {});
+    const restored = restoreFromSnapshot(savedSnapshot, PATTERN_ROOM_DOMAIN_MOCK);
+    assert.ok(restored);
+    assert.deepEqual(restored.overlay.localAuthoredSources, []);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "report");
+    assert.doesNotMatch(readTreeText(environment.app), /Yerel Bağlantılar/);
+    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+test("pattern-room installed UI phase 12G-B resets the local session without touching domain data", async () => {
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+  const confirmMessages: string[] = [];
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?local-reset=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      payload: { snapshot: null },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+    openFocusedView(environment.app, "archive");
+    assertTextIncludes(readTreeText(environment.app), [
+      "Yerel Oturum",
+      "Yerel Oturumu Sıfırla",
+      "Hazır konu verileri korunur.",
+    ]);
+    assert.equal(environment.app.querySelector("[data-pattern-remove-import-batch]"), null);
+
+    const importButton = environment.app.querySelector(
+      "[data-pattern-import-sample-source-package='true']"
+    );
+    assert.ok(importButton);
+    fireEvent(importButton, "click");
+    environment.runPendingTimers(2000);
+
+    assert.ok(environment.app.querySelector("[data-pattern-archive-source='local-source-001']"));
+    assert.ok(
+      environment.app.querySelector("[data-pattern-archive-source='source-shadow-comparison']")
+    );
+    const addLocalSourceToDebate = environment.app.querySelector(
+      "[data-pattern-add-source-debate='local-source-001']"
+    );
+    assert.ok(addLocalSourceToDebate);
+    fireEvent(addLocalSourceToDebate, "click");
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "tenth-man");
+    assertTextIncludes(readTreeText(environment.app), ["Saha Defteri Alıntısı"]);
+    const prepare = environment.app.querySelector("[data-pattern-prepare-debate='true']");
+    assert.ok(prepare);
+    fireEvent(prepare, "click");
+    const assign = environment.app.querySelector("[data-pattern-assign-debate-roles='true']");
+    assert.ok(assign);
+    fireEvent(assign, "click");
+    const start = environment.app.querySelector("[data-pattern-start-debate='true']");
+    assert.ok(start);
+    fireEvent(start, "click");
+    assertTextIncludes(readTreeText(environment.app), ["AI0 araştırmacı açılışı"]);
+    environment.runPendingTimers(2000);
+    assert.deepEqual(environment.sentCommands, [
+      PATTERN_ROOM_SAVE_COMMAND,
+      PATTERN_ROOM_SAVE_COMMAND,
+    ]);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "board");
+    assertTextIncludes(readTreeText(environment.app), ["Gölge yönü notu", "Tekrarlayan gölge izi"]);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "report");
+    assertTextIncludes(readTreeText(environment.app), [
+      "Yerel Notlar",
+      "Kaynak Atölyesi tarafından örnek bir saha notu paketi hazırlandı.",
+      "Yerel Kanıt Notları",
+      "Gölge yönü notu",
+      "Yerel Bağlantılar",
+      "Tekrarlayan gölge izi",
+    ]);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "archive");
+    const resetButton = environment.app.querySelector("[data-pattern-reset-local-session='true']");
+    assert.ok(resetButton);
+    setWindowConfirm((message) => {
+      confirmMessages.push(message);
+      return false;
+    });
+    fireEvent(resetButton, "click");
+
+    assert.deepEqual(confirmMessages, [
+      "Tüm yerel kaynaklar, notlar ve geçici tartışma izleri temizlenecek. Hazır konu verileri korunur. Devam edilsin mi?",
+    ]);
+    assert.ok(environment.app.querySelector("[data-pattern-archive-source='local-source-001']"));
+    assert.equal(environment.pendingTimerCount(), 0);
+    assert.deepEqual(environment.sentCommands, [
+      PATTERN_ROOM_SAVE_COMMAND,
+      PATTERN_ROOM_SAVE_COMMAND,
+    ]);
+
+    setWindowConfirm((message) => {
+      confirmMessages.push(message);
+      return true;
+    });
+    fireEvent(resetButton, "click");
+
+    assert.equal(
+      environment.app.querySelector("[data-pattern-archive-source='local-source-001']"),
+      null
+    );
+    assert.ok(
+      environment.app.querySelector("[data-pattern-archive-source='source-shadow-comparison']")
+    );
+    assert.equal(environment.pendingTimerCount(), 1);
+
+    environment.runPendingTimers(2000);
+    assert.deepEqual(environment.sentCommands, [
+      PATTERN_ROOM_SAVE_COMMAND,
+      PATTERN_ROOM_SAVE_COMMAND,
+      PATTERN_ROOM_SAVE_COMMAND,
+    ]);
+    const savedSnapshot = readLatestSavePayload(environment)[
+      "snapshot"
+    ] as PatternRoomSessionSnapshot;
+    assert.equal(savedSnapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
+    assert.deepEqual(savedSnapshot.overlay.localAuthoredSources, []);
+    assert.deepEqual(savedSnapshot.overlay.localAuthoredNodes, []);
+    assert.deepEqual(savedSnapshot.overlay.localAuthoredEvidence, []);
+    assert.deepEqual(savedSnapshot.overlay.localAuthoredEdges, []);
+    assert.deepEqual(savedSnapshot.overlay.localNotes, []);
+    assert.deepEqual(savedSnapshot.overlay.pinnedSourceIds, []);
+    assert.deepEqual(savedSnapshot.overlay.sourcePinnedLayerById, {});
+    assert.deepEqual(savedSnapshot.overlay.debateReferenceIds, []);
+    assert.deepEqual(savedSnapshot.overlay.debateLocalTurns, []);
+    assert.equal(savedSnapshot.overlay.debateLocalVerdict, null);
+    assert.equal(savedSnapshot.overlay.debatePhase, "idle");
+    assert.equal(savedSnapshot.guards.debateReportReflected, false);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "board");
+    const boardText = readTreeText(environment.app);
+    assert.doesNotMatch(boardText, /Gölge yönü notu/);
+    assert.doesNotMatch(boardText, /Tekrarlayan gölge izi/);
+    assertTextIncludes(boardText, ["Seyir defteri kaynagi"]);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "report");
+    const reportText = readTreeText(environment.app);
+    assert.doesNotMatch(reportText, /Yerel Bağlantılar/);
+    assert.doesNotMatch(reportText, /Yerel Kanıt Notları/);
+    assert.doesNotMatch(
+      reportText,
+      /Kaynak Atölyesi tarafından örnek bir saha notu paketi hazırlandı./
+    );
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "tenth-man");
+    const tenthManText = readTreeText(environment.app);
+    assertTextIncludes(tenthManText, [
+      "Referans eklemek için Pano veya Arşiv üzerinden 10. Adam’a Ekle akışını kullan.",
+      "0 / 8",
+    ]);
+    assert.doesNotMatch(tenthManText, /Saha Defteri Alıntısı/);
+    assert.doesNotMatch(tenthManText, /AI0 araştırmacı açılışı/);
+
+    assert.deepEqual(confirmMessages, [
+      "Tüm yerel kaynaklar, notlar ve geçici tartışma izleri temizlenecek. Hazır konu verileri korunur. Devam edilsin mi?",
+      "Tüm yerel kaynaklar, notlar ve geçici tartışma izleri temizlenecek. Hazır konu verileri korunur. Devam edilsin mi?",
+    ]);
     assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
   } finally {
     environment.restore();

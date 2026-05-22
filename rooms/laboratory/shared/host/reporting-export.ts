@@ -351,11 +351,7 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
       let createdResultAssetIds: string[] = [];
       const stamp = new Date().toISOString().replace(/[:.]/g, "-");
       const baseName = `${sanitizeFileSegment(project.slug, "project")}-${featureId}-${stamp}`;
-      if (
-        requestedFormat !== null &&
-        requestedReportView !== null &&
-        selectedDirectory !== null
-      ) {
+      if (requestedFormat !== null && requestedReportView !== null && selectedDirectory !== null) {
         const targetDirectory = selectedDirectory.targetDirectory;
         const fileName = `${baseName}-${requestedReportView}.${requestedFormat}`;
         const outputPath = joinDirectoryPath(targetDirectory, fileName);

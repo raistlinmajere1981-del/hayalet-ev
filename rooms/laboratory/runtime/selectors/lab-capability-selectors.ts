@@ -26,6 +26,7 @@ import { getAssets, getSourceKind, getToolState } from "./lab-source-selectors.j
 import { getTrackedOperationActionId } from "../lab-operation-action-map.js";
 import { getUserActions } from "./lab-activity-selectors.js";
 import { inferLabAssetSourceKind, type LabAssetSourceKind } from "../../shared/lab-asset-kind.js";
+import { isFullSourceWorkspaceSelection } from "../lab-workspace-selection.js";
 
 type OperationSourceKind = LabAssetSourceKind;
 
@@ -535,7 +536,10 @@ export function getAvailableOperationCapabilities(
   }
   const sourceReady = operationTarget.sourceReady;
   const selection = state.ui.workspace.activeSelection;
-  const hasSelection = selection !== null && selection.endMs > selection.startMs;
+  const hasSelection =
+    selection !== null &&
+    selection.endMs > selection.startMs &&
+    !isFullSourceWorkspaceSelection(selection);
   const hasRoi = selection?.roi !== undefined;
 
   return LAB_OPERATION_CAPABILITIES.map(function (capability) {

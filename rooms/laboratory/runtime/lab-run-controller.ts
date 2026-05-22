@@ -57,6 +57,7 @@ import {
   normalizeWorkspaceControlTab,
 } from "./controller/lab-timeline-controller-helpers.js";
 import { DEFAULT_AUDIO_FOCUS_SETTINGS } from "./lab-audio-focus-normalization.js";
+import { isFullSourceWorkspaceSelection } from "./lab-workspace-selection.js";
 import { inferLabAssetSourceKind } from "../shared/lab-asset-kind.js";
 
 type LabRoomApi = {
@@ -578,8 +579,17 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     const selection = ws.activeSelection;
     const startMs = ws.timelineStartMs ?? selection?.startMs ?? null;
     const endMs = ws.timelineEndMs ?? selection?.endMs ?? null;
+    const hasExplicitTimelineRange =
+      ws.timelineStartMs !== null &&
+      ws.timelineEndMs !== null &&
+      ws.timelineEndMs > ws.timelineStartMs;
+    const hasSelectionTimeRange =
+      !isFullSourceWorkspaceSelection(selection) &&
+      startMs !== null &&
+      endMs !== null &&
+      endMs > startMs;
     const hasTimeRange =
-      sourceKind !== "image" && startMs !== null && endMs !== null && endMs > startMs;
+      sourceKind !== "image" && (hasExplicitTimelineRange || hasSelectionTimeRange);
     const roi = selection?.roi ?? null;
     return {
       endMs,

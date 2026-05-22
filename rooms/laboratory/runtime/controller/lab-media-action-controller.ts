@@ -25,6 +25,7 @@ import {
   LAB_USER_ACTION_HUB_SUCCESS_WINDOW_MS,
   getTrackedLabUserActionDefinition,
 } from "../lab-user-actions.js";
+import { isFullSourceWorkspaceSelection } from "../lab-workspace-selection.js";
 import { buildUiEvent, toStringArray } from "./lab-controller-helpers.js";
 
 type LabRoomApi = {
@@ -301,8 +302,13 @@ export function createLabMediaActionController(deps: LabMediaActionControllerDep
     options: ActiveSelectionOperationPayloadOptions = {}
   ) {
     const selection = state.ui.workspace.activeSelection;
-    const startMs = state.ui.workspace.timelineStartMs ?? selection?.startMs ?? null;
-    const endMs = state.ui.workspace.timelineEndMs ?? selection?.endMs ?? null;
+    const selectionIsFullSource = isFullSourceWorkspaceSelection(selection);
+    const startMs =
+      state.ui.workspace.timelineStartMs ??
+      (selectionIsFullSource ? null : (selection?.startMs ?? null));
+    const endMs =
+      state.ui.workspace.timelineEndMs ??
+      (selectionIsFullSource ? null : (selection?.endMs ?? null));
     const hasTimeRange = startMs !== null && endMs !== null && endMs > startMs;
     const comparisonTargetPayload = getComparisonSideTargetPayload({
       includeNullRoi:
@@ -314,7 +320,9 @@ export function createLabMediaActionController(deps: LabMediaActionControllerDep
     const seekMs =
       state.ui.workspace.timelineStartMs !== null
         ? state.ui.workspace.timelineStartMs
-        : (selection?.startMs ?? 0);
+        : selectionIsFullSource
+          ? 0
+          : (selection?.startMs ?? 0);
     return {
       seekMs,
       ...(hasTimeRange ? { startMs, endMs } : {}),

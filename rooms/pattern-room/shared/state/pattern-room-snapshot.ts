@@ -105,6 +105,14 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
+function readImportBatchId(record: SnapshotRecord): { importBatchId?: string | null } {
+  const importBatchId = record["importBatchId"];
+  if (importBatchId === null || typeof importBatchId === "string") {
+    return { importBatchId };
+  }
+  return {};
+}
+
 function hasLocalIdFormat(value: unknown, prefix: string): value is string {
   return typeof value === "string" && new RegExp(`^${prefix}-\\d{3,}$`).test(value);
 }
@@ -201,6 +209,7 @@ function parseLocalNotes(value: unknown): LocalNote[] | null {
       id: note["id"],
       text: note["text"],
       createdAt: note["createdAt"],
+      ...readImportBatchId(note),
     });
   }
   return notes;
@@ -232,6 +241,7 @@ function parseLocalAuthoredNodes(value: unknown): LocalAuthoredNode[] {
       label: node["label"],
       content: node["content"],
       createdAt: node["createdAt"],
+      ...readImportBatchId(node),
     });
   }
   return nodes;
@@ -263,6 +273,7 @@ function parseLocalAuthoredSources(value: unknown): LocalAuthoredSource[] {
       origin: source["origin"],
       note: source["note"],
       createdAt: source["createdAt"],
+      ...readImportBatchId(source),
     });
   }
   return sources;
@@ -297,6 +308,7 @@ function parseLocalAuthoredEvidence(value: unknown): LocalAuthoredEvidence[] {
       interpretation,
       layer: evidence["layer"],
       createdAt: evidence["createdAt"],
+      ...readImportBatchId(evidence),
     });
   }
   return evidenceItems;
@@ -332,6 +344,7 @@ function parseLocalAuthoredEdges(value: unknown): LocalAuthoredEdge[] {
       targetId: edge["targetId"],
       note,
       createdAt: edge["createdAt"],
+      ...readImportBatchId(edge),
     });
   }
   return edges;

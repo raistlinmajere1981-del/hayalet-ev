@@ -804,6 +804,96 @@ test("workspace surface renders semantic roi overlay and focus mask inside the v
   assert.match(surface.main, /labx-selection-roi-mask/);
 });
 
+test("selection roi binder stores a full-video ROI without an explicit timeline range", () => {
+  const documentRef = new FakeControllerDocument();
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  eventBus.subscribe(store.dispatch);
+  bindLabSelectionRoiInteractions({
+    documentRef: documentRef as unknown as Document,
+    emit: eventBus.emit,
+    getActiveSelection() {
+      return store.getState().ui.workspace.activeSelection;
+    },
+    getSourceKind() {
+      return "video";
+    },
+  });
+
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "video",
+      metadata: {
+        durationMs: 4200,
+      },
+      mode: "local",
+      storedPath: "/tmp/source.mp4",
+    },
+  });
+
+  const mouseDownListener = documentRef.listeners.get("mousedown");
+  const mouseMoveListener = documentRef.listeners.get("mousemove");
+  const mouseUpListener = documentRef.listeners.get("mouseup");
+  assert.ok(mouseDownListener);
+  assert.ok(mouseMoveListener);
+  assert.ok(mouseUpListener);
+
+  const stage = new FakeRoiStage(
+    {
+      "data-lab-selection-roi-controls-reserve": "0",
+    },
+    {
+      left: 0,
+      top: 0,
+      width: 200,
+      height: 100,
+      bottom: 100,
+    }
+  );
+
+  mouseDownListener?.({
+    button: 0,
+    clientX: 20,
+    clientY: 10,
+    preventDefault() {},
+    target: new FakeRoiDrawTarget(stage) as unknown as EventTarget,
+  } as Event);
+  mouseMoveListener?.({
+    clientX: 100,
+    clientY: 60,
+    preventDefault() {},
+  } as Event);
+  mouseUpListener?.({} as Event);
+
+  const selection = store.getState().ui.workspace.activeSelection;
+  assert.equal(selection?.id, "selection-default:full-video");
+  assert.equal(selection?.startMs, 0);
+  assert.equal(selection?.endMs, 4200);
+  assert.deepEqual(selection?.roi, {
+    x: 0.1,
+    y: 0.1,
+    width: 0.4,
+    height: 0.5,
+  });
+  assert.equal(store.getState().ui.workspace.timelineStartMs, null);
+  assert.equal(store.getState().ui.workspace.timelineEndMs, null);
+  assert.equal(getWaveformTimelineModel(store.getState()).startMs, null);
+  assert.equal(getWaveformTimelineModel(store.getState()).endMs, null);
+
+  store.dispatch({
+    type: "selection-roi-cleared",
+  });
+  assert.equal(store.getState().ui.workspace.activeSelection, null);
+
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 500,
+    endMs: 1500,
+  });
+  assert.notEqual(store.getState().ui.workspace.activeSelection?.id, "selection-default:full-video");
+});
+
 test("workspace surface keeps image roi controls out of the visual preview stage", () => {
   const store = createLabStore();
   store.dispatch({

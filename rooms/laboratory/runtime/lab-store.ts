@@ -4,7 +4,9 @@ import { normalizeStoreAsset, upsertStoreAsset } from "./store/lab-store-assets.
 import { getActiveExecutionCandidate, getExecutionDispatchCandidate } from "./lab-selectors.js";
 import { normalizeAudioFocusPatch } from "./lab-audio-focus-normalization.js";
 import {
+  createFullSourceWorkspaceSelectionForRoi,
   getWorkspaceSourceSelectionResetKey,
+  isFullSourceWorkspaceSelection,
   normalizeLabSelectionIntent,
   normalizeLabSelectionRoi,
   normalizeWorkspaceTimelineRange,
@@ -97,6 +99,19 @@ function activateWorkspaceComparisonSide(state: LabStoreState, side: "primary" |
     state.ui.workspace.activeSelection =
       sideRoi === null ? null : createImageInspectionSelection(sideRoi);
   }
+}
+
+function getWorkspaceSourceDurationMs(state: LabStoreState) {
+  const metadata = asLabRecord(asLabRecord(state.source)["metadata"]);
+  const durationMs = metadata["durationMs"];
+  if (typeof durationMs === "number" && Number.isFinite(durationMs)) {
+    return Math.max(0, Math.round(durationMs));
+  }
+  const durationSeconds = metadata["durationSeconds"];
+  if (typeof durationSeconds === "number" && Number.isFinite(durationSeconds)) {
+    return Math.max(0, Math.round(durationSeconds * 1000));
+  }
+  return 0;
 }
 
 function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState {
@@ -760,12 +775,16 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       const activeSelection = state.ui.workspace.activeSelection;
       const sourceKind = getWorkspaceSelectionSuggestionSourceKind(state);
       if (activeSelection === null || activeSelection.endMs <= activeSelection.startMs) {
-        if (sourceKind !== "image") {
-          return state;
-        }
+        const fullSourceSelection = createFullSourceWorkspaceSelectionForRoi(normalizedRoi, {
+          durationMs: getWorkspaceSourceDurationMs(state),
+          sourceKind,
+        });
         state.ui.workspace = {
           ...state.ui.workspace,
-          activeSelection: createImageInspectionSelection(normalizedRoi),
+          activeSelection:
+            sourceKind === "image"
+              ? createImageInspectionSelection(normalizedRoi)
+              : fullSourceSelection,
         };
         return state;
       }
@@ -806,7 +825,11 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         activeSelection.endMs === 1 &&
         state.ui.workspace.timelineStartMs === null &&
         state.ui.workspace.timelineEndMs === null;
-      if (imageOnlySelection) {
+      const fullVideoRoiSelection =
+        isFullSourceWorkspaceSelection(activeSelection) &&
+        state.ui.workspace.timelineStartMs === null &&
+        state.ui.workspace.timelineEndMs === null;
+      if (imageOnlySelection || fullVideoRoiSelection) {
         state.ui.workspace = {
           ...state.ui.workspace,
           activeSelection: null,

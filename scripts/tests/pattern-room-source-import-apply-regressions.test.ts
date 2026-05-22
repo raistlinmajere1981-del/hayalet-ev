@@ -165,6 +165,84 @@ test("pattern-room phase 11C applies SourceImportResult drafts to local overlay"
       createdAt: overlay.localNotes[0]?.createdAt,
     },
   ]);
+  assert.equal("importBatchId" in (overlay.localAuthoredSources[0] ?? {}), false);
+  assert.equal("importBatchId" in (overlay.localAuthoredEvidence[0] ?? {}), false);
+  assert.equal("importBatchId" in (overlay.localAuthoredNodes[0] ?? {}), false);
+  assert.equal("importBatchId" in (overlay.localAuthoredEdges[0] ?? {}), false);
+  assert.equal("importBatchId" in (overlay.localNotes[0] ?? {}), false);
+});
+
+test("pattern-room phase 12F-B applies optional importBatchId to imported overlay entries", () => {
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+
+  const summary = localState.applySourceImportResult(createRichImportResult(), {
+    importBatchId: "source-package-123",
+  });
+  const overlay = localState.getOverlay();
+
+  assert.deepEqual(summary, {
+    sourcesAdded: 1,
+    evidenceAdded: 1,
+    nodesAdded: 1,
+    edgesAdded: 1,
+    notesAdded: 1,
+    edgesDropped: 0,
+    duplicatesSkipped: 0,
+    warnings: [],
+  });
+  assert.deepEqual(
+    overlay.localAuthoredSources.map((source) => source.importBatchId),
+    ["source-package-123"]
+  );
+  assert.deepEqual(
+    overlay.localAuthoredEvidence.map((evidence) => evidence.importBatchId),
+    ["source-package-123"]
+  );
+  assert.deepEqual(
+    overlay.localAuthoredNodes.map((node) => node.importBatchId),
+    ["source-package-123"]
+  );
+  assert.deepEqual(
+    overlay.localAuthoredEdges.map((edge) => edge.importBatchId),
+    ["source-package-123"]
+  );
+  assert.deepEqual(
+    overlay.localNotes.map((note) => note.importBatchId),
+    ["source-package-123"]
+  );
+});
+
+test("pattern-room phase 12F-B preserves importBatchId through snapshot round-trip", () => {
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  localState.applySourceImportResult(createRichImportResult(), {
+    importBatchId: "source-package-round-trip",
+  });
+
+  const snapshot = createSnapshot(localState, "board");
+  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_MOCK);
+  assert.ok(restored);
+
+  assert.equal(snapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
+  assert.deepEqual(
+    restored.overlay.localAuthoredSources.map((source) => source.importBatchId),
+    ["source-package-round-trip"]
+  );
+  assert.deepEqual(
+    restored.overlay.localAuthoredEvidence.map((evidence) => evidence.importBatchId),
+    ["source-package-round-trip"]
+  );
+  assert.deepEqual(
+    restored.overlay.localAuthoredNodes.map((node) => node.importBatchId),
+    ["source-package-round-trip"]
+  );
+  assert.deepEqual(
+    restored.overlay.localAuthoredEdges.map((edge) => edge.importBatchId),
+    ["source-package-round-trip"]
+  );
+  assert.deepEqual(
+    restored.overlay.localNotes.map((note) => note.importBatchId),
+    ["source-package-round-trip"]
+  );
 });
 
 test("pattern-room phase 12D applies user text producer import results through local state", () => {

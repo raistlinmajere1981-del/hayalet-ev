@@ -40,6 +40,11 @@ type TranscriptSampleOptions = {
   sampleSeconds: number;
 };
 
+type ProcessMediaInputScope = {
+  args: string[];
+  inputTimeScope: LaboratoryRecord | null;
+};
+
 export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRuntimeDeps) {
   const {
     asNonEmptyString,
@@ -204,6 +209,110 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
 
   function trimToolOutput(value: string) {
     return value.length <= 1200 ? value : value.slice(-1200);
+  }
+
+  function readFiniteNumber(value: unknown): number | null {
+    if (value === null || value === undefined || value === "") {
+      return null;
+    }
+    const numericValue = asNumber(value) ?? Number(value);
+    return Number.isFinite(numericValue) ? numericValue : null;
+  }
+
+  function formatFfmpegSeconds(value: number) {
+    return (
+      Math.max(0, value)
+        .toFixed(3)
+        .replace(/\.?0+$/, "") || "0"
+    );
+  }
+
+  function readTargetDurationSeconds(target: LaboratoryRecord): number | null {
+    const metadata = toRecord(target["metadata"]);
+    const durationSeconds =
+      readFiniteNumber(metadata["durationSeconds"]) ?? readFiniteNumber(target["durationSeconds"]);
+    return durationSeconds !== null && durationSeconds > 0 ? durationSeconds : null;
+  }
+
+  function isStillImageTarget(target: LaboratoryRecord) {
+    const metadata = toRecord(target["metadata"]);
+    const sourceKind =
+      asNonEmptyString(target["sourceKind"]) ||
+      asNonEmptyString(metadata["sourceKind"]) ||
+      asNonEmptyString(metadata["kind"]);
+    const targetType = asNonEmptyString(target["type"]);
+    const mimeType = asNonEmptyString(target["mimeType"]) || asNonEmptyString(metadata["mimeType"]);
+    return (
+      sourceKind === "image" ||
+      targetType === "image" ||
+      targetType === "frame" ||
+      mimeType?.startsWith("image/") === true
+    );
+  }
+
+  function resolveProjectAnalysisTimeScope(project: LaboratoryRecord, target: LaboratoryRecord) {
+    if (isStillImageTarget(target)) {
+      return null;
+    }
+
+    const analysisScope = toRecord(toRecord(project["workbench"])["analysisScope"]);
+    const timeRange = toRecord(analysisScope["timeRange"]);
+    const startMs = readFiniteNumber(timeRange["startMs"]);
+    const endMs = readFiniteNumber(timeRange["endMs"]);
+    if (startMs === null || endMs === null || endMs <= startMs) {
+      return null;
+    }
+
+    const targetDurationSeconds = readTargetDurationSeconds(target);
+    const unclampedStartSeconds = Math.max(0, startMs / 1000);
+    const unclampedEndSeconds = Math.max(unclampedStartSeconds, endMs / 1000);
+    const startSeconds =
+      targetDurationSeconds === null
+        ? unclampedStartSeconds
+        : Math.min(unclampedStartSeconds, targetDurationSeconds);
+    const endSeconds =
+      targetDurationSeconds === null
+        ? unclampedEndSeconds
+        : Math.min(unclampedEndSeconds, targetDurationSeconds);
+    if (endSeconds <= startSeconds) {
+      return null;
+    }
+
+    return {
+      durationSeconds: endSeconds - startSeconds,
+      endSeconds,
+      startSeconds,
+      timeRange: {
+        startMs: Math.round(startSeconds * 1000),
+        endMs: Math.round(endSeconds * 1000),
+      },
+    };
+  }
+
+  function buildProcessScopedInputArgs(
+    project: LaboratoryRecord,
+    target: LaboratoryRecord
+  ): ProcessMediaInputScope {
+    const targetPath = target["path"] as string;
+    const timeScope = resolveProjectAnalysisTimeScope(project, target);
+    if (timeScope === null) {
+      return {
+        args: ["-i", targetPath],
+        inputTimeScope: null,
+      };
+    }
+
+    return {
+      args: [
+        "-ss",
+        formatFfmpegSeconds(timeScope.startSeconds),
+        "-t",
+        formatFfmpegSeconds(timeScope.durationSeconds),
+        "-i",
+        targetPath,
+      ],
+      inputTimeScope: timeScope,
+    };
   }
 
   async function runProfileTool(_runtime: unknown, options: RunProfileToolOptions) {
@@ -542,11 +651,15 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
       });
     }
 
+    const scopedInput = buildProcessScopedInputArgs(project, target);
     const normalizedTileCount = Math.max(2, Math.round(asNumber(tileCount) || 4));
-    const intervalSeconds = Math.max(
-      1,
-      Math.round((sampleWindowSeconds || 40) / normalizedTileCount)
+    const scopedDurationSeconds = readFiniteNumber(
+      toRecord(scopedInput.inputTimeScope)["durationSeconds"]
     );
+    const intervalSeconds =
+      scopedDurationSeconds === null
+        ? Math.max(1, Math.round((sampleWindowSeconds || 40) / normalizedTileCount))
+        : Math.max(0.1, scopedDurationSeconds / normalizedTileCount);
     await runProfileTool(runtime, {
       requestId,
       jobId,
@@ -554,11 +667,10 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
       cwd: getProjectProfileDir(runtime, project as { slug: string }),
       args: [
         "-y",
-        "-i",
-        target["path"] as string,
+        ...scopedInput.args,
         "-vf",
         [
-          `fps=1/${intervalSeconds}`,
+          `fps=1/${formatFfmpegSeconds(intervalSeconds)}`,
           filterGraph,
           "scale=420:-1:flags=lanczos",
           `tile=${normalizedTileCount}x1`,
@@ -576,6 +688,7 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
       filterGraph,
       tileCount: normalizedTileCount,
       intervalSeconds,
+      inputTimeScope: scopedInput.inputTimeScope,
     });
   }
 
@@ -593,6 +706,7 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
     metadata: LaboratoryRecord = {}
   ) {
     const outputPath = `${outputDir}/${artifactBase}-transform.png`;
+    const scopedInput = buildProcessScopedInputArgs(project, target);
     await runProfileTool(runtime, {
       requestId,
       jobId,
@@ -600,8 +714,7 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
       cwd: getProjectProfileDir(runtime, project as { slug: string }),
       args: [
         "-y",
-        "-i",
-        target["path"] as string,
+        ...scopedInput.args,
         "-vf",
         `${filterGraph},scale=1280:-1:flags=lanczos`,
         "-frames:v",
@@ -613,6 +726,7 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
     return createProcessArtifact(moduleId, "transform-preview", outputPath, label, {
       ...metadata,
       filterGraph,
+      inputTimeScope: scopedInput.inputTimeScope,
     });
   }
 

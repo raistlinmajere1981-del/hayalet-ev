@@ -54,6 +54,7 @@ import {
   renderPreviewArea,
   renderTimelineArea,
 } from "./laboratory-layout.js";
+import { isFullSourceWorkspaceSelection } from "../runtime/lab-workspace-selection.js";
 import type { LabWaveformTimelineModel } from "./lab-waveform-timeline-types.js";
 import {
   buildPreviewFilterState,
@@ -838,6 +839,7 @@ export function renderWorkspaceSurface(
   const effectivePreviewAudioFocus = getEffectivePreviewAudioFocusSettings(state);
   const roiRegions = getROIRegions(state);
   const activeSelection = getActiveSelection(state);
+  const activeSelectionIsFullSource = isFullSourceWorkspaceSelection(activeSelection);
   const timeline = getWaveformTimelineModel(state);
   const timelineModel: LabWaveformTimelineModel = {
     ...timeline,
@@ -867,7 +869,9 @@ export function renderWorkspaceSurface(
     hasRoi: activeSelection?.roi !== undefined,
     hasTimeRange:
       activeMediaKind !== "image" &&
-      ((activeSelection !== null && activeSelection.endMs > activeSelection.startMs) ||
+      ((activeSelection !== null &&
+        activeSelection.endMs > activeSelection.startMs &&
+        !activeSelectionIsFullSource) ||
         (timeline.startMs !== null &&
           timeline.endMs !== null &&
           timeline.endMs > timeline.startMs)),
@@ -959,9 +963,7 @@ export function renderWorkspaceSurface(
             legacyRegions: roiRegions,
             roiFocusActive,
             selectionRoi: activeSelection?.roi ?? null,
-            selectionRoiEnabled:
-              singleInspectionKind === "image" ||
-              (activeSelection !== null && activeSelection.endMs > activeSelection.startMs),
+            selectionRoiEnabled: true,
             mutationLocked: lockState.roi,
             sourceKind: singleInspectionKind,
           },

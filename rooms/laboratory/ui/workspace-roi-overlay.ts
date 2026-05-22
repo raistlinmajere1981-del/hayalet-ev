@@ -146,6 +146,7 @@ export function renderWorkspaceROIOverlay(
       data-lab-selection-roi-overlay="true"
       data-lab-roi-focus-active="${roiFocusActive ? "true" : "false"}"
       data-lab-roi-mutation-locked="${mutationLocked ? "true" : "false"}"
+      data-lab-selection-roi-enabled="${options.selectionRoiEnabled ? "true" : "false"}"
       data-lab-source-kind="${escapeHtml(options.sourceKind)}"
     >
       ${selectionRoi ? renderSelectionRoi(selectionRoi, roiFocusActive, mutationLocked, copy) : ""}

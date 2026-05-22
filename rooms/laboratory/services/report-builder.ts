@@ -577,11 +577,203 @@ function buildCorrelationClusters(signals: ReportCorrelationSignal[]): LabCorrel
     .slice(0, 6);
 }
 
+function formatPercent(value: number | null): string {
+  return value === null ? "unknown" : `${(value * 100).toFixed(1)}%`;
+}
+
+function readRecordNumber(record: Record<string, unknown>, key: string): number | null {
+  return asFiniteNumber(record[key]);
+}
+
+function isMeasuredProbeRecord(record: Record<string, unknown>): boolean {
+  return (
+    asNonEmptyString(record["status"]) === "measured" &&
+    readRecordNumber(record, "sampledFrameCount") !== null
+  );
+}
+
+function appendMeasuredField(
+  fields: string[],
+  record: Record<string, unknown>,
+  label: string
+): string[] {
+  return isMeasuredProbeRecord(record) ? fields.concat(label) : fields;
+}
+
+function buildAttributionForensicNote(
+  finding: LabFindingProjection,
+  probeSummary: Record<string, unknown>,
+  seen: Set<string>
+): LabForensicNote | null {
+  const attribution = asLabRecord(probeSummary["freezeAttribution"]);
+  const classification = asNonEmptyString(attribution["classification"]);
+  if (classification === null || classification === "baseline") {
+    return null;
+  }
+  const duplicateFrame = asLabRecord(probeSummary["duplicateFrame"]);
+  const compressionSignature = asLabRecord(probeSummary["compressionSignature"]);
+  const frameCadence = asLabRecord(probeSummary["frameCadence"]);
+  const gopStructure = asLabRecord(probeSummary["gopStructure"]);
+  const opticalFlow = asLabRecord(probeSummary["opticalFlow"]);
+  const duplicateRatio = readRecordNumber(duplicateFrame, "exactDuplicateFrameRatio");
+  const duplicateCount = readRecordNumber(duplicateFrame, "exactDuplicateFrameCount") || 0;
+  const cadenceDriftRatio = readRecordNumber(frameCadence, "cadenceDriftRatio");
+  const compressionRisk = asNonEmptyString(compressionSignature["riskLevel"]) || "unknown";
+  const confidence = asNonEmptyString(attribution["confidence"]) || "low";
+  const gopOverlap = readRecordNumber(attribution, "gopBoundaryOverlapCount") || 0;
+  const flowClass = asNonEmptyString(opticalFlow["movementClass"]) || "unknown";
+  const flowRatio = readRecordNumber(opticalFlow, "subjectBackgroundMotionRatio");
+  const measuredFields = appendMeasuredField(
+    appendMeasuredField(
+      appendMeasuredField(
+        appendMeasuredField(
+          appendMeasuredField([], duplicateFrame, "duplicate-frame ratio"),
+          frameCadence,
+          "frame cadence drift"
+        ),
+        gopStructure,
+        "GOP keyframe proximity"
+      ),
+      compressionSignature,
+      "compression packet signature"
+    ),
+    opticalFlow,
+    "optical-flow ROI/background split"
+  );
+  const dedupeKey = [
+    "attribution",
+    finding.moduleId || "module",
+    classification,
+    String(duplicateCount),
+    compressionRisk,
+    String(gopOverlap),
+    flowClass,
+  ].join(":");
+  if (seen.has(dedupeKey)) {
+    return null;
+  }
+  seen.add(dedupeKey);
+  return {
+    id: `forensic-${finding.id}-freeze-attribution`,
+    label: "freeze attribution",
+    detail: [
+      `Cause class ${classification} (${confidence} confidence).`,
+      `Duplicate-frame ratio ${formatPercent(duplicateRatio)} across ${String(duplicateCount)} repeated decoded frame(s).`,
+      `Cadence drift ${formatPercent(cadenceDriftRatio)}; compression risk ${compressionRisk}.`,
+      `Motion split ${flowClass}${flowRatio === null ? "" : ` (${flowRatio.toFixed(2)}x subject/background)`}.`,
+      gopOverlap > 0
+        ? `${String(gopOverlap)} freeze boundary/boundaries align near GOP keyframes.`
+        : "No measured GOP boundary overlap.",
+    ].join(" "),
+    followUpChecks: isMeasuredProbeRecord(opticalFlow)
+      ? ["manual ROI replay confirmation"]
+      : ["optical-flow ROI/background split"],
+    measuredFields,
+    moduleId: finding.moduleId,
+    scope:
+      isMeasuredProbeRecord(gopStructure) ||
+      isMeasuredProbeRecord(duplicateFrame) ||
+      isMeasuredProbeRecord(opticalFlow)
+        ? "local"
+        : "global",
+  };
+}
+
+function buildOpticalFlowForensicNote(
+  finding: LabFindingProjection,
+  probeSummary: Record<string, unknown>,
+  seen: Set<string>
+): LabForensicNote | null {
+  const opticalFlow = asLabRecord(probeSummary["opticalFlow"]);
+  if (!isMeasuredProbeRecord(opticalFlow)) {
+    return null;
+  }
+  const movementClass = asNonEmptyString(opticalFlow["movementClass"]) || "unknown";
+  const confidence = asNonEmptyString(opticalFlow["confidence"]) || "low";
+  const subjectEnergy = readRecordNumber(opticalFlow, "subjectMotionEnergy");
+  const backgroundEnergy = readRecordNumber(opticalFlow, "backgroundMotionEnergy");
+  const ratio = readRecordNumber(opticalFlow, "subjectBackgroundMotionRatio");
+  const sampledFrameCount = readRecordNumber(opticalFlow, "sampledFrameCount") || 0;
+  const dedupeKey = [
+    "optical-flow",
+    finding.moduleId || "module",
+    movementClass,
+    String(sampledFrameCount),
+    String(ratio),
+  ].join(":");
+  if (seen.has(dedupeKey)) {
+    return null;
+  }
+  seen.add(dedupeKey);
+  return {
+    id: `forensic-${finding.id}-optical-flow`,
+    label: "optical-flow proxy",
+    detail: `Measured ${movementClass} (${confidence} confidence) across ${String(sampledFrameCount)} frame-difference sample(s); subject energy ${subjectEnergy === null ? "unknown" : subjectEnergy.toFixed(5)}, background energy ${backgroundEnergy === null ? "unknown" : backgroundEnergy.toFixed(5)}, subject/background ratio ${ratio === null ? "unknown" : ratio.toFixed(2)}x.`,
+    followUpChecks: ["manual ROI replay confirmation"],
+    measuredFields: [
+      "subject motion energy",
+      "background motion energy",
+      "subject/background motion ratio",
+    ],
+    moduleId: finding.moduleId,
+    scope: "local",
+  };
+}
+
+function buildDuplicateFrameForensicNote(
+  finding: LabFindingProjection,
+  probeSummary: Record<string, unknown>,
+  seen: Set<string>
+): LabForensicNote | null {
+  const duplicateFrame = asLabRecord(probeSummary["duplicateFrame"]);
+  const duplicateCount = readRecordNumber(duplicateFrame, "exactDuplicateFrameCount") || 0;
+  if (duplicateCount <= 0) {
+    return null;
+  }
+  const duplicateRatio = readRecordNumber(duplicateFrame, "exactDuplicateFrameRatio");
+  const longestRun = readRecordNumber(duplicateFrame, "longestDuplicateRunFrames") || 0;
+  const sampledFrameCount = readRecordNumber(duplicateFrame, "sampledFrameCount") || 0;
+  const dedupeKey = [
+    "duplicate-frame",
+    finding.moduleId || "module",
+    String(duplicateCount),
+    String(longestRun),
+    String(sampledFrameCount),
+  ].join(":");
+  if (seen.has(dedupeKey)) {
+    return null;
+  }
+  seen.add(dedupeKey);
+  return {
+    id: `forensic-${finding.id}-duplicate-frame`,
+    label: "duplicate-frame probe",
+    detail: `Measured ${String(duplicateCount)} repeated decoded frame(s) in ${String(sampledFrameCount)} sampled frame(s); ratio ${formatPercent(duplicateRatio)}, longest run ${String(longestRun)} frame(s).`,
+    followUpChecks: isMeasuredProbeRecord(asLabRecord(probeSummary["opticalFlow"]))
+      ? ["manual frame-by-frame confirmation"]
+      : ["optical-flow motion confirmation"],
+    measuredFields: ["framehash duplicate runs", "duplicate-frame ratio"],
+    moduleId: finding.moduleId,
+    scope: "local",
+  };
+}
+
 function buildForensicNotes(findings: LabFindingProjection[]): LabForensicNote[] {
   const notes: LabForensicNote[] = [];
   const seen = new Set<string>();
   findings.forEach(function (finding) {
     const probeSummary = asLabRecord(asLabRecord(finding.metadata)["probeSummary"]);
+    const attributionNote = buildAttributionForensicNote(finding, probeSummary, seen);
+    if (attributionNote !== null) {
+      notes.push(attributionNote);
+    }
+    const opticalFlowNote = buildOpticalFlowForensicNote(finding, probeSummary, seen);
+    if (opticalFlowNote !== null) {
+      notes.push(opticalFlowNote);
+    }
+    const duplicateFrameNote = buildDuplicateFrameForensicNote(finding, probeSummary, seen);
+    if (duplicateFrameNote !== null) {
+      notes.push(duplicateFrameNote);
+    }
     Object.keys(probeSummary).forEach(function (key) {
       const summary = asLabRecord(probeSummary[key]);
       const count = asFiniteNumber(summary["count"]) || 0;

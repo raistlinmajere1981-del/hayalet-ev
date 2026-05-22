@@ -241,7 +241,7 @@ function createSelectionRoiFromResize(
 }
 
 function canDrawSelectionRoi(activeSelection: LabSelection | null, sourceKind: string) {
-  if (sourceKind === "image") {
+  if (sourceKind === "image" || sourceKind === "video") {
     return true;
   }
   return activeSelection !== null && activeSelection.endMs > activeSelection.startMs;

@@ -6,14 +6,16 @@ import { createAudioAnalysisParserRuntime } from "../../rooms/laboratory/feature
 import { buildAiReport, buildUserReport } from "../../rooms/laboratory/services/report-builder.ts";
 import { createLaboratoryReportExportRuntime } from "../../rooms/laboratory/shared/host/reporting-export.ts";
 
-function createReportExportHarness(options: {
-  getElectronApi?: () => {
-    showOpenDialog?: (dialogOptions: Record<string, unknown>) => Promise<{
-      canceled?: boolean;
-      filePaths?: string[];
-    }>;
-  } | null;
-} = {}) {
+function createReportExportHarness(
+  options: {
+    getElectronApi?: () => {
+      showOpenDialog?: (dialogOptions: Record<string, unknown>) => Promise<{
+        canceled?: boolean;
+        filePaths?: string[];
+      }>;
+    } | null;
+  } = {}
+) {
   const writes: Array<{ path: string; value: string }> = [];
   let persistedExports: Array<Record<string, unknown>> = [];
   const project = {
@@ -422,6 +424,63 @@ test("laboratory reports surface temporal correlation, narrative cues, and foren
     true
   );
   assert.match(aiReport?.forensicNotes?.[0]?.detail || "", /duplicate-frame ratio/);
+});
+
+test("laboratory forensic notes surface optical-flow motion split", () => {
+  const findings: LabRun["findings"] = [
+    {
+      id: "flow-finding",
+      moduleId: "motion",
+      sourceModule: "motion-anomaly",
+      title: "Localized motion track detected",
+      detail: "Motion analysis separated subject movement from the background sample.",
+      level: "medium",
+      confidence: "medium",
+      kind: "measured",
+      evidenceCount: 2,
+      artifactIds: [],
+      metadata: {
+        correlation: {
+          signalType: "motion-discontinuity",
+          label: "motion split",
+          window: { startSeconds: 12 },
+        },
+        probeSummary: {
+          freezeAttribution: {
+            classification: "localized_motion_during_background_freeze",
+            confidence: "medium",
+            gopBoundaryOverlapCount: 0,
+          },
+          opticalFlow: {
+            backgroundMotionEnergy: 0.005,
+            confidence: "medium",
+            movementClass: "localized_subject_motion",
+            sampledFrameCount: 8,
+            status: "measured",
+            subjectBackgroundMotionRatio: 6,
+            subjectMotionEnergy: 0.03,
+          },
+        },
+        temporalSegments: [{ startSeconds: 12, endSeconds: 12.6, durationSeconds: 0.6 }],
+      },
+    },
+  ];
+  const run = createInsightRun({ findings });
+
+  const aiReport = buildAiReport(run, {
+    featureId: "media-analysis",
+    findings,
+    generatedAt: "2026-05-20T10:00:00.000Z",
+    status: "ready",
+  });
+  const opticalNote = aiReport?.forensicNotes?.find((note) => note.label === "optical-flow proxy");
+  const attributionNote = aiReport?.forensicNotes?.find(
+    (note) => note.label === "freeze attribution"
+  );
+
+  assert.match(opticalNote?.detail || "", /localized_subject_motion/);
+  assert.equal(opticalNote?.measuredFields?.includes("subject\/background motion ratio"), true);
+  assert.match(attributionNote?.detail || "", /Motion split localized_subject_motion/);
 });
 
 test("laboratory composite correlation requires distinct signal families", () => {

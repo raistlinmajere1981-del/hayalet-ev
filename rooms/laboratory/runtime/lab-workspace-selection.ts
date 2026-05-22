@@ -138,24 +138,30 @@ function createActiveSelectionFromRange(
   }
 
   const selectionSeed = getSelectionSeedForRange(options.persistedSelection, startMs, endMs);
-  const nextType = previousSelection?.type || selectionSeed?.type || "clip";
+  const reusablePreviousSelection = isFullSourceWorkspaceSelection(previousSelection)
+    ? null
+    : previousSelection;
+  const nextType = reusablePreviousSelection?.type || selectionSeed?.type || "clip";
   const nextIntent = normalizeLabSelectionIntent(
-    previousSelection?.intent ?? selectionSeed?.intent
+    reusablePreviousSelection?.intent ?? selectionSeed?.intent
   );
-  const nextLabel = previousSelection?.label ?? selectionSeed?.label;
+  const nextLabel = reusablePreviousSelection?.label ?? selectionSeed?.label;
   const previousSelectionMatchesRange =
-    previousSelection?.startMs === startMs && previousSelection?.endMs === endMs;
-  const nextRoi = previousSelectionMatchesRange ? previousSelection?.roi : selectionSeed?.roi;
+    reusablePreviousSelection?.startMs === startMs && reusablePreviousSelection?.endMs === endMs;
+  const nextRoi = previousSelectionMatchesRange
+    ? reusablePreviousSelection?.roi
+    : selectionSeed?.roi;
 
   return {
-    id: previousSelection?.id || selectionSeed?.id || createLabEventId("selection"),
+    id: reusablePreviousSelection?.id || selectionSeed?.id || createLabEventId("selection"),
     startMs,
     endMs,
     type: nextType === "unknown" ? "clip" : nextType,
     intent: nextIntent,
     ...(nextLabel === undefined ? {} : { label: nextLabel }),
     ...(nextRoi === undefined ? {} : { roi: nextRoi }),
-    createdAt: previousSelection?.createdAt || selectionSeed?.createdAt || Math.max(0, Date.now()),
+    createdAt:
+      reusablePreviousSelection?.createdAt || selectionSeed?.createdAt || Math.max(0, Date.now()),
   };
 }
 
@@ -182,7 +188,7 @@ export function syncWorkspaceSelectionWithRange(
   };
 }
 
-function createDefaultWorkspaceSelectionForSource(options: {
+export function createDefaultWorkspaceSelectionForSource(options: {
   durationMs: number;
   sourceKind: string;
 }): LabSelection | null {
@@ -214,6 +220,40 @@ function createDefaultWorkspaceSelectionForSource(options: {
     type: "clip",
     intent: "general",
     createdAt: 0,
+  };
+}
+
+export function isFullSourceWorkspaceSelection(selection: LabSelection | null | undefined) {
+  return (
+    selection !== null &&
+    selection !== undefined &&
+    typeof selection.id === "string" &&
+    selection.id.startsWith("selection-default:full-")
+  );
+}
+
+export function createFullSourceWorkspaceSelectionForRoi(
+  roi: LabSelectionROI,
+  options: {
+    durationMs: number;
+    sourceKind: string;
+  }
+): LabSelection | null {
+  if (options.sourceKind !== "video") {
+    return null;
+  }
+  const durationMs =
+    typeof options.durationMs === "number" && Number.isFinite(options.durationMs)
+      ? Math.max(1, Math.round(options.durationMs))
+      : 1;
+  return {
+    id: "selection-default:full-video",
+    startMs: 0,
+    endMs: durationMs,
+    type: "inspect",
+    intent: "visual",
+    roi,
+    createdAt: Math.max(0, Date.now()),
   };
 }
 

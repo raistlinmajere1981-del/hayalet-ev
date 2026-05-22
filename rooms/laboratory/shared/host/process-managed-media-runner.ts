@@ -60,7 +60,13 @@ type LaboratoryProbeBucketRecord = LaboratoryRecord & {
 
 type LaboratoryVideoProbeRecord = LaboratoryRecord & {
   black?: unknown;
+  compressionSignature?: unknown;
+  duplicateFrame?: unknown;
+  frameCadence?: unknown;
   freeze?: unknown;
+  freezeAttribution?: unknown;
+  gopStructure?: unknown;
+  opticalFlow?: unknown;
 };
 
 type LaboratoryAudioProbeRecord = LaboratoryRecord & {
@@ -475,6 +481,42 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
     return `${label}: ${String(count)} interval(s), ${total} total${max ? `, ${max} max` : ""}.`;
   }
 
+  function formatRatioPercent(value: unknown): string | null {
+    const numericValue = toFiniteNumber(value);
+    return numericValue === null ? null : `${(numericValue * 100).toFixed(1)}%`;
+  }
+
+  function formatVideoForensicProbeSummary(probeSummary: LaboratoryRecord): string | null {
+    const duplicateFrame = toRecord(probeSummary["duplicateFrame"]);
+    const compressionSignature = toRecord(probeSummary["compressionSignature"]);
+    const freezeAttribution = toRecord(probeSummary["freezeAttribution"]);
+    const opticalFlow = toRecord(probeSummary["opticalFlow"]);
+    const duplicateCount = toFiniteNumber(duplicateFrame["exactDuplicateFrameCount"]) || 0;
+    const duplicateRatio = formatRatioPercent(duplicateFrame["exactDuplicateFrameRatio"]);
+    const riskLevel = asNonEmptyString(compressionSignature["riskLevel"]);
+    const classification = asNonEmptyString(freezeAttribution["classification"]);
+    const flowClass = asNonEmptyString(opticalFlow["movementClass"]);
+    const flowRatio = toFiniteNumber(opticalFlow["subjectBackgroundMotionRatio"]);
+    const parts = [
+      duplicateCount > 0
+        ? `duplicate frames: ${String(duplicateCount)}${duplicateRatio ? ` (${duplicateRatio})` : ""}`
+        : null,
+      riskLevel ? `compression risk: ${riskLevel}` : null,
+      classification && classification !== "baseline" ? `attribution: ${classification}` : null,
+      flowClass
+        ? `motion split: ${flowClass}${flowRatio === null ? "" : ` (${flowRatio.toFixed(2)}x)`}`
+        : null,
+    ].filter((entry): entry is string => entry !== null);
+    return parts.length === 0 ? null : `Forensic attribution ${parts.join("; ")}.`;
+  }
+
+  function isMeasuredProbeRecord(record: LaboratoryRecord): boolean {
+    return (
+      asNonEmptyString(record["status"]) === "measured" &&
+      toFiniteNumber(record["sampledFrameCount"]) !== null
+    );
+  }
+
   function getFirstProbeWindow(summary: LaboratoryRecord): LaboratoryRecord {
     const firstSegment = toRecord(toUnknownArray(summary["segments"])[0]);
     return {
@@ -500,15 +542,28 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
     probeSummary: LaboratoryRecord,
     window: LaboratoryRecord
   ): LaboratoryRecord {
+    const duplicateFrame = toRecord(probeSummary["duplicateFrame"]);
+    const frameCadence = toRecord(probeSummary["frameCadence"]);
+    const compressionSignature = toRecord(probeSummary["compressionSignature"]);
+    const opticalFlow = toRecord(probeSummary["opticalFlow"]);
+    const measuredChecklist = [
+      "freezedetect intervals",
+      "blackdetect intervals",
+      isMeasuredProbeRecord(duplicateFrame) ? "duplicate-frame ratio" : null,
+      isMeasuredProbeRecord(frameCadence) ? "frame cadence drift" : null,
+      isMeasuredProbeRecord(compressionSignature) ? "compression packet signature" : null,
+      isMeasuredProbeRecord(opticalFlow) ? "optical-flow ROI/background split" : null,
+    ].filter((entry): entry is string => entry !== null);
     return {
+      attribution: toRecord(probeSummary["freezeAttribution"]),
       correlation: {
         label,
         signalType,
         window,
       },
-      forensicChecklist: [
-        "Frame duration, duplicate ratio, GOP boundary, and encoder-artifact checks are not yet measured directly.",
-      ],
+      forensicChecklist: isMeasuredProbeRecord(opticalFlow)
+        ? measuredChecklist
+        : measuredChecklist.concat(["optical-flow object/background split pending"]),
       probeSummary,
       temporalSegments: toUnknownArray(window["segments"]),
     };
@@ -827,13 +882,35 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
       const blackCount = getProbeCount(videoProbe.black);
       const freezeSummary = summarizeProbeBucket(videoProbe.freeze);
       const blackSummary = summarizeProbeBucket(videoProbe.black);
+      const duplicateFrameSummary = toRecord(videoProbe.duplicateFrame);
+      const frameCadenceSummary = toRecord(videoProbe.frameCadence);
+      const compressionSignatureSummary = toRecord(videoProbe.compressionSignature);
+      const gopStructureSummary = toRecord(videoProbe.gopStructure);
+      const opticalFlowSummary = toRecord(videoProbe.opticalFlow);
+      const freezeAttributionSummary = toRecord(videoProbe.freezeAttribution);
+      const duplicateFrameCount =
+        toFiniteNumber(duplicateFrameSummary["exactDuplicateFrameCount"]) || 0;
+      const compressionRiskLevel = asNonEmptyString(compressionSignatureSummary["riskLevel"]);
+      const opticalFlowClass = asNonEmptyString(opticalFlowSummary["movementClass"]);
+      const subjectMotionEnergy = toFiniteNumber(opticalFlowSummary["subjectMotionEnergy"]);
+      const backgroundMotionEnergy = toFiniteNumber(opticalFlowSummary["backgroundMotionEnergy"]);
+      const freezeAttributionClassification = asNonEmptyString(
+        freezeAttributionSummary["classification"]
+      );
       const structureProbeSummary = {
         black: blackSummary,
+        compressionSignature: compressionSignatureSummary,
+        duplicateFrame: duplicateFrameSummary,
+        frameCadence: frameCadenceSummary,
         freeze: freezeSummary,
+        freezeAttribution: freezeAttributionSummary,
+        gopStructure: gopStructureSummary,
+        opticalFlow: opticalFlowSummary,
       };
       const probeDetail = [
         formatProbeSummary("freeze", freezeSummary),
         formatProbeSummary("black", blackSummary),
+        formatVideoForensicProbeSummary(structureProbeSummary),
       ]
         .filter((entry): entry is string => entry !== null)
         .join(" ");
@@ -849,13 +926,16 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
       function buildStructureFindingMetadata(visualModuleId: string) {
         const primarySummary = getStructureProbeSummary(visualModuleId);
         const primaryCount = toFiniteNumber(primarySummary["count"]) || 0;
-        if (primaryCount <= 0) {
+        const duplicateFallbackCount =
+          visualModuleId === "frame-consistency" ? duplicateFrameCount : 0;
+        if (primaryCount <= 0 && duplicateFallbackCount <= 0) {
           return {
             probeSummary: structureProbeSummary,
           };
         }
-        const window = getFirstProbeWindow(primarySummary);
-        const segments = toUnknownArray(primarySummary["segments"]);
+        const signalSummary = primaryCount > 0 ? primarySummary : duplicateFrameSummary;
+        const window = getFirstProbeWindow(signalSummary);
+        const segments = toUnknownArray(signalSummary["segments"]);
         return {
           ...buildFindingMetadata(
             getVisualSignalType(visualModuleId),
@@ -878,7 +958,15 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
           visualModuleId,
           freezeCount,
           blackCount,
-          sourceKind
+          sourceKind,
+          {
+            compressionRiskLevel,
+            duplicateFrameCount,
+            backgroundMotionEnergy,
+            opticalFlowClass,
+            freezeAttribution: freezeAttributionClassification,
+            subjectMotionEnergy,
+          }
         );
         findings.push(
           withFindingMetadata(
@@ -890,11 +978,22 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
                 "balanced"
               )} density with a ${String(getSamplingTileCount(moduleSettings))}-tile preview.`,
               evidenceCount:
-                descriptor.level === "medium" ? Math.max(1, freezeCount + blackCount) : 1,
+                descriptor.level === "medium"
+                  ? Math.max(
+                      1,
+                      freezeCount +
+                        blackCount +
+                        duplicateFrameCount +
+                        (isMeasuredProbeRecord(opticalFlowSummary) ? 1 : 0)
+                    )
+                  : 1,
               level: getSensitivityAdjustedLevel(
                 descriptor.level,
                 moduleSettings,
-                freezeCount + blackCount
+                freezeCount +
+                  blackCount +
+                  duplicateFrameCount +
+                  (isMeasuredProbeRecord(opticalFlowSummary) ? 1 : 0)
               ),
               settingsUsed: {
                 ...moduleSettings,
@@ -916,7 +1015,15 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
             visualModuleId,
             freezeCount,
             blackCount,
-            sourceKind
+            sourceKind,
+            {
+              compressionRiskLevel,
+              duplicateFrameCount,
+              backgroundMotionEnergy,
+              opticalFlowClass,
+              freezeAttribution: freezeAttributionClassification,
+              subjectMotionEnergy,
+            }
           );
           findings.push(
             withFindingMetadata(
@@ -928,11 +1035,22 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
                   "balanced"
                 )} density with a ${String(getSamplingTileCount(moduleSettings))}-tile preview.`,
                 evidenceCount:
-                  descriptor.level === "medium" ? Math.max(1, freezeCount + blackCount) : 1,
+                  descriptor.level === "medium"
+                    ? Math.max(
+                        1,
+                        freezeCount +
+                          blackCount +
+                          duplicateFrameCount +
+                          (isMeasuredProbeRecord(opticalFlowSummary) ? 1 : 0)
+                      )
+                    : 1,
                 level: getSensitivityAdjustedLevel(
                   descriptor.level,
                   moduleSettings,
-                  freezeCount + blackCount
+                  freezeCount +
+                    blackCount +
+                    duplicateFrameCount +
+                    (isMeasuredProbeRecord(opticalFlowSummary) ? 1 : 0)
                 ),
                 settingsUsed: {
                   ...moduleSettings,

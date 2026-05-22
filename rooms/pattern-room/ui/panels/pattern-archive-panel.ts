@@ -6,6 +6,10 @@ import type {
 } from "../../shared/types/pattern-room.js";
 import { createActionButton, createElement, createPanelShell } from "./pattern-panel-utils.js";
 
+const REMOVE_LOCAL_SOURCE_CONFIRMATION = "Bu yerel kaynak odadan kaldırılacak. Devam edilsin mi?";
+const RESET_LOCAL_SESSION_CONFIRMATION =
+  "Tüm yerel kaynaklar, notlar ve geçici tartışma izleri temizlenecek. Hazır konu verileri korunur. Devam edilsin mi?";
+
 function createTextInput(name: string, placeholder: string): HTMLInputElement {
   const input = createElement("input", "pattern-room-inline-input");
   input.name = name;
@@ -140,6 +144,30 @@ function createSourceWorkbenchDemo(
   return demo;
 }
 
+function createLocalSessionResetSection(actions: PatternPanelActions): HTMLElement {
+  const section = createElement("section", "pattern-room-local-session-reset");
+  section.dataset["patternLocalSessionReset"] = "true";
+  const resetButton = createActionButton("Yerel Oturumu Sıfırla", () => {
+    if (!window.confirm(RESET_LOCAL_SESSION_CONFIRMATION)) {
+      return;
+    }
+    actions.resetLocalSession();
+  });
+  resetButton.dataset["patternResetLocalSession"] = "true";
+
+  section.append(
+    createElement("span", "pattern-room-kicker", "Oda Temizliği"),
+    createElement("h3", undefined, "Yerel Oturum"),
+    createElement(
+      "p",
+      "pattern-room-inline-note",
+      "Bu işlem yalnızca bu odada eklenen yerel kaynakları, notları, bağlantıları ve 10. Adam oturum izlerini temizler. Hazır konu verileri korunur."
+    ),
+    resetButton
+  );
+  return section;
+}
+
 export function createArchivePanel(
   data: PatternRoomMockData,
   actions: PatternPanelActions,
@@ -175,6 +203,16 @@ export function createArchivePanel(
     });
     debateButton.dataset["patternAddSourceDebate"] = source.id;
     actionsRow.append(debateButton);
+    if (source.isLocal === true) {
+      const removeButton = createActionButton("Kaynağı kaldır", () => {
+        if (!window.confirm(REMOVE_LOCAL_SOURCE_CONFIRMATION)) {
+          return;
+        }
+        actions.removeLocalSource(source.id);
+      });
+      removeButton.dataset["patternRemoveLocalSource"] = source.id;
+      actionsRow.append(removeButton);
+    }
 
     card.append(
       drawer,
@@ -190,6 +228,7 @@ export function createArchivePanel(
   shell.append(
     createSourceWorkbenchDemo(actions, userTextSourceImportStatus, sourceImportStatus),
     createSourceAuthoringForm(actions),
+    createLocalSessionResetSection(actions),
     list
   );
   return shell;

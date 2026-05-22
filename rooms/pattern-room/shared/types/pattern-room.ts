@@ -154,6 +154,8 @@ export type PatternPanelActions = {
   addAuthoredInspiration: (label: string, content: string) => void;
   addAuthoredUncertainty: (label: string, content: string) => void;
   addAuthoredSource: (label: string, origin: string, note: string) => void;
+  removeLocalSource: (sourceId: string) => void;
+  resetLocalSession: () => void;
   addAuthoredEvidence: (
     label: string,
     excerpt: string,

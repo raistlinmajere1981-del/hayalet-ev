@@ -921,6 +921,34 @@ test("laboratory icon rail operation popovers mirror active timeline and ROI sco
   );
 });
 
+test("laboratory video ROI without a timeline range stays ROI-only in operation scope", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "selection-roi-updated",
+    roi: {
+      height: 0.4,
+      width: 0.3,
+      x: 0.1,
+      y: 0.2,
+    },
+  });
+  store.dispatch({
+    type: "icon-rail-slot-selected",
+    slotId: "roi-crop",
+  });
+
+  const state = store.getState();
+  const surface = renderWorkspaceSurface(state);
+  const operationMarkup = `${surface.main}${surface.inspector ?? ""}`;
+
+  assert.equal(state.ui.workspace.activeSelection?.id, "selection-default:full-video");
+  assert.equal(state.ui.workspace.timelineStartMs, null);
+  assert.equal(state.ui.workspace.timelineEndMs, null);
+  assert.match(surface.main, /data-lab-selection-roi-enabled="true"/);
+  assert.match(operationMarkup, /data-lab-operation-scope="roi"/);
+  assert.doesNotMatch(operationMarkup, /data-lab-operation-scope="timeRange"/);
+});
+
 test("laboratory source drawer tab remains report-analysis only", () => {
   const store = createSeededState(true);
   store.dispatch({ type: "drawer-mode-requested", mode: "setup" });
