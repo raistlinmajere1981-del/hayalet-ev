@@ -661,14 +661,8 @@ test("pattern-room phase 12G-A removed local sources stay removed after snapshot
   assert.deepEqual(restored.overlay.localAuthoredEdges, []);
 });
 
-test("pattern-room phase 12G-B cleanup helpers stay local-state only except approved archive actions", async () => {
-  const localStateOnlyHelperNames = [
-    "removeLocalNode",
-    "removeLocalEvidence",
-    "removeLocalEdge",
-    "removeLocalNote",
-    "removeImportBatch",
-  ];
+test("pattern-room phase 12G-C cleanup helpers stay scoped to approved UI actions", async () => {
+  const localStateOnlyHelperNames = ["removeLocalEdge", "removeLocalNote", "removeImportBatch"];
   const integrationPaths = [
     "rooms/pattern-room/manifest.json",
     "rooms/pattern-room/host/runtime.ts",
@@ -693,14 +687,23 @@ test("pattern-room phase 12G-B cleanup helpers stay local-state only except appr
     resolve("rooms/pattern-room/ui/panels/pattern-archive-panel.ts"),
     "utf8"
   );
+  const boardPanelSource = await readFile(
+    resolve("rooms/pattern-room/ui/panels/pattern-board-panel.ts"),
+    "utf8"
+  );
   const hostRuntimeSource = await readFile(resolve("rooms/pattern-room/host/runtime.ts"), "utf8");
 
   assert.equal(uiRuntimeSource.includes("removeLocalSource(sourceId"), true);
+  assert.equal(uiRuntimeSource.includes("removeLocalNode(nodeId"), true);
+  assert.equal(uiRuntimeSource.includes("removeLocalEvidence(evidenceId"), true);
   assert.equal(uiRuntimeSource.includes("resetLocalSession(): void"), true);
   assert.equal(uiRuntimeSource.includes("localState.resetOverlayToEmpty();"), true);
   assert.equal(archivePanelSource.includes("patternRemoveLocalSource"), true);
   assert.equal(archivePanelSource.includes("patternResetLocalSession"), true);
+  assert.equal(boardPanelSource.includes("patternRemoveBoardItem"), true);
   assert.equal(hostRuntimeSource.includes("removeLocalSource"), false);
+  assert.equal(hostRuntimeSource.includes("removeLocalNode"), false);
+  assert.equal(hostRuntimeSource.includes("removeLocalEvidence"), false);
   assert.equal(hostRuntimeSource.includes("resetOverlayToEmpty"), false);
 
   const localStateSource = await readFile(

@@ -27,6 +27,7 @@ import {
 const PATTERN_FOCUSED_VIEWS = ["board", "desk", "archive", "tenth-man", "report"] as const;
 type PatternFocusedViewId = (typeof PATTERN_FOCUSED_VIEWS)[number];
 type PatternRoomUiEnvironment = ReturnType<typeof createMinimalForgeUiEnvironment>;
+type PatternRoomFakeApp = PatternRoomUiEnvironment["app"];
 type PatternRoomUiRuntimeModule = {
   createPatternRoomUiRuntime: () => {
     dispose: () => void;
@@ -104,6 +105,84 @@ function submitUserTextSource(
   titleInput.value = titleText;
   textInput.value = sourceText;
   submitForm(form);
+}
+
+function submitBoardLocalNode(
+  app: PatternRoomFakeApp,
+  labelText: string,
+  contentText: string,
+  nodeTypeValue: "claim" | "inspiration" | "uncertainty" = "claim"
+): void {
+  const nodeForm = app.querySelector("[data-pattern-author-node-form='true']");
+  const nodeType = app.querySelector("[data-pattern-author-node-type='true']");
+  const labelInput = app.querySelector("[data-pattern-author-node-label='true']");
+  const contentInput = app.querySelector("[data-pattern-author-node-content='true']");
+  assert.ok(nodeForm);
+  assert.ok(nodeType);
+  assert.ok(labelInput);
+  assert.ok(contentInput);
+
+  installFormReset(nodeForm);
+  nodeType.value = nodeTypeValue;
+  labelInput.value = labelText;
+  contentInput.value = contentText;
+  submitForm(nodeForm);
+}
+
+function submitBoardLocalEvidence(
+  app: PatternRoomFakeApp,
+  labelText: string,
+  excerptText: string,
+  interpretationText: string
+): void {
+  const evidenceForm = app.querySelector("[data-pattern-author-evidence-form='true']");
+  const labelInput = app.querySelector("[data-pattern-author-evidence-label='true']");
+  const excerptInput = app.querySelector("[data-pattern-author-evidence-excerpt='true']");
+  const interpretationInput = app.querySelector(
+    "[data-pattern-author-evidence-interpretation='true']"
+  );
+  assert.ok(evidenceForm);
+  assert.ok(labelInput);
+  assert.ok(excerptInput);
+  assert.ok(interpretationInput);
+
+  installFormReset(evidenceForm);
+  labelInput.value = labelText;
+  excerptInput.value = excerptText;
+  interpretationInput.value = interpretationText;
+  submitForm(evidenceForm);
+}
+
+function submitBoardLocalEdge(
+  app: PatternRoomFakeApp,
+  sourceId: string,
+  edgeType: string,
+  targetId: string,
+  noteText: string
+): void {
+  const edgeForm = app.querySelector("[data-pattern-author-edge-form='true']");
+  const sourceSelect = app.querySelector("[data-pattern-author-edge-source='true']");
+  const edgeTypeSelect = app.querySelector("[data-pattern-author-edge-type='true']");
+  const targetSelect = app.querySelector("[data-pattern-author-edge-target='true']");
+  const noteInput = app.querySelector("[data-pattern-author-edge-note='true']");
+  assert.ok(edgeForm);
+  assert.ok(sourceSelect);
+  assert.ok(edgeTypeSelect);
+  assert.ok(targetSelect);
+  assert.ok(noteInput);
+
+  installFormReset(edgeForm);
+  sourceSelect.value = sourceId;
+  edgeTypeSelect.value = edgeType;
+  targetSelect.value = targetId;
+  noteInput.value = noteText;
+  submitForm(edgeForm);
+}
+
+function clickBoardPin(app: PatternRoomFakeApp, pinId: string): void {
+  const pin = app.querySelector(`[data-pattern-board-pin='${pinId}']`);
+  assert.ok(pin);
+  fireEvent(pin, "click");
 }
 
 function setWindowConfirm(handler: (message: string) => boolean): void {
@@ -1226,6 +1305,195 @@ test("pattern-room installed UI phase 12G-A removes confirmed local sources and 
     returnToOverview(environment.app);
     openFocusedView(environment.app, "report");
     assert.doesNotMatch(readTreeText(environment.app), /Yerel Bağlantılar/);
+    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+test("pattern-room installed UI phase 12G-C removes selected local board nodes and evidence only", async () => {
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+  const confirmMessages: string[] = [];
+  const removeConfirm =
+    "Bu yerel pano öğesi odadan kaldırılacak. Bağlı yerel bağlantılar da temizlenir. Devam edilsin mi?";
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?board-item-remove=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      payload: { snapshot: null },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+    openFocusedView(environment.app, "board");
+
+    clickBoardPin(environment.app, "node-navigation-source");
+    assert.equal(environment.app.querySelector("[data-pattern-remove-board-item]"), null);
+
+    submitBoardLocalNode(
+      environment.app,
+      "Faz 12G-C iddia",
+      "Board detail kaldırma testi için local iddia."
+    );
+    clickBoardPin(environment.app, "local-node-001");
+    const cancelRemoveNode = environment.app.querySelector(
+      "[data-pattern-remove-board-item='local-node-001']"
+    );
+    assert.ok(cancelRemoveNode);
+    assert.equal(cancelRemoveNode.dataset["patternRemoveBoardItemKind"], "node");
+    assertTextIncludes(readTreeText(environment.app), ["Öğeyi kaldır"]);
+    const addNodeDebate = environment.app.querySelector(
+      "[data-pattern-add-node-debate='local-node-001']"
+    );
+    assert.ok(addNodeDebate);
+    fireEvent(addNodeDebate, "click");
+
+    setWindowConfirm((message) => {
+      confirmMessages.push(message);
+      return false;
+    });
+    fireEvent(cancelRemoveNode, "click");
+    assert.ok(environment.app.querySelector("[data-pattern-board-pin='local-node-001']"));
+    assertTextIncludes(readTreeText(environment.app), ["Faz 12G-C iddia"]);
+
+    clickBoardPin(environment.app, "node-navigation-source");
+    assert.equal(environment.app.querySelector("[data-pattern-remove-board-item]"), null);
+
+    submitBoardLocalEvidence(
+      environment.app,
+      "Faz 12G-C kanıt",
+      "Board detail kaldırma testi için local kanıt.",
+      "Silme sonrası rapordan düşmeli."
+    );
+    clickBoardPin(environment.app, "local-evidence-001");
+    const removeEvidence = environment.app.querySelector(
+      "[data-pattern-remove-board-item='local-evidence-001']"
+    );
+    assert.ok(removeEvidence);
+    assert.equal(removeEvidence.dataset["patternRemoveBoardItemKind"], "evidence");
+    const addEvidenceDebate = environment.app.querySelector(
+      "[data-pattern-add-evidence-debate='local-evidence-001']"
+    );
+    assert.ok(addEvidenceDebate);
+    fireEvent(addEvidenceDebate, "click");
+
+    submitBoardLocalEdge(
+      environment.app,
+      "local-node-001",
+      "derived_from",
+      "local-evidence-001",
+      "Board item deletion linked edge smoke."
+    );
+    environment.runPendingTimers(2000);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "report");
+    assertTextIncludes(readTreeText(environment.app), [
+      "Yerel Kanıt Notları",
+      "Faz 12G-C kanıt",
+      "Yerel Bağlantılar",
+      "Faz 12G-C iddia",
+      "türetildi",
+      "Faz 12G-C kanıt",
+    ]);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "tenth-man");
+    assertTextIncludes(readTreeText(environment.app), ["Faz 12G-C iddia", "Faz 12G-C kanıt"]);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "board");
+    clickBoardPin(environment.app, "local-evidence-001");
+    const acceptRemoveEvidence = environment.app.querySelector(
+      "[data-pattern-remove-board-item='local-evidence-001']"
+    );
+    assert.ok(acceptRemoveEvidence);
+    setWindowConfirm((message) => {
+      confirmMessages.push(message);
+      return true;
+    });
+    fireEvent(acceptRemoveEvidence, "click");
+
+    assert.equal(
+      environment.app.querySelector("[data-pattern-board-pin='local-evidence-001']"),
+      null
+    );
+    assert.ok(environment.app.querySelector("[data-pattern-board-pin='local-node-001']"));
+    assert.ok(environment.app.querySelector("[data-pattern-board-pin='node-navigation-source']"));
+    environment.runPendingTimers(2000);
+
+    const evidenceRemovedSnapshot = readLatestSavePayload(environment)[
+      "snapshot"
+    ] as PatternRoomSessionSnapshot;
+    assert.equal(evidenceRemovedSnapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
+    assert.equal(evidenceRemovedSnapshot.overlay.localAuthoredNodes.length, 1);
+    assert.deepEqual(evidenceRemovedSnapshot.overlay.localAuthoredEvidence, []);
+    assert.deepEqual(evidenceRemovedSnapshot.overlay.localAuthoredEdges, []);
+    assert.equal(
+      evidenceRemovedSnapshot.overlay.debateReferenceIds.includes("local-evidence-001"),
+      false
+    );
+    assert.equal(
+      evidenceRemovedSnapshot.overlay.debateReferenceIds.includes("local-node-001"),
+      true
+    );
+    const evidenceRemovedRestored = restoreFromSnapshot(
+      evidenceRemovedSnapshot,
+      PATTERN_ROOM_DOMAIN_MOCK
+    );
+    assert.ok(evidenceRemovedRestored);
+    assert.deepEqual(evidenceRemovedRestored.overlay.localAuthoredEvidence, []);
+    assert.deepEqual(evidenceRemovedRestored.overlay.localAuthoredEdges, []);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "report");
+    const evidenceRemovedReportText = readTreeText(environment.app);
+    assert.doesNotMatch(evidenceRemovedReportText, /Yerel Bağlantılar/);
+    assert.doesNotMatch(evidenceRemovedReportText, /Faz 12G-C kanıt/);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "tenth-man");
+    const evidenceRemovedDebateText = readTreeText(environment.app);
+    assertTextIncludes(evidenceRemovedDebateText, ["Faz 12G-C iddia"]);
+    assert.doesNotMatch(evidenceRemovedDebateText, /Faz 12G-C kanıt/);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "board");
+    clickBoardPin(environment.app, "local-node-001");
+    const acceptRemoveNode = environment.app.querySelector(
+      "[data-pattern-remove-board-item='local-node-001']"
+    );
+    assert.ok(acceptRemoveNode);
+    fireEvent(acceptRemoveNode, "click");
+
+    assert.equal(environment.app.querySelector("[data-pattern-board-pin='local-node-001']"), null);
+    assert.ok(environment.app.querySelector("[data-pattern-board-pin='node-navigation-source']"));
+    environment.runPendingTimers(2000);
+
+    const nodeRemovedSnapshot = readLatestSavePayload(environment)[
+      "snapshot"
+    ] as PatternRoomSessionSnapshot;
+    assert.equal(nodeRemovedSnapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
+    assert.deepEqual(nodeRemovedSnapshot.overlay.localAuthoredNodes, []);
+    assert.deepEqual(nodeRemovedSnapshot.overlay.localAuthoredEvidence, []);
+    assert.deepEqual(nodeRemovedSnapshot.overlay.localAuthoredEdges, []);
+    assert.equal(nodeRemovedSnapshot.overlay.debateReferenceIds.includes("local-node-001"), false);
+    const nodeRemovedRestored = restoreFromSnapshot(nodeRemovedSnapshot, PATTERN_ROOM_DOMAIN_MOCK);
+    assert.ok(nodeRemovedRestored);
+    assert.deepEqual(nodeRemovedRestored.overlay.localAuthoredNodes, []);
+    assert.deepEqual(nodeRemovedRestored.overlay.localAuthoredEvidence, []);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "tenth-man");
+    const nodeRemovedDebateText = readTreeText(environment.app);
+    assert.doesNotMatch(nodeRemovedDebateText, /Faz 12G-C iddia/);
+    assert.doesNotMatch(nodeRemovedDebateText, /Faz 12G-C kanıt/);
+
+    assert.deepEqual(confirmMessages, [removeConfirm, removeConfirm, removeConfirm]);
     assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
   } finally {
     environment.restore();

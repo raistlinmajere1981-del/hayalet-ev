@@ -144,7 +144,7 @@ export type PatternUserTextSourceImportStatus = {
 
 export type PatternPanelActions = {
   getSelectedNodeId: () => string | null;
-  selectNode: (nodeId: string) => void;
+  selectNode: (nodeId: string | null) => void;
   sendNodeToDesk: (nodeId: string) => void;
   addNodeToDebate: (nodeId: string) => void;
   pinSourceToBoard: (sourceId: string, layer: PatternBoardLayerId) => void;
@@ -155,6 +155,8 @@ export type PatternPanelActions = {
   addAuthoredUncertainty: (label: string, content: string) => void;
   addAuthoredSource: (label: string, origin: string, note: string) => void;
   removeLocalSource: (sourceId: string) => void;
+  removeLocalNode: (nodeId: string) => void;
+  removeLocalEvidence: (evidenceId: string) => void;
   resetLocalSession: () => void;
   addAuthoredEvidence: (
     label: string,

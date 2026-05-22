@@ -21,6 +21,8 @@ const CONNECTION_EDGE_TYPE_OPTIONS: Array<{
   { value: "questions", label: "sorguluyor" },
   { value: "needs_review", label: "inceleme gerekiyor" },
 ];
+const REMOVE_BOARD_ITEM_CONFIRM_MESSAGE =
+  "Bu yerel pano öğesi odadan kaldırılacak. Bağlı yerel bağlantılar da temizlenir. Devam edilsin mi?";
 
 function createTextInput(name: string, placeholder: string): HTMLInputElement {
   const input = createElement("input", "pattern-room-inline-input");
@@ -313,6 +315,24 @@ function renderSelectedPinDetail(
     });
     debateButton.dataset["patternAddEvidenceDebate"] = selectedPin.id;
     actionsRow.append(debateButton);
+  }
+
+  if (selectedPin.isLocal && (selectedPin.kind === "node" || selectedPin.kind === "evidence")) {
+    const removeButton = createActionButton("Öğeyi kaldır", () => {
+      if (!window.confirm(REMOVE_BOARD_ITEM_CONFIRM_MESSAGE)) {
+        return;
+      }
+
+      actions.selectNode(null);
+      if (selectedPin.kind === "node") {
+        actions.removeLocalNode(selectedPin.id);
+        return;
+      }
+      actions.removeLocalEvidence(selectedPin.id);
+    });
+    removeButton.dataset["patternRemoveBoardItem"] = selectedPin.id;
+    removeButton.dataset["patternRemoveBoardItemKind"] = selectedPin.kind;
+    actionsRow.append(removeButton);
   }
 
   const originCopy =

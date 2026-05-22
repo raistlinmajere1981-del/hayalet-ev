@@ -182,7 +182,7 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     getSelectedNodeId(): string | null {
       return selectedNodeId;
     },
-    selectNode(nodeId: string): void {
+    selectNode(nodeId: string | null): void {
       selectedNodeId = nodeId;
     },
     sendNodeToDesk(nodeId: string): void {
@@ -214,6 +214,12 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     },
     removeLocalSource(sourceId: string): void {
       localState.removeLocalSource(sourceId);
+    },
+    removeLocalNode(nodeId: string): void {
+      localState.removeLocalNode(nodeId);
+    },
+    removeLocalEvidence(evidenceId: string): void {
+      localState.removeLocalEvidence(evidenceId);
     },
     resetLocalSession(): void {
       localState.resetOverlayToEmpty();
