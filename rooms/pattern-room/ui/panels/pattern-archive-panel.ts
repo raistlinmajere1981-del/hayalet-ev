@@ -1,4 +1,6 @@
 import type {
+  PatternLongTextSourceImportInput,
+  PatternLongTextSourceImportStatus,
   PatternPanelActions,
   PatternRoomMockData,
   PatternSampleSourceImportStatus,
@@ -9,6 +11,17 @@ import { createActionButton, createElement, createPanelShell } from "./pattern-p
 const REMOVE_LOCAL_SOURCE_CONFIRMATION = "Bu yerel kaynak odadan kaldırılacak. Devam edilsin mi?";
 const RESET_LOCAL_SESSION_CONFIRMATION =
   "Tüm yerel kaynaklar, notlar ve geçici tartışma izleri temizlenecek. Hazır konu verileri korunur. Devam edilsin mi?";
+const LONG_TEXT_SOURCE_KIND_OPTIONS = [
+  { label: "Kitap", value: "book" },
+  { label: "Makale", value: "article" },
+  { label: "Gazete", value: "newspaper" },
+  { label: "Dini metin", value: "religious_text" },
+  { label: "Arşiv metni", value: "archive_text" },
+  { label: "Kişisel uzun not", value: "personal_note" },
+] as const satisfies ReadonlyArray<{
+  label: string;
+  value: PatternLongTextSourceImportInput["sourceKind"];
+}>;
 
 function createTextInput(name: string, placeholder: string): HTMLInputElement {
   const input = createElement("input", "pattern-room-inline-input");
@@ -22,6 +35,18 @@ function createTextArea(name: string, placeholder: string): HTMLTextAreaElement 
   textarea.name = name;
   textarea.placeholder = placeholder;
   return textarea;
+}
+
+function createSourceKindSelect(): HTMLSelectElement {
+  const select = createElement("select", "pattern-room-inline-input");
+  select.name = "sourceKind";
+  LONG_TEXT_SOURCE_KIND_OPTIONS.forEach((sourceKind) => {
+    const option = createElement("option", undefined, sourceKind.label);
+    option.value = sourceKind.value;
+    select.append(option);
+  });
+  select.value = "book";
+  return select;
 }
 
 function createSubmitButton(label: string): HTMLButtonElement {
@@ -78,6 +103,7 @@ function sourceTypeClass(sourceTypeLabel: string): string {
 function createSourceWorkbenchDemo(
   actions: PatternPanelActions,
   userTextStatus: PatternUserTextSourceImportStatus | null,
+  longTextStatus: PatternLongTextSourceImportStatus | null,
   status: PatternSampleSourceImportStatus | null
 ): HTMLElement {
   const demo = createElement("section", "pattern-room-source-workbench-demo");
@@ -117,6 +143,83 @@ function createSourceWorkbenchDemo(
   submitButton.dataset["patternImportUserTextSource"] = "true";
   form.append(title, text, submitButton);
 
+  const longTextForm = createElement(
+    "form",
+    "pattern-room-inline-form pattern-room-source-workbench-form"
+  );
+  longTextForm.dataset["patternLongTextSourceForm"] = "true";
+  const longTextTitle = createTextInput("title", "Başlık");
+  longTextTitle.dataset["patternLongTextSourceTitle"] = "true";
+  const longTextOrigin = createTextInput("origin", "Kaynak / Köken");
+  longTextOrigin.dataset["patternLongTextSourceOrigin"] = "true";
+  const longTextKind = createSourceKindSelect();
+  longTextKind.dataset["patternLongTextSourceKind"] = "true";
+  const longTextChapter = createTextInput("chapter", "Bölüm / başlık notu (opsiyonel)");
+  longTextChapter.dataset["patternLongTextSourceChapter"] = "true";
+  const longTextPage = createTextInput("page", "Sayfa / referans (opsiyonel)");
+  longTextPage.dataset["patternLongTextSourcePage"] = "true";
+  const longText = createTextArea("text", "Metin");
+  longText.dataset["patternLongTextSourceText"] = "true";
+  const longTextStatusLine = createElement(
+    "p",
+    "pattern-room-source-workbench-status",
+    longTextStatus?.message ?? "Henüz uzun metin kaynak olarak eklenmedi."
+  );
+  longTextStatusLine.dataset["patternLongTextSourceStatus"] = "true";
+  const longTextSubmitButton = createSubmitButton("Uzun Metni Odaya Aktar");
+  longTextSubmitButton.dataset["patternImportLongTextSource"] = "true";
+
+  longTextForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (longTextTitle.value.trim() === "") {
+      longTextStatusLine.textContent = "Başlık boş olamaz.";
+      return;
+    }
+    if (longTextOrigin.value.trim() === "") {
+      longTextStatusLine.textContent = "Kaynak bilgisi boş olamaz.";
+      return;
+    }
+    if (longText.value.trim() === "") {
+      longTextStatusLine.textContent = "Metin boş olamaz.";
+      return;
+    }
+
+    const result = actions.importLongTextSource({
+      title: longTextTitle.value,
+      origin: longTextOrigin.value,
+      sourceKind: longTextKind.value as PatternLongTextSourceImportInput["sourceKind"],
+      chapter: longTextChapter.value,
+      page: longTextPage.value,
+      text: longText.value,
+      language: "tr",
+    });
+    longTextStatusLine.textContent = result.message;
+    if (result.success && !result.duplicate && typeof longTextForm.reset === "function") {
+      longTextForm.reset();
+    }
+  });
+
+  longTextForm.append(
+    createElement(
+      "p",
+      "pattern-room-inline-note",
+      "Bu aşamada metin yalnızca kaynak olarak eklenir; alıntı ve örüntü çıkarımı daha sonra yapılır."
+    ),
+    longTextTitle,
+    longTextOrigin,
+    longTextKind,
+    longTextChapter,
+    longTextPage,
+    longText,
+    longTextSubmitButton,
+    longTextStatusLine
+  );
+  const longTextDisclosure = createAuthoringDisclosure(
+    "Uzun Metin / Kitap / Arşiv Ekle",
+    longTextForm
+  );
+  longTextDisclosure.dataset["patternLongTextSourceDisclosure"] = "true";
+
   const sampleWrap = createElement("div", "pattern-room-source-workbench-example");
   const importButton = createActionButton("Örnek Kaynak Paketini İçe Aktar", () => {
     actions.importSampleSourcePackage();
@@ -139,6 +242,7 @@ function createSourceWorkbenchDemo(
     ),
     form,
     userTextStatusLine,
+    longTextDisclosure,
     sampleWrap
   );
   return demo;
@@ -173,6 +277,7 @@ export function createArchivePanel(
   actions: PatternPanelActions,
   onBack: () => void,
   userTextSourceImportStatus: PatternUserTextSourceImportStatus | null = null,
+  longTextSourceImportStatus: PatternLongTextSourceImportStatus | null = null,
   sourceImportStatus: PatternSampleSourceImportStatus | null = null
 ): HTMLElement {
   const shell = createPanelShell("archive", "Arşiv", onBack);
@@ -226,7 +331,12 @@ export function createArchivePanel(
   });
 
   shell.append(
-    createSourceWorkbenchDemo(actions, userTextSourceImportStatus, sourceImportStatus),
+    createSourceWorkbenchDemo(
+      actions,
+      userTextSourceImportStatus,
+      longTextSourceImportStatus,
+      sourceImportStatus
+    ),
     createSourceAuthoringForm(actions),
     createLocalSessionResetSection(actions),
     list

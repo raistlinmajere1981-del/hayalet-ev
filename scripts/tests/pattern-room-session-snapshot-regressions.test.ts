@@ -19,6 +19,7 @@ import {
   PATTERN_ROOM_SAVE_COMMAND,
 } from "../../rooms/pattern-room/shared/types/pattern-room-persistence.ts";
 import {
+  createLongTextProducer,
   createUserTextProducer,
   produceAndImportSource,
 } from "../../rooms/pattern-room/shared/source-producers/index.ts";
@@ -236,6 +237,53 @@ test("pattern-room phase 12F-B round-trips optional import batch ids without sch
     restored.overlay.localAuthoredSources.map((source) => source.importBatchId),
     ["source-package-snapshot-001"]
   );
+
+  const roundTripState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  roundTripState.restoreOverlay(restored.overlay, restored.guards);
+  const roundTripSnapshot = createSnapshot(roundTripState, restored.activeView);
+  assertRestoredSnapshotStateMatches(roundTripSnapshot, snapshot);
+});
+
+test("pattern-room phase 13C round-trips long text producer sources without schema bump", () => {
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const producer = createLongTextProducer({ now: () => "2026-05-21T10:00:00.000Z" });
+  const text =
+    "Birinci uzun metin parçası snapshot içinde kaynak notu olarak kalmalı.\n\n" +
+    "İkinci uzun metin parçası segment sayısını üretir ama pano kanıtı üretmez.";
+  const orchestrationResult = produceAndImportSource(producer, {
+    inputKind: "long_text",
+    title: "Snapshot uzun metin",
+    origin: "Arşiv defteri",
+    sourceKind: "archive_text",
+    chapter: "Defter I",
+    page: "42",
+    text,
+    language: "tr",
+  });
+  const importResult = orchestrationResult.importResults[0]?.importResult;
+  assert.ok(importResult);
+  assert.equal(orchestrationResult.packagesProduced[0]?.segments.length, 2);
+  localState.applySourceImportResult(importResult);
+
+  const snapshot = createSnapshot(localState, "archive");
+  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_MOCK);
+  assert.ok(restored);
+
+  assert.equal(snapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
+  assert.equal(PATTERN_ROOM_SNAPSHOT_VERSION, 1);
+  assert.deepEqual(restored.overlay.localAuthoredSources, [
+    {
+      id: "local-source-001",
+      label: "Snapshot uzun metin",
+      origin: "Arşiv defteri",
+      note: text,
+      createdAt: restored.overlay.localAuthoredSources[0]?.createdAt,
+    },
+  ]);
+  assert.deepEqual(restored.overlay.localAuthoredEvidence, []);
+  assert.deepEqual(restored.overlay.localAuthoredNodes, []);
+  assert.deepEqual(restored.overlay.pinnedSourceIds, []);
+  assert.deepEqual(restored.overlay.sourcePinnedLayerById, {});
 
   const roundTripState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   roundTripState.restoreOverlay(restored.overlay, restored.guards);

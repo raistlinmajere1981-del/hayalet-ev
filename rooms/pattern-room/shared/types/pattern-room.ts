@@ -1,4 +1,5 @@
 import type { DebateLocalPhase, DebateLocalTurn } from "../state/pattern-room-local-state.js";
+import type { LongTextSourceKind } from "../source-producers/index.js";
 import type { PatternEdgeType } from "./pattern-room-domain.js";
 
 export type PatternViewId = "overview" | "board" | "desk" | "archive" | "tenth-man" | "report";
@@ -142,6 +143,20 @@ export type PatternUserTextSourceImportStatus = {
   errorCount: number;
 };
 
+export type PatternLongTextSourceImportInput = {
+  title: string;
+  origin: string;
+  sourceKind: LongTextSourceKind;
+  chapter?: string;
+  page?: string;
+  text: string;
+  language?: string;
+};
+
+export type PatternLongTextSourceImportStatus = PatternUserTextSourceImportStatus & {
+  segmentCount: number;
+};
+
 export type PatternPanelActions = {
   getSelectedNodeId: () => string | null;
   selectNode: (nodeId: string | null) => void;
@@ -173,6 +188,9 @@ export type PatternPanelActions = {
   importUserTextSource: (
     input: PatternUserTextSourceImportInput
   ) => PatternUserTextSourceImportStatus;
+  importLongTextSource: (
+    input: PatternLongTextSourceImportInput
+  ) => PatternLongTextSourceImportStatus;
   importSampleSourcePackage: (packageId?: string) => PatternSampleSourceImportStatus;
   prepareDebate: () => void;
   assignDebateRoles: () => void;

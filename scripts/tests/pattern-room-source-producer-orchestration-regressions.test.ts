@@ -4,8 +4,10 @@ import { readFile, readdir } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 
 import {
+  createLongTextProducer,
   createUserTextProducer,
   produceAndImportSource,
+  type LongTextInput,
   type PastedTextInput,
   type SourceProducer,
 } from "../../rooms/pattern-room/shared/source-producers/index.ts";
@@ -18,6 +20,20 @@ function createPastedTextInput(partial: Partial<PastedTextInput> = {}): PastedTe
     inputKind: "pasted_text",
     text: "Bir iz tekrar ediyorsa, onu tek olay gibi okumamak gerekir.",
     title: "Tekrarlayan iz notu",
+    language: "tr",
+    ...partial,
+  };
+}
+
+function createLongTextInput(partial: Partial<LongTextInput> = {}): LongTextInput {
+  return {
+    inputKind: "long_text",
+    title: "Arşiv kitabı",
+    origin: "archive:book",
+    sourceKind: "book",
+    text:
+      "Birinci uzun metin paragrafı tek kaynak paketinin ilk segmentidir.\n\n" +
+      "İkinci uzun metin paragrafı aynı kaynak paketinde ikinci segment olarak kalır.",
     language: "tr",
     ...partial,
   };
@@ -83,6 +99,40 @@ test("pattern-room source producer orchestration imports valid user text output"
   assert.equal(result.stats.packagesImported, 1);
   assert.equal(result.stats.packagesFailed, 0);
   assert.equal(result.stats.totalSources, 1);
+});
+
+test("pattern-room source producer orchestration imports long text as a source-only package", () => {
+  const producer = createLongTextProducer({ now: () => FIXED_NOW });
+  const result = produceAndImportSource(
+    producer,
+    createLongTextInput({
+      sourceKind: "article",
+      origin: "archive:article",
+    })
+  );
+
+  assert.equal(result.packagesProduced.length, 1);
+  assert.equal(result.packagesImported, 1);
+  assert.equal(result.importResults.length, 1);
+  assert.deepEqual(result.errors, []);
+
+  const producedPackage = result.packagesProduced[0];
+  const packageResult = result.importResults[0];
+  assert.ok(producedPackage);
+  assert.ok(packageResult);
+  assert.equal(producedPackage.sourceKind, "article");
+  assert.equal(producedPackage.segments.length, 2);
+  assert.deepEqual(producedPackage.quotes, []);
+  assert.deepEqual(producedPackage.observations, []);
+  assert.deepEqual(producedPackage.motifs, []);
+  assert.equal(packageResult.sourceKind, "article");
+  assert.equal(packageResult.importResult.sources.length, 1);
+  assert.equal(packageResult.importResult.sources[0]?.sourceKind, "article");
+  assert.deepEqual(packageResult.importResult.evidence, []);
+  assert.deepEqual(packageResult.importResult.nodes, []);
+  assert.equal(result.stats.totalSources, 1);
+  assert.equal(result.stats.totalEvidence, 0);
+  assert.equal(result.stats.totalNodes, 0);
 });
 
 test("pattern-room source producer orchestration rejects invalid user text without import", () => {
@@ -277,6 +327,7 @@ test("pattern-room source producer orchestration boundaries stay pure", async ()
     "utf8"
   );
   assert.match(uiRuntimeSource, /createUserTextProducer/);
+  assert.match(uiRuntimeSource, /createLongTextProducer/);
   assert.match(uiRuntimeSource, /produceAndImportSource/);
   assert.match(uiRuntimeSource, /applySourceImportResult/);
 

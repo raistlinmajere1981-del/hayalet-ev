@@ -107,6 +107,47 @@ function submitUserTextSource(
   submitForm(form);
 }
 
+function submitLongTextSource(
+  app: PatternRoomFakeApp,
+  input: {
+    title: string;
+    origin: string;
+    text: string;
+    sourceKind?:
+      | "book"
+      | "article"
+      | "newspaper"
+      | "religious_text"
+      | "archive_text"
+      | "personal_note";
+    chapter?: string;
+    page?: string;
+  }
+): void {
+  const form = app.querySelector("[data-pattern-long-text-source-form='true']");
+  const titleInput = app.querySelector("[data-pattern-long-text-source-title='true']");
+  const originInput = app.querySelector("[data-pattern-long-text-source-origin='true']");
+  const kindSelect = app.querySelector("[data-pattern-long-text-source-kind='true']");
+  const chapterInput = app.querySelector("[data-pattern-long-text-source-chapter='true']");
+  const pageInput = app.querySelector("[data-pattern-long-text-source-page='true']");
+  const textInput = app.querySelector("[data-pattern-long-text-source-text='true']");
+  assert.ok(form);
+  assert.ok(titleInput);
+  assert.ok(originInput);
+  assert.ok(kindSelect);
+  assert.ok(chapterInput);
+  assert.ok(pageInput);
+  assert.ok(textInput);
+
+  titleInput.value = input.title;
+  originInput.value = input.origin;
+  kindSelect.value = input.sourceKind ?? "book";
+  chapterInput.value = input.chapter ?? "";
+  pageInput.value = input.page ?? "";
+  textInput.value = input.text;
+  submitForm(form);
+}
+
 function submitBoardLocalNode(
   app: PatternRoomFakeApp,
   labelText: string,
@@ -1062,6 +1103,144 @@ test("pattern-room installed UI phase 12D rejects blank pasted user text", async
     openFocusedView(environment.app, "archive");
     submitUserTextSource(environment.app, "Boş kaynak", " \n\t ");
 
+    assertTextIncludes(readTreeText(environment.app), ["Metin boş olamaz."]);
+    assert.equal(
+      environment.app.querySelector("[data-pattern-archive-source='local-source-001']"),
+      null
+    );
+    assert.equal(environment.pendingTimerCount(), 0);
+    assert.deepEqual(environment.sentCommands, []);
+    assert.deepEqual(environment.sentEvents, []);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+test("pattern-room installed UI phase 13C imports long text as a source only", async () => {
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+  const longText =
+    "Birinci bölüm uzun arşiv metninin ilk parçasıdır. Bu parça yalnızca kaynak gövdesinde tutulur.\n\n" +
+    "İkinci bölüm segment sayısını görünür kılar. Bu aşamada alıntı veya örüntü çıkarımı yapılmaz.";
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?long-text-source=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      payload: { snapshot: null },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+    openFocusedView(environment.app, "archive");
+
+    assert.ok(environment.app.querySelector("[data-pattern-long-text-source-form='true']"));
+    assertTextIncludes(readTreeText(environment.app), [
+      "Uzun Metin / Kitap / Arşiv Ekle",
+      "Bu aşamada metin yalnızca kaynak olarak eklenir; alıntı ve örüntü çıkarımı daha sonra yapılır.",
+    ]);
+
+    submitLongTextSource(environment.app, {
+      title: "Faz 13C uzun metin",
+      origin: "Makale arşivi",
+      sourceKind: "article",
+      chapter: "Bölüm I",
+      page: "s. 12-13",
+      text: longText,
+    });
+
+    assert.ok(environment.app.querySelector("[data-pattern-archive-source='local-source-001']"));
+    assertTextIncludes(readTreeText(environment.app), [
+      "Uzun metin kaynak olarak eklendi: 2 segment.",
+      "Faz 13C uzun metin",
+      "Yerel Kaynak",
+      "Birinci bölüm uzun arşiv metninin ilk parçasıdır.",
+    ]);
+    assert.equal(environment.pendingTimerCount(), 1);
+
+    environment.runPendingTimers(2000);
+    assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_SAVE_COMMAND]);
+    const savedSnapshot = readLatestSavePayload(environment)[
+      "snapshot"
+    ] as PatternRoomSessionSnapshot;
+    assert.equal(savedSnapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
+    assert.equal(savedSnapshot.overlay.localAuthoredSources.length, 1);
+    assert.equal(savedSnapshot.overlay.localAuthoredSources[0]?.label, "Faz 13C uzun metin");
+    assert.equal(savedSnapshot.overlay.localAuthoredSources[0]?.origin, "Makale arşivi");
+    assert.equal(savedSnapshot.overlay.localAuthoredSources[0]?.note, longText);
+    assert.deepEqual(savedSnapshot.overlay.localAuthoredEvidence, []);
+    assert.deepEqual(savedSnapshot.overlay.localAuthoredNodes, []);
+    assert.deepEqual(savedSnapshot.overlay.localAuthoredEdges, []);
+    assert.deepEqual(savedSnapshot.overlay.pinnedSourceIds, []);
+    assert.deepEqual(savedSnapshot.overlay.sourcePinnedLayerById, {});
+    const restored = restoreFromSnapshot(savedSnapshot, PATTERN_ROOM_DOMAIN_MOCK);
+    assert.ok(restored);
+    assert.equal(restored.overlay.localAuthoredSources[0]?.label, "Faz 13C uzun metin");
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "board");
+    assert.equal(
+      environment.app.querySelector("[data-pattern-board-pin='local-source-001']"),
+      null
+    );
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "report");
+    const reportText = readTreeText(environment.app);
+    assert.doesNotMatch(reportText, /Faz 13C uzun metin/);
+    assert.doesNotMatch(reportText, /Yerel Kanıt Notları/);
+    assert.doesNotMatch(reportText, /Yerel Bağlantılar/);
+    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+test("pattern-room installed UI phase 13C rejects blank long text fields", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?long-text-empty=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      payload: { snapshot: null },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+    openFocusedView(environment.app, "archive");
+
+    submitLongTextSource(environment.app, {
+      title: " ",
+      origin: "Arşiv kökeni",
+      text: "Geçerli uzun metin.",
+    });
+    assertTextIncludes(readTreeText(environment.app), ["Başlık boş olamaz."]);
+    assert.equal(
+      environment.app.querySelector("[data-pattern-archive-source='local-source-001']"),
+      null
+    );
+
+    submitLongTextSource(environment.app, {
+      title: "Boş köken testi",
+      origin: " ",
+      text: "Geçerli uzun metin.",
+    });
+    assertTextIncludes(readTreeText(environment.app), ["Kaynak bilgisi boş olamaz."]);
+    assert.equal(
+      environment.app.querySelector("[data-pattern-archive-source='local-source-001']"),
+      null
+    );
+
+    submitLongTextSource(environment.app, {
+      title: "Boş metin testi",
+      origin: "Arşiv kökeni",
+      text: " \n\t ",
+    });
     assertTextIncludes(readTreeText(environment.app), ["Metin boş olamaz."]);
     assert.equal(
       environment.app.querySelector("[data-pattern-archive-source='local-source-001']"),

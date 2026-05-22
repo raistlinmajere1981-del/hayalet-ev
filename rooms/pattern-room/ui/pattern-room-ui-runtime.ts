@@ -9,6 +9,8 @@ import {
   PATTERN_ROOM_SAVE_FAILED_EVENT,
 } from "../shared/types/pattern-room-persistence.js";
 import type {
+  PatternLongTextSourceImportInput,
+  PatternLongTextSourceImportStatus,
   PatternPanelActions,
   PatternRoomMockData,
   PatternUserTextSourceImportInput,
@@ -16,8 +18,10 @@ import type {
   PatternViewId,
 } from "../shared/types/pattern-room.js";
 import {
+  createLongTextProducer,
   createUserTextProducer,
   produceAndImportSource,
+  type LongTextInput,
   type PastedTextInput,
   type SourceProducerOrchestrationResult,
 } from "../shared/source-producers/index.js";
@@ -79,7 +83,9 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
   let pendingSaveTimer: number | null = null;
   let sourceImportDemoStatus: ReturnType<typeof importSampleSourcePackage> | null = null;
   let userTextSourceImportStatus: PatternUserTextSourceImportStatus | null = null;
+  let longTextSourceImportStatus: PatternLongTextSourceImportStatus | null = null;
   const importedUserTextPackageIds = new Set<string>();
+  const importedLongTextPackageIds = new Set<string>();
 
   function createEmptyUserTextStatus(message: string): PatternUserTextSourceImportStatus {
     return {
@@ -98,6 +104,13 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     };
   }
 
+  function createEmptyLongTextStatus(message: string): PatternLongTextSourceImportStatus {
+    return {
+      ...createEmptyUserTextStatus(message),
+      segmentCount: 0,
+    };
+  }
+
   function createUserTextProducerInput(input: PatternUserTextSourceImportInput): PastedTextInput {
     const producerInput: PastedTextInput = {
       inputKind: "pasted_text",
@@ -107,6 +120,26 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     const title = input.title.trim();
     if (title !== "") {
       producerInput.title = title;
+    }
+    return producerInput;
+  }
+
+  function createLongTextProducerInput(input: PatternLongTextSourceImportInput): LongTextInput {
+    const producerInput: LongTextInput = {
+      inputKind: "long_text",
+      title: input.title.trim(),
+      origin: input.origin.trim(),
+      sourceKind: input.sourceKind,
+      text: input.text.trim(),
+      language: input.language?.trim() || "tr",
+    };
+    const chapter = input.chapter?.trim();
+    const page = input.page?.trim();
+    if (chapter !== undefined && chapter !== "") {
+      producerInput.chapter = chapter;
+    }
+    if (page !== undefined && page !== "") {
+      producerInput.page = page;
     }
     return producerInput;
   }
@@ -178,6 +211,75 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     };
   }
 
+  function summarizeLongTextImportResult(
+    result: SourceProducerOrchestrationResult
+  ): PatternLongTextSourceImportStatus {
+    let sourcesAdded = 0;
+    let evidenceAdded = 0;
+    let nodesAdded = 0;
+    let edgesAdded = 0;
+    let notesAdded = 0;
+    let duplicatesSkipped = 0;
+    let applyWarningCount = 0;
+
+    result.importResults.forEach((packageResult) => {
+      const summary = localState.applySourceImportResult(packageResult.importResult);
+      sourcesAdded += summary.sourcesAdded;
+      evidenceAdded += summary.evidenceAdded;
+      nodesAdded += summary.nodesAdded;
+      edgesAdded += summary.edgesAdded;
+      notesAdded += summary.notesAdded;
+      duplicatesSkipped +=
+        summary.duplicatesSkipped + packageResult.importResult.stats.duplicatesSkipped;
+      applyWarningCount += summary.warnings.length;
+
+      if (
+        summary.sourcesAdded > 0 ||
+        summary.evidenceAdded > 0 ||
+        summary.nodesAdded > 0 ||
+        summary.edgesAdded > 0 ||
+        summary.notesAdded > 0
+      ) {
+        importedLongTextPackageIds.add(packageResult.packageId);
+      }
+    });
+
+    const packageIds = result.packagesProduced.map((sourcePackage) => {
+      return sourcePackage.sourcePackageId;
+    });
+    const segmentCount = result.packagesProduced.reduce((count, sourcePackage) => {
+      return count + sourcePackage.segments.length;
+    }, 0);
+    const importedCount = sourcesAdded + evidenceAdded + nodesAdded + edgesAdded + notesAdded;
+    const duplicate = importedCount === 0 && duplicatesSkipped > 0;
+    const errorCount = result.errors.length;
+    const warningCount = result.warnings.length + applyWarningCount;
+    const message =
+      errorCount > 0
+        ? "Uzun metin kaynak paketine dönüştürülemedi."
+        : duplicate
+          ? "Bu uzun metin zaten odada kayıtlı görünüyor."
+          : importedCount > 0
+            ? `Uzun metin kaynak olarak eklendi: ${String(segmentCount)} segment.`
+            : "Uzun metinden içe aktarılacak kaynak bulunamadı.";
+
+    return {
+      packageIds,
+      message,
+      success: importedCount > 0,
+      duplicate,
+      sourcesAdded,
+      evidenceAdded,
+      nodesAdded,
+      edgesAdded,
+      notesAdded,
+      duplicatesSkipped,
+      warningCount,
+      errorCount,
+      segmentCount,
+    };
+  }
+
   const actions: PatternPanelActions = {
     getSelectedNodeId(): string | null {
       return selectedNodeId;
@@ -245,6 +347,30 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
       userTextSourceImportStatus = summarizeUserTextImportResult(result);
       render();
       return userTextSourceImportStatus;
+    },
+    importLongTextSource(input: PatternLongTextSourceImportInput) {
+      if (input.title.trim() === "") {
+        longTextSourceImportStatus = createEmptyLongTextStatus("Başlık boş olamaz.");
+        return longTextSourceImportStatus;
+      }
+      if (input.origin.trim() === "") {
+        longTextSourceImportStatus = createEmptyLongTextStatus("Kaynak bilgisi boş olamaz.");
+        return longTextSourceImportStatus;
+      }
+      if (input.text.trim() === "") {
+        longTextSourceImportStatus = createEmptyLongTextStatus("Metin boş olamaz.");
+        return longTextSourceImportStatus;
+      }
+
+      const producer = createLongTextProducer();
+      const result = produceAndImportSource(producer, createLongTextProducerInput(input), {
+        importOptions: {
+          existingPackageIds: [...importedLongTextPackageIds],
+        },
+      });
+      longTextSourceImportStatus = summarizeLongTextImportResult(result);
+      render();
+      return longTextSourceImportStatus;
     },
     importSampleSourcePackage(packageId?: string) {
       sourceImportDemoStatus = importSampleSourcePackage(localState, packageId);
@@ -362,6 +488,7 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
           actions,
           onBack,
           userTextSourceImportStatus,
+          longTextSourceImportStatus,
           sourceImportDemoStatus
         ),
       board: () => createBoardPanel(viewModels, actions, onBack),
