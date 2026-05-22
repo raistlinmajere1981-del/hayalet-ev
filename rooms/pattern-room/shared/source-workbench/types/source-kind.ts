@@ -1,6 +1,7 @@
 export const SOURCE_KINDS = [
   "user_text",
   "book",
+  "article",
   "religious_text",
   "newspaper",
   "archive_text",

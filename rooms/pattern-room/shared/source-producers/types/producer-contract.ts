@@ -2,7 +2,7 @@ import type { SourcePackage } from "../../source-workbench/types/source-package.
 import type { SourceKind } from "../../source-workbench/types/source-kind.js";
 import type { ProducerInputKind } from "./producer-input.js";
 
-export type ProducerType = "user_text";
+export type ProducerType = "user_text" | "long_text";
 
 export type ProducerCapabilities = {
   supportsPreview: boolean;
@@ -36,6 +36,7 @@ export type ValidationResult = {
 export type ProducerPreview = {
   estimatedPackageCount: number;
   estimatedItemCount: number;
+  estimatedSegmentCount?: number;
   sampleTitle: string;
   warnings: readonly ProducerWarning[];
 };

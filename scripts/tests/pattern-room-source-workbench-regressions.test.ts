@@ -20,6 +20,7 @@ import {
 const EXPECTED_SOURCE_KINDS = [
   "user_text",
   "book",
+  "article",
   "religious_text",
   "newspaper",
   "archive_text",
@@ -35,6 +36,7 @@ const EXPECTED_SOURCE_KINDS = [
 const EXPECTED_SOURCE_KIND_MAPPING = {
   user_text: "personal_note",
   book: "book",
+  article: "unknown",
   religious_text: "religious_text",
   newspaper: "newspaper",
   archive_text: "unknown",
