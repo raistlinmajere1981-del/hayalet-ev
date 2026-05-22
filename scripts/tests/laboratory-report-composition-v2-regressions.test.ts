@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import type { LabRun } from "../../rooms/laboratory/domain/lab-types.ts";
 import { createAudioAnalysisParserRuntime } from "../../rooms/laboratory/features/audio-analysis/host/analysis-parsers.ts";
+import { buildForensicSignatureMapping } from "../../rooms/laboratory/services/forensic-signature-mapper.ts";
 import { buildAiReport, buildUserReport } from "../../rooms/laboratory/services/report-builder.ts";
 import { createLaboratoryReportExportRuntime } from "../../rooms/laboratory/shared/host/reporting-export.ts";
 
@@ -479,8 +480,214 @@ test("laboratory forensic notes surface optical-flow motion split", () => {
   );
 
   assert.match(opticalNote?.detail || "", /localized_subject_motion/);
-  assert.equal(opticalNote?.measuredFields?.includes("subject\/background motion ratio"), true);
+  assert.equal(opticalNote?.measuredFields?.includes("subject/background motion ratio"), true);
   assert.match(attributionNote?.detail || "", /Motion split localized_subject_motion/);
+});
+
+test("laboratory forensic signature mapper classifies low-light compression starvation", () => {
+  const mapping = buildForensicSignatureMapping({
+    black: { count: 1, totalDurationSeconds: 0.8 },
+    compressionSignature: {
+      estimatedBitsPerPixelFrame: 0.045,
+      lowPacketFrameRatio: 0.26,
+      packetSpikeRatio: 0.01,
+      pictTypeCounts: { B: 0, P: 18 },
+      riskFactors: ["low bits-per-pixel-frame", "many low-packet frames"],
+      riskLevel: "high",
+      riskScore: 0.72,
+      sampledFrameCount: 18,
+      status: "measured",
+    },
+    duplicateFrame: {
+      exactDuplicateFrameCount: 0,
+      exactDuplicateFrameRatio: 0,
+      sampledFrameCount: 18,
+      status: "measured",
+    },
+    frameCadence: {
+      cadenceDriftRatio: 0.02,
+      sampledFrameCount: 18,
+      status: "measured",
+    },
+    opticalFlow: {
+      movementClass: "low_motion_baseline",
+      sampledFrameCount: 8,
+      status: "measured",
+    },
+  });
+
+  assert.equal(mapping["artifactFamily"], "low_light_compression_starvation");
+  assert.equal(mapping["confidence"], "high");
+  assert.match(String(mapping["learningFingerprint"]), /bpp:starved/);
+});
+
+test("laboratory forensic signature mapper classifies remaining artifact families", () => {
+  const cases = [
+    {
+      expectedFamily: "transport_duplicate_stream_stall",
+      input: {
+        compressionSignature: {
+          riskLevel: "low",
+          sampledFrameCount: 20,
+          status: "measured",
+        },
+        duplicateFrame: {
+          exactDuplicateFrameCount: 9,
+          exactDuplicateFrameRatio: 0.47,
+          longestDuplicateRunFrames: 5,
+          sampledFrameCount: 20,
+          status: "measured",
+        },
+        frameCadence: {
+          cadenceDriftRatio: 0.2,
+          sampledFrameCount: 20,
+          status: "measured",
+        },
+        freeze: { count: 2 },
+        freezeAttribution: {
+          classification: "transport_duplicate",
+          gopBoundaryOverlapCount: 0,
+        },
+        opticalFlow: {
+          movementClass: "low_motion_baseline",
+          sampledFrameCount: 8,
+          status: "measured",
+        },
+      },
+      signaturePattern: /duplicate:high/,
+    },
+    {
+      expectedFamily: "fast_motion_encoder_smear",
+      input: {
+        compressionSignature: {
+          estimatedBitsPerPixelFrame: 0.14,
+          packetSpikeRatio: 0.18,
+          pictTypeCounts: { B: 12, P: 12 },
+          riskLevel: "high",
+          sampledFrameCount: 24,
+          status: "measured",
+        },
+        frameCadence: {
+          cadenceDriftRatio: 0.21,
+          sampledFrameCount: 24,
+          status: "measured",
+        },
+        opticalFlow: {
+          movementClass: "global_motion_or_camera_shift",
+          sampledFrameCount: 8,
+          status: "measured",
+          subjectMotionEnergy: 0.026,
+        },
+      },
+      signaturePattern: /packet-spike:high/,
+    },
+    {
+      expectedFamily: "thin_edge_ringing_risk",
+      input: {
+        compressionSignature: {
+          estimatedBitsPerPixelFrame: 0.07,
+          packetSpikeRatio: 0.04,
+          pictTypeCounts: { B: 10, P: 10 },
+          riskLevel: "medium",
+          sampledFrameCount: 20,
+          status: "measured",
+        },
+        opticalFlow: {
+          movementClass: "low_motion_baseline",
+          sampledFrameCount: 8,
+          status: "measured",
+        },
+      },
+      signaturePattern: /bpp:thin/,
+    },
+    {
+      expectedFamily: "cadence_gop_discontinuity",
+      input: {
+        frameCadence: {
+          cadenceDriftRatio: 0.24,
+          sampledFrameCount: 20,
+          status: "measured",
+          timestampRegressionCount: 1,
+        },
+        freezeAttribution: {
+          classification: "cadence_drift",
+          gopBoundaryOverlapCount: 2,
+        },
+        gopStructure: {
+          keyFrameCount: 4,
+          sampledFrameCount: 20,
+          status: "measured",
+        },
+      },
+      signaturePattern: /cadence:high/,
+    },
+  ];
+
+  cases.forEach(function (entry) {
+    const mapping = buildForensicSignatureMapping(entry.input);
+
+    assert.equal(mapping["artifactFamily"], entry.expectedFamily);
+    assert.notEqual(mapping["confidence"], "low");
+    assert.match(String(mapping["learningFingerprint"]), entry.signaturePattern);
+  });
+});
+
+test("laboratory reports surface forensic signature mapping notes", () => {
+  const findings: LabRun["findings"] = [
+    {
+      id: "signature-finding",
+      moduleId: "motion",
+      sourceModule: "temporal-noise-pattern",
+      title: "Compression artifact cluster detected",
+      detail: "Packet and luminance probes suggest compression starvation.",
+      level: "medium",
+      confidence: "medium",
+      kind: "measured",
+      evidenceCount: 3,
+      artifactIds: [],
+      metadata: {
+        correlation: {
+          signalType: "luminance-collapse",
+          label: "compression signature",
+          window: { startSeconds: 7 },
+        },
+        probeSummary: {
+          forensicSignature: {
+            artifactFamily: "low_light_compression_starvation",
+            artifactLabel: "Low-light compression starvation",
+            confidence: "high",
+            counterEvidence: ["no repeated decoded-frame hashes were measured"],
+            evidence: [
+              "compression risk high",
+              "estimated bits-per-pixel-frame 0.04500",
+              "low packet-frame ratio 26.0%",
+            ],
+            manualReviewPrompts: ["Check the same window against a pre-upload source."],
+            measuredFields: ["compression packet signature", "blackdetect intervals"],
+            score: 0.91,
+            signatureKey: "compression:high|bpp:starved|motion:low_motion_baseline",
+            status: "measured",
+          },
+        },
+        temporalSegments: [{ startSeconds: 7, endSeconds: 7.8, durationSeconds: 0.8 }],
+      },
+    },
+  ];
+  const run = createInsightRun({ findings });
+
+  const aiReport = buildAiReport(run, {
+    featureId: "media-analysis",
+    findings,
+    generatedAt: "2026-05-20T10:00:00.000Z",
+    status: "ready",
+  });
+  const signatureNote = aiReport?.forensicNotes?.find(
+    (note) => note.label === "compression signature mapping"
+  );
+
+  assert.match(signatureNote?.detail || "", /Low-light compression starvation/);
+  assert.match(signatureNote?.detail || "", /Learning fingerprint compression:high/);
+  assert.equal(signatureNote?.measuredFields?.includes("compression packet signature"), true);
 });
 
 test("laboratory composite correlation requires distinct signal families", () => {

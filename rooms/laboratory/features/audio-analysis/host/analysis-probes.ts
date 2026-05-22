@@ -3,6 +3,7 @@ import {
   getAudioAnalysisOpenSmileConfigPath,
   getProjectProfileDir,
 } from "../../../shared/host/project-paths.js";
+import { buildForensicSignatureMapping } from "../../../services/forensic-signature-mapper.js";
 
 interface AnalysisProbesDeps {
   asNonEmptyString: (value: unknown) => string | null;
@@ -1466,20 +1467,31 @@ export function createAudioAnalysisProbeRuntime(deps: AnalysisProbesDeps) {
       timeScope,
       timeoutMs
     );
+    const freezeAttribution = buildFreezeAttribution(
+      freeze,
+      duplicateFrame,
+      frameMetadata.frameCadence,
+      frameMetadata.compressionSignature,
+      frameMetadata.gopStructure,
+      opticalFlow
+    );
     return {
       black,
       compressionSignature: frameMetadata.compressionSignature,
       duplicateFrame,
       frameCadence: frameMetadata.frameCadence,
       freeze,
-      freezeAttribution: buildFreezeAttribution(
-        freeze,
+      forensicSignature: buildForensicSignatureMapping({
+        black,
+        compressionSignature: frameMetadata.compressionSignature,
         duplicateFrame,
-        frameMetadata.frameCadence,
-        frameMetadata.compressionSignature,
-        frameMetadata.gopStructure,
-        opticalFlow
-      ),
+        frameCadence: frameMetadata.frameCadence,
+        freeze,
+        freezeAttribution,
+        gopStructure: frameMetadata.gopStructure,
+        opticalFlow,
+      }),
+      freezeAttribution,
       gopStructure: frameMetadata.gopStructure,
       opticalFlow,
       scopeWindow: serializeProbeTimeScope(timeScope),

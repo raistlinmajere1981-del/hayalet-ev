@@ -600,6 +600,60 @@ function appendMeasuredField(
   return isMeasuredProbeRecord(record) ? fields.concat(label) : fields;
 }
 
+function buildForensicSignatureMappingNote(
+  finding: LabFindingProjection,
+  probeSummary: Record<string, unknown>,
+  seen: Set<string>
+): LabForensicNote | null {
+  const forensicSignature = asLabRecord(probeSummary["forensicSignature"]);
+  const family = asNonEmptyString(forensicSignature["artifactFamily"]);
+  if (family === null || family === "baseline_no_dominant_artifact_signature") {
+    return null;
+  }
+  const label = asNonEmptyString(forensicSignature["artifactLabel"]) || family;
+  const confidence = asNonEmptyString(forensicSignature["confidence"]) || "low";
+  const score = readRecordNumber(forensicSignature, "score");
+  const signatureKey = asNonEmptyString(forensicSignature["signatureKey"]);
+  const evidence = asStringArray(forensicSignature["evidence"]);
+  const counterEvidence = asStringArray(forensicSignature["counterEvidence"]);
+  const manualReviewPrompts = asStringArray(forensicSignature["manualReviewPrompts"]);
+  const measuredFields = asStringArray(forensicSignature["measuredFields"]);
+  const dedupeKey = [
+    "forensic-signature",
+    finding.moduleId || "module",
+    family,
+    signatureKey || "no-signature",
+  ].join(":");
+  if (seen.has(dedupeKey)) {
+    return null;
+  }
+  seen.add(dedupeKey);
+  return {
+    id: `forensic-${finding.id}-signature-mapping`,
+    label: "compression signature mapping",
+    detail: [
+      `Mapped likely artifact family ${label} (${confidence} confidence${
+        score === null ? "" : `, score ${score.toFixed(2)}`
+      }).`,
+      evidence.length > 0 ? `Evidence: ${evidence.slice(0, 4).join("; ")}.` : null,
+      counterEvidence.length > 0
+        ? `Counter-evidence: ${counterEvidence.slice(0, 3).join("; ")}.`
+        : null,
+      signatureKey ? `Learning fingerprint ${signatureKey}.` : null,
+    ]
+      .filter((entry): entry is string => entry !== null)
+      .join(" "),
+    followUpChecks:
+      manualReviewPrompts.length > 0 ? manualReviewPrompts.slice(0, 3) : ["manual replay review"],
+    measuredFields:
+      measuredFields.length > 0
+        ? measuredFields
+        : ["compression packet signature", "frame cadence drift", "motion split"],
+    moduleId: finding.moduleId,
+    scope: "local",
+  };
+}
+
 function buildAttributionForensicNote(
   finding: LabFindingProjection,
   probeSummary: Record<string, unknown>,
@@ -765,6 +819,10 @@ function buildForensicNotes(findings: LabFindingProjection[]): LabForensicNote[]
     const attributionNote = buildAttributionForensicNote(finding, probeSummary, seen);
     if (attributionNote !== null) {
       notes.push(attributionNote);
+    }
+    const signatureMappingNote = buildForensicSignatureMappingNote(finding, probeSummary, seen);
+    if (signatureMappingNote !== null) {
+      notes.push(signatureMappingNote);
     }
     const opticalFlowNote = buildOpticalFlowForensicNote(finding, probeSummary, seen);
     if (opticalFlowNote !== null) {
@@ -1001,9 +1059,7 @@ export function buildIntentReportGroups(run: LabRun | null): LabIntentReportGrou
   }
 
   const scopeIntentIds = Array.isArray(run.analysisScope?.intentIds)
-    ? run.analysisScope?.intentIds.filter(
-        (entry): entry is LabIntentId => typeof entry === "string"
-      )
+    ? run.analysisScope.intentIds.filter((entry): entry is LabIntentId => typeof entry === "string")
     : [];
   const orderedIntentIds = scopeIntentIds.filter(function (intentId, index) {
     return scopeIntentIds.indexOf(intentId) === index;

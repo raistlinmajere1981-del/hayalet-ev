@@ -64,6 +64,7 @@ type LaboratoryVideoProbeRecord = LaboratoryRecord & {
   duplicateFrame?: unknown;
   frameCadence?: unknown;
   freeze?: unknown;
+  forensicSignature?: unknown;
   freezeAttribution?: unknown;
   gopStructure?: unknown;
   opticalFlow?: unknown;
@@ -489,11 +490,14 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
   function formatVideoForensicProbeSummary(probeSummary: LaboratoryRecord): string | null {
     const duplicateFrame = toRecord(probeSummary["duplicateFrame"]);
     const compressionSignature = toRecord(probeSummary["compressionSignature"]);
+    const forensicSignature = toRecord(probeSummary["forensicSignature"]);
     const freezeAttribution = toRecord(probeSummary["freezeAttribution"]);
     const opticalFlow = toRecord(probeSummary["opticalFlow"]);
     const duplicateCount = toFiniteNumber(duplicateFrame["exactDuplicateFrameCount"]) || 0;
     const duplicateRatio = formatRatioPercent(duplicateFrame["exactDuplicateFrameRatio"]);
     const riskLevel = asNonEmptyString(compressionSignature["riskLevel"]);
+    const artifactFamily = asNonEmptyString(forensicSignature["artifactFamily"]);
+    const artifactConfidence = asNonEmptyString(forensicSignature["confidence"]);
     const classification = asNonEmptyString(freezeAttribution["classification"]);
     const flowClass = asNonEmptyString(opticalFlow["movementClass"]);
     const flowRatio = toFiniteNumber(opticalFlow["subjectBackgroundMotionRatio"]);
@@ -502,6 +506,9 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
         ? `duplicate frames: ${String(duplicateCount)}${duplicateRatio ? ` (${duplicateRatio})` : ""}`
         : null,
       riskLevel ? `compression risk: ${riskLevel}` : null,
+      artifactFamily && artifactFamily !== "baseline_no_dominant_artifact_signature"
+        ? `artifact family: ${artifactFamily}${artifactConfidence ? ` (${artifactConfidence})` : ""}`
+        : null,
       classification && classification !== "baseline" ? `attribution: ${classification}` : null,
       flowClass
         ? `motion split: ${flowClass}${flowRatio === null ? "" : ` (${flowRatio.toFixed(2)}x)`}`
@@ -545,6 +552,7 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
     const duplicateFrame = toRecord(probeSummary["duplicateFrame"]);
     const frameCadence = toRecord(probeSummary["frameCadence"]);
     const compressionSignature = toRecord(probeSummary["compressionSignature"]);
+    const forensicSignature = toRecord(probeSummary["forensicSignature"]);
     const opticalFlow = toRecord(probeSummary["opticalFlow"]);
     const measuredChecklist = [
       "freezedetect intervals",
@@ -552,6 +560,7 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
       isMeasuredProbeRecord(duplicateFrame) ? "duplicate-frame ratio" : null,
       isMeasuredProbeRecord(frameCadence) ? "frame cadence drift" : null,
       isMeasuredProbeRecord(compressionSignature) ? "compression packet signature" : null,
+      isMeasuredProbeRecord(forensicSignature) ? "forensic signature mapping" : null,
       isMeasuredProbeRecord(opticalFlow) ? "optical-flow ROI/background split" : null,
     ].filter((entry): entry is string => entry !== null);
     return {
@@ -885,6 +894,7 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
       const duplicateFrameSummary = toRecord(videoProbe.duplicateFrame);
       const frameCadenceSummary = toRecord(videoProbe.frameCadence);
       const compressionSignatureSummary = toRecord(videoProbe.compressionSignature);
+      const forensicSignatureSummary = toRecord(videoProbe.forensicSignature);
       const gopStructureSummary = toRecord(videoProbe.gopStructure);
       const opticalFlowSummary = toRecord(videoProbe.opticalFlow);
       const freezeAttributionSummary = toRecord(videoProbe.freezeAttribution);
@@ -903,6 +913,7 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
         duplicateFrame: duplicateFrameSummary,
         frameCadence: frameCadenceSummary,
         freeze: freezeSummary,
+        forensicSignature: forensicSignatureSummary,
         freezeAttribution: freezeAttributionSummary,
         gopStructure: gopStructureSummary,
         opticalFlow: opticalFlowSummary,

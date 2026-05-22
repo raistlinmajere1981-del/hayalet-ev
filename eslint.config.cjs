@@ -250,7 +250,9 @@ module.exports = tseslint.config(
       "rooms/.build/**",
       "rooms/**/shared/vendor/**",
       "**/*.min.js",
-      "scripts/**",
+      "scripts/**/*",
+      "!scripts/tests/",
+      "!scripts/tests/laboratory-report-composition-v2-regressions.test.ts",
       "*.min.js",
       "*.tsbuildinfo",
       "package-lock.json",
@@ -448,6 +450,8 @@ module.exports = tseslint.config(
       "rooms/**/ui/**/*.ts",
       "rooms/**/shared/ui/**/*.ts",
       "rooms/**/host/**/*.ts",
+      "rooms/laboratory/services/forensic-signature-mapper.ts",
+      "rooms/laboratory/services/report-builder.ts",
       "rooms/**/shared/host/**/*.ts",
       "rooms/**/shared/types/**/*.ts",
       "rooms/**/main-functions/**/ui/**/*.ts",
@@ -525,6 +529,40 @@ module.exports = tseslint.config(
     },
     rules: {
       ...roomTsContractRules,
+    },
+  },
+
+  // === Focused TypeScript Regression Tests ===
+  {
+    files: ["scripts/tests/laboratory-report-composition-v2-regressions.test.ts"],
+    extends: [...tseslint.configs.recommended],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      globals: {
+        Buffer: "readonly",
+        console: "readonly",
+        process: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^(_|e|err|error|evt|event)",
+          varsIgnorePattern: "^(_|e|err|error|evt|event)",
+          caughtErrorsIgnorePattern: "^(_|e|err|error)",
+        },
+      ],
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-require-imports": "error",
+      "@typescript-eslint/consistent-type-imports": ["error", { prefer: "type-imports" }],
+      "no-unused-vars": "off",
+      "no-empty": ["error", { allowEmptyCatch: true }],
+      "no-console": ["warn", { allow: ["warn", "error", "info"] }],
+      "no-undef": "off",
     },
   },
 
