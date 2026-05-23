@@ -100,6 +100,7 @@ const SOURCE_TYPE_LABELS: Record<PatternSourceType, string> = {
   personal_note: "Kişisel not",
   unknown: "Belirsiz kaynak",
 };
+const ARCHIVE_SOURCE_NOTE_PREVIEW_LENGTH = 240;
 
 const RELIABILITY_LABELS: Record<PatternReliability, string> = {
   unverified: "Doğrulanmamış",
@@ -316,14 +317,24 @@ function adaptSourceNote(source: SourceItem): string {
   return `${reliabilityLabel}; kaynak origin: ${source.origin}.`;
 }
 
+function createArchiveSourceNotePreview(note: string): string {
+  const normalizedNote = note.replace(/\s+/g, " ").trim();
+  if (normalizedNote.length <= ARCHIVE_SOURCE_NOTE_PREVIEW_LENGTH) {
+    return normalizedNote;
+  }
+  return `${normalizedNote.slice(0, ARCHIVE_SOURCE_NOTE_PREVIEW_LENGTH).trimEnd()}…`;
+}
+
 function adaptLocalAuthoredSource(source: LocalAuthoredSource): PatternSource {
+  const note = source.note === "" ? "Oda içinde eklenen yerel kaynak." : source.note;
   return {
     id: source.id,
     label: source.label,
     sourceTypeLabel: "Yerel Kaynak",
     origin: source.origin,
     status: "local",
-    note: source.note === "" ? "Oda içinde eklenen yerel kaynak." : source.note,
+    note,
+    notePreview: createArchiveSourceNotePreview(note),
     isLocal: true,
   };
 }
@@ -501,13 +512,15 @@ export function adaptArchiveViewModel(
   overlay?: PatternRoomLocalOverlay
 ): PatternArchiveViewModel {
   const sources: PatternSource[] = domain.sources.map((source) => {
+    const note = adaptSourceNote(source);
     return {
       id: source.id,
       label: source.label,
       sourceTypeLabel: SOURCE_TYPE_LABELS[source.sourceType],
       origin: source.origin,
       status: "mocked",
-      note: adaptSourceNote(source),
+      note,
+      notePreview: createArchiveSourceNotePreview(note),
       isLocal: false,
     };
   });

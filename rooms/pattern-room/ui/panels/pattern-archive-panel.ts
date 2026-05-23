@@ -1,4 +1,5 @@
 import type {
+  PatternSource,
   PatternLongTextSourceImportInput,
   PatternLongTextSourceImportStatus,
   PatternPanelActions,
@@ -11,6 +12,16 @@ import { createActionButton, createElement, createPanelShell } from "./pattern-p
 const REMOVE_LOCAL_SOURCE_CONFIRMATION = "Bu yerel kaynak odadan kaldırılacak. Devam edilsin mi?";
 const RESET_LOCAL_SESSION_CONFIRMATION =
   "Tüm yerel kaynaklar, notlar ve geçici tartışma izleri temizlenecek. Hazır konu verileri korunur. Devam edilsin mi?";
+type PatternArchivePanelSelection = {
+  selectedSourceId: string | null;
+  onSelectSource: (sourceId: string | null) => void;
+};
+
+const DEFAULT_ARCHIVE_PANEL_SELECTION: PatternArchivePanelSelection = {
+  selectedSourceId: null,
+  onSelectSource: () => {},
+};
+
 const LONG_TEXT_SOURCE_KIND_OPTIONS = [
   { label: "Kitap", value: "book" },
   { label: "Makale", value: "article" },
@@ -272,29 +283,98 @@ function createLocalSessionResetSection(actions: PatternPanelActions): HTMLEleme
   return section;
 }
 
+function createSourceDetailMeta(label: string, value: string): HTMLElement {
+  const item = createElement("span", "pattern-room-source-detail-meta-item", `${label}: ${value}`);
+  return item;
+}
+
+function createArchiveSourceDetail(
+  source: PatternSource | undefined,
+  selectedSourceId: string | null
+): HTMLElement {
+  const detail = createElement("section", "pattern-room-source-detail");
+  detail.dataset["patternArchiveSourceDetail"] = "true";
+  detail.append(createElement("h2", undefined, "Kaynak Detayı"));
+
+  if (source === undefined) {
+    const placeholder = createElement(
+      "p",
+      "pattern-room-source-detail-placeholder",
+      selectedSourceId === null ? "Bir kaynak seç" : "Seçili kaynak artık arşivde değil."
+    );
+    placeholder.dataset["patternArchiveSourceDetailPlaceholder"] = "true";
+    detail.append(placeholder);
+    return detail;
+  }
+
+  detail.dataset["patternArchiveSourceDetailId"] = source.id;
+  const meta = createElement("div", "pattern-room-source-detail-meta");
+  meta.append(
+    createSourceDetailMeta("Tür", source.sourceTypeLabel),
+    createSourceDetailMeta("Köken", source.origin),
+    createSourceDetailMeta("Durum", source.status)
+  );
+  const fullText = createElement("pre", "pattern-room-source-detail-text", source.note);
+  fullText.dataset["patternArchiveSourceFullText"] = source.id;
+
+  detail.append(createElement("h3", undefined, source.label), meta, fullText);
+  return detail;
+}
+
 export function createArchivePanel(
   data: PatternRoomMockData,
   actions: PatternPanelActions,
   onBack: () => void,
   userTextSourceImportStatus: PatternUserTextSourceImportStatus | null = null,
   longTextSourceImportStatus: PatternLongTextSourceImportStatus | null = null,
-  sourceImportStatus: PatternSampleSourceImportStatus | null = null
+  sourceImportStatus: PatternSampleSourceImportStatus | null = null,
+  selection: PatternArchivePanelSelection = DEFAULT_ARCHIVE_PANEL_SELECTION
 ): HTMLElement {
   const shell = createPanelShell("archive", "Arşiv", onBack);
   const list = createElement("div", "pattern-room-archive-list");
+  const selectedSource = data.sources.find((source) => {
+    return source.id === selection.selectedSourceId;
+  });
 
   data.sources.forEach((source) => {
     const toneClass =
       source.isLocal === true ? "local-source" : sourceTypeClass(source.sourceTypeLabel);
-    const card = createElement("article", `pattern-room-archive-card ${toneClass}`);
+    const isSelected = source.id === selection.selectedSourceId;
+    const card = createElement(
+      "article",
+      `pattern-room-archive-card ${toneClass}${isSelected ? " selected-source" : ""}`
+    );
     card.dataset["patternArchiveSource"] = source.id;
+    card.dataset["patternArchiveSourceSelected"] = isSelected ? "true" : "false";
     const drawer = createElement("span", "pattern-room-archive-drawer", source.origin);
     const tag = createElement(
       "span",
       `pattern-room-source-tag ${toneClass}`,
       source.sourceTypeLabel
     );
+    const preview = createElement(
+      "p",
+      "pattern-room-archive-preview",
+      source.notePreview ?? source.note
+    );
+    preview.dataset["patternArchiveSourcePreview"] = source.id;
     const actionsRow = createElement("div", "pattern-room-action-row");
+    const sourceStatus = createElement("small", undefined, source.status);
+    const metadata =
+      source.metadataLine === undefined || source.metadataLine.trim() === ""
+        ? null
+        : createElement("span", "pattern-room-archive-meta", source.metadataLine);
+
+    if (metadata !== null) {
+      metadata.dataset["patternArchiveSourceMeta"] = source.id;
+    }
+
+    const inspectButton = createActionButton("İncele", () => {
+      selection.onSelectSource(source.id);
+    });
+    inspectButton.dataset["patternInspectSource"] = source.id;
+    actionsRow.append(inspectButton);
+
     if (source.isLocal !== true) {
       const pinButton = createActionButton("Panoya İliştir", () => {
         actions.pinSourceToBoard(source.id, "evidence");
@@ -313,6 +393,9 @@ export function createArchivePanel(
         if (!window.confirm(REMOVE_LOCAL_SOURCE_CONFIRMATION)) {
           return;
         }
+        if (selection.selectedSourceId === source.id) {
+          selection.onSelectSource(null);
+        }
         actions.removeLocalSource(source.id);
       });
       removeButton.dataset["patternRemoveLocalSource"] = source.id;
@@ -323,8 +406,9 @@ export function createArchivePanel(
       drawer,
       tag,
       createElement("h3", undefined, source.label),
-      createElement("p", undefined, source.note),
-      createElement("small", undefined, source.status),
+      preview,
+      ...(metadata === null ? [] : [metadata]),
+      sourceStatus,
       actionsRow
     );
     list.append(card);
@@ -339,6 +423,7 @@ export function createArchivePanel(
     ),
     createSourceAuthoringForm(actions),
     createLocalSessionResetSection(actions),
+    createArchiveSourceDetail(selectedSource, selection.selectedSourceId),
     list
   );
   return shell;

@@ -8,6 +8,7 @@ import {
   resolve,
   test,
 } from "./forge-room-ui-smoke.helpers.ts";
+import { adaptDomainToViewModels } from "../../rooms/pattern-room/shared/adapters/pattern-room-view-adapters.ts";
 import { PATTERN_ROOM_DOMAIN_MOCK } from "../../rooms/pattern-room/shared/data/pattern-room-domain.mock.ts";
 import { createLocalState } from "../../rooms/pattern-room/shared/state/pattern-room-local-state.ts";
 import {
@@ -23,6 +24,8 @@ import {
   PATTERN_ROOM_SNAPSHOT_VERSION,
   type PatternRoomSessionSnapshot,
 } from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
+import { createArchivePanel } from "../../rooms/pattern-room/ui/panels/pattern-archive-panel.ts";
+import type { PatternPanelActions } from "../../rooms/pattern-room/shared/types/pattern-room.ts";
 
 const PATTERN_FOCUSED_VIEWS = ["board", "desk", "archive", "tenth-man", "report"] as const;
 type PatternFocusedViewId = (typeof PATTERN_FOCUSED_VIEWS)[number];
@@ -712,6 +715,20 @@ test("pattern-room installed UI supports phase 4B local interactions without hos
 
     returnToOverview(environment.app);
     openFocusedView(environment.app, "archive");
+    const inspectSource = environment.app.querySelector(
+      "[data-pattern-inspect-source='source-shadow-comparison']"
+    );
+    assert.ok(inspectSource);
+    fireEvent(inspectSource, "click");
+    assertTextIncludes(readTreeText(environment.app), [
+      "Kaynak Detayı",
+      "Golge karsilastirma gorseli",
+      "Tür: Görsel kaynak",
+      "Köken: Yerel temsilî görsel inceleme",
+      "Durum: mocked",
+      "Doğrulanmamış; kaynak origin: Yerel temsilî görsel inceleme.",
+    ]);
+
     const pinSource = environment.app.querySelector(
       "[data-pattern-pin-source='source-shadow-comparison']"
     );
@@ -1122,8 +1139,9 @@ test("pattern-room installed UI phase 13C imports long text as a source only", a
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
   const longText =
-    "Birinci bölüm uzun arşiv metninin ilk parçasıdır. Bu parça yalnızca kaynak gövdesinde tutulur.\n\n" +
-    "İkinci bölüm segment sayısını görünür kılar. Bu aşamada alıntı veya örüntü çıkarımı yapılmaz.";
+    "Birinci bölüm uzun arşiv metninin ilk parçasıdır. Bu parça yalnızca kaynak gövdesinde tutulur. Kart görünümü bu metnin tamamını basmamalı; çünkü kaynak kartı arşivde kompakt kalmalı, çalışma yüzeyini uzatmamalı ve yalnızca kısa bir önizleme göstermelidir.\n\n" +
+    "İkinci bölüm segment sayısını görünür kılar. Bu aşamada alıntı veya örüntü çıkarımı yapılmaz. TAM_METIN_GIZLI_KUYRUK";
+  const expectedExcerpt = `${longText.replace(/\s+/g, " ").trim().slice(0, 240).trimEnd()}…`;
 
   try {
     await import(
@@ -1156,8 +1174,44 @@ test("pattern-room installed UI phase 13C imports long text as a source only", a
       "Uzun metin kaynak olarak eklendi: 2 segment.",
       "Faz 13C uzun metin",
       "Yerel Kaynak",
-      "Birinci bölüm uzun arşiv metninin ilk parçasıdır.",
+      expectedExcerpt,
     ]);
+    const archiveText = readTreeText(environment.app);
+    assert.equal(archiveText.includes(longText), false);
+    assert.doesNotMatch(archiveText, /TAM_METIN_GIZLI_KUYRUK/);
+    assertTextIncludes(archiveText, ["Kaynak Detayı", "Bir kaynak seç"]);
+    assert.equal(environment.pendingTimerCount(), 1);
+
+    const preview = environment.app.querySelector(
+      "[data-pattern-archive-source-preview='local-source-001']"
+    );
+    const inspectLongTextSource = environment.app.querySelector(
+      "[data-pattern-inspect-source='local-source-001']"
+    );
+    assert.ok(preview);
+    assert.ok(inspectLongTextSource);
+    assert.equal(preview.textContent, expectedExcerpt);
+    assert.doesNotMatch(preview.textContent, /TAM_METIN_GIZLI_KUYRUK/);
+    fireEvent(inspectLongTextSource, "click");
+
+    const detailText = environment.app.querySelector(
+      "[data-pattern-archive-source-full-text='local-source-001']"
+    );
+    assert.ok(detailText);
+    assert.equal(detailText.textContent, longText);
+    assertTextIncludes(readTreeText(environment.app), [
+      "Kaynak Detayı",
+      "Faz 13C uzun metin",
+      "Tür: Yerel Kaynak",
+      "Köken: Makale arşivi",
+      "Durum: local",
+      "TAM_METIN_GIZLI_KUYRUK",
+    ]);
+    const selectedCard = environment.app.querySelector(
+      "[data-pattern-archive-source='local-source-001']"
+    );
+    assert.ok(selectedCard);
+    assert.equal(selectedCard.dataset["patternArchiveSourceSelected"], "true");
     assert.equal(environment.pendingTimerCount(), 1);
 
     environment.runPendingTimers(2000);
@@ -1196,6 +1250,46 @@ test("pattern-room installed UI phase 13C imports long text as a source only", a
   } finally {
     environment.restore();
     await installedCopy.cleanup();
+  }
+});
+
+test("pattern-room archive source card renders compact preview metadata when provided", () => {
+  const environment = createMinimalForgeUiEnvironment();
+
+  try {
+    const data = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK);
+    data.sources = [
+      {
+        id: "local-source-meta",
+        label: "Deneme",
+        sourceTypeLabel: "Yerel Kaynak",
+        origin: "Test",
+        status: "local",
+        note: "Tam içerik state tarafında korunur; kart yalnızca kısa önizlemeyi gösterir.",
+        notePreview: "Tam içerik state tarafında korunur…",
+        metadataLine: "Segment: 1 · Karakter: 640",
+        isLocal: true,
+      },
+    ];
+
+    const panel = createArchivePanel(data, {} as PatternPanelActions, () => {});
+    environment.app.append(panel as unknown as PatternRoomFakeApp);
+
+    assert.ok(
+      environment.app.querySelector("[data-pattern-archive-source-preview='local-source-meta']")
+    );
+    assert.ok(
+      environment.app.querySelector("[data-pattern-archive-source-meta='local-source-meta']")
+    );
+    assertTextIncludes(readTreeText(environment.app), [
+      "Deneme",
+      "Yerel Kaynak",
+      "Test",
+      "Tam içerik state tarafında korunur…",
+      "Segment: 1 · Karakter: 640",
+    ]);
+  } finally {
+    environment.restore();
   }
 });
 
@@ -1447,6 +1541,17 @@ test("pattern-room installed UI phase 12G-A removes confirmed local sources and 
 
     returnToOverview(environment.app);
     openFocusedView(environment.app, "archive");
+    const inspectLocalSource = environment.app.querySelector(
+      "[data-pattern-inspect-source='local-source-001']"
+    );
+    assert.ok(inspectLocalSource);
+    fireEvent(inspectLocalSource, "click");
+    assertTextIncludes(readTreeText(environment.app), [
+      "Kaynak Detayı",
+      "Kaynak Bağlantı Testi",
+      "Silindiğinde bağlı yerel bağlantısı da kalkacak kaynak.",
+    ]);
+
     const removeLocalSource = environment.app.querySelector(
       "[data-pattern-remove-local-source='local-source-001']"
     );
@@ -1462,6 +1567,10 @@ test("pattern-room installed UI phase 12G-A removes confirmed local sources and 
       environment.app.querySelector("[data-pattern-archive-source='local-source-001']"),
       null
     );
+    assert.ok(
+      environment.app.querySelector("[data-pattern-archive-source-detail-placeholder='true']")
+    );
+    assertTextIncludes(readTreeText(environment.app), ["Kaynak Detayı", "Bir kaynak seç"]);
     assert.equal(environment.pendingTimerCount(), 1);
     environment.runPendingTimers(2000);
     assert.deepEqual(environment.sentCommands, [

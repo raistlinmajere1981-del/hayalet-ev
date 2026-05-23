@@ -70,6 +70,7 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   let activeView: PatternViewId = "overview";
   let selectedNodeId: string | null = null;
+  let selectedArchiveSourceId: string | null = null;
   let viewModels: PatternRoomMockData = adaptDomainToViewModels(
     PATTERN_ROOM_DOMAIN_MOCK,
     localState.getOverlay()
@@ -280,6 +281,17 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     };
   }
 
+  function archiveSourceExists(sourceId: string): boolean {
+    return viewModels.sources.some((source) => {
+      return source.id === sourceId;
+    });
+  }
+
+  function selectArchiveSource(sourceId: string | null): void {
+    selectedArchiveSourceId = sourceId;
+    render();
+  }
+
   const actions: PatternPanelActions = {
     getSelectedNodeId(): string | null {
       return selectedNodeId;
@@ -399,6 +411,9 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
 
   localState.subscribe(() => {
     viewModels = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK, localState.getOverlay());
+    if (selectedArchiveSourceId !== null && !archiveSourceExists(selectedArchiveSourceId)) {
+      selectedArchiveSourceId = null;
+    }
     render();
     scheduleAutosave();
   });
@@ -489,7 +504,11 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
           onBack,
           userTextSourceImportStatus,
           longTextSourceImportStatus,
-          sourceImportDemoStatus
+          sourceImportDemoStatus,
+          {
+            selectedSourceId: selectedArchiveSourceId,
+            onSelectSource: selectArchiveSource,
+          }
         ),
       board: () => createBoardPanel(viewModels, actions, onBack),
       desk: () => createDeskPanel(viewModels, actions, onBack),
@@ -516,6 +535,7 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     isRestoring = true;
     try {
       activeView = restoredState.activeView;
+      selectedArchiveSourceId = null;
       localState.restoreOverlay(restoredState.overlay, restoredState.guards);
       return true;
     } finally {

@@ -45,6 +45,8 @@ export type PatternSource = {
   origin: string;
   status: "mocked" | "local";
   note: string;
+  notePreview?: string;
+  metadataLine?: string;
   isLocal?: boolean;
 };
 

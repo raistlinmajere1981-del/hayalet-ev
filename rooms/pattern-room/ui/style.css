@@ -906,6 +906,18 @@ p {
   text-transform: uppercase;
 }
 
+.pattern-room-archive-preview {
+  overflow-wrap: anywhere;
+}
+
+.pattern-room-archive-meta {
+  display: block;
+  margin-top: var(--pattern-px-8);
+  color: var(--pattern-text-subtle);
+  font-size: var(--pattern-rem-0-76);
+  font-weight: 700;
+}
+
 .pattern-room-lightbox,
 .pattern-room-device,
 .pattern-room-report {
@@ -950,6 +962,13 @@ p {
   padding: var(--pattern-px-18);
   border-top-width: var(--pattern-px-5);
   background: var(--pattern-gradient-archive-sheen), var(--pattern-surface-archive-alpha-86);
+}
+
+.pattern-room-archive-card.selected-source {
+  border-color: var(--pattern-accent-cyan-alpha-72);
+  box-shadow:
+    0 var(--pattern-px-18) var(--pattern-px-48) var(--pattern-black-alpha-24),
+    0 0 0 var(--pattern-px-3) var(--pattern-accent-cyan-alpha-10);
 }
 
 .pattern-room-archive-card::after {
@@ -1015,6 +1034,7 @@ p {
 }
 
 .pattern-room-source-workbench-demo,
+.pattern-room-source-detail,
 .pattern-room-local-session-reset {
   display: grid;
   gap: var(--pattern-px-10);
@@ -1027,10 +1047,50 @@ p {
 }
 
 .pattern-room-source-workbench-demo h3,
+.pattern-room-source-detail h2,
+.pattern-room-source-detail h3,
 .pattern-room-local-session-reset h3 {
   margin: 0;
   color: var(--pattern-text-warm);
   font-size: var(--pattern-rem-1);
+}
+
+.pattern-room-source-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pattern-px-8);
+}
+
+.pattern-room-source-detail-meta-item {
+  display: inline-flex;
+  width: max-content;
+  padding: var(--pattern-px-5) var(--pattern-px-8);
+  border: var(--pattern-px-1) solid var(--pattern-text-alpha-14);
+  border-radius: var(--pattern-px-999);
+  background: var(--pattern-white-alpha-06);
+  color: var(--pattern-text-subtle);
+  font-size: var(--pattern-rem-0-76);
+  font-weight: 800;
+}
+
+.pattern-room-source-detail-placeholder {
+  margin-bottom: 0;
+  color: var(--pattern-text-subtle);
+}
+
+.pattern-room-source-detail-text {
+  max-height: var(--pattern-px-320);
+  margin: 0;
+  overflow: auto;
+  padding: var(--pattern-px-12);
+  border: var(--pattern-px-1) solid var(--pattern-text-alpha-14);
+  border-radius: var(--pattern-px-8);
+  background: var(--pattern-surface-control-alpha-74);
+  color: var(--pattern-text);
+  font-family: inherit;
+  font-size: var(--pattern-rem-0-88);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .pattern-room-source-workbench-status {

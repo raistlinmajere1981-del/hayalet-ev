@@ -126,6 +126,29 @@ test("pattern-room phase 3B adapter maps source type labels for archive cards", 
   assert.deepEqual(labels, ["Kitap / Metin", "Görsel kaynak", "Kişisel not", "Belirsiz kaynak"]);
 });
 
+test("pattern-room phase 13D archive source previews stay compact while notes stay intact", () => {
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const longNote =
+    "Uzun kaynak gövdesi arşiv kartında tam olarak basılmamalı. Bu gövde snapshot ve local state içinde korunur; kart ise kısa bir önizleme gösterir. Böylece uzun kitap, makale veya arşiv metinleri paneli aşağı doğru aşırı büyütmez ve mevcut kaynak kartı davranışı korunur.\n\n" +
+    "Bu kuyruk state içinde kalmalı fakat Archive kart metninde görünmemelidir.";
+  const expectedPreview = `${longNote.replace(/\s+/g, " ").trim().slice(0, 240).trimEnd()}…`;
+
+  localState.addAuthoredSource("Uzun kaynak", "Arşiv", longNote);
+
+  const viewModels = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK, localState.getOverlay());
+  const localSource = viewModels.sources.find((source) => {
+    return source.id === "local-source-001";
+  });
+  const domainSource = adaptArchiveViewModel(PATTERN_ROOM_DOMAIN_MOCK).sources[0];
+
+  assert.ok(localSource);
+  assert.equal(localSource.note, longNote);
+  assert.equal(localSource.notePreview, expectedPreview);
+  assert.equal(localSource.notePreview?.includes("Bu kuyruk"), false);
+  assert.ok(domainSource);
+  assert.equal(domainSource.notePreview, domainSource.note);
+});
+
 test("pattern-room phase 4B adapter applies local overlay without mutating domain mock data", () => {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
