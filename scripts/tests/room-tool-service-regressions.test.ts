@@ -103,7 +103,10 @@ test("room tool service supports app-managed installers and system-command probe
   assert.match(serviceSource, /await copyFile\(sourcePath, targetPath\);/);
   assert.match(serviceSource, /await moveDownloadedFile\(downloadResult\.path, binaryPath\);/);
   assert.match(serviceSource, /releaseProvider\.type === "web-page"/);
-  assert.match(serviceSource, /const latestVersion = findVersion\(releasePage, releaseProvider\.versionRegex\);/);
+  assert.match(
+    serviceSource,
+    /const latestVersion = findVersion\(releasePage, releaseProvider\.versionRegex\);/
+  );
   assert.match(serviceSource, /async function resolveSystemCommandBinaryPath\(/);
   assert.match(serviceSource, /allowPathLookup\?: boolean \| undefined;/);
   assert.match(serviceSource, /if \(options\?\.allowPathLookup === false\) \{\s*return null;\s*\}/);
@@ -160,7 +163,7 @@ test("room tool service supports app-managed installers and system-command probe
   );
   assert.match(
     serviceSource,
-    /allowPathLookup: this\.getInstallerType\(resolvedSystemCommand\.manifest\) !== "python-venv-pip",/
+    /allowPathLookup:\s*this\.getInstallerType\(resolvedSystemCommand\.manifest\)\s*!==\s*"python-venv-pip",/
   );
   assert.match(serviceSource, /installerType,/);
   assert.match(
@@ -245,7 +248,7 @@ test("room tool service supports app-managed installers and system-command probe
   assert.match(toolOverlaySource, /verifySystemCommand/);
   assert.match(toolOverlaySource, /systemCommandVerified/);
   assert.match(toolOverlaySource, /lastCheckedAt/);
-  assert.match(toolOverlaySource, /strategy\.systemCommand/);
+  assert.doesNotMatch(toolOverlaySource, /strategy\.systemCommand/);
   assert.doesNotMatch(manifestSource, /"audioop-lts"/);
   assert.match(
     serviceSource,

@@ -364,10 +364,7 @@
         "report": "optional"
       },
       "probe": {
-        "args": [
-          "-c",
-          "import torch, torchvision, cv2, numpy, scipy; print(torch.__version__)"
-        ],
+        "args": ["-c", "import torch, torchvision, cv2, numpy, scipy; print(torch.__version__)"],
         "versionRegex": "(\\d+(?:\\.\\d+)+)"
       },
       "systemCommand": {

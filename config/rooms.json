@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-05-24T21:20:27.726Z",
+  "updatedAt": "2026-05-24T21:30:03.631Z",
   "rooms": [
     {
       "id": "repair-room",
@@ -1656,8 +1656,8 @@
         }
       },
       "i18nBaseDir": "/home/raistlin/hayalet-ev/rooms/.build/laboratory/runtime/i18n",
-      "installedAt": "2026-05-24T21:20:27.726Z",
-      "updatedAt": "2026-05-24T21:20:27.726Z"
+      "installedAt": "2026-05-24T21:30:03.631Z",
+      "updatedAt": "2026-05-24T21:30:03.631Z"
     }
   ]
 }

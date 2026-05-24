@@ -1018,7 +1018,9 @@ function normalizeToolStatus(toolId: string, data: Partial<RoomToolStatus>): Roo
 }
 
 function isCrossDeviceRenameError(error: unknown): boolean {
-  return error !== null && typeof error === "object" && (error as { code?: unknown }).code === "EXDEV";
+  return (
+    error !== null && typeof error === "object" && (error as { code?: unknown }).code === "EXDEV"
+  );
 }
 
 async function moveDownloadedFile(sourcePath: string, targetPath: string): Promise<void> {
@@ -1905,7 +1907,8 @@ class RoomToolService {
           ? this.resolveSystemCommandTool(manifest, request.toolId)
           : this.resolveToolSystemCommandSpec(toolManifest, request.toolId);
       const resolvedBinaryPath = await resolveSystemCommandBinaryPath(selectedExecutableName, {
-        allowPathLookup: this.getInstallerType(resolvedSystemCommand.manifest) !== "python-venv-pip",
+        allowPathLookup:
+          this.getInstallerType(resolvedSystemCommand.manifest) !== "python-venv-pip",
         envVarNames:
           selectedExecutableName === resolvedSystemCommand.systemCommand.executableName
             ? resolvedSystemCommand.systemCommand.envVarNames
