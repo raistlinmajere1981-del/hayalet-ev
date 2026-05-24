@@ -41,6 +41,61 @@
       "summaryKey": "visualAnalysis.providers.ffmpeg-visual-reveal.summary"
     },
     {
+      "id": "ffmpeg-visual-forensics",
+      "status": "ready",
+      "toolId": "ffmpeg",
+      "moduleIds": [
+        "perceptual-duplicate-frame",
+        "optical-flow-tracking",
+        "compression-signature-mapping",
+        "metadata-provenance-audit",
+        "reference-quality-check"
+      ],
+      "providerType": "binary",
+      "installStrategy": "shared-room-tool",
+      "expectedArtifacts": ["frame-probe-json", "triage-decision", "counter-evidence-ledger"],
+      "titleKey": "visualAnalysis.providers.ffmpeg-visual-forensics.title",
+      "summaryKey": "visualAnalysis.providers.ffmpeg-visual-forensics.summary"
+    },
+    {
+      "id": "opencv-visual-forensics",
+      "status": "ready",
+      "toolId": "visual-forensics-py",
+      "moduleIds": [
+        "perceptual-duplicate-frame",
+        "optical-flow-tracking",
+        "reference-quality-check"
+      ],
+      "providerType": "system-command",
+      "installStrategy": "python-venv-pip",
+      "expectedArtifacts": ["near-duplicate-json", "ssim-quality-json"],
+      "titleKey": "visualAnalysis.providers.opencv-visual-forensics.title",
+      "summaryKey": "visualAnalysis.providers.opencv-visual-forensics.summary"
+    },
+    {
+      "id": "metadata-provenance-system",
+      "status": "ready",
+      "toolId": "exiftool",
+      "moduleIds": ["metadata-provenance-audit"],
+      "fallbackProviderIds": ["ffmpeg-visual-forensics"],
+      "providerType": "system-command",
+      "installStrategy": "host-command",
+      "expectedArtifacts": ["metadata-provenance-json"],
+      "titleKey": "visualAnalysis.providers.metadata-provenance-system.title",
+      "summaryKey": "visualAnalysis.providers.metadata-provenance-system.summary"
+    },
+    {
+      "id": "raft-optical-flow-provider",
+      "status": "planned",
+      "toolId": "raft-optical-flow",
+      "moduleIds": ["optical-flow-tracking"],
+      "providerType": "planned",
+      "installStrategy": "external-model-runtime",
+      "expectedArtifacts": ["dense-flow-json", "subject-background-flow-map"],
+      "titleKey": "visualAnalysis.providers.raft-optical-flow-provider.title",
+      "summaryKey": "visualAnalysis.providers.raft-optical-flow-provider.summary"
+    },
+    {
       "id": "synthetic-visual-forensics",
       "status": "planned",
       "moduleIds": ["ai-artifact-detection"],

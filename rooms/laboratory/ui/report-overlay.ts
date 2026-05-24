@@ -1,4 +1,4 @@
-import { escapeHtml, formatDateTime, getIntentLabel } from "../domain/lab-types.js";
+import { escapeHtml, formatDateTime } from "../domain/lab-types.js";
 import type {
   LabAiReport,
   LabArtifactProjection,
@@ -8,13 +8,11 @@ import type {
   LabStoreState,
   LabUserReport,
 } from "../domain/lab-types.js";
-import { buildIntentReportGroups } from "../services/report-builder.js";
 import {
   getCurrentReports,
+  getCurrentRun,
   getReportFreshness,
   getReportOverlayOpen,
-  getCurrentRun,
-  getIntentDirtyMap,
   getRunSnapshotSummary,
   getWorkspaceDiff,
   isRunActive,
@@ -45,7 +43,7 @@ function formatTimelineMs(ms: number | null): string {
 }
 
 function formatDiffLabel(
-  key: "timeline" | "hypothesis" | "intents",
+  key: "timeline" | "hypothesis",
   copy: LabI18n = LAB_FALLBACK_I18N
 ): string {
   switch (key) {
@@ -53,15 +51,9 @@ function formatDiffLabel(
       return copy.t("mediaAnalysis.reportOverlay.diff.timeline", "Timeline");
     case "hypothesis":
       return copy.t("mediaAnalysis.reportOverlay.diff.hypothesis", "Hypothesis");
-    case "intents":
-      return copy.t("mediaAnalysis.reportOverlay.diff.intents", "Intents");
     default:
       return key;
   }
-}
-
-function getReportIntentLabel(intentId: string, copy: LabI18n): string {
-  return copy.t(`mediaAnalysis.workspace.intents.${intentId}.label`, getIntentLabel(intentId));
 }
 
 function renderSnapshotSummary(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
@@ -75,10 +67,6 @@ function renderSnapshotSummary(state: LabStoreState, copy: LabI18n = LAB_FALLBAC
     snapshotSummary.timelineStartMs !== null || snapshotSummary.timelineEndMs !== null
       ? `${formatTimelineMs(snapshotSummary.timelineStartMs)} - ${formatTimelineMs(snapshotSummary.timelineEndMs)}`
       : copy.t("mediaAnalysis.reportOverlay.snapshot.fullSource", "Full source");
-  const intentSummary =
-    snapshotSummary.intentIds.length > 0
-      ? snapshotSummary.intentIds.map((intentId) => getReportIntentLabel(intentId, copy)).join(", ")
-      : copy.t("mediaAnalysis.reportOverlay.snapshot.noIntent", "No intent snapshot");
   const diffBadges =
     workspaceDiff && workspaceDiff.changedKeys.length > 0
       ? `<div class="labx-workspace-diff-badges">${workspaceDiff.changedKeys
@@ -103,10 +91,6 @@ function renderSnapshotSummary(state: LabStoreState, copy: LabI18n = LAB_FALLBAC
           <span>${escapeHtml(copy.t("mediaAnalysis.reportOverlay.snapshot.timeline", "Timeline"))}</span>
           <strong>${escapeHtml(timelineSummary)}</strong>
         </div>
-        <div class="labx-process-snapshot__item">
-          <span>${escapeHtml(copy.t("mediaAnalysis.reportOverlay.snapshot.intents", "Intents"))}</span>
-          <strong>${escapeHtml(intentSummary)}</strong>
-        </div>
       </div>
       ${
         snapshotSummary.hypothesis
@@ -118,66 +102,6 @@ function renderSnapshotSummary(state: LabStoreState, copy: LabI18n = LAB_FALLBAC
           ? `<p class="labx-workspace-diff-hint">${escapeHtml(copy.t("mediaAnalysis.reportOverlay.snapshot.liveWorkspaceChanged", "Live workspace changed in {keys}. Report still reflects the frozen snapshot.", { keys: workspaceDiff.changedKeys.map((key) => formatDiffLabel(key, copy)).join(", ") }))}</p>`
           : `<p class="labx-workspace-diff-hint">${escapeHtml(copy.t("mediaAnalysis.reportOverlay.snapshot.frozen", "Report reflects the frozen run snapshot."))}</p>`
       }
-    </div>
-  `;
-}
-
-function renderIntentGroups(state: LabStoreState, copy: LabI18n = LAB_FALLBACK_I18N) {
-  const run = getCurrentRun(state);
-  const intentGroups = buildIntentReportGroups(run);
-  if (intentGroups.length === 0) {
-    return "";
-  }
-
-  const dirtyMap = getIntentDirtyMap(state);
-  return `
-    <div class="labx-report-section">
-      <h3 class="labx-report-section__title">${escapeHtml(copy.t("mediaAnalysis.reportOverlay.intentGroups.title", "Intent Groups"))}</h3>
-      ${intentGroups
-        .map(function (group) {
-          const dirtyState = dirtyMap[group.intentId];
-          const dirtyHint = dirtyState.dirty
-            ? `<p class="labx-report-section__hint">${escapeHtml(copy.t("mediaAnalysis.reportOverlay.intentGroups.liveDrift", "Live workspace drift"))}: ${escapeHtml(dirtyState.changedKeys.join(", "))}</p>`
-            : "";
-          const findingsHtml =
-            group.findings.length > 0
-              ? group.findings
-                  .slice(0, 3)
-                  .map(function (finding) {
-                    return `<div class="labx-report-finding"><div class="labx-report-finding__title"><strong>${escapeHtml(finding.title)}</strong></div><div class="labx-report-finding__detail">${escapeHtml(finding.detail)}</div></div>`;
-                  })
-                  .join("")
-              : `<div class="labx-process-empty">${escapeHtml(copy.t("mediaAnalysis.reportOverlay.intentGroups.noFindings", "No findings mapped to this intent."))}</div>`;
-          const artifactHtml =
-            group.artifacts.length > 0
-              ? `<div class="labx-report-manifest">${group.artifacts
-                  .slice(0, 4)
-                  .map(function (artifact) {
-                    return `<div class="labx-report-manifest__entry"><span>${escapeHtml(artifact.kind)}</span><strong>${escapeHtml(artifact.fileName || artifact.id)}</strong></div>`;
-                  })
-                  .join("")}</div>`
-              : "";
-          return `
-            <div class="labx-report-section">
-              <h4 class="labx-report-section__title">${escapeHtml(getReportIntentLabel(group.intentId, copy))}</h4>
-              <p class="labx-report-section__hint">${escapeHtml(
-                copy.t(
-                  "mediaAnalysis.reportOverlay.intentGroups.counts",
-                  "{modules} modules · {findings} findings · {artifacts} artifacts",
-                  {
-                    artifacts: group.artifacts.length,
-                    findings: group.findings.length,
-                    modules: group.modules.length,
-                  }
-                )
-              )}</p>
-              ${dirtyHint}
-              ${findingsHtml}
-              ${artifactHtml}
-            </div>
-          `;
-        })
-        .join("")}
     </div>
   `;
 }
@@ -312,6 +236,73 @@ function renderForensicNotes(
   `;
 }
 
+function renderDecisionSummary(
+  summary: LabUserReport["decisionSummary"] | LabAiReport["decisionSummary"] | undefined,
+  copy: LabI18n = LAB_FALLBACK_I18N
+) {
+  if (!summary) {
+    return "";
+  }
+  return `
+    <div class="labx-report-section">
+      <h3 class="labx-report-section__title">${escapeHtml(copy.t("mediaAnalysis.reportOverlay.triage.title", "Triage Decision"))}</h3>
+      <div class="labx-report-manifest">
+        <div class="labx-report-manifest__entry"><span>${escapeHtml(copy.t("mediaAnalysis.reportOverlay.triage.anomaly", "Anomaly"))}</span><strong>${escapeHtml(summary.anomaly)}</strong></div>
+        <div class="labx-report-manifest__entry"><span>${escapeHtml(copy.t("mediaAnalysis.reportOverlay.triage.manipulation", "Manipulation suspicion"))}</span><strong>${escapeHtml(summary.manipulationSuspicion)}</strong></div>
+        <div class="labx-report-manifest__entry"><span>${escapeHtml(copy.t("mediaAnalysis.reportOverlay.triage.followUp", "Follow-up"))}</span><strong>${escapeHtml(summary.needsFollowUp ? "required" : "not required")}</strong></div>
+      </div>
+      <p class="labx-report-summary">${escapeHtml(summary.likelyTechnicalExplanation)}</p>
+      <p class="labx-report-section__hint">${escapeHtml(summary.rationale)}</p>
+    </div>
+  `;
+}
+
+function renderEvidenceStrength(
+  entries: LabUserReport["evidenceStrength"] | LabAiReport["evidenceStrength"] | undefined,
+  copy: LabI18n = LAB_FALLBACK_I18N
+) {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return "";
+  }
+  return `
+    <div class="labx-report-section">
+      <h3 class="labx-report-section__title">${escapeHtml(copy.t("mediaAnalysis.reportOverlay.evidenceStrength.title", "Evidence Strength"))}</h3>
+      ${entries
+        .map(function (entry) {
+          const tags = entry.evidence
+            .concat(entry.counterEvidence)
+            .slice(0, 5)
+            .map(function (item) {
+              return `<span class="labx-report-evidence-tag">${escapeHtml(item)}</span>`;
+            })
+            .join("");
+          return `<div class="labx-report-finding"><div class="labx-report-finding__title"><strong>${escapeHtml(entry.label)}</strong><span class="labx-report-evidence-tag">${escapeHtml(entry.strength)}</span></div><div class="labx-report-finding__detail">${escapeHtml(entry.detail)}</div>${tags === "" ? "" : `<div class="labx-report-finding__evidence">${tags}</div>`}</div>`;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function renderCounterEvidenceLedger(
+  ledger: LabUserReport["counterEvidenceLedger"] | LabAiReport["counterEvidenceLedger"] | undefined,
+  copy: LabI18n = LAB_FALLBACK_I18N
+) {
+  if (!ledger || !Array.isArray(ledger.entries) || ledger.entries.length === 0) {
+    return "";
+  }
+  return `
+    <div class="labx-report-section">
+      <h3 class="labx-report-section__title">${escapeHtml(copy.t("mediaAnalysis.reportOverlay.counterEvidence.title", "Counter Evidence"))}</h3>
+      <p class="labx-report-section__hint">${escapeHtml(ledger.summary)}</p>
+      ${ledger.entries
+        .map(function (entry) {
+          return `<div class="labx-report-warning"><strong>${escapeHtml(entry.label)}</strong> <span class="labx-report-evidence-tag">${escapeHtml(entry.status)}</span>: ${escapeHtml(entry.detail)}</div>`;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
 function renderSuspiciousFrames(report: LabUserReport, copy: LabI18n = LAB_FALLBACK_I18N) {
   if (!Array.isArray(report.suspiciousFrames) || report.suspiciousFrames.length === 0) {
     return "";
@@ -371,6 +362,11 @@ function renderModuleSummary(report: LabUserReport, copy: LabI18n = LAB_FALLBACK
 
 function renderUserReport(report: LabUserReport, copy: LabI18n = LAB_FALLBACK_I18N) {
   return `
+    ${renderDecisionSummary(report.decisionSummary, copy)}
+    ${renderEvidenceStrength(report.evidenceStrength, copy)}
+    ${renderCounterEvidenceLedger(report.counterEvidenceLedger, copy)}
+    ${renderForensicNotes(report.forensicNotes, copy)}
+
     <div class="labx-report-section">
       <h3 class="labx-report-section__title">${escapeHtml(copy.t("mediaAnalysis.reportOverlay.user.summary", "Özet"))}</h3>
       <div class="labx-report-summary">${escapeHtml(report.summary)}</div>
@@ -388,7 +384,6 @@ function renderUserReport(report: LabUserReport, copy: LabI18n = LAB_FALLBACK_I1
 
     ${renderCorrelationClusters(report.topCorrelationClusters, copy)}
     ${renderNarrativeCues(report.narrativeCues, copy)}
-    ${renderForensicNotes(report.forensicNotes, copy)}
     ${renderSuspiciousFrames(report, copy)}
     ${renderHypothesisResult(report, copy)}
     ${renderModuleSummary(report, copy)}
@@ -543,6 +538,11 @@ function renderAiReport(report: LabAiReport, copy: LabI18n = LAB_FALLBACK_I18N) 
       : "";
 
   return `
+    ${renderDecisionSummary(report.decisionSummary, copy)}
+    ${renderEvidenceStrength(report.evidenceStrength, copy)}
+    ${renderCounterEvidenceLedger(report.counterEvidenceLedger, copy)}
+    ${renderForensicNotes(forensicNotes, copy)}
+
     <div class="labx-report-section">
       <h3 class="labx-report-section__title">${escapeHtml(copy.t("mediaAnalysis.reportOverlay.ai.manifest", "Manifest"))}</h3>
       ${renderManifest(report.manifest)}
@@ -555,7 +555,6 @@ function renderAiReport(report: LabAiReport, copy: LabI18n = LAB_FALLBACK_I18N) 
 
     ${renderCorrelationClusters(correlationClusters, copy)}
     ${renderNarrativeCues(narrativeCues, copy)}
-    ${renderForensicNotes(forensicNotes, copy)}
 
     <div class="labx-report-section">
       <h3 class="labx-report-section__title">${escapeHtml(copy.t("mediaAnalysis.reportOverlay.ai.technicalFindings", "Bulgular (Teknik)"))}</h3>
@@ -721,7 +720,6 @@ export function renderReportOverlay(state: LabStoreState, copy: LabI18n = LAB_FA
                 >${escapeHtml(copy.t("mediaAnalysis.reportOverlay.tabs.ai", "Teknik Rapor"))}</button>
               </div>
               ${renderSnapshotSummary(state, copy)}
-              ${renderIntentGroups(state, copy)}
               ${contentHtml}
             </section>
           `

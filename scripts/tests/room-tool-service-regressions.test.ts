@@ -52,16 +52,16 @@ test("room tool service keeps write roots narrow while allowing packaged tool cw
 test("room tool service can describe planned and system-command tools without forcing an installer contract", () => {
   const serviceSource = readFileSync("electron/room-tool-service.ts", "utf8");
   const typeSource = readFileSync("src/types/room-tools.ts", "utf8");
-  const manifestSource = readFileSync(
-    "rooms/laboratory/tools/toolchain.manifest.json",
-    "utf8"
-  );
+  const manifestSource = readFileSync("rooms/laboratory/tools/toolchain.manifest.json", "utf8");
   const projectToolStatusSource = readFileSync(
     "rooms/laboratory/shared/host/project-tool-status.ts",
     "utf8"
   );
   const roomSnapshotSource = readFileSync("rooms/laboratory/shared/host/room-snapshot.ts", "utf8");
   const toolOverlaySource = readFileSync("rooms/laboratory/ui/tool-management-overlay.ts", "utf8");
+  const manifest = JSON.parse(manifestSource) as {
+    tools: Record<string, { probe?: { versionRegex?: string } }>;
+  };
 
   assert.match(
     serviceSource,
@@ -125,6 +125,9 @@ test("room tool service can describe planned and system-command tools without fo
     /await rm\(venvDir, \{ recursive: true, force: true \}\);\s*venvPythonPath = null;/
   );
   assert.match(serviceSource, /private async installPythonVenvPipTool\(/);
+  assert.match(serviceSource, /private async checkPythonVenvPipUpdates\(/);
+  assert.match(serviceSource, /"list", "--outdated", "--format=json"/);
+  assert.match(serviceSource, /updateAvailable: outdatedPackages\.length > 0/);
   assert.match(serviceSource, /private shouldUseSystemCommandFallback\(/);
   assert.match(serviceSource, /private async probeSystemCommandToolStatus\(/);
   assert.match(serviceSource, /installerType,/);
@@ -189,6 +192,19 @@ test("room tool service can describe planned and system-command tools without fo
     manifestSource,
     /"packages":\s*\[\s*"pyAudioAnalysis",\s*"numpy",\s*"scipy",\s*"scikit-learn",\s*"hmmlearn",\s*"matplotlib",\s*"eyed3",\s*"pydub"\s*\]/
   );
+  assert.match(manifestSource, /"visual-forensics-py"/);
+  assert.match(
+    manifestSource,
+    /"packages":\s*\[\s*"opencv-contrib-python-headless",\s*"scikit-image",\s*"numpy",\s*"scipy"\s*\]/
+  );
+  assert.match(manifestSource, /"exiftool"[\s\S]*"availability":\s*"system-command"/);
+  assert.match(manifestSource, /"mediainfo"[\s\S]*"availability":\s*"system-command"/);
+  assert.equal(manifest.tools["ffmpeg-libvmaf"]?.probe?.versionRegex, "\\blibvmaf\\b");
+  assert.match(manifestSource, /"raft-optical-flow"[\s\S]*"availability":\s*"planned"/);
+  assert.match(toolOverlaySource, /verifySystemCommand/);
+  assert.match(toolOverlaySource, /systemCommandVerified/);
+  assert.match(toolOverlaySource, /lastCheckedAt/);
+  assert.match(toolOverlaySource, /strategy\.systemCommand/);
   assert.doesNotMatch(manifestSource, /"audioop-lts"/);
   assert.match(
     serviceSource,
@@ -227,10 +243,7 @@ test("room tool service resolves toolchain manifests from installed and workspac
     serviceSource,
     /join\(\s*paths\.storageDir,\s*"build",\s*"workspace",\s*"shared",\s*"data",\s*"tools",\s*"toolchain\.manifest\.json"\s*\)/
   );
-  assert.match(
-    serviceSource,
-    /join\(getWorkspaceToolsDir\(paths\), "toolchain\.manifest\.json"\)/
-  );
+  assert.match(serviceSource, /join\(getWorkspaceToolsDir\(paths\), "toolchain\.manifest\.json"\)/);
   assert.match(
     serviceSource,
     /join\(\s*Paths\.getRoomsWorkspaceDir\(\),\s*paths\.roomId,\s*"shared",\s*"data",\s*"tools",\s*"toolchain\.manifest\.json"\s*\)/

@@ -1,7 +1,6 @@
 import { asLabRecord, asNonEmptyString } from "../domain/lab-types.js";
 import type {
   LabGlobalProcessSummary,
-  LabIntentDirtyMap,
   LabRun,
   LabMediaViewportState,
   LabSelection,
@@ -14,9 +13,12 @@ import type {
   PreflightSeverity,
   ReportFreshness,
   LabDrawerMode,
-  LabIntentId,
 } from "../domain/lab-types.js";
-import { CAPABILITY_FAMILIES, WORKSPACE_INTENTS } from "../domain/lab-types.js";
+import {
+  CAPABILITY_FAMILIES,
+  getAnalysisModuleRequirementMeta,
+  getModuleIdsForCapabilityFamily,
+} from "../domain/lab-types.js";
 import {
   getCurrentFeatureReportRecord,
   getProjectSource,
@@ -46,9 +48,8 @@ import {
 } from "./selectors/lab-source-selectors.js";
 import {
   getCurrentPreflight,
-  getIntentDerivedCapabilities,
-  getReadySelectedAnalysisIntentIds,
-  getSelectedIntents,
+  getReadySelectedAnalysisCapabilityIds,
+  getSelectedCapabilities,
   getSourceReady,
 } from "./selectors/lab-capability-selectors.js";
 import {
@@ -67,25 +68,17 @@ import {
 import { isFullSourceWorkspaceSelection } from "./lab-workspace-selection.js";
 
 export {
-  getActualOutputs,
   getAnalysisPreparationGroups,
   getAvailableCapabilities,
-  getAvailableIntents,
   getAvailableOperationCapabilities,
   getCapabilityWorkflowSummary,
   getCurrentPreflight,
-  getExpectedOutputs,
-  getReadyAnalysisIntents,
-  getReadyAnalysisIntentIds,
+  filterReadyAnalysisCapabilityIds,
   getReadyAnalysisPreparationGroups,
   getReadySelectedAnalysisCapabilityIds,
-  getReadySelectedAnalysisIntentIds,
-  getIntentDerivedCapabilities,
   getOperationSettings,
   getSelectedCapabilities,
-  getSelectedIntents,
   getSourceReady,
-  isExpectedOutputMatched,
 } from "./selectors/lab-capability-selectors.js";
 export {
   buildExecutionDispatchId,
@@ -128,7 +121,6 @@ export {
   getSelectionContextDurationMs,
   getSelectionContextSourceKind,
   getSelectionDuration,
-  getSelectionIntent,
   getSelectionSuggestions,
   isSelectionValid,
 } from "./selectors/lab-execution-flow-selectors.js";
@@ -216,17 +208,6 @@ export {
   getToolState,
   getWorkbench,
 } from "./selectors/lab-source-selectors.js";
-
-function normalizeIntentIdList(value: unknown) {
-  const sourceIds = Array.isArray(value)
-    ? value.filter((entry): entry is string => typeof entry === "string")
-    : [];
-  return WORKSPACE_INTENTS.map(function (intent) {
-    return intent.id;
-  }).filter(function (intentId, index, allIntentIds) {
-    return sourceIds.includes(intentId) && allIntentIds.indexOf(intentId) === index;
-  });
-}
 
 export function getPrimaryActionLabel(state: LabStoreState) {
   const sourceProbeStatus = getSourceProbeStatus(state);
@@ -316,7 +297,7 @@ export function getWorkspaceLockState(state: LabStoreState): LabWorkspaceLockSta
     source: heavy,
     timeline: heavy,
     roi: heavy,
-    intents: heavy,
+    analysis: heavy,
     hypothesis: heavy,
     focusControls: false,
   };
@@ -419,7 +400,7 @@ export function getLaboratoryRightPanelContext(state: LabStoreState): LabRightPa
   return {
     activeIntentLabel: activeIntent?.label || null,
     processSummary: getLaboratoryProcessSummary(state),
-    selectionLabel: selection?.label || selection?.intent || null,
+    selectionLabel: selection?.label || null,
     selectionRangeLabel: formatSelectionRangeLabel(selection),
   };
 }
@@ -558,7 +539,7 @@ export function getWorkspaceAnalysisInput(state: LabStoreState) {
     timeRange: getTimelineSelection(state),
     roiRegions: getActiveROIRegions(state),
     hypothesis: getHypothesis(state),
-    selectedIntents: getSelectedIntents(state),
+    selectedCapabilities: getSelectedCapabilities(state),
     interactiveSettings: getInteractiveSettings(state),
     bookmarks: getBookmarks(state),
   };
@@ -572,17 +553,11 @@ export function getWorkspaceDiff(state: LabStoreState): LabWorkspaceDiff | null 
 
   const liveTimeline = getTimelineSelection(state);
   const liveHypothesis = getHypothesis(state).trim();
-  const liveIntentIds = normalizeIntentIdList(getSelectedIntents(state));
 
   const timelineChanged =
     liveTimeline.startMs !== snapshotSummary.timelineStartMs ||
     liveTimeline.endMs !== snapshotSummary.timelineEndMs;
   const hypothesisChanged = liveHypothesis !== (snapshotSummary.hypothesis || "");
-  const intentsChanged =
-    liveIntentIds.length !== snapshotSummary.intentIds.length ||
-    liveIntentIds.some(function (intentId, index) {
-      return snapshotSummary.intentIds[index] !== intentId;
-    });
 
   const changedKeys: LabWorkspaceDiff["changedKeys"] = [];
   if (timelineChanged) {
@@ -591,58 +566,12 @@ export function getWorkspaceDiff(state: LabStoreState): LabWorkspaceDiff | null 
   if (hypothesisChanged) {
     changedKeys.push("hypothesis");
   }
-  if (intentsChanged) {
-    changedKeys.push("intents");
-  }
-
   return {
     timelineChanged,
     hypothesisChanged,
-    intentsChanged,
     workspaceDirty: changedKeys.length > 0,
     changedKeys,
   };
-}
-
-export function getIntentDirtyMap(state: LabStoreState): LabIntentDirtyMap {
-  const snapshotSummary = getRunSnapshotSummary(state);
-  if (!snapshotSummary) {
-    return {} as LabIntentDirtyMap;
-  }
-
-  const workspaceDiff = getWorkspaceDiff(state);
-  const snapshotIntentIds = normalizeIntentIdList(snapshotSummary.intentIds);
-  const liveIntentIds = normalizeIntentIdList(getSelectedIntents(state));
-  const allIntentIds = WORKSPACE_INTENTS.map(function (intent) {
-    return intent.id;
-  }).filter(function (intentId) {
-    return snapshotIntentIds.includes(intentId) || liveIntentIds.includes(intentId);
-  });
-
-  return allIntentIds.reduce(function (accumulator, intentId) {
-    const inSnapshot = snapshotIntentIds.includes(intentId);
-    const inWorkspace = liveIntentIds.includes(intentId);
-    const changedKeys: Array<"timeline" | "hypothesis" | "selection"> = [];
-
-    if (inSnapshot !== inWorkspace) {
-      changedKeys.push("selection");
-    }
-    if (inSnapshot && workspaceDiff?.timelineChanged) {
-      changedKeys.push("timeline");
-    }
-    if (inSnapshot && workspaceDiff?.hypothesisChanged) {
-      changedKeys.push("hypothesis");
-    }
-
-    accumulator[intentId] = {
-      intentId,
-      inSnapshot,
-      inWorkspace,
-      dirty: changedKeys.length > 0,
-      changedKeys,
-    };
-    return accumulator;
-  }, {} as LabIntentDirtyMap);
 }
 
 export function getReportOverlayOpen(state: LabStoreState): boolean {
@@ -731,7 +660,7 @@ export function getPreflightWarnings(state: LabStoreState): string[] {
 }
 
 export function getAnalysisActionBlockReason(state: LabStoreState): string | null {
-  if (getReadySelectedAnalysisIntentIds(state).length === 0) {
+  if (getReadySelectedAnalysisCapabilityIds(state).length === 0) {
     return "En az bir analiz modülü seçilmelidir.";
   }
   return null;
@@ -794,26 +723,43 @@ export function hasReportPayload(state: LabStoreState): boolean {
 export function getToolRelevanceFilter(state: LabStoreState) {
   const sourceMode = getSourceMode(state);
   const sourceKind = getSourceKind(state);
-  const selectedIntents = getSelectedIntents(state);
-  const intentCapabilities = getIntentDerivedCapabilities(state);
   const wsMode = getWorkspaceMode(state);
+  const moduleToggles = asLabRecord(asLabRecord(state.workbench)["moduleToggles"]);
 
   const requiredToolIds = new Set<string>();
-  CAPABILITY_FAMILIES.forEach(function (family) {
-    if (intentCapabilities.includes(family.id)) {
-      family.requiredTools.forEach(function (toolId) {
+  const optionalToolIds = new Set<string>();
+  const selectedCapabilities = getSelectedCapabilities(state);
+  selectedCapabilities.forEach(function (capabilityId) {
+    const family = CAPABILITY_FAMILIES.find(function (entry) {
+      return entry.id === capabilityId;
+    });
+    family?.requiredTools.forEach(function (toolId) {
+      requiredToolIds.add(toolId);
+    });
+    getModuleIdsForCapabilityFamily(capabilityId).forEach(function (moduleId) {
+      if (
+        Object.prototype.hasOwnProperty.call(moduleToggles, moduleId) &&
+        moduleToggles[moduleId] !== true
+      ) {
+        return;
+      }
+      const moduleMeta = getAnalysisModuleRequirementMeta(capabilityId, moduleId);
+      moduleMeta.requiredToolIds.forEach(function (toolId) {
         requiredToolIds.add(toolId);
       });
-    }
+      moduleMeta.optionalToolIds.forEach(function (toolId) {
+        optionalToolIds.add(toolId);
+      });
+    });
   });
 
   return {
     sourceMode,
     sourceKind,
-    selectedIntents,
-    intentCapabilities,
+    selectedCapabilities,
     workspaceMode: wsMode,
     requiredToolIds: Array.from(requiredToolIds),
+    optionalToolIds: Array.from(optionalToolIds),
   };
 }
 
@@ -896,20 +842,6 @@ export function getDrawerCollapsed(state: LabStoreState): boolean {
   return state.ui.workspace.drawerCollapsed === true;
 }
 
-const INTENT_ACTION_PHRASES: Record<LabIntentId, string> = {
-  "visual-inspection": "görsel yapıyı ve forensic işaretleri inceleyerek",
-  "audio-investigation": "ses sinyallerini analiz ederek",
-  "detail-enhancement": "transkript ve kaynak ayrıştırma yaparak",
-  "anomaly-detection": "görsel ve işitsel anomali taraması yaparak",
-};
-
-const INTENT_OUTPUT_PHRASES: Record<LabIntentId, string> = {
-  "visual-inspection": "yapısal anomaliler ve forensic kanıtlar",
-  "audio-investigation": "ses anomalileri ve sinyal detayları",
-  "detail-enhancement": "konuşma dökümleri ve ayrıştırılmış ses kaynakları",
-  "anomaly-detection": "olası anormallikler ve sınıflandırılmış ses olayları",
-};
-
 function formatMsAsTime(ms: number): string {
   const totalSeconds = Math.round(ms / 1000);
   const minutes = Math.floor(totalSeconds / 60);
@@ -917,9 +849,9 @@ function formatMsAsTime(ms: number): string {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-export function buildIntentPreviewSentence(state: LabStoreState): string {
-  const selectedIntents = getReadySelectedAnalysisIntentIds(state);
-  if (selectedIntents.length === 0) return "";
+export function buildAnalysisPreviewSentence(state: LabStoreState): string {
+  const selectedCapabilities = getReadySelectedAnalysisCapabilityIds(state);
+  if (selectedCapabilities.length === 0) return "";
   const timelineSelection = getTimelineSelection(state);
   const metadata = getSourceMetadata(state);
   const durationSeconds =
@@ -931,20 +863,18 @@ export function buildIntentPreviewSentence(state: LabStoreState): string {
   const scopeLabel = isFullRange
     ? `tüm kaynak (${formatMsAsTime(durationMs)})`
     : `${formatMsAsTime(timelineSelection.startMs ?? 0)} \u2013 ${formatMsAsTime(timelineSelection.endMs ?? durationMs)}`;
-  const actions = selectedIntents
+  const selectedLabels = selectedCapabilities
     .map(function (id) {
-      return INTENT_ACTION_PHRASES[id] || id;
+      return (
+        CAPABILITY_FAMILIES.find(function (family) {
+          return family.id === id;
+        })?.label || id
+      );
     })
     .join(", ");
-  const outputs = selectedIntents.map(function (id) {
-    return INTENT_OUTPUT_PHRASES[id] || id;
-  });
-  const uniqueOutputs = outputs.filter(function (output, index) {
-    return outputs.indexOf(output) === index;
-  });
   const hypothesis = getHypothesis(state).trim();
   const hypothesisAppend = hypothesis.length > 0 ? ` Hipotez: \u201C${hypothesis}\u201D` : "";
-  return `Bu analiz ${scopeLabel} üzerinde ${actions} ${uniqueOutputs.join(", ")} tespit edecek.${hypothesisAppend}`;
+  return `Bu analiz ${scopeLabel} üzerinde ${selectedLabels} modüllerini çalıştıracak.${hypothesisAppend}`;
 }
 
 export function getToolLifecycleStage(state: LabStoreState): LabFeatureStage {

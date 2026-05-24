@@ -16,7 +16,6 @@ import type {
 import { getTrackedOperationActionId } from "../lab-operation-action-map.js";
 import {
   getActionOutputs,
-  getCurrentRun,
   getInteractiveSettingsForComparisonSide,
   getUserActions,
 } from "../lab-selectors.js";
@@ -26,7 +25,7 @@ import {
   getTrackedLabUserActionDefinition,
 } from "../lab-user-actions.js";
 import { isFullSourceWorkspaceSelection } from "../lab-workspace-selection.js";
-import { buildUiEvent, toStringArray } from "./lab-controller-helpers.js";
+import { buildUiEvent } from "./lab-controller-helpers.js";
 
 type LabRoomApi = {
   sendEvent?: (eventName: string, payload: Record<string, unknown>) => void;
@@ -198,14 +197,12 @@ export function createLabMediaActionController(deps: LabMediaActionControllerDep
     );
   }
 
-  function getCurrentRunIntentPayload(state = deps.store.getState()): Record<string, unknown> {
-    const intentIds = toStringArray(getCurrentRun(state)?.analysisScope?.intentIds);
+  function getCurrentRunContextPayload(state = deps.store.getState()): Record<string, unknown> {
     const workspaceTargetAssetId = asNonEmptyString(state.ui.activeWorkspaceAssetId);
     const comparisonReferenceAssetId = asNonEmptyString(
       state.ui.workspace.comparisonReferenceAssetId
     );
     return {
-      ...(intentIds.length > 0 ? { intentIds } : {}),
       ...(workspaceTargetAssetId === null ? {} : { workspaceTargetAssetId }),
       ...(comparisonReferenceAssetId === null ? {} : { comparisonReferenceAssetId }),
     };
@@ -337,7 +334,7 @@ export function createLabMediaActionController(deps: LabMediaActionControllerDep
           }
         : {}),
       ...getComparisonRoisOperationPayload(state.ui.workspace.comparisonRois),
-      ...getCurrentRunIntentPayload(state),
+      ...getCurrentRunContextPayload(state),
       ...comparisonTargetPayload,
     };
   }
@@ -502,7 +499,7 @@ export function createLabMediaActionController(deps: LabMediaActionControllerDep
     cancelTrackedOperation,
     createActionRequestId,
     getActiveSelectionOperationPayload,
-    getCurrentRunIntentPayload,
+    getCurrentRunContextPayload,
     getRoomApi,
     handleBusEvent,
     isOperationCapabilityId,

@@ -61,13 +61,18 @@ type LaboratoryProbeBucketRecord = LaboratoryRecord & {
 type LaboratoryVideoProbeRecord = LaboratoryRecord & {
   black?: unknown;
   compressionSignature?: unknown;
+  compressionSignatureMapping?: unknown;
   duplicateFrame?: unknown;
   frameCadence?: unknown;
   freeze?: unknown;
   forensicSignature?: unknown;
   freezeAttribution?: unknown;
   gopStructure?: unknown;
+  metadataProvenance?: unknown;
+  nearDuplicateFrame?: unknown;
   opticalFlow?: unknown;
+  opticalFlowTracking?: unknown;
+  referenceQuality?: unknown;
 };
 
 type LaboratoryAudioProbeRecord = LaboratoryRecord & {
@@ -488,11 +493,17 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
   }
 
   function formatVideoForensicProbeSummary(probeSummary: LaboratoryRecord): string | null {
-    const duplicateFrame = toRecord(probeSummary["duplicateFrame"]);
+    const duplicateFrame = toRecord(
+      probeSummary["nearDuplicateFrame"] || probeSummary["duplicateFrame"]
+    );
     const compressionSignature = toRecord(probeSummary["compressionSignature"]);
-    const forensicSignature = toRecord(probeSummary["forensicSignature"]);
+    const forensicSignature = toRecord(
+      probeSummary["compressionSignatureMapping"] || probeSummary["forensicSignature"]
+    );
     const freezeAttribution = toRecord(probeSummary["freezeAttribution"]);
-    const opticalFlow = toRecord(probeSummary["opticalFlow"]);
+    const opticalFlow = toRecord(
+      probeSummary["opticalFlowTracking"] || probeSummary["opticalFlow"]
+    );
     const duplicateCount = toFiniteNumber(duplicateFrame["exactDuplicateFrameCount"]) || 0;
     const duplicateRatio = formatRatioPercent(duplicateFrame["exactDuplicateFrameRatio"]);
     const riskLevel = asNonEmptyString(compressionSignature["riskLevel"]);
@@ -549,11 +560,19 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
     probeSummary: LaboratoryRecord,
     window: LaboratoryRecord
   ): LaboratoryRecord {
-    const duplicateFrame = toRecord(probeSummary["duplicateFrame"]);
+    const duplicateFrame = toRecord(
+      probeSummary["nearDuplicateFrame"] || probeSummary["duplicateFrame"]
+    );
     const frameCadence = toRecord(probeSummary["frameCadence"]);
     const compressionSignature = toRecord(probeSummary["compressionSignature"]);
-    const forensicSignature = toRecord(probeSummary["forensicSignature"]);
-    const opticalFlow = toRecord(probeSummary["opticalFlow"]);
+    const forensicSignature = toRecord(
+      probeSummary["compressionSignatureMapping"] || probeSummary["forensicSignature"]
+    );
+    const metadataProvenance = toRecord(probeSummary["metadataProvenance"]);
+    const opticalFlow = toRecord(
+      probeSummary["opticalFlowTracking"] || probeSummary["opticalFlow"]
+    );
+    const referenceQuality = toRecord(probeSummary["referenceQuality"]);
     const measuredChecklist = [
       "freezedetect intervals",
       "blackdetect intervals",
@@ -561,7 +580,9 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
       isMeasuredProbeRecord(frameCadence) ? "frame cadence drift" : null,
       isMeasuredProbeRecord(compressionSignature) ? "compression packet signature" : null,
       isMeasuredProbeRecord(forensicSignature) ? "forensic signature mapping" : null,
+      isMeasuredProbeRecord(metadataProvenance) ? "metadata provenance cross-check" : null,
       isMeasuredProbeRecord(opticalFlow) ? "optical-flow ROI/background split" : null,
+      isMeasuredProbeRecord(referenceQuality) ? "reference quality metric" : null,
     ].filter((entry): entry is string => entry !== null);
     return {
       attribution: toRecord(probeSummary["freezeAttribution"]),
@@ -879,11 +900,33 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
         artifacts.push(referenceFramePreview);
       }
 
+      const visualForensicsProbeSettings = {
+        "compression-signature-mapping": getAnalysisModuleSettings(
+          processRecord,
+          "compression-signature-mapping"
+        ),
+        "metadata-provenance-audit": getAnalysisModuleSettings(
+          processRecord,
+          "metadata-provenance-audit"
+        ),
+        "optical-flow-tracking": getAnalysisModuleSettings(processRecord, "optical-flow-tracking"),
+        "perceptual-duplicate-frame": getAnalysisModuleSettings(
+          processRecord,
+          "perceptual-duplicate-frame"
+        ),
+        "reference-quality-check": getAnalysisModuleSettings(
+          processRecord,
+          "reference-quality-check"
+        ),
+      };
       const videoProbe =
-        sourceKind === "video"
+        sourceKind === "video" || sourceKind === "image"
           ? toVideoProbeRecord(
               await runVideoStructureProbe(runtime, project, requestId, jobId, primaryTarget, {
                 analysisScope: processRecord["analysisScope"],
+                moduleSettings: visualForensicsProbeSettings,
+                referenceTarget: comparisonPair?.referenceTarget,
+                sourceKind,
               })
             )
           : toVideoProbeRecord({});
@@ -891,12 +934,18 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
       const blackCount = getProbeCount(videoProbe.black);
       const freezeSummary = summarizeProbeBucket(videoProbe.freeze);
       const blackSummary = summarizeProbeBucket(videoProbe.black);
-      const duplicateFrameSummary = toRecord(videoProbe.duplicateFrame);
+      const duplicateFrameSummary = toRecord(
+        videoProbe.nearDuplicateFrame || videoProbe.duplicateFrame
+      );
       const frameCadenceSummary = toRecord(videoProbe.frameCadence);
       const compressionSignatureSummary = toRecord(videoProbe.compressionSignature);
-      const forensicSignatureSummary = toRecord(videoProbe.forensicSignature);
+      const forensicSignatureSummary = toRecord(
+        videoProbe.compressionSignatureMapping || videoProbe.forensicSignature
+      );
       const gopStructureSummary = toRecord(videoProbe.gopStructure);
-      const opticalFlowSummary = toRecord(videoProbe.opticalFlow);
+      const metadataProvenanceSummary = toRecord(videoProbe.metadataProvenance);
+      const opticalFlowSummary = toRecord(videoProbe.opticalFlowTracking || videoProbe.opticalFlow);
+      const referenceQualitySummary = toRecord(videoProbe.referenceQuality);
       const freezeAttributionSummary = toRecord(videoProbe.freezeAttribution);
       const duplicateFrameCount =
         toFiniteNumber(duplicateFrameSummary["exactDuplicateFrameCount"]) || 0;
@@ -910,13 +959,18 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
       const structureProbeSummary = {
         black: blackSummary,
         compressionSignature: compressionSignatureSummary,
+        compressionSignatureMapping: forensicSignatureSummary,
         duplicateFrame: duplicateFrameSummary,
         frameCadence: frameCadenceSummary,
         freeze: freezeSummary,
         forensicSignature: forensicSignatureSummary,
         freezeAttribution: freezeAttributionSummary,
         gopStructure: gopStructureSummary,
+        metadataProvenance: metadataProvenanceSummary,
+        nearDuplicateFrame: duplicateFrameSummary,
         opticalFlow: opticalFlowSummary,
+        opticalFlowTracking: opticalFlowSummary,
+        referenceQuality: referenceQualitySummary,
       };
       const probeDetail = [
         formatProbeSummary("freeze", freezeSummary),
@@ -974,7 +1028,11 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
             compressionRiskLevel,
             duplicateFrameCount,
             backgroundMotionEnergy,
+            forensicArtifactFamily: asNonEmptyString(forensicSignatureSummary["artifactFamily"]),
+            forensicConfidence: asNonEmptyString(forensicSignatureSummary["confidence"]),
+            metadataProvenanceStatus: asNonEmptyString(metadataProvenanceSummary["status"]),
             opticalFlowClass,
+            referenceQualityStatus: asNonEmptyString(referenceQualitySummary["status"]),
             freezeAttribution: freezeAttributionClassification,
             subjectMotionEnergy,
           }
@@ -1031,7 +1089,11 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
               compressionRiskLevel,
               duplicateFrameCount,
               backgroundMotionEnergy,
+              forensicArtifactFamily: asNonEmptyString(forensicSignatureSummary["artifactFamily"]),
+              forensicConfidence: asNonEmptyString(forensicSignatureSummary["confidence"]),
+              metadataProvenanceStatus: asNonEmptyString(metadataProvenanceSummary["status"]),
               opticalFlowClass,
+              referenceQualityStatus: asNonEmptyString(referenceQualitySummary["status"]),
               freezeAttribution: freezeAttributionClassification,
               subjectMotionEnergy,
             }

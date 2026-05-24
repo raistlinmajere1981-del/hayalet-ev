@@ -10,9 +10,7 @@ import {
 } from "./lab-waveform-timeline-panels.js";
 import {
   INSPECTION_MODE_OPTIONS,
-  SELECTION_INTENT_OPTIONS,
   formatInspectionMode,
-  formatSelectionIntent,
   formatSelectionType,
   renderExecutionIntentStrip,
   renderInspectionSnapshot,
@@ -139,7 +137,6 @@ export function renderLabWaveformSelectionPanel(
     startMs: rawStartMs,
     endMs: rawEndMs,
     type: "clip",
-    intent: "general",
     createdAt: 0,
   };
   const hasSemanticSelection =
@@ -186,7 +183,6 @@ export function renderLabWaveformSelectionPanel(
   const interpretationItems = model.interpretationItems ?? [];
   const inspectionMode = model.inspectionMode ?? "none";
   const roiFocusActive = model.roiFocusActive === true;
-  const selectionIntent = activeSelection.intent;
   const startMs = rawStartMs;
   const endMs = rawEndMs;
   const selectionDurationMs = Math.max(0, endMs - startMs);
@@ -214,24 +210,22 @@ export function renderLabWaveformSelectionPanel(
     placement === "timeline" ? `style="left: ${String(options.selectionCenterPct ?? 0)}%"` : "";
 
   return `
-    <div
-      class="${className}"
-      ${styleAttr}
-      data-selection-intent="${escapeHtml(selectionIntent)}"
-      data-lab-selection-panel="true"
-    >
+	    <div
+	      class="${className}"
+	      ${styleAttr}
+	      data-lab-selection-panel="true"
+	    >
       <div class="lab-selection-panel__eyebrow">${escapeHtml(copy.t("mediaAnalysis.timeline.selection", "Selection"))}</div>
       <div class="lab-selection-panel__range">
         ${formatTimePrecise(startMs)} &rarr; ${formatTimePrecise(endMs)}
         <span class="lab-selection-panel__duration">(${formatDuration(selectionDurationMs)})</span>
       </div>
-      <div class="lab-selection-panel__meta">${escapeHtml(copy.t("mediaAnalysis.timeline.type", "Type"))}: ${escapeHtml(formatSelectionType(activeSelection.type, copy))}</div>
-      <div class="lab-selection-panel__intent-summary">${escapeHtml(copy.t("mediaAnalysis.timeline.intent", "Intent"))}: ${escapeHtml(formatSelectionIntent(selectionIntent, copy))}</div>
-      ${
-        typeof activeSelection.label === "string" && activeSelection.label.trim() !== ""
-          ? `<div class="lab-selection-panel__label">${escapeHtml(activeSelection.label)}</div>`
-          : ""
-      }
+	      <div class="lab-selection-panel__meta">${escapeHtml(copy.t("mediaAnalysis.timeline.type", "Type"))}: ${escapeHtml(formatSelectionType(activeSelection.type, copy))}</div>
+	      ${
+          typeof activeSelection.label === "string" && activeSelection.label.trim() !== ""
+            ? `<div class="lab-selection-panel__label">${escapeHtml(activeSelection.label)}</div>`
+            : ""
+        }
       <div class="lab-selection-panel__region-row">
         <span class="lab-selection-panel__region-state${selectionRoi ? " is-active" : ""}">${escapeHtml(selectionRoiLabel)}</span>
         ${
@@ -262,21 +256,7 @@ export function renderLabWaveformSelectionPanel(
           }).join("")}
         </div>
       </div>
-      <div class="lab-selection-panel__intent">
-        <div class="lab-selection-panel__intent-title">${escapeHtml(copy.t("mediaAnalysis.timeline.selectionIntent", "Selection intent"))}</div>
-        <div class="lab-selection-panel__intent-picker" data-lab-role="selection-intent-picker">
-          ${SELECTION_INTENT_OPTIONS.map(function (intent) {
-            const isActive = selectionIntent === intent;
-            return `<button
-              class="lab-selection-panel__intent-pill${isActive ? " is-active" : ""}"
-              type="button"
-              aria-pressed="${String(isActive)}"
-              data-lab-selection-intent="${intent}"
-            >${escapeHtml(formatSelectionIntent(intent, copy))}</button>`;
-          }).join("")}
-        </div>
-      </div>
-      <div class="lab-selection-panel__hint">${escapeHtml(copy.t("mediaAnalysis.timeline.selectionHint", "This selection will guide future analysis"))}</div>
+	      <div class="lab-selection-panel__hint">${escapeHtml(copy.t("mediaAnalysis.timeline.selectionHint", "This selection will guide future analysis"))}</div>
       ${renderExecutionIntentStrip(activeExecutionIntent, copy)}
       ${renderInspectionToolHints(selectionSuggestions, copy)}
       ${renderInspectionSnapshot(activeInspectionSnapshot, copy)}
@@ -309,7 +289,6 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
     model.startMs !== null && model.endMs !== null && model.endMs > model.startMs;
   const microZoomAvailable = model.waveformInspectionLens?.enabled === true;
   const microZoomOpen = microZoomAvailable === true && model.selectionMicroZoomOpen === true;
-  const selectionIntent = hasSelection ? (model.activeSelection?.intent ?? "general") : "general";
   const startMs = hasSelection ? rawStartMs : 0;
   const endMs = hasSelection ? rawEndMs : durationMs;
   const startPct = hasSelection ? Math.max(0, Math.min(100, (startMs / durationMs) * 100)) : 0;
@@ -448,11 +427,10 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
                   selectionCenterPct,
                 })
           }
-          <div
-            class="labx-timeline__selection lab-selection-overlay"
-            style="left: ${String(startPct)}%; width: ${String(endPct - startPct)}%"
-            data-selection-intent="${escapeHtml(selectionIntent)}"
-          >
+	          <div
+	            class="labx-timeline__selection lab-selection-overlay"
+	            style="left: ${String(startPct)}%; width: ${String(endPct - startPct)}%"
+	          >
             <div class="labx-timeline__handle labx-timeline__handle--start" data-lab-action="timeline-drag-start" ${lockHandleAttr}></div>
             <div class="labx-timeline__handle labx-timeline__handle--end" data-lab-action="timeline-drag-end" ${lockHandleAttr}></div>
             <div class="labx-timeline__selection-body" data-lab-action="timeline-drag-body" ${lockHandleAttr}></div>

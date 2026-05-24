@@ -72,7 +72,6 @@ import { buildExecutionStagingFromResolved } from "../../rooms/laboratory/runtim
 import {
   __testOnlyBuildExecutionPatternKey,
   __testOnlyResetExecutionPatternRegistry,
-  getActualOutputs,
   getActionOutputs,
   getActiveExecutionAlternatives,
   getActiveExecutionCandidate,
@@ -102,10 +101,8 @@ import {
   getCurrentSourceAsset,
   getDualPreviewVolume,
   getEffectivePreviewAudioFocusSettings,
-  getExpectedOutputs,
   getInspectionMode,
   getInterpretationItems,
-  getIntentDirtyMap,
   getLaboratoryProcessSummary,
   getLaboratoryRightPanelContext,
   getLinkedAudioAssets,
@@ -114,7 +111,6 @@ import {
   getRoiFocusActive,
   getRunSnapshotSummary,
   getSelectionDuration,
-  getSelectionIntent,
   getSelectionSuggestions,
   getSelectedDualPreviewAudioAsset,
   getWaveformTimelineModel,
@@ -122,7 +118,6 @@ import {
   getExecutionGoalEvaluation,
   isDualPreviewActive,
   isDualPreviewAvailable,
-  isExpectedOutputMatched,
   isSelectionValid,
   buildExecutionResultInterpretation,
   buildSuggestionPreview,
@@ -141,7 +136,6 @@ import {
   __testOnlyLabPreviewInspectionController,
   createLabPreviewInspectionController,
 } from "../../rooms/laboratory/ui/lab-preview-inspection-controller.ts";
-import { bindLabSelectionIntentClicks } from "../../rooms/laboratory/ui/lab-selection-intent-binder.ts";
 import { bindLabSelectionRoiInteractions } from "../../rooms/laboratory/ui/lab-selection-roi-binder.ts";
 import { bindLabSelectionSuggestionClicks } from "../../rooms/laboratory/ui/lab-selection-suggestion-binder.ts";
 import { renderWorkspaceSurface } from "../../rooms/laboratory/ui/workspace-surface.ts";
@@ -153,7 +147,6 @@ export {
   __testOnlyResetExecutionPatternRegistry,
   assert,
   bindLabPreviewInspectionInteractions,
-  bindLabSelectionIntentClicks,
   bindLabSelectionRoiInteractions,
   bindLabSelectionSuggestionClicks,
   buildAdaptiveDecisionSignal,
@@ -217,7 +210,6 @@ export {
   getActiveSelection,
   getActiveSuggestionPreview,
   getActiveSuggestionPreviewId,
-  getActualOutputs,
   getAssetById,
   getAssets,
   getAssetsByRun,
@@ -229,9 +221,7 @@ export {
   getCurrentSourceAsset,
   getDualPreviewVolume,
   getEffectivePreviewAudioFocusSettings,
-  getExpectedOutputs,
   getInspectionMode,
-  getIntentDirtyMap,
   getInterpretationItems,
   getLaboratoryProcessSummary,
   getLaboratoryRightPanelContext,
@@ -242,14 +232,12 @@ export {
   getRunSnapshotSummary,
   getSelectedDualPreviewAudioAsset,
   getSelectionDuration,
-  getSelectionIntent,
   getSelectionSuggestions,
   getWaveformTimelineModel,
   getWorkspaceDiff,
   getExecutionGoalEvaluation,
   isDualPreviewActive,
   isDualPreviewAvailable,
-  isExpectedOutputMatched,
   isSelectionValid,
   LAB_USER_ACTION_HUB_SUCCESS_WINDOW_MS,
   normalizeAudioFocusSettings,
@@ -397,30 +385,6 @@ export class FakeDomElement {
 
 export class FakeSelectionPanelTrigger extends FakeDomElement {
   getAttribute(): string | null {
-    return null;
-  }
-}
-
-export class FakeSelectionIntentTrigger {
-  constructor(private readonly intent: string | null) {}
-
-  getAttribute(name: string) {
-    return name === "data-lab-selection-intent" ? this.intent : null;
-  }
-}
-
-export class FakeSelectionIntentTarget extends FakeDomElement {
-  constructor(private readonly trigger: FakeSelectionIntentTrigger | null) {
-    super();
-  }
-
-  closest(selector: string) {
-    if (selector === "[data-lab-selection-intent]") {
-      return this.trigger;
-    }
-    if (selector === "[data-lab-selection-panel]") {
-      return new FakeSelectionPanelTrigger();
-    }
     return null;
   }
 }

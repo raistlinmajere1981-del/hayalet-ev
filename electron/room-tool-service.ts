@@ -168,6 +168,12 @@ type ToolReleaseInfo = {
   asset: GitHubReleaseAsset;
 };
 
+type PythonOutdatedPackage = {
+  latestVersion: string | null;
+  name: string;
+  version: string | null;
+};
+
 type ActiveJob =
   | {
       roomId: string;
@@ -191,6 +197,43 @@ function normalizeStringArray(value: unknown): string[] {
       return asNonEmptyString(entry);
     })
     .filter((entry): entry is string => entry !== null);
+}
+
+function normalizePythonPackageName(value: string): string | null {
+  const match = value.trim().match(/^[A-Za-z0-9_.-]+/u);
+  if (!match) {
+    return null;
+  }
+  return match[0].replace(/[-_.]+/gu, "-").toLowerCase();
+}
+
+function parsePythonOutdatedPackages(stdout: string): PythonOutdatedPackage[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stdout) as unknown;
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) {
+    return [];
+  }
+  return parsed
+    .map(function (entry): PythonOutdatedPackage | null {
+      if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+        return null;
+      }
+      const record = entry as Record<string, unknown>;
+      const name = asNonEmptyString(record["name"]);
+      if (name === null) {
+        return null;
+      }
+      return {
+        latestVersion: asNonEmptyString(record["latest_version"]),
+        name,
+        version: asNonEmptyString(record["version"]),
+      };
+    })
+    .filter((entry): entry is PythonOutdatedPackage => entry !== null);
 }
 
 function ensureAbsolutePath(filePath: string): string {
@@ -1407,6 +1450,9 @@ class RoomToolService {
     const manifest = await this.loadToolchainManifest(request.roomId);
     const toolManifest = this.getToolManifest(manifest, request.toolId);
     const platformKey = detectPlatformKey();
+    if (this.getInstallerType(toolManifest) === "python-venv-pip") {
+      return await this.checkPythonVenvPipUpdates(request, toolManifest);
+    }
     if (this.isToolInstallable(toolManifest) !== true) {
       const update: RoomToolUpdateCheck = {
         toolId: request.toolId,
@@ -1478,6 +1524,77 @@ class RoomToolService {
       success: true,
       operation: request.operation,
       requestId: normalizeRequestId(request.requestId),
+      update,
+    };
+  }
+
+  private async checkPythonVenvPipUpdates(
+    request: Extract<RoomToolCallRequest, { operation: "tool-check-for-updates" }>,
+    toolManifest: ToolManifest
+  ): Promise<RoomToolCallResult> {
+    const requestId = normalizeRequestId(request.requestId);
+    const paths = resolveRuntimePaths(request.roomId);
+    const resolved = this.resolvePythonVenvPipInstaller(toolManifest, request.toolId);
+    const binaryPath = await resolveSystemCommandBinaryPath(resolved.systemCommand.executableName, {
+      candidatePaths: resolved.systemCommand.candidatePaths,
+      envVarNames: resolved.systemCommand.envVarNames,
+      runtimePaths: paths,
+    });
+
+    if (binaryPath === null) {
+      throw new Error(`${request.toolId} is not installed in the room-local Python runtime.`);
+    }
+
+    const probe = await runCommand(
+      binaryPath,
+      ["-m", "pip", "--disable-pip-version-check", "list", "--outdated", "--format=json"],
+      dirname(binaryPath),
+      undefined,
+      60_000
+    );
+    if (probe.exitCode !== 0) {
+      throw new Error(
+        asNonEmptyString(probe.stderr) ??
+          asNonEmptyString(probe.stdout) ??
+          `${request.toolId} package update check failed.`
+      );
+    }
+
+    const trackedPackages = new Set(
+      resolved.installer.packages
+        .map(normalizePythonPackageName)
+        .filter((entry): entry is string => entry !== null)
+    );
+    const outdatedPackages = parsePythonOutdatedPackages(probe.stdout).filter(function (entry) {
+      const packageName = normalizePythonPackageName(entry.name);
+      return packageName !== null && trackedPackages.has(packageName);
+    });
+    const latestVersion =
+      outdatedPackages.length === 0
+        ? asNonEmptyString(request.installedVersion)
+        : outdatedPackages
+            .slice(0, 4)
+            .map(function (entry) {
+              return `${entry.name} ${entry.latestVersion ?? "latest"}`;
+            })
+            .join(", ");
+    const update: RoomToolUpdateCheck = {
+      toolId: request.toolId,
+      installedVersion: asNonEmptyString(request.installedVersion),
+      latestVersion,
+      latestReleaseTag: null,
+      latestReleaseName:
+        outdatedPackages.length === 0
+          ? null
+          : `${String(outdatedPackages.length)} package update(s)`,
+      updateAvailable: outdatedPackages.length > 0,
+      releaseUrl: null,
+    };
+
+    return {
+      success: true,
+      operation: request.operation,
+      requestId,
       update,
     };
   }

@@ -14,9 +14,9 @@ type LabWorkspaceOperationControllerDeps = {
       comparisonTarget?: "active-side" | "primary" | "reference";
     }
   ) => Record<string, unknown>;
-  getCurrentRunIntentPayload: (state?: LabStoreState) => Record<string, unknown>;
+  getCurrentRunContextPayload: (state?: LabStoreState) => Record<string, unknown>;
   isWorkspaceMutationLocked: (
-    area: "source" | "timeline" | "roi" | "intents" | "hypothesis"
+    area: "source" | "timeline" | "roi" | "analysis" | "hypothesis"
   ) => boolean;
   pushLockedWorkspaceEvent: (message: string) => void;
   startTrackedOperationForUiAction: (
@@ -82,7 +82,7 @@ export function createLabWorkspaceOperationController(deps: LabWorkspaceOperatio
       y: roiRegion.y,
       width: roiRegion.width,
       height: roiRegion.height,
-      ...deps.getCurrentRunIntentPayload(state),
+      ...deps.getCurrentRunContextPayload(state),
     });
   }
 

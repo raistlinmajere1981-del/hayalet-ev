@@ -13,12 +13,17 @@ type ForensicSignatureCandidate = {
 export type ForensicSignatureMappingInput = {
   black?: unknown;
   compressionSignature?: unknown;
+  compressionSignatureMapping?: unknown;
   duplicateFrame?: unknown;
   frameCadence?: unknown;
   freeze?: unknown;
   freezeAttribution?: unknown;
   gopStructure?: unknown;
+  metadataProvenance?: unknown;
+  nearDuplicateFrame?: unknown;
   opticalFlow?: unknown;
+  opticalFlowTracking?: unknown;
+  referenceQuality?: unknown;
 };
 
 function asRecord(value: unknown): LabRecord {
@@ -88,6 +93,14 @@ function hasMeasuredRecord(record: LabRecord): boolean {
     asNonEmptyString(record["status"]) === "measured" &&
     asFiniteNumber(record["sampledFrameCount"]) !== null
   );
+}
+
+function preferMeasuredRecord(primary: unknown, fallback: unknown): LabRecord {
+  const primaryRecord = asRecord(primary);
+  if (hasMeasuredRecord(primaryRecord) || Object.keys(primaryRecord).length > 0) {
+    return primaryRecord;
+  }
+  return asRecord(fallback);
 }
 
 function scoreCandidate(candidate: ForensicSignatureCandidate): ForensicSignatureCandidate {
@@ -387,12 +400,14 @@ function createCadenceGopCandidate(values: {
 export function buildForensicSignatureMapping(input: ForensicSignatureMappingInput): LabRecord {
   const black = asRecord(input.black);
   const compressionSignature = asRecord(input.compressionSignature);
-  const duplicateFrame = asRecord(input.duplicateFrame);
+  const duplicateFrame = preferMeasuredRecord(input.nearDuplicateFrame, input.duplicateFrame);
   const frameCadence = asRecord(input.frameCadence);
   const freeze = asRecord(input.freeze);
   const freezeAttribution = asRecord(input.freezeAttribution);
   const gopStructure = asRecord(input.gopStructure);
-  const opticalFlow = asRecord(input.opticalFlow);
+  const metadataProvenance = asRecord(input.metadataProvenance);
+  const opticalFlow = preferMeasuredRecord(input.opticalFlowTracking, input.opticalFlow);
+  const referenceQuality = asRecord(input.referenceQuality);
 
   const compressionRiskLevel = asNonEmptyString(compressionSignature["riskLevel"]);
   const compressionRiskScore = asFiniteNumber(compressionSignature["riskScore"]);
@@ -426,6 +441,14 @@ export function buildForensicSignatureMapping(input: ForensicSignatureMappingInp
   const subjectBackgroundMotionRatio = asFiniteNumber(opticalFlow["subjectBackgroundMotionRatio"]);
   const freezeAttributionClass = asNonEmptyString(freezeAttribution["classification"]);
   const gopBoundaryOverlapCount = asFiniteNumber(freezeAttribution["gopBoundaryOverlapCount"]) || 0;
+  const metadataStatus = asNonEmptyString(metadataProvenance["status"]);
+  const referenceQualityStatus = asNonEmptyString(referenceQuality["status"]);
+  const crossCheckCounterEvidence = [
+    metadataStatus === "unavailable" ? "metadata provenance cross-check was not measured" : null,
+    referenceQualityStatus === "unavailable"
+      ? "reference quality comparison was not measured"
+      : null,
+  ].filter((entry): entry is string => entry !== null);
 
   const candidates = [
     createTransportDuplicateCandidate({
@@ -487,6 +510,8 @@ export function buildForensicSignatureMapping(input: ForensicSignatureMappingInp
     hasMeasuredRecord(frameCadence) ? "frame cadence drift" : null,
     hasMeasuredRecord(opticalFlow) ? "optical-flow ROI/background split" : null,
     hasMeasuredRecord(gopStructure) ? "GOP structure" : null,
+    hasMeasuredRecord(metadataProvenance) ? "metadata provenance cross-check" : null,
+    hasMeasuredRecord(referenceQuality) ? "reference quality metric" : null,
     freezeCount > 0 ? "freezedetect intervals" : null,
     blackCount > 0 ? "blackdetect intervals" : null,
   ].filter((entry): entry is string => entry !== null);
@@ -499,6 +524,8 @@ export function buildForensicSignatureMapping(input: ForensicSignatureMappingInp
     `cadence:${bucketRatio(cadenceDriftRatio, 0.18, 0.08)}`,
     `motion:${opticalFlowClass || "unknown"}`,
     `freeze:${freezeAttributionClass || "baseline"}`,
+    `metadata:${metadataStatus || "unknown"}`,
+    `reference:${referenceQualityStatus || "unknown"}`,
   ].join("|");
   const basePayload = {
     caseVectorVersion: 1,
@@ -531,7 +558,13 @@ export function buildForensicSignatureMapping(input: ForensicSignatureMappingInp
       artifactFamily: "baseline_no_dominant_artifact_signature",
       artifactLabel: "No dominant artifact signature",
       confidence: "low",
-      counterEvidence: ["no candidate artifact family crossed the reporting threshold"],
+      counterEvidence: Array.from(
+        new Set(
+          ["no candidate artifact family crossed the reporting threshold"].concat(
+            crossCheckCounterEvidence
+          )
+        )
+      ),
       evidence: [],
       manualReviewPrompts: ["Use manual replay if the visual claim depends on a single frame."],
       score: 0,
@@ -543,7 +576,7 @@ export function buildForensicSignatureMapping(input: ForensicSignatureMappingInp
     artifactFamily: primary.family,
     artifactLabel: primary.label,
     confidence: confidenceFromScore(primary.score),
-    counterEvidence: primary.counterEvidence,
+    counterEvidence: Array.from(new Set(primary.counterEvidence.concat(crossCheckCounterEvidence))),
     evidence: primary.evidence,
     manualReviewPrompts: primary.manualReviewPrompts,
     score: primary.score,

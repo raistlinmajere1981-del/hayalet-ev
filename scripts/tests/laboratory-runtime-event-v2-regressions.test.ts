@@ -240,9 +240,7 @@ test("laboratory runtime events clear stale workbench context for source activat
           selectedModuleIds: ["media-analysis"],
           activeLiveFindingsStreamId: "media-analysis",
           activePreviewArtifactId: "preview-1",
-          analysisScope: {
-            intentIds: ["visual-inspection"],
-          },
+          analysisScope: {},
           analysisSettings: {
             modules: {
               "sound-events": {
@@ -368,9 +366,7 @@ test("laboratory room snapshots keep stale context workbench from overriding sou
       {
         activeModuleId: "media-analysis",
         selectedModuleIds: ["media-analysis"],
-        analysisScope: {
-          intentIds: ["visual-inspection"],
-        },
+        analysisScope: {},
         moduleToggles: {
           "sound-events": true,
         },

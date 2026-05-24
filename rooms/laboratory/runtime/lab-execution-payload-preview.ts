@@ -48,7 +48,6 @@ function createSelectionInput(input: LabExecutionPayloadPreviewInput): Record<st
   return {
     endMs: input.activeSelection.endMs,
     inspectionMode: input.inspectionMode,
-    intent: input.activeSelection.intent,
     sourceKind: input.sourceKind || "unknown",
     startMs: input.activeSelection.startMs,
     ...(roi

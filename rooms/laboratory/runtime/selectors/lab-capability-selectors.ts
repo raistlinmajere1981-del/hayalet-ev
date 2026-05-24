@@ -4,8 +4,6 @@ import type {
   CapabilityReadiness,
   LabAnalysisPreparationGroup,
   LabAsset,
-  LabExpectedOutput,
-  LabIntentId,
   LabOperationCapabilityProjection,
   LabPreflightResult,
   LabStoreState,
@@ -16,13 +14,13 @@ import {
   LAB_ANALYSIS_MODULE_SETTINGS_FIELDS,
   LAB_OPERATION_CAPABILITIES,
   LAB_OPERATION_SETTINGS_FIELDS,
-  WORKSPACE_INTENTS,
+  getAnalysisModuleRequirementMeta,
   getModuleIdsForCapabilityFamily,
   normalizeLabAnalysisModuleSettings,
   normalizeLabOperationSettings,
 } from "../../domain/lab-types.js";
 import { getProjectSource } from "./lab-project-selectors.js";
-import { getAssets, getSourceKind, getToolState } from "./lab-source-selectors.js";
+import { getSourceKind, getToolState } from "./lab-source-selectors.js";
 import { getTrackedOperationActionId } from "../lab-operation-action-map.js";
 import { getUserActions } from "./lab-activity-selectors.js";
 import { inferLabAssetSourceKind, type LabAssetSourceKind } from "../../shared/lab-asset-kind.js";
@@ -123,130 +121,22 @@ function getWorkspaceOperationTarget(state: LabStoreState): OperationTargetConte
   };
 }
 
-export function getSelectedIntents(state: LabStoreState): LabIntentId[] {
-  return state.ui.workspace.selectedIntents;
-}
-
-export function getAvailableIntents(state: LabStoreState) {
-  const operationTarget = getWorkspaceOperationTarget(state);
-  const sourceKind = operationTarget.sourceKind;
-  const sourceReady = operationTarget.sourceReady;
-  const availableCapabilities = getAvailableCapabilities(state);
-
-  return WORKSPACE_INTENTS.map(function (intent) {
-    const sourceCompatible =
-      sourceKind !== null && intent.sourceKinds.includes(sourceKind as "video" | "audio" | "image");
-    const capabilityReadiness = intent.internalCapabilities.map(function (capId) {
-      const cap = availableCapabilities.find(function (entry) {
-        return entry.id === capId;
-      });
-      return cap ? cap.readiness : "blocked";
-    });
-    const allBlocked = capabilityReadiness.every(function (entry) {
-      return entry === "blocked";
-    });
-    const someBlocked = capabilityReadiness.some(function (entry) {
-      return entry === "blocked";
-    });
-
-    let readiness: "ready" | "optional" | "blocked" = "ready";
-    let blockReason: string | null = null;
-
-    if (sourceKind === null) {
-      readiness = "blocked";
-      blockReason = operationTarget.blockReason || "Not available for this file type.";
-    } else if (!sourceReady) {
-      readiness = "blocked";
-      blockReason = "Source not ready.";
-    } else if (!sourceCompatible) {
-      readiness = "blocked";
-      blockReason = "Not available for this source type.";
-    } else if (allBlocked) {
-      readiness = "blocked";
-      blockReason = "Required tools not installed.";
-    } else if (someBlocked) {
-      readiness = "optional";
-      blockReason = "Some tools missing — partial results.";
-    }
-
-    return {
-      ...intent,
-      readiness,
-      blockReason,
-      selected: state.ui.workspace.selectedIntents.includes(intent.id),
-    };
-  });
-}
-
-export function getReadyAnalysisIntents(state: LabStoreState) {
-  return getAvailableIntents(state).filter(function (intent) {
-    return intent.readiness === "ready";
-  });
-}
-
-export function getReadyAnalysisIntentIds(state: LabStoreState): LabIntentId[] {
-  return getReadyAnalysisIntents(state).map(function (intent) {
-    return intent.id;
-  });
-}
-
-export function filterReadyAnalysisIntentIds(
-  state: LabStoreState,
-  intentIds: readonly LabIntentId[]
-): LabIntentId[] {
-  const readyIntentIds = new Set(getReadyAnalysisIntentIds(state));
-  return intentIds.filter(function (intentId, index, allIntentIds) {
-    return readyIntentIds.has(intentId) && allIntentIds.indexOf(intentId) === index;
-  });
-}
-
-export function getReadySelectedAnalysisIntentIds(state: LabStoreState): LabIntentId[] {
-  return filterReadyAnalysisIntentIds(state, state.ui.workspace.selectedIntents);
-}
-
 export function getReadySelectedAnalysisCapabilityIds(state: LabStoreState): CapabilityFamilyId[] {
-  const readyCapabilityIds = new Set(
-    getAvailableCapabilities(state)
-      .filter(function (capability) {
-        return capability.readiness === "ready";
-      })
-      .map(function (capability) {
-        return capability.id;
-      })
-  );
-  const capabilitySet = new Set<CapabilityFamilyId>();
-  const readySelectedIntentIds = getReadySelectedAnalysisIntentIds(state);
-  WORKSPACE_INTENTS.forEach(function (intent) {
-    if (!readySelectedIntentIds.includes(intent.id)) {
-      return;
-    }
-    intent.internalCapabilities.forEach(function (capId) {
-      if (readyCapabilityIds.has(capId)) {
-        capabilitySet.add(capId);
-      }
+  return getAnalysisPreparationGroups(state)
+    .filter(function (group) {
+      return (
+        group.selected &&
+        group.modules.some(function (module) {
+          return module.enabled && module.readiness !== "blocked";
+        })
+      );
+    })
+    .map(function (group) {
+      return group.capabilityId;
     });
-  });
-  return Array.from(capabilitySet);
-}
-
-export function getIntentDerivedCapabilities(state: LabStoreState): CapabilityFamilyId[] {
-  const selectedIntents = getSelectedIntents(state);
-  const capabilitySet = new Set<CapabilityFamilyId>();
-  WORKSPACE_INTENTS.forEach(function (intent) {
-    if (selectedIntents.includes(intent.id)) {
-      intent.internalCapabilities.forEach(function (capId) {
-        capabilitySet.add(capId);
-      });
-    }
-  });
-  return Array.from(capabilitySet);
 }
 
 function getEffectiveSelectedCapabilities(state: LabStoreState) {
-  const intentDerivedCapabilities = getIntentDerivedCapabilities(state);
-  if (intentDerivedCapabilities.length > 0) {
-    return intentDerivedCapabilities;
-  }
   return getSelectedCapabilities(state);
 }
 
@@ -331,37 +221,6 @@ export function getCurrentPreflight(state: LabStoreState): LabPreflightResult {
           ? "Araç uyarıları var ama işlem başlatılabilir."
           : null,
   };
-}
-
-export function getExpectedOutputs(intentId: string): LabExpectedOutput[] {
-  switch (intentId) {
-    case "visual-inspection":
-      return [
-        { intentId, label: "Frame çıktıları", assetTypes: ["frame", "image"] },
-        { intentId, label: "Anomali verileri", assetTypes: ["artifact"] },
-      ];
-    case "audio-investigation":
-      return [{ intentId, label: "Ses çıktısı", assetTypes: ["audio"] }];
-    default:
-      return [];
-  }
-}
-
-export function getActualOutputs(state: LabStoreState, intentId: string): LabAsset[] {
-  return getAssets(state).filter(function (asset) {
-    return Array.isArray(asset.intentIds) && asset.intentIds.includes(intentId);
-  });
-}
-
-export function isExpectedOutputMatched(
-  expectedOutput: LabExpectedOutput,
-  actualOutputs: LabAsset[]
-): boolean {
-  return expectedOutput.assetTypes.some(function (assetType) {
-    return actualOutputs.some(function (asset) {
-      return asset.type === assetType;
-    });
-  });
 }
 
 export function getSelectedCapabilities(state: LabStoreState): CapabilityFamilyId[] {
@@ -609,41 +468,72 @@ export function getAvailableOperationCapabilities(
 
 export function getAnalysisPreparationGroups(state: LabStoreState): LabAnalysisPreparationGroup[] {
   const availableCapabilities = getAvailableCapabilities(state);
-  const selectedIntents = getSelectedIntents(state);
+  const selectedCapabilities = getSelectedCapabilities(state);
   const moduleToggles = asLabRecord(asLabRecord(state.workbench)["moduleToggles"]);
   const analysisSettings = asLabRecord(asLabRecord(state.workbench)["analysisSettings"]);
   const moduleSettings = asLabRecord(analysisSettings["modules"]);
+  const operationTarget = getWorkspaceOperationTarget(state);
+  const sourceKind = operationTarget.sourceKind;
 
-  return WORKSPACE_INTENTS.map(function (intent) {
-    const intentSelected = selectedIntents.includes(intent.id);
-    const modules = intent.internalCapabilities.flatMap(function (capabilityId) {
-      const capability = availableCapabilities.find(function (entry) {
-        return entry.id === capabilityId;
-      });
-      const readiness = capability?.readiness ?? "blocked";
-      const blockReason = capability?.blockReason ?? null;
-      const requiredTools = capability?.requiredTools ?? [];
-      return getModuleIdsForCapabilityFamily(capabilityId).map(function (moduleId) {
-        return {
-          capabilityId,
-          moduleId,
-          label: getReadableModuleLabel(moduleId),
-          flowKind: "analysis-report" as const,
-          requiredTools: requiredTools.slice(),
-          readiness,
-          blockReason,
-          enabled: intentSelected && moduleToggles[moduleId] === true,
-          settings: normalizeLabAnalysisModuleSettings(moduleId, moduleSettings[moduleId]),
-          settingsFields: LAB_ANALYSIS_MODULE_SETTINGS_FIELDS[moduleId] || [],
-          reportSection: getReportSectionForCapability(capabilityId),
-        };
-      });
+  return availableCapabilities.map(function (capability) {
+    const capabilitySelected = selectedCapabilities.includes(capability.id);
+    const modules = getModuleIdsForCapabilityFamily(capability.id).map(function (moduleId) {
+      const moduleMeta = getAnalysisModuleRequirementMeta(capability.id, moduleId);
+      const requiredTools =
+        moduleMeta.requiredToolIds.length > 0
+          ? moduleMeta.requiredToolIds
+          : (capability.requiredTools ?? []);
+      const optionalTools = moduleMeta.optionalToolIds;
+      const sourceCompatible =
+        sourceKind !== null &&
+        moduleMeta.sourceKinds.includes(sourceKind as "video" | "audio" | "image");
+      const requiredMissing = getMissingToolIds(state, requiredTools);
+      const optionalMissing = getMissingToolIds(state, optionalTools);
+      let moduleReadiness = capability.readiness;
+      let moduleBlockReason = capability.blockReason;
+
+      if (moduleMeta.status === "planned" || moduleMeta.status === "gated") {
+        moduleReadiness = "blocked";
+        moduleBlockReason =
+          moduleMeta.status === "gated"
+            ? "Bu modul gelecek faz icin gated durumda."
+            : "Bu modul gelecek faz icin planlandi.";
+      } else if (sourceKind !== null && sourceCompatible !== true) {
+        moduleReadiness = "blocked";
+        moduleBlockReason = `Bu modul ${sourceKind} kaynak turu icin kullanilamaz.`;
+      } else if (requiredMissing.length > 0) {
+        moduleReadiness = "blocked";
+        moduleBlockReason = `Eksik arac: ${requiredMissing.join(", ")}`;
+      } else if (capability.readiness === "blocked") {
+        moduleReadiness = "blocked";
+        moduleBlockReason = capability.blockReason;
+      } else if (optionalMissing.length > 0) {
+        moduleReadiness = "optional";
+        moduleBlockReason = `Opsiyonel arac eksik: ${optionalMissing.join(", ")}`;
+      }
+
+      return {
+        capabilityId: capability.id,
+        moduleId,
+        label: getReadableModuleLabel(moduleId),
+        flowKind: "analysis-report" as const,
+        requiredTools: requiredTools.slice(),
+        optionalTools: optionalTools.slice(),
+        readiness: moduleReadiness,
+        blockReason: moduleBlockReason,
+        enabled: capabilitySelected && moduleToggles[moduleId] !== false,
+        settings: normalizeLabAnalysisModuleSettings(moduleId, moduleSettings[moduleId]),
+        settingsFields: LAB_ANALYSIS_MODULE_SETTINGS_FIELDS[moduleId] || [],
+        reportSection: moduleMeta.reportSection || getReportSectionForCapability(capability.id),
+        sourceKinds: moduleMeta.sourceKinds.slice(),
+        status: moduleMeta.status,
+      };
     });
     const selectedModules = modules.filter(function (module) {
       return module.enabled;
     });
     const selectionState =
-      !intentSelected || selectedModules.length === 0
+      !capabilitySelected || selectedModules.length === 0
         ? "none"
         : selectedModules.length === modules.length
           ? "full"
@@ -663,9 +553,9 @@ export function getAnalysisPreparationGroups(state: LabStoreState): LabAnalysisP
           : "ready";
 
     return {
-      intentId: intent.id,
-      label: intent.label,
-      description: intent.description,
+      capabilityId: capability.id,
+      label: capability.label,
+      description: capability.primaryTool,
       selected,
       selectionState,
       readiness,
@@ -675,7 +565,6 @@ export function getAnalysisPreparationGroups(state: LabStoreState): LabAnalysisP
           : readiness === "optional"
             ? "Bazı modüller kısmi veya kapalı durumda."
             : null,
-      expectedOutputs: getExpectedOutputs(intent.id),
       modules,
     };
   });
@@ -684,9 +573,24 @@ export function getAnalysisPreparationGroups(state: LabStoreState): LabAnalysisP
 export function getReadyAnalysisPreparationGroups(
   state: LabStoreState
 ): LabAnalysisPreparationGroup[] {
-  const readyIntentIds = new Set(getReadyAnalysisIntentIds(state));
   return getAnalysisPreparationGroups(state).filter(function (group) {
-    return readyIntentIds.has(group.intentId);
+    return group.modules.some(function (module) {
+      return module.readiness !== "blocked";
+    });
+  });
+}
+
+export function filterReadyAnalysisCapabilityIds(
+  state: LabStoreState,
+  capabilityIds: readonly CapabilityFamilyId[]
+): CapabilityFamilyId[] {
+  const readyCapabilityIds = new Set(
+    getReadyAnalysisPreparationGroups(state).map(function (group) {
+      return group.capabilityId;
+    })
+  );
+  return capabilityIds.filter(function (capabilityId, index, allCapabilityIds) {
+    return readyCapabilityIds.has(capabilityId) && allCapabilityIds.indexOf(capabilityId) === index;
   });
 }
 

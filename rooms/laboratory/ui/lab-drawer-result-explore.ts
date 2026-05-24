@@ -39,8 +39,8 @@ export function renderResultMode(state: LabStoreState, copy: LabI18n) {
         <strong>${escapeHtml(context.selectionRangeLabel ?? copy.t("mediaAnalysis.rightContext.emptySelection", "No active selection"))}</strong>
       </div>
       <div class="labx-right-context__item">
-        <span>${escapeHtml(copy.t("mediaAnalysis.rightContext.intent", "Intent"))}</span>
-        <strong>${escapeHtml(context.activeIntentLabel ?? copy.t("mediaAnalysis.rightContext.emptyIntent", "No intent selected"))}</strong>
+        <span>${escapeHtml(copy.t("mediaAnalysis.rightContext.activeAction", "Selected action"))}</span>
+        <strong>${escapeHtml(context.activeIntentLabel ?? copy.t("mediaAnalysis.rightContext.emptyAction", "No action selected"))}</strong>
       </div>
     </div>
   `;

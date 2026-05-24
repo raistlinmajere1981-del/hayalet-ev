@@ -134,30 +134,6 @@ export function createMediaExportUtilities(deps: MediaExportUtilityDeps) {
     );
   }
 
-  function getWorkspaceIntentIds(project: LaboratoryRecord): string[] {
-    const scope = toRecord(toRecord(project["workbench"])["analysisScope"]);
-    const intentIds = scope["intentIds"];
-    if (!Array.isArray(intentIds)) {
-      return [];
-    }
-    return intentIds.filter(
-      (entry): entry is string => typeof entry === "string" && entry.trim() !== ""
-    );
-  }
-
-  function getPayloadIntentIds(payload: LaboratoryRecord): string[] | undefined {
-    const intentIds = payload["intentIds"];
-    if (!Array.isArray(intentIds)) {
-      return undefined;
-    }
-    const normalizedIntentIds = intentIds
-      .map(function (entry) {
-        return asNonEmptyString(entry);
-      })
-      .filter((entry): entry is string => entry !== null);
-    return normalizedIntentIds.length > 0 ? Array.from(new Set(normalizedIntentIds)) : undefined;
-  }
-
   function clampNumber(value: number, min: number, max: number) {
     return Math.max(min, Math.min(max, value));
   }
@@ -570,13 +546,11 @@ export function createMediaExportUtilities(deps: MediaExportUtilityDeps) {
     getFpsFilter,
     getFrameGrabSeekPoints,
     getImageExtension,
-    getPayloadIntentIds,
     getProjectId,
     getScaleFilter,
     getSourceDimensions,
     getSourceDurationMs,
     getSourceRecord,
-    getWorkspaceIntentIds,
     hasNormalizedRoiPayload,
     isOperationCancelledError,
     pushCancelledJobState,

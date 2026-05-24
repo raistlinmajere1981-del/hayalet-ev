@@ -111,11 +111,11 @@ function setRun(
   };
 }
 
-test("laboratory wireframe v2 derives active-run workspace locks and blocks locked store mutations", () => {
+test("laboratory wireframe v2 derives active-run workspace locks and blocks locked timeline mutations", () => {
   const store = createReadyStore();
   store.dispatch({ type: "workspace-timeline-updated", startMs: 1000, endMs: 3000 });
   store.dispatch({ type: "workspace-hypothesis-updated", text: "pre-run hypothesis" });
-  store.dispatch({ type: "workspace-intent-set", intents: ["visual-inspection"] });
+  store.dispatch({ type: "capability-set", capabilities: ["visual-forensics"] });
 
   setRun(store.getState());
 
@@ -123,7 +123,7 @@ test("laboratory wireframe v2 derives active-run workspace locks and blocks lock
     source: true,
     timeline: true,
     roi: true,
-    intents: true,
+    analysis: true,
     hypothesis: true,
     focusControls: false,
   });
@@ -131,7 +131,7 @@ test("laboratory wireframe v2 derives active-run workspace locks and blocks lock
 
   store.dispatch({ type: "workspace-timeline-updated", startMs: 2000, endMs: 4000 });
   store.dispatch({ type: "workspace-hypothesis-updated", text: "mutated" });
-  store.dispatch({ type: "workspace-intent-toggled", intentId: "audio-investigation" });
+  store.dispatch({ type: "capability-set", capabilities: ["audio-signal"] });
   store.dispatch({
     type: "selection-roi-updated",
     roi: { x: 0.1, y: 0.1, width: 0.3, height: 0.3 },
@@ -142,7 +142,7 @@ test("laboratory wireframe v2 derives active-run workspace locks and blocks lock
   assert.equal(state.ui.workspace.timelineStartMs, 1000);
   assert.equal(state.ui.workspace.timelineEndMs, 3000);
   assert.equal(state.ui.workspace.hypothesis, "pre-run hypothesis");
-  assert.deepEqual(state.ui.workspace.selectedIntents, ["visual-inspection"]);
+  assert.deepEqual(state.selectedCapabilities, ["audio-signal"]);
   assert.equal(state.ui.workspace.activeSelection?.roi, undefined);
   assert.equal(state.ui.workspace.interactiveSettings.brightness, 112);
 });
@@ -370,9 +370,9 @@ test("laboratory wireframe v2 result drawer uses localized decision labels and a
     "explore-toggle",
   ]);
   assert.match(trDrawer, /Secim/);
-  assert.match(trDrawer, /Niyet/);
+  assert.match(trDrawer, /Secili aksiyon/);
   assert.match(enDrawer, /Selection/);
-  assert.match(enDrawer, /Intent/);
+  assert.match(enDrawer, /Selected action/);
   assert.doesNotMatch(trDrawer, /data-decision-card="candidate"|data-decision-card="commitment"|data-decision-card="staging"/);
   assert.doesNotMatch(enDrawer, /data-block-id="execution-advisories"/);
 

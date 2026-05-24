@@ -11,16 +11,6 @@ type LaboratoryProcessOutputHelpersDeps = {
 export function createLaboratoryProcessOutputHelpers(deps: LaboratoryProcessOutputHelpersDeps) {
   const { asNonEmptyString, audioFeatureId, toRecord } = deps;
 
-  function getProcessIntentIds(processRecord: LaboratoryRecord) {
-    const scope = toRecord(processRecord["analysisScope"]);
-    const intentIds = Array.isArray(scope["intentIds"]) ? (scope["intentIds"] as unknown[]) : [];
-    return intentIds
-      .map(function (entry) {
-        return asNonEmptyString(entry);
-      })
-      .filter((entry): entry is string => entry !== null);
-  }
-
   function formatProcessOutputFeatureLabel(featureId: string) {
     return featureId
       .split(/[-_]/)
@@ -57,7 +47,6 @@ export function createLaboratoryProcessOutputHelpers(deps: LaboratoryProcessOutp
     const featureLabel = formatProcessOutputFeatureLabel(featureId);
     const findingCount = getReportFindingCount(reportRecord);
     const generatedAt = asNonEmptyString(reportRecord["generatedAt"]) || new Date().toISOString();
-    const intentIds = getProcessIntentIds(processRecord);
     const reportViews = [
       { view: "user", label: `${featureLabel} User Report` },
       { view: "ai", label: `${featureLabel} AI Report` },
@@ -71,7 +60,6 @@ export function createLaboratoryProcessOutputHelpers(deps: LaboratoryProcessOutp
           type: "report",
           name: reportView.label,
           runId,
-          intentIds,
           metadata: {
             featureId,
             findingCount,
@@ -107,7 +95,6 @@ export function createLaboratoryProcessOutputHelpers(deps: LaboratoryProcessOutp
     }
 
     const runId = asNonEmptyString(processRecord["runId"]);
-    const intentIds = getProcessIntentIds(processRecord);
     nextAssets = processArtifacts.reduce<unknown>(function (assets, artifact) {
       const artifactPath = asNonEmptyString(artifact["path"]);
       if (artifactPath === null) {
@@ -126,7 +113,6 @@ export function createLaboratoryProcessOutputHelpers(deps: LaboratoryProcessOutp
         name: artifactName,
         localPath: artifactPath,
         runId,
-        intentIds,
         ...(artifactId === null ? {} : { id: `process-artifact-${artifactId}` }),
         metadata: {
           ...toRecord(artifact["metadata"]),

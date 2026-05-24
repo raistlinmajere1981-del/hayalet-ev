@@ -12,13 +12,13 @@ import {
 import {
   CAPABILITY_FAMILIES,
   CAPABILITY_MODULE_GROUPS,
+  LAB_ANALYSIS_MODULE_REQUIREMENTS,
   LAB_OPERATION_CAPABILITIES,
-  WORKSPACE_INTENTS,
 } from "./lab-capability-definitions.js";
 import type {
   CapabilityFamilyId,
+  LabAnalysisModuleRequirementMeta,
   LabAnalysisSettingsMap,
-  LabIntentId,
   LabOperationCapabilityId,
   LabOperationSettingsMap,
   LabSettingsFieldMeta,
@@ -26,36 +26,6 @@ import type {
 } from "./lab-capability-definitions.js";
 export * from "./lab-capability-definitions.js";
 export * from "./lab-operation-settings.js";
-
-export function getIntentLabel(intentId: string): string {
-  return (
-    WORKSPACE_INTENTS.find(function (intent) {
-      return intent.id === intentId;
-    })?.label || intentId
-  );
-}
-
-export function getIntentPreviewDescription(intentId: string): string {
-  switch (intentId) {
-    case "visual-inspection":
-      return "Görsel yapı ve anomaliler analiz edilir";
-    case "audio-investigation":
-      return "Ses sinyali ve anomaliler analiz edilir";
-    case "detail-enhancement":
-      return "Görüntü detayları iyileştirilir";
-    case "anomaly-detection":
-      return "Olası anormallikler tespit edilir";
-    default:
-      return getIntentLabel(intentId);
-  }
-}
-
-export function getCapabilityFamilyIdsForIntentId(intentId: LabIntentId): CapabilityFamilyId[] {
-  const intent = WORKSPACE_INTENTS.find(function (entry) {
-    return entry.id === intentId;
-  });
-  return Array.isArray(intent?.internalCapabilities) ? intent.internalCapabilities.slice() : [];
-}
 
 export const LAB_ANALYSIS_FAMILY_SETTINGS_DEFAULTS: Record<CapabilityFamilyId, LabSettingsRecord> =
   {
@@ -126,6 +96,37 @@ export const LAB_ANALYSIS_MODULE_SETTINGS_DEFAULTS: Record<string, LabSettingsRe
   },
   "temporal-noise-pattern": { samplingDensity: "balanced", frameStep: 24, sensitivity: "medium" },
   "motion-anomaly": { samplingDensity: "dense", frameStep: 12, sensitivity: "medium" },
+  "perceptual-duplicate-frame": {
+    hashMode: "hybrid",
+    similarityThreshold: 0.92,
+    minRunFrames: 2,
+    frameStep: 12,
+    roiOnly: false,
+  },
+  "optical-flow-tracking": {
+    flowEngine: "farneback",
+    cameraCompensation: "light",
+    motionThreshold: 0.18,
+    planeSplit: "auto",
+    roiOnly: false,
+  },
+  "compression-signature-mapping": {
+    artifactProfile: "balanced",
+    lowLightBias: false,
+    edgeSensitivity: 0.55,
+    bppThreshold: 0.08,
+  },
+  "metadata-provenance-audit": {
+    metadataDepth: "overview",
+    timelineCrosscheck: true,
+    platformFingerprint: "light",
+  },
+  "reference-quality-check": {
+    metricSet: "ssim-vmaf",
+    referenceSource: "pre-upload",
+    scale: "source",
+    minDelta: 0.05,
+  },
   "visual-signal-amplification": { revealStrength: 1, channelMode: "rgb", roiOnly: false },
   "color-channel-isolation": { channelMode: "red", revealStrength: 1, roiOnly: false },
   "gamma-scan": { gammaMin: 0.7, gammaMax: 1.7, revealStrength: 1, roiOnly: false },
@@ -181,6 +182,121 @@ export const LAB_ANALYSIS_MODULE_SETTINGS_FIELDS: Record<string, LabSettingsFiel
       kind: "select",
       options: ["low", "medium", "high"].map((value) => ({ label: value, value })),
     },
+  ],
+  "perceptual-duplicate-frame": [
+    {
+      id: "hashMode",
+      label: "Hash mode",
+      kind: "select",
+      options: ["exact", "perceptual", "hybrid"].map((value) => ({ label: value, value })),
+    },
+    {
+      id: "similarityThreshold",
+      label: "Similarity",
+      kind: "number",
+      min: 0.5,
+      max: 1,
+      step: 0.01,
+    },
+    { id: "minRunFrames", label: "Min run", kind: "number", min: 1, max: 30, step: 1 },
+    { id: "frameStep", label: "Frame step", kind: "number", min: 1, max: 120, step: 1 },
+    { id: "roiOnly", label: "ROI only", kind: "toggle" },
+  ],
+  "optical-flow-tracking": [
+    {
+      id: "flowEngine",
+      label: "Flow engine",
+      kind: "select",
+      options: ["farneback", "raft-planned"].map((value) => ({ label: value, value })),
+    },
+    {
+      id: "cameraCompensation",
+      label: "Camera compensation",
+      kind: "select",
+      options: ["off", "light", "strong"].map((value) => ({ label: value, value })),
+    },
+    {
+      id: "motionThreshold",
+      label: "Motion threshold",
+      kind: "number",
+      min: 0.01,
+      max: 1,
+      step: 0.01,
+    },
+    {
+      id: "planeSplit",
+      label: "Plane split",
+      kind: "select",
+      options: ["auto", "roi", "full-frame"].map((value) => ({ label: value, value })),
+    },
+    { id: "roiOnly", label: "ROI only", kind: "toggle" },
+  ],
+  "compression-signature-mapping": [
+    {
+      id: "artifactProfile",
+      label: "Artifact profile",
+      kind: "select",
+      options: ["balanced", "low-light", "fast-motion", "edge"].map((value) => ({
+        label: value,
+        value,
+      })),
+    },
+    { id: "lowLightBias", label: "Low-light bias", kind: "toggle" },
+    {
+      id: "edgeSensitivity",
+      label: "Edge sensitivity",
+      kind: "number",
+      min: 0,
+      max: 1,
+      step: 0.01,
+    },
+    {
+      id: "bppThreshold",
+      label: "BPP threshold",
+      kind: "number",
+      min: 0.01,
+      max: 0.5,
+      step: 0.01,
+    },
+  ],
+  "metadata-provenance-audit": [
+    {
+      id: "metadataDepth",
+      label: "Metadata depth",
+      kind: "select",
+      options: ["overview", "detailed", "forensic"].map((value) => ({ label: value, value })),
+    },
+    { id: "timelineCrosscheck", label: "Timeline check", kind: "toggle" },
+    {
+      id: "platformFingerprint",
+      label: "Platform fingerprint",
+      kind: "select",
+      options: ["off", "light", "strong"].map((value) => ({ label: value, value })),
+    },
+  ],
+  "reference-quality-check": [
+    {
+      id: "metricSet",
+      label: "Metrics",
+      kind: "select",
+      options: ["ssim", "vmaf", "ssim-vmaf"].map((value) => ({ label: value, value })),
+    },
+    {
+      id: "referenceSource",
+      label: "Reference",
+      kind: "select",
+      options: ["pre-upload", "comparison-reference", "active-reference"].map((value) => ({
+        label: value,
+        value,
+      })),
+    },
+    {
+      id: "scale",
+      label: "Scale",
+      kind: "select",
+      options: ["source", "480p", "720p", "1080p"].map((value) => ({ label: value, value })),
+    },
+    { id: "minDelta", label: "Min delta", kind: "number", min: 0, max: 1, step: 0.01 },
   ],
   "visual-signal-amplification": [
     { id: "revealStrength", label: "Reveal", kind: "number", min: 0.25, max: 2, step: 0.05 },
@@ -726,6 +842,44 @@ export function normalizeLabAnalysisModuleSettings(
       case "compression":
         next[key] = pickOption(source[key], ["off", "light", "medium", "strong"], String(fallback));
         break;
+      case "hashMode":
+        next[key] = pickOption(source[key], ["exact", "perceptual", "hybrid"], String(fallback));
+        break;
+      case "flowEngine":
+        next[key] = pickOption(source[key], ["farneback", "raft-planned"], String(fallback));
+        break;
+      case "cameraCompensation":
+        next[key] = pickOption(source[key], ["off", "light", "strong"], String(fallback));
+        break;
+      case "planeSplit":
+        next[key] = pickOption(source[key], ["auto", "roi", "full-frame"], String(fallback));
+        break;
+      case "artifactProfile":
+        next[key] = pickOption(
+          source[key],
+          ["balanced", "low-light", "fast-motion", "edge"],
+          String(fallback)
+        );
+        break;
+      case "metadataDepth":
+        next[key] = pickOption(source[key], ["overview", "detailed", "forensic"], String(fallback));
+        break;
+      case "platformFingerprint":
+        next[key] = pickOption(source[key], ["off", "light", "strong"], String(fallback));
+        break;
+      case "metricSet":
+        next[key] = pickOption(source[key], ["ssim", "vmaf", "ssim-vmaf"], String(fallback));
+        break;
+      case "referenceSource":
+        next[key] = pickOption(
+          source[key],
+          ["pre-upload", "comparison-reference", "active-reference"],
+          String(fallback)
+        );
+        break;
+      case "scale":
+        next[key] = pickOption(source[key], ["source", "480p", "720p", "1080p"], String(fallback));
+        break;
       case "model":
         next[key] = pickOption(
           source[key],
@@ -749,10 +903,19 @@ export function normalizeLabAnalysisModuleSettings(
       case "roiOnly":
       case "selectedRangeOnly":
       case "essentiaFallback":
+      case "lowLightBias":
+      case "timelineCrosscheck":
         next[key] = pickBoolean(source[key], Boolean(fallback));
         break;
       case "threshold":
+      case "similarityThreshold":
+      case "motionThreshold":
+      case "edgeSensitivity":
+      case "bppThreshold":
         next[key] = pickNumber(source[key], Number(fallback), 0.01, 0.95, 0.01);
+        break;
+      case "minDelta":
+        next[key] = pickNumber(source[key], Number(fallback), 0, 1, 0.01);
         break;
       case "sampleRate":
         next[key] = pickNumber(source[key], Number(fallback), 8000, 96000, 1);
@@ -768,6 +931,7 @@ export function normalizeLabAnalysisModuleSettings(
         next[key] = pickNumber(source[key], Number(fallback), 1, 30, 1);
         break;
       case "frameStep":
+      case "minRunFrames":
         next[key] = pickNumber(source[key], Number(fallback), 1, 120, 1);
         break;
       case "windowSeconds":
@@ -832,12 +996,30 @@ export function getModuleIdsForCapabilityFamily(capabilityId: CapabilityFamilyId
   );
 }
 
-export function getIntentIdsForCapabilityFamily(capabilityId: CapabilityFamilyId): LabIntentId[] {
-  return WORKSPACE_INTENTS.filter(function (intent) {
-    return intent.internalCapabilities.includes(capabilityId);
-  }).map(function (intent) {
-    return intent.id;
+export function getAnalysisModuleRequirementMeta(
+  capabilityId: CapabilityFamilyId,
+  moduleId: string
+): LabAnalysisModuleRequirementMeta {
+  const family = CAPABILITY_FAMILIES.find(function (entry) {
+    return entry.id === capabilityId;
   });
+  const explicitMeta = LAB_ANALYSIS_MODULE_REQUIREMENTS[moduleId];
+  if (explicitMeta !== undefined) {
+    return {
+      ...explicitMeta,
+      optionalToolIds: explicitMeta.optionalToolIds.slice(),
+      requiredToolIds: explicitMeta.requiredToolIds.slice(),
+      sourceKinds: explicitMeta.sourceKinds.slice(),
+    };
+  }
+  return {
+    id: moduleId,
+    capabilityId,
+    optionalToolIds: [],
+    requiredToolIds: family?.requiredTools.slice() || [],
+    sourceKinds: family?.sourceKinds.slice() || ["video", "audio", "image"],
+    status: "implemented",
+  };
 }
 
 export function getCapabilityFamilyForModuleId(
@@ -859,12 +1041,4 @@ export function getCapabilityFamilyForModuleId(
       return entry.moduleIds.includes(normalizedModuleId);
     })?.capabilityId || null
   );
-}
-
-export function getIntentIdsForModuleId(moduleId: string | null | undefined): LabIntentId[] {
-  const capabilityId = getCapabilityFamilyForModuleId(moduleId);
-  if (capabilityId === null) {
-    return [];
-  }
-  return getIntentIdsForCapabilityFamily(capabilityId);
 }

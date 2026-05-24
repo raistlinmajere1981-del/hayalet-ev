@@ -7,7 +7,6 @@ import {
   LAB_ANALYSIS_MODULE_SETTINGS_FIELDS,
   LAB_OPERATION_CAPABILITIES,
   LAB_OPERATION_SETTINGS_FIELDS,
-  WORKSPACE_INTENTS,
   getModuleIdsForCapabilityFamily,
 } from "../../rooms/laboratory/domain/lab-types.ts";
 import { labI18nEn } from "../../rooms/laboratory/runtime/lab-i18n-en.ts";
@@ -100,20 +99,11 @@ test("laboratory room catalogs stay structurally aligned across EN and TR", () =
   assert.deepEqual([...trLeaves.keys()].sort(), [...enLeaves.keys()].sort());
 });
 
-test("laboratory intent and operation catalog labels are available in room i18n", () => {
+test("laboratory operation catalog labels are available in room i18n", () => {
   const enCatalog = readCatalog(EN_CATALOG_PATH);
   const trCatalog = readCatalog(TR_CATALOG_PATH);
   const issues: string[] = [];
   const outputKinds = new Set<string>();
-
-  WORKSPACE_INTENTS.forEach(function (intent) {
-    ["label", "description"].forEach(function (field) {
-      const key = `mediaAnalysis.workspace.intents.${intent.id}.${field}`;
-      if (!hasCatalogPath(enCatalog, key) || !hasCatalogPath(trCatalog, key)) {
-        issues.push(key);
-      }
-    });
-  });
 
   LAB_OPERATION_CAPABILITIES.forEach(function (capability) {
     ["label", "description"].forEach(function (field) {

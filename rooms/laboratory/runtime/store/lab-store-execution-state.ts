@@ -1,9 +1,9 @@
 import { asLabRecord, asNonEmptyString } from "../../domain/lab-types.js";
 import type {
   LabActionSuggestion,
+  CapabilityFamilyId,
   LabExecutionCandidate,
   LabExecutionCommitment,
-  LabIntentId,
   LabSelection,
   LabStoreState,
 } from "../../domain/lab-types.js";
@@ -182,35 +182,36 @@ export function isOperationResultSuggestion(suggestion: LabActionSuggestion) {
   );
 }
 
-export function getAnalysisPreparationIntentIdsForSuggestion(
+export function getAnalysisPreparationCapabilityIdsForSuggestion(
   suggestion: LabActionSuggestion | null
-): LabIntentId[] {
+): CapabilityFamilyId[] {
   if (suggestion === null || isOperationResultSuggestion(suggestion)) {
     return [];
   }
+  if (suggestion.analysisCapabilityId) {
+    return [suggestion.analysisCapabilityId];
+  }
   switch (suggestion.actionType) {
     case "inspect-audio":
-      return ["audio-investigation"];
+      return ["audio-signal"];
     case "inspect-motion":
     case "detect-scenes":
     case "detect-objects":
-      return ["visual-inspection"];
+      return ["visual-structure"];
     case "focus-region":
     case "ocr-region":
-      return ["visual-inspection"];
+      return ["visual-forensics"];
     case "metadata-audit":
-      return suggestion.analysisCapabilityId === "audio-signal"
-        ? ["audio-investigation"]
-        : ["visual-inspection"];
+      return ["visual-forensics"];
     case "analyze-segment":
-      return ["visual-inspection", "audio-investigation", "anomaly-detection"];
+      return ["visual-structure", "visual-forensics", "audio-signal"];
     default:
       return [];
   }
 }
 
 export function isAnalysisPreparationSuggestion(suggestion: LabActionSuggestion) {
-  return getAnalysisPreparationIntentIdsForSuggestion(suggestion).length > 0;
+  return getAnalysisPreparationCapabilityIdsForSuggestion(suggestion).length > 0;
 }
 
 function getAnalysisPreparationSuggestionsForState(state: LabStoreState) {

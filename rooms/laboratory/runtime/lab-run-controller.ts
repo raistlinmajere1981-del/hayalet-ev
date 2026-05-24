@@ -1,16 +1,16 @@
 import {
   asLabRecord,
   asNonEmptyString,
+  CAPABILITY_FAMILIES,
   escapeHtml,
-  WORKSPACE_INTENTS,
 } from "../domain/lab-types.js";
 import type {
+  CapabilityFamilyId,
   LabAsset,
   LabComparisonSide,
   LabFeatureId,
   LabFocusLayer,
   LabComparisonViewMode,
-  LabIntentId,
   LabSelectionROI,
   LabStoreEvent,
 } from "../domain/lab-types.js";
@@ -20,7 +20,6 @@ import {
   getCurrentRun,
   getEditActionBlockReason,
   getReadySelectedAnalysisCapabilityIds,
-  getReadySelectedAnalysisIntentIds,
   getSourceReady,
   getToolLifecycleStage,
   getWaveformTimelineModel,
@@ -295,7 +294,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   const workspaceOperations = createLabWorkspaceOperationController({
     dispatch,
     getActiveSelectionOperationPayload: mediaActions.getActiveSelectionOperationPayload,
-    getCurrentRunIntentPayload: mediaActions.getCurrentRunIntentPayload,
+    getCurrentRunContextPayload: mediaActions.getCurrentRunContextPayload,
     isWorkspaceMutationLocked,
     pushLockedWorkspaceEvent,
     startTrackedOperationForUiAction: mediaActions.startTrackedOperationForUiAction,
@@ -529,15 +528,15 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   }
 
   function parseAnalysisPreparationModuleValue(value: string) {
-    const [intentId, moduleId] = value.split("::");
-    const knownIntentId = WORKSPACE_INTENTS.some(function (intent) {
-      return intent.id === intentId;
+    const [capabilityId, moduleId] = value.split("::");
+    const knownCapabilityId = CAPABILITY_FAMILIES.some(function (capability) {
+      return capability.id === capabilityId;
     });
-    if (!knownIntentId || typeof moduleId !== "string" || moduleId.trim() === "") {
+    if (!knownCapabilityId || typeof moduleId !== "string" || moduleId.trim() === "") {
       return null;
     }
     return {
-      intentId: intentId as LabIntentId,
+      capabilityId: capabilityId as CapabilityFamilyId,
       moduleId,
     };
   }
@@ -878,8 +877,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
   function updateAnalysisScopeFromWorkspace(
     state: LabControllerState,
-    choice: AnalysisScopeChoice,
-    selectedIntentIds: LabIntentId[]
+    choice: AnalysisScopeChoice
   ) {
     const selection = getWorkspaceAnalysisSelection(state);
     const ws = state.ui.workspace;
@@ -890,12 +888,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         nextScope["hypothesis"] = hypothesis;
       } else {
         delete nextScope["hypothesis"];
-      }
-
-      if (selectedIntentIds.length > 0) {
-        nextScope["intentIds"] = Array.from(new Set(selectedIntentIds));
-      } else {
-        delete nextScope["intentIds"];
       }
 
       delete nextScope["frameRange"];
@@ -927,7 +919,6 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         "timeRange",
         "frameRange",
         "region",
-        "intentIds",
         "comparison",
         "lifecycle",
       ].some(function (key) {
@@ -957,12 +948,11 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   }
 
   function startDeepAnalysis(state: LabControllerState, scopeChoice: AnalysisScopeChoice) {
-    const selectedIntentIds = getReadySelectedAnalysisIntentIds(state);
-    const intentCapabilities = getReadySelectedAnalysisCapabilityIds(state);
-    const { activeFeatureId } = deriveFeatureSelectionFromCapabilities(intentCapabilities);
+    const selectedCapabilities = getReadySelectedAnalysisCapabilityIds(state);
+    const { activeFeatureId } = deriveFeatureSelectionFromCapabilities(selectedCapabilities);
 
-    syncCapabilities(intentCapabilities);
-    updateAnalysisScopeFromWorkspace(state, scopeChoice, selectedIntentIds);
+    syncCapabilities(selectedCapabilities);
+    updateAnalysisScopeFromWorkspace(state, scopeChoice);
 
     const sourceRecord = asLabRecord(state.source);
     if (asNonEmptyString(sourceRecord["previewUrl"]) === null) {
@@ -1251,7 +1241,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         return;
       }
       case "module-toggle":
-        if (isWorkspaceMutationLocked("intents")) {
+        if (isWorkspaceMutationLocked("analysis")) {
           pushLockedWorkspaceEvent("Analiz modülleri aktif analiz sırasında kilitli.");
           return;
         }
@@ -1260,7 +1250,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           if (parsed) {
             dispatch({
               type: "analysis-prep-module-toggled",
-              intentId: parsed.intentId,
+              capabilityId: parsed.capabilityId,
               moduleId: parsed.moduleId,
             });
             syncCurrentWorkbenchToHost();
@@ -1523,25 +1513,17 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "asset-remove":
         removeAssetsWithConfirmation([value]);
         return;
-      case "workspace-intent-toggle":
-        if (isWorkspaceMutationLocked("intents")) {
-          pushLockedWorkspaceEvent("Analiz amaçları aktif analiz sırasında kilitli.");
+      case "analysis-prep-group-toggle":
+        if (isWorkspaceMutationLocked("analysis")) {
+          pushLockedWorkspaceEvent("Analiz modülleri aktif analiz sırasında kilitli.");
           return;
         }
         if (value.trim() !== "") {
           dispatch({
-            type: "workspace-intent-toggled",
-            intentId: value as import("../domain/lab-types.js").LabIntentId,
+            type: "analysis-prep-group-toggled",
+            capabilityId: value as import("../domain/lab-types.js").CapabilityFamilyId,
           });
           syncCurrentWorkbenchToHost();
-        }
-        return;
-      case "analysis-prep-group-toggle":
-        if (value.trim() !== "") {
-          dispatch({
-            type: "analysis-prep-group-toggled",
-            intentId: value as import("../domain/lab-types.js").LabIntentId,
-          });
         }
         return;
       case "workspace-process-view-toggled":

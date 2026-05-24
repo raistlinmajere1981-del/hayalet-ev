@@ -101,10 +101,16 @@ test("selection suggestion selector falls back to the full source scope without 
   assert.equal(audioStore.getState().ui.workspace.activeSelection, null);
   assert.deepEqual(getSelectionSuggestions(audioStore.getState()), [
     {
+      id: "analyze-anomaly",
+      label: "Anomaliyi analiz et",
+      actionType: "analyze-segment",
+      confidence: 0.9,
+    },
+    {
       id: "audio-inspect",
       label: "Ses detaylarini incele",
       actionType: "inspect-audio",
-      confidence: 0.68,
+      confidence: 0.9,
     },
   ]);
   assert.deepEqual(getEffectiveActiveSelection(audioStore.getState()), {
@@ -112,7 +118,6 @@ test("selection suggestion selector falls back to the full source scope without 
     startMs: 0,
     endMs: 4000,
     type: "clip",
-    intent: "general",
     createdAt: 0,
   });
   assert.equal(
@@ -141,10 +146,34 @@ test("selection suggestion selector falls back to the full source scope without 
 
   assert.deepEqual(getSelectionSuggestions(videoStore.getState()), [
     {
+      id: "analyze-anomaly",
+      label: "Anomaliyi analiz et",
+      actionType: "analyze-segment",
+      confidence: 0.9,
+    },
+    {
+      id: "motion-check",
+      label: "Hareket tutarliligini incele",
+      actionType: "analyze-segment",
+      confidence: 0.85,
+    },
+    {
+      id: "audio-inspect",
+      label: "Ses detaylarini incele",
+      actionType: "inspect-audio",
+      confidence: 0.9,
+    },
+    {
+      id: "enhance-visual",
+      label: "Goruntuyu iyilestir",
+      actionType: "enhance-visual",
+      confidence: 0.8,
+    },
+    {
       id: "extract-clip",
       label: "Bu bolumu kes",
       actionType: "extract-clip",
-      confidence: 0.68,
+      confidence: 0.6,
     },
   ]);
   assert.equal(getEffectiveActiveSelection(videoStore.getState())?.endMs, 9000);
@@ -171,18 +200,24 @@ test("selection suggestion selector falls back to the full source scope without 
   });
   assert.deepEqual(getSelectionSuggestions(imageStore.getState()), [
     {
+      id: "analyze-anomaly",
+      label: "Anomaliyi analiz et",
+      actionType: "analyze-segment",
+      confidence: 0.94,
+    },
+    {
+      id: "enhance-visual",
+      label: "Goruntuyu iyilestir",
+      toolHint: "Enhance clarity",
+      actionType: "enhance-visual",
+      confidence: 0.86,
+    },
+    {
       id: "inspect-region",
       label: "Secili bolgeyi incele",
       toolHint: "Focus region",
       actionType: "focus-region",
       confidence: 0.82,
-    },
-    {
-      id: "enhance-region-clarity",
-      label: "Bolge netligini artir",
-      toolHint: "Enhance clarity",
-      actionType: "enhance-visual",
-      confidence: 0.76,
     },
   ]);
   assert.equal(
@@ -244,15 +279,21 @@ test("selection suggestion selector provides a general fallback for timeline med
 
   assert.deepEqual(getSelectionSuggestions(store.getState()), [
     {
+      id: "analyze-anomaly",
+      label: "Anomaliyi analiz et",
+      actionType: "analyze-segment",
+      confidence: 0.9,
+    },
+    {
       id: "audio-inspect",
       label: "Ses detaylarini incele",
       actionType: "inspect-audio",
-      confidence: 0.68,
+      confidence: 0.9,
     },
   ]);
 });
 
-test("selection suggestion selector fences recommendations by intent and media kind", () => {
+test("selection suggestion selector fences recommendations by inspection mode and media kind", () => {
   const audioStore = createLabStore();
   audioStore.dispatch({
     type: "source-config-patched",
@@ -268,16 +309,22 @@ test("selection suggestion selector fences recommendations by intent and media k
     endMs: 3000,
   });
   audioStore.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
 
   assert.deepEqual(getSelectionSuggestions(audioStore.getState()), [
     {
+      id: "analyze-anomaly",
+      label: "Anomaliyi analiz et",
+      actionType: "analyze-segment",
+      confidence: 0.9,
+    },
+    {
       id: "audio-inspect",
       label: "Ses detaylarini incele",
       actionType: "inspect-audio",
-      confidence: 0.9,
+      confidence: 0.93,
     },
   ]);
 
@@ -296,36 +343,8 @@ test("selection suggestion selector fences recommendations by intent and media k
     endMs: 3000,
   });
   imageStore.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
-  });
-
-  assert.deepEqual(getSelectionSuggestions(imageStore.getState()), [
-    {
-      id: "focus-region",
-      label: "Bolgeye odaklan",
-      actionType: "focus-region",
-      confidence: 0.66,
-    },
-  ]);
-
-  imageStore.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "general",
-  });
-
-  assert.deepEqual(getSelectionSuggestions(imageStore.getState()), [
-    {
-      id: "focus-region",
-      label: "Bolgeye odaklan",
-      actionType: "focus-region",
-      confidence: 0.66,
-    },
-  ]);
-
-  imageStore.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "anomaly",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
 
   assert.deepEqual(getSelectionSuggestions(imageStore.getState()), [
@@ -336,6 +355,12 @@ test("selection suggestion selector fences recommendations by intent and media k
       confidence: 0.9,
     },
     {
+      id: "enhance-visual",
+      label: "Goruntuyu iyilestir",
+      actionType: "enhance-visual",
+      confidence: 0.8,
+    },
+    {
       id: "focus-region",
       label: "Bolgeye odaklan",
       actionType: "focus-region",
@@ -344,16 +369,74 @@ test("selection suggestion selector fences recommendations by intent and media k
   ]);
 
   imageStore.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "visual",
+    type: "selection-inspection-mode-updated",
+    mode: "none",
   });
 
   assert.deepEqual(getSelectionSuggestions(imageStore.getState()), [
+    {
+      id: "analyze-anomaly",
+      label: "Anomaliyi analiz et",
+      actionType: "analyze-segment",
+      confidence: 0.9,
+    },
     {
       id: "enhance-visual",
       label: "Goruntuyu iyilestir",
       actionType: "enhance-visual",
       confidence: 0.8,
+    },
+    {
+      id: "focus-region",
+      label: "Bolgeye odaklan",
+      actionType: "focus-region",
+      confidence: 0.58,
+    },
+  ]);
+
+  imageStore.dispatch({
+    type: "selection-inspection-mode-updated",
+    mode: "none",
+  });
+
+  assert.deepEqual(getSelectionSuggestions(imageStore.getState()), [
+    {
+      id: "analyze-anomaly",
+      label: "Anomaliyi analiz et",
+      actionType: "analyze-segment",
+      confidence: 0.9,
+    },
+    {
+      id: "enhance-visual",
+      label: "Goruntuyu iyilestir",
+      actionType: "enhance-visual",
+      confidence: 0.8,
+    },
+    {
+      id: "focus-region",
+      label: "Bolgeye odaklan",
+      actionType: "focus-region",
+      confidence: 0.58,
+    },
+  ]);
+
+  imageStore.dispatch({
+    type: "selection-inspection-mode-updated",
+    mode: "visual",
+  });
+
+  assert.deepEqual(getSelectionSuggestions(imageStore.getState()), [
+    {
+      id: "analyze-anomaly",
+      label: "Anomaliyi analiz et",
+      actionType: "analyze-segment",
+      confidence: 0.9,
+    },
+    {
+      id: "enhance-visual",
+      label: "Goruntuyu iyilestir",
+      actionType: "enhance-visual",
+      confidence: 0.86,
     },
     {
       id: "focus-region",
@@ -380,16 +463,34 @@ test("selection suggestion selector boosts region-aware visual and motion guidan
     endMs: 3000,
   });
   videoStore.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "motion",
+    type: "selection-inspection-mode-updated",
+    mode: "motion",
   });
 
   assert.deepEqual(getSelectionSuggestions(videoStore.getState()), [
     {
+      id: "analyze-anomaly",
+      label: "Anomaliyi analiz et",
+      actionType: "analyze-segment",
+      confidence: 0.9,
+    },
+    {
       id: "motion-check",
       label: "Hareket tutarliligini incele",
       actionType: "analyze-segment",
-      confidence: 0.85,
+      confidence: 0.92,
+    },
+    {
+      id: "audio-inspect",
+      label: "Ses detaylarini incele",
+      actionType: "inspect-audio",
+      confidence: 0.9,
+    },
+    {
+      id: "enhance-visual",
+      label: "Goruntuyu iyilestir",
+      actionType: "enhance-visual",
+      confidence: 0.8,
     },
     {
       id: "extract-clip",
@@ -415,11 +516,30 @@ test("selection suggestion selector boosts region-aware visual and motion guidan
 
   assert.deepEqual(getSelectionSuggestions(videoStore.getState()), [
     {
+      id: "analyze-anomaly",
+      label: "Anomaliyi analiz et",
+      actionType: "analyze-segment",
+      confidence: 0.94,
+    },
+    {
       id: "motion-check",
       label: "Hareket tutarliligini incele",
       toolHint: "Inspect motion",
       actionType: "analyze-segment",
       confidence: 0.92,
+    },
+    {
+      id: "audio-inspect",
+      label: "Ses detaylarini incele",
+      actionType: "inspect-audio",
+      confidence: 0.9,
+    },
+    {
+      id: "enhance-visual",
+      label: "Goruntuyu iyilestir",
+      toolHint: "Enhance clarity",
+      actionType: "enhance-visual",
+      confidence: 0.86,
     },
     {
       id: "inspect-region",
@@ -436,13 +556,6 @@ test("selection suggestion selector boosts region-aware visual and motion guidan
       confidence: 0.72,
     },
     {
-      id: "enhance-region-clarity",
-      label: "Bolge netligini artir",
-      toolHint: "Enhance clarity",
-      actionType: "enhance-visual",
-      confidence: 0.76,
-    },
-    {
       id: "extract-clip",
       label: "Bu bolumu kes",
       actionType: "extract-clip",
@@ -457,7 +570,6 @@ test("suggestion preview builder returns a dry-run plan for supported actions", 
     startMs: 1200,
     endMs: 7800,
     type: "clip",
-    intent: "audio",
     createdAt: 1700000000000,
   };
   const fallbackSuggestion = {
@@ -605,8 +717,8 @@ test("selection preview is derived from the active preview id and current sugges
     endMs: 3000,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
@@ -640,7 +752,7 @@ test("selection preview is derived from the active preview id and current sugges
   });
 });
 
-test("selection preview clears on range changes, intent changes, and explicit dismiss events", () => {
+test("selection preview clears on range changes, inspection mode changes, and explicit dismiss events", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -657,8 +769,8 @@ test("selection preview clears on range changes, intent changes, and explicit di
     endMs: 3000,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
@@ -684,8 +796,8 @@ test("selection preview clears on range changes, intent changes, and explicit di
   assert.equal(getActiveExecutionIntent(store.getState()), null);
 
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
@@ -699,16 +811,16 @@ test("selection preview clears on range changes, intent changes, and explicit di
   assert.equal(store.getState().ui.activeExecutionIntentId, "audio-inspect");
 
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "visual",
+    type: "selection-inspection-mode-updated",
+    mode: "visual",
   });
   assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
   assert.equal(store.getState().ui.activeExecutionIntentId, null);
   assert.equal(getActiveExecutionIntent(store.getState()), null);
 
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
@@ -743,8 +855,8 @@ test("selection suggestion accept and queue cannot mutate source analysis while 
     endMs: 3000,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "motion",
+    type: "selection-inspection-mode-updated",
+    mode: "motion",
   });
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
@@ -761,7 +873,6 @@ test("selection suggestion accept and queue cannot mutate source analysis while 
   });
 
   const state = store.getState();
-  assert.deepEqual(state.ui.workspace.selectedIntents, []);
   assert.deepEqual(state.selectedCapabilities, []);
   assert.equal(state.ui.activeExecutionIntentId, null);
 });
@@ -774,10 +885,7 @@ test("terminal analysis events clear source selections while preserving the run 
     path: "/tmp/source.wav",
     metadata: { durationSeconds: 4 },
   });
-  store.dispatch({
-    type: "workspace-intent-set",
-    intents: ["audio-investigation"],
-  });
+  store.dispatch({ type: "analysis-prep-group-toggled", capabilityId: "audio-signal" });
   store.dispatch({
     type: "workbench-updated",
     workbench: {
@@ -789,7 +897,6 @@ test("terminal analysis events clear source selections while preserving the run 
           endMs: 2500,
         },
         hypothesis: "voice clue",
-        intentIds: ["audio-investigation"],
       },
     },
   });
@@ -806,15 +913,10 @@ test("terminal analysis events clear source selections while preserving the run 
 
   let state = store.getState();
   moduleToggles = state.workbench["moduleToggles"] as Record<string, unknown>;
-  assert.deepEqual(state.ui.workspace.selectedIntents, []);
   assert.deepEqual(state.selectedCapabilities, []);
   assert.equal(moduleToggles["signal-health"], false);
-  assert.deepEqual(state.run?.analysisScope?.intentIds, ["audio-investigation"]);
 
-  store.dispatch({
-    type: "workspace-intent-set",
-    intents: ["audio-investigation"],
-  });
+  store.dispatch({ type: "analysis-prep-group-toggled", capabilityId: "audio-signal" });
   store.dispatch({
     type: "host-event-received",
     event: {
@@ -837,7 +939,6 @@ test("terminal analysis events clear source selections while preserving the run 
           endMs: 2500,
         },
         hypothesis: "voice clue",
-        intentIds: ["audio-investigation"],
       },
     },
   });
@@ -861,10 +962,8 @@ test("terminal analysis events clear source selections while preserving the run 
 
   state = store.getState();
   moduleToggles = state.workbench["moduleToggles"] as Record<string, unknown>;
-  assert.deepEqual(state.ui.workspace.selectedIntents, []);
   assert.deepEqual(state.selectedCapabilities, []);
   assert.equal(moduleToggles["signal-health"], false);
-  assert.deepEqual(state.run?.analysisScope?.intentIds, ["audio-investigation"]);
 });
 
 test("hydrate keeps selection previews and execution intents ephemeral", async () => {
@@ -890,8 +989,8 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
     endMs: 3000,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
@@ -1147,8 +1246,8 @@ test("hydrate keeps selection previews and execution intents ephemeral", async (
     endMs: 3000,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",

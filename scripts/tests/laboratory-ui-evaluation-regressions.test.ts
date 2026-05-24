@@ -17,7 +17,6 @@ import {
 } from "../../rooms/laboratory/ui/lab-decision-layer.ts";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import {
-  formatLabExpectedOutputLabel,
   formatLabUserActionDisplayText,
   translateLabRuntimeText,
 } from "../../rooms/laboratory/ui/lab-runtime-i18n.ts";
@@ -588,7 +587,6 @@ function createExecutionReadinessTimelineModel(
       startMs: 1000,
       endMs: 3000,
       type: "clip",
-      intent: "audio",
       createdAt: 1,
     },
     bookmarks: [],
@@ -807,20 +805,20 @@ test("laboratory mounted shell keeps chrome when YouTube is selected as a source
     const clickListener = environment.listener("click");
     assert.ok(clickListener);
     clickListener({
-      target: new MountedActionElement("analysis-prep-group-toggle", "audio-investigation"),
+      target: new MountedActionElement("analysis-prep-group-toggle", "audio-signal"),
     } as unknown as Event);
-    assert.match(environment.runtimeRoot.innerHTML, /data-lab-value="audio-investigation"/);
+    assert.match(environment.runtimeRoot.innerHTML, /data-lab-value="audio-signal"/);
     assert.match(
       environment.runtimeRoot.innerHTML,
-      /data-lab-value="audio-investigation"[\s\S]*aria-expanded="true"/
+      /data-lab-value="audio-signal"[\s\S]*aria-expanded="true"/
     );
 
     clickListener({
-      target: new MountedActionElement("analysis-prep-group-toggle", "audio-investigation"),
+      target: new MountedActionElement("analysis-prep-group-toggle", "audio-signal"),
     } as unknown as Event);
     assert.match(
       environment.runtimeRoot.innerHTML,
-      /data-lab-value="audio-investigation"[\s\S]*aria-expanded="false"/
+      /data-lab-value="audio-signal"[\s\S]*aria-expanded="false"/
     );
 
     const changeListener = environment.listener("change");
@@ -859,10 +857,10 @@ test("laboratory mounted shell coalesces store side effects into one animation f
     assert.ok(clickListener);
 
     clickListener({
-      target: new MountedActionElement("analysis-prep-group-toggle", "audio-investigation"),
+      target: new MountedActionElement("analysis-prep-group-toggle", "audio-signal"),
     } as unknown as Event);
     clickListener({
-      target: new MountedActionElement("analysis-prep-group-toggle", "audio-investigation"),
+      target: new MountedActionElement("analysis-prep-group-toggle", "audio-signal"),
     } as unknown as Event);
 
     assert.equal(environment.animationFrameCount(), 1);
@@ -892,11 +890,11 @@ test("laboratory mounted fallback logs missing region diagnostics before preserv
     const clickListener = environment.listener("click");
     assert.ok(clickListener);
 
-    const debugLogs = captureDebugLogs(function () {
-      clickListener({
-        target: new MountedActionElement("analysis-prep-group-toggle", "audio-investigation"),
-      } as unknown as Event);
-    });
+      const debugLogs = captureDebugLogs(function () {
+        clickListener({
+          target: new MountedActionElement("analysis-prep-group-toggle", "audio-signal"),
+        } as unknown as Event);
+      });
     const debugMessages = debugLogs.map(function (entry) {
       return entry[0];
     });
@@ -1798,7 +1796,7 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   assert.match(labRootSource, /schemaVersion:\s*4,/);
   assert.match(
     labRootSource,
-    /analysisPrepExpandedIntentIds:\s*_analysisPrepExpandedIntentIds,\s*\.\.\.workspace/
+    /analysisPrepExpandedCapabilityIds:\s*_analysisPrepExpandedCapabilityIds,\s*\.\.\.workspace/
   );
   assert.match(labRootSource, /workspace,/);
   assert.match(
@@ -1822,7 +1820,7 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   assert.doesNotMatch(labRootSource, /projectWorkspace|renderProjectWorkspaceOverlay/);
   assert.match(topBarSource, /data-lab-field="workspace\.hypothesis"/);
   assert.match(drawerResultExploreSource, /data-lab-action="run-deep-analysis"/);
-  assert.match(drawerSource, /buildIntentPreviewSentence\(state\)/);
+  assert.match(drawerSource, /buildAnalysisPreviewSentence\(state\)/);
   assert.match(drawerResultExploreSource, /getLaboratoryRightPanelContext/);
   assert.doesNotMatch(
     drawerResultExploreSource,
@@ -2230,7 +2228,7 @@ test("laboratory selection preview exposes soft execution intent affordances wit
   assert.match(timelineSelectionSource, /data-lab-execution-intent-dismiss=/);
   assert.match(timelineSelectionSource, /data-lab-execution-intent-queue=/);
   assert.match(timelineSelectionSource, /data-lab-execution-intent-clear="true"/);
-  assert.match(timelineSelectionSource, /mediaAnalysis\.timeline\.intentSelected/);
+  assert.match(timelineSelectionSource, /mediaAnalysis\.timeline\.actionSelected/);
   assert.match(timelineSelectionSource, /mediaAnalysis\.timeline\.wantThis/);
   assert.match(timelineSelectionSource, /mediaAnalysis\.timeline\.notNow/);
   assert.match(timelineSelectionSource, /mediaAnalysis\.timeline\.queueForLater/);
@@ -2392,13 +2390,6 @@ test("laboratory runtime status copy resolves through room-local i18n catalogs",
   );
   assert.equal(translateLabRuntimeText("Eksik araç: ffmpeg", enCopy), "Missing tool: ffmpeg");
   assert.equal(translateLabRuntimeText("Eksik araç: ffmpeg", trCopy), "Eksik araç: ffmpeg");
-  assert.equal(
-    formatLabExpectedOutputLabel(
-      { intentId: "audio-investigation", label: "Ses çıktısı", assetTypes: ["audio"] },
-      enCopy
-    ),
-    "Audio output"
-  );
   assert.equal(
     formatLabUserActionDisplayText(
       {

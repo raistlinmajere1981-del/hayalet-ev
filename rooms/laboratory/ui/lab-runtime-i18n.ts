@@ -1,8 +1,4 @@
-import type {
-  LabEventFeedItem,
-  LabExpectedOutput,
-  LabUserActionEvent,
-} from "../domain/lab-types.js";
+import type { LabEventFeedItem, LabUserActionEvent } from "../domain/lab-types.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
@@ -96,7 +92,7 @@ const RUNTIME_TEXT: Record<string, RuntimeCopyDescriptor> = {
     fallback: "Source not ready.",
   },
   "Not available for this source type.": {
-    key: "mediaAnalysis.runtime.blockReasons.intentSourceUnsupported",
+    key: "mediaAnalysis.runtime.blockReasons.sourceUnsupported",
     fallback: "Not available for this source type.",
   },
   "Required tools not installed.": {
@@ -645,21 +641,6 @@ const USER_ACTIONS: Record<string, Record<LabUserActionEvent["status"], RuntimeC
   },
 };
 
-const EXPECTED_OUTPUT_LABELS: Record<string, RuntimeCopyDescriptor> = {
-  "visual-inspection:Frame çıktıları": {
-    key: "mediaAnalysis.runtime.expectedOutputs.visualInspection.frames",
-    fallback: "Frame outputs",
-  },
-  "visual-inspection:Anomali verileri": {
-    key: "mediaAnalysis.runtime.expectedOutputs.visualInspection.anomalies",
-    fallback: "Anomaly data",
-  },
-  "audio-investigation:Ses çıktısı": {
-    key: "mediaAnalysis.runtime.expectedOutputs.audioInvestigation.audio",
-    fallback: "Audio output",
-  },
-};
-
 function readActionLabelDescriptor(action: string | null | undefined): RuntimeCopyDescriptor {
   if (!action) {
     return {
@@ -747,14 +728,4 @@ export function formatLabUserActionDisplayText(
     return renderDescriptor(known, copy);
   }
   return translateLabRuntimeText(actionEvent.message || actionEvent.label, copy);
-}
-
-export function formatLabExpectedOutputLabel(
-  expectedOutput: LabExpectedOutput,
-  copy: LabI18n = LAB_FALLBACK_I18N
-): string {
-  const descriptor = EXPECTED_OUTPUT_LABELS[`${expectedOutput.intentId}:${expectedOutput.label}`];
-  return descriptor
-    ? renderDescriptor(descriptor, copy)
-    : translateLabRuntimeText(expectedOutput.label, copy);
 }

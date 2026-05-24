@@ -34,24 +34,6 @@ export function applyAnalysisScopeField(
         delete nextScope["hypothesis"];
       }
       break;
-    case "intentIds": {
-      const nextIntentIds = Array.isArray(value)
-        ? value
-            .filter((entry): entry is string => typeof entry === "string")
-            .map(function (entry) {
-              return entry.trim();
-            })
-            .filter(function (entry) {
-              return entry !== "";
-            })
-        : [];
-      if (nextIntentIds.length > 0) {
-        nextScope["intentIds"] = Array.from(new Set(nextIntentIds));
-      } else {
-        delete nextScope["intentIds"];
-      }
-      break;
-    }
     case "timeStartMs":
     case "timeEndMs": {
       const nextValue = readNumeric(value);
@@ -134,7 +116,6 @@ export function applyAnalysisScopeField(
     nextScope["timeRange"] === undefined &&
     nextScope["frameRange"] === undefined &&
     nextScope["region"] === undefined &&
-    nextScope["intentIds"] === undefined &&
     nextScope["comparison"] === undefined
   ) {
     return {

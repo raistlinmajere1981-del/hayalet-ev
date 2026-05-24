@@ -1,7 +1,6 @@
 import type {
   LabActionSuggestion,
   LabInspectionMode,
-  LabSelectionIntent,
   LabSelectionROI,
   LabSelectionType,
 } from "./lab-types.js";
@@ -161,7 +160,6 @@ export interface LabExecutionSelectionSnapshot {
   startMs: number;
   endMs: number;
   type: LabSelectionType;
-  intent: LabSelectionIntent;
   inspectionMode: LabInspectionMode;
   sourceKind: string;
   roi?: LabSelectionROI;

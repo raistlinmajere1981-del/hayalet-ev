@@ -18,7 +18,6 @@ import type {
   LabInspectionMode,
   LabInterpretationItem,
   LabSelection,
-  LabSelectionIntent,
   LabStoreState,
   LabSuggestionPreview,
 } from "../../domain/lab-types.js";
@@ -108,7 +107,6 @@ function createExecutionSelectionSnapshot(
   return {
     endMs: selection.endMs,
     inspectionMode: getInspectionMode(state),
-    intent: selection.intent,
     sourceKind: getSelectionContextSourceKind(state) || "unknown",
     startMs: selection.startMs,
     type: selection.type,
@@ -160,10 +158,6 @@ export function getSelectionDuration(state: LabStoreState): number {
     return 0;
   }
   return selection.endMs - selection.startMs;
-}
-
-export function getSelectionIntent(state: LabStoreState): LabSelectionIntent {
-  return state.ui.workspace.activeSelection?.intent ?? "unknown";
 }
 
 export function getInspectionMode(state: LabStoreState): LabInspectionMode {

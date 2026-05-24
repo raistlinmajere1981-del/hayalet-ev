@@ -115,6 +115,132 @@
         }
       }
     },
+    "visual-forensics-py": {
+      "displayName": "Visual Forensics Python",
+      "installDirName": "visual-forensics-py",
+      "availability": "system-command",
+      "installStrategy": "automatic",
+      "usedBy": ["Near-duplicate frame checks", "Optical-flow assist", "Reference quality checks"],
+      "testImpact": ["visual-forensics", "reference-quality", "duplicate-frame-analysis"],
+      "readinessImpact": "Optional OpenCV/scikit-image helpers remain unavailable; FFmpeg proxy probes still run where possible.",
+      "stageSupport": {
+        "source": "unsupported",
+        "edit": "unsupported",
+        "profile": "optional",
+        "process": "optional",
+        "report": "optional"
+      },
+      "probe": {
+        "args": ["-c", "import cv2, skimage, numpy, scipy; print(cv2.__version__)"],
+        "versionRegex": "(\\d+(?:\\.\\d+)+)"
+      },
+      "systemCommand": {
+        "executableName": "python3",
+        "candidatePaths": [
+          "${roomStorageDir}/runtime/visual-forensics-py-venv/bin/python3",
+          "${roomStorageDir}/runtime/visual-forensics-py-venv/bin/python",
+          "${roomStorageDir}/runtime/visual-forensics-py-venv/Scripts/python.exe"
+        ],
+        "setupHint": "Use the in-app install to prepare OpenCV, scikit-image, numpy, and scipy in a Laboratory-managed Python runtime, then refresh this tool from settings."
+      },
+      "installer": {
+        "type": "python-venv-pip",
+        "venvDir": "${roomStorageDir}/runtime/visual-forensics-py-venv",
+        "estimatedDownloadSize": "180 - 600 MB",
+        "estimatedInstalledSize": "500 MB - 1.5 GB",
+        "supportedPythonVersions": ["3.12", "3.11", "3.10"],
+        "packages": ["opencv-contrib-python-headless", "scikit-image", "numpy", "scipy"]
+      }
+    },
+    "exiftool": {
+      "displayName": "ExifTool",
+      "installDirName": "exiftool",
+      "availability": "system-command",
+      "installStrategy": "system-command",
+      "usedBy": ["Metadata provenance audit", "Capture metadata cross-check"],
+      "testImpact": ["metadata-provenance", "report-counter-evidence"],
+      "readinessImpact": "Metadata provenance checks fall back to FFmpeg/ffprobe fields when ExifTool is not available.",
+      "stageSupport": {
+        "source": "unsupported",
+        "edit": "unsupported",
+        "profile": "optional",
+        "process": "optional",
+        "report": "optional"
+      },
+      "probe": {
+        "args": ["-ver"],
+        "versionRegex": "(\\d+(?:\\.\\d+)+|\\d+)"
+      },
+      "systemCommand": {
+        "executableName": "exiftool",
+        "setupHint": "Install ExifTool on the host system so the exiftool command is available on PATH, then refresh Laboratory tools."
+      }
+    },
+    "mediainfo": {
+      "displayName": "MediaInfo",
+      "installDirName": "mediainfo",
+      "availability": "system-command",
+      "installStrategy": "system-command",
+      "usedBy": ["Container metadata cross-check", "Stream provenance audit"],
+      "testImpact": ["metadata-provenance", "container-stream-cross-check"],
+      "readinessImpact": "Container/stream provenance comparisons remain limited to ffprobe when MediaInfo is not available.",
+      "stageSupport": {
+        "source": "unsupported",
+        "edit": "unsupported",
+        "profile": "optional",
+        "process": "optional",
+        "report": "optional"
+      },
+      "probe": {
+        "args": ["--Version"],
+        "versionRegex": "(?:MediaInfo(?:Lib)?\\s*-?\\s*v?)([^\\s]+)"
+      },
+      "systemCommand": {
+        "executableName": "mediainfo",
+        "setupHint": "Install MediaInfo on the host system so the mediainfo command is available on PATH, then refresh Laboratory tools."
+      }
+    },
+    "ffmpeg-libvmaf": {
+      "displayName": "FFmpeg libvmaf Probe",
+      "installDirName": "ffmpeg-libvmaf",
+      "availability": "system-command",
+      "installStrategy": "system-command",
+      "usedBy": ["Reference quality check", "VMAF availability probe"],
+      "testImpact": ["reference-quality", "ffmpeg-filter-probe"],
+      "readinessImpact": "VMAF quality deltas are reported as not measured unless the active FFmpeg exposes the libvmaf filter and a reference source exists.",
+      "stageSupport": {
+        "source": "unsupported",
+        "edit": "unsupported",
+        "profile": "optional",
+        "process": "optional",
+        "report": "optional"
+      },
+      "probe": {
+        "args": ["-hide_banner", "-filters"],
+        "versionRegex": "\\blibvmaf\\b"
+      },
+      "systemCommand": {
+        "executableName": "ffmpeg",
+        "setupHint": "Use an FFmpeg build that includes the libvmaf filter. Refresh Laboratory tools after replacing or updating FFmpeg."
+      }
+    },
+    "raft-optical-flow": {
+      "displayName": "RAFT Optical Flow",
+      "installDirName": "raft-optical-flow",
+      "availability": "planned",
+      "installStrategy": "planned",
+      "plannedReason": "Heavy PyTorch/RAFT runtime is reserved for a later gated phase; current runs use FFmpeg/OpenCV motion proxies.",
+      "usedBy": ["Optical-flow tracking", "Subject/background motion split"],
+      "testImpact": ["optical-flow-tracking", "planned-tool-gating"],
+      "readinessImpact": "RAFT is not required for the current balanced package; optical-flow tracking degrades to lighter motion proxies.",
+      "stageSupport": {
+        "source": "unsupported",
+        "edit": "unsupported",
+        "profile": "optional",
+        "process": "optional",
+        "report": "optional"
+      }
+    },
     "opensmile": {
       "displayName": "openSMILE",
       "installDirName": "opensmile",

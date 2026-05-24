@@ -142,6 +142,226 @@ test("laboratory structure probes honor analysis time range and scale full-media
   assert.deepEqual(sampleArgs.slice(0, 6), ["-hide_banner", "-ss", "0", "-t", "45", "-i"]);
 });
 
+test("laboratory visual forensics probes run real tool paths before degrading", async () => {
+  const toolRuns: Array<Record<string, unknown>> = [];
+  const probeRuntime = createAudioAnalysisProbeRuntime({
+    asNonEmptyString(value: unknown) {
+      return typeof value === "string" && value.trim() !== "" ? value : null;
+    },
+    asNumber(value: unknown) {
+      return typeof value === "number" && Number.isFinite(value) ? value : null;
+    },
+    buildProsodySummaryFromCsv() {
+      return {};
+    },
+    parseBlackDetectLog() {
+      return { count: 0, segments: [] };
+    },
+    parseFreezeDetectLog() {
+      return { count: 0, segments: [] };
+    },
+    parseSilenceDetectLog() {
+      return { count: 0, segments: [] };
+    },
+    parseVolumeDetectLog() {
+      return {};
+    },
+    readTextFile: async function () {
+      return null;
+    },
+    runProfileTool: async function (_runtime, options) {
+      toolRuns.push(options);
+      const args = Array.isArray(options["args"]) ? (options["args"] as string[]) : [];
+      if (options["toolId"] === "visual-forensics-py" && args[2] === "duplicate") {
+        return {
+          stdout: JSON.stringify({
+            averageHashSimilarity: 0.97,
+            averageSsim: 0.96,
+            method: "opencv-phash-ssim",
+            nearDuplicateFrameCount: 3,
+            nearDuplicateFrameRatio: 0.3,
+            sampledFrameCount: 12,
+            status: "measured",
+          }),
+        };
+      }
+      if (options["toolId"] === "visual-forensics-py" && args[2] === "flow") {
+        return {
+          stdout: JSON.stringify({
+            backgroundMotionEnergy: 0.04,
+            confidence: "medium",
+            method: "opencv-farneback",
+            movementClass: "localized_subject_motion",
+            sampledFrameCount: 8,
+            status: "measured",
+            subjectBackgroundMotionRatio: 3.2,
+            subjectMotionEnergy: 0.13,
+          }),
+        };
+      }
+      if (options["toolId"] === "visual-forensics-py" && args[2] === "reference") {
+        return {
+          stdout: JSON.stringify({
+            method: "opencv-skimage-ssim",
+            qualityDelta: 0.08,
+            sampledFrameCount: 1,
+            ssim: 0.92,
+            status: "measured",
+          }),
+        };
+      }
+      if (options["toolId"] === "exiftool") {
+        return {
+          stdout: JSON.stringify([
+            {
+              CreateDate: "2026:05:23 10:00:00",
+              FileType: "MP4",
+              ImageHeight: 1080,
+              ImageWidth: 1920,
+            },
+          ]),
+        };
+      }
+      if (options["toolId"] === "mediainfo") {
+        return {
+          stdout: JSON.stringify({
+            media: {
+              track: [
+                { "@type": "General", Duration: "4.000", Format: "MPEG-4" },
+                { "@type": "Video", Format: "h264", FrameRate: "25", Height: "1080", Width: "1920" },
+              ],
+            },
+          }),
+        };
+      }
+      if (args.includes("-show_format")) {
+        return {
+          stdout: JSON.stringify({
+            format: { duration: "4.000", format_name: "mov,mp4,m4a,3gp,3g2,mj2" },
+            streams: [
+              {
+                avg_frame_rate: "25/1",
+                codec_name: "h264",
+                codec_type: "video",
+                height: 1080,
+                width: 1920,
+              },
+            ],
+          }),
+        };
+      }
+      if (args.includes("-show_entries")) {
+        return {
+          stdout: JSON.stringify({
+            frames: [
+              { best_effort_timestamp_time: "0", key_frame: 1, pict_type: "I", pkt_size: "1200" },
+              { best_effort_timestamp_time: "0.04", key_frame: 0, pict_type: "P", pkt_size: "900" },
+            ],
+          }),
+        };
+      }
+      if (args.includes("framehash")) {
+        return {
+          stdout: [
+            "#tb 0: 1/25",
+            "0, 0, 0, 1, 900, abc",
+            "0, 0, 1, 1, 900, abc",
+            "0, 0, 2, 1, 901, def",
+          ].join("\n"),
+        };
+      }
+      return { stderr: "probe output" };
+    },
+    toRecord(value: unknown) {
+      return value !== null && typeof value === "object" && Array.isArray(value) === false
+        ? (value as Record<string, unknown>)
+        : {};
+    },
+  });
+  const runtime = { paths: { projectsDir: "/tmp/laboratory-projects" } };
+  const project = { slug: "forensics-probe" };
+  const videoProbe = await probeRuntime.runVideoStructureProbe(
+    runtime,
+    project,
+    "req-forensics",
+    "job-forensics",
+    { metadata: { durationSeconds: 4 }, path: "/tmp/source.mp4" },
+    {
+      moduleSettings: {
+        "compression-signature-mapping": { artifactProfile: "edge", bppThreshold: 0.12 },
+        "metadata-provenance-audit": { metadataDepth: "forensic" },
+        "optical-flow-tracking": {
+          cameraCompensation: "strong",
+          flowEngine: "farneback",
+          motionThreshold: 0.12,
+        },
+        "perceptual-duplicate-frame": {
+          frameStep: 5,
+          hashMode: "hybrid",
+          minRunFrames: 2,
+          similarityThreshold: 0.94,
+        },
+        "reference-quality-check": { metricSet: "ssim", minDelta: 0.04 },
+      },
+      referenceTarget: { path: "/tmp/reference.mp4" },
+      sourceKind: "video",
+    }
+  );
+
+  assert.equal((videoProbe.nearDuplicateFrame as Record<string, unknown>)["method"], "ffmpeg-framehash+opencv-phash-ssim");
+  assert.equal((videoProbe.nearDuplicateFrame as Record<string, unknown>)["nearDuplicateFrameCount"], 3);
+  assert.equal((videoProbe.opticalFlowTracking as Record<string, unknown>)["method"], "opencv-farneback");
+  assert.equal((videoProbe.metadataProvenance as Record<string, unknown>)["coverage"], "cross-checked");
+  assert.equal((videoProbe.referenceQuality as Record<string, unknown>)["status"], "measured");
+  assert.equal((videoProbe.compressionSignature as Record<string, unknown>)["artifactProfile"], "edge");
+
+  const duplicateRun = toolRuns.find(function (entry) {
+    const args = Array.isArray(entry["args"]) ? (entry["args"] as string[]) : [];
+    return entry["toolId"] === "visual-forensics-py" && args[2] === "duplicate";
+  });
+  assert.ok(duplicateRun);
+  const duplicateOptions = JSON.parse(((duplicateRun["args"] as string[]) || [])[4] || "{}");
+  assert.equal(duplicateOptions.frameStep, 5);
+  assert.equal(duplicateOptions.similarityThreshold, 0.94);
+  assert.equal(
+    toolRuns.some(function (entry) {
+      return entry["toolId"] === "exiftool";
+    }),
+    true
+  );
+  assert.equal(
+    toolRuns.some(function (entry) {
+      return entry["toolId"] === "mediainfo";
+    }),
+    true
+  );
+
+  const imageProbe = await probeRuntime.runVideoStructureProbe(
+    runtime,
+    project,
+    "req-image-forensics",
+    "job-image-forensics",
+    { metadata: { kind: "image" }, path: "/tmp/source.png" },
+    {
+      moduleSettings: {
+        "reference-quality-check": { metricSet: "ssim", minDelta: 0.02 },
+      },
+      referenceTarget: { path: "/tmp/reference.png" },
+      sourceKind: "image",
+    }
+  );
+  assert.equal((imageProbe.metadataProvenance as Record<string, unknown>)["status"], "measured");
+  assert.equal((imageProbe.referenceQuality as Record<string, unknown>)["status"], "measured");
+  assert.equal((imageProbe.nearDuplicateFrame as Record<string, unknown>)["status"], "unavailable");
+  assert.equal(
+    toolRuns.some(function (entry) {
+      const args = Array.isArray(entry["args"]) ? (entry["args"] as string[]) : [];
+      return entry["requestId"] === "req-image-forensics" && args.includes("blackdetect=d=0.25:pix_th=0.10,freezedetect=n=-40dB:d=0.4");
+    }),
+    false
+  );
+});
+
 test("laboratory host activation unwraps host-context room-event payloads before saving context", () => {
   const savedContexts: Array<Record<string, unknown>> = [];
   const emittedEvents: Array<Record<string, unknown>> = [];
@@ -188,9 +408,6 @@ test("laboratory host activation unwraps host-context room-event payloads before
     workbench: {
       activeModuleId: "audio-analysis",
       selectedModuleIds: ["audio-analysis"],
-      analysisScope: {
-        intentIds: ["audio-investigation"],
-      },
       moduleToggles: {
         "audio-analysis": true,
       },
@@ -213,9 +430,6 @@ test("laboratory host activation unwraps host-context room-event payloads before
     workbench: {
       activeModuleId: "media-analysis",
       selectedModuleIds: ["media-analysis"],
-      analysisScope: {
-        intentIds: ["visual-inspection"],
-      },
       moduleToggles: {
         "media-analysis": true,
       },
@@ -282,7 +496,6 @@ test("laboratory process runtime keeps cancelled runs cancelled after the active
     workbench: {
       analysisScope: {
         focus: "audio",
-        intentIds: ["audio-investigation"],
       },
     },
     assets: [],
@@ -607,7 +820,6 @@ test("laboratory process runtime registers generated artifacts as project assets
     workbench: {
       analysisScope: {
         hypothesis: "check motion",
-        intentIds: ["visual-inspection"],
       },
     },
     assets: [],
@@ -821,7 +1033,6 @@ test("laboratory process runtime registers generated artifacts as project assets
   assert.equal(artifactAsset?.["localPath"], "/tmp/process/source-metadata.json");
   assert.equal(toRecord(artifactAsset?.["metadata"])["processArtifactId"], "artifact-metadata-1");
   assert.equal(toRecord(artifactAsset?.["metadata"])["featureId"], "media-analysis");
-  assert.deepEqual(artifactAsset?.["intentIds"], ["visual-inspection"]);
 
   const reportAssets = assets.filter(function (asset) {
     return asset["type"] === "report";
@@ -1374,11 +1585,7 @@ test("laboratory media export runtime cancels only prior export jobs for every e
           },
         },
       },
-      workbench: {
-        analysisScope: {
-          intentIds: ["visual-inspection"],
-        },
-      },
+      workbench: {},
       assets: [],
     };
     const jobState = createLaboratoryJobStateRuntime({
@@ -1549,7 +1756,6 @@ test("laboratory media export runtime cancels only prior export jobs for every e
     });
     const metadata = (outputAsset?.["metadata"] || {}) as Record<string, unknown>;
     assert.equal(outputAsset?.["runId"], "run-1");
-    assert.deepEqual(outputAsset?.["intentIds"], ["visual-inspection"]);
     assert.equal(typeof outputAsset?.["sourceId"], "string");
     assert.equal(outputAsset?.["derivedFromAssetId"], outputAsset?.["sourceId"]);
     assert.equal(outputAsset?.["derivedFromSourceId"], outputAsset?.["sourceId"]);
@@ -1693,131 +1899,6 @@ test("laboratory media export runtime reports cancelled tool runs without leakin
   assert.deepEqual(Object.keys(runtime.jobs), []);
 });
 
-test("laboratory media export runtime preserves payload intent ids before workbench fallback", async () => {
-  async function runExportCase(
-    assetType: string,
-    payloadFactory: (intentIds?: unknown) => Record<string, unknown>
-  ) {
-    async function runWithIntentIds(intentIds?: unknown) {
-      let activeProject: Record<string, unknown> = {
-        id: "project-intent-drift",
-        source: {
-          kind: "video",
-          storedPath: "/tmp/lab-demo.mp4",
-        },
-        process: {
-          records: {
-            "media-analysis": {
-              runId: "run-frozen",
-            },
-          },
-        },
-        workbench: {
-          analysisScope: {
-            intentIds: ["audio-investigation"],
-          },
-        },
-        assets: [],
-      };
-      const jobState = createLaboratoryJobStateRuntime({
-        roomId: "laboratory",
-        cancelRoomTool: async function () {},
-      });
-
-      const exportRuntime = createMediaExportActionRuntime({
-        asNonEmptyString(value: unknown) {
-          return typeof value === "string" && value.trim() !== "" ? value : null;
-        },
-        asNumber(value: unknown) {
-          return typeof value === "number" && Number.isFinite(value) ? value : null;
-        },
-        async callRoomTools() {
-          return {
-            run: {
-              exitCode: 0,
-            },
-          };
-        },
-        getActiveProject() {
-          return activeProject;
-        },
-        getProjectEditOutputDir() {
-          return "/tmp";
-        },
-        async patchActiveProject(_runtime, patcher) {
-          const nextProject = patcher(activeProject);
-          activeProject = {
-            ...nextProject,
-            assets: syncSourceLabAssetForProject(nextProject, nextProject["assets"]),
-          };
-        },
-        pushJobState() {},
-        registerJob: jobState.registerJob,
-        clearJob: jobState.clearJob,
-        cancelJobsForProject: jobState.cancelJobsForProject,
-        toRecord(value: unknown) {
-          return value !== null && typeof value === "object" && Array.isArray(value) === false
-            ? (value as Record<string, unknown>)
-            : {};
-        },
-      });
-
-      const payload = payloadFactory(intentIds);
-      const runtime = {
-        roomId: "laboratory",
-        jobs: {},
-      };
-
-      if (assetType === "image") {
-        await exportRuntime.exportROIImage({}, runtime, "req-export-roi-intent", payload);
-      } else if (assetType === "clip") {
-        await exportRuntime.exportTimelineClip({}, runtime, "req-export-clip-intent", payload);
-      } else if (assetType === "audio") {
-        await exportRuntime.exportAudioTrack({}, runtime, "req-export-audio-intent", payload);
-      } else {
-        await exportRuntime.exportFrameGrab({}, runtime, "req-export-frame-intent", payload);
-      }
-
-      const assets = activeProject.assets as Array<Record<string, unknown>>;
-      return assets.find(function (asset) {
-        return asset["type"] === assetType;
-      })?.["intentIds"];
-    }
-
-    assert.deepEqual(await runWithIntentIds(["visual-inspection"]), ["visual-inspection"]);
-    assert.deepEqual(await runWithIntentIds([]), ["audio-investigation"]);
-    assert.deepEqual(await runWithIntentIds(), ["audio-investigation"]);
-  }
-
-  await runExportCase("frame", function (intentIds?: unknown) {
-    return {
-      seekMs: 1200,
-      ...(intentIds === undefined ? {} : { intentIds }),
-    };
-  });
-  await runExportCase("image", function (intentIds?: unknown) {
-    return {
-      regionId: "face",
-      x: 8,
-      y: 12,
-      width: 120,
-      height: 80,
-      seekMs: 1200,
-      ...(intentIds === undefined ? {} : { intentIds }),
-    };
-  });
-  await runExportCase("clip", function (intentIds?: unknown) {
-    return {
-      startMs: 1000,
-      endMs: 2400,
-      ...(intentIds === undefined ? {} : { intentIds }),
-    };
-  });
-  await runExportCase("audio", function (intentIds?: unknown) {
-    return intentIds === undefined ? {} : { intentIds };
-  });
-});
-
 test("laboratory audio variant exports preserve filter and lineage metadata", async () => {
   async function runAudioVariant(action: "clean" | "voice"): Promise<{
     args: string[];
@@ -1843,11 +1924,7 @@ test("laboratory audio variant exports preserve filter and lineage metadata", as
           },
         },
       },
-      workbench: {
-        analysisScope: {
-          intentIds: ["audio-investigation"],
-        },
-      },
+      workbench: {},
       assets: [],
     };
     const pushedJobStates: Array<Record<string, unknown>> = [];
@@ -1970,11 +2047,7 @@ test("laboratory ROI exports normalize crop pixels and preserve operation lineag
         },
       },
     },
-    workbench: {
-      analysisScope: {
-        intentIds: ["visual-inspection"],
-      },
-    },
+    workbench: {},
     assets: [],
   };
   const toolRuns: Array<Record<string, unknown>> = [];

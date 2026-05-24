@@ -2,9 +2,9 @@ import {
   asLabRecord,
   asNonEmptyString,
   asStringArray,
+  CAPABILITY_FAMILIES,
   createLabEventId,
   getModuleIdsForCapabilityFamily,
-  WORKSPACE_INTENTS,
 } from "../../domain/lab-types.js";
 import type {
   CapabilityFamilyId,
@@ -12,7 +12,6 @@ import type {
   LabEventFeedItem,
   LabFocusLayer,
   LabInspectionMode,
-  LabIntentId,
   LabRecord,
   LabSelection,
   LabStoreState,
@@ -30,52 +29,26 @@ export function scopeWorkspaceBookmark(state: LabStoreState, bookmark: LabBookma
   };
 }
 
-export function normalizeWorkspaceIntentIds(value: unknown) {
-  const knownIntentIds = new Set<string>(
-    WORKSPACE_INTENTS.map(function (intent) {
-      return intent.id;
+export function normalizeWorkspaceCapabilityIds(value: unknown): CapabilityFamilyId[] {
+  const knownCapabilityIds = new Set<string>(
+    CAPABILITY_FAMILIES.map(function (capability) {
+      return capability.id;
     })
   );
-  return asStringArray(value).filter(function (intentId, index, allIntentIds) {
-    return knownIntentIds.has(intentId) && allIntentIds.indexOf(intentId) === index;
-  }) as Array<(typeof WORKSPACE_INTENTS)[number]["id"]>;
+  return asStringArray(value).filter(function (capabilityId, index, allCapabilityIds) {
+    return knownCapabilityIds.has(capabilityId) && allCapabilityIds.indexOf(capabilityId) === index;
+  }) as CapabilityFamilyId[];
 }
 
-export function deriveCapabilitiesFromIntentIds(intentIds: unknown): CapabilityFamilyId[] {
-  const normalizedIntentIds = normalizeWorkspaceIntentIds(intentIds);
-  const capabilitySet = new Set<CapabilityFamilyId>();
-  WORKSPACE_INTENTS.forEach(function (intent) {
-    if (!normalizedIntentIds.includes(intent.id)) {
-      return;
-    }
-    intent.internalCapabilities.forEach(function (capabilityId) {
-      capabilitySet.add(capabilityId);
-    });
-  });
-  return Array.from(capabilitySet);
+export function getAnalysisModuleIdsForCapabilityId(capabilityId: CapabilityFamilyId): string[] {
+  return Array.from(new Set(getModuleIdsForCapabilityFamily(capabilityId)));
 }
 
-export function getAnalysisModuleIdsForIntentId(intentId: LabIntentId): string[] {
-  const intent = WORKSPACE_INTENTS.find(function (entry) {
-    return entry.id === intentId;
-  });
-  if (!intent) {
-    return [];
-  }
+function deriveAnalysisModuleIdsFromCapabilityIds(capabilityIds: unknown): string[] {
   return Array.from(
     new Set(
-      intent.internalCapabilities.flatMap(function (capabilityId) {
-        return getModuleIdsForCapabilityFamily(capabilityId);
-      })
-    )
-  );
-}
-
-function deriveAnalysisModuleIdsFromIntentIds(intentIds: unknown): string[] {
-  return Array.from(
-    new Set(
-      normalizeWorkspaceIntentIds(intentIds).flatMap(function (intentId) {
-        return getAnalysisModuleIdsForIntentId(intentId);
+      normalizeWorkspaceCapabilityIds(capabilityIds).flatMap(function (capabilityId) {
+        return getAnalysisModuleIdsForCapabilityId(capabilityId);
       })
     )
   );
@@ -83,15 +56,17 @@ function deriveAnalysisModuleIdsFromIntentIds(intentIds: unknown): string[] {
 
 export function replaceAnalysisPreparationModuleToggles(
   workbench: LabRecord,
-  selectedIntentIds: unknown
+  selectedCapabilityIds: unknown
 ): LabRecord {
-  const selectedModuleIds = new Set(deriveAnalysisModuleIdsFromIntentIds(selectedIntentIds));
+  const selectedModuleIds = new Set(
+    deriveAnalysisModuleIdsFromCapabilityIds(selectedCapabilityIds)
+  );
   const moduleToggles = {
     ...asLabRecord(workbench["moduleToggles"]),
   };
-  deriveAnalysisModuleIdsFromIntentIds(
-    WORKSPACE_INTENTS.map(function (intent) {
-      return intent.id;
+  deriveAnalysisModuleIdsFromCapabilityIds(
+    CAPABILITY_FAMILIES.map(function (capability) {
+      return capability.id;
     })
   ).forEach(function (moduleId) {
     moduleToggles[moduleId] = selectedModuleIds.has(moduleId);
@@ -102,29 +77,29 @@ export function replaceAnalysisPreparationModuleToggles(
   };
 }
 
-export function patchAnalysisPreparationIntentModuleToggles(
+export function patchAnalysisPreparationCapabilityModuleToggles(
   workbench: LabRecord,
-  intentId: LabIntentId,
-  selectedIntentIds: unknown,
+  capabilityId: CapabilityFamilyId,
+  selectedCapabilityIds: unknown,
   enabled: boolean
 ): LabRecord {
-  const selectedIntentSet = new Set(normalizeWorkspaceIntentIds(selectedIntentIds));
+  const selectedCapabilitySet = new Set(normalizeWorkspaceCapabilityIds(selectedCapabilityIds));
   const moduleToggles = {
     ...asLabRecord(workbench["moduleToggles"]),
   };
-  getAnalysisModuleIdsForIntentId(intentId).forEach(function (moduleId) {
+  getAnalysisModuleIdsForCapabilityId(capabilityId).forEach(function (moduleId) {
     if (enabled) {
       moduleToggles[moduleId] = true;
       return;
     }
-    const neededByAnotherSelectedIntent = WORKSPACE_INTENTS.some(function (intent) {
+    const neededByAnotherSelectedCapability = CAPABILITY_FAMILIES.some(function (capability) {
       return (
-        intent.id !== intentId &&
-        selectedIntentSet.has(intent.id) &&
-        getAnalysisModuleIdsForIntentId(intent.id).includes(moduleId)
+        capability.id !== capabilityId &&
+        selectedCapabilitySet.has(capability.id) &&
+        getAnalysisModuleIdsForCapabilityId(capability.id).includes(moduleId)
       );
     });
-    moduleToggles[moduleId] = neededByAnotherSelectedIntent;
+    moduleToggles[moduleId] = neededByAnotherSelectedCapability;
   });
   return {
     ...workbench,
@@ -151,23 +126,23 @@ export function resetInspectionMode(state: LabStoreState) {
   state.ui.inspectionMode = "none";
 }
 
-function isLabIntentId(value: unknown): value is LabIntentId {
+function isLabCapabilityId(value: unknown): value is CapabilityFamilyId {
   return (
     typeof value === "string" &&
-    WORKSPACE_INTENTS.some(function (intent) {
-      return intent.id === value;
+    CAPABILITY_FAMILIES.some(function (capability) {
+      return capability.id === value;
     })
   );
 }
 
-export function normalizeLabIntentIds(values: unknown): LabIntentId[] {
+export function normalizeLabCapabilityIds(values: unknown): CapabilityFamilyId[] {
   if (!Array.isArray(values)) {
     return [];
   }
   return Array.from(
     new Set(
-      values.filter(function (value): value is LabIntentId {
-        return isLabIntentId(value);
+      values.filter(function (value): value is CapabilityFamilyId {
+        return isLabCapabilityId(value);
       })
     )
   );
@@ -194,7 +169,6 @@ export function createImageInspectionSelection(
     startMs: 0,
     endMs: 1,
     type: "inspect",
-    intent: "general",
     roi,
     createdAt: Math.max(0, Date.now()),
   };

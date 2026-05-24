@@ -223,6 +223,54 @@ export function createLaboratoryReportMarkdownRuntime(deps: LaboratoryReportMark
       });
     }
 
+    const decisionSummary = toInsightRecord(userReport["decisionSummary"]);
+    if (Object.keys(decisionSummary).length > 0) {
+      lines.push("", "## Triage Decision");
+      lines.push(`- Anomaly: ${formatValue(decisionSummary["anomaly"])}`);
+      lines.push(
+        `- Likely technical explanation: ${formatValue(decisionSummary["likelyTechnicalExplanation"])}`
+      );
+      lines.push(
+        `- Manipulation suspicion: ${formatValue(decisionSummary["manipulationSuspicion"])}`
+      );
+      lines.push(`- Follow-up required: ${formatValue(decisionSummary["needsFollowUp"])}`);
+      if (asNonEmptyString(decisionSummary["rationale"]) !== null) {
+        lines.push(`- Rationale: ${formatValue(decisionSummary["rationale"])}`);
+      }
+    }
+
+    const evidenceStrength = Array.isArray(userReport["evidenceStrength"])
+      ? (userReport["evidenceStrength"] as unknown[]).map(toInsightRecord)
+      : [];
+    if (evidenceStrength.length > 0) {
+      lines.push("", "## Evidence Strength");
+      evidenceStrength.forEach(function (entry) {
+        lines.push(
+          `- ${formatValue(entry["label"])}: ${formatValue(entry["strength"])} - ${formatValue(
+            entry["detail"]
+          )}`
+        );
+      });
+    }
+
+    const counterEvidenceLedger = toInsightRecord(userReport["counterEvidenceLedger"]);
+    const counterEvidenceEntries = Array.isArray(counterEvidenceLedger["entries"])
+      ? (counterEvidenceLedger["entries"] as unknown[]).map(toInsightRecord)
+      : [];
+    if (counterEvidenceEntries.length > 0) {
+      lines.push("", "## Counter Evidence");
+      if (asNonEmptyString(counterEvidenceLedger["summary"]) !== null) {
+        lines.push(formatValue(counterEvidenceLedger["summary"]));
+      }
+      counterEvidenceEntries.forEach(function (entry) {
+        lines.push(
+          `- ${formatValue(entry["label"])} (${formatValue(entry["status"])}): ${formatValue(
+            entry["detail"]
+          )}`
+        );
+      });
+    }
+
     const correlationClusters = Array.isArray(userReport["topCorrelationClusters"])
       ? (userReport["topCorrelationClusters"] as unknown[]).map(toInsightRecord)
       : [];

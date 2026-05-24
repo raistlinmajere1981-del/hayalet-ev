@@ -34,7 +34,6 @@ function createSourceProjectState(
       createdAt: number;
       metadata?: Record<string, unknown>;
       runId?: string;
-      intentIds?: string[];
     }>;
     projects?: Array<Record<string, unknown>>;
     selectedEntityIds?: string[];

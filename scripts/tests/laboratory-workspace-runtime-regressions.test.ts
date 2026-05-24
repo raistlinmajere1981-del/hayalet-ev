@@ -14,7 +14,6 @@ import {
   FakeRangeElement,
   FakeTextElement,
   getActiveExecutionIntent,
-  getIntentDirtyMap,
   getReportFreshness,
   getRunSnapshotSummary,
   getWorkspaceDiff,
@@ -1023,7 +1022,6 @@ test("laboratory selectors expose frozen snapshot summary and live workspace dri
         timelineStartMs: 2400,
         timelineEndMs: 5600,
         hypothesis: "live workspace clue",
-        selectedIntents: ["visual-inspection"],
       },
       reports: {
         user: {
@@ -1063,7 +1061,6 @@ test("laboratory selectors expose frozen snapshot summary and live workspace dri
             endMs: 5400,
           },
           hypothesis: "frozen clue",
-          intentIds: ["visual-inspection", "anomaly-detection"],
         },
         previewArtifacts: [],
         confidence: "medium",
@@ -1080,35 +1077,15 @@ test("laboratory selectors expose frozen snapshot summary and live workspace dri
     timelineStartMs: 1200,
     timelineEndMs: 5400,
     hypothesis: "frozen clue",
-    intentIds: ["visual-inspection", "anomaly-detection"],
-  });
-  assert.deepEqual(getIntentDirtyMap(state), {
-    "visual-inspection": {
-      intentId: "visual-inspection",
-      inSnapshot: true,
-      inWorkspace: true,
-      dirty: true,
-      changedKeys: ["timeline", "hypothesis"],
-    },
-    "anomaly-detection": {
-      intentId: "anomaly-detection",
-      inSnapshot: true,
-      inWorkspace: false,
-      dirty: true,
-      changedKeys: ["selection", "timeline", "hypothesis"],
-    },
   });
   assert.deepEqual(getWorkspaceDiff(state), {
     timelineChanged: true,
     hypothesisChanged: true,
-    intentsChanged: true,
     workspaceDirty: true,
-    changedKeys: ["timeline", "hypothesis", "intents"],
+    changedKeys: ["timeline", "hypothesis"],
   });
   assert.deepEqual(getReportFreshness(state), {
     state: "current",
     workspaceDirty: true,
   });
-  assert.deepEqual(state.run?.analysisScope?.intentIds, ["visual-inspection", "anomaly-detection"]);
-  assert.deepEqual(state.ui.workspace.selectedIntents, ["visual-inspection"]);
 });

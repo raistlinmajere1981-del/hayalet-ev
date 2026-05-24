@@ -1,6 +1,5 @@
 import { asLabRecord, normalizeLabFeatureId } from "../../domain/lab-types.js";
 import type {
-  CapabilityFamilyId,
   LabEventFeedItem,
   LabPersistedState,
   LabStoreEvent,
@@ -27,8 +26,7 @@ import { toEventFeedItem } from "./lab-store-host-records.js";
 import { normalizeProjectImportState } from "./lab-store-import-state.js";
 import {
   clearInspectionDepth,
-  deriveCapabilitiesFromIntentIds,
-  normalizeWorkspaceIntentIds,
+  normalizeWorkspaceCapabilityIds,
   replaceAnalysisPreparationModuleToggles,
   resetInspectionMode,
 } from "./lab-store-workspace-state.js";
@@ -58,11 +56,7 @@ export function reduceLabHydrationEvent(state: LabStoreState, event: LabStoreEve
     };
   state.persisted = persistedPayload as LabPersistedState;
   state.featureId = normalizeLabFeatureId(event.payload.featureId, state.featureId);
-  state.selectedCapabilities = Array.isArray(event.payload.selectedCapabilities)
-    ? (event.payload.selectedCapabilities as unknown[]).filter(
-        (entry): entry is CapabilityFamilyId => typeof entry === "string"
-      )
-    : [];
+  state.selectedCapabilities = normalizeWorkspaceCapabilityIds(event.payload.selectedCapabilities);
   if (event.payload.projectIndex) {
     state.projectIndex = event.payload.projectIndex;
     state.ui.lastHydratedProjectId = event.payload.projectIndex.activeProjectId;
@@ -185,10 +179,7 @@ function hydrateWorkspaceUi(state: LabStoreState, workspace: unknown) {
           : state.ui.workspace.previewVolume,
       hypothesis: typeof ws.hypothesis === "string" ? ws.hypothesis : state.ui.workspace.hypothesis,
       bookmarks: Array.isArray(ws.bookmarks) ? ws.bookmarks : state.ui.workspace.bookmarks,
-      selectedIntents: Array.isArray(ws.selectedIntents)
-        ? normalizeWorkspaceIntentIds(ws.selectedIntents)
-        : state.ui.workspace.selectedIntents,
-      analysisPrepExpandedIntentIds: [],
+      analysisPrepExpandedCapabilityIds: [],
       sourceIntakeCollapsed: ws.sourceIntakeCollapsed === true,
       selectionLoopEnabled: ws.selectionLoopEnabled === true,
       selectionMicroZoomOpen: ws.selectionMicroZoomOpen === true,
@@ -214,15 +205,12 @@ function hydrateWorkspaceUi(state: LabStoreState, workspace: unknown) {
       persistedSelection: ws.activeSelection,
     }
   );
-  if (Array.isArray(ws.selectedIntents)) {
+  if (state.selectedCapabilities.length > 0) {
     if (Object.keys(asLabRecord(state.workbench["moduleToggles"])).length === 0) {
       state.workbench = replaceAnalysisPreparationModuleToggles(
         state.workbench,
-        state.ui.workspace.selectedIntents
+        state.selectedCapabilities
       );
     }
-    state.selectedCapabilities = deriveCapabilitiesFromIntentIds(
-      state.ui.workspace.selectedIntents
-    );
   }
 }

@@ -1,7 +1,7 @@
 import { asLabRecord, asNonEmptyString, escapeHtml } from "../domain/lab-types.js";
 import type { LabRecord, LabStoreState } from "../domain/lab-types.js";
 import { renderStatusChip } from "./components/status-chip.js";
-import { getToolLifecycleStage, getToolRelevanceFilter } from "../runtime/lab-selectors.js";
+import { getToolLifecycleStage } from "../runtime/lab-selectors.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
@@ -15,6 +15,7 @@ type LabToolDescriptorRecord = LabRecord & {
   installerType?: unknown;
   plannedReason?: unknown;
   readinessImpact?: unknown;
+  setupHint?: unknown;
   stageSupport?: unknown;
   supportedPythonVersions?: unknown;
   toolId?: unknown;
@@ -27,6 +28,7 @@ type LabToolEntryRecord = LabRecord & {
   busy?: unknown;
   installDir?: unknown;
   installed?: unknown;
+  lastCheckedAt?: unknown;
   lastError?: unknown;
   latestReleaseName?: unknown;
   latestVersion?: unknown;
@@ -541,6 +543,7 @@ function getToolEntry(state: LabStoreState, toolId: string): LabToolEntryRecord 
     latestReleaseName: null,
     binaryPath: null,
     installDir: null,
+    lastCheckedAt: null,
     updateAvailable: false,
     busy: false,
     lastError: null,
@@ -554,6 +557,9 @@ function getInstallStrategy(descriptor: LabToolDescriptorRecord): string {
   const strategy = asNonEmptyString(descriptor.installStrategy);
   if (availability === "planned" || strategy === "planned") {
     return "planned";
+  }
+  if (availability === "system-command" && asNonEmptyString(descriptor.installerType) === null) {
+    return "system-command";
   }
   return "automatic";
 }
@@ -588,6 +594,62 @@ function getSupportLabel(
     default:
       return copy.t("mediaAnalysis.toolManager.support.roomWide", "Genel");
   }
+}
+
+function formatLastCheckedAt(value: unknown): string | null {
+  const rawValue = asNonEmptyString(value);
+  if (rawValue === null) {
+    return null;
+  }
+  const date = new Date(rawValue);
+  if (Number.isNaN(date.getTime())) {
+    return rawValue;
+  }
+  return date.toLocaleString("tr-TR", {
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "2-digit",
+  });
+}
+
+function getSystemCommandVerificationHint(
+  descriptor: LabToolDescriptorRecord,
+  entry: LabToolEntryRecord,
+  copy: LabI18n = LAB_FALLBACK_I18N
+): string | null {
+  if (
+    asNonEmptyString(descriptor.availability) !== "system-command" ||
+    asNonEmptyString(descriptor.installerType) !== null
+  ) {
+    return null;
+  }
+  const checkedAt = formatLastCheckedAt(entry.lastCheckedAt);
+  if (checkedAt === null) {
+    return null;
+  }
+  const version = asNonEmptyString(entry.version);
+  const location = asNonEmptyString(entry.binaryPath) || asNonEmptyString(entry.installDir);
+  if (entry.installed === true) {
+    const detail = [version === null ? null : `sürüm ${version}`, location].filter(
+      (item): item is string => item !== null
+    );
+    return copy.t(
+      "mediaAnalysis.toolManager.lifecycle.systemCommandVerified",
+      "Son doğrulama başarılı ({checkedAt}){detail}.",
+      {
+        checkedAt,
+        detail: detail.length === 0 ? "" : `: ${detail.join(", ")}`,
+      }
+    );
+  }
+  return copy.t(
+    "mediaAnalysis.toolManager.lifecycle.systemCommandMissing",
+    "Son doğrulama ({checkedAt}): araç bulunamadı.",
+    {
+      checkedAt,
+    }
+  );
 }
 
 function getStatusChip(
@@ -648,6 +710,22 @@ function getLifecycleHint(
       error: entry.lastError.trim(),
     });
   }
+  const verificationHint = getSystemCommandVerificationHint(descriptor, entry, copy);
+  if (verificationHint !== null) {
+    const setupHint =
+      typeof descriptor.setupHint === "string" && descriptor.setupHint.trim() !== ""
+        ? descriptor.setupHint.trim()
+        : null;
+    return setupHint === null ? verificationHint : `${verificationHint} ${setupHint}`;
+  }
+  if (
+    asNonEmptyString(descriptor.availability) === "system-command" &&
+    asNonEmptyString(descriptor.installerType) === null &&
+    typeof descriptor.setupHint === "string" &&
+    descriptor.setupHint.trim() !== ""
+  ) {
+    return descriptor.setupHint.trim();
+  }
   if (typeof descriptor.readinessImpact === "string" && descriptor.readinessImpact.trim() !== "") {
     return translateToolDescriptorText(
       toolId,
@@ -683,6 +761,8 @@ function getInstallStrategyLabel(
   switch (getInstallStrategy(descriptor)) {
     case "planned":
       return copy.t("mediaAnalysis.toolManager.strategy.planned", "Planlı");
+    case "system-command":
+      return copy.t("mediaAnalysis.toolManager.strategy.systemCommand", "Doğrulama / kurulum notu");
     case "automatic":
     default:
       return copy.t("mediaAnalysis.toolManager.strategy.automatic", "Uygulama içi kurulum");
@@ -715,6 +795,14 @@ function renderToolActions(
     return `
       <button class="labx-inline-action" type="button" disabled>
         ${escapeHtml(copy.t("mediaAnalysis.toolManager.actions.planned", "Planlı"))}
+      </button>
+    `;
+  }
+
+  if (installStrategy === "system-command") {
+    return `
+      <button class="labx-inline-action ${entry.installed === true ? "" : "labx-inline-action--primary"}" type="button" data-lab-action="tools-refresh" ${disabled}>
+        ${escapeHtml(copy.t("mediaAnalysis.toolManager.actions.verifySystemCommand", "Doğrula"))}
       </button>
     `;
   }
@@ -792,6 +880,7 @@ function renderToolCard(
     asNonEmptyString(entry.latestVersion) || asNonEmptyString(entry.latestReleaseName) || "--";
   const locationLabel =
     asNonEmptyString(entry.binaryPath) || asNonEmptyString(entry.installDir) || "--";
+  const checkedAtLabel = formatLastCheckedAt(entry.lastCheckedAt) || "--";
   const monogram = displayName.slice(0, 2).toUpperCase();
 
   const hasError = typeof entry.lastError === "string" && entry.lastError.trim() !== "";
@@ -824,6 +913,7 @@ function renderToolCard(
           <div><span>${escapeHtml(copy.t("mediaAnalysis.toolManager.labels.stageSupport", "Aşama desteği"))}</span><strong>${escapeHtml(getSupportLabel(supportLevel, stageId, copy))}</strong></div>
           <div><span>${escapeHtml(copy.t("mediaAnalysis.toolManager.labels.installedVersion", "Kurulu sürüm"))}</span><strong>${escapeHtml(versionLabel)}</strong></div>
           <div><span>${escapeHtml(copy.t("mediaAnalysis.toolManager.labels.latestVersion", "Son sürüm"))}</span><strong>${escapeHtml(latestLabel)}</strong></div>
+          <div><span>${escapeHtml(copy.t("mediaAnalysis.toolManager.labels.lastCheckedAt", "Son kontrol"))}</span><strong>${escapeHtml(checkedAtLabel)}</strong></div>
           <div><span>${escapeHtml(copy.t("mediaAnalysis.toolManager.labels.location", "Konum"))}</span><strong class="labx-summary-list__path" title="${escapeHtml(locationLabel)}">${escapeHtml(truncatedLocation)}</strong></div>
           ${
             pythonRuntimeLabel === null
@@ -848,31 +938,13 @@ function renderToolSection(
   state: LabStoreState,
   stageId: string,
   descriptors: LabToolDescriptorRecord[],
-  sectionKind: "relevant" | "other",
   copy: LabI18n = LAB_FALLBACK_I18N
 ): string {
-  if (descriptors.length === 0 && sectionKind !== "relevant") {
-    return "";
-  }
-  const titleKey =
-    sectionKind === "relevant"
-      ? "mediaAnalysis.toolManager.sections.relevant.title"
-      : "mediaAnalysis.toolManager.sections.other.title";
-  const titleFallback = sectionKind === "relevant" ? "İlgili araçlar" : "Diğer araçlar";
-  const hintKey =
-    sectionKind === "relevant"
-      ? "mediaAnalysis.toolManager.sections.relevant.hint"
-      : "mediaAnalysis.toolManager.sections.other.hint";
-  const hintFallback =
-    sectionKind === "relevant"
-      ? "Seçili niyet ve yetenek aileleri için gerekli araçlar önce listelenir."
-      : "Diğer modül ve kapasitelere ait araçlar burada tutulur.";
-
   return `
     <section class="labx-list-stack">
       <div class="labx-tool-manager-section__header">
-        <h3>${escapeHtml(copy.t(titleKey, titleFallback))}</h3>
-        <p>${escapeHtml(copy.t(hintKey, hintFallback))}</p>
+        <h3>${escapeHtml(copy.t("mediaAnalysis.toolManager.sections.catalog.title", "Laboratory tools"))}</h3>
+        <p>${escapeHtml(copy.t("mediaAnalysis.toolManager.sections.catalog.hint", "Install, update, and inspect the tools managed by Laboratory."))}</p>
       </div>
       <div class="labx-module-catalog">${descriptors
         .map(function (descriptor) {
@@ -914,11 +986,13 @@ function renderToolInstallConfirmation(
 
   const entry = getToolEntry(state, toolId);
   const availability = asNonEmptyString(descriptor.availability) || "installable";
+  const installStrategy = getInstallStrategy(descriptor);
   if (
     entry.busy === true ||
     entry.installed === true ||
     availability === "planned" ||
-    getInstallStrategy(descriptor) === "planned"
+    installStrategy === "planned" ||
+    installStrategy === "system-command"
   ) {
     return "";
   }
@@ -995,18 +1069,7 @@ export function renderToolManagementOverlay(
 ) {
   const isOpen = state.ui.toolManagerOpen === true;
   const descriptors = getToolRegistry(state);
-  // Relevance-based grouping: tools needed by intent-derived capabilities.
-  const relevance = getToolRelevanceFilter(state);
-  const requiredToolSet = new Set(relevance.requiredToolIds);
   const stageId = getToolLifecycleStage(state);
-  const relevantTools = descriptors.filter(function (descriptor) {
-    const toolId = asNonEmptyString(descriptor.toolId);
-    return toolId !== null && requiredToolSet.has(toolId);
-  });
-  const otherTools = descriptors.filter(function (descriptor) {
-    const toolId = asNonEmptyString(descriptor.toolId);
-    return toolId === null || !requiredToolSet.has(toolId);
-  });
   const roomManagedDescriptors = descriptors.filter(function (descriptor) {
     return isSettingsManagedTool(asNonEmptyString(descriptor.toolId)) !== true;
   });
@@ -1018,7 +1081,11 @@ export function renderToolManagementOverlay(
     const toolId = asNonEmptyString(descriptor.toolId);
     return toolId !== null && getToolEntry(state, toolId).installed === true;
   }).length;
-  const updateCount = roomManagedDescriptors.filter(function (descriptor) {
+  const installedCount = descriptors.filter(function (descriptor) {
+    const toolId = asNonEmptyString(descriptor.toolId);
+    return toolId !== null && getToolEntry(state, toolId).installed === true;
+  }).length;
+  const updateCount = descriptors.filter(function (descriptor) {
     const toolId = asNonEmptyString(descriptor.toolId);
     return toolId !== null && getToolEntry(state, toolId).updateAvailable === true;
   }).length;
@@ -1037,12 +1104,12 @@ export function renderToolManagementOverlay(
             <section class="labx-module-overlay" role="dialog" aria-modal="true" aria-label="${escapeHtml(copy.t("mediaAnalysis.toolManager.ariaLabel", "Araç Yönetimi"))}">
               <div class="labx-module-overlay__header">
                 <div>
-                  <h2 class="labx-module-overlay__title">${escapeHtml(copy.t("mediaAnalysis.toolManager.title", "Araç Yönetimi"))}</h2>
-                  <div class="labx-tool-manager-stats" aria-label="${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.relevant", "İlgili araçlar"))}">
-                    <span>${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.relevant", "İlgili araçlar"))}: <strong>${escapeHtml(String(relevantTools.length))}</strong></span>
-                    <span>${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.installed", "Kurulu araç"))}: <strong>${escapeHtml(String(roomManagedInstalledCount))}</strong></span>
-                    <span>${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.updates", "Güncelleme bekleyen"))}: <strong>${escapeHtml(String(updateCount))}</strong></span>
-                  </div>
+	                  <h2 class="labx-module-overlay__title">${escapeHtml(copy.t("mediaAnalysis.toolManager.title", "Araç Yönetimi"))}</h2>
+	                  <div class="labx-tool-manager-stats" aria-label="${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.catalog", "Araç kataloğu"))}">
+	                    <span>${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.catalog", "Araç kataloğu"))}: <strong>${escapeHtml(String(descriptors.length))}</strong></span>
+	                    <span>${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.installed", "Kurulu araç"))}: <strong>${escapeHtml(String(installedCount))}</strong></span>
+	                    <span>${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.updates", "Güncelleme bekleyen"))}: <strong>${escapeHtml(String(updateCount))}</strong></span>
+	                  </div>
                 </div>
                 <div class="labx-inline-actions">
                   <button
@@ -1067,11 +1134,10 @@ export function renderToolManagementOverlay(
                 </div>
               </div>
               <div class="labx-tool-manager-layout">
-                ${renderToolProgressRail(state, descriptors, copy)}
-                <div class="labx-tool-manager-main">
-                  ${renderToolSection(state, stageId, relevantTools, "relevant", copy)}
-                  ${renderToolSection(state, stageId, otherTools, "other", copy)}
-                </div>
+	                ${renderToolProgressRail(state, descriptors, copy)}
+	                <div class="labx-tool-manager-main">
+	                  ${renderToolSection(state, stageId, descriptors, copy)}
+	                </div>
               </div>
               ${renderToolInstallConfirmation(state, descriptors, copy)}
             </section>

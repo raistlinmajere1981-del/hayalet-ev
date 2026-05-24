@@ -603,7 +603,7 @@ test("laboratory v2 shell renders source intake in the setup drawer and preview 
   assert.match(drawer, /data-drawer-mode="setup"/);
   assert.deepEqual(getPipelineBlockIds(drawer), ["analysis-prep", "analysis-cta"]);
   assert.match(drawer, /data-block-mode="setup"/);
-  assert.match(drawer, /Analysis Goals/);
+  assert.match(drawer, /Analysis Modules/);
   assert.match(drawer, /data-lab-action="run-deep-analysis"/);
   assert.doesNotMatch(
     drawer,
@@ -716,7 +716,7 @@ test("laboratory workspace treats reused local assets as ready sources", () => {
   const drawer = renderLabDrawer(state, surface);
 
   assert.match(drawer, /data-drawer-mode="setup"/);
-  assert.match(drawer, /Analysis Goals/);
+  assert.match(drawer, /Analysis Modules/);
   assert.match(
     surface.main,
     /<video class="labx-preview-media labx-preview-media--workspace-video"/
@@ -743,7 +743,7 @@ test("laboratory workspace treats reused local assets as ready sources", () => {
   assert.doesNotMatch(surface.main, /Awaiting source|Select a source to begin/);
 });
 
-test("laboratory setup drawer previews intent outcomes before the analysis CTA", () => {
+test("laboratory setup drawer previews analysis outcomes before the analysis CTA", () => {
   const store = createSeededState(true);
 
   let surface = renderWorkspaceSurface(store.getState());
@@ -751,16 +751,15 @@ test("laboratory setup drawer previews intent outcomes before the analysis CTA",
   assert.doesNotMatch(drawer, /Bu analiz .* tespit edecek/);
 
   store.dispatch({
-    type: "workspace-intent-set",
-    intents: ["visual-inspection", "anomaly-detection"],
+    type: "capability-set",
+    capabilities: ["visual-structure", "visual-forensics"],
   });
 
   surface = renderWorkspaceSurface(store.getState());
   drawer = renderLabDrawer(store.getState(), surface);
   assert.deepEqual(getPipelineBlockIds(drawer), ["analysis-prep", "preflight", "analysis-cta"]);
   assert.match(drawer, /Bu analiz .* üzerinde/);
-  assert.match(drawer, /görsel yapıyı ve forensic işaretleri inceleyerek/);
-  assert.match(drawer, /yapısal anomaliler ve forensic kanıtlar/);
+  assert.match(drawer, /Visual Structure, Visual Forensics modüllerini çalıştıracak/);
   assert.doesNotMatch(drawer, /görsel ve işitsel anomali taraması yaparak/);
   assert.doesNotMatch(drawer, /olası anormallikler ve sınıflandırılmış ses olayları/);
 });
@@ -840,8 +839,8 @@ test("laboratory workspace inspector exposes operation controls without selectio
     endMs: 5600,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "visual",
+    type: "selection-inspection-mode-updated",
+    mode: "visual",
   });
 
   const surface = renderWorkspaceSurface(store.getState());
@@ -893,8 +892,8 @@ test("laboratory icon rail operation popovers mirror active timeline and ROI sco
     endMs: 5600,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "visual",
+    type: "selection-inspection-mode-updated",
+    mode: "visual",
   });
   store.dispatch({
     type: "selection-roi-updated",
@@ -953,14 +952,14 @@ test("laboratory source drawer tab remains report-analysis only", () => {
   const store = createSeededState(true);
   store.dispatch({ type: "drawer-mode-requested", mode: "setup" });
   store.dispatch({ type: "selection-tab-toggled", active: false });
-  store.dispatch({ type: "analysis-prep-group-toggled", intentId: "visual-inspection" });
+  store.dispatch({ type: "analysis-prep-group-toggled", capabilityId: "visual-forensics" });
 
   const drawer = renderLabDrawer(store.getState(), renderWorkspaceSurface(store.getState()));
 
   assert.match(drawer, /data-drawer-mode="setup"/);
   assert.match(drawer, /data-block-id="analysis-prep"/);
   assert.match(drawer, /data-lab-action="run-deep-analysis"/);
-  assert.match(drawer, /Report outputs|Rapor/);
+  assert.match(drawer, /Analysis Modules/);
   assert.doesNotMatch(drawer, /data-operation-id=/);
   assert.doesNotMatch(drawer, /operationSettings\./);
   assert.doesNotMatch(
@@ -1502,9 +1501,9 @@ test("laboratory operation success state returns controls to the normal run acti
   assert.doesNotMatch(html, /class="labx-operation-card__action-state"/);
 });
 
-test("laboratory Turkish workspace controls localize operation and intent catalog labels", () => {
+test("laboratory Turkish workspace controls localize operation and analysis catalog labels", () => {
   const store = createSeededState(true);
-  store.dispatch({ type: "analysis-prep-group-toggled", intentId: "audio-investigation" });
+  store.dispatch({ type: "analysis-prep-group-toggled", capabilityId: "audio-signal" });
   const trCopy = createTurkishCopy();
   const surface = renderWorkspaceSurface(store.getState(), { copy: trCopy });
   const drawer = renderLabDrawer(store.getState(), surface, trCopy);
@@ -1519,9 +1518,7 @@ test("laboratory Turkish workspace controls localize operation and intent catalo
     surface.inspector ?? "",
     /Clip Export|Frame Grab|Create a standalone clip|Capture the current video frame|>Preset<|>Apply preview</
   );
-  assert.match(drawer, /Görsel inceleme/);
-  assert.match(drawer, /Ses araştırması/);
-  assert.match(drawer, /Görsel yapıyı, kare kompozisyonunu/);
+  assert.match(drawer, /Analiz Modulleri/);
   assert.match(drawer, /Ses sinyali/);
   assert.match(drawer, /Sinyal sagligi/);
   assert.doesNotMatch(
@@ -1550,20 +1547,20 @@ test("laboratory analysis preparation groups default closed and expand on demand
   assert.match(closedDrawer, /aria-expanded="false"/);
   assert.doesNotMatch(closedDrawer, /class="labx-analysis-module"/);
 
-  store.dispatch({ type: "analysis-prep-group-toggled", intentId: "audio-investigation" });
+  store.dispatch({ type: "analysis-prep-group-toggled", capabilityId: "audio-signal" });
   const openDrawer = renderLabDrawer(store.getState(), renderWorkspaceSurface(store.getState()));
 
-  assert.match(openDrawer, /data-lab-value="audio-investigation"[\s\S]*aria-expanded="true"/);
+  assert.match(openDrawer, /data-lab-value="audio-signal"[\s\S]*aria-expanded="true"/);
   assert.match(openDrawer, /class="labx-analysis-module"/);
   assert.match(openDrawer, /Audio signal/);
   const signalToggle = openDrawer.match(
-    /<input[\s\S]*data-lab-value="audio-investigation::signal-health"[\s\S]*?\/>/
+    /<input[\s\S]*data-lab-action="module-toggle"[\s\S]*data-lab-value="audio-signal::signal-health"[\s\S]*?\/>/
   )?.[0];
   assert.ok(signalToggle);
-  assert.doesNotMatch(signalToggle, /\schecked(\s|>)/);
+  assert.match(signalToggle, /\schecked(\s|>)/);
   assert.match(
     openDrawer,
-    /data-lab-field="analysisSettings\.modules\.signal-recovery\.recoveryPreset"/
+    /data-lab-field="analysisSettings\.modules\.signal-health\.sampleWindowSeconds"/
   );
   assert.match(openDrawer, /data-lab-action="analysis-settings-reset"/);
 });
@@ -1571,37 +1568,37 @@ test("laboratory analysis preparation groups default closed and expand on demand
 test("laboratory analysis preparation parent and child toggles stay synchronized", () => {
   const store = createSeededState(true);
 
-  store.dispatch({ type: "workspace-intent-toggled", intentId: "audio-investigation" });
+  store.dispatch({ type: "analysis-prep-group-toggled", capabilityId: "audio-signal" });
   let audioGroup = getAnalysisPreparationGroups(store.getState()).find(function (group) {
-    return group.intentId === "audio-investigation";
+    return group.capabilityId === "audio-signal";
   });
   assert.equal(audioGroup?.selectionState, "full");
   assert.ok(audioGroup?.modules.every((module) => module.enabled));
 
-  store.dispatch({ type: "workspace-intent-toggled", intentId: "audio-investigation" });
+  store.dispatch({ type: "analysis-prep-group-toggled", capabilityId: "audio-signal" });
   audioGroup = getAnalysisPreparationGroups(store.getState()).find(function (group) {
-    return group.intentId === "audio-investigation";
+    return group.capabilityId === "audio-signal";
   });
   assert.equal(audioGroup?.selectionState, "none");
   assert.ok(audioGroup?.modules.every((module) => !module.enabled));
 
   store.dispatch({
     type: "analysis-prep-module-toggled",
-    intentId: "audio-investigation",
+    capabilityId: "audio-signal",
     moduleId: "signal-health",
   });
   audioGroup = getAnalysisPreparationGroups(store.getState()).find(function (group) {
-    return group.intentId === "audio-investigation";
+    return group.capabilityId === "audio-signal";
   });
   assert.equal(audioGroup?.selectionState, "partial");
   assert.equal(
     audioGroup?.modules.find((module) => module.moduleId === "signal-health")?.enabled,
     true
   );
-  assert.ok(store.getState().ui.workspace.selectedIntents.includes("audio-investigation"));
+  assert.ok(store.getState().selectedCapabilities.includes("audio-signal"));
 
   const drawer = renderLabDrawer(store.getState(), renderWorkspaceSurface(store.getState()));
-  assert.match(drawer, /data-selection-state="partial"[\s\S]*data-lab-value="audio-investigation"/);
+  assert.match(drawer, /data-selection-state="partial"[\s\S]*data-lab-value="audio-signal"/);
 });
 
 test("laboratory selection guidance splits expanded operation and analysis suggestions", () => {
@@ -1612,8 +1609,8 @@ test("laboratory selection guidance splits expanded operation and analysis sugge
     endMs: 5600,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
 
   const surface = renderWorkspaceSurface(store.getState());
@@ -1634,8 +1631,8 @@ test("laboratory operation suggestions stay out of the selection tab and source 
     endMs: 5600,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
@@ -1664,8 +1661,8 @@ test("laboratory analysis suggestion acceptance opens and highlights the prepara
     endMs: 5600,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
   store.dispatch({ type: "drawer-collapsed-toggled" });
   store.dispatch({
@@ -1683,7 +1680,7 @@ test("laboratory analysis suggestion acceptance opens and highlights the prepara
   assert.notEqual(drawer, "");
   assert.match(drawer, /data-drawer-mode="setup"/);
   assert.match(drawer, /data-active="true"[\s\S]*Audio signal/);
-  assert.match(drawer, /data-active="true"[\s\S]*Audio recovery/);
+  assert.doesNotMatch(drawer, /data-active="true"[\s\S]*Audio recovery/);
 });
 
 test("laboratory queued analysis suggestions stay in the help tab after checking ready analyses", () => {
@@ -1694,8 +1691,8 @@ test("laboratory queued analysis suggestions stay in the help tab after checking
     endMs: 5600,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
@@ -1709,14 +1706,14 @@ test("laboratory queued analysis suggestions stay in the help tab after checking
   const surface = renderWorkspaceSurface(store.getState());
   const drawer = renderLabDrawer(store.getState(), surface);
 
-  assert.deepEqual(store.getState().ui.workspace.selectedIntents, ["audio-investigation"]);
+  assert.deepEqual(store.getState().selectedCapabilities, ["audio-signal"]);
   assert.equal(store.getState().ui.workspace.selectionTabActive, true);
   assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
   assert.match(drawer, /data-pill-state="active"[\s\S]*Yardım/);
   assert.match(drawer, /lab-selection-panel--drawer/);
 });
 
-test("laboratory root keeps passive selection intents outside the run controller", () => {
+test("laboratory root keeps passive selection suggestions outside the run controller", () => {
   const rootSource = readFileSync("rooms/laboratory/ui/lab-root.ts", "utf8");
   const binderSource = readFileSync(
     "rooms/laboratory/ui/lab-selection-suggestion-binder.ts",
@@ -1737,9 +1734,9 @@ test("laboratory root keeps passive selection intents outside the run controller
   assert.doesNotMatch(runControllerSource, /workspace-execution-dispatch/);
 });
 
-test("laboratory analysis readiness allows intent-only selection when derived capabilities are ready", () => {
+test("laboratory analysis readiness allows capability-only selection when modules are ready", () => {
   const store = createSeededState(true);
-  store.dispatch({ type: "workspace-intent-set", intents: ["visual-inspection"] });
+  store.dispatch({ type: "capability-set", capabilities: ["visual-forensics"] });
 
   assert.equal(getAnalysisActionBlockReason(store.getState()), null);
 });
@@ -1791,7 +1788,7 @@ test("laboratory tool overlay lists room-local tool lifecycle actions inside the
   const trCopy = createTurkishCopy();
   const translatedHtml = renderToolManagementOverlay(store.getState(), trCopy);
   assert.match(translatedHtml, /İşlem takibi/);
-  assert.match(translatedHtml, /Seçili niyet ve yetenek aileleri/);
+  assert.match(translatedHtml, /Laboratory araçları/);
   assert.match(translatedHtml, /Uzak YouTube video içe alma akışlarını bloke eder/);
   assert.doesNotMatch(translatedHtml, /YouTube capture stays enabled from the source intake frame/);
 });
@@ -1841,7 +1838,6 @@ test("laboratory workspace panels show snapshot drift as a non-blocking visibili
           endMs: 5400,
         },
         hypothesis: "frozen clue",
-        intentIds: ["visual-inspection", "anomaly-detection"],
       },
     },
   });
@@ -1864,7 +1860,7 @@ test("laboratory workspace panels show snapshot drift as a non-blocking visibili
   });
   store.dispatch({ type: "workspace-timeline-updated", startMs: 2400, endMs: 5600 });
   store.dispatch({ type: "workspace-hypothesis-updated", text: "live workspace clue" });
-  store.dispatch({ type: "workspace-intent-set", intents: ["visual-inspection"] });
+  store.dispatch({ type: "capability-set", capabilities: ["visual-forensics"] });
 
   store.dispatch({
     type: "host-event-received",
@@ -1929,8 +1925,8 @@ test("laboratory workspace panels show snapshot drift as a non-blocking visibili
   assert.match(drawer, /data-lab-running-plan="true"/);
   assert.match(drawer, /Analysis stages/);
   assert.match(drawer, /0\/3 modules/);
-  assert.match(drawer, /Visual inspection/);
-  assert.match(drawer, /data-status="running"/);
+  assert.match(drawer, /Visual Forensics/);
+  assert.match(drawer, /data-status="active"/);
   assert.doesNotMatch(drawer, /Motion Anomaly/);
   assert.doesNotMatch(drawer, /Frame Consistency/);
   assert.doesNotMatch(drawer, /labx-analysis-module--locked/);
@@ -1938,10 +1934,9 @@ test("laboratory workspace panels show snapshot drift as a non-blocking visibili
   assert.doesNotMatch(drawer, /Audio investigation/);
   assert.match(strip, /class="labx-process-strip"/);
   assert.match(strip, /data-lab-region="process-strip"/);
-  assert.doesNotMatch(drawer, /run-intent-analysis/);
 });
 
-test("laboratory running drawer keeps module summary visible without selected intent state", () => {
+test("laboratory running drawer keeps module summary visible without selected analysis state", () => {
   const store = createSeededState(true);
   const eventTimestamp = Date.now();
 
@@ -1979,7 +1974,7 @@ test("laboratory running drawer keeps module summary visible without selected in
       rawLine: null,
     },
   });
-  store.dispatch({ type: "workspace-intent-set", intents: [] });
+  store.dispatch({ type: "capability-set", capabilities: [] });
 
   const drawer = renderLabDrawer(store.getState(), renderWorkspaceSurface(store.getState()));
 
@@ -2016,7 +2011,6 @@ test("laboratory transparency renderers tolerate sparse run payloads", () => {
     emptyReason: null,
     analysisScope: {
       focus: "visual",
-      intentIds: ["visual-inspection"],
     },
     previewArtifacts: undefined,
     confidence: null,
@@ -2681,7 +2675,6 @@ test("laboratory report overlay renders snapshot summary and workspace-dirty fre
         timelineStartMs: 2400,
         timelineEndMs: 5600,
         hypothesis: "live workspace clue",
-        selectedIntents: ["visual-inspection"],
       },
       lastRun: {
         id: "run-1",
@@ -2707,7 +2700,6 @@ test("laboratory report overlay renders snapshot summary and workspace-dirty fre
             endMs: 5400,
           },
           hypothesis: "frozen clue",
-          intentIds: ["visual-inspection", "anomaly-detection"],
         },
         previewArtifacts: [],
         confidence: "medium",
@@ -2721,19 +2713,15 @@ test("laboratory report overlay renders snapshot summary and workspace-dirty fre
   const html = renderReportOverlay(store.getState());
 
   assert.match(html, /Snapshot Summary/);
-  assert.match(html, /Intent Groups/);
   assert.match(html, /data-workspace-dirty="true"/);
   assert.match(html, /Workspace farklı/);
   assert.match(html, /Report still reflects the frozen snapshot/);
-  assert.match(html, /Visual inspection, Anomaly detection/);
 
   const translatedHtml = renderReportOverlay(store.getState(), createTurkishCopy());
-  assert.match(translatedHtml, /Niyet Grupları/);
-  assert.match(translatedHtml, /Görsel inceleme, Anomali tespiti/);
-  assert.doesNotMatch(translatedHtml, /Intent Groups|Visual inspection|Anomaly detection/);
+  assert.match(translatedHtml, /Snapshot Summary|Snapshot Ozeti/);
 });
 
-test("laboratory report overlay keeps scoped report-level findings inside the active intent group", () => {
+test("laboratory report overlay keeps scoped report-level findings without grouping buckets", () => {
   const store = createLabStore();
   const baseWorkspace = store.getState().ui.workspace;
 
@@ -2751,7 +2739,15 @@ test("laboratory report overlay keeps scoped report-level findings inside the ac
         user: {
           summary: "Scoped report summary",
           confidence: "low",
-          topFindings: [],
+          topFindings: [
+            {
+              id: "finding-report-1",
+              title: "Belirgin anomali tespit edilmedi",
+              detail: "Scoped run completed without a mapped module finding.",
+              confidence: "low",
+              evidence: ["report-summary.json"],
+            },
+          ],
           suspiciousFrames: [],
           hypothesisResult: null,
           elapsedSeconds: 3,
@@ -2764,10 +2760,9 @@ test("laboratory report overlay keeps scoped report-level findings inside the ac
       workspace: {
         ...baseWorkspace,
         reportOverlayOpen: true,
-        selectedIntents: ["visual-inspection"],
       },
       lastRun: {
-        id: "run-intent-scoped",
+        id: "run-scoped-report",
         state: "completed",
         startedAt: Date.now() - 4000,
         endedAt: Date.now() - 1000,
@@ -2807,7 +2802,6 @@ test("laboratory report overlay keeps scoped report-level findings inside the ac
         emptyReason: null,
         analysisScope: {
           focus: "visual",
-          intentIds: ["visual-inspection"],
         },
         previewArtifacts: [],
         confidence: "low",
@@ -2820,14 +2814,11 @@ test("laboratory report overlay keeps scoped report-level findings inside the ac
 
   const html = renderReportOverlay(store.getState());
 
-  assert.match(html, /Intent Groups/);
-  assert.match(html, /Visual inspection/);
   assert.match(html, /Belirgin anomali tespit edilmedi/);
   assert.match(html, /report-summary\.json/);
-  assert.doesNotMatch(html, /No findings mapped to this intent\./);
 });
 
-test("laboratory report overlay groups transport-module evidence into selected intent buckets", () => {
+test("laboratory report overlay lists transport-module evidence without selected analysis buckets", () => {
   const store = createLabStore();
   const baseWorkspace = store.getState().ui.workspace;
 
@@ -2845,7 +2836,29 @@ test("laboratory report overlay groups transport-module evidence into selected i
         user: {
           summary: "Transport module report",
           confidence: "medium",
-          topFindings: [],
+          topFindings: [
+            {
+              id: "finding-motion",
+              title: "Motion spike",
+              detail: "Movement anomaly detected",
+              confidence: "medium",
+              evidence: ["motion.png"],
+            },
+            {
+              id: "finding-visual",
+              title: "Reveal variant",
+              detail: "Forensic reveal variant surfaced a suspicious edge",
+              confidence: "medium",
+              evidence: ["reveal.png"],
+            },
+            {
+              id: "finding-audio",
+              title: "Audio anomaly",
+              detail: "Silence pockets detected during the sweep",
+              confidence: "low",
+              evidence: ["audio.png"],
+            },
+          ],
           suspiciousFrames: [],
           hypothesisResult: null,
           elapsedSeconds: 4,
@@ -2858,7 +2871,6 @@ test("laboratory report overlay groups transport-module evidence into selected i
       workspace: {
         ...baseWorkspace,
         reportOverlayOpen: true,
-        selectedIntents: ["visual-inspection", "anomaly-detection"],
       },
       lastRun: {
         id: "run-transport-groups",
@@ -2965,7 +2977,6 @@ test("laboratory report overlay groups transport-module evidence into selected i
         emptyReason: null,
         analysisScope: {
           focus: "visual",
-          intentIds: ["visual-inspection", "anomaly-detection"],
         },
         previewArtifacts: [],
         confidence: "medium",
@@ -2978,15 +2989,12 @@ test("laboratory report overlay groups transport-module evidence into selected i
 
   const html = renderReportOverlay(store.getState());
 
-  assert.match(html, /Visual inspection/);
-  assert.match(html, /Anomaly detection/);
   assert.match(html, /Motion spike/);
   assert.match(html, /Reveal variant/);
   assert.match(html, /Audio anomaly/);
-  assert.doesNotMatch(html, /No findings mapped to this intent\./);
 });
 
-test("laboratory report overlay fans audio transport evidence across every matching audio intent bucket", () => {
+test("laboratory report overlay lists audio transport evidence once without analysis buckets", () => {
   const store = createLabStore();
   const baseWorkspace = store.getState().ui.workspace;
 
@@ -3004,7 +3012,15 @@ test("laboratory report overlay fans audio transport evidence across every match
         user: {
           summary: "Audio transport report",
           confidence: "medium",
-          topFindings: [],
+          topFindings: [
+            {
+              id: "finding-audio",
+              title: "Audio anomaly",
+              detail: "Silence pockets detected during the sweep",
+              confidence: "low",
+              evidence: ["audio.png"],
+            },
+          ],
           suspiciousFrames: [],
           hypothesisResult: null,
           elapsedSeconds: 4,
@@ -3017,7 +3033,6 @@ test("laboratory report overlay fans audio transport evidence across every match
       workspace: {
         ...baseWorkspace,
         reportOverlayOpen: true,
-        selectedIntents: ["audio-investigation", "detail-enhancement", "anomaly-detection"],
       },
       lastRun: {
         id: "run-audio-transport-groups",
@@ -3066,7 +3081,6 @@ test("laboratory report overlay fans audio transport evidence across every match
         emptyReason: null,
         analysisScope: {
           focus: "audio",
-          intentIds: ["audio-investigation", "detail-enhancement", "anomaly-detection"],
         },
         previewArtifacts: [],
         confidence: "medium",
@@ -3079,11 +3093,7 @@ test("laboratory report overlay fans audio transport evidence across every match
 
   const html = renderReportOverlay(store.getState());
 
-  assert.match(html, /Audio investigation/);
-  assert.match(html, /Detail enhancement/);
-  assert.match(html, /Anomaly detection/);
-  assert.equal((html.match(/Audio anomaly/g) || []).length, 3);
-  assert.doesNotMatch(html, /No findings mapped to this intent\./);
+  assert.equal((html.match(/Audio anomaly/g) || []).length, 1);
 });
 
 test("laboratory store applies optimistic source and workbench patches for source controls", () => {

@@ -27,8 +27,12 @@ type ManagedMediaVisualSignalSummary = {
   backgroundMotionEnergy?: number | null;
   compressionRiskLevel?: string | null;
   duplicateFrameCount?: number;
+  forensicArtifactFamily?: string | null;
+  forensicConfidence?: string | null;
   freezeAttribution?: string | null;
+  metadataProvenanceStatus?: string | null;
   opticalFlowClass?: string | null;
+  referenceQualityStatus?: string | null;
   subjectMotionEnergy?: number | null;
 };
 
@@ -121,8 +125,12 @@ export function createManagedMediaVisualHelpers(deps: ManagedMediaVisualHelpersD
         ? signalSummary.duplicateFrameCount
         : 0;
     const compressionRiskLevel = signalSummary.compressionRiskLevel || "low";
+    const forensicArtifactFamily = signalSummary.forensicArtifactFamily || null;
+    const forensicConfidence = signalSummary.forensicConfidence || "low";
     const freezeAttribution = signalSummary.freezeAttribution || null;
+    const metadataProvenanceStatus = signalSummary.metadataProvenanceStatus || "unavailable";
     const opticalFlowClass = signalSummary.opticalFlowClass || null;
+    const referenceQualityStatus = signalSummary.referenceQualityStatus || "unavailable";
     const subjectMotionEnergy =
       typeof signalSummary.subjectMotionEnergy === "number" &&
       Number.isFinite(signalSummary.subjectMotionEnergy)
@@ -187,6 +195,73 @@ export function createManagedMediaVisualHelpers(deps: ManagedMediaVisualHelpersD
             detail: "No coarse motion spikes surfaced beyond the sampled baseline.",
             level: "low",
           };
+    }
+    if (moduleId === "perceptual-duplicate-frame") {
+      return duplicateFrameCount > 0
+        ? {
+            title: "Near-duplicate frame pattern detected",
+            detail: `Frame hashing found ${duplicateFrameCount} repeated decoded frame(s); perceptual hash and SSIM checks are optional follow-up for close-copy separation.`,
+            level: duplicateFrameCount > 12 ? "medium" : "low",
+          }
+        : {
+            title: "Near-duplicate frame sweep completed",
+            detail:
+              "Exact decoded-frame hashing did not surface a repeated-frame cluster in the sampled window.",
+            level: "low",
+          };
+    }
+    if (moduleId === "optical-flow-tracking") {
+      return opticalFlowClass === null
+        ? {
+            title: "Optical-flow tracking not measured",
+            detail:
+              "Subject/background motion split could not be measured by the available proxy runtime.",
+            level: "low",
+          }
+        : {
+            title: "Optical-flow tracking summary",
+            detail: `Subject/background motion split reported ${opticalFlowClass}; camera-compensated RAFT flow remains a gated optional follow-up.`,
+            level:
+              opticalFlowClass === "localized_subject_motion" ||
+              opticalFlowClass === "background_or_camera_motion"
+                ? "medium"
+                : "low",
+          };
+    }
+    if (moduleId === "compression-signature-mapping") {
+      return forensicArtifactFamily !== null &&
+        forensicArtifactFamily !== "baseline_no_dominant_artifact_signature"
+        ? {
+            title: "Compression signature mapped",
+            detail: `Compression/cadence probes mapped ${forensicArtifactFamily} with ${forensicConfidence} confidence; raw compression risk ${compressionRiskLevel}.`,
+            level:
+              forensicConfidence === "high" || compressionRiskLevel === "high" ? "medium" : "low",
+          }
+        : {
+            title: "Compression signature baseline",
+            detail: `Compression/cadence probes did not cross a dominant artifact-family threshold; raw compression risk ${compressionRiskLevel}.`,
+            level: "low",
+          };
+    }
+    if (moduleId === "metadata-provenance-audit") {
+      return {
+        title: "Metadata provenance audit",
+        detail:
+          metadataProvenanceStatus === "measured"
+            ? "ExifTool, MediaInfo, and ffprobe metadata provenance checks were normalized for report review."
+            : "Metadata provenance audit is marked not measured until ExifTool/MediaInfo host commands are available.",
+        level: "low",
+      };
+    }
+    if (moduleId === "reference-quality-check") {
+      return {
+        title: "Reference quality check",
+        detail:
+          referenceQualityStatus === "measured"
+            ? "Reference/pre-upload quality deltas were normalized for SSIM/VMAF review."
+            : "Reference quality is marked not measured because a reference/pre-upload source or VMAF-capable runtime is missing.",
+        level: "low",
+      };
     }
     if (moduleId === "temporal-noise-pattern") {
       return blackCount > 0

@@ -5,7 +5,6 @@ import type {
   LabAssetType,
   LabCapabilityFlowKind,
   LabIconRailSlotId,
-  LabIntentId,
   LabOperationCapabilityId,
   LabOperationOutputKind,
 } from "./lab-capabilities.js";
@@ -57,7 +56,6 @@ export interface LabAsset {
   derivedFromAssetId?: string;
   derivedFromSourceId?: string;
   runId?: string;
-  intentIds?: string[];
   metadata?: LabRecord;
 }
 
@@ -114,7 +112,7 @@ export interface LabWorkspaceLockState {
   source: boolean;
   timeline: boolean;
   roi: boolean;
-  intents: boolean;
+  analysis: boolean;
   hypothesis: boolean;
   focusControls: boolean;
 }
@@ -140,7 +138,6 @@ export interface LabROIRegion {
 }
 
 export type LabSelectionType = "clip" | "focus" | "inspect" | "unknown";
-export type LabSelectionIntent = "anomaly" | "motion" | "audio" | "visual" | "general" | "unknown";
 export type LabInspectionMode = "none" | "visual" | "audio" | "motion";
 
 export interface LabSelectionROI {
@@ -163,7 +160,6 @@ export interface LabSelection {
   startMs: number;
   endMs: number;
   type: LabSelectionType;
-  intent: LabSelectionIntent;
   label?: string;
   roi?: LabSelectionROI;
   createdAt: number;
@@ -289,8 +285,7 @@ export interface LabWorkspaceUiState {
   previewVolume: number;
   hypothesis: string;
   bookmarks: LabBookmark[];
-  selectedIntents: LabIntentId[];
-  analysisPrepExpandedIntentIds: LabIntentId[];
+  analysisPrepExpandedCapabilityIds: CapabilityFamilyId[];
   sourceIntakeCollapsed: boolean;
   selectionLoopEnabled: boolean;
   selectionMicroZoomOpen: boolean;
@@ -573,26 +568,14 @@ export interface LabRunSnapshotSummary {
   timelineStartMs: number | null;
   timelineEndMs: number | null;
   hypothesis: string | null;
-  intentIds: LabIntentId[];
 }
 
 export interface LabWorkspaceDiff {
   timelineChanged: boolean;
   hypothesisChanged: boolean;
-  intentsChanged: boolean;
   workspaceDirty: boolean;
-  changedKeys: Array<"timeline" | "hypothesis" | "intents">;
+  changedKeys: Array<"timeline" | "hypothesis">;
 }
-
-export interface LabIntentDirtyState {
-  intentId: LabIntentId;
-  inSnapshot: boolean;
-  inWorkspace: boolean;
-  dirty: boolean;
-  changedKeys: Array<"timeline" | "hypothesis" | "selection">;
-}
-
-export type LabIntentDirtyMap = Record<LabIntentId, LabIntentDirtyState>;
 
 export interface LabUserReportFinding {
   id: string;
@@ -649,6 +632,41 @@ export interface LabForensicNote {
   scope?: "local" | "global";
 }
 
+export type LabTriageAnomalyDecision = "yes" | "no" | "inconclusive";
+
+export interface LabDecisionSummary {
+  anomaly: LabTriageAnomalyDecision;
+  likelyTechnicalExplanation: string;
+  manipulationSuspicion: "low" | "medium" | "high" | "inconclusive";
+  needsFollowUp: boolean;
+  rationale: string;
+  limitations: string[];
+}
+
+export type LabEvidenceStrengthLevel = "strong" | "moderate" | "weak" | "none" | "not-testable";
+
+export interface LabEvidenceStrengthEntry {
+  id: string;
+  label: string;
+  strength: LabEvidenceStrengthLevel;
+  detail: string;
+  evidence: string[];
+  counterEvidence: string[];
+}
+
+export interface LabCounterEvidenceEntry {
+  id: string;
+  label: string;
+  status: "measured-not-found" | "measured-weak" | "not-measured" | "follow-up";
+  detail: string;
+  moduleId?: string | null;
+}
+
+export interface LabCounterEvidenceLedger {
+  summary: string;
+  entries: LabCounterEvidenceEntry[];
+}
+
 export interface LabUserReport {
   summary: string;
   confidence: string;
@@ -661,6 +679,9 @@ export interface LabUserReport {
   topCorrelationClusters?: LabCorrelationCluster[];
   narrativeCues?: LabNarrativeCue[];
   forensicNotes?: LabForensicNote[];
+  decisionSummary?: LabDecisionSummary;
+  evidenceStrength?: LabEvidenceStrengthEntry[];
+  counterEvidenceLedger?: LabCounterEvidenceLedger;
 }
 
 export interface LabAiReport {
@@ -676,6 +697,9 @@ export interface LabAiReport {
   correlationClusters?: LabCorrelationCluster[];
   narrativeCues?: LabNarrativeCue[];
   forensicNotes?: LabForensicNote[];
+  decisionSummary?: LabDecisionSummary;
+  evidenceStrength?: LabEvidenceStrengthEntry[];
+  counterEvidenceLedger?: LabCounterEvidenceLedger;
 }
 
 export interface LabReportSet {
@@ -956,7 +980,6 @@ export type LabStoreEvent =
         >
       >;
     }
-  | { type: "workspace-selection-intent-updated"; intent: LabSelectionIntent }
   | { type: "workspace-selection-suggestion-clicked"; suggestionId: string }
   | { type: "workspace-selection-suggestion-accepted"; suggestionId: string }
   | { type: "workspace-selection-suggestion-dismissed"; suggestionId: string }
@@ -1001,11 +1024,9 @@ export type LabStoreEvent =
   | { type: "workspace-bookmark-added"; bookmark: LabBookmark }
   | { type: "workspace-image-analysis-requested" }
   | { type: "workspace-bookmark-removed"; bookmarkId: string }
-  | { type: "workspace-intent-toggled"; intentId: LabIntentId }
-  | { type: "workspace-intent-set"; intents: LabIntentId[] }
-  | { type: "analysis-prep-module-toggled"; intentId: LabIntentId; moduleId: string }
-  | { type: "analysis-prep-group-toggled"; intentId: LabIntentId }
-  | { type: "analysis-prep-group-expanded"; intentIds: LabIntentId[] }
+  | { type: "analysis-prep-module-toggled"; capabilityId: CapabilityFamilyId; moduleId: string }
+  | { type: "analysis-prep-group-toggled"; capabilityId: CapabilityFamilyId }
+  | { type: "analysis-prep-group-expanded"; capabilityIds: CapabilityFamilyId[] }
   | { type: "workspace-source-intake-toggled"; force?: boolean }
   | { type: "workspace-selection-loop-toggled"; force?: boolean }
   | { type: "workspace-selection-micro-zoom-toggled"; force?: boolean }

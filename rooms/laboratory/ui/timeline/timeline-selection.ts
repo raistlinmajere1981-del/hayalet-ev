@@ -30,29 +30,6 @@ export function formatSelectionType(type: LabSelection["type"] | undefined, copy
   return copy.t(`mediaAnalysis.timeline.selectionTypes.${normalizedType}`, fallback);
 }
 
-export const SELECTION_INTENT_OPTIONS = [
-  "anomaly",
-  "motion",
-  "audio",
-  "visual",
-  "general",
-] as const satisfies ReadonlyArray<LabSelection["intent"]>;
-
-export function formatSelectionIntent(intent: LabSelection["intent"] | undefined, copy: LabI18n) {
-  const normalizedIntent = intent ?? "unknown";
-  const fallback = (
-    {
-      anomaly: "Anomaly",
-      audio: "Audio",
-      general: "General",
-      motion: "Motion",
-      unknown: "Unknown",
-      visual: "Visual",
-    } as const
-  )[normalizedIntent];
-  return copy.t(`mediaAnalysis.timeline.selectionIntents.${normalizedIntent}`, fallback);
-}
-
 export function supportsInspectionMode(mode: LabInspectionMode, sourceKind: string | undefined) {
   switch (mode) {
     case "none":
@@ -225,7 +202,7 @@ export function renderSuggestionPreview(
   if (preview === null) {
     return "";
   }
-  const executionIntentSelected = activeExecutionIntent?.id === preview.suggestionId;
+  const actionSelected = activeExecutionIntent?.id === preview.suggestionId;
   return `
     <div class="lab-selection-preview" data-lab-selection-preview="true">
       <div class="lab-selection-preview__eyebrow">${escapeHtml(copy.t("mediaAnalysis.timeline.preview", "Preview"))}</div>
@@ -263,11 +240,11 @@ export function renderSuggestionPreview(
       }
       <div class="lab-selection-preview__actions">
         <button
-          class="lab-selection-preview__action lab-selection-preview__action--primary${executionIntentSelected ? " is-active" : ""}"
-          type="button"
-          data-lab-execution-intent-accept="${escapeHtml(preview.suggestionId)}"
-          aria-pressed="${String(executionIntentSelected)}"
-        >${escapeHtml(executionIntentSelected ? copy.t("mediaAnalysis.timeline.intentSelected", "Intent selected") : copy.t("mediaAnalysis.timeline.wantThis", "I want this"))}</button>
+	          class="lab-selection-preview__action lab-selection-preview__action--primary${actionSelected ? " is-active" : ""}"
+	          type="button"
+	          data-lab-execution-intent-accept="${escapeHtml(preview.suggestionId)}"
+	          aria-pressed="${String(actionSelected)}"
+	        >${escapeHtml(actionSelected ? copy.t("mediaAnalysis.timeline.actionSelected", "Action selected") : copy.t("mediaAnalysis.timeline.wantThis", "I want this"))}</button>
         <button
           class="lab-selection-preview__action"
           type="button"

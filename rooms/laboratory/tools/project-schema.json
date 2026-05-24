@@ -78,7 +78,6 @@
           "derivedFromAssetId",
           "derivedFromSourceId",
           "runId",
-          "intentIds",
           "metadata"
         ],
         "types": ["source", "clip", "frame", "audio", "image", "report", "artifact"]

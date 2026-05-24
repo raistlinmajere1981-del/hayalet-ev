@@ -1,4 +1,4 @@
-import { asLabRecord, asNonEmptyString, WORKSPACE_INTENTS } from "../../domain/lab-types.js";
+import { asLabRecord, asNonEmptyString } from "../../domain/lab-types.js";
 import type {
   LabArtifactProjection,
   LabAsset,
@@ -17,17 +17,6 @@ import {
   getProjectProfile,
   getProjectSource,
 } from "./lab-project-selectors.js";
-
-function normalizeIntentIdList(value: unknown) {
-  const sourceIds = Array.isArray(value)
-    ? value.filter((entry): entry is string => typeof entry === "string")
-    : [];
-  return WORKSPACE_INTENTS.map(function (intent) {
-    return intent.id;
-  }).filter(function (intentId, index, allIntentIds) {
-    return sourceIds.includes(intentId) && allIntentIds.indexOf(intentId) === index;
-  });
-}
 
 export function getCurrentRun(state: LabStoreState): LabRun | null {
   return state.run;
@@ -48,7 +37,6 @@ export function getRunSnapshotSummary(state: LabStoreState): LabRunSnapshotSumma
     timelineEndMs:
       scope.timeRange && typeof scope.timeRange.endMs === "number" ? scope.timeRange.endMs : null,
     hypothesis: typeof scope.hypothesis === "string" ? scope.hypothesis : null,
-    intentIds: normalizeIntentIdList(scope.intentIds),
   };
 }
 

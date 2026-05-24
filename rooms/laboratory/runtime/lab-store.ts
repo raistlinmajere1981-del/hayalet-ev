@@ -7,7 +7,6 @@ import {
   createFullSourceWorkspaceSelectionForRoi,
   getWorkspaceSourceSelectionResetKey,
   isFullSourceWorkspaceSelection,
-  normalizeLabSelectionIntent,
   normalizeLabSelectionRoi,
   normalizeWorkspaceTimelineRange,
   syncWorkspaceSelectionWithRange,
@@ -22,7 +21,7 @@ import {
   clearExecutionRuntime,
   clearSuggestionPreview,
   createExecutionCommitmentFromCandidate,
-  getAnalysisPreparationIntentIdsForSuggestion,
+  getAnalysisPreparationCapabilityIdsForSuggestion,
   getSelectionSuggestionById,
   getWorkspaceSelectionSuggestionSourceKind,
   isMatchingExecutionRuntime,
@@ -30,7 +29,7 @@ import {
   normalizeExecutionPlanId,
   normalizeSelectionSuggestionId,
 } from "./store/lab-store-execution-state.js";
-import { filterReadyAnalysisIntentIds } from "./selectors/lab-capability-selectors.js";
+import { filterReadyAnalysisCapabilityIds } from "./selectors/lab-capability-selectors.js";
 import { normalizeUserActionResultAssetIds } from "./store/lab-store-host-records.js";
 import { normalizeSourceDraftPatch } from "./store/lab-store-import-state.js";
 import { reduceLabImportUiEvent } from "./store/lab-store-import-reducer.js";
@@ -42,13 +41,12 @@ import {
   clearRoiFocus,
   createImageInspectionSelection,
   createSnapshotEvent,
-  deriveCapabilitiesFromIntentIds,
-  getAnalysisModuleIdsForIntentId,
+  getAnalysisModuleIdsForCapabilityId,
   isLabFocusLayer,
   normalizeInspectionMode,
-  normalizeLabIntentIds,
-  normalizeWorkspaceIntentIds,
-  patchAnalysisPreparationIntentModuleToggles,
+  normalizeLabCapabilityIds,
+  normalizeWorkspaceCapabilityIds,
+  patchAnalysisPreparationCapabilityModuleToggles,
   replaceAnalysisPreparationModuleToggles,
   scopeWorkspaceBookmark,
 } from "./store/lab-store-workspace-state.js";
@@ -560,28 +558,6 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       state.ui.workspace = syncWorkspaceSelectionWithRange(state.ui.workspace, nextTimelineRange);
       return state;
     }
-    case "workspace-selection-intent-updated": {
-      if (isRunMutationLocked(state)) {
-        return state;
-      }
-      if (state.ui.workspace.activeSelection === null) {
-        return state;
-      }
-      const nextIntent = normalizeLabSelectionIntent(event.intent);
-      if (state.ui.workspace.activeSelection.intent === nextIntent) {
-        return state;
-      }
-      clearExecutionIntent(state);
-      clearSuggestionPreview(state);
-      state.ui.workspace = {
-        ...state.ui.workspace,
-        activeSelection: {
-          ...state.ui.workspace.activeSelection,
-          intent: nextIntent,
-        },
-      };
-      return state;
-    }
     case "workspace-selection-suggestion-clicked":
       return state;
     case "workspace-selection-suggestion-accepted":
@@ -613,17 +589,20 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
             controlsDrawerTab: "operations",
           };
         } else if (suggestionBoundToAnalysis !== true) {
-          const expandedIntentIds = getAnalysisPreparationIntentIdsForSuggestion(suggestion);
+          const expandedCapabilityIds =
+            getAnalysisPreparationCapabilityIdsForSuggestion(suggestion);
           state.ui.workspace = {
             ...state.ui.workspace,
             drawerCollapsed: false,
             drawerModeOverride: "setup",
-            analysisPrepExpandedIntentIds:
-              expandedIntentIds.length > 0
-                ? normalizeLabIntentIds(
-                    state.ui.workspace.analysisPrepExpandedIntentIds.concat(expandedIntentIds)
+            analysisPrepExpandedCapabilityIds:
+              expandedCapabilityIds.length > 0
+                ? normalizeLabCapabilityIds(
+                    state.ui.workspace.analysisPrepExpandedCapabilityIds.concat(
+                      expandedCapabilityIds
+                    )
                   )
-                : state.ui.workspace.analysisPrepExpandedIntentIds,
+                : state.ui.workspace.analysisPrepExpandedCapabilityIds,
           };
         }
       }
@@ -980,49 +959,13 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         }),
       };
       return state;
-    case "workspace-intent-set": {
-      if (isRunMutationLocked(state)) {
-        return state;
-      }
-      const nextIntents = normalizeWorkspaceIntentIds(event.intents);
-      state.ui.workspace = {
-        ...state.ui.workspace,
-        selectedIntents: nextIntents,
-      };
-      state.workbench = replaceAnalysisPreparationModuleToggles(state.workbench, nextIntents);
-      state.selectedCapabilities = deriveCapabilitiesFromIntentIds(nextIntents);
-      return state;
-    }
-    case "workspace-intent-toggled": {
-      if (isRunMutationLocked(state)) {
-        return state;
-      }
-      const intents = normalizeWorkspaceIntentIds(state.ui.workspace.selectedIntents);
-      const nextIntents = intents.includes(event.intentId)
-        ? intents.filter(function (entry) {
-            return entry !== event.intentId;
-          })
-        : intents.concat(event.intentId);
-      state.ui.workspace = {
-        ...state.ui.workspace,
-        selectedIntents: nextIntents,
-      };
-      state.workbench = patchAnalysisPreparationIntentModuleToggles(
-        state.workbench,
-        event.intentId,
-        nextIntents,
-        !intents.includes(event.intentId)
-      );
-      state.selectedCapabilities = deriveCapabilitiesFromIntentIds(nextIntents);
-      return state;
-    }
     case "analysis-prep-module-toggled": {
       if (isRunMutationLocked(state)) {
         return state;
       }
       const moduleId = event.moduleId.trim();
-      const intentModuleIds = getAnalysisModuleIdsForIntentId(event.intentId);
-      if (moduleId === "" || !intentModuleIds.includes(moduleId)) {
+      const capabilityModuleIds = getAnalysisModuleIdsForCapabilityId(event.capabilityId);
+      if (moduleId === "" || !capabilityModuleIds.includes(moduleId)) {
         return state;
       }
       const moduleToggles = {
@@ -1033,43 +976,49 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         ...state.workbench,
         moduleToggles,
       };
-      const hasEnabledModule = intentModuleIds.some(function (entry) {
+      const hasEnabledModule = capabilityModuleIds.some(function (entry) {
         return moduleToggles[entry] === true;
       });
-      const intentSet = new Set(normalizeWorkspaceIntentIds(state.ui.workspace.selectedIntents));
+      const capabilitySet = new Set(normalizeWorkspaceCapabilityIds(state.selectedCapabilities));
       if (hasEnabledModule) {
-        intentSet.add(event.intentId);
+        capabilitySet.add(event.capabilityId);
       } else {
-        intentSet.delete(event.intentId);
+        capabilitySet.delete(event.capabilityId);
       }
-      const nextIntents = normalizeWorkspaceIntentIds(Array.from(intentSet));
-      state.ui.workspace = {
-        ...state.ui.workspace,
-        selectedIntents: nextIntents,
-      };
-      state.selectedCapabilities = deriveCapabilitiesFromIntentIds(nextIntents);
+      state.selectedCapabilities = normalizeWorkspaceCapabilityIds(Array.from(capabilitySet));
       return state;
     }
     case "analysis-prep-group-toggled": {
-      const expandedIntentIds = normalizeLabIntentIds(
-        state.ui.workspace.analysisPrepExpandedIntentIds
+      const expandedCapabilityIds = normalizeLabCapabilityIds(
+        state.ui.workspace.analysisPrepExpandedCapabilityIds
       );
-      const nextExpandedIntentIds = expandedIntentIds.includes(event.intentId)
-        ? expandedIntentIds.filter(function (entry) {
-            return entry !== event.intentId;
+      const capabilityIds = normalizeWorkspaceCapabilityIds(state.selectedCapabilities);
+      const nextCapabilityIds = capabilityIds.includes(event.capabilityId)
+        ? capabilityIds.filter(function (entry) {
+            return entry !== event.capabilityId;
           })
-        : expandedIntentIds.concat(event.intentId);
+        : capabilityIds.concat(event.capabilityId);
+      const nextExpandedCapabilityIds = expandedCapabilityIds.includes(event.capabilityId)
+        ? expandedCapabilityIds
+        : expandedCapabilityIds.concat(event.capabilityId);
       state.ui.workspace = {
         ...state.ui.workspace,
-        analysisPrepExpandedIntentIds: nextExpandedIntentIds,
+        analysisPrepExpandedCapabilityIds: nextExpandedCapabilityIds,
       };
+      state.selectedCapabilities = normalizeWorkspaceCapabilityIds(nextCapabilityIds);
+      state.workbench = patchAnalysisPreparationCapabilityModuleToggles(
+        state.workbench,
+        event.capabilityId,
+        state.selectedCapabilities,
+        nextCapabilityIds.includes(event.capabilityId)
+      );
       return state;
     }
     case "analysis-prep-group-expanded": {
-      const nextExpandedIntentIds = normalizeLabIntentIds(event.intentIds);
+      const nextExpandedCapabilityIds = normalizeLabCapabilityIds(event.capabilityIds);
       state.ui.workspace = {
         ...state.ui.workspace,
-        analysisPrepExpandedIntentIds: nextExpandedIntentIds,
+        analysisPrepExpandedCapabilityIds: nextExpandedCapabilityIds,
       };
       return state;
     }
@@ -1205,29 +1154,28 @@ function applyAnalysisPreparationSuggestionSelection(
   }
 ) {
   const suggestion = getSelectionSuggestionById(state, options.suggestionId);
-  const suggestionIntentIds = filterReadyAnalysisIntentIds(
+  const suggestionCapabilityIds = filterReadyAnalysisCapabilityIds(
     state,
-    getAnalysisPreparationIntentIdsForSuggestion(suggestion)
+    getAnalysisPreparationCapabilityIdsForSuggestion(suggestion)
   );
-  if (suggestionIntentIds.length === 0) {
+  if (suggestionCapabilityIds.length === 0) {
     return false;
   }
-  const nextIntents =
+  const nextCapabilities =
     options.mode === "append"
-      ? normalizeWorkspaceIntentIds(state.ui.workspace.selectedIntents.concat(suggestionIntentIds))
-      : normalizeWorkspaceIntentIds(suggestionIntentIds);
+      ? normalizeWorkspaceCapabilityIds(state.selectedCapabilities.concat(suggestionCapabilityIds))
+      : normalizeWorkspaceCapabilityIds(suggestionCapabilityIds);
   state.ui.workspace = {
     ...state.ui.workspace,
     drawerCollapsed: false,
     drawerModeOverride: "setup",
     selectionTabActive: options.selectionTabActive,
-    selectedIntents: nextIntents,
-    analysisPrepExpandedIntentIds: normalizeLabIntentIds(
-      state.ui.workspace.analysisPrepExpandedIntentIds.concat(suggestionIntentIds)
+    analysisPrepExpandedCapabilityIds: normalizeLabCapabilityIds(
+      state.ui.workspace.analysisPrepExpandedCapabilityIds.concat(suggestionCapabilityIds)
     ),
   };
-  state.workbench = replaceAnalysisPreparationModuleToggles(state.workbench, nextIntents);
-  state.selectedCapabilities = deriveCapabilitiesFromIntentIds(nextIntents);
+  state.workbench = replaceAnalysisPreparationModuleToggles(state.workbench, nextCapabilities);
+  state.selectedCapabilities = nextCapabilities;
   return true;
 }
 

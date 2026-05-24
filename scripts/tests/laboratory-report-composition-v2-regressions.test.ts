@@ -392,7 +392,6 @@ test("laboratory reports surface temporal correlation, narrative cues, and foren
     analysisScope: {
       focus: "visual",
       hypothesis: "tam o anda kayboldu",
-      intentIds: ["anomaly-detection"],
       timeRange: { startMs: 12_000, endMs: 14_000 },
     },
     previewArtifacts: [],
@@ -519,6 +518,47 @@ test("laboratory forensic signature mapper classifies low-light compression star
   assert.equal(mapping["artifactFamily"], "low_light_compression_starvation");
   assert.equal(mapping["confidence"], "high");
   assert.match(String(mapping["learningFingerprint"]), /bpp:starved/);
+});
+
+test("laboratory forensic signature mapper accepts normalized visual-forensics probe aliases", () => {
+  const mapping = buildForensicSignatureMapping({
+    compressionSignature: {
+      estimatedBitsPerPixelFrame: 0.15,
+      packetSpikeRatio: 0.2,
+      pictTypeCounts: { B: 10, P: 10 },
+      riskLevel: "high",
+      sampledFrameCount: 20,
+      status: "measured",
+    },
+    metadataProvenance: {
+      mismatchCount: 0,
+      sampledFrameCount: 1,
+      status: "measured",
+    },
+    nearDuplicateFrame: {
+      exactDuplicateFrameCount: 0,
+      sampledFrameCount: 20,
+      status: "measured",
+    },
+    opticalFlowTracking: {
+      movementClass: "global_motion_or_camera_shift",
+      sampledFrameCount: 8,
+      status: "measured",
+      subjectMotionEnergy: 0.03,
+    },
+    referenceQuality: {
+      minDelta: 0.02,
+      sampledFrameCount: 1,
+      status: "measured",
+    },
+  });
+
+  assert.equal(mapping["artifactFamily"], "fast_motion_encoder_smear");
+  assert.equal(
+    (mapping["measuredFields"] as string[]).includes("metadata provenance cross-check"),
+    true
+  );
+  assert.match(String(mapping["learningFingerprint"]), /metadata:measured/);
 });
 
 test("laboratory forensic signature mapper classifies remaining artifact families", () => {
@@ -690,6 +730,135 @@ test("laboratory reports surface forensic signature mapping notes", () => {
   assert.equal(signatureNote?.measuredFields?.includes("compression packet signature"), true);
 });
 
+test("laboratory reports surface triage decision, evidence matrix, and counter-evidence ledger", () => {
+  const findings: LabRun["findings"] = [
+    {
+      id: "triage-finding",
+      moduleId: "motion",
+      sourceModule: "compression-signature-mapping",
+      title: "Compression signature mapped",
+      detail: "Low-light compression starvation was mapped in the sampled window.",
+      level: "medium",
+      confidence: "medium",
+      kind: "measured",
+      evidenceCount: 3,
+      artifactIds: [],
+      metadata: {
+        probeSummary: {
+          compressionSignature: {
+            riskLevel: "high",
+            sampledFrameCount: 18,
+            status: "measured",
+          },
+          compressionSignatureMapping: {
+            artifactFamily: "low_light_compression_starvation",
+            artifactLabel: "Low-light compression starvation",
+            confidence: "high",
+            counterEvidence: ["no repeated decoded-frame hashes were measured"],
+            evidence: ["compression risk high", "low packet-frame ratio 26.0%"],
+            manualReviewPrompts: ["Check the same window against a pre-upload source."],
+            measuredFields: ["compression packet signature"],
+            score: 0.81,
+            status: "measured",
+          },
+          metadataProvenance: {
+            reason: "ExifTool/MediaInfo metadata provenance cross-check is not wired.",
+            sampledFrameCount: 0,
+            status: "unavailable",
+          },
+          nearDuplicateFrame: {
+            exactDuplicateFrameCount: 0,
+            sampledFrameCount: 18,
+            status: "measured",
+          },
+          referenceQuality: {
+            reason: "Reference/pre-upload source was not provided.",
+            sampledFrameCount: 0,
+            status: "unavailable",
+          },
+        },
+      },
+    },
+  ];
+  const run = createInsightRun({ findings });
+
+  const userReport = buildUserReport(run, { findings });
+  const aiReport = buildAiReport(run, { findings, featureId: "media-analysis" });
+
+  assert.equal(userReport?.decisionSummary?.anomaly, "inconclusive");
+  assert.equal(userReport?.decisionSummary?.needsFollowUp, true);
+  assert.equal(
+    aiReport?.evidenceStrength?.find((entry) => entry.id === "extraordinary")?.strength,
+    "not-testable"
+  );
+  assert.equal(
+    userReport?.evidenceStrength?.find((entry) => entry.id === "compression-artifact")?.strength,
+    "strong"
+  );
+  assert.equal(
+    userReport?.counterEvidenceLedger?.entries.some(
+      (entry) => entry.id === "duplicate-not-found" && entry.status === "measured-not-found"
+    ),
+    true
+  );
+  assert.equal(
+    aiReport?.counterEvidenceLedger?.entries.some(
+      (entry) => entry.id === "metadata-provenance-not-measured"
+    ),
+    true
+  );
+});
+
+test("laboratory counter-evidence ledger surfaces partial metadata and reference coverage", () => {
+  const findings: LabRun["findings"] = [
+    {
+      id: "partial-cross-check",
+      moduleId: "motion",
+      sourceModule: "metadata-provenance-audit",
+      title: "Metadata provenance audit",
+      detail: "ffprobe metadata was measured with optional host tools missing.",
+      level: "low",
+      confidence: "medium",
+      kind: "measured",
+      evidenceCount: 1,
+      artifactIds: [],
+      metadata: {
+        probeSummary: {
+          metadataProvenance: {
+            coverage: "ffprobe-only",
+            measuredSourceIds: ["ffprobe"],
+            missingToolIds: ["exiftool", "mediainfo"],
+            sampledFrameCount: 1,
+            status: "measured",
+          },
+          referenceQuality: {
+            sampledFrameCount: 1,
+            status: "measured",
+            toolResults: {
+              ssim: { sampledFrameCount: 1, status: "measured" },
+              vmaf: { reason: "libvmaf filter missing", sampledFrameCount: 0, status: "unavailable" },
+            },
+          },
+        },
+      },
+    },
+  ];
+  const userReport = buildUserReport(createInsightRun({ findings }), { findings });
+
+  assert.equal(
+    userReport?.counterEvidenceLedger?.entries.some(
+      (entry) => entry.id === "metadata-provenance-partial" && entry.status === "measured-weak"
+    ),
+    true
+  );
+  assert.equal(
+    userReport?.counterEvidenceLedger?.entries.some(
+      (entry) => entry.id === "reference-quality-partial" && entry.status === "measured-weak"
+    ),
+    true
+  );
+});
+
 test("laboratory composite correlation requires distinct signal families", () => {
   const findings: LabRun["findings"] = [
     {
@@ -781,7 +950,6 @@ test("laboratory narrative cues normalize Turkish diacritics without broad-scope
     analysisScope: {
       focus: "visual",
       hypothesis: "şimdi kayboldu ve çığlık duyuldu",
-      intentIds: ["anomaly-detection"],
       timeRange: { startMs: 0, endMs: 120_000 },
     },
     findings,

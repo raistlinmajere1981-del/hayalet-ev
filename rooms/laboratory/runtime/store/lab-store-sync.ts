@@ -47,10 +47,7 @@ import {
   shouldKeepPendingRunDuringSnapshot,
 } from "./lab-store-run-sync.js";
 import { resetWorkspaceForSourceActivation } from "./lab-store-source-reset.js";
-import {
-  deriveCapabilitiesFromIntentIds,
-  replaceAnalysisPreparationModuleToggles,
-} from "./lab-store-workspace-state.js";
+import { replaceAnalysisPreparationModuleToggles } from "./lab-store-workspace-state.js";
 
 function syncDraftsFromSnapshot(state: LabStoreState, snapshot: Record<string, unknown>) {
   const activeProject = asLabRecord(snapshot["activeProject"]);
@@ -532,11 +529,10 @@ function syncRunStateFromHostEvent(state: LabStoreState, event: LabEventFeedItem
 export function clearAnalysisPreparationSelection(state: LabStoreState) {
   state.ui.workspace = {
     ...state.ui.workspace,
-    selectedIntents: [],
-    analysisPrepExpandedIntentIds: [],
+    analysisPrepExpandedCapabilityIds: [],
   };
   state.workbench = replaceAnalysisPreparationModuleToggles(state.workbench, []);
-  state.selectedCapabilities = deriveCapabilitiesFromIntentIds([]);
+  state.selectedCapabilities = [];
 }
 
 function syncAnalysisCancelPendingFromHostEvent(state: LabStoreState, event: LabEventFeedItem) {

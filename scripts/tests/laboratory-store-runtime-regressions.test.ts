@@ -4,7 +4,6 @@ import {
   createLabStore,
   extractFindings,
   getActionOutputs,
-  getActualOutputs,
   getAssetById,
   getAssets,
   getAssetsByRun,
@@ -12,14 +11,11 @@ import {
   getAssetsByType,
   getCurrentSourceAsset,
   getDualPreviewVolume,
-  getExpectedOutputs,
   getLinkedAudioAssets,
   getParentSourceForAsset,
   getSelectedDualPreviewAudioAsset,
-  getSelectionIntent,
   isDualPreviewActive,
   isDualPreviewAvailable,
-  isExpectedOutputMatched,
   parseProcessOutput,
   test,
 } from "./laboratory-runtime-truth.helpers.ts";
@@ -83,7 +79,6 @@ test("laboratory persistence drops stale runtime snapshots before boot hydrate",
         timelineStartMs: 1000,
         timelineEndMs: 2000,
         activeSelection: { id: "selection-old" },
-        selectedIntents: ["visual-inspection"],
         roiRegions: [{ id: "roi-old" }],
         hypothesis: "old clue",
         previewVolume: 0.42,
@@ -114,7 +109,6 @@ test("laboratory persistence drops stale runtime snapshots before boot hydrate",
   const workspace = loaded["workspace"] as Record<string, unknown>;
   assert.equal("timelineStartMs" in workspace, false);
   assert.equal("activeSelection" in workspace, false);
-  assert.equal("selectedIntents" in workspace, false);
   assert.equal("roiRegions" in workspace, false);
   assert.equal("hypothesis" in workspace, false);
   assert.equal(workspace["previewVolume"], 0.42);
@@ -1531,7 +1525,6 @@ test("laboratory hydrate reconstructs an active selection from a valid persisted
     startMs: 2400,
     endMs: 5600,
     type: "focus",
-    intent: "general",
     label: "Door latch",
     roi: {
       x: 0.1,
@@ -1629,7 +1622,7 @@ test("laboratory hydrate rebuilds selection identity from the primitive bridge o
     assert.equal(rehydratedSelection?.startMs, 2400);
     assert.equal(rehydratedSelection?.endMs, 5600);
     assert.equal(rehydratedSelection?.type, "clip");
-    assert.equal(rehydratedSelection?.intent, "general");
+    assert.equal("intent" in rehydratedSelection, false);
     assert.notEqual(rehydratedSelection?.id, initialSelection?.id);
     assert.equal(rehydratedSelection?.createdAt, 1700000005000);
   } finally {
@@ -1637,7 +1630,7 @@ test("laboratory hydrate rebuilds selection identity from the primitive bridge o
   }
 });
 
-test("laboratory hydrate normalizes malformed persisted selection intent to general", () => {
+test("laboratory hydrate drops malformed persisted selection metadata fields", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -1671,8 +1664,9 @@ test("laboratory hydrate normalizes malformed persisted selection intent to gene
     },
   });
 
-  assert.equal(store.getState().ui.workspace.activeSelection?.intent, "general");
-  assert.equal(getSelectionIntent(store.getState()), "general");
+  const selection = store.getState().ui.workspace.activeSelection;
+  assert.ok(selection);
+  assert.equal("intent" in selection, false);
 });
 
 test("laboratory hydrate suppresses persisted selection entities when the primitive range is invalid", () => {
@@ -1711,96 +1705,4 @@ test("laboratory hydrate suppresses persisted selection entities when the primit
   assert.equal(store.getState().ui.workspace.timelineStartMs, 5600);
   assert.equal(store.getState().ui.workspace.timelineEndMs, null);
   assert.equal(store.getState().ui.workspace.activeSelection, null);
-});
-
-test("laboratory intent output selectors map expected outputs and filter actual assets", () => {
-  const store = createLabStore();
-
-  store.dispatch({
-    type: "snapshot-received",
-    payload: {
-      ready: true,
-      featureId: "media-analysis",
-      activeProjectId: "project-output-trace",
-      projects: [],
-      activeProject: {
-        id: "project-output-trace",
-        source: {
-          status: "ready",
-          kind: "video",
-          mode: "local",
-          storedPath: "/tmp/source.mp4",
-          drafts: {},
-        },
-        edit: {},
-        profile: {},
-        process: {
-          records: {},
-        },
-        report: {
-          records: {},
-        },
-        assets: [
-          {
-            id: "asset-source-tagged",
-            type: "source",
-            name: "source.mp4",
-            localPath: "/tmp/source.mp4",
-            createdAt: 100,
-            intentIds: ["visual-inspection"],
-          },
-          {
-            id: "asset-frame-visual",
-            type: "frame",
-            name: "frame_01.png",
-            localPath: "/tmp/frame_01.png",
-            createdAt: 200,
-            intentIds: ["visual-inspection"],
-          },
-          {
-            id: "asset-audio",
-            type: "audio",
-            name: "audio.wav",
-            localPath: "/tmp/audio.wav",
-            createdAt: 300,
-            intentIds: ["audio-investigation"],
-          },
-          {
-            id: "asset-unscoped",
-            type: "artifact",
-            name: "unscoped.json",
-            localPath: "/tmp/unscoped.json",
-            createdAt: 400,
-          },
-        ],
-      },
-    },
-  });
-
-  const visualExpected = getExpectedOutputs("visual-inspection");
-  const audioExpected = getExpectedOutputs("audio-investigation");
-  const visualActual = getActualOutputs(store.getState(), "visual-inspection");
-
-  assert.deepEqual(
-    visualExpected.map((entry) => entry.label),
-    ["Frame çıktıları", "Anomali verileri"]
-  );
-  assert.deepEqual(audioExpected, [
-    {
-      intentId: "audio-investigation",
-      label: "Ses çıktısı",
-      assetTypes: ["audio"],
-    },
-  ]);
-  assert.deepEqual(getExpectedOutputs("detail-enhancement"), []);
-  assert.deepEqual(
-    visualActual.map((asset) => asset.id),
-    ["asset-source-tagged", "asset-frame-visual"]
-  );
-  assert.equal(isExpectedOutputMatched(visualExpected[0]!, visualActual), true);
-  assert.equal(isExpectedOutputMatched(visualExpected[1]!, visualActual), false);
-  assert.deepEqual(
-    getActualOutputs(store.getState(), "audio-investigation").map((asset) => asset.id),
-    ["asset-audio"]
-  );
 });

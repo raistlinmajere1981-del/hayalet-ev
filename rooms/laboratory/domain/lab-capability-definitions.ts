@@ -1,61 +1,5 @@
 export type LabAssetType = "source" | "clip" | "frame" | "audio" | "image" | "report" | "artifact";
 
-export interface LabExpectedOutput {
-  intentId: string;
-  label: string;
-  assetTypes: LabAssetType[];
-}
-
-export type LabIntentId =
-  | "visual-inspection"
-  | "audio-investigation"
-  | "detail-enhancement"
-  | "anomaly-detection";
-
-export interface LabIntent {
-  id: LabIntentId;
-  label: string;
-  description: string;
-  sourceKinds: Array<"video" | "audio" | "image">;
-  internalCapabilities: CapabilityFamilyId[];
-}
-
-export const WORKSPACE_INTENTS: LabIntent[] = [
-  {
-    id: "visual-inspection",
-    label: "Visual inspection",
-    description: "Examine visual structure, frame composition, and forensic markers.",
-    sourceKinds: ["video", "image"],
-    internalCapabilities: ["visual-structure", "visual-forensics"],
-  },
-  {
-    id: "audio-investigation",
-    label: "Audio investigation",
-    description: "Analyze audio signals, recover details, and identify speakers.",
-    sourceKinds: ["video", "audio"],
-    internalCapabilities: ["audio-signal", "audio-recovery", "speaker-analysis"],
-  },
-  {
-    id: "detail-enhancement",
-    label: "Detail enhancement",
-    description: "Generate transcripts and separate audio sources for deeper review.",
-    sourceKinds: ["video", "audio"],
-    internalCapabilities: ["transcription", "source-separation"],
-  },
-  {
-    id: "anomaly-detection",
-    label: "Anomaly detection",
-    description: "Detect visual and audio anomalies, classify sounds, and analyze prosody.",
-    sourceKinds: ["video", "audio", "image"],
-    internalCapabilities: [
-      "visual-forensics",
-      "sound-classification",
-      "prosody-emotion",
-      "music-analysis",
-    ],
-  },
-];
-
 export type CapabilityFamilyId =
   | "visual-structure"
   | "visual-forensics"
@@ -258,25 +202,27 @@ export interface LabAnalysisCapabilityModuleProjection {
   label: string;
   flowKind: "analysis-report";
   requiredTools: string[];
+  optionalTools: string[];
   readiness: CapabilityReadiness;
   blockReason: string | null;
   enabled: boolean;
   settings: LabSettingsRecord;
   settingsFields: LabSettingsFieldMeta[];
   reportSection: string;
+  sourceKinds: Array<"video" | "audio" | "image">;
+  status: "implemented" | "planned" | "gated";
 }
 
 export type LabAnalysisPreparationSelectionState = "none" | "partial" | "full";
 
 export interface LabAnalysisPreparationGroup {
-  intentId: LabIntentId;
+  capabilityId: CapabilityFamilyId;
   label: string;
   description: string;
   selected: boolean;
   selectionState: LabAnalysisPreparationSelectionState;
   readiness: CapabilityReadiness;
   blockReason: string | null;
-  expectedOutputs: LabExpectedOutput[];
   modules: LabAnalysisCapabilityModuleProjection[];
 }
 
@@ -286,6 +232,16 @@ export interface CapabilityFamilyMeta {
   sourceKinds: Array<"video" | "audio" | "image">;
   primaryTool: string;
   requiredTools: string[];
+}
+
+export interface LabAnalysisModuleRequirementMeta {
+  id: string;
+  capabilityId: CapabilityFamilyId;
+  optionalToolIds: string[];
+  requiredToolIds: string[];
+  sourceKinds: Array<"video" | "audio" | "image">;
+  status: "implemented" | "planned" | "gated";
+  reportSection?: string;
 }
 
 export const LAB_OPERATION_CAPABILITIES: LabOperationCapabilityMeta[] = [
@@ -519,6 +475,11 @@ export const CAPABILITY_MODULE_GROUPS: Array<{
   {
     capabilityId: "visual-forensics",
     moduleIds: [
+      "perceptual-duplicate-frame",
+      "optical-flow-tracking",
+      "compression-signature-mapping",
+      "metadata-provenance-audit",
+      "reference-quality-check",
       "visual-signal-amplification",
       "color-channel-isolation",
       "gamma-scan",
@@ -568,3 +529,60 @@ export const CAPABILITY_MODULE_GROUPS: Array<{
     moduleIds: ["music-rhythm-tonal"],
   },
 ];
+
+export const LAB_ANALYSIS_MODULE_REQUIREMENTS: Record<string, LabAnalysisModuleRequirementMeta> = {
+  "perceptual-duplicate-frame": {
+    id: "perceptual-duplicate-frame",
+    capabilityId: "visual-forensics",
+    requiredToolIds: ["ffmpeg"],
+    optionalToolIds: ["visual-forensics-py"],
+    sourceKinds: ["video"],
+    status: "implemented",
+    reportSection: "Visual forensics",
+  },
+  "optical-flow-tracking": {
+    id: "optical-flow-tracking",
+    capabilityId: "visual-forensics",
+    requiredToolIds: ["ffmpeg"],
+    optionalToolIds: ["visual-forensics-py", "raft-optical-flow"],
+    sourceKinds: ["video"],
+    status: "implemented",
+    reportSection: "Visual forensics",
+  },
+  "compression-signature-mapping": {
+    id: "compression-signature-mapping",
+    capabilityId: "visual-forensics",
+    requiredToolIds: ["ffmpeg"],
+    optionalToolIds: ["mediainfo"],
+    sourceKinds: ["video"],
+    status: "implemented",
+    reportSection: "Visual forensics",
+  },
+  "metadata-provenance-audit": {
+    id: "metadata-provenance-audit",
+    capabilityId: "visual-forensics",
+    requiredToolIds: ["ffmpeg"],
+    optionalToolIds: ["exiftool", "mediainfo"],
+    sourceKinds: ["video", "image"],
+    status: "implemented",
+    reportSection: "Visual forensics",
+  },
+  "reference-quality-check": {
+    id: "reference-quality-check",
+    capabilityId: "visual-forensics",
+    requiredToolIds: ["ffmpeg"],
+    optionalToolIds: ["visual-forensics-py", "ffmpeg-libvmaf"],
+    sourceKinds: ["video", "image"],
+    status: "implemented",
+    reportSection: "Visual forensics",
+  },
+  "ai-artifact-detection": {
+    id: "ai-artifact-detection",
+    capabilityId: "visual-forensics",
+    requiredToolIds: [],
+    optionalToolIds: [],
+    sourceKinds: ["video", "image"],
+    status: "gated",
+    reportSection: "Visual forensics",
+  },
+};

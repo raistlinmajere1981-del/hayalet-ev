@@ -1,7 +1,6 @@
 import { asLabRecord, asNonEmptyString, asNumber, createLabEventId } from "../domain/lab-types.js";
 import type {
   LabSelection,
-  LabSelectionIntent,
   LabSelectionROI,
   LabSelectionType,
   LabWorkspaceUiState,
@@ -44,22 +43,6 @@ function normalizeLabSelectionType(value: unknown): LabSelectionType {
       return value;
     default:
       return "unknown";
-  }
-}
-
-export function normalizeLabSelectionIntent(
-  value: unknown,
-  fallback: LabSelectionIntent = "general"
-): LabSelectionIntent {
-  switch (value) {
-    case "anomaly":
-    case "motion":
-    case "audio":
-    case "visual":
-    case "general":
-      return value;
-    default:
-      return fallback;
   }
 }
 
@@ -118,7 +101,6 @@ function getSelectionSeedForRange(
   return {
     ...(id === null ? {} : { id }),
     type: normalizeLabSelectionType(record["type"]),
-    intent: normalizeLabSelectionIntent(record["intent"]),
     ...(label === undefined ? {} : { label }),
     ...(roi === undefined ? {} : { roi }),
     ...(createdAt === null ? {} : { createdAt: Math.max(0, Math.round(createdAt)) }),
@@ -142,9 +124,6 @@ function createActiveSelectionFromRange(
     ? null
     : previousSelection;
   const nextType = reusablePreviousSelection?.type || selectionSeed?.type || "clip";
-  const nextIntent = normalizeLabSelectionIntent(
-    reusablePreviousSelection?.intent ?? selectionSeed?.intent
-  );
   const nextLabel = reusablePreviousSelection?.label ?? selectionSeed?.label;
   const previousSelectionMatchesRange =
     reusablePreviousSelection?.startMs === startMs && reusablePreviousSelection?.endMs === endMs;
@@ -157,7 +136,6 @@ function createActiveSelectionFromRange(
     startMs,
     endMs,
     type: nextType === "unknown" ? "clip" : nextType,
-    intent: nextIntent,
     ...(nextLabel === undefined ? {} : { label: nextLabel }),
     ...(nextRoi === undefined ? {} : { roi: nextRoi }),
     createdAt:
@@ -198,7 +176,6 @@ export function createDefaultWorkspaceSelectionForSource(options: {
       startMs: 0,
       endMs: 1,
       type: "inspect",
-      intent: "general",
       roi: { ...DEFAULT_IMAGE_SELECTION_ROI },
       createdAt: 0,
     };
@@ -218,7 +195,6 @@ export function createDefaultWorkspaceSelectionForSource(options: {
     startMs: 0,
     endMs: durationMs,
     type: "clip",
-    intent: "general",
     createdAt: 0,
   };
 }
@@ -251,7 +227,6 @@ export function createFullSourceWorkspaceSelectionForRoi(
     startMs: 0,
     endMs: durationMs,
     type: "inspect",
-    intent: "visual",
     roi,
     createdAt: Math.max(0, Date.now()),
   };

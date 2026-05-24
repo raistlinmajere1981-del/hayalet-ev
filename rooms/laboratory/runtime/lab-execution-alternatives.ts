@@ -81,7 +81,6 @@ function isAudioOriented(input: LabExecutionAlternativesInput) {
   return (
     input.sourceKind === "audio" ||
     input.inspectionMode === "audio" ||
-    input.activeSelection.intent === "audio" ||
     input.executionPlan.actionType === "inspect-audio"
   );
 }
@@ -90,7 +89,6 @@ function isVideoOriented(input: LabExecutionAlternativesInput) {
   return (
     input.sourceKind === "video" ||
     input.inspectionMode === "motion" ||
-    input.activeSelection.intent === "motion" ||
     input.executionPlan.actionType === "inspect-motion"
   );
 }
@@ -100,7 +98,6 @@ function isVisualOriented(input: LabExecutionAlternativesInput) {
     input.sourceKind === "image" ||
     input.sourceKind === "video" ||
     input.inspectionMode === "visual" ||
-    input.activeSelection.intent === "visual" ||
     input.executionPlan.actionType === "focus-region" ||
     input.executionPlan.actionType === "enhance-visual"
   );

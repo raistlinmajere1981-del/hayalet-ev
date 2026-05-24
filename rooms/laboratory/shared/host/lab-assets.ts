@@ -28,7 +28,6 @@ type OutputAssetInput = {
   derivedFromAssetId?: string | null;
   derivedFromSourceId?: string | null;
   runId?: string | null;
-  intentIds?: string[];
   metadata?: LabRecord;
 };
 
@@ -70,18 +69,6 @@ function asTimestamp(value: unknown, fallback = Date.now()): number {
 
 function isLabAssetType(value: unknown): value is LabAssetType {
   return LAB_ASSET_TYPES.includes(value as LabAssetType);
-}
-
-function normalizeStringArray(value: unknown): string[] | undefined {
-  if (!Array.isArray(value)) {
-    return undefined;
-  }
-  const entries = value
-    .map(function (entry) {
-      return asNonEmptyString(entry);
-    })
-    .filter((entry): entry is string => entry !== null);
-  return entries.length > 0 ? Array.from(new Set(entries)) : undefined;
 }
 
 function hashText(value: string): string {
@@ -137,7 +124,6 @@ export function normalizeLabAsset(value: unknown): LabAsset | null {
   const derivedFromAssetId = asNonEmptyString(record["derivedFromAssetId"]);
   const derivedFromSourceId = asNonEmptyString(record["derivedFromSourceId"]);
   const runId = asNonEmptyString(record["runId"]);
-  const intentIds = normalizeStringArray(record["intentIds"]);
   const metadata = toRecord(record["metadata"]);
 
   return {
@@ -151,7 +137,6 @@ export function normalizeLabAsset(value: unknown): LabAsset | null {
     ...(derivedFromAssetId === null ? {} : { derivedFromAssetId }),
     ...(derivedFromSourceId === null ? {} : { derivedFromSourceId }),
     ...(runId === null ? {} : { runId }),
-    ...(intentIds === undefined ? {} : { intentIds }),
     ...(Object.keys(metadata).length === 0 ? {} : { metadata }),
   };
 }
@@ -342,9 +327,6 @@ export function createLabOutputAsset(project: ProjectLike, input: OutputAssetInp
     ...(derivedFromAssetId === undefined ? {} : { derivedFromAssetId }),
     ...(derivedFromSourceId === undefined ? {} : { derivedFromSourceId }),
     ...(runId === undefined ? {} : { runId }),
-    ...(input.intentIds && input.intentIds.length > 0
-      ? { intentIds: Array.from(new Set(input.intentIds)) }
-      : {}),
     ...(input.metadata && Object.keys(input.metadata).length > 0
       ? { metadata: input.metadata }
       : {}),

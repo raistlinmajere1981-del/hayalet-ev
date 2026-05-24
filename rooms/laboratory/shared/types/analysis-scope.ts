@@ -67,7 +67,6 @@ export interface AnalysisScope extends AnalysisReference {
   comparison?: AnalysisComparisonScope;
   focus?: AnalysisFocus;
   hypothesis?: string;
-  intentIds?: string[];
   lifecycle?: AnalysisScopeLifecycle;
 }
 
@@ -84,21 +83,6 @@ function asNonEmptyString(value: unknown): string | null {
 function asFiniteNumber(value: unknown): number | null {
   const numericValue = Number(value);
   return Number.isFinite(numericValue) ? numericValue : null;
-}
-
-function asStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  const nextValues = value
-    .filter((entry): entry is string => typeof entry === "string")
-    .map(function (entry) {
-      return entry.trim();
-    })
-    .filter(function (entry) {
-      return entry !== "";
-    });
-  return Array.from(new Set(nextValues));
 }
 
 function normalizeStartEndRange(
@@ -261,13 +245,11 @@ export function normalizeAnalysisScope(rawValue: unknown): AnalysisScope | null 
   const comparison = normalizeAnalysisComparisonScope(source["comparison"]);
   const focus = asNonEmptyString(source["focus"]);
   const hypothesis = asNonEmptyString(source["hypothesis"]);
-  const intentIds = asStringArray(source["intentIds"]);
   const lifecycleSource = toRecord(source["lifecycle"]);
   const lifecycle =
     Object.keys(lifecycleSource).length > 0 ||
     hypothesis !== null ||
     focus !== null ||
-    intentIds.length > 0 ||
     comparison !== null ||
     reference !== null
       ? {
@@ -282,7 +264,6 @@ export function normalizeAnalysisScope(rawValue: unknown): AnalysisScope | null 
     comparison === null &&
     hypothesis === null &&
     focus === null &&
-    intentIds.length === 0 &&
     lifecycle === null
   ) {
     return null;
@@ -295,7 +276,6 @@ export function normalizeAnalysisScope(rawValue: unknown): AnalysisScope | null 
       ? { focus }
       : {}),
     ...(hypothesis ? { hypothesis } : {}),
-    ...(intentIds.length > 0 ? { intentIds } : {}),
     ...(lifecycle ? { lifecycle } : {}),
   };
 }

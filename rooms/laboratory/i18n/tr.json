@@ -354,9 +354,7 @@
       "setup": {
         "eyebrow": "Yapilandirma",
         "title": "Analiz Hazirligi",
-        "intentsTitle": "Analiz Amaclari",
-        "defaultReportOutput": "Rapor kaniti",
-        "reportOutputs": "Rapor ciktilari",
+        "analysisTitle": "Analiz Modulleri",
         "expandGroup": "Genislet",
         "collapseGroup": "Daralt",
         "moduleSettings": "Ayarlar",
@@ -570,14 +568,13 @@
     "rightContext": {
       "selection": "Secim",
       "emptySelection": "Aktif secim yok",
-      "intent": "Niyet",
-      "emptyIntent": "Secili niyet yok"
+      "activeAction": "Secili aksiyon",
+      "emptyAction": "Secili aksiyon yok"
     },
     "timeline": {
       "eyebrow": "Zaman cizgisi",
       "selection": "Secim",
       "type": "Tip",
-      "intent": "Niyet",
       "suggestedActions": "Onerilen aksiyonlar",
       "inspectionTools": "Inceleme araclari",
       "selectedAction": "Secili aksiyon",
@@ -586,7 +583,7 @@
       "steps": "Adimlar",
       "outputs": "Ciktilar",
       "estimatedCost": "Tahmini maliyet",
-      "intentSelected": "Niyet secildi",
+      "actionSelected": "Aksiyon secildi",
       "wantThis": "Bunu istiyorum",
       "notNow": "Simdi degil",
       "queueForLater": "Sonrasi icin ayir",
@@ -626,7 +623,6 @@
       "selectionEnd": "Bitis",
       "selectionEndButton": "Bitisi ata",
       "inspectionMode": "Inceleme modu",
-      "selectionIntent": "Secim niyeti",
       "selectionHint": "Bu secim gelecekteki analize rehberlik eder",
       "suggestedOperations": "Onerilen islemler",
       "suggestedAnalyses": "Onerilen analizler",
@@ -638,14 +634,6 @@
         "clip": "Klip",
         "focus": "Odak",
         "inspect": "Inceleme",
-        "unknown": "Bilinmeyen"
-      },
-      "selectionIntents": {
-        "anomaly": "Anomali",
-        "motion": "Hareket",
-        "audio": "Ses",
-        "visual": "Gorsel",
-        "general": "Genel",
         "unknown": "Bilinmeyen"
       },
       "inspectionModes": {
@@ -794,7 +782,24 @@
         "heuristicSensitivity": "Heuristik",
         "windowSeconds": "Pencere",
         "compression": "Sikistirma",
-        "phaseMode": "Faz"
+        "phaseMode": "Faz",
+        "hashMode": "Hash modu",
+        "similarityThreshold": "Benzerlik",
+        "minRunFrames": "Min seri",
+        "flowEngine": "Flow motoru",
+        "cameraCompensation": "Kamera telafisi",
+        "motionThreshold": "Hareket esigi",
+        "planeSplit": "Duzlem ayrimi",
+        "artifactProfile": "Artefakt profili",
+        "lowLightBias": "Dusuk isik onceligi",
+        "edgeSensitivity": "Kenar hassasiyeti",
+        "bppThreshold": "BPP esigi",
+        "metadataDepth": "Metadata derinligi",
+        "timelineCrosscheck": "Zaman cizgisi kontrolu",
+        "platformFingerprint": "Platform izi",
+        "metricSet": "Metrikler",
+        "referenceSource": "Referans",
+        "minDelta": "Min delta"
       },
       "options": {
         "enabled": "Acik",
@@ -891,7 +896,21 @@
         "left": "Sol",
         "right": "Sag",
         "mid": "Orta",
-        "inverted": "Ters"
+        "inverted": "Ters",
+        "exact": "Tam",
+        "perceptual": "Algisal",
+        "hybrid": "Hibrit",
+        "farneback": "Farneback",
+        "raft-planned": "RAFT planli",
+        "roi": "ROI",
+        "full-frame": "Tam kare",
+        "fast-motion": "Hizli hareket",
+        "ssim": "SSIM",
+        "vmaf": "VMAF",
+        "ssim-vmaf": "SSIM + VMAF",
+        "pre-upload": "Yukleme oncesi",
+        "comparison-reference": "Karsilastirma referansi",
+        "active-reference": "Aktif referans"
       },
       "closeAction": "Kapat",
       "installAction": "Kur",
@@ -1740,7 +1759,7 @@
     "leftRail": {
       "toolManagement": "Arac Yonetimi",
       "workspaceLabel": "Medya calisma alani",
-      "intentsTitle": "NİYETLER",
+      "analysisTitle": "ANALIZ",
       "readiness": {
         "readyShort": "OK"
       },
@@ -1756,25 +1775,16 @@
     "reportOverlay": {
       "diff": {
         "timeline": "Zaman çizgisi",
-        "hypothesis": "Hipotez",
-        "intents": "Niyetler"
+        "hypothesis": "Hipotez"
       },
       "snapshot": {
         "fullSource": "Tum kaynak",
-        "noIntent": "Niyet anlık görüntüsü yok",
         "title": "Snapshot Ozeti",
         "focus": "Odak",
         "unspecified": "Belirtilmemis",
         "timeline": "Zaman çizgisi",
-        "intents": "Niyetler",
         "liveWorkspaceChanged": "Canli workspace {keys} alanlarinda degisti. Rapor donmus snapshotu yansitmaya devam eder.",
         "frozen": "Rapor donmus kosu snapshotunu yansitir."
-      },
-      "intentGroups": {
-        "title": "Niyet Grupları",
-        "liveDrift": "Canli workspace drift",
-        "noFindings": "Bu niyet için eşleşmiş bulgu yok.",
-        "counts": "{modules} modul · {findings} bulgu · {artifacts} artefakt"
       },
       "correlation": {
         "title": "Korelasyon"
@@ -1784,6 +1794,18 @@
       },
       "forensics": {
         "title": "Forensic Notlar"
+      },
+      "triage": {
+        "title": "Triage Karari",
+        "anomaly": "Anomali",
+        "manipulation": "Manipulasyon suphesi",
+        "followUp": "Devam inceleme"
+      },
+      "evidenceStrength": {
+        "title": "Kanit Gucu"
+      },
+      "counterEvidence": {
+        "title": "Karsi Delil"
       },
       "empty": {
         "noFindings": "Bulgu yok",
@@ -1852,17 +1874,21 @@
       "lifecycle": {
         "settingsManaged": "Speech Runtime yasam dongusu ana Settings tarafindan yonetilir. Laboratory yalnizca mevcut runtime probe ve aktif dil/model hazirligini yansitir.",
         "lastError": "Son hata: {error}",
+        "systemCommandVerified": "Son dogrulama basarili ({checkedAt}){detail}.",
+        "systemCommandMissing": "Son dogrulama ({checkedAt}): arac bulunamadi.",
         "default": "Araç durumu room-local registry üzerinden izlenir."
       },
       "strategy": {
         "settingsManaged": "Settings üzerinden yönetilir",
         "planned": "Planlı",
+        "systemCommand": "Dogrula / kurulum notu",
         "automatic": "Uygulama içi kurulum"
       },
       "actions": {
         "settingsManaged": "Settings'ten yönetilir",
         "planned": "Planlı",
         "checkUpdates": "Güncelleme kontrolü",
+        "verifySystemCommand": "Dogrula",
         "update": "Güncelle",
         "install": "Kur",
         "bulkUpdate": "Toplu güncelle",
@@ -1873,6 +1899,7 @@
         "stageSupport": "Aşama desteği",
         "installedVersion": "Kurulu sürüm",
         "latestVersion": "Son sürüm",
+        "lastCheckedAt": "Son kontrol",
         "location": "Konum",
         "pythonRuntime": "Python runtime",
         "requiredPython": "Gerekli Python",
@@ -1894,6 +1921,7 @@
       "title": "Araç Yönetimi",
       "subtitle": "yt-dlp ve FFmpeg gibi oda araçlarını burada yönet; Speech Runtime ise yalnızca merkezi Settings runtime durumuyla birlikte yansıtılır.",
       "stats": {
+        "catalog": "Araç kataloğu",
         "relevant": "İlgili araçlar",
         "installed": "Kurulu araç",
         "updates": "Güncelleme bekleyen"
@@ -1954,14 +1982,9 @@
         "confirm": "Kurulumu başlat"
       },
       "sections": {
-        "relevant": {
-          "title": "İlgili araçlar",
-          "hint": "Seçili niyet ve yetenek aileleri için gerekli araçlar önce listelenir."
-        },
-        "other": {
-          "eyebrow": "Oda geneli",
-          "title": "Diğer araçlar",
-          "hint": "Diğer modül ve kapasitelere ait araçlar burada tutulur."
+        "catalog": {
+          "title": "Laboratory araçları",
+          "hint": "Laboratory tarafından yönetilen araçları kur, güncelle ve incele."
         }
       },
       "usedBy": {
@@ -2097,41 +2120,26 @@
       },
       "diff": {
         "timeline": "Zaman çizgisi",
-        "hypothesis": "Hipotez",
-        "intents": "Niyetler"
+        "hypothesis": "Hipotez"
       },
       "empty": {
         "moduleWaiting": "Modül bekleniyor",
         "noModulePlan": "Modül planı yok",
         "noExecution": "Henüz yürütme yok",
-        "noIntentSelection": "Niyet seçimi yok",
         "noCapabilityMatch": "Yetenek eşleşmesi yok",
         "pipelineResolving": "İş akışı çözümleniyor...",
         "noFindings": "Bulgu yok",
         "noArtifacts": "Artefakt yok",
         "noRecentActions": "Henüz işlem yok"
       },
-      "executionMap": {
-        "title": "Niyet → Yürütme Haritası",
-        "liveDrift": "Canli drift"
-      },
-      "outputTrace": {
-        "title": "NİYET ÇIKTI İZLEĞİ",
-        "noExpected": "Bu niyet için beklenen çıktı tanımı yok",
-        "noActual": "Bu niyet herhangi bir çıktı üretmedi",
-        "expected": "Beklenen:",
-        "actual": "Üretilen:"
-      },
       "snapshot": {
         "fullSource": "Tum kaynak",
-        "noIntent": "Niyet anlık görüntüsü yok",
         "liveWorkspaceChanged": "Canli workspace {keys} alanlarinda degisti. Snapshot bu kosu icin donmus kalir.",
         "frozen": "Snapshot bu kosu icin donmus kalir.",
         "title": "Kosu Snapshotu",
         "focus": "Odak",
         "unspecified": "Belirtilmemis",
-        "timeline": "Timeline",
-        "intents": "Niyetler"
+        "timeline": "Timeline"
       },
       "progressLabel": "{completed}/{total} adım · {percent}%",
       "sections": {
@@ -2143,7 +2151,6 @@
         "more": "Daha fazla"
       },
       "idleTitle": "Analiz akışı",
-      "intentCount": "{count} niyet",
       "runStatus": {
         "analyzing": "Analiz ediliyor",
         "completed": "Tamamlandı",
@@ -2196,46 +2203,11 @@
         "motion": "Hareket"
       }
     },
-    "intentPreview": {
-      "title": "Bu analiz şunları yapacak:",
-      "empty": "Analiz için niyet seçin",
-      "outputsTitle": "Beklenen çıktılar:",
-      "outputs": {
-        "objectDetection": "Nesne tespiti",
-        "anomalyReport": "Anomali raporu",
-        "visualFindings": "Görsel bulgular",
-        "recommendations": "Öneriler"
-      }
-    },
     "analysisActions": {
       "viewReport": "Raporu Görüntüle",
       "cancel": "Analizi İptal Et",
       "start": "Analizi Başlat",
       "imageAnalysis": "Görsel Analiz Et"
-    },
-    "workspace": {
-      "intents": {
-        "visual-inspection": {
-          "label": "Görsel inceleme",
-          "description": "Görsel yapıyı, kare kompozisyonunu ve adli işaretleri incele.",
-          "preview": "Görsel yapı ve anomaliler analiz edilir"
-        },
-        "audio-investigation": {
-          "label": "Ses araştırması",
-          "description": "Ses sinyallerini analiz et, ayrıntıları kurtar ve konuşmacıları belirle.",
-          "preview": "Ses sinyali ve anomaliler analiz edilir"
-        },
-        "detail-enhancement": {
-          "label": "Detay iyileştirme",
-          "description": "Daha derin inceleme için transkript üret ve ses kaynaklarını ayır.",
-          "preview": "Görüntü detayları iyileştirilir"
-        },
-        "anomaly-detection": {
-          "label": "Anomali tespiti",
-          "description": "Görsel ve işitsel anomalileri tespit et, sesleri sınıflandır ve prozodiyi analiz et.",
-          "preview": "Olası anormallikler tespit edilir"
-        }
-      }
     },
     "capabilities": {
       "visual-structure": {
@@ -2302,7 +2274,7 @@
         "prepareSourceAndProbe": "Önce kaynak hazırlanmalı ve probe tamamlanmalı.",
         "selectAnalysisModule": "En az bir analiz modülü seçilmelidir.",
         "sourceNotReady": "Kaynak henüz hazır değil.",
-        "intentSourceUnsupported": "Bu kaynak türü için kullanılamaz.",
+        "sourceUnsupported": "Bu kaynak türü için kullanılamaz.",
         "requiredToolsNotInstalled": "Gerekli araçlar kurulu değil.",
         "someToolsMissingPartial": "Bazı araçlar eksik — sonuçlar kısmi olabilir.",
         "sourceUrlRequired": "Kaynak URL gerekli",
@@ -2452,6 +2424,26 @@
           "title": "Hareket Anomalisi",
           "summary": "Kaba hareket sicrama ve gecis duzensizliklerini olcer."
         },
+        "perceptual-duplicate-frame": {
+          "title": "Algisal Yinelenen Kare",
+          "summary": "Tam yinelenen kareleri algisal yakin-kopya kare serilerinden ayirir."
+        },
+        "optical-flow-tracking": {
+          "title": "Optical-flow Takibi",
+          "summary": "Hafif flow vekiliyle ozne ve arka plan hareketini ayirir."
+        },
+        "compression-signature-mapping": {
+          "title": "Sikistirma Imza Haritasi",
+          "summary": "Dusuk isik, hareket, kenar, cadence ve GOP artefakt ailelerini haritalar."
+        },
+        "metadata-provenance-audit": {
+          "title": "Metadata Provenance Denetimi",
+          "summary": "Mumkun oldugunda ffprobe, ExifTool ve MediaInfo metadata alanlarini karsilastirir."
+        },
+        "reference-quality-check": {
+          "title": "Referans Kalite Kontrolu",
+          "summary": "Referans veya yukleme-oncesi kaynak varsa SSIM/VMAF benzeri kalite farklarini raporlar."
+        },
         "visual-signal-amplification": {
           "title": "Gorsel Sinyal Guclendirme",
           "summary": "Elle inceleme icin daha parlak reveal odakli preview varyantlari uretir."
@@ -2490,6 +2482,22 @@
       "ffmpeg-visual-reveal": {
         "title": "FFmpeg Gorsel Reveal",
         "summary": "Preview varyantlari ve sinyal guclendirme icin oda yonetimli FFmpeg reveal filtreleri."
+      },
+      "ffmpeg-visual-forensics": {
+        "title": "FFmpeg Gorsel Forensics",
+        "summary": "Triage, karsi delil ve forensic haritalama icin oda yonetimli FFmpeg probe'lari."
+      },
+      "opencv-visual-forensics": {
+        "title": "OpenCV Gorsel Forensics",
+        "summary": "Yakin-kopya ve kalite metrikleri icin opsiyonel OpenCV/scikit-image yardimcilari."
+      },
+      "metadata-provenance-system": {
+        "title": "Metadata Provenance Sistemi",
+        "summary": "Opsiyonel host ExifTool ve MediaInfo metadata karsilastirma hatti."
+      },
+      "raft-optical-flow-provider": {
+        "title": "RAFT Optical Flow",
+        "summary": "Sonraki gated rollout icin planli PyTorch/RAFT yogun flow saglayicisi."
       },
       "synthetic-visual-forensics": {
         "title": "Sentetik Gorsel Forensics",

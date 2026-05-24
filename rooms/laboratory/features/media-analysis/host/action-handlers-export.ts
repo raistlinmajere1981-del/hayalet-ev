@@ -90,12 +90,10 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     getImageExtension,
     getOperationSourceAssetLink,
     getOperationSourceRecord,
-    getPayloadIntentIds,
     getProjectId,
     getScaleFilter,
     getSourceDimensions,
     getSourceDurationMs,
-    getWorkspaceIntentIds,
     hasNormalizedRoiPayload,
     isOperationCancelledError,
     pushCancelledJobState,
@@ -119,7 +117,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
       createdAsset = createLabOutputAsset(nextProject, {
         ...assetInput,
         runId: assetInput.runId || getCurrentMediaRunId(inputProject),
-        intentIds: assetInput.intentIds || getWorkspaceIntentIds(inputProject),
       });
       return {
         ...nextProject,
@@ -415,7 +412,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     const cropW = normalizedCrop?.width ?? asNumber(payload["width"]) ?? 100;
     const cropH = normalizedCrop?.height ?? asNumber(payload["height"]) ?? 100;
     const sourceKind = asNonEmptyString(source["kind"]) || "video";
-    const intentIds = getPayloadIntentIds(payload);
     const seekMs = asNumber(payload["seekMs"]);
     const settings = readOperationSettings("roi-crop", payload);
 
@@ -520,7 +516,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         name: outputFileName,
         localPath: outputPath,
         ...getOperationSourceAssetLink(project, payload),
-        ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: "export-roi-image",
           evidenceRole: "derived",
@@ -632,7 +627,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     const rawSeekMs = asNumber(payload["seekMs"]) || 0;
     const startMs = asNumber(payload["startMs"]);
     const endMs = asNumber(payload["endMs"]);
-    const intentIds = getPayloadIntentIds(payload);
     const settings = readOperationSettings("frame-grab", payload);
     const seekPoints = getFrameGrabSeekPoints({
       endMs,
@@ -716,7 +710,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
           name: outputFileName,
           localPath: outputPath,
           ...getOperationSourceAssetLink(project, payload),
-          ...(intentIds === undefined ? {} : { intentIds }),
           metadata: {
             action: "export-frame-grab",
             evidenceRole: "derived",
@@ -810,7 +803,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     }
 
     const seekMs = asNumber(payload["seekMs"]) || 0;
-    const intentIds = getPayloadIntentIds(payload);
     const settings = readOperationSettings("enhanced-frame", payload);
     const previewSettings = toRecord(payload["previewSettings"]);
     const normalizedCrop = resolveNormalizedCropPixels(source, payload["normalizedRoi"]);
@@ -896,7 +888,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         name: outputFileName,
         localPath: outputPath,
         ...getOperationSourceAssetLink(project, payload),
-        ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: "export-enhanced-frame",
           evidenceRole: "derived",
@@ -1002,7 +993,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     }
 
     const seekMs = asNumber(payload["seekMs"]) || 0;
-    const intentIds = getPayloadIntentIds(payload);
     const settings = readOperationSettings("before-after-variant", payload);
     const normalizedCrop = resolveNormalizedCropPixels(source, payload["normalizedRoi"]);
     if (hasNormalizedRoiPayload(payload) && normalizedCrop === null) {
@@ -1100,7 +1090,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         name: outputFileName,
         localPath: outputPath,
         ...getOperationSourceAssetLink(project, payload),
-        ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: "export-before-after-variant",
           evidenceRole: "derived",
@@ -1174,7 +1163,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     const activeProject = project;
     const primaryImagePath = primaryPath;
     const reference = readComparisonReference(project, payload);
-    const intentIds = getPayloadIntentIds(payload);
     const settings = readOperationSettings("image-comparison", payload);
 
     await cancelJobsForProject(runtime, projectId, requestId, {
@@ -1250,7 +1238,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
           name: outputFileName,
           localPath: outputPath,
           ...getOperationSourceAssetLink(activeProject, payload),
-          ...(intentIds === undefined ? {} : { intentIds }),
           metadata: {
             action: "export-image-comparison",
             comparisonKind: kind,
@@ -1384,7 +1371,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         name: metricsFileName,
         localPath: metricsPath,
         ...getOperationSourceAssetLink(activeProject, payload),
-        ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: "export-image-comparison",
           artifactKind: "image-comparison-metrics",
@@ -1539,7 +1525,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
     const outputFileName = `${options.filePrefix}-${options.timestamp}.${format}`;
     const outputPath = `${outputDir}/${outputFileName}`;
     const primaryAssetId = getComparisonPrimaryAssetId(source, payload);
-    const intentIds = getPayloadIntentIds(payload);
     const captureContext = buildComparisonCaptureContext({
       payload,
       primaryAssetId,
@@ -1590,7 +1575,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
       name: outputFileName,
       localPath: outputPath,
       ...getOperationSourceAssetLink(project, payload),
-      ...(intentIds === undefined ? {} : { intentIds }),
       metadata: {
         action: options.action,
         artifactKind: options.artifactKind,
@@ -1765,13 +1749,11 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         snapshotAssetId: snapshotAsset.id,
       };
       await writeLaboratoryTextFile(manifestPath, `${JSON.stringify(manifestPayload, null, 2)}\n`);
-      const intentIds = getPayloadIntentIds(payload);
       const manifestAsset = await registerOutputAsset(runtime, project, {
         type: "artifact",
         name: manifestFileName,
         localPath: manifestPath,
         ...getOperationSourceAssetLink(project, payload),
-        ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: "save-comparison-finding",
           artifactKind: "comparison-finding-manifest",
@@ -1858,7 +1840,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
       throw new Error("Invalid timeline selection for clip export.");
     }
     const durationSec = (endMs - startMs) / 1000;
-    const intentIds = getPayloadIntentIds(payload);
     const settings = readOperationSettings("clip-export", payload);
     const applyRoiCrop = readBooleanSetting(settings, "applyRoiCrop", false);
 
@@ -1990,7 +1971,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         name: outputFileName,
         localPath: outputPath,
         ...getOperationSourceAssetLink(project, payload),
-        ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: "export-timeline-clip",
           durationMs: endMs - startMs,
@@ -2083,7 +2063,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
       throw new Error("Invalid timeline selection for stabilized clip export.");
     }
     const durationSec = (endMs - startMs) / 1000;
-    const intentIds = getPayloadIntentIds(payload);
     const settings = readOperationSettings("segment-stabilization", payload);
 
     await cancelJobsForProject(runtime, projectId, requestId, {
@@ -2189,7 +2168,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         name: outputFileName,
         localPath: outputPath,
         ...getOperationSourceAssetLink(project, payload),
-        ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: "export-stabilized-clip",
           durationMs: endMs - startMs,
@@ -2270,7 +2248,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
       throw new Error("Stem separation requires a ready audio stream.");
     }
 
-    const intentIds = getPayloadIntentIds(payload);
     const settings = readOperationSettings("stem-separation", payload);
 
     await cancelJobsForProject(runtime, projectId, requestId, {
@@ -2364,7 +2341,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
           name: stem.fileName,
           localPath: stem.path,
           ...getOperationSourceAssetLink(project, payload),
-          ...(intentIds === undefined ? {} : { intentIds }),
           metadata: {
             action: "export-stem-separation",
             evidenceRole: "derived",
@@ -2406,7 +2382,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
         name: manifestFileName,
         localPath: manifestPath,
         ...getOperationSourceAssetLink(project, payload),
-        ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: "export-stem-separation",
           artifactKind: "stem-separation-manifest",
@@ -2474,7 +2449,6 @@ export function createMediaExportActionRuntime(deps: LaboratoryExportActionRunti
       getAudioCodecForFormat,
       getOperationSourceAssetLink,
       getOperationSourceRecord,
-      getPayloadIntentIds,
       getProjectEditOutputDir,
       getProjectId,
       getSourceDurationMs,

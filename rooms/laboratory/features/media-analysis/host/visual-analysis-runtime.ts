@@ -23,8 +23,10 @@ type LaboratoryVisualCatalogEntryRecord = LaboratoryRecord & {
   id?: unknown;
   phase?: unknown;
   providerIds?: unknown;
+  optionalToolIds?: unknown;
   sourceKinds?: unknown;
   status?: unknown;
+  requiredToolIds?: unknown;
   summaryKey?: unknown;
   titleKey?: unknown;
   toolIds?: unknown;
@@ -215,7 +217,11 @@ export function createLaboratoryVisualAnalysisRuntime(deps: VisualAnalysisRuntim
         phase: asNonEmptyString(entry.phase) || "v2",
         providerIds,
         toolIds: toStringArray(entry.toolIds),
-        requiredToolIds: toStringArray(entry.toolIds),
+        requiredToolIds:
+          toStringArray(entry.requiredToolIds).length > 0
+            ? toStringArray(entry.requiredToolIds)
+            : toStringArray(entry.toolIds),
+        optionalToolIds: toStringArray(entry.optionalToolIds),
         toolReady,
         featureSupported: sourceSupported,
         capabilityReady: nextStatus === "ready",

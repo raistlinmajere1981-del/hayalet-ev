@@ -100,8 +100,8 @@ test("laboratory process summary derives a single deterministic state", () => {
     endMs: 3000,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
@@ -165,8 +165,8 @@ test("store accepts execution intents only from the exact active suggestion prev
     endMs: 3000,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
 
   store.dispatch({
@@ -276,8 +276,8 @@ test("execution plan is derived only from accepted intents and survives preview 
     endMs: 3000,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
@@ -317,7 +317,7 @@ test("execution plan is derived only from accepted intents and survives preview 
   assert.equal(getActiveExecutionPlan(store.getState()), null);
 });
 
-test("execution plan lifecycle follows soft intent resets instead of re-deriving across invalidating changes", () => {
+test("execution plan lifecycle ignores passive inspection changes and clears on structural changes", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -334,8 +334,8 @@ test("execution plan lifecycle follows soft intent resets instead of re-deriving
     endMs: 3000,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
@@ -352,8 +352,8 @@ test("execution plan lifecycle follows soft intent resets instead of re-deriving
     type: "selection-inspection-mode-updated",
     mode: "audio",
   });
-  assert.equal(store.getState().ui.activeExecutionIntentId, null);
-  assert.equal(getActiveExecutionPlan(store.getState()), null);
+  assert.equal(store.getState().ui.activeExecutionIntentId, "audio-inspect");
+  assert.equal(getActiveExecutionPlan(store.getState())?.suggestionId, "audio-inspect");
 
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
@@ -384,7 +384,6 @@ test("execution planner is deterministic and resolves ROI tool-hint intents", ()
     startMs: 1200,
     endMs: 4800,
     type: "inspect",
-    intent: "motion",
     roi: {
       x: 0.18,
       y: 0.22,
@@ -422,7 +421,7 @@ test("execution planner is deterministic and resolves ROI tool-hint intents", ()
   assert.deepEqual(inspectRegionPlan, inspectRegionPlanRepeat);
   assert.equal(
     inspectRegionPlan.id,
-    "plan:inspect-region:focus-region:video:motion:inspect:motion:1200:4800:180-220-240-280"
+    "plan:inspect-region:focus-region:video:motion:inspect:1200:4800:180-220-240-280"
   );
   assert.equal(inspectRegionPlan.suggestionId, "inspect-region");
   assert.match(inspectRegionPlan.title, /Region focus plan/);
@@ -442,8 +441,8 @@ test("execution planner is deterministic and resolves ROI tool-hint intents", ()
     endMs: 4800,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "motion",
+    type: "selection-inspection-mode-updated",
+    mode: "motion",
   });
   store.dispatch({
     type: "selection-roi-updated",
@@ -480,7 +479,6 @@ test("execution planner falls back safely for unknown action types", () => {
       startMs: 400,
       endMs: 1200,
       type: "clip",
-      intent: "general",
       createdAt: 1,
     },
     inspectionMode: "none",
@@ -509,8 +507,8 @@ test("execution simulation is derived only from active plans and survives previe
     endMs: 3000,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
@@ -560,7 +558,6 @@ test("execution simulation is deterministic and stays stable across audio-focus-
     startMs: 1000,
     endMs: 3000,
     type: "clip",
-    intent: "audio",
     createdAt: 1,
   };
   const plan = buildExecutionPlan({
@@ -634,8 +631,8 @@ test("execution simulation is deterministic and stays stable across audio-focus-
     endMs: 3000,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
@@ -675,7 +672,6 @@ test("execution readiness is deterministic across ready, needs-review, and block
     startMs: 1000,
     endMs: 3200,
     type: "clip",
-    intent: "general",
     createdAt: 1,
   };
   const readyPlan = buildExecutionPlan({
@@ -722,7 +718,6 @@ test("execution readiness is deterministic across ready, needs-review, and block
     startMs: 100,
     endMs: 450,
     type: "clip",
-    intent: "anomaly",
     createdAt: 1,
   };
   const reviewPlan = buildExecutionPlan({
@@ -759,7 +754,6 @@ test("execution readiness is deterministic across ready, needs-review, and block
     startMs: 1200,
     endMs: 4800,
     type: "inspect",
-    intent: "visual",
     roi: {
       x: 0.3,
       y: 0.25,
@@ -816,8 +810,8 @@ test("execution readiness is derived only from active plan and simulation", () =
     endMs: 3000,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
@@ -875,8 +869,8 @@ test("execution readiness follows upstream invalidation instead of persisting in
     endMs: 4800,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "motion",
+    type: "selection-inspection-mode-updated",
+    mode: "motion",
   });
   store.dispatch({
     type: "selection-roi-updated",
@@ -902,8 +896,8 @@ test("execution readiness follows upstream invalidation instead of persisting in
     type: "selection-inspection-mode-updated",
     mode: "motion",
   });
-  assert.equal(store.getState().ui.activeExecutionIntentId, null);
-  assert.equal(getActiveExecutionReadiness(store.getState()), null);
+  assert.equal(store.getState().ui.activeExecutionIntentId, "inspect-region");
+  assert.notEqual(getActiveExecutionReadiness(store.getState()), null);
 
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
@@ -940,8 +934,8 @@ test("execution payload preview is derived only from active readiness", () => {
     endMs: 3000,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
@@ -998,7 +992,6 @@ test("execution payload bridge is deterministic and covers ROI plus fallback sha
     startMs: 1200,
     endMs: 4800,
     type: "inspect",
-    intent: "motion",
     roi: {
       x: 0.18,
       y: 0.22,
@@ -1114,7 +1107,6 @@ test("execution payload preview helper returns null for missing upstream objects
     startMs: 1000,
     endMs: 3000,
     type: "clip",
-    intent: "audio",
     createdAt: 1,
   };
   const plan = buildExecutionPlan({
@@ -1185,7 +1177,6 @@ test("execution reflection maps readiness and simulation into passive decisions"
     startMs: 1000,
     endMs: 3000,
     type: "clip",
-    intent: "audio",
     createdAt: 1,
   };
   const proceedPlan = buildExecutionPlan({
@@ -1253,7 +1244,6 @@ test("execution reflection maps readiness and simulation into passive decisions"
     startMs: 1000,
     endMs: 18000,
     type: "clip",
-    intent: "general",
     createdAt: 1,
   };
   const reviewPlan = buildExecutionPlan({
@@ -1314,7 +1304,6 @@ test("execution reflection maps readiness and simulation into passive decisions"
     startMs: 1000,
     endMs: 2600,
     type: "clip",
-    intent: "audio",
     createdAt: 1,
   };
   const avoidPlan = buildExecutionPlan({
@@ -1389,8 +1378,8 @@ test("execution reflection is derived only from the complete active dry-run chai
     endMs: 3000,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
@@ -1440,7 +1429,6 @@ test("execution reflection helper returns null for missing upstream objects", ()
     startMs: 1000,
     endMs: 3000,
     type: "clip",
-    intent: "audio",
     createdAt: 1,
   };
   const plan = buildExecutionPlan({
@@ -1714,7 +1702,6 @@ test("passive execution descriptor maps conceptual classes deterministically", (
     startMs: 1000,
     endMs: 3600,
     type: "inspect",
-    intent: "audio",
     createdAt: 1,
   };
   const chain = createExecutionAlternativesChain({
@@ -1865,7 +1852,6 @@ test("execution bridge derives input shape without runtime payload values", () =
     startMs: 1000,
     endMs: 3600,
     type: "inspect",
-    intent: "audio",
     createdAt: 1,
   };
   const chain = createExecutionAlternativesChain({
@@ -2307,7 +2293,6 @@ test("passive execution descriptor remains stable across equivalent feedback con
     startMs: 1000,
     endMs: 3200,
     type: "inspect",
-    intent: "visual",
     roi: {
       x: 0.22,
       y: 0.2,
@@ -2399,7 +2384,6 @@ test("execution alternatives compare deterministic counterfactuals across decisi
     startMs: 1000,
     endMs: 3600,
     type: "inspect",
-    intent: "audio",
     roi: {
       x: 0.2,
       y: 0.24,
@@ -2453,7 +2437,6 @@ test("execution alternatives compare deterministic counterfactuals across decisi
     startMs: 1000,
     endMs: 18000,
     type: "clip",
-    intent: "visual",
     roi: {
       x: 0.04,
       y: 0.04,
@@ -2485,7 +2468,6 @@ test("execution alternatives compare deterministic counterfactuals across decisi
     startMs: 1000,
     endMs: 2600,
     type: "clip",
-    intent: "audio",
     createdAt: 1,
   };
   const avoidChain = createExecutionAlternativesChain({
@@ -2515,7 +2497,6 @@ test("passive descriptor and bridge advisories are summary-only and avoid execut
     startMs: 1000,
     endMs: 3600,
     type: "inspect",
-    intent: "audio",
     createdAt: 1,
   };
   const chain = createExecutionAlternativesChain({
@@ -2727,7 +2708,6 @@ test("execution alternatives re-weight summary tone without changing structure",
     startMs: 1000,
     endMs: 3600,
     type: "inspect",
-    intent: "audio",
     createdAt: 1,
   };
   const chain = createExecutionAlternativesChain({
@@ -2780,7 +2760,6 @@ test("execution alternatives cover known action mappings and fallback", () => {
     startMs: 2000,
     endMs: 5200,
     type: "inspect",
-    intent: "motion",
     roi: {
       x: 0.18,
       y: 0.18,
@@ -2875,8 +2854,8 @@ test("execution alternatives are derived only from the complete active reflectio
     endMs: 3000,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
@@ -2925,7 +2904,6 @@ test("execution alternatives helper returns null for missing upstream objects", 
     startMs: 1000,
     endMs: 3000,
     type: "clip",
-    intent: "audio",
     createdAt: 1,
   };
   const chain = createExecutionAlternativesChain({
@@ -3004,7 +2982,6 @@ test("execution candidate synthesizes structural viability without downgrading s
     startMs: 1000,
     endMs: 3600,
     type: "inspect",
-    intent: "audio",
     roi: {
       x: 0.2,
       y: 0.24,
@@ -3061,7 +3038,6 @@ test("execution candidate synthesizes structural viability without downgrading s
     startMs: 1000,
     endMs: 18000,
     type: "clip",
-    intent: "visual",
     roi: {
       x: 0.04,
       y: 0.04,
@@ -3101,7 +3077,6 @@ test("execution candidate synthesizes structural viability without downgrading s
     startMs: 1000,
     endMs: 2600,
     type: "clip",
-    intent: "audio",
     createdAt: 1,
   };
   const avoidChain = createExecutionAlternativesChain({
@@ -3137,7 +3112,6 @@ test("execution candidate adjusts confidence from interpreted result without cha
     startMs: 1000,
     endMs: 3600,
     type: "inspect",
-    intent: "audio",
     createdAt: 1,
   };
   const chain = createExecutionAlternativesChain({
@@ -3206,7 +3180,6 @@ test("execution candidate validates upstream coherence and payload preview shape
     startMs: 1000,
     endMs: 3000,
     type: "clip",
-    intent: "audio",
     createdAt: 1,
   };
   const chain = createExecutionAlternativesChain({
@@ -3356,8 +3329,8 @@ test("execution candidate is derived only from the complete active alternatives 
     endMs: 3000,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
@@ -3405,7 +3378,6 @@ test("execution candidate helper returns null for missing upstream objects", () 
     startMs: 1000,
     endMs: 3000,
     type: "clip",
-    intent: "audio",
     createdAt: 1,
   };
   const chain = createExecutionAlternativesChain({
@@ -3479,8 +3451,8 @@ function createCommittedAudioExecutionStore(
     });
   }
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
@@ -3591,8 +3563,8 @@ test("execution commitment rejects missing, mismatched, stale, and not-viable ca
     endMs: 2600,
   });
   blockedStore.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
   blockedStore.dispatch({
     type: "workspace-audio-updated",
@@ -3655,8 +3627,14 @@ test("execution commitment clears on upstream context changes but not preview cl
     type: "selection-inspection-mode-updated",
     mode: "audio",
   });
-  assert.equal(inspectionStore.store.getState().ui.activeExecutionCommitment, null);
-  assert.equal(getActiveExecutionCommitment(inspectionStore.store.getState()), null);
+  assert.equal(
+    inspectionStore.store.getState().ui.activeExecutionCommitment?.id,
+    inspectionStore.commitment.id
+  );
+  assert.equal(
+    getActiveExecutionCommitment(inspectionStore.store.getState())?.id,
+    inspectionStore.commitment.id
+  );
 
   const sourceStore = createCommittedAudioExecutionStore();
   sourceStore.store.dispatch({
@@ -3724,7 +3702,6 @@ test("execution staging derives a passive staged state from committed viable and
     startMs: 1000,
     endMs: 3600,
     type: "inspect",
-    intent: "audio",
     roi: {
       x: 0.2,
       y: 0.24,
@@ -3787,7 +3764,6 @@ test("execution staging returns null for invalid or stale upstream chains", () =
     startMs: 1000,
     endMs: 3000,
     type: "clip",
-    intent: "audio",
     createdAt: 1,
   };
   const chain = createExecutionStagingChain({
@@ -3895,7 +3871,6 @@ test("execution staging can represent a coherent committed path that is not stag
     startMs: 1000,
     endMs: 18000,
     type: "clip",
-    intent: "visual",
     roi: {
       x: 0.04,
       y: 0.04,
@@ -4065,7 +4040,6 @@ test("execution result interpretation maps deterministic outcome buckets", () =>
   const selectionSnapshot = {
     endMs: 3000,
     inspectionMode: "audio" as const,
-    intent: "audio" as const,
     sourceKind: "audio",
     startMs: 1000,
     type: "clip" as const,
@@ -4154,7 +4128,6 @@ test("execution goal evaluation maps deterministic action-aware outcomes", () =>
   const analyzeSelectionSnapshot = {
     endMs: 4200,
     inspectionMode: "none" as const,
-    intent: "anomaly" as const,
     sourceKind: "video",
     startMs: 1200,
     type: "clip" as const,
@@ -4217,7 +4190,6 @@ test("execution goal evaluation maps deterministic action-aware outcomes", () =>
   const focusSelectionSnapshot = {
     endMs: 3600,
     inspectionMode: "visual" as const,
-    intent: "visual" as const,
     roi: {
       x: 0.15,
       y: 0.2,
@@ -4302,7 +4274,6 @@ test("execution goal evaluation maps deterministic action-aware outcomes", () =>
   const audioSelectionSnapshot = {
     endMs: 3000,
     inspectionMode: "audio" as const,
-    intent: "audio" as const,
     sourceKind: "audio",
     startMs: 1000,
     type: "clip" as const,
@@ -4401,8 +4372,8 @@ test("execution dispatch candidate exists only for a valid committed staged chai
     endMs: 3000,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
@@ -4429,8 +4400,7 @@ test("execution dispatch candidate exists only for a valid committed staged chai
   assert.equal(dispatchCandidate.payloadPreview.planId, activeCandidate.planId);
   assert.deepEqual(dispatchCandidate.selectionSnapshot, {
     endMs: 3000,
-    inspectionMode: "none",
-    intent: "audio",
+    inspectionMode: "audio",
     sourceKind: "audio",
     startMs: 1000,
     type: "clip",
@@ -4708,7 +4678,6 @@ test("session pattern awareness separates duration buckets roi presence and neut
       selectionSnapshot: {
         endMs: 1000 + durationMs,
         inspectionMode: "audio",
-        intent: "audio",
         sourceKind: "audio",
         startMs: 1000,
         type: "clip",
@@ -4782,7 +4751,6 @@ test("session pattern signal softly biases candidate confidence and alternatives
     startMs: 1000,
     endMs: 3000,
     type: "clip",
-    intent: "audio",
     createdAt: 1,
   };
   const chain = createExecutionAlternativesChain({
@@ -5271,7 +5239,6 @@ test("counterfactual projection remains deterministic and pressure-aware", () =>
   const selectionSnapshot = {
     endMs: 4400,
     inspectionMode: "visual" as const,
-    intent: "visual" as const,
     sourceKind: "video",
     startMs: 1200,
     type: "inspect" as const,
@@ -5398,7 +5365,6 @@ test("counterfactual projection remains deterministic and pressure-aware", () =>
           selectionSnapshot: {
             endMs: 3000,
             inspectionMode: "audio",
-            intent: "audio",
             sourceKind: "audio",
             startMs: 1000,
             type: "clip",
@@ -5424,7 +5390,6 @@ test("goal-aware feedback stays additive when goal success coexists with diverge
     startMs: 1200,
     endMs: 4200,
     type: "clip",
-    intent: "anomaly",
     createdAt: 1,
   };
   const chain = createExecutionAlternativesChain({
@@ -5461,7 +5426,6 @@ test("goal-aware feedback stays additive when goal success coexists with diverge
     selectionSnapshot: {
       endMs: chain.selection.endMs,
       inspectionMode: "none" as const,
-      intent: chain.selection.intent,
       sourceKind: "video",
       startMs: chain.selection.startMs,
       type: chain.selection.type,
@@ -5530,7 +5494,6 @@ test("goal-aware feedback tightens failed outcomes without changing structure or
     startMs: 1000,
     endMs: 3400,
     type: "inspect",
-    intent: "visual",
     roi: {
       x: 0.18,
       y: 0.22,
@@ -5572,7 +5535,6 @@ test("goal-aware feedback tightens failed outcomes without changing structure or
     selectionSnapshot: {
       endMs: chain.selection.endMs,
       inspectionMode: "visual" as const,
-      intent: chain.selection.intent,
       roi: chain.selection.roi,
       sourceKind: "video",
       startMs: chain.selection.startMs,
@@ -5679,7 +5641,6 @@ test("decision posture integration stays additive and leaves inputs immutable", 
     startMs: 1200,
     endMs: 4400,
     type: "inspect",
-    intent: "audio",
     createdAt: 1,
   };
   const chain = createExecutionAlternativesChain({
@@ -5829,7 +5790,6 @@ test("execution mock materialization is deterministic and action-aware", () => {
       ...baseCandidate.selectionSnapshot,
       startMs: 1203,
       endMs: 4203,
-      intent: "anomaly",
     },
   });
   const analyzeResult = createMockExecutionResult(analyzeCandidate);
@@ -5852,7 +5812,6 @@ test("execution mock materialization is deterministic and action-aware", () => {
     },
     selectionSnapshot: {
       ...baseCandidate.selectionSnapshot,
-      intent: "visual",
       roi: {
         x: 0.15,
         y: 0.2,
@@ -5939,7 +5898,6 @@ test("focus-region materialization stays segment-scoped when ROI is absent", () 
     },
     selectionSnapshot: {
       ...baseCandidate.selectionSnapshot,
-      intent: "visual",
       roi: undefined,
     },
   });
@@ -6023,15 +5981,6 @@ test("execution runtime clears on upstream invalidation edges", () => {
       },
     },
     {
-      name: "selection intent change",
-      mutate(store) {
-        store.dispatch({
-          type: "workspace-selection-intent-updated",
-          intent: "general",
-        });
-      },
-    },
-    {
       name: "suggestion change",
       mutate(store) {
         store.dispatch({
@@ -6099,15 +6048,6 @@ test("execution runtime clears on upstream invalidation edges", () => {
       mutate(store) {
         store.dispatch({
           type: "selection-roi-cleared",
-        });
-      },
-    },
-    {
-      name: "inspection mode change",
-      mutate(store) {
-        store.dispatch({
-          type: "selection-inspection-mode-updated",
-          mode: "audio",
         });
       },
     },

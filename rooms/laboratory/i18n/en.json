@@ -354,9 +354,7 @@
       "setup": {
         "eyebrow": "Configuration",
         "title": "Analysis Preparation",
-        "intentsTitle": "Analysis Goals",
-        "defaultReportOutput": "Report evidence",
-        "reportOutputs": "Report outputs",
+        "analysisTitle": "Analysis Modules",
         "expandGroup": "Expand",
         "collapseGroup": "Collapse",
         "moduleSettings": "Settings",
@@ -570,14 +568,13 @@
     "rightContext": {
       "selection": "Selection",
       "emptySelection": "No active selection",
-      "intent": "Intent",
-      "emptyIntent": "No intent selected"
+      "activeAction": "Selected action",
+      "emptyAction": "No action selected"
     },
     "timeline": {
       "eyebrow": "Timeline",
       "selection": "Selection",
       "type": "Type",
-      "intent": "Intent",
       "suggestedActions": "Suggested actions",
       "inspectionTools": "Inspection tools",
       "selectedAction": "Selected action",
@@ -586,7 +583,7 @@
       "steps": "Steps",
       "outputs": "Outputs",
       "estimatedCost": "Estimated cost",
-      "intentSelected": "Intent selected",
+      "actionSelected": "Action selected",
       "wantThis": "I want this",
       "notNow": "Not now",
       "queueForLater": "Queue for later",
@@ -626,7 +623,6 @@
       "selectionEnd": "End",
       "selectionEndButton": "Set end",
       "inspectionMode": "Inspection mode",
-      "selectionIntent": "Selection intent",
       "selectionHint": "This selection will guide future analysis",
       "suggestedOperations": "Suggested operations",
       "suggestedAnalyses": "Suggested analyses",
@@ -638,14 +634,6 @@
         "clip": "Clip",
         "focus": "Focus",
         "inspect": "Inspect",
-        "unknown": "Unknown"
-      },
-      "selectionIntents": {
-        "anomaly": "Anomaly",
-        "motion": "Motion",
-        "audio": "Audio",
-        "visual": "Visual",
-        "general": "General",
         "unknown": "Unknown"
       },
       "inspectionModes": {
@@ -794,7 +782,24 @@
         "heuristicSensitivity": "Heuristic",
         "windowSeconds": "Window",
         "compression": "Compression",
-        "phaseMode": "Phase"
+        "phaseMode": "Phase",
+        "hashMode": "Hash mode",
+        "similarityThreshold": "Similarity",
+        "minRunFrames": "Min run",
+        "flowEngine": "Flow engine",
+        "cameraCompensation": "Camera compensation",
+        "motionThreshold": "Motion threshold",
+        "planeSplit": "Plane split",
+        "artifactProfile": "Artifact profile",
+        "lowLightBias": "Low-light bias",
+        "edgeSensitivity": "Edge sensitivity",
+        "bppThreshold": "BPP threshold",
+        "metadataDepth": "Metadata depth",
+        "timelineCrosscheck": "Timeline check",
+        "platformFingerprint": "Platform fingerprint",
+        "metricSet": "Metrics",
+        "referenceSource": "Reference",
+        "minDelta": "Min delta"
       },
       "options": {
         "enabled": "On",
@@ -891,7 +896,21 @@
         "left": "Left",
         "right": "Right",
         "mid": "Mid",
-        "inverted": "Inverted"
+        "inverted": "Inverted",
+        "exact": "Exact",
+        "perceptual": "Perceptual",
+        "hybrid": "Hybrid",
+        "farneback": "Farneback",
+        "raft-planned": "RAFT planned",
+        "roi": "ROI",
+        "full-frame": "Full frame",
+        "fast-motion": "Fast motion",
+        "ssim": "SSIM",
+        "vmaf": "VMAF",
+        "ssim-vmaf": "SSIM + VMAF",
+        "pre-upload": "Pre-upload",
+        "comparison-reference": "Comparison reference",
+        "active-reference": "Active reference"
       },
       "closeAction": "Close",
       "installAction": "Install",
@@ -1740,7 +1759,7 @@
     "leftRail": {
       "toolManagement": "Tool Management",
       "workspaceLabel": "Media workspace",
-      "intentsTitle": "INTENTS",
+      "analysisTitle": "ANALYSIS",
       "readiness": {
         "readyShort": "OK"
       },
@@ -1756,25 +1775,16 @@
     "reportOverlay": {
       "diff": {
         "timeline": "Timeline",
-        "hypothesis": "Hypothesis",
-        "intents": "Intents"
+        "hypothesis": "Hypothesis"
       },
       "snapshot": {
         "fullSource": "Full source",
-        "noIntent": "No intent snapshot",
         "title": "Snapshot Summary",
         "focus": "Focus",
         "unspecified": "Unspecified",
         "timeline": "Timeline",
-        "intents": "Intents",
         "liveWorkspaceChanged": "Live workspace changed in {keys}. Report still reflects the frozen snapshot.",
         "frozen": "Report reflects the frozen run snapshot."
-      },
-      "intentGroups": {
-        "title": "Intent Groups",
-        "liveDrift": "Live workspace drift",
-        "noFindings": "No findings mapped to this intent.",
-        "counts": "{modules} modules · {findings} findings · {artifacts} artifacts"
       },
       "correlation": {
         "title": "Correlation"
@@ -1784,6 +1794,18 @@
       },
       "forensics": {
         "title": "Forensic Notes"
+      },
+      "triage": {
+        "title": "Triage Decision",
+        "anomaly": "Anomaly",
+        "manipulation": "Manipulation suspicion",
+        "followUp": "Follow-up"
+      },
+      "evidenceStrength": {
+        "title": "Evidence Strength"
+      },
+      "counterEvidence": {
+        "title": "Counter Evidence"
       },
       "empty": {
         "noFindings": "No findings",
@@ -1852,17 +1874,21 @@
       "lifecycle": {
         "settingsManaged": "Speech Runtime lifecycle is managed in main Settings. Laboratory only reflects the current runtime probe and active language/model readiness.",
         "lastError": "Last error: {error}",
+        "systemCommandVerified": "Last verification succeeded ({checkedAt}){detail}.",
+        "systemCommandMissing": "Last verification ({checkedAt}): tool was not found.",
         "default": "Tool status is tracked through the room-local registry."
       },
       "strategy": {
         "settingsManaged": "Managed through Settings",
         "planned": "Planned",
+        "systemCommand": "Verify / setup note",
         "automatic": "In-app install"
       },
       "actions": {
         "settingsManaged": "Managed from Settings",
         "planned": "Planned",
         "checkUpdates": "Check updates",
+        "verifySystemCommand": "Verify",
         "update": "Update",
         "install": "Install",
         "bulkUpdate": "Bulk update",
@@ -1873,6 +1899,7 @@
         "stageSupport": "Stage support",
         "installedVersion": "Installed version",
         "latestVersion": "Latest version",
+        "lastCheckedAt": "Last check",
         "location": "Location",
         "pythonRuntime": "Python runtime",
         "requiredPython": "Required Python",
@@ -1894,6 +1921,7 @@
       "title": "Tool Management",
       "subtitle": "Manage room tools such as yt-dlp and FFmpeg here; Speech Runtime is only reflected through the central Settings runtime state.",
       "stats": {
+        "catalog": "Tool catalog",
         "relevant": "Relevant tools",
         "installed": "Installed tools",
         "updates": "Pending updates"
@@ -1954,14 +1982,9 @@
         "confirm": "Start install"
       },
       "sections": {
-        "relevant": {
-          "title": "Relevant tools",
-          "hint": "Tools required for the selected intents and capability families are listed first."
-        },
-        "other": {
-          "eyebrow": "Room-wide",
-          "title": "Other tools",
-          "hint": "Tools for other modules and capabilities stay here."
+        "catalog": {
+          "title": "Laboratory tools",
+          "hint": "Install, update, and inspect the tools managed by Laboratory."
         }
       },
       "usedBy": {
@@ -2097,41 +2120,26 @@
       },
       "diff": {
         "timeline": "Timeline",
-        "hypothesis": "Hypothesis",
-        "intents": "Intents"
+        "hypothesis": "Hypothesis"
       },
       "empty": {
         "moduleWaiting": "Waiting for module",
         "noModulePlan": "No module plan",
         "noExecution": "No execution yet",
-        "noIntentSelection": "No intent selected",
         "noCapabilityMatch": "No capability match",
         "pipelineResolving": "Pipeline resolving...",
         "noFindings": "No findings",
         "noArtifacts": "No artifacts",
         "noRecentActions": "No actions yet"
       },
-      "executionMap": {
-        "title": "Intent → Execution Map",
-        "liveDrift": "Live drift"
-      },
-      "outputTrace": {
-        "title": "INTENT OUTPUT TRACE",
-        "noExpected": "No expected output definition for this intent",
-        "noActual": "This intent did not produce any output",
-        "expected": "Expected:",
-        "actual": "Produced:"
-      },
       "snapshot": {
         "fullSource": "Full source",
-        "noIntent": "No intent snapshot",
         "liveWorkspaceChanged": "Live workspace changed in {keys}. Snapshot stays frozen for this run.",
         "frozen": "Snapshot stays frozen for this run.",
         "title": "Run Snapshot",
         "focus": "Focus",
         "unspecified": "Unspecified",
-        "timeline": "Timeline",
-        "intents": "Intents"
+        "timeline": "Timeline"
       },
       "progressLabel": "{completed}/{total} steps · {percent}%",
       "sections": {
@@ -2143,7 +2151,6 @@
         "more": "More"
       },
       "idleTitle": "Analysis flow",
-      "intentCount": "{count} intents",
       "runStatus": {
         "analyzing": "Analyzing",
         "completed": "Completed",
@@ -2196,46 +2203,11 @@
         "motion": "Motion"
       }
     },
-    "intentPreview": {
-      "title": "This analysis will do:",
-      "empty": "Select an intent for analysis",
-      "outputsTitle": "Expected outputs:",
-      "outputs": {
-        "objectDetection": "Object detection",
-        "anomalyReport": "Anomaly report",
-        "visualFindings": "Visual findings",
-        "recommendations": "Recommendations"
-      }
-    },
     "analysisActions": {
       "viewReport": "View Report",
       "cancel": "Cancel Analysis",
       "start": "Start Analysis",
       "imageAnalysis": "Analyze Image"
-    },
-    "workspace": {
-      "intents": {
-        "visual-inspection": {
-          "label": "Visual inspection",
-          "description": "Examine visual structure, frame composition, and forensic markers.",
-          "preview": "Analyze visual structure and anomalies"
-        },
-        "audio-investigation": {
-          "label": "Audio investigation",
-          "description": "Analyze audio signals, recover details, and identify speakers.",
-          "preview": "Analyze audio signal and anomalies"
-        },
-        "detail-enhancement": {
-          "label": "Detail enhancement",
-          "description": "Generate transcripts and separate audio sources for deeper review.",
-          "preview": "Enhance visual details"
-        },
-        "anomaly-detection": {
-          "label": "Anomaly detection",
-          "description": "Detect visual and audio anomalies, classify sounds, and analyze prosody.",
-          "preview": "Detect possible anomalies"
-        }
-      }
     },
     "capabilities": {
       "visual-structure": {
@@ -2302,7 +2274,7 @@
         "prepareSourceAndProbe": "Prepare the source and complete probe first.",
         "selectAnalysisModule": "Select at least one analysis module.",
         "sourceNotReady": "Source is not ready yet.",
-        "intentSourceUnsupported": "Not available for this source type.",
+        "sourceUnsupported": "Not available for this source type.",
         "requiredToolsNotInstalled": "Required tools not installed.",
         "someToolsMissingPartial": "Some tools missing — partial results.",
         "sourceUrlRequired": "Source URL is required",
@@ -2452,6 +2424,26 @@
           "title": "Motion Anomaly",
           "summary": "Measures coarse motion spikes and transition irregularities."
         },
+        "perceptual-duplicate-frame": {
+          "title": "Perceptual Duplicate Frame",
+          "summary": "Separates exact duplicate frames from perceptual near-copy frame runs."
+        },
+        "optical-flow-tracking": {
+          "title": "Optical-flow Tracking",
+          "summary": "Splits subject and background motion with a lightweight flow proxy."
+        },
+        "compression-signature-mapping": {
+          "title": "Compression Signature Mapping",
+          "summary": "Maps low-light, motion, edge, cadence, and GOP artifact families."
+        },
+        "metadata-provenance-audit": {
+          "title": "Metadata Provenance Audit",
+          "summary": "Cross-checks ffprobe, ExifTool, and MediaInfo metadata when available."
+        },
+        "reference-quality-check": {
+          "title": "Reference Quality Check",
+          "summary": "Reports SSIM/VMAF-style deltas when a reference or pre-upload source exists."
+        },
         "visual-signal-amplification": {
           "title": "Visual Signal Amplification",
           "summary": "Builds brighter reveal-oriented preview variants for manual review."
@@ -2490,6 +2482,22 @@
       "ffmpeg-visual-reveal": {
         "title": "FFmpeg Visual Reveal",
         "summary": "Room-managed FFmpeg reveal filters for preview variants and signal amplification."
+      },
+      "ffmpeg-visual-forensics": {
+        "title": "FFmpeg Visual Forensics",
+        "summary": "Room-managed FFmpeg probes for triage, counter-evidence, and forensic mapping."
+      },
+      "opencv-visual-forensics": {
+        "title": "OpenCV Visual Forensics",
+        "summary": "Optional OpenCV/scikit-image helpers for near-copy and quality metrics."
+      },
+      "metadata-provenance-system": {
+        "title": "Metadata Provenance System",
+        "summary": "Optional host ExifTool and MediaInfo metadata cross-check lane."
+      },
+      "raft-optical-flow-provider": {
+        "title": "RAFT Optical Flow",
+        "summary": "Planned PyTorch/RAFT dense flow provider for later gated rollout."
       },
       "synthetic-visual-forensics": {
         "title": "Synthetic Visual Forensics",

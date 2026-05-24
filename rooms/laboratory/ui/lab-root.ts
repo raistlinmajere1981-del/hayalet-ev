@@ -12,7 +12,6 @@ import { renderLabTopBar } from "./lab-top-bar.js";
 import { renderLabSourcePanel } from "./lab-source-panel.js";
 import { bindLabPreviewInspectionInteractions } from "./lab-preview-inspection-binder.js";
 import { createLabPreviewInspectionController } from "./lab-preview-inspection-controller.js";
-import { bindLabSelectionIntentClicks } from "./lab-selection-intent-binder.js";
 import { bindLabSelectionRoiInteractions } from "./lab-selection-roi-binder.js";
 import { bindLabSelectionSuggestionClicks } from "./lab-selection-suggestion-binder.js";
 import { renderWorkspaceSurface } from "./workspace-surface.js";
@@ -65,7 +64,7 @@ export const __testOnlyLabRootPersistence = {
 };
 
 function readPersistableState(state: LabStoreState) {
-  const { analysisPrepExpandedIntentIds: _analysisPrepExpandedIntentIds, ...workspace } =
+  const { analysisPrepExpandedCapabilityIds: _analysisPrepExpandedCapabilityIds, ...workspace } =
     state.ui.workspace;
   return {
     schemaVersion: 4,
@@ -139,10 +138,6 @@ export function startLaboratoryLabRoot() {
       return getRoiFocusActive(store.getState());
     },
     windowRef,
-  });
-  bindLabSelectionIntentClicks({
-    documentRef,
-    emit: eventBus.emit,
   });
   bindLabSelectionRoiInteractions({
     documentRef,

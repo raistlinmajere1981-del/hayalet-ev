@@ -766,22 +766,24 @@ test("edit action block reason checks probe status", () => {
   assert.equal(getEditActionBlockReason(state2), null);
 });
 
-test("tool relevance filter includes tools from intent-derived capabilities", () => {
+test("tool relevance filter includes tools from selected analysis capabilities", () => {
   const store = createLabStore();
   store.dispatch({
     type: "source-config-patched",
     patch: { kind: "video", mode: "local", storedPath: "/tmp/test.mp4" },
   });
   store.dispatch({ type: "source-probe-completed", action: "source-pick-local" });
-  store.dispatch({
-    type: "workspace-intent-toggled",
-    intentId: "visual-inspection",
-  });
+  store.dispatch({ type: "capability-set", capabilities: ["visual-structure", "visual-forensics"] });
   const state = store.getState();
   const relevance = getToolRelevanceFilter(state);
-  assert.equal(relevance.selectedIntents.includes("visual-inspection"), true);
+  assert.equal(relevance.selectedCapabilities.includes("visual-structure"), true);
+  assert.equal(relevance.selectedCapabilities.includes("visual-forensics"), true);
   assert.equal(relevance.requiredToolIds.includes("ffmpeg"), true);
-  assert.equal(relevance.intentCapabilities.includes("visual-structure"), true);
+  assert.equal(relevance.optionalToolIds.includes("visual-forensics-py"), true);
+  assert.equal(relevance.optionalToolIds.includes("exiftool"), true);
+  assert.equal(relevance.optionalToolIds.includes("mediainfo"), true);
+  assert.equal(relevance.optionalToolIds.includes("ffmpeg-libvmaf"), true);
+  assert.equal(relevance.optionalToolIds.includes("raft-optical-flow"), true);
 });
 
 test("report action block reason checks report availability", () => {
@@ -805,51 +807,53 @@ test("featureStage in tool payloads uses projected lifecycle stage", () => {
 // Overlay grouping: pure relevance, no stageSupport fallback
 // ---------------------------------------------------------------------------
 
-test("tool relevance filter with no intents produces empty requiredToolIds", () => {
+test("tool relevance filter with no selected capabilities produces empty requiredToolIds", () => {
   const store = createLabStore();
   const state = store.getState();
   const relevance = getToolRelevanceFilter(state);
   assert.deepEqual(relevance.requiredToolIds, []);
-  assert.deepEqual(relevance.selectedIntents, []);
+  assert.deepEqual(relevance.optionalToolIds, []);
+  assert.deepEqual(relevance.selectedCapabilities, []);
 });
 
-test("tool relevance filter groups by intent capabilities, not by lifecycle stage", () => {
+test("tool relevance filter groups by selected capabilities, not by lifecycle stage", () => {
   const store = createLabStore();
   store.dispatch({
     type: "source-config-patched",
     patch: { kind: "video", mode: "local", storedPath: "/tmp/test.mp4" },
   });
   store.dispatch({ type: "source-probe-completed", action: "source-pick-local" });
-  // Select audio investigation intent
-  store.dispatch({ type: "workspace-intent-toggled", intentId: "audio-investigation" });
+  store.dispatch({
+    type: "capability-set",
+    capabilities: ["audio-signal", "audio-recovery", "speaker-analysis"],
+  });
   const state = store.getState();
   const relevance = getToolRelevanceFilter(state);
-  // audio-investigation → audio-signal, audio-recovery, speaker-analysis
-  // All require ffmpeg; speaker-analysis requires pyaudioanalysis
   assert.equal(relevance.requiredToolIds.includes("ffmpeg"), true);
   assert.equal(relevance.requiredToolIds.includes("pyaudioanalysis"), true);
   assert.equal(getToolLifecycleStage(state), "edit");
 });
 
-test("switching intents changes tool relevance without stage change", () => {
+test("switching selected capabilities changes tool relevance without stage change", () => {
   const store = createLabStore();
   store.dispatch({
     type: "source-config-patched",
     patch: { kind: "video", mode: "local", storedPath: "/tmp/test.mp4" },
   });
   store.dispatch({ type: "source-probe-completed", action: "source-pick-local" });
-  store.dispatch({ type: "workspace-intent-toggled", intentId: "detail-enhancement" });
+  store.dispatch({
+    type: "capability-set",
+    capabilities: ["transcription", "source-separation"],
+  });
   const state = store.getState();
   const relevance = getToolRelevanceFilter(state);
-  // detail-enhancement → transcription, source-separation
-  // transcription requires transcript-runtime; source-separation requires demucs + ffmpeg
   assert.equal(relevance.requiredToolIds.includes("transcript-runtime"), true);
   assert.equal(relevance.requiredToolIds.includes("demucs"), true);
   assert.equal(relevance.requiredToolIds.includes("ffmpeg"), true);
   assert.equal(getToolLifecycleStage(state), "edit");
 });
 
-test("workspace intent hydration replaces stale capability state in selectors", () => {
+test("workspace hydration keeps selected capability state authoritative", () => {
   const store = createLabStore();
   const baseWorkspace = store.getState().ui.workspace;
 
@@ -861,10 +865,7 @@ test("workspace intent hydration replaces stale capability state in selectors", 
       sourceProbeStatus: "completed",
       toolState: { tools: { ffmpeg: { installed: true } } },
       selectedCapabilities: ["audio-signal"],
-      workspace: {
-        ...baseWorkspace,
-        selectedIntents: ["visual-inspection"],
-      },
+      workspace: baseWorkspace,
     },
   });
 
@@ -877,15 +878,12 @@ test("workspace intent hydration replaces stale capability state in selectors", 
       return entry.id;
     });
 
-  assert.deepEqual(state.selectedCapabilities, ["visual-structure", "visual-forensics"]);
-  assert.deepEqual(getCurrentPreflight(state).enabledModules, [
-    "visual-structure",
-    "visual-forensics",
-  ]);
-  assert.deepEqual(selectedCapabilityIds, ["visual-structure", "visual-forensics"]);
+  assert.deepEqual(state.selectedCapabilities, ["audio-signal"]);
+  assert.deepEqual(getCurrentPreflight(state).enabledModules, ["audio-signal"]);
+  assert.deepEqual(selectedCapabilityIds, ["audio-signal"]);
 });
 
-test("workspace intent hydration clears stale capabilities when no intents remain", () => {
+test("workspace hydration clears selected capabilities when none remain", () => {
   const store = createLabStore();
   const baseWorkspace = store.getState().ui.workspace;
 
@@ -895,11 +893,8 @@ test("workspace intent hydration clears stale capabilities when no intents remai
       featureId: "media-analysis",
       source: { kind: "video", mode: "local", storedPath: "/tmp/test.mp4" },
       sourceProbeStatus: "completed",
-      selectedCapabilities: ["audio-signal"],
-      workspace: {
-        ...baseWorkspace,
-        selectedIntents: [],
-      },
+      selectedCapabilities: [],
+      workspace: baseWorkspace,
     },
   });
 
@@ -909,7 +904,7 @@ test("workspace intent hydration clears stale capabilities when no intents remai
   assert.equal(getAnalysisActionBlockReason(state), "En az bir analiz modülü seçilmelidir.");
 });
 
-test("live intents stay authoritative when manual capability state drifts", () => {
+test("live capability selection stays authoritative after manual capability updates", () => {
   const store = createLabStore();
   store.dispatch({
     type: "source-config-patched",
@@ -917,8 +912,7 @@ test("live intents stay authoritative when manual capability state drifts", () =
   });
   store.getState().toolState = { tools: { ffmpeg: { installed: true } } };
   store.dispatch({ type: "source-probe-completed", action: "source-pick-local" });
-  store.dispatch({ type: "workspace-intent-set", intents: ["visual-inspection"] });
-  store.dispatch({ type: "capability-set", capabilities: ["audio-signal"] });
+  store.dispatch({ type: "capability-set", capabilities: ["visual-structure", "visual-forensics"] });
 
   const state = store.getState();
   const selectedCapabilityIds = getAvailableCapabilities(state)
@@ -939,18 +933,14 @@ test("live intents stay authoritative when manual capability state drifts", () =
 test("controller startDeepAnalysis uses ready workspace analysis selection before stale capability state", () => {
   const source = readFileSync("rooms/laboratory/runtime/lab-run-controller.ts", "utf8");
 
-  assert.match(source, /const selectedIntentIds = getReadySelectedAnalysisIntentIds\(state\);/);
+  assert.match(source, /const selectedCapabilities = getReadySelectedAnalysisCapabilityIds\(state\);/);
   assert.match(
     source,
-    /const intentCapabilities = getReadySelectedAnalysisCapabilityIds\(state\);/
+    /updateAnalysisScopeFromWorkspace\(state, scopeChoice\);/
   );
   assert.match(
     source,
-    /updateAnalysisScopeFromWorkspace\(state, scopeChoice, selectedIntentIds\);/
-  );
-  assert.match(
-    source,
-    /const \{ activeFeatureId \} = deriveFeatureSelectionFromCapabilities\(intentCapabilities\);/
+    /const \{ activeFeatureId \} = deriveFeatureSelectionFromCapabilities\(selectedCapabilities\);/
   );
   assert.match(
     source,

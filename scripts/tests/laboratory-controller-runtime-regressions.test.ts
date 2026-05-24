@@ -19,7 +19,6 @@ import {
   getInspectionMode,
   getRoiFocusActive,
   getSelectionDuration,
-  getSelectionIntent,
   importLabRootModuleWithDomStub,
   installTimerMock,
   isSelectionValid,
@@ -224,7 +223,7 @@ test("laboratory report overlay export buttons send host export actions without 
   }
 });
 
-test("laboratory run controller threads frozen run intent ids into tracked export actions", () => {
+test("laboratory run controller threads frozen run context into tracked export actions", () => {
   const originalElement = globalThis.Element;
   const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
   const documentRef = new FakeControllerDocument();
@@ -279,7 +278,6 @@ test("laboratory run controller threads frozen run intent ids into tracked expor
       emptyReason: null,
       analysisScope: {
         focus: "visual",
-        intentIds: ["visual-inspection"],
       },
       previewArtifacts: [],
       confidence: null,
@@ -318,10 +316,7 @@ test("laboratory run controller threads frozen run intent ids into tracked expor
       }),
       ["export-roi-image", "export-frame-grab", "export-audio-track"]
     );
-    mediaActions.forEach(function (entry) {
-      const payload = entry.payload["payload"] as Record<string, unknown>;
-      assert.deepEqual(payload["intentIds"], ["visual-inspection"]);
-    });
+    assert.ok(mediaActions.every((entry) => typeof entry.payload["payload"] === "object"));
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;
@@ -1146,26 +1141,22 @@ test("laboratory run controller wires v2 shell action buttons into workspace sta
     assert.equal(store.getState().ui.workspace.drawerCollapsed, false);
 
     clickListener?.({
-      target: new TestElement("workspace-intent-toggle", "visual-inspection"),
+      target: new TestElement("analysis-prep-group-toggle", "visual-structure"),
     } as Event);
-    assert.deepEqual(store.getState().ui.workspace.selectedIntents, ["visual-inspection"]);
+    assert.deepEqual(store.getState().selectedCapabilities, ["visual-structure"]);
     assert.equal(
       (store.getState().workbench.moduleToggles as Record<string, unknown>)["frame-consistency"],
       true
     );
-    assert.equal(
-      (store.getState().workbench.moduleToggles as Record<string, unknown>)["hidden-detail-reveal"],
-      true
-    );
 
     clickListener?.({
-      target: new TestElement("module-toggle", "audio-investigation::signal-health"),
+      target: new TestElement("module-toggle", "audio-signal::signal-health"),
     } as Event);
     assert.equal(
       (store.getState().workbench.moduleToggles as Record<string, unknown>)["signal-health"],
       true
     );
-    assert.ok(store.getState().ui.workspace.selectedIntents.includes("audio-investigation"));
+    assert.ok(store.getState().selectedCapabilities.includes("audio-signal"));
 
     clickListener?.({ target: new TestElement("workspace-process-view-toggled") } as Event);
     assert.equal(store.getState().ui.workspace.processViewActive, true);
@@ -1845,7 +1836,6 @@ test("laboratory run controller routes topbar pills and cancel through v2 contra
       emptyReason: null,
       analysisScope: {
         focus: "visual",
-        intentIds: ["visual-inspection"],
       },
       previewArtifacts: [],
       confidence: "high",
@@ -2022,9 +2012,9 @@ test("laboratory run controller honors the analysis preflight auto-run toggle", 
             ffmpeg: { installed: true },
           },
         },
+        selectedCapabilities: ["visual-forensics"],
         workspace: {
           preflightAutoRunEnabled,
-          selectedIntents: ["visual-inspection"],
         },
         reports: {
           user: null,
@@ -2059,11 +2049,6 @@ test("laboratory run controller honors the analysis preflight auto-run toggle", 
     assert.notEqual(enabledPreflightIndex, -1);
     assert.notEqual(enabledRunIndex, -1);
     assert.ok(enabledPreflightIndex < enabledRunIndex);
-    assert.deepEqual(
-      (enabledRun.preflightPayloads[0]?.["analysisScope"] as { intentIds?: string[] } | undefined)
-        ?.intentIds,
-      ["visual-inspection"]
-    );
     assert.deepEqual(enabledRun.processRunStatesDuringSend, ["running"]);
     assert.deepEqual(
       enabledRun.processRunRequestIdsDuringSend,
@@ -2169,9 +2154,9 @@ test("laboratory run controller treats missing area selection as full-media anal
             ffmpeg: { installed: true },
           },
         },
+        selectedCapabilities: ["visual-forensics"],
         workspace: {
           preflightAutoRunEnabled: false,
-          selectedIntents: ["visual-inspection"],
         },
         reports: {
           user: null,
@@ -2191,7 +2176,6 @@ test("laboratory run controller treats missing area selection as full-media anal
 
     assert.equal(prompts.length, 0);
     assert.ok(sentActions.includes("process-run"));
-    assert.deepEqual(analysisScope?.intentIds, ["visual-inspection"]);
     assert.equal(analysisScope?.timeRange, undefined);
     assert.equal(analysisScope?.region, undefined);
     assert.equal(analysisScope?.focus, undefined);
@@ -2273,8 +2257,8 @@ test("laboratory run controller carries active image comparison pair into analys
           comparisonSplitPercent: 38,
           comparisonViewMode: "difference",
           preflightAutoRunEnabled: false,
-          selectedIntents: ["visual-inspection"],
         },
+        selectedCapabilities: ["visual-forensics"],
         reports: {
           user: null,
           ai: null,
@@ -2308,7 +2292,7 @@ test("laboratory run controller carries active image comparison pair into analys
     });
     store.dispatch({ type: "workspace-asset-selected", assetId: "asset-primary" });
     store.dispatch({ type: "workspace-comparison-reference-set", assetId: "asset-reference" });
-    store.dispatch({ type: "workspace-intent-set", intents: ["visual-inspection"] });
+    store.dispatch({ type: "capability-set", capabilities: ["visual-forensics"] });
     store.dispatch({ type: "analysis-preflight-auto-run-toggled", force: false });
     store.dispatch({
       type: "workspace-comparison-updated",
@@ -2468,10 +2452,10 @@ test("laboratory run controller opens an in-room scope overlay for selected rang
         },
         workspace: {
           preflightAutoRunEnabled: false,
-          selectedIntents: ["visual-inspection"],
           timelineStartMs: 1200,
           timelineEndMs: 2600,
         },
+        selectedCapabilities: ["visual-forensics"],
         reports: {
           user: null,
           ai: null,
@@ -3154,8 +3138,8 @@ test("laboratory run controller applies timeline finetune and clear actions from
       endMs: 3000,
     });
     store.dispatch({
-      type: "workspace-selection-intent-updated",
-      intent: "audio",
+      type: "selection-inspection-mode-updated",
+      mode: "audio",
     });
 
     const clickListener = documentRef.listeners.get("click");
@@ -3184,7 +3168,7 @@ test("laboratory run controller applies timeline finetune and clear actions from
 
     assert.equal(store.getState().ui.workspace.timelineStartMs, 1100);
     assert.equal(store.getState().ui.workspace.timelineEndMs, 2500);
-    assert.equal(store.getState().ui.workspace.activeSelection?.intent, "audio");
+    assert.equal(getInspectionMode(store.getState()), "audio");
 
     clickListener?.(
       new FakeMouseEvent(
@@ -3195,7 +3179,7 @@ test("laboratory run controller applies timeline finetune and clear actions from
 
     assert.equal(store.getState().ui.workspace.timelineStartMs, null);
     assert.equal(store.getState().ui.workspace.timelineEndMs, null);
-    assert.equal(getSelectionIntent(store.getState()), "unknown");
+    assert.equal(getInspectionMode(store.getState()), "audio");
   } finally {
     if (originalElement === undefined) {
       delete (globalThis as Record<string, unknown>).Element;
@@ -3220,21 +3204,20 @@ test("laboratory store promotes timeline ranges into stable selection entities",
   const firstSelection = store.getState().ui.workspace.activeSelection;
   assert.ok(firstSelection);
   assert.equal(firstSelection?.type, "clip");
-  assert.equal(firstSelection?.intent, "general");
   assert.equal(firstSelection?.startMs, 1000);
   assert.equal(firstSelection?.endMs, 3000);
   assert.ok(typeof firstSelection?.id === "string" && firstSelection.id.length > 0);
   assert.equal(getActiveSelection(store.getState())?.id, firstSelection?.id);
   assert.equal(isSelectionValid(store.getState()), true);
   assert.equal(getSelectionDuration(store.getState()), 2000);
-  assert.equal(getSelectionIntent(store.getState()), "general");
+  assert.equal(getInspectionMode(store.getState()), "none");
 
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
 
-  assert.equal(getSelectionIntent(store.getState()), "audio");
+  assert.equal(getInspectionMode(store.getState()), "audio");
 
   store.dispatch({
     type: "selection-roi-updated",
@@ -3285,7 +3268,6 @@ test("laboratory store promotes timeline ranges into stable selection entities",
   assert.ok(evolvedSelection);
   assert.equal(evolvedSelection?.id, firstSelection?.id);
   assert.equal(evolvedSelection?.createdAt, firstSelection?.createdAt);
-  assert.equal(evolvedSelection?.intent, "audio");
   assert.equal(evolvedSelection?.startMs, 1200);
   assert.equal(evolvedSelection?.endMs, 3400);
   assert.equal(evolvedSelection?.roi, undefined);
@@ -3301,19 +3283,19 @@ test("laboratory store promotes timeline ranges into stable selection entities",
   assert.equal(store.getState().ui.workspace.activeSelection, null);
   assert.equal(isSelectionValid(store.getState()), false);
   assert.equal(getSelectionDuration(store.getState()), 0);
-  assert.equal(getSelectionIntent(store.getState()), "unknown");
+  assert.equal(getInspectionMode(store.getState()), "audio");
 });
 
-test("laboratory store ignores semantic selection intent updates without an active selection", () => {
+test("laboratory store keeps inspection mode without requiring an active selection", () => {
   const store = createLabStore();
 
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "visual",
+    type: "selection-inspection-mode-updated",
+    mode: "visual",
   });
 
   assert.equal(store.getState().ui.workspace.activeSelection, null);
-  assert.equal(getSelectionIntent(store.getState()), "unknown");
+  assert.equal(getInspectionMode(store.getState()), "visual");
 });
 
 test("laboratory store can synthesize and clear an image inspection selection from semantic roi updates", () => {
@@ -3343,7 +3325,6 @@ test("laboratory store can synthesize and clear an image inspection selection fr
     startMs: 0,
     endMs: 1,
     type: "inspect",
-    intent: "general",
     roi: {
       x: 0.2,
       y: 0.1,

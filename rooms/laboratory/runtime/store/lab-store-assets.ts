@@ -1,4 +1,4 @@
-import { asLabRecord, asNonEmptyString, asNumber, asStringArray } from "../../domain/lab-types.js";
+import { asLabRecord, asNonEmptyString, asNumber } from "../../domain/lab-types.js";
 import type { LabAsset, LabAssetType } from "../../domain/lab-types.js";
 
 const LAB_ASSET_TYPES: LabAssetType[] = [
@@ -30,7 +30,6 @@ export function normalizeStoreAsset(value: unknown): LabAsset | null {
   const derivedFromAssetId = asNonEmptyString(record["derivedFromAssetId"]);
   const derivedFromSourceId = asNonEmptyString(record["derivedFromSourceId"]);
   const runId = asNonEmptyString(record["runId"]);
-  const intentIds = asStringArray(record["intentIds"]);
   const metadata = asLabRecord(record["metadata"]);
 
   return {
@@ -44,7 +43,6 @@ export function normalizeStoreAsset(value: unknown): LabAsset | null {
     ...(derivedFromAssetId === null ? {} : { derivedFromAssetId }),
     ...(derivedFromSourceId === null ? {} : { derivedFromSourceId }),
     ...(runId === null ? {} : { runId }),
-    ...(intentIds.length === 0 ? {} : { intentIds: Array.from(new Set(intentIds)) }),
     ...(Object.keys(metadata).length === 0 ? {} : { metadata }),
   };
 }

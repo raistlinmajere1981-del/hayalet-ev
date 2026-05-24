@@ -37,7 +37,6 @@ function createExecutionPlanId(input: LabExecutionPlannerInput) {
     input.sourceKind || "unknown",
     input.inspectionMode,
     input.activeSelection.type,
-    input.activeSelection.intent,
     String(input.activeSelection.startMs),
     String(input.activeSelection.endMs),
     createRoiSignature(input.activeSelection),

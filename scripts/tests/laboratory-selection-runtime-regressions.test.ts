@@ -2,7 +2,6 @@ import {
   __testOnlyLabPreviewInspectionController,
   assert,
   bindLabPreviewInspectionInteractions,
-  bindLabSelectionIntentClicks,
   bindLabSelectionRoiInteractions,
   bindLabSelectionSuggestionClicks,
   buildInterpretationItems,
@@ -24,8 +23,6 @@ import {
   FakeRoiClearTarget,
   FakeRoiDrawTarget,
   FakeRoiStage,
-  FakeSelectionIntentTarget,
-  FakeSelectionIntentTrigger,
   FakeSelectionSuggestionTarget,
   FakeSelectionSuggestionTrigger,
   FakeWindowEventTarget,
@@ -39,14 +36,13 @@ import {
   getInterpretationItems,
   getRoiFocusActive,
   getRunSnapshotSummary,
-  getSelectionIntent,
   getSelectionSuggestions,
   getWaveformTimelineModel,
   renderLabWaveformTimeline,
   renderWorkspaceSurface,
   test,
 } from "./laboratory-runtime-truth.helpers.ts";
-import { getReadyAnalysisIntents } from "../../rooms/laboratory/runtime/lab-selectors.ts";
+import { getReadyAnalysisPreparationGroups } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 
 import type { LabSelection } from "./laboratory-runtime-truth.helpers.ts";
 
@@ -57,7 +53,6 @@ test("interpretation engine explains audio focus and selection rules with determ
       startMs: 120,
       endMs: 420,
       type: "clip",
-      intent: "audio",
       createdAt: 1,
     },
     audioFocus: createTestAudioFocusSettings({
@@ -164,7 +159,6 @@ test("interpretation engine maps fast playback and wide selection guidance deter
       startMs: 0,
       endMs: 14_000,
       type: "clip",
-      intent: "audio",
       createdAt: 2,
     },
     audioFocus: createTestAudioFocusSettings({
@@ -204,7 +198,6 @@ test("interpretation engine reacts to semantic roi size and fast motion playback
       startMs: 1000,
       endMs: 4000,
       type: "inspect",
-      intent: "motion",
       roi: {
         x: 0.1,
         y: 0.1,
@@ -233,7 +226,6 @@ test("interpretation engine reacts to semantic roi size and fast motion playback
       startMs: 0,
       endMs: 4000,
       type: "inspect",
-      intent: "visual",
       roi: {
         x: 0.05,
         y: 0.05,
@@ -262,7 +254,6 @@ test("interpretation engine flags extreme roi aspect ratios deterministically", 
       startMs: 0,
       endMs: 4_000,
       type: "inspect",
-      intent: "visual",
       roi: {
         x: 0.1,
         y: 0.2,
@@ -349,8 +340,8 @@ test("selection suggestions and waveform model deepen when semantic roi inspecti
     endMs: 16_000,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "visual",
+    type: "selection-inspection-mode-updated",
+    mode: "visual",
   });
   store.dispatch({
     type: "selection-roi-updated",
@@ -376,9 +367,9 @@ test("selection suggestions and waveform model deepen when semantic roi inspecti
   const markup = renderLabWaveformTimeline(model);
 
   assert.deepEqual(toolHintLabels, [
+    "Inspect motion",
     "Enhance clarity",
     "Focus region",
-    "Inspect motion",
     "Stabilize segment",
   ]);
   assert.equal(model.waveformInspectionLens?.enabled, true);
@@ -663,7 +654,6 @@ test("waveform timeline renders selector-driven suggested actions alongside live
     startMs: 12300,
     endMs: 18900,
     type: "clip",
-    intent: "general",
     createdAt: 1700000000000,
   };
   const markup = renderLabWaveformTimeline({
@@ -709,15 +699,10 @@ test("waveform timeline renders selector-driven suggested actions alongside live
   assert.match(markup, /00:12\.300/);
   assert.match(markup, /00:18\.900/);
   assert.match(markup, /Type: Clip/);
-  assert.match(markup, /Intent: General/);
   assert.match(markup, /Region inactive/);
   assert.match(markup, /Inspection mode/);
-  assert.match(markup, /Selection intent/);
   assert.match(markup, /data-lab-selection-inspection-mode="none"/);
   assert.match(markup, /This selection will guide future analysis/);
-  assert.match(markup, /data-selection-intent="general"/);
-  assert.match(markup, /data-lab-selection-intent="anomaly"/);
-  assert.match(markup, /data-lab-selection-intent="general"/);
   assert.match(markup, /aria-pressed="true"/);
   assert.match(markup, /Suggested actions/);
   assert.match(markup, /Ses detaylarini incele/);
@@ -735,7 +720,6 @@ test("waveform timeline renders selector-driven suggested actions alongside live
   assert.doesNotMatch(markup, /Focus region/);
   assert.doesNotMatch(markup, /data-lab-action="[^"]*">Ses detaylarini incele/);
   assert.doesNotMatch(markup, /data-lab-action="[^"]*">Bu bolumu kes/);
-  assert.doesNotMatch(markup, /data-lab-action="workspace-intent-toggle"/);
   assert.doesNotMatch(markup, /timeline-export-clip/);
   assert.doesNotMatch(markup, /timeline-grab-frame/);
 });
@@ -982,45 +966,11 @@ test("image sources keep visual inspection ready for analysis setup", () => {
     },
   });
 
-  const readyIntentIds = getReadyAnalysisIntents(store.getState()).map(function (intent) {
-    return intent.id;
+  const readyCapabilityIds = getReadyAnalysisPreparationGroups(store.getState()).map(function (group) {
+    return group.capabilityId;
   });
 
-  assert.ok(readyIntentIds.includes("visual-inspection"));
-});
-
-test("selection intent binder emits a dedicated semantic selection event", () => {
-  const documentRef = new FakeControllerDocument();
-  const eventBus = createLabEventBus();
-  const store = createLabStore();
-  eventBus.subscribe(store.dispatch);
-  bindLabSelectionIntentClicks({
-    documentRef: documentRef as unknown as Document,
-    emit: eventBus.emit,
-  });
-
-  store.dispatch({
-    type: "workspace-timeline-updated",
-    startMs: 1200,
-    endMs: 2600,
-  });
-
-  const clickListener = documentRef.listeners.get("click");
-  assert.ok(clickListener);
-
-  const clickEvent = new FakeClickEvent(
-    new FakeSelectionIntentTarget(new FakeSelectionIntentTrigger("audio")) as unknown as EventTarget
-  );
-  clickListener?.(clickEvent as unknown as Event);
-
-  assert.equal(clickEvent.defaultPrevented, true);
-  assert.equal(getSelectionIntent(store.getState()), "audio");
-  assert.equal(
-    eventBus.getHistory().some(function (event) {
-      return event.type === "workspace-selection-intent-updated" && event.intent === "audio";
-    }),
-    true
-  );
+  assert.ok(readyCapabilityIds.includes("visual-forensics"));
 });
 
 test("selection suggestion binder emits a passive selection suggestion event", () => {
@@ -1047,8 +997,8 @@ test("selection suggestion binder emits a passive selection suggestion event", (
     endMs: 2600,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
 
   const clickListener = documentRef.listeners.get("click");
@@ -1062,7 +1012,7 @@ test("selection suggestion binder emits a passive selection suggestion event", (
   clickListener?.(clickEvent as unknown as Event);
 
   assert.equal(clickEvent.defaultPrevented, true);
-  assert.equal(store.getState().ui.workspace.activeSelection?.intent, "audio");
+  assert.equal(getInspectionMode(store.getState()), "audio");
   assert.equal(store.getState().ui.activeSuggestionPreviewId, "audio-inspect");
   assert.equal(getActiveSuggestionPreview(store.getState())?.title, "Ses analizi yapilacak");
   assert.equal(store.getState().run, null);
@@ -1119,8 +1069,8 @@ test("selection suggestion binder previews expanded timeline suggestions shown i
     endMs: 2600,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
 
   const clickListener = documentRef.listeners.get("click");
@@ -1191,8 +1141,8 @@ test("selection suggestion binder gates soft execution intent actions by the exa
     endMs: 2600,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
   store.dispatch({
     type: "workspace-selection-suggestion-preview-set",
@@ -2044,10 +1994,6 @@ test("selection suggestion preview dismissal stays stable with stacked document 
   });
   try {
     eventBus.subscribe(store.dispatch);
-    bindLabSelectionIntentClicks({
-      documentRef: documentRef as unknown as Document,
-      emit: eventBus.emit,
-    });
     bindLabSelectionSuggestionClicks({
       canPreviewSuggestion(suggestionId) {
         return getSelectionSuggestions(store.getState()).some(function (suggestion) {
@@ -2076,8 +2022,8 @@ test("selection suggestion preview dismissal stays stable with stacked document 
       endMs: 2600,
     });
     store.dispatch({
-      type: "workspace-selection-intent-updated",
-      intent: "audio",
+      type: "selection-inspection-mode-updated",
+      mode: "audio",
     });
 
     const clickListener = documentRef.listeners.get("click");
@@ -2246,8 +2192,8 @@ test("selection suggestion accept checks the mapped analysis without auto-runnin
     endMs: 2600,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
 
   const clickListener = documentRef.listeners.get("click");
@@ -2269,7 +2215,7 @@ test("selection suggestion accept checks the mapped analysis without auto-runnin
 
   const state = store.getState();
   assert.equal(acceptEvent.defaultPrevented, true);
-  assert.deepEqual(state.ui.workspace.selectedIntents, ["audio-investigation"]);
+  assert.deepEqual(state.selectedCapabilities, ["audio-signal"]);
   assert.equal(state.ui.workspace.selectionTabActive, false);
   assert.equal(sentActions.includes("audio-process-run"), false);
   assert.equal(sentActions.includes("profile-run-preflight"), false);
@@ -2310,8 +2256,8 @@ test("selection suggestion binder ignores invalid preview ids while keeping pass
     endMs: 2600,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
 
   const clickListener = documentRef.listeners.get("click");
@@ -2367,8 +2313,8 @@ test("laboratory store rejects invalid selection preview-set events", () => {
     endMs: 2600,
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
 
   store.dispatch({
@@ -2384,98 +2330,7 @@ test("laboratory store rejects invalid selection preview-set events", () => {
   assert.equal(store.getState().ui.activeSuggestionPreviewId, "audio-inspect");
 });
 
-test("selection intent updates stay fenced from workspace analysis intents", () => {
-  const documentRef = new FakeControllerDocument();
-  const eventBus = createLabEventBus();
-  const store = createLabStore();
-  const baseWorkspace = store.getState().ui.workspace;
-
-  eventBus.subscribe(store.dispatch);
-  bindLabSelectionIntentClicks({
-    documentRef: documentRef as unknown as Document,
-    emit: eventBus.emit,
-  });
-
-  store.dispatch({
-    type: "hydrate",
-    payload: {
-      featureId: "media-analysis",
-      projectIndex: {
-        activeProjectId: "project-1",
-        projects: [],
-      },
-      workbench: {},
-      sourceProbeStatus: "completed",
-      workspace: {
-        ...baseWorkspace,
-        timelineStartMs: 2400,
-        timelineEndMs: 5600,
-        selectedIntents: ["visual-inspection"],
-      },
-      reports: {
-        user: null,
-        ai: null,
-        emptyReason: null,
-      },
-      activityFeed: [],
-      lastRun: {
-        id: "run-1",
-        state: "completed",
-        startedAt: Date.now() - 5000,
-        endedAt: Date.now() - 1000,
-        modules: {},
-        moduleOrder: [],
-        events: [],
-        rawLog: [],
-        artifacts: [],
-        findings: [],
-        liveFindings: [],
-        warnings: [],
-        error: null,
-        targetLabel: null,
-        progress: 100,
-        emptyReason: null,
-        analysisScope: {
-          focus: "visual",
-          timeRange: {
-            startMs: 2400,
-            endMs: 5600,
-          },
-          hypothesis: "frozen clue",
-          intentIds: ["visual-inspection", "anomaly-detection"],
-        },
-        previewArtifacts: [],
-        confidence: "medium",
-        moduleTrace: [],
-        comparisonVariants: [],
-        hypothesisSummary: "frozen clue",
-      },
-    },
-  });
-
-  const clickListener = documentRef.listeners.get("click");
-  assert.ok(clickListener);
-
-  const clickEvent = new FakeClickEvent(
-    new FakeSelectionIntentTarget(new FakeSelectionIntentTrigger("audio")) as unknown as EventTarget
-  );
-  clickListener?.(clickEvent as unknown as Event);
-
-  const state = store.getState();
-  assert.equal(clickEvent.defaultPrevented, true);
-  assert.equal(state.ui.workspace.activeSelection?.intent, "audio");
-  assert.deepEqual(state.ui.workspace.selectedIntents, ["visual-inspection"]);
-  assert.deepEqual(state.run?.analysisScope?.intentIds, ["visual-inspection", "anomaly-detection"]);
-  assert.deepEqual(getRunSnapshotSummary(state), {
-    focus: "visual",
-    timelineStartMs: 2400,
-    timelineEndMs: 5600,
-    hypothesis: "frozen clue",
-    intentIds: ["visual-inspection", "anomaly-detection"],
-  });
-});
-
-test("selection suggestion clicks stay fenced from analysis intents and run execution", () => {
+test("selection suggestion clicks stay fenced from analysis selection and run execution", () => {
   const documentRef = new FakeControllerDocument();
   const eventBus = createLabEventBus();
   const store = createLabStore();
@@ -2514,7 +2369,6 @@ test("selection suggestion clicks stay fenced from analysis intents and run exec
         ...baseWorkspace,
         timelineStartMs: 2400,
         timelineEndMs: 5600,
-        selectedIntents: ["visual-inspection"],
       },
       reports: {
         user: null,
@@ -2546,7 +2400,6 @@ test("selection suggestion clicks stay fenced from analysis intents and run exec
             endMs: 5600,
           },
           hypothesis: "frozen clue",
-          intentIds: ["visual-inspection", "anomaly-detection"],
         },
         previewArtifacts: [],
         confidence: "medium",
@@ -2557,8 +2410,8 @@ test("selection suggestion clicks stay fenced from analysis intents and run exec
     },
   });
   store.dispatch({
-    type: "workspace-selection-intent-updated",
-    intent: "audio",
+    type: "selection-inspection-mode-updated",
+    mode: "audio",
   });
 
   const clickListener = documentRef.listeners.get("click");
@@ -2573,9 +2426,8 @@ test("selection suggestion clicks stay fenced from analysis intents and run exec
 
   const state = store.getState();
   assert.equal(clickEvent.defaultPrevented, true);
-  assert.equal(state.ui.workspace.activeSelection?.intent, "audio");
+  assert.equal(getInspectionMode(state), "audio");
   assert.equal(state.ui.activeSuggestionPreviewId, "audio-inspect");
-  assert.deepEqual(state.ui.workspace.selectedIntents, ["visual-inspection"]);
-  assert.deepEqual(state.run?.analysisScope?.intentIds, ["visual-inspection", "anomaly-detection"]);
+  assert.deepEqual(state.selectedCapabilities, []);
   assert.equal(state.run?.state, "completed");
 });

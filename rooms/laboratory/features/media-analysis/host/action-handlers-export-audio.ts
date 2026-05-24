@@ -35,7 +35,6 @@ type MediaAudioExportActionsDeps = {
     project: LaboratoryRecord,
     payload: LaboratoryRecord
   ) => LaboratoryRecord;
-  getPayloadIntentIds: (payload: LaboratoryRecord) => string[] | undefined;
   getProjectEditOutputDir: (runtime: LaboratoryRecord, project: LaboratoryRecord) => string;
   getProjectId: (project: LaboratoryRecord) => string;
   getSourceDurationMs: (source: LaboratoryRecord) => number | null;
@@ -143,7 +142,6 @@ export function createMediaAudioExportActions(deps: MediaAudioExportActionsDeps)
       throw new Error("The current video source does not expose an audio track.");
     }
 
-    const intentIds = deps.getPayloadIntentIds(payload);
     const settings = deps.readOperationSettings(config.operationId, payload);
 
     await deps.cancelJobsForProject(runtime, projectId, requestId, {
@@ -255,7 +253,6 @@ export function createMediaAudioExportActions(deps: MediaAudioExportActionsDeps)
         name: outputFileName,
         localPath: outputPath,
         ...deps.getOperationSourceAssetLink(project, payload),
-        ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: config.action,
           audioChannels,
@@ -363,7 +360,6 @@ export function createMediaAudioExportActions(deps: MediaAudioExportActionsDeps)
     if (sourceKind !== "video" && sourceKind !== "audio") {
       throw new Error("Audio export is only available for video or audio sources.");
     }
-    const intentIds = deps.getPayloadIntentIds(payload);
     const settings = deps.readOperationSettings("audio-extract", payload);
 
     await deps.cancelJobsForProject(runtime, projectId, requestId, {
@@ -449,7 +445,6 @@ export function createMediaAudioExportActions(deps: MediaAudioExportActionsDeps)
         name: outputFileName,
         localPath: outputPath,
         ...deps.getOperationSourceAssetLink(project, payload),
-        ...(intentIds === undefined ? {} : { intentIds }),
         metadata: {
           action: "export-audio-track",
           audioChannels: channels,

@@ -47,51 +47,42 @@ export function getSelectionSuggestionsForContext(
     suggestions.push(suggestion);
   }
 
-  switch (activeSelection.intent) {
-    case "anomaly":
-      if (sourceKind === "audio" || sourceKind === "video" || sourceKind === "image") {
-        pushSuggestion({
-          id: "analyze-anomaly",
-          label: "Anomaliyi analiz et",
-          actionType: "analyze-segment",
-          confidence: hasSelectionRoi ? 0.94 : 0.9,
-        });
-      }
-      break;
-    case "motion":
-      if (sourceKind === "video") {
-        pushSuggestion({
-          id: "motion-check",
-          label: "Hareket tutarliligini incele",
-          ...(hasSelectionRoi ? { toolHint: "Inspect motion" } : {}),
-          actionType: "analyze-segment",
-          confidence: hasSelectionRoi || inspectionMode === "motion" ? 0.92 : 0.85,
-        });
-      }
-      break;
-    case "audio":
-      if (sourceSupportsAudioSuggestion(sourceKind)) {
-        pushSuggestion({
-          id: "audio-inspect",
-          label: "Ses detaylarini incele",
-          actionType: "inspect-audio",
-          confidence: inspectionMode === "audio" ? 0.93 : 0.9,
-        });
-      }
-      break;
-    case "visual":
-      if (sourceSupportsVisualSuggestion(sourceKind)) {
-        pushSuggestion({
-          id: "enhance-visual",
-          label: "Goruntuyu iyilestir",
-          ...(hasSelectionRoi ? { toolHint: "Enhance clarity" } : {}),
-          actionType: "enhance-visual",
-          confidence: hasSelectionRoi || inspectionMode === "visual" ? 0.86 : 0.8,
-        });
-      }
-      break;
-    default:
-      break;
+  if (sourceKind === "audio" || sourceKind === "video" || sourceKind === "image") {
+    pushSuggestion({
+      id: "analyze-anomaly",
+      label: "Anomaliyi analiz et",
+      actionType: "analyze-segment",
+      confidence: hasSelectionRoi ? 0.94 : 0.9,
+    });
+  }
+
+  if (sourceKind === "video") {
+    pushSuggestion({
+      id: "motion-check",
+      label: "Hareket tutarliligini incele",
+      ...(hasSelectionRoi ? { toolHint: "Inspect motion" } : {}),
+      actionType: "analyze-segment",
+      confidence: hasSelectionRoi || inspectionMode === "motion" ? 0.92 : 0.85,
+    });
+  }
+
+  if (sourceSupportsAudioSuggestion(sourceKind)) {
+    pushSuggestion({
+      id: "audio-inspect",
+      label: "Ses detaylarini incele",
+      actionType: "inspect-audio",
+      confidence: inspectionMode === "audio" ? 0.93 : 0.9,
+    });
+  }
+
+  if (sourceSupportsVisualSuggestion(sourceKind)) {
+    pushSuggestion({
+      id: "enhance-visual",
+      label: "Goruntuyu iyilestir",
+      ...(hasSelectionRoi ? { toolHint: "Enhance clarity" } : {}),
+      actionType: "enhance-visual",
+      confidence: hasSelectionRoi || inspectionMode === "visual" ? 0.86 : 0.8,
+    });
   }
 
   if (hasSelectionRoi && sourceSupportsFocusSuggestion(sourceKind)) {

@@ -1,22 +1,16 @@
-import {
-  asLabRecord,
-  asNonEmptyString,
-  asStringArray,
-  getCapabilityFamilyIdsForIntentId,
-  getIntentIdsForModuleId,
-  getIntentLabel,
-} from "../domain/lab-types.js";
+import { asLabRecord, asNonEmptyString, asStringArray } from "../domain/lab-types.js";
 import type {
   LabAiReport,
   LabArtifactProjection,
   LabBookmark,
   LabComparisonVariant,
+  LabCounterEvidenceLedger,
+  LabDecisionSummary,
+  LabEvidenceStrengthEntry,
   LabCorrelationCluster,
   LabForensicNote,
   LabFindingProjection,
   LabInteractiveSettings,
-  LabIntentId,
-  LabModuleState,
   LabModuleTraceEntry,
   LabNarrativeCue,
   LabROIRegion,
@@ -24,29 +18,6 @@ import type {
   LabUserReport,
 } from "../domain/lab-types.js";
 import type { AnalysisScope } from "../shared/types/analysis-scope.js";
-
-export interface LabIntentReportGroup {
-  intentId: LabIntentId;
-  label: string;
-  findings: LabFindingProjection[];
-  artifacts: LabArtifactProjection[];
-  modules: Array<{
-    id: string;
-    title: string;
-    status: LabModuleState["status"];
-  }>;
-}
-
-const AUDIO_TRANSPORT_CAPABILITY_IDS = [
-  "audio-signal",
-  "audio-recovery",
-  "transcription",
-  "speaker-analysis",
-  "prosody-emotion",
-  "sound-classification",
-  "source-separation",
-  "music-analysis",
-] as const;
 
 type ReportSignalWindow = {
   startSeconds: number | null;
@@ -605,7 +576,9 @@ function buildForensicSignatureMappingNote(
   probeSummary: Record<string, unknown>,
   seen: Set<string>
 ): LabForensicNote | null {
-  const forensicSignature = asLabRecord(probeSummary["forensicSignature"]);
+  const forensicSignature = asLabRecord(
+    probeSummary["compressionSignatureMapping"] || probeSummary["forensicSignature"]
+  );
   const family = asNonEmptyString(forensicSignature["artifactFamily"]);
   if (family === null || family === "baseline_no_dominant_artifact_signature") {
     return null;
@@ -664,11 +637,15 @@ function buildAttributionForensicNote(
   if (classification === null || classification === "baseline") {
     return null;
   }
-  const duplicateFrame = asLabRecord(probeSummary["duplicateFrame"]);
+  const duplicateFrame = asLabRecord(
+    probeSummary["nearDuplicateFrame"] || probeSummary["duplicateFrame"]
+  );
   const compressionSignature = asLabRecord(probeSummary["compressionSignature"]);
   const frameCadence = asLabRecord(probeSummary["frameCadence"]);
   const gopStructure = asLabRecord(probeSummary["gopStructure"]);
-  const opticalFlow = asLabRecord(probeSummary["opticalFlow"]);
+  const opticalFlow = asLabRecord(
+    probeSummary["opticalFlowTracking"] || probeSummary["opticalFlow"]
+  );
   const duplicateRatio = readRecordNumber(duplicateFrame, "exactDuplicateFrameRatio");
   const duplicateCount = readRecordNumber(duplicateFrame, "exactDuplicateFrameCount") || 0;
   const cadenceDriftRatio = readRecordNumber(frameCadence, "cadenceDriftRatio");
@@ -738,7 +715,9 @@ function buildOpticalFlowForensicNote(
   probeSummary: Record<string, unknown>,
   seen: Set<string>
 ): LabForensicNote | null {
-  const opticalFlow = asLabRecord(probeSummary["opticalFlow"]);
+  const opticalFlow = asLabRecord(
+    probeSummary["opticalFlowTracking"] || probeSummary["opticalFlow"]
+  );
   if (!isMeasuredProbeRecord(opticalFlow)) {
     return null;
   }
@@ -779,7 +758,9 @@ function buildDuplicateFrameForensicNote(
   probeSummary: Record<string, unknown>,
   seen: Set<string>
 ): LabForensicNote | null {
-  const duplicateFrame = asLabRecord(probeSummary["duplicateFrame"]);
+  const duplicateFrame = asLabRecord(
+    probeSummary["nearDuplicateFrame"] || probeSummary["duplicateFrame"]
+  );
   const duplicateCount = readRecordNumber(duplicateFrame, "exactDuplicateFrameCount") || 0;
   if (duplicateCount <= 0) {
     return null;
@@ -802,7 +783,9 @@ function buildDuplicateFrameForensicNote(
     id: `forensic-${finding.id}-duplicate-frame`,
     label: "duplicate-frame probe",
     detail: `Measured ${String(duplicateCount)} repeated decoded frame(s) in ${String(sampledFrameCount)} sampled frame(s); ratio ${formatPercent(duplicateRatio)}, longest run ${String(longestRun)} frame(s).`,
-    followUpChecks: isMeasuredProbeRecord(asLabRecord(probeSummary["opticalFlow"]))
+    followUpChecks: isMeasuredProbeRecord(
+      asLabRecord(probeSummary["opticalFlowTracking"] || probeSummary["opticalFlow"])
+    )
       ? ["manual frame-by-frame confirmation"]
       : ["optical-flow motion confirmation"],
     measuredFields: ["framehash duplicate runs", "duplicate-frame ratio"],
@@ -880,18 +863,326 @@ function buildForensicNotes(findings: LabFindingProjection[]): LabForensicNote[]
   return notes.slice(0, 8);
 }
 
+function collectProbeRecord(
+  findings: LabFindingProjection[],
+  keys: string[]
+): Record<string, unknown> {
+  for (const finding of findings) {
+    const probeSummary = asLabRecord(asLabRecord(finding.metadata)["probeSummary"]);
+    for (const key of keys) {
+      const record = asLabRecord(probeSummary[key]);
+      if (Object.keys(record).length > 0) {
+        return record;
+      }
+    }
+  }
+  return {};
+}
+
+function strengthFromScore(score: number | null): LabEvidenceStrengthEntry["strength"] {
+  if (score === null || score <= 0) {
+    return "none";
+  }
+  if (score >= 0.72) {
+    return "strong";
+  }
+  return score >= 0.42 ? "moderate" : "weak";
+}
+
+function buildEvidenceStrength(
+  findings: LabFindingProjection[],
+  correlationClusters: LabCorrelationCluster[]
+): LabEvidenceStrengthEntry[] {
+  const forensicSignature = collectProbeRecord(findings, [
+    "compressionSignatureMapping",
+    "forensicSignature",
+  ]);
+  const compressionSignature = collectProbeRecord(findings, ["compressionSignature"]);
+  const duplicateFrame = collectProbeRecord(findings, ["nearDuplicateFrame", "duplicateFrame"]);
+  const score = readRecordNumber(forensicSignature, "score");
+  const artifactLabel =
+    asNonEmptyString(forensicSignature["artifactLabel"]) || "No dominant artifact signature";
+  const signatureEvidence = asStringArray(forensicSignature["evidence"]);
+  const signatureCounterEvidence = asStringArray(forensicSignature["counterEvidence"]);
+  const mediumOrHighFindings = findings.filter(function (finding) {
+    return finding.level === "high" || finding.level === "medium";
+  });
+  const compressionRisk = asNonEmptyString(compressionSignature["riskLevel"]);
+  const duplicateCount = readRecordNumber(duplicateFrame, "exactDuplicateFrameCount") || 0;
+  const technicalStrength =
+    correlationClusters.length > 0 || mediumOrHighFindings.length > 1
+      ? "moderate"
+      : mediumOrHighFindings.length > 0
+        ? "weak"
+        : "none";
+  const compressionStrength =
+    artifactLabel.includes("compression") ||
+    compressionRisk === "high" ||
+    compressionRisk === "medium"
+      ? strengthFromScore(
+          score ?? (compressionRisk === "high" ? 0.55 : compressionRisk === "medium" ? 0.32 : 0)
+        )
+      : "none";
+  const manipulationStrength =
+    artifactLabel.includes("motion") || duplicateCount > 0
+      ? strengthFromScore(score ?? (duplicateCount > 0 ? 0.2 : 0))
+      : "none";
+
+  return [
+    {
+      id: "technical-anomaly",
+      label: "Technical anomaly strength",
+      strength: technicalStrength,
+      detail:
+        technicalStrength === "none"
+          ? "No medium/high technical anomaly cluster was produced by the active run."
+          : "The report contains technical anomalies, but this is not a final authenticity judgment.",
+      evidence: mediumOrHighFindings.slice(0, 4).map(function (finding) {
+        return finding.title;
+      }),
+      counterEvidence:
+        mediumOrHighFindings.length === 0 ? ["no medium/high technical finding was produced"] : [],
+    },
+    {
+      id: "manipulation",
+      label: "Manipulation-supporting strength",
+      strength: manipulationStrength,
+      detail:
+        manipulationStrength === "none"
+          ? "No manipulation-specific signature crossed the reporting threshold."
+          : "Manipulation remains a hypothesis, not a conclusion, until source/reference review confirms it.",
+      evidence: duplicateCount > 0 ? [`${String(duplicateCount)} repeated decoded frame(s)`] : [],
+      counterEvidence: signatureCounterEvidence.slice(0, 4),
+    },
+    {
+      id: "compression-artifact",
+      label: "Compression/explainable artifact strength",
+      strength: compressionStrength,
+      detail: `Most likely mapped artifact family: ${artifactLabel}.`,
+      evidence: signatureEvidence.slice(0, 5),
+      counterEvidence: signatureCounterEvidence.slice(0, 4),
+    },
+    {
+      id: "extraordinary",
+      label: "Extraordinary/paranormal interpretation",
+      strength: "not-testable",
+      detail:
+        "The Laboratory can test media artifacts and provenance signals; it cannot positively score paranormal or extraordinary claims.",
+      evidence: [],
+      counterEvidence: ["extraordinary interpretation is outside the technical test surface"],
+    },
+  ];
+}
+
+function buildCounterEvidenceLedger(findings: LabFindingProjection[]): LabCounterEvidenceLedger {
+  const duplicateFrame = collectProbeRecord(findings, ["nearDuplicateFrame", "duplicateFrame"]);
+  const compressionSignature = collectProbeRecord(findings, ["compressionSignature"]);
+  const frameCadence = collectProbeRecord(findings, ["frameCadence"]);
+  const metadataProvenance = collectProbeRecord(findings, ["metadataProvenance"]);
+  const opticalFlow = collectProbeRecord(findings, ["opticalFlowTracking", "opticalFlow"]);
+  const referenceQuality = collectProbeRecord(findings, ["referenceQuality"]);
+  const forensicSignature = collectProbeRecord(findings, [
+    "compressionSignatureMapping",
+    "forensicSignature",
+  ]);
+  const duplicateCount = readRecordNumber(duplicateFrame, "exactDuplicateFrameCount") || 0;
+  const cadenceDrift = readRecordNumber(frameCadence, "cadenceDriftRatio") || 0;
+  const compressionRisk = asNonEmptyString(compressionSignature["riskLevel"]);
+  const entries: LabCounterEvidenceLedger["entries"] = [];
+
+  if (isMeasuredProbeRecord(duplicateFrame) && duplicateCount <= 0) {
+    entries.push({
+      id: "duplicate-not-found",
+      label: "Duplicate frames",
+      status: "measured-not-found",
+      detail: "Exact decoded-frame duplicate runs were measured and not found.",
+    });
+  } else if (
+    duplicateCount > 0 &&
+    (readRecordNumber(duplicateFrame, "exactDuplicateFrameRatio") || 0) < 0.12
+  ) {
+    entries.push({
+      id: "duplicate-weak",
+      label: "Duplicate frames",
+      status: "measured-weak",
+      detail: "Repeated decoded frames were present, but the measured ratio stayed weak.",
+    });
+  }
+
+  if (isMeasuredProbeRecord(frameCadence) && cadenceDrift <= 0.08) {
+    entries.push({
+      id: "cadence-not-found",
+      label: "Cadence drift",
+      status: "measured-not-found",
+      detail: "Frame cadence drift was measured below the reporting threshold.",
+    });
+  }
+
+  if (isMeasuredProbeRecord(compressionSignature) && compressionRisk !== "high") {
+    entries.push({
+      id: "compression-weak",
+      label: "Compression signature",
+      status: compressionRisk === "medium" ? "measured-weak" : "measured-not-found",
+      detail: `Compression signature risk was ${compressionRisk || "unknown"}.`,
+    });
+  }
+
+  [
+    {
+      id: "metadata-provenance-not-measured",
+      label: "Metadata provenance",
+      record: metadataProvenance,
+      detail: "ExifTool/MediaInfo provenance cross-check was not measured.",
+    },
+    {
+      id: "reference-quality-not-measured",
+      label: "Reference quality",
+      record: referenceQuality,
+      detail: "Reference/pre-upload quality comparison was not measured.",
+    },
+    {
+      id: "optical-flow-not-measured",
+      label: "Optical-flow tracking",
+      record: opticalFlow,
+      detail: "Subject/background optical-flow split was not measured.",
+    },
+  ].forEach(function (entry) {
+    if (asNonEmptyString(entry.record["status"]) === "unavailable") {
+      entries.push({
+        id: entry.id,
+        label: entry.label,
+        status: "not-measured",
+        detail: asNonEmptyString(entry.record["reason"]) || entry.detail,
+      });
+    }
+  });
+
+  if (asNonEmptyString(metadataProvenance["status"]) === "measured") {
+    const missingToolIds = asStringArray(metadataProvenance["missingToolIds"]);
+    if (missingToolIds.length > 0) {
+      entries.push({
+        id: "metadata-provenance-partial",
+        label: "Metadata provenance",
+        status: "measured-weak",
+        detail: `Metadata provenance was measured with limited coverage; missing tool(s): ${missingToolIds.join(", ")}.`,
+      });
+    }
+    if ((readRecordNumber(metadataProvenance, "mismatchCount") || 0) > 0) {
+      entries.push({
+        id: "metadata-provenance-mismatch",
+        label: "Metadata provenance",
+        status: "follow-up",
+        detail:
+          "Metadata source mismatches were detected and need manual timeline/provenance review.",
+      });
+    }
+  }
+
+  if (asNonEmptyString(referenceQuality["status"]) === "measured") {
+    const toolResults = asLabRecord(referenceQuality["toolResults"]);
+    const vmaf = asLabRecord(toolResults["vmaf"]);
+    const ssim = asLabRecord(toolResults["ssim"]);
+    const partialMetrics = [
+      asNonEmptyString(ssim["status"]) === "unavailable" ? "SSIM" : null,
+      asNonEmptyString(vmaf["status"]) === "unavailable" ? "VMAF" : null,
+    ].filter((entry): entry is string => entry !== null);
+    if (partialMetrics.length > 0) {
+      entries.push({
+        id: "reference-quality-partial",
+        label: "Reference quality",
+        status: "measured-weak",
+        detail: `Reference quality was partially measured; unavailable metric(s): ${partialMetrics.join(", ")}.`,
+      });
+    }
+  }
+
+  asStringArray(forensicSignature["manualReviewPrompts"])
+    .slice(0, 3)
+    .forEach(function (prompt, index) {
+      entries.push({
+        id: `follow-up-${String(index + 1)}`,
+        label: "Review recommendation",
+        status: "follow-up",
+        detail: prompt,
+      });
+    });
+
+  return {
+    summary:
+      entries.length === 0
+        ? "No explicit counter-evidence ledger entries were produced."
+        : `${String(entries.length)} counter-evidence or limitation item(s) were surfaced.`,
+    entries: entries.slice(0, 10),
+  };
+}
+
+function buildDecisionSummary(
+  findings: LabFindingProjection[],
+  evidenceStrength: LabEvidenceStrengthEntry[],
+  counterEvidenceLedger: LabCounterEvidenceLedger
+): LabDecisionSummary {
+  const technicalStrength = evidenceStrength.find((entry) => entry.id === "technical-anomaly");
+  const compressionStrength = evidenceStrength.find((entry) => entry.id === "compression-artifact");
+  const manipulationStrength = evidenceStrength.find((entry) => entry.id === "manipulation");
+  const anomaly =
+    technicalStrength?.strength === "moderate" || technicalStrength?.strength === "strong"
+      ? "yes"
+      : findings.length > 0
+        ? "inconclusive"
+        : "no";
+  const likelyTechnicalExplanation =
+    compressionStrength?.strength === "strong" || compressionStrength?.strength === "moderate"
+      ? compressionStrength.detail
+      : technicalStrength?.strength === "none"
+        ? "No dominant technical anomaly was measured by the active modules."
+        : "Technical artifact or capture/encoding behavior is the most likely testable explanation.";
+  const manipulationSuspicion =
+    manipulationStrength?.strength === "strong"
+      ? "high"
+      : manipulationStrength?.strength === "moderate"
+        ? "medium"
+        : manipulationStrength?.strength === "weak"
+          ? "low"
+          : "inconclusive";
+  return {
+    anomaly,
+    likelyTechnicalExplanation,
+    manipulationSuspicion,
+    needsFollowUp:
+      anomaly !== "no" ||
+      counterEvidenceLedger.entries.some((entry) => entry.status === "not-measured"),
+    rationale:
+      anomaly === "no"
+        ? "The active run did not produce reportable technical anomaly evidence."
+        : "The report is a triage decision based on measured technical signals, counter-evidence, and missing checks.",
+    limitations: counterEvidenceLedger.entries
+      .filter((entry) => entry.status === "not-measured")
+      .map((entry) => entry.detail)
+      .slice(0, 4),
+  };
+}
+
 function buildReportInsights(
   run: LabRun,
   findings: LabFindingProjection[]
 ): {
   correlationClusters: LabCorrelationCluster[];
+  counterEvidenceLedger: LabCounterEvidenceLedger;
+  decisionSummary: LabDecisionSummary;
+  evidenceStrength: LabEvidenceStrengthEntry[];
   narrativeCues: LabNarrativeCue[];
   forensicNotes: LabForensicNote[];
 } {
   const narrativeCues = buildNarrativeCues(run, run.artifacts, findings);
   const signals = buildCorrelationSignals(run, findings, narrativeCues);
+  const correlationClusters = buildCorrelationClusters(signals);
+  const evidenceStrength = buildEvidenceStrength(findings, correlationClusters);
+  const counterEvidenceLedger = buildCounterEvidenceLedger(findings);
   return {
-    correlationClusters: buildCorrelationClusters(signals),
+    correlationClusters,
+    counterEvidenceLedger,
+    decisionSummary: buildDecisionSummary(findings, evidenceStrength, counterEvidenceLedger),
+    evidenceStrength,
     forensicNotes: buildForensicNotes(findings),
     narrativeCues,
   };
@@ -999,6 +1290,9 @@ export function buildUserReport(run: LabRun | null, reportRecord: unknown): LabU
     topCorrelationClusters: insights.correlationClusters.slice(0, 3),
     narrativeCues: insights.narrativeCues,
     forensicNotes: insights.forensicNotes,
+    decisionSummary: insights.decisionSummary,
+    evidenceStrength: insights.evidenceStrength,
+    counterEvidenceLedger: insights.counterEvidenceLedger,
   };
 }
 
@@ -1050,127 +1344,10 @@ export function buildAiReport(run: LabRun | null, reportRecord: unknown): LabAiR
     correlationClusters: insights.correlationClusters,
     narrativeCues: insights.narrativeCues,
     forensicNotes: insights.forensicNotes,
+    decisionSummary: insights.decisionSummary,
+    evidenceStrength: insights.evidenceStrength,
+    counterEvidenceLedger: insights.counterEvidenceLedger,
   };
-}
-
-export function buildIntentReportGroups(run: LabRun | null): LabIntentReportGroup[] {
-  if (!run) {
-    return [];
-  }
-
-  const scopeIntentIds = Array.isArray(run.analysisScope?.intentIds)
-    ? run.analysisScope.intentIds.filter((entry): entry is LabIntentId => typeof entry === "string")
-    : [];
-  const orderedIntentIds = scopeIntentIds.filter(function (intentId, index) {
-    return scopeIntentIds.indexOf(intentId) === index;
-  });
-
-  function resolveTransportIntentIds(moduleId: string | null) {
-    if (moduleId === "motion") {
-      return orderedIntentIds.filter(function (intentId) {
-        return getCapabilityFamilyIdsForIntentId(intentId).includes("visual-structure");
-      });
-    }
-    if (moduleId === "visual-signal") {
-      return orderedIntentIds.filter(function (intentId) {
-        return getCapabilityFamilyIdsForIntentId(intentId).includes("visual-forensics");
-      });
-    }
-    if (moduleId === "audio") {
-      const fallbackCapabilityIds = orderedIntentIds
-        .flatMap(function (intentId) {
-          return getCapabilityFamilyIdsForIntentId(intentId);
-        })
-        .filter(function (capabilityId, index, allCapabilityIds) {
-          return (
-            AUDIO_TRANSPORT_CAPABILITY_IDS.includes(
-              capabilityId as (typeof AUDIO_TRANSPORT_CAPABILITY_IDS)[number]
-            ) && allCapabilityIds.indexOf(capabilityId) === index
-          );
-        });
-      if (fallbackCapabilityIds.length === 0) {
-        return [];
-      }
-      return orderedIntentIds.filter(function (intentId) {
-        const intentCapabilityIds = getCapabilityFamilyIdsForIntentId(intentId);
-        return fallbackCapabilityIds.some(function (capabilityId) {
-          return intentCapabilityIds.includes(capabilityId);
-        });
-      });
-    }
-    if (moduleId === "report" && orderedIntentIds.length === 1) {
-      return orderedIntentIds.slice();
-    }
-    return [];
-  }
-
-  function resolveIntentIdsForGroupedItem(moduleId: string | null) {
-    const mappedIntentIds = getIntentIdsForModuleId(moduleId).filter(function (intentId) {
-      return orderedIntentIds.includes(intentId);
-    });
-    if (mappedIntentIds.length > 0) {
-      return mappedIntentIds;
-    }
-    const transportIntentIds = resolveTransportIntentIds(moduleId);
-    if (transportIntentIds.length > 0) {
-      return transportIntentIds;
-    }
-    if (orderedIntentIds.length === 1 && moduleId === null) {
-      return orderedIntentIds.slice();
-    }
-    return [];
-  }
-
-  return orderedIntentIds.map(function (intentId) {
-    const findings = run.findings.filter(function (finding) {
-      const candidateModuleIds = [finding.moduleId, finding.sourceModule].filter(
-        (moduleId): moduleId is string => typeof moduleId === "string" && moduleId.trim() !== ""
-      );
-      if (candidateModuleIds.length === 0) {
-        return resolveIntentIdsForGroupedItem(null).includes(intentId);
-      }
-      return candidateModuleIds.some(function (moduleId) {
-        return resolveIntentIdsForGroupedItem(moduleId).includes(intentId);
-      });
-    });
-    const artifacts = run.artifacts.filter(function (artifact) {
-      const metadataSourceModule = asNonEmptyString(asLabRecord(artifact.metadata)["sourceModule"]);
-      const candidateModuleIds = [artifact.moduleId, metadataSourceModule].filter(
-        (moduleId): moduleId is string => typeof moduleId === "string" && moduleId.trim() !== ""
-      );
-      if (candidateModuleIds.length === 0) {
-        return resolveIntentIdsForGroupedItem(null).includes(intentId);
-      }
-      return candidateModuleIds.some(function (moduleId) {
-        return resolveIntentIdsForGroupedItem(moduleId).includes(intentId);
-      });
-    });
-    const modules = run.moduleOrder
-      .filter(function (moduleId) {
-        const module = run.modules[moduleId];
-        const metadataModuleIds = asStringArray(asLabRecord(module?.metadata)["moduleIds"]);
-        const candidateModuleIds = [moduleId].concat(metadataModuleIds);
-        return candidateModuleIds.some(function (candidateModuleId) {
-          return resolveIntentIdsForGroupedItem(candidateModuleId).includes(intentId);
-        });
-      })
-      .map(function (moduleId) {
-        const module = run.modules[moduleId];
-        return {
-          id: moduleId,
-          title: module?.title || moduleId,
-          status: module?.status || "idle",
-        };
-      });
-
-    return {
-      intentId,
-      label: getIntentLabel(intentId),
-      findings,
-      artifacts,
-      modules,
-    };
-  });
 }
 
 /** V2.3: Build workspace context snapshot for report enrichment */
@@ -1179,7 +1356,6 @@ export interface LabWorkspaceReportContext {
   roiRegions: LabROIRegion[];
   interactiveSettings: LabInteractiveSettings;
   hypothesis: string;
-  selectedIntents: LabIntentId[];
   bookmarks: LabBookmark[];
 }
 
@@ -1190,7 +1366,6 @@ export function buildWorkspaceContext(workspaceState: {
   interactiveSettings: LabInteractiveSettings;
   hypothesis: string;
   bookmarks: LabBookmark[];
-  selectedIntents: LabIntentId[];
 }): LabWorkspaceReportContext {
   return {
     timeRange: {
@@ -1202,7 +1377,6 @@ export function buildWorkspaceContext(workspaceState: {
     }),
     interactiveSettings: { ...workspaceState.interactiveSettings },
     hypothesis: workspaceState.hypothesis,
-    selectedIntents: workspaceState.selectedIntents.slice(),
     bookmarks: workspaceState.bookmarks.slice().sort(function (a, b) {
       return a.timeMs - b.timeMs;
     }),
