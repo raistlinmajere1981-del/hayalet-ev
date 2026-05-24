@@ -36,7 +36,15 @@ export type LocalAuthoredSource = {
   origin: string;
   note: string;
   createdAt: string;
+  segments?: readonly LocalAuthoredSourceSegment[];
   importBatchId?: string | null;
+};
+
+export type LocalAuthoredSourceSegment = {
+  id: string;
+  label: string;
+  text: string;
+  order: number;
 };
 
 export type LocalAuthoredEvidence = {
@@ -46,7 +54,14 @@ export type LocalAuthoredEvidence = {
   interpretation: string | null;
   layer: PatternLayer;
   createdAt: string;
+  sourceId?: string | null;
+  sourceLabel?: string | null;
   importBatchId?: string | null;
+};
+
+export type LocalAuthoredEvidenceOptions = {
+  sourceId?: string | null;
+  sourceLabel?: string | null;
 };
 
 export type LocalAuthoredEdge = {
@@ -151,7 +166,8 @@ export type PatternRoomLocalState = {
     label: string,
     excerpt: string,
     interpretation?: string,
-    layer?: PatternLayer
+    layer?: PatternLayer,
+    options?: LocalAuthoredEvidenceOptions
   ) => void;
   addAuthoredEdge: (
     edgeType: PatternEdgeType,
@@ -223,9 +239,25 @@ function cloneAuthoredNodes(nodes: readonly LocalAuthoredNode[]): LocalAuthoredN
   });
 }
 
+function cloneAuthoredSourceSegments(
+  segments: readonly LocalAuthoredSourceSegment[] | undefined
+): LocalAuthoredSourceSegment[] | undefined {
+  if (segments === undefined) {
+    return undefined;
+  }
+
+  return segments.map((segment) => {
+    return { ...segment };
+  });
+}
+
 function cloneAuthoredSources(sources: readonly LocalAuthoredSource[]): LocalAuthoredSource[] {
   return sources.map((source) => {
-    return { ...source };
+    const segments = cloneAuthoredSourceSegments(source.segments);
+    return {
+      ...source,
+      ...(segments === undefined ? {} : { segments }),
+    };
   });
 }
 
@@ -295,6 +327,32 @@ function createDuplicateKey(...parts: readonly string[]): string {
       return part.trim().toLocaleLowerCase();
     })
     .join("\n");
+}
+
+function normalizeLocalSourceSegments(
+  segments: readonly LocalAuthoredSourceSegment[] | undefined
+): LocalAuthoredSourceSegment[] {
+  if (segments === undefined) {
+    return [];
+  }
+
+  return segments.flatMap((segment, index) => {
+    const id = segment.id.trim();
+    const label = segment.label.trim();
+    const text = segment.text.trim();
+    if (id === "" || label === "" || text === "") {
+      return [];
+    }
+
+    return [
+      {
+        id,
+        label,
+        text,
+        order: Number.isFinite(segment.order) ? segment.order : index,
+      },
+    ];
+  });
 }
 
 function readOptionalImportText(value: string | null): string | null {
@@ -479,11 +537,13 @@ export function createLocalState(
     origin: string,
     note: string,
     createdAt = new Date().toISOString(),
-    importBatchId?: string
+    importBatchId?: string,
+    segments?: readonly LocalAuthoredSourceSegment[]
   ): string | null {
     const trimmedLabel = label.trim();
     const trimmedOrigin = origin.trim();
     const trimmedNote = note.trim();
+    const localSegments = normalizeLocalSourceSegments(segments);
     if (trimmedLabel === "" || trimmedOrigin === "") {
       return null;
     }
@@ -496,6 +556,7 @@ export function createLocalState(
       origin: trimmedOrigin,
       note: trimmedNote,
       createdAt,
+      ...(localSegments.length === 0 ? {} : { segments: localSegments }),
       ...(importBatchId === undefined ? {} : { importBatchId }),
     });
     return id;
@@ -507,11 +568,14 @@ export function createLocalState(
     interpretation?: string,
     layer?: PatternLayer,
     createdAt = new Date().toISOString(),
-    importBatchId?: string
+    importBatchId?: string,
+    options?: LocalAuthoredEvidenceOptions
   ): string | null {
     const trimmedLabel = label.trim();
     const trimmedExcerpt = excerpt.trim();
     const trimmedInterpretation = interpretation?.trim() ?? "";
+    const trimmedSourceId = options?.sourceId?.trim() ?? "";
+    const trimmedSourceLabel = options?.sourceLabel?.trim() ?? "";
     if (trimmedLabel === "" || trimmedExcerpt === "") {
       return null;
     }
@@ -525,6 +589,8 @@ export function createLocalState(
       interpretation: trimmedInterpretation === "" ? null : trimmedInterpretation,
       layer: layer ?? "evidence",
       createdAt,
+      ...(trimmedSourceId === "" ? {} : { sourceId: trimmedSourceId }),
+      ...(trimmedSourceLabel === "" ? {} : { sourceLabel: trimmedSourceLabel }),
       ...(importBatchId === undefined ? {} : { importBatchId }),
     });
     return id;
@@ -615,10 +681,6 @@ export function createLocalState(
       }
     }
     return initialLength - deskNodeIds.length;
-  }
-
-  function removeDebateReference(entityId: string): number {
-    return removeDebateReferences(new Set([entityId]));
   }
 
   function removeDebateReferences(entityIds: ReadonlySet<string>): number {
@@ -758,7 +820,8 @@ export function createLocalState(
         source.origin,
         source.note,
         importedAt,
-        importBatchId
+        importBatchId,
+        source.segments
       );
       if (localId === null) {
         summary.warnings.push(`Source draft skipped because it was incomplete: ${source.draftId}`);
@@ -933,12 +996,23 @@ export function createLocalState(
     }
 
     const summary = createEmptyCleanupSummary();
+    const removedEntityIds = new Set<string>([trimmedSourceId]);
     localAuthoredSources.splice(sourceIndex, 1);
     summary.sourcesRemoved = 1;
+
+    for (let index = localAuthoredEvidence.length - 1; index >= 0; index -= 1) {
+      const evidence = localAuthoredEvidence[index];
+      if (evidence?.sourceId === trimmedSourceId) {
+        localAuthoredEvidence.splice(index, 1);
+        removedEntityIds.add(evidence.id);
+        summary.evidenceRemoved += 1;
+      }
+    }
+
     summary.pinsRemoved = removePinnedSourceReference(trimmedSourceId);
-    summary.refsRemoved = removeDebateReference(trimmedSourceId);
-    summary.turnRefsRemoved = removeDebateTurnReferences(new Set([trimmedSourceId]));
-    summary.edgesRemoved = removeLocalEdgesTouchingEntities(new Set([trimmedSourceId]));
+    summary.refsRemoved = removeDebateReferences(removedEntityIds);
+    summary.turnRefsRemoved = removeDebateTurnReferences(removedEntityIds);
+    summary.edgesRemoved = removeLocalEdgesTouchingEntities(removedEntityIds);
     summary.edgesRemoved += sweepOrphanLocalEdges();
     notify();
 
@@ -1172,9 +1246,20 @@ export function createLocalState(
       label: string,
       excerpt: string,
       interpretation?: string,
-      layer?: PatternLayer
+      layer?: PatternLayer,
+      options?: LocalAuthoredEvidenceOptions
     ): void {
-      if (addAuthoredEvidenceRecord(label, excerpt, interpretation, layer)) {
+      if (
+        addAuthoredEvidenceRecord(
+          label,
+          excerpt,
+          interpretation,
+          layer,
+          undefined,
+          undefined,
+          options
+        )
+      ) {
         notify();
       }
     },

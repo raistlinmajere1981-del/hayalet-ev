@@ -110,6 +110,14 @@ export type SourceImportSourceDraft = {
   note: string;
   sourceKind: SourceKind;
   patternSourceType: PatternSourceType;
+  segments?: readonly SourceImportSourceSegmentDraft[];
+};
+
+export type SourceImportSourceSegmentDraft = {
+  id: string;
+  label: string;
+  text: string;
+  order: number;
 };
 
 export type SourceImportEvidenceDraft = {

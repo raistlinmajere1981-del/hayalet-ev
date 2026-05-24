@@ -264,12 +264,22 @@ function adaptLocalAuthoredEvidencePin(evidence: LocalAuthoredEvidence): Pattern
     tone: LAYER_TONES.evidence,
     confidenceLabel: "Yerel",
     content: `${evidence.excerpt}${interpretation}`,
-    sourceId: null,
-    sourceLabel: "Yerel kanıt notu",
+    sourceId: evidence.sourceId ?? null,
+    sourceLabel: evidence.sourceLabel ?? "Yerel kanıt notu",
     origin: LAYER_LABELS[evidence.layer],
     kind: "evidence",
     isLocal: true,
   };
+}
+
+function formatLocalEvidenceReportBullet(evidence: LocalAuthoredEvidence): string {
+  const sourceLabel =
+    evidence.sourceLabel === undefined || evidence.sourceLabel === null
+      ? ""
+      : ` Kaynak: ${evidence.sourceLabel}`;
+  const interpretation =
+    evidence.interpretation === null ? "" : ` Yorum: ${evidence.interpretation}`;
+  return `${evidence.label}: ${evidence.excerpt}${sourceLabel}${interpretation}`;
 }
 
 function createLayerPlaceholderPin(layer: PatternLayer): PatternBoardPin {
@@ -335,6 +345,7 @@ function adaptLocalAuthoredSource(source: LocalAuthoredSource): PatternSource {
     status: "local",
     note,
     notePreview: createArchiveSourceNotePreview(note),
+    ...(source.segments === undefined ? {} : { segments: source.segments }),
     isLocal: true,
   };
 }
@@ -767,11 +778,7 @@ export function adaptReportViewModel(
       label: "Yerel Kanıt Notları",
       tone: "evidence",
       note: "Oda içinde eklenen kanıt notları raporda ayrı tutulur.",
-      bullets: overlay.localAuthoredEvidence.map((evidence) => {
-        return evidence.interpretation === null
-          ? `${evidence.label}: ${evidence.excerpt}`
-          : `${evidence.label}: ${evidence.excerpt} Yorum: ${evidence.interpretation}`;
-      }),
+      bullets: overlay.localAuthoredEvidence.map(formatLocalEvidenceReportBullet),
     });
   }
 

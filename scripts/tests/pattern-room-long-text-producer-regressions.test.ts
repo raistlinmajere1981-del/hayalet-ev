@@ -233,6 +233,10 @@ test("pattern-room long text output imports as a source draft without board-read
   assert.equal(importResult.sources[0]?.sourceKind, "article");
   assert.equal(importResult.sources[0]?.patternSourceType, "unknown");
   assert.equal(importResult.sources[0]?.note, parsed.cleanedText);
+  assert.deepEqual(
+    importResult.sources[0]?.segments?.map((segment) => segment.id),
+    parsed.segments.map((segment) => segment.segmentId)
+  );
   assert.deepEqual(importResult.evidence, []);
   assert.deepEqual(importResult.nodes, []);
   assert.deepEqual(importResult.edges, []);

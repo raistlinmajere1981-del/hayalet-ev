@@ -5,6 +5,7 @@ import type {
   PatternPanelActions,
   PatternRoomMockData,
   PatternSampleSourceImportStatus,
+  PatternSourceSegment,
   PatternUserTextSourceImportStatus,
 } from "../../shared/types/pattern-room.js";
 import { createActionButton, createElement, createPanelShell } from "./pattern-panel-utils.js";
@@ -12,14 +13,25 @@ import { createActionButton, createElement, createPanelShell } from "./pattern-p
 const REMOVE_LOCAL_SOURCE_CONFIRMATION = "Bu yerel kaynak odadan kaldırılacak. Devam edilsin mi?";
 const RESET_LOCAL_SESSION_CONFIRMATION =
   "Tüm yerel kaynaklar, notlar ve geçici tartışma izleri temizlenecek. Hazır konu verileri korunur. Devam edilsin mi?";
+const SOURCE_SEGMENT_PREVIEW_LENGTH = 120;
+
 type PatternArchivePanelSelection = {
   selectedSourceId: string | null;
   onSelectSource: (sourceId: string | null) => void;
+  evidenceCaptureStatus: string | null;
+  onEvidenceCaptureStatusChange: (message: string | null) => void;
+};
+
+type SourceEvidenceCaptureForm = {
+  element: HTMLElement;
+  prepareFromSegment: (segment: PatternSourceSegment) => void;
 };
 
 const DEFAULT_ARCHIVE_PANEL_SELECTION: PatternArchivePanelSelection = {
   selectedSourceId: null,
   onSelectSource: () => {},
+  evidenceCaptureStatus: null,
+  onEvidenceCaptureStatusChange: () => {},
 };
 
 const LONG_TEXT_SOURCE_KIND_OPTIONS = [
@@ -288,9 +300,177 @@ function createSourceDetailMeta(label: string, value: string): HTMLElement {
   return item;
 }
 
+function createSourceSegmentPreview(text: string): string {
+  const normalizedText = text.replace(/\s+/g, " ").trim();
+  if (normalizedText.length <= SOURCE_SEGMENT_PREVIEW_LENGTH) {
+    return normalizedText;
+  }
+  return `${normalizedText.slice(0, SOURCE_SEGMENT_PREVIEW_LENGTH).trimEnd()}…`;
+}
+
+function createSourceSegmentButton(
+  segment: PatternSourceSegment,
+  segmentNumber: number,
+  onSelect: (segment: PatternSourceSegment) => void
+): HTMLButtonElement {
+  const button = createElement("button", "pattern-room-source-segment-button");
+  button.type = "button";
+  button.dataset["patternArchiveSourceSegment"] = segment.id;
+  button.dataset["patternArchiveSourceSegmentSelected"] = "false";
+  button.append(
+    createElement("span", "pattern-room-source-segment-number", String(segmentNumber)),
+    createElement("strong", undefined, segment.label),
+    createElement("p", undefined, createSourceSegmentPreview(segment.text))
+  );
+  button.addEventListener("click", () => {
+    onSelect(segment);
+  });
+  return button;
+}
+
+function createSourceSegmentsNavigator(
+  source: PatternSource,
+  onPrepareEvidence: (segment: PatternSourceSegment) => void
+): HTMLElement | null {
+  const orderedSegments = [...(source.segments ?? [])].sort((left, right) => {
+    return left.order - right.order;
+  });
+  if (orderedSegments.length === 0) {
+    return null;
+  }
+
+  const section = createElement("section", "pattern-room-source-segments");
+  section.dataset["patternArchiveSourceSegments"] = source.id;
+  const list = createElement("div", "pattern-room-source-segment-list");
+  const selectedSegmentText = createElement(
+    "pre",
+    "pattern-room-source-segment-text",
+    "Bir segment seç."
+  );
+  selectedSegmentText.dataset["patternArchiveSourceSegmentText"] = source.id;
+  const selectedSegmentDetail = createElement("div", "pattern-room-source-segment-detail");
+  selectedSegmentDetail.dataset["patternArchiveSourceSegmentDetail"] = source.id;
+  let selectedSegment: PatternSourceSegment | null = null;
+  const selectedSegmentHint = createElement(
+    "p",
+    "pattern-room-inline-note",
+    "Seçili segmenti kanıt formuna aktarır; otomatik analiz yapmaz."
+  );
+  const prepareEvidenceButton = createActionButton("Bu Segmentten Kanıt Hazırla", () => {
+    if (selectedSegment === null) {
+      return;
+    }
+
+    onPrepareEvidence(selectedSegment);
+  });
+  prepareEvidenceButton.disabled = true;
+  prepareEvidenceButton.dataset["patternArchivePrepareSegmentEvidence"] = source.id;
+  selectedSegmentDetail.append(
+    createElement("h4", undefined, "Seçili segment"),
+    selectedSegmentText,
+    selectedSegmentHint,
+    prepareEvidenceButton
+  );
+
+  const buttons: HTMLButtonElement[] = [];
+  const selectSegment = (nextSegment: PatternSourceSegment): void => {
+    selectedSegment = nextSegment;
+    buttons.forEach((button) => {
+      const isSelected = button.dataset["patternArchiveSourceSegment"] === nextSegment.id;
+      button.dataset["patternArchiveSourceSegmentSelected"] = isSelected ? "true" : "false";
+      if (isSelected) {
+        button.classList.add("selected-segment");
+        return;
+      }
+      button.classList.remove("selected-segment");
+    });
+    selectedSegmentDetail.dataset["patternArchiveSelectedSegment"] = nextSegment.id;
+    selectedSegmentText.textContent = nextSegment.text;
+    prepareEvidenceButton.disabled = false;
+  };
+
+  orderedSegments.forEach((segment, index) => {
+    const button = createSourceSegmentButton(segment, index + 1, selectSegment);
+    buttons.push(button);
+    list.append(button);
+  });
+
+  section.append(createElement("h3", undefined, "Segmentler"), list, selectedSegmentDetail);
+  return section;
+}
+
+function createSourceEvidenceCaptureForm(
+  source: PatternSource,
+  actions: PatternPanelActions,
+  selection: PatternArchivePanelSelection
+): SourceEvidenceCaptureForm {
+  const section = createElement("section", "pattern-room-source-evidence-capture");
+  section.dataset["patternArchiveEvidenceCapture"] = source.id;
+  const form = createElement("form", "pattern-room-inline-form");
+  form.dataset["patternArchiveEvidenceForm"] = source.id;
+  const label = createTextInput("label", "Kanıt başlığı");
+  label.dataset["patternArchiveEvidenceLabel"] = source.id;
+  const excerpt = createTextArea("excerpt", "Alıntı / pasaj");
+  excerpt.dataset["patternArchiveEvidenceExcerpt"] = source.id;
+  const interpretation = createTextArea("interpretation", "Yorum / bağlam (opsiyonel)");
+  interpretation.dataset["patternArchiveEvidenceInterpretation"] = source.id;
+  const submit = createSubmitButton("Kanıt Notu Oluştur");
+  submit.dataset["patternCreateSourceEvidence"] = source.id;
+  const status = createElement(
+    "p",
+    "pattern-room-source-evidence-status",
+    selection.evidenceCaptureStatus ?? ""
+  );
+  status.dataset["patternArchiveEvidenceStatus"] = source.id;
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (label.value.trim() === "") {
+      status.textContent = "Kanıt başlığı boş olamaz.";
+      selection.onEvidenceCaptureStatusChange(status.textContent);
+      return;
+    }
+    if (excerpt.value.trim() === "") {
+      status.textContent = "Alıntı boş olamaz.";
+      selection.onEvidenceCaptureStatusChange(status.textContent);
+      return;
+    }
+
+    selection.onEvidenceCaptureStatusChange("Kanıt notu panoya eklendi.");
+    actions.addAuthoredEvidence(label.value, excerpt.value, interpretation.value, "evidence", {
+      sourceId: source.id,
+      sourceLabel: source.label,
+    });
+    if (typeof form.reset === "function") {
+      form.reset();
+    }
+  });
+
+  form.append(label, excerpt, interpretation, submit, status);
+  section.append(
+    createElement("h3", undefined, "Bu kaynaktan kanıt notu oluştur"),
+    createElement(
+      "p",
+      "pattern-room-inline-note",
+      "Bu işlem otomatik analiz yapmaz; seçtiğin pasajı yerel kanıt notu olarak panoya ekler."
+    ),
+    form
+  );
+  return {
+    element: section,
+    prepareFromSegment(segment: PatternSourceSegment): void {
+      label.value = segment.label;
+      excerpt.value = segment.text;
+      interpretation.value = "";
+    },
+  };
+}
+
 function createArchiveSourceDetail(
   source: PatternSource | undefined,
-  selectedSourceId: string | null
+  selectedSourceId: string | null,
+  actions: PatternPanelActions,
+  selection: PatternArchivePanelSelection
 ): HTMLElement {
   const detail = createElement("section", "pattern-room-source-detail");
   detail.dataset["patternArchiveSourceDetail"] = "true";
@@ -316,8 +496,19 @@ function createArchiveSourceDetail(
   );
   const fullText = createElement("pre", "pattern-room-source-detail-text", source.note);
   fullText.dataset["patternArchiveSourceFullText"] = source.id;
+  const evidenceCaptureForm = createSourceEvidenceCaptureForm(source, actions, selection);
+  const segmentsNavigator = createSourceSegmentsNavigator(
+    source,
+    evidenceCaptureForm.prepareFromSegment
+  );
 
-  detail.append(createElement("h3", undefined, source.label), meta, fullText);
+  detail.append(
+    createElement("h3", undefined, source.label),
+    meta,
+    fullText,
+    ...(segmentsNavigator === null ? [] : [segmentsNavigator]),
+    evidenceCaptureForm.element
+  );
   return detail;
 }
 
@@ -423,7 +614,7 @@ export function createArchivePanel(
     ),
     createSourceAuthoringForm(actions),
     createLocalSessionResetSection(actions),
-    createArchiveSourceDetail(selectedSource, selection.selectedSourceId),
+    createArchiveSourceDetail(selectedSource, selection.selectedSourceId, actions, selection),
     list
   );
   return shell;

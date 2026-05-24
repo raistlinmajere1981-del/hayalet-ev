@@ -27,6 +27,7 @@ export type {
   SourceImportOptions,
   SourceImportResult,
   SourceImportSourceDraft,
+  SourceImportSourceSegmentDraft,
   SourceNumericPattern,
   SourceObservation,
   SourceObservationType,

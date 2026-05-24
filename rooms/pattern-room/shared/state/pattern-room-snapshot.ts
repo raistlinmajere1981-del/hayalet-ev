@@ -15,6 +15,7 @@ import type {
   LocalAuthoredEvidence,
   LocalAuthoredNode,
   LocalAuthoredSource,
+  LocalAuthoredSourceSegment,
   LocalNote,
   PatternRoomLocalDomainReference,
   PatternRoomLocalGuards,
@@ -111,6 +112,21 @@ function readImportBatchId(record: SnapshotRecord): { importBatchId?: string | n
     return { importBatchId };
   }
   return {};
+}
+
+function readOptionalSnapshotString(
+  record: SnapshotRecord,
+  key: string
+): string | null | undefined {
+  const value = record[key];
+  if (value === null) {
+    return null;
+  }
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmedValue = value.trim();
+  return trimmedValue === "" ? undefined : trimmedValue;
 }
 
 function hasLocalIdFormat(value: unknown, prefix: string): value is string {
@@ -247,6 +263,41 @@ function parseLocalAuthoredNodes(value: unknown): LocalAuthoredNode[] {
   return nodes;
 }
 
+function parseLocalAuthoredSourceSegments(
+  value: unknown
+): LocalAuthoredSourceSegment[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const segments = value.flatMap((segment) => {
+    if (
+      !isRecord(segment) ||
+      typeof segment["id"] !== "string" ||
+      typeof segment["label"] !== "string" ||
+      typeof segment["text"] !== "string" ||
+      typeof segment["order"] !== "number" ||
+      !Number.isFinite(segment["order"]) ||
+      segment["id"].trim() === "" ||
+      segment["label"].trim() === "" ||
+      segment["text"].trim() === ""
+    ) {
+      return [];
+    }
+
+    return [
+      {
+        id: segment["id"].trim(),
+        label: segment["label"].trim(),
+        text: segment["text"].trim(),
+        order: segment["order"],
+      },
+    ];
+  });
+
+  return segments.length === 0 ? undefined : segments;
+}
+
 function parseLocalAuthoredSources(value: unknown): LocalAuthoredSource[] {
   if (!Array.isArray(value)) {
     return [];
@@ -267,12 +318,14 @@ function parseLocalAuthoredSources(value: unknown): LocalAuthoredSource[] {
       continue;
     }
 
+    const segments = parseLocalAuthoredSourceSegments(source["segments"]);
     sources.push({
       id: source["id"],
       label: source["label"],
       origin: source["origin"],
       note: source["note"],
       createdAt: source["createdAt"],
+      ...(segments === undefined ? {} : { segments }),
       ...readImportBatchId(source),
     });
   }
@@ -287,6 +340,12 @@ function parseLocalAuthoredEvidence(value: unknown): LocalAuthoredEvidence[] {
   const evidenceItems: LocalAuthoredEvidence[] = [];
   for (const evidence of value) {
     const interpretation = isRecord(evidence) ? evidence["interpretation"] : undefined;
+    const sourceId = isRecord(evidence)
+      ? readOptionalSnapshotString(evidence, "sourceId")
+      : undefined;
+    const sourceLabel = isRecord(evidence)
+      ? readOptionalSnapshotString(evidence, "sourceLabel")
+      : undefined;
     if (
       !isRecord(evidence) ||
       !hasLocalIdFormat(evidence["id"], "local-evidence") ||
@@ -308,6 +367,8 @@ function parseLocalAuthoredEvidence(value: unknown): LocalAuthoredEvidence[] {
       interpretation,
       layer: evidence["layer"],
       createdAt: evidence["createdAt"],
+      ...(sourceId === undefined ? {} : { sourceId }),
+      ...(sourceLabel === undefined ? {} : { sourceLabel }),
       ...readImportBatchId(evidence),
     });
   }

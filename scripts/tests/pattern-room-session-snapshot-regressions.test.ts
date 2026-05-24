@@ -179,6 +179,36 @@ test("pattern-room phase 7B round-trips local authored overlay entries", () => {
   assertRestoredSnapshotStateMatches(roundTripSnapshot, snapshot);
 });
 
+test("pattern-room phase 13F round-trips source-linked local evidence without schema bump", () => {
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  localState.addAuthoredSource("Snapshot source", "Archive shelf", "Snapshot source note.");
+  localState.addAuthoredEvidence(
+    "Snapshot linked evidence",
+    "Snapshot linked excerpt.",
+    "Snapshot linked context.",
+    "evidence",
+    {
+      sourceId: "local-source-001",
+      sourceLabel: "Snapshot source",
+    }
+  );
+
+  const snapshot = createSnapshot(localState, "archive");
+  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_MOCK);
+
+  assert.equal(snapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
+  assert.equal(snapshot.overlay.localAuthoredEvidence[0]?.sourceId, "local-source-001");
+  assert.equal(snapshot.overlay.localAuthoredEvidence[0]?.sourceLabel, "Snapshot source");
+  assert.ok(restored);
+  assert.equal(restored.overlay.localAuthoredEvidence[0]?.sourceId, "local-source-001");
+  assert.equal(restored.overlay.localAuthoredEvidence[0]?.sourceLabel, "Snapshot source");
+
+  const roundTripState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  roundTripState.restoreOverlay(restored.overlay, restored.guards);
+  const roundTripSnapshot = createSnapshot(roundTripState, restored.activeView);
+  assertRestoredSnapshotStateMatches(roundTripSnapshot, snapshot);
+});
+
 test("pattern-room phase 12D round-trips user text producer sources", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   const producer = createUserTextProducer({ now: () => "2026-05-21T10:00:00.000Z" });
@@ -262,7 +292,8 @@ test("pattern-room phase 13C round-trips long text producer sources without sche
   });
   const importResult = orchestrationResult.importResults[0]?.importResult;
   assert.ok(importResult);
-  assert.equal(orchestrationResult.packagesProduced[0]?.segments.length, 2);
+  const producedSegments = orchestrationResult.packagesProduced[0]?.segments ?? [];
+  assert.equal(producedSegments.length, 2);
   localState.applySourceImportResult(importResult);
 
   const snapshot = createSnapshot(localState, "archive");
@@ -271,15 +302,22 @@ test("pattern-room phase 13C round-trips long text producer sources without sche
 
   assert.equal(snapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
   assert.equal(PATTERN_ROOM_SNAPSHOT_VERSION, 1);
-  assert.deepEqual(restored.overlay.localAuthoredSources, [
-    {
-      id: "local-source-001",
-      label: "Snapshot uzun metin",
-      origin: "Arşiv defteri",
-      note: text,
-      createdAt: restored.overlay.localAuthoredSources[0]?.createdAt,
-    },
-  ]);
+  const restoredSource = restored.overlay.localAuthoredSources[0];
+  assert.equal(restoredSource?.id, "local-source-001");
+  assert.equal(restoredSource?.label, "Snapshot uzun metin");
+  assert.equal(restoredSource?.origin, "Arşiv defteri");
+  assert.equal(restoredSource?.note, text);
+  assert.deepEqual(
+    restoredSource?.segments,
+    producedSegments.map((segment, index) => {
+      return {
+        id: segment.segmentId,
+        label: segment.label,
+        text: segment.text,
+        order: segment.order ?? index,
+      };
+    })
+  );
   assert.deepEqual(restored.overlay.localAuthoredEvidence, []);
   assert.deepEqual(restored.overlay.localAuthoredNodes, []);
   assert.deepEqual(restored.overlay.pinnedSourceIds, []);

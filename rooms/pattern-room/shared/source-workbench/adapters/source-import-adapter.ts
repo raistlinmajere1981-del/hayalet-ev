@@ -10,6 +10,7 @@ import type {
   SourceImportOptions,
   SourceImportResult,
   SourceImportSourceDraft,
+  SourceImportSourceSegmentDraft,
   SourceObservation,
   SourcePackage,
 } from "../types/source-package.js";
@@ -106,6 +107,7 @@ function takeWithLimit<T>(
 }
 
 function createSourceDraft(pkg: SourcePackage): SourceImportSourceDraft {
+  const segments = createSourceSegmentDrafts(pkg);
   return {
     draftId: createDraftId("import-source", pkg.sourcePackageId),
     label: pkg.title,
@@ -113,7 +115,19 @@ function createSourceDraft(pkg: SourcePackage): SourceImportSourceDraft {
     note: pkg.cleanedText ?? "",
     sourceKind: pkg.sourceKind,
     patternSourceType: mapSourceKindToPatternSourceType(pkg.sourceKind),
+    ...(segments.length === 0 ? {} : { segments }),
   };
+}
+
+function createSourceSegmentDrafts(pkg: SourcePackage): SourceImportSourceSegmentDraft[] {
+  return pkg.segments.map((segment, index) => {
+    return {
+      id: segment.segmentId,
+      label: segment.label,
+      text: segment.text,
+      order: segment.order ?? index,
+    };
+  });
 }
 
 function createEvidenceDrafts(

@@ -190,6 +190,56 @@ test("pattern-room source workbench imports a minimal package as a source draft 
   });
 });
 
+test("pattern-room source workbench preserves source package segments on the source draft", () => {
+  const result = importSourcePackage(
+    createMinimalSourcePackage({
+      sourcePackageId: "segmented-package",
+      segments: [
+        {
+          segmentId: "segment-001",
+          sourceItemId: "source-item-001",
+          label: "Segment one",
+          text: "First source segment text.",
+          order: 0,
+          page: null,
+          timecode: null,
+          speaker: null,
+          metadata: {},
+        },
+        {
+          segmentId: "segment-002",
+          sourceItemId: "source-item-001",
+          label: "Segment two",
+          text: "Second source segment text.",
+          order: null,
+          page: null,
+          timecode: null,
+          speaker: null,
+          metadata: {},
+        },
+      ],
+    })
+  );
+
+  assert.deepEqual(result.sources[0]?.segments, [
+    {
+      id: "segment-001",
+      label: "Segment one",
+      text: "First source segment text.",
+      order: 0,
+    },
+    {
+      id: "segment-002",
+      label: "Segment two",
+      text: "Second source segment text.",
+      order: 1,
+    },
+  ]);
+  assert.deepEqual(result.evidence, []);
+  assert.deepEqual(result.nodes, []);
+  assert.deepEqual(result.edges, []);
+});
+
 test("pattern-room source workbench maps quotes and motifs into evidence, nodes, and derived edges", () => {
   const result = importSourcePackage(
     createMinimalSourcePackage({

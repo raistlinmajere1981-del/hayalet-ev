@@ -1093,6 +1093,105 @@ p {
   white-space: pre-wrap;
 }
 
+.pattern-room-source-segments {
+  display: grid;
+  gap: var(--pattern-px-10);
+  padding-top: var(--pattern-px-12);
+  border-top: var(--pattern-px-1) solid var(--pattern-text-alpha-12);
+}
+
+.pattern-room-source-segments h3,
+.pattern-room-source-segments h4,
+.pattern-room-source-segment-button p,
+.pattern-room-source-segment-text {
+  margin: 0;
+}
+
+.pattern-room-source-segment-list {
+  display: grid;
+  max-height: var(--pattern-px-320);
+  overflow: auto;
+  gap: var(--pattern-px-8);
+}
+
+.pattern-room-source-segment-button {
+  display: grid;
+  grid-template-columns: var(--pattern-px-32) minmax(0, 1fr);
+  gap: var(--pattern-px-6) var(--pattern-px-10);
+  padding: var(--pattern-px-10);
+  border: var(--pattern-px-1) solid var(--pattern-text-alpha-14);
+  border-radius: var(--pattern-px-8);
+  background: var(--pattern-surface-control-alpha-74);
+  color: var(--pattern-text);
+  text-align: left;
+}
+
+.pattern-room-source-segment-button:hover,
+.pattern-room-source-segment-button.selected-segment {
+  border-color: var(--pattern-text-alpha-18);
+  background: var(--pattern-white-alpha-08);
+}
+
+.pattern-room-source-segment-button strong,
+.pattern-room-source-segment-button p {
+  overflow-wrap: anywhere;
+}
+
+.pattern-room-source-segment-button p {
+  grid-column: 2;
+  color: var(--pattern-text-subtle);
+  font-size: var(--pattern-rem-0-82);
+}
+
+.pattern-room-source-segment-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--pattern-px-32);
+  height: var(--pattern-px-32);
+  border-radius: var(--pattern-px-999);
+  background: var(--pattern-white-alpha-06);
+  color: var(--pattern-text-subtle);
+  font-size: var(--pattern-rem-0-76);
+  font-weight: 800;
+}
+
+.pattern-room-source-segment-detail {
+  display: grid;
+  gap: var(--pattern-px-8);
+  padding: var(--pattern-px-10);
+  border: var(--pattern-px-1) solid var(--pattern-text-alpha-14);
+  border-radius: var(--pattern-px-8);
+  background: var(--pattern-white-alpha-05);
+}
+
+.pattern-room-source-segment-text {
+  max-height: var(--pattern-px-320);
+  overflow: auto;
+  color: var(--pattern-text);
+  font-family: inherit;
+  font-size: var(--pattern-rem-0-88);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.pattern-room-source-evidence-capture {
+  display: grid;
+  gap: var(--pattern-px-10);
+  padding-top: var(--pattern-px-12);
+  border-top: var(--pattern-px-1) solid var(--pattern-text-alpha-12);
+}
+
+.pattern-room-source-evidence-capture h3,
+.pattern-room-source-evidence-status {
+  margin: 0;
+}
+
+.pattern-room-source-evidence-status {
+  color: var(--pattern-text-subtle);
+  font-size: var(--pattern-rem-0-82);
+}
+
 .pattern-room-source-workbench-status {
   margin: 0;
   color: var(--pattern-text-subtle);

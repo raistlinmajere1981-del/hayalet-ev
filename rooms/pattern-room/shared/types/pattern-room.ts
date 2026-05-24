@@ -47,7 +47,15 @@ export type PatternSource = {
   note: string;
   notePreview?: string;
   metadataLine?: string;
+  segments?: readonly PatternSourceSegment[];
   isLocal?: boolean;
+};
+
+export type PatternSourceSegment = {
+  id: string;
+  label: string;
+  text: string;
+  order: number;
 };
 
 export type PatternDummyRole = {
@@ -70,6 +78,11 @@ export type PatternReportSection = {
   tone: PatternBoardCategoryTone;
   note: string;
   bullets: string[];
+};
+
+export type PatternAuthoredEvidenceOptions = {
+  sourceId?: string;
+  sourceLabel?: string;
 };
 
 export type PatternConnectionOption = {
@@ -179,7 +192,8 @@ export type PatternPanelActions = {
     label: string,
     excerpt: string,
     interpretation?: string,
-    layer?: PatternBoardLayerId
+    layer?: PatternBoardLayerId,
+    options?: PatternAuthoredEvidenceOptions
   ) => void;
   addAuthoredEdge: (
     edgeType: PatternEdgeType,

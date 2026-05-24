@@ -158,6 +158,55 @@ test("pattern-room phase 12F-A removeLocalSource deletes only local source refer
   assert.deepEqual(localState.getOverlay().debateReferenceIds, []);
 });
 
+test("pattern-room phase 13F removeLocalSource deletes source-linked local evidence", () => {
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  localState.addAuthoredSource("Removable source", "Local notebook", "Source note.");
+  localState.addAuthoredEvidence(
+    "Linked evidence",
+    "Linked evidence excerpt.",
+    "Linked evidence context.",
+    "evidence",
+    {
+      sourceId: "local-source-001",
+      sourceLabel: "Removable source",
+    }
+  );
+  localState.addAuthoredClaim("Surviving claim", "Surviving claim content.");
+  localState.addAuthoredEdge("supports", "local-evidence-001", "local-node-001");
+  localState.addToDebate("local-source-001");
+  localState.addToDebate("local-evidence-001");
+  localState.restoreOverlay(
+    {
+      ...localState.getOverlay(),
+      debateLocalTurns: [
+        createReferencedTurn(["local-source-001", "local-evidence-001", "local-node-001"]),
+      ],
+    },
+    localState.getGuards()
+  );
+
+  const summary = localState.removeLocalSource("local-source-001");
+
+  assert.deepEqual(
+    summary,
+    createCleanupSummary({
+      sourcesRemoved: 1,
+      evidenceRemoved: 1,
+      edgesRemoved: 1,
+      refsRemoved: 2,
+      turnRefsRemoved: 2,
+    })
+  );
+  assert.equal(localState.resolveEntityExists("local-source-001"), false);
+  assert.equal(localState.resolveEntityExists("local-evidence-001"), false);
+  assert.equal(localState.resolveEntityExists("local-node-001"), true);
+  assert.deepEqual(localState.getOverlay().localAuthoredSources, []);
+  assert.deepEqual(localState.getOverlay().localAuthoredEvidence, []);
+  assert.deepEqual(localState.getOverlay().localAuthoredEdges, []);
+  assert.deepEqual(localState.getOverlay().debateReferenceIds, []);
+  assert.deepEqual(localState.getOverlay().debateLocalTurns[0]?.referencedIds, ["local-node-001"]);
+});
+
 test("pattern-room phase 12F-B removeLocalNode deletes local node references and edges", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   localState.addAuthoredClaim("Removable node", "Removable node content.");

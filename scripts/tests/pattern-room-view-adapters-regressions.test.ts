@@ -363,6 +363,40 @@ test("pattern-room phase 7B local authoring appears in board, archive, desk, rep
   assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
 });
 
+test("pattern-room phase 13F local evidence can expose source labels in board and report", () => {
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  localState.addAuthoredSource("Kaynaklı arşiv", "Kullanıcı arşivi", "Tam kaynak metni.");
+  localState.addAuthoredEvidence(
+    "Kaynaklı kanıt",
+    "Kaynaklı alıntı",
+    "Kaynaklı yorum",
+    "evidence",
+    {
+      sourceId: "local-source-001",
+      sourceLabel: "Kaynaklı arşiv",
+    }
+  );
+
+  const viewModels = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK, localState.getOverlay());
+  const evidenceCategory = viewModels.boardCategories.find((category) => {
+    return category.id === "board-evidence";
+  });
+  const localEvidenceSection = viewModels.reportSummary.sections.find((section) => {
+    return section.label === "Yerel Kanıt Notları";
+  });
+  const evidencePin = evidenceCategory?.pins.find((pin) => {
+    return pin.id === "local-evidence-001";
+  });
+
+  assert.ok(evidencePin);
+  assert.equal(evidencePin.sourceId, "local-source-001");
+  assert.equal(evidencePin.sourceLabel, "Kaynaklı arşiv");
+  assert.ok(localEvidenceSection);
+  assert.deepEqual(localEvidenceSection.bullets, [
+    "Kaynaklı kanıt: Kaynaklı alıntı Kaynak: Kaynaklı arşiv Yorum: Kaynaklı yorum",
+  ]);
+});
+
 test("pattern-room phase 8B local authored connections appear only in the report", () => {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);

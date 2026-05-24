@@ -71,6 +71,7 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
   let activeView: PatternViewId = "overview";
   let selectedNodeId: string | null = null;
   let selectedArchiveSourceId: string | null = null;
+  let archiveEvidenceCaptureStatus: string | null = null;
   let viewModels: PatternRoomMockData = adaptDomainToViewModels(
     PATTERN_ROOM_DOMAIN_MOCK,
     localState.getOverlay()
@@ -289,7 +290,12 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
 
   function selectArchiveSource(sourceId: string | null): void {
     selectedArchiveSourceId = sourceId;
+    archiveEvidenceCaptureStatus = null;
     render();
+  }
+
+  function setArchiveEvidenceCaptureStatus(message: string | null): void {
+    archiveEvidenceCaptureStatus = message;
   }
 
   const actions: PatternPanelActions = {
@@ -338,8 +344,8 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     resetLocalSession(): void {
       localState.resetOverlayToEmpty();
     },
-    addAuthoredEvidence(label: string, excerpt: string, interpretation, layer): void {
-      localState.addAuthoredEvidence(label, excerpt, interpretation, layer);
+    addAuthoredEvidence(label: string, excerpt: string, interpretation, layer, options): void {
+      localState.addAuthoredEvidence(label, excerpt, interpretation, layer, options);
     },
     addAuthoredEdge(edgeType, sourceId: string, targetId: string, note?: string): void {
       localState.addAuthoredEdge(edgeType, sourceId, targetId, note);
@@ -413,6 +419,7 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     viewModels = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK, localState.getOverlay());
     if (selectedArchiveSourceId !== null && !archiveSourceExists(selectedArchiveSourceId)) {
       selectedArchiveSourceId = null;
+      archiveEvidenceCaptureStatus = null;
     }
     render();
     scheduleAutosave();
@@ -508,6 +515,8 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
           {
             selectedSourceId: selectedArchiveSourceId,
             onSelectSource: selectArchiveSource,
+            evidenceCaptureStatus: archiveEvidenceCaptureStatus,
+            onEvidenceCaptureStatusChange: setArchiveEvidenceCaptureStatus,
           }
         ),
       board: () => createBoardPanel(viewModels, actions, onBack),
@@ -536,6 +545,7 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     try {
       activeView = restoredState.activeView;
       selectedArchiveSourceId = null;
+      archiveEvidenceCaptureStatus = null;
       localState.restoreOverlay(restoredState.overlay, restoredState.guards);
       return true;
     } finally {

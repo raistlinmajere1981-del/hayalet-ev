@@ -172,6 +172,60 @@ test("pattern-room phase 11C applies SourceImportResult drafts to local overlay"
   assert.equal("importBatchId" in (overlay.localNotes[0] ?? {}), false);
 });
 
+test("pattern-room phase 14B-1 applies source segments to local source records only", () => {
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+
+  const summary = localState.applySourceImportResult(
+    createSourceImportResult({
+      sources: [
+        {
+          draftId: "import-source-segmented",
+          label: "Segmented source",
+          origin: "manual:segmented-source",
+          note: "Full segmented source text.",
+          sourceKind: "archive_text",
+          patternSourceType: "unknown",
+          segments: [
+            {
+              id: "segment-001",
+              label: "Segment one",
+              text: "First source segment text.",
+              order: 0,
+            },
+            {
+              id: "segment-002",
+              label: "Segment two",
+              text: "Second source segment text.",
+              order: 1,
+            },
+          ],
+        },
+      ],
+    })
+  );
+
+  const overlay = localState.getOverlay();
+  assert.equal(summary.sourcesAdded, 1);
+  assert.deepEqual(overlay.localAuthoredSources[0]?.segments, [
+    {
+      id: "segment-001",
+      label: "Segment one",
+      text: "First source segment text.",
+      order: 0,
+    },
+    {
+      id: "segment-002",
+      label: "Segment two",
+      text: "Second source segment text.",
+      order: 1,
+    },
+  ]);
+  assert.deepEqual(overlay.localAuthoredEvidence, []);
+  assert.deepEqual(overlay.localAuthoredNodes, []);
+  assert.deepEqual(overlay.localAuthoredEdges, []);
+  assert.deepEqual(overlay.pinnedSourceIds, []);
+});
+
 test("pattern-room phase 12F-B applies optional importBatchId to imported overlay entries", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
 
