@@ -34,6 +34,12 @@ type ProjectDeps = {
     toolId: string,
     featureStage: string | null
   ) => Promise<unknown>;
+  checkAllToolUpdates: (
+    api: MediaProjectActionApi,
+    runtime: MediaProjectRuntimeRecord,
+    requestId: string,
+    featureStage: string | null
+  ) => Promise<unknown>;
   deleteProject: (
     runtime: MediaProjectRuntimeRecord,
     projectId: string | null,
@@ -81,6 +87,13 @@ type ProjectDeps = {
     requestId: string,
     featureStage: string | null
   ) => Promise<unknown>;
+  updateSelectedTools: (
+    api: MediaProjectActionApi,
+    runtime: MediaProjectRuntimeRecord,
+    requestId: string,
+    toolIds: string[],
+    featureStage: string | null
+  ) => Promise<unknown>;
 };
 
 export function createMediaProjectActionRuntime(deps: ProjectDeps) {
@@ -89,6 +102,7 @@ export function createMediaProjectActionRuntime(deps: ProjectDeps) {
     cancelJobById,
     cancelJobsForProject,
     cancelFeatureProcess,
+    checkAllToolUpdates,
     checkToolUpdates,
     createProject: createProjectRecord,
     deleteProject: deleteProjectRecord,
@@ -100,7 +114,19 @@ export function createMediaProjectActionRuntime(deps: ProjectDeps) {
     refreshToolStatus,
     runFeatureProcess,
     updateAllTools,
+    updateSelectedTools,
   } = deps;
+
+  function toToolIdList(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value
+      .map(function (entry) {
+        return asNonEmptyString(entry);
+      })
+      .filter((entry): entry is string => entry !== null);
+  }
 
   async function refresh(runtime: MediaProjectRuntimeRecord, requestId: string) {
     runtime.activeProjectId = null;
@@ -282,6 +308,16 @@ export function createMediaProjectActionRuntime(deps: ProjectDeps) {
     return null;
   }
 
+  async function checkTools(
+    api: MediaProjectActionApi,
+    runtime: MediaProjectRuntimeRecord,
+    requestId: string,
+    featureStage: string
+  ) {
+    await checkAllToolUpdates(api, runtime, requestId, featureStage || "source");
+    return null;
+  }
+
   async function updateTools(
     api: MediaProjectActionApi,
     runtime: MediaProjectRuntimeRecord,
@@ -292,10 +328,28 @@ export function createMediaProjectActionRuntime(deps: ProjectDeps) {
     return null;
   }
 
+  async function updateSelected(
+    api: MediaProjectActionApi,
+    runtime: MediaProjectRuntimeRecord,
+    requestId: string,
+    actionPayload: Record<string, unknown>,
+    featureStage: string
+  ) {
+    await updateSelectedTools(
+      api,
+      runtime,
+      requestId,
+      toToolIdList(actionPayload["toolIds"]),
+      featureStage || "source"
+    );
+    return null;
+  }
+
   return {
     cancelJob,
     cancelProcess,
     checkTool,
+    checkTools,
     clearProject,
     createProject,
     deleteProject,
@@ -307,6 +361,7 @@ export function createMediaProjectActionRuntime(deps: ProjectDeps) {
     renameProject,
     runProcess,
     selectProject,
+    updateSelected,
     updateTools,
   };
 }

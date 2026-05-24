@@ -78,6 +78,16 @@ export type PatternReportSection = {
   tone: PatternBoardCategoryTone;
   note: string;
   bullets: string[];
+  items: PatternReportItem[];
+  emptyMessage: string;
+};
+
+export type PatternReportItem = {
+  id: string;
+  label: string;
+  body: string;
+  meta: string[];
+  detail: string | null;
 };
 
 export type PatternAuthoredEvidenceOptions = {

@@ -79,18 +79,18 @@
       "moduleIds": ["metadata-provenance-audit"],
       "fallbackProviderIds": ["ffmpeg-visual-forensics"],
       "providerType": "system-command",
-      "installStrategy": "host-command",
+      "installStrategy": "automatic",
       "expectedArtifacts": ["metadata-provenance-json"],
       "titleKey": "visualAnalysis.providers.metadata-provenance-system.title",
       "summaryKey": "visualAnalysis.providers.metadata-provenance-system.summary"
     },
     {
       "id": "raft-optical-flow-provider",
-      "status": "planned",
+      "status": "ready",
       "toolId": "raft-optical-flow",
       "moduleIds": ["optical-flow-tracking"],
-      "providerType": "planned",
-      "installStrategy": "external-model-runtime",
+      "providerType": "system-command",
+      "installStrategy": "python-venv-pip",
       "expectedArtifacts": ["dense-flow-json", "subject-background-flow-map"],
       "titleKey": "visualAnalysis.providers.raft-optical-flow-provider.title",
       "summaryKey": "visualAnalysis.providers.raft-optical-flow-provider.summary"

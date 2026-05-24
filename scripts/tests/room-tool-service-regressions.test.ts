@@ -49,7 +49,7 @@ test("room tool service keeps write roots narrow while allowing packaged tool cw
   assert.match(serviceSource, /ensureRoomToolRunCwdPath\(request\.roomId, cwd\);/);
 });
 
-test("room tool service can describe planned and system-command tools without forcing an installer contract", () => {
+test("room tool service supports app-managed installers and system-command probes", () => {
   const serviceSource = readFileSync("electron/room-tool-service.ts", "utf8");
   const typeSource = readFileSync("src/types/room-tools.ts", "utf8");
   const manifestSource = readFileSync("rooms/laboratory/tools/toolchain.manifest.json", "utf8");
@@ -72,6 +72,11 @@ test("room tool service can describe planned and system-command tools without fo
   assert.match(serviceSource, /estimatedDownloadSize\?: string;/);
   assert.match(serviceSource, /estimatedInstalledSize\?: string;/);
   assert.match(serviceSource, /supportedPythonVersions\?: string\[\];/);
+  assert.match(serviceSource, /type WebPageReleaseProvider = \{/);
+  assert.match(
+    serviceSource,
+    /type ToolReleaseProvider = GitHubReleaseProvider \| WebPageReleaseProvider;/
+  );
   assert.match(serviceSource, /type ToolInstallerSpec = PythonVenvPipInstallerSpec;/);
   assert.match(
     serviceSource,
@@ -83,10 +88,25 @@ test("room tool service can describe planned and system-command tools without fo
   assert.match(serviceSource, /installer\?: ToolInstallerSpec;/);
   assert.match(serviceSource, /plannedReason\?: string;/);
   assert.match(serviceSource, /systemCommand\?: SystemCommandSpec;/);
-  assert.match(serviceSource, /availability: "planned"/);
+  assert.match(serviceSource, /copyArchiveContents\?: boolean;/);
+  assert.match(serviceSource, /downloadUrlTemplate\?: string;/);
+  assert.match(serviceSource, /sourceExecutableName\?: string;/);
+  assert.match(serviceSource, /releaseProvider\?: ToolReleaseProvider;/);
   assert.match(serviceSource, /availability: "system-command"/);
   assert.match(serviceSource, /installable: false/);
+  assert.match(serviceSource, /function expandReleaseTemplate\(/);
+  assert.match(serviceSource, /function getFileNameFromUrl\(/);
+  assert.match(serviceSource, /async function findArchiveContentRoot\(/);
+  assert.match(serviceSource, /await cp\(archiveContentRoot, installDir, \{ recursive: true \}\);/);
+  assert.match(serviceSource, /function isCrossDeviceRenameError\(/);
+  assert.match(serviceSource, /async function moveDownloadedFile\(/);
+  assert.match(serviceSource, /await copyFile\(sourcePath, targetPath\);/);
+  assert.match(serviceSource, /await moveDownloadedFile\(downloadResult\.path, binaryPath\);/);
+  assert.match(serviceSource, /releaseProvider\.type === "web-page"/);
+  assert.match(serviceSource, /const latestVersion = findVersion\(releasePage, releaseProvider\.versionRegex\);/);
   assert.match(serviceSource, /async function resolveSystemCommandBinaryPath\(/);
+  assert.match(serviceSource, /allowPathLookup\?: boolean \| undefined;/);
+  assert.match(serviceSource, /if \(options\?\.allowPathLookup === false\) \{\s*return null;\s*\}/);
   assert.match(serviceSource, /expandRuntimePathTemplate\(/);
   assert.match(serviceSource, /private isToolInstallable\(toolManifest: ToolManifest\): boolean/);
   assert.match(serviceSource, /private isSystemCommandTool\(toolManifest: ToolManifest\): boolean/);
@@ -126,10 +146,22 @@ test("room tool service can describe planned and system-command tools without fo
   );
   assert.match(serviceSource, /private async installPythonVenvPipTool\(/);
   assert.match(serviceSource, /private async checkPythonVenvPipUpdates\(/);
+  assert.match(
+    serviceSource,
+    /allowPathLookup: false,\s*candidatePaths: resolved\.systemCommand\.candidatePaths,/
+  );
   assert.match(serviceSource, /"list", "--outdated", "--format=json"/);
   assert.match(serviceSource, /updateAvailable: outdatedPackages\.length > 0/);
   assert.match(serviceSource, /private shouldUseSystemCommandFallback\(/);
   assert.match(serviceSource, /private async probeSystemCommandToolStatus\(/);
+  assert.match(
+    serviceSource,
+    /const installerType = this\.getInstallerType\(resolved\.manifest\);\s*const binaryPath = await resolveSystemCommandBinaryPath\(resolved\.systemCommand\.executableName, \{\s*allowPathLookup: installerType !== "python-venv-pip",/
+  );
+  assert.match(
+    serviceSource,
+    /allowPathLookup: this\.getInstallerType\(resolvedSystemCommand\.manifest\) !== "python-venv-pip",/
+  );
   assert.match(serviceSource, /installerType,/);
   assert.match(
     serviceSource,
@@ -197,10 +229,19 @@ test("room tool service can describe planned and system-command tools without fo
     manifestSource,
     /"packages":\s*\[\s*"opencv-contrib-python-headless",\s*"scikit-image",\s*"numpy",\s*"scipy"\s*\]/
   );
-  assert.match(manifestSource, /"exiftool"[\s\S]*"availability":\s*"system-command"/);
-  assert.match(manifestSource, /"mediainfo"[\s\S]*"availability":\s*"system-command"/);
+  assert.match(manifestSource, /"exiftool"[\s\S]*"availability":\s*"installable"/);
+  assert.match(manifestSource, /"exiftool"[\s\S]*"type":\s*"web-page"/);
+  assert.match(manifestSource, /"exiftool"[\s\S]*"copyArchiveContents":\s*true/);
+  assert.match(manifestSource, /"exiftool"[\s\S]*"sourceExecutableName":\s*"exiftool\(-k\)\.exe"/);
+  assert.match(manifestSource, /"mediainfo"[\s\S]*"availability":\s*"installable"/);
+  assert.match(manifestSource, /"mediainfo"[\s\S]*"downloadUrlTemplate"/);
   assert.equal(manifest.tools["ffmpeg-libvmaf"]?.probe?.versionRegex, "\\blibvmaf\\b");
-  assert.match(manifestSource, /"raft-optical-flow"[\s\S]*"availability":\s*"planned"/);
+  assert.match(manifestSource, /"ffmpeg-libvmaf"[\s\S]*"availability":\s*"installable"/);
+  assert.match(manifestSource, /"raft-optical-flow"[\s\S]*"availability":\s*"system-command"/);
+  assert.match(
+    manifestSource,
+    /"raft-optical-flow"[\s\S]*"packages":\s*\[\s*"torch",\s*"torchvision",\s*"opencv-python-headless",\s*"numpy",\s*"scipy"\s*\]/
+  );
   assert.match(toolOverlaySource, /verifySystemCommand/);
   assert.match(toolOverlaySource, /systemCommandVerified/);
   assert.match(toolOverlaySource, /lastCheckedAt/);

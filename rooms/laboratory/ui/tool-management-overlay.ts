@@ -57,6 +57,20 @@ type LabToolProgressItem = {
   toolId: string | null;
 };
 
+type LabToolManagerStats = {
+  busyCount: number;
+  catalogCount: number;
+  installedCount: number;
+  updateCount: number;
+};
+
+type LabToolUpdateChoice = {
+  displayName: string;
+  latestLabel: string;
+  toolId: string;
+  versionLabel: string;
+};
+
 const STAGE_LABELS: Record<string, string> = {
   source: "Kaynak",
   edit: "Düzene",
@@ -468,9 +482,101 @@ function renderToolProgressCard(item: LabToolProgressItem, copy: LabI18n): strin
   `;
 }
 
+function renderToolManagerStats(stats: LabToolManagerStats, copy: LabI18n): string {
+  return `
+    <div class="labx-tool-manager-stats labx-tool-manager-stats--rail" aria-label="${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.catalog", "Araç kataloğu"))}">
+      <span>${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.catalog", "Araç kataloğu"))}: <strong>${escapeHtml(String(stats.catalogCount))}</strong></span>
+      <span>${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.installed", "Kurulu araç"))}: <strong>${escapeHtml(String(stats.installedCount))}</strong></span>
+      <span>${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.updates", "Güncelleme bekleyen"))}: <strong>${escapeHtml(String(stats.updateCount))}</strong></span>
+    </div>
+  `;
+}
+
+function getUpdateChoices(
+  state: LabStoreState,
+  descriptors: LabToolDescriptorRecord[]
+): LabToolUpdateChoice[] {
+  return descriptors
+    .map(function (descriptor): LabToolUpdateChoice | null {
+      const toolId = asNonEmptyString(descriptor.toolId);
+      if (toolId === null || isSettingsManagedTool(toolId)) {
+        return null;
+      }
+      const entry = getToolEntry(state, toolId);
+      if (entry.updateAvailable !== true) {
+        return null;
+      }
+      return {
+        displayName: asNonEmptyString(descriptor.displayName) || toolId,
+        latestLabel:
+          asNonEmptyString(entry.latestVersion) ||
+          asNonEmptyString(entry.latestReleaseName) ||
+          "--",
+        toolId,
+        versionLabel: asNonEmptyString(entry.version) || "--",
+      };
+    })
+    .filter((entry): entry is LabToolUpdateChoice => entry !== null);
+}
+
+function renderToolUpdateSelection(
+  state: LabStoreState,
+  descriptors: LabToolDescriptorRecord[],
+  stats: LabToolManagerStats,
+  copy: LabI18n
+): string {
+  const choices = getUpdateChoices(state, descriptors);
+  const disabled = stats.busyCount > 0 ? "disabled" : "";
+
+  return `
+    <div class="labx-tool-update-selection">
+      <div class="labx-tool-update-selection__header">
+        <strong>${escapeHtml(copy.t("mediaAnalysis.toolManager.updates.title", "Güncelleme listesi"))}</strong>
+      </div>
+      ${
+        choices.length > 0
+          ? `<div class="labx-tool-update-selection__list">${choices
+              .map(function (choice) {
+                const versionPair = copy.t(
+                  "mediaAnalysis.toolManager.updates.versionPair",
+                  "{current} -> {latest}",
+                  {
+                    current: choice.versionLabel,
+                    latest: choice.latestLabel,
+                  }
+                );
+                return `
+                  <label class="labx-tool-update-choice">
+                    <input type="checkbox" data-lab-update-choice value="${escapeHtml(choice.toolId)}" checked ${disabled} />
+                    <span>
+                      <strong>${escapeHtml(choice.displayName)}</strong>
+                      <small>${escapeHtml(versionPair)}</small>
+                    </span>
+                  </label>
+                `;
+              })
+              .join("")}</div>`
+          : `<div class="labx-tool-update-selection__empty">
+              <strong>${escapeHtml(copy.t("mediaAnalysis.toolManager.updates.empty", "Güncelleme bekleyen araç yok."))}</strong>
+              <p>${escapeHtml(copy.t("mediaAnalysis.toolManager.updates.emptyDetail", "Kontrol tamamlandığında bulunan güncellemeler burada seçili görünür."))}</p>
+            </div>`
+      }
+      <button
+        class="labx-inline-action labx-inline-action--primary labx-tool-update-selection__action"
+        type="button"
+        data-lab-action="tool-update-selected"
+        ${choices.length === 0 || stats.busyCount > 0 ? "disabled" : ""}
+      >
+        ${escapeHtml(copy.t("mediaAnalysis.toolManager.actions.updateSelected", "Güncelle"))}
+      </button>
+    </div>
+  `;
+}
+
 function renderToolProgressRail(
   state: LabStoreState,
   descriptors: LabToolDescriptorRecord[],
+  stats: LabToolManagerStats,
   copy: LabI18n = LAB_FALLBACK_I18N
 ): string {
   const progressItems = getToolProgressItems(state, descriptors, copy);
@@ -480,6 +586,7 @@ function renderToolProgressRail(
 
   return `
     <aside class="labx-tool-progress-rail" aria-label="${escapeHtml(copy.t("mediaAnalysis.toolManager.progress.ariaLabel", "Kurulum ve güncelleme ilerlemesi"))}">
+      ${renderToolManagerStats(stats, copy)}
       <div class="labx-tool-progress-rail__header">
         <p class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.toolManager.progress.eyebrow", "İşlem takibi"))}</p>
         <h3 class="labx-card__title">${escapeHtml(copy.t("mediaAnalysis.toolManager.progress.title", "Kurulum ve güncelleme"))}</h3>
@@ -492,13 +599,9 @@ function renderToolProgressRail(
                 return renderToolProgressCard(item, copy);
               })
               .join("")}</div>`
-          : `
-            <div class="labx-tool-progress-empty">
-              <strong>${escapeHtml(copy.t("mediaAnalysis.toolManager.progress.idle", "Aktif kurulum veya güncelleme yok."))}</strong>
-              <p>${escapeHtml(copy.t("mediaAnalysis.toolManager.progress.idleDetail", "Bir araç işlemi başladığında ilerleme burada görünür."))}</p>
-            </div>
-          `
+          : ""
       }
+      ${renderToolUpdateSelection(state, descriptors, stats, copy)}
     </aside>
   `;
 }
@@ -718,6 +821,21 @@ function getLifecycleHint(
         : null;
     return setupHint === null ? verificationHint : `${verificationHint} ${setupHint}`;
   }
+  const checkedAt = formatLastCheckedAt(entry.lastCheckedAt);
+  if (entry.installed === true && checkedAt !== null) {
+    if (entry.updateAvailable === true) {
+      return copy.t(
+        "mediaAnalysis.toolManager.lifecycle.updateAvailable",
+        "Güncelleme bulundu ({checkedAt}). Güncelle butonu hazır.",
+        {
+          checkedAt,
+        }
+      );
+    }
+    return copy.t("mediaAnalysis.toolManager.lifecycle.upToDate", "Güncel ({checkedAt}).", {
+      checkedAt,
+    });
+  }
   if (
     asNonEmptyString(descriptor.availability) === "system-command" &&
     asNonEmptyString(descriptor.installerType) === null &&
@@ -746,27 +864,6 @@ function getLifecycleHint(
     "mediaAnalysis.toolManager.lifecycle.default",
     "Araç durumu room-local registry üzerinden izlenir."
   );
-}
-
-function getInstallStrategyLabel(
-  descriptor: LabToolDescriptorRecord,
-  copy: LabI18n = LAB_FALLBACK_I18N
-): string {
-  if (isSettingsManagedTool(asNonEmptyString(descriptor.toolId))) {
-    return copy.t(
-      "mediaAnalysis.toolManager.strategy.settingsManaged",
-      "Settings üzerinden yönetilir"
-    );
-  }
-  switch (getInstallStrategy(descriptor)) {
-    case "planned":
-      return copy.t("mediaAnalysis.toolManager.strategy.planned", "Planlı");
-    case "system-command":
-      return copy.t("mediaAnalysis.toolManager.strategy.systemCommand", "Doğrulama / kurulum notu");
-    case "automatic":
-    default:
-      return copy.t("mediaAnalysis.toolManager.strategy.automatic", "Uygulama içi kurulum");
-  }
 }
 
 function renderToolActions(
@@ -808,16 +905,7 @@ function renderToolActions(
   }
 
   if (entry.installed === true) {
-    return `
-      <button class="labx-inline-action" type="button" data-lab-action="tool-check-updates" data-lab-value="${escapeHtml(toolId)}" ${disabled}>
-        ${escapeHtml(copy.t("mediaAnalysis.toolManager.actions.checkUpdates", "Güncelleme kontrolü"))}
-      </button>
-      ${
-        entry.updateAvailable === true
-          ? `<button class="labx-inline-action labx-inline-action--primary" type="button" data-lab-action="tool-update" data-lab-value="${escapeHtml(toolId)}" ${disabled}>${escapeHtml(copy.t("mediaAnalysis.toolManager.actions.update", "Güncelle"))}</button>`
-          : ""
-      }
-    `;
+    return "";
   }
 
   return `
@@ -881,21 +969,19 @@ function renderToolCard(
   const locationLabel =
     asNonEmptyString(entry.binaryPath) || asNonEmptyString(entry.installDir) || "--";
   const checkedAtLabel = formatLastCheckedAt(entry.lastCheckedAt) || "--";
-  const monogram = displayName.slice(0, 2).toUpperCase();
 
   const hasError = typeof entry.lastError === "string" && entry.lastError.trim() !== "";
   const lifecycleHint = getLifecycleHint(descriptor, entry, copy);
   const truncatedLocation = truncateLocationPath(locationLabel);
   const pythonRuntimeLabel = getPythonRuntimeLabel(descriptor, copy);
   const supportedPythonLabel = getSupportedPythonLabel(descriptor);
+  const actionMarkup = renderToolActions(descriptor, entry, copy).trim();
 
   return `
     <article class="labx-module-card" data-selected="${entry.installed === true ? "true" : "false"}" data-active="${supportLevel === "required" ? "true" : "false"}" data-has-error="${hasError ? "true" : "false"}">
       <div class="labx-module-card__head">
-        <span class="labx-tool-monogram" aria-hidden="true">${escapeHtml(monogram)}</span>
         <div>
           <strong>${escapeHtml(displayName)}</strong>
-          <span>${escapeHtml(getInstallStrategyLabel(descriptor, copy))}</span>
         </div>
         <div class="labx-chip-row">
           ${getStatusChip(descriptor, entry, stageId, copy)}
@@ -907,8 +993,7 @@ function renderToolCard(
           : `<p class="labx-panel-hint">${escapeHtml(lifecycleHint)}</p>`
       }
       ${renderUsedBy(descriptor, copy)}
-      <details class="labx-module-card__meta-details">
-        <summary>${escapeHtml(copy.t("mediaAnalysis.toolManager.labels.details", "Sürüm ve konum"))}</summary>
+      <div class="labx-module-card__meta-details">
         <div class="labx-summary-list">
           <div><span>${escapeHtml(copy.t("mediaAnalysis.toolManager.labels.stageSupport", "Aşama desteği"))}</span><strong>${escapeHtml(getSupportLabel(supportLevel, stageId, copy))}</strong></div>
           <div><span>${escapeHtml(copy.t("mediaAnalysis.toolManager.labels.installedVersion", "Kurulu sürüm"))}</span><strong>${escapeHtml(versionLabel)}</strong></div>
@@ -926,10 +1011,8 @@ function renderToolCard(
               : `<div><span>${escapeHtml(copy.t("mediaAnalysis.toolManager.labels.requiredPython", "Gerekli Python"))}</span><strong>${escapeHtml(supportedPythonLabel)}</strong></div>`
           }
         </div>
-      </details>
-      <div class="labx-module-card__actions">
-        ${renderToolActions(descriptor, entry, copy)}
       </div>
+      ${actionMarkup === "" ? "" : `<div class="labx-module-card__actions">${actionMarkup}</div>`}
     </article>
   `;
 }
@@ -942,10 +1025,6 @@ function renderToolSection(
 ): string {
   return `
     <section class="labx-list-stack">
-      <div class="labx-tool-manager-section__header">
-        <h3>${escapeHtml(copy.t("mediaAnalysis.toolManager.sections.catalog.title", "Laboratory tools"))}</h3>
-        <p>${escapeHtml(copy.t("mediaAnalysis.toolManager.sections.catalog.hint", "Install, update, and inspect the tools managed by Laboratory."))}</p>
-      </div>
       <div class="labx-module-catalog">${descriptors
         .map(function (descriptor) {
           return renderToolCard(state, descriptor, stageId, copy);
@@ -1105,20 +1184,15 @@ export function renderToolManagementOverlay(
               <div class="labx-module-overlay__header">
                 <div>
 	                  <h2 class="labx-module-overlay__title">${escapeHtml(copy.t("mediaAnalysis.toolManager.title", "Araç Yönetimi"))}</h2>
-	                  <div class="labx-tool-manager-stats" aria-label="${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.catalog", "Araç kataloğu"))}">
-	                    <span>${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.catalog", "Araç kataloğu"))}: <strong>${escapeHtml(String(descriptors.length))}</strong></span>
-	                    <span>${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.installed", "Kurulu araç"))}: <strong>${escapeHtml(String(installedCount))}</strong></span>
-	                    <span>${escapeHtml(copy.t("mediaAnalysis.toolManager.stats.updates", "Güncelleme bekleyen"))}: <strong>${escapeHtml(String(updateCount))}</strong></span>
-	                  </div>
                 </div>
                 <div class="labx-inline-actions">
                   <button
-                    class="labx-inline-action"
+                    class="labx-inline-action labx-inline-action--primary"
                     type="button"
-                    data-lab-action="tool-update-all"
+                    data-lab-action="tool-check-all-updates"
                     ${roomManagedInstalledCount === 0 || busyCount > 0 ? "disabled" : ""}
                   >
-                    ${escapeHtml(copy.t("mediaAnalysis.toolManager.actions.bulkUpdate", "Toplu güncelle"))}
+                    ${escapeHtml(copy.t("mediaAnalysis.toolManager.actions.checkAllUpdates", "Güncellemeleri kontrol et"))}
                   </button>
                   <button
                     class="labx-inline-action"
@@ -1134,7 +1208,7 @@ export function renderToolManagementOverlay(
                 </div>
               </div>
               <div class="labx-tool-manager-layout">
-	                ${renderToolProgressRail(state, descriptors, copy)}
+	                ${renderToolProgressRail(state, descriptors, { busyCount, catalogCount: descriptors.length, installedCount, updateCount }, copy)}
 	                <div class="labx-tool-manager-main">
 	                  ${renderToolSection(state, stageId, descriptors, copy)}
 	                </div>

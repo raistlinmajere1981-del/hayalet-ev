@@ -127,6 +127,7 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     cancelJobById: deps.cancelJobById,
     cancelJobsForProject: deps.cancelJobsForProject,
     cancelFeatureProcess: deps.cancelFeatureProcess,
+    checkAllToolUpdates: deps.checkAllToolUpdates,
     checkToolUpdates: deps.checkToolUpdates,
     createProject: deps.createProject,
     deleteProject: deps.deleteProject,
@@ -138,6 +139,7 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     refreshToolStatus: deps.refreshToolStatus,
     runFeatureProcess: deps.runFeatureProcess,
     updateAllTools: deps.updateAllTools,
+    updateSelectedTools: deps.updateSelectedTools,
   });
 
   return {

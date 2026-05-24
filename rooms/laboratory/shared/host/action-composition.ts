@@ -102,6 +102,9 @@ export function createLaboratoryActionCompositionRuntime(deps: LaboratoryActionC
     cancelJobsForProject: deps.cancelJobsForProject,
     cancelProfileJobsForProject: deps.cancelProfileJobsForProject,
     clearJob: deps.clearJob,
+    checkAllToolUpdates(...args: Parameters<LaboratoryToolMutationRuntime["checkAllToolUpdates"]>) {
+      return laboratoryToolMutationRuntime.checkAllToolUpdates(...args);
+    },
     checkToolUpdates(...args: Parameters<LaboratoryToolMutationRuntime["checkToolUpdates"]>) {
       return laboratoryToolMutationRuntime.checkToolUpdates(...args);
     },
@@ -150,6 +153,9 @@ export function createLaboratoryActionCompositionRuntime(deps: LaboratoryActionC
     runEditPipeline: deps.runEditPipeline,
     runProfilePreflight: deps.runProfilePreflight,
     toRecord: deps.toRecord,
+    updateSelectedTools(...args: Parameters<LaboratoryToolMutationRuntime["updateSelectedTools"]>) {
+      return laboratoryToolMutationRuntime.updateSelectedTools(...args);
+    },
     updateAllTools(...args: Parameters<LaboratoryToolMutationRuntime["updateAllTools"]>) {
       return laboratoryToolMutationRuntime.updateAllTools(...args);
     },

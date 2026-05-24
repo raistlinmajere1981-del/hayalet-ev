@@ -19,8 +19,6 @@ import {
 import {
   PATTERN_SOURCE_TYPES,
   type PatternSourceType,
-  type PatternTraceType,
-  type ReportTrace,
 } from "../../rooms/pattern-room/shared/types/pattern-room-domain.ts";
 import type { PatternRoomMockData } from "../../rooms/pattern-room/shared/types/pattern-room.ts";
 
@@ -37,20 +35,6 @@ const EXPECTED_SOURCE_TYPE_LABELS: Record<PatternSourceType, string> = {
   unknown: "Belirsiz kaynak",
 };
 
-const TRACE_TYPES_BY_REPORT_SECTION = {
-  "Kanıt İzleri": ["source-added", "evidence-added"],
-  "Analiz İzleri": ["edge-added", "confidence-changed", "layer-promoted"],
-  "Belirsizlik İzleri": ["node-removed", "edge-removed"],
-  "Sonraki araştırma notları": [
-    "node-added",
-    "debate-started",
-    "debate-turn",
-    "debate-ended",
-    "verdict-set",
-    "report-generated",
-  ],
-} as const satisfies Record<string, readonly PatternTraceType[]>;
-
 function createDomainWithAllSourceTypes(): PatternRoomDomainViewSource {
   return {
     ...PATTERN_ROOM_DOMAIN_MOCK,
@@ -66,27 +50,6 @@ function createDomainWithAllSourceTypes(): PatternRoomDomainViewSource {
         addedAt: "2026-05-20T11:30:00.000Z",
       };
     }),
-  };
-}
-
-function createDomainWithAllTraceTypes(): PatternRoomDomainViewSource {
-  const reportTrace: ReportTrace[] = Object.values(TRACE_TYPES_BY_REPORT_SECTION)
-    .flat()
-    .map((traceType, index) => {
-      return {
-        id: `trace-${traceType}`,
-        topicId: PATTERN_ROOM_DOMAIN_MOCK.topic.id,
-        traceType,
-        actorId: "system",
-        summary: `${traceType} summary`,
-        payload: {},
-        occurredAt: `2026-05-20T11:${String(index).padStart(2, "0")}:00.000Z`,
-      };
-    });
-
-  return {
-    ...PATTERN_ROOM_DOMAIN_MOCK,
-    reportTrace,
   };
 }
 
@@ -163,8 +126,8 @@ test("pattern-room phase 4B adapter applies local overlay without mutating domai
   const evidenceCategory = viewModels.boardCategories.find((category) => {
     return category.id === "board-evidence";
   });
-  const localNotesSection = viewModels.reportSummary.sections.find((section) => {
-    return section.id === "report-local-notes";
+  const nextResearchSection = viewModels.reportSummary.sections.find((section) => {
+    return section.id === "report-next-research-notes";
   });
 
   assert.ok(evidenceCategory);
@@ -180,8 +143,11 @@ test("pattern-room phase 4B adapter applies local overlay without mutating domai
       return reference.label === "Golge karsilastirma gorseli";
     })
   );
-  assert.ok(localNotesSection);
-  assert.deepEqual(localNotesSection.bullets, ["Yerel smoke notu"]);
+  assert.ok(nextResearchSection);
+  assert.deepEqual(
+    nextResearchSection.items.map((item) => item.body),
+    ["Yerel smoke notu"]
+  );
   assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
 });
 
@@ -227,10 +193,13 @@ test("pattern-room phase 4B adapter silently skips stale overlay ids", () => {
     false
   );
   assert.deepEqual(viewModels.tenthManSession.references, []);
-  assert.ok(
-    viewModels.reportSummary.sections.some((section) => {
-      return section.label === "Yerel Notlar";
-    })
+  const nextResearchSection = viewModels.reportSummary.sections.find((section) => {
+    return section.id === "report-next-research-notes";
+  });
+  assert.ok(nextResearchSection);
+  assert.deepEqual(
+    nextResearchSection.items.map((item) => item.body),
+    ["Elle yazılmış not"]
   );
 });
 
@@ -268,17 +237,17 @@ test("pattern-room phase 5B local debate state machine stays overlay-only", () =
   localState.reflectDebateToReport();
 
   const viewModels = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK, localState.getOverlay());
-  const localNotesSection = viewModels.reportSummary.sections.find((section) => {
-    return section.id === "report-local-notes";
+  const nextResearchSection = viewModels.reportSummary.sections.find((section) => {
+    return section.id === "report-next-research-notes";
   });
 
   assert.equal(viewModels.tenthManSession.status, "completed");
   assert.equal(viewModels.tenthManSession.phase, "completed");
   assert.equal(viewModels.tenthManSession.turns?.length, 5);
   assert.match(viewModels.tenthManSession.verdict ?? "", /Gerçek AI, provider veya relay/);
-  assert.ok(localNotesSection);
-  assert.equal(localNotesSection.bullets.length, 1);
-  assert.match(localNotesSection.bullets[0] ?? "", /10\. Adam local oturum özeti/);
+  assert.ok(nextResearchSection);
+  assert.equal(nextResearchSection.items.length, 1);
+  assert.match(nextResearchSection.items[0]?.body ?? "", /10\. Adam local oturum özeti/);
   assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
 });
 
@@ -314,7 +283,7 @@ test("pattern-room phase 7B local authoring appears in board, archive, desk, rep
     return source.id === "local-source-001";
   });
   const localEvidenceSection = viewModels.reportSummary.sections.find((section) => {
-    return section.label === "Yerel Kanıt Notları";
+    return section.id === "report-evidence-notes";
   });
 
   assert.ok(interpretationCategory);
@@ -350,7 +319,22 @@ test("pattern-room phase 7B local authoring appears in board, archive, desk, rep
     })
   );
   assert.ok(localEvidenceSection);
-  assert.deepEqual(localEvidenceSection.bullets, ["Yerel kanıt: Local alıntı Yorum: Local yorum"]);
+  assert.deepEqual(
+    localEvidenceSection.items.map((item) => {
+      return {
+        body: item.body,
+        detail: item.detail,
+        label: item.label,
+      };
+    }),
+    [
+      {
+        body: "Local alıntı",
+        detail: "Yorum: Local yorum",
+        label: "Yerel kanıt",
+      },
+    ]
+  );
   assert.deepEqual(localState.getOverlay().debateReferenceIds, [
     "local-node-001",
     "local-source-001",
@@ -382,7 +366,7 @@ test("pattern-room phase 13F local evidence can expose source labels in board an
     return category.id === "board-evidence";
   });
   const localEvidenceSection = viewModels.reportSummary.sections.find((section) => {
-    return section.label === "Yerel Kanıt Notları";
+    return section.id === "report-evidence-notes";
   });
   const evidencePin = evidenceCategory?.pins.find((pin) => {
     return pin.id === "local-evidence-001";
@@ -392,9 +376,9 @@ test("pattern-room phase 13F local evidence can expose source labels in board an
   assert.equal(evidencePin.sourceId, "local-source-001");
   assert.equal(evidencePin.sourceLabel, "Kaynaklı arşiv");
   assert.ok(localEvidenceSection);
-  assert.deepEqual(localEvidenceSection.bullets, [
-    "Kaynaklı kanıt: Kaynaklı alıntı Kaynak: Kaynaklı arşiv Yorum: Kaynaklı yorum",
-  ]);
+  assert.equal(localEvidenceSection.items[0]?.body, "Kaynaklı alıntı");
+  assert.equal(localEvidenceSection.items[0]?.detail, "Yorum: Kaynaklı yorum");
+  assert.ok(localEvidenceSection.items[0]?.meta.includes("Kaynak: Kaynaklı arşiv"));
 });
 
 test("pattern-room phase 8B local authored connections appear only in the report", () => {
@@ -419,10 +403,14 @@ test("pattern-room phase 8B local authored connections appear only in the report
   assert.ok(connectionsSection);
   assert.equal(connectionsSection.label, "Yerel Bağlantılar");
   assert.equal(connectionsSection.tone, "analysis");
-  assert.equal(connectionsSection.note, "Oda içinde kurulan öğeler arası bağlantılar.");
-  assert.deepEqual(connectionsSection.bullets, [
-    "Seyir defteri kaynagi → destekliyor → Golge karsilastirma gorseli",
-  ]);
+  assert.equal(
+    connectionsSection.note,
+    "Oda içinde kurulan yerel bağlantılar kesin hüküm üretmeden gösterilir."
+  );
+  assert.deepEqual(
+    connectionsSection.items.map((item) => item.body),
+    ["Seyir defteri kaynagi → destekliyor → Golge karsilastirma gorseli"]
+  );
   assert.equal(localState.getOverlay().localAuthoredEdges.length, 1);
   assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
 });
@@ -492,7 +480,14 @@ test("pattern-room phase 3B report adapter creates cautious report sections", ()
 
   assert.deepEqual(
     reportSummary.sections.map((section) => section.label),
-    ["Kanıt İzleri", "Analiz İzleri", "Belirsizlik İzleri", "Sonraki araştırma notları"]
+    [
+      "Kaynak Özeti",
+      "Kanıt Notları",
+      "Pano Notları",
+      "Yerel Bağlantılar",
+      "10. Adam İzleri",
+      "Sonraki Araştırma Notları",
+    ]
   );
   assert.equal(
     reportSummary.sections.every((section) => section.bullets.length > 0),
@@ -500,24 +495,107 @@ test("pattern-room phase 3B report adapter creates cautious report sections", ()
   );
 });
 
-test("pattern-room phase 3B report adapter groups every trace type without verdict language", () => {
-  const reportSummary = adaptReportViewModel(createDomainWithAllTraceTypes()).reportSummary;
+test("pattern-room phase 15A report adapter drafts local evidence without verdict language", () => {
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
 
-  for (const [sectionLabel, traceTypes] of Object.entries(TRACE_TYPES_BY_REPORT_SECTION)) {
-    const section = reportSummary.sections.find((candidate) => candidate.label === sectionLabel);
+  localState.addAuthoredSource("Uzun kaynak başlığı", "Kullanıcı arşivi", "Uzun kaynak gövdesi.");
+  localState.addAuthoredClaim("Yerel iddia", "Kullanıcı tarafından eklenen iddia.");
+  localState.addAuthoredInspiration("Yerel ilham", "Kullanıcı tarafından eklenen ilham.");
+  localState.addAuthoredUncertainty("Eksik bağlam", "Sonraki araştırma için belirsizlik.");
+  localState.addAuthoredEvidence(
+    "Kaynaklı kanıt",
+    "Kaynak detayından seçilen kısa pasaj.",
+    "Kullanıcı yorumu ayrı kalır.",
+    "evidence",
+    { sourceId: "local-source-001", sourceLabel: "Uzun kaynak başlığı" }
+  );
+  localState.addAuthoredEdge("supports", "local-node-001", "local-evidence-001", "Bağ notu.");
+  localState.addLocalNote("Kullanıcı takip notu.");
+  localState.addToDebate("local-node-001");
+  localState.prepareDebate();
+  localState.assignDebateRoles();
+  localState.startDebate();
+  localState.advanceDebatePhase();
+  localState.advanceDebatePhase();
+  localState.advanceDebatePhase();
+  localState.advanceDebatePhase();
+  localState.completeDebate();
 
-    assert.ok(section);
-    assert.deepEqual(
-      section.bullets,
-      traceTypes.map((traceType) => `${traceType} summary`)
-    );
-  }
+  const baseOverlay = localState.getOverlay();
+  const firstSource = baseOverlay.localAuthoredSources[0];
+  assert.ok(firstSource);
+  const overlay: PatternRoomLocalOverlay = {
+    ...baseOverlay,
+    localAuthoredSources: [
+      {
+        ...firstSource,
+        segments: [
+          { id: "segment-001", label: "Segment 1", order: 0, text: "İlk segment." },
+          { id: "segment-002", label: "Segment 2", order: 1, text: "İkinci segment." },
+        ],
+      },
+    ],
+  };
+
+  const reportSummary = adaptReportViewModel(PATTERN_ROOM_DOMAIN_MOCK, overlay).reportSummary;
+  const sourceSection = reportSummary.sections.find((section) => {
+    return section.id === "report-source-summary";
+  });
+  const evidenceSection = reportSummary.sections.find((section) => {
+    return section.id === "report-evidence-notes";
+  });
+  const boardSection = reportSummary.sections.find((section) => {
+    return section.id === "report-board-notes";
+  });
+  const connectionSection = reportSummary.sections.find((section) => {
+    return section.id === "report-local-connections";
+  });
+  const tenthManSection = reportSummary.sections.find((section) => {
+    return section.id === "report-tenth-man-traces";
+  });
+  const nextResearchSection = reportSummary.sections.find((section) => {
+    return section.id === "report-next-research-notes";
+  });
+
+  assert.ok(sourceSection);
+  assert.equal(sourceSection.items[0]?.body, "Archive sayımı: 4 domain kaynak, 1 local kaynak.");
+  assert.equal(sourceSection.items[1]?.label, "Uzun kaynak başlığı");
+  assert.ok(sourceSection.items[1]?.meta.includes("Segment: 2"));
+
+  assert.ok(evidenceSection);
+  assert.equal(evidenceSection.items[0]?.label, "Kaynaklı kanıt");
+  assert.equal(evidenceSection.items[0]?.body, "Kaynak detayından seçilen kısa pasaj.");
+  assert.equal(evidenceSection.items[0]?.detail, "Yorum: Kullanıcı yorumu ayrı kalır.");
+  assert.ok(evidenceSection.items[0]?.meta.includes("Kaynak: Uzun kaynak başlığı"));
+
+  assert.ok(boardSection);
+  assert.deepEqual(
+    boardSection.items.map((item) => item.meta.find((meta) => meta.startsWith("Tür:"))),
+    ["Tür: İddia", "Tür: İlham", "Tür: Belirsizlik"]
+  );
+
+  assert.ok(connectionSection);
+  assert.equal(connectionSection.items[0]?.body, "Yerel iddia → destekliyor → Kaynaklı kanıt");
+  assert.equal(connectionSection.items[0]?.detail, "Not: Bağ notu.");
+
+  assert.ok(tenthManSection);
+  assert.equal(tenthManSection.items.length > 0, true);
+  assert.equal(
+    tenthManSection.items.some((item) => item.label === "Yerel tartışma özeti"),
+    true
+  );
+
+  assert.ok(nextResearchSection);
+  assert.ok(nextResearchSection.items.some((item) => item.body === "Kullanıcı takip notu."));
+  assert.ok(nextResearchSection.items.some((item) => item.label === "Eksik bağlam"));
 
   const reportCopy = reportSummary.sections
-    .flatMap((section) => [section.note, ...section.bullets])
+    .flatMap((section) => [section.label, section.note, section.emptyMessage, ...section.bullets])
     .join(" ");
   assert.doesNotMatch(
     reportCopy,
-    /kesin cevap|kanıtlandı|doğrulandı|ispatlandı|final verdict|truth score/i
+    /kesin cevap|kesin sonuç|kanıtlandı|doğrulandı|ispatlandı|AI sonucu|nihai rapor|provider|relay|final verdict|truth score/i
   );
+  assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
 });

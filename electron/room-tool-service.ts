@@ -1,7 +1,18 @@
 import { once } from "events";
 import { spawn } from "child_process";
 import { createWriteStream, existsSync } from "fs";
-import { chmod, mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from "fs/promises";
+import {
+  chmod,
+  copyFile,
+  cp,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rename,
+  rm,
+  writeFile,
+} from "fs/promises";
 import { dirname, join, relative, resolve } from "path";
 import { tmpdir } from "os";
 import type { IpcMainInvokeEvent } from "electron";
@@ -69,7 +80,7 @@ type ToolManifest = {
   availability?: ToolAvailability;
   installer?: ToolInstallerSpec;
   plannedReason?: string;
-  releaseProvider?: GitHubReleaseProvider;
+  releaseProvider?: ToolReleaseProvider;
   assets?: Partial<Record<PlatformKey, ToolAssetSpec>>;
   probe?: {
     args: string[];
@@ -79,7 +90,7 @@ type ToolManifest = {
 };
 
 type InstallableToolManifest = ToolManifest & {
-  releaseProvider: GitHubReleaseProvider;
+  releaseProvider?: ToolReleaseProvider;
   assets: Partial<Record<PlatformKey, ToolAssetSpec>>;
   probe: {
     args: string[];
@@ -122,13 +133,26 @@ type GitHubReleaseProvider = {
   releaseUrl: string;
 };
 
+type WebPageReleaseProvider = {
+  type: "web-page";
+  latestPageUrl: string;
+  releaseUrl: string;
+  versionRegex: string;
+};
+
+type ToolReleaseProvider = GitHubReleaseProvider | WebPageReleaseProvider;
+
 type ArchiveType = "tar.xz" | "tar.gz" | "zip";
 
 type ToolAssetSpec = {
   assetMatch: string;
   archive: "none" | ArchiveType;
+  copyArchiveContents?: boolean;
+  downloadUrlTemplate?: string;
   executableName: string;
   companionExecutables?: string[];
+  releaseProvider?: ToolReleaseProvider;
+  sourceExecutableName?: string;
 };
 
 type GitHubReleaseAsset = {
@@ -471,6 +495,7 @@ function compareLooseVersion(left: string, right: string): number {
 async function resolveSystemCommandBinaryPath(
   executableName: string,
   options?: {
+    allowPathLookup?: boolean | undefined;
     candidatePaths?: string[] | undefined;
     envVarNames?: string[] | undefined;
     runtimePaths?: RoomToolRuntimePaths | null | undefined;
@@ -502,6 +527,10 @@ async function resolveSystemCommandBinaryPath(
 
   if (normalizedName.includes("/") || normalizedName.includes("\\")) {
     return existsSync(normalizedName) ? normalizedName : null;
+  }
+
+  if (options?.allowPathLookup === false) {
+    return null;
   }
 
   const lookupCommand = process.platform === "win32" ? "where.exe" : "which";
@@ -807,6 +836,16 @@ async function fetchGitHubRelease(provider: GitHubReleaseProvider): Promise<GitH
   return (await fetchJson(url)) as GitHubReleasePayload;
 }
 
+function expandReleaseTemplate(template: string, version: string): string {
+  return template.replaceAll("${version}", encodeURIComponent(version));
+}
+
+function getFileNameFromUrl(url: string, fallback: string): string {
+  const pathPart = url.split(/[?#]/u)[0] ?? "";
+  const lastPart = pathPart.split("/").filter(Boolean).pop();
+  return decodeURIComponent(lastPart ?? fallback);
+}
+
 async function collectFilesRecursive(baseDir: string): Promise<string[]> {
   const entries = await readdir(baseDir, { withFileTypes: true });
   const results = await Promise.all(
@@ -819,6 +858,17 @@ async function collectFilesRecursive(baseDir: string): Promise<string[]> {
     })
   );
   return results.flat();
+}
+
+async function findArchiveContentRoot(extractDir: string): Promise<string> {
+  const entries = await readdir(extractDir, { withFileTypes: true });
+  const meaningfulEntries = entries.filter(function (entry) {
+    return entry.name !== "__MACOSX";
+  });
+  if (meaningfulEntries.length === 1 && meaningfulEntries[0]?.isDirectory() === true) {
+    return join(extractDir, meaningfulEntries[0].name);
+  }
+  return extractDir;
 }
 
 function resolveUniquePath(targetPath: string): string {
@@ -965,6 +1015,22 @@ function normalizeToolStatus(toolId: string, data: Partial<RoomToolStatus>): Roo
     companionPaths: data.companionPaths ?? {},
     details: data.details ?? {},
   };
+}
+
+function isCrossDeviceRenameError(error: unknown): boolean {
+  return error !== null && typeof error === "object" && (error as { code?: unknown }).code === "EXDEV";
+}
+
+async function moveDownloadedFile(sourcePath: string, targetPath: string): Promise<void> {
+  try {
+    await rename(sourcePath, targetPath);
+  } catch (error) {
+    if (isCrossDeviceRenameError(error) !== true) {
+      throw error;
+    }
+    await copyFile(sourcePath, targetPath);
+    await rm(sourcePath, { force: true });
+  }
 }
 
 function summarizeCommandFailure(result: { stderr: string; stdout: string }): string | null {
@@ -1536,6 +1602,7 @@ class RoomToolService {
     const paths = resolveRuntimePaths(request.roomId);
     const resolved = this.resolvePythonVenvPipInstaller(toolManifest, request.toolId);
     const binaryPath = await resolveSystemCommandBinaryPath(resolved.systemCommand.executableName, {
+      allowPathLookup: false,
       candidatePaths: resolved.systemCommand.candidatePaths,
       envVarNames: resolved.systemCommand.envVarNames,
       runtimePaths: paths,
@@ -1663,7 +1730,7 @@ class RoomToolService {
 
       if (resolved.asset.archive === "none") {
         const binaryPath = join(installDir, resolved.asset.executableName);
-        await rename(downloadResult.path, binaryPath);
+        await moveDownloadedFile(downloadResult.path, binaryPath);
         await markExecutable(binaryPath);
       } else {
         const extractDir = join(tempRoot, "extract");
@@ -1677,22 +1744,44 @@ class RoomToolService {
           message: resolved.asset.archive,
         });
         await extractArchive(downloadResult.path, extractDir, resolved.asset.archive);
-        const files = await collectFilesRecursive(extractDir);
+        const archiveContentRoot = await findArchiveContentRoot(extractDir);
+        if (resolved.asset.copyArchiveContents === true) {
+          await cp(archiveContentRoot, installDir, { recursive: true });
+        }
+        const searchRoot =
+          resolved.asset.copyArchiveContents === true ? installDir : archiveContentRoot;
+        const files = await collectFilesRecursive(searchRoot);
         const executables = [
-          resolved.asset.executableName,
-          ...(resolved.asset.companionExecutables ?? []),
+          {
+            sourceName: resolved.asset.sourceExecutableName ?? resolved.asset.executableName,
+            targetName: resolved.asset.executableName,
+          },
+          ...(resolved.asset.companionExecutables ?? []).map((executableName) => ({
+            sourceName: executableName,
+            targetName: executableName,
+          })),
         ];
 
         await Promise.all(
-          executables.map(async (executableName): Promise<void> => {
+          executables.map(async (executable): Promise<void> => {
             const sourcePath =
-              files.find((filePath) => filePath.split(/[\\/]/).pop() === executableName) ?? null;
+              files.find((filePath) => filePath.split(/[\\/]/).pop() === executable.sourceName) ??
+              null;
             if (sourcePath === null) {
-              throw new Error(`Could not find ${executableName} inside ${release.asset.name}`);
+              throw new Error(
+                `Could not find ${executable.sourceName} inside ${release.asset.name}`
+              );
             }
-            const targetPath = join(installDir, executableName);
-            const sourceBuffer = await readFile(sourcePath);
-            await writeFile(targetPath, sourceBuffer);
+            const targetPath = join(installDir, executable.targetName);
+            if (sourcePath !== targetPath) {
+              if (resolved.asset.copyArchiveContents === true) {
+                await rm(targetPath, { force: true });
+                await rename(sourcePath, targetPath);
+              } else {
+                const sourceBuffer = await readFile(sourcePath);
+                await writeFile(targetPath, sourceBuffer);
+              }
+            }
             await markExecutable(targetPath);
           })
         );
@@ -1816,6 +1905,7 @@ class RoomToolService {
           ? this.resolveSystemCommandTool(manifest, request.toolId)
           : this.resolveToolSystemCommandSpec(toolManifest, request.toolId);
       const resolvedBinaryPath = await resolveSystemCommandBinaryPath(selectedExecutableName, {
+        allowPathLookup: this.getInstallerType(resolvedSystemCommand.manifest) !== "python-venv-pip",
         envVarNames:
           selectedExecutableName === resolvedSystemCommand.systemCommand.executableName
             ? resolvedSystemCommand.systemCommand.envVarNames
@@ -3042,13 +3132,14 @@ class RoomToolService {
     operation: "tool-probe" | "tool-install" | "tool-update"
   ): Promise<RoomToolCallResult> {
     const resolved = this.resolveToolSystemCommandSpec(toolManifest, toolId);
+    const setupHint = this.getSystemCommandSetupHint(toolId, resolved.manifest);
+    const installerType = this.getInstallerType(resolved.manifest);
     const binaryPath = await resolveSystemCommandBinaryPath(resolved.systemCommand.executableName, {
+      allowPathLookup: installerType !== "python-venv-pip",
       envVarNames: resolved.systemCommand.envVarNames,
       candidatePaths: resolved.systemCommand.candidatePaths,
       runtimePaths: paths,
     });
-    const setupHint = this.getSystemCommandSetupHint(toolId, resolved.manifest);
-    const installerType = this.getInstallerType(resolved.manifest);
 
     if (binaryPath === null) {
       return {
@@ -3166,7 +3257,7 @@ class RoomToolService {
     if (!toolManifest.probe) {
       throw new Error(`Tool ${toolId} is missing a probe declaration`);
     }
-    if (!toolManifest.releaseProvider) {
+    if (!toolManifest.releaseProvider && !asset.releaseProvider) {
       throw new Error(`Tool ${toolId} is missing a release provider declaration`);
     }
 
@@ -3177,7 +3268,9 @@ class RoomToolService {
       releaseAssetNameHint:
         asset.archive === "none"
           ? asset.executableName
-          : `${toolId}.${asset.archive === "tar.xz" ? "tar.xz" : "zip"}`,
+          : `${toolId}.${
+              asset.archive === "tar.xz" ? "tar.xz" : asset.archive === "tar.gz" ? "tar.gz" : "zip"
+            }`,
     };
   }
 
@@ -3204,11 +3297,34 @@ class RoomToolService {
     manifest: ToolManifest,
     asset: ToolAssetSpec
   ): Promise<ToolReleaseInfo> {
-    if (!manifest.releaseProvider) {
+    const releaseProvider = asset.releaseProvider ?? manifest.releaseProvider;
+    if (!releaseProvider) {
       throw new Error(`Tool ${manifest.displayName} is missing a release provider declaration`);
     }
 
-    const payload = await fetchGitHubRelease(manifest.releaseProvider);
+    if (releaseProvider.type === "web-page") {
+      const releasePage = await fetchText(releaseProvider.latestPageUrl);
+      const latestVersion = findVersion(releasePage, releaseProvider.versionRegex);
+      const downloadUrlTemplate = asNonEmptyString(asset.downloadUrlTemplate);
+      if (latestVersion === null) {
+        throw new Error(`No latest version found for ${manifest.displayName}`);
+      }
+      if (downloadUrlTemplate === null) {
+        throw new Error(`Tool ${manifest.displayName} is missing a download URL template`);
+      }
+      const downloadUrl = expandReleaseTemplate(downloadUrlTemplate, latestVersion);
+      return {
+        tag: latestVersion,
+        name: latestVersion,
+        releaseUrl: releaseProvider.releaseUrl,
+        asset: {
+          name: getFileNameFromUrl(downloadUrl, asset.executableName),
+          browser_download_url: downloadUrl,
+        },
+      };
+    }
+
+    const payload = await fetchGitHubRelease(releaseProvider);
     const matcher = new RegExp(asset.assetMatch);
     const releaseAsset = (payload.assets ?? []).find((candidate) => matcher.test(candidate.name));
 
@@ -3221,7 +3337,7 @@ class RoomToolService {
     return {
       tag: asNonEmptyString(payload.tag_name),
       name: asNonEmptyString(payload.name),
-      releaseUrl: asNonEmptyString(payload.html_url) ?? manifest.releaseProvider.releaseUrl,
+      releaseUrl: asNonEmptyString(payload.html_url) ?? releaseProvider.releaseUrl,
       asset: releaseAsset,
     };
   }

@@ -9,7 +9,6 @@ import {
   type PatternNode,
   type PatternReliability,
   type PatternSourceType,
-  type PatternTraceType,
   type ReportTrace,
   type SourceItem,
   type Topic,
@@ -21,11 +20,13 @@ import type {
   PatternClaim,
   PatternConnectionOption,
   PatternDebateReference,
+  PatternReportItem,
   PatternReportSection,
   PatternRoomMockData,
   PatternSource,
 } from "../types/pattern-room.js";
 import type {
+  DebateLocalTurn,
   LocalAuthoredEdge,
   LocalAuthoredEvidence,
   LocalAuthoredNode,
@@ -62,10 +63,12 @@ export type PatternTenthManViewModel = Pick<PatternRoomMockData, "tenthManSessio
 export type PatternReportViewModel = Pick<PatternRoomMockData, "reportSummary">;
 
 type PatternReportSectionId =
-  | "report-evidence"
-  | "report-analysis"
-  | "report-uncertainties"
-  | "report-next-notes";
+  | "report-source-summary"
+  | "report-evidence-notes"
+  | "report-board-notes"
+  | "report-local-connections"
+  | "report-tenth-man-traces"
+  | "report-next-research-notes";
 
 const LAYER_TONES: Record<PatternLayer, PatternBoardCategoryTone> = {
   evidence: "evidence",
@@ -84,7 +87,7 @@ const LAYER_LABELS: Record<PatternLayer, string> = {
 const LAYER_SUMMARIES: Record<PatternLayer, string> = {
   evidence: "Doğrudan kaynak, gözlem ve alıntı izleri bu katmanda tutulur.",
   analysis: "Kaynaklardan türeyen temkinli çıkarımlar ayrı görünür.",
-  interpretation: "Yorum ve senaryo notları kesin sonuçtan ayrılır.",
+  interpretation: "Yorum ve senaryo notları temkinli dilden ayrılır.",
   uncertainty: "Eksik bağlam, itiraz ve doğrulanmamış noktalar işaretlenir.",
 };
 
@@ -101,6 +104,7 @@ const SOURCE_TYPE_LABELS: Record<PatternSourceType, string> = {
   unknown: "Belirsiz kaynak",
 };
 const ARCHIVE_SOURCE_NOTE_PREVIEW_LENGTH = 240;
+const REPORT_ITEM_PREVIEW_LENGTH = 220;
 
 const RELIABILITY_LABELS: Record<PatternReliability, string> = {
   unverified: "Doğrulanmamış",
@@ -133,41 +137,85 @@ const EDGE_TYPE_LABELS: Record<PatternEdgeType, string> = {
   needs_review: "inceleme gerekiyor",
 };
 
-const REPORT_SECTION_DEFINITIONS: Array<{
-  id: PatternReportSectionId;
-  label: string;
-  tone: PatternBoardCategoryTone;
-  note: string;
-  fallbackBullet: string;
-}> = [
+const LOCAL_NODE_TYPE_LABELS: Record<LocalAuthoredNode["nodeType"], string> = {
+  claim: "İddia",
+  inspiration: "İlham",
+  uncertainty: "Belirsizlik",
+};
+
+const DEBATE_PHASE_LABELS: Record<DebateLocalTurn["phaseKey"], string> = {
+  idle: "Beklemede",
+  preparation: "Hazırlık",
+  role_assignment: "Rol atama",
+  opening: "Açılış",
+  counter_argument: "Karşı argüman",
+  evidence_review: "Kanıt inceleme",
+  weak_point: "Zayıf nokta",
+  judge_mapping: "Hakem eşlemesi",
+  completed: "Tamamlandı",
+};
+
+const DEBATE_ROLE_LABELS: Record<DebateLocalTurn["role"], string> = {
+  researcher: "Araştırmacı",
+  advocate: "Savunucu",
+  "tenth-man": "10. Adam / Karşıt",
+  arbiter: "Hakem",
+};
+
+const REPORT_SECTION_DEFINITIONS: Record<
+  PatternReportSectionId,
   {
-    id: "report-evidence",
-    label: "Kanıt İzleri",
+    label: string;
+    tone: PatternBoardCategoryTone;
+    note: string;
+    emptyMessage: string;
+  }
+> = {
+  "report-source-summary": {
+    label: "Kaynak Özeti",
     tone: "evidence",
-    note: "Kaynak ve kanıt izleri kesin hüküm üretmeden listelenir.",
-    fallbackBullet: "Bu mock görünümde kanıt izi henüz boş bırakılmıştır.",
+    note: "Taslak kaynak sayımı Archive görünümündeki domain ve yerel izlerden hazırlanır.",
+    emptyMessage: "Henüz kullanıcı tarafından eklenen yerel kaynak yok.",
   },
-  {
-    id: "report-analysis",
-    label: "Analiz İzleri",
-    tone: "analysis",
-    note: "Analiz izleri yalnızca pano durumunu özetler.",
-    fallbackBullet: "Bu mock görünümde analiz izi henüz boş bırakılmıştır.",
+  "report-evidence-notes": {
+    label: "Kanıt Notları",
+    tone: "evidence",
+    note: "Kullanıcı tarafından eklenen yerel kanıt notları henüz doğrulanmamış iz olarak listelenir.",
+    emptyMessage: "Henüz yerel kanıt notu yok.",
   },
-  {
-    id: "report-uncertainties",
-    label: "Belirsizlik İzleri",
-    tone: "uncertainty",
-    note: "Eksik bağlam ve temkin gerektiren izler ayrı tutulur.",
-    fallbackBullet: "Bu mock görünümde belirsizlik izi henüz boş bırakılmıştır.",
-  },
-  {
-    id: "report-next-notes",
-    label: "Sonraki araştırma notları",
+  "report-board-notes": {
+    label: "Pano Notları",
     tone: "commentary",
-    note: "Tartışma ve takip izleri geçici rapor notu olarak gösterilir.",
-    fallbackBullet: "Bu mock görünümde takip notu henüz boş bırakılmıştır.",
+    note: "Kullanıcı tarafından eklenen claim, inspiration ve uncertainty pano notları ayrılır.",
+    emptyMessage: "Henüz yerel pano notu yok.",
   },
+  "report-local-connections": {
+    label: "Yerel Bağlantılar",
+    tone: "analysis",
+    note: "Oda içinde kurulan yerel bağlantılar kesin hüküm üretmeden gösterilir.",
+    emptyMessage: "Henüz yerel bağlantı yok.",
+  },
+  "report-tenth-man-traces": {
+    label: "10. Adam İzleri",
+    tone: "uncertainty",
+    note: "Yerel 10. Adam tur ve özet izleri dış üretim olmadan rapora yansır.",
+    emptyMessage: "Henüz 10. Adam tartışması rapora yansıtılmadı.",
+  },
+  "report-next-research-notes": {
+    label: "Sonraki Araştırma Notları",
+    tone: "commentary",
+    note: "Eksik bağlam, belirsizlik ve kullanıcı notları sonraki araştırma için tutulur.",
+    emptyMessage: "Henüz sonraki araştırma notu yok.",
+  },
+};
+
+const REPORT_SECTION_ORDER: readonly PatternReportSectionId[] = [
+  "report-source-summary",
+  "report-evidence-notes",
+  "report-board-notes",
+  "report-local-connections",
+  "report-tenth-man-traces",
+  "report-next-research-notes",
 ];
 
 function adaptSubjectLabel(topic: Topic): string {
@@ -272,16 +320,6 @@ function adaptLocalAuthoredEvidencePin(evidence: LocalAuthoredEvidence): Pattern
   };
 }
 
-function formatLocalEvidenceReportBullet(evidence: LocalAuthoredEvidence): string {
-  const sourceLabel =
-    evidence.sourceLabel === undefined || evidence.sourceLabel === null
-      ? ""
-      : ` Kaynak: ${evidence.sourceLabel}`;
-  const interpretation =
-    evidence.interpretation === null ? "" : ` Yorum: ${evidence.interpretation}`;
-  return `${evidence.label}: ${evidence.excerpt}${sourceLabel}${interpretation}`;
-}
-
 function createLayerPlaceholderPin(layer: PatternLayer): PatternBoardPin {
   return {
     id: `board-placeholder-${layer}`,
@@ -333,6 +371,62 @@ function createArchiveSourceNotePreview(note: string): string {
     return normalizedNote;
   }
   return `${normalizedNote.slice(0, ARCHIVE_SOURCE_NOTE_PREVIEW_LENGTH).trimEnd()}…`;
+}
+
+function createReportPreview(text: string, length = REPORT_ITEM_PREVIEW_LENGTH): string {
+  const normalizedText = text.replace(/\s+/g, " ").trim();
+  if (normalizedText.length <= length) {
+    return normalizedText;
+  }
+  return `${normalizedText.slice(0, length).trimEnd()}…`;
+}
+
+function createReportItem(
+  id: string,
+  label: string,
+  body: string,
+  meta: readonly string[],
+  detail: string | null = null
+): PatternReportItem {
+  return {
+    id,
+    label,
+    body: createReportPreview(body),
+    meta: [...meta],
+    detail: detail === null ? null : createReportPreview(detail),
+  };
+}
+
+function formatReportBullet(item: PatternReportItem): string {
+  const meta = item.meta.length === 0 ? "" : ` (${item.meta.join(" · ")})`;
+  const detail = item.detail === null ? "" : ` ${item.detail}`;
+  return `${item.label}: ${item.body}${detail}${meta}`;
+}
+
+function createReportSection(
+  id: PatternReportSectionId,
+  items: readonly PatternReportItem[]
+): PatternReportSection {
+  const definition = REPORT_SECTION_DEFINITIONS[id];
+  return {
+    id,
+    label: definition.label,
+    tone: definition.tone,
+    note: definition.note,
+    bullets: items.length === 0 ? [definition.emptyMessage] : items.map(formatReportBullet),
+    items: [...items],
+    emptyMessage: definition.emptyMessage,
+  };
+}
+
+function createReportLocalTraceText(text: string): string {
+  return text
+    .replace(/\bLocal\b/g, "Yerel")
+    .replace(/\bdummy\b/g, "yerel")
+    .replace(/\bAI0\s+/g, "Yerel araştırmacı ")
+    .replace(/\bAI1\s+/g, "Yerel savunucu ")
+    .replace(/\bAI2\s+/g, "Yerel karşıt ")
+    .replace(/Gerçek .+ çağrısı yapılmadı\./, "Dış üretim çağrısı yapılmadı.");
 }
 
 function adaptLocalAuthoredSource(source: LocalAuthoredSource): PatternSource {
@@ -424,28 +518,6 @@ function adaptRoleLabel(role: DebateRole): string {
     return "US1 — Hakem / Uzak kullanıcı";
   }
   return `${role.slotId} — ${role.label}`;
-}
-
-function classifyTraceSection(traceType: PatternTraceType): PatternReportSectionId {
-  switch (traceType) {
-    case "source-added":
-    case "evidence-added":
-      return "report-evidence";
-    case "edge-added":
-    case "confidence-changed":
-    case "layer-promoted":
-      return "report-analysis";
-    case "node-removed":
-    case "edge-removed":
-      return "report-uncertainties";
-    case "node-added":
-    case "debate-started":
-    case "debate-turn":
-    case "debate-ended":
-    case "verdict-set":
-    case "report-generated":
-      return "report-next-notes";
-  }
 }
 
 export function adaptOverviewViewModel(
@@ -735,75 +807,169 @@ function adaptLocalConnectionBullet(
   return `${sourceLabel} → ${EDGE_TYPE_LABELS[edge.edgeType]} → ${targetLabel}`;
 }
 
+function createSourceSummaryReportItems(
+  domain: PatternRoomDomainViewSource,
+  overlay?: PatternRoomLocalOverlay
+): PatternReportItem[] {
+  const localSources = overlay?.localAuthoredSources ?? [];
+  const items = [
+    createReportItem(
+      "report-source-counts",
+      "Archive kaynak sayımı",
+      `Archive sayımı: ${domain.sources.length} domain kaynak, ${localSources.length} local kaynak.`,
+      ["Taslak", "Yerel iz"]
+    ),
+  ];
+
+  if (localSources.length === 0) {
+    items.push(
+      createReportItem(
+        "report-local-source-empty-note",
+        "Yerel kaynak başlıkları",
+        "Henüz kullanıcı tarafından eklenen yerel kaynak yok.",
+        ["Sonraki araştırma için"]
+      )
+    );
+    return items;
+  }
+
+  return items.concat(
+    localSources.map((source) => {
+      const segmentCount = source.segments?.length ?? 0;
+      const meta = [
+        "Kullanıcı tarafından eklenen",
+        `Köken: ${source.origin}`,
+        ...(segmentCount > 0 ? [`Segment: ${segmentCount}`] : []),
+      ];
+      const body = source.note === "" ? "Kaynak metni için kısa not yok." : source.note;
+      return createReportItem(`report-source-${source.id}`, source.label, body, meta);
+    })
+  );
+}
+
+function createEvidenceReportItems(overlay?: PatternRoomLocalOverlay): PatternReportItem[] {
+  return (
+    overlay?.localAuthoredEvidence.map((evidence) => {
+      const sourceLabel = evidence.sourceLabel ?? "Belirtilmemiş";
+      return createReportItem(
+        `report-evidence-${evidence.id}`,
+        evidence.label,
+        evidence.excerpt,
+        [
+          "Kullanıcı tarafından eklenen",
+          `Kaynak: ${sourceLabel}`,
+          `Katman: ${LAYER_LABELS[evidence.layer]}`,
+          "Henüz doğrulanmamış",
+        ],
+        evidence.interpretation === null ? null : `Yorum: ${evidence.interpretation}`
+      );
+    }) ?? []
+  );
+}
+
+function createBoardNoteReportItems(overlay?: PatternRoomLocalOverlay): PatternReportItem[] {
+  return (
+    overlay?.localAuthoredNodes.map((node) => {
+      return createReportItem(`report-board-node-${node.id}`, node.label, node.content, [
+        "Kullanıcı tarafından eklenen",
+        `Tür: ${LOCAL_NODE_TYPE_LABELS[node.nodeType]}`,
+      ]);
+    }) ?? []
+  );
+}
+
+function createLocalConnectionReportItems(
+  domain: PatternRoomDomainViewSource,
+  overlay?: PatternRoomLocalOverlay
+): PatternReportItem[] {
+  if (overlay === undefined) {
+    return [];
+  }
+
+  return overlay.localAuthoredEdges
+    .map((edge) => {
+      const body = adaptLocalConnectionBullet(domain, overlay, edge);
+      if (body === null) {
+        return null;
+      }
+      return createReportItem(
+        `report-local-edge-${edge.id}`,
+        "Yerel bağlantı",
+        body,
+        ["Yerel iz", "Kullanıcı tarafından eklenen"],
+        edge.note === null ? null : `Not: ${edge.note}`
+      );
+    })
+    .filter((item): item is PatternReportItem => item !== null);
+}
+
+function createTenthManReportItems(overlay?: PatternRoomLocalOverlay): PatternReportItem[] {
+  const turnItems =
+    overlay?.debateLocalTurns.map((turn) => {
+      return createReportItem(
+        `report-tenth-turn-${turn.id}`,
+        `${DEBATE_ROLE_LABELS[turn.role]} yerel turu`,
+        createReportLocalTraceText(turn.content),
+        ["Yerel iz", `Faz: ${DEBATE_PHASE_LABELS[turn.phaseKey]}`]
+      );
+    }) ?? [];
+  const verdict = overlay?.debateLocalVerdict ?? null;
+
+  if (verdict === null) {
+    return turnItems;
+  }
+
+  return turnItems.concat(
+    createReportItem(
+      "report-tenth-verdict",
+      "Yerel tartışma özeti",
+      createReportLocalTraceText(verdict),
+      ["Yerel iz", "Henüz doğrulanmamış"]
+    )
+  );
+}
+
+function createNextResearchReportItems(overlay?: PatternRoomLocalOverlay): PatternReportItem[] {
+  const noteItems =
+    overlay?.localNotes.map((note) => {
+      return createReportItem(`report-local-note-${note.id}`, "Kullanıcı notu", note.text, [
+        "Kullanıcı tarafından eklenen",
+        "Sonraki araştırma için",
+      ]);
+    }) ?? [];
+  const uncertaintyItems =
+    overlay?.localAuthoredNodes
+      .filter((node) => node.nodeType === "uncertainty")
+      .map((node) => {
+        return createReportItem(`report-next-uncertainty-${node.id}`, node.label, node.content, [
+          "Belirsizlik",
+          "Sonraki araştırma için",
+        ]);
+      }) ?? [];
+
+  return [...noteItems, ...uncertaintyItems];
+}
+
 export function adaptReportViewModel(
   domain: PatternRoomDomainViewSource,
   overlay?: PatternRoomLocalOverlay
 ): PatternReportViewModel {
-  const tracesBySection = new Map<PatternReportSectionId, ReportTrace[]>();
-
-  for (const trace of domain.reportTrace) {
-    const sectionId = classifyTraceSection(trace.traceType);
-    const traces = tracesBySection.get(sectionId) ?? [];
-    traces.push(trace);
-    tracesBySection.set(sectionId, traces);
-  }
-
-  // Temporary view-only grouping until a real report capability exists; it avoids verdict language.
-  const sections: PatternReportSection[] = REPORT_SECTION_DEFINITIONS.map((definition) => {
-    const traces = tracesBySection.get(definition.id) ?? [];
-    const bullets =
-      traces.length > 0 ? traces.map((trace) => trace.summary) : [definition.fallbackBullet];
-    return {
-      id: definition.id,
-      label: definition.label,
-      tone: definition.tone,
-      note: definition.note,
-      bullets,
-    };
+  const itemsBySection: Record<PatternReportSectionId, PatternReportItem[]> = {
+    "report-source-summary": createSourceSummaryReportItems(domain, overlay),
+    "report-evidence-notes": createEvidenceReportItems(overlay),
+    "report-board-notes": createBoardNoteReportItems(overlay),
+    "report-local-connections": createLocalConnectionReportItems(domain, overlay),
+    "report-tenth-man-traces": createTenthManReportItems(overlay),
+    "report-next-research-notes": createNextResearchReportItems(overlay),
+  };
+  const sections: PatternReportSection[] = REPORT_SECTION_ORDER.map((sectionId) => {
+    return createReportSection(sectionId, itemsBySection[sectionId]);
   });
-
-  if (overlay !== undefined && overlay.localNotes.length > 0) {
-    sections.push({
-      id: "report-local-notes",
-      label: "Yerel Notlar",
-      tone: "commentary",
-      note: "Sadece bu oturumun belleğinde tutulan geçici notlar.",
-      bullets: overlay.localNotes.map((note) => note.text),
-    });
-  }
-
-  if (overlay !== undefined && overlay.localAuthoredEvidence.length > 0) {
-    sections.push({
-      id: "report-local-evidence-notes",
-      label: "Yerel Kanıt Notları",
-      tone: "evidence",
-      note: "Oda içinde eklenen kanıt notları raporda ayrı tutulur.",
-      bullets: overlay.localAuthoredEvidence.map(formatLocalEvidenceReportBullet),
-    });
-  }
-
-  if (overlay !== undefined && overlay.localAuthoredEdges.length > 0) {
-    const bullets = overlay.localAuthoredEdges
-      .map((edge) => {
-        return adaptLocalConnectionBullet(domain, overlay, edge);
-      })
-      .filter((bullet): bullet is string => bullet !== null);
-
-    if (bullets.length > 0) {
-      sections.push({
-        id: "report-local-connections",
-        label: "Yerel Bağlantılar",
-        tone: "analysis",
-        note: "Oda içinde kurulan öğeler arası bağlantılar.",
-        bullets,
-      });
-    }
-  }
 
   return {
     reportSummary: {
       id: `report-summary-${domain.topic.id}`,
-      label: "Küçük rapor terminali",
+      label: "Taslak rapor terminali",
       status: "dummy",
       sections,
     },

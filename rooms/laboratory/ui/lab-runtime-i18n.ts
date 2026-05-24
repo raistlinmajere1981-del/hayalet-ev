@@ -479,6 +479,14 @@ const ACTION_LABELS: Record<string, RuntimeCopyDescriptor> = {
     key: "mediaAnalysis.runtime.actions.toolCheckUpdates",
     fallback: "Checking tool updates",
   },
+  "tool-check-all-updates": {
+    key: "mediaAnalysis.runtime.actions.toolCheckUpdates",
+    fallback: "Checking tool updates",
+  },
+  "tool-update-selected": {
+    key: "mediaAnalysis.runtime.actions.toolUpdate",
+    fallback: "Updating tool",
+  },
 };
 
 const PRIMARY_ACTION_LABELS: Record<string, RuntimeCopyDescriptor> = {

@@ -315,6 +315,18 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
             "tool-lifecycle"
           );
           break;
+        case "tool-check-all-updates":
+          await mediaActionRuntime.checkTools(api, runtime, requestId, "tool-lifecycle");
+          break;
+        case "tool-update-selected":
+          await mediaActionRuntime.updateSelected(
+            api,
+            runtime,
+            requestId,
+            actionPayload,
+            "tool-lifecycle"
+          );
+          break;
         case "tool-update-all":
           await mediaActionRuntime.updateTools(api, runtime, requestId, "tool-lifecycle");
           break;

@@ -349,10 +349,97 @@ export function createLaboratoryToolMutationRuntime(deps: LaboratoryToolMutation
     }
   }
 
+  async function checkAllToolUpdates(
+    api: unknown,
+    runtime: LaboratoryRuntimeWithToolState,
+    requestId: string,
+    featureStage: string | null
+  ) {
+    if (
+      getRuntimeToolIds(runtime).some(function (toolId) {
+        return getToolEntry(runtime, toolId).busy === true;
+      })
+    ) {
+      throw new Error("A tool operation is already running.");
+    }
+
+    const installedToolIds = getRuntimeToolIds(runtime).filter(function (toolId) {
+      return toolId !== "transcript-runtime" && getToolEntry(runtime, toolId).installed === true;
+    });
+    const failedToolIds: string[] = [];
+
+    /* eslint-disable no-await-in-loop */
+    for (let index = 0; index < installedToolIds.length; index += 1) {
+      const toolId = installedToolIds[index];
+      if (!toolId) {
+        continue;
+      }
+      try {
+        await checkToolUpdates(api, runtime, requestId, toolId, featureStage);
+      } catch {
+        failedToolIds.push(toolId);
+      }
+    }
+    /* eslint-enable no-await-in-loop */
+
+    if (failedToolIds.length > 0) {
+      throw new Error(`Some tools could not be checked: ${failedToolIds.join(", ")}`);
+    }
+  }
+
+  async function updateSelectedTools(
+    api: unknown,
+    runtime: LaboratoryRuntimeWithToolState,
+    requestId: string,
+    toolIds: string[],
+    featureStage: string | null
+  ) {
+    if (
+      getRuntimeToolIds(runtime).some(function (toolId) {
+        return getToolEntry(runtime, toolId).busy === true;
+      })
+    ) {
+      throw new Error("A tool operation is already running.");
+    }
+
+    const runtimeToolIds = new Set(getRuntimeToolIds(runtime));
+    const selectedToolIds = Array.from(
+      new Set(
+        toolIds.filter(function (toolId) {
+          return toolId !== "transcript-runtime" && runtimeToolIds.has(toolId);
+        })
+      )
+    ).filter(function (toolId) {
+      const entry = getToolEntry(runtime, toolId);
+      return entry.installed === true && entry.updateAvailable === true;
+    });
+    const failedToolIds: string[] = [];
+
+    /* eslint-disable no-await-in-loop */
+    for (let index = 0; index < selectedToolIds.length; index += 1) {
+      const toolId = selectedToolIds[index];
+      if (!toolId) {
+        continue;
+      }
+      try {
+        await handleToolMutation(api, runtime, requestId, "tool-update", toolId, featureStage);
+      } catch {
+        failedToolIds.push(toolId);
+      }
+    }
+    /* eslint-enable no-await-in-loop */
+
+    if (failedToolIds.length > 0) {
+      throw new Error(`Some tools could not be updated: ${failedToolIds.join(", ")}`);
+    }
+  }
+
   return {
+    checkAllToolUpdates,
     checkToolUpdates,
     handleToolMutation,
     updateToolBusy,
+    updateSelectedTools,
     updateAllTools,
   };
 }

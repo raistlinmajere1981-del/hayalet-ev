@@ -273,7 +273,7 @@
 
 .labx-module-catalog {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--lab-shell-rem-0-75);
 }
 
@@ -309,23 +309,6 @@
   background: linear-gradient(180deg, var(--lab-shell-color-27), var(--lab-shell-color-28));
 }
 
-.labx-tool-monogram {
-  flex-shrink: 0;
-  width: var(--lab-shell-px-30);
-  height: var(--lab-shell-px-30);
-  border-radius: var(--lab-radius-sm);
-  background: var(--lab-accent-soft);
-  border: var(--lab-shell-px-1) solid var(--lab-shell-color-21);
-  color: var(--lab-accent);
-  font-size: var(--lab-shell-rem-0-68);
-  font-weight: 700;
-  display: grid;
-  place-items: center;
-  text-transform: uppercase;
-  letter-spacing: var(--lab-shell-em-0-04);
-  user-select: none;
-}
-
 .labx-module-card__head {
   display: flex;
   justify-content: space-between;
@@ -337,13 +320,6 @@
 .labx-module-card__head strong {
   display: block;
   font-size: var(--lab-shell-rem-0-92);
-}
-
-.labx-module-card__head span {
-  display: block;
-  margin-top: var(--lab-shell-rem-0-2);
-  color: var(--lab-text-dim);
-  font-size: var(--lab-shell-rem-0-74);
 }
 
 .labx-module-card__actions {
@@ -659,7 +635,7 @@
 
 .labx-module-overlay {
   position: relative;
-  width: min(var(--lab-shell-rem-68), calc(100vw - var(--lab-shell-rem-2)));
+  width: min(96rem, calc(100vw - var(--lab-shell-rem-2)));
   max-height: var(--lab-overlay-max-height);
   padding: var(--lab-shell-rem-1-1);
   box-sizing: border-box;
@@ -689,9 +665,15 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--lab-shell-rem-0-45);
-  margin-top: var(--lab-shell-rem-0-45);
   color: var(--lab-text-dim);
   font-size: var(--lab-shell-rem-0-78);
+}
+
+.labx-tool-manager-stats--rail {
+  padding: var(--lab-shell-rem-0-45) var(--lab-shell-rem-0-55);
+  border: var(--lab-shell-px-1) solid var(--lab-shell-color-23);
+  border-radius: var(--lab-radius-md);
+  background: var(--lab-shell-color-52);
 }
 
 .labx-tool-manager-stats span {
@@ -714,7 +696,7 @@
 
 .labx-tool-manager-layout {
   display: grid;
-  grid-template-columns: minmax(var(--lab-shell-rem-16), var(--lab-shell-rem-20)) minmax(0, 1fr);
+  grid-template-columns: minmax(var(--lab-shell-rem-18), var(--lab-shell-rem-22)) minmax(0, 1fr);
   gap: var(--lab-shell-rem-0-75);
   align-items: start;
 }
@@ -774,24 +756,94 @@
   gap: var(--lab-shell-rem-0-5);
 }
 
-.labx-tool-progress-empty,
-.labx-tool-progress-card {
+.labx-tool-update-selection {
+  display: grid;
+  gap: var(--lab-shell-rem-0-5);
+  padding-top: var(--lab-shell-rem-0-45);
+  border-top: var(--lab-shell-px-1) solid var(--lab-shell-color-23);
+}
+
+.labx-tool-update-selection__header strong {
+  display: block;
+  color: var(--lab-text-default);
+  font-size: var(--lab-shell-rem-0-86);
+}
+
+.labx-tool-update-selection__list {
+  display: grid;
+  gap: var(--lab-shell-rem-0-45);
+}
+
+.labx-tool-update-choice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--lab-shell-rem-0-5);
+  align-items: start;
+  padding: var(--lab-shell-rem-0-45) var(--lab-shell-rem-0-55);
+  border: var(--lab-shell-px-1) solid var(--lab-shell-color-23);
+  border-radius: var(--lab-radius-md);
+  background: var(--lab-shell-color-52);
+  cursor: pointer;
+}
+
+.labx-tool-update-choice input {
+  margin-top: var(--lab-shell-rem-0-2);
+}
+
+.labx-tool-update-choice span {
+  display: grid;
+  gap: var(--lab-shell-rem-0-2);
+  min-width: 0;
+}
+
+.labx-tool-update-choice strong,
+.labx-tool-update-choice small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.labx-tool-update-choice strong {
+  color: var(--lab-text-default);
+  font-size: var(--lab-shell-rem-0-82);
+}
+
+.labx-tool-update-choice small {
+  color: var(--lab-text-dim);
+  font-family: var(--lab-font-mono);
+  font-size: var(--lab-shell-rem-0-68);
+}
+
+.labx-tool-update-selection__empty {
   padding: var(--lab-shell-rem-0-45) var(--lab-shell-rem-0-55);
   border: var(--lab-shell-px-1) solid var(--lab-shell-color-23);
   border-radius: var(--lab-radius-md);
   background: var(--lab-shell-color-52);
 }
 
-.labx-tool-progress-empty strong {
+.labx-tool-update-selection__empty strong {
   display: block;
-  font-size: var(--lab-shell-rem-0-86);
+  color: var(--lab-text-default);
+  font-size: var(--lab-shell-rem-0-82);
 }
 
-.labx-tool-progress-empty p {
-  margin: var(--lab-shell-rem-0-35) 0 0;
+.labx-tool-update-selection__empty p {
+  margin: var(--lab-shell-rem-0-3) 0 0;
   color: var(--lab-text-soft);
-  font-size: var(--lab-shell-rem-0-78);
-  line-height: 1.5;
+  font-size: var(--lab-shell-rem-0-76);
+  line-height: 1.45;
+}
+
+.labx-tool-update-selection__action {
+  justify-content: center;
+  width: 100%;
+}
+
+.labx-tool-progress-card {
+  padding: var(--lab-shell-rem-0-45) var(--lab-shell-rem-0-55);
+  border: var(--lab-shell-px-1) solid var(--lab-shell-color-23);
+  border-radius: var(--lab-radius-md);
+  background: var(--lab-shell-color-52);
 }
 
 .labx-tool-progress-card {

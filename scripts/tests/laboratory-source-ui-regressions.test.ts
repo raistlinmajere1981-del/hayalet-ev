@@ -29,9 +29,7 @@ import {
 const sourcePresets = JSON.parse(
   readFileSync("rooms/laboratory/tools/source-presets.json", "utf8")
 );
-const ytDlpForm = JSON.parse(
-  readFileSync("rooms/laboratory/tools/yt-dlp.form.json", "utf8")
-);
+const ytDlpForm = JSON.parse(readFileSync("rooms/laboratory/tools/yt-dlp.form.json", "utf8"));
 
 function getPipelineBlockIds(markup: string): string[] {
   return Array.from(markup.matchAll(/data-block-id="([^"]+)"/g), function (match) {
@@ -287,6 +285,8 @@ function createSeededState(ffmpegInstalled = false) {
             installed: true,
             version: "2026.04.20",
             latestVersion: "2026.04.20",
+            lastCheckedAt: "2026-05-24T20:23:29.941Z",
+            updateAvailable: false,
           },
           librosa: {
             installed: false,
@@ -1762,10 +1762,24 @@ test("laboratory tool overlay lists room-local tool lifecycle actions inside the
       },
     ],
   };
+  state.toolState = {
+    ...state.toolState,
+    tools: {
+      ...((state.toolState.tools as Record<string, unknown>) || {}),
+      "yt-dlp": {
+        ...(((state.toolState.tools as Record<string, unknown>) || {})["yt-dlp"] as Record<
+          string,
+          unknown
+        >),
+        latestVersion: "2026.05.10",
+        updateAvailable: true,
+      },
+    },
+  };
   const html = renderToolManagementOverlay(store.getState());
 
   assert.match(html, /Araç Yönetimi/);
-  assert.match(html, /Toplu güncelle/);
+  assert.match(html, /Güncellemeleri kontrol et/);
   assert.match(html, /Kurulu araç/);
   assert.match(html, /Güncelleme bekleyen/);
   assert.match(html, /İşlem takibi/);
@@ -1779,7 +1793,13 @@ test("laboratory tool overlay lists room-local tool lifecycle actions inside the
   assert.match(html, /role="progressbar"/);
   assert.match(html, /yt-dlp/);
   assert.match(html, /FFmpeg/);
-  assert.match(html, /data-lab-action="tool-check-updates"/);
+  assert.match(html, /data-lab-action="tool-check-all-updates"/);
+  assert.match(html, /data-lab-update-choice value="yt-dlp" checked/);
+  assert.match(html, /data-lab-action="tool-update-selected"/);
+  assert.doesNotMatch(html, /data-lab-action="tool-update" data-lab-value="yt-dlp"/);
+  assert.doesNotMatch(html, /<details class="labx-module-card__meta-details"/);
+  assert.doesNotMatch(html, /class="labx-tool-monogram"/);
+  assert.doesNotMatch(html, /Uygulama içi kurulum/);
   assert.match(html, /data-lab-action="tool-install-review"/);
   assert.match(html, /data-lab-action="tool-install-review" data-lab-value="librosa"/);
   assert.doesNotMatch(html, /Manuel kurulum|Manual setup/);
@@ -1788,9 +1808,16 @@ test("laboratory tool overlay lists room-local tool lifecycle actions inside the
   const trCopy = createTurkishCopy();
   const translatedHtml = renderToolManagementOverlay(store.getState(), trCopy);
   assert.match(translatedHtml, /İşlem takibi/);
-  assert.match(translatedHtml, /Laboratory araçları/);
-  assert.match(translatedHtml, /Uzak YouTube video içe alma akışlarını bloke eder/);
+  assert.doesNotMatch(translatedHtml, /Laboratory araçları/);
+  assert.match(translatedHtml, /Güncelleme listesi/);
+  assert.match(translatedHtml, /Güncelleme bulundu \(/);
   assert.doesNotMatch(translatedHtml, /YouTube capture stays enabled from the source intake frame/);
+
+  const idleStore = createSeededState();
+  idleStore.dispatch({ type: "tool-manager-toggled", open: true });
+  const idleHtml = renderToolManagementOverlay(idleStore.getState(), trCopy);
+  assert.doesNotMatch(idleHtml, /Aktif kurulum veya güncelleme yok/);
+  assert.doesNotMatch(idleHtml, /Bir araç işlemi başladığında ilerleme burada görünür/);
 });
 
 test("laboratory tool manager asks for install confirmation with package and size details", () => {

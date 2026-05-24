@@ -1804,11 +1804,11 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
     /state\.run\.state === "running" \|\| state\.run\.state === "queued"/
   );
   assert.match(toolOverlaySource, /mediaAnalysis\.toolManager\.ariaLabel/);
-  assert.match(toolOverlaySource, /data-lab-action="tool-update-all"/);
+  assert.match(toolOverlaySource, /data-lab-action="tool-check-all-updates"/);
+  assert.match(toolOverlaySource, /data-lab-action="tool-update-selected"/);
   assert.match(toolOverlaySource, /data-lab-action="tool-install-review"/);
   assert.match(toolOverlaySource, /data-lab-action="tool-install-confirm"/);
   assert.match(toolOverlaySource, /data-lab-action="tool-job-cancel"/);
-  assert.match(toolOverlaySource, /data-lab-action="tool-check-updates"/);
   assert.doesNotMatch(drawerSource, /renderSourceIntake\(state, copy\)/);
   assert.doesNotMatch(drawerSource, /renderLabProjectAssetsPanel/);
   assert.equal(existsSync("rooms/laboratory/ui/lab-project-assets-panel.ts"), false);

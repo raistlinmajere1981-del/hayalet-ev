@@ -107,6 +107,8 @@
         "tool-install": "Tool install",
         "tool-update": "Tool update",
         "tool-check-updates": "Update check",
+        "tool-check-all-updates": "Update check",
+        "tool-update-selected": "Selected tool update",
         "tool-update-all": "Bulk module update",
         "profile-model-install": "Profile model download",
         "source-download-url": "Direct URL intake",
@@ -980,6 +982,8 @@
       "tool-install": "Tool installation completed.",
       "tool-update": "Tool update completed.",
       "tool-check-updates": "Update check completed.",
+      "tool-check-all-updates": "Update check completed.",
+      "tool-update-selected": "Selected tool updates completed.",
       "tool-update-all": "Bulk module update flow completed.",
       "tools-refresh": "Tool status refreshed.",
       "refresh": "Source state refreshed.",
@@ -1876,6 +1880,8 @@
         "lastError": "Last error: {error}",
         "systemCommandVerified": "Last verification succeeded ({checkedAt}){detail}.",
         "systemCommandMissing": "Last verification ({checkedAt}): tool was not found.",
+        "updateAvailable": "Update found ({checkedAt}). The update button is ready.",
+        "upToDate": "Up to date ({checkedAt}).",
         "default": "Tool status is tracked through the room-local registry."
       },
       "strategy": {
@@ -1888,8 +1894,10 @@
         "settingsManaged": "Managed from Settings",
         "planned": "Planned",
         "checkUpdates": "Check updates",
+        "checkAllUpdates": "Check updates",
         "verifySystemCommand": "Verify",
         "update": "Update",
+        "updateSelected": "Update",
         "install": "Install",
         "bulkUpdate": "Bulk update",
         "refresh": "Refresh",
@@ -1925,6 +1933,12 @@
         "relevant": "Relevant tools",
         "installed": "Installed tools",
         "updates": "Pending updates"
+      },
+      "updates": {
+        "title": "Update list",
+        "empty": "No pending tool updates.",
+        "emptyDetail": "Updates found after a check appear here selected by default.",
+        "versionPair": "{current} -> {latest}"
       },
       "progress": {
         "ariaLabel": "Install and update progress",
@@ -2493,11 +2507,11 @@
       },
       "metadata-provenance-system": {
         "title": "Metadata Provenance System",
-        "summary": "Optional host ExifTool and MediaInfo metadata cross-check lane."
+        "summary": "Room-managed ExifTool and MediaInfo metadata cross-check lane."
       },
       "raft-optical-flow-provider": {
         "title": "RAFT Optical Flow",
-        "summary": "Planned PyTorch/RAFT dense flow provider for later gated rollout."
+        "summary": "Dense-flow tracking provider backed by a room-managed PyTorch/OpenCV runtime."
       },
       "synthetic-visual-forensics": {
         "title": "Synthetic Visual Forensics",

@@ -12,6 +12,7 @@ import type {
   LabFocusLayer,
   LabComparisonViewMode,
   LabSelectionROI,
+  LabStoreState,
   LabStoreEvent,
 } from "../domain/lab-types.js";
 import { createLabWaveformTimelineVisualizer } from "../ui/lab-waveform-timeline.js";
@@ -374,6 +375,61 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     }
     pushLockedWorkspaceEvent("Çalışma alanı aktif analiz sırasında kilitli.");
     return true;
+  }
+
+  function getToolEntryRecord(state: LabStoreState, toolId: string) {
+    const tools = asLabRecord(asLabRecord(state.toolState)["tools"]);
+    return asLabRecord(tools[toolId]);
+  }
+
+  function getRoomManagedToolIds(state: LabStoreState): string[] {
+    const snapshot = asLabRecord(state.snapshot);
+    const registry = Array.isArray(snapshot["toolRegistry"])
+      ? (snapshot["toolRegistry"] as unknown[])
+      : [];
+    const toolIds =
+      registry.length > 0
+        ? registry.map(function (entry) {
+            return asNonEmptyString(asLabRecord(entry)["toolId"]);
+          })
+        : Object.keys(asLabRecord(asLabRecord(state.toolState)["tools"]));
+
+    return Array.from(
+      new Set(
+        toolIds.filter(function (toolId): toolId is string {
+          return toolId !== null && toolId !== "transcript-runtime";
+        })
+      )
+    );
+  }
+
+  function getInstalledRoomManagedToolIds(state: LabStoreState): string[] {
+    return getRoomManagedToolIds(state).filter(function (toolId) {
+      return getToolEntryRecord(state, toolId)["installed"] === true;
+    });
+  }
+
+  function getUpdateAvailableRoomManagedToolIds(state: LabStoreState): Set<string> {
+    return new Set(
+      getRoomManagedToolIds(state).filter(function (toolId) {
+        return getToolEntryRecord(state, toolId)["updateAvailable"] === true;
+      })
+    );
+  }
+
+  function getSelectedToolUpdateIds(state: LabStoreState): string[] {
+    const availableIds = getUpdateAvailableRoomManagedToolIds(state);
+    const selectedIds = Array.from(
+      deps.documentRef.querySelectorAll<HTMLInputElement>("[data-lab-update-choice]:checked")
+    )
+      .map(function (input) {
+        return input.value.trim();
+      })
+      .filter(function (toolId) {
+        return toolId !== "" && availableIds.has(toolId);
+      });
+
+    return Array.from(new Set(selectedIds));
   }
 
   function sendHostContext(payload: Record<string, unknown>) {
@@ -1162,8 +1218,31 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "tools-refresh":
         sendMediaAction("tools-refresh");
         return;
+      case "tool-check-all-updates":
+        sendMediaAction("tool-check-all-updates", {
+          featureStage: getToolLifecycleStage(state),
+          actionFamily: "tool-lifecycle",
+        });
+        return;
+      case "tool-update-selected": {
+        const toolIds = getSelectedToolUpdateIds(state);
+        if (toolIds.length === 0) {
+          dispatch({
+            type: "push-event",
+            event: buildUiEvent("Güncellenecek araç seçilmedi.", "warning"),
+          });
+          return;
+        }
+        sendMediaAction("tool-update-selected", {
+          toolIds,
+          featureStage: getToolLifecycleStage(state),
+          actionFamily: "tool-lifecycle",
+        });
+        return;
+      }
       case "tool-update-all":
         sendMediaAction("tool-update-all", {
+          toolIds: getInstalledRoomManagedToolIds(state),
           featureStage: getToolLifecycleStage(state),
           actionFamily: "tool-lifecycle",
         });

@@ -107,6 +107,8 @@
         "tool-install": "Arac kurulumu",
         "tool-update": "Arac guncellemesi",
         "tool-check-updates": "Guncelleme kontrolu",
+        "tool-check-all-updates": "Guncelleme kontrolu",
+        "tool-update-selected": "Secili arac guncellemesi",
         "tool-update-all": "Toplu modul guncellemesi",
         "profile-model-install": "Profil modeli indiriliyor",
         "source-download-url": "Dogrudan URL alimi",
@@ -980,6 +982,8 @@
       "tool-install": "Arac kurulumu tamamlandi.",
       "tool-update": "Arac guncellemesi tamamlandi.",
       "tool-check-updates": "Guncelleme kontrolu tamamlandi.",
+      "tool-check-all-updates": "Guncelleme kontrolu tamamlandi.",
+      "tool-update-selected": "Secili arac guncellemeleri tamamlandi.",
       "tool-update-all": "Toplu modul guncelleme akisi tamamlandi.",
       "tools-refresh": "Arac durumu yenilendi.",
       "refresh": "Kaynak durumu yenilendi.",
@@ -1876,6 +1880,8 @@
         "lastError": "Son hata: {error}",
         "systemCommandVerified": "Son dogrulama basarili ({checkedAt}){detail}.",
         "systemCommandMissing": "Son dogrulama ({checkedAt}): arac bulunamadi.",
+        "updateAvailable": "Güncelleme bulundu ({checkedAt}). Güncelle butonu hazır.",
+        "upToDate": "Güncel ({checkedAt}).",
         "default": "Araç durumu room-local registry üzerinden izlenir."
       },
       "strategy": {
@@ -1888,8 +1894,10 @@
         "settingsManaged": "Settings'ten yönetilir",
         "planned": "Planlı",
         "checkUpdates": "Güncelleme kontrolü",
+        "checkAllUpdates": "Güncellemeleri kontrol et",
         "verifySystemCommand": "Dogrula",
         "update": "Güncelle",
+        "updateSelected": "Güncelle",
         "install": "Kur",
         "bulkUpdate": "Toplu güncelle",
         "refresh": "Yenile",
@@ -1925,6 +1933,12 @@
         "relevant": "İlgili araçlar",
         "installed": "Kurulu araç",
         "updates": "Güncelleme bekleyen"
+      },
+      "updates": {
+        "title": "Güncelleme listesi",
+        "empty": "Güncelleme bekleyen araç yok.",
+        "emptyDetail": "Kontrol tamamlandığında bulunan güncellemeler burada seçili görünür.",
+        "versionPair": "{current} -> {latest}"
       },
       "progress": {
         "ariaLabel": "Kurulum ve güncelleme ilerlemesi",
@@ -2493,11 +2507,11 @@
       },
       "metadata-provenance-system": {
         "title": "Metadata Provenance Sistemi",
-        "summary": "Opsiyonel host ExifTool ve MediaInfo metadata karsilastirma hatti."
+        "summary": "Oda yonetimli ExifTool ve MediaInfo metadata karsilastirma hatti."
       },
       "raft-optical-flow-provider": {
         "title": "RAFT Optical Flow",
-        "summary": "Sonraki gated rollout icin planli PyTorch/RAFT yogun flow saglayicisi."
+        "summary": "Oda yonetimli PyTorch/OpenCV runtime ile yogun flow takip saglayicisi."
       },
       "synthetic-visual-forensics": {
         "title": "Sentetik Gorsel Forensics",

@@ -14,6 +14,7 @@ const REMOVE_LOCAL_SOURCE_CONFIRMATION = "Bu yerel kaynak odadan kaldırılacak.
 const RESET_LOCAL_SESSION_CONFIRMATION =
   "Tüm yerel kaynaklar, notlar ve geçici tartışma izleri temizlenecek. Hazır konu verileri korunur. Devam edilsin mi?";
 const SOURCE_SEGMENT_PREVIEW_LENGTH = 120;
+const SOURCE_FULL_TEXT_SEARCH_CONTEXT_LENGTH = 160;
 
 type PatternArchivePanelSelection = {
   selectedSourceId: string | null;
@@ -25,6 +26,11 @@ type PatternArchivePanelSelection = {
 type SourceEvidenceCaptureForm = {
   element: HTMLElement;
   prepareFromSegment: (segment: PatternSourceSegment) => void;
+};
+
+type SourceSegmentsNavigator = {
+  element: HTMLElement;
+  selectSegmentById: (segmentId: string) => void;
 };
 
 const DEFAULT_ARCHIVE_PANEL_SELECTION: PatternArchivePanelSelection = {
@@ -308,6 +314,50 @@ function createSourceSegmentPreview(text: string): string {
   return `${normalizedText.slice(0, SOURCE_SEGMENT_PREVIEW_LENGTH).trimEnd()}…`;
 }
 
+function createOrderedSourceSegments(source: PatternSource): PatternSourceSegment[] {
+  return [...(source.segments ?? [])].sort((left, right) => {
+    return left.order - right.order;
+  });
+}
+
+function normalizeSourceSearchText(value: string): string {
+  return value.toLocaleLowerCase("tr");
+}
+
+function normalizeSourceSearchQuery(value: string): string {
+  return normalizeSourceSearchText(value.trim());
+}
+
+function countSourceSearchMatches(text: string, normalizedQuery: string): number {
+  if (normalizedQuery === "") {
+    return 0;
+  }
+
+  const normalizedText = normalizeSourceSearchText(text);
+  let matchCount = 0;
+  let index = normalizedText.indexOf(normalizedQuery);
+  while (index !== -1) {
+    matchCount += 1;
+    index = normalizedText.indexOf(normalizedQuery, index + normalizedQuery.length);
+  }
+  return matchCount;
+}
+
+function createSourceFullTextSearchSnippet(text: string, normalizedQuery: string): string {
+  const normalizedText = normalizeSourceSearchText(text);
+  const matchIndex = normalizedText.indexOf(normalizedQuery);
+  if (matchIndex === -1) {
+    return "";
+  }
+
+  const contextOffset = Math.floor(SOURCE_FULL_TEXT_SEARCH_CONTEXT_LENGTH / 2);
+  const start = Math.max(0, matchIndex - contextOffset);
+  const end = Math.min(text.length, start + SOURCE_FULL_TEXT_SEARCH_CONTEXT_LENGTH);
+  const prefix = start > 0 ? "…" : "";
+  const suffix = end < text.length ? "…" : "";
+  return `${prefix}${text.slice(start, end).replace(/\s+/g, " ").trim()}${suffix}`;
+}
+
 function createSourceSegmentButton(
   segment: PatternSourceSegment,
   segmentNumber: number,
@@ -328,13 +378,33 @@ function createSourceSegmentButton(
   return button;
 }
 
+function createSourceSearchResultButton(
+  segment: PatternSourceSegment,
+  segmentNumber: number,
+  matchCount: number,
+  onSelect: (segmentId: string) => void
+): HTMLButtonElement {
+  const button = createElement("button", "pattern-room-source-search-result");
+  button.type = "button";
+  button.dataset["patternArchiveSourceSearchResult"] = segment.id;
+  button.dataset["patternArchiveSourceSearchMatchCount"] = String(matchCount);
+  button.append(
+    createElement("span", "pattern-room-source-segment-number", String(segmentNumber)),
+    createElement("strong", undefined, segment.label),
+    createElement("p", undefined, createSourceSegmentPreview(segment.text)),
+    createElement("small", "pattern-room-source-search-count", `${String(matchCount)} eşleşme`)
+  );
+  button.addEventListener("click", () => {
+    onSelect(segment.id);
+  });
+  return button;
+}
+
 function createSourceSegmentsNavigator(
   source: PatternSource,
+  orderedSegments: readonly PatternSourceSegment[],
   onPrepareEvidence: (segment: PatternSourceSegment) => void
-): HTMLElement | null {
-  const orderedSegments = [...(source.segments ?? [])].sort((left, right) => {
-    return left.order - right.order;
-  });
+): SourceSegmentsNavigator | null {
   if (orderedSegments.length === 0) {
     return null;
   }
@@ -396,6 +466,116 @@ function createSourceSegmentsNavigator(
   });
 
   section.append(createElement("h3", undefined, "Segmentler"), list, selectedSegmentDetail);
+  return {
+    element: section,
+    selectSegmentById(segmentId: string): void {
+      const segment = orderedSegments.find((candidate) => {
+        return candidate.id === segmentId;
+      });
+      if (segment !== undefined) {
+        selectSegment(segment);
+      }
+    },
+  };
+}
+
+function createSourceSearchSection(
+  source: PatternSource,
+  orderedSegments: readonly PatternSourceSegment[],
+  onSelectSegment: ((segmentId: string) => void) | null
+): HTMLElement {
+  const section = createElement("section", "pattern-room-source-search");
+  section.dataset["patternArchiveSourceSearch"] = source.id;
+  section.dataset["patternArchiveSourceSearchState"] = "empty";
+  const input = createTextInput("sourceSearch", "Kelime veya ifade ara");
+  input.dataset["patternArchiveSourceSearchInput"] = source.id;
+  const status = createElement("p", "pattern-room-source-search-status");
+  status.dataset["patternArchiveSourceSearchStatus"] = source.id;
+  const results = createElement("div", "pattern-room-source-search-results");
+  results.dataset["patternArchiveSourceSearchResults"] = source.id;
+
+  const renderEmptySearch = (): void => {
+    section.dataset["patternArchiveSourceSearchState"] = "empty";
+    status.textContent = "";
+    results.replaceChildren();
+  };
+
+  const renderNoMatches = (): void => {
+    section.dataset["patternArchiveSourceSearchState"] = "none";
+    status.textContent = "Eşleşme bulunamadı.";
+    results.replaceChildren();
+  };
+
+  const renderSegmentMatches = (normalizedQuery: string): void => {
+    const matches = orderedSegments
+      .map((segment, index) => {
+        const matchCount = countSourceSearchMatches(
+          `${segment.label} ${segment.text}`,
+          normalizedQuery
+        );
+        return {
+          matchCount,
+          segment,
+          segmentNumber: index + 1,
+        };
+      })
+      .filter((match) => {
+        return match.matchCount > 0;
+      });
+
+    if (matches.length === 0 || onSelectSegment === null) {
+      renderNoMatches();
+      return;
+    }
+
+    section.dataset["patternArchiveSourceSearchState"] = "matches";
+    status.textContent = `${String(matches.length)} segmentte eşleşme.`;
+    results.replaceChildren(
+      ...matches.map((match) => {
+        return createSourceSearchResultButton(
+          match.segment,
+          match.segmentNumber,
+          match.matchCount,
+          onSelectSegment
+        );
+      })
+    );
+  };
+
+  const renderFullTextMatch = (normalizedQuery: string): void => {
+    const matchCount = countSourceSearchMatches(source.note, normalizedQuery);
+    if (matchCount === 0) {
+      renderNoMatches();
+      return;
+    }
+
+    const fullTextResult = createElement("div", "pattern-room-source-search-full-text-result");
+    fullTextResult.dataset["patternArchiveSourceSearchFullTextResult"] = source.id;
+    fullTextResult.append(
+      createElement("strong", undefined, "Tam metinde eşleşme bulundu."),
+      createElement("p", undefined, createSourceFullTextSearchSnippet(source.note, normalizedQuery))
+    );
+    section.dataset["patternArchiveSourceSearchState"] = "matches";
+    status.textContent = `${String(matchCount)} eşleşme.`;
+    results.replaceChildren(fullTextResult);
+  };
+
+  input.addEventListener("input", () => {
+    const normalizedQuery = normalizeSourceSearchQuery(input.value);
+    if (normalizedQuery === "") {
+      renderEmptySearch();
+      return;
+    }
+
+    if (orderedSegments.length > 0) {
+      renderSegmentMatches(normalizedQuery);
+      return;
+    }
+
+    renderFullTextMatch(normalizedQuery);
+  });
+
+  section.append(createElement("h3", undefined, "Kaynak içinde ara"), input, status, results);
   return section;
 }
 
@@ -496,17 +676,25 @@ function createArchiveSourceDetail(
   );
   const fullText = createElement("pre", "pattern-room-source-detail-text", source.note);
   fullText.dataset["patternArchiveSourceFullText"] = source.id;
+  const orderedSegments = createOrderedSourceSegments(source);
   const evidenceCaptureForm = createSourceEvidenceCaptureForm(source, actions, selection);
   const segmentsNavigator = createSourceSegmentsNavigator(
     source,
+    orderedSegments,
     evidenceCaptureForm.prepareFromSegment
+  );
+  const searchSection = createSourceSearchSection(
+    source,
+    orderedSegments,
+    segmentsNavigator?.selectSegmentById ?? null
   );
 
   detail.append(
     createElement("h3", undefined, source.label),
     meta,
+    searchSection,
     fullText,
-    ...(segmentsNavigator === null ? [] : [segmentsNavigator]),
+    ...(segmentsNavigator === null ? [] : [segmentsNavigator.element]),
     evidenceCaptureForm.element
   );
   return detail;

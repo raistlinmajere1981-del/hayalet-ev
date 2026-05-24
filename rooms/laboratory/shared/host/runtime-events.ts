@@ -81,6 +81,10 @@ function getActionLabel(action: string | null) {
       return "Araç güncellemesi çalışıyor";
     case "tool-check-updates":
       return "Araç güncellemesi kontrol ediliyor";
+    case "tool-check-all-updates":
+      return "Araç güncellemeleri kontrol ediliyor";
+    case "tool-update-selected":
+      return "Seçili araç güncellemeleri çalışıyor";
     default:
       return action || "İşlem";
   }

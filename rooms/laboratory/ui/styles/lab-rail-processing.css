@@ -665,10 +665,3 @@
 .labx-module-overlay__header .labx-inline-actions {
   margin-top: var(--lab-rail-processing-rem-0-25);
 }
-
-/* Tool progress idle message. */
-
-.labx-tool-progress-empty {
-  border-style: dashed;
-  opacity: 0.72;
-}

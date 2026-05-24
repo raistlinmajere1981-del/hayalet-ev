@@ -155,8 +155,8 @@
     "exiftool": {
       "displayName": "ExifTool",
       "installDirName": "exiftool",
-      "availability": "system-command",
-      "installStrategy": "system-command",
+      "availability": "installable",
+      "installStrategy": "automatic",
       "usedBy": ["Metadata provenance audit", "Capture metadata cross-check"],
       "testImpact": ["metadata-provenance", "report-counter-evidence"],
       "readinessImpact": "Metadata provenance checks fall back to FFmpeg/ffprobe fields when ExifTool is not available.",
@@ -171,16 +171,68 @@
         "args": ["-ver"],
         "versionRegex": "(\\d+(?:\\.\\d+)+|\\d+)"
       },
+      "releaseProvider": {
+        "type": "web-page",
+        "latestPageUrl": "https://exiftool.org/",
+        "releaseUrl": "https://exiftool.org/",
+        "versionRegex": "Image-ExifTool-([0-9.]+)\\.tar\\.gz"
+      },
+      "assets": {
+        "linux-x64": {
+          "assetMatch": "Image-ExifTool-${version}.tar.gz",
+          "archive": "tar.gz",
+          "downloadUrlTemplate": "https://sourceforge.net/projects/exiftool/files/Image-ExifTool-${version}.tar.gz/download",
+          "executableName": "exiftool",
+          "copyArchiveContents": true
+        },
+        "linux-arm64": {
+          "assetMatch": "Image-ExifTool-${version}.tar.gz",
+          "archive": "tar.gz",
+          "downloadUrlTemplate": "https://sourceforge.net/projects/exiftool/files/Image-ExifTool-${version}.tar.gz/download",
+          "executableName": "exiftool",
+          "copyArchiveContents": true
+        },
+        "darwin-x64": {
+          "assetMatch": "Image-ExifTool-${version}.tar.gz",
+          "archive": "tar.gz",
+          "downloadUrlTemplate": "https://sourceforge.net/projects/exiftool/files/Image-ExifTool-${version}.tar.gz/download",
+          "executableName": "exiftool",
+          "copyArchiveContents": true
+        },
+        "darwin-arm64": {
+          "assetMatch": "Image-ExifTool-${version}.tar.gz",
+          "archive": "tar.gz",
+          "downloadUrlTemplate": "https://sourceforge.net/projects/exiftool/files/Image-ExifTool-${version}.tar.gz/download",
+          "executableName": "exiftool",
+          "copyArchiveContents": true
+        },
+        "win32-x64": {
+          "assetMatch": "exiftool-${version}_64.zip",
+          "archive": "zip",
+          "downloadUrlTemplate": "https://sourceforge.net/projects/exiftool/files/exiftool-${version}_64.zip/download",
+          "executableName": "exiftool.exe",
+          "sourceExecutableName": "exiftool(-k).exe",
+          "copyArchiveContents": true
+        },
+        "win32-arm64": {
+          "assetMatch": "exiftool-${version}_64.zip",
+          "archive": "zip",
+          "downloadUrlTemplate": "https://sourceforge.net/projects/exiftool/files/exiftool-${version}_64.zip/download",
+          "executableName": "exiftool.exe",
+          "sourceExecutableName": "exiftool(-k).exe",
+          "copyArchiveContents": true
+        }
+      },
       "systemCommand": {
         "executableName": "exiftool",
-        "setupHint": "Install ExifTool on the host system so the exiftool command is available on PATH, then refresh Laboratory tools."
+        "setupHint": "Use the in-app install to prepare the room-local ExifTool runtime, or expose exiftool on PATH and refresh Laboratory tools."
       }
     },
     "mediainfo": {
       "displayName": "MediaInfo",
       "installDirName": "mediainfo",
-      "availability": "system-command",
-      "installStrategy": "system-command",
+      "availability": "installable",
+      "installStrategy": "automatic",
       "usedBy": ["Container metadata cross-check", "Stream provenance audit"],
       "testImpact": ["metadata-provenance", "container-stream-cross-check"],
       "readinessImpact": "Container/stream provenance comparisons remain limited to ffprobe when MediaInfo is not available.",
@@ -195,16 +247,56 @@
         "args": ["--Version"],
         "versionRegex": "(?:MediaInfo(?:Lib)?\\s*-?\\s*v?)([^\\s]+)"
       },
+      "releaseProvider": {
+        "type": "web-page",
+        "latestPageUrl": "https://mediaarea.net/en/MediaInfo/Download/AppImage",
+        "releaseUrl": "https://mediaarea.net/en/MediaInfo",
+        "versionRegex": "mediainfo-([0-9.]+)\\.glibc2\\.3-x86_64\\.AppImage"
+      },
+      "assets": {
+        "linux-x64": {
+          "assetMatch": "mediainfo-${version}.glibc2.3-x86_64.AppImage",
+          "archive": "none",
+          "downloadUrlTemplate": "https://mediaarea.net/download/binary/mediainfo/${version}/mediainfo-${version}.glibc2.3-x86_64.AppImage",
+          "executableName": "mediainfo"
+        },
+        "win32-x64": {
+          "assetMatch": "MediaInfo_CLI_${version}_Windows_x64.zip",
+          "archive": "zip",
+          "downloadUrlTemplate": "https://mediaarea.net/download/binary/mediainfo/${version}/MediaInfo_CLI_${version}_Windows_x64.zip",
+          "executableName": "MediaInfo.exe",
+          "copyArchiveContents": true,
+          "releaseProvider": {
+            "type": "web-page",
+            "latestPageUrl": "https://mediaarea.net/en/MediaInfo/Download/Windows",
+            "releaseUrl": "https://mediaarea.net/en/MediaInfo",
+            "versionRegex": "MediaInfo_CLI_([0-9.]+)_Windows_x64\\.zip"
+          }
+        },
+        "win32-arm64": {
+          "assetMatch": "MediaInfo_CLI_${version}_Windows_ARM64.zip",
+          "archive": "zip",
+          "downloadUrlTemplate": "https://mediaarea.net/download/binary/mediainfo/${version}/MediaInfo_CLI_${version}_Windows_ARM64.zip",
+          "executableName": "MediaInfo.exe",
+          "copyArchiveContents": true,
+          "releaseProvider": {
+            "type": "web-page",
+            "latestPageUrl": "https://mediaarea.net/en/MediaInfo/Download/Windows",
+            "releaseUrl": "https://mediaarea.net/en/MediaInfo",
+            "versionRegex": "MediaInfo_CLI_([0-9.]+)_Windows_ARM64\\.zip"
+          }
+        }
+      },
       "systemCommand": {
         "executableName": "mediainfo",
-        "setupHint": "Install MediaInfo on the host system so the mediainfo command is available on PATH, then refresh Laboratory tools."
+        "setupHint": "Use the in-app install to prepare the room-local MediaInfo CLI runtime, or expose mediainfo on PATH and refresh Laboratory tools."
       }
     },
     "ffmpeg-libvmaf": {
       "displayName": "FFmpeg libvmaf Probe",
       "installDirName": "ffmpeg-libvmaf",
-      "availability": "system-command",
-      "installStrategy": "system-command",
+      "availability": "installable",
+      "installStrategy": "automatic",
       "usedBy": ["Reference quality check", "VMAF availability probe"],
       "testImpact": ["reference-quality", "ffmpeg-filter-probe"],
       "readinessImpact": "VMAF quality deltas are reported as not measured unless the active FFmpeg exposes the libvmaf filter and a reference source exists.",
@@ -219,26 +311,81 @@
         "args": ["-hide_banner", "-filters"],
         "versionRegex": "\\blibvmaf\\b"
       },
+      "releaseProvider": {
+        "type": "github-release",
+        "owner": "yt-dlp",
+        "repo": "FFmpeg-Builds",
+        "releaseUrl": "https://github.com/yt-dlp/FFmpeg-Builds/releases/latest"
+      },
+      "assets": {
+        "linux-x64": {
+          "assetMatch": "^ffmpeg-master-latest-linux64-gpl\\.tar\\.xz$",
+          "archive": "tar.xz",
+          "executableName": "ffmpeg",
+          "companionExecutables": ["ffprobe"]
+        },
+        "linux-arm64": {
+          "assetMatch": "^ffmpeg-master-latest-linuxarm64-gpl\\.tar\\.xz$",
+          "archive": "tar.xz",
+          "executableName": "ffmpeg",
+          "companionExecutables": ["ffprobe"]
+        },
+        "win32-x64": {
+          "assetMatch": "^ffmpeg-master-latest-win64-gpl\\.zip$",
+          "archive": "zip",
+          "executableName": "ffmpeg.exe",
+          "companionExecutables": ["ffprobe.exe"]
+        },
+        "win32-arm64": {
+          "assetMatch": "^ffmpeg-master-latest-winarm64-gpl\\.zip$",
+          "archive": "zip",
+          "executableName": "ffmpeg.exe",
+          "companionExecutables": ["ffprobe.exe"]
+        }
+      },
       "systemCommand": {
         "executableName": "ffmpeg",
-        "setupHint": "Use an FFmpeg build that includes the libvmaf filter. Refresh Laboratory tools after replacing or updating FFmpeg."
+        "setupHint": "Use the in-app install to prepare a room-local FFmpeg build with the libvmaf probe path, then refresh Laboratory tools."
       }
     },
     "raft-optical-flow": {
       "displayName": "RAFT Optical Flow",
       "installDirName": "raft-optical-flow",
-      "availability": "planned",
-      "installStrategy": "planned",
-      "plannedReason": "Heavy PyTorch/RAFT runtime is reserved for a later gated phase; current runs use FFmpeg/OpenCV motion proxies.",
+      "availability": "system-command",
+      "installStrategy": "automatic",
       "usedBy": ["Optical-flow tracking", "Subject/background motion split"],
       "testImpact": ["optical-flow-tracking", "planned-tool-gating"],
-      "readinessImpact": "RAFT is not required for the current balanced package; optical-flow tracking degrades to lighter motion proxies.",
+      "readinessImpact": "RAFT is optional for dense motion follow-up; optical-flow tracking degrades to lighter motion proxies when it is not installed.",
       "stageSupport": {
         "source": "unsupported",
         "edit": "unsupported",
         "profile": "optional",
         "process": "optional",
         "report": "optional"
+      },
+      "probe": {
+        "args": [
+          "-c",
+          "import torch, torchvision, cv2, numpy, scipy; print(torch.__version__)"
+        ],
+        "versionRegex": "(\\d+(?:\\.\\d+)+)"
+      },
+      "systemCommand": {
+        "executableName": "python3",
+        "candidatePaths": [
+          "${roomStorageDir}/runtime/raft-optical-flow-venv/bin/python3",
+          "${roomStorageDir}/runtime/raft-optical-flow-venv/bin/python",
+          "${roomStorageDir}/runtime/raft-optical-flow-venv/Scripts/python.exe"
+        ],
+        "setupHint": "Use the in-app install to prepare the room-local PyTorch/OpenCV runtime for RAFT optical-flow follow-up checks."
+      },
+      "installer": {
+        "type": "python-venv-pip",
+        "venvDir": "${roomStorageDir}/runtime/raft-optical-flow-venv",
+        "estimatedDownloadSize": "1.5 - 4 GB",
+        "estimatedInstalledSize": "3 - 7 GB",
+        "supportedPythonVersions": ["3.12", "3.11", "3.10"],
+        "packages": ["torch", "torchvision", "opencv-python-headless", "numpy", "scipy"]
       }
     },
     "opensmile": {

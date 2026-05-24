@@ -82,18 +82,6 @@ function submitForm(form: {
   assert.equal(defaultPrevented, true);
 }
 
-function submitLocalNote(
-  app: ReturnType<typeof createMinimalForgeUiEnvironment>["app"],
-  noteText: string
-): void {
-  const noteInput = app.querySelector("[data-pattern-local-note-input='true']");
-  const noteForm = app.querySelector("[data-pattern-local-note-form='true']");
-  assert.ok(noteInput);
-  assert.ok(noteForm);
-  noteInput.value = noteText;
-  fireEvent(noteForm, "submit");
-}
-
 function submitUserTextSource(
   app: ReturnType<typeof createMinimalForgeUiEnvironment>["app"],
   titleText: string,
@@ -221,6 +209,13 @@ function submitArchiveSourceEvidence(
   submitForm(evidenceForm);
 }
 
+function searchArchiveSource(app: PatternRoomFakeApp, sourceId: string, query: string): void {
+  const searchInput = app.querySelector(`[data-pattern-archive-source-search-input='${sourceId}']`);
+  assert.ok(searchInput);
+  searchInput.value = query;
+  fireEvent(searchInput, "input");
+}
+
 function submitBoardLocalEdge(
   app: PatternRoomFakeApp,
   sourceId: string,
@@ -273,15 +268,15 @@ function readLatestSavePayload(environment: PatternRoomUiEnvironment): Record<st
   return event.payload;
 }
 
-function assertSavePayloadIncludesNote(
+function assertSavePayloadIncludesLocalNode(
   payload: Record<string, unknown>,
-  noteText: string
+  labelText: string
 ): PatternRoomSessionSnapshot {
   const snapshot = payload["snapshot"] as PatternRoomSessionSnapshot;
   assert.ok(snapshot);
   assert.equal(snapshot.roomId, "pattern-room");
   assert.equal(
-    snapshot.overlay.localNotes.some((note) => note.text === noteText),
+    snapshot.overlay.localAuthoredNodes.some((node) => node.label === labelText),
     true
   );
   return snapshot;
@@ -345,10 +340,12 @@ test("pattern-room installed UI renders overview hotspots and returns from focus
 
       if (viewId === "report") {
         assertTextIncludes(focusedText, [
-          "Kanıt İzleri",
-          "Analiz İzleri",
-          "Belirsizlik İzleri",
-          "Sonraki araştırma notları",
+          "Kaynak Özeti",
+          "Kanıt Notları",
+          "Pano Notları",
+          "Yerel Bağlantılar",
+          "10. Adam İzleri",
+          "Sonraki Araştırma Notları",
         ]);
       }
 
@@ -382,7 +379,7 @@ test("pattern-room installed UI restores a loaded host snapshot", async () => {
 
     assert.ok(environment.app.querySelector("[data-pattern-view='report']"));
     assertTextIncludes(readTreeText(environment.app), [
-      "Yerel Notlar",
+      "Sonraki Araştırma Notları",
       "Restored host snapshot note",
     ]);
     environment.runPendingTimers(2000);
@@ -443,7 +440,7 @@ test("pattern-room installed UI rejects an invalid loaded snapshot without break
 
     assert.ok(environment.app.querySelector("[data-pattern-view='overview']"));
     assert.match(readTreeText(environment.app), /Pattern Room/);
-    assert.doesNotMatch(readTreeText(environment.app), /Yerel Notlar/);
+    assert.doesNotMatch(readTreeText(environment.app), /Restored host snapshot note/);
     assert.deepEqual(environment.sentCommands, []);
     assert.deepEqual(environment.sentEvents, []);
   } finally {
@@ -461,8 +458,8 @@ test("pattern-room installed UI does not autosave local mutations before host lo
       `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?autosave-gate=${Date.now()}`
     );
 
-    openFocusedView(environment.app, "report");
-    submitLocalNote(environment.app, "Mutation before loaded event");
+    openFocusedView(environment.app, "board");
+    submitBoardLocalNode(environment.app, "Mutation before loaded event", "Pano mutation");
     environment.runPendingTimers(2000);
 
     assert.equal(environment.pendingTimerCount(), 0);
@@ -487,8 +484,8 @@ test("pattern-room installed UI debounces autosave after a null host load", asyn
       payload: { snapshot: null },
       type: PATTERN_ROOM_LOADED_EVENT,
     });
-    openFocusedView(environment.app, "report");
-    submitLocalNote(environment.app, "Autosaved after null load");
+    openFocusedView(environment.app, "board");
+    submitBoardLocalNode(environment.app, "Autosaved after null load", "Pano autosave");
 
     assert.equal(environment.pendingTimerCount(), 1);
     environment.runPendingTimers(1999);
@@ -498,7 +495,7 @@ test("pattern-room installed UI debounces autosave after a null host load", asyn
     assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_SAVE_COMMAND]);
     const payload = readLatestSavePayload(environment);
     assert.equal(payload["flush"], undefined);
-    assertSavePayloadIncludesNote(payload, "Autosaved after null load");
+    assertSavePayloadIncludesLocalNode(payload, "Autosaved after null load");
   } finally {
     environment.restore();
     await installedCopy.cleanup();
@@ -522,16 +519,22 @@ test("pattern-room installed UI autosaves only user mutations after restoring a 
     environment.runPendingTimers(2000);
     assert.deepEqual(environment.sentCommands, []);
 
-    submitLocalNote(environment.app, "Mutation after restored snapshot");
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "board");
+    submitBoardLocalNode(
+      environment.app,
+      "Mutation after restored snapshot",
+      "Pano restored mutation"
+    );
     environment.runPendingTimers(2000);
 
     assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_SAVE_COMMAND]);
     const payload = readLatestSavePayload(environment);
-    const savedSnapshot = assertSavePayloadIncludesNote(
+    const savedSnapshot = assertSavePayloadIncludesLocalNode(
       payload,
       "Mutation after restored snapshot"
     );
-    assert.equal(savedSnapshot.activeView, "report");
+    assert.equal(savedSnapshot.activeView, "board");
   } finally {
     environment.restore();
     await installedCopy.cleanup();
@@ -551,10 +554,14 @@ test("pattern-room installed UI coalesces fast autosave mutations into one save"
       payload: { snapshot: null },
       type: PATTERN_ROOM_LOADED_EVENT,
     });
-    openFocusedView(environment.app, "report");
+    openFocusedView(environment.app, "board");
 
     for (let index = 0; index < 5; index += 1) {
-      submitLocalNote(environment.app, `Fast autosave note ${index + 1}`);
+      submitBoardLocalNode(
+        environment.app,
+        `Fast autosave node ${index + 1}`,
+        `Fast autosave content ${index + 1}`
+      );
     }
 
     assert.equal(environment.pendingTimerCount(), 1);
@@ -562,8 +569,8 @@ test("pattern-room installed UI coalesces fast autosave mutations into one save"
 
     assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_SAVE_COMMAND]);
     const payload = readLatestSavePayload(environment);
-    const savedSnapshot = assertSavePayloadIncludesNote(payload, "Fast autosave note 5");
-    assert.equal(savedSnapshot.overlay.localNotes.length, 5);
+    const savedSnapshot = assertSavePayloadIncludesLocalNode(payload, "Fast autosave node 5");
+    assert.equal(savedSnapshot.overlay.localAuthoredNodes.length, 5);
   } finally {
     environment.restore();
     await installedCopy.cleanup();
@@ -583,8 +590,12 @@ test("pattern-room installed UI flushes a pending autosave before unload", async
       payload: { snapshot: null },
       type: PATTERN_ROOM_LOADED_EVENT,
     });
-    openFocusedView(environment.app, "report");
-    submitLocalNote(environment.app, "Flush before unload note");
+    openFocusedView(environment.app, "board");
+    submitBoardLocalNode(
+      environment.app,
+      "Flush before unload node",
+      "Flush before unload content"
+    );
 
     assert.equal(environment.pendingTimerCount(), 1);
     environment.emitWindowEvent("beforeunload");
@@ -593,7 +604,7 @@ test("pattern-room installed UI flushes a pending autosave before unload", async
     assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_SAVE_COMMAND]);
     const payload = readLatestSavePayload(environment);
     assert.equal(payload["flush"], true);
-    assertSavePayloadIncludesNote(payload, "Flush before unload note");
+    assertSavePayloadIncludesLocalNode(payload, "Flush before unload node");
 
     environment.runPendingTimers(2000);
     assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_SAVE_COMMAND]);
@@ -623,8 +634,8 @@ test("pattern-room installed UI dispose flushes pending autosave and disconnects
       payload: { snapshot: null },
       type: PATTERN_ROOM_LOADED_EVENT,
     });
-    openFocusedView(environment.app, "report");
-    submitLocalNote(environment.app, "Dispose flush note");
+    openFocusedView(environment.app, "board");
+    submitBoardLocalNode(environment.app, "Dispose flush node", "Dispose flush content");
 
     assert.equal(environment.pendingTimerCount(), 1);
     runtime.dispose();
@@ -635,7 +646,7 @@ test("pattern-room installed UI dispose flushes pending autosave and disconnects
     assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_SAVE_COMMAND]);
     const payload = readLatestSavePayload(environment);
     assert.equal(payload["flush"], true);
-    assertSavePayloadIncludesNote(payload, "Dispose flush note");
+    assertSavePayloadIncludesLocalNode(payload, "Dispose flush node");
 
     console.warn = (...args: unknown[]): void => {
       warnings.push(args.map(String).join(" "));
@@ -779,15 +790,13 @@ test("pattern-room installed UI supports phase 4B local interactions without hos
 
     returnToOverview(environment.app);
     openFocusedView(environment.app, "report");
-    const noteInput = environment.app.querySelector("[data-pattern-local-note-input='true']");
-    const noteForm = environment.app.querySelector("[data-pattern-local-note-form='true']");
-    assert.ok(noteInput);
-    assert.ok(noteForm);
-    noteInput.value = "Bu sadece local overlay notudur";
-    fireEvent(noteForm, "submit");
+    assert.equal(environment.app.querySelector("[data-pattern-local-note-form='true']"), null);
     assertTextIncludes(readTreeText(environment.app), [
-      "Yerel Notlar",
-      "Bu sadece local overlay notudur",
+      "Kaynak Özeti",
+      "Pano Notları",
+      "10. Adam İzleri",
+      "Henüz yerel kanıt notu yok.",
+      "Henüz yerel pano notu yok.",
     ]);
 
     assert.deepEqual(environment.sentCommands, []);
@@ -912,7 +921,7 @@ test("pattern-room installed UI phase 7C board evidence form reaches board and r
     returnToOverview(environment.app);
     openFocusedView(environment.app, "report");
     assertTextIncludes(readTreeText(environment.app), [
-      "Yerel Kanıt Notları",
+      "Kanıt Notları",
       "Faz 7C kanıt",
       "DOM submit ile eklenen local alıntı.",
     ]);
@@ -1071,6 +1080,14 @@ test("pattern-room installed UI phase 12D imports pasted user text through the s
       environment.app.querySelector("[data-pattern-archive-source-segments='local-source-001']"),
       null
     );
+    assert.ok(
+      environment.app.querySelector("[data-pattern-archive-source-search='local-source-001']")
+    );
+    searchArchiveSource(environment.app, "local-source-001", "PRODUCER HATTINDAN");
+    assertTextIncludes(readTreeText(environment.app), ["Tam metinde eşleşme bulundu."]);
+    assert.equal(environment.pendingTimerCount(), 1);
+    searchArchiveSource(environment.app, "local-source-001", "bulunmayan-kisa-kaynak-sorgusu");
+    assertTextIncludes(readTreeText(environment.app), ["Eşleşme bulunamadı."]);
     assert.equal(environment.pendingTimerCount(), 1);
 
     environment.runPendingTimers(2000);
@@ -1318,9 +1335,13 @@ test("pattern-room installed UI phase 13C imports long text as a source only", a
     returnToOverview(environment.app);
     openFocusedView(environment.app, "report");
     const reportText = readTreeText(environment.app);
-    assert.doesNotMatch(reportText, /Faz 13C uzun metin/);
-    assert.doesNotMatch(reportText, /Yerel Kanıt Notları/);
-    assert.doesNotMatch(reportText, /Yerel Bağlantılar/);
+    assertTextIncludes(reportText, [
+      "Kaynak Özeti",
+      "Faz 13C uzun metin",
+      "Segment: 2",
+      "Henüz yerel kanıt notu yok.",
+      "Henüz yerel bağlantı yok.",
+    ]);
     assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
   } finally {
     environment.restore();
@@ -1471,10 +1492,13 @@ test("pattern-room installed UI phase 13F captures manual evidence from source d
     openFocusedView(environment.app, "report");
     const reportText = readTreeText(environment.app);
     assertTextIncludes(reportText, [
-      "Yerel Kanıt Notları",
-      "Kaynak pasajı: Kullanıcı tarafından seçilen manuel kanıt pasajı. Kaynak: Faz 13F uzun kaynak Yorum: Pasajın bağlamı manuel olarak yazıldı.",
+      "Kanıt Notları",
+      "Kaynak pasajı",
+      "Kullanıcı tarafından seçilen manuel kanıt pasajı.",
+      "Kaynak: Faz 13F uzun kaynak",
+      "Yorum: Pasajın bağlamı manuel olarak yazıldı.",
+      "Henüz yerel bağlantı yok.",
     ]);
-    assert.doesNotMatch(reportText, /Yerel Bağlantılar/);
 
     environment.runPendingTimers(2000);
     const captureSnapshot = readLatestSavePayload(environment)[
@@ -1599,7 +1623,9 @@ test("pattern-room installed UI phase 14B-2 prepares manual evidence from a sele
     assert.ok(excerptInput);
     assert.ok(interpretationInput);
     assert.equal(prepareEvidenceButton.disabled, true);
-    assert.equal(environment.app.querySelector("[data-pattern-archive-source-search]"), null);
+    assert.ok(
+      environment.app.querySelector("[data-pattern-archive-source-search='local-source-001']")
+    );
 
     fireEvent(firstSegmentButton, "click");
     assert.equal(firstSegmentButton.dataset["patternArchiveSourceSegmentSelected"], "true");
@@ -1684,8 +1710,11 @@ test("pattern-room installed UI phase 14B-2 prepares manual evidence from a sele
     returnToOverview(environment.app);
     openFocusedView(environment.app, "report");
     assertTextIncludes(readTreeText(environment.app), [
-      "Yerel Kanıt Notları",
-      "Düzenlenmiş segment kanıtı: Kısaltılmış segment pasajı. Kaynak: Faz 14B-2 segment kaynağı Yorum: Kullanıcı yorumu sonradan yazıldı.",
+      "Kanıt Notları",
+      "Düzenlenmiş segment kanıtı",
+      "Kısaltılmış segment pasajı.",
+      "Kaynak: Faz 14B-2 segment kaynağı",
+      "Yorum: Kullanıcı yorumu sonradan yazıldı.",
     ]);
 
     environment.runPendingTimers(2000);
@@ -1725,6 +1754,348 @@ test("pattern-room installed UI phase 14B-2 prepares manual evidence from a sele
       restored.overlay.localAuthoredEvidence[0]?.sourceLabel,
       "Faz 14B-2 segment kaynağı"
     );
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+test("pattern-room installed UI phase 14B-3 searches source detail locally", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+  const firstSegmentText =
+    "İlk segment alfayol pasajı arama sonucundan seçilir ve otomatik kanıt üretmez.";
+  const secondSegmentText =
+    "İkinci segment betaiz pasajı ayrı kalır ve ilk sorgu sonucuna karışmamalıdır.";
+  const longText = `${firstSegmentText}\n\n${secondSegmentText}`;
+  const firstSegmentLabel = firstSegmentText.replace(/\s+/g, " ").trim().slice(0, 80);
+  const noMatchQuery = "UI_ONLY_QUERY_14B3";
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?source-detail-search=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      payload: { snapshot: null },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+    openFocusedView(environment.app, "archive");
+    submitLongTextSource(environment.app, {
+      title: "Faz 14B-3 aranabilir kaynak",
+      origin: "Arama arşivi",
+      sourceKind: "archive_text",
+      text: longText,
+    });
+    environment.runPendingTimers(2000);
+
+    const sourceOnlySnapshot = readLatestSavePayload(environment)[
+      "snapshot"
+    ] as PatternRoomSessionSnapshot;
+    assert.equal(sourceOnlySnapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
+    assert.deepEqual(sourceOnlySnapshot.overlay.localAuthoredEvidence, []);
+    assert.deepEqual(sourceOnlySnapshot.overlay.localAuthoredNodes, []);
+    assert.deepEqual(sourceOnlySnapshot.overlay.localAuthoredEdges, []);
+    assert.deepEqual(sourceOnlySnapshot.overlay.pinnedSourceIds, []);
+
+    const inspectLongTextSource = environment.app.querySelector(
+      "[data-pattern-inspect-source='local-source-001']"
+    );
+    assert.ok(inspectLongTextSource);
+    fireEvent(inspectLongTextSource, "click");
+
+    const searchInput = environment.app.querySelector(
+      "[data-pattern-archive-source-search-input='local-source-001']"
+    );
+    const searchResults = environment.app.querySelector(
+      "[data-pattern-archive-source-search-results='local-source-001']"
+    );
+    const firstSegmentButton = environment.app.querySelector(
+      "[data-pattern-archive-source-segment='segment-001']"
+    );
+    const secondSegmentButton = environment.app.querySelector(
+      "[data-pattern-archive-source-segment='segment-002']"
+    );
+    assert.ok(searchInput);
+    assert.ok(searchResults);
+    assert.ok(firstSegmentButton);
+    assert.ok(secondSegmentButton);
+    assert.equal(searchResults.children.length, 0);
+    assert.equal(environment.pendingTimerCount(), 0);
+
+    searchArchiveSource(environment.app, "local-source-001", noMatchQuery);
+    assertTextIncludes(readTreeText(environment.app), ["Eşleşme bulunamadı."]);
+    assert.equal(environment.pendingTimerCount(), 0);
+    environment.runPendingTimers(2000);
+    assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_SAVE_COMMAND]);
+    assert.equal(JSON.stringify(readLatestSavePayload(environment)).includes(noMatchQuery), false);
+
+    searchArchiveSource(environment.app, "local-source-001", "ALFAYOL");
+    const firstSearchResult = environment.app.querySelector(
+      "[data-pattern-archive-source-search-result='segment-001']"
+    );
+    const secondSearchResult = environment.app.querySelector(
+      "[data-pattern-archive-source-search-result='segment-002']"
+    );
+    assert.ok(firstSearchResult);
+    assert.equal(secondSearchResult, null);
+    assert.equal(firstSearchResult.dataset["patternArchiveSourceSearchMatchCount"], "2");
+    assertTextIncludes(readTreeText(environment.app), [
+      "Kaynak içinde ara",
+      "1 segmentte eşleşme.",
+      firstSegmentLabel,
+    ]);
+
+    fireEvent(firstSearchResult, "click");
+    const selectedSegmentDetail = environment.app.querySelector(
+      "[data-pattern-archive-source-segment-detail='local-source-001']"
+    );
+    const selectedSegmentText = environment.app.querySelector(
+      "[data-pattern-archive-source-segment-text='local-source-001']"
+    );
+    const labelInput = environment.app.querySelector(
+      "[data-pattern-archive-evidence-label='local-source-001']"
+    );
+    const excerptInput = environment.app.querySelector(
+      "[data-pattern-archive-evidence-excerpt='local-source-001']"
+    );
+    assert.ok(selectedSegmentDetail);
+    assert.ok(selectedSegmentText);
+    assert.ok(labelInput);
+    assert.ok(excerptInput);
+    assert.equal(selectedSegmentDetail.dataset["patternArchiveSelectedSegment"], "segment-001");
+    assert.equal(selectedSegmentText.textContent, firstSegmentText);
+    assert.equal(labelInput.value, "");
+    assert.equal(excerptInput.value, "");
+    assert.equal(environment.pendingTimerCount(), 0);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "board");
+    assert.equal(
+      environment.app.querySelector("[data-pattern-board-pin='local-evidence-001']"),
+      null
+    );
+    assert.equal(
+      environment.app.querySelector("[data-pattern-board-pin='local-source-001']"),
+      null
+    );
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "archive");
+    searchArchiveSource(environment.app, "local-source-001", "ALFAYOL");
+    const preparedSearchResult = environment.app.querySelector(
+      "[data-pattern-archive-source-search-result='segment-001']"
+    );
+    const prepareEvidenceButton = environment.app.querySelector(
+      "[data-pattern-archive-prepare-segment-evidence='local-source-001']"
+    );
+    const labelInputAfterSearch = environment.app.querySelector(
+      "[data-pattern-archive-evidence-label='local-source-001']"
+    );
+    const excerptInputAfterSearch = environment.app.querySelector(
+      "[data-pattern-archive-evidence-excerpt='local-source-001']"
+    );
+    const interpretationInputAfterSearch = environment.app.querySelector(
+      "[data-pattern-archive-evidence-interpretation='local-source-001']"
+    );
+    const evidenceFormAfterSearch = environment.app.querySelector(
+      "[data-pattern-archive-evidence-form='local-source-001']"
+    );
+    assert.ok(preparedSearchResult);
+    assert.ok(prepareEvidenceButton);
+    assert.ok(labelInputAfterSearch);
+    assert.ok(excerptInputAfterSearch);
+    assert.ok(interpretationInputAfterSearch);
+    assert.ok(evidenceFormAfterSearch);
+    fireEvent(preparedSearchResult, "click");
+    fireEvent(prepareEvidenceButton, "click");
+    assert.equal(labelInputAfterSearch.value, firstSegmentLabel);
+    assert.equal(excerptInputAfterSearch.value, firstSegmentText);
+    assert.equal(interpretationInputAfterSearch.value, "");
+
+    labelInputAfterSearch.value = "Arama sonrası kanıt";
+    excerptInputAfterSearch.value = "Arama sonucundan kısaltılmış pasaj.";
+    interpretationInputAfterSearch.value = "Yorum kullanıcı tarafından yazıldı.";
+    submitForm(evidenceFormAfterSearch);
+    assertTextIncludes(readTreeText(environment.app), ["Kanıt notu panoya eklendi."]);
+    assert.equal(environment.pendingTimerCount(), 1);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "board");
+    assert.ok(environment.app.querySelector("[data-pattern-board-pin='local-evidence-001']"));
+    assert.equal(
+      environment.app.querySelector("[data-pattern-board-pin='local-source-001']"),
+      null
+    );
+    clickBoardPin(environment.app, "local-evidence-001");
+    assertTextIncludes(readTreeText(environment.app), [
+      "Arama sonrası kanıt",
+      "Arama sonucundan kısaltılmış pasaj.",
+      "Yorum kullanıcı tarafından yazıldı.",
+      "Faz 14B-3 aranabilir kaynak",
+    ]);
+
+    environment.runPendingTimers(2000);
+    assert.deepEqual(environment.sentCommands, [
+      PATTERN_ROOM_SAVE_COMMAND,
+      PATTERN_ROOM_SAVE_COMMAND,
+    ]);
+    const evidenceSnapshot = readLatestSavePayload(environment)[
+      "snapshot"
+    ] as PatternRoomSessionSnapshot;
+    assert.equal(evidenceSnapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
+    assert.equal(evidenceSnapshot.overlay.localAuthoredEvidence.length, 1);
+    assert.equal(evidenceSnapshot.overlay.localAuthoredEvidence[0]?.label, "Arama sonrası kanıt");
+    assert.equal(
+      evidenceSnapshot.overlay.localAuthoredEvidence[0]?.excerpt,
+      "Arama sonucundan kısaltılmış pasaj."
+    );
+    assert.equal(evidenceSnapshot.overlay.localAuthoredEvidence[0]?.sourceId, "local-source-001");
+    assert.equal(
+      evidenceSnapshot.overlay.localAuthoredEvidence[0]?.sourceLabel,
+      "Faz 14B-3 aranabilir kaynak"
+    );
+    assert.deepEqual(evidenceSnapshot.overlay.localAuthoredNodes, []);
+    assert.deepEqual(evidenceSnapshot.overlay.localAuthoredEdges, []);
+    assert.deepEqual(evidenceSnapshot.overlay.pinnedSourceIds, []);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+test("pattern-room installed UI phase 15A renders a read-only deterministic report draft", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+  const longText =
+    "Faz 15A ilk segmenti kaynak detayı ve rapor taslağı için saklanır.\n\n" +
+    "Faz 15A ikinci segmenti kaynak metadata sayımı için saklanır.";
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?report-draft=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      payload: { snapshot: null },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+
+    openFocusedView(environment.app, "report");
+    assert.equal(environment.app.querySelector("[data-pattern-local-note-form='true']"), null);
+    assertTextIncludes(readTreeText(environment.app), [
+      "Kaynak Özeti",
+      "Henüz yerel kanıt notu yok.",
+      "Henüz yerel bağlantı yok.",
+      "Henüz 10. Adam tartışması rapora yansıtılmadı.",
+    ]);
+    assert.deepEqual(environment.sentCommands, []);
+    assert.equal(environment.pendingTimerCount(), 0);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "archive");
+    submitLongTextSource(environment.app, {
+      title: "Faz 15A uzun kaynak",
+      origin: "Faz 15A arşivi",
+      sourceKind: "archive_text",
+      text: longText,
+    });
+    environment.runPendingTimers(2000);
+
+    const inspectLongTextSource = environment.app.querySelector(
+      "[data-pattern-inspect-source='local-source-001']"
+    );
+    assert.ok(inspectLongTextSource);
+    fireEvent(inspectLongTextSource, "click");
+    submitArchiveSourceEvidence(
+      environment.app,
+      "local-source-001",
+      "Faz 15A kanıt",
+      "Faz 15A kaynak detayından seçilen pasaj.",
+      "Faz 15A kullanıcı yorumu."
+    );
+    environment.runPendingTimers(2000);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "board");
+    submitBoardLocalNode(environment.app, "Faz 15A iddia", "Faz 15A pano notu.");
+    submitBoardLocalEdge(
+      environment.app,
+      "local-node-001",
+      "supports",
+      "local-evidence-001",
+      "Faz 15A bağlantı notu."
+    );
+    clickBoardPin(environment.app, "local-node-001");
+    const addNodeToDebate = environment.app.querySelector(
+      "[data-pattern-add-node-debate='local-node-001']"
+    );
+    assert.ok(addNodeToDebate);
+    fireEvent(addNodeToDebate, "click");
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "tenth-man");
+    const prepareDebate = environment.app.querySelector("[data-pattern-prepare-debate='true']");
+    assert.ok(prepareDebate);
+    fireEvent(prepareDebate, "click");
+    const assignRoles = environment.app.querySelector("[data-pattern-assign-debate-roles='true']");
+    assert.ok(assignRoles);
+    fireEvent(assignRoles, "click");
+    const startDebate = environment.app.querySelector("[data-pattern-start-debate='true']");
+    assert.ok(startDebate);
+    fireEvent(startDebate, "click");
+    for (let index = 0; index < 4; index += 1) {
+      const advanceDebate = environment.app.querySelector("[data-pattern-advance-debate='true']");
+      assert.ok(advanceDebate);
+      fireEvent(advanceDebate, "click");
+    }
+    const completeDebate = environment.app.querySelector("[data-pattern-complete-debate='true']");
+    assert.ok(completeDebate);
+    fireEvent(completeDebate, "click");
+    environment.runPendingTimers(2000);
+
+    const snapshotBeforeReport = readLatestSavePayload(environment)[
+      "snapshot"
+    ] as PatternRoomSessionSnapshot;
+    const payloadBeforeReport = JSON.stringify(readLatestSavePayload(environment));
+    const commandsBeforeReport = [...environment.sentCommands];
+    const eventCountBeforeReport = environment.sentEvents.length;
+    assert.equal(snapshotBeforeReport.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
+    assert.equal(
+      commandsBeforeReport.every((command) => command === PATTERN_ROOM_SAVE_COMMAND),
+      true
+    );
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "report");
+    const reportText = readTreeText(environment.app);
+    assertTextIncludes(reportText, [
+      "Kaynak Özeti",
+      "Faz 15A uzun kaynak",
+      "Segment: 2",
+      "Kanıt Notları",
+      "Faz 15A kanıt",
+      "Kaynak: Faz 15A uzun kaynak",
+      "Yorum: Faz 15A kullanıcı yorumu.",
+      "Pano Notları",
+      "Faz 15A iddia",
+      "Tür: İddia",
+      "Yerel Bağlantılar",
+      "destekliyor",
+      "10. Adam İzleri",
+      "Yerel tartışma özeti",
+      "Dış üretim çağrısı yapılmadı.",
+      "Sonraki Araştırma Notları",
+      "Henüz sonraki araştırma notu yok.",
+    ]);
+    assert.doesNotMatch(
+      reportText,
+      /kanıtlandı|doğrulandı|kesin sonuç|nihai rapor|AI sonucu|provider|relay/i
+    );
+    assert.deepEqual(environment.sentCommands, commandsBeforeReport);
+    assert.equal(JSON.stringify(readLatestSavePayload(environment)), payloadBeforeReport);
+    assert.equal(environment.sentEvents.length, eventCountBeforeReport);
+    assert.equal(environment.pendingTimerCount(), 0);
   } finally {
     environment.restore();
     await installedCopy.cleanup();
@@ -1893,9 +2264,9 @@ test("pattern-room installed UI phase 11D imports a mock SourcePackage from the 
     returnToOverview(environment.app);
     openFocusedView(environment.app, "report");
     assertTextIncludes(readTreeText(environment.app), [
-      "Yerel Notlar",
+      "Sonraki Araştırma Notları",
       "Kaynak Atölyesi tarafından örnek bir saha notu paketi hazırlandı.",
-      "Yerel Kanıt Notları",
+      "Kanıt Notları",
       "Gölge yönü notu",
       "Yerel Bağlantılar",
       "Tekrarlayan gölge izi",
@@ -2030,7 +2401,7 @@ test("pattern-room installed UI phase 12G-A removes confirmed local sources and 
 
     returnToOverview(environment.app);
     openFocusedView(environment.app, "report");
-    assert.doesNotMatch(readTreeText(environment.app), /Yerel Bağlantılar/);
+    assertTextIncludes(readTreeText(environment.app), ["Henüz yerel bağlantı yok."]);
     assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
   } finally {
     environment.restore();
@@ -2119,7 +2490,7 @@ test("pattern-room installed UI phase 12G-C removes selected local board nodes a
     returnToOverview(environment.app);
     openFocusedView(environment.app, "report");
     assertTextIncludes(readTreeText(environment.app), [
-      "Yerel Kanıt Notları",
+      "Kanıt Notları",
       "Faz 12G-C kanıt",
       "Yerel Bağlantılar",
       "Faz 12G-C iddia",
@@ -2178,7 +2549,7 @@ test("pattern-room installed UI phase 12G-C removes selected local board nodes a
     returnToOverview(environment.app);
     openFocusedView(environment.app, "report");
     const evidenceRemovedReportText = readTreeText(environment.app);
-    assert.doesNotMatch(evidenceRemovedReportText, /Yerel Bağlantılar/);
+    assertTextIncludes(evidenceRemovedReportText, ["Henüz yerel bağlantı yok."]);
     assert.doesNotMatch(evidenceRemovedReportText, /Faz 12G-C kanıt/);
 
     returnToOverview(environment.app);
@@ -2293,9 +2664,9 @@ test("pattern-room installed UI phase 12G-B resets the local session without tou
     returnToOverview(environment.app);
     openFocusedView(environment.app, "report");
     assertTextIncludes(readTreeText(environment.app), [
-      "Yerel Notlar",
+      "Sonraki Araştırma Notları",
       "Kaynak Atölyesi tarafından örnek bir saha notu paketi hazırlandı.",
-      "Yerel Kanıt Notları",
+      "Kanıt Notları",
       "Gölge yönü notu",
       "Yerel Bağlantılar",
       "Tekrarlayan gölge izi",
@@ -2369,8 +2740,7 @@ test("pattern-room installed UI phase 12G-B resets the local session without tou
     returnToOverview(environment.app);
     openFocusedView(environment.app, "report");
     const reportText = readTreeText(environment.app);
-    assert.doesNotMatch(reportText, /Yerel Bağlantılar/);
-    assert.doesNotMatch(reportText, /Yerel Kanıt Notları/);
+    assertTextIncludes(reportText, ["Henüz yerel kanıt notu yok.", "Henüz yerel bağlantı yok."]);
     assert.doesNotMatch(
       reportText,
       /Kaynak Atölyesi tarafından örnek bir saha notu paketi hazırlandı./
@@ -2466,7 +2836,9 @@ test("pattern-room installed UI runs phase 5B local tenth-man debate flow", asyn
     returnToOverview(environment.app);
     openFocusedView(environment.app, "report");
     assertTextIncludes(readTreeText(environment.app), [
-      "Yerel Notlar",
+      "10. Adam İzleri",
+      "Yerel tartışma özeti",
+      "Sonraki Araştırma Notları",
       "10. Adam local oturum özeti",
     ]);
 
