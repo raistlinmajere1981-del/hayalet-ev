@@ -8,7 +8,19 @@ import type {
   DebateLocalPhase,
   DebateLocalTurn,
 } from "../../shared/state/pattern-room-local-state.js";
+import {
+  createPatternCaseReviewPreviewDraft,
+  type PatternCaseReviewDispatchStatus,
+  type PatternCaseReviewPreviewDraft,
+} from "../pattern-case-review-preview.js";
 import { createActionButton, createElement, createPanelShell } from "./pattern-panel-utils.js";
+
+export type PatternCaseReviewPreviewPanelState = {
+  preview: PatternCaseReviewPreviewDraft | null;
+  dispatchStatus: PatternCaseReviewDispatchStatus;
+  onPrepare: (preview: PatternCaseReviewPreviewDraft) => void;
+  onSend: () => void;
+};
 
 const PHASE_LABELS: Record<DebateLocalPhase, string> = {
   idle: "Beklemede",
@@ -154,6 +166,105 @@ function appendVerdict(device: HTMLElement, verdict: string | null | undefined):
   device.append(verdictCard);
 }
 
+function appendPreviewWarnings(container: HTMLElement, warnings: readonly string[]): void {
+  if (warnings.length === 0) {
+    return;
+  }
+
+  const warningList = createElement("ul", "pattern-room-case-review-preview-warnings");
+  warnings.forEach((warning) => {
+    warningList.append(createElement("li", undefined, warning));
+  });
+  container.append(warningList);
+}
+
+function renderCaseReviewPreview(
+  container: HTMLElement,
+  preview: PatternCaseReviewPreviewDraft
+): void {
+  const meta = createElement("div", "pattern-room-case-review-preview-meta");
+  meta.append(
+    createElement(
+      "span",
+      "pattern-room-device-status pattern-room-device-status-secondary",
+      `Target: ${preview.roleSlot} / ${preview.targetSlot}`
+    ),
+    createElement(
+      "span",
+      "pattern-room-device-status pattern-room-device-status-secondary",
+      `Protocol: ${preview.protocol.protocolKey}`
+    )
+  );
+
+  const textPreview = createElement("pre", "pattern-room-case-review-preview-text");
+  textPreview.dataset["patternCaseReviewPreviewText"] = "true";
+  textPreview.textContent = preview.text;
+
+  container.replaceChildren(meta, textPreview);
+  appendPreviewWarnings(container, preview.warnings);
+}
+
+function appendDispatchStatus(
+  container: HTMLElement,
+  status: PatternCaseReviewDispatchStatus
+): void {
+  if (status.message === null) {
+    return;
+  }
+
+  const statusLine = createElement(
+    "p",
+    `pattern-room-case-review-preview-status ${status.kind}`,
+    status.message
+  );
+  statusLine.dataset["patternCaseReviewDispatchStatus"] = "true";
+  container.append(statusLine);
+}
+
+function appendCaseReviewPreview(
+  device: HTMLElement,
+  data: PatternRoomMockData,
+  previewState: PatternCaseReviewPreviewPanelState
+): void {
+  const previewSection = createElement("section", "pattern-room-case-review-preview");
+  previewSection.dataset["patternCaseReviewPreview"] = "true";
+  const previewResult = createElement("div", "pattern-room-case-review-preview-result");
+  if (previewState.preview === null) {
+    previewResult.append(
+      createElement("p", "pattern-room-empty-state", "Önizleme henüz hazırlanmadı.")
+    );
+  } else {
+    renderCaseReviewPreview(previewResult, previewState.preview);
+  }
+
+  const prepareButton = createActionButton("Önizleme Hazırla", () => {
+    previewState.onPrepare(createPatternCaseReviewPreviewDraft(data));
+  });
+  prepareButton.dataset["patternCaseReviewPreviewPrepare"] = "true";
+
+  const sendButton = createActionButton("AI2’ye İnceleme Gönder", previewState.onSend);
+  sendButton.dataset["patternCaseReviewDispatchSend"] = "true";
+  sendButton.disabled =
+    previewState.preview === null || previewState.dispatchStatus.kind === "sending";
+
+  const actionRow = createElement("div", "pattern-room-action-row");
+  actionRow.append(prepareButton, sendButton);
+  appendDispatchStatus(previewResult, previewState.dispatchStatus);
+
+  previewSection.append(
+    createElement("span", "pattern-room-kicker", "Dry-run"),
+    createElement("h2", undefined, "AI2 Vaka İnceleme Önizlemesi"),
+    createElement(
+      "p",
+      undefined,
+      "Bu önizleme AI’ya gönderilecek araştırma paketinin taslağını gösterir. Bu aşamada hiçbir mesaj gönderilmez."
+    ),
+    actionRow,
+    previewResult
+  );
+  device.append(previewSection);
+}
+
 function appendPhaseAction(
   device: HTMLElement,
   session: PatternTenthManSession,
@@ -218,7 +329,8 @@ function appendPhaseAction(
 export function createTenthManPanel(
   data: PatternRoomMockData,
   actions: PatternPanelActions,
-  onBack: () => void
+  onBack: () => void,
+  caseReviewPreviewState: PatternCaseReviewPreviewPanelState
 ): HTMLElement {
   const shell = createPanelShell("tenth-man", "10. Adam", onBack);
   const session = data.tenthManSession;
@@ -254,6 +366,7 @@ export function createTenthManPanel(
   appendReferences(device, session);
   appendTurnList(device, session.turns ?? []);
   appendVerdict(device, session.verdict);
+  appendCaseReviewPreview(device, data, caseReviewPreviewState);
   appendPhaseAction(device, session, actions);
 
   shell.append(device);

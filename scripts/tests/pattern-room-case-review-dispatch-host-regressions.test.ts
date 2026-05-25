@@ -420,8 +420,9 @@ test("pattern-room case review dispatch host stays renderer-safe and UI-free", a
   assert.doesNotMatch(hostSource, /message\.sendWait|sendWait|protocolDelivered/);
   assert.equal(PATTERN_ROOM_SNAPSHOT_VERSION, 1);
 
-  for (const uiSource of [uiRuntimeSource, tenthManPanelSource]) {
-    assert.doesNotMatch(uiSource, /PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND/);
-    assert.doesNotMatch(uiSource, /pattern:case-review-dispatch|case-review-dispatch/);
-  }
+  assert.match(uiRuntimeSource, /PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND/);
+  assert.doesNotMatch(uiRuntimeSource, /dispatchBridge|message\.sendWait|sendWait/);
+  assert.doesNotMatch(tenthManPanelSource, /PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND/);
+  assert.doesNotMatch(tenthManPanelSource, /pattern:case-review-dispatch|roomAPI\.sendCommand/);
+  assert.doesNotMatch(tenthManPanelSource, /dispatchBridge|message\.sendWait|sendWait/);
 });

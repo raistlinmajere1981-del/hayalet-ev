@@ -4,6 +4,7 @@ import {
   createRoomInstalledCopy,
   fireEvent,
   pathToFileURL,
+  readFileSync,
   readTreeText,
   resolve,
   test,
@@ -21,6 +22,12 @@ import {
   PATTERN_ROOM_SAVE_FAILED_EVENT,
 } from "../../rooms/pattern-room/shared/types/pattern-room-persistence.ts";
 import {
+  PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND,
+  PATTERN_ROOM_CASE_REVIEW_DISPATCH_FAILED_EVENT,
+  PATTERN_ROOM_CASE_REVIEW_DISPATCHED_EVENT,
+  type PatternRoomCaseReviewDispatchDraft,
+} from "../../rooms/pattern-room/shared/types/pattern-room-case-review-dispatch.ts";
+import {
   PATTERN_ROOM_SNAPSHOT_VERSION,
   type PatternRoomSessionSnapshot,
 } from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
@@ -33,6 +40,7 @@ type PatternRoomUiEnvironment = ReturnType<typeof createMinimalForgeUiEnvironmen
 type PatternRoomFakeApp = PatternRoomUiEnvironment["app"];
 type PatternRoomUiRuntimeModule = {
   createPatternRoomUiRuntime: () => {
+    createSnapshot: () => PatternRoomSessionSnapshot;
     dispose: () => void;
     start: () => void;
   };
@@ -266,6 +274,22 @@ function readLatestSavePayload(environment: PatternRoomUiEnvironment): Record<st
   assert.ok(event);
   assert.equal(event.command, PATTERN_ROOM_SAVE_COMMAND);
   return event.payload;
+}
+
+function assertPatternCaseReviewPreviewAvoidsVerdictLanguage(previewText: string): void {
+  assert.doesNotMatch(previewText, /kanıtlandı|doğrulandı|nihai sonuç/i);
+  assert.doesNotMatch(previewText, /kesin hüküm(?:dür|dir| olarak|:)/i);
+  assert.match(previewText, /Kesin hüküm üretme\./);
+}
+
+function assertSnapshotLocalStateUnchanged(
+  before: PatternRoomSessionSnapshot,
+  after: PatternRoomSessionSnapshot
+): void {
+  assert.equal(after.activeView, before.activeView);
+  assert.equal(after.schemaVersion, before.schemaVersion);
+  assert.deepEqual(after.guards, before.guards);
+  assert.deepEqual(after.overlay, before.overlay);
 }
 
 function assertSavePayloadIncludesLocalNode(
@@ -2761,6 +2785,178 @@ test("pattern-room installed UI phase 12G-B resets the local session without tou
       "Tüm yerel kaynaklar, notlar ve geçici tartışma izleri temizlenecek. Hazır konu verileri korunur. Devam edilsin mi?",
     ]);
     assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+test("pattern-room installed UI prepares a local AI2 case review dry-run preview", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?case-review-preview=${Date.now()}`
+    );
+
+    openFocusedView(environment.app, "tenth-man");
+    assertTextIncludes(readTreeText(environment.app), [
+      "AI2 Vaka İnceleme Önizlemesi",
+      "Bu aşamada hiçbir mesaj gönderilmez.",
+      "Önizleme Hazırla",
+    ]);
+
+    const preparePreview = environment.app.querySelector(
+      "[data-pattern-case-review-preview-prepare='true']"
+    );
+    assert.ok(preparePreview);
+    fireEvent(preparePreview, "click");
+
+    const previewTextElement = environment.app.querySelector(
+      "[data-pattern-case-review-preview-text='true']"
+    );
+    assert.ok(previewTextElement);
+    const fullText = readTreeText(environment.app);
+    const previewText = previewTextElement.textContent;
+
+    assertTextIncludes(fullText, [
+      "Target: AI2 / ai2",
+      "Protocol: pattern-room-case-review",
+      "Bu paket kullanıcı tarafından eklenen",
+    ]);
+    assert.match(previewText, /\[Case Packet\]/);
+    assert.match(previewText, /"caution":/);
+    assert.match(previewText, /"sources":/);
+    assertPatternCaseReviewPreviewAvoidsVerdictLanguage(previewText);
+
+    assert.deepEqual(environment.sentCommands, []);
+    assert.deepEqual(environment.sentEvents, []);
+    assert.equal(environment.sentCommands.includes("pattern:case-review-dispatch"), false);
+
+    const previewSource = readFileSync(
+      resolve("rooms/pattern-room/ui/pattern-case-review-preview.ts"),
+      "utf8"
+    );
+    const panelSource = readFileSync(
+      resolve("rooms/pattern-room/ui/panels/pattern-tenth-man-panel.ts"),
+      "utf8"
+    );
+    [previewSource, panelSource].forEach((source) => {
+      assert.doesNotMatch(source, /PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND/);
+      assert.doesNotMatch(source, /pattern:case-review-dispatch/);
+      assert.doesNotMatch(source, /roomAPI\.sendCommand/);
+      assert.doesNotMatch(source, /dispatchBridge/);
+      assert.doesNotMatch(source, /message\.sendWait/);
+    });
+    assert.equal(PATTERN_ROOM_SNAPSHOT_VERSION, 1);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+test("pattern-room installed UI dispatches the AI2 case review only after preview and confirm", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+  const confirmMessages: string[] = [];
+  const confirmMessage =
+    "Bu vaka inceleme paketi AI2 / 10. Adam rolüne gönderilecek. Mesaj gönderildikten sonra yanıt bu aşamada otomatik olarak odaya işlenmez. Devam edilsin mi?";
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  let confirmResult = false;
+
+  try {
+    const runtimeModule = (await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/pattern-room-ui-runtime.js")).href}?case-review-send=${Date.now()}`
+    )) as PatternRoomUiRuntimeModule;
+    const runtime = runtimeModule.createPatternRoomUiRuntime();
+    runtime.start();
+
+    setWindowConfirm((message) => {
+      confirmMessages.push(message);
+      return confirmResult;
+    });
+
+    openFocusedView(environment.app, "tenth-man");
+    const disabledSend = environment.app.querySelector(
+      "[data-pattern-case-review-dispatch-send='true']"
+    );
+    assert.ok(disabledSend);
+    assert.equal(disabledSend.disabled, true);
+    fireEvent(disabledSend, "click");
+    assert.deepEqual(confirmMessages, []);
+    assert.deepEqual(environment.sentCommands, []);
+
+    const preparePreview = environment.app.querySelector(
+      "[data-pattern-case-review-preview-prepare='true']"
+    );
+    assert.ok(preparePreview);
+    fireEvent(preparePreview, "click");
+
+    const enabledSend = environment.app.querySelector(
+      "[data-pattern-case-review-dispatch-send='true']"
+    );
+    assert.ok(enabledSend);
+    assert.equal(enabledSend.disabled, false);
+    assertTextIncludes(readTreeText(environment.app), [
+      "Target: AI2 / ai2",
+      "Protocol: pattern-room-case-review",
+    ]);
+
+    const snapshotBeforeSend = runtime.createSnapshot();
+    fireEvent(enabledSend, "click");
+    assert.deepEqual(confirmMessages, [confirmMessage]);
+    assert.deepEqual(environment.sentCommands, []);
+
+    confirmResult = true;
+    fireEvent(enabledSend, "click");
+    assert.deepEqual(confirmMessages, [confirmMessage, confirmMessage]);
+    assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND]);
+    assertTextIncludes(readTreeText(environment.app), ["Gönderiliyor..."]);
+
+    const dispatchEvent = environment.sentEvents[0];
+    assert.ok(dispatchEvent);
+    assert.equal(dispatchEvent.command, PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND);
+    assert.equal(environment.sentEvents.length, 1);
+    const draft = dispatchEvent.payload["draft"] as PatternRoomCaseReviewDispatchDraft;
+    assert.ok(draft);
+    assert.equal(draft.roleSlot, "AI2");
+    assert.equal(draft.targetSlot, "ai2");
+    assert.equal(draft.payload.toSlot, "ai2");
+    assert.equal(draft.payload.payload.protocol.protocolKey, "pattern-room-case-review");
+    assert.match(draft.payload.payload.text, /\[Case Packet\]/);
+    assert.match(draft.payload.payload.text, /"caution":/);
+    assert.equal("context" in draft.payload.payload.protocol, false);
+
+    assertSnapshotLocalStateUnchanged(snapshotBeforeSend, runtime.createSnapshot());
+
+    environment.emitHostMessage({
+      payload: {
+        roleSlot: "AI2",
+        success: true,
+        targetSlot: "ai2",
+        warnings: [],
+      },
+      type: PATTERN_ROOM_CASE_REVIEW_DISPATCHED_EVENT,
+    });
+    assertTextIncludes(readTreeText(environment.app), ["AI2’ye gönderildi."]);
+    assertSnapshotLocalStateUnchanged(snapshotBeforeSend, runtime.createSnapshot());
+
+    environment.emitHostMessage({
+      payload: {
+        error: "dispatch failed in smoke",
+        success: false,
+      },
+      type: PATTERN_ROOM_CASE_REVIEW_DISPATCH_FAILED_EVENT,
+    });
+    assertTextIncludes(readTreeText(environment.app), ["Gönderim başarısız."]);
+    assertSnapshotLocalStateUnchanged(snapshotBeforeSend, runtime.createSnapshot());
+
+    environment.runPendingTimers(2000);
+    assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND]);
+    assert.equal(environment.sentCommands.includes(PATTERN_ROOM_SAVE_COMMAND), false);
+    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+    runtime.dispose();
   } finally {
     environment.restore();
     await installedCopy.cleanup();

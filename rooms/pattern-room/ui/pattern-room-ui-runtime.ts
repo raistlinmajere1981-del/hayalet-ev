@@ -8,6 +8,11 @@ import {
   PATTERN_ROOM_SAVED_EVENT,
   PATTERN_ROOM_SAVE_FAILED_EVENT,
 } from "../shared/types/pattern-room-persistence.js";
+import {
+  PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND,
+  PATTERN_ROOM_CASE_REVIEW_DISPATCH_FAILED_EVENT,
+  PATTERN_ROOM_CASE_REVIEW_DISPATCHED_EVENT,
+} from "../shared/types/pattern-room-case-review-dispatch.js";
 import type {
   PatternLongTextSourceImportInput,
   PatternLongTextSourceImportStatus,
@@ -32,11 +37,21 @@ import { createDeskPanel } from "./panels/pattern-desk-panel.js";
 import { createOverviewPanel } from "./panels/pattern-overview-panel.js";
 import { createReportPanel } from "./panels/pattern-report-panel.js";
 import { createTenthManPanel } from "./panels/pattern-tenth-man-panel.js";
+import type {
+  PatternCaseReviewDispatchStatus,
+  PatternCaseReviewPreviewDraft,
+} from "./pattern-case-review-preview.js";
 import { importSampleSourcePackage } from "./pattern-source-import-demo.js";
 
 type FocusedPatternViewId = Exclude<PatternViewId, "overview">;
 type HostMessageUnsubscribe = () => void;
 const AUTOSAVE_DEBOUNCE_MS = 2000;
+const CASE_REVIEW_DISPATCH_CONFIRM_MESSAGE =
+  "Bu vaka inceleme paketi AI2 / 10. Adam rolüne gönderilecek. Mesaj gönderildikten sonra yanıt bu aşamada otomatik olarak odaya işlenmez. Devam edilsin mi?";
+const CASE_REVIEW_IDLE_STATUS: PatternCaseReviewDispatchStatus = {
+  kind: "idle",
+  message: null,
+};
 
 export type PatternRoomUiRuntime = {
   start: () => void;
@@ -86,6 +101,8 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
   let sourceImportDemoStatus: ReturnType<typeof importSampleSourcePackage> | null = null;
   let userTextSourceImportStatus: PatternUserTextSourceImportStatus | null = null;
   let longTextSourceImportStatus: PatternLongTextSourceImportStatus | null = null;
+  let caseReviewPreviewDraft: PatternCaseReviewPreviewDraft | null = null;
+  let caseReviewDispatchStatus: PatternCaseReviewDispatchStatus = CASE_REVIEW_IDLE_STATUS;
   const importedUserTextPackageIds = new Set<string>();
   const importedLongTextPackageIds = new Set<string>();
 
@@ -296,6 +313,47 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
 
   function setArchiveEvidenceCaptureStatus(message: string | null): void {
     archiveEvidenceCaptureStatus = message;
+  }
+
+  function prepareCaseReviewPreview(draft: PatternCaseReviewPreviewDraft): void {
+    caseReviewPreviewDraft = draft;
+    caseReviewDispatchStatus = CASE_REVIEW_IDLE_STATUS;
+    render();
+  }
+
+  function setCaseReviewDispatchStatus(status: PatternCaseReviewDispatchStatus): void {
+    caseReviewDispatchStatus = status;
+    render();
+  }
+
+  function dispatchCaseReviewPreview(): void {
+    if (caseReviewPreviewDraft === null) {
+      return;
+    }
+
+    if (window.confirm(CASE_REVIEW_DISPATCH_CONFIRM_MESSAGE) !== true) {
+      return;
+    }
+
+    const sendCommand = window.roomAPI?.sendCommand;
+    if (typeof sendCommand !== "function") {
+      setCaseReviewDispatchStatus({ kind: "failed", message: "Gönderim başarısız." });
+      return;
+    }
+
+    setCaseReviewDispatchStatus({ kind: "sending", message: "Gönderiliyor..." });
+    try {
+      if (
+        !sendCommand(PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND, {
+          draft: caseReviewPreviewDraft.dispatchDraft,
+        })
+      ) {
+        setCaseReviewDispatchStatus({ kind: "failed", message: "Gönderim başarısız." });
+      }
+    } catch (error) {
+      console.warn("Pattern Room case review dispatch command failed.", error);
+      setCaseReviewDispatchStatus({ kind: "failed", message: "Gönderim başarısız." });
+    }
   }
 
   const actions: PatternPanelActions = {
@@ -522,7 +580,13 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
       board: () => createBoardPanel(viewModels, actions, onBack),
       desk: () => createDeskPanel(viewModels, actions, onBack),
       report: () => createReportPanel(viewModels, actions, onBack),
-      "tenth-man": () => createTenthManPanel(viewModels, actions, onBack),
+      "tenth-man": () =>
+        createTenthManPanel(viewModels, actions, onBack, {
+          dispatchStatus: caseReviewDispatchStatus,
+          onPrepare: prepareCaseReviewPreview,
+          onSend: dispatchCaseReviewPreview,
+          preview: caseReviewPreviewDraft,
+        }),
     };
     return panelFactories[viewId]();
   }
@@ -577,6 +641,14 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     console.warn(message);
   }
 
+  function handleCaseReviewDispatchedPayload(): void {
+    setCaseReviewDispatchStatus({ kind: "sent", message: "AI2’ye gönderildi." });
+  }
+
+  function handleCaseReviewDispatchFailedPayload(): void {
+    setCaseReviewDispatchStatus({ kind: "failed", message: "Gönderim başarısız." });
+  }
+
   function handleHostMessage(message: unknown): void {
     if (!isRecord(message)) {
       return;
@@ -593,6 +665,16 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
 
     if (message["type"] === PATTERN_ROOM_SAVE_FAILED_EVENT) {
       handleSaveFailedPayload(message["payload"]);
+      return;
+    }
+
+    if (message["type"] === PATTERN_ROOM_CASE_REVIEW_DISPATCHED_EVENT) {
+      handleCaseReviewDispatchedPayload();
+      return;
+    }
+
+    if (message["type"] === PATTERN_ROOM_CASE_REVIEW_DISPATCH_FAILED_EVENT) {
+      handleCaseReviewDispatchFailedPayload();
     }
   }
 
